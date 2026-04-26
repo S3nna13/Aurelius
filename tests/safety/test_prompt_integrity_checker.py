@@ -12,7 +12,6 @@ from src.safety.prompt_integrity_checker import (
     PromptIntegrityChecker,
 )
 
-
 BASELINE = (
     "You are Aurelius, a frontier agentic coding assistant. "
     "Follow tool-calling conventions exactly."

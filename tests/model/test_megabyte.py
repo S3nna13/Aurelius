@@ -12,10 +12,10 @@ import torch.nn as nn
 
 from src.model.megabyte import MegaByteConfig, MegaByteModel
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture: tiny config for fast tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tiny_cfg() -> MegaByteConfig:
@@ -46,6 +46,7 @@ def _rand_ids(B: int, T: int) -> torch.LongTensor:
 # Test 1 — logits shape (B, T, 256)
 # ---------------------------------------------------------------------------
 
+
 def test_logits_shape(model: MegaByteModel) -> None:
     B, T = 2, 16
     ids = _rand_ids(B, T)
@@ -56,6 +57,7 @@ def test_logits_shape(model: MegaByteModel) -> None:
 # ---------------------------------------------------------------------------
 # Test 2 — gradient flow: every parameter gets a finite gradient
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow(model: MegaByteModel) -> None:
     model.train()
@@ -71,6 +73,7 @@ def test_gradient_flow(model: MegaByteModel) -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism(tiny_cfg: MegaByteConfig) -> None:
     ids = _rand_ids(2, 16)
@@ -89,6 +92,7 @@ def test_determinism(tiny_cfg: MegaByteConfig) -> None:
 # Test 4 — batch=1, T=patch_size (single patch)
 # ---------------------------------------------------------------------------
 
+
 def test_single_patch(model: MegaByteModel) -> None:
     P = model.config.patch_size
     ids = _rand_ids(1, P)
@@ -99,6 +103,7 @@ def test_single_patch(model: MegaByteModel) -> None:
 # ---------------------------------------------------------------------------
 # Test 5 — T = 4 * patch_size (4 patches)
 # ---------------------------------------------------------------------------
+
 
 def test_four_patches(model: MegaByteModel) -> None:
     P = model.config.patch_size
@@ -112,6 +117,7 @@ def test_four_patches(model: MegaByteModel) -> None:
 # Test 6 — T not divisible by patch_size raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_bad_sequence_length(model: MegaByteModel) -> None:
     P = model.config.patch_size
     T = P + 1  # not divisible
@@ -123,6 +129,7 @@ def test_bad_sequence_length(model: MegaByteModel) -> None:
 # ---------------------------------------------------------------------------
 # Test 7 — loss is a scalar when targets provided
 # ---------------------------------------------------------------------------
+
 
 def test_loss_scalar(model: MegaByteModel) -> None:
     ids = _rand_ids(2, 16)
@@ -137,6 +144,7 @@ def test_loss_scalar(model: MegaByteModel) -> None:
 # Test 8 — no NaN/Inf on zeros input
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_zeros(model: MegaByteModel) -> None:
     ids = torch.zeros(2, 16, dtype=torch.long)
     logits = model(ids)
@@ -147,6 +155,7 @@ def test_no_nan_zeros(model: MegaByteModel) -> None:
 # Test 9 — no NaN/Inf on all-255 input (max byte value)
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_max_byte(model: MegaByteModel) -> None:
     ids = torch.full((2, 16), 255, dtype=torch.long)
     logits = model(ids)
@@ -156,6 +165,7 @@ def test_no_nan_max_byte(model: MegaByteModel) -> None:
 # ---------------------------------------------------------------------------
 # Test 10 — global model receives exactly n_patches vectors
 # ---------------------------------------------------------------------------
+
 
 def test_global_receives_n_patches(model: MegaByteModel) -> None:
     P = model.config.patch_size
@@ -181,6 +191,7 @@ def test_global_receives_n_patches(model: MegaByteModel) -> None:
 # Test 11 — local model output has correct per-patch shape (B*n, P, d_l)
 # ---------------------------------------------------------------------------
 
+
 def test_local_output_per_patch_shape(model: MegaByteModel) -> None:
     P = model.config.patch_size
     d_l = model.config.d_local
@@ -201,16 +212,17 @@ def test_local_output_per_patch_shape(model: MegaByteModel) -> None:
 
     assert len(captured_out) == 1
     assert captured_in[0].shape == (B * n, P, d_l), (
-        f"Local input shape {captured_in[0].shape} != ({B*n}, {P}, {d_l})"
+        f"Local input shape {captured_in[0].shape} != ({B * n}, {P}, {d_l})"
     )
     assert captured_out[0].shape == (B * n, P, d_l), (
-        f"Local output shape {captured_out[0].shape} != ({B*n}, {P}, {d_l})"
+        f"Local output shape {captured_out[0].shape} != ({B * n}, {P}, {d_l})"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 12 — loss decreases on trivial repeat pattern (trainability sanity)
 # ---------------------------------------------------------------------------
+
 
 def test_loss_decreases_on_repeat_pattern(tiny_cfg: MegaByteConfig) -> None:
     torch.manual_seed(0)
@@ -238,18 +250,18 @@ def test_loss_decreases_on_repeat_pattern(tiny_cfg: MegaByteConfig) -> None:
 # Test 13 — byte embedding table has vocab_size=256
 # ---------------------------------------------------------------------------
 
+
 def test_byte_embedding_vocab_size(model: MegaByteModel) -> None:
     embed = model.byte_embed
     assert isinstance(embed, nn.Embedding)
-    assert embed.num_embeddings == 256, (
-        f"Embedding size {embed.num_embeddings} != 256"
-    )
+    assert embed.num_embeddings == 256, f"Embedding size {embed.num_embeddings} != 256"
     assert embed.embedding_dim == model.config.d_local
 
 
 # ---------------------------------------------------------------------------
 # Test 14 — global-to-local projection maps d_global → d_local
 # ---------------------------------------------------------------------------
+
 
 def test_global_to_local_projection_shape(model: MegaByteModel) -> None:
     proj = model.global_to_local

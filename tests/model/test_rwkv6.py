@@ -11,19 +11,18 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.model.rwkv6 import (
-    RWKV6TimeMix,
-    RWKV6ChannelMix,
     RWKV6Block,
+    RWKV6ChannelMix,
     RWKV6Model,
+    RWKV6TimeMix,
 )
 
-D_MODEL    = 32
-N_HEADS    = 4
-N_LAYERS   = 2
-BATCH      = 2
-SEQ_LEN    = 8
+D_MODEL = 32
+N_HEADS = 4
+N_LAYERS = 2
+BATCH = 2
+SEQ_LEN = 8
 VOCAB_SIZE = 256
 
 
@@ -76,17 +75,17 @@ def test_time_mix_output_finite(time_mix, x):
 def test_time_mix_causal(time_mix):
     torch.manual_seed(7)
     x_short = torch.randn(BATCH, SEQ_LEN, D_MODEL)
-    x_long  = torch.cat([x_short, torch.randn(BATCH, 4, D_MODEL)], dim=1)
+    x_long = torch.cat([x_short, torch.randn(BATCH, 4, D_MODEL)], dim=1)
     time_mix.eval()
     with torch.no_grad():
         out_short = time_mix(x_short)
-        out_long  = time_mix(x_long)
+        out_long = time_mix(x_long)
     assert torch.allclose(out_short, out_long[:, :SEQ_LEN, :], atol=1e-5)
 
 
 def test_time_mix_gradients(time_mix, x):
     x_grad = x.clone().requires_grad_(True)
-    out    = time_mix(x_grad)
+    out = time_mix(x_grad)
     out.sum().backward()
     assert x_grad.grad is not None
     assert torch.isfinite(x_grad.grad).all()
@@ -112,7 +111,7 @@ def test_channel_mix_output_finite(channel_mix, x):
 
 def test_channel_mix_gradients(channel_mix, x):
     x_grad = x.clone().requires_grad_(True)
-    out    = channel_mix(x_grad)
+    out = channel_mix(x_grad)
     out.sum().backward()
     assert x_grad.grad is not None
     assert torch.isfinite(x_grad.grad).all()
@@ -144,7 +143,7 @@ def test_model_output_finite(rwkv_model, input_ids):
 
 
 def test_model_gradients(rwkv_model, input_ids):
-    out  = rwkv_model(input_ids)
+    out = rwkv_model(input_ids)
     loss = out.sum()
     loss.backward()
     grads = [p.grad for p in rwkv_model.parameters() if p.grad is not None]

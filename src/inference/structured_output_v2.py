@@ -3,12 +3,13 @@
 V2 because structured_output.py exists with a different (PartialJSONValidator) API.
 Provides schema-validated, grammar-constrained structured output generation.
 """
+
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 from torch import Tensor
@@ -19,12 +20,12 @@ class OutputSchema:
     """Schema specification for structured JSON output."""
 
     schema_type: str = "json"
-    required_keys: List[str] = field(default_factory=list)
-    value_types: Dict[str, str] = field(default_factory=dict)
+    required_keys: list[str] = field(default_factory=list)
+    value_types: dict[str, str] = field(default_factory=dict)
     max_tokens: int = 512
 
 
-_TYPE_MAP: Dict[str, type] = {
+_TYPE_MAP: dict[str, type] = {
     "str": str,
     "int": int,
     "float": float,
@@ -43,12 +44,12 @@ def is_valid_json(text: str) -> bool:
         return False
 
 
-def extract_json_from_text(text: str) -> Optional[str]:
+def extract_json_from_text(text: str) -> str | None:
     """Find first balanced JSON object or array in text using bracket counting.
 
     Returns extracted JSON string, or None if not found.
     """
-    for start_char, end_char in [('{', '}'), ('[', ']')]:
+    for start_char, end_char in [("{", "}"), ("[", "]")]:
         idx = text.find(start_char)
         if idx == -1:
             continue
@@ -59,7 +60,7 @@ def extract_json_from_text(text: str) -> Optional[str]:
             if escape_next:
                 escape_next = False
                 continue
-            if ch == '\\' and in_string:
+            if ch == "\\" and in_string:
                 escape_next = True
                 continue
             if ch == '"':
@@ -72,19 +73,19 @@ def extract_json_from_text(text: str) -> Optional[str]:
             elif ch == end_char:
                 depth -= 1
                 if depth == 0:
-                    candidate = text[idx: i + 1]
+                    candidate = text[idx : i + 1]
                     if is_valid_json(candidate):
                         return candidate
                     break
     return None
 
 
-def validate_schema(data: Dict, schema: OutputSchema) -> Tuple[bool, List[str]]:
+def validate_schema(data: dict, schema: OutputSchema) -> tuple[bool, list[str]]:
     """Validate parsed dict against OutputSchema.
 
     Returns (is_valid, list_of_error_messages).
     """
-    errors: List[str] = []
+    errors: list[str] = []
 
     for key in schema.required_keys:
         if key not in data:
@@ -124,7 +125,7 @@ def _infer_json_state(s: str) -> str:
         if escape_next:
             escape_next = False
             continue
-        if ch == '\\' and in_string:
+        if ch == "\\" and in_string:
             escape_next = True
             continue
         if ch == '"':
@@ -133,21 +134,21 @@ def _infer_json_state(s: str) -> str:
             continue
         if in_string:
             continue
-        if ch in ('{', '[', ':', ','):
+        if ch in ("{", "[", ":", ","):
             last_non_space = ch
-        elif ch not in (' ', '\t', '\n', '\r'):
+        elif ch not in (" ", "\t", "\n", "\r"):
             last_non_space = ch
 
     if in_string:
         return "in_string"
-    if last_non_space in (':', '[', '{', ',', ''):
+    if last_non_space in (":", "[", "{", ",", ""):
         return "expect_value"
-    if last_non_space in ('"', '}', ']') or last_non_space.isdigit():
+    if last_non_space in ('"', "}", "]") or last_non_space.isdigit():
         return "after_value"
     return "expect_value"
 
 
-def build_json_grammar_logit_mask(current_json: str, vocab: List[str]) -> Tensor:
+def build_json_grammar_logit_mask(current_json: str, vocab: list[str]) -> Tensor:
     """Return (vocab_size,) float mask: 0.0 = allowed, -inf = banned.
 
     Simplified grammar rules based on current JSON state:
@@ -170,7 +171,7 @@ def build_json_grammar_logit_mask(current_json: str, vocab: List[str]) -> Tensor
             if not tok or tok[0] not in allowed_starts:
                 mask[i] = NEG_INF
     elif state == "after_value":
-        allowed = {',', '}', ']'}
+        allowed = {",", "}", "]"}
         for i, tok in enumerate(vocab):
             stripped = tok.strip()
             if not stripped or stripped[0] not in allowed:
@@ -185,7 +186,7 @@ class StructuredOutputParser:
     def __init__(self, schema: OutputSchema) -> None:
         self.schema = schema
 
-    def parse(self, text: str) -> Optional[Dict]:
+    def parse(self, text: str) -> dict | None:
         """Extract, parse, and validate JSON from text; return dict or None."""
         extracted = extract_json_from_text(text)
         if extracted is None:
@@ -207,14 +208,14 @@ class StructuredOutputParser:
 
     def repair(self, text: str) -> str:
         """Attempt to repair malformed JSON by removing trailing commas and adding closers."""
-        repaired = re.sub(r',\s*([}\]])', r'\1', text)
-        open_brackets = repaired.count('[') - repaired.count(']')
-        open_braces = repaired.count('{') - repaired.count('}')
-        repaired += ']' * max(0, open_brackets)
-        repaired += '}' * max(0, open_braces)
+        repaired = re.sub(r",\s*([}\]])", r"\1", text)
+        open_brackets = repaired.count("[") - repaired.count("]")
+        open_braces = repaired.count("{") - repaired.count("}")
+        repaired += "]" * max(0, open_brackets)
+        repaired += "}" * max(0, open_braces)
         return repaired
 
-    def batch_parse(self, texts: List[str]) -> List[Optional[Dict]]:
+    def batch_parse(self, texts: list[str]) -> list[dict | None]:
         """Parse each text; return None for failures."""
         return [self.parse(t) for t in texts]
 
@@ -226,7 +227,7 @@ class JSONModeDecoder:
         self,
         model_fn: Callable,
         schema: OutputSchema,
-        vocab: List[str],
+        vocab: list[str],
         eos_token_id: int = 2,
     ) -> None:
         self.model_fn = model_fn

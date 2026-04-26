@@ -7,19 +7,19 @@ import math
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.reranker import (
+    CrossEncoderReranker,
     RerankerConfig,
     ScoredDocument,
-    CrossEncoderReranker,
     batch_score,
     format_query_document,
-    rerank,
     reciprocal_rank_fusion,
+    rerank,
     score_query_document_logit,
     score_query_document_perplexity,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny model config — fast enough to run in CI
@@ -35,6 +35,7 @@ TINY_CFG = AureliusConfig(
     vocab_size=256,
     max_seq_len=512,
 )
+
 
 # Byte-level tokenizer capped at 256 tokens (fits within TINY_CFG.vocab_size)
 def byte_encode(s: str) -> list[int]:
@@ -53,6 +54,7 @@ def tiny_model() -> AureliusTransformer:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = RerankerConfig()
     assert cfg.max_seq_len == 256
@@ -65,6 +67,7 @@ def test_config_defaults():
 # 2. test_format_query_document
 # ---------------------------------------------------------------------------
 
+
 def test_format_query_document():
     result = format_query_document("What is AI?", "AI is a field of computer science.")
     assert "Query:" in result
@@ -76,6 +79,7 @@ def test_format_query_document():
 # 3. test_score_logit_finite
 # ---------------------------------------------------------------------------
 
+
 def test_score_logit_finite(tiny_model):
     score = score_query_document_logit(tiny_model, byte_encode, "hi", "hello world")
     assert math.isfinite(score)
@@ -84,6 +88,7 @@ def test_score_logit_finite(tiny_model):
 # ---------------------------------------------------------------------------
 # 4. test_score_perplexity_negative
 # ---------------------------------------------------------------------------
+
 
 def test_score_perplexity_negative(tiny_model):
     score = score_query_document_perplexity(tiny_model, byte_encode, "hi", "hello world")
@@ -96,6 +101,7 @@ def test_score_perplexity_negative(tiny_model):
 # 5. test_batch_score_length
 # ---------------------------------------------------------------------------
 
+
 def test_batch_score_length(tiny_model):
     cfg = RerankerConfig(score_method="logit")
     documents = ["doc one", "doc two", "doc three"]
@@ -106,6 +112,7 @@ def test_batch_score_length(tiny_model):
 # ---------------------------------------------------------------------------
 # 6. test_batch_score_finite
 # ---------------------------------------------------------------------------
+
 
 def test_batch_score_finite(tiny_model):
     cfg = RerankerConfig(score_method="logit")
@@ -119,6 +126,7 @@ def test_batch_score_finite(tiny_model):
 # 7. test_rerank_sorted_descending
 # ---------------------------------------------------------------------------
 
+
 def test_rerank_sorted_descending():
     documents = ["doc a", "doc b", "doc c"]
     scores = [0.3, 0.9, 0.1]
@@ -130,6 +138,7 @@ def test_rerank_sorted_descending():
 # ---------------------------------------------------------------------------
 # 8. test_rerank_original_ranks
 # ---------------------------------------------------------------------------
+
 
 def test_rerank_original_ranks():
     documents = ["first", "second", "third"]
@@ -147,6 +156,7 @@ def test_rerank_original_ranks():
 # 9. test_reciprocal_rank_fusion_order
 # ---------------------------------------------------------------------------
 
+
 def test_reciprocal_rank_fusion_order():
     # Doc 0 is top-ranked in both lists → should win
     rankings = [[0, 1, 2], [0, 2, 1]]
@@ -158,6 +168,7 @@ def test_reciprocal_rank_fusion_order():
 # 10. test_reciprocal_rank_fusion_shape
 # ---------------------------------------------------------------------------
 
+
 def test_reciprocal_rank_fusion_shape():
     rankings = [[0, 1, 2], [1, 2, 3]]
     fused = reciprocal_rank_fusion(rankings)
@@ -168,6 +179,7 @@ def test_reciprocal_rank_fusion_shape():
 # ---------------------------------------------------------------------------
 # 11. test_cross_encoder_rerank_returns_list
 # ---------------------------------------------------------------------------
+
 
 def test_cross_encoder_rerank_returns_list(tiny_model):
     cfg = RerankerConfig(score_method="logit", normalize_scores=True)
@@ -183,6 +195,7 @@ def test_cross_encoder_rerank_returns_list(tiny_model):
 # 12. test_cross_encoder_rerank_count
 # ---------------------------------------------------------------------------
 
+
 def test_cross_encoder_rerank_count(tiny_model):
     cfg = RerankerConfig(score_method="logit")
     reranker = CrossEncoderReranker(tiny_model, byte_encode, cfg)
@@ -194,6 +207,7 @@ def test_cross_encoder_rerank_count(tiny_model):
 # ---------------------------------------------------------------------------
 # 13. test_cross_encoder_ndcg_range
 # ---------------------------------------------------------------------------
+
 
 def test_cross_encoder_ndcg_range(tiny_model):
     cfg = RerankerConfig(score_method="logit")
@@ -207,6 +221,7 @@ def test_cross_encoder_ndcg_range(tiny_model):
 # ---------------------------------------------------------------------------
 # 14. test_cross_encoder_ndcg_perfect
 # ---------------------------------------------------------------------------
+
 
 def test_cross_encoder_ndcg_perfect(tiny_model):
     """A perfectly ranked list should yield NDCG = 1.0."""
@@ -238,6 +253,7 @@ def test_cross_encoder_ndcg_perfect(tiny_model):
 # ---------------------------------------------------------------------------
 # 15. test_cross_encoder_fusion_rerank
 # ---------------------------------------------------------------------------
+
 
 def test_cross_encoder_fusion_rerank(tiny_model):
     cfg = RerankerConfig(score_method="logit")

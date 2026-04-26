@@ -1,17 +1,17 @@
 """Trie-based constrained decoding: enforce valid outputs via prefix tree."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Iterator
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # TrieDecodingConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TrieDecodingConfig:
@@ -26,11 +26,12 @@ class TrieDecodingConfig:
 # TrieNode
 # ---------------------------------------------------------------------------
 
+
 class TrieNode:
     """Node in a prefix tree."""
 
     def __init__(self) -> None:
-        self.children: dict[int, "TrieNode"] = {}
+        self.children: dict[int, TrieNode] = {}
         self.is_terminal: bool = False
 
     def insert(self, tokens: list[int]) -> None:
@@ -45,7 +46,7 @@ class TrieNode:
     def has_child(self, token_id: int) -> bool:
         return token_id in self.children
 
-    def get_child(self, token_id: int) -> "TrieNode | None":
+    def get_child(self, token_id: int) -> TrieNode | None:
         return self.children.get(token_id)
 
     def valid_next_tokens(self) -> list[int]:
@@ -62,6 +63,7 @@ class TrieNode:
 # ---------------------------------------------------------------------------
 # Trie
 # ---------------------------------------------------------------------------
+
 
 class Trie:
     """Prefix tree for constrained generation."""
@@ -116,8 +118,9 @@ class Trie:
 # constrained_logits
 # ---------------------------------------------------------------------------
 
+
 def constrained_logits(
-    logits: Tensor,            # (vocab_size,) for one token position
+    logits: Tensor,  # (vocab_size,) for one token position
     allowed_tokens: list[int],
     temperature: float = 1.0,
 ) -> Tensor:
@@ -144,6 +147,7 @@ def constrained_logits(
 # ---------------------------------------------------------------------------
 # TrieDecoder
 # ---------------------------------------------------------------------------
+
 
 class TrieDecoder:
     """Trie-constrained generation."""
@@ -215,7 +219,9 @@ class TrieDecoder:
                 if next_token == cfg.eos_token_id and cfg.allow_eos_anywhere:
                     break
 
-                next_tensor = torch.tensor([[next_token]], dtype=torch.long, device=current_ids.device)
+                next_tensor = torch.tensor(
+                    [[next_token]], dtype=torch.long, device=current_ids.device
+                )
                 current_ids = torch.cat([current_ids, next_tensor], dim=1)
 
         # Pad to max_new_tokens

@@ -1,7 +1,8 @@
 """Tests for speculative decoding."""
+
 import torch
-import pytest
-from src.inference.speculative import SpeculativeDecoder, SpeculativeConfig, _sample_from_logits
+
+from src.inference.speculative import SpeculativeConfig, SpeculativeDecoder, _sample_from_logits
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -9,8 +10,14 @@ from src.model.transformer import AureliusTransformer
 def _make_model(n_layers=2, d_model=64):
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=n_layers, d_model=d_model, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=n_layers,
+        d_model=d_model,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
@@ -74,7 +81,7 @@ def test_speculative_preserves_prompt():
     prompt = torch.randint(0, 256, (1, 8))
     output = decoder.generate(prompt)
 
-    assert torch.equal(output[:, :prompt.shape[1]], prompt)
+    assert torch.equal(output[:, : prompt.shape[1]], prompt)
 
 
 def test_acceptance_rate_in_range():

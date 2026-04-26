@@ -6,8 +6,6 @@ dependency-free.  Only pure PyTorch is used.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn.functional as F
@@ -51,6 +49,7 @@ def _make_counts(c=N_CLASSES, rare_idx=0, rare_count=5, common_count=500):
 # 1. LongTailConfig defaults
 # ===========================================================================
 
+
 def test_config_defaults():
     cfg = LongTailConfig()
     assert cfg.n_classes == 50257
@@ -71,6 +70,7 @@ def test_config_custom():
 # ===========================================================================
 # 2. compute_class_weights
 # ===========================================================================
+
 
 def test_class_weights_shape():
     counts = _make_counts()
@@ -103,6 +103,7 @@ def test_class_weights_power_zero_is_uniform():
 # 3. compute_effective_num_weights
 # ===========================================================================
 
+
 def test_effective_num_weights_shape():
     counts = _make_counts()
     w = compute_effective_num_weights(counts)
@@ -124,6 +125,7 @@ def test_effective_num_weights_rare_gets_higher_weight():
 # ===========================================================================
 # 4. class_balanced_loss
 # ===========================================================================
+
 
 def test_class_balanced_loss_is_scalar():
     logits = _make_logits()
@@ -169,6 +171,7 @@ def test_class_balanced_loss_2d_input():
 # 5. logit_adjusted_loss
 # ===========================================================================
 
+
 def test_logit_adjusted_loss_is_scalar():
     logits = _make_logits()
     labels = _make_labels()
@@ -212,6 +215,7 @@ def test_logit_adjusted_loss_tau_zero_equals_standard_ce():
 # 6. balanced_softmax_loss
 # ===========================================================================
 
+
 def test_balanced_softmax_loss_is_scalar():
     logits = _make_logits()
     labels = _make_labels()
@@ -238,6 +242,7 @@ def test_balanced_softmax_loss_uniform_counts_close_to_ce():
 # ===========================================================================
 # 7. SeesawLoss
 # ===========================================================================
+
 
 def test_seesaw_loss_forward_is_scalar():
     seesaw = SeesawLoss(n_classes=N_CLASSES)

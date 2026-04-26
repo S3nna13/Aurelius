@@ -6,6 +6,7 @@ structured feedback and scores. Based on Bai et al. (2022) Constitutional AI.
 In production, rule scoring would use a judge model for semantic evaluation.
 Here we use keyword/pattern matching as a lightweight proxy.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,21 +23,11 @@ class ConstitutionalRule:
 
 
 CONSTITUTION: list[ConstitutionalRule] = [
-    ConstitutionalRule(
-        "S1", "safety", "Do not assist with illegal activities.", severity=5.0
-    ),
-    ConstitutionalRule(
-        "S2", "safety", "Do not generate harmful content.", severity=5.0
-    ),
-    ConstitutionalRule(
-        "E1", "ethics", "Respect user autonomy and dignity.", severity=3.0
-    ),
-    ConstitutionalRule(
-        "H1", "helpfulness", "Provide accurate, useful information.", severity=2.0
-    ),
-    ConstitutionalRule(
-        "A1", "accuracy", "Acknowledge uncertainty when present.", severity=2.0
-    ),
+    ConstitutionalRule("S1", "safety", "Do not assist with illegal activities.", severity=5.0),
+    ConstitutionalRule("S2", "safety", "Do not generate harmful content.", severity=5.0),
+    ConstitutionalRule("E1", "ethics", "Respect user autonomy and dignity.", severity=3.0),
+    ConstitutionalRule("H1", "helpfulness", "Provide accurate, useful information.", severity=2.0),
+    ConstitutionalRule("A1", "accuracy", "Acknowledge uncertainty when present.", severity=2.0),
 ]
 
 _ALL_CATEGORIES = ("safety", "ethics", "helpfulness", "accuracy")
@@ -105,9 +96,9 @@ class ConstitutionalScorer:
         # Weighted score by severity
         total_severity = sum(rule.severity for rule in self.rules)
         if total_severity > 0:
-            weighted_score = sum(
-                rule_scores[rule.id] * rule.severity for rule in self.rules
-            ) / total_severity
+            weighted_score = (
+                sum(rule_scores[rule.id] * rule.severity for rule in self.rules) / total_severity
+            )
         else:
             weighted_score = 1.0
         weighted_score = float(max(0.0, min(1.0, weighted_score)))
@@ -135,9 +126,7 @@ class ConstitutionalScorer:
         Returns [(response, score)] for responses meeting min_score,
         sorted descending by score.
         """
-        scored = [
-            (resp, self.score_response(resp)["overall"]) for resp in responses
-        ]
+        scored = [(resp, self.score_response(resp)["overall"]) for resp in responses]
         filtered = [(resp, score) for resp, score in scored if score >= min_score]
         return sorted(filtered, key=lambda x: x[1], reverse=True)
 

@@ -9,19 +9,17 @@ Pure PyTorch only - no external dependencies beyond stdlib and torch.
 
 from __future__ import annotations
 
-import math
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # ConstitutionalRule
 # ---------------------------------------------------------------------------
+
 
 class ConstitutionalRule:
     """A single constitutional constraint rule.
@@ -51,19 +49,20 @@ class ConstitutionalRule:
             ``max_length`` - int (default sys.maxsize).
     """
 
-    VALID_TYPES = frozenset({
-        "forbidden_tokens",
-        "required_prefix",
-        "max_repetition",
-        "sentiment_bound",
-        "length_bound",
-    })
+    VALID_TYPES = frozenset(
+        {
+            "forbidden_tokens",
+            "required_prefix",
+            "max_repetition",
+            "sentiment_bound",
+            "length_bound",
+        }
+    )
 
     def __init__(self, name: str, constraint_type: str, parameters: dict) -> None:
         if constraint_type not in self.VALID_TYPES:
             raise ValueError(
-                f"Unknown constraint_type '{constraint_type}'. "
-                f"Valid: {sorted(self.VALID_TYPES)}"
+                f"Unknown constraint_type '{constraint_type}'. Valid: {sorted(self.VALID_TYPES)}"
             )
         self.name = name
         self.constraint_type = constraint_type
@@ -73,11 +72,11 @@ class ConstitutionalRule:
     # Public API
     # ------------------------------------------------------------------
 
-    def check(self, token_ids: List[int]) -> bool:
+    def check(self, token_ids: list[int]) -> bool:
         """Return True when the constraint is satisfied."""
         return self.violation_score(token_ids) == 0.0
 
-    def violation_score(self, token_ids: List[int]) -> float:
+    def violation_score(self, token_ids: list[int]) -> float:
         """Return a non-negative score; 0 means fully satisfied."""
         ct = self.constraint_type
         if ct == "forbidden_tokens":
@@ -96,28 +95,23 @@ class ConstitutionalRule:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _forbidden_violation(self, token_ids: List[int]) -> float:
+    def _forbidden_violation(self, token_ids: list[int]) -> float:
         forbidden = set(self.parameters.get("token_ids", []))
         count = sum(1 for t in token_ids if t in forbidden)
         return float(count)
 
-    def _required_prefix_violation(self, token_ids: List[int]) -> float:
-        prefix: List[int] = self.parameters.get("prefix", [])
+    def _required_prefix_violation(self, token_ids: list[int]) -> float:
+        prefix: list[int] = self.parameters.get("prefix", [])
         if not prefix:
             return 0.0
         if len(token_ids) < len(prefix):
-            mismatches = sum(
-                1 for i, p in enumerate(prefix[: len(token_ids)])
-                if token_ids[i] != p
-            )
+            mismatches = sum(1 for i, p in enumerate(prefix[: len(token_ids)]) if token_ids[i] != p)
             remaining = len(prefix) - len(token_ids)
             return float(mismatches + remaining)
-        mismatches = sum(
-            1 for i, p in enumerate(prefix) if token_ids[i] != p
-        )
+        mismatches = sum(1 for i, p in enumerate(prefix) if token_ids[i] != p)
         return float(mismatches)
 
-    def _max_repetition_violation(self, token_ids: List[int]) -> float:
+    def _max_repetition_violation(self, token_ids: list[int]) -> float:
         max_reps: int = self.parameters.get("max_reps", 3)
         if not token_ids:
             return 0.0
@@ -125,7 +119,7 @@ class ConstitutionalRule:
         excess = sum(max(0, c - max_reps) for c in counts.values())
         return float(excess)
 
-    def _sentiment_violation(self, token_ids: List[int]) -> float:
+    def _sentiment_violation(self, token_ids: list[int]) -> float:
         neg_ids = set(self.parameters.get("negative_token_ids", []))
         min_positive_ratio: float = self.parameters.get("min_positive_ratio", 0.0)
         if not token_ids:
@@ -135,9 +129,9 @@ class ConstitutionalRule:
         shortfall = max(0.0, min_positive_ratio - positive_ratio)
         return shortfall
 
-    def _length_violation(self, token_ids: List[int]) -> float:
+    def _length_violation(self, token_ids: list[int]) -> float:
         min_len: int = self.parameters.get("min_length", 0)
-        max_len: int = self.parameters.get("max_length", 2 ** 31 - 1)
+        max_len: int = self.parameters.get("max_length", 2**31 - 1)
         length = len(token_ids)
         violation = 0.0
         if length < min_len:
@@ -151,21 +145,22 @@ class ConstitutionalRule:
 # TokenConstraintSet
 # ---------------------------------------------------------------------------
 
+
 class TokenConstraintSet:
     """Aggregates multiple :class:`ConstitutionalRule` objects."""
 
-    def __init__(self, rules: List[ConstitutionalRule]) -> None:
+    def __init__(self, rules: list[ConstitutionalRule]) -> None:
         self.rules = list(rules)
 
-    def check_all(self, token_ids: List[int]) -> Dict[str, bool]:
+    def check_all(self, token_ids: list[int]) -> dict[str, bool]:
         """Return a mapping of rule name to satisfied (bool)."""
         return {r.name: r.check(token_ids) for r in self.rules}
 
-    def total_violation(self, token_ids: List[int]) -> float:
+    def total_violation(self, token_ids: list[int]) -> float:
         """Sum of all individual violation scores (always >= 0)."""
         return sum(r.violation_score(token_ids) for r in self.rules)
 
-    def satisfied(self, token_ids: List[int]) -> bool:
+    def satisfied(self, token_ids: list[int]) -> bool:
         """True only when every rule is satisfied."""
         return all(r.check(token_ids) for r in self.rules)
 
@@ -173,6 +168,7 @@ class TokenConstraintSet:
 # ---------------------------------------------------------------------------
 # LogitConstraintEnforcer
 # ---------------------------------------------------------------------------
+
 
 class LogitConstraintEnforcer(nn.Module):
     """Applies constitutional constraints directly to logits at decode time.
@@ -188,10 +184,8 @@ class LogitConstraintEnforcer(nn.Module):
         self.vocab_size = vocab_size
 
         # Persistent buffers so they move with the module's device
-        self.register_buffer(
-            "forbidden_token_mask", torch.zeros(vocab_size, dtype=torch.bool)
-        )
-        self.required_tokens: List[int] = []
+        self.register_buffer("forbidden_token_mask", torch.zeros(vocab_size, dtype=torch.bool))
+        self.required_tokens: list[int] = []
         self._rep_penalty: float = 1.0
         self._max_reps: int = 3
         self._required_boost: float = 5.0
@@ -200,14 +194,14 @@ class LogitConstraintEnforcer(nn.Module):
     # Configuration helpers
     # ------------------------------------------------------------------
 
-    def set_forbidden(self, token_ids: List[int]) -> None:
+    def set_forbidden(self, token_ids: list[int]) -> None:
         """Mark tokens as forbidden (will be set to -inf in forward)."""
         self.forbidden_token_mask.zero_()
         if token_ids:
             idx = torch.tensor(token_ids, dtype=torch.long)
             self.forbidden_token_mask[idx] = True
 
-    def set_required_tokens(self, token_ids: List[int]) -> None:
+    def set_required_tokens(self, token_ids: list[int]) -> None:
         """Tokens that must appear eventually; will be boosted until generated."""
         self.required_tokens = list(token_ids)
 
@@ -222,9 +216,9 @@ class LogitConstraintEnforcer(nn.Module):
 
     def forward(
         self,
-        logits: torch.Tensor,            # [B, vocab_size]
+        logits: torch.Tensor,  # [B, vocab_size]
         generated_so_far: torch.Tensor,  # [B, T]
-    ) -> torch.Tensor:                   # [B, vocab_size]
+    ) -> torch.Tensor:  # [B, vocab_size]
         """Apply all constraints to logits and return modified logits."""
         B, V = logits.shape
         logits = logits.clone()
@@ -263,6 +257,7 @@ class LogitConstraintEnforcer(nn.Module):
 # ConstrainedDecoder
 # ---------------------------------------------------------------------------
 
+
 class ConstrainedDecoder:
     """Autoregressive decoder that applies :class:`LogitConstraintEnforcer`.
 
@@ -287,15 +282,15 @@ class ConstrainedDecoder:
         self,
         input_ids: torch.Tensor,  # [B, T]
         max_new: int,
-    ) -> torch.Tensor:            # [B, T + max_new]
+    ) -> torch.Tensor:  # [B, T + max_new]
         """Greedy autoregressive decode with enforcer applied at each step."""
         self.model.eval()
         ids = input_ids.clone()
 
         with torch.no_grad():
             for _ in range(max_new):
-                logits_all = self.model(ids)          # [B, T_cur, V]
-                logits_last = logits_all[:, -1, :]    # [B, V]
+                logits_all = self.model(ids)  # [B, T_cur, V]
+                logits_last = logits_all[:, -1, :]  # [B, V]
                 logits_last = self.enforcer(logits_last, ids)
                 next_token = logits_last.argmax(dim=-1, keepdim=True)  # [B, 1]
                 ids = torch.cat([ids, next_token], dim=1)
@@ -311,37 +306,33 @@ class ConstrainedDecoder:
         input_ids: torch.Tensor,  # [B, T]
         beam_size: int,
         max_new: int,
-    ) -> torch.Tensor:             # [B, T + max_new]
+    ) -> torch.Tensor:  # [B, T + max_new]
         """Beam search with per-step constraint enforcement and constraint-aware scoring."""
         self.model.eval()
         B, T = input_ids.shape
         V = self.enforcer.vocab_size
 
         # beams[b] = list of (log_prob_sum, token_id_tensor [T_cur])
-        beams: List[List[Tuple[float, torch.Tensor]]] = [
+        beams: list[list[tuple[float, torch.Tensor]]] = [
             [(0.0, input_ids[b].clone())] for b in range(B)
         ]
 
         with torch.no_grad():
             for step in range(max_new):
-                new_beams: List[List[Tuple[float, torch.Tensor]]] = [[] for _ in range(B)]
+                new_beams: list[list[tuple[float, torch.Tensor]]] = [[] for _ in range(B)]
 
                 for b in range(B):
-                    candidates: List[Tuple[float, torch.Tensor]] = []
+                    candidates: list[tuple[float, torch.Tensor]] = []
                     for score, seq in beams[b]:
-                        seq_batch = seq.unsqueeze(0)            # [1, T_cur]
-                        logits_all = self.model(seq_batch)      # [1, T_cur, V]
-                        logits_last = logits_all[:, -1, :]      # [1, V]
+                        seq_batch = seq.unsqueeze(0)  # [1, T_cur]
+                        logits_all = self.model(seq_batch)  # [1, T_cur, V]
+                        logits_last = logits_all[:, -1, :]  # [1, V]
                         logits_last = self.enforcer(logits_last, seq_batch)
                         log_probs = F.log_softmax(logits_last, dim=-1)  # [1, V]
 
-                        topk_lp, topk_ids = log_probs[0].topk(
-                            min(beam_size, V), dim=-1
-                        )
+                        topk_lp, topk_ids = log_probs[0].topk(min(beam_size, V), dim=-1)
                         for lp, tok in zip(topk_lp.tolist(), topk_ids.tolist()):
-                            new_seq = torch.cat(
-                                [seq, torch.tensor([tok], dtype=seq.dtype)], dim=0
-                            )
+                            new_seq = torch.cat([seq, torch.tensor([tok], dtype=seq.dtype)], dim=0)
                             rule_penalty = self._violation_penalty(new_seq.tolist())
                             candidates.append((score + lp - rule_penalty, new_seq))
 
@@ -363,12 +354,12 @@ class ConstrainedDecoder:
             out[b, : seq.shape[0]] = seq
         return out
 
-    def _violation_penalty(self, token_ids: List[int]) -> float:
+    def _violation_penalty(self, token_ids: list[int]) -> float:
         """Scalar penalty from the enforcer's forbidden mask."""
         forbidden_count = sum(
-            1 for t in token_ids
-            if t < self.enforcer.vocab_size
-            and self.enforcer.forbidden_token_mask[t].item()
+            1
+            for t in token_ids
+            if t < self.enforcer.vocab_size and self.enforcer.forbidden_token_mask[t].item()
         )
         return float(forbidden_count) * 10.0
 
@@ -376,6 +367,7 @@ class ConstrainedDecoder:
 # ---------------------------------------------------------------------------
 # ConstraintRepairModel
 # ---------------------------------------------------------------------------
+
 
 class ConstraintRepairModel(nn.Module):
     """Sequence-to-sequence model trained to repair constitutional violations.
@@ -424,18 +416,18 @@ class ConstraintRepairModel(nn.Module):
         -------
         repair_logits : [B, T, vocab_size]
         """
-        x = self.embed(input_ids)   # [B, T, d_model]
-        x = self.encoder(x)         # [B, T, d_model]
-        logits = self.head(x)       # [B, T, vocab_size]
+        x = self.embed(input_ids)  # [B, T, d_model]
+        x = self.encoder(x)  # [B, T, d_model]
+        logits = self.head(x)  # [B, T, vocab_size]
         return logits
 
     def repair_loss(
         self,
-        input_ids: torch.Tensor,   # [B, T]
+        input_ids: torch.Tensor,  # [B, T]
         target_ids: torch.Tensor,  # [B, T]
     ) -> torch.Tensor:
         """Cross-entropy loss between repair predictions and target tokens."""
-        logits = self.forward(input_ids)    # [B, T, V]
+        logits = self.forward(input_ids)  # [B, T, V]
         B, T, V = logits.shape
         loss = F.cross_entropy(
             logits.reshape(B * T, V),
@@ -447,6 +439,7 @@ class ConstraintRepairModel(nn.Module):
 # ---------------------------------------------------------------------------
 # ConstitutionalSampler
 # ---------------------------------------------------------------------------
+
 
 class ConstitutionalSampler:
     """Samples multiple candidate sequences and selects the least violating one.
@@ -464,7 +457,7 @@ class ConstitutionalSampler:
     def __init__(
         self,
         model: nn.Module,
-        rules: List[ConstitutionalRule],
+        rules: list[ConstitutionalRule],
         n_candidates: int = 4,
     ) -> None:
         self.model = model
@@ -479,7 +472,7 @@ class ConstitutionalSampler:
         self,
         input_ids: torch.Tensor,  # [B, T]
         max_new: int,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Sample n_candidates completions; return least-violating.
 
         Returns
@@ -490,8 +483,8 @@ class ConstitutionalSampler:
         self.model.eval()
         B = input_ids.shape[0]
 
-        all_seqs: List[torch.Tensor] = []
-        all_violations: List[torch.Tensor] = []
+        all_seqs: list[torch.Tensor] = []
+        all_violations: list[torch.Tensor] = []
 
         with torch.no_grad():
             for _ in range(self.n_candidates):
@@ -499,10 +492,7 @@ class ConstitutionalSampler:
                 all_seqs.append(sample)
 
                 viol = torch.tensor(
-                    [
-                        self.constraint_set.total_violation(sample[b].tolist())
-                        for b in range(B)
-                    ],
+                    [self.constraint_set.total_violation(sample[b].tolist()) for b in range(B)],
                     dtype=torch.float,
                 )
                 all_violations.append(viol)
@@ -530,12 +520,12 @@ class ConstitutionalSampler:
         input_ids: torch.Tensor,  # [B, T]
         max_new: int = 8,
         max_attempts: int = 10,
-    ) -> torch.Tensor:            # [B, T + max_new]
+    ) -> torch.Tensor:  # [B, T + max_new]
         """Keep sampling until all constraints satisfied or max_attempts reached."""
         self.model.eval()
         B = input_ids.shape[0]
 
-        best_sample: Optional[torch.Tensor] = None
+        best_sample: torch.Tensor | None = None
         best_violation: float = float("inf")
 
         with torch.no_grad():
@@ -543,12 +533,10 @@ class ConstitutionalSampler:
                 sample = self._sample(input_ids, max_new)
 
                 all_satisfied = all(
-                    self.constraint_set.satisfied(sample[b].tolist())
-                    for b in range(B)
+                    self.constraint_set.satisfied(sample[b].tolist()) for b in range(B)
                 )
                 total_viol = sum(
-                    self.constraint_set.total_violation(sample[b].tolist())
-                    for b in range(B)
+                    self.constraint_set.total_violation(sample[b].tolist()) for b in range(B)
                 )
                 if best_sample is None or total_viol < best_violation:
                     best_sample = sample
@@ -567,12 +555,12 @@ class ConstitutionalSampler:
         self,
         input_ids: torch.Tensor,  # [B, T]
         max_new: int,
-    ) -> torch.Tensor:            # [B, T + max_new]
+    ) -> torch.Tensor:  # [B, T + max_new]
         """Single-pass temperature-1 multinomial sampling."""
         ids = input_ids.clone()
         for _ in range(max_new):
-            logits_all = self.model(ids)         # [B, T_cur, V]
-            logits_last = logits_all[:, -1, :]   # [B, V]
+            logits_all = self.model(ids)  # [B, T_cur, V]
+            logits_last = logits_all[:, -1, :]  # [B, V]
             probs = F.softmax(logits_last, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)  # [B, 1]
             ids = torch.cat([ids, next_token], dim=1)
@@ -583,6 +571,7 @@ class ConstitutionalSampler:
 # ConstitutionalConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ConstitutionalConfig:
     """Default hyperparameters for the constitutional constraint system."""
@@ -592,7 +581,7 @@ class ConstitutionalConfig:
     n_layers: int = 2
 
     # Forbidden tokens (list of int token ids)
-    forbidden_tokens: List[int] = field(default_factory=list)
+    forbidden_tokens: list[int] = field(default_factory=list)
 
     # Repetition penalty settings
     max_rep_penalty: float = 1.5

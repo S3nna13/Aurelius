@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,7 +17,6 @@ from src.training.mixture_consistency import (
     MixtureConsistencyConfig,
     MixtureConsistencyLoss,
     MixtureConsistencyTrainer,
-    compute_pairwise_consistency,
     token_dropout_augment,
 )
 
@@ -32,6 +30,7 @@ B, T, V, D = 2, 8, 16, 32
 # ---------------------------------------------------------------------------
 # Tiny mock model
 # ---------------------------------------------------------------------------
+
 
 class TinyModel(nn.Module):
     """Linear projection from token embeddings to logits."""
@@ -65,6 +64,7 @@ def _base_loss_fn(logits: Tensor, labels: Tensor) -> Tensor:
 # Test 1: MixtureConsistencyConfig defaults are correct
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults() -> None:
     cfg = MixtureConsistencyConfig()
     assert cfg.consistency_weight == 0.1
@@ -77,6 +77,7 @@ def test_config_defaults() -> None:
 # ---------------------------------------------------------------------------
 # Test 2: kl_consistency returns a scalar >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_kl_consistency_nonnegative() -> None:
     loss_fn = MixtureConsistencyLoss(distance_fn="kl")
@@ -91,6 +92,7 @@ def test_kl_consistency_nonnegative() -> None:
 # Test 3: kl_consistency of identical distributions == 0
 # ---------------------------------------------------------------------------
 
+
 def test_kl_consistency_identical_is_zero() -> None:
     loss_fn = MixtureConsistencyLoss(distance_fn="kl")
     p = F.softmax(_make_logits(7), dim=-1)
@@ -101,6 +103,7 @@ def test_kl_consistency_identical_is_zero() -> None:
 # ---------------------------------------------------------------------------
 # Test 4: js_divergence returns value in [0, log(2)]
 # ---------------------------------------------------------------------------
+
 
 def test_js_divergence_in_range() -> None:
     loss_fn = MixtureConsistencyLoss(distance_fn="js")
@@ -115,6 +118,7 @@ def test_js_divergence_in_range() -> None:
 # Test 5: cosine_consistency of identical tensors == 0
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_consistency_identical_is_zero() -> None:
     loss_fn = MixtureConsistencyLoss(distance_fn="cosine")
     h = torch.randn(B, T, D)
@@ -125,6 +129,7 @@ def test_cosine_consistency_identical_is_zero() -> None:
 # ---------------------------------------------------------------------------
 # Test 6: create_augmented_pair returns same-shape pair
 # ---------------------------------------------------------------------------
+
 
 def test_create_augmented_pair_shape() -> None:
     model = _make_model()
@@ -139,6 +144,7 @@ def test_create_augmented_pair_shape() -> None:
 # ---------------------------------------------------------------------------
 # Test 7: Augmented pair has some changed tokens (not identical to original)
 # ---------------------------------------------------------------------------
+
 
 def test_augmented_pair_not_identical() -> None:
     model = _make_model()
@@ -156,6 +162,7 @@ def test_augmented_pair_not_identical() -> None:
 # Test 8: token_dropout_augment changes some tokens
 # ---------------------------------------------------------------------------
 
+
 def test_token_dropout_augment_changes_tokens() -> None:
     torch.manual_seed(11)
     ids = torch.randint(1, V, (4, 64))  # seq_len=64 for reliable change detection
@@ -167,6 +174,7 @@ def test_token_dropout_augment_changes_tokens() -> None:
 # Test 9: token_dropout_augment with rate=0 makes no changes
 # ---------------------------------------------------------------------------
 
+
 def test_token_dropout_augment_zero_rate() -> None:
     ids = torch.randint(1, V, (B, T))
     augmented = token_dropout_augment(ids, dropout_rate=0.0, unk_id=0)
@@ -176,6 +184,7 @@ def test_token_dropout_augment_zero_rate() -> None:
 # ---------------------------------------------------------------------------
 # Test 10: train_step returns dict with all required keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_required_keys() -> None:
     model = _make_model()
@@ -190,6 +199,7 @@ def test_train_step_returns_required_keys() -> None:
 # ---------------------------------------------------------------------------
 # Test 11: consistency_weight=0 means consistency_loss does not affect total
 # ---------------------------------------------------------------------------
+
 
 def test_zero_consistency_weight_no_effect() -> None:
     model = _make_model()
@@ -210,6 +220,7 @@ def test_zero_consistency_weight_no_effect() -> None:
 # Test 12: Gradient flows through combined loss
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows_through_combined_loss() -> None:
     torch.manual_seed(44)
     model = _make_model()
@@ -225,10 +236,6 @@ def test_gradient_flows_through_combined_loss() -> None:
     result["loss"].backward()
 
     # At least one parameter should have a non-zero gradient
-    grad_norms = [
-        p.grad.norm().item()
-        for p in model.parameters()
-        if p.grad is not None
-    ]
+    grad_norms = [p.grad.norm().item() for p in model.parameters() if p.grad is not None]
     assert len(grad_norms) > 0
     assert any(g > 0.0 for g in grad_norms)

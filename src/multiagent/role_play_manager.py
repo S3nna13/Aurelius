@@ -1,4 +1,5 @@
 """Role-play session manager for multiagent conversations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

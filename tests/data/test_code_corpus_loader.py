@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-import os
 import random
 import time
 from pathlib import Path
 
-import pytest
 import torch
 
 from src.data.code_corpus_loader import (
-    CodeChunk,
-    CodeCorpusLoader,
     FIM_MIDDLE,
     FIM_PREFIX,
     FIM_SUFFIX,
+    CodeChunk,
+    CodeCorpusLoader,
 )
 
 
@@ -39,6 +37,7 @@ def _populate(tmp_path: Path, n: int = 3) -> list[Path]:
 
 
 # --------------------------------------------------------------------- walk
+
 
 def test_walk_yields_one_chunk_per_file(tmp_path: Path) -> None:
     _populate(tmp_path, n=4)
@@ -72,13 +71,12 @@ def test_language_detection(tmp_path: Path) -> None:
 
 # ------------------------------------------------------------------ packing
 
+
 def test_pack_iter_yields_fixed_length(tmp_path: Path) -> None:
     # Make files big enough to produce multiple chunks of size 64.
     for i in range(3):
         _write(tmp_path / f"f{i}.py", "x" * 200)
-    loader = CodeCorpusLoader(
-        tokenizer=_char_tokenizer, chunk_size=64, file_sep_token_id=7
-    )
+    loader = CodeCorpusLoader(tokenizer=_char_tokenizer, chunk_size=64, file_sep_token_id=7)
     seqs = list(loader.pack_iter(str(tmp_path)))
     assert len(seqs) >= 1
     for s in seqs:
@@ -91,7 +89,9 @@ def test_file_sep_inserted_between_files(tmp_path: Path) -> None:
     _write(tmp_path / "a.py", "AAAA")
     _write(tmp_path / "b.py", "BBBB")
     loader = CodeCorpusLoader(
-        tokenizer=_char_tokenizer, chunk_size=9, file_sep_token_id=999,
+        tokenizer=_char_tokenizer,
+        chunk_size=9,
+        file_sep_token_id=999,
     )
     seqs = list(loader.pack_iter(str(tmp_path)))
     assert len(seqs) == 1
@@ -108,6 +108,7 @@ def test_chunk_size_tiny_works(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------- FIM
+
 
 def test_fim_rate_zero_never_augments(tmp_path: Path) -> None:
     _write(tmp_path / "a.py", "hello world 12345")
@@ -177,6 +178,7 @@ def test_fim_determinism_seeded(tmp_path: Path) -> None:
 
 # ------------------------------------------------------------------- misc
 
+
 def test_empty_repo_yields_nothing(tmp_path: Path) -> None:
     loader = CodeCorpusLoader(tokenizer=_char_tokenizer)
     assert list(loader.walk(str(tmp_path))) == []
@@ -205,7 +207,9 @@ def test_50_files_pack_fast(tmp_path: Path) -> None:
     for i in range(50):
         _write(tmp_path / f"f{i}.py", f"# file {i}\n" + ("x = 1\n" * 20))
     loader = CodeCorpusLoader(
-        tokenizer=_char_tokenizer, chunk_size=256, file_sep_token_id=3,
+        tokenizer=_char_tokenizer,
+        chunk_size=256,
+        file_sep_token_id=3,
     )
     t0 = time.perf_counter()
     seqs = list(loader.pack_iter(str(tmp_path)))

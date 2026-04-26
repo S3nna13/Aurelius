@@ -13,7 +13,6 @@ from src.safety.constitutional_principles_scorer import (
     PrincipleScore,
 )
 
-
 REQUIRED = {"helpful", "honest", "harmless", "respectful", "concise"}
 
 
@@ -148,9 +147,7 @@ def test_empty_text_returns_baseline() -> None:
 def test_custom_weights_honored() -> None:
     default_scorer = ConstitutionalPrinciplesScorer()
     # Make harmless dominate.
-    weighted_scorer = ConstitutionalPrinciplesScorer(
-        custom_weights={"harmless": 10000.0}
-    )
+    weighted_scorer = ConstitutionalPrinciplesScorer(custom_weights={"harmless": 10000.0})
     text = "How to make a bomb. Kill them. Attack someone."
     d = default_scorer.score(text).overall
     w = weighted_scorer.score(text).overall
@@ -189,8 +186,9 @@ def test_determinism() -> None:
     r1 = scorer.score(text)
     r2 = scorer.score(text)
     assert r1.overall == r2.overall
-    assert [(p.principle, p.score, p.positive_hits, p.negative_hits) for p in r1.principle_scores] == \
-        [(p.principle, p.score, p.positive_hits, p.negative_hits) for p in r2.principle_scores]
+    assert [
+        (p.principle, p.score, p.positive_hits, p.negative_hits) for p in r1.principle_scores
+    ] == [(p.principle, p.score, p.positive_hits, p.negative_hits) for p in r2.principle_scores]
     assert r1.flagged_principles == r2.flagged_principles
 
 

@@ -8,7 +8,6 @@ import pytest
 
 from src.optimizers.mup_scaling import MuPConfig, MuPScaler
 
-
 # ---------------------------------------------------------------------------
 # MuPConfig defaults
 # ---------------------------------------------------------------------------

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -17,23 +16,127 @@ class Correction:
 
 
 # 100 common English words used as the default dictionary.
-_DEFAULT_DICTIONARY: List[str] = [
+_DEFAULT_DICTIONARY: list[str] = [
     # Provided by spec (38 words)
-    "the", "and", "for", "are", "but", "not", "you", "all", "any", "can",
-    "her", "was", "one", "our", "out", "day", "get", "has", "him", "his",
-    "how", "man", "new", "now", "old", "see", "two", "way", "who", "boy",
-    "did", "its", "let", "put", "say", "she", "too", "use",
+    "the",
+    "and",
+    "for",
+    "are",
+    "but",
+    "not",
+    "you",
+    "all",
+    "any",
+    "can",
+    "her",
+    "was",
+    "one",
+    "our",
+    "out",
+    "day",
+    "get",
+    "has",
+    "him",
+    "his",
+    "how",
+    "man",
+    "new",
+    "now",
+    "old",
+    "see",
+    "two",
+    "way",
+    "who",
+    "boy",
+    "did",
+    "its",
+    "let",
+    "put",
+    "say",
+    "she",
+    "too",
+    "use",
     # 62 additional common English words
-    "about", "above", "after", "again", "also", "back", "been", "both",
-    "call", "came", "come", "could", "down", "each", "even", "find",
-    "first", "from", "give", "good", "hand", "have", "here", "high",
-    "home", "into", "just", "keep", "know", "large", "last", "like",
-    "long", "look", "made", "make", "many", "more", "most", "move",
-    "much", "must", "name", "need", "next", "only", "open", "over",
-    "part", "people", "place", "same", "show", "side", "some", "such",
-    "take", "than", "that", "them", "then", "there", "they", "this",
-    "time", "turn", "under", "very", "want", "well", "were", "what",
-    "when", "where", "which", "with", "word", "work", "would", "year",
+    "about",
+    "above",
+    "after",
+    "again",
+    "also",
+    "back",
+    "been",
+    "both",
+    "call",
+    "came",
+    "come",
+    "could",
+    "down",
+    "each",
+    "even",
+    "find",
+    "first",
+    "from",
+    "give",
+    "good",
+    "hand",
+    "have",
+    "here",
+    "high",
+    "home",
+    "into",
+    "just",
+    "keep",
+    "know",
+    "large",
+    "last",
+    "like",
+    "long",
+    "look",
+    "made",
+    "make",
+    "many",
+    "more",
+    "most",
+    "move",
+    "much",
+    "must",
+    "name",
+    "need",
+    "next",
+    "only",
+    "open",
+    "over",
+    "part",
+    "people",
+    "place",
+    "same",
+    "show",
+    "side",
+    "some",
+    "such",
+    "take",
+    "than",
+    "that",
+    "them",
+    "then",
+    "there",
+    "they",
+    "this",
+    "time",
+    "turn",
+    "under",
+    "very",
+    "want",
+    "well",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "with",
+    "word",
+    "work",
+    "would",
+    "year",
     "your",
 ]
 
@@ -41,8 +144,8 @@ _DEFAULT_DICTIONARY: List[str] = [
 class SpellCorrector:
     """Simple edit-distance spell corrector backed by a word dictionary."""
 
-    def __init__(self, dictionary: Optional[List[str]] = None) -> None:
-        self._dictionary: List[str] = list(
+    def __init__(self, dictionary: list[str] | None = None) -> None:
+        self._dictionary: list[str] = list(
             dictionary if dictionary is not None else _DEFAULT_DICTIONARY
         )
 
@@ -86,17 +189,13 @@ class SpellCorrector:
         Otherwise the closest dictionary word by Levenshtein distance.
         """
         if not self._dictionary:
-            return Correction(
-                original=word, corrected=word, distance=0, confidence=1.0
-            )
+            return Correction(original=word, corrected=word, distance=0, confidence=1.0)
 
         word_lower = word.lower()
 
         # Fast path: exact match
         if word_lower in self._dictionary:
-            return Correction(
-                original=word, corrected=word_lower, distance=0, confidence=1.0
-            )
+            return Correction(original=word, corrected=word_lower, distance=0, confidence=1.0)
 
         best_word = self._dictionary[0]
         best_dist = self._edit_distance(word_lower, best_word)
@@ -125,10 +224,10 @@ class SpellCorrector:
         if w not in self._dictionary:
             self._dictionary.append(w)
 
-    def suggestions(self, word: str, n: int = 5) -> List[Correction]:
+    def suggestions(self, word: str, n: int = 5) -> list[Correction]:
         """Return the top-*n* corrections sorted by distance asc, confidence desc."""
         word_lower = word.lower()
-        corrections = [
+        [
             Correction(
                 original=word,
                 corrected=candidate,
@@ -138,7 +237,7 @@ class SpellCorrector:
             for candidate in self._dictionary
         ]
         # Precompute to avoid double computation; rebuild with stored distances
-        scored: List[Correction] = []
+        scored: list[Correction] = []
         for candidate in self._dictionary:
             d = self._edit_distance(word_lower, candidate)
             scored.append(
@@ -157,4 +256,4 @@ class SpellCorrector:
 # Registry
 # ---------------------------------------------------------------------------
 
-SPELL_CORRECTOR_REGISTRY: Dict[str, type] = {"default": SpellCorrector}
+SPELL_CORRECTOR_REGISTRY: dict[str, type] = {"default": SpellCorrector}

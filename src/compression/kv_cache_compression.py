@@ -1,14 +1,15 @@
 """KV cache compression: token eviction, quantization, streaming compression."""
+
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 _rng = random.Random(42)
 
 
-class EvictionPolicy(str, Enum):
+class EvictionPolicy(StrEnum):
     RECENCY = "recency"
     ATTENTION_SCORE = "attention_score"
     RANDOM = "random"
@@ -68,7 +69,9 @@ class KVCacheCompressor:
             total = len(self._cache)
             top_half_count = max(1, total // 2)
             # Sort by attention score descending; heavy hitters are top half
-            indexed = sorted(enumerate(self._cache), key=lambda x: x[1].attention_score, reverse=True)
+            indexed = sorted(
+                enumerate(self._cache), key=lambda x: x[1].attention_score, reverse=True
+            )
             keep_by_score = set(idx for idx, _ in indexed[:top_half_count])
             # Newest 50%: last half by position
             newest_start = total - top_half_count

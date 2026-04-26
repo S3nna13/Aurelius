@@ -10,19 +10,20 @@ Pure PyTorch — no HuggingFace, no scipy, no sklearn.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # NeuronConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NeuronConfig:
     """Configuration for neuron analysis experiments."""
+
     n_top_examples: int = 10
     activation_threshold: float = 0.0
     dead_neuron_threshold: float = 1e-3
@@ -32,10 +33,11 @@ class NeuronConfig:
 # compute_activation_statistics
 # ---------------------------------------------------------------------------
 
+
 def compute_activation_statistics(
     activations: Tensor,
     threshold: float = 0.0,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """
     Compute per-neuron summary statistics over a batch of activations.
 
@@ -57,17 +59,17 @@ def compute_activation_statistics(
     # Flatten batch and sequence dims → (N, d_model)
     flat = activations.reshape(-1, activations.shape[-1])  # (N, d_model)
 
-    mean = flat.mean(dim=0)                          # (d_model,)
-    std  = flat.std(dim=0, unbiased=False)           # (d_model,)
-    max_ = flat.max(dim=0).values                    # (d_model,)
-    min_ = flat.min(dim=0).values                    # (d_model,)
+    mean = flat.mean(dim=0)  # (d_model,)
+    std = flat.std(dim=0, unbiased=False)  # (d_model,)
+    max_ = flat.max(dim=0).values  # (d_model,)
+    min_ = flat.min(dim=0).values  # (d_model,)
     sparsity = (flat > threshold).float().mean(dim=0)  # (d_model,)
 
     return {
-        "mean":     mean,
-        "std":      std,
-        "max":      max_,
-        "min":      min_,
+        "mean": mean,
+        "std": std,
+        "max": max_,
+        "min": min_,
         "sparsity": sparsity,
     }
 
@@ -75,6 +77,7 @@ def compute_activation_statistics(
 # ---------------------------------------------------------------------------
 # find_dead_neurons
 # ---------------------------------------------------------------------------
+
 
 def find_dead_neurons(activations: Tensor, threshold: float = 1e-3) -> Tensor:
     """
@@ -91,13 +94,14 @@ def find_dead_neurons(activations: Tensor, threshold: float = 1e-3) -> Tensor:
     True means the neuron is dead.
     """
     flat = activations.reshape(-1, activations.shape[-1])  # (N, d_model)
-    max_abs = flat.abs().max(dim=0).values                  # (d_model,)
+    max_abs = flat.abs().max(dim=0).values  # (d_model,)
     return max_abs < threshold
 
 
 # ---------------------------------------------------------------------------
 # compute_neuron_correlation
 # ---------------------------------------------------------------------------
+
 
 def compute_neuron_correlation(
     activations_a: Tensor,
@@ -116,19 +120,19 @@ def compute_neuron_correlation(
     Tensor of shape (d,) containing per-neuron Pearson r values.
     Neurons with zero variance in either matrix receive correlation = 0.
     """
-    N = activations_a.shape[0]
+    activations_a.shape[0]
 
-    mean_a = activations_a.mean(dim=0)   # (d,)
-    mean_b = activations_b.mean(dim=0)   # (d,)
+    mean_a = activations_a.mean(dim=0)  # (d,)
+    mean_b = activations_b.mean(dim=0)  # (d,)
 
-    da = activations_a - mean_a          # (N, d)
-    db = activations_b - mean_b          # (N, d)
+    da = activations_a - mean_a  # (N, d)
+    db = activations_b - mean_b  # (N, d)
 
-    cov   = (da * db).sum(dim=0)         # (d,)
+    cov = (da * db).sum(dim=0)  # (d,)
     std_a = da.pow(2).sum(dim=0).sqrt()  # (d,)
     std_b = db.pow(2).sum(dim=0).sqrt()  # (d,)
 
-    denom = std_a * std_b                # (d,)
+    denom = std_a * std_b  # (d,)
 
     # Zero-variance neurons → correlation = 0
     corr = torch.where(denom > 0, cov / denom, torch.zeros_like(cov))
@@ -138,6 +142,7 @@ def compute_neuron_correlation(
 # ---------------------------------------------------------------------------
 # top_activating_examples
 # ---------------------------------------------------------------------------
+
 
 def top_activating_examples(activations: Tensor, k: int) -> Tensor:
     """
@@ -155,12 +160,13 @@ def top_activating_examples(activations: Tensor, k: int) -> Tensor:
     # topk along the N dimension for each neuron
     # activations is (N, d); we want topk over N for each column → transpose first
     top_indices = activations.topk(k, dim=0).indices  # (k, d)
-    return top_indices.T                               # (d, k)
+    return top_indices.T  # (d, k)
 
 
 # ---------------------------------------------------------------------------
 # polysemanticity_score
 # ---------------------------------------------------------------------------
+
 
 def polysemanticity_score(activations: Tensor, k: int = 5) -> Tensor:
     """
@@ -183,10 +189,10 @@ def polysemanticity_score(activations: Tensor, k: int = 5) -> Tensor:
     N, d = activations.shape
     k = min(k, N)
 
-    top_idx = top_activating_examples(activations, k)        # (d, k)
+    top_idx = top_activating_examples(activations, k)  # (d, k)
     # std of top-k indices per neuron, normalised by N
     # When k==1 std is 0; that is correct (no spread).
-    score = top_idx.float().std(dim=1) / N                   # (d,)
+    score = top_idx.float().std(dim=1) / N  # (d,)
     # Clamp to [0, 1] for safety
     score = score.clamp(0.0, 1.0)
     return score
@@ -195,6 +201,7 @@ def polysemanticity_score(activations: Tensor, k: int = 5) -> Tensor:
 # ---------------------------------------------------------------------------
 # NeuronAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class NeuronAnalyzer:
     """High-level API for neuron characterisation."""
@@ -206,7 +213,7 @@ class NeuronAnalyzer:
     # analyze
     # ------------------------------------------------------------------
 
-    def analyze(self, activations: Tensor) -> Dict[str, Any]:
+    def analyze(self, activations: Tensor) -> dict[str, Any]:
         """
         Run a full neuron analysis pass.
 
@@ -232,11 +239,11 @@ class NeuronAnalyzer:
 
         flat = activations.reshape(-1, activations.shape[-1])  # (N, d_model)
         k = min(self.config.n_top_examples, flat.shape[0])
-        top_examples = top_activating_examples(flat, k)        # (d_model, k)
+        top_examples = top_activating_examples(flat, k)  # (d_model, k)
 
         return {
-            "stats":        stats,
-            "dead_mask":    dead_mask,
+            "stats": stats,
+            "dead_mask": dead_mask,
             "top_examples": top_examples,
         }
 
@@ -248,7 +255,7 @@ class NeuronAnalyzer:
         self,
         layer_a: Tensor,
         layer_b: Tensor,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """
         Compare two (B, T, d) activation tensors at the neuron level.
 
@@ -268,10 +275,10 @@ class NeuronAnalyzer:
         stats_b = compute_activation_statistics(layer_b)
 
         mean_diff = (stats_a["mean"] - stats_b["mean"]).abs()
-        std_diff  = (stats_a["std"]  - stats_b["std"]).abs()
+        std_diff = (stats_a["std"] - stats_b["std"]).abs()
 
         return {
             "correlation": corr,
-            "mean_diff":   mean_diff,
-            "std_diff":    std_diff,
+            "mean_diff": mean_diff,
+            "std_diff": std_diff,
         }

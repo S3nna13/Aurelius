@@ -4,9 +4,9 @@ import pytest
 import torch
 
 from src.inference.speculative_acceptance import (
+    accept_prefix,
     acceptance_mask,
     acceptance_stats,
-    accept_prefix,
 )
 
 

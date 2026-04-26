@@ -12,7 +12,6 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
-from .config import AureliusConfig
 from .transformer import AureliusTransformer
 
 
@@ -58,9 +57,7 @@ class EnergyHead(nn.Module):
         return energy
 
 
-def _get_hidden_states(
-    model: AureliusTransformer, input_ids: torch.Tensor
-) -> torch.Tensor:
+def _get_hidden_states(model: AureliusTransformer, input_ids: torch.Tensor) -> torch.Tensor:
     """Run backbone forward pass and return final hidden states (before lm_head).
 
     This extracts intermediate representations by running embed -> layers -> norm,

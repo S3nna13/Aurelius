@@ -1,20 +1,23 @@
 """Speculative tree decoding — draft a tree of candidates, verify with one target forward."""
+
 from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TreeConfig:
     """Configuration for speculative tree decoding."""
-    branching_factor: int = 2   # number of draft tokens per node
-    tree_depth: int = 3         # depth of draft tree
+
+    branching_factor: int = 2  # number of draft tokens per node
+    tree_depth: int = 3  # depth of draft tree
     temperature: float = 1.0
     top_p: float = 0.9
 
@@ -23,13 +26,15 @@ class TreeConfig:
 # Tree data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TreeNode:
     """A single node in the draft tree."""
+
     token_id: int
     log_prob: float
-    parent: "TreeNode | None" = None
-    children: list["TreeNode"] = field(default_factory=list)
+    parent: TreeNode | None = None
+    children: list[TreeNode] = field(default_factory=list)
     depth: int = 0
 
     def path(self) -> list[int]:
@@ -114,6 +119,7 @@ class DraftTree:
 # Draft tree construction
 # ---------------------------------------------------------------------------
 
+
 def _get_last_logits(model, input_ids: torch.Tensor, temperature: float) -> torch.Tensor:
     """Run *model* on *input_ids* and return logits at the last position.
 
@@ -127,7 +133,7 @@ def _get_last_logits(model, input_ids: torch.Tensor, temperature: float) -> torc
         logits = out[1]
     else:
         logits = out
-    logits = logits[0, -1, :]   # (vocab_size,)
+    logits = logits[0, -1, :]  # (vocab_size,)
     if temperature != 1.0 and temperature > 0:
         logits = logits / temperature
     return logits
@@ -200,6 +206,7 @@ def build_draft_tree(
 # Tree verification
 # ---------------------------------------------------------------------------
 
+
 def verify_tree(
     target_model,
     prompt_ids: list[int],
@@ -253,7 +260,7 @@ def verify_tree(
         accepted: list[int] = []
         agreed = True
         for i, tok in enumerate(path):
-            target_pos = context_len - 1 + i   # logits position predicting path[i]
+            target_pos = context_len - 1 + i  # logits position predicting path[i]
             greedy = int(logits_all[0, target_pos, :].argmax(dim=-1).item())
             if greedy == tok:
                 accepted.append(tok)
@@ -294,6 +301,7 @@ def verify_tree(
 # ---------------------------------------------------------------------------
 # High-level decoder
 # ---------------------------------------------------------------------------
+
 
 class TreeSpeculativeDecoder:
     """High-level speculative decoder using tree-structured drafting.
@@ -380,11 +388,7 @@ class TreeSpeculativeDecoder:
                 ``mean_accepted_per_step``: average tokens accepted per round.
                 ``total_steps``: number of draft-verify rounds performed.
         """
-        mean = (
-            self._total_accepted / self._total_steps
-            if self._total_steps > 0
-            else 0.0
-        )
+        mean = self._total_accepted / self._total_steps if self._total_steps > 0 else 0.0
         return {
             "mean_accepted_per_step": float(mean),
             "total_steps": int(self._total_steps),

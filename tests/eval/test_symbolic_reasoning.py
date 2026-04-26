@@ -3,31 +3,38 @@
 from __future__ import annotations
 
 import random
+
 import pytest
 import torch
 
 from src.eval.symbolic_reasoning import (
     LogicProblem,
-    generate_syllogism,
+    SymbolicReasoningBenchmark,
+    evaluate_answer,
     generate_arithmetic,
     generate_boolean_logic,
-    evaluate_answer,
-    SymbolicReasoningBenchmark,
+    generate_syllogism,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -45,6 +52,7 @@ def _decode(ids: list[int]) -> str:
 # ---------------------------------------------------------------------------
 # Tests: LogicProblem
 # ---------------------------------------------------------------------------
+
 
 def test_logic_problem_fields_and_defaults():
     """LogicProblem has all required fields and difficulty defaults to 1."""
@@ -64,6 +72,7 @@ def test_logic_problem_fields_and_defaults():
 # ---------------------------------------------------------------------------
 # Tests: generate_syllogism
 # ---------------------------------------------------------------------------
+
 
 def test_generate_syllogism_returns_logic_problem():
     """generate_syllogism returns a LogicProblem with type='syllogism'."""
@@ -93,6 +102,7 @@ def test_generate_syllogism_answer_yes_or_no():
 # Tests: generate_arithmetic
 # ---------------------------------------------------------------------------
 
+
 def test_generate_arithmetic_returns_logic_problem():
     """generate_arithmetic returns a LogicProblem."""
     rng = random.Random(3)
@@ -111,6 +121,7 @@ def test_generate_arithmetic_answer_is_numeric_string():
 # ---------------------------------------------------------------------------
 # Tests: generate_boolean_logic
 # ---------------------------------------------------------------------------
+
 
 def test_generate_boolean_logic_returns_logic_problem():
     """generate_boolean_logic returns a LogicProblem with type='boolean'."""
@@ -131,6 +142,7 @@ def test_generate_boolean_logic_answer_true_or_false():
 # ---------------------------------------------------------------------------
 # Tests: evaluate_answer
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_answer_exact_match():
     """Exact string match (after strip/lower) returns 1.0."""
@@ -165,6 +177,7 @@ def test_evaluate_answer_boolean_case_insensitive():
 # ---------------------------------------------------------------------------
 # Tests: SymbolicReasoningBenchmark
 # ---------------------------------------------------------------------------
+
 
 def test_benchmark_generates_correct_n_problems():
     """SymbolicReasoningBenchmark generates exactly n_problems problems."""

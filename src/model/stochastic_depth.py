@@ -16,15 +16,16 @@ Components:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
-from typing import Callable, List
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StochasticDepthConfig:
@@ -45,6 +46,7 @@ class StochasticDepthConfig:
 # ---------------------------------------------------------------------------
 # Functional API
 # ---------------------------------------------------------------------------
+
 
 def stochastic_depth(
     x: torch.Tensor,
@@ -95,6 +97,7 @@ def stochastic_depth(
 # StochasticDepthLayer
 # ---------------------------------------------------------------------------
 
+
 class StochasticDepthLayer(nn.Module):
     """nn.Module wrapper that applies stochastic depth to a single layer.
 
@@ -132,6 +135,7 @@ class StochasticDepthLayer(nn.Module):
 # LinearStochasticDepth
 # ---------------------------------------------------------------------------
 
+
 class LinearStochasticDepth:
     """Utility for linearly-spaced stochastic depth across a layer stack.
 
@@ -141,7 +145,7 @@ class LinearStochasticDepth:
     """
 
     @staticmethod
-    def get_drop_rates(n_layers: int, max_drop_rate: float) -> List[float]:
+    def get_drop_rates(n_layers: int, max_drop_rate: float) -> list[float]:
         """Compute per-layer drop rates linearly spaced from 0 to max_drop_rate.
 
         Args:
@@ -154,16 +158,13 @@ class LinearStochasticDepth:
         """
         if n_layers <= 1:
             return [0.0] * n_layers
-        return [
-            max_drop_rate * i / (n_layers - 1)
-            for i in range(n_layers)
-        ]
+        return [max_drop_rate * i / (n_layers - 1) for i in range(n_layers)]
 
     @staticmethod
     def wrap_layers(
-        layers: List[nn.Module],
+        layers: list[nn.Module],
         max_drop_rate: float,
-    ) -> List[StochasticDepthLayer]:
+    ) -> list[StochasticDepthLayer]:
         """Wrap each layer with its linearly-computed stochastic depth rate.
 
         Args:
@@ -175,14 +176,14 @@ class LinearStochasticDepth:
         """
         drop_rates = LinearStochasticDepth.get_drop_rates(len(layers), max_drop_rate)
         return [
-            StochasticDepthLayer(layer, drop_prob=rate)
-            for layer, rate in zip(layers, drop_rates)
+            StochasticDepthLayer(layer, drop_prob=rate) for layer, rate in zip(layers, drop_rates)
         ]
 
 
 # ---------------------------------------------------------------------------
 # StochasticDepthTransformer
 # ---------------------------------------------------------------------------
+
 
 class StochasticDepthTransformer(nn.Module):
     """Sequential transformer that applies stochastic depth to every layer.
@@ -199,14 +200,13 @@ class StochasticDepthTransformer(nn.Module):
 
     def __init__(
         self,
-        layers: List[nn.Module],
+        layers: list[nn.Module],
         config: StochasticDepthConfig,
     ) -> None:
         super().__init__()
         self.config = config
         self.wrapped_layers = nn.ModuleList(
-            StochasticDepthLayer(layer, drop_prob=config.drop_rate)
-            for layer in layers
+            StochasticDepthLayer(layer, drop_prob=config.drop_rate) for layer in layers
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -227,7 +227,8 @@ class StochasticDepthTransformer(nn.Module):
 # Utility
 # ---------------------------------------------------------------------------
 
-def get_expected_depth(n_layers: int, drop_rates: List[float]) -> float:
+
+def get_expected_depth(n_layers: int, drop_rates: list[float]) -> float:
     """Compute the expected number of active (non-dropped) layers.
 
     Expected depth = sum_i (1 - drop_rate_i).

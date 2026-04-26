@@ -61,13 +61,7 @@ def test_score_single_multi_case_fails_on_third():
         difficulty="easy",
     )
     # Completion works for first two but breaks on input == "5".
-    completion = (
-        "x = int(input())\n"
-        "if x == 5:\n"
-        "    print(99)\n"
-        "else:\n"
-        "    print(x * 2)\n"
-    )
+    completion = "x = int(input())\nif x == 5:\n    print(99)\nelse:\n    print(x * 2)\n"
     res = score_single(prob, completion, timeout_seconds=5.0)
     assert res.passed is False
     assert res.failed_case_idx == 2
@@ -166,8 +160,8 @@ def test_per_difficulty_aggregation():
         difficulty="hard",
     )
     completions = [
-        ["print(input())\n"],        # easy: passes
-        ["print('wrong')\n"],        # hard: fails
+        ["print(input())\n"],  # easy: passes
+        ["print('wrong')\n"],  # hard: fails
     ]
     out = score_problems([p_easy, p_hard], completions, k_values=[1], timeout_seconds=5.0)
     assert out["per_difficulty"]["easy"] == pytest.approx(1.0)
@@ -267,8 +261,8 @@ def test_score_problems_end_to_end_two():
         contest_source="codeforces",
     )
     completions = [
-        ["print(input())\n"],                      # passes
-        ["x=int(input()); print(x*x)\n"],           # 3*3=9 passes
+        ["print(input())\n"],  # passes
+        ["x=int(input()); print(x*x)\n"],  # 3*3=9 passes
     ]
     out = score_problems([p1, p2], completions, k_values=[1], timeout_seconds=5.0)
     assert out["n_problems"] == 2

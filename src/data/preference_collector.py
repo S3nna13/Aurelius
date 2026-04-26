@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PreferenceConfig:
@@ -27,6 +27,7 @@ class PreferenceConfig:
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PreferencePair:
@@ -44,6 +45,7 @@ class PreferencePair:
 # ---------------------------------------------------------------------------
 # Response pool
 # ---------------------------------------------------------------------------
+
 
 class ResponsePool:
     """Stores (text, score) response pairs and provides selection utilities."""
@@ -95,6 +97,7 @@ class ResponsePool:
 # Scoring
 # ---------------------------------------------------------------------------
 
+
 def score_response_heuristic(prompt: str, response: str) -> float:
     """Multi-factor heuristic score in [0, 1].
 
@@ -127,6 +130,7 @@ def score_response_heuristic(prompt: str, response: str) -> float:
 # Generation
 # ---------------------------------------------------------------------------
 
+
 def generate_response(
     model,
     prompt_ids: list[int],
@@ -156,13 +160,14 @@ def generate_response(
             generated.append(int(next_token))
 
     # Return only the newly generated part
-    new_ids = generated[len(prompt_ids):]
+    new_ids = generated[len(prompt_ids) :]
     return tokenizer_decode(new_ids)
 
 
 # ---------------------------------------------------------------------------
 # Collector class
 # ---------------------------------------------------------------------------
+
 
 class PreferenceCollector:
     """High-level interface for collecting and formatting preference pairs using a model."""
@@ -204,7 +209,7 @@ class PreferenceCollector:
             return None
 
         chosen, rejected = pool.get_best_worst()
-        score_chosen = max(s for _, s in pool._responses if _ == chosen or True)
+        max(s for _, s in pool._responses if _ == chosen or True)
         # Retrieve actual scores
         scores_dict: dict[str, float] = {}
         for text, score in pool._responses:

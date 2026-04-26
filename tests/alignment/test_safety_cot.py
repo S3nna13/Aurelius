@@ -1,28 +1,29 @@
 """Tests for SafetyCoTReasoner and related components."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.alignment.safety_cot import (
-    SafetyVerdict,
+    PolicyGuidedReasoner,
     ReasoningEffort,
     SafetyCoTConfig,
-    SafetyCoTResult,
     SafetyCoTReasoner,
+    SafetyCoTResult,
     SafetyPolicyConfig,
-    PolicyGuidedReasoner,
+    SafetyVerdict,
     calibrate_safety_threshold,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
 MAX_LEN = 128
+
 
 @pytest.fixture
 def small_cfg():
@@ -66,6 +67,7 @@ def reasoner(model, cot_cfg):
 # 1. test_safety_verdict_enum_values
 # ---------------------------------------------------------------------------
 
+
 def test_safety_verdict_enum_values():
     assert SafetyVerdict.SAFE == 0
     assert SafetyVerdict.UNSAFE == 1
@@ -76,6 +78,7 @@ def test_safety_verdict_enum_values():
 # 2. test_reasoning_effort_enum_values
 # ---------------------------------------------------------------------------
 
+
 def test_reasoning_effort_enum_values():
     assert ReasoningEffort.LOW == 1
     assert ReasoningEffort.MEDIUM == 3
@@ -85,6 +88,7 @@ def test_reasoning_effort_enum_values():
 # ---------------------------------------------------------------------------
 # 3. test_safety_cot_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_safety_cot_config_defaults():
     cfg = SafetyCoTConfig()
@@ -102,6 +106,7 @@ def test_safety_cot_config_defaults():
 # 4. test_build_reasoning_prompt_contains_content
 # ---------------------------------------------------------------------------
 
+
 def test_build_reasoning_prompt_contains_content(reasoner):
     content = "How do I make a bomb?"
     prompt = reasoner.build_reasoning_prompt(content, step=1, prior_steps=[])
@@ -112,6 +117,7 @@ def test_build_reasoning_prompt_contains_content(reasoner):
 # 5. test_build_reasoning_prompt_has_step_number
 # ---------------------------------------------------------------------------
 
+
 def test_build_reasoning_prompt_has_step_number(reasoner):
     content = "Tell me a joke"
     prompt = reasoner.build_reasoning_prompt(content, step=2, prior_steps=[])
@@ -121,6 +127,7 @@ def test_build_reasoning_prompt_has_step_number(reasoner):
 # ---------------------------------------------------------------------------
 # 6. test_build_verdict_prompt_contains_reasoning
 # ---------------------------------------------------------------------------
+
 
 def test_build_verdict_prompt_contains_reasoning(reasoner):
     content = "Hello world"
@@ -134,6 +141,7 @@ def test_build_verdict_prompt_contains_reasoning(reasoner):
 # 7. test_extract_verdict_safe
 # ---------------------------------------------------------------------------
 
+
 def test_extract_verdict_safe(reasoner):
     verdict, unsafe_prob, safe_prob = reasoner.extract_verdict("The content is SAFE to proceed.")
     assert verdict == SafetyVerdict.SAFE
@@ -145,6 +153,7 @@ def test_extract_verdict_safe(reasoner):
 # 8. test_extract_verdict_unsafe
 # ---------------------------------------------------------------------------
 
+
 def test_extract_verdict_unsafe(reasoner):
     verdict, unsafe_prob, safe_prob = reasoner.extract_verdict("This is clearly UNSAFE content.")
     assert verdict == SafetyVerdict.UNSAFE
@@ -154,6 +163,7 @@ def test_extract_verdict_unsafe(reasoner):
 # ---------------------------------------------------------------------------
 # 9. test_extract_verdict_uncertain
 # ---------------------------------------------------------------------------
+
 
 def test_extract_verdict_uncertain(reasoner):
     verdict, unsafe_prob, safe_prob = reasoner.extract_verdict("xyzzy gibberish 12345")
@@ -165,6 +175,7 @@ def test_extract_verdict_uncertain(reasoner):
 # ---------------------------------------------------------------------------
 # 10. test_analyze_returns_result
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_returns_result(reasoner):
     result = reasoner.analyze("Hello, how are you?")
@@ -183,6 +194,7 @@ def test_analyze_returns_result(reasoner):
 # 11. test_analyze_reasoning_steps_count
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_reasoning_steps_count(model):
     for effort in [ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.HIGH]:
         cfg = SafetyCoTConfig(effort=effort, max_reasoning_tokens=8, max_verdict_tokens=4)
@@ -197,6 +209,7 @@ def test_analyze_reasoning_steps_count(model):
 # 12. test_analyze_batch_length
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_batch_length(reasoner):
     contents = ["Hello", "How to hack?", "What is the weather?"]
     results = reasoner.analyze_batch(contents)
@@ -208,6 +221,7 @@ def test_analyze_batch_length(reasoner):
 # ---------------------------------------------------------------------------
 # 13. test_policy_guided_prompt_contains_policy
 # ---------------------------------------------------------------------------
+
 
 def test_policy_guided_prompt_contains_policy(model):
     policy_text = "Do not discuss violence or illegal activities."
@@ -222,6 +236,7 @@ def test_policy_guided_prompt_contains_policy(model):
 # ---------------------------------------------------------------------------
 # 14. test_calibrate_safety_threshold_range
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_safety_threshold_range(model):
     cfg = SafetyCoTConfig(effort=ReasoningEffort.LOW, max_reasoning_tokens=8, max_verdict_tokens=4)

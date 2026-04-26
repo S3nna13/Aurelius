@@ -12,6 +12,7 @@ where m = sketch_dim, S ~ N(0,1)
 
 E[estimate] = <key_residual, query>  (unbiased)
 """
+
 from __future__ import annotations
 
 import math
@@ -55,8 +56,8 @@ class QJLSketch:
         """
         # Project: (..., dim) @ (dim, sketch_dim) = (..., sketch_dim)
         proj = residual.float() @ self.S.to(residual.device).T
-        signs = proj.sign().to(torch.int8)                    # binary quantization
-        norms = residual.float().norm(dim=-1)                 # (...,) L2 norms
+        signs = proj.sign().to(torch.int8)  # binary quantization
+        norms = residual.float().norm(dim=-1)  # (...,) L2 norms
         return signs, norms
 
     def estimate_attention(
@@ -88,6 +89,6 @@ class QJLSketch:
         # Estimator: norms * sqrt(pi/2) / m * sum(signs * q_proj, dim=-1)
         # signs shape: (..._k, sketch_dim), q_proj shape: (..._q, sketch_dim)
         # dot product over sketch_dim
-        dot = (signs.float() * q_proj).sum(dim=-1)            # (..., )
+        dot = (signs.float() * q_proj).sum(dim=-1)  # (..., )
         estimate = norms * math.sqrt(math.pi / 2.0) / m * dot
         return estimate

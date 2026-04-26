@@ -7,7 +7,6 @@ import torch
 
 from src.model.router_zloss import RouterZLoss, router_z_loss
 
-
 N_LAYERS = 2
 D_MODEL = 64
 N_HEADS = 4

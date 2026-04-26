@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 import re
 import shlex
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
 
 __all__ = [
     "ALLOWLIST",
@@ -71,8 +71,19 @@ ALLOWLIST: tuple[str, ...] = (
 #: They are NOT on the allowlist; any command whose base name matches
 #: one of these is classified as *caution* (requires confirmation).
 _CAUTION_COMMANDS: tuple[str, ...] = (
-    "python", "python3", "pip", "pip3", "node", "npm", "npx", "yarn", "pnpm",
-    "make", "cmake", "ninja", "env",
+    "python",
+    "python3",
+    "pip",
+    "pip3",
+    "node",
+    "npm",
+    "npx",
+    "yarn",
+    "pnpm",
+    "make",
+    "cmake",
+    "ninja",
+    "env",
 )
 
 #: Base commands whose invocation is always at least "dangerous".
@@ -100,12 +111,12 @@ DENYLIST: tuple[str, ...] = (
 DENY_PATTERNS: tuple[tuple[str, str], ...] = (
     # rm with recursive + force against root/home — catch clustered and
     # separated flags (e.g. ``rm -r -f /``).
-    (r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-rf|-fr|--recursive\s+--force|--force\s+--recursive)\s+(/|~|\$HOME|/\*)",
-     "rm -rf against root or home"),
-    (r"\brm\s+(-[a-zA-Z]*\s+)*-r\b.*\b-f\b\s+(/|~|\$HOME|/\*)",
-     "rm -r -f against root or home"),
-    (r"\brm\s+(-[a-zA-Z]*\s+)*-f\b.*\b-r\b\s+(/|~|\$HOME|/\*)",
-     "rm -f -r against root or home"),
+    (
+        r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-rf|-fr|--recursive\s+--force|--force\s+--recursive)\s+(/|~|\$HOME|/\*)",
+        "rm -rf against root or home",
+    ),
+    (r"\brm\s+(-[a-zA-Z]*\s+)*-r\b.*\b-f\b\s+(/|~|\$HOME|/\*)", "rm -r -f against root or home"),
+    (r"\brm\s+(-[a-zA-Z]*\s+)*-f\b.*\b-r\b\s+(/|~|\$HOME|/\*)", "rm -f -r against root or home"),
     (r"\bsudo\s+rm\b", "sudo rm"),
     (r"\bchmod\s+-?R?\s*777\b", "chmod 777 (world-writable)"),
     (r"\bchmod\s+-?R?\s*666\b", "chmod 666 (world-writable)"),
@@ -288,7 +299,9 @@ class ShellCommandPlanner:
             return ShellPlan(commands=[], overall_risk="safe", warnings=warnings)
 
         if not isinstance(raw, str):
-            warnings.append(f"generate_fn returned non-string ({type(raw).__name__}); refusing to plan")
+            warnings.append(
+                f"generate_fn returned non-string ({type(raw).__name__}); refusing to plan"
+            )
             return ShellPlan(commands=[], overall_risk="safe", warnings=warnings)
 
         if not raw.strip():
@@ -350,9 +363,7 @@ class ShellCommandPlanner:
             try:
                 obj = json.loads(text)
             except json.JSONDecodeError as exc:
-                warnings.append(
-                    f"candidate output looked like JSON but failed to parse: {exc.msg}"
-                )
+                warnings.append(f"candidate output looked like JSON but failed to parse: {exc.msg}")
                 return [], warnings
             if isinstance(obj, list):
                 out: list[str] = []

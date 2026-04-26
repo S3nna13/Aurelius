@@ -17,6 +17,7 @@ Covers:
   14. GRPOTrainer.freeze_ref freezes all reference model parameters
   15. GRPOTrainer.grpo_step returns the four required metric keys
 """
+
 from __future__ import annotations
 
 import math
@@ -26,16 +27,16 @@ import torch
 import torch.nn as nn
 
 from aurelius.alignment.grpo_v3 import (
-    GRPOConfig,
     GroupRewardNormalizer,
+    GRPOConfig,
     GRPOLoss,
     GRPOTrainer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg() -> GRPOConfig:
@@ -68,6 +69,7 @@ def _flat_log_probs(B: int, G: int, requires_grad: bool = False) -> torch.Tensor
 # 1. GRPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestGRPOConfig:
     def test_defaults(self) -> None:
         c = GRPOConfig()
@@ -81,6 +83,7 @@ class TestGRPOConfig:
 # ---------------------------------------------------------------------------
 # 2-6. GroupRewardNormalizer
 # ---------------------------------------------------------------------------
+
 
 class TestGroupRewardNormalizer:
     def test_normalize_output_shape(self, normalizer: GroupRewardNormalizer) -> None:
@@ -135,14 +138,13 @@ class TestGroupRewardNormalizer:
         B, G = 3, 4
         rewards = torch.ones(B * G)  # all equal within every group
         adv = normalizer.normalize(rewards)
-        assert torch.allclose(adv, torch.zeros(B * G), atol=1e-6), (
-            f"expected zeros, got {adv}"
-        )
+        assert torch.allclose(adv, torch.zeros(B * G), atol=1e-6), f"expected zeros, got {adv}"
 
 
 # ---------------------------------------------------------------------------
 # 7. GRPOLoss.clip_ratio — asymmetric clipping
 # ---------------------------------------------------------------------------
+
 
 class TestClipRatio:
     def test_clips_below_lower_bound(self, loss_fn: GRPOLoss) -> None:
@@ -176,6 +178,7 @@ class TestClipRatio:
 # 8. policy_loss
 # ---------------------------------------------------------------------------
 
+
 class TestPolicyLoss:
     def test_scalar_and_finite(self, loss_fn: GRPOLoss) -> None:
         B = 16
@@ -190,6 +193,7 @@ class TestPolicyLoss:
 # ---------------------------------------------------------------------------
 # 9-10. kl_penalty
 # ---------------------------------------------------------------------------
+
 
 class TestKLPenalty:
     def test_scalar_and_finite(self, loss_fn: GRPOLoss) -> None:
@@ -219,6 +223,7 @@ class TestKLPenalty:
 # 11-12. GRPOLoss.forward
 # ---------------------------------------------------------------------------
 
+
 class TestGRPOLossForward:
     def test_required_keys(self, loss_fn: GRPOLoss) -> None:
         B = 8
@@ -246,6 +251,7 @@ class TestGRPOLossForward:
 # 13. Gradient flow
 # ---------------------------------------------------------------------------
 
+
 class TestGradientFlow:
     def test_gradients_flow_through_log_probs(self, loss_fn: GRPOLoss) -> None:
         B = 8
@@ -262,6 +268,7 @@ class TestGradientFlow:
 # ---------------------------------------------------------------------------
 # 14. GRPOTrainer.freeze_ref
 # ---------------------------------------------------------------------------
+
 
 class TestGRPOTrainerFreezeRef:
     def test_freeze_ref_sets_no_grad(self, cfg: GRPOConfig) -> None:
@@ -284,6 +291,7 @@ class TestGRPOTrainerFreezeRef:
 # ---------------------------------------------------------------------------
 # 15. GRPOTrainer.grpo_step
 # ---------------------------------------------------------------------------
+
 
 class TestGRPOTrainerStep:
     def test_grpo_step_returns_correct_keys(self, cfg: GRPOConfig) -> None:

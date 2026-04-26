@@ -6,18 +6,17 @@ batch sizes, and registry wiring.
 
 Tiny config: d_model=64, vocab_size=256, n_draft_heads=3.
 """
+
 from __future__ import annotations
 
-import torch
-import torch.nn.functional as F
 import pytest
+import torch
 
 from src.inference.hydra_speculative import (
     HydraConfig,
     HydraHead,
     HydraSpeculative,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,15 +33,14 @@ def rand_hidden(B: int = 1, d: int = 64) -> torch.Tensor:
     return torch.randn(B, d)
 
 
-def rand_target_logits(
-    B: int = 1, n_heads: int = 3, vocab_size: int = 256
-) -> torch.Tensor:
+def rand_target_logits(B: int = 1, n_heads: int = 3, vocab_size: int = 256) -> torch.Tensor:
     return torch.randn(B, n_heads, vocab_size)
 
 
 # ---------------------------------------------------------------------------
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = HydraConfig()
@@ -57,6 +55,7 @@ def test_config_defaults():
 # 2. test_head_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_head_output_shape():
     head = HydraHead(d_model=64, hidden=64, vocab_size=256)
     h = rand_hidden(B=2)
@@ -68,6 +67,7 @@ def test_head_output_shape():
 # 3. test_draft_shape
 # ---------------------------------------------------------------------------
 
+
 def test_draft_shape():
     model = make_model()
     h = rand_hidden(B=1)
@@ -78,6 +78,7 @@ def test_draft_shape():
 # ---------------------------------------------------------------------------
 # 4. test_draft_all_heads_run  — n_draft_heads=3 returns 3 predictions
 # ---------------------------------------------------------------------------
+
 
 def test_draft_all_heads_run():
     cfg = HydraConfig(d_model=64, vocab_size=256, n_draft_heads=3)
@@ -91,6 +92,7 @@ def test_draft_all_heads_run():
 # 5. test_sample_draft_tokens_shape
 # ---------------------------------------------------------------------------
 
+
 def test_sample_draft_tokens_shape():
     model = make_model()
     h = rand_hidden(B=2)
@@ -101,6 +103,7 @@ def test_sample_draft_tokens_shape():
 # ---------------------------------------------------------------------------
 # 6. test_sample_draft_tokens_valid
 # ---------------------------------------------------------------------------
+
 
 def test_sample_draft_tokens_valid():
     model = make_model()
@@ -114,6 +117,7 @@ def test_sample_draft_tokens_valid():
 # ---------------------------------------------------------------------------
 # 7. test_verify_shape
 # ---------------------------------------------------------------------------
+
 
 def test_verify_shape():
     model = make_model()
@@ -129,6 +133,7 @@ def test_verify_shape():
 # 8. test_verify_n_accepted_range
 # ---------------------------------------------------------------------------
 
+
 def test_verify_n_accepted_range():
     model = make_model()
     B = 3
@@ -137,14 +142,13 @@ def test_verify_n_accepted_range():
     target_logits = rand_target_logits(B=B)
     _, n_accepted = model.verify(draft_tokens, target_logits)
     max_possible = B * 3
-    assert 0 <= n_accepted <= max_possible, (
-        f"n_accepted={n_accepted} out of [0, {max_possible}]"
-    )
+    assert 0 <= n_accepted <= max_possible, f"n_accepted={n_accepted} out of [0, {max_possible}]"
 
 
 # ---------------------------------------------------------------------------
 # 9. test_acceptance_rate_range
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_rate_range():
     model = make_model()
@@ -159,6 +163,7 @@ def test_acceptance_rate_range():
 # 10. test_acceptance_rate_perfect
 #     target logits = one-hot mass on draft token → acceptance prob = 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_rate_perfect():
     torch.manual_seed(42)
@@ -181,6 +186,7 @@ def test_acceptance_rate_perfect():
 #     target logits = one-hot mass on a DIFFERENT token → acceptance prob = 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_rate_worst():
     torch.manual_seed(0)
     model = make_model()
@@ -199,6 +205,7 @@ def test_acceptance_rate_worst():
 # 12. test_gradients_flow
 # ---------------------------------------------------------------------------
 
+
 def test_gradients_flow():
     model = make_model()
     h = torch.randn(1, 64, requires_grad=True)
@@ -213,6 +220,7 @@ def test_gradients_flow():
 # 13. test_n_heads_1
 # ---------------------------------------------------------------------------
 
+
 def test_n_heads_1():
     cfg = HydraConfig(d_model=64, vocab_size=256, n_draft_heads=1)
     model = HydraSpeculative(cfg)
@@ -226,6 +234,7 @@ def test_n_heads_1():
 # ---------------------------------------------------------------------------
 # 14. test_batch_size_two
 # ---------------------------------------------------------------------------
+
 
 def test_batch_size_two():
     model = make_model()
@@ -245,7 +254,9 @@ def test_batch_size_two():
 # 15. test_registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry():
     from src.inference import DECODER_REGISTRY
+
     assert "hydra" in DECODER_REGISTRY, "'hydra' key missing from DECODER_REGISTRY"
     assert DECODER_REGISTRY["hydra"] is HydraSpeculative

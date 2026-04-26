@@ -16,16 +16,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TrackingConfig:
@@ -35,12 +34,13 @@ class TrackingConfig:
     track_gradients: bool = True
     ema_decay: float = 0.99
     log_interval: int = 100
-    percentiles: List[float] = field(default_factory=lambda: [0.1, 0.5, 0.9])
+    percentiles: list[float] = field(default_factory=lambda: [0.1, 0.5, 0.9])
 
 
 # ---------------------------------------------------------------------------
 # Running statistics (EMA)
 # ---------------------------------------------------------------------------
+
 
 class RunningStats:
     """Exponential moving average tracker for mean and variance.
@@ -87,6 +87,7 @@ class RunningStats:
 # ---------------------------------------------------------------------------
 # Tensor statistics
 # ---------------------------------------------------------------------------
+
 
 def compute_tensor_stats(x: Tensor) -> dict:
     """Return a diagnostic summary dict for tensor *x*.
@@ -141,14 +142,15 @@ def compute_tensor_stats(x: Tensor) -> dict:
 # Per-layer hook wrapper
 # ---------------------------------------------------------------------------
 
+
 class LayerStatsHook:
     """Attach forward (and optionally backward) hooks to a single module."""
 
     def __init__(self, name: str, config: TrackingConfig) -> None:
         self._name = name
         self._config = config
-        self._activation_stats: Optional[dict] = None
-        self._gradient_stats: Optional[dict] = None
+        self._activation_stats: dict | None = None
+        self._gradient_stats: dict | None = None
         self._fwd_handle = None
         self._bwd_handle = None
 
@@ -213,16 +215,17 @@ class LayerStatsHook:
 # Model-level tracker
 # ---------------------------------------------------------------------------
 
+
 class ActivationTracker:
     """Attach and manage :class:`LayerStatsHook` instances across a model."""
 
     def __init__(self, model: nn.Module, config: TrackingConfig) -> None:
         self._model = model
         self._config = config
-        self._hooks: Dict[str, LayerStatsHook] = {}
+        self._hooks: dict[str, LayerStatsHook] = {}
 
     # ------------------------------------------------------------------
-    def attach(self, layer_names: List[str]) -> None:
+    def attach(self, layer_names: list[str]) -> None:
         """Attach hooks to named modules whose names are in *layer_names*.
 
         Silently skips names that do not match any module.
@@ -241,12 +244,12 @@ class ActivationTracker:
         self._hooks.clear()
 
     # ------------------------------------------------------------------
-    def get_all_stats(self) -> Dict[str, dict]:
+    def get_all_stats(self) -> dict[str, dict]:
         """Return {layer_name: stats_dict} for every tracked layer."""
         return {name: hook.get_stats() for name, hook in self._hooks.items()}
 
     # ------------------------------------------------------------------
-    def detect_anomalies(self) -> List[str]:
+    def detect_anomalies(self) -> list[str]:
         """Return names of layers with anomalous activation statistics.
 
         Anomaly criteria (activation stats):
@@ -256,7 +259,7 @@ class ActivationTracker:
             so pure-zero layers are also flagged via norm == 0 only if
             we explicitly check std == 0 regardless of mean.
         """
-        anomalous: List[str] = []
+        anomalous: list[str] = []
         for name, hook in self._hooks.items():
             stats = hook.get_stats()
             act = stats.get("activation")
@@ -275,9 +278,10 @@ class ActivationTracker:
 # Gradient norm per parameter
 # ---------------------------------------------------------------------------
 
-def compute_gradient_norm_per_layer(model: nn.Module) -> Dict[str, float]:
+
+def compute_gradient_norm_per_layer(model: nn.Module) -> dict[str, float]:
     """Return {param_name: grad_l2_norm} for all parameters with gradients."""
-    result: Dict[str, float] = {}
+    result: dict[str, float] = {}
     for name, param in model.named_parameters():
         if param.grad is not None:
             result[name] = param.grad.detach().float().norm(p=2).item()

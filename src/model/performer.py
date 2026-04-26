@@ -26,16 +26,15 @@ PerformerLayer          — Multi-head Performer replacing standard MHA.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Helper: positive FAVOR+ feature map
 # ---------------------------------------------------------------------------
+
 
 def _positive_map(x: Tensor, omega: Tensor, eps: float = 1e-6) -> Tensor:
     """Compute positive FAVOR+ random feature map.
@@ -55,20 +54,21 @@ def _positive_map(x: Tensor, omega: Tensor, eps: float = 1e-6) -> Tensor:
         Tensor of shape (..., m)  — positive feature vectors.
     """
     # (..., d_head) @ (d_head, m) → (..., m)
-    proj = x @ omega.T                              # (..., m)
+    proj = x @ omega.T  # (..., m)
     # ||x||^2 / 2  — shape (..., 1)
-    norm_sq_half = 0.5 * (x * x).sum(dim=-1, keepdim=True)   # (..., 1)
-    log_phi = proj - norm_sq_half                   # (..., m)
+    norm_sq_half = 0.5 * (x * x).sum(dim=-1, keepdim=True)  # (..., 1)
+    log_phi = proj - norm_sq_half  # (..., m)
     # Subtract row-wise max for numerical stability (cancels in ratios)
     log_phi = log_phi - log_phi.max(dim=-1, keepdim=True).values
     m = omega.shape[0]
-    phi = torch.exp(log_phi) / math.sqrt(m)         # (..., m)
+    phi = torch.exp(log_phi) / math.sqrt(m)  # (..., m)
     return phi
 
 
 # ---------------------------------------------------------------------------
 # PerformerOrthogonalRF
 # ---------------------------------------------------------------------------
+
 
 class PerformerOrthogonalRF(nn.Module):
     """Orthogonal random features for FAVOR+.
@@ -84,14 +84,14 @@ class PerformerOrthogonalRF(nn.Module):
         seed:         Optional integer seed for reproducibility.
     """
 
-    def __init__(self, d_head: int, num_features: int, seed: Optional[int] = None) -> None:
+    def __init__(self, d_head: int, num_features: int, seed: int | None = None) -> None:
         super().__init__()
         self.d_head = d_head
         self.num_features = num_features
         self.seed = seed
 
         # Cached omega; None triggers draw on first call to get_omegas()
-        self._omega: Optional[Tensor] = None
+        self._omega: Tensor | None = None
         self._needs_redraw: bool = True
 
     # ------------------------------------------------------------------
@@ -151,23 +151,24 @@ class PerformerOrthogonalRF(nn.Module):
                 g = torch.randn(d, d, device=device, dtype=torch.float32)
 
             # QR decomposition — Q has orthonormal rows/cols
-            q, _ = torch.linalg.qr(g)          # (d, d)
+            q, _ = torch.linalg.qr(g)  # (d, d)
 
             # Scale each row by the Frobenius norm of the corresponding
             # Gaussian row (chi distribution scaling, reduces variance)
             norms = torch.linalg.norm(g, dim=1)  # (d,)
-            q = q * norms.unsqueeze(1)            # (d, d)
+            q = q * norms.unsqueeze(1)  # (d, d)
 
             blocks.append(q)
 
         # Stack all blocks and truncate to m features
-        omega = torch.cat(blocks, dim=0)[:m]     # (m, d)
+        omega = torch.cat(blocks, dim=0)[:m]  # (m, d)
         return omega.to(dtype=dtype)
 
 
 # ---------------------------------------------------------------------------
 # PerformerAttention
 # ---------------------------------------------------------------------------
+
 
 class PerformerAttention(nn.Module):
     """Single-head FAVOR+ performer attention.
@@ -194,7 +195,7 @@ class PerformerAttention(nn.Module):
         d_head: int,
         num_features: int = 256,
         causal: bool = False,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> None:
         super().__init__()
         self.d_head = d_head
@@ -222,8 +223,8 @@ class PerformerAttention(nn.Module):
         omega = self.orf.get_omegas(device=q.device, dtype=q.dtype)  # (m, d)
 
         # Scale queries and keys
-        phi_q = _positive_map(q * scale, omega, eps=self.eps)   # (B, T, m)
-        phi_k = _positive_map(k * scale, omega, eps=self.eps)   # (B, T, m)
+        phi_q = _positive_map(q * scale, omega, eps=self.eps)  # (B, T, m)
+        phi_k = _positive_map(k * scale, omega, eps=self.eps)  # (B, T, m)
 
         if self.causal:
             return self._causal_forward(phi_q, phi_k, v)
@@ -236,13 +237,13 @@ class PerformerAttention(nn.Module):
         """Non-causal FAVOR+: O(T·m·d) with two matrix products."""
         # phi_k: (B, T, m)   v: (B, T, d_head)
         # kv_sum = phi_k^T @ v  → (B, m, d_head)
-        kv_sum = torch.bmm(phi_k.transpose(1, 2), v)       # (B, m, d_head)
+        kv_sum = torch.bmm(phi_k.transpose(1, 2), v)  # (B, m, d_head)
         # normaliser: phi_k^T @ ones → (B, m)
-        z = phi_k.sum(dim=1)                                # (B, m)
+        z = phi_k.sum(dim=1)  # (B, m)
 
         # out = phi_q @ kv_sum / (phi_q @ z + eps)
         # phi_q: (B, T, m)  kv_sum: (B, m, d_head) → (B, T, d_head)
-        out = torch.bmm(phi_q, kv_sum)                     # (B, T, d_head)
+        out = torch.bmm(phi_q, kv_sum)  # (B, T, d_head)
         denom = (phi_q * z.unsqueeze(1)).sum(dim=-1, keepdim=True) + self.eps  # (B, T, 1)
         return out / denom
 
@@ -252,21 +253,21 @@ class PerformerAttention(nn.Module):
         d_head = v.shape[-1]
 
         # Accumulate S_t (m × d_head) and z_t (m,) iteratively
-        S = phi_q.new_zeros(B, m, d_head)   # (B, m, d_head)
-        z = phi_q.new_zeros(B, m)           # (B, m)
+        S = phi_q.new_zeros(B, m, d_head)  # (B, m, d_head)
+        z = phi_q.new_zeros(B, m)  # (B, m)
         outputs = []
 
         for t in range(T):
-            pk_t = phi_k[:, t, :]           # (B, m)
-            v_t  = v[:, t, :]               # (B, d_head)
-            pq_t = phi_q[:, t, :]           # (B, m)
+            pk_t = phi_k[:, t, :]  # (B, m)
+            v_t = v[:, t, :]  # (B, d_head)
+            pq_t = phi_q[:, t, :]  # (B, m)
 
             # Update accumulators: outer product pk_t^T ⊗ v_t
             S = S + torch.bmm(pk_t.unsqueeze(2), v_t.unsqueeze(1))  # (B, m, d_head)
-            z = z + pk_t                                              # (B, m)
+            z = z + pk_t  # (B, m)
 
             # Query: out_t = pq_t @ S / (pq_t @ z + eps)
-            out_t = torch.bmm(pq_t.unsqueeze(1), S).squeeze(1)      # (B, d_head)
+            out_t = torch.bmm(pq_t.unsqueeze(1), S).squeeze(1)  # (B, d_head)
             denom = (pq_t * z).sum(dim=-1, keepdim=True) + self.eps  # (B, 1)
             outputs.append(out_t / denom)
 
@@ -276,6 +277,7 @@ class PerformerAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # PerformerLayer
 # ---------------------------------------------------------------------------
+
 
 class PerformerLayer(nn.Module):
     """Multi-head Performer layer replacing standard MHA.
@@ -297,10 +299,10 @@ class PerformerLayer(nn.Module):
         n_heads: int,
         num_features: int = 256,
         causal: bool = False,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -313,19 +315,21 @@ class PerformerLayer(nn.Module):
         self.out_proj = nn.Linear(d_model, d_model, bias=False)
 
         # One PerformerAttention per head
-        self.heads = nn.ModuleList([
-            PerformerAttention(
-                d_head=self.d_head,
-                num_features=num_features,
-                causal=causal,
-                seed=(seed + i) if seed is not None else None,
-            )
-            for i in range(n_heads)
-        ])
+        self.heads = nn.ModuleList(
+            [
+                PerformerAttention(
+                    d_head=self.d_head,
+                    num_features=num_features,
+                    causal=causal,
+                    seed=(seed + i) if seed is not None else None,
+                )
+                for i in range(n_heads)
+            ]
+        )
 
     # ------------------------------------------------------------------
 
-    def forward(self, x: Tensor, mask: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         """Apply multi-head Performer attention.
 
         Args:
@@ -338,17 +342,17 @@ class PerformerLayer(nn.Module):
         """
         B, T, _ = x.shape
 
-        Q = self.q_proj(x)   # (B, T, d_model)
+        Q = self.q_proj(x)  # (B, T, d_model)
         K = self.k_proj(x)
         V = self.v_proj(x)
 
         d = self.d_head
         head_outputs: list[Tensor] = []
         for h, attn in enumerate(self.heads):
-            q_h = Q[:, :, h * d : (h + 1) * d]   # (B, T, d_head)
+            q_h = Q[:, :, h * d : (h + 1) * d]  # (B, T, d_head)
             k_h = K[:, :, h * d : (h + 1) * d]
             v_h = V[:, :, h * d : (h + 1) * d]
             head_outputs.append(attn(q_h, k_h, v_h))
 
-        out = torch.cat(head_outputs, dim=-1)      # (B, T, d_model)
+        out = torch.cat(head_outputs, dim=-1)  # (B, T, d_model)
         return self.out_proj(out)

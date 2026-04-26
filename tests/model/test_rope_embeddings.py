@@ -4,13 +4,11 @@ Uses tiny configs to keep tests fast:
     D_HEAD=8, D_MODEL=16, N_HEADS=2, MAX_SEQ=16, BATCH=2, SEQ=6
 """
 
-import math
-import pytest
 import torch
 
 from src.model.rope_embeddings import (
-    RoPEConfig,
     RoPEAttention,
+    RoPEConfig,
     apply_rotary_emb,
     apply_rotary_emb_real,
     build_rope_cache,
@@ -35,9 +33,7 @@ SEQ = 6
 def test_compute_freqs_cis_shape():
     """compute_freqs_cis must return (SEQ, D_HEAD//2)."""
     freqs = compute_freqs_cis(D_HEAD, SEQ)
-    assert freqs.shape == (SEQ, D_HEAD // 2), (
-        f"Expected ({SEQ}, {D_HEAD // 2}), got {freqs.shape}"
-    )
+    assert freqs.shape == (SEQ, D_HEAD // 2), f"Expected ({SEQ}, {D_HEAD // 2}), got {freqs.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +134,7 @@ def test_rotate_half_twice_is_negation():
     """Applying rotate_half twice must equal -x (180-degree rotation)."""
     x = torch.randn(BATCH, SEQ, D_HEAD)
     result = rotate_half(rotate_half(x))
-    assert torch.allclose(result, -x, atol=1e-6), (
-        "rotate_half(rotate_half(x)) must equal -x"
-    )
+    assert torch.allclose(result, -x, atol=1e-6), "rotate_half(rotate_half(x)) must equal -x"
 
 
 # ---------------------------------------------------------------------------
@@ -157,9 +151,9 @@ def test_apply_rotary_emb_real_output_shapes():
     t = torch.arange(SEQ, dtype=torch.float32)
     i = torch.arange(0, D_HEAD, 2, dtype=torch.float32)
     theta = 1.0 / (10000.0 ** (i / D_HEAD))
-    angles = torch.outer(t, theta)                           # (SEQ, D_HEAD//2)
+    angles = torch.outer(t, theta)  # (SEQ, D_HEAD//2)
     # Expand angles to full d_head (rotate_half splits into two equal halves)
-    angles_full = torch.cat([angles, angles], dim=-1)        # (SEQ, D_HEAD)
+    angles_full = torch.cat([angles, angles], dim=-1)  # (SEQ, D_HEAD)
     cos = angles_full.cos()
     sin = angles_full.sin()
 

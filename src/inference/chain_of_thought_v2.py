@@ -1,20 +1,21 @@
-"""Chain-of-Thought sampling utilities: CoT prompting, self-consistency voting, and answer extraction."""
+"""Chain-of-Thought sampling utilities: CoT prompting, self-consistency voting, and answer extraction."""  # noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 import torch
-from torch import Tensor, LongTensor
-
+from torch import LongTensor, Tensor
 
 # ---------------------------------------------------------------------------
 # CoTConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CoTConfig:
     """Configuration for Chain-of-Thought sampling."""
+
     n_samples: int = 8
     temperature: float = 0.7
     max_reasoning_tokens: int = 256
@@ -24,6 +25,7 @@ class CoTConfig:
 # ---------------------------------------------------------------------------
 # AnswerExtractor
 # ---------------------------------------------------------------------------
+
 
 class AnswerExtractor:
     """Extract answer spans from token sequences using a trigger phrase."""
@@ -35,9 +37,9 @@ class AnswerExtractor:
     # ------------------------------------------------------------------
     def extract_span(
         self,
-        token_ids: LongTensor,          # shape (T,)
-        trigger_ids: LongTensor,        # shape (K,)
-    ) -> Tuple[int, int]:
+        token_ids: LongTensor,  # shape (T,)
+        trigger_ids: LongTensor,  # shape (K,)
+    ) -> tuple[int, int]:
         """
         Slide trigger_ids over token_ids to find the trigger, then return
         the (start, end) indices of the answer span that follows the trigger.
@@ -73,17 +75,20 @@ class AnswerExtractor:
     # ------------------------------------------------------------------
     def extract_batch(
         self,
-        batch_token_ids: LongTensor,    # shape (B, T)
-        trigger_ids: LongTensor,        # shape (K,)
-    ) -> List[Tuple[int, int]]:
+        batch_token_ids: LongTensor,  # shape (B, T)
+        trigger_ids: LongTensor,  # shape (K,)
+    ) -> list[tuple[int, int]]:
         """Apply extract_span to each row of a batch."""
-        return [self.extract_span(batch_token_ids[i], trigger_ids) for i in range(batch_token_ids.shape[0])]
+        return [
+            self.extract_span(batch_token_ids[i], trigger_ids)
+            for i in range(batch_token_ids.shape[0])
+        ]
 
     # ------------------------------------------------------------------
     def has_answer(
         self,
-        token_ids: LongTensor,          # shape (T,)
-        trigger_ids: LongTensor,        # shape (K,)
+        token_ids: LongTensor,  # shape (T,)
+        trigger_ids: LongTensor,  # shape (K,)
     ) -> bool:
         """Return True when the trigger is present in token_ids."""
         start, _ = self.extract_span(token_ids, trigger_ids)
@@ -94,6 +99,7 @@ class AnswerExtractor:
 # CoTScorer
 # ---------------------------------------------------------------------------
 
+
 class CoTScorer:
     """Score chain-of-thought reasoning chains."""
 
@@ -103,8 +109,8 @@ class CoTScorer:
     # ------------------------------------------------------------------
     def score_reasoning_quality(
         self,
-        reasoning_ids: LongTensor,      # shape (T,)  — unused, kept for API consistency
-        answer_log_probs: Tensor,       # shape (T2,)
+        reasoning_ids: LongTensor,  # shape (T,)  — unused, kept for API consistency
+        answer_log_probs: Tensor,  # shape (T2,)
     ) -> Tensor:
         """
         Quality score = mean of answer log-probabilities.
@@ -136,7 +142,7 @@ class CoTScorer:
         return float(1.0 / (1.0 + excess / hi))
 
     # ------------------------------------------------------------------
-    def aggregate_scores(self, scores: Tensor) -> Dict[str, float]:
+    def aggregate_scores(self, scores: Tensor) -> dict[str, float]:
         """Compute summary statistics over a 1-D score tensor."""
         return {
             "mean": float(scores.mean().item()),
@@ -150,6 +156,7 @@ class CoTScorer:
 # SelfConsistencyCoT
 # ---------------------------------------------------------------------------
 
+
 class SelfConsistencyCoT:
     """Self-consistency voting over multiple chain-of-thought samples."""
 
@@ -160,8 +167,8 @@ class SelfConsistencyCoT:
     # ------------------------------------------------------------------
     def vote(
         self,
-        candidate_answer_spans: List[LongTensor],  # each shape (L_i,)
-    ) -> Tuple[LongTensor, int]:
+        candidate_answer_spans: list[LongTensor],  # each shape (L_i,)
+    ) -> tuple[LongTensor, int]:
         """
         Find the most common answer span (exact token-sequence match).
         Returns (most_common_span_tensor, count).
@@ -170,7 +177,7 @@ class SelfConsistencyCoT:
             return torch.empty(0, dtype=torch.long), 0
 
         # Count exact matches using Python tuples as hashable keys.
-        counts: Dict[Tuple[int, ...], int] = {}
+        counts: dict[tuple[int, ...], int] = {}
         for span in candidate_answer_spans:
             key = tuple(span.tolist())
             counts[key] = counts.get(key, 0) + 1
@@ -187,8 +194,8 @@ class SelfConsistencyCoT:
     # ------------------------------------------------------------------
     def select_best(
         self,
-        candidates: List[LongTensor],
-        scores: Tensor,                  # shape (N,)
+        candidates: list[LongTensor],
+        scores: Tensor,  # shape (N,)
     ) -> LongTensor:
         """Return the candidate with the highest score."""
         best_idx = int(scores.argmax().item())
@@ -199,6 +206,7 @@ class SelfConsistencyCoT:
 # CoTBudgetAllocator
 # ---------------------------------------------------------------------------
 
+
 class CoTBudgetAllocator:
     """Allocate a fixed token budget across CoT samples."""
 
@@ -207,7 +215,7 @@ class CoTBudgetAllocator:
         self._used_tokens: int = 0
 
     # ------------------------------------------------------------------
-    def allocate(self, n_samples: int, max_reasoning_tokens: int) -> Dict[str, int]:
+    def allocate(self, n_samples: int, max_reasoning_tokens: int) -> dict[str, int]:
         """
         Distribute the budget across samples.
         If n_samples * max_reasoning_tokens > budget, reduce n_samples.

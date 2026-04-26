@@ -5,18 +5,16 @@ Covers FourierMixingLayer, FNetBlock, and FNetModel.
 
 from __future__ import annotations
 
-import torch
 import pytest
-
-from aurelius.model.fnet import FourierMixingLayer, FNetBlock, FNetModel
-
+import torch
+from aurelius.model.fnet import FNetBlock, FNetModel, FourierMixingLayer
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
-B, T, D = 2, 16, 64          # batch, seq_len, d_model
-D_FF = 128                    # feed-forward dimension
+B, T, D = 2, 16, 64  # batch, seq_len, d_model
+D_FF = 128  # feed-forward dimension
 N_LAYERS = 3
 VOCAB = 256
 MAX_SEQ = 64
@@ -58,6 +56,7 @@ def sample_ids() -> torch.Tensor:
 # FourierMixingLayer tests (1–4)
 # ---------------------------------------------------------------------------
 
+
 def test_fourier_mixing_output_shape(mixing_layer, sample_x):
     """Test 1: output shape equals input shape."""
     out = mixing_layer(sample_x)
@@ -87,6 +86,7 @@ def test_fourier_mixing_changes_input(mixing_layer, sample_x):
 # ---------------------------------------------------------------------------
 # FNetBlock tests (5–8)
 # ---------------------------------------------------------------------------
+
 
 def test_fnet_block_output_shape(fnet_block, sample_x):
     """Test 5: output shape is (B, T, d_model)."""
@@ -120,6 +120,7 @@ def test_fnet_block_single_token(fnet_block):
 # ---------------------------------------------------------------------------
 # FNetModel tests (9–14)
 # ---------------------------------------------------------------------------
+
 
 def test_fnet_model_output_shape(fnet_model, sample_ids):
     """Test 9: output shape is (B, T, d_model)."""

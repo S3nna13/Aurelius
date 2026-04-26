@@ -11,12 +11,10 @@ from src.agent.skill_executor import (
     SkillExecutor,
 )
 from src.agent.skill_trigger_engine import (
-    DEFAULT_TRIGGER_ENGINE,
     TRIGGER_ENGINE_REGISTRY,
     MatchedSkill,
     SkillTriggerEngine,
     TriggerEngineError,
-    TriggerResult,
 )
 from src.mcp.skill_catalog import SkillCatalogError, SkillMetadata, SkillTrigger
 

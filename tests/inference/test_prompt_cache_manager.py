@@ -9,15 +9,14 @@ import torch
 
 from src.inference.prompt_cache_manager import (
     CacheConfig,
-    PrefixEntry,
     PrefixKVCache,
     PromptCacheManager,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _kv(n_layers: int = 2, seq_len: int = 8, n_heads: int = 2, head_dim: int = 16):
     shape = (n_layers, n_heads, seq_len, head_dim)
@@ -31,6 +30,7 @@ def _tokens(n: int, start: int = 1) -> list[int]:
 # ---------------------------------------------------------------------------
 # PrefixKVCache tests
 # ---------------------------------------------------------------------------
+
 
 class TestPrefixKVCache:
     def test_store_and_lookup_hit(self):
@@ -150,6 +150,7 @@ class TestPrefixKVCache:
 # ---------------------------------------------------------------------------
 # PromptCacheManager tests
 # ---------------------------------------------------------------------------
+
 
 class TestPromptCacheManager:
     def test_should_cache_within_bounds(self):

@@ -11,7 +11,6 @@ from src.chat.instruction_tuning_data import (
     SelfInstructGenerator,
 )
 
-
 # ---------------------------------------------------------------- fakes
 
 
@@ -68,9 +67,7 @@ def test_magpie_n_zero_returns_empty():
 def test_magpie_determinism_with_fixed_seed():
     a = MagpieGenerator(FakeLM()).generate(n=4, seed=42)
     b = MagpieGenerator(FakeLM()).generate(n=4, seed=42)
-    assert [(s.instruction, s.response) for s in a] == [
-        (s.instruction, s.response) for s in b
-    ]
+    assert [(s.instruction, s.response) for s in a] == [(s.instruction, s.response) for s in b]
 
 
 def test_magpie_rejects_role_break_in_output():
@@ -112,9 +109,7 @@ def test_self_instruct_empty_seeds_raises():
 
 
 def test_self_instruct_expand_grows_pool():
-    gen = SelfInstructGenerator(
-        CountingLM(), seed_tasks=["Write a sorting function."]
-    )
+    gen = SelfInstructGenerator(CountingLM(), seed_tasks=["Write a sorting function."])
     samples = gen.expand(n_iterations=2, per_iter=3)
     # 1 seed + (2 iters * 3 per_iter) = 7 samples.
     assert len(samples) == 7
@@ -164,9 +159,7 @@ def test_evol_rejects_unknown_operator():
 
 def test_evol_difficulty_and_tags_populated():
     gen = EvolInstructGenerator(CountingLM())
-    samples = gen.evolve(
-        "seed", operator_sequence=["deepen", "concretize"]
-    )
+    samples = gen.evolve("seed", operator_sequence=["deepen", "concretize"])
     assert samples[0].difficulty == pytest.approx(0.5)
     assert samples[1].difficulty == pytest.approx(1.0)
     assert "deepen" in samples[0].tags

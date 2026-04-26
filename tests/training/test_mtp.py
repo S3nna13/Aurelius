@@ -7,16 +7,15 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.mtp import MTPHead, MTPObjective, MTPTrainer
 
-
 # ---------------------------------------------------------------------------
 # Tiny model fixture (2 layers, d_model=64)
 # ---------------------------------------------------------------------------
+
 
 def _tiny_config() -> AureliusConfig:
     """Return a minimal AureliusConfig that satisfies all assertions."""
@@ -51,6 +50,7 @@ def tiny_mtp_objective() -> MTPObjective:
 # Test 1 — MTPHead output shape
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_head_output_shape():
     """MTPHead(depth=1): (2, 16, 2048) hidden -> (2, 15, 128000) logits."""
     d_model = 2048
@@ -71,6 +71,7 @@ def test_mtp_head_output_shape():
 # Test 2 — MTPObjective returns a scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_objective_loss_scalar(tiny_mtp_objective):
     """compute_mtp_loss should return a 0-d (scalar) tensor."""
     cfg = _tiny_config()
@@ -89,6 +90,7 @@ def test_mtp_objective_loss_scalar(tiny_mtp_objective):
 # Test 3 — MTP loss is positive
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_loss_positive(tiny_mtp_objective):
     """Cross-entropy loss must be > 0 for random logits."""
     cfg = _tiny_config()
@@ -105,6 +107,7 @@ def test_mtp_loss_positive(tiny_mtp_objective):
 # ---------------------------------------------------------------------------
 # Test 4 — mtp_weight scales loss linearly
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_weight_scales_loss(tiny_mtp_objective):
     """mtp_weight=0.1 should give 10x smaller loss than mtp_weight=1.0."""
@@ -128,6 +131,7 @@ def test_mtp_weight_scales_loss(tiny_mtp_objective):
 # ---------------------------------------------------------------------------
 # Test 5 — MTPTrainer.train_step returns the correct dict of floats
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_trainer_step(tiny_model, tiny_mtp_objective):
     """train_step must return a dict with 'main_loss', 'mtp_loss', 'total_loss'."""
@@ -162,6 +166,7 @@ def test_mtp_trainer_step(tiny_model, tiny_mtp_objective):
 # Test 6 — Gradients flow through MTPHead parameters after train_step
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_gradients_flow(tiny_model, tiny_mtp_objective):
     """After train_step, all MTPHead parameters must have non-None gradients."""
     cfg = _tiny_config()
@@ -185,9 +190,7 @@ def test_mtp_gradients_flow(tiny_model, tiny_mtp_objective):
 
     for i, head in enumerate(tiny_mtp_objective.heads):
         for name, param in head.named_parameters():
-            assert param.grad is not None, (
-                f"head[{i}].{name} has no gradient after train_step"
-            )
+            assert param.grad is not None, f"head[{i}].{name} has no gradient after train_step"
             assert param.grad.abs().sum().item() > 0.0, (
                 f"head[{i}].{name} gradient is all-zero after train_step"
             )

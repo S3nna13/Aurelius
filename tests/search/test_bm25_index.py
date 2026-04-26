@@ -1,16 +1,17 @@
 """Tests for BM25Index — at least 20 tests covering all specified requirements."""
+
 from __future__ import annotations
 
 import math
 
 import pytest
 
-from src.search.bm25_index import BM25Index, _MAX_DOC_ID_LEN, _MAX_TEXT_LEN, _MAX_TOP_K
-
+from src.search.bm25_index import _MAX_DOC_ID_LEN, _MAX_TEXT_LEN, _MAX_TOP_K, BM25Index
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh() -> BM25Index:
     """Return a brand-new BM25Index instance."""
@@ -20,6 +21,7 @@ def fresh() -> BM25Index:
 # ---------------------------------------------------------------------------
 # 1. Basic add + query: relevant doc comes first
 # ---------------------------------------------------------------------------
+
 
 def test_basic_query_returns_relevant_doc_first():
     idx = fresh()
@@ -32,6 +34,7 @@ def test_basic_query_returns_relevant_doc_first():
 # ---------------------------------------------------------------------------
 # 2. Score formula verification on minimal 2-doc corpus
 # ---------------------------------------------------------------------------
+
 
 def test_score_formula_minimal_corpus():
     """
@@ -64,6 +67,7 @@ def test_score_formula_minimal_corpus():
 # 3. Remove doc decrements df correctly
 # ---------------------------------------------------------------------------
 
+
 def test_remove_decrements_df():
     idx = fresh()
     idx.add("a", "apple banana")
@@ -77,6 +81,7 @@ def test_remove_decrements_df():
 # 4. Duplicate doc_id raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_duplicate_doc_id_raises():
     idx = fresh()
     idx.add("dup", "some text")
@@ -87,6 +92,7 @@ def test_duplicate_doc_id_raises():
 # ---------------------------------------------------------------------------
 # 5. Empty query tokens returns []
 # ---------------------------------------------------------------------------
+
 
 def test_empty_query_returns_empty():
     idx = fresh()
@@ -99,6 +105,7 @@ def test_empty_query_returns_empty():
 # 6. Empty index returns []
 # ---------------------------------------------------------------------------
 
+
 def test_empty_index_returns_empty():
     idx = fresh()
     assert idx.query("anything") == []
@@ -107,6 +114,7 @@ def test_empty_index_returns_empty():
 # ---------------------------------------------------------------------------
 # 7. top_k=0 raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_zero_raises():
     idx = fresh()
@@ -119,6 +127,7 @@ def test_top_k_zero_raises():
 # 8. top_k > 1000 raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_top_k_exceeds_max_raises():
     idx = fresh()
     idx.add("d", "hello")
@@ -129,6 +138,7 @@ def test_top_k_exceeds_max_raises():
 # ---------------------------------------------------------------------------
 # 9. doc_id > 512 chars raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_doc_id_too_long_raises():
     idx = fresh()
@@ -141,6 +151,7 @@ def test_doc_id_too_long_raises():
 # 10. text > 1_000_000 chars raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_text_too_long_raises():
     idx = fresh()
     long_text = "a " * (_MAX_TEXT_LEN // 2 + 1)  # well over limit in chars
@@ -151,6 +162,7 @@ def test_text_too_long_raises():
 # ---------------------------------------------------------------------------
 # 11. len() and __contains__
 # ---------------------------------------------------------------------------
+
 
 def test_len_and_contains():
     idx = fresh()
@@ -170,6 +182,7 @@ def test_len_and_contains():
 # 12. Remove nonexistent raises KeyError
 # ---------------------------------------------------------------------------
 
+
 def test_remove_nonexistent_raises():
     idx = fresh()
     with pytest.raises(KeyError):
@@ -180,6 +193,7 @@ def test_remove_nonexistent_raises():
 # 13. All-whitespace text raises ValueError (empty tokens after tokenization)
 # ---------------------------------------------------------------------------
 
+
 def test_all_whitespace_text_raises():
     idx = fresh()
     with pytest.raises(ValueError, match="empty after tokenization"):
@@ -189,6 +203,7 @@ def test_all_whitespace_text_raises():
 # ---------------------------------------------------------------------------
 # 14. Higher b → stronger length normalization
 # ---------------------------------------------------------------------------
+
 
 def test_higher_b_stronger_length_normalization():
     """
@@ -220,6 +235,7 @@ def test_higher_b_stronger_length_normalization():
 # 15. Multiple tokens in query accumulate scores
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_query_tokens_accumulate():
     idx = fresh()
     idx.add("both", "python machine learning")
@@ -232,6 +248,7 @@ def test_multiple_query_tokens_accumulate():
 # ---------------------------------------------------------------------------
 # 16. Deterministic ordering with equal scores
 # ---------------------------------------------------------------------------
+
 
 def test_deterministic_ordering():
     """Two docs with identical text → sorted output must be stable / consistent."""
@@ -247,6 +264,7 @@ def test_deterministic_ordering():
 # 17. Query token absent from all docs yields zero scores
 # ---------------------------------------------------------------------------
 
+
 def test_query_token_not_in_corpus():
     idx = fresh()
     idx.add("d", "apple banana cherry")
@@ -258,6 +276,7 @@ def test_query_token_not_in_corpus():
 # ---------------------------------------------------------------------------
 # 18. top_k limits returned results
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_limits_results():
     idx = fresh()
@@ -271,6 +290,7 @@ def test_top_k_limits_results():
 # 19. Metadata is stored and accessible
 # ---------------------------------------------------------------------------
 
+
 def test_metadata_stored():
     idx = fresh()
     meta = {"source": "wiki", "year": 2024}
@@ -281,6 +301,7 @@ def test_metadata_stored():
 # ---------------------------------------------------------------------------
 # 20. k1 parameter affects saturation
 # ---------------------------------------------------------------------------
+
 
 def test_k1_affects_score_magnitude():
     """Higher k1 means tf has more influence; a multi-occurrence term matters more."""
@@ -307,6 +328,7 @@ def test_k1_affects_score_magnitude():
 # 21. add accepts exactly _MAX_DOC_ID_LEN chars (boundary)
 # ---------------------------------------------------------------------------
 
+
 def test_doc_id_exactly_max_len_accepted():
     idx = fresh()
     exact_id = "x" * _MAX_DOC_ID_LEN
@@ -317,6 +339,7 @@ def test_doc_id_exactly_max_len_accepted():
 # ---------------------------------------------------------------------------
 # 22. After removing all docs index is empty
 # ---------------------------------------------------------------------------
+
 
 def test_index_empty_after_remove_all():
     idx = fresh()

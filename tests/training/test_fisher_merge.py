@@ -1,10 +1,10 @@
 """Tests for Fisher information-weighted model merging."""
+
 from __future__ import annotations
 
 import copy
-from typing import Generator
+from collections.abc import Generator
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -18,10 +18,10 @@ from src.training.fisher_merge import (
     fisher_merge_models,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _small_model(seed: int = 0) -> AureliusTransformer:
     """Return a tiny AureliusTransformer for fast tests."""
@@ -64,6 +64,7 @@ def _param_names(model: nn.Module) -> set[str]:
 # compute_fisher tests
 # ---------------------------------------------------------------------------
 
+
 def test_compute_fisher_returns_dict():
     """compute_fisher returns a dict with same keys as model.named_parameters()."""
     model = _small_model()
@@ -105,14 +106,13 @@ def test_compute_fisher_normalized():
     fisher = compute_fisher(model, dl, n_batches=3, normalize=True)
 
     for name, fval in fisher.items():
-        assert fval.max().item() <= 1.0 + 1e-6, (
-            f"{name} max Fisher = {fval.max().item()} > 1.0"
-        )
+        assert fval.max().item() <= 1.0 + 1e-6, f"{name} max Fisher = {fval.max().item()} > 1.0"
 
 
 # ---------------------------------------------------------------------------
 # fisher_merge tests
 # ---------------------------------------------------------------------------
+
 
 def test_fisher_merge_output_shape():
     """Merged state dict has same parameter shapes as the input models."""
@@ -149,9 +149,7 @@ def test_fisher_merge_interpolates():
 
     # Uniform Fisher: result should be arithmetic mean (between m1 and m2)
     f_uniform = {
-        name: torch.ones_like(param)
-        for name, param in m1.named_parameters()
-        if param.requires_grad
+        name: torch.ones_like(param) for name, param in m1.named_parameters() if param.requires_grad
     }
 
     merged_state = fisher_merge([m1, m2], [f_uniform, f_uniform], normalize=False)
@@ -185,9 +183,7 @@ def test_fisher_merge_uniform_fisher():
 
     # Uniform Fisher (all 1s) — only for true named parameters
     uniform_fisher = {
-        name: torch.ones_like(param)
-        for name, param in m1.named_parameters()
-        if param.requires_grad
+        name: torch.ones_like(param) for name, param in m1.named_parameters() if param.requires_grad
     }
 
     merged_state = fisher_merge([m1, m2], [uniform_fisher, uniform_fisher], normalize=False)
@@ -240,9 +236,9 @@ def test_fisher_merge_skewed_fisher():
         if name not in param_keys:
             continue
         if s1[name].dtype.is_floating_point and not s1[name].is_complex():
-            assert torch.allclose(
-                merged_state[name].float(), s1[name].float(), atol=1e-2
-            ), f"{name}: skewed-Fisher merge did not favour the high-Fisher model"
+            assert torch.allclose(merged_state[name].float(), s1[name].float(), atol=1e-2), (
+                f"{name}: skewed-Fisher merge did not favour the high-Fisher model"
+            )
 
 
 def test_fisher_merge_two_identical():
@@ -251,9 +247,7 @@ def test_fisher_merge_two_identical():
     m_copy = copy.deepcopy(m)
 
     uniform_fisher = {
-        name: torch.ones_like(param)
-        for name, param in m.named_parameters()
-        if param.requires_grad
+        name: torch.ones_like(param) for name, param in m.named_parameters() if param.requires_grad
     }
 
     merged_state = fisher_merge([m, m_copy], [uniform_fisher, uniform_fisher])
@@ -272,6 +266,7 @@ def test_fisher_merge_two_identical():
 # ---------------------------------------------------------------------------
 # fisher_merge_models tests
 # ---------------------------------------------------------------------------
+
 
 def test_fisher_merge_models_returns_model():
     """fisher_merge_models returns an nn.Module with a valid forward pass."""
@@ -297,6 +292,7 @@ def test_fisher_merge_models_returns_model():
 # ---------------------------------------------------------------------------
 # analyze_fisher_merge tests
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_fisher_merge_fields():
     """FisherMergeResult has all required fields with sensible values."""

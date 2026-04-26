@@ -23,9 +23,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -67,29 +66,138 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 
 
-_STOP_WORDS: frozenset[str] = frozenset({
-    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-    "am", "do", "does", "did", "doing", "have", "has", "had", "having",
-    "and", "or", "but", "if", "then", "else", "when", "while", "for",
-    "of", "on", "in", "at", "to", "from", "by", "with", "about", "as",
-    "into", "through", "during", "before", "after", "above", "below",
-    "up", "down", "out", "off", "over", "under", "again", "further",
-    "once", "here", "there", "all", "any", "both", "each", "few", "more",
-    "most", "other", "some", "such", "only", "own", "same", "so", "than",
-    "too", "very", "can", "will", "just", "should", "now", "that", "this",
-    "these", "those", "it", "its", "they", "them", "their", "i", "you",
-    "he", "she", "we", "us", "me", "my", "your", "our", "his", "her",
-})
+_STOP_WORDS: frozenset[str] = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "am",
+        "do",
+        "does",
+        "did",
+        "doing",
+        "have",
+        "has",
+        "had",
+        "having",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "else",
+        "when",
+        "while",
+        "for",
+        "of",
+        "on",
+        "in",
+        "at",
+        "to",
+        "from",
+        "by",
+        "with",
+        "about",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "up",
+        "down",
+        "out",
+        "off",
+        "over",
+        "under",
+        "again",
+        "further",
+        "once",
+        "here",
+        "there",
+        "all",
+        "any",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "can",
+        "will",
+        "just",
+        "should",
+        "now",
+        "that",
+        "this",
+        "these",
+        "those",
+        "it",
+        "its",
+        "they",
+        "them",
+        "their",
+        "i",
+        "you",
+        "he",
+        "she",
+        "we",
+        "us",
+        "me",
+        "my",
+        "your",
+        "our",
+        "his",
+        "her",
+    }
+)
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_\-]*")
 # Numeric literal: optional sign, integer or decimal, optional scientific form.
 _NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?")
 
-_NEGATION_TOKENS: frozenset[str] = frozenset({
-    "not", "no", "never", "none", "cannot", "cant", "isnt", "arent",
-    "wasnt", "werent", "dont", "doesnt", "didnt", "wont", "wouldnt",
-    "shouldnt", "couldnt", "hasnt", "havent", "hadnt",
-})
+_NEGATION_TOKENS: frozenset[str] = frozenset(
+    {
+        "not",
+        "no",
+        "never",
+        "none",
+        "cannot",
+        "cant",
+        "isnt",
+        "arent",
+        "wasnt",
+        "werent",
+        "dont",
+        "doesnt",
+        "didnt",
+        "wont",
+        "wouldnt",
+        "shouldnt",
+        "couldnt",
+        "hasnt",
+        "havent",
+        "hadnt",
+    }
+)
 
 
 def _normalize(text: str) -> str:
@@ -179,13 +287,9 @@ class HallucinationGuard:
                 f"similarity_threshold must be in (0, 1], got {similarity_threshold!r}"
             )
         if not (0.0 <= confidence_decay <= 1.0):
-            raise ValueError(
-                f"confidence_decay must be in [0, 1], got {confidence_decay!r}"
-            )
+            raise ValueError(f"confidence_decay must be in [0, 1], got {confidence_decay!r}")
         if numeric_tolerance < 0.0:
-            raise ValueError(
-                f"numeric_tolerance must be >= 0, got {numeric_tolerance!r}"
-            )
+            raise ValueError(f"numeric_tolerance must be >= 0, got {numeric_tolerance!r}")
         self.similarity_threshold = float(similarity_threshold)
         self.confidence_decay = float(confidence_decay)
         self.numeric_tolerance = float(numeric_tolerance)
@@ -236,8 +340,7 @@ class HallucinationGuard:
                     # Lexically similar but numbers absent -> ambiguous, skip
                     continue
                 all_match = all(
-                    any(self._numbers_match(cn, en) for en in ev_numbers)
-                    for cn in claim_numbers
+                    any(self._numbers_match(cn, en) for en in ev_numbers) for cn in claim_numbers
                 )
                 if not all_match:
                     # Numeric conflict under matching key-terms -> contradiction
@@ -324,7 +427,7 @@ class HallucinationGuard:
                 validated.append(claim)
                 aggregate_conf *= c_conf
             elif status == "contradicted":
-                assert ev is not None  # invariant from _classify_against
+                assert ev is not None  # invariant from _classify_against  # noqa: S101
                 contradictions.append((claim, ev))
                 aggregate_conf *= 0.0
             else:  # unvalidated

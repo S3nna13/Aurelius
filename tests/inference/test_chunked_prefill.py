@@ -11,7 +11,6 @@ import torch.nn as nn
 from src.inference.chunked_prefill import (
     ChunkedPrefillConfig,
     ChunkedPrefillEngine,
-    PrefillStats,
     chunk_sequence,
     merge_chunked_logits,
 )

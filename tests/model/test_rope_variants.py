@@ -1,5 +1,5 @@
 """Tests for rope_variants.py: ALiBi, T5-relative bias, dynamic NTK scaling, position interpolation,
-plus new variants: RoPEVariantConfig, alibi_bias, fire_position_encoding, cope_gate, RoPEVariantLayer."""
+plus new variants: RoPEVariantConfig, alibi_bias, fire_position_encoding, cope_gate, RoPEVariantLayer."""  # noqa: E501
 
 import pytest
 import torch
@@ -36,6 +36,7 @@ HEAD_DIM = D_MODEL // N_HEADS  # 16
 # 1. PositionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_position_config_defaults():
     cfg = PositionConfig()
     assert cfg.max_seq_len == 4096
@@ -51,6 +52,7 @@ def test_position_config_defaults():
 # 2. build_alibi_slopes -- shape
 # ---------------------------------------------------------------------------
 
+
 def test_build_alibi_slopes_shape():
     slopes = build_alibi_slopes(N_HEADS)
     assert slopes.shape == (N_HEADS,), f"Expected ({N_HEADS},), got {slopes.shape}"
@@ -60,11 +62,12 @@ def test_build_alibi_slopes_shape():
 # 3. build_alibi_slopes -- slopes decrease with head index
 # ---------------------------------------------------------------------------
 
+
 def test_build_alibi_slopes_decreasing():
     slopes = build_alibi_slopes(N_HEADS)
     for i in range(len(slopes) - 1):
         assert slopes[i] > slopes[i + 1], (
-            f"Slope at {i} ({slopes[i]:.6f}) should be > slope at {i+1} ({slopes[i+1]:.6f})"
+            f"Slope at {i} ({slopes[i]:.6f}) should be > slope at {i + 1} ({slopes[i + 1]:.6f})"
         )
 
 
@@ -72,17 +75,17 @@ def test_build_alibi_slopes_decreasing():
 # 4. compute_alibi_bias -- shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_alibi_bias_shape():
     slopes = build_alibi_slopes(N_HEADS)
     bias = compute_alibi_bias(T, N_HEADS, slopes)
-    assert bias.shape in {(1, N_HEADS, T, T), (N_HEADS, T, T)}, (
-        f"Unexpected shape {bias.shape}"
-    )
+    assert bias.shape in {(1, N_HEADS, T, T), (N_HEADS, T, T)}, f"Unexpected shape {bias.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 5. ALiBiAttention -- output shape
 # ---------------------------------------------------------------------------
+
 
 def test_alibi_attention_output_shape():
     torch.manual_seed(0)
@@ -96,6 +99,7 @@ def test_alibi_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 6. ALiBiAttention -- gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_alibi_attention_gradient_flow():
     torch.manual_seed(0)
@@ -113,6 +117,7 @@ def test_alibi_attention_gradient_flow():
 # 7. t5_relative_position_bucket -- shape
 # ---------------------------------------------------------------------------
 
+
 def test_t5_relative_position_bucket_shape():
     T_q, T_k = 8, 12
     positions = torch.arange(T_q).unsqueeze(1) - torch.arange(T_k).unsqueeze(0)
@@ -123,6 +128,7 @@ def test_t5_relative_position_bucket_shape():
 # ---------------------------------------------------------------------------
 # 8. t5_relative_position_bucket -- values in [0, num_buckets)
 # ---------------------------------------------------------------------------
+
 
 def test_t5_relative_position_bucket_range():
     num_buckets = 32
@@ -139,6 +145,7 @@ def test_t5_relative_position_bucket_range():
 # 9. T5RelativeAttentionBias -- output shape
 # ---------------------------------------------------------------------------
 
+
 def test_t5_relative_attention_bias_shape():
     cfg = PositionConfig(n_heads=N_HEADS, t5_num_buckets=32, t5_max_distance=128)
     module = T5RelativeAttentionBias(cfg)
@@ -153,16 +160,16 @@ def test_t5_relative_attention_bias_shape():
 # 10. dynamic_ntk_scaling -- shape
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_ntk_scaling_shape():
     freqs = dynamic_ntk_scaling(seq_len=T, base=10000.0, d_model=D_MODEL, scale_factor=1.0)
-    assert freqs.shape == (D_MODEL // 2,), (
-        f"Expected ({D_MODEL // 2},), got {freqs.shape}"
-    )
+    assert freqs.shape == (D_MODEL // 2,), f"Expected ({D_MODEL // 2},), got {freqs.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 11. interpolate_rope_positions -- values are positions / scale
 # ---------------------------------------------------------------------------
+
 
 def test_interpolate_rope_positions_scaled():
     positions = torch.arange(T).float()
@@ -176,6 +183,7 @@ def test_interpolate_rope_positions_scaled():
 # ---------------------------------------------------------------------------
 # 12. ALiBiAttention works without any positional embeddings
 # ---------------------------------------------------------------------------
+
 
 def test_alibi_no_positional_embedding_needed():
     torch.manual_seed(0)
@@ -197,6 +205,7 @@ def test_alibi_no_positional_embedding_needed():
 # 13. RoPEVariantConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_rope_variant_config_defaults():
     cfg = RoPEVariantConfig()
     assert cfg.variant == "alibi"
@@ -208,6 +217,7 @@ def test_rope_variant_config_defaults():
 # ---------------------------------------------------------------------------
 # 14. RoPEVariantConfig custom values
 # ---------------------------------------------------------------------------
+
 
 def test_rope_variant_config_custom():
     cfg = RoPEVariantConfig(variant="fire", n_heads=8, max_seq_len=1024, d_model=128)
@@ -221,6 +231,7 @@ def test_rope_variant_config_custom():
 # 15. build_alibi_slopes -- known values for 2 heads
 # ---------------------------------------------------------------------------
 
+
 def test_build_alibi_slopes_known_values():
     slopes = build_alibi_slopes(2)
     # slope[0] = 2^(-8/2 * 1) = 2^(-4) = 0.0625
@@ -232,6 +243,7 @@ def test_build_alibi_slopes_known_values():
 # 16. alibi_bias -- output shape
 # ---------------------------------------------------------------------------
 
+
 def test_alibi_bias_shape():
     slopes = build_alibi_slopes(N_HEADS)
     bias = alibi_bias(T, slopes)
@@ -241,6 +253,7 @@ def test_alibi_bias_shape():
 # ---------------------------------------------------------------------------
 # 17. alibi_bias -- diagonal is zero
 # ---------------------------------------------------------------------------
+
 
 def test_alibi_bias_diagonal_zero():
     slopes = build_alibi_slopes(N_HEADS)
@@ -256,6 +269,7 @@ def test_alibi_bias_diagonal_zero():
 # 18. alibi_bias -- symmetry (|i-j| is symmetric)
 # ---------------------------------------------------------------------------
 
+
 def test_alibi_bias_symmetric():
     slopes = build_alibi_slopes(N_HEADS)
     bias = alibi_bias(T, slopes)
@@ -269,6 +283,7 @@ def test_alibi_bias_symmetric():
 # 19. alibi_bias -- non-negative (slopes * |i-j| >= 0)
 # ---------------------------------------------------------------------------
 
+
 def test_alibi_bias_nonnegative():
     slopes = build_alibi_slopes(N_HEADS)
     bias = alibi_bias(T, slopes)
@@ -279,6 +294,7 @@ def test_alibi_bias_nonnegative():
 # 20. fire_position_encoding -- output shape
 # ---------------------------------------------------------------------------
 
+
 def test_fire_position_encoding_shape():
     positions = torch.arange(T)
     out = fire_position_encoding(positions, d_model=D_MODEL)
@@ -288,6 +304,7 @@ def test_fire_position_encoding_shape():
 # ---------------------------------------------------------------------------
 # 21. FirePositionEncoding module -- output shape and finite
 # ---------------------------------------------------------------------------
+
 
 def test_fire_module_output():
     torch.manual_seed(42)
@@ -301,6 +318,7 @@ def test_fire_module_output():
 # ---------------------------------------------------------------------------
 # 22. FirePositionEncoding -- gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_fire_gradient_flow():
     torch.manual_seed(42)
@@ -317,6 +335,7 @@ def test_fire_gradient_flow():
 # 23. cope_gate -- output shape
 # ---------------------------------------------------------------------------
 
+
 def test_cope_gate_shape():
     q = torch.randn(B, N_HEADS, T, HEAD_DIM)
     k = torch.randn(B, N_HEADS, T, HEAD_DIM)
@@ -327,6 +346,7 @@ def test_cope_gate_shape():
 # ---------------------------------------------------------------------------
 # 24. CoPEGate module -- output shape and finite
 # ---------------------------------------------------------------------------
+
 
 def test_cope_module_output():
     torch.manual_seed(42)
@@ -341,6 +361,7 @@ def test_cope_module_output():
 # ---------------------------------------------------------------------------
 # 25. CoPEGate -- gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_cope_gradient_flow():
     torch.manual_seed(42)
@@ -358,6 +379,7 @@ def test_cope_gradient_flow():
 # 26. RoPEVariantLayer alibi -- output shape
 # ---------------------------------------------------------------------------
 
+
 def test_rope_variant_layer_alibi_shape():
     torch.manual_seed(0)
     cfg = RoPEVariantConfig(variant="alibi", n_heads=N_HEADS, d_model=D_MODEL)
@@ -372,6 +394,7 @@ def test_rope_variant_layer_alibi_shape():
 # ---------------------------------------------------------------------------
 # 27. RoPEVariantLayer fire -- output shape
 # ---------------------------------------------------------------------------
+
 
 def test_rope_variant_layer_fire_shape():
     torch.manual_seed(0)
@@ -388,6 +411,7 @@ def test_rope_variant_layer_fire_shape():
 # 28. RoPEVariantLayer cope -- output shape
 # ---------------------------------------------------------------------------
 
+
 def test_rope_variant_layer_cope_shape():
     torch.manual_seed(0)
     cfg = RoPEVariantConfig(variant="cope", n_heads=N_HEADS, d_model=D_MODEL)
@@ -403,6 +427,7 @@ def test_rope_variant_layer_cope_shape():
 # 29. RoPEVariantLayer -- invalid variant raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_rope_variant_layer_invalid_variant():
     cfg = RoPEVariantConfig(variant="unknown", n_heads=N_HEADS, d_model=D_MODEL)
     with pytest.raises(ValueError, match="Unknown variant"):
@@ -412,6 +437,7 @@ def test_rope_variant_layer_invalid_variant():
 # ---------------------------------------------------------------------------
 # 30. RoPEVariantLayer alibi -- gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_rope_variant_layer_alibi_gradient():
     torch.manual_seed(0)
@@ -431,6 +457,7 @@ def test_rope_variant_layer_alibi_gradient():
 # 31. RoPEVariantLayer fire -- gradient flow
 # ---------------------------------------------------------------------------
 
+
 def test_rope_variant_layer_fire_gradient():
     torch.manual_seed(0)
     cfg = RoPEVariantConfig(variant="fire", n_heads=N_HEADS, d_model=D_MODEL)
@@ -446,6 +473,7 @@ def test_rope_variant_layer_fire_gradient():
 # ---------------------------------------------------------------------------
 # 32. RoPEVariantLayer -- output is finite for all variants
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("variant", ["alibi", "fire", "cope"])
 def test_rope_variant_layer_finite_output(variant):

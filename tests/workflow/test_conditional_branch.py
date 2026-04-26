@@ -1,12 +1,10 @@
 """Tests for conditional_branch — workflow branching logic."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.workflow.conditional_branch import (
-    ConditionalBranch,
     BranchCondition,
-    BranchResult,
+    ConditionalBranch,
     ConditionOperator,
 )
 
@@ -35,22 +33,38 @@ class TestBranchCondition:
 class TestConditionalBranch:
     def test_true_branch_executes(self):
         branch = ConditionalBranch()
-        branch.add_condition(BranchCondition("score", ConditionOperator.GT, 0.5), true_action="approve", false_action="reject")
+        branch.add_condition(
+            BranchCondition("score", ConditionOperator.GT, 0.5),
+            true_action="approve",
+            false_action="reject",
+        )
         result = branch.evaluate({"score": 0.9})
         assert result.action == "approve"
         assert result.triggered
 
     def test_false_branch_executes(self):
         branch = ConditionalBranch()
-        branch.add_condition(BranchCondition("score", ConditionOperator.GT, 0.5), true_action="approve", false_action="reject")
+        branch.add_condition(
+            BranchCondition("score", ConditionOperator.GT, 0.5),
+            true_action="approve",
+            false_action="reject",
+        )
         result = branch.evaluate({"score": 0.1})
         assert result.action == "reject"
         assert not result.triggered
 
     def test_multiple_conditions_all_and(self):
         branch = ConditionalBranch()
-        branch.add_condition(BranchCondition("a", ConditionOperator.EQUALS, 1), true_action="a_pass", false_action="a_fail")
-        branch.add_condition(BranchCondition("b", ConditionOperator.EQUALS, 2), true_action="b_pass", false_action="b_fail")
+        branch.add_condition(
+            BranchCondition("a", ConditionOperator.EQUALS, 1),
+            true_action="a_pass",
+            false_action="a_fail",
+        )
+        branch.add_condition(
+            BranchCondition("b", ConditionOperator.EQUALS, 2),
+            true_action="b_pass",
+            false_action="b_fail",
+        )
         r1 = branch.evaluate({"a": 1, "b": 2})
         assert r1.action == "b_pass"
         r2 = branch.evaluate({"a": 1, "b": 99})

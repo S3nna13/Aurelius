@@ -1,11 +1,10 @@
 """Tests for workflow scheduler."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
-
-from src.workflow.scheduler import WorkflowScheduler, WorkflowSchedule
+from src.workflow.scheduler import WorkflowSchedule, WorkflowScheduler
 
 
 class TestWorkflowScheduler:

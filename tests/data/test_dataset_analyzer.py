@@ -1,10 +1,9 @@
 """Tests for src/data/dataset_analyzer.py"""
-import pytest
 
 from src.data.dataset_analyzer import (
-    DatasetStats,
-    DatasetAnalyzer,
     DATASET_ANALYZER_REGISTRY,
+    DatasetAnalyzer,
+    DatasetStats,
 )
 
 

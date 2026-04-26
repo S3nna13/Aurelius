@@ -10,12 +10,12 @@ All browser interactions are behind abstract interfaces.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
+
 
 class BrowserDriverError(Exception):
     """Raised when a browser driver operation fails or receives invalid input."""
@@ -24,6 +24,7 @@ class BrowserDriverError(Exception):
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BrowserAction:
@@ -50,6 +51,7 @@ class BrowserState:
 # ---------------------------------------------------------------------------
 # Abstract driver interface
 # ---------------------------------------------------------------------------
+
 
 class BrowserDriver(ABC):
     """Abstract interface for browser automation drivers.
@@ -134,6 +136,7 @@ class BrowserDriver(ABC):
 # ---------------------------------------------------------------------------
 # Stub driver — pure in-memory, no real browser
 # ---------------------------------------------------------------------------
+
 
 class StubBrowserDriver(BrowserDriver):
     """In-memory stub driver for testing and offline environments.

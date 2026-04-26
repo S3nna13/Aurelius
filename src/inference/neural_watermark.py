@@ -9,7 +9,6 @@ Implements:
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -20,12 +19,12 @@ from torch import Tensor
 class WatermarkConfig:
     """Configuration for green/red list watermark generation and detection."""
 
-    key: int = 42                    # secret key for green/red list generation
-    gamma: float = 0.25              # fraction of green-list tokens (0 < gamma < 1)
-    delta: float = 2.0               # logit boost for green tokens
-    vocab_size: int = 256            # vocabulary size
-    seeding_scheme: str = "simple"   # "simple" (hash prev token) or "selfhash"
-    detection_threshold: float = 4.0 # z-score threshold for detection
+    key: int = 42  # secret key for green/red list generation
+    gamma: float = 0.25  # fraction of green-list tokens (0 < gamma < 1)
+    delta: float = 2.0  # logit boost for green tokens
+    vocab_size: int = 256  # vocabulary size
+    seeding_scheme: str = "simple"  # "simple" (hash prev token) or "selfhash"
+    detection_threshold: float = 4.0  # z-score threshold for detection
 
 
 class GreenListWatermark:
@@ -107,9 +106,7 @@ class GreenListWatermark:
         green_fraction = n_green / n_scored
 
         # z-score under H0: each token independently green with prob gamma
-        z_score = (n_green - gamma * n_scored) / math.sqrt(
-            n_scored * gamma * (1.0 - gamma)
-        )
+        z_score = (n_green - gamma * n_scored) / math.sqrt(n_scored * gamma * (1.0 - gamma))
         is_watermarked = bool(z_score > self.config.detection_threshold)
 
         return {
@@ -179,9 +176,7 @@ def generate_watermarked(
             # logits: (1, T, vocab_size) -- take last position
             next_logits = logits[0, -1, :]  # (vocab_size,)
 
-            token_id = watermark_sample(
-                next_logits, watermark, prev_token, temperature=temperature
-            )
+            token_id = watermark_sample(next_logits, watermark, prev_token, temperature=temperature)
             generated.append(token_id)
 
             # Append new token and advance

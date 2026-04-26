@@ -3,18 +3,20 @@ Tests for src/agent/execution_monitor.py  (≥28 tests)
 """
 
 import time
-import pytest
-from src.agent.execution_monitor import (
-    ExecutionEvent,
-    BudgetConfig,
-    ExecutionMonitor,
-    EXECUTION_MONITOR_REGISTRY,
-)
 
+import pytest
+
+from src.agent.execution_monitor import (
+    EXECUTION_MONITOR_REGISTRY,
+    BudgetConfig,
+    ExecutionEvent,
+    ExecutionMonitor,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def monitor():
@@ -32,6 +34,7 @@ def tight_monitor():
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_registry_key_exists():
     assert "default" in EXECUTION_MONITOR_REGISTRY
 
@@ -43,6 +46,7 @@ def test_registry_value_is_execution_monitor():
 # ---------------------------------------------------------------------------
 # BudgetConfig
 # ---------------------------------------------------------------------------
+
 
 def test_budget_config_defaults():
     cfg = BudgetConfig()
@@ -68,6 +72,7 @@ def test_budget_config_custom():
 # step_count()
 # ---------------------------------------------------------------------------
 
+
 def test_step_count_empty(monitor):
     assert monitor.step_count() == 0
 
@@ -88,6 +93,7 @@ def test_step_count_after_reset(monitor):
 # ---------------------------------------------------------------------------
 # elapsed_s()
 # ---------------------------------------------------------------------------
+
 
 def test_elapsed_s_empty(monitor):
     assert monitor.elapsed_s() == 0.0
@@ -110,6 +116,7 @@ def test_elapsed_s_increases_over_time(monitor):
 # ---------------------------------------------------------------------------
 # total_cost()
 # ---------------------------------------------------------------------------
+
 
 def test_total_cost_empty(monitor):
     assert monitor.total_cost() == 0.0
@@ -135,6 +142,7 @@ def test_total_cost_partial_cost_keys(monitor):
 # ---------------------------------------------------------------------------
 # budget_status()
 # ---------------------------------------------------------------------------
+
 
 def test_budget_status_all_ok_initial(monitor):
     status = monitor.budget_status()
@@ -164,6 +172,7 @@ def test_budget_status_cost_over(tight_monitor):
 # is_over_budget()
 # ---------------------------------------------------------------------------
 
+
 def test_is_over_budget_false_initially(monitor):
     assert monitor.is_over_budget() is False
 
@@ -183,6 +192,7 @@ def test_is_over_budget_true_after_cost(tight_monitor):
 # reset()
 # ---------------------------------------------------------------------------
 
+
 def test_reset_clears_events(monitor):
     monitor.record("step", {})
     monitor.record("step", {})
@@ -199,6 +209,7 @@ def test_reset_clears_cost(monitor):
 # ---------------------------------------------------------------------------
 # export_log()
 # ---------------------------------------------------------------------------
+
 
 def test_export_log_empty(monitor):
     assert monitor.export_log() == []
@@ -227,6 +238,7 @@ def test_export_log_contains_payload(monitor):
 # event_id auto-generation
 # ---------------------------------------------------------------------------
 
+
 def test_event_id_auto_generated(monitor):
     ev = monitor.record("step", {})
     assert isinstance(ev.event_id, str)
@@ -242,6 +254,7 @@ def test_event_ids_unique(monitor):
 # ---------------------------------------------------------------------------
 # ExecutionEvent frozen
 # ---------------------------------------------------------------------------
+
 
 def test_execution_event_frozen():
     ev = ExecutionEvent(event_id="abc12345", event_type="step", payload={}, timestamp=0.0)

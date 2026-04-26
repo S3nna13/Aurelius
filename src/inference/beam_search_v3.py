@@ -9,10 +9,11 @@ Implements beam search with:
 
 Pure PyTorch — no external dependencies.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, List, Set, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -26,7 +27,7 @@ class BeamConfig:
     beam_width: int = 4
     max_new_tokens: int = 128
     length_penalty: float = 1.0
-    no_repeat_ngram_size: int = 0   # 0 = disabled
+    no_repeat_ngram_size: int = 0  # 0 = disabled
     min_length: int = 0
     eos_token_id: int = 2
     temperature: float = 1.0
@@ -37,7 +38,7 @@ class BeamConfig:
 class BeamHypothesis:
     """A single beam hypothesis."""
 
-    token_ids: List[int]
+    token_ids: list[int]
     score: float
     length: int
 
@@ -45,6 +46,7 @@ class BeamHypothesis:
 # ---------------------------------------------------------------------------
 # Standalone utility functions
 # ---------------------------------------------------------------------------
+
 
 def apply_length_penalty(scores: Tensor, lengths: Tensor, alpha: float) -> Tensor:
     """Normalize beam scores using the Google NMT length penalty.
@@ -94,7 +96,7 @@ def apply_repetition_penalty(logits: Tensor, input_ids: Tensor, penalty: float) 
     return logits
 
 
-def get_ngram_blocked_tokens(sequence: List[int], ngram_size: int) -> Set[int]:
+def get_ngram_blocked_tokens(sequence: list[int], ngram_size: int) -> set[int]:
     """Return the set of token ids that would form a repeated n-gram.
 
     Looks at the last (ngram_size - 1) tokens of *sequence* as a prefix.
@@ -118,7 +120,7 @@ def get_ngram_blocked_tokens(sequence: List[int], ngram_size: int) -> Set[int]:
         return set(sequence)
 
     prefix = tuple(sequence[-prefix_len:])
-    blocked: Set[int] = set()
+    blocked: set[int] = set()
 
     # Slide a window of length (n-1) over all positions except the tail
     for i in range(len(sequence) - prefix_len):
@@ -133,6 +135,7 @@ def get_ngram_blocked_tokens(sequence: List[int], ngram_size: int) -> Set[int]:
 # ---------------------------------------------------------------------------
 # Decoder
 # ---------------------------------------------------------------------------
+
 
 class BeamSearchDecoder:
     """Beam search decoder backed by an arbitrary callable model function.
@@ -151,7 +154,7 @@ class BeamSearchDecoder:
     # Public interface
     # ------------------------------------------------------------------
 
-    def initialize_beams(self, prompt_ids: Tensor) -> List[BeamHypothesis]:
+    def initialize_beams(self, prompt_ids: Tensor) -> list[BeamHypothesis]:
         """Create beam_width copies of the prompt as initial hypotheses (score 0.0).
 
         Args:
@@ -170,8 +173,8 @@ class BeamSearchDecoder:
 
     def step(
         self,
-        hypotheses: List[BeamHypothesis],
-    ) -> Tuple[List[BeamHypothesis], List[BeamHypothesis]]:
+        hypotheses: list[BeamHypothesis],
+    ) -> tuple[list[BeamHypothesis], list[BeamHypothesis]]:
         """Perform one beam-search expansion step.
 
         For each active hypothesis:
@@ -192,8 +195,8 @@ class BeamSearchDecoder:
             (active_beams, completed_beams) tuple.
         """
         cfg = self.config
-        candidates: List[BeamHypothesis] = []
-        completed: List[BeamHypothesis] = []
+        candidates: list[BeamHypothesis] = []
+        completed: list[BeamHypothesis] = []
 
         for hyp in hypotheses:
             ids_tensor = torch.tensor(hyp.token_ids, dtype=torch.long).unsqueeze(0)
@@ -244,7 +247,7 @@ class BeamSearchDecoder:
 
         # Sort all candidates by length-penalised score and keep top-k
         all_hyps = sorted(candidates, key=self._normed_score, reverse=True)
-        active: List[BeamHypothesis] = []
+        active: list[BeamHypothesis] = []
 
         for hyp in all_hyps:
             if hyp.token_ids[-1] == cfg.eos_token_id:
@@ -269,7 +272,7 @@ class BeamSearchDecoder:
             1-D int64 tensor containing prompt + generated tokens.
         """
         active = self.initialize_beams(prompt_ids)
-        all_completed: List[BeamHypothesis] = []
+        all_completed: list[BeamHypothesis] = []
 
         for _ in range(self.config.max_new_tokens):
             if not active:
@@ -291,9 +294,7 @@ class BeamSearchDecoder:
         best = max(all_completed, key=self._normed_score)
         return torch.tensor(best.token_ids, dtype=torch.long)
 
-    def decode_with_scores(
-        self, prompt_ids: Tensor
-    ) -> List[Tuple[Tensor, float]]:
+    def decode_with_scores(self, prompt_ids: Tensor) -> list[tuple[Tensor, float]]:
         """Run full beam search and return all completed beams sorted best-first.
 
         Args:
@@ -304,7 +305,7 @@ class BeamSearchDecoder:
             normalised score descending.
         """
         active = self.initialize_beams(prompt_ids)
-        all_completed: List[BeamHypothesis] = []
+        all_completed: list[BeamHypothesis] = []
 
         for _ in range(self.config.max_new_tokens):
             if not active:

@@ -10,7 +10,6 @@ owner's phone in the future via SMS gateways or push services.
 
 from __future__ import annotations
 
-import datetime
 import json
 import logging
 import threading
@@ -81,9 +80,7 @@ class HermesNotifier:
     # Configuration
     # ------------------------------------------------------------------
 
-    def configure_webhook(
-        self, url: str, headers: dict[str, str] | None = None
-    ) -> None:
+    def configure_webhook(self, url: str, headers: dict[str, str] | None = None) -> None:
         """Set the webhook URL for the ``webhook`` channel."""
         self._webhook_url = url
         self._webhook_headers = dict(headers) if headers else {}
@@ -232,9 +229,7 @@ class HermesNotifier:
 
         if notification.channel == "sms":
             # Placeholder for future Twilio / SNS integration
-            logger.info(
-                "Hermes SMS placeholder: %s — %s", notification.title, notification.body
-            )
+            logger.info("Hermes SMS placeholder: %s — %s", notification.title, notification.body)
             return DeliveryResult(
                 success=True, channel="sms", error="SMS delivery not yet implemented"
             )
@@ -247,9 +242,7 @@ class HermesNotifier:
                 error="Email delivery not yet implemented",
             )
 
-        return DeliveryResult(
-            success=False, channel=notification.channel, error="Unknown channel"
-        )
+        return DeliveryResult(success=False, channel=notification.channel, error="Unknown channel")
 
     def _deliver_webhook(self, notification: Notification) -> DeliveryResult:
         if self._webhook_url is None:
@@ -257,7 +250,7 @@ class HermesNotifier:
                 success=False, channel="webhook", error="Webhook URL not configured"
             )
         try:
-            req = Request(
+            req = Request(  # noqa: S310
                 self._webhook_url,
                 data=json.dumps(
                     {
@@ -275,7 +268,7 @@ class HermesNotifier:
                     **self._webhook_headers,
                 },
             )
-            with urlopen(req, timeout=10) as resp:
+            with urlopen(req, timeout=10) as resp:  # noqa: S310
                 if resp.status < 300:
                     return DeliveryResult(success=True, channel="webhook")
                 return DeliveryResult(

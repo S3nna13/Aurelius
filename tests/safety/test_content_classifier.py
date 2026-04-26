@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.safety.content_classifier import (
+    CONTENT_CLASSIFIER_REGISTRY,
     ClassificationResult,
     ContentCategory,
     ContentClassifier,
-    CONTENT_CLASSIFIER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def clf() -> ContentClassifier:
@@ -24,6 +24,7 @@ def clf() -> ContentClassifier:
 # ---------------------------------------------------------------------------
 # Safe text
 # ---------------------------------------------------------------------------
+
 
 def test_safe_text_returns_safe_category(clf: ContentClassifier) -> None:
     result = clf.classify("The sky is blue and the weather is nice.")
@@ -50,6 +51,7 @@ def test_empty_text_returns_safe(clf: ContentClassifier) -> None:
 # Violence detection
 # ---------------------------------------------------------------------------
 
+
 def test_violence_keyword_detected_kill(clf: ContentClassifier) -> None:
     result = clf.classify("I want to kill the process on my computer.")
     assert result.category == ContentCategory.VIOLENCE
@@ -74,6 +76,7 @@ def test_violence_keyword_in_evidence(clf: ContentClassifier) -> None:
 # Hate detection
 # ---------------------------------------------------------------------------
 
+
 def test_hate_keyword_detected_racist(clf: ContentClassifier) -> None:
     result = clf.classify("That was a racist remark.")
     assert result.category == ContentCategory.HATE
@@ -93,6 +96,7 @@ def test_hate_keyword_in_evidence(clf: ContentClassifier) -> None:
 # Self-harm detection
 # ---------------------------------------------------------------------------
 
+
 def test_self_harm_detected(clf: ContentClassifier) -> None:
     result = clf.classify("Information about suicide prevention hotlines.")
     assert result.category == ContentCategory.SELF_HARM
@@ -106,6 +110,7 @@ def test_self_harm_overdose(clf: ContentClassifier) -> None:
 # ---------------------------------------------------------------------------
 # Illegal detection
 # ---------------------------------------------------------------------------
+
 
 def test_illegal_cocaine_detected(clf: ContentClassifier) -> None:
     result = clf.classify("Cocaine is a controlled substance.")
@@ -121,6 +126,7 @@ def test_illegal_trafficking_detected(clf: ContentClassifier) -> None:
 # Spam detection
 # ---------------------------------------------------------------------------
 
+
 def test_spam_detected_click_here(clf: ContentClassifier) -> None:
     result = clf.classify("Click here to claim your prize!")
     assert result.category == ContentCategory.SPAM
@@ -134,6 +140,7 @@ def test_spam_detected_win_money(clf: ContentClassifier) -> None:
 # ---------------------------------------------------------------------------
 # Confidence calculation
 # ---------------------------------------------------------------------------
+
 
 def test_confidence_one_match(clf: ContentClassifier) -> None:
     # 1 match / 3 = 0.333...
@@ -163,6 +170,7 @@ def test_confidence_two_matches(clf: ContentClassifier) -> None:
 # Evidence: sorted and unique
 # ---------------------------------------------------------------------------
 
+
 def test_evidence_is_sorted(clf: ContentClassifier) -> None:
     result = clf.classify("weapon kill attack")
     assert result.evidence == sorted(result.evidence)
@@ -183,6 +191,7 @@ def test_evidence_contains_matched_keywords(clf: ContentClassifier) -> None:
 # ---------------------------------------------------------------------------
 # batch_classify
 # ---------------------------------------------------------------------------
+
 
 def test_batch_classify_length(clf: ContentClassifier) -> None:
     texts = ["Hello world", "kill and murder", "cocaine trafficking"]
@@ -212,6 +221,7 @@ def test_batch_classify_correct_categories(clf: ContentClassifier) -> None:
 # safe_to_serve
 # ---------------------------------------------------------------------------
 
+
 def test_safe_to_serve_safe_category_true(clf: ContentClassifier) -> None:
     result = clf.classify("How do I cook pasta?")
     assert clf.safe_to_serve(result) is True
@@ -239,6 +249,7 @@ def test_safe_to_serve_custom_threshold(clf: ContentClassifier) -> None:
 # ClassificationResult frozen
 # ---------------------------------------------------------------------------
 
+
 def test_classification_result_is_frozen() -> None:
     result = ClassificationResult(
         text="hello",
@@ -254,6 +265,7 @@ def test_classification_result_is_frozen() -> None:
 # text field preserved
 # ---------------------------------------------------------------------------
 
+
 def test_classification_result_text_preserved(clf: ContentClassifier) -> None:
     text = "Some text about a weapon."
     result = clf.classify(text)
@@ -263,6 +275,7 @@ def test_classification_result_text_preserved(clf: ContentClassifier) -> None:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_default() -> None:
     assert "default" in CONTENT_CLASSIFIER_REGISTRY

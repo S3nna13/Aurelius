@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.security.randomized_smoothing import SmoothedClassifier
 
@@ -47,6 +47,7 @@ def x() -> torch.Tensor:
 # Deterministic base model for tests that need a peaked distribution
 # ---------------------------------------------------------------------------
 
+
 class _ConstantLogitModel(nn.Module):
     """Always outputs identical logits that peak on class 0."""
 
@@ -74,6 +75,7 @@ def peaked_smoothed() -> SmoothedClassifier:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 # 1. Instantiation
 def test_instantiation(smoothed: SmoothedClassifier) -> None:
@@ -160,14 +162,18 @@ def test_certify_abstain_is_bool(smoothed: SmoothedClassifier, x: torch.Tensor) 
 
 
 # 12. All samples agree -> abstain=False
-def test_certify_no_abstain_on_peaked_model(peaked_smoothed: SmoothedClassifier, x: torch.Tensor) -> None:
+def test_certify_no_abstain_on_peaked_model(
+    peaked_smoothed: SmoothedClassifier, x: torch.Tensor
+) -> None:
     predicted_class, certified_radius, abstain = peaked_smoothed.certify(x)
     assert abstain is False
     assert predicted_class == 0
 
 
 # 13. certified_radius > 0 when not abstaining on peaked distribution
-def test_certify_positive_radius_on_peaked_model(peaked_smoothed: SmoothedClassifier, x: torch.Tensor) -> None:
+def test_certify_positive_radius_on_peaked_model(
+    peaked_smoothed: SmoothedClassifier, x: torch.Tensor
+) -> None:
     _, certified_radius, abstain = peaked_smoothed.certify(x)
     if not abstain:
         assert certified_radius > 0.0

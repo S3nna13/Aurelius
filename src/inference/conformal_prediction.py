@@ -10,8 +10,8 @@ from torch import Tensor
 
 @dataclass
 class ConformalConfig:
-    alpha: float = 0.1        # target miscoverage rate (1-alpha = target coverage)
-    method: str = "aps"       # "aps" | "raps" | "lac"
+    alpha: float = 0.1  # target miscoverage rate (1-alpha = target coverage)
+    method: str = "aps"  # "aps" | "raps" | "lac"
     raps_lambda: float = 0.01
     raps_k_reg: int = 5
 

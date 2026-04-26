@@ -60,23 +60,18 @@ class GGUFEngineAdapter(EngineAdapter):
         self,
         probe_modules: tuple[str, ...] | None = None,
     ) -> None:
-        self._probe_modules = (
-            _DEFAULT_PROBE_MODULES if probe_modules is None else probe_modules
-        )
+        self._probe_modules = _DEFAULT_PROBE_MODULES if probe_modules is None else probe_modules
         if not isinstance(self._probe_modules, tuple):
             raise BackendAdapterError(
                 "probe_modules must be a tuple of strings, got "
                 f"{type(self._probe_modules).__name__}"
             )
         if not self._probe_modules:
-            raise BackendAdapterError(
-                "probe_modules must not be empty"
-            )
+            raise BackendAdapterError("probe_modules must not be empty")
         for module_name in self._probe_modules:
             if not isinstance(module_name, str) or not module_name:
                 raise BackendAdapterError(
-                    "probe_modules must contain non-empty strings, got "
-                    f"{module_name!r}"
+                    f"probe_modules must contain non-empty strings, got {module_name!r}"
                 )
 
     @property

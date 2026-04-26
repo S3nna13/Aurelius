@@ -3,14 +3,13 @@
 Verifies end-to-end generation of 30 mixed problems, correct-answer verification,
 difficulty_stats totals, and registry wiring.
 """
+
 from __future__ import annotations
 
-import pytest
-
 from src.data.synthetic_math import (
+    DATA_REGISTRY,
     SyntheticMathConfig,
     SyntheticMathGenerator,
-    DATA_REGISTRY,
 )
 
 
@@ -49,8 +48,7 @@ def test_integration_verify_10_correct_answers():
     for p in problems[:10]:
         result = gen.verify(p, p.answer)
         assert result is True, (
-            f"verify() returned False for correct answer '{p.answer}' "
-            f"on problem {p.problem_id}"
+            f"verify() returned False for correct answer '{p.answer}' on problem {p.problem_id}"
         )
 
 

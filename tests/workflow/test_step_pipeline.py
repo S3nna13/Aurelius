@@ -40,11 +40,7 @@ def test_on_failure_fluent():
 
 
 def test_chain_fluent_api():
-    p = (
-        StepPipeline()
-        .add_step("a", lambda v: (v or 0) + 1)
-        .add_step("b", lambda v: v * 2)
-    )
+    p = StepPipeline().add_step("a", lambda v: (v or 0) + 1).add_step("b", lambda v: v * 2)
     results = p.run(0)
     assert [r.output for r in results] == [1, 2]
 
@@ -147,11 +143,7 @@ def test_on_failure_hook_called_on_final_failure():
     def boom(v):
         raise RuntimeError("x")
 
-    p = (
-        StepPipeline()
-        .add_step("a", boom)
-        .on_failure(lambda n, r: fails.append(n))
-    )
+    p = StepPipeline().add_step("a", boom).on_failure(lambda n, r: fails.append(n))
     p.run()
     assert fails == ["a"]
 
@@ -173,11 +165,7 @@ def test_on_failure_not_called_if_retry_succeeds():
             raise RuntimeError("x")
         return 1
 
-    p = (
-        StepPipeline()
-        .add_step("a", flaky, retry_count=1)
-        .on_failure(lambda n, r: fails.append(n))
-    )
+    p = StepPipeline().add_step("a", flaky, retry_count=1).on_failure(lambda n, r: fails.append(n))
     p.run()
     assert fails == []
 

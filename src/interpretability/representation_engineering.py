@@ -15,18 +15,17 @@ Pure PyTorch — no HuggingFace, no sklearn, no scipy.
 
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RepEngConfig:
@@ -40,6 +39,7 @@ class RepEngConfig:
     n_directions: Number of PCA directions to extract (currently used as metadata).
     normalize   : Whether to normalize steering vectors to unit norm.
     """
+
     layer_idx: int = -1
     batch_size: int = 8
     n_directions: int = 1
@@ -49,6 +49,7 @@ class RepEngConfig:
 # ---------------------------------------------------------------------------
 # RepresentationExtractor
 # ---------------------------------------------------------------------------
+
 
 class RepresentationExtractor:
     """Extract hidden representations from a specific transformer layer.
@@ -70,9 +71,7 @@ class RepresentationExtractor:
         if layer_idx < 0:
             layer_idx = n_layers + layer_idx
         if not (0 <= layer_idx < n_layers):
-            raise IndexError(
-                f"layer_idx {layer_idx} out of range for model with {n_layers} layers"
-            )
+            raise IndexError(f"layer_idx {layer_idx} out of range for model with {n_layers} layers")
         self.layer_idx = layer_idx
 
     def extract(self, input_ids: Tensor) -> Tensor:
@@ -115,10 +114,11 @@ class RepresentationExtractor:
 # extract_concept_direction
 # ---------------------------------------------------------------------------
 
+
 def extract_concept_direction(
     model: nn.Module,
-    positive_ids: Tensor,   # (N, T) token ids for positive examples
-    negative_ids: Tensor,   # (N, T) token ids for negative examples
+    positive_ids: Tensor,  # (N, T) token ids for positive examples
+    negative_ids: Tensor,  # (N, T) token ids for negative examples
     layer_idx: int = -1,
     normalize: bool = True,
 ) -> Tensor:
@@ -142,14 +142,14 @@ def extract_concept_direction(
     """
     extractor = RepresentationExtractor(model, layer_idx)
 
-    pos_hiddens = extractor.extract(positive_ids)   # (N, T, D)
-    neg_hiddens = extractor.extract(negative_ids)   # (N, T, D)
+    pos_hiddens = extractor.extract(positive_ids)  # (N, T, D)
+    neg_hiddens = extractor.extract(negative_ids)  # (N, T, D)
 
     # Last-token representation, averaged over the batch
-    pos_mean = pos_hiddens[:, -1, :].mean(dim=0)    # (D,)
-    neg_mean = neg_hiddens[:, -1, :].mean(dim=0)    # (D,)
+    pos_mean = pos_hiddens[:, -1, :].mean(dim=0)  # (D,)
+    neg_mean = neg_hiddens[:, -1, :].mean(dim=0)  # (D,)
 
-    direction = pos_mean - neg_mean                 # (D,)
+    direction = pos_mean - neg_mean  # (D,)
 
     if normalize:
         norm = direction.norm()
@@ -162,6 +162,7 @@ def extract_concept_direction(
 # ---------------------------------------------------------------------------
 # SteeringVectorBank
 # ---------------------------------------------------------------------------
+
 
 class SteeringVectorBank:
     """Persistent store of named steering vectors with composition utilities.
@@ -196,10 +197,7 @@ class SteeringVectorBank:
         KeyError if *name* is not in the bank.
         """
         if name not in self._bank:
-            raise KeyError(
-                f"No steering vector named '{name}'.  "
-                f"Available: {list(self._bank)}"
-            )
+            raise KeyError(f"No steering vector named '{name}'.  Available: {list(self._bank)}")
         return self._bank[name]
 
     def remove(self, name: str) -> None:
@@ -210,10 +208,7 @@ class SteeringVectorBank:
         KeyError if *name* is not in the bank.
         """
         if name not in self._bank:
-            raise KeyError(
-                f"No steering vector named '{name}'.  "
-                f"Available: {list(self._bank)}"
-            )
+            raise KeyError(f"No steering vector named '{name}'.  Available: {list(self._bank)}")
         del self._bank[name]
 
     def list_names(self) -> list[str]:
@@ -252,7 +247,7 @@ class SteeringVectorBank:
 
         if weights is None:
             # Equal-weight sum, then normalize
-            composed = torch.stack(vectors, dim=0).mean(dim=0)   # (D,)
+            composed = torch.stack(vectors, dim=0).mean(dim=0)  # (D,)
             norm = composed.norm()
             if norm > 1e-8:
                 composed = composed / norm
@@ -261,10 +256,8 @@ class SteeringVectorBank:
                 raise ValueError(
                     f"len(weights) ({len(weights)}) must equal len(names) ({len(names)})"
                 )
-            weight_t = torch.tensor(
-                weights, dtype=vectors[0].dtype, device=vectors[0].device
-            )
-            stacked = torch.stack(vectors, dim=0)               # (N, D)
+            weight_t = torch.tensor(weights, dtype=vectors[0].dtype, device=vectors[0].device)
+            stacked = torch.stack(vectors, dim=0)  # (N, D)
             composed = (weight_t.unsqueeze(1) * stacked).sum(dim=0)  # (D,)
 
         return composed
@@ -286,7 +279,7 @@ class SteeringVectorBank:
         -------
         (d_model,) tensor with the named direction component removed.
         """
-        d = self.get(direction)                        # (D,)
+        d = self.get(direction)  # (D,)
         d_sq_norm = d.dot(d)
         if d_sq_norm < 1e-16:
             return vector.clone()
@@ -318,9 +311,10 @@ class SteeringVectorBank:
 # apply_steering_hook
 # ---------------------------------------------------------------------------
 
+
 def apply_steering_hook(
     model: nn.Module,
-    steering_vector: Tensor,   # (d_model,)
+    steering_vector: Tensor,  # (d_model,)
     layer_idx: int,
     scale: float = 1.0,
 ) -> Callable:
@@ -347,15 +341,13 @@ def apply_steering_hook(
     # Resolve negative index
     resolved_idx = layer_idx if layer_idx >= 0 else n_layers + layer_idx
     if not (0 <= resolved_idx < n_layers):
-        raise IndexError(
-            f"layer_idx {layer_idx} out of range for model with {n_layers} layers"
-        )
+        raise IndexError(f"layer_idx {layer_idx} out of range for model with {n_layers} layers")
 
     layer = model.layers[resolved_idx]  # type: ignore[index]
 
     def _steering_hook(module: nn.Module, inputs, output):
         is_tuple = isinstance(output, tuple)
-        act = output[0] if is_tuple else output          # (B, T, D)
+        act = output[0] if is_tuple else output  # (B, T, D)
         steered = act + scale * steering_vector.to(act.device)
         return (steered,) + output[1:] if is_tuple else steered
 

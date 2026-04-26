@@ -1,4 +1,5 @@
 """Memory-backed key-value store with TTL support."""
+
 from __future__ import annotations
 
 import time

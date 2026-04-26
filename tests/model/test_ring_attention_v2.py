@@ -22,10 +22,8 @@ Covers:
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.ring_attention_v2 import (
-    ChunkAttention,
     RingAttentionConfig,
     RingAttentionLayer,
     RingAttentionSimulated,
@@ -67,6 +65,7 @@ def set_inference_mode(model: torch.nn.Module) -> torch.nn.Module:
 # 1. RingAttentionSimulated output shape
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_output_shape():
     """Forward pass returns (B, T, d_model)."""
     model = RingAttentionSimulated(make_cfg())
@@ -80,6 +79,7 @@ def test_simulated_output_shape():
 # 2. Output is finite
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_output_finite():
     """Output contains no NaN or Inf values."""
     model = RingAttentionSimulated(make_cfg())
@@ -92,6 +92,7 @@ def test_simulated_output_finite():
 # ---------------------------------------------------------------------------
 # 3. Gradient flows to input
 # ---------------------------------------------------------------------------
+
 
 def test_simulated_gradient_flows():
     """Loss.backward() produces non-None, non-zero gradients w.r.t. input."""
@@ -108,6 +109,7 @@ def test_simulated_gradient_flows():
 # 4. Causal property: zeroing future tokens leaves past outputs unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_causal_masking():
     """Output at position t is unchanged when tokens at t+1..T-1 are zeroed."""
     model = RingAttentionSimulated(make_cfg(causal=True))
@@ -122,7 +124,7 @@ def test_simulated_causal_masking():
         out_full = model(x)
 
         x_zeroed = x.clone()
-        x_zeroed[:, pivot + 1:, :] = 0.0
+        x_zeroed[:, pivot + 1 :, :] = 0.0
         out_zeroed = model(x_zeroed)
 
     # Output at positions 0..pivot must be identical
@@ -136,6 +138,7 @@ def test_simulated_causal_masking():
 # ---------------------------------------------------------------------------
 # 5. chunk_size=T (single chunk) equals chunk_size=1 (token-by-token)
 # ---------------------------------------------------------------------------
+
 
 def test_simulated_chunk_size_equivalence():
     """Single-chunk and per-token chunking produce the same output."""
@@ -164,6 +167,7 @@ def test_simulated_chunk_size_equivalence():
 # 6. chunk_size > T still works
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_chunk_larger_than_seq():
     """chunk_size > T should not raise and should return correct shape."""
     cfg = make_cfg(chunk_size=T * 3)
@@ -178,6 +182,7 @@ def test_simulated_chunk_larger_than_seq():
 # ---------------------------------------------------------------------------
 # 7. n_heads = 1
 # ---------------------------------------------------------------------------
+
 
 def test_simulated_single_head():
     """Model with n_heads=1 produces correct shape and finite output."""
@@ -194,6 +199,7 @@ def test_simulated_single_head():
 # 8. RingAttentionLayer output shape
 # ---------------------------------------------------------------------------
 
+
 def test_layer_output_shape():
     """RingAttentionLayer returns (B, T, d_model)."""
     layer = RingAttentionLayer(make_cfg(), d_ff=D_FF)
@@ -207,6 +213,7 @@ def test_layer_output_shape():
 # 9. RingAttentionLayer output finite
 # ---------------------------------------------------------------------------
 
+
 def test_layer_output_finite():
     """RingAttentionLayer output contains no NaN or Inf."""
     layer = RingAttentionLayer(make_cfg(), d_ff=D_FF)
@@ -219,6 +226,7 @@ def test_layer_output_finite():
 # ---------------------------------------------------------------------------
 # 10. RingAttentionLayer gradient flows
 # ---------------------------------------------------------------------------
+
 
 def test_layer_gradient_flows():
     """RingAttentionLayer backward pass produces non-zero input gradient."""
@@ -234,6 +242,7 @@ def test_layer_gradient_flows():
 # 11. Different inputs produce different outputs
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_different_inputs_different_outputs():
     """Two distinct inputs must produce distinct outputs."""
     model = RingAttentionSimulated(make_cfg())
@@ -247,21 +256,20 @@ def test_simulated_different_inputs_different_outputs():
         out1 = model(x1)
         out2 = model(x2)
 
-    assert not torch.allclose(out1, out2, atol=1e-6), (
-        "Distinct inputs produced identical outputs"
-    )
+    assert not torch.allclose(out1, out2, atol=1e-6), "Distinct inputs produced identical outputs"
 
 
 # ---------------------------------------------------------------------------
 # 12. T not divisible by chunk_size
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_non_divisible_seq_len():
     """Sequence length not divisible by chunk_size is handled without error."""
     # T=12, chunk_size=5  ->  chunks of [5, 5, 2]
     cfg = make_cfg(chunk_size=5)
     model = RingAttentionSimulated(cfg)
-    x = make_input()   # T=12
+    x = make_input()  # T=12
     with torch.no_grad():
         out = model(x)
     assert out.shape == (B, T, D)

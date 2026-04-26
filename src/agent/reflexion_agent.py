@@ -24,9 +24,8 @@ Design choices
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -119,12 +118,12 @@ class ReflexionResult:
         Ordered list of non-empty reflection strings generated during the run.
     """
 
-    attempts: List[ReflexionAttempt] = field(default_factory=list)
+    attempts: list[ReflexionAttempt] = field(default_factory=list)
     final_output: str = ""
     success: bool = False
     n_attempts: int = 0
     best_score: float = 0.0
-    reflection_history: List[str] = field(default_factory=list)
+    reflection_history: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +162,7 @@ class ReflexionMemory:
     # Queries
     # ------------------------------------------------------------------
 
-    def get_all(self) -> List[str]:
+    def get_all(self) -> list[str]:
         """Return all stored reflections in insertion order (oldest first)."""
         return list(self._store)
 
@@ -218,7 +217,7 @@ class ReflexionAgent:
         :class:`ReflexionConfig` instance controlling loop behaviour.
     """
 
-    def __init__(self, config: Optional[ReflexionConfig] = None) -> None:
+    def __init__(self, config: ReflexionConfig | None = None) -> None:
         self.config: ReflexionConfig = config if config is not None else ReflexionConfig()
         self._memory: ReflexionMemory = ReflexionMemory(self.config.memory_size)
 
@@ -254,12 +253,7 @@ class ReflexionAgent:
         str
             The verbal reflection returned by ``generate_fn``.
         """
-        prompt = (
-            f"Task: {task_description}\n"
-            f"Attempt: {attempt_output}\n"
-            f"Score: {score}\n"
-            "Reflection:"
-        )
+        prompt = f"Task: {task_description}\nAttempt: {attempt_output}\nScore: {score}\nReflection:"
         return generate_fn(prompt)
 
     def run(
@@ -306,14 +300,14 @@ class ReflexionAgent:
         """
         # Reset per-run memory so successive calls are independent.
         memory = ReflexionMemory(self.config.memory_size)
-        attempts: List[ReflexionAttempt] = []
-        reflection_history: List[str] = []
+        attempts: list[ReflexionAttempt] = []
+        reflection_history: list[str] = []
         success = False
         best_score = 0.0
 
         for attempt_idx in range(self.config.max_attempts):
             # Build context: task + any stored reflections.
-            context_parts: List[str] = [f"Task: {task_description}"]
+            context_parts: list[str] = [f"Task: {task_description}"]
             reflection_context = memory.build_context(self.config.reflection_decay)
             if reflection_context:
                 context_parts.append(reflection_context)

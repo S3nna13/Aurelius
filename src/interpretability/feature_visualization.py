@@ -1,10 +1,10 @@
 """Feature visualization: activation patching, causal tracing, feature decomposition."""
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class PatchTarget(str, Enum):
+class PatchTarget(StrEnum):
     RESIDUAL_STREAM = "residual_stream"
     ATTENTION_OUTPUT = "attention_output"
     MLP_OUTPUT = "mlp_output"
@@ -71,8 +71,7 @@ class FeatureDecomposer:
         n_feats = len(activations[0])
         # compute per-feature mean
         means = [
-            sum(activations[i][j] for i in range(n_samples)) / n_samples
-            for j in range(n_feats)
+            sum(activations[i][j] for i in range(n_samples)) / n_samples for j in range(n_feats)
         ]
         # subtract mean, then take first n_components features as stub
         n_out = min(self.n_components, n_feats)

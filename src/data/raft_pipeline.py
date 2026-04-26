@@ -11,19 +11,19 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RAFTConfig:
     """Configuration for the RAFT data-construction pipeline."""
 
-    n_distractor_docs: int = 3    # number of distractor (irrelevant) documents
-    n_oracle_docs: int = 1        # number of relevant (oracle) documents
-    oracle_prob: float = 0.8      # probability of including oracle doc in context
-    max_doc_length: int = 200     # max characters per document (truncation guard)
+    n_distractor_docs: int = 3  # number of distractor (irrelevant) documents
+    n_oracle_docs: int = 1  # number of relevant (oracle) documents
+    oracle_prob: float = 0.8  # probability of including oracle doc in context
+    max_doc_length: int = 200  # max characters per document (truncation guard)
     cot_prefix: str = "Let me think step by step."
     answer_prefix: str = "##ANSWER:"
 
@@ -32,13 +32,14 @@ class RAFTConfig:
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RAFTDocument:
     """A single document in the RAFT corpus."""
 
     doc_id: str
     content: str
-    is_oracle: bool = False   # True = this document contains the answer
+    is_oracle: bool = False  # True = this document contains the answer
     source: str = ""
 
 
@@ -47,10 +48,10 @@ class RAFTSample:
     """A single RAFT training example."""
 
     question: str
-    documents: list[RAFTDocument]   # oracle + distractors, interleaved
+    documents: list[RAFTDocument]  # oracle + distractors, interleaved
     answer: str
     chain_of_thought: str = ""
-    oracle_doc_id: str = ""         # doc_id of the oracle document
+    oracle_doc_id: str = ""  # doc_id of the oracle document
     # back-reference to config so format_output knows the prefixes
     _config: RAFTConfig = field(default_factory=RAFTConfig, repr=False, compare=False)
 
@@ -74,11 +75,7 @@ class RAFTSample:
     def format_output(self) -> str:
         """Return '{cot_prefix}\\n{chain_of_thought}\\n{answer_prefix} {answer}'."""
         cot = self.chain_of_thought or ""
-        return (
-            f"{self._config.cot_prefix}\n"
-            f"{cot}\n"
-            f"{self._config.answer_prefix} {self.answer}"
-        )
+        return f"{self._config.cot_prefix}\n{cot}\n{self._config.answer_prefix} {self.answer}"
 
     def to_sft_example(self) -> dict:
         """Return a supervised fine-tuning dict with instruction/input/output keys."""
@@ -95,6 +92,7 @@ class RAFTSample:
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 class RAFTPipeline:
     """Pipeline for constructing RAFT training data from QA pairs + document corpus."""
@@ -233,6 +231,7 @@ class RAFTPipeline:
 # Utility functions
 # ---------------------------------------------------------------------------
 
+
 def extract_answer_from_output(output: str, answer_prefix: str = "##ANSWER:") -> str:
     """Extract the final answer from a RAFT-formatted output string.
 
@@ -243,7 +242,7 @@ def extract_answer_from_output(output: str, answer_prefix: str = "##ANSWER:") ->
     idx = output.rfind(answer_prefix)
     if idx == -1:
         return ""
-    after = output[idx + len(answer_prefix):]
+    after = output[idx + len(answer_prefix) :]
     return after.strip()
 
 
@@ -260,7 +259,7 @@ def compute_oracle_recall(
           - ``oracle_cited``: 1.0 if the oracle doc_id appears in the output (crude
             citation check). 0.0 if there is no oracle doc in this sample.
     """
-    extracted = extract_answer_from_output(model_output, answer_prefix)
+    extract_answer_from_output(model_output, answer_prefix)
     answer_present = 1.0 if sample.answer.lower() in model_output.lower() else 0.0
 
     oracle_cited = 0.0
@@ -276,6 +275,7 @@ def compute_oracle_recall(
 # ---------------------------------------------------------------------------
 # Mock data generators (for testing / demos)
 # ---------------------------------------------------------------------------
+
 
 def mock_qa_pairs(n: int = 4) -> list[tuple[str, str]]:
     """Return ``n`` synthetic (question, answer) tuples."""
@@ -303,11 +303,10 @@ def mock_documents(n: int = 8) -> list[RAFTDocument]:
     docs: list[RAFTDocument] = []
     for i in range(n):
         is_oracle = i == 0
-        content = (
-            f"This is document {i}. "
-            + ("It contains the answer: Paris is the capital of France. " * 3
-               if is_oracle
-               else f"This document discusses topic {i} which is unrelated to the query. " * 3)
+        content = f"This is document {i}. " + (
+            "It contains the answer: Paris is the capital of France. " * 3
+            if is_oracle
+            else f"This document discusses topic {i} which is unrelated to the query. " * 3
         )
         docs.append(
             RAFTDocument(

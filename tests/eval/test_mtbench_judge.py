@@ -11,8 +11,8 @@ from src.eval.mtbench_judge import (
     SingleAnswerScore,
 )
 
-
 # --------------------------------------------------------------------------- helpers
+
 
 def _q(turns=None, ref=None, qid="q1", cat="writing"):
     return MTBenchQuestion(
@@ -28,6 +28,7 @@ def _const(reply: str):
 
 
 # --------------------------------------------------------------------------- tests
+
 
 def test_score_single_parses_bracket_rating():
     judge = MTBenchJudge(_const("Good answer. Rating: [[7]]"))

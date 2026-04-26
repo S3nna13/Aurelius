@@ -1,4 +1,5 @@
 """Tests for src/eval/head_analysis.py."""
+
 from __future__ import annotations
 
 import math
@@ -8,15 +9,14 @@ import torch
 
 from src.eval.head_analysis import (
     HeadAnalysisConfig,
-    compute_head_entropy,
+    HeadImportanceAnalyzer,
     compute_head_agreement,
+    compute_head_entropy,
     find_redundant_heads,
     head_specialization_score,
-    HeadImportanceAnalyzer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared small config
@@ -50,6 +50,7 @@ def _one_hot_attn(B: int, H: int, T: int) -> torch.Tensor:
 # 1. HeadAnalysisConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_head_analysis_config_defaults():
     cfg = HeadAnalysisConfig()
     assert cfg.n_layers == 2
@@ -62,6 +63,7 @@ def test_head_analysis_config_defaults():
 # 2. compute_head_entropy – output shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_head_entropy_shape():
     B, H, T = 3, 4, 8
     attn = _uniform_attn(B, H, T)
@@ -72,6 +74,7 @@ def test_compute_head_entropy_shape():
 # ---------------------------------------------------------------------------
 # 3. compute_head_entropy – uniform → maximum entropy
 # ---------------------------------------------------------------------------
+
 
 def test_compute_head_entropy_uniform_is_max():
     T = 16
@@ -85,6 +88,7 @@ def test_compute_head_entropy_uniform_is_max():
 # 4. compute_head_entropy – one-hot → near-zero entropy
 # ---------------------------------------------------------------------------
 
+
 def test_compute_head_entropy_one_hot_near_zero():
     T = 16
     attn = _one_hot_attn(1, 1, T)
@@ -95,6 +99,7 @@ def test_compute_head_entropy_one_hot_near_zero():
 # ---------------------------------------------------------------------------
 # 5. compute_head_agreement – identical → 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_head_agreement_identical():
     B, H, T = 2, 2, 6
@@ -107,6 +112,7 @@ def test_compute_head_agreement_identical():
 # 6. compute_head_agreement – different → < 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_head_agreement_different_less_than_one():
     B, T = 2, 6
     attn_a = _uniform_attn(B, 1, T)
@@ -118,6 +124,7 @@ def test_compute_head_agreement_different_less_than_one():
 # ---------------------------------------------------------------------------
 # 7. find_redundant_heads – identical heads → finds pair
 # ---------------------------------------------------------------------------
+
 
 def test_find_redundant_heads_identical_heads():
     B, T = 2, 6
@@ -135,6 +142,7 @@ def test_find_redundant_heads_identical_heads():
 # 8. find_redundant_heads – distinct heads → no redundancy at high threshold
 # ---------------------------------------------------------------------------
 
+
 def test_find_redundant_heads_distinct_heads_no_redundancy():
     B, T = 2, 6
     attn = torch.zeros(B, 2, T, T)
@@ -149,6 +157,7 @@ def test_find_redundant_heads_distinct_heads_no_redundancy():
 # 9. head_specialization_score – correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_head_specialization_score_keys():
     T = 8
     attn = torch.eye(T) / 1.0  # identity: attends to self
@@ -159,6 +168,7 @@ def test_head_specialization_score_keys():
 # ---------------------------------------------------------------------------
 # 10. head_specialization_score – identity matrix has high diagonal_focus
 # ---------------------------------------------------------------------------
+
 
 def test_head_specialization_score_diagonal_focus():
     T = 8
@@ -171,6 +181,7 @@ def test_head_specialization_score_diagonal_focus():
 # ---------------------------------------------------------------------------
 # 11. HeadImportanceAnalyzer – rank_heads_by_entropy sorted ascending
 # ---------------------------------------------------------------------------
+
 
 def test_rank_heads_by_entropy_sorted():
     model = AureliusTransformer(ACFG)

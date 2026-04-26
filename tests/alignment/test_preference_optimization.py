@@ -3,31 +3,38 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.optim as optim
 
 from src.alignment.preference_optimization import (
     PreferenceOptConfig,
-    compute_sequence_log_probs,
-    orpo_loss,
-    kto_loss,
-    rrhf_loss,
     PreferenceOptTrainer,
+    compute_sequence_log_probs,
+    kto_loss,
+    orpo_loss,
+    rrhf_loss,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -55,6 +62,7 @@ def _make_ids(batch_size=2, seq_len=16, vocab_size=256, seed=42):
 # Test 1: PreferenceOptConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = PreferenceOptConfig()
     assert cfg.method == "orpo"
@@ -67,6 +75,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: compute_sequence_log_probs shape is (B,)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_sequence_log_probs_shape(policy_model):
     B, seq_len = 2, 16
@@ -84,6 +93,7 @@ def test_compute_sequence_log_probs_shape(policy_model):
 # Test 3: orpo_loss scalar output
 # ---------------------------------------------------------------------------
 
+
 def test_orpo_loss_scalar_output(policy_model):
     B, seq_len = 2, 16
     chosen_ids = _make_ids(batch_size=B, seq_len=seq_len, seed=10)
@@ -99,9 +109,12 @@ def test_orpo_loss_scalar_output(policy_model):
     policy_rejected_logps = compute_sequence_log_probs(policy_model, rejected_ids, rejected_labels)
 
     loss, metrics = orpo_loss(
-        policy_chosen_logps, policy_rejected_logps,
-        chosen_logits, chosen_labels,
-        lambda_=1.0, beta=0.1,
+        policy_chosen_logps,
+        policy_rejected_logps,
+        chosen_logits,
+        chosen_labels,
+        lambda_=1.0,
+        beta=0.1,
     )
 
     assert loss.ndim == 0, "ORPO loss must be a scalar"
@@ -111,6 +124,7 @@ def test_orpo_loss_scalar_output(policy_model):
 # ---------------------------------------------------------------------------
 # Test 4: orpo_loss returns correct dict keys
 # ---------------------------------------------------------------------------
+
 
 def test_orpo_loss_dict_keys(policy_model):
     B, seq_len = 2, 16
@@ -127,9 +141,12 @@ def test_orpo_loss_dict_keys(policy_model):
     policy_rejected_logps = compute_sequence_log_probs(policy_model, rejected_ids, rejected_labels)
 
     loss, metrics = orpo_loss(
-        policy_chosen_logps, policy_rejected_logps,
-        chosen_logits, chosen_labels,
-        lambda_=1.0, beta=0.1,
+        policy_chosen_logps,
+        policy_rejected_logps,
+        chosen_logits,
+        chosen_labels,
+        lambda_=1.0,
+        beta=0.1,
     )
 
     assert "sft_loss" in metrics, "ORPO metrics must include 'sft_loss'"
@@ -142,6 +159,7 @@ def test_orpo_loss_dict_keys(policy_model):
 # Test 5: kto_loss scalar output
 # ---------------------------------------------------------------------------
 
+
 def test_kto_loss_scalar_output():
     B = 4
     policy_chosen = torch.randn(B)
@@ -150,9 +168,13 @@ def test_kto_loss_scalar_output():
     ref_rejected = torch.randn(B)
 
     loss, metrics = kto_loss(
-        policy_chosen, policy_rejected,
-        ref_chosen, ref_rejected,
-        desirable_weight=1.0, undesirable_weight=1.0, beta=0.1,
+        policy_chosen,
+        policy_rejected,
+        ref_chosen,
+        ref_rejected,
+        desirable_weight=1.0,
+        undesirable_weight=1.0,
+        beta=0.1,
     )
 
     assert loss.ndim == 0, "KTO loss must be a scalar"
@@ -163,6 +185,7 @@ def test_kto_loss_scalar_output():
 # Test 6: kto_loss returns correct dict keys
 # ---------------------------------------------------------------------------
 
+
 def test_kto_loss_dict_keys():
     B = 4
     policy_chosen = torch.randn(B)
@@ -171,9 +194,13 @@ def test_kto_loss_dict_keys():
     ref_rejected = torch.randn(B)
 
     loss, metrics = kto_loss(
-        policy_chosen, policy_rejected,
-        ref_chosen, ref_rejected,
-        desirable_weight=1.0, undesirable_weight=1.0, beta=0.1,
+        policy_chosen,
+        policy_rejected,
+        ref_chosen,
+        ref_rejected,
+        desirable_weight=1.0,
+        undesirable_weight=1.0,
+        beta=0.1,
     )
 
     assert "chosen_utility" in metrics, "KTO metrics must include 'chosen_utility'"
@@ -185,6 +212,7 @@ def test_kto_loss_dict_keys():
 # ---------------------------------------------------------------------------
 # Test 7: rrhf_loss with 3 ranked responses
 # ---------------------------------------------------------------------------
+
 
 def test_rrhf_loss_three_ranked_responses():
     B = 3
@@ -204,6 +232,7 @@ def test_rrhf_loss_three_ranked_responses():
 # Test 8: rrhf_loss correct ordering → 0 loss
 # ---------------------------------------------------------------------------
 
+
 def test_rrhf_loss_correct_ordering_zero_loss():
     B = 4
     # Perfectly ranked: logp_0 > logp_1 > logp_2 (all by large margin)
@@ -222,27 +251,25 @@ def test_rrhf_loss_correct_ordering_zero_loss():
 # Test 9: rrhf_loss n_pairs correct count
 # ---------------------------------------------------------------------------
 
+
 def test_rrhf_loss_n_pairs_count():
     B = 2
     # 4 responses → C(4, 2) = 6 pairs
     responses = [torch.randn(B) for _ in range(4)]
     _, metrics = rrhf_loss(responses)
 
-    assert metrics["n_pairs"] == 6, (
-        f"Expected 6 pairs for 4 responses, got {metrics['n_pairs']}"
-    )
+    assert metrics["n_pairs"] == 6, f"Expected 6 pairs for 4 responses, got {metrics['n_pairs']}"
 
     # 3 responses → C(3, 2) = 3 pairs
     responses3 = [torch.randn(B) for _ in range(3)]
     _, metrics3 = rrhf_loss(responses3)
-    assert metrics3["n_pairs"] == 3, (
-        f"Expected 3 pairs for 3 responses, got {metrics3['n_pairs']}"
-    )
+    assert metrics3["n_pairs"] == 3, f"Expected 3 pairs for 3 responses, got {metrics3['n_pairs']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: PreferenceOptTrainer with method="orpo" returns keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_orpo_returns_keys(policy_model, ref_model):
     cfg = PreferenceOptConfig(method="orpo", beta=0.1, lambda_=1.0)
@@ -265,6 +292,7 @@ def test_trainer_orpo_returns_keys(policy_model, ref_model):
 # Test 11: PreferenceOptTrainer with method="kto" returns keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_kto_returns_keys(policy_model, ref_model):
     cfg = PreferenceOptConfig(method="kto", beta=0.1)
     optimizer = optim.SGD(policy_model.parameters(), lr=1e-4)
@@ -285,6 +313,7 @@ def test_trainer_kto_returns_keys(policy_model, ref_model):
 # ---------------------------------------------------------------------------
 # Test 12: PreferenceOptTrainer with method="rrhf"
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_rrhf_returns_keys(policy_model, ref_model):
     cfg = PreferenceOptConfig(method="rrhf")

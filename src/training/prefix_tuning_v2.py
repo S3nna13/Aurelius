@@ -13,17 +13,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PrefixConfig:
@@ -49,6 +48,7 @@ class PrefixConfig:
 # ---------------------------------------------------------------------------
 # PrefixEmbedding
 # ---------------------------------------------------------------------------
+
 
 class PrefixEmbedding(nn.Module):
     """Produces per-layer K and V prefix tensors for all attention layers.
@@ -106,11 +106,11 @@ class PrefixEmbedding(nn.Module):
 
         if self._use_reparam:
             # raw: (L, 2, P, H*D)  →  mlp applied to last dim  →  same shape
-            flat = self.raw.view(-1, H * D)          # (L*2*P, H*D)
-            flat = self.mlp(flat)                    # (L*2*P, H*D)
+            flat = self.raw.view(-1, H * D)  # (L*2*P, H*D)
+            flat = self.mlp(flat)  # (L*2*P, H*D)
             out = flat.view(L, 2, P, H * D)
         else:
-            out = self.prefix                        # (L, 2, P, H*D)
+            out = self.prefix  # (L, 2, P, H*D)
 
         # Reshape last dim into (n_heads, head_dim)
         return out.view(L, 2, P, H, D)
@@ -119,6 +119,7 @@ class PrefixEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # PrefixAttention
 # ---------------------------------------------------------------------------
+
 
 class PrefixAttention(nn.Module):
     """Multi-head self-attention with prepended prefix K and V tokens.
@@ -169,9 +170,9 @@ class PrefixAttention(nn.Module):
 
         # Project queries, keys, values from sequence
         # (B, T, H*D) → (B, H, T, D)
-        Q = self.W_q(x).view(B, T, H, D).transpose(1, 2)   # (B, H, T, D)
-        K = self.W_k(x).view(B, T, H, D).transpose(1, 2)   # (B, H, T, D)
-        V = self.W_v(x).view(B, T, H, D).transpose(1, 2)   # (B, H, T, D)
+        Q = self.W_q(x).view(B, T, H, D).transpose(1, 2)  # (B, H, T, D)
+        K = self.W_k(x).view(B, T, H, D).transpose(1, 2)  # (B, H, T, D)
+        V = self.W_v(x).view(B, T, H, D).transpose(1, 2)  # (B, H, T, D)
 
         if P > 0:
             # prefix_k/prefix_v: (B, P, H, D) → (B, H, P, D)
@@ -186,16 +187,17 @@ class PrefixAttention(nn.Module):
         # Q: (B, H, T, D),  K/V: (B, H, P+T, D)
         attn_logits = torch.matmul(Q, K.transpose(-2, -1)) / self._scale  # (B, H, T, P+T)
         attn_weights = F.softmax(attn_logits, dim=-1)
-        attn_out = torch.matmul(attn_weights, V)   # (B, H, T, D)
+        attn_out = torch.matmul(attn_weights, V)  # (B, H, T, D)
 
         # Merge heads and project back
         attn_out = attn_out.transpose(1, 2).reshape(B, T, H * D)  # (B, T, H*D)
-        return self.W_o(attn_out)                                   # (B, T, d_model)
+        return self.W_o(attn_out)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # PrefixModel
 # ---------------------------------------------------------------------------
+
 
 class PrefixModel(nn.Module):
     """Wraps an arbitrary backbone module and attaches prefix embeddings.
@@ -224,7 +226,7 @@ class PrefixModel(nn.Module):
             param.requires_grad = False
 
     # ------------------------------------------------------------------
-    def trainable_parameters(self) -> List[nn.Parameter]:
+    def trainable_parameters(self) -> list[nn.Parameter]:
         """Return only the prefix parameters (backbone excluded)."""
         return list(self.prefix_embedding.parameters())
 

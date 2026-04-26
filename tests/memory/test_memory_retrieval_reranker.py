@@ -1,10 +1,11 @@
 """Tests for memory_retrieval_reranker — re-rank retrieved memories."""
+
 from __future__ import annotations
 
 from src.memory.memory_retrieval_reranker import (
+    MemoryItem,
     MemoryRetrievalReranker,
     RerankStrategy,
-    MemoryItem,
     rerank_by_recency,
     rerank_by_relevance,
 )
@@ -52,13 +53,19 @@ class TestMemoryRetrievalReranker:
 
     def test_rerank_recency_strategy(self):
         reranker = MemoryRetrievalReranker(strategy=RerankStrategy.RECENCY)
-        items = [MemoryItem("old", score=0.9, timestamp=100), MemoryItem("new", score=0.1, timestamp=500)]
+        items = [
+            MemoryItem("old", score=0.9, timestamp=100),
+            MemoryItem("new", score=0.1, timestamp=500),
+        ]
         reranked = reranker.rerank(items)
         assert reranked[0].content == "new"
 
     def test_hybrid_blends_scores(self):
         reranker = MemoryRetrievalReranker(strategy=RerankStrategy.HYBRID)
-        items = [MemoryItem("rel", score=0.9, timestamp=100), MemoryItem("rec", score=0.1, timestamp=500)]
+        items = [
+            MemoryItem("rel", score=0.9, timestamp=100),
+            MemoryItem("rec", score=0.1, timestamp=500),
+        ]
         reranked = reranker.rerank(items)
         assert len(reranked) == 2
 

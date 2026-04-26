@@ -1,4 +1,5 @@
 """MCP request/response metadata and tracing."""
+
 from __future__ import annotations
 
 import time

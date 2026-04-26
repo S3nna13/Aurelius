@@ -18,7 +18,6 @@ from src.eval.swebench_lite_scorer import (
     score_single,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -162,18 +161,14 @@ def test_apply_patch_empty_string_is_noop(tmp_path: Path) -> None:
 def test_run_tests_passing(tmp_path: Path) -> None:
     script = tmp_path / "ok.py"
     script.write_text("import sys; sys.exit(0)\n")
-    passed, _out, _err = run_tests(
-        [sys.executable, str(script)], str(tmp_path), timeout=10.0
-    )
+    passed, _out, _err = run_tests([sys.executable, str(script)], str(tmp_path), timeout=10.0)
     assert passed is True
 
 
 def test_run_tests_failing(tmp_path: Path) -> None:
     script = tmp_path / "bad.py"
     script.write_text("import sys; sys.exit(1)\n")
-    passed, _out, _err = run_tests(
-        [sys.executable, str(script)], str(tmp_path), timeout=10.0
-    )
+    passed, _out, _err = run_tests([sys.executable, str(script)], str(tmp_path), timeout=10.0)
     assert passed is False
 
 
@@ -186,9 +181,7 @@ def test_run_tests_empty_command(tmp_path: Path) -> None:
 def test_run_tests_timeout(tmp_path: Path) -> None:
     script = tmp_path / "spin.py"
     script.write_text("import time; time.sleep(30)\n")
-    passed, _out, err = run_tests(
-        [sys.executable, str(script)], str(tmp_path), timeout=0.5
-    )
+    passed, _out, err = run_tests([sys.executable, str(script)], str(tmp_path), timeout=0.5)
     assert passed is False
     assert "TIMEOUT" in err
 

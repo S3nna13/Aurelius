@@ -12,7 +12,6 @@ from src.inference.attention_sink_prefill import (
     repeat_kv_heads,
 )
 
-
 TINY = {
     "n_layers": 2,
     "d_model": 64,

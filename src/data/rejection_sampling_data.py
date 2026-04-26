@@ -11,9 +11,9 @@ Pure stdlib; no foreign imports.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import combinations
-from typing import Callable, List, Optional, Tuple
 
 __all__ = ["PreferencePair", "RejectionSampler"]
 
@@ -58,7 +58,7 @@ class RejectionSampler:
         reward_fn: Callable[[str, str], float],
         n_samples: int = 4,
         min_margin: float = 0.0,
-        max_candidates: Optional[int] = None,
+        max_candidates: int | None = None,
     ) -> None:
         if not callable(generate_fn):
             raise TypeError("generate_fn must be callable")
@@ -69,9 +69,7 @@ class RejectionSampler:
         if min_margin < 0.0:
             raise ValueError(f"min_margin must be >= 0.0, got {min_margin}")
         if max_candidates is not None and max_candidates < 1:
-            raise ValueError(
-                f"max_candidates must be >= 1 or None, got {max_candidates}"
-            )
+            raise ValueError(f"max_candidates must be >= 1 or None, got {max_candidates}")
 
         self.generate_fn = generate_fn
         self.reward_fn = reward_fn
@@ -87,19 +85,19 @@ class RejectionSampler:
             return self.n_samples
         return min(self.n_samples, self.max_candidates)
 
-    def _score_candidates(self, prompt: str) -> List[Tuple[int, str, float]]:
+    def _score_candidates(self, prompt: str) -> list[tuple[int, str, float]]:
         """Generate and score candidates. Returns list of (index, text, reward).
 
         Candidates whose ``reward_fn`` raises are skipped. Index is the
         generation order (stable, used for deterministic tie-breaks).
         """
         n = self._effective_n()
-        scored: List[Tuple[int, str, float]] = []
+        scored: list[tuple[int, str, float]] = []
         for i in range(n):
             response = self.generate_fn(prompt)
             try:
                 reward = float(self.reward_fn(prompt, response))
-            except Exception:
+            except Exception:  # noqa: S112
                 continue
             scored.append((i, response, reward))
         return scored
@@ -107,7 +105,7 @@ class RejectionSampler:
     # ------------------------------------------------------------------
     # public API
     # ------------------------------------------------------------------
-    def sample_top_bottom(self, prompt: str) -> Optional[PreferencePair]:
+    def sample_top_bottom(self, prompt: str) -> PreferencePair | None:
         """Return the (best, worst) preference pair for a single prompt.
 
         Returns ``None`` if fewer than 2 valid candidates, or if the margin
@@ -139,7 +137,7 @@ class RejectionSampler:
             margin=margin,
         )
 
-    def sample_all_pairs(self, prompt: str) -> List[PreferencePair]:
+    def sample_all_pairs(self, prompt: str) -> list[PreferencePair]:
         """Return all C(n, 2) pairs for a single prompt.
 
         Each pair orients the higher-reward candidate as ``chosen``. Pairs
@@ -147,7 +145,7 @@ class RejectionSampler:
         rewards are dropped (no meaningful preference).
         """
         scored = self._score_candidates(prompt)
-        pairs: List[PreferencePair] = []
+        pairs: list[PreferencePair] = []
         for (i, resp_i, r_i), (j, resp_j, r_j) in combinations(scored, 2):
             if r_i > r_j:
                 chosen_resp, chosen_r = resp_i, r_i
@@ -173,13 +171,13 @@ class RejectionSampler:
             )
         return pairs
 
-    def sample_pairs(self, prompts: List[str]) -> List[PreferencePair]:
+    def sample_pairs(self, prompts: list[str]) -> list[PreferencePair]:
         """Build one top/bottom preference pair per prompt.
 
         Prompts whose margin is below ``min_margin`` (or which cannot form a
         pair at all) are silently skipped.
         """
-        out: List[PreferencePair] = []
+        out: list[PreferencePair] = []
         for prompt in prompts:
             pair = self.sample_top_bottom(prompt)
             if pair is not None:

@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
-
 from aurelius.model.mixture_of_depths_v3 import (
     MoDBlock,
     MoDConfig,
@@ -30,6 +28,7 @@ T = 16
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_config(capacity: float = 0.5) -> MoDConfig:
     return MoDConfig(d_model=D, capacity=capacity, n_heads=N_HEADS, d_ff=D_FF)
 
@@ -41,6 +40,7 @@ def make_x(b: int = B, t: int = T) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # TokenRouter tests
 # ---------------------------------------------------------------------------
+
 
 class TestTokenRouter:
     def test_router_weights_shape(self):
@@ -117,6 +117,7 @@ class TestTokenRouter:
 # MoDBlock tests
 # ---------------------------------------------------------------------------
 
+
 class TestMoDBlock:
     def test_output_shape(self):
         """MoDBlock output must match input shape."""
@@ -153,6 +154,7 @@ class TestMoDBlock:
 # ---------------------------------------------------------------------------
 # MoDModel tests
 # ---------------------------------------------------------------------------
+
 
 class TestMoDModel:
     def _make_model(self, capacity: float = 0.5) -> MoDModel:

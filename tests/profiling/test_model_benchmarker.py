@@ -1,10 +1,10 @@
 import time
 
 from src.profiling.model_benchmarker import (
+    MODEL_BENCHMARKER_REGISTRY,
     BenchmarkConfig,
     BenchmarkStats,
     ModelBenchmarker,
-    MODEL_BENCHMARKER_REGISTRY,
 )
 
 
@@ -173,9 +173,7 @@ def test_input_factory_called_once():
         calls["n"] += 1
         return bs
 
-    ModelBenchmarker(BenchmarkConfig(warmup_runs=1, bench_runs=1)).run(
-        _noop_fn, 3, fac
-    )
+    ModelBenchmarker(BenchmarkConfig(warmup_runs=1, bench_runs=1)).run(_noop_fn, 3, fac)
     assert calls["n"] == 1
 
 

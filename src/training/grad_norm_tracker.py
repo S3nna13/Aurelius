@@ -12,17 +12,16 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import torch
 import torch.nn as nn
 
 
 @dataclass
 class GradNormConfig:
-    ema_alpha: float = 0.99       # EMA smoothing factor for norm history
+    ema_alpha: float = 0.99  # EMA smoothing factor for norm history
     spike_threshold: float = 3.0  # flag if global_norm > spike_threshold * ema_norm
-    window_size: int = 100        # rolling window size for statistics
+    window_size: int = 100  # rolling window size for statistics
     track_per_layer: bool = True  # track individual parameter grad norms
 
 
@@ -37,7 +36,7 @@ class GradNormTracker:
         self.cfg = cfg
 
         self._step: int = 0
-        self._ema_norm: float | None = None            # lazily initialised
+        self._ema_norm: float | None = None  # lazily initialised
         self._window: deque[float] = deque(maxlen=cfg.window_size)
         self._spike_flags: deque[bool] = deque(maxlen=cfg.window_size)
         self._last_layer_norms: dict[str, float] = {}

@@ -1,9 +1,10 @@
 """Process Reward Model: scores each reasoning step individually."""
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
@@ -52,9 +53,7 @@ class ProcessRewardModel(nn.Module):
         """
         # Extract hidden states via forward hook on backbone.norm
         hidden_states: list[torch.Tensor] = []
-        hook = self.backbone.norm.register_forward_hook(
-            lambda m, i, o: hidden_states.append(o)
-        )
+        hook = self.backbone.norm.register_forward_hook(lambda m, i, o: hidden_states.append(o))
         try:
             with torch.set_grad_enabled(not self.cfg.freeze_backbone):
                 self.backbone(input_ids)
@@ -71,9 +70,7 @@ class ProcessRewardModel(nn.Module):
         max_steps = step_mask.sum(dim=1).max().item()
         max_steps = max(max_steps, 1)
 
-        step_scores_padded = torch.full(
-            (B, max_steps), float("-inf"), device=input_ids.device
-        )
+        step_scores_padded = torch.full((B, max_steps), float("-inf"), device=input_ids.device)
         step_counts = torch.zeros(B, dtype=torch.long, device=input_ids.device)
 
         for b in range(B):

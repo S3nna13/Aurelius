@@ -8,13 +8,13 @@ pointwise scoring.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Configuration and data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DebateConfig:
@@ -25,8 +25,8 @@ class DebateConfig:
 
 @dataclass
 class DebateArgument:
-    debater_id: str          # "A" or "B"
-    position: str            # "for" or "against"
+    debater_id: str  # "A" or "B"
+    position: str  # "for" or "against"
     content: str
     round_number: int
 
@@ -36,14 +36,15 @@ class DebateTranscript:
     question: str
     position_a: str
     position_b: str
-    arguments: List[DebateArgument] = field(default_factory=list)
-    winner: Optional[str] = None   # "A", "B", or "tie"
+    arguments: list[DebateArgument] = field(default_factory=list)
+    winner: str | None = None  # "A", "B", or "tie"
     judge_reasoning: str = ""
 
 
 # ---------------------------------------------------------------------------
 # Prompt builders
 # ---------------------------------------------------------------------------
+
 
 def build_debater_prompt(
     question: str,
@@ -52,7 +53,7 @@ def build_debater_prompt(
     round_num: int,
 ) -> str:
     """Build a prompt for a debater given the transcript so far."""
-    lines: List[str] = [
+    lines: list[str] = [
         f"Question: {question}",
         f"Your position: {position}",
         f"Current round: {round_num}",
@@ -63,7 +64,7 @@ def build_debater_prompt(
     if transcript.arguments:
         for arg in transcript.arguments:
             lines.append(
-                f"  [Round {arg.round_number}] Debater {arg.debater_id} ({arg.position}): {arg.content}"
+                f"  [Round {arg.round_number}] Debater {arg.debater_id} ({arg.position}): {arg.content}"  # noqa: E501
             )
     else:
         lines.append("  (no arguments yet)")
@@ -78,7 +79,7 @@ def build_debater_prompt(
 
 def build_judge_prompt(transcript: DebateTranscript) -> str:
     """Build a prompt for the judge showing the full transcript."""
-    lines: List[str] = [
+    lines: list[str] = [
         f"Question: {transcript.question}",
         "",
         f"Debater A argues: {transcript.position_a}",
@@ -113,7 +114,7 @@ def build_judge_prompt(transcript: DebateTranscript) -> str:
 _WINNER_RE = re.compile(r"winner\s*:\s*(A|B|tie)\b", re.IGNORECASE)
 
 
-def extract_winner(judge_output: str) -> Optional[str]:
+def extract_winner(judge_output: str) -> str | None:
     """Parse 'Winner: A/B/tie' from judge output (case-insensitive).
 
     Returns "A", "B", "tie", or None if unparseable.
@@ -131,6 +132,7 @@ def extract_winner(judge_output: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class DebateEvaluator:
     def __init__(self, generate_fn: Callable[[str], str], config: DebateConfig) -> None:
@@ -180,7 +182,7 @@ class DebateEvaluator:
         position_b = f"This claim is incorrect: {claim}"
         return self.run_debate(claim, position_a, position_b)
 
-    def batch_evaluate(self, claims: List[str]) -> List[DebateTranscript]:
+    def batch_evaluate(self, claims: list[str]) -> list[DebateTranscript]:
         """Evaluate a list of claims and return one transcript per claim."""
         return [self.evaluate_claim(claim) for claim in claims]
 
@@ -189,7 +191,8 @@ class DebateEvaluator:
 # Aggregation
 # ---------------------------------------------------------------------------
 
-def aggregate_debate_results(transcripts: List[DebateTranscript]) -> Dict[str, float]:
+
+def aggregate_debate_results(transcripts: list[DebateTranscript]) -> dict[str, float]:
     """Aggregate outcomes across a list of transcripts.
 
     Returns::

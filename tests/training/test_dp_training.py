@@ -74,6 +74,7 @@ def input_ids():
 # 1. DPConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_dpconfig_defaults():
     cfg = DPConfig()
     assert cfg.max_grad_norm == 1.0
@@ -87,6 +88,7 @@ def test_dpconfig_defaults():
 # 2. PrivacyAccountant sampling rate
 # ---------------------------------------------------------------------------
 
+
 def test_privacy_accountant_sampling_rate(accountant):
     expected = BATCH_SIZE / DATASET_SIZE
     assert abs(accountant.sampling_rate - expected) < 1e-9
@@ -95,6 +97,7 @@ def test_privacy_accountant_sampling_rate(accountant):
 # ---------------------------------------------------------------------------
 # 3. compute_rdp is positive
 # ---------------------------------------------------------------------------
+
 
 def test_compute_rdp_positive(accountant):
     rdp = accountant.compute_rdp(steps=10)
@@ -105,6 +108,7 @@ def test_compute_rdp_positive(accountant):
 # 4. compute_epsilon increases with steps
 # ---------------------------------------------------------------------------
 
+
 def test_compute_epsilon_increases_with_steps(accountant):
     eps1 = accountant.compute_epsilon(steps=1)
     eps2 = accountant.compute_epsilon(steps=100)
@@ -114,6 +118,7 @@ def test_compute_epsilon_increases_with_steps(accountant):
 # ---------------------------------------------------------------------------
 # 5. Larger noise_multiplier → smaller epsilon
 # ---------------------------------------------------------------------------
+
 
 def test_larger_noise_smaller_epsilon():
     cfg_low_noise = DPConfig(noise_multiplier=0.5)
@@ -129,6 +134,7 @@ def test_larger_noise_smaller_epsilon():
 # 6. is_budget_exceeded returns False at step 0
 # ---------------------------------------------------------------------------
 
+
 def test_budget_not_exceeded_at_step_zero(accountant):
     assert accountant.is_budget_exceeded(steps=0) is False
 
@@ -136,6 +142,7 @@ def test_budget_not_exceeded_at_step_zero(accountant):
 # ---------------------------------------------------------------------------
 # 7. is_budget_exceeded can return True with tiny target epsilon
 # ---------------------------------------------------------------------------
+
 
 def test_budget_exceeded_with_small_target():
     cfg = DPConfig(target_epsilon=0.0001, noise_multiplier=0.1)
@@ -148,6 +155,7 @@ def test_budget_exceeded_with_small_target():
 # 8. clip_gradients returns a float (avg grad norm)
 # ---------------------------------------------------------------------------
 
+
 def test_clip_gradients_returns_float():
     params = [nn.Parameter(torch.randn(4, 4)) for _ in range(3)]
     for p in params:
@@ -159,6 +167,7 @@ def test_clip_gradients_returns_float():
 # ---------------------------------------------------------------------------
 # 9. clip_gradients actually clips grad norms to ≤ max_grad_norm
 # ---------------------------------------------------------------------------
+
 
 def test_clip_gradients_clips_norms():
     max_norm = 1.0
@@ -176,6 +185,7 @@ def test_clip_gradients_clips_norms():
 # 10. add_dp_noise modifies gradients
 # ---------------------------------------------------------------------------
 
+
 def test_add_dp_noise_modifies_gradients():
     torch.manual_seed(123)
     params = [nn.Parameter(torch.zeros(5)) for _ in range(2)]
@@ -186,16 +196,14 @@ def test_add_dp_noise_modifies_gradients():
     add_dp_noise(params, noise_multiplier=1.0, max_grad_norm=1.0, batch_size=BATCH_SIZE)
 
     # At least one gradient should have changed
-    changed = any(
-        not torch.allclose(p.grad, orig)
-        for p, orig in zip(params, original_grads)
-    )
+    changed = any(not torch.allclose(p.grad, orig) for p, orig in zip(params, original_grads))
     assert changed
 
 
 # ---------------------------------------------------------------------------
 # 11. DPTrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_required_keys(dp_trainer, input_ids):
     result = dp_trainer.train_step(input_ids)
@@ -207,6 +215,7 @@ def test_train_step_returns_required_keys(dp_trainer, input_ids):
 # 12. DPTrainer.train_step epsilon increases over multiple steps
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_epsilon_increases(dp_trainer, input_ids):
     result1 = dp_trainer.train_step(input_ids)
     result2 = dp_trainer.train_step(input_ids)
@@ -216,6 +225,7 @@ def test_train_step_epsilon_increases(dp_trainer, input_ids):
 # ---------------------------------------------------------------------------
 # 13. DPTrainer.train_step budget_exceeded starts False
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_budget_not_exceeded_initially(small_model, input_ids):
     # Use a generous target_epsilon so budget is not exceeded on the first step.
@@ -237,6 +247,7 @@ def test_train_step_budget_not_exceeded_initially(small_model, input_ids):
 # 14. DPTrainer.get_privacy_spent returns (epsilon, delta) tuple
 # ---------------------------------------------------------------------------
 
+
 def test_get_privacy_spent_returns_tuple(dp_trainer, input_ids):
     dp_trainer.train_step(input_ids)
     result = dp_trainer.get_privacy_spent()
@@ -250,6 +261,7 @@ def test_get_privacy_spent_returns_tuple(dp_trainer, input_ids):
 # ---------------------------------------------------------------------------
 # 15. DPConfig noise_multiplier affects privacy
 # ---------------------------------------------------------------------------
+
 
 def test_noise_multiplier_affects_privacy():
     """Higher noise_multiplier should yield lower epsilon (more private)."""

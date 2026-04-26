@@ -1,29 +1,37 @@
 """Tests for Whisper-inspired robust decoding with temperature fallback cascade."""
-import pytest
+
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.inference.robust_decoding import (
-    RobustDecodingConfig,
     GenerationResult,
+    RobustDecoder,
+    RobustDecodingConfig,
     compute_compression_ratio,
     compute_mean_logprob,
-    no_repeat_ngram_logit_processor,
     generate_with_fallback,
-    RobustDecoder,
+    no_repeat_ngram_logit_processor,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 
 def _make_model(n_layers=2, d_model=64):
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=n_layers, d_model=d_model, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=n_layers,
+        d_model=d_model,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
 
 # ── compression ratio tests ──────────────────────────────────────────────────
+
 
 def test_compression_ratio_repetitive():
     """Highly repetitive text should have a very low compression ratio."""
@@ -42,6 +50,7 @@ def test_compression_ratio_diverse():
 
 
 # ── mean log-prob tests ──────────────────────────────────────────────────────
+
 
 def test_compute_mean_logprob_negative():
     """Mean log-prob should be a negative float."""
@@ -64,10 +73,11 @@ def test_compute_mean_logprob_shape():
 
 # ── no-repeat n-gram logit processor tests ───────────────────────────────────
 
+
 def test_no_repeat_ngram_blocks_repeated():
     """Token that would form a repeated n-gram should get -inf logit."""
     # input sequence [1, 2, 3, 1, 2]: prefix [1,2] already followed by 3
-    input_ids = torch.tensor([[1, 2, 3, 1, 2]])   # (1, 5)
+    input_ids = torch.tensor([[1, 2, 3, 1, 2]])  # (1, 5)
     logits = torch.zeros(1, 256)
     result = no_repeat_ngram_logit_processor(input_ids, logits, ngram_size=3)
     assert result[0, 3] == float("-inf"), "Token 3 should be blocked"
@@ -83,6 +93,7 @@ def test_no_repeat_ngram_allows_new():
 
 
 # ── generate_with_fallback tests ─────────────────────────────────────────────
+
 
 def test_generate_with_fallback_returns_result():
     """generate_with_fallback should return a GenerationResult."""
@@ -113,6 +124,7 @@ def test_generate_with_fallback_temperature_used():
 
 # ── GenerationResult field tests ─────────────────────────────────────────────
 
+
 def test_generation_result_fields():
     """GenerationResult should have all required fields."""
     model = _make_model()
@@ -131,6 +143,7 @@ def test_generation_result_fields():
 
 
 # ── RobustDecoder tests ───────────────────────────────────────────────────────
+
 
 def test_robust_decoder_generate():
     """RobustDecoder.generate should return a GenerationResult."""

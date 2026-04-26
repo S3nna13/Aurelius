@@ -12,7 +12,7 @@ from src.optimizers.ranger_optimizer import Ranger
 
 
 def quadratic_loss(p: torch.Tensor) -> torch.Tensor:
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 def test_instantiate_with_linear():
@@ -89,9 +89,7 @@ def test_state_dict_roundtrip():
 def test_multiple_param_groups():
     a = nn.Parameter(torch.tensor([3.0]))
     b = nn.Parameter(torch.tensor([3.0]))
-    opt = Ranger(
-        [{"params": [a], "lr": 0.1}, {"params": [b], "lr": 0.01}]
-    )
+    opt = Ranger([{"params": [a], "lr": 0.1}, {"params": [b], "lr": 0.01}])
     for _ in range(50):
         opt.zero_grad()
         (quadratic_loss(a) + quadratic_loss(b)).backward()
@@ -103,7 +101,7 @@ def test_grad_none_skipped_without_crash():
     a = nn.Parameter(torch.tensor([1.0]))
     b = nn.Parameter(torch.tensor([2.0]))
     opt = Ranger([a, b], lr=0.1)
-    (a ** 2).sum().backward()
+    (a**2).sum().backward()
     assert b.grad is None
     opt.step()
 

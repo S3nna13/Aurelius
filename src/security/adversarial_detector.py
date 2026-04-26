@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class AdversarialPattern(str, Enum):
+class AdversarialPattern(StrEnum):
     JAILBREAK = "jailbreak"
     PROMPT_LEAK = "prompt_leak"
     INDIRECT_INJECTION = "indirect"
@@ -135,8 +135,7 @@ class AdversarialDetector:
         gcg_hits = [
             m.group()
             for m in _GCG_CHUNK_RE.finditer(text)
-            if not re.match(r"https?://", m.group())
-               and not _B64_CHUNK_RE.fullmatch(m.group())
+            if not re.match(r"https?://", m.group()) and not _B64_CHUNK_RE.fullmatch(m.group())
         ]
         if gcg_hits:
             p = AdversarialPattern.GRADIENT_ATTACK

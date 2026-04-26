@@ -36,8 +36,7 @@ Usage:
 
 from __future__ import annotations
 
-import math
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch.optim import Optimizer
@@ -199,8 +198,8 @@ class AdamMini(Optimizer):
                 state["step"] += 1
                 t = state["step"]
 
-                m = state["m"]   # first moment  (shape = p.shape)
-                v = state["v"]   # second moment  (scalar or (n_heads,))
+                m = state["m"]  # first moment  (shape = p.shape)
+                v = state["v"]  # second moment  (scalar or (n_heads,))
 
                 # ---- First moment update: m_t = β₁ m_{t-1} + (1 - β₁) g_t ----
                 m.mul_(β1).add_(g, alpha=1.0 - β1)
@@ -213,31 +212,31 @@ class AdamMini(Optimizer):
                 if n_blocks > 1 and blk_head_dim is not None:
                     # Head-wise blocking: param shape is (n_heads * head_dim, d_in)
                     # Reshape g to (n_heads, head_dim * d_in) and mean per head
-                    g_blocks = g.reshape(n_blocks, -1)      # (n_heads, head_dim * d_in)
-                    g2_mean = g_blocks.pow(2).mean(dim=1)   # (n_heads,) — v_block per head
+                    g_blocks = g.reshape(n_blocks, -1)  # (n_heads, head_dim * d_in)
+                    g2_mean = g_blocks.pow(2).mean(dim=1)  # (n_heads,) — v_block per head
                     v.mul_(β2).add_(g2_mean, alpha=1.0 - β2)
                 else:
                     # Single block — scalar mean over all elements
-                    g2_mean = g.pow(2).mean()               # scalar
+                    g2_mean = g.pow(2).mean()  # scalar
                     v.mul_(β2).add_(g2_mean, alpha=1.0 - β2)
 
                 # ---- Bias correction -------------------------------------------
-                bias_corr1 = 1.0 - β1 ** t
-                bias_corr2 = 1.0 - β2 ** t
+                bias_corr1 = 1.0 - β1**t
+                bias_corr2 = 1.0 - β2**t
 
-                m_hat = m / bias_corr1          # m̂_t  (same shape as p)
+                m_hat = m / bias_corr1  # m̂_t  (same shape as p)
 
                 if n_blocks > 1 and blk_head_dim is not None:
                     # v has shape (n_heads,); expand to (n_heads, 1) for broadcasting
-                    v_hat = v / bias_corr2      # (n_heads,)
-                    denom = (v_hat.sqrt().unsqueeze(1) + ε)   # (n_heads, 1)
+                    v_hat = v / bias_corr2  # (n_heads,)
+                    denom = v_hat.sqrt().unsqueeze(1) + ε  # (n_heads, 1)
 
                     # m_hat reshaped to (n_heads, head_dim * d_in)
                     m_hat_blocks = m_hat.reshape(n_blocks, -1)
                     update = (m_hat_blocks / denom).reshape_as(p)
                 else:
-                    v_hat = v / bias_corr2      # scalar
-                    denom = v_hat.sqrt() + ε    # scalar
+                    v_hat = v / bias_corr2  # scalar
+                    denom = v_hat.sqrt() + ε  # scalar
                     update = m_hat / denom
 
                 # ---- Weight decay (decoupled, AdamW-style) ---------------------

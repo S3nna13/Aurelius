@@ -113,9 +113,7 @@ class DataIngestPipeline:
                 fh.write(json.dumps(record, ensure_ascii=False) + "\n")
         return len(result.accepted)
 
-    def filter_by_split(
-        self, result: IngestResult, split: str
-    ) -> list[TrainingSample]:
+    def filter_by_split(self, result: IngestResult, split: str) -> list[TrainingSample]:
         """Return accepted samples whose ``split`` matches *split*."""
         return [s for s in result.accepted if s.split == split]
 

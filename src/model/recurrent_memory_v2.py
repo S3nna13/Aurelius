@@ -2,14 +2,13 @@
 
 V2 because recurrent_memory.py exists with a different (RMT segment-token) API.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -52,7 +51,7 @@ class MemoryAttention(nn.Module):
         self.k_proj = nn.Linear(d_model, d_model, bias=False)
         self.v_proj = nn.Linear(d_model, d_model, bias=False)
         self.out_proj = nn.Linear(d_model, d_model, bias=False)
-        self.scale = d_model ** -0.5
+        self.scale = d_model**-0.5
 
     def forward(self, hidden: Tensor, memory_state: Tensor) -> Tensor:
         """(B, T, d_model), (B, n_mem, d_model) → (B, T, d_model)"""
@@ -84,7 +83,7 @@ class RecurrentTransformerLayer(nn.Module):
         self.ffn = nn.Sequential(nn.Linear(d, 4 * d), nn.GELU(), nn.Linear(4 * d, d))
         self.ln3 = nn.LayerNorm(d)
 
-    def forward(self, x: Tensor, memory: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor, memory: Tensor) -> tuple[Tensor, Tensor]:
         """x (B,T,d), memory (B,n_mem,d) → output (B,T,d), new_memory (B,n_mem,d)"""
         # Self-attention
         x = x + self.self_attn(self.ln1(x), self.ln1(x), self.ln1(x))[0]

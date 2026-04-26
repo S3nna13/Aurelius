@@ -16,14 +16,12 @@ Covers:
 13. HierAttnBlock residual connection changes output
 """
 
-import pytest
 import torch
-import torch.nn as nn
 
 from src.model.hierarchical_attention import (
-    HierAttnConfig,
     HierarchicalAttention,
     HierAttnBlock,
+    HierAttnConfig,
     LocalAttention,
     broadcast_chunk_context,
     chunk_sequence,
@@ -39,7 +37,7 @@ D = 16
 N_HEADS = 2
 CHUNK = 4
 B = 2
-T = 8   # 2 chunks of size 4
+T = 8  # 2 chunks of size 4
 
 TINY_CFG = HierAttnConfig(d_model=D, n_heads=N_HEADS, chunk_size=CHUNK)
 
@@ -47,6 +45,7 @@ TINY_CFG = HierAttnConfig(d_model=D, n_heads=N_HEADS, chunk_size=CHUNK)
 # ---------------------------------------------------------------------------
 # 1. test_hierattn_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_hierattn_config_defaults():
     """HierAttnConfig instantiates with documented defaults."""
@@ -62,6 +61,7 @@ def test_hierattn_config_defaults():
 # 2. test_chunk_sequence_shape
 # ---------------------------------------------------------------------------
 
+
 def test_chunk_sequence_shape():
     """chunk_sequence returns (B*n_chunks, chunk_size, D) and correct n_chunks."""
     x = torch.randn(B, T, D)
@@ -75,6 +75,7 @@ def test_chunk_sequence_shape():
 # ---------------------------------------------------------------------------
 # 3. test_chunk_sequence_non_divisible
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_sequence_non_divisible():
     """chunk_sequence pads and chunks correctly when T % chunk_size != 0."""
@@ -96,14 +97,13 @@ def test_chunk_sequence_non_divisible():
 # 4. test_summarize_chunks_mean_shape
 # ---------------------------------------------------------------------------
 
+
 def test_summarize_chunks_mean_shape():
     """summarize_chunks('mean') produces (B, n_chunks, D) after reshape."""
     n_chunks = T // CHUNK
     chunk_outputs = torch.randn(B * n_chunks, CHUNK, D)
     flat = summarize_chunks(chunk_outputs, method="mean")
-    assert flat.shape == (B * n_chunks, D), (
-        f"Expected ({B * n_chunks}, {D}), got {flat.shape}"
-    )
+    assert flat.shape == (B * n_chunks, D), f"Expected ({B * n_chunks}, {D}), got {flat.shape}"
     summaries = flat.view(B, n_chunks, D)
     assert summaries.shape == (B, n_chunks, D), (
         f"Expected ({B}, {n_chunks}, {D}), got {summaries.shape}"
@@ -114,14 +114,13 @@ def test_summarize_chunks_mean_shape():
 # 5. test_summarize_chunks_first_shape
 # ---------------------------------------------------------------------------
 
+
 def test_summarize_chunks_first_shape():
     """summarize_chunks('first') produces (B*n_chunks, D)."""
     n_chunks = T // CHUNK
     chunk_outputs = torch.randn(B * n_chunks, CHUNK, D)
     flat = summarize_chunks(chunk_outputs, method="first")
-    assert flat.shape == (B * n_chunks, D), (
-        f"Expected ({B * n_chunks}, {D}), got {flat.shape}"
-    )
+    assert flat.shape == (B * n_chunks, D), f"Expected ({B * n_chunks}, {D}), got {flat.shape}"
     # Verify 'first' really picks the first token
     assert torch.allclose(flat, chunk_outputs[:, 0, :]), (
         "'first' summary should equal the first token of each chunk"
@@ -131,6 +130,7 @@ def test_summarize_chunks_first_shape():
 # ---------------------------------------------------------------------------
 # 6. test_summarize_chunks_last_shape_and_values
 # ---------------------------------------------------------------------------
+
 
 def test_summarize_chunks_last_shape_and_values():
     """summarize_chunks('last') picks the last token of each chunk."""
@@ -147,19 +147,19 @@ def test_summarize_chunks_last_shape_and_values():
 # 7. test_cross_chunk_attention_shape
 # ---------------------------------------------------------------------------
 
+
 def test_cross_chunk_attention_shape():
     """cross_chunk_attention returns (B, n_chunks, D)."""
     n_chunks = T // CHUNK
     summaries = torch.randn(B, n_chunks, D)
     out = cross_chunk_attention(summaries, n_heads=N_HEADS, d_model=D)
-    assert out.shape == (B, n_chunks, D), (
-        f"Expected ({B}, {n_chunks}, {D}), got {out.shape}"
-    )
+    assert out.shape == (B, n_chunks, D), f"Expected ({B}, {n_chunks}, {D}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 8. test_broadcast_chunk_context_shape
 # ---------------------------------------------------------------------------
+
 
 def test_broadcast_chunk_context_shape():
     """broadcast_chunk_context returns (B*n_chunks, chunk_size, D)."""
@@ -176,6 +176,7 @@ def test_broadcast_chunk_context_shape():
 # 9. test_local_attention_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_local_attention_output_shape():
     """LocalAttention returns (B, T, D)."""
     layer = LocalAttention(d_model=D, n_heads=N_HEADS)
@@ -188,6 +189,7 @@ def test_local_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 10. test_hierarchical_attention_output_shape
 # ---------------------------------------------------------------------------
+
 
 def test_hierarchical_attention_output_shape():
     """HierarchicalAttention returns (B, T, D)."""
@@ -202,6 +204,7 @@ def test_hierarchical_attention_output_shape():
 # 11. test_hierarchical_attention_output_finite
 # ---------------------------------------------------------------------------
 
+
 def test_hierarchical_attention_output_finite():
     """HierarchicalAttention output contains no NaN or Inf values."""
     model = HierarchicalAttention(TINY_CFG)
@@ -215,6 +218,7 @@ def test_hierarchical_attention_output_finite():
 # 12. test_hierattn_block_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_hierattn_block_output_shape():
     """HierAttnBlock returns (B, T, D)."""
     block = HierAttnBlock(TINY_CFG)
@@ -227,6 +231,7 @@ def test_hierattn_block_output_shape():
 # ---------------------------------------------------------------------------
 # 13. test_hierattn_block_residual_changes_output
 # ---------------------------------------------------------------------------
+
 
 def test_hierattn_block_residual_changes_output():
     """HierAttnBlock output differs from its input (residual is non-trivial)."""

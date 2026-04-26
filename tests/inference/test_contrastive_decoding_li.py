@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import torch
-import pytest
-
 from aurelius.inference.contrastive_decoding_li import (
     CDScorer,
     CDSearcher,
     ContrastiveDecoder,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_logits(V: int = 10, seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
     """Return (expert_logits, amateur_logits) of shape (V,)."""
@@ -38,10 +36,12 @@ def _make_batch_logits(
 
 def _dummy_fn(logits: torch.Tensor):
     """Return a model-like callable that always returns ``logits`` (1, 1, V)."""
+
     # logits shape: (1, V)
     def fn(input_ids: torch.Tensor) -> torch.Tensor:
         T = input_ids.shape[1]
         return logits.unsqueeze(1).expand(1, T, -1)  # (1, T, V)
+
     return fn
 
 
@@ -49,8 +49,8 @@ def _dummy_fn(logits: torch.Tensor):
 # CDScorer tests
 # ---------------------------------------------------------------------------
 
-class TestCDScorer:
 
+class TestCDScorer:
     def test_plausibility_mask_below_alpha_gets_neg_inf(self):
         """Tokens with expert_prob < alpha * max_prob must get -inf score."""
         V = 8
@@ -103,7 +103,8 @@ class TestCDScorer:
         expected = expert_log - amateur_log
 
         torch.testing.assert_close(
-            scores[eligible], expected[eligible],
+            scores[eligible],
+            expected[eligible],
             msg="CD score should equal log_p_expert - log_p_amateur for eligible tokens.",
         )
 
@@ -128,17 +129,15 @@ class TestCDScorer:
         scorer = CDScorer(alpha=0.0)
         expert_logits, amateur_logits = _make_logits(V=V)
         scores = scorer.score(expert_logits, amateur_logits)
-        assert torch.all(torch.isfinite(scores)), (
-            "All tokens must be eligible when alpha=0.0."
-        )
+        assert torch.all(torch.isfinite(scores)), "All tokens must be eligible when alpha=0.0."
 
 
 # ---------------------------------------------------------------------------
 # CDSearcher tests
 # ---------------------------------------------------------------------------
 
-class TestCDSearcher:
 
+class TestCDSearcher:
     def test_search_output_shape_B(self):
         """search() must return a LongTensor of shape (B,)."""
         B, V = 6, 15
@@ -172,22 +171,20 @@ class TestCDSearcher:
         V = 10
         # Make expert and amateur identical so CD score is 0 for all eligible
         expert_logits = torch.zeros(1, V)
-        expert_logits[0, 3] = 5.0   # token 3 is clearly the max
+        expert_logits[0, 3] = 5.0  # token 3 is clearly the max
         amateur_logits = expert_logits.clone()
 
         searcher = CDSearcher(alpha=0.5)  # only token 3 is eligible
         selected = searcher.search(expert_logits, amateur_logits)
-        assert selected[0].item() == 3, (
-            "When only one token is eligible, it should be selected."
-        )
+        assert selected[0].item() == 3, "When only one token is eligible, it should be selected."
 
 
 # ---------------------------------------------------------------------------
 # ContrastiveDecoder tests
 # ---------------------------------------------------------------------------
 
-class TestContrastiveDecoder:
 
+class TestContrastiveDecoder:
     def _build_decoder(
         self, V: int = 16, seed: int = 7, alpha: float = 0.1
     ) -> tuple[ContrastiveDecoder, torch.Tensor, torch.Tensor]:
@@ -242,9 +239,9 @@ class TestContrastiveDecoder:
         new_tokens = decoder.generate(prompt, max_new_tokens=15)  # (15,)
 
         # Plausibility set is fixed (logits never change in this dummy setup)
-        expert_probs = torch.softmax(expert_logits[0], dim=-1)    # (V,)
+        expert_probs = torch.softmax(expert_logits[0], dim=-1)  # (V,)
         max_prob = expert_probs.max()
-        plausible_mask = expert_probs >= alpha * max_prob          # (V,)
+        plausible_mask = expert_probs >= alpha * max_prob  # (V,)
 
         for tok in new_tokens.tolist():
             assert plausible_mask[tok].item(), (

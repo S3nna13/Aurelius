@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -20,28 +19,28 @@ class TokenizationConfig:
 
 @dataclass
 class TokenizedOutput:
-    input_ids: List[int]
-    attention_mask: List[int]
+    input_ids: list[int]
+    attention_mask: list[int]
     length: int
     truncated: bool
 
 
 class TokenizationPipeline:
-    def __init__(self, vocab_size: int = 32000, config: Optional[TokenizationConfig] = None) -> None:
+    def __init__(self, vocab_size: int = 32000, config: TokenizationConfig | None = None) -> None:
         self.vocab_size = vocab_size
         self.config = config if config is not None else TokenizationConfig()
 
     def normalize(self, text: str) -> str:
         """Lowercase, collapse whitespace, strip."""
         text = text.lower()
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r"\s+", " ", text)
         return text.strip()
 
     def char_to_id(self, char: str) -> int:
         """Simple stub: ord(char) % vocab_size."""
         return ord(char) % self.vocab_size
 
-    def tokenize(self, text: str) -> List[int]:
+    def tokenize(self, text: str) -> list[int]:
         """Normalize, prepend BOS, convert each char to char_to_id, append EOS."""
         normalized = self.normalize(text)
         ids = [self.config.bos_token_id]
@@ -58,7 +57,7 @@ class TokenizationPipeline:
 
         # Truncation
         if cfg.truncation and len(input_ids) > cfg.max_length:
-            input_ids = input_ids[:cfg.max_length]
+            input_ids = input_ids[: cfg.max_length]
             input_ids[-1] = cfg.eos_token_id
             truncated = True
 
@@ -76,7 +75,7 @@ class TokenizationPipeline:
             truncated=truncated,
         )
 
-    def decode(self, token_ids: List[int]) -> str:
+    def decode(self, token_ids: list[int]) -> str:
         """Filter special tokens (BOS/EOS/PAD), join chr(id % 128) for printable."""
         cfg = self.config
         special = {cfg.bos_token_id, cfg.eos_token_id, cfg.pad_token_id}
@@ -87,6 +86,6 @@ class TokenizationPipeline:
             chars.append(chr(id_ % 128))
         return "".join(chars)
 
-    def batch_encode(self, texts: List[str]) -> List[TokenizedOutput]:
+    def batch_encode(self, texts: list[str]) -> list[TokenizedOutput]:
         """Encode a list of texts."""
         return [self.encode(t) for t in texts]

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass(frozen=True)
 class Posting:
     """A single posting: which document and how often the term appears there."""
+
     doc_id: int
     term_freq: int
 
@@ -18,13 +18,13 @@ class InvertedIndex:
 
     def __init__(self) -> None:
         # term -> {doc_id -> count}
-        self._index: Dict[str, Dict[int, int]] = {}
+        self._index: dict[str, dict[int, int]] = {}
 
     # ------------------------------------------------------------------
     # Building
     # ------------------------------------------------------------------
 
-    def add_document(self, doc_id: int, tokens: List[str]) -> None:
+    def add_document(self, doc_id: int, tokens: list[str]) -> None:
         """Index *tokens* from *doc_id*, accumulating term frequencies."""
         for token in tokens:
             if token not in self._index:
@@ -36,21 +36,18 @@ class InvertedIndex:
     # Querying
     # ------------------------------------------------------------------
 
-    def lookup(self, term: str) -> List[Posting]:
+    def lookup(self, term: str) -> list[Posting]:
         """Return postings for *term*, sorted ascending by doc_id."""
         doc_map = self._index.get(term, {})
-        return [
-            Posting(doc_id=doc_id, term_freq=freq)
-            for doc_id, freq in sorted(doc_map.items())
-        ]
+        return [Posting(doc_id=doc_id, term_freq=freq) for doc_id, freq in sorted(doc_map.items())]
 
-    def search(self, query_tokens: List[str]) -> List[int]:
+    def search(self, query_tokens: list[str]) -> list[int]:
         """AND search: return doc_ids present in *all* query token postings."""
         if not query_tokens:
             return []
 
         # Build sets of doc_ids per token; unknown token → empty set stops here
-        sets: List[set] = []
+        sets: list[set] = []
         for token in query_tokens:
             doc_map = self._index.get(token)
             if doc_map is None:
@@ -79,4 +76,4 @@ class InvertedIndex:
         return len(self._index)
 
 
-INVERTED_INDEX_REGISTRY: Dict[str, type] = {"default": InvertedIndex}
+INVERTED_INDEX_REGISTRY: dict[str, type] = {"default": InvertedIndex}

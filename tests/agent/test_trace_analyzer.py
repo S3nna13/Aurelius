@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.agent.execution_tracer import ExecutionEvent, ExecutionEventType
-from src.agent.trace_analyzer import TraceAnalyzer, ToolSummary
+from src.agent.trace_analyzer import TraceAnalyzer
 
 
 def _evt(
@@ -38,10 +38,19 @@ def test_counts_errors_and_tools():
     events = [
         _evt(ExecutionEventType.AGENT_START, 0),
         _evt(ExecutionEventType.THINK, 1, duration_ms=10.0),
-        _evt(ExecutionEventType.TOOL_CALL, 2, {"tool_name": "read"}, duration_ms=50.0, event_id="tc1"),
+        _evt(
+            ExecutionEventType.TOOL_CALL, 2, {"tool_name": "read"}, duration_ms=50.0, event_id="tc1"
+        ),
         _evt(ExecutionEventType.TOOL_RESULT, 3, {"tool_call_id": "tc1"}, event_id="tr1"),
-        _evt(ExecutionEventType.TOOL_CALL, 4, {"tool_name": "read"}, duration_ms=60.0, event_id="tc2"),
-        _evt(ExecutionEventType.TOOL_RESULT, 5, {"tool_call_id": "tc2", "error": True}, event_id="tr2"),
+        _evt(
+            ExecutionEventType.TOOL_CALL, 4, {"tool_name": "read"}, duration_ms=60.0, event_id="tc2"
+        ),
+        _evt(
+            ExecutionEventType.TOOL_RESULT,
+            5,
+            {"tool_call_id": "tc2", "error": True},
+            event_id="tr2",
+        ),
         _evt(ExecutionEventType.ERROR, 6, {"message": "oops"}),
         _evt(ExecutionEventType.AGENT_STOP, 7),
     ]
@@ -82,9 +91,7 @@ def test_detects_tool_error_chain():
 
 def test_detects_think_heavy():
     ta = TraceAnalyzer()
-    events = [
-        _evt(ExecutionEventType.THINK, i) for i in range(10)
-    ] + [
+    events = [_evt(ExecutionEventType.THINK, i) for i in range(10)] + [
         _evt(ExecutionEventType.ACT, 10),
     ]
     result = ta.analyze(events)

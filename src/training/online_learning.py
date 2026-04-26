@@ -3,12 +3,13 @@
 Also provides concept-drift-aware adaptive learning rate training via:
   OnlineLearningConfig, LossWindow, DriftDetector, AdaptiveLRScheduler, OnlineLearner.
 """
+
 from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -19,11 +20,12 @@ from torch import Tensor
 @dataclass
 class OnlineLearningConfig:
     """Configuration for online / streaming learner (legacy replay+EWC API)."""
+
     replay_buffer_size: int = 1000
     replay_batch_size: int = 16
     ewc_lambda: float = 1.0
     drift_detection_window: int = 50
-    drift_threshold: float = 2.0   # z-score threshold for drift detection
+    drift_threshold: float = 2.0  # z-score threshold for drift detection
     learning_rate: float = 1e-4
     # --- drift-adaptive LR fields (used by new API) ---
     window_size: int = 100
@@ -87,7 +89,7 @@ def detect_concept_drift(
     mean2 = sum(second_half) / len(second_half)
 
     variance1 = sum((x - mean1) ** 2 for x in first_half) / len(first_half)
-    std1 = variance1 ** 0.5
+    std1 = variance1**0.5
 
     z_score = (mean2 - mean1) / (std1 + 1e-8)
     return z_score > threshold
@@ -288,6 +290,7 @@ class _LegacyOnlineLearner:
 # ---------------------------------------------------------------------------
 # New drift-aware adaptive-LR online learning API
 # ---------------------------------------------------------------------------
+
 
 class LossWindow:
     """Fixed-size sliding window of scalar loss values."""

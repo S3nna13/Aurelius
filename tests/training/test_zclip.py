@@ -21,12 +21,13 @@ def _params_with_norm(target_norm: float, size: int = 100) -> list[nn.Parameter]
 def _compute_grad_norm(params: list[nn.Parameter]) -> float:
     """Compute L2 grad norm for a list of parameters."""
     total = sum(p.grad.float().norm() ** 2 for p in params if p.grad is not None)
-    return float(total ** 0.5)
+    return float(total**0.5)
 
 
 # ---------------------------------------------------------------------------
 # test_zclip_warmup_clips_to_fallback
 # ---------------------------------------------------------------------------
+
 
 def test_zclip_warmup_clips_to_fallback():
     """During warmup, a huge gradient norm is clipped to <= fallback_clip * 1.01."""
@@ -46,6 +47,7 @@ def test_zclip_warmup_clips_to_fallback():
 # ---------------------------------------------------------------------------
 # test_zclip_no_clip_normal_gradient
 # ---------------------------------------------------------------------------
+
 
 def test_zclip_no_clip_normal_gradient():
     """After warmup, a gradient at the running mean is NOT clipped.
@@ -82,6 +84,7 @@ def test_zclip_no_clip_normal_gradient():
 # test_zclip_clips_spike
 # ---------------------------------------------------------------------------
 
+
 def test_zclip_clips_spike():
     """After warmup, a spike (mean + 10*std) is clipped down to mean + z_threshold*std."""
     warmup = 20
@@ -111,6 +114,7 @@ def test_zclip_clips_spike():
 # test_zclip_ema_updates
 # ---------------------------------------------------------------------------
 
+
 def test_zclip_ema_updates():
     """After several steps, _ema_mean is > 0 and _step is incremented."""
     zclip = ZClip(ema_alpha=0.1, min_warmup_steps=5)
@@ -126,6 +130,7 @@ def test_zclip_ema_updates():
 # ---------------------------------------------------------------------------
 # test_zclip_returns_prenorm
 # ---------------------------------------------------------------------------
+
 
 def test_zclip_returns_prenorm():
     """The return value is the pre-clip norm, not the post-clip norm."""
@@ -145,6 +150,7 @@ def test_zclip_returns_prenorm():
 # ---------------------------------------------------------------------------
 # test_zclip_empty_params
 # ---------------------------------------------------------------------------
+
 
 def test_zclip_empty_params():
     """Returns 0.0 and does not update EMA state when no params have grads."""

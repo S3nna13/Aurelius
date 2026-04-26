@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.megabyte_model import MegabyteConfig, MegabyteModel, PatchEmbedding
+from src.model.megabyte_model import MegabyteConfig, MegabyteModel
 
 
 def _small_cfg(patch_size: int = 4) -> MegabyteConfig:

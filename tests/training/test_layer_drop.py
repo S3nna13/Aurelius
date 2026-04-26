@@ -1,9 +1,7 @@
 """Tests for progressive layer dropping."""
 
-import math
-
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -19,8 +17,14 @@ from src.training.layer_drop import (
 
 def _tiny_config():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -231,4 +235,4 @@ def test_estimate_speedup_formula():
 
 
 def test_estimate_speedup_full_drop():
-    assert estimate_speedup(10, 1.0) == float('inf')
+    assert estimate_speedup(10, 1.0) == float("inf")

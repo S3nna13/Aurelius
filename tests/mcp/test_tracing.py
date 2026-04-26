@@ -1,7 +1,6 @@
 """Tests for MCP tracing."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.mcp.tracing import MCPTracer
 
@@ -31,6 +30,7 @@ class TestMCPTracer:
 
     def test_headers(self):
         from src.mcp.tracing import MCPTracingContext
+
         ctx = MCPTracingContext(trace_id="t1", parent_span_id="p1")
         headers = ctx.to_headers()
         assert headers["x-trace-id"] == "t1"

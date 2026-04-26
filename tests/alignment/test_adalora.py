@@ -1,9 +1,9 @@
 """Tests for AdaLoRA: rank-adaptive SVD LoRA (arXiv:2303.10512)."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.adalora import AdaLoRAConfig, AdaLoRALinear, AdaLoRATrainer
 
@@ -21,6 +21,7 @@ def make_layer() -> AdaLoRALinear:
 # 1. Output shape
 # ---------------------------------------------------------------------------
 
+
 def test_adalora_linear_output_shape():
     layer = make_layer()
     x = torch.randn(2, 8, IN)  # (B, S, in_features)
@@ -32,6 +33,7 @@ def test_adalora_linear_output_shape():
 # 2. Base weight is frozen
 # ---------------------------------------------------------------------------
 
+
 def test_adalora_linear_base_weight_frozen():
     layer = make_layer()
     assert not layer.weight.requires_grad, "weight should be frozen (requires_grad=False)"
@@ -40,6 +42,7 @@ def test_adalora_linear_base_weight_frozen():
 # ---------------------------------------------------------------------------
 # 3. P, Q, lambda_vec are trainable
 # ---------------------------------------------------------------------------
+
 
 def test_adalora_linear_pqv_trainable():
     layer = make_layer()
@@ -52,6 +55,7 @@ def test_adalora_linear_pqv_trainable():
 # 4. Orthogonality loss is non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_orthogonality_loss_nonneg():
     layer = make_layer()
     loss = layer.orthogonality_loss()
@@ -61,6 +65,7 @@ def test_orthogonality_loss_nonneg():
 # ---------------------------------------------------------------------------
 # 5. prune_to_budget keeps exactly target_rank active
 # ---------------------------------------------------------------------------
+
 
 def test_prune_to_budget_masks_correct_count():
     layer = make_layer()
@@ -72,6 +77,7 @@ def test_prune_to_budget_masks_correct_count():
 # ---------------------------------------------------------------------------
 # 6. prune_to_budget keeps the most important singular values
 # ---------------------------------------------------------------------------
+
 
 def test_prune_to_budget_keeps_important():
     layer = make_layer()
@@ -89,6 +95,7 @@ def test_prune_to_budget_keeps_important():
 # ---------------------------------------------------------------------------
 # 7. update_importance changes importance via EMA after backward
 # ---------------------------------------------------------------------------
+
 
 def test_update_importance_updates_ema():
     layer = make_layer()
@@ -111,6 +118,7 @@ def test_update_importance_updates_ema():
 # 8. AdaLoRATrainer.train_step returns the expected metric keys
 # ---------------------------------------------------------------------------
 
+
 def test_adalora_trainer_step_returns_metrics():
     layer = make_layer()
     model = nn.Sequential(layer)
@@ -131,6 +139,7 @@ def test_adalora_trainer_step_returns_metrics():
 # 9. Rank schedule: correct values at boundaries
 # ---------------------------------------------------------------------------
 
+
 def test_adalora_trainer_rank_schedule():
     layer = make_layer()
     model = nn.Sequential(layer)
@@ -150,6 +159,7 @@ def test_adalora_trainer_rank_schedule():
 # ---------------------------------------------------------------------------
 # 10. Active rank decreases after pruning steps
 # ---------------------------------------------------------------------------
+
 
 def test_active_rank_decreases():
     cfg = AdaLoRAConfig(

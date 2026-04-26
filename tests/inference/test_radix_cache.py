@@ -7,17 +7,13 @@ block counting, cache hit rate, stats(), and multiple diverging prefixes.
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from src.inference.radix_cache import (
     CacheBlock,
     RadixCache,
     RadixCacheConfig,
-    RadixNode,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

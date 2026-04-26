@@ -16,12 +16,10 @@ final byte is padded with a zero low nibble.
 
 from __future__ import annotations
 
-from typing import List
-
-
 # ---------------------------------------------------------------------------
 # Clamp helper
 # ---------------------------------------------------------------------------
+
 
 def _clamp_int4(v: int) -> int:
     """Clamp *v* to the unsigned INT4 range [0, 15]."""
@@ -36,7 +34,8 @@ def _clamp_int4(v: int) -> int:
 # pack / unpack
 # ---------------------------------------------------------------------------
 
-def pack_int4(values: List[int]) -> bytes:
+
+def pack_int4(values: list[int]) -> bytes:
     """Pack a list of INT4 values into a :class:`bytes` object.
 
     Each value is clamped to [0, 15].  Pairs of consecutive values are packed
@@ -50,7 +49,7 @@ def pack_int4(values: List[int]) -> bytes:
     Returns:
         Packed bytes of length ``ceil(len(values) / 2)``.
     """
-    result: List[int] = []
+    result: list[int] = []
     i = 0
     while i < len(values):
         high = _clamp_int4(values[i])
@@ -60,7 +59,7 @@ def pack_int4(values: List[int]) -> bytes:
     return bytes(result)
 
 
-def unpack_int4(data: bytes, count: int) -> List[int]:
+def unpack_int4(data: bytes, count: int) -> list[int]:
     """Unpack *count* INT4 values from a :class:`bytes` object.
 
     Args:
@@ -77,10 +76,9 @@ def unpack_int4(data: bytes, count: int) -> List[int]:
     max_count = len(data) * 2
     if count > max_count:
         raise ValueError(
-            f"count={count} exceeds the capacity of {len(data)} bytes "
-            f"(max {max_count} values)."
+            f"count={count} exceeds the capacity of {len(data)} bytes (max {max_count} values)."
         )
-    out: List[int] = []
+    out: list[int] = []
     for byte in data:
         if len(out) >= count:
             break
@@ -93,6 +91,7 @@ def unpack_int4(data: bytes, count: int) -> List[int]:
 # ---------------------------------------------------------------------------
 # Int4Tensor
 # ---------------------------------------------------------------------------
+
 
 class Int4Tensor:
     """Lightweight INT4 tensor backed by packed bytes.
@@ -108,7 +107,7 @@ class Int4Tensor:
         assert t.tolist() == [3, 7, 15, 0, 5]
     """
 
-    def __init__(self, values: List[int]) -> None:
+    def __init__(self, values: list[int]) -> None:
         self._count: int = len(values)
         self._data: bytes = pack_int4(values)
 
@@ -130,7 +129,7 @@ class Int4Tensor:
     # Sequence-like interface
     # ------------------------------------------------------------------
 
-    def tolist(self) -> List[int]:
+    def tolist(self) -> list[int]:
         """Unpack and return all values as a list of ints."""
         return unpack_int4(self._data, self._count)
 

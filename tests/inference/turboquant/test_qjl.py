@@ -1,7 +1,8 @@
 """Tests for QJL Gaussian sketch inner product estimator."""
-import math
-import torch
+
 import pytest
+import torch
+
 from src.inference.turboquant.qjl import QJLSketch
 
 
@@ -66,8 +67,9 @@ def test_estimator_unbiased():
 
     mean_est = sum(estimates) / n_trials
     # With 200 independent sketches mean should be within 10% of true
-    assert abs(mean_est - true_dot) < abs(true_dot) * 0.10 + 0.1, \
+    assert abs(mean_est - true_dot) < abs(true_dot) * 0.10 + 0.1, (
         f"Mean estimate {mean_est:.4f} too far from true {true_dot:.4f}"
+    )
 
 
 def test_s_matrix_is_gaussian(sketch):

@@ -16,7 +16,6 @@ from src.training.gradient_surgery_projection import (
     pcgrad_project_reference,
 )
 
-
 TINY_CFG = AureliusConfig(
     n_layers=2,
     d_model=64,

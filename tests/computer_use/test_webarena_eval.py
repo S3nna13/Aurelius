@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from src.computer_use.browser_driver import StubBrowserDriver
-from src.computer_use.gui_action import ActionType, GUIAction
 from src.computer_use.webarena_eval import (
     WEBARENA_DEFAULT_TASKS,
     WEBARENA_HARNESS_REGISTRY,
@@ -20,10 +19,10 @@ from src.computer_use.webarena_eval import (
     WebTask,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_task(**overrides) -> WebTask:
     """Return a minimal valid WebTask with optional field overrides."""
@@ -55,6 +54,7 @@ def _make_result(**overrides) -> TaskResult:
 # ---------------------------------------------------------------------------
 # WebTask dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestWebTask:
     def test_task_id_field(self):
@@ -96,6 +96,7 @@ class TestWebTask:
 # TaskResult dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestTaskResult:
     def test_success_field_true(self):
         result = _make_result(success=True)
@@ -121,6 +122,7 @@ class TestTaskResult:
 # ---------------------------------------------------------------------------
 # SuccessEvaluator
 # ---------------------------------------------------------------------------
+
 
 class TestSuccessEvaluator:
     def setup_method(self):
@@ -193,6 +195,7 @@ class TestSuccessEvaluator:
 # WebArenaHarness — registry
 # ---------------------------------------------------------------------------
 
+
 class TestWebArenaHarnessRegistry:
     def test_register_task_accessible(self):
         harness = WebArenaHarness()
@@ -212,6 +215,7 @@ class TestWebArenaHarnessRegistry:
 # ---------------------------------------------------------------------------
 # WebArenaHarness — run_task
 # ---------------------------------------------------------------------------
+
 
 class TestWebArenaHarnessRunTask:
     def test_run_task_none_agent_zero_steps(self):
@@ -244,6 +248,7 @@ class TestWebArenaHarnessRunTask:
 # ---------------------------------------------------------------------------
 # WebArenaHarness — score
 # ---------------------------------------------------------------------------
+
 
 class TestWebArenaHarnessScore:
     def _build_tasks_and_results(self):
@@ -289,6 +294,7 @@ class TestWebArenaHarnessScore:
 # ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
+
 
 class TestModuleConstants:
     def test_webarena_default_tasks_has_three(self):

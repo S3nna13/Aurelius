@@ -1,10 +1,10 @@
 """FP16 quantization utilities for memory-efficient inference."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import torch
-
 
 FP16_MAX = 65504.0
 

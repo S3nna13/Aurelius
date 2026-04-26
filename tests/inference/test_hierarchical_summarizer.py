@@ -2,27 +2,34 @@
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.inference.hierarchical_summarizer import (
+    HierarchicalSummarizer,
     SummarizerConfig,
     TextChunk,
     chunk_document,
     encode_chunk,
     greedy_summarize,
-    HierarchicalSummarizer,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     torch.manual_seed(42)
     model = AureliusTransformer(cfg)
@@ -56,6 +63,7 @@ def summarizer(small_model):
 # 1. SummarizerConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_summarizer_config_defaults():
     cfg = SummarizerConfig()
     assert cfg.chunk_size == 256
@@ -68,6 +76,7 @@ def test_summarizer_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. TextChunk fields
 # ---------------------------------------------------------------------------
+
 
 def test_text_chunk_fields():
     chunk = TextChunk(text="hello", token_ids=[1, 2, 3], start_pos=10, level=1)
@@ -86,6 +95,7 @@ def test_text_chunk_default_level():
 # 3. chunk_document: correct number of chunks
 # ---------------------------------------------------------------------------
 
+
 def test_chunk_document_correct_n_chunks():
     ids = list(range(50))
     chunks = chunk_document(ids, chunk_size=20, overlap=5)
@@ -98,6 +108,7 @@ def test_chunk_document_correct_n_chunks():
 # 4. chunk_document: each chunk correct size (except last)
 # ---------------------------------------------------------------------------
 
+
 def test_chunk_document_chunk_sizes():
     ids = list(range(50))
     chunks = chunk_document(ids, chunk_size=20, overlap=5)
@@ -109,6 +120,7 @@ def test_chunk_document_chunk_sizes():
 # ---------------------------------------------------------------------------
 # 5. chunk_document: overlap -- consecutive chunks share tokens
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_document_overlap():
     ids = list(range(40))
@@ -123,6 +135,7 @@ def test_chunk_document_overlap():
 # 6. chunk_document: empty input returns empty list
 # ---------------------------------------------------------------------------
 
+
 def test_chunk_document_empty():
     chunks = chunk_document([], chunk_size=16, overlap=4)
     assert chunks == []
@@ -131,6 +144,7 @@ def test_chunk_document_empty():
 # ---------------------------------------------------------------------------
 # 7. encode_chunk: returns tensor of shape (d_model,)
 # ---------------------------------------------------------------------------
+
 
 def test_encode_chunk_shape(small_model):
     chunk = TextChunk(text="hello", token_ids=[1, 2, 3, 4, 5], start_pos=0)
@@ -143,6 +157,7 @@ def test_encode_chunk_shape(small_model):
 # 8. greedy_summarize: returns string
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_summarize_returns_string(small_model):
     input_ids = [10, 20, 30, 40]
     result = greedy_summarize(small_model, input_ids, max_new_tokens=3, tokenizer_decode=_decode)
@@ -153,6 +168,7 @@ def test_greedy_summarize_returns_string(small_model):
 # 9. HierarchicalSummarizer.summarize_chunk returns string
 # ---------------------------------------------------------------------------
 
+
 def test_summarize_chunk_returns_string(summarizer):
     chunk = TextChunk(text="test sentence", token_ids=_encode("test sentence"), start_pos=0)
     result = summarizer.summarize_chunk(chunk)
@@ -162,6 +178,7 @@ def test_summarize_chunk_returns_string(summarizer):
 # ---------------------------------------------------------------------------
 # 10. HierarchicalSummarizer.summarize_level returns list of TextChunk
 # ---------------------------------------------------------------------------
+
 
 def test_summarize_level_returns_list(summarizer):
     chunks = [
@@ -177,6 +194,7 @@ def test_summarize_level_returns_list(summarizer):
 # ---------------------------------------------------------------------------
 # 11. HierarchicalSummarizer.summarize_level level incremented
 # ---------------------------------------------------------------------------
+
 
 def test_summarize_level_increments_level(summarizer):
     chunks = [
@@ -198,6 +216,7 @@ def test_summarize_level_increments_level_from_higher(summarizer):
 # 12. HierarchicalSummarizer.summarize returns dict with required keys
 # ---------------------------------------------------------------------------
 
+
 def test_summarize_returns_dict_keys(summarizer):
     text = "hello world " * 10
     result = summarizer.summarize(text)
@@ -212,6 +231,7 @@ def test_summarize_returns_dict_keys(summarizer):
 # 13. HierarchicalSummarizer.summarize compression > 1 for long input
 # ---------------------------------------------------------------------------
 
+
 def test_summarize_compression_long_input(summarizer):
     # A long-ish text (more tokens than max_summary_tokens)
     text = "The quick brown fox jumps over the lazy dog. " * 20
@@ -222,6 +242,7 @@ def test_summarize_compression_long_input(summarizer):
 # ---------------------------------------------------------------------------
 # 14. HierarchicalSummarizer.extractive_summary returns string
 # ---------------------------------------------------------------------------
+
 
 def test_extractive_summary_returns_string(summarizer):
     text = "The cat sat on the mat. The dog ran in the park. Birds fly in the sky."

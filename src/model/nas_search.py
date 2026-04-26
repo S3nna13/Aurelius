@@ -1,4 +1,5 @@
 """DARTS-style differentiable Neural Architecture Search with Gumbel-softmax."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,14 +9,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NASConfig:
     """Configuration for DARTS-style NAS search."""
+
     n_ops: int = 4
     d_model: int = 64
     temperature: float = 1.0
@@ -25,6 +27,7 @@ class NASConfig:
 # ---------------------------------------------------------------------------
 # Gumbel-softmax helper
 # ---------------------------------------------------------------------------
+
 
 def gumbel_softmax_weights(logits: Tensor, temperature: float, hard: bool = False) -> Tensor:
     """Compute Gumbel-softmax weights.
@@ -60,6 +63,7 @@ def gumbel_softmax_weights(logits: Tensor, temperature: float, hard: bool = Fals
 # Mixed Operation
 # ---------------------------------------------------------------------------
 
+
 class MixedOp(nn.Module):
     """Weighted mixture of candidate operations with learnable architecture weights."""
 
@@ -85,16 +89,19 @@ class MixedOp(nn.Module):
 # DARTS Cell
 # ---------------------------------------------------------------------------
 
+
 def _build_candidate_ops(d_model: int) -> nn.ModuleList:
     """Build the list of candidate operations for a cell."""
     relu_linear = nn.Sequential(nn.ReLU(), nn.Linear(d_model, d_model))
     norm_linear = nn.Sequential(nn.LayerNorm(d_model), nn.Linear(d_model, d_model))
-    return nn.ModuleList([
-        nn.Identity(),
-        nn.Linear(d_model, d_model),
-        relu_linear,
-        norm_linear,
-    ])
+    return nn.ModuleList(
+        [
+            nn.Identity(),
+            nn.Linear(d_model, d_model),
+            relu_linear,
+            norm_linear,
+        ]
+    )
 
 
 class DARTSCell(nn.Module):
@@ -118,6 +125,7 @@ class DARTSCell(nn.Module):
 # ---------------------------------------------------------------------------
 # DARTS Searcher
 # ---------------------------------------------------------------------------
+
 
 class DARTSSearcher:
     """Manages bi-level optimization for a collection of DARTS cells."""

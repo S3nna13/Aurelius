@@ -4,14 +4,14 @@ Pure stdlib + torch; fast string-based inputs.
 """
 
 import math
+
 import pytest
 import torch
-
 from aurelius.eval.nlg_metrics import (
-    NGramCounter,
     BLEUScore,
-    ROUGEScore,
     METEORScore,
+    NGramCounter,
+    ROUGEScore,
     SemanticSimilarityScore,
 )
 
@@ -97,7 +97,7 @@ def test_bleu_corpus_vs_sentence():
     ]
     refs = [
         ["the", "cat", "sat"],  # perfect match
-        ["goodbye", "earth"],   # zero match
+        ["goodbye", "earth"],  # zero match
     ]
     corpus = bleu.corpus_bleu(hyps, refs)
     # worst sentence BLEU (smooth) > 0; corpus should be > second sentence

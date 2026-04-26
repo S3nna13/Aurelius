@@ -16,9 +16,9 @@ Pure stdlib: only :mod:`re`, :mod:`dataclasses`, :mod:`enum`.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Iterable
+from enum import StrEnum
 
 __all__ = [
     "DEFAULT_DENYLIST",
@@ -29,7 +29,7 @@ __all__ = [
 ]
 
 
-class DenylistCategory(str, Enum):
+class DenylistCategory(StrEnum):
     """Top-level danger categories for denylist rules."""
 
     KERNEL_SURFACE = "kernel_surface"
@@ -328,9 +328,7 @@ class ToolSandboxDenylist:
         rules: list[DenylistRule] | None = None,
         strict: bool = True,
     ) -> None:
-        self._rules: list[DenylistRule] = list(
-            rules if rules is not None else DEFAULT_DENYLIST
-        )
+        self._rules: list[DenylistRule] = list(rules if rules is not None else DEFAULT_DENYLIST)
         self.strict = bool(strict)
         self._compiled: dict[str, re.Pattern[str]] = {}
         for rule in self._rules:
@@ -340,9 +338,7 @@ class ToolSandboxDenylist:
         try:
             self._compiled[rule.id] = re.compile(rule.pattern, re.IGNORECASE)
         except re.error as exc:
-            raise ValueError(
-                f"invalid regex for rule {rule.id!r}: {exc}"
-            ) from exc
+            raise ValueError(f"invalid regex for rule {rule.id!r}: {exc}") from exc
 
     def add_rule(self, rule: DenylistRule) -> None:
         if any(r.id == rule.id for r in self._rules):

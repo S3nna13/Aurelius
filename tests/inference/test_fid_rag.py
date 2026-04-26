@@ -2,29 +2,35 @@
 
 import pytest
 import torch
-import torch.nn as nn
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.fid_rag import (
     FiDConfig,
-    encode_passages,
-    concat_fusion,
-    average_fusion,
-    FusionCrossAttention,
-    FiDModel,
     FiDGenerator,
+    FiDModel,
+    FusionCrossAttention,
+    average_fusion,
+    concat_fusion,
+    encode_passages,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -55,6 +61,7 @@ def _input_ids(length=4, vocab=256):
 # 1. FiDConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_fidconfig_defaults():
     cfg = FiDConfig()
     assert cfg.n_passages == 5
@@ -66,6 +73,7 @@ def test_fidconfig_defaults():
 # ---------------------------------------------------------------------------
 # 2. FiDConfig custom values
 # ---------------------------------------------------------------------------
+
 
 def test_fidconfig_custom():
     cfg = FiDConfig(n_passages=10, max_passage_len=64, fusion_method="average", d_model=128)
@@ -79,6 +87,7 @@ def test_fidconfig_custom():
 # 3. encode_passages returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_encode_passages_count(small_model):
     passages = _passages(n=3)
     result = encode_passages(small_model, passages)
@@ -89,6 +98,7 @@ def test_encode_passages_count(small_model):
 # ---------------------------------------------------------------------------
 # 4. encode_passages each element has correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_encode_passages_shapes(small_model, small_cfg):
     T = 8
@@ -102,6 +112,7 @@ def test_encode_passages_shapes(small_model, small_cfg):
 # 5. encode_passages with single passage
 # ---------------------------------------------------------------------------
 
+
 def test_encode_passages_single(small_model, small_cfg):
     passages = _passages(n=1, length=6)
     result = encode_passages(small_model, passages)
@@ -112,6 +123,7 @@ def test_encode_passages_single(small_model, small_cfg):
 # ---------------------------------------------------------------------------
 # 6. encode_passages with 1D input (unbatched)
 # ---------------------------------------------------------------------------
+
 
 def test_encode_passages_1d_input(small_model, small_cfg):
     torch.manual_seed(99)
@@ -125,6 +137,7 @@ def test_encode_passages_1d_input(small_model, small_cfg):
 # 7. concat_fusion shape
 # ---------------------------------------------------------------------------
 
+
 def test_concat_fusion_shape():
     t1 = torch.randn(1, 5, 64)
     t2 = torch.randn(1, 7, 64)
@@ -135,6 +148,7 @@ def test_concat_fusion_shape():
 # ---------------------------------------------------------------------------
 # 8. concat_fusion preserves content
 # ---------------------------------------------------------------------------
+
 
 def test_concat_fusion_content():
     t1 = torch.ones(1, 3, 8)
@@ -148,6 +162,7 @@ def test_concat_fusion_content():
 # 9. average_fusion shape
 # ---------------------------------------------------------------------------
 
+
 def test_average_fusion_shape():
     tensors = [torch.randn(1, 5, 64) for _ in range(4)]
     out = average_fusion(tensors)
@@ -157,6 +172,7 @@ def test_average_fusion_shape():
 # ---------------------------------------------------------------------------
 # 10. average_fusion correctness
 # ---------------------------------------------------------------------------
+
 
 def test_average_fusion_correctness():
     t1 = torch.ones(1, 3, 8) * 2.0
@@ -172,6 +188,7 @@ def test_average_fusion_correctness():
 # 11. FusionCrossAttention output shape
 # ---------------------------------------------------------------------------
 
+
 def test_cross_attention_shape():
     ca = FusionCrossAttention(d_model=64, n_heads=4)
     query = torch.randn(1, 5, 64)
@@ -183,6 +200,7 @@ def test_cross_attention_shape():
 # ---------------------------------------------------------------------------
 # 12. FusionCrossAttention preserves batch dim
 # ---------------------------------------------------------------------------
+
 
 def test_cross_attention_batch():
     ca = FusionCrossAttention(d_model=32, n_heads=2)
@@ -196,8 +214,11 @@ def test_cross_attention_batch():
 # 13. FiDModel forward with concat fusion
 # ---------------------------------------------------------------------------
 
+
 def test_fid_model_concat(small_model, small_cfg):
-    cfg = FiDConfig(n_passages=2, max_passage_len=8, fusion_method="concat", d_model=small_cfg.d_model)
+    cfg = FiDConfig(
+        n_passages=2, max_passage_len=8, fusion_method="concat", d_model=small_cfg.d_model
+    )
     fid = FiDModel(small_model, cfg)
     fid.eval()
 
@@ -213,8 +234,11 @@ def test_fid_model_concat(small_model, small_cfg):
 # 14. FiDModel forward with average fusion
 # ---------------------------------------------------------------------------
 
+
 def test_fid_model_average(small_model, small_cfg):
-    cfg = FiDConfig(n_passages=2, max_passage_len=8, fusion_method="average", d_model=small_cfg.d_model)
+    cfg = FiDConfig(
+        n_passages=2, max_passage_len=8, fusion_method="average", d_model=small_cfg.d_model
+    )
     fid = FiDModel(small_model, cfg)
     fid.eval()
 
@@ -230,8 +254,11 @@ def test_fid_model_average(small_model, small_cfg):
 # 15. FiDModel forward with cross_attention fusion
 # ---------------------------------------------------------------------------
 
+
 def test_fid_model_cross_attention(small_model, small_cfg):
-    cfg = FiDConfig(n_passages=2, max_passage_len=8, fusion_method="cross_attention", d_model=small_cfg.d_model)
+    cfg = FiDConfig(
+        n_passages=2, max_passage_len=8, fusion_method="cross_attention", d_model=small_cfg.d_model
+    )
     fid = FiDModel(small_model, cfg)
     fid.eval()
 
@@ -247,6 +274,7 @@ def test_fid_model_cross_attention(small_model, small_cfg):
 # 16. FiDModel raises on unknown fusion method
 # ---------------------------------------------------------------------------
 
+
 def test_fid_model_unknown_fusion(small_model, small_cfg):
     cfg = FiDConfig(fusion_method="unknown", d_model=small_cfg.d_model)
     fid = FiDModel(small_model, cfg)
@@ -257,6 +285,7 @@ def test_fid_model_unknown_fusion(small_model, small_cfg):
 # ---------------------------------------------------------------------------
 # 17. FiDGenerator generate returns correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_fid_generator_shape(small_model, small_cfg):
     cfg = FiDConfig(n_passages=2, fusion_method="concat", d_model=small_cfg.d_model)
@@ -275,6 +304,7 @@ def test_fid_generator_shape(small_model, small_cfg):
 # ---------------------------------------------------------------------------
 # 18. FiDGenerator with eos_token_id stops early
 # ---------------------------------------------------------------------------
+
 
 def test_fid_generator_eos_stop(small_model, small_cfg):
     cfg = FiDConfig(n_passages=1, fusion_method="average", d_model=small_cfg.d_model)
@@ -296,6 +326,7 @@ def test_fid_generator_eos_stop(small_model, small_cfg):
 # 19. FiDGenerator output starts with input_ids
 # ---------------------------------------------------------------------------
 
+
 def test_fid_generator_starts_with_input(small_model, small_cfg):
     cfg = FiDConfig(n_passages=2, fusion_method="concat", d_model=small_cfg.d_model)
     fid = FiDModel(small_model, cfg)
@@ -312,6 +343,7 @@ def test_fid_generator_starts_with_input(small_model, small_cfg):
 # ---------------------------------------------------------------------------
 # 20. encode_passages does not require grad
 # ---------------------------------------------------------------------------
+
 
 def test_encode_passages_no_grad(small_model):
     passages = _passages(n=2, length=6)

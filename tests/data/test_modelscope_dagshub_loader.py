@@ -1,29 +1,32 @@
 """Tests for modelscope_dagshub_loader — no network required."""
+
 from __future__ import annotations
+
 import pytest
+
 from src.data.modelscope_dagshub_loader import (
-    # mock generators
-    mock_modelscope_samples,
-    mock_modelscope_model_cards,
-    mock_dagshub_mlruns,
-    mock_dagshub_datafiles,
-    # parsers
-    parse_modelscope_sample,
-    parse_modelscope_model_card,
-    parse_dagshub_mlrun,
-    parse_dagshub_datafile,
+    filter_by_language,
     # filters
     filter_by_quality,
-    filter_by_language,
+    mlrun_to_summary,
+    mock_dagshub_datafiles,
+    mock_dagshub_mlruns,
+    mock_modelscope_model_cards,
+    # mock generators
+    mock_modelscope_samples,
     # converters
     modelscope_to_sft_format,
-    mlrun_to_summary,
+    parse_dagshub_datafile,
+    parse_dagshub_mlrun,
+    parse_modelscope_model_card,
+    # parsers
+    parse_modelscope_sample,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. mock_modelscope_samples has all required fields
 # ---------------------------------------------------------------------------
+
 
 def test_mock_modelscope_samples_required_fields():
     samples = mock_modelscope_samples(4)
@@ -38,6 +41,7 @@ def test_mock_modelscope_samples_required_fields():
 # 2. parse_modelscope_sample quality_score is float
 # ---------------------------------------------------------------------------
 
+
 def test_parse_modelscope_sample_quality_score_is_float():
     raw = mock_modelscope_samples(1)[0]
     sample = parse_modelscope_sample(raw)
@@ -47,6 +51,7 @@ def test_parse_modelscope_sample_quality_score_is_float():
 # ---------------------------------------------------------------------------
 # 3. parse_modelscope_sample history is list
 # ---------------------------------------------------------------------------
+
 
 def test_parse_modelscope_sample_history_is_list():
     raw = mock_modelscope_samples(2)
@@ -58,6 +63,7 @@ def test_parse_modelscope_sample_history_is_list():
 # ---------------------------------------------------------------------------
 # 4. mock_modelscope_model_cards has model_id, task, metrics
 # ---------------------------------------------------------------------------
+
 
 def test_mock_modelscope_model_cards_required_fields():
     cards = mock_modelscope_model_cards(4)
@@ -72,6 +78,7 @@ def test_mock_modelscope_model_cards_required_fields():
 # 5. parse_modelscope_model_card languages is list
 # ---------------------------------------------------------------------------
 
+
 def test_parse_modelscope_model_card_languages_is_list():
     raws = mock_modelscope_model_cards(3)
     for raw in raws:
@@ -82,6 +89,7 @@ def test_parse_modelscope_model_card_languages_is_list():
 # ---------------------------------------------------------------------------
 # 6. mock_dagshub_mlruns has run_id, metrics, params, start/end time
 # ---------------------------------------------------------------------------
+
 
 def test_mock_dagshub_mlruns_required_fields():
     runs = mock_dagshub_mlruns(4)
@@ -98,6 +106,7 @@ def test_mock_dagshub_mlruns_required_fields():
 # 7. parse_dagshub_mlrun duration_seconds = end - start
 # ---------------------------------------------------------------------------
 
+
 def test_parse_dagshub_mlrun_duration_seconds():
     raw = mock_dagshub_mlruns(1)[0]
     run = parse_dagshub_mlrun(raw)
@@ -108,6 +117,7 @@ def test_parse_dagshub_mlrun_duration_seconds():
 # ---------------------------------------------------------------------------
 # 8. mock_dagshub_datafiles has path, md5, size
 # ---------------------------------------------------------------------------
+
 
 def test_mock_dagshub_datafiles_required_fields():
     files = mock_dagshub_datafiles(4)
@@ -122,6 +132,7 @@ def test_mock_dagshub_datafiles_required_fields():
 # 9. parse_dagshub_datafile size_bytes is int
 # ---------------------------------------------------------------------------
 
+
 def test_parse_dagshub_datafile_size_bytes_is_int():
     raws = mock_dagshub_datafiles(2)
     for raw in raws:
@@ -132,6 +143,7 @@ def test_parse_dagshub_datafile_size_bytes_is_int():
 # ---------------------------------------------------------------------------
 # 10. filter_by_quality removes low-score samples
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_quality_removes_low_scores():
     raws = mock_modelscope_samples(4)
@@ -147,6 +159,7 @@ def test_filter_by_quality_removes_low_scores():
 # 11. filter_by_language returns only matching language
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_language_returns_matching_only():
     raws = mock_modelscope_samples(4)
     samples = [parse_modelscope_sample(r) for r in raws]
@@ -159,6 +172,7 @@ def test_filter_by_language_returns_matching_only():
 # ---------------------------------------------------------------------------
 # 12. modelscope_to_sft_format returns dict with 'messages' list
 # ---------------------------------------------------------------------------
+
 
 def test_modelscope_to_sft_format_structure():
     raw = mock_modelscope_samples(1)[0]
@@ -176,6 +190,7 @@ def test_modelscope_to_sft_format_structure():
 # 13. mlrun_to_summary has duration_min and best_metric
 # ---------------------------------------------------------------------------
 
+
 def test_mlrun_to_summary_has_required_keys():
     raw = mock_dagshub_mlruns(1)[0]
     run = parse_dagshub_mlrun(raw)
@@ -190,6 +205,7 @@ def test_mlrun_to_summary_has_required_keys():
 # 14. mlrun_to_summary duration_min = duration_seconds / 60
 # ---------------------------------------------------------------------------
 
+
 def test_mlrun_to_summary_duration_min_calculation():
     raw = mock_dagshub_mlruns(1)[0]
     run = parse_dagshub_mlrun(raw)
@@ -201,6 +217,7 @@ def test_mlrun_to_summary_duration_min_calculation():
 # ---------------------------------------------------------------------------
 # Bonus: best_metric is the key with the highest value
 # ---------------------------------------------------------------------------
+
 
 def test_mlrun_to_summary_best_metric_is_highest():
     raw = mock_dagshub_mlruns(1)[0]

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from src.agent.skill_composer import (
-    DEFAULT_SKILL_COMPOSER,
     SKILL_COMPOSER_REGISTRY,
-    CompositionResult,
     CompositionStep,
     SkillComposer,
     SkillCompositionError,
@@ -18,9 +18,6 @@ from src.agent.skill_executor import (
     SkillExecutionError,
     SkillExecutor,
 )
-
-
-import re
 
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
@@ -125,9 +122,7 @@ class TestSkillComposerInit:
 class TestExecutePipeline:
     def test_single_step(self) -> None:
         composer = SkillComposer(executor=FakeExecutor())
-        result = composer.execute_pipeline(
-            [CompositionStep(skill_id="s1", instructions="hello")]
-        )
+        result = composer.execute_pipeline([CompositionStep(skill_id="s1", instructions="hello")])
         assert result.overall_success is True
         assert "output" in result.outputs
         assert result.outputs["output"].output == "[s1] hello"
@@ -135,12 +130,8 @@ class TestExecutePipeline:
     def test_multi_step_context_passing(self) -> None:
         composer = SkillComposer(executor=FakeExecutor())
         steps = [
-            CompositionStep(
-                skill_id="s1", instructions="step1", output_key="step1_out"
-            ),
-            CompositionStep(
-                skill_id="s2", instructions="{step1_out}", output_key="step2_out"
-            ),
+            CompositionStep(skill_id="s1", instructions="step1", output_key="step1_out"),
+            CompositionStep(skill_id="s2", instructions="{step1_out}", output_key="step2_out"),
         ]
         result = composer.execute_pipeline(steps)
         assert result.overall_success is True
@@ -163,9 +154,7 @@ class TestExecutePipeline:
 
     def test_skill_execution_error_caught(self) -> None:
         composer = SkillComposer(executor=RaisingExecutor())
-        result = composer.execute_pipeline(
-            [CompositionStep(skill_id="s1", instructions="x")]
-        )
+        result = composer.execute_pipeline([CompositionStep(skill_id="s1", instructions="x")])
         assert result.overall_success is False
         assert result.outputs["output"].success is False
         assert "boom" in result.outputs["output"].output
@@ -182,9 +171,7 @@ class TestExecutePipeline:
 
     def test_duration_non_negative(self) -> None:
         composer = SkillComposer(executor=FakeExecutor())
-        result = composer.execute_pipeline(
-            [CompositionStep(skill_id="s1", instructions="hello")]
-        )
+        result = composer.execute_pipeline([CompositionStep(skill_id="s1", instructions="hello")])
         assert result.total_duration_ms >= 0
 
     def test_same_output_key_overwrites(self) -> None:

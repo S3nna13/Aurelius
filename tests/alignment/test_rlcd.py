@@ -12,10 +12,10 @@ import torch
 
 from src.alignment.rlcd import RLCDConfig, RLCDLoss, RLCDPairGenerator
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_log_probs(B: int, T: int, value: float = -1.0) -> torch.Tensor:
     """Return a (B, T) tensor filled with *value*."""
@@ -29,6 +29,7 @@ def _all_ones_mask(B: int, T: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # RLCDConfig
 # ---------------------------------------------------------------------------
+
 
 class TestRLCDConfig:
     def test_defaults(self):
@@ -45,6 +46,7 @@ class TestRLCDConfig:
 # ---------------------------------------------------------------------------
 # RLCDLoss — shape & basics
 # ---------------------------------------------------------------------------
+
 
 class TestRLCDLossShape:
     """Test 1 — loss is a scalar."""
@@ -73,6 +75,7 @@ class TestRLCDLossShape:
 # Test 2 — Gradient flow
 # ---------------------------------------------------------------------------
 
+
 class TestGradientFlow:
     def test_finite_grads_after_backward(self):
         B, T = 3, 10
@@ -80,7 +83,7 @@ class TestGradientFlow:
         pos_lp = _make_log_probs(B, T).requires_grad_(True)
         neg_lp = _make_log_probs(B, T).requires_grad_(True)
         ref_lp = _make_log_probs(B, T)
-        mask   = _all_ones_mask(B, T)
+        mask = _all_ones_mask(B, T)
 
         loss, _ = loss_fn(pos_lp, neg_lp, ref_lp, ref_lp, mask, mask)
         loss.backward()
@@ -95,12 +98,13 @@ class TestGradientFlow:
 # Test 3 — Loss ≈ log(2) when policy == reference
 # ---------------------------------------------------------------------------
 
+
 class TestLossAtReference:
     def test_loss_approx_log2_when_policy_equals_reference(self):
         """When π_θ = π_ref the log-ratio is 0 → margin = 0 → loss = -log σ(0) = log 2."""
         B, T = 8, 20
         loss_fn = RLCDLoss()
-        lp   = _make_log_probs(B, T, value=-2.0)
+        lp = _make_log_probs(B, T, value=-2.0)
         mask = _all_ones_mask(B, T)
 
         loss, _ = loss_fn(lp, lp, lp, lp, mask, mask)
@@ -111,20 +115,21 @@ class TestLossAtReference:
 # Test 4 — Loss decreases when positives outperform negatives
 # ---------------------------------------------------------------------------
 
+
 class TestLossDirection:
     def test_better_positives_give_lower_loss(self):
         """Positive completions closer to reference than negatives → lower loss."""
         B, T = 4, 12
         loss_fn = RLCDLoss()
         ref_lp = _make_log_probs(B, T, value=-1.0)
-        mask   = _all_ones_mask(B, T)
+        mask = _all_ones_mask(B, T)
 
         # Baseline: policy == reference (loss = log 2)
         base_loss, _ = loss_fn(ref_lp, ref_lp, ref_lp, ref_lp, mask, mask)
 
         # Policy improves on positives (higher log-prob) and degrades on negatives
         pos_lp_better = _make_log_probs(B, T, value=-0.5)  # higher than ref
-        neg_lp_worse  = _make_log_probs(B, T, value=-2.0)  # lower than ref
+        neg_lp_worse = _make_log_probs(B, T, value=-2.0)  # lower than ref
 
         better_loss, _ = loss_fn(pos_lp_better, neg_lp_worse, ref_lp, ref_lp, mask, mask)
         assert better_loss.item() < base_loss.item(), (
@@ -137,15 +142,16 @@ class TestLossDirection:
 # Test 5 — Token masking
 # ---------------------------------------------------------------------------
 
+
 class TestTokenMasking:
     def test_masked_tokens_dont_affect_loss(self):
         """Zeroing out extra tokens via mask should not change the loss."""
         B, T = 2, 10
         loss_fn = RLCDLoss()
 
-        pos_lp  = torch.randn(B, T)
-        neg_lp  = torch.randn(B, T)
-        ref_lp  = torch.randn(B, T)
+        pos_lp = torch.randn(B, T)
+        neg_lp = torch.randn(B, T)
+        ref_lp = torch.randn(B, T)
 
         # First 5 tokens are valid
         mask_short = torch.zeros(B, T)
@@ -162,7 +168,9 @@ class TestTokenMasking:
         mask_full = torch.ones(B, T)
 
         loss_short, _ = loss_fn(pos_lp, neg_lp, ref_lp, ref_lp, mask_short, mask_short)
-        loss_full,  _ = loss_fn(pos_lp_full, neg_lp_full, ref_lp_full, ref_lp_full, mask_full, mask_full)
+        loss_full, _ = loss_fn(
+            pos_lp_full, neg_lp_full, ref_lp_full, ref_lp_full, mask_full, mask_full
+        )
 
         assert loss_short.item() == pytest.approx(loss_full.item(), abs=1e-5), (
             "Masking extra (identical) tokens changed the loss"
@@ -173,15 +181,16 @@ class TestTokenMasking:
 # Tests 6 & 7 — RLCDPairGenerator.prepare_inputs
 # ---------------------------------------------------------------------------
 
+
 class TestPairGeneratorPrepareInputs:
     def test_prepend_order(self):
         """Test 6 — output starts with prompt tokens then instruction tokens."""
         gen = RLCDPairGenerator()
         B, T_inst, T_p = 2, 6, 3
 
-        inst  = torch.arange(T_inst).unsqueeze(0).expand(B, -1)   # (2, 6)
-        p_pos = torch.tensor([100, 101, 102])                       # (3,)
-        p_neg = torch.tensor([200, 201, 202])                       # (3,)
+        inst = torch.arange(T_inst).unsqueeze(0).expand(B, -1)  # (2, 6)
+        p_pos = torch.tensor([100, 101, 102])  # (3,)
+        p_neg = torch.tensor([200, 201, 202])  # (3,)
 
         pos_out, neg_out = gen.prepare_inputs(inst, p_pos, p_neg)
 
@@ -197,7 +206,7 @@ class TestPairGeneratorPrepareInputs:
         gen = RLCDPairGenerator()
         B, T_inst, T_p = 3, 8, 4
 
-        inst  = torch.zeros(B, T_inst, dtype=torch.long)
+        inst = torch.zeros(B, T_inst, dtype=torch.long)
         p_pos = torch.zeros(T_p, dtype=torch.long)
         p_neg = torch.zeros(T_p, dtype=torch.long)
 
@@ -210,6 +219,7 @@ class TestPairGeneratorPrepareInputs:
 # ---------------------------------------------------------------------------
 # Test 8 — Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 class TestDeterminism:
     def test_same_seed_same_loss(self):
@@ -226,12 +236,13 @@ class TestDeterminism:
             return loss.item()
 
         assert _run(42) == pytest.approx(_run(42), abs=0.0)
-        assert _run(7)  == pytest.approx(_run(7),  abs=0.0)
+        assert _run(7) == pytest.approx(_run(7), abs=0.0)
 
 
 # ---------------------------------------------------------------------------
 # Test 9 — Numerical stability (extreme log-probs)
 # ---------------------------------------------------------------------------
+
 
 class TestNumericalStability:
     def test_no_nan_inf_with_extreme_log_probs(self):
@@ -243,13 +254,15 @@ class TestNumericalStability:
             lp = _make_log_probs(B, T, value=val)
             loss, metrics = loss_fn(lp, lp, lp, lp, mask, mask)
             assert torch.isfinite(loss), f"loss not finite for log_prob={val}"
-            assert all(math.isfinite(v) for v in metrics.values()), \
+            assert all(math.isfinite(v) for v in metrics.values()), (
                 f"metrics contain non-finite values for log_prob={val}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # Test 11 — Beta scaling
 # ---------------------------------------------------------------------------
+
 
 class TestBetaScaling:
     def test_higher_beta_stronger_kl_penalty(self):
@@ -278,6 +291,7 @@ class TestBetaScaling:
 # Test 12 — Sequence length tolerance (different T+ vs T-)
 # ---------------------------------------------------------------------------
 
+
 class TestDifferentSequenceLengths:
     def test_pos_neg_different_lengths(self):
         """pos and neg completions can have different padded lengths via masking."""
@@ -285,12 +299,12 @@ class TestDifferentSequenceLengths:
         T_pos, T_neg = 12, 8
         loss_fn = RLCDLoss()
 
-        pos_lp      = torch.randn(B, T_pos)
-        ref_pos_lp  = torch.randn(B, T_pos)
-        neg_lp      = torch.randn(B, T_neg)
-        ref_neg_lp  = torch.randn(B, T_neg)
-        pos_mask    = _all_ones_mask(B, T_pos)
-        neg_mask    = _all_ones_mask(B, T_neg)
+        pos_lp = torch.randn(B, T_pos)
+        ref_pos_lp = torch.randn(B, T_pos)
+        neg_lp = torch.randn(B, T_neg)
+        ref_neg_lp = torch.randn(B, T_neg)
+        pos_mask = _all_ones_mask(B, T_pos)
+        neg_mask = _all_ones_mask(B, T_neg)
 
         loss, metrics = loss_fn(pos_lp, neg_lp, ref_pos_lp, ref_neg_lp, pos_mask, neg_mask)
         assert loss.shape == torch.Size([])
@@ -300,6 +314,7 @@ class TestDifferentSequenceLengths:
 # ---------------------------------------------------------------------------
 # Test 13 — Batch size 1
 # ---------------------------------------------------------------------------
+
 
 class TestBatchSizeOne:
     def test_single_example(self):
@@ -316,9 +331,9 @@ class TestBatchSizeOne:
 
     def test_prepare_inputs_batch_size_one(self):
         gen = RLCDPairGenerator()
-        inst  = torch.tensor([[1, 2, 3]])    # (1, 3)
-        p_pos = torch.tensor([10, 11])       # (2,)
-        p_neg = torch.tensor([20, 21])       # (2,)
+        inst = torch.tensor([[1, 2, 3]])  # (1, 3)
+        p_pos = torch.tensor([10, 11])  # (2,)
+        p_neg = torch.tensor([20, 21])  # (2,)
 
         pos_out, neg_out = gen.prepare_inputs(inst, p_pos, p_neg)
         assert pos_out.shape == (1, 5)

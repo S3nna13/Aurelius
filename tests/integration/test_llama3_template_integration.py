@@ -20,7 +20,7 @@ def test_llama3_round_trip_via_registry() -> None:
         Message(role="system", content="sys"),
         Message(role="user", content="hi"),
         Message(role="assistant", content="hello"),
-        Message(role="tool", content="{\"ok\": 1}"),
+        Message(role="tool", content='{"ok": 1}'),
     ]
     wire = tpl.encode(msgs)
     assert tpl.decode(wire) == msgs

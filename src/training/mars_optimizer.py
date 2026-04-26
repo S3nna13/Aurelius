@@ -10,10 +10,10 @@ than either pure Adam or pure SGDM in both convex and non-convex settings.
 Reference: Yuan & Gao 2024, "MARS: Unleashing the Power of Variance Reduction
 for Training Large Models", arXiv:2411.10438
 """
+
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 from torch.optim import Optimizer
@@ -112,7 +112,7 @@ class MARSOptimizer(Optimizer):
     # ------------------------------------------------------------------
 
     @torch.no_grad()
-    def step(self, closure=None) -> Optional[float]:
+    def step(self, closure=None) -> float | None:
         """Perform a single MARS optimization step.
 
         Args:
@@ -154,7 +154,7 @@ class MARSOptimizer(Optimizer):
 
                 exp_avg = state["exp_avg"]
                 exp_avg_sq = state["exp_avg_sq"]
-                last_grad: Optional[torch.Tensor] = state["last_grad"]
+                last_grad: torch.Tensor | None = state["last_grad"]
 
                 # ----------------------------------------------------------
                 # 1. Compute variance-reduced gradient c_t
@@ -185,8 +185,8 @@ class MARSOptimizer(Optimizer):
                     exp_avg_sq.mul_(beta2).addcmul_(c_t, c_t, value=1.0 - beta2)
 
                     # Bias correction
-                    bias_correction1 = 1.0 - beta1 ** step
-                    bias_correction2 = 1.0 - beta2 ** step
+                    bias_correction1 = 1.0 - beta1**step
+                    bias_correction2 = 1.0 - beta2**step
 
                     # Adam update: m_hat / (sqrt(v_hat) + eps)
                     step_size = lr / bias_correction1

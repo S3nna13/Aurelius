@@ -2,23 +2,24 @@
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.eval.capability_eval import (
     CapabilityConfig,
+    CapabilityEvaluator,
     EvalExample,
-    TaskResult,
+    ExactMatchScorer,
     GreedyGenerator,
     MultipleChoiceEvaluator,
-    ExactMatchScorer,
-    CapabilityEvaluator,
+    TaskResult,
     create_synthetic_examples,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -52,6 +53,7 @@ def tokenizer_decode():
 # 1. CapabilityConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_capability_config_defaults():
     cfg = CapabilityConfig()
     assert cfg.n_shots == 0
@@ -64,6 +66,7 @@ def test_capability_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. EvalExample fields
 # ---------------------------------------------------------------------------
+
 
 def test_eval_example_fields():
     ex = EvalExample(
@@ -89,6 +92,7 @@ def test_eval_example_fields():
 # 3. TaskResult fields
 # ---------------------------------------------------------------------------
 
+
 def test_task_result_fields():
     result = TaskResult(
         task="math",
@@ -108,6 +112,7 @@ def test_task_result_fields():
 # 4. GreedyGenerator returns string
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_generator_returns_string(small_model, tokenizer_encode, tokenizer_decode):
     gen = GreedyGenerator(small_model, tokenizer_encode, tokenizer_decode)
     result = gen.generate("hello", max_new_tokens=5)
@@ -117,6 +122,7 @@ def test_greedy_generator_returns_string(small_model, tokenizer_encode, tokenize
 # ---------------------------------------------------------------------------
 # 5. GreedyGenerator batch length
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_generator_batch_length(small_model, tokenizer_encode, tokenizer_decode):
     gen = GreedyGenerator(small_model, tokenizer_encode, tokenizer_decode)
@@ -132,17 +138,20 @@ def test_greedy_generator_batch_length(small_model, tokenizer_encode, tokenizer_
 # 6. MultipleChoiceEvaluator score is float
 # ---------------------------------------------------------------------------
 
+
 def test_mc_evaluator_score_is_float(small_model, tokenizer_encode):
     ev = MultipleChoiceEvaluator(small_model, tokenizer_encode)
     score = ev.score_choice("The capital of France is", "Paris")
     assert isinstance(score, float)
     import math
+
     assert math.isfinite(score)
 
 
 # ---------------------------------------------------------------------------
 # 7. MultipleChoiceEvaluator predict returns valid index
 # ---------------------------------------------------------------------------
+
 
 def test_mc_evaluator_predict_valid_index(small_model, tokenizer_encode):
     ev = MultipleChoiceEvaluator(small_model, tokenizer_encode)
@@ -156,6 +165,7 @@ def test_mc_evaluator_predict_valid_index(small_model, tokenizer_encode):
 # 8. ExactMatchScorer identical -> 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_exact_match_scorer_identical():
     scorer = ExactMatchScorer()
     assert scorer.score("Paris", "Paris") == 1.0
@@ -167,6 +177,7 @@ def test_exact_match_scorer_identical():
 # 9. ExactMatchScorer different -> 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_exact_match_scorer_different():
     scorer = ExactMatchScorer()
     assert scorer.score("London", "Paris") == 0.0
@@ -176,6 +187,7 @@ def test_exact_match_scorer_different():
 # ---------------------------------------------------------------------------
 # 10. CapabilityEvaluator.evaluate_example
 # ---------------------------------------------------------------------------
+
 
 def test_capability_evaluator_evaluate_example(small_model, tokenizer_encode, tokenizer_decode):
     cfg = CapabilityConfig(max_new_tokens=4)
@@ -205,13 +217,19 @@ def test_capability_evaluator_evaluate_example(small_model, tokenizer_encode, to
 # 11. CapabilityEvaluator.summary_report keys
 # ---------------------------------------------------------------------------
 
+
 def test_capability_evaluator_summary_report_keys(small_model, tokenizer_encode, tokenizer_decode):
     cfg = CapabilityConfig(max_new_tokens=4)
     evaluator = CapabilityEvaluator(small_model, cfg, tokenizer_encode, tokenizer_decode)
 
     examples = [
         EvalExample(task="math", prompt="2+2=?", gold_answer="4", choices=["3", "4", "5"]),
-        EvalExample(task="reasoning", prompt="A implies B and B implies C, so A implies C?", gold_answer="Yes", choices=["Yes", "No"]),
+        EvalExample(
+            task="reasoning",
+            prompt="A implies B and B implies C, so A implies C?",
+            gold_answer="Yes",
+            choices=["Yes", "No"],
+        ),
     ]
     results = evaluator.evaluate_all(examples)
     report = evaluator.summary_report(results)
@@ -227,6 +245,7 @@ def test_capability_evaluator_summary_report_keys(small_model, tokenizer_encode,
 # ---------------------------------------------------------------------------
 # 12. create_synthetic_examples count
 # ---------------------------------------------------------------------------
+
 
 def test_create_synthetic_examples_count():
     n = 5

@@ -1,4 +1,5 @@
 """Multimodal audio feature extractor for classification."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

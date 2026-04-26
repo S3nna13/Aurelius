@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.data.preference_synthesis import (
-    ArgillaSample,
-    NectarSample,
-    OpenHermesSample,
     PreferenceSynthesizer,
     mock_argilla_data,
     mock_nectar_data,
@@ -17,10 +12,10 @@ from src.data.preference_synthesis import (
     parse_openhermes_sample,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. mock_nectar_data has id, prompt, answers fields
 # ---------------------------------------------------------------------------
+
 
 def test_mock_nectar_data_fields():
     data = mock_nectar_data(n=4)
@@ -36,6 +31,7 @@ def test_mock_nectar_data_fields():
 # 2. NectarSample.best_answer returns rank=1 answer
 # ---------------------------------------------------------------------------
 
+
 def test_nectar_best_answer_rank_one():
     raw = mock_nectar_data(n=1)[0]
     sample = parse_nectar_sample(raw)
@@ -47,6 +43,7 @@ def test_nectar_best_answer_rank_one():
 # ---------------------------------------------------------------------------
 # 3. NectarSample.worst_answer returns last-ranked answer
 # ---------------------------------------------------------------------------
+
 
 def test_nectar_worst_answer():
     raw = mock_nectar_data(n=1)[0]
@@ -61,6 +58,7 @@ def test_nectar_worst_answer():
 # 4. NectarSample.to_preference_pair has prompt/chosen/rejected
 # ---------------------------------------------------------------------------
 
+
 def test_nectar_to_preference_pair_keys():
     sample = parse_nectar_sample(mock_nectar_data(n=1)[0])
     pair = sample.to_preference_pair()
@@ -74,6 +72,7 @@ def test_nectar_to_preference_pair_keys():
 # 5. mock_openhermes_data has conversations field
 # ---------------------------------------------------------------------------
 
+
 def test_mock_openhermes_data_conversations():
     data = mock_openhermes_data(n=4)
     assert len(data) == 4
@@ -86,6 +85,7 @@ def test_mock_openhermes_data_conversations():
 # ---------------------------------------------------------------------------
 # 6. OpenHermesSample.to_instruction extracts human/gpt turns
 # ---------------------------------------------------------------------------
+
 
 def test_openhermes_to_instruction():
     raw = mock_openhermes_data(n=1)[0]
@@ -104,6 +104,7 @@ def test_openhermes_to_instruction():
 # 7. mock_argilla_data has chosen, rejected, ratings
 # ---------------------------------------------------------------------------
 
+
 def test_mock_argilla_data_fields():
     data = mock_argilla_data(n=4)
     assert len(data) == 4
@@ -120,6 +121,7 @@ def test_mock_argilla_data_fields():
 # 8. parse_argilla_sample chosen_rating is float
 # ---------------------------------------------------------------------------
 
+
 def test_argilla_chosen_rating_is_float():
     raw = mock_argilla_data(n=1)[0]
     sample = parse_argilla_sample(raw)
@@ -131,6 +133,7 @@ def test_argilla_chosen_rating_is_float():
 # 9. ArgillaSample chosen_rating > rejected_rating in mock
 # ---------------------------------------------------------------------------
 
+
 def test_argilla_chosen_rating_greater_than_rejected():
     for raw in mock_argilla_data(n=4):
         sample = parse_argilla_sample(raw)
@@ -140,6 +143,7 @@ def test_argilla_chosen_rating_greater_than_rejected():
 # ---------------------------------------------------------------------------
 # 10. PreferenceSynthesizer.score_response returns float in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_score_response_range():
     synth = PreferenceSynthesizer(seed=0)
@@ -159,6 +163,7 @@ def test_score_response_range():
 # 11. Longer/structured responses score higher than empty strings
 # ---------------------------------------------------------------------------
 
+
 def test_score_response_structured_beats_empty():
     synth = PreferenceSynthesizer(seed=0)
     empty_score = synth.score_response("")
@@ -167,8 +172,7 @@ def test_score_response_structured_beats_empty():
         "This is a detailed response that covers multiple aspects.\n"
         "- Point one is important\n"
         "- Point two builds on that\n"
-        "```python\nprint('hello')\n```\n"
-        + "Additional content " * 20
+        "```python\nprint('hello')\n```\n" + "Additional content " * 20
     )
     structured_score = synth.score_response(structured)
     assert structured_score > empty_score
@@ -187,6 +191,7 @@ def test_score_response_longer_beats_single_word():
 # ---------------------------------------------------------------------------
 # 12. create_pair_from_instructions returns list of dicts with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_create_pair_from_instructions_keys():
     synth = PreferenceSynthesizer(seed=42)
@@ -217,6 +222,7 @@ def test_create_pair_from_instructions_empty_input():
 # 13. augment_with_negatives truncate → rejected shorter than chosen
 # ---------------------------------------------------------------------------
 
+
 def test_augment_truncate_shorter():
     synth = PreferenceSynthesizer(seed=0)
     pairs = [
@@ -234,6 +240,7 @@ def test_augment_truncate_shorter():
 # ---------------------------------------------------------------------------
 # 14. augment_with_negatives returns same length list as input
 # ---------------------------------------------------------------------------
+
 
 def test_augment_with_negatives_same_length():
     synth = PreferenceSynthesizer(seed=7)

@@ -10,14 +10,10 @@ Every test performs actual forward (and where relevant, backward) passes.
 from __future__ import annotations
 
 import math
-from typing import List, Tuple
 
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
-
 from aurelius.training.knowledge_distillation_v3 import (
     AttentionTransferLoss,
     CompressionBenchmark,
@@ -26,6 +22,7 @@ from aurelius.training.knowledge_distillation_v3 import (
     PKDLoss,
     SoftTargetLoss,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Tiny config constants
@@ -38,13 +35,14 @@ STUDENT_DIM = 8
 TEACHER_DIM = 16
 TEMPERATURE = 4.0
 ALPHA = 0.7
-N_HEADS_S = 2   # student attention heads
-N_HEADS_T = 4   # teacher attention heads
+N_HEADS_S = 2  # student attention heads
+N_HEADS_T = 4  # teacher attention heads
 
 
 # ---------------------------------------------------------------------------
 # Minimal stub models for DistilTrainer tests
 # ---------------------------------------------------------------------------
+
 
 class TinyModel(nn.Module):
     """Minimal LM-like model returning (logits, hidden_states, attn_maps)."""
@@ -56,12 +54,10 @@ class TinyModel(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
 
-    def forward(
-        self, input_ids: Tensor
-    ) -> Tuple[Tensor, List[Tensor], List[Tensor]]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, list[Tensor], list[Tensor]]:
         B, T = input_ids.shape
-        h = self.embed(input_ids)           # (B, T, d_model)
-        logits = self.proj(h)               # (B, T, vocab)
+        h = self.embed(input_ids)  # (B, T, d_model)
+        logits = self.proj(h)  # (B, T, vocab)
         hidden_states = [h]
         # Attention maps built from a learnable parameter so grads flow
         raw = torch.ones(B, self.n_heads, T, T, device=h.device, dtype=h.dtype)
@@ -81,6 +77,7 @@ def make_teacher() -> TinyModel:
 # ---------------------------------------------------------------------------
 # Test 1: SoftTargetLoss -- all outputs finite, backward runs
 # ---------------------------------------------------------------------------
+
 
 def test_soft_target_loss_finite():
     loss_fn = SoftTargetLoss(temperature=TEMPERATURE, alpha=ALPHA)
@@ -105,6 +102,7 @@ def test_soft_target_loss_finite():
 # Test 2: SoftTargetLoss -- ce_loss matches standard cross-entropy
 # ---------------------------------------------------------------------------
 
+
 def test_soft_target_ce_matches_standard():
     loss_fn = SoftTargetLoss(temperature=TEMPERATURE, alpha=ALPHA)
     student_logits = torch.randn(BATCH, VOCAB)
@@ -122,6 +120,7 @@ def test_soft_target_ce_matches_standard():
 # ---------------------------------------------------------------------------
 # Test 3: SoftTargetLoss -- T=1 => kd_loss approximately equals standard KL
 # ---------------------------------------------------------------------------
+
 
 def test_soft_target_t1_equals_standard_kl():
     loss_fn = SoftTargetLoss(temperature=1.0, alpha=ALPHA)
@@ -145,6 +144,7 @@ def test_soft_target_t1_equals_standard_kl():
 # Test 4: SoftTargetLoss -- alpha=0 => total_loss == ce_loss
 # ---------------------------------------------------------------------------
 
+
 def test_soft_target_alpha_zero():
     loss_fn = SoftTargetLoss(temperature=TEMPERATURE, alpha=0.0)
     student_logits = torch.randn(BATCH, VOCAB, requires_grad=True)
@@ -164,6 +164,7 @@ def test_soft_target_alpha_zero():
 # Test 5: SoftTargetLoss -- alpha=1 => total_loss == kd_loss
 # ---------------------------------------------------------------------------
 
+
 def test_soft_target_alpha_one():
     loss_fn = SoftTargetLoss(temperature=TEMPERATURE, alpha=1.0)
     student_logits = torch.randn(BATCH, VOCAB, requires_grad=True)
@@ -182,6 +183,7 @@ def test_soft_target_alpha_one():
 # ---------------------------------------------------------------------------
 # Test 6: FeatDistilLoss -- scalar, finite, grad flows to student but not teacher
 # ---------------------------------------------------------------------------
+
 
 def test_feat_distil_loss_finite_and_grad():
     feat_fn = FeatDistilLoss(student_dim=STUDENT_DIM, teacher_dim=TEACHER_DIM)
@@ -210,6 +212,7 @@ def test_feat_distil_loss_finite_and_grad():
 # Test 7: FeatDistilLoss.layer_mapping -- correct length and valid indices
 # ---------------------------------------------------------------------------
 
+
 def test_feat_distil_layer_mapping():
     feat_fn = FeatDistilLoss(student_dim=STUDENT_DIM, teacher_dim=TEACHER_DIM)
     n_student = 3
@@ -217,9 +220,7 @@ def test_feat_distil_layer_mapping():
 
     mapping = feat_fn.layer_mapping(n_student, n_teacher)
 
-    assert len(mapping) == n_student, (
-        f"Expected mapping length {n_student}, got {len(mapping)}"
-    )
+    assert len(mapping) == n_student, f"Expected mapping length {n_student}, got {len(mapping)}"
     for s_idx, t_idx in mapping:
         assert 0 <= s_idx < n_student, f"student index {s_idx} out of range"
         assert 0 <= t_idx < n_teacher, f"teacher index {t_idx} out of range"
@@ -228,6 +229,7 @@ def test_feat_distil_layer_mapping():
 # ---------------------------------------------------------------------------
 # Test 8: AttentionTransferLoss -- scalar >= 0, 0 for identical inputs
 # ---------------------------------------------------------------------------
+
 
 def test_attn_transfer_zero_for_identical():
     attn_fn = AttentionTransferLoss()
@@ -238,14 +240,13 @@ def test_attn_transfer_zero_for_identical():
     # Forward pass confirmed
     assert loss.shape == (), f"Expected scalar, got shape {loss.shape}"
     assert loss.item() >= 0.0, "AttentionTransferLoss must be non-negative"
-    assert abs(loss.item()) < 1e-6, (
-        f"Expected ~0 for identical inputs, got {loss.item()}"
-    )
+    assert abs(loss.item()) < 1e-6, f"Expected ~0 for identical inputs, got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 9: AttentionTransferLoss -- mismatched H returns scalar via averaging
 # ---------------------------------------------------------------------------
+
 
 def test_attn_transfer_mismatched_heads():
     attn_fn = AttentionTransferLoss()
@@ -253,9 +254,7 @@ def test_attn_transfer_mismatched_heads():
     student_attn = torch.softmax(
         torch.randn(BATCH, N_HEADS_S, SEQ_LEN, SEQ_LEN), dim=-1
     ).requires_grad_(True)
-    teacher_attn = torch.softmax(
-        torch.randn(BATCH, N_HEADS_T, SEQ_LEN, SEQ_LEN), dim=-1
-    )
+    teacher_attn = torch.softmax(torch.randn(BATCH, N_HEADS_T, SEQ_LEN, SEQ_LEN), dim=-1)
 
     loss = attn_fn(student_attn, teacher_attn)
 
@@ -270,6 +269,7 @@ def test_attn_transfer_mismatched_heads():
 # Test 10: PKDLoss -- scalar >= 0, 0 for identical representations
 # ---------------------------------------------------------------------------
 
+
 def test_pkd_loss_zero_for_identical():
     pkd_fn = PKDLoss(student_layers=[0, 1], teacher_layers=[0, 1])
     hidden = torch.randn(BATCH, SEQ_LEN, STUDENT_DIM)
@@ -279,23 +279,22 @@ def test_pkd_loss_zero_for_identical():
 
     assert loss.shape == (), f"Expected scalar, got shape {loss.shape}"
     assert loss.item() >= 0.0, "PKDLoss must be non-negative"
-    assert abs(loss.item()) < 1e-6, (
-        f"Expected ~0 for identical inputs, got {loss.item()}"
-    )
+    assert abs(loss.item()) < 1e-6, f"Expected ~0 for identical inputs, got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 11: PKDLoss -- different hiddens produce positive loss
 # ---------------------------------------------------------------------------
 
+
 def test_pkd_loss_positive_for_different():
     pkd_fn = PKDLoss(student_layers=[0], teacher_layers=[0])
 
     # Orthogonal one-hot vectors -- large MSE after normalisation
     s_h_data = torch.zeros(BATCH, SEQ_LEN, STUDENT_DIM)
-    s_h_data[..., 0] = 1.0   # one-hot in dim 0
+    s_h_data[..., 0] = 1.0  # one-hot in dim 0
     t_h_data = torch.zeros(BATCH, SEQ_LEN, STUDENT_DIM)
-    t_h_data[..., 1] = 1.0   # one-hot in dim 1
+    t_h_data[..., 1] = 1.0  # one-hot in dim 1
 
     # requires_grad so backward works
     s_h = [s_h_data.clone().requires_grad_(True)]
@@ -313,6 +312,7 @@ def test_pkd_loss_positive_for_different():
 # ---------------------------------------------------------------------------
 # Test 12: DistilTrainer -- teacher params frozen after init
 # ---------------------------------------------------------------------------
+
 
 def test_distil_trainer_teacher_frozen():
     student = make_student()
@@ -333,6 +333,7 @@ def test_distil_trainer_teacher_frozen():
 # ---------------------------------------------------------------------------
 # Test 13: DistilTrainer.train_step -- all keys present, total_loss finite
 # ---------------------------------------------------------------------------
+
 
 def test_distil_trainer_step_keys_finite():
     student = make_student()
@@ -360,6 +361,7 @@ def test_distil_trainer_step_keys_finite():
 # Test 14: DistilTrainer -- grad flows to student, not teacher
 # ---------------------------------------------------------------------------
 
+
 def test_distil_trainer_grad_student_not_teacher():
     student = make_student()
     teacher = make_teacher()
@@ -371,10 +373,7 @@ def test_distil_trainer_grad_student_not_teacher():
     trainer = DistilTrainer(student, teacher, optimizer, soft_fn, feat_fn, attn_fn)
 
     # Record student param values before step
-    before = {
-        name: p.data.clone()
-        for name, p in trainer.student_model.named_parameters()
-    }
+    before = {name: p.data.clone() for name, p in trainer.student_model.named_parameters()}
 
     input_ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
     labels = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
@@ -396,10 +395,11 @@ def test_distil_trainer_grad_student_not_teacher():
 # Test 15: CompressionBenchmark.parameter_ratio < 1 when student smaller
 # ---------------------------------------------------------------------------
 
+
 def test_compression_parameter_ratio():
     bench = CompressionBenchmark()
-    student = make_student()   # d_model=8
-    teacher = make_teacher()   # d_model=16
+    student = make_student()  # d_model=8
+    teacher = make_teacher()  # d_model=16
 
     ratio = bench.parameter_ratio(student, teacher)
     assert ratio < 1.0, f"Expected ratio < 1.0 for smaller student, got {ratio}"
@@ -408,6 +408,7 @@ def test_compression_parameter_ratio():
 # ---------------------------------------------------------------------------
 # Test 16 (bonus): perplexity_gap >= 1.0 when student worse than teacher
 # ---------------------------------------------------------------------------
+
 
 def test_compression_perplexity_gap_worse_student():
     bench = CompressionBenchmark()
@@ -423,6 +424,7 @@ def test_compression_perplexity_gap_worse_student():
 # Test 17 (bonus): layer_similarity in [-1,1], == 1.0 for identical layers
 # ---------------------------------------------------------------------------
 
+
 def test_compression_layer_similarity():
     bench = CompressionBenchmark()
     hidden = torch.randn(BATCH, SEQ_LEN, STUDENT_DIM)
@@ -433,6 +435,4 @@ def test_compression_layer_similarity():
 
     assert len(sims) == 1, f"Expected 1 similarity value, got {len(sims)}"
     assert -1.0 <= sims[0] <= 1.0 + 1e-6, f"Similarity {sims[0]} out of [-1, 1]"
-    assert abs(sims[0] - 1.0) < 1e-4, (
-        f"Expected ~1.0 for identical hiddens, got {sims[0]}"
-    )
+    assert abs(sims[0] - 1.0) < 1e-4, f"Expected ~1.0 for identical hiddens, got {sims[0]}"

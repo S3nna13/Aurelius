@@ -5,13 +5,12 @@ from __future__ import annotations
 import pytest
 
 from src.ui.context_menu import (
-    MenuItemKind,
-    MenuItem,
+    CONTEXT_MENU_REGISTRY,
     ContextMenu,
     ContextMenuRegistry,
-    CONTEXT_MENU_REGISTRY,
+    MenuItem,
+    MenuItemKind,
 )
-
 
 # ---------------------------------------------------------------------------
 # MenuItemKind enum

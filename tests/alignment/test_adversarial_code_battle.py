@@ -32,9 +32,14 @@ def _vulnerable_snippet() -> str:
 # 1. single round
 # ---------------------------------------------------------------------------
 
+
 def test_single_round_with_noop_fns_hits_no_findings() -> None:
-    red = lambda code, prev: {"vulnerabilities": []}
-    blue = lambda code, r, prev: {"patches": []}
+    def red(code, prev):
+        return {"vulnerabilities": []}
+
+    def blue(code, r, prev):
+        return {"patches": []}
+
     b = AdversarialCodeBattle(red, blue, max_rounds=3)
     t = b.run("print('hi')")
     assert t.convergence_signal == "no_findings"
@@ -46,6 +51,7 @@ def test_single_round_with_noop_fns_hits_no_findings() -> None:
 # ---------------------------------------------------------------------------
 # 2. multi-round with convergence (heuristics converge once all types patched)
 # ---------------------------------------------------------------------------
+
 
 def test_multi_round_heuristics_converge() -> None:
     b = AdversarialCodeBattle(
@@ -61,6 +67,7 @@ def test_multi_round_heuristics_converge() -> None:
 # 3. stuck loop hits max_rounds
 # ---------------------------------------------------------------------------
 
+
 def test_stuck_loop_hits_max_rounds() -> None:
     # Red always emits a NEW type each round (so no convergence); blue never patches.
     counter = {"n": 0}
@@ -68,9 +75,7 @@ def test_stuck_loop_hits_max_rounds() -> None:
     def stuck_red(code: str, prev: list[dict]) -> dict:
         counter["n"] += 1
         return {
-            "vulnerabilities": [
-                {"type": f"novel_{counter['n']}", "line": 1, "severity": "low"}
-            ]
+            "vulnerabilities": [{"type": f"novel_{counter['n']}", "line": 1, "severity": "low"}]
         }
 
     def stuck_blue(code: str, r: dict, prev: list[dict]) -> dict:
@@ -87,6 +92,7 @@ def test_stuck_loop_hits_max_rounds() -> None:
 # 4. heuristic red finds eval / hardcoded-secret / shell-invocation
 # ---------------------------------------------------------------------------
 
+
 def test_heuristic_red_finds_known_types() -> None:
     r = heuristic_red_fn(_vulnerable_snippet(), [])
     types = {v["type"] for v in r["vulnerabilities"]}
@@ -98,6 +104,7 @@ def test_heuristic_red_finds_known_types() -> None:
 # ---------------------------------------------------------------------------
 # 5. heuristic blue produces patch
 # ---------------------------------------------------------------------------
+
 
 def test_heuristic_blue_produces_patches() -> None:
     code = _vulnerable_snippet()
@@ -111,6 +118,7 @@ def test_heuristic_blue_produces_patches() -> None:
 # ---------------------------------------------------------------------------
 # 6. preference-pair output shape
 # ---------------------------------------------------------------------------
+
 
 def test_preference_pair_output_shape() -> None:
     b = AdversarialCodeBattle(
@@ -136,6 +144,7 @@ def test_preference_pair_output_shape() -> None:
 # 7. empty code input
 # ---------------------------------------------------------------------------
 
+
 def test_empty_code_input() -> None:
     b = AdversarialCodeBattle(heuristic_red_fn, heuristic_blue_fn, max_rounds=2)
     t = b.run("")
@@ -147,6 +156,7 @@ def test_empty_code_input() -> None:
 # ---------------------------------------------------------------------------
 # 8. malformed red_fn output is coerced
 # ---------------------------------------------------------------------------
+
 
 def test_malformed_red_fn_output_is_coerced() -> None:
     # Red returns garbage; battle must not crash.
@@ -186,6 +196,7 @@ def test_malformed_vulnerability_entries_filtered() -> None:
 # 9. convergence_threshold=1 edge case
 # ---------------------------------------------------------------------------
 
+
 def test_convergence_threshold_one_edge_case() -> None:
     # Red emits same type every round -> with threshold=1 converges after round 2.
     def red(code: str, prev: list[dict]) -> dict:
@@ -204,6 +215,7 @@ def test_convergence_threshold_one_edge_case() -> None:
 # ---------------------------------------------------------------------------
 # 10. determinism with fixed heuristic fns
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_with_heuristic_fns() -> None:
     code = _vulnerable_snippet()
@@ -224,6 +236,7 @@ def test_determinism_with_heuristic_fns() -> None:
 # 11. round records carry code snapshot
 # ---------------------------------------------------------------------------
 
+
 def test_round_carries_code_snapshot() -> None:
     b = AdversarialCodeBattle(
         heuristic_red_fn, heuristic_blue_fn, max_rounds=3, convergence_threshold=1
@@ -240,6 +253,7 @@ def test_round_carries_code_snapshot() -> None:
 # 12. preference pairs preserve line info
 # ---------------------------------------------------------------------------
 
+
 def test_preference_pairs_preserve_line_info() -> None:
     b = AdversarialCodeBattle(
         heuristic_red_fn, heuristic_blue_fn, max_rounds=3, convergence_threshold=1
@@ -254,6 +268,7 @@ def test_preference_pairs_preserve_line_info() -> None:
 # ---------------------------------------------------------------------------
 # 13. patch apply-failure recorded, not silently swallowed
 # ---------------------------------------------------------------------------
+
 
 def test_patch_apply_failure_recorded() -> None:
     def red(code: str, prev: list[dict]) -> dict:
@@ -286,6 +301,7 @@ def test_patch_apply_failure_recorded() -> None:
 # 14. large input
 # ---------------------------------------------------------------------------
 
+
 def test_large_input_handled() -> None:
     big = "\n".join(f"x_{i} = {i}" for i in range(500))
     big += '\npassword = "deadbeefcafe"\n'
@@ -302,24 +318,22 @@ def test_large_input_handled() -> None:
 # 15. validation errors on bad constructor args
 # ---------------------------------------------------------------------------
 
+
 def test_constructor_rejects_bad_args() -> None:
     import pytest
 
     with pytest.raises(ValueError):
         AdversarialCodeBattle(lambda a, b: {}, lambda a, b, c: {}, max_rounds=0)
     with pytest.raises(ValueError):
-        AdversarialCodeBattle(
-            lambda a, b: {}, lambda a, b, c: {}, convergence_threshold=0
-        )
+        AdversarialCodeBattle(lambda a, b: {}, lambda a, b, c: {}, convergence_threshold=0)
     with pytest.raises(ValueError):
-        AdversarialCodeBattle(
-            lambda a, b: {}, lambda a, b, c: {}, max_patch_applies=0
-        )
+        AdversarialCodeBattle(lambda a, b: {}, lambda a, b, c: {}, max_patch_applies=0)
 
 
 # ---------------------------------------------------------------------------
 # 16. dataclass constructors
 # ---------------------------------------------------------------------------
+
 
 def test_dataclasses_roundtrip() -> None:
     rf = RedFinding.from_dict({"type": "t", "line": 2, "confidence": 0.7})
@@ -327,9 +341,7 @@ def test_dataclasses_roundtrip() -> None:
     assert RedFinding.from_dict("bad") is None
     assert RedFinding.from_dict({"line": 1}) is None  # missing type
 
-    bp = BluePatch.from_dict(
-        {"vulnerability_type": "t", "original_code": "a", "patched_code": "b"}
-    )
+    bp = BluePatch.from_dict({"vulnerability_type": "t", "original_code": "a", "patched_code": "b"})
     assert bp is not None and bp.patched_code == "b"
     assert BluePatch.from_dict({"vulnerability_type": "t"}) is None
 
@@ -356,13 +368,12 @@ def test_dataclasses_roundtrip() -> None:
 # 17. red_fn raising is treated as empty (untrusted)
 # ---------------------------------------------------------------------------
 
+
 def test_red_fn_raising_does_not_crash_battle() -> None:
     def exploding_red(code: str, prev: list[dict]) -> dict:
         raise RuntimeError("boom")
 
-    b = AdversarialCodeBattle(
-        exploding_red, lambda c, r, p: {"patches": []}, max_rounds=2
-    )
+    b = AdversarialCodeBattle(exploding_red, lambda c, r, p: {"patches": []}, max_rounds=2)
     t = b.run("x = 1")
     assert t.converged is True
     assert t.convergence_signal == "no_findings"

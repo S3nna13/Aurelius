@@ -5,12 +5,11 @@ Uses tiny dimensions so tests run quickly on CPU.
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.bitnet_quant import (
+    BitLinear,
     BitNetConfig,
     BitNetFFN,
-    BitLinear,
     apply_bitnet,
     compute_effective_bits,
     quantize_activation,
@@ -29,6 +28,7 @@ SEQ = 4
 # ===========================================================================
 # ternarize_weight
 # ===========================================================================
+
 
 def test_ternarize_weight_values_in_ternary_set():
     """All elements of ternary_W must be in {-1, 0, +1}."""
@@ -68,6 +68,7 @@ def test_ternarize_weight_ste_backward():
 # quantize_activation
 # ===========================================================================
 
+
 def test_quantize_activation_range():
     """Quantized float values must lie within [-127, 127] for 8-bit."""
     x = torch.randn(BATCH, SEQ, D_MODEL) * 5.0
@@ -94,6 +95,7 @@ def test_quantize_activation_shape_preserved():
 # ===========================================================================
 # BitLinear
 # ===========================================================================
+
 
 def test_bitlinear_output_shape_matches_linear():
     """BitLinear and nn.Linear must produce the same output shape."""
@@ -136,6 +138,7 @@ def test_bitlinear_extra_repr_contains_dims():
 # apply_bitnet
 # ===========================================================================
 
+
 class _TinyModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -169,6 +172,7 @@ def test_apply_bitnet_leaves_embedding_untouched():
 # compute_effective_bits
 # ===========================================================================
 
+
 def test_compute_effective_bits_keys_present():
     """Return dict must contain n_bitlinear, n_linear, compression_ratio."""
     layer = BitLinear(D_MODEL, D_FF)
@@ -198,6 +202,7 @@ def test_compute_effective_bits_compression_ratio_range():
 # ===========================================================================
 # BitNetFFN
 # ===========================================================================
+
 
 def test_bitnetffn_output_shape():
     """BitNetFFN must return tensor with same shape as input."""

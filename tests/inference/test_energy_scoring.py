@@ -6,8 +6,8 @@ import pytest
 import torch
 
 from src.inference.energy_scoring import (
-    EnergyConfig,
     EnergyBasedGenerator,
+    EnergyConfig,
     EnergyReranker,
     compute_fluency_score,
     compute_sequence_energy,
@@ -16,10 +16,10 @@ from src.inference.energy_scoring import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -71,10 +71,7 @@ def sample_ids(small_cfg):
 def candidates(small_cfg):
     """List of 3 candidate tensors, each shape (1, 6)."""
     torch.manual_seed(1)
-    return [
-        torch.randint(0, small_cfg.vocab_size, (1, 6))
-        for _ in range(3)
-    ]
+    return [torch.randint(0, small_cfg.vocab_size, (1, 6)) for _ in range(3)]
 
 
 def _byte_encode(text: str) -> list[int]:
@@ -91,6 +88,7 @@ def _byte_decode(ids: list[int]) -> str:
 # Test 1: EnergyConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_energy_config_defaults():
     cfg = EnergyConfig()
     assert cfg.n_candidates == 8
@@ -105,6 +103,7 @@ def test_energy_config_defaults():
 # Test 2: compute_sequence_energy returns shape (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sequence_energy_shape(model, sample_ids):
     energy = compute_sequence_energy(model, sample_ids)
     B = sample_ids.shape[0]
@@ -115,6 +114,7 @@ def test_compute_sequence_energy_shape(model, sample_ids):
 # Test 3: compute_sequence_energy values are finite floats
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sequence_energy_finite(model, sample_ids):
     energy = compute_sequence_energy(model, sample_ids)
     assert torch.isfinite(energy).all(), "Energy values contain non-finite numbers"
@@ -123,6 +123,7 @@ def test_compute_sequence_energy_finite(model, sample_ids):
 # ---------------------------------------------------------------------------
 # Test 4: compute_fluency_score returns shape (B,)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_fluency_score_shape(model, sample_ids):
     fluency = compute_fluency_score(model, sample_ids)
@@ -134,16 +135,16 @@ def test_compute_fluency_score_shape(model, sample_ids):
 # Test 5: compute_fluency_score values <= 0 (negative entropy)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_fluency_score_nonpositive(model, sample_ids):
     fluency = compute_fluency_score(model, sample_ids)
-    assert (fluency <= 0).all(), (
-        f"Fluency scores should be <= 0 (negative entropy), got {fluency}"
-    )
+    assert (fluency <= 0).all(), f"Fluency scores should be <= 0 (negative entropy), got {fluency}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: EnergyReranker.score returns shape (N,)
 # ---------------------------------------------------------------------------
+
 
 def test_reranker_score_shape(reranker, candidates):
     scores = reranker.score(candidates)
@@ -155,6 +156,7 @@ def test_reranker_score_shape(reranker, candidates):
 # Test 7: EnergyReranker.rerank returns same number of candidates
 # ---------------------------------------------------------------------------
 
+
 def test_reranker_rerank_same_count(reranker, candidates):
     reranked = reranker.rerank(candidates)
     assert len(reranked) == len(candidates)
@@ -163,6 +165,7 @@ def test_reranker_rerank_same_count(reranker, candidates):
 # ---------------------------------------------------------------------------
 # Test 8: EnergyReranker.rerank first element has highest score
 # ---------------------------------------------------------------------------
+
 
 def test_reranker_rerank_first_is_best(reranker, candidates):
     reranked = reranker.rerank(candidates)
@@ -175,6 +178,7 @@ def test_reranker_rerank_first_is_best(reranker, candidates):
 # Test 9: EnergyReranker.select_best returns tensor with correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_reranker_select_best_shape(reranker, candidates):
     best = reranker.select_best(candidates)
     # Each candidate is (1, 6) -- best should be (1, 6)
@@ -184,6 +188,7 @@ def test_reranker_select_best_shape(reranker, candidates):
 # ---------------------------------------------------------------------------
 # Test 10: langevin_refine returns same shape as input
 # ---------------------------------------------------------------------------
+
 
 def test_langevin_refine_same_shape(model, small_cfg, energy_cfg):
     torch.manual_seed(7)
@@ -196,6 +201,7 @@ def test_langevin_refine_same_shape(model, small_cfg, energy_cfg):
 # Test 11: langevin_refine output dtype is long
 # ---------------------------------------------------------------------------
 
+
 def test_langevin_refine_dtype_long(model, small_cfg, energy_cfg):
     torch.manual_seed(8)
     input_ids = torch.randint(0, small_cfg.vocab_size, (1, 6))
@@ -207,10 +213,9 @@ def test_langevin_refine_dtype_long(model, small_cfg, energy_cfg):
 # Test 12: EnergyBasedGenerator.generate_candidates returns list of strings
 # ---------------------------------------------------------------------------
 
+
 def test_generator_candidates_is_list_of_strings(model, energy_cfg):
-    gen = EnergyBasedGenerator(
-        model, energy_cfg, _byte_encode, _byte_decode
-    )
+    gen = EnergyBasedGenerator(model, energy_cfg, _byte_encode, _byte_decode)
     results = gen.generate_candidates("hello", max_new_tokens=4)
     assert isinstance(results, list)
     assert all(isinstance(s, str) for s in results)
@@ -220,10 +225,9 @@ def test_generator_candidates_is_list_of_strings(model, energy_cfg):
 # Test 13: EnergyBasedGenerator.generate_candidates returns n_candidates strings
 # ---------------------------------------------------------------------------
 
+
 def test_generator_candidates_count(model, energy_cfg):
-    gen = EnergyBasedGenerator(
-        model, energy_cfg, _byte_encode, _byte_decode
-    )
+    gen = EnergyBasedGenerator(model, energy_cfg, _byte_encode, _byte_decode)
     results = gen.generate_candidates("hi", max_new_tokens=4)
     assert len(results) == energy_cfg.n_candidates
 
@@ -232,10 +236,9 @@ def test_generator_candidates_count(model, energy_cfg):
 # Test 14: EnergyBasedGenerator.generate_best returns a single string
 # ---------------------------------------------------------------------------
 
+
 def test_generator_generate_best_returns_string(model, energy_cfg):
-    gen = EnergyBasedGenerator(
-        model, energy_cfg, _byte_encode, _byte_decode
-    )
+    gen = EnergyBasedGenerator(model, energy_cfg, _byte_encode, _byte_decode)
     result = gen.generate_best("test", max_new_tokens=4)
     assert isinstance(result, str)
 
@@ -243,6 +246,7 @@ def test_generator_generate_best_returns_string(model, energy_cfg):
 # ---------------------------------------------------------------------------
 # Bonus tests for extra coverage
 # ---------------------------------------------------------------------------
+
 
 def test_energy_config_custom_values():
     cfg = EnergyConfig(n_candidates=4, mcmc_steps=5, step_size=0.1, temperature=0.8)

@@ -22,13 +22,12 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.model.chunked_attention_v2 import (
+    ChunkedAttention,
     ChunkedAttnBlock,
     ChunkedAttnConfig,
-    ChunkedAttention,
     chunked_attention,
     compare_chunked_vs_standard,
 )
@@ -39,7 +38,7 @@ from src.model.chunked_attention_v2 import (
 
 D_MODEL = 16
 N_HEADS = 2
-D_HEAD = D_MODEL // N_HEADS   # 8
+D_HEAD = D_MODEL // N_HEADS  # 8
 CHUNK = 4
 BATCH = 2
 SEQ = 8

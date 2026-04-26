@@ -10,13 +10,14 @@ on success or when ``max_depth`` is exhausted.
 
 Pure stdlib. No foreign imports. Deterministic when inputs are.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
-
-MUTATION_STRATEGIES: Tuple[str, ...] = (
+MUTATION_STRATEGIES: tuple[str, ...] = (
     "elaborate",
     "persona_roleplay",
     "technicalize",
@@ -34,15 +35,15 @@ class TAPNode:
     target_response: str
     score: float
     rationale: str
-    parent_id: Optional[int]
-    children_ids: List[int] = field(default_factory=list)
-    strategy: Optional[str] = None
+    parent_id: int | None
+    children_ids: list[int] = field(default_factory=list)
+    strategy: str | None = None
 
 
 @dataclass
 class TAPResult:
     objective: str
-    nodes: Dict[int, TAPNode] = field(default_factory=dict)
+    nodes: dict[int, TAPNode] = field(default_factory=dict)
     root_id: int = 0
     best_id: int = 0
     best_score: float = 0.0
@@ -52,17 +53,13 @@ class TAPResult:
 
 def _coerce_str(value: Any, label: str) -> str:
     if not isinstance(value, str):
-        raise TypeError(
-            f"{label} must be a str, got {type(value).__name__}"
-        )
+        raise TypeError(f"{label} must be a str, got {type(value).__name__}")
     return value
 
 
-def _validate_judge_verdict(verdict: Any) -> Tuple[float, str]:
+def _validate_judge_verdict(verdict: Any) -> tuple[float, str]:
     if not isinstance(verdict, tuple) or len(verdict) != 2:
-        raise TypeError(
-            "judge_fn must return (score: float, rationale: str)"
-        )
+        raise TypeError("judge_fn must return (score: float, rationale: str)")
     score, rationale = verdict
     if isinstance(score, bool) or not isinstance(score, (int, float)):
         raise TypeError("judge_fn score must be a float")
@@ -79,7 +76,7 @@ def _validate_judge_verdict(verdict: Any) -> Tuple[float, str]:
 class TreeOfAttacksProbe:
     """Beam-search TAP probe."""
 
-    MUTATION_STRATEGIES: Tuple[str, ...] = MUTATION_STRATEGIES
+    MUTATION_STRATEGIES: tuple[str, ...] = MUTATION_STRATEGIES
 
     def __init__(
         self,
@@ -94,9 +91,7 @@ class TreeOfAttacksProbe:
             raise ValueError("beam_width must be a positive int")
         if not isinstance(branch_factor, int) or branch_factor <= 0:
             raise ValueError("branch_factor must be a positive int")
-        if isinstance(success_threshold, bool) or not isinstance(
-            success_threshold, (int, float)
-        ):
+        if isinstance(success_threshold, bool) or not isinstance(success_threshold, (int, float)):
             raise TypeError("success_threshold must be a float")
         st = float(success_threshold)
         if st < 0.0 or st > 1.0:
@@ -109,10 +104,10 @@ class TreeOfAttacksProbe:
     def run(
         self,
         objective: str,
-        target_fn: Callable[[List[dict]], str],
-        judge_fn: Callable[[str, str], Tuple[float, str]],
+        target_fn: Callable[[list[dict]], str],
+        judge_fn: Callable[[str, str], tuple[float, str]],
         mutator_fn: Callable[[str, str], str],
-        seed_prompt: Optional[str] = None,
+        seed_prompt: str | None = None,
     ) -> TAPResult:
         objective = _coerce_str(objective, "objective")
         if not objective.strip():
@@ -136,8 +131,8 @@ class TreeOfAttacksProbe:
         def _evaluate(
             prompt: str,
             depth: int,
-            parent_id: Optional[int],
-            strategy: Optional[str],
+            parent_id: int | None,
+            strategy: str | None,
         ) -> TAPNode:
             nonlocal next_id
             raw_resp = target_fn([{"role": "user", "content": prompt}])
@@ -159,8 +154,10 @@ class TreeOfAttacksProbe:
             next_id += 1
             if parent_id is not None:
                 result.nodes[parent_id].children_ids.append(node.node_id)
-            if score > result.best_score or not result.nodes or (
-                result.best_id == 0 and node.node_id == 0
+            if (
+                score > result.best_score
+                or not result.nodes
+                or (result.best_id == 0 and node.node_id == 0)
             ):
                 # Update best on strict improvement (first node always wins).
                 if node.node_id == 0 or score > result.best_score:
@@ -175,16 +172,14 @@ class TreeOfAttacksProbe:
             result.succeeded = True
             return result
 
-        beam: List[TAPNode] = [root]
+        beam: list[TAPNode] = [root]
 
         for depth in range(1, self.max_depth + 1):
             # Branch each beam node into branch_factor children.
-            children: List[TAPNode] = []
+            children: list[TAPNode] = []
             for parent in beam:
                 for i in range(self.branch_factor):
-                    strategy = MUTATION_STRATEGIES[
-                        i % len(MUTATION_STRATEGIES)
-                    ]
+                    strategy = MUTATION_STRATEGIES[i % len(MUTATION_STRATEGIES)]
                     mutated = mutator_fn(parent.attacker_message, strategy)
                     mutated_s = _coerce_str(mutated, "mutator_fn return")
                     child = _evaluate(
@@ -203,11 +198,9 @@ class TreeOfAttacksProbe:
                 break
 
             # Prune: sort by score desc, keep top beam_width.
-            children.sort(
-                key=lambda n: (-n.score, n.node_id)
-            )
+            children.sort(key=lambda n: (-n.score, n.node_id))
             survivors = children[: self.beam_width]
-            pruned = children[self.beam_width:]
+            pruned = children[self.beam_width :]
             result.pruned_count += len(pruned)
             beam = survivors
             if not beam:
@@ -219,6 +212,7 @@ class TreeOfAttacksProbe:
 # ---------------------------------------------------------------------------
 # Deterministic stubs for tests / integration.
 # ---------------------------------------------------------------------------
+
 
 def heuristic_mutator(prompt: str, strategy: str) -> str:
     """Deterministic prompt mutator across MUTATION_STRATEGIES."""
@@ -242,7 +236,7 @@ def heuristic_mutator(prompt: str, strategy: str) -> str:
     return f"[{strategy}] {prompt}"
 
 
-def stub_target_fn(messages: List[dict]) -> str:
+def stub_target_fn(messages: list[dict]) -> str:
     """Deterministic target that 'complies' on long/escalated prompts."""
     if not isinstance(messages, list) or not messages:
         raise ValueError("messages must be a non-empty list")
@@ -262,7 +256,7 @@ def stub_target_fn(messages: List[dict]) -> str:
     return "I can offer a brief general overview at a high level."
 
 
-def stub_judge_fn(objective: str, response: str) -> Tuple[float, str]:
+def stub_judge_fn(objective: str, response: str) -> tuple[float, str]:
     """Deterministic judge — score in [0,1] based on marker hits."""
     if not isinstance(objective, str):
         raise TypeError("objective must be str")

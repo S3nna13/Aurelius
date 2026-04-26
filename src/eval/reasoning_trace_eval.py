@@ -21,13 +21,8 @@ Registry
 
 from __future__ import annotations
 
-import math
 import re
-from collections import Counter
 from dataclasses import dataclass, field
-from typing import List, Dict
-
-import torch  # imported for project consistency; tensor ops available if needed
 
 from src.eval import BENCHMARK_REGISTRY
 
@@ -35,9 +30,11 @@ from src.eval import BENCHMARK_REGISTRY
 # Configuration dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ReasoningTraceConfig:
     """Hyper-parameters for the reasoning-trace evaluator."""
+
     step_delimiter: str = "\n"
     answer_prefix: str = "Therefore"
     min_steps: int = 2
@@ -49,9 +46,7 @@ class ReasoningTraceConfig:
 # Per-step analysis dataclass
 # ---------------------------------------------------------------------------
 
-_REASONING_WORDS = frozenset(
-    {"because", "therefore", "since", "thus", "so"}
-)
+_REASONING_WORDS = frozenset({"because", "therefore", "since", "thus", "so"})
 
 _MATH_PATTERN = re.compile(r"[\d=+\-*/]")
 
@@ -59,6 +54,7 @@ _MATH_PATTERN = re.compile(r"[\d=+\-*/]")
 @dataclass
 class StepAnalysis:
     """Structured analysis of a single reasoning step."""
+
     text: str
     word_count: int
     is_answer_step: bool
@@ -70,9 +66,11 @@ class StepAnalysis:
 # Evaluation result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TraceEvalResult:
     """Evaluation result for a single (trace, answer) pair."""
+
     n_steps: int
     faithfulness_score: float
     length_efficiency: float
@@ -86,6 +84,7 @@ class TraceEvalResult:
 # Main evaluator class
 # ---------------------------------------------------------------------------
 
+
 class ReasoningTraceEval:
     """
     Evaluates chain-of-thought reasoning traces across multiple quality
@@ -98,28 +97,28 @@ class ReasoningTraceEval:
     """
 
     # Weights for overall score (must sum to 1.0)
-    _WEIGHTS: Dict[str, float] = field(default_factory=dict)
+    _WEIGHTS: dict[str, float] = field(default_factory=dict)
 
     def __init__(self, config: ReasoningTraceConfig | None = None) -> None:
         self.config = config or ReasoningTraceConfig()
         self._weights = {
             "faithfulness": 0.3,
-            "efficiency":   0.2,
-            "redundancy":   0.2,
-            "consistency":  0.3,
+            "efficiency": 0.2,
+            "redundancy": 0.2,
+            "consistency": 0.3,
         }
 
     # ------------------------------------------------------------------
     # Parsing
     # ------------------------------------------------------------------
 
-    def parse_steps(self, trace: str) -> List[StepAnalysis]:
+    def parse_steps(self, trace: str) -> list[StepAnalysis]:
         """
         Split *trace* by ``config.step_delimiter`` and return a
         :class:`StepAnalysis` for every non-empty step.
         """
         raw_steps = trace.split(self.config.step_delimiter)
-        analyses: List[StepAnalysis] = []
+        analyses: list[StepAnalysis] = []
         for raw in raw_steps:
             text = raw.strip()
             if not text:
@@ -144,7 +143,7 @@ class ReasoningTraceEval:
     # Individual metrics
     # ------------------------------------------------------------------
 
-    def faithfulness_score(self, steps: List[StepAnalysis]) -> float:
+    def faithfulness_score(self, steps: list[StepAnalysis]) -> float:
         """
         Fraction of *non-answer* steps that contain at least one explicit
         reasoning signal word.
@@ -192,7 +191,7 @@ class ReasoningTraceEval:
         unique = len(set(ngrams))
         return unique / total
 
-    def step_consistency(self, steps: List[StepAnalysis]) -> float:
+    def step_consistency(self, steps: list[StepAnalysis]) -> float:
         """
         Mean Jaccard word-overlap between consecutive step pairs.
 
@@ -202,7 +201,7 @@ class ReasoningTraceEval:
         """
         if len(steps) < 2:
             return 0.0
-        scores: List[float] = []
+        scores: list[float] = []
         for a, b in zip(steps[:-1], steps[1:]):
             set_a = set(a.text.lower().split())
             set_b = set(b.text.lower().split())
@@ -251,9 +250,7 @@ class ReasoningTraceEval:
             overall=overall,
         )
 
-    def evaluate_batch(
-        self, traces: List[str], answers: List[str]
-    ) -> List[TraceEvalResult]:
+    def evaluate_batch(self, traces: list[str], answers: list[str]) -> list[TraceEvalResult]:
         """
         Evaluate a batch of (trace, answer) pairs.
 
@@ -268,12 +265,11 @@ class ReasoningTraceEval:
         """
         if len(traces) != len(answers):
             raise ValueError(
-                f"traces and answers must have equal length, "
-                f"got {len(traces)} vs {len(answers)}"
+                f"traces and answers must have equal length, got {len(traces)} vs {len(answers)}"
             )
         return [self.evaluate(t, a) for t, a in zip(traces, answers)]
 
-    def aggregate(self, results: List[TraceEvalResult]) -> Dict[str, float]:
+    def aggregate(self, results: list[TraceEvalResult]) -> dict[str, float]:
         """
         Compute the mean of each metric across *results*.
 

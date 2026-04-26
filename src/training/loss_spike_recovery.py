@@ -26,12 +26,10 @@ from __future__ import annotations
 import copy
 import math
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -40,12 +38,12 @@ import torch.nn as nn
 
 @dataclass
 class SpikeConfig:
-    window_size: int = 20              # rolling window for baseline loss
-    spike_threshold: float = 2.5      # z-score threshold to declare spike
-    grad_norm_limit: float = 100.0    # hard gradient norm limit (also a spike signal)
+    window_size: int = 20  # rolling window for baseline loss
+    spike_threshold: float = 2.5  # z-score threshold to declare spike
+    grad_norm_limit: float = 100.0  # hard gradient norm limit (also a spike signal)
     min_steps_before_check: int = 50  # don't check before warmup
-    cooldown_steps: int = 10          # steps to skip after recovery
-    max_recoveries: int = 5           # abort training after this many recoveries
+    cooldown_steps: int = 10  # steps to skip after recovery
+    max_recoveries: int = 5  # abort training after this many recoveries
 
 
 # ---------------------------------------------------------------------------
@@ -254,15 +252,12 @@ class LossSpikeRecovery:
             if self._recovery_count > self.config.max_recoveries:
                 self._aborted = True
                 raise RuntimeError(
-                    f"Training aborted: exceeded max_recoveries "
-                    f"({self.config.max_recoveries})."
+                    f"Training aborted: exceeded max_recoveries ({self.config.max_recoveries})."
                 )
 
             # Attempt rollback
             if len(self.checkpoint_buffer) > 0:
-                restored_step = self.checkpoint_buffer.restore_latest(
-                    self.model, self.optimizer
-                )
+                restored_step = self.checkpoint_buffer.restore_latest(self.model, self.optimizer)
                 result["recovered"] = True
                 result["step_restored_to"] = restored_step
             # Even without a checkpoint we count it as a recovery event
@@ -287,9 +282,8 @@ class LossSpikeRecovery:
         if self._cooldown_remaining > 0:
             return False
         # If we have enough history, reject spike losses
-        if (
-            len(self._loss_history) >= 2
-            and self._loss_history.is_spike(loss, self.config.spike_threshold)
+        if len(self._loss_history) >= 2 and self._loss_history.is_spike(
+            loss, self.config.spike_threshold
         ):
             return False
         return True

@@ -1,13 +1,14 @@
 """Secure aggregation: masking schemes for federated gradient updates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import torch
 
 
-class MaskingScheme(str, Enum):
+class MaskingScheme(StrEnum):
     ADDITIVE = "ADDITIVE"
     PAIRWISE_MASK = "PAIRWISE_MASK"
     SHAMIR_STUB = "SHAMIR_STUB"
@@ -78,8 +79,9 @@ try:
     from src.federation.federated_learning import (  # type: ignore[import]
         FEDERATION_REGISTRY as _REG,
     )
+
     _REG["secure_aggregation"] = _SECURE_AGGREGATOR
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 FEDERATION_REGISTRY: dict[str, object] = {"secure_aggregation": _SECURE_AGGREGATOR}

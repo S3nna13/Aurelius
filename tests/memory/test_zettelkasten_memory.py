@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.memory.zettelkasten_memory import ZettelNote, ZettelkastenMemory
+from src.memory.zettelkasten_memory import ZettelkastenMemory, ZettelNote
 
 
 @pytest.fixture()

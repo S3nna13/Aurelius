@@ -17,16 +17,17 @@ References:
     - Keyformer (Adnan et al., 2024): KV cache reduction for LLM inference.
     - KVQuant (Hooper et al., 2024): nuanced KV cache quantization.
 """
+
 from __future__ import annotations
 
 import math
 
 import torch
 
-
 # ---------------------------------------------------------------------------
 # KVQuantizer
 # ---------------------------------------------------------------------------
+
 
 class KVQuantizer:
     """Quantize KV cache tensors for memory-efficient long-context inference.
@@ -63,7 +64,7 @@ class KVQuantizer:
             self.q_max = 2 ** (bits - 1) - 1
         else:
             self.q_min = 0
-            self.q_max = 2 ** bits - 1
+            self.q_max = 2**bits - 1
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -209,7 +210,7 @@ class KVQuantizer:
                     'original_shape': tuple (shape of k and v — they must match),
                 }
         """
-        assert k.shape == v.shape, "K and V must have the same shape"
+        assert k.shape == v.shape, "K and V must have the same shape"  # noqa: S101
         original_shape = tuple(k.shape)
 
         k_q, k_scales, k_zp = self.quantize(k)
@@ -309,8 +310,8 @@ class KVQuantizer:
 
         quantized_bytes = int_bytes + scale_bytes + zp_bytes
 
-        fp16_mb = fp16_bytes / (1024 ** 2)
-        quantized_mb = quantized_bytes / (1024 ** 2)
+        fp16_mb = fp16_bytes / (1024**2)
+        quantized_mb = quantized_bytes / (1024**2)
         savings_factor = fp16_mb / max(quantized_mb, 1e-9)
 
         return {

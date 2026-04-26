@@ -1,19 +1,20 @@
 """Tests for src/evaluation/metric_aggregator.py — ≥28 test cases."""
 
 import dataclasses
+
 import pytest
 
 from src.evaluation.metric_aggregator import (
+    METRIC_AGGREGATOR_REGISTRY,
     MetricAggregator,
     MetricScore,
     MetricWeight,
-    METRIC_AGGREGATOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # MetricWeight / MetricScore dataclasses
 # ---------------------------------------------------------------------------
+
 
 class TestDataclasses:
     def test_metric_weight_frozen(self):
@@ -38,6 +39,7 @@ class TestDataclasses:
 # ---------------------------------------------------------------------------
 # MetricAggregator.add_score / basic retrieval
 # ---------------------------------------------------------------------------
+
 
 class TestAddScore:
     def test_add_single_score(self):
@@ -65,6 +67,7 @@ class TestAddScore:
 # ---------------------------------------------------------------------------
 # MetricAggregator.weighted_average
 # ---------------------------------------------------------------------------
+
 
 class TestWeightedAverage:
     def test_weighted_average_empty_returns_zero(self):
@@ -116,6 +119,7 @@ class TestWeightedAverage:
 # MetricAggregator.report
 # ---------------------------------------------------------------------------
 
+
 class TestReport:
     def test_report_has_scores_key(self):
         agg = MetricAggregator()
@@ -154,6 +158,7 @@ class TestReport:
 # MetricAggregator.reset
 # ---------------------------------------------------------------------------
 
+
 class TestReset:
     def test_reset_clears_scores(self):
         agg = MetricAggregator()
@@ -178,6 +183,7 @@ class TestReset:
 # ---------------------------------------------------------------------------
 # MetricAggregator.best
 # ---------------------------------------------------------------------------
+
 
 class TestBest:
     def test_best_returns_top_n(self):
@@ -220,6 +226,7 @@ class TestBest:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

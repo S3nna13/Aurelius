@@ -1,10 +1,10 @@
 """Tests for src/eval/generation_metrics.py"""
+
 from __future__ import annotations
 
 import pytest
 
 from src.eval.generation_metrics import (
-    GenerationEvaluator,
     GenerationStats,
     average_token_entropy,
     compression_ratio,
@@ -17,10 +17,10 @@ from src.eval.generation_metrics import (
     vocabulary_coverage,
 )
 
-
 # ---------------------------------------------------------------------------
 # distinct_n
 # ---------------------------------------------------------------------------
+
 
 def test_distinct_1_all_unique():
     """All different words -> distinct_1 should be 1.0."""
@@ -41,6 +41,7 @@ def test_distinct_1_all_same():
 # repetition_rate
 # ---------------------------------------------------------------------------
 
+
 def test_repetition_rate_looping_text():
     """Looping text should have high repetition rate for 4-grams."""
     text = "the cat sat the cat sat the cat sat the cat sat"
@@ -52,6 +53,7 @@ def test_repetition_rate_looping_text():
 # ---------------------------------------------------------------------------
 # self_bleu
 # ---------------------------------------------------------------------------
+
 
 def test_self_bleu_identical():
     """Two identical texts -> high self_bleu (> 0.5)."""
@@ -69,6 +71,7 @@ def test_self_bleu_single_text():
 # ---------------------------------------------------------------------------
 # coverage
 # ---------------------------------------------------------------------------
+
 
 def test_coverage_full():
     """Summary identical to source -> coverage = 1.0."""
@@ -89,6 +92,7 @@ def test_coverage_no_overlap():
 # density
 # ---------------------------------------------------------------------------
 
+
 def test_density_extractive():
     """Summary copied verbatim from source -> density > 1.0."""
     source = "the cat sat on the mat and the dog ran fast"
@@ -102,6 +106,7 @@ def test_density_extractive():
 # compression_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_compression_ratio_positive():
     """Longer source, shorter summary -> ratio > 1.0."""
     source = "this is a very long source document with many words"
@@ -113,6 +118,7 @@ def test_compression_ratio_positive():
 # ---------------------------------------------------------------------------
 # generation_statistics
 # ---------------------------------------------------------------------------
+
 
 def test_generation_statistics_fields():
     """GenerationStats dataclass has all required fields with correct types."""
@@ -140,6 +146,7 @@ def test_generation_statistics_fields():
 # vocabulary_coverage
 # ---------------------------------------------------------------------------
 
+
 def test_vocabulary_coverage_keys():
     """vocabulary_coverage returns dict with all required keys."""
     generated = ["the quick brown fox", "jumps over the lazy dog"]
@@ -160,6 +167,7 @@ def test_vocabulary_coverage_keys():
 # ---------------------------------------------------------------------------
 # average_token_entropy
 # ---------------------------------------------------------------------------
+
 
 def test_average_token_entropy_positive():
     """Diverse texts with varied vocabulary -> entropy > 0."""

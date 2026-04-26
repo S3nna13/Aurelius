@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 import torch
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+")
 
 
@@ -40,7 +39,9 @@ def hallucination_rate(answer: str, source: str, n: int = 1) -> float:
     return 1.0 - coverage_score(answer, source, n=n)
 
 
-def embedding_alignment(answer_embeddings: torch.Tensor, source_embeddings: torch.Tensor) -> torch.Tensor:
+def embedding_alignment(
+    answer_embeddings: torch.Tensor, source_embeddings: torch.Tensor
+) -> torch.Tensor:
     """Compute max-cosine alignment between answer and source embeddings."""
     if answer_embeddings.dim() != 2 or source_embeddings.dim() != 2:
         raise ValueError("answer_embeddings and source_embeddings must be 2D")
@@ -78,12 +79,16 @@ def faithfulness_report(
         overlap = len(answer_tokens & source_tokens)
         precision = overlap / max(len(answer_tokens), 1)
         recall = overlap / max(len(source_tokens), 1)
-        lexical_f1 = 0.0 if precision + recall == 0 else 2 * precision * recall / (precision + recall)
+        lexical_f1 = (
+            0.0 if precision + recall == 0 else 2 * precision * recall / (precision + recall)
+        )
 
     embedding_support = None
     if answer_embeddings is not None or source_embeddings is not None:
         if answer_embeddings is None or source_embeddings is None:
-            raise ValueError("answer_embeddings and source_embeddings must either both be set or both be None")
+            raise ValueError(
+                "answer_embeddings and source_embeddings must either both be set or both be None"
+            )
         embedding_support = embedding_alignment(answer_embeddings, source_embeddings)
 
     return FaithfulnessReport(

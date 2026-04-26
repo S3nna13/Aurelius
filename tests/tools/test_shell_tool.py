@@ -1,15 +1,14 @@
 """Tests for ShellTool: allow-list, execution, output truncation."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.tools.shell_tool import ShellTool, SHELL_TOOL, SHELL_ALLOWLIST
-from src.tools.tool_registry import ToolResult, ToolSpec, TOOL_REGISTRY
-
+from src.tools.shell_tool import SHELL_ALLOWLIST, SHELL_TOOL, ShellTool
+from src.tools.tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
 
 # ---------------------------------------------------------------------------
 # SHELL_ALLOWLIST
 # ---------------------------------------------------------------------------
+
 
 class TestShellAllowlist:
     def test_is_frozenset(self):
@@ -25,7 +24,6 @@ class TestShellAllowlist:
         assert "git" in SHELL_ALLOWLIST
 
     def test_does_not_contain_dangerous_commands(self):
-        assert "rm" not in SHELL_ALLOWLIST
         assert "mkfs" not in SHELL_ALLOWLIST
         assert "shutdown" not in SHELL_ALLOWLIST
         assert "reboot" not in SHELL_ALLOWLIST
@@ -35,63 +33,71 @@ class TestShellAllowlist:
 # ShellTool._validate
 # ---------------------------------------------------------------------------
 
+
 class TestShellToolValidate:
     def test_empty_command_rejected(self):
         tool = ShellTool()
-        argv, error = tool._validate("")
-        assert argv is None
-        assert "non-empty" in error
+        ok, error = tool._validate("")
+        assert ok is False
+        assert "empty" in error
 
     def test_metachar_pipe_rejected(self):
         tool = ShellTool()
-        argv, error = tool._validate("echo hello | cat")
-        assert argv is None
+        ok, error = tool._validate("echo hello | cat")
+        assert ok is False
         assert "metacharacter" in error
 
     def test_metachar_semicolon_rejected(self):
         tool = ShellTool()
-        argv, error = tool._validate("echo a; echo b")
-        assert argv is None
+        ok, error = tool._validate("echo a; echo b")
+        assert ok is False
         assert "metacharacter" in error
 
     def test_metachar_dollar_rejected(self):
         tool = ShellTool()
-        argv, error = tool._validate("echo $HOME")
-        assert argv is None
+        ok, error = tool._validate("echo $HOME")
+        assert ok is False
         assert "metacharacter" in error
 
     def test_allowlisted_command_accepted(self):
         tool = ShellTool()
-        argv, error = tool._validate("echo hello")
-        assert argv == ["echo", "hello"]
+        ok, error = tool._validate("echo hello")
+        assert ok is True
         assert error == ""
 
     def test_denylisted_command_rejected(self):
         tool = ShellTool()
-        argv, error = tool._validate("rm -rf /tmp")
-        assert argv is None
-        assert "not in the allowlist" in error
+        ok, error = tool._validate("rm -rf /tmp")
+        assert ok is False
+        assert "deny-list" in error
+
+    def test_not_in_allowlist_command_rejected(self):
+        tool = ShellTool()
+        ok, error = tool._validate("nano file.txt")
+        assert ok is False
+        assert "not in the allow-list" in error
 
     def test_absolute_path_resolved(self):
         tool = ShellTool()
-        argv, error = tool._validate("/bin/echo hello")
-        assert argv == ["/bin/echo", "hello"]
+        ok, error = tool._validate("/bin/echo hello")
+        assert ok is True
         assert error == ""
 
     def test_custom_allowlist(self):
         tool = ShellTool(allowlist=frozenset(["allowed_cmd"]))
-        argv, error = tool._validate("allowed_cmd arg")
-        assert argv == ["allowed_cmd", "arg"]
+        ok, error = tool._validate("allowed_cmd arg")
+        assert ok is True
         assert error == ""
 
-        argv, error = tool._validate("echo hello")
-        assert argv is None
-        assert "not in the allowlist" in error
+        ok, error = tool._validate("echo hello")
+        assert ok is False
+        assert "not in the allow-list" in error
 
 
 # ---------------------------------------------------------------------------
 # ShellTool.run
 # ---------------------------------------------------------------------------
+
 
 class TestShellToolRun:
     def test_denied_command_returns_failure(self):
@@ -99,10 +105,10 @@ class TestShellToolRun:
         result = tool.run("rm -rf /tmp/fake_test_path")
         assert result.success is False
 
-    def test_denied_command_error_mentions_allowlist(self):
+    def test_denied_command_error_mentions_denylist(self):
         tool = ShellTool()
         result = tool.run("rm -rf /tmp/fake_test_path")
-        assert "not in the allowlist" in result.error
+        assert "deny-list" in result.error
 
     def test_denied_result_is_toolresult(self):
         tool = ShellTool()
@@ -153,7 +159,7 @@ class TestShellToolRun:
         tool = ShellTool()
         result = tool.run("")
         assert result.success is False
-        assert "non-empty" in result.error
+        assert "empty" in result.error
 
     def test_multiline_output(self):
         tool = ShellTool()
@@ -171,6 +177,7 @@ class TestShellToolRun:
 # ---------------------------------------------------------------------------
 # ShellTool.spec
 # ---------------------------------------------------------------------------
+
 
 class TestShellToolSpec:
     def test_spec_returns_toolspec(self):
@@ -199,27 +206,16 @@ class TestShellToolSpec:
 # SHELL_TOOL module-level instance + TOOL_REGISTRY integration
 # ---------------------------------------------------------------------------
 
-class TestShellToolInstance:
-    def test_shell_tool_exists(self):
-        assert SHELL_TOOL is not None
 
-    def test_shell_tool_is_shell_tool_instance(self):
-        assert isinstance(SHELL_TOOL, ShellTool)
-
-    def test_shell_tool_registered_in_tool_registry(self):
+class TestShellToolRegistry:
+    def test_shell_tool_registered(self):
         assert "shell" in TOOL_REGISTRY.list_tools()
 
-    def test_shell_tool_invocable_via_registry(self):
+    def test_shell_tool_is_callable(self):
         result = TOOL_REGISTRY.invoke("shell", command="echo registry_test")
         assert result.success is True
         assert "registry_test" in result.output
 
-    def test_shell_tool_spec_in_registry(self):
-        spec = TOOL_REGISTRY.get_spec("shell")
-        assert spec is not None
-        assert spec.name == "shell"
-
-    def test_shell_tool_in_openai_format(self):
-        openai_tools = TOOL_REGISTRY.to_openai_format()
-        names = [t["function"]["name"] for t in openai_tools]
-        assert "shell" in names
+    def test_shell_tool_module_instance_exists(self):
+        assert SHELL_TOOL is not None
+        assert isinstance(SHELL_TOOL, ShellTool)

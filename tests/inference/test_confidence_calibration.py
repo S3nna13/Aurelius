@@ -1,29 +1,37 @@
 """Tests for token-level confidence calibration."""
+
 import pytest
 import torch
 import torch.nn.functional as F
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.inference.confidence_calibration import (
     CalibrationConfig,
-    temperature_scale,
-    compute_token_confidence,
+    CalibrationEvaluator,
+    TemperatureScaler,
     compute_ece,
     compute_reliability_diagram,
-    TemperatureScaler,
-    CalibrationEvaluator,
+    compute_token_confidence,
+    temperature_scale,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     torch.manual_seed(42)
     return AureliusTransformer(cfg)
@@ -32,6 +40,7 @@ def small_model():
 # ---------------------------------------------------------------------------
 # CalibrationConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_calibration_config_defaults():
     cfg = CalibrationConfig()
@@ -52,6 +61,7 @@ def test_calibration_config_custom():
 # ---------------------------------------------------------------------------
 # temperature_scale tests
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_scale_identity():
     """T=1.0 should return unchanged logits."""
@@ -87,6 +97,7 @@ def test_temperature_scale_halves_logits():
 # compute_token_confidence tests
 # ---------------------------------------------------------------------------
 
+
 def test_compute_token_confidence_shape():
     """Output shape should be (B, T)."""
     logits = torch.randn(2, 10, 64)
@@ -114,7 +125,7 @@ def test_compute_token_confidence_is_max_prob():
 def test_compute_token_confidence_deterministic():
     """A one-hot logit vector should give confidence = 1."""
     logits = torch.zeros(1, 1, 8)
-    logits[0, 0, 3] = 100.0   # near one-hot
+    logits[0, 0, 3] = 100.0  # near one-hot
     conf = compute_token_confidence(logits)
     assert conf[0, 0].item() > 0.99
 
@@ -122,6 +133,7 @@ def test_compute_token_confidence_deterministic():
 # ---------------------------------------------------------------------------
 # compute_ece tests
 # ---------------------------------------------------------------------------
+
 
 def test_ece_perfectly_calibrated():
     """Perfectly calibrated model should yield ECE near 0."""
@@ -162,6 +174,7 @@ def test_ece_nonnegative():
 # compute_reliability_diagram tests
 # ---------------------------------------------------------------------------
 
+
 def test_reliability_diagram_bin_count():
     """All three lists must have exactly n_bins elements."""
     torch.manual_seed(4)
@@ -192,6 +205,7 @@ def test_reliability_diagram_counts_sum_to_n():
 # ---------------------------------------------------------------------------
 # TemperatureScaler tests
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_scaler_default_temperature():
     """Default temperature should come from config."""
@@ -235,6 +249,7 @@ def test_temperature_scaler_fit_multiple_batches():
 # ---------------------------------------------------------------------------
 # CalibrationEvaluator tests
 # ---------------------------------------------------------------------------
+
 
 def test_calibration_evaluator_returns_dict(small_model):
     """evaluate() must return a dict with ece, mean_confidence, accuracy."""

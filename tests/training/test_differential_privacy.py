@@ -14,6 +14,7 @@ Covers:
 from __future__ import annotations
 
 import math
+
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -89,9 +90,7 @@ def test_privacy_accountant_higher_noise_lower_epsilon():
     acct_high = PrivacyAccountant(noise_multiplier=2.0, max_grad_norm=1.0, delta=1e-5)
     eps_low = acct_low.epsilon_from_steps(100, 0.01)
     eps_high = acct_high.epsilon_from_steps(100, 0.01)
-    assert eps_low > eps_high, (
-        f"Higher noise should give lower epsilon, got {eps_low=} {eps_high=}"
-    )
+    assert eps_low > eps_high, f"Higher noise should give lower epsilon, got {eps_low=} {eps_high=}"
 
 
 def test_privacy_accountant_moments_accountant_positive():
@@ -202,9 +201,7 @@ def test_gaussian_mechanism_sensitivity():
 def test_dpsgd_optimizer_step_runs():
     """DPSGDOptimizer.step should run without raising."""
     model = make_model()
-    opt = DPSGDOptimizer(
-        model, lr=1e-3, max_grad_norm=MAX_GRAD_NORM, noise_multiplier=1.1
-    )
+    opt = DPSGDOptimizer(model, lr=1e-3, max_grad_norm=MAX_GRAD_NORM, noise_multiplier=1.1)
     input_ids, labels = make_batch()
 
     # Build per-sample losses with grad_fn
@@ -226,9 +223,7 @@ def test_dpsgd_optimizer_modifies_params():
     # Snapshot initial parameters
     before = {n: p.detach().clone() for n, p in model.named_parameters()}
 
-    opt = DPSGDOptimizer(
-        model, lr=0.1, max_grad_norm=MAX_GRAD_NORM, noise_multiplier=1.1
-    )
+    opt = DPSGDOptimizer(model, lr=0.1, max_grad_norm=MAX_GRAD_NORM, noise_multiplier=1.1)
     input_ids, labels = make_batch()
 
     losses = []

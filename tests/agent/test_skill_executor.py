@@ -91,9 +91,7 @@ def test_empty_context_uses_defaults():
 
 def test_empty_skill_id_raises():
     exe = _fresh()
-    with pytest.raises(
-        SkillExecutionError, match="skill_id must be a non-empty string"
-    ):
+    with pytest.raises(SkillExecutionError, match="skill_id must be a non-empty string"):
         exe.execute("", "instructions")
 
 
@@ -104,9 +102,7 @@ def test_empty_skill_id_raises():
 
 def test_whitespace_only_skill_id_raises():
     exe = _fresh()
-    with pytest.raises(
-        SkillExecutionError, match="skill_id must be a non-empty string"
-    ):
+    with pytest.raises(SkillExecutionError, match="skill_id must be a non-empty string"):
         exe.execute("   ", "instructions")
 
 
@@ -117,9 +113,7 @@ def test_whitespace_only_skill_id_raises():
 
 def test_empty_instructions_raises():
     exe = _fresh()
-    with pytest.raises(
-        SkillExecutionError, match="instructions must be a non-empty string"
-    ):
+    with pytest.raises(SkillExecutionError, match="instructions must be a non-empty string"):
         exe.execute("test", "")
 
 
@@ -130,9 +124,7 @@ def test_empty_instructions_raises():
 
 def test_whitespace_only_instructions_raises():
     exe = _fresh()
-    with pytest.raises(
-        SkillExecutionError, match="instructions must be a non-empty string"
-    ):
+    with pytest.raises(SkillExecutionError, match="instructions must be a non-empty string"):
         exe.execute("test", "   ")
 
 

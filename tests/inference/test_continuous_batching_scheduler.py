@@ -86,9 +86,7 @@ def test_max_new_tokens_completes_request():
 def test_max_seq_len_completes_request():
     sched = ContinuousBatchingScheduler(max_batch_size=2, max_seq_len=5)
     # prompt length 4, so after 2 generated tokens total=6 > 5 -> complete
-    sched.enqueue(
-        _req("a", prompt=[1, 2, 3, 4], max_new_tokens=100, eos=999)
-    )
+    sched.enqueue(_req("a", prompt=[1, 2, 3, 4], max_new_tokens=100, eos=999))
 
     sched.build_step()
     sched.receive_tokens({"a": 10})
@@ -194,7 +192,13 @@ def test_determinism_same_inputs_yield_same_batches():
             if step is None:
                 trace.append(None)
                 break
-            trace.append((tuple(step.request_ids), tuple(tuple(x) for x in step.input_ids), tuple(step.is_prefill)))
+            trace.append(
+                (
+                    tuple(step.request_ids),
+                    tuple(tuple(x) for x in step.input_ids),
+                    tuple(step.is_prefill),
+                )
+            )
             # deterministic token: id-based
             tokens = {rid: (i + 1) for i, rid in enumerate(step.request_ids)}
             sched.receive_tokens(tokens)

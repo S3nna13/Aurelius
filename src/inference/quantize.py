@@ -6,19 +6,21 @@ Supports:
 
 Dequantization happens on-the-fly during forward(); inference-time memory savings.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class QuantConfig:
-    bits: int = 8              # 8 or 4
-    per_channel: bool = True   # per output-channel (True) or per-tensor (False)
-    group_size: int = 128      # used only when bits=4 (groups within each row)
+    bits: int = 8  # 8 or 4
+    per_channel: bool = True  # per output-channel (True) or per-tensor (False)
+    group_size: int = 128  # used only when bits=4 (groups within each row)
 
 
 def quantize_tensor_int8(
@@ -84,7 +86,7 @@ def quantize_tensor_int4(
     Note: weight_q stores values in [0, 15] packed into int8 (lower 4 bits).
     """
     out_features, in_features = weight.shape
-    assert in_features % group_size == 0, (
+    assert in_features % group_size == 0, (  # noqa: S101
         f"in_features ({in_features}) must be divisible by group_size ({group_size})"
     )
     n_groups = in_features // group_size
@@ -97,10 +99,10 @@ def quantize_tensor_int4(
     w_max = w_grouped.max(dim=-1).values  # (out, n_groups)
 
     scale = (w_max - w_min).clamp(min=1e-8) / 15.0  # (out, n_groups)
-    zero_point = -w_min / scale.clamp(min=1e-8)      # (out, n_groups)
+    zero_point = -w_min / scale.clamp(min=1e-8)  # (out, n_groups)
 
     # Quantize: q = round(w/scale + zero_point), clamp to [0, 15]
-    scale_exp = scale.unsqueeze(-1)    # (out, n_groups, 1)
+    scale_exp = scale.unsqueeze(-1)  # (out, n_groups, 1)
     zp_exp = zero_point.unsqueeze(-1)  # (out, n_groups, 1)
     weight_q = (w_grouped / scale_exp + zp_exp).round().clamp(0, 15).to(torch.uint8)
 

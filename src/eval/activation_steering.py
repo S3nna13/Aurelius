@@ -1,4 +1,4 @@
-"""Activation steering and representation engineering: compute steering vectors, apply them at inference time."""
+"""Activation steering and representation engineering: compute steering vectors, apply them at inference time."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from torch import Tensor
 
 @dataclass
 class SteeringConfig:
-    """Configuration for activation steering."""
+    """Configuration for activation steering."""  # noqa: E501
 
     layer_idx: int = 12
     """Which layer to steer."""
@@ -118,7 +118,7 @@ class SteeringHook:
     # Context-manager protocol
     # ------------------------------------------------------------------
 
-    def register(self, model: nn.Module) -> "SteeringHook":
+    def register(self, model: nn.Module) -> SteeringHook:
         """Register the forward hook on *model*.  Returns self for chaining."""
         self._model = model
         target_layer = model.layers[self.config.layer_idx]
@@ -131,7 +131,7 @@ class SteeringHook:
             self._handle.remove()
             self._handle = None
 
-    def __enter__(self) -> "SteeringHook":
+    def __enter__(self) -> SteeringHook:
         return self
 
     def __exit__(self, *args: Any) -> None:
@@ -216,13 +216,13 @@ def measure_steering_effect(
 
     Returns:
         Dictionary with keys ``"logit_kl"``, ``"logit_mse"``, ``"max_logit_diff"``.
-    """
+    """  # noqa: E501
     with torch.no_grad():
         _loss_base, logits_base, _pkv = model(input_ids)
         logits_steered = apply_steering(model, input_ids, steering_vector, config)
 
     # Flatten B*T
-    logits_base_flat = logits_base.view(-1, logits_base.shape[-1])       # (B*T, V)
+    logits_base_flat = logits_base.view(-1, logits_base.shape[-1])  # (B*T, V)
     logits_steered_flat = logits_steered.view(-1, logits_steered.shape[-1])  # (B*T, V)
 
     probs_base = F.softmax(logits_base_flat, dim=-1)

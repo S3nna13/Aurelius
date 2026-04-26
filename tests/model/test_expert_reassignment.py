@@ -44,9 +44,12 @@ def test_backup_expert_indices_rejects_bad_rank():
 
 def test_reassign_overflowed_tokens_rejects_bad_shapes():
     with pytest.raises(ValueError):
-        reassign_overflowed_tokens(torch.tensor([0, 1]), torch.tensor([[0, 1]]), torch.tensor([1, 1]))
+        reassign_overflowed_tokens(
+            torch.tensor([0, 1]), torch.tensor([[0, 1]]), torch.tensor([1, 1])
+        )
 
 
 def test_reassignment_success_rate_handles_empty_assignments():
-    assert reassignment_success_rate(torch.tensor([], dtype=torch.long)).item() == pytest.approx(0.0)
-
+    assert reassignment_success_rate(torch.tensor([], dtype=torch.long)).item() == pytest.approx(
+        0.0
+    )

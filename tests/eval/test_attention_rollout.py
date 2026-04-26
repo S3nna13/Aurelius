@@ -8,27 +8,26 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-from torch import Tensor
-
 from aurelius.eval.attention_rollout import (
     AttentionRollout,
     AttentionRolloutHook,
     RolloutAttributor,
 )
-
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Shared constants
 # ---------------------------------------------------------------------------
 
-T = 8   # sequence length
-H = 4   # number of attention heads
-B = 2   # batch size
+T = 8  # sequence length
+H = 4  # number of attention heads
+B = 2  # batch size
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform_attn(t: int = T) -> Tensor:
     """Return a (T, T) uniform attention matrix (rows sum to 1)."""
@@ -56,10 +55,11 @@ def _rand_attn_unbatched(h: int = H, t: int = T) -> Tensor:
 # Test 1 — single-layer identity input produces identity rollout
 # ---------------------------------------------------------------------------
 
+
 def test_single_layer_identity_rollout():
     """If A_l = I, rollout should also be I (after residual + normalise)."""
     rollout = AttentionRollout()
-    attn = _identity_attn()          # (T, T)
+    attn = _identity_attn()  # (T, T)
     result = rollout.compute([attn])  # (T, T)
     assert torch.allclose(result, torch.eye(T), atol=1e-6), (
         "Identity attention should yield identity rollout"
@@ -69,6 +69,7 @@ def test_single_layer_identity_rollout():
 # ---------------------------------------------------------------------------
 # Test 2 — single-layer uniform attention → rows sum to 1
 # ---------------------------------------------------------------------------
+
 
 def test_single_layer_uniform_rows_sum_to_one():
     """Rollout of a uniform attention map must have rows summing to 1."""
@@ -85,10 +86,11 @@ def test_single_layer_uniform_rows_sum_to_one():
 # Test 3 — output shape (T, T) for unbatched (T, T) input
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape_unbatched_tt():
     """Single unbatched (T, T) map → output shape (T, T)."""
     rollout = AttentionRollout()
-    attn = _uniform_attn()           # (T, T)
+    attn = _uniform_attn()  # (T, T)
     result = rollout.compute([attn])
     assert result.shape == (T, T), f"Expected ({T}, {T}), got {result.shape}"
 
@@ -97,10 +99,11 @@ def test_output_shape_unbatched_tt():
 # Test 4 — output shape (B, T, T) for batched (B, H, T, T) input
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape_batched():
     """Batched (B, H, T, T) maps → output shape (B, T, T)."""
     rollout = AttentionRollout()
-    attn = _rand_attn_batched()      # (B, H, T, T)
+    attn = _rand_attn_batched()  # (B, H, T, T)
     result = rollout.compute([attn])
     assert result.shape == (B, T, T), f"Expected ({B}, {T}, {T}), got {result.shape}"
 
@@ -108,6 +111,7 @@ def test_output_shape_batched():
 # ---------------------------------------------------------------------------
 # Test 5 — all values in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_values_in_zero_one():
     """Rollout values must lie in [0, 1]."""
@@ -122,12 +126,13 @@ def test_values_in_zero_one():
 # Test 6 — rows sum to 1 (normalised)
 # ---------------------------------------------------------------------------
 
+
 def test_rows_sum_to_one():
     """All rows of the rollout matrix must sum to ~1."""
     rollout = AttentionRollout()
     maps = [_rand_attn_batched() for _ in range(4)]
     result = rollout.compute(maps)  # (B, T, T)
-    row_sums = result.sum(dim=-1)   # (B, T)
+    row_sums = result.sum(dim=-1)  # (B, T)
     assert torch.allclose(row_sums, torch.ones(B, T), atol=1e-5), (
         f"Row sums off: min={row_sums.min():.6f} max={row_sums.max():.6f}"
     )
@@ -136,6 +141,7 @@ def test_rows_sum_to_one():
 # ---------------------------------------------------------------------------
 # Test 7 — multi-layer: 4 random layers → correct output shape
 # ---------------------------------------------------------------------------
+
 
 def test_multi_layer_output_shape():
     """Four batched layers must produce a (B, T, T) rollout."""
@@ -149,17 +155,18 @@ def test_multi_layer_output_shape():
 # Test 8 — discard_ratio=0.5 zeros out bottom half of weights
 # ---------------------------------------------------------------------------
 
+
 def test_discard_ratio_zeroes_low_weights():
     """discard_ratio=0.5 must produce sparser maps than discard_ratio=0."""
     torch.manual_seed(42)
     rollout_nodiscard = AttentionRollout(discard_ratio=0.0)
-    rollout_discard   = AttentionRollout(discard_ratio=0.5)
+    rollout_discard = AttentionRollout(discard_ratio=0.5)
 
     maps = [_rand_attn_batched() for _ in range(2)]
 
     # Compute with no discarding and with 50 % discarding
     result_nodiscard = rollout_nodiscard.compute(maps)
-    result_discard   = rollout_discard.compute(maps)
+    result_discard = rollout_discard.compute(maps)
 
     # Both must still produce valid shapes
     assert result_discard.shape == (B, T, T)
@@ -172,6 +179,7 @@ def test_discard_ratio_zeroes_low_weights():
 # ---------------------------------------------------------------------------
 # Test 9 — head_fusion="min" produces valid rollout
 # ---------------------------------------------------------------------------
+
 
 def test_head_fusion_min_valid():
     """head_fusion='min' must produce shape (B, T, T) with rows summing to 1."""
@@ -187,6 +195,7 @@ def test_head_fusion_min_valid():
 # Test 10 — head_fusion="max" produces valid rollout
 # ---------------------------------------------------------------------------
 
+
 def test_head_fusion_max_valid():
     """head_fusion='max' must produce shape (B, T, T) with rows summing to 1."""
     rollout = AttentionRollout(head_fusion="max")
@@ -201,11 +210,12 @@ def test_head_fusion_max_valid():
 # Test 11 — RolloutAttributor.attribute output shape (B, T) for batched input
 # ---------------------------------------------------------------------------
 
+
 def test_attributor_output_shape_batched():
     """attribute() must return (B, T) for batched attention maps."""
-    rollout    = AttentionRollout()
+    rollout = AttentionRollout()
     attributor = RolloutAttributor(rollout)
-    maps   = [_rand_attn_batched() for _ in range(3)]
+    maps = [_rand_attn_batched() for _ in range(3)]
     scores = attributor.attribute(maps, target_pos=0)
     assert scores.shape == (B, T), f"Expected ({B}, {T}), got {scores.shape}"
 
@@ -214,11 +224,12 @@ def test_attributor_output_shape_batched():
 # Test 12 — RolloutAttributor.attribute sums to 1 per batch item
 # ---------------------------------------------------------------------------
 
+
 def test_attributor_sums_to_one():
     """Importance scores must sum to 1 for each batch item."""
-    rollout    = AttentionRollout()
+    rollout = AttentionRollout()
     attributor = RolloutAttributor(rollout)
-    maps   = [_rand_attn_batched() for _ in range(3)]
+    maps = [_rand_attn_batched() for _ in range(3)]
     scores = attributor.attribute(maps, target_pos=2)
     totals = scores.sum(dim=-1)  # (B,)
     assert torch.allclose(totals, torch.ones(B), atol=1e-6), (
@@ -230,17 +241,18 @@ def test_attributor_sums_to_one():
 # Test 13 — RolloutAttributor.attribute uses correct target_pos row
 # ---------------------------------------------------------------------------
 
+
 def test_attributor_target_pos_selects_correct_row():
     """attribute(target_pos=p) must equal rollout[:, p, :] (normalised)."""
-    rollout    = AttentionRollout()
+    rollout = AttentionRollout()
     attributor = RolloutAttributor(rollout)
-    maps   = [_rand_attn_batched() for _ in range(2)]
+    maps = [_rand_attn_batched() for _ in range(2)]
 
     target = 3
-    scores    = attributor.attribute(maps, target_pos=target)   # (B, T)
-    roll_mat  = rollout.compute(maps)                            # (B, T, T)
-    raw_row   = roll_mat[:, target, :]                           # (B, T)
-    expected  = raw_row / raw_row.sum(dim=-1, keepdim=True)
+    scores = attributor.attribute(maps, target_pos=target)  # (B, T)
+    roll_mat = rollout.compute(maps)  # (B, T, T)
+    raw_row = roll_mat[:, target, :]  # (B, T)
+    expected = raw_row / raw_row.sum(dim=-1, keepdim=True)
 
     assert torch.allclose(scores, expected, atol=1e-6), (
         "attributor scores do not match the normalised rollout row"
@@ -250,6 +262,7 @@ def test_attributor_target_pos_selects_correct_row():
 # ---------------------------------------------------------------------------
 # Tiny module for hook tests
 # ---------------------------------------------------------------------------
+
 
 class _AttnModule(nn.Module):
     """Minimal attention-like module that returns (attn_weights, value)."""
@@ -283,15 +296,14 @@ class _TinyTransformer(nn.Module):
 # Test 14 — AttentionRolloutHook registers hooks on correct module type
 # ---------------------------------------------------------------------------
 
+
 def test_hook_registers_on_correct_type():
     """Hooks should be registered on all _AttnModule instances."""
     model = _TinyTransformer()
-    hook  = AttentionRolloutHook(model, attention_module_class=_AttnModule)
+    hook = AttentionRolloutHook(model, attention_module_class=_AttnModule)
     hook.register()
 
-    assert len(hook._hooks) == 2, (
-        f"Expected 2 hooks (one per _AttnModule), got {len(hook._hooks)}"
-    )
+    assert len(hook._hooks) == 2, f"Expected 2 hooks (one per _AttnModule), got {len(hook._hooks)}"
     hook.remove()
 
 
@@ -299,10 +311,11 @@ def test_hook_registers_on_correct_type():
 # Test 15 — AttentionRolloutHook.remove cleans up; model still works
 # ---------------------------------------------------------------------------
 
+
 def test_hook_remove_cleans_up():
     """After remove(), hooks list is empty and the model still runs."""
     model = _TinyTransformer()
-    hook  = AttentionRolloutHook(model, attention_module_class=_AttnModule)
+    hook = AttentionRolloutHook(model, attention_module_class=_AttnModule)
     hook.register()
     hook.remove()
 
@@ -311,7 +324,7 @@ def test_hook_remove_cleans_up():
     # Model should still run without errors
     x = torch.randn(1, T, 16)
     try:
-        out = model(x)
+        model(x)
     except Exception as exc:
         pytest.fail(f"Model raised an exception after hook removal: {exc}")
 
@@ -320,10 +333,11 @@ def test_hook_remove_cleans_up():
 # Test 16 — Hook collects maps after a forward pass
 # ---------------------------------------------------------------------------
 
+
 def test_hook_collects_maps():
     """get_maps() must return non-empty list after a forward pass."""
     model = _TinyTransformer()
-    hook  = AttentionRolloutHook(model, attention_module_class=_AttnModule)
+    hook = AttentionRolloutHook(model, attention_module_class=_AttnModule)
     hook.register()
 
     x = torch.randn(B, T, 16)
@@ -341,6 +355,7 @@ def test_hook_collects_maps():
 # ---------------------------------------------------------------------------
 # Bonus — hook collects maps by name (attention_module_class=None)
 # ---------------------------------------------------------------------------
+
 
 class _NamedAttnTransformer(nn.Module):
     """Transformer stub where attention modules are named exactly 'attn'."""
@@ -360,7 +375,7 @@ class _NamedAttnTransformer(nn.Module):
 def test_hook_by_name_registers_correctly():
     """With attention_module_class=None, hooks target modules named 'attn'."""
     model = _NamedAttnTransformer()
-    hook  = AttentionRolloutHook(model)  # no class specified
+    hook = AttentionRolloutHook(model)  # no class specified
     hook.register()
 
     # Should have found 2 modules with leaf name 'attn'

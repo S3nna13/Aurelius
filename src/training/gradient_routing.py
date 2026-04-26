@@ -7,19 +7,19 @@ Routes gradients based on data properties, allowing controlled learning:
 
 Reference: Gradient Routing (MIT/Anthropic 2024)
 """
+
 from __future__ import annotations
 
 import fnmatch
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RoutingRule:
@@ -33,9 +33,10 @@ class RoutingRule:
             Applied after allowed_modules; these are always blocked regardless.
         gradient_scale: Scale factor for allowed gradients (0.0 = block, 1.0 = pass-through).
     """
-    data_tags: List[str] = field(default_factory=list)
-    allowed_modules: List[str] = field(default_factory=list)
-    blocked_modules: List[str] = field(default_factory=list)
+
+    data_tags: list[str] = field(default_factory=list)
+    allowed_modules: list[str] = field(default_factory=list)
+    blocked_modules: list[str] = field(default_factory=list)
     gradient_scale: float = 1.0
 
     def matches_tag(self, data_tag: str) -> bool:
@@ -76,7 +77,8 @@ class GradientRoutingConfig:
         default_scale: Scale applied when no rule matches (default 1.0).
         log_gradient_norms: Whether to log gradient norms before/after masking.
     """
-    rules: Optional[List[RoutingRule]] = None
+
+    rules: list[RoutingRule] | None = None
     default_scale: float = 1.0
     log_gradient_norms: bool = False
 
@@ -84,6 +86,7 @@ class GradientRoutingConfig:
 # ---------------------------------------------------------------------------
 # ModuleGradientMask
 # ---------------------------------------------------------------------------
+
 
 class ModuleGradientMask:
     """Apply per-parameter gradient scaling masks after a backward pass.
@@ -95,7 +98,7 @@ class ModuleGradientMask:
             other values scale the gradient proportionally.
     """
 
-    def __init__(self, model: nn.Module, mask: Dict[str, float]) -> None:
+    def __init__(self, model: nn.Module, mask: dict[str, float]) -> None:
         self.model = model
         self.mask = mask  # {param_name: scale}
 
@@ -117,7 +120,7 @@ class ModuleGradientMask:
             else:
                 param.grad.mul_(scale)
 
-    def get_masked_params(self) -> List[str]:
+    def get_masked_params(self) -> list[str]:
         """Return list of parameter names whose scale is less than 1.0."""
         return [name for name, scale in self.mask.items() if scale < 1.0]
 
@@ -125,6 +128,7 @@ class ModuleGradientMask:
 # ---------------------------------------------------------------------------
 # GradientRouter
 # ---------------------------------------------------------------------------
+
 
 class GradientRouter:
     """Route gradients to model components based on data tags and routing rules.
@@ -137,11 +141,11 @@ class GradientRouter:
         routing_rules: List of RoutingRule instances to apply.
     """
 
-    def __init__(self, model: nn.Module, routing_rules: List[RoutingRule]) -> None:
+    def __init__(self, model: nn.Module, routing_rules: list[RoutingRule]) -> None:
         self.model = model
         self.routing_rules = routing_rules
-        self._hooks: List[torch.utils.hooks.RemovableHook] = []
-        self._active_tag: Optional[str] = None
+        self._hooks: list[torch.utils.hooks.RemovableHook] = []
+        self._active_tag: str | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -202,15 +206,14 @@ class GradientRouter:
                     tag = self._active_tag
                     if tag is None:
                         return grad
-                    active_rules = [
-                        r for r in self.routing_rules if r.matches_tag(tag)
-                    ]
+                    active_rules = [r for r in self.routing_rules if r.matches_tag(tag)]
                     combined_scale: float = 1.0
                     for rule in active_rules:
                         combined_scale *= rule.scale_for_param(param_name)
                     if combined_scale == 1.0:
                         return grad
                     return grad * combined_scale
+
                 return hook
 
             handle = param.register_hook(make_hook(_name))
@@ -235,14 +238,14 @@ class GradientRouter:
                 blocked_params_per_tag: {tag: [param_names blocked]}
                 active_tags: list of all unique tags across all rules
         """
-        all_tags: List[str] = []
+        all_tags: list[str] = []
         for rule in self.routing_rules:
             all_tags.extend(rule.data_tags)
         active_tags = list(dict.fromkeys(all_tags))  # deduplicate preserving order
 
-        blocked_params_per_tag: Dict[str, List[str]] = {}
+        blocked_params_per_tag: dict[str, list[str]] = {}
         for tag in active_tags:
-            blocked: List[str] = []
+            blocked: list[str] = []
             active_rules = [r for r in self.routing_rules if r.matches_tag(tag)]
             for name, _param in self.model.named_parameters():
                 combined_scale: float = 1.0
@@ -263,6 +266,7 @@ class GradientRouter:
 # Factory helpers
 # ---------------------------------------------------------------------------
 
+
 def create_safety_routing(model: nn.Module) -> GradientRouter:
     """Create a router that prevents 'harmful' gradients from reaching early layers.
 
@@ -277,9 +281,10 @@ def create_safety_routing(model: nn.Module) -> GradientRouter:
     """
     # Infer number of layers by scanning parameter names for "layers.N." patterns
     import re
+
     layer_indices = set()
     for name, _ in model.named_parameters():
-        m = re.search(r'layers\.(\d+)\.', name)
+        m = re.search(r"layers\.(\d+)\.", name)
         if m:
             layer_indices.add(int(m.group(1)))
 
@@ -291,7 +296,7 @@ def create_safety_routing(model: nn.Module) -> GradientRouter:
 
     safety_rule = RoutingRule(
         data_tags=["harmful"],
-        allowed_modules=[],       # no allow-list restriction
+        allowed_modules=[],  # no allow-list restriction
         blocked_modules=blocked_patterns,
         gradient_scale=1.0,
     )
@@ -303,9 +308,10 @@ def create_safety_routing(model: nn.Module) -> GradientRouter:
 # Utility functions
 # ---------------------------------------------------------------------------
 
+
 def compute_gradient_conflict(
-    grads1: List[torch.Tensor],
-    grads2: List[torch.Tensor],
+    grads1: list[torch.Tensor],
+    grads2: list[torch.Tensor],
 ) -> float:
     """Measure cosine similarity between two gradient sets.
 

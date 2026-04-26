@@ -7,16 +7,15 @@ architecture.  Pure native PyTorch only.
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # RMSNorm
 # ---------------------------------------------------------------------------
+
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization."""
@@ -35,6 +34,7 @@ class RMSNorm(nn.Module):
 # ---------------------------------------------------------------------------
 # SSMKernel
 # ---------------------------------------------------------------------------
+
 
 class SSMKernel(nn.Module):
     """
@@ -86,7 +86,7 @@ class SSMKernel(nn.Module):
         A: torch.Tensor,  # [d_model, d_state]  (already negative real)
         B: torch.Tensor,  # [B, d_model, d_state]
         dt: torch.Tensor,  # [B, d_model]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Zero-Order Hold discretisation.
 
@@ -99,11 +99,11 @@ class SSMKernel(nn.Module):
         B_bar : [B, d_model, d_state]
         """
         # dt: [B, d_model] → [B, d_model, 1]
-        dt_exp = dt.unsqueeze(-1)                     # [B, d_model, 1]
+        dt_exp = dt.unsqueeze(-1)  # [B, d_model, 1]
         # A:  [d_model, d_state] → [1, d_model, d_state]
-        A_bc = A.unsqueeze(0)                         # [1, d_model, d_state]
-        A_bar = torch.exp(dt_exp * A_bc)              # [B, d_model, d_state]
-        B_bar = dt_exp * B                            # [B, d_model, d_state]
+        A_bc = A.unsqueeze(0)  # [1, d_model, d_state]
+        A_bar = torch.exp(dt_exp * A_bc)  # [B, d_model, d_state]
+        B_bar = dt_exp * B  # [B, d_model, d_state]
         return A_bar, B_bar
 
     # ------------------------------------------------------------------
@@ -127,12 +127,12 @@ class SSMKernel(nn.Module):
 
         # ---- input-dependent (selective) projections ----
         # dt: [B, T, d_model]
-        dt_rank_hidden = self.x_dt_proj(u)            # [B, T, dt_rank]
-        dt = F.softplus(self.dt_proj(dt_rank_hidden)) # [B, T, d_model]
+        dt_rank_hidden = self.x_dt_proj(u)  # [B, T, dt_rank]
+        dt = F.softplus(self.dt_proj(dt_rank_hidden))  # [B, T, d_model]
 
         # B_t and C_t: [B, T, d_state]
-        B_t = self.B_proj(u)   # [B, T, d_state]
-        C_t = self.C_proj(u)   # [B, T, d_state]
+        B_t = self.B_proj(u)  # [B, T, d_state]
+        C_t = self.C_proj(u)  # [B, T, d_state]
 
         # ---- sequential scan ----
         # h: [B, d_model, d_state]
@@ -142,23 +142,23 @@ class SSMKernel(nn.Module):
         for t in range(T):
             # Discretise at this time step
             # dt_t: [B, d_model]
-            dt_t = dt[:, t, :]                        # [B, d_model]
+            dt_t = dt[:, t, :]  # [B, d_model]
             # B_bar_t: [B, d_model, d_state]
             B_t_step = B_t[:, t, :].unsqueeze(1).expand(B_sz, d_model, d_state)
             A_bar_t, B_bar_t = self.discretize(A, B_t_step, dt_t)
 
             # u_t: [B, d_model] → [B, d_model, 1] for broadcasting
-            u_t = u[:, t, :].unsqueeze(-1)            # [B, d_model, 1]
+            u_t = u[:, t, :].unsqueeze(-1)  # [B, d_model, 1]
 
             # State update: h = A_bar * h + B_bar * u_t
-            h = A_bar_t * h + B_bar_t * u_t          # [B, d_model, d_state]
+            h = A_bar_t * h + B_bar_t * u_t  # [B, d_model, d_state]
 
             # Output: y_t = sum_n C_t[n] * h[..., n]  + D * u_t
             # C_t_step: [B, d_state] → [B, 1, d_state]
-            C_t_step = C_t[:, t, :].unsqueeze(1)     # [B, 1, d_state]
+            C_t_step = C_t[:, t, :].unsqueeze(1)  # [B, 1, d_state]
             # (h * C): [B, d_model, d_state] → sum over d_state → [B, d_model]
-            y_t = (h * C_t_step).sum(dim=-1)         # [B, d_model]
-            y_t = y_t + self.D * u[:, t, :]          # skip connection
+            y_t = (h * C_t_step).sum(dim=-1)  # [B, d_model]
+            y_t = y_t + self.D * u[:, t, :]  # skip connection
 
             ys.append(y_t)
 
@@ -169,6 +169,7 @@ class SSMKernel(nn.Module):
 # ---------------------------------------------------------------------------
 # S6Block
 # ---------------------------------------------------------------------------
+
 
 class S6Block(nn.Module):
     """
@@ -221,25 +222,26 @@ class S6Block(nn.Module):
         B_sz, T, _ = x.shape
 
         # Project to inner dimension, split into two paths
-        xz = self.in_proj(x)                               # [B, T, 2*d_inner]
-        x_proj, z = xz.chunk(2, dim=-1)                   # each [B, T, d_inner]
+        xz = self.in_proj(x)  # [B, T, 2*d_inner]
+        x_proj, z = xz.chunk(2, dim=-1)  # each [B, T, d_inner]
 
         # Depthwise conv1d expects [B, C, T]
-        x_conv = self.conv1d(x_proj.transpose(1, 2))      # [B, d_inner, T + pad]
-        x_conv = x_conv[..., :T]                          # trim to T
-        x_conv = x_conv.transpose(1, 2)                   # [B, T, d_inner]
+        x_conv = self.conv1d(x_proj.transpose(1, 2))  # [B, d_inner, T + pad]
+        x_conv = x_conv[..., :T]  # trim to T
+        x_conv = x_conv.transpose(1, 2)  # [B, T, d_inner]
 
         # SSM over SiLU-activated conv output
         x_ssm = self.ssm.selective_scan(F.silu(x_conv))  # [B, T, d_inner]
 
         # Gated output
-        out = self.out_proj(x_ssm * F.silu(z))            # [B, T, d_model]
+        out = self.out_proj(x_ssm * F.silu(z))  # [B, T, d_model]
         return out
 
 
 # ---------------------------------------------------------------------------
 # MambaBlock
 # ---------------------------------------------------------------------------
+
 
 class MambaBlock(nn.Module):
     """Pre-norm wrapper around S6Block with residual connection."""
@@ -266,6 +268,7 @@ class MambaBlock(nn.Module):
 # MambaLanguageModel
 # ---------------------------------------------------------------------------
 
+
 class MambaLanguageModel(nn.Module):
     """Stack of MambaBlocks with token embedding and language-model head."""
 
@@ -278,9 +281,7 @@ class MambaLanguageModel(nn.Module):
     ) -> None:
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.layers = nn.ModuleList(
-            [MambaBlock(d_model, d_state=d_state) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([MambaBlock(d_model, d_state=d_state) for _ in range(n_layers)])
         self.norm_f = RMSNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
@@ -294,11 +295,11 @@ class MambaLanguageModel(nn.Module):
         -------
         logits : [B, T, vocab_size]
         """
-        x = self.embedding(input_ids)          # [B, T, d_model]
+        x = self.embedding(input_ids)  # [B, T, d_model]
         for layer in self.layers:
             x = layer(x)
-        x = self.norm_f(x)                     # [B, T, d_model]
-        logits = self.lm_head(x)               # [B, T, vocab_size]
+        x = self.norm_f(x)  # [B, T, d_model]
+        logits = self.lm_head(x)  # [B, T, vocab_size]
         return logits
 
     def compute_loss(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -313,10 +314,10 @@ class MambaLanguageModel(nn.Module):
         -------
         loss : scalar tensor
         """
-        logits = self.forward(input_ids)       # [B, T, vocab_size]
+        logits = self.forward(input_ids)  # [B, T, vocab_size]
         # Shift: predict token t+1 from context up to t
-        shift_logits = logits[:, :-1, :].contiguous()   # [B, T-1, vocab]
-        shift_labels = input_ids[:, 1:].contiguous()    # [B, T-1]
+        shift_logits = logits[:, :-1, :].contiguous()  # [B, T-1, vocab]
+        shift_labels = input_ids[:, 1:].contiguous()  # [B, T-1]
         loss = F.cross_entropy(
             shift_logits.view(-1, shift_logits.size(-1)),
             shift_labels.view(-1),
@@ -327,6 +328,7 @@ class MambaLanguageModel(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MambaConfig:

@@ -11,13 +11,14 @@ executes or imports the code under review — it is pattern-level only.
 
 Pure stdlib: ``re``, ``dataclasses``, ``time``. No foreign imports.
 """
+
 from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 VULNHUNTER_SYSTEM_PROMPT: str = """\
 You are VulnHunter, an intent-level code reviewer. Your job is to surface
@@ -66,10 +67,10 @@ NEGATIVE LIST — Do NOT flag:
 Output must be machine-parseable JSON. Silence is better than a noisy
 finding. The harness will drop any finding missing why_real / fix_hint /
 cwe — so make each field count.
-"""
+"""  # noqa: E501
 
 
-NEGATIVE_EXAMPLES: Tuple[str, ...] = (
+NEGATIVE_EXAMPLES: tuple[str, ...] = (
     "# test fixture: pw='test'",
     "os.environ['API_KEY']",
     "os.getenv('SECRET_TOKEN')",
@@ -79,14 +80,22 @@ NEGATIVE_EXAMPLES: Tuple[str, ...] = (
 )
 
 
-REQUIRED_FIELDS: Tuple[str, ...] = ("why_real", "fix_hint", "cwe")
+REQUIRED_FIELDS: tuple[str, ...] = ("why_real", "fix_hint", "cwe")
 
-_VALID_SEVERITIES: Tuple[str, ...] = (
-    "critical", "high", "medium", "low", "info",
+_VALID_SEVERITIES: tuple[str, ...] = (
+    "critical",
+    "high",
+    "medium",
+    "low",
+    "info",
 )
 
-_SEVERITY_RANK: Dict[str, int] = {
-    "info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4,
+_SEVERITY_RANK: dict[str, int] = {
+    "info": 0,
+    "low": 1,
+    "medium": 2,
+    "high": 3,
+    "critical": 4,
 }
 
 
@@ -104,11 +113,11 @@ class VibeFinding:
 @dataclass
 class VibeReviewReport:
     file_path: str
-    findings: List[VibeFinding]
+    findings: list[VibeFinding]
     total_lines: int
     elapsed_s: float
     dropped: int = 0
-    warning: Optional[str] = None
+    warning: str | None = None
 
 
 def _get(obj: Any, name: str, default: Any = None) -> Any:
@@ -117,7 +126,7 @@ def _get(obj: Any, name: str, default: Any = None) -> Any:
     return getattr(obj, name, default)
 
 
-def _extract_snippet(lines: List[str], line_no: int, radius: int = 2) -> str:
+def _extract_snippet(lines: list[str], line_no: int, radius: int = 2) -> str:
     if not lines or line_no < 1:
         return ""
     idx = min(max(line_no, 1), len(lines)) - 1
@@ -136,13 +145,12 @@ class VibeCodeReviewer:
 
     def __init__(
         self,
-        judge_fn: Callable[[str, str], List[Any]],
+        judge_fn: Callable[[str, str], list[Any]],
         min_severity: str = "medium",
     ) -> None:
         if min_severity not in _SEVERITY_RANK:
             raise ValueError(
-                f"min_severity must be one of {list(_SEVERITY_RANK)}, "
-                f"got {min_severity!r}"
+                f"min_severity must be one of {list(_SEVERITY_RANK)}, got {min_severity!r}"
             )
         self.judge_fn = judge_fn
         self.min_severity = min_severity
@@ -150,15 +158,13 @@ class VibeCodeReviewer:
     # ------------------------------------------------------------------
     # Filtering
     # ------------------------------------------------------------------
-    def filter_low_quality(
-        self, findings: List[Any]
-    ) -> Tuple[List[Any], int]:
+    def filter_low_quality(self, findings: list[Any]) -> tuple[list[Any], int]:
         """Drop findings missing why_real / fix_hint / cwe.
 
         Loud-fail by dropping: silent heuristics would let low-quality
         reports through. Returns ``(kept, dropped_count)``.
         """
-        kept: List[Any] = []
+        kept: list[Any] = []
         dropped = 0
         for f in findings:
             ok = True
@@ -183,9 +189,7 @@ class VibeCodeReviewer:
     # ------------------------------------------------------------------
     # Review one file
     # ------------------------------------------------------------------
-    def review_file(
-        self, path: str, code: Optional[str] = None
-    ) -> VibeReviewReport:
+    def review_file(self, path: str, code: str | None = None) -> VibeReviewReport:
         if code is None:
             with open(path, "rb") as fh:
                 raw = fh.read()
@@ -193,11 +197,11 @@ class VibeCodeReviewer:
 
         lines = code.splitlines()
         total_lines = len(lines)
-        warning: Optional[str] = None
+        warning: str | None = None
 
         t0 = time.perf_counter()
         if not code.strip():
-            raw_findings: List[Any] = []
+            raw_findings: list[Any] = []
         else:
             try:
                 raw_findings = list(self.judge_fn(code, path) or [])
@@ -207,7 +211,7 @@ class VibeCodeReviewer:
 
         kept, dropped = self.filter_low_quality(raw_findings)
 
-        vibe: List[VibeFinding] = []
+        vibe: list[VibeFinding] = []
         for f in kept:
             severity = str(_get(f, "severity", "info") or "info").lower()
             if severity not in _VALID_SEVERITIES:
@@ -220,9 +224,7 @@ class VibeCodeReviewer:
                 line_no = 1
             if line_no < 1:
                 line_no = 1
-            snippet = _get(f, "snippet", "") or _extract_snippet(
-                lines, line_no
-            )
+            snippet = _get(f, "snippet", "") or _extract_snippet(lines, line_no)
             vibe.append(
                 VibeFinding(
                     why_real=str(_get(f, "why_real", "")),
@@ -249,9 +251,7 @@ class VibeCodeReviewer:
     # ------------------------------------------------------------------
     # Review many files
     # ------------------------------------------------------------------
-    def review_corpus(
-        self, paths: List[str]
-    ) -> Dict[str, VibeReviewReport]:
+    def review_corpus(self, paths: list[str]) -> dict[str, VibeReviewReport]:
         return {p: self.review_file(p) for p in paths}
 
 
@@ -259,7 +259,7 @@ class VibeCodeReviewer:
 # Deterministic stub judge for tests
 # ----------------------------------------------------------------------
 # Marker -> (cwe, severity, why_real, fix_hint)
-_STUB_MARKERS: Tuple[Tuple[str, str, str, str, str], ...] = (
+_STUB_MARKERS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         r"VIBE_SSRF_SINK",
         "CWE-918",
@@ -267,8 +267,7 @@ _STUB_MARKERS: Tuple[Tuple[str, str, str, str, str], ...] = (
         "Unauthenticated remote attacker controls the URL passed into "
         "the outbound HTTP client on this line, turning the request into "
         "an SSRF pivot against internal services.",
-        "Validate the URL against an allowlist of hosts before the "
-        "outbound request.",
+        "Validate the URL against an allowlist of hosts before the outbound request.",
     ),
     (
         r"VIBE_IDOR_SINK",
@@ -277,8 +276,7 @@ _STUB_MARKERS: Tuple[Tuple[str, str, str, str, str], ...] = (
         "An authenticated tenant supplies the object id in the request "
         "path and the handler loads the row without any ownership check, "
         "allowing cross-tenant reads.",
-        "Scope the query by current_user.tenant_id before returning the "
-        "row.",
+        "Scope the query by current_user.tenant_id before returning the row.",
     ),
     (
         r"VIBE_CRYPTO_SINK",
@@ -307,13 +305,13 @@ _STUB_MARKERS: Tuple[Tuple[str, str, str, str, str], ...] = (
 )
 
 
-def stub_judge_fn(code: str, file_path: str) -> List[Dict[str, Any]]:
+def stub_judge_fn(code: str, file_path: str) -> list[dict[str, Any]]:
     """Deterministic regex-based judge used by tests.
 
     Scans ``code`` for marker tokens; each match yields a Finding-shaped
     dict. Deterministic: same input → same output, every call.
     """
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     lines = code.splitlines()
     for lineno, line in enumerate(lines, start=1):
         for marker, cwe, severity, why_real, fix_hint in _STUB_MARKERS:

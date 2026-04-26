@@ -7,9 +7,7 @@ def test_function_calling_api_registered_in_api_shape_registry():
     from src.serving import API_SHAPE_REGISTRY, FunctionCallValidator
 
     assert "function_calling.validator" in API_SHAPE_REGISTRY
-    assert API_SHAPE_REGISTRY["function_calling.validator"] is (
-        FunctionCallValidator
-    )
+    assert API_SHAPE_REGISTRY["function_calling.validator"] is (FunctionCallValidator)
 
 
 def test_function_calling_symbols_exported_from_serving():
@@ -66,7 +64,7 @@ def test_end_to_end_happy_path_via_registry():
             {
                 "id": "1",
                 "type": "function",
-                "function": {"name": "lookup", "arguments": "{\"q\": \"x\"}"},
+                "function": {"name": "lookup", "arguments": '{"q": "x"}'},
             }
         ]
     )

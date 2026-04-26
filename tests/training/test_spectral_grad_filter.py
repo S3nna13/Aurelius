@@ -2,6 +2,7 @@
 
 Uses a tiny 2-layer MLP (input=32, hidden=64, output=16) for all tests.
 """
+
 from __future__ import annotations
 
 import copy
@@ -17,10 +18,10 @@ from src.training.spectral_grad_filter import (
     apply_spectral_filter,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tiny_mlp() -> nn.Module:
@@ -57,6 +58,7 @@ def _make_filtered_opt(
 # Test 1: GradientHistory.update works; len tracks correctly
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_history_update_and_len():
     hist = GradientHistory(maxlen=5)
     assert len(hist) == 0
@@ -79,10 +81,11 @@ def test_gradient_history_update_and_len():
 # Test 2: get_slow_component returns None when history not full
 # ---------------------------------------------------------------------------
 
+
 def test_get_slow_component_none_when_not_full():
     hist = GradientHistory(maxlen=8)
     g = torch.randn(10)
-    for _ in range(7):                  # fill to 7/8
+    for _ in range(7):  # fill to 7/8
         hist.update(g)
     assert hist.get_slow_component(cutoff_freq=0.25) is None
 
@@ -90,6 +93,7 @@ def test_get_slow_component_none_when_not_full():
 # ---------------------------------------------------------------------------
 # Test 3: get_slow_component returns tensor of same shape as grad when full
 # ---------------------------------------------------------------------------
+
 
 def test_get_slow_component_shape_when_full():
     hist = GradientHistory(maxlen=8)
@@ -104,6 +108,7 @@ def test_get_slow_component_shape_when_full():
 # ---------------------------------------------------------------------------
 # Test 4: Slow component has lower frequency content than raw grad
 # ---------------------------------------------------------------------------
+
 
 def test_slow_component_has_lower_frequency_content():
     """The slow component's high-frequency power should be lower than the raw grad's."""
@@ -128,7 +133,7 @@ def test_slow_component_has_lower_frequency_content():
     raw_fft = torch.fft.rfft(raw)
     slow_fft = torch.fft.rfft(slow)
     n_bins = raw_fft.shape[0]
-    cutoff = n_bins // 5   # top 80% = high-frequency
+    cutoff = n_bins // 5  # top 80% = high-frequency
     raw_hf_power = raw_fft[cutoff:].abs().pow(2).mean().item()
     slow_hf_power = slow_fft[cutoff:].abs().pow(2).mean().item()
 
@@ -141,6 +146,7 @@ def test_slow_component_has_lower_frequency_content():
 # ---------------------------------------------------------------------------
 # Test 5: cutoff_freq=1.0 → slow component ≈ raw grad (no filtering)
 # ---------------------------------------------------------------------------
+
 
 def test_cutoff_freq_one_keeps_all_frequencies():
     torch.manual_seed(0)
@@ -161,6 +167,7 @@ def test_cutoff_freq_one_keeps_all_frequencies():
 # ---------------------------------------------------------------------------
 # Test 6: cutoff_freq=0.0 → slow component is near-zero
 # ---------------------------------------------------------------------------
+
 
 def test_cutoff_freq_zero_near_zero_output():
     torch.manual_seed(1)
@@ -183,15 +190,17 @@ def test_cutoff_freq_zero_near_zero_output():
 # Test 7: SpectralGradFilter.step runs without error
 # ---------------------------------------------------------------------------
 
+
 def test_spectral_grad_filter_step_no_error(tiny_mlp, default_config):
     filt = _make_filtered_opt(tiny_mlp, default_config)
     _run_forward_backward(tiny_mlp)
-    filt.step()   # should not raise
+    filt.step()  # should not raise
 
 
 # ---------------------------------------------------------------------------
 # Test 8: After N > window steps, params updated differently than plain SGD
 # ---------------------------------------------------------------------------
+
 
 def test_params_differ_from_plain_sgd_after_window(tiny_mlp, default_config):
     torch.manual_seed(7)
@@ -202,7 +211,7 @@ def test_params_differ_from_plain_sgd_after_window(tiny_mlp, default_config):
     opt_sgd = torch.optim.SGD(model_sgd.parameters(), lr=0.01)
     filt = _make_filtered_opt(model_filt, default_config)
 
-    N = default_config.window + 4   # exceed window
+    N = default_config.window + 4  # exceed window
 
     for _ in range(N):
         # SGD model
@@ -230,6 +239,7 @@ def test_params_differ_from_plain_sgd_after_window(tiny_mlp, default_config):
 # Test 9: state_dict / load_state_dict round-trips without error
 # ---------------------------------------------------------------------------
 
+
 def test_state_dict_round_trip(tiny_mlp, default_config):
     filt = _make_filtered_opt(tiny_mlp, default_config)
 
@@ -247,7 +257,7 @@ def test_state_dict_round_trip(tiny_mlp, default_config):
     # Restore into a fresh wrapper
     model2 = copy.deepcopy(tiny_mlp)
     filt2 = _make_filtered_opt(model2, default_config)
-    filt2.load_state_dict(sd)   # should not raise
+    filt2.load_state_dict(sd)  # should not raise
 
     # Config values should be preserved
     assert filt2.config.window == default_config.window
@@ -259,13 +269,10 @@ def test_state_dict_round_trip(tiny_mlp, default_config):
 # Test 10: apply_spectral_filter returns dict with same keys
 # ---------------------------------------------------------------------------
 
+
 def test_apply_spectral_filter_returns_same_keys(tiny_mlp, default_config):
     _run_forward_backward(tiny_mlp)
-    grads = {
-        name: p.grad.clone()
-        for name, p in tiny_mlp.named_parameters()
-        if p.grad is not None
-    }
+    grads = {name: p.grad.clone() for name, p in tiny_mlp.named_parameters() if p.grad is not None}
     histories: dict[str, GradientHistory] = {}
     result = apply_spectral_filter(tiny_mlp, grads, histories, default_config)
 
@@ -279,14 +286,11 @@ def test_apply_spectral_filter_returns_same_keys(tiny_mlp, default_config):
 # Test 11: alpha=0.0 → output identical to raw grad
 # ---------------------------------------------------------------------------
 
+
 def test_alpha_zero_no_change(tiny_mlp):
     config = SpectralGradConfig(window=4, cutoff_freq=0.25, alpha=0.0)
     _run_forward_backward(tiny_mlp)
-    grads = {
-        name: p.grad.clone()
-        for name, p in tiny_mlp.named_parameters()
-        if p.grad is not None
-    }
+    grads = {name: p.grad.clone() for name, p in tiny_mlp.named_parameters() if p.grad is not None}
     histories: dict[str, GradientHistory] = {}
 
     # Prime the histories so they are full
@@ -301,6 +305,7 @@ def test_alpha_zero_no_change(tiny_mlp):
 # ---------------------------------------------------------------------------
 # Test 12: window=1 → history never full → falls back to identity
 # ---------------------------------------------------------------------------
+
 
 def test_window_one_identity_fallback(tiny_mlp):
     """With window=1 the history requires 1 step to be 'full'...
@@ -322,7 +327,7 @@ def test_window_one_identity_fallback(tiny_mlp):
     filt = _make_filtered_opt(tiny_mlp, config)
 
     _run_forward_backward(tiny_mlp)
-    filt.step()   # should not raise
+    filt.step()  # should not raise
 
     for p in tiny_mlp.parameters():
         assert not torch.isnan(p).any(), "NaN found in parameters after window=1 step"
@@ -332,14 +337,11 @@ def test_window_one_identity_fallback(tiny_mlp):
 # Test 12b (bonus): window=1 stateless version – no NaN, returns same keys
 # ---------------------------------------------------------------------------
 
+
 def test_window_one_stateless_no_nan(tiny_mlp):
     config = SpectralGradConfig(window=1, cutoff_freq=0.1, alpha=1.0)
     _run_forward_backward(tiny_mlp)
-    grads = {
-        name: p.grad.clone()
-        for name, p in tiny_mlp.named_parameters()
-        if p.grad is not None
-    }
+    grads = {name: p.grad.clone() for name, p in tiny_mlp.named_parameters() if p.grad is not None}
     histories: dict[str, GradientHistory] = {}
     result = apply_spectral_filter(tiny_mlp, grads, histories, config)
     assert set(result.keys()) == set(grads.keys())

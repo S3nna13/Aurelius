@@ -1,4 +1,5 @@
 """Tests for constitutional scoring utilities."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,14 +7,13 @@ import pytest
 from src.alignment.constitutional_scoring import (
     CONSTITUTION,
     ConstitutionalFeedback,
-    ConstitutionalRule,
     ConstitutionalScorer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer() -> ConstitutionalScorer:
@@ -28,6 +28,7 @@ def feedback(scorer: ConstitutionalScorer) -> ConstitutionalFeedback:
 # ---------------------------------------------------------------------------
 # score_rule tests
 # ---------------------------------------------------------------------------
+
 
 def test_score_rule_range(scorer: ConstitutionalScorer) -> None:
     """score_rule returns a float in [0, 1]."""
@@ -55,13 +56,12 @@ def test_score_rule_violation_detected(scorer: ConstitutionalScorer) -> None:
 # score_response tests
 # ---------------------------------------------------------------------------
 
+
 def test_score_response_keys(scorer: ConstitutionalScorer) -> None:
     """score_response returns a dict with all required keys."""
     result = scorer.score_response("A perfectly fine answer.")
     required_keys = {"rule_scores", "category_scores", "weighted_score", "violations", "overall"}
-    assert required_keys <= result.keys(), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    assert required_keys <= result.keys(), f"Missing keys: {required_keys - result.keys()}"
 
 
 def test_category_scores_all_categories(scorer: ConstitutionalScorer) -> None:
@@ -98,6 +98,7 @@ def test_violations_list(scorer: ConstitutionalScorer) -> None:
 # filter_responses tests
 # ---------------------------------------------------------------------------
 
+
 def test_filter_responses_sorted(scorer: ConstitutionalScorer) -> None:
     """filter_responses returns tuples sorted descending by score."""
     responses = [
@@ -110,9 +111,7 @@ def test_filter_responses_sorted(scorer: ConstitutionalScorer) -> None:
     assert len(filtered) == 3
     # Check descending order
     scores = [score for _, score in filtered]
-    assert scores == sorted(scores, reverse=True), (
-        f"Responses not sorted descending: {scores}"
-    )
+    assert scores == sorted(scores, reverse=True), f"Responses not sorted descending: {scores}"
     # Each element is a (str, float) tuple
     for resp, score in filtered:
         assert isinstance(resp, str)
@@ -123,6 +122,7 @@ def test_filter_responses_sorted(scorer: ConstitutionalScorer) -> None:
 # rank_responses tests
 # ---------------------------------------------------------------------------
 
+
 def test_rank_responses_order(scorer: ConstitutionalScorer) -> None:
     """Higher-scoring (cleaner) response is ranked first."""
     clean = "The capital of France is Paris."
@@ -131,9 +131,7 @@ def test_rank_responses_order(scorer: ConstitutionalScorer) -> None:
     assert len(ranked) == 2
     # The clean response should be first (higher score)
     best_response, best_scores = ranked[0]
-    assert best_response == clean, (
-        f"Expected clean response first, got: {best_response!r}"
-    )
+    assert best_response == clean, f"Expected clean response first, got: {best_response!r}"
     # Scores dict must have required keys
     assert "overall" in best_scores
     assert "weighted_score" in best_scores

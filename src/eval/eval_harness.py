@@ -79,10 +79,7 @@ class EvalHarness:
         )
 
     def evaluate_all(self, predictions: list[str]) -> list[EvalMetrics]:
-        return [
-            self.evaluate_one(task, pred)
-            for task, pred in zip(self._tasks, predictions)
-        ]
+        return [self.evaluate_one(task, pred) for task, pred in zip(self._tasks, predictions)]
 
     def aggregate(self, metrics: list[EvalMetrics]) -> dict:
         n = len(metrics)

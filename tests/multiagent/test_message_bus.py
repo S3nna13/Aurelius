@@ -1,9 +1,8 @@
 """Tests for message bus."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.multiagent.message_bus import MessageBus, AgentMessage
+from src.multiagent.message_bus import AgentMessage, MessageBus
 
 
 class TestMessageBus:

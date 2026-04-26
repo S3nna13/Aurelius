@@ -7,18 +7,17 @@ and uncertainty-based hallucination detection. Pure PyTorch only.
 
 from __future__ import annotations
 
-import math
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # NLIClassifier
 # ---------------------------------------------------------------------------
+
 
 class NLIClassifier(nn.Module):
     """Entailment / contradiction / neutral classifier.
@@ -49,8 +48,8 @@ class NLIClassifier(nn.Module):
             logits: (B, n_classes)
         """
         combined = torch.cat([premise_repr, hypothesis_repr], dim=-1)  # (B, 2D)
-        hidden = self.act(self.proj(combined))                          # (B, D)
-        logits = self.classifier(hidden)                                # (B, n_classes)
+        hidden = self.act(self.proj(combined))  # (B, D)
+        logits = self.classifier(hidden)  # (B, n_classes)
         return logits
 
     def entailment_score(self, premise_repr: Tensor, hypothesis_repr: Tensor) -> Tensor:
@@ -60,13 +59,14 @@ class NLIClassifier(nn.Module):
             (B,) float tensor in (0, 1)
         """
         logits = self.forward(premise_repr, hypothesis_repr)  # (B, 3)
-        probs = F.softmax(logits, dim=-1)                     # (B, 3)
-        return probs[:, 0]                                    # (B,)
+        probs = F.softmax(logits, dim=-1)  # (B, 3)
+        return probs[:, 0]  # (B,)
 
 
 # ---------------------------------------------------------------------------
 # TextEncoder
 # ---------------------------------------------------------------------------
+
 
 class TextEncoder:
     """Encode text sequences to fixed-size representations.
@@ -158,12 +158,12 @@ class FactConsistencyScorer:
         if claim_ids.dim() == 1:
             claim_ids = claim_ids.unsqueeze(0)
 
-        src_repr = self.encoder.encode(source_ids)   # (1, D)
-        clm_repr = self.encoder.encode(claim_ids)    # (1, D)
+        src_repr = self.encoder.encode(source_ids)  # (1, D)
+        clm_repr = self.encoder.encode(claim_ids)  # (1, D)
 
         with torch.no_grad():
-            logits = self.nli(src_repr, clm_repr)    # (1, 3)
-            probs = F.softmax(logits, dim=-1)        # (1, 3)
+            logits = self.nli(src_repr, clm_repr)  # (1, 3)
+            probs = F.softmax(logits, dim=-1)  # (1, 3)
 
         entailment_prob = probs[0, 0].item()
         label_idx = int(probs[0].argmax().item())
@@ -196,9 +196,7 @@ class FactConsistencyScorer:
 
         return probs[:, 0].tolist()
 
-    def consistency_threshold(
-        self, scores: list[float], threshold: float = 0.5
-    ) -> list[bool]:
+    def consistency_threshold(self, scores: list[float], threshold: float = 0.5) -> list[bool]:
         """Return True for each score that meets or exceeds threshold.
 
         Args:
@@ -214,6 +212,7 @@ class FactConsistencyScorer:
 # ---------------------------------------------------------------------------
 # HallucinationDetector
 # ---------------------------------------------------------------------------
+
 
 class HallucinationDetector:
     """Detect potential hallucinations in generated text using token entropy."""
@@ -243,9 +242,7 @@ class HallucinationDetector:
         entropy = -(probs * log_probs).sum(dim=-1)  # (T,)
         return entropy
 
-    def detect_hallucinations(
-        self, input_ids: Tensor, context_ids: Tensor
-    ) -> dict:
+    def detect_hallucinations(self, input_ids: Tensor, context_ids: Tensor) -> dict:
         """Detect hallucinations by combining entropy and NLI-free consistency.
 
         Args:
@@ -293,6 +290,7 @@ class HallucinationDetector:
 # FactualConsistencyTrainer
 # ---------------------------------------------------------------------------
 
+
 class FactualConsistencyTrainer:
     """Fine-tune encoder + NLI classifier on consistency (NLI) data."""
 
@@ -324,7 +322,7 @@ class FactualConsistencyTrainer:
         """
         self.optimizer.zero_grad()
 
-        prem_repr = self.encoder.encode(premise_ids)   # (B, D)
+        prem_repr = self.encoder.encode(premise_ids)  # (B, D)
         hyp_repr = self.encoder.encode(hypothesis_ids)  # (B, D)
 
         logits = self.nli(prem_repr, hyp_repr)  # (B, 3)
@@ -342,6 +340,7 @@ class FactualConsistencyTrainer:
 # ---------------------------------------------------------------------------
 # ConsistencyBenchmark
 # ---------------------------------------------------------------------------
+
 
 class ConsistencyBenchmark:
     """Evaluate consistency detection metrics."""
@@ -365,11 +364,7 @@ class ConsistencyBenchmark:
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
         return {"precision": precision, "recall": recall, "f1": f1}
 
@@ -384,9 +379,7 @@ class ConsistencyBenchmark:
         """
         if not detector_outputs:
             return 0.0
-        high_count = sum(
-            1 for d in detector_outputs if d.get("hallucination_risk") == "high"
-        )
+        high_count = sum(1 for d in detector_outputs if d.get("hallucination_risk") == "high")
         return high_count / len(detector_outputs)
 
     def calibration_error(
@@ -414,15 +407,15 @@ class ConsistencyBenchmark:
             lo, hi = bin_boundaries[b], bin_boundaries[b + 1]
             # Include right edge in last bin
             if b < n_bins - 1:
-                in_bin = [(s, int(l)) for s, l in zip(scores, labels) if lo <= s < hi]
+                in_bin = [(s, int(lbl)) for s, lbl in zip(scores, labels) if lo <= s < hi]
             else:
-                in_bin = [(s, int(l)) for s, l in zip(scores, labels) if lo <= s <= hi]
+                in_bin = [(s, int(lbl)) for s, lbl in zip(scores, labels) if lo <= s <= hi]
 
             if not in_bin:
                 continue
 
             avg_conf = sum(s for s, _ in in_bin) / len(in_bin)
-            frac_pos = sum(l for _, l in in_bin) / len(in_bin)
+            frac_pos = sum(lvl for _, lvl in in_bin) / len(in_bin)
             ece += (len(in_bin) / n) * abs(avg_conf - frac_pos)
 
         return ece

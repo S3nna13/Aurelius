@@ -1,20 +1,21 @@
 """Tests for constrained generation module."""
 
 import math
+
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.constrained_generation import (
+    BannedTokensDecoder,
     ConstraintConfig,
-    apply_repetition_penalty,
-    build_vocab_mask,
-    apply_vocab_mask,
     PrefixConstrainedDecoder,
     RegexConstrainedDecoder,
-    BannedTokensDecoder,
+    apply_repetition_penalty,
+    apply_vocab_mask,
+    build_vocab_mask,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 VOCAB_SIZE = 256
 TINY_CFG = AureliusConfig(
@@ -45,6 +46,7 @@ def token_decode(ids: list) -> str:
 # 1. ConstraintConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_constraint_config_defaults():
     cfg = ConstraintConfig()
     assert cfg.max_new_tokens == 64
@@ -57,6 +59,7 @@ def test_constraint_config_defaults():
 # 2. apply_repetition_penalty — output shape (V,)
 # ---------------------------------------------------------------------------
 
+
 def test_apply_repetition_penalty_shape():
     logits = torch.randn(VOCAB_SIZE)
     result = apply_repetition_penalty(logits, [1, 2, 3], penalty=1.5)
@@ -66,6 +69,7 @@ def test_apply_repetition_penalty_shape():
 # ---------------------------------------------------------------------------
 # 3. apply_repetition_penalty — penalized token logit is smaller (positive logit case)
 # ---------------------------------------------------------------------------
+
 
 def test_apply_repetition_penalty_reduces_logit():
     logits = torch.zeros(VOCAB_SIZE)
@@ -80,6 +84,7 @@ def test_apply_repetition_penalty_reduces_logit():
 # 4. build_vocab_mask — True for allowed tokens
 # ---------------------------------------------------------------------------
 
+
 def test_build_vocab_mask_allowed():
     allowed = [0, 5, 100, 255]
     mask = build_vocab_mask(allowed, VOCAB_SIZE)
@@ -90,6 +95,7 @@ def test_build_vocab_mask_allowed():
 # ---------------------------------------------------------------------------
 # 5. build_vocab_mask — False for disallowed tokens
 # ---------------------------------------------------------------------------
+
 
 def test_build_vocab_mask_disallowed():
     allowed = [0, 5, 100]
@@ -102,6 +108,7 @@ def test_build_vocab_mask_disallowed():
 # ---------------------------------------------------------------------------
 # 6. apply_vocab_mask — disallowed tokens become -inf
 # ---------------------------------------------------------------------------
+
 
 def test_apply_vocab_mask_inf():
     logits = torch.zeros(VOCAB_SIZE)
@@ -118,6 +125,7 @@ def test_apply_vocab_mask_inf():
 # ---------------------------------------------------------------------------
 # 7. PrefixConstrainedDecoder — first n tokens match required_prefix
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_constrained_decoder_prefix_enforced(small_model):
     required_prefix = [10, 20, 30]
@@ -140,6 +148,7 @@ def test_prefix_constrained_decoder_prefix_enforced(small_model):
 # 8. PrefixConstrainedDecoder — output shape
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_constrained_decoder_output_shape(small_model):
     required_prefix = [5, 15]
     max_new = 8
@@ -156,6 +165,7 @@ def test_prefix_constrained_decoder_output_shape(small_model):
 # ---------------------------------------------------------------------------
 # 9. BannedTokensDecoder — generated tokens don't include banned tokens
 # ---------------------------------------------------------------------------
+
 
 def test_banned_tokens_decoder_no_banned_in_output(small_model):
     # Ban a large range of tokens so there's a meaningful constraint
@@ -176,6 +186,7 @@ def test_banned_tokens_decoder_no_banned_in_output(small_model):
 # 10. BannedTokensDecoder — output shape
 # ---------------------------------------------------------------------------
 
+
 def test_banned_tokens_decoder_output_shape(small_model):
     banned = [1, 2, 3]
     max_new = 7
@@ -192,6 +203,7 @@ def test_banned_tokens_decoder_output_shape(small_model):
 # ---------------------------------------------------------------------------
 # 11. RegexConstrainedDecoder — output shape
 # ---------------------------------------------------------------------------
+
 
 def test_regex_constrained_decoder_output_shape(small_model):
     # Simple pattern: allow any sequence of digits or letters

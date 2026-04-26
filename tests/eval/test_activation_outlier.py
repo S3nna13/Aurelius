@@ -7,21 +7,20 @@ import torch
 import torch.nn as nn
 
 from src.eval.activation_outlier import (
-    OutlierReport,
+    ActivationOutlierDetector,
     ModelOutlierSummary,
+    compute_per_channel_stats,
     detect_outliers_iqr,
     detect_outliers_zscore,
-    compute_per_channel_stats,
     suggest_quantization_scale,
-    ActivationOutlierDetector,
     visualize_outlier_distribution,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared small model fixture
 # input_dim=32, hidden=16, output=8
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def mock_model():
@@ -45,6 +44,7 @@ def small_input():
 # 1. detect_outliers_iqr returns (mask, scores) of shape (d,)
 # ---------------------------------------------------------------------------
 
+
 def test_iqr_output_shapes():
     torch.manual_seed(0)
     d = 64
@@ -60,6 +60,7 @@ def test_iqr_output_shapes():
 # 2. detect_outliers_iqr: no outliers in uniform data
 # ---------------------------------------------------------------------------
 
+
 def test_iqr_no_outliers_uniform():
     # All channels exactly equal -- IQR is 0, no outliers
     activations = torch.ones(20, 32)
@@ -71,10 +72,11 @@ def test_iqr_no_outliers_uniform():
 # 3. detect_outliers_iqr: detects obvious spike (one channel 100x larger)
 # ---------------------------------------------------------------------------
 
+
 def test_iqr_detects_spike():
     torch.manual_seed(1)
     d = 64
-    activations = torch.rand(20, d) * 0.1   # small random values
+    activations = torch.rand(20, d) * 0.1  # small random values
     # Inject a huge spike in channel 5 across all samples
     activations[:, 5] = 100.0
     mask, scores = detect_outliers_iqr(activations, threshold=3.0)
@@ -85,6 +87,7 @@ def test_iqr_detects_spike():
 # ---------------------------------------------------------------------------
 # 4. detect_outliers_zscore returns (mask, scores) of shape (d,)
 # ---------------------------------------------------------------------------
+
 
 def test_zscore_output_shapes():
     torch.manual_seed(2)
@@ -100,11 +103,12 @@ def test_zscore_output_shapes():
 # 5. detect_outliers_zscore: detects spike
 # ---------------------------------------------------------------------------
 
+
 def test_zscore_detects_spike():
     torch.manual_seed(3)
     d = 64
-    activations = torch.randn(d)   # near-normal, std ~ 1
-    activations[10] = 500.0        # extreme outlier
+    activations = torch.randn(d)  # near-normal, std ~ 1
+    activations[10] = 500.0  # extreme outlier
     mask, scores = detect_outliers_zscore(activations, threshold=3.0)
     assert mask[10].item() is True, "Channel 10 should be a z-score outlier"
     assert scores[10].item() > 3.0
@@ -113,6 +117,7 @@ def test_zscore_detects_spike():
 # ---------------------------------------------------------------------------
 # 6. compute_per_channel_stats returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_per_channel_stats_keys():
     t = torch.randn(10, 32)
@@ -124,6 +129,7 @@ def test_per_channel_stats_keys():
 # ---------------------------------------------------------------------------
 # 7. compute_per_channel_stats shapes are (d,) for (N, d) input
 # ---------------------------------------------------------------------------
+
 
 def test_per_channel_stats_shape_2d():
     N, d = 15, 32
@@ -137,6 +143,7 @@ def test_per_channel_stats_shape_2d():
 # 8. compute_per_channel_stats shapes are (d,) for (B, T, d) input
 # ---------------------------------------------------------------------------
 
+
 def test_per_channel_stats_shape_3d():
     B, T, d = 3, 5, 16
     t = torch.randn(B, T, d)
@@ -149,6 +156,7 @@ def test_per_channel_stats_shape_3d():
 # 9. suggest_quantization_scale returns tensor of shape (d,)
 # ---------------------------------------------------------------------------
 
+
 def test_quantization_scale_shape():
     d = 32
     absmax = torch.rand(d) * 10.0
@@ -160,23 +168,27 @@ def test_quantization_scale_shape():
 # 10. suggest_quantization_scale: outlier dims have larger scale
 # ---------------------------------------------------------------------------
 
+
 def test_quantization_scale_outlier_larger():
     d = 16
     absmax = torch.ones(d)
     outlier_mask = torch.zeros(d, dtype=torch.bool)
-    outlier_mask[0] = True   # channel 0 is outlier
-    scale = suggest_quantization_scale(absmax, n_bits=8, outlier_dims=outlier_mask, outlier_scale_factor=4.0)
+    outlier_mask[0] = True  # channel 0 is outlier
+    scale = suggest_quantization_scale(
+        absmax, n_bits=8, outlier_dims=outlier_mask, outlier_scale_factor=4.0
+    )
     assert scale[0].item() > scale[1].item(), (
         "Outlier dim scale should be larger than normal dim scale"
     )
     # Specifically: outlier should be 4x the base
-    base = 1.0 / (2 ** 7 - 1)
+    base = 1.0 / (2**7 - 1)
     assert scale[0].item() == pytest.approx(base * 4.0, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------
 # 11. ActivationOutlierDetector instantiates and registers hooks
 # ---------------------------------------------------------------------------
+
 
 def test_detector_instantiates(mock_model):
     detector = ActivationOutlierDetector(mock_model)
@@ -189,15 +201,17 @@ def test_detector_instantiates(mock_model):
 # 12. ActivationOutlierDetector.collect runs without error
 # ---------------------------------------------------------------------------
 
+
 def test_detector_collect_no_error(mock_model, small_input):
     detector = ActivationOutlierDetector(mock_model)
-    detector.collect(small_input)   # should not raise
+    detector.collect(small_input)  # should not raise
     detector.remove_hooks()
 
 
 # ---------------------------------------------------------------------------
 # 13. n_samples_collected increments after collect()
 # ---------------------------------------------------------------------------
+
 
 def test_detector_n_samples(mock_model, small_input):
     detector = ActivationOutlierDetector(mock_model)
@@ -213,6 +227,7 @@ def test_detector_n_samples(mock_model, small_input):
 # 14. ActivationOutlierDetector.analyze returns ModelOutlierSummary
 # ---------------------------------------------------------------------------
 
+
 def test_detector_analyze_returns_summary(mock_model, small_input):
     detector = ActivationOutlierDetector(mock_model)
     detector.collect(small_input)
@@ -227,6 +242,7 @@ def test_detector_analyze_returns_summary(mock_model, small_input):
 # 15. ModelOutlierSummary.global_outlier_ratio in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_global_outlier_ratio_range(mock_model, small_input):
     detector = ActivationOutlierDetector(mock_model)
     detector.collect(small_input)
@@ -240,6 +256,7 @@ def test_global_outlier_ratio_range(mock_model, small_input):
 # ---------------------------------------------------------------------------
 # 16. visualize_outlier_distribution returns dict with 'outlier_indices' key
 # ---------------------------------------------------------------------------
+
 
 def test_visualize_returns_outlier_indices():
     torch.manual_seed(42)

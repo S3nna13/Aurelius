@@ -6,12 +6,13 @@ Run with:
 """
 
 import pytest
-from src.eval.math_eval import MathEval, MathEvalConfig, MathAnswer
 
+from src.eval.math_eval import MathEval, MathEvalConfig
 
 # ---------------------------------------------------------------------------
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     """MathEvalConfig should have the correct default values."""
@@ -26,6 +27,7 @@ def test_config_defaults():
 # 2. test_extract_boxed
 # ---------------------------------------------------------------------------
 
+
 def test_extract_boxed():
     """\\boxed{42} should yield extracted='42', numeric=42.0."""
     ev = MathEval()
@@ -38,6 +40,7 @@ def test_extract_boxed():
 # 3. test_extract_last_number
 # ---------------------------------------------------------------------------
 
+
 def test_extract_last_number():
     """When no boxed content, last number in text should be extracted."""
     ev = MathEval()
@@ -49,6 +52,7 @@ def test_extract_last_number():
 # ---------------------------------------------------------------------------
 # 4. test_extract_fraction
 # ---------------------------------------------------------------------------
+
 
 def test_extract_fraction():
     """\\boxed{3/7} should yield numeric ≈ 0.42857, is_fraction=True."""
@@ -63,6 +67,7 @@ def test_extract_fraction():
 # 5. test_extract_none
 # ---------------------------------------------------------------------------
 
+
 def test_extract_none():
     """A response with no numbers and no boxed content → extracted=None."""
     ev = MathEval()
@@ -73,6 +78,7 @@ def test_extract_none():
 # ---------------------------------------------------------------------------
 # 6. test_normalize_strips_whitespace
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_strips_whitespace():
     """normalize_answer should strip leading/trailing whitespace."""
@@ -86,6 +92,7 @@ def test_normalize_strips_whitespace():
 # 7. test_is_correct_exact
 # ---------------------------------------------------------------------------
 
+
 def test_is_correct_exact():
     """Exact string match (after normalization) should return True."""
     ev = MathEval()
@@ -95,6 +102,7 @@ def test_is_correct_exact():
 # ---------------------------------------------------------------------------
 # 8. test_is_correct_numeric
 # ---------------------------------------------------------------------------
+
 
 def test_is_correct_numeric():
     """'42.0' vs '42' should match within default tolerance."""
@@ -106,6 +114,7 @@ def test_is_correct_numeric():
 # 9. test_is_correct_fraction
 # ---------------------------------------------------------------------------
 
+
 def test_is_correct_fraction():
     """'1/2' vs '0.5' should match within tolerance."""
     ev = MathEval()
@@ -116,6 +125,7 @@ def test_is_correct_fraction():
 # 10. test_is_correct_wrong
 # ---------------------------------------------------------------------------
 
+
 def test_is_correct_wrong():
     """'41' vs '42' should not match."""
     ev = MathEval()
@@ -125,6 +135,7 @@ def test_is_correct_wrong():
 # ---------------------------------------------------------------------------
 # 11. test_evaluate_accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_accuracy():
     """All correct predictions should yield accuracy=1.0."""
@@ -146,12 +157,13 @@ def test_evaluate_accuracy():
 # 12. test_evaluate_by_category
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_by_category():
     """evaluate() with categories should return per-category breakdown."""
     ev = MathEval()
     predictions = [
-        "\\boxed{1}",   # algebra, correct
-        "\\boxed{99}", # algebra, wrong (gt=2)
+        "\\boxed{1}",  # algebra, correct
+        "\\boxed{99}",  # algebra, wrong (gt=2)
         "\\boxed{3}",  # number_theory, correct
     ]
     ground_truths = ["1", "2", "3"]
@@ -171,6 +183,7 @@ def test_evaluate_by_category():
 # 13. test_evaluate_extraction_failed
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_extraction_failed():
     """Completely unparseable responses should be counted in n_extraction_failed."""
     cfg = MathEvalConfig(extract_boxed=False, extract_last_number=False)
@@ -181,7 +194,7 @@ def test_evaluate_extraction_failed():
     # With extract_boxed=False and extract_last_number=False the fallback path
     # returns the raw stripped text, which won't be None for a non-empty string.
     # Use a truly empty or whitespace response.
-    predictions = ["   "]   # whitespace only → extracted = None
+    predictions = ["   "]  # whitespace only → extracted = None
     ground_truths = ["42"]
     result = ev.evaluate(predictions, ground_truths)
     assert result["n_extraction_failed"] == 1
@@ -191,6 +204,7 @@ def test_evaluate_extraction_failed():
 # ---------------------------------------------------------------------------
 # 14. test_aime_score_integer
 # ---------------------------------------------------------------------------
+
 
 def test_aime_score_integer():
     """AIME: '042' in prediction text should match ground truth '42'."""
@@ -210,6 +224,7 @@ def test_aime_score_integer():
 # 15. test_evaluate_empty
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_empty():
     """Empty prediction / ground-truth lists should not crash and return 0.0."""
     ev = MathEval()
@@ -223,6 +238,7 @@ def test_evaluate_empty():
 # ---------------------------------------------------------------------------
 # 16. test_extract_boxed_with_expression
 # ---------------------------------------------------------------------------
+
 
 def test_extract_boxed_with_expression():
     """\\boxed{} containing a simple expression like '-5' should extract correctly."""

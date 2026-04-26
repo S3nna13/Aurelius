@@ -9,10 +9,9 @@ from __future__ import annotations
 import contextlib
 import time
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterator
-
 
 # ---------------------------------------------------------------------------
 # SpanKind
@@ -199,25 +198,34 @@ class PrometheusMetrics:
 
         if path != "/metrics":
             body = b"Not Found\n"
-            start_response("404 Not Found", [
-                ("Content-Type", "text/plain"),
-                ("Content-Length", str(len(body))),
-            ])
+            start_response(
+                "404 Not Found",
+                [
+                    ("Content-Type", "text/plain"),
+                    ("Content-Length", str(len(body))),
+                ],
+            )
             return [body]
 
         if method != "GET":
             body = b"Method Not Allowed\n"
-            start_response("405 Method Not Allowed", [
-                ("Content-Type", "text/plain"),
-                ("Content-Length", str(len(body))),
-            ])
+            start_response(
+                "405 Method Not Allowed",
+                [
+                    ("Content-Type", "text/plain"),
+                    ("Content-Length", str(len(body))),
+                ],
+            )
             return [body]
 
         body = self.render_text().encode("utf-8")
-        start_response("200 OK", [
-            ("Content-Type", "text/plain; version=0.0.4; charset=utf-8"),
-            ("Content-Length", str(len(body))),
-        ])
+        start_response(
+            "200 OK",
+            [
+                ("Content-Type", "text/plain; version=0.0.4; charset=utf-8"),
+                ("Content-Length", str(len(body))),
+            ],
+        )
         return [body]
 
 

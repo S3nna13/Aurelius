@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.alignment.online_hard_mining import (
@@ -20,8 +19,8 @@ from src.alignment.online_hard_mining import (
 # Constants
 # ---------------------------------------------------------------------------
 
-B = 8    # batch size
-T = 16   # sequence length
+B = 8  # batch size
+T = 16  # sequence length
 
 torch.manual_seed(42)
 
@@ -29,6 +28,7 @@ torch.manual_seed(42)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _random_logprobs(size: int = B, low: float = -5.0, high: float = -0.1) -> torch.Tensor:
     return torch.empty(size).uniform_(low, high)
@@ -41,6 +41,7 @@ def _make_ids(batch: int = B, seq: int = T) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # 1. compute_dpo_difficulty — shape and range
 # ---------------------------------------------------------------------------
+
 
 def test_compute_dpo_difficulty_shape_and_range():
     """compute_dpo_difficulty returns (B,) tensor with values in [0, 1]."""
@@ -58,6 +59,7 @@ def test_compute_dpo_difficulty_shape_and_range():
 # 2. compute_dpo_difficulty — chosen >> rejected → low difficulty
 # ---------------------------------------------------------------------------
 
+
 def test_compute_dpo_difficulty_easy_examples():
     """When chosen log-probs >> rejected, difficulty should be low (< 0.5)."""
     # Policy strongly prefers chosen.
@@ -74,6 +76,7 @@ def test_compute_dpo_difficulty_easy_examples():
 # 3. compute_dpo_difficulty — chosen ≈ rejected → high difficulty (~0.5)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_dpo_difficulty_hard_examples():
     """When chosen ≈ rejected log-probs, difficulty should be near 0.5."""
     lp = torch.full((B,), -2.0)
@@ -86,6 +89,7 @@ def test_compute_dpo_difficulty_hard_examples():
 # ---------------------------------------------------------------------------
 # 4. compute_reward_difficulty — shape and range
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reward_difficulty_shape_and_range():
     """compute_reward_difficulty returns (B,) tensor with values in [0, 1]."""
@@ -101,6 +105,7 @@ def test_compute_reward_difficulty_shape_and_range():
 # 5. compute_reward_difficulty — large gap → low difficulty
 # ---------------------------------------------------------------------------
 
+
 def test_compute_reward_difficulty_large_gap():
     """A large reward gap (chosen >> rejected) should give difficulty < 0.5."""
     chosen = torch.full((B,), 10.0)
@@ -112,6 +117,7 @@ def test_compute_reward_difficulty_large_gap():
 # ---------------------------------------------------------------------------
 # 6. select_hard_examples "hardest" — returns top-k by difficulty
 # ---------------------------------------------------------------------------
+
 
 def test_select_hard_examples_hardest_correct_indices():
     """'hardest' strategy should return the indices with highest difficulty."""
@@ -130,6 +136,7 @@ def test_select_hard_examples_hardest_correct_indices():
 # 7. select_hard_examples "semi-hard" — mid-range difficulty
 # ---------------------------------------------------------------------------
 
+
 def test_select_hard_examples_semi_hard_range():
     """'semi-hard' strategy should return indices with difficulty in [0.3, 0.7]."""
     difficulties = torch.tensor([0.05, 0.35, 0.45, 0.55, 0.65, 0.92, 0.1, 0.5])
@@ -143,6 +150,7 @@ def test_select_hard_examples_semi_hard_range():
 # ---------------------------------------------------------------------------
 # 8. select_hard_examples — correct count
 # ---------------------------------------------------------------------------
+
 
 def test_select_hard_examples_correct_count():
     """select_hard_examples should return exactly int(B * top_k_ratio) indices."""
@@ -158,6 +166,7 @@ def test_select_hard_examples_correct_count():
 # ---------------------------------------------------------------------------
 # 9. HardExampleBuffer.add — increases length
 # ---------------------------------------------------------------------------
+
 
 def test_hard_example_buffer_add_increases_length():
     """Adding examples to buffer should increase its length."""
@@ -181,6 +190,7 @@ def test_hard_example_buffer_add_increases_length():
 # 10. HardExampleBuffer — never exceeds max_size
 # ---------------------------------------------------------------------------
 
+
 def test_hard_example_buffer_max_size():
     """Buffer should never exceed max_size (evicts easiest on overflow)."""
     max_size = 6
@@ -194,14 +204,13 @@ def test_hard_example_buffer_max_size():
         for i in range(15)
     ]
     buf.add(examples)
-    assert len(buf) <= max_size, (
-        f"Buffer exceeded max_size={max_size}: got {len(buf)}"
-    )
+    assert len(buf) <= max_size, f"Buffer exceeded max_size={max_size}: got {len(buf)}"
 
 
 # ---------------------------------------------------------------------------
 # 11. HardExampleBuffer.sample — returns n examples
 # ---------------------------------------------------------------------------
+
 
 def test_hard_example_buffer_sample_count():
     """Buffer.sample(n) should return exactly n examples."""
@@ -223,6 +232,7 @@ def test_hard_example_buffer_sample_count():
 # 12. OnlineHardMiner.mine — returns subset with correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_online_hard_miner_mine_shape():
     """mine() should return (k, T) tensors where k < B."""
     miner = OnlineHardMiner(config=MiningConfig(top_k_ratio=0.5))
@@ -233,9 +243,7 @@ def test_online_hard_miner_mine_shape():
     ref_c = _random_logprobs()
     ref_r = _random_logprobs()
 
-    chosen_hard, rejected_hard = miner.mine(
-        chosen, rejected, policy_c, policy_r, ref_c, ref_r
-    )
+    chosen_hard, rejected_hard = miner.mine(chosen, rejected, policy_c, policy_r, ref_c, ref_r)
     expected_k = max(1, int(B * 0.5))
     assert chosen_hard.shape == (expected_k, T), (
         f"Expected chosen_hard shape ({expected_k}, {T}), got {chosen_hard.shape}"
@@ -248,6 +256,7 @@ def test_online_hard_miner_mine_shape():
 # ---------------------------------------------------------------------------
 # 13. OnlineHardMiner.get_sample_weights — (B,) summing to B
 # ---------------------------------------------------------------------------
+
 
 def test_online_hard_miner_get_sample_weights():
     """get_sample_weights should return (B,) tensor summing to B."""
@@ -263,6 +272,7 @@ def test_online_hard_miner_get_sample_weights():
 # ---------------------------------------------------------------------------
 # 14. OnlineHardMiner.curriculum_difficulty_threshold — increases with step
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_difficulty_threshold_increases():
     """curriculum_difficulty_threshold should grow linearly with step count."""
@@ -282,18 +292,16 @@ def test_curriculum_difficulty_threshold_increases():
     # Threshold should be non-decreasing.
     for i in range(1, len(thresholds)):
         assert thresholds[i] >= thresholds[i - 1], (
-            f"Threshold decreased at step {i}: "
-            f"{thresholds[i-1]:.4f} → {thresholds[i]:.4f}"
+            f"Threshold decreased at step {i}: {thresholds[i - 1]:.4f} → {thresholds[i]:.4f}"
         )
     # Should be strictly increasing (not all equal) during warmup.
-    assert thresholds[-1] > thresholds[0], (
-        "Threshold did not increase over training steps."
-    )
+    assert thresholds[-1] > thresholds[0], "Threshold did not increase over training steps."
 
 
 # ---------------------------------------------------------------------------
 # 15. dpo_loss_with_mining — returns scalar loss
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_with_mining_scalar():
     """dpo_loss_with_mining should return a scalar (0-dim) tensor loss."""
@@ -309,6 +317,7 @@ def test_dpo_loss_with_mining_scalar():
 # ---------------------------------------------------------------------------
 # 16. dpo_loss_with_mining — metrics has 'mean_difficulty' key
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_with_mining_metrics_keys():
     """dpo_loss_with_mining metrics dict must contain 'mean_difficulty'."""

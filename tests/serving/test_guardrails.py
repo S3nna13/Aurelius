@@ -1,6 +1,5 @@
 """Tests for src/serving/guardrails.py"""
 
-import pytest
 from src.serving.guardrails import (
     ContentGuardrails,
     GuardrailPolicy,

@@ -54,7 +54,9 @@ def dequantize_kv_cache(cache: QuantizedKVCache) -> tuple[torch.Tensor, torch.Te
     )
 
 
-def kv_cache_quantization_error(key_cache: torch.Tensor, value_cache: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+def kv_cache_quantization_error(
+    key_cache: torch.Tensor, value_cache: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Return mean absolute quantization errors for key and value caches."""
     quantized = quantize_kv_cache(key_cache, value_cache)
     key_hat, value_hat = dequantize_kv_cache(quantized)

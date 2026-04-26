@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass(frozen=True)
 class Concept:
     """A human-interpretable concept with a name, description, and unique id."""
+
     name: str
     description: str
     concept_id: int
@@ -23,6 +23,7 @@ class Concept:
 @dataclass(frozen=True)
 class ConceptScore:
     """Score and activation status for a single concept."""
+
     concept: Concept
     score: float
     active: bool
@@ -35,7 +36,7 @@ class ConceptBottleneck:
     stdlib-only arithmetic.
     """
 
-    def __init__(self, concepts: List[Concept], threshold: float = 0.5) -> None:
+    def __init__(self, concepts: list[Concept], threshold: float = 0.5) -> None:
         """
         Args:
             concepts: List of Concept objects to track.
@@ -44,9 +45,9 @@ class ConceptBottleneck:
         self.concepts = concepts
         self.threshold = threshold
         # concept_id -> probe weights (list of floats)
-        self._probes: Dict[int, List[float]] = {}
+        self._probes: dict[int, list[float]] = {}
 
-    def register_probe(self, concept_id: int, weights: List[float]) -> None:
+    def register_probe(self, concept_id: int, weights: list[float]) -> None:
         """Register a linear probe for a concept.
 
         Args:
@@ -55,7 +56,7 @@ class ConceptBottleneck:
         """
         self._probes[concept_id] = list(weights)
 
-    def score_concept(self, concept_id: int, activations: List[float]) -> float:
+    def score_concept(self, concept_id: int, activations: list[float]) -> float:
         """Score a single concept given activations via a linear probe + sigmoid.
 
         The dot product of probe weights and activations is passed through a
@@ -76,7 +77,7 @@ class ConceptBottleneck:
         x_clamped = max(-500.0, min(500.0, x))
         return 1.0 / (1.0 + math.exp(-x_clamped))
 
-    def predict(self, activations: List[float]) -> List[ConceptScore]:
+    def predict(self, activations: list[float]) -> list[ConceptScore]:
         """Score all registered concepts and determine which are active.
 
         Args:
@@ -85,7 +86,7 @@ class ConceptBottleneck:
         Returns:
             List of ConceptScore (one per concept with a registered probe).
         """
-        results: List[ConceptScore] = []
+        results: list[ConceptScore] = []
         for concept in self.concepts:
             if concept.concept_id in self._probes:
                 score = self.score_concept(concept.concept_id, activations)
@@ -93,7 +94,7 @@ class ConceptBottleneck:
                 results.append(ConceptScore(concept=concept, score=score, active=active))
         return results
 
-    def active_concepts(self, activations: List[float]) -> List[Concept]:
+    def active_concepts(self, activations: list[float]) -> list[Concept]:
         """Return only the concepts that are active (score >= threshold).
 
         Args:
@@ -108,8 +109,8 @@ class ConceptBottleneck:
         self,
         concept_id: int,
         target_score: float,
-        activations: List[float],
-    ) -> List[float]:
+        activations: list[float],
+    ) -> list[float]:
         """Stub for counterfactual concept intervention.
 
         Returns a copy of the activations unchanged. In a full implementation

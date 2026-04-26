@@ -14,10 +14,10 @@ from src.eval.pairwise_eval import (
     extract_pairwise_winner,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mock generate_fn — always returns "Winner: A"
 # ---------------------------------------------------------------------------
+
 
 def _mock_generate(prompt: str) -> str:  # noqa: ARG001
     return "The response was good overall.\nWinner: A"
@@ -26,6 +26,7 @@ def _mock_generate(prompt: str) -> str:  # noqa: ARG001
 # ---------------------------------------------------------------------------
 # build_pairwise_prompt
 # ---------------------------------------------------------------------------
+
 
 def test_build_pairwise_prompt_contains_instruction():
     prompt = build_pairwise_prompt("What is gravity?", "It pulls things.", "A force.")
@@ -45,6 +46,7 @@ def test_build_pairwise_prompt_contains_response_b():
 # ---------------------------------------------------------------------------
 # extract_pairwise_winner
 # ---------------------------------------------------------------------------
+
 
 def test_extract_winner_a():
     assert extract_pairwise_winner("Winner: A") == "A"
@@ -66,6 +68,7 @@ def test_extract_winner_garbage_defaults_tie():
 # PairwiseResult dataclass
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_result_creation():
     result = PairwiseResult(
         instruction="Q",
@@ -85,6 +88,7 @@ def test_pairwise_result_creation():
 # PairwiseConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_config_defaults():
     cfg = PairwiseConfig()
     assert cfg.n_annotators == 1
@@ -96,6 +100,7 @@ def test_pairwise_config_defaults():
 # ---------------------------------------------------------------------------
 # PairwiseAnnotator.annotate
 # ---------------------------------------------------------------------------
+
 
 def test_annotate_returns_pairwise_result():
     annotator = PairwiseAnnotator(_mock_generate, PairwiseConfig())
@@ -112,6 +117,7 @@ def test_annotate_winner_valid_value():
 # ---------------------------------------------------------------------------
 # PairwiseAnnotator.annotate_batch
 # ---------------------------------------------------------------------------
+
 
 def test_annotate_batch_length_matches_input():
     annotator = PairwiseAnnotator(_mock_generate, PairwiseConfig())
@@ -134,6 +140,7 @@ def test_annotate_batch_returns_list_of_pairwise_result():
 # ---------------------------------------------------------------------------
 # compute_win_rate
 # ---------------------------------------------------------------------------
+
 
 def test_compute_win_rate_has_required_keys():
     results = [PairwiseResult("Q", "A", "B", "A")]
@@ -171,6 +178,7 @@ def test_compute_win_rate_empty_list():
 # AlpacaEvalPipeline.evaluate
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_returns_dict_with_win_rate():
     pipeline = AlpacaEvalPipeline(PairwiseAnnotator(_mock_generate, PairwiseConfig()))
     result = pipeline.evaluate(["Q1", "Q2"], ["A1", "A2"], ["B1", "B2"])
@@ -189,6 +197,7 @@ def test_evaluate_instruction_count_matches_outputs():
 # ---------------------------------------------------------------------------
 # AlpacaEvalPipeline.bootstrap_confidence_interval
 # ---------------------------------------------------------------------------
+
 
 def test_bootstrap_confidence_interval_returns_two_floats():
     pipeline = AlpacaEvalPipeline(PairwiseAnnotator(_mock_generate, PairwiseConfig()))

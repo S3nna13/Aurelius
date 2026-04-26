@@ -3,12 +3,11 @@
 Based on Rame et al. 2024: averaging model weights in parameter space produces a better model
 than any single model while reducing reward hacking.
 """
+
 from __future__ import annotations
 
 import copy
-import math
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -17,10 +16,10 @@ from torch import Tensor
 
 @dataclass
 class RewardSoupConfig:
-    aggregation: str = "mean"           # "mean", "weighted_mean", "min", "max", "median"
+    aggregation: str = "mean"  # "mean", "weighted_mean", "min", "max", "median"
     normalize_before_agg: bool = False  # z-score normalize each model's rewards first
-    temperature: float = 1.0           # softmax temperature for computing ensemble weights
-    weights: Optional[List[float]] = None  # per-model weights for weighted_mean
+    temperature: float = 1.0  # softmax temperature for computing ensemble weights
+    weights: list[float] | None = None  # per-model weights for weighted_mean
 
 
 def weight_average_models(
@@ -147,8 +146,8 @@ class RewardSoup:
 
     def calibrate_weights(
         self,
-        val_inputs: Tensor,   # (N, T) validation inputs
-        val_labels: Tensor,   # (N,) binary preference labels
+        val_inputs: Tensor,  # (N, T) validation inputs
+        val_labels: Tensor,  # (N,) binary preference labels
     ) -> list[float]:
         """Compute per-model accuracy on validation set.
 
@@ -209,12 +208,12 @@ def evaluate_reward_diversity(
     stacked = torch.stack(reward_lists, dim=0)  # (M, N)
 
     # Per-sample std across models, then average
-    std_per_sample = stacked.std(dim=0)           # (N,)
+    std_per_sample = stacked.std(dim=0)  # (N,)
     std_across_models = std_per_sample.mean().item()
 
     # Max disagreement: max range across models for any single sample
-    max_reward = stacked.max(dim=0).values        # (N,)
-    min_reward = stacked.min(dim=0).values        # (N,)
+    max_reward = stacked.max(dim=0).values  # (N,)
+    min_reward = stacked.min(dim=0).values  # (N,)
     max_disagreement = (max_reward - min_reward).max().item()
 
     mean_reward = stacked.mean().item()

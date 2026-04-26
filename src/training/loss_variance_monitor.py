@@ -15,7 +15,6 @@ import math
 import warnings
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, List, Tuple
 
 
 @dataclass
@@ -67,8 +66,8 @@ class LossVarianceMonitor:
         self.spike_threshold = float(spike_threshold)
         self.divergence_threshold = float(divergence_threshold)
 
-        self._window: Deque[Tuple[int, float]] = deque(maxlen=self.window_size)
-        self._anomalies: List[Dict] = []
+        self._window: deque[tuple[int, float]] = deque(maxlen=self.window_size)
+        self._anomalies: list[dict] = []
 
     # ------------------------------------------------------------------
     # Recording
@@ -101,9 +100,7 @@ class LossVarianceMonitor:
 
         # Check for spike using *current* stats before appending.
         if self.is_spike(loss_f):
-            self._anomalies.append(
-                {"step": int(step), "type": "spike", "value": loss_f}
-            )
+            self._anomalies.append({"step": int(step), "type": "spike", "value": loss_f})
 
         self._window.append((int(step), loss_f))
 
@@ -116,14 +113,12 @@ class LossVarianceMonitor:
                 and self._anomalies[-1].get("step") == int(step)
                 and self._anomalies[-1].get("type") == "divergence"
             ):
-                self._anomalies.append(
-                    {"step": int(step), "type": "divergence", "value": loss_f}
-                )
+                self._anomalies.append({"step": int(step), "type": "divergence", "value": loss_f})
 
     # ------------------------------------------------------------------
     # Statistics (Welford's algorithm applied over the window)
     # ------------------------------------------------------------------
-    def _welford(self) -> Tuple[float, float, int]:
+    def _welford(self) -> tuple[float, float, int]:
         """Run Welford's online algorithm over the current window.
 
         Returns:
@@ -221,6 +216,6 @@ class LossVarianceMonitor:
         self._window.clear()
         self._anomalies.clear()
 
-    def anomalies(self) -> List[Dict]:
+    def anomalies(self) -> list[dict]:
         """Return a copy of the list of detected anomaly records."""
         return list(self._anomalies)

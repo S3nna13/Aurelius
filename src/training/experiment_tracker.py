@@ -10,11 +10,12 @@ import tempfile
 import threading
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +42,10 @@ class TrackingBackend(ABC):
     """Abstract backend for experiment tracking."""
 
     @abstractmethod
-    def start_run(
-        self, run_name: str, experiment_name: str, params: dict[str, Any]
-    ) -> str: ...
+    def start_run(self, run_name: str, experiment_name: str, params: dict[str, Any]) -> str: ...
 
     @abstractmethod
-    def log_metrics(
-        self, run_id: str, metrics: dict[str, float], step: int
-    ) -> None: ...
+    def log_metrics(self, run_id: str, metrics: dict[str, float], step: int) -> None: ...
 
     @abstractmethod
     def log_artifact(self, run_id: str, path: str, name: str) -> None: ...
@@ -72,9 +69,7 @@ class JSONBackend(TrackingBackend):
         self._active_runs: dict[str, RunRecord] = {}
         self._lock = threading.RLock()
 
-    def start_run(
-        self, run_name: str, experiment_name: str, params: dict[str, Any]
-    ) -> str:
+    def start_run(self, run_name: str, experiment_name: str, params: dict[str, Any]) -> str:
         with self._lock:
             run_id = uuid.uuid4().hex[:12]
             run_dir = self._root / experiment_name / run_id
@@ -84,25 +79,21 @@ class JSONBackend(TrackingBackend):
                 run_name=run_name,
                 experiment_name=experiment_name,
                 params=dict(params),
-                start_time=datetime.now(timezone.utc).isoformat(),
+                start_time=datetime.now(UTC).isoformat(),
             )
             self._active_runs[run_id] = record
             (run_dir / "params.json").write_text(json.dumps(params, indent=2))
             self._save_record(record)
             return run_id
 
-    def log_metrics(
-        self, run_id: str, metrics: dict[str, float], step: int
-    ) -> None:
+    def log_metrics(self, run_id: str, metrics: dict[str, float], step: int) -> None:
         with self._lock:
             record = self._active_runs.get(run_id)
             if record is None:
                 logger.error("Run '%s' not found", run_id)
                 return
             for key, value in metrics.items():
-                record.metrics.setdefault(key, []).append(
-                    {"step": step, "value": value}
-                )
+                record.metrics.setdefault(key, []).append({"step": step, "value": value})
             self._atomic_write(
                 self._root / record.experiment_name / run_id / "metrics.json",
                 json.dumps(record.metrics, indent=2),
@@ -115,9 +106,7 @@ class JSONBackend(TrackingBackend):
             if record is None:
                 logger.error("Run '%s' not found", run_id)
                 return
-            artifact_dir = (
-                self._root / record.experiment_name / run_id / "artifacts"
-            )
+            artifact_dir = self._root / record.experiment_name / run_id / "artifacts"
             artifact_dir.mkdir(parents=True, exist_ok=True)
             src = Path(path)
             if not src.exists():
@@ -134,7 +123,7 @@ class JSONBackend(TrackingBackend):
                 logger.error("Run '%s' not found", run_id)
                 return
             record.status = status
-            record.end_time = datetime.now(timezone.utc).isoformat()
+            record.end_time = datetime.now(UTC).isoformat()
             self._save_record(record)
 
     def get_runs(self, experiment_name: str) -> list[dict[str, Any]]:
@@ -162,16 +151,12 @@ class JSONBackend(TrackingBackend):
     def _save_record(self, record: RunRecord) -> None:
         run_dir = self._root / record.experiment_name / record.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
-        self._atomic_write(
-            run_dir / "run.json", json.dumps(record.to_dict(), indent=2)
-        )
+        self._atomic_write(run_dir / "run.json", json.dumps(record.to_dict(), indent=2))
 
     @staticmethod
     def _atomic_write(target: Path, content: str) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_path = tempfile.mkstemp(
-            dir=target.parent, prefix=".tmp_", suffix=".json.tmp"
-        )
+        fd, tmp_path = tempfile.mkstemp(dir=target.parent, prefix=".tmp_", suffix=".json.tmp")
         try:
             with os.fdopen(fd, "w") as fh:
                 fh.write(content)
@@ -211,9 +196,7 @@ class ExperimentTracker:
         params: dict[str, Any] | None = None,
     ) -> str:
         self._current_experiment = experiment_name
-        self._current_run_id = self._backend.start_run(
-            run_name, experiment_name, params or {}
-        )
+        self._current_run_id = self._backend.start_run(run_name, experiment_name, params or {})
         return self._current_run_id
 
     def log_metric(self, name: str, value: float, step: int) -> None:

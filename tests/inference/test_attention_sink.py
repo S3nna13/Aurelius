@@ -11,8 +11,8 @@ from src.inference.attention_sink import (
     compute_sink_attention_stats,
 )
 
-
 # ── SinkConfig tests ──────────────────────────────────────────────────
+
 
 class TestSinkConfig:
     def test_defaults(self):
@@ -41,6 +41,7 @@ class TestSinkConfig:
 
 
 # ── SinkKVCache tests ─────────────────────────────────────────────────
+
 
 class TestSinkKVCache:
     def _make_kv(self, seq_len: int, val: float = 1.0) -> tuple[torch.Tensor, torch.Tensor]:
@@ -120,6 +121,7 @@ class TestSinkKVCache:
 
 # ── build_sink_mask tests ─────────────────────────────────────────────
 
+
 class TestBuildSinkMask:
     def test_shape(self):
         mask = build_sink_mask(n_sink=2, window_size=3, seq_len=8)
@@ -162,6 +164,7 @@ class TestBuildSinkMask:
 
 # ── StreamingGenerator tests ──────────────────────────────────────────
 
+
 class _DummyModel:
     """Minimal model that returns (loss, logits, pkv) tuple."""
 
@@ -203,6 +206,7 @@ class TestStreamingGenerator:
 
 
 # ── compute_sink_attention_stats tests ────────────────────────────────
+
 
 class TestComputeSinkAttentionStats:
     def test_all_attention_on_sinks(self):

@@ -212,8 +212,10 @@ def test_observe_is_deterministic():
 
     def run():
         mgr = CompactionTriggerManager(tiers=DEFAULT_TIERS, compaction_fn=det)
-        return [mgr.observe(n, history) is not None and mgr.observe.__self__ is mgr  # type: ignore[attr-defined]
-                for n in sequence] and [
+        return [
+            mgr.observe(n, history) is not None and mgr.observe.__self__ is mgr  # type: ignore[attr-defined]
+            for n in sequence
+        ] and [
             (e.tier_name, e.before_tokens, e.after_tokens)
             for e in mgr._events  # noqa: SLF001 -- test inspects record
         ]

@@ -1,18 +1,18 @@
-"""Tests for tensor parallelism: column/row linear splitting, attention head sharding, and all-reduce simulation."""
+"""Tests for tensor parallelism: column/row linear splitting, attention head sharding, and all-reduce simulation."""  # noqa: E501
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.training.tensor_parallel import (
     TensorParallelConfig,
-    split_weight_column,
-    split_weight_row,
+    TensorParallelLinear,
     column_parallel_linear,
     row_parallel_linear,
     simulated_all_reduce,
     split_attention_heads,
-    TensorParallelLinear,
+    split_weight_column,
+    split_weight_row,
 )
 
 # Shared constants
@@ -27,6 +27,7 @@ WORLD_SIZE = 2
 # 1. TensorParallelConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_tensor_parallel_config_defaults():
     cfg = TensorParallelConfig()
     assert cfg.world_size == 2
@@ -37,6 +38,7 @@ def test_tensor_parallel_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. split_weight_column output shapes
 # ---------------------------------------------------------------------------
+
 
 def test_split_weight_column_output_shapes():
     weight = torch.randn(OUT_FEATURES, IN_FEATURES)
@@ -50,6 +52,7 @@ def test_split_weight_column_output_shapes():
 # 3. split_weight_column concat restores original
 # ---------------------------------------------------------------------------
 
+
 def test_split_weight_column_restores_original():
     torch.manual_seed(0)
     weight = torch.randn(OUT_FEATURES, IN_FEATURES)
@@ -61,6 +64,7 @@ def test_split_weight_column_restores_original():
 # ---------------------------------------------------------------------------
 # 4. split_weight_row output shapes
 # ---------------------------------------------------------------------------
+
 
 def test_split_weight_row_output_shapes():
     weight = torch.randn(OUT_FEATURES, IN_FEATURES)
@@ -74,6 +78,7 @@ def test_split_weight_row_output_shapes():
 # 5. split_weight_row concat restores original
 # ---------------------------------------------------------------------------
 
+
 def test_split_weight_row_restores_original():
     torch.manual_seed(1)
     weight = torch.randn(OUT_FEATURES, IN_FEATURES)
@@ -85,6 +90,7 @@ def test_split_weight_row_restores_original():
 # ---------------------------------------------------------------------------
 # 6. column_parallel_linear output shape
 # ---------------------------------------------------------------------------
+
 
 def test_column_parallel_linear_output_shape():
     torch.manual_seed(2)
@@ -99,6 +105,7 @@ def test_column_parallel_linear_output_shape():
 # 7. row_parallel_linear output shape
 # ---------------------------------------------------------------------------
 
+
 def test_row_parallel_linear_output_shape():
     torch.manual_seed(3)
     x_shard = torch.randn(B, T, IN_FEATURES // WORLD_SIZE)
@@ -110,6 +117,7 @@ def test_row_parallel_linear_output_shape():
 # ---------------------------------------------------------------------------
 # 8. simulated_all_reduce sum of 2 partials
 # ---------------------------------------------------------------------------
+
 
 def test_simulated_all_reduce_sum():
     torch.manual_seed(4)
@@ -124,6 +132,7 @@ def test_simulated_all_reduce_sum():
 # 9. simulated_all_reduce mean
 # ---------------------------------------------------------------------------
 
+
 def test_simulated_all_reduce_mean():
     torch.manual_seed(5)
     p1 = torch.randn(B, T, OUT_FEATURES)
@@ -137,6 +146,7 @@ def test_simulated_all_reduce_mean():
 # 10. split_attention_heads correct ranges
 # ---------------------------------------------------------------------------
 
+
 def test_split_attention_heads_correct_ranges():
     n_heads = 8
     ranges = split_attention_heads(n_heads, WORLD_SIZE)
@@ -148,6 +158,7 @@ def test_split_attention_heads_correct_ranges():
 # ---------------------------------------------------------------------------
 # 11. split_attention_heads all heads covered
 # ---------------------------------------------------------------------------
+
 
 def test_split_attention_heads_all_heads_covered():
     n_heads = 8
@@ -161,6 +172,7 @@ def test_split_attention_heads_all_heads_covered():
 # ---------------------------------------------------------------------------
 # 12. TensorParallelLinear forward output shape
 # ---------------------------------------------------------------------------
+
 
 def test_tensor_parallel_linear_forward_output_shape():
     torch.manual_seed(6)

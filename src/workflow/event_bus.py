@@ -1,7 +1,7 @@
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class EventBus:
     def publish(self, event: Event) -> int:
         self._log.append(event)
         if len(self._log) > self.MAX_LOG:
-            self._log = self._log[-self.MAX_LOG:]
+            self._log = self._log[-self.MAX_LOG :]
 
         called = 0
         exhausted: list[str] = []

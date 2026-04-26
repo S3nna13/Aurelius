@@ -11,13 +11,12 @@ from __future__ import annotations
 
 import pytest
 
+from src.inference import DECODER_REGISTRY
 from src.inference.radix_cache import (
     CacheBlock,
     RadixCache,
     RadixCacheConfig,
 )
-from src.inference import DECODER_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -76,7 +75,7 @@ def test_radix_cache_integration():
     # ------------------------------------------------------------------
     # 3. Evict 2 blocks → free_blocks increases
     # ------------------------------------------------------------------
-    free_before = cache.free_blocks()
+    cache.free_blocks()
     total_before = cache.total_blocks()
 
     evicted = cache.evict(2)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import tempfile
@@ -13,14 +12,16 @@ from training_data.tokenize_pipeline import TokenizePipeline
 
 @pytest.fixture
 def pipeline():
-    return TokenizePipeline({
-        "tokenize": {
-            "shard_size": 8,
-            "max_length": 16,
-            "num_workers": 1,
-            "verify_integrity": False,
-        },
-    })
+    return TokenizePipeline(
+        {
+            "tokenize": {
+                "shard_size": 8,
+                "max_length": 16,
+                "num_workers": 1,
+                "verify_integrity": False,
+            },
+        }
+    )
 
 
 @pytest.fixture

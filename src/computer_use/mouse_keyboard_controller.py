@@ -31,15 +31,11 @@ class MouseKeyboardController:
         if x < 0 or y < 0:
             raise ValueError(f"coordinates must be non-negative, got ({x}, {y})")
         if x > self._MAX_COORD or y > self._MAX_COORD:
-            raise ValueError(
-                f"coordinates must be <= {self._MAX_COORD}, got ({x}, {y})"
-            )
+            raise ValueError(f"coordinates must be <= {self._MAX_COORD}, got ({x}, {y})")
 
     def _validate_button(self, button: str) -> None:
         if button not in self._VALID_BUTTONS:
-            raise ValueError(
-                f"button must be one of {sorted(self._VALID_BUTTONS)}, got {button!r}"
-            )
+            raise ValueError(f"button must be one of {sorted(self._VALID_BUTTONS)}, got {button!r}")
 
     def move_mouse(self, x: int, y: int) -> None:
         """Record a move-mouse action after validating coordinates."""
@@ -82,9 +78,7 @@ class MouseKeyboardController:
         if not isinstance(text, str):
             raise TypeError(f"text must be str, got {type(text).__name__}")
         if len(text) > self._MAX_TEXT_LEN:
-            raise ValueError(
-                f"text length must be <= {self._MAX_TEXT_LEN}, got {len(text)}"
-            )
+            raise ValueError(f"text length must be <= {self._MAX_TEXT_LEN}, got {len(text)}")
         if interval < 0:
             raise ValueError(f"interval must be non-negative, got {interval}")
         self._log.append({"action": "type_text", "text": text, "interval": interval})

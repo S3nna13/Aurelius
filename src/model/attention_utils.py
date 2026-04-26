@@ -6,19 +6,20 @@ Provides theoretical estimates for:
 - Optimal block sizes for a given SRAM budget
 - Hardware utilization estimates
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-import math
 
 
 @dataclass
 class AttentionMemoryStats:
     """Memory footprint analysis for a single attention layer."""
+
     seq_len: int
     n_heads: int
     head_dim: int
-    dtype_bytes: int           # 2 for bf16/fp16, 4 for fp32
+    dtype_bytes: int  # 2 for bf16/fp16, 4 for fp32
 
     @property
     def qkv_bytes(self) -> int:
@@ -56,8 +57,9 @@ class AttentionMemoryStats:
 @dataclass
 class BlockTilingConfig:
     """Block tiling configuration for Flash Attention."""
-    block_q: int    # query block size
-    block_kv: int   # key/value block size
+
+    block_q: int  # query block size
+    block_kv: int  # key/value block size
     n_blocks_q: int
     n_blocks_kv: int
     sram_usage_bytes: int
@@ -148,7 +150,7 @@ def memory_bandwidth_bound_at_seqlen(
     head_dim: int,
     dtype_bytes: int = 2,
     memory_bandwidth_gbps: float = 2000.0,  # A100 HBM bandwidth
-    flops_per_second: float = 312e12,       # A100 bf16 Tensor Core FLOPS
+    flops_per_second: float = 312e12,  # A100 bf16 Tensor Core FLOPS
 ) -> dict[str, float]:
     """Estimate whether attention is compute-bound or memory-bound at a given seq_len.
 
@@ -171,8 +173,12 @@ def memory_bandwidth_bound_at_seqlen(
     flops = attention_flops(seq_len, n_heads, head_dim, causal=True)
 
     # bytes moved for standard attention: QKV reads + attention matrix + output
-    standard_bytes = stats.qkv_bytes + stats.attention_matrix_bytes + (
-        n_heads * seq_len * head_dim * dtype_bytes  # output O
+    standard_bytes = (
+        stats.qkv_bytes
+        + stats.attention_matrix_bytes
+        + (
+            n_heads * seq_len * head_dim * dtype_bytes  # output O
+        )
     )
 
     # bytes moved for flash attention: QKV reads + output (no full attn matrix materialized)

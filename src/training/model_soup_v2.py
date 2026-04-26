@@ -7,18 +7,19 @@ References:
     Wortsman et al. 2022, "Model soups: averaging weights of multiple fine-tuned
     models improves accuracy without increasing inference time"
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SoupConfig:
@@ -37,7 +38,8 @@ class SoupConfig:
 # Core averaging functions
 # ---------------------------------------------------------------------------
 
-def uniform_soup(state_dicts: List[Dict[str, Tensor]]) -> Dict[str, Tensor]:
+
+def uniform_soup(state_dicts: list[dict[str, Tensor]]) -> dict[str, Tensor]:
     """Simple uniform average of all models' state dicts.
 
     Args:
@@ -51,7 +53,7 @@ def uniform_soup(state_dicts: List[Dict[str, Tensor]]) -> Dict[str, Tensor]:
     """
     if not state_dicts:
         raise ValueError("state_dicts must be non-empty")
-    averaged: Dict[str, Tensor] = {}
+    averaged: dict[str, Tensor] = {}
     for key in state_dicts[0]:
         stacked = torch.stack([sd[key].float() for sd in state_dicts])
         averaged[key] = stacked.mean(dim=0).to(state_dicts[0][key].dtype)
@@ -59,10 +61,10 @@ def uniform_soup(state_dicts: List[Dict[str, Tensor]]) -> Dict[str, Tensor]:
 
 
 def greedy_soup(
-    state_dicts: List[Dict[str, Tensor]],
-    eval_fn: Callable[[Dict[str, Tensor]], float],
+    state_dicts: list[dict[str, Tensor]],
+    eval_fn: Callable[[dict[str, Tensor]], float],
     higher_is_better: bool = True,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """Greedy model soup: add each model only if it improves the soup's eval score.
 
     The first candidate always seeds the soup. Subsequent candidates are
@@ -82,7 +84,7 @@ def greedy_soup(
     if not state_dicts:
         raise ValueError("state_dicts must be non-empty")
 
-    soup_members: List[Dict[str, Tensor]] = [{k: v.clone() for k, v in state_dicts[0].items()}]
+    soup_members: list[dict[str, Tensor]] = [{k: v.clone() for k, v in state_dicts[0].items()}]
     soup_state = uniform_soup(soup_members)
     best_score = eval_fn(soup_state)
 
@@ -101,9 +103,9 @@ def greedy_soup(
 
 
 def learned_soup(
-    state_dicts: List[Dict[str, Tensor]],
-    weights: Optional[Tensor] = None,
-) -> Dict[str, Tensor]:
+    state_dicts: list[dict[str, Tensor]],
+    weights: Tensor | None = None,
+) -> dict[str, Tensor]:
     """Weighted average where weights is a (n_models,) mixing-coefficient tensor.
 
     Weights are normalised to sum to 1 before blending. When weights is None,
@@ -133,7 +135,7 @@ def learned_soup(
             raise ValueError("weights must sum to a positive value")
         w = weights.float() / total
 
-    averaged: Dict[str, Tensor] = {}
+    averaged: dict[str, Tensor] = {}
     for key in state_dicts[0]:
         acc = torch.zeros_like(state_dicts[0][key], dtype=torch.float32)
         for sd, wi in zip(state_dicts, w.tolist()):
@@ -143,10 +145,10 @@ def learned_soup(
 
 
 def interpolate_models(
-    state_dict_a: Dict[str, Tensor],
-    state_dict_b: Dict[str, Tensor],
+    state_dict_a: dict[str, Tensor],
+    state_dict_b: dict[str, Tensor],
     alpha: float,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """Linear interpolation between two state dicts: (1-alpha)*A + alpha*B.
 
     Args:
@@ -157,7 +159,7 @@ def interpolate_models(
     Returns:
         Interpolated state dict.
     """
-    interpolated: Dict[str, Tensor] = {}
+    interpolated: dict[str, Tensor] = {}
     for key in state_dict_a:
         a = state_dict_a[key].float()
         b = state_dict_b[key].float() if key in state_dict_b else a
@@ -165,7 +167,7 @@ def interpolate_models(
     return interpolated
 
 
-def compute_weight_distance(sd_a: Dict[str, Tensor], sd_b: Dict[str, Tensor]) -> float:
+def compute_weight_distance(sd_a: dict[str, Tensor], sd_b: dict[str, Tensor]) -> float:
     """Mean L2 distance across all parameter tensors between two state dicts.
 
     Args:
@@ -175,7 +177,7 @@ def compute_weight_distance(sd_a: Dict[str, Tensor], sd_b: Dict[str, Tensor]) ->
     Returns:
         Mean per-tensor L2 distance as a Python float.
     """
-    distances: List[float] = []
+    distances: list[float] = []
     for key in sd_a:
         if key in sd_b:
             diff = sd_a[key].float() - sd_b[key].float()
@@ -189,6 +191,7 @@ def compute_weight_distance(sd_a: Dict[str, Tensor], sd_b: Dict[str, Tensor]) ->
 # ModelSoup orchestrator
 # ---------------------------------------------------------------------------
 
+
 class ModelSoup:
     """High-level orchestrator for model soup construction.
 
@@ -201,9 +204,9 @@ class ModelSoup:
 
     def __init__(self, config: SoupConfig) -> None:
         self.config = config
-        self._checkpoints: List[Dict[str, Tensor]] = []
+        self._checkpoints: list[dict[str, Tensor]] = []
 
-    def add_checkpoint(self, state_dict: Dict[str, Tensor]) -> None:
+    def add_checkpoint(self, state_dict: dict[str, Tensor]) -> None:
         """Store a checkpoint state dict (up to config.max_models, FIFO eviction)."""
         if len(self._checkpoints) >= self.config.max_models:
             self._checkpoints.pop(0)
@@ -211,9 +214,9 @@ class ModelSoup:
 
     def cook(
         self,
-        eval_fn: Optional[Callable[[Dict[str, Tensor]], float]] = None,
-        weights: Optional[Tensor] = None,
-    ) -> Dict[str, Tensor]:
+        eval_fn: Callable[[dict[str, Tensor]], float] | None = None,
+        weights: Tensor | None = None,
+    ) -> dict[str, Tensor]:
         """Build the soup using the method specified in config.
 
         Args:
@@ -239,19 +242,21 @@ class ModelSoup:
         elif method == "learned":
             return learned_soup(self._checkpoints, weights=weights)
         else:
-            raise ValueError(f"Unknown method '{method}'. Choose from 'uniform', 'greedy', 'learned'.")
+            raise ValueError(
+                f"Unknown method '{method}'. Choose from 'uniform', 'greedy', 'learned'."
+            )
 
     def get_soup_stats(
         self,
-        base_state_dict: Dict[str, Tensor],
-        soup_state_dict: Dict[str, Tensor],
-    ) -> Dict[str, float]:
+        base_state_dict: dict[str, Tensor],
+        soup_state_dict: dict[str, Tensor],
+    ) -> dict[str, float]:
         """Compute weight-distance statistics between a base and soup state dict.
 
         Returns:
             Dict with keys: mean_l2_distance, max_l2_distance, n_params.
         """
-        distances: List[float] = []
+        distances: list[float] = []
         n_params = 0
         for key in base_state_dict:
             if key in soup_state_dict:

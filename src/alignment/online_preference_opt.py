@@ -14,34 +14,31 @@ Algorithm:
 
 from __future__ import annotations
 
-import copy
-import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OPOConfig:
     """Configuration for Online Preference Optimization."""
 
-    beta: float = 0.1               # DPO temperature (KL penalty coefficient)
+    beta: float = 0.1  # DPO temperature (KL penalty coefficient)
     lr: float = 1e-5
     batch_size: int = 4
-    n_steps: int = 4                # optimization steps per batch
-    max_new_tokens: int = 16        # tokens to generate for self-play
-    temperature: float = 1.0        # generation temperature
+    n_steps: int = 4  # optimization steps per batch
+    max_new_tokens: int = 16  # tokens to generate for self-play
+    temperature: float = 1.0  # generation temperature
     top_p: float = 0.9
     reward_model_weight: float = 1.0
-    sft_weight: float = 0.1         # SFT regularization coefficient
+    sft_weight: float = 0.1  # SFT regularization coefficient
     max_seq_len: int = 64
 
 
@@ -49,13 +46,14 @@ class OPOConfig:
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OnlinePair:
     """An online-collected preference pair."""
 
-    prompt_ids: Tensor        # (T_p,)
-    chosen_ids: Tensor        # (T_r,) higher-reward response
-    rejected_ids: Tensor      # (T_r,) lower-reward response
+    prompt_ids: Tensor  # (T_p,)
+    chosen_ids: Tensor  # (T_r,) higher-reward response
+    rejected_ids: Tensor  # (T_r,) lower-reward response
     chosen_reward: float
     rejected_reward: float
 
@@ -64,9 +62,10 @@ class OnlinePair:
 # Generation
 # ---------------------------------------------------------------------------
 
+
 def generate_response(
     model: nn.Module,
-    prompt_ids: Tensor,      # (T_p,)
+    prompt_ids: Tensor,  # (T_p,)
     max_new_tokens: int = 16,
     temperature: float = 1.0,
     top_p: float = 0.9,
@@ -85,7 +84,7 @@ def generate_response(
     """
     # Add batch dimension: (T_p,) -> (1, T_p)
     current = prompt_ids.unsqueeze(0)
-    generated: List[Tensor] = []
+    generated: list[Tensor] = []
 
     with torch.no_grad():
         for _ in range(max_new_tokens):
@@ -106,9 +105,7 @@ def generate_response(
                     # Remove tokens with cumulative probability above threshold
                     # Shift right so the first token above threshold is kept
                     sorted_indices_to_remove = cumulative_probs - sorted_probs > top_p
-                    sorted_probs = sorted_probs.masked_fill(
-                        sorted_indices_to_remove, 0.0
-                    )
+                    sorted_probs = sorted_probs.masked_fill(sorted_indices_to_remove, 0.0)
                     # Renormalize
                     sorted_probs = sorted_probs / (sorted_probs.sum() + 1e-10)
                     # Sample from filtered distribution
@@ -127,13 +124,14 @@ def generate_response(
 # Online data collection
 # ---------------------------------------------------------------------------
 
+
 def collect_online_pairs(
     model: nn.Module,
     reward_model: nn.Module,
-    prompts: List[Tensor],   # list of (T_p,) prompt tensors
+    prompts: list[Tensor],  # list of (T_p,) prompt tensors
     config: OPOConfig,
     n_samples_per_prompt: int = 2,
-) -> List[OnlinePair]:
+) -> list[OnlinePair]:
     """For each prompt, generate n_samples responses, score with reward model,
     create preference pairs (best vs worst).
 
@@ -149,12 +147,12 @@ def collect_online_pairs(
     """
     model.eval()
     reward_model.eval()
-    pairs: List[OnlinePair] = []
+    pairs: list[OnlinePair] = []
 
     with torch.no_grad():
         for prompt_ids in prompts:
-            responses: List[Tensor] = []
-            rewards: List[float] = []
+            responses: list[Tensor] = []
+            rewards: list[float] = []
 
             for _ in range(n_samples_per_prompt):
                 resp = generate_response(
@@ -191,10 +189,11 @@ def collect_online_pairs(
 # Log-prob helpers
 # ---------------------------------------------------------------------------
 
+
 def _compute_sequence_log_probs(
     model: nn.Module,
-    prompt_ids: Tensor,   # (1, T_p)
-    response_ids: Tensor, # (1, T_r)
+    prompt_ids: Tensor,  # (1, T_p)
+    response_ids: Tensor,  # (1, T_r)
 ) -> Tensor:
     """Compute sum of log probs for response tokens given prompt.
 
@@ -213,11 +212,9 @@ def _compute_sequence_log_probs(
     # In shifted view, position (prompt_len-1) predicts response token 0.
     resp_start = prompt_len - 1
     T_r = response_ids.shape[1]
-    log_probs_resp = log_probs_all[:, resp_start:resp_start + T_r, :]  # (1, T_r, vocab)
+    log_probs_resp = log_probs_all[:, resp_start : resp_start + T_r, :]  # (1, T_r, vocab)
 
-    token_lp = log_probs_resp.gather(
-        2, response_ids.unsqueeze(-1)
-    ).squeeze(-1)  # (1, T_r)
+    token_lp = log_probs_resp.gather(2, response_ids.unsqueeze(-1)).squeeze(-1)  # (1, T_r)
 
     return token_lp.sum(dim=-1)  # (1,)
 
@@ -226,10 +223,11 @@ def _compute_sequence_log_probs(
 # OPO Loss
 # ---------------------------------------------------------------------------
 
+
 def opo_loss(
     model: nn.Module,
     ref_model: nn.Module,
-    batch: List[OnlinePair],
+    batch: list[OnlinePair],
     beta: float = 0.1,
     sft_weight: float = 0.1,
 ) -> tuple:
@@ -252,28 +250,24 @@ def opo_loss(
         (loss, metrics) where metrics has keys:
         'dpo_loss', 'sft_loss', 'total_loss', 'reward_margin'
     """
-    dpo_losses: List[Tensor] = []
-    sft_losses: List[Tensor] = []
-    chosen_rewards_list: List[float] = []
-    rejected_rewards_list: List[float] = []
+    dpo_losses: list[Tensor] = []
+    sft_losses: list[Tensor] = []
+    chosen_rewards_list: list[float] = []
+    rejected_rewards_list: list[float] = []
 
     for pair in batch:
-        prompt_b = pair.prompt_ids.unsqueeze(0)      # (1, T_p)
-        chosen_b = pair.chosen_ids.unsqueeze(0)      # (1, T_r)
+        prompt_b = pair.prompt_ids.unsqueeze(0)  # (1, T_p)
+        chosen_b = pair.chosen_ids.unsqueeze(0)  # (1, T_r)
         rejected_b = pair.rejected_ids.unsqueeze(0)  # (1, T_r)
 
         # Policy log probs (with grad)
-        pi_chosen_lp = _compute_sequence_log_probs(model, prompt_b, chosen_b)      # (1,)
+        pi_chosen_lp = _compute_sequence_log_probs(model, prompt_b, chosen_b)  # (1,)
         pi_rejected_lp = _compute_sequence_log_probs(model, prompt_b, rejected_b)  # (1,)
 
         # Reference log probs (no grad)
         with torch.no_grad():
-            ref_chosen_lp = _compute_sequence_log_probs(
-                ref_model, prompt_b, chosen_b
-            )    # (1,)
-            ref_rejected_lp = _compute_sequence_log_probs(
-                ref_model, prompt_b, rejected_b
-            )  # (1,)
+            ref_chosen_lp = _compute_sequence_log_probs(ref_model, prompt_b, chosen_b)  # (1,)
+            ref_rejected_lp = _compute_sequence_log_probs(ref_model, prompt_b, rejected_b)  # (1,)
 
         # DPO implicit rewards
         chosen_reward_t = beta * (pi_chosen_lp - ref_chosen_lp)
@@ -311,6 +305,7 @@ def opo_loss(
 # ---------------------------------------------------------------------------
 # OPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class OPOTrainer:
     """Online Preference Optimization Trainer.
@@ -350,7 +345,7 @@ class OPOTrainer:
 
     def collect_and_train(
         self,
-        prompts: List[Tensor],
+        prompts: list[Tensor],
     ) -> dict:
         """Full OPO step: collect online pairs + DPO update.
 

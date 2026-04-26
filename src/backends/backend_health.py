@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 __all__ = [
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"

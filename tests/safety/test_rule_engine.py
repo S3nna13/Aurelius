@@ -7,14 +7,14 @@ import warnings
 import pytest
 
 from src.safety.rule_engine import (
+    SEED_RULES,
+    VALID_CHECK_TYPES,
     Rule,
     RuleDomain,
     RuleEngine,
     RuleEvaluationReport,
     RuleSeverity,
     RuleViolation,
-    SEED_RULES,
-    VALID_CHECK_TYPES,
 )
 
 

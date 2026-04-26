@@ -5,13 +5,11 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.activation_anomaly import (
-    AnomalyConfig,
-    AnomalyReport,
     ActivationMonitor,
+    AnomalyConfig,
     AnomalyDetector,
+    AnomalyReport,
     compute_activation_statistics,
     compute_layer_similarity,
     detect_dead_neurons,
@@ -19,6 +17,8 @@ from src.eval.activation_anomaly import (
     detect_nan_inf,
     detect_outlier_activations,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny config / model
@@ -54,6 +54,7 @@ def small_input():
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = AnomalyConfig()
     assert cfg.z_score_threshold == 3.0
@@ -63,6 +64,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_detect_nan_inf_clean
 # ---------------------------------------------------------------------------
+
 
 def test_detect_nan_inf_clean():
     t = torch.randn(2, 4, 8)
@@ -74,6 +76,7 @@ def test_detect_nan_inf_clean():
 # ---------------------------------------------------------------------------
 # 3. test_detect_nan_inf_nan
 # ---------------------------------------------------------------------------
+
 
 def test_detect_nan_inf_nan():
     t = torch.randn(2, 4, 8)
@@ -87,6 +90,7 @@ def test_detect_nan_inf_nan():
 # 4. test_detect_nan_inf_inf
 # ---------------------------------------------------------------------------
 
+
 def test_detect_nan_inf_inf():
     t = torch.randn(2, 4, 8)
     t[0, 0, 0] = float("inf")
@@ -99,6 +103,7 @@ def test_detect_nan_inf_inf():
 # 5. test_detect_exploding_threshold
 # ---------------------------------------------------------------------------
 
+
 def test_detect_exploding_threshold():
     # All values are 200 -- well above threshold of 100
     t = torch.full((2, 4, 8), 200.0)
@@ -109,6 +114,7 @@ def test_detect_exploding_threshold():
 # ---------------------------------------------------------------------------
 # 6. test_detect_exploding_normal
 # ---------------------------------------------------------------------------
+
 
 def test_detect_exploding_normal():
     torch.manual_seed(42)
@@ -121,6 +127,7 @@ def test_detect_exploding_normal():
 # 7. test_detect_dead_neurons_all_dead
 # ---------------------------------------------------------------------------
 
+
 def test_detect_dead_neurons_all_dead():
     t = torch.zeros(2, 4, 16)
     frac = detect_dead_neurons(t, threshold=0.01)
@@ -130,6 +137,7 @@ def test_detect_dead_neurons_all_dead():
 # ---------------------------------------------------------------------------
 # 8. test_detect_dead_neurons_alive
 # ---------------------------------------------------------------------------
+
 
 def test_detect_dead_neurons_alive():
     torch.manual_seed(42)
@@ -142,6 +150,7 @@ def test_detect_dead_neurons_alive():
 # 9. test_compute_activation_statistics_keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_activation_statistics_keys():
     t = torch.randn(2, 4, 16)
     stats = compute_activation_statistics(t)
@@ -152,6 +161,7 @@ def test_compute_activation_statistics_keys():
 # ---------------------------------------------------------------------------
 # 10. test_compute_activation_statistics_mean
 # ---------------------------------------------------------------------------
+
 
 def test_compute_activation_statistics_mean():
     # Tensor of all 3.0
@@ -167,6 +177,7 @@ def test_compute_activation_statistics_mean():
 # 11. test_detect_outlier_activations_range
 # ---------------------------------------------------------------------------
 
+
 def test_detect_outlier_activations_range():
     torch.manual_seed(42)
     t = torch.randn(2, 4, 32)
@@ -178,6 +189,7 @@ def test_detect_outlier_activations_range():
 # 12. test_compute_layer_similarity_identical
 # ---------------------------------------------------------------------------
 
+
 def test_compute_layer_similarity_identical():
     torch.manual_seed(42)
     t = torch.randn(2, 4, 64)
@@ -188,6 +200,7 @@ def test_compute_layer_similarity_identical():
 # ---------------------------------------------------------------------------
 # 13. test_activation_monitor_captures
 # ---------------------------------------------------------------------------
+
 
 def test_activation_monitor_captures(tiny_model, small_input):
     cfg = AnomalyConfig(layers_to_monitor=[0, 1])
@@ -210,6 +223,7 @@ def test_activation_monitor_captures(tiny_model, small_input):
 # 14. test_anomaly_detector_analyze_returns_list
 # ---------------------------------------------------------------------------
 
+
 def test_anomaly_detector_analyze_returns_list(tiny_model, small_input):
     cfg = AnomalyConfig(layers_to_monitor=[0, 1], n_calibration_samples=2)
     monitor = ActivationMonitor(tiny_model, cfg)
@@ -224,6 +238,7 @@ def test_anomaly_detector_analyze_returns_list(tiny_model, small_input):
 # ---------------------------------------------------------------------------
 # 15. test_anomaly_detector_summarize_keys
 # ---------------------------------------------------------------------------
+
 
 def test_anomaly_detector_summarize_keys(tiny_model, small_input):
     cfg = AnomalyConfig(layers_to_monitor=[0, 1], n_calibration_samples=2)

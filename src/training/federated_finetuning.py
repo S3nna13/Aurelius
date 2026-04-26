@@ -11,12 +11,11 @@ References:
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # ClientDataShard
@@ -38,7 +37,7 @@ class ClientDataShard:
         self.labels = labels
         self._n = data.shape[0]
 
-    def sample_batch(self, batch_size: int) -> Tuple[Tensor, Tensor]:
+    def sample_batch(self, batch_size: int) -> tuple[Tensor, Tensor]:
         """Return a random batch of (data, labels), wrapping around if needed.
 
         Args:
@@ -69,9 +68,9 @@ class FedProxClient:
         self.client_id = client_id
         self.model = model
         self.mu = mu
-        self.global_params: Dict[str, Tensor] = {}
+        self.global_params: dict[str, Tensor] = {}
 
-    def set_global_params(self, global_state: Dict[str, Tensor]) -> None:
+    def set_global_params(self, global_state: dict[str, Tensor]) -> None:
         """Load global parameters into model and save a reference copy.
 
         Args:
@@ -99,7 +98,7 @@ class FedProxClient:
         loss_fn: Callable,
         n_steps: int = 5,
         lr: float = 0.01,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Run n_steps of gradient descent with Adam + proximal term.
 
         Args:
@@ -134,7 +133,7 @@ class FedProxClient:
             "n_steps": n_steps,
         }
 
-    def get_update(self) -> Dict[str, Tensor]:
+    def get_update(self) -> dict[str, Tensor]:
         """Return the parameter delta (current - global) for each param.
 
         Returns:
@@ -194,7 +193,7 @@ class FedLoRAAdapter(nn.Module):
         effective_weight = scale * (self.B @ self.A)  # (d_out, d_in)
         return x @ effective_weight.T  # (B, d_out)
 
-    def get_adapter_params(self) -> Dict[str, Tensor]:
+    def get_adapter_params(self) -> dict[str, Tensor]:
         """Return cloned copies of A and B.
 
         Returns:
@@ -202,7 +201,7 @@ class FedLoRAAdapter(nn.Module):
         """
         return {"A": self.A.data.clone(), "B": self.B.data.clone()}
 
-    def set_adapter_params(self, params: Dict[str, Tensor]) -> None:
+    def set_adapter_params(self, params: dict[str, Tensor]) -> None:
         """Load A and B from a params dict.
 
         Args:
@@ -238,9 +237,9 @@ class FedAggregator:
 
     def fedavg(
         self,
-        client_states: List[Dict[str, Tensor]],
-        weights: Optional[List[float]] = None,
-    ) -> Dict[str, Tensor]:
+        client_states: list[dict[str, Tensor]],
+        weights: list[float] | None = None,
+    ) -> dict[str, Tensor]:
         """Weighted average of client state dicts.
 
         Args:
@@ -257,19 +256,17 @@ class FedAggregator:
             total = sum(weights)
             weights = [w / total for w in weights]
 
-        averaged: Dict[str, Tensor] = {}
+        averaged: dict[str, Tensor] = {}
         for key in client_states[0]:
-            averaged[key] = sum(
-                w * state[key].float() for w, state in zip(weights, client_states)
-            )
+            averaged[key] = sum(w * state[key].float() for w, state in zip(weights, client_states))
         return averaged
 
     def fedprox_aggregate(
         self,
-        global_state: Dict[str, Tensor],
-        client_deltas: List[Dict[str, Tensor]],
-        weights: Optional[List[float]] = None,
-    ) -> Dict[str, Tensor]:
+        global_state: dict[str, Tensor],
+        client_deltas: list[dict[str, Tensor]],
+        weights: list[float] | None = None,
+    ) -> dict[str, Tensor]:
         """Aggregate client deltas onto the global model.
 
         new_global = global + weighted_mean(deltas)
@@ -289,18 +286,16 @@ class FedAggregator:
             total = sum(weights)
             weights = [w / total for w in weights]
 
-        new_state: Dict[str, Tensor] = {}
+        new_state: dict[str, Tensor] = {}
         for key in global_state:
-            mean_delta = sum(
-                w * delta[key].float() for w, delta in zip(weights, client_deltas)
-            )
+            mean_delta = sum(w * delta[key].float() for w, delta in zip(weights, client_deltas))
             new_state[key] = global_state[key].float() + mean_delta
         return new_state
 
     def aggregate_lora(
         self,
-        adapter_params_list: List[Dict[str, Tensor]],
-    ) -> Dict[str, Tensor]:
+        adapter_params_list: list[dict[str, Tensor]],
+    ) -> dict[str, Tensor]:
         """Average LoRA adapter parameters across clients.
 
         Args:

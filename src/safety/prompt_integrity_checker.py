@@ -33,10 +33,8 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from src.chat.chatml_template import ChatMLTemplate, Message
-
 
 # Control tokens that must never appear in a plain system prompt.
 # Sourced from the chat-template siblings so we catch the formats
@@ -79,8 +77,8 @@ class IntegrityReport:
     """
 
     valid: bool
-    signals: List[str] = field(default_factory=list)
-    expected_checksum: Optional[str] = None
+    signals: list[str] = field(default_factory=list)
+    expected_checksum: str | None = None
     actual_checksum: str = ""
     length_delta: int = 0
 
@@ -110,19 +108,16 @@ class PromptIntegrityChecker:
 
     def __init__(
         self,
-        expected_prompt: Optional[str] = None,
+        expected_prompt: str | None = None,
         tolerated_length_delta: int = 0,
         strict_checksum: bool = False,
         template: str = "chatml",
     ) -> None:
         if tolerated_length_delta < 0:
-            raise ValueError(
-                f"tolerated_length_delta must be >= 0, got {tolerated_length_delta}"
-            )
+            raise ValueError(f"tolerated_length_delta must be >= 0, got {tolerated_length_delta}")
         if template not in _SUPPORTED_TEMPLATES:
             raise ValueError(
-                f"unknown template {template!r}; supported: "
-                f"{sorted(_SUPPORTED_TEMPLATES)}"
+                f"unknown template {template!r}; supported: {sorted(_SUPPORTED_TEMPLATES)}"
             )
 
         self.tolerated_length_delta = int(tolerated_length_delta)
@@ -130,8 +125,8 @@ class PromptIntegrityChecker:
         self.template_name = template
         self._template = ChatMLTemplate()
 
-        self._baseline_prompt: Optional[str] = None
-        self._baseline_checksum: Optional[str] = None
+        self._baseline_prompt: str | None = None
+        self._baseline_checksum: str | None = None
 
         if expected_prompt is not None:
             self.register_baseline(expected_prompt)
@@ -141,9 +136,7 @@ class PromptIntegrityChecker:
     def register_baseline(self, prompt: str) -> None:
         """Install ``prompt`` as the approved system prompt fingerprint."""
         if not isinstance(prompt, str):
-            raise TypeError(
-                f"baseline prompt must be str, got {type(prompt).__name__}"
-            )
+            raise TypeError(f"baseline prompt must be str, got {type(prompt).__name__}")
         self._baseline_prompt = prompt
         self._baseline_checksum = _sha256_hex(prompt)
 
@@ -152,17 +145,13 @@ class PromptIntegrityChecker:
     def check(self, current_prompt: str) -> IntegrityReport:
         """Check ``current_prompt`` against the registered baseline."""
         if not isinstance(current_prompt, str):
-            raise TypeError(
-                f"current_prompt must be str, got {type(current_prompt).__name__}"
-            )
+            raise TypeError(f"current_prompt must be str, got {type(current_prompt).__name__}")
 
         actual = _sha256_hex(current_prompt)
-        signals: List[str] = []
+        signals: list[str] = []
 
         # Role-break scan is independent of whether a baseline exists.
-        role_break_hits = [
-            tok for tok in _ROLE_BREAK_TOKENS if tok in current_prompt
-        ]
+        role_break_hits = [tok for tok in _ROLE_BREAK_TOKENS if tok in current_prompt]
         if role_break_hits:
             signals.append("role_break_token")
 
@@ -213,7 +202,7 @@ class PromptIntegrityChecker:
     def check_round_trip(
         self,
         current_prompt: str,
-        messages: List[Message],
+        messages: list[Message],
     ) -> IntegrityReport:
         """Verify that encoding and decoding ``messages`` preserves the system prompt.
 
@@ -231,29 +220,23 @@ class PromptIntegrityChecker:
 
         # Locate the first system message.
         system_idx = next(
-            (i for i, m in enumerate(messages)
-             if isinstance(m, Message) and m.role == "system"),
+            (i for i, m in enumerate(messages) if isinstance(m, Message) and m.role == "system"),
             None,
         )
 
-        round_trip_signals: List[str] = []
+        round_trip_signals: list[str] = []
         if system_idx is None:
             round_trip_signals.append("system_message_missing")
         else:
             # A user-role message appearing *before* the first system
             # message is a strong signal that someone tried to inject
             # content ahead of the real system slot.
-            if any(
-                isinstance(m, Message) and m.role == "user"
-                for m in messages[:system_idx]
-            ):
+            if any(isinstance(m, Message) and m.role == "user" for m in messages[:system_idx]):
                 round_trip_signals.append("user_before_system")
 
             encoded = self._template.encode(messages)
             decoded = self._template.decode(encoded)
-            decoded_system = next(
-                (m for m in decoded if m.role == "system"), None
-            )
+            decoded_system = next((m for m in decoded if m.role == "system"), None)
             if decoded_system is None or decoded_system.content != current_prompt:
                 round_trip_signals.append("round_trip_mismatch")
 

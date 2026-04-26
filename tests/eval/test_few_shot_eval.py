@@ -3,14 +3,11 @@
 Uses only stdlib + PyTorch; no HuggingFace, scipy, or sklearn.
 All model/tokenizer fixtures are tiny inline stubs.
 """
-from __future__ import annotations
 
-import math
-from typing import List
+from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn.functional as F
 
 from src.eval.few_shot_eval import (
     FewShotConfig,
@@ -29,7 +26,7 @@ from src.eval.few_shot_eval import (
 VOCAB_SIZE = 32  # small vocabulary for tests
 
 
-def _make_examples(n: int = 6, n_choices: int = 4) -> List[dict]:
+def _make_examples(n: int = 6, n_choices: int = 4) -> list[dict]:
     """Return a list of toy multiple-choice examples."""
     choices = [f"Choice_{c}" for c in range(n_choices)]
     return [
@@ -42,7 +39,7 @@ def _make_examples(n: int = 6, n_choices: int = 4) -> List[dict]:
     ]
 
 
-def _dummy_tokenizer(text: str) -> List[int]:
+def _dummy_tokenizer(text: str) -> list[int]:
     """Character-based tokenizer: each char → its ASCII value (mod VOCAB_SIZE)."""
     return [ord(c) % VOCAB_SIZE for c in text] or [0]
 
@@ -57,6 +54,7 @@ def _dummy_model(token_ids: torch.Tensor) -> torch.Tensor:
 # 1. FewShotConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_fewshotconfig_defaults():
     cfg = FewShotConfig()
     assert cfg.n_shots == 5
@@ -70,6 +68,7 @@ def test_fewshotconfig_defaults():
 # 2. format_example with answer includes letter
 # ---------------------------------------------------------------------------
 
+
 def test_format_example_with_answer_includes_letter():
     cfg = FewShotConfig()
     result = format_example("What is 2+2?", ["3", "4", "5"], answer_idx=1, config=cfg)
@@ -81,6 +80,7 @@ def test_format_example_with_answer_includes_letter():
 # 3. format_example without answer omits letter
 # ---------------------------------------------------------------------------
 
+
 def test_format_example_without_answer_omits_letter():
     cfg = FewShotConfig()
     result = format_example("What is 2+2?", ["3", "4", "5"], answer_idx=None, config=cfg)
@@ -89,13 +89,14 @@ def test_format_example_without_answer_omits_letter():
     # The line containing "Answer:" should not end with a letter
     for line in result.splitlines():
         if line.startswith("Answer:"):
-            stripped = line[len("Answer:"):].strip()
+            stripped = line[len("Answer:") :].strip()
             assert stripped == "", f"Expected no letter after prefix, got: {stripped!r}"
 
 
 # ---------------------------------------------------------------------------
 # 4. format_example choices use A/B/C/D labels
 # ---------------------------------------------------------------------------
+
 
 def test_format_example_choice_labels():
     choices = ["Alpha", "Beta", "Gamma", "Delta"]
@@ -110,6 +111,7 @@ def test_format_example_choice_labels():
 # 5. build_few_shot_prompt contains separator between examples
 # ---------------------------------------------------------------------------
 
+
 def test_build_few_shot_prompt_contains_separator():
     cfg = FewShotConfig(n_shots=2, separator="\n\n")
     pool = _make_examples(5)
@@ -122,6 +124,7 @@ def test_build_few_shot_prompt_contains_separator():
 # 6. build_few_shot_prompt last example has no answer letter
 # ---------------------------------------------------------------------------
 
+
 def test_build_few_shot_prompt_last_example_no_answer():
     cfg = FewShotConfig(n_shots=2, separator="\n\n")
     pool = _make_examples(5)
@@ -129,15 +132,16 @@ def test_build_few_shot_prompt_last_example_no_answer():
     prompt = build_few_shot_prompt(pool[:3], test_ex, cfg)
     # Split on separator; the last block must end with "Answer:" (no letter)
     last_block = prompt.split(cfg.separator)[-1]
-    answer_lines = [l for l in last_block.splitlines() if l.startswith("Answer:")]
+    answer_lines = [line for line in last_block.splitlines() if line.startswith("Answer:")]
     assert len(answer_lines) == 1
-    letter_part = answer_lines[0][len("Answer:"):].strip()
+    letter_part = answer_lines[0][len("Answer:") :].strip()
     assert letter_part == ""
 
 
 # ---------------------------------------------------------------------------
 # 7. build_few_shot_prompt uses n_shots examples (+ 1 test block)
 # ---------------------------------------------------------------------------
+
 
 def test_build_few_shot_prompt_uses_n_shots():
     n_shots = 3
@@ -154,6 +158,7 @@ def test_build_few_shot_prompt_uses_n_shots():
 # 8. score_multiple_choice returns index of max logprob choice
 # ---------------------------------------------------------------------------
 
+
 def test_score_multiple_choice_returns_max():
     vocab = 16
     logprobs = torch.full((vocab,), -10.0)
@@ -169,6 +174,7 @@ def test_score_multiple_choice_returns_max():
 # 9. score_multiple_choice returns valid index (in range)
 # ---------------------------------------------------------------------------
 
+
 def test_score_multiple_choice_valid_index():
     vocab = 20
     logprobs = torch.randn(vocab)
@@ -181,6 +187,7 @@ def test_score_multiple_choice_valid_index():
 # 10. compute_accuracy = 1.0 when all correct
 # ---------------------------------------------------------------------------
 
+
 def test_compute_accuracy_all_correct():
     preds = [0, 1, 2, 3]
     targets = [0, 1, 2, 3]
@@ -191,6 +198,7 @@ def test_compute_accuracy_all_correct():
 # 11. compute_accuracy = 0.0 when all wrong
 # ---------------------------------------------------------------------------
 
+
 def test_compute_accuracy_all_wrong():
     preds = [1, 2, 3, 0]
     targets = [0, 1, 2, 3]
@@ -200,6 +208,7 @@ def test_compute_accuracy_all_wrong():
 # ---------------------------------------------------------------------------
 # 12. compute_per_class_accuracy length == n_classes
 # ---------------------------------------------------------------------------
+
 
 def test_compute_per_class_accuracy_length():
     preds = [0, 1, 2, 0, 1]
@@ -212,6 +221,7 @@ def test_compute_per_class_accuracy_length():
 # ---------------------------------------------------------------------------
 # 13. compute_per_class_accuracy correctness
 # ---------------------------------------------------------------------------
+
 
 def test_compute_per_class_accuracy_values():
     # Class 0: pred=0, target=0 → correct; Class 1: pred=0, target=1 → wrong
@@ -226,6 +236,7 @@ def test_compute_per_class_accuracy_values():
 # 14. FewShotEvaluator.evaluate_example returns valid choice index
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_evaluate_example_valid_index():
     cfg = FewShotConfig(n_shots=2)
     evaluator = FewShotEvaluator(_dummy_model, _dummy_tokenizer, cfg)
@@ -238,6 +249,7 @@ def test_evaluator_evaluate_example_valid_index():
 # ---------------------------------------------------------------------------
 # 15. FewShotEvaluator.evaluate_example: biased model picks correct class
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_evaluate_example_biased_model():
     """A model that strongly favors token id for 'B' should predict index 1."""
@@ -267,6 +279,7 @@ def test_evaluator_evaluate_example_biased_model():
 # 16. FewShotEvaluator.evaluate_dataset returns dict with required keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_evaluate_dataset_keys():
     cfg = FewShotConfig(n_shots=2)
     evaluator = FewShotEvaluator(_dummy_model, _dummy_tokenizer, cfg)
@@ -283,6 +296,7 @@ def test_evaluator_evaluate_dataset_keys():
 # 17. FewShotEvaluator.evaluate_dataset n_total matches input length
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_evaluate_dataset_n_total():
     cfg = FewShotConfig(n_shots=2)
     evaluator = FewShotEvaluator(_dummy_model, _dummy_tokenizer, cfg)
@@ -295,6 +309,7 @@ def test_evaluator_evaluate_dataset_n_total():
 # ---------------------------------------------------------------------------
 # 18. FewShotEvaluator.evaluate_dataset accuracy in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_evaluate_dataset_accuracy_range():
     cfg = FewShotConfig(n_shots=1)
@@ -309,6 +324,7 @@ def test_evaluator_evaluate_dataset_accuracy_range():
 # 19. compute_per_class_accuracy with zero-example class returns 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_per_class_accuracy_missing_class():
     # Class 2 has no examples
     preds = [0, 1, 0, 1]
@@ -320,6 +336,7 @@ def test_compute_per_class_accuracy_missing_class():
 # ---------------------------------------------------------------------------
 # 20. build_few_shot_prompt: question text appears in prompt
 # ---------------------------------------------------------------------------
+
 
 def test_build_few_shot_prompt_question_text():
     cfg = FewShotConfig(n_shots=1)

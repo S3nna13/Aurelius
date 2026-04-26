@@ -45,7 +45,7 @@ Design constraints for Aurelius:
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 import torch
 
@@ -91,9 +91,7 @@ class _CosineDenseRetriever:
 
     def add_documents(self, docs: Sequence[str]) -> None:
         if self._indexed:
-            raise RuntimeError(
-                "_CosineDenseRetriever.add_documents may only be called once."
-            )
+            raise RuntimeError("_CosineDenseRetriever.add_documents may only be called once.")
         if not isinstance(docs, (list, tuple)):
             docs = list(docs)
         if len(docs) == 0:
@@ -127,9 +125,7 @@ class _CosineDenseRetriever:
             return []
         qv = self._to_vec(self._embed_fn(q))
         if qv.shape[0] != self._dim:
-            raise ValueError(
-                f"embed_fn query dim {qv.shape[0]} != corpus dim {self._dim}"
-            )
+            raise ValueError(f"embed_fn query dim {qv.shape[0]} != corpus dim {self._dim}")
         qv = self._l2_normalize(qv.unsqueeze(0)).squeeze(0)
         # Cosine similarity in [-1, 1]; corpus rows are already L2-normalized.
         scores = (self._matrix @ qv).tolist()
@@ -201,25 +197,16 @@ class HybridRetriever:
     ) -> None:
         if sparse_retriever is None:
             raise ValueError("sparse_retriever is required")
-        if not hasattr(sparse_retriever, "query") or not hasattr(
-            sparse_retriever, "add_documents"
-        ):
-            raise TypeError(
-                "sparse_retriever must expose .add_documents and .query"
-            )
+        if not hasattr(sparse_retriever, "query") or not hasattr(sparse_retriever, "add_documents"):
+            raise TypeError("sparse_retriever must expose .add_documents and .query")
 
         if fusion not in _ALLOWED_FUSIONS:
-            raise ValueError(
-                f"fusion must be one of {_ALLOWED_FUSIONS}, got {fusion!r}"
-            )
+            raise ValueError(f"fusion must be one of {_ALLOWED_FUSIONS}, got {fusion!r}")
 
         if not isinstance(k_rrf, int) or isinstance(k_rrf, bool) or k_rrf <= 0:
             raise ValueError(f"k_rrf must be a positive int, got {k_rrf!r}")
 
-        if (
-            not isinstance(weights, (tuple, list))
-            or len(weights) != 2
-        ):
+        if not isinstance(weights, (tuple, list)) or len(weights) != 2:
             raise ValueError("weights must be a 2-tuple (w_sparse, w_dense)")
         w_s, w_d = float(weights[0]), float(weights[1])
         if w_s < 0.0 or w_d < 0.0:
@@ -228,9 +215,7 @@ class HybridRetriever:
             raise ValueError("weights must not both be zero")
 
         if dense_retriever is not None and embed_fn is not None:
-            raise ValueError(
-                "pass exactly one of dense_retriever or embed_fn, not both"
-            )
+            raise ValueError("pass exactly one of dense_retriever or embed_fn, not both")
 
         if embed_fn is not None and not callable(embed_fn):
             raise TypeError("embed_fn must be callable")
@@ -245,9 +230,7 @@ class HybridRetriever:
             if not hasattr(dense_retriever, "query") or not hasattr(
                 dense_retriever, "add_documents"
             ):
-                raise TypeError(
-                    "dense_retriever must expose .add_documents and .query"
-                )
+                raise TypeError("dense_retriever must expose .add_documents and .query")
             dense = dense_retriever
         elif embed_fn is not None:
             dense = _CosineDenseRetriever(embed_fn)
@@ -288,9 +271,7 @@ class HybridRetriever:
         sparse/dense indices).
         """
         if self._indexed:
-            raise RuntimeError(
-                "HybridRetriever.add_documents may only be called once."
-            )
+            raise RuntimeError("HybridRetriever.add_documents may only be called once.")
         if not isinstance(docs, (list, tuple)):
             docs = list(docs)
         if len(docs) == 0:
@@ -308,9 +289,7 @@ class HybridRetriever:
 
     def _require_indexed(self) -> None:
         if not self._indexed:
-            raise RuntimeError(
-                "HybridRetriever has no corpus; call add_documents() first."
-            )
+            raise RuntimeError("HybridRetriever has no corpus; call add_documents() first.")
 
     def _candidate_k(self, k: int) -> int:
         # Pull more candidates from each sub-retriever than requested so that

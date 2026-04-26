@@ -1,4 +1,5 @@
-"""Stochastic depth (layer dropout): randomly drop entire layers during training for regularization."""
+"""Stochastic depth (layer dropout): randomly drop entire layers during training for regularization."""  # noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -58,15 +59,11 @@ def get_layer_drop_rates(n_layers: int, config: StochasticDepthConfig) -> list[f
 
     else:
         raise ValueError(
-            f"Unknown schedule: {config.schedule!r}. "
-            "Use 'linear', 'uniform', or 'reverse_linear'."
+            f"Unknown schedule: {config.schedule!r}. Use 'linear', 'uniform', or 'reverse_linear'."
         )
 
     # Clamp to [min_drop_rate, max_drop_rate]
-    rates = [
-        max(config.min_drop_rate, min(config.max_drop_rate, r))
-        for r in rates
-    ]
+    rates = [max(config.min_drop_rate, min(config.max_drop_rate, r)) for r in rates]
 
     return rates
 
@@ -190,10 +187,9 @@ def wrap_with_stochastic_depth(
     """
     n_layers = len(layers)
     drop_rates = get_layer_drop_rates(n_layers, config)
-    wrapped = nn.ModuleList([
-        StochasticDepthLayer(layer, rate)
-        for layer, rate in zip(layers, drop_rates)
-    ])
+    wrapped = nn.ModuleList(
+        [StochasticDepthLayer(layer, rate) for layer, rate in zip(layers, drop_rates)]
+    )
     return wrapped
 
 

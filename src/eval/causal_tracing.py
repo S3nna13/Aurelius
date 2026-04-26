@@ -11,9 +11,11 @@ Algorithm:
 Reference: Meng et al. 2022 "Locating and Editing Factual Associations in GPT"
            (ROME, arXiv:2202.05262)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,11 +24,12 @@ import torch.nn.functional as F
 @dataclass
 class PatchingResult:
     """Result of a single activation patching experiment."""
+
     layer: int
     position: int
-    clean_prob: float         # P(target_token | clean input)
-    corrupted_prob: float     # P(target_token | corrupted input, no patching)
-    patched_prob: float       # P(target_token | corrupted + patch at this layer/pos)
+    clean_prob: float  # P(target_token | clean input)
+    corrupted_prob: float  # P(target_token | corrupted input, no patching)
+    patched_prob: float  # P(target_token | corrupted + patch at this layer/pos)
 
     @property
     def restoration_score(self) -> float:
@@ -51,7 +54,7 @@ def _get_prob(model: nn.Module, input_ids: torch.Tensor, target_token_id: int) -
 
 def get_hidden_states(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (1, S)
+    input_ids: torch.Tensor,  # (1, S)
 ) -> dict[int, torch.Tensor]:
     """Run model forward, return hidden states at each layer.
 
@@ -66,6 +69,7 @@ def get_hidden_states(
             # TransformerBlock returns (hidden_state, kv_cache)
             hs = output[0] if isinstance(output, tuple) else output
             hidden_states[layer_idx] = hs.detach().clone()
+
         return hook
 
     for i, layer in enumerate(model.layers):
@@ -83,11 +87,11 @@ def get_hidden_states(
 
 def patch_and_forward(
     model: nn.Module,
-    corrupted_ids: torch.Tensor,      # (1, S)
-    patch_hidden: torch.Tensor,       # (1, S, D) — clean hidden state to inject
+    corrupted_ids: torch.Tensor,  # (1, S)
+    patch_hidden: torch.Tensor,  # (1, S, D) — clean hidden state to inject
     layer_idx: int,
-    position: int,                    # token position to patch
-    target_token_id: int,             # which token's probability to measure
+    position: int,  # token position to patch
+    target_token_id: int,  # which token's probability to measure
 ) -> float:
     """Run corrupted forward pass with one activation patched.
 
@@ -121,9 +125,9 @@ def patch_and_forward(
 
 def causal_trace(
     model: nn.Module,
-    clean_ids: torch.Tensor,          # (1, S)
-    corrupted_ids: torch.Tensor,      # (1, S) — same structure, different tokens
-    target_token_id: int,             # token we're measuring probability of
+    clean_ids: torch.Tensor,  # (1, S)
+    corrupted_ids: torch.Tensor,  # (1, S) — same structure, different tokens
+    target_token_id: int,  # token we're measuring probability of
     layers: list[int] | None = None,  # which layers to probe (None = all)
     positions: list[int] | None = None,  # which positions to probe (None = all)
 ) -> list[PatchingResult]:
@@ -160,12 +164,14 @@ def causal_trace(
                 position=pos,
                 target_token_id=target_token_id,
             )
-            results.append(PatchingResult(
-                layer=layer_idx,
-                position=pos,
-                clean_prob=clean_prob,
-                corrupted_prob=corrupted_prob,
-                patched_prob=patched_prob,
-            ))
+            results.append(
+                PatchingResult(
+                    layer=layer_idx,
+                    position=pos,
+                    clean_prob=clean_prob,
+                    corrupted_prob=corrupted_prob,
+                    patched_prob=patched_prob,
+                )
+            )
 
     return results

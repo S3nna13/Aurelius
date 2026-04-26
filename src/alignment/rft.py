@@ -10,7 +10,7 @@ Much simpler than PPO while surprisingly effective for alignment.
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # RFTSampler
 # ---------------------------------------------------------------------------
+
 
 class RFTSampler:
     """Generate K completions per prompt, score each, and filter by threshold.
@@ -147,6 +148,7 @@ class RFTSampler:
 # RFTDataset
 # ---------------------------------------------------------------------------
 
+
 class RFTDataset:
     """Dataset of ``(prompt, accepted_response)`` pairs built by RFTSampler.
 
@@ -195,6 +197,7 @@ class RFTDataset:
 # ---------------------------------------------------------------------------
 # RFTTrainer
 # ---------------------------------------------------------------------------
+
 
 class RFTTrainer:
     """Train on RFT-filtered completions using SFT (cross-entropy) loss.
@@ -268,7 +271,7 @@ class RFTTrainer:
         for _epoch in range(n_epochs):
             for example in dataset:
                 input_ids = example["input_ids"].unsqueeze(0)  # (1, S)
-                labels = example["labels"].unsqueeze(0)         # (1, S)
+                labels = example["labels"].unsqueeze(0)  # (1, S)
                 step_loss = self.train_step(input_ids, labels)
                 losses.append(step_loss)
 
@@ -278,6 +281,7 @@ class RFTTrainer:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def compute_reward_stats(scored: list[dict]) -> dict:
     """Compute summary statistics for a list of scored completions.

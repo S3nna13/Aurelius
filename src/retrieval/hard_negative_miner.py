@@ -50,8 +50,9 @@ No foreign imports. Pure Python + PyTorch.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Protocol, Sequence
+from typing import Protocol
 
 import torch
 
@@ -123,15 +124,13 @@ class HardNegativeMiner:
 
     def __init__(
         self,
-        retriever: Optional[BM25Retriever] = None,
-        embedder: Optional[_Embedder] = None,
+        retriever: BM25Retriever | None = None,
+        embedder: _Embedder | None = None,
         strategy: str = "bm25_hard",
         k: int = 4,
     ) -> None:
         if strategy not in STRATEGIES:
-            raise ValueError(
-                f"unknown strategy {strategy!r}; expected one of {STRATEGIES}"
-            )
+            raise ValueError(f"unknown strategy {strategy!r}; expected one of {STRATEGIES}")
         if not isinstance(k, int) or isinstance(k, bool) or k <= 0:
             raise ValueError(f"k must be a positive int, got {k!r}")
 
@@ -151,18 +150,12 @@ class HardNegativeMiner:
             raise ValueError("corpus must be non-empty")
         for i, d in enumerate(corpus):
             if not isinstance(d, str):
-                raise TypeError(
-                    f"corpus[{i}] must be str, got {type(d).__name__}"
-                )
+                raise TypeError(f"corpus[{i}] must be str, got {type(d).__name__}")
         return list(corpus)
 
-    def _require_positive_in_corpus(
-        self, positive_doc_id: str, corpus: list[str]
-    ) -> None:
+    def _require_positive_in_corpus(self, positive_doc_id: str, corpus: list[str]) -> None:
         if not isinstance(positive_doc_id, str):
-            raise TypeError(
-                f"positive_doc_id must be str, got {type(positive_doc_id).__name__}"
-            )
+            raise TypeError(f"positive_doc_id must be str, got {type(positive_doc_id).__name__}")
         if positive_doc_id not in corpus:
             raise ValueError(
                 "positive_doc_id is not present in corpus; refusing to mine "
@@ -173,13 +166,9 @@ class HardNegativeMiner:
     # Strategies                                                          #
     # ------------------------------------------------------------------ #
 
-    def _mine_bm25(
-        self, query: str, positive_doc_id: str, corpus: list[str]
-    ) -> list[HardNegative]:
+    def _mine_bm25(self, query: str, positive_doc_id: str, corpus: list[str]) -> list[HardNegative]:
         if self.retriever is None:
-            raise ValueError(
-                "strategy 'bm25_hard' requires a retriever; got None"
-            )
+            raise ValueError("strategy 'bm25_hard' requires a retriever; got None")
         # Allow callers to pass either a pre-indexed retriever whose
         # document ordering matches `corpus`, or an un-indexed retriever
         # we index now. We index a *fresh* retriever only if it has no
@@ -200,9 +189,7 @@ class HardNegativeMiner:
             if text in seen:
                 continue
             seen.add(text)
-            negatives.append(
-                HardNegative(doc_id=text, score=float(score), reason="bm25_hard")
-            )
+            negatives.append(HardNegative(doc_id=text, score=float(score), reason="bm25_hard"))
             if len(negatives) >= self.k:
                 break
         return negatives
@@ -211,22 +198,17 @@ class HardNegativeMiner:
         self, query: str, positive_doc_id: str, corpus: list[str]
     ) -> list[HardNegative]:
         if self.embedder is None:
-            raise ValueError(
-                "strategy 'embedding_hard' requires an embedder; got None"
-            )
+            raise ValueError("strategy 'embedding_hard' requires an embedder; got None")
         # Encode the positive together with the corpus in a single pass
         # so callers with a learned encoder amortize the forward cost.
         texts = [positive_doc_id] + corpus
         with torch.no_grad():
             emb = self.embedder.encode(texts)
         if not isinstance(emb, torch.Tensor):
-            raise TypeError(
-                f"embedder.encode must return torch.Tensor, got {type(emb).__name__}"
-            )
+            raise TypeError(f"embedder.encode must return torch.Tensor, got {type(emb).__name__}")
         if emb.dim() != 2 or emb.shape[0] != len(texts):
             raise ValueError(
-                f"embedder.encode returned shape {tuple(emb.shape)}, "
-                f"expected [{len(texts)}, D]"
+                f"embedder.encode returned shape {tuple(emb.shape)}, expected [{len(texts)}, D]"
             )
         emb = emb.to(dtype=torch.float32)
         # Defensive L2 normalization so cosine == dot product regardless
@@ -253,9 +235,7 @@ class HardNegativeMiner:
                 continue
             seen.add(text)
             negatives.append(
-                HardNegative(
-                    doc_id=text, score=float(sims[i]), reason="embedding_hard"
-                )
+                HardNegative(doc_id=text, score=float(sims[i]), reason="embedding_hard")
             )
             if len(negatives) >= self.k:
                 break
@@ -265,9 +245,7 @@ class HardNegativeMiner:
     # Public API                                                          #
     # ------------------------------------------------------------------ #
 
-    def mine(
-        self, query: str, positive_doc_id: str, corpus: Sequence[str]
-    ) -> list[HardNegative]:
+    def mine(self, query: str, positive_doc_id: str, corpus: Sequence[str]) -> list[HardNegative]:
         """Mine hard negatives for a single ``(query, positive)`` pair."""
         if not isinstance(query, str):
             raise TypeError(f"query must be str, got {type(query).__name__}")
@@ -310,10 +288,7 @@ class HardNegativeMiner:
         # Validate corpus once; each mine() call revalidates cheaply but
         # avoids re-checking per-element types here.
         self._validate_corpus(corpus)
-        return [
-            self.mine(q, pos, corpus)
-            for q, pos in zip(queries, positive_doc_ids)
-        ]
+        return [self.mine(q, pos, corpus) for q, pos in zip(queries, positive_doc_ids)]
 
     def mine_in_batch(
         self, query_positive_pairs: Sequence[tuple[str, str]]
@@ -337,9 +312,7 @@ class HardNegativeMiner:
                 or not isinstance(pair[0], str)
                 or not isinstance(pair[1], str)
             ):
-                raise TypeError(
-                    f"query_positive_pairs[{i}] must be a (str, str) tuple"
-                )
+                raise TypeError(f"query_positive_pairs[{i}] must be a (str, str) tuple")
             pairs.append((pair[0], pair[1]))
         if len(pairs) < 2:
             raise ValueError(
@@ -357,9 +330,7 @@ class HardNegativeMiner:
                 # example i. Score 0.0 is a placeholder: in-batch
                 # negatives are unordered, and downstream InfoNCE does
                 # not consume this score.
-                negs.append(
-                    HardNegative(doc_id=pos_j, score=0.0, reason="in_batch")
-                )
+                negs.append(HardNegative(doc_id=pos_j, score=0.0, reason="in_batch"))
             out.append(negs)
         return out
 

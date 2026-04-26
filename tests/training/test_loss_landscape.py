@@ -1,6 +1,5 @@
 """Tests for loss-landscape helpers."""
 
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,7 +14,6 @@ from src.training.loss_landscape import (
     compute_weight_norm,
     measure_sharpness,
     sam_first_step,
-    sam_second_step,
 )
 
 # ---------------------------------------------------------------------------
@@ -131,15 +129,12 @@ def test_sam_first_step_returns_original_params_dict():
 def test_sam_first_step_perturbs_model_parameters():
     model = make_model()
     # Save params before perturbation
-    params_before = {
-        name: p.data.clone() for name, p in model.named_parameters()
-    }
+    params_before = {name: p.data.clone() for name, p in model.named_parameters()}
     loss = compute_loss_with_grad(model)
     sam_first_step(model, loss, rho=0.05)
     # At least some parameters should have changed
     any_changed = any(
-        not torch.allclose(p.data, params_before[name])
-        for name, p in model.named_parameters()
+        not torch.allclose(p.data, params_before[name]) for name, p in model.named_parameters()
     )
     assert any_changed, "sam_first_step should perturb model parameters"
 
@@ -192,8 +187,5 @@ def test_sam_optimizer_zero_grad_clears_gradients():
     sam.zero_grad()
 
     # After zero_grad, gradients should be zeroed
-    all_zero = all(
-        p.grad is None or p.grad.abs().max().item() == 0.0
-        for p in model.parameters()
-    )
+    all_zero = all(p.grad is None or p.grad.abs().max().item() == 0.0 for p in model.parameters())
     assert all_zero, "Gradients should be cleared after zero_grad"

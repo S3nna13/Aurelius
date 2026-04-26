@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.vision_encoder import (
-    VisionConfig,
+    MultimodalEmbedding,
     PatchEmbedding,
+    VisionConfig,
     VisionTransformer,
     VisualProjection,
-    MultimodalEmbedding,
     create_visual_attention_mask,
 )
 
@@ -31,7 +30,7 @@ SMALL_CFG = VisionConfig(
 )
 
 # 32x32 image → (32//16)^2 = 4 patches + 1 CLS = 5 visual tokens
-N_PATCHES_SMALL = (32 // 16) ** 2   # 4
+N_PATCHES_SMALL = (32 // 16) ** 2  # 4
 N_VISUAL_SMALL = N_PATCHES_SMALL + 1  # 5  (includes CLS)
 
 torch.manual_seed(0)
@@ -49,6 +48,7 @@ def _make_text_embed(vocab: int = 100, cfg: VisionConfig = SMALL_CFG) -> nn.Embe
 # 1. test_vision_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_vision_config_defaults():
     cfg = VisionConfig()
     assert cfg.image_size == 224
@@ -65,6 +65,7 @@ def test_vision_config_defaults():
 # 2. test_patch_embedding_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_patch_embedding_output_shape():
     torch.manual_seed(0)
     embed = PatchEmbedding(SMALL_CFG)
@@ -78,6 +79,7 @@ def test_patch_embedding_output_shape():
 # ---------------------------------------------------------------------------
 # 3. test_patch_embedding_cls_token
 # ---------------------------------------------------------------------------
+
 
 def test_patch_embedding_cls_token():
     """The first token position should be the CLS token (from cls_token parameter)."""
@@ -102,6 +104,7 @@ def test_patch_embedding_cls_token():
 # 4. test_vision_transformer_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_vision_transformer_output_shape():
     torch.manual_seed(0)
     vit = VisionTransformer(SMALL_CFG)
@@ -114,6 +117,7 @@ def test_vision_transformer_output_shape():
 # 5. test_visual_projection_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_visual_projection_output_shape():
     torch.manual_seed(0)
     proj = VisualProjection(SMALL_CFG)
@@ -125,6 +129,7 @@ def test_visual_projection_output_shape():
 # ---------------------------------------------------------------------------
 # 6. test_multimodal_embedding_text_only
 # ---------------------------------------------------------------------------
+
 
 def test_multimodal_embedding_text_only():
     torch.manual_seed(0)
@@ -141,6 +146,7 @@ def test_multimodal_embedding_text_only():
 # ---------------------------------------------------------------------------
 # 7. test_multimodal_embedding_with_image
 # ---------------------------------------------------------------------------
+
 
 def test_multimodal_embedding_with_image():
     torch.manual_seed(0)
@@ -162,6 +168,7 @@ def test_multimodal_embedding_with_image():
 # 8. test_visual_attention_mask_shape
 # ---------------------------------------------------------------------------
 
+
 def test_visual_attention_mask_shape():
     n_visual, n_text = 5, 10
     mask = create_visual_attention_mask(n_visual, n_text)
@@ -174,6 +181,7 @@ def test_visual_attention_mask_shape():
 # 9. test_visual_attention_mask_text_causal
 # ---------------------------------------------------------------------------
 
+
 def test_visual_attention_mask_text_causal():
     """Text tokens must be causal: token i attends to text tokens 0..i only."""
     n_visual, n_text = 3, 4
@@ -185,9 +193,7 @@ def test_visual_attention_mask_text_causal():
     for i in range(n_text):
         for j in range(n_text):
             expected = j <= i  # causal: can attend to same or earlier position
-            assert text_block[i, j].item() == expected, (
-                f"text_block[{i},{j}] should be {expected}"
-            )
+            assert text_block[i, j].item() == expected, f"text_block[{i},{j}] should be {expected}"
 
     # All text tokens must be able to attend to all visual tokens.
     text_to_visual = mask[n_visual:, :n_visual]
@@ -197,6 +203,7 @@ def test_visual_attention_mask_text_causal():
 # ---------------------------------------------------------------------------
 # 10. test_patch_embedding_different_image_sizes
 # ---------------------------------------------------------------------------
+
 
 def test_patch_embedding_different_image_sizes():
     """PatchEmbedding must work with image_size=32, patch_size=16 → 4 patches."""
@@ -212,6 +219,7 @@ def test_patch_embedding_different_image_sizes():
 # ---------------------------------------------------------------------------
 # 11. test_vision_transformer_gradient_flow
 # ---------------------------------------------------------------------------
+
 
 def test_vision_transformer_gradient_flow():
     """Backward pass through the full VisionTransformer must not error."""
@@ -231,6 +239,7 @@ def test_vision_transformer_gradient_flow():
 # ---------------------------------------------------------------------------
 # 12. test_multimodal_embedding_no_image_vs_image
 # ---------------------------------------------------------------------------
+
 
 def test_multimodal_embedding_no_image_vs_image():
     """Output sequence length must differ when image is provided vs. not."""

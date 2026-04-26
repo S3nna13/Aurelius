@@ -11,7 +11,7 @@ part of the same model (no separate draft model).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -21,24 +21,25 @@ from .config import AureliusConfig
 from .rms_norm import RMSNorm
 from .transformer import TransformerBlock
 
-
 # ---------------------------------------------------------------------------
 # MTPConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MTPConfig:
     """Configuration for Multi-Token Prediction heads."""
 
-    n_heads: int = 4            # number of extra prediction steps
-    shared_head: bool = False   # if True, all heads share weights
-    head_type: str = "linear"   # "linear" | "transformer_layer"
+    n_heads: int = 4  # number of extra prediction steps
+    shared_head: bool = False  # if True, all heads share weights
+    head_type: str = "linear"  # "linear" | "transformer_layer"
     detach_hidden: bool = True  # detach hidden states for head inputs
 
 
 # ---------------------------------------------------------------------------
 # MTPHead
 # ---------------------------------------------------------------------------
+
 
 class MTPHead(nn.Module):
     """Single multi-token prediction head.
@@ -75,12 +76,15 @@ class MTPHead(nn.Module):
             self.proj = nn.Linear(config.d_model, config.vocab_size, bias=False)
             # Precompute RoPE frequencies for transformer_layer heads
             from .attention import precompute_rope_frequencies
+
             freqs = precompute_rope_frequencies(
                 config.head_dim, config.max_seq_len, config.rope_theta
             )
             self.register_buffer("freqs_cis", freqs, persistent=False)
         else:
-            raise ValueError(f"Unknown head_type: {head_type!r}. Use 'linear' or 'transformer_layer'.")
+            raise ValueError(
+                f"Unknown head_type: {head_type!r}. Use 'linear' or 'transformer_layer'."
+            )
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """
@@ -103,6 +107,7 @@ class MTPHead(nn.Module):
 # ---------------------------------------------------------------------------
 # MultiTokenPredictionModel
 # ---------------------------------------------------------------------------
+
 
 class MultiTokenPredictionModel(nn.Module):
     """Wraps a base transformer and adds k MTP heads.
@@ -130,9 +135,7 @@ class MultiTokenPredictionModel(nn.Module):
         if self.mtp_config.shared_head:
             # One canonical head; all steps share its parameters
             _canonical = MTPHead(cfg, step=1, head_type=self.mtp_config.head_type)
-            self.mtp_heads = nn.ModuleList(
-                [_canonical] * self.mtp_config.n_heads
-            )
+            self.mtp_heads = nn.ModuleList([_canonical] * self.mtp_config.n_heads)
         else:
             self.mtp_heads = nn.ModuleList(
                 [
@@ -212,9 +215,7 @@ class MultiTokenPredictionModel(nn.Module):
         If return_all_logits=True: return list of logits from all heads.
         """
         if labels is not None:
-            hidden, main_loss, logits, pkv = self._get_hidden_states_with_labels(
-                input_ids, labels
-            )
+            hidden, main_loss, logits, pkv = self._get_hidden_states_with_labels(input_ids, labels)
 
             if self.mtp_config.detach_hidden:
                 hidden = hidden.detach()
@@ -235,10 +236,10 @@ class MultiTokenPredictionModel(nn.Module):
                     # Sequence too short for this head; skip
                     continue
 
-                h_slice = hidden[:, :-step, :]    # (B, T-step, D)
-                target = labels[:, step:]          # (B, T-step)
+                h_slice = hidden[:, :-step, :]  # (B, T-step, D)
+                target = labels[:, step:]  # (B, T-step)
 
-                head_logits = head(h_slice)        # (B, T-step, V)
+                head_logits = head(h_slice)  # (B, T-step, V)
                 B, Ts, V = head_logits.shape
 
                 head_loss = F.cross_entropy(
@@ -293,7 +294,7 @@ class MultiTokenPredictionModel(nn.Module):
         Returns (generated_token_ids, {'n_forward_passes': int, 'tokens_per_pass': float})
         """
         n_mtp = self.mtp_config.n_heads  # number of speculative steps per pass
-        tokens_per_pass = 1 + n_mtp      # main head + k MTP heads
+        1 + n_mtp  # main head + k MTP heads
 
         generated: list[int] = []
         n_forward_passes = 0
@@ -320,7 +321,7 @@ class MultiTokenPredictionModel(nn.Module):
             for head in self.mtp_heads:
                 if len(generated) >= n_tokens:
                     break
-                head_logits = head(h_last)          # (1, 1, V)
+                head_logits = head(h_last)  # (1, 1, V)
                 next_tok = head_logits[:, -1, :].argmax(dim=-1)
                 generated.append(next_tok[0].item())
 
@@ -346,6 +347,7 @@ class MultiTokenPredictionModel(nn.Module):
 # ---------------------------------------------------------------------------
 # MTPTrainer
 # ---------------------------------------------------------------------------
+
 
 class MTPTrainer:
     """Trainer for multi-token prediction.
@@ -422,10 +424,11 @@ class MTPTrainer:
 # acceptance_rate_stats
 # ---------------------------------------------------------------------------
 
+
 def acceptance_rate_stats(
-    base_logits: torch.Tensor,        # (T, V) main head predictions
+    base_logits: torch.Tensor,  # (T, V) main head predictions
     head_logits: list[torch.Tensor],  # k tensors of (T, V)
-    true_tokens: torch.Tensor,        # (T,) ground truth
+    true_tokens: torch.Tensor,  # (T,) ground truth
 ) -> dict:
     """For evaluation: compute how often each MTP head correctly predicts future tokens.
 

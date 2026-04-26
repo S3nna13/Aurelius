@@ -14,9 +14,8 @@ Algorithm:
    e. If all converged (or max_iterations reached), stop
 3. Return the converged sequence
 """
-from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
@@ -33,7 +32,7 @@ class JacobiDecoder:
         max_iterations: int = 10,
         temperature: float = 1.0,
         top_k: int = 0,
-        eos_token_id: Optional[int] = None,
+        eos_token_id: int | None = None,
     ) -> None:
         """
         Args:
@@ -119,7 +118,7 @@ class JacobiDecoder:
         self,
         input_ids: Tensor,
         max_new_tokens: int = 20,
-    ) -> Tuple[Tensor, int]:
+    ) -> tuple[Tensor, int]:
         """Run Jacobi decoding.
 
         Args:
@@ -162,7 +161,7 @@ class JacobiDecoder:
                     new_draft[b, i] = self._sample_token(logits[b, logit_pos])
 
             # Check convergence: which positions have stabilized
-            converged = (new_draft == draft)  # (B, n_new) bool
+            converged = new_draft == draft  # (B, n_new) bool
 
             draft = new_draft
 
@@ -207,7 +206,7 @@ class JacobiDecoder:
         draft = self._initialize_draft(batch_size, max_new_tokens, vocab_size).to(device)
 
         n_iterations = 0
-        tokens_per_iteration: List[int] = []
+        tokens_per_iteration: list[int] = []
         # Track which positions have ever converged (across all batch elems, use mean)
         # We track convergence mask based on last batch element [0] for simplicity
         convergence_mask = torch.zeros(max_new_tokens, dtype=torch.bool, device=device)
@@ -256,7 +255,7 @@ def jacobi_decode(
     max_new_tokens: int = 20,
     max_iterations: int = 10,
     temperature: float = 1.0,
-    eos_token_id: Optional[int] = None,
+    eos_token_id: int | None = None,
 ) -> Tensor:
     """Convenience wrapper for Jacobi decoding returning just output_ids.
 

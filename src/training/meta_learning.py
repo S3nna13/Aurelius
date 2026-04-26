@@ -1,4 +1,5 @@
 """Meta-learning: MAML and Reptile for few-shot task adaptation."""
+
 from __future__ import annotations
 
 import copy
@@ -17,17 +18,18 @@ logger = logging.getLogger(__name__)
 class MetaLearningConfig:
     """Configuration for MAML / Reptile meta-learning."""
 
-    algorithm: str = "reptile"      # "maml" | "reptile"
-    n_inner_steps: int = 5          # inner loop gradient steps
+    algorithm: str = "reptile"  # "maml" | "reptile"
+    n_inner_steps: int = 5  # inner loop gradient steps
     inner_lr: float = 0.01
     outer_lr: float = 0.001
-    n_tasks_per_batch: int = 4      # meta-batch size
-    first_order: bool = True        # for MAML: use first-order approx (FOMAML)
+    n_tasks_per_batch: int = 4  # meta-batch size
+    first_order: bool = True  # for MAML: use first-order approx (FOMAML)
 
 
 # ---------------------------------------------------------------------------
 # Core functional utilities
 # ---------------------------------------------------------------------------
+
 
 def compute_task_loss(
     model: nn.Module,
@@ -78,13 +80,11 @@ def inner_loop_update(
     """
     # Snapshot the original state so we can restore afterwards
     original_state = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-        if param.requires_grad
+        name: param.data.clone() for name, param in model.named_parameters() if param.requires_grad
     }
 
     # Collect references to trainable params for autograd
-    trainable_names = [name for name, p in model.named_parameters() if p.requires_grad]
+    [name for name, p in model.named_parameters() if p.requires_grad]
 
     # Perform n_steps of manual SGD directly on model weights
     for _ in range(n_steps):
@@ -112,9 +112,7 @@ def inner_loop_update(
 
     # Capture adapted parameter values
     adapted_params: dict[str, Tensor] = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-        if param.requires_grad
+        name: param.data.clone() for name, param in model.named_parameters() if param.requires_grad
     }
 
     # Restore original weights
@@ -187,6 +185,7 @@ def fomaml_meta_gradient(
 # ---------------------------------------------------------------------------
 # MetaLearner class
 # ---------------------------------------------------------------------------
+
 
 class MetaLearner:
     """Wraps a model with MAML or Reptile meta-learning.
@@ -267,9 +266,7 @@ class MetaLearner:
             # Average adapted params across tasks
             avg_adapted: dict[str, Tensor] = {}
             for name in original_params:
-                avg_adapted[name] = torch.stack(
-                    [a[name] for a in all_adapted]
-                ).mean(dim=0)
+                avg_adapted[name] = torch.stack([a[name] for a in all_adapted]).mean(dim=0)
 
             new_params = reptile_update(original_params, avg_adapted, cfg.outer_lr)
 

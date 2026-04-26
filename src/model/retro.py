@@ -24,23 +24,22 @@ Architecture (Section 2.2, Figure 1):
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Utility: scaled dot-product attention (manual, avoids optional deps)
 # ---------------------------------------------------------------------------
+
 
 def _scaled_dot_product_attention(
     q: Tensor,
     k: Tensor,
     v: Tensor,
-    attn_mask: Optional[Tensor] = None,
+    attn_mask: Tensor | None = None,
     dropout_p: float = 0.0,
 ) -> Tensor:
     """Scaled dot-product attention.
@@ -68,12 +67,13 @@ def _scaled_dot_product_attention(
 # RETROEncoder — bidirectional encoder over retrieved neighbors (Section 2.3)
 # ---------------------------------------------------------------------------
 
+
 class _EncoderLayer(nn.Module):
     """Single bidirectional encoder layer (no causal mask)."""
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
 
@@ -125,9 +125,7 @@ class RETROEncoder(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, n_layers: int = 2) -> None:
         super().__init__()
-        self.layers = nn.ModuleList(
-            [_EncoderLayer(d_model, n_heads) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([_EncoderLayer(d_model, n_heads) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -146,6 +144,7 @@ class RETROEncoder(nn.Module):
 # Chunked Cross-Attention (CCA) — Section 2.4
 # ---------------------------------------------------------------------------
 
+
 class RETROCrossChunkAttention(nn.Module):
     """CCA: each input chunk H_i attends to its encoded neighbor representations E_i.
 
@@ -156,7 +155,7 @@ class RETROCrossChunkAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
 
@@ -195,12 +194,13 @@ class RETROCrossChunkAttention(nn.Module):
 # Standard Transformer Layer (shared by both RETRO and non-RETRO layers)
 # ---------------------------------------------------------------------------
 
+
 class _SelfAttentionLayer(nn.Module):
     """Causal self-attention sub-layer with pre-norm."""
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0
+        assert d_model % n_heads == 0  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
 
@@ -252,6 +252,7 @@ class _FFNLayer(nn.Module):
 # RETRO Decoder Layer (RETRO block, Section 2.2)
 # ---------------------------------------------------------------------------
 
+
 class RETROBlock(nn.Module):
     """RETRO decoder layer: self-attn → CCA(neighbors) → FFN.
 
@@ -271,7 +272,7 @@ class RETROBlock(nn.Module):
     def forward(
         self,
         x: Tensor,
-        neighbors: Optional[Tensor] = None,
+        neighbors: Tensor | None = None,
         chunk_size: int = 64,
     ) -> Tensor:
         """
@@ -309,7 +310,7 @@ class RETROBlock(nn.Module):
             H = x_chunks.view(B * n_chunks, chunk_size, D)
 
             # CCA: H attends to E
-            cca_out = self.cca(H, E)           # (B * n_chunks, chunk_size, D)
+            cca_out = self.cca(H, E)  # (B * n_chunks, chunk_size, D)
 
             # Reshape back and add residual
             cca_out = cca_out.view(B, padded_T, D)
@@ -326,6 +327,7 @@ class RETROBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Standard (non-RETRO) Decoder Layer
 # ---------------------------------------------------------------------------
+
 
 class StandardBlock(nn.Module):
     """Standard transformer decoder layer: self-attn → FFN (no CCA)."""
@@ -344,6 +346,7 @@ class StandardBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # RETRO Decoder
 # ---------------------------------------------------------------------------
+
 
 class RETRODecoder(nn.Module):
     """RETRO full decoder: interleaved standard and RETRO layers.
@@ -383,7 +386,7 @@ class RETRODecoder(nn.Module):
         n_heads: int = 16,
         n_layers: int = 12,
         chunk_size: int = 64,
-        n_retrieval_layers: Optional[list[int]] = None,
+        n_retrieval_layers: list[int] | None = None,
         encoder_n_layers: int = 2,
     ) -> None:
         super().__init__()
@@ -427,7 +430,7 @@ class RETRODecoder(nn.Module):
     def forward(
         self,
         x: Tensor,
-        neighbors: Optional[Tensor] = None,
+        neighbors: Tensor | None = None,
     ) -> Tensor:
         """
         Args:

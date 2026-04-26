@@ -1,8 +1,11 @@
 """Tests for AureliusTrainer training loop fixes."""
+
 import math
-import torch
+
 import pytest
+import torch
 from torch.utils.data import DataLoader, TensorDataset
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.trainer import AureliusTrainer, TrainConfig
@@ -11,8 +14,14 @@ from src.training.trainer import AureliusTrainer, TrainConfig
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
 
 
@@ -63,9 +72,7 @@ def test_train_step_loss_is_finite(small_model, small_cfg):
     trainer.train()
 
     any_changed = any(
-        not torch.equal(before[n], p)
-        for n, p in small_model.named_parameters()
-        if p.requires_grad
+        not torch.equal(before[n], p) for n, p in small_model.named_parameters() if p.requires_grad
     )
     assert any_changed, "No weights changed — gradients did not flow"
 
@@ -83,6 +90,7 @@ def test_validate_returns_finite_loss(small_model, small_cfg):
 def test_build_dataloaders_yields_dict_batches(tmp_path, small_cfg):
     """build_dataloaders() must return loaders yielding {"input_ids", "labels"} dicts."""
     import numpy as np
+
     from src.training.trainer import build_dataloaders
 
     train_dir = tmp_path / "train"

@@ -2,18 +2,18 @@
 
 Tiny config: VOCAB=32, D=16, D_EMBED=8, N_CB=2, N_CODES=8, B=2, T=4
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.model.embedding_compression_v2 import (
     EmbedConfigV2,
     FactorizedEmbeddingV2,
-    ProductQuantizedEmbedding,
-    embed_dropout,
-    compute_embedding_norm,
     MixedPrecisionEmbedding,
+    ProductQuantizedEmbedding,
+    compute_embedding_norm,
+    embed_dropout,
 )
 
 VOCAB = 32
@@ -33,6 +33,7 @@ def _ids():
 # EmbedConfigV2 defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = EmbedConfigV2()
     assert cfg.vocab_size == 50257
@@ -46,6 +47,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # FactorizedEmbeddingV2
 # ---------------------------------------------------------------------------
+
 
 def test_factorized_embedding_output_shape():
     emb = FactorizedEmbeddingV2(VOCAB, D_EMBED, D)
@@ -68,6 +70,7 @@ def test_factorized_embedding_output_finite():
 # ProductQuantizedEmbedding
 # ---------------------------------------------------------------------------
 
+
 def test_pq_embedding_output_shape():
     emb = ProductQuantizedEmbedding(VOCAB, D, N_CB, N_CODES)
     out = emb(_ids())
@@ -88,6 +91,7 @@ def test_pq_embedding_output_finite():
 # ---------------------------------------------------------------------------
 # embed_dropout
 # ---------------------------------------------------------------------------
+
 
 def test_embed_dropout_zeros_at_p1():
     emb = torch.randn(B, T, D)
@@ -112,6 +116,7 @@ def test_embed_dropout_no_op_when_not_training():
 # compute_embedding_norm
 # ---------------------------------------------------------------------------
 
+
 def test_compute_embedding_norm_shape():
     weight = torch.randn(VOCAB, D)
     norms = compute_embedding_norm(weight)
@@ -127,6 +132,7 @@ def test_compute_embedding_norm_non_negative():
 # ---------------------------------------------------------------------------
 # MixedPrecisionEmbedding
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_precision_output_shape():
     emb = MixedPrecisionEmbedding(VOCAB, D, dtype=torch.float16)

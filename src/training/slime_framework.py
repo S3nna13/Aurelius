@@ -2,10 +2,11 @@
 Unified post-training infrastructure: task_type → verifier → reward_fn.
 Default tasks: swe (exact), terminal (substring), search (overlap).
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 VerifierFn = Callable[[str, str], bool]
 RewardFn = Callable[[str, str], float]
@@ -34,8 +35,7 @@ class SlimeTaskRouter:
     def route(self, task_type: str) -> SlimeTask:
         if task_type not in self._registry:
             raise ValueError(
-                f"Unknown task type {task_type!r}. "
-                f"Registered: {sorted(self._registry.keys())}"
+                f"Unknown task type {task_type!r}. Registered: {sorted(self._registry.keys())}"
             )
         return self._registry[task_type]
 
@@ -58,19 +58,25 @@ def _overlap_score(completion: str, target: str) -> float:
 
 def make_default_router() -> SlimeTaskRouter:
     router = SlimeTaskRouter()
-    router.register_task(SlimeTask(
-        name="swe",
-        verifier=lambda c, t: c.strip() == t.strip(),
-        reward_fn=lambda c, t: 1.0 if c.strip() == t.strip() else 0.0,
-    ))
-    router.register_task(SlimeTask(
-        name="terminal",
-        verifier=lambda c, t: t in c,
-        reward_fn=lambda c, t: 1.0 if t in c else 0.0,
-    ))
-    router.register_task(SlimeTask(
-        name="search",
-        verifier=lambda c, t: _overlap_score(c, t) > 0,
-        reward_fn=_overlap_score,
-    ))
+    router.register_task(
+        SlimeTask(
+            name="swe",
+            verifier=lambda c, t: c.strip() == t.strip(),
+            reward_fn=lambda c, t: 1.0 if c.strip() == t.strip() else 0.0,
+        )
+    )
+    router.register_task(
+        SlimeTask(
+            name="terminal",
+            verifier=lambda c, t: t in c,
+            reward_fn=lambda c, t: 1.0 if t in c else 0.0,
+        )
+    )
+    router.register_task(
+        SlimeTask(
+            name="search",
+            verifier=lambda c, t: _overlap_score(c, t) > 0,
+            reward_fn=_overlap_score,
+        )
+    )
     return router

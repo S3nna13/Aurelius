@@ -5,19 +5,21 @@ Optionally uses a process reward model to score each thinking step.
 
 This enables reasoning at inference time (like DeepSeek-R1/o1 style).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 
 
 @dataclass
 class ThinkingConfig:
-    think_token_budget: int = 512     # max tokens for scratchpad
-    answer_token_budget: int = 256    # max tokens for final answer
+    think_token_budget: int = 512  # max tokens for scratchpad
+    answer_token_budget: int = 256  # max tokens for final answer
     think_start_token: int | None = None  # token to start thinking (None = no special token)
-    think_end_token: int | None = None    # token to end thinking
+    think_end_token: int | None = None  # token to end thinking
     answer_start_token: int | None = None  # token to start final answer
     temperature: float = 1.0
     top_p: float = 0.9
@@ -28,9 +30,10 @@ class ThinkingConfig:
 @dataclass
 class ThinkingResult:
     """Result of think-before-answer generation."""
-    thinking_ids: torch.Tensor    # (S_think,) scratchpad tokens
-    answer_ids: torch.Tensor      # (S_ans,) final answer tokens
-    full_ids: torch.Tensor        # (S_think + S_ans,) full sequence
+
+    thinking_ids: torch.Tensor  # (S_think,) scratchpad tokens
+    answer_ids: torch.Tensor  # (S_ans,) final answer tokens
+    full_ids: torch.Tensor  # (S_think + S_ans,) full sequence
     thinking_tokens_used: int
     answer_tokens_used: int
 
@@ -41,7 +44,7 @@ class ThinkingResult:
 
 def generate_thinking(
     model: nn.Module,
-    prompt_ids: torch.Tensor,    # (1, S_prompt)
+    prompt_ids: torch.Tensor,  # (1, S_prompt)
     cfg: ThinkingConfig,
 ) -> torch.Tensor:
     """Generate the thinking (scratchpad) tokens.
@@ -55,7 +58,7 @@ def generate_thinking(
     else:
         input_ids = prompt_ids
 
-    prompt_len = input_ids.shape[1]
+    input_ids.shape[1]
 
     # Optionally prepend think_start_token to the generation context
     gen_input = input_ids
@@ -72,7 +75,7 @@ def generate_thinking(
             eos_token_id=cfg.eos_token_id if cfg.stop_thinking_on_eos else None,
         )  # (1, gen_input_len + generated_len)
 
-    thinking_ids = output[0, gen_input.shape[1]:]  # (S_think,)
+    thinking_ids = output[0, gen_input.shape[1] :]  # (S_think,)
 
     # Trim at think_end_token if configured
     if cfg.think_end_token is not None:
@@ -86,7 +89,7 @@ def generate_thinking(
 
 def generate_answer(
     model: nn.Module,
-    prompt_ids: torch.Tensor,    # (1, S_prompt)
+    prompt_ids: torch.Tensor,  # (1, S_prompt)
     thinking_ids: torch.Tensor,  # (S_think,)
     cfg: ThinkingConfig,
 ) -> torch.Tensor:
@@ -131,7 +134,7 @@ def generate_answer(
 
 def think_and_answer(
     model: nn.Module,
-    prompt_ids: torch.Tensor,   # (1, S_prompt) or (S_prompt,)
+    prompt_ids: torch.Tensor,  # (1, S_prompt) or (S_prompt,)
     cfg: ThinkingConfig | None = None,
 ) -> ThinkingResult:
     """Full think-then-answer pipeline.
@@ -179,7 +182,7 @@ class ThinkingReranker:
         self,
         model: nn.Module,
         n_candidates: int = 4,
-        reward_fn=None,   # callable(answer_ids: Tensor) -> float, or None (use log-prob)
+        reward_fn=None,  # callable(answer_ids: Tensor) -> float, or None (use log-prob)
         cfg: ThinkingConfig | None = None,
     ) -> None:
         self.model = model
@@ -191,7 +194,7 @@ class ThinkingReranker:
         self,
         prompt_ids: torch.Tensor,  # (1, S_prompt)
         thinking_ids: torch.Tensor,  # (S_think,)
-        answer_ids: torch.Tensor,    # (S_ans,)
+        answer_ids: torch.Tensor,  # (S_ans,)
     ) -> float:
         """Score the answer using reward_fn or model log-prob."""
         if answer_ids.numel() == 0:
@@ -216,7 +219,7 @@ class ThinkingReranker:
             _, logits, _ = self.model(full_ids)  # (1, S, vocab)
 
         # Logits at [context_len-1 : context_len + ans_len - 1] predict answer tokens
-        gen_logits = logits[0, context_len - 1: context_len + ans_len - 1, :]
+        gen_logits = logits[0, context_len - 1 : context_len + ans_len - 1, :]
         log_probs = F.log_softmax(gen_logits, dim=-1)
         token_log_probs = log_probs[torch.arange(ans_len), answer_1d]
         return token_log_probs.mean().item()

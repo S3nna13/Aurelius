@@ -2,16 +2,15 @@
 
 Covers KVBlockStore, TriForceDraftCache, TriForceVerifier, TriForceDecoder (14 tests).
 """
+
 from __future__ import annotations
 
 import torch
-import pytest
-
 from aurelius.inference.triforce import (
     KVBlockStore,
+    TriForceDecoder,
     TriForceDraftCache,
     TriForceVerifier,
-    TriForceDecoder,
 )
 
 # ---------------------------------------------------------------------------
@@ -26,7 +25,9 @@ TOP_K = 4
 GAMMA = 4
 
 
-def _rand_block(block_size: int = BLOCK_SIZE, n_heads: int = N_HEADS, d_head: int = D_HEAD) -> tuple:
+def _rand_block(
+    block_size: int = BLOCK_SIZE, n_heads: int = N_HEADS, d_head: int = D_HEAD
+) -> tuple:
     """Return a random (keys, values) pair of shape (block_size, n_heads, d_head)."""
     keys = torch.randn(block_size, n_heads, d_head)
     vals = torch.randn(block_size, n_heads, d_head)
@@ -62,6 +63,7 @@ def _alt_draft_fn(ids: torch.Tensor) -> torch.Tensor:
 # Test 1: KVBlockStore.add_block increases block count
 # ---------------------------------------------------------------------------
 
+
 def test_kvblockstore_add_block_increases_count():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
     assert store.n_blocks == 0
@@ -75,6 +77,7 @@ def test_kvblockstore_add_block_increases_count():
 # ---------------------------------------------------------------------------
 # Test 2: KVBlockStore.retrieve_top_k returns correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_kvblockstore_retrieve_top_k_shapes():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
@@ -92,6 +95,7 @@ def test_kvblockstore_retrieve_top_k_shapes():
 # ---------------------------------------------------------------------------
 # Test 3: KVBlockStore.retrieve_top_k with k > stored blocks returns all stored
 # ---------------------------------------------------------------------------
+
 
 def test_kvblockstore_retrieve_top_k_less_than_k_stored():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
@@ -111,6 +115,7 @@ def test_kvblockstore_retrieve_top_k_less_than_k_stored():
 # ---------------------------------------------------------------------------
 # Test 4: Retrieval — identical query to stored block → that block is top-1
 # ---------------------------------------------------------------------------
+
 
 def test_kvblockstore_retrieve_identical_query_is_top1():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
@@ -141,14 +146,13 @@ def test_kvblockstore_retrieve_identical_query_is_top1():
 # Test 5: TriForceDraftCache.build_attn_context output shapes
 # ---------------------------------------------------------------------------
 
+
 def test_triforce_draft_cache_build_attn_context_shapes():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
     for _ in range(TOP_K + 2):
         store.add_block(*_rand_block())
 
-    cache = TriForceDraftCache(
-        n_heads=N_HEADS, d_head=D_HEAD, block_size=BLOCK_SIZE, top_k=TOP_K
-    )
+    cache = TriForceDraftCache(n_heads=N_HEADS, d_head=D_HEAD, block_size=BLOCK_SIZE, top_k=TOP_K)
     query = _rand_query()
     ctx_keys, ctx_vals = cache.build_attn_context(query, store)
 
@@ -161,6 +165,7 @@ def test_triforce_draft_cache_build_attn_context_shapes():
 # ---------------------------------------------------------------------------
 # Test 6: TriForceVerifier.verify all-accepted: returns γ+1 tokens when target==draft
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_verifier_all_accepted():
     gamma = GAMMA
@@ -177,13 +182,14 @@ def test_triforce_verifier_all_accepted():
 
     assert n_accepted == gamma, f"Expected all {gamma} accepted, got {n_accepted}"
     assert accepted.shape[0] == gamma + 1, (
-        f"Expected γ+1={gamma+1} tokens (including bonus), got {accepted.shape[0]}"
+        f"Expected γ+1={gamma + 1} tokens (including bonus), got {accepted.shape[0]}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 7: TriForceVerifier.verify none-accepted: returns 1 token (resampled first)
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_verifier_none_accepted():
     gamma = GAMMA
@@ -202,14 +208,13 @@ def test_triforce_verifier_none_accepted():
     accepted, n_accepted = verifier.verify(draft_toks, draft_logits, target_logits)
 
     assert n_accepted == 0, f"Expected 0 accepted, got {n_accepted}"
-    assert accepted.shape[0] == 1, (
-        f"Expected exactly 1 resampled token, got {accepted.shape[0]}"
-    )
+    assert accepted.shape[0] == 1, f"Expected exactly 1 resampled token, got {accepted.shape[0]}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: TriForceVerifier.verify partial acceptance
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_verifier_partial_acceptance():
     gamma = 4
@@ -247,6 +252,7 @@ def test_triforce_verifier_partial_acceptance():
 # Test 9: Accepted token count is between 1 and γ+1
 # ---------------------------------------------------------------------------
 
+
 def test_triforce_verifier_accepted_count_in_range():
     gamma = GAMMA
     vocab = VOCAB
@@ -261,7 +267,7 @@ def test_triforce_verifier_accepted_count_in_range():
     accepted, n_accepted = verifier.verify(draft_toks, draft_logits, target_logits)
 
     assert 1 <= accepted.shape[0] <= gamma + 1, (
-        f"accepted count {accepted.shape[0]} not in [1, {gamma+1}]"
+        f"accepted count {accepted.shape[0]} not in [1, {gamma + 1}]"
     )
     assert 0 <= n_accepted <= gamma
 
@@ -269,6 +275,7 @@ def test_triforce_verifier_accepted_count_in_range():
 # ---------------------------------------------------------------------------
 # Test 10: TriForceDecoder.generate output length == max_new_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_decoder_generate_exact_length():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
@@ -282,14 +289,13 @@ def test_triforce_decoder_generate_exact_length():
     max_new = 10
     out = decoder.generate(prompt, max_new_tokens=max_new)
 
-    assert out.shape[0] == max_new, (
-        f"Expected {max_new} new tokens, got {out.shape[0]}"
-    )
+    assert out.shape[0] == max_new, f"Expected {max_new} new tokens, got {out.shape[0]}"
 
 
 # ---------------------------------------------------------------------------
 # Test 11: TriForceDecoder.generate returns LongTensor
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_decoder_generate_returns_longtensor():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
@@ -309,6 +315,7 @@ def test_triforce_decoder_generate_returns_longtensor():
 # Test 12: Generate with max_new_tokens=1 works
 # ---------------------------------------------------------------------------
 
+
 def test_triforce_decoder_generate_max_new_tokens_1():
     store = KVBlockStore(block_size=BLOCK_SIZE, max_blocks=256)
     decoder = TriForceDecoder(
@@ -326,6 +333,7 @@ def test_triforce_decoder_generate_max_new_tokens_1():
 # ---------------------------------------------------------------------------
 # Test 13: Target fn called fewer times than max_new_tokens when all drafts accepted
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_decoder_target_called_fewer_times():
     """When draft tokens are always accepted, the target should be called
@@ -361,8 +369,7 @@ def test_triforce_decoder_target_called_fewer_times():
     # We verify the weaker bound: calls <= max_new (target never called more than
     # max_new times since each step produces >= 1 token).
     assert call_count[0] <= max_new, (
-        f"Target called {call_count[0]} times for {max_new} tokens; "
-        f"should be <= {max_new}"
+        f"Target called {call_count[0]} times for {max_new} tokens; should be <= {max_new}"
     )
     # Stronger bound: when all drafts are accepted each step produces gamma+1=5 tokens,
     # so we need ceil(20/5)=4 steps, each costing gamma+1=5 target calls → 20 total.
@@ -371,14 +378,13 @@ def test_triforce_decoder_target_called_fewer_times():
     # With gamma=4, 20 tokens → 4 steps → 4*(4+1)=20 calls.
     # The speedup comes from the draft model being faster.
     # Just ensure call_count < max_new * 2 as sanity.
-    assert call_count[0] < max_new * 2, (
-        f"Unexpectedly many target calls: {call_count[0]}"
-    )
+    assert call_count[0] < max_new * 2, f"Unexpectedly many target calls: {call_count[0]}"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: Determinism — same seed → same output
 # ---------------------------------------------------------------------------
+
 
 def test_triforce_decoder_determinism():
     def make_decoder():
@@ -398,6 +404,4 @@ def test_triforce_decoder_determinism():
     torch.manual_seed(99)
     out2 = make_decoder().generate(prompt.clone(), max_new_tokens=8)
 
-    assert torch.equal(out1, out2), (
-        f"Same seed produced different outputs:\n{out1}\nvs\n{out2}"
-    )
+    assert torch.equal(out1, out2), f"Same seed produced different outputs:\n{out1}\nvs\n{out2}"

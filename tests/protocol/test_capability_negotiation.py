@@ -1,13 +1,11 @@
 """Tests for src/protocol/capability_negotiation.py"""
 
-import pytest
 from src.protocol.capability_negotiation import (
+    PROTOCOL_REGISTRY,
     Capability,
     CapabilityNegotiator,
     CapabilitySet,
-    PROTOCOL_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # CapabilitySet construction
@@ -66,7 +64,9 @@ def test_negotiate_uses_server_version():
 def test_is_compatible_true_when_all_required_present():
     neg = CapabilityNegotiator()
     client = CapabilitySet(capabilities=frozenset({Capability.STREAMING, Capability.TOOL_USE}))
-    server = CapabilitySet(capabilities=frozenset({Capability.STREAMING, Capability.TOOL_USE, Capability.VISION}))
+    server = CapabilitySet(
+        capabilities=frozenset({Capability.STREAMING, Capability.TOOL_USE, Capability.VISION})
+    )
     assert neg.is_compatible(client, server, {Capability.STREAMING})
 
 

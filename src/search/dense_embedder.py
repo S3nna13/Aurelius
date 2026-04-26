@@ -60,9 +60,7 @@ class DenseEmbedder:
         vb = self.embed(b)
         return float(numpy.dot(va, vb))
 
-    def top_k_similar(
-        self, query: str, corpus: list[str], k: int = 5
-    ) -> list[tuple[int, float]]:
+    def top_k_similar(self, query: str, corpus: list[str], k: int = 5) -> list[tuple[int, float]]:
         if not corpus:
             return []
         qv = self.embed(query)

@@ -10,17 +10,16 @@ import math
 
 import pytest
 import torch
-
 from aurelius.data.qura_scorer import (
     QuRaScorer,
     QuRatingConfig,
     QuRatingScores,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_tokens(n: int, vocab_size: int = 128000, seed: int = 0) -> torch.Tensor:
     """Return deterministic (n,) int64 token-id tensor."""
@@ -36,6 +35,7 @@ def _uniform_log_probs(n: int, value: float) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # 1. Shape: score_batch returns list of length B
 # ---------------------------------------------------------------------------
+
 
 def test_score_batch_returns_list_of_length_b():
     scorer = QuRaScorer()
@@ -53,6 +53,7 @@ def test_score_batch_returns_list_of_length_b():
 # ---------------------------------------------------------------------------
 # 2. All individual scores in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_all_individual_scores_in_unit_interval():
     scorer = QuRaScorer()
@@ -72,6 +73,7 @@ def test_all_individual_scores_in_unit_interval():
 # ---------------------------------------------------------------------------
 # 3. Composite is the normalised weighted average
 # ---------------------------------------------------------------------------
+
 
 def test_composite_is_weighted_average():
     cfg = QuRatingConfig(
@@ -100,10 +102,11 @@ def test_composite_is_weighted_average():
 # 4. Low-perplexity text → higher writing quality
 # ---------------------------------------------------------------------------
 
+
 def test_low_perplexity_yields_high_writing_quality():
     scorer = QuRaScorer()
     ids = _make_tokens(50)
-    low_ppl_lp = _uniform_log_probs(50, -0.1)   # near 0 → ppl ≈ 1.1 → high quality
+    low_ppl_lp = _uniform_log_probs(50, -0.1)  # near 0 → ppl ≈ 1.1 → high quality
     high_ppl_lp = _uniform_log_probs(50, -5.0)  # very negative → higher ppl
 
     low_score = scorer.score_tokens(ids, low_ppl_lp)
@@ -115,6 +118,7 @@ def test_low_perplexity_yields_high_writing_quality():
 # ---------------------------------------------------------------------------
 # 5. High-perplexity text → lower writing quality
 # ---------------------------------------------------------------------------
+
 
 def test_high_perplexity_yields_low_writing_quality():
     scorer = QuRaScorer()
@@ -130,6 +134,7 @@ def test_high_perplexity_yields_low_writing_quality():
 # ---------------------------------------------------------------------------
 # 6. Edge case: short sequence (< min_tokens) → zero scores
 # ---------------------------------------------------------------------------
+
 
 def test_short_sequence_returns_zero_scores():
     cfg = QuRatingConfig(min_tokens=10)
@@ -150,6 +155,7 @@ def test_short_sequence_returns_zero_scores():
 # 7. select_top_k returns exactly k indices
 # ---------------------------------------------------------------------------
 
+
 def test_select_top_k_returns_k_indices():
     scorer = QuRaScorer()
     B, T = 10, 30
@@ -168,6 +174,7 @@ def test_select_top_k_returns_k_indices():
 # ---------------------------------------------------------------------------
 # 8. select_top_k(criterion='composite') returns highest composite scorers
 # ---------------------------------------------------------------------------
+
 
 def test_select_top_k_composite_returns_highest():
     scorer = QuRaScorer()
@@ -191,6 +198,7 @@ def test_select_top_k_composite_returns_highest():
 # 9. Determinism: same inputs → same outputs
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     scorer = QuRaScorer()
     ids = _make_tokens(40, seed=7)
@@ -205,6 +213,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # 10. Batch vs single: score_tokens and score_batch[0] agree
 # ---------------------------------------------------------------------------
+
 
 def test_batch_and_single_agree():
     scorer = QuRaScorer()
@@ -231,6 +240,7 @@ def test_batch_and_single_agree():
 # 11. Numerical stability: no NaN/Inf with extreme log_probs
 # ---------------------------------------------------------------------------
 
+
 def test_numerical_stability_extreme_log_probs():
     scorer = QuRaScorer()
     ids = _make_tokens(50)
@@ -247,11 +257,12 @@ def test_numerical_stability_extreme_log_probs():
 # 12. Padding mask: masked tokens do not affect score
 # ---------------------------------------------------------------------------
 
+
 def test_padding_mask_excluded_from_score():
     scorer = QuRaScorer()
     T_valid = 30
     T_pad = 20
-    T_total = T_valid + T_pad
+    T_valid + T_pad
 
     torch.manual_seed(3)
     ids_valid = torch.randint(0, 128000, (T_valid,), dtype=torch.long)
@@ -260,10 +271,12 @@ def test_padding_mask_excluded_from_score():
     # Padding tokens are wildly different — should not change scores
     ids_padded = torch.cat([ids_valid, torch.zeros(T_pad, dtype=torch.long)])
     lp_padded = torch.cat([lp_valid, _uniform_log_probs(T_pad, -999.0)])
-    mask = torch.cat([
-        torch.ones(T_valid, dtype=torch.long),
-        torch.zeros(T_pad, dtype=torch.long),
-    ])
+    mask = torch.cat(
+        [
+            torch.ones(T_valid, dtype=torch.long),
+            torch.zeros(T_pad, dtype=torch.long),
+        ]
+    )
 
     # Score unpadded directly
     s_direct = scorer.score_tokens(ids_valid, lp_valid)
@@ -283,6 +296,7 @@ def test_padding_mask_excluded_from_score():
 # 13. Empty-ish batch: batch of size 1 works
 # ---------------------------------------------------------------------------
 
+
 def test_batch_of_size_one():
     scorer = QuRaScorer()
     T = 20
@@ -301,6 +315,7 @@ def test_batch_of_size_one():
 # ---------------------------------------------------------------------------
 # 14. Config weights: changing weights changes composite proportionally
 # ---------------------------------------------------------------------------
+
 
 def test_config_weights_affect_composite():
     """Doubling the writing weight should move the composite toward writing_quality."""
@@ -325,7 +340,8 @@ def test_config_weights_affect_composite():
     # Both scorers see the same document, so individual dimension scores are equal
     assert s_default.writing_quality == pytest.approx(s_high_w.writing_quality, abs=1e-6)
     # Composite differs because weights differ
-    assert not math.isclose(s_default.composite, s_high_w.composite, abs_tol=1e-6) or \
-           math.isclose(s_default.writing_quality, s_default.composite, abs_tol=1e-4)
+    assert not math.isclose(s_default.composite, s_high_w.composite, abs_tol=1e-6) or math.isclose(
+        s_default.writing_quality, s_default.composite, abs_tol=1e-4
+    )
     # Higher writing weight → composite pulled more toward writing_quality
     assert diff_high <= diff_default + 1e-6

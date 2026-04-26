@@ -3,10 +3,10 @@
 Provides utilities to choose which layers to apply gradient checkpointing
 to, based on memory budget, uniform spacing, or adaptive heuristics.
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -25,15 +25,16 @@ class CheckpointSelectorConfig:
         bytes_per_element: Bytes per tensor element (4 = fp32, 2 = fp16/bf16).
     """
 
-    strategy: str = "uniform"          # "uniform" | "memory_optimal" | "adaptive"
-    checkpoint_ratio: float = 0.5      # fraction of layers to checkpoint
+    strategy: str = "uniform"  # "uniform" | "memory_optimal" | "adaptive"
+    checkpoint_ratio: float = 0.5  # fraction of layers to checkpoint
     memory_budget_gb: float = 8.0
-    bytes_per_element: int = 4         # fp32
+    bytes_per_element: int = 4  # fp32
 
 
 # ---------------------------------------------------------------------------
 # Memory estimation
 # ---------------------------------------------------------------------------
+
 
 def estimate_activation_bytes(
     n_layers: int,
@@ -52,9 +53,9 @@ def estimate_activation_bytes(
     Returns total bytes across all layers.
     """
     per_layer = (
-        batch_size * seq_len * seq_len           # attention scores
-        + batch_size * seq_len * (4 * d_model)   # FFN intermediate (~d_ff)
-        + 2 * batch_size * seq_len * d_model      # residuals / norms
+        batch_size * seq_len * seq_len  # attention scores
+        + batch_size * seq_len * (4 * d_model)  # FFN intermediate (~d_ff)
+        + 2 * batch_size * seq_len * d_model  # residuals / norms
     ) * bytes_per_element
     return n_layers * per_layer
 
@@ -62,6 +63,7 @@ def estimate_activation_bytes(
 # ---------------------------------------------------------------------------
 # Layer selection helpers
 # ---------------------------------------------------------------------------
+
 
 def select_uniform_layers(n_layers: int, ratio: float) -> list[int]:
     """Return evenly-spaced layer indices to checkpoint.
@@ -147,6 +149,7 @@ def select_memory_optimal_layers(
 # Cost estimation
 # ---------------------------------------------------------------------------
 
+
 def compute_recomputation_cost(n_checkpointed: int, n_layers: int) -> float:
     """Estimate extra recomputation cost fraction of the full forward pass.
 
@@ -165,6 +168,7 @@ def compute_recomputation_cost(n_checkpointed: int, n_layers: int) -> float:
 # Checkpointing wrappers
 # ---------------------------------------------------------------------------
 
+
 class CheckpointedLayer(nn.Module):
     """Wraps an nn.Module layer to use gradient checkpointing on forward."""
 
@@ -179,9 +183,7 @@ class CheckpointedLayer(nn.Module):
         def _fn(*a: Any, **kw: Any) -> Any:
             return self.layer(*a, **kw)
 
-        return torch.utils.checkpoint.checkpoint(
-            _fn, *args, use_reentrant=False, **kwargs
-        )
+        return torch.utils.checkpoint.checkpoint(_fn, *args, use_reentrant=False, **kwargs)
 
 
 def apply_selective_checkpointing(
@@ -202,7 +204,9 @@ def apply_selective_checkpointing(
     indices_set = set(layer_indices)
     for idx in indices_set:
         if idx < 0 or idx >= len(model.layers):
-            raise IndexError(f"Layer index {idx} out of range for model with {len(model.layers)} layers")
+            raise IndexError(
+                f"Layer index {idx} out of range for model with {len(model.layers)} layers"
+            )
         original_layer = model.layers[idx]
         # Don't double-wrap
         if not isinstance(original_layer, CheckpointedLayer):
@@ -213,6 +217,7 @@ def apply_selective_checkpointing(
 # ---------------------------------------------------------------------------
 # High-level CheckpointSelector
 # ---------------------------------------------------------------------------
+
 
 class CheckpointSelector:
     """Selects and applies gradient checkpointing to a model's layers.
@@ -259,7 +264,7 @@ class CheckpointSelector:
             return select_uniform_layers(n_layers, self.cfg.checkpoint_ratio)
 
         elif strategy == "memory_optimal":
-            budget_bytes = int(self.cfg.memory_budget_gb * (1024 ** 3))
+            budget_bytes = int(self.cfg.memory_budget_gb * (1024**3))
             d_model = self._d_model()
             return select_memory_optimal_layers(
                 n_layers,
@@ -273,7 +278,7 @@ class CheckpointSelector:
         elif strategy == "adaptive":
             # Adaptive: start with memory_optimal, then fall back to uniform if
             # not enough savings are achieved.
-            budget_bytes = int(self.cfg.memory_budget_gb * (1024 ** 3))
+            budget_bytes = int(self.cfg.memory_budget_gb * (1024**3))
             d_model = self._d_model()
             optimal = select_memory_optimal_layers(
                 n_layers,
@@ -307,9 +312,7 @@ class CheckpointSelector:
         apply_selective_checkpointing(self.model, indices)
         return indices
 
-    def estimate_memory_savings(
-        self, seq_len: int, batch_size: int
-    ) -> dict[str, float]:
+    def estimate_memory_savings(self, seq_len: int, batch_size: int) -> dict[str, float]:
         """Estimate memory savings from checkpointing.
 
         Args:
@@ -329,7 +332,7 @@ class CheckpointSelector:
         baseline_bytes = estimate_activation_bytes(
             n_layers, seq_len, d_model, batch_size, self.cfg.bytes_per_element
         )
-        baseline_gb = baseline_bytes / (1024 ** 3)
+        baseline_gb = baseline_bytes / (1024**3)
 
         indices = self.select_layers(seq_len, batch_size)
         n_checkpointed = len(indices)
@@ -337,7 +340,7 @@ class CheckpointSelector:
         # Each checkpointed layer frees its activations
         per_layer_bytes = baseline_bytes / n_layers if n_layers > 0 else 0
         saved_bytes = n_checkpointed * per_layer_bytes
-        saved_gb = saved_bytes / (1024 ** 3)
+        saved_gb = saved_bytes / (1024**3)
 
         savings_fraction = saved_bytes / baseline_bytes if baseline_bytes > 0 else 0.0
         recompute_overhead = compute_recomputation_cost(n_checkpointed, n_layers)

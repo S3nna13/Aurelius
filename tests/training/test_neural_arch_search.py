@@ -1,17 +1,18 @@
 """Tests for differentiable neural architecture search (DARTS-style)."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.neural_arch_search import (
-    NASConfig,
     ArchitectureWeights,
-    gumbel_softmax_sample,
     MixedOperation,
+    NASConfig,
     NASFFNCandidate,
     NASSearcher,
+    gumbel_softmax_sample,
 )
 
 D_MODEL = 64
@@ -21,6 +22,7 @@ T = 8
 
 # --- NASConfig ---
 
+
 def test_nas_config_defaults_have_correct_keys():
     cfg = NASConfig()
     assert "d_ff_mult" in cfg.search_space
@@ -29,6 +31,7 @@ def test_nas_config_defaults_have_correct_keys():
 
 
 # --- ArchitectureWeights ---
+
 
 def test_arch_weights_get_probs_valid_probabilities():
     cfg = NASConfig()
@@ -56,6 +59,7 @@ def test_arch_weights_entropy_scalar_and_nonnegative():
 
 # --- gumbel_softmax_sample ---
 
+
 def test_gumbel_softmax_output_shape_matches_input():
     logits = torch.randn(5)
     out = gumbel_softmax_sample(logits, temperature=1.0)
@@ -78,6 +82,7 @@ def test_gumbel_softmax_probabilities_sum_to_one():
 
 # --- MixedOperation ---
 
+
 def test_mixed_operation_forward_output_shape():
     ops = [nn.Linear(D_MODEL, D_MODEL) for _ in range(3)]
     arch_logits = torch.nn.Parameter(torch.zeros(3))
@@ -89,6 +94,7 @@ def test_mixed_operation_forward_output_shape():
 
 # --- NASFFNCandidate ---
 
+
 @pytest.mark.parametrize("activation", ["swiglu", "gelu", "relu"])
 def test_nas_ffn_candidate_forward(activation):
     candidate = NASFFNCandidate(D_MODEL, D_MODEL * 4, activation)
@@ -98,6 +104,7 @@ def test_nas_ffn_candidate_forward(activation):
 
 
 # --- NASSearcher ---
+
 
 def test_nas_searcher_build_candidates_nonempty():
     cfg = NASConfig()

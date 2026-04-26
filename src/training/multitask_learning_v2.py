@@ -2,21 +2,20 @@
 
 New API on top of the existing multitask_learning.py backbone.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
 @dataclass
 class MTLConfig:
-    task_names: List[str] = field(default_factory=lambda: ["task_a", "task_b"])
-    loss_weights: Optional[Dict[str, float]] = None
+    task_names: list[str] = field(default_factory=lambda: ["task_a", "task_b"])
+    loss_weights: dict[str, float] | None = None
     gradient_accumulation_steps: int = 1
     uncertainty_weighting: bool = False
 
@@ -66,9 +65,7 @@ class MTLLoss:
         else:
             self.log_vars = None
 
-    def compute(
-        self, task_losses: Dict[str, Tensor]
-    ) -> Tuple[Tensor, Dict[str, float]]:
+    def compute(self, task_losses: dict[str, Tensor]) -> tuple[Tensor, dict[str, float]]:
         """Compute weighted total loss.
 
         Returns:
@@ -88,7 +85,7 @@ class MTLLoss:
         else:
             weights = torch.ones(len(active_names), dtype=torch.float32)
 
-        total = sum(w * l for w, l in zip(weights, losses))
+        total = sum(w * lo for w, lo in zip(weights, losses))
         weight_dict = {n: w.item() for n, w in zip(active_names, weights)}
         return total, weight_dict
 
@@ -99,15 +96,13 @@ class MultiTaskModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
-        task_heads: Dict[str, TaskHead],
+        task_heads: dict[str, TaskHead],
     ) -> None:
         super().__init__()
         self.backbone = backbone
         self.task_heads = nn.ModuleDict(task_heads)
 
-    def forward(
-        self, x: Tensor, task_name: Optional[str] = None
-    ) -> Dict[str, Tensor]:
+    def forward(self, x: Tensor, task_name: str | None = None) -> dict[str, Tensor]:
         hidden = self.backbone(x)
         if task_name is not None:
             return {task_name: self.task_heads[task_name](hidden)}
@@ -123,9 +118,9 @@ class GradientBalancer:
     def compute_grad_norms(
         self,
         model: nn.Module,
-        task_losses: List[Tensor],
+        task_losses: list[Tensor],
         retain_graph: bool = True,
-    ) -> List[float]:
+    ) -> list[float]:
         """Compute gradient norm for each task loss independently."""
         params = list(model.parameters())
         norms = []
@@ -136,13 +131,11 @@ class GradientBalancer:
                 retain_graph=(retain_graph or i < len(task_losses) - 1),
                 allow_unused=True,
             )
-            norm = sum(
-                g.norm().item() ** 2 for g in grads if g is not None
-            ) ** 0.5
+            norm = sum(g.norm().item() ** 2 for g in grads if g is not None) ** 0.5
             norms.append(norm)
         return norms
 
-    def balance_weights(self, grad_norms: List[float]) -> List[float]:
+    def balance_weights(self, grad_norms: list[float]) -> list[float]:
         """Inverse-norm weights normalized to sum to 1."""
         eps = 1e-8
         inv_norms = [1.0 / (n + eps) for n in grad_norms]

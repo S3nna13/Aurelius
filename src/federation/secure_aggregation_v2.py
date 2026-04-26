@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
-
 
 ModelDelta = dict[str, torch.Tensor]
 
@@ -26,7 +24,9 @@ def aggregate_with_clipping(deltas: list[ModelDelta], clip_norm: float = 1.0) ->
     return result
 
 
-def add_clip_noise(x: torch.Tensor, noise_scale: float = 0.0, seed: int | None = None) -> torch.Tensor:
+def add_clip_noise(
+    x: torch.Tensor, noise_scale: float = 0.0, seed: int | None = None
+) -> torch.Tensor:
     if noise_scale <= 0.0:
         return x.clone()
     if seed is not None:

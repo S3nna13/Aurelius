@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
-from enum import Enum
-from typing import Any, Mapping
-
+from enum import StrEnum
+from typing import Any
 
 __all__ = [
     "ReleaseTrack",
@@ -44,7 +44,7 @@ class ManifestValidationError(Exception):
     """Raised when a manifest payload is malformed."""
 
 
-class ReleaseTrack(str, Enum):
+class ReleaseTrack(StrEnum):
     """Release maturity track for a family variant."""
 
     RESEARCH = "research"
@@ -78,26 +78,35 @@ class FamilyManifest:
 
     def __post_init__(self) -> None:
         # String identity fields
-        for fname in ("family_name", "variant_name", "backbone_class",
-                      "tokenizer_name", "context_policy"):
+        for fname in (
+            "family_name",
+            "variant_name",
+            "backbone_class",
+            "tokenizer_name",
+            "context_policy",
+        ):
             v = getattr(self, fname)
             if not isinstance(v, str) or not v:
-                raise ManifestValidationError(
-                    f"{fname} must be a non-empty string, got {v!r}"
-                )
+                raise ManifestValidationError(f"{fname} must be a non-empty string, got {v!r}")
 
         if self.tokenizer_hash is not None and not isinstance(self.tokenizer_hash, str):
             raise ManifestValidationError(
                 f"tokenizer_hash must be str or None, got {type(self.tokenizer_hash).__name__}"
             )
 
-        if not isinstance(self.vocab_size, int) or isinstance(self.vocab_size, bool) \
-                or self.vocab_size <= 0:
+        if (
+            not isinstance(self.vocab_size, int)
+            or isinstance(self.vocab_size, bool)
+            or self.vocab_size <= 0
+        ):
             raise ManifestValidationError(
                 f"vocab_size must be a positive int, got {self.vocab_size!r}"
             )
-        if not isinstance(self.max_seq_len, int) or isinstance(self.max_seq_len, bool) \
-                or self.max_seq_len <= 0:
+        if (
+            not isinstance(self.max_seq_len, int)
+            or isinstance(self.max_seq_len, bool)
+            or self.max_seq_len <= 0
+        ):
             raise ManifestValidationError(
                 f"max_seq_len must be a positive int, got {self.max_seq_len!r}"
             )
@@ -108,32 +117,29 @@ class FamilyManifest:
             )
 
         # Normalize capability_tags / migration_notes to tuples of strings.
-        object.__setattr__(self, "capability_tags",
-                           _coerce_str_tuple(self.capability_tags, "capability_tags"))
-        object.__setattr__(self, "migration_notes",
-                           _coerce_str_tuple(self.migration_notes, "migration_notes"))
+        object.__setattr__(
+            self, "capability_tags", _coerce_str_tuple(self.capability_tags, "capability_tags")
+        )
+        object.__setattr__(
+            self, "migration_notes", _coerce_str_tuple(self.migration_notes, "migration_notes")
+        )
 
-        for vfield in ("checkpoint_format_version", "config_version",
-                       "compatibility_version"):
+        for vfield in ("checkpoint_format_version", "config_version", "compatibility_version"):
             v = getattr(self, vfield)
             if not isinstance(v, str) or not _SEMVER_RE.match(v):
-                raise ManifestValidationError(
-                    f"{vfield} must match semver X.Y.Z, got {v!r}"
-                )
+                raise ManifestValidationError(f"{vfield} must match semver X.Y.Z, got {v!r}")
 
         try:
             ReleaseTrack(self.release_track)
         except ValueError as exc:
             raise ManifestValidationError(
-                f"release_track {self.release_track!r} not in "
-                f"{[t.value for t in ReleaseTrack]}"
+                f"release_track {self.release_track!r} not in {[t.value for t in ReleaseTrack]}"
             ) from exc
 
         if self.backend_name is not None:
             if not isinstance(self.backend_name, str) or not self.backend_name:
                 raise ManifestValidationError(
-                    f"backend_name must be a non-empty string or None, "
-                    f"got {self.backend_name!r}"
+                    f"backend_name must be a non-empty string or None, got {self.backend_name!r}"
                 )
             if not _BACKEND_NAME_RE.match(self.backend_name):
                 raise ManifestValidationError(
@@ -157,9 +163,7 @@ class FamilyManifest:
 
 def _coerce_str_tuple(value: Any, fname: str) -> tuple[str, ...]:
     if isinstance(value, str):
-        raise ManifestValidationError(
-            f"{fname} must be a sequence of strings, got bare str"
-        )
+        raise ManifestValidationError(f"{fname} must be a sequence of strings, got bare str")
     try:
         items = tuple(value)
     except TypeError as exc:
@@ -168,29 +172,26 @@ def _coerce_str_tuple(value: Any, fname: str) -> tuple[str, ...]:
         ) from exc
     for item in items:
         if not isinstance(item, str):
-            raise ManifestValidationError(
-                f"{fname} entries must be str, got {type(item).__name__}"
-            )
+            raise ManifestValidationError(f"{fname} entries must be str, got {type(item).__name__}")
     return items
 
 
 _MANIFEST_FIELDS = tuple(f.name for f in fields(FamilyManifest))
-_OPTIONAL_MANIFEST_FIELDS = frozenset({
-    "migration_notes",
-    "backend_name",
-    "engine_contract",
-    "adapter_contract",
-})
+_OPTIONAL_MANIFEST_FIELDS = frozenset(
+    {
+        "migration_notes",
+        "backend_name",
+        "engine_contract",
+        "adapter_contract",
+    }
+)
 
 
 def load_manifest(data: Mapping[str, Any]) -> FamilyManifest:
     """Validate a mapping and construct a :class:`FamilyManifest`."""
     if not isinstance(data, Mapping):
-        raise ManifestValidationError(
-            f"manifest data must be a mapping, got {type(data).__name__}"
-        )
-    missing = [f for f in _MANIFEST_FIELDS
-               if f not in data and f not in _OPTIONAL_MANIFEST_FIELDS]
+        raise ManifestValidationError(f"manifest data must be a mapping, got {type(data).__name__}")
+    missing = [f for f in _MANIFEST_FIELDS if f not in data and f not in _OPTIONAL_MANIFEST_FIELDS]
     if missing:
         raise ManifestValidationError(f"manifest missing fields: {missing}")
     extra = [k for k in data.keys() if k not in _MANIFEST_FIELDS]

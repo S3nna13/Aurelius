@@ -6,24 +6,21 @@ Inspired by OpenDevin/OpenDevin (Apache-2.0, browser tool), MoonshotAI/Kimi-Dev
 
 from __future__ import annotations
 
-import pytest
-
 from src.computer_use.browser_driver import StubBrowserDriver
 from src.computer_use.gui_action import ActionType, GUIAction
 from src.computer_use.screen_parser import AccessibilityNode, ScreenSnapshot
 from src.computer_use.trajectory_replay import (
     TRAJECTORY_REGISTRY,
     Trajectory,
-    TrajectoryError,
     TrajectoryRecorder,
     TrajectoryReplayer,
     TrajectoryStep,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_snapshot(label: str = "root") -> ScreenSnapshot:
     return ScreenSnapshot(
@@ -45,6 +42,7 @@ def _make_type_action(selector: str = "#input", value: str = "hello") -> GUIActi
 # TrajectoryStep dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestTrajectoryStep:
     def test_step_id_is_int(self):
         step = TrajectoryStep(step_id=0, action=_make_click_action())
@@ -61,6 +59,7 @@ class TestTrajectoryStep:
 # ---------------------------------------------------------------------------
 # Trajectory dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestTrajectory:
     def test_success_defaults_none(self):
@@ -79,6 +78,7 @@ class TestTrajectory:
 # ---------------------------------------------------------------------------
 # TrajectoryRecorder
 # ---------------------------------------------------------------------------
+
 
 class TestTrajectoryRecorder:
     def test_record_step_first_step_id_is_zero(self):
@@ -163,6 +163,7 @@ class TestTrajectoryRecorder:
 # ---------------------------------------------------------------------------
 # TrajectoryReplayer
 # ---------------------------------------------------------------------------
+
 
 class TestTrajectoryReplayer:
     def _make_trajectory(self, n: int = 2) -> Trajectory:
@@ -252,6 +253,7 @@ class TestTrajectoryReplayer:
 # TrajectoryReplayer.verify
 # ---------------------------------------------------------------------------
 
+
 class TestTrajectoryReplayerVerify:
     def test_verify_zero_steps_returns_false(self):
         traj = Trajectory(trajectory_id="empty", goal="nothing", steps=[])
@@ -289,6 +291,7 @@ class TestTrajectoryReplayerVerify:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestTrajectoryRegistry:
     def test_trajectory_registry_is_dict(self):

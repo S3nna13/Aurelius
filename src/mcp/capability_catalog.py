@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
@@ -210,7 +209,7 @@ class CapabilityCatalog:
     # Comparison
     # ------------------------------------------------------------------
 
-    def compatible_with(self, other: "CapabilityCatalog") -> list[str]:
+    def compatible_with(self, other: CapabilityCatalog) -> list[str]:
         """Return capability names present in both this catalog and *other*.
 
         Returns
@@ -227,9 +226,7 @@ class CapabilityCatalog:
 # ---------------------------------------------------------------------------
 
 #: Maps logical catalog names to :class:`CapabilityCatalog` classes.
-CAPABILITY_CATALOG_REGISTRY: dict[str, type[CapabilityCatalog]] = {
-    "default": CapabilityCatalog
-}
+CAPABILITY_CATALOG_REGISTRY: dict[str, type[CapabilityCatalog]] = {"default": CapabilityCatalog}
 
 __all__ = [
     "Capability",

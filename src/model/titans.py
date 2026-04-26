@@ -7,13 +7,12 @@ updates during inference (write phase) before querying memory (read phase).
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -219,21 +218,17 @@ class TitansLayer(nn.Module):
 
         # Persistent (always-available) memory tokens
         if use_persistent_memory:
-            self.persistent_memory = nn.Parameter(
-                torch.randn(n_persistent, d_model) * 0.02
-            )
+            self.persistent_memory = nn.Parameter(torch.randn(n_persistent, d_model) * 0.02)
         else:
             self.persistent_memory = None  # type: ignore[assignment]
 
         # Simple self-attention (used to let x attend to persistent memory)
-        head_dim = max(1, d_model // n_heads)
+        max(1, d_model // n_heads)
         # Ensure d_model is divisible by n_heads; fall back if not
         actual_n_heads = n_heads
         while d_model % actual_n_heads != 0 and actual_n_heads > 1:
             actual_n_heads //= 2
-        self.attn = nn.MultiheadAttention(
-            d_model, actual_n_heads, batch_first=True, bias=True
-        )
+        self.attn = nn.MultiheadAttention(d_model, actual_n_heads, batch_first=True, bias=True)
 
     def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         """Forward pass.

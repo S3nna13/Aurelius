@@ -74,7 +74,7 @@ class _MultiHeadSelfAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, dropout: float) -> None:
         super().__init__()
-        assert d_model % n_heads == 0
+        assert d_model % n_heads == 0  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -140,9 +140,7 @@ class CrossEncoderReranker(nn.Module):
         self.tok_embed = nn.Embedding(config.vocab_size, config.d_model)
         self.pos_embed = nn.Embedding(config.max_seq_len, config.d_model)
         self.input_dropout = nn.Dropout(config.dropout)
-        self.layers = nn.ModuleList(
-            [_EncoderBlock(config) for _ in range(config.n_layers)]
-        )
+        self.layers = nn.ModuleList([_EncoderBlock(config) for _ in range(config.n_layers)])
         self.final_norm = nn.LayerNorm(config.d_model)
         self.score_head = nn.Linear(config.d_model, 1, bias=True)
         self._init_weights()
@@ -170,16 +168,12 @@ class CrossEncoderReranker(nn.Module):
             externally for probabilities).
         """
         if input_ids.dim() != 2:
-            raise ValueError(
-                f"input_ids must be 2D [B, S]; got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be 2D [B, S]; got shape {tuple(input_ids.shape)}")
         b, s = input_ids.shape
         if s == 0:
             raise ValueError("input_ids sequence length must be >= 1")
         if s > self.config.max_seq_len:
-            raise ValueError(
-                f"sequence length {s} exceeds max_seq_len {self.config.max_seq_len}"
-            )
+            raise ValueError(f"sequence length {s} exceeds max_seq_len {self.config.max_seq_len}")
         if input_ids.dtype not in (torch.long, torch.int64, torch.int32):
             raise ValueError("input_ids must be an integer tensor")
         if torch.any(input_ids < 0) or torch.any(input_ids >= self.config.vocab_size):
@@ -199,12 +193,8 @@ class CrossEncoderReranker(nn.Module):
     # Inference helpers
     # ------------------------------------------------------------------
 
-    def _build_sequence(
-        self, query_ids: list[int], doc_ids: list[int]
-    ) -> torch.Tensor:
-        if not isinstance(query_ids, (list, tuple)) or not isinstance(
-            doc_ids, (list, tuple)
-        ):
+    def _build_sequence(self, query_ids: list[int], doc_ids: list[int]) -> torch.Tensor:
+        if not isinstance(query_ids, (list, tuple)) or not isinstance(doc_ids, (list, tuple)):
             raise TypeError("query_ids and doc_ids must be lists of ints")
         # [CLS] + query + [SEP] + doc
         seq = [self.CLS_TOKEN_ID, *query_ids, self.config.sep_token_id, *doc_ids]

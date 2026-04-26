@@ -98,7 +98,7 @@ class DPODataGenerator:
         ),
         (
             "Write a Python decorator that measures and logs function execution time.",
-            "import functools\nimport time\nimport logging\n\nlogger = logging.getLogger(__name__)\n\ndef timed(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.perf_counter()\n        try:\n            return func(*args, **kwargs)\n        finally:\n            elapsed = time.perf_counter() - start\n            logger.info(f\"{func.__name__} took {elapsed:.4f}s\")\n    return wrapper\n\n@timed\ndef expensive_operation(n):\n    return sum(i * i for i in range(n))\n\nThe decorator uses @functools.wraps to preserve the original function's metadata. The try/finally ensures timing is logged even if the function raises an exception.",
+            'import functools\nimport time\nimport logging\n\nlogger = logging.getLogger(__name__)\n\ndef timed(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.perf_counter()\n        try:\n            return func(*args, **kwargs)\n        finally:\n            elapsed = time.perf_counter() - start\n            logger.info(f"{func.__name__} took {elapsed:.4f}s")\n    return wrapper\n\n@timed\ndef expensive_operation(n):\n    return sum(i * i for i in range(n))\n\nThe decorator uses @functools.wraps to preserve the original function\'s metadata. The try/finally ensures timing is logged even if the function raises an exception.',
             "import time\n\ndef timer(f):\n    def wrapper(*a, **k):\n        t = time.time()\n        r = f(*a, **k)\n        print(f'took {time.time()-t}s')\n        return r\n    return wrapper",
         ),
     ]
@@ -294,8 +294,8 @@ class DPODataGenerator:
         ),
         (
             "Implement a simple rate limiter using a decorator.",
-            "import functools\nimport time\n\ndef rate_limit(max_calls: int, period: float):\n    def decorator(func):\n        calls = []\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            now = time.monotonic()\n            calls[:] = [t for t in calls if now - t < period]\n            if len(calls) >= max_calls:\n                raise RuntimeError(f\"Rate limit: {max_calls} calls per {period}s\")\n            calls.append(now)\n            return func(*args, **kwargs)\n        return wrapper\n    return decorator",
-            "import time\n\ndef rate_limit(max_calls, period):\n    calls = 0\n    start = time.time()\n    def decorator(func):\n        def wrapper(*args, **kwargs):\n            nonlocal calls, start\n            if time.time() - start > period:\n                calls = 0\n                start = time.time()\n            if calls >= max_calls:\n                return \"Rate limited\"\n            calls += 1\n            return func(*args, **kwargs)\n        return wrapper\n    return decorator",
+            'import functools\nimport time\n\ndef rate_limit(max_calls: int, period: float):\n    def decorator(func):\n        calls = []\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            now = time.monotonic()\n            calls[:] = [t for t in calls if now - t < period]\n            if len(calls) >= max_calls:\n                raise RuntimeError(f"Rate limit: {max_calls} calls per {period}s")\n            calls.append(now)\n            return func(*args, **kwargs)\n        return wrapper\n    return decorator',
+            'import time\n\ndef rate_limit(max_calls, period):\n    calls = 0\n    start = time.time()\n    def decorator(func):\n        def wrapper(*args, **kwargs):\n            nonlocal calls, start\n            if time.time() - start > period:\n                calls = 0\n                start = time.time()\n            if calls >= max_calls:\n                return "Rate limited"\n            calls += 1\n            return func(*args, **kwargs)\n        return wrapper\n    return decorator',
         ),
         (
             "Write a function that flattens a nested list (arbitrary depth).",
@@ -319,7 +319,7 @@ class DPODataGenerator:
         ),
         (
             "Implement a function to compute the nth prime number.",
-            "def nth_prime(n: int) -> int:\n    if n < 1:\n        raise ValueError(\"n must be >= 1\")\n    primes = [2]\n    candidate = 3\n    while len(primes) < n:\n        is_prime = True\n        for p in primes:\n            if p * p > candidate:\n                break\n            if candidate % p == 0:\n                is_prime = False\n                break\n        if is_prime:\n            primes.append(candidate)\n        candidate += 2\n    return primes[-1]",
+            'def nth_prime(n: int) -> int:\n    if n < 1:\n        raise ValueError("n must be >= 1")\n    primes = [2]\n    candidate = 3\n    while len(primes) < n:\n        is_prime = True\n        for p in primes:\n            if p * p > candidate:\n                break\n            if candidate % p == 0:\n                is_prime = False\n                break\n        if is_prime:\n            primes.append(candidate)\n        candidate += 2\n    return primes[-1]',
             "def nth_prime(n):\n    primes = []\n    for num in range(2, 1000000):\n        for p in primes:\n            if num % p == 0:\n                break\n        else:\n            primes.append(num)\n            if len(primes) == n:\n                return num",
         ),
         (
@@ -329,7 +329,7 @@ class DPODataGenerator:
         ),
         (
             "Implement a Queue using only two stacks.",
-            "class Queue:\n    def __init__(self):\n        self._in = []\n        self._out = []\n\n    def enqueue(self, item):\n        self._in.append(item)\n\n    def dequeue(self):\n        if not self._out:\n            while self._in:\n                self._out.append(self._in.pop())\n        if not self._out:\n            raise IndexError(\"dequeue from empty queue\")\n        return self._out.pop()\n\n    def peek(self):\n        if not self._out:\n            while self._in:\n                self._out.append(self._in.pop())\n        if not self._out:\n            raise IndexError(\"peek from empty queue\")\n        return self._out[-1]\n\n    def is_empty(self) -> bool:\n        return not self._in and not self._out",
+            'class Queue:\n    def __init__(self):\n        self._in = []\n        self._out = []\n\n    def enqueue(self, item):\n        self._in.append(item)\n\n    def dequeue(self):\n        if not self._out:\n            while self._in:\n                self._out.append(self._in.pop())\n        if not self._out:\n            raise IndexError("dequeue from empty queue")\n        return self._out.pop()\n\n    def peek(self):\n        if not self._out:\n            while self._in:\n                self._out.append(self._in.pop())\n        if not self._out:\n            raise IndexError("peek from empty queue")\n        return self._out[-1]\n\n    def is_empty(self) -> bool:\n        return not self._in and not self._out',
             "class Queue:\n    def __init__(self):\n        self.s1 = []\n        self.s2 = []\n\n    def enqueue(self, x):\n        self.s1.append(x)\n\n    def dequeue(self):\n        if self.s2:\n            return self.s2.pop()\n        while self.s1:\n            self.s2.append(self.s1.pop())\n        return self.s2.pop()",
         ),
         (

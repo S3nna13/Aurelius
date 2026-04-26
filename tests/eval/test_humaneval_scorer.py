@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-import os
 from pathlib import Path
 
 import pytest
@@ -16,7 +14,6 @@ from src.eval.humaneval_scorer import (
     score_single,
 )
 
-
 # ---------------------------------------------------------------------------
 # Toy problem factory
 # ---------------------------------------------------------------------------
@@ -24,7 +21,7 @@ from src.eval.humaneval_scorer import (
 
 def _toy_problem(task_id: str = "toy/0") -> HumanEvalProblem:
     """Return a HumanEval-shaped problem: add(a, b) -> a + b."""
-    prompt = "def add(a, b):\n    \"\"\"Return the sum of a and b.\"\"\"\n"
+    prompt = 'def add(a, b):\n    """Return the sum of a and b."""\n'
     test = (
         "def check(candidate):\n"
         "    assert candidate(1, 2) == 3\n"
@@ -41,12 +38,8 @@ def _toy_problem(task_id: str = "toy/0") -> HumanEvalProblem:
 
 
 def _second_toy_problem() -> HumanEvalProblem:
-    prompt = "def double(x):\n    \"\"\"Return 2*x.\"\"\"\n"
-    test = (
-        "def check(candidate):\n"
-        "    assert candidate(2) == 4\n"
-        "    assert candidate(-3) == -6\n"
-    )
+    prompt = 'def double(x):\n    """Return 2*x."""\n'
+    test = "def check(candidate):\n    assert candidate(2) == 4\n    assert candidate(-3) == -6\n"
     return HumanEvalProblem(
         task_id="toy/1",
         prompt=prompt,
@@ -57,12 +50,8 @@ def _second_toy_problem() -> HumanEvalProblem:
 
 
 def _third_toy_problem() -> HumanEvalProblem:
-    prompt = "def ident(x):\n    \"\"\"Return x.\"\"\"\n"
-    test = (
-        "def check(candidate):\n"
-        "    assert candidate(7) == 7\n"
-        "    assert candidate('a') == 'a'\n"
-    )
+    prompt = 'def ident(x):\n    """Return x."""\n'
+    test = "def check(candidate):\n    assert candidate(7) == 7\n    assert candidate('a') == 'a'\n"
     return HumanEvalProblem(
         task_id="toy/2",
         prompt=prompt,
@@ -160,10 +149,7 @@ def test_score_single_syntax_error():
 
 def test_score_single_import_error():
     problem = _toy_problem()
-    completion = (
-        "    import nonexistent_package_xyz_12345\n"
-        "    return a + b\n"
-    )
+    completion = "    import nonexistent_package_xyz_12345\n    return a + b\n"
     res = score_single(problem, completion, timeout_seconds=5.0)
     assert res.passed is False
     # ModuleNotFoundError is a subclass of ImportError.
@@ -186,11 +172,7 @@ def test_score_single_assertion_captured():
 def test_score_single_benign_os_call_does_not_affect_parent():
     """A completion that touches os should run but not leak state upward."""
     problem = _toy_problem()
-    completion = (
-        "    import os\n"
-        "    _ = os.getenv('DOES_NOT_EXIST_123')\n"
-        "    return a + b\n"
-    )
+    completion = "    import os\n    _ = os.getenv('DOES_NOT_EXIST_123')\n    return a + b\n"
     res = score_single(problem, completion, timeout_seconds=5.0)
     assert res.passed is True
 
@@ -201,9 +183,7 @@ def test_score_single_subprocess_is_isolated_from_parent_fs(tmp_path: Path):
     problem = _toy_problem()
     marker = tmp_path / "child_created.txt"
     completion = (
-        f"    with open({str(marker)!r}, 'w') as f:\n"
-        "        f.write('hello')\n"
-        "    return a + b\n"
+        f"    with open({str(marker)!r}, 'w') as f:\n        f.write('hello')\n    return a + b\n"
     )
     res = score_single(problem, completion, timeout_seconds=5.0)
     assert res.passed is True
@@ -246,11 +226,9 @@ def test_score_problems_pass_at_k_k1_and_k2():
     p2 = _second_toy_problem()
     completions = [
         ["    return a + b\n", "    return a + b\n"],  # 2/2 correct
-        ["    return 2 * x\n", "    return x\n"],       # 1/2 correct
+        ["    return 2 * x\n", "    return x\n"],  # 1/2 correct
     ]
-    out = score_problems(
-        [p1, p2], completions, k_values=[1, 2], max_workers=2, timeout_seconds=5.0
-    )
+    out = score_problems([p1, p2], completions, k_values=[1, 2], max_workers=2, timeout_seconds=5.0)
     # p1: pass@1=1.0, pass@2=1.0. p2: pass@1=0.5, pass@2=1.0 (k=n, c>=1).
     assert out["pass@1"] == pytest.approx((1.0 + 0.5) / 2)
     assert out["pass@2"] == pytest.approx(1.0)
@@ -276,12 +254,8 @@ def test_score_problems_max_workers_parity():
 def test_score_problems_deterministic_on_same_inputs():
     p = _toy_problem("toy/0")
     completions = [["    return a + b\n", "    return a - b\n"]]
-    out_a = score_problems(
-        [p], completions, k_values=[1], max_workers=2, timeout_seconds=5.0
-    )
-    out_b = score_problems(
-        [p], completions, k_values=[1], max_workers=2, timeout_seconds=5.0
-    )
+    out_a = score_problems([p], completions, k_values=[1], max_workers=2, timeout_seconds=5.0)
+    out_b = score_problems([p], completions, k_values=[1], max_workers=2, timeout_seconds=5.0)
     assert out_a["pass@1"] == out_b["pass@1"]
     assert [t["n_correct"] for t in out_a["per_task"]] == [
         t["n_correct"] for t in out_b["per_task"]

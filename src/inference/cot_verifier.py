@@ -1,8 +1,8 @@
 """Chain-of-thought verification and step-level process reward for reasoning models."""
 
 import string
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -104,8 +104,8 @@ class StepVerifier(nn.Module):
         """
         x = self.embedding(token_ids)  # (B, T, d_model)
         for layer in self.encoder:
-            x = layer(x)              # (B, T, d_model)
-        pooled = x.mean(dim=1)        # (B, d_model)
+            x = layer(x)  # (B, T, d_model)
+        pooled = x.mean(dim=1)  # (B, d_model)
         scores = self.scorer(pooled).squeeze(-1)  # (B,)
         return scores
 
@@ -166,9 +166,7 @@ class ChainOfThoughtVerifier:
             "n_steps": float(len(steps)),
         }
 
-    def filter_by_quality(
-        self, candidates: list[str], gold: str, top_k: int = 1
-    ) -> list[str]:
+    def filter_by_quality(self, candidates: list[str], gold: str, top_k: int = 1) -> list[str]:
         """Score all candidates' CoT chains, return top_k by mean_step_score * answer_score."""
         if not candidates:
             return []
@@ -229,5 +227,5 @@ def compute_process_reward(
     rewards = []
     for i in range(n):
         exponent = n - i - 1
-        rewards.append(final_reward * (discount ** exponent))
+        rewards.append(final_reward * (discount**exponent))
     return rewards

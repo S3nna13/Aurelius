@@ -1,22 +1,23 @@
 """DARTS-style differentiable Neural Architecture Search."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DARTSConfig:
     """Configuration for DARTS NAS."""
+
     n_ops: int = 4
     n_cells: int = 4
     d_model: int = 64
@@ -27,6 +28,7 @@ class DARTSConfig:
 # ---------------------------------------------------------------------------
 # Mixed Operation
 # ---------------------------------------------------------------------------
+
 
 class MixedOp(nn.Module):
     """Weighted mixture of candidate Linear operations.
@@ -54,11 +56,13 @@ class MixedOp(nn.Module):
                 self.ops.append(nn.Linear(d_model, d_model))
             else:
                 # bottleneck: down then up
-                self.ops.append(nn.Sequential(
-                    nn.Linear(d_model, h),
-                    nn.ReLU(),
-                    nn.Linear(h, d_model),
-                ))
+                self.ops.append(
+                    nn.Sequential(
+                        nn.Linear(d_model, h),
+                        nn.ReLU(),
+                        nn.Linear(h, d_model),
+                    )
+                )
 
     def forward(self, x: Tensor, weights: Tensor) -> Tensor:
         """Weighted sum of op outputs.
@@ -76,6 +80,7 @@ class MixedOp(nn.Module):
 # ---------------------------------------------------------------------------
 # DARTS Cell
 # ---------------------------------------------------------------------------
+
 
 class DARTSCell(nn.Module):
     """Single searchable cell with one MixedOp and learnable arch_params."""
@@ -95,27 +100,30 @@ class DARTSCell(nn.Module):
 # DARTS Network
 # ---------------------------------------------------------------------------
 
+
 class DARTSNetwork(nn.Module):
     """Stack of DARTSCells forming a searchable network."""
 
     def __init__(self, config: DARTSConfig) -> None:
         super().__init__()
         self.config = config
-        self.cells = nn.ModuleList([
-            DARTSCell(config.d_model, config.n_ops, config.temperature)
-            for _ in range(config.n_cells)
-        ])
+        self.cells = nn.ModuleList(
+            [
+                DARTSCell(config.d_model, config.n_ops, config.temperature)
+                for _ in range(config.n_cells)
+            ]
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         for cell in self.cells:
             x = cell(x)
         return x
 
-    def arch_parameters(self) -> List[nn.Parameter]:
+    def arch_parameters(self) -> list[nn.Parameter]:
         """Return list of all architecture parameters from all cells."""
         return [cell.arch_params for cell in self.cells]
 
-    def discretize(self) -> List[int]:
+    def discretize(self) -> list[int]:
         """Return argmax op index per cell (the 'chosen' operation)."""
         return [int(cell.arch_params.argmax().item()) for cell in self.cells]
 
@@ -124,13 +132,14 @@ class DARTSNetwork(nn.Module):
 # DARTS Trainer
 # ---------------------------------------------------------------------------
 
+
 class DARTSTrainer:
     """Bi-level optimizer for DARTS: separates weight and arch param updates."""
 
     def __init__(
         self,
-        model_params: List[nn.Parameter],
-        arch_params: List[nn.Parameter],
+        model_params: list[nn.Parameter],
+        arch_params: list[nn.Parameter],
         config: DARTSConfig,
     ) -> None:
         self.weight_optimizer = torch.optim.Adam(model_params, lr=1e-3)
@@ -154,6 +163,7 @@ class DARTSTrainer:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def compute_arch_entropy(arch_params: Tensor, temperature: float = 1.0) -> Tensor:
     """Compute entropy of the architecture distribution.

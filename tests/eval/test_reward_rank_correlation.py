@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
-
 from aurelius.eval.reward_rank_correlation import (
     KendallTau,
     RankCorrelationMetrics,
@@ -12,10 +10,10 @@ from aurelius.eval.reward_rank_correlation import (
     SpearmanCorrelation,
 )
 
-
 # ---------------------------------------------------------------------------
 # SpearmanCorrelation tests
 # ---------------------------------------------------------------------------
+
 
 class TestSpearmanCorrelation:
     def setup_method(self):
@@ -61,6 +59,7 @@ class TestSpearmanCorrelation:
 # KendallTau tests
 # ---------------------------------------------------------------------------
 
+
 class TestKendallTau:
     def setup_method(self):
         self.kendall = KendallTau()
@@ -98,6 +97,7 @@ class TestKendallTau:
 # RankCorrelationMetrics tests
 # ---------------------------------------------------------------------------
 
+
 class TestRankCorrelationMetrics:
     def test_dataclass_fields_exist(self):
         """Dataclass must have all required fields."""
@@ -118,6 +118,7 @@ class TestRankCorrelationMetrics:
 # ---------------------------------------------------------------------------
 # RewardRankEvaluator tests
 # ---------------------------------------------------------------------------
+
 
 class TestRewardRankEvaluator:
     def setup_method(self):
@@ -143,16 +144,16 @@ class TestRewardRankEvaluator:
     def test_evaluate_pairwise_all_correct(self):
         """All preferred scores > rejected → accuracy = 1.0."""
         reward_scores = torch.tensor([0.1, 0.5, 0.9, 0.3, 0.8])
-        preferred = torch.tensor([2, 4, 1])   # scores: 0.9, 0.8, 0.5
-        rejected = torch.tensor([0, 3, 0])    # scores: 0.1, 0.3, 0.1
+        preferred = torch.tensor([2, 4, 1])  # scores: 0.9, 0.8, 0.5
+        rejected = torch.tensor([0, 3, 0])  # scores: 0.1, 0.3, 0.1
         acc = self.evaluator.evaluate_pairwise(reward_scores, preferred, rejected)
         assert abs(acc - 1.0) < 1e-6
 
     def test_evaluate_pairwise_all_wrong(self):
         """All rejected scores > preferred → accuracy = 0.0."""
         reward_scores = torch.tensor([0.9, 0.1, 0.8, 0.2])
-        preferred = torch.tensor([1, 3])   # scores: 0.1, 0.2
-        rejected = torch.tensor([0, 2])    # scores: 0.9, 0.8
+        preferred = torch.tensor([1, 3])  # scores: 0.1, 0.2
+        rejected = torch.tensor([0, 2])  # scores: 0.9, 0.8
         acc = self.evaluator.evaluate_pairwise(reward_scores, preferred, rejected)
         assert abs(acc - 0.0) < 1e-6
 

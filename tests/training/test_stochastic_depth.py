@@ -1,10 +1,12 @@
 """Tests for stochastic depth (layer dropout) module."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.stochastic_depth import (
     StochasticDepthConfig,
     StochasticDepthLayer,
@@ -14,13 +16,11 @@ from src.training.stochastic_depth import (
     stochastic_depth_forward,
     wrap_with_stochastic_depth,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _small_config() -> AureliusConfig:
     return AureliusConfig(
@@ -43,6 +43,7 @@ def _small_model() -> AureliusTransformer:
 # 1. StochasticDepthConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = StochasticDepthConfig()
     assert cfg.drop_rate == 0.1
@@ -55,6 +56,7 @@ def test_config_defaults():
 # 2. get_layer_drop_rates length == n_layers
 # ---------------------------------------------------------------------------
 
+
 def test_get_layer_drop_rates_length():
     cfg = StochasticDepthConfig(drop_rate=0.2, schedule="uniform")
     rates = get_layer_drop_rates(8, cfg)
@@ -64,6 +66,7 @@ def test_get_layer_drop_rates_length():
 # ---------------------------------------------------------------------------
 # 3. linear schedule: last > first
 # ---------------------------------------------------------------------------
+
 
 def test_get_layer_drop_rates_linear_last_greater():
     cfg = StochasticDepthConfig(drop_rate=0.3, schedule="linear")
@@ -75,6 +78,7 @@ def test_get_layer_drop_rates_linear_last_greater():
 # 4. uniform schedule: all equal
 # ---------------------------------------------------------------------------
 
+
 def test_get_layer_drop_rates_uniform_all_equal():
     cfg = StochasticDepthConfig(drop_rate=0.15, schedule="uniform")
     rates = get_layer_drop_rates(5, cfg)
@@ -84,6 +88,7 @@ def test_get_layer_drop_rates_uniform_all_equal():
 # ---------------------------------------------------------------------------
 # 5. clamp to max_drop_rate
 # ---------------------------------------------------------------------------
+
 
 def test_get_layer_drop_rates_clamps_to_max():
     cfg = StochasticDepthConfig(
@@ -98,6 +103,7 @@ def test_get_layer_drop_rates_clamps_to_max():
 # ---------------------------------------------------------------------------
 # 6. stochastic_depth_forward in eval mode always applies layer
 # ---------------------------------------------------------------------------
+
 
 def test_stochastic_depth_forward_eval_always_applies():
     """In eval mode (training=False), layer must always be applied."""
@@ -119,6 +125,7 @@ def test_stochastic_depth_forward_eval_always_applies():
 # 7. stochastic_depth_forward training drop_rate=1.0 always drops
 # ---------------------------------------------------------------------------
 
+
 def test_stochastic_depth_forward_training_drop_rate_1_always_drops():
     layer = nn.Linear(8, 8, bias=False)
     torch.nn.init.constant_(layer.weight, 2.0)
@@ -133,6 +140,7 @@ def test_stochastic_depth_forward_training_drop_rate_1_always_drops():
 # ---------------------------------------------------------------------------
 # 8. stochastic_depth_forward training drop_rate=0.0 always applies
 # ---------------------------------------------------------------------------
+
 
 def test_stochastic_depth_forward_training_drop_rate_0_always_applies():
     layer = nn.Linear(8, 8, bias=False)
@@ -149,6 +157,7 @@ def test_stochastic_depth_forward_training_drop_rate_0_always_applies():
 # 9. StochasticDepthLayer forward output shape
 # ---------------------------------------------------------------------------
 
+
 def test_stochastic_depth_layer_output_shape():
     inner = nn.Linear(16, 16, bias=False)
     sdl = StochasticDepthLayer(inner, drop_rate=0.3)
@@ -163,6 +172,7 @@ def test_stochastic_depth_layer_output_shape():
 # 10. wrap_with_stochastic_depth output length
 # ---------------------------------------------------------------------------
 
+
 def test_wrap_with_stochastic_depth_output_length():
     layers = nn.ModuleList([nn.Linear(8, 8) for _ in range(6)])
     cfg = StochasticDepthConfig(drop_rate=0.2, schedule="linear")
@@ -174,6 +184,7 @@ def test_wrap_with_stochastic_depth_output_length():
 # 11. compute_expected_depth all zeros -> n_layers
 # ---------------------------------------------------------------------------
 
+
 def test_compute_expected_depth_all_zeros():
     n = 10
     drop_rates = [0.0] * n
@@ -184,6 +195,7 @@ def test_compute_expected_depth_all_zeros():
 # ---------------------------------------------------------------------------
 # 12. StochasticDepthTrainer.train_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_stochastic_depth_trainer_train_step_keys():
     model = _small_model()

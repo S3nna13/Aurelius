@@ -4,8 +4,9 @@ Restricts each token to attend only to the W most recent tokens,
 producing additive masks compatible with scaled dot-product attention.
 """
 
-import torch
 from dataclasses import dataclass
+
+import torch
 
 
 @dataclass

@@ -37,10 +37,8 @@ ML frameworks.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Union
-
 import math
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -86,13 +84,9 @@ class YarnConfig:
 
     def __post_init__(self) -> None:
         if self.head_dim <= 0 or self.head_dim % 2 != 0:
-            raise ValueError(
-                f"head_dim must be a positive even integer, got {self.head_dim}"
-            )
+            raise ValueError(f"head_dim must be a positive even integer, got {self.head_dim}")
         if self.scaling_factor < 1.0:
-            raise ValueError(
-                f"scaling_factor must be >= 1.0, got {self.scaling_factor}"
-            )
+            raise ValueError(f"scaling_factor must be >= 1.0, got {self.scaling_factor}")
         if self.original_max_seq_len <= 0:
             raise ValueError(
                 f"original_max_seq_len must be positive, got {self.original_max_seq_len}"
@@ -100,9 +94,7 @@ class YarnConfig:
         if self.rope_theta <= 0:
             raise ValueError(f"rope_theta must be positive, got {self.rope_theta}")
         if self.beta_fast <= self.beta_slow:
-            raise ValueError(
-                f"beta_fast ({self.beta_fast}) must be > beta_slow ({self.beta_slow})"
-            )
+            raise ValueError(f"beta_fast ({self.beta_fast}) must be > beta_slow ({self.beta_slow})")
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +154,7 @@ def _find_correction_range(config: YarnConfig) -> tuple[int, int]:
 def yarn_linear_ramp_mask(
     config: YarnConfig,
     *,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     dtype: torch.dtype = torch.float32,
 ) -> Tensor:
     """Smooth transition mask over frequency bands, shape ``[head_dim//2]``.
@@ -190,7 +182,7 @@ def yarn_linear_ramp_mask(
 def yarn_inv_freq(
     config: YarnConfig,
     *,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     dtype: torch.dtype = torch.float32,
 ) -> Tensor:
     """Return the YaRN-adjusted inverse frequencies, shape ``[head_dim//2]``.
@@ -202,9 +194,7 @@ def yarn_inv_freq(
     half = config.head_dim // 2
     idx = torch.arange(0, half, device=device, dtype=dtype)
     # Plain RoPE frequencies: theta^(-2i/head_dim).
-    inv_freq_extrap = 1.0 / (
-        config.rope_theta ** (2.0 * idx / config.head_dim)
-    )
+    inv_freq_extrap = 1.0 / (config.rope_theta ** (2.0 * idx / config.head_dim))
     inv_freq_interp = inv_freq_extrap / config.scaling_factor
     mask = yarn_linear_ramp_mask(config, device=device, dtype=dtype)
     # mask=0 -> extrap, mask=1 -> interp.
@@ -221,9 +211,9 @@ def _mscale_scalar(config: YarnConfig) -> float:
 
 def yarn_mscale(
     config: YarnConfig,
-    position: Union[int, Tensor],
+    position: int | Tensor,
     *,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     dtype: torch.dtype = torch.float32,
 ) -> Tensor:
     """Return the attention-temperature scale at ``position``.
@@ -263,7 +253,7 @@ def build_yarn_rotary_cache(
     config: YarnConfig,
     seq_len: int,
     *,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     dtype: torch.dtype = torch.float32,
 ) -> tuple[Tensor, Tensor]:
     """Return ``(cos, sin)`` rotary caches, each of shape ``[seq_len, head_dim]``.
@@ -316,13 +306,9 @@ def apply_rotary(x: Tensor, cos: Tensor, sin: Tensor) -> Tensor:
     Returns a tensor of the same shape and dtype as ``x``.
     """
     if x.shape[-1] != cos.shape[-1]:
-        raise ValueError(
-            f"head_dim mismatch: x has D={x.shape[-1]}, cos has D={cos.shape[-1]}"
-        )
+        raise ValueError(f"head_dim mismatch: x has D={x.shape[-1]}, cos has D={cos.shape[-1]}")
     if x.shape[-2] > cos.shape[-2]:
-        raise ValueError(
-            f"seq_len mismatch: x has S={x.shape[-2]}, cos has S={cos.shape[-2]}"
-        )
+        raise ValueError(f"seq_len mismatch: x has S={x.shape[-2]}, cos has S={cos.shape[-2]}")
 
     s = x.shape[-2]
     cos_s = cos[:s].to(dtype=x.dtype, device=x.device)

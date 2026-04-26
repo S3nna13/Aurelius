@@ -23,8 +23,6 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
 
 QUEUED = "queued"
 PREFILL = "prefill"
@@ -37,20 +35,20 @@ class InferenceRequest:
     """A single inference request tracked by the scheduler."""
 
     request_id: str
-    prompt_tokens: List[int]
+    prompt_tokens: list[int]
     max_new_tokens: int
     eos_token_id: int
     state: str = QUEUED
-    generated: List[int] = field(default_factory=list)
+    generated: list[int] = field(default_factory=list)
 
 
 @dataclass
 class BatchStep:
     """A single iteration-level batch to be executed by the caller."""
 
-    request_ids: List[str]
-    input_ids: List[List[int]]
-    is_prefill: List[bool]
+    request_ids: list[str]
+    input_ids: list[list[int]]
+    is_prefill: list[bool]
 
 
 class ContinuousBatchingScheduler:
@@ -73,9 +71,9 @@ class ContinuousBatchingScheduler:
             raise ValueError("max_seq_len must be positive")
         self.max_batch_size = max_batch_size
         self.max_seq_len = max_seq_len
-        self._queue: "OrderedDict[str, InferenceRequest]" = OrderedDict()
-        self._active: "OrderedDict[str, InferenceRequest]" = OrderedDict()
-        self._completed: "OrderedDict[str, InferenceRequest]" = OrderedDict()
+        self._queue: OrderedDict[str, InferenceRequest] = OrderedDict()
+        self._active: OrderedDict[str, InferenceRequest] = OrderedDict()
+        self._completed: OrderedDict[str, InferenceRequest] = OrderedDict()
         self._known_ids: set = set()
 
     # ------------------------------------------------------------------
@@ -86,9 +84,7 @@ class ContinuousBatchingScheduler:
         if not isinstance(request, InferenceRequest):
             raise TypeError("request must be an InferenceRequest")
         if request.request_id in self._known_ids:
-            raise ValueError(
-                f"duplicate request_id: {request.request_id!r}"
-            )
+            raise ValueError(f"duplicate request_id: {request.request_id!r}")
         if not request.prompt_tokens:
             raise ValueError("prompt_tokens must be non-empty")
         if request.max_new_tokens <= 0:
@@ -106,7 +102,7 @@ class ContinuousBatchingScheduler:
             req.state = PREFILL
             self._active[rid] = req
 
-    def build_step(self) -> Optional[BatchStep]:
+    def build_step(self) -> BatchStep | None:
         """Construct the next iteration-level batch.
 
         Returns ``None`` when there are no active requests and the queue is
@@ -116,9 +112,9 @@ class ContinuousBatchingScheduler:
         if not self._active:
             return None
 
-        request_ids: List[str] = []
-        input_ids: List[List[int]] = []
-        is_prefill: List[bool] = []
+        request_ids: list[str] = []
+        input_ids: list[list[int]] = []
+        is_prefill: list[bool] = []
 
         for rid, req in self._active.items():
             if req.state == PREFILL:
@@ -128,16 +124,12 @@ class ContinuousBatchingScheduler:
             elif req.state == DECODING:
                 # Feed only the most recently generated token.
                 if not req.generated:
-                    raise RuntimeError(
-                        f"request {rid!r} is decoding but has no generated tokens"
-                    )
+                    raise RuntimeError(f"request {rid!r} is decoding but has no generated tokens")
                 request_ids.append(rid)
                 input_ids.append([req.generated[-1]])
                 is_prefill.append(False)
             else:
-                raise RuntimeError(
-                    f"request {rid!r} in unexpected state {req.state!r}"
-                )
+                raise RuntimeError(f"request {rid!r} in unexpected state {req.state!r}")
 
         return BatchStep(
             request_ids=request_ids,
@@ -148,7 +140,7 @@ class ContinuousBatchingScheduler:
     # ------------------------------------------------------------------
     # Token ingestion
     # ------------------------------------------------------------------
-    def receive_tokens(self, request_id_to_token: Dict[str, int]) -> None:
+    def receive_tokens(self, request_id_to_token: dict[str, int]) -> None:
         """Apply freshly sampled tokens to their active requests."""
         if not isinstance(request_id_to_token, dict):
             raise TypeError("request_id_to_token must be a dict")
@@ -156,9 +148,7 @@ class ContinuousBatchingScheduler:
         # Validate all ids first; do not mutate on error.
         for rid in request_id_to_token:
             if rid not in self._active:
-                raise KeyError(
-                    f"unknown or inactive request_id: {rid!r}"
-                )
+                raise KeyError(f"unknown or inactive request_id: {rid!r}")
 
         for rid, token in request_id_to_token.items():
             req = self._active[rid]
@@ -179,13 +169,13 @@ class ContinuousBatchingScheduler:
     # ------------------------------------------------------------------
     # Completion drain & stats
     # ------------------------------------------------------------------
-    def completed(self) -> List[InferenceRequest]:
+    def completed(self) -> list[InferenceRequest]:
         """Drain and return all completed requests in completion order."""
         drained = list(self._completed.values())
         self._completed.clear()
         return drained
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         return {
             "active": len(self._active),
             "queued": len(self._queue),

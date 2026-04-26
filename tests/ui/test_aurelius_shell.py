@@ -72,7 +72,9 @@ def test_shell_skill_discovery_attachment_and_execute_command_surface(tmp_path):
         task_prompt="Attach discovered skills.",
         mode="review",
     )
-    updated = shell.attach_skill_ids(thread.thread_id, [discovered[0].skill_id], roots=[tmp_path / "skills"])
+    updated = shell.attach_skill_ids(
+        thread.thread_id, [discovered[0].skill_id], roots=[tmp_path / "skills"]
+    )
 
     assert updated.skills[0].skill_id == "demo-skill"
     assert "Demo Skill" in shell.render_thread_status(updated.thread_id)
@@ -132,7 +134,10 @@ def test_shell_capability_and_journal_commands_route_through_runtime_summaries(m
     monkeypatch.setattr(
         shell,
         "journal_compaction_summary",
-        lambda branch_id=None, compaction_id=None: {"branch_id": branch_id, "compaction_id": compaction_id},
+        lambda branch_id=None, compaction_id=None: {
+            "branch_id": branch_id,
+            "compaction_id": compaction_id,
+        },
     )
 
     capability_payload = json.loads(shell.execute_command("capability summary"))

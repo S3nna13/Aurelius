@@ -1,9 +1,10 @@
 """Tests for screenshot_analyzer — screen content analysis."""
+
 from __future__ import annotations
 
 from src.computer_use.screenshot_analyzer import (
-    ScreenshotAnalyzer,
     ScreenRegion,
+    ScreenshotAnalyzer,
     TextElement,
     UIElement,
     find_text_in_regions,

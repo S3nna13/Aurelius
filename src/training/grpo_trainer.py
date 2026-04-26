@@ -8,19 +8,20 @@ estimate advantages:
 - GRPOTrainer           -- full train step: sample -> reward -> normalize -> update
 - RewardFunction        -- abstract base + LengthReward + UniqueTokenReward
 """
+
 from __future__ import annotations
 
 import abc
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # GroupRewardNormalizer
 # ---------------------------------------------------------------------------
+
 
 class GroupRewardNormalizer:
     """Normalize rewards within a group to produce advantages.
@@ -51,15 +52,13 @@ class GroupRewardNormalizer:
 
         # Batch -- shape (B, G)
         mean = rewards.mean(dim=1, keepdim=True)
-        std  = rewards.std(dim=1, keepdim=True, unbiased=False)
+        std = rewards.std(dim=1, keepdim=True, unbiased=False)
         mask = (std < self.eps).expand_as(rewards)
         advantages = (rewards - mean) / (std + self.eps)
         advantages = advantages.masked_fill(mask, 0.0)
         return advantages
 
-    def clip_advantages(
-        self, advantages: torch.Tensor, clip_range: float = 10.0
-    ) -> torch.Tensor:
+    def clip_advantages(self, advantages: torch.Tensor, clip_range: float = 10.0) -> torch.Tensor:
         """Clamp advantages to [-clip_range, clip_range]."""
         return advantages.clamp(-clip_range, clip_range)
 
@@ -67,6 +66,7 @@ class GroupRewardNormalizer:
 # ---------------------------------------------------------------------------
 # GRPOLoss
 # ---------------------------------------------------------------------------
+
 
 class GRPOLoss(nn.Module):
     """Core GRPO policy-gradient loss.
@@ -78,15 +78,15 @@ class GRPOLoss(nn.Module):
 
     def __init__(self, clip_eps: float = 0.2, kl_coeff: float = 0.01) -> None:
         super().__init__()
-        self.clip_eps  = clip_eps
-        self.kl_coeff  = kl_coeff
+        self.clip_eps = clip_eps
+        self.kl_coeff = kl_coeff
 
     def forward(
         self,
-        policy_logps:  torch.Tensor,
-        ref_logps:     torch.Tensor,
-        advantages:    torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        policy_logps: torch.Tensor,
+        ref_logps: torch.Tensor,
+        advantages: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute GRPO loss.
 
         Args:
@@ -110,9 +110,7 @@ class GRPOLoss(nn.Module):
 
         total_loss = policy_loss + kl_penalty
 
-        clip_fraction = torch.mean(
-            ((ratio - clipped_ratio).abs() > 1e-6).float()
-        )
+        clip_fraction = torch.mean(((ratio - clipped_ratio).abs() > 1e-6).float())
 
         return total_loss, kl_penalty.detach(), clip_fraction.detach()
 
@@ -120,6 +118,7 @@ class GRPOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # GroupSampler
 # ---------------------------------------------------------------------------
+
 
 class GroupSampler:
     """Generate G independent responses per prompt via autoregressive sampling.
@@ -132,20 +131,20 @@ class GroupSampler:
 
     def __init__(
         self,
-        model:       nn.Module,
-        group_size:  int   = 4,
+        model: nn.Module,
+        group_size: int = 4,
         temperature: float = 1.0,
     ) -> None:
-        self.model       = model
-        self.group_size  = group_size
+        self.model = model
+        self.group_size = group_size
         self.temperature = temperature
 
     @torch.no_grad()
     def sample_group(
         self,
-        input_ids:      torch.Tensor,
+        input_ids: torch.Tensor,
         max_new_tokens: int = 20,
-    ) -> Tuple[List[torch.Tensor], torch.Tensor]:
+    ) -> tuple[list[torch.Tensor], torch.Tensor]:
         """Sample group_size responses from the model.
 
         Args:
@@ -161,12 +160,12 @@ class GroupSampler:
 
         device = input_ids.device
 
-        responses: List[torch.Tensor] = []
-        log_probs_list: List[torch.Tensor] = []
+        responses: list[torch.Tensor] = []
+        log_probs_list: list[torch.Tensor] = []
 
         for _ in range(self.group_size):
-            cur_ids  = input_ids.clone()
-            new_toks: List[int] = []
+            cur_ids = input_ids.clone()
+            new_toks: list[int] = []
             cumulative_logp = torch.tensor(0.0, device=device)
 
             for _step in range(max_new_tokens):
@@ -174,7 +173,7 @@ class GroupSampler:
                 next_logits = logits[:, -1, :]
                 if self.temperature != 1.0:
                     next_logits = next_logits / self.temperature
-                probs    = F.softmax(next_logits, dim=-1)
+                probs = F.softmax(next_logits, dim=-1)
                 next_tok = torch.multinomial(probs, num_samples=1)
                 token_id = next_tok.item()
 
@@ -184,9 +183,7 @@ class GroupSampler:
                 new_toks.append(token_id)
                 cur_ids = torch.cat([cur_ids, next_tok], dim=1)
 
-            responses.append(
-                torch.tensor(new_toks, dtype=torch.long, device=device)
-            )
+            responses.append(torch.tensor(new_toks, dtype=torch.long, device=device))
             log_probs_list.append(cumulative_logp)
 
         log_probs = torch.stack(log_probs_list)
@@ -196,6 +193,7 @@ class GroupSampler:
 # ---------------------------------------------------------------------------
 # RewardFunction
 # ---------------------------------------------------------------------------
+
 
 class RewardFunction(abc.ABC):
     """Abstract base class for reward functions."""
@@ -249,6 +247,7 @@ class UniqueTokenReward(RewardFunction):
 # GRPOTrainer
 # ---------------------------------------------------------------------------
 
+
 class GRPOTrainer:
     """Full GRPO training loop -- one step per call.
 
@@ -265,19 +264,19 @@ class GRPOTrainer:
 
     def __init__(
         self,
-        policy_model:   nn.Module,
-        ref_model:      nn.Module,
-        optimizer:      torch.optim.Optimizer,
-        group_size:     int   = 4,
-        max_new_tokens: int   = 20,
-        clip_eps:       float = 0.2,
-        kl_coeff:       float = 0.01,
-        temperature:    float = 1.0,
+        policy_model: nn.Module,
+        ref_model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        group_size: int = 4,
+        max_new_tokens: int = 20,
+        clip_eps: float = 0.2,
+        kl_coeff: float = 0.01,
+        temperature: float = 1.0,
     ) -> None:
-        self.policy_model   = policy_model
-        self.ref_model      = ref_model
-        self.optimizer      = optimizer
-        self.group_size     = group_size
+        self.policy_model = policy_model
+        self.ref_model = ref_model
+        self.optimizer = optimizer
+        self.group_size = group_size
         self.max_new_tokens = max_new_tokens
 
         # Freeze reference model completely
@@ -285,14 +284,14 @@ class GRPOTrainer:
             param.requires_grad_(False)
         self.ref_model.eval()
 
-        self.sampler    = GroupSampler(policy_model, group_size, temperature)
+        self.sampler = GroupSampler(policy_model, group_size, temperature)
         self.normalizer = GroupRewardNormalizer()
-        self.loss_fn    = GRPOLoss(clip_eps=clip_eps, kl_coeff=kl_coeff)
+        self.loss_fn = GRPOLoss(clip_eps=clip_eps, kl_coeff=kl_coeff)
 
     def _sequence_log_prob(
         self,
-        model:        nn.Module,
-        input_ids:    torch.Tensor,
+        model: nn.Module,
+        input_ids: torch.Tensor,
         response_ids: torch.Tensor,
     ) -> torch.Tensor:
         """Sum of per-token log-probs for response_ids given input_ids.
@@ -311,11 +310,11 @@ class GRPOTrainer:
         logits = model(full)
 
         T_prompt = input_ids.size(1)
-        T_new    = response_ids.size(0)
+        T_new = response_ids.size(0)
 
-        pred_logits = logits[:, T_prompt - 1: T_prompt - 1 + T_new, :]
-        log_probs   = F.log_softmax(pred_logits, dim=-1)
-        targets     = response_ids.unsqueeze(0).unsqueeze(-1)
+        pred_logits = logits[:, T_prompt - 1 : T_prompt - 1 + T_new, :]
+        log_probs = F.log_softmax(pred_logits, dim=-1)
+        targets = response_ids.unsqueeze(0).unsqueeze(-1)
         token_logps = log_probs.gather(2, targets).squeeze(-1)
         return token_logps.sum()
 
@@ -323,7 +322,7 @@ class GRPOTrainer:
         self,
         input_ids: torch.Tensor,
         reward_fn: Callable[[torch.Tensor], float],
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Perform one GRPO training step.
 
         Args:
@@ -338,14 +337,11 @@ class GRPOTrainer:
             input_ids = input_ids.unsqueeze(0)
 
         # 1. Sample G responses
-        responses, _sample_logps = self.sampler.sample_group(
-            input_ids, self.max_new_tokens
-        )
+        responses, _sample_logps = self.sampler.sample_group(input_ids, self.max_new_tokens)
 
         # 2. Compute rewards
         rewards_list = [reward_fn(r) for r in responses]
-        rewards = torch.tensor(rewards_list, dtype=torch.float32,
-                               device=input_ids.device)
+        rewards = torch.tensor(rewards_list, dtype=torch.float32, device=input_ids.device)
 
         # 3. Normalize rewards -> advantages, shape (G,) -> (1, G)
         advantages = self.normalizer.normalize(rewards)
@@ -355,8 +351,8 @@ class GRPOTrainer:
         # 4. Re-compute log-probs with gradient graph
         self.policy_model.train()
 
-        policy_logps_list: List[torch.Tensor] = []
-        ref_logps_list:    List[torch.Tensor] = []
+        policy_logps_list: list[torch.Tensor] = []
+        ref_logps_list: list[torch.Tensor] = []
 
         for resp in responses:
             plp = self._sequence_log_prob(self.policy_model, input_ids, resp)
@@ -367,20 +363,18 @@ class GRPOTrainer:
             ref_logps_list.append(rlp)
 
         policy_logps = torch.stack(policy_logps_list).unsqueeze(0)
-        ref_logps    = torch.stack(ref_logps_list).unsqueeze(0)
+        ref_logps = torch.stack(ref_logps_list).unsqueeze(0)
 
         # 5. Loss, backward, step
         self.optimizer.zero_grad()
-        loss, kl_penalty, clip_fraction = self.loss_fn(
-            policy_logps, ref_logps, advantages
-        )
+        loss, kl_penalty, clip_fraction = self.loss_fn(policy_logps, ref_logps, advantages)
         loss.backward()
         self.optimizer.step()
 
         return {
-            "loss":          loss.item(),
-            "kl_penalty":    kl_penalty.item(),
+            "loss": loss.item(),
+            "kl_penalty": kl_penalty.item(),
             "clip_fraction": clip_fraction.item(),
-            "mean_reward":   rewards.mean().item(),
-            "reward_std":    rewards.std(unbiased=False).item(),
+            "mean_reward": rewards.mean().item(),
+            "reward_std": rewards.std(unbiased=False).item(),
         }

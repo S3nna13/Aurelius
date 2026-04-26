@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 _FIELD_RE = re.compile(r"^\s*([A-Za-z_ ]+)\s*:\s*(.+?)\s*$", re.MULTILINE)
 
 
@@ -19,7 +18,10 @@ class WrittenEval:
 
 def parse_written_eval(text: str) -> WrittenEval:
     """Parse a structured written-eval text block."""
-    fields = {key.strip().lower().replace(" ", "_"): value.strip() for key, value in _FIELD_RE.findall(text)}
+    fields = {
+        key.strip().lower().replace(" ", "_"): value.strip()
+        for key, value in _FIELD_RE.findall(text)
+    }
     required = ("verdict", "rationale", "confidence", "rubric_score")
     missing = [key for key in required if key not in fields]
     if missing:
@@ -36,7 +38,11 @@ def weighted_verdict_score(evals: list[WrittenEval], positive_label: str = "pass
     """Average confidence-weighted support for a positive verdict."""
     if not evals:
         return 0.0
-    weighted = [evaluation.confidence for evaluation in evals if evaluation.verdict.lower() == positive_label]
+    weighted = [
+        evaluation.confidence
+        for evaluation in evals
+        if evaluation.verdict.lower() == positive_label
+    ]
     return sum(weighted) / len(evals)
 
 

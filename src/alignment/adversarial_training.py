@@ -9,10 +9,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AdversarialConfig:
@@ -30,6 +30,7 @@ class AdversarialConfig:
 # ---------------------------------------------------------------------------
 # Safety Classifier Head
 # ---------------------------------------------------------------------------
+
 
 class SafetyClassifierHead(nn.Module):
     """Binary safety classifier using EmbeddingBag over token ids."""
@@ -55,6 +56,7 @@ class SafetyClassifierHead(nn.Module):
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def generator_attack_loss(
     classifier: SafetyClassifierHead,
@@ -90,6 +92,7 @@ def classifier_defense_loss(
 # Greedy generation
 # ---------------------------------------------------------------------------
 
+
 def greedy_sample(model: nn.Module, input_ids: Tensor, max_new: int) -> Tensor:
     """Autoregressively generate max_new tokens using greedy decoding.
 
@@ -119,6 +122,7 @@ def greedy_sample(model: nn.Module, input_ids: Tensor, max_new: int) -> Tensor:
 # Adversarial Trainer
 # ---------------------------------------------------------------------------
 
+
 class AdversarialTrainer:
     """Orchestrates the adversarial training loop between generator and classifier.
 
@@ -140,12 +144,8 @@ class AdversarialTrainer:
         self.classifier = classifier
         self.config = config
 
-        self.gen_optimizer = torch.optim.Adam(
-            generator.parameters(), lr=config.attack_lr
-        )
-        self.cls_optimizer = torch.optim.Adam(
-            classifier.parameters(), lr=config.defense_lr
-        )
+        self.gen_optimizer = torch.optim.Adam(generator.parameters(), lr=config.attack_lr)
+        self.cls_optimizer = torch.optim.Adam(classifier.parameters(), lr=config.defense_lr)
 
     def _soft_attack_forward(self, prompt_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Soft differentiable attack forward.
@@ -155,7 +155,6 @@ class AdversarialTrainer:
             generated_ids: (1, max_new) discrete tokens (detached)
         """
         max_new = self.config.max_new_tokens
-        device = prompt_ids.device
 
         generated_ids = greedy_sample(self.generator, prompt_ids, max_new)
 
@@ -169,7 +168,7 @@ class AdversarialTrainer:
         probs = torch.softmax(last_logits, dim=-1)
 
         emb_weight = self.classifier.proj.weight
-        soft_emb = (probs.unsqueeze(0) @ emb_weight)
+        soft_emb = probs.unsqueeze(0) @ emb_weight
         attack_logits = self.classifier.head(soft_emb)
 
         return attack_logits, generated_ids
@@ -222,7 +221,9 @@ class AdversarialTrainer:
             unsafe_logits = self.classifier(unsafe_ids)
 
             safe_labels = torch.ones(safe_ids.size(0), dtype=torch.long, device=safe_ids.device)
-            unsafe_labels = torch.zeros(unsafe_ids.size(0), dtype=torch.long, device=unsafe_ids.device)
+            unsafe_labels = torch.zeros(
+                unsafe_ids.size(0), dtype=torch.long, device=unsafe_ids.device
+            )
 
             all_logits = torch.cat([safe_logits, unsafe_logits], dim=0)
             all_labels = torch.cat([safe_labels, unsafe_labels], dim=0)
@@ -256,6 +257,7 @@ class AdversarialTrainer:
 # ---------------------------------------------------------------------------
 # Evaluation metrics
 # ---------------------------------------------------------------------------
+
 
 def compute_adversarial_metrics(
     classifier: SafetyClassifierHead,

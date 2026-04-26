@@ -12,8 +12,9 @@ import ipaddress
 import json
 import logging
 import webbrowser
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Callable, List, Optional, Union
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -65,14 +66,13 @@ def _validate_upstream_url(url: str) -> None:
     if not parsed.hostname:
         raise ValueError(f"upstream URL missing host: {url!r}")
     if _is_private_or_reserved_ip(parsed.hostname):
-        raise ValueError(
-            f"upstream URL points to a private or reserved IP: {parsed.hostname}"
-        )
+        raise ValueError(f"upstream URL points to a private or reserved IP: {parsed.hostname}")
+
 
 logger = logging.getLogger(__name__)
 
-from .auth_middleware import AuthMiddleware
-from .rate_limiter import RateLimiterChain, TokenBucketLimiter
+from .auth_middleware import AuthMiddleware  # noqa: E402
+from .rate_limiter import RateLimiterChain, TokenBucketLimiter  # noqa: E402
 
 HTML_TEMPLATE: str = """<!DOCTYPE html>
 <html lang="en">
@@ -298,9 +298,7 @@ def _normalize_history(history: Any) -> list[dict[str, str]]:
         if not isinstance(content, str):
             raise ValueError(f"history[{index}].content must be a string")
         if len(content) > _MAX_MESSAGE_CHARS:
-            raise ValueError(
-                f"history[{index}].content exceeds {_MAX_MESSAGE_CHARS} characters"
-            )
+            raise ValueError(f"history[{index}].content exceeds {_MAX_MESSAGE_CHARS} characters")
         normalized.append({"role": role, "content": content})
     return normalized
 
@@ -316,7 +314,7 @@ def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
             "stream": False,
         }
     ).encode("utf-8")
-    request = Request(
+    request = Request(  # noqa: S310
         api_url,
         data=request_body,
         headers={
@@ -326,7 +324,7 @@ def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
         method="POST",
     )
     try:
-        with urlopen(request, timeout=30) as response:  # nosec B310 - scheme validated by _validate_upstream_url
+        with urlopen(request, timeout=30) as response:  # nosec B310 - scheme validated by _validate_upstream_url  # noqa: S310
             raw = response.read()
     except HTTPError as exc:
         raise RuntimeError(f"upstream API request failed with HTTP {exc.code}") from exc
@@ -495,11 +493,11 @@ class WebUIServer(HTTPServer):
         self,
         host: str,
         port: int,
-        generate_fn: Callable[[str, List], str],
+        generate_fn: Callable[[str, list], str],
         *,
         api_url: str | None = None,
-        auth_middleware: Optional[AuthMiddleware] = None,
-        rate_limiter: Optional[Union[TokenBucketLimiter, RateLimiterChain]] = None,
+        auth_middleware: AuthMiddleware | None = None,
+        rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
         bind_and_activate: bool = True,
     ):
         super().__init__(
@@ -513,20 +511,21 @@ class WebUIServer(HTTPServer):
         self.rate_limiter = rate_limiter
 
 
-def make_mock_generate_fn() -> Callable[[str, List], str]:
-    def _generate(message: str, history: List) -> str:
+def make_mock_generate_fn() -> Callable[[str, list], str]:
+    def _generate(message: str, history: list) -> str:
         return f"You said: {message}"
+
     return _generate
 
 
 def create_ui_server(
     host: str,
     port: int,
-    generate_fn: Callable[[str, List], str],
+    generate_fn: Callable[[str, list], str],
     *,
     api_url: str | None = None,
-    auth_middleware: Optional[AuthMiddleware] = None,
-    rate_limiter: Optional[Union[TokenBucketLimiter, RateLimiterChain]] = None,
+    auth_middleware: AuthMiddleware | None = None,
+    rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
     bind_and_activate: bool = True,
 ) -> WebUIServer:
     return WebUIServer(
@@ -545,10 +544,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Aurelius browser chat UI")
     parser.add_argument("--port", type=int, default=7860, help="Port to listen on (default: 7860)")
-    parser.add_argument("--host", default="127.0.0.1",
-                        help="Interface to bind (default: 127.0.0.1 loopback; use 0.0.0.0 to expose on all interfaces)")
-    parser.add_argument("--api-url", default="http://localhost:8080/v1/chat/completions",
-                        help="Upstream API URL (default: http://localhost:8080/v1/chat/completions)")
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Interface to bind (default: 127.0.0.1 loopback; use 0.0.0.0 to expose on all interfaces)",  # noqa: E501
+    )
+    parser.add_argument(
+        "--api-url",
+        default="http://localhost:8080/v1/chat/completions",
+        help="Upstream API URL (default: http://localhost:8080/v1/chat/completions)",
+    )
     args = parser.parse_args()
 
     # Default bind is loopback only (CWE-605). Operators must pass --host 0.0.0.0

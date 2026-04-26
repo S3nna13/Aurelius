@@ -1,31 +1,39 @@
 """Tests for native DPO implementation."""
+
 import copy
 import math
+
 import pytest
 import torch
-import torch.nn.functional as F
+
 from src.alignment.dpo import (
-    compute_log_probs,
-    dpo_loss,
     DPOConfig,
     DPOTrainer,
-    compute_reward_margin,
     _dpo_loss_from_logps,
+    compute_log_probs,
+    compute_reward_margin,
+    dpo_loss,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures and helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -43,13 +51,14 @@ def _make_batch(batch_size=2, seq_len=16, vocab_size=256):
     input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
     # Mask: first 8 tokens are prompt (0), last 8 are response (1)
     mask = torch.zeros(batch_size, seq_len, dtype=torch.long)
-    mask[:, seq_len // 2:] = 1
+    mask[:, seq_len // 2 :] = 1
     return input_ids, mask
 
 
 # ---------------------------------------------------------------------------
 # Legacy tests (preserved for backward compatibility)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_log_probs_shape(small_model):
     """compute_log_probs must return (B,) shaped tensor."""
@@ -108,10 +117,7 @@ def test_dpo_loss_backward(small_model):
     loss = dpo_loss(small_model, reference, chosen_ids, rejected_ids, chosen_mask, rejected_mask)
     loss.backward()
 
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in small_model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum() > 0 for p in small_model.parameters())
     assert has_grad, "No gradients flowed through policy"
 
 
@@ -136,6 +142,7 @@ def test_reference_frozen(small_model):
 # DPOConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_config_defaults():
     """DPOConfig should have correct default values."""
     cfg = DPOConfig()
@@ -157,6 +164,7 @@ def test_dpo_config_custom():
 # ---------------------------------------------------------------------------
 # compute_log_probs tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_log_probs_returns_batch_tensor(small_model):
     """compute_log_probs returns a 1D tensor with one entry per batch item."""
@@ -194,15 +202,16 @@ def test_compute_log_probs_zero_mask_gives_zero(small_model):
 # dpo_loss (new logps-based functional API) tests
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_sigmoid_preferred_gt_rejected_lower_loss():
     """Sigmoid DPO loss: when chosen margin > rejected margin, loss is lower."""
     cfg = DPOConfig(beta=0.1, loss_type="sigmoid")
     # Case 1: clear preference signal
     loss_good, _ = _dpo_loss_from_logps(
-        torch.tensor([-1.0]),   # policy_chosen
-        torch.tensor([-5.0]),   # policy_rejected
-        torch.tensor([-2.0]),   # ref_chosen
-        torch.tensor([-2.0]),   # ref_rejected
+        torch.tensor([-1.0]),  # policy_chosen
+        torch.tensor([-5.0]),  # policy_rejected
+        torch.tensor([-2.0]),  # ref_chosen
+        torch.tensor([-2.0]),  # ref_rejected
         cfg,
     )
     # Case 2: reversed preference signal
@@ -226,10 +235,10 @@ def test_dpo_loss_hinge_margin_satisfied_gives_zero():
     # Need margin = beta*(chosen_diff - rejected_diff) >= 1
     # So with beta=0.1, need (chosen_diff - rejected_diff) >= 10
     loss, _ = _dpo_loss_from_logps(
-        torch.tensor([-1.0]),   # policy_chosen
+        torch.tensor([-1.0]),  # policy_chosen
         torch.tensor([-20.0]),  # policy_rejected
-        torch.tensor([-1.0]),   # ref_chosen (chosen_diff = 0)
-        torch.tensor([-9.0]),   # ref_rejected (rejected_diff = -11)
+        torch.tensor([-1.0]),  # ref_chosen (chosen_diff = 0)
+        torch.tensor([-9.0]),  # ref_rejected (rejected_diff = -11)
         # margin = 0.1 * (0 - (-11)) = 1.1 > 1, loss = max(0, 1-1.1) = 0
         cfg,
     )
@@ -331,6 +340,7 @@ def test_dpo_loss_reference_free_mode():
 # DPOTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_trainer_train_step_returns_required_keys(small_model, ref_model):
     """DPOTrainer.train_step must return dict with required keys."""
     cfg = DPOConfig(beta=0.1, loss_type="sigmoid")
@@ -401,6 +411,7 @@ def test_dpo_trainer_ipo_loss_type(small_model, ref_model):
 # ---------------------------------------------------------------------------
 # compute_reward_margin tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reward_margin_positive_when_chosen_better():
     """compute_reward_margin should be positive when chosen_logps > rejected_logps."""

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -21,7 +19,7 @@ class KGConfig:
     n_entities: int = 100
     n_relations: int = 10
     embedding_dim: int = 64
-    scoring_fn: str = "transe"    # "transe" | "rotate" | "distmult"
+    scoring_fn: str = "transe"  # "transe" | "rotate" | "distmult"
     margin: float = 1.0
     neg_samples: int = 10
     learning_rate: float = 1e-3
@@ -241,8 +239,7 @@ class KGTrainer:
 
         # L2 regularization on embeddings
         reg = self.config.regularization * (
-            self.entity_emb.emb.weight.norm(p=2) ** 2
-            + self.relation_emb.emb.weight.norm(p=2) ** 2
+            self.entity_emb.emb.weight.norm(p=2) ** 2 + self.relation_emb.emb.weight.norm(p=2) ** 2
         )
         total_loss = loss + reg
 

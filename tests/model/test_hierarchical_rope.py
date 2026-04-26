@@ -1,11 +1,11 @@
 """Tests for hierarchical_rope.py — Hierarchical Rotary Position Embeddings."""
 
-import torch
 import pytest
+import torch
 
 from src.model.hierarchical_rope import (
-    HierarchicalRoPEConfig,
     HierarchicalRoPEAttention,
+    HierarchicalRoPEConfig,
     RoPEScaleScheduler,
     apply_hierarchical_rope,
     apply_rope_single_scale,
@@ -101,8 +101,7 @@ def test_apply_hierarchical_rope_shape():
 # 8. apply_hierarchical_rope ≠ single scale (with n_scales > 1)
 # ---------------------------------------------------------------------------
 def test_apply_hierarchical_rope_different_from_single():
-    cfg = HierarchicalRoPEConfig(head_dim=HEAD_DIM, n_scales=3,
-                                  scale_factors=[1.0, 4.0, 16.0])
+    cfg = HierarchicalRoPEConfig(head_dim=HEAD_DIM, n_scales=3, scale_factors=[1.0, 4.0, 16.0])
     x = torch.randn(B, H, T, HEAD_DIM)
 
     hierarchical_out = apply_hierarchical_rope(x, cfg)

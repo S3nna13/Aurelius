@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import ClassVar
 
 
@@ -27,27 +27,27 @@ class OutputSanitizer:
     DEFAULT_RULES: ClassVar[list[SanitizationRule]] = [
         SanitizationRule(
             name="email",
-            pattern=r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            pattern=r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
             replacement="[EMAIL]",
         ),
         SanitizationRule(
             name="phone_us",
-            pattern=r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
+            pattern=r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b",
             replacement="[PHONE]",
         ),
         SanitizationRule(
             name="ssn",
-            pattern=r'\b\d{3}-\d{2}-\d{4}\b',
+            pattern=r"\b\d{3}-\d{2}-\d{4}\b",
             replacement="[SSN]",
         ),
         SanitizationRule(
             name="api_key",
-            pattern=r'\b(sk|pk|api|key)[-_][A-Za-z0-9]{20,}\b',
+            pattern=r"\b(sk|pk|api|key)[-_][A-Za-z0-9]{20,}\b",
             replacement="[API_KEY]",
         ),
         SanitizationRule(
             name="ipv4",
-            pattern=r'\b(?:\d{1,3}\.){3}\d{1,3}\b',
+            pattern=r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
             replacement="[IP]",
         ),
     ]

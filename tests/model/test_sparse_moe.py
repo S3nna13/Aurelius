@@ -1,17 +1,18 @@
 """Tests for sparse_moe.py."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.model.sparse_moe import (
-    SparseMoEConfig,
     ExpertFFN,
-    TokenRouter,
+    SparseMoEConfig,
     SparseMoELayer,
+    TokenRouter,
+    combine_expert_outputs,
     compute_capacity,
     dispatch_tokens,
-    combine_expert_outputs,
 )
 
 B, T, D = 2, 8, 32

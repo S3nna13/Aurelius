@@ -3,25 +3,24 @@
 Covers MoEAnalysisConfig, simulate_expert_routing, compute_expert_utilization,
 compute_load_balance_score, compute_expert_specialization, and MoEAnalyzer.
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.eval.moe_analysis import (
     MoEAnalysisConfig,
-    ExpertStats,
-    simulate_expert_routing,
+    MoEAnalyzer,
+    compute_expert_specialization,
     compute_expert_utilization,
     compute_load_balance_score,
-    compute_expert_specialization,
-    MoEAnalyzer,
+    simulate_expert_routing,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_model():
     """Create a small AureliusTransformer for testing."""
@@ -57,6 +56,7 @@ def make_input_ids(B=2, S=8, vocab_size=256) -> torch.Tensor:
 # 1. MoEAnalysisConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_moe_analysis_config_defaults():
     """MoEAnalysisConfig should have correct default values."""
     cfg = MoEAnalysisConfig()
@@ -69,6 +69,7 @@ def test_moe_analysis_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. simulate_expert_routing - correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_simulate_expert_routing_shapes():
     """simulate_expert_routing should return (B, T, top_k) tensors."""
@@ -84,6 +85,7 @@ def test_simulate_expert_routing_shapes():
 # 3. simulate_expert_routing - top_k indices in [0, n_experts)
 # ---------------------------------------------------------------------------
 
+
 def test_simulate_expert_routing_index_range():
     """All expert indices should be in [0, n_experts)."""
     B, T, D = 3, 10, 32
@@ -98,6 +100,7 @@ def test_simulate_expert_routing_index_range():
 # 4. simulate_expert_routing - weights sum to 1 per token (after softmax top_k)
 # ---------------------------------------------------------------------------
 
+
 def test_simulate_expert_routing_weights_positive():
     """Expert weights should be positive (they come from softmax)."""
     B, T, D = 2, 6, 32
@@ -111,6 +114,7 @@ def test_simulate_expert_routing_weights_positive():
 # 5. compute_expert_utilization - returns shape (n_experts,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_expert_utilization_shape():
     """compute_expert_utilization should return shape (n_experts,)."""
     B, T, top_k, n_experts = 2, 8, 2, 6
@@ -123,6 +127,7 @@ def test_compute_expert_utilization_shape():
 # ---------------------------------------------------------------------------
 # 6. compute_expert_utilization - values in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_expert_utilization_values_in_range():
     """Utilization values should be in [0, 1]."""
@@ -138,6 +143,7 @@ def test_compute_expert_utilization_values_in_range():
 # 7. compute_load_balance_score - uniform utilization -> score near 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_load_balance_score_uniform():
     """Uniform utilization should yield a load balance score near 1.0."""
     n_experts = 8
@@ -149,6 +155,7 @@ def test_compute_load_balance_score_uniform():
 # ---------------------------------------------------------------------------
 # 8. compute_load_balance_score - all-one-expert -> score near 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_load_balance_score_concentrated():
     """Highly concentrated utilization should yield a low load balance score."""
@@ -163,6 +170,7 @@ def test_compute_load_balance_score_concentrated():
 # 9. compute_expert_specialization - returns shape (n_experts,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_expert_specialization_shape():
     """compute_expert_specialization should return shape (n_experts,)."""
     B, T, n_experts, top_k = 2, 8, 6, 2
@@ -176,6 +184,7 @@ def test_compute_expert_specialization_shape():
 # ---------------------------------------------------------------------------
 # 10. compute_expert_specialization - values in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_expert_specialization_values_in_range():
     """Specialization scores should be in [0, 1]."""
@@ -192,6 +201,7 @@ def test_compute_expert_specialization_values_in_range():
 # 11. MoEAnalyzer.register_hooks - returns handles
 # ---------------------------------------------------------------------------
 
+
 def test_moe_analyzer_register_hooks_returns_handles():
     """register_hooks should return a non-empty list of hook handles."""
     model = make_model()
@@ -206,6 +216,7 @@ def test_moe_analyzer_register_hooks_returns_handles():
 # ---------------------------------------------------------------------------
 # 12. MoEAnalyzer.analyze_batch - returns dict with layer keys
 # ---------------------------------------------------------------------------
+
 
 def test_moe_analyzer_analyze_batch_layer_keys():
     """analyze_batch should return a dict keyed by layer indices."""
@@ -226,6 +237,7 @@ def test_moe_analyzer_analyze_batch_layer_keys():
 # 13. MoEAnalyzer.analyze_batch - each value has "load_balance" key
 # ---------------------------------------------------------------------------
 
+
 def test_moe_analyzer_analyze_batch_has_load_balance():
     """Each layer result in analyze_batch should contain 'load_balance' key."""
     model = make_model()
@@ -240,12 +252,15 @@ def test_moe_analyzer_analyze_batch_has_load_balance():
             f"Layer {layer_idx} result missing 'load_balance' key: {list(stats.keys())}"
         )
         assert "utilization" in stats, f"Layer {layer_idx} result missing 'utilization' key"
-        assert "mean_expert_stats" in stats, f"Layer {layer_idx} result missing 'mean_expert_stats' key"
+        assert "mean_expert_stats" in stats, (
+            f"Layer {layer_idx} result missing 'mean_expert_stats' key"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 14. MoEAnalyzer.run_analysis - returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_moe_analyzer_run_analysis_required_keys():
     """run_analysis should return a dict with all required keys."""
@@ -254,7 +269,12 @@ def test_moe_analyzer_run_analysis_required_keys():
     analyzer = MoEAnalyzer(model, cfg)
     dataset = [make_input_ids(B=2, S=8) for _ in range(3)]
     results = analyzer.run_analysis(dataset)
-    required_keys = {"mean_load_balance", "per_layer_balance", "most_used_expert", "least_used_expert"}
+    required_keys = {
+        "mean_load_balance",
+        "per_layer_balance",
+        "most_used_expert",
+        "least_used_expert",
+    }
     for key in required_keys:
         assert key in results, f"Missing required key '{key}' in run_analysis output"
 
@@ -262,6 +282,7 @@ def test_moe_analyzer_run_analysis_required_keys():
 # ---------------------------------------------------------------------------
 # 15. MoEAnalyzer.run_analysis - mean_load_balance in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_moe_analyzer_run_analysis_mean_load_balance_range():
     """mean_load_balance in run_analysis output should be in [0, 1]."""

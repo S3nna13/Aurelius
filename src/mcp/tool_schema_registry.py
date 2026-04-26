@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -73,7 +72,7 @@ class ToolSchema:
         """Return the major version component as an integer."""
         return int(self.version.split(".")[0])
 
-    def is_compatible_with(self, other: "ToolSchema") -> bool:
+    def is_compatible_with(self, other: ToolSchema) -> bool:
         """Return True if *other* shares the same major version as *self*.
 
         Compatibility follows semver: differing major versions are breaking.
@@ -153,14 +152,11 @@ def validate_tool_call(name: str, args: dict) -> bool:
     required = schema.input_schema.get("required", [])
     if not isinstance(required, list):
         raise ToolSchemaError(
-            f"input_schema 'required' for {name!r} must be a list, "
-            f"got {type(required).__name__}"
+            f"input_schema 'required' for {name!r} must be a list, got {type(required).__name__}"
         )
     missing = [k for k in required if k not in args]
     if missing:
-        raise ToolSchemaError(
-            f"Tool {name!r} call missing required argument(s): {missing!r}"
-        )
+        raise ToolSchemaError(f"Tool {name!r} call missing required argument(s): {missing!r}")
     return True
 
 

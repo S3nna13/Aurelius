@@ -4,22 +4,20 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
+from src.model.attention import precompute_rope_frequencies
+from src.model.config import AureliusConfig
 from src.model.cross_attention import (
+    CrossAttention,
+    CrossAttentionBlock,
     CrossAttentionConfig,
     CrossAttentionLayer,
     MultiModalTransformerBlock,
-    add_cross_attention_to_model,
-    CrossAttention,
-    CrossAttentionBlock,
     RAGAttentionLayer,
+    add_cross_attention_to_model,
     scaled_dot_product_cross_attention,
 )
-from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.model.attention import precompute_rope_frequencies
-
 
 # ---------------------------------------------------------------------------
 # Tiny config for fast tests
@@ -39,6 +37,7 @@ TINY = CrossAttentionConfig(
 # CrossAttentionConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_cross_attn_config_defaults():
     cfg = CrossAttentionConfig()
     assert cfg.d_model == 2048
@@ -52,6 +51,7 @@ def test_cross_attn_config_defaults():
 # ---------------------------------------------------------------------------
 # CrossAttentionLayer shape/behaviour tests
 # ---------------------------------------------------------------------------
+
 
 def test_cross_attn_output_shape():
     B, S, C = 2, 10, 5
@@ -121,6 +121,7 @@ def test_cross_attn_different_context_dim():
 # ---------------------------------------------------------------------------
 # MultiModalTransformerBlock tests
 # ---------------------------------------------------------------------------
+
 
 def _tiny_aurelius_config():
     """Minimal AureliusConfig that satisfies the assertion in __post_init__."""
@@ -200,6 +201,7 @@ def test_multimodal_block_with_context():
 # add_cross_attention_to_model tests
 # ---------------------------------------------------------------------------
 
+
 def _tiny_model():
     cfg = _tiny_aurelius_config()
     return AureliusTransformer(cfg)
@@ -227,6 +229,7 @@ def test_add_cross_attention_to_model_subset():
 # Gradient flow test
 # ---------------------------------------------------------------------------
 
+
 def test_cross_attn_gradients_flow():
     """Gradients must flow back through cross-attention to both x and context."""
     B, S, C = 2, 6, 4
@@ -246,6 +249,7 @@ def test_cross_attn_gradients_flow():
 # ---------------------------------------------------------------------------
 # CrossAttention (new module) tests
 # ---------------------------------------------------------------------------
+
 
 def _tiny_aurelius_config():
     """Minimal AureliusConfig for the new CrossAttention tests."""

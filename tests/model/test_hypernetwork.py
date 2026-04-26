@@ -4,36 +4,35 @@ Covers: WeightGenerator, HyperLinear, HyperAttention,
         HyperTransformerBlock, TaskConditionedLM, HyperNetConfig
 """
 
-import math
 import torch
-import pytest
 
 from src.model.hypernetwork import (
-    WeightGenerator,
-    HyperLinear,
     HyperAttention,
+    HyperLinear,
+    HyperNetConfig,
     HyperTransformerBlock,
     TaskConditionedLM,
-    HyperNetConfig,
+    WeightGenerator,
 )
 
 # ---------------------------------------------------------------------------
 # Tiny config constants
 # ---------------------------------------------------------------------------
-D_MODEL    = 16
+D_MODEL = 16
 VOCAB_SIZE = 16
-N_LAYERS   = 2
-N_HEADS    = 4
-D_CONTEXT  = 8
-N_TASKS    = 3
-B          = 2
-T          = 6
-HIDDEN     = 16   # small hidden for speed
+N_LAYERS = 2
+N_HEADS = 4
+D_CONTEXT = 8
+N_TASKS = 3
+B = 2
+T = 6
+HIDDEN = 16  # small hidden for speed
 
 
 # ---------------------------------------------------------------------------
 # WeightGenerator tests
 # ---------------------------------------------------------------------------
+
 
 def test_weight_generator_output_shape_1d():
     """WeightGenerator produces [B, out_features] for a 1-D target."""
@@ -79,11 +78,12 @@ def test_weight_generator_different_contexts_produce_different_weights():
 # HyperLinear tests
 # ---------------------------------------------------------------------------
 
+
 def test_hyper_linear_output_shape():
     """HyperLinear forward produces [B, out_features]."""
     in_f, out_f = 8, 12
     layer = HyperLinear(D_CONTEXT, in_f, out_f, hidden=HIDDEN)
-    x   = torch.randn(B, in_f)
+    x = torch.randn(B, in_f)
     ctx = torch.randn(B, D_CONTEXT)
     out = layer(x, ctx)
     assert out.shape == (B, out_f), f"Expected ({B}, {out_f}), got {out.shape}"
@@ -93,7 +93,7 @@ def test_hyper_linear_different_contexts_different_outputs():
     """Same input x, different contexts → different HyperLinear outputs."""
     in_f, out_f = 8, 12
     layer = HyperLinear(D_CONTEXT, in_f, out_f, hidden=HIDDEN)
-    x     = torch.randn(1, in_f)
+    x = torch.randn(1, in_f)
     ctx_a = torch.randn(1, D_CONTEXT)
     ctx_b = torch.randn(1, D_CONTEXT)
     while torch.allclose(ctx_a, ctx_b):
@@ -108,7 +108,7 @@ def test_hyper_linear_gradient_flows_through_context():
     """Gradients should propagate back through the context input."""
     in_f, out_f = 8, 12
     layer = HyperLinear(D_CONTEXT, in_f, out_f, hidden=HIDDEN)
-    x   = torch.randn(B, in_f)
+    x = torch.randn(B, in_f)
     ctx = torch.randn(B, D_CONTEXT, requires_grad=True)
     out = layer(x, ctx)
     loss = out.sum()
@@ -121,10 +121,11 @@ def test_hyper_linear_gradient_flows_through_context():
 # HyperAttention tests
 # ---------------------------------------------------------------------------
 
+
 def test_hyper_attention_output_shape():
     """HyperAttention forward preserves [B, T, d_model] shape."""
     attn = HyperAttention(D_MODEL, D_CONTEXT, N_HEADS, hidden=HIDDEN)
-    x   = torch.randn(B, T, D_MODEL)
+    x = torch.randn(B, T, D_MODEL)
     ctx = torch.randn(B, D_CONTEXT)
     out = attn(x, ctx)
     assert out.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {out.shape}"
@@ -132,8 +133,8 @@ def test_hyper_attention_output_shape():
 
 def test_hyper_attention_different_contexts_different_outputs():
     """Different context vectors produce different attention outputs."""
-    attn  = HyperAttention(D_MODEL, D_CONTEXT, N_HEADS, hidden=HIDDEN)
-    x     = torch.randn(1, T, D_MODEL)
+    attn = HyperAttention(D_MODEL, D_CONTEXT, N_HEADS, hidden=HIDDEN)
+    x = torch.randn(1, T, D_MODEL)
     ctx_a = torch.randn(1, D_CONTEXT)
     ctx_b = torch.randn(1, D_CONTEXT)
     while torch.allclose(ctx_a, ctx_b):
@@ -141,17 +142,20 @@ def test_hyper_attention_different_contexts_different_outputs():
 
     out_a = attn(x, ctx_a)
     out_b = attn(x, ctx_b)
-    assert not torch.allclose(out_a, out_b), "Different contexts should produce different attention outputs"
+    assert not torch.allclose(out_a, out_b), (
+        "Different contexts should produce different attention outputs"
+    )
 
 
 # ---------------------------------------------------------------------------
 # HyperTransformerBlock tests
 # ---------------------------------------------------------------------------
 
+
 def test_hyper_transformer_block_output_shape():
     """HyperTransformerBlock forward preserves [B, T, d_model] shape."""
     block = HyperTransformerBlock(D_MODEL, D_CONTEXT, N_HEADS, hidden=HIDDEN)
-    x   = torch.randn(B, T, D_MODEL)
+    x = torch.randn(B, T, D_MODEL)
     ctx = torch.randn(B, D_CONTEXT)
     out = block(x, ctx)
     assert out.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {out.shape}"
@@ -160,18 +164,19 @@ def test_hyper_transformer_block_output_shape():
 def test_hyper_transformer_block_gradient_flows():
     """Gradients should flow back through all parameters of HyperTransformerBlock."""
     block = HyperTransformerBlock(D_MODEL, D_CONTEXT, N_HEADS, hidden=HIDDEN)
-    x   = torch.randn(B, T, D_MODEL, requires_grad=True)
+    x = torch.randn(B, T, D_MODEL, requires_grad=True)
     ctx = torch.randn(B, D_CONTEXT, requires_grad=True)
     out = block(x, ctx)
     loss = out.sum()
     loss.backward()
-    assert x.grad   is not None, "Gradient should flow to input x"
+    assert x.grad is not None, "Gradient should flow to input x"
     assert ctx.grad is not None, "Gradient should flow to context"
 
 
 # ---------------------------------------------------------------------------
 # TaskConditionedLM tests
 # ---------------------------------------------------------------------------
+
 
 def _make_lm() -> TaskConditionedLM:
     return TaskConditionedLM(
@@ -195,7 +200,7 @@ def _random_task_ids() -> torch.Tensor:
 
 def test_task_conditioned_lm_forward_output_shape():
     """TaskConditionedLM forward produces [B, T, vocab_size] logits."""
-    lm  = _make_lm()
+    lm = _make_lm()
     ids = _random_input_ids()
     tid = _random_task_ids()
     logits = lm(ids, tid)
@@ -206,7 +211,7 @@ def test_task_conditioned_lm_forward_output_shape():
 
 def test_task_conditioned_lm_different_task_ids_different_logits():
     """Different task IDs should produce different logits for the same input."""
-    lm  = _make_lm()
+    lm = _make_lm()
     ids = _random_input_ids()
 
     # Use task ids that are definitely different
@@ -222,7 +227,7 @@ def test_task_conditioned_lm_different_task_ids_different_logits():
 
 def test_task_conditioned_lm_compute_loss_finite_positive():
     """compute_loss should return a finite, positive scalar."""
-    lm  = _make_lm()
+    lm = _make_lm()
     ids = _random_input_ids()
     tid = _random_task_ids()
     loss = lm.compute_loss(ids, tid)
@@ -233,7 +238,7 @@ def test_task_conditioned_lm_compute_loss_finite_positive():
 
 def test_task_conditioned_lm_compute_loss_backward():
     """Gradients should flow through compute_loss."""
-    lm  = _make_lm()
+    lm = _make_lm()
     ids = _random_input_ids()
     tid = _random_task_ids()
     loss = lm.compute_loss(ids, tid)
@@ -264,26 +269,28 @@ def test_task_conditioned_lm_task_embeddings_learnable():
 # HyperNetConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_hypernetconfig_defaults():
     """HyperNetConfig should have the documented default values."""
     cfg = HyperNetConfig()
-    assert cfg.d_model    == 32
+    assert cfg.d_model == 32
     assert cfg.vocab_size == 64
-    assert cfg.n_layers   == 2
-    assert cfg.n_heads    == 4
-    assert cfg.d_context  == 16
-    assert cfg.n_tasks    == 4
-    assert cfg.hidden     == 32
+    assert cfg.n_layers == 2
+    assert cfg.n_heads == 4
+    assert cfg.d_context == 16
+    assert cfg.n_tasks == 4
+    assert cfg.hidden == 32
 
 
 def test_hypernetconfig_custom_values():
     """HyperNetConfig should accept and store custom values."""
-    cfg = HyperNetConfig(d_model=64, vocab_size=128, n_layers=4, n_heads=8,
-                         d_context=32, n_tasks=10, hidden=64)
-    assert cfg.d_model    == 64
+    cfg = HyperNetConfig(
+        d_model=64, vocab_size=128, n_layers=4, n_heads=8, d_context=32, n_tasks=10, hidden=64
+    )
+    assert cfg.d_model == 64
     assert cfg.vocab_size == 128
-    assert cfg.n_layers   == 4
-    assert cfg.n_heads    == 8
-    assert cfg.d_context  == 32
-    assert cfg.n_tasks    == 10
-    assert cfg.hidden     == 64
+    assert cfg.n_layers == 4
+    assert cfg.n_heads == 8
+    assert cfg.d_context == 32
+    assert cfg.n_tasks == 10
+    assert cfg.hidden == 64

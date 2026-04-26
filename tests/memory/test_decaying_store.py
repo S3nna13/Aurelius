@@ -1,9 +1,8 @@
 """Tests for decaying memory store."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.memory.decaying_store import DecayingMemoryStore
 

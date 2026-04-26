@@ -1,4 +1,5 @@
 """Tests for RedTeamGenerator."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +8,6 @@ import pytest
 
 from src.safety.red_team_generator import (
     AttackCategory,
-    RedTeamCase,
     RedTeamGenerator,
     RedTeamReport,
 )

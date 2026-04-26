@@ -1,11 +1,18 @@
 """Tests for multiple-choice benchmark scoring."""
+
 import math
-import torch
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+import torch
+
 from src.eval.multiple_choice import (
-    MultipleChoiceItem, score_completion, evaluate_item,
-    run_benchmark, BenchmarkResult, EvalResult,
+    BenchmarkResult,
+    EvalResult,
+    MultipleChoiceItem,
+    evaluate_item,
+    run_benchmark,
+    score_completion,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -15,8 +22,14 @@ from src.model.transformer import AureliusTransformer
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
@@ -64,9 +77,7 @@ def test_evaluate_item_returns_result(small_model):
 def test_evaluate_item_picks_highest_score(small_model):
     """predicted_idx must correspond to the highest score."""
     tok = _fake_tokenizer()
-    item = MultipleChoiceItem(
-        question="test", choices=["a", "b", "c"], correct_idx=0
-    )
+    item = MultipleChoiceItem(question="test", choices=["a", "b", "c"], correct_idx=0)
     result = evaluate_item(small_model, tok, item)
     assert result.predicted_idx == result.scores.index(max(result.scores))
 

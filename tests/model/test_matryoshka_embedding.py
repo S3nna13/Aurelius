@@ -51,7 +51,4 @@ def test_anisotropy_singleton_is_zero() -> None:
 
 def test_registry_entry_present_in_model_package() -> None:
     assert "matryoshka_embedding" in model_pkg.MODEL_COMPONENT_REGISTRY
-    assert (
-        model_pkg.MODEL_COMPONENT_REGISTRY["matryoshka_embedding"]
-        is MatryoshkaEmbedding
-    )
+    assert model_pkg.MODEL_COMPONENT_REGISTRY["matryoshka_embedding"] is MatryoshkaEmbedding

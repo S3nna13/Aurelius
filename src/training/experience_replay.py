@@ -8,6 +8,7 @@ Implements:
 References:
     Ziegler et al. 2019 (RLHF), Schulman et al. 2017 (PPO), Schaul et al. 2015 (PER)
 """
+
 from __future__ import annotations
 
 import math
@@ -16,24 +17,25 @@ from dataclasses import dataclass, field
 
 import torch
 
-
 # ---------------------------------------------------------------------------
 # Data container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Experience:
-    prompt_ids: list[int]          # tokenized prompt
-    completion_ids: list[int]      # tokenized completion
-    reward: float                  # scalar reward signal
-    log_prob: float                # log probability under policy at collection time
-    step: int                      # training step when collected
+    prompt_ids: list[int]  # tokenized prompt
+    completion_ids: list[int]  # tokenized completion
+    reward: float  # scalar reward signal
+    log_prob: float  # log probability under policy at collection time
+    step: int  # training step when collected
     metadata: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
 # Circular replay buffer with optional priority
 # ---------------------------------------------------------------------------
+
 
 class ReplayBuffer:
     """Circular experience replay buffer with optional prioritized sampling.
@@ -89,9 +91,7 @@ class ReplayBuffer:
         batch_size = min(batch_size, n)
 
         if self.prioritized:
-            priorities = torch.tensor(
-                self._priorities[:n], dtype=torch.float64
-            )
+            priorities = torch.tensor(self._priorities[:n], dtype=torch.float64)
             # torch.multinomial requires float32
             probs = (priorities / priorities.sum()).float()
             indices = torch.multinomial(probs, num_samples=batch_size, replacement=True).tolist()
@@ -146,6 +146,7 @@ class ReplayBuffer:
 # ---------------------------------------------------------------------------
 # PPO rollout buffer
 # ---------------------------------------------------------------------------
+
 
 class OnlinePPOBuffer:
     """PPO-style rollout buffer.
@@ -214,6 +215,7 @@ class OnlinePPOBuffer:
 # ---------------------------------------------------------------------------
 # Online reward normalizer (Welford's algorithm)
 # ---------------------------------------------------------------------------
+
 
 class RewardNormalizer:
     """Online running statistics for reward normalization.

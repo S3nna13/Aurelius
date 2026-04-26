@@ -90,9 +90,7 @@ class SessionManager:
 
     def active_count(self) -> int:
         """Return count of sessions with state == ACTIVE."""
-        return sum(
-            1 for s in self._sessions.values() if s.state is SessionState.ACTIVE
-        )
+        return sum(1 for s in self._sessions.values() if s.state is SessionState.ACTIVE)
 
     def cleanup(self) -> int:
         """Remove TERMINATED and EXPIRED sessions. Returns count removed."""

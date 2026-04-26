@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
 @dataclass
@@ -13,7 +13,7 @@ class ElasticConfig:
     monitor_interval_s: float = 5.0
 
 
-class WorkerState(str, Enum):
+class WorkerState(StrEnum):
     INIT = "INIT"
     RUNNING = "RUNNING"
     FAILED = "FAILED"

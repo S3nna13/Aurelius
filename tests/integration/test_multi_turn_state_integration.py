@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import src.chat as chat_pkg
 from src.chat.multi_turn_state import ConversationState, ConversationTurn
-from src.longcontext.context_compaction import ContextCompactor, Turn
+from src.longcontext.context_compaction import ContextCompactor
 
 
 def test_exposed_in_src_chat():
@@ -83,9 +83,7 @@ def test_integration_with_context_compactor():
     # System preserved and a summary injected.
     assert any(m["role"] == "system" for m in msgs)
     assert any("summary" in m["content"].lower() or "SYS" == m["content"] for m in msgs)
-    assert state.current_tokens() <= 5 or any(
-        "summary" in m["content"].lower() for m in msgs
-    )
+    assert state.current_tokens() <= 5 or any("summary" in m["content"].lower() for m in msgs)
 
 
 def test_attachments_and_reset_flow():

@@ -15,32 +15,32 @@ No dependencies beyond Python stdlib + dataclasses.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Optional
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MathEvalConfig:
-    numeric_tolerance: float = 1e-6   # absolute tolerance for float comparison
-    extract_boxed: bool = True         # try \\boxed{} first
-    extract_last_number: bool = True   # fallback: last number in response
-    normalize_fractions: bool = True   # convert "p/q" → float
+    numeric_tolerance: float = 1e-6  # absolute tolerance for float comparison
+    extract_boxed: bool = True  # try \\boxed{} first
+    extract_last_number: bool = True  # fallback: last number in response
+    normalize_fractions: bool = True  # convert "p/q" → float
 
 
 # ---------------------------------------------------------------------------
 # Answer container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MathAnswer:
-    raw_text: str                    # original model response
-    extracted: Optional[str]         # extracted answer string (stripped)
-    numeric: Optional[float]         # parsed float, if applicable
-    is_fraction: bool = False        # True when extracted answer was a fraction
+    raw_text: str  # original model response
+    extracted: str | None  # extracted answer string (stripped)
+    numeric: float | None  # parsed float, if applicable
+    is_fraction: bool = False  # True when extracted answer was a fraction
 
 
 # ---------------------------------------------------------------------------
@@ -49,9 +49,7 @@ class MathAnswer:
 
 # Matches \\boxed{...} with balanced-ish single-level braces.
 # Handles nested braces up to 2 levels deep to cover common cases.
-_BOXED_RE = re.compile(
-    r"\\boxed\{((?:[^{}]|\{[^{}]*\})*)\}"
-)
+_BOXED_RE = re.compile(r"\\boxed\{((?:[^{}]|\{[^{}]*\})*)\}")
 
 # Matches integers and decimals (positive and negative).
 _NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
@@ -64,10 +62,11 @@ _FRACTION_RE = re.compile(r"^(-?\d+)\s*/\s*(-?\d+)$")
 # Core class
 # ---------------------------------------------------------------------------
 
+
 class MathEval:
     """Evaluator for MATH/AIME-style benchmarks."""
 
-    def __init__(self, config: Optional[MathEvalConfig] = None) -> None:
+    def __init__(self, config: MathEvalConfig | None = None) -> None:
         self.config = config if config is not None else MathEvalConfig()
 
     # ------------------------------------------------------------------
@@ -84,8 +83,8 @@ class MathEval:
 
         Attempts to parse the extracted string as a float (handles fractions).
         """
-        extracted: Optional[str] = None
-        numeric: Optional[float] = None
+        extracted: str | None = None
+        numeric: float | None = None
         is_fraction: bool = False
 
         if self.config.extract_boxed:
@@ -124,7 +123,7 @@ class MathEval:
     # Normalization
     # ------------------------------------------------------------------
 
-    def normalize_answer(self, answer: str) -> tuple[str, Optional[float]]:
+    def normalize_answer(self, answer: str) -> tuple[str, float | None]:
         """Normalize an answer string.
 
         Returns:
@@ -186,7 +185,7 @@ class MathEval:
         self,
         predictions: list[str],
         ground_truths: list[str],
-        categories: Optional[list[str]] = None,
+        categories: list[str] | None = None,
     ) -> dict:
         """Evaluate a list of model responses against ground-truth answers.
 

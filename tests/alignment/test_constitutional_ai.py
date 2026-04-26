@@ -2,6 +2,7 @@
 
 Import path: aurelius.alignment.constitutional_ai
 """
+
 from __future__ import annotations
 
 import copy
@@ -9,19 +10,18 @@ import copy
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.alignment.constitutional_ai import (
-    ConstitutionalPrinciple,
-    Constitution,
-    ConstitutionalScorer,
     CAILoss,
     CAITrainer,
+    Constitution,
+    ConstitutionalPrinciple,
+    ConstitutionalScorer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_constitution(n: int = 3) -> Constitution:
     principles = [
@@ -50,6 +50,7 @@ class _DummyModel(nn.Module):
 # 1. ConstitutionalPrinciple fields
 # ---------------------------------------------------------------------------
 
+
 def test_constitutional_principle_fields():
     p = ConstitutionalPrinciple(
         name="honesty",
@@ -65,6 +66,7 @@ def test_constitutional_principle_fields():
 # 2. ConstitutionalPrinciple default weight
 # ---------------------------------------------------------------------------
 
+
 def test_constitutional_principle_default_weight():
     p = ConstitutionalPrinciple(name="safety", critique_prompt="Is it safe?")
     assert p.weight == 1.0
@@ -73,6 +75,7 @@ def test_constitutional_principle_default_weight():
 # ---------------------------------------------------------------------------
 # 3. Constitution.get_principle returns correct principle
 # ---------------------------------------------------------------------------
+
 
 def test_constitution_get_principle():
     c = make_constitution(3)
@@ -85,6 +88,7 @@ def test_constitution_get_principle():
 # 4. Constitution.get_principle raises KeyError for unknown name
 # ---------------------------------------------------------------------------
 
+
 def test_constitution_get_principle_keyerror():
     c = make_constitution(2)
     with pytest.raises(KeyError):
@@ -95,6 +99,7 @@ def test_constitution_get_principle_keyerror():
 # 5. Constitution.total_weight sums weights
 # ---------------------------------------------------------------------------
 
+
 def test_constitution_total_weight():
     c = make_constitution(4)
     # weights = 1, 2, 3, 4 -> total = 10
@@ -104,6 +109,7 @@ def test_constitution_total_weight():
 # ---------------------------------------------------------------------------
 # 6. Constitution.weighted_score correct
 # ---------------------------------------------------------------------------
+
 
 def test_constitution_weighted_score():
     principles = [
@@ -121,6 +127,7 @@ def test_constitution_weighted_score():
 # 7. Constitution.from_dicts constructs correctly
 # ---------------------------------------------------------------------------
 
+
 def test_constitution_from_dicts():
     dicts = [
         {"name": "helpfulness", "critique_prompt": "Is it helpful?", "weight": 2.0},
@@ -136,6 +143,7 @@ def test_constitution_from_dicts():
 # 8. ConstitutionalScorer.score_response shape (N,)
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_score_response_shape():
     c = make_constitution(4)
     scorer = ConstitutionalScorer(c)
@@ -147,6 +155,7 @@ def test_scorer_score_response_shape():
 # ---------------------------------------------------------------------------
 # 9. ConstitutionalScorer.score_response values = mean log-prob per response
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_score_response_values():
     c = make_constitution(3)
@@ -164,6 +173,7 @@ def test_scorer_score_response_values():
 # 10. ConstitutionalScorer.aggregate_score returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_aggregate_score_scalar():
     c = make_constitution(3)
     scorer = ConstitutionalScorer(c)
@@ -176,6 +186,7 @@ def test_scorer_aggregate_score_scalar():
 # ---------------------------------------------------------------------------
 # 11. ConstitutionalScorer.aggregate_score with weights
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_aggregate_score_weighted():
     c = make_constitution(2)
@@ -190,6 +201,7 @@ def test_scorer_aggregate_score_weighted():
 # 12. ConstitutionalScorer.rank_responses descending order
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_rank_responses_descending():
     c = make_constitution(2)
     scorer = ConstitutionalScorer(c)
@@ -202,6 +214,7 @@ def test_scorer_rank_responses_descending():
 # ---------------------------------------------------------------------------
 # 13. CAILoss returns scalar + correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_cai_loss_returns_scalar_and_keys():
     loss_fn = CAILoss(beta=0.1)
@@ -221,6 +234,7 @@ def test_cai_loss_returns_scalar_and_keys():
 # 14. CAILoss perfect separation -> accuracy = 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_cai_loss_perfect_separation_accuracy():
     loss_fn = CAILoss(beta=1.0)
     B = 8
@@ -236,6 +250,7 @@ def test_cai_loss_perfect_separation_accuracy():
 # ---------------------------------------------------------------------------
 # 15. CAILoss gradient flows
 # ---------------------------------------------------------------------------
+
 
 def test_cai_loss_gradient_flows():
     loss_fn = CAILoss(beta=0.1)
@@ -255,6 +270,7 @@ def test_cai_loss_gradient_flows():
 # 16. CAITrainer.freeze_ref freezes all ref params
 # ---------------------------------------------------------------------------
 
+
 def test_cai_trainer_freeze_ref():
     c = make_constitution(2)
     model = _DummyModel()
@@ -269,6 +285,7 @@ def test_cai_trainer_freeze_ref():
 # ---------------------------------------------------------------------------
 # 17. CAITrainer.train_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_cai_trainer_train_step_keys():
     c = make_constitution(2)

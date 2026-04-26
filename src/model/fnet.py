@@ -11,10 +11,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Core mixing primitive
 # ---------------------------------------------------------------------------
+
 
 class FourierMixingLayer(nn.Module):
     """Parameter-free token mixing via 2-D FFT.
@@ -43,6 +43,7 @@ class FourierMixingLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # FNet block
 # ---------------------------------------------------------------------------
+
 
 class FNetBlock(nn.Module):
     """Full FNet block: Fourier mixing + FFN, both in pre-norm style.
@@ -93,6 +94,7 @@ class FNetBlock(nn.Module):
 # Full FNet model
 # ---------------------------------------------------------------------------
 
+
 class FNetModel(nn.Module):
     """Stack of FNetBlocks with token and positional embeddings.
 
@@ -119,9 +121,7 @@ class FNetModel(nn.Module):
         self.token_emb = nn.Embedding(vocab_size, d_model)
         self.pos_emb = nn.Embedding(max_seq_len, d_model)
 
-        self.blocks = nn.ModuleList(
-            [FNetBlock(d_model, d_ff, dropout) for _ in range(n_layers)]
-        )
+        self.blocks = nn.ModuleList([FNetBlock(d_model, d_ff, dropout) for _ in range(n_layers)])
         self.n_layers = n_layers
 
     def forward(

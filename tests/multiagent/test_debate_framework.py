@@ -1,16 +1,19 @@
 """Tests for src/multiagent/debate_framework.py"""
+
 import pytest
+
 from src.multiagent.debate_framework import (
+    DEBATE_REGISTRY,
     DebateConfig,
     DebateRound,
     DebateSession,
-    DEBATE_REGISTRY,
 )
 
 
 def make_agent(answer: str):
     def agent_fn(question: str, others: list[str]) -> str:
         return answer
+
     return agent_fn
 
 

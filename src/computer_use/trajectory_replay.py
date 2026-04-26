@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class TrajectoryError(Exception):
     """Raised when a trajectory operation is invalid."""
 
@@ -31,6 +32,7 @@ class TrajectoryError(Exception):
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TrajectoryStep:
@@ -58,6 +60,7 @@ class Trajectory:
 # ---------------------------------------------------------------------------
 # Recorder
 # ---------------------------------------------------------------------------
+
 
 class TrajectoryRecorder:
     """Records GUI actions into a Trajectory.
@@ -138,6 +141,7 @@ class TrajectoryRecorder:
 # Replayer
 # ---------------------------------------------------------------------------
 
+
 class TrajectoryReplayer:
     """Replays and validates recorded trajectories.
 
@@ -153,7 +157,7 @@ class TrajectoryReplayer:
     def replay(
         self,
         trajectory: Trajectory,
-        driver: "BrowserDriver",
+        driver: BrowserDriver,
     ) -> list[str]:
         """Replay *trajectory* against *driver*.
 
@@ -235,9 +239,7 @@ class TrajectoryReplayer:
             # action is always set via the dataclass, but guard against None
             # in case a caller manually constructs a step.
             if step.action is None and step.snapshot_before is None:
-                issues.append(
-                    f"Step {step.step_id}: both action and snapshot_before are None."
-                )
+                issues.append(f"Step {step.step_id}: both action and snapshot_before are None.")
 
         return len(issues) == 0, issues
 

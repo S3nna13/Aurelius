@@ -14,10 +14,10 @@ from src.runtime.hot_reload import (
     ReloadEvent,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _good_loader(path: str) -> dict:
     return {"loaded_from": path, "value": 42}
@@ -31,6 +31,7 @@ def _bad_loader(path: str) -> None:
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 class TestRegistry:
     def test_registry_has_default_key(self):
         assert "default" in HOT_RELOAD_REGISTRY
@@ -42,6 +43,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # ReloadEvent frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestReloadEvent:
     def test_event_is_frozen(self):
@@ -89,6 +91,7 @@ class TestReloadEvent:
 # ReloadConfig frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestReloadConfig:
     def test_config_is_frozen(self):
         cfg = ReloadConfig()
@@ -112,6 +115,7 @@ class TestReloadConfig:
 # register_resource
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterResource:
     def test_register_increments_resource_count(self):
         r = HotReloader()
@@ -134,6 +138,7 @@ class TestRegisterResource:
 # ---------------------------------------------------------------------------
 # reload — success path
 # ---------------------------------------------------------------------------
+
 
 class TestReloadSuccess:
     def test_reload_returns_reload_event(self):
@@ -185,6 +190,7 @@ class TestReloadSuccess:
 # reload — failure path
 # ---------------------------------------------------------------------------
 
+
 class TestReloadFailure:
     def test_reload_failure_success_false(self):
         r = HotReloader()
@@ -226,6 +232,7 @@ class TestReloadFailure:
 # get
 # ---------------------------------------------------------------------------
 
+
 class TestGet:
     def test_get_none_before_reload(self):
         r = HotReloader()
@@ -246,6 +253,7 @@ class TestGet:
 # ---------------------------------------------------------------------------
 # reload_history
 # ---------------------------------------------------------------------------
+
 
 class TestReloadHistory:
     def test_history_empty_initially(self):

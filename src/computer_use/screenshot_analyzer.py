@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -76,7 +75,9 @@ class ScreenshotAnalyzer:
         self._text_elements.clear()
 
 
-def find_text_in_regions(elements: list[TextElement], regions: list[ScreenRegion]) -> list[TextElement]:
+def find_text_in_regions(
+    elements: list[TextElement], regions: list[ScreenRegion]
+) -> list[TextElement]:
     return [e for e in elements if any(r.contains(e.region.x, e.region.y) for r in regions)]
 
 

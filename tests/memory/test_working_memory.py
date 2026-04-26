@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
-from src.memory.working_memory import WorkingMemory, WorkingMemorySlot, WORKING_MEMORY
-
+from src.memory.working_memory import WORKING_MEMORY, WorkingMemory, WorkingMemorySlot
 
 # ---------------------------------------------------------------------------
 # WorkingMemorySlot fields

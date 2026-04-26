@@ -1,18 +1,18 @@
 """Tests for src/alignment/lora_rank_allocation.py."""
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.alignment.lora_rank_allocation import (
-    RankAllocationConfig,
     LoRAAdapter,
+    RankAllocationConfig,
+    RankAllocator,
+    allocate_ranks_by_sensitivity,
+    allocate_ranks_uniform,
     compute_gradient_sensitivity,
     compute_singular_value_sensitivity,
-    allocate_ranks_uniform,
-    allocate_ranks_by_sensitivity,
     prune_low_rank_components,
-    RankAllocator,
 )
 
 IN_FEATURES = 64
@@ -23,6 +23,7 @@ RANK = 8
 # ---------------------------------------------------------------------------
 # RankAllocationConfig
 # ---------------------------------------------------------------------------
+
 
 def test_rank_allocation_config_defaults():
     cfg = RankAllocationConfig()
@@ -36,6 +37,7 @@ def test_rank_allocation_config_defaults():
 # ---------------------------------------------------------------------------
 # LoRAAdapter
 # ---------------------------------------------------------------------------
+
 
 def test_lora_adapter_forward_output_shape():
     adapter = LoRAAdapter(IN_FEATURES, OUT_FEATURES, RANK)
@@ -61,6 +63,7 @@ def test_lora_adapter_scaling():
 # compute_gradient_sensitivity
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradient_sensitivity_returns_float():
     adapter = LoRAAdapter(IN_FEATURES, OUT_FEATURES, RANK)
     # No gradients yet
@@ -83,6 +86,7 @@ def test_compute_gradient_sensitivity_with_gradients():
 # compute_singular_value_sensitivity
 # ---------------------------------------------------------------------------
 
+
 def test_compute_singular_value_sensitivity_in_range():
     adapter = LoRAAdapter(IN_FEATURES, OUT_FEATURES, RANK)
     # Give lora_B some non-zero values so the weight isn't trivially zero
@@ -102,6 +106,7 @@ def test_compute_singular_value_sensitivity_zero_weight():
 # ---------------------------------------------------------------------------
 # allocate_ranks_uniform
 # ---------------------------------------------------------------------------
+
 
 def test_allocate_ranks_uniform_respects_min_max():
     cfg = RankAllocationConfig(total_rank_budget=64, min_rank=2, max_rank=16)
@@ -126,6 +131,7 @@ def test_allocate_ranks_uniform_empty():
 # ---------------------------------------------------------------------------
 # allocate_ranks_by_sensitivity
 # ---------------------------------------------------------------------------
+
 
 def test_allocate_ranks_by_sensitivity_total_within_budget():
     cfg = RankAllocationConfig(total_rank_budget=64, min_rank=1, max_rank=16)
@@ -153,6 +159,7 @@ def test_allocate_ranks_by_sensitivity_length():
 # ---------------------------------------------------------------------------
 # prune_low_rank_components
 # ---------------------------------------------------------------------------
+
 
 def test_prune_low_rank_components_returns_int():
     adapter = LoRAAdapter(IN_FEATURES, OUT_FEATURES, RANK)
@@ -182,7 +189,6 @@ def test_prune_low_rank_components_updates_in_place():
     adapter = LoRAAdapter(IN_FEATURES, OUT_FEATURES, RANK)
     torch.nn.init.normal_(adapter.lora_A, std=0.5)
     torch.nn.init.normal_(adapter.lora_B, std=0.5)
-    original_A_shape = adapter.lora_A.shape
     prune_low_rank_components(adapter, threshold=0.01)
     # lora_A and lora_B may have been resized; check they are still Parameters
     assert isinstance(adapter.lora_A, torch.nn.Parameter)
@@ -192,6 +198,7 @@ def test_prune_low_rank_components_updates_in_place():
 # ---------------------------------------------------------------------------
 # RankAllocator
 # ---------------------------------------------------------------------------
+
 
 def test_rank_allocator_register_and_compute_sensitivities():
     cfg = RankAllocationConfig(sensitivity_method="gradient")

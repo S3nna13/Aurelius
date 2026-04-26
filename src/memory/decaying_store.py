@@ -1,4 +1,5 @@
 """Time-decaying memory store for recency-weighted retrieval."""
+
 from __future__ import annotations
 
 import time

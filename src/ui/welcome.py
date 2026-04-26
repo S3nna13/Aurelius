@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.ui.branding import DEFAULT_BRANDING, MASCOT_ASCII, AureliusBranding
+from src.ui.branding import MASCOT_ASCII, AureliusBranding
 from src.ui.errors import UIError
 from src.ui.motion import MotionSpec, get_motion, play
 from src.ui.ui_surface import UISurface, register_ui_surface
@@ -153,9 +153,7 @@ def render_welcome(panel: WelcomePanel, *, cols: int = 80, rows: int = 24) -> st
     body_lines.append(_centered(wordmark_line, inner_width))
 
     if panel.show_mascot:
-        mascot_rows = [
-            _sanitize(line) for line in MASCOT_ASCII.splitlines() if line is not None
-        ]
+        mascot_rows = [_sanitize(line) for line in MASCOT_ASCII.splitlines() if line is not None]
         tagline_text = tagline if panel.show_tagline else ""
         pair_count = max(len(mascot_rows), 1 if tagline_text else 0)
         pair_count = max(pair_count, 1)

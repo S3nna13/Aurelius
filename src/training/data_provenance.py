@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -18,9 +18,7 @@ SourceType = Literal[
 ]
 LicenseTier = Literal["open", "restricted", "commercial", "unknown"]
 SplitType = Literal["train", "eval", "test"]
-TaskType = Literal[
-    "reasoning", "code", "tool_calling", "long_context", "general", "alignment"
-]
+TaskType = Literal["reasoning", "code", "tool_calling", "long_context", "general", "alignment"]
 
 _ALLOWED_SOURCES = {
     "internal_logs",
@@ -42,7 +40,7 @@ _ALLOWED_TASKS = {
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass(frozen=True)

@@ -5,6 +5,7 @@ Clips the normalized gradient to [-gamma, gamma] for stability.
 
 Reference: Liu et al. 2023, arXiv:2305.14342
 """
+
 from __future__ import annotations
 
 import torch

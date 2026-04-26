@@ -1,26 +1,29 @@
 """Tests for src/data/conversation.py — multi-turn conversation dataset builder."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.data.conversation import (
-    Turn,
-    Conversation,
     ChatTemplate,
-    build_sft_labels,
-    conversations_from_pairs,
-    concatenate_conversations,
+    Conversation,
     ConversationDataset,
+    Turn,
+    build_sft_labels,
+    concatenate_conversations,
+    conversations_from_pairs,
 )
 
+
 # Simple deterministic tokenizer: maps each char to ord(c) % 128
-_tokenize = lambda s: [ord(c) % 128 for c in s]
+def _tokenize(s):
+    return [ord(c) % 128 for c in s]
 
 
 # ---------------------------------------------------------------------------
 # Turn dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_turn_dataclass():
     t = Turn(role="user", content="hello")
@@ -32,24 +35,29 @@ def test_turn_dataclass():
 # Conversation basics
 # ---------------------------------------------------------------------------
 
+
 def test_conversation_len():
-    conv = Conversation(turns=[
-        Turn("user", "hi"),
-        Turn("assistant", "hello"),
-        Turn("user", "bye"),
-        Turn("assistant", "goodbye"),
-    ])
+    conv = Conversation(
+        turns=[
+            Turn("user", "hi"),
+            Turn("assistant", "hello"),
+            Turn("user", "bye"),
+            Turn("assistant", "goodbye"),
+        ]
+    )
     assert len(conv) == 4
 
 
 def test_conversation_user_turns():
-    conv = Conversation(turns=[
-        Turn("system", "sys"),
-        Turn("user", "q1"),
-        Turn("assistant", "a1"),
-        Turn("user", "q2"),
-        Turn("assistant", "a2"),
-    ])
+    conv = Conversation(
+        turns=[
+            Turn("system", "sys"),
+            Turn("user", "q1"),
+            Turn("assistant", "a1"),
+            Turn("user", "q2"),
+            Turn("assistant", "a2"),
+        ]
+    )
     user = conv.user_turns()
     assert len(user) == 2
     assert all(t.role == "user" for t in user)
@@ -59,37 +67,45 @@ def test_conversation_user_turns():
 # Conversation.is_valid
 # ---------------------------------------------------------------------------
 
+
 def test_conversation_is_valid_alternating():
-    conv = Conversation(turns=[
-        Turn("user", "q1"),
-        Turn("assistant", "a1"),
-        Turn("user", "q2"),
-        Turn("assistant", "a2"),
-    ])
+    conv = Conversation(
+        turns=[
+            Turn("user", "q1"),
+            Turn("assistant", "a1"),
+            Turn("user", "q2"),
+            Turn("assistant", "a2"),
+        ]
+    )
     assert conv.is_valid() is True
 
 
 def test_conversation_is_valid_with_system():
-    conv = Conversation(turns=[
-        Turn("system", "You are helpful."),
-        Turn("user", "question"),
-        Turn("assistant", "answer"),
-    ])
+    conv = Conversation(
+        turns=[
+            Turn("system", "You are helpful."),
+            Turn("user", "question"),
+            Turn("assistant", "answer"),
+        ]
+    )
     assert conv.is_valid() is True
 
 
 def test_conversation_is_valid_double_user():
-    conv = Conversation(turns=[
-        Turn("user", "q1"),
-        Turn("user", "q2"),
-        Turn("assistant", "a1"),
-    ])
+    conv = Conversation(
+        turns=[
+            Turn("user", "q1"),
+            Turn("user", "q2"),
+            Turn("assistant", "a1"),
+        ]
+    )
     assert conv.is_valid() is False
 
 
 # ---------------------------------------------------------------------------
 # ChatTemplate
 # ---------------------------------------------------------------------------
+
 
 def test_chat_template_format_turn():
     template = ChatTemplate()
@@ -102,11 +118,13 @@ def test_chat_template_format_turn():
 
 def test_chat_template_format_conversation():
     template = ChatTemplate()
-    conv = Conversation(turns=[
-        Turn("system", "sys prompt"),
-        Turn("user", "my question"),
-        Turn("assistant", "my answer"),
-    ])
+    conv = Conversation(
+        turns=[
+            Turn("system", "sys prompt"),
+            Turn("user", "my question"),
+            Turn("assistant", "my answer"),
+        ]
+    )
     result = template.format_conversation(conv)
     assert "sys prompt" in result
     assert "my question" in result
@@ -120,11 +138,14 @@ def test_chat_template_format_conversation():
 # build_sft_labels
 # ---------------------------------------------------------------------------
 
+
 def _make_simple_conv():
-    return Conversation(turns=[
-        Turn("user", "Hello"),
-        Turn("assistant", "Hi there"),
-    ])
+    return Conversation(
+        turns=[
+            Turn("user", "Hello"),
+            Turn("assistant", "Hi there"),
+        ]
+    )
 
 
 def test_build_sft_labels_shape():
@@ -168,6 +189,7 @@ def test_build_sft_labels_assistant_not_masked():
 # conversations_from_pairs
 # ---------------------------------------------------------------------------
 
+
 def test_conversations_from_pairs():
     pairs = [("q1", "a1"), ("q2", "a2"), ("q3", "a3")]
     convs = conversations_from_pairs(pairs, system_prompt="Be helpful.")
@@ -186,6 +208,7 @@ def test_conversations_from_pairs():
 # ---------------------------------------------------------------------------
 # concatenate_conversations
 # ---------------------------------------------------------------------------
+
 
 def test_concatenate_conversations():
     pairs = [("q1", "a1"), ("q2", "a2"), ("q3", "a3")]
@@ -207,6 +230,7 @@ def test_concatenate_conversations_max_turns():
 # ---------------------------------------------------------------------------
 # ConversationDataset
 # ---------------------------------------------------------------------------
+
 
 def _make_dataset(n: int = 3, max_seq_len: int = 512) -> ConversationDataset:
     pairs = [(f"question {i}", f"answer {i}") for i in range(n)]
@@ -236,10 +260,17 @@ def test_conversation_dataset_getitem():
 # filter_by_length
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_length():
     # Create conversations of varying content lengths
-    pairs_short = [("hi", "ok")]          # very short
-    pairs_long = [(f"tell me about topic {i} in great detail", f"certainly, topic {i} is very interesting because...") for i in range(4)]
+    pairs_short = [("hi", "ok")]  # very short
+    pairs_long = [
+        (
+            f"tell me about topic {i} in great detail",
+            f"certainly, topic {i} is very interesting because...",
+        )
+        for i in range(4)
+    ]
 
     all_pairs = pairs_short + pairs_long
     convs = conversations_from_pairs(all_pairs)

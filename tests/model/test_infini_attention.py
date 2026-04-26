@@ -5,10 +5,8 @@ Tiny config: d_model=64, n_heads=4, head_dim=16, segment_len=8.
 Pure PyTorch only — no external ML libraries.
 """
 
-import math
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.infini_attention import InfiniAttention, _sigma
 
@@ -51,12 +49,8 @@ def test_output_shape(model):
 def test_memory_state_shapes(model):
     x = _rand_input()
     _, (M, z) = model(x)
-    assert M.shape == (N_HEADS, HEAD_DIM, HEAD_DIM), (
-        f"M shape wrong: {M.shape}"
-    )
-    assert z.shape == (N_HEADS, HEAD_DIM), (
-        f"z shape wrong: {z.shape}"
-    )
+    assert M.shape == (N_HEADS, HEAD_DIM, HEAD_DIM), f"M shape wrong: {M.shape}"
+    assert z.shape == (N_HEADS, HEAD_DIM), f"z shape wrong: {z.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -164,9 +158,7 @@ def test_memory_context_effect(model):
 # ---------------------------------------------------------------------------
 def test_beta_in_range(model):
     beta = torch.sigmoid(model.beta_param)
-    assert (beta > 0).all() and (beta < 1).all(), (
-        f"β out of (0,1): {beta}"
-    )
+    assert (beta > 0).all() and (beta < 1).all(), f"β out of (0,1): {beta}"
 
 
 # ---------------------------------------------------------------------------
@@ -205,9 +197,7 @@ def test_sigma_positive():
     torch.manual_seed(0)
     x = torch.randn(100, 50) * 10  # wide range including very negative values
     result = _sigma(x)
-    assert (result >= 0).all(), (
-        f"σ(x) has negative values; min={result.min().item():.6f}"
-    )
+    assert (result >= 0).all(), f"σ(x) has negative values; min={result.min().item():.6f}"
 
 
 # ---------------------------------------------------------------------------
@@ -218,9 +208,7 @@ def test_non_divisible_seq_len(model):
     T = SEG_LEN * 3 + 3
     x = _rand_input(seq_len=T)
     out, (M, z) = model(x)
-    assert out.shape == (BATCH, T, D_MODEL), (
-        f"Shape mismatch for non-divisible T: {out.shape}"
-    )
+    assert out.shape == (BATCH, T, D_MODEL), f"Shape mismatch for non-divisible T: {out.shape}"
     assert torch.isfinite(out).all(), "NaN/Inf when seq_len not divisible by segment_len"
     assert torch.isfinite(M).all()
     assert torch.isfinite(z).all()

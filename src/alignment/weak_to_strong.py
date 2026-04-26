@@ -6,9 +6,8 @@ A weak model's predictions are used as training signal for a stronger model.
 The strong model can generalize beyond its supervisor's capability because it
 leverages its own internal representations more effectively.
 """
-from __future__ import annotations
 
-from typing import Dict
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
@@ -16,10 +15,10 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import Dataset
 
-
 # ---------------------------------------------------------------------------
 # WeakSupervisor
 # ---------------------------------------------------------------------------
+
 
 class WeakSupervisor:
     """Wraps a small frozen model to produce soft pseudo-labels.
@@ -60,6 +59,7 @@ class WeakSupervisor:
 # WeakToStrongDataset
 # ---------------------------------------------------------------------------
 
+
 class WeakToStrongDataset(Dataset):
     """Dataset that pre-computes soft labels from a WeakSupervisor.
 
@@ -82,6 +82,7 @@ class WeakToStrongDataset(Dataset):
 # ---------------------------------------------------------------------------
 # WeakToStrongLoss
 # ---------------------------------------------------------------------------
+
 
 class WeakToStrongLoss(nn.Module):
     """KL-divergence loss between strong model outputs and weak soft labels.
@@ -136,6 +137,7 @@ class WeakToStrongLoss(nn.Module):
 # WeakToStrongTrainer
 # ---------------------------------------------------------------------------
 
+
 class WeakToStrongTrainer:
     """Orchestrates one training step of the strong model on weak pseudo-labels.
 
@@ -155,7 +157,7 @@ class WeakToStrongTrainer:
         self.optimizer = optimizer
         self.loss_fn = loss_fn
 
-    def train_step(self, x: Tensor, soft_labels: Tensor) -> Dict[str, float]:
+    def train_step(self, x: Tensor, soft_labels: Tensor) -> dict[str, float]:
         """Execute one gradient update step.
 
         Args:

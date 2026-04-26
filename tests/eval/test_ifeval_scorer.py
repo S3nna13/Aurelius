@@ -102,10 +102,12 @@ def test_max_punctuation():
 
 def test_score_one_multiple_constraints():
     s = IFEvalScorer()
-    prob = _mk([
-        IFEvalConstraint("length_words", {"min": 2}),
-        IFEvalConstraint("contains_keyword", {"keyword": "hello"}),
-    ])
+    prob = _mk(
+        [
+            IFEvalConstraint("length_words", {"min": 2}),
+            IFEvalConstraint("contains_keyword", {"keyword": "hello"}),
+        ]
+    )
     r = s.score_one(prob, "hello world")
     assert isinstance(r, IFEvalResult)
     assert r.passed == [True, True]
@@ -115,10 +117,12 @@ def test_score_one_multiple_constraints():
 
 def test_strict_pass_requires_all():
     s = IFEvalScorer()
-    prob = _mk([
-        IFEvalConstraint("length_words", {"min": 10}),  # fails
-        IFEvalConstraint("contains_keyword", {"keyword": "hi"}),
-    ])
+    prob = _mk(
+        [
+            IFEvalConstraint("length_words", {"min": 10}),  # fails
+            IFEvalConstraint("contains_keyword", {"keyword": "hi"}),
+        ]
+    )
     r = s.score_one(prob, "hi world")
     assert r.strict_pass is False
     assert r.passed == [False, True]
@@ -159,14 +163,18 @@ def test_mismatched_lengths_raises():
 def test_per_type_accuracy_correct_mixed():
     s = IFEvalScorer()
     # Two problems, each with two constraint types.
-    p1 = _mk([
-        IFEvalConstraint("length_words", {"min": 1}),     # pass
-        IFEvalConstraint("contains_keyword", {"keyword": "zzz"}),  # fail
-    ])
-    p2 = _mk([
-        IFEvalConstraint("length_words", {"min": 100}),   # fail
-        IFEvalConstraint("contains_keyword", {"keyword": "hi"}),   # pass
-    ])
+    p1 = _mk(
+        [
+            IFEvalConstraint("length_words", {"min": 1}),  # pass
+            IFEvalConstraint("contains_keyword", {"keyword": "zzz"}),  # fail
+        ]
+    )
+    p2 = _mk(
+        [
+            IFEvalConstraint("length_words", {"min": 100}),  # fail
+            IFEvalConstraint("contains_keyword", {"keyword": "hi"}),  # pass
+        ]
+    )
     out = s.score([p1, p2], ["hi there", "hi there"])
     assert out["per_type_accuracy"]["length_words"] == pytest.approx(0.5)
     assert out["per_type_accuracy"]["contains_keyword"] == pytest.approx(0.5)
@@ -174,11 +182,13 @@ def test_per_type_accuracy_correct_mixed():
 
 def test_determinism():
     s = IFEvalScorer()
-    p = _mk([
-        IFEvalConstraint("length_words", {"min": 2, "max": 10}),
-        IFEvalConstraint("start_with", {"phrase": "Hello"}),
-        IFEvalConstraint("json_format", {}),
-    ])
+    p = _mk(
+        [
+            IFEvalConstraint("length_words", {"min": 2, "max": 10}),
+            IFEvalConstraint("start_with", {"phrase": "Hello"}),
+            IFEvalConstraint("json_format", {}),
+        ]
+    )
     resp = "Hello world"
     a = s.score_one(p, resp)
     b = s.score_one(p, resp)

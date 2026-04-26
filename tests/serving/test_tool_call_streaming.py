@@ -1,17 +1,16 @@
 """Tests for src/serving/tool_call_streaming.py (~45 tests)."""
 
-import pytest
 from src.serving.tool_call_streaming import (
+    TOOL_CALL_ACCUMULATOR_REGISTRY,
     ToolCallBuffer,
     ToolCallState,
     ToolCallStreamAccumulator,
-    TOOL_CALL_ACCUMULATOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # ToolCallState enum
 # ---------------------------------------------------------------------------
+
 
 class TestToolCallStateEnum:
     def test_pending_value(self):
@@ -38,6 +37,7 @@ class TestToolCallStateEnum:
 # ToolCallBuffer – initial state
 # ---------------------------------------------------------------------------
 
+
 class TestToolCallBufferInit:
     def test_initial_state_is_pending(self):
         buf = ToolCallBuffer("tc-1", "my_fn")
@@ -59,6 +59,7 @@ class TestToolCallBufferInit:
 # ---------------------------------------------------------------------------
 # ToolCallBuffer – append_argument_delta
 # ---------------------------------------------------------------------------
+
 
 class TestToolCallBufferAppend:
     def test_single_delta_accumulates(self):
@@ -93,6 +94,7 @@ class TestToolCallBufferAppend:
 # ---------------------------------------------------------------------------
 # ToolCallBuffer – finalize
 # ---------------------------------------------------------------------------
+
 
 class TestToolCallBufferFinalize:
     def test_finalize_valid_json_returns_dict(self):
@@ -151,6 +153,7 @@ class TestToolCallBufferFinalize:
 # ---------------------------------------------------------------------------
 # ToolCallStreamAccumulator
 # ---------------------------------------------------------------------------
+
 
 class TestToolCallStreamAccumulator:
     def test_start_tool_call_returns_buffer(self):

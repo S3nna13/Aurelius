@@ -7,9 +7,9 @@ N independent responses and selecting the best via a verifier or vote.
 from __future__ import annotations
 
 import math
-from collections import Counter
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 
@@ -27,13 +27,14 @@ class ScalingConfig:
 # Standalone aggregation helpers
 # ---------------------------------------------------------------------------
 
-def majority_vote(responses: List[str]) -> str:
+
+def majority_vote(responses: list[str]) -> str:
     """Return the most common response; tie-break by first occurrence."""
     if not responses:
         return ""
 
-    counts: Dict[str, int] = {}
-    first_seen: Dict[str, int] = {}
+    counts: dict[str, int] = {}
+    first_seen: dict[str, int] = {}
     for idx, r in enumerate(responses):
         counts[r] = counts.get(r, 0) + 1
         if r not in first_seen:
@@ -47,7 +48,7 @@ def majority_vote(responses: List[str]) -> str:
     return candidates[0]
 
 
-def weighted_majority_vote(responses: List[str], weights: List[float]) -> str:
+def weighted_majority_vote(responses: list[str], weights: list[float]) -> str:
     """Sum weights per unique response, return the highest-weight one.
 
     Tie-break by first occurrence.
@@ -55,8 +56,8 @@ def weighted_majority_vote(responses: List[str], weights: List[float]) -> str:
     if not responses:
         return ""
 
-    totals: Dict[str, float] = {}
-    first_seen: Dict[str, int] = {}
+    totals: dict[str, float] = {}
+    first_seen: dict[str, int] = {}
     for idx, (r, w) in enumerate(zip(responses, weights)):
         totals[r] = totals.get(r, 0.0) + w
         if r not in first_seen:
@@ -68,7 +69,7 @@ def weighted_majority_vote(responses: List[str], weights: List[float]) -> str:
     return candidates[0]
 
 
-def best_of_n(responses: List[str], scores: List[float]) -> str:
+def best_of_n(responses: list[str], scores: list[float]) -> str:
     """Return the response with the highest score."""
     if not responses:
         return ""
@@ -76,7 +77,7 @@ def best_of_n(responses: List[str], scores: List[float]) -> str:
     return responses[best_idx]
 
 
-def normalize_scores(scores: List[float]) -> List[float]:
+def normalize_scores(scores: list[float]) -> list[float]:
     """Softmax-normalize scores so they sum to 1."""
     if not scores:
         return []
@@ -85,7 +86,7 @@ def normalize_scores(scores: List[float]) -> List[float]:
     return normalized.tolist()
 
 
-def compute_response_diversity(responses: List[str]) -> float:
+def compute_response_diversity(responses: list[str]) -> float:
     """Diversity of responses: 1.0 = all unique, 0.0 = all the same.
 
     Computed as (n_unique - 1) / (n - 1) for n > 1.
@@ -103,6 +104,7 @@ def compute_response_diversity(responses: List[str]) -> float:
 # ComputeScaler
 # ---------------------------------------------------------------------------
 
+
 class ComputeScaler:
     """Generate N responses and aggregate them for inference-time scaling.
 
@@ -116,18 +118,18 @@ class ComputeScaler:
     def __init__(
         self,
         generate_fn: Callable[[str], str],
-        score_fn: Optional[Callable[[str, str], float]] = None,
-        config: Optional[ScalingConfig] = None,
+        score_fn: Callable[[str, str], float] | None = None,
+        config: ScalingConfig | None = None,
     ) -> None:
         self.generate_fn = generate_fn
         self.score_fn = score_fn
         self.config = config if config is not None else ScalingConfig()
 
-    def generate_n(self, prompt: str) -> List[str]:
+    def generate_n(self, prompt: str) -> list[str]:
         """Call generate_fn n_samples times and return the list of responses."""
         return [self.generate_fn(prompt) for _ in range(self.config.n_samples)]
 
-    def aggregate(self, prompt: str, responses: List[str]) -> str:
+    def aggregate(self, prompt: str, responses: list[str]) -> str:
         """Apply the configured aggregation strategy to select the best response."""
         agg = self.config.aggregation
         if agg == "majority_vote":
@@ -147,7 +149,7 @@ class ComputeScaler:
         else:
             raise ValueError(f"Unknown aggregation: {agg!r}")
 
-    def __call__(self, prompt: str) -> Tuple[str, Dict[str, Any]]:
+    def __call__(self, prompt: str) -> tuple[str, dict[str, Any]]:
         """Generate N responses, aggregate, and return (best_response, metadata).
 
         Metadata contains:
@@ -160,7 +162,7 @@ class ComputeScaler:
         best = self.aggregate(prompt, responses)
         n_unique = len(set(responses))
         diversity = compute_response_diversity(responses)
-        metadata: Dict[str, Any] = {
+        metadata: dict[str, Any] = {
             "n_samples": self.config.n_samples,
             "n_unique": n_unique,
             "diversity": diversity,
@@ -172,6 +174,7 @@ class ComputeScaler:
 # ---------------------------------------------------------------------------
 # PassAtK
 # ---------------------------------------------------------------------------
+
 
 class PassAtK:
     """Estimate pass@k for code generation evaluation.
@@ -202,7 +205,7 @@ class PassAtK:
             return 0.0
         return 1.0 - numerator / denominator
 
-    def compute_from_results(self, results: List[bool], k: int) -> float:
+    def compute_from_results(self, results: list[bool], k: int) -> float:
         """Compute empirical pass@k from a list of pass/fail booleans.
 
         Args:

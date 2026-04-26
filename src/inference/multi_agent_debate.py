@@ -11,12 +11,11 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 import torch
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DebateConfig:
@@ -55,6 +54,7 @@ class DebateResult:
 # Standalone helpers
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def greedy_generate(model, prompt_ids: list[int], max_new_tokens: int, vocab_size: int) -> str:
     """Token-by-token greedy decoding.
@@ -92,7 +92,7 @@ def compute_agreement(positions: list[str]) -> float:
     def get_trigrams(text: str) -> set[str]:
         if len(text) < 3:
             return {text} if text else set()
-        return {text[i:i+3] for i in range(len(text) - 2)}
+        return {text[i : i + 3] for i in range(len(text) - 2)}
 
     def trigram_similarity(a: str, b: str) -> float:
         tgrams_a = get_trigrams(a)
@@ -131,6 +131,7 @@ def extract_confidence(text: str) -> float:
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
+
 
 class DebateOrchestrator:
     """Orchestrates a multi-agent debate to reach consensus on a question.

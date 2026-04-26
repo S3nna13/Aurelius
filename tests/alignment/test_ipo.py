@@ -70,4 +70,3 @@ def test_ipo_backward_produces_gradients():
 def test_ipo_rejects_shape_mismatch():
     with pytest.raises(ValueError):
         ipo_loss(torch.tensor([1.0, 2.0]), torch.tensor([0.5]), beta=0.5)
-

@@ -1,20 +1,21 @@
 """Tests for CapacityPlanner."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.monitoring.capacity_planner import (
+    CAPACITY_PLANNER_REGISTRY,
     CapacityForecast,
     CapacityPlanner,
     CapacityPlannerConfig,
     TrendDirection,
-    CAPACITY_PLANNER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Enum
 # ---------------------------------------------------------------------------
+
 
 class TestTrendDirectionEnum:
     def test_increasing(self):
@@ -37,6 +38,7 @@ class TestTrendDirectionEnum:
 # Dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestForecast:
     def test_fields(self):
         f = CapacityForecast(
@@ -52,9 +54,7 @@ class TestForecast:
         assert f.current_value == 10.0
 
     def test_frozen(self):
-        f = CapacityForecast(
-            "m", 1.0, TrendDirection.STABLE, 0.0, 1.0, None, 100.0
-        )
+        f = CapacityForecast("m", 1.0, TrendDirection.STABLE, 0.0, 1.0, None, 100.0)
         with pytest.raises(Exception):
             f.slope = 2.0  # type: ignore
 
@@ -75,6 +75,7 @@ class TestConfig:
 # ---------------------------------------------------------------------------
 # Linear regression
 # ---------------------------------------------------------------------------
+
 
 class TestLinearRegression:
     def setup_method(self):
@@ -107,6 +108,7 @@ class TestLinearRegression:
 # ---------------------------------------------------------------------------
 # Analyze
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyze:
     def setup_method(self):
@@ -173,6 +175,7 @@ class TestAnalyze:
 # analyze_all
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeAll:
     def setup_method(self):
         self.p = CapacityPlanner()
@@ -181,9 +184,7 @@ class TestAnalyzeAll:
         assert self.p.analyze_all({}) == []
 
     def test_multiple(self):
-        results = self.p.analyze_all(
-            {"a": [1.0, 2.0, 3.0], "b": [5.0, 5.0, 5.0]}
-        )
+        results = self.p.analyze_all({"a": [1.0, 2.0, 3.0], "b": [5.0, 5.0, 5.0]})
         assert len(results) == 2
 
     def test_names_preserved(self):
@@ -195,6 +196,7 @@ class TestAnalyzeAll:
 # ---------------------------------------------------------------------------
 # at_risk
 # ---------------------------------------------------------------------------
+
 
 class TestAtRisk:
     def setup_method(self):
@@ -211,12 +213,8 @@ class TestAtRisk:
 
     def test_filters_over_threshold(self):
         forecasts = [
-            CapacityForecast(
-                "a", 0, TrendDirection.INCREASING, 1.0, 0.0, 5.0, 50.0
-            ),
-            CapacityForecast(
-                "b", 0, TrendDirection.INCREASING, 1.0, 0.0, 100.0, 50.0
-            ),
+            CapacityForecast("a", 0, TrendDirection.INCREASING, 1.0, 0.0, 5.0, 50.0),
+            CapacityForecast("b", 0, TrendDirection.INCREASING, 1.0, 0.0, 100.0, 50.0),
         ]
         at_risk = self.p.at_risk(forecasts, threshold_days=30)
         assert len(at_risk) == 1
@@ -224,9 +222,7 @@ class TestAtRisk:
 
     def test_threshold_inclusive(self):
         forecasts = [
-            CapacityForecast(
-                "a", 0, TrendDirection.INCREASING, 1.0, 0.0, 30.0, 50.0
-            ),
+            CapacityForecast("a", 0, TrendDirection.INCREASING, 1.0, 0.0, 30.0, 50.0),
         ]
         assert len(self.p.at_risk(forecasts, threshold_days=30)) == 1
 
@@ -234,6 +230,7 @@ class TestAtRisk:
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
+
 
 class TestReport:
     def setup_method(self):
@@ -245,9 +242,7 @@ class TestReport:
 
     def test_mentions_at_risk(self):
         forecasts = [
-            CapacityForecast(
-                "a", 0, TrendDirection.INCREASING, 1.0, 0.0, 5.0, 50.0
-            ),
+            CapacityForecast("a", 0, TrendDirection.INCREASING, 1.0, 0.0, 5.0, 50.0),
         ]
         out = self.p.report(forecasts)
         assert "AT RISK" in out
@@ -264,6 +259,7 @@ class TestReport:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_default(self):

@@ -8,18 +8,17 @@ mutual information estimation integrated into layer-wise results.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ProbingConfig:
@@ -30,7 +29,7 @@ class ProbingConfig:
     probe_type supports 'linear' or 'mlp' (not 'attention' like advanced version).
     """
 
-    probe_type: str = "linear"   # "linear" | "mlp"
+    probe_type: str = "linear"  # "linear" | "mlp"
     n_epochs: int = 10
     lr: float = 1e-3
     hidden_dim: int = 128
@@ -41,6 +40,7 @@ class ProbingConfig:
 # MLPProbe — 2-layer MLP with GELU + Dropout
 # Distinct from probing_advanced.MLPProbe which uses ReLU without Dropout
 # ---------------------------------------------------------------------------
+
 
 class MLPProbe(nn.Module):
     """Two-layer MLP probe with GELU activation and Dropout.
@@ -73,6 +73,7 @@ class MLPProbe(nn.Module):
 # Layer representation extraction
 # ---------------------------------------------------------------------------
 
+
 def extract_layer_representations(
     model: nn.Module,
     input_ids: Tensor,
@@ -92,11 +93,13 @@ def extract_layer_representations(
     hooks = []
 
     for idx in layer_indices:
+
         def make_hook(layer_idx: int):
             def hook(module, inputs, output):
                 # TransformerBlock returns (hidden, kv) tuple; capture hidden state
                 out = output[0] if isinstance(output, (tuple, list)) else output
                 captured[layer_idx] = out.detach()
+
             return hook
 
         hooks.append(model.layers[idx].register_forward_hook(make_hook(idx)))
@@ -114,6 +117,7 @@ def extract_layer_representations(
 # ---------------------------------------------------------------------------
 # ProbingDataset
 # ---------------------------------------------------------------------------
+
 
 class ProbingDataset:
     """Dataset of (representation, label) pairs for probing classifiers.
@@ -141,7 +145,7 @@ class ProbingDataset:
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
         return self.representations[idx], self.labels[idx]
 
-    def split(self, ratio: float = 0.8) -> tuple["ProbingDataset", "ProbingDataset"]:
+    def split(self, ratio: float = 0.8) -> tuple[ProbingDataset, ProbingDataset]:
         """Split dataset into train/val subsets.
 
         Args:
@@ -167,6 +171,7 @@ class ProbingDataset:
 # ---------------------------------------------------------------------------
 # ProbingClassifier
 # ---------------------------------------------------------------------------
+
 
 class ProbingClassifier:
     """Train and evaluate a linear or MLP probe on frozen representations.
@@ -266,6 +271,7 @@ class ProbingClassifier:
 # LayerwiseProbingResults
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LayerwiseProbingResults:
     """Results from probing all layers of a transformer model.
@@ -286,6 +292,7 @@ class LayerwiseProbingResults:
 # ---------------------------------------------------------------------------
 # LayerwiseProber
 # ---------------------------------------------------------------------------
+
 
 class LayerwiseProber:
     """Probe every layer of a transformer model for a given task.
@@ -322,15 +329,13 @@ class LayerwiseProber:
         n_layers = len(list(self.model.layers))
         all_indices = list(range(n_layers))
 
-        representations = extract_layer_representations(
-            self.model, input_ids, all_indices
-        )
+        representations = extract_layer_representations(self.model, input_ids, all_indices)
 
         n_classes = int(labels.max().item()) + 1
         layer_accuracies: dict[int, float] = {}
 
         for idx in all_indices:
-            hidden = representations[idx]   # (B, T, D)
+            hidden = representations[idx]  # (B, T, D)
             # Mean-pool over sequence dimension -> (B, D)
             pooled = hidden.mean(dim=1)
 
@@ -371,7 +376,7 @@ class LayerwiseProber:
         n_bins = 10
 
         # Project to scalar via feature mean
-        x_scalar = reps.float().mean(dim=-1)   # (N,)
+        x_scalar = reps.float().mean(dim=-1)  # (N,)
         x_min = x_scalar.min().item()
         x_max = x_scalar.max().item()
 
@@ -407,11 +412,9 @@ class LayerwiseProber:
             hy_given_x += p_b * h_b
 
         mi = hy - hy_given_x
-        return float(max(0.0, mi))   # clamp to non-negative
+        return float(max(0.0, mi))  # clamp to non-negative
 
-    def rank_layers(
-        self, results: LayerwiseProbingResults
-    ) -> list[tuple[int, float]]:
+    def rank_layers(self, results: LayerwiseProbingResults) -> list[tuple[int, float]]:
         """Return layers sorted by probe accuracy in descending order.
 
         Args:

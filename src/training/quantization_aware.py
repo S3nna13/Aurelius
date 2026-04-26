@@ -10,13 +10,14 @@ Usage:
     n_replaced = apply_qat(model, config)
     # Train as normal -- weights are fake-quantized each forward pass.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 
 @dataclass
@@ -30,11 +31,12 @@ class QATConfig:
         quant_min: Minimum quantized integer value. Auto-computed when None.
         quant_max: Maximum quantized integer value. Auto-computed when None.
     """
+
     n_bits: int = 8
     symmetric: bool = True
     per_channel: bool = False
-    quant_min: Optional[int] = None
-    quant_max: Optional[int] = None
+    quant_min: int | None = None
+    quant_max: int | None = None
 
     def __post_init__(self) -> None:
         if self.quant_min is None:
@@ -46,7 +48,7 @@ class QATConfig:
             if self.symmetric:
                 self.quant_max = 2 ** (self.n_bits - 1) - 1
             else:
-                self.quant_max = 2 ** self.n_bits - 1
+                self.quant_max = 2**self.n_bits - 1
 
 
 def compute_quantization_params(
@@ -55,7 +57,7 @@ def compute_quantization_params(
     symmetric: bool,
     per_channel: bool = False,
     channel_dim: int = 0,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Compute quantization scale and zero-point for a tensor.
 
     Args:
@@ -83,7 +85,7 @@ def compute_quantization_params(
             for d in sorted(reduce_dims, reverse=True):
                 x_min = x_min.amin(dim=d)
                 x_max = x_max.amax(dim=d)
-            scale = (x_max - x_min).clamp(min=1e-8) / (2 ** n_bits - 1)
+            scale = (x_max - x_min).clamp(min=1e-8) / (2**n_bits - 1)
             zero_point = torch.round(-x_min / scale)
     else:
         if symmetric:
@@ -93,7 +95,7 @@ def compute_quantization_params(
         else:
             x_min = x.min()
             x_max = x.max()
-            scale = (x_max - x_min).clamp(min=1e-8) / (2 ** n_bits - 1)
+            scale = (x_max - x_min).clamp(min=1e-8) / (2**n_bits - 1)
             zero_point = torch.round(-x_min / scale)
 
     return scale, zero_point
@@ -172,7 +174,9 @@ class FakeQuantize(nn.Module):
             per_channel=self.config.per_channel,
         )
         return fake_quantize(
-            x, scale, zero_point,
+            x,
+            scale,
+            zero_point,
             self.config.quant_min,
             self.config.quant_max,
         )
@@ -195,7 +199,9 @@ class FakeQuantize(nn.Module):
             per_channel=self.config.per_channel,
         )
         x_fq = fake_quantize(
-            x, scale, zero_point,
+            x,
+            scale,
+            zero_point,
             self.config.quant_min,
             self.config.quant_max,
         )
@@ -282,7 +288,7 @@ def apply_qat(
 def compute_model_quantization_error(
     model: nn.Module,
     x: torch.Tensor,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Measure the effect of fake quantization on model output.
 
     Runs the model in train mode (fake quant active) and eval mode (no quant)

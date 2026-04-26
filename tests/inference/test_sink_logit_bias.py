@@ -78,7 +78,7 @@ def test_applier_empty_ids_raises():
 
 def test_determinism():
     torch.manual_seed(1)
-    a = torch.randn(1, 6, 10)
+    torch.randn(1, 6, 10)
     torch.manual_seed(1)
     b = torch.randn(1, 6, 10)
     o1 = apply_sink_token_logit_bias(b, [2, 4], last_n_positions=3, bonus=0.25)

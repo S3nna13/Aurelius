@@ -2,9 +2,8 @@
 
 All tests are pure Python — no network, no torch.
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.github_code_loader import (
     CodeFile,
@@ -23,17 +22,21 @@ from src.data.github_code_loader import (
     parse_the_stack_sample,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. mock_codesearchnet_data has correct fields
 # ---------------------------------------------------------------------------
+
 
 def test_mock_codesearchnet_data_fields():
     data = mock_codesearchnet_data(4)
     assert len(data) == 4
     required = {
-        "repository_name", "func_name", "whole_func_string",
-        "language", "func_documentation_string", "func_code_tokens",
+        "repository_name",
+        "func_name",
+        "whole_func_string",
+        "language",
+        "func_documentation_string",
+        "func_code_tokens",
     }
     for sample in data:
         assert required.issubset(sample.keys()), f"Missing fields in {sample.keys()}"
@@ -42,6 +45,7 @@ def test_mock_codesearchnet_data_fields():
 # ---------------------------------------------------------------------------
 # 2. parse_codesearchnet_sample returns CodeFunction with code/docstring
 # ---------------------------------------------------------------------------
+
 
 def test_parse_codesearchnet_sample_returns_codefunction():
     raw = mock_codesearchnet_data(1)[0]
@@ -58,6 +62,7 @@ def test_parse_codesearchnet_sample_returns_codefunction():
 # 3. mock_the_stack_data has content, lang, max_stars fields
 # ---------------------------------------------------------------------------
 
+
 def test_mock_the_stack_data_fields():
     data = mock_the_stack_data(4)
     assert len(data) == 4
@@ -69,6 +74,7 @@ def test_mock_the_stack_data_fields():
 # ---------------------------------------------------------------------------
 # 4. parse_the_stack_sample returns CodeFile
 # ---------------------------------------------------------------------------
+
 
 def test_parse_the_stack_sample_returns_codefile():
     raw = mock_the_stack_data(1)[0]
@@ -84,6 +90,7 @@ def test_parse_the_stack_sample_returns_codefile():
 # 5. parse_the_stack_sample stars come from max_stars_count
 # ---------------------------------------------------------------------------
 
+
 def test_parse_the_stack_sample_stars_from_max_stars_count():
     raw = mock_the_stack_data(2)[1]
     cf = parse_the_stack_sample(raw)
@@ -93,6 +100,7 @@ def test_parse_the_stack_sample_stars_from_max_stars_count():
 # ---------------------------------------------------------------------------
 # 6. mock_github_issues has correct fields
 # ---------------------------------------------------------------------------
+
 
 def test_mock_github_issues_fields():
     data = mock_github_issues(4)
@@ -105,6 +113,7 @@ def test_mock_github_issues_fields():
 # ---------------------------------------------------------------------------
 # 7. parse_github_issue extracts labels from list of dicts
 # ---------------------------------------------------------------------------
+
 
 def test_parse_github_issue_extracts_labels():
     raw = {
@@ -126,6 +135,7 @@ def test_parse_github_issue_extracts_labels():
 # 8. parse_github_issue state is "open" or "closed"
 # ---------------------------------------------------------------------------
 
+
 def test_parse_github_issue_state_valid():
     for state in ("open", "closed"):
         raw = {
@@ -145,6 +155,7 @@ def test_parse_github_issue_state_valid():
 # ---------------------------------------------------------------------------
 # 9. code_to_instruction returns dict with instruction/input/output
 # ---------------------------------------------------------------------------
+
 
 def test_code_to_instruction_structure():
     fn = CodeFunction(
@@ -167,6 +178,7 @@ def test_code_to_instruction_structure():
 # ---------------------------------------------------------------------------
 # 10. issue_to_instruction returns dict with instruction/input/output
 # ---------------------------------------------------------------------------
+
 
 def test_issue_to_instruction_structure():
     issue = GitHubIssue(
@@ -194,6 +206,7 @@ def test_issue_to_instruction_structure():
 # 11. filter_by_language returns only matching language
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_language():
     files = [parse_the_stack_sample(r) for r in mock_the_stack_data(4)]
     python_files = filter_by_language(files, "Python")
@@ -211,6 +224,7 @@ def test_filter_by_language_case_insensitive():
 # ---------------------------------------------------------------------------
 # 12. filter_by_quality removes low-star files
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_quality_removes_low_stars():
     raw_files = mock_the_stack_data(4)
@@ -241,13 +255,17 @@ def test_filter_by_quality_removes_low_alphanum():
 # 13. deduplicate_by_content removes duplicates
 # ---------------------------------------------------------------------------
 
+
 def test_deduplicate_by_content_removes_duplicates():
-    fn1 = CodeFunction(repo="r", func_name="foo", code="def foo(): pass",
-                       docstring="", language="python")
-    fn2 = CodeFunction(repo="r2", func_name="foo2", code="def foo(): pass",
-                       docstring="", language="python")  # same code
-    fn3 = CodeFunction(repo="r3", func_name="bar", code="def bar(): return 1",
-                       docstring="", language="python")
+    fn1 = CodeFunction(
+        repo="r", func_name="foo", code="def foo(): pass", docstring="", language="python"
+    )
+    fn2 = CodeFunction(
+        repo="r2", func_name="foo2", code="def foo(): pass", docstring="", language="python"
+    )  # same code
+    fn3 = CodeFunction(
+        repo="r3", func_name="bar", code="def bar(): return 1", docstring="", language="python"
+    )
     result = deduplicate_by_content([fn1, fn2, fn3])
     assert len(result) == 2
     codes = [f.code for f in result]
@@ -259,18 +277,38 @@ def test_deduplicate_by_content_removes_duplicates():
 # 14. deduplicate_by_content preserves order of first occurrences
 # ---------------------------------------------------------------------------
 
+
 def test_deduplicate_by_content_preserves_order():
     fns = []
     for i in range(5):
-        fns.append(CodeFunction(
-            repo="r", func_name=f"fn_{i}", code=f"def fn_{i}(): return {i}",
-            docstring="", language="python",
-        ))
+        fns.append(
+            CodeFunction(
+                repo="r",
+                func_name=f"fn_{i}",
+                code=f"def fn_{i}(): return {i}",
+                docstring="",
+                language="python",
+            )
+        )
     # Add duplicates of fn_1 and fn_3
-    fns.append(CodeFunction(repo="r", func_name="fn_1_dup",
-                            code="def fn_1(): return 1", docstring="", language="python"))
-    fns.append(CodeFunction(repo="r", func_name="fn_3_dup",
-                            code="def fn_3(): return 3", docstring="", language="python"))
+    fns.append(
+        CodeFunction(
+            repo="r",
+            func_name="fn_1_dup",
+            code="def fn_1(): return 1",
+            docstring="",
+            language="python",
+        )
+    )
+    fns.append(
+        CodeFunction(
+            repo="r",
+            func_name="fn_3_dup",
+            code="def fn_3(): return 3",
+            docstring="",
+            language="python",
+        )
+    )
 
     result = deduplicate_by_content(fns)
     assert len(result) == 5  # only 5 unique code strings

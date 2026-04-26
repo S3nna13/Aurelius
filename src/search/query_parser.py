@@ -5,12 +5,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Lexer
 # ---------------------------------------------------------------------------
+
 
 class TokenType(Enum):
     TERM = auto()
@@ -39,23 +39,24 @@ _KEYWORD_MAP = {
 # Parser AST helpers
 # ---------------------------------------------------------------------------
 
-def _make_term(value: str) -> Dict[str, Any]:
+
+def _make_term(value: str) -> dict[str, Any]:
     return {"op": "TERM", "value": value}
 
 
-def _make_phrase(value: str) -> Dict[str, Any]:
+def _make_phrase(value: str) -> dict[str, Any]:
     return {"op": "PHRASE", "value": value}
 
 
-def _make_and(left: Dict, right: Dict) -> Dict[str, Any]:
+def _make_and(left: dict, right: dict) -> dict[str, Any]:
     return {"op": "AND", "operands": [left, right]}
 
 
-def _make_or(left: Dict, right: Dict) -> Dict[str, Any]:
+def _make_or(left: dict, right: dict) -> dict[str, Any]:
     return {"op": "OR", "operands": [left, right]}
 
 
-def _make_not(child: Dict) -> Dict[str, Any]:
+def _make_not(child: dict) -> dict[str, Any]:
     return {"op": "NOT", "operand": child}
 
 
@@ -72,14 +73,15 @@ def _make_not(child: Dict) -> Dict[str, Any]:
 #
 # "implicit AND" = two primaries in a row with no explicit operator.
 
+
 class _Parser:
-    def __init__(self, tokens: List[QueryToken]) -> None:
+    def __init__(self, tokens: list[QueryToken]) -> None:
         self._tokens = tokens
         self._pos = 0
 
     # ---- internal helpers -------------------------------------------------
 
-    def _peek(self) -> Optional[QueryToken]:
+    def _peek(self) -> QueryToken | None:
         if self._pos < len(self._tokens):
             return self._tokens[self._pos]
         return None
@@ -92,28 +94,30 @@ class _Parser:
     def _expect(self, ttype: TokenType) -> QueryToken:
         tok = self._peek()
         if tok is None or tok.type != ttype:
-            raise SyntaxError(
-                f"Expected {ttype} but got {tok!r} at position {self._pos}"
-            )
+            raise SyntaxError(f"Expected {ttype} but got {tok!r} at position {self._pos}")
         return self._consume()
 
     # ---- grammar rules ----------------------------------------------------
 
-    def parse(self) -> Optional[Dict[str, Any]]:
+    def parse(self) -> dict[str, Any] | None:
         if not self._tokens:
             return {"op": "EMPTY", "value": ""}
         node = self._or_expr()
         return node
 
-    def _or_expr(self) -> Dict[str, Any]:
+    def _or_expr(self) -> dict[str, Any]:
         left = self._and_expr()
-        while self._peek() is not None and self._peek().type == TokenType.OR:
-            self._consume()  # eat OR
-            right = self._and_expr()
-            left = _make_or(left, right)
+        while True:
+            tok = self._peek()
+            if tok is not None and tok.type == TokenType.OR:
+                self._consume()  # eat OR
+                right = self._and_expr()
+                left = _make_or(left, right)
+            else:
+                break
         return left
 
-    def _and_expr(self) -> Dict[str, Any]:
+    def _and_expr(self) -> dict[str, Any]:
         left = self._not_expr()
         while True:
             tok = self._peek()
@@ -123,8 +127,7 @@ class _Parser:
                 self._consume()  # eat AND
                 right = self._not_expr()
                 left = _make_and(left, right)
-            elif tok.type in (TokenType.TERM, TokenType.PHRASE, TokenType.NOT,
-                              TokenType.LPAREN):
+            elif tok.type in (TokenType.TERM, TokenType.PHRASE, TokenType.NOT, TokenType.LPAREN):
                 # implicit AND
                 right = self._not_expr()
                 left = _make_and(left, right)
@@ -132,7 +135,7 @@ class _Parser:
                 break
         return left
 
-    def _not_expr(self) -> Dict[str, Any]:
+    def _not_expr(self) -> dict[str, Any]:
         tok = self._peek()
         if tok is not None and tok.type == TokenType.NOT:
             self._consume()
@@ -140,7 +143,7 @@ class _Parser:
             return _make_not(child)
         return self._primary()
 
-    def _primary(self) -> Dict[str, Any]:
+    def _primary(self) -> dict[str, Any]:
         tok = self._peek()
         if tok is None:
             raise SyntaxError("Unexpected end of query")
@@ -148,7 +151,8 @@ class _Parser:
             self._consume()
             node = self._or_expr()
             # consume RPAREN if present; be lenient about missing closing paren
-            if self._peek() is not None and self._peek().type == TokenType.RPAREN:
+            tok = self._peek()
+            if tok is not None and tok.type == TokenType.RPAREN:
                 self._consume()
             return node
         if tok.type == TokenType.TERM:
@@ -164,14 +168,15 @@ class _Parser:
 # Public class
 # ---------------------------------------------------------------------------
 
+
 class QueryParser:
     """Parse Boolean queries into AST dicts."""
 
     # ---- tokeniser --------------------------------------------------------
 
-    def tokenize(self, query: str) -> List[QueryToken]:
+    def tokenize(self, query: str) -> list[QueryToken]:
         """Split *query* into :class:`QueryToken` objects."""
-        tokens: List[QueryToken] = []
+        tokens: list[QueryToken] = []
         i = 0
         query = query.strip()
         while i < len(query):
@@ -187,21 +192,21 @@ class QueryParser:
                 end = query.find('"', i + 1)
                 if end == -1:
                     # Unterminated quote – treat rest as phrase
-                    phrase = query[i + 1:]
+                    phrase = query[i + 1 :]
                     i = len(query)
                 else:
-                    phrase = query[i + 1:end]
+                    phrase = query[i + 1 : end]
                     i = end + 1
                 tokens.append(QueryToken(type=TokenType.PHRASE, value=phrase))
                 continue
 
             # Parentheses
-            if ch == '(':
-                tokens.append(QueryToken(type=TokenType.LPAREN, value='('))
+            if ch == "(":
+                tokens.append(QueryToken(type=TokenType.LPAREN, value="("))
                 i += 1
                 continue
-            if ch == ')':
-                tokens.append(QueryToken(type=TokenType.RPAREN, value=')'))
+            if ch == ")":
+                tokens.append(QueryToken(type=TokenType.RPAREN, value=")"))
                 i += 1
                 continue
 
@@ -221,7 +226,7 @@ class QueryParser:
 
     # ---- parser -----------------------------------------------------------
 
-    def parse(self, query: str) -> Dict[str, Any]:
+    def parse(self, query: str) -> dict[str, Any]:
         """Parse *query* into an AST dict.
 
         Returns ``{"op": "EMPTY", "value": ""}`` for an empty/blank query.
@@ -235,14 +240,14 @@ class QueryParser:
 
     # ---- term extraction --------------------------------------------------
 
-    def extract_terms(self, query: str) -> List[str]:
+    def extract_terms(self, query: str) -> list[str]:
         """Return all leaf TERM/PHRASE values (lowercased) from *query*."""
         ast = self.parse(query)
-        terms: List[str] = []
+        terms: list[str] = []
         self._collect_terms(ast, terms)
         return terms
 
-    def _collect_terms(self, node: Dict[str, Any], out: List[str]) -> None:
+    def _collect_terms(self, node: dict[str, Any], out: list[str]) -> None:
         op = node.get("op")
         if op in ("TERM", "PHRASE"):
             out.append(node["value"].lower())
@@ -256,4 +261,4 @@ class QueryParser:
         # EMPTY and unknown ops produce nothing
 
 
-QUERY_PARSER_REGISTRY: Dict[str, type] = {"default": QueryParser}
+QUERY_PARSER_REGISTRY: dict[str, type] = {"default": QueryParser}

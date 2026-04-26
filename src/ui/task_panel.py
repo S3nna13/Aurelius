@@ -10,7 +10,6 @@ Only rich, stdlib, and project-local imports are used.
 from __future__ import annotations
 
 import time
-import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -223,9 +222,7 @@ class TaskPanel:
                     tags_text,
                 )
 
-        console.print(
-            Panel(table, title="[bold]Aurelius Tasks[/bold]", border_style="dim")
-        )
+        console.print(Panel(table, title="[bold]Aurelius Tasks[/bold]", border_style="dim"))
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable snapshot of all tasks."""

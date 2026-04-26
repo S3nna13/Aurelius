@@ -36,8 +36,7 @@ Usage::
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -67,7 +66,7 @@ class FIMConfig:
     fim_prefix_token_id: int = 100257  # <fim_prefix>
     fim_suffix_token_id: int = 100258  # <fim_suffix>
     fim_middle_token_id: int = 100259  # <fim_middle>
-    eot_token_id: int = 100260        # <|endoftext|>
+    eot_token_id: int = 100260  # <|endoftext|>
     fim_rate: float = 0.5
     spm_rate: float = 0.5
     max_seq_len: int = 8192
@@ -90,9 +89,9 @@ class FIMDocument:
         mode:        Reordering mode: ``"spm"`` or ``"psm"``.
     """
 
-    prefix_ids: List[int]
-    suffix_ids: List[int]
-    middle_ids: List[int]
+    prefix_ids: list[int]
+    suffix_ids: list[int]
+    middle_ids: list[int]
     mode: str  # "spm" or "psm"
 
 
@@ -130,7 +129,7 @@ class FIMTransformer:
 
     def split_document(
         self,
-        token_ids: List[int],
+        token_ids: list[int],
         rng: random.Random,
     ) -> FIMDocument:
         """Split ``token_ids`` into prefix / middle / suffix at two random points.
@@ -165,7 +164,7 @@ class FIMTransformer:
             mode=mode,
         )
 
-    def to_spm(self, doc: FIMDocument) -> List[int]:
+    def to_spm(self, doc: FIMDocument) -> list[int]:
         """Reorder ``doc`` using Suffix-Prefix-Middle (SPM) format.
 
         Output layout::
@@ -189,7 +188,7 @@ class FIMTransformer:
             + [cfg.eot_token_id]
         )
 
-    def to_psm(self, doc: FIMDocument) -> List[int]:
+    def to_psm(self, doc: FIMDocument) -> list[int]:
         """Reorder ``doc`` using Prefix-Suffix-Middle (PSM) format.
 
         Output layout::
@@ -219,9 +218,9 @@ class FIMTransformer:
 
     def transform(
         self,
-        token_ids: List[int],
+        token_ids: list[int],
         rng: random.Random,
-    ) -> List[int]:
+    ) -> list[int]:
         """Optionally apply FIM reordering to a single document.
 
         With probability ``config.fim_rate`` the document is split and reordered
@@ -249,9 +248,9 @@ class FIMTransformer:
 
     def transform_batch(
         self,
-        batch: List[List[int]],
-        seed: Optional[int] = None,
-    ) -> List[List[int]]:
+        batch: list[list[int]],
+        seed: int | None = None,
+    ) -> list[list[int]]:
         """Transform a batch of token sequences.
 
         Each sequence is processed independently with its own per-document RNG
@@ -267,7 +266,7 @@ class FIMTransformer:
         effective_seed = seed if seed is not None else self.config.seed
         base_rng = random.Random(effective_seed)
 
-        results: List[List[int]] = []
+        results: list[list[int]] = []
         for token_ids in batch:
             # Give each document a deterministic but independent sub-seed.
             doc_seed = base_rng.randint(0, 2**31 - 1)
@@ -276,7 +275,7 @@ class FIMTransformer:
 
         return results
 
-    def truncate_to_max(self, token_ids: List[int]) -> List[int]:
+    def truncate_to_max(self, token_ids: list[int]) -> list[int]:
         """Truncate ``token_ids`` to ``config.max_seq_len`` tokens.
 
         Args:
@@ -311,7 +310,7 @@ class FIMLossFilter:
     def __init__(self, config: FIMConfig) -> None:
         self.config = config
 
-    def make_loss_mask(self, token_ids: List[int]) -> List[bool]:
+    def make_loss_mask(self, token_ids: list[int]) -> list[bool]:
         """Build a boolean loss mask for ``token_ids``.
 
         Args:

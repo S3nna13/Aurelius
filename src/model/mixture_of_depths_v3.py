@@ -8,17 +8,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MoDConfig:
@@ -41,6 +40,7 @@ class MoDConfig:
 # Token Router
 # ---------------------------------------------------------------------------
 
+
 class TokenRouter(nn.Module):
     """Learned per-token scalar router with top-k selection.
 
@@ -54,7 +54,7 @@ class TokenRouter(nn.Module):
         self.capacity = capacity
         self.linear = nn.Linear(d_model, 1, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """Route tokens via top-k selection.
 
         Args:
@@ -94,6 +94,7 @@ class TokenRouter(nn.Module):
 # SwiGLU Feed-Forward Network
 # ---------------------------------------------------------------------------
 
+
 class SwiGLUFFN(nn.Module):
     """SwiGLU-style feed-forward block."""
 
@@ -110,6 +111,7 @@ class SwiGLUFFN(nn.Module):
 # ---------------------------------------------------------------------------
 # MoDBlock
 # ---------------------------------------------------------------------------
+
 
 class MoDBlock(nn.Module):
     """Single Mixture-of-Depths transformer block.
@@ -137,7 +139,7 @@ class MoDBlock(nn.Module):
         )
         self.ffn = SwiGLUFFN(d, config.d_ff)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Apply MoD routing and transformer computation.
 
         Args:
@@ -184,6 +186,7 @@ class MoDBlock(nn.Module):
 # MoDModel
 # ---------------------------------------------------------------------------
 
+
 class MoDModel(nn.Module):
     """Decoder-only transformer using Mixture-of-Depths blocks.
 
@@ -218,7 +221,7 @@ class MoDModel(nn.Module):
         self.norm = nn.LayerNorm(d_model)
         self.unembedding = nn.Linear(d_model, vocab_size, bias=False)
 
-    def forward(self, input_ids: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Forward pass.
 
         Args:

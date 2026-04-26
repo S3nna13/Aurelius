@@ -5,12 +5,11 @@ from __future__ import annotations
 import pytest
 
 from src.safety.policy_engine import (
+    REFUSAL_MESSAGE,
     PolicyDecision,
     PolicyEngine,
     PolicyRule,
-    REFUSAL_MESSAGE,
 )
-
 
 # Runtime-assembled trigger tokens to keep raw dangerous/jailbreak literals out
 # of the test source.
@@ -44,11 +43,7 @@ def test_jailbreak_input_blocks_pre_generation() -> None:
 
 def test_malicious_code_output_blocks_post() -> None:
     eng = PolicyEngine()
-    code = (
-        f"import os\nimport {_PK}\n"
-        f"os.{_SYS}('{_RMRF}')\n"
-        f"obj = {_PK}.loads(data)\n"
-    )
+    code = f"import os\nimport {_PK}\nos.{_SYS}('{_RMRF}')\nobj = {_PK}.loads(data)\n"
     d = eng.evaluate("write me python", code)
     assert d.final_action == "block"
     assert "malicious_code" in d.triggered_rules
@@ -94,9 +89,7 @@ def test_add_rule_appends_to_pipeline() -> None:
     def fires(_t: str):
         return True, {"marker": "x"}
 
-    rule = PolicyRule(
-        name="extra", phase="pre", check=fires, action="warn", description=""
-    )
+    rule = PolicyRule(name="extra", phase="pre", check=fires, action="warn", description="")
     eng.add_rule(rule)
     assert len(eng.rules) == 1
     d = eng.evaluate("anything", "")
@@ -188,8 +181,7 @@ def test_details_dict_has_per_check_signal_info() -> None:
     d = eng.evaluate("hello", "world")
     # Every default rule should have recorded a detail entry, even when
     # the rule did not fire.
-    for name in ("jailbreak", "prompt_injection", "malicious_code",
-                 "harm_taxonomy", "pii_redact"):
+    for name in ("jailbreak", "prompt_injection", "malicious_code", "harm_taxonomy", "pii_redact"):
         assert name in d.details, f"missing detail for {name!r}"
 
 

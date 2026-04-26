@@ -6,19 +6,21 @@ K tokens, then verifying all K with one target model forward pass.
 Expected speedup: beta * K + 1 target calls per K+1 tokens, where beta is
 the acceptance rate (how well draft matches target distribution).
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class SpeculativeConfig:
-    K: int = 4                    # draft tokens per speculation round
-    temperature: float = 1.0      # sampling temperature (applied to both models)
-    top_p: float = 0.9            # nucleus sampling threshold
+    K: int = 4  # draft tokens per speculation round
+    temperature: float = 1.0  # sampling temperature (applied to both models)
+    top_p: float = 0.9  # nucleus sampling threshold
     max_new_tokens: int = 256
     eos_token_id: int | None = None
 
@@ -139,9 +141,7 @@ class SpeculativeDecoder:
 
             # Step 2: Target model verifies all K tokens in one pass
             # Input: original context + all K draft tokens
-            verify_input = torch.cat(
-                [generated, torch.stack(draft_tokens).unsqueeze(0)], dim=1
-            )
+            verify_input = torch.cat([generated, torch.stack(draft_tokens).unsqueeze(0)], dim=1)
             target_probs_all = _get_probs(self.target, verify_input, cfg.temperature)
             # target_probs_all: (prompt_len + K, vocab_size)
             # target_probs_all[i] is the distribution that predicts token i+1
@@ -185,9 +185,7 @@ class SpeculativeDecoder:
                 # target_probs_all[current_len + K - 1] predicts the next token after
                 # all accepted draft tokens
                 bonus_pos = current_len + cfg.K - 1
-                bonus_tok = _sample_from_probs(
-                    target_probs_all[bonus_pos], top_p=cfg.top_p
-                )
+                bonus_tok = _sample_from_probs(target_probs_all[bonus_pos], top_p=cfg.top_p)
                 generated = torch.cat([generated, bonus_tok.view(1, 1)], dim=1)
                 tokens_generated += 1
 
@@ -222,9 +220,7 @@ class SpeculativeDecoder:
                 draft_probs.append(d_probs[-1])
                 draft_input = torch.cat([draft_input, next_token.view(1, 1)], dim=1)
 
-            verify_input = torch.cat(
-                [generated, torch.stack(draft_tokens).unsqueeze(0)], dim=1
-            )
+            verify_input = torch.cat([generated, torch.stack(draft_tokens).unsqueeze(0)], dim=1)
             target_probs_all = _get_probs(self.target, verify_input, cfg.temperature)
 
             round_accepted = 0

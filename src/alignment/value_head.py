@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class PPOConfig:
-    clip_eps: float = 0.2          # PPO clipping parameter
-    value_loss_coef: float = 0.5   # weight for value loss in total loss
-    entropy_coef: float = 0.01     # weight for entropy bonus
+    clip_eps: float = 0.2  # PPO clipping parameter
+    value_loss_coef: float = 0.5  # weight for value loss in total loss
+    entropy_coef: float = 0.01  # weight for entropy bonus
     d_model: int = 1024
 
 
@@ -44,9 +45,7 @@ class ValueHead(nn.Module):
         """
         # Hook into backbone.norm to get hidden states
         hidden_states: list[torch.Tensor] = []
-        hook = self.backbone.norm.register_forward_hook(
-            lambda m, i, o: hidden_states.append(o)
-        )
+        hook = self.backbone.norm.register_forward_hook(lambda m, i, o: hidden_states.append(o))
         try:
             loss, logits, _ = self.backbone(input_ids, labels=labels)
         finally:

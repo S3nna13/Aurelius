@@ -21,19 +21,17 @@ class BLEUScorer:
 
     def _tokenize(self, text: str) -> list[str]:
         """Lowercase and extract word tokens."""
-        return re.findall(r'\w+', text.lower())
+        return re.findall(r"\w+", text.lower())
 
     def _ngrams(self, tokens: list[str], n: int) -> dict[tuple, int]:
         """Return a Counter-style dict of n-gram counts."""
         counts: dict[tuple, int] = {}
         for i in range(len(tokens) - n + 1):
-            gram = tuple(tokens[i: i + n])
+            gram = tuple(tokens[i : i + n])
             counts[gram] = counts.get(gram, 0) + 1
         return counts
 
-    def _clipped_precision(
-        self, hyp_tokens: list[str], ref_tokens: list[str], n: int
-    ) -> float:
+    def _clipped_precision(self, hyp_tokens: list[str], ref_tokens: list[str], n: int) -> float:
         """Clipped precision for order n.
 
         For each hypothesis n-gram, clip count to the max count in the
@@ -53,9 +51,7 @@ class BLEUScorer:
 
         return clipped_sum / max(total_hyp, 1)
 
-    def score(
-        self, hypothesis: str, reference: str, max_n: int = 4
-    ) -> BLEUResult:
+    def score(self, hypothesis: str, reference: str, max_n: int = 4) -> BLEUResult:
         """Compute BLEU for a single hypothesis/reference pair."""
         hyp_tokens = self._tokenize(hypothesis)
         ref_tokens = self._tokenize(reference)
@@ -118,9 +114,7 @@ class BLEUScorer:
         mean_bp = sum(r.brevity_penalty for r in results) / n
         mean_hyp_len = sum(r.hypothesis_len for r in results) // n
         mean_ref_len = sum(r.reference_len for r in results) // n
-        mean_precisions = [
-            sum(r.precisions[i] for r in results) / n for i in range(max_n)
-        ]
+        mean_precisions = [sum(r.precisions[i] for r in results) / n for i in range(max_n)]
         return BLEUResult(
             score=mean_score,
             precisions=mean_precisions,

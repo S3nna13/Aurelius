@@ -15,41 +15,44 @@ Importing this package MUST be side-effect-free with respect to existing
 modules (model, training, inference). Keep it that way.
 """
 
-from .kv_compression import (
-    CompressedKV,
-    KVInt8Compressor,
-    quantize_per_head_symmetric,
-)
 from .attention_sinks import AttentionSinkCache
-from .ring_attention import RingAttention, ring_attention
-from .context_compaction import ContextCompactor, Turn as CompactionTurn
+from .chunked_prefill import ChunkedPrefill, ChunkedPrefillConfig
+from .compressive_transformer import CompressiveMemory, CompressiveMemoryState
+from .context_compaction import ContextCompactor
+from .context_compaction import Turn as CompactionTurn
+from .context_window_extension import (
+    CONTEXT_EXTENSION_REGISTRY,
+    ContextWindowExtension,
+    DynamicContextScaler,
+)
+from .infini_attention import InfiniAttention
 from .kv_cache_quantization import (
     CompressedKIVI,
     KIVIQuantizer,
     pack_int4,
     unpack_int4,
 )
-from .infini_attention import InfiniAttention
-from .yarn_position_extension import (
-    YarnConfig,
-    apply_rotary as yarn_apply_rotary,
-    build_yarn_rotary_cache,
-    yarn_inv_freq,
-    yarn_linear_ramp_mask,
-    yarn_mscale,
+from .kv_compression import (
+    CompressedKV,
+    KVInt8Compressor,
+    quantize_per_head_symmetric,
 )
-from .chunked_prefill import ChunkedPrefill, ChunkedPrefillConfig
 from .paged_kv_cache import (
     PagedKVCache,
     PagedKVOutOfMemory,
     PageTable,
 )
 from .prefix_cache import PrefixCache, PrefixEntry
-from .compressive_transformer import CompressiveMemory, CompressiveMemoryState
-from .context_window_extension import (
-    CONTEXT_EXTENSION_REGISTRY,
-    ContextWindowExtension,
-    DynamicContextScaler,
+from .ring_attention import RingAttention, ring_attention
+from .yarn_position_extension import (
+    YarnConfig,
+    build_yarn_rotary_cache,
+    yarn_inv_freq,
+    yarn_linear_ramp_mask,
+    yarn_mscale,
+)
+from .yarn_position_extension import (
+    apply_rotary as yarn_apply_rotary,
 )
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
@@ -71,6 +74,8 @@ LONGCONTEXT_STRATEGY_REGISTRY["swa_causal_mask"] = SlidingWindowCausalMaskBuilde
 
 from .compaction_trigger import (  # noqa: E402
     DEFAULT_TIERS as COMPACTION_TRIGGER_DEFAULT_TIERS,
+)
+from .compaction_trigger import (
     CompactionEvent,
     CompactionTier,
     CompactionTriggerManager,
@@ -92,8 +97,8 @@ from .context_budget_controller import (  # noqa: E402
 LONGCONTEXT_STRATEGY_REGISTRY["context_budget"] = ContextBudgetController
 
 from .cross_layer_kv_sharing import (  # noqa: E402
-    CrossLayerKVConfig,
     CrossLayerKVAttention,
+    CrossLayerKVConfig,
     CrossLayerKVStack,
 )
 
@@ -104,8 +109,8 @@ from .dynamic_ntk_rope import DynamicNTKRoPE, NTKRoPEConfig  # noqa: E402
 LONGCONTEXT_STRATEGY_REGISTRY["dynamic_ntk_rope"] = DynamicNTKRoPE
 
 from .streaming_attention import (  # noqa: E402
-    StreamingConfig,
     StreamingAttentionCache,
+    StreamingConfig,
     compute_streaming_attention,
 )
 
@@ -122,7 +127,8 @@ from .sliding_window_attention import SlidingWindowAttention, SWAConfig  # noqa:
 
 LONGCONTEXT_STRATEGY_REGISTRY["sliding_window_attention"] = SlidingWindowAttention
 
-from .chunk_prefill import ChunkPrefillConfig as ChunkPrefillSchedulerConfig, ChunkPrefillScheduler, ChunkResult  # noqa: E402
+from .chunk_prefill import ChunkPrefillConfig as ChunkPrefillSchedulerConfig  # noqa: E402
+from .chunk_prefill import ChunkPrefillScheduler, ChunkResult
 
 LONGCONTEXT_STRATEGY_REGISTRY["chunk_prefill_scheduler"] = ChunkPrefillScheduler
 

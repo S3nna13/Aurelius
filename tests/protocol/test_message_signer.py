@@ -5,13 +5,13 @@ import hmac
 import json
 
 import pytest
+
 from src.protocol.message_signer import (
+    MESSAGE_SIGNER_REGISTRY,
     MessageSigner,
     SignedMessage,
     SignerConfig,
-    MESSAGE_SIGNER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # sign()
@@ -51,11 +51,11 @@ def test_sign_signature_is_hex_string():
 
 
 def test_sign_signature_matches_manual_hmac():
-    key    = b"test-key"
+    key = b"test-key"
     config = SignerConfig(key=key)
     signer = MessageSigner(config)
     payload = b"important data"
-    msg     = signer.sign(payload)
+    msg = signer.sign(payload)
     expected = hmac.new(key, payload, digestmod=hashlib.sha256).hexdigest()
     assert msg.signature == expected
 
@@ -68,33 +68,33 @@ def test_sign_signature_matches_manual_hmac():
 def test_verify_correct_payload_returns_true():
     signer = MessageSigner()
     payload = b"verify me"
-    msg     = signer.sign(payload)
+    msg = signer.sign(payload)
     assert signer.verify(msg, payload) is True
 
 
 def test_verify_tampered_payload_returns_false():
     signer = MessageSigner()
-    msg    = signer.sign(b"original")
+    msg = signer.sign(b"original")
     assert signer.verify(msg, b"tampered") is False
 
 
 def test_verify_empty_payload():
     signer = MessageSigner()
-    msg    = signer.sign(b"")
+    msg = signer.sign(b"")
     assert signer.verify(msg, b"") is True
 
 
 def test_verify_empty_payload_tampered():
     signer = MessageSigner()
-    msg    = signer.sign(b"")
+    msg = signer.sign(b"")
     assert signer.verify(msg, b"x") is False
 
 
 def test_verify_different_key_returns_false():
     signer_a = MessageSigner(SignerConfig(key=b"key-a"))
     signer_b = MessageSigner(SignerConfig(key=b"key-b"))
-    payload  = b"data"
-    msg      = signer_a.sign(payload)
+    payload = b"data"
+    msg = signer_a.sign(payload)
     assert signer_b.verify(msg, payload) is False
 
 
@@ -104,7 +104,7 @@ def test_verify_different_key_returns_false():
 
 
 def test_rotate_key_changes_signature():
-    signer  = MessageSigner(SignerConfig(key=b"old-key"))
+    signer = MessageSigner(SignerConfig(key=b"old-key"))
     payload = b"rotate test"
     msg_old = signer.sign(payload)
     signer.rotate_key(b"new-key")
@@ -113,16 +113,16 @@ def test_rotate_key_changes_signature():
 
 
 def test_rotate_key_old_verify_fails():
-    signer  = MessageSigner(SignerConfig(key=b"old-key"))
+    signer = MessageSigner(SignerConfig(key=b"old-key"))
     payload = b"some data"
-    msg     = signer.sign(payload)
+    msg = signer.sign(payload)
     signer.rotate_key(b"new-key")
     # Old message no longer verifies with new key
     assert signer.verify(msg, payload) is False
 
 
 def test_rotate_key_new_verify_succeeds():
-    signer  = MessageSigner(SignerConfig(key=b"old"))
+    signer = MessageSigner(SignerConfig(key=b"old"))
     payload = b"data"
     signer.rotate_key(b"new")
     msg = signer.sign(payload)
@@ -142,30 +142,30 @@ def test_rotate_key_updates_config():
 
 def test_sign_dict_returns_signed_message():
     signer = MessageSigner()
-    msg    = signer.sign_dict({"a": 1})
+    msg = signer.sign_dict({"a": 1})
     assert isinstance(msg, SignedMessage)
 
 
 def test_sign_dict_consistent_with_manual_json():
-    key    = b"dict-key"
+    key = b"dict-key"
     signer = MessageSigner(SignerConfig(key=key))
-    data   = {"z": 3, "a": 1, "m": 2}
-    msg    = signer.sign_dict(data)
+    data = {"z": 3, "a": 1, "m": 2}
+    msg = signer.sign_dict(data)
     canonical = json.dumps(data, sort_keys=True).encode()
-    expected  = hmac.new(key, canonical, digestmod=hashlib.sha256).hexdigest()
+    expected = hmac.new(key, canonical, digestmod=hashlib.sha256).hexdigest()
     assert msg.signature == expected
 
 
 def test_verify_dict_true_for_same_data():
     signer = MessageSigner()
-    data   = {"key": "value", "num": 42}
-    msg    = signer.sign_dict(data)
+    data = {"key": "value", "num": 42}
+    msg = signer.sign_dict(data)
     assert signer.verify_dict(msg, data) is True
 
 
 def test_verify_dict_false_for_different_data():
     signer = MessageSigner()
-    msg    = signer.sign_dict({"key": "value"})
+    msg = signer.sign_dict({"key": "value"})
     assert signer.verify_dict(msg, {"key": "other"}) is False
 
 
@@ -204,9 +204,9 @@ def test_signed_message_payload_frozen():
 
 
 def test_custom_algorithm_string_stored():
-    cfg    = SignerConfig(algorithm="sha512")
+    cfg = SignerConfig(algorithm="sha512")
     signer = MessageSigner(cfg)
-    msg    = signer.sign(b"algo test")
+    msg = signer.sign(b"algo test")
     assert msg.algorithm == "sha512"
 
 
@@ -224,6 +224,6 @@ def test_registry_default_is_class():
 
 
 def test_registry_default_is_instantiable():
-    cls    = MESSAGE_SIGNER_REGISTRY["default"]
+    cls = MESSAGE_SIGNER_REGISTRY["default"]
     signer = cls()
     assert isinstance(signer, MessageSigner)

@@ -1,10 +1,11 @@
-import torch
 import pytest
+import torch
+
 from src.multimodal.audio_encoder import (
+    AudioEncoder,
+    AudioEncoderBlock,
     AudioEncoderConfig,
     LogMelSpectrogram,
-    AudioEncoderBlock,
-    AudioEncoder,
 )
 
 
@@ -141,7 +142,7 @@ def test_audio_encoder_output_last_dim_is_hidden():
 
 
 def test_audio_encoder_multi_layer():
-    cfg = tiny_config()
+    tiny_config()
     cfg_deep = AudioEncoderConfig(n_mels=16, hidden_dim=32, n_layers=3, n_heads=2)
     model = AudioEncoder(cfg_deep)
     assert len(model.blocks) == 3

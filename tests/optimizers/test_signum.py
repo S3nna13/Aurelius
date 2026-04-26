@@ -23,15 +23,14 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.optimizers.signum import Signum
 
-
 # --------------------------------------------------------------------------- #
 # Helpers                                                                       #
 # --------------------------------------------------------------------------- #
+
 
 def _scalar_param(value: float = 2.0) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(value))
@@ -43,12 +42,13 @@ def _matrix_param(rows: int = 4, cols: int = 4, fill: float = 1.0) -> torch.nn.P
 
 def _quadratic_loss(p: torch.Tensor) -> torch.Tensor:
     """L = sum(p²) — global minimum at p = 0."""
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 # --------------------------------------------------------------------------- #
 # 1. Shape: step() updates scalar and matrix params                            #
 # --------------------------------------------------------------------------- #
+
 
 def test_shape_scalar():
     p = _scalar_param(3.0)
@@ -76,6 +76,7 @@ def test_shape_matrix():
 # 2. Convergence: reduces loss on a quadratic objective                        #
 # --------------------------------------------------------------------------- #
 
+
 def test_convergence_quadratic():
     """Signum makes consistent constant-magnitude steps; loss should reduce clearly.
 
@@ -96,14 +97,14 @@ def test_convergence_quadratic():
     # Signum converges but can oscillate near the minimum; we require a
     # substantial reduction (< 50 % of initial) rather than near-zero.
     assert final_loss < initial_loss * 0.5, (
-        f"Expected significant loss reduction; initial={initial_loss:.4f}, "
-        f"final={final_loss:.6f}"
+        f"Expected significant loss reduction; initial={initial_loss:.4f}, final={final_loss:.6f}"
     )
 
 
 # --------------------------------------------------------------------------- #
 # 3. Update direction: params move in −sign(momentum) direction                #
 # --------------------------------------------------------------------------- #
+
 
 def test_update_direction_negative_sign_of_momentum():
     """After one step, the parameter change should equal −lr * sign(momentum)."""
@@ -112,7 +113,7 @@ def test_update_direction_negative_sign_of_momentum():
     p = torch.nn.Parameter(torch.tensor(init_val))
     opt = Signum([p], lr=lr, momentum=0.9)
 
-    _quadratic_loss(p).backward()   # grad = 2 * init_val = 6 > 0
+    _quadratic_loss(p).backward()  # grad = 2 * init_val = 6 > 0
     p_before = p.data.clone()
     opt.step()
     p_after = p.data.clone()
@@ -130,6 +131,7 @@ def test_update_direction_negative_sign_of_momentum():
 # 4. Determinism under torch.manual_seed                                       #
 # --------------------------------------------------------------------------- #
 
+
 def test_determinism():
     def run() -> float:
         torch.manual_seed(42)
@@ -137,7 +139,7 @@ def test_determinism():
         opt = Signum([p], lr=1e-3, momentum=0.9)
         for _ in range(10):
             opt.zero_grad()
-            (p ** 2 + 0.5 * p).backward()
+            (p**2 + 0.5 * p).backward()
             opt.step()
         return p.item()
 
@@ -147,6 +149,7 @@ def test_determinism():
 # --------------------------------------------------------------------------- #
 # 5. sign(momentum) ∈ {−1, 0, +1}                                              #
 # --------------------------------------------------------------------------- #
+
 
 def test_sign_of_momentum_is_ternary():
     """The momentum buffer's sign must only contain values in {-1, 0, 1}."""
@@ -170,12 +173,13 @@ def test_sign_of_momentum_is_ternary():
 # 6. Weight decay: params shrink toward zero                                   #
 # --------------------------------------------------------------------------- #
 
+
 def test_weight_decay_shrinks_params():
     """With non-zero weight_decay and a positive param, the param should shrink."""
     p = torch.nn.Parameter(torch.tensor(1.0))
     opt = Signum([p], lr=1e-2, momentum=0.9, weight_decay=0.5)
     # Apply a positive gradient so the param moves left (toward 0 for positive p).
-    p.grad = torch.tensor(1.0)   # positive grad + positive weight decay → sign > 0
+    p.grad = torch.tensor(1.0)  # positive grad + positive weight decay → sign > 0
     val_before = p.data.clone()
     opt.step()
     assert p.item() < val_before.item(), (
@@ -187,6 +191,7 @@ def test_weight_decay_shrinks_params():
 # --------------------------------------------------------------------------- #
 # 7. Zero gradient: momentum decays but no new gradient push                   #
 # --------------------------------------------------------------------------- #
+
 
 def test_zero_gradient_momentum_decays():
     """With g=0 the momentum buffer should decay toward zero (m *= β)."""
@@ -214,6 +219,7 @@ def test_zero_gradient_momentum_decays():
 # 8. No NaN / Inf after 50 steps                                               #
 # --------------------------------------------------------------------------- #
 
+
 def test_no_nan_inf_after_50_steps():
     torch.manual_seed(13)
     p = torch.nn.Parameter(torch.randn(16, 16))
@@ -230,6 +236,7 @@ def test_no_nan_inf_after_50_steps():
 # 9. State keys: 'exp_avg' present after first step                            #
 # --------------------------------------------------------------------------- #
 
+
 def test_state_keys_after_first_step():
     p = _scalar_param(1.0)
     opt = Signum([p], lr=1e-3, momentum=0.9)
@@ -243,6 +250,7 @@ def test_state_keys_after_first_step():
 # --------------------------------------------------------------------------- #
 # 10. norm_scaling=True: effective lr scales with gradient magnitude           #
 # --------------------------------------------------------------------------- #
+
 
 def test_norm_scaling_effective_lr():
     """norm_scaling=True should yield a larger step when the gradient is small.
@@ -276,6 +284,7 @@ def test_norm_scaling_effective_lr():
 # 11. momentum=0: equivalent to signSGD (sign of raw gradient)                 #
 # --------------------------------------------------------------------------- #
 
+
 def test_momentum_zero_is_sign_sgd():
     """When momentum=0, Signum degenerates to signSGD: θ -= lr * sign(g)."""
     lr = 0.05
@@ -284,14 +293,13 @@ def test_momentum_zero_is_sign_sgd():
     # Signum with momentum=0
     p_signum = torch.nn.Parameter(torch.tensor(init_val))
     opt_signum = Signum([p_signum], lr=lr, momentum=0.0)
-    p_signum.grad = torch.tensor(4.0)   # positive gradient
+    p_signum.grad = torch.tensor(4.0)  # positive gradient
     opt_signum.step()
 
     # Manual signSGD: θ -= lr * sign(g) = 3.0 - 0.05 * 1 = 2.95
     expected = init_val - lr * math.copysign(1.0, 4.0)
     assert math.isclose(p_signum.item(), expected, rel_tol=1e-6), (
-        f"momentum=0 should give signSGD update; expected {expected}, "
-        f"got {p_signum.item()}"
+        f"momentum=0 should give signSGD update; expected {expected}, got {p_signum.item()}"
     )
     # Also confirm no state is stored (no exp_avg key)
     assert "exp_avg" not in opt_signum.state[p_signum], (
@@ -303,15 +311,16 @@ def test_momentum_zero_is_sign_sgd():
 # 12. Different lr values produce proportionally different step sizes           #
 # --------------------------------------------------------------------------- #
 
+
 def test_lr_proportional_step_sizes():
     """Step size should be proportional to lr (sign update scales linearly)."""
     lr_a = 0.01
-    lr_b = 0.10   # 10× larger
+    lr_b = 0.10  # 10× larger
 
     def single_step_delta(lr: float) -> float:
         p = torch.nn.Parameter(torch.tensor(5.0))
-        opt = Signum([p], lr=lr, momentum=0.0)   # momentum=0 for clean comparison
-        p.grad = torch.tensor(1.0)               # constant positive gradient
+        opt = Signum([p], lr=lr, momentum=0.0)  # momentum=0 for clean comparison
+        p.grad = torch.tensor(1.0)  # constant positive gradient
         before = p.data.clone()
         opt.step()
         return (p.data - before).item()
@@ -320,8 +329,7 @@ def test_lr_proportional_step_sizes():
     delta_b = single_step_delta(lr_b)
 
     ratio = delta_b / delta_a
-    expected_ratio = lr_b / lr_a   # should be 10.0
+    expected_ratio = lr_b / lr_a  # should be 10.0
     assert math.isclose(ratio, expected_ratio, rel_tol=1e-4), (
-        f"Step-size ratio should equal lr ratio ({expected_ratio:.1f}); "
-        f"got {ratio:.6f}"
+        f"Step-size ratio should equal lr ratio ({expected_ratio:.1f}); got {ratio:.6f}"
     )

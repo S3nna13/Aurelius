@@ -28,4 +28,3 @@ def best_path_index(path_scores: torch.Tensor) -> int:
     if path_scores.numel() == 0:
         raise ValueError("path_scores must be non-empty")
     return int(torch.argmax(path_scores).item())
-

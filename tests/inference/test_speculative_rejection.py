@@ -1,10 +1,10 @@
 """Tests for speculative rejection sampling."""
+
 import torch
-import pytest
 
 from src.inference.speculative_rejection import (
-    SpeculativeRejectionConfig,
     RejectionStats,
+    SpeculativeRejectionConfig,
     log_prob_quality_score,
     nucleus_sample_with_logit,
     speculative_rejection_generate,
@@ -12,10 +12,10 @@ from src.inference.speculative_rejection import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model(n_layers=2, d_model=64, vocab_size=256, max_seq_len=32):
     torch.manual_seed(0)
@@ -40,6 +40,7 @@ def _prompt(length=4, vocab_size=256):
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SpeculativeRejectionConfig()
     assert cfg.quality_threshold == 0.3
@@ -49,6 +50,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. log_prob_quality_score range
 # ---------------------------------------------------------------------------
+
 
 def test_log_prob_quality_score_range():
     torch.manual_seed(1)
@@ -62,6 +64,7 @@ def test_log_prob_quality_score_range():
 # ---------------------------------------------------------------------------
 # 3. nucleus_sample_with_logit returns tuple
 # ---------------------------------------------------------------------------
+
 
 def test_nucleus_sample_returns_tuple():
     logits = torch.randn(256)
@@ -77,6 +80,7 @@ def test_nucleus_sample_returns_tuple():
 # 4. nucleus_sample_with_logit valid token
 # ---------------------------------------------------------------------------
 
+
 def test_nucleus_sample_valid_token():
     vocab_size = 256
     logits = torch.randn(vocab_size)
@@ -88,6 +92,7 @@ def test_nucleus_sample_valid_token():
 # ---------------------------------------------------------------------------
 # 5. generate returns tensor and stats
 # ---------------------------------------------------------------------------
+
 
 def test_generate_returns_tensor_and_stats():
     model = _make_model()
@@ -102,6 +107,7 @@ def test_generate_returns_tensor_and_stats():
 # 6. max_new_tokens respected
 # ---------------------------------------------------------------------------
 
+
 def test_generate_max_tokens_respected():
     model = _make_model()
     max_new = 6
@@ -115,6 +121,7 @@ def test_generate_max_tokens_respected():
 # 7. rejection_rate non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_rejection_stats_rate_nonneg():
     stats = RejectionStats(total_steps=10, total_rejections=3, tokens_generated=10)
     assert stats.rejection_rate >= 0.0
@@ -127,18 +134,19 @@ def test_rejection_stats_rate_nonneg():
 # 8. High threshold causes more rejections than low threshold
 # ---------------------------------------------------------------------------
 
+
 def test_high_threshold_more_rejections():
     torch.manual_seed(7)
     model = _make_model()
 
     cfg_high = SpeculativeRejectionConfig(
         max_new_tokens=10,
-        quality_threshold=1.0,   # always reject (score in [0,1) since log_p < 0)
+        quality_threshold=1.0,  # always reject (score in [0,1) since log_p < 0)
         max_rejections_per_step=5,
     )
     cfg_low = SpeculativeRejectionConfig(
         max_new_tokens=10,
-        quality_threshold=0.0,   # never reject
+        quality_threshold=0.0,  # never reject
         max_rejections_per_step=5,
     )
 
@@ -152,6 +160,7 @@ def test_high_threshold_more_rejections():
 # ---------------------------------------------------------------------------
 # 9. Custom quality_fn is called and affects behavior
 # ---------------------------------------------------------------------------
+
 
 def test_custom_quality_fn():
     model = _make_model()
@@ -179,6 +188,7 @@ def test_custom_quality_fn():
 # 10. Deterministic output with very low temperature
 # ---------------------------------------------------------------------------
 
+
 def test_generate_deterministic_with_temp_0():
     model = _make_model()
     cfg = SpeculativeRejectionConfig(
@@ -193,4 +203,6 @@ def test_generate_deterministic_with_temp_0():
     torch.manual_seed(42)
     out2, _ = speculative_rejection_generate(model, prompt, cfg)
 
-    assert torch.equal(out1, out2), "Outputs should be identical with the same seed and near-zero temperature"
+    assert torch.equal(out1, out2), (
+        "Outputs should be identical with the same seed and near-zero temperature"
+    )

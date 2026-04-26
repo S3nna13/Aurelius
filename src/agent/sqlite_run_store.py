@@ -4,7 +4,6 @@ import json
 import sqlite3
 import time
 import uuid
-from typing import Optional
 
 from src.agent.run_store import AgentRunState, RunStatus
 
@@ -88,10 +87,8 @@ class SQLiteRunStore:
         self._conn.commit()
         return state
 
-    def get(self, run_id: str) -> Optional[AgentRunState]:
-        row = self._conn.execute(
-            "SELECT * FROM agent_runs WHERE run_id = ?", (run_id,)
-        ).fetchone()
+    def get(self, run_id: str) -> AgentRunState | None:
+        row = self._conn.execute("SELECT * FROM agent_runs WHERE run_id = ?", (run_id,)).fetchone()
         return self._row_to_state(row) if row else None
 
     def update(self, state: AgentRunState) -> None:
@@ -123,9 +120,7 @@ class SQLiteRunStore:
 
         if new_status == RunStatus.RUNNING and state.status == RunStatus.FAILED:
             if state.retry_budget <= 0:
-                raise ValueError(
-                    f"Cannot retry run {run_id!r}: retry_budget exhausted"
-                )
+                raise ValueError(f"Cannot retry run {run_id!r}: retry_budget exhausted")
             state.retry_budget -= 1
         elif new_status not in allowed:
             raise ValueError(
@@ -150,9 +145,7 @@ class SQLiteRunStore:
         if state is None:
             raise KeyError(f"Run {run_id!r} not found")
         if state.status != RunStatus.FAILED:
-            raise ValueError(
-                f"retry() requires FAILED status, got {state.status!r}"
-            )
+            raise ValueError(f"retry() requires FAILED status, got {state.status!r}")
         if state.retry_budget <= 0:
             raise RuntimeError(f"Run {run_id!r} has no remaining retry budget")
         return self.transition(run_id, RunStatus.RUNNING)
@@ -168,7 +161,5 @@ class SQLiteRunStore:
         return [self._row_to_state(r) for r in rows]
 
     def delete(self, run_id: str) -> None:
-        self._conn.execute(
-            "DELETE FROM agent_runs WHERE run_id = ?", (run_id,)
-        )
+        self._conn.execute("DELETE FROM agent_runs WHERE run_id = ?", (run_id,))
         self._conn.commit()

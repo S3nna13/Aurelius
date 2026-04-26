@@ -2,25 +2,21 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.federation.federated_learning import (
+    FEDERATION_REGISTRY,
     ClientUpdate,
     FederatedClient,
     FederatedServer,
-    FEDERATION_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # ClientUpdate dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestClientUpdate:
     def test_fields_required(self):
-        cu = ClientUpdate(
-            client_id="c1", round_id=1, weight_delta=[0.1, -0.2], n_samples=50
-        )
+        cu = ClientUpdate(client_id="c1", round_id=1, weight_delta=[0.1, -0.2], n_samples=50)
         assert cu.client_id == "c1"
         assert cu.round_id == 1
         assert cu.weight_delta == [0.1, -0.2]
@@ -31,9 +27,7 @@ class TestClientUpdate:
         assert cu.loss == 0.0
 
     def test_loss_explicit(self):
-        cu = ClientUpdate(
-            client_id="c2", round_id=3, weight_delta=[1.0], n_samples=20, loss=0.5
-        )
+        cu = ClientUpdate(client_id="c2", round_id=3, weight_delta=[1.0], n_samples=20, loss=0.5)
         assert cu.loss == 0.5
 
     def test_client_id_type(self):
@@ -57,6 +51,7 @@ class TestClientUpdate:
 # ---------------------------------------------------------------------------
 # FederatedClient
 # ---------------------------------------------------------------------------
+
 
 class TestFederatedClient:
     def test_init_default_n_samples(self):
@@ -147,6 +142,7 @@ class TestFederatedClient:
 # ---------------------------------------------------------------------------
 # FederatedServer
 # ---------------------------------------------------------------------------
+
 
 class TestFederatedServer:
     def test_initial_round_is_zero(self):
@@ -253,6 +249,7 @@ class TestFederatedServer:
 # ---------------------------------------------------------------------------
 # FEDERATION_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestFederationRegistry:
     def test_registry_exists(self):

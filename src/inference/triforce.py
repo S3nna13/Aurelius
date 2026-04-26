@@ -1,5 +1,4 @@
 """TriForce: Lossless Acceleration of Long Sequence Generation with Hierarchical Speculative Decoding.
-
 Based on Sun et al., arXiv:2404.11912.
 
 TriForce uses two-level speculative decoding:
@@ -13,19 +12,20 @@ KVBlockStore        — stores KV cache blocks for retrieval
 TriForceDraftCache  — fast Level-2 draft context via retrieved KV blocks
 TriForceVerifier    — standard speculative verification (Algorithm 1, Leviathan et al. 2023)
 TriForceDecoder     — orchestrates the two-level speculation loop
-"""
+"""  # noqa: E501
+
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # KVBlockStore
 # ---------------------------------------------------------------------------
+
 
 class KVBlockStore:
     """Stores KV cache blocks for retrieval by query similarity.
@@ -43,10 +43,10 @@ class KVBlockStore:
         self.max_blocks = max_blocks
 
         # Each element: (block_size, n_heads, d_head)
-        self._key_blocks: List[Tensor] = []
-        self._val_blocks: List[Tensor] = []
+        self._key_blocks: list[Tensor] = []
+        self._val_blocks: list[Tensor] = []
         # Mean key per block for fast similarity lookup: (n_heads, d_head)
-        self._key_means: List[Tensor] = []
+        self._key_means: list[Tensor] = []
 
     # ------------------------------------------------------------------
     # Properties
@@ -90,9 +90,7 @@ class KVBlockStore:
     # Retrieval
     # ------------------------------------------------------------------
 
-    def retrieve_top_k(
-        self, query: Tensor, k: int = 8
-    ) -> Tuple[Tensor, Tensor]:
+    def retrieve_top_k(self, query: Tensor, k: int = 8) -> tuple[Tensor, Tensor]:
         """Retrieve the top-k KV blocks by mean cosine similarity.
 
         Parameters
@@ -142,6 +140,7 @@ class KVBlockStore:
 # TriForceDraftCache
 # ---------------------------------------------------------------------------
 
+
 class TriForceDraftCache:
     """Fast Level-2 draft context built by retrieving top-K KV blocks.
 
@@ -171,7 +170,7 @@ class TriForceDraftCache:
 
     def build_attn_context(
         self, query_states: Tensor, kv_store: KVBlockStore
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Retrieve the top-k blocks and concatenate into a draft context.
 
         Parameters
@@ -197,13 +196,15 @@ class TriForceDraftCache:
 
         if actual_k == 0:
             ctx_keys = torch.zeros(
-                ctx_len, self.n_heads, self.d_head,
+                ctx_len,
+                self.n_heads,
+                self.d_head,
                 device=query_states.device,
                 dtype=query_states.dtype,
             )
             ctx_values = ctx_keys.clone()
         else:
-            # Reshape: (actual_k, block_size, n_heads, d_head) -> (actual_k * block_size, n_heads, d_head)
+            # Reshape: (actual_k, block_size, n_heads, d_head) -> (actual_k * block_size, n_heads, d_head)  # noqa: E501
             ctx_keys = top_keys.reshape(ctx_len, self.n_heads, self.d_head)
             ctx_values = top_values.reshape(ctx_len, self.n_heads, self.d_head)
 
@@ -213,6 +214,7 @@ class TriForceDraftCache:
 # ---------------------------------------------------------------------------
 # TriForceVerifier
 # ---------------------------------------------------------------------------
+
 
 class TriForceVerifier:
     """Standard speculative verification (Algorithm 1, Leviathan et al. 2023).
@@ -232,7 +234,7 @@ class TriForceVerifier:
         draft_tokens: Tensor,
         draft_logits: Tensor,
         target_logits: Tensor,
-    ) -> Tuple[Tensor, int]:
+    ) -> tuple[Tensor, int]:
         """Verify γ draft tokens against the target model's logits.
 
         Implements standard rejection sampling:
@@ -267,10 +269,10 @@ class TriForceVerifier:
         device = draft_tokens.device
 
         # Compute probabilities
-        draft_probs = F.softmax(draft_logits.float(), dim=-1)   # (γ, V)
-        target_probs = F.softmax(target_logits.float(), dim=-1) # (γ or γ+1, V)
+        draft_probs = F.softmax(draft_logits.float(), dim=-1)  # (γ, V)
+        target_probs = F.softmax(target_logits.float(), dim=-1)  # (γ or γ+1, V)
 
-        accepted: List[Tensor] = []
+        accepted: list[Tensor] = []
         n_accepted = 0
 
         for i in range(gamma):
@@ -325,6 +327,7 @@ class TriForceVerifier:
 # ---------------------------------------------------------------------------
 # TriForceDecoder
 # ---------------------------------------------------------------------------
+
 
 class TriForceDecoder:
     """Orchestrates the two-level TriForce speculation loop.
@@ -384,7 +387,7 @@ class TriForceDecoder:
         generated : 1-D int64 ``Tensor`` of length ``max_new_tokens``.
         """
         prompt_ids = prompt_ids.long()
-        generated: List[Tensor] = []
+        generated: list[Tensor] = []
         context = prompt_ids.clone()
 
         tokens_generated = 0
@@ -396,8 +399,8 @@ class TriForceDecoder:
             # ---------------------------------------------------------------
             # Level 1: draft model generates γ draft tokens
             # ---------------------------------------------------------------
-            draft_token_list: List[Tensor] = []
-            draft_logit_list: List[Tensor] = []
+            draft_token_list: list[Tensor] = []
+            draft_logit_list: list[Tensor] = []
 
             draft_context = context.clone()
             for _ in range(gamma):
@@ -407,14 +410,14 @@ class TriForceDecoder:
                 draft_logit_list.append(d_logits)
                 draft_context = torch.cat([draft_context, d_token.unsqueeze(0)], dim=0)
 
-            draft_toks = torch.stack(draft_token_list, dim=0)   # (γ,)
-            draft_lgts = torch.stack(draft_logit_list, dim=0)   # (γ, V)
+            draft_toks = torch.stack(draft_token_list, dim=0)  # (γ,)
+            draft_lgts = torch.stack(draft_logit_list, dim=0)  # (γ, V)
 
             # ---------------------------------------------------------------
             # Level 0: target model verifies draft tokens in γ+1 forward passes
             # (one pass per position, single-token interface as specified)
             # ---------------------------------------------------------------
-            target_logit_list: List[Tensor] = []
+            target_logit_list: list[Tensor] = []
 
             # For position i, target sees context + draft_toks[:i]
             verify_context = context.clone()
@@ -422,18 +425,14 @@ class TriForceDecoder:
                 t_logits = self._call_fn(self.target_fn, verify_context)  # (V,)
                 target_logit_list.append(t_logits)
                 if i < gamma:
-                    verify_context = torch.cat(
-                        [verify_context, draft_toks[i].unsqueeze(0)], dim=0
-                    )
+                    verify_context = torch.cat([verify_context, draft_toks[i].unsqueeze(0)], dim=0)
 
             target_lgts = torch.stack(target_logit_list, dim=0)  # (γ+1, V)
 
             # ---------------------------------------------------------------
             # Verify
             # ---------------------------------------------------------------
-            accepted_toks, n_accepted = self._verifier.verify(
-                draft_toks, draft_lgts, target_lgts
-            )
+            accepted_toks, n_accepted = self._verifier.verify(draft_toks, draft_lgts, target_lgts)
             # accepted_toks: 1-D, length between 1 and γ+1
 
             # Clamp to remaining budget

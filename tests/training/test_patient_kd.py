@@ -1,24 +1,23 @@
 """Tests for Patient Knowledge Distillation (patient_kd.py)."""
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import pytest
 
-from src.training.patient_kd import (
-    PKDConfig,
-    get_patient_layers,
-    pkd_hidden_loss,
-    attention_transfer_loss,
-    PKDLoss,
-    PatientKDTrainer,
-)
+import torch
+import torch.optim as optim
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
+from src.training.patient_kd import (
+    PatientKDTrainer,
+    PKDConfig,
+    PKDLoss,
+    attention_transfer_loss,
+    get_patient_layers,
+    pkd_hidden_loss,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model(n_layers: int = 2) -> AureliusTransformer:
     torch.manual_seed(42)
@@ -47,6 +46,7 @@ def _make_attns(n: int, B: int = 1, H: int = 2, T: int = 8) -> list[torch.Tensor
 # 1. test_pkd_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_pkd_config_defaults():
     cfg = PKDConfig()
     assert cfg.n_student_layers == 2
@@ -61,6 +61,7 @@ def test_pkd_config_defaults():
 # 2. test_get_patient_layers_last
 # ---------------------------------------------------------------------------
 
+
 def test_get_patient_layers_last():
     # n_teacher=4, n_student=2, strategy="last" -> [2, 3]
     result = get_patient_layers(4, 2, "last")
@@ -71,6 +72,7 @@ def test_get_patient_layers_last():
 # ---------------------------------------------------------------------------
 # 3. test_get_patient_layers_skip
 # ---------------------------------------------------------------------------
+
 
 def test_get_patient_layers_skip():
     n_student = 3
@@ -85,6 +87,7 @@ def test_get_patient_layers_skip():
 # 4. test_pkd_hidden_loss_same
 # ---------------------------------------------------------------------------
 
+
 def test_pkd_hidden_loss_same():
     hiddens = _make_hiddens(2)
     # Same tensors: MSE should be 0
@@ -96,6 +99,7 @@ def test_pkd_hidden_loss_same():
 # 5. test_pkd_hidden_loss_different
 # ---------------------------------------------------------------------------
 
+
 def test_pkd_hidden_loss_different():
     s = _make_hiddens(2)
     t = _make_hiddens(4)
@@ -106,6 +110,7 @@ def test_pkd_hidden_loss_different():
 # ---------------------------------------------------------------------------
 # 6. test_pkd_hidden_loss_normalized
 # ---------------------------------------------------------------------------
+
 
 def test_pkd_hidden_loss_normalized():
     s = _make_hiddens(2)
@@ -119,6 +124,7 @@ def test_pkd_hidden_loss_normalized():
 # 7. test_attention_transfer_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_attention_transfer_loss_scalar():
     s_attns = _make_attns(2)
     t_attns = _make_attns(4)
@@ -131,6 +137,7 @@ def test_attention_transfer_loss_scalar():
 # ---------------------------------------------------------------------------
 # 8. test_pkd_loss_forward_keys
 # ---------------------------------------------------------------------------
+
 
 def test_pkd_loss_forward_keys():
     cfg = PKDConfig(n_student_layers=2, n_teacher_layers=4)
@@ -153,6 +160,7 @@ def test_pkd_loss_forward_keys():
 # 9. test_pkd_loss_forward_positive
 # ---------------------------------------------------------------------------
 
+
 def test_pkd_loss_forward_positive():
     cfg = PKDConfig(n_student_layers=2, n_teacher_layers=4)
     loss_fn = PKDLoss(cfg, student_d_model=64, teacher_d_model=64)
@@ -172,6 +180,7 @@ def test_pkd_loss_forward_positive():
 # ---------------------------------------------------------------------------
 # 10. test_patient_kd_trainer_step_keys
 # ---------------------------------------------------------------------------
+
 
 def test_patient_kd_trainer_step_keys():
     torch.manual_seed(0)
@@ -193,6 +202,7 @@ def test_patient_kd_trainer_step_keys():
 # ---------------------------------------------------------------------------
 # 11. test_patient_kd_teacher_frozen
 # ---------------------------------------------------------------------------
+
 
 def test_patient_kd_teacher_frozen():
     torch.manual_seed(1)

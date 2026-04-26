@@ -1,14 +1,15 @@
 import pytest
-from src.profiling.kernel_profiler import (
-    KernelRecord,
-    KernelProfiler,
-    KERNEL_PROFILER_REGISTRY,
-)
 
+from src.profiling.kernel_profiler import (
+    KERNEL_PROFILER_REGISTRY,
+    KernelProfiler,
+    KernelRecord,
+)
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry_key():
     assert "default" in KERNEL_PROFILER_REGISTRY
@@ -18,6 +19,7 @@ def test_registry_key():
 # ---------------------------------------------------------------------------
 # KernelRecord – construction and frozen
 # ---------------------------------------------------------------------------
+
 
 def test_kernel_record_is_frozen():
     r = KernelRecord(
@@ -48,6 +50,7 @@ def test_kernel_record_stores_fields():
 # KernelRecord – throughput_gflops
 # ---------------------------------------------------------------------------
 
+
 def test_throughput_gflops_formula():
     # 1e9 flops in 1 us → 1e9 / (1e-6 s) / 1e9 = 1_000_000 Gflops (= 1 Pflops)
     r = KernelRecord("k", (1,), (1,), duration_us=1.0)
@@ -69,6 +72,7 @@ def test_throughput_gflops_scales_with_flops():
 # ---------------------------------------------------------------------------
 # KernelProfiler – record_kernel
 # ---------------------------------------------------------------------------
+
 
 def test_record_kernel_returns_kernel_record():
     p = KernelProfiler()
@@ -104,6 +108,7 @@ def test_record_kernel_grid_and_block_tuples():
 # ---------------------------------------------------------------------------
 # KernelProfiler – top_kernels
 # ---------------------------------------------------------------------------
+
 
 def test_top_kernels_sorted_descending():
     p = KernelProfiler()
@@ -147,6 +152,7 @@ def test_top_kernels_empty():
 # ---------------------------------------------------------------------------
 # KernelProfiler – summary_by_name
 # ---------------------------------------------------------------------------
+
 
 def test_summary_by_name_single_kernel():
     p = KernelProfiler()
@@ -193,6 +199,7 @@ def test_summary_by_name_empty():
 # KernelProfiler – total_time_us
 # ---------------------------------------------------------------------------
 
+
 def test_total_time_us_sum():
     p = KernelProfiler()
     p.record_kernel("a", (1,), (1,), 100.0)
@@ -215,6 +222,7 @@ def test_total_time_us_single():
 # ---------------------------------------------------------------------------
 # KernelProfiler – reset
 # ---------------------------------------------------------------------------
+
 
 def test_reset_clears_records():
     p = KernelProfiler()

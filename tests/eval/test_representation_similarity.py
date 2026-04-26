@@ -1,9 +1,9 @@
 """Tests for src/eval/representation_similarity.py"""
+
 from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.eval.representation_similarity import (
     CKAAnalyzer,
     LayerSimilarityReport,
@@ -17,8 +17,8 @@ from aurelius.eval.representation_similarity import (
 
 torch.manual_seed(0)
 
-N = 30   # number of examples
-D = 16   # feature dimension
+N = 30  # number of examples
+D = 16  # feature dimension
 N_LAYERS = 4
 
 
@@ -39,6 +39,7 @@ def layer_reprs():
 # ===========================================================================
 # CKAAnalyzer
 # ===========================================================================
+
 
 class TestCKAAnalyzer:
     def test_cka_identical_is_one(self):
@@ -85,6 +86,7 @@ class TestCKAAnalyzer:
 # RSAAnalyzer
 # ===========================================================================
 
+
 class TestRSAAnalyzerEuclidean:
     def test_rdm_shape(self):
         """rdm returns (N, N) tensor."""
@@ -126,6 +128,7 @@ class TestRSAAnalyzerEuclidean:
 # ProcrustesAnalyzer
 # ===========================================================================
 
+
 class TestProcrustesAnalyzer:
     def test_procrustes_keys(self, rng_reprs):
         """procrustes returns dict with 'residual' and 'similarity' keys."""
@@ -161,6 +164,7 @@ class TestProcrustesAnalyzer:
 # ===========================================================================
 # LayerSimilarityReport
 # ===========================================================================
+
 
 class TestLayerSimilarityReport:
     def test_cka_profile_length(self, layer_reprs):

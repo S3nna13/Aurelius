@@ -1,13 +1,18 @@
 """Tests for quantization-aware training."""
+
 import torch
-import pytest
-from src.training.qat import (
-    fake_quantize_int8, fake_quantize_int4,
-    QATLinear, QATConfig, prepare_qat, convert_qat,
-    _StraightThroughRound,
-)
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.qat import (
+    QATConfig,
+    QATLinear,
+    _StraightThroughRound,
+    convert_qat,
+    fake_quantize_int4,
+    fake_quantize_int8,
+    prepare_qat,
+)
 
 
 def test_ste_round_forward():
@@ -58,8 +63,14 @@ def test_prepare_qat_replaces_linears():
     """prepare_qat must replace nn.Linear with QATLinear."""
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     model = AureliusTransformer(cfg)
     prepare_qat(model, QATConfig(bits=8))
@@ -72,8 +83,14 @@ def test_qat_gradient_flows():
     """QAT forward+backward must produce gradients through fake quantization."""
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     model = AureliusTransformer(cfg)
     prepare_qat(model, QATConfig(bits=8))
@@ -83,10 +100,7 @@ def test_qat_gradient_flows():
     loss.backward()
 
     # QATLinear weights must have gradients
-    has_grad = any(
-        isinstance(m, QATLinear) and m.weight.grad is not None
-        for m in model.modules()
-    )
+    has_grad = any(isinstance(m, QATLinear) and m.weight.grad is not None for m in model.modules())
     assert has_grad, "No gradients flowed through QATLinear layers"
 
 
@@ -96,8 +110,14 @@ def test_convert_qat():
 
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     model = AureliusTransformer(cfg)
     prepare_qat(model, QATConfig(bits=8))

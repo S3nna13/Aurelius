@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.draft_target_analysis import (
     AcceptanceStats,
-    compute_token_acceptance,
-    acceptance_rate,
-    compute_acceptance_stats,
-    calibrate_draft_temperature,
-    kl_divergence_analysis,
-    compute_expected_speedup,
     DraftQualityMonitor,
+    acceptance_rate,
+    calibrate_draft_temperature,
+    compute_acceptance_stats,
+    compute_expected_speedup,
+    compute_token_acceptance,
+    kl_divergence_analysis,
     top_k_overlap,
 )
 
@@ -35,6 +34,7 @@ def make_tokens(B: int, T: int, V: int, seed: int = 42) -> torch.Tensor:
 
 # ----- Test 1: compute_token_acceptance returns boolean tensor of shape (B, T_draft) -----
 
+
 def test_compute_token_acceptance_shape():
     draft_tokens = make_tokens(BATCH, T_DRAFT, VOCAB)
     target_logits = make_logits(BATCH, T_DRAFT, VOCAB, seed=1)
@@ -47,6 +47,7 @@ def test_compute_token_acceptance_shape():
 
 
 # ----- Test 2: identical draft and target → acceptance rate ≈ 1.0 -----
+
 
 def test_compute_token_acceptance_identical_high_rate():
     # When draft and target are identical, ratio = 1.0, always accepted
@@ -61,6 +62,7 @@ def test_compute_token_acceptance_identical_high_rate():
 
 
 # ----- Test 3: very different draft and target → some rejections -----
+
 
 def test_compute_token_acceptance_different_some_rejections():
     torch.manual_seed(99)
@@ -83,6 +85,7 @@ def test_compute_token_acceptance_different_some_rejections():
 
 # ----- Test 4: acceptance_rate returns float in [0, 1] -----
 
+
 def test_acceptance_rate_returns_float_in_range():
     draft_tokens = make_tokens(BATCH, T_DRAFT, VOCAB)
     target_logits = make_logits(BATCH, T_DRAFT, VOCAB, seed=10)
@@ -96,6 +99,7 @@ def test_acceptance_rate_returns_float_in_range():
 
 # ----- Test 5: acceptance_rate: identical logits → ≈ 1.0 -----
 
+
 def test_acceptance_rate_identical_logits():
     logits = make_logits(BATCH, T_DRAFT, VOCAB, seed=7)
     draft_tokens = make_tokens(BATCH, T_DRAFT, VOCAB)
@@ -106,6 +110,7 @@ def test_acceptance_rate_identical_logits():
 
 
 # ----- Test 6: compute_acceptance_stats returns AcceptanceStats -----
+
 
 def test_compute_acceptance_stats_returns_dataclass():
     draft_tokens = make_tokens(BATCH, T_DRAFT, VOCAB)
@@ -119,6 +124,7 @@ def test_compute_acceptance_stats_returns_dataclass():
 
 # ----- Test 7: AcceptanceStats.acceptance_rate in [0, 1] -----
 
+
 def test_acceptance_stats_rate_in_range():
     draft_tokens = make_tokens(BATCH, T_DRAFT, VOCAB)
     target_logits = make_logits(BATCH, T_DRAFT, VOCAB, seed=30)
@@ -131,6 +137,7 @@ def test_acceptance_stats_rate_in_range():
 
 # ----- Test 8: AcceptanceStats.token_acceptance_dist length == T_draft -----
 
+
 def test_acceptance_stats_dist_length():
     draft_tokens = make_tokens(BATCH, T_DRAFT, VOCAB)
     target_logits = make_logits(BATCH, T_DRAFT, VOCAB, seed=40)
@@ -142,6 +149,7 @@ def test_acceptance_stats_dist_length():
 
 
 # ----- Test 9: calibrate_draft_temperature returns float in [0.5, 2.0] -----
+
 
 def test_calibrate_draft_temperature_range():
     torch.manual_seed(0)
@@ -157,6 +165,7 @@ def test_calibrate_draft_temperature_range():
 
 # ----- Test 10: kl_divergence_analysis returns dict with 'mean_kl' key -----
 
+
 def test_kl_divergence_analysis_returns_dict():
     torch.manual_seed(0)
     N = 20
@@ -166,12 +175,13 @@ def test_kl_divergence_analysis_returns_dict():
     result = kl_divergence_analysis(draft_logits, target_logits)
 
     assert isinstance(result, dict)
-    assert 'mean_kl' in result
-    assert 'max_kl' in result
-    assert 'frac_high_kl' in result
+    assert "mean_kl" in result
+    assert "max_kl" in result
+    assert "frac_high_kl" in result
 
 
 # ----- Test 11: kl_divergence_analysis: identical logits → mean_kl ≈ 0 -----
+
 
 def test_kl_divergence_identical_logits():
     torch.manual_seed(0)
@@ -180,10 +190,11 @@ def test_kl_divergence_identical_logits():
 
     result = kl_divergence_analysis(logits, logits)
 
-    assert result['mean_kl'] < 1e-4, f"Expected mean_kl ≈ 0, got {result['mean_kl']}"
+    assert result["mean_kl"] < 1e-4, f"Expected mean_kl ≈ 0, got {result['mean_kl']}"
 
 
 # ----- Test 12: compute_expected_speedup: acceptance=1.0 gives speedup > 1.0 -----
+
 
 def test_expected_speedup_full_acceptance():
     speedup = compute_expected_speedup(acceptance_rate=1.0, n_draft_tokens=4, draft_overhead=0.1)
@@ -192,6 +203,7 @@ def test_expected_speedup_full_acceptance():
 
 
 # ----- Test 13: compute_expected_speedup: acceptance=0.0 gives speedup <= 1.0 -----
+
 
 def test_expected_speedup_zero_acceptance():
     speedup = compute_expected_speedup(acceptance_rate=0.0, n_draft_tokens=4, draft_overhead=0.1)
@@ -202,6 +214,7 @@ def test_expected_speedup_zero_acceptance():
 
 # ----- Test 14: DraftQualityMonitor.update and get_stats run without error -----
 
+
 def test_draft_quality_monitor_update_get_stats():
     monitor = DraftQualityMonitor(window_size=10, ema_decay=0.9, alert_threshold=0.5)
 
@@ -210,12 +223,13 @@ def test_draft_quality_monitor_update_get_stats():
 
     stats = monitor.get_stats()
 
-    assert 'ema_acceptance' in stats
-    assert 'window_acceptance' in stats
-    assert 'total_accepted' in stats
+    assert "ema_acceptance" in stats
+    assert "window_acceptance" in stats
+    assert "total_accepted" in stats
 
 
 # ----- Test 15: DraftQualityMonitor.should_fallback False when acceptance is high -----
+
 
 def test_draft_quality_monitor_no_fallback_high_acceptance():
     monitor = DraftQualityMonitor(window_size=10, ema_decay=0.5, alert_threshold=0.5)
@@ -229,6 +243,7 @@ def test_draft_quality_monitor_no_fallback_high_acceptance():
 
 # ----- Test 16: top_k_overlap: identical logits → 1.0 -----
 
+
 def test_top_k_overlap_identical_logits():
     torch.manual_seed(0)
     logits = torch.randn(VOCAB)
@@ -240,6 +255,7 @@ def test_top_k_overlap_identical_logits():
 
 # ----- Bonus tests -----
 
+
 def test_top_k_overlap_disjoint_logits():
     """Logits that put top-k in completely different positions → overlap near 0."""
     logits_a = torch.zeros(VOCAB)
@@ -249,7 +265,7 @@ def test_top_k_overlap_disjoint_logits():
     # a: top-k are tokens 0..4
     logits_a[:k] = 100.0
     # b: top-k are tokens (VOCAB-k)..(VOCAB-1) — disjoint
-    logits_b[VOCAB - k:] = 100.0
+    logits_b[VOCAB - k :] = 100.0
 
     overlap = top_k_overlap(logits_a, logits_b, k=k)
 
@@ -262,8 +278,8 @@ def test_draft_quality_monitor_reset():
     monitor.reset()
 
     stats = monitor.get_stats()
-    assert stats['total_accepted'] == 0.0
-    assert stats['window_acceptance'] == 0.0
+    assert stats["total_accepted"] == 0.0
+    assert stats["window_acceptance"] == 0.0
 
 
 def test_compute_acceptance_stats_total_tokens():

@@ -6,6 +6,7 @@ Model: nn.Linear(D, VOCAB)
 """
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
@@ -49,6 +50,7 @@ def ce_loss(x, y):
 def make_simple_loss(model):
     def loss_fn(x, y):
         return F.cross_entropy(model(x), y)
+
     return loss_fn
 
 
@@ -68,6 +70,7 @@ def ref_params_from(model) -> dict:
 # 1. CLConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_clconfig_defaults():
     cfg = CLConfig()
     assert cfg.ewc_lambda == 5000.0
@@ -80,6 +83,7 @@ def test_clconfig_defaults():
 # ---------------------------------------------------------------------------
 # 2. EWCRegularizer.penalty is a scalar and finite
 # ---------------------------------------------------------------------------
+
 
 def test_ewc_penalty_is_scalar_finite():
     model = make_model()
@@ -95,6 +99,7 @@ def test_ewc_penalty_is_scalar_finite():
 # 3. EWC penalty is zero when params unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_ewc_penalty_zero_when_unchanged():
     model = make_model()
     fisher = make_fisher(model)
@@ -107,6 +112,7 @@ def test_ewc_penalty_zero_when_unchanged():
 # ---------------------------------------------------------------------------
 # 4. EWC penalty > 0 when params changed
 # ---------------------------------------------------------------------------
+
 
 def test_ewc_penalty_positive_when_params_changed():
     model = make_model()
@@ -127,6 +133,7 @@ def test_ewc_penalty_positive_when_params_changed():
 # 5. ExperienceReplayBuffer add / len
 # ---------------------------------------------------------------------------
 
+
 def test_replay_buffer_add_len():
     buf = ExperienceReplayBuffer(max_size=100)
     assert len(buf) == 0
@@ -138,6 +145,7 @@ def test_replay_buffer_add_len():
 # ---------------------------------------------------------------------------
 # 6. Replay buffer FIFO eviction at max_size
 # ---------------------------------------------------------------------------
+
 
 def test_replay_buffer_fifo_eviction():
     buf = ExperienceReplayBuffer(max_size=B)
@@ -163,6 +171,7 @@ def test_replay_buffer_fifo_eviction():
 # 7. sample returns <= n items
 # ---------------------------------------------------------------------------
 
+
 def test_replay_buffer_sample_at_most_n():
     buf = ExperienceReplayBuffer(max_size=100)
     x, y = make_xy()
@@ -181,6 +190,7 @@ def test_replay_buffer_sample_at_most_n():
 # 8. clone_model produces same parameter values
 # ---------------------------------------------------------------------------
 
+
 def test_clone_model_same_params():
     model = make_model()
     cloned = clone_model(model)
@@ -193,6 +203,7 @@ def test_clone_model_same_params():
 # 9. clone_model is an independent copy
 # ---------------------------------------------------------------------------
 
+
 def test_clone_model_independence():
     model = make_model()
     cloned = clone_model(model)
@@ -202,12 +213,15 @@ def test_clone_model_independence():
             p.add_(torch.ones_like(p) * 10.0)
 
     for (_, p_orig), (_, p_clone) in zip(model.named_parameters(), cloned.named_parameters()):
-        assert not torch.allclose(p_orig, p_clone), "Clone should not be affected by original mutation"
+        assert not torch.allclose(p_orig, p_clone), (
+            "Clone should not be affected by original mutation"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 10. compute_distillation_loss is scalar
 # ---------------------------------------------------------------------------
+
 
 def test_distillation_loss_is_scalar():
     student = torch.randn(B, VOCAB)
@@ -221,6 +235,7 @@ def test_distillation_loss_is_scalar():
 # 11. distillation_loss non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_distillation_loss_non_negative():
     student = torch.randn(B, VOCAB)
     teacher = torch.randn(B, VOCAB)
@@ -231,6 +246,7 @@ def test_distillation_loss_non_negative():
 # ---------------------------------------------------------------------------
 # 12. ContinualTrainer.train_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_keys():
     model = make_model()
@@ -244,6 +260,7 @@ def test_trainer_train_step_keys():
 # ---------------------------------------------------------------------------
 # 13. train_step loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_loss_finite():
     model = make_model()
@@ -259,6 +276,7 @@ def test_trainer_train_step_loss_finite():
 # ---------------------------------------------------------------------------
 # 14. register_task stores params
 # ---------------------------------------------------------------------------
+
 
 def test_register_task_stores_params():
     model = make_model()
@@ -278,6 +296,7 @@ def test_register_task_stores_params():
 # ---------------------------------------------------------------------------
 # 15. get_forgetting is non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_get_forgetting_non_negative():
     model = make_model()

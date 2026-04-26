@@ -1,5 +1,7 @@
 import time
+
 import pytest
+
 from src.backends.credential_manager import (
     CREDENTIAL_MANAGER,
     Credential,
@@ -10,10 +12,11 @@ from src.backends.credential_manager import (
 
 
 def fresh_cred(provider="test_provider", expires_at=0.0):
-    return Credential(provider=provider, token="tok_abc", expires_at=expires_at)
+    return Credential(provider=provider, token="tok_abc", expires_at=expires_at)  # noqa: S106
 
 
 # --- CredentialManager unit tests ---
+
 
 def test_register_and_get():
     cm = CredentialManager()
@@ -113,12 +116,12 @@ def test_module_level_credential_manager_singleton():
 
 
 def test_credential_default_status():
-    cred = Credential(provider="x", token="t", expires_at=0.0)
+    cred = Credential(provider="x", token="t", expires_at=0.0)  # noqa: S106
     assert cred.status == CredentialStatus.VALID
 
 
 def test_register_overwrites_existing():
     cm = CredentialManager()
-    cm.register(Credential(provider="dup", token="old", expires_at=0.0))
-    cm.register(Credential(provider="dup", token="new", expires_at=0.0))
+    cm.register(Credential(provider="dup", token="old", expires_at=0.0))  # noqa: S106
+    cm.register(Credential(provider="dup", token="new", expires_at=0.0))  # noqa: S106
     assert cm.get("dup").token == "new"

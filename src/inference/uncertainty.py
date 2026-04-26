@@ -5,25 +5,26 @@ multiple forward passes, then computing predictive entropy and mutual
 information as measures of total and epistemic uncertainty respectively.
 """
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class UncertaintyConfig:
-    n_samples: int = 10          # number of MC forward passes
-    dropout_p: float = 0.1       # dropout probability for MC sampling
-    eps: float = 1e-9            # numerical stability
+    n_samples: int = 10  # number of MC forward passes
+    dropout_p: float = 0.1  # dropout probability for MC sampling
+    eps: float = 1e-9  # numerical stability
 
 
 @dataclass
 class UncertaintyResult:
     predictive_entropy: torch.Tensor  # (B, S) total uncertainty
     mutual_information: torch.Tensor  # (B, S) epistemic uncertainty
-    mean_probs: torch.Tensor          # (B, S, V) mean probability across samples
-    confidence: torch.Tensor          # (B, S) max probability (argmax confidence)
+    mean_probs: torch.Tensor  # (B, S, V) mean probability across samples
+    confidence: torch.Tensor  # (B, S) max probability (argmax confidence)
 
     def summary(self) -> str:
         return (
@@ -68,7 +69,7 @@ def mutual_information(sample_probs: torch.Tensor, eps: float = 1e-9) -> torch.T
     # E_q[H[p]]
     p = sample_probs.clamp(min=eps)
     per_sample_entropy = -(p * p.log()).sum(dim=-1)  # (N, B, S)
-    E_H = per_sample_entropy.mean(dim=0)             # (B, S)
+    E_H = per_sample_entropy.mean(dim=0)  # (B, S)
 
     return (H_mean - E_H).clamp(min=0.0)
 
@@ -116,7 +117,7 @@ class MCDropoutEstimator:
                 all_probs.append(probs)
 
         sample_probs = torch.stack(all_probs, dim=0)  # (N, B, S, V)
-        mean_probs = sample_probs.mean(dim=0)          # (B, S, V)
+        mean_probs = sample_probs.mean(dim=0)  # (B, S, V)
 
         pred_entropy = predictive_entropy(mean_probs, self.cfg.eps)
         mi = mutual_information(sample_probs, self.cfg.eps)

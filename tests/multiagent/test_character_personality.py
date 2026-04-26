@@ -47,7 +47,9 @@ class TestCharacterPersonality:
         assert "strategy" in prompt
 
     def test_build_system_prompt_explicit(self):
-        cfg = PersonalityConfig(name="custom", character="Custom", role="Helper", system_prompt="You are a helper.")
+        cfg = PersonalityConfig(
+            name="custom", character="Custom", role="Helper", system_prompt="You are a helper."
+        )
         p = CharacterPersonality(cfg)
         assert p.build_system_prompt() == "You are a helper."
 
@@ -60,7 +62,9 @@ class TestCharacterPersonality:
         assert ctx[0]["role"] == "user"
 
     def test_status(self):
-        p = CharacterPersonality(PersonalityConfig(name="monitor", character="Monitor", role="Watcher"))
+        p = CharacterPersonality(
+            PersonalityConfig(name="monitor", character="Monitor", role="Watcher")
+        )
         status = p.status()
         assert status["name"] == "monitor"
         assert status["task_count"] == 0

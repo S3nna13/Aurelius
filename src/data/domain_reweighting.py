@@ -3,23 +3,22 @@
 from __future__ import annotations
 
 import random
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
 
 
 @dataclass
 class DomainConfig:
     domain_names: list[str]
     initial_weights: list[float] | None = None  # defaults to uniform
-    learning_rate: float = 1.0                  # for weight updates
-    smoothing_alpha: float = 0.1                # EMA smoothing
-    min_weight: float = 0.01                    # minimum domain weight
-    normalize: bool = True                      # keep weights summing to 1
-    strategy: str = "ema"                       # "ema" | "exp3" | "doro"
+    learning_rate: float = 1.0  # for weight updates
+    smoothing_alpha: float = 0.1  # EMA smoothing
+    min_weight: float = 0.01  # minimum domain weight
+    normalize: bool = True  # keep weights summing to 1
+    strategy: str = "ema"  # "ema" | "exp3" | "doro"
 
 
 def normalize_weights(weights: Tensor, min_weight: float = 0.01) -> Tensor:
@@ -100,8 +99,8 @@ def doro_update(
         Normalized (n_domains,) weight tensor
     """
     w = weights.float()
-    l = losses.float()
-    excess = l - (w * l).sum()
+    lo = losses.float()
+    excess = lo - (w * lo).sum()
     updated = w * torch.exp(lr * excess)
     return normalize_weights(updated)
 
@@ -164,24 +163,25 @@ class DomainReweighter:
         strategy = self.config.strategy
         if strategy == "ema":
             new_w = ema_update(
-                self._weights, losses,
+                self._weights,
+                losses,
                 alpha=self.config.smoothing_alpha,
                 lr=self.config.learning_rate,
             )
         elif strategy == "exp3":
             new_w = exp3_update(
-                self._weights, losses,
+                self._weights,
+                losses,
                 lr=self.config.learning_rate,
             )
         elif strategy == "doro":
             new_w = doro_update(
-                self._weights, losses,
+                self._weights,
+                losses,
                 lr=self.config.learning_rate,
             )
         else:
-            raise ValueError(
-                f"Unknown strategy '{strategy}'. Must be one of: ema, exp3, doro"
-            )
+            raise ValueError(f"Unknown strategy '{strategy}'. Must be one of: ema, exp3, doro")
 
         if self.config.normalize:
             new_w = normalize_weights(new_w, self.config.min_weight)
@@ -204,10 +204,7 @@ class DomainReweighter:
 
     def get_weights(self) -> dict[str, float]:
         """Return {domain_name: weight} mapping."""
-        return {
-            name: w
-            for name, w in zip(self.config.domain_names, self._weights.tolist())
-        }
+        return {name: w for name, w in zip(self.config.domain_names, self._weights.tolist())}
 
     def get_sampling_probs(self) -> Tensor:
         """Return (n_domains,) probability tensor (copy)."""

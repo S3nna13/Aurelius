@@ -13,7 +13,6 @@ from __future__ import annotations
 import math
 import struct
 from dataclasses import dataclass, field
-from typing import List
 
 
 class InvalidPEError(ValueError):
@@ -57,10 +56,10 @@ class PEInfo:
     num_sections: int
     entry_point: int
     image_base: int
-    sections: List[PESection] = field(default_factory=list)
-    imports: List[str] = field(default_factory=list)
+    sections: list[PESection] = field(default_factory=list)
+    imports: list[str] = field(default_factory=list)
     is_dll: bool = False
-    suspicious: List[str] = field(default_factory=list)
+    suspicious: list[str] = field(default_factory=list)
 
 
 def _shannon_entropy(data: bytes) -> float:
@@ -78,7 +77,7 @@ def _shannon_entropy(data: bytes) -> float:
     return ent
 
 
-def _rva_to_offset(rva: int, sections: List[PESection]) -> int:
+def _rva_to_offset(rva: int, sections: list[PESection]) -> int:
     for s in sections:
         if s.virtual_address <= rva < s.virtual_address + max(s.virtual_size, s.raw_size):
             return s.raw_offset + (rva - s.virtual_address)
@@ -98,15 +97,15 @@ def _read_cstr(data: bytes, offset: int, limit: int = 512) -> str:
 
 
 def _parse_imports(
-    data: bytes, import_rva: int, import_size: int, sections: List[PESection]
-) -> List[str]:
+    data: bytes, import_rva: int, import_size: int, sections: list[PESection]
+) -> list[str]:
     """Best-effort parse of IMAGE_DIRECTORY_ENTRY_IMPORT (import descriptors)."""
     if import_rva == 0 or import_size == 0:
         return []
     start = _rva_to_offset(import_rva, sections)
     if start < 0:
         return []
-    dlls: List[str] = []
+    dlls: list[str] = []
     # IMAGE_IMPORT_DESCRIPTOR is 20 bytes: 5 x uint32
     desc_size = 20
     offset = start
@@ -179,7 +178,7 @@ def analyze_pe(data: bytes) -> PEInfo:
         raise InvalidPEError("invalid/truncated optional header")
 
     opt_magic = struct.unpack_from("<H", data, opt_hdr_off)[0]
-    suspicious: List[str] = []
+    suspicious: list[str] = []
 
     # Layout differs between PE32 (0x10B) and PE32+ (0x20B).
     # We pull: AddressOfEntryPoint, ImageBase, NumberOfRvaAndSizes, then data dirs.
@@ -215,7 +214,7 @@ def analyze_pe(data: bytes) -> PEInfo:
 
     # Section headers start at opt_hdr_off + size_opt_hdr
     sections_off = opt_hdr_off + size_opt_hdr
-    sections: List[PESection] = []
+    sections: list[PESection] = []
     section_hdr_size = 40
     for i in range(num_sections):
         off = sections_off + i * section_hdr_size
@@ -258,7 +257,7 @@ def analyze_pe(data: bytes) -> PEInfo:
             suspicious.append(f"high_entropy_section:{name or f'#{i}'}:{entropy:.2f}")
 
     # Imports (best-effort)
-    imports: List[str] = []
+    imports: list[str] = []
     try:
         imports = _parse_imports(data, import_rva, import_size, sections)
     except Exception as exc:  # pragma: no cover - defensive

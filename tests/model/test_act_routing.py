@@ -150,9 +150,7 @@ def test_act_wrapper_mean_steps_in_range():
     x = torch.randn(B, T, D)
     _, info = wrapper(x)
     mean_steps = info["mean_steps"]
-    assert 1.0 <= mean_steps <= max_steps, (
-        f"mean_steps {mean_steps} not in [1, {max_steps}]"
-    )
+    assert 1.0 <= mean_steps <= max_steps, f"mean_steps {mean_steps} not in [1, {max_steps}]"
 
 
 def test_act_wrapper_halted_at_step_shape():
@@ -176,6 +174,4 @@ def test_compute_act_loss_combines_correctly():
 
     total = compute_act_loss(task_loss, ponder_cost, ponder_weight)
     expected = 2.0 + 0.5 * 3.0  # 3.5
-    assert total.item() == pytest.approx(expected), (
-        f"Expected {expected}, got {total.item()}"
-    )
+    assert total.item() == pytest.approx(expected), f"Expected {expected}, got {total.item()}"

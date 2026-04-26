@@ -1,16 +1,17 @@
 import time
+from dataclasses import dataclass
+
 import torch
-from dataclasses import dataclass, field
 
 
 @dataclass
 class ProfileResult:
-    step_time_ms: float        # wall-clock time for the step in milliseconds
-    tokens_per_sec: float      # tokens processed per second
-    peak_memory_mb: float      # peak GPU/CPU memory in MB (0 if no CUDA)
-    n_tokens: int              # total tokens in this step
-    flops_estimate: float      # estimated FLOPs for this step
-    mfu: float                 # model FLOP utilization (0-1, requires hardware_flops_per_sec)
+    step_time_ms: float  # wall-clock time for the step in milliseconds
+    tokens_per_sec: float  # tokens processed per second
+    peak_memory_mb: float  # peak GPU/CPU memory in MB (0 if no CUDA)
+    n_tokens: int  # total tokens in this step
+    flops_estimate: float  # estimated FLOPs for this step
+    mfu: float  # model FLOP utilization (0-1, requires hardware_flops_per_sec)
 
     def summary(self) -> str:
         lines = [
@@ -18,7 +19,9 @@ class ProfileResult:
             f"Throughput:   {self.tokens_per_sec:.0f} tokens/sec",
             f"Peak memory:  {self.peak_memory_mb:.1f} MB",
             f"FLOPs (est):  {self.flops_estimate:.2e}",
-            f"MFU:          {self.mfu:.1%}" if self.mfu > 0 else "MFU:          N/A (no hardware spec)",
+            f"MFU:          {self.mfu:.1%}"
+            if self.mfu > 0
+            else "MFU:          N/A (no hardware spec)",
         ]
         return "\n".join(lines)
 
@@ -76,7 +79,7 @@ class ThroughputProfiler:
 
         if torch.cuda.is_available():
             peak_bytes = torch.cuda.max_memory_allocated()
-            peak_mb = peak_bytes / (1024 ** 2)
+            peak_mb = peak_bytes / (1024**2)
         else:
             peak_mb = 0.0
 

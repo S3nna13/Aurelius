@@ -1,23 +1,21 @@
 """Tests for test-time compute scaling (TTCConfig, sampling, generation, perplexity)."""
-from __future__ import annotations
 
-import math
+from __future__ import annotations
 
 import pytest
 import torch
 
+from src.inference.test_time_compute import (
+    TestTimeScaler,
+    TTCConfig,
+    best_of_n_generate,
+    compute_perplexity,
+    greedy_generate,
+    iterative_refine,
+    sample_with_temperature,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.test_time_compute import (
-    TTCConfig,
-    sample_with_temperature,
-    greedy_generate,
-    compute_perplexity,
-    best_of_n_generate,
-    iterative_refine,
-    TestTimeScaler,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -63,16 +61,19 @@ def prompt_ids(small_cfg):
 # Score helpers (named functions to avoid inline expressions)
 # ---------------------------------------------------------------------------
 
+
 def neg_perplexity(model, seq):
     return -compute_perplexity(model, seq)
 
 
 def biased_score_factory(prompt_len, call_counts):
     """Return a score function that prefers sequences starting with token 0."""
+
     def _score(model, seq):
         call_counts["n"] += 1
         first_gen = seq[0, prompt_len].item()
         return 1.0 if first_gen == 0 else 0.0
+
     return _score
 
 
@@ -80,12 +81,14 @@ def counting_score_factory(call_counts):
     def _score(model, seq):
         call_counts["n"] += 1
         return -compute_perplexity(model, seq)
+
     return _score
 
 
 # ---------------------------------------------------------------------------
 # 1. TTCConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_ttcconfig_default_n_samples():
     cfg = TTCConfig()
@@ -119,6 +122,7 @@ def test_ttcconfig_custom_values():
 # 2. sample_with_temperature — basic validity
 # ---------------------------------------------------------------------------
 
+
 def test_sample_with_temperature_returns_tensor():
     logits = torch.randn(VOCAB_SIZE)
     token = sample_with_temperature(logits, temperature=1.0)
@@ -142,6 +146,7 @@ def test_sample_with_temperature_scalar():
 # 3. sample_with_temperature — high temperature -> more uniform distribution
 # ---------------------------------------------------------------------------
 
+
 def test_sample_with_temperature_high_temp_more_uniform():
     """At very high temperature the sampled distribution should be more uniform.
 
@@ -149,17 +154,15 @@ def test_sample_with_temperature_high_temp_more_uniform():
     """
     torch.manual_seed(0)
     logits = torch.zeros(VOCAB_SIZE)
-    logits[0] = 10.0   # single dominant token at low temperature
+    logits[0] = 10.0  # single dominant token at low temperature
 
     n_trials = 200
 
     low_t_tokens = {
-        sample_with_temperature(logits, temperature=0.01).item()
-        for _ in range(n_trials)
+        sample_with_temperature(logits, temperature=0.01).item() for _ in range(n_trials)
     }
     high_t_tokens = {
-        sample_with_temperature(logits, temperature=5.0).item()
-        for _ in range(n_trials)
+        sample_with_temperature(logits, temperature=5.0).item() for _ in range(n_trials)
     }
 
     # High temperature must produce strictly more unique tokens
@@ -169,6 +172,7 @@ def test_sample_with_temperature_high_temp_more_uniform():
 # ---------------------------------------------------------------------------
 # 4. greedy_generate — returns longer sequence
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_generate_returns_longer_sequence(small_model, prompt_ids):
     max_tokens = 6
@@ -191,6 +195,7 @@ def test_greedy_generate_returns_2d_tensor(small_model, prompt_ids):
 # 5. compute_perplexity — returns positive float
 # ---------------------------------------------------------------------------
 
+
 def test_compute_perplexity_returns_float(small_model, prompt_ids):
     ppl = compute_perplexity(small_model, prompt_ids)
     assert isinstance(ppl, float)
@@ -204,6 +209,7 @@ def test_compute_perplexity_positive(small_model, prompt_ids):
 # ---------------------------------------------------------------------------
 # 6. compute_perplexity — lower for likely sequence
 # ---------------------------------------------------------------------------
+
 
 def test_compute_perplexity_lower_for_likely_sequence(small_model):
     """Perplexity of a greedy sequence differs from a random sequence."""
@@ -224,6 +230,7 @@ def test_compute_perplexity_lower_for_likely_sequence(small_model):
 # 7. best_of_n_generate — returns tensor
 # ---------------------------------------------------------------------------
 
+
 def test_best_of_n_generate_returns_tensor(small_model, prompt_ids, fast_config):
     result = best_of_n_generate(small_model, prompt_ids, fast_config)
     assert isinstance(result, torch.Tensor)
@@ -237,6 +244,7 @@ def test_best_of_n_generate_longer_than_prompt(small_model, prompt_ids, fast_con
 # ---------------------------------------------------------------------------
 # 8. best_of_n_generate — selects best by score_fn
 # ---------------------------------------------------------------------------
+
 
 def test_best_of_n_generate_uses_score_fn(small_model, prompt_ids):
     """A custom score_fn is called once per sample."""
@@ -253,6 +261,7 @@ def test_best_of_n_generate_uses_score_fn(small_model, prompt_ids):
 # ---------------------------------------------------------------------------
 # 9. iterative_refine — returns tensor of similar length
 # ---------------------------------------------------------------------------
+
 
 def test_iterative_refine_returns_tensor(small_model, prompt_ids, fast_config):
     result = iterative_refine(small_model, prompt_ids, fast_config, n_iterations=1)
@@ -272,6 +281,7 @@ def test_iterative_refine_preserves_prompt(small_model, prompt_ids, fast_config)
 # ---------------------------------------------------------------------------
 # 10. TestTimeScaler.generate — returns (sequence, score) tuple
 # ---------------------------------------------------------------------------
+
 
 def test_testtime_scaler_generate_returns_tuple(small_model, prompt_ids, fast_config):
     scaler = TestTimeScaler(small_model, fast_config)

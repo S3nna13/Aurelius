@@ -13,9 +13,11 @@ Algorithm:
 Reference: Meng et al. 2022 "Locating and Editing Factual Associations in GPT"
            (arXiv:2202.05262)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,24 +25,25 @@ import torch.nn.functional as F
 
 @dataclass
 class ROMEConfig:
-    layer_idx: int = 12            # which layer to edit (middle layers usually best)
-    n_gradient_steps: int = 20     # steps to compute target vector v
-    v_lr: float = 0.1              # learning rate for v optimization
-    kl_factor: float = 0.0625      # KL penalty weight (prevent distribution shift)
+    layer_idx: int = 12  # which layer to edit (middle layers usually best)
+    n_gradient_steps: int = 20  # steps to compute target vector v
+    v_lr: float = 0.1  # learning rate for v optimization
+    kl_factor: float = 0.0625  # KL penalty weight (prevent distribution shift)
 
 
 @dataclass
 class ROMEEdit:
     """Specification for a single fact edit."""
-    prompt: str              # "[subject] [relation]" e.g. "The Eiffel Tower is located in"
-    target_new: str          # new target token(s) e.g. " Berlin"
+
+    prompt: str  # "[subject] [relation]" e.g. "The Eiffel Tower is located in"
+    target_new: str  # new target token(s) e.g. " Berlin"
     target_true: str | None = None  # original target (for computing KL penalty)
-    subject: str = ""        # subject string for locating hidden state
+    subject: str = ""  # subject string for locating hidden state
 
 
 def get_subject_hidden_state(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (1, S)
+    input_ids: torch.Tensor,  # (1, S)
     subject_last_token_pos: int,
     layer_idx: int,
 ) -> torch.Tensor:
@@ -73,8 +76,8 @@ def get_subject_hidden_state(
 def compute_target_vector(
     model: nn.Module,
     edit: ROMEEdit,
-    tokenizer_fn,              # callable: str → list[int]
-    k: torch.Tensor,           # (D,) key vector
+    tokenizer_fn,  # callable: str → list[int]
+    k: torch.Tensor,  # (D,) key vector
     layer_idx: int,
     n_steps: int = 20,
     lr: float = 0.1,
@@ -93,7 +96,7 @@ def compute_target_vector(
     patch_pos = len(prompt_ids) - 1  # patch at last token of prompt
 
     # Get W_out (down_proj): shape (d_model, d_ff)
-    w_out = model.layers[layer_idx].ffn.down_proj.weight  # (d_model, d_ff)
+    model.layers[layer_idx].ffn.down_proj.weight  # (d_model, d_ff)
 
     # Initialize v as the current output of W_out applied to k
     # k is (D,) = (d_model,); but W_out maps d_ff -> d_model
@@ -135,8 +138,8 @@ def compute_target_vector(
 
 def apply_rome_edit(
     model: nn.Module,
-    k: torch.Tensor,     # (D,) key vector
-    v: torch.Tensor,     # (D,) target value vector
+    k: torch.Tensor,  # (D,) key vector
+    v: torch.Tensor,  # (D,) target value vector
     layer_idx: int,
 ) -> None:
     """Apply rank-1 update to down_proj of FFN at layer_idx.
@@ -164,10 +167,10 @@ def apply_rome_edit(
     # We want: w_out @ k_ff ≈ v, so k_ff = w_out^T @ k (pseudo-inverse approach)
     # rank-1 update: ΔW = outer(v - w_out @ k_ff, k_ff) / (k_ff^T k_ff)
     with torch.no_grad():
-        k_ff = w_out.T @ k          # (d_ff,) — project k into d_ff space
-        w_k = w_out @ k_ff           # (d_model,) — current output
-        residual = v - w_k           # (d_model,) — correction needed
-        k_sq = k_ff @ k_ff           # scalar
+        k_ff = w_out.T @ k  # (d_ff,) — project k into d_ff space
+        w_k = w_out @ k_ff  # (d_model,) — current output
+        residual = v - w_k  # (d_model,) — correction needed
+        k_sq = k_ff @ k_ff  # scalar
         if k_sq.abs() < 1e-10:
             return
         delta_w = torch.outer(residual, k_ff) / k_sq  # (d_model, d_ff)
@@ -177,7 +180,7 @@ def apply_rome_edit(
 def rome_edit(
     model: nn.Module,
     edit: ROMEEdit,
-    tokenizer_fn,          # callable: str → list[int]
+    tokenizer_fn,  # callable: str → list[int]
     cfg: ROMEConfig | None = None,
 ) -> None:
     """Full ROME edit pipeline. Modifies model in place.

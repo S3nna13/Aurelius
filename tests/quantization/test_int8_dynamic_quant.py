@@ -1,4 +1,5 @@
 """Tests for int8_dynamic_quant — INT8 dynamic per-tensor quantization."""
+
 from __future__ import annotations
 
 import torch

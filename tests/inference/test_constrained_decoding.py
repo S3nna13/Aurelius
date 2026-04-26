@@ -1,17 +1,16 @@
 """Tests for src/inference/constrained_decoding.py."""
 
-import pytest
 import torch
 
 from src.inference.constrained_decoding import (
-    ConstraintConfig,
-    apply_token_constraints,
-    apply_min_length_constraint,
-    force_prefix,
-    LogitProcessor,
     ConstrainedGreedyDecoder,
     ConstrainedSampler,
+    ConstraintConfig,
+    LogitProcessor,
+    apply_min_length_constraint,
+    apply_token_constraints,
     compute_constraint_satisfaction,
+    force_prefix,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,6 +27,7 @@ EOS = 2
 # Mock model
 # ---------------------------------------------------------------------------
 
+
 def mock_model(ids: torch.Tensor) -> torch.Tensor:
     """Return random logits of shape (1, T, VOCAB)."""
     return torch.randn(1, ids.shape[1], VOCAB)
@@ -35,16 +35,19 @@ def mock_model(ids: torch.Tensor) -> torch.Tensor:
 
 def biased_mock_model(bias_token: int):
     """Return a mock model that always strongly prefers bias_token."""
+
     def _model(ids: torch.Tensor) -> torch.Tensor:
         logits = torch.full((1, ids.shape[1], VOCAB), -100.0)
         logits[:, :, bias_token] = 100.0
         return logits
+
     return _model
 
 
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def make_prompt(length: int = PROMPT_LEN) -> torch.Tensor:
     return torch.zeros(length, dtype=torch.long)
@@ -53,6 +56,7 @@ def make_prompt(length: int = PROMPT_LEN) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # Test 1: ConstraintConfig default values
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     """ConstraintConfig should have correct default field values."""
@@ -69,6 +73,7 @@ def test_config_defaults():
 # Test 2: apply_token_constraints — banned makes logit -inf
 # ---------------------------------------------------------------------------
 
+
 def test_apply_token_constraints_banned_sets_neg_inf():
     """Banned tokens must have -inf logit after apply_token_constraints."""
     logits = torch.zeros(VOCAB)
@@ -83,6 +88,7 @@ def test_apply_token_constraints_banned_sets_neg_inf():
 # ---------------------------------------------------------------------------
 # Test 3: apply_token_constraints — allowed masks all non-allowed tokens
 # ---------------------------------------------------------------------------
+
 
 def test_apply_token_constraints_allowed_masks_others():
     """Only allowed tokens should keep their original logit; rest become -inf."""
@@ -99,6 +105,7 @@ def test_apply_token_constraints_allowed_masks_others():
 # ---------------------------------------------------------------------------
 # Test 4: apply_min_length_constraint — blocks EOS before min_len
 # ---------------------------------------------------------------------------
+
 
 def test_apply_min_length_constraint_blocks_eos_before_min_len():
     """EOS logit must be -inf when current_len < min_len."""
@@ -120,6 +127,7 @@ def test_apply_min_length_constraint_allows_eos_at_min_len():
 # Test 5: force_prefix returns correct token within prefix
 # ---------------------------------------------------------------------------
 
+
 def test_force_prefix_returns_correct_token():
     """force_prefix should return prefix[step] when step < len(prefix)."""
     prefix = [10, 20, 30]
@@ -132,6 +140,7 @@ def test_force_prefix_returns_correct_token():
 # Test 6: force_prefix returns None after prefix is done
 # ---------------------------------------------------------------------------
 
+
 def test_force_prefix_returns_none_after_prefix():
     """force_prefix should return None when step >= len(prefix)."""
     prefix = [10, 20]
@@ -142,6 +151,7 @@ def test_force_prefix_returns_none_after_prefix():
 # ---------------------------------------------------------------------------
 # Test 7: LogitProcessor applies banned tokens correctly
 # ---------------------------------------------------------------------------
+
 
 def test_logit_processor_applies_banned():
     """LogitProcessor must zero out banned tokens."""
@@ -158,6 +168,7 @@ def test_logit_processor_applies_banned():
 # Test 8: ConstrainedGreedyDecoder output length > PROMPT_LEN
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decoder_output_longer_than_prompt():
     """decode() output should contain more tokens than the original prompt."""
     cfg = ConstraintConfig(max_new_tokens=5)
@@ -171,6 +182,7 @@ def test_greedy_decoder_output_longer_than_prompt():
 # Test 9: decoder output is 1D
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decoder_output_is_1d():
     """decode() must return a 1-D tensor."""
     cfg = ConstraintConfig(max_new_tokens=3)
@@ -183,6 +195,7 @@ def test_greedy_decoder_output_is_1d():
 # ---------------------------------------------------------------------------
 # Test 10: decoder respects max_new_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_decoder_respects_max_new_tokens():
     """decode() must not generate more than max_new_tokens new tokens."""
@@ -201,6 +214,7 @@ def test_greedy_decoder_respects_max_new_tokens():
 # Test 11: decoder with banned tokens never generates them
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decoder_never_generates_banned_tokens():
     """Banned tokens must not appear in the generated portion of the output."""
     # Ban tokens 5-29 so only 0,1,2,3,4 are reachable (EOS=2 may stop early)
@@ -217,6 +231,7 @@ def test_greedy_decoder_never_generates_banned_tokens():
 # ---------------------------------------------------------------------------
 # Test 12: ConstrainedSampler returns n_samples sequences
 # ---------------------------------------------------------------------------
+
 
 def test_constrained_sampler_returns_n_samples():
     """sample() must return exactly n_samples tensors."""
@@ -235,6 +250,7 @@ def test_constrained_sampler_returns_n_samples():
 # Test 13: compute_constraint_satisfaction keys present
 # ---------------------------------------------------------------------------
 
+
 def test_compute_constraint_satisfaction_keys_present():
     """compute_constraint_satisfaction must return dict with the required keys."""
     cfg = ConstraintConfig(banned_tokens=[99], allowed_tokens=[0, 1, 2], min_new_tokens=3)
@@ -248,6 +264,7 @@ def test_compute_constraint_satisfaction_keys_present():
 # ---------------------------------------------------------------------------
 # Test 14: compute_constraint_satisfaction correctness
 # ---------------------------------------------------------------------------
+
 
 def test_compute_constraint_satisfaction_correctness():
     """compute_constraint_satisfaction returns correct boolean values."""
@@ -277,6 +294,7 @@ def test_compute_constraint_satisfaction_correctness():
 # ---------------------------------------------------------------------------
 # Test 15: LogitProcessor forces prefix tokens correctly
 # ---------------------------------------------------------------------------
+
 
 def test_logit_processor_forces_prefix_tokens():
     """LogitProcessor must force the prefix token at each prefix step."""

@@ -1,15 +1,15 @@
 """Tests for MuonClip optimizer."""
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.muonclip import MuonClip
-
 
 # ---------------------------------------------------------------------------
 # Test 1: basic convergence
 # ---------------------------------------------------------------------------
+
 
 def test_muonclip_step_reduces_loss():
     """Optimizing a simple quadratic over 10 steps should reduce loss."""
@@ -38,6 +38,7 @@ def test_muonclip_step_reduces_loss():
 # Test 2: Newton-Schulz orthogonality
 # ---------------------------------------------------------------------------
 
+
 def test_newton_schulz_orthogonalizes():
     """After orthogonalization, G @ G.T should be approximately proportional to I."""
     torch.manual_seed(1)
@@ -49,7 +50,7 @@ def test_newton_schulz_orthogonalizes():
     # Normalize columns so we can check near-orthogonality up to scale
     # Use the Frobenius-normalized version: divide by its own norm first
     norm = G_orth.norm()
-    G_norm = G_orth / norm * (16 ** 0.5)   # scale so expected singular values ≈ 1
+    G_norm = G_orth / norm * (16**0.5)  # scale so expected singular values ≈ 1
 
     product = G_norm @ G_norm.T
     identity = torch.eye(16)
@@ -62,6 +63,7 @@ def test_newton_schulz_orthogonalizes():
 # ---------------------------------------------------------------------------
 # Test 3: gradient clipping reduces spike
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_clipping():
     """Injecting a spike gradient, clipping should reduce the max absolute value."""
@@ -87,6 +89,7 @@ def test_gradient_clipping():
 # Test 4: momentum buffer populated after first step (matrix params)
 # ---------------------------------------------------------------------------
 
+
 def test_matrix_param_uses_momentum():
     """After the first step, a 2D parameter should have a momentum_buffer in state."""
     torch.manual_seed(2)
@@ -106,6 +109,7 @@ def test_matrix_param_uses_momentum():
 # ---------------------------------------------------------------------------
 # Test 5: 1D parameter falls back to Adam state
 # ---------------------------------------------------------------------------
+
 
 def test_vector_param_fallback():
     """A 1D parameter should accumulate Adam-style state (exp_avg, exp_avg_sq)."""
@@ -128,6 +132,7 @@ def test_vector_param_fallback():
 # Test 6: tiny MoE simulation — no NaN/Inf in outputs
 # ---------------------------------------------------------------------------
 
+
 def test_muonclip_with_moe_params():
     """MuonClip should handle a tiny MoE (router + expert FFNs) without NaN/Inf."""
     torch.manual_seed(4)
@@ -141,14 +146,16 @@ def test_muonclip_with_moe_params():
     router = nn.Linear(d_model, num_experts * 2, bias=False)
 
     # Expert FFNs (simple 2-layer MLPs)
-    experts = nn.ModuleList([
-        nn.Sequential(
-            nn.Linear(d_model, d_ff, bias=False),
-            nn.ReLU(),
-            nn.Linear(d_ff, d_model, bias=False),
-        )
-        for _ in range(num_experts)
-    ])
+    experts = nn.ModuleList(
+        [
+            nn.Sequential(
+                nn.Linear(d_model, d_ff, bias=False),
+                nn.ReLU(),
+                nn.Linear(d_ff, d_model, bias=False),
+            )
+            for _ in range(num_experts)
+        ]
+    )
 
     # Collect 2D weight params (Muon) and 1D params (Adam fallback)
     matrix_params = []
@@ -167,8 +174,8 @@ def test_muonclip_with_moe_params():
     x = torch.randn(batch, d_model)
 
     # Forward: simple router + expert sum (no top-k for simplicity)
-    router_logits = router(x)                          # (batch, num_experts*2)
-    router_weights = router_logits.softmax(dim=-1)     # (batch, num_experts*2)
+    router_logits = router(x)  # (batch, num_experts*2)
+    router_weights = router_logits.softmax(dim=-1)  # (batch, num_experts*2)
 
     # Use only first num_experts weights for the actual experts
     expert_out = torch.stack(
@@ -176,7 +183,7 @@ def test_muonclip_with_moe_params():
     )  # (batch, num_experts, d_model)
 
     w = router_weights[:, :num_experts].unsqueeze(-1)  # (batch, num_experts, 1)
-    output = (w * expert_out).sum(dim=1)               # (batch, d_model)
+    output = (w * expert_out).sum(dim=1)  # (batch, d_model)
 
     loss = output.pow(2).mean()
     loss.backward()

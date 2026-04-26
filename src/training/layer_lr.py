@@ -1,4 +1,5 @@
 """Layer-wise learning rate decay and warmup scheduling."""
+
 from __future__ import annotations
 
 import math
@@ -12,11 +13,11 @@ from torch import Tensor
 @dataclass
 class LayerLRConfig:
     base_lr: float = 1e-4
-    decay_factor: float = 0.9     # lr_layer_i = base_lr * decay_factor^(n_layers - i - 1)
+    decay_factor: float = 0.9  # lr_layer_i = base_lr * decay_factor^(n_layers - i - 1)
     min_lr: float = 1e-6
     warmup_steps: int = 100
     decay_steps: int = 1000
-    decay_type: str = "cosine"    # "cosine" | "linear" | "constant"
+    decay_type: str = "cosine"  # "cosine" | "linear" | "constant"
 
 
 def layer_learning_rates(
@@ -36,7 +37,7 @@ def layer_learning_rates(
     lrs = []
     for i in range(n_layers):
         exponent = n_layers - 1 - i
-        lr = base_lr * (decay_factor ** exponent)
+        lr = base_lr * (decay_factor**exponent)
         lr = max(lr, min_lr)
         lrs.append(lr)
     return lrs
@@ -96,7 +97,7 @@ def build_layer_param_groups(
     )
 
     # Embed group — one step below the bottom layer
-    embed_lr = max(config.base_lr * (config.decay_factor ** n_layers), config.min_lr)
+    embed_lr = max(config.base_lr * (config.decay_factor**n_layers), config.min_lr)
 
     # Head group — full base_lr
     head_lr = config.base_lr
@@ -152,14 +153,18 @@ class LayerLROptimizer:
             )
         elif self.config.decay_type == "linear":
             if step < self.config.warmup_steps:
-                scheduled_lr = warmup_lr_schedule(step, self.config.warmup_steps, self.config.base_lr)
+                scheduled_lr = warmup_lr_schedule(
+                    step, self.config.warmup_steps, self.config.base_lr
+                )
             elif step >= self.config.decay_steps:
                 scheduled_lr = self.config.min_lr
             else:
                 progress = (step - self.config.warmup_steps) / max(
                     self.config.decay_steps - self.config.warmup_steps, 1
                 )
-                scheduled_lr = self.config.base_lr + (self.config.min_lr - self.config.base_lr) * progress
+                scheduled_lr = (
+                    self.config.base_lr + (self.config.min_lr - self.config.base_lr) * progress
+                )
         else:  # "constant"
             scheduled_lr = warmup_lr_schedule(step, self.config.warmup_steps, self.config.base_lr)
 

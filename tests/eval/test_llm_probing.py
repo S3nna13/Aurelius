@@ -14,35 +14,36 @@ Constants:
     N_SAMPLES  = 20
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import math
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.eval.llm_probing import (
     ActivationExtractor,
     LinearProbe,
     NonlinearProbe,
-    RepresentationSimilarityAnalysis,
     ProbeEvaluationSuite,
     ProbingConfig,
+    RepresentationSimilarityAnalysis,
 )
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-D_MODEL    = 16
+D_MODEL = 16
 VOCAB_SIZE = 16
-N_LAYERS   = 2
-SEQ_LEN    = 8
-BATCH      = 4
-N_CLASSES  = 3
-N_SAMPLES  = 20
+N_LAYERS = 2
+SEQ_LEN = 8
+BATCH = 4
+N_CLASSES = 3
+N_SAMPLES = 20
 
 torch.manual_seed(42)
 
@@ -50,6 +51,7 @@ torch.manual_seed(42)
 # ---------------------------------------------------------------------------
 # Tiny inline transformer (no Aurelius imports)
 # ---------------------------------------------------------------------------
+
 
 class _SelfAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int = 2) -> None:
@@ -102,9 +104,7 @@ class TinyTransformer(nn.Module):
     ) -> None:
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.blocks = nn.ModuleList(
-            [_TransformerBlock(d_model) for _ in range(n_layers)]
-        )
+        self.blocks = nn.ModuleList([_TransformerBlock(d_model) for _ in range(n_layers)])
         self.ln_f = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
@@ -119,6 +119,7 @@ class TinyTransformer(nn.Module):
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_model() -> TinyTransformer:
@@ -150,6 +151,7 @@ def sample_labels() -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # ActivationExtractor tests
 # ---------------------------------------------------------------------------
+
 
 def test_extractor_captures_activations(tiny_model, layer_names, batch_input):
     """ActivationExtractor populates activations dict after forward."""
@@ -207,6 +209,7 @@ def test_extractor_context_manager_removes_hooks(tiny_model, layer_names, batch_
 # LinearProbe tests
 # ---------------------------------------------------------------------------
 
+
 def test_linear_probe_forward_shape():
     """LinearProbe.forward outputs [B, n_classes]."""
     probe = LinearProbe(D_MODEL, N_CLASSES)
@@ -260,8 +263,8 @@ def test_linear_probe_loss_decreases():
     features = torch.zeros(30, D_MODEL)
     labels = torch.zeros(30, dtype=torch.long)
     for i in range(3):
-        features[i * 10:(i + 1) * 10, i] = 5.0
-        labels[i * 10:(i + 1) * 10] = i
+        features[i * 10 : (i + 1) * 10, i] = 5.0
+        labels[i * 10 : (i + 1) * 10] = i
 
     probe = LinearProbe(D_MODEL, N_CLASSES)
     history = probe.fit(features, labels, n_epochs=50, lr=0.1)
@@ -271,6 +274,7 @@ def test_linear_probe_loss_decreases():
 # ---------------------------------------------------------------------------
 # NonlinearProbe tests
 # ---------------------------------------------------------------------------
+
 
 def test_nonlinear_probe_forward_shape():
     """NonlinearProbe.forward outputs [B, n_classes]."""
@@ -310,6 +314,7 @@ def test_nonlinear_probe_f1_in_range():
 # ---------------------------------------------------------------------------
 # RepresentationSimilarityAnalysis tests
 # ---------------------------------------------------------------------------
+
 
 def test_rsa_cka_value_in_range():
     """CKA of two random matrices is in [0, 1]."""
@@ -366,6 +371,7 @@ def test_rsa_mutual_knn_self_equals_one():
 # ProbeEvaluationSuite tests
 # ---------------------------------------------------------------------------
 
+
 def test_suite_run_probe_returns_dict_with_layer_keys(
     tiny_model, layer_names, sample_input, sample_labels
 ):
@@ -377,9 +383,7 @@ def test_suite_run_probe_returns_dict_with_layer_keys(
     )
 
 
-def test_suite_run_probe_result_structure(
-    tiny_model, layer_names, sample_input, sample_labels
-):
+def test_suite_run_probe_result_structure(tiny_model, layer_names, sample_input, sample_labels):
     """Each layer result has acc, f1, loss_curve keys."""
     suite = ProbeEvaluationSuite(tiny_model, layer_names)
     results = suite.run_probe(sample_input, sample_labels, probe_type="linear")
@@ -396,9 +400,7 @@ def test_suite_run_probe_nonlinear(tiny_model, layer_names, sample_input, sample
     assert set(results.keys()) == set(layer_names)
 
 
-def test_suite_compare_layers_returns_nested_dict(
-    tiny_model, layer_names, sample_input
-):
+def test_suite_compare_layers_returns_nested_dict(tiny_model, layer_names, sample_input):
     """compare_layers returns a nested dict of CKA values."""
     suite = ProbeEvaluationSuite(tiny_model, layer_names)
     cka_matrix = suite.compare_layers(sample_input)
@@ -412,6 +414,7 @@ def test_suite_compare_layers_returns_nested_dict(
 # ---------------------------------------------------------------------------
 # ProbingConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_probing_config_defaults():
     """ProbingConfig has expected default values."""

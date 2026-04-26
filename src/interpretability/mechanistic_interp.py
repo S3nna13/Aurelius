@@ -12,7 +12,6 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -44,8 +43,8 @@ def analyze_weight_matrix(
     k = min(n_singular_vectors, S.shape[0])
 
     sum_s = S.sum()
-    sum_s2 = (S ** 2).sum()
-    effective_rank = float((sum_s ** 2) / (sum_s2 + 1e-12))
+    sum_s2 = (S**2).sum()
+    effective_rank = float((sum_s**2) / (sum_s2 + 1e-12))
 
     condition_number = float(S[0] / (S[-1] + 1e-12))
 
@@ -123,7 +122,7 @@ def _recompute_attention_weights(
     q = q.transpose(1, 2)
     k = k.transpose(1, 2)
 
-    scale = head_dim ** -0.5
+    scale = head_dim**-0.5
     attn_logits = torch.matmul(q, k.transpose(-2, -1)) * scale
 
     causal_mask = torch.triu(torch.ones(S, S, device=x.device), diagonal=1).bool()

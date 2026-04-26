@@ -26,6 +26,7 @@ class AttestationVerificationError(ProvenanceError):
 @dataclass(frozen=True)
 class Material:
     """A dependency material identified by URI and SHA-256 digest."""
+
     uri: str
     sha256: str
 
@@ -36,6 +37,7 @@ class ProvenanceAttestation:
 
     https://slsa.dev/spec/v1.0/provenance
     """
+
     builder_id: str
     build_config: dict[str, Any]
     materials: list[Material] = field(default_factory=list)
@@ -61,9 +63,7 @@ class ProvenanceAttestationBuilder:
         now = time.time()
         meta: dict[str, Any] = {
             "generated_at": now,
-            "generated_at_iso": time.strftime(
-                "%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)
-            ),
+            "generated_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
         }
         if metadata:
             meta.update(metadata)
@@ -93,10 +93,7 @@ class ProvenanceAttestationBuilder:
             {
                 "builder_id": attestation.builder_id,
                 "build_config": attestation.build_config,
-                "materials": [
-                    {"uri": m.uri, "sha256": m.sha256}
-                    for m in attestation.materials
-                ],
+                "materials": [{"uri": m.uri, "sha256": m.sha256} for m in attestation.materials],
                 "recipe": attestation.recipe,
                 "metadata": attestation.metadata,
             },
@@ -118,9 +115,7 @@ def build_file_attestation(
 ) -> ProvenanceAttestation:
     with open(file_path, "rb") as f:
         digest = hashlib.sha256(f.read()).hexdigest()
-    builder = ProvenanceAttestationBuilder(
-        builder_id=builder_id, shared_key=shared_key
-    )
+    builder = ProvenanceAttestationBuilder(builder_id=builder_id, shared_key=shared_key)
     return builder.build(
         build_config={"artifact_path": file_path},
         materials=[Material(uri=f"file:{file_path}", sha256=digest)],

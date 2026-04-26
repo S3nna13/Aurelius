@@ -11,8 +11,8 @@ Implements PCGrad from "Gradient Surgery for Multi-Task Learning"
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 import torch
 from torch import Tensor

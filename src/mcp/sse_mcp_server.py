@@ -15,8 +15,8 @@ import json
 import logging
 import socketserver
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from .mcp_server import MCPServer, register_mcp_server
 
@@ -48,7 +48,7 @@ class _SSEHandler(http.server.BaseHTTPRequestHandler):
     """Minimal HTTP request handler that serves SSE streams and accepts JSON POSTs."""
 
     # Injected by SSEMCPServer when building the handler class.
-    _sse_server: "SSEMCPServer"
+    _sse_server: SSEMCPServer
 
     # ------------------------------------------------------------------ GET --
 

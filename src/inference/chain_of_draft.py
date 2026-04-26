@@ -10,6 +10,7 @@ Key paper terminology preserved:
   - budget forcing : stopping draft generation once the budget is exhausted
   - answer extraction : generating the final answer after all draft steps
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -40,7 +41,7 @@ class ChainOfDraftConfig:
 
     max_draft_steps: int = 5
     draft_budget: int = 10
-    step_separator_id: int = 198        # '\n' in GPT-2 / byte-level vocab
+    step_separator_id: int = 198  # '\n' in GPT-2 / byte-level vocab
     answer_prefix_ids: list[int] = field(default_factory=list)
 
 
@@ -92,7 +93,7 @@ class ChainOfDraftDecoder:
             _loss, logits, _pkv = self.model(input_ids)
 
         # logits: (B, T, vocab_size) — take last time-step
-        last_logits = logits[:, -1, :]          # (B, vocab_size)
+        last_logits = logits[:, -1, :]  # (B, vocab_size)
         next_tokens = torch.argmax(last_logits, dim=-1, keepdim=True)  # (B, 1)
         return next_tokens, last_logits
 
@@ -205,11 +206,15 @@ class ChainOfDraftDecoder:
 
         # --- optional answer prefix ----------------------------------------
         if cfg.answer_prefix_ids:
-            prefix = torch.tensor(
-                cfg.answer_prefix_ids,
-                dtype=torch.long,
-                device=current.device,
-            ).unsqueeze(0).expand(current.size(0), -1)  # (B, P)
+            prefix = (
+                torch.tensor(
+                    cfg.answer_prefix_ids,
+                    dtype=torch.long,
+                    device=current.device,
+                )
+                .unsqueeze(0)
+                .expand(current.size(0), -1)
+            )  # (B, P)
             current = torch.cat([current, prefix], dim=1)
 
         # --- answer phase --------------------------------------------------

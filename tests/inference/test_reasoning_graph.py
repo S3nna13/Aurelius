@@ -6,9 +6,7 @@ and GraphReasoner from ``src/inference/reasoning_graph.py``.
 
 from __future__ import annotations
 
-import pytest
 import torch
-
 from aurelius.inference.reasoning_graph import (
     AnswerAggregator,
     GraphReasoner,
@@ -28,6 +26,7 @@ N_CLASSES = 4
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _rand_emb(d: int = D_MODEL) -> torch.Tensor:
     return torch.randn(d)
@@ -79,6 +78,7 @@ def _make_reasoner() -> GraphReasoner:
 # 1. ReasoningNode initializes with correct fields
 # ---------------------------------------------------------------------------
 
+
 def test_reasoning_node_init_fields():
     emb = _rand_emb()
     node = ReasoningNode(42, emb, dependencies=[1, 2])
@@ -93,6 +93,7 @@ def test_reasoning_node_init_fields():
 # 2. ReasoningNode.solve sets is_solved and answer_embedding
 # ---------------------------------------------------------------------------
 
+
 def test_reasoning_node_solve():
     node = ReasoningNode(0, _rand_emb())
     answer = _rand_emb()
@@ -104,6 +105,7 @@ def test_reasoning_node_solve():
 # ---------------------------------------------------------------------------
 # 3. topological_order on linear chain returns dependencies-first order
 # ---------------------------------------------------------------------------
+
 
 def test_topological_order_linear_chain():
     graph = _linear_chain()
@@ -117,6 +119,7 @@ def test_topological_order_linear_chain():
 # 4. topological_order result contains all node ids
 # ---------------------------------------------------------------------------
 
+
 def test_topological_order_contains_all_nodes():
     graph = _diamond_graph()
     order = graph.topological_order()
@@ -127,6 +130,7 @@ def test_topological_order_contains_all_nodes():
 # 5. is_dag returns True for a valid DAG
 # ---------------------------------------------------------------------------
 
+
 def test_is_dag_true_for_valid_dag():
     assert _diamond_graph().is_dag() is True
     assert _linear_chain().is_dag() is True
@@ -136,6 +140,7 @@ def test_is_dag_true_for_valid_dag():
 # 6. is_dag returns False for a graph with a cycle
 # ---------------------------------------------------------------------------
 
+
 def test_is_dag_false_for_cycle():
     assert _cycle_graph().is_dag() is False
 
@@ -143,6 +148,7 @@ def test_is_dag_false_for_cycle():
 # ---------------------------------------------------------------------------
 # 7. unsolved_leaves returns nodes with no dependencies
 # ---------------------------------------------------------------------------
+
 
 def test_unsolved_leaves():
     graph = _diamond_graph()
@@ -154,6 +160,7 @@ def test_unsolved_leaves():
 # ---------------------------------------------------------------------------
 # 8. all_solved: False initially, True after all solved
 # ---------------------------------------------------------------------------
+
 
 def test_all_solved_initially_false():
     graph = _linear_chain()
@@ -171,6 +178,7 @@ def test_all_solved_true_after_solving_all():
 # 9. NodeSolver output shape (d_model,)
 # ---------------------------------------------------------------------------
 
+
 def test_node_solver_output_shape():
     solver = NodeSolver(D_MODEL)
     question = _rand_emb()
@@ -183,6 +191,7 @@ def test_node_solver_output_shape():
 # 10. NodeSolver output is finite
 # ---------------------------------------------------------------------------
 
+
 def test_node_solver_output_finite():
     solver = NodeSolver(D_MODEL)
     out = solver(_rand_emb(), torch.randn(2, D_MODEL))
@@ -192,6 +201,7 @@ def test_node_solver_output_finite():
 # ---------------------------------------------------------------------------
 # 11. NodeSolver gradient flows
 # ---------------------------------------------------------------------------
+
 
 def test_node_solver_gradient_flows():
     solver = NodeSolver(D_MODEL)
@@ -207,6 +217,7 @@ def test_node_solver_gradient_flows():
 # 12. AnswerAggregator output shape (n_classes,)
 # ---------------------------------------------------------------------------
 
+
 def test_answer_aggregator_output_shape():
     agg = AnswerAggregator(D_MODEL, N_CLASSES)
     root_answer = _rand_emb()
@@ -217,6 +228,7 @@ def test_answer_aggregator_output_shape():
 # ---------------------------------------------------------------------------
 # 13. GraphReasoner.solve_graph returns (n_classes,) logits
 # ---------------------------------------------------------------------------
+
 
 def test_solve_graph_output_shape():
     reasoner = _make_reasoner()
@@ -229,6 +241,7 @@ def test_solve_graph_output_shape():
 # 14. GraphReasoner.solve_graph produces finite output
 # ---------------------------------------------------------------------------
 
+
 def test_solve_graph_output_finite():
     reasoner = _make_reasoner()
     graph = _linear_chain()
@@ -240,6 +253,7 @@ def test_solve_graph_output_finite():
 # 15. GraphReasoner.solve_batch returns (B, n_classes)
 # ---------------------------------------------------------------------------
 
+
 def test_solve_batch_output_shape():
     reasoner = _make_reasoner()
     graphs = [_linear_chain(), _diamond_graph(), _linear_chain()]
@@ -250,6 +264,7 @@ def test_solve_batch_output_shape():
 # ---------------------------------------------------------------------------
 # 16. Solving same graph twice gives deterministic result (node states reset)
 # ---------------------------------------------------------------------------
+
 
 def test_solve_graph_deterministic_on_reuse():
     torch.manual_seed(0)

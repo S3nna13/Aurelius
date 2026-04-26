@@ -1,10 +1,9 @@
 """DPO (Direct Preference Optimization) trainer — Rafailov et al. 2023 (2305.18290)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
@@ -13,6 +12,7 @@ from torch import Tensor
 @dataclass
 class DPOConfig:
     """Configuration for DPO training."""
+
     beta: float = 0.1
     label_smoothing: float = 0.0
     reference_free: bool = False
@@ -30,8 +30,8 @@ class DPOLoss(nn.Module):
         self,
         policy_chosen_logps: Tensor,
         policy_rejected_logps: Tensor,
-        reference_chosen_logps: Optional[Tensor],
-        reference_rejected_logps: Optional[Tensor],
+        reference_chosen_logps: Tensor | None,
+        reference_rejected_logps: Tensor | None,
     ) -> tuple[Tensor, Tensor, Tensor]:
         """Compute DPO loss and implicit rewards.
 
@@ -60,10 +60,7 @@ class DPOLoss(nn.Module):
                 loss = -F.logsigmoid(logits).mean()
             else:
                 ls = cfg.label_smoothing
-                loss = (
-                    -(1.0 - ls) * F.logsigmoid(logits)
-                    - ls * F.logsigmoid(-logits)
-                ).mean()
+                loss = (-(1.0 - ls) * F.logsigmoid(logits) - ls * F.logsigmoid(-logits)).mean()
         elif cfg.loss_type == "hinge":
             loss = F.relu(1.0 - logits).mean()
         elif cfg.loss_type == "ipo":
@@ -82,7 +79,7 @@ class DPOLoss(nn.Module):
 class DPOTrainer:
     """Direct Preference Optimization trainer (lightweight, no model required)."""
 
-    def __init__(self, config: Optional[DPOConfig] = None) -> None:
+    def __init__(self, config: DPOConfig | None = None) -> None:
         self.config = config if config is not None else DPOConfig()
         self._loss_fn = DPOLoss(self.config)
 
@@ -90,8 +87,8 @@ class DPOTrainer:
         self,
         policy_chosen_logps: Tensor,
         policy_rejected_logps: Tensor,
-        reference_chosen_logps: Optional[Tensor] = None,
-        reference_rejected_logps: Optional[Tensor] = None,
+        reference_chosen_logps: Tensor | None = None,
+        reference_rejected_logps: Tensor | None = None,
     ) -> dict:
         """Compute DPO loss and reward metrics.
 

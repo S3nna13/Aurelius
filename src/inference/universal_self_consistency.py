@@ -14,16 +14,15 @@ SelfConsistencyDecoder : full pipeline — sample, score/vote, return best.
 
 from __future__ import annotations
 
-from collections import Counter
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SelfConsistencyVoter
 # ---------------------------------------------------------------------------
+
 
 class SelfConsistencyVoter:
     """Aggregate answers by frequency (majority vote).
@@ -36,7 +35,7 @@ class SelfConsistencyVoter:
         exact string match is used (after ``str.strip()``).
     """
 
-    def __init__(self, answer_extractor: Optional[Callable[[str], str]] = None) -> None:
+    def __init__(self, answer_extractor: Callable[[str], str] | None = None) -> None:
         self.answer_extractor = answer_extractor
 
     # ------------------------------------------------------------------
@@ -52,7 +51,7 @@ class SelfConsistencyVoter:
     # Public API
     # ------------------------------------------------------------------
 
-    def vote(self, answers: List[str]) -> Tuple[str, Dict[str, int]]:
+    def vote(self, answers: list[str]) -> tuple[str, dict[str, int]]:
         """Return (majority_answer, vote_counts).
 
         Parameters
@@ -78,13 +77,13 @@ class SelfConsistencyVoter:
             raise ValueError("answers must not be empty")
 
         extracted = [self._extract(a) for a in answers]
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for e in extracted:
             counts[e] = counts.get(e, 0) + 1
 
         max_count = max(counts.values())
         # Prefer first occurrence among ties
-        winner_extracted: Optional[str] = None
+        winner_extracted: str | None = None
         for e in extracted:
             if counts[e] == max_count:
                 winner_extracted = e
@@ -99,7 +98,7 @@ class SelfConsistencyVoter:
 
         return winner_original, counts
 
-    def vote_with_confidence(self, answers: List[str]) -> Tuple[str, float]:
+    def vote_with_confidence(self, answers: list[str]) -> tuple[str, float]:
         """Return (majority_answer, confidence).
 
         confidence = winner_count / len(answers), so it lies in (0, 1].
@@ -122,6 +121,7 @@ class SelfConsistencyVoter:
 # UniversalSCScorer
 # ---------------------------------------------------------------------------
 
+
 class UniversalSCScorer:
     """Score each answer by pairwise consistency with all other answers.
 
@@ -133,7 +133,7 @@ class UniversalSCScorer:
     def __init__(self) -> None:
         pass
 
-    def score(self, answers: List[str]) -> Tensor:
+    def score(self, answers: list[str]) -> Tensor:
         """Return a (N,) float tensor of consistency scores.
 
         For each answer a_i, score_i = (# of a_j == a_i for j ≠ i) / (N - 1).
@@ -152,7 +152,7 @@ class UniversalSCScorer:
             scores[i] = agree / (n - 1)
         return scores
 
-    def select_best(self, answers: List[str], scores: Tensor) -> str:
+    def select_best(self, answers: list[str], scores: Tensor) -> str:
         """Return the answer with the highest score.
 
         Ties are broken by first occurrence (lowest index).
@@ -174,6 +174,7 @@ class UniversalSCScorer:
 # TemperatureSampler
 # ---------------------------------------------------------------------------
 
+
 class TemperatureSampler:
     """Sample diverse single-token outputs at varied temperatures.
 
@@ -190,14 +191,14 @@ class TemperatureSampler:
     def __init__(
         self,
         model_fn: Callable[[Tensor, float], int],
-        temperatures: List[float],
+        temperatures: list[float],
     ) -> None:
         if not temperatures:
             raise ValueError("temperatures must not be empty")
         self.model_fn = model_fn
         self.temperatures = temperatures
 
-    def sample_n(self, prompt_ids: Tensor, n: int) -> List[int]:
+    def sample_n(self, prompt_ids: Tensor, n: int) -> list[int]:
         """Draw *n* token samples by cycling through temperatures.
 
         Parameters
@@ -212,7 +213,7 @@ class TemperatureSampler:
         List[int]
             Length-*n* list of sampled token ids.
         """
-        samples: List[int] = []
+        samples: list[int] = []
         for i in range(n):
             temp = self.temperatures[i % len(self.temperatures)]
             token_id = self.model_fn(prompt_ids, temp)
@@ -223,6 +224,7 @@ class TemperatureSampler:
 # ---------------------------------------------------------------------------
 # SelfConsistencyDecoder
 # ---------------------------------------------------------------------------
+
 
 class SelfConsistencyDecoder:
     """Full Universal Self-Consistency pipeline.
@@ -275,7 +277,7 @@ class SelfConsistencyDecoder:
         self,
         prompt_ids: Tensor,
         max_new_tokens: int = 50,
-    ) -> Tuple[Tensor, Dict]:
+    ) -> tuple[Tensor, dict]:
         """Generate *n_samples* completions and select the best.
 
         Parameters
@@ -296,7 +298,7 @@ class SelfConsistencyDecoder:
             - ``'confidence'`` (float): winner's vote share or USC score.
             - ``'all_completions'`` (List[LongTensor]): all sampled completions.
         """
-        all_completions: List[Tensor] = []
+        all_completions: list[Tensor] = []
         temperatures = self._temperatures
 
         for i in range(self.n_samples):
@@ -329,7 +331,7 @@ class SelfConsistencyDecoder:
 
         best_tokens = all_completions[best_idx]
 
-        stats: Dict = {
+        stats: dict = {
             "n_samples": self.n_samples,
             "confidence": float(confidence),
             "all_completions": all_completions,

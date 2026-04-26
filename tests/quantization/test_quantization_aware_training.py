@@ -7,16 +7,16 @@ import torch
 import torch.nn as nn
 
 from src.quantization.quantization_aware_training import (
+    QUANTIZATION_REGISTRY,
     FakeQuantize,
     QATConfig,
     QATWrapper,
-    QUANTIZATION_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def cfg8() -> QATConfig:
@@ -44,6 +44,7 @@ def tiny_input() -> torch.Tensor:
 # QATConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestQATConfig:
     def test_defaults(self):
         cfg = QATConfig()
@@ -63,6 +64,7 @@ class TestQATConfig:
 # ---------------------------------------------------------------------------
 # FakeQuantize tests
 # ---------------------------------------------------------------------------
+
 
 class TestFakeQuantize:
     def test_output_shape(self, cfg8, tiny_input):
@@ -110,6 +112,7 @@ class TestFakeQuantize:
 # ---------------------------------------------------------------------------
 # QATWrapper tests
 # ---------------------------------------------------------------------------
+
 
 class TestQATWrapper:
     def test_forward_shape(self, linear_4x8, tiny_input, cfg8):

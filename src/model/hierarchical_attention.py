@@ -15,18 +15,16 @@ Architecture:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class HierAttnConfig:
@@ -41,7 +39,8 @@ class HierAttnConfig:
 # Utility functions
 # ---------------------------------------------------------------------------
 
-def chunk_sequence(x: torch.Tensor, chunk_size: int) -> Tuple[torch.Tensor, int]:
+
+def chunk_sequence(x: torch.Tensor, chunk_size: int) -> tuple[torch.Tensor, int]:
     """Split a (B, T, d) tensor into non-overlapping chunks.
 
     If T is not divisible by chunk_size the last chunk is zero-padded to
@@ -91,11 +90,11 @@ def summarize_chunks(
         ``.view(B, n_chunks, d)`` after calling.
     """
     if method == "mean":
-        summary = chunk_outputs.mean(dim=1)          # (B*n_chunks, d)
+        summary = chunk_outputs.mean(dim=1)  # (B*n_chunks, d)
     elif method == "first":
-        summary = chunk_outputs[:, 0, :]             # (B*n_chunks, d)
+        summary = chunk_outputs[:, 0, :]  # (B*n_chunks, d)
     elif method == "last":
-        summary = chunk_outputs[:, -1, :]            # (B*n_chunks, d)
+        summary = chunk_outputs[:, -1, :]  # (B*n_chunks, d)
     else:
         raise ValueError(f"Unknown summarize method: {method!r}. Use 'mean', 'first', or 'last'.")
     return summary  # (B*n_chunks, d) — caller reshapes to (B, n_chunks, d)
@@ -117,7 +116,7 @@ def cross_chunk_attention(
         Tensor of shape (B, n_chunks, d_model).
     """
     B, n_chunks, d = chunk_summaries.shape
-    assert d == d_model, f"d_model mismatch: got {d}, expected {d_model}"
+    assert d == d_model, f"d_model mismatch: got {d}, expected {d_model}"  # noqa: S101
     head_dim = d_model // n_heads
 
     # Project Q, K, V inline (no learnable weights — this is a standalone fn).
@@ -159,6 +158,7 @@ def broadcast_chunk_context(
 # Local (within-chunk) attention
 # ---------------------------------------------------------------------------
 
+
 class LocalAttention(nn.Module):
     """Standard multi-head self-attention with no bias on projections.
 
@@ -172,7 +172,7 @@ class LocalAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -204,6 +204,7 @@ class LocalAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Hierarchical attention
 # ---------------------------------------------------------------------------
+
 
 class HierarchicalAttention(nn.Module):
     """Two-level hierarchical attention for long sequences.
@@ -270,6 +271,7 @@ class HierarchicalAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Hierarchical attention block (with LayerNorm + residual)
 # ---------------------------------------------------------------------------
+
 
 class HierAttnBlock(nn.Module):
     """Pre-norm hierarchical attention block with residual connection.

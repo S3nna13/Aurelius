@@ -1,7 +1,8 @@
 """Knowledge transfer utilities for copying or blending weights between models."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 
@@ -26,16 +27,10 @@ class KnowledgeTransfer:
     def __init__(self, config: TransferConfig | None = None) -> None:
         self.config = config or TransferConfig()
 
-    def compatible_keys(
-        self, source: torch.nn.Module, target: torch.nn.Module
-    ) -> list[str]:
+    def compatible_keys(self, source: torch.nn.Module, target: torch.nn.Module) -> list[str]:
         src_sd = source.state_dict()
         tgt_sd = target.state_dict()
-        return [
-            k
-            for k in src_sd
-            if k in tgt_sd and src_sd[k].shape == tgt_sd[k].shape
-        ]
+        return [k for k in src_sd if k in tgt_sd and src_sd[k].shape == tgt_sd[k].shape]
 
     def _layer_index(self, key: str) -> int | None:
         """Extract the first integer segment from a parameter key, or None."""
@@ -44,9 +39,7 @@ class KnowledgeTransfer:
                 return int(part)
         return None
 
-    def transfer(
-        self, source: torch.nn.Module, target: torch.nn.Module
-    ) -> TransferResult:
+    def transfer(self, source: torch.nn.Module, target: torch.nn.Module) -> TransferResult:
         mode = self.config.transfer_mode
         alpha = self.config.interpolation_alpha
         layers_filter = self.config.layers_to_transfer

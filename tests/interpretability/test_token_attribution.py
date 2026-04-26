@@ -4,26 +4,27 @@ Uses a small AureliusConfig so the model fits comfortably in CPU memory:
   n_layers=2, d_model=64, n_heads=4, n_kv_heads=2, head_dim=16,
   d_ff=128, vocab_size=256, max_seq_len=64
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.token_attribution import (
     AttributionConfig,
     TokenAttribution,
     top_k_tokens,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
 SEQ_LEN = 8
-TARGET_POS = SEQ_LEN - 1   # last token position
-TARGET_TOK = 5              # arbitrary vocab index
+TARGET_POS = SEQ_LEN - 1  # last token position
+TARGET_TOK = 5  # arbitrary vocab index
 
 
 @pytest.fixture(scope="module")
@@ -62,6 +63,7 @@ def attrib(model) -> TokenAttribution:
 # Test 1: AttributionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_attribution_config_defaults():
     cfg = AttributionConfig()
     assert cfg.method == "gradient"
@@ -74,6 +76,7 @@ def test_attribution_config_defaults():
 # Test 2: gradient_attribution returns (seq_len,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_attribution_shape(attrib, input_ids):
     scores = attrib.gradient_attribution(input_ids, TARGET_POS, TARGET_TOK)
     assert scores.shape == (SEQ_LEN,), f"Expected ({SEQ_LEN},), got {scores.shape}"
@@ -82,6 +85,7 @@ def test_gradient_attribution_shape(attrib, input_ids):
 # ---------------------------------------------------------------------------
 # Test 3: gradient_attribution scores are non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_attribution_non_negative(attrib, input_ids):
     scores = attrib.gradient_attribution(input_ids, TARGET_POS, TARGET_TOK)
@@ -92,6 +96,7 @@ def test_gradient_attribution_non_negative(attrib, input_ids):
 # Test 4: integrated_gradients returns (seq_len,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_integrated_gradients_shape(attrib, input_ids):
     scores = attrib.integrated_gradients(input_ids, TARGET_POS, TARGET_TOK, n_steps=5)
     assert scores.shape == (SEQ_LEN,), f"Expected ({SEQ_LEN},), got {scores.shape}"
@@ -100,6 +105,7 @@ def test_integrated_gradients_shape(attrib, input_ids):
 # ---------------------------------------------------------------------------
 # Test 5: attention_rollout returns (seq_len, seq_len) matrix
 # ---------------------------------------------------------------------------
+
 
 def test_attention_rollout_shape(attrib, input_ids):
     rollout = attrib.attention_rollout(input_ids)
@@ -111,6 +117,7 @@ def test_attention_rollout_shape(attrib, input_ids):
 # ---------------------------------------------------------------------------
 # Test 6: attention_rollout rows sum to approximately 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_attention_rollout_rows_sum_to_one(attrib, input_ids):
     rollout = attrib.attention_rollout(input_ids)
@@ -124,6 +131,7 @@ def test_attention_rollout_rows_sum_to_one(attrib, input_ids):
 # Test 7: erasure_attribution returns (seq_len,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_erasure_attribution_shape(attrib, input_ids):
     scores = attrib.erasure_attribution(input_ids, TARGET_POS, TARGET_TOK)
     assert scores.shape == (SEQ_LEN,), f"Expected ({SEQ_LEN},), got {scores.shape}"
@@ -132,6 +140,7 @@ def test_erasure_attribution_shape(attrib, input_ids):
 # ---------------------------------------------------------------------------
 # Test 8: normalize_attributions returns values in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_attributions_range(attrib):
     raw = torch.tensor([0.1, 0.5, 1.2, 0.0, 0.8])
@@ -143,6 +152,7 @@ def test_normalize_attributions_range(attrib):
 # ---------------------------------------------------------------------------
 # Test 9: top_k_tokens returns k results
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_tokens_count(input_ids):
     k = 3
@@ -165,6 +175,7 @@ def test_top_k_tokens_structure(input_ids):
 # ---------------------------------------------------------------------------
 # Test 10: Different methods give different attributions
 # ---------------------------------------------------------------------------
+
 
 def test_different_methods_differ(model, input_ids):
     """Gradient, integrated_gradients, and erasure should not all produce identical scores."""

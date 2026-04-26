@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import asdict, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from src.model.interface_framework import (
     ApprovalRequest,
@@ -45,13 +46,17 @@ def _coerce_workspace(value: str | Path | None) -> str | None:
     return value
 
 
-def _coerce_skill_ids(skill_ids: tuple[str, ...] | list[str] | tuple[Any, ...] | list[Any]) -> tuple[str, ...]:
+def _coerce_skill_ids(
+    skill_ids: tuple[str, ...] | list[str] | tuple[Any, ...] | list[Any],
+) -> tuple[str, ...]:
     if isinstance(skill_ids, str):
         raise InterfaceFrameworkError("skill_ids must be a sequence of non-empty strings")
     try:
         items = tuple(skill_ids)
     except TypeError as exc:  # pragma: no cover - defensive
-        raise InterfaceFrameworkError(f"skill_ids must be iterable, got {type(skill_ids).__name__}") from exc
+        raise InterfaceFrameworkError(
+            f"skill_ids must be iterable, got {type(skill_ids).__name__}"
+        ) from exc
     normalized: list[str] = []
     for item in items:
         if not isinstance(item, str) or not item.strip():
@@ -107,7 +112,11 @@ class AureliusInterfaceRuntime:
                 f"framework must be AureliusInterfaceFramework, got {type(framework).__name__}"
             )
         self.framework = framework
-        self.root_dir = Path(root_dir).expanduser().resolve() if root_dir is not None else framework.paths.repo_root
+        self.root_dir = (
+            Path(root_dir).expanduser().resolve()
+            if root_dir is not None
+            else framework.paths.repo_root
+        )
         self.variant_id = variant_id or framework.model_context.get("variant_id")
         self.session_manager = session_manager or SessionManager(root_dir=self.root_dir)
         self.skill_catalog = skill_catalog or SkillCatalog(
@@ -120,12 +129,16 @@ class AureliusInterfaceRuntime:
         cls,
         root_dir: str | Path | None = None,
         variant_id: str | None = None,
-    ) -> "AureliusInterfaceRuntime":
+    ) -> AureliusInterfaceRuntime:
         framework = AureliusInterfaceFramework.from_repo_root(
             root_dir=root_dir,
             variant_id=variant_id,
         )
-        root = Path(root_dir).expanduser().resolve() if root_dir is not None else framework.paths.repo_root
+        root = (
+            Path(root_dir).expanduser().resolve()
+            if root_dir is not None
+            else framework.paths.repo_root
+        )
         return cls(framework, root_dir=root, variant_id=variant_id)
 
     # ------------------------------------------------------------------
@@ -265,10 +278,14 @@ class AureliusInterfaceRuntime:
             workspace=thread_spec.workspace or session.workspace,
             repo_instructions=thread_spec.repo_instructions
             if thread_spec.repo_instructions is not None
-            else self._load_instruction_layers(thread_spec.workspace or session.workspace, label="repo"),
+            else self._load_instruction_layers(
+                thread_spec.workspace or session.workspace, label="repo"
+            ),
             workspace_instructions=thread_spec.workspace_instructions
             if thread_spec.workspace_instructions is not None
-            else self._load_instruction_layers(thread_spec.workspace or session.workspace, label="workspace"),
+            else self._load_instruction_layers(
+                thread_spec.workspace or session.workspace, label="workspace"
+            ),
         )
         thread = self.framework.create_thread(thread_spec)
         skill_bundles = self._resolve_skill_bundles(thread_spec.attached_skills)
@@ -277,7 +294,9 @@ class AureliusInterfaceRuntime:
             skills=skill_bundles,
             instruction_stack=self._compose_instruction_stack(thread, skill_bundles),
         )
-        self.session_manager.register_thread(session.session_id, thread, workstream_id=workstream.workstream_id)
+        self.session_manager.register_thread(
+            session.session_id, thread, workstream_id=workstream.workstream_id
+        )
         return thread
 
     def attach_skills(
@@ -319,7 +338,9 @@ class AureliusInterfaceRuntime:
     def spawn_subagent(self, thread: TaskThread, **kwargs: Any) -> TaskThread:
         child = self.framework.spawn_subagent(thread, **kwargs)
         if thread.session_id is not None:
-            self.session_manager.register_thread(thread.session_id, child, workstream_id=child.workstream_id)
+            self.session_manager.register_thread(
+                thread.session_id, child, workstream_id=child.workstream_id
+            )
         return child
 
     def launch_background_job(self, thread: TaskThread, **kwargs: Any) -> BackgroundJob:
@@ -328,14 +349,26 @@ class AureliusInterfaceRuntime:
             self.session_manager.register_background_job(thread.session_id, job)
         return job
 
-    def cancel_background_job(self, job: BackgroundJob | str, *, session_id: str | None = None) -> BackgroundJob:
+    def cancel_background_job(
+        self, job: BackgroundJob | str, *, session_id: str | None = None
+    ) -> BackgroundJob:
         canceled = self.framework.cancel_background_job(job)
         sid = session_id or canceled.metadata.get("session_id")
         if sid is not None:
-            self.session_manager.update_background_job(sid, canceled.job_id, status="canceled", result=canceled.result)
+            self.session_manager.update_background_job(
+                sid, canceled.job_id, status="canceled", result=canceled.result
+            )
         return canceled
 
-    def route_channel(self, *, host: str, channel: str, thread: TaskThread | None = None, recipient: str | None = None, metadata: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    def route_channel(
+        self,
+        *,
+        host: str,
+        channel: str,
+        thread: TaskThread | None = None,
+        recipient: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         routed = self.framework.route_channel(
             host=host,
             channel=channel,
@@ -378,15 +411,26 @@ class AureliusInterfaceRuntime:
             recipient=recipient,
             kind=kind,
             payload=dict(payload or {}),
-            created_at=created_at or datetime.now(timezone.utc).isoformat(),
+            created_at=created_at or datetime.now(UTC).isoformat(),
             session_id=session.session_id,
             workstream_id=workstream_id or (thread.workstream_id if thread is not None else None),
-            workspace=_coerce_workspace(workspace) or session.workspace or (thread.workspace if thread is not None else None),
+            workspace=_coerce_workspace(workspace)
+            or session.workspace
+            or (thread.workspace if thread is not None else None),
             metadata=dict(metadata or {}),
         )
         return self.session_manager.register_message(session.session_id, envelope)
 
-    def record_tool_call(self, *, tool_name: str, arguments: dict[str, Any], call_id: str | None = None, host_step_id: str | None = None, status: str = "validated", thread: TaskThread | None = None) -> dict[str, Any]:
+    def record_tool_call(
+        self,
+        *,
+        tool_name: str,
+        arguments: dict[str, Any],
+        call_id: str | None = None,
+        host_step_id: str | None = None,
+        status: str = "validated",
+        thread: TaskThread | None = None,
+    ) -> dict[str, Any]:
         normalized = self.framework.record_tool_call(
             tool_name=tool_name,
             arguments=arguments,
@@ -513,7 +557,9 @@ class AureliusInterfaceRuntime:
     def capability_summary(self, session_id: str | None = None) -> dict[str, Any]:
         session = self.session_manager.get_session(session_id) if session_id is not None else None
         session_status = self.session_manager.status(session_id) if session is not None else None
-        journal_summary = self.session_manager.journal_summary(session_id) if session is not None else None
+        journal_summary = (
+            self.session_manager.journal_summary(session_id) if session is not None else None
+        )
         messages = self.list_messages(session_id) if session is not None else []
         return {
             "schema": self.capability_summary_schema(),
@@ -524,7 +570,9 @@ class AureliusInterfaceRuntime:
             "skill_catalog": self.skill_catalog.provenance_summary(),
             "sessions": {
                 "count": self.session_manager.session_count(),
-                "session_ids": [session.session_id for session in self.session_manager.list_sessions()],
+                "session_ids": [
+                    session.session_id for session in self.session_manager.list_sessions()
+                ],
             },
             "runtime": {
                 "channel_messages": len(messages),
@@ -534,8 +582,12 @@ class AureliusInterfaceRuntime:
             "journal": journal_summary,
         }
 
-    def list_skills(self, *, scope: str | None = None, active: bool | None = None, include_archived: bool = True):
-        return self.skill_catalog.list(scope=scope, active=active, include_archived=include_archived)
+    def list_skills(
+        self, *, scope: str | None = None, active: bool | None = None, include_archived: bool = True
+    ):
+        return self.skill_catalog.list(
+            scope=scope, active=active, include_archived=include_archived
+        )
 
     def search_skills(self, query: str):
         return self.skill_catalog.search(query)
@@ -613,8 +665,12 @@ class AureliusInterfaceRuntime:
             workstream_name=workstream_name or spec.workstream_name,
             workspace=_coerce_workspace(workspace) or spec.workspace or str(self.root_dir),
             attached_skills=_coerce_skill_ids(merged_skills),
-            repo_instructions=repo_instructions if repo_instructions is not None else spec.repo_instructions,
-            workspace_instructions=workspace_instructions if workspace_instructions is not None else spec.workspace_instructions,
+            repo_instructions=repo_instructions
+            if repo_instructions is not None
+            else spec.repo_instructions,
+            workspace_instructions=workspace_instructions
+            if workspace_instructions is not None
+            else spec.workspace_instructions,
             metadata={**spec.metadata, **extras},
         )
 
@@ -623,7 +679,9 @@ class AureliusInterfaceRuntime:
             return tuple()
         return self.skill_catalog.resolve_skill_bundles(skill_ids)
 
-    def _compose_instruction_stack(self, thread: TaskThread, skills: tuple[Any, ...]) -> tuple[str, ...]:
+    def _compose_instruction_stack(
+        self, thread: TaskThread, skills: tuple[Any, ...]
+    ) -> tuple[str, ...]:
         layers = [
             "system policy: canonical interface contract",
             f"user task prompt: {thread.task_prompt}",
@@ -647,12 +705,16 @@ class AureliusInterfaceRuntime:
 
     def _update_thread(self, thread: TaskThread) -> None:
         if thread.session_id is not None:
-            self.session_manager.register_thread(thread.session_id, thread, workstream_id=thread.workstream_id)
+            self.session_manager.register_thread(
+                thread.session_id, thread, workstream_id=thread.workstream_id
+            )
 
     def _load_instruction_layers(self, workspace: str | None, *, label: str) -> str | None:
         if workspace is None:
             return None
-        layers = self.skill_catalog.instruction_layers_for(workspace=workspace, repo_root=self.root_dir)
+        layers = self.skill_catalog.instruction_layers_for(
+            workspace=workspace, repo_root=self.root_dir
+        )
         matching = [layer for layer in layers if layer.startswith(f"{label} instructions:")]
         if not matching:
             return None

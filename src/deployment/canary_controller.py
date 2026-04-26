@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
 @dataclass(frozen=True)
@@ -13,7 +13,7 @@ class CanaryStage:
     success_threshold: float = 0.99
 
 
-class CanaryState(str, Enum):
+class CanaryState(StrEnum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"

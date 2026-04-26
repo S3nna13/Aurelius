@@ -24,8 +24,8 @@ import hashlib
 import json
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
 
 
 @dataclass
@@ -36,9 +36,9 @@ class CachedResponse:
     completion: str
     created_at: float
     hit_count: int
-    ttl: Optional[float]
+    ttl: float | None
 
-    def is_expired(self, now: Optional[float] = None) -> bool:
+    def is_expired(self, now: float | None = None) -> bool:
         if self.ttl is None:
             return False
         if now is None:
@@ -51,7 +51,7 @@ def _default_hasher(key_material: str) -> str:
     return hashlib.sha256(key_material.encode("utf-8")).hexdigest()
 
 
-def _canonical_params(params: Optional[Dict]) -> str:
+def _canonical_params(params: dict | None) -> str:
     """JSON-serialize params with sorted keys for order independence.
 
     ``None`` and ``{}`` both collapse to ``"{}"`` so callers that elide
@@ -69,30 +69,28 @@ class PromptCache:
     def __init__(
         self,
         max_entries: int = 1000,
-        default_ttl: Optional[float] = None,
-        hasher: Optional[Callable[[str], str]] = None,
+        default_ttl: float | None = None,
+        hasher: Callable[[str], str] | None = None,
     ) -> None:
         if max_entries <= 0:
             raise ValueError("max_entries must be positive")
         self.max_entries = max_entries
         self.default_ttl = default_ttl
         self._hasher: Callable[[str], str] = hasher or _default_hasher
-        self._store: "OrderedDict[str, CachedResponse]" = OrderedDict()
+        self._store: OrderedDict[str, CachedResponse] = OrderedDict()
         self._hits = 0
         self._misses = 0
         self._evictions = 0
 
     # ---- key construction -------------------------------------------------
 
-    def _key(self, prompt: str, params: Optional[Dict]) -> str:
+    def _key(self, prompt: str, params: dict | None) -> str:
         material = prompt + "\x1f" + _canonical_params(params)
         return self._hasher(material)
 
     # ---- core operations --------------------------------------------------
 
-    def get(
-        self, prompt: str, params: Optional[Dict] = None
-    ) -> Optional[CachedResponse]:
+    def get(self, prompt: str, params: dict | None = None) -> CachedResponse | None:
         key = self._key(prompt, params)
         entry = self._store.get(key)
         if entry is None:
@@ -112,8 +110,8 @@ class PromptCache:
         self,
         prompt: str,
         completion: str,
-        params: Optional[Dict] = None,
-        ttl: Optional[float] = None,
+        params: dict | None = None,
+        ttl: float | None = None,
     ) -> None:
         key = self._key(prompt, params)
         effective_ttl = ttl if ttl is not None else self.default_ttl
@@ -134,7 +132,7 @@ class PromptCache:
             self._store.popitem(last=False)
             self._evictions += 1
 
-    def invalidate(self, prompt: str, params: Optional[Dict] = None) -> bool:
+    def invalidate(self, prompt: str, params: dict | None = None) -> bool:
         key = self._key(prompt, params)
         if key in self._store:
             del self._store[key]
@@ -155,7 +153,7 @@ class PromptCache:
 
     # ---- introspection ----------------------------------------------------
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         return {
             "hits": self._hits,
             "misses": self._misses,

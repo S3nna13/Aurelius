@@ -2,6 +2,7 @@
 
 Trail of Bits: enforce authorization at every boundary.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,11 +17,7 @@ class Permission:
 @dataclass
 class Role:
     name: str
-    permissions: list[Permission] | None = None
-
-    def __post_init__(self) -> None:
-        if self.permissions is None:
-            self.permissions = []
+    permissions: list[Permission] = field(default_factory=list)
 
     def has_permission(self, resource: str, action: str) -> bool:
         return any(p.resource == resource and p.action == action for p in self.permissions)

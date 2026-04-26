@@ -50,13 +50,9 @@ class VariantAdapter:
             raise AdapterValidationError("target_modules must be a tuple")
         if self.kind is AdapterKind.LORA:
             if self.rank is None or not isinstance(self.rank, int) or self.rank <= 0:
-                raise AdapterValidationError(
-                    "LORA adapter requires rank > 0"
-                )
+                raise AdapterValidationError("LORA adapter requires rank > 0")
             if len(self.target_modules) == 0:
-                raise AdapterValidationError(
-                    "LORA adapter requires non-empty target_modules"
-                )
+                raise AdapterValidationError("LORA adapter requires non-empty target_modules")
         if self.kind is AdapterKind.PREFIX_TUNE:
             if len(self.target_modules) == 0:
                 raise AdapterValidationError(
@@ -64,9 +60,7 @@ class VariantAdapter:
                 )
         if self.kind is AdapterKind.HEAD_SWAP:
             if not self.weights_path:
-                raise AdapterValidationError(
-                    "HEAD_SWAP adapter requires weights_path"
-                )
+                raise AdapterValidationError("HEAD_SWAP adapter requires weights_path")
 
 
 VARIANT_ADAPTER_REGISTRY: dict[str, VariantAdapter] = {}
@@ -78,9 +72,7 @@ def register_adapter(adapter: VariantAdapter) -> VariantAdapter:
     if not isinstance(adapter, VariantAdapter):
         raise AdapterValidationError("register_adapter expects a VariantAdapter")
     if adapter.id in VARIANT_ADAPTER_REGISTRY:
-        raise AdapterValidationError(
-            f"adapter id already registered: {adapter.id!r}"
-        )
+        raise AdapterValidationError(f"adapter id already registered: {adapter.id!r}")
     VARIANT_ADAPTER_REGISTRY[adapter.id] = adapter
     return adapter
 
@@ -101,9 +93,7 @@ def adapters_for_variant(variant_id: str) -> tuple[VariantAdapter, ...]:
     """Return adapters whose id starts with ``"{variant_id}/"``."""
     prefix = f"{variant_id}/"
     matches = [
-        adapter
-        for key, adapter in VARIANT_ADAPTER_REGISTRY.items()
-        if key.startswith(prefix)
+        adapter for key, adapter in VARIANT_ADAPTER_REGISTRY.items() if key.startswith(prefix)
     ]
     matches.sort(key=lambda a: a.id)
     return tuple(matches)

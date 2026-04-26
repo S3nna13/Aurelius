@@ -133,9 +133,9 @@ class MinPSampler:
         if squeezed:
             logits = logits.unsqueeze(0)
 
-        probs = F.softmax(logits, dim=-1)                        # (B, V)
-        p_max = probs.max(dim=-1, keepdim=True).values           # (B, 1)
-        threshold = self.config.min_p * p_max                    # (B, 1)
+        probs = F.softmax(logits, dim=-1)  # (B, V)
+        p_max = probs.max(dim=-1, keepdim=True).values  # (B, 1)
+        threshold = self.config.min_p * p_max  # (B, 1)
 
         filtered = logits.clone()
         filtered[probs < threshold] = float("-inf")
@@ -166,13 +166,13 @@ class MinPSampler:
         if squeezed:
             logits = logits.unsqueeze(0)
 
-        probs = F.softmax(logits, dim=-1)                             # (B, V)
+        probs = F.softmax(logits, dim=-1)  # (B, V)
         sorted_probs, sorted_idx = torch.sort(probs, dim=-1, descending=True)
-        cumprobs = sorted_probs.cumsum(dim=-1)                        # (B, V)
+        cumprobs = sorted_probs.cumsum(dim=-1)  # (B, V)
 
         # Remove tokens whose cumulative probability exceeds top_p.
         # Shift by one so the token that crosses the boundary is kept.
-        remove_mask = cumprobs - sorted_probs > p                     # (B, V)
+        remove_mask = cumprobs - sorted_probs > p  # (B, V)
 
         # Scatter mask back to original vocab ordering.
         mask = torch.zeros_like(remove_mask).scatter_(-1, sorted_idx, remove_mask)
@@ -211,7 +211,7 @@ class MinPSampler:
         logits = self.apply_min_p(logits)
         logits = self.apply_top_p(logits)
 
-        probs = F.softmax(logits, dim=-1)                             # (B, V)
+        probs = F.softmax(logits, dim=-1)  # (B, V)
         token_ids = torch.multinomial(probs, num_samples=1).squeeze(-1)  # (B,)
 
         return token_ids.squeeze(0) if squeezed else token_ids
@@ -241,7 +241,7 @@ class MinPSampler:
         logits = self.apply_min_p(logits)
         logits = self.apply_top_p(logits)
 
-        filtered_probs = F.softmax(logits, dim=-1)                     # (B, V)
+        filtered_probs = F.softmax(logits, dim=-1)  # (B, V)
         token_ids = torch.multinomial(filtered_probs, num_samples=1).squeeze(-1)  # (B,)
 
         if squeezed:

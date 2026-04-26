@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 _DEFAULT_TEMPLATE = (
     "Rephrase the following text in different words while keeping the same meaning:"
     "\n\n{text}\n\nRephrased version:"

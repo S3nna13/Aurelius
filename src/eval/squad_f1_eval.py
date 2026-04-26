@@ -12,8 +12,7 @@ from __future__ import annotations
 import re
 import string
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data-classes
@@ -36,15 +35,15 @@ class SQuADExample:
 
     question: str
     prediction: str
-    gold_answers: List[str]
+    gold_answers: list[str]
 
 
 @dataclass
 class SQuADResult:
     """Scored result for a single SQuAD example."""
 
-    exact_match: float          # 0.0 or 1.0
-    f1: float                   # token-level F1 in [0, 1]
+    exact_match: float  # 0.0 or 1.0
+    f1: float  # token-level F1 in [0, 1]
     prediction_normalized: str
     best_gold_normalized: str
 
@@ -156,7 +155,7 @@ class SQuADEval:
             best_gold_normalized=best_gold_norm,
         )
 
-    def evaluate(self, examples: List[SQuADExample]) -> dict:
+    def evaluate(self, examples: list[SQuADExample]) -> dict:
         """Aggregate EM and F1 over a list of examples.
 
         Returns
@@ -176,7 +175,7 @@ class SQuADEval:
     # SQuAD 2.0 helpers
     # ------------------------------------------------------------------
 
-    def no_answer_accuracy(self, examples: List[SQuADExample]) -> float:
+    def no_answer_accuracy(self, examples: list[SQuADExample]) -> float:
         """Fraction of examples where prediction and all golds are empty.
 
         Designed for SQuAD 2.0 no-answer questions.  An example counts as a
@@ -191,9 +190,7 @@ class SQuADEval:
         correct = 0
         for ex in examples:
             pred_is_empty = self.normalize(ex.prediction) == no_ans
-            golds_all_empty = all(
-                self.normalize(g) == no_ans for g in ex.gold_answers
-            )
+            golds_all_empty = all(self.normalize(g) == no_ans for g in ex.gold_answers)
             if pred_is_empty and golds_all_empty:
                 correct += 1
 
@@ -203,9 +200,7 @@ class SQuADEval:
     # Analysis helpers
     # ------------------------------------------------------------------
 
-    def per_length_analysis(
-        self, examples: List[SQuADExample]
-    ) -> dict:
+    def per_length_analysis(self, examples: list[SQuADExample]) -> dict:
         """Bin examples by best gold answer word count and report EM/F1.
 
         Bins:

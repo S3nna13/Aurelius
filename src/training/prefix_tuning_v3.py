@@ -15,17 +15,16 @@ References:
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SoftPromptEmbedding
 # ---------------------------------------------------------------------------
+
 
 class SoftPromptEmbedding(nn.Module):
     """Learnable prompt tokens in embedding space (Lester et al. 2021).
@@ -53,9 +52,7 @@ class SoftPromptEmbedding(nn.Module):
         self.n_tokens = n_tokens
         self.d_model = d_model
 
-        self.prompt_embeddings = nn.Parameter(
-            torch.randn(n_tokens, d_model) * 0.02
-        )
+        self.prompt_embeddings = nn.Parameter(torch.randn(n_tokens, d_model) * 0.02)
 
         # Optional: record vocab-init metadata for caller use
         self._init_from_vocab = init_from_vocab
@@ -86,6 +83,7 @@ class SoftPromptEmbedding(nn.Module):
 # PrefixEncoder
 # ---------------------------------------------------------------------------
 
+
 class PrefixEncoder(nn.Module):
     """MLP reparameterization for prefix parameters (more stable than raw params).
 
@@ -110,9 +108,7 @@ class PrefixEncoder(nn.Module):
     ) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
-            )
+            raise ValueError(f"d_model ({d_model}) must be divisible by n_heads ({n_heads})")
         self.n_tokens = n_tokens
         self.d_model = d_model
         self.n_layers = n_layers
@@ -120,9 +116,7 @@ class PrefixEncoder(nn.Module):
         self.head_dim = d_model // n_heads
 
         # Latent prefix representation
-        self.prefix_params = nn.Parameter(
-            torch.randn(n_tokens, prefix_hidden_dim) * 0.02
-        )
+        self.prefix_params = nn.Parameter(torch.randn(n_tokens, prefix_hidden_dim) * 0.02)
 
         # MLP: (prefix_hidden_dim) -> (prefix_hidden_dim) -> (n_layers * 2 * d_model)
         output_dim = n_layers * 2 * d_model
@@ -159,6 +153,7 @@ class PrefixEncoder(nn.Module):
 # PrefixAttention
 # ---------------------------------------------------------------------------
 
+
 class PrefixAttention(nn.Module):
     """Multi-head attention that prepends learnable prefix tokens to K and V.
 
@@ -171,9 +166,7 @@ class PrefixAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int, n_prefix_tokens: int) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
-            )
+            raise ValueError(f"d_model ({d_model}) must be divisible by n_heads ({n_heads})")
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -202,8 +195,8 @@ class PrefixAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        prefix_k_override: Optional[Tensor] = None,
-        prefix_v_override: Optional[Tensor] = None,
+        prefix_k_override: Tensor | None = None,
+        prefix_v_override: Tensor | None = None,
     ) -> Tensor:
         """Compute prefix-augmented attention.
 
@@ -219,9 +212,9 @@ class PrefixAttention(nn.Module):
         """
         B, T, D = x.shape
 
-        Q = self._split_heads(self.q_proj(x))   # (B, H, T, hd)
-        K = self._split_heads(self.k_proj(x))   # (B, H, T, hd)
-        V = self._split_heads(self.v_proj(x))   # (B, H, T, hd)
+        Q = self._split_heads(self.q_proj(x))  # (B, H, T, hd)
+        K = self._split_heads(self.k_proj(x))  # (B, H, T, hd)
+        V = self._split_heads(self.v_proj(x))  # (B, H, T, hd)
 
         if self.n_prefix_tokens > 0:
             if prefix_k_override is not None:
@@ -249,13 +242,14 @@ class PrefixAttention(nn.Module):
         attn_weights = F.softmax(attn_weights, dim=-1)
         attn_out = torch.matmul(attn_weights, V)  # (B, H, T, hd)
 
-        out = self._merge_heads(attn_out)          # (B, T, D)
+        out = self._merge_heads(attn_out)  # (B, T, D)
         return self.out_proj(out)
 
 
 # ---------------------------------------------------------------------------
 # PrefixTuningModel
 # ---------------------------------------------------------------------------
+
 
 class PrefixTuningModel(nn.Module):
     """Wraps a frozen backbone with trainable prefix / soft-prompt parameters.
@@ -304,21 +298,18 @@ class PrefixTuningModel(nn.Module):
         # Trainable prefix parameters
         if n_prefix_tokens > 0:
             if use_reparameterization:
-                self.prefix_encoder: Optional[PrefixEncoder] = PrefixEncoder(
+                self.prefix_encoder: PrefixEncoder | None = PrefixEncoder(
                     n_tokens=n_prefix_tokens,
                     d_model=d_model,
                     n_layers=n_layers,
                     n_heads=n_heads,
                     prefix_hidden_dim=prefix_hidden_dim,
                 )
-                self.soft_prompts: Optional[nn.ModuleList] = None
+                self.soft_prompts: nn.ModuleList | None = None
             else:
                 self.prefix_encoder = None
                 self.soft_prompts = nn.ModuleList(
-                    [
-                        SoftPromptEmbedding(n_prefix_tokens, d_model)
-                        for _ in range(n_layers)
-                    ]
+                    [SoftPromptEmbedding(n_prefix_tokens, d_model) for _ in range(n_layers)]
                 )
         else:
             self.prefix_encoder = None
@@ -326,9 +317,7 @@ class PrefixTuningModel(nn.Module):
 
         # Trainable embedding for prefix tokens (prompt-tuning variant)
         if n_prefix_tokens > 0:
-            self.prefix_embed = nn.Parameter(
-                torch.randn(n_prefix_tokens, d_model) * 0.02
-            )
+            self.prefix_embed = nn.Parameter(torch.randn(n_prefix_tokens, d_model) * 0.02)
         else:
             self.prefix_embed = None
 
@@ -360,7 +349,7 @@ class PrefixTuningModel(nn.Module):
 
         # Trim prefix positions
         if self.n_prefix_tokens > 0:
-            logits = logits_all[:, self.n_prefix_tokens:, :]  # (B, T, V)
+            logits = logits_all[:, self.n_prefix_tokens :, :]  # (B, T, V)
         else:
             logits = logits_all  # (B, T, V)
 
@@ -370,6 +359,7 @@ class PrefixTuningModel(nn.Module):
 # ---------------------------------------------------------------------------
 # PrefixTuningTrainer
 # ---------------------------------------------------------------------------
+
 
 class PrefixTuningTrainer:
     """Trains only the prefix/prompt parameters of a PrefixTuningModel.
@@ -384,12 +374,8 @@ class PrefixTuningTrainer:
         self.optimizer = optimizer
 
     def _count_params(self):
-        n_trainable = sum(
-            p.numel() for p in self.model.parameters() if p.requires_grad
-        )
-        n_frozen = sum(
-            p.numel() for p in self.model.parameters() if not p.requires_grad
-        )
+        n_trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        n_frozen = sum(p.numel() for p in self.model.parameters() if not p.requires_grad)
         return n_trainable, n_frozen
 
     def train_step(self, input_ids: Tensor, labels: Tensor) -> dict:
@@ -411,8 +397,8 @@ class PrefixTuningTrainer:
 
         # Shift for next-token prediction: predict token t+1 from position t
         # logits[:, :-1, :] predicts labels[:, 1:]
-        shift_logits = logits[:, :-1, :].contiguous()          # (B, T-1, V)
-        shift_labels = labels[:, 1:].contiguous()              # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
+        shift_labels = labels[:, 1:].contiguous()  # (B, T-1)
 
         B, Tm1, V = shift_logits.shape
         loss = F.cross_entropy(

@@ -13,19 +13,19 @@ References:
     LLMLingua (Jiang et al., 2023): coarse-to-fine prompt compression.
     Selective Context (Li et al., 2023): compression via self-information.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # TokenImportanceScorer
 # ---------------------------------------------------------------------------
+
 
 class TokenImportanceScorer:
     """Score each token's importance in a prompt.
@@ -42,9 +42,7 @@ class TokenImportanceScorer:
 
     def __init__(self, model: nn.Module, method: str = "perplexity") -> None:
         if method not in self.VALID_METHODS:
-            raise ValueError(
-                f"Unknown method '{method}'. Choose from {self.VALID_METHODS}."
-            )
+            raise ValueError(f"Unknown method '{method}'. Choose from {self.VALID_METHODS}.")
         self.model = model
         self.method = method
 
@@ -61,8 +59,7 @@ class TokenImportanceScorer:
             logits = out[0]
         else:
             raise TypeError(
-                f"Model output type {type(out)} is not supported; "
-                "expected Tensor or tuple/list."
+                f"Model output type {type(out)} is not supported; expected Tensor or tuple/list."
             )
         if logits.dim() == 2:
             # (B, V) — single-step model; expand to (B, 1, V)
@@ -144,11 +141,11 @@ class TokenImportanceScorer:
         pooled: list[torch.Tensor] = []
         for w in captured:
             w = w.float()
-            if w.dim() == 4:          # (B, heads, T, T)
+            if w.dim() == 4:  # (B, heads, T, T)
                 w = w[0].mean(dim=0)  # (T, T)
-            elif w.dim() == 3:        # (B, T, T)  [already avg'd heads]
-                w = w[0]              # (T, T)
-            elif w.dim() == 2:        # (T, T)
+            elif w.dim() == 3:  # (B, T, T)  [already avg'd heads]
+                w = w[0]  # (T, T)
+            elif w.dim() == 2:  # (T, T)
                 pass
             else:
                 continue
@@ -248,6 +245,7 @@ class TokenImportanceScorer:
 # TokenSelector
 # ---------------------------------------------------------------------------
 
+
 class TokenSelector:
     """Select which tokens to keep based on importance scores.
 
@@ -257,9 +255,7 @@ class TokenSelector:
 
     def __init__(self, compression_ratio: float = 0.5) -> None:
         if not (0.0 <= compression_ratio <= 1.0):
-            raise ValueError(
-                f"compression_ratio must be in [0, 1], got {compression_ratio}."
-            )
+            raise ValueError(f"compression_ratio must be in [0, 1], got {compression_ratio}.")
         self.compression_ratio = compression_ratio
 
     def target_length(self, original_length: int) -> int:
@@ -318,6 +314,7 @@ class TokenSelector:
 # ChunkCompressor
 # ---------------------------------------------------------------------------
 
+
 class ChunkCompressor:
     """Compress a long prompt in non-overlapping chunks.
 
@@ -355,9 +352,7 @@ class ChunkCompressor:
         kept_ids, _ = self.selector.select(scores, chunk_ids_2d)
         return kept_ids  # (K,)
 
-    def compress(
-        self, input_ids: torch.Tensor
-    ) -> tuple[torch.Tensor, dict]:
+    def compress(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, dict]:
         """Split into chunks, compress each, concatenate.
 
         Args:
@@ -402,6 +397,7 @@ class ChunkCompressor:
 # ---------------------------------------------------------------------------
 # SemanticPreserver
 # ---------------------------------------------------------------------------
+
 
 class SemanticPreserver:
     """Evaluate how well a compressed prompt preserves semantic content.
@@ -450,8 +446,8 @@ class SemanticPreserver:
         Returns:
             float cosine similarity.
         """
-        h_orig = self._get_hidden_states(original_ids)      # (d,)
-        h_comp = self._get_hidden_states(compressed_ids)    # (d,)
+        h_orig = self._get_hidden_states(original_ids)  # (d,)
+        h_comp = self._get_hidden_states(compressed_ids)  # (d,)
 
         # Cosine similarity
         dot = (h_orig * h_comp).sum()
@@ -489,7 +485,7 @@ class SemanticPreserver:
 
         # NLL over positions 1..T given logits at 0..T-1
         log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # (1, T-1, V)
-        targets = input_ids[:, 1:]                              # (1, T-1)
+        targets = input_ids[:, 1:]  # (1, T-1)
         gathered = log_probs[0, torch.arange(T - 1), targets[0]]  # (T-1,)
         nll = -gathered.mean().item()
         return math.exp(nll)
@@ -521,6 +517,7 @@ class SemanticPreserver:
 # IterativeCompressor
 # ---------------------------------------------------------------------------
 
+
 class IterativeCompressor:
     """Iteratively compress a prompt until the target ratio is reached.
 
@@ -543,16 +540,12 @@ class IterativeCompressor:
         max_iterations: int = 5,
     ) -> None:
         if not (0.0 <= target_ratio <= 1.0):
-            raise ValueError(
-                f"target_ratio must be in [0, 1], got {target_ratio}."
-            )
+            raise ValueError(f"target_ratio must be in [0, 1], got {target_ratio}.")
         self.scorer = scorer
         self.target_ratio = target_ratio
         self.max_iterations = max_iterations
 
-    def compress(
-        self, input_ids: torch.Tensor
-    ) -> tuple[torch.Tensor, int]:
+    def compress(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, int]:
         """Compress iteratively until target_ratio or max_iterations.
 
         Args:

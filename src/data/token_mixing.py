@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class TokenMixingConfig:
     """Configuration for token-level domain mixing."""
 
-    domain_weights: Dict[str, float]
+    domain_weights: dict[str, float]
     buffer_size: int = 1000
     sequence_length: int = 512
     pack_sequences: bool = True
@@ -23,7 +23,8 @@ class TokenMixingConfig:
 # Weight utilities
 # ---------------------------------------------------------------------------
 
-def normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
+
+def normalize_weights(weights: dict[str, float]) -> dict[str, float]:
     """Normalize a dict of weights so they sum to 1.0.
 
     Raises:
@@ -31,14 +32,12 @@ def normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
     """
     for key, val in weights.items():
         if val <= 0:
-            raise ValueError(
-                f"Weight for domain '{key}' must be > 0, got {val}"
-            )
+            raise ValueError(f"Weight for domain '{key}' must be > 0, got {val}")
     total = sum(weights.values())
     return {k: v / total for k, v in weights.items()}
 
 
-def sample_domain(weights: Dict[str, float], rng: random.Random) -> str:
+def sample_domain(weights: dict[str, float], rng: random.Random) -> str:
     """Sample a domain name according to the given weights.
 
     Args:
@@ -66,11 +65,12 @@ def sample_domain(weights: Dict[str, float], rng: random.Random) -> str:
 # Sequence packing
 # ---------------------------------------------------------------------------
 
+
 def pack_sequences(
-    sequences: List[List[int]],
+    sequences: list[list[int]],
     seq_len: int,
     eos_id: int,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Concatenate sequences with EOS tokens between them and chunk into fixed windows.
 
     Sequences are joined as: seq0 + [eos_id] + seq1 + [eos_id] + ...
@@ -89,13 +89,13 @@ def pack_sequences(
         return []
 
     # Build the full token stream
-    stream: List[int] = []
+    stream: list[int] = []
     for seq in sequences:
         stream.extend(seq)
         stream.append(eos_id)
 
     # Chunk into seq_len windows; discard the partial tail
-    chunks: List[List[int]] = []
+    chunks: list[list[int]] = []
     for start in range(0, len(stream) - seq_len + 1, seq_len):
         chunks.append(stream[start : start + seq_len])
 
@@ -106,7 +106,8 @@ def pack_sequences(
 # Attention mask
 # ---------------------------------------------------------------------------
 
-def create_attention_mask(token_ids: List[int], eos_id: int) -> List[int]:
+
+def create_attention_mask(token_ids: list[int], eos_id: int) -> list[int]:
     """Return a causal attention mask for the given token sequence.
 
     Implementation: returns a list of 1s of length ``len(token_ids)``.
@@ -127,12 +128,13 @@ def create_attention_mask(token_ids: List[int], eos_id: int) -> List[int]:
 # TokenMixer
 # ---------------------------------------------------------------------------
 
+
 class TokenMixer:
     """Sample sequences from multiple domains according to mixing weights."""
 
     def __init__(
         self,
-        domain_sequences: Dict[str, List[List[int]]],
+        domain_sequences: dict[str, list[list[int]]],
         config: TokenMixingConfig,
     ) -> None:
         self.domain_sequences = domain_sequences
@@ -141,8 +143,8 @@ class TokenMixer:
     def get_batch(
         self,
         batch_size: int,
-        rng: Optional[random.Random] = None,
-    ) -> Dict[str, Any]:
+        rng: random.Random | None = None,
+    ) -> dict[str, Any]:
         """Sample ``batch_size`` sequences by domain weights.
 
         Domains with no sequences are skipped during sampling.
@@ -164,9 +166,9 @@ class TokenMixer:
             if domain in self.domain_sequences and len(self.domain_sequences[domain]) > 0
         }
 
-        input_ids: List[List[int]] = []
-        domain_labels: List[str] = []
-        lengths: List[int] = []
+        input_ids: list[list[int]] = []
+        domain_labels: list[str] = []
+        lengths: list[int] = []
 
         if not active_weights:
             # No data available — return empty batch
@@ -186,13 +188,13 @@ class TokenMixer:
             "lengths": lengths,
         }
 
-    def get_domain_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_domain_stats(self) -> dict[str, dict[str, float]]:
         """Return per-domain statistics.
 
         Returns:
             {domain: {"n_sequences": float, "mean_length": float, "total_tokens": float}}
         """
-        stats: Dict[str, Dict[str, float]] = {}
+        stats: dict[str, dict[str, float]] = {}
         for domain, seqs in self.domain_sequences.items():
             n = len(seqs)
             total = sum(len(s) for s in seqs)
@@ -204,13 +206,13 @@ class TokenMixer:
             }
         return stats
 
-    def compute_mixing_weights_from_tokens(self) -> Dict[str, float]:
+    def compute_mixing_weights_from_tokens(self) -> dict[str, float]:
         """Compute mixing weights proportional to total tokens per domain.
 
         Returns:
             Normalized weight dict (sums to 1.0).
         """
-        token_counts: Dict[str, float] = {}
+        token_counts: dict[str, float] = {}
         for domain, seqs in self.domain_sequences.items():
             token_counts[domain] = float(sum(len(s) for s in seqs))
 
@@ -227,9 +229,10 @@ class TokenMixer:
 # Standalone token-count weight computation (mirrors TokenMixer method)
 # ---------------------------------------------------------------------------
 
+
 def compute_mixing_weights_from_tokens(
-    domain_sequences: Dict[str, List[List[int]]],
-) -> Dict[str, float]:
+    domain_sequences: dict[str, list[list[int]]],
+) -> dict[str, float]:
     """Compute mixing weights proportional to total tokens per domain.
 
     Args:
@@ -239,9 +242,8 @@ def compute_mixing_weights_from_tokens(
         Normalized weight dict (sums to 1.0). Falls back to uniform weights
         when total token count is zero.
     """
-    token_counts: Dict[str, float] = {
-        domain: float(sum(len(s) for s in seqs))
-        for domain, seqs in domain_sequences.items()
+    token_counts: dict[str, float] = {
+        domain: float(sum(len(s) for s in seqs)) for domain, seqs in domain_sequences.items()
     }
     total = sum(token_counts.values())
     if total == 0:
@@ -254,11 +256,12 @@ def compute_mixing_weights_from_tokens(
 # Interleaving
 # ---------------------------------------------------------------------------
 
+
 def interleave_sequences(
-    sequences_a: List[int],
-    sequences_b: List[int],
+    sequences_a: list[int],
+    sequences_b: list[int],
     ratio: float,
-) -> List[int]:
+) -> list[int]:
     """Interleave two token sequences.
 
     For every ``ceil(1 / ratio)`` tokens from *b*, insert 1 token from *a*.
@@ -275,7 +278,7 @@ def interleave_sequences(
     """
     step_b = math.ceil(1.0 / ratio) if ratio > 0 else len(sequences_b) + 1
 
-    result: List[int] = []
+    result: list[int] = []
     idx_a = 0
     idx_b = 0
 
@@ -300,7 +303,8 @@ def interleave_sequences(
 # Distribution utilities
 # ---------------------------------------------------------------------------
 
-def compute_domain_distribution(domain_labels: List[str]) -> Dict[str, float]:
+
+def compute_domain_distribution(domain_labels: list[str]) -> dict[str, float]:
     """Compute the empirical frequency of each domain in a list of labels.
 
     Args:
@@ -313,7 +317,7 @@ def compute_domain_distribution(domain_labels: List[str]) -> Dict[str, float]:
     if not domain_labels:
         return {}
 
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for label in domain_labels:
         counts[label] = counts.get(label, 0) + 1
 

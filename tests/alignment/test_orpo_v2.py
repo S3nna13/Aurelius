@@ -10,13 +10,12 @@ import math
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.alignment.orpo_v2 import ORPOConfig, ORPOLoss, ORPOTrainer
-
 
 # ---------------------------------------------------------------------------
 # Shared tiny model used for gradient / trainer tests
 # ---------------------------------------------------------------------------
+
 
 class _TinyLM(nn.Module):
     """Minimal embedding + linear model sufficient for gradient flow tests."""
@@ -55,6 +54,7 @@ def _default_loss_fn() -> ORPOLoss:
 # 1. ORPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_orpo_config_defaults():
     """ORPOConfig must expose lambda_=0.1 and beta=0.1 by default."""
     cfg = ORPOConfig()
@@ -72,6 +72,7 @@ def test_orpo_config_custom():
 # ---------------------------------------------------------------------------
 # 2. log_odds
 # ---------------------------------------------------------------------------
+
 
 def test_log_odds_finite():
     """log_odds must return finite values for typical negative log-probs."""
@@ -103,6 +104,7 @@ def test_log_odds_monotone():
 # 3. sft_loss
 # ---------------------------------------------------------------------------
 
+
 def test_sft_loss_scalar_and_finite():
     """sft_loss must return a scalar finite tensor."""
     loss_fn = _default_loss_fn()
@@ -128,6 +130,7 @@ def test_sft_loss_all_ignored():
 # 4. odds_ratio_loss
 # ---------------------------------------------------------------------------
 
+
 def test_odds_ratio_loss_scalar_and_finite():
     """odds_ratio_loss must return a scalar finite tensor."""
     loss_fn = _default_loss_fn()
@@ -141,6 +144,7 @@ def test_odds_ratio_loss_scalar_and_finite():
 # ---------------------------------------------------------------------------
 # 5. ORPOLoss.forward
 # ---------------------------------------------------------------------------
+
 
 def test_forward_returns_correct_keys():
     """forward must return a metrics dict with the four required keys."""
@@ -161,9 +165,7 @@ def test_forward_returns_correct_keys():
 def test_forward_total_loss_finite():
     """total_loss from forward must be finite."""
     loss_fn = _default_loss_fn()
-    total, metrics = loss_fn(
-        _make_logits(), _make_logits(), _make_labels(), _make_labels()
-    )
+    total, metrics = loss_fn(_make_logits(), _make_logits(), _make_labels(), _make_labels())
     assert torch.isfinite(total), f"total_loss not finite: {total.item()}"
     assert torch.isfinite(metrics["total_loss"])
 
@@ -175,17 +177,14 @@ def test_forward_gradient_flows():
     loss_fn = _default_loss_fn()
 
     tokens = torch.randint(0, V, (B, T))
-    chosen_logits = model(tokens)          # requires_grad via model params
+    chosen_logits = model(tokens)  # requires_grad via model params
     rejected_logits = model(tokens).detach()  # no grad needed on rejected
 
     labels = _make_labels()
     total, _ = loss_fn(chosen_logits, rejected_logits, labels, labels)
     total.backward()
 
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum() > 0 for p in model.parameters())
     assert has_grad, "No gradient flowed to model parameters"
 
 
@@ -193,12 +192,11 @@ def test_forward_gradient_flows():
 # 6. Accuracy
 # ---------------------------------------------------------------------------
 
+
 def test_accuracy_in_range():
     """Accuracy must be in [0, 1]."""
     loss_fn = _default_loss_fn()
-    _, metrics = loss_fn(
-        _make_logits(), _make_logits(), _make_labels(), _make_labels()
-    )
+    _, metrics = loss_fn(_make_logits(), _make_logits(), _make_labels(), _make_labels())
     acc = metrics["accuracy"].item()
     assert 0.0 <= acc <= 1.0, f"Accuracy out of range: {acc}"
 
@@ -211,10 +209,10 @@ def test_accuracy_perfect_when_chosen_dominates():
     V_local = 8
     # chosen: uniform over first token
     chosen_logits = torch.zeros(B, T, V_local)
-    chosen_logits[:, :, 0] = 10.0       # very high prob on token 0
+    chosen_logits[:, :, 0] = 10.0  # very high prob on token 0
 
     rejected_logits = torch.zeros(B, T, V_local)
-    rejected_logits[:, :, 0] = -10.0    # very low prob on token 0
+    rejected_logits[:, :, 0] = -10.0  # very low prob on token 0
 
     # Labels all point to token 0.
     labels = torch.zeros(B, T, dtype=torch.long)
@@ -228,6 +226,7 @@ def test_accuracy_perfect_when_chosen_dominates():
 # ---------------------------------------------------------------------------
 # 7. ORPOTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_compute_log_probs_shape():
     """compute_log_probs must return a (B,) tensor."""

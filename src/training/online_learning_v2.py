@@ -1,28 +1,29 @@
 """Online learning v2: incremental model updates on streaming data with catastrophic forgetting prevention.
-
 Provides:
   OnlineConfig, StreamingBuffer, compute_parameter_distance,
   compute_online_ewc_loss, OnlineLearner, compute_forgetting_metric.
-"""
+"""  # noqa: E501
+
 from __future__ import annotations
 
 import copy
 import random
-from dataclasses import dataclass, field
-from typing import Any, List
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OnlineConfig:
     """Configuration for the online learner."""
+
     buffer_size: int = 1000
     update_frequency: int = 100
     lr: float = 1e-4
@@ -36,6 +37,7 @@ class OnlineConfig:
 # StreamingBuffer
 # ---------------------------------------------------------------------------
 
+
 class StreamingBuffer:
     """Fixed-size circular buffer for streaming data (FIFO eviction)."""
 
@@ -43,7 +45,7 @@ class StreamingBuffer:
         if capacity <= 0:
             raise ValueError("capacity must be > 0")
         self._capacity = capacity
-        self._data: List[Any] = []
+        self._data: list[Any] = []
         self._head: int = 0  # index of next write position when full
 
     def add(self, item: Any) -> None:
@@ -54,7 +56,7 @@ class StreamingBuffer:
             self._data[self._head] = item
             self._head = (self._head + 1) % self._capacity
 
-    def sample(self, n: int) -> List[Any]:
+    def sample(self, n: int) -> list[Any]:
         """Random sample of min(n, len(buffer)) items without replacement."""
         k = min(n, len(self._data))
         return random.sample(self._data, k)
@@ -70,7 +72,8 @@ class StreamingBuffer:
 # Utility functions
 # ---------------------------------------------------------------------------
 
-def compute_parameter_distance(params1: List[Tensor], params2: List[Tensor]) -> float:
+
+def compute_parameter_distance(params1: list[Tensor], params2: list[Tensor]) -> float:
     """L2 distance between two parameter lists."""
     if len(params1) != len(params2):
         raise ValueError("Parameter lists must have the same length")
@@ -83,8 +86,8 @@ def compute_parameter_distance(params1: List[Tensor], params2: List[Tensor]) -> 
 
 def compute_online_ewc_loss(
     model: nn.Module,
-    fisher_diags: List[Tensor],
-    anchors: List[Tensor],
+    fisher_diags: list[Tensor],
+    anchors: list[Tensor],
     lambda_: float,
 ) -> Tensor:
     """EWC regularisation: lambda/2 * sum_i( F_i * (theta_i - theta_i*)^2 ).
@@ -105,6 +108,7 @@ def compute_online_ewc_loss(
 # OnlineLearner
 # ---------------------------------------------------------------------------
 
+
 class OnlineLearner:
     """Incrementally updates a model on streaming (x, y) pairs."""
 
@@ -112,9 +116,7 @@ class OnlineLearner:
         self.model = model
         self.config = config
         # Store initial parameter values for drift calculation
-        self._init_params: List[Tensor] = [
-            p.detach().clone() for p in model.parameters()
-        ]
+        self._init_params: list[Tensor] = [p.detach().clone() for p in model.parameters()]
         # AdamW optimizer
         self._optimizer = torch.optim.AdamW(
             model.parameters(),
@@ -145,7 +147,7 @@ class OnlineLearner:
         self._optimizer.step()
         return loss_val
 
-    def observe_batch(self, xs: List[Tensor], ys: List[Tensor]) -> List[float]:
+    def observe_batch(self, xs: list[Tensor], ys: list[Tensor]) -> list[float]:
         """Observe each (x, y) pair; return list of losses."""
         return [self.observe(x, y) for x, y in zip(xs, ys)]
 
@@ -167,9 +169,10 @@ class OnlineLearner:
 # Metric
 # ---------------------------------------------------------------------------
 
+
 def compute_forgetting_metric(
-    losses_before: List[float],
-    losses_after: List[float],
+    losses_before: list[float],
+    losses_after: list[float],
 ) -> float:
     """Mean(losses_after - losses_before).
 

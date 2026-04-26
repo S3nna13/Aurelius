@@ -1,20 +1,22 @@
-"""GRPO Advanced: DeepSeekMath-style group relative policy optimization with per-token advantages."""
+"""GRPO Advanced: DeepSeekMath-style group relative policy optimization with per-token advantages."""  # noqa: E501
+
 from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-from typing import Callable
 
 Tensor = torch.Tensor
 
 
 @dataclass
 class GRPOAdvancedConfig:
-    n_group: int = 8             # group size (samples per prompt)
-    epsilon: float = 0.2         # PPO clip ratio
-    beta: float = 0.04           # KL penalty coefficient
+    n_group: int = 8  # group size (samples per prompt)
+    epsilon: float = 0.2  # PPO clip ratio
+    beta: float = 0.04  # KL penalty coefficient
     max_new_tokens: int = 32
     temperature: float = 1.0
     normalize_advantages: bool = True
@@ -67,8 +69,8 @@ def sample_group(
             all_ids.append(torch.tensor(step_ids, dtype=torch.long))
             all_log_probs.append(torch.tensor(step_lps, dtype=torch.float32))
 
-    group_ids = torch.stack(all_ids, dim=0)               # (n_group, max_new_tokens)
-    group_log_probs = torch.stack(all_log_probs, dim=0)   # (n_group, max_new_tokens)
+    group_ids = torch.stack(all_ids, dim=0)  # (n_group, max_new_tokens)
+    group_log_probs = torch.stack(all_log_probs, dim=0)  # (n_group, max_new_tokens)
     return group_ids, group_log_probs
 
 
@@ -188,12 +190,14 @@ class GRPOAdvancedTrainer:
         log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # (n_group, prompt_len+T-1, V)
 
         # completion tokens correspond to positions prompt_len-1 .. prompt_len+T-2 in log_probs
-        completion_log_probs = log_probs[:, prompt_len - 1: prompt_len - 1 + T, :]  # (n_group, T, V)
+        completion_log_probs = log_probs[
+            :, prompt_len - 1 : prompt_len - 1 + T, :
+        ]  # (n_group, T, V)
 
         # Gather the log probs for the actual tokens
-        token_lp = completion_log_probs.gather(
-            2, completion_ids.unsqueeze(-1)
-        ).squeeze(-1)  # (n_group, T)
+        token_lp = completion_log_probs.gather(2, completion_ids.unsqueeze(-1)).squeeze(
+            -1
+        )  # (n_group, T)
 
         return token_lp
 

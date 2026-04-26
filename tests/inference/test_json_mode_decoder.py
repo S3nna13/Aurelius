@@ -6,12 +6,11 @@ import pytest
 import torch
 
 from src.inference.json_mode_decoder import (
+    MAX_DEPTH,
     JSONDecoderState,
     JSONMaskBuilder,
-    MAX_DEPTH,
     is_valid_json_prefix,
 )
-
 
 VOCAB = ["{", "}", "[", "]", ",", ":", '"', "a", "b", "1", "2", "3", " "]
 

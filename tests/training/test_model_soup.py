@@ -5,22 +5,22 @@ interpolate_models, ModelSoup, compute_weight_distance, and get_soup_stats.
 
 All tests use tiny nn.Linear(4, 4) models to keep tensors small.
 """
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.model_soup_v2 import (
-    SoupConfig,
     ModelSoup,
-    uniform_soup,
-    greedy_soup,
-    learned_soup,
-    interpolate_models,
+    SoupConfig,
     compute_weight_distance,
+    greedy_soup,
+    interpolate_models,
+    learned_soup,
+    uniform_soup,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -171,9 +171,7 @@ def test_model_soup_add_checkpoint_up_to_max():
     soup = ModelSoup(cfg)
     for i in range(5):
         soup.add_checkpoint(_make_linear_state_dict(i))
-    assert len(soup._checkpoints) == 3, (
-        f"Expected 3 checkpoints, got {len(soup._checkpoints)}"
-    )
+    assert len(soup._checkpoints) == 3, f"Expected 3 checkpoints, got {len(soup._checkpoints)}"
 
 
 # ---------------------------------------------------------------------------
@@ -250,9 +248,7 @@ def test_compute_weight_distance_identical_is_zero():
     """compute_weight_distance with identical state dicts should return 0."""
     sd_copy = {k: v.clone() for k, v in _SD_A.items()}
     dist = compute_weight_distance(_SD_A, sd_copy)
-    assert dist == pytest.approx(0.0, abs=1e-6), (
-        f"Expected 0.0 for identical models, got {dist}"
-    )
+    assert dist == pytest.approx(0.0, abs=1e-6), f"Expected 0.0 for identical models, got {dist}"
 
 
 # ---------------------------------------------------------------------------
@@ -276,10 +272,11 @@ def test_model_soup_truncates_fifo():
     for key in sd0:
         # sd0 should NOT be in the pool — check neither checkpoint equals sd0
         for cp in soup._checkpoints:
-            assert not torch.allclose(cp[key].float(), sd0[key].float(), atol=1e-8) or \
-                   torch.allclose(sd1[key].float(), sd0[key].float(), atol=1e-8) or \
-                   torch.allclose(sd2[key].float(), sd0[key].float(), atol=1e-8), \
-                   f"Key {key}: evicted checkpoint still present"
+            assert (
+                not torch.allclose(cp[key].float(), sd0[key].float(), atol=1e-8)
+                or torch.allclose(sd1[key].float(), sd0[key].float(), atol=1e-8)
+                or torch.allclose(sd2[key].float(), sd0[key].float(), atol=1e-8)
+            ), f"Key {key}: evicted checkpoint still present"
         break  # checking one key is sufficient for the structure test
 
 
@@ -350,14 +347,13 @@ def test_get_soup_stats_n_params_correct():
 
 def test_greedy_soup_lower_is_better():
     """greedy_soup with higher_is_better=False should seek the lower eval score."""
+
     # eval_fn returning positive L1 mean (lower = better in this mode)
     def _lower_better(sd: dict) -> float:
         return float(sd["weight"].float().abs().mean().item())
 
     initial_score = _lower_better(_SD_A)
-    result = greedy_soup(
-        [_SD_A, _SD_B, _SD_C], eval_fn=_lower_better, higher_is_better=False
-    )
+    result = greedy_soup([_SD_A, _SD_B, _SD_C], eval_fn=_lower_better, higher_is_better=False)
     final_score = _lower_better(result)
     # Score should be <= initial (greedy never makes things strictly worse)
     assert final_score <= initial_score + 1e-6, (

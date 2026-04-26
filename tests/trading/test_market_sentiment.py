@@ -1,11 +1,12 @@
 """Tests for market_sentiment — news/social media sentiment scoring."""
+
 from __future__ import annotations
 
 from src.trading.market_sentiment import (
     MarketSentiment,
+    SentimentLabel,
     SentimentResult,
     SentimentSource,
-    SentimentLabel,
     analyze_sentiment,
     combine_sources,
 )

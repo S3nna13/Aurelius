@@ -8,7 +8,7 @@ best-of-N selection, policy gradient loss, and aggregate statistics.
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
 
 from src.training.swe_rl import (
@@ -19,10 +19,10 @@ from src.training.swe_rl import (
     SWETask,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_task(difficulty: str = "medium", n_tests: int = 5) -> SWETask:
     return SWETask(
@@ -75,6 +75,7 @@ def _verifier_partial(patch_text: str, test_cases: list[str]) -> tuple[int, int]
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """SWERLConfig defaults: n_attempts=4, resolved_bonus=0.5."""
     cfg = SWERLConfig()
@@ -90,6 +91,7 @@ def test_config_defaults():
 # 2. test_compute_reward_resolved
 # ---------------------------------------------------------------------------
 
+
 def test_compute_reward_resolved():
     """All tests pass → base=1.0 + bonus=0.5 = 1.5 × medium_weight(1.0) = 1.5."""
     trainer = SWERLTrainer()
@@ -102,6 +104,7 @@ def test_compute_reward_resolved():
 # ---------------------------------------------------------------------------
 # 3. test_compute_reward_partial
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reward_partial():
     """3/5 tests pass, not resolved → base=0.6, no bonus, medium weight → 0.6."""
@@ -116,6 +119,7 @@ def test_compute_reward_partial():
 # 4. test_compute_reward_zero
 # ---------------------------------------------------------------------------
 
+
 def test_compute_reward_zero():
     """0/5 tests pass → reward = 0.0."""
     trainer = SWERLTrainer()
@@ -128,6 +132,7 @@ def test_compute_reward_zero():
 # ---------------------------------------------------------------------------
 # 5. test_compute_reward_difficulty_weight
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reward_difficulty_weight():
     """Hard task reward > medium task reward for same pass rate."""
@@ -146,6 +151,7 @@ def test_compute_reward_difficulty_weight():
 # ---------------------------------------------------------------------------
 # 6. test_compute_reward_no_pass_rate
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reward_no_pass_rate():
     """pass_rate_reward=False → binary: 1.0 if resolved, 0.0 otherwise."""
@@ -166,6 +172,7 @@ def test_compute_reward_no_pass_rate():
 # 7. test_evaluate_patch_correct
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_patch_correct():
     """verifier returns (5, 5) → resolved=True, reward > 1.0 (includes bonus)."""
     trainer = SWERLTrainer()
@@ -177,12 +184,13 @@ def test_evaluate_patch_correct():
     assert result.resolved is True
     assert result.tests_passed == 5
     assert result.tests_total == 5
-    assert result.reward > 1.0   # base(1.0) + bonus(0.5) × weight(1.0) = 1.5
+    assert result.reward > 1.0  # base(1.0) + bonus(0.5) × weight(1.0) = 1.5
 
 
 # ---------------------------------------------------------------------------
 # 8. test_evaluate_patch_partial
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_patch_partial():
     """verifier returns (3, 5) → resolved=False, reward ~= 0.6."""
@@ -201,6 +209,7 @@ def test_evaluate_patch_partial():
 # ---------------------------------------------------------------------------
 # 9. test_best_of_n_picks_best
 # ---------------------------------------------------------------------------
+
 
 def test_best_of_n_picks_best():
     """best_of_n returns the patch with the highest reward."""
@@ -227,6 +236,7 @@ def test_best_of_n_picks_best():
 # 10. test_best_of_n_all_zero
 # ---------------------------------------------------------------------------
 
+
 def test_best_of_n_all_zero():
     """All patches have 0 reward → function returns without crashing."""
     trainer = SWERLTrainer()
@@ -242,6 +252,7 @@ def test_best_of_n_all_zero():
 # 11. test_policy_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_policy_loss_scalar():
     """compute_policy_loss returns a scalar tensor."""
     trainer = SWERLTrainer()
@@ -250,12 +261,13 @@ def test_policy_loss_scalar():
     loss = trainer.compute_policy_loss(log_probs, rewards)
 
     assert isinstance(loss, torch.Tensor)
-    assert loss.ndim == 0   # scalar
+    assert loss.ndim == 0  # scalar
 
 
 # ---------------------------------------------------------------------------
 # 12. test_policy_loss_gradient
 # ---------------------------------------------------------------------------
+
 
 def test_policy_loss_gradient():
     """Backward pass through compute_policy_loss does not raise."""
@@ -273,6 +285,7 @@ def test_policy_loss_gradient():
 # ---------------------------------------------------------------------------
 # 13. test_statistics_keys
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_keys():
     """statistics() returns dict with the four required keys."""
@@ -293,6 +306,7 @@ def test_statistics_keys():
 # 14. test_statistics_resolve_rate
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_resolve_rate():
     """All resolved → resolve_rate = 1.0."""
     trainer = SWERLTrainer()
@@ -309,6 +323,7 @@ def test_statistics_resolve_rate():
 # ---------------------------------------------------------------------------
 # 15. test_statistics_by_difficulty
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_by_difficulty():
     """statistics() groups results by _difficulty attribute correctly."""

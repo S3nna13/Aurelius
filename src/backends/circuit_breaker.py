@@ -54,7 +54,9 @@ class CircuitBreaker:
         config: CircuitBreakerConfig | None = None,
     ) -> None:
         self._name = name
-        self._config: CircuitBreakerConfig = config if config is not None else CircuitBreakerConfig()
+        self._config: CircuitBreakerConfig = (
+            config if config is not None else CircuitBreakerConfig()
+        )
         self._state: CircuitState = CircuitState.CLOSED
         self._failure_count: int = 0
         self._success_count: int = 0

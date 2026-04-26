@@ -1,14 +1,15 @@
 import pytest
-from src.profiling.bandwidth_profiler import (
-    BandwidthSample,
-    BandwidthProfiler,
-    BANDWIDTH_PROFILER_REGISTRY,
-)
 
+from src.profiling.bandwidth_profiler import (
+    BANDWIDTH_PROFILER_REGISTRY,
+    BandwidthProfiler,
+    BandwidthSample,
+)
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry_key():
     assert "default" in BANDWIDTH_PROFILER_REGISTRY
@@ -18,6 +19,7 @@ def test_registry_key():
 # ---------------------------------------------------------------------------
 # BandwidthSample – construction
 # ---------------------------------------------------------------------------
+
 
 def test_record_returns_bandwidth_sample():
     p = BandwidthProfiler()
@@ -60,20 +62,27 @@ def test_sample_is_frozen():
 # BandwidthSample – bandwidth properties
 # ---------------------------------------------------------------------------
 
+
 def test_read_bandwidth_gbps_formula():
     # 1 GB read in 1000 ms → 1 GB/s = 1 Gbps
-    s = BandwidthSample(timestamp=0.0, bytes_read=1_000_000_000, bytes_written=0, duration_ms=1000.0)
+    s = BandwidthSample(
+        timestamp=0.0, bytes_read=1_000_000_000, bytes_written=0, duration_ms=1000.0
+    )
     assert s.read_bandwidth_gbps == pytest.approx(1.0, rel=1e-6)
 
 
 def test_write_bandwidth_gbps_formula():
     # 2 GB written in 1000 ms → 2 Gbps
-    s = BandwidthSample(timestamp=0.0, bytes_read=0, bytes_written=2_000_000_000, duration_ms=1000.0)
+    s = BandwidthSample(
+        timestamp=0.0, bytes_read=0, bytes_written=2_000_000_000, duration_ms=1000.0
+    )
     assert s.write_bandwidth_gbps == pytest.approx(2.0, rel=1e-6)
 
 
 def test_total_bandwidth_gbps_is_sum():
-    s = BandwidthSample(timestamp=0.0, bytes_read=1_000_000_000, bytes_written=1_000_000_000, duration_ms=1000.0)
+    s = BandwidthSample(
+        timestamp=0.0, bytes_read=1_000_000_000, bytes_written=1_000_000_000, duration_ms=1000.0
+    )
     assert s.total_bandwidth_gbps == pytest.approx(s.read_bandwidth_gbps + s.write_bandwidth_gbps)
 
 
@@ -96,6 +105,7 @@ def test_total_bandwidth_zero_duration_returns_zero():
 # BandwidthProfiler – utilization
 # ---------------------------------------------------------------------------
 
+
 def test_utilization_within_range():
     p = BandwidthProfiler(peak_bandwidth_gbps=900.0)
     s = p.record(bytes_read=1_000_000_000, bytes_written=0, duration_ms=1000.0)
@@ -106,7 +116,9 @@ def test_utilization_within_range():
 def test_utilization_clamped_max():
     # Saturate bandwidth far above peak
     p = BandwidthProfiler(peak_bandwidth_gbps=1.0)
-    s = BandwidthSample(timestamp=0.0, bytes_read=999_000_000_000, bytes_written=999_000_000_000, duration_ms=1.0)
+    s = BandwidthSample(
+        timestamp=0.0, bytes_read=999_000_000_000, bytes_written=999_000_000_000, duration_ms=1.0
+    )
     assert p.utilization(s) == pytest.approx(100.0)
 
 
@@ -119,13 +131,16 @@ def test_utilization_clamped_min():
 def test_utilization_proportional():
     # 450 Gbps on a 900 Gbps peak → 50%
     p = BandwidthProfiler(peak_bandwidth_gbps=900.0)
-    s = BandwidthSample(timestamp=0.0, bytes_read=450_000_000_000, bytes_written=0, duration_ms=1000.0)
+    s = BandwidthSample(
+        timestamp=0.0, bytes_read=450_000_000_000, bytes_written=0, duration_ms=1000.0
+    )
     assert p.utilization(s) == pytest.approx(50.0, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------
 # BandwidthProfiler – summary
 # ---------------------------------------------------------------------------
+
 
 def test_summary_keys_present():
     p = BandwidthProfiler()
@@ -160,7 +175,7 @@ def test_summary_mean_read_gbps():
 
 def test_summary_peak_utilization_pct_is_max():
     p = BandwidthProfiler(peak_bandwidth_gbps=900.0)
-    p.record(1_000_000_000, 0, 1000.0)   # ~0.11%
+    p.record(1_000_000_000, 0, 1000.0)  # ~0.11%
     p.record(90_000_000_000, 0, 1000.0)  # ~10%
     util = p.summary()["peak_utilization_pct"]
     assert util >= p.utilization(BandwidthSample(0.0, 1_000_000_000, 0, 1000.0))
@@ -169,6 +184,7 @@ def test_summary_peak_utilization_pct_is_max():
 # ---------------------------------------------------------------------------
 # BandwidthProfiler – reset
 # ---------------------------------------------------------------------------
+
 
 def test_reset_clears_samples():
     p = BandwidthProfiler()

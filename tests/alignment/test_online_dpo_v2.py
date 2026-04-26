@@ -16,26 +16,25 @@ Covers all 13+ required test cases:
   13. OnlineDPOTrainer.online_step updates policy parameters
   14. CompletionSampler.sample output shape (B * n_samples, T)
 """
+
 from __future__ import annotations
 
 import copy
 
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.alignment.online_dpo_guo2024 import (
-    OnlineDPOConfig,
     CompletionSampler,
-    OnlinePairBuilder,
+    OnlineDPOConfig,
     OnlineDPOLoss,
     OnlineDPOTrainer,
+    OnlinePairBuilder,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_tiny_linear(in_features: int = 8, out_features: int = 16) -> nn.Module:
     """Minimal nn.Module used as a stand-in policy / ref model."""
@@ -60,6 +59,7 @@ def make_trainer(
 # Test 1: OnlineDPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = OnlineDPOConfig()
     assert cfg.beta == 0.1
@@ -71,6 +71,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: CompletionSampler.log_probs_of returns shape (B,)
 # ---------------------------------------------------------------------------
+
 
 def test_log_probs_of_shape():
     B, T, V = 3, 5, 32
@@ -85,6 +86,7 @@ def test_log_probs_of_shape():
 # Test 3: CompletionSampler.log_probs_of values are finite
 # ---------------------------------------------------------------------------
 
+
 def test_log_probs_of_finite():
     B, T, V = 4, 6, 64
     sampler = CompletionSampler(vocab_size=V)
@@ -97,6 +99,7 @@ def test_log_probs_of_finite():
 # ---------------------------------------------------------------------------
 # Test 4: CompletionSampler.log_probs_of — higher logit → higher log prob
 # ---------------------------------------------------------------------------
+
 
 def test_log_probs_of_higher_logit_higher_prob():
     """Sequence where token 0 is overwhelmingly preferred should have higher log-prob."""
@@ -124,6 +127,7 @@ def test_log_probs_of_higher_logit_higher_prob():
 # Test 5: OnlinePairBuilder.build_pairs returns correct shapes
 # ---------------------------------------------------------------------------
 
+
 def test_build_pairs_shapes():
     B, K = 5, 4
     config = OnlineDPOConfig(n_completions=K)
@@ -138,6 +142,7 @@ def test_build_pairs_shapes():
 # Test 6: chosen index has higher (or equal) reward than rejected index
 # ---------------------------------------------------------------------------
 
+
 def test_build_pairs_chosen_ge_rejected():
     torch.manual_seed(42)
     B, K = 6, 4
@@ -146,7 +151,7 @@ def test_build_pairs_chosen_ge_rejected():
     rewards = torch.randn(B * K)
     chosen, rejected = builder.build_pairs(rewards)
 
-    chosen_rewards = rewards[chosen]    # (B,)
+    chosen_rewards = rewards[chosen]  # (B,)
     rejected_rewards = rewards[rejected]  # (B,)
 
     assert (chosen_rewards >= rejected_rewards).all(), (
@@ -158,6 +163,7 @@ def test_build_pairs_chosen_ge_rejected():
 # ---------------------------------------------------------------------------
 # Test 7: OnlineDPOLoss returns scalar loss and correct dict keys
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_output_types_and_keys():
     B = 8
@@ -183,6 +189,7 @@ def test_dpo_loss_output_types_and_keys():
 # Test 8: OnlineDPOLoss accuracy == 1.0 when pi_chosen >> pi_rejected
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_accuracy_perfect():
     B = 4
     loss_fn = OnlineDPOLoss(beta=1.0)
@@ -202,6 +209,7 @@ def test_dpo_loss_accuracy_perfect():
 # ---------------------------------------------------------------------------
 # Test 9: OnlineDPOLoss gradients flow through loss
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_gradients_flow():
     B = 4
@@ -225,6 +233,7 @@ def test_dpo_loss_gradients_flow():
 # Test 10: OnlineDPOTrainer.freeze_ref freezes all ref params
 # ---------------------------------------------------------------------------
 
+
 def test_freeze_ref_freezes_all_params():
     trainer, _, ref = make_trainer()
 
@@ -244,18 +253,19 @@ def test_freeze_ref_freezes_all_params():
 # Test 11: OnlineDPOTrainer.online_step returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_online_step_returns_correct_keys():
     trainer, _, _ = make_trainer()
     B = 4
 
-    pi_c = torch.randn(B, requires_grad=True)
-    pi_r = torch.randn(B, requires_grad=True)
+    torch.randn(B, requires_grad=True)
+    torch.randn(B, requires_grad=True)
     ref_c = torch.randn(B)
     ref_r = torch.randn(B)
 
     # Recompute with grad context
-    pi_c2 = torch.randn(B)
-    pi_r2 = torch.randn(B)
+    torch.randn(B)
+    torch.randn(B)
 
     # Supply tensors that actually need grad through the policy model
     # Use a simple proxy: wrap in a linear pass so policy.parameters() get grad
@@ -263,21 +273,20 @@ def test_online_step_returns_correct_keys():
     x = torch.randn(B, policy.in_features)
     out = policy(x)  # (B, out_features) — just to ensure params are in graph
     # For log-probs, use mean of output as proxy scalar per batch item
-    pi_chosen = out.mean(dim=1)   # (B,)
+    pi_chosen = out.mean(dim=1)  # (B,)
     pi_rejected = -out.mean(dim=1)  # (B,) — different from chosen
 
     metrics = trainer.online_step(pi_chosen, pi_rejected, ref_c, ref_r)
 
     assert isinstance(metrics, dict)
     required = {"loss", "accuracy", "reward_chosen", "reward_rejected", "margin"}
-    assert required == set(metrics.keys()), (
-        f"Expected keys {required}, got {set(metrics.keys())}"
-    )
+    assert required == set(metrics.keys()), f"Expected keys {required}, got {set(metrics.keys())}"
 
 
 # ---------------------------------------------------------------------------
 # Test 12: OnlineDPOTrainer.online_step loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_online_step_loss_finite():
     trainer, _, _ = make_trainer()
@@ -292,14 +301,13 @@ def test_online_step_loss_finite():
     pi_rejected = -out.mean(dim=1)
 
     metrics = trainer.online_step(pi_chosen, pi_rejected, ref_c, ref_r)
-    assert torch.isfinite(torch.tensor(metrics["loss"])), (
-        f"Loss is not finite: {metrics['loss']}"
-    )
+    assert torch.isfinite(torch.tensor(metrics["loss"])), f"Loss is not finite: {metrics['loss']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 13: OnlineDPOTrainer.online_step updates policy parameters
 # ---------------------------------------------------------------------------
+
 
 def test_online_step_updates_policy():
     trainer, policy, _ = make_trainer()
@@ -308,10 +316,7 @@ def test_online_step_updates_policy():
     ref_r = torch.randn(B)
 
     # Snapshot initial parameters
-    params_before = {
-        name: param.detach().clone()
-        for name, param in policy.named_parameters()
-    }
+    params_before = {name: param.detach().clone() for name, param in policy.named_parameters()}
 
     x = torch.randn(B, policy.in_features)
     out = policy(x)
@@ -332,6 +337,7 @@ def test_online_step_updates_policy():
 # Test 14: CompletionSampler.sample output shape (B * n_samples, T)
 # ---------------------------------------------------------------------------
 
+
 def test_sample_output_shape():
     B, T, V = 3, 7, 64
     n_samples = 4
@@ -346,6 +352,7 @@ def test_sample_output_shape():
 # ---------------------------------------------------------------------------
 # Bonus: build_pairs with explicit group_size override
 # ---------------------------------------------------------------------------
+
 
 def test_build_pairs_with_explicit_group_size():
     B, K = 3, 5  # different from config default of 4

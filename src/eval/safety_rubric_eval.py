@@ -15,7 +15,9 @@ class SafetyEvalReport:
     max_score: float
 
 
-def evaluate_safety_texts(texts: list[str], rubric: SafetyRubric, threshold: float = 0.0) -> SafetyEvalReport:
+def evaluate_safety_texts(
+    texts: list[str], rubric: SafetyRubric, threshold: float = 0.0
+) -> SafetyEvalReport:
     """Evaluate a batch of texts against a safety rubric."""
     if not texts:
         return SafetyEvalReport(mean_score=0.0, pass_rate=0.0, min_score=0.0, max_score=0.0)
@@ -36,4 +38,3 @@ def compare_safety_reports(left: SafetyEvalReport, right: SafetyEvalReport) -> s
     if (right.pass_rate, right.mean_score) > (left.pass_rate, left.mean_score):
         return "right"
     return "tie"
-

@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
-import pytest
 
-from src.runtime.compile_manager import CompileConfig, CompileManager, COMPILE_REGISTRY
+from src.runtime.compile_manager import COMPILE_REGISTRY, CompileConfig, CompileManager
 
 
 def _tiny_model() -> nn.Module:
@@ -23,7 +22,13 @@ class TestCompileConfig:
         assert cfg.warmup_iters == 3
 
     def test_custom_values(self):
-        cfg = CompileConfig(mode="reduce-overhead", fullgraph=True, dynamic=False, backend="aot_eager", warmup_iters=5)
+        cfg = CompileConfig(
+            mode="reduce-overhead",
+            fullgraph=True,
+            dynamic=False,
+            backend="aot_eager",
+            warmup_iters=5,
+        )
         assert cfg.mode == "reduce-overhead"
         assert cfg.fullgraph is True
         assert cfg.dynamic is False

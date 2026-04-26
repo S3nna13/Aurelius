@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.multimodal.cross_modal_attention import (
-    CrossModalConfig,
-    CrossModalAttentionLayer,
-    QFormer,
     CROSS_MODAL_REGISTRY,
+    CrossModalAttentionLayer,
+    CrossModalConfig,
+    QFormer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny test config (batch=1, d=64, n_heads=4, n_layers=2, n_query_tokens=8)
@@ -30,6 +28,7 @@ TINY_CFG = CrossModalConfig(
 # ---------------------------------------------------------------------------
 # CrossModalConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults_d_model():
     cfg = CrossModalConfig()
@@ -65,6 +64,7 @@ def test_config_defaults_feedforward_mult():
 # QFormer.from_config
 # ---------------------------------------------------------------------------
 
+
 def test_qformer_from_config_builds():
     model = QFormer.from_config(TINY_CFG)
     assert isinstance(model, QFormer)
@@ -88,6 +88,7 @@ def test_qformer_query_tokens_are_parameter():
 # ---------------------------------------------------------------------------
 # QFormer forward shape and correctness
 # ---------------------------------------------------------------------------
+
 
 def test_qformer_forward_output_shape():
     torch.manual_seed(42)
@@ -141,6 +142,7 @@ def test_qformer_forward_no_nan_batch_2():
 # CrossModalAttentionLayer edge case: seq_len=1
 # ---------------------------------------------------------------------------
 
+
 def test_cross_modal_attention_layer_seq_len_1():
     """Edge case: both query and kv have seq_len=1 — must not crash."""
     torch.manual_seed(42)
@@ -157,6 +159,7 @@ def test_cross_modal_attention_layer_seq_len_1():
 # Registry checks
 # ---------------------------------------------------------------------------
 
+
 def test_cross_modal_registry_contains_qformer():
     assert "qformer" in CROSS_MODAL_REGISTRY
 
@@ -168,9 +171,11 @@ def test_cross_modal_registry_qformer_is_class():
 def test_modality_projector_registry_contains_qformer():
     """After importing cross_modal_attention, MODALITY_PROJECTOR_REGISTRY must have 'QFormer'."""
     from src.multimodal.multimodal_registry import MODALITY_PROJECTOR_REGISTRY
+
     assert "QFormer" in MODALITY_PROJECTOR_REGISTRY
 
 
 def test_modality_projector_registry_qformer_is_class():
     from src.multimodal.multimodal_registry import MODALITY_PROJECTOR_REGISTRY
+
     assert MODALITY_PROJECTOR_REGISTRY["QFormer"] is QFormer

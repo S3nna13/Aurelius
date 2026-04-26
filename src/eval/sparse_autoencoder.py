@@ -1,4 +1,4 @@
-"""Sparse autoencoder (SAE): learn sparse feature directions from model activations for mechanistic interpretability."""
+"""Sparse autoencoder (SAE): learn sparse feature directions from model activations for mechanistic interpretability."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -14,9 +14,9 @@ from torch import Tensor
 class SAEConfig:
     """Configuration for a SparseAutoencoder."""
 
-    d_model: int = 512          # input dimension (model hidden dim)
-    n_features: int = 4096      # number of sparse features (> d_model)
-    l1_coeff: float = 0.001     # sparsity penalty
+    d_model: int = 512  # input dimension (model hidden dim)
+    n_features: int = 4096  # number of sparse features (> d_model)
+    l1_coeff: float = 0.001  # sparsity penalty
     learning_rate: float = 1e-3
     n_steps_warmup: int = 1000
     normalize_decoder: bool = True  # normalize decoder columns to unit norm

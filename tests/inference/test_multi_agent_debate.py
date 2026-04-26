@@ -6,21 +6,21 @@ import pytest
 import torch
 
 from src.inference.multi_agent_debate import (
-    DebateConfig,
     AgentState,
-    DebateResult,
+    DebateConfig,
     DebateOrchestrator,
-    greedy_generate,
+    DebateResult,
     compute_agreement,
     extract_confidence,
+    greedy_generate,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tiny_cfg():
@@ -72,6 +72,7 @@ def orchestrator(tiny_model, debate_config):
 # 1. DebateConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_debate_config_defaults():
     cfg = DebateConfig()
     assert cfg.n_agents == 3
@@ -84,6 +85,7 @@ def test_debate_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. AgentState fields
 # ---------------------------------------------------------------------------
+
 
 def test_agent_state_fields():
     state = AgentState(agent_id=0, position="hello", confidence=0.9)
@@ -101,6 +103,7 @@ def test_agent_state_history_default_empty():
 # ---------------------------------------------------------------------------
 # 3. DebateResult fields
 # ---------------------------------------------------------------------------
+
 
 def test_debate_result_fields():
     result = DebateResult(
@@ -123,6 +126,7 @@ def test_debate_result_fields():
 # 15. DebateResult.consensus_reached is bool
 # ---------------------------------------------------------------------------
 
+
 def test_debate_result_consensus_reached_is_bool():
     result = DebateResult(
         question="Q?",
@@ -138,6 +142,7 @@ def test_debate_result_consensus_reached_is_bool():
 # ---------------------------------------------------------------------------
 # 4-5. greedy_generate returns a string
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_generate_returns_string(tiny_model):
     prompt_ids = [72, 101, 108, 108, 111]  # "Hello"
@@ -156,6 +161,7 @@ def test_greedy_generate_length(tiny_model):
 # 6. compute_agreement for identical strings returns 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_agreement_identical():
     positions = ["The answer is 42", "The answer is 42", "The answer is 42"]
     assert compute_agreement(positions) == pytest.approx(1.0)
@@ -164,6 +170,7 @@ def test_compute_agreement_identical():
 # ---------------------------------------------------------------------------
 # 7. compute_agreement for completely different strings returns < 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_agreement_different():
     positions = ["abcdef", "xyz123", "qwerty"]
@@ -174,6 +181,7 @@ def test_compute_agreement_different():
 # ---------------------------------------------------------------------------
 # 8. compute_agreement with single agent returns 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_agreement_single_agent():
     assert compute_agreement(["only one position"]) == pytest.approx(1.0)
@@ -187,6 +195,7 @@ def test_compute_agreement_empty():
 # 9. extract_confidence finds "confidence: 80%" → 0.8
 # ---------------------------------------------------------------------------
 
+
 def test_extract_confidence_confidence_pattern():
     result = extract_confidence("I am confidence: 80% sure this is correct.")
     assert result == pytest.approx(0.8)
@@ -195,6 +204,7 @@ def test_extract_confidence_confidence_pattern():
 # ---------------------------------------------------------------------------
 # 10. extract_confidence finds "certainty: 60%" → 0.6
 # ---------------------------------------------------------------------------
+
 
 def test_extract_confidence_certainty_pattern():
     result = extract_confidence("My certainty: 60% on this answer.")
@@ -210,6 +220,7 @@ def test_extract_confidence_sure_pattern():
 # 11. extract_confidence returns 0.5 when no pattern found
 # ---------------------------------------------------------------------------
 
+
 def test_extract_confidence_default():
     result = extract_confidence("No confidence information here.")
     assert result == pytest.approx(0.5)
@@ -224,6 +235,7 @@ def test_extract_confidence_case_insensitive():
 # 12. DebateOrchestrator._build_initial_prompt contains question and agent_id
 # ---------------------------------------------------------------------------
 
+
 def test_build_initial_prompt_contains_question_and_agent(orchestrator):
     prompt = orchestrator._build_initial_prompt("What is the meaning of life?", agent_id=2)
     assert "What is the meaning of life?" in prompt
@@ -233,6 +245,7 @@ def test_build_initial_prompt_contains_question_and_agent(orchestrator):
 # ---------------------------------------------------------------------------
 # 13. DebateOrchestrator._build_debate_prompt contains "Other agents"
 # ---------------------------------------------------------------------------
+
 
 def test_build_debate_prompt_contains_other_agents(orchestrator):
     prompt = orchestrator._build_debate_prompt(
@@ -249,6 +262,7 @@ def test_build_debate_prompt_contains_other_agents(orchestrator):
 # 14. DebateOrchestrator.debate returns DebateResult
 # ---------------------------------------------------------------------------
 
+
 def test_debate_returns_debate_result(orchestrator):
     result = orchestrator.debate("What is 2+2?")
     assert isinstance(result, DebateResult)
@@ -257,6 +271,7 @@ def test_debate_returns_debate_result(orchestrator):
 # ---------------------------------------------------------------------------
 # 15. DebateOrchestrator.debate result has correct n_agents positions
 # ---------------------------------------------------------------------------
+
 
 def test_debate_result_has_correct_n_agent_positions(orchestrator, debate_config):
     result = orchestrator.debate("What is the capital of France?")
@@ -267,6 +282,7 @@ def test_debate_result_has_correct_n_agent_positions(orchestrator, debate_config
 # ---------------------------------------------------------------------------
 # 16. DebateOrchestrator.batch_debate returns list of DebateResult with correct length
 # ---------------------------------------------------------------------------
+
 
 def test_batch_debate_returns_correct_length(orchestrator):
     questions = ["Q1?", "Q2?", "Q3?"]

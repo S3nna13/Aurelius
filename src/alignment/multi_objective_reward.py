@@ -1,18 +1,18 @@
 """Multi-objective reward modeling with Pareto-based and scalarization approaches."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
+
 
 class MultiHeadRewardModel(nn.Module):
     """Single backbone hidden state -> N scalar reward heads.
@@ -26,7 +26,7 @@ class MultiHeadRewardModel(nn.Module):
         self,
         hidden_dim: int,
         n_objectives: int,
-        objective_names: Optional[List[str]] = None,
+        objective_names: list[str] | None = None,
     ) -> None:
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -34,9 +34,7 @@ class MultiHeadRewardModel(nn.Module):
         self.objective_names = objective_names or [f"obj_{i}" for i in range(n_objectives)]
 
         # Independent linear head per objective
-        self.heads = nn.ModuleList(
-            [nn.Linear(hidden_dim, 1) for _ in range(n_objectives)]
-        )
+        self.heads = nn.ModuleList([nn.Linear(hidden_dim, 1) for _ in range(n_objectives)])
         for head in self.heads:
             nn.init.normal_(head.weight, std=0.02)
             nn.init.zeros_(head.bias)
@@ -66,6 +64,7 @@ class MultiHeadRewardModel(nn.Module):
 # Scalarization strategies
 # ---------------------------------------------------------------------------
 
+
 def linear_scalarize(rewards: Tensor, weights: Tensor) -> Tensor:
     """Weighted sum scalarization.
 
@@ -83,7 +82,7 @@ def linear_scalarize(rewards: Tensor, weights: Tensor) -> Tensor:
 def chebyshev_scalarize(
     rewards: Tensor,
     weights: Tensor,
-    reference_point: Optional[Tensor] = None,
+    reference_point: Tensor | None = None,
 ) -> Tensor:
     """Chebyshev (minimax) scalarization. Encourages Pareto-diverse solutions.
 
@@ -134,6 +133,7 @@ def hypervolume_scalarize(rewards: Tensor, weights: Tensor) -> Tensor:
 # Pareto dominance utilities
 # ---------------------------------------------------------------------------
 
+
 def is_pareto_dominated(solution: Tensor, population: Tensor) -> bool:
     """Returns True if any row in population dominates solution on ALL objectives.
 
@@ -152,7 +152,7 @@ def is_pareto_dominated(solution: Tensor, population: Tensor) -> bool:
     # dominator must be >= on all objectives
     ge_all = (population >= solution.unsqueeze(0)).all(dim=-1)  # (N,)
     # and strictly > on at least one
-    gt_any = (population > solution.unsqueeze(0)).any(dim=-1)   # (N,)
+    gt_any = (population > solution.unsqueeze(0)).any(dim=-1)  # (N,)
 
     return bool((ge_all & gt_any).any().item())
 
@@ -172,7 +172,6 @@ def pareto_front(solutions: Tensor) -> Tensor:
     for i in range(n):
         if is_dominated[i]:
             continue
-        others = solutions  # (N, K)
         # Check if solution i is dominated by any other
         # We skip self-comparison by checking only strict improvement
         for j in range(n):
@@ -191,6 +190,7 @@ def pareto_front(solutions: Tensor) -> Tensor:
 # Configuration dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ObjectiveConfig:
     name: str
@@ -202,19 +202,20 @@ class ObjectiveConfig:
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class MultiObjectiveRMTrainer:
     """Trains a MultiHeadRewardModel with per-objective Bradley-Terry losses."""
 
     def __init__(
         self,
         model: MultiHeadRewardModel,
-        objectives: List[ObjectiveConfig],
+        objectives: list[ObjectiveConfig],
         scalarization: str = "linear",  # "linear" | "chebyshev"
         lr: float = 1e-4,
     ) -> None:
         if len(objectives) != model.n_objectives:
             raise ValueError(
-                f"len(objectives)={len(objectives)} must equal model.n_objectives={model.n_objectives}"
+                f"len(objectives)={len(objectives)} must equal model.n_objectives={model.n_objectives}"  # noqa: E501
             )
         self.model = model
         self.objectives = objectives
@@ -222,39 +223,37 @@ class MultiObjectiveRMTrainer:
         self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
         # Build weight tensor from objective configs
-        self._weights = torch.tensor(
-            [obj.weight for obj in objectives], dtype=torch.float32
-        )
+        self._weights = torch.tensor([obj.weight for obj in objectives], dtype=torch.float32)
 
     def _scalarize(self, losses: Tensor) -> Tensor:
         """losses: (n_objectives,) -> scalar."""
         if self.scalarization == "chebyshev":
             # chebyshev over losses (B=1 view)
-            return chebyshev_scalarize(
-                losses.unsqueeze(0), self._weights.to(losses.device)
-            ).squeeze(0).neg()  # negate back since chebyshev negates
+            return (
+                chebyshev_scalarize(losses.unsqueeze(0), self._weights.to(losses.device))
+                .squeeze(0)
+                .neg()
+            )  # negate back since chebyshev negates
         else:
-            return linear_scalarize(
-                losses.unsqueeze(0), self._weights.to(losses.device)
-            ).squeeze(0)
+            return linear_scalarize(losses.unsqueeze(0), self._weights.to(losses.device)).squeeze(0)
 
     def compute_loss(
         self,
-        chosen_hidden: Tensor,    # (B, hidden_dim)
+        chosen_hidden: Tensor,  # (B, hidden_dim)
         rejected_hidden: Tensor,  # (B, hidden_dim)
-    ) -> Tuple[Tensor, Dict[str, float]]:
+    ) -> tuple[Tensor, dict[str, float]]:
         """Bradley-Terry loss per objective, then scalarized.
 
         Returns (total_loss, per_objective_metrics).
         """
-        chosen_rewards = self.model(chosen_hidden)    # (B, n_obj)
+        chosen_rewards = self.model(chosen_hidden)  # (B, n_obj)
         rejected_rewards = self.model(rejected_hidden)  # (B, n_obj)
 
-        per_obj_losses: List[Tensor] = []
-        metrics: Dict[str, float] = {}
+        per_obj_losses: list[Tensor] = []
+        metrics: dict[str, float] = {}
 
         for idx, obj in enumerate(self.objectives):
-            r_chosen = chosen_rewards[:, idx]    # (B,)
+            r_chosen = chosen_rewards[:, idx]  # (B,)
             r_rejected = rejected_rewards[:, idx]  # (B,)
 
             if obj.minimize:
@@ -276,11 +275,11 @@ class MultiObjectiveRMTrainer:
         chosen_hidden: Tensor,
         rejected_hidden: Tensor,
     ) -> Tensor:
-        """Returns (n_objectives, n_objectives) cosine similarity matrix of per-objective gradients."""
+        """Returns (n_objectives, n_objectives) cosine similarity matrix of per-objective gradients."""  # noqa: E501
         n_obj = self.model.n_objectives
-        grads: List[Tensor] = []
+        grads: list[Tensor] = []
 
-        chosen_rewards = self.model(chosen_hidden)    # (B, n_obj)
+        chosen_rewards = self.model(chosen_hidden)  # (B, n_obj)
         rejected_rewards = self.model(rejected_hidden)  # (B, n_obj)
 
         for idx, obj in enumerate(self.objectives):
@@ -324,8 +323,9 @@ class MultiObjectiveRMTrainer:
 # Pareto improvement reward
 # ---------------------------------------------------------------------------
 
+
 def compute_pareto_reward(
-    rewards: Tensor,            # (B, K)
+    rewards: Tensor,  # (B, K)
     reference_rewards: Tensor,  # (B, K)
 ) -> Tensor:
     """Compute Pareto improvement reward per sample.
@@ -339,7 +339,7 @@ def compute_pareto_reward(
     result = torch.zeros(B, dtype=torch.long, device=rewards.device)
 
     for b in range(B):
-        r = rewards[b]      # (K,)
+        r = rewards[b]  # (K,)
         ref = reference_rewards[b]  # (K,)
 
         # Check if r dominates ref

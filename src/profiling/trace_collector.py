@@ -80,9 +80,7 @@ class TraceCollector:
         total_duration_ms = sum(e.duration_ms for e in evs)
         by_category: dict[str, dict] = {}
         for e in evs:
-            bucket = by_category.setdefault(
-                e.category, {"total_ms": 0.0, "count": 0}
-            )
+            bucket = by_category.setdefault(e.category, {"total_ms": 0.0, "count": 0})
             bucket["total_ms"] += e.duration_ms
             bucket["count"] += 1
         return {

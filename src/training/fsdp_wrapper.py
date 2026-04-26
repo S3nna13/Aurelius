@@ -21,12 +21,14 @@ class FSDPWrapper:
     def wrap(self, model: nn.Module) -> nn.Module:
         if torch.distributed.is_available() and torch.distributed.is_initialized():
             from torch.distributed.fsdp import FullyShardedDataParallel
+
             return FullyShardedDataParallel(model)
         return model
 
     def get_mixed_precision_policy(self):
         try:
             from torch.distributed.fsdp import MixedPrecision
+
             dtype_map = {
                 "float32": torch.float32,
                 "float16": torch.float16,

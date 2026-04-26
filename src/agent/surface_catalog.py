@@ -240,13 +240,41 @@ def surface_catalog_schema() -> dict[str, Any]:
         "schema_version": _SURFACE_CATALOG_SCHEMA_VERSION,
         "description": "Versioned schema for Aurelius terminal surface catalogs.",
         "sections": [
-            {"name": "backends", "required": True, "description": "Registered training / math backends."},
-            {"name": "engine_adapters", "required": True, "description": "Known inference-engine adapters."},
-            {"name": "multimodal", "required": True, "description": "Modality contracts and multimodal registries."},
-            {"name": "mcp", "required": True, "description": "MCP client, server, and tool-schema registries."},
-            {"name": "computer_use", "required": True, "description": "Screen parsers, action predictors, and denylist."},
-            {"name": "deployment", "required": True, "description": "Deployment targets, artifact builders, and health checks."},
-            {"name": "ui", "required": True, "description": "Terminal UI surfaces, motion, and onboarding helpers."},
+            {
+                "name": "backends",
+                "required": True,
+                "description": "Registered training / math backends.",
+            },
+            {
+                "name": "engine_adapters",
+                "required": True,
+                "description": "Known inference-engine adapters.",
+            },
+            {
+                "name": "multimodal",
+                "required": True,
+                "description": "Modality contracts and multimodal registries.",
+            },
+            {
+                "name": "mcp",
+                "required": True,
+                "description": "MCP client, server, and tool-schema registries.",
+            },
+            {
+                "name": "computer_use",
+                "required": True,
+                "description": "Screen parsers, action predictors, and denylist.",
+            },
+            {
+                "name": "deployment",
+                "required": True,
+                "description": "Deployment targets, artifact builders, and health checks.",
+            },
+            {
+                "name": "ui",
+                "required": True,
+                "description": "Terminal UI surfaces, motion, and onboarding helpers.",
+            },
         ],
     }
 

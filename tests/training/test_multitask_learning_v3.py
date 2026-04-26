@@ -4,17 +4,18 @@ gradient surgery, dynamic task weighting, and MTLTrainer.
 """
 
 import math
-import torch
+
 import pytest
+import torch
 
 from src.training.multitask_learning_v3 import (
-    TaskHead,
-    SharedBackbone,
-    MTLModel,
-    GradientSurgery,
     DynamicTaskWeighter,
-    MTLTrainer,
+    GradientSurgery,
     MTLConfig,
+    MTLModel,
+    MTLTrainer,
+    SharedBackbone,
+    TaskHead,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,6 +41,7 @@ def make_input() -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # TaskHead tests
 # ---------------------------------------------------------------------------
+
 
 def test_taskhead_lm_loss_finite_scalar():
     head = TaskHead(d_model=D_MODEL, output_size=VOCAB_SIZE, task_type="lm")
@@ -79,6 +81,7 @@ def test_taskhead_invalid_type_raises():
 # SharedBackbone tests
 # ---------------------------------------------------------------------------
 
+
 def test_shared_backbone_token_repr_shape():
     backbone = make_backbone()
     input_ids = make_input()
@@ -108,6 +111,7 @@ def test_shared_backbone_output_finite():
 # ---------------------------------------------------------------------------
 # MTLModel tests
 # ---------------------------------------------------------------------------
+
 
 def _make_mtl_model():
     backbone = make_backbone()
@@ -143,9 +147,7 @@ def test_mtlmodel_compute_all_losses_returns_dict_with_task_keys():
         "cls_task": torch.randint(0, 3, (B,)),
     }
     losses = model.compute_all_losses(input_ids, targets_dict)
-    assert set(losses.keys()) == {"lm_task", "cls_task"}, (
-        f"Keys mismatch: {losses.keys()}"
-    )
+    assert set(losses.keys()) == {"lm_task", "cls_task"}, f"Keys mismatch: {losses.keys()}"
 
 
 def test_mtlmodel_compute_all_losses_all_finite():
@@ -164,6 +166,7 @@ def test_mtlmodel_compute_all_losses_all_finite():
 # ---------------------------------------------------------------------------
 # GradientSurgery tests
 # ---------------------------------------------------------------------------
+
 
 def _make_surgery_setup():
     model = _make_mtl_model()
@@ -194,26 +197,21 @@ def test_gradient_surgery_project_conflicting_returns_same_n_tensors():
     surgery, losses, params = _make_surgery_setup()
     task_grads = surgery.compute_task_gradients(losses, params)
     merged = surgery.project_conflicting(task_grads)
-    assert len(merged) == len(params), (
-        f"Expected {len(params)} merged tensors, got {len(merged)}"
-    )
+    assert len(merged) == len(params), f"Expected {len(params)} merged tensors, got {len(merged)}"
 
 
 def test_gradient_surgery_cosine_similarity_in_range():
     surgery, losses, params = _make_surgery_setup()
     task_grads = surgery.compute_task_gradients(losses, params)
     task_names = list(task_grads.keys())
-    cos_sim = surgery.cosine_similarity_grads(
-        task_grads[task_names[0]], task_grads[task_names[1]]
-    )
-    assert -1.0 - 1e-5 <= cos_sim <= 1.0 + 1e-5, (
-        f"Cosine similarity {cos_sim} out of [-1, 1]"
-    )
+    cos_sim = surgery.cosine_similarity_grads(task_grads[task_names[0]], task_grads[task_names[1]])
+    assert -1.0 - 1e-5 <= cos_sim <= 1.0 + 1e-5, f"Cosine similarity {cos_sim} out of [-1, 1]"
 
 
 # ---------------------------------------------------------------------------
 # DynamicTaskWeighter tests
 # ---------------------------------------------------------------------------
+
 
 def test_dynamic_task_weighter_uncertainty_forward_is_scalar():
     weighter = DynamicTaskWeighter(n_tasks=N_TASKS, method="uncertainty")
@@ -251,6 +249,7 @@ def test_dynamic_task_weighter_gradnorm_forward_is_scalar():
 # ---------------------------------------------------------------------------
 # MTLTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_mtl_trainer_train_step_returns_finite_total_loss():
     backbone = make_backbone()
@@ -294,6 +293,7 @@ def test_mtl_trainer_get_task_weights_returns_dict():
 # ---------------------------------------------------------------------------
 # MTLConfig defaults test
 # ---------------------------------------------------------------------------
+
 
 def test_mtlconfig_defaults():
     cfg = MTLConfig()

@@ -14,18 +14,17 @@ Step by Step" (2023); value-guided beam search literature.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SearchConfig:
@@ -33,8 +32,8 @@ class SearchConfig:
 
     beam_width: int = 4
     max_steps: int = 64
-    reward_weight: float = 0.5       # λ: weight on value_fn vs log_prob
-    length_penalty: float = 0.6      # α in score /= len^α
+    reward_weight: float = 0.5  # λ: weight on value_fn vs log_prob
+    length_penalty: float = 0.6  # α in score /= len^α
     vocab_size: int = 128000
     eos_token_id: int = 2
     pad_token_id: int = 0
@@ -43,6 +42,7 @@ class SearchConfig:
 # ---------------------------------------------------------------------------
 # Beam dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SearchBeam:
@@ -58,6 +58,7 @@ class SearchBeam:
 # ---------------------------------------------------------------------------
 # Core search class
 # ---------------------------------------------------------------------------
+
 
 class RewardGuidedSearch:
     """Value-guided beam search that combines LM log-probs with a reward/value signal.
@@ -181,7 +182,7 @@ class RewardGuidedSearch:
         initial_tokens: list[int],
         model_fn: Callable[[list[int]], Tensor],
         value_fn: Callable[[list[int]], float],
-        n_steps: Optional[int] = None,
+        n_steps: int | None = None,
     ) -> list[SearchBeam]:
         """Run reward-guided beam search.
 
@@ -286,6 +287,7 @@ class RewardGuidedSearch:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _edit_distance(a: list[int], b: list[int]) -> int:
     """Compute token-level Levenshtein (edit) distance between two sequences."""

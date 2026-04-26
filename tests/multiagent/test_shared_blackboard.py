@@ -1,18 +1,17 @@
 """Tests for src/multiagent/shared_blackboard.py."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.multiagent.shared_blackboard import (
+    SHARED_BLACKBOARD_REGISTRY,
     Blackboard,
     BlackboardEntry,
-    SHARED_BLACKBOARD_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # BlackboardEntry dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_entry_fields_stored():
     entry = BlackboardEntry(key="x", value=42, author="agent-1", timestamp=1.0, version=1)
@@ -31,6 +30,7 @@ def test_entry_default_version():
 # ---------------------------------------------------------------------------
 # Blackboard.write
 # ---------------------------------------------------------------------------
+
 
 def test_write_creates_entry():
     bb = Blackboard()
@@ -75,7 +75,7 @@ def test_write_version_increments_multiple_times():
 
 def test_write_different_keys_independent_versions():
     bb = Blackboard()
-    e1 = bb.write("a", 1, "x")
+    bb.write("a", 1, "x")
     e2 = bb.write("b", 2, "x")
     bb.write("a", 3, "x")
     assert e2.version == 1
@@ -85,6 +85,7 @@ def test_write_different_keys_independent_versions():
 # ---------------------------------------------------------------------------
 # Blackboard.read
 # ---------------------------------------------------------------------------
+
 
 def test_read_returns_entry():
     bb = Blackboard()
@@ -110,6 +111,7 @@ def test_read_returns_latest_value():
 # Blackboard.read_all
 # ---------------------------------------------------------------------------
 
+
 def test_read_all_returns_all_entries():
     bb = Blackboard()
     bb.write("a", 1, "x")
@@ -132,6 +134,7 @@ def test_read_all_empty_blackboard():
 # Blackboard.delete
 # ---------------------------------------------------------------------------
 
+
 def test_delete_existing_key_returns_true():
     bb = Blackboard()
     bb.write("z", 0, "agent")
@@ -153,6 +156,7 @@ def test_delete_missing_key_returns_false():
 # ---------------------------------------------------------------------------
 # Blackboard.subscribe / _notify
 # ---------------------------------------------------------------------------
+
 
 def test_subscribe_callback_triggered_on_write():
     bb = Blackboard()
@@ -195,6 +199,7 @@ def test_subscribe_callback_called_on_each_write():
 # Blackboard.keys
 # ---------------------------------------------------------------------------
 
+
 def test_keys_returns_sorted_list():
     bb = Blackboard()
     bb.write("zebra", 1, "a")
@@ -212,6 +217,7 @@ def test_keys_empty_blackboard():
 # Blackboard.version_of
 # ---------------------------------------------------------------------------
 
+
 def test_version_of_missing_key_returns_0():
     bb = Blackboard()
     assert bb.version_of("missing") == 0
@@ -227,6 +233,7 @@ def test_version_of_existing_key():
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_default():
     assert "default" in SHARED_BLACKBOARD_REGISTRY

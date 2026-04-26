@@ -7,16 +7,17 @@ MockLM is self-contained — no imports from the main transformer module.
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
 
 from src.alignment.cpo import CPOConfig, CPOTrainer, cpo_loss
 
-
 # ---------------------------------------------------------------------------
 # Tiny mock language model
 # ---------------------------------------------------------------------------
+
 
 class MockLM(nn.Module):
     """Minimal language model for testing: input_ids → logits (B, T, vocab_size)."""
@@ -27,8 +28,8 @@ class MockLM(nn.Module):
         self.proj = nn.Linear(d_model, vocab_size)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:  # (B, T) → (B, T, V)
-        x = self.embed(input_ids)           # (B, T, d_model)
-        return self.proj(x)                 # (B, T, vocab_size)
+        x = self.embed(input_ids)  # (B, T, d_model)
+        return self.proj(x)  # (B, T, vocab_size)
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +86,7 @@ def _make_batch(batch: int = BATCH, seq_len: int = SEQ_LEN) -> dict:
 # Test 1: cpo_loss returns a scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_cpo_loss_returns_scalar(default_config):
     """cpo_loss must return a 0-dim (scalar) tensor."""
     chosen = _make_logps(value=-1.5)
@@ -97,6 +99,7 @@ def test_cpo_loss_returns_scalar(default_config):
 # ---------------------------------------------------------------------------
 # Test 2: Metrics dict has required keys
 # ---------------------------------------------------------------------------
+
 
 def test_cpo_loss_metrics_keys(default_config):
     """Metrics dict must contain 'sft_loss', 'cpo_loss', and 'margin'."""
@@ -112,6 +115,7 @@ def test_cpo_loss_metrics_keys(default_config):
 # Test 3: Loss is differentiable (backward passes)
 # ---------------------------------------------------------------------------
 
+
 def test_cpo_loss_backward(default_config):
     """total_loss.backward() must not raise and produce finite gradients."""
     chosen = _random_logps().requires_grad_(True)
@@ -125,6 +129,7 @@ def test_cpo_loss_backward(default_config):
 # ---------------------------------------------------------------------------
 # Test 4: When chosen >> rejected, contrastive loss is near zero
 # ---------------------------------------------------------------------------
+
 
 def test_cpo_loss_near_zero_contrastive_when_chosen_dominates():
     """When chosen log-probs >> rejected, the contrastive term should be near 0."""
@@ -142,18 +147,18 @@ def test_cpo_loss_near_zero_contrastive_when_chosen_dominates():
 # Test 5: When chosen == rejected, margin is 0
 # ---------------------------------------------------------------------------
 
+
 def test_cpo_loss_zero_margin_when_equal(default_config):
     """When chosen_logps == rejected_logps, the margin must be 0."""
     logps = _make_logps(value=-2.5)
     _, metrics = cpo_loss(logps, logps.clone(), default_config)
-    assert abs(metrics["margin"]) < 1e-6, (
-        f"Expected margin=0, got {metrics['margin']}"
-    )
+    assert abs(metrics["margin"]) < 1e-6, f"Expected margin=0, got {metrics['margin']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: Higher beta → sharper (larger-magnitude) preference signal
 # ---------------------------------------------------------------------------
+
 
 def test_higher_beta_sharper_preference():
     """Higher beta should increase the contrastive loss magnitude when margin is negative."""
@@ -176,6 +181,7 @@ def test_higher_beta_sharper_preference():
 # Test 7: CPOTrainer.train_step returns dict with 'loss' key
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_has_loss_key(model, optimizer):
     """train_step must return a dict that includes a 'loss' key."""
     config = CPOConfig()
@@ -189,6 +195,7 @@ def test_trainer_train_step_has_loss_key(model, optimizer):
 # ---------------------------------------------------------------------------
 # Test 8: label_smoothing > 0 produces different loss than label_smoothing = 0
 # ---------------------------------------------------------------------------
+
 
 def test_label_smoothing_changes_loss():
     """label_smoothing > 0 must yield a different cpo_loss value than label_smoothing = 0."""
@@ -209,6 +216,7 @@ def test_label_smoothing_changes_loss():
 # ---------------------------------------------------------------------------
 # Test 9: Gradient flows to model parameters
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_to_model_parameters(model, optimizer):
     """After train_step, at least one model parameter must have a non-zero gradient."""
@@ -235,16 +243,14 @@ def test_gradient_flows_to_model_parameters(model, optimizer):
     loss, _ = cpo_loss(chosen_logps, rejected_logps, config)
     loss.backward()
 
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum() > 0 for p in model.parameters())
     assert has_grad, "No non-zero gradients found in model parameters"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: delta > 0 increases loss vs delta = 0
 # ---------------------------------------------------------------------------
+
 
 def test_positive_delta_increases_loss():
     """A positive delta makes the margin harder to satisfy, increasing the CPO loss."""
@@ -266,6 +272,7 @@ def test_positive_delta_increases_loss():
 # Bonus test 11: train_step returns all expected metric keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_full_metrics(model, optimizer):
     """train_step must return 'loss', 'sft_loss', 'cpo_loss', and 'margin'."""
     config = CPOConfig()
@@ -280,6 +287,7 @@ def test_trainer_train_step_full_metrics(model, optimizer):
 # ---------------------------------------------------------------------------
 # Bonus test 12: sft_weight and cpo_weight scale their respective components
 # ---------------------------------------------------------------------------
+
 
 def test_sft_weight_scales_loss():
     """Doubling sft_weight should change total_loss by approximately that factor on the SFT term."""
@@ -301,6 +309,7 @@ def test_sft_weight_scales_loss():
 # Bonus test 13: compute_logps returns correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_logps_shape(model, optimizer):
     """compute_logps must return a 1-D tensor of length batch_size."""
     config = CPOConfig()
@@ -315,6 +324,7 @@ def test_compute_logps_shape(model, optimizer):
 # ---------------------------------------------------------------------------
 # Bonus test 14: compute_logps values are negative (valid log-probs)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_logps_are_negative(model, optimizer):
     """Mean log-probs per sequence should be negative (probabilities < 1)."""

@@ -1,4 +1,5 @@
 """Tests for knowledge_graph module."""
+
 from __future__ import annotations
 
 import random
@@ -8,21 +9,21 @@ import torch
 
 from src.data.knowledge_graph import (
     KGConfig,
-    Triple,
+    KGRetriever,
     KnowledgeGraph,
     TransEEmbedder,
-    transe_margin_loss,
+    Triple,
     build_entity_index,
     build_relation_index,
-    retrieve_by_entity,
     format_triples_as_text,
-    KGRetriever,
+    retrieve_by_entity,
+    transe_margin_loss,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_simple_kg() -> KnowledgeGraph:
     """Return a small KG with 3 triples for reuse in tests."""
@@ -37,6 +38,7 @@ def make_simple_kg() -> KnowledgeGraph:
 # 1. test_kg_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_kg_config_defaults():
     cfg = KGConfig()
     assert cfg.embed_dim == 64
@@ -50,6 +52,7 @@ def test_kg_config_defaults():
 # 2. test_kg_add_and_len
 # ---------------------------------------------------------------------------
 
+
 def test_kg_add_and_len():
     kg = make_simple_kg()
     assert len(kg) == 3
@@ -58,6 +61,7 @@ def test_kg_add_and_len():
 # ---------------------------------------------------------------------------
 # 3. test_kg_get_neighbors
 # ---------------------------------------------------------------------------
+
 
 def test_kg_get_neighbors():
     kg = make_simple_kg()
@@ -75,6 +79,7 @@ def test_kg_get_neighbors():
 # 4. test_kg_get_entities_unique
 # ---------------------------------------------------------------------------
 
+
 def test_kg_get_entities_unique():
     kg = make_simple_kg()
     entities = kg.get_entities()
@@ -86,6 +91,7 @@ def test_kg_get_entities_unique():
 # 5. test_kg_get_relations_unique
 # ---------------------------------------------------------------------------
 
+
 def test_kg_get_relations_unique():
     kg = make_simple_kg()
     relations = kg.get_relations()
@@ -96,6 +102,7 @@ def test_kg_get_relations_unique():
 # ---------------------------------------------------------------------------
 # 6. test_kg_sample_negative_different
 # ---------------------------------------------------------------------------
+
 
 def test_kg_sample_negative_different():
     kg = make_simple_kg()
@@ -118,6 +125,7 @@ def test_kg_sample_negative_different():
 # 7. test_build_entity_index_contiguous
 # ---------------------------------------------------------------------------
 
+
 def test_build_entity_index_contiguous():
     kg = make_simple_kg()
     index = build_entity_index(kg)
@@ -129,6 +137,7 @@ def test_build_entity_index_contiguous():
 # 8. test_build_relation_index_deterministic
 # ---------------------------------------------------------------------------
 
+
 def test_build_relation_index_deterministic():
     kg = make_simple_kg()
     idx1 = build_relation_index(kg)
@@ -139,6 +148,7 @@ def test_build_relation_index_deterministic():
 # ---------------------------------------------------------------------------
 # 9. test_transe_embedder_score_shape
 # ---------------------------------------------------------------------------
+
 
 def test_transe_embedder_score_shape():
     n_entities = 10
@@ -159,6 +169,7 @@ def test_transe_embedder_score_shape():
 # 10. test_transe_margin_loss_positive_case
 # ---------------------------------------------------------------------------
 
+
 def test_transe_margin_loss_positive_case():
     # pos_score >> neg_score → loss ~ 0
     pos_scores = torch.tensor([5.0, 5.0, 5.0])
@@ -171,6 +182,7 @@ def test_transe_margin_loss_positive_case():
 # ---------------------------------------------------------------------------
 # 11. test_transe_margin_loss_negative_case
 # ---------------------------------------------------------------------------
+
 
 def test_transe_margin_loss_negative_case():
     # neg_score >> pos_score → loss > 0
@@ -185,6 +197,7 @@ def test_transe_margin_loss_negative_case():
 # 12. test_retrieve_by_entity_depth1
 # ---------------------------------------------------------------------------
 
+
 def test_retrieve_by_entity_depth1():
     kg = make_simple_kg()
     triples = retrieve_by_entity(kg, "Alice", max_hops=1)
@@ -197,6 +210,7 @@ def test_retrieve_by_entity_depth1():
 # ---------------------------------------------------------------------------
 # 13. test_retrieve_by_entity_depth2
 # ---------------------------------------------------------------------------
+
 
 def test_retrieve_by_entity_depth2():
     kg = make_simple_kg()
@@ -212,6 +226,7 @@ def test_retrieve_by_entity_depth2():
 # 14. test_format_triples_as_text
 # ---------------------------------------------------------------------------
 
+
 def test_format_triples_as_text():
     triples = [Triple(head="Alice", relation="knows", tail="Bob")]
     text = format_triples_as_text(triples)
@@ -222,10 +237,11 @@ def test_format_triples_as_text():
 # 15. test_kg_retriever_retrieve_count
 # ---------------------------------------------------------------------------
 
+
 def test_kg_retriever_retrieve_count():
     kg = KnowledgeGraph()
     for i in range(20):
-        kg.add_triple(f"entity{i}", "rel", f"entity{i+1}")
+        kg.add_triple(f"entity{i}", "rel", f"entity{i + 1}")
 
     retriever = KGRetriever(kg, max_hops=2)
     # Query mentioning entity0 — should return at most top_k
@@ -236,6 +252,7 @@ def test_kg_retriever_retrieve_count():
 # ---------------------------------------------------------------------------
 # 16. test_kg_retriever_format_context
 # ---------------------------------------------------------------------------
+
 
 def test_kg_retriever_format_context():
     kg = make_simple_kg()

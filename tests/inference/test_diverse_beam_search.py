@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from typing import List
 
 import pytest
 import torch
@@ -136,8 +135,7 @@ def test_initialize_groups_beam_count():
 
 def test_search_returns_n_groups_sequences():
     cfg = DiverseBeamConfig(
-        beam_width=BEAM, n_groups=N_GROUPS, max_new_tokens=3,
-        diversity_penalty=0.5
+        beam_width=BEAM, n_groups=N_GROUPS, max_new_tokens=3, diversity_penalty=0.5
     )
     dbs = DiverseBeamSearch(make_mock_model(), cfg)
     prompt = torch.tensor([1, 2, 3], dtype=torch.long)
@@ -241,8 +239,11 @@ def test_diversity_penalty_increases_diversity():
 
     # With strong diversity penalty.
     cfg_diverse = DiverseBeamConfig(
-        beam_width=BEAM, n_groups=N_GROUPS, max_new_tokens=10,
-        diversity_penalty=5.0, temperature=1.0,
+        beam_width=BEAM,
+        n_groups=N_GROUPS,
+        max_new_tokens=10,
+        diversity_penalty=5.0,
+        temperature=1.0,
     )
     dbs_diverse = DiverseBeamSearch(make_mock_model(seed=1), cfg_diverse)
     seqs_diverse = dbs_diverse.search(prompt)
@@ -250,8 +251,11 @@ def test_diversity_penalty_increases_diversity():
 
     # With zero diversity penalty.
     cfg_nodiv = DiverseBeamConfig(
-        beam_width=BEAM, n_groups=N_GROUPS, max_new_tokens=10,
-        diversity_penalty=0.0, temperature=1.0,
+        beam_width=BEAM,
+        n_groups=N_GROUPS,
+        max_new_tokens=10,
+        diversity_penalty=0.0,
+        temperature=1.0,
     )
     dbs_nodiv = DiverseBeamSearch(make_mock_model(seed=1), cfg_nodiv)
     seqs_nodiv = dbs_nodiv.search(prompt)

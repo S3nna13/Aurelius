@@ -14,8 +14,8 @@ primitives — no external alignment libraries required.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -68,7 +68,7 @@ class STaRFilter:
 
     def __init__(
         self,
-        answer_extractor: Optional[Callable[[STaRSample], bool]] = None,
+        answer_extractor: Callable[[STaRSample], bool] | None = None,
     ) -> None:
         self.answer_extractor = answer_extractor
 
@@ -82,7 +82,7 @@ class STaRFilter:
             return self.answer_extractor(sample)
         return sample.is_correct
 
-    def filter(self, samples: List[STaRSample]) -> List[STaRSample]:
+    def filter(self, samples: list[STaRSample]) -> list[STaRSample]:
         """Return only the samples deemed correct.
 
         Args:
@@ -94,7 +94,7 @@ class STaRFilter:
         """
         return [s for s in samples if self._is_correct(s)]
 
-    def compute_accuracy(self, samples: List[STaRSample]) -> float:
+    def compute_accuracy(self, samples: list[STaRSample]) -> float:
         """Compute the fraction of correct samples.
 
         Args:
@@ -166,12 +166,12 @@ class STaRLoss(nn.Module):
 
         # Standard causal LM: predict token t from logit at position t-1.
         # Shift: logits[:, :-1, :] predicts token_ids[:, 1:]
-        shift_logits = logits[:, :-1, :].contiguous()   # (B, T-1, V)
-        shift_labels = labels[:, 1:].contiguous()        # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
+        shift_labels = labels[:, 1:].contiguous()  # (B, T-1)
 
         # Flatten for F.cross_entropy
-        flat_logits = shift_logits.view(-1, V)           # (B*(T-1), V)
-        flat_labels = shift_labels.view(-1)              # (B*(T-1),)
+        flat_logits = shift_logits.view(-1, V)  # (B*(T-1), V)
+        flat_labels = shift_labels.view(-1)  # (B*(T-1),)
 
         # Guard: if every position is masked (all labels == -100), PyTorch's
         # cross_entropy returns NaN.  Return 0.0 in that case instead.
@@ -207,7 +207,7 @@ class STaRTrainer:
         self.optimizer = optimizer
         self.loss_fn = loss_fn
 
-    def train_on_samples(self, batches: List[Dict[str, torch.Tensor]]) -> float:
+    def train_on_samples(self, batches: list[dict[str, torch.Tensor]]) -> float:
         """Fine-tune the model on a list of pre-computed batches.
 
         Each element of *batches* must be a ``dict`` with the following keys:
@@ -250,7 +250,7 @@ class STaRTrainer:
 
         return total_loss / len(batches)
 
-    def rationalize_step(self, correct_frac: float, total: int) -> Dict[str, object]:
+    def rationalize_step(self, correct_frac: float, total: int) -> dict[str, object]:
         """Compute rationalization statistics for one STaR iteration.
 
         In a full STaR loop the caller would have already generated samples,
@@ -272,7 +272,7 @@ class STaRTrainer:
         n_correct = int(round(correct_frac * total))
         n_rationalized = total - n_correct
 
-        stats: Dict[str, object] = {
+        stats: dict[str, object] = {
             "n_total": total,
             "n_correct": n_correct,
             "n_rationalized": n_rationalized,

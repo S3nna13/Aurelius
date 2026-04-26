@@ -1,10 +1,11 @@
 """Tests for focal_loss.py — focal loss, label-smoothed focal loss, poly loss,
 FocalLossTrainer, and AdaptiveGammaScheduler."""
 
-import pytest
 import torch
 import torch.nn.functional as F
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.focal_loss import (
     AdaptiveGammaScheduler,
     FocalLossTrainer,
@@ -12,13 +13,11 @@ from src.training.focal_loss import (
     label_smoothed_focal_loss,
     poly_loss,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared test config (small model for fast tests)
 # ---------------------------------------------------------------------------
+
 
 def make_config() -> AureliusConfig:
     return AureliusConfig(
@@ -37,6 +36,7 @@ def make_config() -> AureliusConfig:
 # 1. gamma=0 → focal loss == cross-entropy
 # ---------------------------------------------------------------------------
 
+
 def test_focal_loss_gamma_0_equals_ce():
     torch.manual_seed(0)
     B, T, V = 2, 8, 32
@@ -54,6 +54,7 @@ def test_focal_loss_gamma_0_equals_ce():
 # ---------------------------------------------------------------------------
 # 2. gamma>0 reduces weight for easy tokens
 # ---------------------------------------------------------------------------
+
 
 def test_focal_loss_gamma_reduces_easy_weight():
     torch.manual_seed(1)
@@ -76,6 +77,7 @@ def test_focal_loss_gamma_reduces_easy_weight():
 # ---------------------------------------------------------------------------
 # 3. ignore_index positions don't contribute
 # ---------------------------------------------------------------------------
+
 
 def test_focal_loss_ignore_index():
     torch.manual_seed(2)
@@ -107,6 +109,7 @@ def test_focal_loss_ignore_index():
 # 4. 3D input (B, T, V) works correctly
 # ---------------------------------------------------------------------------
 
+
 def test_focal_loss_3d_input():
     torch.manual_seed(3)
     B, T, V = 4, 16, 64
@@ -129,6 +132,7 @@ def test_focal_loss_3d_input():
 # 5. label_smoothed_focal_loss returns scalar for reduction='mean'
 # ---------------------------------------------------------------------------
 
+
 def test_label_smoothed_focal_loss_shape():
     torch.manual_seed(4)
     B, T, V = 3, 10, 48
@@ -145,6 +149,7 @@ def test_label_smoothed_focal_loss_shape():
 # ---------------------------------------------------------------------------
 # 6. FocalLossTrainer.train_step returns all required keys
 # ---------------------------------------------------------------------------
+
 
 def test_focal_trainer_metrics_keys():
     torch.manual_seed(5)
@@ -169,6 +174,7 @@ def test_focal_trainer_metrics_keys():
 # 7. easy_token_ratio is in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_easy_token_ratio_in_range():
     torch.manual_seed(6)
     cfg = make_config()
@@ -190,6 +196,7 @@ def test_easy_token_ratio_in_range():
 # 8. AdaptiveGammaScheduler: at step=500, warmup=1000 → gamma = target/2
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_gamma_warmup():
     target = 2.0
     scheduler = AdaptiveGammaScheduler(target_gamma=target, warmup_steps=1000)
@@ -203,6 +210,7 @@ def test_adaptive_gamma_warmup():
 # ---------------------------------------------------------------------------
 # 9. AdaptiveGammaScheduler: step > warmup_steps clamps at target_gamma
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_gamma_clamps_at_target():
     target = 3.5
@@ -218,6 +226,7 @@ def test_adaptive_gamma_clamps_at_target():
 # ---------------------------------------------------------------------------
 # 10. poly_loss > CE when epsilon > 0 and p_t < 1
 # ---------------------------------------------------------------------------
+
 
 def test_poly_loss_greater_than_ce():
     torch.manual_seed(7)

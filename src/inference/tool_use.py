@@ -5,11 +5,10 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -52,11 +51,13 @@ class ToolCall:
 
     def to_json(self) -> str:
         """Return JSON string representation."""
-        return json.dumps({
-            "name": self.tool_name,
-            "arguments": self.arguments,
-            "call_id": self.call_id,
-        })
+        return json.dumps(
+            {
+                "name": self.tool_name,
+                "arguments": self.arguments,
+                "call_id": self.call_id,
+            }
+        )
 
 
 @dataclass
@@ -75,9 +76,7 @@ class ToolResult:
         else:
             content = self.result
         return (
-            f"<tool_result call_id=\"{self.call_id}\" tool=\"{self.tool_name}\">"
-            f"{content}"
-            f"</tool_result>"
+            f'<tool_result call_id="{self.call_id}" tool="{self.tool_name}">{content}</tool_result>'
         )
 
 
@@ -296,8 +295,8 @@ class ToolUseSession:
 
         with torch.no_grad():
             for _ in range(self.max_new_tokens):
-                output = self.model(current_ids)   # (loss, logits, past_key_values)
-                logits = output[1]                 # (1, S, V)
+                output = self.model(current_ids)  # (loss, logits, past_key_values)
+                logits = output[1]  # (1, S, V)
                 next_token = int(torch.argmax(logits[0, -1, :]).item())
                 generated.append(next_token)
                 current_ids = torch.cat(

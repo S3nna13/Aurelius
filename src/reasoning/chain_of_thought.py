@@ -1,12 +1,13 @@
 """Chain-of-thought: step extractor, consistency checker, format templates."""
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CoTFormat(str, Enum):
+class CoTFormat(StrEnum):
     NUMBERED = "numbered"
     BULLET = "bullet"
     XML_TAGS = "xml_tags"
@@ -31,25 +32,25 @@ class ChainOfThought:
 
         if self.format == CoTFormat.NUMBERED:
             for line in text.splitlines():
-                m = re.match(r'^\s*(\d+)[.)]\s+(.+)', line)
+                m = re.match(r"^\s*(\d+)[.)]\s+(.+)", line)
                 if m:
                     steps.append(CoTStep(index=int(m.group(1)), content=m.group(2).strip()))
 
         elif self.format == CoTFormat.BULLET:
             line_number = 0
             for line in text.splitlines():
-                m = re.match(r'^\s*[-*•]\s+(.+)', line)
+                m = re.match(r"^\s*[-*•]\s+(.+)", line)
                 if m:
                     steps.append(CoTStep(index=line_number, content=m.group(1).strip()))
                     line_number += 1
 
         elif self.format == CoTFormat.XML_TAGS:
-            matches = re.findall(r'<step>(.*?)</step>', text, re.DOTALL)
+            matches = re.findall(r"<step>(.*?)</step>", text, re.DOTALL)
             for i, content in enumerate(matches):
                 steps.append(CoTStep(index=i, content=content.strip()))
 
         elif self.format == CoTFormat.FREEFORM:
-            paragraphs = re.split(r'\n\n+', text.strip())
+            paragraphs = re.split(r"\n\n+", text.strip())
             for i, para in enumerate(paragraphs):
                 para = para.strip()
                 if para:

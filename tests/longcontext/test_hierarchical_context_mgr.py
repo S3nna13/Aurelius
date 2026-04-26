@@ -2,27 +2,24 @@
 
 GLM-5 §6.2 — keep-recent-k + discard-all fallback.
 """
+
 from __future__ import annotations
 
-import pytest
-
 from src.longcontext.hierarchical_context_mgr import HierarchicalContextManager, Turn
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_turns(n: int, tokens_each: int = 100) -> list[Turn]:
-    return [
-        {"role": "user", "content": f"turn {i}", "tokens": tokens_each}
-        for i in range(n)
-    ]
+    return [{"role": "user", "content": f"turn {i}", "tokens": tokens_each} for i in range(n)]
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_below_trigger_no_truncation():
     """total = 79% of max_len → all turns returned unchanged."""

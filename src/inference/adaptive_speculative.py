@@ -3,23 +3,26 @@
 Dynamically adjusts draft length based on EMA-smoothed acceptance rate history,
 targeting a configurable acceptance rate to maximize throughput.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
 
 
 @dataclass
 class AdaptiveSpecConfig:
     """Configuration for adaptive speculative decoding."""
+
     init_draft_len: int = 4
     min_draft_len: int = 1
     max_draft_len: int = 8
-    alpha: float = 0.1               # EMA smoothing for acceptance rate
-    target_acceptance: float = 0.7   # target acceptance rate
-    adjustment_interval: int = 10    # steps between length adjustments
+    alpha: float = 0.1  # EMA smoothing for acceptance rate
+    target_acceptance: float = 0.7  # target acceptance rate
+    adjustment_interval: int = 10  # steps between length adjustments
     temperature: float = 1.0
 
 
@@ -48,7 +51,7 @@ class AcceptanceRateTracker:
 @torch.no_grad()
 def sample_draft_tokens(
     draft_model: nn.Module,
-    input_ids: torch.Tensor,   # (1, T) current context
+    input_ids: torch.Tensor,  # (1, T) current context
     n_tokens: int,
     temperature: float = 1.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -73,7 +76,7 @@ def sample_draft_tokens(
         probs = log_probs.exp()
 
         next_token = torch.multinomial(probs, 1)  # (1,) scalar index
-        token_log_prob = log_probs[next_token]    # (1,)
+        token_log_prob = log_probs[next_token]  # (1,)
 
         draft_ids_list.append(next_token)
         draft_log_probs_list.append(token_log_prob)
@@ -81,7 +84,7 @@ def sample_draft_tokens(
         context = torch.cat([context, next_token.view(1, 1)], dim=1)
 
     # Stack to (n_tokens,) then unsqueeze to (1, n_tokens)
-    draft_ids = torch.stack(draft_ids_list, dim=0).view(1, n_tokens)      # (1, n_tokens)
+    draft_ids = torch.stack(draft_ids_list, dim=0).view(1, n_tokens)  # (1, n_tokens)
     draft_log_probs = torch.stack(draft_log_probs_list, dim=0).view(1, n_tokens)  # (1, n_tokens)
 
     return draft_ids, draft_log_probs
@@ -90,8 +93,8 @@ def sample_draft_tokens(
 @torch.no_grad()
 def compute_target_log_probs(
     target_model: nn.Module,
-    input_ids: torch.Tensor,   # (1, T) context
-    draft_ids: torch.Tensor,   # (1, K) draft tokens
+    input_ids: torch.Tensor,  # (1, T) context
+    draft_ids: torch.Tensor,  # (1, K) draft tokens
 ) -> torch.Tensor:
     """Run target model on context+draft, return log probs for draft positions.
 
@@ -108,8 +111,8 @@ def compute_target_log_probs(
 
     target_log_probs_list: list[torch.Tensor] = []
     for k in range(K):
-        pos_logits = logits[0, T - 1 + k, :]           # (vocab_size,)
-        log_probs = F.log_softmax(pos_logits, dim=-1)   # (vocab_size,)
+        pos_logits = logits[0, T - 1 + k, :]  # (vocab_size,)
+        log_probs = F.log_softmax(pos_logits, dim=-1)  # (vocab_size,)
         token_id = draft_ids[0, k]
         target_log_probs_list.append(log_probs[token_id].unsqueeze(0))  # (1,)
 
@@ -118,9 +121,9 @@ def compute_target_log_probs(
 
 
 def speculative_verify(
-    draft_ids: torch.Tensor,          # (1, K)
-    draft_log_probs: torch.Tensor,    # (1, K)
-    target_log_probs: torch.Tensor,   # (1, K)
+    draft_ids: torch.Tensor,  # (1, K)
+    draft_log_probs: torch.Tensor,  # (1, K)
+    target_log_probs: torch.Tensor,  # (1, K)
 ) -> tuple[torch.Tensor, int]:
     """Token-by-token acceptance sampling.
 
@@ -231,9 +234,7 @@ class AdaptiveSpeculativeDecoder:
             )
 
             # 2. Verify with target model
-            target_log_probs = compute_target_log_probs(
-                self.target_model, context, draft_ids
-            )
+            target_log_probs = compute_target_log_probs(self.target_model, context, draft_ids)
             self._n_target_calls += 1
 
             # 3. Accept verified tokens

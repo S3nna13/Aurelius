@@ -1,15 +1,14 @@
-"""Continual learning with experience replay: DER++, ring buffer replay, and selective memory consolidation."""
+"""Continual learning with experience replay: DER++, ring buffer replay, and selective memory consolidation."""  # noqa: E501
+
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -20,13 +19,13 @@ from torch import Tensor
 class ReplayConfig:
     """Configuration for continual replay training."""
 
-    buffer_size: int = 1000                # max examples in replay buffer
-    replay_fraction: float = 0.25          # fraction of batch from replay
-    alpha: float = 0.1                     # DER++ logit replay weight
-    beta: float = 0.5                      # DER++ CE on replay weight
-    ewc_lambda: float = 0.01              # EWC regularization strength
-    strategy: str = "der++"               # "der++" | "er" | "ewc_only"
-    reservoir_sampling: bool = True        # reservoir sampling for buffer updates
+    buffer_size: int = 1000  # max examples in replay buffer
+    replay_fraction: float = 0.25  # fraction of batch from replay
+    alpha: float = 0.1  # DER++ logit replay weight
+    beta: float = 0.5  # DER++ CE on replay weight
+    ewc_lambda: float = 0.01  # EWC regularization strength
+    strategy: str = "der++"  # "der++" | "er" | "ewc_only"
+    reservoir_sampling: bool = True  # reservoir sampling for buffer updates
 
 
 # ---------------------------------------------------------------------------
@@ -38,9 +37,9 @@ class ReplayConfig:
 class ReplayExample:
     """A single stored example in the replay buffer."""
 
-    input_ids: Tensor          # shape (T,)
-    labels: Tensor             # shape (T,) with -100 for masked tokens
-    logits: Optional[Tensor]   # stored teacher logits (T, V), used by DER++
+    input_ids: Tensor  # shape (T,)
+    labels: Tensor  # shape (T,) with -100 for masked tokens
+    logits: Tensor | None  # stored teacher logits (T, V), used by DER++
     task_id: int
     timestamp: int
 
@@ -56,8 +55,8 @@ class RingBufferReplay:
     def __init__(self, config: ReplayConfig) -> None:
         self.config = config
         self._buffer: list[ReplayExample] = []
-        self._ptr: int = 0        # next write position (ring mode)
-        self._n_seen: int = 0     # total examples seen (reservoir mode)
+        self._ptr: int = 0  # next write position (ring mode)
+        self._n_seen: int = 0  # total examples seen (reservoir mode)
 
     def add(self, example: ReplayExample) -> None:
         """Add a single example to the buffer."""
@@ -289,9 +288,8 @@ class ContinualReplayTrainer:
             replay_ids_list = []
             replay_labels_list = []
             replay_logits_list = []
-            has_stored_logits = (
-                self.config.strategy == "der++"
-                and all(ex.logits is not None for ex in replay_examples)
+            has_stored_logits = self.config.strategy == "der++" and all(
+                ex.logits is not None for ex in replay_examples
             )
 
             for ex in replay_examples:
@@ -362,9 +360,7 @@ class ContinualReplayTrainer:
         B = input_ids.shape[0]
         for i in range(B):
             stored_logit = (
-                store_logits[i].detach().cpu()
-                if self.config.strategy == "der++"
-                else None
+                store_logits[i].detach().cpu() if self.config.strategy == "der++" else None
             )
             ex = ReplayExample(
                 input_ids=input_ids[i].detach().cpu(),

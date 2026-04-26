@@ -1,7 +1,6 @@
 """Tests for stratified sampler."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.sampler import StratifiedSampler
 

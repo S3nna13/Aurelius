@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import dataclasses
+
 import pytest
 
 from src.mcp.mcp_router import (
-    MCPRouter,
     MCP_ROUTER_REGISTRY,
+    MCPRouter,
     RouteMatch,
     RoutePattern,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def echo_handler(payload: dict) -> dict:
     return {"ok": True, "payload": payload}
@@ -32,6 +33,7 @@ def make_router(*routes: tuple[str, str]) -> MCPRouter:
 # ---------------------------------------------------------------------------
 # RoutePattern frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestRoutePatternFrozen:
     def test_is_frozen(self):
@@ -55,6 +57,7 @@ class TestRoutePatternFrozen:
 # RouteMatch frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestRouteMatchFrozen:
     def test_is_frozen(self):
         pat = RoutePattern(path="/foo")
@@ -72,6 +75,7 @@ class TestRouteMatchFrozen:
 # ---------------------------------------------------------------------------
 # add_route / match basics
 # ---------------------------------------------------------------------------
+
 
 class TestAddRouteAndMatch:
     def test_exact_match(self):
@@ -106,6 +110,7 @@ class TestAddRouteAndMatch:
 # Parameterized path matching
 # ---------------------------------------------------------------------------
 
+
 class TestParamExtraction:
     def test_single_param(self):
         router = make_router(("/models/{model_id}", "*"))
@@ -138,26 +143,19 @@ class TestParamExtraction:
 # Exact path takes priority over parameterized
 # ---------------------------------------------------------------------------
 
+
 class TestExactPriority:
     def test_exact_beats_param(self):
         router = MCPRouter()
-        router.add_route(
-            RoutePattern(path="/models/{model_id}"), lambda p: {"src": "param"}
-        )
-        router.add_route(
-            RoutePattern(path="/models/special"), lambda p: {"src": "exact"}
-        )
+        router.add_route(RoutePattern(path="/models/{model_id}"), lambda p: {"src": "param"})
+        router.add_route(RoutePattern(path="/models/special"), lambda p: {"src": "exact"})
         result = router.dispatch("/models/special", "*", {})
         assert result["src"] == "exact"
 
     def test_param_used_for_non_exact(self):
         router = MCPRouter()
-        router.add_route(
-            RoutePattern(path="/models/{model_id}"), lambda p: {"src": "param"}
-        )
-        router.add_route(
-            RoutePattern(path="/models/special"), lambda p: {"src": "exact"}
-        )
+        router.add_route(RoutePattern(path="/models/{model_id}"), lambda p: {"src": "param"})
+        router.add_route(RoutePattern(path="/models/special"), lambda p: {"src": "exact"})
         result = router.dispatch("/models/other", "*", {})
         assert result["src"] == "param"
 
@@ -166,39 +164,33 @@ class TestExactPriority:
 # Method filtering
 # ---------------------------------------------------------------------------
 
+
 class TestMethodFilter:
     def test_method_specific_match(self):
         router = MCPRouter()
-        router.add_route(
-            RoutePattern(path="/resource", method="GET"), echo_handler
-        )
+        router.add_route(RoutePattern(path="/resource", method="GET"), echo_handler)
         assert router.match("/resource", "GET") is not None
 
     def test_method_mismatch_no_match(self):
         router = MCPRouter()
-        router.add_route(
-            RoutePattern(path="/resource", method="GET"), echo_handler
-        )
+        router.add_route(RoutePattern(path="/resource", method="GET"), echo_handler)
         assert router.match("/resource", "POST") is None
 
     def test_wildcard_method_matches_any(self):
         router = MCPRouter()
-        router.add_route(
-            RoutePattern(path="/resource", method="*"), echo_handler
-        )
+        router.add_route(RoutePattern(path="/resource", method="*"), echo_handler)
         assert router.match("/resource", "DELETE") is not None
 
     def test_request_wildcard_matches_method_pattern(self):
         router = MCPRouter()
-        router.add_route(
-            RoutePattern(path="/resource", method="GET"), echo_handler
-        )
+        router.add_route(RoutePattern(path="/resource", method="GET"), echo_handler)
         assert router.match("/resource", "*") is not None
 
 
 # ---------------------------------------------------------------------------
 # dispatch
 # ---------------------------------------------------------------------------
+
 
 class TestDispatch:
     def test_dispatch_calls_handler(self):
@@ -236,6 +228,7 @@ class TestDispatch:
 # list_routes
 # ---------------------------------------------------------------------------
 
+
 class TestListRoutes:
     def test_sorted_output(self):
         router = make_router(("/z", "*"), ("/a", "*"), ("/m", "*"))
@@ -253,6 +246,7 @@ class TestListRoutes:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_contains_default(self):

@@ -30,8 +30,8 @@ only the Python standard library.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional
 
 __all__ = [
     "TruncatedResult",
@@ -71,7 +71,7 @@ class TruncatedResult:
             inserted (only possible for ``token_budget_summarize_oldest``).
     """
 
-    messages: List[dict]
+    messages: list[dict]
     dropped_count: int
     summary_added: bool
 
@@ -96,16 +96,15 @@ class MessageTruncationPolicy:
     def __init__(
         self,
         strategy: str,
-        max_tokens: Optional[int] = None,
-        max_turns: Optional[int] = None,
-        token_counter: Optional[Callable[[str], int]] = None,
-        summarize_fn: Optional[Callable[[List[dict]], str]] = None,
-        priority_fn: Optional[Callable[[dict], float]] = None,
+        max_tokens: int | None = None,
+        max_turns: int | None = None,
+        token_counter: Callable[[str], int] | None = None,
+        summarize_fn: Callable[[list[dict]], str] | None = None,
+        priority_fn: Callable[[dict], float] | None = None,
     ) -> None:
         if strategy not in VALID_STRATEGIES:
             raise ValueError(
-                f"unknown truncation strategy: {strategy!r}. "
-                f"valid: {sorted(VALID_STRATEGIES)}"
+                f"unknown truncation strategy: {strategy!r}. valid: {sorted(VALID_STRATEGIES)}"
             )
         if max_tokens is not None and max_tokens < 0:
             raise ValueError("max_tokens must be >= 0")
@@ -122,7 +121,7 @@ class MessageTruncationPolicy:
     # ------------------------------------------------------------------
     # public API
     # ------------------------------------------------------------------
-    def apply(self, messages: List[dict]) -> TruncatedResult:
+    def apply(self, messages: list[dict]) -> TruncatedResult:
         """Apply the configured strategy. Returns a new list; does not
         mutate ``messages``."""
         if not isinstance(messages, list):
@@ -131,9 +130,7 @@ class MessageTruncationPolicy:
             return TruncatedResult(messages=[], dropped_count=0, summary_added=False)
         for m in messages:
             if not isinstance(m, dict) or "role" not in m or "content" not in m:
-                raise ValueError(
-                    "every message must be a dict with 'role' and 'content' keys"
-                )
+                raise ValueError("every message must be a dict with 'role' and 'content' keys")
 
         if self.strategy == "keep_last_n":
             return self._keep_last_n(messages)
@@ -153,40 +150,32 @@ class MessageTruncationPolicy:
     # ------------------------------------------------------------------
     def _require_max_turns(self) -> int:
         if self.max_turns is None:
-            raise ValueError(
-                f"strategy {self.strategy!r} requires max_turns"
-            )
+            raise ValueError(f"strategy {self.strategy!r} requires max_turns")
         return self.max_turns
 
     def _require_max_tokens(self) -> int:
         if self.max_tokens is None:
-            raise ValueError(
-                f"strategy {self.strategy!r} requires max_tokens"
-            )
+            raise ValueError(f"strategy {self.strategy!r} requires max_tokens")
         return self.max_tokens
 
-    def _count_tokens(self, messages: List[dict]) -> int:
+    def _count_tokens(self, messages: list[dict]) -> int:
         total = 0
         for m in messages:
             total += self.token_counter(m["content"])
         return total
 
-    def _keep_last_n(self, messages: List[dict]) -> TruncatedResult:
+    def _keep_last_n(self, messages: list[dict]) -> TruncatedResult:
         n = self._require_max_turns()
         if n >= len(messages):
-            return TruncatedResult(
-                messages=list(messages), dropped_count=0, summary_added=False
-            )
+            return TruncatedResult(messages=list(messages), dropped_count=0, summary_added=False)
         kept = list(messages[-n:]) if n > 0 else []
         dropped = len(messages) - len(kept)
-        return TruncatedResult(
-            messages=kept, dropped_count=dropped, summary_added=False
-        )
+        return TruncatedResult(messages=kept, dropped_count=dropped, summary_added=False)
 
-    def _keep_system_and_last_n(self, messages: List[dict]) -> TruncatedResult:
+    def _keep_system_and_last_n(self, messages: list[dict]) -> TruncatedResult:
         n = self._require_max_turns()
         # Leading system messages are always preserved.
-        leading_system: List[dict] = []
+        leading_system: list[dict] = []
         i = 0
         while i < len(messages) and messages[i]["role"] == "system":
             leading_system.append(messages[i])
@@ -202,13 +191,9 @@ class MessageTruncationPolicy:
         tail = list(rest[-n:]) if n > 0 else []
         kept = list(leading_system) + tail
         dropped = len(messages) - len(kept)
-        return TruncatedResult(
-            messages=kept, dropped_count=dropped, summary_added=False
-        )
+        return TruncatedResult(messages=kept, dropped_count=dropped, summary_added=False)
 
-    def _token_budget_oldest_first(
-        self, messages: List[dict]
-    ) -> TruncatedResult:
+    def _token_budget_oldest_first(self, messages: list[dict]) -> TruncatedResult:
         budget = self._require_max_tokens()
         work = list(messages)
         dropped = 0
@@ -234,17 +219,11 @@ class MessageTruncationPolicy:
             del work[sys_end]
             dropped += 1
 
-        return TruncatedResult(
-            messages=work, dropped_count=dropped, summary_added=False
-        )
+        return TruncatedResult(messages=work, dropped_count=dropped, summary_added=False)
 
-    def _token_budget_summarize_oldest(
-        self, messages: List[dict]
-    ) -> TruncatedResult:
+    def _token_budget_summarize_oldest(self, messages: list[dict]) -> TruncatedResult:
         if self.summarize_fn is None:
-            raise ValueError(
-                "strategy 'token_budget_summarize_oldest' requires summarize_fn"
-            )
+            raise ValueError("strategy 'token_budget_summarize_oldest' requires summarize_fn")
         budget = self._require_max_tokens()
 
         # Leading system messages survive unchanged.
@@ -265,13 +244,11 @@ class MessageTruncationPolicy:
         # Drop oldest non-system turns one at a time, collecting them
         # for summarization. After each drop, re-check budget including
         # the synthetic summary (so we don't overshoot).
-        to_summarize: List[dict] = []
+        to_summarize: list[dict] = []
         while tail:
             candidate_summary_text = self.summarize_fn(to_summarize) if to_summarize else ""
             synthetic = (
-                [{"role": "system", "content": candidate_summary_text}]
-                if to_summarize
-                else []
+                [{"role": "system", "content": candidate_summary_text}] if to_summarize else []
             )
             current = leading_system + synthetic + tail
             if self._count_tokens(current) <= budget:
@@ -299,11 +276,9 @@ class MessageTruncationPolicy:
             summary_added=True,
         )
 
-    def _priority_score(self, messages: List[dict]) -> TruncatedResult:
+    def _priority_score(self, messages: list[dict]) -> TruncatedResult:
         if self.priority_fn is None:
-            raise ValueError(
-                "strategy 'priority_score' requires priority_fn"
-            )
+            raise ValueError("strategy 'priority_score' requires priority_fn")
         n = self._require_max_turns()
 
         # Always preserve leading system message(s) outside the ranking
@@ -337,6 +312,4 @@ class MessageTruncationPolicy:
         chosen.sort(key=lambda t: t[1])
         kept = leading_system + [t[2] for t in chosen]
         dropped = len(messages) - len(kept)
-        return TruncatedResult(
-            messages=kept, dropped_count=dropped, summary_added=False
-        )
+        return TruncatedResult(messages=kept, dropped_count=dropped, summary_added=False)

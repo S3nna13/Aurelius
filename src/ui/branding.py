@@ -50,12 +50,7 @@ class AureliusBranding:
 DEFAULT_BRANDING = AureliusBranding()
 
 
-MASCOT_ASCII: str = (
-    "  ,___,\n"
-    "  (o,o)\n"
-    "  /)_)\n"
-    '  "" ""'
-)
+MASCOT_ASCII: str = '  ,___,\n  (o,o)\n  /)_)\n  "" ""'
 """A small owl-shaped ASCII mascot for Aurelius.
 
 Original to Aurelius — hand-drawn from generic punctuation. Four lines,

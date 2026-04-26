@@ -7,13 +7,11 @@ and perplexity divergence between a system context and a user message.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 
-from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 
@@ -27,14 +25,14 @@ class InjectionPattern:
         label: Human-readable name for this pattern.
     """
 
-    pattern_ids: List[int]
+    pattern_ids: list[int]
     weight: float
     label: str
 
 
 # Default synthetic patterns that mimic short override commands.
 # These are fixed token sequences used when no custom patterns are supplied.
-_DEFAULT_PATTERNS: List[InjectionPattern] = [
+_DEFAULT_PATTERNS: list[InjectionPattern] = [
     InjectionPattern(
         pattern_ids=[10, 11, 12, 13, 14],
         weight=1.0,
@@ -85,10 +83,10 @@ class PromptInjectionDetector:
     def __init__(
         self,
         model: AureliusTransformer,
-        patterns: Optional[List[InjectionPattern]] = None,
+        patterns: list[InjectionPattern] | None = None,
     ) -> None:
         self.model = model
-        self.patterns: List[InjectionPattern] = (
+        self.patterns: list[InjectionPattern] = (
             patterns if patterns is not None else list(_DEFAULT_PATTERNS)
         )
 
@@ -98,8 +96,8 @@ class PromptInjectionDetector:
 
     @staticmethod
     def ngram_overlap(
-        ids_a: List[int],
-        ids_b: List[int],
+        ids_a: list[int],
+        ids_b: list[int],
         n: int = 3,
     ) -> float:
         """Jaccard similarity of n-gram sets between two token sequences.
@@ -113,7 +111,8 @@ class PromptInjectionDetector:
             Float in [0, 1]. Returns 0.0 when both sequences are too short
             to form any n-gram.
         """
-        def _ngrams(ids: List[int], order: int):
+
+        def _ngrams(ids: list[int], order: int):
             return set(tuple(ids[i : i + order]) for i in range(len(ids) - order + 1))
 
         grams_a = _ngrams(ids_a, n)
@@ -126,7 +125,7 @@ class PromptInjectionDetector:
         return len(intersection) / len(union)
 
     @torch.no_grad()
-    def _compute_perplexity(self, ids: List[int]) -> float:
+    def _compute_perplexity(self, ids: list[int]) -> float:
         """Compute perplexity of a token sequence under the model.
 
         Uses a single forward pass and computes per-token NLL from the
@@ -168,8 +167,8 @@ class PromptInjectionDetector:
 
     def perplexity_ratio(
         self,
-        system_ids: List[int],
-        user_ids: List[int],
+        system_ids: list[int],
+        user_ids: list[int],
     ) -> float:
         """Ratio of model perplexity on user_ids versus system_ids.
 
@@ -187,7 +186,7 @@ class PromptInjectionDetector:
         ppl_user = self._compute_perplexity(user_ids)
         return ppl_user / (ppl_system + 1e-8)
 
-    def pattern_score(self, input_ids: List[int]) -> float:
+    def pattern_score(self, input_ids: list[int]) -> float:
         """Weighted sum of n-gram overlaps between input_ids and each known pattern.
 
         Args:
@@ -209,8 +208,8 @@ class PromptInjectionDetector:
 
     def detect(
         self,
-        system_ids: List[int],
-        user_ids: List[int],
+        system_ids: list[int],
+        user_ids: list[int],
         overlap_threshold: float = 0.1,
         perplexity_ratio_threshold: float = 5.0,
     ) -> dict:
@@ -237,9 +236,7 @@ class PromptInjectionDetector:
         ppl_ratio = self.perplexity_ratio(system_ids, user_ids)
         overlap = self.ngram_overlap(system_ids, user_ids, n=3)
 
-        is_injection = bool(
-            p_score > overlap_threshold or ppl_ratio > perplexity_ratio_threshold
-        )
+        is_injection = bool(p_score > overlap_threshold or ppl_ratio > perplexity_ratio_threshold)
 
         return {
             "is_injection": is_injection,
@@ -250,11 +247,11 @@ class PromptInjectionDetector:
 
     def batch_detect(
         self,
-        system_ids: List[int],
-        list_of_user_ids: List[List[int]],
+        system_ids: list[int],
+        list_of_user_ids: list[list[int]],
         overlap_threshold: float = 0.1,
         perplexity_ratio_threshold: float = 5.0,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """Run detect() for a list of user messages against a fixed system context.
 
         Args:

@@ -6,7 +6,7 @@ Useful for verifying gradient correctness and tracing computation graphs.
 """
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 
 class ScalarValue:
@@ -42,7 +42,7 @@ class ScalarValue:
         return out
 
     def __pow__(self, exp: float):
-        out = ScalarValue(self.data ** exp, (self,), f"**{exp}")
+        out = ScalarValue(self.data**exp, (self,), f"**{exp}")
 
         def _backward():
             self.grad += exp * (self.data ** (exp - 1)) * out.grad
@@ -64,7 +64,7 @@ class ScalarValue:
         out = ScalarValue(t, (self,), "tanh")
 
         def _backward():
-            self.grad += (1 - t ** 2) * out.grad
+            self.grad += (1 - t**2) * out.grad
 
         out._backward = _backward
         return out
@@ -110,10 +110,10 @@ class ScalarValue:
         return self * other
 
     def __truediv__(self, other):
-        return self * other ** -1
+        return self * other**-1
 
     def __rtruediv__(self, other):
-        return other * self ** -1
+        return other * self**-1
 
     def __repr__(self):
         return f"ScalarValue(data={self.data:.4f}, grad={self.grad:.4f})"
@@ -124,6 +124,7 @@ class ScalarNeuron:
 
     def __init__(self, nin: int, nonlin: bool = True):
         import random
+
         self.w = [ScalarValue(random.uniform(-1, 1)) for _ in range(nin)]
         self.b = ScalarValue(0.0)
         self.nonlin = nonlin
@@ -155,8 +156,7 @@ class ScalarMLP:
     def __init__(self, nin: int, nouts: list[int]):
         sz = [nin] + nouts
         self.layers = [
-            ScalarLayer(sz[i], sz[i + 1], nonlin=(i < len(nouts) - 1))
-            for i in range(len(nouts))
+            ScalarLayer(sz[i], sz[i + 1], nonlin=(i < len(nouts) - 1)) for i in range(len(nouts))
         ]
 
     def __call__(self, x: list) -> "ScalarValue | list[ScalarValue]":

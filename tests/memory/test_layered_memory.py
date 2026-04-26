@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -134,7 +134,7 @@ def test_evict_expired_removes_old_entries():
     old_entry = LayeredMemoryEntry(
         content="old",
         layer="L4 Session Archive",
-        timestamp=datetime.now(timezone.utc) - timedelta(days=2),
+        timestamp=datetime.now(UTC) - timedelta(days=2),
     )
     mem.store(old_entry, "L4 Session Archive")
     mem.store("fresh", "L4 Session Archive")
@@ -148,12 +148,12 @@ def test_evict_expired_respects_layer_ttl():
     old_l1 = LayeredMemoryEntry(
         content="old l1",
         layer="L1 Insight Index",
-        timestamp=datetime.now(timezone.utc) - timedelta(days=3),
+        timestamp=datetime.now(UTC) - timedelta(days=3),
     )
     old_l4 = LayeredMemoryEntry(
         content="old l4",
         layer="L4 Session Archive",
-        timestamp=datetime.now(timezone.utc) - timedelta(days=2),
+        timestamp=datetime.now(UTC) - timedelta(days=2),
     )
     mem.store(old_l1, "L1 Insight Index")
     mem.store(old_l4, "L4 Session Archive")
@@ -167,7 +167,7 @@ def test_evict_expired_l0_never_evicted():
     old_l0 = LayeredMemoryEntry(
         content="bootstrap",
         layer="L0 Meta Rules",
-        timestamp=datetime.now(timezone.utc) - timedelta(days=365),
+        timestamp=datetime.now(UTC) - timedelta(days=365),
     )
     mem.store(old_l0, "L0 Meta Rules")
     assert mem.evict_expired() == 0
@@ -194,17 +194,17 @@ def test_max_entries_eviction_uses_importance_recency():
     layer.max_entries = 2
     old_low = LayeredMemoryEntry(
         content="old low",
-        timestamp=datetime.now(timezone.utc) - timedelta(hours=10),
+        timestamp=datetime.now(UTC) - timedelta(hours=10),
         importance_score=0.1,
     )
     new_high = LayeredMemoryEntry(
         content="new high",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         importance_score=0.9,
     )
     mid = LayeredMemoryEntry(
         content="mid",
-        timestamp=datetime.now(timezone.utc) - timedelta(hours=1),
+        timestamp=datetime.now(UTC) - timedelta(hours=1),
         importance_score=0.5,
     )
     mem.store(old_low, "L1 Insight Index")
@@ -223,9 +223,7 @@ def test_max_entries_eviction_uses_importance_recency():
 
 def test_promote_moves_up_layer():
     mem = LayeredMemory()
-    entry = mem.store(
-        "promote me", "L2 Global Facts", access_count=3, importance_score=0.5
-    )
+    entry = mem.store("promote me", "L2 Global Facts", access_count=3, importance_score=0.5)
     assert entry.layer == "L2 Global Facts"
     ok = mem.promote(entry.entry_id)
     assert ok is True

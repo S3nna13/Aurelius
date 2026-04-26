@@ -89,11 +89,7 @@ class CalibrationScorer:
             ece = 0.0
             mce = 0.0
         else:
-            ece = sum(
-                (b.count / n_samples) * b.calibration_error
-                for b in bins
-                if b.count > 0
-            )
+            ece = sum((b.count / n_samples) * b.calibration_error for b in bins if b.count > 0)
             mce = max(
                 (b.calibration_error for b in bins if b.count > 0),
                 default=0.0,

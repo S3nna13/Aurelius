@@ -8,30 +8,32 @@ parallel draft branches and explicit accept/reject verification.
 
 from __future__ import annotations
 
-import torch
-from dataclasses import dataclass, field
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
+import torch
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LookaheadConfig:
     """Configuration for parallel lookahead / Jacobi decoding."""
 
-    lookahead_window: int = 7       # number of parallel draft steps in Jacobi branch
-    guess_set_size: int = 7         # max candidates to keep in guess set
-    n_gram_size: int = 3            # n-gram size for the speculation cache
-    max_new_tokens: int = 256       # maximum tokens to generate
-    verification_steps: int = 1     # verification rounds per step
+    lookahead_window: int = 7  # number of parallel draft steps in Jacobi branch
+    guess_set_size: int = 7  # max candidates to keep in guess set
+    n_gram_size: int = 3  # n-gram size for the speculation cache
+    max_new_tokens: int = 256  # maximum tokens to generate
+    verification_steps: int = 1  # verification rounds per step
 
 
 # ---------------------------------------------------------------------------
 # N-gram cache
 # ---------------------------------------------------------------------------
+
 
 class NGramCache:
     """Maps n-gram context tuples to lists of observed next tokens.
@@ -83,6 +85,7 @@ class NGramCache:
 # Draft generation — Jacobi branch
 # ---------------------------------------------------------------------------
 
+
 def generate_lookahead_branch(
     model: torch.nn.Module,
     input_ids: list[int],
@@ -126,6 +129,7 @@ def generate_lookahead_branch(
 # Draft verification
 # ---------------------------------------------------------------------------
 
+
 def verify_draft(
     model: torch.nn.Module,
     prefix_ids: list[int],
@@ -163,12 +167,12 @@ def verify_draft(
     accepted: list[int] = []
 
     for i, draft_tok in enumerate(draft_ids):
-        pos = prefix_len - 1 + i          # logit position predicting draft_ids[i]
+        pos = prefix_len - 1 + i  # logit position predicting draft_ids[i]
         predicted = int(logits[0, pos, :].argmax())
         if predicted == draft_tok:
             accepted.append(draft_tok)
         else:
-            break                          # stop at first mismatch
+            break  # stop at first mismatch
 
     return accepted, len(accepted)
 
@@ -176,6 +180,7 @@ def verify_draft(
 # ---------------------------------------------------------------------------
 # Jacobi Decoder
 # ---------------------------------------------------------------------------
+
 
 class JacobiDecoder:
     """Parallel lookahead decoder combining n-gram speculation with Jacobi drafts.
@@ -219,7 +224,7 @@ class JacobiDecoder:
         for _ in range(window):
             if len(current_context) < n - 1:
                 break
-            key = tuple(current_context[-(n - 1):])
+            key = tuple(current_context[-(n - 1) :])
             candidates = self._ngram_cache.lookup(key)
             if not candidates:
                 break
@@ -300,6 +305,7 @@ class JacobiDecoder:
 # ---------------------------------------------------------------------------
 # Speedup estimator
 # ---------------------------------------------------------------------------
+
 
 def estimate_speedup(n_accepted_per_step: float, draft_cost: float = 0.1) -> float:
     """Theoretical speedup from parallel lookahead decoding.

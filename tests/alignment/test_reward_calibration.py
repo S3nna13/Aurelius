@@ -1,21 +1,20 @@
 """Tests for src/alignment/reward_calibration.py — ~45 tests."""
-import math
-import pytest
 
 from src.alignment.reward_calibration import (
+    REWARD_CALIBRATOR_REGISTRY,
     CalibrationMethod,
     RewardCalibrator,
-    REWARD_CALIBRATOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_data(n: int = 100, seed: int = 42) -> tuple[list[float], list[int]]:
     """Simple synthetic scores and binary labels."""
     import random
+
     rng = random.Random(seed)
     scores = [rng.gauss(0, 1) for _ in range(n)]
     # Labels positively correlated with scores
@@ -26,6 +25,7 @@ def _make_data(n: int = 100, seed: int = 42) -> tuple[list[float], list[int]]:
 # ---------------------------------------------------------------------------
 # CalibrationMethod enum
 # ---------------------------------------------------------------------------
+
 
 def test_calibration_method_temperature_value():
     assert CalibrationMethod.TEMPERATURE == "temperature"
@@ -53,6 +53,7 @@ def test_calibration_method_members():
 # ---------------------------------------------------------------------------
 # RewardCalibrator — Temperature
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_calibrate_returns_float():
     cal = RewardCalibrator(CalibrationMethod.TEMPERATURE)
@@ -82,7 +83,6 @@ def test_temperature_fit_no_crash():
 
 def test_temperature_fit_changes_temperature():
     cal = RewardCalibrator(CalibrationMethod.TEMPERATURE)
-    t_before = cal._temperature
     scores, labels = _make_data()
     cal.fit(scores, labels)
     # With realistic data temperature should change from 1.0
@@ -123,6 +123,7 @@ def test_temperature_calibrate_monotone():
 # RewardCalibrator — Platt
 # ---------------------------------------------------------------------------
 
+
 def test_platt_calibrate_returns_float():
     cal = RewardCalibrator(CalibrationMethod.PLATT)
     result = cal.calibrate(0.0)
@@ -156,10 +157,7 @@ def test_platt_fit_updates_params():
     scores, labels = _make_data()
     cal.fit(scores, labels)
     # At least one param should change
-    changed = (
-        abs(cal._platt_a - a_before) > 1e-6
-        or abs(cal._platt_b - b_before) > 1e-6
-    )
+    changed = abs(cal._platt_a - a_before) > 1e-6 or abs(cal._platt_b - b_before) > 1e-6
     assert changed
 
 
@@ -173,6 +171,7 @@ def test_platt_calibrate_monotone_before_fit():
 # ---------------------------------------------------------------------------
 # RewardCalibrator — Isotonic
 # ---------------------------------------------------------------------------
+
 
 def test_isotonic_calibrate_without_fit_returns_default():
     cal = RewardCalibrator(CalibrationMethod.ISOTONIC)
@@ -212,6 +211,7 @@ def test_isotonic_calibrate_after_fit_returns_float():
 # ---------------------------------------------------------------------------
 # ECE
 # ---------------------------------------------------------------------------
+
 
 def test_ece_returns_float():
     cal = RewardCalibrator(CalibrationMethod.TEMPERATURE)
@@ -266,6 +266,7 @@ def test_ece_perfect_calibration_near_zero():
 # ---------------------------------------------------------------------------
 # REWARD_CALIBRATOR_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_registry_has_temperature():
     assert "temperature" in REWARD_CALIBRATOR_REGISTRY

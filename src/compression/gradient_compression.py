@@ -1,14 +1,15 @@
 """Gradient compression: TOP_K, RANDOM_K, THRESHOLD, SIGN_SGD strategies."""
+
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import torch
 
 
-class GradCompressMethod(str, Enum):
+class GradCompressMethod(StrEnum):
     TOP_K = "top_k"
     RANDOM_K = "random_k"
     THRESHOLD = "threshold"
@@ -18,7 +19,7 @@ class GradCompressMethod(str, Enum):
 @dataclass
 class GradCompressionConfig:
     method: GradCompressMethod = GradCompressMethod.TOP_K
-    sparsity: float = 0.99   # fraction of weights to zero out (0.99 → keep 1%)
+    sparsity: float = 0.99  # fraction of weights to zero out (0.99 → keep 1%)
     threshold: float = 0.01  # for THRESHOLD method
 
 
@@ -38,9 +39,7 @@ class GradientCompressor:
     # Public API
     # ------------------------------------------------------------------
 
-    def compress(
-        self, grad: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def compress(self, grad: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Return (values, flat_indices) of non-zeroed gradient elements."""
         flat = grad.reshape(-1)
         method = self.config.method

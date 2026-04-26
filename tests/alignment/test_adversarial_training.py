@@ -79,6 +79,7 @@ def rand_ids(batch: int, seq: int, vocab: int = VOCAB_SIZE) -> torch.Tensor:
 # 1. AdversarialConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_adversarial_config_defaults():
     cfg = AdversarialConfig()
     assert cfg.n_attack_steps == 3
@@ -94,6 +95,7 @@ def test_adversarial_config_defaults():
 # 2. SafetyClassifierHead output shape
 # ---------------------------------------------------------------------------
 
+
 def test_classifier_head_output_shape():
     clf = make_classifier()
     ids = rand_ids(4, 8)
@@ -104,6 +106,7 @@ def test_classifier_head_output_shape():
 # ---------------------------------------------------------------------------
 # 3. SafetyClassifierHead gradients flow
 # ---------------------------------------------------------------------------
+
 
 def test_classifier_head_gradients_flow():
     clf = make_classifier()
@@ -120,6 +123,7 @@ def test_classifier_head_gradients_flow():
 # 4. generator_attack_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_generator_attack_loss_scalar():
     clf = make_classifier()
     ids = rand_ids(3, 5)
@@ -130,6 +134,7 @@ def test_generator_attack_loss_scalar():
 # ---------------------------------------------------------------------------
 # 5. generator_attack_loss lower when target class has high probability
 # ---------------------------------------------------------------------------
+
 
 def test_generator_attack_loss_lower_when_target_high():
     """If the classifier strongly predicts class 0, attack loss should be low."""
@@ -156,6 +161,7 @@ def test_generator_attack_loss_lower_when_target_high():
 # 6. classifier_defense_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_classifier_defense_loss_scalar():
     clf = make_classifier()
     safe = rand_ids(3, 5)
@@ -168,6 +174,7 @@ def test_classifier_defense_loss_scalar():
 # 7. greedy_sample output shape
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_sample_output_shape():
     model = make_model()
     prompt = rand_ids(1, 4)
@@ -178,6 +185,7 @@ def test_greedy_sample_output_shape():
 # ---------------------------------------------------------------------------
 # 8. AdversarialTrainer attack_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_attack_step_keys():
     trainer = make_trainer()
@@ -190,6 +198,7 @@ def test_attack_step_keys():
 # ---------------------------------------------------------------------------
 # 9. AdversarialTrainer attack_step attack_loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_attack_step_loss_finite():
     trainer = make_trainer()
@@ -204,6 +213,7 @@ def test_attack_step_loss_finite():
 # 10. AdversarialTrainer defense_step returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_defense_step_keys():
     trainer = make_trainer()
     safe = rand_ids(2, 5)
@@ -216,6 +226,7 @@ def test_defense_step_keys():
 # ---------------------------------------------------------------------------
 # 11. AdversarialTrainer train_round returns combined metrics
 # ---------------------------------------------------------------------------
+
 
 def test_train_round_combined_metrics():
     trainer = make_trainer()
@@ -231,6 +242,7 @@ def test_train_round_combined_metrics():
 # 12. compute_adversarial_metrics returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_adversarial_metrics_keys():
     clf = make_classifier()
     test_ids = rand_ids(6, 5)
@@ -244,20 +256,17 @@ def test_adversarial_metrics_keys():
 # 13. compute_adversarial_metrics accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_adversarial_metrics_accuracy_range():
     clf = make_classifier()
     test_ids = rand_ids(8, 5)
     labels = torch.randint(0, 2, (8,))
     metrics = compute_adversarial_metrics(clf, test_ids, labels)
-    assert 0.0 <= metrics["accuracy"] <= 1.0, (
-        f"accuracy out of range: {metrics['accuracy']}"
-    )
+    assert 0.0 <= metrics["accuracy"] <= 1.0, f"accuracy out of range: {metrics['accuracy']}"
     assert 0.0 <= metrics["attack_success_rate"] <= 1.0, (
         f"attack_success_rate out of range: {metrics['attack_success_rate']}"
     )
     assert 0.0 <= metrics["robustness_score"] <= 1.0, (
         f"robustness_score out of range: {metrics['robustness_score']}"
     )
-    assert metrics["robustness_score"] == pytest.approx(
-        1.0 - metrics["attack_success_rate"]
-    )
+    assert metrics["robustness_score"] == pytest.approx(1.0 - metrics["attack_success_rate"])

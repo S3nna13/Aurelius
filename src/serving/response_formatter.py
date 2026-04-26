@@ -2,7 +2,6 @@
 
 import re
 import textwrap
-from typing import List, Tuple
 
 _SPECIAL_TOKENS = re.compile(r"<\|(?:system|user|assistant|end)\|>")
 _CODE_FENCE = re.compile(r"```(\w*)\n(.*?)```", re.DOTALL)
@@ -13,7 +12,7 @@ def strip_special_tokens(text: str) -> str:
     return _SPECIAL_TOKENS.sub("", text)
 
 
-def extract_code_blocks(text: str) -> List[Tuple[str, str]]:
+def extract_code_blocks(text: str) -> list[tuple[str, str]]:
     """Return list of (language, code) tuples for every fenced code block."""
     return [(m.group(1), m.group(2)) for m in _CODE_FENCE.finditer(text)]
 

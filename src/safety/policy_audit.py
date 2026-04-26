@@ -6,12 +6,12 @@ import dataclasses
 import hashlib
 import json
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class PolicyDecision(str, Enum):
+class PolicyDecision(StrEnum):
     ALLOW = "allow"
     BLOCK = "block"
     WARN = "warn"
@@ -34,9 +34,9 @@ class AuditEntry:
         decision: PolicyDecision,
         reason: str = "",
         input_text: str = "",
-    ) -> "AuditEntry":
+    ) -> AuditEntry:
         entry_id = uuid.uuid4().hex[:8]
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         input_hash = ""
         if input_text:
             input_hash = hashlib.sha256(input_text.encode()).hexdigest()[:16]

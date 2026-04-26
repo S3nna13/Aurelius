@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -15,7 +14,7 @@ class ObjectiveWeight:
 
 @dataclass
 class MOConfig:
-    objectives: List[ObjectiveWeight]
+    objectives: list[ObjectiveWeight]
     epsilon: float = 0.2
     entropy_coef: float = 0.01
     normalize_rewards: bool = True
@@ -24,7 +23,7 @@ class MOConfig:
 @dataclass
 class MOTrainResult:
     total_loss: float
-    per_objective_losses: Dict[str, float]
+    per_objective_losses: dict[str, float]
     weighted_reward: float
 
 
@@ -35,7 +34,7 @@ class MultiObjectiveRLHFTrainer:
         self.policy = policy
         self.config = config
 
-    def scalarize_rewards(self, reward_dict: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def scalarize_rewards(self, reward_dict: dict[str, torch.Tensor]) -> torch.Tensor:
         total: torch.Tensor | None = None
         for obj in self.config.objectives:
             r = reward_dict[obj.name]
@@ -67,13 +66,13 @@ class MultiObjectiveRLHFTrainer:
 
     def train_step(
         self,
-        reward_dict: Dict[str, torch.Tensor],
+        reward_dict: dict[str, torch.Tensor],
         log_probs: torch.Tensor,
         old_log_probs: torch.Tensor,
         values: torch.Tensor,
     ) -> MOTrainResult:
         if self.config.normalize_rewards:
-            normed: Dict[str, torch.Tensor] = {}
+            normed: dict[str, torch.Tensor] = {}
             for k, v in reward_dict.items():
                 std = v.std()
                 normed[k] = (v - v.mean()) / (std + 1e-8)
@@ -87,7 +86,7 @@ class MultiObjectiveRLHFTrainer:
         entropy_bonus = -(log_probs * torch.exp(log_probs)).mean()
         total_loss = policy_loss - self.config.entropy_coef * entropy_bonus
 
-        per_obj: Dict[str, float] = {}
+        per_obj: dict[str, float] = {}
         for obj in self.config.objectives:
             r = normed[obj.name]
             adv = self.compute_advantages(r, values)
@@ -99,9 +98,9 @@ class MultiObjectiveRLHFTrainer:
             weighted_reward=scalar_rewards.mean().item(),
         )
 
-    def pareto_check(self, results: List[MOTrainResult]) -> List[bool]:
+    def pareto_check(self, results: list[MOTrainResult]) -> list[bool]:
         n = len(results)
-        is_pareto: List[bool] = [True] * n
+        is_pareto: list[bool] = [True] * n
 
         for i in range(n):
             for j in range(n):

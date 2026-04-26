@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 
@@ -45,6 +46,7 @@ class ActivationMapper:
                     has_inf=bool(torch.isinf(t).any()),
                 )
             )
+
         return hook
 
     def remove_hooks(self, handles: list):

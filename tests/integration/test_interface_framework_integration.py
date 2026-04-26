@@ -9,10 +9,8 @@ from src.model import (
     AureliusInterfaceFramework,
     BackgroundJob,
     Checkpoint,
-    MessageEnvelope,
     TaskThread,
     TaskThreadSpec,
-    Workstream,
 )
 
 
@@ -47,7 +45,9 @@ def test_framework_loads_real_contract_bundle_from_repo_artifacts():
     assert framework.schema["title"] == "Aurelius Canonical Interface Contract Schema"
     assert "code" in framework.mode_catalog
     assert "review" in framework.mode_catalog
-    assert "pending_approval" in framework.contract["canonical_nouns"]["task_thread"]["status_values"]
+    assert (
+        "pending_approval" in framework.contract["canonical_nouns"]["task_thread"]["status_values"]
+    )
     assert "cli" in framework.host_catalog
     assert "ide" in framework.host_catalog
     assert "allow" in framework.contract["approval_contract"]["decision_values"]

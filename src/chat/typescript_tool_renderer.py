@@ -12,8 +12,6 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any
-
 
 def ts_type(
     schema: dict,
@@ -59,9 +57,7 @@ def ts_type(
             lines: list[str] = ["{"]
             for k, v in props.items():
                 opt = "" if k in req else "?"
-                lines.append(
-                    f"{inner_indent}{k}{opt}: {ts_type(v, req, indent + 1, k)};"
-                )
+                lines.append(f"{inner_indent}{k}{opt}: {ts_type(v, req, indent + 1, k)};")
             lines.append(f"{indent_str}}}")
             ts = "\n".join(lines)
 

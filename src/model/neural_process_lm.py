@@ -10,16 +10,14 @@ References:
 
 from __future__ import annotations
 
-from typing import Dict, Tuple
-
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ContextEncoder
 # ---------------------------------------------------------------------------
+
 
 class ContextEncoder(nn.Module):
     """Encodes individual (input_emb, output_emb) pairs to fixed-size representations.
@@ -58,6 +56,7 @@ class ContextEncoder(nn.Module):
 # LatentEncoder
 # ---------------------------------------------------------------------------
 
+
 class LatentEncoder(nn.Module):
     """Maps aggregate representation to latent distribution parameters (mu, log_sigma)."""
 
@@ -66,7 +65,7 @@ class LatentEncoder(nn.Module):
         self.mu_net = nn.Linear(d_repr, d_latent)
         self.log_sigma_net = nn.Linear(d_repr, d_latent)
 
-    def forward(self, r: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, r: Tensor) -> tuple[Tensor, Tensor]:
         """Map aggregate representation to latent distribution parameters.
 
         Args:
@@ -96,6 +95,7 @@ class LatentEncoder(nn.Module):
 # ---------------------------------------------------------------------------
 # NPDecoder
 # ---------------------------------------------------------------------------
+
 
 class NPDecoder(nn.Module):
     """Decodes given a query embedding and latent z to produce output embeddings."""
@@ -129,6 +129,7 @@ class NPDecoder(nn.Module):
 # NeuralProcessLM
 # ---------------------------------------------------------------------------
 
+
 class NeuralProcessLM(nn.Module):
     """Full Neural Process Language Model.
 
@@ -146,7 +147,7 @@ class NeuralProcessLM(nn.Module):
 
     def encode_context(
         self, context_inputs: Tensor, context_outputs: Tensor
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Encode context examples into latent distribution parameters.
 
         Args:
@@ -197,7 +198,7 @@ class NeuralProcessLM(nn.Module):
         query_targets: Tensor,
         context_inputs: Tensor,
         context_outputs: Tensor,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Compute Evidence Lower BOund (ELBO) loss for training.
 
         Encodes the full context+query set for the posterior and the context
@@ -235,9 +236,8 @@ class NeuralProcessLM(nn.Module):
         kl_loss = (
             log_sigma_post
             - log_sigma_prior
-            + (
-                torch.exp(2 * log_sigma_prior) + (mu_prior - mu_post) ** 2
-            ) / (2 * torch.exp(2 * log_sigma_post))
+            + (torch.exp(2 * log_sigma_prior) + (mu_prior - mu_post) ** 2)
+            / (2 * torch.exp(2 * log_sigma_post))
             - 0.5
         ).sum()
 

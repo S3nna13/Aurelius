@@ -1,10 +1,11 @@
 """Tests for model_quantizer."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.quantization.model_quantizer import ModelQuantizer, MODEL_QUANTIZER_REGISTRY
+from src.quantization.model_quantizer import MODEL_QUANTIZER_REGISTRY, ModelQuantizer
 
 
 class TestModelQuantizer:

@@ -1,7 +1,7 @@
 """Tests for src/inference/context_compression.py."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.context_compression import (
@@ -22,7 +22,7 @@ from src.inference.context_compression import (
 B = 2
 T = 12
 D = 8
-K = 6       # T * 0.5
+K = 6  # T * 0.5
 POOL = 2
 STRIDE = 2
 
@@ -30,6 +30,7 @@ STRIDE = 2
 # ---------------------------------------------------------------------------
 # 1. CompressionConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = CompressionConfig()
@@ -43,6 +44,7 @@ def test_config_defaults():
 # 2. score_tokens_by_attention — shape
 # ---------------------------------------------------------------------------
 
+
 def test_score_tokens_by_attention_shape():
     hidden = torch.randn(B, T, D)
     query = torch.randn(B, D)
@@ -53,6 +55,7 @@ def test_score_tokens_by_attention_shape():
 # ---------------------------------------------------------------------------
 # 3. score_tokens_by_attention — finite values
 # ---------------------------------------------------------------------------
+
 
 def test_score_tokens_by_attention_finite():
     hidden = torch.randn(B, T, D)
@@ -65,6 +68,7 @@ def test_score_tokens_by_attention_finite():
 # 4. score_tokens_by_norm — shape
 # ---------------------------------------------------------------------------
 
+
 def test_score_tokens_by_norm_shape():
     hidden = torch.randn(B, T, D)
     scores = score_tokens_by_norm(hidden)
@@ -74,6 +78,7 @@ def test_score_tokens_by_norm_shape():
 # ---------------------------------------------------------------------------
 # 5. score_tokens_by_norm — non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_score_tokens_by_norm_non_negative():
     hidden = torch.randn(B, T, D)
@@ -85,6 +90,7 @@ def test_score_tokens_by_norm_non_negative():
 # 6. select_top_tokens — indices shape
 # ---------------------------------------------------------------------------
 
+
 def test_select_top_tokens_indices_shape():
     scores = torch.randn(B, T)
     indices, _ = select_top_tokens(scores, K)
@@ -95,6 +101,7 @@ def test_select_top_tokens_indices_shape():
 # 7. select_top_tokens — mask shape
 # ---------------------------------------------------------------------------
 
+
 def test_select_top_tokens_mask_shape():
     scores = torch.randn(B, T)
     _, mask = select_top_tokens(scores, K)
@@ -104,6 +111,7 @@ def test_select_top_tokens_mask_shape():
 # ---------------------------------------------------------------------------
 # 8. select_top_tokens — exactly k True per row
 # ---------------------------------------------------------------------------
+
 
 def test_select_top_tokens_mask_count():
     scores = torch.randn(B, T)
@@ -116,6 +124,7 @@ def test_select_top_tokens_mask_count():
 # 9. strided_compression — output shape
 # ---------------------------------------------------------------------------
 
+
 def test_strided_compression_shape():
     hidden = torch.randn(B, T, D)
     out = strided_compression(hidden, STRIDE)
@@ -127,6 +136,7 @@ def test_strided_compression_shape():
 # 10. local_pooling_compression — output shape
 # ---------------------------------------------------------------------------
 
+
 def test_local_pooling_compression_shape():
     hidden = torch.randn(B, T, D)
     out = local_pooling_compression(hidden, POOL)
@@ -137,6 +147,7 @@ def test_local_pooling_compression_shape():
 # ---------------------------------------------------------------------------
 # 11. ContextCompressor — compressed hidden shape
 # ---------------------------------------------------------------------------
+
 
 def test_context_compressor_output_hidden_shape():
     cfg = CompressionConfig(target_ratio=0.5, min_tokens=1)
@@ -150,6 +161,7 @@ def test_context_compressor_output_hidden_shape():
 # 12. ContextCompressor — selection mask shape
 # ---------------------------------------------------------------------------
 
+
 def test_context_compressor_mask_shape():
     cfg = CompressionConfig(target_ratio=0.5, min_tokens=1)
     compressor = ContextCompressor(D, cfg)
@@ -162,6 +174,7 @@ def test_context_compressor_mask_shape():
 # 13. compute_compression_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_compute_compression_ratio():
     ratio = compute_compression_ratio(original_len=12, compressed_len=6)
     assert abs(ratio - 0.5) < 1e-6, f"Expected 0.5, got {ratio}"
@@ -171,20 +184,20 @@ def test_compute_compression_ratio():
 # 14. reconstruct_from_mask — output shape
 # ---------------------------------------------------------------------------
 
+
 def test_reconstruct_from_mask_shape():
     cfg = CompressionConfig(target_ratio=0.5, min_tokens=1)
     compressor = ContextCompressor(D, cfg)
     hidden = torch.randn(B, T, D)
     compressed, mask = compressor(hidden)
     reconstructed = reconstruct_from_mask(compressed, mask)
-    assert reconstructed.shape == (B, T, D), (
-        f"Expected ({B},{T},{D}), got {reconstructed.shape}"
-    )
+    assert reconstructed.shape == (B, T, D), f"Expected ({B},{T},{D}), got {reconstructed.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 15. reconstruct_from_mask — fill value at unselected positions
 # ---------------------------------------------------------------------------
+
 
 def test_reconstruct_from_mask_fill_value():
     fill = -999.0

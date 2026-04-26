@@ -3,31 +3,38 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.optim as optim
 
 from src.alignment.dpo_advanced import (
     DPOAdvancedConfig,
+    DPOAdvancedTrainer,
     compute_log_probs,
     dpo_loss,
     ipo_loss,
     slic_loss,
-    DPOAdvancedTrainer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -55,6 +62,7 @@ def _make_ids(batch_size=2, seq_len=16, vocab_size=256, seed=42):
 # Test 1: DPOAdvancedConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = DPOAdvancedConfig()
     assert cfg.beta == 0.1
@@ -67,6 +75,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: dpo_loss returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_scalar_output():
     B = 4
@@ -83,6 +92,7 @@ def test_dpo_loss_scalar_output():
 # ---------------------------------------------------------------------------
 # Test 3: dpo_loss is small when chosen >> rejected
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_chosen_better_gives_small_loss():
     B = 4
@@ -102,6 +112,7 @@ def test_dpo_loss_chosen_better_gives_small_loss():
 # Test 4: dpo_loss with label smoothing
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_label_smoothing():
     B = 4
     policy_chosen = torch.randn(B)
@@ -110,22 +121,22 @@ def test_dpo_loss_label_smoothing():
     ref_rejected = torch.zeros(B)
 
     loss_no_smooth, _ = dpo_loss(
-        policy_chosen, policy_rejected, ref_chosen, ref_rejected,
-        beta=0.1, label_smoothing=0.0
+        policy_chosen, policy_rejected, ref_chosen, ref_rejected, beta=0.1, label_smoothing=0.0
     )
     loss_smooth, _ = dpo_loss(
-        policy_chosen, policy_rejected, ref_chosen, ref_rejected,
-        beta=0.1, label_smoothing=0.1
+        policy_chosen, policy_rejected, ref_chosen, ref_rejected, beta=0.1, label_smoothing=0.1
     )
     # Label smoothing should produce a different (typically higher) loss
-    assert loss_no_smooth.item() != pytest.approx(loss_smooth.item(), abs=1e-4), \
+    assert loss_no_smooth.item() != pytest.approx(loss_smooth.item(), abs=1e-4), (
         "Label smoothing should change the loss"
+    )
     assert torch.isfinite(loss_smooth)
 
 
 # ---------------------------------------------------------------------------
 # Test 5: ipo_loss returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_ipo_loss_scalar_output():
     B = 4
@@ -142,6 +153,7 @@ def test_ipo_loss_scalar_output():
 # ---------------------------------------------------------------------------
 # Test 6: ipo_loss is near zero at optimum (h = 1/(2*beta))
 # ---------------------------------------------------------------------------
+
 
 def test_ipo_loss_at_optimum():
     beta = 0.1
@@ -162,6 +174,7 @@ def test_ipo_loss_at_optimum():
 # Test 7: slic_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_slic_loss_scalar_output():
     B = 4
     policy_chosen = torch.randn(B)
@@ -179,6 +192,7 @@ def test_slic_loss_scalar_output():
 # Test 8: slic_loss is zero when margin exceeds delta
 # ---------------------------------------------------------------------------
 
+
 def test_slic_loss_satisfied_margin():
     delta = 1.0
     B = 4
@@ -189,12 +203,15 @@ def test_slic_loss_satisfied_margin():
     ref_rejected = torch.zeros(B)
 
     loss, _ = slic_loss(policy_chosen, policy_rejected, ref_chosen, ref_rejected, delta=delta)
-    assert abs(loss.item()) < 1e-6, f"SLiC loss should be 0 when margin is satisfied, got {loss.item()}"
+    assert abs(loss.item()) < 1e-6, (
+        f"SLiC loss should be 0 when margin is satisfied, got {loss.item()}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 9: compute_log_probs shape is (B,)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_log_probs_shape(policy_model):
     B, seq_len = 2, 16
@@ -211,6 +228,7 @@ def test_compute_log_probs_shape(policy_model):
 # ---------------------------------------------------------------------------
 # Test 10: DPOAdvancedTrainer with loss_type="dpo" returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_dpo_returns_keys(policy_model, ref_model):
     cfg = DPOAdvancedConfig(beta=0.1, loss_type="dpo")
@@ -232,6 +250,7 @@ def test_trainer_dpo_returns_keys(policy_model, ref_model):
 # Test 11: DPOAdvancedTrainer with loss_type="ipo" returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_ipo_returns_keys(policy_model, ref_model):
     cfg = DPOAdvancedConfig(beta=0.1, loss_type="ipo")
     optimizer = optim.SGD(policy_model.parameters(), lr=1e-4)
@@ -250,6 +269,7 @@ def test_trainer_ipo_returns_keys(policy_model, ref_model):
 # ---------------------------------------------------------------------------
 # Test 12: DPOAdvancedTrainer with reference_free=True (no ref model needed)
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_reference_free(policy_model):
     cfg = DPOAdvancedConfig(beta=0.1, loss_type="dpo", reference_free=True)

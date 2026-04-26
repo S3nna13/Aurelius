@@ -31,9 +31,7 @@ def test_construct_from_registry_and_call_loss():
 
     out = csd.loss(rl_loss, student, teacher)
 
-    assert out.shape == torch.Size([]), (
-        f"Expected scalar output, got shape {out.shape}"
-    )
+    assert out.shape == torch.Size([]), f"Expected scalar output, got shape {out.shape}"
     assert torch.isfinite(out), f"Expected finite output, got {out}"
 
 

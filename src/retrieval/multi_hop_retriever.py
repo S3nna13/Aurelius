@@ -6,15 +6,14 @@ reasoning chains across multiple retrieval hops.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, List, Protocol, Tuple
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 RETRIEVAL_REGISTRY: dict = {}
 
 
 class _RetrieverProtocol(Protocol):
-    def retrieve(self, query: str, k: int) -> list[tuple[str, float]]:
-        ...
+    def retrieve(self, query: str, k: int) -> list[tuple[str, float]]: ...
 
 
 @dataclass
@@ -60,12 +59,12 @@ class MultiHopRetriever:
         self,
         initial_query: str,
         config: MultiHopConfig | None = None,
-    ) -> List[HopResult]:
+    ) -> list[HopResult]:
         """Run multi-hop retrieval and return one HopResult per hop."""
         if config is None:
             config = MultiHopConfig()
 
-        hop_results: List[HopResult] = []
+        hop_results: list[HopResult] = []
         query = initial_query
 
         for hop in range(1, config.max_hops + 1):
@@ -90,7 +89,7 @@ class MultiHopRetriever:
 
         return hop_results
 
-    def flatten(self, hop_results: List[HopResult]) -> List[str]:
+    def flatten(self, hop_results: list[HopResult]) -> list[str]:
         """Return unique doc ids across all hops, ordered by first-hop score."""
         if not hop_results:
             return []

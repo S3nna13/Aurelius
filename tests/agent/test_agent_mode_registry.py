@@ -295,9 +295,7 @@ def test_custom_registry_in_agent_mode_registry():
     custom.register(_sample_mode("custom_mode"))
     AGENT_MODE_REGISTRY["test_custom"] = custom
     assert AGENT_MODE_REGISTRY["test_custom"] is custom
-    assert (
-        AGENT_MODE_REGISTRY["test_custom"].get("custom_mode").mode_id == "custom_mode"
-    )
+    assert AGENT_MODE_REGISTRY["test_custom"].get("custom_mode").mode_id == "custom_mode"
     del AGENT_MODE_REGISTRY["test_custom"]
 
 

@@ -6,13 +6,10 @@ Algorithms Through Structured State Space Duality", arXiv:2405.21060.
 Tiny test config: d_model=64, n_heads=4, d_state=16, head_dim=16
 """
 
-import math
-import pytest
 import torch
 import torch.nn.functional as F
 
-from src.model.mamba2 import Mamba2Block, SSDLayer, Mamba2Config
-
+from src.model.mamba2 import Mamba2Block
 
 # ---------------------------------------------------------------------------
 # Shared test configuration
@@ -44,6 +41,7 @@ def make_block(**kwargs) -> Mamba2Block:
 # Test 1: Output shape matches input (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape():
     """forward(x) output must have shape (B, T, d_model)."""
     block = make_block()
@@ -58,20 +56,20 @@ def test_output_shape():
 # Test 2: Hidden state shape (B, n_heads, head_dim, d_state)
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_state_shape():
     """Returned hidden state must have shape (B, n_heads, head_dim, d_state)."""
     block = make_block()
     x = torch.randn(2, 16, D_MODEL)
     _, h = block(x)
     expected = (2, N_HEADS, HEAD_DIM, D_STATE)
-    assert h.shape == expected, (
-        f"Expected hidden state shape {expected}, got {h.shape}"
-    )
+    assert h.shape == expected, f"Expected hidden state shape {expected}, got {h.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Gradient flow through all trainable parameters
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow():
     """Backward pass must produce finite (non-None, non-NaN/Inf) grads on all params."""
@@ -83,14 +81,13 @@ def test_gradient_flow():
 
     for name, param in block.named_parameters():
         assert param.grad is not None, f"Parameter {name} has no gradient."
-        assert torch.isfinite(param.grad).all(), (
-            f"Parameter {name} has non-finite gradient."
-        )
+        assert torch.isfinite(param.grad).all(), f"Parameter {name} has non-finite gradient."
 
 
 # ---------------------------------------------------------------------------
 # Test 4: Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     """Same seed produces identical outputs on two independent runs."""
@@ -116,6 +113,7 @@ def test_determinism():
 # Test 5: batch=1, seq_len=1
 # ---------------------------------------------------------------------------
 
+
 def test_batch1_seqlen1():
     """Block must handle single-token input (B=1, T=1) without error."""
     block = make_block()
@@ -128,6 +126,7 @@ def test_batch1_seqlen1():
 # ---------------------------------------------------------------------------
 # Test 6: seq_len=1 with explicit hidden_state passed in
 # ---------------------------------------------------------------------------
+
 
 def test_seqlen1_with_explicit_hidden_state():
     """Passing an explicit hidden_state to a single-token forward must not crash."""
@@ -143,6 +142,7 @@ def test_seqlen1_with_explicit_hidden_state():
 # Test 7: No NaN/Inf on zeros input
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_zeros():
     """All-zero input must produce finite outputs and hidden states."""
     block = make_block()
@@ -157,6 +157,7 @@ def test_no_nan_on_zeros():
 # Test 8: No NaN/Inf on large inputs (x100)
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_large_input():
     """Large-magnitude input must not produce NaN/Inf outputs."""
     block = make_block()
@@ -170,6 +171,7 @@ def test_no_nan_on_large_input():
 # ---------------------------------------------------------------------------
 # Test 9: State carries context — output at t=T depends on t=1
 # ---------------------------------------------------------------------------
+
 
 def test_state_propagation():
     """Output at last timestep must differ when the first token differs."""
@@ -197,6 +199,7 @@ def test_state_propagation():
 # Test 10: None hidden_state -> zero-init, no crash
 # ---------------------------------------------------------------------------
 
+
 def test_none_hidden_state_zero_init():
     """hidden_state=None (default) must silently zero-init and not crash."""
     block = make_block()
@@ -209,6 +212,7 @@ def test_none_hidden_state_zero_init():
 # ---------------------------------------------------------------------------
 # Test 11: Different hidden_states produce different outputs
 # ---------------------------------------------------------------------------
+
 
 def test_different_hidden_states_different_outputs():
     """Two different initial hidden states must yield different outputs."""
@@ -233,6 +237,7 @@ def test_different_hidden_states_different_outputs():
 # Test 12: A_log initialized negative (ensures contraction, stability)
 # ---------------------------------------------------------------------------
 
+
 def test_a_log_initialized_for_stability():
     """SSDLayer A_log must ensure dA < 1 (contractive decay) for unit delta.
 
@@ -256,15 +261,14 @@ def test_a_log_initialized_for_stability():
 # Test 13: dt after softplus is positive
 # ---------------------------------------------------------------------------
 
+
 def test_delta_is_positive():
     """Discretization step delta must be strictly positive after softplus."""
     block = make_block()
     x = torch.randn(2, 8, D_MODEL)
 
     ssm_in = block.in_proj(x)
-    _, _, dt_raw, _ = ssm_in.split(
-        [D_STATE, D_STATE, N_HEADS, block.d_inner], dim=-1
-    )
+    _, _, dt_raw, _ = ssm_in.split([D_STATE, D_STATE, N_HEADS, block.d_inner], dim=-1)
     delta = F.softplus(dt_raw + block.dt_bias)
     assert (delta > 0).all(), "Delta contains non-positive values after softplus."
 
@@ -272,6 +276,7 @@ def test_delta_is_positive():
 # ---------------------------------------------------------------------------
 # Test 14: Parameter count consistent with config
 # ---------------------------------------------------------------------------
+
 
 def test_parameter_count():
     """Parameter count must match the analytically expected value.
@@ -289,13 +294,13 @@ def test_parameter_count():
     d_inner = N_HEADS * HEAD_DIM  # 4 * 16 = 64
 
     expected = (
-        D_MODEL * (D_MODEL * EXPAND)                                  # z_proj
-        + D_MODEL * (D_STATE + D_STATE + N_HEADS + d_inner)           # in_proj
-        + N_HEADS                                                      # dt_bias
-        + N_HEADS                                                      # ssd.A_log
-        + N_HEADS                                                      # ssd.D
-        + (D_MODEL * EXPAND) * d_inner                                # z_gate_proj
-        + d_inner * D_MODEL                                           # out_proj
+        D_MODEL * (D_MODEL * EXPAND)  # z_proj
+        + D_MODEL * (D_STATE + D_STATE + N_HEADS + d_inner)  # in_proj
+        + N_HEADS  # dt_bias
+        + N_HEADS  # ssd.A_log
+        + N_HEADS  # ssd.D
+        + (D_MODEL * EXPAND) * d_inner  # z_gate_proj
+        + d_inner * D_MODEL  # out_proj
     )
 
     actual = sum(p.numel() for p in block.parameters())

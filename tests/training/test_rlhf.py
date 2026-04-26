@@ -1,16 +1,16 @@
 """Tests for online PPO RLHF training loop."""
+
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
 
+from src.alignment.reward_model import RewardModel
+from src.alignment.value_head import PPOConfig, ValueHead
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.alignment.value_head import ValueHead, PPOConfig
-from src.alignment.reward_model import RewardModel
-from src.training.rlhf import RLHFConfig, RLHFBatch, RLHFTrainer
-
+from src.training.rlhf import RLHFBatch, RLHFConfig, RLHFTrainer
 
 # ---------------------------------------------------------------------------
 # Tiny config helpers
@@ -44,6 +44,7 @@ def make_policy():
 
 def make_reward_model():
     from src.alignment.reward_model import RewardModelConfig
+
     backbone = AureliusTransformer(TINY_CFG)
     # backbone returns (loss, logits, kv) tuple; logits dim == vocab_size
     cfg = RewardModelConfig(d_model=TINY_CFG.vocab_size)
@@ -51,15 +52,13 @@ def make_reward_model():
 
 
 def make_prompts(n: int = 2, prompt_len: int = 4) -> list[torch.Tensor]:
-    return [
-        torch.randint(0, TINY_CFG.vocab_size, (prompt_len,))
-        for _ in range(n)
-    ]
+    return [torch.randint(0, TINY_CFG.vocab_size, (prompt_len,)) for _ in range(n)]
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_rlhf_config_defaults():
     cfg = RLHFConfig()
@@ -167,7 +166,6 @@ def test_step_updates_weights():
 
     # At least one parameter should have changed
     changed = any(
-        not torch.equal(before[name], p.detach())
-        for name, p in policy.named_parameters()
+        not torch.equal(before[name], p.detach()) for name, p in policy.named_parameters()
     )
     assert changed, "No weights changed after step() — optimizer may not be working"

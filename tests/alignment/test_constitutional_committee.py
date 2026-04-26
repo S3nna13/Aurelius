@@ -1,4 +1,5 @@
 """Tests for src/alignment/constitutional_committee.py."""
+
 from __future__ import annotations
 
 import pytest
@@ -12,10 +13,10 @@ from src.alignment.constitutional_committee import (
     score_with_committee,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test 1: CommitteeConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_committee_config_defaults():
     cfg = CommitteeConfig()
@@ -29,6 +30,7 @@ def test_committee_config_defaults():
 # Test 2: create_default_committee returns 4-member committee
 # ---------------------------------------------------------------------------
 
+
 def test_create_default_committee_four_members():
     committee = create_default_committee()
     assert isinstance(committee, ConstitutionalCommittee)
@@ -40,6 +42,7 @@ def test_create_default_committee_four_members():
 # ---------------------------------------------------------------------------
 # Test 3: evaluate returns one CommitteeVote per member
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_returns_vote_per_member():
     committee = create_default_committee()
@@ -53,6 +56,7 @@ def test_evaluate_returns_vote_per_member():
 # ---------------------------------------------------------------------------
 # Test 4: All scores are in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_all_scores_in_unit_interval():
     committee = create_default_committee()
@@ -74,6 +78,7 @@ def test_all_scores_in_unit_interval():
 # ---------------------------------------------------------------------------
 # Test 5: aggregate_votes weighted_mean returns (weighted) mean
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_weighted_mean():
     members = [
@@ -109,6 +114,7 @@ def test_aggregate_weighted_mean_with_weights():
 # Test 6: aggregate_votes 'min' returns minimum score
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_min():
     members = [
         CommitteeMember(name="x", principle="p", weight=1.0),
@@ -130,10 +136,9 @@ def test_aggregate_min():
 # Test 7: aggregate_votes majority_vote returns True if majority needs revision
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_majority_vote_needs_revision():
-    members = [
-        CommitteeMember(name=f"m{i}", principle="p", weight=1.0) for i in range(4)
-    ]
+    members = [CommitteeMember(name=f"m{i}", principle="p", weight=1.0) for i in range(4)]
     committee = ConstitutionalCommittee(members=members, aggregation="majority_vote")
 
     # 3 out of 4 flag revision → majority → needs_revision = True
@@ -160,6 +165,7 @@ def test_aggregate_majority_vote_needs_revision():
 # ---------------------------------------------------------------------------
 # Test 8: get_revision_instructions includes critiques from flagged members
 # ---------------------------------------------------------------------------
+
 
 def test_get_revision_instructions_contains_flagged_critiques():
     members = [
@@ -201,6 +207,7 @@ def test_get_revision_instructions_empty_when_no_flags():
 # Test 9: filter_dataset keeps only high-scoring examples
 # ---------------------------------------------------------------------------
 
+
 def test_filter_dataset_keeps_high_scores():
     committee = create_default_committee()
     examples = [
@@ -223,9 +230,7 @@ def test_filter_dataset_keeps_high_scores():
 
 def test_filter_dataset_adds_committee_score_key():
     committee = create_default_committee()
-    examples = [
-        {"response": "Here is a helpful and safe explanation. You can try this approach."}
-    ]
+    examples = [{"response": "Here is a helpful and safe explanation. You can try this approach."}]
     result = committee.filter_dataset(examples, threshold=0.0)
     assert len(result) == 1
     assert "committee_score" in result[0]
@@ -235,6 +240,7 @@ def test_filter_dataset_adds_committee_score_key():
 # ---------------------------------------------------------------------------
 # Test 10: score_with_committee returns dict with all required keys
 # ---------------------------------------------------------------------------
+
 
 def test_score_with_committee_keys():
     committee = create_default_committee()
@@ -255,6 +261,7 @@ def test_score_with_committee_keys():
 # Test 11: Safe response scores higher than harmful response
 # ---------------------------------------------------------------------------
 
+
 def test_safe_response_scores_higher_than_harmful():
     committee = create_default_committee()
 
@@ -262,9 +269,7 @@ def test_safe_response_scores_higher_than_harmful():
         "I can help you with that. Here is a clear, safe explanation with practical steps "
         "to guide you through the process. Please consider the following advice carefully."
     )
-    harmful = (
-        "You should kill them, use a weapon, and commit fraud. Hack their system and steal everything."
-    )
+    harmful = "You should kill them, use a weapon, and commit fraud. Hack their system and steal everything."  # noqa: E501
 
     safe_result = score_with_committee(committee, safe)
     harmful_result = score_with_committee(committee, harmful)
@@ -278,6 +283,7 @@ def test_safe_response_scores_higher_than_harmful():
 # ---------------------------------------------------------------------------
 # Test 12: Empty committee raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_empty_committee_raises_value_error():
     with pytest.raises(ValueError, match="at least one CommitteeMember"):

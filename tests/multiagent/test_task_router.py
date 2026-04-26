@@ -1,18 +1,17 @@
 """Tests for src/multiagent/task_router.py."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.multiagent.task_router import (
+    TASK_ROUTER,
     RoutingStrategy,
     TaskRouter,
-    TASK_ROUTER,
 )
-
 
 # ---------------------------------------------------------------------------
 # RoutingStrategy enum
 # ---------------------------------------------------------------------------
+
 
 def test_routing_strategy_values():
     assert RoutingStrategy.CAPABILITY == "capability"
@@ -32,6 +31,7 @@ def test_routing_strategy_is_str():
 # ---------------------------------------------------------------------------
 # register() / registered_agents()
 # ---------------------------------------------------------------------------
+
 
 def test_register_and_list():
     router = TaskRouter()
@@ -65,6 +65,7 @@ def test_registered_agents_empty():
 # ---------------------------------------------------------------------------
 # route() — CAPABILITY
 # ---------------------------------------------------------------------------
+
 
 def test_route_capability_returns_matching_agent():
     router = TaskRouter(RoutingStrategy.CAPABILITY)
@@ -105,6 +106,7 @@ def test_route_capability_returns_none_empty_router():
 # route() — ROUND_ROBIN
 # ---------------------------------------------------------------------------
 
+
 def test_route_round_robin_cycles():
     router = TaskRouter(RoutingStrategy.ROUND_ROBIN)
     router.register("a1", [])
@@ -141,6 +143,7 @@ def test_route_round_robin_increments_index():
 # route() — LEAST_LOADED
 # ---------------------------------------------------------------------------
 
+
 def test_route_least_loaded():
     router = TaskRouter(RoutingStrategy.LEAST_LOADED)
     router.register("a1", [], load=10)
@@ -164,6 +167,7 @@ def test_route_least_loaded_empty():
 # ---------------------------------------------------------------------------
 # update_load()
 # ---------------------------------------------------------------------------
+
 
 def test_update_load_increment():
     router = TaskRouter()
@@ -198,6 +202,7 @@ def test_update_load_unknown_agent_noop():
 # route() — PRIORITY
 # ---------------------------------------------------------------------------
 
+
 def test_route_priority_picks_highest():
     router = TaskRouter(RoutingStrategy.PRIORITY)
     router.register("a1", ["nlp"], priority=1)
@@ -223,6 +228,7 @@ def test_route_priority_no_match_returns_none():
 # ---------------------------------------------------------------------------
 # agents_by_capability()
 # ---------------------------------------------------------------------------
+
 
 def test_agents_by_capability_returns_matching():
     router = TaskRouter()
@@ -251,6 +257,7 @@ def test_agents_by_capability_all():
 # ---------------------------------------------------------------------------
 # TASK_ROUTER singleton
 # ---------------------------------------------------------------------------
+
 
 def test_task_router_singleton_exists():
     assert TASK_ROUTER is not None

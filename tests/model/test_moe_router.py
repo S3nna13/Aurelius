@@ -7,7 +7,6 @@ import torch
 
 from src.model.moe_router import MoERouter, RouterConfig, RouterOutput, RouterType
 
-
 N_EXPERTS = 4
 D_MODEL = 16
 BATCH = 2

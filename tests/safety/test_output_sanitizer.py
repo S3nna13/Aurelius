@@ -2,41 +2,39 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.safety.output_sanitizer import (
     OutputSanitizer,
     SanitizationResult,
     SanitizationRule,
 )
 
-
 # ---------------------------------------------------------------------------
 # SanitizationRule dataclass fields
 # ---------------------------------------------------------------------------
 
+
 def test_sanitization_rule_has_name():
-    rule = SanitizationRule(name="test", pattern=r'\d+', replacement="[NUM]")
+    rule = SanitizationRule(name="test", pattern=r"\d+", replacement="[NUM]")
     assert rule.name == "test"
 
 
 def test_sanitization_rule_has_pattern():
-    rule = SanitizationRule(name="test", pattern=r'\d+', replacement="[NUM]")
-    assert rule.pattern == r'\d+'
+    rule = SanitizationRule(name="test", pattern=r"\d+", replacement="[NUM]")
+    assert rule.pattern == r"\d+"
 
 
 def test_sanitization_rule_has_replacement():
-    rule = SanitizationRule(name="test", pattern=r'\d+', replacement="[NUM]")
+    rule = SanitizationRule(name="test", pattern=r"\d+", replacement="[NUM]")
     assert rule.replacement == "[NUM]"
 
 
 def test_sanitization_rule_enabled_defaults_true():
-    rule = SanitizationRule(name="test", pattern=r'\d+', replacement="[NUM]")
+    rule = SanitizationRule(name="test", pattern=r"\d+", replacement="[NUM]")
     assert rule.enabled is True
 
 
 def test_sanitization_rule_enabled_can_be_false():
-    rule = SanitizationRule(name="test", pattern=r'\d+', replacement="[NUM]", enabled=False)
+    rule = SanitizationRule(name="test", pattern=r"\d+", replacement="[NUM]", enabled=False)
     assert rule.enabled is False
 
 
@@ -44,29 +42,39 @@ def test_sanitization_rule_enabled_can_be_false():
 # SanitizationResult dataclass fields
 # ---------------------------------------------------------------------------
 
+
 def test_sanitization_result_has_original_length():
-    r = SanitizationResult(original_length=10, sanitized_text="hi", rules_applied=[], redaction_count=0)
+    r = SanitizationResult(
+        original_length=10, sanitized_text="hi", rules_applied=[], redaction_count=0
+    )
     assert r.original_length == 10
 
 
 def test_sanitization_result_has_sanitized_text():
-    r = SanitizationResult(original_length=10, sanitized_text="hi", rules_applied=[], redaction_count=0)
+    r = SanitizationResult(
+        original_length=10, sanitized_text="hi", rules_applied=[], redaction_count=0
+    )
     assert r.sanitized_text == "hi"
 
 
 def test_sanitization_result_has_rules_applied():
-    r = SanitizationResult(original_length=10, sanitized_text="hi", rules_applied=["email"], redaction_count=1)
+    r = SanitizationResult(
+        original_length=10, sanitized_text="hi", rules_applied=["email"], redaction_count=1
+    )
     assert r.rules_applied == ["email"]
 
 
 def test_sanitization_result_has_redaction_count():
-    r = SanitizationResult(original_length=10, sanitized_text="hi", rules_applied=[], redaction_count=5)
+    r = SanitizationResult(
+        original_length=10, sanitized_text="hi", rules_applied=[], redaction_count=5
+    )
     assert r.redaction_count == 5
 
 
 # ---------------------------------------------------------------------------
 # DEFAULT_RULES
 # ---------------------------------------------------------------------------
+
 
 def test_default_rules_has_at_least_5():
     assert len(OutputSanitizer.DEFAULT_RULES) >= 5
@@ -101,6 +109,7 @@ def test_default_rules_includes_ipv4():
 # sanitize() — email
 # ---------------------------------------------------------------------------
 
+
 def test_sanitize_email_replaced():
     s = OutputSanitizer()
     result = s.sanitize("Contact us at user@example.com for help.")
@@ -124,6 +133,7 @@ def test_sanitize_email_redaction_count():
 # sanitize() — phone
 # ---------------------------------------------------------------------------
 
+
 def test_sanitize_phone_replaced():
     s = OutputSanitizer()
     result = s.sanitize("Call me at 555-867-5309.")
@@ -145,6 +155,7 @@ def test_sanitize_phone_dotted_format():
 # ---------------------------------------------------------------------------
 # sanitize() — SSN
 # ---------------------------------------------------------------------------
+
 
 def test_sanitize_ssn_replaced():
     s = OutputSanitizer()
@@ -168,6 +179,7 @@ def test_sanitize_ssn_original_not_present():
 # sanitize() — API key
 # ---------------------------------------------------------------------------
 
+
 def test_sanitize_api_key_replaced():
     s = OutputSanitizer()
     result = s.sanitize("Use token sk-abcdefghijklmnopqrstuvwxyz12345 to auth.")
@@ -184,6 +196,7 @@ def test_sanitize_api_key_rule_applied():
 # sanitize() — IPv4
 # ---------------------------------------------------------------------------
 
+
 def test_sanitize_ipv4_replaced():
     s = OutputSanitizer()
     result = s.sanitize("Server is at 192.168.1.100")
@@ -199,6 +212,7 @@ def test_sanitize_ipv4_rule_applied():
 # ---------------------------------------------------------------------------
 # sanitize() — clean text
 # ---------------------------------------------------------------------------
+
 
 def test_sanitize_clean_text_redaction_count_zero():
     s = OutputSanitizer()
@@ -230,16 +244,17 @@ def test_sanitize_original_length_recorded():
 # add_rule()
 # ---------------------------------------------------------------------------
 
+
 def test_add_rule_new_rule_applied():
     s = OutputSanitizer()
-    s.add_rule(SanitizationRule(name="zip", pattern=r'\b\d{5}\b', replacement="[ZIP]"))
+    s.add_rule(SanitizationRule(name="zip", pattern=r"\b\d{5}\b", replacement="[ZIP]"))
     result = s.sanitize("Zip code is 90210.")
     assert "[ZIP]" in result.sanitized_text
 
 
 def test_add_rule_appears_in_rules_applied():
     s = OutputSanitizer()
-    s.add_rule(SanitizationRule(name="zip", pattern=r'\b\d{5}\b', replacement="[ZIP]"))
+    s.add_rule(SanitizationRule(name="zip", pattern=r"\b\d{5}\b", replacement="[ZIP]"))
     result = s.sanitize("Zip: 90210")
     assert "zip" in result.rules_applied
 
@@ -247,7 +262,7 @@ def test_add_rule_appears_in_rules_applied():
 def test_add_rule_does_not_affect_other_sanitizers():
     s1 = OutputSanitizer()
     s2 = OutputSanitizer()
-    s1.add_rule(SanitizationRule(name="zip", pattern=r'\b\d{5}\b', replacement="[ZIP]"))
+    s1.add_rule(SanitizationRule(name="zip", pattern=r"\b\d{5}\b", replacement="[ZIP]"))
     result = s2.sanitize("Zip: 90210")
     assert "zip" not in result.rules_applied
 
@@ -255,6 +270,7 @@ def test_add_rule_does_not_affect_other_sanitizers():
 # ---------------------------------------------------------------------------
 # disable_rule()
 # ---------------------------------------------------------------------------
+
 
 def test_disable_rule_returns_true_when_found():
     s = OutputSanitizer()

@@ -1,4 +1,5 @@
 """Tests for src/federation/secure_aggregation.py"""
+
 import pytest
 import torch
 
@@ -8,10 +9,10 @@ from src.federation.secure_aggregation import (
     SecureAggregator,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def agg() -> SecureAggregator:
     return SecureAggregator()
@@ -25,6 +26,7 @@ def cfg(scheme: MaskingScheme, num_parties: int = 2, seed: int = 42) -> SecureAg
 # MaskingScheme enum
 # ---------------------------------------------------------------------------
 
+
 def test_masking_scheme_values():
     assert MaskingScheme.ADDITIVE == "ADDITIVE"
     assert MaskingScheme.PAIRWISE_MASK == "PAIRWISE_MASK"
@@ -34,6 +36,7 @@ def test_masking_scheme_values():
 # ---------------------------------------------------------------------------
 # generate_mask – shape
 # ---------------------------------------------------------------------------
+
 
 def test_generate_mask_additive_shape():
     sa = agg()
@@ -57,6 +60,7 @@ def test_generate_mask_shamir_stub_zeros():
 # generate_mask – PAIRWISE symmetry
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_masks_cancel_in_pair():
     sa = agg()
     config = cfg(MaskingScheme.PAIRWISE_MASK, num_parties=2)
@@ -69,6 +73,7 @@ def test_pairwise_masks_cancel_in_pair():
 # ---------------------------------------------------------------------------
 # mask_update
 # ---------------------------------------------------------------------------
+
 
 def test_mask_update_additive_changes_tensor():
     sa = agg()
@@ -87,6 +92,7 @@ def test_mask_update_shamir_stub_unchanged():
 # ---------------------------------------------------------------------------
 # aggregate_masked
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_masked_sums():
     sa = agg()

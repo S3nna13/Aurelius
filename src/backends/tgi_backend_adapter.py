@@ -38,9 +38,7 @@ def _validate_tgi_url(url: str) -> None:
     except Exception as exc:
         raise ValueError(f"malformed TGI URL: {url!r}") from exc
     if parsed.scheme not in _ALLOWED_SCHEMES:
-        raise ValueError(
-            f"TGI URL scheme {parsed.scheme!r} not allowed; must be http or https"
-        )
+        raise ValueError(f"TGI URL scheme {parsed.scheme!r} not allowed; must be http or https")
     if not parsed.hostname:
         raise ValueError(f"TGI URL missing host: {url!r}")
 
@@ -115,17 +113,11 @@ class TGIBackendAdapter:
             with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310 - scheme validated by _validate_tgi_url
                 data = json.loads(resp.read())
         except urllib.error.HTTPError as exc:
-            raise TGIBackendAdapterError(
-                f"TGI HTTP error {exc.code}: {exc.reason}"
-            ) from exc
+            raise TGIBackendAdapterError(f"TGI HTTP error {exc.code}: {exc.reason}") from exc
         except json.JSONDecodeError as exc:
-            raise TGIBackendAdapterError(
-                f"TGI returned invalid JSON: {exc}"
-            ) from exc
+            raise TGIBackendAdapterError(f"TGI returned invalid JSON: {exc}") from exc
         except Exception as exc:
-            raise TGIBackendAdapterError(
-                f"TGI request failed: {exc}"
-            ) from exc
+            raise TGIBackendAdapterError(f"TGI request failed: {exc}") from exc
 
         if not isinstance(data, dict):
             raise TGIBackendAdapterError(
@@ -133,9 +125,7 @@ class TGIBackendAdapter:
             )
         generated_text = data.get("generated_text")
         if generated_text is None:
-            raise TGIBackendAdapterError(
-                "TGI response missing 'generated_text' field"
-            )
+            raise TGIBackendAdapterError("TGI response missing 'generated_text' field")
         return str(generated_text)
 
     def stream_generate(
@@ -147,9 +137,7 @@ class TGIBackendAdapter:
         """Stream tokens from TGI via Server-Sent Events."""
         url = f"{self._base_url}/generate_stream"
         _validate_tgi_url(url)
-        payload = self._build_payload(
-            prompt, max_tokens, temperature, stream=True
-        )
+        payload = self._build_payload(prompt, max_tokens, temperature, stream=True)
         body = json.dumps(payload).encode()
         req = urllib.request.Request(  # noqa: S310 - scheme validated above
             url,
@@ -163,7 +151,7 @@ class TGIBackendAdapter:
                     line = raw_line.decode("utf-8").strip()
                     if not line or not line.startswith("data:"):
                         continue
-                    json_str = line[len("data:"):].strip()
+                    json_str = line[len("data:") :].strip()
                     if json_str == "[DONE]":
                         break
                     try:
@@ -181,13 +169,9 @@ class TGIBackendAdapter:
                     if generated_text is not None:
                         break
         except urllib.error.HTTPError as exc:
-            raise TGIBackendAdapterError(
-                f"TGI HTTP error {exc.code}: {exc.reason}"
-            ) from exc
+            raise TGIBackendAdapterError(f"TGI HTTP error {exc.code}: {exc.reason}") from exc
         except Exception as exc:
-            raise TGIBackendAdapterError(
-                f"TGI stream request failed: {exc}"
-            ) from exc
+            raise TGIBackendAdapterError(f"TGI stream request failed: {exc}") from exc
 
 
 TGI_BACKEND_REGISTRY: dict[str, type[TGIBackendAdapter]] = {

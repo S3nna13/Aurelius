@@ -75,9 +75,7 @@ class KeyboardNav:
             raise KeyBindingError("register() requires a KeyBinding instance")
         registry_key = cls._normalise(binding.key, binding.modifiers)
         if registry_key in cls.BINDINGS:
-            raise KeyBindingError(
-                f"key combo {registry_key!r} is already registered"
-            )
+            raise KeyBindingError(f"key combo {registry_key!r} is already registered")
         cls.BINDINGS[registry_key] = binding
 
     @classmethod

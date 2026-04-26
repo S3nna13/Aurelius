@@ -51,8 +51,8 @@ class MockModel(nn.Module):
 
     def forward(self, ids: torch.Tensor, **kwargs):
         # ids: (B, T)
-        x = self.embed(ids)       # (B, T, D)
-        logits = self.head(x)     # (B, T, V)
+        x = self.embed(ids)  # (B, T, D)
+        logits = self.head(x)  # (B, T, V)
         return None, logits, None
 
 

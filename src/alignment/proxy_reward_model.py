@@ -1,19 +1,19 @@
 """Proxy Reward Models — lightweight learned value estimators for RLHF / alignment."""
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Building blocks
 # ---------------------------------------------------------------------------
+
 
 class _SelfAttention(nn.Module):
     """Single-head self-attention (kept minimal for proxy/lightweight use)."""
@@ -60,6 +60,7 @@ class _EncoderBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # RewardBackbone
 # ---------------------------------------------------------------------------
+
 
 class RewardBackbone(nn.Module):
     """Simple transformer encoder: embedding + n blocks + pooling.
@@ -124,16 +125,17 @@ class RewardBackbone(nn.Module):
         x = self.norm(x)  # [B, T(+1), d_model]
 
         if self.pooling == "last":
-            return x[:, -1, :]       # [B, d_model]
+            return x[:, -1, :]  # [B, d_model]
         elif self.pooling == "mean":
-            return x.mean(dim=1)     # [B, d_model]
+            return x.mean(dim=1)  # [B, d_model]
         else:  # cls
-            return x[:, 0, :]        # [B, d_model]  — CLS position
+            return x[:, 0, :]  # [B, d_model]  — CLS position
 
 
 # ---------------------------------------------------------------------------
 # RewardHead
 # ---------------------------------------------------------------------------
+
 
 class RewardHead(nn.Module):
     """MLP head: d_model -> d_model//2 -> n_outputs.
@@ -166,6 +168,7 @@ class RewardHead(nn.Module):
 # ProxyRewardModel
 # ---------------------------------------------------------------------------
 
+
 class ProxyRewardModel(nn.Module):
     """Combines a RewardBackbone and RewardHead into a full proxy reward model.
 
@@ -186,8 +189,8 @@ class ProxyRewardModel(nn.Module):
         Returns:
             rewards: [B]  (last dim squeezed)
         """
-        pooled = self.backbone(input_ids)       # [B, d_model]
-        return self.head(pooled).squeeze(-1)    # [B]
+        pooled = self.backbone(input_ids)  # [B, d_model]
+        return self.head(pooled).squeeze(-1)  # [B]
 
     @torch.no_grad()
     def score_batch(self, input_ids: Tensor) -> Tensor:
@@ -199,6 +202,7 @@ class ProxyRewardModel(nn.Module):
 # EnsembleRewardModel
 # ---------------------------------------------------------------------------
 
+
 class EnsembleRewardModel(nn.Module):
     """Ensemble of ProxyRewardModels for uncertainty estimation.
 
@@ -206,7 +210,7 @@ class EnsembleRewardModel(nn.Module):
         models: List of ProxyRewardModel instances.
     """
 
-    def __init__(self, models: List[ProxyRewardModel]) -> None:
+    def __init__(self, models: list[ProxyRewardModel]) -> None:
         super().__init__()
         if len(models) == 0:
             raise ValueError("models list must be non-empty")
@@ -220,10 +224,8 @@ class EnsembleRewardModel(nn.Module):
             mean_reward: [B]
             std_reward:  [B]  (>= 0)
         """
-        rewards = torch.stack(
-            [m(input_ids) for m in self.models], dim=0
-        )  # [N, B]
-        mean_reward = rewards.mean(dim=0)   # [B]
+        rewards = torch.stack([m(input_ids) for m in self.models], dim=0)  # [N, B]
+        mean_reward = rewards.mean(dim=0)  # [B]
         std_reward = rewards.std(dim=0, unbiased=False)  # [B]
         # std with a single model degenerates to 0, which is correct
         return mean_reward, std_reward
@@ -243,6 +245,7 @@ class EnsembleRewardModel(nn.Module):
 # ---------------------------------------------------------------------------
 # RewardModelTrainer
 # ---------------------------------------------------------------------------
+
 
 class RewardModelTrainer:
     """Training utilities for a ProxyRewardModel.
@@ -275,8 +278,8 @@ class RewardModelTrainer:
         Returns:
             scalar loss
         """
-        r_chosen = self.model(chosen_ids)     # [B]
-        r_rejected = self.model(rejected_ids) # [B]
+        r_chosen = self.model(chosen_ids)  # [B]
+        r_rejected = self.model(rejected_ids)  # [B]
         # Apply margin: we want r_chosen - r_rejected > margin
         logits = r_chosen - r_rejected - self.margin
         loss = -F.logsigmoid(logits).mean()
@@ -291,7 +294,7 @@ class RewardModelTrainer:
         Returns:
             scalar loss
         """
-        preds = self.model(input_ids)   # [B]
+        preds = self.model(input_ids)  # [B]
         return F.mse_loss(preds, targets)
 
     def train_step(self, chosen_ids: Tensor, rejected_ids: Tensor) -> Tensor:
@@ -328,6 +331,7 @@ class RewardModelTrainer:
 # ---------------------------------------------------------------------------
 # RewardNormalizer
 # ---------------------------------------------------------------------------
+
 
 class RewardNormalizer:
     """Running mean/std normalizer for reward signals.
@@ -381,9 +385,11 @@ class RewardNormalizer:
 # ProxyRewardConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProxyRewardConfig:
     """Configuration dataclass for building a full proxy reward pipeline."""
+
     d_model: int = 32
     vocab_size: int = 64
     n_layers: int = 2

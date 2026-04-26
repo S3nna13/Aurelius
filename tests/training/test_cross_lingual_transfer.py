@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.cross_lingual_transfer import (
     AlignmentLoss,
@@ -67,6 +67,7 @@ def rand_labels(b: int = B, n_classes: int = N_CLASSES) -> torch.Tensor:
 # LanguageIdentifier tests
 # ---------------------------------------------------------------------------
 
+
 def test_language_identifier_forward_shape():
     """LanguageIdentifier forward output has shape [B, n_languages]."""
     model = LanguageIdentifier(D_MODEL, N_LANGUAGES)
@@ -81,8 +82,9 @@ def test_language_identifier_predict_valid_range():
     pooled = torch.randn(B, D_MODEL)
     lang_ids = model.predict(pooled)
     assert lang_ids.shape == (B,), f"Expected ({B},), got {lang_ids.shape}"
-    assert (lang_ids >= 0).all() and (lang_ids < N_LANGUAGES).all(), \
+    assert (lang_ids >= 0).all() and (lang_ids < N_LANGUAGES).all(), (
         f"lang_ids out of range: {lang_ids}"
+    )
 
 
 def test_language_identifier_predict_shape():
@@ -97,6 +99,7 @@ def test_language_identifier_predict_shape():
 # ---------------------------------------------------------------------------
 # LanguageAdversary tests
 # ---------------------------------------------------------------------------
+
 
 def test_language_adversary_forward_shape():
     """LanguageAdversary forward output has shape [B, n_languages]."""
@@ -130,8 +133,9 @@ def test_language_adversary_gradient_reversal():
     grad_grl = inp_grl.grad.clone()
 
     # GRL gradient should be negation of direct gradient
-    assert torch.allclose(grad_grl, -grad_direct, atol=1e-5), \
+    assert torch.allclose(grad_grl, -grad_direct, atol=1e-5), (
         "GRL gradient should be the negative of the direct gradient"
+    )
 
 
 def test_language_adversary_lambda_zero_no_reversal():
@@ -147,6 +151,7 @@ def test_language_adversary_lambda_zero_no_reversal():
 # ---------------------------------------------------------------------------
 # AlignmentLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_alignment_loss_mean_in_range():
     """mean_alignment result is in [0, 2] (cosine distance range)."""
@@ -178,8 +183,9 @@ def test_alignment_loss_contrastive_identical_near_zero():
     # Identical embeddings → diagonal scores dominate → loss approaches 0
     emb = torch.randn(B, D_MODEL)
     loss = AlignmentLoss.contrastive_alignment(emb, emb, temperature=TEMPERATURE)
-    assert loss.item() < 0.5, \
+    assert loss.item() < 0.5, (
         f"Contrastive loss with identical embeddings should be near 0, got {loss.item()}"
+    )
 
 
 def test_alignment_loss_word_alignment_attn_shape():
@@ -198,8 +204,9 @@ def test_alignment_loss_word_alignment_attn_sums_to_one():
     tgt = torch.randn(B, T_t, D_MODEL)
     attn, _ = AlignmentLoss.word_alignment(src, tgt)
     row_sums = attn.sum(dim=-1)  # [B, T_s]
-    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), \
+    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), (
         "Attention rows should sum to 1"
+    )
 
 
 def test_alignment_loss_word_alignment_loss_positive():
@@ -215,14 +222,16 @@ def test_alignment_loss_word_alignment_loss_positive():
 # CrossLingualEncoder tests
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_token_repr_shape():
     """CrossLingualEncoder forward returns token_repr of shape [B, T, d_model]."""
     enc = make_encoder()
     ids = rand_ids()
     langs = rand_langs()
     token_repr, pooled = enc(ids, langs)
-    assert token_repr.shape == (B, T, D_MODEL), \
+    assert token_repr.shape == (B, T, D_MODEL), (
         f"Expected ({B}, {T}, {D_MODEL}), got {token_repr.shape}"
+    )
 
 
 def test_encoder_pooled_shape():
@@ -231,8 +240,7 @@ def test_encoder_pooled_shape():
     ids = rand_ids()
     langs = rand_langs()
     _, pooled = enc(ids, langs)
-    assert pooled.shape == (B, D_MODEL), \
-        f"Expected ({B}, {D_MODEL}), got {pooled.shape}"
+    assert pooled.shape == (B, D_MODEL), f"Expected ({B}, {D_MODEL}), got {pooled.shape}"
 
 
 def test_encoder_different_lang_ids_produce_different_outputs():
@@ -246,21 +254,24 @@ def test_encoder_different_lang_ids_produce_different_outputs():
     _, pooled_a = enc(ids, lang_a)
     _, pooled_b = enc(ids, lang_b)
 
-    assert not torch.allclose(pooled_a, pooled_b), \
+    assert not torch.allclose(pooled_a, pooled_b), (
         "Different language ids should produce different encoder outputs"
+    )
 
 
 def test_encoder_adversary_present():
     """CrossLingualEncoder has an adversary attribute of type LanguageAdversary."""
     enc = make_encoder()
     assert hasattr(enc, "adversary"), "Encoder should have adversary attribute"
-    assert isinstance(enc.adversary, LanguageAdversary), \
+    assert isinstance(enc.adversary, LanguageAdversary), (
         "encoder.adversary should be LanguageAdversary"
+    )
 
 
 # ---------------------------------------------------------------------------
 # ZeroShotTransferTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_finite_losses():
     """ZeroShotTransferTrainer train_step returns finite total_loss."""
@@ -273,9 +284,7 @@ def test_trainer_train_step_finite_losses():
     tgt_lang = rand_langs()
     labels = rand_labels()
 
-    total_loss, loss_dict = trainer.train_step(
-        src_ids, src_lang, tgt_ids, tgt_lang, labels
-    )
+    total_loss, loss_dict = trainer.train_step(src_ids, src_lang, tgt_ids, tgt_lang, labels)
     assert math.isfinite(total_loss.item()), f"total_loss is not finite: {total_loss.item()}"
 
 
@@ -290,12 +299,11 @@ def test_trainer_loss_dict_keys():
     tgt_lang = rand_langs()
     labels = rand_labels()
 
-    _, loss_dict = trainer.train_step(
-        src_ids, src_lang, tgt_ids, tgt_lang, labels
-    )
+    _, loss_dict = trainer.train_step(src_ids, src_lang, tgt_ids, tgt_lang, labels)
     expected_keys = {"task", "align", "adv", "total"}
-    assert set(loss_dict.keys()) == expected_keys, \
+    assert set(loss_dict.keys()) == expected_keys, (
         f"Expected keys {expected_keys}, got {set(loss_dict.keys())}"
+    )
 
 
 def test_trainer_loss_dict_values_finite():
@@ -309,9 +317,7 @@ def test_trainer_loss_dict_values_finite():
     tgt_lang = rand_langs()
     labels = rand_labels()
 
-    _, loss_dict = trainer.train_step(
-        src_ids, src_lang, tgt_ids, tgt_lang, labels
-    )
+    _, loss_dict = trainer.train_step(src_ids, src_lang, tgt_ids, tgt_lang, labels)
     for key, val in loss_dict.items():
         assert math.isfinite(val), f"loss_dict['{key}'] = {val} is not finite"
 
@@ -335,6 +341,7 @@ def test_trainer_evaluate_transfer_in_range():
 # ---------------------------------------------------------------------------
 # CrossLingualConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_cross_lingual_config_defaults():
     """CrossLingualConfig has correct default values."""

@@ -1,9 +1,8 @@
 """Tests for workflow dead letter queue."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.workflow.dead_letter_queue import DeadLetterQueue, DeadLetteredStep
+from src.workflow.dead_letter_queue import DeadLetteredStep, DeadLetterQueue
 
 
 class TestDeadLetterQueue:

@@ -11,23 +11,22 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # CoverageVector
 # ---------------------------------------------------------------------------
+
 
 class CoverageVector:
     """Tracks accumulated attention weights to penalise re-attending."""
 
     def __init__(self) -> None:
-        self.coverage: Optional[Tensor] = None  # [B, T_src]
+        self.coverage: Tensor | None = None  # [B, T_src]
 
     def reset(self, batch_size: int, src_len: int) -> None:
         """Initialise / clear coverage to zeros."""
@@ -58,8 +57,7 @@ class CoverageVector:
         """
         if self.coverage is None:
             # No accumulated coverage yet — no penalty.
-            return torch.tensor(0.0, dtype=attn_weights.dtype,
-                                device=attn_weights.device)
+            return torch.tensor(0.0, dtype=attn_weights.dtype, device=attn_weights.device)
         cov = self.coverage.to(attn_weights.device)
         loss = torch.min(attn_weights, cov).sum()
         return loss
@@ -69,11 +67,12 @@ class CoverageVector:
 # ExtractivePseudoLabel
 # ---------------------------------------------------------------------------
 
+
 class ExtractivePseudoLabel:
     """Utilities for computing extractive oracle labels via ROUGE-1 overlap."""
 
     @staticmethod
-    def _token_overlap(a: List[int], b: List[int]) -> float:
+    def _token_overlap(a: list[int], b: list[int]) -> float:
         """Unigram F1 (ROUGE-1) between two token lists."""
         if not a or not b:
             return 0.0
@@ -88,9 +87,9 @@ class ExtractivePseudoLabel:
 
     def compute_rouge_scores(
         self,
-        src_tokens: List[List[int]],
-        tgt_tokens: List[int],
-    ) -> List[float]:
+        src_tokens: list[list[int]],
+        tgt_tokens: list[int],
+    ) -> list[float]:
         """ROUGE-1 F1 score for each source sentence against the target.
 
         Args:
@@ -105,10 +104,10 @@ class ExtractivePseudoLabel:
 
     def extract_oracle(
         self,
-        src_sentences: List[List[int]],
-        tgt_tokens: List[int],
+        src_sentences: list[list[int]],
+        tgt_tokens: list[int],
         n_sent: int = 3,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Greedy oracle extraction: iteratively pick sentences with maximum
         marginal ROUGE-1 gain over the already-selected set.
 
@@ -121,9 +120,9 @@ class ExtractivePseudoLabel:
             (selected_indices, marginal_scores) — both of length min(n_sent, N).
         """
         n_sent = min(n_sent, len(src_sentences))
-        selected: List[int] = []
-        selected_scores: List[float] = []
-        accumulated: List[int] = []
+        selected: list[int] = []
+        selected_scores: list[float] = []
+        accumulated: list[int] = []
 
         remaining = list(range(len(src_sentences)))
 
@@ -157,6 +156,7 @@ class ExtractivePseudoLabel:
 # ---------------------------------------------------------------------------
 # SummarizationLoss
 # ---------------------------------------------------------------------------
+
 
 class SummarizationLoss:
     """Collection of loss functions for summarization training."""
@@ -241,6 +241,7 @@ class SummarizationLoss:
 # ExtractiveAbstractiveTrainer
 # ---------------------------------------------------------------------------
 
+
 class ExtractiveAbstractiveTrainer:
     """Joint extractive + abstractive training loop."""
 
@@ -275,13 +276,13 @@ class ExtractiveAbstractiveTrainer:
             Scalar BCE loss.
         """
         self.optimizer.zero_grad()
-        enc_out = self.encoder(src_ids)          # [B, T_src, d_model]
+        enc_out = self.encoder(src_ids)  # [B, T_src, d_model]
         # The encoder must expose .extract_head (a linear -> 1) or we fall back
         # to the last dim as a logit.
-        if hasattr(self.encoder, 'extract_head'):
+        if hasattr(self.encoder, "extract_head"):
             logits = self.encoder.extract_head(enc_out).squeeze(-1)  # [B, T_src]
         else:
-            logits = enc_out[..., 0]             # [B, T_src] fallback
+            logits = enc_out[..., 0]  # [B, T_src] fallback
 
         loss = F.binary_cross_entropy_with_logits(
             logits,
@@ -306,7 +307,7 @@ class ExtractiveAbstractiveTrainer:
             Scalar CE loss.
         """
         self.optimizer.zero_grad()
-        enc_out = self.encoder(src_ids)          # [B, T_src, d_model]
+        enc_out = self.encoder(src_ids)  # [B, T_src, d_model]
         logits = self.decoder(tgt_ids, enc_out)  # [B, T_tgt, V]
         loss = self._loss_fn.seq2seq_loss(logits, tgt_ids)
         loss.backward()
@@ -319,7 +320,7 @@ class ExtractiveAbstractiveTrainer:
         tgt_ids: Tensor,
         extract_labels: Tensor,
         alpha: float = 0.5,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Combined extractive + abstractive step.
 
         Args:
@@ -333,10 +334,10 @@ class ExtractiveAbstractiveTrainer:
         """
         self.optimizer.zero_grad()
 
-        enc_out = self.encoder(src_ids)          # [B, T_src, d_model]
+        enc_out = self.encoder(src_ids)  # [B, T_src, d_model]
 
         # Extractive head
-        if hasattr(self.encoder, 'extract_head'):
+        if hasattr(self.encoder, "extract_head"):
             ext_logits = self.encoder.extract_head(enc_out).squeeze(-1)
         else:
             ext_logits = enc_out[..., 0]
@@ -360,6 +361,7 @@ class ExtractiveAbstractiveTrainer:
 # ---------------------------------------------------------------------------
 # LeadBiasAugmentation
 # ---------------------------------------------------------------------------
+
 
 class LeadBiasAugmentation:
     """Boost the importance of leading tokens (lead bias heuristic)."""
@@ -402,10 +404,10 @@ class LeadBiasAugmentation:
 
         bias = self.compute_position_bias(T).to(importance_scores.device)
         # Only apply bias to the lead portion; tail stays unchanged.
-        lead_bias = bias[:lead_len]                    # [lead_len]
-        tail_ones = torch.ones(T - lead_len,
-                               dtype=importance_scores.dtype,
-                               device=importance_scores.device)
+        lead_bias = bias[:lead_len]  # [lead_len]
+        tail_ones = torch.ones(
+            T - lead_len, dtype=importance_scores.dtype, device=importance_scores.device
+        )
         multiplier = torch.cat([lead_bias.to(importance_scores.dtype), tail_ones])
         # Broadcast over batch
         augmented = importance_scores * multiplier.unsqueeze(0)  # [B, T]
@@ -415,6 +417,7 @@ class LeadBiasAugmentation:
 # ---------------------------------------------------------------------------
 # SummarizationConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SummarizationConfig:

@@ -23,19 +23,17 @@ Variable notation follows the paper notation where applicable:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # RMSNorm (inline — avoids cross-module coupling in this hybrid file)
 # ---------------------------------------------------------------------------
+
 
 class _RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (Zhang & Sennrich, 2019)."""
@@ -54,6 +52,7 @@ class _RMSNorm(nn.Module):
 # ---------------------------------------------------------------------------
 # Inline Mamba-1 SSM (NOT imported from mamba.py — as required)
 # ---------------------------------------------------------------------------
+
 
 class _JambaSSMCore(nn.Module):
     """Mamba-1 style selective SSM core for Jamba hybrid blocks.
@@ -95,7 +94,7 @@ class _JambaSSMCore(nn.Module):
     def forward(
         self,
         x: Tensor,
-        h: Optional[Tensor] = None,
+        h: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         """
         Args:
@@ -112,15 +111,13 @@ class _JambaSSMCore(nn.Module):
             h = torch.zeros(B, self.d_model, self.d_state, dtype=x.dtype, device=x.device)
 
         # Project input → Δ_raw, B_in, C_in
-        proj = self.x_proj(x)                                   # (B, T, d_model + 2*d_state)
-        delta_raw, B_in, C_in = proj.split(
-            [self.d_model, self.d_state, self.d_state], dim=-1
-        )
+        proj = self.x_proj(x)  # (B, T, d_model + 2*d_state)
+        delta_raw, B_in, C_in = proj.split([self.d_model, self.d_state, self.d_state], dim=-1)
         # delta_raw: (B, T, d_model)
         # B_in, C_in: (B, T, d_state)
 
         # Δ = softplus(Δ_raw)
-        delta = F.softplus(delta_raw)                           # (B, T, d_model)
+        delta = F.softplus(delta_raw)  # (B, T, d_model)
 
         # A = -exp(A_log)  →  shape (d_model, d_state)
         A = -torch.exp(self.A_log.float())
@@ -131,7 +128,7 @@ class _JambaSSMCore(nn.Module):
 
         # B_bar_t = Δ_t ⊗ B_in_t  shape (B, T, d_model, d_state)
         # delta: (B, T, d_model, 1),  B_in: (B, T, 1, d_state)
-        B_bar = delta.unsqueeze(-1) * B_in.unsqueeze(2)         # (B, T, d_model, d_state)
+        B_bar = delta.unsqueeze(-1) * B_in.unsqueeze(2)  # (B, T, d_model, d_state)
 
         # Sequential scan over T timesteps
         ys = []
@@ -150,6 +147,7 @@ class _JambaSSMCore(nn.Module):
 # ---------------------------------------------------------------------------
 # JambaMambaBlock
 # ---------------------------------------------------------------------------
+
 
 class JambaMambaBlock(nn.Module):
     """Jamba Mamba block: pre-norm SSM with SiLU gate + residual.
@@ -192,7 +190,7 @@ class JambaMambaBlock(nn.Module):
     def forward(
         self,
         x: Tensor,
-        h: Optional[Tensor] = None,
+        h: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         """
         Args:
@@ -206,30 +204,31 @@ class JambaMambaBlock(nn.Module):
         B, T, _ = x.shape
         residual = x
 
-        x_normed = self.norm(x)                                  # (B, T, d_model)
+        x_normed = self.norm(x)  # (B, T, d_model)
 
         # Gate split
-        xz = self.in_proj(x_normed)                             # (B, T, 2*d_model)
-        x_branch, z = xz.chunk(2, dim=-1)                      # each (B, T, d_model)
+        xz = self.in_proj(x_normed)  # (B, T, 2*d_model)
+        x_branch, z = xz.chunk(2, dim=-1)  # each (B, T, d_model)
 
         # Causal depthwise conv1d
-        x_conv = x_branch.transpose(1, 2)                       # (B, d_model, T)
-        x_conv = self.conv1d(x_conv)[:, :, :T]                 # (B, d_model, T)
-        x_conv = F.silu(x_conv.transpose(1, 2))                 # (B, T, d_model)
+        x_conv = x_branch.transpose(1, 2)  # (B, d_model, T)
+        x_conv = self.conv1d(x_conv)[:, :, :T]  # (B, d_model, T)
+        x_conv = F.silu(x_conv.transpose(1, 2))  # (B, T, d_model)
 
         # Selective SSM
-        y, h_new = self.ssm(x_conv, h)                          # (B, T, d_model)
+        y, h_new = self.ssm(x_conv, h)  # (B, T, d_model)
 
         # Multiplicative gate
-        y = y * F.silu(z)                                        # (B, T, d_model)
+        y = y * F.silu(z)  # (B, T, d_model)
 
-        out = self.out_proj(y)                                   # (B, T, d_model)
+        out = self.out_proj(y)  # (B, T, d_model)
         return residual + out, h_new
 
 
 # ---------------------------------------------------------------------------
 # JambaAttentionBlock
 # ---------------------------------------------------------------------------
+
 
 class _MultiHeadAttention(nn.Module):
     """Grouped-Query Attention (GQA) for Jamba attention blocks.
@@ -253,7 +252,7 @@ class _MultiHeadAttention(nn.Module):
         self.n_heads = n_heads
         self.n_kv_heads = n_kv_heads
         self.head_dim = d_model // n_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
         # each KV head is shared across (n_heads // n_kv_heads) Q heads
         self.n_rep = n_heads // n_kv_heads
 
@@ -282,22 +281,22 @@ class _MultiHeadAttention(nn.Module):
         attn_scores = attn_scores.masked_fill(~causal_mask, float("-inf"))
         attn_weights = F.softmax(attn_scores, dim=-1)
 
-        out = torch.matmul(attn_weights, v)                     # (B, H, T, head_dim)
-        out = out.transpose(1, 2).reshape(B, T, -1)            # (B, T, d_model)
+        out = torch.matmul(attn_weights, v)  # (B, H, T, head_dim)
+        out = out.transpose(1, 2).reshape(B, T, -1)  # (B, T, d_model)
         return self.o_proj(out)
 
 
 class _SwiGLUFFN(nn.Module):
     """Simple SwiGLU FFN (no external deps)."""
 
-    def __init__(self, d_model: int, d_ff: Optional[int] = None) -> None:
+    def __init__(self, d_model: int, d_ff: int | None = None) -> None:
         super().__init__()
         if d_ff is None:
             d_ff = int(d_model * 8 / 3)
             # round to nearest multiple of 64
             d_ff = (d_ff + 63) // 64 * 64
         self.gate_proj = nn.Linear(d_model, d_ff, bias=False)
-        self.up_proj   = nn.Linear(d_model, d_ff, bias=False)
+        self.up_proj = nn.Linear(d_model, d_ff, bias=False)
         self.down_proj = nn.Linear(d_ff, d_model, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -319,13 +318,13 @@ class JambaAttentionBlock(nn.Module):
         d_model: int,
         n_heads: int,
         n_kv_heads: int,
-        d_ff: Optional[int] = None,
+        d_ff: int | None = None,
     ) -> None:
         super().__init__()
         self.attn_norm = _RMSNorm(d_model)
-        self.ffn_norm  = _RMSNorm(d_model)
+        self.ffn_norm = _RMSNorm(d_model)
         self.attn = _MultiHeadAttention(d_model, n_heads, n_kv_heads)
-        self.ffn  = _SwiGLUFFN(d_model, d_ff)
+        self.ffn = _SwiGLUFFN(d_model, d_ff)
 
     def forward(self, x: Tensor) -> Tensor:
         x = x + self.attn(self.attn_norm(x))
@@ -336,6 +335,7 @@ class JambaAttentionBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # JambaModel
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class JambaConfig:
@@ -353,13 +353,14 @@ class JambaConfig:
         attn_every_k:      place an attention block every k layers
         rms_norm_eps:      epsilon for RMSNorm
     """
+
     d_model: int = 2048
     n_layers: int = 32
     n_heads: int = 32
     n_kv_heads: int = 8
     d_state: int = 16
     d_conv: int = 4
-    d_ff: Optional[int] = None
+    d_ff: int | None = None
     attn_layer_offset: int = 0
     attn_every_k: int = 4
     rms_norm_eps: float = 1e-6
@@ -413,7 +414,7 @@ class JambaModel(nn.Module):
     def forward(
         self,
         x: Tensor,
-        hidden_states: Optional[list[Tensor]] = None,
+        hidden_states: list[Tensor] | None = None,
     ) -> tuple[Tensor, list[Tensor]]:
         """
         Args:
@@ -426,7 +427,7 @@ class JambaModel(nn.Module):
             new_hidden_states: list[Tensor], each (B, d_model, d_state)
         """
         # Count Mamba layers to validate / initialise hidden_states
-        mamba_layers = [l for l in self.layers if isinstance(l, JambaMambaBlock)]
+        mamba_layers = [line for line in self.layers if isinstance(line, JambaMambaBlock)]
         n_mamba = len(mamba_layers)
 
         if hidden_states is None:
@@ -438,7 +439,7 @@ class JambaModel(nn.Module):
         else:
             if len(hidden_states) != n_mamba:
                 raise ValueError(
-                    f"hidden_states has {len(hidden_states)} entries but model has {n_mamba} Mamba layers"
+                    f"hidden_states has {len(hidden_states)} entries but model has {n_mamba} Mamba layers"  # noqa: E501
                 )
 
         new_hidden_states: list[Tensor] = []
@@ -460,6 +461,7 @@ class JambaModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Tiny config helper (for tests and quick experiments)
 # ---------------------------------------------------------------------------
+
 
 def jamba_tiny_config() -> JambaConfig:
     """Return tiny Jamba config suitable for unit tests."""

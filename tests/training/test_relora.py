@@ -6,11 +6,9 @@ Pure PyTorch only — no scipy / sklearn / HuggingFace / peft.
 
 from __future__ import annotations
 
-import math
-
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.relora import (
     ReLoRALinear,
@@ -50,17 +48,17 @@ def x() -> torch.Tensor:
 # Test 1: Forward output shape matches nn.Linear
 # ---------------------------------------------------------------------------
 
+
 def test_forward_output_shape(relora_layer: ReLoRALinear, x: torch.Tensor) -> None:
     """ReLoRALinear forward must produce same shape as the wrapped nn.Linear."""
     out = relora_layer(x)
-    assert out.shape == (BATCH, OUT), (
-        f"Expected shape ({BATCH}, {OUT}), got {out.shape}"
-    )
+    assert out.shape == (BATCH, OUT), f"Expected shape ({BATCH}, {OUT}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: Initial output ≈ base weight output (B=0 ⇒ zero delta)
 # ---------------------------------------------------------------------------
+
 
 def test_initial_output_equals_base(
     base_linear: nn.Linear, relora_layer: ReLoRALinear, x: torch.Tensor
@@ -70,8 +68,11 @@ def test_initial_output_equals_base(
         base_out = base_linear(x)
         relora_out = relora_layer(x)
     torch.testing.assert_close(
-        relora_out, base_out, atol=1e-5, rtol=1e-5,
-        msg="Initial ReLoRA output should equal base linear output (B=0)"
+        relora_out,
+        base_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg="Initial ReLoRA output should equal base linear output (B=0)",
     )
 
 
@@ -79,11 +80,12 @@ def test_initial_output_equals_base(
 # Test 3: merge() bakes B·A into W_0 correctly
 # ---------------------------------------------------------------------------
 
+
 def test_merge_updates_weight_correctly(relora_layer: ReLoRALinear) -> None:
     """After merge, W_0 should equal old_W_0 + B @ A."""
     W0_before = relora_layer.W_0.data.clone()
-    B_before = relora_layer.B.data.clone()
-    A_before = relora_layer.A.data.clone()
+    relora_layer.B.data.clone()
+    relora_layer.A.data.clone()
 
     # Give B a non-zero value so the update is non-trivial
     with torch.no_grad():
@@ -96,14 +98,18 @@ def test_merge_updates_weight_correctly(relora_layer: ReLoRALinear) -> None:
 
     expected_W0 = W0_before + B_nonzero @ A_snapshot
     torch.testing.assert_close(
-        relora_layer.W_0.data, expected_W0, atol=1e-5, rtol=1e-5,
-        msg="After merge, W_0 should equal old_W_0 + B @ A"
+        relora_layer.W_0.data,
+        expected_W0,
+        atol=1e-5,
+        rtol=1e-5,
+        msg="After merge, W_0 should equal old_W_0 + B @ A",
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 4: merge() resets B to zeros
 # ---------------------------------------------------------------------------
+
 
 def test_merge_resets_B_to_zero(relora_layer: ReLoRALinear) -> None:
     """After merge, B must be all zeros."""
@@ -112,14 +118,13 @@ def test_merge_resets_B_to_zero(relora_layer: ReLoRALinear) -> None:
 
     relora_layer.merge()
 
-    assert relora_layer.B.data.abs().max().item() == 0.0, (
-        "B should be exactly zero after merge()"
-    )
+    assert relora_layer.B.data.abs().max().item() == 0.0, "B should be exactly zero after merge()"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: merge() re-initialises A (A changes after merge)
 # ---------------------------------------------------------------------------
+
 
 def test_merge_reinitialises_A(relora_layer: ReLoRALinear) -> None:
     """After merge, A should be a fresh random init (different from before)."""
@@ -137,6 +142,7 @@ def test_merge_reinitialises_A(relora_layer: ReLoRALinear) -> None:
 # ---------------------------------------------------------------------------
 # Test 6: Gradients flow through A and B
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_flow_through_A_and_B(relora_layer: ReLoRALinear, x: torch.Tensor) -> None:
     """Backward pass should populate gradients in both A and B.
@@ -163,6 +169,7 @@ def test_gradients_flow_through_A_and_B(relora_layer: ReLoRALinear, x: torch.Ten
 # Test 7: After merge, new forward is sensible (not NaN / all-zero)
 # ---------------------------------------------------------------------------
 
+
 def test_forward_after_merge_is_sensible(relora_layer: ReLoRALinear, x: torch.Tensor) -> None:
     """After merge, forward pass should return finite, non-zero output."""
     with torch.no_grad():
@@ -180,6 +187,7 @@ def test_forward_after_merge_is_sensible(relora_layer: ReLoRALinear, x: torch.Te
 # ---------------------------------------------------------------------------
 # Test 8: ReLoRAScheduler — False before warmup, True at restart points
 # ---------------------------------------------------------------------------
+
 
 def test_scheduler_false_before_warmup() -> None:
     """should_restart should return False for steps < warmup_steps."""
@@ -204,6 +212,7 @@ def test_scheduler_true_at_restart_point() -> None:
 # Test 9: ReLoRAScheduler — fires every restart_every steps (no off-by-one)
 # ---------------------------------------------------------------------------
 
+
 def test_scheduler_period_exact() -> None:
     """Scheduler fires exactly at multiples of restart_every >= warmup_steps."""
     restart_every = 50
@@ -219,6 +228,7 @@ def test_scheduler_period_exact() -> None:
 # Test 10: ReLoRAWrapper — only LoRA params (B, A) are trainable
 # ---------------------------------------------------------------------------
 
+
 def test_wrapper_only_lora_params_trainable() -> None:
     """After wrapping, only B and A should have requires_grad=True."""
     torch.manual_seed(0)
@@ -228,26 +238,22 @@ def test_wrapper_only_lora_params_trainable() -> None:
         nn.Linear(OUT, IN, bias=True),
     )
     wrapper = ReLoRAWrapper(
-        model, target_modules=["0", "2"],
-        rank=RANK, restart_every=100, warmup_steps=10
+        model, target_modules=["0", "2"], rank=RANK, restart_every=100, warmup_steps=10
     )
 
     for name, param in wrapper.model.named_parameters():
-        is_lora = ("B" in name or "A" in name)
+        is_lora = "B" in name or "A" in name
         # bias may remain trainable or not — check only weight-like params
         if "W_0" in name:
-            assert not param.requires_grad, (
-                f"W_0 param '{name}' should be frozen"
-            )
+            assert not param.requires_grad, f"W_0 param '{name}' should be frozen"
         if is_lora:
-            assert param.requires_grad, (
-                f"LoRA param '{name}' should be trainable"
-            )
+            assert param.requires_grad, f"LoRA param '{name}' should be trainable"
 
 
 # ---------------------------------------------------------------------------
 # Test 11: ReLoRAWrapper.restart calls merge on all layers
 # ---------------------------------------------------------------------------
+
 
 def test_wrapper_restart_merges_all_layers() -> None:
     """wrapper.restart() must call merge() on every ReLoRALinear."""
@@ -257,8 +263,7 @@ def test_wrapper_restart_merges_all_layers() -> None:
         nn.Linear(OUT, IN, bias=False),
     )
     wrapper = ReLoRAWrapper(
-        model, target_modules=["0", "1"],
-        rank=RANK, restart_every=100, warmup_steps=10
+        model, target_modules=["0", "1"], rank=RANK, restart_every=100, warmup_steps=10
     )
 
     # Give B non-zero values in all layers
@@ -275,25 +280,30 @@ def test_wrapper_restart_merges_all_layers() -> None:
     for i, layer in enumerate(wrapper._relora_layers):
         expected_W0 = W0_snapshots[i] + BA_products[i]
         torch.testing.assert_close(
-            layer.W_0.data, expected_W0, atol=1e-5, rtol=1e-5,
-            msg=f"Layer {i}: W_0 not updated correctly by restart()"
+            layer.W_0.data,
+            expected_W0,
+            atol=1e-5,
+            rtol=1e-5,
+            msg=f"Layer {i}: W_0 not updated correctly by restart()",
         )
-        assert layer.B.data.abs().max().item() == 0.0, (
-            f"Layer {i}: B not zeroed by restart()"
-        )
+        assert layer.B.data.abs().max().item() == 0.0, f"Layer {i}: B not zeroed by restart()"
 
 
 # ---------------------------------------------------------------------------
 # Test 12: ReLoRAWrapper.restart with optimizer — resets m_1, keeps m_2
 # ---------------------------------------------------------------------------
 
+
 def test_wrapper_restart_resets_first_moment() -> None:
     """restart(optimizer) should zero exp_avg (m_1) for LoRA params."""
     torch.manual_seed(0)
     model = nn.Linear(IN, OUT, bias=False)
     wrapper = ReLoRAWrapper(
-        model, target_modules=[""],  # "" matches every module name
-        rank=RANK, restart_every=100, warmup_steps=10
+        model,
+        target_modules=[""],  # "" matches every module name
+        rank=RANK,
+        restart_every=100,
+        warmup_steps=10,
     )
 
     trainable = wrapper.trainable_params_list()
@@ -340,14 +350,16 @@ def test_wrapper_restart_resets_first_moment() -> None:
         pid = id(p)
         if pid in m2_before:
             torch.testing.assert_close(
-                state["exp_avg_sq"], m2_before[pid],
-                msg="exp_avg_sq (m_2) should not change during warm restart"
+                state["exp_avg_sq"],
+                m2_before[pid],
+                msg="exp_avg_sq (m_2) should not change during warm restart",
             )
 
 
 # ---------------------------------------------------------------------------
 # Test 13: Accumulated rank across 2 restarts > single LoRA rank
 # ---------------------------------------------------------------------------
+
 
 def test_accumulated_rank_after_two_restarts() -> None:
     """After 2 restarts, the cumulative weight change should have higher rank
@@ -391,6 +403,7 @@ def test_accumulated_rank_after_two_restarts() -> None:
 # Test 14: Numerical stability — no NaN/Inf after merge + new forward
 # ---------------------------------------------------------------------------
 
+
 def test_numerical_stability_after_merge() -> None:
     """No NaN or Inf values should appear after repeated merge + forward."""
     torch.manual_seed(99)
@@ -404,7 +417,5 @@ def test_numerical_stability_after_merge() -> None:
         layer.merge()
         with torch.no_grad():
             out = layer(x)
-        assert torch.isfinite(out).all(), (
-            "Non-finite values in output after merge + forward"
-        )
+        assert torch.isfinite(out).all(), "Non-finite values in output after merge + forward"
         assert not torch.isnan(out).any(), "NaN in output after merge + forward"

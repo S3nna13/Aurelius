@@ -11,33 +11,34 @@ Algorithm:
     cos_neg = max(0, -cos(g_A, g_B))
     g_A_resolved = g_A - alpha * cos_neg * (g_A·g_B / ||g_B||²) * g_B
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
-import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PCGradV2Config:
     """Configuration for PCGrad v2."""
+
     n_tasks: int = 2
-    adaptive_weight: bool = True   # use cosine-adaptive weighting
-    alpha: float = 1.0             # weighting factor for projection
+    adaptive_weight: bool = True  # use cosine-adaptive weighting
+    alpha: float = 1.0  # weighting factor for projection
     normalize_gradients: bool = False  # normalize grad magnitudes before conflict check
-    gradient_bank_size: int = 1    # accumulate this many batches before resolving
+    gradient_bank_size: int = 1  # accumulate this many batches before resolving
 
 
 # ---------------------------------------------------------------------------
 # Gradient Bank
 # ---------------------------------------------------------------------------
+
 
 class GradientBank:
     """Accumulates per-task gradients for multi-batch conflict resolution."""
@@ -46,9 +47,7 @@ class GradientBank:
         self.n_tasks = n_tasks
         self.bank_size = bank_size
         # _storage[task_id] -> list of batch grad-lists
-        self._storage: dict[int, list[list[Tensor]]] = {
-            t: [] for t in range(n_tasks)
-        }
+        self._storage: dict[int, list[list[Tensor]]] = {t: [] for t in range(n_tasks)}
 
     def add(self, task_id: int, grads: list[Tensor]) -> bool:
         """Add one batch of gradients for the given task.
@@ -61,9 +60,7 @@ class GradientBank:
         self._storage[task_id].append([g.clone() for g in grads])
 
         # Full when every task has >= bank_size entries
-        return all(
-            len(self._storage[t]) >= self.bank_size for t in range(self.n_tasks)
-        )
+        return all(len(self._storage[t]) >= self.bank_size for t in range(self.n_tasks))
 
     def get_accumulated(self) -> list[list[Tensor]]:
         """Return accumulated (averaged) gradients: [n_tasks][n_params]."""
@@ -90,10 +87,11 @@ class GradientBank:
 # PCGrad v2 Core
 # ---------------------------------------------------------------------------
 
+
 class PCGradV2:
     """PCGrad v2 — Cosine-Adaptive Conflicting Gradient Projection."""
 
-    def __init__(self, config: Optional[PCGradV2Config] = None) -> None:
+    def __init__(self, config: PCGradV2Config | None = None) -> None:
         self.config = config if config is not None else PCGradV2Config()
 
     # ------------------------------------------------------------------
@@ -265,9 +263,7 @@ class PCGradV2:
         # Apply averaged resolved gradients
         optimizer.zero_grad()
         for p_idx, p in enumerate(params):
-            avg_grad = torch.stack(
-                [resolved[t][p_idx] for t in range(n_tasks)], dim=0
-            ).mean(dim=0)
+            avg_grad = torch.stack([resolved[t][p_idx] for t in range(n_tasks)], dim=0).mean(dim=0)
             p.grad = avg_grad.to(p.dtype)
 
         optimizer.step()

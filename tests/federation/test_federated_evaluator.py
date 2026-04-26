@@ -340,9 +340,7 @@ def test_pending_clients_empty_unknown_task() -> None:
 
 
 def test_client_eval_result_frozen() -> None:
-    r = ClientEvalResult(
-        client_id="c1", task_id="t", metric_value=0.5, num_samples=1
-    )
+    r = ClientEvalResult(client_id="c1", task_id="t", metric_value=0.5, num_samples=1)
     try:
         r.metric_value = 0.6  # type: ignore[misc]
     except Exception:
@@ -371,9 +369,7 @@ def test_registry_has_default() -> None:
 
 
 def test_client_eval_result_error_default() -> None:
-    r = ClientEvalResult(
-        client_id="c1", task_id="t", metric_value=0.5, num_samples=1
-    )
+    r = ClientEvalResult(client_id="c1", task_id="t", metric_value=0.5, num_samples=1)
     assert r.error == ""
 
 

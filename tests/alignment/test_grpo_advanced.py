@@ -1,29 +1,37 @@
 """Tests for GRPO Advanced: DeepSeekMath-style GRPO with per-token advantages."""
+
 import math
-import torch
+
 import pytest
+import torch
 
 from src.alignment.grpo_advanced import (
     GRPOAdvancedConfig,
-    sample_group,
-    compute_group_advantages,
-    per_token_advantage,
-    grpo_clipped_loss,
     GRPOAdvancedTrainer,
+    compute_group_advantages,
+    grpo_clipped_loss,
+    per_token_advantage,
+    sample_group,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -53,6 +61,7 @@ def default_config():
 # GRPOAdvancedConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """GRPOAdvancedConfig has correct default values."""
     cfg = GRPOAdvancedConfig()
@@ -67,6 +76,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # compute_group_advantages tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_group_advantages_mean_centering():
     """Advantages without normalization should sum to ~0 (mean-centered)."""
@@ -101,6 +111,7 @@ def test_compute_group_advantages_mean_zero_normalized():
 # per_token_advantage tests
 # ---------------------------------------------------------------------------
 
+
 def test_per_token_advantage_shape():
     """per_token_advantage returns (n_group, seq_len) tensor."""
     advantages = torch.tensor([1.0, -0.5, 0.8, -1.3])
@@ -125,6 +136,7 @@ def test_per_token_advantage_broadcast():
 # grpo_clipped_loss tests
 # ---------------------------------------------------------------------------
 
+
 def test_grpo_clipped_loss_scalar():
     """grpo_clipped_loss returns a finite scalar."""
     n_group, T = 4, 8
@@ -148,7 +160,9 @@ def test_grpo_clipped_loss_clipping_applied():
     epsilon = 0.2
     beta = 0.0  # no KL so we isolate clipping
 
-    loss = grpo_clipped_loss(log_probs_policy, log_probs_ref, advantages, epsilon=epsilon, beta=beta)
+    loss = grpo_clipped_loss(
+        log_probs_policy, log_probs_ref, advantages, epsilon=epsilon, beta=beta
+    )
 
     # With large ratio and positive advantage, clipping should cap the ratio at 1+epsilon
     ratio_val = math.exp(-0.5 - (-5.0))  # ~90
@@ -164,6 +178,7 @@ def test_grpo_clipped_loss_clipping_applied():
 # ---------------------------------------------------------------------------
 # sample_group tests
 # ---------------------------------------------------------------------------
+
 
 def test_sample_group_output_shapes(policy_model, prompt_ids):
     """sample_group returns tensors of shape (n_group, max_new_tokens)."""
@@ -189,6 +204,7 @@ def test_sample_group_log_probs_finite(policy_model, prompt_ids):
 # ---------------------------------------------------------------------------
 # GRPOAdvancedTrainer.train_step tests
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_keys(policy_model, ref_model, prompt_ids):
     """train_step returns dict with required keys."""

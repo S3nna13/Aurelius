@@ -1,16 +1,16 @@
-from dataclasses import dataclass, field
 import math
-import torch
-import torch.nn as nn
 from collections import defaultdict
+from dataclasses import dataclass
+
+import torch.nn as nn
 
 
 @dataclass
 class GradSnapshot:
     step: int
-    layer_norms: dict[str, float]   # layer_prefix -> L2 norm of all grads in that layer
-    param_norms: dict[str, float]   # param_name -> individual grad L2 norm
-    global_norm: float              # sqrt(sum of all squared grad norms)
+    layer_norms: dict[str, float]  # layer_prefix -> L2 norm of all grads in that layer
+    param_norms: dict[str, float]  # param_name -> individual grad L2 norm
+    global_norm: float  # sqrt(sum of all squared grad norms)
 
 
 class GradTracker:
@@ -57,9 +57,7 @@ class GradTracker:
             layer_squared[layer_prefix] += norm * norm
             total_squared += norm * norm
 
-        layer_norms: dict[str, float] = {
-            k: math.sqrt(v) for k, v in layer_squared.items()
-        }
+        layer_norms: dict[str, float] = {k: math.sqrt(v) for k, v in layer_squared.items()}
         global_norm = math.sqrt(total_squared)
 
         snap = GradSnapshot(
@@ -91,9 +89,7 @@ class GradTracker:
         for snap in snapshots:
             lines.append(f"=== Step {snap.step} | Global norm: {snap.global_norm:.6f} ===")
 
-            sorted_layers = sorted(
-                snap.layer_norms.items(), key=lambda x: x[1], reverse=True
-            )
+            sorted_layers = sorted(snap.layer_norms.items(), key=lambda x: x[1], reverse=True)
 
             for layer, norm in sorted_layers:
                 flag = ""

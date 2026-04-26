@@ -1,14 +1,13 @@
 """Gradient-based attribution: integrated gradients, saliency maps."""
 
 import math
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List
+from dataclasses import dataclass
+from enum import StrEnum
 
 from torch import Tensor
 
 
-class AttributionMethod(str, Enum):
+class AttributionMethod(StrEnum):
     SALIENCY = "saliency"
     INTEGRATED_GRADIENTS = "integrated_gradients"
     GRADIENT_X_INPUT = "gradient_x_input"
@@ -16,8 +15,8 @@ class AttributionMethod(str, Enum):
 
 @dataclass
 class Attribution:
-    token_ids: List[int]
-    scores: List[float]
+    token_ids: list[int]
+    scores: list[float]
     method: AttributionMethod
     normalized: bool = False
 
@@ -33,7 +32,7 @@ class GradientAttribution:
         self.method = method
         self.n_steps = n_steps
 
-    def normalize(self, scores: List[float]) -> List[float]:
+    def normalize(self, scores: list[float]) -> list[float]:
         """L2-normalize a list of scores.
 
         Returns zeros if the input is all-zero (avoids NaN).
@@ -42,7 +41,7 @@ class GradientAttribution:
         norm = math.sqrt(sum_sq + 1e-8)
         return [s / norm for s in scores]
 
-    def saliency(self, embeddings: Tensor, gradient: Tensor) -> List[float]:
+    def saliency(self, embeddings: Tensor, gradient: Tensor) -> list[float]:
         """Compute saliency scores: |gradient|.sum(-1).
 
         Args:
@@ -54,7 +53,7 @@ class GradientAttribution:
         """
         return gradient.abs().sum(-1).tolist()
 
-    def gradient_x_input(self, embeddings: Tensor, gradient: Tensor) -> List[float]:
+    def gradient_x_input(self, embeddings: Tensor, gradient: Tensor) -> list[float]:
         """Compute gradient * input scores.
 
         Args:
@@ -68,9 +67,9 @@ class GradientAttribution:
 
     def integrated_gradients_scores(
         self,
-        baseline_grads: List[List[float]],
-        input_grads: List[float],
-    ) -> List[float]:
+        baseline_grads: list[list[float]],
+        input_grads: list[float],
+    ) -> list[float]:
         """Approximate integrated gradients.
 
         Args:
@@ -87,16 +86,15 @@ class GradientAttribution:
         seq_len = len(input_grads)
         # Mean over steps element-wise
         mean_grads = [
-            sum(baseline_grads[s][i] for s in range(n_steps)) / n_steps
-            for i in range(seq_len)
+            sum(baseline_grads[s][i] for s in range(n_steps)) / n_steps for i in range(seq_len)
         ]
         # Multiply by input grads element-wise
         return [m * g for m, g in zip(mean_grads, input_grads)]
 
     def create_attribution(
         self,
-        token_ids: List[int],
-        scores: List[float],
+        token_ids: list[int],
+        scores: list[float],
         normalize: bool = True,
     ) -> Attribution:
         """Create an Attribution object.

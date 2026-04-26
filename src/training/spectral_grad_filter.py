@@ -11,11 +11,11 @@ an exact brickwall low-pass filter in the frequency domain via rfft/irfft.
 Reference inspiration: Lee et al. 2024, "GrokFast: Accelerated Grokking by
 Amplifying Slow Gradients" arXiv:2405.20233
 """
+
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -39,10 +39,11 @@ class SpectralGradConfig:
             "weights_only"    – parameters whose name ends with ".weight".
             "embeddings_only" – parameters whose name contains "embed".
     """
+
     window: int = 32
     cutoff_freq: float = 0.1
     alpha: float = 2.0
-    param_filter: str = "all"   # "all" | "weights_only" | "embeddings_only"
+    param_filter: str = "all"  # "all" | "weights_only" | "embeddings_only"
 
 
 class GradientHistory:
@@ -66,7 +67,7 @@ class GradientHistory:
         """Append a gradient snapshot to the history (CPU clone to save VRAM)."""
         self._buf.append(grad.detach().cpu().clone())
 
-    def get_slow_component(self, cutoff_freq: float) -> Optional[torch.Tensor]:
+    def get_slow_component(self, cutoff_freq: float) -> torch.Tensor | None:
         """Return the slow (low-frequency) component of the gradient history.
 
         Steps:
@@ -92,14 +93,14 @@ class GradientHistory:
 
         # Determine the number of frequency bins to zero out.
         # rfft of length W produces W//2+1 bins (index 0 … W//2).
-        n_bins = G_fft.shape[0]                          # W//2 + 1
+        n_bins = G_fft.shape[0]  # W//2 + 1
         cutoff_idx = max(1, int(round(cutoff_freq * n_bins)))
         # Zero out everything above cutoff_idx
         if cutoff_idx < n_bins:
             G_fft[cutoff_idx:] = 0.0
 
         # Reconstruct; specify n=W so irfft returns exactly W time steps
-        slow_G = torch.fft.irfft(G_fft, n=W, dim=0)     # (W, *param_shape)
+        slow_G = torch.fft.irfft(G_fft, n=W, dim=0)  # (W, *param_shape)
 
         # Return the reconstructed gradient at the latest time step
         return slow_G[-1]
@@ -246,7 +247,7 @@ class SpectralGradFilter:
     # Convenience: register param names from a model
     # ------------------------------------------------------------------
 
-    def register_model(self, model: nn.Module) -> "SpectralGradFilter":
+    def register_model(self, model: nn.Module) -> SpectralGradFilter:
         """Associate parameter names from *model* with tracked parameters.
 
         Call this after construction to enable ``param_filter`` modes other
@@ -263,10 +264,11 @@ class SpectralGradFilter:
 # Stateless functional API
 # ---------------------------------------------------------------------------
 
+
 def apply_spectral_filter(
     model: nn.Module,
     grads: dict[str, torch.Tensor],
-    histories: dict[str, "GradientHistory"],
+    histories: dict[str, GradientHistory],
     config: SpectralGradConfig,
 ) -> dict[str, torch.Tensor]:
     """Stateless spectral gradient filter operating on explicit grad dicts.

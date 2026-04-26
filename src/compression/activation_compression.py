@@ -1,10 +1,11 @@
 """Activation compression: quantization, sparsification, checkpointing."""
+
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class SparsificationMethod(str, Enum):
+class SparsificationMethod(StrEnum):
     TOPK = "topk"
     THRESHOLD = "threshold"
     RANDOM_DROPOUT = "random_dropout"
@@ -55,6 +56,7 @@ class ActivationCompressor:
             return self.threshold_sparsify(activations, threshold)
         elif method == SparsificationMethod.RANDOM_DROPOUT:
             import random
+
             rng = random.Random(42)
             return [v if rng.random() > self.default_sparsity else 0.0 for v in activations]
         return list(activations)

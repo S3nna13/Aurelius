@@ -14,9 +14,7 @@ High H + High VH  → creative (high temperature)
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -35,7 +33,7 @@ class EntropixConfig:
     high_vent_thresh: float = 2.0
 
     # Temperatures used by each strategy
-    sample_temp: float = 0.8    # used in High-H / Low-VH branch
+    sample_temp: float = 0.8  # used in High-H / Low-VH branch
     creative_temp: float = 1.3  # used in High-H / High-VH branch
 
     # min-p cutoff for Low-H / High-VH branch
@@ -51,7 +49,7 @@ class EntropixSampler:
         EntropixConfig instance; defaults are used when *None*.
     """
 
-    def __init__(self, config: Optional[EntropixConfig] = None) -> None:
+    def __init__(self, config: EntropixConfig | None = None) -> None:
         self.config = config if config is not None else EntropixConfig()
 
     # ------------------------------------------------------------------
@@ -76,11 +74,11 @@ class EntropixSampler:
         safe_logits = logits.clone()
         safe_logits[safe_logits == float("-inf")] = -1e9
 
-        log_probs = F.log_softmax(safe_logits, dim=-1)   # (B, V)
-        probs = log_probs.exp()                           # (B, V)
+        log_probs = F.log_softmax(safe_logits, dim=-1)  # (B, V)
+        probs = log_probs.exp()  # (B, V)
 
         # H = -sum p * log(p);  where p==0, p*log(p) == 0
-        entropy = -(probs * log_probs).sum(dim=-1)        # (B,)
+        entropy = -(probs * log_probs).sum(dim=-1)  # (B,)
         return entropy
 
     def attn_varentropy(self, attn: torch.Tensor) -> torch.Tensor:
@@ -126,7 +124,7 @@ class EntropixSampler:
     def _temperature_sample(
         logits: torch.Tensor,
         temperature: float,
-        generator: Optional[torch.Generator],
+        generator: torch.Generator | None,
     ) -> torch.Tensor:
         """Sample from logits / temperature. Shape: (B, V) → (B,)."""
         scaled = logits / temperature
@@ -137,15 +135,15 @@ class EntropixSampler:
     def _min_p_sample(
         logits: torch.Tensor,
         min_p: float,
-        generator: Optional[torch.Generator],
+        generator: torch.Generator | None,
     ) -> torch.Tensor:
         """Min-p sampling: keep tokens with prob >= min_p * max_prob.
 
         Shape: (B, V) → (B,).
         """
-        probs = F.softmax(logits, dim=-1)           # (B, V)
+        probs = F.softmax(logits, dim=-1)  # (B, V)
         max_prob = probs.max(dim=-1, keepdim=True).values  # (B, 1)
-        threshold = min_p * max_prob                # (B, 1)
+        threshold = min_p * max_prob  # (B, 1)
 
         # Mask out tokens below threshold; replace masked logits with -inf
         filtered_logits = logits.clone()
@@ -162,7 +160,7 @@ class EntropixSampler:
         self,
         logits: torch.Tensor,
         attn: torch.Tensor,
-        generator: Optional[torch.Generator] = None,
+        generator: torch.Generator | None = None,
     ) -> torch.Tensor:
         """Select and apply a sampling strategy per element in the batch.
 
@@ -183,15 +181,15 @@ class EntropixSampler:
         cfg = self.config
         B, V = logits.shape
 
-        H_tok = self.token_entropy(logits)         # (B,)
-        VH_attn = self.attn_varentropy(attn)       # (B,)
+        H_tok = self.token_entropy(logits)  # (B,)
+        VH_attn = self.attn_varentropy(attn)  # (B,)
 
         tokens = torch.empty(B, dtype=torch.long, device=logits.device)
 
         for i in range(B):
             h = H_tok[i].item()
             vh = VH_attn[i].item()
-            l_i = logits[i].unsqueeze(0)           # (1, V)
+            l_i = logits[i].unsqueeze(0)  # (1, V)
 
             low_h = h < cfg.high_ent_thresh
             low_vh = vh < cfg.high_vent_thresh
@@ -201,16 +199,12 @@ class EntropixSampler:
                 tokens[i] = self._greedy(l_i).squeeze(0)
             elif (not low_h) and low_vh:
                 # Uncertain distribution, consistent heads → explore with temp
-                tokens[i] = self._temperature_sample(
-                    l_i, cfg.sample_temp, generator
-                ).squeeze(0)
+                tokens[i] = self._temperature_sample(l_i, cfg.sample_temp, generator).squeeze(0)
             elif low_h and (not low_vh):
                 # Peaked distribution, inconsistent heads → min-p
                 tokens[i] = self._min_p_sample(l_i, cfg.min_p, generator).squeeze(0)
             else:
                 # High entropy, high varentropy → most creative
-                tokens[i] = self._temperature_sample(
-                    l_i, cfg.creative_temp, generator
-                ).squeeze(0)
+                tokens[i] = self._temperature_sample(l_i, cfg.creative_temp, generator).squeeze(0)
 
         return tokens

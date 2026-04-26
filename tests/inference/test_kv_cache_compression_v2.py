@@ -7,18 +7,16 @@ Every test runs actual forward (and where relevant backward) passes.
 
 from __future__ import annotations
 
-import math
-
+import pytest
 import torch
 import torch.nn.functional as F
-import pytest
 
 from src.inference.kv_cache_compression_v2 import (
     AttentionScoreAccumulator,
-    H2OEvictionPolicy,
-    SnapKVPolicy,
     CompressedKVCache,
+    H2OEvictionPolicy,
     KVCompressionAnalyzer,
+    SnapKVPolicy,
 )
 
 # ---------------------------------------------------------------------------
@@ -166,9 +164,7 @@ def test_snapkv_importance_from_query_key():
     # Position 0 should be among the kept positions for at least batch 0
     # We check by comparing the kept key values against the large-value key
     max_val = k_out.abs().max().item()
-    assert max_val >= 5.0, (
-        f"Expected dominant key (value≈10) to be kept; max in output: {max_val}"
-    )
+    assert max_val >= 5.0, f"Expected dominant key (value≈10) to be kept; max in output: {max_val}"
 
 
 # ===========================================================================
@@ -201,9 +197,7 @@ def test_compressed_cache_none_unbounded():
         v = _rand(B, H, t_new, D)
         cache.update(0, k, v)
         total += t_new
-    assert cache.cache_size(0) == total, (
-        f"Expected {total}, got {cache.cache_size(0)}"
-    )
+    assert cache.cache_size(0) == total, f"Expected {total}, got {cache.cache_size(0)}"
 
 
 # ===========================================================================
@@ -282,9 +276,7 @@ def test_full_cache_update_cycle():
 
         # After compression the size must be ≤ budget (or ≤ total if still small)
         assert v_stored.shape[2] == sz, "stored shape mismatch with reported size"
-        assert sz <= max(BUDGET, (step + 1) * t_new), (
-            f"Step {step}: unexpected cache size {sz}"
-        )
+        assert sz <= max(BUDGET, (step + 1) * t_new), f"Step {step}: unexpected cache size {sz}"
 
     # Final state: must be ≤ budget (9 tokens accumulated, budget=4)
     assert cache.cache_size(0) <= BUDGET, (

@@ -1,24 +1,23 @@
 """Tests for intermediate layer knowledge distillation (TinyBERT style)."""
+
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
-import pytest
 
-from src.training.intermediate_distillation import (
-    IntermDistillConfig,
-    LayerMapper,
-    AlignmentProjection,
-    IntermediateDistillationLoss,
-    IntermDistillTrainer,
-)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
+from src.training.intermediate_distillation import (
+    AlignmentProjection,
+    IntermDistillConfig,
+    IntermDistillTrainer,
+    IntermediateDistillationLoss,
+    LayerMapper,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _small_config(**kwargs) -> AureliusConfig:
     """Return a small AureliusConfig for fast tests."""
@@ -44,6 +43,7 @@ def _make_model(**kwargs) -> AureliusTransformer:
 # ---------------------------------------------------------------------------
 # 1. LayerMapper — uniform
 # ---------------------------------------------------------------------------
+
 
 def test_layer_mapper_uniform():
     """Uniform mapping for 2 student, 4 teacher layers."""
@@ -71,6 +71,7 @@ def test_layer_mapper_uniform():
 # 2. LayerMapper — last_n
 # ---------------------------------------------------------------------------
 
+
 def test_layer_mapper_last_n():
     """last_n maps to last n_student teacher layers."""
     mapper = LayerMapper(n_student=2, n_teacher=4, method="last_n")
@@ -85,6 +86,7 @@ def test_layer_mapper_last_n():
 # ---------------------------------------------------------------------------
 # 3. AlignmentProjection — same dim
 # ---------------------------------------------------------------------------
+
 
 def test_alignment_projection_same_dim():
     """d_student == d_teacher -> Identity (no extra params)."""
@@ -104,6 +106,7 @@ def test_alignment_projection_same_dim():
 # 4. AlignmentProjection — different dim
 # ---------------------------------------------------------------------------
 
+
 def test_alignment_projection_diff_dim():
     """d_student != d_teacher -> has Linear params."""
     proj = AlignmentProjection(d_student=64, d_teacher=128)
@@ -119,6 +122,7 @@ def test_alignment_projection_diff_dim():
 # ---------------------------------------------------------------------------
 # 5. hidden_loss — same dim
 # ---------------------------------------------------------------------------
+
 
 def test_hidden_loss_same_dim():
     """hidden_loss returns a scalar differentiable tensor."""
@@ -148,6 +152,7 @@ def test_hidden_loss_same_dim():
 # 6. attention_loss — same heads
 # ---------------------------------------------------------------------------
 
+
 def test_attention_loss_same_heads():
     """attention_loss works with matching head counts and returns scalar tensor."""
     B, H, T = 2, 4, 8
@@ -172,6 +177,7 @@ def test_attention_loss_same_heads():
 # ---------------------------------------------------------------------------
 # 7. prediction_loss — same vocab
 # ---------------------------------------------------------------------------
+
 
 def test_prediction_loss_same_vocab():
     """KL div works with same vocab size and returns scalar tensor."""
@@ -198,6 +204,7 @@ def test_prediction_loss_same_vocab():
 # ---------------------------------------------------------------------------
 # 8. prediction_loss — different vocab
 # ---------------------------------------------------------------------------
+
 
 def test_prediction_loss_diff_vocab():
     """KL div works when student and teacher have different vocab sizes (truncation)."""
@@ -227,6 +234,7 @@ def test_prediction_loss_diff_vocab():
 # 9. forward() returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_distillation_loss_forward_returns_dict():
     """forward() returns dict with 'total', 'pred_loss', 'hidden_loss', 'attn_loss'."""
     B, T, D, V = 2, 8, 64, 256
@@ -247,13 +255,18 @@ def test_distillation_loss_forward_returns_dict():
     teacher_attn = [torch.randn(B, 4, T, T) for _ in range(4)]
 
     result = loss_fn(
-        student_logits, teacher_logits,
-        student_hiddens, teacher_hiddens,
-        student_attn, teacher_attn,
+        student_logits,
+        teacher_logits,
+        student_hiddens,
+        teacher_hiddens,
+        student_attn,
+        teacher_attn,
     )
 
     required_keys = {"total", "pred_loss", "hidden_loss", "attn_loss"}
-    assert required_keys == set(result.keys()), f"Missing keys: {required_keys - set(result.keys())}"
+    assert required_keys == set(result.keys()), (
+        f"Missing keys: {required_keys - set(result.keys())}"
+    )
 
     for key, val in result.items():
         assert isinstance(val, torch.Tensor), f"'{key}' should be a tensor"
@@ -263,6 +276,7 @@ def test_distillation_loss_forward_returns_dict():
 # ---------------------------------------------------------------------------
 # 10. Total loss = weighted sum
 # ---------------------------------------------------------------------------
+
 
 def test_total_loss_is_weighted_sum():
     """total ~ alpha_pred * pred + alpha_hidden * hidden (attn=0 when not provided)."""
@@ -297,6 +311,7 @@ def test_total_loss_is_weighted_sum():
 # ---------------------------------------------------------------------------
 # 11. IntermDistillTrainer.train_step returns metrics
 # ---------------------------------------------------------------------------
+
 
 def test_distill_trainer_step_returns_metrics():
     """train_step returns dict containing the 'loss' key."""

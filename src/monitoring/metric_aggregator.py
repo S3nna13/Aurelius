@@ -3,8 +3,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Deque
+from enum import StrEnum
 
 import numpy as np
 
@@ -17,7 +16,7 @@ class MetricPoint:
     labels: dict[str, str] = field(default_factory=dict)
 
 
-class AggregationWindow(str, Enum):
+class AggregationWindow(StrEnum):
     LAST_1M = "1m"
     LAST_5M = "5m"
     LAST_15M = "15m"
@@ -37,7 +36,7 @@ class MetricAggregator:
 
     def __init__(self, max_points_per_metric: int = 10_000) -> None:
         self._max = max_points_per_metric
-        self._store: dict[str, Deque[MetricPoint]] = {}
+        self._store: dict[str, deque[MetricPoint]] = {}
 
     def record(self, name: str, value: float, labels: dict | None = None) -> MetricPoint:
         point = MetricPoint(

@@ -208,10 +208,7 @@ def test_detect_high_thresholds_not_injection(detector, system_ids, user_ids):
 def test_batch_detect_correct_length(detector, system_ids):
     """batch_detect returns a list whose length matches the number of user messages."""
     torch.manual_seed(SEED + 10)
-    user_batch = [
-        torch.randint(60, 100, (SEQ_LEN,)).tolist()
-        for _ in range(5)
-    ]
+    user_batch = [torch.randint(60, 100, (SEQ_LEN,)).tolist() for _ in range(5)]
     results = detector.batch_detect(system_ids, user_batch)
     assert isinstance(results, list)
     assert len(results) == 5
@@ -225,10 +222,7 @@ def test_batch_detect_correct_length(detector, system_ids):
 def test_batch_detect_elements_have_expected_keys(detector, system_ids):
     """Every element of batch_detect output is a dict with the four detection keys."""
     torch.manual_seed(SEED + 20)
-    user_batch = [
-        torch.randint(60, 100, (SEQ_LEN,)).tolist()
-        for _ in range(3)
-    ]
+    user_batch = [torch.randint(60, 100, (SEQ_LEN,)).tolist() for _ in range(3)]
     results = detector.batch_detect(system_ids, user_batch)
     expected_keys = {"is_injection", "pattern_score", "perplexity_ratio", "overlap"}
     for i, item in enumerate(results):

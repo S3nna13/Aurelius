@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class ExecutionEventType(str, Enum):
+class ExecutionEventType(StrEnum):
     AGENT_START = "agent_start"
     AGENT_STOP = "agent_stop"
     THINK = "think"
@@ -101,15 +100,19 @@ class ExecutionTracer:
     def export_jsonl(self, session_id: str) -> str:
         lines = []
         for event in self._sessions.get(session_id, []):
-            lines.append(json.dumps({
-                "event_id": event.event_id,
-                "session_id": event.session_id,
-                "event_type": event.event_type.value,
-                "step": event.step,
-                "content": event.content,
-                "timestamp": event.timestamp,
-                "duration_ms": event.duration_ms,
-            }))
+            lines.append(
+                json.dumps(
+                    {
+                        "event_id": event.event_id,
+                        "session_id": event.session_id,
+                        "event_type": event.event_type.value,
+                        "step": event.step,
+                        "content": event.content,
+                        "timestamp": event.timestamp,
+                        "duration_ms": event.duration_ms,
+                    }
+                )
+            )
         return "\n".join(lines)
 
     def list_sessions(self) -> list[str]:

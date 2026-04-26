@@ -8,7 +8,6 @@ import pytest
 
 from src.safety.canary_token_guard import CanaryDetection, CanaryTokenGuard
 
-
 # --------------------------------------------------------------------- generate
 
 

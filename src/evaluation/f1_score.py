@@ -1,4 +1,5 @@
 """F1 score evaluator for classification tasks."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

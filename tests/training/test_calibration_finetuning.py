@@ -8,10 +8,10 @@ Tiny configs:
 """
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytest
 
 from src.training.calibration_finetuning import (
     CalibrationBenchmark,
@@ -26,15 +26,16 @@ from src.training.calibration_finetuning import (
 # ---------------------------------------------------------------------------
 # Shared tiny constants
 # ---------------------------------------------------------------------------
-V = 16      # vocab / n_classes
-T = 8       # seq_len
-B = 4       # batch
-N = 32      # validation samples
+V = 16  # vocab / n_classes
+T = 8  # seq_len
+B = 4  # batch
+N = 32  # validation samples
 
 
 # ---------------------------------------------------------------------------
 # Minimal language-model stub used by MixupTrainer
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal LM that accepts inputs_embeds and returns [B, T, V] logits."""
@@ -62,6 +63,7 @@ class TinyLM(nn.Module):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_logits(b: int = B, t: int = T, v: int = V) -> torch.Tensor:
     torch.manual_seed(0)
@@ -92,6 +94,7 @@ def make_probs(n: int = N, c: int = V) -> torch.Tensor:
 # 1. LabelSmoothingLoss — forward produces finite positive scalar
 # ===========================================================================
 
+
 def test_label_smoothing_loss_finite_positive():
     loss_fn = LabelSmoothingLoss(vocab_size=V, smoothing=0.1)
     loss = loss_fn(make_logits(), make_targets())
@@ -103,6 +106,7 @@ def test_label_smoothing_loss_finite_positive():
 # ===========================================================================
 # 2. LabelSmoothingLoss with smoothing=0 matches standard cross-entropy
 # ===========================================================================
+
 
 def test_label_smoothing_loss_zero_smoothing_matches_ce():
     logits = make_logits()
@@ -120,6 +124,7 @@ def test_label_smoothing_loss_zero_smoothing_matches_ce():
 # ===========================================================================
 # 3. LabelSmoothingLoss — ignore_index positions are excluded
 # ===========================================================================
+
 
 def test_label_smoothing_loss_ignore_index():
     logits = make_logits()
@@ -143,6 +148,7 @@ def test_label_smoothing_loss_ignore_index():
 # 4. TemperatureScalingTrainer — calibrate returns positive float
 # ===========================================================================
 
+
 def test_temperature_scaling_calibrate_positive():
     model = TinyLM()
     trainer = TemperatureScalingTrainer(model)
@@ -155,6 +161,7 @@ def test_temperature_scaling_calibrate_positive():
 # 5. TemperatureScalingTrainer — scaled_logits changes values
 # ===========================================================================
 
+
 def test_temperature_scaling_scaled_logits_differs():
     model = TinyLM()
     trainer = TemperatureScalingTrainer(model)
@@ -162,15 +169,14 @@ def test_temperature_scaling_scaled_logits_differs():
     trainer.temperature = nn.Parameter(torch.tensor([2.0]))
     logits = make_val_logits()
     scaled = trainer.scaled_logits(logits)
-    assert not torch.allclose(logits, scaled), (
-        "scaled_logits with T!=1 should change values"
-    )
+    assert not torch.allclose(logits, scaled), "scaled_logits with T!=1 should change values"
     assert logits.shape == scaled.shape, "Shape must be preserved"
 
 
 # ===========================================================================
 # 6. TemperatureScalingTrainer — ECE in [0, 1]
 # ===========================================================================
+
 
 def test_temperature_scaling_ece_range():
     probs = make_probs()
@@ -184,6 +190,7 @@ def test_temperature_scaling_ece_range():
 # 7. VectorScalingTrainer — calibrate runs without error
 # ===========================================================================
 
+
 def test_vector_scaling_calibrate_no_error():
     trainer = VectorScalingTrainer(n_classes=V)
     # Should complete without raising
@@ -194,19 +201,19 @@ def test_vector_scaling_calibrate_no_error():
 # 8. VectorScalingTrainer — scaled_logits shape unchanged
 # ===========================================================================
 
+
 def test_vector_scaling_scaled_logits_shape():
     trainer = VectorScalingTrainer(n_classes=V)
     trainer.calibrate(make_val_logits(), make_val_labels(), n_steps=5)
     logits = make_val_logits()
     scaled = trainer.scaled_logits(logits)
-    assert scaled.shape == logits.shape, (
-        f"Shape mismatch: {scaled.shape} vs {logits.shape}"
-    )
+    assert scaled.shape == logits.shape, f"Shape mismatch: {scaled.shape} vs {logits.shape}"
 
 
 # ===========================================================================
 # 9. FocalLoss — forward produces finite positive scalar
 # ===========================================================================
+
 
 def test_focal_loss_finite_positive():
     loss_fn = FocalLoss(gamma=2.0)
@@ -219,6 +226,7 @@ def test_focal_loss_finite_positive():
 # ===========================================================================
 # 10. FocalLoss gamma=0 matches standard cross-entropy
 # ===========================================================================
+
 
 def test_focal_loss_gamma_zero_matches_ce():
     logits = make_logits()
@@ -237,6 +245,7 @@ def test_focal_loss_gamma_zero_matches_ce():
 # 11. FocalLoss — high-confidence correct predictions get lower weight
 # ===========================================================================
 
+
 def test_focal_loss_high_confidence_lower_weight():
     """
     Construct two scenarios:
@@ -248,9 +257,9 @@ def test_focal_loss_high_confidence_lower_weight():
     loss_fn = FocalLoss(gamma=gamma)
 
     # Scenario A: very confident correct prediction
-    targets = torch.zeros(B, T, dtype=torch.long)   # all class 0
+    targets = torch.zeros(B, T, dtype=torch.long)  # all class 0
     logits_confident = torch.full((B, T, V), -10.0)
-    logits_confident[:, :, 0] = 10.0                # class 0 gets huge score
+    logits_confident[:, :, 0] = 10.0  # class 0 gets huge score
 
     # Scenario B: uniform (uncertain) logits
     logits_uniform = torch.zeros(B, T, V)
@@ -268,6 +277,7 @@ def test_focal_loss_high_confidence_lower_weight():
 # 12. MixupTrainer — mixup_batch returns correct embedding shape
 # ===========================================================================
 
+
 def test_mixup_batch_shape():
     model = TinyLM()
     trainer = MixupTrainer(model, alpha=0.2)
@@ -275,14 +285,13 @@ def test_mixup_batch_shape():
     ids_b = torch.randint(0, V, (B, T))
     mixed, lam = trainer.mixup_batch(ids_a, ids_b)
     d_model = model.embed.embedding_dim
-    assert mixed.shape == (B, T, d_model), (
-        f"Expected ({B},{T},{d_model}), got {mixed.shape}"
-    )
+    assert mixed.shape == (B, T, d_model), f"Expected ({B},{T},{d_model}), got {mixed.shape}"
 
 
 # ===========================================================================
 # 13. MixupTrainer — lambda in [0, 1]
 # ===========================================================================
+
 
 def test_mixup_lambda_range():
     model = TinyLM()
@@ -297,6 +306,7 @@ def test_mixup_lambda_range():
 # ===========================================================================
 # 14. MixupTrainer — train_step returns finite loss
 # ===========================================================================
+
 
 def test_mixup_train_step_finite_loss():
     model = TinyLM()
@@ -313,6 +323,7 @@ def test_mixup_train_step_finite_loss():
 # ===========================================================================
 # 15. CalibrationBenchmark — reliability_diagram_data returns correct keys
 # ===========================================================================
+
 
 def test_reliability_diagram_data_keys():
     bench = CalibrationBenchmark()
@@ -331,6 +342,7 @@ def test_reliability_diagram_data_keys():
 # 16. CalibrationBenchmark — mce in [0, 1]
 # ===========================================================================
 
+
 def test_calibration_benchmark_mce_range():
     bench = CalibrationBenchmark()
     probs = make_probs()
@@ -344,6 +356,7 @@ def test_calibration_benchmark_mce_range():
 # 17. CalibrationBenchmark — brier_score non-negative
 # ===========================================================================
 
+
 def test_calibration_benchmark_brier_score_non_negative():
     bench = CalibrationBenchmark()
     probs = make_probs()
@@ -356,6 +369,7 @@ def test_calibration_benchmark_brier_score_non_negative():
 # ===========================================================================
 # 18. CalibrationConfig — default values
 # ===========================================================================
+
 
 def test_calibration_config_defaults():
     cfg = CalibrationConfig()
@@ -371,6 +385,7 @@ def test_calibration_config_defaults():
 # 19. LabelSmoothingLoss — gradient flows through loss
 # ===========================================================================
 
+
 def test_label_smoothing_loss_gradient():
     logits = make_logits().requires_grad_(True)
     targets = make_targets()
@@ -385,6 +400,7 @@ def test_label_smoothing_loss_gradient():
 # 20. VectorScalingTrainer — calibrated W and b are not all-zero/one after fit
 # ===========================================================================
 
+
 def test_vector_scaling_parameters_updated():
     trainer = VectorScalingTrainer(n_classes=V)
     trainer.calibrate(make_val_logits(), make_val_labels(), n_steps=50)
@@ -392,6 +408,4 @@ def test_vector_scaling_parameters_updated():
     # (or W from ones) in at least some class dimensions
     b_changed = not torch.allclose(trainer.b, torch.zeros(V), atol=1e-6)
     w_changed = not torch.allclose(trainer.W, torch.ones(V), atol=1e-6)
-    assert b_changed or w_changed, (
-        "VectorScaling parameters should update during calibration"
-    )
+    assert b_changed or w_changed, "VectorScaling parameters should update during calibration"

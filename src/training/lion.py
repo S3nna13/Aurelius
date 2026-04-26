@@ -5,6 +5,7 @@ Only one momentum buffer vs Adam's two — more memory efficient.
 
 Reference: Chen et al. 2023, arXiv:2302.06675
 """
+
 from __future__ import annotations
 
 import torch

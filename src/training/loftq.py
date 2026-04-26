@@ -13,10 +13,10 @@ for A and B via alternating optimization:
 This bridges quantization (QAT) and LoRA initialization for better accuracy
 when deploying quantized models with LoRA adapters.
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -25,15 +25,16 @@ import torch.nn.functional as F
 
 @dataclass
 class LoftQConfig:
-    rank: int = 16                       # LoRA rank
-    n_bits: int = 4                      # Quantization bits (4 or 8)
-    n_iter: int = 5                      # Alternating optimization iterations
+    rank: int = 16  # LoRA rank
+    n_bits: int = 4  # Quantization bits (4 or 8)
+    n_iter: int = 5  # Alternating optimization iterations
     target_modules: list[str] | None = None  # None = all Linear layers
 
 
 # ---------------------------------------------------------------------------
 # NF4 quantization (approximate uniform 4-bit)
 # ---------------------------------------------------------------------------
+
 
 def quantize_nf4(
     weight: torch.Tensor,
@@ -133,6 +134,7 @@ def dequantize_nf4(
 # INT8 quantization (per-channel)
 # ---------------------------------------------------------------------------
 
+
 def quantize_int8(
     weight: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -172,6 +174,7 @@ def dequantize_int8(
 # ---------------------------------------------------------------------------
 # LoftQ initialization algorithm
 # ---------------------------------------------------------------------------
+
 
 def loftq_init(
     weight: torch.Tensor,
@@ -241,7 +244,7 @@ def loftq_init(
 
         # Step 6: Update A and B using top-rank singular values/vectors
         sqrt_S = S[:effective_rank].sqrt()  # (effective_rank,)
-        A = U[:, :effective_rank] * sqrt_S.unsqueeze(0)   # (out, rank)
+        A = U[:, :effective_rank] * sqrt_S.unsqueeze(0)  # (out, rank)
         B = sqrt_S.unsqueeze(-1) * Vh[:effective_rank, :]  # (rank, in)
 
     return A, B, W_q_deq
@@ -250,6 +253,7 @@ def loftq_init(
 # ---------------------------------------------------------------------------
 # LoftQLinear module
 # ---------------------------------------------------------------------------
+
 
 class LoftQLinear(nn.Module):
     """Linear layer with LoftQ-initialized LoRA adapters.
@@ -315,6 +319,7 @@ class LoftQLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # apply_loftq: replace Linear layers in model
 # ---------------------------------------------------------------------------
+
 
 def apply_loftq(
     model: nn.Module,

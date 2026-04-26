@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 THREAT_INTEL_SYSTEM_PROMPT: str = """\
 You are Aurelius-ThreatIntel, a defensive-security threat-intelligence analyst.
@@ -194,6 +192,7 @@ _DOMAIN_RE = re.compile(
 
 # --- Persona ------------------------------------------------------------------
 
+
 @dataclass
 class ThreatIntelPersona:
     """Stateless classifier + message-builder + response-validator."""
@@ -222,7 +221,7 @@ class ThreatIntelPersona:
 
     # ---- schema lookup -------------------------------------------------------
 
-    def schema_for(self, query_type: str) -> Optional[dict]:
+    def schema_for(self, query_type: str) -> dict | None:
         return _SCHEMAS.get(query_type)
 
     # ---- message assembly ----------------------------------------------------
@@ -230,7 +229,7 @@ class ThreatIntelPersona:
     def build_messages(
         self,
         user_message: str,
-        history: Optional[list[dict]] = None,
+        history: list[dict] | None = None,
     ) -> list[dict]:
         """Assemble ``[system, intent-hint, *history, user]`` message list."""
         qtype = self.classify_query(user_message)

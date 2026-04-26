@@ -3,24 +3,23 @@
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 from src.inference.agent_loop import (
     AgentConfig,
-    AgentStep,
     AgentMemory,
-    parse_react_output,
-    format_react_prompt,
-    SimpleToolExecutor,
+    AgentStep,
     ReActAgent,
+    SimpleToolExecutor,
     compute_agent_metrics,
+    format_react_prompt,
+    parse_react_output,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_config():
@@ -74,6 +73,7 @@ def agent(model, tool_executor, agent_config):
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_agent_config_defaults():
     cfg = AgentConfig()
     assert cfg.max_steps == 10
@@ -111,7 +111,9 @@ def test_agent_memory_add_step():
 
 def test_agent_memory_format_history():
     mem = AgentMemory()
-    mem.add_step(AgentStep(step_num=0, thought="think", action="echo(hi)", observation="hi", is_final=False))
+    mem.add_step(
+        AgentStep(step_num=0, thought="think", action="echo(hi)", observation="hi", is_final=False)
+    )
     history = mem.format_history()
     assert "Thought: think" in history
     assert "Action: echo(hi)" in history
@@ -121,7 +123,9 @@ def test_agent_memory_format_history():
 def test_agent_memory_get_last_n():
     mem = AgentMemory()
     for i in range(5):
-        mem.add_step(AgentStep(step_num=i, thought=f"t{i}", action=None, observation=None, is_final=False))
+        mem.add_step(
+            AgentStep(step_num=i, thought=f"t{i}", action=None, observation=None, is_final=False)
+        )
     last2 = mem.get_last_n(2)
     assert len(last2) == 2
     assert last2[0].step_num == 3

@@ -1,4 +1,5 @@
 """Tests for CoTTrainer — chain-of-thought scratchpad training."""
+
 from __future__ import annotations
 
 import pytest
@@ -18,8 +19,8 @@ from src.training.cot_trainer import (
     verify_answer_correct,
 )
 
-
 # ── Fixtures ────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def small_cfg():
@@ -52,6 +53,7 @@ def _simple_decode(ids: list[int]) -> str:
 
 # ── CoTExample ───────────────────────────────────────────────────────────────
 
+
 def test_cot_example_full_text():
     ex = CoTExample(
         question="How many apples?",
@@ -65,6 +67,7 @@ def test_cot_example_full_text():
 
 
 # ── Synthetic data generation ────────────────────────────────────────────────
+
 
 def test_generate_arithmetic_example_fields():
     ex = generate_arithmetic_example()
@@ -95,11 +98,12 @@ def test_generate_arithmetic_dataset_reproducible():
 
 # ── build_cot_labels ─────────────────────────────────────────────────────────
 
+
 def _make_simple_sequence(cfg: CoTConfig) -> tuple[torch.Tensor, list[int]]:
     """Return (input_ids, delimiter_token_ids) with a known structure."""
     # Construct: question_tokens + delimiter_tokens + answer_tokens
     question_ids = [10, 11, 12]
-    delimiter_ids = [ord('#'), ord('#'), ord('#'), ord('#')]  # "####"
+    delimiter_ids = [ord("#"), ord("#"), ord("#"), ord("#")]  # "####"
     answer_ids = [20, 21]
     all_ids = question_ids + delimiter_ids + answer_ids
     return torch.tensor(all_ids, dtype=torch.long), delimiter_ids
@@ -131,6 +135,7 @@ def test_build_cot_labels_weight_after_delimiter():
 
 # ── cot_loss ─────────────────────────────────────────────────────────────────
 
+
 def test_cot_loss_scalar(small_model):
     B, T = 2, 16
     vocab = 256
@@ -140,7 +145,7 @@ def test_cot_loss_scalar(small_model):
     labels[:, :4] = -100
     weights = torch.ones(B, T)
     weights[:, 8:] = 5.0
-    cfg = CoTConfig()
+    CoTConfig()
     loss = cot_loss(small_model, input_ids, labels, weights)
     assert loss.shape == (), "cot_loss must return a scalar tensor"
     assert loss.item() > 0
@@ -148,6 +153,7 @@ def test_cot_loss_scalar(small_model):
 
 
 # ── CoTTrainer ───────────────────────────────────────────────────────────────
+
 
 def test_cot_trainer_tokenize_shape(small_model):
     cfg = CoTConfig(max_seq_len=512)
@@ -178,6 +184,7 @@ def test_cot_trainer_train_step_metrics(small_model, small_cfg):
 
 # ── extract_cot_answer ────────────────────────────────────────────────────────
 
+
 def test_extract_cot_answer_basic():
     text = "Let me think.\n#### 42"
     ans = extract_cot_answer(text)
@@ -191,6 +198,7 @@ def test_extract_cot_answer_none():
 
 
 # ── verify_answer_correct ─────────────────────────────────────────────────────
+
 
 def test_verify_answer_correct_exact():
     assert verify_answer_correct("42", "42") is True

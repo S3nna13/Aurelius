@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
-from typing import Dict
+from dataclasses import dataclass
 
 
 @dataclass
@@ -29,7 +27,7 @@ class TokenBudgetController:
 
     def __init__(self, config: BudgetConfig | None = None) -> None:
         self._config = config or BudgetConfig()
-        self._sessions: Dict[str, BudgetState] = {}
+        self._sessions: dict[str, BudgetState] = {}
 
     def create_session(self, session_id: str) -> BudgetState:
         state = BudgetState(
@@ -48,9 +46,7 @@ class TokenBudgetController:
             raise KeyError(f"Unknown session: {session_id}")
         return self._sessions[session_id]
 
-    def record_usage(
-        self, session_id: str, input_tokens: int, output_tokens: int
-    ) -> BudgetState:
+    def record_usage(self, session_id: str, input_tokens: int, output_tokens: int) -> BudgetState:
         state = self._get_or_raise(session_id)
         state.input_tokens_used += input_tokens
         state.output_tokens_used += output_tokens
@@ -79,10 +75,7 @@ class TokenBudgetController:
             return False, "input token limit would be exceeded"
         if state.output_tokens_used + requested_output > cfg.max_output_tokens:
             return False, "output token limit would be exceeded"
-        if (
-            state.total_tokens_used + requested_input + requested_output
-            > cfg.max_total_tokens
-        ):
+        if state.total_tokens_used + requested_input + requested_output > cfg.max_total_tokens:
             return False, "total token limit would be exceeded"
         return True, "ok"
 

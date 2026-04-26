@@ -4,33 +4,34 @@ Diagnostic tools for understanding load balance, routing collapse,
 and expert utilization in MoE layers.  All classes operate on plain
 PyTorch tensors; no external dependencies beyond stdlib + torch.
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MoEAnalysisConfig:
     """Configuration knobs for MoE diagnostic thresholds."""
+
     n_experts: int = 8
     top_k: int = 2
-    collapse_threshold: float = 0.01   # fraction below which an expert is "dead"
-    entropy_threshold: float = 0.5     # nats; below this routing is "low-entropy"
-    imbalance_threshold: float = 0.3   # std of utilization; above this is imbalanced
+    collapse_threshold: float = 0.01  # fraction below which an expert is "dead"
+    entropy_threshold: float = 0.5  # nats; below this routing is "low-entropy"
+    imbalance_threshold: float = 0.3  # std of utilization; above this is imbalanced
 
 
 # ---------------------------------------------------------------------------
 # RouterStats
 # ---------------------------------------------------------------------------
+
 
 class RouterStats:
     """Accumulates per-expert token counts and routing weight statistics
@@ -56,7 +57,7 @@ class RouterStats:
     def update(
         self,
         routing_weights: torch.Tensor,  # [B*T, n_experts]  — full softmax/gate probs
-        selected_experts: torch.Tensor, # [B*T, top_k]      — indices of chosen experts
+        selected_experts: torch.Tensor,  # [B*T, top_k]      — indices of chosen experts
     ) -> None:
         """Accumulate one batch of routing statistics.
 
@@ -117,7 +118,7 @@ class RouterStats:
         """
         if self._total_tokens == 0 or self._routing_weight_count == 0:
             return 0.0
-        f = self.expert_utilization()                              # [n_experts]
+        f = self.expert_utilization()  # [n_experts]
         p = self._routing_weight_sum / self._routing_weight_count  # [n_experts]
         loss = float(self.n_experts * (f * p).sum().item())
         return max(loss, 0.0)
@@ -172,6 +173,7 @@ class RouterStats:
 # ---------------------------------------------------------------------------
 # ExpertActivationTracker
 # ---------------------------------------------------------------------------
+
 
 class ExpertActivationTracker:
     """Tracks which experts are activated together and the tokens they process.
@@ -232,7 +234,7 @@ class ExpertActivationTracker:
     def expert_specialization(
         self,
         features: torch.Tensor,  # [N, d]
-        expert_ids: torch.Tensor, # [N]  — single expert index per token
+        expert_ids: torch.Tensor,  # [N]  — single expert index per token
     ) -> torch.Tensor:
         """Compute the mean feature vector (centroid) for each expert.
 
@@ -259,9 +261,9 @@ class ExpertActivationTracker:
     def top_tokens_per_expert(
         self,
         token_ids: torch.Tensor,  # [N]  — integer token ids
-        expert_ids: torch.Tensor, # [N]  — single expert index per token
+        expert_ids: torch.Tensor,  # [N]  — single expert index per token
         k: int = 5,
-    ) -> Dict[int, List[int]]:
+    ) -> dict[int, list[int]]:
         """Return the ``k`` most frequent token ids routed to each expert.
 
         Parameters
@@ -274,7 +276,7 @@ class ExpertActivationTracker:
         -------
         dict mapping expert_index → list of up to k token_ids (most-frequent first)
         """
-        result: Dict[int, List[int]] = {}
+        result: dict[int, list[int]] = {}
         for e in range(self.n_experts):
             mask = expert_ids == e
             if not mask.any():
@@ -282,7 +284,7 @@ class ExpertActivationTracker:
                 continue
             tids = token_ids[mask]
             # count occurrences
-            counts: Dict[int, int] = {}
+            counts: dict[int, int] = {}
             for tid in tids.tolist():
                 tid = int(tid)
                 counts[tid] = counts.get(tid, 0) + 1
@@ -294,6 +296,7 @@ class ExpertActivationTracker:
 # ---------------------------------------------------------------------------
 # RoutingDiversityMetrics
 # ---------------------------------------------------------------------------
+
 
 class RoutingDiversityMetrics:
     """Stateless collection of diversity / consistency metrics for MoE routing."""
@@ -360,6 +363,7 @@ class RoutingDiversityMetrics:
 # MoEDiagnostics
 # ---------------------------------------------------------------------------
 
+
 class MoEDiagnostics:
     """High-level diagnostic wrapper combining RouterStats and ExpertActivationTracker.
 
@@ -377,7 +381,7 @@ class MoEDiagnostics:
         self.router_stats = router_stats
         self.tracker = tracker
 
-    def full_report(self) -> Dict[str, float]:
+    def full_report(self) -> dict[str, float]:
         """Compute all key metrics and return as a flat dict.
 
         Returns
@@ -406,7 +410,7 @@ class MoEDiagnostics:
             "mean_co_activation": mean_co,
         }
 
-    def detect_issues(self) -> List[str]:
+    def detect_issues(self) -> list[str]:
         """Return a list of warning strings for detected routing problems.
 
         Possible warnings
@@ -419,7 +423,7 @@ class MoEDiagnostics:
         -------
         list[str]  — empty if no issues detected
         """
-        issues: List[str] = []
+        issues: list[str] = []
         report = self.full_report()
 
         if report["utilization_std"] > 0.3:

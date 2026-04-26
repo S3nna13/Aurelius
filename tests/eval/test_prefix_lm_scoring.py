@@ -3,26 +3,28 @@
 All tests use tiny tensors and a trivial mock model so they run fast
 with no GPU and no external dependencies beyond PyTorch.
 """
+
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 from torch import Tensor
 
 from src.eval.prefix_lm_scoring import (
+    PrefixLMScorer,
     ScoringConfig,
     compute_token_log_probs,
-    score_completion,
-    rank_completions,
-    PrefixLMScorer,
     perplexity_from_log_probs,
+    rank_completions,
+    score_completion,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
+
 
 def _uniform_logits(T: int, vocab: int, seed: int = 0) -> Tensor:
     """Return deterministic random logits of shape (T, vocab)."""
@@ -38,16 +40,19 @@ def _make_ids(T: int, vocab: int, seed: int = 1) -> Tensor:
 
 def _dummy_model(vocab: int = 32, seed: int = 42):
     """Return a callable that ignores input and returns fixed logits."""
+
     def model_fn(input_ids: Tensor) -> Tensor:
         T = input_ids.shape[-1]
         torch.manual_seed(seed)
         return torch.randn(T, vocab)
+
     return model_fn
 
 
 # ---------------------------------------------------------------------------
 # ScoringConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_scoring_config_defaults():
     """ScoringConfig should have correct default values."""
@@ -80,6 +85,7 @@ def test_scoring_config_invalid_log_base():
 # ---------------------------------------------------------------------------
 # compute_token_log_probs tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_token_log_probs_shape():
     """Output must be 1-D with length T."""
@@ -123,6 +129,7 @@ def test_compute_token_log_probs_known_value():
 # ---------------------------------------------------------------------------
 # score_completion tests
 # ---------------------------------------------------------------------------
+
 
 def test_score_completion_mean_returns_scalar():
     """reduction='mean' must return a 0-D tensor."""
@@ -178,6 +185,7 @@ def test_score_completion_log_base_conversion():
 # rank_completions tests
 # ---------------------------------------------------------------------------
 
+
 def test_rank_completions_highest_score_gets_rank_0():
     """The completion with the highest score must have rank 0."""
     scores = torch.tensor([-3.0, -1.0, -5.0, -2.0])
@@ -206,6 +214,7 @@ def test_rank_completions_is_permutation():
 # ---------------------------------------------------------------------------
 # PrefixLMScorer tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -249,8 +258,8 @@ def test_prefix_lm_scorer_rank_best_is_rank_0():
     scorer = PrefixLMScorer(model_fn=controlled_model, config=cfg)
 
     # First input: starts with token 0, completion continues with token 0
-    inp0 = torch.zeros(6, dtype=torch.long)          # all token-0
-    inp1 = torch.ones(6, dtype=torch.long)            # all token-1 (worse score)
+    inp0 = torch.zeros(6, dtype=torch.long)  # all token-0
+    inp1 = torch.ones(6, dtype=torch.long)  # all token-1 (worse score)
     inputs = [inp0, inp1]
     starts = [3, 3]
 
@@ -261,6 +270,7 @@ def test_prefix_lm_scorer_rank_best_is_rank_0():
 # ---------------------------------------------------------------------------
 # perplexity_from_log_probs tests
 # ---------------------------------------------------------------------------
+
 
 def test_perplexity_from_log_probs_finite_positive():
     """Perplexity must be a finite, positive float."""
@@ -280,7 +290,7 @@ def test_perplexity_from_log_probs_all_zeros_gives_one():
 def test_perplexity_from_log_probs_known_value():
     """Verify perplexity formula: base^(-mean(log_probs))."""
     base = 2.0
-    log_probs = torch.tensor([-2.0, -4.0])   # mean = -3
-    expected = base ** 3                       # = 8.0
+    log_probs = torch.tensor([-2.0, -4.0])  # mean = -3
+    expected = base**3  # = 8.0
     ppl = perplexity_from_log_probs(log_probs, base=base)
     assert abs(ppl - expected) < 1e-5, f"Expected {expected}, got {ppl}"

@@ -11,6 +11,7 @@ Pipeline:
   3. Revision: model revises based on the critique
   4. Optionally: repeat critique-revision for multiple rounds
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,17 +25,17 @@ logger = logging.getLogger(__name__)
 
 # Default constitutional principles (Anthropic-style)
 DEFAULT_PRINCIPLES: list[str] = [
-    "Is the response harmful, dangerous, or promoting illegal activity? If so, rewrite it to be safe and helpful.",
-    "Is the response honest and accurate? If it makes false claims, rewrite it to be truthful or acknowledge uncertainty.",
-    "Is the response respectful and free from bias? If not, rewrite it to be respectful to all people.",
-    "Is the response clear and helpful? If not, rewrite it to better address the user's actual need.",
+    "Is the response harmful, dangerous, or promoting illegal activity? If so, rewrite it to be safe and helpful.",  # noqa: E501
+    "Is the response honest and accurate? If it makes false claims, rewrite it to be truthful or acknowledge uncertainty.",  # noqa: E501
+    "Is the response respectful and free from bias? If not, rewrite it to be respectful to all people.",  # noqa: E501
+    "Is the response clear and helpful? If not, rewrite it to better address the user's actual need.",  # noqa: E501
 ]
 
 
 @dataclass
 class ConstitutionalConfig:
     principles: list[str] = field(default_factory=lambda: list(DEFAULT_PRINCIPLES))
-    num_rounds: int = 1           # number of critique-revision rounds
+    num_rounds: int = 1  # number of critique-revision rounds
     max_critique_tokens: int = 128
     max_revision_tokens: int = 256
     temperature: float = 0.7
@@ -105,7 +106,7 @@ class ConstitutionalReviser:
         # Truncate to leave room for generation
         max_seq = self.model.config.max_seq_len
         if input_ids.shape[1] >= max_seq - 4:
-            input_ids = input_ids[:, -(max_seq - max_new_tokens - 4):]
+            input_ids = input_ids[:, -(max_seq - max_new_tokens - 4) :]
 
         output = self.model.generate(
             input_ids,
@@ -114,7 +115,7 @@ class ConstitutionalReviser:
             top_p=self.cfg.top_p,
         )
 
-        new_ids = output[:, input_ids.shape[1]:][0].tolist()
+        new_ids = output[:, input_ids.shape[1] :][0].tolist()
         return self.tokenizer.decode(new_ids)
 
     def critique(self, prompt: str, response: str, principle: str) -> str:
@@ -144,24 +145,28 @@ class ConstitutionalReviser:
 
                 # Skip revision if critique indicates no issues
                 if "no issues" in critique.lower() or len(critique.strip()) < 5:
-                    round_record["revisions"].append({
-                        "principle": principle,
-                        "critique": critique,
-                        "revised": False,
-                        "response": current_response,
-                    })
+                    round_record["revisions"].append(
+                        {
+                            "principle": principle,
+                            "critique": critique,
+                            "revised": False,
+                            "response": current_response,
+                        }
+                    )
                     continue
 
                 revised = self.revise(prompt, current_response, critique, principle)
                 if revised.strip():
                     current_response = revised
 
-                round_record["revisions"].append({
-                    "principle": principle,
-                    "critique": critique,
-                    "revised": True,
-                    "response": current_response,
-                })
+                round_record["revisions"].append(
+                    {
+                        "principle": principle,
+                        "critique": critique,
+                        "revised": True,
+                        "response": current_response,
+                    }
+                )
                 logger.debug("Round %d - Applied principle: %s", round_idx + 1, principle[:50])
 
             rounds.append(round_record)

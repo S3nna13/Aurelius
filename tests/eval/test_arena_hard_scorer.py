@@ -12,7 +12,6 @@ from src.eval.arena_hard_scorer import (
     ArenaProblem,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper fake judges
 # ---------------------------------------------------------------------------
@@ -20,8 +19,10 @@ from src.eval.arena_hard_scorer import (
 
 def _always(verdict: str):
     """Returns a judge_fn that always emits the given bracket verdict."""
+
     def fn(prompt: str) -> str:
         return f"explanation text. [[{verdict}]]"
+
     return fn
 
 
@@ -104,9 +105,7 @@ def test_swap_order_agreement_preserved():
     judge = _dominant_judge("MARKER_WINNER")
     scorer = ArenaHardScorer(judge_fn=judge, swap_order=True)
     prob = ArenaProblem(prompt_id="p1", prompt="question")
-    c = scorer.compare(
-        prob, "this is MARKER_WINNER content", "loser content", "m1", "m2"
-    )
+    c = scorer.compare(prob, "this is MARKER_WINNER content", "loser content", "m1", "m2")
     assert c.winner == "A"  # model_a (m1) had the marker
 
 
@@ -135,15 +134,9 @@ def test_fit_bradley_terry_dominant_model_highest():
     names = ["m_strong", "m_mid", "m_weak"]
     comparisons = []
     for _ in range(10):
-        comparisons.append(
-            ArenaComparison("p", "m_strong", "m_mid", "A")
-        )
-        comparisons.append(
-            ArenaComparison("p", "m_strong", "m_weak", "A")
-        )
-        comparisons.append(
-            ArenaComparison("p", "m_mid", "m_weak", "A")
-        )
+        comparisons.append(ArenaComparison("p", "m_strong", "m_mid", "A"))
+        comparisons.append(ArenaComparison("p", "m_strong", "m_weak", "A"))
+        comparisons.append(ArenaComparison("p", "m_mid", "m_weak", "A"))
     ratings = ArenaHardScorer.fit_bradley_terry(comparisons, names, n_iters=200)
     assert ratings["m_strong"] > ratings["m_mid"] > ratings["m_weak"]
     # Zero-mean normalized.
@@ -152,9 +145,7 @@ def test_fit_bradley_terry_dominant_model_highest():
 
 def test_bootstrap_ci_contains_mean():
     names = ["m_strong", "m_weak"]
-    comparisons = [
-        ArenaComparison("p", "m_strong", "m_weak", "A") for _ in range(20)
-    ]
+    comparisons = [ArenaComparison("p", "m_strong", "m_weak", "A") for _ in range(20)]
     ci = ArenaHardScorer.bootstrap_confidence_intervals(
         comparisons, names, n_bootstrap=50, ci=0.90, seed=0
     )
@@ -182,6 +173,7 @@ def test_bootstrap_lo_le_mean_le_hi_all_models():
 def test_invalid_judge_output_yields_invalid():
     def bad_judge(prompt: str) -> str:
         return "I refuse to answer."
+
     scorer = ArenaHardScorer(judge_fn=bad_judge, swap_order=False)
     prob = ArenaProblem(prompt_id="p1", prompt="q")
     c = scorer.compare(prob, "a", "b", "x", "y")
@@ -245,6 +237,7 @@ def test_missing_response_raises():
 def test_judge_fn_exceptions_handled():
     def raising_judge(prompt: str) -> str:
         raise RuntimeError("kaboom")
+
     scorer = ArenaHardScorer(judge_fn=raising_judge, swap_order=False)
     prob = ArenaProblem(prompt_id="p1", prompt="q")
     c = scorer.compare(prob, "a", "b", "x", "y")
@@ -261,9 +254,7 @@ def test_compare_same_model_name_raises():
 
 def test_bootstrap_empty_comparisons():
     names = ["a", "b"]
-    ci = ArenaHardScorer.bootstrap_confidence_intervals(
-        [], names, n_bootstrap=5, ci=0.9, seed=0
-    )
+    ci = ArenaHardScorer.bootstrap_confidence_intervals([], names, n_bootstrap=5, ci=0.9, seed=0)
     for m in names:
         mean, lo, hi = ci[m]
         assert mean == 0.0 and lo == 0.0 and hi == 0.0

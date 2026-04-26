@@ -31,7 +31,7 @@ def _newton_schulz(G: torch.Tensor, steps: int = 5) -> torch.Tensor:
     Returns:
         Orthogonalized matrix of the same shape as G.
     """
-    assert G.ndim >= 2
+    assert G.ndim >= 2  # noqa: S101
     # Ensure m >= n by transposing if needed, then transpose back
     transposed = G.shape[0] < G.shape[1]
     if transposed:

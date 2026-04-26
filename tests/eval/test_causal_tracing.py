@@ -1,22 +1,23 @@
 """Tests for causal tracing / activation patching (src/eval/causal_tracing.py)."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.causal_tracing import (
     PatchingResult,
+    causal_trace,
     get_hidden_states,
     patch_and_forward,
-    causal_trace,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny model fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_model() -> AureliusTransformer:
@@ -61,6 +62,7 @@ def target_token_id() -> int:
 # Tests for get_hidden_states
 # ---------------------------------------------------------------------------
 
+
 def test_get_hidden_states_returns_all_layers(tiny_model, clean_ids):
     """Dict must have one entry per layer."""
     hs = get_hidden_states(tiny_model, clean_ids)
@@ -82,6 +84,7 @@ def test_get_hidden_states_shape(tiny_model, clean_ids):
 # Tests for patch_and_forward
 # ---------------------------------------------------------------------------
 
+
 def test_patch_and_forward_returns_float(tiny_model, clean_ids, corrupted_ids, target_token_id):
     """Should return a float probability in [0, 1]."""
     hs = get_hidden_states(tiny_model, clean_ids)
@@ -100,6 +103,7 @@ def test_patch_and_forward_returns_float(tiny_model, clean_ids, corrupted_ids, t
 # ---------------------------------------------------------------------------
 # Tests for causal_trace
 # ---------------------------------------------------------------------------
+
 
 def test_causal_trace_returns_results(tiny_model, clean_ids, corrupted_ids, target_token_id):
     """Should return a non-empty list."""
@@ -143,7 +147,9 @@ def test_restoration_score_range(tiny_model, clean_ids, corrupted_ids, target_to
     )
     for r in results:
         score = r.restoration_score
-        assert 0.0 <= score <= 1.0, f"Score out of range: {score} for layer={r.layer}, pos={r.position}"
+        assert 0.0 <= score <= 1.0, (
+            f"Score out of range: {score} for layer={r.layer}, pos={r.position}"
+        )
 
 
 def test_restoration_score_full(tiny_model, clean_ids, target_token_id):
@@ -151,7 +157,7 @@ def test_restoration_score_full(tiny_model, clean_ids, target_token_id):
     results = causal_trace(
         model=tiny_model,
         clean_ids=clean_ids,
-        corrupted_ids=clean_ids,   # same input = no corruption
+        corrupted_ids=clean_ids,  # same input = no corruption
         target_token_id=target_token_id,
         layers=[0],
         positions=[0],

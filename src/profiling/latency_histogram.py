@@ -95,12 +95,9 @@ class LatencyHistogram:
             "p95": self.percentile(95),
             "p99": self.percentile(99),
             "buckets": [
-                {"lower": b.lower, "upper": b.upper, "count": b.count}
-                for b in self.buckets()
+                {"lower": b.lower, "upper": b.upper, "count": b.count} for b in self.buckets()
             ],
         }
 
 
-LATENCY_HISTOGRAM_REGISTRY: dict[str, type[LatencyHistogram]] = {
-    "default": LatencyHistogram
-}
+LATENCY_HISTOGRAM_REGISTRY: dict[str, type[LatencyHistogram]] = {"default": LatencyHistogram}

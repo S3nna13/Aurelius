@@ -8,17 +8,17 @@ suite runs quickly without GPU.
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
 
 from src.interpretability.probing import (
-    ProbingConfig,
-    LinearProbe,
-    train_probe,
-    evaluate_probe,
-    compute_mutual_information_proxy,
     LayerProbingResults,
+    LinearProbe,
     MultiLayerProber,
+    ProbingConfig,
+    compute_mutual_information_proxy,
+    evaluate_probe,
+    train_probe,
 )
 
 # ---------------------------------------------------------------------------
@@ -69,6 +69,7 @@ def _tiny_config() -> ProbingConfig:
 # 1. ProbingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_probing_config_defaults():
     cfg = ProbingConfig()
     assert cfg.n_classes == 2
@@ -83,6 +84,7 @@ def test_probing_config_defaults():
 # 2. LinearProbe output shape
 # ---------------------------------------------------------------------------
 
+
 def test_linear_probe_output_shape():
     probe = LinearProbe(D, N_CLASSES)
     h = torch.randn(N, D)
@@ -93,6 +95,7 @@ def test_linear_probe_output_shape():
 # ---------------------------------------------------------------------------
 # 3. train_probe returns list of length n_epochs
 # ---------------------------------------------------------------------------
+
 
 def test_train_probe_returns_correct_length():
     cfg = _tiny_config()
@@ -106,6 +109,7 @@ def test_train_probe_returns_correct_length():
 # ---------------------------------------------------------------------------
 # 4. train_probe loss decreases (first epoch loss > last epoch loss)
 # ---------------------------------------------------------------------------
+
 
 def test_train_probe_loss_decreases():
     cfg = ProbingConfig(
@@ -128,6 +132,7 @@ def test_train_probe_loss_decreases():
 # 5. evaluate_probe returns accuracy and loss keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_probe_keys():
     cfg = _tiny_config()
     hiddens, labels = _make_random_data()
@@ -141,6 +146,7 @@ def test_evaluate_probe_keys():
 # ---------------------------------------------------------------------------
 # 6. accuracy is in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_probe_accuracy_range():
     cfg = _tiny_config()
@@ -156,6 +162,7 @@ def test_evaluate_probe_accuracy_range():
 # 7. loss is positive
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_probe_loss_positive():
     cfg = _tiny_config()
     hiddens, labels = _make_random_data()
@@ -169,6 +176,7 @@ def test_evaluate_probe_loss_positive():
 # 8. compute_mutual_information_proxy returns non-negative float
 # ---------------------------------------------------------------------------
 
+
 def test_mi_proxy_non_negative():
     hiddens, labels = _make_random_data()
     mi = compute_mutual_information_proxy(hiddens, labels)
@@ -180,6 +188,7 @@ def test_mi_proxy_non_negative():
 # 9. MI > 0 for linearly separable data
 # ---------------------------------------------------------------------------
 
+
 def test_mi_proxy_positive_for_separable_data():
     hiddens, labels = _make_separable_data()
     mi = compute_mutual_information_proxy(hiddens, labels, n_bins=10)
@@ -189,6 +198,7 @@ def test_mi_proxy_positive_for_separable_data():
 # ---------------------------------------------------------------------------
 # 10. MultiLayerProber.probe_layer returns LayerProbingResults
 # ---------------------------------------------------------------------------
+
 
 def test_probe_layer_returns_correct_type():
     cfg = _tiny_config()
@@ -201,6 +211,7 @@ def test_probe_layer_returns_correct_type():
 # ---------------------------------------------------------------------------
 # 11. probe_all_layers length equals number of layers
 # ---------------------------------------------------------------------------
+
 
 def test_probe_all_layers_length():
     cfg = _tiny_config()
@@ -215,6 +226,7 @@ def test_probe_all_layers_length():
 # ---------------------------------------------------------------------------
 # 12. get_best_layer returns a valid layer index
 # ---------------------------------------------------------------------------
+
 
 def test_get_best_layer_valid_index():
     cfg = _tiny_config()
@@ -231,6 +243,7 @@ def test_get_best_layer_valid_index():
 # ---------------------------------------------------------------------------
 # 13. LayerProbingResults has required fields
 # ---------------------------------------------------------------------------
+
 
 def test_layer_probing_results_fields():
     result = LayerProbingResults(
@@ -249,6 +262,7 @@ def test_layer_probing_results_fields():
 # 14. probe_all_layers results are sorted by layer_idx
 # ---------------------------------------------------------------------------
 
+
 def test_probe_all_layers_sorted():
     cfg = _tiny_config()
     prober = MultiLayerProber(cfg)
@@ -263,6 +277,7 @@ def test_probe_all_layers_sorted():
 # ---------------------------------------------------------------------------
 # 15. train_probe losses are all finite floats
 # ---------------------------------------------------------------------------
+
 
 def test_train_probe_losses_finite():
     cfg = _tiny_config()

@@ -1,12 +1,13 @@
 """Tests for src/search/inverted_index.py  (≥28 tests)."""
 
 import pytest
-from src.search.inverted_index import InvertedIndex, Posting, INVERTED_INDEX_REGISTRY
 
+from src.search.inverted_index import INVERTED_INDEX_REGISTRY, InvertedIndex, Posting
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_index(*docs) -> InvertedIndex:
     """Build an InvertedIndex from (doc_id, tokens) pairs."""
@@ -19,6 +20,7 @@ def _make_index(*docs) -> InvertedIndex:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):
@@ -34,6 +36,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # Empty index
 # ---------------------------------------------------------------------------
+
 
 class TestEmptyIndex:
     def test_lookup_returns_empty_list_for_unknown_term(self):
@@ -60,6 +63,7 @@ class TestEmptyIndex:
 # ---------------------------------------------------------------------------
 # Single document
 # ---------------------------------------------------------------------------
+
 
 class TestSingleDocument:
     def test_add_document_and_lookup(self):
@@ -108,6 +112,7 @@ class TestSingleDocument:
 # ---------------------------------------------------------------------------
 # Multiple documents
 # ---------------------------------------------------------------------------
+
 
 class TestMultipleDocuments:
     def test_lookup_multiple_docs_sorted_ascending(self):

@@ -7,6 +7,7 @@ and MLX-based local training on Apple Silicon.
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import math
@@ -16,14 +17,13 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-import importlib
 
 import torch
 import yaml
 from safetensors.torch import load_file, save_file
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 from src.data.tokenized_loader import TokenizedShardDataset
 from src.training.muon import Muon
@@ -56,12 +56,13 @@ def _make_accelerator(**kwargs: Any) -> Any:
 # GLM-5 §4.1 (arXiv:2602.15763)
 # ---------------------------------------------------------------------------
 
+
 def build_async_rl_orchestrator(
     heartbeat_timeout: float = 30.0,
     max_concurrent: int = 1000,
     *,
     enabled: bool = False,
-) -> "Any":
+) -> Any:
     """Return a ``RolloutOrchestrator`` when async RL is enabled.
 
     This function is **additive only** — it is behind the ``enabled`` feature
@@ -85,6 +86,7 @@ def build_async_rl_orchestrator(
     if not enabled:
         return None
     from src.training.async_rl_infra import RolloutOrchestrator
+
     return RolloutOrchestrator(
         heartbeat_timeout=heartbeat_timeout,
         max_concurrent=max_concurrent,
@@ -95,10 +97,11 @@ def build_async_rl_orchestrator(
 # PRM-aware model factory (ADDITIVE -- does not modify AureliusTrainer)
 # ---------------------------------------------------------------------------
 
+
 def build_model_for_training(
-    config: "Any",
-    base_model: "torch.nn.Module | None" = None,
-) -> "torch.nn.Module":
+    config: Any,
+    base_model: torch.nn.Module | None = None,
+) -> torch.nn.Module:
     """Return the appropriate model wrapper given training config.
 
     This factory is ADDITIVE -- the core AureliusTrainer is unchanged.
@@ -117,22 +120,24 @@ def build_model_for_training(
         torch.nn.Module ready for the training loop.
     """
     # Lazy import to avoid circular deps
-    from src.model.config import AureliusConfig
 
     if hasattr(config, "enable_prm_training") and config.enable_prm_training:
         from src.training.process_reward_model import ProcessRewardModel
+
         logger.info("PRM training enabled -- wrapping backbone in ProcessRewardModel")
         return ProcessRewardModel(config)
     elif base_model is not None:
         return base_model
     else:
         from src.model.transformer import AureliusTransformer
+
         return AureliusTransformer(config)
 
 
 # ---------------------------------------------------------------------------
 # Dataloader helpers
 # ---------------------------------------------------------------------------
+
 
 def _collate_fn(
     batch: list[tuple[torch.Tensor, torch.Tensor]],
@@ -144,7 +149,7 @@ def _collate_fn(
 
 
 def build_dataloaders(
-    cfg: "TrainConfig",
+    cfg: TrainConfig,
 ) -> tuple[DataLoader, DataLoader | None]:
     """Build train and validation DataLoaders from .npy token shards.
 
@@ -190,6 +195,7 @@ def build_dataloaders(
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TrainConfig:
@@ -241,8 +247,8 @@ class TrainConfig:
     pin_memory: bool = True
 
     # Optimizer variant
-    use_muon: bool = True   # Use Muon for matrix params + AdamW for embeddings
-    muon_lr: float = 0.02   # Muon learning rate (much higher than AdamW's 3e-4)
+    use_muon: bool = True  # Use Muon for matrix params + AdamW for embeddings
+    muon_lr: float = 0.02  # Muon learning rate (much higher than AdamW's 3e-4)
     muon_momentum: float = 0.95
 
     # ZClip (adaptive gradient clipping)
@@ -276,18 +282,26 @@ class TrainConfig:
             weight_decay=raw.get("optimizer", {}).get("weight_decay", cls.weight_decay),
             warmup_steps=raw.get("scheduler", {}).get("warmup_steps", cls.warmup_steps),
             total_steps=raw.get("scheduler", {}).get("total_steps", cls.total_steps),
-            global_batch_tokens=raw.get("batch", {}).get("global_batch_tokens", cls.global_batch_tokens),
+            global_batch_tokens=raw.get("batch", {}).get(
+                "global_batch_tokens", cls.global_batch_tokens
+            ),
             micro_batch_size=raw.get("batch", {}).get("micro_batch_size", cls.micro_batch_size),
             seq_len=raw.get("batch", {}).get("seq_len", cls.seq_len),
             max_grad_norm=raw.get("gradient", {}).get("max_norm", cls.max_grad_norm),
             dtype=raw.get("precision", {}).get("dtype", cls.dtype),
             flash_attention=raw.get("precision", {}).get("flash_attention", cls.flash_attention),
-            gradient_checkpointing=raw.get("precision", {}).get("gradient_checkpointing", cls.gradient_checkpointing),
-            save_interval_steps=raw.get("checkpoint", {}).get("save_interval_steps", cls.save_interval_steps),
+            gradient_checkpointing=raw.get("precision", {}).get(
+                "gradient_checkpointing", cls.gradient_checkpointing
+            ),
+            save_interval_steps=raw.get("checkpoint", {}).get(
+                "save_interval_steps", cls.save_interval_steps
+            ),
             save_dir=raw.get("checkpoint", {}).get("save_dir", cls.save_dir),
             max_checkpoints=raw.get("checkpoint", {}).get("max_checkpoints", cls.max_checkpoints),
             checkpoint_format=raw.get("checkpoint", {}).get("format", cls.checkpoint_format),
-            log_interval_steps=raw.get("logging", {}).get("log_interval_steps", cls.log_interval_steps),
+            log_interval_steps=raw.get("logging", {}).get(
+                "log_interval_steps", cls.log_interval_steps
+            ),
             wandb_enabled=raw.get("logging", {}).get("wandb", {}).get("enabled", cls.wandb_enabled),
             wandb_project=raw.get("logging", {}).get("wandb", {}).get("project", cls.wandb_project),
             train_data_dir=raw.get("data", {}).get("train_data_dir", cls.train_data_dir),
@@ -301,7 +315,9 @@ class TrainConfig:
             muon_lr=raw.get("optimizer", {}).get("muon_lr", cls.muon_lr),
             muon_momentum=raw.get("optimizer", {}).get("muon_momentum", cls.muon_momentum),
             use_zclip=raw.get("optimizer", {}).get("use_zclip", cls.use_zclip),
-            zclip_z_threshold=raw.get("optimizer", {}).get("zclip_z_threshold", cls.zclip_z_threshold),
+            zclip_z_threshold=raw.get("optimizer", {}).get(
+                "zclip_z_threshold", cls.zclip_z_threshold
+            ),
             zclip_ema_alpha=raw.get("optimizer", {}).get("zclip_ema_alpha", cls.zclip_ema_alpha),
         )
 
@@ -309,6 +325,7 @@ class TrainConfig:
 # ---------------------------------------------------------------------------
 # Learning-rate schedule: linear warmup + cosine decay
 # ---------------------------------------------------------------------------
+
 
 def _cosine_with_warmup(
     step: int,
@@ -337,6 +354,7 @@ def build_scheduler(optimizer: AdamW, cfg: TrainConfig) -> LambdaLR:
 # ---------------------------------------------------------------------------
 # Checkpoint management
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CheckpointManager:
@@ -373,8 +391,7 @@ class CheckpointManager:
         # model ties ``embed.weight`` and ``lm_head.weight``. Clone each tensor
         # so checkpointing stays compatible with tied-embedding models.
         state_dict = {
-            k: v.detach().contiguous().cpu().clone()
-            for k, v in unwrapped.state_dict().items()
+            k: v.detach().contiguous().cpu().clone() for k, v in unwrapped.state_dict().items()
         }
         save_file(state_dict, ckpt_dir / "model.safetensors")
 
@@ -404,6 +421,7 @@ class CheckpointManager:
             oldest = self._saved.pop(0)
             if oldest.exists():
                 import shutil
+
                 shutil.rmtree(oldest)
                 logger.info("Removed old checkpoint: %s", oldest)
 
@@ -445,7 +463,9 @@ class CheckpointManager:
 
         logger.info(
             "Resumed from %s (step=%d, tokens=%d)",
-            ckpt_dir, metadata["step"], metadata["tokens_seen"],
+            ckpt_dir,
+            metadata["step"],
+            metadata["tokens_seen"],
         )
         return metadata
 
@@ -453,6 +473,7 @@ class CheckpointManager:
 # ---------------------------------------------------------------------------
 # Main training loop
 # ---------------------------------------------------------------------------
+
 
 class AureliusTrainer:
     """Pre-training loop for Aurelius 1.3B using HuggingFace Accelerate."""
@@ -473,7 +494,8 @@ class AureliusTrainer:
         self.n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info(
             "Trainable parameters: %s (%.2fB)",
-            f"{self.n_params:,}", self.n_params / 1e9,
+            f"{self.n_params:,}",
+            self.n_params / 1e9,
         )
 
         # Optimizer
@@ -512,8 +534,11 @@ class AureliusTrainer:
                 self.train_dataloader,
                 self.scheduler,
             ) = self.accelerator.prepare(
-                self.model, self.muon_optimizer, self.adamw_optimizer,
-                self.train_dataloader, self.scheduler,
+                self.model,
+                self.muon_optimizer,
+                self.adamw_optimizer,
+                self.train_dataloader,
+                self.scheduler,
             )
             self.optimizer = [self.muon_optimizer, self.adamw_optimizer]
         else:
@@ -523,7 +548,10 @@ class AureliusTrainer:
                 self.train_dataloader,
                 self.scheduler,
             ) = self.accelerator.prepare(
-                self.model, self.optimizer, self.train_dataloader, self.scheduler,
+                self.model,
+                self.optimizer,
+                self.train_dataloader,
+                self.scheduler,
             )
         if self.val_dataloader is not None:
             self.val_dataloader = self.accelerator.prepare(self.val_dataloader)
@@ -543,7 +571,8 @@ class AureliusTrainer:
             )
             logger.info(
                 "ZClip enabled: z_threshold=%.1f, ema_alpha=%.4f",
-                cfg.zclip_z_threshold, cfg.zclip_ema_alpha,
+                cfg.zclip_z_threshold,
+                cfg.zclip_ema_alpha,
             )
 
         # Training state
@@ -596,8 +625,13 @@ class AureliusTrainer:
         adamw_no_decay: list[torch.nn.Parameter] = []
 
         muon_target_suffixes = (
-            "q_proj.weight", "k_proj.weight", "v_proj.weight", "o_proj.weight",
-            "gate_proj.weight", "up_proj.weight", "down_proj.weight",
+            "q_proj.weight",
+            "k_proj.weight",
+            "v_proj.weight",
+            "o_proj.weight",
+            "gate_proj.weight",
+            "up_proj.weight",
+            "down_proj.weight",
         )
 
         for name, param in self.model.named_parameters():
@@ -640,7 +674,10 @@ class AureliusTrainer:
         accum = max(1, self.cfg.global_batch_tokens // total_per_step)
         logger.info(
             "Gradient accumulation: %d (global_batch=%d tokens, per_micro=%d, gpus=%d)",
-            accum, self.cfg.global_batch_tokens, tokens_per_micro, n_gpus,
+            accum,
+            self.cfg.global_batch_tokens,
+            tokens_per_micro,
+            n_gpus,
         )
         return accum
 
@@ -678,7 +715,8 @@ class AureliusTrainer:
 
         logger.info(
             "Starting training for %d steps (%d tokens)",
-            self.cfg.total_steps, self.cfg.total_tokens,
+            self.cfg.total_steps,
+            self.cfg.total_tokens,
         )
 
         self.model.train()
@@ -710,7 +748,8 @@ class AureliusTrainer:
                         self.zclip.clip_grad_norm_(self.model.parameters())
                     else:
                         self.accelerator.clip_grad_norm_(
-                            self.model.parameters(), self.cfg.max_grad_norm,
+                            self.model.parameters(),
+                            self.cfg.max_grad_norm,
                         )
 
                 if self.muon_optimizer is not None:
@@ -733,9 +772,9 @@ class AureliusTrainer:
                 if self.global_step % self.cfg.log_interval_steps == 0:
                     elapsed = time.perf_counter() - step_start_time
                     avg_loss = step_loss_accum / max(1, micro_steps_in_accum)
-                    tokens_per_sec = (
-                        batch_tokens * self.cfg.log_interval_steps
-                    ) / max(elapsed, 1e-6)
+                    tokens_per_sec = (batch_tokens * self.cfg.log_interval_steps) / max(
+                        elapsed, 1e-6
+                    )
                     current_lr = self.scheduler.get_last_lr()[0]
 
                     metrics = {
@@ -814,7 +853,8 @@ class AureliusTrainer:
         if self.accelerator.is_main_process:
             logger.info(
                 "Validation loss: %.4f (perplexity: %.2f)",
-                avg_loss, math.exp(min(avg_loss, 20)),
+                avg_loss,
+                math.exp(min(avg_loss, 20)),
             )
 
         return avg_loss
@@ -824,17 +864,22 @@ class AureliusTrainer:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     """Entry point for training."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Aurelius 1.3B Pre-training")
     parser.add_argument(
-        "--config", type=str, default="configs/train_1b.yaml",
+        "--config",
+        type=str,
+        default="configs/train_1b.yaml",
         help="Path to training config YAML",
     )
     parser.add_argument(
-        "--resume", type=str, default=None,
+        "--resume",
+        type=str,
+        default=None,
         help="Path to checkpoint directory to resume from",
     )
     args = parser.parse_args()
@@ -852,11 +897,13 @@ def main() -> None:
     logger.info("Loading config from %s", args.config)
     logger.info(
         "Config: total_steps=%d, lr=%.2e, batch_tokens=%d",
-        cfg.total_steps, cfg.lr, cfg.global_batch_tokens,
+        cfg.total_steps,
+        cfg.lr,
+        cfg.global_batch_tokens,
     )
 
-    from src.model.transformer import AureliusTransformer
     from src.model.config import AureliusConfig
+    from src.model.transformer import AureliusTransformer
 
     model = AureliusTransformer(AureliusConfig())
     train_loader, val_loader = build_dataloaders(cfg)

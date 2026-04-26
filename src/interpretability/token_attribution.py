@@ -6,32 +6,32 @@ Methods:
   3. attention_rollout — layer-by-layer attention matrix product
   4. erasure           — mask each token and measure logit change
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AttributionConfig:
-    method: str = "gradient"      # 'gradient', 'integrated_gradients', 'attention_rollout', 'erasure'
-    n_steps: int = 20             # for integrated gradients
+    method: str = "gradient"  # 'gradient', 'integrated_gradients', 'attention_rollout', 'erasure'
+    n_steps: int = 20  # for integrated gradients
     normalize: bool = True
-    baseline_type: str = "zero"   # 'zero' (only supported baseline for now)
+    baseline_type: str = "zero"  # 'zero' (only supported baseline for now)
 
 
 # ---------------------------------------------------------------------------
 # Helper: forward pass returning logits from raw embeddings
 # ---------------------------------------------------------------------------
+
 
 def _forward_from_embeddings(
     model: nn.Module,
@@ -60,7 +60,8 @@ def _forward_from_embeddings(
 # Attention weight extraction via hooks
 # ---------------------------------------------------------------------------
 
-def _extract_attention_weights(model: nn.Module, input_ids: Tensor) -> List[Tensor]:
+
+def _extract_attention_weights(model: nn.Module, input_ids: Tensor) -> list[Tensor]:
     """Run a forward pass and collect per-layer attention weight matrices.
 
     Registers temporary forward hooks on each GroupedQueryAttention module
@@ -69,7 +70,7 @@ def _extract_attention_weights(model: nn.Module, input_ids: Tensor) -> List[Tens
     Returns:
         List of (1, n_heads, S, S) tensors, one per layer.
     """
-    attn_weights: List[Tensor] = []
+    attn_weights: list[Tensor] = []
     hooks = []
 
     def make_hook(layer_idx: int):
@@ -91,6 +92,7 @@ def _extract_attention_weights(model: nn.Module, input_ids: Tensor) -> List[Tens
 
             # Apply RoPE — freqs_cis slice for S positions
             from src.model.attention import apply_rope
+
             freqs_cis_s = model.freqs_cis[:S]
             q = apply_rope(q, freqs_cis_s)
             k = apply_rope(k, freqs_cis_s)
@@ -104,7 +106,7 @@ def _extract_attention_weights(model: nn.Module, input_ids: Tensor) -> List[Tens
             q = q.transpose(1, 2)
             k = k.transpose(1, 2)
 
-            scale = head_dim ** -0.5
+            scale = head_dim**-0.5
             scores = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, H, S, S)
 
             # Causal mask
@@ -134,6 +136,7 @@ def _extract_attention_weights(model: nn.Module, input_ids: Tensor) -> List[Tens
 # ---------------------------------------------------------------------------
 # Main class
 # ---------------------------------------------------------------------------
+
 
 class TokenAttribution:
     """Input token attribution methods for the Aurelius transformer."""
@@ -166,7 +169,7 @@ class TokenAttribution:
             input_ids = input_ids.unsqueeze(0)
 
         B, S = input_ids.shape
-        assert B == 1, "gradient_attribution expects a single sequence (B=1)"
+        assert B == 1, "gradient_attribution expects a single sequence (B=1)"  # noqa: S101
 
         # Embed and attach gradient
         embeddings = self.model.embed(input_ids)  # (1, S, d_model)
@@ -213,10 +216,10 @@ class TokenAttribution:
             input_ids = input_ids.unsqueeze(0)
 
         B, S = input_ids.shape
-        assert B == 1
+        assert B == 1  # noqa: S101
 
         actual_emb = self.model.embed(input_ids).detach()  # (1, S, d_model)
-        baseline = torch.zeros_like(actual_emb)            # zero baseline
+        baseline = torch.zeros_like(actual_emb)  # zero baseline
 
         freqs_cis = self.model.freqs_cis[:S]
         grad_sum = torch.zeros_like(actual_emb)
@@ -234,7 +237,7 @@ class TokenAttribution:
 
         avg_grad = grad_sum / n_steps
         attributions = avg_grad * (actual_emb - baseline)  # (1, S, d_model)
-        scores = attributions[0].norm(dim=-1)               # (S,)
+        scores = attributions[0].norm(dim=-1)  # (S,)
         return scores.detach()
 
     # ------------------------------------------------------------------
@@ -257,7 +260,7 @@ class TokenAttribution:
             input_ids = input_ids.unsqueeze(0)
 
         B, S = input_ids.shape
-        assert B == 1
+        assert B == 1  # noqa: S101
 
         # Collect per-layer attention weights: list of (1, H, S, S)
         attn_weights = _extract_attention_weights(self.model, input_ids)
@@ -304,7 +307,7 @@ class TokenAttribution:
             input_ids = input_ids.unsqueeze(0)
 
         B, S = input_ids.shape
-        assert B == 1
+        assert B == 1  # noqa: S101
 
         with torch.no_grad():
             _, logits_orig, _ = self.model(input_ids)
@@ -345,11 +348,12 @@ class TokenAttribution:
 # top_k_tokens helper
 # ---------------------------------------------------------------------------
 
+
 def top_k_tokens(
     attributions: Tensor,
     k: int,
     input_ids: Tensor,
-) -> List[Tuple[int, int, float]]:
+) -> list[tuple[int, int, float]]:
     """Return the top-k attributed tokens.
 
     Args:
@@ -367,7 +371,7 @@ def top_k_tokens(
     k = min(k, S)
 
     top_scores, top_positions = attributions.topk(k)
-    result: List[Tuple[int, int, float]] = []
+    result: list[tuple[int, int, float]] = []
     for pos, score in zip(top_positions.tolist(), top_scores.tolist()):
         token_id = int(input_ids[pos].item())
         result.append((token_id, int(pos), float(score)))

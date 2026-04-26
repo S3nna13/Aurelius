@@ -27,20 +27,21 @@ Test inventory (14 unit + 1 integration = 15 total):
 from __future__ import annotations
 
 import math
+
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.speculative_acceptance_eval import (
     SpecAcceptConfig,
-    SpecStep,
     SpecEvalResult,
+    SpecStep,
     SpeculativeAcceptanceEval,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_eval(max_draft_len: int = 8) -> SpeculativeAcceptanceEval:
     return SpeculativeAcceptanceEval(SpecAcceptConfig(max_draft_len=max_draft_len))
@@ -54,6 +55,7 @@ def _step(draft: list, accepted: list, bonus=None) -> SpecStep:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SpecAcceptConfig()
     assert cfg.max_draft_len == 8
@@ -63,6 +65,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. Acceptance rate — all accepted
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_rate_all_accepted():
     evaluator = _make_eval()
@@ -78,6 +81,7 @@ def test_acceptance_rate_all_accepted():
 # 3. Acceptance rate — none accepted
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_rate_none_accepted():
     evaluator = _make_eval()
     steps = [
@@ -91,6 +95,7 @@ def test_acceptance_rate_none_accepted():
 # ---------------------------------------------------------------------------
 # 4. Acceptance rate — partial
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_rate_partial():
     evaluator = _make_eval()
@@ -107,6 +112,7 @@ def test_acceptance_rate_partial():
 # 5. Mean accepted per step — bonus counted
 # ---------------------------------------------------------------------------
 
+
 def test_mean_accepted_with_bonus():
     evaluator = _make_eval()
     # 2 accepted + bonus  →  3 tokens per step, both steps identical
@@ -122,11 +128,12 @@ def test_mean_accepted_with_bonus():
 # 6. Mean accepted per step — no bonus
 # ---------------------------------------------------------------------------
 
+
 def test_mean_accepted_without_bonus():
     evaluator = _make_eval()
     steps = [
-        _step([1, 2, 3], [1, 2]),   # 2 accepted, no bonus -> 2
-        _step([4, 5], [4]),          # 1 accepted, no bonus -> 1
+        _step([1, 2, 3], [1, 2]),  # 2 accepted, no bonus -> 2
+        _step([4, 5], [4]),  # 1 accepted, no bonus -> 1
     ]
     mean = evaluator.mean_accepted_per_step(steps)
     # (2 + 1) / 2 = 1.5
@@ -136,6 +143,7 @@ def test_mean_accepted_without_bonus():
 # ---------------------------------------------------------------------------
 # 7. Theoretical speedup — perfect acceptance (alpha=1.0)
 # ---------------------------------------------------------------------------
+
 
 def test_theoretical_speedup_perfect():
     evaluator = _make_eval(max_draft_len=7)
@@ -148,6 +156,7 @@ def test_theoretical_speedup_perfect():
 # 8. Theoretical speedup — zero acceptance (alpha=0.0)
 # ---------------------------------------------------------------------------
 
+
 def test_theoretical_speedup_zero():
     evaluator = _make_eval()
     # alpha=0 -> (1 - 0) / (1 - 0) = 1.0  (only bonus token ever emitted)
@@ -159,16 +168,15 @@ def test_theoretical_speedup_zero():
 # 9. Theoretical speedup — alpha=0.5
 # ---------------------------------------------------------------------------
 
+
 def test_theoretical_speedup_half():
     evaluator = _make_eval()
     k = 4
     alpha = 0.5
     # (1 - 0.5^5) / (1 - 0.5) = (1 - 1/32) / 0.5 = (31/32) / 0.5 = 31/16
-    expected = (1 - 0.5 ** 5) / 0.5
+    expected = (1 - 0.5**5) / 0.5
     speedup = evaluator.theoretical_speedup(alpha=alpha, k=k)
-    assert math.isclose(speedup, expected, rel_tol=1e-9), (
-        f"Expected {expected}, got {speedup}"
-    )
+    assert math.isclose(speedup, expected, rel_tol=1e-9), f"Expected {expected}, got {speedup}"
     assert speedup < k + 1, "alpha<1 speedup must be less than K+1"
     assert speedup > 1.0, "alpha>0 speedup must exceed 1.0"
 
@@ -176,6 +184,7 @@ def test_theoretical_speedup_half():
 # ---------------------------------------------------------------------------
 # 10. Invalid alpha raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_theoretical_speedup_invalid_alpha():
     evaluator = _make_eval()
@@ -189,15 +198,16 @@ def test_theoretical_speedup_invalid_alpha():
 # 11. Per-position acceptance — decreasing along draft sequence
 # ---------------------------------------------------------------------------
 
+
 def test_per_position_acceptance_decreases():
     evaluator = _make_eval(max_draft_len=4)
     # Position 0 always accepted, position 1 half the time,
     # position 2 never, position 3 never.
     steps = [
         _step([10, 20, 30, 40], [10, 20]),  # pos 0,1 accepted
-        _step([11, 21, 31, 41], [11]),       # pos 0 accepted
-        _step([12, 22, 32, 42], [12, 22]),   # pos 0,1 accepted
-        _step([13, 23, 33, 43], [13]),        # pos 0 accepted
+        _step([11, 21, 31, 41], [11]),  # pos 0 accepted
+        _step([12, 22, 32, 42], [12, 22]),  # pos 0,1 accepted
+        _step([13, 23, 33, 43], [13]),  # pos 0 accepted
     ]
     rates = evaluator.per_position_acceptance(steps)
     assert len(rates) == 4
@@ -208,14 +218,13 @@ def test_per_position_acceptance_decreases():
     assert math.isclose(rates[3], 0.0)
     # Must be non-increasing
     for i in range(len(rates) - 1):
-        assert rates[i] >= rates[i + 1], (
-            f"Rates not non-increasing at position {i}: {rates}"
-        )
+        assert rates[i] >= rates[i + 1], f"Rates not non-increasing at position {i}: {rates}"
 
 
 # ---------------------------------------------------------------------------
 # 12. Per-position acceptance — empty steps list
 # ---------------------------------------------------------------------------
+
 
 def test_per_position_acceptance_empty():
     evaluator = _make_eval()
@@ -226,6 +235,7 @@ def test_per_position_acceptance_empty():
 # ---------------------------------------------------------------------------
 # 13. evaluate() returns SpecEvalResult
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_result_type():
     evaluator = _make_eval()
@@ -239,12 +249,13 @@ def test_evaluate_result_type():
 # 14. evaluate() — total_generated equals accepted + bonus count
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_total_tokens():
     evaluator = _make_eval()
     steps = [
         _step([1, 2, 3], [1, 2], bonus=99),  # 2 accepted + 1 bonus = 3
-        _step([4, 5, 6], [4], bonus=None),    # 1 accepted + 0 bonus = 1
-        _step([7, 8], [], bonus=77),           # 0 accepted + 1 bonus = 1
+        _step([4, 5, 6], [4], bonus=None),  # 1 accepted + 0 bonus = 1
+        _step([7, 8], [], bonus=77),  # 0 accepted + 1 bonus = 1
     ]
     result = evaluator.evaluate(steps)
     assert result.total_draft_tokens == 8
@@ -256,6 +267,7 @@ def test_evaluate_total_tokens():
 # ---------------------------------------------------------------------------
 # 15. aggregate() — correct keys present
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_keys():
     evaluator = _make_eval()
@@ -278,6 +290,7 @@ def test_aggregate_keys():
 # 16. acceptance_curve() — higher alpha yields higher speedup (monotone)
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_curve_monotone():
     evaluator = _make_eval()
     k = 6
@@ -289,13 +302,14 @@ def test_acceptance_curve_monotone():
             f"Curve not monotone at alpha={alphas[i]}: {speedups}"
         )
     # Boundary checks
-    assert math.isclose(speedups[0], 1.0)       # alpha=0 -> speedup=1
-    assert math.isclose(speedups[-1], k + 1)    # alpha=1 -> speedup=K+1
+    assert math.isclose(speedups[0], 1.0)  # alpha=0 -> speedup=1
+    assert math.isclose(speedups[-1], k + 1)  # alpha=1 -> speedup=K+1
 
 
 # ---------------------------------------------------------------------------
 # Integration test — 10 steps with K=4, mixed acceptance patterns
 # ---------------------------------------------------------------------------
+
 
 def test_integration_10_steps():
     """
@@ -337,7 +351,7 @@ def test_integration_10_steps():
     assert result.n_steps == 10
 
     # Total token accounting
-    assert result.total_draft_tokens == 40   # 10 steps x 4 tokens
+    assert result.total_draft_tokens == 40  # 10 steps x 4 tokens
     expected_accepted = 4 + 3 + 2 + 1 + 0 + 4 + 2 + 3 + 1 + 0  # = 20
     assert result.total_accepted_tokens == expected_accepted
     bonus_count = sum(1 for s in steps if s.bonus_token is not None)  # 6 bonuses
@@ -355,7 +369,7 @@ def test_integration_10_steps():
     assert 0.0 <= result.mean_accepted_per_step <= K + 1
 
     # Theoretical speedup based on alpha=0.5, k=4
-    expected_speedup = (1 - 0.5 ** 5) / (1 - 0.5)
+    expected_speedup = (1 - 0.5**5) / (1 - 0.5)
     assert math.isclose(result.theoretical_speedup, expected_speedup, rel_tol=1e-9)
     assert result.theoretical_speedup > 1.0
 

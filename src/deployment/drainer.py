@@ -1,4 +1,5 @@
 """Graceful deployment drainer with connection tracking."""
+
 from __future__ import annotations
 
 import time
@@ -46,7 +47,8 @@ class DeploymentDrainer:
     def _prune(self) -> None:
         now = time.monotonic()
         self._connections = {
-            k: v for k, v in self._connections.items()
+            k: v
+            for k, v in self._connections.items()
             if v.finished == 0.0 or (v.finished > 0 and now - v.finished < 60)
         }
 

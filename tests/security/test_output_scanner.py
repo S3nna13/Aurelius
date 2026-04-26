@@ -8,7 +8,6 @@ import pytest
 
 from src.security.output_scanner import OutputScanner, ScanResult
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

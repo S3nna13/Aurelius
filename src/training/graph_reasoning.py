@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -23,11 +22,11 @@ from torch import Tensor
 class GraphConfig:
     """Configuration for graph problem generation."""
 
-    n_nodes: int = 20               # number of nodes per graph
-    edge_density: float = 0.15      # probability of each directed edge existing
-    problem_type: str = "bfs"       # "bfs" | "parents" | "mixed"
-    bfs_depth: int = 2              # BFS depth for reachability problems
-    node_id_length: int = 6         # hex node id length
+    n_nodes: int = 20  # number of nodes per graph
+    edge_density: float = 0.15  # probability of each directed edge existing
+    problem_type: str = "bfs"  # "bfs" | "parents" | "mixed"
+    bfs_depth: int = 2  # BFS depth for reachability problems
+    node_id_length: int = 6  # hex node id length
     seed: int | None = None
 
 
@@ -38,11 +37,11 @@ class GraphConfig:
 class GraphProblem:
     """A single graph reasoning problem."""
 
-    graph_edges: list[tuple[str, str]]   # (from_node, to_node) directed edges
-    query_node: str                       # node to query about
-    problem_type: str                     # "bfs" or "parents"
-    answer_nodes: list[str]              # correct answer (sorted)
-    prompt: str                          # full natural-language prompt
+    graph_edges: list[tuple[str, str]]  # (from_node, to_node) directed edges
+    query_node: str  # node to query about
+    problem_type: str  # "bfs" or "parents"
+    answer_nodes: list[str]  # correct answer (sorted)
+    prompt: str  # full natural-language prompt
 
     def format_answer(self) -> str:
         return f"Final Answer: [{', '.join(sorted(self.answer_nodes))}]"
@@ -110,11 +109,7 @@ def solve_parents(graph: dict[str, list[str]], target: str) -> list[str]:
 
     Excludes `target` itself. Returns a sorted list.
     """
-    parents = [
-        node
-        for node, neighbors in graph.items()
-        if target in neighbors and node != target
-    ]
+    parents = [node for node, neighbors in graph.items() if target in neighbors and node != target]
     return sorted(parents)
 
 
@@ -146,9 +141,7 @@ def generate_graph_problem(
         ptype = cfg.problem_type
 
     edges: list[tuple[str, str]] = [
-        (src, dst)
-        for src, neighbors in graph.items()
-        for dst in neighbors
+        (src, dst) for src, neighbors in graph.items() for dst in neighbors
     ]
 
     if ptype == "bfs":
@@ -159,9 +152,7 @@ def generate_graph_problem(
         )
     else:
         answer_nodes = solve_parents(graph, query_node)
-        problem_description = (
-            f"Which nodes have a directed edge to node {query_node}?"
-        )
+        problem_description = f"Which nodes have a directed edge to node {query_node}?"
 
     prompt = _format_prompt(edges, problem_description)
 
@@ -352,7 +343,7 @@ class GraphReasoningTrainer:
                     next_token = int(logits[0, -1, :].argmax().item())
                     generated.append(next_token)
                     try:
-                        tail = bytes([t % 256 for t in generated[len(prompt_ids):]]).decode(
+                        tail = bytes([t % 256 for t in generated[len(prompt_ids) :]]).decode(
                             "utf-8", errors="replace"
                         )
                         if "]" in tail:

@@ -208,5 +208,6 @@ class TestBatchValidate:
     def test_uses_global_registry_by_default(self):
         from src.tools.tool_schema_registry import TOOL_SCHEMA_REGISTRY
         from src.tools.tool_validator import ToolCallValidator as TCV
+
         v = TCV()
         assert v._registry is TOOL_SCHEMA_REGISTRY

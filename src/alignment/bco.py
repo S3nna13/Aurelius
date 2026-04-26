@@ -48,17 +48,14 @@ The implicit classifier is implemented via the log-ratio margin:
 
 from __future__ import annotations
 
-import math
-from typing import Dict, Optional
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # BCO Loss
 # ---------------------------------------------------------------------------
+
 
 class BCOLoss(nn.Module):
     """BCO-0 loss for offline paired preference data (Jung et al. 2024, §3.1).
@@ -94,7 +91,7 @@ class BCOLoss(nn.Module):
         lp_l: torch.Tensor,
         lp_ref_w: torch.Tensor,
         lp_ref_l: torch.Tensor,
-    ) -> tuple[torch.Tensor, Dict[str, float]]:
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute BCO-0 loss from pre-computed log probabilities.
 
         Args:
@@ -113,8 +110,8 @@ class BCOLoss(nn.Module):
         diff = (lp_w - lp_ref_w) - (lp_l - lp_ref_l)  # (B,)
 
         # Implicit classifier score f_φ(x, y_w) = σ(diff / β)
-        scaled = diff / self.beta                        # (B,)
-        classifier_score = torch.sigmoid(scaled)        # (B,) ∈ (0, 1)
+        scaled = diff / self.beta  # (B,)
+        classifier_score = torch.sigmoid(scaled)  # (B,) ∈ (0, 1)
 
         # BCO-0 loss = -2 · log σ(diff/β)  [sum of BCE for w and l]
         # Use F.logsigmoid for numerical stability (avoids log(0))
@@ -126,7 +123,7 @@ class BCOLoss(nn.Module):
             reward_margin_val = diff.mean().item()
             classifier_score_val = classifier_score.mean().item()
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "classifier_score": classifier_score_val,
             "reward_margin": reward_margin_val,
             "accuracy": accuracy,
@@ -138,6 +135,7 @@ class BCOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # BCO Trainer
 # ---------------------------------------------------------------------------
+
 
 class BCOTrainer:
     """Trainer wrapper for BCO-0 preference optimization.
@@ -164,8 +162,8 @@ class BCOTrainer:
 
     def compute_loss(
         self,
-        batch: Dict[str, torch.Tensor],
-    ) -> tuple[torch.Tensor, Dict[str, float]]:
+        batch: dict[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute BCO-0 loss from a batch dict.
 
         Args:

@@ -10,29 +10,29 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.rwkv import (
-    RWKVTimeMixing,
-    RWKVChannelMixing,
     RWKVBlock,
+    RWKVChannelMixing,
     RWKVLayer,
+    RWKVTimeMixing,
 )
 
 # ---------------------------------------------------------------------------
 # Shared constants
 # ---------------------------------------------------------------------------
 
-D_MODEL  = 32
-D_FF     = 64
-N_HEADS  = 1
-BATCH    = 2
-SEQ_LEN  = 8
+D_MODEL = 32
+D_FF = 64
+N_HEADS = 1
+BATCH = 2
+SEQ_LEN = 8
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def time_mix():
@@ -64,6 +64,7 @@ def x():
 # 1. RWKVTimeMixing forward, state=None → output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_time_mixing_output_shape(time_mix, x):
     out, _ = time_mix(x, state=None)
     assert out.shape == (BATCH, SEQ_LEN, D_MODEL), (
@@ -74,6 +75,7 @@ def test_time_mixing_output_shape(time_mix, x):
 # ---------------------------------------------------------------------------
 # 2. RWKVTimeMixing returns new_state of shape (B, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_time_mixing_state_shape(time_mix, x):
     _, new_state = time_mix(x, state=None)
@@ -86,6 +88,7 @@ def test_time_mixing_state_shape(time_mix, x):
 # 3. RWKVTimeMixing recurrent mode: step-by-step produces same sequence shape
 #    as parallel mode.
 # ---------------------------------------------------------------------------
+
 
 def test_time_mixing_recurrent_vs_parallel_shape(time_mix):
     torch.manual_seed(0)
@@ -112,6 +115,7 @@ def test_time_mixing_recurrent_vs_parallel_shape(time_mix):
 # 4. RWKVChannelMixing forward returns correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_channel_mixing_output_shape(channel_mix, x):
     out, _ = channel_mix(x, state=None)
     assert out.shape == (BATCH, SEQ_LEN, D_MODEL), (
@@ -122,6 +126,7 @@ def test_channel_mixing_output_shape(channel_mix, x):
 # ---------------------------------------------------------------------------
 # 5. RWKVChannelMixing new_state has correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_channel_mixing_state_shape(channel_mix, x):
     _, new_state = channel_mix(x, state=None)
@@ -134,11 +139,10 @@ def test_channel_mixing_state_shape(channel_mix, x):
 # 6. RWKVBlock forward, no state → (output, time_state, channel_state)
 # ---------------------------------------------------------------------------
 
+
 def test_block_forward_no_state(block, x):
     out, ts, cs = block(x, time_state=None, channel_state=None)
-    assert out.shape == (BATCH, SEQ_LEN, D_MODEL), (
-        f"Block output shape mismatch: {out.shape}"
-    )
+    assert out.shape == (BATCH, SEQ_LEN, D_MODEL), f"Block output shape mismatch: {out.shape}"
     assert ts.shape == (BATCH, D_MODEL), f"time_state shape: {ts.shape}"
     assert cs.shape == (BATCH, D_MODEL), f"channel_state shape: {cs.shape}"
 
@@ -147,18 +151,20 @@ def test_block_forward_no_state(block, x):
 # 7. RWKVBlock with explicit states runs without error
 # ---------------------------------------------------------------------------
 
+
 def test_block_with_explicit_states(block, x):
     ts_init = torch.zeros(BATCH, D_MODEL)
     cs_init = torch.zeros(BATCH, D_MODEL)
     out, ts, cs = block(x, time_state=ts_init, channel_state=cs_init)
     assert out.shape == (BATCH, SEQ_LEN, D_MODEL)
-    assert ts.shape  == (BATCH, D_MODEL)
-    assert cs.shape  == (BATCH, D_MODEL)
+    assert ts.shape == (BATCH, D_MODEL)
+    assert cs.shape == (BATCH, D_MODEL)
 
 
 # ---------------------------------------------------------------------------
 # 8. RWKVLayer forward, states=None → output (B, T, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_layer_output_shape(layer, x):
     out, _ = layer(x, states=None)
@@ -170,6 +176,7 @@ def test_layer_output_shape(layer, x):
 # ---------------------------------------------------------------------------
 # 9. RWKVLayer returns list of states, length == n_layers
 # ---------------------------------------------------------------------------
+
 
 def test_layer_states_length(layer, x):
     _, new_states = layer(x, states=None)
@@ -185,18 +192,20 @@ def test_layer_states_length(layer, x):
 # 10. Recurrent single-step: RWKVBlock with T=1 runs correctly
 # ---------------------------------------------------------------------------
 
+
 def test_block_single_step(block):
     torch.manual_seed(7)
     x_single = torch.randn(BATCH, 1, D_MODEL)
     out, ts, cs = block(x_single, time_state=None, channel_state=None)
     assert out.shape == (BATCH, 1, D_MODEL), f"Single-step output shape: {out.shape}"
-    assert ts.shape  == (BATCH, D_MODEL)
-    assert cs.shape  == (BATCH, D_MODEL)
+    assert ts.shape == (BATCH, D_MODEL)
+    assert cs.shape == (BATCH, D_MODEL)
 
 
 # ---------------------------------------------------------------------------
 # 11. Time decay params (w) have correct shape after init
 # ---------------------------------------------------------------------------
+
 
 def test_time_decay_param_shape(time_mix):
     assert time_mix.w_log.shape == (D_MODEL,), (
@@ -210,6 +219,7 @@ def test_time_decay_param_shape(time_mix):
 # ---------------------------------------------------------------------------
 # 12. Sequential single-token inference matches parallel shape
 # ---------------------------------------------------------------------------
+
 
 def test_sequential_single_token_shape(time_mix):
     torch.manual_seed(3)
@@ -228,6 +238,7 @@ def test_sequential_single_token_shape(time_mix):
 # 13. RWKVLayer gradients flow (loss.backward() no error)
 # ---------------------------------------------------------------------------
 
+
 def test_layer_gradients_flow(layer, x):
     x_grad = x.clone().requires_grad_(True)
     out, _ = layer(x_grad, states=None)
@@ -240,6 +251,7 @@ def test_layer_gradients_flow(layer, x):
 # ---------------------------------------------------------------------------
 # 14. Different seq lengths work: T=1, T=4, T=16
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("seq_len", [1, 4, 16])
 def test_different_seq_lengths(block, seq_len):

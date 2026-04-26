@@ -6,9 +6,6 @@ Pure PyTorch only — no scipy, numpy, or sklearn.
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.data.token_frequency_analysis import (

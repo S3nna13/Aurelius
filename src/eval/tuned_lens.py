@@ -14,7 +14,7 @@ what the model "thinks" at each layer of computation.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -49,7 +49,7 @@ class TunedLensTranslator(nn.Module):
             nn.init.eye_(linear.weight)
             nn.init.zeros_(linear.bias)
 
-    def forward(self, hidden_states: List[Tensor], layer_idx: int) -> Tensor:
+    def forward(self, hidden_states: list[Tensor], layer_idx: int) -> Tensor:
         """Apply the translator for a single layer.
 
         Args:
@@ -62,7 +62,7 @@ class TunedLensTranslator(nn.Module):
         h = hidden_states[layer_idx]  # (B, T, d_model)
         return self.translators[layer_idx](h)  # (B, T, d_model)
 
-    def translate_all(self, hidden_states: List[Tensor]) -> List[Tensor]:
+    def translate_all(self, hidden_states: list[Tensor]) -> list[Tensor]:
         """Apply each translator to its corresponding layer's hidden state.
 
         Args:
@@ -91,7 +91,7 @@ class TunedLensEvaluator:
         self.translator = translator
         self.unembed_fn = unembed_fn
 
-    def get_layer_logits(self, hidden_states: List[Tensor]) -> List[Tensor]:
+    def get_layer_logits(self, hidden_states: list[Tensor]) -> list[Tensor]:
         """Return per-layer logit predictions via the tuned lens.
 
         For each layer l:  logits_l = unembed_fn(T_l(h_l))
@@ -105,7 +105,7 @@ class TunedLensEvaluator:
         translated = self.translator.translate_all(hidden_states)
         return [self.unembed_fn(h) for h in translated]
 
-    def layer_entropy(self, hidden_states: List[Tensor]) -> Tensor:
+    def layer_entropy(self, hidden_states: list[Tensor]) -> Tensor:
         """Compute the mean entropy of per-layer predictions across batch and positions.
 
         Args:
@@ -115,7 +115,7 @@ class TunedLensEvaluator:
             Tensor of shape (n_layers,) with per-layer mean entropy.
         """
         all_logits = self.get_layer_logits(hidden_states)
-        entropies: List[Tensor] = []
+        entropies: list[Tensor] = []
         for logits in all_logits:  # each (B, T, V)
             probs = F.softmax(logits, dim=-1)
             log_probs = torch.log(probs + 1e-10)
@@ -149,9 +149,9 @@ class TunedLensTrainer:
 
     def train_step(
         self,
-        hidden_states: List[Tensor],
+        hidden_states: list[Tensor],
         final_logits: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Perform one gradient-descent step on the translators.
 
         Minimises  sum_l KL(p_final || p_l)  where
@@ -177,7 +177,7 @@ class TunedLensTrainer:
         # Target distribution (detached — we do not back-prop into the model)
         p_final = F.softmax(final_logits.detach(), dim=-1)  # (B, T, V)
 
-        kl_per_layer: List[Tensor] = []
+        kl_per_layer: list[Tensor] = []
         for i in range(self.translator.n_layers):
             h_translated = self.translator.translators[i](hidden_states[i])  # (B, T, D)
             layer_logits = self.unembed_fn(h_translated)  # (B, T, V)
@@ -216,7 +216,7 @@ class LogitLens:
     def __init__(self, unembed_fn: Callable[[Tensor], Tensor]) -> None:
         self.unembed_fn = unembed_fn
 
-    def forward(self, hidden_states: List[Tensor]) -> List[Tensor]:
+    def forward(self, hidden_states: list[Tensor]) -> list[Tensor]:
         """Apply unembed_fn directly to each layer's hidden state.
 
         Args:
@@ -227,7 +227,7 @@ class LogitLens:
         """
         return [self.unembed_fn(h) for h in hidden_states]
 
-    def top_tokens(self, hidden_states: List[Tensor], k: int = 5) -> List[Tensor]:
+    def top_tokens(self, hidden_states: list[Tensor], k: int = 5) -> list[Tensor]:
         """Return the top-k token indices per layer per position.
 
         Args:
@@ -246,7 +246,7 @@ class LogitLens:
             ``torch.stack(lens.top_tokens(...))`` to obtain (n_layers, T, k).
         """
         all_logits = self.forward(hidden_states)
-        result: List[Tensor] = []
+        result: list[Tensor] = []
         for logits in all_logits:  # (B, T, V)
             # Use first batch element
             logits_0 = logits[0]  # (T, V)

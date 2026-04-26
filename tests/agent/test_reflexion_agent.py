@@ -6,8 +6,6 @@ full reflexion loop end-to-end.
 
 from __future__ import annotations
 
-import pytest
-
 from src.agent.reflexion_agent import (
     ReflexionAgent,
     ReflexionAttempt,
@@ -15,7 +13,6 @@ from src.agent.reflexion_agent import (
     ReflexionMemory,
     ReflexionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -346,6 +343,7 @@ def test_integration_compute_2_plus_2():
     reflection is prepended, and a subsequent attempt that includes
     '4' in the reflection context must pass.
     """
+
     # A reflect_fn that always hints at the answer.
     def helpful_reflect(prompt: str) -> str:
         return "The answer is 4. Include '4' in your next attempt."

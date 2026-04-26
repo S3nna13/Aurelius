@@ -1,4 +1,5 @@
 """MoE with top-p routing: select fewest experts whose probability sum >= p."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,9 +15,9 @@ class MoETopPConfig:
     n_experts: int = 8
     d_model: int = 256
     d_ff: int = 512
-    top_p: float = 0.9          # select experts until cumulative prob >= top_p
-    min_experts: int = 1        # always use at least this many experts
-    max_experts: int = 4        # cap at this many experts
+    top_p: float = 0.9  # select experts until cumulative prob >= top_p
+    min_experts: int = 1  # always use at least this many experts
+    max_experts: int = 4  # cap at this many experts
     aux_loss_coeff: float = 0.01
 
 
@@ -55,7 +56,7 @@ def top_p_routing(
     # Sort experts by probability descending for each token
     sorted_probs, sorted_indices = torch.sort(probs, dim=-1, descending=True)
     # Limit to max_experts candidates
-    sorted_probs = sorted_probs[:, :max_experts]      # (N, max_experts)
+    sorted_probs = sorted_probs[:, :max_experts]  # (N, max_experts)
     sorted_indices = sorted_indices[:, :max_experts]  # (N, max_experts)
 
     # Cumulative sum to determine cutoff
@@ -115,7 +116,7 @@ def top_p_aux_loss(
 
     for k in range(selected_indices.shape[1]):
         slot_valid = valid_mask[:, k]  # (N,)
-        idx = valid_indices[:, k]      # (N,)
+        idx = valid_indices[:, k]  # (N,)
         one_hot = F.one_hot(idx, num_classes=n_experts).to(dtype)  # (N, n_experts)
         expert_mask += one_hot * slot_valid.to(dtype).unsqueeze(-1)
 
@@ -140,10 +141,9 @@ class MoETopPLayer(nn.Module):
         self.config = config
         self.router = nn.Linear(config.d_model, config.n_experts, bias=False)
         nn.init.normal_(self.router.weight, std=0.01)
-        self.experts = nn.ModuleList([
-            ExpertFFN(config.d_model, config.d_ff)
-            for _ in range(config.n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [ExpertFFN(config.d_model, config.d_ff) for _ in range(config.n_experts)]
+        )
         # Cache for routing_stats()
         self._last_selected_indices: Tensor | None = None
         self._last_n_tokens: int = 0
@@ -174,13 +174,13 @@ class MoETopPLayer(nn.Module):
 
         for e in range(self.config.n_experts):
             # Find tokens assigned to expert e
-            is_assigned = (selected_indices == e)  # (N, max_experts) bool
-            token_mask = is_assigned.any(dim=-1)   # (N,) bool
+            is_assigned = selected_indices == e  # (N, max_experts) bool
+            token_mask = is_assigned.any(dim=-1)  # (N,) bool
 
             if not token_mask.any():
                 continue
 
-            token_inputs = x_flat[token_mask]          # (M, d_model)
+            token_inputs = x_flat[token_mask]  # (M, d_model)
             expert_out = self.experts[e](token_inputs)  # (M, d_model)
 
             # Gather per-token weight for expert e
@@ -212,7 +212,6 @@ class MoETopPLayer(nn.Module):
             }
 
         indices = self._last_selected_indices  # (N, max_experts)
-        N = self._last_n_tokens
         n_experts = self.config.n_experts
 
         # Count how many active (non -1) slots each token uses
@@ -226,7 +225,9 @@ class MoETopPLayer(nn.Module):
             valid = slot >= 0
             if valid.any():
                 valid_idx = slot[valid]
-                counts.scatter_add_(0, valid_idx, torch.ones(valid_idx.shape[0], device=indices.device))
+                counts.scatter_add_(
+                    0, valid_idx, torch.ones(valid_idx.shape[0], device=indices.device)
+                )
 
         total = counts.sum().clamp(min=1.0)
         utilization = (counts / total).tolist()
@@ -244,9 +245,7 @@ class MoETopPTransformer(nn.Module):
         super().__init__()
         self.config = config
         self.embed = nn.Embedding(vocab_size, config.d_model)
-        self.layers = nn.ModuleList([
-            MoETopPLayer(config) for _ in range(n_layers)
-        ])
+        self.layers = nn.ModuleList([MoETopPLayer(config) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(config.d_model)
         self.head = nn.Linear(config.d_model, vocab_size, bias=False)
 

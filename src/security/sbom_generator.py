@@ -119,9 +119,7 @@ def _validate_package(pkg: dict[str, Any]) -> tuple[str, str]:
     if not isinstance(name, str) or not name:
         raise ValueError(f"Malformed lockfile: package missing name: {pkg!r}")
     if not isinstance(version, str) or not version:
-        raise ValueError(
-            f"Malformed lockfile: package {name!r} missing version"
-        )
+        raise ValueError(f"Malformed lockfile: package {name!r} missing version")
     return name, version
 
 

@@ -3,10 +3,11 @@
 Uses EWC regularization to prevent catastrophic forgetting. Tracks per-task
 performance to detect and report forgetting.
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -21,20 +22,21 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TaskRecord:
     """Record of a completed training task."""
+
     task_id: str
     final_loss: float
     eval_loss: float | None
     n_steps: int
-    ewc_lambda: float           # lambda used for this task's EWC
-    fisher_computed: bool       # whether Fisher was computed after this task
+    ewc_lambda: float  # lambda used for this task's EWC
+    fisher_computed: bool  # whether Fisher was computed after this task
 
 
 @dataclass
 class ContinualConfig:
-    base_ewc_lambda: float = 5000.0    # starting EWC penalty strength
-    lambda_growth: float = 1.0         # multiply lambda by this per task (1.0 = constant)
-    n_fisher_samples: int = 200        # samples for Fisher estimation
-    steps_per_task: int = 100          # gradient steps per task
+    base_ewc_lambda: float = 5000.0  # starting EWC penalty strength
+    lambda_growth: float = 1.0  # multiply lambda by this per task (1.0 = constant)
+    n_fisher_samples: int = 200  # samples for Fisher estimation
+    steps_per_task: int = 100  # gradient steps per task
     lr: float = 1e-4
     forgetting_threshold: float = 0.1  # flag if loss regresses > 10%
 
@@ -108,9 +110,9 @@ class ContinualTrainer:
 
             if isinstance(batch, dict):
                 input_ids = batch["input_ids"]
-                labels = batch.get("labels", batch["input_ids"])
+                batch.get("labels", batch["input_ids"])
             else:
-                input_ids, labels = batch[0], batch[1]
+                input_ids, _labels = batch[0], batch[1]
 
             self._optimizer.zero_grad()
             _loss, logits, _ = self.model(input_ids)
@@ -145,7 +147,9 @@ class ContinualTrainer:
                 if measured_loss > prev_eval * (1.0 + self.cfg.forgetting_threshold):
                     logger.warning(
                         "Forgetting detected for task %s: prev=%.4f current=%.4f",
-                        task_id, prev_eval, measured_loss,
+                        task_id,
+                        prev_eval,
+                        measured_loss,
                     )
                     self._forgetting_events.append(task_id)
 
@@ -179,14 +183,16 @@ class ContinualTrainer:
             for batch in data_loader:
                 if isinstance(batch, dict):
                     input_ids = batch["input_ids"]
-                    labels = batch.get("labels", batch["input_ids"])
+                    batch.get("labels", batch["input_ids"])
                 else:
-                    input_ids, labels = batch[0], batch[1]
+                    input_ids, _labels = batch[0], batch[1]
 
                 _loss, logits, _ = self.model(input_ids)
                 shift_logits = logits[:, :-1, :].contiguous()
                 shift_labels = input_ids[:, 1:].contiguous()
-                loss = _F.cross_entropy(shift_logits.view(-1, logits.size(-1)), shift_labels.view(-1))
+                loss = _F.cross_entropy(
+                    shift_logits.view(-1, logits.size(-1)), shift_labels.view(-1)
+                )
                 total_loss += loss.item()
                 n_batches += 1
 
@@ -205,4 +211,4 @@ class ContinualTrainer:
 
         lambda = base_ewc_lambda * lambda_growth^task_index
         """
-        return self.cfg.base_ewc_lambda * (self.cfg.lambda_growth ** task_index)
+        return self.cfg.base_ewc_lambda * (self.cfg.lambda_growth**task_index)

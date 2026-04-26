@@ -23,10 +23,10 @@ from torch import Tensor
 
 from .rms_norm import RMSNorm
 
-
 # ---------------------------------------------------------------------------
 # SambaMambaBlock — inline Mamba-1 SSM block (no import from mamba.py)
 # ---------------------------------------------------------------------------
+
 
 class SambaMambaBlock(nn.Module):
     """Simplified inline Mamba-1 SSM block for use inside SAMBA.
@@ -79,11 +79,7 @@ class SambaMambaBlock(nn.Module):
 
         # A: log-parameterized state matrix (d_inner, d_state)
         # A_log stores log(|A|); actual A = -exp(A_log) < 0 for stability
-        A_log = (
-            torch.log(torch.arange(1, d_state + 1).float())
-            .unsqueeze(0)
-            .expand(d_inner, -1)
-        )
+        A_log = torch.log(torch.arange(1, d_state + 1).float()).unsqueeze(0).expand(d_inner, -1)
         self.A_log = nn.Parameter(A_log.clone())
 
         # D: skip connection scalar per inner channel
@@ -104,31 +100,27 @@ class SambaMambaBlock(nn.Module):
         d_inner = self.d_inner
 
         # Project and split
-        xz = self.in_proj(x)                         # (B, T, 2*d_inner)
-        x_branch, z = xz.chunk(2, dim=-1)            # each (B, T, d_inner)
+        xz = self.in_proj(x)  # (B, T, 2*d_inner)
+        x_branch, z = xz.chunk(2, dim=-1)  # each (B, T, d_inner)
 
         # Causal depthwise conv1d
-        xc = x_branch.transpose(1, 2)               # (B, d_inner, T)
-        xc = self.conv1d(xc)                         # (B, d_inner, T + d_conv - 1)
-        xc = xc[:, :, :T]                           # (B, d_inner, T) — trim right
-        xc = xc.transpose(1, 2)                      # (B, T, d_inner)
+        xc = x_branch.transpose(1, 2)  # (B, d_inner, T)
+        xc = self.conv1d(xc)  # (B, d_inner, T + d_conv - 1)
+        xc = xc[:, :, :T]  # (B, d_inner, T) — trim right
+        xc = xc.transpose(1, 2)  # (B, T, d_inner)
         xc = F.silu(xc)
 
         # Compute input-dependent SSM params
-        proj_out = self.x_proj(xc)                   # (B, T, dt_rank + 2*d_state)
-        delta_raw, B_in, C_in = proj_out.split(
-            [self.dt_rank, self.d_state, self.d_state], dim=-1
-        )
+        proj_out = self.x_proj(xc)  # (B, T, dt_rank + 2*d_state)
+        delta_raw, B_in, C_in = proj_out.split([self.dt_rank, self.d_state, self.d_state], dim=-1)
         # delta_raw: (B, T, dt_rank); B_in, C_in: (B, T, d_state)
 
         delta = F.softplus(self.dt_proj(delta_raw))  # (B, T, d_inner)
 
         # Discretize A
-        A = -torch.exp(self.A_log.float())           # (d_inner, d_state)
+        A = -torch.exp(self.A_log.float())  # (d_inner, d_state)
         # A_bar: (B, T, d_inner, d_state)
-        A_bar = torch.exp(
-            delta.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0)
-        )
+        A_bar = torch.exp(delta.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0))
         # B_bar: (B, T, d_inner, d_state)
         B_bar = delta.unsqueeze(-1) * B_in.unsqueeze(2)
 
@@ -140,17 +132,18 @@ class SambaMambaBlock(nn.Module):
             y_t = (h * C_in[:, t].unsqueeze(1)).sum(dim=-1) + self.D * xc[:, t]
             ys.append(y_t)
 
-        y = torch.stack(ys, dim=1)                   # (B, T, d_inner)
+        y = torch.stack(ys, dim=1)  # (B, T, d_inner)
 
         # Multiplicative gate
-        y = y * F.silu(z)                            # (B, T, d_inner)
+        y = y * F.silu(z)  # (B, T, d_inner)
 
-        return self.out_proj(y)                      # (B, T, d_model)
+        return self.out_proj(y)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # SambaSWABlock — Sliding-Window Self-Attention block
 # ---------------------------------------------------------------------------
+
 
 class SambaSWABlock(nn.Module):
     """Sliding-window causal self-attention block.
@@ -167,12 +160,12 @@ class SambaSWABlock(nn.Module):
         window_size: int = 64,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.window_size = window_size
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
 
         self.qkv_proj = nn.Linear(d_model, 3 * d_model, bias=False)
         self.out_proj = nn.Linear(d_model, d_model, bias=False)
@@ -191,8 +184,8 @@ class SambaSWABlock(nn.Module):
         W = self.window_size
 
         # QKV projection
-        qkv = self.qkv_proj(x)                       # (B, T, 3*d_model)
-        q, k, v = qkv.chunk(3, dim=-1)               # each (B, T, d_model)
+        qkv = self.qkv_proj(x)  # (B, T, 3*d_model)
+        q, k, v = qkv.chunk(3, dim=-1)  # each (B, T, d_model)
 
         # Reshape to (B, H, T, D)
         q = q.view(B, T, H, D).transpose(1, 2)
@@ -209,29 +202,30 @@ class SambaSWABlock(nn.Module):
         i_idx = torch.arange(T, device=device).unsqueeze(1)  # (T, 1)
         j_idx = torch.arange(T, device=device).unsqueeze(0)  # (1, T)
         # Causal: j > i
-        causal_mask = j_idx > i_idx                          # (T, T)
+        causal_mask = j_idx > i_idx  # (T, T)
         # Window: i - j >= W  (j is too far in the past)
-        window_mask = (i_idx - j_idx) >= W                   # (T, T)
-        combined_mask = causal_mask | window_mask            # (T, T)
+        window_mask = (i_idx - j_idx) >= W  # (T, T)
+        combined_mask = causal_mask | window_mask  # (T, T)
 
         # Apply mask: blocked positions → -inf
         scores = scores.masked_fill(combined_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
         # Softmax + weighted sum
-        attn = F.softmax(scores, dim=-1)                     # (B, H, T, T)
+        attn = F.softmax(scores, dim=-1)  # (B, H, T, T)
         # Replace NaN from all-masked rows (e.g., when T < W at position 0 is fine,
         # but guard against the degenerate case where a full row is -inf)
         attn = torch.nan_to_num(attn, nan=0.0)
 
-        out = torch.matmul(attn, v)                          # (B, H, T, D)
+        out = torch.matmul(attn, v)  # (B, H, T, D)
         out = out.transpose(1, 2).contiguous().view(B, T, -1)  # (B, T, d_model)
 
-        return self.out_proj(out)                            # (B, T, d_model)
+        return self.out_proj(out)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # SambaModel — interleaved Mamba + SWA stack
 # ---------------------------------------------------------------------------
+
 
 class _SambaLayer(nn.Module):
     """Pre-norm residual wrapper: out = x + block(RMSNorm(x))."""
@@ -289,9 +283,9 @@ class SambaModel(nn.Module):
         Returns:
             (B, T, d_model) hidden states after final RMSNorm
         """
-        x = self.embedding(input_ids)   # (B, T, d_model)
+        x = self.embedding(input_ids)  # (B, T, d_model)
 
         for layer in self.layers:
             x = layer(x)
 
-        return self.norm_out(x)         # (B, T, d_model)
+        return self.norm_out(x)  # (B, T, d_model)

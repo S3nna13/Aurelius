@@ -7,8 +7,8 @@ Uses a deliberately tiny configuration so every test runs in <1 s on CPU:
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.diff_transformer import (
     DiffAttnConfig,
@@ -21,8 +21,8 @@ from src.model.diff_transformer import (
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-BATCH   = 2
-SEQ     = 8
+BATCH = 2
+SEQ = 8
 D_MODEL = 64
 N_HEADS = 4
 HEAD_DIM = 16
@@ -77,6 +77,7 @@ def _causal_mask(seq_len: int) -> torch.Tensor:
 # Test 1 — Output shape is correct (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape(attn: DifferentialAttention, x: torch.Tensor) -> None:
     with torch.no_grad():
         out = attn(x)
@@ -89,6 +90,7 @@ def test_output_shape(attn: DifferentialAttention, x: torch.Tensor) -> None:
 # Test 2 — Lambda is learnable and clamped in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_lambda_learnable_and_clamped(attn: DifferentialAttention) -> None:
     # lambda_param must be an nn.Parameter (i.e. requires_grad=True)
     assert isinstance(attn.lambda_param, torch.nn.Parameter)
@@ -96,7 +98,7 @@ def test_lambda_learnable_and_clamped(attn: DifferentialAttention) -> None:
 
     # lambda_values must stay in [0, 1] even after arbitrary raw param values
     with torch.no_grad():
-        attn.lambda_param.fill_(5.0)   # raw value outside valid range
+        attn.lambda_param.fill_(5.0)  # raw value outside valid range
     clamped = attn.lambda_values
     assert (clamped >= 0.0).all() and (clamped <= 1.0).all(), (
         f"lambda_values out of [0,1]: {clamped}"
@@ -111,6 +113,7 @@ def test_lambda_learnable_and_clamped(attn: DifferentialAttention) -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — Causal mask zeros upper triangle (future positions get ~0 weight)
 # ---------------------------------------------------------------------------
+
 
 def test_causal_mask_zeros_upper_triangle(attn: DifferentialAttention) -> None:
     """With a causal mask, token i must not be influenced by token j > i.
@@ -144,6 +147,7 @@ def test_causal_mask_zeros_upper_triangle(attn: DifferentialAttention) -> None:
 # Test 4 — Forward pass produces no NaN or Inf
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf(attn: DifferentialAttention, x: torch.Tensor) -> None:
     with torch.no_grad():
         out = attn(x)
@@ -155,17 +159,19 @@ def test_no_nan_inf(attn: DifferentialAttention, x: torch.Tensor) -> None:
 # Test 5 — Backward pass computes gradients (loss.backward() succeeds)
 # ---------------------------------------------------------------------------
 
+
 def test_backward_pass(attn: DifferentialAttention, x: torch.Tensor) -> None:
     x_req = x.detach().requires_grad_(True)
     out = attn(x_req)
     loss = out.sum()
-    loss.backward()                       # must not raise
+    loss.backward()  # must not raise
     assert x_req.grad is not None, "No gradient flowed back to the input."
 
 
 # ---------------------------------------------------------------------------
 # Test 6 — Lambda gradient is non-zero after backward
 # ---------------------------------------------------------------------------
+
 
 def test_lambda_gradient_nonzero(attn: DifferentialAttention, x: torch.Tensor) -> None:
     # Reset param to a mid-range value so clamping doesn't zero the gradient
@@ -186,6 +192,7 @@ def test_lambda_gradient_nonzero(attn: DifferentialAttention, x: torch.Tensor) -
 # Test 7 — DiffTransformerBlock output shape
 # ---------------------------------------------------------------------------
 
+
 def test_block_output_shape(block: DiffTransformerBlock, x: torch.Tensor) -> None:
     with torch.no_grad():
         out = block(x)
@@ -198,6 +205,7 @@ def test_block_output_shape(block: DiffTransformerBlock, x: torch.Tensor) -> Non
 # Test 8 — DiffTransformerLayer stack output shape
 # ---------------------------------------------------------------------------
 
+
 def test_layer_stack_output_shape(layer: DiffTransformerLayer, x: torch.Tensor) -> None:
     with torch.no_grad():
         out = layer(x)
@@ -209,6 +217,7 @@ def test_layer_stack_output_shape(layer: DiffTransformerLayer, x: torch.Tensor) 
 # ---------------------------------------------------------------------------
 # Test 9 — Different lambda values produce different outputs
 # ---------------------------------------------------------------------------
+
 
 def test_different_lambda_different_output(cfg: DiffAttnConfig, x: torch.Tensor) -> None:
     attn_a = DifferentialAttention(cfg)
@@ -237,6 +246,7 @@ def test_different_lambda_different_output(cfg: DiffAttnConfig, x: torch.Tensor)
 # Test 10 — Deterministic with same random seed
 # ---------------------------------------------------------------------------
 
+
 def test_deterministic_with_same_seed(cfg: DiffAttnConfig) -> None:
     def _run() -> torch.Tensor:
         torch.manual_seed(42)
@@ -255,6 +265,7 @@ def test_deterministic_with_same_seed(cfg: DiffAttnConfig) -> None:
 # Bonus Test 11 — Block no NaN/Inf with causal mask
 # ---------------------------------------------------------------------------
 
+
 def test_block_no_nan_with_causal_mask(block: DiffTransformerBlock, x: torch.Tensor) -> None:
     mask = _causal_mask(SEQ)
     block.train(False)
@@ -267,6 +278,7 @@ def test_block_no_nan_with_causal_mask(block: DiffTransformerBlock, x: torch.Ten
 # ---------------------------------------------------------------------------
 # Bonus Test 12 — Layer stack no NaN/Inf
 # ---------------------------------------------------------------------------
+
 
 def test_layer_no_nan(layer: DiffTransformerLayer, x: torch.Tensor) -> None:
     layer.train(False)

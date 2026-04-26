@@ -24,11 +24,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -133,8 +132,7 @@ def apply_mup_init(model: nn.Module, config: MuPConfig) -> None:
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
 
-        elif isinstance(module, (nn.LayerNorm, nn.GroupNorm, nn.BatchNorm1d,
-                                  nn.BatchNorm2d)):
+        elif isinstance(module, (nn.LayerNorm, nn.GroupNorm, nn.BatchNorm1d, nn.BatchNorm2d)):
             if hasattr(module, "weight") and module.weight is not None:
                 nn.init.ones_(module.weight)
             if hasattr(module, "bias") and module.bias is not None:
@@ -146,7 +144,7 @@ def apply_mup_init(model: nn.Module, config: MuPConfig) -> None:
 # ---------------------------------------------------------------------------
 
 
-def get_mup_param_groups(model: nn.Module, config: MuPConfig) -> List[dict]:
+def get_mup_param_groups(model: nn.Module, config: MuPConfig) -> list[dict]:
     """Return optimizer param groups with per-group learning rates already set.
 
     Groups
@@ -168,10 +166,10 @@ def get_mup_param_groups(model: nn.Module, config: MuPConfig) -> List[dict]:
     width_mult = config.width_multiplier
     hidden_lr = config.base_lr / width_mult
 
-    embed_params: List[nn.Parameter] = []
-    hidden_params: List[nn.Parameter] = []
-    output_params: List[nn.Parameter] = []
-    other_params: List[nn.Parameter] = []
+    embed_params: list[nn.Parameter] = []
+    hidden_params: list[nn.Parameter] = []
+    output_params: list[nn.Parameter] = []
+    other_params: list[nn.Parameter] = []
 
     # Track already-assigned parameter ids to avoid double-counting.
     assigned: set = set()
@@ -205,19 +203,15 @@ def get_mup_param_groups(model: nn.Module, config: MuPConfig) -> List[dict]:
                 # Norm layers, unknown layers, biases
                 other_params.append(param)
 
-    groups: List[dict] = []
+    groups: list[dict] = []
     if embed_params:
-        groups.append({"params": embed_params, "lr": config.base_lr,
-                        "group_name": "embed"})
+        groups.append({"params": embed_params, "lr": config.base_lr, "group_name": "embed"})
     if hidden_params:
-        groups.append({"params": hidden_params, "lr": hidden_lr,
-                        "group_name": "hidden"})
+        groups.append({"params": hidden_params, "lr": hidden_lr, "group_name": "hidden"})
     if output_params:
-        groups.append({"params": output_params, "lr": hidden_lr,
-                        "group_name": "output"})
+        groups.append({"params": output_params, "lr": hidden_lr, "group_name": "output"})
     if other_params:
-        groups.append({"params": other_params, "lr": config.base_lr,
-                        "group_name": "other"})
+        groups.append({"params": other_params, "lr": config.base_lr, "group_name": "other"})
 
     return groups
 
@@ -245,7 +239,7 @@ class MuPAdamW(torch.optim.Optimizer):
 
     def __init__(
         self,
-        param_groups: List[dict],
+        param_groups: list[dict],
         lr: float = 1e-3,
         betas: tuple = (0.9, 0.999),
         eps: float = 1e-8,
@@ -265,7 +259,7 @@ class MuPAdamW(torch.optim.Optimizer):
         super().__init__(param_groups, defaults)
 
     @torch.no_grad()
-    def step(self, closure: Optional[Any] = None) -> Optional[torch.Tensor]:
+    def step(self, closure: Any | None = None) -> torch.Tensor | None:
         """Perform a single optimisation step (AdamW with muP per-group LR).
 
         Args:
@@ -275,7 +269,7 @@ class MuPAdamW(torch.optim.Optimizer):
         Returns:
             Loss from the closure, or ``None``.
         """
-        loss: Optional[torch.Tensor] = None
+        loss: torch.Tensor | None = None
         if closure is not None:
             with torch.enable_grad():
                 loss = closure()
@@ -312,8 +306,8 @@ class MuPAdamW(torch.optim.Optimizer):
                 exp_avg_sq: torch.Tensor = state["exp_avg_sq"]
 
                 # Bias correction
-                bias_corr1 = 1.0 - beta1 ** step
-                bias_corr2 = 1.0 - beta2 ** step
+                bias_corr1 = 1.0 - beta1**step
+                bias_corr2 = 1.0 - beta2**step
 
                 # Weight decay (decoupled)
                 p.mul_(1.0 - lr * wd)
@@ -342,7 +336,7 @@ class MuPAdamW(torch.optim.Optimizer):
 
 def coord_check(
     model_fn: Any,
-    widths: List[int],
+    widths: list[int],
     d_model_base: int,
     base_lr: float,
     input_ids: torch.Tensor,
@@ -371,8 +365,7 @@ def coord_check(
     results: dict = {}
 
     for width in widths:
-        config = MuPConfig(d_model=width, d_model_base=d_model_base,
-                           base_lr=base_lr)
+        config = MuPConfig(d_model=width, d_model_base=d_model_base, base_lr=base_lr)
         total: float = 0.0
         for seed in range(n_seeds):
             torch.manual_seed(seed)

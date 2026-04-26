@@ -5,12 +5,12 @@ gradient-free model editing, composition, and forgetting.
 
 Reference: Ilharco et al. 2023, "Editing Models with Task Arithmetic", arXiv:2212.04089
 """
+
 from __future__ import annotations
 
 import copy
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -37,9 +37,9 @@ class TaskVector:
 
     def __init__(
         self,
-        base_model: Optional[nn.Module] = None,
-        finetuned_model: Optional[nn.Module] = None,
-        vector: Optional[Dict[str, Tensor]] = None,
+        base_model: nn.Module | None = None,
+        finetuned_model: nn.Module | None = None,
+        vector: dict[str, Tensor] | None = None,
     ) -> None:
         """Initialize from (base, finetuned) pair or directly from vector dict.
 
@@ -49,19 +49,20 @@ class TaskVector:
             vector: Pre-computed {param_name: finetuned_param - base_param} dict.
         """
         if vector is not None:
-            self.vector: Dict[str, Tensor] = vector
+            self.vector: dict[str, Tensor] = vector
         elif base_model is not None and finetuned_model is not None:
             self.vector = {
                 name: ft_param.data.clone() - base_param.data.clone()
-                for (name, base_param), (_, ft_param)
-                in zip(base_model.named_parameters(), finetuned_model.named_parameters())
+                for (name, base_param), (_, ft_param) in zip(
+                    base_model.named_parameters(), finetuned_model.named_parameters()
+                )
             }
         else:
             raise ValueError(
                 "Must provide either (base_model, finetuned_model) pair or a vector dict."
             )
 
-    def __add__(self, other: "TaskVector") -> "TaskVector":
+    def __add__(self, other: TaskVector) -> TaskVector:
         """Add two task vectors element-wise."""
         new_vector = {
             name: self.vector[name] + other.vector[name]
@@ -70,11 +71,11 @@ class TaskVector:
         }
         return TaskVector(vector=new_vector)
 
-    def __neg__(self) -> "TaskVector":
+    def __neg__(self) -> TaskVector:
         """Negate task vector (for task forgetting)."""
         return self.__mul__(-1.0)
 
-    def __sub__(self, other: "TaskVector") -> "TaskVector":
+    def __sub__(self, other: TaskVector) -> TaskVector:
         """Subtract two task vectors."""
         new_vector = {
             name: self.vector[name] - other.vector[name]
@@ -83,23 +84,19 @@ class TaskVector:
         }
         return TaskVector(vector=new_vector)
 
-    def __mul__(self, scalar: float) -> "TaskVector":
+    def __mul__(self, scalar: float) -> TaskVector:
         """Scale task vector by scalar."""
-        new_vector = {
-            name: self.vector[name] * scalar
-            for name in self.vector
-        }
+        new_vector = {name: self.vector[name] * scalar for name in self.vector}
         return TaskVector(vector=new_vector)
 
-    def __rmul__(self, scalar: float) -> "TaskVector":
+    def __rmul__(self, scalar: float) -> TaskVector:
         """Right multiply: scalar * task_vector."""
         return self.__mul__(scalar)
 
     def norm(self) -> float:
         """L2 norm of all concatenated task vector parameters."""
         total_sq = sum(
-            param.float().reshape(-1).norm().item() ** 2
-            for param in self.vector.values()
+            param.float().reshape(-1).norm().item() ** 2 for param in self.vector.values()
         )
         return math.sqrt(total_sq)
 
@@ -130,7 +127,7 @@ class TaskVector:
 
         return new_model
 
-    def cosine_similarity(self, other: "TaskVector") -> float:
+    def cosine_similarity(self, other: TaskVector) -> float:
         """Cosine similarity between two task vectors (flat parameter vectors).
 
         Args:
@@ -155,7 +152,7 @@ class TaskVector:
         dot = (flat_self * flat_other).sum()
         return (dot / (norm_self * norm_other)).item()
 
-    def sparsify(self, fraction: float) -> "TaskVector":
+    def sparsify(self, fraction: float) -> TaskVector:
         """Zero out (1 - fraction) of parameters with smallest absolute value.
 
         Implements magnitude-based pruning (DARE-style): keeps only the top
@@ -170,7 +167,7 @@ class TaskVector:
         if not (0.0 <= fraction <= 1.0):
             raise ValueError(f"fraction must be in [0, 1], got {fraction}")
 
-        new_vector: Dict[str, Tensor] = {}
+        new_vector: dict[str, Tensor] = {}
         for name, param in self.vector.items():
             flat = param.reshape(-1).float()
             n_keep = max(1, int(round(flat.numel() * fraction)))
@@ -185,9 +182,9 @@ class TaskVector:
 
 def multi_task_compose(
     base_model: nn.Module,
-    task_vectors: List[TaskVector],
-    weights: Optional[List[float]] = None,
-    config: Optional[TaskVectorConfig] = None,
+    task_vectors: list[TaskVector],
+    weights: list[float] | None = None,
+    config: TaskVectorConfig | None = None,
 ) -> nn.Module:
     """Compose multiple task vectors via weighted sum.
 
@@ -212,12 +209,10 @@ def multi_task_compose(
     if weights is None:
         weights = [1.0] * n
     elif len(weights) != n:
-        raise ValueError(
-            f"len(weights)={len(weights)} must match len(task_vectors)={n}"
-        )
+        raise ValueError(f"len(weights)={len(weights)} must match len(task_vectors)={n}")
 
     # Optionally normalize each task vector to unit norm
-    vecs: List[TaskVector] = []
+    vecs: list[TaskVector] = []
     for tv, w in zip(task_vectors, weights):
         if config.normalize:
             tv_norm = tv.norm()
@@ -280,7 +275,9 @@ def interpolate_models(
 
     for name, param in new_model.named_parameters():
         if name in params_a and name in params_b:
-            interp = alpha * params_a[name].data.float() + (1.0 - alpha) * params_b[name].data.float()
+            interp = (
+                alpha * params_a[name].data.float() + (1.0 - alpha) * params_b[name].data.float()
+            )
             param.data.copy_(interp.to(param.dtype))
 
     return new_model

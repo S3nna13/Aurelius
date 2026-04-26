@@ -1,15 +1,16 @@
 """Tests for Multi-head Latent Attention (MLA) — DeepSeek-V2 KV cache compression."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.mla import (
-    MLAConfig,
     DownProjectKV,
-    UpProjectKV,
-    MultiHeadLatentAttention,
     MLABlock,
+    MLAConfig,
+    MultiHeadLatentAttention,
+    UpProjectKV,
     compute_kv_cache_savings,
 )
 

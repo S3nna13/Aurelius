@@ -2,6 +2,7 @@
 
 16 tests covering WARMEnsemble, WARMInterpolation, WARMRewardModel, WARMTrainer.
 """
+
 from __future__ import annotations
 
 import copy
@@ -9,7 +10,6 @@ import copy
 import pytest
 import torch
 import torch.nn as nn
-from torch import Tensor
 
 from src.alignment.warm import (
     WARMEnsemble,
@@ -17,7 +17,6 @@ from src.alignment.warm import (
     WARMRewardModel,
     WARMTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -242,9 +241,7 @@ def test_sweep_returns_correct_number_of_models():
     base = _make_linear(seed=99)
     swept = interp.sweep(alphas, base)
 
-    assert len(swept) == len(alphas), (
-        f"sweep returned {len(swept)} models, expected {len(alphas)}"
-    )
+    assert len(swept) == len(alphas), f"sweep returned {len(swept)} models, expected {len(alphas)}"
     for m in swept:
         assert isinstance(m, nn.Module)
 
@@ -296,9 +293,7 @@ def test_reward_model_gradient_flows():
 
     for name, param in rm.named_parameters():
         assert param.grad is not None, f"No gradient for parameter '{name}'"
-        assert torch.isfinite(param.grad).all(), (
-            f"Non-finite gradient for parameter '{name}'"
-        )
+        assert torch.isfinite(param.grad).all(), f"Non-finite gradient for parameter '{name}'"
 
 
 # ---------------------------------------------------------------------------
@@ -319,9 +314,7 @@ def test_trainer_train_step_returns_correct_number_of_losses():
     x_l = torch.randn(B, d)
     losses = trainer.train_step(x_w, x_l)
 
-    assert len(losses) == n_models, (
-        f"train_step returned {len(losses)} losses, expected {n_models}"
-    )
+    assert len(losses) == n_models, f"train_step returned {len(losses)} losses, expected {n_models}"
 
 
 # ---------------------------------------------------------------------------
@@ -343,9 +336,7 @@ def test_trainer_losses_are_finite():
     losses = trainer.train_step(x_w, x_l)
 
     for idx, loss in enumerate(losses):
-        assert loss.shape == torch.Size([]), (
-            f"Loss {idx} is not a scalar: shape {loss.shape}"
-        )
+        assert loss.shape == torch.Size([]), f"Loss {idx} is not a scalar: shape {loss.shape}"
         assert torch.isfinite(loss), f"Loss {idx} is not finite: {loss.item()}"
 
 

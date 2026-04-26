@@ -5,20 +5,19 @@ Maximum-entropy RL framework that balances reward maximization with entropy
 regularization, applied to token-level decoding decisions.
 """
 
-import math
 import copy
+import math
 from dataclasses import dataclass
-from typing import Optional, Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Policy Head
 # ---------------------------------------------------------------------------
+
 
 class SACPolicyHead(nn.Module):
     """
@@ -34,16 +33,14 @@ class SACPolicyHead(nn.Module):
 
         self.linear = nn.Linear(d_model, vocab_size)
         # log_alpha is auto-tuned; initialise so exp(log_alpha) == alpha_init
-        self.log_alpha = nn.Parameter(
-            torch.tensor(math.log(alpha_init), dtype=torch.float32)
-        )
+        self.log_alpha = nn.Parameter(torch.tensor(math.log(alpha_init), dtype=torch.float32))
 
     @property
     def alpha(self) -> Tensor:
         """Temperature coefficient (always positive)."""
         return self.log_alpha.exp()
 
-    def forward(self, hidden: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
         """
         Args:
             hidden: [B, d_model]
@@ -52,11 +49,11 @@ class SACPolicyHead(nn.Module):
             logits:    [B, vocab_size]
             log_probs: [B, vocab_size]  (log-softmax of logits)
         """
-        logits = self.linear(hidden)                    # [B, V]
-        log_probs = F.log_softmax(logits, dim=-1)       # [B, V]
+        logits = self.linear(hidden)  # [B, V]
+        log_probs = F.log_softmax(logits, dim=-1)  # [B, V]
         return logits, log_probs
 
-    def sample_action(self, hidden: Tensor) -> Tuple[Tensor, Tensor]:
+    def sample_action(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
         """
         Sample a token from the policy distribution.
 
@@ -67,10 +64,10 @@ class SACPolicyHead(nn.Module):
             action:   [B]  integer token indices
             log_prob: [B]  log probability of the sampled token
         """
-        logits, log_probs = self.forward(hidden)        # [B, V]
-        probs = torch.softmax(logits, dim=-1)           # [B, V]
+        logits, log_probs = self.forward(hidden)  # [B, V]
+        probs = torch.softmax(logits, dim=-1)  # [B, V]
         dist = torch.distributions.Categorical(probs=probs)
-        action = dist.sample()                          # [B]
+        action = dist.sample()  # [B]
         # Gather log_prob of the chosen action
         log_prob = log_probs.gather(1, action.unsqueeze(1)).squeeze(1)  # [B]
         return action, log_prob
@@ -79,6 +76,7 @@ class SACPolicyHead(nn.Module):
 # ---------------------------------------------------------------------------
 # Q-Network (Double-Q)
 # ---------------------------------------------------------------------------
+
 
 def _build_mlp(d_model: int, vocab_size: int, n_layers: int) -> nn.Sequential:
     """Build a simple MLP: d_model -> ... -> vocab_size."""
@@ -108,7 +106,7 @@ class SACQNetwork(nn.Module):
         self.q1 = _build_mlp(d_model, vocab_size, n_layers)
         self.q2 = _build_mlp(d_model, vocab_size, n_layers)
 
-    def forward(self, state: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, state: Tensor) -> tuple[Tensor, Tensor]:
         """
         Args:
             state: [B, d_model]
@@ -124,6 +122,7 @@ class SACQNetwork(nn.Module):
 # Replay Buffer
 # ---------------------------------------------------------------------------
 
+
 class SACReplayBuffer:
     """
     Fixed-capacity circular replay buffer storing (s, a, r, s', done) transitions.
@@ -137,11 +136,11 @@ class SACReplayBuffer:
         self._pos = 0
         self._size = 0
 
-        self.states      = torch.zeros(capacity, state_dim)
-        self.actions     = torch.zeros(capacity, dtype=torch.long)
-        self.rewards     = torch.zeros(capacity)
+        self.states = torch.zeros(capacity, state_dim)
+        self.actions = torch.zeros(capacity, dtype=torch.long)
+        self.rewards = torch.zeros(capacity)
         self.next_states = torch.zeros(capacity, state_dim)
-        self.dones       = torch.zeros(capacity, dtype=torch.bool)
+        self.dones = torch.zeros(capacity, dtype=torch.bool)
 
     def push(
         self,
@@ -153,16 +152,16 @@ class SACReplayBuffer:
     ) -> None:
         """Store a single transition (overwrites oldest if full)."""
         i = self._pos
-        self.states[i]      = state.detach().cpu().float()
-        self.actions[i]     = int(action)
-        self.rewards[i]     = float(reward)
+        self.states[i] = state.detach().cpu().float()
+        self.actions[i] = int(action)
+        self.rewards[i] = float(reward)
         self.next_states[i] = next_state.detach().cpu().float()
-        self.dones[i]       = bool(done)
+        self.dones[i] = bool(done)
 
         self._pos = (self._pos + 1) % self.capacity
         self._size = min(self._size + 1, self.capacity)
 
-    def sample(self, batch_size: int) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+    def sample(self, batch_size: int) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """
         Uniformly sample a mini-batch of transitions.
 
@@ -194,6 +193,7 @@ class SACReplayBuffer:
 # SAC Trainer
 # ---------------------------------------------------------------------------
 
+
 class SACTrainer:
     """
     Orchestrates SAC updates for a (policy, q-network) pair.
@@ -211,7 +211,7 @@ class SACTrainer:
         lr: float,
         gamma: float = 0.99,
         tau: float = 0.005,
-        target_entropy: Optional[float] = None,
+        target_entropy: float | None = None,
     ) -> None:
         self.policy = policy
         self.q_net = q_net
@@ -229,9 +229,9 @@ class SACTrainer:
         else:
             self.target_entropy = target_entropy
 
-        self.q_optimizer      = torch.optim.Adam(q_net.parameters(),      lr=lr)
-        self.policy_optimizer = torch.optim.Adam(policy.parameters(),     lr=lr)
-        self.alpha_optimizer  = torch.optim.Adam([policy.log_alpha],      lr=lr)
+        self.q_optimizer = torch.optim.Adam(q_net.parameters(), lr=lr)
+        self.policy_optimizer = torch.optim.Adam(policy.parameters(), lr=lr)
+        self.alpha_optimizer = torch.optim.Adam([policy.log_alpha], lr=lr)
 
     # ------------------------------------------------------------------
     # Loss helpers
@@ -239,7 +239,7 @@ class SACTrainer:
 
     def critic_loss(
         self,
-        batch: Tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
+        batch: tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
     ) -> Tensor:
         """
         TD-error loss for both Q-networks.
@@ -252,27 +252,27 @@ class SACTrainer:
 
         with torch.no_grad():
             # Next-state distribution
-            _, next_log_probs = self.policy(next_states)          # [B, V]
-            next_probs = next_log_probs.exp()                     # [B, V]
+            _, next_log_probs = self.policy(next_states)  # [B, V]
+            next_probs = next_log_probs.exp()  # [B, V]
 
             # Soft target value (expectation over actions)
-            tq1, tq2 = self.target_q_net(next_states)            # [B, V]
-            min_tq = torch.min(tq1, tq2)                         # [B, V]
+            tq1, tq2 = self.target_q_net(next_states)  # [B, V]
+            min_tq = torch.min(tq1, tq2)  # [B, V]
             soft_v_next = (next_probs * (min_tq - alpha * next_log_probs)).sum(dim=-1)  # [B]
 
             target = rewards + self.gamma * (~dones).float() * soft_v_next  # [B]
 
-        q1, q2 = self.q_net(states)                              # [B, V]
+        q1, q2 = self.q_net(states)  # [B, V]
         # Extract Q-value for the taken action
-        q1_a = q1.gather(1, actions.unsqueeze(1)).squeeze(1)     # [B]
-        q2_a = q2.gather(1, actions.unsqueeze(1)).squeeze(1)     # [B]
+        q1_a = q1.gather(1, actions.unsqueeze(1)).squeeze(1)  # [B]
+        q2_a = q2.gather(1, actions.unsqueeze(1)).squeeze(1)  # [B]
 
         loss = F.mse_loss(q1_a, target) + F.mse_loss(q2_a, target)
         return loss
 
     def actor_loss(
         self,
-        batch: Tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
+        batch: tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
     ) -> Tensor:
         """
         Policy loss: maximise E[min(Q1,Q2)(s,a) - α * log π(a|s)].
@@ -283,11 +283,11 @@ class SACTrainer:
         states = batch[0]
         alpha = self.policy.alpha.detach()
 
-        _, log_probs = self.policy(states)     # [B, V]
-        probs = log_probs.exp()                # [B, V]
+        _, log_probs = self.policy(states)  # [B, V]
+        probs = log_probs.exp()  # [B, V]
 
-        q1, q2 = self.q_net(states)           # [B, V]
-        min_q = torch.min(q1, q2)             # [B, V]
+        q1, q2 = self.q_net(states)  # [B, V]
+        min_q = torch.min(q1, q2)  # [B, V]
 
         # E_a[min_Q - alpha * log_pi]  —  gradient w.r.t. policy params
         loss = (probs * (alpha * log_probs - min_q)).sum(dim=-1).mean()
@@ -295,7 +295,7 @@ class SACTrainer:
 
     def alpha_loss(
         self,
-        batch: Tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
+        batch: tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
     ) -> Tensor:
         """
         Temperature loss: push H(π) towards target_entropy.
@@ -305,8 +305,8 @@ class SACTrainer:
         states = batch[0]
 
         with torch.no_grad():
-            _, log_probs = self.policy(states)    # [B, V]
-            probs = log_probs.exp()               # [B, V]
+            _, log_probs = self.policy(states)  # [B, V]
+            probs = log_probs.exp()  # [B, V]
             # Expected entropy under current policy
             ent = -(probs * log_probs).sum(dim=-1)  # [B]
 
@@ -316,8 +316,8 @@ class SACTrainer:
 
     def update(
         self,
-        batch: Tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
-    ) -> Dict[str, float]:
+        batch: tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
+    ) -> dict[str, float]:
         """
         Perform one full SAC update step.
 
@@ -347,23 +347,22 @@ class SACTrainer:
 
         return {
             "critic_loss": c_loss.item(),
-            "actor_loss":  a_loss.item(),
-            "alpha_loss":  al_loss.item(),
-            "alpha":       self.policy.alpha.item(),
+            "actor_loss": a_loss.item(),
+            "alpha_loss": al_loss.item(),
+            "alpha": self.policy.alpha.item(),
         }
 
     def soft_update_target(self) -> None:
         """Polyak-average the target Q-network towards the main Q-network."""
         tau = self.tau
-        for p_target, p_main in zip(
-            self.target_q_net.parameters(), self.q_net.parameters()
-        ):
+        for p_target, p_main in zip(self.target_q_net.parameters(), self.q_net.parameters()):
             p_target.data.mul_(1.0 - tau).add_(tau * p_main.data)
 
 
 # ---------------------------------------------------------------------------
 # Maximum-Entropy Decoder
 # ---------------------------------------------------------------------------
+
 
 class SACDecoder:
     """
@@ -426,13 +425,11 @@ class SACDecoder:
             probs_t = log_probs_t.exp()
 
             dist = torch.distributions.Categorical(probs=probs_t)
-            token = dist.sample()                               # [B]
+            token = dist.sample()  # [B]
             generated[:, step] = token
 
             # Append sampled token to context
-            current_ids = torch.cat(
-                [current_ids, token.unsqueeze(1)], dim=1
-            )
+            current_ids = torch.cat([current_ids, token.unsqueeze(1)], dim=1)
 
         return generated
 
@@ -441,14 +438,16 @@ class SACDecoder:
 # Configuration dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SACConfig:
     """Default hyperparameters for a small SAC-LLM experiment."""
-    d_model: int         = 32
-    vocab_size: int      = 64
-    n_layers: int        = 2
-    lr: float            = 3e-4
-    gamma: float         = 0.99
-    tau: float           = 0.005
+
+    d_model: int = 32
+    vocab_size: int = 64
+    n_layers: int = 2
+    lr: float = 3e-4
+    gamma: float = 0.99
+    tau: float = 0.005
     buffer_capacity: int = 1000
-    alpha_init: float    = 1.0
+    alpha_init: float = 1.0

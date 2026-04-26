@@ -10,15 +10,11 @@ Tiny dimensions are used throughout so tests run fast on CPU.
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
-import torch.nn as nn
 
 from src.model.flash_attention_sim import (
-    FlashAttnConfig,
     FlashAttentionSim,
+    FlashAttnConfig,
     MultiHeadFlashAttn,
     compare_attention_outputs,
     standard_attention,
@@ -30,7 +26,7 @@ from src.model.flash_attention_sim import (
 # ---------------------------------------------------------------------------
 D_MODEL = 16
 N_HEADS = 2
-D_HEAD = D_MODEL // N_HEADS   # 8
+D_HEAD = D_MODEL // N_HEADS  # 8
 BLOCK = 4
 BATCH = 2
 SEQ = 8
@@ -55,6 +51,7 @@ def make_qkv(
 # 1. FlashAttnConfig defaults
 # ===========================================================================
 
+
 def test_config_defaults():
     """FlashAttnConfig must have the specified default values."""
     cfg = FlashAttnConfig()
@@ -68,6 +65,7 @@ def test_config_defaults():
 # 2. standard_attention output shape
 # ===========================================================================
 
+
 def test_standard_attention_output_shape():
     Q, K, V = make_qkv()
     out = standard_attention(Q, K, V)
@@ -79,6 +77,7 @@ def test_standard_attention_output_shape():
 # ===========================================================================
 # 3. tiled_attention output shape matches standard
 # ===========================================================================
+
 
 def test_tiled_attention_output_shape():
     Q, K, V = make_qkv()
@@ -92,6 +91,7 @@ def test_tiled_attention_output_shape():
 # 4. Numerical equivalence — causal=True
 # ===========================================================================
 
+
 def test_numerical_equivalence_causal():
     """tiled_attention must match standard_attention with causal=True."""
     Q, K, V = make_qkv()
@@ -104,14 +104,13 @@ def test_numerical_equivalence_causal():
     tiled = tiled_attention(Q, K, V, causal=True, block_size=BLOCK)
 
     max_diff = (std.float() - tiled.float()).abs().max().item()
-    assert max_diff < 1e-4, (
-        f"Causal: max absolute difference {max_diff:.2e} exceeds 1e-4"
-    )
+    assert max_diff < 1e-4, f"Causal: max absolute difference {max_diff:.2e} exceeds 1e-4"
 
 
 # ===========================================================================
 # 5. Numerical equivalence — causal=False
 # ===========================================================================
+
 
 def test_numerical_equivalence_non_causal():
     """tiled_attention must match standard_attention with causal=False."""
@@ -121,28 +120,26 @@ def test_numerical_equivalence_non_causal():
     tiled = tiled_attention(Q, K, V, causal=False, block_size=BLOCK)
 
     max_diff = (std.float() - tiled.float()).abs().max().item()
-    assert max_diff < 1e-4, (
-        f"Non-causal: max absolute difference {max_diff:.2e} exceeds 1e-4"
-    )
+    assert max_diff < 1e-4, f"Non-causal: max absolute difference {max_diff:.2e} exceeds 1e-4"
 
 
 # ===========================================================================
 # 6. FlashAttentionSim output shape
 # ===========================================================================
 
+
 def test_flash_attention_sim_output_shape():
     cfg = FlashAttnConfig(block_size=BLOCK, causal=True)
     model = FlashAttentionSim(D_MODEL, N_HEADS, cfg)
     x = torch.randn(BATCH, SEQ, D_MODEL)
     out = model(x)
-    assert out.shape == (BATCH, SEQ, D_MODEL), (
-        f"Expected {(BATCH, SEQ, D_MODEL)}, got {out.shape}"
-    )
+    assert out.shape == (BATCH, SEQ, D_MODEL), f"Expected {(BATCH, SEQ, D_MODEL)}, got {out.shape}"
 
 
 # ===========================================================================
 # 7. Gradient flows through tiled_attention
 # ===========================================================================
+
 
 def test_gradient_flow_tiled_attention():
     """Gradients must reach Q, K, V inputs through tiled_attention."""
@@ -167,19 +164,19 @@ def test_gradient_flow_tiled_attention():
 # 8. MultiHeadFlashAttn output shape
 # ===========================================================================
 
+
 def test_multi_head_flash_attn_output_shape():
     cfg = FlashAttnConfig(block_size=BLOCK, causal=True)
     model = MultiHeadFlashAttn(D_MODEL, N_HEADS, cfg)
     x = torch.randn(BATCH, SEQ, D_MODEL)
     out = model(x)
-    assert out.shape == (BATCH, SEQ, D_MODEL), (
-        f"Expected {(BATCH, SEQ, D_MODEL)}, got {out.shape}"
-    )
+    assert out.shape == (BATCH, SEQ, D_MODEL), f"Expected {(BATCH, SEQ, D_MODEL)}, got {out.shape}"
 
 
 # ===========================================================================
 # 9. Single-token sequence (T=1)
 # ===========================================================================
+
 
 def test_single_token_sequence():
     """tiled_attention must handle seq_len=1 without error."""
@@ -195,6 +192,7 @@ def test_single_token_sequence():
 # ===========================================================================
 # 10. Causal masking — future tokens have zero weight
 # ===========================================================================
+
 
 def test_causal_masking_future_tokens_zero_weight():
     """With causal masking, zeroing future K/V should not affect past outputs."""
@@ -215,8 +213,8 @@ def test_causal_masking_future_tokens_zero_weight():
     out_mod = tiled_attention(Q, K_mod, V_mod, causal=True, block_size=BLOCK)
 
     max_diff = (
-        out_orig[:, :, :PIVOT, :].float() - out_mod[:, :, :PIVOT, :].float()
-    ).abs().max().item()
+        (out_orig[:, :, :PIVOT, :].float() - out_mod[:, :, :PIVOT, :].float()).abs().max().item()
+    )
     assert max_diff < 1e-5, (
         f"Causal masking failed: positions < {PIVOT} differ by {max_diff:.2e} "
         "when future K/V are zeroed"
@@ -226,6 +224,7 @@ def test_causal_masking_future_tokens_zero_weight():
 # ===========================================================================
 # 11. compare_attention_outputs — returns small number
 # ===========================================================================
+
 
 def test_compare_attention_outputs_small():
     """compare_attention_outputs must return a value < 1e-4."""
@@ -239,6 +238,7 @@ def test_compare_attention_outputs_small():
 # 12. FlashAttentionSim has no bias in projections
 # ===========================================================================
 
+
 def test_flash_attention_sim_no_bias():
     cfg = FlashAttnConfig(block_size=BLOCK)
     model = FlashAttentionSim(D_MODEL, N_HEADS, cfg)
@@ -250,6 +250,7 @@ def test_flash_attention_sim_no_bias():
 # ===========================================================================
 # 13. Gradient flows through FlashAttentionSim parameters
 # ===========================================================================
+
 
 def test_gradient_flow_flash_attention_sim():
     """All parameters of FlashAttentionSim must receive non-zero gradients."""
@@ -267,6 +268,7 @@ def test_gradient_flow_flash_attention_sim():
 # ===========================================================================
 # 14. MultiHeadFlashAttn residual connection is present
 # ===========================================================================
+
 
 def test_multi_head_residual_present():
     """MultiHeadFlashAttn output must include the residual skip connection."""
@@ -288,6 +290,7 @@ def test_multi_head_residual_present():
 # ===========================================================================
 # 15. compare_attention_outputs non-causal also stays small
 # ===========================================================================
+
 
 def test_compare_attention_outputs_non_causal():
     Q, K, V = make_qkv(seed=13)

@@ -9,17 +9,17 @@ from __future__ import annotations
 import math
 import string
 from collections import Counter
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Text utilities
 # ---------------------------------------------------------------------------
 
-def tokenize(text: str) -> List[str]:
+
+def tokenize(text: str) -> list[str]:
     """Simple whitespace + punctuation tokenizer.
 
     Split on whitespace, strip punctuation from each token, lowercase, and
@@ -33,7 +33,7 @@ def tokenize(text: str) -> List[str]:
     return tokens
 
 
-def compute_ngrams(tokens: List[str], n: int) -> Counter:
+def compute_ngrams(tokens: list[str], n: int) -> Counter:
     """Return a Counter of n-gram tuples for the given token list."""
     if n <= 0 or n > len(tokens):
         return Counter()
@@ -43,6 +43,7 @@ def compute_ngrams(tokens: List[str], n: int) -> Counter:
 # ---------------------------------------------------------------------------
 # BLEU
 # ---------------------------------------------------------------------------
+
 
 def bleu_score(
     reference: str,
@@ -78,9 +79,7 @@ def bleu_score(
         hyp_ngrams = compute_ngrams(hyp_tokens, n)
 
         # Clipped counts
-        clipped = sum(
-            min(count, ref_ngrams[gram]) for gram, count in hyp_ngrams.items()
-        )
+        clipped = sum(min(count, ref_ngrams[gram]) for gram, count in hyp_ngrams.items())
         total = sum(hyp_ngrams.values())
 
         if smooth:
@@ -102,11 +101,12 @@ def bleu_score(
 # ROUGE-N
 # ---------------------------------------------------------------------------
 
+
 def rouge_n(
     reference: str,
     hypothesis: str,
     n: int = 2,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """ROUGE-N precision, recall, and F1.
 
     Returns a dict with keys ``"precision"``, ``"recall"``, ``"f1"``.
@@ -125,9 +125,7 @@ def rouge_n(
     if ref_total == 0 or hyp_total == 0:
         return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
 
-    overlap = sum(
-        min(count, ref_ngrams[gram]) for gram, count in hyp_ngrams.items()
-    )
+    overlap = sum(min(count, ref_ngrams[gram]) for gram, count in hyp_ngrams.items())
 
     precision = overlap / hyp_total
     recall = overlap / ref_total
@@ -143,7 +141,8 @@ def rouge_n(
 # ROUGE-L
 # ---------------------------------------------------------------------------
 
-def _lcs_length(a: List[str], b: List[str]) -> int:
+
+def _lcs_length(a: list[str], b: list[str]) -> int:
     """Compute the length of the Longest Common Subsequence of *a* and *b*."""
     m, n = len(a), len(b)
     # Use two-row DP to save memory
@@ -162,7 +161,7 @@ def _lcs_length(a: List[str], b: List[str]) -> int:
 def rouge_l(
     reference: str,
     hypothesis: str,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """ROUGE-L precision, recall, and F1 based on LCS.
 
     Returns a dict with keys ``"precision"``, ``"recall"``, ``"f1"``.
@@ -194,9 +193,10 @@ def rouge_l(
 # Distinct-N
 # ---------------------------------------------------------------------------
 
-def distinct_n(texts: List[str], n: int = 2) -> float:
+
+def distinct_n(texts: list[str], n: int = 2) -> float:
     """Corpus-level distinct-n: unique n-grams / total n-grams across all texts."""
-    all_ngrams: List[tuple] = []
+    all_ngrams: list[tuple] = []
     for text in texts:
         tokens = tokenize(text)
         ngrams = compute_ngrams(tokens, n)
@@ -212,6 +212,7 @@ def distinct_n(texts: List[str], n: int = 2) -> float:
 # ---------------------------------------------------------------------------
 # Perplexity
 # ---------------------------------------------------------------------------
+
 
 def compute_perplexity(
     log_probs: Tensor,
@@ -236,6 +237,7 @@ def compute_perplexity(
 # Embedding similarity
 # ---------------------------------------------------------------------------
 
+
 class EmbeddingSimilarity:
     """Cosine-similarity metric backed by an arbitrary embedding function."""
 
@@ -246,16 +248,12 @@ class EmbeddingSimilarity:
         """Return cosine similarity between the embeddings of *text_a* and *text_b*."""
         ea = self._embed(text_a).float()
         eb = self._embed(text_b).float()
-        cos = torch.nn.functional.cosine_similarity(
-            ea.unsqueeze(0), eb.unsqueeze(0)
-        )
+        cos = torch.nn.functional.cosine_similarity(ea.unsqueeze(0), eb.unsqueeze(0))
         return float(cos.item())
 
-    def batch_similarity(
-        self, refs: List[str], hyps: List[str]
-    ) -> List[float]:
+    def batch_similarity(self, refs: list[str], hyps: list[str]) -> list[float]:
         """Return pairwise cosine similarities for corresponding (ref, hyp) pairs."""
-        results: List[float] = []
+        results: list[float] = []
         for r, h in zip(refs, hyps):
             results.append(self.similarity(r, h))
         return results
@@ -265,17 +263,18 @@ class EmbeddingSimilarity:
 # MetricsEvaluator
 # ---------------------------------------------------------------------------
 
+
 class MetricsEvaluator:
     """High-level evaluator that aggregates multiple metrics over a corpus."""
 
-    def __init__(self, embed_fn: Optional[Callable[[str], Tensor]] = None) -> None:
+    def __init__(self, embed_fn: Callable[[str], Tensor] | None = None) -> None:
         self._embed_sim = EmbeddingSimilarity(embed_fn) if embed_fn is not None else None
 
     def evaluate(
         self,
-        references: List[str],
-        hypotheses: List[str],
-    ) -> Dict[str, float]:
+        references: list[str],
+        hypotheses: list[str],
+    ) -> dict[str, float]:
         """Compute mean BLEU-4, ROUGE-2 F1, ROUGE-L F1, distinct-2, and (optionally)
         mean embedding similarity across all reference/hypothesis pairs.
 
@@ -283,10 +282,10 @@ class MetricsEvaluator:
             ``"bleu"``, ``"rouge_2_f1"``, ``"rouge_l_f1"``, ``"distinct_2"``,
             and (if embed_fn was provided) ``"embedding_similarity"``.
         """
-        bleu_scores: List[float] = []
-        rouge2_scores: List[float] = []
-        rougel_scores: List[float] = []
-        emb_scores: List[float] = []
+        bleu_scores: list[float] = []
+        rouge2_scores: list[float] = []
+        rougel_scores: list[float] = []
+        emb_scores: list[float] = []
 
         for ref, hyp in zip(references, hypotheses):
             bleu_scores.append(bleu_score(ref, hyp, max_n=4, smooth=True))
@@ -295,10 +294,10 @@ class MetricsEvaluator:
             if self._embed_sim is not None:
                 emb_scores.append(self._embed_sim.similarity(ref, hyp))
 
-        def _mean(lst: List[float]) -> float:
+        def _mean(lst: list[float]) -> float:
             return sum(lst) / len(lst) if lst else 0.0
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "bleu": _mean(bleu_scores),
             "rouge_2_f1": _mean(rouge2_scores),
             "rouge_l_f1": _mean(rougel_scores),
@@ -309,7 +308,7 @@ class MetricsEvaluator:
 
         return metrics
 
-    def get_summary(self, metrics: Dict[str, float]) -> str:
+    def get_summary(self, metrics: dict[str, float]) -> str:
         """Format a metrics dict as a human-readable string."""
         lines = ["Evaluation Metrics:"]
         for key, value in metrics.items():

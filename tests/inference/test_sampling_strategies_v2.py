@@ -10,8 +10,8 @@ import torch
 import torch.nn.functional as F
 
 from src.inference.sampling_strategies_v2 import (
-    SamplingConfig,
     SamplerPipeline,
+    SamplingConfig,
     apply_min_p,
     apply_repetition_penalty_sampling,
     apply_temperature,
@@ -41,6 +41,7 @@ def make_uniform(vocab: int = VOCAB) -> torch.Tensor:
 # 1. SamplingConfig defaults
 # ===========================================================================
 
+
 def test_sampling_config_defaults():
     cfg = SamplingConfig()
     assert cfg.temperature == 1.0
@@ -56,6 +57,7 @@ def test_sampling_config_defaults():
 # 2. apply_temperature divides logits correctly
 # ===========================================================================
 
+
 def test_apply_temperature_divides_logits():
     logits = make_logits()
     t = 2.5
@@ -67,6 +69,7 @@ def test_apply_temperature_divides_logits():
 # 3. apply_temperature raises ValueError on temperature <= 0
 # ===========================================================================
 
+
 @pytest.mark.parametrize("bad_temp", [0.0, -1.0, -0.001])
 def test_apply_temperature_raises_on_nonpositive(bad_temp):
     logits = make_logits()
@@ -77,6 +80,7 @@ def test_apply_temperature_raises_on_nonpositive(bad_temp):
 # ===========================================================================
 # 4. apply_top_k keeps exactly k tokens (rest -inf)
 # ===========================================================================
+
 
 def test_apply_top_k_keeps_k_tokens():
     logits = make_logits()
@@ -90,6 +94,7 @@ def test_apply_top_k_keeps_k_tokens():
 # 5. apply_top_k is a no-op when k=0
 # ===========================================================================
 
+
 def test_apply_top_k_noop_when_k_zero():
     logits = make_logits()
     result = apply_top_k(logits, k=0)
@@ -99,6 +104,7 @@ def test_apply_top_k_noop_when_k_zero():
 # ===========================================================================
 # 6. apply_top_p: cumulative probability of kept tokens >= p
 # ===========================================================================
+
 
 def test_apply_top_p_cumulative_prob_ge_p():
     logits = make_logits()
@@ -115,6 +121,7 @@ def test_apply_top_p_cumulative_prob_ge_p():
 # 7. apply_top_p: at least one token kept
 # ===========================================================================
 
+
 def test_apply_top_p_at_least_one_token():
     logits = make_logits()
     # Even with p→0 we keep the top token
@@ -126,6 +133,7 @@ def test_apply_top_p_at_least_one_token():
 # 8. apply_min_p: at least one token kept
 # ===========================================================================
 
+
 def test_apply_min_p_at_least_one_token():
     logits = make_logits()
     # min_p=1.0 would kill everything — implementation must preserve top token
@@ -136,6 +144,7 @@ def test_apply_min_p_at_least_one_token():
 # ===========================================================================
 # 9. apply_min_p filters tokens below threshold
 # ===========================================================================
+
 
 def test_apply_min_p_filters_below_threshold():
     logits = make_logits()
@@ -155,6 +164,7 @@ def test_apply_min_p_filters_below_threshold():
 # 10. apply_typical_p: at least one token kept
 # ===========================================================================
 
+
 def test_apply_typical_p_at_least_one_token():
     logits = make_logits()
     result = apply_typical_p(logits, mass=1e-9)
@@ -164,6 +174,7 @@ def test_apply_typical_p_at_least_one_token():
 # ===========================================================================
 # 11. apply_typical_p: output shape matches input shape
 # ===========================================================================
+
 
 def test_apply_typical_p_output_shape():
     logits = make_logits()
@@ -175,10 +186,11 @@ def test_apply_typical_p_output_shape():
 # 12. apply_repetition_penalty_sampling penalizes past tokens
 # ===========================================================================
 
+
 def test_apply_repetition_penalty_sampling_penalizes_past_tokens():
     logits = torch.zeros(VOCAB)
-    logits[3] = 3.0    # positive logit
-    logits[7] = -2.0   # negative logit
+    logits[3] = 3.0  # positive logit
+    logits[7] = -2.0  # negative logit
     past = torch.tensor([3, 7])
     penalty = 2.0
 
@@ -196,6 +208,7 @@ def test_apply_repetition_penalty_sampling_penalizes_past_tokens():
 # 13. sample_token: returns valid int in [0, vocab)
 # ===========================================================================
 
+
 def test_sample_token_returns_valid_int():
     logits = make_logits()
     cfg = SamplingConfig()
@@ -207,6 +220,7 @@ def test_sample_token_returns_valid_int():
 # ===========================================================================
 # 14. sample_token greedy (do_sample=False) returns argmax
 # ===========================================================================
+
 
 def test_sample_token_greedy_returns_argmax():
     logits = make_logits()
@@ -220,6 +234,7 @@ def test_sample_token_greedy_returns_argmax():
 # 15. SamplerPipeline.apply_filters: output shape matches input shape
 # ===========================================================================
 
+
 def test_sampler_pipeline_apply_filters_shape():
     logits = make_logits()
     cfg = SamplingConfig(top_k=8, top_p=0.9, temperature=0.7)
@@ -231,6 +246,7 @@ def test_sampler_pipeline_apply_filters_shape():
 # ===========================================================================
 # 16. SamplerPipeline.batch_sample returns (B,) tensor
 # ===========================================================================
+
 
 def test_sampler_pipeline_batch_sample_shape():
     B = 6
@@ -249,6 +265,7 @@ def test_sampler_pipeline_batch_sample_shape():
 # 17. SamplerPipeline.sample returns int
 # ===========================================================================
 
+
 def test_sampler_pipeline_sample_returns_int():
     logits = make_logits()
     cfg = SamplingConfig()
@@ -261,6 +278,7 @@ def test_sampler_pipeline_sample_returns_int():
 # ===========================================================================
 # 18. SamplerPipeline greedy is deterministic
 # ===========================================================================
+
 
 def test_sampler_pipeline_greedy_deterministic():
     logits = make_logits()
@@ -275,6 +293,7 @@ def test_sampler_pipeline_greedy_deterministic():
 # 19. apply_top_k clamped when k > vocab
 # ===========================================================================
 
+
 def test_apply_top_k_clamps_to_vocab():
     logits = make_logits()
     # k larger than vocab should keep all tokens
@@ -285,6 +304,7 @@ def test_apply_top_k_clamps_to_vocab():
 # ===========================================================================
 # 20. sample_token with all filters combined stays in vocab range
 # ===========================================================================
+
 
 def test_sample_token_all_filters_combined():
     logits = make_logits(seed=7)

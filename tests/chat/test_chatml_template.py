@@ -44,9 +44,7 @@ def test_encode_multi_turn_conversation(tpl: ChatMLTemplate):
 
 
 def test_add_generation_prompt_appends_open_assistant_tag(tpl: ChatMLTemplate):
-    out = tpl.encode(
-        [Message("user", "ping")], add_generation_prompt=True
-    )
+    out = tpl.encode([Message("user", "ping")], add_generation_prompt=True)
     assert out.endswith("<|im_start|>assistant\n")
     # No closing tag after the open generation prompt.
     assert not out.endswith("<|im_end|>\n")
@@ -87,9 +85,7 @@ def test_round_trip_preserves_role_and_content(tpl: ChatMLTemplate):
     ]
     wire = tpl.encode(msgs)
     decoded = tpl.decode(wire)
-    assert [(m.role, m.content) for m in decoded] == [
-        (m.role, m.content) for m in msgs
-    ]
+    assert [(m.role, m.content) for m in decoded] == [(m.role, m.content) for m in msgs]
 
 
 def test_decode_malformed_missing_end_tag_raises(tpl: ChatMLTemplate):
@@ -105,10 +101,7 @@ def test_decode_tolerates_trailing_whitespace(tpl: ChatMLTemplate):
 
 
 def test_decode_open_generation_prompt_is_dropped(tpl: ChatMLTemplate):
-    wire = (
-        "<|im_start|>user\nhi<|im_end|>\n"
-        "<|im_start|>assistant\n"
-    )
+    wire = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n"
     decoded = tpl.decode(wire)
     assert decoded == [Message("user", "hi")]
 

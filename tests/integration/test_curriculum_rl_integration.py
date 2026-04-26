@@ -11,13 +11,13 @@ Verifies:
 
 import pytest
 
-from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
 from src.training import TRAINING_REGISTRY
-
+from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
 
 # ---------------------------------------------------------------------------
 # Fixture: fully-wired sampler with 10 tasks
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def wired_sampler():
@@ -64,6 +64,7 @@ def wired_sampler():
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_integration_sampled_ids_are_registered(wired_sampler):
     """All 50 sampled task IDs must be among the 10 registered tasks."""
     registered = {f"task_{i}" for i in range(10)}
@@ -80,9 +81,7 @@ def test_integration_statistics_zones(wired_sampler):
     assert stats["n_tasks"] == 10
     assert stats["n_easy"] == 4, f"Expected 4 easy tasks, got {stats['n_easy']}"
     assert stats["n_hard"] == 2, f"Expected 2 hard tasks, got {stats['n_hard']}"
-    assert stats["n_in_zone"] == 4, (
-        f"Expected 4 tasks in learning zone, got {stats['n_in_zone']}"
-    )
+    assert stats["n_in_zone"] == 4, f"Expected 4 tasks in learning zone, got {stats['n_in_zone']}"
     assert 0.0 <= stats["mean_accuracy"] <= 1.0
 
 

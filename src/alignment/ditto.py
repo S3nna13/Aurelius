@@ -27,16 +27,14 @@ current policy, preventing excessive KL divergence from a stale anchor.
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # DITTOLoss
 # ---------------------------------------------------------------------------
+
 
 class DITTOLoss(nn.Module):
     """DITTO alignment loss.
@@ -63,7 +61,7 @@ class DITTOLoss(nn.Module):
         log_probs_l: torch.Tensor,
         ref_log_probs_w: torch.Tensor,
         ref_log_probs_l: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute the DITTO loss.
 
         Parameters
@@ -86,11 +84,11 @@ class DITTOLoss(nn.Module):
             'reward_accuracy' — fraction of pairs where y_w is ranked higher (float).
         """
         # Implicit reward differences (policy log-ratio advantage)
-        r_w = log_probs_w - ref_log_probs_w   # shape (B,)
-        r_l = log_probs_l - ref_log_probs_l   # shape (B,)
+        r_w = log_probs_w - ref_log_probs_w  # shape (B,)
+        r_l = log_probs_l - ref_log_probs_l  # shape (B,)
 
         # Reward margin
-        diff = self.beta * (r_w - r_l)        # shape (B,)
+        diff = self.beta * (r_w - r_l)  # shape (B,)
 
         # DITTO / DPO loss
         loss = -F.logsigmoid(diff).mean()
@@ -98,7 +96,7 @@ class DITTOLoss(nn.Module):
         reward_margin = diff.mean().detach().item()
         reward_accuracy = (diff > 0).float().mean().detach().item()
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "reward_margin": reward_margin,
             "reward_accuracy": reward_accuracy,
         }
@@ -111,13 +109,14 @@ class DITTOLoss(nn.Module):
         log_probs_l: torch.Tensor,
         ref_log_probs_w: torch.Tensor,
         ref_log_probs_l: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         return super().__call__(log_probs_w, log_probs_l, ref_log_probs_w, ref_log_probs_l)
 
 
 # ---------------------------------------------------------------------------
 # DITTOReferenceUpdater
 # ---------------------------------------------------------------------------
+
 
 class DITTOReferenceUpdater:
     """Manages iterative reference-policy updates for DITTO.
@@ -155,9 +154,7 @@ class DITTOReferenceUpdater:
         ref_model : nn.Module
             Reference model whose parameters are updated in-place.
         """
-        for ref_param, pol_param in zip(
-            ref_model.parameters(), policy_model.parameters()
-        ):
+        for ref_param, pol_param in zip(ref_model.parameters(), policy_model.parameters()):
             ref_param.data.mul_(self.alpha).add_(pol_param.data, alpha=1.0 - self.alpha)
 
     @torch.no_grad()
@@ -171,15 +168,14 @@ class DITTOReferenceUpdater:
         ref_model : nn.Module
             Reference model whose parameters are overwritten in-place.
         """
-        for ref_param, pol_param in zip(
-            ref_model.parameters(), policy_model.parameters()
-        ):
+        for ref_param, pol_param in zip(ref_model.parameters(), policy_model.parameters()):
             ref_param.data.copy_(pol_param.data)
 
 
 # ---------------------------------------------------------------------------
 # DITTOTrainer
 # ---------------------------------------------------------------------------
+
 
 class DITTOTrainer:
     """Minimal DITTO trainer that wires together loss and reference updates.
@@ -212,7 +208,7 @@ class DITTOTrainer:
 
     def compute_loss(
         self,
-        batch: Dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
     ) -> torch.Tensor:
         """Compute DITTO loss from a pre-processed batch.
 
@@ -244,7 +240,7 @@ class DITTOTrainer:
         policy_model: nn.Module,
         ref_model: nn.Module,
         step: int,
-        hard_update_interval: Optional[int] = None,
+        hard_update_interval: int | None = None,
     ) -> None:
         """Update the reference model.
 

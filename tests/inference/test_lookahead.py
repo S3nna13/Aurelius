@@ -1,16 +1,24 @@
 """Tests for simplified lookahead decoding."""
+
 import pytest
 import torch
+
+from src.inference.lookahead import LookaheadConfig, NGramCache, lookahead_generate
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.lookahead import LookaheadConfig, NGramCache, lookahead_generate
 
 
 @pytest.fixture
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=64, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=64,
+        max_seq_len=64,
     )
     torch.manual_seed(0)
     model = AureliusTransformer(cfg)

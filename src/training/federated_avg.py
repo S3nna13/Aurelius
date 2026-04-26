@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import copy
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -21,11 +18,11 @@ class FederatedConfig:
     """Configuration for federated learning (FedAvg / FedProx / FedMedian)."""
 
     n_clients: int = 10
-    fraction: float = 0.1         # fraction of clients selected per round
-    local_epochs: int = 5         # local training epochs per client per round
-    local_lr: float = 0.01        # local SGD learning rate
-    mu: float = 0.0               # FedProx proximal regularisation coefficient
-    aggregation: str = "fedavg"   # "fedavg" | "fedprox" | "fedmedian"
+    fraction: float = 0.1  # fraction of clients selected per round
+    local_epochs: int = 5  # local training epochs per client per round
+    local_lr: float = 0.01  # local SGD learning rate
+    mu: float = 0.0  # FedProx proximal regularisation coefficient
+    aggregation: str = "fedavg"  # "fedavg" | "fedprox" | "fedmedian"
 
 
 # ---------------------------------------------------------------------------
@@ -42,10 +39,7 @@ def get_model_weights(model: nn.Module) -> OrderedDict:
     Returns:
         OrderedDict mapping parameter name -> detached CPU tensor copy.
     """
-    return OrderedDict(
-        (name, param.detach().clone())
-        for name, param in model.named_parameters()
-    )
+    return OrderedDict((name, param.detach().clone()) for name, param in model.named_parameters())
 
 
 def set_model_weights(model: nn.Module, weights: OrderedDict) -> None:
@@ -67,8 +61,8 @@ def set_model_weights(model: nn.Module, weights: OrderedDict) -> None:
 
 
 def fedavg_aggregate(
-    client_weights: List[OrderedDict],
-    client_sizes: List[int],
+    client_weights: list[OrderedDict],
+    client_sizes: list[int],
 ) -> OrderedDict:
     """Weighted-average aggregation (FedAvg).
 
@@ -106,7 +100,7 @@ def fedavg_aggregate(
     return aggregated
 
 
-def fedmedian_aggregate(client_weights: List[OrderedDict]) -> OrderedDict:
+def fedmedian_aggregate(client_weights: list[OrderedDict]) -> OrderedDict:
     """Coordinate-wise median aggregation (Byzantine-robust alternative to FedAvg).
 
     Args:
@@ -182,7 +176,7 @@ class FederatedClient:
         self,
         input_ids: torch.Tensor,
         global_weights: OrderedDict | None = None,
-    ) -> Tuple[OrderedDict, int]:
+    ) -> tuple[OrderedDict, int]:
         """Run local training for *local_epochs* steps.
 
         Args:
@@ -247,7 +241,7 @@ class FederatedServer:
 
     def aggregate_round(
         self,
-        client_results: List[Tuple[OrderedDict, int]],
+        client_results: list[tuple[OrderedDict, int]],
     ) -> OrderedDict:
         """Aggregate client updates and update the server model.
 

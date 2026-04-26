@@ -8,17 +8,16 @@ Uses a tiny AureliusConfig:
 
 from __future__ import annotations
 
-import pytest
 import torch
 
+from src.interpretability.probe_intervention import (
+    LinearProbe,
+    ProbeConfig,
+    ProbeInterventionExperiment,
+    ProbeTrainer,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.interpretability.probe_intervention import (
-    ProbeConfig,
-    LinearProbe,
-    ProbeTrainer,
-    ProbeInterventionExperiment,
-)
 
 # ---------------------------------------------------------------------------
 # Shared tiny constants
@@ -35,7 +34,7 @@ TINY_CFG = AureliusConfig(
     max_seq_len=64,
 )
 
-D_MODEL = TINY_CFG.d_model   # 64
+D_MODEL = TINY_CFG.d_model  # 64
 N_CLASSES = 2
 BATCH = 4
 SEQ = 8
@@ -61,6 +60,7 @@ def _make_input() -> torch.Tensor:
 # Test 1: ProbeConfig defaults correct
 # ---------------------------------------------------------------------------
 
+
 def test_probe_config_defaults():
     cfg = ProbeConfig()
     assert cfg.d_model == 64
@@ -73,30 +73,29 @@ def test_probe_config_defaults():
 # Test 2: LinearProbe output shape is (batch, n_classes)
 # ---------------------------------------------------------------------------
 
+
 def test_linear_probe_output_shape():
     probe = _make_probe()
     h = torch.randn(BATCH, D_MODEL)
     out = probe(h)
-    assert out.shape == (BATCH, N_CLASSES), (
-        f"Expected ({BATCH}, {N_CLASSES}), got {out.shape}"
-    )
+    assert out.shape == (BATCH, N_CLASSES), f"Expected ({BATCH}, {N_CLASSES}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: get_direction returns (d_model,) tensor for binary probe
 # ---------------------------------------------------------------------------
 
+
 def test_get_direction_shape():
     probe = _make_probe(n_classes=2)
     direction = probe.get_direction()
-    assert direction.shape == (D_MODEL,), (
-        f"Expected ({D_MODEL},), got {direction.shape}"
-    )
+    assert direction.shape == (D_MODEL,), f"Expected ({D_MODEL},), got {direction.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: ProbeTrainer.fit returns dict with 'train_accuracy' key
 # ---------------------------------------------------------------------------
+
 
 def test_probe_trainer_fit_returns_dict_with_accuracy():
     probe = _make_probe()
@@ -112,6 +111,7 @@ def test_probe_trainer_fit_returns_dict_with_accuracy():
 # Test 5: Accuracy on linearly separable data > 0.9
 # ---------------------------------------------------------------------------
 
+
 def test_probe_accuracy_on_separable_data():
     """Linearly separable data: class 0 cluster vs class 1 cluster."""
     torch.manual_seed(0)
@@ -119,8 +119,9 @@ def test_probe_accuracy_on_separable_data():
     X_pos = torch.randn(n // 2, D_MODEL) + 5.0  # class 1 far positive
     X_neg = torch.randn(n // 2, D_MODEL) - 5.0  # class 0 far negative
     X = torch.cat([X_neg, X_pos], dim=0)
-    y = torch.cat([torch.zeros(n // 2, dtype=torch.long),
-                   torch.ones(n // 2, dtype=torch.long)], dim=0)
+    y = torch.cat(
+        [torch.zeros(n // 2, dtype=torch.long), torch.ones(n // 2, dtype=torch.long)], dim=0
+    )
 
     probe = _make_probe(n_classes=2)
     trainer = ProbeTrainer(probe, lr=0.05, n_epochs=200)
@@ -132,6 +133,7 @@ def test_probe_accuracy_on_separable_data():
 # ---------------------------------------------------------------------------
 # Test 6: ProbeTrainer.evaluate returns float in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_probe_trainer_evaluate_returns_valid_float():
     probe = _make_probe()
@@ -148,20 +150,20 @@ def test_probe_trainer_evaluate_returns_valid_float():
 # Test 7: extract_representations returns (batch, d_model) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_extract_representations_shape():
     model = _make_model()
     probe = _make_probe()
     exp = ProbeInterventionExperiment(model, probe, layer_idx=0)
     input_ids = _make_input()
     reps = exp.extract_representations(input_ids)
-    assert reps.shape == (BATCH, D_MODEL), (
-        f"Expected ({BATCH}, {D_MODEL}), got {reps.shape}"
-    )
+    assert reps.shape == (BATCH, D_MODEL), f"Expected ({BATCH}, {D_MODEL}), got {reps.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: intervention_effect runs without error
 # ---------------------------------------------------------------------------
+
 
 def test_intervention_effect_runs():
     model = _make_model()
@@ -181,6 +183,7 @@ def test_intervention_effect_runs():
 # Test 9: causal_scrubbing returns float
 # ---------------------------------------------------------------------------
 
+
 def test_causal_scrubbing_returns_float():
     model = _make_model()
     probe = _make_probe()
@@ -198,6 +201,7 @@ def test_causal_scrubbing_returns_float():
 # ---------------------------------------------------------------------------
 # Test 10: ProbeInterventionExperiment works with different layer indices
 # ---------------------------------------------------------------------------
+
 
 def test_experiment_different_layer_indices():
     model = _make_model()

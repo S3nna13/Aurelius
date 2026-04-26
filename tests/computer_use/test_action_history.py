@@ -5,10 +5,10 @@ Tests for src/computer_use/action_history.py
 import unittest
 
 from src.computer_use.action_history import (
-    Action,
-    ActionType,
-    ActionHistory,
     ACTION_HISTORY_REGISTRY,
+    Action,
+    ActionHistory,
+    ActionType,
 )
 
 
@@ -75,7 +75,9 @@ class TestActionHistory(unittest.TestCase):
     def setUp(self):
         self.history = ActionHistory()
 
-    def _make_action(self, action_type: ActionType = ActionType.CLICK, target: str = "btn") -> Action:
+    def _make_action(
+        self, action_type: ActionType = ActionType.CLICK, target: str = "btn"
+    ) -> Action:
         return Action(action_type=action_type, target=target)
 
     # --- record ---

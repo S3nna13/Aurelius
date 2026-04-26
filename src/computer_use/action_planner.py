@@ -10,14 +10,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-class ActionType(str, Enum):
+
+class ActionType(StrEnum):
     CLICK = "click"
     TYPE = "type"
     SCROLL = "scroll"
@@ -55,7 +56,10 @@ _KEYWORD_RULES: list[tuple[re.Pattern[str], ActionType]] = [
     (re.compile(r"\bhover\b|\bmouse.?over\b", re.I), ActionType.HOVER),
     (re.compile(r"\bkey.?combo\b|\bshortcut\b|\bpress\b|\bhotkey\b", re.I), ActionType.KEY_COMBO),
     (re.compile(r"\btype\b|\benter\b|\binput\b|\bwrite\b|\bfill\b", re.I), ActionType.TYPE),
-    (re.compile(r"\bclick\b|\btap\b|\bselect\b|\bopen\b|\bsubmit\b|\blaunch\b", re.I), ActionType.CLICK),
+    (
+        re.compile(r"\bclick\b|\btap\b|\bselect\b|\bopen\b|\bsubmit\b|\blaunch\b", re.I),
+        ActionType.CLICK,
+    ),
 ]
 
 # Cost weights per action type (arbitrary token-step estimate)
@@ -98,6 +102,7 @@ def _extract_target(goal: str, screen_context: dict) -> str:
 # ActionPlanner
 # ---------------------------------------------------------------------------
 
+
 class ActionPlanner:
     """Rule-based planner: converts a natural-language goal into an ActionPlan."""
 
@@ -132,7 +137,7 @@ class ActionPlanner:
             m = re.search(r"(\d+(?:\.\d+)?)\s*(?:s|sec|second|ms|millisecond)?", goal, re.I)
             params["duration"] = float(m.group(1)) if m else 1.0
         elif action_type == ActionType.KEY_COMBO:
-            m = re.search(r'(?:press|shortcut|combo)\s+([A-Za-z0-9+_\-\s]+)', goal, re.I)
+            m = re.search(r"(?:press|shortcut|combo)\s+([A-Za-z0-9+_\-\s]+)", goal, re.I)
             params["keys"] = m.group(1).strip() if m else goal
         elif action_type == ActionType.DRAG:
             params["from"] = screen_context.get("drag_from", "source")

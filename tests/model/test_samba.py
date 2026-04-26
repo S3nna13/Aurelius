@@ -7,17 +7,14 @@ Covers SambaMambaBlock, SambaSWABlock, and SambaModel.
 
 from __future__ import annotations
 
-import pytest
 import torch
-
-from aurelius.model.samba import SambaMambaBlock, SambaSWABlock, SambaModel
-
+from aurelius.model.samba import SambaMambaBlock, SambaModel, SambaSWABlock
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
-B, T, D = 2, 16, 32   # batch, seq_len, d_model
+B, T, D = 2, 16, 32  # batch, seq_len, d_model
 N_HEADS = 4
 D_STATE = 8
 WINDOW = 8
@@ -58,6 +55,7 @@ def set_inference_mode(model: torch.nn.Module) -> torch.nn.Module:
 # ---------------------------------------------------------------------------
 # SambaMambaBlock tests (tests 1-4)
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_block_output_shape():
     """Test 1: SambaMambaBlock output shape matches (B, T, d_model)."""
@@ -108,6 +106,7 @@ def test_mamba_block_causal():
 # ---------------------------------------------------------------------------
 # SambaSWABlock tests (tests 5-9)
 # ---------------------------------------------------------------------------
+
 
 def test_swa_block_output_shape():
     """Test 5: SambaSWABlock output shape matches (B, T, d_model)."""
@@ -166,7 +165,7 @@ def test_swa_window_limit():
 
     Token at query_pos can only attend to tokens in (query_pos-window_size, query_pos].
     Modifying a token at beyond_pos (distance >= window_size away) must not change the output.
-    """
+    """  # noqa: E501
     block = make_swa(window_size=WINDOW)
     set_inference_mode(block)
 
@@ -190,6 +189,7 @@ def test_swa_window_limit():
 # ---------------------------------------------------------------------------
 # SambaModel tests (tests 10-14)
 # ---------------------------------------------------------------------------
+
 
 def test_model_output_shape():
     """Test 10: SambaModel output shape matches (B, T, d_model)."""

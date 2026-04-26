@@ -7,7 +7,6 @@ import torch.nn as nn
 from src.model.config import AureliusConfig
 from src.model.universal_transformer import (
     UniversalTransformer,
-    UniversalTransformerBlock,
 )
 
 
@@ -48,6 +47,7 @@ def test_universal_transformer_returns_tuple(model, cfg):
 
 def test_universal_transformer_loss_with_labels(model, cfg):
     import math
+
     input_ids = torch.randint(0, cfg.vocab_size, (2, 16))
     labels = torch.randint(0, cfg.vocab_size, (2, 16))
     loss, logits, _ = model(input_ids, labels=labels)
@@ -63,14 +63,12 @@ def test_shared_weights(model):
     w_again = block.attn.q_proj.weight
     assert w0 is w_again
 
-    assert not hasattr(model, "layers"), \
-        "UniversalTransformer must not have a 'layers' ModuleList"
+    assert not hasattr(model, "layers"), "UniversalTransformer must not have a 'layers' ModuleList"
 
     for name, module in model.named_modules():
         if name == "":
             continue
-        assert not isinstance(module, nn.ModuleList), \
-            f"Found unexpected ModuleList at '{name}'"
+        assert not isinstance(module, nn.ModuleList), f"Found unexpected ModuleList at '{name}'"
 
 
 def test_parameter_count_less_than_standard(cfg):
@@ -104,8 +102,9 @@ def test_parameter_count_less_than_standard(cfg):
     std_params = sum(p.numel() for p in standard.parameters())
     ut_params = universal.parameter_count()
 
-    assert ut_params < std_params, \
+    assert ut_params < std_params, (
         f"UT ({ut_params:,}) should have fewer params than standard ({std_params:,})"
+    )
 
 
 def test_step_embedding_effect(cfg):
@@ -125,8 +124,9 @@ def test_step_embedding_effect(cfg):
         _, logits1, _ = model1(input_ids)
         _, logits3, _ = model3(input_ids)
 
-    assert not torch.allclose(logits1, logits3), \
+    assert not torch.allclose(logits1, logits3), (
         "n_steps=1 and n_steps=3 should produce different outputs"
+    )
 
 
 def test_effective_depth(cfg):

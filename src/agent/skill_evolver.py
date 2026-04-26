@@ -191,9 +191,7 @@ class SkillEvolver:
                 "deepest_tree_depth": 0,
             }
 
-        total_attempts = sum(
-            s.success_count + s.failure_count for s in self._skills.values()
-        )
+        total_attempts = sum(s.success_count + s.failure_count for s in self._skills.values())
         avg_success = (
             sum(s.success_count for s in self._skills.values()) / total_attempts
             if total_attempts

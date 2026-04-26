@@ -10,10 +10,10 @@ from src.safety.jailbreak_v2 import (
     JailbreakSignal,
 )
 
-
 # ---------------------------------------------------------------------------
 # Enum value tests (5 values)
 # ---------------------------------------------------------------------------
+
 
 def test_signal_role_play_value():
     assert JailbreakSignal.ROLE_PLAY == "role_play"
@@ -42,6 +42,7 @@ def test_signal_enum_has_five_members():
 # ---------------------------------------------------------------------------
 # JailbreakDetection dataclass fields
 # ---------------------------------------------------------------------------
+
 
 def test_detection_has_signals_field():
     d = JailbreakDetection(signals=[], confidence=0.0, is_jailbreak=False)
@@ -72,6 +73,7 @@ def test_detection_explanation_defaults_to_empty_string():
 # SIGNAL_PATTERNS dict
 # ---------------------------------------------------------------------------
 
+
 def test_signal_patterns_has_all_signals():
     clf = JailbreakClassifierV2()
     for signal in JailbreakSignal:
@@ -101,6 +103,7 @@ def test_signal_patterns_token_smuggling_has_min_3():
 # ---------------------------------------------------------------------------
 # detect() — single signal tests
 # ---------------------------------------------------------------------------
+
 
 def test_detect_role_play_signal():
     clf = JailbreakClassifierV2()
@@ -136,6 +139,7 @@ def test_detect_token_smuggling_signal():
 # detect() — clean text
 # ---------------------------------------------------------------------------
 
+
 def test_detect_clean_text_is_not_jailbreak():
     clf = JailbreakClassifierV2()
     result = clf.detect("What is the weather like today?")
@@ -157,6 +161,7 @@ def test_detect_clean_text_no_signals():
 # ---------------------------------------------------------------------------
 # detect() — confidence calculation
 # ---------------------------------------------------------------------------
+
 
 def test_detect_one_signal_confidence():
     clf = JailbreakClassifierV2()
@@ -189,6 +194,7 @@ def test_detect_all_signals_confidence_one():
 # detect() — is_jailbreak threshold
 # ---------------------------------------------------------------------------
 
+
 def test_is_jailbreak_true_when_confidence_ge_0_2():
     clf = JailbreakClassifierV2()
     result = clf.detect("Pretend you are a pirate.")
@@ -204,6 +210,7 @@ def test_is_jailbreak_false_when_no_signals():
 # ---------------------------------------------------------------------------
 # detect() — explanation
 # ---------------------------------------------------------------------------
+
 
 def test_detect_explanation_lists_signals():
     clf = JailbreakClassifierV2()
@@ -227,6 +234,7 @@ def test_detect_clean_explanation_empty_list():
 # detect() — case insensitivity
 # ---------------------------------------------------------------------------
 
+
 def test_detect_case_insensitive_role_play():
     clf = JailbreakClassifierV2()
     result = clf.detect("PRETEND YOU ARE a robot.")
@@ -242,6 +250,7 @@ def test_detect_case_insensitive_token_smuggling():
 # ---------------------------------------------------------------------------
 # batch_detect()
 # ---------------------------------------------------------------------------
+
 
 def test_batch_detect_returns_list():
     clf = JailbreakClassifierV2()
@@ -286,6 +295,7 @@ def test_batch_detect_confidence_values():
 # ---------------------------------------------------------------------------
 # Additional edge cases
 # ---------------------------------------------------------------------------
+
 
 def test_detect_returns_detection_type():
     clf = JailbreakClassifierV2()

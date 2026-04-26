@@ -11,8 +11,6 @@ Verifies:
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
 
 import torch
@@ -20,10 +18,10 @@ import torch
 import src.longcontext as lc
 from src.model.config import AureliusConfig
 
-
 # ---------------------------------------------------------------------------
 # Registry surface tests
 # ---------------------------------------------------------------------------
+
 
 def test_context_extension_registry_exposed() -> None:
     """CONTEXT_EXTENSION_REGISTRY must be importable from src.longcontext."""
@@ -40,8 +38,7 @@ def test_dynamic_context_scaler_in_strategy_registry() -> None:
     assert hasattr(lc, "LONGCONTEXT_STRATEGY_REGISTRY")
     reg = lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert "dynamic_context_scaler" in reg, (
-        f"'dynamic_context_scaler' not in LONGCONTEXT_STRATEGY_REGISTRY. "
-        f"Keys: {list(reg.keys())}"
+        f"'dynamic_context_scaler' not in LONGCONTEXT_STRATEGY_REGISTRY. Keys: {list(reg.keys())}"
     )
     assert reg["dynamic_context_scaler"] is lc.DynamicContextScaler
 
@@ -67,15 +64,14 @@ def test_existing_registry_entries_still_present() -> None:
 # AureliusConfig integration
 # ---------------------------------------------------------------------------
 
+
 def test_aurelius_config_has_context_extension_fields() -> None:
     """AureliusConfig must expose context_extension_strategy and context_target_len."""
     cfg = AureliusConfig()
     assert hasattr(cfg, "context_extension_strategy"), (
         "AureliusConfig missing 'context_extension_strategy'"
     )
-    assert hasattr(cfg, "context_target_len"), (
-        "AureliusConfig missing 'context_target_len'"
-    )
+    assert hasattr(cfg, "context_target_len"), "AureliusConfig missing 'context_target_len'"
     # Defaults: OFF / none.
     assert cfg.context_extension_strategy == "none"
     assert cfg.context_target_len == 8192
@@ -94,6 +90,7 @@ def test_aurelius_config_custom_values() -> None:
 # ---------------------------------------------------------------------------
 # End-to-end: DynamicContextScaler from AureliusConfig
 # ---------------------------------------------------------------------------
+
 
 def _make_scaler_from_config(cfg: AureliusConfig) -> lc.DynamicContextScaler:
     """Construct DynamicContextScaler from AureliusConfig fields."""
@@ -180,16 +177,27 @@ def test_end_to_end_ntk_strategy_explicit() -> None:
 # No prohibited imports
 # ---------------------------------------------------------------------------
 
+
 def test_no_external_ml_deps() -> None:
     """Implementation must not import external ML libraries."""
-    impl_path = Path(__file__).parent.parent.parent / "src" / "longcontext" / "context_window_extension.py"
+    impl_path = (
+        Path(__file__).parent.parent.parent / "src" / "longcontext" / "context_window_extension.py"
+    )
     source = impl_path.read_text()
     banned = [
-        "transformers", "einops", "trl", "xformers", "flash_attn",
-        "bitsandbytes", "peft", "diffusers", "datasets", "accelerate",
-        "deepspeed", "langchain", "llamaindex",
+        "transformers",
+        "einops",
+        "trl",
+        "xformers",
+        "flash_attn",
+        "bitsandbytes",
+        "peft",
+        "diffusers",
+        "datasets",
+        "accelerate",
+        "deepspeed",
+        "langchain",
+        "llamaindex",
     ]
     for lib in banned:
-        assert lib not in source, (
-            f"Prohibited import '{lib}' found in context_window_extension.py"
-        )
+        assert lib not in source, f"Prohibited import '{lib}' found in context_window_extension.py"

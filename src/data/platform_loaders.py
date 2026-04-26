@@ -1,16 +1,17 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class KaggleSentimentSample:
     text: str
-    label: int        # 0=negative, 4=positive
+    label: int  # 0=negative, 4=positive
     user: str = ""
     date: str = ""
 
@@ -54,6 +55,7 @@ class ReplicatePrediction:
 # ---------------------------------------------------------------------------
 # Parsers
 # ---------------------------------------------------------------------------
+
 
 def parse_kaggle_sentiment(row: dict) -> KaggleSentimentSample:
     """row has: target (0 or 4), id, date, flag, user, text"""
@@ -115,8 +117,9 @@ def parse_replicate_prediction(raw: dict) -> ReplicatePrediction:
 # Converters
 # ---------------------------------------------------------------------------
 
+
 def kaggle_sentiment_to_instruction(sample: KaggleSentimentSample) -> dict:
-    """{'instruction': 'Classify the sentiment...', 'input': sample.text, 'output': 'positive'/'negative'}"""
+    """{'instruction': 'Classify the sentiment...', 'input': sample.text, 'output': 'positive'/'negative'}"""  # noqa: E501
     label_str = "positive" if sample.label == 4 else "negative"
     return {
         "instruction": "Classify the sentiment of the following text as positive or negative.",
@@ -137,7 +140,7 @@ def modelscope_to_instruction(sample: ModelScopeInstructSample) -> dict:
 
 def readability_to_regression_sample(sample: KaggleReadabilitySample) -> dict:
     """{'text': excerpt, 'score': target, 'weight': 1/(std_err^2 + 1e-8)}"""
-    weight = 1.0 / (sample.standard_error ** 2 + 1e-8)
+    weight = 1.0 / (sample.standard_error**2 + 1e-8)
     return {
         "text": sample.excerpt,
         "score": sample.target,
@@ -148,6 +151,7 @@ def readability_to_regression_sample(sample: KaggleReadabilitySample) -> dict:
 # ---------------------------------------------------------------------------
 # Mock generators
 # ---------------------------------------------------------------------------
+
 
 def mock_kaggle_sentiment_data(n: int = 4) -> list[dict]:
     """Return n mock Kaggle sentiment rows: target in {0,4}, id, date, flag, user, text"""
@@ -164,19 +168,21 @@ def mock_kaggle_sentiment_data(n: int = 4) -> list[dict]:
     ]
     for i in range(n):
         target = 4 if i % 2 == 0 else 0
-        rows.append({
-            "target": target,
-            "id": str(1000 + i),
-            "date": f"Mon Apr {i + 1:02d} 12:00:00 UTC 2024",
-            "flag": "NO_QUERY",
-            "user": f"user_{i}",
-            "text": texts[i % len(texts)],
-        })
+        rows.append(
+            {
+                "target": target,
+                "id": str(1000 + i),
+                "date": f"Mon Apr {i + 1:02d} 12:00:00 UTC 2024",
+                "flag": "NO_QUERY",
+                "user": f"user_{i}",
+                "text": texts[i % len(texts)],
+            }
+        )
     return rows
 
 
 def mock_kaggle_readability_data(n: int = 4) -> list[dict]:
-    """Return n mock Kaggle readability rows: id, url_legal, license, excerpt, target, standard_error"""
+    """Return n mock Kaggle readability rows: id, url_legal, license, excerpt, target, standard_error"""  # noqa: E501
     rows = []
     excerpts = [
         "The quick brown fox jumps over the lazy dog.",
@@ -189,14 +195,16 @@ def mock_kaggle_readability_data(n: int = 4) -> list[dict]:
         "It was a bright cold day in April, and the clocks were striking thirteen.",
     ]
     for i in range(n):
-        rows.append({
-            "id": f"excerpt_{i:04d}",
-            "url_legal": "",
-            "license": "CC",
-            "excerpt": excerpts[i % len(excerpts)],
-            "target": round(-2.0 + i * 0.5, 4),
-            "standard_error": round(0.4 + i * 0.05, 4),
-        })
+        rows.append(
+            {
+                "id": f"excerpt_{i:04d}",
+                "url_legal": "",
+                "license": "CC",
+                "excerpt": excerpts[i % len(excerpts)],
+                "target": round(-2.0 + i * 0.5, 4),
+                "standard_error": round(0.4 + i * 0.05, 4),
+            }
+        )
     return rows
 
 
@@ -217,12 +225,14 @@ def mock_modelscope_data(n: int = 4) -> list[dict]:
         history: list[list[str]] = []
         if i > 0:
             history = [["Previous question?", "Previous answer."]]
-        rows.append({
-            "instruction": instructions[i % len(instructions)],
-            "input": f"Sample input text number {i}.",
-            "output": f"Sample output text number {i}.",
-            "history": history,
-        })
+        rows.append(
+            {
+                "instruction": instructions[i % len(instructions)],
+                "input": f"Sample input text number {i}.",
+                "output": f"Sample output text number {i}.",
+                "history": history,
+            }
+        )
     return rows
 
 
@@ -231,43 +241,48 @@ def mock_dagshub_runs(n: int = 4) -> list[dict]:
     statuses = ["FINISHED", "RUNNING", "FAILED", "SCHEDULED"]
     rows = []
     for i in range(n):
-        rows.append({
-            "run_id": f"run_{i:04d}",
-            "experiment_id": f"exp_{i // 2:03d}",
-            "status": statuses[i % len(statuses)],
-            "metrics": {
-                "loss": round(2.5 - i * 0.3, 4),
-                "accuracy": round(0.5 + i * 0.1, 4),
-            },
-            "params": {
-                "lr": str(1e-4 * (i + 1)),
-                "batch_size": str(32 * (i + 1)),
-            },
-            "tags": {"model": "transformer", "version": str(i)},
-        })
+        rows.append(
+            {
+                "run_id": f"run_{i:04d}",
+                "experiment_id": f"exp_{i // 2:03d}",
+                "status": statuses[i % len(statuses)],
+                "metrics": {
+                    "loss": round(2.5 - i * 0.3, 4),
+                    "accuracy": round(0.5 + i * 0.1, 4),
+                },
+                "params": {
+                    "lr": str(1e-4 * (i + 1)),
+                    "batch_size": str(32 * (i + 1)),
+                },
+                "tags": {"model": "transformer", "version": str(i)},
+            }
+        )
     return rows
 
 
 def mock_replicate_predictions(n: int = 4) -> list[dict]:
-    """Return n mock Replicate prediction rows: id, version, status, input, output, error, metrics"""
+    """Return n mock Replicate prediction rows: id, version, status, input, output, error, metrics"""  # noqa: E501
     statuses = ["succeeded", "failed", "processing", "starting"]
     rows = []
     for i in range(n):
-        rows.append({
-            "id": f"pred_{i:08d}",
-            "version": f"v{i}.0.0",
-            "status": statuses[i % len(statuses)],
-            "input": {"prompt": f"Test prompt {i}", "max_tokens": 256},
-            "output": f"Generated output {i}" if i % 2 == 0 else None,
-            "error": None if i % 2 == 0 else f"Error on run {i}",
-            "metrics": {"predict_time": round(0.5 + i * 0.25, 4)},
-        })
+        rows.append(
+            {
+                "id": f"pred_{i:08d}",
+                "version": f"v{i}.0.0",
+                "status": statuses[i % len(statuses)],
+                "input": {"prompt": f"Test prompt {i}", "max_tokens": 256},
+                "output": f"Generated output {i}" if i % 2 == 0 else None,
+                "error": None if i % 2 == 0 else f"Error on run {i}",
+                "metrics": {"predict_time": round(0.5 + i * 0.25, 4)},
+            }
+        )
     return rows
 
 
 # ---------------------------------------------------------------------------
 # PlatformDataMixer
 # ---------------------------------------------------------------------------
+
 
 class PlatformDataMixer:
     def __init__(self) -> None:

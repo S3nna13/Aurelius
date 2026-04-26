@@ -6,11 +6,10 @@ revises them toward better alignment.
 
 Reference: Bai et al., 2022 (arXiv:2212.08073).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Configuration dataclasses
@@ -21,7 +20,7 @@ from typing import List, Tuple
 class CAIConfig:
     """Configuration for a Constitutional AI v2 session."""
 
-    principles: List[str] = field(
+    principles: list[str] = field(
         default_factory=lambda: ["Be helpful", "Be harmless", "Be honest"]
     )
     n_revisions: int = 2
@@ -60,9 +59,7 @@ def format_critique_prompt(response: str, principle: str, config: CAIConfig) -> 
     )
 
 
-def format_revision_prompt(
-    response: str, critique: str, principle: str, config: CAIConfig
-) -> str:
+def format_revision_prompt(response: str, critique: str, principle: str, config: CAIConfig) -> str:
     """Return a prompt asking a model to revise *response* based on *critique*.
 
     The returned string contains the original response, the critique, and the
@@ -98,9 +95,7 @@ def score_principle_adherence(response: str, principle: str) -> float:
     return matches / len(words)
 
 
-def select_worst_principle(
-    response: str, principles: List[str]
-) -> Tuple[int, float]:
+def select_worst_principle(response: str, principles: list[str]) -> tuple[int, float]:
     """Return (index_of_worst_principle, lowest_score).
 
     "Worst" means the principle with the lowest adherence score — the one
@@ -145,7 +140,7 @@ class CAISession:
         prompt = format_revision_prompt(response, critique, principle, self.config)
         return f"{prompt} [Revised response]"
 
-    def run_revision_loop(self, initial_response: str) -> List[dict]:
+    def run_revision_loop(self, initial_response: str) -> list[dict]:
         """Run ``config.n_revisions`` critique-revise iterations.
 
         Each iteration selects the principle least adhered to by the current
@@ -155,13 +150,11 @@ class CAISession:
             ``iteration``, ``principle``, ``critique``, ``revision``,
             ``score_before``, ``score_after``.
         """
-        history: List[dict] = []
+        history: list[dict] = []
         current_response = initial_response
 
         for i in range(self.config.n_revisions):
-            idx, score_before = select_worst_principle(
-                current_response, self.config.principles
-            )
+            idx, score_before = select_worst_principle(current_response, self.config.principles)
             principle = self.config.principles[idx]
 
             critique = self.critique(current_response, principle)
@@ -183,7 +176,7 @@ class CAISession:
 
         return history
 
-    def get_final_response(self, revision_history: List[dict]) -> str:
+    def get_final_response(self, revision_history: list[dict]) -> str:
         """Return the last revised response from *revision_history*."""
         if not revision_history:
             return ""
@@ -195,9 +188,7 @@ class CAISession:
 # ---------------------------------------------------------------------------
 
 
-def compute_principle_coverage(
-    revision_history: List[dict], principles: List[str]
-) -> dict:
+def compute_principle_coverage(revision_history: list[dict], principles: list[str]) -> dict:
     """Summarise how well the revision loop covered all principles.
 
     Returns a dict with:
@@ -210,9 +201,7 @@ def compute_principle_coverage(
     addressed = {entry["principle"] for entry in revision_history}
     coverage = len(addressed & set(principles)) / max(len(principles), 1)
 
-    improvements = [
-        entry["score_after"] - entry["score_before"] for entry in revision_history
-    ]
+    improvements = [entry["score_after"] - entry["score_before"] for entry in revision_history]
     mean_improvement = sum(improvements) / len(improvements)
 
     return {"coverage": coverage, "mean_improvement": mean_improvement}

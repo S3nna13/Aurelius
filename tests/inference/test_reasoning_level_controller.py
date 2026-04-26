@@ -3,9 +3,8 @@
 Covers parse_reasoning_level and apply_reasoning_level.
 SWE-bench Verified: low=47.9%, medium=52.6%, high=62.4%.
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.inference.reasoning_level_controller import (
     LEVEL_CONFIGS,
@@ -13,10 +12,10 @@ from src.inference.reasoning_level_controller import (
     parse_reasoning_level,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _low() -> dict:
     return parse_reasoning_level("Reasoning: low")
@@ -34,6 +33,7 @@ def _high() -> dict:
 # 1. low temperature
 # ---------------------------------------------------------------------------
 
+
 def test_low_temperature() -> None:
     assert _low()["temperature"] == 0.3
 
@@ -41,6 +41,7 @@ def test_low_temperature() -> None:
 # ---------------------------------------------------------------------------
 # 2. low max_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_low_max_tokens() -> None:
     assert _low()["max_tokens"] == 512
@@ -50,6 +51,7 @@ def test_low_max_tokens() -> None:
 # 3. medium temperature
 # ---------------------------------------------------------------------------
 
+
 def test_medium_temperature() -> None:
     assert _medium()["temperature"] == 0.6
 
@@ -57,6 +59,7 @@ def test_medium_temperature() -> None:
 # ---------------------------------------------------------------------------
 # 4. medium max_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_medium_max_tokens() -> None:
     assert _medium()["max_tokens"] == 2048
@@ -66,6 +69,7 @@ def test_medium_max_tokens() -> None:
 # 5. high temperature
 # ---------------------------------------------------------------------------
 
+
 def test_high_temperature() -> None:
     assert _high()["temperature"] == 1.0
 
@@ -74,6 +78,7 @@ def test_high_temperature() -> None:
 # 6. high max_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_high_max_tokens() -> None:
     assert _high()["max_tokens"] == 8192
 
@@ -81,6 +86,7 @@ def test_high_max_tokens() -> None:
 # ---------------------------------------------------------------------------
 # 7. missing prefix defaults to medium
 # ---------------------------------------------------------------------------
+
 
 def test_missing_prefix_defaults_medium() -> None:
     result = parse_reasoning_level("You are a helpful assistant.")
@@ -91,6 +97,7 @@ def test_missing_prefix_defaults_medium() -> None:
 # 8. None prompt defaults to medium
 # ---------------------------------------------------------------------------
 
+
 def test_none_prompt_defaults_medium() -> None:
     result = parse_reasoning_level(None)
     assert result == dict(LEVEL_CONFIGS["medium"])
@@ -99,6 +106,7 @@ def test_none_prompt_defaults_medium() -> None:
 # ---------------------------------------------------------------------------
 # 9. empty string defaults to medium
 # ---------------------------------------------------------------------------
+
 
 def test_empty_string_defaults_medium() -> None:
     result = parse_reasoning_level("")
@@ -109,6 +117,7 @@ def test_empty_string_defaults_medium() -> None:
 # 10. case-insensitive uppercase
 # ---------------------------------------------------------------------------
 
+
 def test_case_insensitive_upper() -> None:
     result = parse_reasoning_level("REASONING: HIGH")
     assert result == dict(LEVEL_CONFIGS["high"])
@@ -118,6 +127,7 @@ def test_case_insensitive_upper() -> None:
 # 11. case-insensitive mixed
 # ---------------------------------------------------------------------------
 
+
 def test_case_insensitive_mixed() -> None:
     result = parse_reasoning_level("Reasoning: Low")
     assert result == dict(LEVEL_CONFIGS["low"])
@@ -126,6 +136,7 @@ def test_case_insensitive_mixed() -> None:
 # ---------------------------------------------------------------------------
 # 12. returns a copy (no shared state)
 # ---------------------------------------------------------------------------
+
 
 def test_returns_copy() -> None:
     a = parse_reasoning_level("Reasoning: high")
@@ -140,6 +151,7 @@ def test_returns_copy() -> None:
 # ---------------------------------------------------------------------------
 # 13. reasoning_level key always present
 # ---------------------------------------------------------------------------
+
 
 def test_reasoning_level_key_present() -> None:
     for prompt in (
@@ -158,6 +170,7 @@ def test_reasoning_level_key_present() -> None:
 # 14. apply_reasoning_level does not override explicit values
 # ---------------------------------------------------------------------------
 
+
 def test_apply_does_not_override_explicit() -> None:
     merged = apply_reasoning_level(
         "Reasoning: low",
@@ -170,6 +183,7 @@ def test_apply_does_not_override_explicit() -> None:
 # ---------------------------------------------------------------------------
 # 15. apply_reasoning_level fills missing keys
 # ---------------------------------------------------------------------------
+
 
 def test_apply_adds_missing_keys() -> None:
     merged = apply_reasoning_level(
@@ -188,6 +202,7 @@ def test_apply_adds_missing_keys() -> None:
 # Bonus: verify top_p values
 # ---------------------------------------------------------------------------
 
+
 def test_low_top_p() -> None:
     assert _low()["top_p"] == 0.9
 
@@ -203,6 +218,7 @@ def test_high_top_p() -> None:
 # ---------------------------------------------------------------------------
 # Bonus: reasoning_level field correctness per level
 # ---------------------------------------------------------------------------
+
 
 def test_reasoning_level_field_low() -> None:
     assert _low()["reasoning_level"] == "low"

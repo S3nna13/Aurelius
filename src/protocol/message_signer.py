@@ -14,7 +14,6 @@ import json
 import time
 from dataclasses import dataclass
 
-
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
@@ -23,7 +22,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class SignedMessage:
     """Immutable container for a signed payload."""
-    payload:   bytes
+
+    payload: bytes
     signature: str
     algorithm: str
     signed_at: float
@@ -32,8 +32,9 @@ class SignedMessage:
 @dataclass
 class SignerConfig:
     """Mutable configuration so the key can be rotated at runtime."""
-    algorithm: str   = "sha256"
-    key:       bytes = b"default-key"
+
+    algorithm: str = "sha256"
+    key: bytes = b"default-key"
 
 
 # ---------------------------------------------------------------------------

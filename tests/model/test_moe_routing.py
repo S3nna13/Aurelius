@@ -5,17 +5,17 @@ Tiny config: N_EXPERTS=4, TOP_K=2, D=8, B=2, T=4  (B*T=8 tokens)
 """
 
 import math
-import pytest
+
 import torch
 
 from src.model.moe_routing import (
-    RoutingConfig,
-    topk_routing,
-    expert_choice_routing,
-    compute_router_z_loss,
-    compute_load_balance_loss,
     Router,
+    RoutingConfig,
     SwitchRouter,
+    compute_load_balance_loss,
+    compute_router_z_loss,
+    expert_choice_routing,
+    topk_routing,
 )
 
 # ---------------------------------------------------------------------------
@@ -35,6 +35,7 @@ torch.manual_seed(42)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_logits(s=S, n=N_EXPERTS) -> torch.Tensor:
     return torch.randn(s, n)
 
@@ -51,6 +52,7 @@ def make_config(**kwargs) -> RoutingConfig:
 # 1. RoutingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_routing_config_defaults():
     cfg = RoutingConfig()
     assert cfg.n_experts == 8
@@ -65,6 +67,7 @@ def test_routing_config_defaults():
 # 2. topk_routing — expert_indices shape
 # ---------------------------------------------------------------------------
 
+
 def test_topk_routing_expert_indices_shape():
     logits = make_logits()
     indices, _ = topk_routing(logits, k=TOP_K)
@@ -74,6 +77,7 @@ def test_topk_routing_expert_indices_shape():
 # ---------------------------------------------------------------------------
 # 3. topk_routing — gates shape
 # ---------------------------------------------------------------------------
+
 
 def test_topk_routing_gates_shape():
     logits = make_logits()
@@ -85,17 +89,20 @@ def test_topk_routing_gates_shape():
 # 4. topk_routing — gates sum to ~1 per token (softmax over top-k)
 # ---------------------------------------------------------------------------
 
+
 def test_topk_routing_gates_sum_to_one():
     logits = make_logits()
     _, gates = topk_routing(logits, k=TOP_K)
     sums = gates.sum(dim=-1)  # (S,)
-    assert torch.allclose(sums, torch.ones(S), atol=1e-5), \
+    assert torch.allclose(sums, torch.ones(S), atol=1e-5), (
         f"Gates don't sum to 1; got min={sums.min():.6f}, max={sums.max():.6f}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 5. topk_routing — indices are valid expert indices
 # ---------------------------------------------------------------------------
+
 
 def test_topk_routing_indices_valid_range():
     logits = make_logits()
@@ -108,6 +115,7 @@ def test_topk_routing_indices_valid_range():
 # 6. topk_routing with noise produces different indices from without noise
 # ---------------------------------------------------------------------------
 
+
 def test_topk_routing_noise_differs():
     torch.manual_seed(0)
     logits = make_logits()
@@ -117,50 +125,58 @@ def test_topk_routing_noise_differs():
     torch.manual_seed(1)
     idx_noise, _ = topk_routing(logits, k=TOP_K, noise_std=10.0)
     # With noise_std=10 on logits of order ~1, at least some assignments differ
-    assert not torch.equal(idx_no_noise, idx_noise), \
+    assert not torch.equal(idx_no_noise, idx_noise), (
         "Expected noise to change at least some expert assignments"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 7. expert_choice_routing — token_indices shape (n_experts, capacity)
 # ---------------------------------------------------------------------------
 
+
 def test_expert_choice_routing_token_indices_shape():
     logits = make_logits()
     capacity = 3
     token_indices, _ = expert_choice_routing(logits, capacity=capacity)
-    assert token_indices.shape == (N_EXPERTS, capacity), \
+    assert token_indices.shape == (N_EXPERTS, capacity), (
         f"Expected ({N_EXPERTS}, {capacity}), got {token_indices.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 8. expert_choice_routing — gates shape (n_experts, capacity)
 # ---------------------------------------------------------------------------
 
+
 def test_expert_choice_routing_gates_shape():
     logits = make_logits()
     capacity = 3
     _, gates = expert_choice_routing(logits, capacity=capacity)
-    assert gates.shape == (N_EXPERTS, capacity), \
+    assert gates.shape == (N_EXPERTS, capacity), (
         f"Expected ({N_EXPERTS}, {capacity}), got {gates.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 9. expert_choice_routing — gates sum to ~1 per expert (softmax per expert)
 # ---------------------------------------------------------------------------
 
+
 def test_expert_choice_routing_gates_sum_to_one():
     logits = make_logits()
     capacity = 3
     _, gates = expert_choice_routing(logits, capacity=capacity)
     sums = gates.sum(dim=-1)  # (n_experts,)
-    assert torch.allclose(sums, torch.ones(N_EXPERTS), atol=1e-5), \
+    assert torch.allclose(sums, torch.ones(N_EXPERTS), atol=1e-5), (
         f"Expert gates don't sum to 1 per expert; sums={sums}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. compute_router_z_loss — scalar and positive
 # ---------------------------------------------------------------------------
+
 
 def test_router_z_loss_scalar_and_positive():
     logits = make_logits()
@@ -173,6 +189,7 @@ def test_router_z_loss_scalar_and_positive():
 # 11. compute_load_balance_loss — scalar and non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_load_balance_loss_scalar_and_nonneg():
     probs = torch.softmax(make_logits(), dim=-1)  # (S, n_experts)
     loss = compute_load_balance_loss(probs, n_experts=N_EXPERTS, coef=0.01)
@@ -184,31 +201,34 @@ def test_load_balance_loss_scalar_and_nonneg():
 # 12. Router — output expert_indices shape
 # ---------------------------------------------------------------------------
 
+
 def test_router_expert_indices_shape():
     cfg = make_config()
     router = Router(d_model=D, config=cfg)
     x = make_input()
     expert_indices, gates, aux_loss = router(x)
-    assert expert_indices.shape == (S, TOP_K), \
+    assert expert_indices.shape == (S, TOP_K), (
         f"Expected ({S}, {TOP_K}), got {expert_indices.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 13. Router — output gates shape
 # ---------------------------------------------------------------------------
 
+
 def test_router_gates_shape():
     cfg = make_config()
     router = Router(d_model=D, config=cfg)
     x = make_input()
     expert_indices, gates, aux_loss = router(x)
-    assert gates.shape == (S, TOP_K), \
-        f"Expected ({S}, {TOP_K}), got {gates.shape}"
+    assert gates.shape == (S, TOP_K), f"Expected ({S}, {TOP_K}), got {gates.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 14. Router — aux_loss is finite scalar
 # ---------------------------------------------------------------------------
+
 
 def test_router_aux_loss_finite_scalar():
     cfg = make_config()
@@ -223,18 +243,19 @@ def test_router_aux_loss_finite_scalar():
 # 15. SwitchRouter — expert_idx shape (B*T,)
 # ---------------------------------------------------------------------------
 
+
 def test_switch_router_expert_idx_shape():
     cfg = make_config()
     router = SwitchRouter(d_model=D, config=cfg)
     x = make_input()
     expert_idx, gates, aux_loss = router(x)
-    assert expert_idx.shape == (S,), \
-        f"Expected ({S},), got {expert_idx.shape}"
+    assert expert_idx.shape == (S,), f"Expected ({S},), got {expert_idx.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 16. SwitchRouter — gates finite and shape (B*T,)
 # ---------------------------------------------------------------------------
+
 
 def test_switch_router_gates_finite():
     cfg = make_config()
@@ -249,6 +270,7 @@ def test_switch_router_gates_finite():
 # 17. SwitchRouter — aux_loss finite scalar
 # ---------------------------------------------------------------------------
 
+
 def test_switch_router_aux_loss_finite():
     cfg = make_config()
     router = SwitchRouter(d_model=D, config=cfg)
@@ -262,6 +284,7 @@ def test_switch_router_aux_loss_finite():
 # 18. SwitchRouter — capacity dropping: no more than capacity tokens per expert
 # ---------------------------------------------------------------------------
 
+
 def test_switch_router_capacity_respected():
     cfg = make_config(capacity_factor=1.0)
     router = SwitchRouter(d_model=D, config=cfg)
@@ -271,13 +294,15 @@ def test_switch_router_capacity_respected():
     for e in range(N_EXPERTS):
         # Tokens assigned to expert e with non-zero gates
         active = ((expert_idx == e) & (gates > 0)).sum().item()
-        assert active <= capacity, \
+        assert active <= capacity, (
             f"Expert {e} has {active} active tokens but capacity is {capacity}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 19. topk_routing — gates are non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_topk_routing_gates_nonneg():
     logits = make_logits()
@@ -289,11 +314,13 @@ def test_topk_routing_gates_nonneg():
 # 20. Router — gates sum to ~1 per token
 # ---------------------------------------------------------------------------
 
+
 def test_router_gates_sum_to_one():
     cfg = make_config()
     router = Router(d_model=D, config=cfg)
     x = make_input()
     _, gates, _ = router(x)
     sums = gates.sum(dim=-1)
-    assert torch.allclose(sums, torch.ones(S), atol=1e-5), \
+    assert torch.allclose(sums, torch.ones(S), atol=1e-5), (
         f"Router gates don't sum to 1; min={sums.min():.6f}, max={sums.max():.6f}"
+    )

@@ -24,9 +24,7 @@ def test_pack_toy_repo_three_py_files(tmp_path):
     _mkfile(
         tmp_path,
         "totals.py",
-        "def calculate_total(items):\n"
-        "    '''Return the sum of items.'''\n"
-        "    return sum(items)\n",
+        "def calculate_total(items):\n    '''Return the sum of items.'''\n    return sum(items)\n",
     )
     _mkfile(
         tmp_path,
@@ -36,10 +34,7 @@ def test_pack_toy_repo_three_py_files(tmp_path):
     _mkfile(
         tmp_path,
         "io_utils.py",
-        "import os\n\n"
-        "def read_text(path):\n"
-        "    with open(path) as f:\n"
-        "        return f.read()\n",
+        "import os\n\ndef read_text(path):\n    with open(path) as f:\n        return f.read()\n",
     )
 
     packer = agent.RepoContextPacker(str(tmp_path), max_tokens=2000)

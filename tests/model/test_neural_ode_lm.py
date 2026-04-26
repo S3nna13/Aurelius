@@ -8,16 +8,16 @@ All tests use small dimensions: d_model=16, vocab_size=16, B=2, T=6.
 from __future__ import annotations
 
 import math
+
 import torch
-import pytest
 
 from src.model.neural_ode_lm import (
-    ODEFunc,
     EulerSolver,
-    RK4Solver,
     NeuralODEBlock,
-    NeuralODELanguageModel,
     NeuralODEConfig,
+    NeuralODELanguageModel,
+    ODEFunc,
+    RK4Solver,
 )
 
 # ---------------------------------------------------------------------------
@@ -44,6 +44,7 @@ def make_input_ids() -> torch.Tensor:
 # ===========================================================================
 # ODEFunc tests
 # ===========================================================================
+
 
 def test_odefunc_output_shape():
     """ODEFunc forward output shape matches input [B, T, d_model]."""
@@ -72,13 +73,15 @@ def test_odefunc_time_conditioning():
     z0 = make_z0()
     dz_t0 = func(0.0, z0)
     dz_t1 = func(1.0, z0)
-    assert not torch.allclose(dz_t0, dz_t1), \
+    assert not torch.allclose(dz_t0, dz_t1), (
         "ODEFunc outputs should differ for t=0 vs t=1 (time conditioning)"
+    )
 
 
 # ===========================================================================
 # EulerSolver tests
 # ===========================================================================
+
 
 def test_euler_output_shape():
     """EulerSolver.solve output shape matches z0."""
@@ -106,8 +109,9 @@ def test_euler_single_step():
         dz = func(t0, z0)
         zT_manual = z0 + h * dz
 
-    assert torch.allclose(zT_solver, zT_manual, atol=1e-5), \
+    assert torch.allclose(zT_solver, zT_manual, atol=1e-5), (
         "EulerSolver n_steps=1 should match manual one-step update"
+    )
 
 
 def test_euler_output_differs_from_z0():
@@ -116,13 +120,13 @@ def test_euler_output_differs_from_z0():
     solver = EulerSolver()
     z0 = make_z0()
     zT = solver.solve(func, z0, (0.0, 1.0), n_steps=N_STEPS)
-    assert not torch.allclose(zT, z0), \
-        "EulerSolver output must differ from initial z0"
+    assert not torch.allclose(zT, z0), "EulerSolver output must differ from initial z0"
 
 
 # ===========================================================================
 # RK4Solver tests
 # ===========================================================================
+
 
 def test_rk4_output_shape():
     """RK4Solver.solve output shape matches z0."""
@@ -139,8 +143,7 @@ def test_rk4_output_differs_from_z0():
     solver = RK4Solver()
     z0 = make_z0()
     zT = solver.solve(func, z0, (0.0, 1.0), n_steps=N_STEPS)
-    assert not torch.allclose(zT, z0), \
-        "RK4Solver output must differ from initial z0"
+    assert not torch.allclose(zT, z0), "RK4Solver output must differ from initial z0"
 
 
 def test_rk4_more_accurate_than_euler_for_simple_dynamics():
@@ -149,10 +152,12 @@ def test_rk4_more_accurate_than_euler_for_simple_dynamics():
     We test on dz/dt = -z (analytical: z(t) = z0 * exp(-t)).
     We patch ODEFunc.forward temporarily with a known dynamics to isolate solver accuracy.
     """
+
     # Simple scalar: dz/dt = -z, z(0)=1, z(1) = exp(-1) ≈ 0.3679
     # We'll run 1-D (batch 1, seq 1, d_model=1) with identity-scaled linear func
     class LinearDecayFunc(torch.nn.Module):
         nfe = 0
+
         def forward(self, t: float, z: torch.Tensor) -> torch.Tensor:
             self.nfe += 1
             return -z  # dz/dt = -z
@@ -181,6 +186,7 @@ def test_rk4_more_accurate_than_euler_for_simple_dynamics():
 # ===========================================================================
 # NeuralODEBlock tests
 # ===========================================================================
+
 
 def test_ode_block_output_shape():
     """NeuralODEBlock forward output shape is [B, T, d_model]."""
@@ -214,23 +220,21 @@ def test_ode_block_gradient_flow():
 # NeuralODELanguageModel tests
 # ===========================================================================
 
+
 def test_lm_forward_output_shape():
     """NeuralODELanguageModel forward output shape is [B, T, vocab_size]."""
     model = NeuralODELanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE,
-        n_ode_blocks=2, solver="rk4", n_steps=N_STEPS
+        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_ode_blocks=2, solver="rk4", n_steps=N_STEPS
     )
     ids = make_input_ids()
     logits = model(ids)
-    assert logits.shape == (B, T, VOCAB_SIZE), \
-        f"Expected {(B, T, VOCAB_SIZE)}, got {logits.shape}"
+    assert logits.shape == (B, T, VOCAB_SIZE), f"Expected {(B, T, VOCAB_SIZE)}, got {logits.shape}"
 
 
 def test_lm_compute_loss_finite_positive():
     """NeuralODELanguageModel.compute_loss returns a finite positive scalar."""
     model = NeuralODELanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE,
-        n_ode_blocks=2, solver="rk4", n_steps=N_STEPS
+        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_ode_blocks=2, solver="rk4", n_steps=N_STEPS
     )
     ids = make_input_ids()
     loss = model.compute_loss(ids)
@@ -242,23 +246,20 @@ def test_lm_compute_loss_finite_positive():
 def test_lm_compute_loss_backward():
     """Gradients must flow through NeuralODELanguageModel.compute_loss."""
     model = NeuralODELanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE,
-        n_ode_blocks=2, solver="rk4", n_steps=N_STEPS
+        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_ode_blocks=2, solver="rk4", n_steps=N_STEPS
     )
     ids = make_input_ids()
     loss = model.compute_loss(ids)
     loss.backward()
     # Check at least one parameter has a gradient
-    has_grad = any(
-        p.grad is not None and not torch.all(p.grad == 0)
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and not torch.all(p.grad == 0) for p in model.parameters())
     assert has_grad, "At least one parameter should have a non-zero gradient"
 
 
 # ===========================================================================
 # NeuralODEConfig tests
 # ===========================================================================
+
 
 def test_neural_ode_config_defaults():
     """NeuralODEConfig should have the expected default values."""
@@ -286,6 +287,7 @@ def test_neural_ode_config_custom():
 # Additional integration tests
 # ===========================================================================
 
+
 def test_euler_block_gradient_flow():
     """Gradients must flow through NeuralODEBlock with Euler solver."""
     block = NeuralODEBlock(D_MODEL, solver="euler", n_steps=2)
@@ -299,8 +301,7 @@ def test_euler_block_gradient_flow():
 def test_lm_euler_solver():
     """NeuralODELanguageModel works with Euler solver."""
     model = NeuralODELanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE,
-        n_ode_blocks=1, solver="euler", n_steps=N_STEPS
+        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_ode_blocks=1, solver="euler", n_steps=N_STEPS
     )
     ids = make_input_ids()
     logits = model(ids)
@@ -314,7 +315,7 @@ def test_rk4_nfe_count():
     z0 = make_z0()
     n = 3
     solver.solve(func, z0, (0.0, 1.0), n_steps=n)
-    assert func.nfe == 4 * n, f"Expected {4*n} NFE for RK4 with n_steps={n}, got {func.nfe}"
+    assert func.nfe == 4 * n, f"Expected {4 * n} NFE for RK4 with n_steps={n}, got {func.nfe}"
 
 
 def test_euler_nfe_count():

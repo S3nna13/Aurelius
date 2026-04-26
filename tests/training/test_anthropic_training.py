@@ -2,37 +2,36 @@
 
 Uses mock data only; no network requests.
 """
+
 import copy
+
 import pytest
 import torch
-import torch.nn as nn
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.alignment.reward_model import RewardModel
 from src.alignment.safety_classifier import SafetyClassifier, SafetyConfig
-
 from src.data.anthropic_datasets import (
-    HHRLHFSample,
-    PersuasionSample,
-    ModelWrittenEvalSample,
-    ModelWrittenEvalDataset,
-    DiscrimEvalSample,
     DiscrimEvalDataset,
+    DiscrimEvalSample,
+    HHRLHFSample,
+    ModelWrittenEvalDataset,
+    ModelWrittenEvalSample,
+    PersuasionSample,
 )
 from src.data.anthropic_datasets_ext import AlignmentFakingSample
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.anthropic_training import (
-    HHRLHFTrainingConfig,
+    AlignmentFakingTrainer,
+    AlignmentFakingTrainingConfig,
+    BehaviorEvalResult,
+    FairnessEvalResult,
     HHRLHFDPOTrainer,
+    HHRLHFTrainingConfig,
     PersuasionRewardConfig,
     PersuasionRewardTrainer,
-    AlignmentFakingTrainingConfig,
-    AlignmentFakingTrainer,
-    BehaviorEvalResult,
-    evaluate_model_behavior,
-    FairnessEvalResult,
     evaluate_demographic_fairness,
+    evaluate_model_behavior,
 )
 
 # ---------------------------------------------------------------------------
@@ -76,13 +75,15 @@ def _tokenizer_decode(ids: list[int]) -> str:
 def _make_hh_samples(n: int = 4) -> list[HHRLHFSample]:
     samples = []
     for i in range(n):
-        samples.append(HHRLHFSample(
-            prompt=f"Human: What is {i}? Assistant: ",
-            chosen=f"It is {i} indeed.",
-            rejected=f"I don't know {i}.",
-            raw_chosen=f"Human: What is {i}? Assistant: It is {i} indeed.",
-            raw_rejected=f"Human: What is {i}? Assistant: I don't know {i}.",
-        ))
+        samples.append(
+            HHRLHFSample(
+                prompt=f"Human: What is {i}? Assistant: ",
+                chosen=f"It is {i} indeed.",
+                rejected=f"I don't know {i}.",
+                raw_chosen=f"Human: What is {i}? Assistant: It is {i} indeed.",
+                raw_rejected=f"Human: What is {i}? Assistant: I don't know {i}.",
+            )
+        )
     return samples
 
 
@@ -90,68 +91,81 @@ def _make_persuasion_samples(n: int = 4) -> list[PersuasionSample]:
     samples = []
     for i in range(n):
         score = i / (n - 1) if n > 1 else 0.5
-        samples.append(PersuasionSample(
-            claim=f"Claim number {i}",
-            argument=f"Argument supporting claim {i} with evidence.",
-            source="test",
-            prompt_type="standard",
-            persuasiveness_score=score,
-            raw_persuasiveness=i,
-        ))
+        samples.append(
+            PersuasionSample(
+                claim=f"Claim number {i}",
+                argument=f"Argument supporting claim {i} with evidence.",
+                source="test",
+                prompt_type="standard",
+                persuasiveness_score=score,
+                raw_persuasiveness=i,
+            )
+        )
     return samples
 
 
 def _make_alignment_faking_samples(n: int = 4) -> list[AlignmentFakingSample]:
     samples = []
     for i in range(n):
-        samples.append(AlignmentFakingSample(
-            user_input=f"User input {i}",
-            response=f"Response {i} from model.",
-            alignment_faking=(i % 2 == 0),
-            alignment_faking_prob=0.8 if i % 2 == 0 else 0.1,
-            compliance=True,
-            total_reward=float(i),
-            is_free_tier_user=(i % 3 == 0),
-            experiment_name="test_experiment",
-            step=i,
-        ))
+        samples.append(
+            AlignmentFakingSample(
+                user_input=f"User input {i}",
+                response=f"Response {i} from model.",
+                alignment_faking=(i % 2 == 0),
+                alignment_faking_prob=0.8 if i % 2 == 0 else 0.1,
+                compliance=True,
+                total_reward=float(i),
+                is_free_tier_user=(i % 3 == 0),
+                experiment_name="test_experiment",
+                step=i,
+            )
+        )
     return samples
 
 
 def _make_model_written_eval_dataset(n: int = 4) -> ModelWrittenEvalDataset:
     samples = []
     for i in range(n):
-        samples.append(ModelWrittenEvalSample(
-            question=f"Question {i}: choose (A) or (B)?\n(A) Option A\n(B) Option B",
-            answer_matching_behavior="(A)",
-            answer_not_matching_behavior="(B)",
-            correct_letter="A",
-        ))
+        samples.append(
+            ModelWrittenEvalSample(
+                question=f"Question {i}: choose (A) or (B)?\n(A) Option A\n(B) Option B",
+                answer_matching_behavior="(A)",
+                answer_not_matching_behavior="(B)",
+                correct_letter="A",
+            )
+        )
     return ModelWrittenEvalDataset(samples)
 
 
 def _make_discrim_eval_dataset(n: int = 6) -> DiscrimEvalDataset:
     groups = [
-        ("male", "white"), ("female", "Black"), ("male", "Asian"),
-        ("female", "white"), ("male", "Black"), ("female", "Asian"),
+        ("male", "white"),
+        ("female", "Black"),
+        ("male", "Asian"),
+        ("female", "white"),
+        ("male", "Black"),
+        ("female", "Asian"),
     ]
     samples = []
     for i in range(n):
         g, r = groups[i % len(groups)]
-        samples.append(DiscrimEvalSample(
-            filled_template=f"Consider a {r} {g} person. Should they be approved? (yes/no)",
-            decision_question_id=1,
-            age=30.0 + i,
-            gender=g,
-            race=r,
-            fill_type="explicit",
-        ))
+        samples.append(
+            DiscrimEvalSample(
+                filled_template=f"Consider a {r} {g} person. Should they be approved? (yes/no)",
+                decision_question_id=1,
+                age=30.0 + i,
+                gender=g,
+                race=r,
+                fill_type="explicit",
+            )
+        )
     return DiscrimEvalDataset(samples)
 
 
 # ---------------------------------------------------------------------------
 # HHRLHFDPOTrainer tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def hh_trainer():
@@ -202,6 +216,7 @@ def test_hh_rlhf_trainer_train_step_returns_metrics(hh_trainer):
 def test_hh_rlhf_trainer_train_step_loss_positive(hh_trainer):
     """DPO loss must be positive and finite."""
     import math
+
     samples = _make_hh_samples(n=2)
     metrics = hh_trainer.train_step(samples)
     assert math.isfinite(metrics["loss"])
@@ -212,10 +227,12 @@ def test_hh_rlhf_trainer_train_step_loss_positive(hh_trainer):
 # PersuasionRewardTrainer tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def persuasion_trainer():
     torch.manual_seed(1)
     from src.alignment.reward_model import RewardModelConfig
+
     backbone = _make_model()
     # backbone returns (loss, logits, kv) tuple; logits dim == vocab_size
     rm_cfg = RewardModelConfig(d_model=VOCAB_SIZE)  # logits dim == vocab_size
@@ -245,6 +262,7 @@ def test_persuasion_reward_trainer_normalization(persuasion_trainer):
 def test_persuasion_reward_trainer_train_step_metrics(persuasion_trainer):
     """train_step returns dict with 'loss' and 'mae' as finite floats."""
     import math
+
     samples = _make_persuasion_samples(n=4)
     metrics = persuasion_trainer.train_step(samples)
     assert "loss" in metrics
@@ -258,6 +276,7 @@ def test_persuasion_reward_trainer_train_step_metrics(persuasion_trainer):
 # ---------------------------------------------------------------------------
 # AlignmentFakingTrainer tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def af_trainer():
@@ -290,6 +309,7 @@ def test_alignment_faking_trainer_labels_binary(af_trainer):
 def test_alignment_faking_trainer_train_step_metrics(af_trainer):
     """train_step returns dict with 'loss', 'accuracy', 'faking_recall' as finite floats."""
     import math
+
     samples = _make_alignment_faking_samples(n=4)
     metrics = af_trainer.train_step(samples)
     assert "loss" in metrics
@@ -303,6 +323,7 @@ def test_alignment_faking_trainer_train_step_metrics(af_trainer):
 # ---------------------------------------------------------------------------
 # evaluate_model_behavior tests
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_model_behavior_returns_result():
     """evaluate_model_behavior returns a BehaviorEvalResult."""
@@ -340,6 +361,7 @@ def test_evaluate_model_behavior_rate_range():
 # ---------------------------------------------------------------------------
 # evaluate_demographic_fairness tests
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_demographic_fairness_returns_list():
     """evaluate_demographic_fairness returns a list of FairnessEvalResult."""

@@ -8,19 +8,19 @@ References:
     Han et al. 2015 (Deep Compression) — https://arxiv.org/abs/1510.00149
     Frankle & Carlin 2019 (Lottery Ticket) — https://arxiv.org/abs/1803.03635
 """
+
 from __future__ import annotations
 
 import math
-from typing import Dict
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SparsityStats
 # ---------------------------------------------------------------------------
+
 
 class SparsityStats:
     """Measures the fraction of zero-valued weights in a model or tensor."""
@@ -36,12 +36,9 @@ class SparsityStats:
         zeros = (param == 0).sum().item()
         return zeros / total
 
-    def model_sparsity(self, model: nn.Module) -> Dict[str, float]:
+    def model_sparsity(self, model: nn.Module) -> dict[str, float]:
         """Return ``{name: sparsity_fraction}`` for every named parameter."""
-        return {
-            name: self.layer_sparsity(param.data)
-            for name, param in model.named_parameters()
-        }
+        return {name: self.layer_sparsity(param.data) for name, param in model.named_parameters()}
 
     def total_sparsity(self, model: nn.Module) -> float:
         """Overall fraction of zero parameters across all weights."""
@@ -58,6 +55,7 @@ class SparsityStats:
 # ---------------------------------------------------------------------------
 # MagnitudePruner
 # ---------------------------------------------------------------------------
+
 
 class MagnitudePruner:
     """Prunes the smallest-magnitude weights to achieve a target sparsity."""
@@ -115,13 +113,13 @@ class MagnitudePruner:
 
         return mask
 
-    def prune_model(self, model: nn.Module) -> Dict[str, Tensor]:
+    def prune_model(self, model: nn.Module) -> dict[str, Tensor]:
         """Prune all parameters of *model*.
 
         Returns:
             Dict mapping parameter name to its boolean keep-mask.
         """
-        masks: Dict[str, Tensor] = {}
+        masks: dict[str, Tensor] = {}
         for name, param in model.named_parameters():
             masks[name] = self.prune_layer(param, mask_only=False)
         return masks
@@ -130,6 +128,7 @@ class MagnitudePruner:
 # ---------------------------------------------------------------------------
 # GradientSensitivityPruner
 # ---------------------------------------------------------------------------
+
 
 class GradientSensitivityPruner:
     """Prunes weights by gradient sensitivity: |weight * gradient|."""
@@ -148,12 +147,12 @@ class GradientSensitivityPruner:
             return (param.data * param.grad).abs()
         return param.data.abs()
 
-    def prune_by_sensitivity(self, model: nn.Module) -> Dict[str, Tensor]:
+    def prune_by_sensitivity(self, model: nn.Module) -> dict[str, Tensor]:
         """Prune each parameter by sensitivity, return keep-masks.
 
         Parameters whose grad is None fall back to magnitude-based pruning.
         """
-        masks: Dict[str, Tensor] = {}
+        masks: dict[str, Tensor] = {}
         for name, param in model.named_parameters():
             sensitivity = self.compute_sensitivity(param)
             n = sensitivity.numel()
@@ -178,6 +177,7 @@ class GradientSensitivityPruner:
 # LotteryTicketAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class LotteryTicketAnalyzer:
     """Implements the Lottery Ticket Hypothesis (Frankle & Carlin 2019).
 
@@ -192,15 +192,15 @@ class LotteryTicketAnalyzer:
     def __init__(self) -> None:
         pass
 
-    def save_initial_weights(self, model: nn.Module) -> Dict[str, Tensor]:
+    def save_initial_weights(self, model: nn.Module) -> dict[str, Tensor]:
         """Return ``{name: param.data.clone()}`` for all parameters."""
         return {name: param.data.clone() for name, param in model.named_parameters()}
 
     def reset_to_ticket(
         self,
         model: nn.Module,
-        initial_weights: Dict[str, Tensor],
-        masks: Dict[str, Tensor],
+        initial_weights: dict[str, Tensor],
+        masks: dict[str, Tensor],
     ) -> None:
         """Reset *model* to ``initial_weights * masks`` (rewind with sparsity).
 
@@ -218,8 +218,8 @@ class LotteryTicketAnalyzer:
 
     def ticket_similarity(
         self,
-        weights1: Dict[str, Tensor],
-        weights2: Dict[str, Tensor],
+        weights1: dict[str, Tensor],
+        weights2: dict[str, Tensor],
     ) -> float:
         """Cosine similarity between the flattened weight vectors.
 
@@ -246,6 +246,7 @@ class LotteryTicketAnalyzer:
 # ---------------------------------------------------------------------------
 # PruningScheduler
 # ---------------------------------------------------------------------------
+
 
 class PruningScheduler:
     """Gradually increases sparsity from *initial_sparsity* to *final_sparsity*.
@@ -291,8 +292,4 @@ class PruningScheduler:
 
     def should_prune(self, step: int) -> bool:
         """Return True if pruning should occur at *step*."""
-        return (
-            step >= self.start_step
-            and step <= self.end_step
-            and step % self.frequency == 0
-        )
+        return step >= self.start_step and step <= self.end_step and step % self.frequency == 0

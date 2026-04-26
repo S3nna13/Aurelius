@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.evaluation.faithfulness_scorer import (
+    FAITHFULNESS_SCORER_REGISTRY,
     FaithfulnessResult,
     FaithfulnessScorer,
-    FAITHFULNESS_SCORER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -33,11 +34,10 @@ SCIENCE_SOURCE = (
 # FaithfulnessResult dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestFaithfulnessResultFrozen:
     def test_is_frozen(self):
-        result = FaithfulnessResult(
-            score=1.0, supported_claims=2, total_claims=2, unsupported=[]
-        )
+        result = FaithfulnessResult(score=1.0, supported_claims=2, total_claims=2, unsupported=[])
         with pytest.raises((AttributeError, TypeError)):
             result.score = 0.0  # type: ignore[misc]
 
@@ -55,6 +55,7 @@ class TestFaithfulnessResultFrozen:
 # ---------------------------------------------------------------------------
 # _split_claims
 # ---------------------------------------------------------------------------
+
 
 class TestSplitClaims:
     def test_splits_on_period_space(self, scorer):
@@ -91,6 +92,7 @@ class TestSplitClaims:
 # _word_overlap
 # ---------------------------------------------------------------------------
 
+
 class TestWordOverlap:
     def test_identical_strings_overlap_one(self, scorer):
         assert math.isclose(scorer._word_overlap("the cat", "the cat"), 1.0)
@@ -112,6 +114,7 @@ class TestWordOverlap:
 # ---------------------------------------------------------------------------
 # score — single pair
 # ---------------------------------------------------------------------------
+
 
 class TestScore:
     def test_identical_generated_source_score_one(self, scorer):
@@ -202,6 +205,7 @@ class TestScore:
 # batch_score
 # ---------------------------------------------------------------------------
 
+
 class TestBatchScore:
     def test_batch_score_returns_list(self, scorer):
         pairs = [
@@ -239,6 +243,7 @@ class TestBatchScore:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

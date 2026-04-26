@@ -5,30 +5,30 @@ Augmentation techniques that operate on tokenized sequences (integers),
 not raw text. Useful for training LLMs on limited data.
 """
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, Callable
 import random
+from dataclasses import dataclass
+
 import torch
 
 
 @dataclass
 class AugmentationConfig:
-    random_deletion_prob: float = 0.1    # probability of deleting a token
-    random_swap_prob: float = 0.1        # probability of swapping adjacent tokens
-    random_insertion_prob: float = 0.0   # probability of inserting random token
-    mask_token_id: int = 0               # token id used for masking (like <mask>)
-    mask_prob: float = 0.15              # MLM-style masking probability
-    vocab_size: int = 128                # needed for random token insertion
-    keep_special_tokens: bool = True     # don't augment first/last token (BOS/EOS)
-    seed: Optional[int] = None
+    random_deletion_prob: float = 0.1  # probability of deleting a token
+    random_swap_prob: float = 0.1  # probability of swapping adjacent tokens
+    random_insertion_prob: float = 0.0  # probability of inserting random token
+    mask_token_id: int = 0  # token id used for masking (like <mask>)
+    mask_prob: float = 0.15  # MLM-style masking probability
+    vocab_size: int = 128  # needed for random token insertion
+    keep_special_tokens: bool = True  # don't augment first/last token (BOS/EOS)
+    seed: int | None = None
 
 
 def random_deletion(
-    tokens: List[int],
+    tokens: list[int],
     prob: float = 0.1,
     keep_special_tokens: bool = True,
-    rng: Optional[random.Random] = None,
-) -> List[int]:
+    rng: random.Random | None = None,
+) -> list[int]:
     """Delete each token with probability prob. Never deletes first/last if keep_special."""
     if rng is None:
         rng = random.Random()
@@ -51,11 +51,11 @@ def random_deletion(
 
 
 def random_swap(
-    tokens: List[int],
+    tokens: list[int],
     prob: float = 0.1,
     keep_special_tokens: bool = True,
-    rng: Optional[random.Random] = None,
-) -> List[int]:
+    rng: random.Random | None = None,
+) -> list[int]:
     """Swap each token with its right neighbor with probability prob."""
     if rng is None:
         rng = random.Random()
@@ -81,12 +81,12 @@ def random_swap(
 
 
 def random_insertion(
-    tokens: List[int],
+    tokens: list[int],
     prob: float = 0.1,
     vocab_size: int = 128,
     keep_special_tokens: bool = True,
-    rng: Optional[random.Random] = None,
-) -> List[int]:
+    rng: random.Random | None = None,
+) -> list[int]:
     """Insert a random token after each position with probability prob."""
     if rng is None:
         rng = random.Random()
@@ -111,13 +111,13 @@ def random_insertion(
 
 
 def mlm_masking(
-    tokens: List[int],
+    tokens: list[int],
     mask_token_id: int,
     mask_prob: float = 0.15,
     vocab_size: int = 128,
     keep_special_tokens: bool = True,
-    rng: Optional[random.Random] = None,
-) -> Tuple[List[int], List[int]]:
+    rng: random.Random | None = None,
+) -> tuple[list[int], list[int]]:
     """
     BERT-style masked language modeling.
     80% replace with mask_token_id
@@ -147,13 +147,13 @@ def mlm_masking(
 
 
 def span_masking(
-    tokens: List[int],
+    tokens: list[int],
     mask_token_id: int,
     avg_span_length: float = 3.0,
     mask_ratio: float = 0.15,
     keep_special_tokens: bool = True,
-    rng: Optional[random.Random] = None,
-) -> Tuple[List[int], List[int]]:
+    rng: random.Random | None = None,
+) -> tuple[list[int], list[int]]:
     """
     T5-style span masking: mask contiguous spans of tokens.
     Returns: (masked, labels) of same length as input.
@@ -200,11 +200,11 @@ def span_masking(
 
 
 def token_cutout(
-    tokens: List[int],
+    tokens: list[int],
     cutout_len: int = 5,
     mask_token_id: int = 0,
-    rng: Optional[random.Random] = None,
-) -> List[int]:
+    rng: random.Random | None = None,
+) -> list[int]:
     """Replace a contiguous random span of length cutout_len with mask_token_id."""
     if rng is None:
         rng = random.Random()
@@ -223,10 +223,10 @@ def token_cutout(
 
 
 def mixup_sequences(
-    tokens_a: List[int],
-    tokens_b: List[int],
+    tokens_a: list[int],
+    tokens_b: list[int],
     alpha: float = 0.5,
-) -> List[int]:
+) -> list[int]:
     """
     Token-level mixup: interleave tokens from two sequences.
     Returns sequence of length max(len(a), len(b)).
@@ -265,7 +265,7 @@ class TokenAugmentor:
         else:
             self._rng = random.Random()
 
-    def augment(self, tokens: List[int]) -> List[int]:
+    def augment(self, tokens: list[int]) -> list[int]:
         """Apply all enabled augmentations in order."""
         cfg = self.config
         result = tokens[:]
@@ -297,7 +297,7 @@ class TokenAugmentor:
 
         return result
 
-    def augment_batch(self, batch: List[List[int]]) -> List[List[int]]:
+    def augment_batch(self, batch: list[list[int]]) -> list[list[int]]:
         """Augment a batch of token sequences."""
         return [self.augment(tokens) for tokens in batch]
 
@@ -325,7 +325,7 @@ class TokenAugmentor:
         else:
             raise ValueError(f"Expected 1D or 2D tensor, got {tokens.dim()}D")
 
-    def mlm_augment(self, tokens: List[int]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def mlm_augment(self, tokens: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
         """Return (masked_input, labels) tensors for MLM training."""
         masked, labels = mlm_masking(
             tokens,

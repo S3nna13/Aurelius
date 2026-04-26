@@ -10,8 +10,8 @@ from src.memory.progressive_search import (
     DEFAULT_PROGRESSIVE_SEARCHER,
     PROGRESSIVE_SEARCH_REGISTRY,
     IndexEntry,
-    ProgressiveSearchError,
     ProgressiveSearcher,
+    ProgressiveSearchError,
     SearchResult,
 )
 

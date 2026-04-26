@@ -20,8 +20,7 @@ Recurrence per parameter, step k:
 
 from __future__ import annotations
 
-import math
-from typing import Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
 
 import torch
 from torch.optim import Optimizer
@@ -80,7 +79,7 @@ class AdaBelief(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable] = None):
+    def step(self, closure: Callable | None = None):
         """Perform a single optimisation step.
 
         Args:
@@ -115,12 +114,8 @@ class AdaBelief(Optimizer):
 
                 if len(state) == 0:
                     state["step"] = 0
-                    state["exp_avg"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
-                    state["exp_avg_var"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
+                    state["exp_avg"] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                    state["exp_avg_var"] = torch.zeros_like(p, memory_format=torch.preserve_format)
                     if amsgrad:
                         state["max_exp_avg_var"] = torch.zeros_like(
                             p, memory_format=torch.preserve_format
@@ -132,8 +127,8 @@ class AdaBelief(Optimizer):
                 step = state["step"]
 
                 # Bias corrections
-                bias_correction1 = 1.0 - beta1 ** step
-                bias_correction2 = 1.0 - beta2 ** step
+                bias_correction1 = 1.0 - beta1**step
+                bias_correction2 = 1.0 - beta2**step
 
                 # Fixed-decay weight decay (applied before the gradient step)
                 if wd != 0.0 and fixed_decay:
@@ -146,9 +141,7 @@ class AdaBelief(Optimizer):
                 grad_residual = grad - exp_avg
 
                 # Update biased second moment estimate (belief)
-                exp_avg_var.mul_(beta2).addcmul_(
-                    grad_residual, grad_residual, value=1.0 - beta2
-                )
+                exp_avg_var.mul_(beta2).addcmul_(grad_residual, grad_residual, value=1.0 - beta2)
                 exp_avg_var.add_(eps)
 
                 if amsgrad:

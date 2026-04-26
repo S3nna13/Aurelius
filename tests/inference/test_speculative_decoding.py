@@ -3,17 +3,16 @@
 Covers SpeculativeConfig, DraftModel, SpeculativeVerifier, and SpeculativeDecoder
 with ≥12 tests as required.
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn.functional as F
-
 from aurelius.inference.speculative_decoding import (
-    SpeculativeConfig,
     DraftModel,
-    SpeculativeVerifier,
+    SpeculativeConfig,
     SpeculativeDecoder,
+    SpeculativeVerifier,
 )
 
 # ---------------------------------------------------------------------------
@@ -52,6 +51,7 @@ def _uniform_model_fn(ids: torch.Tensor) -> torch.Tensor:
 # 1. SpeculativeConfig defaults are sane
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SpeculativeConfig()
     assert cfg.n_draft_tokens == 5
@@ -63,6 +63,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. DraftModel.autoregressive_draft returns correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_draft_model_shapes():
     n = 5
@@ -79,6 +80,7 @@ def test_draft_model_shapes():
 # 3. Draft tokens are in vocab range
 # ---------------------------------------------------------------------------
 
+
 def test_draft_tokens_in_vocab_range():
     draft = DraftModel(_random_model_fn, VOCAB_SIZE)
     prompt = _make_prompt()
@@ -90,6 +92,7 @@ def test_draft_tokens_in_vocab_range():
 # ---------------------------------------------------------------------------
 # 4. SpeculativeVerifier.verify — perfect match (p_target == p_draft) accepts all K
 # ---------------------------------------------------------------------------
+
 
 def test_verify_perfect_match_accepts_all():
     """When draft and target distributions are identical, all tokens accepted."""
@@ -108,6 +111,7 @@ def test_verify_perfect_match_accepts_all():
 # 5. SpeculativeVerifier.verify — zero target prob at draft token → always reject
 # ---------------------------------------------------------------------------
 
+
 def test_verify_zero_target_prob_always_rejects():
     """When target assigns 0 prob to the draft token, reject at first position."""
     verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
@@ -120,7 +124,7 @@ def test_verify_zero_target_prob_always_rejects():
     draft_probs[:, 1] = 0.5
 
     target_probs = torch.zeros(K, VOCAB_SIZE)
-    target_probs[:, 0] = 0.0   # zero at draft token
+    target_probs[:, 0] = 0.0  # zero at draft token
     target_probs[:, 1:] = 1.0 / (VOCAB_SIZE - 1)  # uniform elsewhere
 
     accepted_tokens, n_accepted = verifier.verify(draft_ids, draft_probs, target_probs)
@@ -131,10 +135,11 @@ def test_verify_zero_target_prob_always_rejects():
 # 6. verify returns n_accepted in [0, K]
 # ---------------------------------------------------------------------------
 
+
 def test_verify_n_accepted_in_bounds():
     verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
     K = 5
-    probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+    F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
     draft_ids = torch.randint(0, VOCAB_SIZE, (K,))
     draft_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
     target_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
@@ -146,6 +151,7 @@ def test_verify_n_accepted_in_bounds():
 # ---------------------------------------------------------------------------
 # 7. Accepted tokens are all in vocab range
 # ---------------------------------------------------------------------------
+
 
 def test_accepted_tokens_in_vocab_range():
     verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
@@ -163,6 +169,7 @@ def test_accepted_tokens_in_vocab_range():
 # 8. sample_from_logits returns valid token id
 # ---------------------------------------------------------------------------
 
+
 def test_sample_from_logits_valid():
     verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
     logits = torch.randn(VOCAB_SIZE)
@@ -174,6 +181,7 @@ def test_sample_from_logits_valid():
 # ---------------------------------------------------------------------------
 # 9. SpeculativeDecoder.generate returns correct length (max_new_tokens)
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_generate_correct_length():
     cfg = SpeculativeConfig(n_draft_tokens=3, temperature=1.0, max_new_tokens=10)
@@ -187,12 +195,11 @@ def test_decoder_generate_correct_length():
 # 10. Deterministic identical draft/target accepts all K tokens per step
 # ---------------------------------------------------------------------------
 
+
 def test_identical_models_high_acceptance():
     """With identical draft and target models, acceptance rate should be high."""
     cfg = SpeculativeConfig(n_draft_tokens=4, temperature=1.0, max_new_tokens=20)
-    decoder = SpeculativeDecoder(
-        _deterministic_model_fn, _deterministic_model_fn, VOCAB_SIZE, cfg
-    )
+    decoder = SpeculativeDecoder(_deterministic_model_fn, _deterministic_model_fn, VOCAB_SIZE, cfg)
     prompt = _make_prompt()
     out = decoder.generate(prompt, max_new_tokens=20)
     # Output must be exactly max_new_tokens
@@ -202,6 +209,7 @@ def test_identical_models_high_acceptance():
 # ---------------------------------------------------------------------------
 # 11. Works with K=1 (single draft token)
 # ---------------------------------------------------------------------------
+
 
 def test_k1_single_draft_token():
     cfg = SpeculativeConfig(n_draft_tokens=1, temperature=1.0, max_new_tokens=8)
@@ -217,6 +225,7 @@ def test_k1_single_draft_token():
 # 12. Temperature very small (near-zero) acts greedy
 # ---------------------------------------------------------------------------
 
+
 def test_small_temperature_greedy_behavior():
     """With very small temperature, draft model should be deterministic/greedy."""
     draft = DraftModel(_deterministic_model_fn, VOCAB_SIZE)
@@ -231,6 +240,7 @@ def test_small_temperature_greedy_behavior():
 # 13. SpeculativeDecoder.generate output tokens are valid vocab ids
 # ---------------------------------------------------------------------------
 
+
 def test_generate_output_in_vocab_range():
     cfg = SpeculativeConfig(n_draft_tokens=4, temperature=1.0, max_new_tokens=12)
     decoder = SpeculativeDecoder(_random_model_fn, _random_model_fn, VOCAB_SIZE, cfg)
@@ -244,6 +254,7 @@ def test_generate_output_in_vocab_range():
 # 14. Config with non-default values is respected
 # ---------------------------------------------------------------------------
 
+
 def test_config_custom_values():
     cfg = SpeculativeConfig(n_draft_tokens=3, temperature=0.8, top_p=0.9, max_new_tokens=64)
     assert cfg.n_draft_tokens == 3
@@ -255,6 +266,7 @@ def test_config_custom_values():
 # ---------------------------------------------------------------------------
 # 15. verify returns at least 1 token (corrected or bonus)
 # ---------------------------------------------------------------------------
+
 
 def test_verify_always_returns_at_least_one_token():
     verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)

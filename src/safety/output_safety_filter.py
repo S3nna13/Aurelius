@@ -35,7 +35,6 @@ remain meaningful.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
 
 from src.safety.harm_taxonomy_classifier import (
     HARM_CATEGORIES,
@@ -102,7 +101,7 @@ class FilterDecision:
 
     action: str
     reason: str
-    redacted_text: Optional[str]
+    redacted_text: str | None
     signal_breakdown: dict = field(default_factory=dict)
 
 
@@ -144,9 +143,7 @@ class OutputSafetyPolicy:
 
     def __post_init__(self) -> None:
         if self.mode not in _MODES:
-            raise ValueError(
-                f"unknown mode {self.mode!r}; expected one of {sorted(_MODES)}"
-            )
+            raise ValueError(f"unknown mode {self.mode!r}; expected one of {sorted(_MODES)}")
         if not isinstance(self.harm_threshold, (int, float)):
             raise TypeError("harm_threshold must be a real number")
         if not 0.0 <= float(self.harm_threshold) <= 1.0:
@@ -155,9 +152,7 @@ class OutputSafetyPolicy:
         for name in ("pii_action", "jailbreak_action", "injection_action"):
             val = getattr(self, name)
             if val not in _ACTIONS:
-                raise ValueError(
-                    f"unknown {name}={val!r}; expected one of {sorted(_ACTIONS)}"
-                )
+                raise ValueError(f"unknown {name}={val!r}; expected one of {sorted(_ACTIONS)}")
         if not isinstance(self.max_buffer_chars, int):
             raise TypeError("max_buffer_chars must be int")
         if self.max_buffer_chars <= 0:
@@ -188,13 +183,12 @@ class OutputSafetyFilter:
     supplied ``buffer`` argument.
     """
 
-    def __init__(self, policy: Optional[OutputSafetyPolicy] = None) -> None:
+    def __init__(self, policy: OutputSafetyPolicy | None = None) -> None:
         if policy is None:
             policy = OutputSafetyPolicy()
         elif not isinstance(policy, OutputSafetyPolicy):
             raise TypeError(
-                "policy must be an OutputSafetyPolicy or None, got "
-                f"{type(policy).__name__}"
+                f"policy must be an OutputSafetyPolicy or None, got {type(policy).__name__}"
             )
         self.policy = policy
 
@@ -209,9 +203,7 @@ class OutputSafetyFilter:
             harm_thr = policy.harm_threshold
 
         self._jailbreak = JailbreakDetector(threshold=jb_thr)
-        self._injection = PromptInjectionScanner(
-            threshold=inj_thr, strict_mode=False
-        )
+        self._injection = PromptInjectionScanner(threshold=inj_thr, strict_mode=False)
         # Apply harm threshold uniformly to every category.
         harm_overrides = {cat: harm_thr for cat in HARM_CATEGORIES}
         self._harm = HarmTaxonomyClassifier(thresholds=harm_overrides)
@@ -242,9 +234,7 @@ class OutputSafetyFilter:
                 redacted_text=None,
                 signal_breakdown={
                     "jailbreak": {"score": 0.0, "triggered": False, "signals": []},
-                    "prompt_injection": {
-                        "score": 0.0, "triggered": False, "signals": []
-                    },
+                    "prompt_injection": {"score": 0.0, "triggered": False, "signals": []},
                     "harm_taxonomy": {
                         "max_score": 0.0,
                         "flagged": False,
@@ -263,7 +253,7 @@ class OutputSafetyFilter:
         pii_matches = self._pii.detect(raw)
 
         # --- Collect candidate actions ------------------------------------
-        candidates: list[Tuple[str, str]] = []  # (action, reason)
+        candidates: list[tuple[str, str]] = []  # (action, reason)
 
         if jb_result.is_jailbreak:
             action = self.policy.jailbreak_action
@@ -302,7 +292,7 @@ class OutputSafetyFilter:
                 )
             )
 
-        redacted_by_pii: Optional[str] = None
+        redacted_by_pii: str | None = None
         if pii_matches:
             action = self.policy.pii_action
             if action == "redact":
@@ -325,9 +315,7 @@ class OutputSafetyFilter:
             # action == "allow" -> PII signal is ignored for decision.
 
         # --- Pick highest-priority action ---------------------------------
-        signal_breakdown = self._build_breakdown(
-            jb_result, inj_result, harm_result, pii_matches
-        )
+        signal_breakdown = self._build_breakdown(jb_result, inj_result, harm_result, pii_matches)
 
         if not candidates:
             return FilterDecision(
@@ -372,9 +360,7 @@ class OutputSafetyFilter:
     # Streaming filter
     # --------------------------------------------------------------------- #
 
-    def filter_chunk(
-        self, chunk: object, buffer: str = ""
-    ) -> Tuple[FilterDecision, str]:
+    def filter_chunk(self, chunk: object, buffer: str = "") -> tuple[FilterDecision, str]:
         """Buffered streaming-mode filter.
 
         The caller accumulates incoming chunks into ``buffer`` and invokes
@@ -412,9 +398,7 @@ class OutputSafetyFilter:
     # Internals
     # --------------------------------------------------------------------- #
 
-    def _build_breakdown(
-        self, jb_result, inj_result, harm_result, pii_matches
-    ) -> dict:
+    def _build_breakdown(self, jb_result, inj_result, harm_result, pii_matches) -> dict:
         return {
             "jailbreak": {
                 "score": float(jb_result.score),
@@ -434,8 +418,7 @@ class OutputSafetyFilter:
             },
             "pii": {
                 "matches": [
-                    {"type": m.type, "span": list(m.span),
-                     "confidence": float(m.confidence)}
+                    {"type": m.type, "span": list(m.span), "confidence": float(m.confidence)}
                     for m in pii_matches
                 ],
                 "count": len(pii_matches),

@@ -1,16 +1,17 @@
 """Tests for src/alignment/preference_collector.py."""
 
 import pytest
-from src.alignment.preference_collector import (
-    PreferenceItem,
-    PreferenceCollector,
-    PREFERENCE_COLLECTOR,
-)
 
+from src.alignment.preference_collector import (
+    PREFERENCE_COLLECTOR,
+    PreferenceCollector,
+    PreferenceItem,
+)
 
 # ---------------------------------------------------------------------------
 # PreferenceItem dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPreferenceItem:
     def test_auto_generates_id(self):
@@ -50,6 +51,7 @@ class TestPreferenceItem:
 # PreferenceCollector.add
 # ---------------------------------------------------------------------------
 
+
 class TestPreferenceCollectorAdd:
     def setup_method(self):
         self.collector = PreferenceCollector()
@@ -76,6 +78,7 @@ class TestPreferenceCollectorAdd:
 # PreferenceCollector.get
 # ---------------------------------------------------------------------------
 
+
 class TestPreferenceCollectorGet:
     def setup_method(self):
         self.collector = PreferenceCollector()
@@ -95,6 +98,7 @@ class TestPreferenceCollectorGet:
 # ---------------------------------------------------------------------------
 # PreferenceCollector.sample
 # ---------------------------------------------------------------------------
+
 
 class TestPreferenceCollectorSample:
     def setup_method(self):
@@ -137,6 +141,7 @@ class TestPreferenceCollectorSample:
 # ---------------------------------------------------------------------------
 # PreferenceCollector.to_chatml_pairs
 # ---------------------------------------------------------------------------
+
 
 class TestPreferenceCollectorToChatmlPairs:
     def setup_method(self):
@@ -185,6 +190,7 @@ class TestPreferenceCollectorToChatmlPairs:
 # PreferenceCollector.filter_by_annotator
 # ---------------------------------------------------------------------------
 
+
 class TestPreferenceCollectorFilterByAnnotator:
     def setup_method(self):
         self.collector = PreferenceCollector()
@@ -212,6 +218,7 @@ class TestPreferenceCollectorFilterByAnnotator:
 # ---------------------------------------------------------------------------
 # PreferenceCollector.stats
 # ---------------------------------------------------------------------------
+
 
 class TestPreferenceCollectorStats:
     def setup_method(self):
@@ -254,10 +261,11 @@ class TestPreferenceCollectorStats:
 # Max items eviction
 # ---------------------------------------------------------------------------
 
+
 class TestPreferenceCollectorMaxItems:
     def test_max_items_eviction(self):
         collector = PreferenceCollector(max_items=3)
-        items = [collector.add(f"p{i}", f"c{i}", f"r{i}") for i in range(5)]
+        [collector.add(f"p{i}", f"c{i}", f"r{i}") for i in range(5)]
         assert collector.stats()["total"] == 3
 
     def test_oldest_items_evicted(self):
@@ -279,6 +287,7 @@ class TestPreferenceCollectorMaxItems:
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 class TestPreferenceCollectorSingleton:
     def test_preference_collector_exists(self):

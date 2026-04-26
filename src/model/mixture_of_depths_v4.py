@@ -7,7 +7,6 @@ Pure PyTorch, no external dependencies.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
 
 
 class TokenRouter(nn.Module):
@@ -74,7 +73,7 @@ class MoDBlock(nn.Module):
         mask, router_logits = self.router(x)  # (B, T), (B, T)
 
         # Auxiliary loss: prevent router collapse
-        aux_loss = (router_logits ** 2).mean() * 0.01
+        aux_loss = (router_logits**2).mean() * 0.01
 
         # Start with residual copy; we will overwrite selected positions
         output = x.clone()
@@ -109,19 +108,15 @@ class MoDTransformer(nn.Module):
         n_layers: int,
         n_heads: int,
         vocab_size: int,
-        capacity_factors: Optional[list] = None,
+        capacity_factors: list | None = None,
     ):
         super().__init__()
         if capacity_factors is None:
             capacity_factors = [0.5] * n_layers
-        assert len(capacity_factors) == n_layers, (
-            "capacity_factors length must equal n_layers"
-        )
+        assert len(capacity_factors) == n_layers, "capacity_factors length must equal n_layers"  # noqa: S101
 
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.blocks = nn.ModuleList(
-            [MoDBlock(d_model, n_heads, cf) for cf in capacity_factors]
-        )
+        self.blocks = nn.ModuleList([MoDBlock(d_model, n_heads, cf) for cf in capacity_factors])
         self.norm = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, vocab_size, bias=False)
 

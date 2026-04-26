@@ -1,12 +1,13 @@
 """Scheduled quantization: gradually reduce bit-width during training."""
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class QuantSchedule(str, Enum):
+class QuantSchedule(StrEnum):
     LINEAR = "linear"
     COSINE = "cosine"
     STEP = "step"
@@ -79,9 +80,7 @@ class QuantizationScheduler:
         scale = self.initial_bits / safe
         return QuantizationStep(step=int(step), bits=bits, scale=scale)
 
-    def schedule_summary(
-        self, num_checkpoints: int = 10
-    ) -> list[QuantizationStep]:
+    def schedule_summary(self, num_checkpoints: int = 10) -> list[QuantizationStep]:
         num_checkpoints = max(1, int(num_checkpoints))
         if num_checkpoints == 1:
             return [self.get_step(0)]

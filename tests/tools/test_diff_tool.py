@@ -1,8 +1,6 @@
 import tempfile
-from pathlib import Path
-import pytest
-from src.tools.diff_tool import DiffTool, DiffFormat, DiffResult, DIFF_TOOL_REGISTRY
 
+from src.tools.diff_tool import DIFF_TOOL_REGISTRY, DiffFormat, DiffResult, DiffTool
 
 A = "line1\nline2\nline3\n"
 B = "line1\nlineX\nline3\nline4\n"

@@ -9,23 +9,23 @@ thinking.
 Reference: Hao et al., "Training Large Language Models to Reason in a
 Continuous Latent Space" (2024). https://arxiv.org/abs/2412.06769
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import torch
 import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CoCoNutConfig:
     d_model: int = 2048
-    n_continuous_steps: int = 8        # reasoning steps in latent space
+    n_continuous_steps: int = 8  # reasoning steps in latent space
     continuous_step_hidden: int | None = None  # if None, defaults to d_model
     dropout: float = 0.0
     use_layer_norm: bool = True
@@ -34,6 +34,7 @@ class CoCoNutConfig:
 # ---------------------------------------------------------------------------
 # Single residual latent reasoning step
 # ---------------------------------------------------------------------------
+
 
 class ContinuousReasoningStep(nn.Module):
     """Single residual latent reasoning step.
@@ -79,6 +80,7 @@ class ContinuousReasoningStep(nn.Module):
 # ---------------------------------------------------------------------------
 # Chain of Continuous Thought reasoner
 # ---------------------------------------------------------------------------
+
 
 class CoCoNut(nn.Module):
     """Chain of Continuous Thought reasoner (CoCoNut).

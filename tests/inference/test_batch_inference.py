@@ -51,6 +51,7 @@ def model() -> TinyModel:
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def make_seq(length: int, vocab: int = VOCAB) -> Tensor:
     return torch.randint(1, vocab, (length,))
 
@@ -58,6 +59,7 @@ def make_seq(length: int, vocab: int = VOCAB) -> Tensor:
 # ===========================================================================
 # DynamicPadder tests
 # ===========================================================================
+
 
 def test_dynamic_padder_pad_batch_shape():
     """pad_batch output has correct (B, max_len) shape and mask shape."""
@@ -91,7 +93,6 @@ def test_dynamic_padder_right_vs_left_positions():
     right_pad, right_mask = right_padder.pad_batch([seq_short, seq_long])
     left_pad, left_mask = left_padder.pad_batch([seq_short, seq_long])
 
-    max_len = 5
     # Right-padded: real tokens at positions 0,1,2; zeros at 3,4
     assert right_pad[0, 0].item() == 1
     assert right_pad[0, 4].item() == 0
@@ -130,12 +131,13 @@ def test_dynamic_padder_overhead_range():
 # BucketBatcher tests
 # ===========================================================================
 
+
 def test_bucket_batcher_correct_bucket_assignment():
     """Sequences go to the smallest bucket whose boundary >= their length."""
     batcher = BucketBatcher(bucket_boundaries=[4, 8], batch_size=2)
-    short = make_seq(3)   # -> bucket 0 (boundary 4)
+    short = make_seq(3)  # -> bucket 0 (boundary 4)
     medium = make_seq(5)  # -> bucket 1 (boundary 8)
-    long_ = make_seq(9)   # -> overflow bucket
+    long_ = make_seq(9)  # -> overflow bucket
 
     batcher.add(short)
     batcher.add(medium)
@@ -182,6 +184,7 @@ def test_bucket_batcher_n_waiting_decreases_after_get_batch():
 # ContinuousBatcher tests
 # ===========================================================================
 
+
 def test_continuous_batcher_add_request_increments_ids(model: TinyModel):
     """add_request returns incrementing integer request ids starting from 0."""
     batcher = ContinuousBatcher(max_batch_size=4, max_seq_len=16)
@@ -218,6 +221,7 @@ def test_continuous_batcher_active_count_decreases(model: TinyModel):
 # ThroughputBenchmark tests
 # ===========================================================================
 
+
 def test_throughput_batch_efficiency_in_range():
     """batch_efficiency is in (0, 1] for valid inputs."""
     bench = ThroughputBenchmark()
@@ -238,6 +242,7 @@ def test_throughput_tokens_per_second_positive_finite(model: TinyModel):
 # ===========================================================================
 # PrefixCacheManager tests
 # ===========================================================================
+
 
 def test_prefix_cache_compute_prefix_kv_not_none(model: TinyModel):
     """compute_prefix_kv returns non-None (keys, values) tensors."""

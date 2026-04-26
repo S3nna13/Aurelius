@@ -159,6 +159,7 @@ def test_document_parser_json():
 def test_qformer_cross_modal():
     """Build QFormer via from_config, run forward with random vision features, verify shape."""
     import torch
+
     from src.multimodal.cross_modal_attention import CrossModalConfig, QFormer
 
     cfg = CrossModalConfig(d_model=64, n_heads=4, n_layers=2, n_query_tokens=8)
@@ -174,6 +175,7 @@ def test_qformer_cross_modal():
 def test_speech_fusion_encoder():
     """Build SpeechFusionEncoder, run forward with random audio+text, verify shape."""
     import torch
+
     from src.multimodal.audio_speech_fusion import SpeechFusionConfig, SpeechFusionEncoder
 
     cfg = SpeechFusionConfig(
@@ -192,6 +194,7 @@ def test_speech_fusion_encoder():
 def test_multimodal_token_fusion():
     """Build MultimodalTokenFusion, run forward with text+vision, verify shape and no NaN."""
     import torch
+
     from src.multimodal.multimodal_token_fusion import (
         FusionStrategy,
         MultimodalTokenFusion,
@@ -212,10 +215,8 @@ def test_multimodal_token_fusion():
 def test_document_embedder_shapes():
     """Embed a page and verify output shape is (N_regions, d_model)."""
     import torch
+
     from src.multimodal.document_understanding import (
-        DocumentEmbedderConfig,
-        DocumentPage,
-        DocumentRegion,
         DocumentRegionType,
     )
 
@@ -227,9 +228,7 @@ def test_document_embedder_shapes():
             multimodal_pkg.DocumentRegion(
                 region_type=DocumentRegionType.TEXT, text="Hello Aurelius"
             ),
-            multimodal_pkg.DocumentRegion(
-                region_type=DocumentRegionType.TABLE, text="A B C D"
-            ),
+            multimodal_pkg.DocumentRegion(region_type=DocumentRegionType.TABLE, text="A B C D"),
         ],
     )
     cfg = multimodal_pkg.DocumentEmbedderConfig(vocab_size=256, d_model=128)

@@ -260,7 +260,7 @@ class SlidingWindowSinkAttention(nn.Module):
         if key_padding_mask is not None:
             if key_padding_mask.shape != (B, T):
                 raise ValueError(
-                    f"key_padding_mask must have shape {(B, T)}, got {tuple(key_padding_mask.shape)}"
+                    f"key_padding_mask must have shape {(B, T)}, got {tuple(key_padding_mask.shape)}"  # noqa: E501
                 )
             query_valid = key_padding_mask.to(dtype=torch.bool)
             if use_cache:

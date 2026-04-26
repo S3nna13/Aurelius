@@ -1,18 +1,20 @@
 """Tests for HealthChecker (~45 tests)."""
+
 from __future__ import annotations
 
 import pytest
+
 from src.monitoring.health_checker import (
-    HealthStatus,
+    HEALTH_CHECKER,
     HealthCheck,
     HealthChecker,
-    HEALTH_CHECKER,
+    HealthStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # HealthStatus enum
 # ---------------------------------------------------------------------------
+
 
 class TestHealthStatusEnum:
     def test_healthy(self):
@@ -37,6 +39,7 @@ class TestHealthStatusEnum:
 # ---------------------------------------------------------------------------
 # HealthCheck dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestHealthCheck:
     def test_name_field(self):
@@ -68,6 +71,7 @@ class TestHealthCheck:
 # HealthChecker.register + run
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterAndRun:
     def setup_method(self):
         self.hc = HealthChecker()
@@ -87,6 +91,7 @@ class TestRegisterAndRun:
     def test_run_exception_returns_unhealthy(self):
         def bad():
             raise RuntimeError("boom")
+
         self.hc.register("bad", bad)
         result = self.hc.run("bad")
         assert result.status == HealthStatus.UNHEALTHY
@@ -94,6 +99,7 @@ class TestRegisterAndRun:
     def test_run_exception_message_contains_error(self):
         def bad():
             raise RuntimeError("connection refused")
+
         self.hc.register("bad", bad)
         result = self.hc.run("bad")
         assert "connection refused" in result.message
@@ -101,6 +107,7 @@ class TestRegisterAndRun:
     def test_run_exception_name_preserved(self):
         def bad():
             raise ValueError("oops")
+
         self.hc.register("mycomp", bad)
         result = self.hc.run("mycomp")
         assert result.name == "mycomp"
@@ -115,6 +122,7 @@ class TestRegisterAndRun:
 # ---------------------------------------------------------------------------
 # HealthChecker.run_all
 # ---------------------------------------------------------------------------
+
 
 class TestRunAll:
     def setup_method(self):
@@ -144,6 +152,7 @@ class TestRunAll:
     def test_run_all_catches_exceptions(self):
         def bad():
             raise RuntimeError("fail")
+
         self.hc.register("bad", bad)
         result = self.hc.run_all()
         assert result["bad"].status == HealthStatus.UNHEALTHY
@@ -152,6 +161,7 @@ class TestRunAll:
 # ---------------------------------------------------------------------------
 # HealthChecker.aggregate_status
 # ---------------------------------------------------------------------------
+
 
 class TestAggregateStatus:
     def setup_method(self):
@@ -196,6 +206,7 @@ class TestAggregateStatus:
 # HealthChecker.readiness
 # ---------------------------------------------------------------------------
 
+
 class TestReadiness:
     def setup_method(self):
         self.hc = HealthChecker()
@@ -232,6 +243,7 @@ class TestReadiness:
 # HealthChecker.liveness
 # ---------------------------------------------------------------------------
 
+
 class TestLiveness:
     def setup_method(self):
         self.hc = HealthChecker()
@@ -249,6 +261,7 @@ class TestLiveness:
         # run_all catches exceptions internally, so liveness should still return alive
         def bad():
             raise RuntimeError("fail")
+
         self.hc.register("bad", bad)
         result = self.hc.liveness()
         assert result["alive"] is True
@@ -257,6 +270,7 @@ class TestLiveness:
 # ---------------------------------------------------------------------------
 # Singleton
 # ---------------------------------------------------------------------------
+
 
 class TestSingleton:
     def test_health_checker_exists(self):

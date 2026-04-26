@@ -7,9 +7,9 @@ whether each response represents a safe refusal or a policy violation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
 
 
 class ProbeCategory(Enum):

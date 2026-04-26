@@ -22,7 +22,7 @@ class FaithfulnessScorer:
     def _split_claims(self, text: str) -> list[str]:
         """Split text into individual claims on sentence-ending punctuation."""
         # Split on '. ', '? ', or '! ' (sentence-ending sequences)
-        parts = re.split(r'(?<=[.?!])\s+', text)
+        parts = re.split(r"(?<=[.?!])\s+", text)
         return [p.strip() for p in parts if p.strip()]
 
     def _word_overlap(self, claim: str, source: str) -> float:
@@ -30,8 +30,8 @@ class FaithfulnessScorer:
 
         Returns 0.0 if both are empty.
         """
-        claim_words = set(re.findall(r'\w+', claim.lower()))
-        source_words = set(re.findall(r'\w+', source.lower()))
+        claim_words = set(re.findall(r"\w+", claim.lower()))
+        source_words = set(re.findall(r"\w+", source.lower()))
 
         if not claim_words and not source_words:
             return 0.0
@@ -44,9 +44,7 @@ class FaithfulnessScorer:
 
         return len(intersection) / len(union)
 
-    def score(
-        self, generated: str, source: str, threshold: float = 0.3
-    ) -> FaithfulnessResult:
+    def score(self, generated: str, source: str, threshold: float = 0.3) -> FaithfulnessResult:
         """Score faithfulness of generated text against source.
 
         A claim is supported if its word overlap with source >= threshold.

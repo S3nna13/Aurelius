@@ -1,21 +1,22 @@
 """Tests for src/reasoning/beam_search_reasoner.py — at least 20 tests."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.reasoning.beam_search_reasoner import (
-    BeamHypothesis,
-    BeamSearchReasoner,
-    BEAM_SEARCH_REASONER,
     _MAX_BEAM_WIDTH,
     _MAX_DEPTH,
     _MAX_STEP_LEN,
+    BEAM_SEARCH_REASONER,
+    BeamHypothesis,
+    BeamSearchReasoner,
 )
-
 
 # ---------------------------------------------------------------------------
 # BeamHypothesis dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_beam_hypothesis_depth_correct():
     h = BeamHypothesis(steps=["a", "b", "c"])
@@ -70,6 +71,7 @@ def test_beam_hypothesis_is_finished_default_false():
 # BeamSearchReasoner construction
 # ---------------------------------------------------------------------------
 
+
 def test_beam_width_below_one_raises():
     with pytest.raises(ValueError, match="beam_width"):
         BeamSearchReasoner(beam_width=0)
@@ -94,6 +96,7 @@ def test_max_depth_above_max_raises():
 # initialize
 # ---------------------------------------------------------------------------
 
+
 def test_initialize_single_hypothesis():
     r = BeamSearchReasoner(beam_width=4)
     beam = r.initialize("first step")
@@ -110,6 +113,7 @@ def test_initialize_score_propagated():
 # ---------------------------------------------------------------------------
 # expand
 # ---------------------------------------------------------------------------
+
 
 def test_expand_candidates_mismatch_raises():
     r = BeamSearchReasoner(beam_width=4)
@@ -151,6 +155,7 @@ def test_expand_hypothesis_at_max_depth_passes_through():
 # _prune
 # ---------------------------------------------------------------------------
 
+
 def test_prune_returns_at_most_beam_width():
     r = BeamSearchReasoner(beam_width=2, normalize_scores=False)
     hyps = [BeamHypothesis(steps=[f"s{i}"], score=float(i)) for i in range(10)]
@@ -170,6 +175,7 @@ def test_prune_sorted_descending_by_score():
 # best
 # ---------------------------------------------------------------------------
 
+
 def test_best_returns_max_score_hypothesis():
     r = BeamSearchReasoner(beam_width=4, normalize_scores=False)
     hyps = [BeamHypothesis(steps=[f"s{i}"], score=float(i)) for i in range(5)]
@@ -187,6 +193,7 @@ def test_best_empty_list_raises():
 # mark_finished
 # ---------------------------------------------------------------------------
 
+
 def test_mark_finished_sets_is_finished():
     r = BeamSearchReasoner(beam_width=4)
     h = BeamHypothesis(steps=["step1"], score=1.0)
@@ -199,6 +206,7 @@ def test_mark_finished_sets_is_finished():
 # ---------------------------------------------------------------------------
 # normalize_scores flag
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_scores_true_uses_normalized():
     r = BeamSearchReasoner(beam_width=2, normalize_scores=True)
@@ -225,6 +233,7 @@ def test_normalize_scores_false_uses_raw():
 # ---------------------------------------------------------------------------
 # Full beam search simulation
 # ---------------------------------------------------------------------------
+
 
 def test_full_beam_search_simulation_three_steps_deep():
     """Simulate a 3-step beam search and verify the best path is selected."""
@@ -263,6 +272,7 @@ def test_full_beam_search_simulation_three_steps_deep():
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_beam_search_reasoner_singleton_is_instance():
     assert isinstance(BEAM_SEARCH_REASONER, BeamSearchReasoner)

@@ -3,13 +3,10 @@
 import pytest
 
 from src.security.yara_rule_engine import (
-    YaraMatch,
     YaraParseError,
-    YaraRule,
     YaraRuleEngine,
     YaraRuleParser,
 )
-
 
 RULE_TEXT_AND = """
 rule detect_both {
@@ -89,7 +86,7 @@ def test_hex_string_matches():
     """
     eng = YaraRuleEngine()
     eng.compile(rule)
-    matches = eng.scan(b"\x01\x02\xDE\xAD\xBE\xEF\xFF")
+    matches = eng.scan(b"\x01\x02\xde\xad\xbe\xef\xff")
     assert len(matches) == 1
 
 
@@ -104,7 +101,7 @@ def test_hex_wildcard():
     """
     eng = YaraRuleEngine()
     eng.compile(rule)
-    matches = eng.scan(b"\xDE\xCC\xBE\xEF")
+    matches = eng.scan(b"\xde\xcc\xbe\xef")
     assert len(matches) == 1
 
 

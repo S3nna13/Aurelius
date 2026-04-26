@@ -1,4 +1,4 @@
-"""Block-sparse attention patterns: efficient attention over long sequences using BigBird/block-sparse structure."""
+"""Block-sparse attention patterns: efficient attention over long sequences using BigBird/block-sparse structure."""  # noqa: E501
 
 import math
 from dataclasses import dataclass
@@ -11,10 +11,10 @@ from torch import Tensor
 
 @dataclass
 class BlockSparseConfig:
-    block_size: int = 64          # size of each block
-    n_global_tokens: int = 4      # number of global tokens (attend everywhere)
-    n_random_blocks: int = 2      # random block connections per query block
-    window_size: int = 1          # local sliding window (in blocks)
+    block_size: int = 64  # size of each block
+    n_global_tokens: int = 4  # number of global tokens (attend everywhere)
+    n_random_blocks: int = 2  # random block connections per query block
+    window_size: int = 1  # local sliding window (in blocks)
     d_model: int = 512
     n_heads: int = 8
     head_dim: int = 64
@@ -44,7 +44,7 @@ def create_block_sparse_mask(
     Returns:
         Boolean tensor (seq_len, seq_len)
     """
-    assert seq_len % config.block_size == 0, (
+    assert seq_len % config.block_size == 0, (  # noqa: S101
         f"seq_len ({seq_len}) must be divisible by block_size ({config.block_size})"
     )
 
@@ -54,8 +54,8 @@ def create_block_sparse_mask(
     # Global tokens: rows 0..n_global_tokens-1 attend to all, all attend to them
     n_global = min(config.n_global_tokens, seq_len)
     if n_global > 0:
-        mask[:n_global, :] = True   # global token rows attend everywhere
-        mask[:, :n_global] = True   # all columns attend to global tokens
+        mask[:n_global, :] = True  # global token rows attend everywhere
+        mask[:, :n_global] = True  # all columns attend to global tokens
 
     # Local sliding window (in blocks)
     for block_q in range(n_blocks):

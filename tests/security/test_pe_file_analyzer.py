@@ -6,7 +6,6 @@ run on any platform without real executables.
 
 from __future__ import annotations
 
-import os
 import struct
 
 import pytest
@@ -18,7 +17,6 @@ from src.security.pe_file_analyzer import (
     analyze_pe,
     analyze_pe_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # Synthetic PE builder

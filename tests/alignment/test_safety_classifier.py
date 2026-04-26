@@ -1,11 +1,12 @@
 """Tests for the safety classifier."""
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
 from src.alignment.safety_classifier import (
     SafetyClassifier,
@@ -16,10 +17,10 @@ from src.alignment.safety_classifier import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg():
@@ -70,6 +71,7 @@ def _make_dataloader(batch_size: int = 4, seq_len: int = 8, n_samples: int = 8):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_safety_classifier_forward_shape(classifier):
     """Logits must have shape (B,)."""

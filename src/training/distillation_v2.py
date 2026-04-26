@@ -5,27 +5,28 @@ Trains a small student model to mimic a large teacher using:
 - Hard CE loss against ground-truth labels
 - Optional intermediate feature matching via projection layers
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DistillConfig:
     """Configuration for knowledge distillation."""
-    temperature: float = 4.0          # softening temperature T
-    alpha: float = 0.5                # weight for KD loss (1-alpha for CE)
+
+    temperature: float = 4.0  # softening temperature T
+    alpha: float = 0.5  # weight for KD loss (1-alpha for CE)
     feature_loss_weight: float = 0.0  # 0 = feature matching disabled
-    kd_loss_type: str = "kl"          # one of "kl", "mse", "cosine"
+    kd_loss_type: str = "kl"  # one of "kl", "mse", "cosine"
 
     def __post_init__(self) -> None:
         if self.kd_loss_type not in ("kl", "mse", "cosine"):
@@ -41,6 +42,7 @@ class DistillConfig:
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def kl_divergence_loss(
     student_logits: torch.Tensor,
@@ -72,7 +74,7 @@ def kl_divergence_loss(
     # F.kl_div expects (log_input, target); KL(teacher || student)
     kl = F.kl_div(student_log_soft, teacher_soft, reduction="batchmean")
     # Clamp to zero: tiny floating-point negatives can occur due to log-softmax precision
-    return (temperature ** 2) * kl.clamp(min=0.0)
+    return (temperature**2) * kl.clamp(min=0.0)
 
 
 def mse_logit_loss(
@@ -120,12 +122,13 @@ def cosine_embedding_loss(
 # Combined distillation loss
 # ---------------------------------------------------------------------------
 
+
 def compute_combined_distillation_loss(
     student_logits: torch.Tensor,
     teacher_logits: torch.Tensor,
     labels: torch.Tensor,
     config: DistillConfig,
-) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     """Compute alpha * KD_loss + (1-alpha) * CE_loss.
 
     Args:
@@ -164,7 +167,7 @@ def compute_combined_distillation_loss(
 
     total_loss = config.alpha * kd_loss + (1.0 - config.alpha) * ce_loss
 
-    metrics: Dict[str, torch.Tensor] = {
+    metrics: dict[str, torch.Tensor] = {
         "kd_loss": kd_loss,
         "ce_loss": ce_loss,
         "total": total_loss,
@@ -175,6 +178,7 @@ def compute_combined_distillation_loss(
 # ---------------------------------------------------------------------------
 # Feature projector
 # ---------------------------------------------------------------------------
+
 
 class FeatureProjector(nn.Module):
     """Linear projection from student_dim to teacher_dim (no bias).
@@ -203,6 +207,7 @@ class FeatureProjector(nn.Module):
 # Distillation trainer
 # ---------------------------------------------------------------------------
 
+
 class DistillationTrainer:
     """Wraps student + teacher to compute distillation loss.
 
@@ -218,7 +223,7 @@ class DistillationTrainer:
         student: nn.Module,
         teacher: nn.Module,
         config: DistillConfig,
-        projector: Optional[FeatureProjector] = None,
+        projector: FeatureProjector | None = None,
     ) -> None:
         self.student = student
         self.teacher = teacher
@@ -234,7 +239,7 @@ class DistillationTrainer:
         self,
         input_ids: torch.Tensor,
         labels: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Run both models and compute combined distillation loss.
 
         Teacher is always run under torch.no_grad().  Student is run
@@ -266,11 +271,9 @@ class DistillationTrainer:
         for param in self.teacher.parameters():
             param.requires_grad = False
 
-    def get_trainable_params(self) -> List[nn.Parameter]:
+    def get_trainable_params(self) -> list[nn.Parameter]:
         """Return list of trainable student parameters only."""
-        params: List[nn.Parameter] = [
-            p for p in self.student.parameters() if p.requires_grad
-        ]
+        params: list[nn.Parameter] = [p for p in self.student.parameters() if p.requires_grad]
         if self.projector is not None:
             params += [p for p in self.projector.parameters() if p.requires_grad]
         return params
@@ -279,6 +282,7 @@ class DistillationTrainer:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_logits(model_output) -> torch.Tensor:
     """Extract logit tensor from various model output formats."""
@@ -289,6 +293,4 @@ def _extract_logits(model_output) -> torch.Tensor:
         for item in model_output:
             if isinstance(item, torch.Tensor) and item.dim() >= 2:
                 return item
-    raise ValueError(
-        f"Cannot extract logits from model output of type {type(model_output)}"
-    )
+    raise ValueError(f"Cannot extract logits from model output of type {type(model_output)}")

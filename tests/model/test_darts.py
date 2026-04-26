@@ -1,4 +1,5 @@
 """Tests for DARTS-style Neural Architecture Search (src/model/darts.py)."""
+
 from __future__ import annotations
 
 import math
@@ -8,18 +9,18 @@ import torch
 import torch.nn as nn
 
 from src.model.darts import (
-    DARTSConfig,
     DARTSCell,
+    DARTSConfig,
     DARTSNetwork,
     DARTSTrainer,
     MixedOp,
     compute_arch_entropy,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def default_config() -> DARTSConfig:
@@ -34,6 +35,7 @@ def small_config() -> DARTSConfig:
 # ---------------------------------------------------------------------------
 # 1. DARTSConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_darts_config_defaults():
     cfg = DARTSConfig()
@@ -57,6 +59,7 @@ def test_darts_config_custom():
 # 2. MixedOp — output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_mixed_op_output_shape():
     d_model, n_ops = 64, 4
     op = MixedOp(d_model, n_ops)
@@ -79,6 +82,7 @@ def test_mixed_op_output_shape_2d():
 # 3. MixedOp weighted sum with uniform weights
 # ---------------------------------------------------------------------------
 
+
 def test_mixed_op_uniform_weights_is_mean():
     """With uniform weights, output should equal the uniform average of op outputs."""
     d_model, n_ops = 16, 4
@@ -98,7 +102,7 @@ def test_mixed_op_weights_sum_to_one_respected():
     d_model, n_ops = 16, 4
     op = MixedOp(d_model, n_ops)
     x = torch.randn(2, d_model)
-    w1 = torch.softmax(torch.zeros(n_ops), dim=-1)   # uniform
+    w1 = torch.softmax(torch.zeros(n_ops), dim=-1)  # uniform
     w2 = torch.softmax(torch.zeros(n_ops), dim=-1)
     out1 = op(x, w1)
     out2 = op(x, w2)
@@ -108,6 +112,7 @@ def test_mixed_op_weights_sum_to_one_respected():
 # ---------------------------------------------------------------------------
 # 4. DARTSCell forward shape
 # ---------------------------------------------------------------------------
+
 
 def test_darts_cell_forward_shape():
     cell = DARTSCell(d_model=64, n_ops=4)
@@ -127,6 +132,7 @@ def test_darts_cell_forward_shape_2d():
 # 5. DARTSCell arch_params are learnable parameters
 # ---------------------------------------------------------------------------
 
+
 def test_darts_cell_arch_params_is_parameter():
     cell = DARTSCell(d_model=64, n_ops=4)
     assert isinstance(cell.arch_params, nn.Parameter)
@@ -142,6 +148,7 @@ def test_darts_cell_arch_params_shape_custom():
 # ---------------------------------------------------------------------------
 # 6. DARTSNetwork forward shape
 # ---------------------------------------------------------------------------
+
 
 def test_darts_network_forward_shape(default_config):
     net = DARTSNetwork(default_config)
@@ -161,6 +168,7 @@ def test_darts_network_forward_shape_small(small_config):
 # 7. DARTSNetwork arch_parameters returns list
 # ---------------------------------------------------------------------------
 
+
 def test_darts_network_arch_parameters_is_list(default_config):
     net = DARTSNetwork(default_config)
     params = net.arch_parameters()
@@ -177,6 +185,7 @@ def test_darts_network_arch_parameters_are_parameters(default_config):
 # ---------------------------------------------------------------------------
 # 8. DARTSNetwork discretize returns list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_darts_network_discretize_returns_list(default_config):
     net = DARTSNetwork(default_config)
@@ -197,6 +206,7 @@ def test_darts_network_discretize_values_are_ints(default_config):
 # 9. DARTSTrainer weight_step returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_darts_trainer_weight_step_returns_scalar(default_config):
     net = DARTSNetwork(default_config)
     arch_p = net.arch_parameters()
@@ -214,6 +224,7 @@ def test_darts_trainer_weight_step_returns_scalar(default_config):
 # ---------------------------------------------------------------------------
 # 10. DARTSTrainer arch_step returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_darts_trainer_arch_step_returns_scalar(default_config):
     net = DARTSNetwork(default_config)
@@ -233,6 +244,7 @@ def test_darts_trainer_arch_step_returns_scalar(default_config):
 # 11. compute_arch_entropy range [0, log(n_ops)]
 # ---------------------------------------------------------------------------
 
+
 def test_compute_arch_entropy_range():
     n_ops = 4
     # Uniform → maximum entropy
@@ -251,7 +263,6 @@ def test_compute_arch_entropy_uniform_is_max():
 
 def test_compute_arch_entropy_one_hot_near_zero():
     """Very peaked distribution should have near-zero entropy."""
-    n_ops = 4
     peaked = torch.tensor([100.0, 0.0, 0.0, 0.0])
     entropy = compute_arch_entropy(peaked, temperature=1.0)
     assert entropy.item() < 0.01
@@ -261,8 +272,8 @@ def test_compute_arch_entropy_one_hot_near_zero():
 # 12. High temperature → higher entropy
 # ---------------------------------------------------------------------------
 
+
 def test_high_temperature_higher_entropy():
-    n_ops = 4
     # Use a non-uniform logit vector so temperature has a visible effect
     logits = torch.tensor([2.0, 0.5, -0.5, -2.0])
     low_temp_entropy = compute_arch_entropy(logits, temperature=0.1)
@@ -282,6 +293,7 @@ def test_temperature_monotone_entropy():
 # ---------------------------------------------------------------------------
 # Bonus: gradient flow through DARTSNetwork
 # ---------------------------------------------------------------------------
+
 
 def test_darts_network_gradients_flow(default_config):
     net = DARTSNetwork(default_config)

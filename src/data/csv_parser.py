@@ -1,8 +1,9 @@
 """Simple CSV parser for data loading with type inference."""
+
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from io import StringIO
 from typing import Any
 

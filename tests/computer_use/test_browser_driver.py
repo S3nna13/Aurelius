@@ -17,10 +17,10 @@ from src.computer_use.browser_driver import (
     StubBrowserDriver,
 )
 
-
 # ---------------------------------------------------------------------------
 # BrowserAction dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestBrowserAction:
     def test_default_wait_ms(self):
@@ -52,6 +52,7 @@ class TestBrowserAction:
 # BrowserState dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestBrowserState:
     def test_default_ready_true(self):
         state = BrowserState(url="https://example.com", title="Example")
@@ -67,6 +68,7 @@ class TestBrowserState:
 # BrowserDriver abstract class
 # ---------------------------------------------------------------------------
 
+
 class TestBrowserDriverAbstract:
     def test_cannot_instantiate_abstract_driver(self):
         with pytest.raises(TypeError):
@@ -76,6 +78,7 @@ class TestBrowserDriverAbstract:
 # ---------------------------------------------------------------------------
 # StubBrowserDriver — happy paths
 # ---------------------------------------------------------------------------
+
 
 class TestStubBrowserDriverHappyPath:
     def test_navigate_updates_url(self):
@@ -154,6 +157,7 @@ class TestStubBrowserDriverHappyPath:
 # StubBrowserDriver — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestStubBrowserDriverErrors:
     def test_navigate_empty_url_raises(self):
         driver = StubBrowserDriver()
@@ -187,6 +191,7 @@ class TestStubBrowserDriverErrors:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestBrowserDriverRegistry:
     def test_registry_contains_stub(self):

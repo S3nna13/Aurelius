@@ -11,16 +11,15 @@ Reasoning in Open Language Models".
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GRPOConfig:
@@ -45,6 +44,7 @@ class GRPOConfig:
 # ---------------------------------------------------------------------------
 # GroupRewardNormalizer
 # ---------------------------------------------------------------------------
+
 
 class GroupRewardNormalizer:
     """Compute group-relative advantages from flat reward vectors.
@@ -83,9 +83,7 @@ class GroupRewardNormalizer:
         G = self.group_size
         total = rewards.shape[0]
         if total % G != 0:
-            raise ValueError(
-                f"rewards length {total} is not divisible by group_size {G}"
-            )
+            raise ValueError(f"rewards length {total} is not divisible by group_size {G}")
         B = total // G
         rewards_2d = rewards.reshape(B, G)
         advantages_2d = self._normalize_2d(rewards_2d)
@@ -109,8 +107,8 @@ class GroupRewardNormalizer:
     @staticmethod
     def _normalize_2d(rewards_2d: Tensor) -> Tensor:
         """Normalise each row of a (B, G) tensor independently."""
-        mean = rewards_2d.mean(dim=1, keepdim=True)   # (B, 1)
-        std = rewards_2d.std(dim=1, keepdim=True)     # (B, 1)  unbiased by default
+        mean = rewards_2d.mean(dim=1, keepdim=True)  # (B, 1)
+        std = rewards_2d.std(dim=1, keepdim=True)  # (B, 1)  unbiased by default
         advantages = (rewards_2d - mean) / (std + 1e-8)
         return advantages
 
@@ -118,6 +116,7 @@ class GroupRewardNormalizer:
 # ---------------------------------------------------------------------------
 # GRPOLoss
 # ---------------------------------------------------------------------------
+
 
 class GRPOLoss(nn.Module):
     """Policy gradient loss for GRPO with asymmetric clipping and KL penalty.
@@ -166,7 +165,7 @@ class GRPOLoss(nn.Module):
             Scalar loss tensor.
         """
         ratio = torch.exp(log_probs - old_log_probs)  # (B,)
-        clipped = self.clip_ratio(ratio)               # (B,)
+        clipped = self.clip_ratio(ratio)  # (B,)
         surr1 = ratio * advantages
         surr2 = clipped * advantages
         loss = -torch.min(surr1, surr2).mean()
@@ -188,7 +187,7 @@ class GRPOLoss(nn.Module):
         Returns:
             Scalar non-negative KL estimate.
         """
-        diff = log_probs - ref_log_probs          # (B,)
+        diff = log_probs - ref_log_probs  # (B,)
         kl = (torch.exp(diff) - diff - 1.0).mean()
         return kl
 
@@ -202,7 +201,7 @@ class GRPOLoss(nn.Module):
         old_log_probs: Tensor,
         ref_log_probs: Tensor,
         advantages: Tensor,
-    ) -> Tuple[Tensor, Dict[str, float]]:
+    ) -> tuple[Tensor, dict[str, float]]:
         """Compute total GRPO loss = policy_loss + beta * kl_penalty.
 
         Args:
@@ -221,7 +220,7 @@ class GRPOLoss(nn.Module):
         kl_loss = self.kl_penalty(log_probs, ref_log_probs)
         total_loss = p_loss + self.config.beta * kl_loss
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "policy_loss": p_loss.item(),
             "kl_loss": kl_loss.item(),
             "total_loss": total_loss.item(),
@@ -233,6 +232,7 @@ class GRPOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # GRPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class GRPOTrainer:
     """Orchestrates a single GRPO update step.
@@ -280,7 +280,7 @@ class GRPOTrainer:
         old_log_probs: Tensor,
         ref_log_probs: Tensor,
         rewards: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Perform one GRPO backward pass and optimiser update.
 
         Args:

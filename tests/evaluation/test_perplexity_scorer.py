@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.evaluation.perplexity_scorer import (
+    PERPLEXITY_SCORER_REGISTRY,
     PerplexityResult,
     PerplexityScorer,
-    PERPLEXITY_SCORER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -24,6 +25,7 @@ def scorer():
 # ---------------------------------------------------------------------------
 # PerplexityResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPerplexityResultFrozen:
     def test_is_frozen(self):
@@ -52,6 +54,7 @@ class TestPerplexityResultFrozen:
 # ---------------------------------------------------------------------------
 # from_log_probs
 # ---------------------------------------------------------------------------
+
 
 class TestFromLogProbs:
     def test_empty_log_probs_gives_inf(self, scorer):
@@ -108,6 +111,7 @@ class TestFromLogProbs:
 # compare
 # ---------------------------------------------------------------------------
 
+
 class TestCompare:
     def test_a_wins_lower_perplexity(self, scorer):
         a = PerplexityResult(text="a", log_prob_sum=0.0, token_count=1, perplexity=2.0)
@@ -134,6 +138,7 @@ class TestCompare:
 # batch_score
 # ---------------------------------------------------------------------------
 
+
 class TestBatchScore:
     def test_batch_length_matches_input(self, scorer):
         examples = [("a", [-1.0]), ("b", [-2.0]), ("c", [-3.0])]
@@ -159,6 +164,7 @@ class TestBatchScore:
 # ---------------------------------------------------------------------------
 # summary
 # ---------------------------------------------------------------------------
+
 
 class TestSummary:
     def test_summary_count(self, scorer):
@@ -192,6 +198,7 @@ class TestSummary:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

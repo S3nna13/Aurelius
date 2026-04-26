@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-from src.interpretability.activation_patcher import ActivationPatcher, PatchSpec
+from src.interpretability.activation_patcher import ActivationPatcher
 
 
 @dataclass
@@ -57,7 +57,9 @@ class CausalTracer:
                 continue
             for token_idx in range(config.token_range[0], config.token_range[1]):
                 effect = abs(hash(layer_name + str(token_idx))) % 100 / 100.0
-                traces.append(CausalTrace(layer_name=layer_name, token_idx=token_idx, effect=effect))
+                traces.append(
+                    CausalTrace(layer_name=layer_name, token_idx=token_idx, effect=effect)
+                )
 
         total_effect = sum(t.effect for t in traces)
 

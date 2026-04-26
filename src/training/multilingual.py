@@ -54,10 +54,7 @@ def compute_language_sampling_probs(
     p_uniform = {lang: 1.0 / n for lang in languages}
 
     # Mix
-    mixed = {
-        lang: (1.0 - alpha) * p_scaled[lang] + alpha * p_uniform[lang]
-        for lang in languages
-    }
+    mixed = {lang: (1.0 - alpha) * p_scaled[lang] + alpha * p_uniform[lang] for lang in languages}
 
     # Normalize to correct any floating-point drift
     total_mixed = sum(mixed.values())
@@ -162,12 +159,10 @@ class MultilingualTrainer:
         self.optimizer.zero_grad()
 
         # Stack into a single (total_batch, seq_len) tensor
-        stacked = torch.stack(
-            [t if t.dim() == 1 else t.squeeze(0) for t in batch_ids], dim=0
-        )
+        stacked = torch.stack([t if t.dim() == 1 else t.squeeze(0) for t in batch_ids], dim=0)
 
-        input_ids = stacked[:, :-1]   # (B, S-1)
-        labels = stacked[:, 1:]       # (B, S-1)
+        input_ids = stacked[:, :-1]  # (B, S-1)
+        labels = stacked[:, 1:]  # (B, S-1)
 
         loss, logits, _ = self.model(input_ids)
 

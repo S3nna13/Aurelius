@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.soap import SOAP
-
 
 # ---------------------------------------------------------------------------
 # 1. Loss decreases after a few steps on a simple quadratic
 # ---------------------------------------------------------------------------
+
 
 def test_soap_step_reduces_loss():
     """SOAP should reduce a simple quadratic loss within 5 steps."""
@@ -37,6 +37,7 @@ def test_soap_step_reduces_loss():
 # 2. 1D parameters use plain Adam — no Kronecker factors in state
 # ---------------------------------------------------------------------------
 
+
 def test_soap_1d_params_plain_adam():
     """1D parameters must not have L, R, Q_L, Q_R in their optimizer state."""
     param = nn.Parameter(torch.randn(16))
@@ -56,6 +57,7 @@ def test_soap_1d_params_plain_adam():
 # ---------------------------------------------------------------------------
 # 3. 2D parameters have Kronecker factors after first step
 # ---------------------------------------------------------------------------
+
 
 def test_soap_2d_params_have_kronecker_factors():
     """After the first step on a 2D param, state must contain L, R, Q_L, Q_R."""
@@ -77,6 +79,7 @@ def test_soap_2d_params_have_kronecker_factors():
 # ---------------------------------------------------------------------------
 # 4. Preconditioner updates exactly at precond_freq, not before
 # ---------------------------------------------------------------------------
+
 
 def test_soap_precond_update_frequency():
     """Q_L should stay at the identity until step == precond_freq."""
@@ -114,6 +117,7 @@ def test_soap_precond_update_frequency():
 # 5. Weight decay reduces L2 norm on zero gradient
 # ---------------------------------------------------------------------------
 
+
 def test_soap_weight_decay():
     """With weight_decay > 0 and zero gradient, param norm should shrink."""
     torch.manual_seed(7)
@@ -134,6 +138,7 @@ def test_soap_weight_decay():
 # ---------------------------------------------------------------------------
 # 6. Different matrix shapes are handled correctly
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("shape", [(4, 8), (16, 32), (64, 64)])
 def test_soap_different_matrix_shapes(shape):
@@ -157,6 +162,7 @@ def test_soap_different_matrix_shapes(shape):
 # ---------------------------------------------------------------------------
 # 7. Eigenvectors are orthonormal: Q_L^T @ Q_L ≈ I
 # ---------------------------------------------------------------------------
+
 
 def test_soap_eigenspace_projection_roundtrip():
     """After a preconditioner update, Q_L and Q_R must be orthonormal matrices."""
@@ -184,6 +190,7 @@ def test_soap_eigenspace_projection_roundtrip():
 # ---------------------------------------------------------------------------
 # 8. State is initialised correctly after one step
 # ---------------------------------------------------------------------------
+
 
 def test_soap_state_initialized_correctly():
     """After exactly one step, verify all expected state keys exist with correct dtypes."""

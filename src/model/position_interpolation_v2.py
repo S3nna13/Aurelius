@@ -8,19 +8,19 @@ References:
     Positional Interpolation"
     Peng et al. 2023, "YaRN: Efficient Context Window Extension of Large Language Models"
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PIConfig:
@@ -37,11 +37,12 @@ class PIConfig:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _standard_freqs_cis(
     d_head: int,
     seq_len: int,
     base: float = 10000.0,
-    positions: Optional[Tensor] = None,
+    positions: Tensor | None = None,
 ) -> Tensor:
     """Compute complex RoPE frequencies.
 
@@ -54,9 +55,11 @@ def _standard_freqs_cis(
     Returns:
         Complex64 tensor of shape (seq_len, d_head // 2).
     """
-    half_dim = d_head // 2
+    d_head // 2
     # theta_i = 1 / base^(2i/d_head)
-    theta = 1.0 / (base ** (torch.arange(0, d_head, 2, dtype=torch.float32) / d_head))  # (half_dim,)
+    theta = 1.0 / (
+        base ** (torch.arange(0, d_head, 2, dtype=torch.float32) / d_head)
+    )  # (half_dim,)
 
     if positions is None:
         positions = torch.arange(seq_len, dtype=torch.float32)
@@ -68,6 +71,7 @@ def _standard_freqs_cis(
 # ---------------------------------------------------------------------------
 # Scale factor computation
 # ---------------------------------------------------------------------------
+
 
 def compute_scale_factor(config: PIConfig) -> float:
     """Compute the position scaling factor for the given interpolation method.
@@ -84,12 +88,13 @@ def compute_scale_factor(config: PIConfig) -> float:
     else:
         # NTK and YaRN use the same scale formula
         exponent = config.d_head / (config.d_head - 2)
-        return ratio ** exponent
+        return ratio**exponent
 
 
 # ---------------------------------------------------------------------------
 # Interpolation functions
 # ---------------------------------------------------------------------------
+
 
 def interpolate_freqs_cis(
     freqs_cis: Tensor,
@@ -107,7 +112,7 @@ def interpolate_freqs_cis(
         Complex64 tensor of shape (target_seq_len, d_head//2).
     """
     half_dim = freqs_cis.shape[1]
-    d_head = half_dim * 2
+    half_dim * 2
 
     # Recover per-dimension theta from existing freqs_cis using a single position
     # theta_i = angle(freqs_cis[1, i]) / 1  (position 1 gives theta directly)
@@ -141,7 +146,7 @@ def ntk_aware_freqs_cis(
         Complex64 tensor of shape (seq_len, d_head//2).
     """
     exponent = d_head / (d_head - 2)
-    new_base = base * (scale ** exponent)
+    new_base = base * (scale**exponent)
     return _standard_freqs_cis(d_head, seq_len, base=new_base)
 
 
@@ -170,7 +175,7 @@ def yarn_freqs_cis(
     Returns:
         Complex64 tensor of shape (seq_len, d_head//2).
     """
-    half_dim = d_head // 2
+    d_head // 2
 
     # Per-dimension theta (original)
     dim_idx = torch.arange(0, d_head, 2, dtype=torch.float32)
@@ -210,7 +215,9 @@ def build_interpolated_freqs_cis(config: PIConfig) -> Tensor:
 
     if config.method == "linear":
         positions = torch.arange(config.extended_max_seq_len, dtype=torch.float32) / scale
-        theta = 1.0 / (config.base ** (torch.arange(0, config.d_head, 2, dtype=torch.float32) / config.d_head))
+        theta = 1.0 / (
+            config.base ** (torch.arange(0, config.d_head, 2, dtype=torch.float32) / config.d_head)
+        )
         freqs = torch.outer(positions, theta)
         return torch.polar(torch.ones_like(freqs), freqs)
     elif config.method == "ntk":
@@ -225,6 +232,7 @@ def build_interpolated_freqs_cis(config: PIConfig) -> Tensor:
 # PositionInterpolator
 # ---------------------------------------------------------------------------
 
+
 class PositionInterpolator:
     """High-level interface for position interpolation.
 
@@ -236,7 +244,7 @@ class PositionInterpolator:
 
     def __init__(self, config: PIConfig) -> None:
         self.config = config
-        self._cache: Dict[int, Tensor] = {}
+        self._cache: dict[int, Tensor] = {}
 
     def get_freqs_cis(self, seq_len: int) -> Tensor:
         """Return freqs_cis for the given sequence length.
@@ -259,7 +267,9 @@ class PositionInterpolator:
             scale = compute_scale_factor(cfg)
             if cfg.method == "linear":
                 positions = torch.arange(seq_len, dtype=torch.float32) / scale
-                theta = 1.0 / (cfg.base ** (torch.arange(0, cfg.d_head, 2, dtype=torch.float32) / cfg.d_head))
+                theta = 1.0 / (
+                    cfg.base ** (torch.arange(0, cfg.d_head, 2, dtype=torch.float32) / cfg.d_head)
+                )
                 freqs = torch.outer(positions, theta)
                 result = torch.polar(torch.ones_like(freqs), freqs)
             elif cfg.method == "ntk":

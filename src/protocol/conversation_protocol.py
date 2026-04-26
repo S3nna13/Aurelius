@@ -1,10 +1,11 @@
 """Conversation protocol: turn validation, role sequencing, state machine."""
+
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ConversationState(str, Enum):
+class ConversationState(StrEnum):
     INIT = "init"
     USER_TURN = "user_turn"
     ASSISTANT_TURN = "assistant_turn"
@@ -55,8 +56,7 @@ class ConversationProtocol:
         if role not in transitions:
             valid = list(transitions.keys())
             raise TurnValidationError(
-                f"Invalid role {role!r} from state {self._state.value!r}; "
-                f"valid roles: {valid}"
+                f"Invalid role {role!r} from state {self._state.value!r}; valid roles: {valid}"
             )
         new_state = transitions[role]
         self._history.append((role, new_state))

@@ -9,20 +9,21 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.model.xlstm import mLSTMCell, sLSTMCell, xLSTMBlock, xLSTMModel
+from src.model.xlstm import mLSTMCell, sLSTMCell, xLSTMModel
 
 # ---------------------------------------------------------------------------
 # Shared tiny config
 # ---------------------------------------------------------------------------
 
-D = 32       # d_model
-B = 2        # batch size
-T = 8        # sequence length
+D = 32  # d_model
+B = 2  # batch size
+T = 8  # sequence length
 
 
 # ===========================================================================
 # 1. sLSTMCell output shape
 # ===========================================================================
+
 
 def test_slstm_cell_output_shape():
     cell = sLSTMCell(D)
@@ -39,6 +40,7 @@ def test_slstm_cell_output_shape():
 # 2. mLSTMCell output shape
 # ===========================================================================
 
+
 def test_mlstm_cell_output_shape():
     cell = mLSTMCell(D)
     x_t = torch.randn(B, D)
@@ -54,6 +56,7 @@ def test_mlstm_cell_output_shape():
 # 3. xLSTMModel output shape (B, T, d_model)
 # ===========================================================================
 
+
 def test_xlstm_model_output_shape():
     model = xLSTMModel(d_model=D, n_layers=2)
     x = torch.randn(B, T, D)
@@ -64,6 +67,7 @@ def test_xlstm_model_output_shape():
 # ===========================================================================
 # 4. Hidden states returned and have correct shapes
 # ===========================================================================
+
 
 def test_hidden_states_shapes():
     model = xLSTMModel(d_model=D, n_layers=2, block_types=["mlstm", "slstm"])
@@ -88,6 +92,7 @@ def test_hidden_states_shapes():
 # 5. Gradient flow: finite grads on all params
 # ===========================================================================
 
+
 def test_gradient_flow():
     model = xLSTMModel(d_model=D, n_layers=2)
     x = torch.randn(B, T, D)
@@ -103,6 +108,7 @@ def test_gradient_flow():
 # ===========================================================================
 # 6. Determinism under fixed seed
 # ===========================================================================
+
 
 def test_determinism():
     def run():
@@ -121,6 +127,7 @@ def test_determinism():
 # 7. Edge case: batch=1, T=1
 # ===========================================================================
 
+
 def test_edge_case_batch1_T1():
     model = xLSTMModel(d_model=D, n_layers=2)
     x = torch.randn(1, 1, D)
@@ -133,6 +140,7 @@ def test_edge_case_batch1_T1():
 # 8. hidden_states=None -> zero init, no crash
 # ===========================================================================
 
+
 def test_hidden_states_none_no_crash():
     model = xLSTMModel(d_model=D, n_layers=2)
     x = torch.randn(B, T, D)
@@ -143,6 +151,7 @@ def test_hidden_states_none_no_crash():
 # ===========================================================================
 # 9. Passed state affects output
 # ===========================================================================
+
 
 def test_passed_state_affects_output():
     model = xLSTMModel(d_model=D, n_layers=2)
@@ -155,13 +164,15 @@ def test_passed_state_affects_output():
         out_with_state, _ = model(x2, hidden_states=hs)
         out_no_state, _ = model(x2, hidden_states=None)
 
-    assert not torch.allclose(out_with_state, out_no_state), \
+    assert not torch.allclose(out_with_state, out_no_state), (
         "Output should differ when non-zero state is passed"
+    )
 
 
 # ===========================================================================
 # 10. Stabiliser m_t == max(z_f + m_prev, z_i) at each step (sLSTM)
 # ===========================================================================
+
 
 def test_slstm_stabiliser_is_max():
     """m_t in log-space must equal max(z_f + m_prev, z_i) exactly."""
@@ -183,13 +194,15 @@ def test_slstm_stabiliser_is_max():
         n_dummy = torch.zeros(B_test, D)
         _, (_, _, m_t) = cell(x_t2, (c_dummy, n_dummy, m_prev))
 
-    assert torch.allclose(m_t, expected_m, atol=1e-5), \
+    assert torch.allclose(m_t, expected_m, atol=1e-5), (
         "Stabiliser m_t does not match max(z_f + m_prev, z_i)"
+    )
 
 
 # ===========================================================================
 # 11. No NaN/Inf on zeros input
 # ===========================================================================
+
 
 def test_no_nan_inf_zeros_input():
     model = xLSTMModel(d_model=D, n_layers=2)
@@ -202,6 +215,7 @@ def test_no_nan_inf_zeros_input():
 # 12. No NaN/Inf on large inputs
 # ===========================================================================
 
+
 def test_no_nan_inf_large_input():
     model = xLSTMModel(d_model=D, n_layers=2)
     x = torch.randn(B, T, D) * 100.0
@@ -212,6 +226,7 @@ def test_no_nan_inf_large_input():
 # ===========================================================================
 # 13. Normaliser prevents overflow (output finite for extreme gates)
 # ===========================================================================
+
 
 def test_normaliser_prevents_overflow():
     """Force extreme gate values; output must remain finite."""
@@ -232,6 +247,7 @@ def test_normaliser_prevents_overflow():
 # ===========================================================================
 # 14. block_types list of length != n_layers raises ValueError
 # ===========================================================================
+
 
 def test_mismatched_block_types_raises():
     with pytest.raises(ValueError, match="block_types"):

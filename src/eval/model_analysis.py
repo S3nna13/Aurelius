@@ -1,4 +1,4 @@
-"""Model analysis utilities: parameter counting, FLOPs estimation, architecture visualization, and weight statistics."""
+"""Model analysis utilities: parameter counting, FLOPs estimation, architecture visualization, and weight statistics."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Parameter counting
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ModelStats:
@@ -115,6 +115,7 @@ def count_parameters(model: nn.Module) -> ModelStats:
 # FLOPs estimation
 # ---------------------------------------------------------------------------
 
+
 def estimate_flops(
     model: nn.Module,
     seq_len: int,
@@ -158,6 +159,7 @@ def estimate_flops(
 # Weight statistics
 # ---------------------------------------------------------------------------
 
+
 def weight_statistics(model: nn.Module) -> dict:
     """
     Compute statistics over all weight tensors.
@@ -173,13 +175,15 @@ def weight_statistics(model: nn.Module) -> dict:
         all_weights.append(data.flatten())
 
         if len(per_layer) < 50:
-            per_layer.append({
-                "name": name,
-                "shape": tuple(param.shape),
-                "mean": float(data.mean()),
-                "std": float(data.std()),
-                "l2": float(data.norm(2)),
-            })
+            per_layer.append(
+                {
+                    "name": name,
+                    "shape": tuple(param.shape),
+                    "mean": float(data.mean()),
+                    "std": float(data.std()),
+                    "l2": float(data.norm(2)),
+                }
+            )
 
     if not all_weights:
         return {
@@ -208,6 +212,7 @@ def weight_statistics(model: nn.Module) -> dict:
 # ---------------------------------------------------------------------------
 # Activation histograms
 # ---------------------------------------------------------------------------
+
 
 def activation_histogram(
     model: nn.Module,
@@ -241,6 +246,7 @@ def activation_histogram(
     def make_hook(layer_name: str):
         def hook(module, input, output):
             activations[layer_name] = output.detach().float().flatten()
+
         return hook
 
     for name, module in target_modules.items():
@@ -270,6 +276,7 @@ def activation_histogram(
 # ---------------------------------------------------------------------------
 # Architecture summary
 # ---------------------------------------------------------------------------
+
 
 class ArchitectureSummary:
     """
@@ -313,18 +320,21 @@ class ArchitectureSummary:
         rows = []
         for name, module in self.model.named_modules():
             param_count = sum(p.numel() for p in module.parameters(recurse=False))
-            rows.append({
-                "name": name,
-                "type": type(module).__name__,
-                "params": param_count,
-                "output_shape_hint": "",
-            })
+            rows.append(
+                {
+                    "name": name,
+                    "type": type(module).__name__,
+                    "params": param_count,
+                    "output_shape_hint": "",
+                }
+            )
         return rows
 
 
 # ---------------------------------------------------------------------------
 # Model comparison
 # ---------------------------------------------------------------------------
+
 
 def compare_models(
     model_a: nn.Module,
@@ -365,9 +375,9 @@ def compare_models(
             b_data = params_dict_b[name].detach().float()
             if a_data.shape == b_data.shape:
                 diff = (a_data - b_data).norm(2)
-                distance_sq += float(diff ** 2)
+                distance_sq += float(diff**2)
 
-    weight_distance = float(distance_sq ** 0.5)
+    weight_distance = float(distance_sq**0.5)
 
     return {
         "params_a": params_a,

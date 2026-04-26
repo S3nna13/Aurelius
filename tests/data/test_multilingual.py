@@ -7,20 +7,18 @@ Covers ≥10 distinct test cases as required.
 from __future__ import annotations
 
 import random
-from typing import List
 
 import pytest
 import torch
 
 from src.data.multilingual import (
+    CrossLingualAligner,
     LanguageConfig,
-    MultilingualBatch,
-    smooth_language_weights,
-    detect_language_heuristic,
     LanguageSampler,
     build_multilingual_batch,
     compute_language_accuracy,
-    CrossLingualAligner,
+    detect_language_heuristic,
+    smooth_language_weights,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,7 +38,7 @@ TINY_DATA = {
 LANG_TO_ID = {"en": 0, "fr": 1, "de": 2, "es": 3, "zh": 4}
 
 
-def simple_tokenize(text: str) -> List[int]:
+def simple_tokenize(text: str) -> list[int]:
     """Tiny whitespace tokenizer: returns ASCII ordinal of first char per word."""
     return [ord(w[0]) % 256 for w in text.split() if w]
 

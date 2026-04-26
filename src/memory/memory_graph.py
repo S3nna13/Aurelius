@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class MemoryNode:
     """A node in the memory knowledge graph."""
+
     node_id: str
     content: str
     node_type: str = "concept"
@@ -23,6 +23,7 @@ class MemoryNode:
 @dataclass(frozen=True)
 class MemoryEdge:
     """A directed, weighted edge between two nodes."""
+
     src: str
     dst: str
     relation: str
@@ -69,13 +70,11 @@ class MemoryGraph:
     # Query
     # ------------------------------------------------------------------
 
-    def get_node(self, node_id: str) -> Optional[MemoryNode]:
+    def get_node(self, node_id: str) -> MemoryNode | None:
         """Return the MemoryNode for node_id, or None if not found."""
         return self._nodes.get(node_id)
 
-    def neighbors(
-        self, node_id: str, relation: Optional[str] = None
-    ) -> list[MemoryNode]:
+    def neighbors(self, node_id: str, relation: str | None = None) -> list[MemoryNode]:
         """Return neighbor nodes reachable from node_id via outgoing edges.
 
         Parameters

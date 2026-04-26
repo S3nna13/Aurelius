@@ -3,14 +3,12 @@
 import time
 import unittest.mock as mock
 
-import pytest
-
-from src.search.search_cache import SearchCache, CacheEntry, SEARCH_CACHE_REGISTRY
-
+from src.search.search_cache import SEARCH_CACHE_REGISTRY, CacheEntry, SearchCache
 
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):
@@ -26,6 +24,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # CacheEntry dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCacheEntry:
     def test_cache_entry_creation(self):
@@ -43,6 +42,7 @@ class TestCacheEntry:
 # ---------------------------------------------------------------------------
 # Empty cache
 # ---------------------------------------------------------------------------
+
 
 class TestEmptyCache:
     def test_get_returns_none_on_empty(self):
@@ -68,6 +68,7 @@ class TestEmptyCache:
 # ---------------------------------------------------------------------------
 # Basic put / get
 # ---------------------------------------------------------------------------
+
 
 class TestPutGet:
     def test_put_and_get(self):
@@ -102,6 +103,7 @@ class TestPutGet:
 # Hit count
 # ---------------------------------------------------------------------------
 
+
 class TestHitCount:
     def test_hit_count_increments_on_get(self):
         cache = SearchCache(ttl_seconds=9999)
@@ -129,18 +131,23 @@ class TestHitCount:
 # TTL / expiry
 # ---------------------------------------------------------------------------
 
+
 class TestTTL:
     def test_expired_entry_returns_none(self):
         cache = SearchCache(ttl_seconds=60)
         cache.put("q", [42])
         # Patch time.monotonic to simulate expiry
-        with mock.patch("src.search.search_cache.time.monotonic", return_value=time.monotonic() + 61):
+        with mock.patch(
+            "src.search.search_cache.time.monotonic", return_value=time.monotonic() + 61
+        ):
             assert cache.get("q") is None
 
     def test_not_yet_expired_returns_result(self):
         cache = SearchCache(ttl_seconds=300)
         cache.put("q", [7])
-        with mock.patch("src.search.search_cache.time.monotonic", return_value=time.monotonic() + 100):
+        with mock.patch(
+            "src.search.search_cache.time.monotonic", return_value=time.monotonic() + 100
+        ):
             assert cache.get("q") == [7]
 
     def test_expired_entry_removed_from_size(self):
@@ -155,6 +162,7 @@ class TestTTL:
 # ---------------------------------------------------------------------------
 # LRU eviction
 # ---------------------------------------------------------------------------
+
 
 class TestLRUEviction:
     def test_lru_evicts_oldest_when_full(self):
@@ -173,7 +181,7 @@ class TestLRUEviction:
         cache.put("a", [1])
         cache.put("b", [2])
         cache.put("c", [3])
-        cache.get("a")   # "a" is now most-recently used; "b" becomes oldest
+        cache.get("a")  # "a" is now most-recently used; "b" becomes oldest
         cache.put("d", [4])  # "b" should be evicted
         assert cache.get("b") is None
         assert cache.get("a") == [1]
@@ -188,6 +196,7 @@ class TestLRUEviction:
 # ---------------------------------------------------------------------------
 # Invalidate / clear
 # ---------------------------------------------------------------------------
+
 
 class TestInvalidateClear:
     def test_invalidate_existing_returns_true(self):

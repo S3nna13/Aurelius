@@ -13,12 +13,11 @@ import difflib
 import re
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
+
 
 class PatchError(Exception):
     """Raised when a patch cannot be parsed or applied."""
@@ -27,6 +26,7 @@ class PatchError(Exception):
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PatchHunk:
@@ -52,6 +52,7 @@ class Patch:
 # ---------------------------------------------------------------------------
 # PatchSynthesizer
 # ---------------------------------------------------------------------------
+
 
 class PatchSynthesizer:
     """Produce and apply unified-diff patches."""
@@ -107,14 +108,10 @@ class PatchSynthesizer:
         ]
         for hunk in patch.hunks:
             old_range = (
-                f"{hunk.old_start}"
-                if hunk.old_count == 1
-                else f"{hunk.old_start},{hunk.old_count}"
+                f"{hunk.old_start}" if hunk.old_count == 1 else f"{hunk.old_start},{hunk.old_count}"
             )
             new_range = (
-                f"{hunk.new_start}"
-                if hunk.new_count == 1
-                else f"{hunk.new_start},{hunk.new_count}"
+                f"{hunk.new_start}" if hunk.new_count == 1 else f"{hunk.new_start},{hunk.new_count}"
             )
             parts.append(f"@@ -{old_range} +{new_range} @@\n")
             for line in hunk.lines:
@@ -156,7 +153,7 @@ class PatchSynthesizer:
             # Verify old lines match
             actual = result_lines[old_start_0 : old_start_0 + len(old_hunk_lines)]
             # Normalise for comparison (strip trailing newline differences)
-            if [l.rstrip("\n") for l in actual] != [l.rstrip("\n") for l in old_hunk_lines]:
+            if [line.rstrip("\n") for line in actual] != [line.rstrip("\n") for line in old_hunk_lines]:  # noqa: E501
                 raise PatchError(
                     f"Hunk at old_start={hunk.old_start} does not match source. "
                     f"Expected:\n{''.join(old_hunk_lines)}\nGot:\n{''.join(actual)}"
@@ -180,14 +177,12 @@ class PatchSynthesizer:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    _HUNK_HEADER_RE = re.compile(
-        r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@"
-    )
+    _HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
     def _parse_hunks(self, diff_lines: list[str]) -> list[PatchHunk]:
         """Parse raw ``difflib.unified_diff`` output into :class:`PatchHunk` list."""
         hunks: list[PatchHunk] = []
-        current: Optional[PatchHunk] = None
+        current: PatchHunk | None = None
 
         for line in diff_lines:
             if line.startswith("--- ") or line.startswith("+++ "):

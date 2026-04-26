@@ -6,9 +6,9 @@ import tempfile
 import pytest
 
 from src.security.provenance_attestation import (
+    PROVENANCE_ATTESTATION_REGISTRY,
     AttestationVerificationError,
     Material,
-    PROVENANCE_ATTESTATION_REGISTRY,
     ProvenanceAttestation,
     ProvenanceAttestationBuilder,
     build_file_attestation,

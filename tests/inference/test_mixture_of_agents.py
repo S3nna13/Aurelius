@@ -1,24 +1,25 @@
 """Tests for logit-fusion Mixture-of-Agents (MoA) inference."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.inference.mixture_of_agents import (
-    MoAConfig,
     MixtureOfAgents,
+    MoAConfig,
     MoADecoder,
+    aggregate_logits_max_prob,
     aggregate_logits_mean,
     aggregate_logits_weighted,
-    aggregate_logits_max_prob,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -70,6 +71,7 @@ def _random_logits(seed: int) -> torch.Tensor:
 # 1. MoAConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_moa_config_default_aggregation():
     cfg = MoAConfig()
     assert cfg.aggregation == "mean"
@@ -89,6 +91,7 @@ def test_moa_config_default_weights_none():
 # 4. aggregate_logits_mean shape and correctness
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_logits_mean_shape():
     logits = [_random_logits(i) for i in range(3)]
     out = aggregate_logits_mean(logits)
@@ -97,9 +100,9 @@ def test_aggregate_logits_mean_shape():
 
 def test_aggregate_logits_mean_single():
     """Mean of a single tensor is that tensor."""
-    l = _random_logits(42)
-    out = aggregate_logits_mean([l])
-    assert torch.allclose(out, l)
+    item = _random_logits(42)
+    out = aggregate_logits_mean([item])
+    assert torch.allclose(out, item)
 
 
 def test_aggregate_logits_mean_correctness():
@@ -114,6 +117,7 @@ def test_aggregate_logits_mean_correctness():
 # ---------------------------------------------------------------------------
 # 5. aggregate_logits_weighted
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_logits_weighted_shape():
     logits = [_random_logits(i) for i in range(2)]
@@ -132,9 +136,9 @@ def test_aggregate_logits_weighted_equal_weights_equals_mean():
 
 def test_aggregate_logits_weighted_single_model():
     """Single model with any non-zero weight returns that model's logits."""
-    l = _random_logits(20)
-    out = aggregate_logits_weighted([l], [5.0])
-    assert torch.allclose(out, l, atol=1e-5)
+    item = _random_logits(20)
+    out = aggregate_logits_weighted([item], [5.0])
+    assert torch.allclose(out, item, atol=1e-5)
 
 
 def test_aggregate_logits_weighted_correctness():
@@ -151,6 +155,7 @@ def test_aggregate_logits_weighted_correctness():
 # 6. aggregate_logits_max_prob
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_logits_max_prob_shape():
     logits = [_random_logits(i) for i in range(3)]
     out = aggregate_logits_max_prob(logits)
@@ -159,9 +164,9 @@ def test_aggregate_logits_max_prob_shape():
 
 def test_aggregate_logits_max_prob_single():
     """With a single model, output equals that model's logits."""
-    l = _random_logits(55)
-    out = aggregate_logits_max_prob([l])
-    assert torch.allclose(out, l)
+    item = _random_logits(55)
+    out = aggregate_logits_max_prob([item])
+    assert torch.allclose(out, item)
 
 
 def test_aggregate_logits_max_prob_selects_highest_prob():
@@ -180,6 +185,7 @@ def test_aggregate_logits_max_prob_selects_highest_prob():
 # 7. MixtureOfAgents.forward shape
 # ---------------------------------------------------------------------------
 
+
 def test_mixture_forward_shape(model_a, model_b, input_ids):
     cfg = MoAConfig(aggregation="mean")
     moa = MixtureOfAgents([model_a, model_b], cfg)
@@ -192,6 +198,7 @@ def test_mixture_forward_shape(model_a, model_b, input_ids):
 # 8. MixtureOfAgents with single model returns same logits
 # ---------------------------------------------------------------------------
 
+
 def test_mixture_single_model_equals_direct(model_a, input_ids):
     cfg = MoAConfig(aggregation="mean", temperature=1.0)
     moa = MixtureOfAgents([model_a], cfg)
@@ -203,6 +210,7 @@ def test_mixture_single_model_equals_direct(model_a, input_ids):
 # ---------------------------------------------------------------------------
 # 9. MixtureOfAgents with all three aggregation modes
 # ---------------------------------------------------------------------------
+
 
 def test_mixture_mode_mean(model_a, model_b, input_ids):
     cfg = MoAConfig(aggregation="mean")
@@ -229,6 +237,7 @@ def test_mixture_mode_max_prob(model_a, model_b, input_ids):
 # 10. MoADecoder.generate returns token tensor of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_decoder_generate_length(model_a, input_ids):
     cfg = MoAConfig(aggregation="mean")
     decoder = MoADecoder([model_a], cfg)
@@ -250,12 +259,13 @@ def test_decoder_generate_preserves_prompt(model_a, input_ids):
     cfg = MoAConfig(aggregation="mean")
     decoder = MoADecoder([model_a], cfg)
     out = decoder.generate(input_ids, max_new_tokens=4)
-    assert torch.equal(out[:, :input_ids.shape[1]], input_ids)
+    assert torch.equal(out[:, : input_ids.shape[1]], input_ids)
 
 
 # ---------------------------------------------------------------------------
 # 11. Temperature scaling effect
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_scaling_changes_logits(model_a, input_ids):
     """Logits with temperature=0.5 should differ from temperature=1.0."""

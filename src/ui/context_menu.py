@@ -5,15 +5,15 @@ Only rich, stdlib, and project-local imports are used.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 from rich.console import Console
 from rich.rule import Rule
 from rich.text import Text
 
 
-class MenuItemKind(str, Enum):
+class MenuItemKind(StrEnum):
     """Discriminator for menu item types."""
 
     ACTION = "action"
@@ -180,13 +180,32 @@ class ContextMenuRegistry:
 CONTEXT_MENU_REGISTRY = ContextMenuRegistry()
 
 _editor_menu = ContextMenu(title="Editor")
-_editor_menu.add_item(MenuItem(label="Copy", kind=MenuItemKind.ACTION, shortcut="Ctrl+C", action_id="copy"))
-_editor_menu.add_item(MenuItem(label="Paste", kind=MenuItemKind.ACTION, shortcut="Ctrl+V", action_id="paste"))
+_editor_menu.add_item(
+    MenuItem(label="Copy", kind=MenuItemKind.ACTION, shortcut="Ctrl+C", action_id="copy")
+)
+_editor_menu.add_item(
+    MenuItem(label="Paste", kind=MenuItemKind.ACTION, shortcut="Ctrl+V", action_id="paste")
+)
 _editor_menu.add_separator()
-_editor_menu.add_item(MenuItem(label="Select All", kind=MenuItemKind.ACTION, shortcut="Ctrl+A", action_id="select_all"))
+_editor_menu.add_item(
+    MenuItem(
+        label="Select All", kind=MenuItemKind.ACTION, shortcut="Ctrl+A", action_id="select_all"
+    )
+)
 CONTEXT_MENU_REGISTRY.register("editor", _editor_menu)
 
 _session_menu = ContextMenu(title="Session")
-_session_menu.add_item(MenuItem(label="New Session", kind=MenuItemKind.ACTION, shortcut="Ctrl+N", action_id="new_session"))
-_session_menu.add_item(MenuItem(label="Close Session", kind=MenuItemKind.ACTION, shortcut="Ctrl+W", action_id="close_session"))
+_session_menu.add_item(
+    MenuItem(
+        label="New Session", kind=MenuItemKind.ACTION, shortcut="Ctrl+N", action_id="new_session"
+    )
+)
+_session_menu.add_item(
+    MenuItem(
+        label="Close Session",
+        kind=MenuItemKind.ACTION,
+        shortcut="Ctrl+W",
+        action_id="close_session",
+    )
+)
 CONTEXT_MENU_REGISTRY.register("session", _session_menu)

@@ -1,4 +1,5 @@
 """Sparse attention: local window + strided global patterns."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,8 +14,8 @@ from torch import Tensor
 class SparseAttentionConfig:
     d_model: int = 256
     n_heads: int = 4
-    window_size: int = 32       # local attention window (each side)
-    stride: int = 8             # global strided attention step
+    window_size: int = 32  # local attention window (each side)
+    stride: int = 8  # global strided attention step
     dropout: float = 0.0
 
 
@@ -39,7 +40,7 @@ def build_strided_mask(
     stride: int,
     device: torch.device = torch.device("cpu"),
 ) -> Tensor:
-    """Build (T, T) boolean mask where mask[i,j]=True if j % stride == 0 AND j<=i (causal global)."""
+    """Build (T, T) boolean mask where mask[i,j]=True if j % stride == 0 AND j<=i (causal global)."""  # noqa: E501
     rows = torch.arange(seq_len, device=device).unsqueeze(1)  # (T, 1)
     cols = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, T)
     causal = cols <= rows
@@ -77,7 +78,7 @@ class SparseAttention(nn.Module):
         self.stride = config.stride
         self.dropout = config.dropout
 
-        assert config.d_model % config.n_heads == 0, (
+        assert config.d_model % config.n_heads == 0, (  # noqa: S101
             f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
         )
         self.head_dim = config.d_model // config.n_heads
@@ -108,7 +109,7 @@ class SparseAttention(nn.Module):
         sparse_mask = build_sparse_mask(T, self.window_size, self.stride, device=x.device)
 
         # Compute attention scores
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         attn = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, n_heads, T, T)
 
         # Apply sparse mask: set False positions to -inf
@@ -116,7 +117,7 @@ class SparseAttention(nn.Module):
         attn = attn.masked_fill(~sparse_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
         attn = F.softmax(attn, dim=-1)
-        # Replace NaN from rows that are all -inf (shouldn't happen for causal since diagonal is True)
+        # Replace NaN from rows that are all -inf (shouldn't happen for causal since diagonal is True)  # noqa: E501
         attn = torch.nan_to_num(attn, nan=0.0)
         attn = self.attn_dropout(attn)
 
@@ -156,9 +157,7 @@ class SparseTransformer(nn.Module):
     ) -> None:
         super().__init__()
         self.embed = nn.Embedding(vocab_size, config.d_model)
-        self.layers = nn.ModuleList(
-            [SparseTransformerLayer(config) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([SparseTransformerLayer(config) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(config.d_model)
         self.lm_head = nn.Linear(config.d_model, vocab_size, bias=False)
 

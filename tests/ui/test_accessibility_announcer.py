@@ -5,12 +5,11 @@ from __future__ import annotations
 import pytest
 
 from src.ui.accessibility_announcer import (
+    DEFAULT_ACCESSIBILITY_ANNOUNCER,
     AccessibilityAnnouncer,
     AccessibilityAnnouncerError,
     AriaLiveRegion,
-    DEFAULT_ACCESSIBILITY_ANNOUNCER,
 )
-
 
 # ---------------------------------------------------------------------------
 # AccessibilityAnnouncer — announce / queue
@@ -180,8 +179,8 @@ class TestSanitization:
         assert "a\nb" in result
 
     def test_zero_width_space_stripped(self):
-        result = self.announcer.announce("a\u200Bb")
-        assert "\u200B" not in result
+        result = self.announcer.announce("a\u200bb")
+        assert "\u200b" not in result
 
 
 # ---------------------------------------------------------------------------

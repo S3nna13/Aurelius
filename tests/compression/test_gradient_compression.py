@@ -1,16 +1,18 @@
 """Tests for src/compression/gradient_compression.py — 8+ tests."""
+
 import pytest
 import torch
+
 from src.compression.gradient_compression import (
-    GradCompressMethod,
     GradCompressionConfig,
+    GradCompressMethod,
     GradientCompressor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def grad_4x4():
@@ -33,6 +35,7 @@ def sign_compressor():
 # ---------------------------------------------------------------------------
 # 1. TOP_K
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_keeps_correct_count(top_k_compressor, grad_4x4):
     values, indices = top_k_compressor.compress(grad_4x4)
@@ -76,6 +79,7 @@ def test_decompress_top_k_zeros_pruned(top_k_compressor, grad_4x4):
 # 2. RANDOM_K
 # ---------------------------------------------------------------------------
 
+
 def test_random_k_count(grad_4x4):
     cfg = GradCompressionConfig(method=GradCompressMethod.RANDOM_K, sparsity=0.5)
     c = GradientCompressor(cfg)
@@ -95,6 +99,7 @@ def test_random_k_decompress_shape(grad_4x4):
 # ---------------------------------------------------------------------------
 # 3. THRESHOLD
 # ---------------------------------------------------------------------------
+
 
 def test_threshold_keeps_large_values():
     cfg = GradCompressionConfig(method=GradCompressMethod.THRESHOLD, threshold=0.5)
@@ -119,6 +124,7 @@ def test_threshold_fallback_to_max_when_none_pass():
 # 4. SIGN_SGD
 # ---------------------------------------------------------------------------
 
+
 def test_sign_sgd_all_elements_returned(sign_compressor, grad_4x4):
     values, indices = sign_compressor.compress(grad_4x4)
     assert values.numel() == grad_4x4.numel()
@@ -137,6 +143,7 @@ def test_sign_sgd_values_are_signs(sign_compressor, grad_4x4):
 # ---------------------------------------------------------------------------
 # 5. Enum values
 # ---------------------------------------------------------------------------
+
 
 def test_enum_values():
     assert GradCompressMethod.TOP_K == "top_k"

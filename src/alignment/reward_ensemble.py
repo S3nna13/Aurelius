@@ -1,33 +1,34 @@
 """Reward model ensemble for uncertainty-aware RLHF."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EnsembleConfig:
     """Configuration for the reward ensemble."""
 
     n_models: int = 5
-    aggregation: str = "mean"       # "mean" | "min" | "ucb"
+    aggregation: str = "mean"  # "mean" | "min" | "ucb"
     ucb_beta: float = 1.0
-    dropout_rate: float = 0.1       # for MC dropout baseline
+    dropout_rate: float = 0.1  # for MC dropout baseline
     temperature: float = 1.0
 
 
 # ---------------------------------------------------------------------------
 # RewardHead
 # ---------------------------------------------------------------------------
+
 
 class RewardHead(nn.Module):
     """Scalar reward head: Linear -> GELU -> Dropout -> Linear -> scalar.
@@ -53,17 +54,18 @@ class RewardHead(nn.Module):
         Returns:
             ``(B,)`` scalar reward per sample.
         """
-        x = hidden_states[:, -1, :]   # pool last token: (B, D)
+        x = hidden_states[:, -1, :]  # pool last token: (B, D)
         x = self.fc1(x)
         x = self.act(x)
         x = self.dropout(x)
         x = self.fc2(x)
-        return x.squeeze(-1)          # (B,)
+        return x.squeeze(-1)  # (B,)
 
 
 # ---------------------------------------------------------------------------
 # RewardEnsemble
 # ---------------------------------------------------------------------------
+
 
 class RewardEnsemble(nn.Module):
     """Ensemble of reward models sharing one backbone.
@@ -118,11 +120,9 @@ class RewardEnsemble(nn.Module):
         """
         hidden = self._get_hidden_states(input_ids)  # (B, T, D)
 
-        per_head = torch.stack(
-            [head(hidden) for head in self.reward_heads], dim=0
-        )  # (n_models, B)
+        per_head = torch.stack([head(hidden) for head in self.reward_heads], dim=0)  # (n_models, B)
 
-        mean_reward = per_head.mean(dim=0)   # (B,)
+        mean_reward = per_head.mean(dim=0)  # (B,)
         if per_head.shape[0] > 1:
             std_reward = per_head.std(dim=0, correction=0)
         else:
@@ -152,9 +152,7 @@ class RewardEnsemble(nn.Module):
                 std = torch.zeros_like(mean)
             return mean + self.config.ucb_beta * std
         else:
-            raise ValueError(
-                f"Unknown aggregation '{mode}'. Choose from 'mean', 'min', 'ucb'."
-            )
+            raise ValueError(f"Unknown aggregation '{mode}'. Choose from 'mean', 'min', 'ucb'.")
 
     def uncertainty(self, input_ids: Tensor) -> dict[str, Tensor]:
         """Return uncertainty estimates for a batch.
@@ -168,9 +166,7 @@ class RewardEnsemble(nn.Module):
         """
         hidden = self._get_hidden_states(input_ids)  # (B, T, D)
 
-        per_head = torch.stack(
-            [head(hidden) for head in self.reward_heads], dim=0
-        )  # (n_models, B)
+        per_head = torch.stack([head(hidden) for head in self.reward_heads], dim=0)  # (n_models, B)
 
         mean = per_head.mean(dim=0)
         if per_head.shape[0] > 1:
@@ -191,6 +187,7 @@ class RewardEnsemble(nn.Module):
 # ---------------------------------------------------------------------------
 # MCDropoutReward
 # ---------------------------------------------------------------------------
+
 
 class MCDropoutReward:
     """MC-Dropout baseline: single head run multiple times in train mode.
@@ -213,7 +210,7 @@ class MCDropoutReward:
         Returns:
             Tuple ``(mean, std)`` both shape ``(B,)``.
         """
-        self.reward_head.train()   # enable dropout
+        self.reward_head.train()  # enable dropout
         samples = torch.stack(
             [self.reward_head(hidden) for _ in range(self.n_forward)], dim=0
         )  # (n_forward, B)
@@ -229,6 +226,7 @@ class MCDropoutReward:
 # ---------------------------------------------------------------------------
 # Functional helpers
 # ---------------------------------------------------------------------------
+
 
 def conservative_reward(mean: Tensor, std: Tensor, beta: float = 1.0) -> Tensor:
     """Lower confidence bound: mean - beta * std.
@@ -247,6 +245,7 @@ def conservative_reward(mean: Tensor, std: Tensor, beta: float = 1.0) -> Tensor:
 # ---------------------------------------------------------------------------
 # RewardEnsembleTrainer
 # ---------------------------------------------------------------------------
+
 
 class RewardEnsembleTrainer:
     """Train a RewardEnsemble on preference pairs with Bradley-Terry loss.
@@ -274,9 +273,7 @@ class RewardEnsembleTrainer:
             ``(n_models, B)``
         """
         hidden = self.ensemble._get_hidden_states(input_ids)
-        return torch.stack(
-            [head(hidden) for head in self.ensemble.reward_heads], dim=0
-        )
+        return torch.stack([head(hidden) for head in self.ensemble.reward_heads], dim=0)
 
     def train_step(
         self,
@@ -300,10 +297,10 @@ class RewardEnsembleTrainer:
         self.ensemble.train()
         self.optimizer.zero_grad()
 
-        chosen_rewards = self._get_per_head_rewards(chosen_ids)     # (n_models, B)
+        chosen_rewards = self._get_per_head_rewards(chosen_ids)  # (n_models, B)
         rejected_rewards = self._get_per_head_rewards(rejected_ids)  # (n_models, B)
 
-        margin = chosen_rewards - rejected_rewards                   # (n_models, B)
+        margin = chosen_rewards - rejected_rewards  # (n_models, B)
         loss = -F.logsigmoid(margin).mean()
 
         loss.backward()

@@ -26,16 +26,16 @@ Paper notation used throughout:
 
 from __future__ import annotations
 
-from typing import Dict, Iterator, List, Optional, Tuple
+from collections.abc import Iterator
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # ReLoRALinear
 # ---------------------------------------------------------------------------
+
 
 class ReLoRALinear(nn.Module):
     """nn.Linear augmented with a low-rank adapter (B·A) for ReLoRA training.
@@ -69,7 +69,7 @@ class ReLoRALinear(nn.Module):
 
         # W_0: base weight — trainable so we can .data-assign after merge
         self.W_0 = nn.Parameter(torch.empty(out_features, in_features))
-        nn.init.kaiming_uniform_(self.W_0, a=5 ** 0.5)
+        nn.init.kaiming_uniform_(self.W_0, a=5**0.5)
 
         # B: left factor — always init to zero
         self.B = nn.Parameter(torch.zeros(out_features, r))
@@ -91,7 +91,7 @@ class ReLoRALinear(nn.Module):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_linear(cls, linear: nn.Linear, r: int) -> "ReLoRALinear":
+    def from_linear(cls, linear: nn.Linear, r: int) -> ReLoRALinear:
         """Wrap an existing nn.Linear in a ReLoRALinear, copying its weights."""
         layer = cls(
             in_features=linear.in_features,
@@ -140,6 +140,7 @@ class ReLoRALinear(nn.Module):
 # ReLoRAScheduler
 # ---------------------------------------------------------------------------
 
+
 class ReLoRAScheduler:
     """Determines when to trigger a ReLoRA restart.
 
@@ -181,6 +182,7 @@ class ReLoRAScheduler:
 # ReLoRAWrapper
 # ---------------------------------------------------------------------------
 
+
 class ReLoRAWrapper(nn.Module):
     """Wraps a model's target nn.Linear layers with ReLoRALinear adapters.
 
@@ -211,7 +213,7 @@ class ReLoRAWrapper(nn.Module):
     def __init__(
         self,
         model: nn.Module,
-        target_modules: List[str],
+        target_modules: list[str],
         rank: int,
         restart_every: int,
         warmup_steps: int = 100,
@@ -220,7 +222,7 @@ class ReLoRAWrapper(nn.Module):
         self.model = model
         self.rank = rank
         self.scheduler = ReLoRAScheduler(restart_every, warmup_steps)
-        self._relora_layers: List[ReLoRALinear] = []
+        self._relora_layers: list[ReLoRALinear] = []
 
         self._replace_target_linears(target_modules)
 
@@ -228,9 +230,9 @@ class ReLoRAWrapper(nn.Module):
     # Layer replacement
     # ------------------------------------------------------------------
 
-    def _replace_target_linears(self, target_modules: List[str]) -> None:
+    def _replace_target_linears(self, target_modules: list[str]) -> None:
         """Walk model and replace matching nn.Linear with ReLoRALinear."""
-        replacements: List[Tuple[nn.Module, str, nn.Linear]] = []
+        replacements: list[tuple[nn.Module, str, nn.Linear]] = []
 
         for full_name, module in self.model.named_modules():
             if not isinstance(module, nn.Linear):
@@ -252,7 +254,7 @@ class ReLoRAWrapper(nn.Module):
     # Restart (Section 3, Steps 3–5)
     # ------------------------------------------------------------------
 
-    def restart(self, optimizer: Optional[torch.optim.Optimizer] = None) -> None:
+    def restart(self, optimizer: torch.optim.Optimizer | None = None) -> None:
         """Merge all LoRA updates into W_0, reset adapters, warm-restart optimizer.
 
         Steps:
@@ -271,9 +273,7 @@ class ReLoRAWrapper(nn.Module):
 
         # Step 5: warm-restart optimizer state (Section 4.2)
         if optimizer is not None:
-            lora_param_ids = {
-                id(p) for p in self._lora_parameters()
-            }
+            lora_param_ids = {id(p) for p in self._lora_parameters()}
             for group in optimizer.param_groups:
                 for p in group["params"]:
                     if id(p) not in lora_param_ids:
@@ -295,7 +295,7 @@ class ReLoRAWrapper(nn.Module):
             yield layer.B
             yield layer.A
 
-    def trainable_params(self) -> List[Tuple[str, nn.Parameter]]:
+    def trainable_params(self) -> list[tuple[str, nn.Parameter]]:
         """Return (name, param) pairs for all LoRA (B and A) parameters only.
 
         W_0 and biases are excluded; only B and A are trained.
@@ -310,7 +310,7 @@ class ReLoRAWrapper(nn.Module):
                 result.append((name, param))
         return result
 
-    def trainable_params_list(self) -> List[nn.Parameter]:
+    def trainable_params_list(self) -> list[nn.Parameter]:
         """Convenience: return just the parameter tensors (for optimizers)."""
         return [p for _, p in self.trainable_params()]
 

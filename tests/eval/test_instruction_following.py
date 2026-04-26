@@ -1,7 +1,5 @@
 """Tests for instruction_following evaluation module."""
 
-import pytest
-
 from src.eval.instruction_following import (
     ComplianceResult,
     Instruction,
@@ -117,7 +115,13 @@ def test_evaluator_aggregate_keys():
     results = evaluator.evaluate_batch(instructions, responses)
     agg = evaluator.aggregate_results(results)
 
-    assert set(agg.keys()) == {"mean_overall", "format_rate", "length_rate", "keyword_rate", "structure_rate"}
+    assert set(agg.keys()) == {
+        "mean_overall",
+        "format_rate",
+        "length_rate",
+        "keyword_rate",
+        "structure_rate",
+    }
     for v in agg.values():
         assert isinstance(v, float)
 

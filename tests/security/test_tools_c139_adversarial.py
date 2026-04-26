@@ -2,15 +2,16 @@
 
 Control-ID: C-139. All assertions verify graceful failure — no exceptions raised.
 """
+
 from __future__ import annotations
 
-import pytest
-from src.tools.edit_tool import EditTool, _MAX_CONTENT_LEN as EDIT_MAX
+from src.tools.edit_tool import _MAX_CONTENT_LEN as EDIT_MAX
+from src.tools.edit_tool import EditTool
 from src.tools.grep_tool import GrepTool
-from src.tools.web_tool import WebTool, _is_safe_url
-
+from src.tools.web_tool import WebTool
 
 # ── edit_tool adversarial ─────────────────────────────────────────────────────
+
 
 def test_edit_search_not_found_no_exception():
     tool = EditTool()
@@ -44,6 +45,7 @@ def test_edit_empty_search_blocked():
 
 # ── grep_tool adversarial ─────────────────────────────────────────────────────
 
+
 def test_grep_invalid_regex_no_exception():
     tool = GrepTool()
     result = tool.search("[[[invalid", "some content here")
@@ -60,6 +62,7 @@ def test_grep_catastrophic_regex_small_input():
 
 
 # ── web_tool adversarial ──────────────────────────────────────────────────────
+
 
 def test_web_ssrf_imds_blocked():
     tool = WebTool()

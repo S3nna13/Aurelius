@@ -2,10 +2,11 @@
 
 Adapted from BUGBOUNTY_AGENT/reporting/remediation.py. Stdlib-only.
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

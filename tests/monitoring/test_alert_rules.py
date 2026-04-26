@@ -139,22 +139,32 @@ class TestRuleEngine:
 
     def test_add_multiple(self):
         for i in range(3):
-            self.engine.add_rule(Rule(name=f"r{i}", condition=lambda s: (True, "", None), cooldown_seconds=0))
+            self.engine.add_rule(
+                Rule(name=f"r{i}", condition=lambda s: (True, "", None), cooldown_seconds=0)
+            )
         assert len(self.engine.rules) == 3
 
     def test_evaluate_all_returns_fired(self):
-        self.engine.add_rule(Rule(name="a", condition=lambda s: (True, "a", 1.0), cooldown_seconds=0))
-        self.engine.add_rule(Rule(name="b", condition=lambda s: (False, "", None), cooldown_seconds=0))
+        self.engine.add_rule(
+            Rule(name="a", condition=lambda s: (True, "a", 1.0), cooldown_seconds=0)
+        )
+        self.engine.add_rule(
+            Rule(name="b", condition=lambda s: (False, "", None), cooldown_seconds=0)
+        )
         alerts = self.engine.evaluate_all({})
         assert len(alerts) == 1
         assert alerts[0].name == "a"
 
     def test_evaluate_all_no_trigger(self):
-        self.engine.add_rule(Rule(name="a", condition=lambda s: (False, "", None), cooldown_seconds=0))
+        self.engine.add_rule(
+            Rule(name="a", condition=lambda s: (False, "", None), cooldown_seconds=0)
+        )
         assert self.engine.evaluate_all({}) == []
 
     def test_active_alerts_after_evaluate(self):
-        self.engine.add_rule(Rule(name="a", condition=lambda s: (True, "", None), cooldown_seconds=0))
+        self.engine.add_rule(
+            Rule(name="a", condition=lambda s: (True, "", None), cooldown_seconds=0)
+        )
         self.engine.evaluate_all({})
         assert len(self.engine.active_alerts()) == 1
 
@@ -162,7 +172,9 @@ class TestRuleEngine:
         assert self.engine.active_alerts() == []
 
     def test_clear_alerts(self):
-        self.engine.add_rule(Rule(name="a", condition=lambda s: (True, "", None), cooldown_seconds=0))
+        self.engine.add_rule(
+            Rule(name="a", condition=lambda s: (True, "", None), cooldown_seconds=0)
+        )
         self.engine.evaluate_all({})
         self.engine.clear_alerts()
         assert self.engine.active_alerts() == []

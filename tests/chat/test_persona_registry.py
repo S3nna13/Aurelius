@@ -8,10 +8,10 @@ from src.chat.persona_registry import (
     PersonaTone,
 )
 
-
 # ---------------------------------------------------------------------------
 # Enum smoke tests
 # ---------------------------------------------------------------------------
+
 
 def test_persona_tone_values():
     assert PersonaTone.FORMAL == "formal"
@@ -22,6 +22,7 @@ def test_persona_tone_values():
 # ---------------------------------------------------------------------------
 # Default personas
 # ---------------------------------------------------------------------------
+
 
 def test_default_personas_count():
     registry = PersonaRegistry()
@@ -70,6 +71,7 @@ def test_default_teacher_persona():
 # register / get
 # ---------------------------------------------------------------------------
 
+
 def test_register_new_persona():
     registry = PersonaRegistry()
     config = PersonaConfig(
@@ -107,6 +109,7 @@ def test_get_unknown_persona_returns_none():
 # list_personas
 # ---------------------------------------------------------------------------
 
+
 def test_list_personas_returns_list():
     registry = PersonaRegistry()
     personas = registry.list_personas()
@@ -119,6 +122,7 @@ def test_list_personas_returns_list():
 # ---------------------------------------------------------------------------
 # apply_persona
 # ---------------------------------------------------------------------------
+
 
 def test_apply_persona_prepends_system_message():
     registry = PersonaRegistry()

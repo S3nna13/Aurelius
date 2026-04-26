@@ -15,15 +15,14 @@ S-LoRA batched forward (heterogeneous adapter batch):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # LoRAAdapter — stores (A, B, rank r, scaling α/r) for one adapter
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LoRAAdapter:
@@ -37,9 +36,10 @@ class LoRAAdapter:
         rank       : r  — rank of the decomposition
         scaling    : α / r  (merged scalar; often 1.0 for pre-scaled matrices)
     """
+
     adapter_id: str
-    A: torch.Tensor   # (r, d_in)
-    B: torch.Tensor   # (d_out, r)
+    A: torch.Tensor  # (r, d_in)
+    B: torch.Tensor  # (d_out, r)
     rank: int
     scaling: float
 
@@ -47,6 +47,7 @@ class LoRAAdapter:
 # ---------------------------------------------------------------------------
 # SLoRARegistry — stores/swaps adapters, enforces capacity
 # ---------------------------------------------------------------------------
+
 
 class SLoRARegistry:
     """
@@ -109,8 +110,7 @@ class SLoRARegistry:
         """Return adapter or raise KeyError if not loaded."""
         if adapter_id not in self._store:
             raise KeyError(
-                f"Adapter '{adapter_id}' is not loaded in the registry. "
-                "Call swap_in() first."
+                f"Adapter '{adapter_id}' is not loaded in the registry. Call swap_in() first."
             )
         return self._store[adapter_id]
 
@@ -128,6 +128,7 @@ class SLoRARegistry:
 # ---------------------------------------------------------------------------
 # SLoRALinear — batched heterogeneous-adapter linear layer
 # ---------------------------------------------------------------------------
+
 
 class SLoRALinear(nn.Module):
     """
@@ -169,7 +170,7 @@ class SLoRALinear(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        adapter_ids: list[Optional[str]],
+        adapter_ids: list[str | None],
     ) -> torch.Tensor:
         """
         Batched heterogeneous-adapter forward pass.
@@ -187,9 +188,7 @@ class SLoRALinear(nn.Module):
         B, T, d_in = x.shape
 
         if len(adapter_ids) != B:
-            raise ValueError(
-                f"len(adapter_ids)={len(adapter_ids)} must equal batch size B={B}."
-            )
+            raise ValueError(f"len(adapter_ids)={len(adapter_ids)} must equal batch size B={B}.")
 
         # ------------------------------------------------------------------
         # Step 1: Base pass  H_base = X @ W_base^T     shape (B, T, d_out)
@@ -218,7 +217,7 @@ class SLoRALinear(nn.Module):
             #   lora_out = x_sub @ A^T @ B^T * scaling
             #   A : (r, d_in)  =>  x_sub @ A^T  gives (|idx|, T, r)
             #   B : (d_out, r) =>  (...) @ B^T  gives (|idx|, T, d_out)
-            A = adapter.A.to(x.device)   # (r, d_in)  — no gradient
+            A = adapter.A.to(x.device)  # (r, d_in)  — no gradient
             B_mat = adapter.B.to(x.device)  # (d_out, r)
 
             with torch.no_grad():
@@ -227,7 +226,7 @@ class SLoRALinear(nn.Module):
                 delta = delta * adapter.scaling
 
             # Scatter delta back (in-place add on a slice of H)
-            H = H.clone()          # avoid in-place on leaf / autograd tape
+            H = H.clone()  # avoid in-place on leaf / autograd tape
             H[idx] = H[idx] + delta
 
         return H
@@ -236,6 +235,7 @@ class SLoRALinear(nn.Module):
 # ---------------------------------------------------------------------------
 # SLoRALayer — convenience wrapper: augments an existing nn.Linear
 # ---------------------------------------------------------------------------
+
 
 class SLoRALayer(nn.Module):
     """
@@ -267,6 +267,6 @@ class SLoRALayer(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        adapter_ids: list[Optional[str]],
+        adapter_ids: list[str | None],
     ) -> torch.Tensor:
         return self._slora(x, adapter_ids)

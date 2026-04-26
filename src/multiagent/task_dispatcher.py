@@ -1,13 +1,14 @@
 """Dispatches tasks to available agents."""
+
 from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class DispatchStatus(str, Enum):
+class DispatchStatus(StrEnum):
     PENDING = "pending"
     ASSIGNED = "assigned"
     COMPLETED = "completed"

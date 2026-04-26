@@ -1,29 +1,30 @@
 """Tests for Token Budget Forcing (~14 tests)."""
+
 from __future__ import annotations
 
 import pytest
 import torch
-from torch import LongTensor, Tensor
-
 from aurelius.inference.token_budget_forcing import (
     BudgetConfig,
     BudgetForcingDecoder,
     BudgetForcingLogitsProcessor,
     BudgetTracker,
 )
+from torch import LongTensor, Tensor
 
 # ---------------------------------------------------------------------------
 # Constants used across tests
 # ---------------------------------------------------------------------------
 
 VOCAB_SIZE = 32
-ANSWER_TOK = 5          # arbitrary token that starts the answer phase
+ANSWER_TOK = 5  # arbitrary token that starts the answer phase
 BUDGET = 4
 
 
 # ---------------------------------------------------------------------------
 # Helper: tiny deterministic model_fn
 # ---------------------------------------------------------------------------
+
 
 def _make_model_fn(vocab_size: int = VOCAB_SIZE, seed: int = 42):
     """Returns a callable that produces fixed random logits.
@@ -44,6 +45,7 @@ def _make_model_fn(vocab_size: int = VOCAB_SIZE, seed: int = 42):
 # ===========================================================================
 # 1. BudgetConfig dataclass has correct fields and defaults
 # ===========================================================================
+
 
 class TestBudgetConfig:
     def test_fields_and_defaults(self):
@@ -70,6 +72,7 @@ class TestBudgetConfig:
 # 2. BudgetTracker.step returns False when under budget
 # ===========================================================================
 
+
 class TestBudgetTrackerUnderBudget:
     def test_step_false_under_budget(self):
         cfg = BudgetConfig(thinking_budget=BUDGET, answer_start_token_id=ANSWER_TOK)
@@ -82,11 +85,12 @@ class TestBudgetTrackerUnderBudget:
 # 3. BudgetTracker.step returns True when budget exhausted
 # ===========================================================================
 
+
 class TestBudgetTrackerExhausted:
     def test_step_true_when_exhausted(self):
         cfg = BudgetConfig(thinking_budget=BUDGET, answer_start_token_id=ANSWER_TOK)
         tracker = BudgetTracker(cfg)
-        for tok in range(BUDGET):       # tokens 0..3 (all non-answer-start)
+        for tok in range(BUDGET):  # tokens 0..3 (all non-answer-start)
             exhausted = tracker.step(tok)
         # After BUDGET steps the budget is exactly met
         assert exhausted is True
@@ -95,6 +99,7 @@ class TestBudgetTrackerExhausted:
 # ===========================================================================
 # 4. BudgetTracker.reset resets count to 0
 # ===========================================================================
+
 
 class TestBudgetTrackerReset:
     def test_reset(self):
@@ -112,6 +117,7 @@ class TestBudgetTrackerReset:
 # 5. thinking_count increments each step
 # ===========================================================================
 
+
 class TestThinkingCountIncrements:
     def test_count_increments(self):
         cfg = BudgetConfig(thinking_budget=100, answer_start_token_id=ANSWER_TOK)
@@ -127,6 +133,7 @@ class TestThinkingCountIncrements:
 # 6. Tracker transitions out of thinking phase on answer_start_token_id
 # ===========================================================================
 
+
 class TestTrackerTransition:
     def test_transitions_on_answer_token(self):
         cfg = BudgetConfig(thinking_budget=100, answer_start_token_id=ANSWER_TOK)
@@ -134,22 +141,23 @@ class TestTrackerTransition:
         assert tracker.is_in_thinking_phase is True
         tracker.step(1)
         assert tracker.is_in_thinking_phase is True
-        tracker.step(ANSWER_TOK)    # trigger transition
+        tracker.step(ANSWER_TOK)  # trigger transition
         assert tracker.is_in_thinking_phase is False
 
     def test_count_does_not_increment_after_transition(self):
         cfg = BudgetConfig(thinking_budget=100, answer_start_token_id=ANSWER_TOK)
         tracker = BudgetTracker(cfg)
-        tracker.step(1)          # count = 1
-        tracker.step(ANSWER_TOK) # transition
+        tracker.step(1)  # count = 1
+        tracker.step(ANSWER_TOK)  # transition
         count_after_transition = tracker.thinking_count
-        tracker.step(2)          # answer-phase token — should not increment
+        tracker.step(2)  # answer-phase token — should not increment
         assert tracker.thinking_count == count_after_transition
 
 
 # ===========================================================================
 # 7. BudgetForcingLogitsProcessor adds bias when forcing
 # ===========================================================================
+
 
 class TestProcessorAddsBias:
     def test_adds_bias_when_budget_exhausted(self):
@@ -175,6 +183,7 @@ class TestProcessorAddsBias:
 # 8. Processor doesn't modify logits when under budget
 # ===========================================================================
 
+
 class TestProcessorNoModifyUnderBudget:
     def test_no_bias_under_budget(self):
         cfg = BudgetConfig(
@@ -194,6 +203,7 @@ class TestProcessorNoModifyUnderBudget:
 # ===========================================================================
 # 9. Processor handles (B, V) input
 # ===========================================================================
+
 
 class TestProcessorBatchedInput:
     def test_batched_scores(self):
@@ -219,6 +229,7 @@ class TestProcessorBatchedInput:
 # 10. BudgetForcingDecoder.generate output ≤ max_total_tokens
 # ===========================================================================
 
+
 class TestDecoderOutputLength:
     def test_length_at_most_max(self):
         cfg = BudgetConfig(thinking_budget=BUDGET, answer_start_token_id=ANSWER_TOK)
@@ -232,6 +243,7 @@ class TestDecoderOutputLength:
 # ===========================================================================
 # 11. Generate returns LongTensor
 # ===========================================================================
+
 
 class TestDecoderReturnType:
     def test_returns_long_tensor(self):
@@ -247,6 +259,7 @@ class TestDecoderReturnType:
 # ===========================================================================
 # 12. budget=0: first token is answer_start_token_id or has highest forced logit
 # ===========================================================================
+
 
 class TestDecoderBudgetZero:
     def test_budget_zero_forces_answer_start(self):
@@ -268,6 +281,7 @@ class TestDecoderBudgetZero:
 # 13. Deterministic: same prompt → same output
 # ===========================================================================
 
+
 class TestDecoderDeterministic:
     def test_same_prompt_same_output(self):
         cfg = BudgetConfig(thinking_budget=BUDGET, answer_start_token_id=ANSWER_TOK)
@@ -282,6 +296,7 @@ class TestDecoderDeterministic:
 # ===========================================================================
 # 14. max_total_tokens=1 works
 # ===========================================================================
+
 
 class TestDecoderMaxOne:
     def test_max_total_tokens_one(self):

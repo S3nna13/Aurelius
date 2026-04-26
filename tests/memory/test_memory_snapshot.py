@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import gzip
-import hashlib
 import json
-import os
 
 import pytest
 
-from src.memory.memory_snapshot import MemorySnapshot, SnapshotCorruptedError
 from src.memory.episodic_memory import EpisodicMemory
-from src.memory.working_memory import WorkingMemory
+from src.memory.memory_snapshot import MemorySnapshot, SnapshotCorruptedError
 from src.memory.semantic_memory import SemanticMemory
+from src.memory.working_memory import WorkingMemory
 
 
 class TestEpisodicRoundtrip:

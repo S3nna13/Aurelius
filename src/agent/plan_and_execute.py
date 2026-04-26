@@ -26,9 +26,8 @@ Design choices
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -90,7 +89,7 @@ class PlanStep:
 
     step_idx: int
     task: str
-    result: Optional[str] = None
+    result: str | None = None
     success: bool = False
     n_attempts: int = 0
     is_final: bool = False
@@ -109,7 +108,7 @@ class ExecutionPlan:
         (0 = original plan, 1 = first re-plan, etc.).
     """
 
-    steps: List[PlanStep]
+    steps: list[PlanStep]
     created_at_attempt: int = 0
 
     def __post_init__(self) -> None:
@@ -128,12 +127,12 @@ class ExecutionPlan:
         return len(self.steps)
 
     @property
-    def completed_steps(self) -> List[PlanStep]:
+    def completed_steps(self) -> list[PlanStep]:
         """Steps that have been executed (``result is not None``)."""
         return [s for s in self.steps if s.result is not None]
 
     @property
-    def pending_steps(self) -> List[PlanStep]:
+    def pending_steps(self) -> list[PlanStep]:
         """Steps that have not yet been executed (``result is None``)."""
         return [s for s in self.steps if s.result is None]
 
@@ -165,7 +164,7 @@ class PlanExecuteResult:
     """
 
     final_answer: str
-    plans: List[ExecutionPlan]
+    plans: list[ExecutionPlan]
     total_steps_executed: int
     n_replans: int
     success: bool
@@ -189,7 +188,7 @@ class PlanAndExecuteAgent:
         :class:`PlanConfig` with its own defaults if ``None``.
     """
 
-    def __init__(self, config: Optional[PlanConfig] = None) -> None:
+    def __init__(self, config: PlanConfig | None = None) -> None:
         self.config: PlanConfig = config if config is not None else PlanConfig()
 
     # ------------------------------------------------------------------
@@ -200,7 +199,7 @@ class PlanAndExecuteAgent:
         self,
         task: str,
         context: str,
-        plan_fn: Callable[[str, str], List[str]],
+        plan_fn: Callable[[str, str], list[str]],
     ) -> ExecutionPlan:
         """Generate an :class:`ExecutionPlan` from a task description.
 
@@ -219,11 +218,8 @@ class PlanAndExecuteAgent:
         ExecutionPlan
             A plan whose steps are indexed from 0.
         """
-        subtasks: List[str] = plan_fn(task, context)
-        steps = [
-            PlanStep(step_idx=i, task=subtask)
-            for i, subtask in enumerate(subtasks)
-        ]
+        subtasks: list[str] = plan_fn(task, context)
+        steps = [PlanStep(step_idx=i, task=subtask) for i, subtask in enumerate(subtasks)]
         return ExecutionPlan(steps=steps, created_at_attempt=0)
 
     # ------------------------------------------------------------------
@@ -234,7 +230,7 @@ class PlanAndExecuteAgent:
         self,
         step: PlanStep,
         context: str,
-        execute_fn: Callable[[str, str], Tuple[str, bool]],
+        execute_fn: Callable[[str, str], tuple[str, bool]],
     ) -> PlanStep:
         """Execute a single :class:`PlanStep` in place and return it.
 
@@ -266,9 +262,9 @@ class PlanAndExecuteAgent:
     def replan(
         self,
         original_task: str,
-        completed: List[PlanStep],
+        completed: list[PlanStep],
         failed_step: PlanStep,
-        plan_fn: Callable[[str, str], List[str]],
+        plan_fn: Callable[[str, str], list[str]],
         replan_attempt: int = 0,
     ) -> ExecutionPlan:
         """Generate a new :class:`ExecutionPlan` given partial completion.
@@ -297,12 +293,12 @@ class PlanAndExecuteAgent:
             A fresh plan tagged with ``created_at_attempt=replan_attempt``.
         """
         # Build a context string that summarises what has been done.
-        completed_summary_parts: List[str] = []
+        completed_summary_parts: list[str] = []
         for s in completed:
-            completed_summary_parts.append(
-                f"[Step {s.step_idx}] {s.task}: {s.result}"
-            )
-        completed_summary = "\n".join(completed_summary_parts) if completed_summary_parts else "None"
+            completed_summary_parts.append(f"[Step {s.step_idx}] {s.task}: {s.result}")
+        completed_summary = (
+            "\n".join(completed_summary_parts) if completed_summary_parts else "None"
+        )
 
         context = (
             f"Original task: {original_task}\n"
@@ -311,11 +307,8 @@ class PlanAndExecuteAgent:
             "Generate a new plan for the remaining work."
         )
 
-        subtasks: List[str] = plan_fn(original_task, context)
-        steps = [
-            PlanStep(step_idx=i, task=subtask)
-            for i, subtask in enumerate(subtasks)
-        ]
+        subtasks: list[str] = plan_fn(original_task, context)
+        steps = [PlanStep(step_idx=i, task=subtask) for i, subtask in enumerate(subtasks)]
         return ExecutionPlan(steps=steps, created_at_attempt=replan_attempt)
 
     # ------------------------------------------------------------------
@@ -325,8 +318,8 @@ class PlanAndExecuteAgent:
     def run(
         self,
         task: str,
-        plan_fn: Callable[[str, str], List[str]],
-        execute_fn: Callable[[str, str], Tuple[str, bool]],
+        plan_fn: Callable[[str, str], list[str]],
+        execute_fn: Callable[[str, str], tuple[str, bool]],
     ) -> PlanExecuteResult:
         """Execute the full Plan-and-Execute loop.
 
@@ -355,10 +348,10 @@ class PlanAndExecuteAgent:
         -------
         PlanExecuteResult
         """
-        all_plans: List[ExecutionPlan] = []
+        all_plans: list[ExecutionPlan] = []
         n_replans: int = 0
         total_steps_executed: int = 0
-        completed_steps: List[PlanStep] = []
+        completed_steps: list[PlanStep] = []
         last_result: str = ""
 
         # Initial plan.
@@ -374,7 +367,7 @@ class PlanAndExecuteAgent:
                     break
 
                 # Build running context from completed results.
-                context_parts: List[str] = [f"Task: {task}"]
+                context_parts: list[str] = [f"Task: {task}"]
                 for cs in completed_steps:
                     context_parts.append(f"[Done] {cs.task}: {cs.result}")
                 context = "\n".join(context_parts)
@@ -387,10 +380,7 @@ class PlanAndExecuteAgent:
                     last_result = step.result or ""
                 else:
                     # Step failed.
-                    if (
-                        self.config.replan_on_failure
-                        and n_replans < self.config.max_replans
-                    ):
+                    if self.config.replan_on_failure and n_replans < self.config.max_replans:
                         n_replans += 1
                         current_plan = self.replan(
                             original_task=task,
@@ -450,9 +440,7 @@ class PlanAndExecuteAgent:
               that were completed (have a non-``None`` result)
         """
         n_plans = len(result.plans)
-        steps_per_plan = (
-            result.total_steps_executed / n_plans if n_plans > 0 else 0.0
-        )
+        steps_per_plan = result.total_steps_executed / n_plans if n_plans > 0 else 0.0
         final_plan = result.plans[-1] if result.plans else None
         if final_plan is not None and final_plan.n_steps > 0:
             plan_completion_rate = len(final_plan.completed_steps) / final_plan.n_steps

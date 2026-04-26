@@ -2,18 +2,17 @@
 
 All tests use small nn.Linear or nn.Sequential models (no large dependencies).
 """
+
 from __future__ import annotations
 
 import copy
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.task_arithmetic_merge import (
     MergeConfig,
     TaskArithmeticMerger,
-    TaskVector,
     add_task_vectors,
     apply_task_vector,
     extract_task_vector,
@@ -23,10 +22,10 @@ from src.training.task_arithmetic_merge import (
     task_vector_similarity,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _linear(in_f: int = 8, out_f: int = 4, seed: int = 0) -> nn.Linear:
     torch.manual_seed(seed)
@@ -55,6 +54,7 @@ def _state(model: nn.Module):
 # 1. extract_task_vector returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_extract_task_vector_keys():
     pre = _linear()
     ft = _perturb(pre)
@@ -66,6 +66,7 @@ def test_extract_task_vector_keys():
 # 2. extract_task_vector: τ of identical models is all zeros
 # ---------------------------------------------------------------------------
 
+
 def test_extract_task_vector_identical_is_zero():
     pre = _linear()
     tv = extract_task_vector(_state(pre), _state(pre))
@@ -76,6 +77,7 @@ def test_extract_task_vector_identical_is_zero():
 # ---------------------------------------------------------------------------
 # 3. apply_task_vector with scaling=0.0 returns pretrained weights
 # ---------------------------------------------------------------------------
+
 
 def test_apply_task_vector_scaling_zero():
     pre = _linear(seed=1)
@@ -92,6 +94,7 @@ def test_apply_task_vector_scaling_zero():
 # 4. apply_task_vector with scaling=1.0 returns finetuned weights
 # ---------------------------------------------------------------------------
 
+
 def test_apply_task_vector_scaling_one():
     pre = _linear(seed=2)
     ft = _perturb(pre, seed=20)
@@ -107,11 +110,12 @@ def test_apply_task_vector_scaling_one():
 # 5. add_task_vectors with 2 identical vectors = 2x one vector (uniform weights)
 # ---------------------------------------------------------------------------
 
+
 def test_add_task_vectors_two_identical():
     pre = _linear(seed=3)
     ft = _perturb(pre, seed=30)
     tv = extract_task_vector(_state(pre), _state(ft))
-    combined = add_task_vectors([tv, tv])
+    add_task_vectors([tv, tv])
     # With 2 identical vectors, uniform weight = 0.5 each → sum = 1.0 * tv
     # BUT uniform means each weighted 1/n=0.5, so result = 0.5*tv + 0.5*tv = tv
     # Test that 2*tv == add_task_vectors([tv, tv], weights=[1,1])
@@ -126,6 +130,7 @@ def test_add_task_vectors_two_identical():
 # 6. add_task_vectors uniform weights = mean
 # ---------------------------------------------------------------------------
 
+
 def test_add_task_vectors_uniform_is_mean():
     pre = _linear(seed=4)
     ft1 = _perturb(pre, scale=0.1, seed=41)
@@ -137,14 +142,13 @@ def test_add_task_vectors_uniform_is_mean():
     result = add_task_vectors([tv1, tv2])
     for k in tv1:
         expected = 0.5 * tv1[k] + 0.5 * tv2[k]
-        assert torch.allclose(result[k], expected, atol=1e-6), (
-            f"Uniform mean mismatch at {k}"
-        )
+        assert torch.allclose(result[k], expected, atol=1e-6), f"Uniform mean mismatch at {k}"
 
 
 # ---------------------------------------------------------------------------
 # 7. negate_task_vector flips signs
 # ---------------------------------------------------------------------------
+
 
 def test_negate_task_vector():
     pre = _linear(seed=5)
@@ -152,14 +156,13 @@ def test_negate_task_vector():
     tv = extract_task_vector(_state(pre), _state(ft))
     neg = negate_task_vector(tv)
     for k in tv:
-        assert torch.allclose(neg[k], -tv[k], atol=1e-6), (
-            f"Negation mismatch at {k}"
-        )
+        assert torch.allclose(neg[k], -tv[k], atol=1e-6), f"Negation mismatch at {k}"
 
 
 # ---------------------------------------------------------------------------
 # 8. scale_task_vector doubles all values with scale=2.0
 # ---------------------------------------------------------------------------
+
 
 def test_scale_task_vector_double():
     pre = _linear(seed=6)
@@ -167,14 +170,13 @@ def test_scale_task_vector_double():
     tv = extract_task_vector(_state(pre), _state(ft))
     scaled = scale_task_vector(tv, 2.0)
     for k in tv:
-        assert torch.allclose(scaled[k], 2.0 * tv[k], atol=1e-6), (
-            f"Scaling mismatch at {k}"
-        )
+        assert torch.allclose(scaled[k], 2.0 * tv[k], atol=1e-6), f"Scaling mismatch at {k}"
 
 
 # ---------------------------------------------------------------------------
 # 9. resolve_conflicts "mean" = add_task_vectors with uniform weights
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_conflicts_mean_equals_uniform_add():
     pre = _linear(seed=7)
@@ -195,6 +197,7 @@ def test_resolve_conflicts_mean_equals_uniform_add():
 # 10. resolve_conflicts "ties": conflicting sign params zeroed out
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_conflicts_ties_zeros_conflicts():
     # Construct task vectors with guaranteed sign conflict.
     # tv1 has large positive delta, tv2 has large negative delta → no majority
@@ -212,14 +215,13 @@ def test_resolve_conflicts_ties_zeros_conflicts():
     result = resolve_conflicts([tv_pos, tv_neg], method="ties")
     for k, v in result.items():
         # With equal positive and negative, no majority → should be zeroed
-        assert torch.all(v == 0), (
-            f"Expected zeros due to sign conflict at {k}, got {v}"
-        )
+        assert torch.all(v == 0), f"Expected zeros due to sign conflict at {k}, got {v}"
 
 
 # ---------------------------------------------------------------------------
 # 11. resolve_conflicts "dare": output has some zeros (dropout effect)
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_conflicts_dare_has_zeros():
     torch.manual_seed(0)
@@ -239,6 +241,7 @@ def test_resolve_conflicts_dare_has_zeros():
 # 12. task_vector_similarity(tv, tv) ≈ 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_task_vector_similarity_self():
     pre = _linear(seed=9)
     ft = _perturb(pre, seed=90)
@@ -250,6 +253,7 @@ def test_task_vector_similarity_self():
 # ---------------------------------------------------------------------------
 # 13. task_vector_similarity(tv, -tv) ≈ -1.0
 # ---------------------------------------------------------------------------
+
 
 def test_task_vector_similarity_negated():
     pre = _linear(seed=10)
@@ -263,6 +267,7 @@ def test_task_vector_similarity_negated():
 # ---------------------------------------------------------------------------
 # 14. TaskArithmeticMerger.n_tasks increments after add_finetuned
 # ---------------------------------------------------------------------------
+
 
 def test_merger_n_tasks_increments():
     pre = _linear(seed=11)
@@ -278,6 +283,7 @@ def test_merger_n_tasks_increments():
 # 15. TaskArithmeticMerger.merge returns nn.Module
 # ---------------------------------------------------------------------------
 
+
 def test_merger_merge_returns_module():
     pre = _linear(seed=12)
     merger = TaskArithmeticMerger(pre)
@@ -291,6 +297,7 @@ def test_merger_merge_returns_module():
 # ---------------------------------------------------------------------------
 # 16. TaskArithmeticMerger.forget returns model with negated task vector applied
 # ---------------------------------------------------------------------------
+
 
 def test_merger_forget_negates_task_vector():
     pre = _linear(seed=13)
@@ -315,6 +322,7 @@ def test_merger_forget_negates_task_vector():
 # 17. merge does not modify original pretrained model
 # ---------------------------------------------------------------------------
 
+
 def test_merger_merge_does_not_mutate_pretrained():
     pre = _linear(seed=14)
     pre_state_before = {k: v.clone() for k, v in pre.state_dict().items()}
@@ -330,6 +338,7 @@ def test_merger_merge_does_not_mutate_pretrained():
 # ---------------------------------------------------------------------------
 # 18. Merger with MergeConfig scaling=0.0 returns pretrained weights
 # ---------------------------------------------------------------------------
+
 
 def test_merger_scaling_zero_returns_pretrained():
     pre = _linear(seed=15)

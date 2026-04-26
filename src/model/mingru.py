@@ -49,6 +49,7 @@ class MinGRUConfig:
 # Associative scan — affine map composition
 # ---------------------------------------------------------------------------
 
+
 def _parallel_scan_affine(log_a: Tensor, b: Tensor) -> Tensor:
     """Parallel prefix scan for the linear recurrence h_t = a_t * h_{t-1} + b_t.
 
@@ -70,8 +71,8 @@ def _parallel_scan_affine(log_a: Tensor, b: Tensor) -> Tensor:
     T = log_a.shape[1]
 
     # Working copies
-    la = log_a.clone()   # (B, T, d)
-    bv = b.clone()       # (B, T, d)
+    la = log_a.clone()  # (B, T, d)
+    bv = b.clone()  # (B, T, d)
 
     stride = 1
     while stride < T:
@@ -100,6 +101,7 @@ def _parallel_scan_affine(log_a: Tensor, b: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # MinGRU module
 # ---------------------------------------------------------------------------
+
 
 class MinGRU(nn.Module):
     """Minimal GRU (minGRU) supporting both sequential and parallel modes.
@@ -130,9 +132,7 @@ class MinGRU(nn.Module):
     # Sequential (inference) mode
     # ------------------------------------------------------------------
 
-    def forward_sequential(
-        self, x: Tensor, h0: Tensor | None = None
-    ) -> tuple[Tensor, Tensor]:
+    def forward_sequential(self, x: Tensor, h0: Tensor | None = None) -> tuple[Tensor, Tensor]:
         """Sequential recurrence for inference.
 
         Args:
@@ -148,13 +148,13 @@ class MinGRU(nn.Module):
 
         outputs = []
         for t in range(T):
-            xt = x[:, t, :]                        # (B, d_model)
-            z = torch.sigmoid(self.linear_z(xt))   # (B, d_inner)
-            h_tilde = self.linear_h(xt)            # (B, d_inner)
-            h = (1.0 - z) * h + z * h_tilde        # (B, d_inner)
+            xt = x[:, t, :]  # (B, d_model)
+            z = torch.sigmoid(self.linear_z(xt))  # (B, d_inner)
+            h_tilde = self.linear_h(xt)  # (B, d_inner)
+            h = (1.0 - z) * h + z * h_tilde  # (B, d_inner)
             outputs.append(h)
 
-        out = torch.stack(outputs, dim=1)          # (B, T, d_inner)
+        out = torch.stack(outputs, dim=1)  # (B, T, d_inner)
         return self.out_proj(out), h
 
     # ------------------------------------------------------------------
@@ -170,16 +170,16 @@ class MinGRU(nn.Module):
         Returns:
             output: (B, T, d_model)
         """
-        z = torch.sigmoid(self.linear_z(x))        # (B, T, d_inner)
-        h_tilde = self.linear_h(x)                 # (B, T, d_inner)
+        z = torch.sigmoid(self.linear_z(x))  # (B, T, d_inner)
+        h_tilde = self.linear_h(x)  # (B, T, d_inner)
 
         # Affine map parameters:  h_t = a_t * h_{t-1} + b_t
         #   a_t = 1 - z_t  ∈ (0, 1)   →  log_a = log(1 - z_t) < 0 (stable)
         #   b_t = z_t * h̃_t           ∈ ℝ
-        log_a = torch.log(1.0 - z + 1e-8)         # (B, T, d_inner)
-        b = z * h_tilde                             # (B, T, d_inner)
+        log_a = torch.log(1.0 - z + 1e-8)  # (B, T, d_inner)
+        b = z * h_tilde  # (B, T, d_inner)
 
-        h_out = _parallel_scan_affine(log_a, b)    # (B, T, d_inner)
+        h_out = _parallel_scan_affine(log_a, b)  # (B, T, d_inner)
         return self.out_proj(h_out)
 
     # ------------------------------------------------------------------

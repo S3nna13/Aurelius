@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -14,12 +14,12 @@ import torch.nn.functional as F
 class CoTPRMConfig:
     """Configuration for CoT with PRM beam search."""
 
-    n_samples: int = 4          # parallel CoT chains to sample
-    max_steps: int = 8          # max reasoning steps per chain
+    n_samples: int = 4  # parallel CoT chains to sample
+    max_steps: int = 8  # max reasoning steps per chain
     step_delimiter: str = "\n"  # separator between steps
     temperature: float = 0.8
     max_tokens_per_step: int = 32
-    beam_width: int = 2         # keep top-k partial chains by cumulative PRM score
+    beam_width: int = 2  # keep top-k partial chains by cumulative PRM score
 
 
 def split_into_steps(text: str, delimiter: str) -> list[str]:
@@ -50,7 +50,7 @@ def sample_next_step(
     with torch.no_grad():
         for _ in range(config.max_tokens_per_step):
             _, logits, _ = model(current_ids)  # (1, T, vocab)
-            next_logits = logits[0, -1, :]     # (vocab,)
+            next_logits = logits[0, -1, :]  # (vocab,)
 
             # Temperature sampling
             if config.temperature > 0:
@@ -65,7 +65,9 @@ def sample_next_step(
                 break
 
             # Extend context
-            next_id = torch.tensor([[next_token]], dtype=current_ids.dtype, device=current_ids.device)
+            next_id = torch.tensor(
+                [[next_token]], dtype=current_ids.dtype, device=current_ids.device
+            )
             current_ids = torch.cat([current_ids, next_id], dim=1)
 
     generated_ids = torch.tensor(generated, dtype=torch.long, device=context_ids.device)
@@ -84,9 +86,7 @@ def score_step_with_prm(
     PRM forward: score_logits = prm(combined_ids) -> shape (1, T, 2).
     Uses last token, class 1 probability.
     """
-    combined_ids = torch.cat(
-        [context_ids, step_ids.unsqueeze(0)], dim=1
-    )  # (1, S + step_len)
+    combined_ids = torch.cat([context_ids, step_ids.unsqueeze(0)], dim=1)  # (1, S + step_len)
 
     with torch.no_grad():
         score_logits = prm(combined_ids)  # (1, T, 2)
@@ -114,14 +114,12 @@ class StepBeam:
         step_text: str,
         step_score: float,
         new_ids: torch.Tensor,
-    ) -> "StepBeam":
+    ) -> StepBeam:
         """Return new StepBeam with step appended and score accumulated."""
         new_texts = self.step_texts + [step_text]
         new_score = self.score + step_score
         # Append new token ids to existing context
-        new_token_ids = torch.cat(
-            [self.token_ids, new_ids.unsqueeze(0)], dim=1
-        )
+        new_token_ids = torch.cat([self.token_ids, new_ids.unsqueeze(0)], dim=1)
         return StepBeam(new_texts, new_score, new_token_ids)
 
     def text(self) -> str:
@@ -166,14 +164,10 @@ class CoTPRMDecoder:
 
             for beam in beams:
                 # Sample next step from this beam's context
-                step_ids, step_text = sample_next_step(
-                    self.model, beam.token_ids, cfg
-                )
+                step_ids, step_text = sample_next_step(self.model, beam.token_ids, cfg)
 
                 # Score the step with PRM
-                step_score = score_step_with_prm(
-                    self.prm, beam.token_ids, step_ids
-                )
+                step_score = score_step_with_prm(self.prm, beam.token_ids, step_ids)
 
                 # Create a new candidate beam
                 new_beam = beam.add_step(step_text, step_score, step_ids)

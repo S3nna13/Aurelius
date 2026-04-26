@@ -24,7 +24,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # Maximum length of a code string accepted for sandboxed evaluation.
 # Keeps pathological or adversarial inputs from exhausting the compiler/parser.
 _MAX_EXEC_LEN = 100_000
@@ -34,30 +33,32 @@ _MAX_EXEC_LEN = 100_000
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CodeEvalConfig:
     """Configuration for code generation evaluation."""
 
-    language: str = "python"        # only Python for now
+    language: str = "python"  # only Python for now
     timeout_seconds: float = 5.0
-    n_samples: int = 1              # samples per problem for pass@k
+    n_samples: int = 1  # samples per problem for pass@k
     k_values: list[int] = field(default_factory=lambda: [1, 5, 10])
-    safety_check: bool = True       # reject code with dangerous patterns
+    safety_check: bool = True  # reject code with dangerous patterns
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CodeProblem:
     """A single code generation problem."""
 
     problem_id: str
-    prompt: str             # function signature + docstring
+    prompt: str  # function signature + docstring
     canonical_solution: str
-    test_cases: list[str]   # list of assert statements
-    entry_point: str        # function name to call
+    test_cases: list[str]  # list of assert statements
+    entry_point: str  # function name to call
 
 
 # ---------------------------------------------------------------------------
@@ -68,13 +69,9 @@ _PROBLEMS: list[dict] = [
     {
         "problem_id": "sum_list",
         "prompt": (
-            "def sum_list(nums: list) -> int:\n"
-            '    """Return the sum of all elements in nums."""\n'
+            'def sum_list(nums: list) -> int:\n    """Return the sum of all elements in nums."""\n'
         ),
-        "canonical_solution": (
-            "def sum_list(nums: list) -> int:\n"
-            "    return sum(nums)\n"
-        ),
+        "canonical_solution": ("def sum_list(nums: list) -> int:\n    return sum(nums)\n"),
         "test_cases": [
             "assert sum_list([1, 2, 3]) == 6",
             "assert sum_list([]) == 0",
@@ -89,10 +86,7 @@ _PROBLEMS: list[dict] = [
             "def max_list(nums: list) -> int:\n"
             '    """Return the maximum element in nums. Assumes nums is non-empty."""\n'
         ),
-        "canonical_solution": (
-            "def max_list(nums: list) -> int:\n"
-            "    return max(nums)\n"
-        ),
+        "canonical_solution": ("def max_list(nums: list) -> int:\n    return max(nums)\n"),
         "test_cases": [
             "assert max_list([1, 2, 3]) == 3",
             "assert max_list([5]) == 5",
@@ -104,13 +98,9 @@ _PROBLEMS: list[dict] = [
     {
         "problem_id": "reverse_string",
         "prompt": (
-            "def reverse_string(s: str) -> str:\n"
-            '    """Return the reverse of string s."""\n'
+            'def reverse_string(s: str) -> str:\n    """Return the reverse of string s."""\n'
         ),
-        "canonical_solution": (
-            "def reverse_string(s: str) -> str:\n"
-            "    return s[::-1]\n"
-        ),
+        "canonical_solution": ("def reverse_string(s: str) -> str:\n    return s[::-1]\n"),
         "test_cases": [
             'assert reverse_string("hello") == "olleh"',
             'assert reverse_string("") == ""',
@@ -144,10 +134,7 @@ _PROBLEMS: list[dict] = [
             "def is_palindrome(s: str) -> bool:\n"
             '    """Return True if s is a palindrome (reads the same forwards and backwards)."""\n'
         ),
-        "canonical_solution": (
-            "def is_palindrome(s: str) -> bool:\n"
-            "    return s == s[::-1]\n"
-        ),
+        "canonical_solution": ("def is_palindrome(s: str) -> bool:\n    return s == s[::-1]\n"),
         "test_cases": [
             'assert is_palindrome("racecar") == True',
             'assert is_palindrome("hello") == False',
@@ -159,10 +146,7 @@ _PROBLEMS: list[dict] = [
     },
     {
         "problem_id": "factorial",
-        "prompt": (
-            "def factorial(n: int) -> int:\n"
-            '    """Return n! (n factorial). n >= 0."""\n'
-        ),
+        "prompt": ('def factorial(n: int) -> int:\n    """Return n! (n factorial). n >= 0."""\n'),
         "canonical_solution": (
             "def factorial(n: int) -> int:\n"
             "    if n == 0:\n"
@@ -285,8 +269,7 @@ _PROBLEMS: list[dict] = [
             '    """Return the number of times item appears in lst."""\n'
         ),
         "canonical_solution": (
-            "def count_occurrences(lst: list, item) -> int:\n"
-            "    return lst.count(item)\n"
+            "def count_occurrences(lst: list, item) -> int:\n    return lst.count(item)\n"
         ),
         "test_cases": [
             "assert count_occurrences([1, 2, 1, 3, 1], 1) == 3",
@@ -525,6 +508,7 @@ def execute_code_safely(
 # pass@k metric
 # ---------------------------------------------------------------------------
 
+
 def pass_at_k(n: int, c: int, k: int) -> float:
     """Compute the pass@k metric using the exact combinatorial formula.
 
@@ -551,6 +535,7 @@ def pass_at_k(n: int, c: int, k: int) -> float:
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class CodeEvaluator:
     """Evaluates code generation solutions against HumanEval-style problems."""

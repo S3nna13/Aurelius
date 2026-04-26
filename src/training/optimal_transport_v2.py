@@ -6,17 +6,16 @@ Pure native PyTorch implementation — no external OT libraries.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # OTConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OTConfig:
@@ -30,6 +29,7 @@ class OTConfig:
 # ---------------------------------------------------------------------------
 # CostMatrix
 # ---------------------------------------------------------------------------
+
 
 class CostMatrix:
     """Factory methods for computing cost matrices between point sets."""
@@ -46,9 +46,9 @@ class CostMatrix:
             C: [N, M]  where C[i,j] = ||X[i] - Y[j]||^2
         """
         # ||x - y||^2 = ||x||^2 + ||y||^2 - 2 x·y
-        X_sq = (X ** 2).sum(dim=1, keepdim=True)   # [N, 1]
-        Y_sq = (Y ** 2).sum(dim=1, keepdim=True).T   # [1, M]
-        cross = X @ Y.T                               # [N, M]
+        X_sq = (X**2).sum(dim=1, keepdim=True)  # [N, 1]
+        Y_sq = (Y**2).sum(dim=1, keepdim=True).T  # [1, M]
+        cross = X @ Y.T  # [N, M]
         C = X_sq + Y_sq - 2.0 * cross
         # Numerical safety: clamp to non-negative
         return C.clamp(min=0.0)
@@ -64,9 +64,9 @@ class CostMatrix:
         Returns:
             C: [N, M]  values in [0, 2]
         """
-        X_norm = F.normalize(X, p=2, dim=1)   # [N, d]
-        Y_norm = F.normalize(Y, p=2, dim=1)   # [M, d]
-        sim = X_norm @ Y_norm.T                # [N, M]
+        X_norm = F.normalize(X, p=2, dim=1)  # [N, d]
+        Y_norm = F.normalize(Y, p=2, dim=1)  # [M, d]
+        sim = X_norm @ Y_norm.T  # [N, M]
         return 1.0 - sim
 
     @staticmethod
@@ -81,13 +81,14 @@ class CostMatrix:
             C: [T_a, T_b]
         """
         # Broadcasting comparison
-        C = (seq_a.unsqueeze(1) != seq_b.unsqueeze(0)).float()   # [T_a, T_b]
+        C = (seq_a.unsqueeze(1) != seq_b.unsqueeze(0)).float()  # [T_a, T_b]
         return C
 
 
 # ---------------------------------------------------------------------------
 # SinkhornSolver
 # ---------------------------------------------------------------------------
+
 
 class SinkhornSolver:
     """
@@ -104,7 +105,7 @@ class SinkhornSolver:
         a: torch.Tensor,
         b: torch.Tensor,
         C: torch.Tensor,
-    ) -> Tuple[torch.Tensor, float]:
+    ) -> tuple[torch.Tensor, float]:
         """
         Compute the regularised OT plan via Sinkhorn-Knopp in log-space.
 
@@ -117,9 +118,9 @@ class SinkhornSolver:
             cost: float   OT cost sum(plan * C)
         """
         N, M = C.shape
-        log_a = a.log()          # [N]
-        log_b = b.log()          # [M]
-        log_K = -C / self.eps    # [N, M]
+        log_a = a.log()  # [N]
+        log_b = b.log()  # [M]
+        log_K = -C / self.eps  # [N, M]
 
         # Initialise dual variables in log-space
         log_f = torch.zeros(N, dtype=C.dtype, device=C.device)  # [N]
@@ -139,7 +140,7 @@ class SinkhornSolver:
                 break
 
         # Recover plan: P = diag(f) K diag(g)  in log-space
-        log_plan = log_f.unsqueeze(1) + log_K + log_g.unsqueeze(0)   # [N, M]
+        log_plan = log_f.unsqueeze(1) + log_K + log_g.unsqueeze(0)  # [N, M]
         plan = log_plan.exp()
 
         cost = (plan * C).sum().item()
@@ -159,6 +160,7 @@ class SinkhornSolver:
 # ---------------------------------------------------------------------------
 # EarthMoversDistance (nn.Module)
 # ---------------------------------------------------------------------------
+
 
 class EarthMoversDistance(nn.Module):
     """Batched Earth Mover's Distance (Wasserstein-1 / Sinkhorn approximation)."""
@@ -195,6 +197,7 @@ class EarthMoversDistance(nn.Module):
 # OTSequenceAligner
 # ---------------------------------------------------------------------------
 
+
 class OTSequenceAligner:
     """
     Soft sequence alignment via Optimal Transport on token embeddings.
@@ -207,7 +210,7 @@ class OTSequenceAligner:
         self,
         emb_a: torch.Tensor,
         emb_b: torch.Tensor,
-    ) -> Tuple[torch.Tensor, float]:
+    ) -> tuple[torch.Tensor, float]:
         """
         Soft alignment via OT on L2 cost with uniform marginals.
 
@@ -220,7 +223,7 @@ class OTSequenceAligner:
         """
         T_a = emb_a.shape[0]
         T_b = emb_b.shape[0]
-        C = CostMatrix.l2_cost(emb_a, emb_b)          # [T_a, T_b]
+        C = CostMatrix.l2_cost(emb_a, emb_b)  # [T_a, T_b]
         a = torch.full((T_a,), 1.0 / T_a, dtype=emb_a.dtype, device=emb_a.device)
         b = torch.full((T_b,), 1.0 / T_b, dtype=emb_b.dtype, device=emb_b.device)
         plan, cost = self.solver.solve(a, b, C)
@@ -264,14 +267,15 @@ class OTSequenceAligner:
             emb_proj: [T_a, d]
         """
         # plan: [T_a, T_b], emb_b: [T_b, d]
-        row_sums = plan.sum(dim=1, keepdim=True).clamp(min=1e-9)   # [T_a, 1]
-        emb_proj = (plan @ emb_b) / row_sums                       # [T_a, d]
+        row_sums = plan.sum(dim=1, keepdim=True).clamp(min=1e-9)  # [T_a, 1]
+        emb_proj = (plan @ emb_b) / row_sums  # [T_a, d]
         return emb_proj
 
 
 # ---------------------------------------------------------------------------
 # OTDistillationLoss (nn.Module)
 # ---------------------------------------------------------------------------
+
 
 class OTDistillationLoss(nn.Module):
     """
@@ -298,7 +302,7 @@ class OTDistillationLoss(nn.Module):
         Returns:
             loss: scalar tensor
         """
-        per_sample = self.aligner.soft_align_loss(student_emb, teacher_emb)   # [B]
+        per_sample = self.aligner.soft_align_loss(student_emb, teacher_emb)  # [B]
         loss = self.lambda_ot * per_sample.mean()
         return loss
 
@@ -306,6 +310,7 @@ class OTDistillationLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # SlicedWasserstein
 # ---------------------------------------------------------------------------
+
 
 class SlicedWasserstein:
     """
@@ -331,12 +336,12 @@ class SlicedWasserstein:
         theta = F.normalize(theta, p=2, dim=1)
 
         # Project: [n_projections, N] and [n_projections, M]
-        X_proj = (theta @ X.T)   # [P, N]
-        Y_proj = (theta @ Y.T)   # [P, M]
+        X_proj = theta @ X.T  # [P, N]
+        Y_proj = theta @ Y.T  # [P, M]
 
         # Sort along sample dimension
-        X_sorted, _ = X_proj.sort(dim=1)   # [P, N]
-        Y_sorted, _ = Y_proj.sort(dim=1)   # [P, M]
+        X_sorted, _ = X_proj.sort(dim=1)  # [P, N]
+        Y_sorted, _ = Y_proj.sort(dim=1)  # [P, M]
 
         # If N != M, interpolate the smaller to match the larger
         N = X_sorted.shape[1]
@@ -345,11 +350,11 @@ class SlicedWasserstein:
             # Upsample the smaller via linear interpolation
             if N < M:
                 X_sorted = F.interpolate(
-                    X_sorted.unsqueeze(0), size=M, mode='linear', align_corners=False
+                    X_sorted.unsqueeze(0), size=M, mode="linear", align_corners=False
                 ).squeeze(0)
             else:
                 Y_sorted = F.interpolate(
-                    Y_sorted.unsqueeze(0), size=N, mode='linear', align_corners=False
+                    Y_sorted.unsqueeze(0), size=N, mode="linear", align_corners=False
                 ).squeeze(0)
 
         # Sliced W_2^2: mean over projections of mean squared diff of sorted points

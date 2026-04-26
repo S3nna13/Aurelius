@@ -16,31 +16,31 @@ Public API:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ChunkedAttentionConfig:
     """Configuration for chunked attention computation."""
+
     chunk_size: int = 64
     causal: bool = True
     dropout: float = 0.0
-    scale: Optional[float] = None  # defaults to 1/sqrt(head_dim) if None
+    scale: float | None = None  # defaults to 1/sqrt(head_dim) if None
 
 
 # ---------------------------------------------------------------------------
 # ChunkedSelfAttention
 # ---------------------------------------------------------------------------
+
 
 class ChunkedSelfAttention(nn.Module):
     """Memory-efficient self-attention via chunked query computation.
@@ -98,8 +98,10 @@ class ChunkedSelfAttention(nn.Module):
 
             if self.config.causal:
                 # Build causal mask: position q_i (absolute) can only attend to k_j where j <= q_i
-                q_positions = torch.arange(q_start, q_end, device=Q.device).unsqueeze(1)  # (chunk, 1)
-                k_positions = torch.arange(T, device=Q.device).unsqueeze(0)              # (1, T)
+                q_positions = torch.arange(q_start, q_end, device=Q.device).unsqueeze(
+                    1
+                )  # (chunk, 1)
+                k_positions = torch.arange(T, device=Q.device).unsqueeze(0)  # (1, T)
                 # mask[i, j] = True where j > q_positions[i] (should be masked)
                 causal_mask = k_positions > q_positions  # (chunk, T)
                 # Broadcast over (B, H) dimensions
@@ -153,6 +155,7 @@ class ChunkedSelfAttention(nn.Module):
 # ChunkedCrossAttention
 # ---------------------------------------------------------------------------
 
+
 class ChunkedCrossAttention(nn.Module):
     """Chunked cross-attention between a query sequence and a context sequence.
 
@@ -187,7 +190,7 @@ class ChunkedCrossAttention(nn.Module):
         B, T_q, D = query.shape
         T_c = context.shape[1]
 
-        Q = self.q_proj(query)    # (B, T_q, D)
+        Q = self.q_proj(query)  # (B, T_q, D)
         K = self.k_proj(context)  # (B, T_c, D)
         V = self.v_proj(context)  # (B, T_c, D)
 
@@ -221,6 +224,7 @@ class ChunkedCrossAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # MemoryUsageEstimator
 # ---------------------------------------------------------------------------
+
 
 class MemoryUsageEstimator:
     """Estimate and compare memory usage of standard vs chunked attention."""
@@ -263,6 +267,7 @@ class MemoryUsageEstimator:
 # ---------------------------------------------------------------------------
 # ChunkedAttentionBlock
 # ---------------------------------------------------------------------------
+
 
 class ChunkedAttentionBlock(nn.Module):
     """Full transformer block using chunked self-attention.

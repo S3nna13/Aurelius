@@ -21,11 +21,10 @@ def _validate_backend_url(url: str) -> None:
     except Exception as exc:  # pragma: no cover - urlparse rarely raises
         raise ValueError(f"malformed backend URL: {url!r}") from exc
     if parsed.scheme not in _ALLOWED_SCHEMES:
-        raise ValueError(
-            f"backend URL scheme {parsed.scheme!r} not allowed; must be http or https"
-        )
+        raise ValueError(f"backend URL scheme {parsed.scheme!r} not allowed; must be http or https")
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
+
 
 __all__ = [
     "HTTPBackendConfig",
@@ -56,12 +55,12 @@ class HTTPBackend:
     def _post(self, url: str, body: dict) -> dict:
         cfg = self._config
         encoded = json.dumps(body).encode()
-        req = urllib.request.Request(url, data=encoded, headers=self._headers(), method="POST")
+        req = urllib.request.Request(url, data=encoded, headers=self._headers(), method="POST")  # noqa: S310
         last_exc: Exception | None = None
         for attempt in range(cfg.max_retries):
             try:
                 _validate_backend_url(url)
-                with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url
+                with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url  # noqa: S310
                     return json.loads(resp.read())
             except urllib.error.HTTPError as exc:
                 if 400 <= exc.code < 500:
@@ -69,7 +68,9 @@ class HTTPBackend:
                 last_exc = exc
             except Exception as exc:
                 last_exc = exc
-        raise RuntimeError(f"HTTP backend request failed after {cfg.max_retries} retries: {last_exc}") from last_exc
+        raise RuntimeError(
+            f"HTTP backend request failed after {cfg.max_retries} retries: {last_exc}"
+        ) from last_exc
 
     def chat(self, messages: list[dict], max_tokens: int = 256, temperature: float = 0.7) -> str:
         cfg = self._config
@@ -97,9 +98,9 @@ class HTTPBackend:
             _validate_backend_url(health_url)
         except ValueError:
             return False
-        req = urllib.request.Request(health_url, method="GET")
+        req = urllib.request.Request(health_url, method="GET")  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url
+            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url  # noqa: S310
                 return resp.status == 200
         except Exception:
             return False

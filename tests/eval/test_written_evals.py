@@ -15,10 +15,10 @@ from src.eval.written_evals import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_model():
@@ -82,6 +82,7 @@ def _make_question(
 # Test 1: _build_generation_prompt contains category
 # ---------------------------------------------------------------------------
 
+
 def test_build_generation_prompt_contains_category(small_model):
     gen = _make_generator(small_model)
     prompt = gen._build_generation_prompt("mathematics", 0)
@@ -92,16 +93,10 @@ def test_build_generation_prompt_contains_category(small_model):
 # Test 2: _parse_question valid
 # ---------------------------------------------------------------------------
 
+
 def test_parse_question_valid(small_model):
     gen = _make_generator(small_model)
-    text = (
-        "Q: What is the boiling point of water?\n"
-        "A) 100°C\n"
-        "B) 0°C\n"
-        "C) 50°C\n"
-        "D) 200°C\n"
-        "Answer: A"
-    )
+    text = "Q: What is the boiling point of water?\nA) 100°C\nB) 0°C\nC) 50°C\nD) 200°C\nAnswer: A"
     result = gen._parse_question(text, "science", 0)
     assert result is not None
     assert isinstance(result, EvalQuestion)
@@ -115,6 +110,7 @@ def test_parse_question_valid(small_model):
 # Test 3: _parse_question invalid returns None
 # ---------------------------------------------------------------------------
 
+
 def test_parse_question_invalid_returns_none(small_model):
     gen = _make_generator(small_model)
     # Missing the Answer: line
@@ -126,6 +122,7 @@ def test_parse_question_invalid_returns_none(small_model):
 # ---------------------------------------------------------------------------
 # Test 4: eval_runner run returns results
 # ---------------------------------------------------------------------------
+
 
 def test_eval_runner_run_returns_results(small_model):
     runner = _make_runner(small_model)
@@ -143,6 +140,7 @@ def test_eval_runner_run_returns_results(small_model):
 # ---------------------------------------------------------------------------
 # Test 5: confidence values are in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_eval_runner_confidence_in_range(small_model):
     runner = _make_runner(small_model)
@@ -162,6 +160,7 @@ def test_eval_runner_confidence_in_range(small_model):
 # Test 6: aggregate accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_accuracy_in_range(small_model):
     runner = _make_runner(small_model)
     questions = [
@@ -176,6 +175,7 @@ def test_aggregate_accuracy_in_range(small_model):
 # ---------------------------------------------------------------------------
 # Test 7: per_category has one key per category
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_per_category(small_model):
     runner = _make_runner(small_model)
@@ -197,17 +197,26 @@ def test_aggregate_per_category(small_model):
 # Test 8: difficulty_score
 # ---------------------------------------------------------------------------
 
+
 def test_difficulty_score():
     # All correct -> accuracy=1.0, difficulty=0.0
     all_correct = [
-        EvalResult(question_id="q1", predicted_choice=0, correct=True, confidence=0.9, raw_output=""),
-        EvalResult(question_id="q2", predicted_choice=1, correct=True, confidence=0.8, raw_output=""),
+        EvalResult(
+            question_id="q1", predicted_choice=0, correct=True, confidence=0.9, raw_output=""
+        ),
+        EvalResult(
+            question_id="q2", predicted_choice=1, correct=True, confidence=0.8, raw_output=""
+        ),
     ]
     assert difficulty_score(all_correct) == pytest.approx(0.0)
 
     # None correct -> accuracy=0.0, difficulty=1.0
     none_correct = [
-        EvalResult(question_id="q1", predicted_choice=1, correct=False, confidence=0.7, raw_output=""),
-        EvalResult(question_id="q2", predicted_choice=2, correct=False, confidence=0.6, raw_output=""),
+        EvalResult(
+            question_id="q1", predicted_choice=1, correct=False, confidence=0.7, raw_output=""
+        ),
+        EvalResult(
+            question_id="q2", predicted_choice=2, correct=False, confidence=0.6, raw_output=""
+        ),
     ]
     assert difficulty_score(none_correct) == pytest.approx(1.0)

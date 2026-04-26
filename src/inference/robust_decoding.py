@@ -9,6 +9,7 @@ Implements:
 
 Reference: Radford et al., "Robust Speech Recognition via Large-Scale Weak Supervision" (Whisper).
 """
+
 from __future__ import annotations
 
 import zlib
@@ -22,12 +23,12 @@ from torch import Tensor
 @dataclass
 class RobustDecodingConfig:
     temperatures: list[float] = field(default_factory=lambda: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-    compression_ratio_threshold: float = 2.4   # zlib: high = less compressible = not repetitive
-    logprob_threshold: float = -1.0            # mean log-prob; below = low confidence
-    no_repeat_ngram_size: int = 3              # penalize repeated n-grams
+    compression_ratio_threshold: float = 2.4  # zlib: high = less compressible = not repetitive
+    logprob_threshold: float = -1.0  # mean log-prob; below = low confidence
+    no_repeat_ngram_size: int = 3  # penalize repeated n-grams
     max_new_tokens: int = 128
     min_new_tokens: int = 1
-    beam_size: int = 1                         # 1 = greedy
+    beam_size: int = 1  # 1 = greedy
 
 
 def compute_compression_ratio(text: str) -> float:
@@ -75,11 +76,12 @@ def compute_mean_logprob(
     S = input_ids.shape[1]
     # logits for positions that predict generated tokens: [S-1, ..., S+T_gen-2]
     pred_logits = logits[:, S - 1 : S + T_gen - 1, :]  # (1, T_gen, V)
-    log_probs = F.log_softmax(pred_logits, dim=-1)      # (1, T_gen, V)
+    log_probs = F.log_softmax(pred_logits, dim=-1)  # (1, T_gen, V)
 
     # Gather log-probs of the actual generated tokens
     token_log_probs = log_probs.gather(
-        2, generated_ids.unsqueeze(-1)  # (1, T_gen, 1)
+        2,
+        generated_ids.unsqueeze(-1),  # (1, T_gen, 1)
     ).squeeze(-1)  # (1, T_gen)
 
     mean_lp = token_log_probs.mean().item()
@@ -87,8 +89,8 @@ def compute_mean_logprob(
 
 
 def no_repeat_ngram_logit_processor(
-    input_ids: Tensor,   # (1, S)
-    logits: Tensor,      # (1, V)
+    input_ids: Tensor,  # (1, S)
+    logits: Tensor,  # (1, V)
     ngram_size: int = 3,
 ) -> Tensor:
     """Set logits to -inf for tokens that would create a repeated n-gram.
@@ -108,7 +110,7 @@ def no_repeat_ngram_logit_processor(
         return logits  # not enough context
 
     # The prefix we're trying to extend: last (n-1) tokens
-    prefix = input_ids[0, -(n - 1):].tolist()  # list of n-1 ints
+    prefix = input_ids[0, -(n - 1) :].tolist()  # list of n-1 ints
 
     # Find all occurrences of this prefix in input_ids and collect their continuations
     seq = input_ids[0].tolist()
@@ -128,13 +130,13 @@ def no_repeat_ngram_logit_processor(
 
 @dataclass
 class GenerationResult:
-    token_ids: Tensor           # (1, T_gen) generated tokens
+    token_ids: Tensor  # (1, T_gen) generated tokens
     temperature_used: float
     mean_logprob: float
     compression_ratio: float
     passed_logprob_check: bool
     passed_compression_check: bool
-    is_reliable: bool           # both checks passed
+    is_reliable: bool  # both checks passed
 
 
 def _generate_simple(
@@ -162,7 +164,7 @@ def _generate_simple(
     with torch.no_grad():
         for _ in range(max_new_tokens):
             _loss, logits, _kv = model(current_ids)  # logits: (1, S, V)
-            next_logits = logits[:, -1, :]           # (1, V)
+            next_logits = logits[:, -1, :]  # (1, V)
 
             # Apply no-repeat n-gram filtering
             if no_repeat_ngram_size > 0:
@@ -177,7 +179,7 @@ def _generate_simple(
                 # Sample from temperature-scaled softmax
                 scaled = next_logits / temperature
                 probs = F.softmax(scaled, dim=-1)  # (1, V)
-                next_token = torch.multinomial(probs, num_samples=1)   # (1, 1)
+                next_token = torch.multinomial(probs, num_samples=1)  # (1, 1)
 
             generated.append(next_token)
             current_ids = torch.cat([current_ids, next_token], dim=1)
@@ -190,7 +192,7 @@ def _generate_simple(
 
 def generate_with_fallback(
     model,
-    input_ids: Tensor,           # (1, S) prompt
+    input_ids: Tensor,  # (1, S) prompt
     cfg: RobustDecodingConfig,
 ) -> GenerationResult:
     """Try each temperature in cfg.temperatures; return first result passing both checks.

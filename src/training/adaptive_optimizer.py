@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -166,9 +166,7 @@ def compute_gradient_norm(params: list[nn.Parameter]) -> float:
     return math.sqrt(total_sq)
 
 
-def clip_gradients_by_norm(
-    params: list[nn.Parameter], max_norm: float = 1.0
-) -> float:
+def clip_gradients_by_norm(params: list[nn.Parameter], max_norm: float = 1.0) -> float:
     """Clip gradients in-place so the global L2 norm does not exceed max_norm.
 
     Args:
@@ -324,8 +322,8 @@ class SOAPOptimizer(Optimizer):
                 v.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
                 # Bias correction
-                bc1 = 1.0 - beta1 ** t
-                bc2 = 1.0 - beta2 ** t
+                bc1 = 1.0 - beta1**t
+                bc2 = 1.0 - beta2**t
                 m1_hat = m1 / bc1
 
                 # Use preconditioned v if available, otherwise standard Adam v

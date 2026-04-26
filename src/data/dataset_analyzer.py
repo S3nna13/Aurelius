@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass(frozen=True)
@@ -21,7 +20,7 @@ class DatasetAnalyzer:
 
     def analyze(
         self,
-        examples: List[dict],
+        examples: list[dict],
         prompt_key: str = "prompt",
         response_key: str = "response",
         domain_key: str = "domain",
@@ -42,7 +41,7 @@ class DatasetAnalyzer:
         for e in examples:
             vocab.update(e.get(prompt_key, "").split())
             vocab.update(e.get(response_key, "").split())
-        domain_dist: Dict[str, int] = {}
+        domain_dist: dict[str, int] = {}
         for e in examples:
             d = e.get(domain_key, "")
             if d:
@@ -59,10 +58,10 @@ class DatasetAnalyzer:
 
     def length_histogram(
         self,
-        examples: List[dict],
+        examples: list[dict],
         key: str = "prompt",
         n_bins: int = 10,
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         lengths = [len(e.get(key, "")) for e in examples]
         if not lengths:
             return {}
@@ -72,7 +71,7 @@ class DatasetAnalyzer:
             label = f"{lo}-{hi}"
             return {label: len(lengths)}
         bin_width = (hi - lo) / n_bins
-        bins: Dict[str, int] = {}
+        bins: dict[str, int] = {}
         for i in range(n_bins):
             bin_lo = lo + i * bin_width
             bin_hi = lo + (i + 1) * bin_width
@@ -90,9 +89,9 @@ class DatasetAnalyzer:
             bins[label] += 1
         return bins
 
-    def detect_duplicates(self, examples: List[dict], key: str = "prompt") -> List[int]:
-        seen: Dict[str, int] = {}
-        duplicates: List[int] = []
+    def detect_duplicates(self, examples: list[dict], key: str = "prompt") -> list[int]:
+        seen: dict[str, int] = {}
+        duplicates: list[int] = []
         for i, e in enumerate(examples):
             val = e.get(key, "")
             if val in seen:

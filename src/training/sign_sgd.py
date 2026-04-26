@@ -21,13 +21,13 @@ Implements two compressed-communication optimizers:
        e_t             = m_t_corrected - q_t
        θ_{t+1}         = θ_t - lr * q_t / sqrt(v_frozen + ε)
 """
+
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 from torch.optim import Optimizer
-
 
 # ---------------------------------------------------------------------------
 # SignSGD / MSignSGD
@@ -68,7 +68,7 @@ class SignSGD(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable[[], torch.Tensor]] = None):
+    def step(self, closure: Callable[[], torch.Tensor] | None = None):
         """Perform a single SignSGD / MSignSGD step.
 
         Args:
@@ -167,7 +167,7 @@ class OneBitAdam(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable[[], torch.Tensor]] = None):
+    def step(self, closure: Callable[[], torch.Tensor] | None = None):
         """Perform a single 1-bit Adam step.
 
         Args:
@@ -229,8 +229,8 @@ class OneBitAdam(Optimizer):
                     v.mul_(beta2).addcmul_(g_t, g_t, value=1.0 - beta2)
 
                     # Bias correction
-                    bc1 = 1.0 - beta1 ** t
-                    bc2 = 1.0 - beta2 ** t
+                    bc1 = 1.0 - beta1**t
+                    bc2 = 1.0 - beta2**t
                     m_hat = m / bc1
                     v_hat = v / bc2
 

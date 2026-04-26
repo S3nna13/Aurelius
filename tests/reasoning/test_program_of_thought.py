@@ -1,12 +1,12 @@
 """Tests for ProgramOfThought."""
+
 from __future__ import annotations
 
-import pytest
 from src.reasoning.program_of_thought import (
-    ProgramOfThought,
+    POT_REGISTRY,
     PoTConfig,
     PoTResult,
-    POT_REGISTRY,
+    ProgramOfThought,
 )
 
 

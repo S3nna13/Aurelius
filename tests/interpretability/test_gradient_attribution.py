@@ -1,6 +1,7 @@
 """Tests for gradient_attribution.py."""
 
 import math
+
 import pytest
 import torch
 
@@ -27,6 +28,7 @@ def make_gradient(seed=1):
 # ---------------------------------------------------------------------------
 # AttributionMethod enum
 # ---------------------------------------------------------------------------
+
 
 class TestAttributionMethodEnum:
     def test_saliency_value(self):
@@ -57,6 +59,7 @@ class TestAttributionMethodEnum:
 # ---------------------------------------------------------------------------
 # Attribution dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestAttributionDataclass:
     def test_token_ids_stored(self):
@@ -98,12 +101,14 @@ class TestAttributionDataclass:
 
     def test_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(Attribution)
 
 
 # ---------------------------------------------------------------------------
 # GradientAttribution.normalize
 # ---------------------------------------------------------------------------
+
 
 class TestNormalize:
     def setup_method(self):
@@ -112,7 +117,7 @@ class TestNormalize:
     def test_l2_norm_approx_1(self):
         scores = [3.0, 4.0]
         normalized = self.ga.normalize(scores)
-        norm = math.sqrt(sum(s ** 2 for s in normalized))
+        norm = math.sqrt(sum(s**2 for s in normalized))
         assert abs(norm - 1.0) < 1e-4
 
     def test_all_zero_input_returns_zeros_not_nan(self):
@@ -131,7 +136,7 @@ class TestNormalize:
         scores = [5.0]
         normalized = self.ga.normalize(scores)
         assert len(normalized) == 1
-        norm = math.sqrt(sum(s ** 2 for s in normalized))
+        norm = math.sqrt(sum(s**2 for s in normalized))
         assert abs(norm - 1.0) < 1e-4
 
     def test_returns_list(self):
@@ -141,13 +146,14 @@ class TestNormalize:
     def test_negative_values_preserved_in_l2(self):
         scores = [-3.0, 4.0]
         normalized = self.ga.normalize(scores)
-        norm = math.sqrt(sum(s ** 2 for s in normalized))
+        norm = math.sqrt(sum(s**2 for s in normalized))
         assert abs(norm - 1.0) < 1e-4
 
 
 # ---------------------------------------------------------------------------
 # GradientAttribution.saliency
 # ---------------------------------------------------------------------------
+
 
 class TestSaliency:
     def setup_method(self):
@@ -189,6 +195,7 @@ class TestSaliency:
 # GradientAttribution.gradient_x_input
 # ---------------------------------------------------------------------------
 
+
 class TestGradientXInput:
     def setup_method(self):
         self.ga = GradientAttribution(method=AttributionMethod.GRADIENT_X_INPUT)
@@ -228,6 +235,7 @@ class TestGradientXInput:
 # ---------------------------------------------------------------------------
 # GradientAttribution.integrated_gradients_scores
 # ---------------------------------------------------------------------------
+
 
 class TestIntegratedGradientsScores:
     def setup_method(self):
@@ -270,6 +278,7 @@ class TestIntegratedGradientsScores:
 # GradientAttribution.create_attribution
 # ---------------------------------------------------------------------------
 
+
 class TestCreateAttribution:
     def setup_method(self):
         self.ga = GradientAttribution()
@@ -298,7 +307,7 @@ class TestCreateAttribution:
 
     def test_normalize_true_scores_l2_norm_approx_1(self):
         result = self.ga.create_attribution(self.token_ids, self.scores, normalize=True)
-        norm = math.sqrt(sum(s ** 2 for s in result.scores))
+        norm = math.sqrt(sum(s**2 for s in result.scores))
         assert abs(norm - 1.0) < 1e-4
 
     def test_normalize_false_scores_unchanged(self):

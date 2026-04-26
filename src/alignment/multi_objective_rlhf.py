@@ -7,19 +7,16 @@ Pure PyTorch only — no external alignment libraries.
 
 from __future__ import annotations
 
-import math
-import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # MultiObjectiveReward
 # ---------------------------------------------------------------------------
+
 
 class MultiObjectiveReward(nn.Module):
     """Wraps a list of reward models, one per objective.
@@ -31,19 +28,17 @@ class MultiObjectiveReward(nn.Module):
 
     def __init__(
         self,
-        reward_models: List[nn.Module],
-        objective_names: List[str],
+        reward_models: list[nn.Module],
+        objective_names: list[str],
     ) -> None:
         super().__init__()
         if len(reward_models) != len(objective_names):
-            raise ValueError(
-                "reward_models and objective_names must have the same length"
-            )
+            raise ValueError("reward_models and objective_names must have the same length")
         self.reward_models = nn.ModuleList(reward_models)
         self.objective_names = list(objective_names)
 
     # ------------------------------------------------------------------
-    def forward(self, input_ids: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor) -> dict[str, torch.Tensor]:
         """Score *input_ids* with every reward model.
 
         Args:
@@ -52,7 +47,7 @@ class MultiObjectiveReward(nn.Module):
         Returns:
             dict mapping objective name → reward tensor of shape ``[B]``.
         """
-        rewards: Dict[str, torch.Tensor] = {}
+        rewards: dict[str, torch.Tensor] = {}
         for name, model in zip(self.objective_names, self.reward_models):
             r = model(input_ids)
             if r.dim() == 2:
@@ -63,7 +58,7 @@ class MultiObjectiveReward(nn.Module):
     # ------------------------------------------------------------------
     def scalarize(
         self,
-        rewards_dict: Dict[str, torch.Tensor],
+        rewards_dict: dict[str, torch.Tensor],
         weights: torch.Tensor,
     ) -> torch.Tensor:
         """Weighted sum of objective rewards.
@@ -86,11 +81,12 @@ class MultiObjectiveReward(nn.Module):
 # ParetoFront
 # ---------------------------------------------------------------------------
 
+
 class ParetoFront:
     """Maintains a set of Pareto-optimal solutions discovered during training."""
 
     def __init__(self) -> None:
-        self.solutions: List[Dict] = []
+        self.solutions: list[dict] = []
         # Each entry: {"weights": Tensor[n_obj], "rewards": Tensor[n_obj], "loss": float}
 
     # ------------------------------------------------------------------
@@ -123,7 +119,7 @@ class ParetoFront:
         return bool(all_ge and any_gt)
 
     # ------------------------------------------------------------------
-    def get_pareto_front(self) -> List[Dict]:
+    def get_pareto_front(self) -> list[dict]:
         """Return only the non-dominated solutions from the current set."""
         n = len(self.solutions)
         if n == 0:
@@ -171,7 +167,7 @@ class ParetoFront:
 
     @staticmethod
     def _hypervolume_2d(
-        front: List[Dict],
+        front: list[dict],
         ref: torch.Tensor,
     ) -> float:
         """Exact 2-D hypervolume via sweep."""
@@ -190,19 +186,19 @@ class ParetoFront:
         pts.sort(key=lambda x: x[0], reverse=True)
 
         hv = 0.0
-        prev_f1 = float(ref[0])
-        max_f2 = float(ref[1])
+        float(ref[0])
+        float(ref[1])
 
         # Sweep from right to left in f1 dimension
         # We need to sort ascending in f1 and track maximum f2 seen
-        pts_asc = sorted(pts, key=lambda x: x[0])
-        prev_f1 = float(ref[0])
-        prev_f2 = float(ref[1])
+        sorted(pts, key=lambda x: x[0])
+        float(ref[0])
+        float(ref[1])
 
         # Standard sweep for 2-D: sort by f1 descending, track running max of f2
         pts_desc = sorted(pts, key=lambda x: x[0], reverse=True)
         running_max_f2 = float(ref[1])
-        sweep_pts: List[Tuple[float, float]] = []
+        sweep_pts: list[tuple[float, float]] = []
         for f1, f2 in pts_desc:
             if f2 > running_max_f2:
                 sweep_pts.append((f1, f2))
@@ -235,9 +231,9 @@ class ParetoFront:
         hv = 0.0
         for idx, (f1, f2) in enumerate(sorted_pts):
             if idx + 1 < len(sorted_pts):
-                next_f1 = sorted_pts[idx + 1][0]
+                sorted_pts[idx + 1][0]
             else:
-                next_f1 = f1  # last point; width contribution handled below
+                pass  # last point; width contribution handled below
             width = f1 - ref_f1_val
             # height = f2 above the ref
             # We use the standard sweep: each point contributes a rectangle
@@ -261,7 +257,7 @@ class ParetoFront:
 
     @staticmethod
     def _hypervolume_nd_mc(
-        front: List[Dict],
+        front: list[dict],
         ref: torch.Tensor,
         n_samples: int = 10_000,
     ) -> float:
@@ -301,6 +297,7 @@ class ParetoFront:
 # ---------------------------------------------------------------------------
 # WeightSampler
 # ---------------------------------------------------------------------------
+
 
 class WeightSampler:
     """Utilities for sampling scalarization weight vectors."""
@@ -358,7 +355,7 @@ class WeightSampler:
             return grid
 
     @staticmethod
-    def _simplex_grid(n_obj: int, divisions: int) -> List[List[float]]:
+    def _simplex_grid(n_obj: int, divisions: int) -> list[list[float]]:
         """Recursively enumerate grid points on the simplex."""
         if n_obj == 1:
             return [[1.0]]
@@ -405,6 +402,7 @@ class WeightSampler:
 # MOPPOTrainer
 # ---------------------------------------------------------------------------
 
+
 class MOPPOTrainer:
     """Multi-Objective PPO-style trainer using REINFORCE with scalarized reward.
 
@@ -432,7 +430,7 @@ class MOPPOTrainer:
         self,
         input_ids: torch.Tensor,
         weights: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Single REINFORCE step with scalarized reward.
 
         Args:
@@ -451,11 +449,11 @@ class MOPPOTrainer:
         # Use tokens 1..T as targets, log-probs 0..T-1 as predictions
         T = input_ids.shape[1]
         if T > 1:
-            target_ids = input_ids[:, 1:]           # [B, T-1]
-            pred_log_probs = log_probs[:, :-1, :]   # [B, T-1, V]
+            target_ids = input_ids[:, 1:]  # [B, T-1]
+            pred_log_probs = log_probs[:, :-1, :]  # [B, T-1, V]
         else:
-            target_ids = input_ids                  # [B, T]
-            pred_log_probs = log_probs              # [B, T, V]
+            target_ids = input_ids  # [B, T]
+            pred_log_probs = log_probs  # [B, T, V]
 
         # Gather: [B, T-1]
         gathered = pred_log_probs.gather(
@@ -479,7 +477,7 @@ class MOPPOTrainer:
         self,
         input_ids: torch.Tensor,
         n_weight_samples: int = 4,
-    ) -> Dict:
+    ) -> dict:
         """Sample multiple weight vectors, compute and average loss, update.
 
         Args:
@@ -494,7 +492,7 @@ class MOPPOTrainer:
         )  # [n_weight_samples, n_obj]
 
         total_loss = torch.tensor(0.0, requires_grad=True)
-        all_rewards: List[torch.Tensor] = []
+        all_rewards: list[torch.Tensor] = []
 
         for i in range(n_weight_samples):
             w = weight_samples[i]
@@ -562,6 +560,7 @@ class MOPPOTrainer:
 # RewardWeightScheduler
 # ---------------------------------------------------------------------------
 
+
 class RewardWeightScheduler:
     """Produce scalarization weight vectors according to a named schedule."""
 
@@ -569,9 +568,7 @@ class RewardWeightScheduler:
 
     def __init__(self, n_obj: int, schedule: str = "uniform") -> None:
         if schedule not in self.VALID_SCHEDULES:
-            raise ValueError(
-                f"schedule must be one of {self.VALID_SCHEDULES}, got {schedule!r}"
-            )
+            raise ValueError(f"schedule must be one of {self.VALID_SCHEDULES}, got {schedule!r}")
         self.n_obj = n_obj
         self.schedule = schedule
         self._sampler = WeightSampler()
@@ -603,12 +600,13 @@ class RewardWeightScheduler:
 # MOConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MOConfig:
     """Configuration for multi-objective RLHF training."""
 
     n_objectives: int = 3
-    objective_names: List[str] = field(
+    objective_names: list[str] = field(
         default_factory=lambda: ["helpfulness", "safety", "harmlessness"]
     )
     lr: float = 1e-4

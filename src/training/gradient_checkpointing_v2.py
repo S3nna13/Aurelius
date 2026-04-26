@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Dict, List
 
 import torch
 import torch.nn as nn
 import torch.utils.checkpoint
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -112,11 +110,11 @@ class SelectiveCheckpointing:
         config: :class:`CheckpointConfig` controlling which layers to wrap.
     """
 
-    def __init__(self, layers: List[nn.Module], config: CheckpointConfig) -> None:
+    def __init__(self, layers: list[nn.Module], config: CheckpointConfig) -> None:
         self._layers = list(layers)
         self.config = config
 
-    def wrap(self) -> List[CheckpointedLayer]:
+    def wrap(self) -> list[CheckpointedLayer]:
         """Return a list where qualifying layers are wrapped.
 
         Layer *i* is wrapped in :class:`CheckpointedLayer` when
@@ -128,7 +126,7 @@ class SelectiveCheckpointing:
             A list of :class:`CheckpointedLayer` objects the same length as
             the original layer list.
         """
-        result: List[CheckpointedLayer] = []
+        result: list[CheckpointedLayer] = []
         for i, layer in enumerate(self._layers):
             should_checkpoint = i % self.config.checkpoint_every == 0
             # Build a per-layer config that respects both the global flag and
@@ -142,7 +140,7 @@ class SelectiveCheckpointing:
         return result
 
     @staticmethod
-    def unwrap(layers: List[CheckpointedLayer]) -> List[nn.Module]:
+    def unwrap(layers: list[CheckpointedLayer]) -> list[nn.Module]:
         """Extract the original inner modules from a list of :class:`CheckpointedLayer`.
 
         Args:
@@ -178,7 +176,7 @@ class MemoryStats:
     reserved_mb: float
 
     @classmethod
-    def capture(cls) -> "MemoryStats":
+    def capture(cls) -> MemoryStats:
         """Capture a memory snapshot from the current PyTorch allocator state.
 
         Uses ``torch.cuda`` statistics when a CUDA device is available;
@@ -188,9 +186,9 @@ class MemoryStats:
             A :class:`MemoryStats` instance reflecting the current state.
         """
         if torch.cuda.is_available():
-            peak = torch.cuda.max_memory_allocated() / (1024 ** 2)
-            current = torch.cuda.memory_allocated() / (1024 ** 2)
-            reserved = torch.cuda.memory_reserved() / (1024 ** 2)
+            peak = torch.cuda.max_memory_allocated() / (1024**2)
+            current = torch.cuda.memory_allocated() / (1024**2)
+            reserved = torch.cuda.memory_reserved() / (1024**2)
         else:
             peak = 0.0
             current = 0.0
@@ -223,9 +221,7 @@ class CheckpointingBenchmark:
     # Public API
     # ------------------------------------------------------------------
 
-    def run_forward(
-        self, x: torch.Tensor, n_iterations: int = 3
-    ) -> Dict[str, float]:
+    def run_forward(self, x: torch.Tensor, n_iterations: int = 3) -> dict[str, float]:
         """Benchmark forward and backward passes.
 
         Runs ``n_iterations`` forward+backward cycles **without**
@@ -248,8 +244,8 @@ class CheckpointingBenchmark:
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
 
-        forward_times: List[float] = []
-        backward_times: List[float] = []
+        forward_times: list[float] = []
+        backward_times: list[float] = []
 
         for _ in range(n_iterations):
             # Zero any existing gradients.

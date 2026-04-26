@@ -32,7 +32,7 @@ Pure-PyTorch implementation.  No external dependencies.
 
 from __future__ import annotations
 
-from typing import Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
 
 import torch
 from torch.optim import Optimizer
@@ -147,7 +147,7 @@ class ScheduleFreeAdamW(Optimizer):
     # ------------------------------------------------------------------ #
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable] = None):
+    def step(self, closure: Callable | None = None):
         """Perform a single optimisation step.
 
         Args:
@@ -189,7 +189,7 @@ class ScheduleFreeAdamW(Optimizer):
             lr_eff = lr * sched
 
             # Polynomial averaging weight
-            weight = (lr_eff ** 2) * (max(group_step, 1) ** r)
+            weight = (lr_eff**2) * (max(group_step, 1) ** r)
             weight_sum = group["weight_sum"] + weight
             group["weight_sum"] = weight_sum
             if weight_sum > 0.0:
@@ -197,7 +197,7 @@ class ScheduleFreeAdamW(Optimizer):
             else:
                 ckp1 = 0.0
 
-            bias_correction2 = 1.0 - beta2 ** group_step
+            bias_correction2 = 1.0 - beta2**group_step
 
             for p in group["params"]:
                 if p.grad is None:
@@ -205,18 +205,14 @@ class ScheduleFreeAdamW(Optimizer):
 
                 grad = p.grad
                 if grad.is_sparse:
-                    raise RuntimeError(
-                        "ScheduleFreeAdamW does not support sparse gradients."
-                    )
+                    raise RuntimeError("ScheduleFreeAdamW does not support sparse gradients.")
 
                 state = self.state[p]
 
                 # --- Lazy state initialisation -------------------------- #
                 if len(state) == 0:
                     state["step"] = 0
-                    state["exp_avg_sq"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
+                    state["exp_avg_sq"] = torch.zeros_like(p, memory_format=torch.preserve_format)
                     # On the very first step p.data holds y == x == z.
                     state["z"] = p.data.clone()
                     state["x"] = p.data.clone()

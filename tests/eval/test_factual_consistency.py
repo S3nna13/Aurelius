@@ -13,26 +13,27 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.eval.factual_consistency import (
+    ConsistencyBenchmark,
+    FactConsistencyScorer,
+    FactualConsistencyTrainer,
+    HallucinationDetector,
     NLIClassifier,
     TextEncoder,
-    FactConsistencyScorer,
-    HallucinationDetector,
-    FactualConsistencyTrainer,
-    ConsistencyBenchmark,
 )
 
 # ---------------------------------------------------------------------------
 # Tiny constants
 # ---------------------------------------------------------------------------
-D = 16      # d_model
-V = 16      # vocab size
-T = 8       # seq_len
-B = 2       # batch
+D = 16  # d_model
+V = 16  # vocab size
+T = 8  # seq_len
+B = 2  # batch
 
 
 # ---------------------------------------------------------------------------
 # Minimal backbone: Embedding + Linear → (B, T, D)
 # ---------------------------------------------------------------------------
+
 
 class TinyBackbone(nn.Module):
     """nn.Embedding(V, D) + nn.Linear(D, D) — returns (B, T, D)."""
@@ -66,6 +67,7 @@ def rand_ids(batch: int = B, seq: int = T) -> Tensor:
 # 1. NLIClassifier output shape (B, 3)
 # ---------------------------------------------------------------------------
 
+
 def test_nli_output_shape():
     nli = make_nli()
     p = torch.randn(B, D)
@@ -77,6 +79,7 @@ def test_nli_output_shape():
 # ---------------------------------------------------------------------------
 # 2. NLIClassifier logits are finite
 # ---------------------------------------------------------------------------
+
 
 def test_nli_logits_finite():
     nli = make_nli()
@@ -90,6 +93,7 @@ def test_nli_logits_finite():
 # 3. entailment_score shape (B,) and values in (0, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_entailment_score_shape_and_range():
     nli = make_nli()
     p = torch.randn(B, D)
@@ -102,6 +106,7 @@ def test_entailment_score_shape_and_range():
 # ---------------------------------------------------------------------------
 # 4. NLIClassifier: grad flows through both premise and hypothesis paths
 # ---------------------------------------------------------------------------
+
 
 def test_nli_gradient_flows():
     nli = make_nli()
@@ -118,6 +123,7 @@ def test_nli_gradient_flows():
 # 5. TextEncoder.encode: shape (B, D) for mean/cls/last pooling
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("pooling", ["mean", "cls", "last"])
 def test_text_encoder_encode_shape(pooling):
     enc = make_encoder(pooling)
@@ -130,6 +136,7 @@ def test_text_encoder_encode_shape(pooling):
 # 6. TextEncoder.batch_encode: shape (N, D) for N sequences
 # ---------------------------------------------------------------------------
 
+
 def test_text_encoder_batch_encode_shape():
     enc = make_encoder()
     seqs = [torch.randint(0, V, (T + i,)) for i in range(3)]  # different lengths
@@ -140,6 +147,7 @@ def test_text_encoder_batch_encode_shape():
 # ---------------------------------------------------------------------------
 # 7. FactConsistencyScorer.score: returns (float, str), label in valid set
 # ---------------------------------------------------------------------------
+
 
 def test_fact_scorer_score_types():
     scorer = FactConsistencyScorer(make_encoder(), make_nli())
@@ -153,6 +161,7 @@ def test_fact_scorer_score_types():
 # ---------------------------------------------------------------------------
 # 8. FactConsistencyScorer.batch_score: length == len(claims), all in (0,1)
 # ---------------------------------------------------------------------------
+
 
 def test_fact_scorer_batch_score():
     scorer = FactConsistencyScorer(make_encoder(), make_nli())
@@ -168,6 +177,7 @@ def test_fact_scorer_batch_score():
 # 9. FactConsistencyScorer.consistency_threshold: returns list[bool], same len
 # ---------------------------------------------------------------------------
 
+
 def test_consistency_threshold():
     scorer = FactConsistencyScorer(make_encoder(), make_nli())
     scores = [0.2, 0.5, 0.7, 0.9]
@@ -181,6 +191,7 @@ def test_consistency_threshold():
 # 10. HallucinationDetector.token_entropy: shape (T,), all >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_hallucination_detector_entropy_shape_and_nonneg():
     det = HallucinationDetector(make_backbone(), threshold=3.0)
     ids = rand_ids(1)  # (1, T)
@@ -192,6 +203,7 @@ def test_hallucination_detector_entropy_shape_and_nonneg():
 # ---------------------------------------------------------------------------
 # 11. HallucinationDetector.detect_hallucinations: all 3 keys present
 # ---------------------------------------------------------------------------
+
 
 def test_hallucination_detector_keys():
     det = HallucinationDetector(make_backbone(), threshold=3.0)
@@ -206,6 +218,7 @@ def test_hallucination_detector_keys():
 # ---------------------------------------------------------------------------
 # 12. HallucinationDetector: high entropy positions correctly identified
 # ---------------------------------------------------------------------------
+
 
 def test_hallucination_detector_high_entropy_positions():
     backbone = make_backbone()
@@ -226,15 +239,13 @@ def test_hallucination_detector_high_entropy_positions():
 # 13. FactualConsistencyTrainer.train_step: loss finite, accuracy in [0,1]
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_loss_and_accuracy():
     encoder = make_encoder()
     nli = make_nli()
 
     # Collect all parameters
-    params = (
-        list(encoder.model.parameters())
-        + list(nli.parameters())
-    )
+    params = list(encoder.model.parameters()) + list(nli.parameters())
     optimizer = torch.optim.SGD(params, lr=1e-3)
     trainer = FactualConsistencyTrainer(encoder, nli, optimizer)
 
@@ -251,6 +262,7 @@ def test_trainer_train_step_loss_and_accuracy():
 # ---------------------------------------------------------------------------
 # 14. FactualConsistencyTrainer: grad flows to encoder and NLI classifier
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_gradient_flows():
     backbone = make_backbone()
@@ -273,15 +285,9 @@ def test_trainer_gradient_flows():
     trainer.train_step(premise_ids, hyp_ids, labels)
 
     backbone_grad_norm = sum(
-        p.grad.abs().sum().item()
-        for p in backbone.parameters()
-        if p.grad is not None
+        p.grad.abs().sum().item() for p in backbone.parameters() if p.grad is not None
     )
-    nli_grad_norm = sum(
-        p.grad.abs().sum().item()
-        for p in nli.parameters()
-        if p.grad is not None
-    )
+    nli_grad_norm = sum(p.grad.abs().sum().item() for p in nli.parameters() if p.grad is not None)
     assert backbone_grad_norm > 0, "No gradient flowed to backbone (encoder)"
     assert nli_grad_norm > 0, "No gradient flowed to NLI classifier"
 
@@ -289,6 +295,7 @@ def test_trainer_gradient_flows():
 # ---------------------------------------------------------------------------
 # 15. ConsistencyBenchmark: precision/recall/f1 in [0,1]; calibration_error in [0,1]
 # ---------------------------------------------------------------------------
+
 
 def test_benchmark_precision_recall_and_calibration():
     bench = ConsistencyBenchmark()

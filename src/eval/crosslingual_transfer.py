@@ -3,20 +3,22 @@
 Measures zero-shot transfer accuracy, transfer gaps, language confusion,
 and multilingual consistency across language pairs.
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LanguageResult:
@@ -31,37 +33,38 @@ class LanguageResult:
 class CrossLingualTransferResult:
     source_language: str
     source_accuracy: float
-    target_results: Dict[str, LanguageResult]
-    transfer_gaps: Dict[str, float]       # source_acc - target_acc per language
+    target_results: dict[str, LanguageResult]
+    transfer_gaps: dict[str, float]  # source_acc - target_acc per language
     avg_transfer_gap: float
-    consistency_scores: Dict[str, float]  # per language pair
+    consistency_scores: dict[str, float]  # per language pair
 
 
 # ---------------------------------------------------------------------------
 # Language / script detection
 # ---------------------------------------------------------------------------
 
+
 class LanguageDetector:
     """Heuristic script-level language detector. No external libraries."""
 
     # Unicode ranges (inclusive)
-    _RANGES: Dict[str, Tuple[int, int]] = {
-        "chinese":  (0x4E00, 0x9FFF),
+    _RANGES: dict[str, tuple[int, int]] = {
+        "chinese": (0x4E00, 0x9FFF),
         "japanese": (0x3040, 0x30FF),
-        "arabic":   (0x0600, 0x06FF),
-        "latin":    (0x0041, 0x007A),   # A-z (covers en/fr/de/es)
+        "arabic": (0x0600, 0x06FF),
+        "latin": (0x0041, 0x007A),  # A-z (covers en/fr/de/es)
     }
 
     # Script → default ISO 639-1 code
-    _SCRIPT_TO_LANG: Dict[str, str] = {
-        "chinese":  "zh",
+    _SCRIPT_TO_LANG: dict[str, str] = {
+        "chinese": "zh",
         "japanese": "ja",
-        "arabic":   "ar",
-        "latin":    "en",
+        "arabic": "ar",
+        "latin": "en",
     }
 
     # Explicit lang → expected script
-    _LANG_TO_SCRIPT: Dict[str, str] = {
+    _LANG_TO_SCRIPT: dict[str, str] = {
         "zh": "chinese",
         "ja": "japanese",
         "ar": "arabic",
@@ -75,7 +78,7 @@ class LanguageDetector:
         """Returns 'chinese', 'japanese', 'arabic', 'latin', or 'unknown'."""
         if not text:
             return "unknown"
-        counts: Dict[str, int] = {k: 0 for k in self._RANGES}
+        counts: dict[str, int] = {k: 0 for k in self._RANGES}
         for ch in text:
             cp = ord(ch)
             for script, (lo, hi) in self._RANGES.items():
@@ -102,23 +105,24 @@ class LanguageDetector:
 # Multilingual consistency checker
 # ---------------------------------------------------------------------------
 
+
 class MultilingualConsistencyChecker:
     """Checks whether a model gives consistent answers across language variants."""
 
     def __init__(
         self,
         model: nn.Module,
-        encode_fn: Callable[[str], List[int]],
-        decode_fn: Callable[[List[int]], str],
+        encode_fn: Callable[[str], list[int]],
+        decode_fn: Callable[[list[int]], str],
     ) -> None:
         self.model = model
         self.encode_fn = encode_fn
         self.decode_fn = decode_fn
         self._detector = LanguageDetector()
 
-    def _greedy_generate(self, input_ids: torch.Tensor, max_new_tokens: int) -> List[int]:
+    def _greedy_generate(self, input_ids: torch.Tensor, max_new_tokens: int) -> list[int]:
         """Autoregressive greedy decoding. Returns list of new token ids."""
-        generated: List[int] = []
+        generated: list[int] = []
         cur = input_ids.clone()
         self.model.eval()
         with torch.no_grad():
@@ -132,9 +136,9 @@ class MultilingualConsistencyChecker:
 
     def check_consistency(
         self,
-        prompts_by_language: Dict[str, str],
+        prompts_by_language: dict[str, str],
         max_new_tokens: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a response for each language variant of the same question.
 
@@ -143,8 +147,8 @@ class MultilingualConsistencyChecker:
             language_scores: Dict[lang, float]  (1.0 = correct lang, 0.0 = wrong)
             semantic_consistency: float  (avg pairwise token-set Jaccard)
         """
-        responses: Dict[str, str] = {}
-        language_scores: Dict[str, float] = {}
+        responses: dict[str, str] = {}
+        language_scores: dict[str, float] = {}
 
         for lang, prompt in prompts_by_language.items():
             ids = self.encode_fn(prompt)
@@ -183,14 +187,15 @@ class MultilingualConsistencyChecker:
 # Cross-lingual evaluator
 # ---------------------------------------------------------------------------
 
+
 class CrossLingualEvaluator:
     """Evaluates multiple-choice accuracy across source and target languages."""
 
     def __init__(
         self,
         model: nn.Module,
-        encode_fn: Callable[[str], List[int]],
-        decode_fn: Callable[[List[int]], str],
+        encode_fn: Callable[[str], list[int]],
+        decode_fn: Callable[[list[int]], str],
         source_language: str = "en",
     ) -> None:
         self.model = model
@@ -199,9 +204,7 @@ class CrossLingualEvaluator:
         self.source_language = source_language
         self._detector = LanguageDetector()
 
-    def _logprob_of_continuation(
-        self, prompt_ids: List[int], continuation_ids: List[int]
-    ) -> float:
+    def _logprob_of_continuation(self, prompt_ids: list[int], continuation_ids: list[int]) -> float:
         """Sum of log-probs of continuation tokens given prompt."""
         if not continuation_ids:
             return 0.0
@@ -221,15 +224,15 @@ class CrossLingualEvaluator:
 
     def evaluate_language(
         self,
-        prompts: List[str],
-        labels: List[int],
-        choices_per_prompt: List[List[str]],
+        prompts: list[str],
+        labels: list[int],
+        choices_per_prompt: list[list[str]],
         language: str = "en",
     ) -> LanguageResult:
         """Multiple-choice accuracy for one language via log-prob scoring."""
-        assert len(prompts) == len(labels) == len(choices_per_prompt)
+        assert len(prompts) == len(labels) == len(choices_per_prompt)  # noqa: S101
         n_correct = 0
-        confidences: List[float] = []
+        confidences: list[float] = []
         confusion_count = 0
 
         for prompt, label, choices in zip(prompts, labels, choices_per_prompt):
@@ -262,15 +265,13 @@ class CrossLingualEvaluator:
             language_confusion_rate=confusion_rate,
         )
 
-    def compute_transfer_gap(
-        self, source: LanguageResult, target: LanguageResult
-    ) -> float:
+    def compute_transfer_gap(self, source: LanguageResult, target: LanguageResult) -> float:
         return source.accuracy - target.accuracy
 
     def evaluate_transfer(
         self,
-        source_data: Tuple[List[str], List[int], List[List[str]]],
-        target_data_by_lang: Dict[str, Tuple[List[str], List[int], List[List[str]]]],
+        source_data: tuple[list[str], list[int], list[list[str]]],
+        target_data_by_lang: dict[str, tuple[list[str], list[int], list[list[str]]]],
     ) -> CrossLingualTransferResult:
         """Evaluate on source + all target languages, compute transfer metrics."""
         src_prompts, src_labels, src_choices = source_data
@@ -278,22 +279,17 @@ class CrossLingualEvaluator:
             src_prompts, src_labels, src_choices, language=self.source_language
         )
 
-        target_results: Dict[str, LanguageResult] = {}
-        transfer_gaps: Dict[str, float] = {}
+        target_results: dict[str, LanguageResult] = {}
+        transfer_gaps: dict[str, float] = {}
         for lang, (prompts, labels, choices) in target_data_by_lang.items():
             tgt = self.evaluate_language(prompts, labels, choices, language=lang)
             target_results[lang] = tgt
             transfer_gaps[lang] = self.compute_transfer_gap(source_result, tgt)
 
-        avg_gap = (
-            sum(transfer_gaps.values()) / len(transfer_gaps)
-            if transfer_gaps else 0.0
-        )
+        avg_gap = sum(transfer_gaps.values()) / len(transfer_gaps) if transfer_gaps else 0.0
 
         # Consistency: dummy 1.0 per pair (no cross-gen in this evaluator)
-        consistency_scores: Dict[str, float] = {
-            lang: 1.0 for lang in target_results
-        }
+        consistency_scores: dict[str, float] = {lang: 1.0 for lang in target_results}
 
         return CrossLingualTransferResult(
             source_language=self.source_language,
@@ -309,9 +305,10 @@ class CrossLingualEvaluator:
 # Aggregation utility
 # ---------------------------------------------------------------------------
 
+
 def aggregate_transfer_results(
-    results: List[CrossLingualTransferResult],
-) -> Dict[str, float]:
+    results: list[CrossLingualTransferResult],
+) -> dict[str, float]:
     """Aggregate multiple eval runs into mean/std statistics."""
     if not results:
         return {"mean_transfer_gap": 0.0, "std_transfer_gap": 0.0, "mean_consistency": 0.0}
@@ -321,13 +318,11 @@ def aggregate_transfer_results(
     variance = sum((g - mean_gap) ** 2 for g in all_gaps) / len(all_gaps)
     std_gap = math.sqrt(variance)
 
-    all_consistency: List[float] = []
+    all_consistency: list[float] = []
     for r in results:
         if r.consistency_scores:
             all_consistency.extend(r.consistency_scores.values())
-    mean_consistency = (
-        sum(all_consistency) / len(all_consistency) if all_consistency else 0.0
-    )
+    mean_consistency = sum(all_consistency) / len(all_consistency) if all_consistency else 0.0
 
     return {
         "mean_transfer_gap": mean_gap,

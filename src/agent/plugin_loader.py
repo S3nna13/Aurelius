@@ -71,9 +71,7 @@ class PluginLoader:
 
         parts = entry_point.split(".")
         if ".." in entry_point:
-            raise PluginLoadError(
-                f"Path traversal detected in entry_point: {entry_point!r}"
-            )
+            raise PluginLoadError(f"Path traversal detected in entry_point: {entry_point!r}")
 
         # Search for the plugin directory in plugin_dirs
         plugin_root: Path | None = None
@@ -84,9 +82,7 @@ class PluginLoader:
                 break
 
         if plugin_root is None:
-            raise PluginLoadError(
-                f"Plugin directory for entry point {entry_point!r} not found"
-            )
+            raise PluginLoadError(f"Plugin directory for entry point {entry_point!r} not found")
 
         # Build the file path from remaining parts
         file_path = plugin_root
@@ -99,17 +95,13 @@ class PluginLoader:
             if init_file.is_file():
                 target = init_file
             else:
-                raise PluginLoadError(
-                    f"Module path {file_path} is a directory without __init__.py"
-                )
+                raise PluginLoadError(f"Module path {file_path} is a directory without __init__.py")
         else:
             py_file = file_path.with_suffix(".py")
             if py_file.is_file():
                 target = py_file
             else:
-                raise PluginLoadError(
-                    f"Module file for entry_point {entry_point!r} not found"
-                )
+                raise PluginLoadError(f"Module file for entry_point {entry_point!r} not found")
 
         # Path traversal guard: resolved path must stay within plugin_dirs
         resolved = target.resolve()

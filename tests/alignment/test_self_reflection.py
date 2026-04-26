@@ -1,24 +1,26 @@
 """Tests for self_reflection module."""
+
 from __future__ import annotations
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.alignment.self_reflection import (
     ReflectionConfig,
+    ReflectionDataCollector,
     ReflectionStep,
     ResponseScorer,
     SelfCritiqueGenerator,
     SelfReflectionLoop,
-    ReflectionDataCollector,
     compute_self_consistency_score,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -70,6 +72,7 @@ def reflection_loop(small_model, scorer, critic, default_config):
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_reflection_config_defaults():
     """ReflectionConfig should have the specified default values."""
     cfg = ReflectionConfig()
@@ -116,9 +119,7 @@ def test_self_critique_generator_critique_is_string(critic):
 
 def test_self_critique_generator_revision_is_string(critic):
     """generate_revision must return a non-None string."""
-    result = critic.generate_revision(
-        "This is a test response.", "Could be clearer.", max_tokens=8
-    )
+    result = critic.generate_revision("This is a test response.", "Could be clearer.", max_tokens=8)
     assert isinstance(result, str)
 
 
@@ -168,8 +169,12 @@ def test_reflection_data_collector_training_pairs():
     """ReflectionDataCollector should produce correct chosen/rejected pairs."""
     collector = ReflectionDataCollector()
 
-    step_good = ReflectionStep(round=1, response="good response", critique="ok", score=0.9, improved=True)
-    step_bad = ReflectionStep(round=2, response="bad response", critique="poor", score=0.1, improved=False)
+    step_good = ReflectionStep(
+        round=1, response="good response", critique="ok", score=0.9, improved=True
+    )
+    step_bad = ReflectionStep(
+        round=2, response="bad response", critique="poor", score=0.1, improved=False
+    )
 
     collector.add_step("test prompt", step_good)
     collector.add_step("test prompt", step_bad)

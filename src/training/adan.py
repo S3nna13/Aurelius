@@ -6,11 +6,10 @@ Incorporates Nesterov momentum through estimates of three terms:
 
 Reference: Xie et al. 2022, arXiv:2208.06677
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 from torch.optim import Optimizer
@@ -38,7 +37,7 @@ class Adan(Optimizer):
         self,
         params,
         lr: float = 1e-3,
-        betas: Tuple[float, float, float] = (0.98, 0.92, 0.99),
+        betas: tuple[float, float, float] = (0.98, 0.92, 0.99),
         eps: float = 1e-8,
         weight_decay: float = 0.02,
         no_prox: bool = False,
@@ -59,7 +58,7 @@ class Adan(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure=None) -> Optional[float]:
+    def step(self, closure=None) -> float | None:
         """Perform a single Adan optimization step.
 
         Args:
@@ -150,7 +149,7 @@ class Adan(Optimizer):
 
         return loss
 
-    def get_lr(self) -> List[float]:
+    def get_lr(self) -> list[float]:
         """Return current learning rates for all param groups."""
         return [group["lr"] for group in self.param_groups]
 
@@ -184,7 +183,7 @@ class AdanConfig:
     """
 
     lr: float = 1e-3
-    betas: Tuple[float, float, float] = (0.98, 0.92, 0.99)
+    betas: tuple[float, float, float] = (0.98, 0.92, 0.99)
     eps: float = 1e-8
     weight_decay: float = 0.02
     no_prox: bool = False

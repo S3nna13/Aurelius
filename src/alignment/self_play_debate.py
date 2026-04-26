@@ -45,4 +45,3 @@ def summarize_claims(moves: list[DebateMove], top_k: int = 2) -> list[str]:
         raise ValueError("top_k must be non-negative")
     ranked = sorted(moves, key=lambda move: move.score, reverse=True)
     return [move.claim for move in ranked[:top_k]]
-

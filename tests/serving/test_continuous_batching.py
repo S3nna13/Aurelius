@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
-import pytest
 import torch
 
 from src.serving.continuous_batching import ContinuousBatcher, Request
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_logits(vocab_size: int, next_token: int, batch_size: int, seq_len: int):
     """Return logits tensor where the max token is always `next_token`."""
@@ -23,10 +20,12 @@ def _make_logits(vocab_size: int, next_token: int, batch_size: int, seq_len: int
 
 def _mock_model(next_token: int, vocab_size: int = 100):
     """Return a callable mock that mimics model(input_ids) -> (loss, logits, pkv)."""
+
     def model(input_ids: torch.Tensor):
         B, T = input_ids.shape
         logits = _make_logits(vocab_size, next_token, B, T)
         return None, logits, None
+
     return model
 
 
@@ -34,8 +33,9 @@ def _dummy_encode(text: str) -> list[int]:
     return [ord(c) % 100 for c in text]
 
 
-def _make_request(rid: str, prompt_len: int = 3, max_new_tokens: int = 5,
-                  temperature: float = 0.0) -> Request:
+def _make_request(
+    rid: str, prompt_len: int = 3, max_new_tokens: int = 5, temperature: float = 0.0
+) -> Request:
     return Request(
         request_id=rid,
         input_ids=list(range(1, prompt_len + 1)),
@@ -47,6 +47,7 @@ def _make_request(rid: str, prompt_len: int = 3, max_new_tokens: int = 5,
 # ---------------------------------------------------------------------------
 # Test 1 – add_request puts request in waiting_queue
 # ---------------------------------------------------------------------------
+
 
 def test_add_request_to_queue():
     batcher = ContinuousBatcher(_mock_model(1), _dummy_encode)
@@ -60,6 +61,7 @@ def test_add_request_to_queue():
 # Test 2 – _fill_batch respects max_batch_size
 # ---------------------------------------------------------------------------
 
+
 def test_fill_batch_respects_max_batch_size():
     batcher = ContinuousBatcher(_mock_model(1), _dummy_encode, max_batch_size=4)
     for i in range(10):
@@ -72,6 +74,7 @@ def test_fill_batch_respects_max_batch_size():
 # ---------------------------------------------------------------------------
 # Test 3 – step advances generation by one token
 # ---------------------------------------------------------------------------
+
 
 def test_step_advances_generation():
     next_tok = 7
@@ -87,6 +90,7 @@ def test_step_advances_generation():
 # ---------------------------------------------------------------------------
 # Test 4 – EOS token terminates request in 1 step
 # ---------------------------------------------------------------------------
+
 
 def test_eos_terminates_request():
     eos_id = 2
@@ -106,11 +110,10 @@ def test_eos_terminates_request():
 # Test 5 – max_new_tokens terminates request after exactly N steps
 # ---------------------------------------------------------------------------
 
+
 def test_max_new_tokens_terminates():
     # Use token 5, which is NOT the eos_token_id (2)
-    batcher = ContinuousBatcher(
-        _mock_model(5), _dummy_encode, eos_token_id=2, max_batch_size=4
-    )
+    batcher = ContinuousBatcher(_mock_model(5), _dummy_encode, eos_token_id=2, max_batch_size=4)
     req = _make_request("r1", max_new_tokens=3, temperature=0.0)
     batcher.add_request(req)
 
@@ -130,10 +133,9 @@ def test_max_new_tokens_terminates():
 # Test 6 – run_until_complete returns all requests
 # ---------------------------------------------------------------------------
 
+
 def test_run_until_complete_returns_all():
-    batcher = ContinuousBatcher(
-        _mock_model(5), _dummy_encode, eos_token_id=2, max_batch_size=4
-    )
+    batcher = ContinuousBatcher(_mock_model(5), _dummy_encode, eos_token_id=2, max_batch_size=4)
     requests = [_make_request(f"r{i}", max_new_tokens=2, temperature=0.0) for i in range(6)]
     results = batcher.run_until_complete(requests)
     assert len(results) == 6
@@ -145,10 +147,9 @@ def test_run_until_complete_returns_all():
 # Test 7 – stats dict has correct counts
 # ---------------------------------------------------------------------------
 
+
 def test_stats_tracking():
-    batcher = ContinuousBatcher(
-        _mock_model(5), _dummy_encode, eos_token_id=2, max_batch_size=2
-    )
+    batcher = ContinuousBatcher(_mock_model(5), _dummy_encode, eos_token_id=2, max_batch_size=2)
     # Add 5 requests: 2 go active, 3 wait
     for i in range(5):
         batcher.add_request(_make_request(f"r{i}", max_new_tokens=10, temperature=0.0))
@@ -163,6 +164,7 @@ def test_stats_tracking():
 # ---------------------------------------------------------------------------
 # Test 8 – slots fill as requests complete
 # ---------------------------------------------------------------------------
+
 
 def test_batch_fills_as_slots_free():
     """With max_batch=2 and 4 requests, first 2 are active;

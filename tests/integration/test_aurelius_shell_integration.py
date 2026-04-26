@@ -15,9 +15,9 @@ def test_src_ui_package_exports_shell_surface():
         AureliusShell,
         MessageEnvelope,
         SkillRecord,
-        Workstream,
         WorkflowRun,
         WorkflowStep,
+        Workstream,
     )
 
     assert AureliusShell.__name__ == "AureliusShell"

@@ -17,21 +17,21 @@ Covers:
   14. DITTOTrainer.compute_loss matches DITTOLoss directly
   15. Reference updater preserves requires_grad=False on ref params
 """
+
 from __future__ import annotations
 
 import copy
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.alignment.ditto import DITTOLoss, DITTOReferenceUpdater, DITTOTrainer
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def make_log_probs(B: int, seed: int = 0) -> torch.Tensor:
     """Return shape-(B,) negative values suitable as sequence log-probs."""
@@ -57,6 +57,7 @@ def make_ref_model(policy: nn.Module) -> nn.Module:
 # Test 1: DITTOLoss output is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_ditto_loss_output_is_scalar():
     criterion = DITTOLoss(beta=0.1)
     B = 4
@@ -75,6 +76,7 @@ def test_ditto_loss_output_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 2: Gradients are finite after backward
 # ---------------------------------------------------------------------------
+
 
 def test_ditto_loss_gradients_finite():
     criterion = DITTOLoss(beta=0.1)
@@ -96,6 +98,7 @@ def test_ditto_loss_gradients_finite():
 # Test 3: Determinism — same inputs produce same output
 # ---------------------------------------------------------------------------
 
+
 def test_ditto_loss_determinism():
     criterion = DITTOLoss(beta=0.1)
     B = 8
@@ -107,14 +110,13 @@ def test_ditto_loss_determinism():
     loss1, _ = criterion(lp_w, lp_l, ref_w, ref_l)
     loss2, _ = criterion(lp_w, lp_l, ref_w, ref_l)
 
-    assert torch.allclose(loss1, loss2), (
-        f"Non-deterministic: {loss1.item()} vs {loss2.item()}"
-    )
+    assert torch.allclose(loss1, loss2), f"Non-deterministic: {loss1.item()} vs {loss2.item()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: batch_size=1 works
 # ---------------------------------------------------------------------------
+
 
 def test_ditto_loss_batch_size_one():
     criterion = DITTOLoss(beta=0.1)
@@ -134,6 +136,7 @@ def test_ditto_loss_batch_size_one():
 # ---------------------------------------------------------------------------
 # Test 5: Loss decreases when reward margin increases
 # ---------------------------------------------------------------------------
+
 
 def test_ditto_loss_decreases_with_larger_margin():
     """A larger positive reward margin should produce a lower loss."""
@@ -161,6 +164,7 @@ def test_ditto_loss_decreases_with_larger_margin():
 # Test 6: Loss ≈ log(2) when margin = 0
 # ---------------------------------------------------------------------------
 
+
 def test_ditto_loss_equals_log2_at_zero_margin():
     """When β * ((lp_w − ref_w) − (lp_l − ref_l)) = 0 for all items,
     loss = −log σ(0) = log(2) ≈ 0.6931."""
@@ -179,6 +183,7 @@ def test_ditto_loss_equals_log2_at_zero_margin():
 # ---------------------------------------------------------------------------
 # Test 7: Reward accuracy > 0.5 when y_w is clearly better
 # ---------------------------------------------------------------------------
+
 
 def test_ditto_reward_accuracy_when_winner_is_clear():
     criterion = DITTOLoss(beta=0.1)
@@ -199,11 +204,12 @@ def test_ditto_reward_accuracy_when_winner_is_clear():
 # Test 8: No NaN/Inf on extreme log_probs (±100)
 # ---------------------------------------------------------------------------
 
+
 def test_ditto_loss_no_nan_on_extreme_inputs():
     criterion = DITTOLoss(beta=0.1)
     B = 4
-    lp_w  = torch.full((B,), 100.0)
-    lp_l  = torch.full((B,), -100.0)
+    lp_w = torch.full((B,), 100.0)
+    lp_l = torch.full((B,), -100.0)
     ref_w = torch.full((B,), 100.0)
     ref_l = torch.full((B,), -100.0)
 
@@ -219,6 +225,7 @@ def test_ditto_loss_no_nan_on_extreme_inputs():
 # Test 9: No NaN/Inf when all inputs are equal
 # ---------------------------------------------------------------------------
 
+
 def test_ditto_loss_no_nan_equal_inputs():
     criterion = DITTOLoss(beta=0.1)
     B = 4
@@ -233,6 +240,7 @@ def test_ditto_loss_no_nan_equal_inputs():
 # ---------------------------------------------------------------------------
 # Test 10: DITTOReferenceUpdater.update moves ref toward policy
 # ---------------------------------------------------------------------------
+
 
 def test_reference_updater_soft_update_moves_toward_policy():
     """After EMA update with alpha < 1, ref params should be closer to policy."""
@@ -250,7 +258,7 @@ def test_reference_updater_soft_update_moves_toward_policy():
         total = 0.0
         for p1, p2 in zip(m1.parameters(), m2.parameters()):
             total += (p1.data - p2.data).pow(2).sum().item()
-        return total ** 0.5
+        return total**0.5
 
     dist_before = l2_dist(ref, policy)
 
@@ -268,6 +276,7 @@ def test_reference_updater_soft_update_moves_toward_policy():
 # ---------------------------------------------------------------------------
 # Test 11: DITTOReferenceUpdater.update: alpha=1.0 leaves ref unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_reference_updater_alpha_one_unchanged():
     """With alpha=1.0, the EMA leaves ref params exactly unchanged."""
@@ -287,14 +296,13 @@ def test_reference_updater_alpha_one_unchanged():
     updater.update(policy, ref)
 
     for before, after in zip(ref_params_before, ref.parameters()):
-        assert torch.allclose(before, after.data), (
-            "alpha=1.0 should leave ref params unchanged"
-        )
+        assert torch.allclose(before, after.data), "alpha=1.0 should leave ref params unchanged"
 
 
 # ---------------------------------------------------------------------------
 # Test 12: DITTOReferenceUpdater.update: alpha=0.0 sets ref = policy
 # ---------------------------------------------------------------------------
+
 
 def test_reference_updater_alpha_zero_copies_policy():
     """With alpha=0.0, ref params become exactly equal to policy params."""
@@ -320,6 +328,7 @@ def test_reference_updater_alpha_zero_copies_policy():
 # Test 13: DITTOReferenceUpdater.hard_update: ref params exactly equal policy
 # ---------------------------------------------------------------------------
 
+
 def test_reference_updater_hard_update_exact_copy():
     """hard_update must copy all policy params verbatim into ref_model."""
     torch.manual_seed(45)
@@ -344,14 +353,15 @@ def test_reference_updater_hard_update_exact_copy():
 # Test 14: DITTOTrainer.compute_loss matches DITTOLoss directly
 # ---------------------------------------------------------------------------
 
+
 def test_ditto_trainer_compute_loss_matches_criterion():
     """DITTOTrainer.compute_loss should produce the same loss as calling
     DITTOLoss directly with the same inputs."""
     beta = 0.2
     B = 8
     torch.manual_seed(99)
-    lp_w  = make_log_probs(B, seed=20)
-    lp_l  = make_log_probs(B, seed=21)
+    lp_w = make_log_probs(B, seed=20)
+    lp_l = make_log_probs(B, seed=21)
     ref_w = make_log_probs(B, seed=22)
     ref_l = make_log_probs(B, seed=23)
 
@@ -370,14 +380,14 @@ def test_ditto_trainer_compute_loss_matches_criterion():
     actual_loss = trainer.compute_loss(batch)
 
     assert torch.allclose(expected_loss, actual_loss), (
-        f"Trainer loss {actual_loss.item()} != direct criterion loss "
-        f"{expected_loss.item()}"
+        f"Trainer loss {actual_loss.item()} != direct criterion loss {expected_loss.item()}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 15: Reference updater preserves requires_grad=False on ref params
 # ---------------------------------------------------------------------------
+
 
 def test_reference_updater_preserves_no_grad_on_ref():
     """Both soft and hard updates must not accidentally set requires_grad=True
@@ -395,13 +405,9 @@ def test_reference_updater_preserves_no_grad_on_ref():
     # Soft update
     updater.update(policy, ref)
     for p in ref.parameters():
-        assert not p.requires_grad, (
-            "soft update must not enable requires_grad on ref params"
-        )
+        assert not p.requires_grad, "soft update must not enable requires_grad on ref params"
 
     # Hard update
     updater.hard_update(policy, ref)
     for p in ref.parameters():
-        assert not p.requires_grad, (
-            "hard_update must not enable requires_grad on ref params"
-        )
+        assert not p.requires_grad, "hard_update must not enable requires_grad on ref params"

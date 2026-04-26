@@ -1,9 +1,10 @@
 """Tests for LoRA++ and RSLoRA implementation."""
+
 from __future__ import annotations
 
 import math
+
 import torch
-import pytest
 
 from src.alignment.loraplus import (
     LoRAPlusConfig,
@@ -11,10 +12,10 @@ from src.alignment.loraplus import (
     create_loraplus_optimizer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Config defaults
 # ---------------------------------------------------------------------------
+
 
 def test_loraplus_config_defaults():
     cfg = LoRAPlusConfig()
@@ -27,6 +28,7 @@ def test_loraplus_config_defaults():
 # Forward shape
 # ---------------------------------------------------------------------------
 
+
 def test_loraplus_forward_shape():
     cfg = LoRAPlusConfig(rank=4, alpha=8.0)
     layer = LoRAPlusLinear(in_features=32, out_features=16, cfg=cfg)
@@ -38,6 +40,7 @@ def test_loraplus_forward_shape():
 # ---------------------------------------------------------------------------
 # Parameter properties
 # ---------------------------------------------------------------------------
+
 
 def test_base_weight_frozen():
     cfg = LoRAPlusConfig()
@@ -64,6 +67,7 @@ def test_a_b_initialized():
 # ---------------------------------------------------------------------------
 # Scaling
 # ---------------------------------------------------------------------------
+
 
 def test_scaling_standard():
     rank = 8
@@ -117,6 +121,7 @@ def test_rslora_vs_standard_different():
 # Param groups / asymmetric LR
 # ---------------------------------------------------------------------------
 
+
 def test_get_param_groups_lr_ratio():
     lr_ratio = 16.0
     cfg = LoRAPlusConfig(rank=4, lr_ratio=lr_ratio)
@@ -143,7 +148,7 @@ def test_create_optimizer_asymmetric_lr():
     # 2 layers * 2 groups each = 4 param groups
     assert len(opt.param_groups) == 4
 
-    lrs = [pg["lr"] for pg in opt.param_groups]
+    [pg["lr"] for pg in opt.param_groups]
     # Every other group should be B (high lr)
     for i, pg in enumerate(opt.param_groups):
         if i % 2 == 0:
@@ -155,6 +160,7 @@ def test_create_optimizer_asymmetric_lr():
 # ---------------------------------------------------------------------------
 # Gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_loraplus_gradient_flows():
     cfg = LoRAPlusConfig(rank=4, alpha=8.0)

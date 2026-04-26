@@ -1,30 +1,31 @@
 """Tests for gradient_surgery.py: conflict detection, projection, multi-task aggregation,
 PCGradProjector, PCGradOptimizer, and TaskLossAggregator."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-
-from src.training.gradient_surgery import (
-    flatten_gradients,
-    unflatten_gradients,
-    compute_gradient_conflict,
-    project_gradient,
-    gradient_surgery_step,
-    gradient_vaccine,
-    GradientSurgeon,
-)
 from aurelius.training.gradient_surgery import (
-    PCGradProjector,
     PCGradOptimizer,
+    PCGradProjector,
     TaskLossAggregator,
 )
 
+from src.training.gradient_surgery import (
+    GradientSurgeon,
+    compute_gradient_conflict,
+    flatten_gradients,
+    gradient_surgery_step,
+    gradient_vaccine,
+    project_gradient,
+    unflatten_gradients,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_model_with_grads(seed: int = 0) -> nn.Module:
     """Create a small nn.Linear with synthetic gradients assigned."""
@@ -49,14 +50,13 @@ def total_param_count(model: nn.Module) -> int:
 # flatten_gradients tests
 # ---------------------------------------------------------------------------
 
+
 def test_flatten_gradients_shape():
     """flatten_gradients output shape matches sum of parameter sizes."""
     model = make_model_with_grads()
     flat = flatten_gradients(model)
     expected = total_param_count(model)
-    assert flat.shape == (expected,), (
-        f"Expected shape ({expected},), got {flat.shape}"
-    )
+    assert flat.shape == (expected,), f"Expected shape ({expected},), got {flat.shape}"
 
 
 def test_flatten_gradients_skips_none():
@@ -71,10 +71,13 @@ def test_flatten_gradients_skips_none():
 # unflatten_gradients round-trip tests
 # ---------------------------------------------------------------------------
 
+
 def test_flatten_unflatten_roundtrip():
     """flatten_gradients -> unflatten_gradients round-trips grad values."""
     model = make_model_with_grads(seed=42)
-    original_grads = {name: p.grad.clone() for name, p in model.named_parameters() if p.grad is not None}
+    original_grads = {
+        name: p.grad.clone() for name, p in model.named_parameters() if p.grad is not None
+    }
 
     flat = flatten_gradients(model)
     for p in model.parameters():
@@ -107,6 +110,7 @@ def test_unflatten_only_updates_non_none():
 # compute_gradient_conflict tests
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradient_conflict_parallel():
     """Parallel (same direction) vectors -> cosine similarity ~1.0."""
     g = torch.tensor([1.0, 2.0, 3.0])
@@ -133,28 +137,26 @@ def test_compute_gradient_conflict_orthogonal():
 # project_gradient tests
 # ---------------------------------------------------------------------------
 
+
 def test_project_gradient_output_shape():
     """project_gradient returns same shape as grad."""
     grad = torch.randn(10, 5)
     onto = torch.randn(10, 5)
     result = project_gradient(grad, onto)
-    assert result.shape == grad.shape, (
-        f"Expected shape {grad.shape}, got {result.shape}"
-    )
+    assert result.shape == grad.shape, f"Expected shape {grad.shape}, got {result.shape}"
 
 
 def test_project_gradient_self_projection():
     """Projecting a vector onto itself returns itself (self-projection = self)."""
     g = torch.tensor([3.0, 4.0])
     result = project_gradient(g, g)
-    assert torch.allclose(result, g, atol=1e-5), (
-        f"Self-projection should equal self, got {result}"
-    )
+    assert torch.allclose(result, g, atol=1e-5), f"Self-projection should equal self, got {result}"
 
 
 # ---------------------------------------------------------------------------
 # gradient_surgery_step tests
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_surgery_step_output_shape():
     """gradient_surgery_step returns a tensor with shape (total_params,)."""
@@ -183,6 +185,7 @@ def test_gradient_surgery_step_conflicting_gradients_reduced():
 # gradient_vaccine tests
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_vaccine_output_shape():
     """gradient_vaccine returns a tensor with shape (total_params,)."""
     dim = 64 * 64 + 64
@@ -194,6 +197,7 @@ def test_gradient_vaccine_output_shape():
 # ---------------------------------------------------------------------------
 # GradientSurgeon tests
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_surgeon_aggregate_mean():
     """GradientSurgeon.aggregate with method='mean' returns element-wise mean."""
@@ -263,15 +267,14 @@ def test_gradient_surgeon_invalid_method():
 # PCGradProjector tests (15 required tests)
 # ===========================================================================
 
+
 # 1. project output list has same length
 def test_pcgrad_project_output_length():
     """PCGradProjector.project returns a list of the same length as input."""
     projector = PCGradProjector()
     grads = [torch.randn(10) for _ in range(4)]
     result = projector.project(grads)
-    assert len(result) == len(grads), (
-        f"Expected {len(grads)} outputs, got {len(result)}"
-    )
+    assert len(result) == len(grads), f"Expected {len(grads)} outputs, got {len(result)}"
 
 
 # 2. Non-conflicting grads (positive dot product) -> unchanged
@@ -295,9 +298,7 @@ def test_pcgrad_project_conflicting_resolved():
     assert torch.dot(g1, g2) < 0
     result = projector.project([g1, g2])
     dot_after = torch.dot(result[0], result[1]).item()
-    assert dot_after >= -1e-6, (
-        f"Dot product of projected grads should be >= 0, got {dot_after}"
-    )
+    assert dot_after >= -1e-6, f"Dot product of projected grads should be >= 0, got {dot_after}"
 
 
 # 4. Projection is idempotent on non-conflicting grads
@@ -330,9 +331,7 @@ def test_pcgrad_project_three_tasks_all_resolved():
     # g0 vs g1 conflict should be resolved: both should project to near-zero
     # in the conflicting dimension and their dot should be >= 0
     dot_01 = torch.dot(result[0].flatten(), result[1].flatten()).item()
-    assert dot_01 >= -1e-5, (
-        f"Conflict between tasks 0 and 1 should be resolved: dot={dot_01}"
-    )
+    assert dot_01 >= -1e-5, f"Conflict between tasks 0 and 1 should be resolved: dot={dot_01}"
     # g2 is orthogonal to both; it should be unchanged (no conflicts to resolve)
     assert torch.allclose(result[2], g2, atol=1e-6), "g2 (orthogonal) should remain unchanged"
 
@@ -365,9 +364,7 @@ def test_pcgrad_project_params_grad_shape():
     ]
     projector.project_params(per_task_grads, params)
     for p in params:
-        assert p.grad.shape == p.shape, (
-            f"param.grad shape {p.grad.shape} != param shape {p.shape}"
-        )
+        assert p.grad.shape == p.shape, f"param.grad shape {p.grad.shape} != param shape {p.shape}"
 
 
 # 8. PCGradOptimizer.pc_step runs without error (simple linear model, 2 tasks)
@@ -428,6 +425,7 @@ def test_pcgrad_optimizer_identical_losses_no_conflict():
 # ---------------------------------------------------------------------------
 # TaskLossAggregator tests
 # ---------------------------------------------------------------------------
+
 
 # 11. aggregate with uniform weights = simple mean
 def test_task_loss_aggregator_uniform_mean():

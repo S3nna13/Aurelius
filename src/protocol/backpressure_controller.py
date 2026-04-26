@@ -10,12 +10,11 @@ Pure stdlib only.  No external dependencies.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class BackpressureSignal(str, Enum):
+class BackpressureSignal(StrEnum):
     NONE = "none"
     SOFT = "soft"
     HARD = "hard"
@@ -26,21 +25,21 @@ class BackpressureSignal(str, Enum):
 class BackpressureState:
     signal: BackpressureSignal
     queue_depth: int
-    drain_rate: float         # requests / second
+    drain_rate: float  # requests / second
     suggested_delay_ms: float
 
 
 class BackpressureController:
     """Generates backpressure signals based on queue depth thresholds."""
 
-    DEFAULT_THRESHOLDS: Dict[str, int] = {
+    DEFAULT_THRESHOLDS: dict[str, int] = {
         "SOFT": 50,
         "HARD": 100,
         "CRITICAL": 200,
     }
 
-    def __init__(self, thresholds: Dict[str, int] | None = None) -> None:
-        self.thresholds: Dict[str, int] = (
+    def __init__(self, thresholds: dict[str, int] | None = None) -> None:
+        self.thresholds: dict[str, int] = (
             thresholds if thresholds is not None else dict(self.DEFAULT_THRESHOLDS)
         )
 

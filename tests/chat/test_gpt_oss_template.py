@@ -7,16 +7,16 @@ import json
 import pytest
 
 from src.chat.gpt_oss_template import (
-    START,
-    CHANNEL,
-    MESSAGE,
-    END,
-    CALL,
-    RETURN,
     ANALYSIS_CHANNEL,
-    FINAL_CHANNEL,
-    GptOssTemplate,
+    CALL,
+    CHANNEL,
     CHAT_TEMPLATE_REGISTRY,
+    END,
+    FINAL_CHANNEL,
+    MESSAGE,
+    RETURN,
+    START,
+    GptOssTemplate,
 )
 
 
@@ -110,9 +110,7 @@ class TestGptOssTemplateToolCalls:
         msgs = [
             {
                 "role": "assistant",
-                "tool_calls": [
-                    {"function": {"name": "search", "arguments": {"q": "ai"}}}
-                ],
+                "tool_calls": [{"function": {"name": "search", "arguments": {"q": "ai"}}}],
                 "content": "",
             }
         ]
@@ -152,10 +150,7 @@ class TestGptOssTemplateToolCalls:
 class TestGptOssTemplateDecode:
     def test_decode_valid_tool_call(self, tmpl):
         args = json.dumps({"q": "test"})
-        text = (
-            f"{START}assistant to=functions.search"
-            f"{CHANNEL}commentary json{MESSAGE}{args}{CALL}"
-        )
+        text = f"{START}assistant to=functions.search{CHANNEL}commentary json{MESSAGE}{args}{CALL}"
         parsed = tmpl.decode_tool_call(text)
         assert parsed is not None
         assert parsed["name"] == "search"
@@ -165,10 +160,7 @@ class TestGptOssTemplateDecode:
         assert tmpl.decode_tool_call("no tool call") is None
 
     def test_decode_invalid_json_returns_raw_string(self, tmpl):
-        text = (
-            f"{START}assistant to=functions.foo"
-            f"{CHANNEL}commentary json{MESSAGE}not_json{CALL}"
-        )
+        text = f"{START}assistant to=functions.foo{CHANNEL}commentary json{MESSAGE}not_json{CALL}"
         parsed = tmpl.decode_tool_call(text)
         assert parsed is not None
         assert isinstance(parsed["arguments"], str)

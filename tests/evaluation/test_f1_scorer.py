@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.evaluation.f1_scorer import (
+    F1_SCORER_REGISTRY,
     F1Result,
     F1Scorer,
-    F1_SCORER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -24,6 +25,7 @@ def scorer():
 # ---------------------------------------------------------------------------
 # F1Result dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestF1ResultFrozen:
     def test_is_frozen(self):
@@ -59,6 +61,7 @@ class TestF1ResultFrozen:
 # _normalize
 # ---------------------------------------------------------------------------
 
+
 class TestNormalize:
     def test_lowercases(self, scorer):
         assert scorer._normalize("Hello World") == ["hello", "world"]
@@ -82,6 +85,7 @@ class TestNormalize:
 # ---------------------------------------------------------------------------
 # score — single pair
 # ---------------------------------------------------------------------------
+
 
 class TestScore:
     def test_exact_match_f1_one(self, scorer):
@@ -171,6 +175,7 @@ class TestScore:
 # batch_score
 # ---------------------------------------------------------------------------
 
+
 class TestBatchScore:
     def test_batch_score_length_matches_input(self, scorer):
         preds = ["the cat sat", "hello world", "foo bar"]
@@ -203,6 +208,7 @@ class TestBatchScore:
 # mean_f1
 # ---------------------------------------------------------------------------
 
+
 class TestMeanF1:
     def test_mean_f1_all_ones(self, scorer):
         results = [scorer.score("hello world", "hello world")] * 3
@@ -213,8 +219,8 @@ class TestMeanF1:
         assert scorer.mean_f1(results) == 0.0
 
     def test_mean_f1_mixed(self, scorer):
-        r1 = scorer.score("hello world", "hello world")   # f1=1.0
-        r2 = scorer.score("foo bar", "baz qux")           # f1=0.0
+        r1 = scorer.score("hello world", "hello world")  # f1=1.0
+        r2 = scorer.score("foo bar", "baz qux")  # f1=0.0
         mean = scorer.mean_f1([r1, r2])
         assert math.isclose(mean, 0.5, rel_tol=1e-9)
 
@@ -230,6 +236,7 @@ class TestMeanF1:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

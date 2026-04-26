@@ -6,9 +6,8 @@ Verifies that:
 - The full eviction scenario (spec integration test) works end-to-end
 - Pre-existing registry entries are not disturbed (regression guards)
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
 from src.longcontext.context_budget_controller import (
@@ -17,7 +16,6 @@ from src.longcontext.context_budget_controller import (
     ContextSegment,
     SegmentPriority,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry wiring

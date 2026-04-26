@@ -9,10 +9,10 @@ from src.chat.session_state_machine import (
     SessionTransition,
 )
 
-
 # ---------------------------------------------------------------------------
 # Enum smoke tests
 # ---------------------------------------------------------------------------
+
 
 def test_session_event_values():
     assert SessionEvent.START == "start"
@@ -30,6 +30,7 @@ def test_session_phase_values():
 # Initial state
 # ---------------------------------------------------------------------------
 
+
 def test_initial_phase_is_idle():
     sm = ChatSessionStateMachine()
     assert sm.current_phase == SessionPhase.IDLE
@@ -38,6 +39,7 @@ def test_initial_phase_is_idle():
 # ---------------------------------------------------------------------------
 # Valid transitions
 # ---------------------------------------------------------------------------
+
 
 def test_idle_to_awaiting_input():
     sm = ChatSessionStateMachine()
@@ -81,6 +83,7 @@ def test_tool_execution_to_generating():
 # Universal events (PAUSE / RESUME / END)
 # ---------------------------------------------------------------------------
 
+
 def test_pause_from_generating():
     sm = ChatSessionStateMachine()
     sm.transition(SessionEvent.START)
@@ -115,6 +118,7 @@ def test_pause_from_idle():
 # Invalid transitions
 # ---------------------------------------------------------------------------
 
+
 def test_invalid_user_turn_from_idle():
     sm = ChatSessionStateMachine()
     with pytest.raises(ValueError, match="Invalid transition"):
@@ -131,6 +135,7 @@ def test_cannot_transition_after_ended():
 # ---------------------------------------------------------------------------
 # can_transition
 # ---------------------------------------------------------------------------
+
 
 def test_can_transition_true():
     sm = ChatSessionStateMachine()
@@ -151,6 +156,7 @@ def test_can_transition_false_after_ended():
 # ---------------------------------------------------------------------------
 # SessionTransition dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_session_transition_dataclass():
     t = SessionTransition(

@@ -1,9 +1,9 @@
-"""Latent reasoning: invisible thinking tokens that improve answer quality without appearing in output."""
+"""Latent reasoning: invisible thinking tokens that improve answer quality without appearing in output."""  # noqa: E501
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn

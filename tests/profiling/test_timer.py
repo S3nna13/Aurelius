@@ -1,11 +1,10 @@
 """Tests for profiling timer."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
-
-from src.profiling.timer import Timer, timed, get_timer, report_all
+from src.profiling.timer import Timer, get_timer, report_all, timed
 
 
 class TestTimer:

@@ -2,23 +2,23 @@
 
 Minimum 15 tests covering the new SteeringConfig / SteeringVector API.
 """
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.alignment.activation_steering import (
-    SteeringConfig,
-    SteeringVector,
     ActivationSteerer,
+    SteeringConfig,
     SteeringHook,
+    SteeringVector,
     collect_activations,
     extract_mean_diff_vector,
     extract_pca_vector,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -61,6 +61,7 @@ def steering_cfg():
 # 1. test_extract_mean_diff_shape
 # ---------------------------------------------------------------------------
 
+
 def test_extract_mean_diff_shape():
     pos = torch.randn(4, D)
     neg = torch.randn(4, D)
@@ -71,6 +72,7 @@ def test_extract_mean_diff_shape():
 # ---------------------------------------------------------------------------
 # 2. test_extract_mean_diff_normalized
 # ---------------------------------------------------------------------------
+
 
 def test_extract_mean_diff_normalized():
     pos = torch.randn(4, D)
@@ -84,10 +86,11 @@ def test_extract_mean_diff_normalized():
 # 3. test_extract_mean_diff_direction
 # ---------------------------------------------------------------------------
 
+
 def test_extract_mean_diff_direction():
     """mean_diff vector should point from the negative mean toward the positive mean."""
-    pos = torch.randn(8, D) + 5.0   # shifted positive cluster
-    neg = torch.randn(8, D) - 5.0   # shifted negative cluster
+    pos = torch.randn(8, D) + 5.0  # shifted positive cluster
+    neg = torch.randn(8, D) - 5.0  # shifted negative cluster
     vec = extract_mean_diff_vector(pos, neg, normalize=False)
     # The dot product with (mean_pos - mean_neg) should be positive
     expected_dir = pos.mean(dim=0) - neg.mean(dim=0)
@@ -99,6 +102,7 @@ def test_extract_mean_diff_direction():
 # 4. test_extract_pca_vector_shape
 # ---------------------------------------------------------------------------
 
+
 def test_extract_pca_vector_shape():
     data = torch.randn(8, D)
     direction, _ = extract_pca_vector(data, normalize=False)
@@ -108,6 +112,7 @@ def test_extract_pca_vector_shape():
 # ---------------------------------------------------------------------------
 # 5. test_extract_pca_vector_normalized
 # ---------------------------------------------------------------------------
+
 
 def test_extract_pca_vector_normalized():
     data = torch.randn(8, D)
@@ -120,6 +125,7 @@ def test_extract_pca_vector_normalized():
 # 6. test_extract_pca_explained_variance
 # ---------------------------------------------------------------------------
 
+
 def test_extract_pca_explained_variance():
     data = torch.randn(10, D)
     _, ev = extract_pca_vector(data, normalize=True)
@@ -130,6 +136,7 @@ def test_extract_pca_explained_variance():
 # 7. test_collect_activations_shape
 # ---------------------------------------------------------------------------
 
+
 def test_collect_activations_shape(model, input_ids):
     acts = collect_activations(model, input_ids, layer_idx=0)
     assert acts.shape == (B, D), f"Expected ({B}, {D}), got {acts.shape}"
@@ -138,6 +145,7 @@ def test_collect_activations_shape(model, input_ids):
 # ---------------------------------------------------------------------------
 # 8. test_steering_hook_add_mode
 # ---------------------------------------------------------------------------
+
 
 def test_steering_hook_add_mode(model, input_ids):
     direction = torch.randn(D)
@@ -153,20 +161,19 @@ def test_steering_hook_add_mode(model, input_ids):
         with torch.no_grad():
             _, steered, _ = model(input_ids)
 
-    assert not torch.allclose(baseline, steered), \
-        "add-mode steering should change the output"
+    assert not torch.allclose(baseline, steered), "add-mode steering should change the output"
 
 
 # ---------------------------------------------------------------------------
 # 9. test_steering_hook_project_out
 # ---------------------------------------------------------------------------
 
+
 def test_steering_hook_project_out(model, input_ids):
     direction = torch.randn(D)
     direction = direction / direction.norm()
     sv = SteeringVector(direction=direction, layer_idx=0, concept="test")
-    cfg = SteeringConfig(layer_indices=[0], coefficient=1.0, normalize=True,
-                         mode="project_out")
+    cfg = SteeringConfig(layer_indices=[0], coefficient=1.0, normalize=True, mode="project_out")
 
     model.eval()
     with torch.no_grad():
@@ -176,13 +183,15 @@ def test_steering_hook_project_out(model, input_ids):
         with torch.no_grad():
             _, steered, _ = model(input_ids)
 
-    assert not torch.allclose(baseline, steered), \
+    assert not torch.allclose(baseline, steered), (
         "project_out-mode steering should change the output"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. test_steering_hook_context_manager_restores
 # ---------------------------------------------------------------------------
+
 
 def test_steering_hook_context_manager_restores(model, input_ids):
     """After exiting SteeringHook, the model should produce its original output."""
@@ -201,29 +210,33 @@ def test_steering_hook_context_manager_restores(model, input_ids):
     with torch.no_grad():
         _, after, _ = model(input_ids)
 
-    assert torch.allclose(before, after, atol=1e-6), \
+    assert torch.allclose(before, after, atol=1e-6), (
         "Output should be restored after context manager exit"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 11. test_steerer_fit_mean_diff_count
 # ---------------------------------------------------------------------------
 
+
 def test_steerer_fit_mean_diff_count(model, input_ids):
     cfg = SteeringConfig(layer_indices=[0, 1], coefficient=1.0)
     steerer = ActivationSteerer(model, cfg)
 
-    pos_ids = input_ids[:1].expand(4, -1)   # (4, T)
-    neg_ids = input_ids[1:].expand(4, -1)   # (4, T)
+    pos_ids = input_ids[:1].expand(4, -1)  # (4, T)
+    neg_ids = input_ids[1:].expand(4, -1)  # (4, T)
 
     vectors = steerer.fit_from_pairs(pos_ids, neg_ids, method="mean_diff")
-    assert len(vectors) == len(cfg.layer_indices), \
+    assert len(vectors) == len(cfg.layer_indices), (
         f"Expected {len(cfg.layer_indices)} vectors, got {len(vectors)}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 12. test_steerer_fit_pca_count
 # ---------------------------------------------------------------------------
+
 
 def test_steerer_fit_pca_count(model, input_ids):
     cfg = SteeringConfig(layer_indices=[0, 1], coefficient=1.0)
@@ -233,13 +246,15 @@ def test_steerer_fit_pca_count(model, input_ids):
     neg_ids = input_ids[1:].expand(4, -1)
 
     vectors = steerer.fit_from_pairs(pos_ids, neg_ids, method="pca")
-    assert len(vectors) == len(cfg.layer_indices), \
+    assert len(vectors) == len(cfg.layer_indices), (
         f"Expected {len(cfg.layer_indices)} vectors, got {len(vectors)}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 13. test_steerer_steer_shape
 # ---------------------------------------------------------------------------
+
 
 def test_steerer_steer_shape(model, input_ids):
     cfg = SteeringConfig(layer_indices=[0, 1], coefficient=1.0)
@@ -250,17 +265,17 @@ def test_steerer_steer_shape(model, input_ids):
     vectors = steerer.fit_from_pairs(pos_ids, neg_ids, method="mean_diff")
 
     max_new = 5
-    single_input = input_ids[:1]   # (1, T)
+    single_input = input_ids[:1]  # (1, T)
     generated = steerer.steer(single_input, vectors, max_new_tokens=max_new)
 
     assert generated.shape[0] == 1, f"Batch dim should be 1, got {generated.shape[0]}"
-    assert generated.shape[1] == max_new, \
-        f"Expected {max_new} new tokens, got {generated.shape[1]}"
+    assert generated.shape[1] == max_new, f"Expected {max_new} new tokens, got {generated.shape[1]}"
 
 
 # ---------------------------------------------------------------------------
 # 14. test_measure_concept_activation_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_measure_concept_activation_scalar(model, input_ids):
     direction = torch.randn(D)
@@ -278,6 +293,7 @@ def test_measure_concept_activation_scalar(model, input_ids):
 # 15. test_steering_vector_normalize
 # ---------------------------------------------------------------------------
 
+
 def test_steering_vector_normalize(model, input_ids):
     """SteeringVector direction should have unit norm when normalize=True."""
     cfg = SteeringConfig(layer_indices=[0], normalize=True)
@@ -289,5 +305,6 @@ def test_steering_vector_normalize(model, input_ids):
 
     for sv in vectors:
         norm = sv.direction.norm().item()
-        assert abs(norm - 1.0) < 1e-5, \
+        assert abs(norm - 1.0) < 1e-5, (
             f"Direction at layer {sv.layer_idx} should have unit norm, got {norm}"
+        )

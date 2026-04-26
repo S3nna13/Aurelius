@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import copy
-
-import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer

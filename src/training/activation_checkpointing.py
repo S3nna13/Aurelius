@@ -7,9 +7,9 @@ for reduced peak activation memory during backpropagation.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
-from typing import Any, Callable, List
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -59,7 +59,7 @@ class CheckpointedSequential(nn.Module):
         config: CheckpointConfig controlling checkpointing behavior.
     """
 
-    def __init__(self, modules: List[nn.Module], config: CheckpointConfig) -> None:
+    def __init__(self, modules: list[nn.Module], config: CheckpointConfig) -> None:
         super().__init__()
         self.module_list = nn.ModuleList(modules)
         self.config = config
@@ -154,6 +154,7 @@ def apply_activation_checkpointing(
 # Legacy helpers kept for backward compatibility
 # ---------------------------------------------------------------------------
 
+
 class CheckpointedLayer(nn.Module):
     """Thin wrapper that applies gradient checkpointing to any nn.Module layer."""
 
@@ -164,6 +165,7 @@ class CheckpointedLayer(nn.Module):
 
     def forward(self, *args, **kwargs):
         if kwargs:
+
             def _fn(*a):
                 return self.layer(*a, **kwargs)
         else:
@@ -181,9 +183,7 @@ def wrap_layers_with_checkpointing(model: nn.Module, config: CheckpointConfig) -
 
     for i in range(len(model.layers)):
         if i % n == 0:
-            model.layers[i] = CheckpointedLayer(
-                model.layers[i], use_reentrant=config.use_reentrant
-            )
+            model.layers[i] = CheckpointedLayer(model.layers[i], use_reentrant=config.use_reentrant)
             wrapped_count += 1
 
     return wrapped_count
@@ -195,9 +195,7 @@ def get_checkpoint_stats(model: nn.Module) -> dict:
         raise AttributeError("model must have a 'layers' attribute (nn.ModuleList)")
 
     total = len(model.layers)
-    checkpointed = sum(
-        1 for layer in model.layers if isinstance(layer, CheckpointedLayer)
-    )
+    checkpointed = sum(1 for layer in model.layers if isinstance(layer, CheckpointedLayer))
     ratio = checkpointed / total if total > 0 else 0.0
 
     return {

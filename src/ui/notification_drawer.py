@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 
-class NotificationLevel(str, Enum):
+class NotificationLevel(StrEnum):
     """Severity level for a :class:`Notification`."""
 
     INFO = "info"

@@ -2,13 +2,12 @@
 Tests for src/computer_use/screen_recorder.py
 """
 
-import time
 import unittest
 
 from src.computer_use.screen_recorder import (
-    ScreenSnapshot,
-    ScreenRecorder,
     SCREEN_RECORDER_REGISTRY,
+    ScreenRecorder,
+    ScreenSnapshot,
 )
 
 

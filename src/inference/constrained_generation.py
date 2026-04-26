@@ -1,11 +1,10 @@
-"""Constrained generation: prefix/suffix constraints, vocabulary masks, and regex-guided decoding."""
+"""Constrained generation: prefix/suffix constraints, vocabulary masks, and regex-guided decoding."""  # noqa: E501
 
 from __future__ import annotations
 
 import re
-import string
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
@@ -161,9 +160,7 @@ class PrefixConstrainedDecoder:
                     logits = apply_repetition_penalty(
                         logits, generated, self.config.repetition_penalty
                     )
-                    next_token = _sample_top_p(
-                        logits, self.config.top_p, self.config.temperature
-                    )
+                    next_token = _sample_top_p(logits, self.config.top_p, self.config.temperature)
 
                 tokens.append(next_token)
                 generated.append(next_token)
@@ -249,13 +246,9 @@ class RegexConstrainedDecoder:
                 logits = apply_vocab_mask(logits, allowed_mask)
 
                 # Apply repetition penalty
-                logits = apply_repetition_penalty(
-                    logits, generated, self.config.repetition_penalty
-                )
+                logits = apply_repetition_penalty(logits, generated, self.config.repetition_penalty)
 
-                next_token = _sample_top_p(
-                    logits, self.config.top_p, self.config.temperature
-                )
+                next_token = _sample_top_p(logits, self.config.top_p, self.config.temperature)
 
                 tokens.append(next_token)
                 generated.append(next_token)
@@ -310,13 +303,9 @@ class BannedTokensDecoder:
                 logits = apply_vocab_mask(logits, ban_mask)
 
                 # Apply repetition penalty
-                logits = apply_repetition_penalty(
-                    logits, generated, self.config.repetition_penalty
-                )
+                logits = apply_repetition_penalty(logits, generated, self.config.repetition_penalty)
 
-                next_token = _sample_top_p(
-                    logits, self.config.top_p, self.config.temperature
-                )
+                next_token = _sample_top_p(logits, self.config.top_p, self.config.temperature)
 
                 tokens.append(next_token)
                 generated.append(next_token)

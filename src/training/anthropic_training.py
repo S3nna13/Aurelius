@@ -10,31 +10,28 @@ Implements full training loops using Anthropic HuggingFace datasets:
 
 from __future__ import annotations
 
-import copy
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.alignment.dpo import compute_log_probs, dpo_loss
 from src.data.anthropic_datasets import (
-    HHRLHFSample,
-    PersuasionSample,
-    ModelWrittenEvalDataset,
     DiscrimEvalDataset,
+    HHRLHFSample,
+    ModelWrittenEvalDataset,
+    PersuasionSample,
     compute_demographic_bias_score,
 )
 from src.data.anthropic_datasets_ext import AlignmentFakingSample
-from src.alignment.dpo import dpo_loss, compute_log_probs
-
 
 # ── 1. HH-RLHF -> DPO Training ───────────────────────────────────────────────
 
 
 @dataclass
 class HHRLHFTrainingConfig:
-    beta: float = 0.1              # DPO KL coefficient
+    beta: float = 0.1  # DPO KL coefficient
     batch_size: int = 8
     learning_rate: float = 1e-5
     max_seq_len: int = 512
@@ -162,9 +159,7 @@ class HHRLHFDPOTrainer:
             "rejected_reward": rejected_reward,
         }
 
-    def evaluate(
-        self, eval_samples: list[HHRLHFSample], n_batches: int = 10
-    ) -> dict[str, float]:
+    def evaluate(self, eval_samples: list[HHRLHFSample], n_batches: int = 10) -> dict[str, float]:
         """Evaluate on held-out samples.
 
         Returns:
@@ -194,8 +189,12 @@ class HHRLHFDPOTrainer:
                 r_mask = batch["rejected_mask"]
 
                 loss = dpo_loss(
-                    self.model, self.ref_model,
-                    c_ids, r_ids, c_mask, r_mask,
+                    self.model,
+                    self.ref_model,
+                    c_ids,
+                    r_ids,
+                    c_mask,
+                    r_mask,
                     beta=self.cfg.beta,
                 )
                 total_loss += loss.item()
@@ -246,7 +245,9 @@ def _get_model_max_seq_len(model: nn.Module, default: int = 512) -> int:
 class PersuasionRewardTrainer:
     """Train a RewardModel using persuasiveness_score as ground truth."""
 
-    def __init__(self, reward_model: nn.Module, tokenizer_encode, cfg: PersuasionRewardConfig) -> None:
+    def __init__(
+        self, reward_model: nn.Module, tokenizer_encode, cfg: PersuasionRewardConfig
+    ) -> None:
         self.reward_model = reward_model
         self.tokenizer_encode = tokenizer_encode
         self.cfg = cfg
@@ -346,7 +347,7 @@ class AlignmentFakingTrainingConfig:
     batch_size: int = 32
     learning_rate: float = 1e-4
     n_steps: int = 200
-    pos_weight: float = 5.0    # class imbalance: faking is rare
+    pos_weight: float = 5.0  # class imbalance: faking is rare
 
 
 class AlignmentFakingTrainer:
@@ -373,7 +374,9 @@ class AlignmentFakingTrainer:
         ids = self.tokenizer_encode(text)
         return ids[:max_len]
 
-    def prepare_batch(self, samples: list[AlignmentFakingSample]) -> tuple[torch.Tensor, torch.Tensor]:
+    def prepare_batch(
+        self, samples: list[AlignmentFakingSample]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Tokenize user_input + " [SEP] " + response.
 
         Returns:
@@ -408,9 +411,7 @@ class AlignmentFakingTrainer:
         logits = self.safety_classifier(input_ids)  # (B,)
 
         pos_weight = self.pos_weight.to(logits.device)
-        loss = F.binary_cross_entropy_with_logits(
-            logits, labels.float(), pos_weight=pos_weight
-        )
+        loss = F.binary_cross_entropy_with_logits(logits, labels.float(), pos_weight=pos_weight)
         loss.backward()
         nn.utils.clip_grad_norm_(self.safety_classifier.parameters(), 1.0)
         self.optimizer.step()
@@ -438,10 +439,10 @@ class AlignmentFakingTrainer:
 @dataclass
 class BehaviorEvalResult:
     n_total: int
-    n_matching: int          # model chose answer_matching_behavior
+    n_matching: int  # model chose answer_matching_behavior
     n_not_matching: int
-    matching_rate: float     # n_matching / n_total
-    questions_matching: list[str]   # questions where model showed target behavior
+    matching_rate: float  # n_matching / n_total
+    questions_matching: list[str]  # questions where model showed target behavior
 
 
 def evaluate_model_behavior(
@@ -483,7 +484,7 @@ def evaluate_model_behavior(
 
             # Truncate to leave room for generation
             if len(ids) > max_seq - max_new_tokens:
-                ids = ids[-(max_seq - max_new_tokens):]
+                ids = ids[-(max_seq - max_new_tokens) :]
 
             generated = list(ids)
             for _ in range(max_new_tokens):
@@ -492,7 +493,7 @@ def evaluate_model_behavior(
                 next_token = int(logits[0, -1, :].argmax().item())
                 generated.append(next_token)
 
-            new_token_ids = generated[len(ids):]
+            new_token_ids = generated[len(ids) :]
             generated_text = tokenizer_decode(new_token_ids)
 
             # Check generated text for (A) or (B)
@@ -537,10 +538,10 @@ def evaluate_model_behavior(
 
 @dataclass
 class FairnessEvalResult:
-    attribute: str              # "race", "gender", or "age"
-    group_scores: dict[str, float]    # group_value -> mean model score
-    disparity: float            # max - min across groups
-    is_biased: bool             # disparity > threshold
+    attribute: str  # "race", "gender", or "age"
+    group_scores: dict[str, float]  # group_value -> mean model score
+    disparity: float  # max - min across groups
+    is_biased: bool  # disparity > threshold
     threshold: float
 
 

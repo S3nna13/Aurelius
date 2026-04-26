@@ -6,14 +6,13 @@ Pure Python, stdlib-only. No torch dependency.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass(frozen=True)
 class AttentionFlow:
     """A single directed attention flow from one position to another."""
+
     layer: int
     head: int
     from_pos: int
@@ -28,16 +27,16 @@ class AttentionFlowAnalyzer:
         self.num_layers = num_layers
         self.num_heads = num_heads
         # All recorded flows stored as a flat list
-        self._flows: List[AttentionFlow] = []
+        self._flows: list[AttentionFlow] = []
         # Per (layer, head) -> list of AttentionFlow
-        self._layer_head_flows: Dict[tuple, List[AttentionFlow]] = {}
+        self._layer_head_flows: dict[tuple, list[AttentionFlow]] = {}
 
     def record(
         self,
         layer: int,
         head: int,
-        attention_weights: List[List[float]],
-    ) -> List[AttentionFlow]:
+        attention_weights: list[list[float]],
+    ) -> list[AttentionFlow]:
         """Record attention weights for one layer/head.
 
         For each (from_pos, to_pos) pair, creates an AttentionFlow if weight > 0.0.
@@ -50,7 +49,7 @@ class AttentionFlowAnalyzer:
         Returns:
             List of AttentionFlow objects created for this layer/head.
         """
-        flows: List[AttentionFlow] = []
+        flows: list[AttentionFlow] = []
         for from_pos, row in enumerate(attention_weights):
             for to_pos, weight in enumerate(row):
                 if weight > 0.0:
@@ -70,7 +69,7 @@ class AttentionFlowAnalyzer:
         self._layer_head_flows[key].extend(flows)
         return flows
 
-    def top_flows(self, n: int = 10) -> List[AttentionFlow]:
+    def top_flows(self, n: int = 10) -> list[AttentionFlow]:
         """Return the globally top-n AttentionFlow objects by weight descending.
 
         If n > number of recorded flows, returns all flows.
@@ -84,7 +83,7 @@ class AttentionFlowAnalyzer:
         sorted_flows = sorted(self._flows, key=lambda f: f.weight, reverse=True)
         return sorted_flows[:n]
 
-    def layer_summary(self, layer: int) -> Dict:
+    def layer_summary(self, layer: int) -> dict:
         """Summarize all recorded flows for a given layer (across all heads).
 
         Args:
@@ -112,7 +111,7 @@ class AttentionFlowAnalyzer:
             "max_weight": max_w,
         }
 
-    def head_importance(self, layer: int) -> List[float]:
+    def head_importance(self, layer: int) -> list[float]:
         """Return mean attention weight per head for a given layer.
 
         Args:

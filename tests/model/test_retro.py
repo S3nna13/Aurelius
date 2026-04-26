@@ -11,26 +11,26 @@ import pytest
 import torch
 
 from src.model.retro import (
+    RETROBlock,
+    RETROCrossChunkAttention,
     RETRODecoder,
     RETROEncoder,
-    RETROCrossChunkAttention,
-    RETROBlock,
     StandardBlock,
 )
 
 # ---------------------------------------------------------------------------
 # Tiny config constants (paper notation: L=chunk_size, K=neighbors per chunk)
 # ---------------------------------------------------------------------------
-D = 64          # d_model
-NH = 4          # n_heads
-NL = 4          # n_layers
-CS = 8          # chunk_size  L (paper)
-K = 2           # neighbors per chunk
-NL_RETR = 8    # neighbor_len
+D = 64  # d_model
+NH = 4  # n_heads
+NL = 4  # n_layers
+CS = 8  # chunk_size  L (paper)
+K = 2  # neighbors per chunk
+NL_RETR = 8  # neighbor_len
 RETR_LAYERS = [2]  # only layer 2 is a RETRO block
 
-B = 2           # batch size
-T = 16          # sequence length (= 2 * chunk_size — two chunks)
+B = 2  # batch size
+T = 16  # sequence length (= 2 * chunk_size — two chunks)
 
 
 def make_decoder(**kwargs) -> RETRODecoder:
@@ -139,7 +139,7 @@ def test_retrieval_changes_output():
 # ---------------------------------------------------------------------------
 def test_non_divisible_T_raises():
     model = make_decoder()
-    T_bad = CS + 3   # not divisible by chunk_size
+    T_bad = CS + 3  # not divisible by chunk_size
     x = torch.randn(B, T_bad, D)
     n_chunks_fake = (T_bad // CS) + 1
     neighbors = make_neighbors(n_chunks=n_chunks_fake)
@@ -234,9 +234,7 @@ def test_long_sequence_four_chunks():
     x = torch.randn(B, T_long, D)
     neighbors = torch.randn(B, n_chunks, K, NL_RETR, D)
     out = model(x, neighbors)
-    assert out.shape == (B, T_long, D), (
-        f"Expected {(B, T_long, D)}, got {out.shape}"
-    )
+    assert out.shape == (B, T_long, D), f"Expected {(B, T_long, D)}, got {out.shape}"
 
 
 # ---------------------------------------------------------------------------

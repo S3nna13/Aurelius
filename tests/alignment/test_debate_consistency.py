@@ -2,7 +2,11 @@
 
 import pytest
 
-from src.alignment.debate_consistency import argument_overlap, debate_run_consistency, winner_consistency
+from src.alignment.debate_consistency import (
+    argument_overlap,
+    debate_run_consistency,
+    winner_consistency,
+)
 
 
 def test_winner_consistency_detects_majority():
@@ -32,4 +36,3 @@ def test_debate_run_consistency_handles_single_run():
 
 def test_argument_overlap_handles_empty_sets():
     assert argument_overlap([], []) == pytest.approx(1.0)
-

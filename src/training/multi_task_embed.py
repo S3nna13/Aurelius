@@ -1,9 +1,10 @@
 """Multi-task learning with task embeddings, uncertainty weighting, and GradNorm."""
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MultiTaskConfig:
@@ -30,6 +32,7 @@ class MultiTaskConfig:
 # ---------------------------------------------------------------------------
 # Task Embedding
 # ---------------------------------------------------------------------------
+
 
 class TaskEmbedding(nn.Module):
     """Learnable embedding for each task.
@@ -52,8 +55,7 @@ class TaskEmbedding(nn.Module):
             Tensor of shape (embed_dim,).
         """
         if isinstance(task_id, int):
-            idx = torch.tensor(task_id, dtype=torch.long,
-                               device=self.embedding.weight.device)
+            idx = torch.tensor(task_id, dtype=torch.long, device=self.embedding.weight.device)
         else:
             idx = task_id.long()
             # Flatten to scalar if possible
@@ -66,6 +68,7 @@ class TaskEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # Uncertainty Weighting  (Kendall et al., 2018)
 # ---------------------------------------------------------------------------
+
 
 class UncertaintyWeighting(nn.Module):
     """Multi-task loss weighting via learnable task uncertainty (log-sigma).
@@ -82,7 +85,7 @@ class UncertaintyWeighting(nn.Module):
         # log_sigma initialised to 0 => sigma=1, weight=0.5
         self.log_sigma = nn.Parameter(torch.zeros(n_tasks))
 
-    def forward(self, losses: List[Tensor]) -> Tensor:
+    def forward(self, losses: list[Tensor]) -> Tensor:
         """Combine per-task losses with uncertainty weighting.
 
         Args:
@@ -93,15 +96,16 @@ class UncertaintyWeighting(nn.Module):
         """
         total = torch.zeros(1, device=self.log_sigma.device).squeeze()
         for i, loss in enumerate(losses):
-            sigma_sq = torch.exp(self.log_sigma[i]) ** 2          # sigma^2
-            weight = 1.0 / (2.0 * sigma_sq)                       # 1/(2*sigma^2)
-            total = total + weight * loss + self.log_sigma[i]      # + log(sigma)
+            sigma_sq = torch.exp(self.log_sigma[i]) ** 2  # sigma^2
+            weight = 1.0 / (2.0 * sigma_sq)  # 1/(2*sigma^2)
+            total = total + weight * loss + self.log_sigma[i]  # + log(sigma)
         return total
 
 
 # ---------------------------------------------------------------------------
 # GradNorm Weighting
 # ---------------------------------------------------------------------------
+
 
 class GradNormWeighting:
     """GradNorm dynamic loss weighting (Chen et al., 2018).
@@ -118,7 +122,7 @@ class GradNormWeighting:
         # Start with uniform weights summing to n_tasks
         self._weights = torch.ones(n_tasks, dtype=torch.float32)
 
-    def update(self, losses: List[Tensor], initial_losses: List[Tensor]) -> Tensor:
+    def update(self, losses: list[Tensor], initial_losses: list[Tensor]) -> Tensor:
         """Recompute task weights based on relative loss decrease.
 
         Args:
@@ -129,15 +133,17 @@ class GradNormWeighting:
             Updated weight tensor of shape (n_tasks,) with positive values
             that sum approximately to n_tasks.
         """
-        assert len(losses) == self.n_tasks
-        assert len(initial_losses) == self.n_tasks
+        assert len(losses) == self.n_tasks  # noqa: S101
+        assert len(initial_losses) == self.n_tasks  # noqa: S101
 
         with torch.no_grad():
             # Relative inverse training rate: loss_i / loss_i_0
-            ratios = torch.stack([
-                (l.detach() / (l0.detach() + 1e-8)).clamp(min=1e-8)
-                for l, l0 in zip(losses, initial_losses)
-            ])  # (n_tasks,)
+            ratios = torch.stack(
+                [
+                    (lo.detach() / (l0.detach() + 1e-8)).clamp(min=1e-8)
+                    for lo, l0 in zip(losses, initial_losses)
+                ]
+            )  # (n_tasks,)
 
             mean_ratio = ratios.mean()
 
@@ -160,6 +166,7 @@ class GradNormWeighting:
 # Multi-Task Trainer
 # ---------------------------------------------------------------------------
 
+
 class MultiTaskTrainer:
     """Trains a model across multiple tasks simultaneously.
 
@@ -172,7 +179,7 @@ class MultiTaskTrainer:
         self,
         model: nn.Module,
         config: MultiTaskConfig,
-        task_loaders: Dict[int, DataLoader],
+        task_loaders: dict[int, DataLoader],
     ) -> None:
         self.model = model
         self.config = config
@@ -180,14 +187,14 @@ class MultiTaskTrainer:
         self.n_tasks = len(task_loaders)
 
         # Build infinite iterators for each loader
-        self._iters: Dict[int, Iterator] = {
+        self._iters: dict[int, Iterator] = {
             tid: iter(loader) for tid, loader in task_loaders.items()
         }
 
         # Set up weighting module / helper
-        self._uncertainty: Optional[UncertaintyWeighting] = None
-        self._gradnorm: Optional[GradNormWeighting] = None
-        self._gradnorm_initial: Optional[List[Tensor]] = None
+        self._uncertainty: UncertaintyWeighting | None = None
+        self._gradnorm: GradNormWeighting | None = None
+        self._gradnorm_initial: list[Tensor] | None = None
 
         if config.loss_weighting == "uncertainty":
             self._uncertainty = UncertaintyWeighting(self.n_tasks)
@@ -226,8 +233,8 @@ class MultiTaskTrainer:
         loss, logits, _pkv = self.model(input_ids)
         if loss is None:
             # logits: (B, S, V) — predict next token from all but last position
-            shift_logits = logits[:, :-1, :].contiguous()       # (B, S-1, V)
-            shift_labels = input_ids[:, 1:].contiguous()         # (B, S-1)
+            shift_logits = logits[:, :-1, :].contiguous()  # (B, S-1, V)
+            shift_labels = input_ids[:, 1:].contiguous()  # (B, S-1)
             loss = nn.functional.cross_entropy(
                 shift_logits.view(-1, shift_logits.size(-1)),
                 shift_labels.view(-1),
@@ -238,7 +245,7 @@ class MultiTaskTrainer:
     # Public API
     # ------------------------------------------------------------------
 
-    def train_step(self) -> Dict[str, object]:
+    def train_step(self) -> dict[str, object]:
         """One training step over all tasks.
 
         Returns:
@@ -250,7 +257,7 @@ class MultiTaskTrainer:
         self.optimizer.zero_grad()
 
         task_ids = list(self.task_loaders.keys())
-        per_task_loss_tensors: Dict[int, Tensor] = {}
+        per_task_loss_tensors: dict[int, Tensor] = {}
 
         for tid in task_ids:
             input_ids = self._next_batch(tid)
@@ -266,12 +273,12 @@ class MultiTaskTrainer:
         elif self._gradnorm is not None:
             # Initialise initial losses on first step
             if self._gradnorm_initial is None:
-                self._gradnorm_initial = [l.detach().clone() for l in loss_list]
+                self._gradnorm_initial = [line.detach().clone() for line in loss_list]
 
             weights = self._gradnorm.update(loss_list, self._gradnorm_initial)
             device = loss_list[0].device
             weights = weights.to(device)
-            total = sum(w * l for w, l in zip(weights, loss_list))
+            total = sum(w * lo for w, lo in zip(weights, loss_list))
 
         else:
             # Uniform weighting

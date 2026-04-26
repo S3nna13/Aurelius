@@ -1,17 +1,18 @@
 """Tests for src/model/vocab_pruning.py."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.model.vocab_pruning import (
     VocabPruningResult,
     collect_token_frequencies,
-    select_top_k_tokens,
-    remap_token_ids,
     prune_vocabulary,
+    remap_token_ids,
+    select_top_k_tokens,
 )
 
 VOCAB_SIZE = 256
@@ -138,6 +139,4 @@ def test_prune_vocabulary_id_map_valid(small_model):
     _, result = prune_vocabulary(small_model, tokens_to_keep, d_model=D_MODEL)
     new_vocab = result.new_vocab_size
     for old_id, new_id in result.id_map.items():
-        assert 0 <= new_id < new_vocab, (
-            f"id_map[{old_id}]={new_id} is outside [0, {new_vocab})"
-        )
+        assert 0 <= new_id < new_vocab, f"id_map[{old_id}]={new_id} is outside [0, {new_vocab})"

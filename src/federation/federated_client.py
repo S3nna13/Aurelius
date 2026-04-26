@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-
-
-ModelDelta = dict[str, torch.Tensor]
 
 
 class ModelDelta:
@@ -38,14 +34,18 @@ class ClientConfig:
 
 
 class FederatedClient:
-    def __init__(self, client_id: str, model: nn.Module, config: ClientConfig | None = None) -> None:
+    def __init__(
+        self, client_id: str, model: nn.Module, config: ClientConfig | None = None
+    ) -> None:
         self.client_id = client_id
         self.model = model
         self.config = config or ClientConfig(client_id=client_id)
         self._epochs: int = 0
         self._samples: int = 0
 
-    def train(self, data: torch.Tensor, lr: float | None = None, epochs: int | None = None) -> ModelDelta:
+    def train(
+        self, data: torch.Tensor, lr: float | None = None, epochs: int | None = None
+    ) -> ModelDelta:
         old_params = {k: v.data.clone() for k, v in self.model.named_parameters()}
         opt = torch.optim.SGD(self.model.parameters(), lr=lr or self.config.learning_rate)
         loss_fn = nn.MSELoss()

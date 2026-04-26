@@ -2,11 +2,11 @@
 
 All tests pass pre-computed probability tensors so no real LM is required.
 """
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.inference.arithmetic_coding import (
@@ -18,6 +18,7 @@ from src.inference.arithmetic_coding import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform(vocab: int) -> torch.Tensor:
     return torch.ones(vocab) / vocab
@@ -47,18 +48,21 @@ def _peaked_probs(n: int, vocab: int, **kw) -> list[torch.Tensor]:
 
 def _make_probs_fn(probs: list[torch.Tensor]):
     """Return a stateful probs_fn that yields tensors in order."""
+
     def fn(decoded: list[int]) -> torch.Tensor:
         idx = len(decoded)
         if idx < len(probs):
             return probs[idx]
         # fallback: uniform
         return _uniform(probs[0].shape[0])
+
     return fn
 
 
 # ---------------------------------------------------------------------------
 # Test 1 — round-trip: single token
 # ---------------------------------------------------------------------------
+
 
 def test_roundtrip_single_token():
     vocab = 256
@@ -77,6 +81,7 @@ def test_roundtrip_single_token():
 # Test 2 — round-trip: 10-token sequence, vocab=256
 # ---------------------------------------------------------------------------
 
+
 def test_roundtrip_10_tokens():
     vocab = 256
     tok = _random_seq(10, vocab)
@@ -93,6 +98,7 @@ def test_roundtrip_10_tokens():
 # ---------------------------------------------------------------------------
 # Test 3 — round-trip: 50-token sequence
 # ---------------------------------------------------------------------------
+
 
 def test_roundtrip_50_tokens():
     vocab = 256
@@ -111,6 +117,7 @@ def test_roundtrip_50_tokens():
 # Test 4 — determinism: same input → same bitstream
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     vocab = 64
     tok = _random_seq(20, vocab)
@@ -126,6 +133,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # Test 5 — different inputs → different bitstreams
 # ---------------------------------------------------------------------------
+
 
 def test_different_inputs_different_bitstreams():
     vocab = 256
@@ -145,6 +153,7 @@ def test_different_inputs_different_bitstreams():
 # Test 6 — compression ratio: bits ≤ ceil(H * n / 8) + overhead
 # ---------------------------------------------------------------------------
 
+
 def test_compression_ratio():
     vocab = 16
     n = 40
@@ -156,14 +165,13 @@ def test_compression_ratio():
 
     H_bits_per_tok = math.log2(vocab)  # 4
     max_bytes = math.ceil(H_bits_per_tok * n / 8) + 8  # generous overhead
-    assert len(bs) <= max_bytes, (
-        f"Compressed size {len(bs)} B > expected max {max_bytes} B"
-    )
+    assert len(bs) <= max_bytes, f"Compressed size {len(bs)} B > expected max {max_bytes} B"
 
 
 # ---------------------------------------------------------------------------
 # Test 7 — bits_per_token ≈ log2(vocab) for uniform distribution
 # ---------------------------------------------------------------------------
+
 
 def test_bits_per_token_uniform():
     vocab = 256
@@ -175,14 +183,13 @@ def test_bits_per_token_uniform():
     bpt = coder.bits_per_token(tok, probs)
 
     expected = math.log2(vocab)  # 8.0
-    assert abs(bpt - expected) <= 1.0, (
-        f"bits_per_token={bpt:.2f}, expected ~{expected:.2f} ± 1"
-    )
+    assert abs(bpt - expected) <= 1.0, f"bits_per_token={bpt:.2f}, expected ~{expected:.2f} ± 1"
 
 
 # ---------------------------------------------------------------------------
 # Test 8 — peaked distribution compresses better than uniform
 # ---------------------------------------------------------------------------
+
 
 def test_peaked_compresses_better():
     vocab = 256
@@ -206,8 +213,8 @@ def test_peaked_compresses_better():
 # Test 9 — single-token vocabulary (trivially compressible)
 # ---------------------------------------------------------------------------
 
+
 def test_single_token_vocabulary():
-    vocab = 1
     tok = [0, 0, 0, 0, 0]
     # one-hot distribution
     probs = [torch.tensor([1.0]) for _ in range(5)]
@@ -225,6 +232,7 @@ def test_single_token_vocabulary():
 # ---------------------------------------------------------------------------
 # Test 10 — binary alphabet, uniform → ~1 bit/token
 # ---------------------------------------------------------------------------
+
 
 def test_binary_alphabet_uniform():
     vocab = 2
@@ -250,8 +258,8 @@ def test_binary_alphabet_uniform():
 # Test 11 — numerical stability: near-zero probabilities
 # ---------------------------------------------------------------------------
 
+
 def test_near_zero_probabilities():
-    vocab = 8
     n = 10
     # Construct a near-degenerate distribution with one near-zero prob
     p_raw = torch.tensor([0.0, 1e-38, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2])
@@ -271,6 +279,7 @@ def test_near_zero_probabilities():
 # Test 12 — empty sequence
 # ---------------------------------------------------------------------------
 
+
 def test_empty_sequence():
     enc = ArithmeticEncoder()
     dec = ArithmeticDecoder()
@@ -285,6 +294,7 @@ def test_empty_sequence():
 # ---------------------------------------------------------------------------
 # Test 13 — compressed result is valid bytes object
 # ---------------------------------------------------------------------------
+
 
 def test_compressed_is_bytes():
     vocab = 64
@@ -301,6 +311,7 @@ def test_compressed_is_bytes():
 # Test 14 — large sequence (200 tokens) round-trips correctly
 # ---------------------------------------------------------------------------
 
+
 def test_roundtrip_200_tokens():
     vocab = 128
     n = 200
@@ -314,14 +325,16 @@ def test_roundtrip_200_tokens():
 
     assert recovered == tok, (
         f"Round-trip failed: first mismatch at "
-        f"index {next(i for i,(a,b) in enumerate(zip(tok,recovered)) if a!=b)}"
-        if recovered != tok else ""
+        f"index {next(i for i, (a, b) in enumerate(zip(tok, recovered)) if a != b)}"
+        if recovered != tok
+        else ""
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 15 — LMArithmeticCoder compress/decompress round-trip
 # ---------------------------------------------------------------------------
+
 
 def test_lm_coder_compress_decompress():
     vocab = 32
@@ -339,6 +352,7 @@ def test_lm_coder_compress_decompress():
 # ---------------------------------------------------------------------------
 # Test 16 — bits_per_token returns 0 for empty sequence
 # ---------------------------------------------------------------------------
+
 
 def test_bits_per_token_empty():
     coder = LMArithmeticCoder()

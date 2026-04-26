@@ -4,7 +4,6 @@ import json
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 
 @dataclass
@@ -25,7 +24,7 @@ class CoTDatasetConfig:
 
 
 class SyntheticCoTDataset:
-    def __init__(self, config: Optional[CoTDatasetConfig] = None) -> None:
+    def __init__(self, config: CoTDatasetConfig | None = None) -> None:
         self.config = config if config is not None else CoTDatasetConfig()
 
     def generate_math_example(self, seed: int = 0) -> CoTExample:
@@ -33,7 +32,7 @@ class SyntheticCoTDataset:
         a = rng.randint(1, 50)
         b = rng.randint(1, 50)
         c = rng.randint(1, 10)
-        question = f"A store has {a} apples. They receive {b} more and then sell {c}. How many apples remain?"
+        question = f"A store has {a} apples. They receive {b} more and then sell {c}. How many apples remain?"  # noqa: E501
         total = a + b
         result = total - c
         cot = (
@@ -56,7 +55,7 @@ class SyntheticCoTDataset:
         pred = predicates[rng.randint(0, len(predicates) - 1)]
         specific = subj.split()[-1][:-1].capitalize()
         name = ["Luna", "Max", "Bella", "Charlie"][rng.randint(0, 3)]
-        question = f"{subj} {pred}. {name} is a {specific.lower()}. Does {name} {pred.split(' ', 1)[1] if ' ' in pred else pred}?"
+        question = f"{subj} {pred}. {name} is a {specific.lower()}. Does {name} {pred.split(' ', 1)[1] if ' ' in pred else pred}?"  # noqa: E501
         cot = (
             f"1. Premise 1: {subj} {pred}.\n"
             f"2. Premise 2: {name} is a {specific.lower()}.\n"
@@ -118,10 +117,10 @@ class SyntheticCoTDataset:
             return self.generate_coding_example(seed)
         return self.generate_general_example(seed)
 
-    def generate(self, n: Optional[int] = None) -> List[CoTExample]:
+    def generate(self, n: int | None = None) -> list[CoTExample]:
         count = n if n is not None else self.config.n_examples
         domains = self.config.domains
-        examples: List[CoTExample] = []
+        examples: list[CoTExample] = []
         for i in range(count):
             domain = domains[i % len(domains)]
             seed = i // len(domains)
@@ -134,7 +133,7 @@ class SyntheticCoTDataset:
             f"<|assistant|>\n{example.chain_of_thought}\n\nAnswer: {example.answer}<|end|>"
         )
 
-    def export_jsonl(self, examples: List[CoTExample], path) -> None:
+    def export_jsonl(self, examples: list[CoTExample], path) -> None:
         path = Path(path)
         with path.open("w", encoding="utf-8") as f:
             for ex in examples:

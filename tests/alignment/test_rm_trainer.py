@@ -1,17 +1,17 @@
 """Tests for src/alignment/rm_trainer.py"""
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-import torch.nn as nn
 from torch import Tensor
 
 from src.alignment.rm_trainer import (
-    RMTrainerConfig,
     ELORatingSystem,
     RewardModelTrainer,
+    RMTrainerConfig,
     compute_accuracy,
     preference_loss,
     train_reward_model,
@@ -19,10 +19,10 @@ from src.alignment.rm_trainer import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg() -> AureliusConfig:
@@ -66,6 +66,7 @@ def rejected_ids() -> Tensor:
 # 1. RMTrainerConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_rmtrainerconfig_defaults():
     cfg = RMTrainerConfig()
     assert cfg.learning_rate == 1e-5
@@ -81,6 +82,7 @@ def test_rmtrainerconfig_defaults():
 # 2. preference_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_preference_loss_returns_scalar():
     chosen = torch.tensor([1.0, 2.0, 0.5])
     rejected = torch.tensor([0.0, 0.5, 1.0])
@@ -92,6 +94,7 @@ def test_preference_loss_returns_scalar():
 # ---------------------------------------------------------------------------
 # 3. preference_loss is lower when chosen >> rejected
 # ---------------------------------------------------------------------------
+
 
 def test_preference_loss_lower_when_correct_ordering():
     # When chosen >> rejected, loss should be small (high confidence)
@@ -110,6 +113,7 @@ def test_preference_loss_lower_when_correct_ordering():
 # 4. preference_loss with margin increases loss when margin not satisfied
 # ---------------------------------------------------------------------------
 
+
 def test_preference_loss_margin_increases_loss():
     chosen = torch.tensor([1.0, 1.0])
     rejected = torch.tensor([0.0, 0.0])
@@ -125,6 +129,7 @@ def test_preference_loss_margin_increases_loss():
 # 5. compute_accuracy returns 1.0 when all chosen > rejected
 # ---------------------------------------------------------------------------
 
+
 def test_compute_accuracy_all_correct():
     chosen = torch.tensor([2.0, 3.0, 4.0])
     rejected = torch.tensor([0.0, 1.0, 2.0])
@@ -136,6 +141,7 @@ def test_compute_accuracy_all_correct():
 # 6. compute_accuracy returns 0.0 when all rejected > chosen
 # ---------------------------------------------------------------------------
 
+
 def test_compute_accuracy_all_wrong():
     chosen = torch.tensor([0.0, 1.0, 2.0])
     rejected = torch.tensor([2.0, 3.0, 4.0])
@@ -146,6 +152,7 @@ def test_compute_accuracy_all_wrong():
 # ---------------------------------------------------------------------------
 # 7. ELORatingSystem update increases winner rating
 # ---------------------------------------------------------------------------
+
 
 def test_elo_update_increases_winner():
     elo = ELORatingSystem(initial_rating=1000.0, k=32.0)
@@ -160,6 +167,7 @@ def test_elo_update_increases_winner():
 # 8. ELORatingSystem update decreases loser rating
 # ---------------------------------------------------------------------------
 
+
 def test_elo_update_decreases_loser():
     elo = ELORatingSystem(initial_rating=1000.0, k=32.0)
     elo.get_rating("A")
@@ -172,6 +180,7 @@ def test_elo_update_decreases_loser():
 # ---------------------------------------------------------------------------
 # 9. ELORatingSystem get_ranking returns sorted list
 # ---------------------------------------------------------------------------
+
 
 def test_elo_get_ranking_sorted():
     elo = ELORatingSystem()
@@ -186,6 +195,7 @@ def test_elo_get_ranking_sorted():
 # 10. RewardModelTrainer train_step returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_correct_keys(trainer, chosen_ids, rejected_ids):
     metrics = trainer.train_step(chosen_ids, rejected_ids)
     assert set(metrics.keys()) == {"loss", "accuracy", "chosen_reward", "rejected_reward"}
@@ -194,6 +204,7 @@ def test_train_step_returns_correct_keys(trainer, chosen_ids, rejected_ids):
 # ---------------------------------------------------------------------------
 # 11. RewardModelTrainer train_step loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_loss_is_finite(trainer, chosen_ids, rejected_ids):
     metrics = trainer.train_step(chosen_ids, rejected_ids)
@@ -204,6 +215,7 @@ def test_train_step_loss_is_finite(trainer, chosen_ids, rejected_ids):
 # ---------------------------------------------------------------------------
 # 12. RewardModelTrainer evaluate returns accuracy in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_accuracy_in_range(trainer, chosen_ids, rejected_ids):
     result = trainer.evaluate(chosen_ids, rejected_ids)
@@ -216,6 +228,7 @@ def test_evaluate_accuracy_in_range(trainer, chosen_ids, rejected_ids):
 # ---------------------------------------------------------------------------
 # 13. train_reward_model returns losses and accuracies lists
 # ---------------------------------------------------------------------------
+
 
 def test_train_reward_model_returns_history(backbone):
     torch.manual_seed(7)
@@ -230,5 +243,5 @@ def test_train_reward_model_returns_history(backbone):
     # 2 batches x 2 epochs = 4 entries
     assert len(history["losses"]) == 4
     assert len(history["accuracies"]) == 4
-    assert all(math.isfinite(l) for l in history["losses"])
+    assert all(math.isfinite(line) for line in history["losses"])
     assert all(0.0 <= a <= 1.0 for a in history["accuracies"])

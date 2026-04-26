@@ -13,16 +13,15 @@ Terminology used throughout this module:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PackConfig:
@@ -47,10 +46,11 @@ class PackConfig:
 # Core packing logic
 # ---------------------------------------------------------------------------
 
+
 def pack_sequences(
-    sequences: List[List[int]],
+    sequences: list[list[int]],
     config: PackConfig,
-) -> List[dict]:
+) -> list[dict]:
     """Greedily pack variable-length sequences into fixed-length chunks.
 
     Each sequence is optionally followed by an EOS token (config.add_eos).
@@ -72,11 +72,11 @@ def pack_sequences(
             sequence_ids   (List[int]): source sequence index per token;
                                         -1 for EOS separators and padding
     """
-    chunks: List[dict] = []
+    chunks: list[dict] = []
 
     # Buffers for the chunk currently being built
-    buf_tokens: List[int] = []
-    buf_seq_ids: List[int] = []
+    buf_tokens: list[int] = []
+    buf_seq_ids: list[int] = []
 
     def _flush() -> None:
         """Pad the current buffer to max_seq_len and emit a chunk."""
@@ -116,8 +116,8 @@ def pack_sequences(
 
     for seq_idx, seq in enumerate(sequences):
         # Build the segment: [seq_tokens] + optionally [EOS]
-        segment_tokens: List[int] = list(seq)
-        segment_seq_ids: List[int] = [seq_idx] * len(seq)
+        segment_tokens: list[int] = list(seq)
+        segment_seq_ids: list[int] = [seq_idx] * len(seq)
 
         if config.add_eos:
             segment_tokens.append(config.eos_token_id)
@@ -147,8 +147,9 @@ def pack_sequences(
 # Efficiency metric
 # ---------------------------------------------------------------------------
 
+
 def compute_packing_efficiency(
-    sequences: List[List[int]],
+    sequences: list[list[int]],
     config: PackConfig,
 ) -> float:
     """Return the fraction of chunk tokens that carry real (non-padding) content.
@@ -179,7 +180,8 @@ def compute_packing_efficiency(
 # Position ids
 # ---------------------------------------------------------------------------
 
-def create_position_ids(sequence_ids: List[int]) -> List[int]:
+
+def create_position_ids(sequence_ids: list[int]) -> list[int]:
     """Create per-token position ids that reset at each new sequence boundary.
 
     The position counter resets to 0 whenever a new (non -1) sequence begins.
@@ -191,7 +193,7 @@ def create_position_ids(sequence_ids: List[int]) -> List[int]:
     Returns:
         List of int, same length as sequence_ids.
     """
-    position_ids: List[int] = []
+    position_ids: list[int] = []
     pos = 0
     prev_sid = None  # sentinel: no previous token
 
@@ -219,7 +221,8 @@ def create_position_ids(sequence_ids: List[int]) -> List[int]:
 # Document attention mask
 # ---------------------------------------------------------------------------
 
-def build_document_attention_mask(sequence_ids: List[int]) -> Tensor:
+
+def build_document_attention_mask(sequence_ids: list[int]) -> Tensor:
     """Build a (T, T) boolean attention mask for a packed chunk.
 
     mask[i, j] is True iff token i can attend to token j, which requires:
@@ -242,15 +245,16 @@ def build_document_attention_mask(sequence_ids: List[int]) -> Tensor:
     ids_i = ids.unsqueeze(1).expand(T, T)  # (T, T)
     ids_j = ids.unsqueeze(0).expand(T, T)  # (T, T)
 
-    same_seq = ids_i == ids_j          # same sequence id
-    not_pad = ids_i != -1              # neither is padding (ids_i covers row; if sid[i]==-1 → blocked)
+    same_seq = ids_i == ids_j  # same sequence id
+    not_pad = ids_i != -1  # neither is padding (ids_i covers row; if sid[i]==-1 → blocked)
 
-    return same_seq & not_pad          # (T, T) bool
+    return same_seq & not_pad  # (T, T) bool
 
 
 # ---------------------------------------------------------------------------
 # SequencePacker class
 # ---------------------------------------------------------------------------
+
 
 class SequencePacker:
     """Stateless wrapper around the sequence packing utilities.
@@ -266,7 +270,7 @@ class SequencePacker:
     def __init__(self, config: PackConfig) -> None:
         self.config = config
 
-    def pack(self, sequences: List[List[int]]) -> List[dict]:
+    def pack(self, sequences: list[list[int]]) -> list[dict]:
         """Pack sequences into fixed-length chunks.
 
         Args:
@@ -277,7 +281,7 @@ class SequencePacker:
         """
         return pack_sequences(sequences, self.config)
 
-    def efficiency(self, sequences: List[List[int]]) -> float:
+    def efficiency(self, sequences: list[list[int]]) -> float:
         """Compute packing efficiency (non-padding token fraction).
 
         Args:
@@ -288,7 +292,7 @@ class SequencePacker:
         """
         return compute_packing_efficiency(sequences, self.config)
 
-    def unpack(self, packed: dict) -> List[List[int]]:
+    def unpack(self, packed: dict) -> list[list[int]]:
         """Recover the original sequences from a packed chunk.
 
         EOS separators (sequence_id == -1) and padding tokens are excluded from
@@ -304,7 +308,7 @@ class SequencePacker:
         sequence_ids = packed["sequence_ids"]
 
         # Collect tokens grouped by sequence_id, preserving order
-        recovered: dict[int, List[int]] = {}
+        recovered: dict[int, list[int]] = {}
         for token, sid in zip(input_ids, sequence_ids):
             if sid == -1:
                 continue  # EOS / padding — skip

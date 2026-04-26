@@ -6,13 +6,20 @@ Run: python -m src.serving.api_server --port 8080
 Endpoints:
   POST /v1/chat/completions   — chat completion (streaming or non-streaming)
   GET  /v1/models             — list available models
-  GET  /health                — health check
+  GET  /health                — health check (simple)
+  GET  /healthz               — liveness probe
+  GET  /readyz                — readiness probe
+  GET  /openapi.json          — OpenAPI 3.1 specification
+  GET  /docs                  — Swagger UI documentation
 """
 
 import hashlib
 import json
 import logging
 import math
+import os
+import signal
+import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -20,6 +27,7 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from .auth_middleware import AuthMiddleware
+from .openapi_spec import openapi_spec, render_docs_page
 from .rate_limiter import RateLimiterChain, TokenBucketLimiter
 from .request_coalescer import RequestCoalescer
 
@@ -119,9 +127,7 @@ def _validate_chat_request(body: dict) -> ChatRequest:
     if not isinstance(messages, list):
         raise ValueError("messages must be a list")
     if len(messages) > _MAX_MESSAGES:
-        raise ValueError(
-            f"messages list exceeds maximum length ({_MAX_MESSAGES})"
-        )
+        raise ValueError(f"messages list exceeds maximum length ({_MAX_MESSAGES})")
     for i, msg in enumerate(messages):
         if not isinstance(msg, dict):
             raise ValueError(f"messages[{i}] must be an object")
@@ -157,7 +163,6 @@ def _validate_chat_request(body: dict) -> ChatRequest:
 
 
 class AureliusRequestHandler(BaseHTTPRequestHandler):
-
     def log_message(self, format, *args):
         logger.debug("%s - %s", self.address_string(), format % args)
 
@@ -186,9 +191,54 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             )
         return self.rfile.read(content_length)
 
+    def _get_server_info(self) -> dict:
+        uptime = 0.0
+        started = getattr(self.server, "_started_at", None)
+        if started is not None:
+            uptime = time.time() - started
+        version = os.environ.get("AURELIUS_VERSION", "0.1.0")
+        try:
+            import psutil
+            mem = psutil.Process().memory_info()
+            rss = mem.rss
+        except ImportError:
+            rss = 0
+        return {
+            "version": version,
+            "uptime": round(uptime, 2),
+            "memory": {"rss": rss},
+        }
+
     def do_GET(self):
         if self.path == "/health":
-            self._send_json(200, {"status": "ok"})
+            info = self._get_server_info()
+            self._send_json(200, {"status": "ok", **info})
+            return
+        if self.path == "/healthz":
+            self._send_json(200, {"alive": True})
+            return
+        if self.path == "/readyz":
+            started = getattr(self.server, "_started_at", None)
+            ready = started is not None
+            status = 200 if ready else 503
+            self._send_json(status, {"ready": ready})
+            return
+        if self.path == "/openapi.json":
+            host = self.server.server_address[0] if self.server else "localhost"
+            port = self.server.server_address[1] if self.server else 8080
+            spec = openapi_spec(host, port)
+            self._send_json(200, spec)
+            return
+        if self.path == "/docs":
+            host = self.server.server_address[0] if self.server else "localhost"
+            port = self.server.server_address[1] if self.server else 8080
+            page = render_docs_page(host, port)
+            body = page.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
             return
         if not _check_auth_and_rate_limit(self):
             return
@@ -303,7 +353,6 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
 
 
 class AureliusServer(HTTPServer):
-
     def __init__(
         self,
         host: str,
@@ -367,13 +416,28 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aurelius API server")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
+    parser.add_argument("--timeout", type=int, default=30, help="Graceful shutdown timeout (default: 30s)")
     args = parser.parse_args()
 
     generate_fn = make_mock_generate_fn()
     server = create_server(args.host, args.port, generate_fn)
+    server._started_at = time.time()
     logger.info("Aurelius API server listening on http://%s:%d", args.host, args.port)
+
+    shutdown_event = threading.Event()
+
+    def _handle_signal(signum, frame):
+        sig_name = signal.Signals(signum).name
+        logger.info("Received %s, shutting down gracefully...", sig_name)
+        shutdown_event.set()
+        server.shutdown()
+
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         logger.info("Shutting down.")
-        server.server_close()
+    finally:
+        logger.info("Server stopped.")

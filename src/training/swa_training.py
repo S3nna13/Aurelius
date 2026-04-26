@@ -4,36 +4,36 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.optim import Optimizer
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SWAConfig:
     """Configuration for SWA training with cyclical learning rate."""
 
-    swa_start: int = 100       # step to begin averaging
-    swa_freq: int = 5          # average every N steps
-    swa_lr: float = 0.05       # constant LR used during SWA phase (informational)
+    swa_start: int = 100  # step to begin averaging
+    swa_freq: int = 5  # average every N steps
+    swa_lr: float = 0.05  # constant LR used during SWA phase (informational)
 
     # Cyclical LR params
-    cycle_length: int = 20     # steps per cycle
-    cycle_mult: float = 1.0    # multiply cycle length after each restart
-    min_lr: float = 1e-6       # trough of cosine
-    max_lr: float = 1e-3       # peak of cosine
+    cycle_length: int = 20  # steps per cycle
+    cycle_mult: float = 1.0  # multiply cycle length after each restart
+    min_lr: float = 1e-6  # trough of cosine
+    max_lr: float = 1e-3  # peak of cosine
 
 
 # ---------------------------------------------------------------------------
 # CyclicalLRScheduler
 # ---------------------------------------------------------------------------
+
 
 class CyclicalLRScheduler:
     """Cosine annealing cyclical LR scheduler.
@@ -90,12 +90,13 @@ class CyclicalLRScheduler:
 # SWAModel
 # ---------------------------------------------------------------------------
 
+
 class SWAModel:
     """Running average of model parameters for Stochastic Weight Averaging."""
 
     def __init__(self, model: nn.Module) -> None:
         self._n_averaged: int = 0
-        self._swa_params: Optional[dict[str, Tensor]] = None
+        self._swa_params: dict[str, Tensor] | None = None
 
     def update(self, model: nn.Module) -> None:
         """Update running average: swa_p = (swa_p * n + p) / (n + 1)."""
@@ -103,8 +104,7 @@ class SWAModel:
 
         if self._swa_params is None:
             self._swa_params = {
-                name: param.detach().clone().float()
-                for name, param in model.named_parameters()
+                name: param.detach().clone().float() for name, param in model.named_parameters()
             }
         else:
             for name, param in model.named_parameters():
@@ -133,13 +133,15 @@ class SWAModel:
 # update_bn
 # ---------------------------------------------------------------------------
 
+
 def update_bn(model: nn.Module, data_loader: list[Tensor]) -> None:
     """Re-estimate BatchNorm running statistics after SWA weight averaging.
 
     No-op if the model contains no BatchNorm layers.
     """
     bn_layers = [
-        m for m in model.modules()
+        m
+        for m in model.modules()
         if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d))
     ]
     if not bn_layers:
@@ -164,6 +166,7 @@ def update_bn(model: nn.Module, data_loader: list[Tensor]) -> None:
 # ---------------------------------------------------------------------------
 # SWATrainer
 # ---------------------------------------------------------------------------
+
 
 class SWATrainer:
     """Training wrapper combining SWA with a cyclical LR scheduler."""
@@ -210,7 +213,7 @@ class SWATrainer:
         self._step += 1
         return result
 
-    def finalize(self, data: Optional[list[Tensor]] = None) -> None:
+    def finalize(self, data: list[Tensor] | None = None) -> None:
         """Apply averaged weights to model; optionally update BN statistics."""
         self._swa_model.get_averaged_model(self.model)
 

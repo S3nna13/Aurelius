@@ -8,11 +8,12 @@ hardware-friendly unlike unstructured sparsity.
 Importance metric: gradient × activation sensitivity (grad_sensitivity) or
 L1 norm of output projection weights (l1_norm).
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -22,9 +23,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class HeadPruningConfig:
-    target_sparsity: float = 0.5          # fraction of heads to prune (0.5 = half)
+    target_sparsity: float = 0.5  # fraction of heads to prune (0.5 = half)
     importance_metric: str = "grad_sensitivity"  # "grad_sensitivity" | "l1_norm" | "random"
-    n_calibration_batches: int = 10       # batches to estimate importance
+    n_calibration_batches: int = 10  # batches to estimate importance
     prune_layers: list[int] | None = None  # None = prune all layers
 
 
@@ -127,6 +128,7 @@ def compute_head_importance_gradient(
             def hook(mod: nn.Module, inp: tuple, out: torch.Tensor) -> None:
                 # inp[0] is the input to the linear: (batch, seq, n_heads * head_dim)
                 activations[idx] = inp[0].detach()
+
             return hook
 
         hooks.append(out_proj.register_forward_hook(make_fwd_hook(layer_idx)))
@@ -191,11 +193,13 @@ def compute_head_importance_gradient(
     scores: list[HeadImportanceScore] = []
     for layer_idx in range(n_layers):
         for head_idx in range(n_heads):
-            scores.append(HeadImportanceScore(
-                layer_idx=layer_idx,
-                head_idx=head_idx,
-                score=importance_acc[layer_idx, head_idx].item(),
-            ))
+            scores.append(
+                HeadImportanceScore(
+                    layer_idx=layer_idx,
+                    head_idx=head_idx,
+                    score=importance_acc[layer_idx, head_idx].item(),
+                )
+            )
 
     scores.sort(key=lambda s: s.score, reverse=True)
     return scores
@@ -275,7 +279,7 @@ class StructuredHeadPruner:
             n_layers, n_heads = _n_layers_heads(self.model)
             scores = [
                 HeadImportanceScore(layer_idx=l, head_idx=h, score=torch.rand(1).item())
-                for l in range(n_layers)
+                for l in range(n_layers)  # noqa: E741
                 for h in range(n_heads)
             ]
             scores.sort(key=lambda s: s.score, reverse=True)
@@ -322,7 +326,9 @@ class StructuredHeadPruner:
 
         logger.info(
             "Pruned %d/%d heads (%.1f%% sparsity)",
-            n_pruned, total_heads, 100.0 * n_pruned / max(1, total_heads),
+            n_pruned,
+            total_heads,
+            100.0 * n_pruned / max(1, total_heads),
         )
 
         return {
@@ -351,8 +357,7 @@ class StructuredHeadPruner:
 
         mask = self._head_mask
         per_layer_active = [
-            int((mask.mask[layer_idx] != 0).sum().item())
-            for layer_idx in range(n_layers)
+            int((mask.mask[layer_idx] != 0).sum().item()) for layer_idx in range(n_layers)
         ]
         n_active = sum(per_layer_active)
         n_pruned = total_heads - n_active

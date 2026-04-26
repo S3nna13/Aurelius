@@ -13,31 +13,32 @@ Test parameters
 """
 
 import math
+
 import torch
-import pytest
 
 from src.model.hash_embedding import (
-    HashEmbedding,
-    FeatureHasher,
-    SubwordHashEmbedding,
     CompressedEmbeddingLayer,
     EmbeddingCompressionBenchmark,
+    FeatureHasher,
+    HashEmbedding,
     HashEmbeddingConfig,
+    SubwordHashEmbedding,
 )
 
 # ---------------------------------------------------------------------------
 # Shared constants
 # ---------------------------------------------------------------------------
 VOCAB_SIZE = 64
-D_MODEL    = 16
-B, T       = 2, 6
-N_HASHES   = 4
+D_MODEL = 16
+B, T = 2, 6
+N_HASHES = 4
 HASH_VOCAB = 32
 
 
 # ===========================================================================
 # HashEmbedding tests (4)
 # ===========================================================================
+
 
 def test_hash_embedding_output_shape():
     """Forward pass must return [B, T, d_model]."""
@@ -51,12 +52,14 @@ def test_hash_embedding_different_tokens_different_embeddings():
     """Two clearly different token ids should (almost certainly) map to different embeddings."""
     torch.manual_seed(42)
     emb = HashEmbedding(num_hashes=N_HASHES, hash_vocab_size=HASH_VOCAB, d_model=D_MODEL)
-    ids_a = torch.zeros(1, 1, dtype=torch.long)          # token 0
+    ids_a = torch.zeros(1, 1, dtype=torch.long)  # token 0
     ids_b = torch.full((1, 1), VOCAB_SIZE - 1, dtype=torch.long)  # token 63
     out_a = emb(ids_a)
     out_b = emb(ids_b)
     # With non-trivial hash tables the two outputs should differ
-    assert not torch.allclose(out_a, out_b), "Different token ids should produce different embeddings"
+    assert not torch.allclose(out_a, out_b), (
+        "Different token ids should produce different embeddings"
+    )
 
 
 def test_hash_embedding_hash_fn_deterministic():
@@ -69,7 +72,7 @@ def test_hash_embedding_hash_fn_deterministic():
 
 
 def test_hash_embedding_param_count_less_than_standard():
-    """Hash embedding should use fewer parameters than a standard embedding for a large vocabulary."""
+    """Hash embedding should use fewer parameters than a standard embedding for a large vocabulary."""  # noqa: E501
     # Use a realistically large vocab (50k) so hash compression is meaningful.
     # Hash tables: 4 * 32 * D_MODEL  vs standard: 50000 * D_MODEL
     large_vocab = 50_000
@@ -85,13 +88,14 @@ def test_hash_embedding_param_count_less_than_standard():
 # FeatureHasher tests (2)
 # ===========================================================================
 
+
 def test_feature_hasher_output_shape():
     """Forward pass must return [B, d_model]."""
     N_FEAT = 512
     N_SPARSE = 10
     hasher = FeatureHasher(n_features=N_FEAT, d_model=D_MODEL)
     indices = torch.randint(0, 10_000, (B, N_SPARSE))
-    values  = torch.randn(B, N_SPARSE)
+    values = torch.randn(B, N_SPARSE)
     out = hasher(indices, values)
     assert out.shape == (B, D_MODEL), f"Expected {(B, D_MODEL)}, got {out.shape}"
 
@@ -102,7 +106,7 @@ def test_feature_hasher_dense_from_sparse():
     N_SPARSE = 10
     hasher = FeatureHasher(n_features=N_FEAT, d_model=D_MODEL)
     indices = torch.randint(0, 10_000, (B, N_SPARSE))
-    values  = torch.ones(B, N_SPARSE)
+    values = torch.ones(B, N_SPARSE)
     out = hasher(indices, values)
     # Dense output should not be all zeros after non-trivial embedding weights
     assert out.abs().sum().item() > 0.0, "Dense output should be non-zero for non-zero inputs"
@@ -112,12 +116,13 @@ def test_feature_hasher_dense_from_sparse():
 # SubwordHashEmbedding tests (2)
 # ===========================================================================
 
+
 def test_subword_hash_embedding_output_shape():
     """Forward pass must return [B, T, d_model]."""
     MAX_WORD_LEN = 8
     model = SubwordHashEmbedding(vocab_size=VOCAB_SIZE, d_model=D_MODEL)
     token_ids = torch.randint(0, VOCAB_SIZE, (B, T))
-    char_ids  = torch.randint(0, 256, (B, T, MAX_WORD_LEN))
+    char_ids = torch.randint(0, 256, (B, T, MAX_WORD_LEN))
     out = model(token_ids, char_ids)
     assert out.shape == (B, T, D_MODEL), f"Expected {(B, T, D_MODEL)}, got {out.shape}"
 
@@ -138,6 +143,7 @@ def test_subword_hash_embedding_char_ids_influence_output():
 # ===========================================================================
 # CompressedEmbeddingLayer tests (3)
 # ===========================================================================
+
 
 def test_compressed_embedding_output_shape():
     """Forward pass must return [B, T, d_model]."""
@@ -174,12 +180,11 @@ def test_compressed_embedding_gradient_flows():
 # EmbeddingCompressionBenchmark tests (4)
 # ===========================================================================
 
+
 def test_benchmark_standard_param_count():
     """standard_param_count should equal vocab_size * d_model."""
     result = EmbeddingCompressionBenchmark.standard_param_count(VOCAB_SIZE, D_MODEL)
-    assert result == VOCAB_SIZE * D_MODEL, (
-        f"Expected {VOCAB_SIZE * D_MODEL}, got {result}"
-    )
+    assert result == VOCAB_SIZE * D_MODEL, f"Expected {VOCAB_SIZE * D_MODEL}, got {result}"
 
 
 def test_benchmark_hash_param_count_less_than_standard():
@@ -214,6 +219,7 @@ def test_benchmark_reconstruction_error_nonneg():
 # ===========================================================================
 # HashEmbeddingConfig tests (1)
 # ===========================================================================
+
 
 def test_hash_embedding_config_defaults():
     """HashEmbeddingConfig must have the documented default values."""

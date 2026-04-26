@@ -14,11 +14,6 @@ Usage:
 
 from __future__ import annotations
 
-import copy
-
-import torch
-from torch.optim import Optimizer
-
 from .lookahead import Lookahead
 from .radam import RAdam
 

@@ -10,10 +10,8 @@ Implements:
 
 from __future__ import annotations
 
-import copy
 import math
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -23,18 +21,18 @@ from torch import Tensor
 
 @dataclass
 class NegativeTrainingConfig:
-    negative_lr: float = 1e-4        # learning rate for negative examples
-    positive_lr: float = 1e-5        # learning rate for positive examples
-    negative_steps: int = 5          # gradient ascent steps on negative set
-    positive_steps: int = 5          # gradient descent steps on positive set
+    negative_lr: float = 1e-4  # learning rate for negative examples
+    positive_lr: float = 1e-5  # learning rate for positive examples
+    negative_steps: int = 5  # gradient ascent steps on negative set
+    positive_steps: int = 5  # gradient descent steps on positive set
     gradient_projection: bool = True  # project negative gradients out of positive gradient space
-    max_grad_norm: float = 1.0       # gradient clipping
-    loss_margin: float = 5.0         # stop gradient ascent if loss exceeds this (prevents divergence)
+    max_grad_norm: float = 1.0  # gradient clipping
+    loss_margin: float = 5.0  # stop gradient ascent if loss exceeds this (prevents divergence)
 
 
 def negative_loss(
     model: nn.Module,
-    neg_inputs: Tensor,   # (B, T) token ids
+    neg_inputs: Tensor,  # (B, T) token ids
     neg_targets: Tensor,  # (B, T) token ids (next-token prediction)
 ) -> Tensor:
     """Negated cross-entropy loss for suppressing specific outputs.
@@ -55,7 +53,7 @@ def negative_loss(
 
 def positive_loss(
     model: nn.Module,
-    pos_inputs: Tensor,   # (B, T) token ids
+    pos_inputs: Tensor,  # (B, T) token ids
     pos_targets: Tensor,  # (B, T) token ids
 ) -> Tensor:
     """Standard cross-entropy loss for preserving desired behaviors."""
@@ -72,15 +70,15 @@ def positive_loss(
 
 
 def project_gradient(
-    neg_grad: List[Tensor],  # gradients from negative examples
-    pos_grad: List[Tensor],  # gradients from positive examples
-) -> List[Tensor]:
+    neg_grad: list[Tensor],  # gradients from negative examples
+    pos_grad: list[Tensor],  # gradients from positive examples
+) -> list[Tensor]:
     """Project negative gradient to remove components aligned with positive gradient.
 
     For each parameter: g_neg = g_neg - (g_neg . g_pos / |g_pos|^2) g_pos
     Returns the projected negative gradient.
     """
-    projected: List[Tensor] = []
+    projected: list[Tensor] = []
     for g_neg, g_pos in zip(neg_grad, pos_grad):
         if g_neg is None or g_pos is None:
             projected.append(g_neg)
@@ -106,8 +104,8 @@ def project_gradient(
 
 @dataclass
 class NegativeTrainingResult:
-    negative_losses: List[float]  # per-step negative loss (should increase in absolute terms)
-    positive_losses: List[float]  # per-step positive loss
+    negative_losses: list[float]  # per-step negative loss (should increase in absolute terms)
+    positive_losses: list[float]  # per-step positive loss
     n_negative_steps: int
     n_positive_steps: int
 
@@ -118,12 +116,8 @@ class NegativeTrainer:
     def __init__(self, model: nn.Module, config: NegativeTrainingConfig) -> None:
         self.model = model
         self.config = config
-        self._neg_optimizer = torch.optim.Adam(
-            model.parameters(), lr=config.negative_lr
-        )
-        self._pos_optimizer = torch.optim.Adam(
-            model.parameters(), lr=config.positive_lr
-        )
+        self._neg_optimizer = torch.optim.Adam(model.parameters(), lr=config.negative_lr)
+        self._pos_optimizer = torch.optim.Adam(model.parameters(), lr=config.positive_lr)
 
     def negative_step(
         self,
@@ -173,7 +167,7 @@ class NegativeTrainer:
         loss_fn,
         inputs: Tensor,
         targets: Tensor,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Compute gradients without applying them; returns list per parameter."""
         self.model.zero_grad()
         loss = loss_fn(self.model, inputs, targets)
@@ -230,14 +224,14 @@ class NegativeTrainer:
 
     def run(
         self,
-        negative_dataset: List[Tuple[Tensor, Tensor]],
-        positive_dataset: List[Tuple[Tensor, Tensor]],
+        negative_dataset: list[tuple[Tensor, Tensor]],
+        positive_dataset: list[tuple[Tensor, Tensor]],
     ) -> NegativeTrainingResult:
         """Alternate negative and positive training steps."""
         cfg = self.config
 
-        neg_losses: List[float] = []
-        pos_losses: List[float] = []
+        neg_losses: list[float] = []
+        pos_losses: list[float] = []
 
         def next_cyclic(iterator, dataset):
             try:

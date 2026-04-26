@@ -1,14 +1,11 @@
 """Tests for the Adan (Adaptive Nesterov Momentum) optimizer."""
-from __future__ import annotations
 
-import copy
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.adan import Adan, AdanConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -72,7 +69,7 @@ def test_adan_loss_decreases_quadratic():
     losses = []
     for _ in range(200):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         losses.append(loss.item())
         loss.backward()
         opt.step()
@@ -105,7 +102,7 @@ def test_adan_proximal_weight_decay_shrinks_params():
 
     norm_after = p.data.norm().item()
     assert norm_after < norm_before, (
-        f"Proximal weight decay did not shrink params: before={norm_before:.4f}, after={norm_after:.4f}"
+        f"Proximal weight decay did not shrink params: before={norm_before:.4f}, after={norm_after:.4f}"  # noqa: E501
     )
 
 
@@ -149,7 +146,7 @@ def test_adan_restart_opt_resets_state():
     # Run a few steps to populate state
     for _ in range(5):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         loss.backward()
         opt.step()
 
@@ -164,7 +161,9 @@ def test_adan_restart_opt_resets_state():
     assert state["exp_avg"].abs().sum().item() == 0.0, "restart_opt did not zero exp_avg"
     assert state["exp_avg_diff"].abs().sum().item() == 0.0, "restart_opt did not zero exp_avg_diff"
     assert state["exp_avg_sq"].abs().sum().item() == 0.0, "restart_opt did not zero exp_avg_sq"
-    assert state["previous_grad"].abs().sum().item() == 0.0, "restart_opt did not zero previous_grad"
+    assert state["previous_grad"].abs().sum().item() == 0.0, (
+        "restart_opt did not zero previous_grad"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -187,10 +186,12 @@ def test_adan_get_lr_multiple_groups():
     """get_lr() must return one entry per param group."""
     p1 = nn.Parameter(torch.randn(4))
     p2 = nn.Parameter(torch.randn(4))
-    opt = Adan([
-        {"params": [p1], "lr": 1e-3},
-        {"params": [p2], "lr": 2e-4},
-    ])
+    opt = Adan(
+        [
+            {"params": [p1], "lr": 1e-3},
+            {"params": [p2], "lr": 2e-4},
+        ]
+    )
     lrs = opt.get_lr()
     assert lrs == [1e-3, 2e-4], f"Unexpected lrs: {lrs}"
 
@@ -207,7 +208,7 @@ def test_adan_state_dict_save_load():
 
     for _ in range(3):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         loss.backward()
         opt.step()
 
@@ -242,10 +243,13 @@ def test_adan_multiple_param_groups():
     p1 = nn.Parameter(torch.randn(16) * 2.0)
     p2 = nn.Parameter(torch.randn(16) * 2.0)
 
-    opt = Adan([
-        {"params": [p1], "lr": 1e-2},
-        {"params": [p2], "lr": 1e-4},
-    ], weight_decay=0.0)
+    opt = Adan(
+        [
+            {"params": [p1], "lr": 1e-2},
+            {"params": [p2], "lr": 1e-4},
+        ],
+        weight_decay=0.0,
+    )
 
     before1 = p1.data.clone()
     before2 = p2.data.clone()
@@ -291,7 +295,7 @@ def test_adan_gradient_clipping_compatible():
     for p in linear.parameters():
         if p.grad is not None:
             total_norm += p.grad.data.norm(2).item() ** 2
-    total_norm = total_norm ** 0.5
+    total_norm = total_norm**0.5
     assert total_norm <= max_norm + 1e-5, f"Gradient norm not clipped: {total_norm:.4f}"
 
     # step must not raise
@@ -299,10 +303,7 @@ def test_adan_gradient_clipping_compatible():
 
     # Params must have changed
     # (just verifying no crash and some update happened)
-    assert all(
-        p.data.abs().sum().item() >= 0
-        for p in linear.parameters()
-    )
+    assert all(p.data.abs().sum().item() >= 0 for p in linear.parameters())
 
 
 # ---------------------------------------------------------------------------
@@ -386,8 +387,14 @@ def test_adan_from_config():
     """Adan can be constructed from an AdanConfig."""
     cfg = AdanConfig(lr=2e-3, weight_decay=0.05, no_prox=True)
     p = nn.Parameter(torch.randn(8))
-    opt = Adan([p], lr=cfg.lr, betas=cfg.betas, eps=cfg.eps,
-               weight_decay=cfg.weight_decay, no_prox=cfg.no_prox)
+    opt = Adan(
+        [p],
+        lr=cfg.lr,
+        betas=cfg.betas,
+        eps=cfg.eps,
+        weight_decay=cfg.weight_decay,
+        no_prox=cfg.no_prox,
+    )
 
     group = opt.param_groups[0]
     assert group["lr"] == cfg.lr

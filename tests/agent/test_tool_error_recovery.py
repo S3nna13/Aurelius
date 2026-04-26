@@ -58,17 +58,13 @@ def test_decide_timeout_retries_with_backoff():
 
 def test_decide_validation_requests_modified_args():
     policy = RecoveryPolicy(max_retries=3)
-    d = decide(
-        _fail("calc", "schema_error:missing_required:x"), policy, attempt_count=1
-    )
+    d = decide(_fail("calc", "schema_error:missing_required:x"), policy, attempt_count=1)
     assert d.strategy == RecoveryStrategy.RETRY_MODIFIED_ARGS
 
 
 def test_decide_validation_aborts_when_exhausted():
     policy = RecoveryPolicy(max_retries=2)
-    d = decide(
-        _fail("calc", "schema_error:missing_required:x"), policy, attempt_count=2
-    )
+    d = decide(_fail("calc", "schema_error:missing_required:x"), policy, attempt_count=2)
     assert d.strategy == RecoveryStrategy.ABORT
 
 
@@ -98,18 +94,14 @@ def test_decide_aborts_at_max_retries():
 
 
 def test_decide_backoff_capped_at_max_delay():
-    policy = RecoveryPolicy(
-        max_retries=10, backoff_base=1.0, backoff_factor=10.0, max_delay=2.5
-    )
+    policy = RecoveryPolicy(max_retries=10, backoff_base=1.0, backoff_factor=10.0, max_delay=2.5)
     d = decide(_fail("net", "timeout"), policy, attempt_count=5)
     assert d.delay_seconds == pytest.approx(2.5)
 
 
 def test_decide_abort_on_list_overrides():
     policy = RecoveryPolicy(max_retries=5, abort_on=["budget:"])
-    d = decide(
-        _fail("t", "budget:total_calls_exhausted"), policy, attempt_count=1
-    )
+    d = decide(_fail("t", "budget:total_calls_exhausted"), policy, attempt_count=1)
     assert d.strategy == RecoveryStrategy.ABORT
 
 
@@ -201,9 +193,7 @@ def test_recovering_dispatcher_exhausts_retries():
     # Three attempts: 2 retries + final abort attempt. The third call
     # returns failure and decide() at attempt_count=3 -> abort.
     assert len(inner.calls) == 3
-    assert any(
-        d.strategy == RecoveryStrategy.ABORT for _, d in disp.recovery_history()
-    )
+    assert any(d.strategy == RecoveryStrategy.ABORT for _, d in disp.recovery_history())
 
 
 def test_recovering_dispatcher_uses_fallback():
@@ -263,9 +253,7 @@ def test_recovering_dispatcher_retry_modified_args_without_mutator_aborts():
 
 def test_recovering_dispatcher_escalate_returns_failure():
     inner = _FakeDispatcher([_fail("fs", "permission denied")])
-    disp = RecoveringDispatcher(
-        inner, RecoveryPolicy(), sleep=lambda s: None
-    )
+    disp = RecoveringDispatcher(inner, RecoveryPolicy(), sleep=lambda s: None)
     result = disp.dispatch("fs", {})
     assert result.ok is False
     hist = disp.recovery_history()

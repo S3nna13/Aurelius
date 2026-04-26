@@ -8,11 +8,12 @@ previous task.
 
 Penalty: lambda/2 * sum_i F_i * (theta_i - theta*_i)^2
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 import torch
 import torch.nn as nn
@@ -24,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EWCConfig:
-    ewc_lambda: float = 1000.0      # regularization strength
-    n_fisher_samples: int = 200     # samples to estimate Fisher
+    ewc_lambda: float = 1000.0  # regularization strength
+    n_fisher_samples: int = 200  # samples to estimate Fisher
     fisher_type: str = "empirical"  # "empirical" | "diagonal"
 
 
@@ -232,21 +233,21 @@ class TaskSequence:
     def __len__(self) -> int:
         return len(self._tasks)
 
+
 # Backward-compatible alias
-EWC = EWCTrainer
-
-
 class EWC:
     """Legacy EWC interface (model, config) compatible with continual.py."""
 
-    def __init__(self, model: nn.Module, config: "EWCConfig") -> None:
+    def __init__(self, model: nn.Module, config: EWCConfig) -> None:
         self.model = model
         self.config = config
         self._fisher: dict[str, Tensor] | None = None
         self._optimal_params: dict[str, Tensor] | None = None
 
     def compute_fisher(self, data_iter) -> None:
-        self._fisher = compute_fisher_diagonal(self.model, iter(data_iter), self.config.n_fisher_samples)
+        self._fisher = compute_fisher_diagonal(
+            self.model, iter(data_iter), self.config.n_fisher_samples
+        )
         self._optimal_params = {n: p.detach().clone() for n, p in self.model.named_parameters()}
 
     def penalty(self, model: nn.Module) -> Tensor:

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import math
-from enum import Enum
+from enum import StrEnum
 
 
-class AggregationStrategy(str, Enum):
+class AggregationStrategy(StrEnum):
     FEDAVG = "fedavg"
     FEDMEDIAN = "fedmedian"
     KRUM = "krum"
@@ -83,9 +83,7 @@ class GradientAggregator:
 
         scores = []
         for i in range(n):
-            dists = sorted(
-                sq_dist(gradients[i], gradients[j]) for j in range(n) if j != i
-            )
+            dists = sorted(sq_dist(gradients[i], gradients[j]) for j in range(n) if j != i)
             score = sum(dists[:k])
             scores.append((score, i))
 
@@ -121,7 +119,7 @@ class GradientAggregator:
         for i in range(n_params):
             col = sorted(g[i] for g in gradients)
             if 2 * k < n:
-                trimmed = col[k: n - k]
+                trimmed = col[k : n - k]
             else:
                 trimmed = col
             result.append(sum(trimmed) / len(trimmed))

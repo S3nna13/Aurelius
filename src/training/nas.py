@@ -10,11 +10,11 @@ are learned alongside model weights via bilevel optimization.
 Reference: Liu et al. 2019 "DARTS: Differentiable Architecture Search"
            arXiv:1806.09055
 """
+
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -26,10 +26,10 @@ from torch import Tensor
 class NASConfig:
     """Configuration for NAS primitives."""
 
-    n_candidates: int = 4       # number of candidate operations per cell
+    n_candidates: int = 4  # number of candidate operations per cell
     d_model: int = 64
-    temperature: float = 1.0    # Gumbel softmax temperature
-    hard: bool = False          # hard vs soft Gumbel-Softmax
+    temperature: float = 1.0  # Gumbel softmax temperature
+    hard: bool = False  # hard vs soft Gumbel-Softmax
     arch_lr: float = 3e-4
 
 
@@ -37,14 +37,15 @@ class NASConfig:
 class ArchitectureStats:
     """Statistics over the current architecture weight distributions."""
 
-    selected_ops: list[int]   # argmax of arch weights per cell
-    entropy: float            # mean entropy of arch weight distributions
-    dominance: float          # max arch weight minus mean (how peaked)
+    selected_ops: list[int]  # argmax of arch weights per cell
+    entropy: float  # mean entropy of arch weight distributions
+    dominance: float  # max arch weight minus mean (how peaked)
 
 
 # ---------------------------------------------------------------------------
 # Gumbel-Softmax
 # ---------------------------------------------------------------------------
+
 
 def gumbel_softmax(logits: Tensor, temperature: float, hard: bool = False) -> Tensor:
     """Gumbel-Softmax relaxation.
@@ -76,6 +77,7 @@ def gumbel_softmax(logits: Tensor, temperature: float, hard: bool = False) -> Te
 # Architecture weight statistics
 # ---------------------------------------------------------------------------
 
+
 def compute_arch_entropy(arch_weights: Tensor) -> float:
     """Compute mean Shannon entropy over rows of arch_weights.
 
@@ -100,15 +102,16 @@ def compute_arch_dominance(arch_weights: Tensor) -> float:
     Returns:
         Dominance score (float).
     """
-    max_w = arch_weights.max(dim=-1).values   # (K,)
-    mean_w = arch_weights.mean(dim=-1)        # (K,)
-    dominance_per_cell = max_w - mean_w       # (K,)
+    max_w = arch_weights.max(dim=-1).values  # (K,)
+    mean_w = arch_weights.mean(dim=-1)  # (K,)
+    dominance_per_cell = max_w - mean_w  # (K,)
     return float(dominance_per_cell.mean().item())
 
 
 # ---------------------------------------------------------------------------
 # MixedOp
 # ---------------------------------------------------------------------------
+
 
 class MixedOp(nn.Module):
     """Weighted mixture of candidate operations.
@@ -145,6 +148,7 @@ class MixedOp(nn.Module):
 # ---------------------------------------------------------------------------
 # DARTSCell
 # ---------------------------------------------------------------------------
+
 
 class DARTSCell(nn.Module):
     """A single NAS cell with learnable architecture weights.
@@ -204,6 +208,7 @@ class DARTSCell(nn.Module):
 # ---------------------------------------------------------------------------
 # DARTSSearcher
 # ---------------------------------------------------------------------------
+
 
 class DARTSSearcher:
     """Bi-level optimization manager: model weights + architecture weights.
@@ -269,6 +274,7 @@ class DARTSSearcher:
 # ---------------------------------------------------------------------------
 # Random Architecture Search
 # ---------------------------------------------------------------------------
+
 
 def random_architecture_search(
     model: nn.Module,

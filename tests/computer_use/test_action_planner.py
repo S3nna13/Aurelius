@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 from src.computer_use.action_planner import (
+    COMPUTER_USE_REGISTRY,
     ActionPlan,
     ActionPlanner,
     ActionType,
-    COMPUTER_USE_REGISTRY,
     PlannedAction,
 )
 
@@ -21,6 +21,7 @@ def planner() -> ActionPlanner:
 # ---------------------------------------------------------------------------
 # ActionType inference
 # ---------------------------------------------------------------------------
+
 
 class TestActionTypeInference:
     def test_click_keyword(self, planner):
@@ -65,6 +66,7 @@ class TestActionTypeInference:
 # Params extraction
 # ---------------------------------------------------------------------------
 
+
 class TestParamExtraction:
     def test_type_action_has_text_param(self, planner):
         plan = planner.plan('type "hello world" into the field', {})
@@ -101,6 +103,7 @@ class TestParamExtraction:
 # Confidence
 # ---------------------------------------------------------------------------
 
+
 class TestConfidence:
     def test_confidence_higher_with_context(self, planner):
         plan_ctx = planner.plan("click the button", {"focused_element": "btn"})
@@ -115,6 +118,7 @@ class TestConfidence:
 # ---------------------------------------------------------------------------
 # validate_plan
 # ---------------------------------------------------------------------------
+
 
 class TestValidatePlan:
     def test_valid_plan_no_errors(self, planner):
@@ -149,6 +153,7 @@ class TestValidatePlan:
 # estimate_cost
 # ---------------------------------------------------------------------------
 
+
 class TestEstimateCost:
     def test_cost_positive(self, planner):
         plan = planner.plan("click the button", {})
@@ -168,6 +173,7 @@ class TestEstimateCost:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_contains_action_planner(self):

@@ -18,16 +18,15 @@ get_position_encoding  — dispatcher returning the appropriate tensor
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PosEncConfig:
@@ -49,14 +48,13 @@ class PosEncConfig:
     def __post_init__(self) -> None:
         valid = {"alibi", "sinusoidal", "learned", "none"}
         if self.encoding_type not in valid:
-            raise ValueError(
-                f"encoding_type must be one of {valid}, got {self.encoding_type!r}"
-            )
+            raise ValueError(f"encoding_type must be one of {valid}, got {self.encoding_type!r}")
 
 
 # ---------------------------------------------------------------------------
 # ALiBi helpers
 # ---------------------------------------------------------------------------
+
 
 def compute_alibi_slopes(n_heads: int) -> torch.Tensor:
     """Compute per-head ALiBi slopes.
@@ -68,7 +66,7 @@ def compute_alibi_slopes(n_heads: int) -> torch.Tensor:
     Tensor of shape (n_heads,), all values in (0, 1], strictly decreasing.
     """
     exponents = torch.arange(1, n_heads + 1, dtype=torch.float32)
-    slopes = (0.5 ** (exponents * 8.0 / n_heads))
+    slopes = 0.5 ** (exponents * 8.0 / n_heads)
     return slopes
 
 
@@ -107,6 +105,7 @@ def build_alibi_bias(n_heads: int, seq_len: int) -> torch.Tensor:
 # Sinusoidal encoding
 # ---------------------------------------------------------------------------
 
+
 def build_sinusoidal_encoding(
     seq_len: int,
     d_model: int,
@@ -121,9 +120,9 @@ def build_sinusoidal_encoding(
     -------
     Tensor of shape (seq_len, d_model), values in [-1, 1].
     """
-    t = torch.arange(seq_len, dtype=torch.float32).unsqueeze(1)         # (T, 1)
-    i = torch.arange(0, d_model, 2, dtype=torch.float32).unsqueeze(0)   # (1, d/2)
-    div_term = base ** (i / d_model)                                     # (1, d/2)
+    t = torch.arange(seq_len, dtype=torch.float32).unsqueeze(1)  # (T, 1)
+    i = torch.arange(0, d_model, 2, dtype=torch.float32).unsqueeze(0)  # (1, d/2)
+    div_term = base ** (i / d_model)  # (1, d/2)
 
     pe = torch.zeros(seq_len, d_model)
     pe[:, 0::2] = torch.sin(t / div_term)
@@ -134,6 +133,7 @@ def build_sinusoidal_encoding(
 # ---------------------------------------------------------------------------
 # Learned positional encoding
 # ---------------------------------------------------------------------------
+
 
 class LearnedPositionalEncoding(nn.Module):
     """Trainable absolute positional embeddings.
@@ -162,14 +162,15 @@ class LearnedPositionalEncoding(nn.Module):
         (B, T, d_model) — input plus position embeddings.
         """
         B, T, _ = x.shape
-        positions = torch.arange(T, device=x.device)          # (T,)
-        pos_emb = self.embedding(positions)                    # (T, d_model)
-        return x + pos_emb.unsqueeze(0)                        # (B, T, d_model)
+        positions = torch.arange(T, device=x.device)  # (T,)
+        pos_emb = self.embedding(positions)  # (T, d_model)
+        return x + pos_emb.unsqueeze(0)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # ALiBiAttention
 # ---------------------------------------------------------------------------
+
 
 class ALiBiAttention(nn.Module):
     """Multi-head self-attention with ALiBi positional bias.
@@ -186,7 +187,7 @@ class ALiBiAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -228,13 +229,13 @@ class ALiBiAttention(nn.Module):
 
         # ALiBi bias: (H, T, T)  — causal; j > i already set to -inf
         alibi = build_alibi_bias(H, T).to(x.device)  # (H, T, T)
-        scores = scores + alibi.unsqueeze(0)           # broadcast over B
+        scores = scores + alibi.unsqueeze(0)  # broadcast over B
 
         # Softmax — -inf entries become 0 probability
         attn = torch.softmax(scores, dim=-1)
 
         # Weighted sum and merge heads
-        out = torch.matmul(attn, v)                    # (B, H, T, D)
+        out = torch.matmul(attn, v)  # (B, H, T, D)
         out = out.transpose(1, 2).contiguous().view(B, T, self.d_model)
         return self.out_proj(out)
 
@@ -242,6 +243,7 @@ class ALiBiAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
+
 
 def get_position_encoding(
     config: PosEncConfig,

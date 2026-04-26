@@ -9,18 +9,18 @@ Implements:
 from __future__ import annotations
 
 import copy
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
-from typing import Dict, Generator, Iterator, List, Optional
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _get_params(model: nn.Module) -> List[torch.Tensor]:
+
+def _get_params(model: nn.Module) -> list[torch.Tensor]:
     """Return parameters from the underlying module (unwrap DDP if needed)."""
     m = getattr(model, "module", model)  # handle DDP wrapper
     return list(m.parameters())
@@ -34,6 +34,7 @@ def _get_named_params(model: nn.Module) -> Iterator:
 # ---------------------------------------------------------------------------
 # ModelEMA
 # ---------------------------------------------------------------------------
+
 
 class ModelEMA:
     """Exponential Moving Average of model parameters.
@@ -61,7 +62,7 @@ class ModelEMA:
         model: nn.Module,
         decay: float = 0.9999,
         warmup_steps: int = 2000,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         foreach: bool = True,
     ) -> None:
         self.decay = decay
@@ -79,13 +80,12 @@ class ModelEMA:
 
         # Build shadow parameter list (float32 clones on target device)
         m = getattr(model, "module", model)
-        self.shadow_params: List[torch.Tensor] = [
-            p.detach().clone().float().to(self.device)
-            for p in m.parameters()
+        self.shadow_params: list[torch.Tensor] = [
+            p.detach().clone().float().to(self.device) for p in m.parameters()
         ]
 
         # Backup for store/restore
-        self._backup: Optional[List[torch.Tensor]] = None
+        self._backup: list[torch.Tensor] | None = None
 
     # ------------------------------------------------------------------
     # Properties
@@ -113,9 +113,7 @@ class ModelEMA:
 
         if self.foreach:
             # Collect float versions of current model params on the shadow device
-            current = [
-                p.detach().float().to(self.device) for p in model_params
-            ]
+            current = [p.detach().float().to(self.device) for p in model_params]
             # In-place: shadow = shadow * d + current * (1 - d)
             torch._foreach_mul_(self.shadow_params, d)
             torch._foreach_add_(self.shadow_params, current, alpha=one_minus_d)
@@ -167,7 +165,7 @@ class ModelEMA:
     # State dict
     # ------------------------------------------------------------------
 
-    def state_dict(self) -> Dict:
+    def state_dict(self) -> dict:
         """Return serializable state dict suitable for torch.save."""
         return {
             "decay": self.decay,
@@ -178,16 +176,14 @@ class ModelEMA:
             "shadow_params": [p.cpu() for p in self.shadow_params],
         }
 
-    def load_state_dict(self, state_dict: Dict) -> None:
+    def load_state_dict(self, state_dict: dict) -> None:
         """Load from a state dict (as returned by state_dict())."""
         self.decay = state_dict["decay"]
         self.warmup_steps = state_dict["warmup_steps"]
         self.foreach = state_dict["foreach"]
         self._step = state_dict["step"]
         self.device = torch.device(state_dict["device"])
-        self.shadow_params = [
-            p.to(self.device) for p in state_dict["shadow_params"]
-        ]
+        self.shadow_params = [p.to(self.device) for p in state_dict["shadow_params"]]
 
     # ------------------------------------------------------------------
     # Utility
@@ -216,6 +212,7 @@ class ModelEMA:
 # ---------------------------------------------------------------------------
 # StochasticWeightAveraging
 # ---------------------------------------------------------------------------
+
 
 class StochasticWeightAveraging:
     """SWA: uniform average of model weights taken at regular intervals.
@@ -249,7 +246,7 @@ class StochasticWeightAveraging:
 
         # Running average stored as float32 tensors (CPU)
         m = getattr(model, "module", model)
-        self._avg_params: Optional[List[torch.Tensor]] = None
+        self._avg_params: list[torch.Tensor] | None = None
         self._model_ref = m  # keep arch reference for get_swa_model()
 
     @property
@@ -275,10 +272,7 @@ class StochasticWeightAveraging:
 
         if self._avg_params is None:
             # First checkpoint: initialize the running mean
-            self._avg_params = [
-                p.detach().clone().float().cpu()
-                for p in m.parameters()
-            ]
+            self._avg_params = [p.detach().clone().float().cpu() for p in m.parameters()]
         else:
             # Running mean: avg = (avg * n + p) / (n + 1)
             with torch.no_grad():

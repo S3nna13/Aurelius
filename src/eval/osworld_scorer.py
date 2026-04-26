@@ -89,9 +89,7 @@ class OSWorldScorer:
             return False
         if result.final_screen_state is None:
             return True
-        return any(
-            ref in result.final_screen_state for ref in task.reference_answers
-        )
+        return any(ref in result.final_screen_state for ref in task.reference_answers)
 
     def score_batch(
         self,
@@ -245,6 +243,6 @@ try:
     if not hasattr(_eval_pkg, "EVAL_HARNESS_REGISTRY"):
         _eval_pkg.EVAL_HARNESS_REGISTRY = {}
     _eval_pkg.EVAL_HARNESS_REGISTRY.setdefault("osworld", OSWorldScorer)
-except Exception:  # noqa: BLE001
+except Exception:  # noqa: BLE001, S110
     # Running in isolation (e.g. during module unit tests before package init).
-    pass
+    pass  # noqa: S110

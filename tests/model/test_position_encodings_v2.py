@@ -32,6 +32,7 @@ BATCH = 2
 # PosEncConfig
 # ===========================================================================
 
+
 class TestPosEncConfig:
     def test_defaults(self):
         cfg = PosEncConfig()
@@ -59,6 +60,7 @@ class TestPosEncConfig:
 # ===========================================================================
 # compute_alibi_slopes
 # ===========================================================================
+
 
 class TestComputeAlibiSlopes:
     def test_shape(self):
@@ -95,6 +97,7 @@ class TestComputeAlibiSlopes:
 # build_alibi_bias
 # ===========================================================================
 
+
 class TestBuildAlibiBias:
     def test_shape(self):
         bias = build_alibi_bias(N_HEADS, SEQ_LEN)
@@ -118,7 +121,7 @@ class TestBuildAlibiBias:
             for i in range(SEQ_LEN):
                 for j in range(i + 1, SEQ_LEN):
                     assert bias[h, i, j].isinf() and bias[h, i, j] < 0, (
-                        f"bias[{h},{i},{j}] should be -inf, got {bias[h,i,j]}"
+                        f"bias[{h},{i},{j}] should be -inf, got {bias[h, i, j]}"
                     )
 
     def test_lower_triangle_non_positive(self):
@@ -128,7 +131,7 @@ class TestBuildAlibiBias:
             for i in range(SEQ_LEN):
                 for j in range(i + 1):  # j <= i
                     assert bias[h, i, j] <= 0, (
-                        f"bias[{h},{i},{j}] should be <= 0, got {bias[h,i,j]}"
+                        f"bias[{h},{i},{j}] should be <= 0, got {bias[h, i, j]}"
                     )
 
     def test_penalty_increases_with_distance(self):
@@ -136,8 +139,8 @@ class TestBuildAlibiBias:
         bias = build_alibi_bias(N_HEADS, SEQ_LEN)
         # Row i=5, compare columns j=4 (dist 1) and j=0 (dist 5)
         for h in range(N_HEADS):
-            close_val = bias[h, 5, 4]   # |5-4| = 1
-            far_val = bias[h, 5, 0]     # |5-0| = 5
+            close_val = bias[h, 5, 4]  # |5-4| = 1
+            far_val = bias[h, 5, 0]  # |5-0| = 5
             assert far_val < close_val, (
                 f"Head {h}: bias at dist=5 ({far_val}) should be < bias at dist=1 ({close_val})"
             )
@@ -151,12 +154,11 @@ class TestBuildAlibiBias:
 # build_sinusoidal_encoding
 # ===========================================================================
 
+
 class TestBuildSinusoidalEncoding:
     def test_shape(self):
         pe = build_sinusoidal_encoding(SEQ_LEN, D_MODEL)
-        assert pe.shape == (SEQ_LEN, D_MODEL), (
-            f"Expected ({SEQ_LEN}, {D_MODEL}), got {pe.shape}"
-        )
+        assert pe.shape == (SEQ_LEN, D_MODEL), f"Expected ({SEQ_LEN}, {D_MODEL}), got {pe.shape}"
 
     def test_values_in_neg1_pos1(self):
         pe = build_sinusoidal_encoding(SEQ_LEN, D_MODEL)
@@ -179,7 +181,7 @@ class TestBuildSinusoidalEncoding:
                 div = 10000.0 ** (2 * i / D)
                 expected = math.sin(t / div)
                 assert abs(pe[t, 2 * i].item() - expected) < 1e-5, (
-                    f"pe[{t},{2*i}] should be sin: {pe[t,2*i]} vs {expected}"
+                    f"pe[{t},{2 * i}] should be sin: {pe[t, 2 * i]} vs {expected}"
                 )
 
     def test_odd_dims_are_cos(self):
@@ -191,7 +193,7 @@ class TestBuildSinusoidalEncoding:
                 div = 10000.0 ** (2 * i / D)
                 expected = math.cos(t / div)
                 assert abs(pe[t, 2 * i + 1].item() - expected) < 1e-5, (
-                    f"pe[{t},{2*i+1}] should be cos: {pe[t,2*i+1]} vs {expected}"
+                    f"pe[{t},{2 * i + 1}] should be cos: {pe[t, 2 * i + 1]} vs {expected}"
                 )
 
     def test_different_base_changes_encoding(self):
@@ -205,6 +207,7 @@ class TestBuildSinusoidalEncoding:
 # ===========================================================================
 # LearnedPositionalEncoding
 # ===========================================================================
+
 
 class TestLearnedPositionalEncoding:
     def test_forward_shape(self):
@@ -229,9 +232,7 @@ class TestLearnedPositionalEncoding:
 
     def test_embedding_is_learnable(self):
         lpe = LearnedPositionalEncoding(max_seq_len=SEQ_LEN, d_model=D_MODEL)
-        assert lpe.embedding.weight.requires_grad, (
-            "Embedding weights should require grad"
-        )
+        assert lpe.embedding.weight.requires_grad, "Embedding weights should require grad"
 
     def test_shorter_seq_than_max(self):
         """Should work when the actual sequence is shorter than max_seq_len."""
@@ -244,6 +245,7 @@ class TestLearnedPositionalEncoding:
 # ===========================================================================
 # ALiBiAttention
 # ===========================================================================
+
 
 class TestALiBiAttention:
     def test_forward_shape(self):
@@ -286,6 +288,7 @@ class TestALiBiAttention:
 # ===========================================================================
 # get_position_encoding (dispatcher)
 # ===========================================================================
+
 
 class TestGetPositionEncoding:
     def test_sinusoidal_shape(self):

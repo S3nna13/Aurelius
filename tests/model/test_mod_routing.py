@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.model.mod_routing import (
-    MoDRoutingConfig,
-    TokenImportanceRouter,
     MoDLayer,
+    MoDRoutingConfig,
     MoDTransformer,
+    TokenImportanceRouter,
     analyze_routing_patterns,
     compute_load_balance_loss,
     route_tokens,
@@ -54,6 +53,7 @@ def make_proxy_layer() -> nn.Module:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_mod_routing_config_defaults():
     cfg = MoDRoutingConfig()
     assert cfg.capacity_factor == 0.5
@@ -85,9 +85,7 @@ def test_route_tokens_selected_count():
     hidden = make_hidden()
     scores = torch.randn(B, T)
     capacity = int(B * T * CAPACITY_FACTOR)
-    selected_hidden, selected_indices, routing_weights = route_tokens(
-        hidden, scores, capacity
-    )
+    selected_hidden, selected_indices, routing_weights = route_tokens(hidden, scores, capacity)
     assert selected_hidden.shape[0] == capacity, (
         f"Expected {capacity} selected tokens, got {selected_hidden.shape[0]}"
     )
@@ -111,15 +109,11 @@ def test_scatter_back_shape():
     hidden = make_hidden()
     scores = torch.randn(B, T)
     capacity = int(B * T * CAPACITY_FACTOR)
-    selected_hidden, selected_indices, routing_weights = route_tokens(
-        hidden, scores, capacity
-    )
+    selected_hidden, selected_indices, routing_weights = route_tokens(hidden, scores, capacity)
     # Use a simple identity transform as processed output
     processed = selected_hidden.detach().clone()
     output = scatter_back(processed, selected_indices, routing_weights, hidden)
-    assert output.shape == (B, T, D_MODEL), (
-        f"Expected ({B}, {T}, {D_MODEL}), got {output.shape}"
-    )
+    assert output.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {output.shape}"
 
 
 def test_scatter_back_non_selected_unchanged():
@@ -165,9 +159,7 @@ def test_mod_layer_output_shape():
     mod = MoDLayer(layer, cfg)
     hidden = make_hidden()
     output, lb_loss = mod(hidden)
-    assert output.shape == (B, T, D_MODEL), (
-        f"Expected ({B}, {T}, {D_MODEL}), got {output.shape}"
-    )
+    assert output.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {output.shape}"
     assert lb_loss.shape == (), f"Load balance loss should be scalar, got {lb_loss.shape}"
 
 
@@ -191,9 +183,7 @@ def test_mod_transformer_output_shape():
     transformer = MoDTransformer(layers, cfg)
     hidden = make_hidden()
     output, total_lb_loss = transformer(hidden)
-    assert output.shape == (B, T, D_MODEL), (
-        f"Expected ({B}, {T}, {D_MODEL}), got {output.shape}"
-    )
+    assert output.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {output.shape}"
     assert total_lb_loss.shape == (), (
         f"Total load balance loss should be scalar, got {total_lb_loss.shape}"
     )

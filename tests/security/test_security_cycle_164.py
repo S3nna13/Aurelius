@@ -15,7 +15,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # AUR-SEC-2026-0024 — sqlitedict security gate
 # ---------------------------------------------------------------------------
@@ -24,8 +23,8 @@ import pytest
 class TestAURSEC20240024SqlitedictGate:
     def test_harness_blocks_when_sqlitedict_present(self):
         """If sqlitedict is importable, _run_via_python_api must refuse."""
-        from src.eval.harness import EvalHarness
         from src.eval.benchmark_config import MMLU
+        from src.eval.harness import EvalHarness
 
         harness = EvalHarness()
         fake_sqlitedict = MagicMock()
@@ -57,17 +56,15 @@ class TestSubprocessHardening:
         """CodeExecutionTool must use sys.executable instead of hardcoded python3."""
         from src.agent.code_execution_tool import (
             CodeExecutionTool,
-            ExecutionRequest,
             ExecutionLanguage,
+            ExecutionRequest,
         )
 
         tool = CodeExecutionTool()
         req = ExecutionRequest(code="print(42)", language=ExecutionLanguage.PYTHON)
 
         with patch("src.agent.code_execution_tool.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout="42\n", stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="42\n", stderr="")
             tool.execute(req)
 
         call_args = mock_run.call_args
@@ -81,14 +78,12 @@ class TestSubprocessHardening:
         """JavaScript execution must be rejected (not implemented = smaller attack surface)."""
         from src.agent.code_execution_tool import (
             CodeExecutionTool,
-            ExecutionRequest,
             ExecutionLanguage,
+            ExecutionRequest,
         )
 
         tool = CodeExecutionTool()
-        req = ExecutionRequest(
-            code="alert(1)", language=ExecutionLanguage.JAVASCRIPT
-        )
+        req = ExecutionRequest(code="alert(1)", language=ExecutionLanguage.JAVASCRIPT)
         result = tool.execute(req)
         assert result.exit_code == 1
         assert "not yet supported" in result.stderr
@@ -97,8 +92,8 @@ class TestSubprocessHardening:
         """Deny patterns must block obviously dangerous primitives."""
         from src.agent.code_execution_tool import (
             CodeExecutionTool,
-            ExecutionRequest,
             ExecutionLanguage,
+            ExecutionRequest,
         )
 
         tool = CodeExecutionTool()
@@ -147,8 +142,8 @@ class TestProactiveTriggerExceptionHandling:
     def test_trigger_registry_limits_max_triggers(self):
         """Registry capacity limits prevent unbounded DoS."""
         from src.agent.proactive_trigger import (
-            ProactiveTriggerRegistry,
             ProactiveTriggerConfig,
+            ProactiveTriggerRegistry,
             TriggerSpec,
         )
 
@@ -171,8 +166,10 @@ class TestIsolationCompliance:
 
     def test_eval_harness_no_lm_eval_at_module_level(self):
         """lm_eval must not appear at module level in harness.py."""
-        import src.eval.harness as _harness_mod
         import inspect
+
+        import src.eval.harness as _harness_mod
+
         harness_path = Path(inspect.getfile(_harness_mod))
         source = harness_path.read_text(encoding="utf-8")
         # lm_eval is allowed only inside the method body (lazy import)
@@ -182,17 +179,16 @@ class TestIsolationCompliance:
             if stripped.startswith("import lm_eval") or stripped.startswith("from lm_eval"):
                 # Must be indented (inside a function/method)
                 if not line.startswith("        ") and not line.startswith("\t"):
-                    pytest.fail(
-                        f"Module-level lm_eval import found at {harness_path}:{i}"
-                    )
+                    pytest.fail(f"Module-level lm_eval import found at {harness_path}:{i}")
 
     def test_security_gate_imports_only_stdlib(self):
         """The security gate code in harness.py must use only stdlib imports."""
         # The gate itself does `import sqlitedict` — that's the whole point.
         # Everything else in the method must be stdlib or project-local.
+        import inspect
+
         from src.eval.harness import EvalHarness
 
-        import inspect
         sig = inspect.signature(EvalHarness._run_via_python_api)
         # No assertion needed — if the import were banned, the module would fail to load.
         assert "checkpoint_path" in sig.parameters

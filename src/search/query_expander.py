@@ -5,10 +5,11 @@ and applies optional synonym substitution.
 Inspired by code-aware tokenization in Qwen2.5-Coder (Apache-2.0) and
 DeepSeek-Coder (MIT); Aurelius-native clean-room. License: MIT.
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 _MAX_QUERY_LEN = 2048
 _MAX_SYNONYMS = 256
@@ -18,16 +19,17 @@ _MAX_EXPANSIONS = 64
 @dataclass
 class ExpandedQuery:
     original: str
-    tokens: list[str]        # tokenized original
-    variants: list[str]      # all query string variants
+    tokens: list[str]  # tokenized original
+    variants: list[str]  # all query string variants
     synonyms_applied: int = 0
 
 
 class QueryExpander:
     """Expands queries by identifier splitting and synonym substitution."""
 
-    def __init__(self, synonyms: dict[str, list[str]] | None = None,
-                 max_expansions: int = 16) -> None:
+    def __init__(
+        self, synonyms: dict[str, list[str]] | None = None, max_expansions: int = 16
+    ) -> None:
         if max_expansions > _MAX_EXPANSIONS:
             raise ValueError(f"max_expansions exceeds {_MAX_EXPANSIONS}")
         self.max_expansions = max_expansions
@@ -84,7 +86,7 @@ class QueryExpander:
         for i, tok in enumerate(tokens):
             if tok in self._synonyms:
                 for syn in self._synonyms[tok]:
-                    new_tokens = tokens[:i] + [syn] + tokens[i + 1:]
+                    new_tokens = tokens[:i] + [syn] + tokens[i + 1 :]
                     v = " ".join(new_tokens)
                     if v not in variants:
                         variants.append(v)
@@ -102,7 +104,7 @@ class QueryExpander:
         return ExpandedQuery(
             original=query,
             tokens=tokens,
-            variants=variants[:self.max_expansions],
+            variants=variants[: self.max_expansions],
             synonyms_applied=synonyms_applied,
         )
 

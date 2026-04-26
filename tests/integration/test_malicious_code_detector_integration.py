@@ -5,8 +5,8 @@ from __future__ import annotations
 from src.safety import (
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
-    MaliciousCodeDetector,
     CodeThreatReport,
+    MaliciousCodeDetector,
 )
 
 # Runtime-assembled trigger tokens so the test source does not contain raw

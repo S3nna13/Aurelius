@@ -1,4 +1,5 @@
 """Text chunker for splitting documents into fixed-size segments."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

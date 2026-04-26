@@ -6,17 +6,16 @@ import pytest
 import torch
 
 from src.eval.llm_judge import (
+    STANDARD_CRITERIA,
     JudgingCriteria,
     LLMJudge,
     PairwiseJudge,
-    PointwiseJudge,
-    STANDARD_CRITERIA,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_model(fixed_output: str = "7"):
     """Return a model whose generate() always returns a fixed decode string."""
@@ -35,8 +34,12 @@ def _make_mock_model(fixed_output: str = "7"):
     return MockModel(fixed_output)
 
 
-_ENCODE = lambda s: [ord(c) % 100 for c in s[:10]]
-_DECODE = lambda ids: "7"  # always decodes to "7"
+def _ENCODE(s):
+    return [ord(c) % 100 for c in s[:10]]
+
+
+def _DECODE(ids):
+    return "7"  # always decodes to "7"
 
 
 def _make_judge(criteria=None) -> LLMJudge:
@@ -47,6 +50,7 @@ def _make_judge(criteria=None) -> LLMJudge:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_build_prompt_contains_question():
     judge = _make_judge()

@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 import src.alignment as alignment
-from src.alignment import StepPreferenceExample, StepDPOTrainer, step_dpo_loss
+from src.alignment import StepDPOTrainer, StepPreferenceExample, step_dpo_loss
 
 
 def test_surface_exports_present():
@@ -112,9 +112,7 @@ def test_callable_policy_and_ref_fns():
             "rejected": ex.rejected_step_ref_logprobs,
         }
 
-    trainer = StepDPOTrainer(
-        policy_logprob_fn=policy_fn, ref_logprob_fn=ref_fn, beta=0.2
-    )
+    trainer = StepDPOTrainer(policy_logprob_fn=policy_fn, ref_logprob_fn=ref_fn, beta=0.2)
     batch = [
         StepPreferenceExample(
             prefix_logprobs=torch.tensor(0.0),

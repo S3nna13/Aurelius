@@ -2,14 +2,13 @@ import hashlib
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
 class SessionConfig:
     n_workers: int = 4
     max_sessions_per_worker: int = 32
-    eviction_policy: str = 'lru'
+    eviction_policy: str = "lru"
 
 
 @dataclass
@@ -18,13 +17,13 @@ class Session:
     worker_id: int
     last_active: float
     n_turns: int = 0
-    metadata: Dict = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict)
 
 
 class ConsistentHashRouter:
     def __init__(self, config: SessionConfig):
         self.config = config
-        self._ring: List[tuple] = []
+        self._ring: list[tuple] = []
         n_virtual = 100
         for w in range(config.n_workers):
             for i in range(n_virtual):
@@ -42,7 +41,7 @@ class ConsistentHashRouter:
                 return worker_id
         return self._ring[0][1]
 
-    def worker_load(self) -> Dict[int, int]:
+    def worker_load(self) -> dict[int, int]:
         load = {w: 0 for w in range(self.config.n_workers)}
         return load
 
@@ -51,9 +50,9 @@ class SessionManager:
     def __init__(self, config: SessionConfig):
         self.config = config
         self._router = ConsistentHashRouter(config)
-        self._sessions: Dict[str, Session] = {}
+        self._sessions: dict[str, Session] = {}
 
-    def create_session(self, session_id: Optional[str] = None) -> Session:
+    def create_session(self, session_id: str | None = None) -> Session:
         if session_id is None:
             session_id = str(uuid.uuid4())
         worker_id = self._router.route(session_id)
@@ -65,7 +64,7 @@ class SessionManager:
         self._sessions[session_id] = session
         return session
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         return self._sessions.get(session_id)
 
     def update_session(self, session_id: str) -> None:
@@ -74,7 +73,7 @@ class SessionManager:
             session.n_turns += 1
             session.last_active = time.time()
 
-    def evict_lru(self, worker_id: int) -> Optional[str]:
+    def evict_lru(self, worker_id: int) -> str | None:
         worker_sessions = [s for s in self._sessions.values() if s.worker_id == worker_id]
         if not worker_sessions:
             return None
@@ -82,7 +81,7 @@ class SessionManager:
         del self._sessions[lru.session_id]
         return lru.session_id
 
-    def list_sessions(self, worker_id: Optional[int] = None) -> List[Session]:
+    def list_sessions(self, worker_id: int | None = None) -> list[Session]:
         if worker_id is None:
             return list(self._sessions.values())
         return [s for s in self._sessions.values() if s.worker_id == worker_id]

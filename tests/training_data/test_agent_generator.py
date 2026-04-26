@@ -33,14 +33,24 @@ def test_generate_trajectory_search() -> None:
     g = AgentDataGenerator({})
     traj = g.generate_trajectory("web_search")
     assert len(traj["conversations"]) > 0
-    assert any("web_search" in tool or "web_search" in str(traj["tools_used"]) for tool in traj["tools_used"])
+    assert any(
+        "web_search" in tool or "web_search" in str(traj["tools_used"])
+        for tool in traj["tools_used"]
+    )
 
 
 def test_generate_trajectory_file_ops() -> None:
     g = AgentDataGenerator({})
     traj = g.generate_trajectory("file_ops")
     assert len(traj["conversations"]) > 0
-    assert any("file" in tool.lower() or "read" in tool.lower() or "list" in tool.lower() or "glob" in tool.lower() or "grep" in tool.lower() for tool in traj["tools_used"])
+    assert any(
+        "file" in tool.lower()
+        or "read" in tool.lower()
+        or "list" in tool.lower()
+        or "glob" in tool.lower()
+        or "grep" in tool.lower()
+        for tool in traj["tools_used"]
+    )
 
 
 def test_generate_trajectory_shell() -> None:
@@ -88,8 +98,8 @@ def test_tool_call_format() -> None:
     traj = g.generate_trajectory("database")
     for msg in traj["conversations"]:
         if msg["from"] == "gpt" and "<tool_call>" in msg["value"]:
-                assert '"name"' in msg["value"]
-                assert '"args"' in msg["value"]
+            assert '"name"' in msg["value"]
+            assert '"args"' in msg["value"]
 
 
 def test_at_least_15_templates() -> None:

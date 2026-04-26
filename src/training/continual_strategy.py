@@ -19,10 +19,12 @@ def linear_ewc_schedule(base_lambda: float, stage_idx: int, growth: float = 1.0)
         raise ValueError("base_lambda and growth must be non-negative")
     if stage_idx < 0:
         raise ValueError("stage_idx must be non-negative")
-    return base_lambda * (growth ** stage_idx)
+    return base_lambda * (growth**stage_idx)
 
 
-def replay_ratio_schedule(stage_idx: int, n_stages: int, min_ratio: float = 0.0, max_ratio: float = 0.3) -> float:
+def replay_ratio_schedule(
+    stage_idx: int, n_stages: int, min_ratio: float = 0.0, max_ratio: float = 0.3
+) -> float:
     """Linearly increase replay ratio across stages."""
     if n_stages <= 0:
         raise ValueError("n_stages must be positive")
@@ -59,9 +61,10 @@ def build_continual_plan(
             ContinualStage(
                 task_id=task_id,
                 token_budget=stage_token_budget(total_tokens, n_stages, stage_idx),
-                replay_ratio=replay_ratio_schedule(stage_idx, n_stages, min_replay_ratio, max_replay_ratio),
+                replay_ratio=replay_ratio_schedule(
+                    stage_idx, n_stages, min_replay_ratio, max_replay_ratio
+                ),
                 ewc_lambda=linear_ewc_schedule(base_lambda, stage_idx, growth),
             )
         )
     return plan
-

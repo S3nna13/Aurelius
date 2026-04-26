@@ -17,6 +17,7 @@ Strategy 2 — discard-all fallback:
 
 Trigger condition: total_tokens > max_len * trigger_ratio (default 0.8)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

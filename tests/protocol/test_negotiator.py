@@ -1,7 +1,6 @@
 """Tests for protocol negotiator."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.protocol.negotiator import ProtocolNegotiator, ProtocolVersion
 

@@ -7,9 +7,11 @@ Enables logging, rate-limiting, safety filtering without modifying the agent loo
     untrusted plugins, create a scoped :class:`PluginHookRegistry`
     instance rather than using the global singleton.
 """
+
 from __future__ import annotations
 
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
 
 HOOK_POINTS = (
     "pre_tool_call",
@@ -26,22 +28,19 @@ class PluginHookRegistry:
 
     def register(self, point: str, fn: Callable) -> None:
         if point not in self._hooks:
-            raise ValueError(
-                f"Unknown hook point {point!r}. Valid points: {HOOK_POINTS}"
-            )
+            raise ValueError(f"Unknown hook point {point!r}. Valid points: {HOOK_POINTS}")
         self._hooks[point].append(fn)
 
     def fire(self, point: str, **kwargs: Any) -> None:
         if point not in self._hooks:
-            raise ValueError(
-                f"Unknown hook point {point!r}. Valid points: {HOOK_POINTS}"
-            )
+            raise ValueError(f"Unknown hook point {point!r}. Valid points: {HOOK_POINTS}")
         for fn in self._hooks[point]:
             try:
                 fn(**kwargs)
             except Exception:
                 # Hooks must not break the caller.  Log and continue.
                 import logging
+
                 logging.getLogger(__name__).exception(
                     "Hook %r at %r raised an exception; continuing", fn, point
                 )

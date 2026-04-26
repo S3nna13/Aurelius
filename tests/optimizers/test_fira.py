@@ -19,18 +19,15 @@ Coverage:
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
 
 from src.optimizers.fira import Fira
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _quad_loss(param: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """Simple quadratic loss ||param - target||^2."""
@@ -45,6 +42,7 @@ def _make_param(shape: tuple[int, ...], seed: int = 42) -> nn.Parameter:
 # ---------------------------------------------------------------------------
 # Test 1: Shape / dtype — 2-D and 1-D parameters are updated
 # ---------------------------------------------------------------------------
+
 
 def test_shape_dtype_2d():
     """A 2-D parameter is updated correctly after one step."""
@@ -73,6 +71,7 @@ def test_shape_dtype_1d():
 # Test 2: Convergence on a quadratic objective
 # ---------------------------------------------------------------------------
 
+
 def test_convergence_quadratic():
     """Loss should decrease monotonically on a simple quadratic."""
     torch.manual_seed(0)
@@ -96,8 +95,10 @@ def test_convergence_quadratic():
 # Test 3: Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     """Two runs with the same seed should produce identical parameters."""
+
     def _run() -> torch.Tensor:
         torch.manual_seed(7)
         param = nn.Parameter(torch.randn(16, 16))
@@ -116,6 +117,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # Test 4: Low-rank projection — G_low has at most rank r singular values
 # ---------------------------------------------------------------------------
+
 
 def test_low_rank_projection_rank():
     """G_low computed internally should be (at most) rank r.
@@ -149,6 +151,7 @@ def test_low_rank_projection_rank():
 # Test 5: Compensation term is non-negligible
 # ---------------------------------------------------------------------------
 
+
 def test_compensation_term_active():
     """Full Fira update should differ from an update using only G_low."""
     torch.manual_seed(42)
@@ -167,6 +170,7 @@ def test_compensation_term_active():
     # Re-construct what an update using ONLY G_low would look like:
     # zero out compensation by running with a param whose gradient is already low-rank.
     from src.optimizers.fira import _project_grad
+
     P = opt_fira.state[param_fira]["proj_matrix"]
     G_low, G_comp = _project_grad(grad, P)
 
@@ -174,7 +178,7 @@ def test_compensation_term_active():
     torch.manual_seed(42)
     param_low_only.data.copy_(param_fira.data + (after_fira - param_fira.data) * 0)  # reset
     # Give it only the low-rank gradient
-    param_low_only_init = param_fira.data + (after_fira - param_fira.data)
+    param_fira.data + (after_fira - param_fira.data)
 
     # The compensation adds c_t * lr * G_comp to the update.
     # As long as G_comp is non-zero (it almost always is), the updates differ.
@@ -185,6 +189,7 @@ def test_compensation_term_active():
 # ---------------------------------------------------------------------------
 # Test 6: Memory efficiency — state size is O(rank × d), not O(d × d)
 # ---------------------------------------------------------------------------
+
 
 def test_memory_efficiency():
     """Optimizer states should not grow as O(d^2) for matrix parameters."""
@@ -203,7 +208,7 @@ def test_memory_efficiency():
     assert P.shape == (rank, n_flat), f"Expected ({rank}, {n_flat}), got {P.shape}"
 
     # exp_avg and exp_avg_sq store moments; total elements should be << m*n for rank << d
-    total_state_elements = P.numel() + state["exp_avg"].numel() + state["exp_avg_sq"].numel()
+    P.numel() + state["exp_avg"].numel() + state["exp_avg_sq"].numel()
     # For full Adam: 2 * m * n = 2 * 128 * 64 = 16384; proj is 8*64=512 (small fraction)
     # Here moments are still stored at full shape for correctness, but P is compact
     assert P.numel() == rank * n_flat, "Projection matrix should be rank × n_flat"
@@ -213,6 +218,7 @@ def test_memory_efficiency():
 # ---------------------------------------------------------------------------
 # Test 7: Gradient flow — finite parameters after backward + step
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow_finite():
     """Parameters remain finite after backward + step through a small model."""
@@ -236,6 +242,7 @@ def test_gradient_flow_finite():
 # Test 8: Weight decay — params shrink toward zero
 # ---------------------------------------------------------------------------
 
+
 def test_weight_decay_shrinks_params():
     """With zero gradient and weight decay, params should shrink toward zero."""
     param = nn.Parameter(torch.ones(8, 8))
@@ -251,6 +258,7 @@ def test_weight_decay_shrinks_params():
 # ---------------------------------------------------------------------------
 # Test 9: State keys present for matrix params
 # ---------------------------------------------------------------------------
+
 
 def test_state_keys_matrix():
     """Required state keys must be present after first step for matrix params."""
@@ -269,6 +277,7 @@ def test_state_keys_matrix():
 # Test 10: 1-D params — no proj_matrix in state
 # ---------------------------------------------------------------------------
 
+
 def test_state_keys_1d_no_projection():
     """1-D parameters should NOT have proj_matrix in their state."""
     param = nn.Parameter(torch.ones(16))
@@ -286,6 +295,7 @@ def test_state_keys_1d_no_projection():
 # ---------------------------------------------------------------------------
 # Test 11: Numerical stability — no NaN/Inf after 50 steps
 # ---------------------------------------------------------------------------
+
 
 def test_numerical_stability_50_steps():
     """No NaN or Inf should appear after 50 optimizer steps."""
@@ -309,6 +319,7 @@ def test_numerical_stability_50_steps():
 # ---------------------------------------------------------------------------
 # Test 12: Projection matrix refreshes after update_proj_gap steps
 # ---------------------------------------------------------------------------
+
 
 def test_projection_matrix_refreshes():
     """proj_matrix should change exactly at step update_proj_gap + 1."""
@@ -343,6 +354,7 @@ def test_projection_matrix_refreshes():
 # Test 13: Closure support
 # ---------------------------------------------------------------------------
 
+
 def test_closure_support():
     """step() should accept and correctly call a closure."""
     param = nn.Parameter(torch.ones(4, 4))
@@ -353,7 +365,7 @@ def test_closure_support():
     def closure():
         nonlocal call_count
         opt.zero_grad()
-        loss = (param ** 2).sum()
+        loss = (param**2).sum()
         loss.backward()
         call_count += 1
         return loss
@@ -368,12 +380,11 @@ def test_closure_support():
 # Test 14: Zero-gradient passthrough — no update without grad
 # ---------------------------------------------------------------------------
 
+
 def test_zero_grad_passthrough():
     """step() with no gradient set should not modify the parameter."""
     param = nn.Parameter(torch.ones(8, 8))
     opt = Fira([param], lr=1e-2, rank=4)
     before = param.detach().clone()
     opt.step()  # no grad set
-    assert torch.allclose(param.detach(), before), (
-        "Parameter must not change when grad is None"
-    )
+    assert torch.allclose(param.detach(), before), "Parameter must not change when grad is None"

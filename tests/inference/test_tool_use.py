@@ -7,19 +7,18 @@ import json
 import pytest
 import torch
 
+from src.inference.tool_use import (
+    ToolCall,
+    ToolRegistry,
+    ToolResult,
+    ToolSchema,
+    ToolUseSession,
+    format_tool_result_for_context,
+    format_tools_for_prompt,
+    parse_tool_call,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.tool_use import (
-    ToolSchema,
-    ToolCall,
-    ToolResult,
-    ToolRegistry,
-    ToolUseSession,
-    parse_tool_call,
-    format_tools_for_prompt,
-    format_tool_result_for_context,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

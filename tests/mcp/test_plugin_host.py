@@ -16,7 +16,6 @@ from src.mcp.plugin_host import (
     PluginManifest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -55,15 +54,11 @@ def host() -> PluginHost:
 
 class TestPluginManifest:
     def test_default_enabled(self):
-        m = PluginManifest(
-            plugin_id="x", name="X", version="0.1.0", description="desc"
-        )
+        m = PluginManifest(plugin_id="x", name="X", version="0.1.0", description="desc")
         assert m.enabled is True
 
     def test_default_tool_schemas_empty(self):
-        m = PluginManifest(
-            plugin_id="x", name="X", version="0.1.0", description="desc"
-        )
+        m = PluginManifest(plugin_id="x", name="X", version="0.1.0", description="desc")
         assert m.tool_schemas == []
 
     def test_fields_stored_correctly(self):

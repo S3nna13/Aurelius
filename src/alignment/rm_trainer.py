@@ -9,10 +9,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RMTrainerConfig:
@@ -22,14 +22,15 @@ class RMTrainerConfig:
     batch_size: int = 4
     gradient_clip: float = 1.0
     label_smoothing: float = 0.0
-    margin: float = 0.0        # minimum margin for preference loss
-    use_elo: bool = False       # track ELO ratings for responses
-    elo_k: float = 32.0        # ELO K-factor
+    margin: float = 0.0  # minimum margin for preference loss
+    use_elo: bool = False  # track ELO ratings for responses
+    elo_k: float = 32.0  # ELO K-factor
 
 
 # ---------------------------------------------------------------------------
 # Loss and accuracy helpers
 # ---------------------------------------------------------------------------
+
 
 def preference_loss(
     chosen_rewards: Tensor,
@@ -72,6 +73,7 @@ def compute_accuracy(chosen_rewards: Tensor, rejected_rewards: Tensor) -> float:
 # ---------------------------------------------------------------------------
 # ELO Rating System
 # ---------------------------------------------------------------------------
+
 
 class ELORatingSystem:
     """Track ELO ratings for responses or models.
@@ -133,6 +135,7 @@ class ELORatingSystem:
 # ---------------------------------------------------------------------------
 # RewardModelTrainer
 # ---------------------------------------------------------------------------
+
 
 class RewardModelTrainer:
     """Train a reward model backbone on (chosen, rejected) preference pairs.
@@ -260,6 +263,7 @@ class RewardModelTrainer:
 # ---------------------------------------------------------------------------
 # Convenience training loop
 # ---------------------------------------------------------------------------
+
 
 def train_reward_model(
     reward_model: nn.Module,

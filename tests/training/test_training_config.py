@@ -1,15 +1,14 @@
 """Tests for src/training/training_config.py"""
-import pytest
 
 from src.training.training_config import (
-    TrainingConfig,
     DEFAULT_TRAINING_CONFIG,
+    TrainingConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tests: defaults
 # ---------------------------------------------------------------------------
+
 
 def test_default_vocab_size():
     cfg = TrainingConfig()
@@ -55,6 +54,7 @@ def test_default_compile_false():
 # Tests: presets
 # ---------------------------------------------------------------------------
 
+
 def test_gpt2_small_preset():
     cfg = TrainingConfig.gpt2_small()
     assert cfg.vocab_size == 50257
@@ -81,6 +81,7 @@ def test_aurelius_1b_preset():
 # ---------------------------------------------------------------------------
 # Tests: to_dict() / from_dict()
 # ---------------------------------------------------------------------------
+
 
 def test_to_dict_returns_dict():
     cfg = TrainingConfig()
@@ -123,6 +124,7 @@ def test_from_dict_partial_override():
 # Tests: effective_tokens_per_step()
 # ---------------------------------------------------------------------------
 
+
 def test_effective_tokens_per_step_default():
     cfg = TrainingConfig()  # batch=12, grad_accum=1, seq=1024
     assert cfg.effective_tokens_per_step() == 12 * 1 * 1024
@@ -136,6 +138,7 @@ def test_effective_tokens_per_step_with_accum():
 # ---------------------------------------------------------------------------
 # Tests: chinchilla_optimal_steps()
 # ---------------------------------------------------------------------------
+
 
 def test_chinchilla_optimal_steps_exact():
     cfg = TrainingConfig(batch_size=4, gradient_accumulation_steps=1, max_seq_len=1024)
@@ -153,6 +156,7 @@ def test_chinchilla_optimal_steps_returns_int():
 # ---------------------------------------------------------------------------
 # Tests: module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_default_config_singleton():
     assert isinstance(DEFAULT_TRAINING_CONFIG, TrainingConfig)

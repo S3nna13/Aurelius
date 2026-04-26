@@ -1,4 +1,5 @@
 """Tests for grpc_adapter."""
+
 from __future__ import annotations
 
 from src.protocol.grpc_adapter import (
@@ -87,7 +88,7 @@ def test_roundtrip_preserves_message_id():
 
 
 def test_roundtrip_preserves_metadata():
-    msg = GRPCAdapter.build_request("S", "M", {}, token="abc", user="u1")
+    msg = GRPCAdapter.build_request("S", "M", {}, token="abc", user="u1")  # noqa: S106
     decoded = GRPCAdapter.deserialize(GRPCAdapter.serialize(msg))
     assert decoded.metadata == {"token": "abc", "user": "u1"}
 

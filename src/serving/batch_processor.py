@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import time
-import uuid
 from dataclasses import dataclass, field
-from queue import PriorityQueue
 
 
 class QueueFullError(Exception):
@@ -68,10 +65,7 @@ class BatchProcessor:
         latency_ms = len(requests) * 10.0
         results: list[BatchResult] = []
         for req in requests:
-            outputs = [
-                f"output_{i} for {p[:20]}"
-                for i, p in enumerate(req.prompts)
-            ]
+            outputs = [f"output_{i} for {p[:20]}" for i, p in enumerate(req.prompts)]
             token_counts = [len(o.split()) for o in outputs]
             results.append(
                 BatchResult(

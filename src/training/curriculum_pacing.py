@@ -9,10 +9,10 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PacingConfig:
@@ -25,6 +25,7 @@ class PacingConfig:
         n_steps:         Total number of training steps for the pacing schedule.
         step_size:       Number of steps between each increment (for "step" pacing).
     """
+
     pacing_fn: str = "linear"
     start_fraction: float = 0.2
     end_fraction: float = 1.0
@@ -35,6 +36,7 @@ class PacingConfig:
 # ---------------------------------------------------------------------------
 # Pacing functions
 # ---------------------------------------------------------------------------
+
 
 def linear_pacing(step: int, n_steps: int, start: float, end: float) -> float:
     """Linearly interpolate the data fraction from *start* to *end*.
@@ -84,6 +86,7 @@ def step_pacing(step: int, step_size: int, start: float, end: float, n_steps: in
 # Dispatcher
 # ---------------------------------------------------------------------------
 
+
 def get_pacing_fraction(step: int, config: PacingConfig) -> float:
     """Return the data fraction for step according to config."""
     fn = config.pacing_fn
@@ -102,6 +105,7 @@ def get_pacing_fraction(step: int, config: PacingConfig) -> float:
 # ---------------------------------------------------------------------------
 # DifficultyScorer
 # ---------------------------------------------------------------------------
+
 
 class DifficultyScorer:
     """Score samples by difficulty using per-sample cross-entropy loss.
@@ -134,8 +138,8 @@ class DifficultyScorer:
                 _loss, logits, _pkv = self.model(ids)
                 # logits: (1, seq_len, vocab_size)
                 # Shift: input[:-1] -> predict input[1:]
-                shift_logits = logits[:, :-1, :].contiguous()   # (1, S-1, V)
-                shift_labels = ids[:, 1:].contiguous()           # (1, S-1)
+                shift_logits = logits[:, :-1, :].contiguous()  # (1, S-1, V)
+                shift_labels = ids[:, 1:].contiguous()  # (1, S-1)
                 loss_val = F.cross_entropy(
                     shift_logits.view(-1, shift_logits.size(-1)),
                     shift_labels.view(-1),
@@ -148,6 +152,7 @@ class DifficultyScorer:
 # ---------------------------------------------------------------------------
 # CurriculumSampler
 # ---------------------------------------------------------------------------
+
 
 class CurriculumSampler:
     """Curriculum-aware data sampler.

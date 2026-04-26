@@ -19,14 +19,11 @@
 
 import torch
 import torch.nn.functional as F
-import pytest
-
 from aurelius.model.lightning_attention import (
-    LightningLinearAttn,
-    LightningAttentionLayer,
     LightningAttentionBlock,
+    LightningAttentionLayer,
+    LightningLinearAttn,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared dimensions
@@ -44,6 +41,7 @@ CHUNK = 8
 # 1. LightningLinearAttn output shape matches v shape
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_linear_attn_output_shape():
     attn = LightningLinearAttn(d_head=D_HEAD, chunk_size=CHUNK)
     q = torch.randn(B_BATCH, T, D_HEAD)
@@ -57,6 +55,7 @@ def test_lightning_linear_attn_output_shape():
 # 2. Output finite
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_linear_attn_output_finite():
     attn = LightningLinearAttn(d_head=D_HEAD, chunk_size=CHUNK)
     q = torch.randn(B_BATCH, T, D_HEAD)
@@ -69,6 +68,7 @@ def test_lightning_linear_attn_output_finite():
 # ---------------------------------------------------------------------------
 # 3. Causal: first t outputs are identical for T and T+4
 # ---------------------------------------------------------------------------
+
 
 def test_lightning_linear_attn_causal():
     """Causal property: outputs at positions 0..T-1 must not change when we
@@ -100,6 +100,7 @@ def test_lightning_linear_attn_causal():
 # 4. chunk_size > T: single chunk, output finite
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_linear_attn_chunk_larger_than_T():
     # chunk_size=128 > T=20
     attn = LightningLinearAttn(d_head=D_HEAD, chunk_size=128)
@@ -114,6 +115,7 @@ def test_lightning_linear_attn_chunk_larger_than_T():
 # ---------------------------------------------------------------------------
 # 5. T not divisible by chunk_size: works, output shape correct
 # ---------------------------------------------------------------------------
+
 
 def test_lightning_linear_attn_T_not_divisible_by_chunk():
     T_odd = 17  # 17 % 8 = 1
@@ -131,6 +133,7 @@ def test_lightning_linear_attn_T_not_divisible_by_chunk():
 # 6. ELU+1 kernel: after applying kernel, all q/k values are positive
 # ---------------------------------------------------------------------------
 
+
 def test_elu_kernel_positive():
     """ELU(x)+1 must be strictly positive for any input."""
     x = torch.randn(4, 10, D_HEAD) * 5.0
@@ -141,6 +144,7 @@ def test_elu_kernel_positive():
 # ---------------------------------------------------------------------------
 # 7. LightningAttentionLayer output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_lightning_attention_layer_output_shape():
     layer = LightningAttentionLayer(D_MODEL, N_HEADS, chunk_size=CHUNK)
@@ -155,6 +159,7 @@ def test_lightning_attention_layer_output_shape():
 # 8. Layer output finite
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_attention_layer_output_finite():
     layer = LightningAttentionLayer(D_MODEL, N_HEADS, chunk_size=CHUNK)
     x = torch.randn(B_BATCH, T, D_MODEL)
@@ -165,6 +170,7 @@ def test_lightning_attention_layer_output_finite():
 # ---------------------------------------------------------------------------
 # 9. Gradient flows through LightningAttentionLayer
 # ---------------------------------------------------------------------------
+
 
 def test_lightning_attention_layer_gradient_flows():
     layer = LightningAttentionLayer(D_MODEL, N_HEADS, chunk_size=CHUNK)
@@ -181,6 +187,7 @@ def test_lightning_attention_layer_gradient_flows():
 # 10. Batch=1, seq_len=1 works
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_attention_layer_batch1_seq1():
     layer = LightningAttentionLayer(D_MODEL, N_HEADS, chunk_size=CHUNK)
     x = torch.randn(1, 1, D_MODEL)
@@ -192,6 +199,7 @@ def test_lightning_attention_layer_batch1_seq1():
 # ---------------------------------------------------------------------------
 # 11. seq_len exactly equals chunk_size
 # ---------------------------------------------------------------------------
+
 
 def test_lightning_linear_attn_seq_len_equals_chunk_size():
     chunk = 8
@@ -208,6 +216,7 @@ def test_lightning_linear_attn_seq_len_equals_chunk_size():
 # 12. LightningAttentionBlock output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_attention_block_output_shape():
     block = LightningAttentionBlock(D_MODEL, N_HEADS, D_FF, chunk_size=CHUNK)
     x = torch.randn(B_BATCH, T, D_MODEL)
@@ -221,6 +230,7 @@ def test_lightning_attention_block_output_shape():
 # 13. Block output finite
 # ---------------------------------------------------------------------------
 
+
 def test_lightning_attention_block_output_finite():
     block = LightningAttentionBlock(D_MODEL, N_HEADS, D_FF, chunk_size=CHUNK)
     x = torch.randn(B_BATCH, T, D_MODEL)
@@ -231,6 +241,7 @@ def test_lightning_attention_block_output_finite():
 # ---------------------------------------------------------------------------
 # 14. Gradient flows through LightningAttentionBlock
 # ---------------------------------------------------------------------------
+
 
 def test_lightning_attention_block_gradient_flows():
     block = LightningAttentionBlock(D_MODEL, N_HEADS, D_FF, chunk_size=CHUNK)

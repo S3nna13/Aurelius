@@ -80,16 +80,14 @@ class ActivationProfiler:
 
         Shows top_n most sparse layers.
         """
-        sorted_stats = sorted(
-            self._stats.values(), key=lambda s: s.sparsity, reverse=True
-        )[:top_n]
+        sorted_stats = sorted(self._stats.values(), key=lambda s: s.sparsity, reverse=True)[:top_n]
 
         lines = [
-            f"{'Layer':<60} {'Mean':>10} {'Std':>10} {'AbsMax':>10} {'Sparsity':>10} {'Elements':>12}",
+            f"{'Layer':<60} {'Mean':>10} {'Std':>10} {'AbsMax':>10} {'Sparsity':>10} {'Elements':>12}",  # noqa: E501
             "-" * 112,
         ]
         for s in sorted_stats:
             lines.append(
-                f"{s.name:<60} {s.mean:>10.4f} {s.std:>10.4f} {s.abs_max:>10.4f} {s.sparsity:>10.4f} {s.num_elements:>12d}"
+                f"{s.name:<60} {s.mean:>10.4f} {s.std:>10.4f} {s.abs_max:>10.4f} {s.sparsity:>10.4f} {s.num_elements:>12d}"  # noqa: E501
             )
         return "\n".join(lines)

@@ -6,8 +6,8 @@ enabling causal analysis of which hidden states drive model predictions.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
@@ -197,23 +197,17 @@ class ActivationPatcher:
             _loss, clean_logits, _pkv = self.model(clean_ids)
 
         # Capture source activations
-        source_act = capture_activations(
-            self.model, source_ids, self.config.layer_idx
-        )
+        source_act = capture_activations(self.model, source_ids, self.config.layer_idx)
 
         # Create patch hook and run patched forward
         patch_hook = create_patch_hook(source_act, self.config)
-        patched_logits = run_with_patch(
-            self.model, clean_ids, patch_hook, self.config.layer_idx
-        )
+        patched_logits = run_with_patch(self.model, clean_ids, patch_hook, self.config.layer_idx)
 
         # Compute logit diffs at the last position
-        clean_diff = (
-            clean_logits[:, -1, token_a] - clean_logits[:, -1, token_b]
-        ).mean().item()
+        clean_diff = (clean_logits[:, -1, token_a] - clean_logits[:, -1, token_b]).mean().item()
         patched_diff = (
-            patched_logits[:, -1, token_a] - patched_logits[:, -1, token_b]
-        ).mean().item()
+            (patched_logits[:, -1, token_a] - patched_logits[:, -1, token_b]).mean().item()
+        )
 
         return {
             "clean_diff": clean_diff,

@@ -10,24 +10,25 @@ Pure PyTorch — no HuggingFace, no scipy, no sklearn.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # PatchConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PatchConfig:
     """Configuration for an activation patching experiment."""
-    patch_layers: List[int] = field(default_factory=list)
-    patch_positions: Optional[List[int]] = None
-    patch_heads: Optional[List[int]] = None
+
+    patch_layers: list[int] = field(default_factory=list)
+    patch_positions: list[int] | None = None
+    patch_heads: list[int] | None = None
     normalize_effect: bool = True
 
 
@@ -35,20 +36,23 @@ class PatchConfig:
 # ActivationStore
 # ---------------------------------------------------------------------------
 
+
 class ActivationStore:
     """Captures and stores activations via forward hooks."""
 
     def __init__(self) -> None:
-        self.store: Dict[str, Tensor] = {}
+        self.store: dict[str, Tensor] = {}
 
     def hook_fn(self, name: str) -> Callable:
         """Return a forward hook that saves the module output to self.store[name]."""
+
         def _hook(module: nn.Module, input, output) -> None:  # noqa: ANN001
             # output may be a tuple (e.g. attention layers) — store the first element
             if isinstance(output, tuple):
                 self.store[name] = output[0].detach()
             else:
                 self.store[name] = output.detach()
+
         return _hook
 
     def get(self, name: str) -> Tensor:
@@ -64,10 +68,11 @@ class ActivationStore:
 # patch_activations
 # ---------------------------------------------------------------------------
 
+
 def patch_activations(
     target: Tensor,
     source: Tensor,
-    positions: Optional[List[int]] = None,
+    positions: list[int] | None = None,
 ) -> Tensor:
     """
     Replace activations in *target* with those from *source*.
@@ -97,6 +102,7 @@ def patch_activations(
 # compute_patching_effect
 # ---------------------------------------------------------------------------
 
+
 def compute_patching_effect(
     original_logits: Tensor,
     patched_logits: Tensor,
@@ -120,6 +126,7 @@ def compute_patching_effect(
 # PatchingExperiment
 # ---------------------------------------------------------------------------
 
+
 class PatchingExperiment:
     """High-level API for running activation patching experiments."""
 
@@ -134,8 +141,8 @@ class PatchingExperiment:
     def capture_activations(
         self,
         x: Tensor,
-        hook_points: List[str],
-    ) -> Dict[str, Tensor]:
+        hook_points: list[str],
+    ) -> dict[str, Tensor]:
         """
         Run a forward pass and return the activations at each named module.
 
@@ -173,8 +180,8 @@ class PatchingExperiment:
     def run_patched_forward(
         self,
         x: Tensor,
-        patch_dict: Dict[str, Tensor],
-        hook_points: List[str],
+        patch_dict: dict[str, Tensor],
+        hook_points: list[str],
     ) -> Tensor:
         """
         Run a forward pass where certain intermediate activations are replaced
@@ -198,12 +205,13 @@ class PatchingExperiment:
                 replacement = patch_dict[name]
                 positions = self.config.patch_positions
 
-                def _make_patch_hook(rep: Tensor, pos: Optional[List[int]]) -> Callable:
+                def _make_patch_hook(rep: Tensor, pos: list[int] | None) -> Callable:
                     def _hook(module, input, output):  # noqa: ANN001
                         is_tuple = isinstance(output, tuple)
                         act = output[0] if is_tuple else output
                         patched = patch_activations(act, rep, positions)
                         return (patched,) + output[1:] if is_tuple else patched
+
                     return _hook
 
                 h = module_dict[name].register_forward_hook(
@@ -228,8 +236,8 @@ class PatchingExperiment:
         self,
         clean_x: Tensor,
         corrupted_x: Tensor,
-        hook_points: List[str],
-    ) -> Dict[str, float]:
+        hook_points: list[str],
+    ) -> dict[str, float]:
         """
         For each hook point, patch the corrupted run with clean activations
         and measure mean absolute difference of output logits vs. the
@@ -246,7 +254,7 @@ class PatchingExperiment:
         # Capture clean activations at every hook point
         clean_acts = self.capture_activations(clean_x, hook_points)
 
-        importance: Dict[str, float] = {}
+        importance: dict[str, float] = {}
         for name in hook_points:
             if name not in clean_acts:
                 importance[name] = 0.0
@@ -263,6 +271,7 @@ class PatchingExperiment:
 # ---------------------------------------------------------------------------
 # attention_pattern_similarity
 # ---------------------------------------------------------------------------
+
 
 def attention_pattern_similarity(attn_a: Tensor, attn_b: Tensor) -> Tensor:
     """
@@ -281,8 +290,8 @@ def attention_pattern_similarity(attn_a: Tensor, attn_b: Tensor) -> Tensor:
     a_flat = attn_a.reshape(attn_a.shape[0], attn_a.shape[1], -1)  # (B, H, T*T)
     b_flat = attn_b.reshape(attn_b.shape[0], attn_b.shape[1], -1)  # (B, H, T*T)
 
-    dot = (a_flat * b_flat).sum(dim=-1)                              # (B, H)
-    norm_a = a_flat.norm(dim=-1).clamp(min=1e-8)                     # (B, H)
-    norm_b = b_flat.norm(dim=-1).clamp(min=1e-8)                     # (B, H)
+    dot = (a_flat * b_flat).sum(dim=-1)  # (B, H)
+    norm_a = a_flat.norm(dim=-1).clamp(min=1e-8)  # (B, H)
+    norm_b = b_flat.norm(dim=-1).clamp(min=1e-8)  # (B, H)
 
     return dot / (norm_a * norm_b)

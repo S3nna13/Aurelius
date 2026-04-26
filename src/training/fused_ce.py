@@ -6,6 +6,7 @@ materializing the full (B*S, V) logit matrix at once.
 Memory: O(chunk_size * V) instead of O(B * S * V)
 For B=4, S=2048, V=128K, chunk=128: 128*128K = 16M params vs 1B params (~64x reduction)
 """
+
 from __future__ import annotations
 
 import torch
@@ -13,11 +14,11 @@ import torch.nn.functional as F
 
 
 def chunked_cross_entropy(
-    logits: torch.Tensor,       # (B, S, V) or (N, V) — model logits
-    labels: torch.Tensor,       # (B, S) or (N,) — target token ids
-    chunk_size: int = 128,      # tokens processed at once
-    ignore_index: int = -100,   # label value to ignore (padding)
-    reduction: str = "mean",    # "mean" or "sum"
+    logits: torch.Tensor,  # (B, S, V) or (N, V) — model logits
+    labels: torch.Tensor,  # (B, S) or (N,) — target token ids
+    chunk_size: int = 128,  # tokens processed at once
+    ignore_index: int = -100,  # label value to ignore (padding)
+    reduction: str = "mean",  # "mean" or "sum"
 ) -> torch.Tensor:
     """Compute cross-entropy loss in chunks to save memory.
 

@@ -9,8 +9,8 @@ import pytest
 from src.agent.command_dispatcher import (
     COMMAND_DISPATCHER_REGISTRY,
     DEFAULT_COMMAND_DISPATCHER,
-    CommandDispatchError,
     CommandDispatcher,
+    CommandDispatchError,
     DispatchResult,
 )
 from src.agent.nl_command_parser import ParsedCommand
@@ -138,9 +138,7 @@ def test_dispatch_deactivate_skill_with_mock_catalog():
 def test_dispatch_load_plugin_with_mock_loader():
     loader = MagicMock()
     dispatcher = CommandDispatcher(plugin_loader=loader)
-    cmd = _make_cmd(
-        "load_plugin", target="plugin_z", args={"entry_point": "plugin_z.main"}
-    )
+    cmd = _make_cmd("load_plugin", target="plugin_z", args={"entry_point": "plugin_z.main"})
     result = dispatcher.dispatch(cmd)
 
     assert result.success is True

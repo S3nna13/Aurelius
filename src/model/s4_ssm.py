@@ -10,7 +10,6 @@ where A_bar = exp(delta * A), B_bar = (A_bar - I) * A^{-1} * B (ZOH).
 """
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -37,15 +36,11 @@ class S4DKernel(nn.Module):
         self.d_state = d_state
 
         # log_A_real: real part of diagonal A; A_real = -softplus(log_A_real) < 0
-        self.log_A_real = nn.Parameter(
-            torch.log(0.5 * torch.ones(d_model, d_state))
-        )
+        self.log_A_real = nn.Parameter(torch.log(0.5 * torch.ones(d_model, d_state)))
 
         # A_imag: imaginary part of diagonal A
         A_imag_init = torch.linspace(0, math.pi, d_state)  # (d_state,)
-        self.A_imag = nn.Parameter(
-            A_imag_init.unsqueeze(0).expand(d_model, d_state).clone()
-        )
+        self.A_imag = nn.Parameter(A_imag_init.unsqueeze(0).expand(d_model, d_state).clone())
 
         # B: complex input projection, stored as (real, imag)
         self.B = nn.Parameter(torch.randn(d_model, d_state, 2))
@@ -162,7 +157,7 @@ class S4DBlock(nn.Module):
         self,
         d_model: int,
         d_state: int = 16,
-        d_ff: Optional[int] = None,
+        d_ff: int | None = None,
         dropout: float = 0.0,
     ) -> None:
         super().__init__()

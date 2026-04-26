@@ -5,6 +5,7 @@ MoEDiagnostics, and MoEAnalysisConfig.
 
 Test matrix uses n_experts=4, top_k=2, d=16, N=32, B=2, T=8.
 """
+
 from __future__ import annotations
 
 import math
@@ -27,9 +28,9 @@ from src.eval.moe_routing_analysis_v2 import (
 N_EXPERTS = 4
 TOP_K = 2
 D = 16
-N = 32   # B*T tokens
+N = 32  # B*T tokens
 B = 2
-T = 8    # B*T = 16; we use N=32 for standalone tensors
+T = 8  # B*T = 16; we use N=32 for standalone tensors
 
 
 def _uniform_routing(n: int = N) -> torch.Tensor:
@@ -67,6 +68,7 @@ def _make_tracker_with_data() -> ExpertActivationTracker:
 # ---------------------------------------------------------------------------
 # RouterStats tests
 # ---------------------------------------------------------------------------
+
 
 class TestRouterStatsUpdate:
     def test_update_increments_total_tokens(self):
@@ -198,6 +200,7 @@ class TestRouterStatsReset:
 # ExpertActivationTracker tests
 # ---------------------------------------------------------------------------
 
+
 class TestExpertActivationTracker:
     def test_co_activation_matrix_shape(self):
         tracker = _make_tracker_with_data()
@@ -213,7 +216,7 @@ class TestExpertActivationTracker:
             for j in range(N_EXPERTS):
                 if i != j:
                     assert diag[i].item() >= mat[i, j].item() - 1e-6, (
-                        f"diag[{i}]={diag[i].item():.4f} < off-diag[{i},{j}]={mat[i,j].item():.4f}"
+                        f"diag[{i}]={diag[i].item():.4f} < off-diag[{i},{j}]={mat[i, j].item():.4f}"
                     )
 
     def test_co_activation_matrix_non_negative(self):
@@ -270,6 +273,7 @@ class TestExpertActivationTracker:
 # ---------------------------------------------------------------------------
 # RoutingDiversityMetrics tests
 # ---------------------------------------------------------------------------
+
 
 class TestRoutingDiversityMetrics:
     def test_token_routing_entropy_shape(self):
@@ -433,6 +437,7 @@ class TestMoEDiagnostics:
 # ---------------------------------------------------------------------------
 # MoEAnalysisConfig tests
 # ---------------------------------------------------------------------------
+
 
 class TestMoEAnalysisConfig:
     def test_default_values(self):

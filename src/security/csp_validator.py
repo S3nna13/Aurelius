@@ -1,4 +1,5 @@
 """Content Security Policy validator and header builder."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -28,16 +29,18 @@ class CSPBuilder:
 
     @classmethod
     def strict_default(cls) -> CSPBuilder:
-        return cls(directives=[
-            CSPDirective("default-src", ["'self'"]),
-            CSPDirective("script-src", ["'self'"]),
-            CSPDirective("style-src", ["'self'", "'unsafe-inline'"]),
-            CSPDirective("img-src", ["'self'", "data:"]),
-            CSPDirective("connect-src", ["'self'"]),
-            CSPDirective("frame-ancestors", ["'none'"]),
-            CSPDirective("base-uri", ["'self'"]),
-            CSPDirective("form-action", ["'self'"]),
-        ])
+        return cls(
+            directives=[
+                CSPDirective("default-src", ["'self'"]),
+                CSPDirective("script-src", ["'self'"]),
+                CSPDirective("style-src", ["'self'", "'unsafe-inline'"]),
+                CSPDirective("img-src", ["'self'", "data:"]),
+                CSPDirective("connect-src", ["'self'"]),
+                CSPDirective("frame-ancestors", ["'none'"]),
+                CSPDirective("base-uri", ["'self'"]),
+                CSPDirective("form-action", ["'self'"]),
+            ]
+        )
 
 
 CSP_STRICT = CSPBuilder.strict_default()

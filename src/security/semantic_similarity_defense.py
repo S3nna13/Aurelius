@@ -8,8 +8,6 @@ in multiple surface forms and verifies that model outputs agree.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 import torch
 import torch.nn.functional as F
 
@@ -113,7 +111,7 @@ class SimilarityDefense:
     def output_consistency(
         self,
         model: AureliusTransformer,
-        list_of_input_ids: List[torch.Tensor],
+        list_of_input_ids: list[torch.Tensor],
         top_k: int = 1,
     ) -> float:
         """Measure how consistently the model predicts the same token across input variants.
@@ -157,7 +155,7 @@ class SimilarityDefense:
     def is_consistent(
         self,
         model: AureliusTransformer,
-        list_of_input_ids: List[torch.Tensor],
+        list_of_input_ids: list[torch.Tensor],
     ) -> bool:
         """Check whether a set of query variants produces consistent model outputs.
 

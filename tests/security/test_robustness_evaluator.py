@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -45,24 +45,19 @@ def evaluator(model: AureliusTransformer) -> RobustnessEvaluator:
 @pytest.fixture(scope="module")
 def input_ids_list() -> list:
     torch.manual_seed(1)
-    return [
-        torch.randint(0, TINY_CONFIG.vocab_size, (B, S))
-        for _ in range(N_SAMPLES)
-    ]
+    return [torch.randint(0, TINY_CONFIG.vocab_size, (B, S)) for _ in range(N_SAMPLES)]
 
 
 @pytest.fixture(scope="module")
 def perturbed_ids_list() -> list:
     torch.manual_seed(2)
-    return [
-        torch.randint(0, TINY_CONFIG.vocab_size, (B, S))
-        for _ in range(N_SAMPLES)
-    ]
+    return [torch.randint(0, TINY_CONFIG.vocab_size, (B, S)) for _ in range(N_SAMPLES)]
 
 
 # ---------------------------------------------------------------------------
 # Helper: get actual model predictions so we can construct exact label sets
 # ---------------------------------------------------------------------------
+
 
 def get_predictions(model: AureliusTransformer, ids_list: list) -> list:
     preds = []
@@ -77,6 +72,7 @@ def get_predictions(model: AureliusTransformer, ids_list: list) -> list:
 # Test 1: RobustnessEvaluator instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_instantiation(evaluator: RobustnessEvaluator) -> None:
     assert isinstance(evaluator, RobustnessEvaluator)
 
@@ -84,6 +80,7 @@ def test_instantiation(evaluator: RobustnessEvaluator) -> None:
 # ---------------------------------------------------------------------------
 # Test 2: clean_accuracy returns float in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_clean_accuracy_range(
     evaluator: RobustnessEvaluator,
@@ -99,6 +96,7 @@ def test_clean_accuracy_range(
 # Test 3: All-matching labels -> accuracy = 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_clean_accuracy_all_correct(
     evaluator: RobustnessEvaluator,
     model: AureliusTransformer,
@@ -112,6 +110,7 @@ def test_clean_accuracy_all_correct(
 # ---------------------------------------------------------------------------
 # Test 4: All-mismatched labels -> accuracy = 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_clean_accuracy_all_wrong(
     evaluator: RobustnessEvaluator,
@@ -128,6 +127,7 @@ def test_clean_accuracy_all_wrong(
 # Test 5: attack_success_rate returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_attack_success_rate_range(
     evaluator: RobustnessEvaluator,
     input_ids_list: list,
@@ -143,6 +143,7 @@ def test_attack_success_rate_range(
 # Test 6: Identical clean and perturbed -> attack_success_rate = 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_attack_success_rate_identical(
     evaluator: RobustnessEvaluator,
     model: AureliusTransformer,
@@ -156,6 +157,7 @@ def test_attack_success_rate_identical(
 # ---------------------------------------------------------------------------
 # Test 7: semantic_preservation returns float in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_semantic_preservation_range(
     evaluator: RobustnessEvaluator,
@@ -171,6 +173,7 @@ def test_semantic_preservation_range(
 # Test 8: Identical sequences -> preservation = 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_semantic_preservation_identical(
     evaluator: RobustnessEvaluator,
     input_ids_list: list,
@@ -182,6 +185,7 @@ def test_semantic_preservation_identical(
 # ---------------------------------------------------------------------------
 # Test 9: certified_lower_bound returns non-negative float
 # ---------------------------------------------------------------------------
+
 
 def test_certified_lower_bound_nonnegative(
     evaluator: RobustnessEvaluator,
@@ -196,6 +200,7 @@ def test_certified_lower_bound_nonnegative(
 # Test 10: evaluate returns RobustnessReport
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_returns_report(
     evaluator: RobustnessEvaluator,
     input_ids_list: list,
@@ -209,6 +214,7 @@ def test_evaluate_returns_report(
 # ---------------------------------------------------------------------------
 # Test 11: RobustnessReport has all required fields
 # ---------------------------------------------------------------------------
+
 
 def test_report_has_required_fields(
     evaluator: RobustnessEvaluator,
@@ -228,6 +234,7 @@ def test_report_has_required_fields(
 # Test 12: report.n_samples matches input list length
 # ---------------------------------------------------------------------------
 
+
 def test_report_n_samples(
     evaluator: RobustnessEvaluator,
     input_ids_list: list,
@@ -241,6 +248,7 @@ def test_report_n_samples(
 # ---------------------------------------------------------------------------
 # Test 13: report.semantic_preservation in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_report_semantic_preservation_range(
     evaluator: RobustnessEvaluator,

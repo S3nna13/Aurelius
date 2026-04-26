@@ -10,7 +10,7 @@ from src.optimizers.mars import Mars
 
 
 def quadratic_loss(p: torch.Tensor) -> torch.Tensor:
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 def test_instantiate_with_linear():
@@ -65,7 +65,7 @@ def test_second_step_uses_variance_reduced_estimator():
         for p, opt in [(p1, opt1), (p2, opt2)]:
             opt.zero_grad()
             # Use a loss that changes gradient across steps so diff != 0
-            loss = (p ** 2).sum() + (p ** 3).sum()
+            loss = (p**2).sum() + (p**3).sum()
             loss.backward()
             opt.step()
 
@@ -80,7 +80,7 @@ def test_determinism_with_seed():
         opt = Mars([p], lr=1e-3)
         for _ in range(10):
             opt.zero_grad()
-            (p ** 2).sum().backward()
+            (p**2).sum().backward()
             opt.step()
         return p.detach().clone()
 
@@ -125,12 +125,13 @@ def test_weight_decay_decoupled():
 
 def test_state_dict_roundtrip():
     import copy
+
     torch.manual_seed(7)
     p = nn.Parameter(torch.randn(3))
     opt = Mars([p], lr=1e-3)
     for _ in range(3):
         opt.zero_grad()
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         opt.step()
     sd = copy.deepcopy(opt.state_dict())
 
@@ -148,8 +149,12 @@ def test_state_dict_roundtrip():
 
     # Stepping each with the same fresh gradient should produce the same update.
     g = torch.tensor([0.5, -0.3, 0.9])
-    opt.zero_grad(); p.grad = g.clone(); opt.step()
-    opt2.zero_grad(); p2.grad = g.clone(); opt2.step()
+    opt.zero_grad()
+    p.grad = g.clone()
+    opt.step()
+    opt2.zero_grad()
+    p2.grad = g.clone()
+    opt2.step()
     assert torch.allclose(p, p2, atol=1e-6, rtol=1e-6)
 
 
@@ -189,10 +194,8 @@ def test_gamma_zero_matches_adamw():
     p_mars = nn.Parameter(init.clone())
     p_adam = nn.Parameter(init.clone())
 
-    opt_mars = Mars([p_mars], lr=1e-2, betas=(0.9, 0.999), eps=1e-8,
-                   weight_decay=0.05, gamma=0.0)
-    opt_adam = torch.optim.AdamW([p_adam], lr=1e-2, betas=(0.9, 0.999),
-                                 eps=1e-8, weight_decay=0.05)
+    opt_mars = Mars([p_mars], lr=1e-2, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.05, gamma=0.0)
+    opt_adam = torch.optim.AdamW([p_adam], lr=1e-2, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.05)
 
     for step_i in range(6):
         # Same grad source
@@ -211,8 +214,7 @@ def test_multiple_param_groups():
     p1 = nn.Parameter(torch.tensor([3.0]))
     p2 = nn.Parameter(torch.tensor([3.0]))
     opt = Mars(
-        [{"params": [p1], "lr": 1e-1},
-         {"params": [p2], "lr": 1e-5}],
+        [{"params": [p1], "lr": 1e-1}, {"params": [p2], "lr": 1e-5}],
         lr=1e-3,
         weight_decay=0.0,
     )

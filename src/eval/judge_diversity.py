@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+")
 
 
@@ -32,4 +31,3 @@ def pairwise_verdict_disagreement(verdicts_a: list[str], verdicts_b: list[str]) 
     if not verdicts_a:
         return 0.0
     return sum(a != b for a, b in zip(verdicts_a, verdicts_b)) / len(verdicts_a)
-

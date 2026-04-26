@@ -19,17 +19,15 @@ Covers all 14 rigor-floor items specified in the implementation brief:
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
 from src.alignment.nash_md import NashMDLoss, NashMDTrainer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_batch(
     B: int = 4,
@@ -64,6 +62,7 @@ _LOSS_FN = NashMDLoss()
 # Test 1: output is a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_loss_is_scalar():
     batch = _make_batch(B=4)
     loss = _LOSS_FN(**batch)
@@ -73,6 +72,7 @@ def test_loss_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 2: loss is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_loss_is_differentiable():
     batch = _make_batch(B=4)
@@ -98,6 +98,7 @@ def test_loss_is_differentiable():
 # Test 3: determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     def _compute():
         torch.manual_seed(42)
@@ -111,6 +112,7 @@ def test_determinism():
 # Test 4: batch_size=1 edge case
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one():
     batch = _make_batch(B=1)
     loss = _LOSS_FN(**batch)
@@ -121,6 +123,7 @@ def test_batch_size_one():
 # ---------------------------------------------------------------------------
 # Test 5: reward_w >> reward_l  →  loss decreases when log_π(y_w) increases
 # ---------------------------------------------------------------------------
+
 
 def test_high_reward_w_favours_y_w():
     """When y_w is strongly preferred, increasing log π(y_w) should lower loss."""
@@ -148,6 +151,7 @@ def test_high_reward_w_favours_y_w():
 # Test 6: reward_w ≈ reward_l  →  weights near 0, loss near 0
 # ---------------------------------------------------------------------------
 
+
 def test_equal_rewards_near_zero_loss():
     """Equal rewards → weights ≈ 0 → Nash policy loss ≈ 0."""
     B = 8
@@ -166,13 +170,12 @@ def test_equal_rewards_near_zero_loss():
 # Test 7: beta=0 → KL term is zero
 # ---------------------------------------------------------------------------
 
+
 def test_beta_zero_no_kl():
     """With beta=0 the KL term must be exactly zero and total loss equals policy loss."""
     batch = _make_batch(B=4, ref_log_probs_w_val=-2.0)  # diverged ref
     metrics = _LOSS_FN.forward_with_metrics(**batch, beta=0.0)
-    assert metrics.loss_kl.item() == 0.0, (
-        f"Expected KL=0 when beta=0, got {metrics.loss_kl.item()}"
-    )
+    assert metrics.loss_kl.item() == 0.0, f"Expected KL=0 when beta=0, got {metrics.loss_kl.item()}"
     assert torch.allclose(metrics.loss, metrics.loss_policy), (
         "Total loss should equal policy loss when beta=0"
     )
@@ -181,6 +184,7 @@ def test_beta_zero_no_kl():
 # ---------------------------------------------------------------------------
 # Test 8: beta>0 → KL increases loss when policy diverges from ref
 # ---------------------------------------------------------------------------
+
 
 def test_beta_positive_kl_increases_loss():
     """Diverging from reference raises loss proportional to beta."""
@@ -225,6 +229,7 @@ def test_beta_positive_kl_increases_loss():
 # Test 9: nash_w + nash_l == 1.0 per sample
 # ---------------------------------------------------------------------------
 
+
 def test_nash_weights_sum_to_one():
     batch = _make_batch(B=8)
     metrics = _LOSS_FN.forward_with_metrics(**batch)
@@ -238,6 +243,7 @@ def test_nash_weights_sum_to_one():
 # Test 10: nash_w, nash_l ∈ [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_nash_weights_in_unit_interval():
     batch = _make_batch(B=8)
     metrics = _LOSS_FN.forward_with_metrics(**batch)
@@ -249,6 +255,7 @@ def test_nash_weights_in_unit_interval():
 # Test 11: no NaN/Inf on extreme reward differences
 # ---------------------------------------------------------------------------
 
+
 def test_numerical_stability_extreme_rewards():
     for r_val in [100.0, -100.0]:
         batch = _make_batch(B=4, reward_w_val=r_val, reward_l_val=-r_val)
@@ -259,6 +266,7 @@ def test_numerical_stability_extreme_rewards():
 # ---------------------------------------------------------------------------
 # Test 12: no NaN/Inf on very large negative log_probs (masked tokens)
 # ---------------------------------------------------------------------------
+
 
 def test_numerical_stability_masked_log_probs():
     B = 4
@@ -279,6 +287,7 @@ def test_numerical_stability_masked_log_probs():
 # Test 13: NashMDTrainer.compute_loss matches NashMDLoss directly
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_matches_loss_fn():
     batch = _make_batch(B=6)
     trainer = NashMDTrainer(beta=0.1)
@@ -292,6 +301,7 @@ def test_trainer_matches_loss_fn():
 # ---------------------------------------------------------------------------
 # Test 14: gradients flow through reward_w and reward_l
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_flow_through_rewards():
     """Nash weights σ(r_w - r_l) must back-prop into r_w and r_l."""
@@ -310,6 +320,7 @@ def test_gradients_flow_through_rewards():
 # Additional: missing batch key raises KeyError
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_raises_on_missing_key():
     batch = _make_batch(B=4)
     del batch["reward_w"]
@@ -321,6 +332,7 @@ def test_trainer_raises_on_missing_key():
 # ---------------------------------------------------------------------------
 # Additional: negative beta raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_negative_beta_raises():
     batch = _make_batch(B=4)

@@ -6,19 +6,17 @@ n_chains=3, max_reasoning=4, max_answer=2, seq_len=4.
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import pytest
 
 from src.training.cot_consistency import (
     AnswerExtractor,
     ChainOfThoughtSampler,
-    CoTConsistencyLoss,
     ConsistencyReward,
+    CoTConsistencyLoss,
     STaRTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
@@ -64,14 +62,18 @@ def input_ids() -> torch.Tensor:
 
 def test_sampler_returns_n_chains_chains(sampler, input_ids):
     """ChainOfThoughtSampler.sample_chains returns exactly n_chains chains."""
-    chains, log_probs = sampler.sample_chains(input_ids, max_reasoning_tokens=4, max_answer_tokens=2)
+    chains, log_probs = sampler.sample_chains(
+        input_ids, max_reasoning_tokens=4, max_answer_tokens=2
+    )
     assert len(chains) == 3
     assert len(log_probs) == 3
 
 
 def test_sampler_returns_n_chains_log_probs(sampler, input_ids):
     """ChainOfThoughtSampler.sample_chains returns n_chains log_probs."""
-    chains, log_probs = sampler.sample_chains(input_ids, max_reasoning_tokens=4, max_answer_tokens=2)
+    chains, log_probs = sampler.sample_chains(
+        input_ids, max_reasoning_tokens=4, max_answer_tokens=2
+    )
     assert len(log_probs) == 3
 
 
@@ -158,9 +160,9 @@ def test_consistency_reward_agreeing_higher_than_disagreeing():
     reward_fn = ConsistencyReward(length_penalty=0.0)  # disable length for clarity
     # majority answer = last token = 9 (appears twice)
     chains = [
-        torch.tensor([5, 6, 9]),   # answer = 9 (majority)
-        torch.tensor([5, 6, 9]),   # answer = 9 (majority)
-        torch.tensor([5, 6, 7]),   # answer = 7 (minority)
+        torch.tensor([5, 6, 9]),  # answer = 9 (majority)
+        torch.tensor([5, 6, 9]),  # answer = 9 (majority)
+        torch.tensor([5, 6, 7]),  # answer = 7 (minority)
     ]
     rewards = reward_fn.compute(chains, [0.0] * 3)
     # Majority chains (idx 0,1) reward > minority chain (idx 2) reward

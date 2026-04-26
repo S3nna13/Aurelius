@@ -13,7 +13,6 @@ Reference: Liu et al. (2024) "DoRA: Weight-Decomposed Low-Rank Adaptation"
 from __future__ import annotations
 
 import math
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -116,7 +115,7 @@ class DoRALinear(nn.Module):
         return F.linear(x, w_prime, self.bias)
 
     @classmethod
-    def from_linear(cls, linear: nn.Linear, rank: int = 4) -> "DoRALinear":
+    def from_linear(cls, linear: nn.Linear, rank: int = 4) -> DoRALinear:
         """Construct a DoRALinear from an existing nn.Linear.
 
         The original weight and bias are copied; the weight is frozen.
@@ -180,7 +179,7 @@ class DoRAModel(nn.Module):
     def __init__(
         self,
         model: nn.Module,
-        target_modules: List[str],
+        target_modules: list[str],
         rank: int = 4,
     ) -> None:
         super().__init__()
@@ -214,7 +213,7 @@ class DoRAModel(nn.Module):
         for parent, attr, dora_layer in replacements:
             setattr(parent, attr, dora_layer)
 
-    def trainable_parameters(self) -> List[nn.Parameter]:
+    def trainable_parameters(self) -> list[nn.Parameter]:
         """Return only the trainable DoRA parameters (m, lora_A, lora_B).
 
         The frozen base weights (weight_0) are excluded.

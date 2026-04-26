@@ -5,8 +5,6 @@ Code execution: Inspired by Gemini 2.5 code execution tool (Google DeepMind 2025
 
 from __future__ import annotations
 
-import pytest
-
 from src.agent.code_execution_tool import (
     CODE_EXECUTION_TOOL_REGISTRY,
     CodeExecutionTool,
@@ -14,7 +12,6 @@ from src.agent.code_execution_tool import (
     ExecutionRequest,
     ExecutionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Dataclass / enum basics

@@ -14,14 +14,11 @@ Exposes the canonical API:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -45,7 +42,7 @@ class ChunkedAttnConfig:
     n_heads: int = 4
     chunk_size: int = 64
     causal: bool = True
-    scale: Optional[float] = None
+    scale: float | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -54,12 +51,12 @@ class ChunkedAttnConfig:
 
 
 def chunked_attention(
-    Q: Tensor,                        # (B, H, T, d_head)
-    K: Tensor,                        # (B, H, T, d_head)
-    V: Tensor,                        # (B, H, T, d_head)
+    Q: Tensor,  # (B, H, T, d_head)
+    K: Tensor,  # (B, H, T, d_head)
+    V: Tensor,  # (B, H, T, d_head)
     chunk_size: int,
     causal: bool = True,
-    scale: Optional[float] = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Compute multi-head attention in query chunks.
 
@@ -94,7 +91,7 @@ def chunked_attention(
 
     for start in range(0, T, chunk_size):
         end = min(start + chunk_size, T)
-        q_chunk = Q[:, :, start:end, :]          # (B, H, chunk, d_head)
+        q_chunk = Q[:, :, start:end, :]  # (B, H, chunk, d_head)
 
         # Attention scores: (B, H, chunk, S)
         scores = torch.matmul(q_chunk, K.transpose(-2, -1)) * scale
@@ -103,9 +100,9 @@ def chunked_attention(
             # Query positions in the original sequence: [start, end)
             # Key positions:                            [0, S)
             # Mask out future positions: k_pos > q_pos
-            q_pos = torch.arange(start, end, device=Q.device).unsqueeze(1)   # (chunk, 1)
-            k_pos = torch.arange(0, S, device=Q.device).unsqueeze(0)          # (1, S)
-            causal_mask = (k_pos > q_pos).unsqueeze(0).unsqueeze(0)           # (1, 1, chunk, S)
+            q_pos = torch.arange(start, end, device=Q.device).unsqueeze(1)  # (chunk, 1)
+            k_pos = torch.arange(0, S, device=Q.device).unsqueeze(0)  # (1, S)
+            causal_mask = (k_pos > q_pos).unsqueeze(0).unsqueeze(0)  # (1, 1, chunk, S)
             scores = scores.masked_fill(causal_mask, float("-inf"))
 
         # Numerical stability: subtract per-row maximum
@@ -118,11 +115,11 @@ def chunked_attention(
         )
         scores = scores - scores_max
 
-        attn = torch.softmax(scores, dim=-1)          # (B, H, chunk, S)
-        out_chunk = torch.matmul(attn, V)             # (B, H, chunk, d_head)
+        attn = torch.softmax(scores, dim=-1)  # (B, H, chunk, S)
+        out_chunk = torch.matmul(attn, V)  # (B, H, chunk, d_head)
         outputs.append(out_chunk)
 
-    return torch.cat(outputs, dim=2)                  # (B, H, T, d_head)
+    return torch.cat(outputs, dim=2)  # (B, H, T, d_head)
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +132,7 @@ def _standard_attention(
     K: Tensor,
     V: Tensor,
     causal: bool = True,
-    scale: Optional[float] = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Full O(T^2) standard scaled-dot-product attention."""
     B, H, T, d_head = Q.shape
@@ -170,7 +167,7 @@ class ChunkedAttention(nn.Module):
 
     def __init__(self, config: ChunkedAttnConfig) -> None:
         super().__init__()
-        assert config.d_model % config.n_heads == 0, (
+        assert config.d_model % config.n_heads == 0, (  # noqa: S101
             f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
         )
         self.config = config
@@ -212,11 +209,13 @@ class ChunkedAttention(nn.Module):
         V = self._split_heads(self.v_proj(x))
 
         out = chunked_attention(
-            Q, K, V,
+            Q,
+            K,
+            V,
             chunk_size=cfg.chunk_size,
             causal=cfg.causal,
             scale=scale,
-        )                                         # (B, H, T, d_head)
+        )  # (B, H, T, d_head)
 
         return self.out_proj(self._merge_heads(out))  # (B, T, d_model)
 
@@ -273,7 +272,9 @@ def compare_chunked_vs_standard(
         K = attn._split_heads(attn.k_proj(x))
         V = attn._split_heads(attn.v_proj(x))
 
-        chunked_out = chunked_attention(Q, K, V, chunk_size=chunk_size, causal=cfg.causal, scale=scale)
+        chunked_out = chunked_attention(
+            Q, K, V, chunk_size=chunk_size, causal=cfg.causal, scale=scale
+        )
         standard_out = _standard_attention(Q, K, V, causal=cfg.causal, scale=scale)
 
     return (chunked_out - standard_out).abs().max().item()

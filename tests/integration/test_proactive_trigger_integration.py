@@ -4,9 +4,8 @@ Scenario: 3 triggers (2 interval, 1 condition) across a simulated time
 progression.  Verifies expected fire counts and that the registry is
 properly wired into AGENT_LOOP_REGISTRY["proactive_trigger"].
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.agent import AGENT_LOOP_REGISTRY
 from src.agent.proactive_trigger import (
@@ -15,10 +14,10 @@ from src.agent.proactive_trigger import (
     interval_trigger,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. Registry wired into AGENT_LOOP_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_proactive_trigger_in_agent_loop_registry():
     assert "proactive_trigger" in AGENT_LOOP_REGISTRY, (
@@ -29,6 +28,7 @@ def test_proactive_trigger_in_agent_loop_registry():
 # ---------------------------------------------------------------------------
 # 2. Class from registry is constructable
 # ---------------------------------------------------------------------------
+
 
 def test_registry_class_constructable():
     cls = AGENT_LOOP_REGISTRY["proactive_trigger"]
@@ -52,6 +52,7 @@ def test_registry_class_constructable():
 #   t=65  → elapsed ≥ 60 for all three → 3 actions again
 #
 # ---------------------------------------------------------------------------
+
 
 def test_time_progression_scenario():
     reg = ProactiveTriggerRegistry()
@@ -77,9 +78,7 @@ def test_time_progression_scenario():
 
     # t=30 — cooldown not elapsed → nothing fires.
     fired_t30 = reg.check_all(current_time=30.0)
-    assert fired_t30 == [], (
-        f"Expected 0 fires at t=30 (cooldown), got {fired_t30}"
-    )
+    assert fired_t30 == [], f"Expected 0 fires at t=30 (cooldown), got {fired_t30}"
 
     # t=65 — 65 ≥ 60 → all three fire again.
     fired_t65 = reg.check_all(current_time=65.0)
@@ -97,10 +96,17 @@ def test_time_progression_scenario():
 # 4. Regression guard — existing AGENT_LOOP_REGISTRY keys intact
 # ---------------------------------------------------------------------------
 
+
 def test_existing_agent_loop_registry_keys_intact():
     expected = {
-        "react", "safe_dispatch", "beam_plan", "task_decompose",
-        "dispatch_task", "budget_bounded", "agent_swarm", "plugin_hook",
+        "react",
+        "safe_dispatch",
+        "beam_plan",
+        "task_decompose",
+        "dispatch_task",
+        "budget_bounded",
+        "agent_swarm",
+        "plugin_hook",
     }
     for key in expected:
         assert key in AGENT_LOOP_REGISTRY, (

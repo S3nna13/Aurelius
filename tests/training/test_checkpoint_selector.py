@@ -1,16 +1,16 @@
 """Tests for src/training/checkpoint_selector.py"""
+
 from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.checkpoint_selector import (
-    CheckpointSelectorConfig,
     CheckpointedLayer,
     CheckpointSelector,
+    CheckpointSelectorConfig,
     apply_selective_checkpointing,
     compute_recomputation_cost,
     estimate_activation_bytes,
@@ -130,7 +130,7 @@ def test_select_memory_optimal_large_budget():
         seq_len=64,
         d_model=64,
         batch_size=2,
-        budget_bytes=10 * (1024 ** 3),  # 10 GB
+        budget_bytes=10 * (1024**3),  # 10 GB
         bytes_per_element=4,
     )
     assert result == []
@@ -142,7 +142,9 @@ def test_select_memory_optimal_large_budget():
 def test_compute_recomputation_cost_range():
     for n_ckpt, n_layers in [(0, 4), (2, 4), (4, 4), (3, 10)]:
         cost = compute_recomputation_cost(n_ckpt, n_layers)
-        assert 0.0 <= cost <= 1.0, f"cost={cost} out of range for n_ckpt={n_ckpt}, n_layers={n_layers}"
+        assert 0.0 <= cost <= 1.0, (
+            f"cost={cost} out of range for n_ckpt={n_ckpt}, n_layers={n_layers}"
+        )
 
 
 # -------------------------------------------------------------------------

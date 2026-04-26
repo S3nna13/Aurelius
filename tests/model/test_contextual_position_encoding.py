@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.model.contextual_position_encoding import (
@@ -57,7 +54,7 @@ class TestALiBiPositionBias:
         slopes = module.get_slopes(N_HEADS)
         for i in range(len(slopes) - 1):
             assert slopes[i] > slopes[i + 1], (
-                f"slopes[{i}]={slopes[i].item():.6f} should be > slopes[{i+1}]={slopes[i+1].item():.6f}"
+                f"slopes[{i}]={slopes[i].item():.6f} should be > slopes[{i + 1}]={slopes[i + 1].item():.6f}"  # noqa: E501
             )
 
     def test_forward_shape(self):
@@ -83,7 +80,7 @@ class TestALiBiPositionBias:
             for i in range(1, T):
                 for j in range(i):
                     assert bias[h, i, j].item() < 0, (
-                        f"Head {h}, i={i}, j={j}: expected negative, got {bias[h,i,j].item()}"
+                        f"Head {h}, i={i}, j={j}: expected negative, got {bias[h, i, j].item()}"
                     )
 
     def test_causal_future_masked(self):
@@ -94,7 +91,7 @@ class TestALiBiPositionBias:
             for i in range(T - 1):
                 for j in range(i + 1, T):
                     assert bias[h, i, j].item() == float("-inf"), (
-                        f"Head {h}, i={i}, j={j}: expected -inf, got {bias[h,i,j].item()}"
+                        f"Head {h}, i={i}, j={j}: expected -inf, got {bias[h, i, j].item()}"
                     )
 
     def test_custom_slopes(self):
@@ -207,8 +204,7 @@ class TestKERPLEBias:
                 for j in range(T):
                     if i != j:
                         assert bias[h, i, j].item() < 0, (
-                            f"Head {h}, i={i}, j={j}: expected negative, "
-                            f"got {bias[h,i,j].item()}"
+                            f"Head {h}, i={i}, j={j}: expected negative, got {bias[h, i, j].item()}"
                         )
 
     def test_r_is_learnable(self):

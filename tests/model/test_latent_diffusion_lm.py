@@ -7,15 +7,15 @@ Uses small dimensions throughout:
 from __future__ import annotations
 
 import math
+
 import torch
-import pytest
 
 from src.model.latent_diffusion_lm import (
-    NoiseSchedule,
-    DenoisingNetwork,
     DDPMTrainer,
-    LatentDiffusionLM,
+    DenoisingNetwork,
     DiffusionConfig,
+    LatentDiffusionLM,
+    NoiseSchedule,
 )
 
 # ---------------------------------------------------------------------------
@@ -44,6 +44,7 @@ def make_input_ids() -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # NoiseSchedule tests
 # ---------------------------------------------------------------------------
+
 
 class TestNoiseScheduleCosine:
     def setup_method(self):
@@ -113,6 +114,7 @@ class TestNoiseScheduleLinear:
 # DenoisingNetwork tests
 # ---------------------------------------------------------------------------
 
+
 class TestDenoisingNetwork:
     def setup_method(self):
         self.net = DenoisingNetwork(d_model=D, n_layers=LAYERS, n_heads=N_HEADS)
@@ -150,6 +152,7 @@ class TestDenoisingNetwork:
 # ---------------------------------------------------------------------------
 # DDPMTrainer tests
 # ---------------------------------------------------------------------------
+
 
 class TestDDPMTrainer:
     def setup_method(self):
@@ -189,9 +192,7 @@ class TestDDPMTrainer:
         x_t = make_embeddings()
         with torch.no_grad():
             x_prev = self.trainer.p_sample(x_t, t=N_DIFF - 1)
-        assert x_prev.shape == x_t.shape, (
-            f"p_sample shape mismatch: {x_prev.shape} vs {x_t.shape}"
-        )
+        assert x_prev.shape == x_t.shape, f"p_sample shape mismatch: {x_prev.shape} vs {x_t.shape}"
 
     def test_p_sample_at_t0_returns_mean(self):
         """At t=0 p_sample should return mean without added noise."""
@@ -218,6 +219,7 @@ class TestDDPMTrainer:
 # ---------------------------------------------------------------------------
 # LatentDiffusionLM tests
 # ---------------------------------------------------------------------------
+
 
 class TestLatentDiffusionLM:
     def setup_method(self):
@@ -255,6 +257,7 @@ class TestLatentDiffusionLM:
 # ---------------------------------------------------------------------------
 # DiffusionConfig tests
 # ---------------------------------------------------------------------------
+
 
 class TestDiffusionConfig:
     def test_defaults(self):

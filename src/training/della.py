@@ -12,13 +12,12 @@ sparsification (MAGPRUNE):
     5. Merge multiple deltas via weighted mean (or TIES-style sign election).
     6. Add merged delta back to the pretrained base.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -44,7 +43,7 @@ class DELLAConfig:
     density: float = 0.5
     rescale: bool = True
     merge_method: str = "mean"
-    weights: Optional[list[float]] = None
+    weights: list[float] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +164,7 @@ class DELLAMerger:
                 delta[key] = finetuned[key].float() - base[key].float()
         return delta
 
-    def prune_delta(
-        self, delta: dict[str, torch.Tensor]
-    ) -> dict[str, torch.Tensor]:
+    def prune_delta(self, delta: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Apply magnitude pruning to every tensor in ``delta``.
 
         Uses ``config.density`` and ``config.rescale``.
@@ -179,9 +176,7 @@ class DELLAMerger:
             New dict with pruned tensors.
         """
         return {
-            key: magnitude_prune_delta(
-                tensor, self.config.density, self.config.rescale
-            )
+            key: magnitude_prune_delta(tensor, self.config.density, self.config.rescale)
             for key, tensor in delta.items()
         }
 
@@ -210,10 +205,7 @@ class DELLAMerger:
             return {k: v.clone() for k, v in base.items()}
 
         # Compute and prune per-model deltas
-        pruned_deltas = [
-            self.prune_delta(self.compute_delta(base, ft))
-            for ft in finetuned_list
-        ]
+        pruned_deltas = [self.prune_delta(self.compute_delta(base, ft)) for ft in finetuned_list]
 
         # Determine per-model weights
         n = len(pruned_deltas)
@@ -240,9 +232,7 @@ class DELLAMerger:
                     total_w += w
             if total_w > 0.0:
                 # Already normalised — just add
-                merged_state[key] = (base_param.float() + combined).to(
-                    base_param.dtype
-                )
+                merged_state[key] = (base_param.float() + combined).to(base_param.dtype)
             else:
                 merged_state[key] = base_param.clone()
 
@@ -270,10 +260,7 @@ class DELLAMerger:
         if not finetuned_list:
             return {k: v.clone() for k, v in base.items()}
 
-        pruned_deltas = [
-            self.prune_delta(self.compute_delta(base, ft))
-            for ft in finetuned_list
-        ]
+        pruned_deltas = [self.prune_delta(self.compute_delta(base, ft)) for ft in finetuned_list]
 
         merged_state: dict[str, torch.Tensor] = {}
         for key in base:
@@ -299,8 +286,6 @@ class DELLAMerger:
             count = count.clamp(min=1.0)
             merged_delta = merged_delta / count
 
-            merged_state[key] = (base_param.float() + merged_delta).to(
-                base_param.dtype
-            )
+            merged_state[key] = (base_param.float() + merged_delta).to(base_param.dtype)
 
         return merged_state

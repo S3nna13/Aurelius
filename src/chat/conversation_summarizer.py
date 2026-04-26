@@ -5,15 +5,33 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 _STOPWORDS = {
-    "a", "an", "the", "is", "in", "to", "of", "and", "or", "for",
-    "with", "that", "this", "it", "be", "was", "are", "were", "has", "have",
+    "a",
+    "an",
+    "the",
+    "is",
+    "in",
+    "to",
+    "of",
+    "and",
+    "or",
+    "for",
+    "with",
+    "that",
+    "this",
+    "it",
+    "be",
+    "was",
+    "are",
+    "were",
+    "has",
+    "have",
 }
 
 
-class SummaryMode(str, Enum):
+class SummaryMode(StrEnum):
     EXTRACTIVE = "extractive"
     ABSTRACTIVE_STUB = "abstractive_stub"
     BULLETS = "bullets"
@@ -57,7 +75,7 @@ class ConversationSummarizer:
         # last (max_sentences - 2) messages before the final
         tail_count = self.max_sentences - 2
         if tail_count > 0:
-            middle_tail = messages[-(tail_count + 1):-1]
+            middle_tail = messages[-(tail_count + 1) : -1]
             for m in middle_tail:
                 if m not in selected:
                     selected.append(m)

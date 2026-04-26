@@ -2,19 +2,19 @@
 Tests for src/agent/context_compressor.py  (≥28 tests)
 """
 
-import math
 import pytest
+
 from src.agent.context_compressor import (
-    Turn,
+    CONTEXT_COMPRESSOR_REGISTRY,
     CompressionConfig,
     ContextCompressor,
-    CONTEXT_COMPRESSOR_REGISTRY,
+    Turn,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def compressor():
@@ -30,6 +30,7 @@ def make_turns(n: int, words_each: int = 10) -> list[Turn]:
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_registry_key_exists():
     assert "default" in CONTEXT_COMPRESSOR_REGISTRY
 
@@ -41,6 +42,7 @@ def test_registry_value_is_context_compressor():
 # ---------------------------------------------------------------------------
 # Turn dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_turn_token_estimate_auto_set():
     t = Turn(role="user", content="hello world foo")
@@ -71,6 +73,7 @@ def test_turn_content_stored():
 # CompressionConfig
 # ---------------------------------------------------------------------------
 
+
 def test_compression_config_defaults():
     cfg = CompressionConfig()
     assert cfg.max_tokens == 4096
@@ -95,6 +98,7 @@ def test_compression_config_custom():
 # estimate_tokens()
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_tokens_empty(compressor):
     assert compressor.estimate_tokens([]) == 0
 
@@ -106,8 +110,8 @@ def test_estimate_tokens_single_turn(compressor):
 
 def test_estimate_tokens_multiple_turns(compressor):
     turns = [
-        Turn(role="user", content="a b c"),       # 3
-        Turn(role="assistant", content="d e f g"), # 4
+        Turn(role="user", content="a b c"),  # 3
+        Turn(role="assistant", content="d e f g"),  # 4
     ]
     assert compressor.estimate_tokens(turns) == 7
 
@@ -120,6 +124,7 @@ def test_estimate_tokens_uses_token_estimate_field(compressor):
 # ---------------------------------------------------------------------------
 # compress() — under limit
 # ---------------------------------------------------------------------------
+
 
 def test_compress_under_limit_returns_unchanged(compressor):
     turns = [Turn(role="user", content="hi")]  # 1 token << 4096
@@ -145,6 +150,7 @@ def test_compress_exactly_at_limit_returns_unchanged():
 # ---------------------------------------------------------------------------
 # compress() — over limit
 # ---------------------------------------------------------------------------
+
 
 def test_compress_over_limit_keeps_last_keep_recent():
     cfg = CompressionConfig(max_tokens=5, keep_recent=2, summary_ratio=0.5)
@@ -205,6 +211,7 @@ def test_compress_summary_every_nth_word():
 # ---------------------------------------------------------------------------
 # compression_ratio()
 # ---------------------------------------------------------------------------
+
 
 def test_compression_ratio_unchanged_is_one(compressor):
     turns = [Turn(role="user", content="hi")]

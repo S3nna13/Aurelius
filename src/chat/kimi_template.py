@@ -160,10 +160,10 @@ class KimiChatTemplate:
 
         # Prepend tool declarations.
         if tools:
-            tool_text = tools_ts_str if tools_ts_str is not None else self.render_tools_as_json(tools)
-            parts.append(
-                f"{IM_SYSTEM}tool_declare{IM_MIDDLE}{tool_text}{IM_END}\n"
+            tool_text = (
+                tools_ts_str if tools_ts_str is not None else self.render_tools_as_json(tools)
             )
+            parts.append(f"{IM_SYSTEM}tool_declare{IM_MIDDLE}{tool_text}{IM_END}\n")
 
         for msg in messages:
             role_opener = set_role(msg)

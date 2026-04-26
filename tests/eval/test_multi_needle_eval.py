@@ -29,9 +29,7 @@ from src.eval.multi_needle_eval import (
 # Config validation
 # ---------------------------------------------------------------------------
 def test_good_config_construction():
-    cfg = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=256, depth_profile="uniform", seed=7
-    )
+    cfg = MultiNeedleConfig(num_needles=4, haystack_tokens=256, depth_profile="uniform", seed=7)
     assert cfg.num_needles == 4
     assert cfg.haystack_tokens == 256
     assert cfg.depth_profile == "uniform"
@@ -58,17 +56,13 @@ def test_bad_haystack_tokens_too_small_raises():
 
 
 def test_bad_haystack_tokens_too_large_raises():
-    cfg = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=65537, depth_profile="uniform"
-    )
+    cfg = MultiNeedleConfig(num_needles=4, haystack_tokens=65537, depth_profile="uniform")
     with pytest.raises(MultiNeedleError):
         build_sample(cfg)
 
 
 def test_bad_depth_profile_raises():
-    cfg = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=128, depth_profile="spiral_of_doom"
-    )
+    cfg = MultiNeedleConfig(num_needles=4, haystack_tokens=128, depth_profile="spiral_of_doom")
     with pytest.raises(MultiNeedleError):
         build_sample(cfg)
 
@@ -109,8 +103,7 @@ def test_prompt_contains_every_needle_text_exactly_once():
     for key, value in s.gold:
         needle_text = f"remember the code {key}={value}."
         assert s.prompt.count(needle_text) == 1, (
-            f"needle {key}={value} must appear exactly once; "
-            f"got {s.prompt.count(needle_text)}"
+            f"needle {key}={value} must appear exactly once; got {s.prompt.count(needle_text)}"
         )
 
 
@@ -124,9 +117,7 @@ def test_prompt_length_roughly_matches_haystack_tokens():
 
 
 def test_determinism_same_seed_byte_identical():
-    cfg = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=42
-    )
+    cfg = MultiNeedleConfig(num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=42)
     s1 = build_sample(cfg)
     s2 = build_sample(cfg)
     assert s1.prompt == s2.prompt
@@ -136,12 +127,8 @@ def test_determinism_same_seed_byte_identical():
 
 
 def test_different_seeds_produce_different_samples():
-    cfg_a = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=1
-    )
-    cfg_b = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=2
-    )
+    cfg_a = MultiNeedleConfig(num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=1)
+    cfg_b = MultiNeedleConfig(num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=2)
     s_a = build_sample(cfg_a)
     s_b = build_sample(cfg_b)
     assert s_a.prompt != s_b.prompt
@@ -162,25 +149,19 @@ def test_uniform_depth_fracs_approximately_evenly_spaced():
 
 
 def test_clustered_early_all_depths_below_0_2():
-    cfg = MultiNeedleConfig(
-        num_needles=6, haystack_tokens=1024, depth_profile="clustered_early"
-    )
+    cfg = MultiNeedleConfig(num_needles=6, haystack_tokens=1024, depth_profile="clustered_early")
     s = build_sample(cfg)
     assert all(d < 0.2 for d in s.depth_fracs)
 
 
 def test_clustered_late_all_depths_above_0_8():
-    cfg = MultiNeedleConfig(
-        num_needles=6, haystack_tokens=1024, depth_profile="clustered_late"
-    )
+    cfg = MultiNeedleConfig(num_needles=6, haystack_tokens=1024, depth_profile="clustered_late")
     s = build_sample(cfg)
     assert all(d > 0.8 for d in s.depth_fracs)
 
 
 def test_boundary_half_early_half_late():
-    cfg = MultiNeedleConfig(
-        num_needles=8, haystack_tokens=1024, depth_profile="boundary"
-    )
+    cfg = MultiNeedleConfig(num_needles=8, haystack_tokens=1024, depth_profile="boundary")
     s = build_sample(cfg)
     lows = [d for d in s.depth_fracs if d < 0.1]
     highs = [d for d in s.depth_fracs if d > 0.9]
@@ -221,9 +202,7 @@ def test_parse_recovery_empty_input():
 # score
 # ---------------------------------------------------------------------------
 def _make_small_sample() -> MultiNeedleSample:
-    cfg = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=0
-    )
+    cfg = MultiNeedleConfig(num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=0)
     return build_sample(cfg)
 
 
@@ -302,9 +281,7 @@ def test_register_depth_profile_adds_custom_and_builds_sample():
     register_depth_profile("center_only", center_only)
     assert "center_only" in DEPTH_PROFILE_REGISTRY
 
-    cfg = MultiNeedleConfig(
-        num_needles=3, haystack_tokens=256, depth_profile="center_only", seed=3
-    )
+    cfg = MultiNeedleConfig(num_needles=3, haystack_tokens=256, depth_profile="center_only", seed=3)
     s = build_sample(cfg)
     assert len(s.gold) == 3
     assert all(abs(d - 0.5) < 1e-12 for d in s.depth_fracs)

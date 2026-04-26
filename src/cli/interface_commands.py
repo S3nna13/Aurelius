@@ -10,18 +10,19 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Callable, TextIO
+from typing import Any, TextIO
 
 from src.agent.interface_runtime import AureliusInterfaceRuntime
 from src.agent.session_manager import SessionManager
 from src.agent.skill_catalog import SkillCatalog
+from src.model.interface_framework import AureliusInterfaceFramework, InterfaceFrameworkError
 from src.ui.aurelius_shell import (
     AureliusShell,
     AureliusShellError,
 )
-from src.model.interface_framework import AureliusInterfaceFramework, InterfaceFrameworkError
 
 __all__ = [
     "INTERFACE_COMMAND_HANDLERS",
@@ -74,7 +75,9 @@ def _build_shell(args: argparse.Namespace, shell: AureliusShell | None = None) -
     repo_root = getattr(args, "repo_root", None)
     variant_id = getattr(args, "variant_id", None)
     session_id = getattr(args, "session_id", None)
-    return AureliusShell.from_repo_root(root_dir=repo_root, variant_id=variant_id, session_id=session_id)
+    return AureliusShell.from_repo_root(
+        root_dir=repo_root, variant_id=variant_id, session_id=session_id
+    )
 
 
 def _build_runtime(
@@ -89,7 +92,11 @@ def _build_runtime(
     if state_dir is None:
         return AureliusInterfaceRuntime.from_repo_root(root_dir=repo_root, variant_id=variant_id)
     framework = AureliusInterfaceFramework.from_repo_root(root_dir=repo_root, variant_id=variant_id)
-    resolved_root = Path(repo_root).expanduser().resolve() if repo_root is not None else framework.paths.repo_root
+    resolved_root = (
+        Path(repo_root).expanduser().resolve()
+        if repo_root is not None
+        else framework.paths.repo_root
+    )
     return AureliusInterfaceRuntime(
         framework,
         root_dir=resolved_root,
@@ -308,7 +315,9 @@ def handle_interface_channel_send(
                 recipient=getattr(args, "recipient", None),
                 workstream_id=thread.workstream_id,
                 workspace=thread.workspace,
-                metadata={"routing": {key: value for key, value in routing.items() if key != "envelope"}},
+                metadata={
+                    "routing": {key: value for key, value in routing.items() if key != "envelope"}
+                },
             )
             _json_write(
                 stream,
@@ -319,7 +328,9 @@ def handle_interface_channel_send(
             )
             return 0
         if not getattr(args, "allow_unbound", False):
-            raise AureliusShellError("channel send without --thread-id requires --allow-unbound or an active shell thread")
+            raise AureliusShellError(
+                "channel send without --thread-id requires --allow-unbound or an active shell thread"  # noqa: E501
+            )
         envelope = runtime.register_message(
             session_id,
             channel_id=args.channel,
@@ -374,7 +385,10 @@ def handle_interface_mode_list(
         stream,
         {
             "current_mode": active_shell.current_mode,
-            "modes": [asdict(active_shell.framework.select_mode(name)) for name in active_shell.list_modes()],
+            "modes": [
+                asdict(active_shell.framework.select_mode(name))
+                for name in active_shell.list_modes()
+            ],
         },
     )
     return 0
@@ -797,7 +811,9 @@ def handle_interface_workflow_run(
     return 0
 
 
-INTERFACE_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace, TextIO, AureliusShell | None], int]] = {
+INTERFACE_COMMAND_HANDLERS: dict[
+    str, Callable[[argparse.Namespace, TextIO, AureliusShell | None], int]
+] = {
     "capability_summary": handle_interface_capability_summary,
     "capability_schema": handle_interface_capability_schema,
     "describe": handle_interface_describe,
@@ -885,9 +901,13 @@ def build_interface_parser(
     describe_p.set_defaults(interface_handler=handle_interface_describe)
 
     capability_p = interface_sub.add_parser("capability", help="summarize interface capabilities")
-    capability_sub = capability_p.add_subparsers(dest="capability_command", metavar="capability_command")
+    capability_sub = capability_p.add_subparsers(
+        dest="capability_command", metavar="capability_command"
+    )
     capability_summary_p = capability_sub.add_parser("summary", help="show capability summary")
-    capability_summary_p.add_argument("--session-id", default=None, help="optional persistent session id")
+    capability_summary_p.add_argument(
+        "--session-id", default=None, help="optional persistent session id"
+    )
     capability_summary_p.set_defaults(interface_handler=handle_interface_capability_summary)
     capability_schema_p = capability_sub.add_parser("schema", help="show capability summary schema")
     capability_schema_p.set_defaults(interface_handler=handle_interface_capability_schema)
@@ -936,10 +956,16 @@ def build_interface_parser(
     journal_branch_p.add_argument("--session-id", required=True, help="persistent session id")
     journal_branch_p.add_argument("--branch-id", default="main", help="journal branch id")
     journal_branch_p.set_defaults(interface_handler=handle_interface_journal_branch_summary)
-    journal_compaction_p = journal_sub.add_parser("compaction", help="show a journal compaction summary")
+    journal_compaction_p = journal_sub.add_parser(
+        "compaction", help="show a journal compaction summary"
+    )
     journal_compaction_p.add_argument("--session-id", required=True, help="persistent session id")
-    journal_compaction_p.add_argument("--branch-id", default=None, help="optional journal branch id")
-    journal_compaction_p.add_argument("--compaction-id", default=None, help="optional compaction id")
+    journal_compaction_p.add_argument(
+        "--branch-id", default=None, help="optional journal branch id"
+    )
+    journal_compaction_p.add_argument(
+        "--compaction-id", default=None, help="optional compaction id"
+    )
     journal_compaction_p.set_defaults(interface_handler=handle_interface_journal_compaction_summary)
 
     mode_p = interface_sub.add_parser("mode", help="list and select Aurelius modes")
@@ -978,12 +1004,22 @@ def build_interface_parser(
     thread_create_p.add_argument("--mode", default=None, help="mode name")
     thread_create_p.add_argument("--host", default="cli", help="host adapter name")
     thread_create_p.add_argument("--workspace", default=None, help="workspace path")
-    thread_create_p.add_argument("--workstream-id", default=None, help="attach to an existing workstream")
-    thread_create_p.add_argument("--workstream-name", default=None, help="create and attach a new workstream")
+    thread_create_p.add_argument(
+        "--workstream-id", default=None, help="attach to an existing workstream"
+    )
+    thread_create_p.add_argument(
+        "--workstream-name", default=None, help="create and attach a new workstream"
+    )
     thread_create_p.add_argument("--channel", default=None, help="channel identifier")
-    thread_create_p.add_argument("--skill", dest="skills", action="append", default=[], help="skill id to attach")
-    thread_create_p.add_argument("--repo-instructions", default=None, help="repo-local instructions text")
-    thread_create_p.add_argument("--workspace-instructions", default=None, help="workspace instructions text")
+    thread_create_p.add_argument(
+        "--skill", dest="skills", action="append", default=[], help="skill id to attach"
+    )
+    thread_create_p.add_argument(
+        "--repo-instructions", default=None, help="repo-local instructions text"
+    )
+    thread_create_p.add_argument(
+        "--workspace-instructions", default=None, help="workspace instructions text"
+    )
     thread_create_p.set_defaults(interface_handler=handle_interface_thread_create)
     thread_status_p = thread_sub.add_parser("status", help="render thread status")
     thread_status_p.add_argument("--thread-id", default=None, help="thread id")
@@ -1000,7 +1036,9 @@ def build_interface_parser(
         help="skill root to scan (may be supplied multiple times)",
     )
     skill_list_p.set_defaults(interface_handler=handle_interface_skill_list)
-    skill_search_p = skill_sub.add_parser("search", help="search installed or discovered catalog skills")
+    skill_search_p = skill_sub.add_parser(
+        "search", help="search installed or discovered catalog skills"
+    )
     skill_search_p.add_argument("query", help="search query")
     skill_search_p.set_defaults(interface_handler=handle_interface_skill_search)
     skill_show_p = skill_sub.add_parser("show", help="show one catalog skill")
@@ -1011,7 +1049,9 @@ def build_interface_parser(
     skill_activate_p = skill_sub.add_parser("activate", help="activate an installed catalog skill")
     skill_activate_p.add_argument("skill_id", help="skill id")
     skill_activate_p.set_defaults(interface_handler=handle_interface_skill_activate)
-    skill_deactivate_p = skill_sub.add_parser("deactivate", help="deactivate an installed catalog skill")
+    skill_deactivate_p = skill_sub.add_parser(
+        "deactivate", help="deactivate an installed catalog skill"
+    )
     skill_deactivate_p.add_argument("skill_id", help="skill id")
     skill_deactivate_p.set_defaults(interface_handler=handle_interface_skill_deactivate)
     skill_archive_p = skill_sub.add_parser("archive", help="archive an installed catalog skill")
@@ -1039,7 +1079,9 @@ def build_interface_parser(
     skill_layers_p.set_defaults(interface_handler=handle_interface_skill_layers)
     skill_attach_p = skill_sub.add_parser("attach", help="attach skills to a thread")
     skill_attach_p.add_argument("--thread-id", default=None, help="thread id")
-    skill_attach_p.add_argument("--skill", dest="skills", action="append", required=True, help="skill id")
+    skill_attach_p.add_argument(
+        "--skill", dest="skills", action="append", required=True, help="skill id"
+    )
     skill_attach_p.add_argument(
         "--root",
         dest="roots",
@@ -1057,16 +1099,26 @@ def build_interface_parser(
     approval_req_p.add_argument("--action-summary", required=True, help="summary of the action")
     approval_req_p.add_argument("--reason", required=True, help="why approval is needed")
     approval_req_p.add_argument("--minimum-scope", required=True, help="minimum approval scope")
-    approval_req_p.add_argument("--resource", action="append", default=[], help="affected resource path")
-    approval_req_p.add_argument("--reversible", action="store_true", help="mark the action reversible")
+    approval_req_p.add_argument(
+        "--resource", action="append", default=[], help="affected resource path"
+    )
+    approval_req_p.add_argument(
+        "--reversible", action="store_true", help="mark the action reversible"
+    )
     approval_req_p.set_defaults(interface_handler=handle_interface_approval_request)
 
     checkpoint_p = interface_sub.add_parser("checkpoint", help="checkpoint and resume threads")
-    checkpoint_sub = checkpoint_p.add_subparsers(dest="checkpoint_command", metavar="checkpoint_command")
+    checkpoint_sub = checkpoint_p.add_subparsers(
+        dest="checkpoint_command", metavar="checkpoint_command"
+    )
     checkpoint_save_p = checkpoint_sub.add_parser("save", help="save a checkpoint")
     checkpoint_save_p.add_argument("--thread-id", default=None, help="thread id")
-    checkpoint_save_p.add_argument("--memory-summary", required=True, help="checkpoint memory summary")
-    checkpoint_save_p.add_argument("--last-model-response", default=None, help="most recent model response")
+    checkpoint_save_p.add_argument(
+        "--memory-summary", required=True, help="checkpoint memory summary"
+    )
+    checkpoint_save_p.add_argument(
+        "--last-model-response", default=None, help="most recent model response"
+    )
     checkpoint_save_p.set_defaults(interface_handler=handle_interface_checkpoint_save)
     checkpoint_resume_p = checkpoint_sub.add_parser("resume", help="resume a checkpoint")
     checkpoint_resume_p.add_argument("--checkpoint-id", required=True, help="checkpoint id")
@@ -1090,7 +1142,9 @@ def build_interface_parser(
     workflow_run_p = workflow_sub.add_parser("run", help="run a workflow spec")
     workflow_run_p.add_argument("--thread-id", default=None, help="thread id")
     workflow_run_p.add_argument("--workflow-json", default=None, help="workflow JSON string")
-    workflow_run_p.add_argument("--workflow-file", default=None, help="path to a workflow JSON file")
+    workflow_run_p.add_argument(
+        "--workflow-file", default=None, help="path to a workflow JSON file"
+    )
     workflow_run_p.set_defaults(interface_handler=handle_interface_workflow_run)
 
     return interface_parser

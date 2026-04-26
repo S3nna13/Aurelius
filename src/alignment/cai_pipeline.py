@@ -3,17 +3,17 @@
 Implements CAIConfig, CAIReviser, CAIDataCollector and supporting utilities
 as described in Anthropic's Constitutional AI approach (Bai et al., 2022).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Default principles and templates
 # ---------------------------------------------------------------------------
 
-_DEFAULT_PRINCIPLES: List[str] = [
+_DEFAULT_PRINCIPLES: list[str] = [
     "Be helpful, harmless, and honest.",
     "Avoid harmful or dangerous content.",
     "Be respectful and unbiased.",
@@ -34,12 +34,13 @@ _DEFAULT_REVISION_TEMPLATE: str = (
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CAIConfig:
     """Configuration for Constitutional AI revision pipeline."""
 
     n_revision_steps: int = 2
-    principles: Optional[List[str]] = None
+    principles: list[str] | None = None
     critique_template: str = _DEFAULT_CRITIQUE_TEMPLATE
     revision_template: str = _DEFAULT_REVISION_TEMPLATE
 
@@ -59,6 +60,7 @@ class ConstitutionalPrinciple:
 # ---------------------------------------------------------------------------
 # Prompt builders
 # ---------------------------------------------------------------------------
+
 
 def build_critique_prompt(response: str, principle: str, template: str) -> str:
     """Format the critique template with the given response and principle."""
@@ -102,9 +104,26 @@ def extract_critique_score(critique_text: str) -> float:
 
 _HARMFUL_WORDS = frozenset(
     {
-        "kill", "murder", "bomb", "explode", "attack", "weapon", "harm", "hurt",
-        "dangerous", "illegal", "toxic", "poison", "violence", "threat", "abuse",
-        "exploit", "hack", "steal", "fraud", "scam",
+        "kill",
+        "murder",
+        "bomb",
+        "explode",
+        "attack",
+        "weapon",
+        "harm",
+        "hurt",
+        "dangerous",
+        "illegal",
+        "toxic",
+        "poison",
+        "violence",
+        "threat",
+        "abuse",
+        "exploit",
+        "hack",
+        "steal",
+        "fraud",
+        "scam",
     }
 )
 
@@ -129,6 +148,7 @@ def score_response_safety(response: str) -> float:
 # CAIReviser
 # ---------------------------------------------------------------------------
 
+
 class CAIReviser:
     """Applies Constitutional AI critique-revision cycles to a response."""
 
@@ -146,12 +166,12 @@ class CAIReviser:
         prompt = build_revision_prompt(response, critique, self.config.revision_template)
         return self.generate_fn(prompt)
 
-    def run_revision_cycle(self, response: str) -> List[str]:
+    def run_revision_cycle(self, response: str) -> list[str]:
         """Iterate through all principles and perform critique-then-revise.
 
         Returns a flat list of revised responses, one per (step, principle) pair.
         """
-        revisions: List[str] = []
+        revisions: list[str] = []
         current = response
         principles = self.config.principles or []
 
@@ -164,7 +184,7 @@ class CAIReviser:
 
         return revisions
 
-    def run_full_pipeline(self, initial_response: str) -> Tuple[str, List[str]]:
+    def run_full_pipeline(self, initial_response: str) -> tuple[str, list[str]]:
         """Run the full revision pipeline.
 
         Returns:
@@ -180,18 +200,19 @@ class CAIReviser:
 # CAIDataCollector
 # ---------------------------------------------------------------------------
 
+
 class CAIDataCollector:
     """Collects CAI pipeline outputs for training data or analysis."""
 
     def __init__(self, reviser: CAIReviser) -> None:
         self.reviser = reviser
 
-    def collect(self, responses: List[str]) -> List[Dict[str, str]]:
+    def collect(self, responses: list[str]) -> list[dict[str, str]]:
         """Run the full pipeline on each response.
 
         Returns a list of dicts with keys: "original", "final", "n_revisions".
         """
-        results: List[Dict[str, str]] = []
+        results: list[dict[str, str]] = []
         for resp in responses:
             final, history = self.reviser.run_full_pipeline(resp)
             results.append(
@@ -203,7 +224,7 @@ class CAIDataCollector:
             )
         return results
 
-    def get_stats(self, collected: List[Dict]) -> Dict[str, float]:
+    def get_stats(self, collected: list[dict]) -> dict[str, float]:
         """Compute summary statistics over collected data.
 
         Returns dict with keys: "n_samples", "mean_revisions", "mean_safety_improvement".

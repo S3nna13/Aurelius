@@ -19,11 +19,11 @@ from torch import Tensor
 class AQLMConfig:
     """Configuration for an AQLM-quantized linear layer."""
 
-    in_features: int            # weight matrix: [out_features, in_features]
+    in_features: int  # weight matrix: [out_features, in_features]
     out_features: int
-    n_codebooks: int = 2        # M: number of additive codebooks
-    codebook_size: int = 256    # K: codewords per codebook
-    group_size: int = 8         # quantize groups of `group_size` input features together
+    n_codebooks: int = 2  # M: number of additive codebooks
+    codebook_size: int = 256  # K: codewords per codebook
+    group_size: int = 8  # quantize groups of `group_size` input features together
 
 
 class AQLMCodebook(nn.Module):
@@ -109,7 +109,7 @@ class AQLMLinear(nn.Module):
         Args:
             weight: Float tensor of shape ``[out_features, in_features]``.
         """
-        assert weight.shape == (self.out_features, self.in_features), (
+        assert weight.shape == (self.out_features, self.in_features), (  # noqa: S101
             f"Expected weight shape ({self.out_features}, {self.in_features}), "
             f"got {tuple(weight.shape)}."
         )
@@ -129,12 +129,12 @@ class AQLMLinear(nn.Module):
             # codewords: [K, group_size] → [1, 1, K, group_size]
             diff = w.unsqueeze(2) - codewords.unsqueeze(0).unsqueeze(0)
             # diff: [out, n_groups, K, group_size]
-            dists = (diff ** 2).sum(dim=-1)  # [out, n_groups, K]
-            idx = dists.argmin(dim=-1)       # [out, n_groups]
+            dists = (diff**2).sum(dim=-1)  # [out, n_groups, K]
+            idx = dists.argmin(dim=-1)  # [out, n_groups]
             new_codes[:, :, m] = idx.to(torch.int16)
 
             # Subtract the chosen codewords from the residual.
-            chosen = codewords[idx]          # [out, n_groups, group_size]
+            chosen = codewords[idx]  # [out, n_groups, group_size]
             w = w - chosen
 
         self.codes.copy_(new_codes)
@@ -161,14 +161,14 @@ class AQLMLinear(nn.Module):
 
         for m, cb in enumerate(self.codebooks):
             idx = self.codes[:, :, m].long()  # [out_features, n_groups]
-            codewords = cb.weight             # [K, group_size]
+            codewords = cb.weight  # [K, group_size]
             # Gather selected codewords: [out_features, n_groups, group_size]
             selected = codewords[idx]
             reconstructed = reconstructed + selected
 
         # Reshape to [out_features, in_features] and apply per-row scale.
         weight = reconstructed.reshape(self.out_features, self.in_features)
-        weight = weight * self.scale          # broadcast: [out_features, 1]
+        weight = weight * self.scale  # broadcast: [out_features, 1]
         return weight
 
     # ------------------------------------------------------------------
@@ -206,7 +206,5 @@ class AQLMLinear(nn.Module):
         Returns:
             Compression ratio (> 1.0 means we use fewer bits than fp32).
         """
-        bits_per_weight = (
-            self.n_codebooks * math.log2(self.codebook_size)
-        ) / self.group_size
+        bits_per_weight = (self.n_codebooks * math.log2(self.codebook_size)) / self.group_size
         return 32.0 / bits_per_weight

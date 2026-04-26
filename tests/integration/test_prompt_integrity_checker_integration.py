@@ -6,7 +6,6 @@ from src.chat.chatml_template import Message
 from src.safety import SAFETY_FILTER_REGISTRY
 from src.safety.prompt_integrity_checker import PromptIntegrityChecker
 
-
 BASELINE = "You are Aurelius. Obey tool protocol."
 
 

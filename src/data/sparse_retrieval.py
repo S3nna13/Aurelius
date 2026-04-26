@@ -8,13 +8,13 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BM25Config:
@@ -27,6 +27,7 @@ class BM25Config:
 # Tokenizer
 # ---------------------------------------------------------------------------
 
+
 def tokenize_bm25(text: str) -> list[str]:
     """Lowercase and split on whitespace/punctuation, filtering empty strings."""
     tokens = re.split(r'[\s\.,!?;:()\[\]{}"\']+', text.lower())
@@ -36,6 +37,7 @@ def tokenize_bm25(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # BM25Index
 # ---------------------------------------------------------------------------
+
 
 class BM25Index:
     def __init__(self, config: BM25Config = None) -> None:
@@ -106,6 +108,7 @@ class BM25Index:
 # TF-IDF Index
 # ---------------------------------------------------------------------------
 
+
 class TF_IDF_Index:
     def __init__(self) -> None:
         self._documents: list[str] = []
@@ -173,6 +176,7 @@ class TF_IDF_Index:
 # HybridRetriever
 # ---------------------------------------------------------------------------
 
+
 class HybridRetriever:
     def __init__(self, bm25_weight: float = 0.6, tfidf_weight: float = 0.4) -> None:
         self.bm25_weight = bm25_weight
@@ -216,6 +220,7 @@ class HybridRetriever:
 # ---------------------------------------------------------------------------
 # RAGContext
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RAGContext:

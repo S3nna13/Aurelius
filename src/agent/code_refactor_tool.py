@@ -27,7 +27,6 @@ import io
 import tokenize
 from dataclasses import dataclass, field
 
-
 __all__ = ["CodeRefactorTool", "RefactorResult"]
 
 
@@ -251,16 +250,12 @@ class CodeRefactorTool:
             warnings.append(f"{var_name!r} is not assigned at module scope")
             return RefactorResult(code, "inline_variable", 0, warnings)
         if len(assigns) > 1:
-            warnings.append(
-                f"{var_name!r} has {len(assigns)} assignments; refusing to inline"
-            )
+            warnings.append(f"{var_name!r} has {len(assigns)} assignments; refusing to inline")
             return RefactorResult(code, "inline_variable", 0, warnings)
 
         assign = assigns[0]
         if not isinstance(assign, ast.Assign) or len(assign.targets) != 1:
-            warnings.append(
-                f"{var_name!r} is not a simple single-target assignment"
-            )
+            warnings.append(f"{var_name!r} is not a simple single-target assignment")
             return RefactorResult(code, "inline_variable", 0, warnings)
 
         value_expr = assign.value
@@ -287,9 +282,7 @@ class CodeRefactorTool:
         tree.body = new_body
         ast.fix_missing_locations(tree)
 
-        return RefactorResult(
-            _unparse(tree), "inline_variable", changes + 1, warnings
-        )
+        return RefactorResult(_unparse(tree), "inline_variable", changes + 1, warnings)
 
     # ------------------------------------------------------------------
     # remove_unused_imports
@@ -348,9 +341,7 @@ class CodeRefactorTool:
         ast.fix_missing_locations(tree)
 
         if changes == 0:
-            return RefactorResult(
-                code, "remove_unused_imports", 0, warnings
-            )
+            return RefactorResult(code, "remove_unused_imports", 0, warnings)
 
         # Lex the original (not the rewrite) just to keep the tokenize
         # import load-bearing and to surface encoding-level warnings.
@@ -359,9 +350,7 @@ class CodeRefactorTool:
         except tokenize.TokenizeError as exc:  # pragma: no cover - sanity
             warnings.append(f"tokenize warning: {exc}")
 
-        return RefactorResult(
-            _unparse(tree), "remove_unused_imports", changes, warnings
-        )
+        return RefactorResult(_unparse(tree), "remove_unused_imports", changes, warnings)
 
     # ------------------------------------------------------------------
     # extract_function
@@ -385,9 +374,7 @@ class CodeRefactorTool:
 
         warnings: list[str] = []
         if not new_fn_name.isidentifier():
-            raise ValueError(
-                f"{new_fn_name!r} is not a valid Python identifier"
-            )
+            raise ValueError(f"{new_fn_name!r} is not a valid Python identifier")
         tree = ast.parse(code)
 
         # Locate the owning statement list (module-level only).
@@ -399,9 +386,7 @@ class CodeRefactorTool:
             and getattr(stmt, "end_lineno", -1) <= end_line
         ]
         if not block_idxs:
-            warnings.append(
-                f"no module-level statements in lines {start_line}-{end_line}"
-            )
+            warnings.append(f"no module-level statements in lines {start_line}-{end_line}")
             return RefactorResult(code, "extract_function", 0, warnings)
 
         block = [body[i] for i in block_idxs]
@@ -480,9 +465,7 @@ class CodeRefactorTool:
                 replacement = ast.Assign(
                     targets=[
                         ast.Tuple(
-                            elts=[
-                                ast.Name(id=n, ctx=ast.Store()) for n in returns
-                            ],
+                            elts=[ast.Name(id=n, ctx=ast.Store()) for n in returns],
                             ctx=ast.Store(),
                         )
                     ],
@@ -540,24 +523,18 @@ class CodeRefactorTool:
                 and node.name == function_name
             ):
                 all_args = (
-                    list(node.args.posonlyargs)
-                    + list(node.args.args)
-                    + list(node.args.kwonlyargs)
+                    list(node.args.posonlyargs) + list(node.args.args) + list(node.args.kwonlyargs)
                 )
                 for a in all_args:
                     if a.arg == param_name:
                         if a.annotation is not None:
-                            warnings.append(
-                                f"overwriting existing annotation on {param_name!r}"
-                            )
+                            warnings.append(f"overwriting existing annotation on {param_name!r}")
                         a.annotation = annotation_node
                         changes += 1
                         break
 
         if changes == 0:
-            warnings.append(
-                f"no parameter {param_name!r} on function {function_name!r}"
-            )
+            warnings.append(f"no parameter {param_name!r} on function {function_name!r}")
             return RefactorResult(code, "add_type_hint", 0, warnings)
 
         ast.fix_missing_locations(tree)

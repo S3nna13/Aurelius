@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -22,7 +21,7 @@ class Snippet:
 class SnippetConfig:
     """Configuration for :class:`SnippetExtractor`."""
 
-    window_size: int = 150   # characters on either side of the hit centre
+    window_size: int = 150  # characters on either side of the hit centre
     max_snippets: int = 3
     merge_threshold: int = 50  # merge windows within this many chars of each other
 
@@ -30,14 +29,14 @@ class SnippetConfig:
 class SnippetExtractor:
     """Extracts and scores relevant text snippets from a document."""
 
-    def __init__(self, config: Optional[SnippetConfig] = None) -> None:
+    def __init__(self, config: SnippetConfig | None = None) -> None:
         self.config = config or SnippetConfig()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def extract(self, document: str, query_terms: List[str]) -> List[Snippet]:
+    def extract(self, document: str, query_terms: list[str]) -> list[Snippet]:
         """Return up to *max_snippets* scored snippets covering query-term hits.
 
         Algorithm
@@ -60,7 +59,7 @@ class SnippetExtractor:
         doc_lower = document.lower()
 
         # Step 1 & 2 – collect raw windows
-        raw_windows: List[tuple[int, int]] = []
+        raw_windows: list[tuple[int, int]] = []
         unique_terms = [t for t in dict.fromkeys(t.lower() for t in query_terms if t)]
         if not unique_terms:
             return []
@@ -84,7 +83,7 @@ class SnippetExtractor:
 
         # Step 3 – merge overlapping / near-adjacent windows
         raw_windows.sort()
-        merged: List[tuple[int, int]] = []
+        merged: list[tuple[int, int]] = []
         cur_s, cur_e = raw_windows[0]
         for s, e in raw_windows[1:]:
             if s <= cur_e + cfg.merge_threshold:
@@ -95,7 +94,7 @@ class SnippetExtractor:
         merged.append((cur_s, cur_e))
 
         # Step 4 – score each merged window
-        scored: List[Snippet] = []
+        scored: list[Snippet] = []
         for ws, we in merged:
             chunk = document[ws:we]
             chunk_lower = chunk.lower()
@@ -132,4 +131,4 @@ class SnippetExtractor:
 # Registry
 # ---------------------------------------------------------------------------
 
-SNIPPET_EXTRACTOR_REGISTRY: Dict[str, type] = {"default": SnippetExtractor}
+SNIPPET_EXTRACTOR_REGISTRY: dict[str, type] = {"default": SnippetExtractor}

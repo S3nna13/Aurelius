@@ -1,7 +1,6 @@
 """Tests for honeytoken manager."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.honeytoken_manager import HoneytokenManager
 

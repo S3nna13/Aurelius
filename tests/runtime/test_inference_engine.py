@@ -173,7 +173,7 @@ class TestInferenceEngine:
     def test_warmup_latencies_non_negative(self):
         engine = InferenceEngine(InferenceConfig(warmup_steps=2))
         lats = engine.warmup("sample")
-        assert all(l >= 0.0 for l in lats)
+        assert all(line >= 0.0 for line in lats)
 
     def test_throughput_zero_on_empty(self):
         engine = InferenceEngine(InferenceConfig())
@@ -222,7 +222,9 @@ class TestInferenceEngine:
         assert engine.config.max_batch_size == 7
 
     def test_generate_fn_stored(self):
-        fn = lambda *a: "y"
+        def fn(*a):
+            return "y"
+
         engine = InferenceEngine(InferenceConfig(), generate_fn=fn)
         assert engine.generate_fn is fn
 

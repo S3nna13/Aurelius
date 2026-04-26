@@ -5,7 +5,6 @@ import torch
 
 from src.inference.token_tree import TokenTree, TreeNode
 
-
 VOCAB = 32
 
 
@@ -101,7 +100,7 @@ class TestGetPaths:
         tree = make_tree(branching=2, depth=3)
         root = tree.build(make_logits(3))
         paths = tree.get_paths(root)
-        assert len(paths) == 2 ** 3
+        assert len(paths) == 2**3
 
     def test_paths_length(self):
         tree = make_tree(branching=2, depth=3)

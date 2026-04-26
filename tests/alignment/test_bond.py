@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 import torch
 import torch.nn as nn
@@ -10,13 +9,12 @@ import torch.nn as nn
 from src.alignment.bond import (
     BONDConfig,
     BONDTrainer,
-    compute_j_star,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_trainer(n=4, temperature=1.0, kl_coef=0.1, hard_bond=False):
     """Build a minimal BONDTrainer with tiny dummy models."""
@@ -45,6 +43,7 @@ def _rewards(batch=2, n=4, seed=0):
 # Test 1: BONDConfig has correct defaults
 # ---------------------------------------------------------------------------
 
+
 def test_bond_config_defaults():
     cfg = BONDConfig()
     assert cfg.n_samples == 8
@@ -57,6 +56,7 @@ def test_bond_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: compute_bond_weights soft mode sums to 1.0 within each group
 # ---------------------------------------------------------------------------
+
 
 def test_soft_weights_sum_to_one():
     trainer = _make_trainer(n=4)
@@ -74,10 +74,21 @@ def test_soft_weights_sum_to_one():
 # Test 3: Hard BOND gives one-hot weights (argmax gets weight 1)
 # ---------------------------------------------------------------------------
 
+
 def test_hard_bond_one_hot():
     trainer = _make_trainer(n=4, hard_bond=True)
-    rewards = torch.tensor([0.1, 0.5, 0.3, 0.2,   # group 0: argmax=1
-                             0.9, 0.2, 0.1, 0.4])  # group 1: argmax=0
+    rewards = torch.tensor(
+        [
+            0.1,
+            0.5,
+            0.3,
+            0.2,  # group 0: argmax=1
+            0.9,
+            0.2,
+            0.1,
+            0.4,
+        ]
+    )  # group 1: argmax=0
     weights = trainer.compute_bond_weights(rewards, n=4)
     w = weights.view(2, 4)
 
@@ -93,6 +104,7 @@ def test_hard_bond_one_hot():
 # Test 4: Higher reward → higher soft weight
 # ---------------------------------------------------------------------------
 
+
 def test_higher_reward_higher_weight():
     trainer = _make_trainer(n=4, temperature=1.0)
     # Use a single group where rewards are strictly increasing.
@@ -101,13 +113,14 @@ def test_higher_reward_higher_weight():
     # Weights must be monotonically increasing.
     for i in range(len(rewards) - 1):
         assert weights[i].item() < weights[i + 1].item(), (
-            f"Expected weights[{i}] < weights[{i+1}], got {weights}"
+            f"Expected weights[{i}] < weights[{i + 1}], got {weights}"
         )
 
 
 # ---------------------------------------------------------------------------
 # Test 5: compute_bond_loss returns scalar tensor
 # ---------------------------------------------------------------------------
+
 
 def test_bond_loss_is_scalar():
     trainer = _make_trainer(n=4)
@@ -125,6 +138,7 @@ def test_bond_loss_is_scalar():
 # Test 6: j_star_approximation increases monotonically with n
 # ---------------------------------------------------------------------------
 
+
 def test_j_star_increases_with_n():
     torch.manual_seed(42)
     # Create a large pool and test increasing n.
@@ -140,13 +154,14 @@ def test_j_star_increases_with_n():
 
     for i in range(len(j_values) - 1):
         assert j_values[i] <= j_values[i + 1] + 0.5, (
-            f"j_star not increasing: j[{i}]={j_values[i]:.4f} > j[{i+1}]={j_values[i+1]:.4f}"
+            f"j_star not increasing: j[{i}]={j_values[i]:.4f} > j[{i + 1}]={j_values[i + 1]:.4f}"
         )
 
 
 # ---------------------------------------------------------------------------
 # Test 7: Temperature → ∞ makes weights uniform
 # ---------------------------------------------------------------------------
+
 
 def test_high_temperature_uniform_weights():
     trainer = _make_trainer(n=4, temperature=1.0)
@@ -162,6 +177,7 @@ def test_high_temperature_uniform_weights():
 # ---------------------------------------------------------------------------
 # Test 8: Temperature → 0 approaches hard BOND
 # ---------------------------------------------------------------------------
+
 
 def test_low_temperature_approaches_hard_bond():
     trainer_soft = _make_trainer(n=4, hard_bond=False)
@@ -180,6 +196,7 @@ def test_low_temperature_approaches_hard_bond():
 # Test 9: train_step returns dict with all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_keys():
     trainer = _make_trainer(n=4)
     batch, n = 2, 4
@@ -192,14 +209,13 @@ def test_train_step_keys():
     result = trainer.train_step(input_ids, ref_lp, policy_lp, rewards)
 
     required_keys = {"loss", "bond_loss", "kl_loss", "j_star", "effective_n"}
-    assert required_keys.issubset(result.keys()), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    assert required_keys.issubset(result.keys()), f"Missing keys: {required_keys - result.keys()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: Gradient flows through bond_loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_bond_loss():
     trainer = _make_trainer(n=4)
@@ -218,6 +234,7 @@ def test_gradient_flows_through_bond_loss():
 # ---------------------------------------------------------------------------
 # Test 11: reward_scaling=True normalizes rewards before weighting
 # ---------------------------------------------------------------------------
+
 
 def test_reward_scaling_normalizes():
     """With reward_scaling=True the effective weights should differ from

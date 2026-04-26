@@ -8,11 +8,11 @@ import pytest
 import torch
 
 from src.alignment.debate_reward import (
-    DebateConfig,
     ArgumentGenerator,
+    DebateConfig,
+    DebateRewardTrainer,
     JudgeModel,
     debate_reward,
-    DebateRewardTrainer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -88,7 +88,9 @@ def test_argument_generator_pro_vs_con_differ():
     """generate_argument produces different outputs for 'pro' vs 'con'."""
     torch.manual_seed(0)
     model = make_model()
-    gen = ArgumentGenerator(model, DebateConfig(n_rounds=1, max_argument_tokens=3, judge_temperature=0.5))
+    gen = ArgumentGenerator(
+        model, DebateConfig(n_rounds=1, max_argument_tokens=3, judge_temperature=0.5)
+    )
     q = make_question_ids()
     # Run multiple trials; they should differ at least once (with temperature)
     any_diff = False

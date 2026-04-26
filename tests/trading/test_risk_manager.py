@@ -4,10 +4,10 @@ import unittest
 
 from src.trading.portfolio import Portfolio
 from src.trading.risk_manager import (
+    RISK_REGISTRY,
+    RiskLevel,
     RiskManager,
     RiskRule,
-    RiskLevel,
-    RISK_REGISTRY,
     register_risk_manager,
 )
 
@@ -68,6 +68,7 @@ class TestRiskManager(unittest.TestCase):
 
     def test_var_computation(self):
         from src.trading.risk_manager import RiskManager as RM
+
         rm = RM(self.portfolio)
         returns = [-0.01, -0.02, 0.01, 0.03, -0.015, 0.005, -0.005, 0.01]
         var_95 = rm._compute_var(returns, 0.95)

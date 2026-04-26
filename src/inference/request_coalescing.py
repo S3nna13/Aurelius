@@ -103,7 +103,8 @@ class RequestCoalescer:
             "pending": float(pending),
             "unique": float(self._total_unique),
             "deduplicated": float(self._total_deduplicated),
-            "savings_ratio": float(self._total_deduplicated) / float(self._total_unique + self._total_deduplicated)
+            "savings_ratio": float(self._total_deduplicated)
+            / float(self._total_unique + self._total_deduplicated)
             if (self._total_unique + self._total_deduplicated) > 0
             else 0.0,
         }

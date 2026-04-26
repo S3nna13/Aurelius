@@ -6,9 +6,7 @@ Import path: aurelius.inference.kv_cache_compression_h2o
 
 from __future__ import annotations
 
-import pytest
 import torch
-
 from aurelius.inference.kv_cache_compression_h2o import (
     CacheStats,
     H2OKVCache,
@@ -130,9 +128,7 @@ def test_h2o_eviction_keeps_recent_tokens():
     n_recent = cfg.n_recent
     # We stored distinct keys; after eviction the tail of the cache should hold
     # the most recently inserted keys — verify tensor is non-empty and tail size.
-    assert keys.shape[1] >= n_recent, (
-        f"Expected >= {n_recent} positions, got {keys.shape[1]}"
-    )
+    assert keys.shape[1] >= n_recent, f"Expected >= {n_recent} positions, got {keys.shape[1]}"
 
 
 # ---------------------------------------------------------------------------

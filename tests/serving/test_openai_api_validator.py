@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import copy
 
-import pytest
-
 from src.serving.openai_api_validator import (
-    APIValidationError,
     OpenAIChatRequestValidator,
     OpenAIChatResponseValidator,
 )
@@ -22,6 +19,7 @@ def _fields(errors):
 
 
 # --------------------------------------------------------------------- requests
+
 
 def test_minimal_valid_request_passes():
     v = OpenAIChatRequestValidator()
@@ -77,9 +75,13 @@ def test_assistant_message_with_tool_calls_only_is_valid():
 
 def test_temperature_out_of_range_errors():
     v = OpenAIChatRequestValidator()
-    errs = v.validate({"model": "m", "messages": [{"role": "user", "content": "x"}], "temperature": 2.5})
+    errs = v.validate(
+        {"model": "m", "messages": [{"role": "user", "content": "x"}], "temperature": 2.5}
+    )
     assert any(e.field == "temperature" and e.code == "out_of_range" for e in errs)
-    errs = v.validate({"model": "m", "messages": [{"role": "user", "content": "x"}], "temperature": -0.1})
+    errs = v.validate(
+        {"model": "m", "messages": [{"role": "user", "content": "x"}], "temperature": -0.1}
+    )
     assert any(e.field == "temperature" and e.code == "out_of_range" for e in errs)
 
 
@@ -91,17 +93,21 @@ def test_top_p_out_of_range_errors():
 
 def test_negative_max_tokens_errors():
     v = OpenAIChatRequestValidator()
-    errs = v.validate({"model": "m", "messages": [{"role": "user", "content": "x"}], "max_tokens": -1})
+    errs = v.validate(
+        {"model": "m", "messages": [{"role": "user", "content": "x"}], "max_tokens": -1}
+    )
     assert any(e.field == "max_tokens" and e.code == "out_of_range" for e in errs)
 
 
 def test_tools_with_invalid_schema_errors():
     v = OpenAIChatRequestValidator()
-    errs = v.validate({
-        "model": "m",
-        "messages": [{"role": "user", "content": "x"}],
-        "tools": [{"type": "not_a_function"}],  # missing function, wrong type
-    })
+    errs = v.validate(
+        {
+            "model": "m",
+            "messages": [{"role": "user", "content": "x"}],
+            "tools": [{"type": "not_a_function"}],  # missing function, wrong type
+        }
+    )
     assert any("tools[0]" in e.field for e in errs)
     assert "invalid_value" in _codes(errs) or "missing_field" in _codes(errs)
 
@@ -124,21 +130,25 @@ def test_stop_accepts_string_list_and_null():
 
 def test_strict_false_allows_unknown_top_level_fields():
     v = OpenAIChatRequestValidator(strict=False)
-    errs = v.validate({
-        "model": "m",
-        "messages": [{"role": "user", "content": "x"}],
-        "custom_future_field": True,
-    })
+    errs = v.validate(
+        {
+            "model": "m",
+            "messages": [{"role": "user", "content": "x"}],
+            "custom_future_field": True,
+        }
+    )
     assert errs == []
 
 
 def test_unknown_field_in_strict_mode_errors():
     v = OpenAIChatRequestValidator(strict=True)
-    errs = v.validate({
-        "model": "m",
-        "messages": [{"role": "user", "content": "x"}],
-        "custom_future_field": True,
-    })
+    errs = v.validate(
+        {
+            "model": "m",
+            "messages": [{"role": "user", "content": "x"}],
+            "custom_future_field": True,
+        }
+    )
     assert any(e.code == "unknown_field" for e in errs)
 
 
@@ -158,21 +168,22 @@ def test_determinism():
 
 def test_tool_call_in_request_requires_function_name():
     v = OpenAIChatRequestValidator()
-    errs = v.validate({
-        "model": "m",
-        "messages": [
-            {
-                "role": "assistant",
-                "tool_calls": [
-                    {"id": "c1", "type": "function", "function": {}}
-                ],
-            }
-        ],
-    })
+    errs = v.validate(
+        {
+            "model": "m",
+            "messages": [
+                {
+                    "role": "assistant",
+                    "tool_calls": [{"id": "c1", "type": "function", "function": {}}],
+                }
+            ],
+        }
+    )
     assert any(e.field.endswith("function.name") and e.code == "missing_field" for e in errs)
 
 
 # -------------------------------------------------------------------- responses
+
 
 def _valid_response():
     return {
@@ -223,7 +234,7 @@ def test_response_tool_calls_in_assistant_valid():
             {
                 "id": "call_1",
                 "type": "function",
-                "function": {"name": "get_weather", "arguments": "{\"city\":\"NYC\"}"},
+                "function": {"name": "get_weather", "arguments": '{"city":"NYC"}'},
             }
         ],
     }

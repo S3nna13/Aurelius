@@ -2,20 +2,19 @@
 
 import pytest
 import torch
-import torch.nn.functional as F
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.semantic_similarity import (
+    SemanticSimilarityModel,
     SimilarityConfig,
-    pool_hidden_states,
-    get_embeddings,
+    compute_similarity,
     cosine_similarity,
     dot_similarity,
     euclidean_distance,
-    compute_similarity,
-    SemanticSimilarityModel,
+    get_embeddings,
+    pool_hidden_states,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -45,6 +44,7 @@ def small_model():
 # 1. SimilarityConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_config_defaults():
     cfg = SimilarityConfig()
     assert cfg.pooling == "mean"
@@ -62,6 +62,7 @@ def test_similarity_config_custom():
 # ---------------------------------------------------------------------------
 # 2. pool_hidden_states - mean pooling shape
 # ---------------------------------------------------------------------------
+
 
 def test_pool_mean_shape():
     B, T, d = 3, 10, 64
@@ -94,6 +95,7 @@ def test_pool_mean_respects_mask():
 # 3. pool_hidden_states - last token pooling shape
 # ---------------------------------------------------------------------------
 
+
 def test_pool_last_shape():
     B, T, d = 4, 12, 48
     hidden = torch.randn(B, T, d)
@@ -116,6 +118,7 @@ def test_pool_last_selects_correct_token():
 # 4. pool_hidden_states - cls pooling shape
 # ---------------------------------------------------------------------------
 
+
 def test_pool_cls_shape():
     B, T, d = 2, 10, 64
     hidden = torch.randn(B, T, d)
@@ -133,6 +136,7 @@ def test_pool_cls_selects_first_token():
 # ---------------------------------------------------------------------------
 # 5. get_embeddings - shape and normalization
 # ---------------------------------------------------------------------------
+
 
 def test_get_embeddings_shape(small_model):
     input_ids = torch.randint(0, 256, (2, 8))
@@ -169,6 +173,7 @@ def test_get_embeddings_last_pooling(small_model):
 # 6. cosine_similarity
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_similarity_identical_vectors():
     v = torch.randn(4, 32)
     scores = cosine_similarity(v, v)
@@ -202,6 +207,7 @@ def test_cosine_similarity_range():
 # 7. dot_similarity
 # ---------------------------------------------------------------------------
 
+
 def test_dot_similarity_shape():
     a = torch.randn(4, 16)
     b = torch.randn(4, 16)
@@ -219,6 +225,7 @@ def test_dot_similarity_value():
 # ---------------------------------------------------------------------------
 # 8. euclidean_distance
 # ---------------------------------------------------------------------------
+
 
 def test_euclidean_distance_identical():
     v = torch.randn(3, 16)
@@ -243,6 +250,7 @@ def test_euclidean_distance_non_negative():
 # ---------------------------------------------------------------------------
 # 9. compute_similarity dispatching
 # ---------------------------------------------------------------------------
+
 
 def test_compute_similarity_dispatches_cosine():
     a = torch.randn(3, 16)
@@ -278,6 +286,7 @@ def test_compute_similarity_invalid_metric():
 # ---------------------------------------------------------------------------
 # 10. SemanticSimilarityModel
 # ---------------------------------------------------------------------------
+
 
 def test_semantic_similarity_model_embed_shape(small_model):
     sim_model = SemanticSimilarityModel(small_model)

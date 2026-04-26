@@ -8,21 +8,21 @@ from __future__ import annotations
 
 import copy
 import math
-import pytest
+
 import torch
 import torch.nn as nn
 
 from src.alignment.contrastive_preference import (
     ContrastivePrefConfig,
     ContrastivePrefOptimizer,
-    triplet_preference_loss,
     multi_negative_ranking_loss,
+    triplet_preference_loss,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny mock language model
 # ---------------------------------------------------------------------------
+
 
 class MockLM(nn.Module):
     """Minimal LM for testing: input_ids (B, T) -> logits (B, T, vocab_size)."""
@@ -33,8 +33,8 @@ class MockLM(nn.Module):
         self.proj = nn.Linear(d_model, vocab_size)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        x = self.embed(input_ids)   # (B, T, d_model)
-        return self.proj(x)         # (B, T, vocab_size)
+        x = self.embed(input_ids)  # (B, T, d_model)
+        return self.proj(x)  # (B, T, vocab_size)
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +98,7 @@ def _make_rejected_list(n: int = N_NEG, batch: int = BATCH, seq_len: int = SEQ_L
 # Test 1: ContrastivePrefConfig defaults correct
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """ContrastivePrefConfig should have the specified default values."""
     cfg = ContrastivePrefConfig()
@@ -112,6 +113,7 @@ def test_config_defaults():
 # Test 2: compute_sequence_logps returns (batch,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sequence_logps_shape():
     """compute_sequence_logps must return a 1-D (batch,) tensor."""
     opt, policy, _ = _make_cpo()
@@ -125,6 +127,7 @@ def test_compute_sequence_logps_shape():
 # ---------------------------------------------------------------------------
 # Test 3: info_nce_preference_loss returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_info_nce_loss_returns_scalar():
     """info_nce_preference_loss must return a scalar (0-dim) tensor."""
@@ -147,8 +150,10 @@ def test_info_nce_loss_returns_scalar():
     ]
 
     loss, metrics = opt.info_nce_preference_loss(
-        chosen_logps, rejected_logps_list,
-        ref_chosen_logps, ref_rejected_logps_list,
+        chosen_logps,
+        rejected_logps_list,
+        ref_chosen_logps,
+        ref_rejected_logps_list,
     )
 
     assert loss.ndim == 0, f"Expected scalar loss, got shape {loss.shape}"
@@ -158,6 +163,7 @@ def test_info_nce_loss_returns_scalar():
 # ---------------------------------------------------------------------------
 # Test 4: Accuracy > 0.5 when chosen_logp > all rejected_logps
 # ---------------------------------------------------------------------------
+
 
 def test_accuracy_high_when_chosen_dominates():
     """When chosen implicit reward clearly exceeds all rejected, accuracy should be 1.0."""
@@ -171,18 +177,19 @@ def test_accuracy_high_when_chosen_dominates():
     ref_rejected_logps_list = [torch.full((BATCH,), 0.0) for _ in range(N_NEG)]  # rej_ratio = -5.0
 
     _, metrics = opt.info_nce_preference_loss(
-        chosen_logps, rejected_logps_list,
-        ref_chosen_logps, ref_rejected_logps_list,
+        chosen_logps,
+        rejected_logps_list,
+        ref_chosen_logps,
+        ref_rejected_logps_list,
     )
 
-    assert metrics["accuracy"] > 0.5, (
-        f"Expected accuracy > 0.5, got {metrics['accuracy']}"
-    )
+    assert metrics["accuracy"] > 0.5, f"Expected accuracy > 0.5, got {metrics['accuracy']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: Lower temperature -> sharper distribution -> higher loss gradient
 # ---------------------------------------------------------------------------
+
 
 def test_lower_temperature_sharper_distribution():
     """Lower temperature should produce a larger gradient magnitude on chosen_logps."""
@@ -212,13 +219,14 @@ def test_lower_temperature_sharper_distribution():
     grad_low = chosen_logps_low_T.grad.abs().mean().item()
 
     assert grad_low > grad_high, (
-        f"Lower temperature should produce larger gradient: low={grad_low:.4f} vs high={grad_high:.4f}"
+        f"Lower temperature should produce larger gradient: low={grad_low:.4f} vs high={grad_high:.4f}"  # noqa: E501
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 6: select_hard_negatives returns correct count (n_hard)
 # ---------------------------------------------------------------------------
+
 
 def test_select_hard_negatives_count():
     """select_hard_negatives must return exactly n_hard items."""
@@ -241,6 +249,7 @@ def test_select_hard_negatives_count():
 # Test 7: Hard negatives are closest in reward to chosen
 # ---------------------------------------------------------------------------
 
+
 def test_hard_negatives_are_closest_in_reward():
     """The selected hard negatives should be those with reward closest to chosen."""
     opt, _, _ = _make_cpo(beta=1.0)
@@ -262,20 +271,19 @@ def test_hard_negatives_are_closest_in_reward():
     selected_means = sorted((t.mean().item() for t in sel_rej), reverse=True)
     hardest_expected_sorted = sorted(hardest_expected, reverse=True)
     for got, exp in zip(selected_means, hardest_expected_sorted):
-        assert abs(got - exp) < 1e-4, (
-            f"Expected hard negative mean ~{exp}, got {got}"
-        )
+        assert abs(got - exp) < 1e-4, f"Expected hard negative mean ~{exp}, got {got}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: triplet_preference_loss is 0 when margin satisfied
 # ---------------------------------------------------------------------------
 
+
 def test_triplet_loss_zero_when_margin_satisfied():
     """triplet_preference_loss should be exactly 0 when the margin is clearly satisfied."""
     # anchor - negative >> anchor - positive + margin
     anchor = torch.zeros(BATCH)
-    positive = torch.full((BATCH,), -0.1)   # anchor - positive = 0.1
+    positive = torch.full((BATCH,), -0.1)  # anchor - positive = 0.1
     negative = torch.full((BATCH,), -10.0)  # anchor - negative = 10.0
     margin = 1.0  # need (anchor-negative) - (anchor-positive) >= margin -> 9.9 >= 1.0 (yes)
 
@@ -286,6 +294,7 @@ def test_triplet_loss_zero_when_margin_satisfied():
 # ---------------------------------------------------------------------------
 # Test 9: multi_negative_ranking_loss is scalar
 # ---------------------------------------------------------------------------
+
 
 def test_multi_negative_ranking_loss_scalar():
     """multi_negative_ranking_loss must return a scalar (0-dim) tensor."""
@@ -300,6 +309,7 @@ def test_multi_negative_ranking_loss_scalar():
 # ---------------------------------------------------------------------------
 # Test 10: train_step returns dict with all required keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_required_keys():
     """train_step must return a dict containing loss, accuracy, mean_chosen_reward,
@@ -327,20 +337,21 @@ def test_train_step_returns_required_keys():
 # Test 11: Gradient flows through InfoNCE loss
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows_through_infonce():
     """Backward through info_nce_preference_loss must produce finite gradients."""
     opt, _, _ = _make_cpo()
 
     chosen_logps = torch.tensor([-1.0, -1.5], requires_grad=True)
-    rejected_logps_list = [
-        torch.tensor([-2.0, -2.5]) for _ in range(N_NEG)
-    ]
+    rejected_logps_list = [torch.tensor([-2.0, -2.5]) for _ in range(N_NEG)]
     ref_chosen_logps = torch.zeros(BATCH)
     ref_rejected_logps_list = [torch.zeros(BATCH) for _ in range(N_NEG)]
 
     loss, _ = opt.info_nce_preference_loss(
-        chosen_logps, rejected_logps_list,
-        ref_chosen_logps, ref_rejected_logps_list,
+        chosen_logps,
+        rejected_logps_list,
+        ref_chosen_logps,
+        ref_rejected_logps_list,
     )
     loss.backward()
 

@@ -3,6 +3,7 @@
 Implements Trail of Bits security principles: validate early, fail closed,
 reject unexpected characters, and enforce strict type/range boundaries.
 """
+
 from __future__ import annotations
 
 import re
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 @dataclass
 class SanitizerRule:
     """A single validation rule for input sanitization."""
+
     field: str
     pattern: str | None = None
     max_length: int | None = None
@@ -40,9 +42,20 @@ class InputSanitizer:
 
     def __post_init__(self) -> None:
         if self.reject_sql_keywords:
-            self._sql_keywords = {"SELECT", "DROP", "DELETE", "INSERT",
-                                  "UPDATE", "ALTER", "CREATE", "EXEC",
-                                  "--", "/*", "*/", "UNION"}
+            self._sql_keywords = {
+                "SELECT",
+                "DROP",
+                "DELETE",
+                "INSERT",
+                "UPDATE",
+                "ALTER",
+                "CREATE",
+                "EXEC",
+                "--",
+                "/*",
+                "*/",
+                "UNION",
+            }
         if self.reject_html_tags:
             self._html_tag_re = re.compile(r"<[^>]*>")
 

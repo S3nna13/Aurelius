@@ -9,21 +9,21 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProbingConfig:
     """Configuration for probing classifiers."""
+
     n_classes: int = 2
     d_hidden: int = 512
     n_epochs: int = 100
@@ -35,6 +35,7 @@ class ProbingConfig:
 # ---------------------------------------------------------------------------
 # Linear Probe
 # ---------------------------------------------------------------------------
+
 
 class LinearProbe(nn.Module):
     """Single linear layer probe: maps hidden states to class logits."""
@@ -58,12 +59,13 @@ class LinearProbe(nn.Module):
 # Training
 # ---------------------------------------------------------------------------
 
+
 def train_probe(
     probe: LinearProbe,
     hiddens: Tensor,
     labels: Tensor,
     config: ProbingConfig,
-) -> List[float]:
+) -> list[float]:
     """
     Train the probe with AdamW + L2 regularisation.
 
@@ -76,12 +78,10 @@ def train_probe(
     Returns:
         List of per-epoch average cross-entropy losses.
     """
-    optimizer = torch.optim.AdamW(
-        probe.parameters(), lr=config.lr, weight_decay=config.l2_reg
-    )
+    optimizer = torch.optim.AdamW(probe.parameters(), lr=config.lr, weight_decay=config.l2_reg)
 
     n = hiddens.size(0)
-    epoch_losses: List[float] = []
+    epoch_losses: list[float] = []
 
     probe.train()
     for _ in range(config.n_epochs):
@@ -90,7 +90,7 @@ def train_probe(
         hiddens_shuffled = hiddens[perm]
         labels_shuffled = labels[perm]
 
-        batch_losses: List[float] = []
+        batch_losses: list[float] = []
         for start in range(0, n, config.batch_size):
             end = start + config.batch_size
             h_batch = hiddens_shuffled[start:end]
@@ -113,11 +113,12 @@ def train_probe(
 # Evaluation
 # ---------------------------------------------------------------------------
 
+
 def evaluate_probe(
     probe: LinearProbe,
     hiddens: Tensor,
     labels: Tensor,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Evaluate probe accuracy and loss on a test set.
 
@@ -142,6 +143,7 @@ def evaluate_probe(
 # ---------------------------------------------------------------------------
 # Mutual Information Proxy
 # ---------------------------------------------------------------------------
+
 
 def compute_mutual_information_proxy(
     hiddens: Tensor,
@@ -211,18 +213,21 @@ def compute_mutual_information_proxy(
 # Results dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LayerProbingResults:
     """Results from probing a single transformer layer."""
+
     layer_idx: int
     accuracy: float
     loss: float
-    train_losses: List[float] = field(default_factory=list)
+    train_losses: list[float] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
 # Multi-layer prober
 # ---------------------------------------------------------------------------
+
 
 class MultiLayerProber:
     """Probe multiple transformer layers and identify the most informative one."""
@@ -260,9 +265,9 @@ class MultiLayerProber:
 
     def probe_all_layers(
         self,
-        all_hiddens: List[Tensor],
+        all_hiddens: list[Tensor],
         labels: Tensor,
-    ) -> List[LayerProbingResults]:
+    ) -> list[LayerProbingResults]:
         """
         Probe every layer and return results sorted by layer index.
 
@@ -280,7 +285,7 @@ class MultiLayerProber:
         results.sort(key=lambda r: r.layer_idx)
         return results
 
-    def get_best_layer(self, results: List[LayerProbingResults]) -> int:
+    def get_best_layer(self, results: list[LayerProbingResults]) -> int:
         """
         Return the layer index with the highest probing accuracy.
 

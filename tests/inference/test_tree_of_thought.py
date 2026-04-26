@@ -18,24 +18,25 @@ Covers:
   - Registry entry                            (test_registry_entry)
   - Integration: propose+value+terminal       (test_integration_full_search)
 """
+
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
+from src.inference import DECODER_REGISTRY
 from src.inference.tree_of_thought import (
     ThoughtNode,
     ToTConfig,
     ToTTree,
     TreeOfThoughtDecoder,
 )
-from src.inference import DECODER_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _always_true(_: str) -> bool:
     return True
@@ -58,6 +59,7 @@ def _propose(*thoughts: str):
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 class TestToTConfigDefaults:
     def test_config_defaults(self):
         cfg = ToTConfig()
@@ -72,6 +74,7 @@ class TestToTConfigDefaults:
 # ---------------------------------------------------------------------------
 # 2. ToTTree.add_node — id increments
 # ---------------------------------------------------------------------------
+
 
 class TestToTTreeAddNode:
     def test_tree_add_node(self):
@@ -95,6 +98,7 @@ class TestToTTreeAddNode:
 # 3. ToTTree.children
 # ---------------------------------------------------------------------------
 
+
 class TestToTTreeChildren:
     def test_tree_children(self):
         tree = ToTTree()
@@ -114,6 +118,7 @@ class TestToTTreeChildren:
 # ---------------------------------------------------------------------------
 # 4. ToTTree.path_to_root
 # ---------------------------------------------------------------------------
+
 
 class TestToTTreePathToRoot:
     def test_tree_path_to_root(self):
@@ -140,6 +145,7 @@ class TestToTTreePathToRoot:
 # 5. ToTTree.best_leaf
 # ---------------------------------------------------------------------------
 
+
 class TestToTTreeBestLeaf:
     def test_tree_best_leaf(self):
         tree = ToTTree()
@@ -162,6 +168,7 @@ class TestToTTreeBestLeaf:
 # 6. ToTTree.size
 # ---------------------------------------------------------------------------
 
+
 class TestToTTreeSize:
     def test_tree_size(self):
         tree = ToTTree()
@@ -175,6 +182,7 @@ class TestToTTreeSize:
 # ---------------------------------------------------------------------------
 # 7. generate_thoughts limits to n_candidates
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateThoughts:
     def test_generate_thoughts_limits(self):
@@ -199,6 +207,7 @@ class TestGenerateThoughts:
 # 8. evaluate_state delegates correctly
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateState:
     def test_evaluate_state_calls_fn(self):
         cfg = ToTConfig()
@@ -214,6 +223,7 @@ class TestEvaluateState:
 # ---------------------------------------------------------------------------
 # 9. BFS breadth pruning
 # ---------------------------------------------------------------------------
+
 
 class TestBFSBreadth:
     def test_bfs_explores_breadth(self):
@@ -238,17 +248,14 @@ class TestBFSBreadth:
         # Those 2 nodes each create up to 4 children at depth-2.
         # Total nodes = 1 root + (root's n_candidates) + (b * n_candidates) = 1 + 4 + 8 = 13.
         # Upper bound: 1 + n_candidates + breadth_limit * n_candidates
-        max_expected = (
-            1
-            + cfg.n_candidates
-            + cfg.breadth_limit * cfg.n_candidates
-        )
+        max_expected = 1 + cfg.n_candidates + cfg.breadth_limit * cfg.n_candidates
         assert tree.size() <= max_expected
 
 
 # ---------------------------------------------------------------------------
 # 10. BFS terminates at max_depth
 # ---------------------------------------------------------------------------
+
 
 class TestBFSMaxDepth:
     def test_bfs_terminates_at_max_depth(self):
@@ -275,6 +282,7 @@ class TestBFSMaxDepth:
 # 11. BFS stops at terminal node
 # ---------------------------------------------------------------------------
 
+
 class TestBFSTerminal:
     def test_bfs_terminal_stops(self):
         """BFS should return as soon as it creates a terminal node."""
@@ -300,9 +308,7 @@ class TestBFSTerminal:
 
         # Tree should contain root + at least one terminal child
         terminal_nodes = [
-            tree.get_node(nid)
-            for nid in range(tree.size())
-            if tree.get_node(nid).is_terminal
+            tree.get_node(nid) for nid in range(tree.size()) if tree.get_node(nid).is_terminal
         ]
         assert len(terminal_nodes) >= 1
 
@@ -310,6 +316,7 @@ class TestBFSTerminal:
 # ---------------------------------------------------------------------------
 # 12. DFS prunes nodes below threshold
 # ---------------------------------------------------------------------------
+
 
 class TestDFSPruning:
     def test_dfs_prunes_low_value(self):
@@ -330,7 +337,7 @@ class TestDFSPruning:
             call_order.append(state)
             # 'good' paths get high value, 'bad' paths get low value
             if "bad" in state:
-                return 0.1   # below threshold → pruned
+                return 0.1  # below threshold → pruned
             return 0.9
 
         terminal_fn = _always_false
@@ -352,6 +359,7 @@ class TestDFSPruning:
 # 13. DFS finds terminal state
 # ---------------------------------------------------------------------------
 
+
 class TestDFSSolution:
     def test_dfs_finds_solution(self):
         cfg = ToTConfig(
@@ -365,8 +373,6 @@ class TestDFSSolution:
         propose = _propose("step1", "step2")
         value_fn = _fixed_value(0.9)
 
-        terminal_counter = {"count": 0}
-
         def terminal_fn(state: str) -> bool:
             # Terminal on the first child created (depth 1)
             return state != "initial"
@@ -374,9 +380,7 @@ class TestDFSSolution:
         tree = decoder.dfs("initial", propose, value_fn, terminal_fn)
 
         terminal_nodes = [
-            tree.get_node(nid)
-            for nid in range(tree.size())
-            if tree.get_node(nid).is_terminal
+            tree.get_node(nid) for nid in range(tree.size()) if tree.get_node(nid).is_terminal
         ]
         assert len(terminal_nodes) >= 1
 
@@ -384,6 +388,7 @@ class TestDFSSolution:
 # ---------------------------------------------------------------------------
 # 14. search() dispatches to correct method
 # ---------------------------------------------------------------------------
+
 
 class TestSearchDispatches:
     def test_search_dispatches_bfs(self, monkeypatch):
@@ -429,6 +434,7 @@ class TestSearchDispatches:
 # 15. Registry entry
 # ---------------------------------------------------------------------------
 
+
 class TestRegistry:
     def test_registry_entry(self):
         assert "tree_of_thought" in DECODER_REGISTRY
@@ -438,6 +444,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # 16. Integration test
 # ---------------------------------------------------------------------------
+
 
 class TestIntegration:
     def test_integration_full_search(self):
@@ -455,7 +462,7 @@ class TestIntegration:
         decoder = TreeOfThoughtDecoder(cfg)
 
         propose_fn = lambda _s: ["step1", "step2"]  # noqa: E731
-        value_fn = lambda _s: 0.8                   # noqa: E731
+        value_fn = lambda _s: 0.8  # noqa: E731
 
         # BFS joins state as "parent_state thought", so depth-1 nodes are
         # "problem step1" / "problem step2" — these each contain exactly
@@ -475,9 +482,7 @@ class TestIntegration:
 
         # At least one terminal node must exist in the tree
         terminal_nodes = [
-            tree.get_node(nid)
-            for nid in range(tree.size())
-            if tree.get_node(nid).is_terminal
+            tree.get_node(nid) for nid in range(tree.size()) if tree.get_node(nid).is_terminal
         ]
         assert len(terminal_nodes) >= 1, "Expected at least one terminal node."
 

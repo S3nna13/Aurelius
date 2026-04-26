@@ -10,15 +10,15 @@ Verifies:
 from __future__ import annotations
 
 import torch
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # 1. Registry membership
 # ---------------------------------------------------------------------------
 
+
 def test_moonvit_patch_packer_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
+
     assert "moonvit_patch_packer" in MODEL_COMPONENT_REGISTRY, (
         "'moonvit_patch_packer' not found in MODEL_COMPONENT_REGISTRY"
     )
@@ -28,19 +28,19 @@ def test_moonvit_patch_packer_in_registry():
 # 2. Registry class identity
 # ---------------------------------------------------------------------------
 
+
 def test_registry_class_is_moonvit_patch_packer():
     from src.model import MODEL_COMPONENT_REGISTRY
     from src.model.moonvit_patch_packer import MoonVitPatchPacker
 
     cls = MODEL_COMPONENT_REGISTRY["moonvit_patch_packer"]
-    assert cls is MoonVitPatchPacker, (
-        f"Expected MoonVitPatchPacker, got {cls}"
-    )
+    assert cls is MoonVitPatchPacker, f"Expected MoonVitPatchPacker, got {cls}"
 
 
 # ---------------------------------------------------------------------------
 # 3. Construct from registry + forward pass — output shapes
 # ---------------------------------------------------------------------------
+
 
 def test_registry_forward_shapes():
     """Simulate AureliusConfig dict pattern: build from config dict, run forward."""
@@ -79,6 +79,7 @@ def test_registry_forward_shapes():
 # 4. Output tensor dtypes
 # ---------------------------------------------------------------------------
 
+
 def test_registry_output_dtypes():
     """patches/mask are float, positions are long integer indices."""
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -99,6 +100,7 @@ def test_registry_output_dtypes():
 # ---------------------------------------------------------------------------
 # 5. Regression guard: existing MODEL_COMPONENT_REGISTRY keys still present
 # ---------------------------------------------------------------------------
+
 
 def test_existing_registry_keys_intact():
     from src.model import MODEL_COMPONENT_REGISTRY

@@ -49,9 +49,7 @@ def test_embeddings_l2_normalized() -> None:
     ids = _random_ids(6, 8, cfg.vocab_size, seed=1)
     out = emb(ids)
     norms = out.norm(dim=-1)
-    assert torch.allclose(
-        norms, torch.ones_like(norms), atol=1e-5
-    ), f"norms were {norms}"
+    assert torch.allclose(norms, torch.ones_like(norms), atol=1e-5), f"norms were {norms}"
 
 
 def test_gradient_flow_to_all_trainable_params() -> None:

@@ -3,22 +3,22 @@
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.probing_advanced import (
-    ProbingConfig,
     LinearProbeV2,
     MLPProbe,
+    MultiLayerProber,
+    ProbingConfig,
+    estimate_mutual_information,
     extract_layer_representations,
     train_probe,
-    estimate_mutual_information,
-    MultiLayerProber,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -55,6 +55,7 @@ def binary_labels():
 # 1. ProbingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_probing_config_defaults():
     cfg = ProbingConfig()
     assert cfg.probe_type == "linear"
@@ -69,6 +70,7 @@ def test_probing_config_defaults():
 # 2. LinearProbeV2 forward shape
 # ---------------------------------------------------------------------------
 
+
 def test_linear_probe_v2_forward_shape():
     probe = LinearProbeV2(input_dim=64, n_classes=3)
     x = torch.randn(8, 64)
@@ -79,6 +81,7 @@ def test_linear_probe_v2_forward_shape():
 # ---------------------------------------------------------------------------
 # 3. MLPProbe forward shape
 # ---------------------------------------------------------------------------
+
 
 def test_mlp_probe_forward_shape():
     probe = MLPProbe(input_dim=64, hidden_dim=32, n_classes=5)
@@ -91,6 +94,7 @@ def test_mlp_probe_forward_shape():
 # 4. extract_layer_representations returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_extract_layer_representations_keys(small_model, input_ids):
     layer_indices = [0, 1]
     result = extract_layer_representations(small_model, input_ids, layer_indices)
@@ -100,6 +104,7 @@ def test_extract_layer_representations_keys(small_model, input_ids):
 # ---------------------------------------------------------------------------
 # 5. extract_layer_representations hidden state shape (B, T, D)
 # ---------------------------------------------------------------------------
+
 
 def test_extract_layer_representations_shape(small_model, input_ids):
     result = extract_layer_representations(small_model, input_ids, [0])
@@ -112,6 +117,7 @@ def test_extract_layer_representations_shape(small_model, input_ids):
 # ---------------------------------------------------------------------------
 # 6. train_probe returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_probe_returns_correct_keys():
     probe = LinearProbeV2(input_dim=16, n_classes=2)
@@ -127,6 +133,7 @@ def test_train_probe_returns_correct_keys():
 # 7. train_probe accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_train_probe_accuracy_range():
     probe = LinearProbeV2(input_dim=16, n_classes=2)
     X = torch.randn(20, 16)
@@ -140,6 +147,7 @@ def test_train_probe_accuracy_range():
 # 8. estimate_mutual_information returns float
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_mi_returns_float():
     torch.manual_seed(42)
     X = torch.randn(50, 8)
@@ -152,14 +160,17 @@ def test_estimate_mi_returns_float():
 # 9. estimate_mutual_information perfectly correlated -> high MI
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_mi_perfectly_correlated():
     # X is perfectly correlated with y: class 0 gets large negative values, class 1 large positive
     N = 100
     y = torch.cat([torch.zeros(N // 2, dtype=torch.long), torch.ones(N // 2, dtype=torch.long)])
-    X = torch.cat([
-        torch.full((N // 2, 4), -10.0),
-        torch.full((N // 2, 4), +10.0),
-    ])
+    X = torch.cat(
+        [
+            torch.full((N // 2, 4), -10.0),
+            torch.full((N // 2, 4), +10.0),
+        ]
+    )
     mi = estimate_mutual_information(X, y, n_bins=10)
     # For perfect binary separation, MI should be close to 1 bit
     assert mi > 0.5, f"Expected MI > 0.5 bits for perfectly correlated data, got {mi}"
@@ -168,6 +179,7 @@ def test_estimate_mi_perfectly_correlated():
 # ---------------------------------------------------------------------------
 # 10. MultiLayerProber.probe_all_layers returns dict with layer keys
 # ---------------------------------------------------------------------------
+
 
 def test_multi_layer_prober_keys(small_model, input_ids, binary_labels):
     cfg = ProbingConfig(n_epochs=2)
@@ -179,6 +191,7 @@ def test_multi_layer_prober_keys(small_model, input_ids, binary_labels):
 # ---------------------------------------------------------------------------
 # 11. MultiLayerProber layer accuracies in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_multi_layer_prober_accuracy_range(small_model, input_ids, binary_labels):
     cfg = ProbingConfig(n_epochs=2)
@@ -194,11 +207,10 @@ def test_multi_layer_prober_accuracy_range(small_model, input_ids, binary_labels
 # 12. MLPProbe output shape with different input sizes
 # ---------------------------------------------------------------------------
 
+
 def test_mlp_probe_various_input_sizes():
     for input_dim, hidden_dim, n_classes, batch in [(32, 16, 2, 4), (128, 64, 10, 8)]:
         probe = MLPProbe(input_dim=input_dim, hidden_dim=hidden_dim, n_classes=n_classes)
         x = torch.randn(batch, input_dim)
         out = probe(x)
-        assert out.shape == (batch, n_classes), (
-            f"Expected ({batch}, {n_classes}), got {out.shape}"
-        )
+        assert out.shape == (batch, n_classes), f"Expected ({batch}, {n_classes}), got {out.shape}"

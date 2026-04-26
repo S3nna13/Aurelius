@@ -6,8 +6,6 @@ Tiny configs / data to keep the suite fast.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from src.data.vocab_analysis import (
@@ -21,7 +19,6 @@ from src.data.vocab_analysis import (
     find_dead_tokens,
     find_rare_tokens,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -280,8 +277,14 @@ def test_analyze_corpus_has_required_keys():
     cfg = VocabConfig(vocab_size=SMALL_VOCAB_SIZE, min_freq=2)
     analyzer = VocabAnalyzer(TINY_VOCAB, cfg)
     result = analyzer.analyze_corpus(TINY_TOKEN_IDS)
-    for key in ("frequencies", "zipf_exponent", "rare_tokens", "dead_tokens",
-                "fertility", "coverage"):
+    for key in (
+        "frequencies",
+        "zipf_exponent",
+        "rare_tokens",
+        "dead_tokens",
+        "fertility",
+        "coverage",
+    ):
         assert key in result, f"Missing key: {key}"
 
 
@@ -351,8 +354,13 @@ def test_get_subword_stats_has_required_keys():
     cfg = VocabConfig(vocab_size=SMALL_VOCAB_SIZE)
     analyzer = VocabAnalyzer(TINY_VOCAB, cfg)
     stats = analyzer.get_subword_stats()
-    for key in ("n_prefix_tokens", "n_whole_word_tokens", "n_special_tokens",
-                "n_digit_tokens", "n_punct_tokens"):
+    for key in (
+        "n_prefix_tokens",
+        "n_whole_word_tokens",
+        "n_special_tokens",
+        "n_digit_tokens",
+        "n_punct_tokens",
+    ):
         assert key in stats, f"Missing key: {key}"
 
 

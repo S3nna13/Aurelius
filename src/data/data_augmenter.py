@@ -8,8 +8,6 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -48,9 +46,9 @@ class AugmentedSample:
 class DataAugmenter:
     """Apply text augmentation strategies to individual texts or batches."""
 
-    def __init__(self, strategies: Optional[List[AugmentationStrategy]] = None) -> None:
+    def __init__(self, strategies: list[AugmentationStrategy] | None = None) -> None:
         if strategies is None:
-            self._strategies: List[AugmentationStrategy] = list(AugmentationStrategy)
+            self._strategies: list[AugmentationStrategy] = list(AugmentationStrategy)
         else:
             self._strategies = list(strategies)
 
@@ -118,11 +116,11 @@ class DataAugmenter:
 
     _STRATEGY_FN = {
         AugmentationStrategy.SYNONYM_SWAP: _synonym_swap.__func__,  # type: ignore[attr-defined]
-        AugmentationStrategy.DELETION: _deletion.__func__,          # type: ignore[attr-defined]
-        AugmentationStrategy.INSERTION: _insertion.__func__,        # type: ignore[attr-defined]
-        AugmentationStrategy.SWAP_WORDS: _swap_words.__func__,      # type: ignore[attr-defined]
-        AugmentationStrategy.LOWERCASE: _lowercase.__func__,        # type: ignore[attr-defined]
-        AugmentationStrategy.UPPERCASE: _uppercase.__func__,        # type: ignore[attr-defined]
+        AugmentationStrategy.DELETION: _deletion.__func__,  # type: ignore[attr-defined]
+        AugmentationStrategy.INSERTION: _insertion.__func__,  # type: ignore[attr-defined]
+        AugmentationStrategy.SWAP_WORDS: _swap_words.__func__,  # type: ignore[attr-defined]
+        AugmentationStrategy.LOWERCASE: _lowercase.__func__,  # type: ignore[attr-defined]
+        AugmentationStrategy.UPPERCASE: _uppercase.__func__,  # type: ignore[attr-defined]
     }
 
     # ------------------------------------------------------------------
@@ -147,13 +145,13 @@ class DataAugmenter:
 
     def augment_batch(
         self,
-        texts: List[str],
+        texts: list[str],
         strategy: AugmentationStrategy,
-    ) -> List[AugmentedSample]:
+    ) -> list[AugmentedSample]:
         """Apply *strategy* to each text in *texts*, using seed=index."""
         return [self.augment(text, strategy, seed=idx) for idx, text in enumerate(texts)]
 
-    def apply_all(self, text: str) -> List[AugmentedSample]:
+    def apply_all(self, text: str) -> list[AugmentedSample]:
         """Apply every strategy to *text* with seed=42 and return all results."""
         return [self.augment(text, strategy, seed=42) for strategy in AugmentationStrategy]
 

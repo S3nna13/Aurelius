@@ -12,14 +12,12 @@ Verifies:
 from __future__ import annotations
 
 import torch
-import pytest
 
-from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 import src.alignment as alignment_pkg
+from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.training.process_reward_model import ProcessRewardModel
 from src.training.trainer import build_model_for_training
-
 
 # ---------------------------------------------------------------------------
 # Shared tiny config
@@ -67,6 +65,7 @@ def tiny_base_config() -> AureliusConfig:
 # Test 1: ALIGNMENT_REGISTRY["prm"] == ProcessRewardModel
 # ---------------------------------------------------------------------------
 
+
 def test_alignment_registry_has_prm():
     assert hasattr(alignment_pkg, "ALIGNMENT_REGISTRY"), (
         "src/alignment/__init__.py must expose ALIGNMENT_REGISTRY"
@@ -80,18 +79,18 @@ def test_alignment_registry_has_prm():
 # Test 2: build_model_for_training with enable_prm_training=True -> PRM
 # ---------------------------------------------------------------------------
 
+
 def test_build_model_prm_enabled():
     cfg = tiny_prm_config()
     model = build_model_for_training(cfg)
-    assert isinstance(model, ProcessRewardModel), (
-        f"Expected ProcessRewardModel, got {type(model)}"
-    )
+    assert isinstance(model, ProcessRewardModel), f"Expected ProcessRewardModel, got {type(model)}"
     assert model.step_token_id == STEP_TOKEN_ID
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Default config (enable_prm_training=False) -> AureliusTransformer
 # ---------------------------------------------------------------------------
+
 
 def test_build_model_default_path():
     from src.model.transformer import AureliusTransformer
@@ -107,6 +106,7 @@ def test_build_model_default_path():
 # ---------------------------------------------------------------------------
 # Test 4: Full forward pass with PRM-enabled config
 # ---------------------------------------------------------------------------
+
 
 def test_prm_forward_pass_integration():
     cfg = tiny_prm_config()
@@ -135,6 +135,7 @@ def test_prm_forward_pass_integration():
 # Test 5: PRMInference end-to-end select_best on tiny model
 # ---------------------------------------------------------------------------
 
+
 def test_prm_inference_end_to_end():
     from src.training.process_reward_model import PRMInference
 
@@ -150,7 +151,7 @@ def test_prm_inference_end_to_end():
         ["a" * 4, "b" * 4],
         ["p" * 2, "q" * 2],
     ]
-    best_idx = inference.select_best(candidates, step_token="\n\n")
+    best_idx = inference.select_best(candidates, step_token="\n\n")  # noqa: S106
     assert isinstance(best_idx, int)
     assert 0 <= best_idx < len(candidates)
 
@@ -159,11 +160,18 @@ def test_prm_inference_end_to_end():
 # Test 6: AureliusConfig PRM fields exist with correct defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_prm_fields_defaults():
     FEATURE_FLAG_REGISTRY._flags.pop("training.prm_training", None)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=4, n_kv_heads=2,
-        head_dim=16, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     assert hasattr(cfg, "enable_prm_training")
     assert cfg.enable_prm_training is False

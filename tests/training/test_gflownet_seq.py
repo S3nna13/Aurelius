@@ -1,15 +1,16 @@
 """Tests for src/training/gflownet_seq.py"""
+
 import pytest
 import torch
 import torch.nn as nn
 
 from src.training.gflownet_seq import (
-    GFlowNetConfig,
     FlowModel,
-    compute_forward_log_prob,
-    trajectory_balance_loss,
-    detailed_balance_loss,
+    GFlowNetConfig,
     GFlowNetTrainer,
+    compute_forward_log_prob,
+    detailed_balance_loss,
+    trajectory_balance_loss,
 )
 
 # ---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ SEQ = 6
 # ---------------------------------------------------------------------------
 # Mock LM (returns (loss, logits, pkv))
 # ---------------------------------------------------------------------------
+
 
 class _MockLM(nn.Module):
     def __init__(self, vocab=VOCAB, d_model=D_MODEL):
@@ -63,9 +65,7 @@ def flow_model():
 
 @pytest.fixture
 def trainer(lm, flow_model, cfg):
-    opt = torch.optim.Adam(
-        list(lm.parameters()) + list(flow_model.parameters()), lr=1e-3
-    )
+    opt = torch.optim.Adam(list(lm.parameters()) + list(flow_model.parameters()), lr=1e-3)
     return GFlowNetTrainer(lm, flow_model, cfg, opt)
 
 
@@ -77,6 +77,7 @@ def input_ids():
 # ---------------------------------------------------------------------------
 # GFlowNetConfig
 # ---------------------------------------------------------------------------
+
 
 def test_config_default_temperature():
     cfg = GFlowNetConfig()
@@ -91,6 +92,7 @@ def test_config_epsilon_in_range():
 # ---------------------------------------------------------------------------
 # FlowModel
 # ---------------------------------------------------------------------------
+
 
 def test_flow_model_output_shape(flow_model):
     h = torch.randn(BATCH, D_MODEL)
@@ -115,6 +117,7 @@ def test_flow_model_gradient_flows(flow_model):
 # compute_forward_log_prob
 # ---------------------------------------------------------------------------
 
+
 def test_forward_log_prob_shape(lm, input_ids):
     lp = compute_forward_log_prob(lm, input_ids)
     assert lp.shape == (BATCH,)
@@ -133,6 +136,7 @@ def test_forward_log_prob_finite(lm, input_ids):
 # ---------------------------------------------------------------------------
 # trajectory_balance_loss
 # ---------------------------------------------------------------------------
+
 
 def test_tb_loss_scalar():
     log_Z = torch.tensor(0.0, requires_grad=True)
@@ -173,6 +177,7 @@ def test_tb_loss_has_gradient():
 # detailed_balance_loss
 # ---------------------------------------------------------------------------
 
+
 def test_db_loss_scalar():
     log_fs = torch.randn(BATCH)
     log_pf = torch.randn(BATCH)
@@ -191,6 +196,7 @@ def test_db_loss_zero_when_balanced():
 # ---------------------------------------------------------------------------
 # GFlowNetTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_log_z_is_parameter(trainer):
     assert isinstance(trainer.log_Z, nn.Parameter)
@@ -215,7 +221,7 @@ def test_trainer_step_loss_finite(trainer):
 
 
 def test_trainer_step_log_z_updates(trainer):
-    initial = trainer.log_Z.item()
+    trainer.log_Z.item()
 
     def reward_fn(seqs):
         return torch.ones(seqs.shape[0])

@@ -3,18 +3,19 @@
 Covers TreeConfig, DraftNode, build_draft_tree, tree_to_sequences,
 verify_tree, and TreeSpeculativeDecoder — 14+ tests in total.
 """
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.inference.tree_speculative import (
-    TreeConfig,
     DraftNode,
+    TreeConfig,
+    TreeSpeculativeDecoder,
     build_draft_tree,
     tree_to_sequences,
     verify_tree,
-    TreeSpeculativeDecoder,
 )
 
 # ---------------------------------------------------------------------------
@@ -37,6 +38,7 @@ class MockModel:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_config(**kwargs) -> TreeConfig:
     defaults = dict(
@@ -62,6 +64,7 @@ def _dummy_decode(ids: list[int]) -> str:
 # 1. TreeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_tree_config_defaults():
     cfg = TreeConfig()
     assert cfg.branching_factor == 2
@@ -75,6 +78,7 @@ def test_tree_config_defaults():
 # 2. DraftNode fields
 # ---------------------------------------------------------------------------
 
+
 def test_draft_node_fields():
     node = DraftNode(token_id=7, log_prob=-0.3, depth=1)
     assert node.token_id == 7
@@ -87,6 +91,7 @@ def test_draft_node_fields():
 # ---------------------------------------------------------------------------
 # 3. DraftNode.path_to_root for leaf node
 # ---------------------------------------------------------------------------
+
 
 def test_draft_node_path_to_root_leaf():
     root = DraftNode(token_id=1, log_prob=0.0, depth=0)
@@ -102,6 +107,7 @@ def test_draft_node_path_to_root_leaf():
 # 4. DraftNode.path_to_root for root node
 # ---------------------------------------------------------------------------
 
+
 def test_draft_node_path_to_root_root():
     root = DraftNode(token_id=42, log_prob=0.0, depth=0)
     assert root.path_to_root() == [42]
@@ -110,6 +116,7 @@ def test_draft_node_path_to_root_root():
 # ---------------------------------------------------------------------------
 # 5. build_draft_tree returns DraftNode
 # ---------------------------------------------------------------------------
+
 
 def test_build_draft_tree_returns_draft_node():
     model = MockModel()
@@ -121,6 +128,7 @@ def test_build_draft_tree_returns_draft_node():
 # ---------------------------------------------------------------------------
 # 6. build_draft_tree correct tree depth
 # ---------------------------------------------------------------------------
+
 
 def test_build_draft_tree_correct_depth():
     model = MockModel()
@@ -140,6 +148,7 @@ def test_build_draft_tree_correct_depth():
 # 7. build_draft_tree branching factor correct
 # ---------------------------------------------------------------------------
 
+
 def test_build_draft_tree_branching_factor():
     model = MockModel()
     cfg = _make_config(branching_factor=2, tree_depth=2)
@@ -151,6 +160,7 @@ def test_build_draft_tree_branching_factor():
 # ---------------------------------------------------------------------------
 # 8. tree_to_sequences returns list of lists
 # ---------------------------------------------------------------------------
+
 
 def test_tree_to_sequences_returns_list_of_lists():
     model = MockModel()
@@ -165,6 +175,7 @@ def test_tree_to_sequences_returns_list_of_lists():
 # 9. tree_to_sequences count = branching_factor^tree_depth
 # ---------------------------------------------------------------------------
 
+
 def test_tree_to_sequences_count():
     model = MockModel()
     bf = 2
@@ -172,13 +183,14 @@ def test_tree_to_sequences_count():
     cfg = _make_config(branching_factor=bf, tree_depth=td)
     root = build_draft_tree(model, [0, 1], cfg)
     seqs = tree_to_sequences(root)
-    expected = bf ** td
+    expected = bf**td
     assert len(seqs) == expected
 
 
 # ---------------------------------------------------------------------------
 # 10. verify_tree returns (list, int)
 # ---------------------------------------------------------------------------
+
 
 def test_verify_tree_return_type():
     model = MockModel()
@@ -197,6 +209,7 @@ def test_verify_tree_return_type():
 # 11. verify_tree n_accepted <= max draft length
 # ---------------------------------------------------------------------------
 
+
 def test_verify_tree_accepted_bound():
     model = MockModel()
     cfg = _make_config(branching_factor=2, tree_depth=2)
@@ -211,6 +224,7 @@ def test_verify_tree_accepted_bound():
 # ---------------------------------------------------------------------------
 # 12. TreeSpeculativeDecoder.decode returns (str, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_tree_speculative_decoder_decode_return_type():
     model = MockModel()
@@ -233,6 +247,7 @@ def test_tree_speculative_decoder_decode_return_type():
 # 13. TreeSpeculativeDecoder.decode stats has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_tree_speculative_decoder_stats_keys():
     model = MockModel()
     cfg = _make_config(max_new_tokens=4, branching_factor=2, tree_depth=2)
@@ -251,6 +266,7 @@ def test_tree_speculative_decoder_stats_keys():
 # ---------------------------------------------------------------------------
 # 14. TreeSpeculativeDecoder._decode_step returns (list, int)
 # ---------------------------------------------------------------------------
+
 
 def test_tree_speculative_decoder_decode_step_return_type():
     model = MockModel()
@@ -274,6 +290,7 @@ def test_tree_speculative_decoder_decode_step_return_type():
 # 15. Bonus: stats tokens_generated matches max_new_tokens budget
 # ---------------------------------------------------------------------------
 
+
 def test_tree_speculative_decoder_tokens_generated_bounded():
     model = MockModel()
     max_new = 4
@@ -291,6 +308,7 @@ def test_tree_speculative_decoder_tokens_generated_bounded():
 # ---------------------------------------------------------------------------
 # 16. Bonus: n_steps is positive after decode
 # ---------------------------------------------------------------------------
+
 
 def test_tree_speculative_decoder_n_steps_positive():
     model = MockModel()

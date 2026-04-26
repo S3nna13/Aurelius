@@ -5,7 +5,6 @@ import json
 import logging
 import math
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -37,21 +36,25 @@ CONFIG = AureliusConfig(
     tie_embeddings=True,
 )
 
+
 class TokenizedShardDataset(Dataset):
     def __init__(self, shard_path, seq_len, stride=None):
         self.seq_len = seq_len
         self.stride = stride if stride is not None else seq_len
         self.tokens = np.load(shard_path, mmap_mode="r")
         self.num_examples = max(0, (len(self.tokens) - seq_len - 1) // self.stride + 1)
+
     def __len__(self):
         return self.num_examples
+
     def __getitem__(self, idx):
         start = idx * self.stride
-        chunk = self.tokens[start:start + self.seq_len + 1]
+        chunk = self.tokens[start : start + self.seq_len + 1]
         return {
             "input_ids": torch.tensor(chunk[:-1], dtype=torch.long),
             "labels": torch.tensor(chunk[1:], dtype=torch.long),
         }
+
 
 def cosine_with_warmup(step, warmup_steps, total_steps, min_lr_ratio):
     if step < warmup_steps:
@@ -59,9 +62,21 @@ def cosine_with_warmup(step, warmup_steps, total_steps, min_lr_ratio):
     progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
     return min_lr_ratio + (1.0 - min_lr_ratio) * (0.5 * (1.0 + math.cos(math.pi * progress)))
 
-def train(model, train_loader, val_loader, device, total_steps=500, warmup_steps=50,
-          lr=3e-4, min_lr=3e-5, weight_decay=0.1, max_grad_norm=1.0,
-          log_interval=25, save_dir=Path("checkpoints/aurelius-glm5")):
+
+def train(
+    model,
+    train_loader,
+    val_loader,
+    device,
+    total_steps=500,
+    warmup_steps=50,
+    lr=3e-4,
+    min_lr=3e-5,
+    weight_decay=0.1,
+    max_grad_norm=1.0,
+    log_interval=25,
+    save_dir=Path("checkpoints/aurelius-glm5"),
+):
     model.to(device)
     model.train()
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -76,10 +91,18 @@ def train(model, train_loader, val_loader, device, total_steps=500, warmup_steps
         else:
             decay.append(param)
 
-    optimizer = AdamW([{"params": decay, "weight_decay": weight_decay},
-                       {"params": no_decay, "weight_decay": 0.0}],
-                      lr=lr, betas=(0.9, 0.95), eps=1e-8)
-    scheduler = LambdaLR(optimizer, lr_lambda=lambda s: cosine_with_warmup(s, warmup_steps, total_steps, min_lr / lr))
+    optimizer = AdamW(
+        [
+            {"params": decay, "weight_decay": weight_decay},
+            {"params": no_decay, "weight_decay": 0.0},
+        ],
+        lr=lr,
+        betas=(0.9, 0.95),
+        eps=1e-8,
+    )
+    scheduler = LambdaLR(
+        optimizer, lr_lambda=lambda s: cosine_with_warmup(s, warmup_steps, total_steps, min_lr / lr)
+    )
 
     save_dir.mkdir(parents=True, exist_ok=True)
     global_step = 0
@@ -116,16 +139,28 @@ def train(model, train_loader, val_loader, device, total_steps=500, warmup_steps
 
         if global_step % log_interval == 0:
             elapsed = time.monotonic() - start_time
-            logger.info("Step %3d/%d | loss=%.4f | lr=%.2e | tok=%s | tps=%.0f",
-                        global_step, total_steps, loss.item(), lr_now,
-                        f"{tokens_seen:,}", tokens_seen / elapsed)
+            logger.info(
+                "Step %3d/%d | loss=%.4f | lr=%.2e | tok=%s | tps=%.0f",
+                global_step,
+                total_steps,
+                loss.item(),
+                lr_now,
+                f"{tokens_seen:,}",
+                tokens_seen / elapsed,
+            )
 
     # Final checkpoint
     ckpt = save_dir / "final.pt"
-    torch.save({"step": global_step, "tokens_seen": tokens_seen,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "scheduler_state_dict": scheduler.state_dict()}, ckpt)
+    torch.save(
+        {
+            "step": global_step,
+            "tokens_seen": tokens_seen,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+        },
+        ckpt,
+    )
     logger.info("Saved final checkpoint: %s", ckpt)
 
     # Validation
@@ -158,27 +193,46 @@ def train(model, train_loader, val_loader, device, total_steps=500, warmup_steps
         json.dump(report, f, indent=2)
     return report
 
+
 def main():
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     logger.info("Device: %s", device)
 
     model = AureliusTransformer(CONFIG)
-    train_ds = TokenizedShardDataset("data/pretrain/glm5/train_shard_000.npy", CONFIG.max_seq_len, stride=128)
-    val_ds = TokenizedShardDataset("data/pretrain/glm5/val_shard_000.npy", CONFIG.max_seq_len, stride=128)
+    train_ds = TokenizedShardDataset(
+        "data/pretrain/glm5/train_shard_000.npy", CONFIG.max_seq_len, stride=128
+    )
+    val_ds = TokenizedShardDataset(
+        "data/pretrain/glm5/val_shard_000.npy", CONFIG.max_seq_len, stride=128
+    )
     train_loader = DataLoader(train_ds, batch_size=4, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_ds, batch_size=4, shuffle=False, drop_last=False)
 
     logger.info("Train examples: %d | Val examples: %d", len(train_ds), len(val_ds))
-    report = train(model, train_loader, val_loader, device, total_steps=500,
-                   save_dir=Path("checkpoints/aurelius-glm5"))
+    report = train(
+        model,
+        train_loader,
+        val_loader,
+        device,
+        total_steps=500,
+        save_dir=Path("checkpoints/aurelius-glm5"),
+    )
 
     logger.info("=" * 50)
     logger.info("GLM-5 TRAINING COMPLETE")
-    logger.info("Params: %.1fM | Steps: %d | Time: %.1fmin",
-                report["model_params"] / 1e6, report["total_steps"], report["total_time_sec"] / 60)
-    logger.info("Train loss: %.4f | Val perplexity: %.2f",
-                report["final_train_loss"], report["val_perplexity"])
+    logger.info(
+        "Params: %.1fM | Steps: %d | Time: %.1fmin",
+        report["model_params"] / 1e6,
+        report["total_steps"],
+        report["total_time_sec"] / 60,
+    )
+    logger.info(
+        "Train loss: %.4f | Val perplexity: %.2f",
+        report["final_train_loss"],
+        report["val_perplexity"],
+    )
     logger.info("=" * 50)
+
 
 if __name__ == "__main__":
     main()

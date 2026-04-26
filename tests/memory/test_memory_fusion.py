@@ -1,14 +1,15 @@
 """Tests for memory_fusion — multi-source memory fusion."""
+
 from __future__ import annotations
 
 from src.memory.memory_fusion import (
-    MemoryFusion,
-    MemorySource,
     FusionStrategy,
     MemoryFragment,
-    fuse_weighted_average,
+    MemoryFusion,
+    MemorySource,
     fuse_most_recent,
     fuse_union,
+    fuse_weighted_average,
 )
 
 

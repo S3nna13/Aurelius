@@ -24,10 +24,10 @@ from __future__ import annotations
 
 import random
 import string
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
 
 # Lorem-like base sentences. Deterministic, self-contained, no external IO.
-_BASE_SENTENCES: Tuple[str, ...] = (
+_BASE_SENTENCES: tuple[str, ...] = (
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
     "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
     "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
@@ -41,7 +41,7 @@ _BASE_SENTENCES: Tuple[str, ...] = (
 )
 
 
-def default_haystack_filler(char_budget: int, seed: Optional[int] = None) -> str:
+def default_haystack_filler(char_budget: int, seed: int | None = None) -> str:
     """Build a deterministic filler of approximately `char_budget` characters.
 
     If `seed` is provided the ordering of base sentences is shuffled with a
@@ -54,7 +54,7 @@ def default_haystack_filler(char_budget: int, seed: Optional[int] = None) -> str
         rng = random.Random(seed)
         rng.shuffle(sentences)
     # Repeat sentences until the budget is filled, joined by single spaces.
-    parts: List[str] = []
+    parts: list[str] = []
     total = 0
     i = 0
     while total < char_budget:
@@ -86,7 +86,7 @@ class NeedleInHaystackBenchmark:
 
     def __init__(
         self,
-        haystack_filler: Optional[Callable[[int], str]] = None,
+        haystack_filler: Callable[[int], str] | None = None,
         needle: str = "The magic number is 42.",
         question: str = "What is the magic number?",
         answer_key: str = "42",
@@ -119,9 +119,7 @@ class NeedleInHaystackBenchmark:
         structure is preserved.
         """
         if not isinstance(context_tokens, int) or context_tokens <= 0:
-            raise ValueError(
-                f"context_tokens must be a positive int, got {context_tokens!r}"
-            )
+            raise ValueError(f"context_tokens must be a positive int, got {context_tokens!r}")
         if not (0.0 <= depth <= 1.0):
             raise ValueError(f"depth must be in [0,1], got {depth!r}")
         if approx_chars_per_token <= 0:
@@ -155,7 +153,7 @@ class NeedleInHaystackBenchmark:
         after = sentences[idx:]
         rebuilt_before = ". ".join(before)
         rebuilt_after = ". ".join(after)
-        pieces: List[str] = []
+        pieces: list[str] = []
         if rebuilt_before:
             pieces.append(rebuilt_before.rstrip(". ") + ".")
         pieces.append(self.needle)
@@ -170,9 +168,9 @@ class NeedleInHaystackBenchmark:
     def evaluate(
         self,
         generate_fn: Callable[[str], str],
-        context_lengths: List[int],
-        depths: List[float],
-    ) -> Dict[Tuple[int, float], Dict[str, object]]:
+        context_lengths: list[int],
+        depths: list[float],
+    ) -> dict[tuple[int, float], dict[str, object]]:
         """Run the 2D grid (L, d) and return per-cell results.
 
         Returns a dict keyed by (L, d) with {"pass": bool, "response": str}.
@@ -191,15 +189,13 @@ class NeedleInHaystackBenchmark:
                 raise ValueError(f"depth must be in [0,1], got {d!r}")
 
         key_lc = self.answer_key.lower()
-        results: Dict[Tuple[int, float], Dict[str, object]] = {}
+        results: dict[tuple[int, float], dict[str, object]] = {}
         for L in context_lengths:
             for d in depths:
                 prompt = self.build_prompt(L, d)
                 response = generate_fn(prompt)
                 if not isinstance(response, str):
-                    raise TypeError(
-                        f"generate_fn must return str, got {type(response).__name__}"
-                    )
+                    raise TypeError(f"generate_fn must return str, got {type(response).__name__}")
                 passed = key_lc in response.lower()
                 results[(L, d)] = {"pass": passed, "response": response}
         return results
@@ -208,7 +204,7 @@ class NeedleInHaystackBenchmark:
     # Aggregation
     # ------------------------------------------------------------------
     @staticmethod
-    def score(results: Dict[Tuple[int, float], Dict[str, object]]) -> float:
+    def score(results: dict[tuple[int, float], dict[str, object]]) -> float:
         """Overall pass rate in [0,1]."""
         if not results:
             return 0.0
@@ -216,7 +212,7 @@ class NeedleInHaystackBenchmark:
         return passes / len(results)
 
     @staticmethod
-    def grid_report(results: Dict[Tuple[int, float], Dict[str, object]]) -> str:
+    def grid_report(results: dict[tuple[int, float], dict[str, object]]) -> str:
         """ASCII heatmap: rows = context length, cols = depth."""
         if not results:
             return "(empty grid)"

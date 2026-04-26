@@ -14,7 +14,6 @@ from src.chat.role_attention_mask import (
     validate_spans,
 )
 
-
 S = 16
 
 
@@ -108,7 +107,7 @@ def test_multi_role_sequence_mask_well_formed():
 
 def test_user_tool_barrier():
     spans = _full_spans()
-    m = build_role_mask(spans, S, system_priority=True, causal=True)
+    build_role_mask(spans, S, system_priority=True, causal=True)
     # user[12:14] must not attend tool[9:12] (tool is before, so actually
     # *only* later tools are blocked -- here tool 9:12 came before user
     # 12:14, so allowed). Ensure user[3:6] cannot attend tool[9:12] (but

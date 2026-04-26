@@ -7,8 +7,8 @@ using the Aurelius model through logit, perplexity, or embedding similarity meth
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -18,7 +18,7 @@ import torch.nn.functional as F
 @dataclass
 class RerankerConfig:
     max_seq_len: int = 256
-    score_method: str = "logit"        # "logit" | "embedding" | "perplexity"
+    score_method: str = "logit"  # "logit" | "embedding" | "perplexity"
     batch_size: int = 8
     normalize_scores: bool = True
 
@@ -46,8 +46,8 @@ def score_query_document_logit(
     query: str,
     document: str,
     max_seq_len: int = 256,
-    yes_token_id: int = 121,    # ord('y')
-    no_token_id: int = 110,     # ord('n')
+    yes_token_id: int = 121,  # ord('y')
+    no_token_id: int = 110,  # ord('n')
 ) -> float:
     """Score relevance via yes/no logit at the last token position.
 
@@ -67,16 +67,14 @@ def score_query_document_logit(
         loss, logits, _pkv = model(input_ids)
 
     # logits: (1, S, vocab_size) — pick last position
-    last_logits = logits[0, -1, :]   # (vocab_size,)
+    last_logits = logits[0, -1, :]  # (vocab_size,)
     log_probs = F.log_softmax(last_logits, dim=-1)
     log_p_yes = log_probs[yes_token_id].item()
     log_p_no = log_probs[no_token_id].item()
 
     # log(p_yes / (p_yes + p_no)) = log_p_yes - log(p_yes + p_no)
     # Use logsumexp for numerical stability
-    log_denom = torch.logsumexp(
-        torch.tensor([log_p_yes, log_p_no]), dim=0
-    ).item()
+    log_denom = torch.logsumexp(torch.tensor([log_p_yes, log_p_no]), dim=0).item()
     return log_p_yes - log_denom
 
 
@@ -271,9 +269,7 @@ class CrossEncoderReranker:
         original_scores: list[float] | None = None,
     ) -> list[ScoredDocument]:
         """Score and sort documents. Returns all ScoredDocuments sorted descending."""
-        raw_scores = batch_score(
-            self.model, self.encode_fn, query, documents, self.cfg
-        )
+        raw_scores = batch_score(self.model, self.encode_fn, query, documents, self.cfg)
 
         if self.cfg.normalize_scores and raw_scores:
             min_s = min(raw_scores)
@@ -289,7 +285,7 @@ class CrossEncoderReranker:
         self,
         query: str,
         documents: list[str],
-        relevance_labels: list[int],    # 0=irrelevant, 1=relevant, 2=highly relevant
+        relevance_labels: list[int],  # 0=irrelevant, 1=relevant, 2=highly relevant
         top_k: int = 5,
     ) -> float:
         """Compute NDCG@k after reranking.

@@ -27,17 +27,16 @@ NystromformerModel     — embedding + stack of blocks (no LM head).
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Internal helper — RMSNorm (defined locally to keep the module self-contained)
 # ---------------------------------------------------------------------------
+
 
 class _RMSNorm(nn.Module):
     """Lightweight Root Mean Square Layer Normalisation."""
@@ -56,6 +55,7 @@ class _RMSNorm(nn.Module):
 # Internal helper — segment-mean pooling
 # ---------------------------------------------------------------------------
 
+
 def _segment_mean(x: Tensor, num_landmarks: int) -> Tensor:
     """Reduce the time axis of x to num_landmarks via segment-mean pooling.
 
@@ -72,22 +72,23 @@ def _segment_mean(x: Tensor, num_landmarks: int) -> Tensor:
         Tensor of shape (B, H, m, d_head).
     """
     B, H, T, d = x.shape
-    m = min(num_landmarks, T)   # cannot have more landmarks than tokens
+    m = min(num_landmarks, T)  # cannot have more landmarks than tokens
 
     if m == T:
         # Trivial case: every token is its own landmark
         return x
 
     # Reshape to (B*H, d, T) for adaptive pooling, then back.
-    x_t = x.reshape(B * H, T, d).permute(0, 2, 1)      # (B*H, d, T)
-    pooled = F.adaptive_avg_pool1d(x_t, m)               # (B*H, d, m)
-    pooled = pooled.permute(0, 2, 1).reshape(B, H, m, d) # (B, H, m, d)
+    x_t = x.reshape(B * H, T, d).permute(0, 2, 1)  # (B*H, d, T)
+    pooled = F.adaptive_avg_pool1d(x_t, m)  # (B*H, d, m)
+    pooled = pooled.permute(0, 2, 1).reshape(B, H, m, d)  # (B, H, m, d)
     return pooled
 
 
 # ---------------------------------------------------------------------------
 # NystromAttention
 # ---------------------------------------------------------------------------
+
 
 class NystromAttention(nn.Module):
     """Multi-head Nyström self-attention layer.
@@ -108,7 +109,7 @@ class NystromAttention(nn.Module):
         d_model: int,
         n_heads: int,
         num_landmarks: int = 32,
-        conv_kernel_size: Optional[int] = None,
+        conv_kernel_size: int | None = None,
     ) -> None:
         super().__init__()
         if d_model % n_heads != 0:
@@ -137,7 +138,7 @@ class NystromAttention(nn.Module):
                 out_channels=d_model,
                 kernel_size=conv_kernel_size,
                 padding=padding,
-                groups=d_model,   # depth-wise
+                groups=d_model,  # depth-wise
                 bias=False,
             )
 
@@ -155,7 +156,7 @@ class NystromAttention(nn.Module):
 
     # ------------------------------------------------------------------
 
-    def forward(self, x: Tensor, mask: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         """Compute Nyström self-attention.
 
         Args:
@@ -169,34 +170,28 @@ class NystromAttention(nn.Module):
         B, T, _ = x.shape
 
         # --- QKV projections ---
-        Q = self._split_heads(self.q_proj(x))   # (B, H, T, d_head)
-        K = self._split_heads(self.k_proj(x))   # (B, H, T, d_head)
-        V = self._split_heads(self.v_proj(x))   # (B, H, T, d_head)
+        Q = self._split_heads(self.q_proj(x))  # (B, H, T, d_head)
+        K = self._split_heads(self.k_proj(x))  # (B, H, T, d_head)
+        V = self._split_heads(self.v_proj(x))  # (B, H, T, d_head)
 
         # --- Landmark selection via segment-mean pooling ---
         m = min(self.num_landmarks, T)
 
-        Q_lm = _segment_mean(Q, m)   # (B, H, m, d_head)
-        K_lm = _segment_mean(K, m)   # (B, H, m, d_head)
+        Q_lm = _segment_mean(Q, m)  # (B, H, m, d_head)
+        K_lm = _segment_mean(K, m)  # (B, H, m, d_head)
 
         # --- Three softmax attention matrices ---
         # A_hat: Q attends to landmark keys  (B, H, T, m)
-        A_hat = torch.softmax(
-            Q @ K_lm.transpose(-2, -1) / self.scale, dim=-1
-        )
+        A_hat = torch.softmax(Q @ K_lm.transpose(-2, -1) / self.scale, dim=-1)
 
         # B_hat: landmark queries attend to full K  (B, H, m, T)
-        B_hat = torch.softmax(
-            Q_lm @ K.transpose(-2, -1) / self.scale, dim=-1
-        )
+        B_hat = torch.softmax(Q_lm @ K.transpose(-2, -1) / self.scale, dim=-1)
 
         # C_hat: landmark queries attend to landmark keys  (B, H, m, m)
-        C_hat = torch.softmax(
-            Q_lm @ K_lm.transpose(-2, -1) / self.scale, dim=-1
-        )
+        C_hat = torch.softmax(Q_lm @ K_lm.transpose(-2, -1) / self.scale, dim=-1)
 
         # Moore-Penrose pseudoinverse of C_hat
-        C_pinv = torch.linalg.pinv(C_hat)   # (B, H, m, m)
+        C_pinv = torch.linalg.pinv(C_hat)  # (B, H, m, m)
 
         # --- Nyström approximation output ---
         # (B, H, T, m) @ (B, H, m, m) → (B, H, T, m)
@@ -204,15 +199,15 @@ class NystromAttention(nn.Module):
         # first: (B, H, m, m) @ (B, H, m, T) → (B, H, m, T)
         # then:  (B, H, T, m) @ (B, H, m, T) @ V would be T²; avoid it:
         # out = A_hat @ (C_pinv @ (B_hat @ V))  — right-associative O(T·m)
-        BV = B_hat @ V                      # (B, H, m, d_head)
-        CBV = C_pinv @ BV                   # (B, H, m, d_head)
-        out = A_hat @ CBV                   # (B, H, T, d_head)
+        BV = B_hat @ V  # (B, H, m, d_head)
+        CBV = C_pinv @ BV  # (B, H, m, d_head)
+        out = A_hat @ CBV  # (B, H, T, d_head)
 
-        out = self._merge_heads(out)        # (B, T, d_model)
+        out = self._merge_heads(out)  # (B, T, d_model)
 
         # --- Optional local skip: depth-wise conv on V ---
         if self.conv is not None:
-            V_merged = self._merge_heads(V)          # (B, T, d_model)
+            V_merged = self._merge_heads(V)  # (B, T, d_model)
             # Conv1d expects (B, C, T)
             V_conv = self.conv(V_merged.transpose(1, 2)).transpose(1, 2)  # (B, T, d_model)
             out = out + V_conv
@@ -223,6 +218,7 @@ class NystromAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # NystromformerBlock
 # ---------------------------------------------------------------------------
+
 
 class NystromformerBlock(nn.Module):
     """Nyström attention block with FFN and RMSNorm (pre-norm residual).
@@ -270,6 +266,7 @@ class NystromformerBlock(nn.Module):
 # NystromformerModel
 # ---------------------------------------------------------------------------
 
+
 class NystromformerModel(nn.Module):
     """Stack of Nyströmformer blocks with token + position embeddings.
 
@@ -299,10 +296,12 @@ class NystromformerModel(nn.Module):
         super().__init__()
         self.tok_emb = nn.Embedding(vocab_size, d_model)
         self.pos_emb = nn.Embedding(max_seq_len, d_model)
-        self.blocks = nn.ModuleList([
-            NystromformerBlock(d_model, n_heads, d_ff, num_landmarks=num_landmarks)
-            for _ in range(n_layers)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                NystromformerBlock(d_model, n_heads, d_ff, num_landmarks=num_landmarks)
+                for _ in range(n_layers)
+            ]
+        )
         self.norm = _RMSNorm(d_model)
 
     def forward(self, input_ids: Tensor) -> Tensor:

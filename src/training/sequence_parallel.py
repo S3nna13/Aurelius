@@ -1,4 +1,4 @@
-"""Sequence parallelism simulation: partition sequences across virtual ranks for long-context training."""
+"""Sequence parallelism simulation: partition sequences across virtual ranks for long-context training."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -21,9 +21,7 @@ class SeqParallelConfig:
     load_balance: bool = True
 
 
-def partition_sequence(
-    input_ids: Tensor, world_size: int, overlap: int = 0
-) -> list[Tensor]:
+def partition_sequence(input_ids: Tensor, world_size: int, overlap: int = 0) -> list[Tensor]:
     """Split (B, T) tensor into *world_size* chunks along the T dimension.
 
     If *overlap* > 0, each chunk (except the first) is extended by *overlap*
@@ -85,7 +83,7 @@ def compute_chunk_attention(
     Returns:
         ``(B, T_q, d)`` — attended output.
     """
-    K = torch.cat(key_chunks, dim=1)   # (B, sum(T_k), d)
+    K = torch.cat(key_chunks, dim=1)  # (B, sum(T_k), d)
     V = torch.cat(value_chunks, dim=1)  # (B, sum(T_v), d)
 
     d = query_chunk.shape[-1]
@@ -203,9 +201,7 @@ class SequenceParallelTrainer:
         self.model.train()
         self.optimizer.zero_grad()
 
-        chunks = partition_sequence(
-            input_ids, self.config.world_size, self.config.overlap_tokens
-        )
+        chunks = partition_sequence(input_ids, self.config.world_size, self.config.overlap_tokens)
 
         total_loss = 0.0
         n_chunks = len(chunks)

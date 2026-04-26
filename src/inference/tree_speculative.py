@@ -7,23 +7,23 @@ sequence.
 
 Reference: SpecTree / Medusa-style tree speculation.
 """
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TreeConfig:
     """Configuration for tree-structured speculative decoding."""
+
     branching_factor: int = 2
     tree_depth: int = 4
     max_new_tokens: int = 128
@@ -35,19 +35,21 @@ class TreeConfig:
 # Draft tree data structure
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DraftNode:
     """A single node in the draft tree."""
+
     token_id: int
     log_prob: float
     depth: int
-    children: list['DraftNode'] = field(default_factory=list)
-    parent: Optional['DraftNode'] = None
+    children: list[DraftNode] = field(default_factory=list)
+    parent: DraftNode | None = None
 
     def path_to_root(self) -> list[int]:
         """Return token IDs from root to this node (inclusive)."""
         path: list[int] = []
-        node: Optional[DraftNode] = self
+        node: DraftNode | None = self
         while node is not None:
             path.append(node.token_id)
             node = node.parent
@@ -58,6 +60,7 @@ class DraftNode:
 # ---------------------------------------------------------------------------
 # Helper: run model and get last-position logits
 # ---------------------------------------------------------------------------
+
 
 def _last_logits(model, input_ids: torch.Tensor, temperature: float) -> torch.Tensor:
     """Run model on input_ids and return (possibly temperature-scaled) logits
@@ -73,6 +76,7 @@ def _last_logits(model, input_ids: torch.Tensor, temperature: float) -> torch.Te
 # ---------------------------------------------------------------------------
 # Build draft tree
 # ---------------------------------------------------------------------------
+
 
 def build_draft_tree(
     model,
@@ -134,6 +138,7 @@ def build_draft_tree(
 # Extract sequences from tree
 # ---------------------------------------------------------------------------
 
+
 def tree_to_sequences(root: DraftNode) -> list[list[int]]:
     """Enumerate all root-to-leaf paths in the tree.
 
@@ -157,6 +162,7 @@ def tree_to_sequences(root: DraftNode) -> list[list[int]]:
 # ---------------------------------------------------------------------------
 # Verify tree sequences against the target model
 # ---------------------------------------------------------------------------
+
 
 def verify_tree(
     model,
@@ -186,7 +192,7 @@ def verify_tree(
     best_seq: list[int] = []
     best_count: int = 0
 
-    prefix_tensor = torch.tensor(prefix_ids, dtype=torch.long, device=device)
+    torch.tensor(prefix_ids, dtype=torch.long, device=device)
     prefix_len = len(prefix_ids)
 
     for seq in tree_sequences:
@@ -232,6 +238,7 @@ def verify_tree(
 # ---------------------------------------------------------------------------
 # High-level TreeSpeculativeDecoder
 # ---------------------------------------------------------------------------
+
 
 class TreeSpeculativeDecoder:
     """High-level tree speculative decoder with tokenizer interface.

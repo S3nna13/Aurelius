@@ -18,8 +18,8 @@ class ICLConfig:
     n_shots: int = 4
     selection_strategy: str = "random"  # "random" | "similarity" | "diverse"
     max_context_len: int = 2048
-    label_smoothing: float = 0.0        # for calibration
-    calibrate: bool = False             # apply contextual calibration
+    label_smoothing: float = 0.0  # for calibration
+    calibrate: bool = False  # apply contextual calibration
     template: str = "Q: {input}\nA: {output}"  # few-shot template
 
 

@@ -14,8 +14,8 @@ attacks. There are no silent fallbacks.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional
 
 IM_START = "<|im_start|>"
 IM_END = "<|im_end|>"
@@ -45,7 +45,7 @@ class Message:
 
     role: str
     content: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 def _validate_content(role: str, content: str) -> None:
@@ -75,7 +75,7 @@ class ChatMLTemplate:
 
     def encode(
         self,
-        messages: List[Message],
+        messages: list[Message],
         add_generation_prompt: bool = False,
     ) -> str:
         """Serialize messages to a ChatML string.
@@ -90,12 +90,10 @@ class ChatMLTemplate:
         if not isinstance(messages, list):
             raise ChatMLFormatError("messages must be a list[Message]")
 
-        parts: List[str] = []
+        parts: list[str] = []
         for idx, msg in enumerate(messages):
             if not isinstance(msg, Message):
-                raise ChatMLFormatError(
-                    f"messages[{idx}] is not a Message dataclass"
-                )
+                raise ChatMLFormatError(f"messages[{idx}] is not a Message dataclass")
             if msg.role not in VALID_ROLES:
                 raise ChatMLFormatError(
                     f"messages[{idx}] has invalid role={msg.role!r}; "
@@ -111,7 +109,7 @@ class ChatMLTemplate:
 
     # ------------------------------------------------------------------ decode
 
-    def decode(self, text: str) -> List[Message]:
+    def decode(self, text: str) -> list[Message]:
         """Parse a ChatML string back into Message objects.
 
         Any trailing whitespace and an optional open generation prompt
@@ -126,7 +124,7 @@ class ChatMLTemplate:
         if text == "":
             return []
 
-        messages: List[Message] = []
+        messages: list[Message] = []
         pos = 0
         n = len(text)
 
@@ -139,8 +137,7 @@ class ChatMLTemplate:
 
             if not text.startswith(IM_START, pos):
                 raise ChatMLFormatError(
-                    f"expected {IM_START!r} at offset {pos}, got "
-                    f"{text[pos:pos + 32]!r}"
+                    f"expected {IM_START!r} at offset {pos}, got {text[pos : pos + 32]!r}"
                 )
 
             m = _MESSAGE_RE.match(text, pos)
@@ -148,7 +145,7 @@ class ChatMLTemplate:
                 # Could be an open generation prompt: <|im_start|>role\n...
                 # with no closing <|im_end|>. Accept only if it is the
                 # final fragment; otherwise malformed.
-                head = text[pos + len(IM_START):]
+                head = text[pos + len(IM_START) :]
                 nl = head.find("\n")
                 if nl == -1:
                     # rstrip may have eaten the trailing newline of a
@@ -158,15 +155,11 @@ class ChatMLTemplate:
                     remainder = ""
                 else:
                     role = head[:nl]
-                    remainder = head[nl + 1:]
+                    remainder = head[nl + 1 :]
                 if IM_END in remainder or IM_START in remainder:
-                    raise ChatMLFormatError(
-                        f"malformed message at offset {pos}: missing {IM_END}"
-                    )
+                    raise ChatMLFormatError(f"malformed message at offset {pos}: missing {IM_END}")
                 if role not in VALID_ROLES:
-                    raise ChatMLFormatError(
-                        f"invalid role {role!r} in open generation prompt"
-                    )
+                    raise ChatMLFormatError(f"invalid role {role!r} in open generation prompt")
                 # Treat as dangling generation prompt; stop parsing.
                 return messages
 
@@ -174,8 +167,7 @@ class ChatMLTemplate:
             content = m.group("content")
             if role not in VALID_ROLES:
                 raise ChatMLFormatError(
-                    f"invalid role {role!r} at offset {pos}; "
-                    f"valid roles are {sorted(VALID_ROLES)}"
+                    f"invalid role {role!r} at offset {pos}; valid roles are {sorted(VALID_ROLES)}"
                 )
             # Content must not itself contain control tokens (the regex
             # is non-greedy so a nested <|im_start|> would be captured
@@ -200,10 +192,10 @@ class ChatMLTemplate:
 
     def encode_token_ids(
         self,
-        messages: List[Message],
+        messages: list[Message],
         tokenizer: Callable[[str], Iterable[int]],
         add_generation_prompt: bool = False,
-    ) -> List[int]:
+    ) -> list[int]:
         """Encode messages to a flat list of token ids.
 
         ``tokenizer`` is any callable mapping ``str -> Iterable[int]``.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.training.hard_negative_mining import (
     HardNegativeConfig,
@@ -36,6 +35,7 @@ def make_batch(seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
 # 1. HardNegativeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_hard_negative_config_defaults():
     cfg = HardNegativeConfig()
     assert cfg.mining_strategy == "semi-hard"
@@ -50,6 +50,7 @@ def test_hard_negative_config_defaults():
 # 2. pairwise_cosine_similarity shape
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_cosine_similarity_shape():
     M, N = 5, 7
     x = torch.randn(M, D)
@@ -62,19 +63,19 @@ def test_pairwise_cosine_similarity_shape():
 # 3. pairwise_cosine_similarity self-similarity ≈ 1 on L2-normalised inputs
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_cosine_similarity_self():
     x = torch.randn(B, D)
     x_norm = torch.nn.functional.normalize(x, p=2, dim=-1)
     sim = pairwise_cosine_similarity(x_norm, x_norm)
     diag = sim.diagonal()
-    assert torch.allclose(diag, torch.ones(B), atol=1e-5), (
-        f"Diagonal should be ≈ 1, got {diag}"
-    )
+    assert torch.allclose(diag, torch.ones(B), atol=1e-5), f"Diagonal should be ≈ 1, got {diag}"
 
 
 # ---------------------------------------------------------------------------
 # 4. pairwise_euclidean_distance shape
 # ---------------------------------------------------------------------------
+
 
 def test_pairwise_euclidean_distance_shape():
     M, N = 6, 4
@@ -88,18 +89,18 @@ def test_pairwise_euclidean_distance_shape():
 # 5. pairwise_euclidean_distance self-distance = 0 on diagonal
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_euclidean_distance_self_zero():
     x = torch.randn(B, D)
     dist = pairwise_euclidean_distance(x, x)
     diag = dist.diagonal()
-    assert torch.allclose(diag, torch.zeros(B), atol=1e-5), (
-        f"Diagonal should be 0, got {diag}"
-    )
+    assert torch.allclose(diag, torch.zeros(B), atol=1e-5), f"Diagonal should be 0, got {diag}"
 
 
 # ---------------------------------------------------------------------------
 # 6. mine_hard_negatives strategy="hard" returns non-empty triplets
 # ---------------------------------------------------------------------------
+
 
 def test_mine_hard_negatives_hard_nonempty():
     embeddings, labels = make_batch()
@@ -113,6 +114,7 @@ def test_mine_hard_negatives_hard_nonempty():
 # ---------------------------------------------------------------------------
 # 7. mine_hard_negatives strategy="semi-hard" returns valid shapes
 # ---------------------------------------------------------------------------
+
 
 def test_mine_hard_negatives_semi_hard_shapes():
     embeddings, labels = make_batch()
@@ -128,6 +130,7 @@ def test_mine_hard_negatives_semi_hard_shapes():
 # 8. triplet_loss returns a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_triplet_loss_scalar():
     embeddings, labels = make_batch()
     cfg = HardNegativeConfig(mining_strategy="hard")
@@ -139,6 +142,7 @@ def test_triplet_loss_scalar():
 # ---------------------------------------------------------------------------
 # 9. triplet_loss ≈ 0 when negatives are far, positives are close
 # ---------------------------------------------------------------------------
+
 
 def test_triplet_loss_zero_when_margin_satisfied():
     # Anchor and positives are nearly identical unit vectors (cosine dist ≈ 0).
@@ -152,7 +156,7 @@ def test_triplet_loss_zero_when_margin_satisfied():
     rand_vecs = torch.randn(4, D)
     a_norm = torch.nn.functional.normalize(anchors, p=2, dim=-1)
     proj = (rand_vecs * a_norm).sum(dim=-1, keepdim=True) * a_norm
-    negatives = rand_vecs - proj   # orthogonal to anchor
+    negatives = rand_vecs - proj  # orthogonal to anchor
 
     loss = triplet_loss(anchors, positives, negatives, margin=0.5, distance_metric="cosine")
     # d(a,p) ≈ 0, d(a,n) ≈ 1, margin = 0.5 → loss ≈ max(0 - 1 + 0.5, 0) = 0
@@ -162,6 +166,7 @@ def test_triplet_loss_zero_when_margin_satisfied():
 # ---------------------------------------------------------------------------
 # 10. triplet_loss > 0 when negatives are closer than positives
 # ---------------------------------------------------------------------------
+
 
 def test_triplet_loss_positive_when_violation():
     # Anchor: random unit vectors
@@ -180,6 +185,7 @@ def test_triplet_loss_positive_when_violation():
 # 11. infonce_loss returns a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_infonce_loss_scalar():
     torch.manual_seed(7)
     K = 3
@@ -193,6 +199,7 @@ def test_infonce_loss_scalar():
 # ---------------------------------------------------------------------------
 # 12. infonce_loss decreases when positives are more similar
 # ---------------------------------------------------------------------------
+
 
 def test_infonce_loss_decreases_with_similar_positives():
     torch.manual_seed(11)
@@ -218,6 +225,7 @@ def test_infonce_loss_decreases_with_similar_positives():
 # 13. HardNegativeMiner.mine_and_compute_loss returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_miner_mine_and_compute_loss_keys():
     embeddings, labels = make_batch()
     cfg = HardNegativeConfig()
@@ -232,14 +240,14 @@ def test_miner_mine_and_compute_loss_keys():
 # 14. HardNegativeMiner.mine_and_compute_loss n_triplets > 0 with multiple classes
 # ---------------------------------------------------------------------------
 
+
 def test_miner_mine_and_compute_loss_n_triplets():
     embeddings, labels = make_batch()
     cfg = HardNegativeConfig()
     miner = HardNegativeMiner(cfg)
     loss, info = miner.mine_and_compute_loss(embeddings, labels)
     assert info["n_triplets"] > 0, (
-        f"Expected n_triplets > 0 for batch with {N_CLASSES} classes, "
-        f"got {info['n_triplets']}"
+        f"Expected n_triplets > 0 for batch with {N_CLASSES} classes, got {info['n_triplets']}"
     )
     # Loss should be a valid scalar tensor
     assert loss.shape == (), f"Expected scalar loss, got {loss.shape}"

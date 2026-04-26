@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.security.red_team_dataset_gen import (
     RedTeamConfig,
     RedTeamGenerator,
-    RedTeamSample,
 )
 
 CFG = RedTeamConfig(n_benign=4, n_adversarial=4, max_len=16, vocab_size=64, seed=0)

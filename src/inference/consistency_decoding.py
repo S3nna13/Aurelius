@@ -8,7 +8,6 @@ score measures how consistently the samples agree across token positions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn.functional as F
@@ -84,7 +83,7 @@ def greedy_decode(model, input_ids: Tensor, max_new_tokens: int) -> Tensor:
 
     for _ in range(max_new_tokens):
         _, logits, _ = model(cur_ids)
-        next_logits = logits[:, -1, :]          # (B, V)
+        next_logits = logits[:, -1, :]  # (B, V)
         next_token = next_logits.argmax(dim=-1)  # (B,)
         generated.append(next_token)
         cur_ids = torch.cat([cur_ids, next_token.unsqueeze(-1)], dim=-1)
@@ -130,7 +129,7 @@ def temperature_decode(
 # ---------------------------------------------------------------------------
 
 
-def majority_vote(sequences: List[Tensor]) -> Tensor:
+def majority_vote(sequences: list[Tensor]) -> Tensor:
     """Per-position majority vote across a list of sample tensors.
 
     Args:
@@ -150,7 +149,7 @@ def majority_vote(sequences: List[Tensor]) -> Tensor:
     return voted
 
 
-def compute_sequence_agreement(sequences: List[Tensor]) -> float:
+def compute_sequence_agreement(sequences: list[Tensor]) -> float:
     """Mean pairwise exact-match agreement across all sample pairs.
 
     For each pair (i, j) with i < j, computes the fraction of positions
@@ -199,12 +198,12 @@ class ConsistencyDecoder:
         self.model = model
         self.config = config or ConsistencyConfig()
 
-    def _generate_samples(self, input_ids: Tensor, max_new_tokens: int) -> List[Tensor]:
+    def _generate_samples(self, input_ids: Tensor, max_new_tokens: int) -> list[Tensor]:
         """Generate config.n_samples independent completions.
 
         Returns list of n_samples tensors, each of shape (B, max_new_tokens).
         """
-        samples: List[Tensor] = []
+        samples: list[Tensor] = []
         for _ in range(self.config.n_samples):
             seq = temperature_decode(
                 self.model,
@@ -232,9 +231,7 @@ class ConsistencyDecoder:
         # majority_vote expects list of tensors with same shape; we pass (B, T) tensors.
         return majority_vote(samples)
 
-    def decode_with_score(
-        self, input_ids: Tensor, max_new_tokens: int
-    ) -> tuple[Tensor, float]:
+    def decode_with_score(self, input_ids: Tensor, max_new_tokens: int) -> tuple[Tensor, float]:
         """Generate samples, apply majority vote, and compute agreement score.
 
         Args:

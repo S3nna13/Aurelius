@@ -6,8 +6,6 @@ gradient tensors are present — no mocking required.
 
 from __future__ import annotations
 
-import math
-import pytest
 import torch
 import torch.nn as nn
 
@@ -21,7 +19,6 @@ from src.training.gradient_utils import (
     compute_layer_grad_norms,
     detect_gradient_issues,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

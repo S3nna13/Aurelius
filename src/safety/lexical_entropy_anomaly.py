@@ -15,7 +15,6 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-
 _WS = re.compile(r"\s+")
 
 
@@ -83,9 +82,7 @@ class LexicalEntropyAnomalyDetector:
 
         ttr = v / total
         high_signal = (
-            self._high_ttr is not None
-            and total >= self._min_tok
-            and ttr >= self._high_ttr
+            self._high_ttr is not None and total >= self._min_tok and ttr >= self._high_ttr
         )
         single_type_spam = v == 1 and total >= 12
         low_signal = (h_norm <= self._low and v > 1) or single_type_spam

@@ -1,7 +1,7 @@
 """Tests for dynamic coefficient scheduling (src/training/dynamic_coef.py)."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -13,10 +13,10 @@ from src.training.dynamic_coef import (
     create_dynamic_coef_scheduler,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_shared_param(requires_grad: bool = True) -> nn.Parameter:
     """Small shared parameter for GradNorm tests."""
@@ -32,6 +32,7 @@ def _make_task_losses(n: int, shared_param: nn.Parameter) -> list[torch.Tensor]:
 # Test 1 – DynamicCoefConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_coef_config_defaults():
     cfg = DynamicCoefConfig()
     assert cfg.method == "uncertainty"
@@ -46,6 +47,7 @@ def test_dynamic_coef_config_defaults():
 # Test 2 – GradNormScheduler.get_weights sums to 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_gradnorm_weights_sum_to_one():
     sched = GradNormScheduler(n_tasks=3)
     weights = sched.get_weights()
@@ -58,6 +60,7 @@ def test_gradnorm_weights_sum_to_one():
 # ---------------------------------------------------------------------------
 # Test 3 – GradNormScheduler.update returns scalar loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradnorm_update_returns_scalar():
     torch.manual_seed(0)
@@ -74,9 +77,10 @@ def test_gradnorm_update_returns_scalar():
 # Test 4 – UncertaintyWeighting.compute_weighted_loss returns (loss, weights)
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_weighting_returns_tuple():
     uw = UncertaintyWeighting(n_tasks=3)
-    losses = [torch.tensor(l, dtype=torch.float32) for l in [0.5, 0.3, 0.2]]
+    losses = [torch.tensor(line, dtype=torch.float32) for line in [0.5, 0.3, 0.2]]
     result = uw.compute_weighted_loss(losses)
     assert isinstance(result, tuple) and len(result) == 2
     total_loss, per_task_weights = result
@@ -87,6 +91,7 @@ def test_uncertainty_weighting_returns_tuple():
 # ---------------------------------------------------------------------------
 # Test 5 – Uncertainty per-task weights are positive
 # ---------------------------------------------------------------------------
+
 
 def test_uncertainty_weights_positive():
     uw = UncertaintyWeighting(n_tasks=4)
@@ -101,18 +106,18 @@ def test_uncertainty_weights_positive():
 # Test 6 – get_log_variances has correct shape (n_tasks,)
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_log_variances_shape():
     n_tasks = 5
     uw = UncertaintyWeighting(n_tasks=n_tasks)
     log_vars = uw.get_log_variances()
-    assert log_vars.shape == (n_tasks,), (
-        f"Expected shape ({n_tasks},), got {log_vars.shape}"
-    )
+    assert log_vars.shape == (n_tasks,), f"Expected shape ({n_tasks},), got {log_vars.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 7 – LossRatioScheduler.get_coefficients returns dict with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_loss_ratio_scheduler_keys():
     targets = {"lm": 0.6, "aux": 0.4}
@@ -124,6 +129,7 @@ def test_loss_ratio_scheduler_keys():
 # ---------------------------------------------------------------------------
 # Test 8 – LossRatioScheduler adjusts coefficients toward target ratio
 # ---------------------------------------------------------------------------
+
 
 def test_loss_ratio_scheduler_adjusts():
     # Target: lm should be 0.9 of total, aux should be 0.1.
@@ -153,6 +159,7 @@ def test_loss_ratio_scheduler_adjusts():
 # Test 9 – create_dynamic_coef_scheduler returns GradNormScheduler
 # ---------------------------------------------------------------------------
 
+
 def test_factory_returns_gradnorm():
     cfg = DynamicCoefConfig(method="gradnorm", n_tasks=3)
     sched = create_dynamic_coef_scheduler(cfg, task_names=["a", "b", "c"])
@@ -162,6 +169,7 @@ def test_factory_returns_gradnorm():
 # ---------------------------------------------------------------------------
 # Test 10 – create_dynamic_coef_scheduler returns UncertaintyWeighting
 # ---------------------------------------------------------------------------
+
 
 def test_factory_returns_uncertainty():
     cfg = DynamicCoefConfig(method="uncertainty", n_tasks=2)
@@ -173,33 +181,26 @@ def test_factory_returns_uncertainty():
 # Test 11 – Gradient flows through UncertaintyWeighting loss
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_gradient_flow():
     uw = UncertaintyWeighting(n_tasks=2)
     assert uw.log_var.grad is None
 
-    losses = [torch.tensor(0.5, requires_grad=False),
-              torch.tensor(0.3, requires_grad=False)]
+    losses = [torch.tensor(0.5, requires_grad=False), torch.tensor(0.3, requires_grad=False)]
     total_loss, _ = uw.compute_weighted_loss(losses)
     total_loss.backward()
 
-    assert uw.log_var.grad is not None, (
-        "Gradient should flow back to log_var parameters"
-    )
-    assert not torch.isnan(uw.log_var.grad).any(), (
-        "Gradients should not be NaN"
-    )
+    assert uw.log_var.grad is not None, "Gradient should flow back to log_var parameters"
+    assert not torch.isnan(uw.log_var.grad).any(), "Gradients should not be NaN"
 
 
 # ---------------------------------------------------------------------------
 # Test 12 – GradNormScheduler weights are learnable parameters
 # ---------------------------------------------------------------------------
 
+
 def test_gradnorm_weights_are_learnable():
     sched = GradNormScheduler(n_tasks=2)
     # log_weights must be an nn.Parameter with requires_grad=True.
-    assert isinstance(sched.log_weights, nn.Parameter), (
-        "log_weights should be an nn.Parameter"
-    )
-    assert sched.log_weights.requires_grad, (
-        "log_weights should have requires_grad=True"
-    )
+    assert isinstance(sched.log_weights, nn.Parameter), "log_weights should be an nn.Parameter"
+    assert sched.log_weights.requires_grad, "log_weights should have requires_grad=True"

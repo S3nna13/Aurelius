@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.security.membership_inference import (
-    MIAConfig,
     EntropyMIA,
+    MIAConfig,
     ThresholdMIA,
     compute_sample_entropy,
     compute_sample_loss,

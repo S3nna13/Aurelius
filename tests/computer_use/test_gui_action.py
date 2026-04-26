@@ -13,14 +13,16 @@ from src.computer_use.gui_action import (
     get_action_predictor,
     register_action_predictor,
 )
-from src.computer_use.screen_parser import AccessibilityNode, JSONTreeParser, ScreenSnapshot
-
+from src.computer_use.screen_parser import JSONTreeParser, ScreenSnapshot
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_snapshot(root_name: str = "Root", children_names: list[str] | None = None) -> ScreenSnapshot:
+
+def _make_snapshot(
+    root_name: str = "Root", children_names: list[str] | None = None
+) -> ScreenSnapshot:
     root_dict: dict = {
         "width": 1024,
         "height": 768,
@@ -39,6 +41,7 @@ def _make_snapshot(root_name: str = "Root", children_names: list[str] | None = N
 # ---------------------------------------------------------------------------
 # RuleBasedPredictor tests
 # ---------------------------------------------------------------------------
+
 
 class TestRuleBasedPredictor:
     def test_finds_matching_node_by_keyword(self):
@@ -101,6 +104,7 @@ class TestRuleBasedPredictor:
 # GUIAction dataclass tests
 # ---------------------------------------------------------------------------
 
+
 class TestGUIActionDataclass:
     def test_click_with_none_coords_is_valid(self):
         action = GUIAction(action_type=ActionType.CLICK, target_selector="OK", coords=None)
@@ -126,6 +130,7 @@ class TestGUIActionDataclass:
 # GUIActionError
 # ---------------------------------------------------------------------------
 
+
 class TestGUIActionError:
     def test_is_exception(self):
         err = GUIActionError("test error")
@@ -136,6 +141,7 @@ class TestGUIActionError:
 # ---------------------------------------------------------------------------
 # Registry tests
 # ---------------------------------------------------------------------------
+
 
 class TestGUIActionRegistry:
     def test_registry_contains_rule_based(self):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 __all__ = [
     "ModelPreset",
@@ -27,17 +27,11 @@ class ModelPreset:
         if not self.model_id:
             raise ModelPresetError("model_id must be a non-empty string")
         if not (0.0 <= self.temperature <= 2.0):
-            raise ModelPresetError(
-                f"temperature must be in [0.0, 2.0], got {self.temperature}"
-            )
+            raise ModelPresetError(f"temperature must be in [0.0, 2.0], got {self.temperature}")
         if self.max_tokens < 1:
-            raise ModelPresetError(
-                f"max_tokens must be >= 1, got {self.max_tokens}"
-            )
+            raise ModelPresetError(f"max_tokens must be >= 1, got {self.max_tokens}")
         if not (0.0 < self.top_p <= 1.0):
-            raise ModelPresetError(
-                f"top_p must be in (0.0, 1.0], got {self.top_p}"
-            )
+            raise ModelPresetError(f"top_p must be in (0.0, 1.0], got {self.top_p}")
 
 
 class ModelPresetRegistry:

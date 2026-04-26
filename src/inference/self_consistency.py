@@ -8,8 +8,7 @@ Improves accuracy on reasoning tasks (math, logic, code) without fine-tuning.
 from __future__ import annotations
 
 import re
-from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -44,6 +43,7 @@ class ConsistencyResult:
 # ---------------------------------------------------------------------------
 # Standalone helpers
 # ---------------------------------------------------------------------------
+
 
 def majority_vote(answers: list[str]) -> tuple[str, dict[str, int]]:
     """Return (most_common_answer, vote_counts_dict).
@@ -120,6 +120,7 @@ def answer_consistency_score(answers: list[str]) -> float:
 # ---------------------------------------------------------------------------
 # Core decoder
 # ---------------------------------------------------------------------------
+
 
 class SelfConsistencyDecoder:
     """Self-consistency decoding via majority vote over sampled completions.
@@ -210,9 +211,7 @@ class SelfConsistencyDecoder:
             winner, vote_counts = majority_vote(all_extracted)
 
         winner_norm = winner.strip().lower()
-        votes_for_winner = sum(
-            1 for a in all_extracted if a.strip().lower() == winner_norm
-        )
+        votes_for_winner = sum(1 for a in all_extracted if a.strip().lower() == winner_norm)
         confidence = votes_for_winner / self.config.n_samples if self.config.n_samples > 0 else 0.0
 
         return ConsistencyResult(
@@ -231,6 +230,7 @@ class SelfConsistencyDecoder:
 # ---------------------------------------------------------------------------
 # Chain-of-thought sampler
 # ---------------------------------------------------------------------------
+
 
 class ChainOfThoughtSampler:
     """Generate chain-of-thought reasoning paths before extracting answers.
@@ -262,7 +262,9 @@ class ChainOfThoughtSampler:
         self.cot_trigger = cot_trigger
         self.answer_trigger = answer_trigger
         self.config = config or SelfConsistencyConfig()
-        self._decoder = SelfConsistencyDecoder(model, tokenizer_encode, tokenizer_decode, self.config)
+        self._decoder = SelfConsistencyDecoder(
+            model, tokenizer_encode, tokenizer_decode, self.config
+        )
         self.model.train(False)
 
     def sample_with_cot(
@@ -291,11 +293,13 @@ class ChainOfThoughtSampler:
                 reasoning = full_text.strip()
                 answer = ""
 
-            results.append({
-                "reasoning": reasoning,
-                "answer": answer,
-                "full_text": full_text,
-            })
+            results.append(
+                {
+                    "reasoning": reasoning,
+                    "answer": answer,
+                    "full_text": full_text,
+                }
+            )
 
         return results
 
@@ -319,9 +323,7 @@ class ChainOfThoughtSampler:
             }
 
         winner_norm = final_answer.strip().lower()
-        votes_for_winner = sum(
-            1 for a in answers if a.strip().lower() == winner_norm
-        )
+        votes_for_winner = sum(1 for a in answers if a.strip().lower() == winner_norm)
         confidence = votes_for_winner / n
         consistent_reasoning = confidence > 0.5
 

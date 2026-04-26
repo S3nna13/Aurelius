@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import json
 import tempfile
-from pathlib import Path
 
 from training_data.reddit_pipeline import RedditPipeline, _clean_text, _is_bot
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _sample_submission(overrides: dict | None = None) -> dict:
     base = {
@@ -30,7 +29,7 @@ def _sample_submission(overrides: dict | None = None) -> dict:
 def _sample_comment(overrides: dict | None = None) -> dict:
     base = {
         "id": "def456",
-        "body": "Transformers use self-attention mechanisms to process sequential data efficiently.",
+        "body": "Transformers use self-attention mechanisms to process sequential data efficiently.",  # noqa: E501
         "subreddit": "MachineLearning",
         "score": 5,
         "created_utc": 1700000001,
@@ -45,6 +44,7 @@ def _sample_comment(overrides: dict | None = None) -> dict:
 # ---------------------------------------------------------------------------
 # Config defaults
 # ---------------------------------------------------------------------------
+
 
 def test_default_config() -> None:
     p = RedditPipeline({})
@@ -79,6 +79,7 @@ def test_blocklist_populated() -> None:
 # ---------------------------------------------------------------------------
 # Text cleaning
 # ---------------------------------------------------------------------------
+
 
 def test_clean_text_strips_markdown_links() -> None:
     text = "See [this link](https://example.com) for details"
@@ -121,6 +122,7 @@ def test_clean_text_handles_empty() -> None:
 # Bot detection
 # ---------------------------------------------------------------------------
 
+
 def test_is_bot_detects_bot_phrases() -> None:
     assert _is_bot("I am a bot that helps with formatting")
     assert _is_bot("Beep boop, I'm a bot")
@@ -135,6 +137,7 @@ def test_is_bot_returns_false_for_normal_text() -> None:
 # ---------------------------------------------------------------------------
 # Parsing and filtering
 # ---------------------------------------------------------------------------
+
 
 def test_parse_item_keeps_valid_submission() -> None:
     p = RedditPipeline({})
@@ -199,11 +202,22 @@ def test_parse_item_keeps_valid_comment() -> None:
 # Quality filtering on parsed items
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_quality_removes_low_score() -> None:
     p = RedditPipeline({"min_score_comments": 3})
     items = [
-        {"id": "1", "text": "This is a long enough text to pass min length.", "score": 1, "type": "comment"},
-        {"id": "2", "text": "This is another long enough text to pass min length.", "score": 5, "type": "comment"},
+        {
+            "id": "1",
+            "text": "This is a long enough text to pass min length.",
+            "score": 1,
+            "type": "comment",
+        },
+        {
+            "id": "2",
+            "text": "This is another long enough text to pass min length.",
+            "score": 5,
+            "type": "comment",
+        },
     ]
     filtered = p.filter_by_quality(items)
     assert len(filtered) == 1
@@ -213,7 +227,12 @@ def test_filter_by_quality_removes_low_score() -> None:
 def test_filter_by_quality_removes_deleted() -> None:
     p = RedditPipeline({})
     items = [
-        {"id": "1", "text": "This is a long enough text that exceeds the minimum threshold for testing purposes.", "score": 10, "type": "comment"},
+        {
+            "id": "1",
+            "text": "This is a long enough text that exceeds the minimum threshold for testing purposes.",  # noqa: E501
+            "score": 10,
+            "type": "comment",
+        },
         {"id": "2", "text": "[deleted]", "score": 10, "type": "comment"},
     ]
     filtered = p.filter_by_quality(items)
@@ -224,6 +243,7 @@ def test_filter_by_quality_removes_deleted() -> None:
 # ---------------------------------------------------------------------------
 # Comment threading
 # ---------------------------------------------------------------------------
+
 
 def test_thread_comments_empty() -> None:
     p = RedditPipeline({})
@@ -261,9 +281,30 @@ def test_thread_comments_basic_chain() -> None:
 def test_thread_comments_respects_depth() -> None:
     p = RedditPipeline({"max_conversation_depth": 2})
     comments = [
-        {"id": "c1", "parent_id": "", "text": "Q1", "score": 1, "created_utc": 1, "subreddit": "test"},
-        {"id": "c2", "parent_id": "t1_c1", "text": "A1", "score": 1, "created_utc": 2, "subreddit": "test"},
-        {"id": "c3", "parent_id": "t1_c2", "text": "A2", "score": 1, "created_utc": 3, "subreddit": "test"},
+        {
+            "id": "c1",
+            "parent_id": "",
+            "text": "Q1",
+            "score": 1,
+            "created_utc": 1,
+            "subreddit": "test",
+        },
+        {
+            "id": "c2",
+            "parent_id": "t1_c1",
+            "text": "A1",
+            "score": 1,
+            "created_utc": 2,
+            "subreddit": "test",
+        },
+        {
+            "id": "c3",
+            "parent_id": "t1_c2",
+            "text": "A2",
+            "score": 1,
+            "created_utc": 3,
+            "subreddit": "test",
+        },
     ]
     convs = p.thread_comments(comments)
     for conv in convs:
@@ -274,6 +315,7 @@ def test_thread_comments_respects_depth() -> None:
 # ---------------------------------------------------------------------------
 # Output format checks
 # ---------------------------------------------------------------------------
+
 
 def test_raw_jsonl_output_format() -> None:
     p = RedditPipeline({})
@@ -288,8 +330,22 @@ def test_raw_jsonl_output_format() -> None:
 def test_conversation_jsonl_format() -> None:
     p = RedditPipeline({})
     comments = [
-        {"id": "c1", "parent_id": "", "text": "Hello?", "score": 2, "created_utc": 1, "subreddit": "test"},
-        {"id": "c2", "parent_id": "t1_c1", "text": "World!", "score": 1, "created_utc": 2, "subreddit": "test"},
+        {
+            "id": "c1",
+            "parent_id": "",
+            "text": "Hello?",
+            "score": 2,
+            "created_utc": 1,
+            "subreddit": "test",
+        },
+        {
+            "id": "c2",
+            "parent_id": "t1_c1",
+            "text": "World!",
+            "score": 1,
+            "created_utc": 2,
+            "subreddit": "test",
+        },
     ]
     convs = p.thread_comments(comments)
     assert len(convs) == 1
@@ -326,6 +382,7 @@ def test_pretrain_output_format() -> None:
 # State tracking
 # ---------------------------------------------------------------------------
 
+
 def test_state_tracking_marks_and_checks() -> None:
     p = RedditPipeline({})
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -356,6 +413,7 @@ def test_state_tracking_persistence() -> None:
 # Incremental skip
 # ---------------------------------------------------------------------------
 
+
 def test_skips_already_processed_files() -> None:
     p = RedditPipeline({})
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -368,10 +426,16 @@ def test_skips_already_processed_files() -> None:
 # Filter_by_quality on score
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_quality_removes_bot() -> None:
     p = RedditPipeline({})
     items = [
-        {"id": "1", "text": "This is a real question about Python programming language and its frameworks.", "score": 10, "type": "comment"},
+        {
+            "id": "1",
+            "text": "This is a real question about Python programming language and its frameworks.",
+            "score": 10,
+            "type": "comment",
+        },
         {"id": "2", "text": "I am a bot, beep boop.", "score": 10, "type": "comment"},
     ]
     filtered = p.filter_by_quality(items)
@@ -382,6 +446,7 @@ def test_filter_by_quality_removes_bot() -> None:
 # ---------------------------------------------------------------------------
 # Text length boundaries
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_quality_text_length_bounds() -> None:
     p = RedditPipeline({"min_text_length": 10, "max_text_length": 50})

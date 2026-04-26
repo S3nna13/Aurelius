@@ -7,9 +7,6 @@ Test config: in_features=64, out_features=128, rank=8.
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -28,6 +25,7 @@ BATCH = 4
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _fresh_vera_linear(freeze_base: bool = True) -> VeRALinear:
     """Return a VeRALinear with no shared A/B supplied (internally generated)."""
@@ -52,6 +50,7 @@ def _tiny_model() -> nn.Module:
 # Test 1: Output shape
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape():
     """VeRALinear output shape matches nn.Linear for same inputs."""
     vera = _fresh_vera_linear()
@@ -64,6 +63,7 @@ def test_output_shape():
 # Test 2: Zero-delta initialisation (d=0 → delta term vanishes)
 # ---------------------------------------------------------------------------
 
+
 def test_initial_output_equals_base():
     """With d=0, VeRALinear output should equal the base linear output."""
     vera = _fresh_vera_linear()
@@ -73,7 +73,8 @@ def test_initial_output_equals_base():
     base_out = vera.base_linear(x)
     vera_out = vera(x)
     torch.testing.assert_close(
-        vera_out, base_out,
+        vera_out,
+        base_out,
         msg="Initial VeRA output should match base linear output when d=0",
     )
 
@@ -81,6 +82,7 @@ def test_initial_output_equals_base():
 # ---------------------------------------------------------------------------
 # Test 3: A, B are frozen (requires_grad=False)
 # ---------------------------------------------------------------------------
+
 
 def test_frozen_shared_matrices():
     """A and B must not require gradients."""
@@ -93,6 +95,7 @@ def test_frozen_shared_matrices():
 # Test 4: d, b are trainable (requires_grad=True)
 # ---------------------------------------------------------------------------
 
+
 def test_trainable_scaling_vectors():
     """d and b must be trainable parameters."""
     vera = _fresh_vera_linear()
@@ -103,6 +106,7 @@ def test_trainable_scaling_vectors():
 # ---------------------------------------------------------------------------
 # Test 5: Gradients flow through d and b
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_d_and_b():
     """Backward pass must produce non-None, non-zero gradients for d and b."""
@@ -123,6 +127,7 @@ def test_gradient_flows_through_d_and_b():
 # Test 6: d/b gradients are finite
 # ---------------------------------------------------------------------------
 
+
 def test_gradients_are_finite():
     """d and b gradients must be finite (no NaN/Inf)."""
     vera = _fresh_vera_linear()
@@ -138,6 +143,7 @@ def test_gradients_are_finite():
 # ---------------------------------------------------------------------------
 # Test 7: Determinism — same seed → same A, B, same output
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_same_seed():
     """Two VeRALinear instances built with the same seed should produce identical outputs."""
@@ -161,6 +167,7 @@ def test_determinism_same_seed():
 # Test 8: Shared A/B — two layers sharing the same tensors → same object id
 # ---------------------------------------------------------------------------
 
+
 def test_shared_matrices_same_object():
     """When two VeRALinear layers are given the same A/B tensors, they must
     reference the same objects (not copies)."""
@@ -181,6 +188,7 @@ def test_shared_matrices_same_object():
 # Test 9: VeRAModel — only d and b appear in optimizer params
 # ---------------------------------------------------------------------------
 
+
 def test_vera_model_only_d_b_trainable():
     """After VeRAModel wraps a model, only d and b vectors should be trainable."""
     base = _tiny_model()
@@ -192,9 +200,7 @@ def test_vera_model_only_d_b_trainable():
 
     # Every trainable parameter name must end with '.d' or '.b'
     for name in trainable_names:
-        assert name.endswith(".d") or name.endswith(".b"), (
-            f"Unexpected trainable parameter: {name}"
-        )
+        assert name.endswith(".d") or name.endswith(".b"), f"Unexpected trainable parameter: {name}"
 
     # There must be at least one d and one b
     assert any(n.endswith(".d") for n in trainable_names), "No d parameters found"
@@ -204,6 +210,7 @@ def test_vera_model_only_d_b_trainable():
 # ---------------------------------------------------------------------------
 # Test 10: VeRAModel — trainable param count << LoRA param count (same rank)
 # ---------------------------------------------------------------------------
+
 
 def test_vera_fewer_params_than_lora():
     """VeRA trainable parameters must be fewer than LoRA for the same rank.
@@ -228,6 +235,7 @@ def test_vera_fewer_params_than_lora():
 # Test 11: VeRAModel forward — output shape matches original model
 # ---------------------------------------------------------------------------
 
+
 def test_vera_model_forward_shape():
     """VeRAModel forward pass must produce the same output shape as the original."""
     x = torch.randn(BATCH, IN_F)
@@ -239,14 +247,13 @@ def test_vera_model_forward_shape():
     with torch.no_grad():
         out = vera_model(x)
 
-    assert out.shape == expected_shape, (
-        f"Output shape {out.shape} != expected {expected_shape}"
-    )
+    assert out.shape == expected_shape, f"Output shape {out.shape} != expected {expected_shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 12: Numerical stability — zero input
 # ---------------------------------------------------------------------------
+
 
 def test_numerical_stability_zero_input():
     """Output must be finite (no NaN/Inf) on an all-zeros input."""
@@ -259,6 +266,7 @@ def test_numerical_stability_zero_input():
 # ---------------------------------------------------------------------------
 # Test 13: Numerical stability — large input
 # ---------------------------------------------------------------------------
+
 
 def test_numerical_stability_large_input():
     """Output must be finite (no NaN/Inf) on large-valued inputs."""
@@ -273,6 +281,7 @@ def test_numerical_stability_large_input():
 # ---------------------------------------------------------------------------
 # Test 14: Optimizer step changes d and b from initial values
 # ---------------------------------------------------------------------------
+
 
 def test_optimizer_step_updates_d_and_b():
     """After one SGD step on a simple regression task, d and b must change."""
@@ -309,6 +318,7 @@ def test_optimizer_step_updates_d_and_b():
 # Test 15: VeRALinear init — b is all-ones
 # ---------------------------------------------------------------------------
 
+
 def test_b_initialized_to_ones():
     """b must be initialised to all-ones (paper Section 3.2)."""
     vera = _fresh_vera_linear()
@@ -318,6 +328,7 @@ def test_b_initialized_to_ones():
 # ---------------------------------------------------------------------------
 # Test 16: Non-square / asymmetric shapes work correctly
 # ---------------------------------------------------------------------------
+
 
 def test_non_square_shapes():
     """VeRALinear should handle arbitrary in_features != out_features."""

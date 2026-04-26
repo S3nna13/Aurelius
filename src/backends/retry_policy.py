@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 __all__ = [
     "RetryConfig",
@@ -65,7 +65,7 @@ class RetryPolicy:
         multiplied by a uniform random factor in ``[0.5, 1.0)``.
         """
         cfg = self._config
-        raw = cfg.base_delay_s * (cfg.backoff_factor ** attempt)
+        raw = cfg.base_delay_s * (cfg.backoff_factor**attempt)
         clamped = min(raw, cfg.max_delay_s)
         if cfg.jitter:
             clamped *= random.uniform(0.5, 1.0)

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.data.persona_hub import (
     Persona,
     PersonaConfig,
@@ -13,23 +11,33 @@ from src.data.persona_hub import (
     persona_weighted_sample,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test 1: PersonaConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_persona_config_defaults():
     """PersonaConfig should have the correct default values."""
     cfg = PersonaConfig()
     assert cfg.n_default_personas == 20
     assert cfg.allow_domain_filter is True
-    expected_domains = {"math", "science", "programming", "writing", "history", "business", "education", "art"}
+    expected_domains = {
+        "math",
+        "science",
+        "programming",
+        "writing",
+        "history",
+        "business",
+        "education",
+        "art",
+    }
     assert set(cfg.domains) == expected_domains
 
 
 # ---------------------------------------------------------------------------
 # Test 2: create_default_personas returns 20 personas
 # ---------------------------------------------------------------------------
+
 
 def test_create_default_personas_count():
     """create_default_personas should return exactly 20 Persona objects."""
@@ -40,6 +48,7 @@ def test_create_default_personas_count():
 # ---------------------------------------------------------------------------
 # Test 3: All default personas have required fields
 # ---------------------------------------------------------------------------
+
 
 def test_default_personas_required_fields():
     """Every default persona must have non-empty name, description, domain, and traits."""
@@ -55,6 +64,7 @@ def test_default_personas_required_fields():
 # Test 4: sample_persona returns correct count
 # ---------------------------------------------------------------------------
 
+
 def test_sample_persona_count():
     """sample_persona(n) should return exactly n personas."""
     hub = PersonaHub(seed=0)
@@ -68,6 +78,7 @@ def test_sample_persona_count():
 # Test 5: sample_persona with domain filter
 # ---------------------------------------------------------------------------
 
+
 def test_sample_persona_domain_filter():
     """sample_persona with domain filter should only return personas from that domain."""
     hub = PersonaHub(seed=0)
@@ -79,6 +90,7 @@ def test_sample_persona_domain_filter():
 # ---------------------------------------------------------------------------
 # Test 6: generate_instruction_prompt contains persona prefix
 # ---------------------------------------------------------------------------
+
 
 def test_generate_instruction_prompt_contains_prefix():
     """generate_instruction_prompt should contain the persona's to_prompt_prefix() string."""
@@ -94,6 +106,7 @@ def test_generate_instruction_prompt_contains_prefix():
 # ---------------------------------------------------------------------------
 # Test 7: diversify_dataset returns n_personas_per * len(instructions) examples
 # ---------------------------------------------------------------------------
+
 
 def test_diversify_dataset_output_size():
     """diversify_dataset should return exactly n_personas_per * len(instructions) dicts."""
@@ -119,6 +132,7 @@ def test_diversify_dataset_dict_keys():
 # Test 8: compute_diversity_score returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_compute_diversity_score_range():
     """compute_diversity_score should return a float in [0.0, 1.0]."""
     hub = PersonaHub(seed=0)
@@ -136,6 +150,7 @@ def test_compute_diversity_score_range():
 # ---------------------------------------------------------------------------
 # Test 9: More diverse instructions → higher diversity score
 # ---------------------------------------------------------------------------
+
 
 def test_compute_diversity_score_ordering():
     """Highly diverse instructions should score higher than near-identical ones."""
@@ -165,6 +180,7 @@ def test_compute_diversity_score_ordering():
 # Test 10: get_persona_distribution returns dict with all domains
 # ---------------------------------------------------------------------------
 
+
 def test_get_persona_distribution_all_domains():
     """get_persona_distribution should include every domain from PersonaConfig."""
     hub = PersonaHub(seed=0)
@@ -180,6 +196,7 @@ def test_get_persona_distribution_all_domains():
 # ---------------------------------------------------------------------------
 # Test 11: persona_weighted_sample respects domain weights
 # ---------------------------------------------------------------------------
+
 
 def test_persona_weighted_sample_domain_weight():
     """Heavily weighting one domain should make it appear more often in samples."""
@@ -197,6 +214,7 @@ def test_persona_weighted_sample_domain_weight():
 # ---------------------------------------------------------------------------
 # Test 12: estimate_coverage returns 1.0 when all domains covered
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_coverage_full():
     """estimate_coverage should return 1.0 when sampled personas cover all domains."""

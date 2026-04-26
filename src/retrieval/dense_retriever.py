@@ -22,7 +22,7 @@ class DenseRetriever:
         self._store: dict[str, DenseDocument] = {}
 
     def _embed_stub(self, text: str) -> list[float]:
-        words = text.lower().split()[:self.embedding_dim]
+        words = text.lower().split()[: self.embedding_dim]
         vec = [hash(word) % 256 / 255.0 for word in words]
         # Pad to embedding_dim
         while len(vec) < self.embedding_dim:

@@ -13,10 +13,10 @@ import torch.nn.functional as F
 
 from src.alignment.bco import BCOLoss, BCOTrainer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_logps(
     batch_size: int = 4,
@@ -42,6 +42,7 @@ def _make_logps(
 # Test 1: Loss is a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_loss_is_scalar():
     loss_fn = BCOLoss(beta=0.1)
     lp_w, lp_l, lp_ref_w, lp_ref_l = _make_logps()
@@ -53,6 +54,7 @@ def test_loss_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 2: Gradients are finite
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_finite():
     loss_fn = BCOLoss(beta=0.1)
@@ -71,6 +73,7 @@ def test_gradients_finite():
 # Test 3: Determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     loss_fn = BCOLoss(beta=0.1)
     lp_w, lp_l, lp_ref_w, lp_ref_l = _make_logps(seed=7)
@@ -84,6 +87,7 @@ def test_determinism():
 # Test 4: batch_size=1 works
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one():
     loss_fn = BCOLoss(beta=0.1)
     lp_w, lp_l, lp_ref_w, lp_ref_l = _make_logps(batch_size=1)
@@ -96,12 +100,13 @@ def test_batch_size_one():
 # Test 5: Large margin → small loss
 # ---------------------------------------------------------------------------
 
+
 def test_large_margin_small_loss():
     """When y_w >> y_l (large preference margin), loss should be near 0."""
     loss_fn = BCOLoss(beta=0.1)
     B = 8
     lp_w = torch.zeros(B)
-    lp_l = torch.full((B,), -50.0)    # policy strongly prefers w
+    lp_l = torch.full((B,), -50.0)  # policy strongly prefers w
     lp_ref_w = torch.zeros(B)
     lp_ref_l = torch.zeros(B)
     loss, _ = loss_fn(lp_w, lp_l, lp_ref_w, lp_ref_l)
@@ -111,6 +116,7 @@ def test_large_margin_small_loss():
 # ---------------------------------------------------------------------------
 # Test 6: Zero margin → loss ≈ 2·log(2)
 # ---------------------------------------------------------------------------
+
 
 def test_zero_margin_loss_equals_2log2():
     """When diff=0, σ(0)=0.5, loss = -2·log(0.5) = 2·log(2) ≈ 1.3863."""
@@ -128,6 +134,7 @@ def test_zero_margin_loss_equals_2log2():
 # Test 7: classifier_score ∈ (0, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_classifier_score_in_unit_interval():
     loss_fn = BCOLoss(beta=0.1)
     lp_w, lp_l, lp_ref_w, lp_ref_l = _make_logps()
@@ -139,6 +146,7 @@ def test_classifier_score_in_unit_interval():
 # ---------------------------------------------------------------------------
 # Test 8: classifier_score > 0.5 when y_w is clearly preferred
 # ---------------------------------------------------------------------------
+
 
 def test_classifier_score_above_half_when_preferred():
     """When the policy assigns clearly higher log-probs to y_w, score > 0.5."""
@@ -157,6 +165,7 @@ def test_classifier_score_above_half_when_preferred():
 # ---------------------------------------------------------------------------
 # Test 9: BCO loss ≈ 2× DPO loss for same β
 # ---------------------------------------------------------------------------
+
 
 def test_bco_loss_approx_twice_dpo_loss():
     """BCO-0 loss = -2·log σ(diff/β) = 2 × DPO loss (which = -log σ(diff/β) / β·β)."""
@@ -181,14 +190,13 @@ def test_bco_loss_approx_twice_dpo_loss():
     dpo_equiv = -F.logsigmoid(scaled).mean()
 
     ratio = bco_loss.item() / dpo_equiv.item()
-    assert abs(ratio - 2.0) < 1e-4, (
-        f"Expected BCO ≈ 2×DPO (ratio=2.0), got ratio={ratio:.6f}"
-    )
+    assert abs(ratio - 2.0) < 1e-4, f"Expected BCO ≈ 2×DPO (ratio=2.0), got ratio={ratio:.6f}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: No NaN/Inf on extreme log-probs (±100)
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf_extreme_logprobs():
     loss_fn = BCOLoss(beta=0.1)
@@ -207,6 +215,7 @@ def test_no_nan_inf_extreme_logprobs():
 # Test 11: No NaN/Inf on zero inputs
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_zero_inputs():
     loss_fn = BCOLoss(beta=0.1)
     B = 4
@@ -221,6 +230,7 @@ def test_no_nan_inf_zero_inputs():
 # Test 12: beta=0 raises ValueError (no silent division by zero)
 # ---------------------------------------------------------------------------
 
+
 def test_beta_zero_raises():
     with pytest.raises(ValueError, match="beta > 0"):
         BCOLoss(beta=0.0)
@@ -234,6 +244,7 @@ def test_beta_negative_raises():
 # ---------------------------------------------------------------------------
 # Test 13: reward_margin in metrics is the mean diff value
 # ---------------------------------------------------------------------------
+
 
 def test_reward_margin_is_mean_diff():
     beta = 0.1
@@ -250,6 +261,7 @@ def test_reward_margin_is_mean_diff():
 # ---------------------------------------------------------------------------
 # Test 14: accuracy = fraction of correct rankings (diff > 0)
 # ---------------------------------------------------------------------------
+
 
 def test_accuracy_correct_ranking():
     beta = 0.1
@@ -271,6 +283,7 @@ def test_accuracy_correct_ranking():
 # ---------------------------------------------------------------------------
 # Test 15: BCOTrainer.compute_loss matches BCOLoss directly
 # ---------------------------------------------------------------------------
+
 
 def test_bco_trainer_compute_loss_matches_bco_loss():
     beta = 0.2
@@ -301,6 +314,7 @@ def test_bco_trainer_compute_loss_matches_bco_loss():
 # ---------------------------------------------------------------------------
 # Test 16: BCOTrainer raises KeyError for missing batch key
 # ---------------------------------------------------------------------------
+
 
 def test_bco_trainer_missing_key_raises():
     trainer = BCOTrainer(beta=0.1)

@@ -9,33 +9,33 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EvalQuestion:
     question_id: str
     question: str
-    choices: list[str]        # ["A) ...", "B) ...", "C) ...", "D) ..."]
-    correct_choice: int       # 0-indexed
-    category: str             # e.g. "reasoning", "factual", "math"
-    difficulty: float         # 0.0=easy, 1.0=hard (estimated)
+    choices: list[str]  # ["A) ...", "B) ...", "C) ...", "D) ..."]
+    correct_choice: int  # 0-indexed
+    category: str  # e.g. "reasoning", "factual", "math"
+    difficulty: float  # 0.0=easy, 1.0=hard (estimated)
 
 
 @dataclass
 class EvalResult:
     question_id: str
-    predicted_choice: int     # 0-indexed, -1 if unparseable
+    predicted_choice: int  # 0-indexed, -1 if unparseable
     correct: bool
-    confidence: float         # max softmax prob over choice tokens
+    confidence: float  # max softmax prob over choice tokens
     raw_output: str
 
 
@@ -57,6 +57,7 @@ _CHOICE_TOKEN_IDS = [65, 66, 67, 68]
 # ---------------------------------------------------------------------------
 # Generator
 # ---------------------------------------------------------------------------
+
 
 class WrittenEvalGenerator:
     """Generate evaluation questions by prompting the model with templates.
@@ -105,14 +106,14 @@ class WrittenEvalGenerator:
             max_prompt = max(1, self.max_seq_len - 128)
             token_ids = token_ids[:max_prompt]
 
-            input_tensor = torch.tensor([token_ids], dtype=torch.long)
+            torch.tensor([token_ids], dtype=torch.long)
 
             # Generate greedily up to 128 new tokens
             generated: list[int] = []
             with torch.no_grad():
                 for _ in range(128):
                     seq = token_ids + generated
-                    seq = seq[-(self.max_seq_len):]
+                    seq = seq[-(self.max_seq_len) :]
                     t = torch.tensor([seq], dtype=torch.long)
                     _loss, logits, _pkv = self.model(t)
                     next_token = int(logits[0, -1, :].argmax().item())
@@ -198,6 +199,7 @@ class WrittenEvalGenerator:
 # Runner
 # ---------------------------------------------------------------------------
 
+
 class WrittenEvalRunner:
     """Run a set of EvalQuestions against a model and compute metrics.
 
@@ -244,10 +246,12 @@ class WrittenEvalRunner:
         last_logits = logits[0, -1, :]  # (vocab_size,)
 
         # Extract logits for A(65), B(66), C(67), D(68)
-        choice_logits = torch.stack([
-            last_logits[tid] if tid < last_logits.shape[0] else torch.tensor(float("-inf"))
-            for tid in _CHOICE_TOKEN_IDS
-        ])  # shape: (4,)
+        choice_logits = torch.stack(
+            [
+                last_logits[tid] if tid < last_logits.shape[0] else torch.tensor(float("-inf"))
+                for tid in _CHOICE_TOKEN_IDS
+            ]
+        )  # shape: (4,)
 
         # Softmax to get confidence
         choice_probs = F.softmax(choice_logits, dim=0)
@@ -314,8 +318,7 @@ class WrittenEvalRunner:
             per_category_total[cat] = per_category_total.get(cat, 0) + 1
 
         per_category = {
-            cat: per_category_correct[cat] / per_category_total[cat]
-            for cat in per_category_total
+            cat: per_category_correct[cat] / per_category_total[cat] for cat in per_category_total
         }
 
         return {
@@ -329,6 +332,7 @@ class WrittenEvalRunner:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def difficulty_score(results: list[EvalResult]) -> float:
     """Estimate difficulty as 1 - accuracy (higher = harder set)."""

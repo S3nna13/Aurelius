@@ -3,6 +3,7 @@
 Scans payloads for PII, toxic patterns, and policy violations.
 Fail closed: ambiguous or oversized inputs default to BLOCK.
 """
+
 from __future__ import annotations
 
 import logging
@@ -58,15 +59,21 @@ class MessageContentFilter:
     }
 
     _TOXIC_TOKENS: set[str] = {
-        "kill", "die", "attack", "bomb", "shoot", "murder",
-        "rape", "terrorist", "hostage", "weapon",
+        "kill",
+        "die",
+        "attack",
+        "bomb",
+        "shoot",
+        "murder",
+        "rape",
+        "terrorist",
+        "hostage",
+        "weapon",
     }
 
     def __init__(self, config: FilterConfig | None = None) -> None:
         self._config = config or FilterConfig()
-        self._blocklist: set[str] = set(
-            w.lower() for w in self._config.custom_blocklist
-        )
+        self._blocklist: set[str] = set(w.lower() for w in self._config.custom_blocklist)
 
     def scan(self, text: str) -> FilterResult:
         """Scan *text* and return a FilterResult.

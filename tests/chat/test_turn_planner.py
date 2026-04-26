@@ -1,13 +1,11 @@
 """Tests for src/chat/turn_planner.py."""
 
-import pytest
-
 from src.chat.turn_planner import TurnAction, TurnPlan, TurnPlanner
-
 
 # ---------------------------------------------------------------------------
 # Enum smoke tests
 # ---------------------------------------------------------------------------
+
 
 def test_turn_action_values():
     assert TurnAction.RESPOND == "respond"
@@ -18,6 +16,7 @@ def test_turn_action_values():
 # ---------------------------------------------------------------------------
 # plan() — USE_TOOL
 # ---------------------------------------------------------------------------
+
 
 def test_plan_use_tool_search():
     planner = TurnPlanner()
@@ -47,6 +46,7 @@ def test_plan_use_tool_run():
 # plan() — ASK_CLARIFICATION
 # ---------------------------------------------------------------------------
 
+
 def test_plan_clarification_short_message():
     planner = TurnPlanner()
     plan = planner.plan([], "hi")
@@ -62,6 +62,7 @@ def test_plan_clarification_question_mark():
 # ---------------------------------------------------------------------------
 # plan() — SUMMARIZE
 # ---------------------------------------------------------------------------
+
 
 def test_plan_summarize_long_history():
     planner = TurnPlanner()
@@ -81,6 +82,7 @@ def test_plan_summarize_exactly_at_threshold_plus_one():
 # plan() — DEFER
 # ---------------------------------------------------------------------------
 
+
 def test_plan_defer_later():
     planner = TurnPlanner()
     plan = planner.plan([], "Do this later please")
@@ -96,6 +98,7 @@ def test_plan_defer_remind():
 # ---------------------------------------------------------------------------
 # plan() — RESPOND (default)
 # ---------------------------------------------------------------------------
+
 
 def test_plan_respond_default():
     planner = TurnPlanner()
@@ -114,6 +117,7 @@ def test_plan_respond_high_confidence():
 # TurnPlan dataclass
 # ---------------------------------------------------------------------------
 
+
 def test_turn_plan_has_rationale():
     planner = TurnPlanner()
     plan = planner.plan([], "search for something")
@@ -131,6 +135,7 @@ def test_turn_plan_metadata_is_dict():
 # estimate_response_length
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_length_respond():
     planner = TurnPlanner()
     plan = TurnPlan(action=TurnAction.RESPOND, rationale="", confidence=0.9)
@@ -142,7 +147,9 @@ def test_estimate_length_use_tool_is_short():
     planner = TurnPlanner()
     plan_tool = TurnPlan(action=TurnAction.USE_TOOL, rationale="", confidence=0.9)
     plan_respond = TurnPlan(action=TurnAction.RESPOND, rationale="", confidence=0.9)
-    assert planner.estimate_response_length(plan_tool, 512) <= planner.estimate_response_length(plan_respond, 512)
+    assert planner.estimate_response_length(plan_tool, 512) <= planner.estimate_response_length(
+        plan_respond, 512
+    )
 
 
 def test_estimate_length_defer_is_very_short():

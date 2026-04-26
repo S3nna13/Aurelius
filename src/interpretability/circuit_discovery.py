@@ -21,44 +21,46 @@ Pure PyTorch — no HuggingFace.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # ComponentScore
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ComponentScore:
     """Score for a single model component in a circuit-discovery experiment."""
 
-    component_type: str   # 'attention_head' or 'mlp'
+    component_type: str  # 'attention_head' or 'mlp'
     layer: int
-    head: int             # -1 for MLP components
-    score: float          # normalised patching contribution
-    description: str      # human-readable label
+    head: int  # -1 for MLP components
+    score: float  # normalised patching contribution
+    description: str  # human-readable label
 
 
 # ---------------------------------------------------------------------------
 # CircuitConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CircuitConfig:
     """Configuration knobs for a CircuitDiscoverer run."""
 
     threshold: float = 0.5
-    n_patches: Optional[int] = None   # None = score every component
+    n_patches: int | None = None  # None = score every component
     normalize_scores: bool = True
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _run_forward(model: nn.Module, input_ids: torch.Tensor) -> torch.Tensor:
     """Return logits from *model* given *input_ids*.
@@ -77,6 +79,7 @@ def _run_forward(model: nn.Module, input_ids: torch.Tensor) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # CircuitDiscoverer
 # ---------------------------------------------------------------------------
+
 
 class CircuitDiscoverer:
     """Identifies circuit components via activation patching.
@@ -113,7 +116,7 @@ class CircuitDiscoverer:
     # get_clean_activations
     # ------------------------------------------------------------------
 
-    def get_clean_activations(self, clean_ids: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def get_clean_activations(self, clean_ids: torch.Tensor) -> dict[str, torch.Tensor]:
         """Run a forward pass on *clean_ids* and cache intermediate activations.
 
         Cached keys:
@@ -125,7 +128,7 @@ class CircuitDiscoverer:
         -------
         dict mapping component key → Tensor (detached, on the same device as the model).
         """
-        activations: Dict[str, torch.Tensor] = {}
+        activations: dict[str, torch.Tensor] = {}
         hooks: list = []
 
         for layer_idx, layer in enumerate(self.model.layers):  # type: ignore[union-attr]
@@ -140,6 +143,7 @@ class CircuitDiscoverer:
                     per_head = attn_out.detach().view(B, S, n_heads, hd)
                     for h in range(n_heads):
                         activations[f"attn_layer_{li}_head_{h}"] = per_head[:, :, h, :]
+
                 return _hook
 
             # ---- mlp hook -----------------------------------------------
@@ -147,21 +151,25 @@ class CircuitDiscoverer:
                 def _hook(module, input, output):
                     out = output[0] if isinstance(output, tuple) else output
                     activations[f"mlp_layer_{li}"] = out.detach()
+
                 return _hook
 
             # Detect per-head dimension safely
             config = getattr(self.model, "config", None)
-            head_dim = config.head_dim if config is not None else (
-                self.model.config.d_model // self.n_heads  # type: ignore[union-attr]
-                if hasattr(self.model, "config") else 64
+            head_dim = (
+                config.head_dim
+                if config is not None
+                else (
+                    self.model.config.d_model // self.n_heads  # type: ignore[union-attr]
+                    if hasattr(self.model, "config")
+                    else 64
+                )
             )
 
-            hooks.append(layer.attn.register_forward_hook(
-                _make_attn_hook(layer_idx, self.n_heads, head_dim)
-            ))
-            hooks.append(layer.ffn.register_forward_hook(
-                _make_mlp_hook(layer_idx)
-            ))
+            hooks.append(
+                layer.attn.register_forward_hook(_make_attn_hook(layer_idx, self.n_heads, head_dim))
+            )
+            hooks.append(layer.ffn.register_forward_hook(_make_mlp_hook(layer_idx)))
 
         try:
             with torch.no_grad():
@@ -179,7 +187,7 @@ class CircuitDiscoverer:
     def patch_activation(
         self,
         corrupted_ids: torch.Tensor,
-        patch_source: Dict[str, torch.Tensor],
+        patch_source: dict[str, torch.Tensor],
         component: str,
     ) -> float:
         """Run the model on *corrupted_ids* with one component patched from *patch_source*.
@@ -211,9 +219,7 @@ class CircuitDiscoverer:
             head_idx = int(parts[4])
 
             config = getattr(self.model, "config", None)
-            head_dim = config.head_dim if config is not None else (
-                clean_act.shape[-1]
-            )
+            config.head_dim if config is not None else (clean_act.shape[-1])
             n_heads = self.n_heads
 
             def _attn_patch_hook(module, input, output):
@@ -265,7 +271,7 @@ class CircuitDiscoverer:
         self,
         clean_ids: torch.Tensor,
         corrupted_ids: torch.Tensor,
-    ) -> List[ComponentScore]:
+    ) -> list[ComponentScore]:
         """Score every attention head and MLP by activation patching.
 
         For each component *c*:
@@ -284,7 +290,7 @@ class CircuitDiscoverer:
         # Cache clean activations once
         clean_acts = self.get_clean_activations(clean_ids)
 
-        scores: List[ComponentScore] = []
+        scores: list[ComponentScore] = []
 
         for layer_idx in range(self.n_layers):
             # Attention heads
@@ -297,13 +303,15 @@ class CircuitDiscoverer:
                     raw_score = float(
                         max(0.0, min(1.0, (metric_patched - metric_corrupted) / denom))
                     )
-                scores.append(ComponentScore(
-                    component_type="attention_head",
-                    layer=layer_idx,
-                    head=head_idx,
-                    score=float(raw_score),
-                    description=f"Layer {layer_idx} Attention Head {head_idx}",
-                ))
+                scores.append(
+                    ComponentScore(
+                        component_type="attention_head",
+                        layer=layer_idx,
+                        head=head_idx,
+                        score=float(raw_score),
+                        description=f"Layer {layer_idx} Attention Head {head_idx}",
+                    )
+                )
 
             # MLP
             key = f"mlp_layer_{layer_idx}"
@@ -311,16 +319,16 @@ class CircuitDiscoverer:
             if abs(denom) < 1e-6:
                 raw_score = 0.0
             else:
-                raw_score = float(
-                    max(0.0, min(1.0, (metric_patched - metric_corrupted) / denom))
+                raw_score = float(max(0.0, min(1.0, (metric_patched - metric_corrupted) / denom)))
+            scores.append(
+                ComponentScore(
+                    component_type="mlp",
+                    layer=layer_idx,
+                    head=-1,
+                    score=float(raw_score),
+                    description=f"Layer {layer_idx} MLP",
                 )
-            scores.append(ComponentScore(
-                component_type="mlp",
-                layer=layer_idx,
-                head=-1,
-                score=float(raw_score),
-                description=f"Layer {layer_idx} MLP",
-            ))
+            )
 
         scores.sort(key=lambda s: s.score, reverse=True)
         return scores
@@ -334,7 +342,7 @@ class CircuitDiscoverer:
         clean_ids: torch.Tensor,
         corrupted_ids: torch.Tensor,
         threshold: float = 0.5,
-    ) -> List[ComponentScore]:
+    ) -> list[ComponentScore]:
         """Return only the components whose patching score >= *threshold*.
 
         Parameters
@@ -354,6 +362,7 @@ class CircuitDiscoverer:
 # ---------------------------------------------------------------------------
 # compute_indirect_effect  (module-level convenience)
 # ---------------------------------------------------------------------------
+
 
 def compute_indirect_effect(
     model: nn.Module,
@@ -399,8 +408,9 @@ def compute_indirect_effect(
 # visualize_circuit
 # ---------------------------------------------------------------------------
 
+
 def visualize_circuit(
-    scores: List[ComponentScore],
+    scores: list[ComponentScore],
     top_k: int = 10,
 ) -> dict:
     """Produce a structured summary of circuit components.
@@ -418,7 +428,7 @@ def visualize_circuit(
       ``'top_components'`` : list of up to *top_k* ComponentScore, sorted by
                              score descending.
     """
-    by_layer: Dict[int, List[ComponentScore]] = {}
+    by_layer: dict[int, list[ComponentScore]] = {}
     for cs in scores:
         by_layer.setdefault(cs.layer, []).append(cs)
 

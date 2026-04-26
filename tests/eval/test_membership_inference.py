@@ -20,7 +20,6 @@ Covers all required test cases (15 total):
 
 import math
 
-import pytest
 import torch
 
 from src.eval.membership_inference import (
@@ -31,10 +30,10 @@ from src.eval.membership_inference import (
     MinKProbAttack,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_log_probs(B: int = 4, T: int = 10, seed: int = 42) -> torch.Tensor:
     """Return a (B, T) tensor of plausible log-probabilities in (-5, 0)."""
@@ -46,6 +45,7 @@ def make_log_probs(B: int = 4, T: int = 10, seed: int = 42) -> torch.Tensor:
 # 1. LossAttack score shape
 # ---------------------------------------------------------------------------
 
+
 def test_loss_attack_shape():
     attack = LossAttack()
     log_probs = make_log_probs(B=4, T=10)
@@ -56,6 +56,7 @@ def test_loss_attack_shape():
 # ---------------------------------------------------------------------------
 # 2. LossAttack: lower loss → higher member score
 # ---------------------------------------------------------------------------
+
 
 def test_loss_attack_direction():
     """A sequence with higher (less-negative) log-probs has lower loss
@@ -81,6 +82,7 @@ def test_loss_attack_direction():
 # 3. MinKProbAttack score shape
 # ---------------------------------------------------------------------------
 
+
 def test_mink_attack_shape():
     attack = MinKProbAttack(k_percent=0.2)
     log_probs = make_log_probs(B=5, T=20)
@@ -92,15 +94,15 @@ def test_mink_attack_shape():
 # 4. MinKProbAttack: k_percent=0.2 uses exactly bottom-20% tokens
 # ---------------------------------------------------------------------------
 
+
 def test_mink_attack_k_tokens():
     """Manually verify that MinKProbAttack with k=0.2 picks the bottom 20%
     of tokens and matches a hand-computed reference score."""
     T = 10
-    k = max(1, math.ceil(T * 0.2))  # = 2
+    max(1, math.ceil(T * 0.2))  # = 2
 
     # Construct log_probs so the 2 worst are clearly identifiable.
-    log_probs_row = torch.tensor([-0.1, -0.2, -0.3, -0.4, -4.9, -5.0,
-                                   -0.5, -0.6, -0.7, -0.8])
+    log_probs_row = torch.tensor([-0.1, -0.2, -0.3, -0.4, -4.9, -5.0, -0.5, -0.6, -0.7, -0.8])
     log_probs = log_probs_row.unsqueeze(0)  # (1, 10)
 
     attack = MinKProbAttack(k_percent=0.2)
@@ -117,6 +119,7 @@ def test_mink_attack_k_tokens():
 # 5. MinKProbAttack: peaked text scores higher than flat text
 # ---------------------------------------------------------------------------
 
+
 def test_mink_peaked_vs_flat():
     """Peaked (high-confidence) text: most tokens have high log-prob,
     so the min-K% tokens are less negative → higher score.
@@ -125,10 +128,13 @@ def test_mink_peaked_vs_flat():
 
     T = 10
     # Peaked: 8 tokens near 0, 2 tokens at -1.0  → min-K% ≈ -1.0
-    peaked = torch.cat([
-        torch.full((1, 8), -0.05),
-        torch.full((1, 2), -1.0),
-    ], dim=1)
+    peaked = torch.cat(
+        [
+            torch.full((1, 8), -0.05),
+            torch.full((1, 2), -1.0),
+        ],
+        dim=1,
+    )
 
     # Flat: all tokens at -3.0  → min-K% ≈ -3.0
     flat = torch.full((1, T), -3.0)
@@ -145,6 +151,7 @@ def test_mink_peaked_vs_flat():
 # 6. LikelihoodRatioAttack score shape
 # ---------------------------------------------------------------------------
 
+
 def test_lr_attack_shape():
     attack = LikelihoodRatioAttack()
     log_probs = make_log_probs(B=6, T=15)
@@ -156,6 +163,7 @@ def test_lr_attack_shape():
 # 7. MembershipInferenceEvaluator returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_keys():
     evaluator = MembershipInferenceEvaluator()
     member_scores = torch.tensor([1.0, 2.0, 3.0])
@@ -163,14 +171,13 @@ def test_evaluator_keys():
     result = evaluator.evaluate(member_scores, nonmember_scores)
 
     required_keys = {"auc", "tpr_at_fpr_0.1", "accuracy"}
-    assert required_keys.issubset(result.keys()), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    assert required_keys.issubset(result.keys()), f"Missing keys: {required_keys - result.keys()}"
 
 
 # ---------------------------------------------------------------------------
 # 8. AUC in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_auc_range():
     evaluator = MembershipInferenceEvaluator()
@@ -185,6 +192,7 @@ def test_evaluator_auc_range():
 # 9. AUC ≈ 1.0 when members have much higher scores
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_auc_near_one():
     evaluator = MembershipInferenceEvaluator()
     member_scores = torch.linspace(10.0, 20.0, 100)
@@ -197,6 +205,7 @@ def test_evaluator_auc_near_one():
 # 10. AUC ≈ 0.5 when scores are indistinguishable
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_auc_near_half():
     """When members and non-members have the same score distribution,
     AUC should be near 0.5 (random chance)."""
@@ -207,14 +216,13 @@ def test_evaluator_auc_near_half():
     member_scores = scores[:100]
     nonmember_scores = scores[100:]
     result = evaluator.evaluate(member_scores, nonmember_scores)
-    assert 0.3 <= result["auc"] <= 0.7, (
-        f"Expected AUC ≈ 0.5, got {result['auc']}"
-    )
+    assert 0.3 <= result["auc"] <= 0.7, f"Expected AUC ≈ 0.5, got {result['auc']}"
 
 
 # ---------------------------------------------------------------------------
 # 11. GradientNoiseDefense: output shapes match input
 # ---------------------------------------------------------------------------
+
 
 def test_defense_shapes():
     defense = GradientNoiseDefense(noise_multiplier=1.0)
@@ -223,14 +231,13 @@ def test_defense_shapes():
     noised = defense.clip_and_noise(grads, max_norm=1.0)
     assert len(noised) == len(grads)
     for orig, out in zip(grads, noised):
-        assert orig.shape == out.shape, (
-            f"Shape mismatch: {orig.shape} vs {out.shape}"
-        )
+        assert orig.shape == out.shape, f"Shape mismatch: {orig.shape} vs {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 12. GradientNoiseDefense: noised grad differs from original
 # ---------------------------------------------------------------------------
+
 
 def test_defense_adds_noise():
     defense = GradientNoiseDefense(noise_multiplier=1.0)
@@ -245,6 +252,7 @@ def test_defense_adds_noise():
 # ---------------------------------------------------------------------------
 # 13. noise_multiplier=0 → output ≈ clipped grad (no noise)
 # ---------------------------------------------------------------------------
+
 
 def test_defense_no_noise_when_zero_multiplier():
     """With noise_multiplier=0 the output should equal the clipped gradient."""
@@ -267,6 +275,7 @@ def test_defense_no_noise_when_zero_multiplier():
 # 14. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
 
+
 def test_defense_determinism():
     defense = GradientNoiseDefense(noise_multiplier=0.5)
     grad = torch.ones(20)
@@ -285,6 +294,7 @@ def test_defense_determinism():
 # ---------------------------------------------------------------------------
 # 15. No NaN/Inf on normal inputs
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf():
     torch.manual_seed(55)

@@ -33,10 +33,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RingAttentionConfig:
@@ -45,13 +45,14 @@ class RingAttentionConfig:
     d_model: int
     n_heads: int
     head_dim: int
-    chunk_size: int = 64   # tokens per simulated device / ring slot
+    chunk_size: int = 64  # tokens per simulated device / ring slot
     causal: bool = True
 
 
 # ---------------------------------------------------------------------------
 # ChunkAttention
 # ---------------------------------------------------------------------------
+
 
 class ChunkAttention(nn.Module):
     """Scaled dot-product attention for a single Q-chunk against full K/V.
@@ -69,11 +70,11 @@ class ChunkAttention(nn.Module):
 
     def forward(
         self,
-        q: Tensor,                # (B, nh, Tq, dh)
-        k: Tensor,                # (B, nh, Tk, dh)
-        v: Tensor,                # (B, nh, Tk, dh)
+        q: Tensor,  # (B, nh, Tq, dh)
+        k: Tensor,  # (B, nh, Tk, dh)
+        v: Tensor,  # (B, nh, Tk, dh)
         causal: bool = False,
-        q_chunk_start: int = 0,   # absolute start position of this Q-chunk
+        q_chunk_start: int = 0,  # absolute start position of this Q-chunk
     ) -> Tensor:
         """Compute attention for a Q-chunk attending to full K/V.
 
@@ -98,9 +99,9 @@ class ChunkAttention(nn.Module):
             # q_positions: (Tq,)  absolute position of each query token
             # k_positions: (Tk,)  absolute position of each key   token
             q_pos = torch.arange(Tq, device=q.device) + q_chunk_start  # (Tq,)
-            k_pos = torch.arange(Tk, device=q.device)                   # (Tk,)
+            k_pos = torch.arange(Tk, device=q.device)  # (Tk,)
             # mask[qi, ki] = True  where k_pos[ki] > q_pos[qi]  → future → -inf
-            mask = k_pos.unsqueeze(0) > q_pos.unsqueeze(1)              # (Tq, Tk)
+            mask = k_pos.unsqueeze(0) > q_pos.unsqueeze(1)  # (Tq, Tk)
             scores = scores.masked_fill(mask, float("-inf"))
 
         attn = torch.softmax(scores, dim=-1)
@@ -112,6 +113,7 @@ class ChunkAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # RingAttentionSimulated
 # ---------------------------------------------------------------------------
+
 
 class RingAttentionSimulated(nn.Module):
     """Oracle ring attention (single-device simulation).
@@ -184,7 +186,7 @@ class RingAttentionSimulated(nn.Module):
         start = 0
         while start < T:
             end = min(start + chunk_size, T)
-            q_chunk = Q[:, :, start:end, :]          # (B, nh, Cq, dh)
+            q_chunk = Q[:, :, start:end, :]  # (B, nh, Cq, dh)
 
             out_chunk = self.chunk_attn(
                 q=q_chunk,
@@ -192,19 +194,20 @@ class RingAttentionSimulated(nn.Module):
                 v=V,
                 causal=cfg.causal,
                 q_chunk_start=start,
-            )                                         # (B, nh, Cq, dh)
+            )  # (B, nh, Cq, dh)
             output_chunks.append(out_chunk)
             start = end
 
         # Reassemble: (B, nh, T, dh) → (B, T, nh*dh)
-        O = torch.cat(output_chunks, dim=2)           # (B, nh, T, dh)
-        out = self._merge_heads(O)                    # (B, T, nh*dh)
-        return self.W_o(out)                          # (B, T, d_model)
+        O = torch.cat(output_chunks, dim=2)  # (B, nh, T, dh)  # noqa: E741
+        out = self._merge_heads(O)  # (B, T, nh*dh)  # noqa: E741
+        return self.W_o(out)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # RingAttentionLayer  (pre-norm wrapper)
 # ---------------------------------------------------------------------------
+
 
 class RingAttentionLayer(nn.Module):
     """Pre-norm transformer layer using RingAttentionSimulated.

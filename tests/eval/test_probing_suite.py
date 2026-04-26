@@ -3,22 +3,22 @@
 import pytest
 import torch
 
+from src.eval.probing_suite import (
+    LayerwiseProber,
+    LayerwiseProbingResults,
+    MLPProbe,
+    ProbingClassifier,
+    ProbingConfig,
+    ProbingDataset,
+    extract_layer_representations,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.eval.probing_suite import (
-    ProbingConfig,
-    MLPProbe,
-    extract_layer_representations,
-    ProbingDataset,
-    ProbingClassifier,
-    LayerwiseProbingResults,
-    LayerwiseProber,
-)
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -55,6 +55,7 @@ def binary_labels():
 # Test 1: ProbingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_probing_config_defaults():
     cfg = ProbingConfig()
     assert cfg.probe_type == "linear"
@@ -68,6 +69,7 @@ def test_probing_config_defaults():
 # Test 2: MLPProbe output shape (B, n_classes)
 # ---------------------------------------------------------------------------
 
+
 def test_mlp_probe_output_shape():
     probe = MLPProbe(input_dim=64, n_classes=3, hidden_dim=32, dropout=0.0)
     x = torch.randn(8, 64)
@@ -79,6 +81,7 @@ def test_mlp_probe_output_shape():
 # Test 3: extract_layer_representations returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_extract_layer_representations_keys(small_model, input_ids):
     layer_indices = [0, 1]
     result = extract_layer_representations(small_model, input_ids, layer_indices)
@@ -88,6 +91,7 @@ def test_extract_layer_representations_keys(small_model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 4: extract_layer_representations shape (B, T, D) per layer
 # ---------------------------------------------------------------------------
+
 
 def test_extract_layer_representations_shape(small_model, input_ids):
     result = extract_layer_representations(small_model, input_ids, [0])
@@ -101,6 +105,7 @@ def test_extract_layer_representations_shape(small_model, input_ids):
 # Test 5: ProbingDataset.__len__ returns N
 # ---------------------------------------------------------------------------
 
+
 def test_probing_dataset_len():
     reps = torch.randn(20, 32)
     labels = torch.randint(0, 2, (20,))
@@ -111,6 +116,7 @@ def test_probing_dataset_len():
 # ---------------------------------------------------------------------------
 # Test 6: ProbingDataset.split correct sizes
 # ---------------------------------------------------------------------------
+
 
 def test_probing_dataset_split_sizes():
     N = 10
@@ -125,6 +131,7 @@ def test_probing_dataset_split_sizes():
 # ---------------------------------------------------------------------------
 # Test 7: ProbingClassifier.fit returns list of floats
 # ---------------------------------------------------------------------------
+
 
 def test_probing_classifier_fit_returns_loss_history():
     cfg = ProbingConfig(n_epochs=5, probe_type="linear")
@@ -142,6 +149,7 @@ def test_probing_classifier_fit_returns_loss_history():
 # Test 8: ProbingClassifier.evaluate returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_probing_classifier_evaluate_keys():
     cfg = ProbingConfig(n_epochs=3)
     reps = torch.randn(12, 32)
@@ -158,6 +166,7 @@ def test_probing_classifier_evaluate_keys():
 # Test 9: ProbingClassifier.evaluate accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_probing_classifier_evaluate_accuracy_range():
     cfg = ProbingConfig(n_epochs=3)
     reps = torch.randn(12, 32)
@@ -172,6 +181,7 @@ def test_probing_classifier_evaluate_accuracy_range():
 # ---------------------------------------------------------------------------
 # Test 10: ProbingClassifier.predict returns correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_probing_classifier_predict_shape():
     cfg = ProbingConfig(n_epochs=2)
@@ -189,6 +199,7 @@ def test_probing_classifier_predict_shape():
 # Test 11: LayerwiseProber.probe_all_layers returns LayerwiseProbingResults
 # ---------------------------------------------------------------------------
 
+
 def test_layerwise_prober_returns_results(small_model, input_ids, binary_labels):
     cfg = ProbingConfig(n_epochs=2)
     prober = LayerwiseProber(small_model, cfg)
@@ -201,6 +212,7 @@ def test_layerwise_prober_returns_results(small_model, input_ids, binary_labels)
 # ---------------------------------------------------------------------------
 # Test 12: LayerwiseProbingResults.best_layer is valid layer index
 # ---------------------------------------------------------------------------
+
 
 def test_layerwise_results_best_layer_valid(small_model, input_ids, binary_labels):
     cfg = ProbingConfig(n_epochs=2)
@@ -215,6 +227,7 @@ def test_layerwise_results_best_layer_valid(small_model, input_ids, binary_label
 # Test 13: LayerwiseProber.mutual_information_estimate returns non-negative float
 # ---------------------------------------------------------------------------
 
+
 def test_mutual_information_estimate_non_negative(small_model):
     cfg = ProbingConfig()
     prober = LayerwiseProber(small_model, cfg)
@@ -228,6 +241,7 @@ def test_mutual_information_estimate_non_negative(small_model):
 # ---------------------------------------------------------------------------
 # Test 14: LayerwiseProber.rank_layers returns sorted list (descending)
 # ---------------------------------------------------------------------------
+
 
 def test_rank_layers_sorted_descending(small_model, input_ids, binary_labels):
     cfg = ProbingConfig(n_epochs=2)
@@ -247,12 +261,11 @@ def test_rank_layers_sorted_descending(small_model, input_ids, binary_labels):
 # Test 15: ProbingDataset.split sizes sum to original
 # ---------------------------------------------------------------------------
 
+
 def test_probing_dataset_split_sizes_sum_to_original():
     N = 25
     reps = torch.randn(N, 16)
     labels = torch.randint(0, 3, (N,))
     ds = ProbingDataset(reps, labels)
     train_ds, val_ds = ds.split(ratio=0.7)
-    assert len(train_ds) + len(val_ds) == N, (
-        f"Train ({len(train_ds)}) + Val ({len(val_ds)}) != {N}"
-    )
+    assert len(train_ds) + len(val_ds) == N, f"Train ({len(train_ds)}) + Val ({len(val_ds)}) != {N}"

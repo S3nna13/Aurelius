@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class ThroughputBenchmark:
@@ -12,7 +13,9 @@ class ThroughputBenchmark:
         elapsed = time.perf_counter() - start
         return iterations / elapsed if elapsed > 0 else float("inf")
 
-    def measure_with_warmup(self, fn: Callable, iterations: int = 100, warmup: int = 10, args: tuple[Any, ...] = ()) -> float:
+    def measure_with_warmup(
+        self, fn: Callable, iterations: int = 100, warmup: int = 10, args: tuple[Any, ...] = ()
+    ) -> float:
         for _ in range(warmup):
             fn(*args)
         return self.measure(fn, iterations, args)

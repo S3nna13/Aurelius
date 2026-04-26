@@ -1,12 +1,12 @@
-import pytest
 import torch
+
 from src.model.longformer_attention import (
     LongformerConfig,
-    create_local_attention_mask,
-    create_global_attention_mask,
-    merge_attention_masks,
     LongformerSelfAttention,
     compute_attention_sparsity,
+    create_global_attention_mask,
+    create_local_attention_mask,
+    merge_attention_masks,
 )
 
 # Common test dimensions
@@ -19,6 +19,7 @@ WINDOW = 4
 
 # ── LongformerConfig ────────────────────────────────────────────────────────
 
+
 def test_longformer_config_defaults():
     cfg = LongformerConfig()
     assert cfg.window_size == 64
@@ -29,6 +30,7 @@ def test_longformer_config_defaults():
 
 
 # ── create_local_attention_mask ─────────────────────────────────────────────
+
 
 def test_local_mask_shape():
     mask = create_local_attention_mask(T, WINDOW)
@@ -79,6 +81,7 @@ def test_local_mask_window_coverage():
 
 # ── create_global_attention_mask ────────────────────────────────────────────
 
+
 def test_global_mask_shape():
     mask = create_global_attention_mask(T, n_global=1)
     assert mask.shape == (T, T)
@@ -104,6 +107,7 @@ def test_global_mask_n_global_zero():
 
 # ── merge_attention_masks ───────────────────────────────────────────────────
 
+
 def test_merge_masks_is_or():
     """Merged mask should equal the logical OR of the two input masks."""
     local = create_local_attention_mask(T, WINDOW)
@@ -122,6 +126,7 @@ def test_merge_masks_superset_of_local():
 
 
 # ── LongformerSelfAttention ─────────────────────────────────────────────────
+
 
 def test_longformer_attention_output_shape():
     cfg = LongformerConfig(window_size=WINDOW, n_global_tokens=1, d_model=D_MODEL, n_heads=N_HEADS)
@@ -148,6 +153,7 @@ def test_longformer_attention_no_nan():
 
 
 # ── compute_attention_sparsity ──────────────────────────────────────────────
+
 
 def test_sparsity_keys_present():
     result = compute_attention_sparsity(T, window_size=WINDOW, n_global=1)
@@ -191,6 +197,7 @@ def test_sparsity_full_window_low_sparsity():
 
 
 # ── Dilation ────────────────────────────────────────────────────────────────
+
 
 def test_local_mask_dilation_skips_tokens():
     """With dilation=2 only every second token within the window is attended."""

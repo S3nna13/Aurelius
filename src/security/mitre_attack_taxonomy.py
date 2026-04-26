@@ -9,11 +9,10 @@ free-text threat descriptions with likely technique IDs.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
 
-
-TACTIC_ORDER: List[str] = [
+TACTIC_ORDER: list[str] = [
     "initial-access",
     "execution",
     "persistence",
@@ -29,7 +28,7 @@ TACTIC_ORDER: List[str] = [
 ]
 
 
-ATTACK_TECHNIQUES: Dict[str, Dict] = {
+ATTACK_TECHNIQUES: dict[str, dict] = {
     # --- Initial Access ---
     "T1566": {
         "name": "Phishing",
@@ -41,7 +40,12 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Spearphishing Attachment",
         "tactic": ["initial-access"],
         "description": "Phishing with a malicious file attachment.",
-        "keywords": ["malicious attachment", "phishing attachment", "weaponized document", "malicious doc"],
+        "keywords": [
+            "malicious attachment",
+            "phishing attachment",
+            "weaponized document",
+            "malicious doc",
+        ],
     },
     "T1566.002": {
         "name": "Spearphishing Link",
@@ -53,13 +57,24 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Exploit Public-Facing Application",
         "tactic": ["initial-access"],
         "description": "Exploiting a weakness in an Internet-facing application.",
-        "keywords": ["exploit public", "web exploit", "rce web", "internet-facing vulnerability", "sql injection"],
+        "keywords": [
+            "exploit public",
+            "web exploit",
+            "rce web",
+            "internet-facing vulnerability",
+            "sql injection",
+        ],
     },
     "T1078": {
         "name": "Valid Accounts",
         "tactic": ["initial-access", "persistence", "privilege-escalation", "defense-evasion"],
         "description": "Use of compromised legitimate credentials.",
-        "keywords": ["valid account", "compromised credentials", "stolen credentials", "legitimate account"],
+        "keywords": [
+            "valid account",
+            "compromised credentials",
+            "stolen credentials",
+            "legitimate account",
+        ],
     },
     "T1133": {
         "name": "External Remote Services",
@@ -85,7 +100,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Introducing malicious hardware into a target environment.",
         "keywords": ["malicious usb", "rogue device", "hardware implant"],
     },
-
     # --- Execution ---
     "T1059": {
         "name": "Command and Scripting Interpreter",
@@ -153,7 +167,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Use WMI for execution.",
         "keywords": ["wmi", "wmic", "windows management instrumentation"],
     },
-
     # --- Persistence ---
     "T1547": {
         "name": "Boot or Logon Autostart Execution",
@@ -197,7 +210,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Execute code in response to specific events.",
         "keywords": ["wmi subscription", "event trigger", "accessibility features"],
     },
-
     # --- Privilege Escalation ---
     "T1068": {
         "name": "Exploitation for Privilege Escalation",
@@ -217,7 +229,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Manipulate access tokens to run under a different user.",
         "keywords": ["token manipulation", "token impersonation", "access token"],
     },
-
     # --- Defense Evasion ---
     "T1027": {
         "name": "Obfuscated Files or Information",
@@ -247,7 +258,12 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Process Injection",
         "tactic": ["defense-evasion", "privilege-escalation"],
         "description": "Inject code into another process to evade defenses.",
-        "keywords": ["process injection", "dll injection", "process hollowing", "reflective loading"],
+        "keywords": [
+            "process injection",
+            "dll injection",
+            "process hollowing",
+            "reflective loading",
+        ],
     },
     "T1036": {
         "name": "Masquerading",
@@ -267,7 +283,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Disable or tamper with security controls.",
         "keywords": ["disable antivirus", "disable defender", "impair defenses", "stop edr"],
     },
-
     # --- Credential Access ---
     "T1003": {
         "name": "OS Credential Dumping",
@@ -291,7 +306,12 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Unsecured Credentials",
         "tactic": ["credential-access"],
         "description": "Find credentials stored insecurely on systems.",
-        "keywords": ["unsecured credentials", "hardcoded password", "credentials in file", "plaintext password"],
+        "keywords": [
+            "unsecured credentials",
+            "hardcoded password",
+            "credentials in file",
+            "plaintext password",
+        ],
     },
     "T1555": {
         "name": "Credentials from Password Stores",
@@ -311,7 +331,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Position between two devices to intercept/relay traffic.",
         "keywords": ["adversary in the middle", "mitm", "arp spoofing", "llmnr poisoning"],
     },
-
     # --- Discovery ---
     "T1083": {
         "name": "File and Directory Discovery",
@@ -335,7 +354,12 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Remote System Discovery",
         "tactic": ["discovery"],
         "description": "Identify other systems on the network.",
-        "keywords": ["remote system discovery", "network enumeration", "net view", "host discovery"],
+        "keywords": [
+            "remote system discovery",
+            "network enumeration",
+            "net view",
+            "host discovery",
+        ],
     },
     "T1087": {
         "name": "Account Discovery",
@@ -355,7 +379,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Scan network for listening services.",
         "keywords": ["port scan", "nmap", "service discovery", "network scan"],
     },
-
     # --- Lateral Movement ---
     "T1021": {
         "name": "Remote Services",
@@ -387,7 +410,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Transfer tools between systems within the network.",
         "keywords": ["lateral tool transfer", "copy tool", "push binary"],
     },
-
     # --- Collection ---
     "T1005": {
         "name": "Data from Local System",
@@ -425,7 +447,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Archive and compress data prior to exfiltration.",
         "keywords": ["archive data", "rar data", "zip data", "7zip staging"],
     },
-
     # --- Command and Control ---
     "T1071": {
         "name": "Application Layer Protocol",
@@ -449,7 +470,12 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Ingress Tool Transfer",
         "tactic": ["command-and-control"],
         "description": "Transfer tools or files into the victim environment.",
-        "keywords": ["ingress tool transfer", "download payload", "fetch second stage", "curl payload"],
+        "keywords": [
+            "ingress tool transfer",
+            "download payload",
+            "fetch second stage",
+            "curl payload",
+        ],
     },
     "T1572": {
         "name": "Protocol Tunneling",
@@ -469,7 +495,6 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Encrypt C2 traffic to evade inspection.",
         "keywords": ["encrypted channel", "tls c2", "custom crypto"],
     },
-
     # --- Exfiltration ---
     "T1041": {
         "name": "Exfiltration Over C2 Channel",
@@ -487,7 +512,12 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "name": "Exfiltration Over Web Service",
         "tactic": ["exfiltration"],
         "description": "Exfiltrate via a legitimate web service.",
-        "keywords": ["exfiltration web service", "upload to dropbox", "google drive exfil", "pastebin upload"],
+        "keywords": [
+            "exfiltration web service",
+            "upload to dropbox",
+            "google drive exfil",
+            "pastebin upload",
+        ],
     },
     "T1052": {
         "name": "Exfiltration Over Physical Medium",
@@ -495,19 +525,29 @@ ATTACK_TECHNIQUES: Dict[str, Dict] = {
         "description": "Exfiltrate via USB or other physical medium.",
         "keywords": ["usb exfil", "physical medium exfil"],
     },
-
     # --- Impact ---
     "T1486": {
         "name": "Data Encrypted for Impact",
         "tactic": ["impact"],
         "description": "Encrypt data to disrupt availability (ransomware).",
-        "keywords": ["ransomware", "data encrypted", "file encryption impact", "lockbit", "encrypt for ransom"],
+        "keywords": [
+            "ransomware",
+            "data encrypted",
+            "file encryption impact",
+            "lockbit",
+            "encrypt for ransom",
+        ],
     },
     "T1490": {
         "name": "Inhibit System Recovery",
         "tactic": ["impact"],
         "description": "Delete backups or shadow copies to prevent recovery.",
-        "keywords": ["delete shadow copies", "vssadmin delete", "inhibit recovery", "wbadmin delete"],
+        "keywords": [
+            "delete shadow copies",
+            "vssadmin delete",
+            "inhibit recovery",
+            "wbadmin delete",
+        ],
     },
     "T1489": {
         "name": "Service Stop",
@@ -550,24 +590,24 @@ _WORD_PATTERN = re.compile(r"[a-z0-9][a-z0-9\-\._/]*")
 class TechniqueMatch:
     technique_id: str
     name: str
-    tactic: List[str]
+    tactic: list[str]
     confidence: float
-    matched_keywords: List[str] = field(default_factory=list)
+    matched_keywords: list[str] = field(default_factory=list)
 
 
 class MitreAttackClassifier:
     """Heuristic keyword-based MITRE ATT&CK technique classifier."""
 
-    def __init__(self, custom_techniques: Optional[Dict[str, Dict]] = None) -> None:
-        catalog: Dict[str, Dict] = {tid: dict(entry) for tid, entry in ATTACK_TECHNIQUES.items()}
+    def __init__(self, custom_techniques: dict[str, dict] | None = None) -> None:
+        catalog: dict[str, dict] = {tid: dict(entry) for tid, entry in ATTACK_TECHNIQUES.items()}
         if custom_techniques:
             for tid, entry in custom_techniques.items():
                 if not _TECHNIQUE_ID_PATTERN.match(tid):
                     raise ValueError(f"Invalid technique id: {tid}")
                 catalog[tid] = dict(entry)
-        self._catalog: Dict[str, Dict] = catalog
+        self._catalog: dict[str, dict] = catalog
         # Precompute normalized keyword list per technique.
-        self._keyword_index: Dict[str, List[str]] = {
+        self._keyword_index: dict[str, list[str]] = {
             tid: [kw.lower() for kw in entry.get("keywords", [])]
             for tid, entry in self._catalog.items()
         }
@@ -575,21 +615,19 @@ class MitreAttackClassifier:
     # ------------------------------------------------------------------
     # Lookup helpers
     # ------------------------------------------------------------------
-    def lookup(self, technique_id: str) -> Dict:
+    def lookup(self, technique_id: str) -> dict:
         if technique_id not in self._catalog:
             raise KeyError(f"Unknown technique id: {technique_id}")
         return dict(self._catalog[technique_id])
 
-    def by_tactic(self, tactic: str) -> List[str]:
+    def by_tactic(self, tactic: str) -> list[str]:
         if tactic not in TACTIC_ORDER:
             raise ValueError(f"Unknown tactic: {tactic}")
         return sorted(
-            tid
-            for tid, entry in self._catalog.items()
-            if tactic in entry.get("tactic", [])
+            tid for tid, entry in self._catalog.items() if tactic in entry.get("tactic", [])
         )
 
-    def get_kill_chain(self, technique_ids: Iterable[str]) -> List[str]:
+    def get_kill_chain(self, technique_ids: Iterable[str]) -> list[str]:
         def sort_key(tid: str):
             entry = self._catalog.get(tid)
             if not entry:
@@ -604,16 +642,16 @@ class MitreAttackClassifier:
     # ------------------------------------------------------------------
     # Classification
     # ------------------------------------------------------------------
-    def classify(self, text: str, top_k: int = 5) -> List[TechniqueMatch]:
+    def classify(self, text: str, top_k: int = 5) -> list[TechniqueMatch]:
         if not text or not text.strip():
             return []
         lowered = text.lower()
 
-        matches: List[TechniqueMatch] = []
+        matches: list[TechniqueMatch] = []
         for tid, keywords in self._keyword_index.items():
             if not keywords:
                 continue
-            hit_kws: List[str] = []
+            hit_kws: list[str] = []
             for kw in keywords:
                 # Use substring match; works for multiword keywords and
                 # single-token keywords alike.

@@ -1,8 +1,9 @@
 """Black-box prompt optimization via evolutionary search."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -12,19 +13,19 @@ from torch import Tensor
 
 @dataclass
 class PromptOptimizerConfig:
-    prompt_len: int = 8             # number of prefix tokens to optimize
+    prompt_len: int = 8  # number of prefix tokens to optimize
     vocab_size: int = 256
-    population_size: int = 10      # number of candidate prompts
-    n_elite: int = 3               # top-k survivors per generation
-    mutation_rate: float = 0.1     # fraction of tokens to randomly mutate
+    population_size: int = 10  # number of candidate prompts
+    n_elite: int = 3  # top-k survivors per generation
+    mutation_rate: float = 0.1  # fraction of tokens to randomly mutate
     n_generations: int = 5
-    temperature: float = 1.0       # for scoring
+    temperature: float = 1.0  # for scoring
 
 
 def score_prompt(
     model: nn.Module,
-    prompt_ids: Tensor,      # (prompt_len,) prefix tokens
-    target_ids: Tensor,      # (target_len,) target sequence to elicit
+    prompt_ids: Tensor,  # (prompt_len,) prefix tokens
+    target_ids: Tensor,  # (target_len,) target sequence to elicit
 ) -> float:
     """Score a prompt by how well the model predicts target_ids after prompt_ids.
 
@@ -44,7 +45,9 @@ def score_prompt(
         prompt_len = prompt_ids.shape[0]
         target_len = target_ids.shape[0]
         # Slice out the logits corresponding to target token predictions
-        target_logits = logits[0, prompt_len - 1: prompt_len - 1 + target_len, :]  # (target_len, V)
+        target_logits = logits[
+            0, prompt_len - 1 : prompt_len - 1 + target_len, :
+        ]  # (target_len, V)
         labels = target_ids  # (target_len,)
         loss = F.cross_entropy(target_logits, labels)
         return -loss.item()
@@ -61,8 +64,8 @@ def initialize_population(
 
 
 def select_elite(
-    population: Tensor,      # (pop_size, prompt_len)
-    scores: Tensor,          # (pop_size,)
+    population: Tensor,  # (pop_size, prompt_len)
+    scores: Tensor,  # (pop_size,)
     n_elite: int,
 ) -> tuple[Tensor, Tensor]:
     """Select top-n_elite candidates by score.
@@ -76,7 +79,7 @@ def select_elite(
 
 
 def mutate_population(
-    elite: Tensor,           # (n_elite, prompt_len)
+    elite: Tensor,  # (n_elite, prompt_len)
     population_size: int,
     vocab_size: int,
     mutation_rate: float,
@@ -126,18 +129,23 @@ class BlackBoxPromptOptimizer:
         for gen in range(cfg.n_generations):
             # Score all candidates
             scores = torch.tensor(
-                [self.score_fn(self.model, population[i], target_ids) for i in range(cfg.population_size)],
+                [
+                    self.score_fn(self.model, population[i], target_ids)
+                    for i in range(cfg.population_size)
+                ],
                 dtype=torch.float32,
             )
 
             # Track generation stats
             gen_best_score = scores.max().item()
             gen_mean_score = scores.mean().item()
-            self._history.append({
-                "generation": gen,
-                "best_score": gen_best_score,
-                "mean_score": gen_mean_score,
-            })
+            self._history.append(
+                {
+                    "generation": gen,
+                    "best_score": gen_best_score,
+                    "mean_score": gen_mean_score,
+                }
+            )
 
             # Update global best
             if gen_best_score > best_score:
@@ -149,7 +157,9 @@ class BlackBoxPromptOptimizer:
 
             # Mutate to produce next generation (skip mutation on last gen to save compute)
             if gen < cfg.n_generations - 1:
-                population = mutate_population(elite, cfg.population_size, cfg.vocab_size, cfg.mutation_rate)
+                population = mutate_population(
+                    elite, cfg.population_size, cfg.vocab_size, cfg.mutation_rate
+                )
             else:
                 # On the last generation we already scored, no next generation needed
                 break
@@ -157,7 +167,7 @@ class BlackBoxPromptOptimizer:
         return best_prompt, best_score
 
     def get_history(self) -> list[dict]:
-        """Return per-generation history: [{"generation": int, "best_score": float, "mean_score": float}]."""
+        """Return per-generation history: [{"generation": int, "best_score": float, "mean_score": float}]."""  # noqa: E501
         return list(self._history)
 
 
@@ -217,7 +227,9 @@ class PromptOptimizerTrainer:
 
                 if gen < cfg.n_generations - 1:
                     elite, _ = select_elite(population, scores, cfg.n_elite)
-                    population = mutate_population(elite, cfg.population_size, cfg.vocab_size, cfg.mutation_rate)
+                    population = mutate_population(
+                        elite, cfg.population_size, cfg.vocab_size, cfg.mutation_rate
+                    )
                 else:
                     break
 
@@ -225,5 +237,5 @@ class PromptOptimizerTrainer:
                 best_mean_score = trial_best_mean
                 best_prompt = trial_best_prompt
 
-        assert best_prompt is not None
+        assert best_prompt is not None  # noqa: S101
         return best_prompt, best_mean_score

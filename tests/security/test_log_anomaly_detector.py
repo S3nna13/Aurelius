@@ -2,8 +2,6 @@
 
 import time
 
-import pytest
-
 from src.security.log_anomaly_detector import LogAnomaly, LogAnomalyDetector
 
 
@@ -70,9 +68,12 @@ def test_reset_clears_state():
         d.observe(_rec(base + i, source_ip="1.1.1.1", event="auth_fail"))
     d.reset()
     s = d.stats()
-    assert s.get("observed", 0) == 0 or s.get("total", 0) == 0 or sum(
-        v for k, v in s.items() if isinstance(v, int) and k not in ("window_size_seconds",)
-    ) == 0
+    assert (
+        s.get("observed", 0) == 0
+        or s.get("total", 0) == 0
+        or sum(v for k, v in s.items() if isinstance(v, int) and k not in ("window_size_seconds",))
+        == 0
+    )
 
 
 def test_stats_count_observed():
@@ -125,7 +126,8 @@ def test_off_hours_detected_when_trained():
     d.train_hours(range(9, 17))  # activity only 9am-5pm
     # 3am UTC timestamp
     import datetime as _dt
-    ts = _dt.datetime(2024, 1, 1, 3, 0, 0, tzinfo=_dt.timezone.utc).timestamp()
+
+    ts = _dt.datetime(2024, 1, 1, 3, 0, 0, tzinfo=_dt.UTC).timestamp()
     d.observe({"timestamp": ts})
     anomalies = d.detect_anomalies()
     assert any(a.anomaly_type == "off_hours" for a in anomalies)

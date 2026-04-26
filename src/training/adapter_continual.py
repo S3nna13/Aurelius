@@ -1,7 +1,8 @@
 """Continual learning with task-specific adapters: progressive training without forgetting."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -219,7 +220,7 @@ class AdapterContinualTrainer:
 
         # Single shared MultiTaskAdapterLayer (not inserted into the model graph;
         # overlap penalty is computed from it and added to the task loss).
-        d_model: int = getattr(config, "_d_model", 64)  # default; overridden in start_task
+        getattr(config, "_d_model", 64)  # default; overridden in start_task
         self._adapter_layer: MultiTaskAdapterLayer | None = None
         self._optimizer: torch.optim.Optimizer | None = None
         self._current_task_id: int | None = None

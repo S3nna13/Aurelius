@@ -23,15 +23,15 @@ Typical usage during a training step:
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ExpertRoutingConfig:
@@ -48,6 +48,7 @@ class ExpertRoutingConfig:
         history_window:     Number of tokens (not steps) kept in the rolling
                             window used by ExpertLoadTracker.
     """
+
     n_experts: int = 8
     n_active: int = 2
     load_balance_coeff: float = 0.01
@@ -59,6 +60,7 @@ class ExpertRoutingConfig:
 # ---------------------------------------------------------------------------
 # Load-balance loss
 # ---------------------------------------------------------------------------
+
 
 def compute_load_balance_loss(router_probs: Tensor, expert_mask: Tensor) -> Tensor:
     """Switch Transformer load-balance loss over a (B, T, n_experts) batch.
@@ -93,12 +95,12 @@ def compute_load_balance_loss(router_probs: Tensor, expert_mask: Tensor) -> Tens
     # f_i: fraction of total token-expert assignments going to expert i.
     # expert_mask may have multiple 1s per token (top-k), so normalise by
     # the total number of (token, expert) selection events.
-    mask_float = expert_mask.float()                    # (B, T, E)
+    mask_float = expert_mask.float()  # (B, T, E)
     total_selections = mask_float.sum().clamp(min=1.0)
     f_i = mask_float.sum(dim=(0, 1)) / total_selections  # (E,)
 
     # P_i: mean router probability per expert across all tokens.
-    P_i = router_probs.mean(dim=(0, 1))                 # (E,)
+    P_i = router_probs.mean(dim=(0, 1))  # (E,)
 
     lb_loss = n_experts * (f_i * P_i).sum()
     return lb_loss
@@ -107,6 +109,7 @@ def compute_load_balance_loss(router_probs: Tensor, expert_mask: Tensor) -> Tens
 # ---------------------------------------------------------------------------
 # Router entropy
 # ---------------------------------------------------------------------------
+
 
 def compute_router_entropy(router_probs: Tensor) -> Tensor:
     """Mean entropy of the router probability distribution over tokens.
@@ -132,6 +135,7 @@ def compute_router_entropy(router_probs: Tensor) -> Tensor:
 # Expert utilization
 # ---------------------------------------------------------------------------
 
+
 def compute_expert_utilization(expert_mask: Tensor) -> dict[str, Tensor]:
     """Per-expert utilization statistics from a selection mask.
 
@@ -148,7 +152,7 @@ def compute_expert_utilization(expert_mask: Tensor) -> dict[str, Tensor]:
                                0 when load is perfectly balanced, higher when
                                routing is skewed.
     """
-    mask_float = expert_mask.float()                    # (B, T, E)
+    mask_float = expert_mask.float()  # (B, T, E)
     total_selections = mask_float.sum().clamp(min=1.0)
     utilization = mask_float.sum(dim=(0, 1)) / total_selections  # (E,)
 
@@ -171,6 +175,7 @@ def compute_expert_utilization(expert_mask: Tensor) -> dict[str, Tensor]:
 # ---------------------------------------------------------------------------
 # Running load tracker
 # ---------------------------------------------------------------------------
+
 
 class ExpertLoadTracker:
     """Running statistics over a sliding window of expert assignments.
@@ -258,7 +263,7 @@ class ExpertLoadTracker:
 
         mean_util = sum(utilization) / n_experts
         variance = sum((u - mean_util) ** 2 for u in utilization) / n_experts
-        std_util = variance ** 0.5
+        std_util = variance**0.5
         cv = std_util / max(mean_util, 1e-9)
 
         dead_experts = sum(1 for u in utilization if u < 0.01)
@@ -278,6 +283,7 @@ class ExpertLoadTracker:
 # ---------------------------------------------------------------------------
 # Combined routing-aware loss
 # ---------------------------------------------------------------------------
+
 
 class RoutingAwareLoss:
     """Combine task loss with load-balance and entropy regularization.

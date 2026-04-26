@@ -149,9 +149,7 @@ def test_json_array_parsed() -> None:
 
 
 def test_json_object_with_commands_key() -> None:
-    planner = ShellCommandPlanner(
-        _fixed('{"commands": ["pwd", "rg TODO src/"]}')
-    )
+    planner = ShellCommandPlanner(_fixed('{"commands": ["pwd", "rg TODO src/"]}'))
     plan = planner.plan("search")
     assert [c.cmd for c in plan.commands] == ["pwd", "rg"]
 

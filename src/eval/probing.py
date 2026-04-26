@@ -1,11 +1,12 @@
-"""Linear probing: train simple classifiers on frozen hidden states to test layer-wise representations."""
+"""Linear probing: train simple classifiers on frozen hidden states to test layer-wise representations."""  # noqa: E501
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from dataclasses import dataclass
 
 
 @dataclass

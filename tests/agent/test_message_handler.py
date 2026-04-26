@@ -1,15 +1,15 @@
 """Tests for message_handler — agent-bound message routing."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.agent.message_handler import (
-    MessageHandler,
-    MESSAGE_HANDLER_REGISTRY,
     DEFAULT_MESSAGE_HANDLER,
+    MESSAGE_HANDLER_REGISTRY,
+    MessageHandler,
 )
 from src.multiagent.message_bus import AgentMessage
-
 
 # ---------------------------------------------------------------------------
 # Registration

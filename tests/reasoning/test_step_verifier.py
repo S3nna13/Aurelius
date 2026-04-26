@@ -1,21 +1,22 @@
 """Tests for src/reasoning/step_verifier.py — at least 20 tests."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.reasoning.step_verifier import (
+    _MAX_STEP_LEN,
+    _MAX_STEPS,
+    STEP_VERIFIER,
     StepScore,
     StepVerifier,
     VerificationLabel,
-    STEP_VERIFIER,
-    _MAX_STEP_LEN,
-    _MAX_STEPS,
 )
-
 
 # ---------------------------------------------------------------------------
 # StepScore dataclass validation
 # ---------------------------------------------------------------------------
+
 
 def test_stepscore_confidence_below_zero_raises():
     with pytest.raises(ValueError, match="confidence"):
@@ -45,6 +46,7 @@ def test_stepscore_valid_boundary_confidence_one():
 # ---------------------------------------------------------------------------
 # verify_step: basic label outcomes
 # ---------------------------------------------------------------------------
+
 
 def test_verify_step_short_step_returns_neutral():
     v = StepVerifier()
@@ -102,9 +104,11 @@ def test_verify_step_step_index_preserved():
 
 def test_verify_step_confidence_scales_with_length():
     v = StepVerifier()
-    short = v.verify_step(0, "We solve it now.")    # shorter normal step
-    long_content = "We carefully derive the solution by expanding the polynomial and " \
-                   "collecting terms, then applying the quadratic formula to obtain roots. " * 3
+    short = v.verify_step(0, "We solve it now.")  # shorter normal step
+    long_content = (
+        "We carefully derive the solution by expanding the polynomial and "
+        "collecting terms, then applying the quadratic formula to obtain roots. " * 3
+    )
     long = v.verify_step(1, long_content)
     # longer correct step should have higher or equal confidence (capped at 0.85)
     assert long.confidence >= short.confidence or long.confidence == 0.85
@@ -122,21 +126,30 @@ def test_verify_step_confidence_capped_at_085():
 # verify_step: adversarial inputs
 # ---------------------------------------------------------------------------
 
+
 def test_verify_step_null_bytes_do_not_crash():
     v = StepVerifier()
     content = "Valid step\x00with null bytes inside."
     score = v.verify_step(0, content)
-    assert score.label in (VerificationLabel.CORRECT, VerificationLabel.NEUTRAL,
-                           VerificationLabel.INCORRECT)
+    assert score.label in (
+        VerificationLabel.CORRECT,
+        VerificationLabel.NEUTRAL,
+        VerificationLabel.INCORRECT,
+    )
 
 
 # ---------------------------------------------------------------------------
 # verify_chain
 # ---------------------------------------------------------------------------
 
+
 def test_verify_chain_correct_sequential_indices():
     v = StepVerifier()
-    steps = ["First we note that x equals 2.", "Then we substitute to get 4.", "Therefore the answer is 4."]
+    steps = [
+        "First we note that x equals 2.",
+        "Then we substitute to get 4.",
+        "Therefore the answer is 4.",
+    ]
     scores = v.verify_chain(steps)
     for i, s in enumerate(scores):
         assert s.step_index == i
@@ -155,9 +168,11 @@ def test_verify_chain_empty_list_returns_empty():
 
 def test_verify_chain_returns_correct_count():
     v = StepVerifier()
-    steps = ["Step one is to identify the variable.",
-             "Step two is to isolate x.",
-             "Step three gives us the final answer."]
+    steps = [
+        "Step one is to identify the variable.",
+        "Step two is to isolate x.",
+        "Step three gives us the final answer.",
+    ]
     scores = v.verify_chain(steps)
     assert len(scores) == 3
 
@@ -166,10 +181,13 @@ def test_verify_chain_returns_correct_count():
 # aggregate_score
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_score_all_correct_above_half():
     v = StepVerifier()
     scores = [
-        StepScore(step_index=i, content="good step", label=VerificationLabel.CORRECT, confidence=0.8)
+        StepScore(
+            step_index=i, content="good step", label=VerificationLabel.CORRECT, confidence=0.8
+        )
         for i in range(5)
     ]
     result = v.aggregate_score(scores)
@@ -209,6 +227,7 @@ def test_aggregate_score_empty_returns_zero():
 # Custom contradiction keywords
 # ---------------------------------------------------------------------------
 
+
 def test_custom_contradiction_keyword_triggers_incorrect():
     v = StepVerifier(contradiction_keywords=["banana contradiction"])
     score = v.verify_step(0, "This step has a banana contradiction in its logic.")
@@ -226,6 +245,7 @@ def test_custom_keywords_replace_defaults():
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_step_verifier_singleton_is_instance():
     assert isinstance(STEP_VERIFIER, StepVerifier)

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -43,7 +42,7 @@ class DynamicNTKRoPE(nn.Module):
         if seq_len > cfg.max_seq_len:
             # NTK correction: scale base by alpha^(dim / (dim - 2))
             exponent = cfg.dim / (cfg.dim - 2)
-            base = base * (cfg.alpha ** exponent)
+            base = base * (cfg.alpha**exponent)
 
         half_dim = cfg.dim // 2
         # inv_freq[i] = 1 / base^(2i/dim)
@@ -78,7 +77,7 @@ class DynamicNTKRoPE(nn.Module):
         freqs = self._compute_freqs(seq_len)  # (seq_len, dim//2)
 
         # head_dim = x.shape[-1]; we use the first dim//2 dimensions for rotation
-        half_dim = self.config.dim // 2
+        self.config.dim // 2
         head_dim = x.shape[-1]
 
         # Build cos/sin of shape (1, 1, seq_len, head_dim) by repeating freqs twice
@@ -106,4 +105,4 @@ class DynamicNTKRoPE(nn.Module):
         """
         cfg = self.config
         exponent = (cfg.dim / 2) / (cfg.dim - 2)
-        return int(cfg.max_seq_len * (alpha ** exponent))
+        return int(cfg.max_seq_len * (alpha**exponent))

@@ -1,25 +1,25 @@
-"""Tests for speculative_decoding_v2: draft model + target verification with acceptance rate tracking."""
-import pytest
+"""Tests for speculative_decoding_v2: draft model + target verification with acceptance rate tracking."""  # noqa: E501
+
 import torch
 import torch.nn.functional as F
 
 from src.inference.speculative_decoding_v2 import (
+    AcceptanceTracker,
     SpeculativeConfig,
+    SpeculativeDecoderV2,
     apply_top_k,
     apply_top_p,
-    sample_token,
     draft_tokens,
+    sample_token,
     verify_tokens,
-    AcceptanceTracker,
-    SpeculativeDecoderV2,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model() -> AureliusTransformer:
     torch.manual_seed(0)
@@ -45,6 +45,7 @@ def _make_prompt(length: int = 4) -> torch.Tensor:
 # 1. SpeculativeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_speculative_config_defaults():
     cfg = SpeculativeConfig()
     assert cfg.n_draft_tokens == 4
@@ -57,6 +58,7 @@ def test_speculative_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. apply_top_k zeros out non-top-k logits (via -inf)
 # ---------------------------------------------------------------------------
+
 
 def test_apply_top_k_non_top_k_are_neg_inf():
     torch.manual_seed(42)
@@ -73,11 +75,12 @@ def test_apply_top_k_non_top_k_are_neg_inf():
 # 3. apply_top_p masks low-prob tokens
 # ---------------------------------------------------------------------------
 
+
 def test_apply_top_p_masks_low_prob_tokens():
     torch.manual_seed(7)
     # Make one token dominate so top_p=0.5 should cut most tokens
     logits = torch.full((1, 256), -10.0)
-    logits[0, 0] = 10.0   # this token has ~1.0 probability
+    logits[0, 0] = 10.0  # this token has ~1.0 probability
 
     result = apply_top_p(logits, p=0.5)
     probs = F.softmax(result, dim=-1)
@@ -91,6 +94,7 @@ def test_apply_top_p_masks_low_prob_tokens():
 # 4. sample_token output shape is (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_sample_token_output_shape():
     B, V = 3, 256
     logits = torch.randn(B, V)
@@ -102,9 +106,10 @@ def test_sample_token_output_shape():
 # 5. draft_tokens output shapes (B, n_draft)
 # ---------------------------------------------------------------------------
 
+
 def test_draft_tokens_output_shapes():
     model = _make_model()
-    prompt = _make_prompt(4)   # (1, 4)
+    prompt = _make_prompt(4)  # (1, 4)
     cfg = SpeculativeConfig(n_draft_tokens=3, max_new_tokens=4)
 
     with torch.no_grad():
@@ -117,6 +122,7 @@ def test_draft_tokens_output_shapes():
 # ---------------------------------------------------------------------------
 # 6. AcceptanceTracker.update and acceptance_rate
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_tracker_update_and_rate():
     tracker = AcceptanceTracker()
@@ -132,6 +138,7 @@ def test_acceptance_tracker_update_and_rate():
 # 7. AcceptanceTracker.reset
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_tracker_reset():
     tracker = AcceptanceTracker()
     tracker.update(n_drafted=4, n_accepted=3)
@@ -145,6 +152,7 @@ def test_acceptance_tracker_reset():
 # 8. AcceptanceTracker: 0 drafted → 0.0 (no division by zero)
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_tracker_zero_drafted():
     tracker = AcceptanceTracker()
     rate = tracker.acceptance_rate()
@@ -154,6 +162,7 @@ def test_acceptance_tracker_zero_drafted():
 # ---------------------------------------------------------------------------
 # 9. SpeculativeDecoderV2.generate returns correct keys in stats
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_decoder_v2_stats_keys():
     draft = _make_model()
@@ -176,6 +185,7 @@ def test_speculative_decoder_v2_stats_keys():
 # 10. SpeculativeDecoderV2.generate output shape (1, generated_len)
 # ---------------------------------------------------------------------------
 
+
 def test_speculative_decoder_v2_output_shape():
     draft = _make_model()
     target = _make_model()
@@ -195,6 +205,7 @@ def test_speculative_decoder_v2_output_shape():
 # 11. verify_tokens: n_accepted <= n_draft_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_verify_tokens_n_accepted_bounded():
     draft_model = _make_model()
     target_model = _make_model()
@@ -211,6 +222,7 @@ def test_verify_tokens_n_accepted_bounded():
 # ---------------------------------------------------------------------------
 # 12. apply_top_k with k=1: only argmax survives
 # ---------------------------------------------------------------------------
+
 
 def test_apply_top_k_k1_only_argmax_survives():
     torch.manual_seed(99)

@@ -21,7 +21,6 @@ from src.model.release_track_router import (
     RouterPolicy,
 )
 
-
 # ---------------------------------------------------------------------------
 # Manifest fixtures per track
 # ---------------------------------------------------------------------------
@@ -217,10 +216,7 @@ def test_custom_policy_composes() -> None:
     beta = router.route(BETA_M)
     assert beta.allowed is True and beta.warnings
     assert router.route(RESEARCH_M).allowed is False
-    assert (
-        router.route(RESEARCH_M, override_flags={"allow_research"}).allowed
-        is True
-    )
+    assert router.route(RESEARCH_M, override_flags={"allow_research"}).allowed is True
     assert router.route(DEPRECATED_M).allowed is False
 
 

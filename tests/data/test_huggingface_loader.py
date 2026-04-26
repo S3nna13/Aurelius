@@ -5,7 +5,6 @@ All tests use mock data generators — no network requests are made.
 
 from __future__ import annotations
 
-import pytest
 import torch
 from torch import Tensor
 
@@ -26,10 +25,10 @@ from src.data.huggingface_loader import (
     parse_ultrafeedback_sample,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. mock_hh_rlhf_data has correct fields
 # ---------------------------------------------------------------------------
+
 
 def test_mock_hh_rlhf_data_fields():
     data = mock_hh_rlhf_data(4)
@@ -45,6 +44,7 @@ def test_mock_hh_rlhf_data_fields():
 # 2. parse_hh_rlhf_sample returns PreferencePair with non-empty fields
 # ---------------------------------------------------------------------------
 
+
 def test_parse_hh_rlhf_sample_returns_preference_pair():
     raw = mock_hh_rlhf_data(1)[0]
     result = parse_hh_rlhf_sample(raw)
@@ -57,6 +57,7 @@ def test_parse_hh_rlhf_sample_returns_preference_pair():
 # ---------------------------------------------------------------------------
 # 3. parse_hh_rlhf_sample: prompt does NOT include the final response text
 # ---------------------------------------------------------------------------
+
 
 def test_parse_hh_rlhf_sample_prompt_excludes_response():
     raw = {
@@ -76,6 +77,7 @@ def test_parse_hh_rlhf_sample_prompt_excludes_response():
 # 4. mock_alpaca_data has correct fields
 # ---------------------------------------------------------------------------
 
+
 def test_mock_alpaca_data_fields():
     data = mock_alpaca_data(4)
     assert len(data) == 4
@@ -90,6 +92,7 @@ def test_mock_alpaca_data_fields():
 # 5. parse_alpaca_sample returns InstructionSample
 # ---------------------------------------------------------------------------
 
+
 def test_parse_alpaca_sample_returns_instruction_sample():
     raw = mock_alpaca_data(1)[0]
     result = parse_alpaca_sample(raw)
@@ -101,6 +104,7 @@ def test_parse_alpaca_sample_returns_instruction_sample():
 # ---------------------------------------------------------------------------
 # 6. parse_alpaca_sample: empty input → input_context=""
 # ---------------------------------------------------------------------------
+
 
 def test_parse_alpaca_sample_empty_input_context():
     raw = {
@@ -117,6 +121,7 @@ def test_parse_alpaca_sample_empty_input_context():
 # 7. mock_oasst_data has correct fields
 # ---------------------------------------------------------------------------
 
+
 def test_mock_oasst_data_fields():
     data = mock_oasst_data(4)
     assert len(data) == 4
@@ -131,6 +136,7 @@ def test_mock_oasst_data_fields():
 # ---------------------------------------------------------------------------
 # 8. parse_oasst_sample returns None for deleted=True
 # ---------------------------------------------------------------------------
+
 
 def test_parse_oasst_sample_returns_none_for_deleted():
     raw = {
@@ -149,6 +155,7 @@ def test_parse_oasst_sample_returns_none_for_deleted():
 # ---------------------------------------------------------------------------
 # 9. parse_oasst_sample returns InstructionSample for role=assistant, deleted=False
 # ---------------------------------------------------------------------------
+
 
 def test_parse_oasst_sample_assistant_not_deleted():
     raw = {
@@ -171,6 +178,7 @@ def test_parse_oasst_sample_assistant_not_deleted():
 # 10. mock_lima_data has correct fields
 # ---------------------------------------------------------------------------
 
+
 def test_mock_lima_data_fields():
     data = mock_lima_data(4)
     assert len(data) == 4
@@ -183,6 +191,7 @@ def test_mock_lima_data_fields():
 # ---------------------------------------------------------------------------
 # 11. parse_lima_sample conversation list is non-empty
 # ---------------------------------------------------------------------------
+
 
 def test_parse_lima_sample_conversation_non_empty():
     raw = mock_lima_data(1)[0]
@@ -197,6 +206,7 @@ def test_parse_lima_sample_conversation_non_empty():
 # ---------------------------------------------------------------------------
 # 12. mock_ultrafeedback_data has completions list
 # ---------------------------------------------------------------------------
+
 
 def test_mock_ultrafeedback_data_has_completions():
     data = mock_ultrafeedback_data(4)
@@ -215,6 +225,7 @@ def test_mock_ultrafeedback_data_has_completions():
 # 13. parse_ultrafeedback_sample returns list[PreferencePair]
 # ---------------------------------------------------------------------------
 
+
 def test_parse_ultrafeedback_sample_returns_list_of_preference_pairs():
     raw = mock_ultrafeedback_data(1)[0]
     results = parse_ultrafeedback_sample(raw)
@@ -230,6 +241,7 @@ def test_parse_ultrafeedback_sample_returns_list_of_preference_pairs():
 # ---------------------------------------------------------------------------
 # 14. HuggingFaceLoader with patched _data → as_preference_pairs works
 # ---------------------------------------------------------------------------
+
 
 def test_huggingface_loader_as_preference_pairs_with_patched_data():
     config = HFDatasetConfig(dataset_name="Anthropic/hh-rlhf", max_samples=4)
@@ -249,6 +261,7 @@ def test_huggingface_loader_as_preference_pairs_with_patched_data():
 # ---------------------------------------------------------------------------
 # 15. HuggingFaceLoader.to_tokenized returns list of dicts with tensor values
 # ---------------------------------------------------------------------------
+
 
 def test_huggingface_loader_to_tokenized_returns_tensors():
     config = HFDatasetConfig(dataset_name="Anthropic/hh-rlhf", max_samples=4)

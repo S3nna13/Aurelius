@@ -4,6 +4,7 @@ Verifies that the URL validator rejects file:// schemes, RFC1918 private
 addresses and other SSRF-prone hosts, and accepts well-formed http/https
 URLs pointing at public hosts.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -65,6 +66,7 @@ def test_validator_blocks_gopher():
 
 # --- Backend-specific scheme validators -------------------------------------
 
+
 def test_http_backend_validator_rejects_file_scheme():
     from src.backends.http_backend import _validate_backend_url
 
@@ -112,6 +114,7 @@ def test_web_ui_validator_accepts_https():
 
 
 # --- AUR-SEC-2026-0023 bind default regression -------------------------------
+
 
 def test_serve_config_default_host_is_loopback():
     """Default serving bind must be loopback (CWE-605 B104)."""

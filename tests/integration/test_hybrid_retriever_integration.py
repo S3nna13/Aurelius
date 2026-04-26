@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.retrieval import RETRIEVER_REGISTRY, BM25Retriever, HybridRetriever
 
 
@@ -78,6 +76,4 @@ def test_sparse_only_hybrid_matches_plain_bm25_end_to_end():
         weights=(1.0, 0.0),
     )
     hybrid.add_documents(corpus)
-    assert [d for d, _ in hybrid.query("alpha", k=5)] == [
-        d for d, _ in plain.query("alpha", k=5)
-    ]
+    assert [d for d, _ in hybrid.query("alpha", k=5)] == [d for d, _ in plain.query("alpha", k=5)]

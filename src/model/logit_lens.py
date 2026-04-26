@@ -6,8 +6,7 @@ projecting intermediate hidden states through the final norm + lm_head.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -24,7 +23,7 @@ class LogitLensConfig:
         top_k: Number of top tokens to return per position.
     """
 
-    layers: Optional[list[int]] = None
+    layers: list[int] | None = None
     normalize: bool = True
     top_k: int = 5
 
@@ -50,6 +49,7 @@ def extract_layer_hidden_states(
             # TransformerBlock.forward returns (x, kv)
             x = output[0] if isinstance(output, tuple) else output
             storage.append(x.detach())
+
         return hook_fn
 
     for layer in model.layers:
@@ -147,9 +147,7 @@ class LogitLens:
 
         # Determine which layers to analyse
         if self.config.layers is not None:
-            selected_indices = [
-                i for i in self.config.layers if 0 <= i < len(all_hidden)
-            ]
+            selected_indices = [i for i in self.config.layers if 0 <= i < len(all_hidden)]
         else:
             selected_indices = list(range(len(all_hidden)))
 

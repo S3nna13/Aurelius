@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 class WorkflowStatus(Enum):
@@ -42,18 +41,26 @@ class WorkflowMonitor:
     def start_workflow(self, workflow_id: str, name: str = "") -> None:
         self._workflows[workflow_id] = WorkflowStatus.RUNNING
         self._names[workflow_id] = name
-        self._events.setdefault(workflow_id, []).append(create_event(EventType.STARTED, workflow_id, f"Started: {name}"))
+        self._events.setdefault(workflow_id, []).append(
+            create_event(EventType.STARTED, workflow_id, f"Started: {name}")
+        )
 
     def complete_workflow(self, workflow_id: str, message: str = "") -> None:
         self._workflows[workflow_id] = WorkflowStatus.COMPLETED
-        self._events.setdefault(workflow_id, []).append(create_event(EventType.COMPLETED, workflow_id, message))
+        self._events.setdefault(workflow_id, []).append(
+            create_event(EventType.COMPLETED, workflow_id, message)
+        )
 
     def fail_workflow(self, workflow_id: str, message: str = "") -> None:
         self._workflows[workflow_id] = WorkflowStatus.FAILED
-        self._events.setdefault(workflow_id, []).append(create_event(EventType.FAILED, workflow_id, message))
+        self._events.setdefault(workflow_id, []).append(
+            create_event(EventType.FAILED, workflow_id, message)
+        )
 
     def log_event(self, workflow_id: str, event_type: EventType, message: str = "") -> None:
-        self._events.setdefault(workflow_id, []).append(create_event(event_type, workflow_id, message))
+        self._events.setdefault(workflow_id, []).append(
+            create_event(event_type, workflow_id, message)
+        )
 
     def get_status(self, workflow_id: str) -> WorkflowStatus | None:
         return self._workflows.get(workflow_id)

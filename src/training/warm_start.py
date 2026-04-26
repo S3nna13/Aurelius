@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Original helpers (preserved)
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class WarmStartReport:
@@ -85,14 +85,15 @@ def prefix_warm_start(
 # New warm-start strategies
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class WarmStartConfig:
     """Configuration for warm-starting a model."""
 
     strategy: str = "interpolate"  # "interpolate" | "stack_layers" | "depth_upscale" | "scratch"
     source_checkpoint: str | None = None  # path to source weights
-    interpolation_alpha: float = 0.5      # for interpolate: blend (0=random, 1=source)
-    target_n_layers: int | None = None    # for stack_layers / depth_upscale
+    interpolation_alpha: float = 0.5  # for interpolate: blend (0=random, 1=source)
+    target_n_layers: int | None = None  # for stack_layers / depth_upscale
 
 
 class WarmStartInitializer:
@@ -182,7 +183,7 @@ class WarmStartInitializer:
                 }
 
                 for tgt_name, tgt_param in target_params.items():
-                    src_name = prefix_src + tgt_name[len(prefix_tgt):]
+                    src_name = prefix_src + tgt_name[len(prefix_tgt) :]
                     if src_name not in source_state_dict:
                         continue
                     src_tensor = source_state_dict[src_name]
@@ -206,8 +207,12 @@ class WarmStartInitializer:
                     self.config.source_checkpoint, map_location="cpu", weights_only=True
                 )
             if source_state_dict is None:
-                raise ValueError("interpolate strategy requires source_state_dict or source_checkpoint")
-            self.interpolate_weights(model, source_state_dict, alpha=self.config.interpolation_alpha)
+                raise ValueError(
+                    "interpolate strategy requires source_state_dict or source_checkpoint"
+                )
+            self.interpolate_weights(
+                model, source_state_dict, alpha=self.config.interpolation_alpha
+            )
 
         elif strategy in ("stack_layers", "depth_upscale"):
             if source_state_dict is None and self.config.source_checkpoint is not None:
@@ -228,6 +233,7 @@ class WarmStartInitializer:
 # ---------------------------------------------------------------------------
 # LayerDropout
 # ---------------------------------------------------------------------------
+
 
 class LayerDropout(nn.Module):
     """Layer dropout: randomly skip entire transformer layers during training.
@@ -257,6 +263,7 @@ class LayerDropout(nn.Module):
 # ---------------------------------------------------------------------------
 # DepthGrowthScheduler
 # ---------------------------------------------------------------------------
+
 
 class DepthGrowthScheduler:
     """Schedule for gradually reducing LayerDropout rates during training.
@@ -298,6 +305,7 @@ class DepthGrowthScheduler:
 # muggle_init
 # ---------------------------------------------------------------------------
 
+
 def muggle_init(model: nn.Module) -> None:
     """'Muggles' initialization (depth-scaled init from μP / Greg Yang 2022).
 
@@ -320,6 +328,7 @@ def muggle_init(model: nn.Module) -> None:
 # count_matchable_params
 # ---------------------------------------------------------------------------
 
+
 def count_matchable_params(target_model: nn.Module, source_state_dict: dict) -> dict:
     """Return counts of parameter matches between target model and source state dict.
 
@@ -335,9 +344,7 @@ def count_matchable_params(target_model: nn.Module, source_state_dict: dict) -> 
     target_keys = set(target_params.keys())
 
     # Filter source_state_dict to only tensor entries
-    source_tensors = {
-        k: v for k, v in source_state_dict.items() if isinstance(v, torch.Tensor)
-    }
+    source_tensors = {k: v for k, v in source_state_dict.items() if isinstance(v, torch.Tensor)}
     source_keys = set(source_tensors.keys())
 
     n_matched = 0

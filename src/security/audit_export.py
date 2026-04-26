@@ -1,4 +1,5 @@
 """Audit log exporter for compliance reporting."""
+
 from __future__ import annotations
 
 import json
@@ -40,15 +41,26 @@ class AuditExporter:
 
     def export_csv(self, path: str) -> None:
         import csv
+
         with open(path, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["timestamp", "actor", "action", "resource", "result"])
+            writer = csv.DictWriter(
+                f, fieldnames=["timestamp", "actor", "action", "resource", "result"]
+            )
             writer.writeheader()
             for e in self.entries:
-                writer.writerow({"timestamp": e.timestamp, "actor": e.actor,
-                                 "action": e.action, "resource": e.resource, "result": e.result})
+                writer.writerow(
+                    {
+                        "timestamp": e.timestamp,
+                        "actor": e.actor,
+                        "action": e.action,
+                        "resource": e.resource,
+                        "result": e.result,
+                    }
+                )
 
-    def filter(self, actor: str | None = None, action: str | None = None,
-               result: str | None = None) -> list[AuditEntry]:
+    def filter(
+        self, actor: str | None = None, action: str | None = None, result: str | None = None
+    ) -> list[AuditEntry]:
         filtered = self.entries[:]
         if actor:
             filtered = [e for e in filtered if e.actor == actor]

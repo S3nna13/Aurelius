@@ -1,24 +1,25 @@
 """Tests for LLM-based data selection (data_selection_llm.py)."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
+from src.data.data_selection_llm import (
+    DataScorer,
+    DataSelectionConfig,
+    DiversitySelector,
+    InstructionFollowingScorer,
+    alpagasus_filter,
+    nuggets_score,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.data.data_selection_llm import (
-    DataSelectionConfig,
-    DataScorer,
-    InstructionFollowingScorer,
-    DiversitySelector,
-    nuggets_score,
-    alpagasus_filter,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -56,14 +57,17 @@ def sample_examples():
 @pytest.fixture
 def constant_score_fn():
     """Score function that returns score based on response length."""
+
     def score(instruction: str, response: str) -> float:
         return float(len(response))
+
     return score
 
 
 # ---------------------------------------------------------------------------
 # Test 1: DataSelectionConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_data_selection_config_defaults():
     cfg = DataSelectionConfig()
@@ -77,6 +81,7 @@ def test_data_selection_config_defaults():
 # Test 2: DataScorer.score_dataset returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_score_dataset_length(sample_examples, constant_score_fn):
     scorer = DataScorer(score_fn=constant_score_fn)
     scores = scorer.score_dataset(sample_examples)
@@ -89,6 +94,7 @@ def test_score_dataset_length(sample_examples, constant_score_fn):
 # Test 3: select_top_k with k=3 returns exactly 3 examples
 # ---------------------------------------------------------------------------
 
+
 def test_select_top_k_absolute(sample_examples, constant_score_fn):
     scorer = DataScorer(score_fn=constant_score_fn)
     scores = scorer.score_dataset(sample_examples)
@@ -100,6 +106,7 @@ def test_select_top_k_absolute(sample_examples, constant_score_fn):
 # ---------------------------------------------------------------------------
 # Test 4: select_top_k with fraction=0.5 returns half the examples
 # ---------------------------------------------------------------------------
+
 
 def test_select_top_k_fraction(sample_examples, constant_score_fn):
     scorer = DataScorer(score_fn=constant_score_fn)
@@ -114,6 +121,7 @@ def test_select_top_k_fraction(sample_examples, constant_score_fn):
 # ---------------------------------------------------------------------------
 # Test 5: filter_by_threshold keeps only examples above threshold
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_threshold(sample_examples, constant_score_fn):
     scorer = DataScorer(score_fn=constant_score_fn)
@@ -132,6 +140,7 @@ def test_filter_by_threshold(sample_examples, constant_score_fn):
 # Test 6: InstructionFollowingScorer.batch_score returns (n,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_batch_score_shape(small_model):
     scorer = InstructionFollowingScorer(small_model, tokenizer_vocab_size=256)
     torch.manual_seed(0)
@@ -146,6 +155,7 @@ def test_batch_score_shape(small_model):
 # ---------------------------------------------------------------------------
 # Test 7: Higher quality responses get higher scores
 # ---------------------------------------------------------------------------
+
 
 def test_higher_quality_response_higher_score(small_model):
     """A well-formed long response should not score lower than an empty one."""
@@ -172,6 +182,7 @@ def test_higher_quality_response_higher_score(small_model):
 # Test 8: DiversitySelector.compute_embeddings returns correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_embeddings_shape():
     dim = 16
     n = 5
@@ -188,6 +199,7 @@ def test_compute_embeddings_shape():
 # ---------------------------------------------------------------------------
 # Test 9: select_diverse returns exactly n distinct indices
 # ---------------------------------------------------------------------------
+
 
 def test_select_diverse_count_and_unique():
     torch.manual_seed(7)
@@ -211,6 +223,7 @@ def test_select_diverse_count_and_unique():
 # Test 10: quality_diversity_select returns correct number of indices
 # ---------------------------------------------------------------------------
 
+
 def test_quality_diversity_select_count():
     torch.manual_seed(11)
     n_total = 15
@@ -233,6 +246,7 @@ def test_quality_diversity_select_count():
 # ---------------------------------------------------------------------------
 # Test 11: nuggets_score returns value in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_nuggets_score_range():
     # Various cases
@@ -262,6 +276,7 @@ def test_nuggets_score_full_coverage():
 # ---------------------------------------------------------------------------
 # Test 12: alpagasus_filter keeps examples above 4.5 threshold
 # ---------------------------------------------------------------------------
+
 
 def test_alpagasus_filter_threshold():
     examples = [

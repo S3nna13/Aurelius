@@ -1,20 +1,21 @@
 """Tests for adaptive speculative decoding module."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
+from src.inference.adaptive_speculative import (
+    AcceptanceRateTracker,
+    AdaptiveSpecConfig,
+    AdaptiveSpeculativeDecoder,
+    adjust_draft_length,
+    compute_target_log_probs,
+    sample_draft_tokens,
+    speculative_verify,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.adaptive_speculative import (
-    AdaptiveSpecConfig,
-    AcceptanceRateTracker,
-    sample_draft_tokens,
-    compute_target_log_probs,
-    speculative_verify,
-    adjust_draft_length,
-    AdaptiveSpeculativeDecoder,
-)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -57,6 +58,7 @@ def input_ids():
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = AdaptiveSpecConfig()
     assert cfg.init_draft_len == 4
@@ -67,6 +69,7 @@ def test_config_defaults():
 # 2. test_tracker_init_rate
 # ---------------------------------------------------------------------------
 
+
 def test_tracker_init_rate():
     tracker = AcceptanceRateTracker(alpha=0.1, init_rate=0.7)
     assert tracker.get_rate() == pytest.approx(0.7)
@@ -75,6 +78,7 @@ def test_tracker_init_rate():
 # ---------------------------------------------------------------------------
 # 3. test_tracker_update_high
 # ---------------------------------------------------------------------------
+
 
 def test_tracker_update_high():
     tracker = AcceptanceRateTracker(alpha=0.1, init_rate=0.5)
@@ -88,6 +92,7 @@ def test_tracker_update_high():
 # 4. test_tracker_update_low
 # ---------------------------------------------------------------------------
 
+
 def test_tracker_update_low():
     tracker = AcceptanceRateTracker(alpha=0.1, init_rate=0.7)
     initial_rate = tracker.get_rate()
@@ -100,6 +105,7 @@ def test_tracker_update_low():
 # 5. test_tracker_reset
 # ---------------------------------------------------------------------------
 
+
 def test_tracker_reset():
     tracker = AcceptanceRateTracker(alpha=0.1, init_rate=0.7)
     tracker.update(n_accepted=0, n_proposed=10)
@@ -110,6 +116,7 @@ def test_tracker_reset():
 # ---------------------------------------------------------------------------
 # 6. test_sample_draft_tokens_shape
 # ---------------------------------------------------------------------------
+
 
 def test_sample_draft_tokens_shape(tiny_model, input_ids):
     n_tokens = 3
@@ -122,6 +129,7 @@ def test_sample_draft_tokens_shape(tiny_model, input_ids):
 # 7. test_sample_draft_tokens_vocab_range
 # ---------------------------------------------------------------------------
 
+
 def test_sample_draft_tokens_vocab_range(tiny_model, input_ids):
     draft_ids, _ = sample_draft_tokens(tiny_model, input_ids, n_tokens=4)
     assert draft_ids.min().item() >= 0
@@ -131,6 +139,7 @@ def test_sample_draft_tokens_vocab_range(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # 8. test_compute_target_log_probs_shape
 # ---------------------------------------------------------------------------
+
 
 def test_compute_target_log_probs_shape(tiny_model, input_ids):
     K = 3
@@ -142,6 +151,7 @@ def test_compute_target_log_probs_shape(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # 9. test_speculative_verify_all_accept
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_verify_all_accept():
     K = 4
@@ -156,6 +166,7 @@ def test_speculative_verify_all_accept():
 # ---------------------------------------------------------------------------
 # 10. test_speculative_verify_all_reject
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_verify_all_reject():
     K = 4
@@ -172,6 +183,7 @@ def test_speculative_verify_all_reject():
 # 11. test_speculative_verify_accepted_ids_shape
 # ---------------------------------------------------------------------------
 
+
 def test_speculative_verify_accepted_ids_shape():
     K = 4
     draft_ids = torch.randint(0, 256, (1, K))
@@ -186,6 +198,7 @@ def test_speculative_verify_accepted_ids_shape():
 # 12. test_adjust_draft_len_increase
 # ---------------------------------------------------------------------------
 
+
 def test_adjust_draft_len_increase():
     # acceptance_rate = 0.9 > target_rate(0.7) + 0.1 -> increase by 1
     new_len = adjust_draft_length(
@@ -198,6 +211,7 @@ def test_adjust_draft_len_increase():
 # 13. test_adjust_draft_len_decrease
 # ---------------------------------------------------------------------------
 
+
 def test_adjust_draft_len_decrease():
     # acceptance_rate = 0.3 < target_rate(0.7) - 0.1 -> decrease by 1
     new_len = adjust_draft_length(
@@ -209,6 +223,7 @@ def test_adjust_draft_len_decrease():
 # ---------------------------------------------------------------------------
 # 14. test_adjust_draft_len_clamp
 # ---------------------------------------------------------------------------
+
 
 def test_adjust_draft_len_clamp():
     # Cannot go below min_len
@@ -228,6 +243,7 @@ def test_adjust_draft_len_clamp():
 # 15. test_decoder_decode_returns_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_decoder_decode_returns_tokens(tiny_model, draft_model, input_ids):
     cfg = AdaptiveSpecConfig(init_draft_len=2, max_draft_len=3, adjustment_interval=5)
     decoder = AdaptiveSpeculativeDecoder(
@@ -244,6 +260,7 @@ def test_decoder_decode_returns_tokens(tiny_model, draft_model, input_ids):
 # ---------------------------------------------------------------------------
 # 16. test_decoder_stats_keys
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_stats_keys(tiny_model, draft_model, input_ids):
     cfg = AdaptiveSpecConfig(init_draft_len=2, max_draft_len=3, adjustment_interval=5)

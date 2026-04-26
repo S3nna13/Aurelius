@@ -15,8 +15,8 @@ Pure stdlib: dataclasses, re, typing.
 
 from __future__ import annotations
 
-import re
 import dataclasses
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -64,9 +64,7 @@ def parse_semver(s: str) -> SemverParts:
         CompatibilityError: if ``s`` is not a valid semver string.
     """
     if not isinstance(s, str):
-        raise CompatibilityError(
-            f"semver must be a string, got {type(s).__name__}"
-        )
+        raise CompatibilityError(f"semver must be a string, got {type(s).__name__}")
     match = _SEMVER_RE.match(s)
     if not match:
         raise CompatibilityError(f"invalid semver: {s!r}")
@@ -88,13 +86,10 @@ class CompatibilityVerdict:
     def __post_init__(self) -> None:
         if self.severity not in _SEVERITY_ORDER:
             raise CompatibilityError(
-                f"invalid severity {self.severity!r}; must be one of "
-                f"{sorted(_SEVERITY_ORDER)}"
+                f"invalid severity {self.severity!r}; must be one of {sorted(_SEVERITY_ORDER)}"
             )
         if not isinstance(self.reasons, tuple):
-            raise CompatibilityError(
-                f"reasons must be a tuple, got {type(self.reasons).__name__}"
-            )
+            raise CompatibilityError(f"reasons must be a tuple, got {type(self.reasons).__name__}")
 
 
 def _escalate(current: str, new: str) -> str:
@@ -102,7 +97,7 @@ def _escalate(current: str, new: str) -> str:
     return new if _SEVERITY_ORDER[new] > _SEVERITY_ORDER[current] else current
 
 
-def _backend_contract_summary(manifest: "FamilyManifest") -> str:
+def _backend_contract_summary(manifest: FamilyManifest) -> str:
     """Return a compact JSON-safe summary of backend-contract fields."""
     return (
         f"backend_name={manifest.backend_name!r}, "
@@ -112,8 +107,8 @@ def _backend_contract_summary(manifest: "FamilyManifest") -> str:
 
 
 def check_manifest_compatibility(
-    required: "FamilyManifest",
-    candidate: "FamilyManifest",
+    required: FamilyManifest,
+    candidate: FamilyManifest,
 ) -> CompatibilityVerdict:
     """Compare ``candidate`` against ``required`` and return a verdict.
 
@@ -130,9 +125,7 @@ def check_manifest_compatibility(
           (downgraded to ``minor_mismatch``).
         - ``capability_tags``: candidate must be a superset of required.
     """
-    if not isinstance(required, FamilyManifest) or not isinstance(
-        candidate, FamilyManifest
-    ):
+    if not isinstance(required, FamilyManifest) or not isinstance(candidate, FamilyManifest):
         raise CompatibilityError(
             "check_manifest_compatibility expected two FamilyManifest instances"
         )
@@ -167,8 +160,7 @@ def check_manifest_compatibility(
 
     if required.vocab_size != candidate.vocab_size:
         reasons.append(
-            f"vocab_size mismatch: required {required.vocab_size}, "
-            f"candidate {candidate.vocab_size}"
+            f"vocab_size mismatch: required {required.vocab_size}, candidate {candidate.vocab_size}"
         )
         severity = _escalate(severity, SEVERITY_MAJOR)
 
@@ -188,9 +180,7 @@ def check_manifest_compatibility(
         )
         severity = _escalate(
             severity,
-            SEVERITY_MINOR
-            if backend_verdict == SEVERITY_MINOR
-            else SEVERITY_MAJOR,
+            SEVERITY_MINOR if backend_verdict == SEVERITY_MINOR else SEVERITY_MAJOR,
         )
 
     # rope_config.
@@ -215,9 +205,7 @@ def check_manifest_compatibility(
     cand_tags = set(candidate.capability_tags)
     missing = req_tags - cand_tags
     if missing:
-        reasons.append(
-            f"capability_tags missing in candidate: {sorted(missing)}"
-        )
+        reasons.append(f"capability_tags missing in candidate: {sorted(missing)}")
         severity = _escalate(severity, SEVERITY_MAJOR)
 
     compatible = severity != SEVERITY_MAJOR
@@ -229,7 +217,7 @@ def check_manifest_compatibility(
 
 
 def check_checkpoint_compatibility(
-    manifest: "FamilyManifest",
+    manifest: FamilyManifest,
     checkpoint_meta: dict,
 ) -> CompatibilityVerdict:
     """Check a checkpoint-meta dict against a manifest.
@@ -250,13 +238,11 @@ def check_checkpoint_compatibility(
     """
     if not isinstance(manifest, FamilyManifest):
         raise CompatibilityError(
-            f"check_checkpoint_compatibility expected FamilyManifest, got "
-            f"{type(manifest).__name__}"
+            f"check_checkpoint_compatibility expected FamilyManifest, got {type(manifest).__name__}"
         )
     if not isinstance(checkpoint_meta, dict):
         raise CompatibilityError(
-            f"checkpoint_meta must be a dict, got "
-            f"{type(checkpoint_meta).__name__}"
+            f"checkpoint_meta must be a dict, got {type(checkpoint_meta).__name__}"
         )
 
     reasons: list[str] = []
@@ -304,10 +290,7 @@ def check_checkpoint_compatibility(
     man_hash = manifest.tokenizer_hash
     ckpt_hash = checkpoint_meta.get("tokenizer_hash")
     if man_hash is not None and ckpt_hash is not None and man_hash != ckpt_hash:
-        reasons.append(
-            f"tokenizer_hash mismatch: manifest {man_hash!r}, checkpoint "
-            f"{ckpt_hash!r}"
-        )
+        reasons.append(f"tokenizer_hash mismatch: manifest {man_hash!r}, checkpoint {ckpt_hash!r}")
         severity = _escalate(severity, SEVERITY_MAJOR)
 
     backend_keys = ("backend_name", "engine_contract", "adapter_contract")
@@ -317,8 +300,7 @@ def check_checkpoint_compatibility(
             value = checkpoint_meta.get(key)
             if value is not None and not isinstance(value, str):
                 raise CompatibilityError(
-                    f"{key} in checkpoint_meta must be a string or None, "
-                    f"got {type(value).__name__}"
+                    f"{key} in checkpoint_meta must be a string or None, got {type(value).__name__}"
                 )
             if key in ("engine_contract", "adapter_contract") and value is not None:
                 parse_semver(value)
@@ -333,9 +315,7 @@ def check_checkpoint_compatibility(
             )
             severity = _escalate(
                 severity,
-                SEVERITY_MINOR
-                if backend_verdict == SEVERITY_MINOR
-                else SEVERITY_MAJOR,
+                SEVERITY_MINOR if backend_verdict == SEVERITY_MINOR else SEVERITY_MAJOR,
             )
 
     compatible = severity != SEVERITY_MAJOR
@@ -354,12 +334,9 @@ def assert_compatible(verdict: Any) -> None:
     """
     if not isinstance(verdict, CompatibilityVerdict):
         raise CompatibilityError(
-            f"assert_compatible expected CompatibilityVerdict, got "
-            f"{type(verdict).__name__}"
+            f"assert_compatible expected CompatibilityVerdict, got {type(verdict).__name__}"
         )
     if verdict.severity == SEVERITY_MAJOR or not verdict.compatible:
         raise CompatibilityError(
-            "incompatible: " + "; ".join(verdict.reasons)
-            if verdict.reasons
-            else "incompatible"
+            "incompatible: " + "; ".join(verdict.reasons) if verdict.reasons else "incompatible"
         )

@@ -12,9 +12,8 @@ raise explicitly.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -25,26 +24,22 @@ from typing import Callable, Dict, List, Optional
 class GPQAProblem:
     question_id: str
     question: str
-    choices: List[str]
+    choices: list[str]
     correct_index: int
     domain: str = "general"
     difficulty: str = "hard"
 
     def __post_init__(self) -> None:
         if len(self.choices) != 4:
-            raise ValueError(
-                f"GPQA is 4-way multiple choice; got {len(self.choices)} choices"
-            )
+            raise ValueError(f"GPQA is 4-way multiple choice; got {len(self.choices)} choices")
         if not (0 <= self.correct_index < 4):
-            raise ValueError(
-                f"correct_index must be in [0,4); got {self.correct_index}"
-            )
+            raise ValueError(f"correct_index must be in [0,4); got {self.correct_index}")
 
 
 @dataclass
 class GPQAResult:
     question_id: str
-    predicted_letter: Optional[str]
+    predicted_letter: str | None
     correct: bool
     raw_response: str
 
@@ -54,21 +49,12 @@ class GPQAResult:
 # ---------------------------------------------------------------------------
 
 
-PROMPT_TEMPLATE = (
-    "{question}\n\n"
-    "A) {a}\n"
-    "B) {b}\n"
-    "C) {c}\n"
-    "D) {d}\n\n"
-    "Answer (just the letter):"
-)
+PROMPT_TEMPLATE = "{question}\n\nA) {a}\nB) {b}\nC) {c}\nD) {d}\n\nAnswer (just the letter):"
 
 
 def format_prompt(problem: GPQAProblem) -> str:
     a, b, c, d = problem.choices
-    return PROMPT_TEMPLATE.format(
-        question=problem.question, a=a, b=b, c=c, d=d
-    )
+    return PROMPT_TEMPLATE.format(question=problem.question, a=a, b=b, c=c, d=d)
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +65,7 @@ def format_prompt(problem: GPQAProblem) -> str:
 # Patterns are checked in order; first match wins. Each pattern captures one
 # letter in group 1. Inputs are matched case-insensitively; the returned
 # letter is always uppercased A/B/C/D.
-_ANSWER_PATTERNS: List[re.Pattern[str]] = [
+_ANSWER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\[\[\s*([A-Da-d])\s*\]\]"),
     re.compile(r"\banswer\s*(?:is|:)?\s*\(?\s*([A-Da-d])\s*\)?", re.IGNORECASE),
     re.compile(r"final\s+answer\s+(?:is\s+)?\(?\s*([A-Da-d])\s*\)?", re.IGNORECASE),
@@ -89,7 +75,7 @@ _ANSWER_PATTERNS: List[re.Pattern[str]] = [
 ]
 
 
-def parse_answer_letter(response: str) -> Optional[str]:
+def parse_answer_letter(response: str) -> str | None:
     """Extract the chosen letter from a free-form response.
 
     Returns one of "A", "B", "C", "D" or None if no letter is found.
@@ -128,7 +114,7 @@ class GPQAScorer:
 
     def __init__(
         self,
-        generate_fn: Optional[Callable[[str], str]] = None,
+        generate_fn: Callable[[str], str] | None = None,
         case_insensitive: bool = True,
     ) -> None:
         self.generate_fn = generate_fn
@@ -162,13 +148,12 @@ class GPQAScorer:
 
     def score(
         self,
-        problems: List[GPQAProblem],
-        responses: List[str],
-    ) -> Dict[str, object]:
+        problems: list[GPQAProblem],
+        responses: list[str],
+    ) -> dict[str, object]:
         if len(problems) != len(responses):
             raise ValueError(
-                f"problems/responses length mismatch: "
-                f"{len(problems)} vs {len(responses)}"
+                f"problems/responses length mismatch: {len(problems)} vs {len(responses)}"
             )
 
         n = len(problems)
@@ -186,11 +171,11 @@ class GPQAScorer:
         n_correct = sum(1 for r in results if r.correct)
         n_valid = sum(1 for r in results if r.predicted_letter is not None)
 
-        per_domain: Dict[str, Dict[str, float]] = {}
-        per_difficulty: Dict[str, Dict[str, float]] = {}
+        per_domain: dict[str, dict[str, float]] = {}
+        per_difficulty: dict[str, dict[str, float]] = {}
 
         def _bump(
-            bucket: Dict[str, Dict[str, float]],
+            bucket: dict[str, dict[str, float]],
             key: str,
             correct: bool,
         ) -> None:
@@ -217,19 +202,15 @@ class GPQAScorer:
 
     # -- end-to-end generation -----------------------------------------
 
-    def run(self, problems: List[GPQAProblem]) -> List[GPQAResult]:
+    def run(self, problems: list[GPQAProblem]) -> list[GPQAResult]:
         if self.generate_fn is None:
-            raise ValueError(
-                "GPQAScorer.run requires generate_fn to be provided at construction"
-            )
-        out: List[GPQAResult] = []
+            raise ValueError("GPQAScorer.run requires generate_fn to be provided at construction")
+        out: list[GPQAResult] = []
         for p in problems:
             prompt = format_prompt(p)
             resp = self.generate_fn(prompt)
             if not isinstance(resp, str):
-                raise TypeError(
-                    f"generate_fn must return str; got {type(resp).__name__}"
-                )
+                raise TypeError(f"generate_fn must return str; got {type(resp).__name__}")
             out.append(self.score_one(p, resp))
         return out
 

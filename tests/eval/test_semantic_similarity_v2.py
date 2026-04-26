@@ -2,6 +2,7 @@
 
 Pure PyTorch only.  Uses tiny tensors (small D, B) for speed.
 """
+
 from __future__ import annotations
 
 import math
@@ -11,8 +12,8 @@ import torch
 import torch.nn.functional as F
 
 from src.eval.semantic_similarity_v2 import (
-    SimilarityConfig,
     SemanticSimilarityScorer,
+    SimilarityConfig,
     compute_cosine_similarity,
     compute_pairwise_similarity,
     compute_retrieval_metrics,
@@ -32,6 +33,7 @@ N = 4
 # 1. SimilarityConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_config_defaults():
     cfg = SimilarityConfig()
     assert cfg.pooling == "mean"
@@ -43,6 +45,7 @@ def test_similarity_config_defaults():
 # 2. pool_hidden_states — mean pooling shape (B, D)
 # ---------------------------------------------------------------------------
 
+
 def test_pool_hidden_states_mean_shape():
     hidden = torch.randn(B, T, D)
     out = pool_hidden_states(hidden, mode="mean")
@@ -52,6 +55,7 @@ def test_pool_hidden_states_mean_shape():
 # ---------------------------------------------------------------------------
 # 3. pool_hidden_states — cls pooling returns first token
 # ---------------------------------------------------------------------------
+
 
 def test_pool_hidden_states_cls_returns_first_token():
     hidden = torch.randn(B, T, D)
@@ -64,6 +68,7 @@ def test_pool_hidden_states_cls_returns_first_token():
 # 4. pool_hidden_states — max pooling shape (B, D)
 # ---------------------------------------------------------------------------
 
+
 def test_pool_hidden_states_max_shape():
     hidden = torch.randn(B, T, D)
     out = pool_hidden_states(hidden, mode="max")
@@ -73,6 +78,7 @@ def test_pool_hidden_states_max_shape():
 # ---------------------------------------------------------------------------
 # 5. pool_hidden_states — mean with mask ignores masked positions
 # ---------------------------------------------------------------------------
+
 
 def test_pool_hidden_states_mean_with_mask_ignores_padded():
     torch.manual_seed(0)
@@ -91,6 +97,7 @@ def test_pool_hidden_states_mean_with_mask_ignores_padded():
 # 6. compute_cosine_similarity — shape (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_cosine_similarity_shape():
     a = torch.randn(B, D)
     b = torch.randn(B, D)
@@ -102,6 +109,7 @@ def test_compute_cosine_similarity_shape():
 # 7. compute_cosine_similarity — identical vectors = 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_cosine_similarity_identical_vectors():
     a = torch.randn(B, D)
     sims = compute_cosine_similarity(a, a)
@@ -111,6 +119,7 @@ def test_compute_cosine_similarity_identical_vectors():
 # ---------------------------------------------------------------------------
 # 8. compute_pairwise_similarity — shape (N, N)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_pairwise_similarity_shape():
     embs = torch.randn(N, D)
@@ -122,6 +131,7 @@ def test_compute_pairwise_similarity_shape():
 # 9. compute_pairwise_similarity — diagonal = 1.0 for cosine
 # ---------------------------------------------------------------------------
 
+
 def test_compute_pairwise_similarity_diagonal_cosine():
     embs = torch.randn(N, D)
     mat = compute_pairwise_similarity(embs, metric="cosine")
@@ -132,6 +142,7 @@ def test_compute_pairwise_similarity_diagonal_cosine():
 # ---------------------------------------------------------------------------
 # 10. embedding_alignment_score — in [-1, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_embedding_alignment_score_range():
     src = torch.randn(N, D)
@@ -145,6 +156,7 @@ def test_embedding_alignment_score_range():
 # 11. embedding_uniformity_score — returns finite float
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_uniformity_score_finite():
     embs = F.normalize(torch.randn(N, D), p=2, dim=-1)
     score = embedding_uniformity_score(embs)
@@ -155,6 +167,7 @@ def test_embedding_uniformity_score_finite():
 # ---------------------------------------------------------------------------
 # 12. SemanticSimilarityScorer.encode — shape (B, D)
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_encode_shape():
     cfg = SimilarityConfig(pooling="mean", normalize=False)
@@ -167,6 +180,7 @@ def test_scorer_encode_shape():
 # ---------------------------------------------------------------------------
 # 13. SemanticSimilarityScorer.encode — normalized when normalize=True
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_encode_normalized():
     cfg = SimilarityConfig(pooling="mean", normalize=True)
@@ -181,6 +195,7 @@ def test_scorer_encode_normalized():
 # 14. SemanticSimilarityScorer.similarity — shape (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_similarity_shape():
     cfg = SimilarityConfig()
     scorer = SemanticSimilarityScorer(cfg)
@@ -193,6 +208,7 @@ def test_scorer_similarity_shape():
 # ---------------------------------------------------------------------------
 # 15. compute_retrieval_metrics — recall@1 = 1.0 when embeddings are identical
 # ---------------------------------------------------------------------------
+
 
 def test_retrieval_metrics_identical_embeddings_recall_1():
     embs = F.normalize(torch.randn(N, D), p=2, dim=-1)
@@ -208,6 +224,7 @@ def test_retrieval_metrics_identical_embeddings_recall_1():
 # 16. compute_retrieval_metrics — recall@k <= 1 and mrr in (0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_retrieval_metrics_random_embeddings_bounds():
     torch.manual_seed(7)
     queries = F.normalize(torch.randn(N, D), p=2, dim=-1)
@@ -221,6 +238,7 @@ def test_retrieval_metrics_random_embeddings_bounds():
 # 17. SimilarityConfig rejects invalid pooling
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_config_invalid_pooling():
     with pytest.raises(ValueError):
         SimilarityConfig(pooling="last")
@@ -230,6 +248,7 @@ def test_similarity_config_invalid_pooling():
 # 18. SimilarityConfig rejects invalid metric
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_config_invalid_metric():
     with pytest.raises(ValueError):
         SimilarityConfig(similarity_metric="euclidean")
@@ -238,6 +257,7 @@ def test_similarity_config_invalid_metric():
 # ---------------------------------------------------------------------------
 # 19. compute_pairwise_similarity — dot product matrix shape and symmetry
 # ---------------------------------------------------------------------------
+
 
 def test_compute_pairwise_similarity_dot_symmetric():
     embs = torch.randn(N, D)
@@ -249,6 +269,7 @@ def test_compute_pairwise_similarity_dot_symmetric():
 # ---------------------------------------------------------------------------
 # 20. embedding_uniformity_score — more uniform = more negative
 # ---------------------------------------------------------------------------
+
 
 def test_embedding_uniformity_score_uniform_vs_clustered():
     # Uniform embeddings on hypersphere should be more negative than clustered ones.
@@ -271,11 +292,12 @@ def test_embedding_uniformity_score_uniform_vs_clustered():
 # 21. pool_hidden_states — max pooling respects mask
 # ---------------------------------------------------------------------------
 
+
 def test_pool_hidden_states_max_respects_mask():
     # Create hidden states where token 2 and 3 have very large values.
     hidden = torch.zeros(1, 4, 4)
-    hidden[0, 2, :] = 100.0   # This should be ignored (masked out)
-    hidden[0, 3, :] = 100.0   # This should be ignored (masked out)
+    hidden[0, 2, :] = 100.0  # This should be ignored (masked out)
+    hidden[0, 3, :] = 100.0  # This should be ignored (masked out)
     hidden[0, 0, :] = 1.0
     hidden[0, 1, :] = 2.0
 

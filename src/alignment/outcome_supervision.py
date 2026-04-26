@@ -10,18 +10,18 @@ contrasted with PRMs which score intermediate reasoning steps. Key features:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Any, Callable, List, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Standalone helpers
 # ---------------------------------------------------------------------------
+
 
 def pass_at_k(n: int, c: int, k: int) -> float:
     """Unbiased pass@k estimator.
@@ -62,19 +62,21 @@ def pass_at_k(n: int, c: int, k: int) -> float:
 # ORMConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ORMConfig:
     """Configuration for Outcome Reward Model training and inference."""
 
-    correct_reward: float = 1.0    # reward for a correct final answer
-    wrong_reward: float = 0.0      # reward for an incorrect final answer
-    n_samples: int = 16            # default number of MC samples
-    temperature: float = 0.8       # sampling temperature for MC rollouts
+    correct_reward: float = 1.0  # reward for a correct final answer
+    wrong_reward: float = 0.0  # reward for an incorrect final answer
+    n_samples: int = 16  # default number of MC samples
+    temperature: float = 0.8  # sampling temperature for MC rollouts
 
 
 # ---------------------------------------------------------------------------
 # OutcomeVerifier
 # ---------------------------------------------------------------------------
+
 
 class OutcomeVerifier:
     """Verifies whether a model response matches a ground-truth answer.
@@ -102,8 +104,8 @@ class OutcomeVerifier:
 
     def batch_verify(
         self,
-        responses: List[torch.Tensor],
-        ground_truths: List[Any],
+        responses: list[torch.Tensor],
+        ground_truths: list[Any],
     ) -> torch.Tensor:
         """Verify a batch of responses.
 
@@ -114,16 +116,14 @@ class OutcomeVerifier:
         Returns:
             Boolean tensor of shape (n,) — True where the response is correct.
         """
-        results = [
-            self.verify(resp, gt)
-            for resp, gt in zip(responses, ground_truths)
-        ]
+        results = [self.verify(resp, gt) for resp, gt in zip(responses, ground_truths)]
         return torch.tensor(results, dtype=torch.bool)
 
 
 # ---------------------------------------------------------------------------
 # OutcomeRewardModel
 # ---------------------------------------------------------------------------
+
 
 class OutcomeRewardModel:
     """Assigns scalar rewards based on final-answer correctness.
@@ -170,7 +170,7 @@ class OutcomeRewardModel:
 
     def estimate_pass_at_k(
         self,
-        responses: List[torch.Tensor],
+        responses: list[torch.Tensor],
         ground_truth: Any,
         k: int,
     ) -> float:
@@ -186,9 +186,7 @@ class OutcomeRewardModel:
             randomly-chosen responses is correct.
         """
         n = len(responses)
-        correct_mask = self.verifier.batch_verify(
-            responses, [ground_truth] * n
-        )
+        correct_mask = self.verifier.batch_verify(responses, [ground_truth] * n)
         c = int(correct_mask.sum().item())
         return pass_at_k(n, c, k)
 
@@ -225,7 +223,7 @@ class OutcomeRewardModel:
         if prompt_ids.dim() == 1:
             prompt_ids = prompt_ids.unsqueeze(0)  # (1, T)
 
-        responses: List[torch.Tensor] = []
+        responses: list[torch.Tensor] = []
         for _ in range(n_samples):
             with torch.no_grad():
                 response = model.generate(
@@ -235,9 +233,7 @@ class OutcomeRewardModel:
                 )
             responses.append(response.squeeze(0))
 
-        correct_mask = self.verifier.batch_verify(
-            responses, [ground_truth] * n_samples
-        )
+        correct_mask = self.verifier.batch_verify(responses, [ground_truth] * n_samples)
         correct_count = int(correct_mask.sum().item())
         mean_reward = (
             correct_count / n_samples * self.correct_reward
@@ -259,6 +255,7 @@ class OutcomeRewardModel:
 # ---------------------------------------------------------------------------
 # ORMTrainer
 # ---------------------------------------------------------------------------
+
 
 class ORMTrainer:
     """Trains a parametric reward model using binary cross-entropy on ORM labels.
@@ -285,9 +282,9 @@ class ORMTrainer:
 
     def create_training_batch(
         self,
-        responses: List[torch.Tensor],
-        ground_truths: List[Any],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        responses: list[torch.Tensor],
+        ground_truths: list[Any],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Build a padded batch with binary labels.
 
         Args:
@@ -334,7 +331,7 @@ class ORMTrainer:
         self.optimizer.zero_grad()
 
         logits = self.reward_model(response_ids)  # (B,) or (B, 1)
-        logits = logits.squeeze(-1)               # ensure (B,)
+        logits = logits.squeeze(-1)  # ensure (B,)
 
         loss = F.binary_cross_entropy_with_logits(logits, labels)
         loss.backward()

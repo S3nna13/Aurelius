@@ -1,4 +1,4 @@
-"""Zettelkasten graph memory with auto-linking and importance-based eviction — A-MEM pattern (arXiv 2502.12110)."""
+"""Zettelkasten graph memory with auto-linking and importance-based eviction — A-MEM pattern (arXiv 2502.12110)."""  # noqa: E501
 
 from __future__ import annotations
 

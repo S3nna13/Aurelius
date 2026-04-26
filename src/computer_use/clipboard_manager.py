@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -40,12 +39,12 @@ class ClipboardManager:
         self._total_copies += 1
         return entry
 
-    def paste(self) -> Optional[ClipboardEntry]:
+    def paste(self) -> ClipboardEntry | None:
         if not self._history:
             return None
         return self._history[0]
 
-    def paste_nth(self, n: int) -> Optional[ClipboardEntry]:
+    def paste_nth(self, n: int) -> ClipboardEntry | None:
         if n < 0 or n >= len(self._history):
             return None
         return self._history[n]

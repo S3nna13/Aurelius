@@ -47,4 +47,3 @@ def test_router_entropy_handles_batched_logits():
 def test_sharpened_top1_respects_temperature_interface():
     logits = torch.tensor([[2.0, 1.0]])
     assert torch.equal(sharpened_top1(logits, temperature=0.5), torch.tensor([0]))
-

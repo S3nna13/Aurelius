@@ -6,19 +6,14 @@ Import path: aurelius.inference.beam_search_v4
 from __future__ import annotations
 
 import math
-from typing import List
 
-import pytest
 import torch
-import torch.nn.functional as F
-
 from aurelius.inference.beam_search_v4 import (
     Beam,
     BeamSearch,
     BeamSearchConfig,
     BeamSearchDecoder,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -49,11 +44,13 @@ def deterministic_model_fn(input_ids: torch.LongTensor) -> torch.FloatTensor:
 
 def eos_always_model_fn(eos_id: int = 2):
     """Return a model_fn that always strongly prefers the EOS token."""
+
     def _fn(input_ids: torch.LongTensor) -> torch.FloatTensor:
         B, T = input_ids.shape
         logits = torch.full((B, T, VOCAB_SIZE), -100.0)
         logits[:, :, eos_id] = 100.0
         return logits
+
     return _fn
 
 
@@ -73,6 +70,7 @@ def make_config(**kwargs) -> BeamSearchConfig:
 # 1. BeamSearchConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """Config defaults should be sane."""
     cfg = BeamSearchConfig()
@@ -87,6 +85,7 @@ def test_config_defaults():
 # 2. Beam.length
 # ---------------------------------------------------------------------------
 
+
 def test_beam_length_counts_tokens():
     b = Beam(token_ids=[10, 20, 30], score=-3.0)
     assert b.length == 3
@@ -100,6 +99,7 @@ def test_beam_length_empty():
 # ---------------------------------------------------------------------------
 # 3. Beam.normalized_score
 # ---------------------------------------------------------------------------
+
 
 def test_beam_normalized_score_alpha_one():
     """normalized_score(alpha=1.0) == score / length."""
@@ -116,7 +116,7 @@ def test_beam_normalized_score_alpha_zero():
 def test_beam_normalized_score_alpha_two():
     """normalized_score(alpha=2.0) == score / length^2."""
     b = Beam(token_ids=[1, 2, 3], score=-9.0)
-    expected = -9.0 / (3 ** 2)
+    expected = -9.0 / (3**2)
     assert math.isclose(b.normalized_score(2.0), expected, rel_tol=1e-6)
 
 
@@ -130,6 +130,7 @@ def test_beam_normalized_score_empty_no_error():
 # ---------------------------------------------------------------------------
 # 4. Beam.extend
 # ---------------------------------------------------------------------------
+
 
 def test_beam_extend_appends_token():
     b = Beam(token_ids=[1, 2], score=-2.0)
@@ -159,6 +160,7 @@ def test_beam_extend_returns_new_beam_instance():
 # ---------------------------------------------------------------------------
 # 5. BeamSearch.search — structural properties
 # ---------------------------------------------------------------------------
+
 
 def test_search_returns_list_of_beams():
     cfg = make_config(beam_size=3, max_new_tokens=5)
@@ -213,6 +215,7 @@ def test_search_result_sorted_by_normalized_score():
 # 6. length_penalty=0 makes all beams have equal length penalty (1^0 = 1)
 # ---------------------------------------------------------------------------
 
+
 def test_length_penalty_zero_all_equal_denominator():
     """With alpha=0, normalized_score == raw score for all lengths."""
     b_short = Beam(token_ids=[1, 2], score=-4.0)
@@ -227,6 +230,7 @@ def test_length_penalty_zero_all_equal_denominator():
 # ---------------------------------------------------------------------------
 # 7. beam_size=1 is equivalent to greedy search
 # ---------------------------------------------------------------------------
+
 
 def test_beam_size_one_is_greedy():
     """beam_size=1 should always pick the argmax at each step."""
@@ -243,6 +247,7 @@ def test_beam_size_one_is_greedy():
 # ---------------------------------------------------------------------------
 # 8. BeamSearchDecoder.decode
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_decode_returns_longtensor():
     cfg = make_config(beam_size=2, max_new_tokens=5)

@@ -1,10 +1,15 @@
 """Tests for Constitutional AI self-critique."""
-import torch
-import pytest
+
 from unittest.mock import MagicMock
+
+import pytest
+import torch
+
 from src.alignment.constitutional import (
-    ConstitutionalReviser, ConstitutionalConfig,
-    _build_critique_prompt, _build_revision_prompt,
+    ConstitutionalConfig,
+    ConstitutionalReviser,
+    _build_critique_prompt,
+    _build_revision_prompt,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -14,8 +19,14 @@ from src.model.transformer import AureliusTransformer
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
@@ -74,4 +85,4 @@ def test_constitutional_no_revision_on_no_issues(small_model):
 
     # With "No issues" critique, response should be unchanged
     round_record = result["rounds"][0]["revisions"][0]
-    assert round_record["revised"] == False
+    assert not round_record["revised"]

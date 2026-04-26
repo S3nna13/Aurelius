@@ -1,8 +1,8 @@
 from src.profiling.memory_monitor import (
+    MEMORY_MONITOR_REGISTRY,
+    MemoryMonitor,
     MemorySnapshot,
     WatermarkConfig,
-    MemoryMonitor,
-    MEMORY_MONITOR_REGISTRY,
 )
 
 

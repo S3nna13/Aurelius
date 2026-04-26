@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -31,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ContrastivePrefConfig:
@@ -57,6 +57,7 @@ class ContrastivePrefConfig:
 # ---------------------------------------------------------------------------
 # Standalone loss functions
 # ---------------------------------------------------------------------------
+
 
 def triplet_preference_loss(
     anchor_logps: torch.Tensor,
@@ -110,9 +111,7 @@ def multi_negative_ranking_loss(
         Scalar mean ranking loss.
     """
     # Concatenate: (B, 1 + n_negatives) with chosen first
-    all_logps = torch.cat(
-        [chosen_logps.unsqueeze(1), rejected_logps_stack], dim=1
-    )
+    all_logps = torch.cat([chosen_logps.unsqueeze(1), rejected_logps_stack], dim=1)
 
     scaled = all_logps / temperature
 
@@ -126,6 +125,7 @@ def multi_negative_ranking_loss(
 # ---------------------------------------------------------------------------
 # ContrastivePrefOptimizer
 # ---------------------------------------------------------------------------
+
 
 class ContrastivePrefOptimizer:
     """Contrastive Preference Optimizer.
@@ -195,7 +195,7 @@ class ContrastivePrefOptimizer:
 
         # Shift: logits[t] predicts labels[t+1]
         shift_logits = logits[:, :-1, :]  # (B, T-1, V)
-        shift_labels = labels[:, 1:]      # (B, T-1)
+        shift_labels = labels[:, 1:]  # (B, T-1)
 
         log_probs = F.log_softmax(shift_logits, dim=-1)  # (B, T-1, V)
 
@@ -203,9 +203,7 @@ class ContrastivePrefOptimizer:
         valid_mask = (shift_labels != self.IGNORE_INDEX).float()  # (B, T-1)
         safe_labels = shift_labels.clamp(min=0)  # prevent negative index in gather
 
-        token_lp = log_probs.gather(
-            2, safe_labels.unsqueeze(-1)
-        ).squeeze(-1)  # (B, T-1)
+        token_lp = log_probs.gather(2, safe_labels.unsqueeze(-1)).squeeze(-1)  # (B, T-1)
 
         return (token_lp * valid_mask).sum(dim=-1)  # (B,)
 
@@ -216,10 +214,10 @@ class ContrastivePrefOptimizer:
     def info_nce_preference_loss(
         self,
         chosen_logps: torch.Tensor,
-        rejected_logps_list: List[torch.Tensor],
+        rejected_logps_list: list[torch.Tensor],
         ref_chosen_logps: torch.Tensor,
-        ref_rejected_logps_list: List[torch.Tensor],
-    ) -> Tuple[torch.Tensor, dict]:
+        ref_rejected_logps_list: list[torch.Tensor],
+    ) -> tuple[torch.Tensor, dict]:
         """InfoNCE-style contrastive preference loss.
 
         Computes implicit rewards (log-ratios scaled by beta) for chosen and
@@ -254,9 +252,7 @@ class ContrastivePrefOptimizer:
 
         # Temperature scaling
         chosen_scaled = chosen_ratio / T  # (B,)
-        rejected_scaled = torch.stack(
-            [r / T for r in rejected_ratios], dim=1
-        )  # (B, n_negatives)
+        rejected_scaled = torch.stack([r / T for r in rejected_ratios], dim=1)  # (B, n_negatives)
 
         # InfoNCE via log-sum-exp:
         #   loss = logsumexp([chosen, rej_0, ..., rej_N], dim=1) - chosen
@@ -265,13 +261,13 @@ class ContrastivePrefOptimizer:
         )  # (B, 1 + n_negatives)
 
         log_denominator = torch.logsumexp(all_scaled, dim=1)  # (B,)
-        loss_per_sample = log_denominator - chosen_scaled      # (B,)
+        loss_per_sample = log_denominator - chosen_scaled  # (B,)
         loss = loss_per_sample.mean()
 
         # ---- Metrics ----
         with torch.no_grad():
             rejected_stack = torch.stack(rejected_ratios, dim=1)  # (B, n_negatives)
-            max_rejected = rejected_stack.max(dim=1).values        # (B,)
+            max_rejected = rejected_stack.max(dim=1).values  # (B,)
             accuracy = (chosen_ratio > max_rejected).float().mean().item()
             mean_chosen_reward = chosen_ratio.mean().item()
             mean_rejected_reward = rejected_stack.mean().item()
@@ -290,11 +286,11 @@ class ContrastivePrefOptimizer:
 
     def select_hard_negatives(
         self,
-        rejected_logps_list: List[torch.Tensor],
-        ref_rejected_logps_list: List[torch.Tensor],
+        rejected_logps_list: list[torch.Tensor],
+        ref_rejected_logps_list: list[torch.Tensor],
         chosen_logps: torch.Tensor,
         n_hard: int,
-    ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """Select the hardest rejected examples (closest in reward to chosen).
 
         Computes the implicit reward for each rejected candidate and selects the
@@ -342,8 +338,8 @@ class ContrastivePrefOptimizer:
         self,
         chosen_ids: torch.Tensor,
         chosen_labels: torch.Tensor,
-        rejected_ids_list: List[torch.Tensor],
-        rejected_labels_list: List[torch.Tensor],
+        rejected_ids_list: list[torch.Tensor],
+        rejected_labels_list: list[torch.Tensor],
     ) -> dict:
         """Single contrastive preference optimisation step.
 
@@ -368,9 +364,7 @@ class ContrastivePrefOptimizer:
         self.policy.train()
 
         # Policy log-probs
-        chosen_logps = self.compute_sequence_logps(
-            self.policy, chosen_ids, chosen_labels
-        )
+        chosen_logps = self.compute_sequence_logps(self.policy, chosen_ids, chosen_labels)
         rejected_logps_computed = [
             self.compute_sequence_logps(self.policy, rej_ids, rej_labels)
             for rej_ids, rej_labels in zip(rejected_ids_list, rejected_labels_list)

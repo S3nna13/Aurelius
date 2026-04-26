@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 
 import torch
@@ -15,7 +14,7 @@ class BeamSearchConfig:
 
     beam_width: int = 4
     max_new_tokens: int = 50
-    length_penalty: float = 1.0   # score = log_prob / len^length_penalty
+    length_penalty: float = 1.0  # score = log_prob / len^length_penalty
     repetition_penalty: float = 1.0
     no_repeat_ngram_size: int = 0
     early_stopping: bool = True
@@ -40,7 +39,7 @@ class Beam:
         length = len(self.token_ids)
         if length == 0:
             return self.log_prob
-        return self.log_prob / (length ** self._length_penalty)
+        return self.log_prob / (length**self._length_penalty)
 
 
 def apply_repetition_penalty(
@@ -102,7 +101,7 @@ def apply_no_repeat_ngram(
         ngram_follows.setdefault(prefix, []).append(next_tok)
 
     # The last (n-1) tokens form the current prefix.
-    current_prefix = tuple(token_ids[-(n - 1):])
+    current_prefix = tuple(token_ids[-(n - 1) :])
     banned = ngram_follows.get(current_prefix, [])
     if banned:
         logits[banned] = float("-inf")

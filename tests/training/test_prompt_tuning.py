@@ -2,15 +2,14 @@
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.prompt_tuning import (
+    PrefixTuningModel,
+    PromptTunedModel,
     PromptTuningConfig,
     SoftPromptEmbedding,
-    PromptTunedModel,
-    PrefixTuningModel,
     optimize_prompt,
 )
 
@@ -64,6 +63,7 @@ def labels(input_ids):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_prompt_tuning_config_defaults():
     cfg = PromptTuningConfig()

@@ -1,10 +1,9 @@
 """Tests for src/cli/config_validator.py."""
+
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-
-import pytest
 
 from src.cli.config_validator import ConfigValidator
 

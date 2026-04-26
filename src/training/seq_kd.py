@@ -9,16 +9,16 @@ Distills at the sequence level rather than per-token logit matching.
 
 from __future__ import annotations
 
-from typing import Callable, List
+from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def sequence_log_probs(
     model_fn: Callable,
@@ -46,7 +46,7 @@ def sequence_log_probs(
 
     # logits at positions [T_p-1 : T_p+L-1] predict tokens [T_p : T_p+L]
     pred_logits = logits[0, T_p - 1 : T_p + L - 1, :]  # (L, V)
-    log_probs = F.log_softmax(pred_logits, dim=-1)       # (L, V)
+    log_probs = F.log_softmax(pred_logits, dim=-1)  # (L, V)
 
     # Gather log probs at target token positions
     target = seq_tokens  # (L,)
@@ -58,6 +58,7 @@ def sequence_log_probs(
 # ---------------------------------------------------------------------------
 # TeacherSequenceSampler
 # ---------------------------------------------------------------------------
+
 
 class TeacherSequenceSampler:
     """Samples sequences from a teacher model.
@@ -88,13 +89,13 @@ class TeacherSequenceSampler:
         Returns:
             ``(max_length,)`` LongTensor of generated token ids.
         """
-        generated: List[int] = []
+        generated: list[int] = []
         current_ids = prompt_ids.clone()
 
         with torch.no_grad():
             for _ in range(max_length):
                 _, logits = self.teacher_fn(current_ids)  # (1, T, V)
-                next_logits = logits[0, -1, :]             # (V,)
+                next_logits = logits[0, -1, :]  # (V,)
 
                 if self.temperature <= 0:
                     next_token = next_logits.argmax().item()
@@ -113,7 +114,7 @@ class TeacherSequenceSampler:
         prompt_ids: Tensor,
         max_length: int,
         beam_width: int = 4,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Simple beam search returning *beam_width* sequences.
 
         Args:
@@ -125,11 +126,11 @@ class TeacherSequenceSampler:
             List of *beam_width* LongTensors each of shape ``(max_length,)``.
         """
         # Each beam: (cumulative_log_prob, list_of_token_ids, current_ids_tensor)
-        beams: List[tuple] = [(0.0, [], prompt_ids.clone())]
+        beams: list[tuple] = [(0.0, [], prompt_ids.clone())]
 
         with torch.no_grad():
             for _ in range(max_length):
-                candidates: List[tuple] = []
+                candidates: list[tuple] = []
                 for score, tokens, cur_ids in beams:
                     _, logits = self.teacher_fn(cur_ids)  # (1, T, V)
                     log_probs = F.log_softmax(logits[0, -1, :], dim=-1)  # (V,)
@@ -153,6 +154,7 @@ class TeacherSequenceSampler:
 # SequenceLevelKDLoss
 # ---------------------------------------------------------------------------
 
+
 class SequenceLevelKDLoss:
     """Train the student on teacher-generated sequences (Kim & Rush 2016).
 
@@ -168,7 +170,7 @@ class SequenceLevelKDLoss:
     def forward(
         self,
         prompt_ids: Tensor,
-        teacher_sequences: List[Tensor],
+        teacher_sequences: list[Tensor],
     ) -> Tensor:
         """Compute mean NLL of *teacher_sequences* under the student.
 
@@ -179,7 +181,7 @@ class SequenceLevelKDLoss:
         Returns:
             Scalar tensor: mean NLL.
         """
-        nlls: List[Tensor] = []
+        nlls: list[Tensor] = []
         for seq in teacher_sequences:
             # sequence_log_probs returns mean log prob (≤ 0); NLL = -mean_log_prob
             lp = sequence_log_probs(self.student_fn, prompt_ids, seq)
@@ -190,6 +192,7 @@ class SequenceLevelKDLoss:
 # ---------------------------------------------------------------------------
 # MiniLLMLoss
 # ---------------------------------------------------------------------------
+
 
 class MiniLLMLoss:
     """Reverse KL distillation: E_student[log p_student / p_teacher].
@@ -206,7 +209,7 @@ class MiniLLMLoss:
     def forward(
         self,
         prompt_ids: Tensor,
-        student_sequences: List[Tensor],
+        student_sequences: list[Tensor],
     ) -> Tensor:
         """Reverse KL loss on student-sampled sequences.
 
@@ -217,7 +220,7 @@ class MiniLLMLoss:
         Returns:
             Scalar tensor: mean reverse KL.
         """
-        rkl_terms: List[Tensor] = []
+        rkl_terms: list[Tensor] = []
         for seq in student_sequences:
             log_s = sequence_log_probs(self.student_fn, prompt_ids, seq)
             log_t = sequence_log_probs(self.teacher_fn, prompt_ids, seq)
@@ -229,6 +232,7 @@ class MiniLLMLoss:
 # ---------------------------------------------------------------------------
 # GKDLoss
 # ---------------------------------------------------------------------------
+
 
 class GKDLoss:
     """Generalized Knowledge Distillation (Agarwal et al. 2024).
@@ -258,8 +262,8 @@ class GKDLoss:
     def forward(
         self,
         prompt_ids: Tensor,
-        teacher_sequences: List[Tensor],
-        student_sequences: List[Tensor],
+        teacher_sequences: list[Tensor],
+        student_sequences: list[Tensor],
     ) -> Tensor:
         """Combined GKD loss.
 

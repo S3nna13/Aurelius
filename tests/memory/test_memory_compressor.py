@@ -15,10 +15,10 @@ from src.memory.memory_compressor import (
     MemoryCompressor,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mems(*contents: str) -> list[dict]:
     """Create simple memory dicts with sequential ids."""
@@ -28,6 +28,7 @@ def make_mems(*contents: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # CompressionStrategy enum
 # ---------------------------------------------------------------------------
+
 
 class TestCompressionStrategy:
     def test_enum_members_exist(self):
@@ -44,6 +45,7 @@ class TestCompressionStrategy:
 # ---------------------------------------------------------------------------
 # CompressionResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCompressionResult:
     def test_result_creation(self):
@@ -67,6 +69,7 @@ class TestCompressionResult:
 # ---------------------------------------------------------------------------
 # MemoryCompressor: deduplicate
 # ---------------------------------------------------------------------------
+
 
 class TestDeduplicate:
     def test_dedup_exact_duplicates(self):
@@ -136,6 +139,7 @@ class TestDeduplicate:
 # MemoryCompressor: truncate
 # ---------------------------------------------------------------------------
 
+
 class TestTruncate:
     def test_truncate_keeps_first_n(self):
         mems = make_mems("a", "b", "c", "d", "e")
@@ -183,6 +187,7 @@ class TestTruncate:
 # MemoryCompressor: merge_similar
 # ---------------------------------------------------------------------------
 
+
 class TestMergeSimilar:
     def test_merge_similar_identical_content_merged(self):
         mems = make_mems("hello world", "hello world", "something else entirely")
@@ -228,6 +233,7 @@ class TestMergeSimilar:
 # MemoryCompressor: compress dispatcher
 # ---------------------------------------------------------------------------
 
+
 class TestCompress:
     def test_compress_dedup_strategy(self):
         mems = make_mems("same", "same", "different")
@@ -264,6 +270,7 @@ class TestCompress:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):

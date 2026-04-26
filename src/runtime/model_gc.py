@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING
 
 
 class GCPolicy(Enum):
@@ -28,7 +27,7 @@ class ModelGCManager:
 
     def __init__(
         self,
-        max_memory_bytes: int = 4 * 1024 ** 3,
+        max_memory_bytes: int = 4 * 1024**3,
         policy: GCPolicy = GCPolicy.LRU,
     ) -> None:
         self.max_memory_bytes = max_memory_bytes

@@ -7,12 +7,9 @@ always succeed.
 
 from __future__ import annotations
 
-import sys
-import importlib
 from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Import-time sanity: module must load even without vLLM installed
@@ -73,11 +70,14 @@ def test_load_engine_raises_vllm_adapter_error_when_vllm_not_installed() -> None
     # Patch importlib so that 'import vllm' raises ImportError.
     real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
 
-    with patch("builtins.__import__", side_effect=lambda name, *a, **kw: (
-        (_ for _ in ()).throw(ImportError("No module named 'vllm'"))
-        if name == "vllm"
-        else real_import(name, *a, **kw)
-    )):
+    with patch(
+        "builtins.__import__",
+        side_effect=lambda name, *a, **kw: (
+            (_ for _ in ()).throw(ImportError("No module named 'vllm'"))
+            if name == "vllm"
+            else real_import(name, *a, **kw)
+        ),
+    ):
         with pytest.raises(VLLMAdapterError, match="vLLM is not installed"):
             adapter._load_engine()
 
@@ -87,11 +87,14 @@ def test_load_engine_raises_when_vllm_missing_no_config() -> None:
     from src.backends.vllm_adapter import VLLMAdapter, VLLMAdapterError
 
     adapter = VLLMAdapter()  # no config
-    with patch("builtins.__import__", side_effect=lambda name, *a, **kw: (
-        (_ for _ in ()).throw(ImportError("No module named 'vllm'"))
-        if name == "vllm"
-        else (__import__(name, *a, **kw))
-    )):
+    with patch(
+        "builtins.__import__",
+        side_effect=lambda name, *a, **kw: (
+            (_ for _ in ()).throw(ImportError("No module named 'vllm'"))
+            if name == "vllm"
+            else (__import__(name, *a, **kw))
+        ),
+    ):
         with pytest.raises(VLLMAdapterError, match="vLLM is not installed"):
             adapter._load_engine()
 
@@ -190,7 +193,7 @@ def test_vllm_engine_adapter_describe_returns_dict() -> None:
 
 def test_backend_registry_contains_vllm_after_register() -> None:
     from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
-    from src.backends.vllm_adapter import register, VLLMAdapter
+    from src.backends.vllm_adapter import VLLMAdapter, register
 
     before_backend = dict(BACKEND_REGISTRY)
     before_engine = dict(ENGINE_ADAPTER_REGISTRY)
@@ -212,7 +215,7 @@ def test_backend_registry_contains_vllm_after_register() -> None:
 
 def test_engine_adapter_registry_contains_vllm_after_register() -> None:
     from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
-    from src.backends.vllm_adapter import register, VLLMEngineAdapter
+    from src.backends.vllm_adapter import VLLMEngineAdapter, register
 
     before_backend = dict(BACKEND_REGISTRY)
     before_engine = dict(ENGINE_ADAPTER_REGISTRY)

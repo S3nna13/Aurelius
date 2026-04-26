@@ -1,4 +1,5 @@
 """Integration tests for dictionary_learning exposure via src.interpretability."""
+
 from __future__ import annotations
 
 import torch
@@ -35,9 +36,7 @@ def test_small_end_to_end_pipeline() -> None:
         alpha_true[i, idx] = torch.randn(3)
     X = alpha_true @ D_true.T
 
-    learner = DictionaryLearner(
-        n_atoms=k, sparsity_target=3, max_iters=15, l1_lambda=0.0, tol=1e-6
-    )
+    learner = DictionaryLearner(n_atoms=k, sparsity_target=3, max_iters=15, l1_lambda=0.0, tol=1e-6)
     res = learner.fit(X)
     assert isinstance(res, DictionaryResult)
     assert res.D.shape == (d_dim, k)

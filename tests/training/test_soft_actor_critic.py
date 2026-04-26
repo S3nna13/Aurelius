@@ -6,15 +6,12 @@ All tests use small dimensions: d_model=16, vocab_size=16, B=4.
 """
 
 import math
-import copy
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.soft_actor_critic import (
     SACConfig,
-    SACDecoder,
     SACPolicyHead,
     SACQNetwork,
     SACReplayBuffer,
@@ -25,10 +22,10 @@ from src.training.soft_actor_critic import (
 # Shared fixtures / constants
 # ---------------------------------------------------------------------------
 
-D_MODEL    = 16
+D_MODEL = 16
 VOCAB_SIZE = 16
-B          = 4
-BUF_CAP    = 32
+B = 4
+BUF_CAP = 32
 
 
 def make_policy() -> SACPolicyHead:
@@ -45,34 +42,35 @@ def make_buffer() -> SACReplayBuffer:
 
 def make_trainer() -> SACTrainer:
     policy = make_policy()
-    q_net  = make_q_net()
+    q_net = make_q_net()
     return SACTrainer(policy=policy, q_net=q_net, lr=3e-4)
 
 
 def fill_buffer(buf: SACReplayBuffer, n: int) -> None:
     """Push n random transitions into buf."""
     for _ in range(n):
-        s  = torch.randn(D_MODEL)
-        a  = torch.randint(0, VOCAB_SIZE, ()).item()
-        r  = float(torch.randn(1).item())
+        s = torch.randn(D_MODEL)
+        a = torch.randint(0, VOCAB_SIZE, ()).item()
+        r = float(torch.randn(1).item())
         ns = torch.randn(D_MODEL)
-        d  = bool(torch.randint(0, 2, ()).item())
+        d = bool(torch.randint(0, 2, ()).item())
         buf.push(s, a, r, ns, d)
 
 
 def make_batch(n: int = B) -> tuple:
     """Create a minimal in-memory batch (not from buffer)."""
-    states      = torch.randn(n, D_MODEL)
-    actions     = torch.randint(0, VOCAB_SIZE, (n,))
-    rewards     = torch.randn(n)
+    states = torch.randn(n, D_MODEL)
+    actions = torch.randint(0, VOCAB_SIZE, (n,))
+    rewards = torch.randn(n)
     next_states = torch.randn(n, D_MODEL)
-    dones       = torch.zeros(n, dtype=torch.bool)
+    dones = torch.zeros(n, dtype=torch.bool)
     return states, actions, rewards, next_states, dones
 
 
 # ===========================================================================
 # SACPolicyHead tests
 # ===========================================================================
+
 
 def test_policy_forward_logits_shape():
     """forward() must return logits of shape [B, vocab_size]."""
@@ -96,8 +94,9 @@ def test_policy_log_probs_sum_to_zero():
     hidden = torch.randn(B, D_MODEL)
     _, log_probs = policy(hidden)
     row_sums = log_probs.exp().sum(dim=-1)  # should be ~1
-    assert torch.allclose(row_sums, torch.ones(B), atol=1e-5), \
+    assert torch.allclose(row_sums, torch.ones(B), atol=1e-5), (
         f"Softmax rows do not sum to 1: {row_sums}"
+    )
 
 
 def test_policy_sample_action_valid_indices():
@@ -106,8 +105,7 @@ def test_policy_sample_action_valid_indices():
     hidden = torch.randn(B, D_MODEL)
     action, _ = policy.sample_action(hidden)
     assert action.shape == (B,), f"Expected shape ({B},), got {action.shape}"
-    assert (action >= 0).all() and (action < VOCAB_SIZE).all(), \
-        f"Action out of range: {action}"
+    assert (action >= 0).all() and (action < VOCAB_SIZE).all(), f"Action out of range: {action}"
 
 
 def test_policy_sample_action_log_prob_shape():
@@ -131,13 +129,13 @@ def test_policy_alpha_is_positive():
 def test_policy_log_alpha_is_parameter():
     """log_alpha must be a nn.Parameter so it can be optimised."""
     policy = make_policy()
-    assert isinstance(policy.log_alpha, nn.Parameter), \
-        "log_alpha should be nn.Parameter"
+    assert isinstance(policy.log_alpha, nn.Parameter), "log_alpha should be nn.Parameter"
 
 
 # ===========================================================================
 # SACQNetwork tests
 # ===========================================================================
+
 
 def test_q_net_forward_q1_shape():
     """q_net forward q1 must have shape [B, vocab_size]."""
@@ -168,6 +166,7 @@ def test_q_net_q1_neq_q2():
 # SACReplayBuffer tests
 # ===========================================================================
 
+
 def test_buffer_push_increases_size():
     """Pushing transitions must increase buffer size up to capacity."""
     buf = make_buffer()
@@ -182,19 +181,18 @@ def test_buffer_sample_shapes():
     fill_buffer(buf, 16)
     batch_size = 8
     s, a, r, ns, d = buf.sample(batch_size)
-    assert s.shape  == (batch_size, D_MODEL), f"states shape wrong: {s.shape}"
-    assert a.shape  == (batch_size,),          f"actions shape wrong: {a.shape}"
-    assert r.shape  == (batch_size,),          f"rewards shape wrong: {r.shape}"
+    assert s.shape == (batch_size, D_MODEL), f"states shape wrong: {s.shape}"
+    assert a.shape == (batch_size,), f"actions shape wrong: {a.shape}"
+    assert r.shape == (batch_size,), f"rewards shape wrong: {r.shape}"
     assert ns.shape == (batch_size, D_MODEL), f"next_states shape wrong: {ns.shape}"
-    assert d.shape  == (batch_size,),          f"dones shape wrong: {d.shape}"
+    assert d.shape == (batch_size,), f"dones shape wrong: {d.shape}"
 
 
 def test_buffer_circular_overflow():
     """Overflowing past capacity must keep size at capacity."""
     buf = make_buffer()
     fill_buffer(buf, BUF_CAP + 10)
-    assert len(buf) == BUF_CAP, \
-        f"Buffer size should be capped at {BUF_CAP}, got {len(buf)}"
+    assert len(buf) == BUF_CAP, f"Buffer size should be capped at {BUF_CAP}, got {len(buf)}"
 
 
 def test_buffer_sample_action_dtype():
@@ -216,6 +214,7 @@ def test_buffer_sample_dones_dtype():
 # ===========================================================================
 # SACTrainer tests
 # ===========================================================================
+
 
 def test_trainer_critic_loss_finite_scalar():
     """critic_loss must return a finite scalar tensor."""
@@ -251,8 +250,9 @@ def test_trainer_update_returns_expected_keys():
     batch = make_batch()
     result = trainer.update(batch)
     expected_keys = {"critic_loss", "actor_loss", "alpha_loss", "alpha"}
-    assert set(result.keys()) == expected_keys, \
+    assert set(result.keys()) == expected_keys, (
         f"Expected keys {expected_keys}, got {set(result.keys())}"
+    )
 
 
 def test_trainer_update_values_are_finite():
@@ -286,31 +286,34 @@ def test_trainer_soft_update_target_moves_toward_main():
     trainer.soft_update_target()
     dist_after = l2_dist(trainer.q_net, trainer.target_q_net)
 
-    assert dist_after < dist_before, \
+    assert dist_after < dist_before, (
         f"Target did not move toward main: dist_before={dist_before}, dist_after={dist_after}"
+    )
 
 
 def test_trainer_target_entropy_default():
     """Default target_entropy should be log(vocab_size) (maximum entropy)."""
     trainer = make_trainer()
     expected = math.log(VOCAB_SIZE)
-    assert abs(trainer.target_entropy - expected) < 1e-6, \
+    assert abs(trainer.target_entropy - expected) < 1e-6, (
         f"Expected target_entropy={expected}, got {trainer.target_entropy}"
+    )
 
 
 # ===========================================================================
 # SACConfig tests
 # ===========================================================================
 
+
 def test_sac_config_defaults():
     """SACConfig must have the documented default values."""
     cfg = SACConfig()
-    assert cfg.d_model        == 32
-    assert cfg.vocab_size     == 64
-    assert cfg.n_layers       == 2
-    assert abs(cfg.lr         - 3e-4) < 1e-9
-    assert abs(cfg.gamma      - 0.99) < 1e-9
-    assert abs(cfg.tau        - 0.005) < 1e-9
+    assert cfg.d_model == 32
+    assert cfg.vocab_size == 64
+    assert cfg.n_layers == 2
+    assert abs(cfg.lr - 3e-4) < 1e-9
+    assert abs(cfg.gamma - 0.99) < 1e-9
+    assert abs(cfg.tau - 0.005) < 1e-9
     assert cfg.buffer_capacity == 1000
     assert abs(cfg.alpha_init - 1.0) < 1e-9
 
@@ -318,6 +321,6 @@ def test_sac_config_defaults():
 def test_sac_config_override():
     """SACConfig fields can be overridden at construction time."""
     cfg = SACConfig(d_model=64, vocab_size=128, lr=1e-3)
-    assert cfg.d_model    == 64
+    assert cfg.d_model == 64
     assert cfg.vocab_size == 128
     assert abs(cfg.lr - 1e-3) < 1e-9

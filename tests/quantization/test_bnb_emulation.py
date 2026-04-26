@@ -6,16 +6,16 @@ import pytest
 import torch
 
 from src.quantization.bnb_emulation import (
+    QUANTIZATION_REGISTRY,
     BnBConfig,
     BnBQuantizer,
     OutlierDetector,
-    QUANTIZATION_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tiny_weight() -> torch.Tensor:
@@ -28,10 +28,10 @@ def tiny_weight() -> torch.Tensor:
 def weight_with_outliers() -> torch.Tensor:
     """4×8 weight with explicit large outlier values."""
     w = torch.zeros(4, 8)
-    w[0, 0] = 10.0   # outlier
-    w[1, 3] = -8.0   # outlier
-    w[2, 5] = 0.5    # normal
-    w[3, 7] = 1.2    # normal
+    w[0, 0] = 10.0  # outlier
+    w[1, 3] = -8.0  # outlier
+    w[2, 5] = 0.5  # normal
+    w[3, 7] = 1.2  # normal
     return w
 
 
@@ -43,6 +43,7 @@ def default_config() -> BnBConfig:
 # ---------------------------------------------------------------------------
 # BnBConfig tests
 # ---------------------------------------------------------------------------
+
 
 class TestBnBConfig:
     def test_defaults(self):
@@ -60,6 +61,7 @@ class TestBnBConfig:
 # ---------------------------------------------------------------------------
 # OutlierDetector tests
 # ---------------------------------------------------------------------------
+
 
 class TestOutlierDetector:
     def test_detect_returns_bool_tensor(self, tiny_weight, default_config):
@@ -112,6 +114,7 @@ class TestOutlierDetector:
 # ---------------------------------------------------------------------------
 # BnBQuantizer tests
 # ---------------------------------------------------------------------------
+
 
 class TestBnBQuantizer:
     def test_quantize_output_types(self, tiny_weight, default_config):

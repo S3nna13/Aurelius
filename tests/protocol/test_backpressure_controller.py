@@ -1,13 +1,12 @@
 """Tests for src/protocol/backpressure_controller.py"""
 
 import pytest
+
 from src.protocol.backpressure_controller import (
+    PROTOCOL_REGISTRY,
     BackpressureController,
     BackpressureSignal,
-    BackpressureState,
-    PROTOCOL_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # evaluate — signal levels

@@ -1,4 +1,5 @@
 """Scenario builder for constructing simulation scenarios."""
+
 from __future__ import annotations
 
 

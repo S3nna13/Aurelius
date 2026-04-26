@@ -1,4 +1,4 @@
-"""Tool-augmented generation: parallel tool calls, result caching, error recovery, and multi-step tool chains."""
+"""Tool-augmented generation: parallel tool calls, result caching, error recovery, and multi-step tool chains."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -7,12 +7,11 @@ import json
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -23,12 +22,12 @@ import torch.nn as nn
 class ToolConfig:
     """Configuration for tool-augmented generation."""
 
-    max_tool_calls: int = 10          # max tools per generation
+    max_tool_calls: int = 10  # max tools per generation
     timeout_seconds: float = 5.0
     cache_results: bool = True
     retry_on_error: bool = True
     max_retries: int = 2
-    parallel_calls: bool = False       # enable parallel tool execution
+    parallel_calls: bool = False  # enable parallel tool execution
 
 
 # ---------------------------------------------------------------------------
@@ -42,8 +41,8 @@ class ToolSpec:
 
     name: str
     description: str
-    parameters: dict                   # JSON schema-like parameter spec
-    returns_type: str = "string"       # "string" | "json" | "number"
+    parameters: dict  # JSON schema-like parameter spec
+    returns_type: str = "string"  # "string" | "json" | "number"
 
 
 @dataclass
@@ -157,9 +156,7 @@ class ToolCache:
 
     @staticmethod
     def _key(tool_name: str, args: dict) -> str:
-        canonical = json.dumps(
-            {"tool": tool_name, "args": args}, sort_keys=True, ensure_ascii=True
-        )
+        canonical = json.dumps({"tool": tool_name, "args": args}, sort_keys=True, ensure_ascii=True)
         return hashlib.sha256(canonical.encode()).hexdigest()
 
     # ------------------------------------------------------------------
@@ -293,9 +290,7 @@ class ToolAugmentedGenerator:
     # Multi-step generation
     # ------------------------------------------------------------------
 
-    def generate_with_tools(
-        self, prompt: str, max_rounds: int = 3
-    ) -> tuple[str, list[ToolResult]]:
+    def generate_with_tools(self, prompt: str, max_rounds: int = 3) -> tuple[str, list[ToolResult]]:
         """Greedy decode -> parse tool calls -> execute -> re-inject -> repeat.
 
         Returns ``(final_text, all_results)``.

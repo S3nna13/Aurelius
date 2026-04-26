@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass, field
-from typing import Iterator
 
 
 @dataclass
 class StitchConfig:
     """Configuration for model stitching."""
 
-    stitch_layer: int = 1          # which layer index to stitch at
-    use_affine: bool = True        # use affine transform (Linear) vs identity
-    freeze_bottom: bool = True     # freeze layers below stitch point
-    freeze_top: bool = False       # freeze layers above stitch point
+    stitch_layer: int = 1  # which layer index to stitch at
+    use_affine: bool = True  # use affine transform (Linear) vs identity
+    freeze_bottom: bool = True  # freeze layers below stitch point
+    freeze_top: bool = False  # freeze layers above stitch point
 
 
 def centered_kernel_alignment(X: torch.Tensor, Y: torch.Tensor) -> float:
@@ -35,7 +35,10 @@ def centered_kernel_alignment(X: torch.Tensor, Y: torch.Tensor) -> float:
     L = Y @ Y.T  # (n, n)
 
     # Centering matrix H = I - 11^T / n
-    H = torch.eye(n, dtype=X.dtype, device=X.device) - torch.ones(n, n, dtype=X.dtype, device=X.device) / n
+    H = (
+        torch.eye(n, dtype=X.dtype, device=X.device)
+        - torch.ones(n, n, dtype=X.dtype, device=X.device) / n
+    )
 
     # HSIC(K, L) = trace(K H L H) / (n-1)^2
     KH = K @ H
@@ -119,9 +122,10 @@ class ActivationCollector:
             if act.dim() == 3:
                 act = act.mean(dim=1)
             self.activations[name] = act.detach()
+
         return hook
 
-    def __enter__(self) -> "ActivationCollector":
+    def __enter__(self) -> ActivationCollector:
         self._hooks = []
         for name, module in self.model.named_modules():
             if _is_transformer_block(module):

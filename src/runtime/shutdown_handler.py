@@ -1,10 +1,11 @@
 """Graceful shutdown handler with drain and timeout."""
+
 from __future__ import annotations
 
 import signal
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -30,7 +31,7 @@ class ShutdownHandler:
                 break
             try:
                 handler()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
     def install_signal_handlers(self) -> None:

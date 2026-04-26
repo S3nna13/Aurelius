@@ -30,9 +30,10 @@ g_{t-1} is set to g_1 so that the gradient difference is zero.
 When no_prox=True the weight decay is applied additively (AdamW-style)
 instead of using the proximal formulation above.
 """
+
 from __future__ import annotations
 
-from typing import Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
 
 import torch
 from torch.optim import Optimizer
@@ -112,7 +113,7 @@ class NesterovAdan(Optimizer):
     # ------------------------------------------------------------------
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable] = None) -> Optional[float]:
+    def step(self, closure: Callable | None = None) -> float | None:
         """Perform a single Adan optimisation step.
 
         Args:
@@ -122,7 +123,7 @@ class NesterovAdan(Optimizer):
         Returns:
             The loss returned by *closure*, or ``None``.
         """
-        loss: Optional[float] = None
+        loss: float | None = None
         if closure is not None:
             with torch.enable_grad():
                 loss = closure()
@@ -151,9 +152,9 @@ class NesterovAdan(Optimizer):
                 t: int = state["step"] + 1
                 state["step"] = t
 
-                m_t: torch.Tensor = state["exp_avg"]        # β1 moment
-                v_t: torch.Tensor = state["exp_avg_diff"]   # β2 moment
-                n_t: torch.Tensor = state["exp_avg_sq"]     # β3 moment
+                m_t: torch.Tensor = state["exp_avg"]  # β1 moment
+                v_t: torch.Tensor = state["exp_avg_diff"]  # β2 moment
+                n_t: torch.Tensor = state["exp_avg_sq"]  # β3 moment
 
                 # g_{t-1}: on the very first step treat it as g_1 → diff = 0
                 if state["prev_grad"] is None:
@@ -180,9 +181,9 @@ class NesterovAdan(Optimizer):
                 n_t.mul_(β3).addcmul_(k_t, k_t, value=1.0 - β3)
 
                 # ---- bias corrections ---------------------------------
-                bc1: float = 1.0 - β1 ** t   # 1 - β1^t
-                bc2: float = 1.0 - β2 ** t   # 1 - β2^t
-                bc3: float = 1.0 - β3 ** t   # 1 - β3^t
+                bc1: float = 1.0 - β1**t  # 1 - β1^t
+                bc2: float = 1.0 - β2**t  # 1 - β2^t
+                bc3: float = 1.0 - β3**t  # 1 - β3^t
 
                 # m̂_t = m_t / bc1
                 m_hat = m_t / bc1

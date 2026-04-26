@@ -1,9 +1,9 @@
-"""Loss landscape analysis: sharpness measurement, flatness-seeking perturbations, and SAM optimizer."""
+"""Loss landscape analysis: sharpness measurement, flatness-seeking perturbations, and SAM optimizer."""  # noqa: E501
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -101,6 +101,7 @@ def local_sharpness(base_loss: torch.Tensor, perturbed_losses: torch.Tensor) -> 
 # LossLandscapeExplorer and LandscapeStats
 # ---------------------------------------------------------------------------
 
+
 class LossLandscapeExplorer:
     """
     Explore loss landscape by perturbing parameters along random/specific directions.
@@ -130,7 +131,7 @@ class LossLandscapeExplorer:
         offset = 0
         for p in self.model.parameters():
             n = p.numel()
-            p.data.copy_(flat_params[offset:offset + n].view_as(p))
+            p.data.copy_(flat_params[offset : offset + n].view_as(p))
             offset += n
 
     def _random_direction(self) -> torch.Tensor:
@@ -158,8 +159,8 @@ class LossLandscapeExplorer:
 
     def line_scan(
         self,
-        direction: Optional[torch.Tensor] = None,
-        alphas: Optional[torch.Tensor] = None,
+        direction: torch.Tensor | None = None,
+        alphas: torch.Tensor | None = None,
         n_points: int = 20,
         alpha_range: tuple = (-1.0, 1.0),
     ) -> dict:
@@ -192,14 +193,14 @@ class LossLandscapeExplorer:
         self._set_flat_params(original_params)
 
         return {
-            'alphas': alphas,
-            'losses': torch.stack(losses),
+            "alphas": alphas,
+            "losses": torch.stack(losses),
         }
 
     def surface_scan(
         self,
-        direction1: Optional[torch.Tensor] = None,
-        direction2: Optional[torch.Tensor] = None,
+        direction1: torch.Tensor | None = None,
+        direction2: torch.Tensor | None = None,
         n_points: int = 10,
         alpha_range: tuple = (-1.0, 1.0),
     ) -> dict:
@@ -234,9 +235,9 @@ class LossLandscapeExplorer:
         self._set_flat_params(original_params)
 
         return {
-            'alphas1': alphas,
-            'alphas2': alphas,
-            'losses': loss_grid,
+            "alphas1": alphas,
+            "alphas2": alphas,
+            "losses": loss_grid,
         }
 
     def flatness_score(self, epsilon: float = 0.1, n_directions: int = 5) -> float:
@@ -319,10 +320,12 @@ class LandscapeStats:
 
         for i in range(half, n - half):
             # Check if losses[i] is less than all neighbors within window
-            window_vals = losses_1d[max(0, i - half):min(n, i + half + 1)]
+            window_vals = losses_1d[max(0, i - half) : min(n, i + half + 1)]
             if losses_1d[i] == window_vals.min() and (window_vals < losses_1d[i]).sum() == 0:
                 # Strictly less than all other values in window
-                others = torch.cat([losses_1d[max(0, i - half):i], losses_1d[i + 1:min(n, i + half + 1)]])
+                others = torch.cat(
+                    [losses_1d[max(0, i - half) : i], losses_1d[i + 1 : min(n, i + half + 1)]]
+                )
                 if len(others) > 0 and (losses_1d[i] < others).all():
                     count += 1
 
@@ -359,14 +362,15 @@ class LandscapeStats:
 # SAM / Sharpness-Aware Minimization API
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LandscapeConfig:
     """Configuration for loss landscape analysis and SAM optimizer."""
 
-    rho: float = 0.05                   # SAM perturbation radius
+    rho: float = 0.05  # SAM perturbation radius
     sharpness_n_perturbations: int = 10
     sharpness_epsilon: float = 0.01
-    adaptive_sam: bool = False          # ASAM: normalize perturbation by parameter magnitude
+    adaptive_sam: bool = False  # ASAM: normalize perturbation by parameter magnitude
 
 
 def compute_gradient_norm(model: nn.Module) -> float:
@@ -452,10 +456,7 @@ def sam_first_step(
     grads = torch.autograd.grad(loss, params, create_graph=False, allow_unused=True)
 
     # Replace None grads with zeros
-    grads = [
-        g if g is not None else torch.zeros_like(p)
-        for g, p in zip(grads, params)
-    ]
+    grads = [g if g is not None else torch.zeros_like(p) for g, p in zip(grads, params)]
 
     # Compute global grad norm
     flat_grads = torch.cat([g.reshape(-1) for g in grads])
@@ -534,7 +535,7 @@ class SAMOptimizer:
 
     def second_step(self, loss: Tensor) -> None:
         """Restore original params, backward on perturbed loss, optimizer step."""
-        assert self._original_params is not None, "Call first_step before second_step"
+        assert self._original_params is not None, "Call first_step before second_step"  # noqa: S101
         sam_second_step(self.model, self._original_params, loss, self.base_optimizer)
         self._original_params = None
 
@@ -570,8 +571,7 @@ def compute_hessian_trace(
     estimates = []
     for _ in range(n_samples):
         # Draw Rademacher vector
-        vs = [torch.randint(0, 2, p.shape, dtype=p.dtype, device=p.device) * 2 - 1
-              for p in params]
+        vs = [torch.randint(0, 2, p.shape, dtype=p.dtype, device=p.device) * 2 - 1 for p in params]
 
         # Perturb parameters by eps * v
         with torch.no_grad():
@@ -583,9 +583,7 @@ def compute_hessian_trace(
         # Re-use the same loss_fn structure: recompute loss
         try:
             # Try to recompute using the computational graph (may not always work)
-            pert_grads_raw = torch.autograd.grad(
-                loss, params, allow_unused=True, retain_graph=True
-            )
+            pert_grads_raw = torch.autograd.grad(loss, params, allow_unused=True, retain_graph=True)
         except RuntimeError:
             pert_grads_raw = [None] * len(params)
 

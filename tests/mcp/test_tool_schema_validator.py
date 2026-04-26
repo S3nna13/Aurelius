@@ -20,8 +20,6 @@ Coverage (≥ 12 tests):
 
 from __future__ import annotations
 
-import pytest
-
 from src.mcp.tool_schema_validator import (
     DEFAULT_TOOL_SCHEMA_VALIDATOR,
     TOOL_SCHEMA_VALIDATOR_REGISTRY,

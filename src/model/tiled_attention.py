@@ -8,15 +8,14 @@ with an online softmax (log-sum-exp trick).
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Online-softmax accumulator
 # ---------------------------------------------------------------------------
+
 
 class OnlineSoftmax:
     """
@@ -33,10 +32,10 @@ class OnlineSoftmax:
 
     @staticmethod
     def update(
-        m_prev: torch.Tensor,   # [B, H, Tq, 1]
-        l_prev: torch.Tensor,   # [B, H, Tq, 1]
-        O_prev: torch.Tensor,   # [B, H, Tq, d_head]
-        Q_i: torch.Tensor,      # [B, H, Tq, d_head]
+        m_prev: torch.Tensor,  # [B, H, Tq, 1]
+        l_prev: torch.Tensor,  # [B, H, Tq, 1]
+        O_prev: torch.Tensor,  # [B, H, Tq, d_head]
+        Q_i: torch.Tensor,  # [B, H, Tq, d_head]
         K_block: torch.Tensor,  # [B, H, Tk, d_head]
         V_block: torch.Tensor,  # [B, H, Tk, d_head]
         scale: float,
@@ -56,14 +55,16 @@ class OnlineSoftmax:
         m_new = torch.max(m_prev, scores.max(dim=-1, keepdim=True).values)
 
         # unnormalised weights shifted by new max
-        P = torch.exp(scores - m_new)                                    # [B, H, Tq, Tk]
+        P = torch.exp(scores - m_new)  # [B, H, Tq, Tk]
 
         # update normalisation factor
-        correction = torch.exp(m_prev - m_new)                           # [B, H, Tq, 1]
-        l_new = correction * l_prev + P.sum(dim=-1, keepdim=True)        # [B, H, Tq, 1]
+        correction = torch.exp(m_prev - m_new)  # [B, H, Tq, 1]
+        l_new = correction * l_prev + P.sum(dim=-1, keepdim=True)  # [B, H, Tq, 1]
 
         # update output
-        O_new = (correction * l_prev * O_prev + torch.matmul(P, V_block)) / l_new  # [B, H, Tq, d_head]
+        O_new = (
+            correction * l_prev * O_prev + torch.matmul(P, V_block)
+        ) / l_new  # [B, H, Tq, d_head]
 
         return m_new, l_new, O_new
 
@@ -71,6 +72,7 @@ class OnlineSoftmax:
 # ---------------------------------------------------------------------------
 # Custom autograd Function
 # ---------------------------------------------------------------------------
+
 
 class TiledAttention(torch.autograd.Function):
     """
@@ -96,16 +98,16 @@ class TiledAttention(torch.autograd.Function):
         B, H, T, d_head = Q.shape
         device, dtype = Q.device, Q.dtype
 
-        O = torch.zeros_like(Q)
+        O = torch.zeros_like(Q)  # noqa: E741
         # running max / denominator stored for backward reuse
         logsumexp = torch.full((B, H, T), -float("inf"), device=device, dtype=dtype)
 
-        online = OnlineSoftmax()
+        OnlineSoftmax()
 
         # iterate over query tiles
         for q_start in range(0, T, tile_size):
             q_end = min(q_start + tile_size, T)
-            Q_tile = Q[:, :, q_start:q_end, :]       # [B, H, tq, d]
+            Q_tile = Q[:, :, q_start:q_end, :]  # [B, H, tq, d]
             tq = q_end - q_start
 
             m_i = torch.full((B, H, tq, 1), -float("inf"), device=device, dtype=dtype)
@@ -128,9 +130,11 @@ class TiledAttention(torch.autograd.Function):
 
                 # apply causal mask within a partial tile
                 if causal:
-                    q_indices = torch.arange(q_start, q_end, device=device).unsqueeze(1)   # [tq, 1]
-                    k_indices = torch.arange(kv_start, kv_end, device=device).unsqueeze(0) # [1, tk]
-                    mask = k_indices > q_indices   # True where key is in the future
+                    q_indices = torch.arange(q_start, q_end, device=device).unsqueeze(1)  # [tq, 1]
+                    k_indices = torch.arange(kv_start, kv_end, device=device).unsqueeze(
+                        0
+                    )  # [1, tk]
+                    mask = k_indices > q_indices  # True where key is in the future
                     scores = scores.masked_fill(mask, float("-inf"))
 
                 # online-softmax update
@@ -142,17 +146,15 @@ class TiledAttention(torch.autograd.Function):
                 m_i = m_new
                 l_i = l_new
 
-            O[:, :, q_start:q_end, :] = O_i
+            O[:, :, q_start:q_end, :] = O_i  # noqa: E741
             # logsumexp = m + log(l), used in backward
-            logsumexp[:, :, q_start:q_end] = (
-                m_i.squeeze(-1) + torch.log(l_i.squeeze(-1) + 1e-10)
-            )
+            logsumexp[:, :, q_start:q_end] = m_i.squeeze(-1) + torch.log(l_i.squeeze(-1) + 1e-10)
 
-        ctx.save_for_backward(Q, K, V, O, logsumexp)
+        ctx.save_for_backward(Q, K, V, O, logsumexp)  # noqa: E741
         ctx.scale = scale
         ctx.causal = causal
         ctx.tile_size = tile_size
-        return O
+        return O  # noqa: E741
 
     @staticmethod
     def backward(ctx, dO):  # type: ignore[override]
@@ -162,7 +164,7 @@ class TiledAttention(torch.autograd.Function):
 
         Returns: (dQ, dK, dV, None, None, None)
         """
-        Q, K, V, O, logsumexp = ctx.saved_tensors
+        Q, K, V, O, logsumexp = ctx.saved_tensors  # noqa: E741
         scale = ctx.scale
         causal = ctx.causal
         tile_size = ctx.tile_size
@@ -175,14 +177,14 @@ class TiledAttention(torch.autograd.Function):
         dV = torch.zeros_like(V)
 
         # D_i = rowsum(dO * O)  [B, H, T]
-        D = (dO * O).sum(dim=-1)  # [B, H, T]
+        D = (dO * O).sum(dim=-1)  # [B, H, T]  # noqa: E741
 
         for q_start in range(0, T, tile_size):
             q_end = min(q_start + tile_size, T)
-            Q_tile = Q[:, :, q_start:q_end, :]   # [B, H, tq, d]
+            Q_tile = Q[:, :, q_start:q_end, :]  # [B, H, tq, d]
             dO_tile = dO[:, :, q_start:q_end, :]
-            lse_tile = logsumexp[:, :, q_start:q_end]   # [B, H, tq]
-            D_tile = D[:, :, q_start:q_end]             # [B, H, tq]
+            lse_tile = logsumexp[:, :, q_start:q_end]  # [B, H, tq]
+            D_tile = D[:, :, q_start:q_end]  # [B, H, tq]
 
             dQ_tile = torch.zeros_like(Q_tile)
 
@@ -227,6 +229,7 @@ class TiledAttention(torch.autograd.Function):
 # nn.Module wrapper
 # ---------------------------------------------------------------------------
 
+
 class TiledAttentionModule(nn.Module):
     """
     Multi-head attention backed by the tiled forward/backward kernel.
@@ -246,7 +249,7 @@ class TiledAttentionModule(nn.Module):
         causal: bool = True,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -279,19 +282,20 @@ class TiledAttentionModule(nn.Module):
         Returns:
             [B, T, d_model]
         """
-        Q = self._split_heads(self.W_q(x))   # [B, H, T, d_head]
+        Q = self._split_heads(self.W_q(x))  # [B, H, T, d_head]
         K = self._split_heads(self.W_k(x))
         V = self._split_heads(self.W_v(x))
 
-        O = TiledAttention.apply(Q, K, V, self.scale, self.causal, self.tile_size)
+        O = TiledAttention.apply(Q, K, V, self.scale, self.causal, self.tile_size)  # noqa: E741
 
-        out = self._merge_heads(O)            # [B, T, d_model]
+        out = self._merge_heads(O)  # [B, T, d_model]  # noqa: E741
         return self.W_o(out)
 
 
 # ---------------------------------------------------------------------------
 # Reference / equivalence checker
 # ---------------------------------------------------------------------------
+
 
 class AttentionEquivalenceChecker:
     """
@@ -322,9 +326,7 @@ class AttentionEquivalenceChecker:
 
         if causal:
             T = Q.size(-2)
-            mask = torch.triu(
-                torch.ones(T, T, device=Q.device, dtype=torch.bool), diagonal=1
-            )
+            mask = torch.triu(torch.ones(T, T, device=Q.device, dtype=torch.bool), diagonal=1)
             scores = scores.masked_fill(mask, float("-inf"))
 
         attn = torch.softmax(scores, dim=-1)
@@ -339,6 +341,7 @@ class AttentionEquivalenceChecker:
 # ---------------------------------------------------------------------------
 # Configuration dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TiledAttentionConfig:

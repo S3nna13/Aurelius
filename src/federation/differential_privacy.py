@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class DPMechanism(str, Enum):
+class DPMechanism(StrEnum):
     GAUSSIAN = "gaussian"
     LAPLACE = "laplace"
     RANDOMIZED_RESPONSE = "randomized_response"
@@ -37,11 +37,9 @@ class DifferentialPrivacy:
         self._rng = random.Random(seed)
         self._budget = PrivacyBudget(epsilon=epsilon, delta=delta)
 
-    def clip_gradient(
-        self, gradient: list[float], max_norm: float = 1.0
-    ) -> list[float]:
+    def clip_gradient(self, gradient: list[float], max_norm: float = 1.0) -> list[float]:
         """Scale gradient down if its L2 norm exceeds max_norm."""
-        norm = math.sqrt(sum(x ** 2 for x in gradient))
+        norm = math.sqrt(sum(x**2 for x in gradient))
         if norm == 0.0:
             return list(gradient)
         scale = min(1.0, max_norm / norm)

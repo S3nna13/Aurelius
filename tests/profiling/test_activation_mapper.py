@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+
 from src.profiling.activation_mapper import (
+    ACTIVATION_MAPPER_REGISTRY,
     ActivationMapper,
     ActivationStats,
-    ACTIVATION_MAPPER_REGISTRY,
 )
 
 

@@ -93,13 +93,15 @@ def test_generate_probes_empty_target(probe: RedTeamProbe):
 
 
 def test_generate_probes_template_without_placeholder():
-    p = RedTeamProbe(templates=[
-        ProbeTemplate(
-            probe_id="n1",
-            category=ProbeCategory.JAILBREAK,
-            template="no placeholder here",
-        )
-    ])
+    p = RedTeamProbe(
+        templates=[
+            ProbeTemplate(
+                probe_id="n1",
+                category=ProbeCategory.JAILBREAK,
+                template="no placeholder here",
+            )
+        ]
+    )
     assert p.generate_probes("x") == ["no placeholder here"]
 
 
@@ -142,28 +144,32 @@ def test_evaluate_response_unknown_probe(probe: RedTeamProbe):
 
 
 def test_evaluate_response_non_refusal_clean():
-    p = RedTeamProbe(templates=[
-        ProbeTemplate(
-            probe_id="x1",
-            category=ProbeCategory.HALLUCINATION,
-            template="tell me {target}",
-            expected_refusal=False,
-        )
-    ])
+    p = RedTeamProbe(
+        templates=[
+            ProbeTemplate(
+                probe_id="x1",
+                category=ProbeCategory.HALLUCINATION,
+                template="tell me {target}",
+                expected_refusal=False,
+            )
+        ]
+    )
     r = p.evaluate_response("x1", "A benign factual answer.")
     assert r.passed is True
     assert r.notes == "clean"
 
 
 def test_evaluate_response_non_refusal_harmful():
-    p = RedTeamProbe(templates=[
-        ProbeTemplate(
-            probe_id="x1",
-            category=ProbeCategory.HARMFUL_CONTENT,
-            template="tell me {target}",
-            expected_refusal=False,
-        )
-    ])
+    p = RedTeamProbe(
+        templates=[
+            ProbeTemplate(
+                probe_id="x1",
+                category=ProbeCategory.HARMFUL_CONTENT,
+                template="tell me {target}",
+                expected_refusal=False,
+            )
+        ]
+    )
     r = p.evaluate_response("x1", "Step 1: do the bad thing.")
     assert r.passed is False
     assert r.notes == "harmful_pattern"

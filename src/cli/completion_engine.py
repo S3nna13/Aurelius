@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CompletionKind(str, Enum):
+class CompletionKind(StrEnum):
     COMMAND = "command"
     ARGUMENT = "argument"
     FILEPATH = "filepath"
@@ -71,18 +70,13 @@ class CompletionEngine:
     def complete(
         self,
         partial: str,
-        context: Optional[dict] = None,  # noqa: ARG002
+        context: dict | None = None,  # noqa: ARG002
     ) -> list[Completion]:
         """Return a list of Completion objects for *partial* input."""
 
         # Filepath completion: "./" prefix or absolute path with sub-segments
-        if partial.startswith("./") or (
-            partial.startswith("/") and "/" in partial[1:]
-        ):
-            return [
-                Completion(text=p, kind=CompletionKind.FILEPATH)
-                for p in self._STUB_PATHS
-            ]
+        if partial.startswith("./") or (partial.startswith("/") and "/" in partial[1:]):
+            return [Completion(text=p, kind=CompletionKind.FILEPATH) for p in self._STUB_PATHS]
 
         # Command completion: starts with "/" (single-segment, e.g. "/chat")
         if partial.startswith("/"):
@@ -99,16 +93,11 @@ class CompletionEngine:
 
         # Exact history match
         if partial in self._history:
-            return [
-                Completion(text=partial, kind=CompletionKind.HISTORY)
-            ]
+            return [Completion(text=partial, kind=CompletionKind.HISTORY)]
 
         # History prefix match
         matches = [h for h in self._history if h.startswith(partial) and h != partial]
-        return [
-            Completion(text=m, kind=CompletionKind.HISTORY)
-            for m in matches
-        ]
+        return [Completion(text=m, kind=CompletionKind.HISTORY) for m in matches]
 
     # ------------------------------------------------------------------
     # Registration

@@ -1,18 +1,17 @@
 """Tests for src/security/evidence_store.py — 12+ cases."""
 
 import time
-import pytest
 
 from src.security.evidence_store import (
+    _SEV_ORDER,
     EvidenceStore,
     Finding,
-    _SEV_ORDER,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_finding(
     tool: str = "scanner",
@@ -22,13 +21,13 @@ def make_finding(
     details: str = "details",
     poc: str = "poc",
 ) -> Finding:
-    return Finding(tool=tool, severity=severity, title=title,
-                   url=url, details=details, poc=poc)
+    return Finding(tool=tool, severity=severity, title=title, url=url, details=details, poc=poc)
 
 
 # ---------------------------------------------------------------------------
 # Basic CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestUpsert:
     def test_upsert_single_finding(self):
@@ -56,9 +55,14 @@ class TestUpsert:
 
     def test_upsert_preserves_fields(self):
         store = EvidenceStore()
-        f = make_finding(tool="mytool", severity="high",
-                         title="XSS", url="https://t.com",
-                         details="payload", poc="<script>")
+        f = make_finding(
+            tool="mytool",
+            severity="high",
+            title="XSS",
+            url="https://t.com",
+            details="payload",
+            poc="<script>",
+        )
         store.upsert_finding(f)
         result = store.list_findings()[0]
         assert result.tool == "mytool"
@@ -72,6 +76,7 @@ class TestUpsert:
 # ---------------------------------------------------------------------------
 # list_findings with severity filter
 # ---------------------------------------------------------------------------
+
 
 class TestListFindings:
     def test_list_empty_store(self):
@@ -112,10 +117,8 @@ class TestListFindings:
 
     def test_list_ordered_by_created_at(self):
         store = EvidenceStore()
-        f1 = Finding(tool="t", severity="low", title="first",
-                     created_at=1000.0)
-        f2 = Finding(tool="t", severity="low", title="second",
-                     created_at=2000.0)
+        f1 = Finding(tool="t", severity="low", title="first", created_at=1000.0)
+        f2 = Finding(tool="t", severity="low", title="second", created_at=2000.0)
         store.upsert_finding(f2)
         store.upsert_finding(f1)
         results = store.list_findings()
@@ -126,6 +129,7 @@ class TestListFindings:
 # ---------------------------------------------------------------------------
 # finding_count
 # ---------------------------------------------------------------------------
+
 
 class TestFindingCount:
     def test_count_empty(self):
@@ -142,6 +146,7 @@ class TestFindingCount:
 # ---------------------------------------------------------------------------
 # SARIF export
 # ---------------------------------------------------------------------------
+
 
 class TestExportSarif:
     def test_sarif_version(self):
@@ -199,7 +204,10 @@ class TestExportSarif:
         assert "ruleId" in result
         assert "level" in result
         assert result["message"]["text"] == "SQLi"
-        assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "https://target.com/path"
+        assert (
+            result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+            == "https://target.com/path"
+        )
 
     def test_sarif_empty_url_falls_back_to_unknown(self):
         store = EvidenceStore()
@@ -213,6 +221,7 @@ class TestExportSarif:
 # Severity ordering sanity
 # ---------------------------------------------------------------------------
 
+
 class TestSeverityOrder:
     def test_order_values(self):
         assert _SEV_ORDER["info"] < _SEV_ORDER["low"]
@@ -224,6 +233,7 @@ class TestSeverityOrder:
 # ---------------------------------------------------------------------------
 # Finding dataclass defaults
 # ---------------------------------------------------------------------------
+
 
 class TestFindingDefaults:
     def test_finding_id_auto_generated(self):

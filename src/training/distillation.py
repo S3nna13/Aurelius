@@ -9,6 +9,7 @@ Combined loss: alpha * CE(student, labels) + (1-alpha) * T^2 * KL(student_soft |
 The T^2 factor compensates for the reduced magnitude of gradients when
 using softened distributions at temperature T.
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DistillationConfig:
-    temperature: float = 4.0       # softening temperature T
-    alpha: float = 0.5             # weight for hard target loss (1-alpha for soft)
+    temperature: float = 4.0  # softening temperature T
+    alpha: float = 0.5  # weight for hard target loss (1-alpha for soft)
     learning_rate: float = 1e-4
     num_steps: int = 1000
     batch_size: int = 4
@@ -72,7 +73,7 @@ def distillation_loss(
         student_soft.view(-1, V),
         teacher_soft.view(-1, V),
         reduction="batchmean",
-    ) * (temperature ** 2)  # T^2 compensation
+    ) * (temperature**2)  # T^2 compensation
 
     total_loss = alpha * hard_loss + (1 - alpha) * soft_loss
     return total_loss, hard_loss, soft_loss
@@ -133,7 +134,9 @@ class DistillationTrainer:
 
         # Compute distillation loss
         total_loss, hard_loss, soft_loss = distillation_loss(
-            student_logits, teacher_logits, labels,
+            student_logits,
+            teacher_logits,
+            labels,
             temperature=self.cfg.temperature,
             alpha=self.cfg.alpha,
         )

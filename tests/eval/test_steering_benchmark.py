@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.eval.steering_benchmark import (
-    SteeringTarget,
-    SteeringResult,
-    SteeringEvaluator,
     SteeringComparison,
+    SteeringEvaluator,
+    SteeringResult,
+    SteeringTarget,
     SteeringVectorNormalizer,
 )
 
@@ -125,7 +124,9 @@ def test_steering_result_fields_accessible():
 # ---------------------------------------------------------------------------
 
 
-def test_evaluate_steering_returns_steering_result(evaluator, hidden_states, steering_vector, target):
+def test_evaluate_steering_returns_steering_result(
+    evaluator, hidden_states, steering_vector, target
+):
     result = evaluator.evaluate_steering(hidden_states, steering_vector, target)
     assert isinstance(result, SteeringResult)
 
@@ -181,7 +182,7 @@ def test_steering_efficiency_formula(evaluator, hidden_states, steering_vector, 
 def test_steering_increases_target_probs(hidden_states, target):
     """Construct a model_fn such that the steering vector directly increases target logits."""
     torch.manual_seed(99)
-    # W maps d_model -> vocab_size; steering in direction W[:, target_ids].mean(1) boosts those logits
+    # W maps d_model -> vocab_size; steering in direction W[:, target_ids].mean(1) boosts those logits  # noqa: E501
     W = torch.zeros(D_MODEL, VOCAB_SIZE)
     # Set up W so token 0 gets higher logit when we steer in direction of W[:, 0]
     direction = torch.zeros(D_MODEL)
@@ -224,8 +225,12 @@ def test_compare_groups_by_method_name():
 
 
 def test_compare_averages_metrics_correctly():
-    r1 = SteeringResult("pca", concept_shift=0.1, fluency_kl=0.02, steering_efficiency=0.05, steering_norm=2.0)
-    r2 = SteeringResult("pca", concept_shift=0.3, fluency_kl=0.04, steering_efficiency=0.15, steering_norm=2.0)
+    r1 = SteeringResult(
+        "pca", concept_shift=0.1, fluency_kl=0.02, steering_efficiency=0.05, steering_norm=2.0
+    )
+    r2 = SteeringResult(
+        "pca", concept_shift=0.3, fluency_kl=0.04, steering_efficiency=0.15, steering_norm=2.0
+    )
     comp = SteeringComparison()
     summary = comp.compare([r1, r2])
 
@@ -243,9 +248,15 @@ def test_compare_averages_metrics_correctly():
 
 
 def test_rank_by_returns_descending_order():
-    r1 = SteeringResult("a", concept_shift=0.1, fluency_kl=0.01, steering_efficiency=0.05, steering_norm=2.0)
-    r2 = SteeringResult("b", concept_shift=0.5, fluency_kl=0.05, steering_efficiency=0.25, steering_norm=2.0)
-    r3 = SteeringResult("c", concept_shift=0.3, fluency_kl=0.03, steering_efficiency=0.15, steering_norm=2.0)
+    r1 = SteeringResult(
+        "a", concept_shift=0.1, fluency_kl=0.01, steering_efficiency=0.05, steering_norm=2.0
+    )
+    r2 = SteeringResult(
+        "b", concept_shift=0.5, fluency_kl=0.05, steering_efficiency=0.25, steering_norm=2.0
+    )
+    r3 = SteeringResult(
+        "c", concept_shift=0.3, fluency_kl=0.03, steering_efficiency=0.15, steering_norm=2.0
+    )
     comp = SteeringComparison()
     ranked = comp.rank_by([r1, r2, r3], metric="steering_efficiency")
     efficiencies = [r.steering_efficiency for r in ranked]
@@ -261,9 +272,15 @@ def test_rank_by_returns_descending_order():
 
 
 def test_rank_by_descending_for_any_metric():
-    r1 = SteeringResult("a", concept_shift=0.1, fluency_kl=0.30, steering_efficiency=0.05, steering_norm=2.0)
-    r2 = SteeringResult("b", concept_shift=0.5, fluency_kl=0.05, steering_efficiency=0.25, steering_norm=2.0)
-    r3 = SteeringResult("c", concept_shift=0.3, fluency_kl=0.15, steering_efficiency=0.15, steering_norm=2.0)
+    r1 = SteeringResult(
+        "a", concept_shift=0.1, fluency_kl=0.30, steering_efficiency=0.05, steering_norm=2.0
+    )
+    r2 = SteeringResult(
+        "b", concept_shift=0.5, fluency_kl=0.05, steering_efficiency=0.25, steering_norm=2.0
+    )
+    r3 = SteeringResult(
+        "c", concept_shift=0.3, fluency_kl=0.15, steering_efficiency=0.15, steering_norm=2.0
+    )
     comp = SteeringComparison()
     # rank by fluency_kl descending (even if semantically lower is better, API is always descending)
     ranked = comp.rank_by([r1, r2, r3], metric="fluency_kl")
@@ -298,9 +315,7 @@ def test_normalizer_scale_to_norm():
     target_norm = 3.7
     v_scaled = normalizer.scale_to_norm(v, target_norm)
     actual_norm = v_scaled.norm().item()
-    assert abs(actual_norm - target_norm) < 1e-5, (
-        f"Expected norm {target_norm}, got {actual_norm}"
-    )
+    assert abs(actual_norm - target_norm) < 1e-5, f"Expected norm {target_norm}, got {actual_norm}"
 
 
 # ---------------------------------------------------------------------------

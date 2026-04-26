@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SynthConfig:
@@ -24,7 +24,7 @@ class SynthConfig:
     similarity_threshold: float = 0.7
     max_length: int = 512
     min_length: int = 20
-    templates: List[str] = field(
+    templates: list[str] = field(
         default_factory=lambda: [
             "Explain {topic}",
             "Write a {adjective} {document_type} about {topic}",
@@ -38,11 +38,13 @@ class SynthConfig:
 # Standalone helpers
 # ---------------------------------------------------------------------------
 
-def fill_template(template: str, slots: Dict[str, str]) -> str:
+
+def fill_template(template: str, slots: dict[str, str]) -> str:
     """Replace {slot} placeholders with values from *slots*.
 
     Any placeholder not present in *slots* is left unchanged.
     """
+
     def replacer(match: re.Match) -> str:
         key = match.group(1)
         return slots.get(key, match.group(0))
@@ -77,13 +79,11 @@ def compute_rouge1_similarity(a: str, b: str) -> float:
     return f1
 
 
-def deduplicate_instructions(
-    instructions: List[str], threshold: float = 0.7
-) -> List[str]:
+def deduplicate_instructions(instructions: list[str], threshold: float = 0.7) -> list[str]:
     """Remove instructions whose ROUGE-1 similarity to any earlier kept
     instruction is >= *threshold*.  Preserves order of first occurrence.
     """
-    kept: List[str] = []
+    kept: list[str] = []
     for candidate in instructions:
         duplicate = False
         for existing in kept:
@@ -142,6 +142,7 @@ def estimate_difficulty(instruction: str, max_length: int = 512) -> float:
 # Synthesiser class
 # ---------------------------------------------------------------------------
 
+
 class InstructionSynthesizer:
     """Generates diverse instructions from templates and seed tasks."""
 
@@ -152,30 +153,26 @@ class InstructionSynthesizer:
     # Public API
     # ------------------------------------------------------------------
 
-    def from_template(
-        self, template: str, slots_list: List[Dict[str, str]]
-    ) -> List[str]:
+    def from_template(self, template: str, slots_list: list[dict[str, str]]) -> list[str]:
         """Fill *template* with each slots dict and return valid instructions.
 
         Validity: length between config.min_length and config.max_length.
         """
-        results: List[str] = []
+        results: list[str] = []
         for slots in slots_list:
             filled = fill_template(template, slots)
             if self.config.min_length <= len(filled) <= self.config.max_length:
                 results.append(filled)
         return results
 
-    def from_seed(
-        self, seed_instruction: str, variations: List[Dict[str, str]]
-    ) -> List[str]:
+    def from_seed(self, seed_instruction: str, variations: list[dict[str, str]]) -> list[str]:
         """Generate variations of *seed_instruction*.
 
         For each variation dict, replace every key found verbatim in the seed
         with its corresponding value.  Returns up to
         config.n_instructions_per_seed results (seed itself is excluded).
         """
-        generated: List[str] = []
+        generated: list[str] = []
         for var in variations:
             modified = seed_instruction
             for word, replacement in var.items():
@@ -188,9 +185,9 @@ class InstructionSynthesizer:
 
     def build_dataset(
         self,
-        seeds: List[str],
-        slots_list: List[Dict[str, str]],
-    ) -> List[Dict[str, str]]:
+        seeds: list[str],
+        slots_list: list[dict[str, str]],
+    ) -> list[dict[str, str]]:
         """Build a dataset of instruction dicts.
 
         For each seed:
@@ -201,12 +198,10 @@ class InstructionSynthesizer:
 
         Returns list of {"instruction", "type", "difficulty"} dicts.
         """
-        all_instructions: List[str] = []
+        all_instructions: list[str] = []
         for seed in seeds:
             candidates = [seed] + self.from_seed(seed, slots_list)
-            candidates = deduplicate_instructions(
-                candidates, self.config.similarity_threshold
-            )
+            candidates = deduplicate_instructions(candidates, self.config.similarity_threshold)
             all_instructions.extend(candidates)
 
         # Global deduplication across seeds
@@ -214,20 +209,18 @@ class InstructionSynthesizer:
             all_instructions, self.config.similarity_threshold
         )
 
-        dataset: List[Dict[str, str]] = []
+        dataset: list[dict[str, str]] = []
         for instr in all_instructions:
             dataset.append(
                 {
                     "instruction": instr,
                     "type": classify_instruction_type(instr),
-                    "difficulty": estimate_difficulty(
-                        instr, self.config.max_length
-                    ),
+                    "difficulty": estimate_difficulty(instr, self.config.max_length),
                 }
             )
         return dataset
 
-    def get_stats(self, dataset: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_stats(self, dataset: list[dict[str, Any]]) -> dict[str, Any]:
         """Compute summary statistics for a dataset.
 
         Returns dict with keys:
@@ -237,7 +230,7 @@ class InstructionSynthesizer:
         - mean_length
         """
         n_total = len(dataset)
-        type_dist: Dict[str, int] = {}
+        type_dist: dict[str, int] = {}
         total_difficulty = 0.0
         total_length = 0
 

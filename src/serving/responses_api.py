@@ -1,19 +1,18 @@
 """Inspired by OpenAI Responses API (GPT-5 agentic API shape, 2025), OpenAI function-calling API (Apache-2.0 compatible spec), clean-room Aurelius implementation.
-
 GPT-5-style agentic Responses API shape for Aurelius.  Provides stateful
 multi-turn request/response types, tool-call support, reasoning chains, and
 a streaming SSE event generator — all implemented with stdlib dataclasses
 only (no FastAPI, no starlette, no httpx).
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import ClassVar, Generator, Literal
-
+from enum import StrEnum
+from typing import ClassVar, Literal
 
 __all__ = [
     "ResponsesAPIModel",
@@ -39,7 +38,8 @@ __all__ = [
 # Model enum
 # ---------------------------------------------------------------------------
 
-class ResponsesAPIModel(str, Enum):
+
+class ResponsesAPIModel(StrEnum):
     """Supported Aurelius model identifiers for the Responses API."""
 
     base = "aurelius-base"
@@ -63,6 +63,7 @@ RESPONSE_FAILED: str = "response.failed"
 # ---------------------------------------------------------------------------
 # Request / response dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class InputItem:
@@ -127,6 +128,7 @@ class ResponsesAPIResponse:
 # Streaming event dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ResponseStreamEvent:
     """A single SSE streaming event emitted during a Responses API stream."""
@@ -139,6 +141,7 @@ class ResponseStreamEvent:
 # ---------------------------------------------------------------------------
 # Validator
 # ---------------------------------------------------------------------------
+
 
 class ResponsesAPIValidator:
     """Validates :class:`ResponsesAPIRequest` and :class:`ResponsesAPIResponse`
@@ -156,14 +159,10 @@ class ResponsesAPIValidator:
             errors.append("input must not be empty")
 
         if not (0.0 <= req.temperature <= 2.0):
-            errors.append(
-                f"temperature must be in [0.0, 2.0], got {req.temperature}"
-            )
+            errors.append(f"temperature must be in [0.0, 2.0], got {req.temperature}")
 
         if req.max_output_tokens is not None and req.max_output_tokens <= 0:
-            errors.append(
-                f"max_output_tokens must be > 0 if set, got {req.max_output_tokens}"
-            )
+            errors.append(f"max_output_tokens must be > 0 if set, got {req.max_output_tokens}")
 
         if req.tools:
             for tool in req.tools:
@@ -188,6 +187,7 @@ class ResponsesAPIValidator:
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
+
 
 class ResponsesAPIHandler:
     """Stub handler that creates :class:`ResponsesAPIResponse` objects and
@@ -226,9 +226,7 @@ class ResponsesAPIHandler:
             created_at=time.time(),
         )
 
-    def stream_events(
-        self, req: ResponsesAPIRequest
-    ) -> Generator[ResponseStreamEvent, None, None]:
+    def stream_events(self, req: ResponsesAPIRequest) -> Generator[ResponseStreamEvent, None, None]:
         """Yield a minimal sequence of SSE events for *req*."""
         response_id = self._next_id()
         seq = 0
@@ -293,5 +291,5 @@ try:
     from src.serving.openai_api_validator import API_SHAPE_REGISTRY  # type: ignore[import]
 
     API_SHAPE_REGISTRY["responses"] = ResponsesAPIHandler
-except Exception:
+except Exception:  # noqa: S110
     pass

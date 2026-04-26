@@ -6,20 +6,20 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from src.quantization.gptq_quantizer import (
+from src.quantization.gptq_quantizer import (  # noqa: E402
+    GPTQ_QUANTIZER_REGISTRY,
     GPTQConfig,
     GPTQQuantizer,
-    GPTQ_QUANTIZER_REGISTRY,
     QuantizedLayer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
-def small_weight() -> "torch.Tensor":
+def small_weight() -> torch.Tensor:
     torch.manual_seed(0)
     return torch.randn(8, 16)
 
@@ -37,6 +37,7 @@ def cfg_asym() -> GPTQConfig:
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 class TestGPTQConfig:
     def test_defaults(self):
@@ -59,6 +60,7 @@ class TestGPTQConfig:
 # ---------------------------------------------------------------------------
 # QuantizedLayer container
 # ---------------------------------------------------------------------------
+
 
 class TestQuantizedLayer:
     def test_frozen(self, small_weight, cfg_sym):
@@ -87,6 +89,7 @@ class TestQuantizedLayer:
 # ---------------------------------------------------------------------------
 # Quantization semantics
 # ---------------------------------------------------------------------------
+
 
 class TestQuantizeWeight:
     def test_shape_preserved(self, small_weight, cfg_sym):
@@ -138,6 +141,7 @@ class TestQuantizeWeight:
 # Dequantization / round-trip
 # ---------------------------------------------------------------------------
 
+
 class TestDequantize:
     def test_shape_preserved(self, small_weight, cfg_sym):
         q = GPTQQuantizer(cfg_sym)
@@ -170,9 +174,7 @@ class TestDequantize:
 
     def test_dequantize_empty_raises(self, cfg_sym):
         q = GPTQQuantizer(cfg_sym)
-        empty = QuantizedLayer(
-            weight_int=None, scale=None, zero_point=None, bits=4, group_size=128
-        )
+        empty = QuantizedLayer(weight_int=None, scale=None, zero_point=None, bits=4, group_size=128)
         with pytest.raises(ValueError):
             q.dequantize(empty)
 
@@ -180,6 +182,7 @@ class TestDequantize:
 # ---------------------------------------------------------------------------
 # bits_saved_ratio / misc
 # ---------------------------------------------------------------------------
+
 
 class TestBitsSavedRatio:
     def test_default(self):

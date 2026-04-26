@@ -1,9 +1,8 @@
 """Tests for task queue."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.workflow.task_queue import TaskQueue, Task
+from src.workflow.task_queue import Task, TaskQueue
 
 
 class TestTaskQueue:

@@ -13,7 +13,6 @@ from src.computer_use.screenshot_diff import (
     load_rgb_pixels,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -42,6 +41,7 @@ def _top_left_quadrant() -> tuple[list[list[int]], list[list[int]]]:
 # ---------------------------------------------------------------------------
 # ScreenshotDiff
 # ---------------------------------------------------------------------------
+
 
 class TestScreenshotDiffConstruction:
     def test_default_construction(self):
@@ -252,15 +252,25 @@ class TestScreenshotDiffValidation:
 class TestChangedRegionDataclass:
     def test_area_property(self):
         region = ChangedRegion(
-            x=10, y=20, width=100, height=50,
-            pixel_count=500, total_pixels=5000, ratio=0.1,
+            x=10,
+            y=20,
+            width=100,
+            height=50,
+            pixel_count=500,
+            total_pixels=5000,
+            ratio=0.1,
         )
         assert region.area == 5000
 
     def test_area_of_single_pixel(self):
         region = ChangedRegion(
-            x=0, y=0, width=1, height=1,
-            pixel_count=1, total_pixels=1, ratio=1.0,
+            x=0,
+            y=0,
+            width=1,
+            height=1,
+            pixel_count=1,
+            total_pixels=1,
+            ratio=1.0,
         )
         assert region.area == 1
 
@@ -274,8 +284,13 @@ class TestDiffResultDataclass:
 
     def test_custom_values(self):
         region = ChangedRegion(
-            x=0, y=0, width=10, height=10,
-            pixel_count=100, total_pixels=100, ratio=1.0,
+            x=0,
+            y=0,
+            width=10,
+            height=10,
+            pixel_count=100,
+            total_pixels=100,
+            ratio=1.0,
         )
         result = DiffResult(
             changed_regions=[region],
@@ -293,6 +308,7 @@ class TestLoadFunctions:
     def test_load_grayscale_pixels_type(self, tmp_path):
         try:
             from PIL import Image
+
             path = str(tmp_path / "test.png")
             img = Image.new("L", (5, 5), color=128)
             img.save(path)
@@ -306,6 +322,7 @@ class TestLoadFunctions:
     def test_load_rgb_pixels_type(self, tmp_path):
         try:
             from PIL import Image
+
             path = str(tmp_path / "test_rgb.png")
             img = Image.new("RGB", (4, 4), color=(255, 0, 0))
             img.save(path)

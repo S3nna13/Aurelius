@@ -1,7 +1,8 @@
 """Tests for analogy_engine — analogical reasoning engine."""
+
 from __future__ import annotations
 
-from src.reasoning.analogy_engine import AnalogyEngine, Analogy, Concept
+from src.reasoning.analogy_engine import Analogy, AnalogyEngine, Concept
 
 
 class TestConcept:

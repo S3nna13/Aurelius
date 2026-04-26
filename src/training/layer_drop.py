@@ -1,4 +1,4 @@
-"""Progressive Layer Dropping: skip transformer layers during training for speedup and regularization."""
+"""Progressive Layer Dropping: skip transformer layers during training for speedup and regularization."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ class LayerDropConfig:
         schedule: How drop rate changes over training — "linear", "constant", or "cosine".
         warmup_steps: Steps before any dropping begins (ramp from 0).
     """
+
     drop_rate: float = 0.2
     schedule: str = "linear"  # "linear" | "constant" | "cosine"
     warmup_steps: int = 100
@@ -155,9 +156,7 @@ class LayerDropTrainer:
         self.model.train()
 
         # Compute current drop rate
-        current_drop_rate = compute_drop_rate(
-            self.step_count, self.total_steps, self.config
-        )
+        current_drop_rate = compute_drop_rate(self.step_count, self.total_steps, self.config)
 
         # Generate layer mask
         n_layers = len(self.model.layers)
@@ -186,7 +185,7 @@ class LayerDropTrainer:
         self.step_count += 1
 
         # Clean up
-        if hasattr(self.model, '_layer_drop_input_ids'):
+        if hasattr(self.model, "_layer_drop_input_ids"):
             del self.model._layer_drop_input_ids
 
         return {
@@ -208,5 +207,5 @@ def estimate_speedup(n_layers: int, drop_rate: float) -> float:
     """
     active = n_layers * (1.0 - drop_rate)
     if active <= 0:
-        return float('inf')
+        return float("inf")
     return n_layers / active

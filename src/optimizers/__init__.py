@@ -1,6 +1,6 @@
 """Optimizer algorithms for Aurelius."""
 
-from .mup_scaling import MuPConfig, MuPScaler
+from .adabelief_optimizer import AdaBelief
 from .adafactor import (
     Adafactor,
     adafactor_factorized_second_moment,
@@ -10,11 +10,11 @@ from .lamb import LAMB, lamb_trust_ratio
 from .lookahead import Lookahead
 from .mars import Mars
 from .muonclip import MuonClip
+from .mup_scaling import MuPConfig, MuPScaler
 from .prodigy import Prodigy
 from .radam import RAdam, radam_rectification, radam_rho_inf, radam_rho_t
-from .schedule_free_adamw import ScheduleFreeAdamW
 from .ranger_optimizer import Ranger
-from .adabelief_optimizer import AdaBelief
+from .schedule_free_adamw import ScheduleFreeAdamW
 
 __all__ = [
     "MuPConfig",

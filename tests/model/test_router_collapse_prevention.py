@@ -10,7 +10,6 @@ from src.model.router_collapse_prevention import (
     router_z_loss,
 )
 
-
 N_LAYERS = 2
 D_MODEL = 64
 N_HEADS = 4

@@ -7,19 +7,21 @@ uncertainty decomposition distinct from the simpler uncertainty.py module.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class MCDropoutConfig:
     """Configuration for MC Dropout inference."""
+
     n_forward_passes: int = 10
     dropout_rate: float = 0.1
     temperature: float = 1.0
-    aggregate: str = "mean"   # "mean" | "majority_vote" | "entropy_weighted"
+    aggregate: str = "mean"  # "mean" | "majority_vote" | "entropy_weighted"
 
 
 class DropoutWrapper(nn.Module):
@@ -60,6 +62,7 @@ class DropoutWrapper(nn.Module):
                 elif isinstance(output, torch.Tensor):
                     return F.dropout(output, p=rate, training=True)
                 return output
+
             return hook
 
         for child in self.model.children():
@@ -70,8 +73,7 @@ class DropoutWrapper(nn.Module):
         """Set model to train mode but keep BatchNorm / LayerNorm in eval mode."""
         self.model.train()
         for module in self.model.modules():
-            if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d,
-                                   nn.BatchNorm3d, nn.LayerNorm)):
+            if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.LayerNorm)):
                 module.eval()
 
     def forward(self, input_ids: torch.Tensor) -> tuple:
@@ -83,7 +85,7 @@ class DropoutWrapper(nn.Module):
         for h in self._hooks:
             try:
                 h.remove()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
 
@@ -128,8 +130,8 @@ def compute_predictive_entropy(probs: torch.Tensor) -> torch.Tensor:
     Returns:
         (B, T) predictive entropy >= 0
     """
-    mean_p = probs.mean(dim=0)                                    # (B, T, V)
-    entropy = -(mean_p * torch.log(mean_p + 1e-9)).sum(dim=-1)   # (B, T)
+    mean_p = probs.mean(dim=0)  # (B, T, V)
+    entropy = -(mean_p * torch.log(mean_p + 1e-9)).sum(dim=-1)  # (B, T)
     return entropy
 
 
@@ -144,11 +146,11 @@ def compute_mutual_information(probs: torch.Tensor) -> torch.Tensor:
     Returns:
         (B, T) mutual information >= 0
     """
-    mean_p = probs.mean(dim=0)                                     # (B, T, V)
-    H_mean = -(mean_p * torch.log(mean_p + 1e-9)).sum(dim=-1)     # (B, T)
+    mean_p = probs.mean(dim=0)  # (B, T, V)
+    H_mean = -(mean_p * torch.log(mean_p + 1e-9)).sum(dim=-1)  # (B, T)
 
-    per_pass_H = -(probs * torch.log(probs + 1e-9)).sum(dim=-1)   # (n_passes, B, T)
-    mean_H = per_pass_H.mean(dim=0)                               # (B, T)
+    per_pass_H = -(probs * torch.log(probs + 1e-9)).sum(dim=-1)  # (n_passes, B, T)
+    mean_H = per_pass_H.mean(dim=0)  # (B, T)
 
     return (H_mean - mean_H).clamp(min=0.0)
 
@@ -170,7 +172,7 @@ def aggregate_predictions(
     probs = F.softmax(logits_stack, dim=-1)  # (n_passes, B, T, V)
 
     if method == "mean":
-        mean_probs = probs.mean(dim=0)        # (B, T, V)
+        mean_probs = probs.mean(dim=0)  # (B, T, V)
         return torch.log(mean_probs + 1e-9)
 
     elif method == "majority_vote":
@@ -186,9 +188,9 @@ def aggregate_predictions(
     elif method == "entropy_weighted":
         # Weight each pass inversely by its mean entropy
         per_pass_entropy = -(probs * torch.log(probs + 1e-9)).sum(dim=-1)  # (n_passes, B, T)
-        weights = 1.0 / (per_pass_entropy + 1e-9)                          # (n_passes, B, T)
-        weights = weights / weights.sum(dim=0, keepdim=True)               # normalize
-        weighted_probs = (probs * weights.unsqueeze(-1)).sum(dim=0)        # (B, T, V)
+        weights = 1.0 / (per_pass_entropy + 1e-9)  # (n_passes, B, T)
+        weights = weights / weights.sum(dim=0, keepdim=True)  # normalize
+        weighted_probs = (probs * weights.unsqueeze(-1)).sum(dim=0)  # (B, T, V)
         return torch.log(weighted_probs + 1e-9)
 
     else:
@@ -226,17 +228,15 @@ class MCDropoutInference:
         if self.config.temperature != 1.0:
             logits_stack = logits_stack / self.config.temperature
 
-        probs = F.softmax(logits_stack, dim=-1)   # (n_passes, B, T, V)
+        probs = F.softmax(logits_stack, dim=-1)  # (n_passes, B, T, V)
 
-        pred_entropy = compute_predictive_entropy(probs)   # (B, T)
-        mi = compute_mutual_information(probs)             # (B, T)
+        pred_entropy = compute_predictive_entropy(probs)  # (B, T)
+        mi = compute_mutual_information(probs)  # (B, T)
 
         epistemic = mi.mean().item()
         aleatoric = (pred_entropy - mi).clamp(min=0.0).mean().item()
 
-        aggregated_logits = aggregate_predictions(
-            logits_stack, method=self.config.aggregate
-        )
+        aggregated_logits = aggregate_predictions(logits_stack, method=self.config.aggregate)
 
         return {
             "logits": aggregated_logits,

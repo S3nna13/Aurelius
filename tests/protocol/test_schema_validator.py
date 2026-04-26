@@ -1,13 +1,12 @@
 """Tests for src/protocol/schema_validator.py"""
 
 import pytest
+
 from src.protocol.schema_validator import (
+    PROTOCOL_REGISTRY,
     MessageSchema,
     SchemaField,
-    SchemaType,
     SchemaValidator,
-    ValidationError,
-    PROTOCOL_REGISTRY,
 )
 
 

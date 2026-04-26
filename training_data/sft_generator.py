@@ -1,7 +1,7 @@
 import json
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 
 class SFTDataGenerator:
@@ -25,9 +25,7 @@ class SFTDataGenerator:
             "general": self.general_templates,
         }
 
-    def _build_conversation(
-        self, category: str, target_turns: int
-    ) -> List[Dict[str, str]]:
+    def _build_conversation(self, category: str, target_turns: int) -> list[dict[str, str]]:
         templates = self.template_map[category]
         human_prompt, gpt_response, follow_ups = self.rng.choice(templates)
         turns = [
@@ -45,17 +43,17 @@ class SFTDataGenerator:
             turns.append({"from": "gpt", "value": f_gpt})
         return turns
 
-    def generate_conversation(self, category: str) -> List[Dict[str, str]]:
+    def generate_conversation(self, category: str) -> list[dict[str, str]]:
         target = self.rng.randint(1, 5)
         return self._build_conversation(category, target)
 
-    def generate_single_turn(self, category: str) -> Dict[str, Any]:
+    def generate_single_turn(self, category: str) -> dict[str, Any]:
         return {"conversations": self._build_conversation(category, 1)}
 
-    def generate_multi_turn(self, category: str, num_turns: int) -> Dict[str, Any]:
+    def generate_multi_turn(self, category: str, num_turns: int) -> dict[str, Any]:
         return {"conversations": self._build_conversation(category, num_turns)}
 
-    def run(self, num_samples: int, output_dir: Union[str, Path]) -> None:
+    def run(self, num_samples: int, output_dir: str | Path) -> None:
         output_dir = Path(output_dir)
         sft_dir = output_dir / "sft"
         sft_dir.mkdir(parents=True, exist_ok=True)
@@ -361,7 +359,7 @@ class SFTDataGenerator:
                     "            return None\n"
                     "        return dict(row)\n"
                     "    except Exception as e:\n"
-                    "        logger.error(f\"Failed to fetch user {user_id}: {e}\")\n"
+                    '        logger.error(f"Failed to fetch user {user_id}: {e}")\n'
                     "        raise\n"
                     "```\n\n"
                     "Parameterized queries prevent injection by escaping values separately."
@@ -390,7 +388,7 @@ class SFTDataGenerator:
                             "        row = result.fetchone()\n"
                             "        return dict(row) if row else None\n"
                             "    except Exception as e:\n"
-                            "        logger.error(f\"Failed to fetch user {user_id}: {e}\")\n"
+                            '        logger.error(f"Failed to fetch user {user_id}: {e}")\n'
                             "        raise\n"
                             "```\n\n"
                             "The frozenset acts as a strict allowlist against injection."
@@ -414,7 +412,7 @@ class SFTDataGenerator:
                     "        yield\n"
                     "    finally:\n"
                     "        elapsed = time.perf_counter() - start\n"
-                    "        logging.info(f\"{label} took {elapsed*1000:.2f}ms\")\n"
+                    '        logging.info(f"{label} took {elapsed*1000:.2f}ms")\n'
                     "```\n\n"
                     "time.perf_counter() gives the highest-resolution timer available."
                 ),
@@ -436,9 +434,9 @@ class SFTDataGenerator:
                             "        elapsed = time.perf_counter() - start\n"
                             "        end_snapshot = tracemalloc.take_snapshot()\n"
                             "        tracemalloc.stop()\n"
-                            "        stats = end_snapshot.compare_to(start_snapshot, \"lineno\")\n"
+                            '        stats = end_snapshot.compare_to(start_snapshot, "lineno")\n'
                             "        total_diff = sum(s.size_diff for s in stats)\n"
-                            "        logging.info(f\"{label}: {elapsed*1000:.2f}ms, mem: {total_diff/1024:.2f}KB\")\n"
+                            '        logging.info(f"{label}: {elapsed*1000:.2f}ms, mem: {total_diff/1024:.2f}KB")\n'
                             "```"
                         ),
                     ),
@@ -450,7 +448,7 @@ class SFTDataGenerator:
                 (
                     "```python\n"
                     "from typing import Any, Dict\n\n"
-                    "def flatten_dict(d: Dict[str, Any], parent_key: str = \"\",\n"
+                    'def flatten_dict(d: Dict[str, Any], parent_key: str = "",\n'
                     '                 sep: str = ".") -> Dict[str, Any]:\n'
                     '    """Flatten a nested dict into dot-separated keys."""\n'
                     "    items: Dict[str, Any] = {}\n"
@@ -837,7 +835,7 @@ class SFTDataGenerator:
                     "                if expected is not Any and not isinstance(value, expected):\n"
                     "                    raise TypeError(\n"
                     "                        f\"Argument '{param_name}' expected {expected.__name__}, \"\n"
-                    "                        f\"got {type(value).__name__}\"\n"
+                    '                        f"got {type(value).__name__}"\n'
                     "                    )\n"
                     "        result = func(*args, **kwargs)\n"
                     "        if 'return' in hints:\n"

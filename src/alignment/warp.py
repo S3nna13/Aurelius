@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -81,9 +81,9 @@ def slerp_two(t: float, v0: Tensor, v1: Tensor, eps: float = 1e-8) -> Tensor:
 
 
 def merge_policies_slerp(
-    policy_state_dicts: List[Dict[str, Tensor]],
-    weights: Optional[List[float]] = None,
-) -> Dict[str, Tensor]:
+    policy_state_dicts: list[dict[str, Tensor]],
+    weights: list[float] | None = None,
+) -> dict[str, Tensor]:
     """SLERP-merge K policy state_dicts into one merged state_dict.
 
     The merge is performed iteratively: the first two policies are blended
@@ -109,9 +109,7 @@ def merge_policies_slerp(
         weights = [1.0 / K] * K
     else:
         if len(weights) != K:
-            raise ValueError(
-                f"len(weights)={len(weights)} must equal len(policy_state_dicts)={K}"
-            )
+            raise ValueError(f"len(weights)={len(weights)} must equal len(policy_state_dicts)={K}")
         total = sum(weights)
         weights = [w / total for w in weights]  # normalise
 
@@ -129,7 +127,7 @@ def merge_policies_slerp(
         # t = fraction of the running result that should come from policy i
         t = w_i / cumulative_weight if cumulative_weight > 0 else 0.0
 
-        new_merged: Dict[str, Tensor] = {}
+        new_merged: dict[str, Tensor] = {}
         for key in merged:
             v0 = merged[key]
             v1 = policy_state_dicts[i][key].float()
@@ -148,10 +146,10 @@ def merge_policies_slerp(
 
 
 def anchor_merge(
-    sft_state_dict: Dict[str, Tensor],
-    merged_state_dict: Dict[str, Tensor],
+    sft_state_dict: dict[str, Tensor],
+    merged_state_dict: dict[str, Tensor],
     alpha: float = 0.5,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """Linear interpolation between SFT (anchor) and merged policy.
 
     theta_final = (1 - alpha) * theta_sft + alpha * theta_merged
@@ -168,7 +166,7 @@ def anchor_merge(
     if not (0.0 <= alpha <= 1.0):
         raise ValueError(f"alpha must be in [0, 1], got {alpha}")
 
-    result: Dict[str, Tensor] = {}
+    result: dict[str, Tensor] = {}
     for key in sft_state_dict:
         sft_param = sft_state_dict[key].float()
         merged_param = merged_state_dict[key].float()
@@ -246,7 +244,7 @@ class WARPTrainer:
         self,
         input_ids: Tensor,
         n_steps: int = 10,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Fine-tune one policy with reward + KL penalty from SFT.
 
         Creates a fresh deep copy of the SFT model and optimises it for
@@ -313,7 +311,7 @@ class WARPTrainer:
         logger.info("WARP: training %d policies for %d steps each", self.n_policies, n_steps)
 
         # Phase 2: train K policies
-        policy_state_dicts: List[Dict[str, Tensor]] = []
+        policy_state_dicts: list[dict[str, Tensor]] = []
         for i in range(self.n_policies):
             logger.debug("WARP: training policy %d/%d", i + 1, self.n_policies)
             sd = self.train_policy(input_ids, n_steps=n_steps)

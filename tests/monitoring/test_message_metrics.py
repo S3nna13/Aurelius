@@ -1,20 +1,17 @@
 """Tests for message_metrics — instrumentation wrapper for MessageBus."""
-from __future__ import annotations
 
-import time
+from __future__ import annotations
 
 import pytest
 
 from src.monitoring.message_metrics import (
-    InstrumentedMessageBus,
+    DEFAULT_MESSAGE_METRICS,
+    MESSAGE_METRICS_REGISTRY,
     MessageMetrics,
     MessageMetricsConfig,
-    MESSAGE_METRICS_REGISTRY,
-    DEFAULT_MESSAGE_METRICS,
 )
 from src.monitoring.prometheus_metrics import MetricsCollector
 from src.multiagent.message_bus import AgentMessage, MessageBus
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,7 +35,9 @@ def test_record_sent_increments_counter():
     col = make_collector()
     mm = MessageMetrics(MessageMetricsConfig(collector=col))
     mm.record_sent(msg_type="alert", latency_seconds=0.01)
-    assert col.read_counter("aurelius_message_bus_messages_sent_total", {"msg_type": "alert"}) == 1.0
+    assert (
+        col.read_counter("aurelius_message_bus_messages_sent_total", {"msg_type": "alert"}) == 1.0
+    )
 
 
 def test_record_sent_records_histogram():
@@ -53,7 +52,9 @@ def test_record_sent_error_increments_error_counter():
     col = make_collector()
     mm = MessageMetrics(MessageMetricsConfig(collector=col))
     mm.record_sent(error=True)
-    assert col.read_counter("aurelius_message_bus_send_errors_total", {"msg_type": "unknown"}) == 1.0
+    assert (
+        col.read_counter("aurelius_message_bus_send_errors_total", {"msg_type": "unknown"}) == 1.0
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +66,10 @@ def test_record_received_increments_counter():
     col = make_collector()
     mm = MessageMetrics(MessageMetricsConfig(collector=col))
     mm.record_received(msg_type="alert", count=3)
-    assert col.read_counter("aurelius_message_bus_messages_received_total", {"msg_type": "alert"}) == 3.0
+    assert (
+        col.read_counter("aurelius_message_bus_messages_received_total", {"msg_type": "alert"})
+        == 3.0
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +96,9 @@ def test_instrumented_send_records_metrics():
     wrapped = mm.wrap(bus)
     msg = AgentMessage("alice", "bob", "greet", "hello")
     wrapped.send(msg)
-    assert col.read_counter("aurelius_message_bus_messages_sent_total", {"msg_type": "greet"}) == 1.0
+    assert (
+        col.read_counter("aurelius_message_bus_messages_sent_total", {"msg_type": "greet"}) == 1.0
+    )
 
 
 def test_instrumented_send_records_error_on_exception():
@@ -121,7 +127,10 @@ def test_instrumented_receive_records_metrics():
     wrapped = mm.wrap(bus)
     msgs = wrapped.receive("bob")
     assert len(msgs) == 1
-    assert col.read_counter("aurelius_message_bus_messages_received_total", {"msg_type": "alert"}) == 1.0
+    assert (
+        col.read_counter("aurelius_message_bus_messages_received_total", {"msg_type": "alert"})
+        == 1.0
+    )
 
 
 def test_instrumented_receive_no_metrics_when_empty():

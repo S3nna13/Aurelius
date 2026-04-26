@@ -1,9 +1,8 @@
 """Tests for CLI history store."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.cli.history_store import HistoryStore, HistoryEntry
+from src.cli.history_store import HistoryEntry, HistoryStore
 
 
 class TestHistoryStore:

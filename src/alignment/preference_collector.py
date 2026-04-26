@@ -65,11 +65,13 @@ class PreferenceCollector:
         """Convert each item to ChatML-style prompt/chosen/rejected dicts."""
         result = []
         for item in self._items:
-            result.append({
-                "prompt": item.prompt,
-                "chosen": [{"role": "assistant", "content": item.chosen}],
-                "rejected": [{"role": "assistant", "content": item.rejected}],
-            })
+            result.append(
+                {
+                    "prompt": item.prompt,
+                    "chosen": [{"role": "assistant", "content": item.chosen}],
+                    "rejected": [{"role": "assistant", "content": item.rejected}],
+                }
+            )
         return result
 
     def filter_by_annotator(self, annotator_id: str) -> list[PreferenceItem]:
@@ -83,9 +85,9 @@ class PreferenceCollector:
         if total == 0:
             avg_score_gap = 0.0
         else:
-            avg_score_gap = sum(
-                item.score_chosen - item.score_rejected for item in self._items
-            ) / total
+            avg_score_gap = (
+                sum(item.score_chosen - item.score_rejected for item in self._items) / total
+            )
         return {
             "total": total,
             "annotators": annotators,

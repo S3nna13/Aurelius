@@ -25,12 +25,12 @@ class OutlineNode:
 
     title: str
     level: int = 1  # 1 = section, 2 = subsection
-    children: list["OutlineNode"] = field(default_factory=list)
+    children: list[OutlineNode] = field(default_factory=list)
     content: str = ""
 
-    def to_flat_list(self) -> list["OutlineNode"]:
+    def to_flat_list(self) -> list[OutlineNode]:
         """Flatten the outline tree using DFS traversal."""
-        result: list["OutlineNode"] = [self]
+        result: list[OutlineNode] = [self]
         for child in self.children:
             result.extend(child.to_flat_list())
         return result
@@ -43,7 +43,7 @@ def _greedy_generate(
     temperature: float = 0.8,
 ) -> torch.Tensor:
     """Simple greedy/sampling generation using the model's forward pass."""
-    prompt_len = input_ids.shape[1]
+    input_ids.shape[1]
     output = model.generate(
         input_ids,
         max_new_tokens=max_new_tokens,
@@ -67,16 +67,14 @@ def generate_outline(
     Falls back to ["Section 1", "Section 2", ...] if parsing fails or yields
     too few sections.
     """
-    outline_prompt = (
-        f"Write an outline with {n_sections} sections for: {prompt}\n1."
-    )
+    outline_prompt = f"Write an outline with {n_sections} sections for: {prompt}\n1."
     prompt_ids = tokenizer_encode(outline_prompt)
     input_ids = torch.tensor(prompt_ids, dtype=torch.long).unsqueeze(0)
 
     with torch.no_grad():
         output = _greedy_generate(model, input_ids, max_new_tokens=max_new_tokens)
 
-    new_token_ids = output[0, len(prompt_ids):].tolist()
+    new_token_ids = output[0, len(prompt_ids) :].tolist()
     generated_text = "1." + tokenizer_decode(new_token_ids)
 
     # Parse numbered lines like "1. Title" or "2. Title"
@@ -91,10 +89,7 @@ def generate_outline(
 
     # Fallback: fill remaining slots with default section names
     if len(nodes) < n_sections:
-        fallback_nodes = [
-            OutlineNode(title=f"Section {i + 1}", level=1)
-            for i in range(n_sections)
-        ]
+        fallback_nodes = [OutlineNode(title=f"Section {i + 1}", level=1) for i in range(n_sections)]
         return fallback_nodes
 
     return nodes
@@ -110,7 +105,7 @@ def compute_coherence_score(prev_text: str, next_text: str) -> float:
 
     def get_trigrams(text: str) -> set[str]:
         text = text.lower()
-        return {text[i:i + 3] for i in range(len(text) - 2)}
+        return {text[i : i + 3] for i in range(len(text) - 2)}
 
     prev_trigrams = get_trigrams(prev_text)
     next_trigrams = get_trigrams(next_text)
@@ -161,16 +156,9 @@ class HierarchicalGenerator:
             Generated section content as a string.
         """
         if context:
-            section_prompt = (
-                f"{context}\n\n"
-                f"Section: {outline_node.title}\n"
-                f"Content:"
-            )
+            section_prompt = f"{context}\n\nSection: {outline_node.title}\nContent:"
         else:
-            section_prompt = (
-                f"Section: {outline_node.title}\n"
-                f"Content:"
-            )
+            section_prompt = f"Section: {outline_node.title}\nContent:"
 
         prompt_ids = self.encode(section_prompt)
         input_ids = torch.tensor(prompt_ids, dtype=torch.long).unsqueeze(0)
@@ -183,7 +171,7 @@ class HierarchicalGenerator:
                 temperature=self.config.temperature,
             )
 
-        new_token_ids = output[0, len(prompt_ids):].tolist()
+        new_token_ids = output[0, len(prompt_ids) :].tolist()
         return self.decode(new_token_ids)
 
     def generate_document(self, prompt: str) -> dict:
@@ -258,9 +246,7 @@ class HierarchicalGenerator:
             Revised section content as a string.
         """
         refine_prompt = (
-            f"Section title: {outline_node.title}\n"
-            f"Original content: {section}\n"
-            f"Revised content:"
+            f"Section title: {outline_node.title}\nOriginal content: {section}\nRevised content:"
         )
 
         prompt_ids = self.encode(refine_prompt)
@@ -274,5 +260,5 @@ class HierarchicalGenerator:
                 temperature=self.config.temperature,
             )
 
-        new_token_ids = output[0, len(prompt_ids):].tolist()
+        new_token_ids = output[0, len(prompt_ids) :].tolist()
         return self.decode(new_token_ids)

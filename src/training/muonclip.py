@@ -76,7 +76,7 @@ class MuonClip(Optimizer):
         Returns:
             Approximately orthogonal matrix of the same shape as G.
         """
-        assert G.ndim >= 2, "newton_schulz_orthogonalize requires a 2D+ tensor"
+        assert G.ndim >= 2, "newton_schulz_orthogonalize requires a 2D+ tensor"  # noqa: S101
 
         # Ensure tall (m >= n) for numerical stability; transpose back at the end
         transposed = G.shape[0] < G.shape[1]
@@ -192,8 +192,8 @@ class MuonClip(Optimizer):
                     exp_avg_sq.mul_(beta2).addcmul_(g, g, value=1.0 - beta2)
 
                     # Bias correction
-                    bias_corr1 = 1.0 - beta1 ** t
-                    bias_corr2 = 1.0 - beta2 ** t
+                    bias_corr1 = 1.0 - beta1**t
+                    bias_corr2 = 1.0 - beta2**t
                     step_size = lr * math.sqrt(bias_corr2) / bias_corr1
 
                     denom = exp_avg_sq.sqrt().add_(eps)

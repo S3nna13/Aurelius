@@ -1,7 +1,7 @@
 """Tests for portfolio_optimizer — mean-variance portfolio optimization."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.trading.portfolio_optimizer import PortfolioOptimizer, optimal_weights

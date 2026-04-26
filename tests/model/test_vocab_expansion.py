@@ -1,19 +1,19 @@
 """Tests for src/model/vocab_expansion.py."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.model.vocab_expansion import (
+    VocabExpander,
     VocabExpansionConfig,
     expand_embedding,
     expand_lm_head,
-    get_new_token_params,
     verify_expansion,
-    VocabExpander,
 )
 
 # ---------------------------------------------------------------------------
@@ -65,6 +65,7 @@ def base_lm_head() -> nn.Linear:
 # 1. VocabExpansionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_vocab_expansion_config_defaults():
     cfg = VocabExpansionConfig()
     assert cfg.init_strategy == "mean"
@@ -77,6 +78,7 @@ def test_vocab_expansion_config_defaults():
 # 2. expand_embedding output has correct vocab size
 # ---------------------------------------------------------------------------
 
+
 def test_expand_embedding_correct_vocab_size(base_embedding: nn.Embedding):
     cfg = VocabExpansionConfig(init_strategy="mean")
     new_emb = expand_embedding(base_embedding, N_NEW, cfg)
@@ -87,6 +89,7 @@ def test_expand_embedding_correct_vocab_size(base_embedding: nn.Embedding):
 # ---------------------------------------------------------------------------
 # 3. expand_embedding preserves old weights exactly
 # ---------------------------------------------------------------------------
+
 
 def test_expand_embedding_preserves_old_weights(base_embedding: nn.Embedding):
     cfg = VocabExpansionConfig(init_strategy="mean")
@@ -100,6 +103,7 @@ def test_expand_embedding_preserves_old_weights(base_embedding: nn.Embedding):
 # ---------------------------------------------------------------------------
 # 4. expand_embedding strategy="mean" — new rows ≈ mean of old rows
 # ---------------------------------------------------------------------------
+
 
 def test_expand_embedding_mean_strategy(base_embedding: nn.Embedding):
     cfg = VocabExpansionConfig(init_strategy="mean")
@@ -116,6 +120,7 @@ def test_expand_embedding_mean_strategy(base_embedding: nn.Embedding):
 # 5. expand_embedding strategy="zeros" — new rows = 0
 # ---------------------------------------------------------------------------
 
+
 def test_expand_embedding_zeros_strategy(base_embedding: nn.Embedding):
     cfg = VocabExpansionConfig(init_strategy="zeros")
     new_emb = expand_embedding(base_embedding, N_NEW, cfg)
@@ -126,6 +131,7 @@ def test_expand_embedding_zeros_strategy(base_embedding: nn.Embedding):
 # ---------------------------------------------------------------------------
 # 6. expand_embedding strategy="random" — new rows have non-zero variance
 # ---------------------------------------------------------------------------
+
 
 def test_expand_embedding_random_strategy_has_variance(base_embedding: nn.Embedding):
     torch.manual_seed(99)
@@ -141,6 +147,7 @@ def test_expand_embedding_random_strategy_has_variance(base_embedding: nn.Embedd
 # 7. expand_lm_head output has correct output dim
 # ---------------------------------------------------------------------------
 
+
 def test_expand_lm_head_correct_output_dim(base_lm_head: nn.Linear):
     cfg = VocabExpansionConfig(init_strategy="mean")
     new_head = expand_lm_head(base_lm_head, N_NEW, cfg)
@@ -151,6 +158,7 @@ def test_expand_lm_head_correct_output_dim(base_lm_head: nn.Linear):
 # ---------------------------------------------------------------------------
 # 8. expand_lm_head preserves old output rows exactly
 # ---------------------------------------------------------------------------
+
 
 def test_expand_lm_head_preserves_old_rows(base_lm_head: nn.Linear):
     cfg = VocabExpansionConfig(init_strategy="mean")
@@ -165,6 +173,7 @@ def test_expand_lm_head_preserves_old_rows(base_lm_head: nn.Linear):
 # 9. verify_expansion returns True for old_weights_preserved when correct
 # ---------------------------------------------------------------------------
 
+
 def test_verify_expansion_old_weights_preserved_true(base_embedding: nn.Embedding):
     cfg = VocabExpansionConfig(init_strategy="mean")
     new_emb = expand_embedding(base_embedding, N_NEW, cfg)
@@ -177,6 +186,7 @@ def test_verify_expansion_old_weights_preserved_true(base_embedding: nn.Embeddin
 # ---------------------------------------------------------------------------
 # 10. verify_expansion returns False for old_weights_preserved when weights differ
 # ---------------------------------------------------------------------------
+
 
 def test_verify_expansion_old_weights_preserved_false(base_embedding: nn.Embedding):
     cfg = VocabExpansionConfig(init_strategy="mean")
@@ -192,6 +202,7 @@ def test_verify_expansion_old_weights_preserved_false(base_embedding: nn.Embeddi
 # 11. VocabExpander.expand increases embedding vocab size
 # ---------------------------------------------------------------------------
 
+
 def test_vocab_expander_increases_embedding_size(model: AureliusTransformer):
     old_vocab = model.embed.weight.shape[0]
     cfg = VocabExpansionConfig(init_strategy="mean", freeze_existing=False)
@@ -206,6 +217,7 @@ def test_vocab_expander_increases_embedding_size(model: AureliusTransformer):
 # ---------------------------------------------------------------------------
 # 12. VocabExpander.expand — model runs forward successfully after expansion
 # ---------------------------------------------------------------------------
+
 
 def test_vocab_expander_forward_after_expansion(model: AureliusTransformer):
     cfg = VocabExpansionConfig(init_strategy="mean", freeze_existing=False)
@@ -228,6 +240,7 @@ def test_vocab_expander_forward_after_expansion(model: AureliusTransformer):
 # ---------------------------------------------------------------------------
 # 13. VocabExpander.get_param_groups returns two groups with different LRs
 # ---------------------------------------------------------------------------
+
 
 def test_vocab_expander_get_param_groups(model: AureliusTransformer):
     base_lr = 1e-4

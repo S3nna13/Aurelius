@@ -1,4 +1,5 @@
 """Tests for src/multiagent/parallel_consensus.py"""
+
 from __future__ import annotations
 
 import asyncio
@@ -15,18 +16,23 @@ from src.multiagent.parallel_consensus import (
     _hash_response,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
 
-def _make_response(provider: str = "local", response: str = "hello", confidence: float = 0.8) -> ProviderResponse:
-    return ProviderResponse(provider=provider, response=response, latency_ms=20.0, confidence=confidence)
+
+def _make_response(
+    provider: str = "local", response: str = "hello", confidence: float = 0.8
+) -> ProviderResponse:
+    return ProviderResponse(
+        provider=provider, response=response, latency_ms=20.0, confidence=confidence
+    )
 
 
 # ---------------------------------------------------------------------------
 # ProviderResponse dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_provider_response_fields():
     pr = ProviderResponse(provider="openai", response="hi", latency_ms=42.5, confidence=0.9)
@@ -68,6 +74,7 @@ def test_hash_response_contains_provider():
 # Engine construction
 # ---------------------------------------------------------------------------
 
+
 def test_default_providers():
     engine = ParallelConsensusEngine()
     assert set(engine._providers) == {"local", "openai", "anthropic"}
@@ -107,6 +114,7 @@ def test_remove_nonexistent_provider_no_error():
 # query_provider (async, deterministic stub)
 # ---------------------------------------------------------------------------
 
+
 def test_query_provider_returns_response():
     engine = ParallelConsensusEngine(providers=["local"])
     pr = asyncio.run(engine.query_provider("local", "test"))
@@ -128,6 +136,7 @@ def test_query_provider_deterministic():
 # gather_responses
 # ---------------------------------------------------------------------------
 
+
 def test_gather_responses_count():
     engine = ParallelConsensusEngine(providers=["a", "b", "c"])
     responses = asyncio.run(engine.gather_responses("prompt"))
@@ -144,6 +153,7 @@ def test_gather_responses_all_providers_represented():
 # ---------------------------------------------------------------------------
 # adjudicate — each strategy
 # ---------------------------------------------------------------------------
+
 
 def test_adjudicate_highest_confidence():
     engine = ParallelConsensusEngine(strategy=AdjudicationStrategy.HIGHEST_CONFIDENCE)
@@ -191,7 +201,11 @@ def test_adjudicate_weighted_picks_highest_confidence():
 
 def test_adjudicate_agreement_score_all_same():
     engine = ParallelConsensusEngine(strategy=AdjudicationStrategy.MAJORITY)
-    responses = [_make_response("a", "same"), _make_response("b", "same"), _make_response("c", "same")]
+    responses = [
+        _make_response("a", "same"),
+        _make_response("b", "same"),
+        _make_response("c", "same"),
+    ]
     result = engine.adjudicate(responses)
     assert result.agreement_score == pytest.approx(1.0)
 
@@ -224,6 +238,7 @@ def test_adjudicate_returns_consensus_result():
 # ---------------------------------------------------------------------------
 # consensus (end-to-end async)
 # ---------------------------------------------------------------------------
+
 
 def test_consensus_end_to_end():
     engine = ParallelConsensusEngine(providers=["local", "openai"])

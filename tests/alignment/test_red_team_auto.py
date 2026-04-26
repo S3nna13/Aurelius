@@ -38,9 +38,14 @@ TINY_CFG = AureliusConfig(
     max_seq_len=512,
 )
 
+
 # Byte-level tokenizer capped at vocab_size=256
-encode = lambda s: list(s.encode("utf-8", errors="replace"))[:256]
-decode = lambda ids: bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
+def encode(s):
+    return list(s.encode("utf-8", errors="replace"))[:256]
+
+
+def decode(ids):
+    return bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
 
 
 @pytest.fixture(scope="module")
@@ -66,6 +71,7 @@ def auto_red_teamer(tiny_model: AureliusTransformer) -> AutoRedTeamer:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = RedTeamConfig()
     assert cfg.n_attack_candidates == 8
@@ -76,6 +82,7 @@ def test_config_defaults():
 # 2. test_attack_templates_coverage
 # ---------------------------------------------------------------------------
 
+
 def test_attack_templates_coverage():
     required = {"direct", "roleplay", "hypothetical", "jailbreak_prefix"}
     assert required == set(ATTACK_TEMPLATES.keys())
@@ -85,6 +92,7 @@ def test_attack_templates_coverage():
 # 3. test_benign_actions_count
 # ---------------------------------------------------------------------------
 
+
 def test_benign_actions_count():
     assert len(BENIGN_ACTIONS) >= 3
 
@@ -92,6 +100,7 @@ def test_benign_actions_count():
 # ---------------------------------------------------------------------------
 # 4. test_generate_attack_prompt_contains_action
 # ---------------------------------------------------------------------------
+
 
 def test_generate_attack_prompt_contains_action():
     action = "bake a cake"
@@ -104,12 +113,10 @@ def test_generate_attack_prompt_contains_action():
 # 5. test_generate_attack_prompt_strategy_varies
 # ---------------------------------------------------------------------------
 
+
 def test_generate_attack_prompt_strategy_varies():
     action = "learn programming"
-    prompts = {
-        strategy: generate_attack_prompt(strategy, action)
-        for strategy in ATTACK_TEMPLATES
-    }
+    prompts = {strategy: generate_attack_prompt(strategy, action) for strategy in ATTACK_TEMPLATES}
     # Different strategies should produce different prompts
     assert len(set(prompts.values())) > 1, "All strategies produced the same prompt"
 
@@ -117,6 +124,7 @@ def test_generate_attack_prompt_strategy_varies():
 # ---------------------------------------------------------------------------
 # 6. test_check_safety_refusal_true
 # ---------------------------------------------------------------------------
+
 
 def test_check_safety_refusal_true():
     keywords = RedTeamConfig().safety_keywords
@@ -127,6 +135,7 @@ def test_check_safety_refusal_true():
 # 7. test_check_safety_refusal_false
 # ---------------------------------------------------------------------------
 
+
 def test_check_safety_refusal_false():
     keywords = RedTeamConfig().safety_keywords
     assert check_safety_refusal("Sure, here's how", keywords) is False
@@ -135,6 +144,7 @@ def test_check_safety_refusal_false():
 # ---------------------------------------------------------------------------
 # 8. test_compute_safety_score_refusal
 # ---------------------------------------------------------------------------
+
 
 def test_compute_safety_score_refusal():
     keywords = RedTeamConfig().safety_keywords
@@ -145,6 +155,7 @@ def test_compute_safety_score_refusal():
 # ---------------------------------------------------------------------------
 # 9. test_compute_safety_score_long_no_refusal
 # ---------------------------------------------------------------------------
+
 
 def test_compute_safety_score_long_no_refusal():
     keywords = RedTeamConfig().safety_keywords
@@ -157,6 +168,7 @@ def test_compute_safety_score_long_no_refusal():
 # ---------------------------------------------------------------------------
 # 10. test_greedy_generate_returns_string
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_generate_returns_string(tiny_model: AureliusTransformer):
     result = greedy_generate(
@@ -175,6 +187,7 @@ def test_greedy_generate_returns_string(tiny_model: AureliusTransformer):
 # 11. test_auto_red_teamer_attack_single_fields
 # ---------------------------------------------------------------------------
 
+
 def test_auto_red_teamer_attack_single_fields(auto_red_teamer: AutoRedTeamer):
     result = auto_red_teamer.attack_single("bake a cake", "direct", seed=0)
     assert isinstance(result, AttackResult)
@@ -190,6 +203,7 @@ def test_auto_red_teamer_attack_single_fields(auto_red_teamer: AutoRedTeamer):
 # ---------------------------------------------------------------------------
 # 12. test_auto_red_teamer_attack_suite_count
 # ---------------------------------------------------------------------------
+
 
 def test_auto_red_teamer_attack_suite_count(tiny_model: AureliusTransformer):
     actions = ["bake a cake", "learn programming"]
@@ -212,6 +226,7 @@ def test_auto_red_teamer_attack_suite_count(tiny_model: AureliusTransformer):
 # 13. test_safety_report_keys
 # ---------------------------------------------------------------------------
 
+
 def test_safety_report_keys(auto_red_teamer: AutoRedTeamer):
     actions = ["bake a cake"]
     results = auto_red_teamer.run_attack_suite(actions=actions)
@@ -230,6 +245,7 @@ def test_safety_report_keys(auto_red_teamer: AutoRedTeamer):
 # 14. test_safety_report_refusal_rate_range
 # ---------------------------------------------------------------------------
 
+
 def test_safety_report_refusal_rate_range(auto_red_teamer: AutoRedTeamer):
     actions = ["bake a cake", "write poetry"]
     results = auto_red_teamer.run_attack_suite(actions=actions)
@@ -240,6 +256,7 @@ def test_safety_report_refusal_rate_range(auto_red_teamer: AutoRedTeamer):
 # ---------------------------------------------------------------------------
 # 15. test_find_adversarial_prompts_list
 # ---------------------------------------------------------------------------
+
 
 def test_find_adversarial_prompts_list(auto_red_teamer: AutoRedTeamer):
     results = auto_red_teamer.find_adversarial_prompts("bake a cake", n_trials=4, seed=0)

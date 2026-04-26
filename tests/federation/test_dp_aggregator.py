@@ -168,9 +168,7 @@ def test_privacy_budget_remaining_clamps_negative() -> None:
 
 
 def test_dp_aggregation_result_frozen() -> None:
-    r = DPAggregationResult(
-        aggregated=[0.1], noise_added=[0.0], epsilon_used=0.5, num_clients=2
-    )
+    r = DPAggregationResult(aggregated=[0.1], noise_added=[0.0], epsilon_used=0.5, num_clients=2)
     try:
         r.num_clients = 3  # type: ignore[misc]
     except Exception:

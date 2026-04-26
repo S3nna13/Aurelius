@@ -2,7 +2,6 @@
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -93,7 +92,7 @@ class DynamicSparseAttention(nn.Module):
         self.dropout = nn.Dropout(config.dropout)
         self.scale = math.sqrt(head_dim)
 
-    def _gather_kv(self, k: Tensor, v: Tensor, indices: Tensor) -> Tuple[Tensor, Tensor]:
+    def _gather_kv(self, k: Tensor, v: Tensor, indices: Tensor) -> tuple[Tensor, Tensor]:
         """Gather sparse key and value vectors for each query position.
 
         Args:

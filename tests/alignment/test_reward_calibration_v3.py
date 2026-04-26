@@ -1,12 +1,11 @@
 """Tests for reward_calibration_v3: TemperatureScaler, HistogramBinCalibrator,
 ReliabilityDiagram, and PreferenceCalibrator."""
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
-
 from aurelius.alignment.reward_calibration_v3 import (
     HistogramBinCalibrator,
     PreferenceCalibrator,
@@ -21,6 +20,7 @@ torch.manual_seed(42)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_rewards_labels(n: int = N):
     rewards = torch.randn(n)
@@ -191,7 +191,7 @@ def test_preference_calibrator_calibration_error_returns_float_in_zero_one():
     """preference_calibration_error() must return a float in [0, 1]."""
     scaler = TemperatureScaler(init_temperature=1.0)
     pref_cal = PreferenceCalibrator(scaler)
-    reward_w = torch.randn(N) + 1.0   # winners slightly higher on average
+    reward_w = torch.randn(N) + 1.0  # winners slightly higher on average
     reward_l = torch.randn(N) - 1.0
     ece = pref_cal.preference_calibration_error(reward_w, reward_l)
     assert isinstance(ece, float)

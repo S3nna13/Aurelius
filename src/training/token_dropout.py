@@ -32,9 +32,7 @@ class TokenDropout:
         if not isinstance(p, (int, float)) or p < 0.0 or p > 1.0:
             raise ValueError(f"p must be in [0, 1], got {p!r}")
         if mode not in _VALID_MODES:
-            raise ValueError(
-                f"mode must be one of {_VALID_MODES}, got {mode!r}"
-            )
+            raise ValueError(f"mode must be one of {_VALID_MODES}, got {mode!r}")
         self.p = float(p)
         self.mask_token_id = int(mask_token_id)
         self.mode = mode
@@ -59,9 +57,7 @@ class TokenDropout:
 
         # Default loss mask: all positions contribute.
         if loss_mask is None:
-            new_loss_mask = torch.ones(
-                shape, dtype=torch.float32, device=device
-            )
+            new_loss_mask = torch.ones(shape, dtype=torch.float32, device=device)
         else:
             new_loss_mask = loss_mask.clone()
 

@@ -49,7 +49,7 @@ Usage::
 from __future__ import annotations
 
 import math
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 from torch.optim import Optimizer
@@ -125,20 +125,13 @@ class MechanicWrapper:
             r_min = r_max * (1e-6)
             log_min = math.log10(r_min)
             log_max = math.log10(r_max)
-            self._r = [
-                10.0 ** (log_min + (log_max - log_min) * k / (K - 1))
-                for k in range(K)
-            ]
+            self._r = [10.0 ** (log_min + (log_max - log_min) * k / (K - 1)) for k in range(K)]
 
         # Per-reference-lr bet amounts s_k (initialized to s_init each)
         # Shape: (K,)
-        self._s_k: torch.Tensor = torch.full(
-            (K,), s_init, dtype=torch.float64
-        )
+        self._s_k: torch.Tensor = torch.full((K,), s_init, dtype=torch.float64)
         # Reference LR tensor for vectorized update
-        self._r_tensor: torch.Tensor = torch.tensor(
-            self._r, dtype=torch.float64
-        )
+        self._r_tensor: torch.Tensor = torch.tensor(self._r, dtype=torch.float64)
 
         # Per-parameter state: previous parameter values to compute Δθ
         self._prev_params: dict[int, torch.Tensor] = {}
@@ -181,7 +174,7 @@ class MechanicWrapper:
         self.base_optimizer.load_state_dict(state["base_optimizer"])
         self._prev_params = {}  # prev_params are transient; reset on load
 
-    def step(self, closure: Optional[Callable[[], torch.Tensor]] = None) -> Optional[torch.Tensor]:
+    def step(self, closure: Callable[[], torch.Tensor] | None = None) -> torch.Tensor | None:
         """Perform a single Mechanic + base optimizer step.
 
         Algorithm 1 from arXiv:2306.00144:
@@ -199,7 +192,7 @@ class MechanicWrapper:
         Returns:
             Loss value if closure provided, else None.
         """
-        loss: Optional[torch.Tensor] = None
+        loss: torch.Tensor | None = None
         if closure is not None:
             with torch.enable_grad():
                 loss = closure()
@@ -210,9 +203,7 @@ class MechanicWrapper:
             for p in group["params"]:
                 if p.grad is not None:
                     if p.grad.is_sparse:
-                        raise RuntimeError(
-                            "MechanicWrapper does not support sparse gradients."
-                        )
+                        raise RuntimeError("MechanicWrapper does not support sparse gradients.")
                     params_with_grads.append(p)
 
         # ---- Step 2: Compute h_t = Σ <g_t, Δθ_{t-1}> ----

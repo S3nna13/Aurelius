@@ -7,15 +7,15 @@ import torch
 import torch.nn as nn
 
 from src.runtime.jit_cache import (
+    RUNTIME_REGISTRY,
     JITCache,
     JITCacheConfig,
-    RUNTIME_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def default_config() -> JITCacheConfig:
@@ -37,6 +37,7 @@ def tiny_inputs() -> list:
 # JITCacheConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestJITCacheConfig:
     def test_defaults(self):
         cfg = JITCacheConfig()
@@ -52,6 +53,7 @@ class TestJITCacheConfig:
 # ---------------------------------------------------------------------------
 # JITCache tests
 # ---------------------------------------------------------------------------
+
 
 class TestJITCache:
     def test_get_or_compile_returns_module(self, default_config, simple_linear, tiny_inputs):

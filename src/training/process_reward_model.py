@@ -18,8 +18,6 @@ Architecture:
 
 from __future__ import annotations
 
-from typing import Optional
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,10 +25,10 @@ import torch.nn.functional as F
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # PRMHead
 # ---------------------------------------------------------------------------
+
 
 class PRMHead(nn.Module):
     """Linear head: d_model -> 1 scalar reward per step position.
@@ -60,6 +58,7 @@ class PRMHead(nn.Module):
 # PRMLoss
 # ---------------------------------------------------------------------------
 
+
 class PRMLoss(nn.Module):
     """Binary cross-entropy loss over step positions only.
 
@@ -83,11 +82,11 @@ class PRMLoss(nn.Module):
         Returns:
             Scalar BCE loss over non-padded positions.
         """
-        mask = labels != -1                  # [B, S]
+        mask = labels != -1  # [B, S]
         if mask.sum() == 0:
-            return logits.sum() * 0.0       # differentiable zero
+            return logits.sum() * 0.0  # differentiable zero
 
-        valid_logits = logits[mask]          # [N]
+        valid_logits = logits[mask]  # [N]
         valid_labels = labels[mask].float()  # [N]
         return F.binary_cross_entropy_with_logits(valid_logits, valid_labels)
 
@@ -95,6 +94,7 @@ class PRMLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # ProcessRewardModel
 # ---------------------------------------------------------------------------
+
 
 class ProcessRewardModel(nn.Module):
     """PRM: scores each step in a reasoning chain.
@@ -136,7 +136,7 @@ class ProcessRewardModel(nn.Module):
     def _get_hidden_states(
         self,
         input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor],
+        attention_mask: torch.Tensor | None,
     ) -> torch.Tensor:
         """Run backbone and return final hidden states [B, T, d_model].
 
@@ -157,9 +157,7 @@ class ProcessRewardModel(nn.Module):
             handle.remove()
 
         if not captured:
-            raise RuntimeError(
-                "PRMHead hook failed to capture hidden states from backbone.norm"
-            )
+            raise RuntimeError("PRMHead hook failed to capture hidden states from backbone.norm")
 
         return captured[0]  # [B, T, d_model]
 
@@ -170,9 +168,9 @@ class ProcessRewardModel(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-    ) -> tuple[Optional[torch.Tensor], torch.Tensor]:
+        labels: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor | None, torch.Tensor]:
         """Score each step; optionally compute BCE loss.
 
         Args:
@@ -192,7 +190,7 @@ class ProcessRewardModel(nn.Module):
 
         # --- 2. Find step token positions -----------------------------------
         step_mask = input_ids == self.step_token_id  # [B, T] bool
-        step_counts = step_mask.sum(dim=1)           # [B]
+        step_counts = step_mask.sum(dim=1)  # [B]
         S = int(step_counts.max().item())
         if S == 0:
             # No step tokens -- return zeros [B, 1]
@@ -206,13 +204,15 @@ class ProcessRewardModel(nn.Module):
         for b in range(B):
             positions = step_mask[b].nonzero(as_tuple=False).squeeze(1)  # [n_b]
             n_b = positions.shape[0]
-            h_b = hidden[b, positions, :]   # [n_b, d_model]
+            h_b = hidden[b, positions, :]  # [n_b, d_model]
             if n_b < S:
                 pad = torch.zeros(
-                    S - n_b, self.config.d_model,
-                    device=hidden.device, dtype=hidden.dtype,
+                    S - n_b,
+                    self.config.d_model,
+                    device=hidden.device,
+                    dtype=hidden.dtype,
                 )
-                h_b = torch.cat([h_b, pad], dim=0)   # [S, d_model]
+                h_b = torch.cat([h_b, pad], dim=0)  # [S, d_model]
             step_hidden_list.append(h_b)
 
         step_hidden = torch.stack(step_hidden_list, dim=0)  # [B, S, d_model]
@@ -221,7 +221,7 @@ class ProcessRewardModel(nn.Module):
         # Reshape for linear: [B*S, d_model] -> [B*S] -> [B, S]
         flat_hidden = step_hidden.view(B * S, self.config.d_model)
         flat_logits = self.head.linear(flat_hidden).squeeze(-1)  # [B*S]
-        step_rewards = flat_logits.view(B, S)                    # [B, S]
+        step_rewards = flat_logits.view(B, S)  # [B, S]
 
         # Zero out padded positions (where there are no real steps)
         for b in range(B):
@@ -230,14 +230,16 @@ class ProcessRewardModel(nn.Module):
                 step_rewards[b, n_b:] = 0.0
 
         # --- 5. Loss --------------------------------------------------------
-        loss: Optional[torch.Tensor] = None
+        loss: torch.Tensor | None = None
         if labels is not None:
             # labels: [B, S_label]; S_label may differ from S
             S_label = labels.shape[1]
             if S_label < S:
                 pad_labels = torch.full(
-                    (B, S - S_label), -1,
-                    dtype=labels.dtype, device=labels.device,
+                    (B, S - S_label),
+                    -1,
+                    dtype=labels.dtype,
+                    device=labels.device,
                 )
                 labels = torch.cat([labels, pad_labels], dim=1)  # [B, S]
             elif S_label > S:
@@ -251,6 +253,7 @@ class ProcessRewardModel(nn.Module):
 # ---------------------------------------------------------------------------
 # StepDataCollator
 # ---------------------------------------------------------------------------
+
 
 class StepDataCollator:
     """Collates step-annotated examples for PRM training.
@@ -316,6 +319,7 @@ class StepDataCollator:
 # PRMInference
 # ---------------------------------------------------------------------------
 
+
 class PRMInference:
     """Best-of-N step selection using PRM scores.
 
@@ -361,7 +365,7 @@ class PRMInference:
     def score_chain(
         self,
         chain: str,
-        step_token: str = "\n\n",
+        step_token: str = "\n\n",  # noqa: S107
     ) -> list[float]:
         """Score each step in a single chain string.
 
@@ -391,19 +395,21 @@ class PRMInference:
 
         device = next(self.prm.parameters()).device
         input_ids = torch.tensor(
-            [input_ids_list], dtype=torch.long, device=device,
+            [input_ids_list],
+            dtype=torch.long,
+            device=device,
         )  # [1, T]
 
         self.prm.eval()
         _, step_rewards = self.prm(input_ids, labels=None)  # [1, S]
-        probs = torch.sigmoid(step_rewards[0])               # [S]
+        probs = torch.sigmoid(step_rewards[0])  # [S]
         return probs.tolist()
 
     @torch.no_grad()
     def select_best(
         self,
         candidates: list[list[str]],
-        step_token: str = "\n\n",
+        step_token: str = "\n\n",  # noqa: S107
     ) -> int:
         """Select the best candidate chain by aggregate step score.
 
@@ -438,6 +444,7 @@ class PRMInference:
 # Math-Shepherd: synthetic step label generation via MC rollouts
 # ---------------------------------------------------------------------------
 
+
 def generate_synthetic_step_labels(
     model: ProcessRewardModel,
     input_ids: torch.Tensor,
@@ -467,7 +474,7 @@ def generate_synthetic_step_labels(
         for pos in step_positions:
             # Score the prefix up to and including this step token
             prefix = input_ids[:, : pos + 1]  # [1, pos+1]
-            _, rewards = model(prefix)          # [1, S]
+            _, rewards = model(prefix)  # [1, S]
             # Use the last step's score as the rollout proxy
             if rewards.shape[1] > 0:
                 score = torch.sigmoid(rewards[0, -1]).item()

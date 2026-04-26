@@ -1,17 +1,15 @@
 """Tests for WARP: Weight Averaging Rewarded Policies."""
-import copy
-import pytest
+
 import torch
 import torch.nn as nn
 from torch import Tensor
 
 from src.alignment.warp import (
-    slerp_two,
-    merge_policies_slerp,
-    anchor_merge,
     WARPTrainer,
+    anchor_merge,
+    merge_policies_slerp,
+    slerp_two,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,6 +38,7 @@ def simple_reward_fn(logits: Tensor) -> Tensor:
 # 1. slerp_two at t=0.0 returns v0
 # ---------------------------------------------------------------------------
 
+
 def test_slerp_two_t0_returns_v0():
     torch.manual_seed(42)
     v0 = torch.randn(32)
@@ -52,6 +51,7 @@ def test_slerp_two_t0_returns_v0():
 # 2. slerp_two at t=1.0 returns v1
 # ---------------------------------------------------------------------------
 
+
 def test_slerp_two_t1_returns_v1():
     torch.manual_seed(42)
     v0 = torch.randn(32)
@@ -63,6 +63,7 @@ def test_slerp_two_t1_returns_v1():
 # ---------------------------------------------------------------------------
 # 3. slerp_two at t=0.5 returns a midpoint with approximately preserved norm
 # ---------------------------------------------------------------------------
+
 
 def test_slerp_two_t05_norm_preserved():
     torch.manual_seed(7)
@@ -86,6 +87,7 @@ def test_slerp_two_t05_norm_preserved():
 # 4. slerp_two output has same shape as inputs
 # ---------------------------------------------------------------------------
 
+
 def test_slerp_two_shape_preserved():
     v0 = torch.randn(3, 4, 5)
     v1 = torch.randn(3, 4, 5)
@@ -98,6 +100,7 @@ def test_slerp_two_shape_preserved():
 # ---------------------------------------------------------------------------
 # 5. merge_policies_slerp with 2 identical models returns same weights
 # ---------------------------------------------------------------------------
+
 
 def test_merge_policies_slerp_identical_models():
     sd = make_state_dict(seed=1)
@@ -114,21 +117,23 @@ def test_merge_policies_slerp_identical_models():
 # 6. merge_policies_slerp with 3 models doesn't crash, returns valid state_dict
 # ---------------------------------------------------------------------------
 
+
 def test_merge_policies_slerp_three_models():
     sds = [make_state_dict(seed=i) for i in range(3)]
     merged = merge_policies_slerp(sds)
 
     assert set(merged.keys()) == set(sds[0].keys()), "Merged state_dict keys must match"
     for key in merged:
-        assert merged[key].shape == sds[0][key].shape, (
-            f"Merged tensor shape mismatch for key {key}"
+        assert merged[key].shape == sds[0][key].shape, f"Merged tensor shape mismatch for key {key}"
+        assert torch.isfinite(merged[key]).all(), (
+            f"Merged weights contain non-finite values for {key}"
         )
-        assert torch.isfinite(merged[key]).all(), f"Merged weights contain non-finite values for {key}"
 
 
 # ---------------------------------------------------------------------------
 # 7. merge_policies_slerp with custom weights works
 # ---------------------------------------------------------------------------
+
 
 def test_merge_policies_slerp_custom_weights():
     sds = [make_state_dict(seed=i) for i in range(2)]
@@ -137,12 +142,15 @@ def test_merge_policies_slerp_custom_weights():
 
     assert set(merged.keys()) == set(sds[0].keys())
     for key in merged:
-        assert torch.isfinite(merged[key]).all(), f"Custom-weighted merge has non-finite values for {key}"
+        assert torch.isfinite(merged[key]).all(), (
+            f"Custom-weighted merge has non-finite values for {key}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 8. anchor_merge at alpha=0.0 returns SFT weights
 # ---------------------------------------------------------------------------
+
 
 def test_anchor_merge_alpha0_returns_sft():
     sft_sd = make_state_dict(seed=10)
@@ -159,6 +167,7 @@ def test_anchor_merge_alpha0_returns_sft():
 # 9. anchor_merge at alpha=1.0 returns merged weights
 # ---------------------------------------------------------------------------
 
+
 def test_anchor_merge_alpha1_returns_merged():
     sft_sd = make_state_dict(seed=10)
     merged_sd = make_state_dict(seed=20)
@@ -173,6 +182,7 @@ def test_anchor_merge_alpha1_returns_merged():
 # ---------------------------------------------------------------------------
 # 10. anchor_merge at alpha=0.5 is between SFT and merged
 # ---------------------------------------------------------------------------
+
 
 def test_anchor_merge_alpha05_is_midpoint():
     sft_sd = make_state_dict(seed=10)
@@ -189,6 +199,7 @@ def test_anchor_merge_alpha05_is_midpoint():
 # ---------------------------------------------------------------------------
 # 11. WARPTrainer.get_kl_penalty returns non-negative tensor
 # ---------------------------------------------------------------------------
+
 
 def test_warp_trainer_kl_penalty_nonnegative():
     torch.manual_seed(0)
@@ -211,6 +222,7 @@ def test_warp_trainer_kl_penalty_nonnegative():
 # ---------------------------------------------------------------------------
 # 12. WARPTrainer.train_policy returns a valid state_dict
 # ---------------------------------------------------------------------------
+
 
 def test_warp_trainer_train_policy_returns_state_dict():
     torch.manual_seed(1)
@@ -237,6 +249,7 @@ def test_warp_trainer_train_policy_returns_state_dict():
 # 13. WARPTrainer.run completes and returns an nn.Module
 # ---------------------------------------------------------------------------
 
+
 def test_warp_trainer_run_returns_module():
     torch.manual_seed(2)
     model = make_tiny_model(in_features=4, out_features=4)
@@ -255,6 +268,7 @@ def test_warp_trainer_run_returns_module():
 # 14. Final model weights differ from SFT model (training changed something)
 # ---------------------------------------------------------------------------
 
+
 def test_warp_trainer_run_changes_weights():
     torch.manual_seed(3)
     model = make_tiny_model(in_features=4, out_features=4)
@@ -264,9 +278,7 @@ def test_warp_trainer_run_changes_weights():
         # Push logits in a specific direction so training produces a gradient
         return logits.sum(dim=-1)
 
-    trainer = WARPTrainer(
-        model, dummy_reward, alpha=0.9, n_policies=2, lr=1e-2, kl_coef=0.01
-    )
+    trainer = WARPTrainer(model, dummy_reward, alpha=0.9, n_policies=2, lr=1e-2, kl_coef=0.01)
     input_ids = torch.randn(2, 4)
     final_model = trainer.run(input_ids, n_steps=5)
 

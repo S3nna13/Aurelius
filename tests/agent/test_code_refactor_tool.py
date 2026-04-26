@@ -25,14 +25,7 @@ def test_rename_symbol_module_scope(tool: CodeRefactorTool) -> None:
 
 
 def test_rename_symbol_function_scope(tool: CodeRefactorTool) -> None:
-    src = (
-        "def a():\n"
-        "    foo = 1\n"
-        "    return foo\n"
-        "def b():\n"
-        "    foo = 2\n"
-        "    return foo\n"
-    )
+    src = "def a():\n    foo = 1\n    return foo\ndef b():\n    foo = 2\n    return foo\n"
     result = tool.rename_symbol(src, "foo", "bar", scope="function")
     # Only the first function that defines/uses foo is renamed.
     tree = ast.parse(result.new_code)
@@ -86,9 +79,7 @@ def test_extract_function_creates_named_fn(tool: CodeRefactorTool) -> None:
 
 
 def test_add_type_hint_annotates(tool: CodeRefactorTool) -> None:
-    result = tool.add_type_hint(
-        "def f(x):\n    return x\n", "f", "x", "int"
-    )
+    result = tool.add_type_hint("def f(x):\n    return x\n", "f", "x", "int")
     assert "def f(x: int)" in result.new_code
     assert result.changes == 1
 
@@ -152,9 +143,7 @@ def test_large_file_handled(tool: CodeRefactorTool) -> None:
 
 
 def test_add_type_hint_missing_param_warns(tool: CodeRefactorTool) -> None:
-    result = tool.add_type_hint(
-        "def f(x):\n    return x\n", "f", "missing", "int"
-    )
+    result = tool.add_type_hint("def f(x):\n    return x\n", "f", "missing", "int")
     assert result.changes == 0
     assert result.warnings
 

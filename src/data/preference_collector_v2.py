@@ -13,45 +13,50 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Response:
     """A single model response with optional reward score and metadata."""
+
     text: str
-    score: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    score: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PreferencePair:
     """A chosen/rejected preference pair with margin information."""
+
     prompt: str
     chosen: Response
     rejected: Response
-    margin: float = 0.0          # chosen.score - rejected.score
+    margin: float = 0.0  # chosen.score - rejected.score
     source: str = "collected"
 
 
 @dataclass
 class CollectionConfig:
     """Configuration for the preference collection pipeline."""
-    n_candidates: int = 4            # best-of-N
-    min_margin: float = 0.1          # minimum score gap to accept pair
-    max_pairs_per_prompt: int = 3    # max pairs generated per prompt
-    dedup_threshold: float = 0.8     # text similarity threshold for dedup
-    include_ties: bool = False       # include pairs with margin=0
+
+    n_candidates: int = 4  # best-of-N
+    min_margin: float = 0.1  # minimum score gap to accept pair
+    max_pairs_per_prompt: int = 3  # max pairs generated per prompt
+    dedup_threshold: float = 0.8  # text similarity threshold for dedup
+    include_ties: bool = False  # include pairs with margin=0
 
 
 # ---------------------------------------------------------------------------
 # Text similarity utilities
 # ---------------------------------------------------------------------------
+
 
 def compute_text_similarity(a: str, b: str) -> float:
     """Jaccard similarity on word sets. Returns float in [0, 1].
@@ -86,16 +91,17 @@ def is_near_duplicate(
 # Scoring
 # ---------------------------------------------------------------------------
 
+
 def score_with_reward_model(
     prompt: str,
-    responses: List[str],
+    responses: list[str],
     reward_fn: Callable[[str, str], float],
-) -> List[Response]:
+) -> list[Response]:
     """Apply reward_fn to each (prompt, response) pair.
 
     Returns list of Response objects with scores populated.
     """
-    scored: List[Response] = []
+    scored: list[Response] = []
     for text in responses:
         score = reward_fn(prompt, text)
         scored.append(Response(text=text, score=score))
@@ -106,11 +112,12 @@ def score_with_reward_model(
 # Preference pair mining
 # ---------------------------------------------------------------------------
 
+
 def mine_preference_pairs(
     prompt: str,
-    responses: List[Response],
+    responses: list[Response],
     config: CollectionConfig,
-) -> List[PreferencePair]:
+) -> list[PreferencePair]:
     """Given N candidate responses with scores, mine preference pairs.
 
     Steps:
@@ -133,7 +140,7 @@ def mine_preference_pairs(
     # Sort descending by score
     sorted_responses = sorted(scored, key=lambda r: r.score, reverse=True)
 
-    pairs: List[PreferencePair] = []
+    pairs: list[PreferencePair] = []
 
     for i in range(len(sorted_responses)):
         for j in range(i + 1, len(sorted_responses)):
@@ -173,32 +180,35 @@ def mine_preference_pairs(
 # Dataset statistics
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DatasetStats:
     """Quality statistics for a preference dataset."""
+
     n_pairs: int
     n_prompts: int
     mean_margin: float
     std_margin: float
     min_margin: float
     max_margin: float
-    source_distribution: Dict[str, int]  # {source: count}
+    source_distribution: dict[str, int]  # {source: count}
 
 
 # ---------------------------------------------------------------------------
 # Dataset class
 # ---------------------------------------------------------------------------
 
+
 class PreferenceDatasetV2:
     """Manages a preference dataset with quality filtering and statistics."""
 
     def __init__(
         self,
-        pairs: Optional[List[PreferencePair]] = None,
+        pairs: list[PreferencePair] | None = None,
         config: CollectionConfig = None,
     ) -> None:
         self._config = config if config is not None else CollectionConfig()
-        self._pairs: List[PreferencePair] = []
+        self._pairs: list[PreferencePair] = []
         if pairs:
             for pair in pairs:
                 self.add(pair)
@@ -214,11 +224,11 @@ class PreferenceDatasetV2:
         self._pairs.append(pair)
         return True
 
-    def add_batch(self, pairs: List[PreferencePair]) -> int:
+    def add_batch(self, pairs: list[PreferencePair]) -> int:
         """Add multiple pairs. Returns count added."""
         return sum(1 for p in pairs if self.add(p))
 
-    def filter_by_margin(self, min_margin: float) -> "PreferenceDatasetV2":
+    def filter_by_margin(self, min_margin: float) -> PreferenceDatasetV2:
         """Return new dataset with only high-margin pairs."""
         filtered_pairs = [p for p in self._pairs if p.margin >= min_margin]
         new_ds = PreferenceDatasetV2(config=self._config)
@@ -246,7 +256,7 @@ class PreferenceDatasetV2:
         std_m = math.sqrt(variance)
 
         prompts = {p.prompt for p in self._pairs}
-        source_dist: Dict[str, int] = {}
+        source_dist: dict[str, int] = {}
         for p in self._pairs:
             source_dist[p.source] = source_dist.get(p.source, 0) + 1
 
@@ -260,11 +270,11 @@ class PreferenceDatasetV2:
             source_distribution=source_dist,
         )
 
-    def to_list(self) -> List[PreferencePair]:
+    def to_list(self) -> list[PreferencePair]:
         """Return all pairs as a list."""
         return list(self._pairs)
 
-    def to_dicts(self) -> List[Dict[str, str]]:
+    def to_dicts(self) -> list[dict[str, str]]:
         """Export as list of {'prompt', 'chosen', 'rejected'} dicts for DPO."""
         return [
             {
@@ -275,7 +285,7 @@ class PreferenceDatasetV2:
             for p in self._pairs
         ]
 
-    def sample(self, n: int, strategy: str = "random") -> List[PreferencePair]:
+    def sample(self, n: int, strategy: str = "random") -> list[PreferencePair]:
         """Sample n pairs.
 
         strategy:
@@ -311,12 +321,13 @@ class PreferenceDatasetV2:
 # Full pipeline collector
 # ---------------------------------------------------------------------------
 
+
 class PreferenceCollectorV2:
     """Full pipeline: generate candidates → score → mine pairs → filter → store."""
 
     def __init__(
         self,
-        generate_fn: Callable[[str], str],       # prompt → response
+        generate_fn: Callable[[str], str],  # prompt → response
         reward_fn: Callable[[str, str], float],  # (prompt, response) → score
         config: CollectionConfig = None,
     ) -> None:
@@ -328,8 +339,8 @@ class PreferenceCollectorV2:
     def collect(
         self,
         prompt: str,
-        n_candidates: Optional[int] = None,
-    ) -> List[PreferencePair]:
+        n_candidates: int | None = None,
+    ) -> list[PreferencePair]:
         """Generate N candidates, score, mine pairs. Return new pairs."""
         k = n_candidates if n_candidates is not None else self._config.n_candidates
 
@@ -349,8 +360,8 @@ class PreferenceCollectorV2:
 
     def collect_batch(
         self,
-        prompts: List[str],
-        n_candidates: Optional[int] = None,
+        prompts: list[str],
+        n_candidates: int | None = None,
     ) -> PreferenceDatasetV2:
         """Collect from all prompts. Return dataset with all collected pairs."""
         for prompt in prompts:

@@ -9,6 +9,7 @@ Implements:
 - soft_label_loss: KL divergence with temperature scaling
 - FeatureDistillTrainer: full training loop combining all losses
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,10 +19,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FeatDistillConfig:
@@ -37,6 +38,7 @@ class FeatDistillConfig:
 # ---------------------------------------------------------------------------
 # FeatureAdapter
 # ---------------------------------------------------------------------------
+
 
 class FeatureAdapter(nn.Module):
     """Project student features into teacher feature space.
@@ -69,6 +71,7 @@ class FeatureAdapter(nn.Module):
 # Hook-based feature extraction
 # ---------------------------------------------------------------------------
 
+
 def extract_features(
     model: nn.Module,
     input_ids: Tensor,
@@ -98,6 +101,7 @@ def extract_features(
             else:
                 h = output
             hidden_states[idx] = h.detach()
+
         return hook
 
     for idx in layer_indices:
@@ -117,6 +121,7 @@ def extract_features(
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def compute_feature_loss(
     student_feats: dict[int, Tensor],
@@ -139,7 +144,9 @@ def compute_feature_loss(
     Returns:
         Scalar MSE loss (mean over valid pairs). Zero tensor if no valid pairs.
     """
-    device = next(iter(student_feats.values())).device if student_feats else torch.tensor(0.0).device
+    device = (
+        next(iter(student_feats.values())).device if student_feats else torch.tensor(0.0).device
+    )
     total = torch.zeros(1, device=device).squeeze()
     n_pairs = 0
 
@@ -186,8 +193,8 @@ def compute_attention_transfer_loss(
         Scalar MSE loss.
     """
     # Attention map: mean over feature dimension → (B, T)
-    s_attn = student_hidden.mean(dim=-1)   # (B, T)
-    t_attn = teacher_hidden.mean(dim=-1)   # (B, T)
+    s_attn = student_hidden.mean(dim=-1)  # (B, T)
+    t_attn = teacher_hidden.mean(dim=-1)  # (B, T)
 
     # L2 normalize over T dimension
     s_norm = F.normalize(s_attn, p=2, dim=-1)  # (B, T)
@@ -223,12 +230,13 @@ def soft_label_loss(
     teacher_soft = F.softmax(teacher_logits_flat.detach() / T, dim=-1)
 
     kl = F.kl_div(student_log_soft, teacher_soft, reduction="batchmean")
-    return kl * (T ** 2)
+    return kl * (T**2)
 
 
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class FeatureDistillTrainer:
     """Trains a student model using feature-level knowledge distillation.
@@ -292,6 +300,7 @@ class FeatureDistillTrainer:
                 def hook(module, inp, output):
                     h = output[0] if isinstance(output, (tuple, list)) else output
                     s_feats[idx] = h
+
                 return hook
 
             for idx in set(s_indices):
@@ -309,6 +318,7 @@ class FeatureDistillTrainer:
                 def hook(module, inp, output):
                     h = output[0] if isinstance(output, (tuple, list)) else output
                     t_feats[idx] = h
+
                 return hook
 
             for idx in set(t_indices):
@@ -339,7 +349,7 @@ class FeatureDistillTrainer:
         Returns:
             Tuple of (features dict, logits tensor).
         """
-        indices = list({idx for pair in self.config.layer_mapping for idx in pair})
+        list({idx for pair in self.config.layer_mapping for idx in pair})
         s_indices = [s for s, _ in self.config.layer_mapping]
         t_indices = [t for _, t in self.config.layer_mapping]
 
@@ -350,6 +360,7 @@ class FeatureDistillTrainer:
             def hook(module, inp, output):
                 h = output[0] if isinstance(output, (tuple, list)) else output
                 hidden_states[idx] = h
+
             return hook
 
         # Decide which indices to hook based on the model
@@ -405,6 +416,7 @@ class FeatureDistillTrainer:
             def hook(module, inp, output):
                 h = output[0] if isinstance(output, (tuple, list)) else output
                 teacher_feats[idx] = h.detach()
+
             return hook
 
         for idx in t_indices:
@@ -427,6 +439,7 @@ class FeatureDistillTrainer:
             def hook(module, inp, output):
                 h = output[0] if isinstance(output, (tuple, list)) else output
                 student_feats[idx] = h
+
             return hook
 
         for idx in s_indices:
@@ -521,6 +534,7 @@ class FeatureDistillTrainer:
                 def hook(module, inp, output):
                     h = output[0] if isinstance(output, (tuple, list)) else output
                     teacher_feats[idx] = h
+
                 return hook
 
             for idx in t_indices:
@@ -542,6 +556,7 @@ class FeatureDistillTrainer:
                 def hook(module, inp, output):
                     h = output[0] if isinstance(output, (tuple, list)) else output
                     student_feats[idx] = h
+
                 return hook
 
             for idx in s_indices:

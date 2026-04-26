@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.evaluation.calibration_scorer import (
+    CALIBRATION_SCORER_REGISTRY,
     CalibrationBin,
     CalibrationResult,
     CalibrationScorer,
-    CALIBRATION_SCORER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -26,19 +27,18 @@ def scorer():
 # CalibrationBin frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestCalibrationBinFrozen:
     def test_is_frozen(self):
         b = CalibrationBin(
-            bin_lower=0.0, bin_upper=0.1, count=10,
-            mean_confidence=0.05, mean_accuracy=0.05
+            bin_lower=0.0, bin_upper=0.1, count=10, mean_confidence=0.05, mean_accuracy=0.05
         )
         with pytest.raises((AttributeError, TypeError)):
             b.count = 5  # type: ignore[misc]
 
     def test_fields_accessible(self):
         b = CalibrationBin(
-            bin_lower=0.2, bin_upper=0.3, count=15,
-            mean_confidence=0.25, mean_accuracy=0.20
+            bin_lower=0.2, bin_upper=0.3, count=15, mean_confidence=0.25, mean_accuracy=0.20
         )
         assert b.bin_lower == 0.2
         assert b.bin_upper == 0.3
@@ -48,26 +48,22 @@ class TestCalibrationBinFrozen:
 
     def test_calibration_error_property_zero_when_perfectly_calibrated(self):
         b = CalibrationBin(
-            bin_lower=0.4, bin_upper=0.5, count=5,
-            mean_confidence=0.45, mean_accuracy=0.45
+            bin_lower=0.4, bin_upper=0.5, count=5, mean_confidence=0.45, mean_accuracy=0.45
         )
         assert math.isclose(b.calibration_error, 0.0, abs_tol=1e-12)
 
     def test_calibration_error_property_positive_when_miscalibrated(self):
         b = CalibrationBin(
-            bin_lower=0.8, bin_upper=0.9, count=10,
-            mean_confidence=0.85, mean_accuracy=0.60
+            bin_lower=0.8, bin_upper=0.9, count=10, mean_confidence=0.85, mean_accuracy=0.60
         )
         assert math.isclose(b.calibration_error, abs(0.85 - 0.60), rel_tol=1e-9)
 
     def test_calibration_error_symmetric(self):
         b1 = CalibrationBin(
-            bin_lower=0.0, bin_upper=0.1, count=5,
-            mean_confidence=0.9, mean_accuracy=0.1
+            bin_lower=0.0, bin_upper=0.1, count=5, mean_confidence=0.9, mean_accuracy=0.1
         )
         b2 = CalibrationBin(
-            bin_lower=0.0, bin_upper=0.1, count=5,
-            mean_confidence=0.1, mean_accuracy=0.9
+            bin_lower=0.0, bin_upper=0.1, count=5, mean_confidence=0.1, mean_accuracy=0.9
         )
         assert math.isclose(b1.calibration_error, b2.calibration_error, rel_tol=1e-9)
 
@@ -75,6 +71,7 @@ class TestCalibrationBinFrozen:
 # ---------------------------------------------------------------------------
 # CalibrationResult frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCalibrationResultFrozen:
     def test_is_frozen(self):
@@ -93,6 +90,7 @@ class TestCalibrationResultFrozen:
 # ---------------------------------------------------------------------------
 # score — basic correctness
 # ---------------------------------------------------------------------------
+
 
 class TestScore:
     def test_score_returns_calibration_result(self, scorer):
@@ -138,7 +136,7 @@ class TestScore:
         s = CalibrationScorer(num_bins=10)
         confidences = [0.55] * 10  # all land in the [0.5, 0.6) bin
         correct = [True] * 5 + [False] * 5  # accuracy = 0.5, mean_conf = 0.55
-        result = s.score(confidences, correct)
+        s.score(confidences, correct)
         # ECE should be abs(0.55 - 0.5) * 1.0 — not zero, but let's test a truly
         # perfect case: mean_confidence == mean_accuracy
         # Build a case where they must match exactly
@@ -188,9 +186,7 @@ class TestScore:
         # Verify ECE matches manual computation from result.bins
         total = result.num_samples
         manual_ece = sum(
-            (b.count / total) * b.calibration_error
-            for b in result.bins
-            if b.count > 0
+            (b.count / total) * b.calibration_error for b in result.bins if b.count > 0
         )
         assert math.isclose(result.ece, manual_ece, rel_tol=1e-9)
 
@@ -208,6 +204,7 @@ class TestScore:
 # ---------------------------------------------------------------------------
 # reliability_diagram_data
 # ---------------------------------------------------------------------------
+
 
 class TestReliabilityDiagramData:
     def test_returns_list_of_length_num_bins(self, scorer):
@@ -258,6 +255,7 @@ class TestReliabilityDiagramData:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

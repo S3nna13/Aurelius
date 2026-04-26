@@ -2,20 +2,18 @@
 
 Covers all 15 required test cases for WaitTokenForcer and WaitTokenForcerConfig.
 """
+
 from __future__ import annotations
 
-import pytest
-
 from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-END_THINK = 151645   # default end_think_token_id
-WAIT_TOK  = 151649   # default wait_token_id
-MIN_TOKS  = 64       # default min_thinking_tokens
+END_THINK = 151645  # default end_think_token_id
+WAIT_TOK = 151649  # default wait_token_id
+MIN_TOKS = 64  # default min_thinking_tokens
 
 
 def _seq(n: int, end_with_end_think: bool = False) -> list[int]:
@@ -35,6 +33,7 @@ def _long_seq_ending_end_think(length: int) -> list[int]:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = WaitTokenForcerConfig()
     assert cfg.end_think_token_id == 151645
@@ -48,10 +47,11 @@ def test_config_defaults():
 # 2. test_should_inject_true
 # ---------------------------------------------------------------------------
 
+
 def test_should_inject_true():
     """should_inject_wait returns True when all conditions are met."""
     forcer = WaitTokenForcer()
-    seq = _long_seq_ending_end_think(MIN_TOKS)   # length == min_thinking_tokens
+    seq = _long_seq_ending_end_think(MIN_TOKS)  # length == min_thinking_tokens
     assert forcer.should_inject_wait(seq) is True
 
 
@@ -59,10 +59,11 @@ def test_should_inject_true():
 # 3. test_should_inject_false_not_end_think
 # ---------------------------------------------------------------------------
 
+
 def test_should_inject_false_not_end_think():
     """Returns False when last token is not end_think_token_id."""
     forcer = WaitTokenForcer()
-    seq = [1] * MIN_TOKS   # last token is 1, not END_THINK
+    seq = [1] * MIN_TOKS  # last token is 1, not END_THINK
     assert forcer.should_inject_wait(seq) is False
 
 
@@ -70,17 +71,19 @@ def test_should_inject_false_not_end_think():
 # 4. test_should_inject_false_max_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_should_inject_false_max_tokens():
     """Returns False when sequence length == max_thinking_tokens."""
     cfg = WaitTokenForcerConfig(max_thinking_tokens=100)
     forcer = WaitTokenForcer(cfg)
-    seq = _long_seq_ending_end_think(100)   # exactly at the limit
+    seq = _long_seq_ending_end_think(100)  # exactly at the limit
     assert forcer.should_inject_wait(seq) is False
 
 
 # ---------------------------------------------------------------------------
 # 5. test_should_inject_false_max_injections
 # ---------------------------------------------------------------------------
+
 
 def test_should_inject_false_max_injections():
     """Returns False when injection counter has hit max_wait_injections."""
@@ -96,17 +99,19 @@ def test_should_inject_false_max_injections():
 # 6. test_should_inject_false_min_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_should_inject_false_min_tokens():
     """Returns False when sequence is shorter than min_thinking_tokens."""
     cfg = WaitTokenForcerConfig(min_thinking_tokens=10)
     forcer = WaitTokenForcer(cfg)
-    seq = _long_seq_ending_end_think(5)   # below minimum
+    seq = _long_seq_ending_end_think(5)  # below minimum
     assert forcer.should_inject_wait(seq) is False
 
 
 # ---------------------------------------------------------------------------
 # 7. test_inject_wait_replaces_end_think
 # ---------------------------------------------------------------------------
+
 
 def test_inject_wait_replaces_end_think():
     """inject_wait removes end_think, appends wait_token_id."""
@@ -122,10 +127,11 @@ def test_inject_wait_replaces_end_think():
 # 8. test_inject_wait_no_change_when_not_needed
 # ---------------------------------------------------------------------------
 
+
 def test_inject_wait_no_change_when_not_needed():
     """inject_wait returns the list unchanged when conditions aren't met."""
     forcer = WaitTokenForcer()
-    seq = [1] * MIN_TOKS   # last token is NOT end_think
+    seq = [1] * MIN_TOKS  # last token is NOT end_think
     result = forcer.inject_wait(seq)
     assert result == seq
 
@@ -133,6 +139,7 @@ def test_inject_wait_no_change_when_not_needed():
 # ---------------------------------------------------------------------------
 # 9. test_inject_increments_counter
 # ---------------------------------------------------------------------------
+
 
 def test_inject_increments_counter():
     """injections_used increments by 1 after each successful inject_wait."""
@@ -151,6 +158,7 @@ def test_inject_increments_counter():
 # 10. test_process_sequence_no_early_stop
 # ---------------------------------------------------------------------------
 
+
 def test_process_sequence_no_early_stop():
     """process_sequence with no end_think token → sequence unchanged, 0 injections."""
     forcer = WaitTokenForcer()
@@ -163,6 +171,7 @@ def test_process_sequence_no_early_stop():
 # ---------------------------------------------------------------------------
 # 11. test_process_sequence_one_injection
 # ---------------------------------------------------------------------------
+
 
 def test_process_sequence_one_injection():
     """process_sequence replaces a mid-sequence end_think with wait_token_id."""
@@ -180,6 +189,7 @@ def test_process_sequence_one_injection():
 # ---------------------------------------------------------------------------
 # 12. test_process_sequence_max_injections
 # ---------------------------------------------------------------------------
+
 
 def test_process_sequence_max_injections():
     """process_sequence stops injecting once max_wait_injections is reached."""
@@ -199,6 +209,7 @@ def test_process_sequence_max_injections():
 # 13. test_reset_clears_counter
 # ---------------------------------------------------------------------------
 
+
 def test_reset_clears_counter():
     """reset() brings injections_used back to 0."""
     forcer = WaitTokenForcer()
@@ -212,6 +223,7 @@ def test_reset_clears_counter():
 # ---------------------------------------------------------------------------
 # 14. test_injection_stats_keys
 # ---------------------------------------------------------------------------
+
 
 def test_injection_stats_keys():
     """injection_stats() returns the correct keys and consistent values."""
@@ -232,6 +244,7 @@ def test_injection_stats_keys():
 # ---------------------------------------------------------------------------
 # 15. test_determinism
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     """Same input always produces same output (no randomness)."""

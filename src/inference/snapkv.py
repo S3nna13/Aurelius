@@ -16,15 +16,15 @@ Variable notation follows the paper:
 
 from __future__ import annotations
 
-from typing import Literal, Tuple
+from typing import Literal
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SnapKV Policy
 # ---------------------------------------------------------------------------
+
 
 class SnapKVPolicy:
     """Selects which KV-cache positions to retain using the SnapKV algorithm.
@@ -51,8 +51,8 @@ class SnapKVPolicy:
         if pool_method not in ("mean", "max"):
             raise ValueError(f"pool_method must be 'mean' or 'max', got {pool_method!r}")
 
-        self.window_size = window_size      # w
-        self.max_capacity = max_capacity    # k
+        self.window_size = window_size  # w
+        self.max_capacity = max_capacity  # k
         self.pool_method = pool_method
 
     # ------------------------------------------------------------------
@@ -124,7 +124,7 @@ class SnapKVPolicy:
 
         # Pool across heads  → (T_seq,)
         if self.pool_method == "mean":
-            imp = imp_per_head.mean(dim=0)   # imp_j
+            imp = imp_per_head.mean(dim=0)  # imp_j
         else:  # 'max'
             imp = imp_per_head.max(dim=0).values
 
@@ -150,6 +150,7 @@ class SnapKVPolicy:
 # ---------------------------------------------------------------------------
 # SnapKV Cache Compressor
 # ---------------------------------------------------------------------------
+
 
 class SnapKVCache:
     """Compresses keys and values using the SnapKV selection policy.
@@ -181,7 +182,7 @@ class SnapKVCache:
         keys: Tensor,
         values: Tensor,
         attention_weights: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Apply SnapKV compression to keys and values.
 
         Processes each item in the batch independently using the same
@@ -203,9 +204,7 @@ class SnapKVCache:
                 f"got {tuple(keys.shape)} vs {tuple(values.shape)}"
             )
         if keys.dim() != 4:
-            raise ValueError(
-                f"keys must be 4-D (B, n_heads, T, head_dim), got {keys.dim()}-D"
-            )
+            raise ValueError(f"keys must be 4-D (B, n_heads, T, head_dim), got {keys.dim()}-D")
         if attention_weights.dim() != 4:
             raise ValueError(
                 f"attention_weights must be 4-D (B, n_heads, T_obs, T), "
@@ -225,7 +224,7 @@ class SnapKVCache:
 
             # Gather: (n_heads, k_kept, head_dim)
             idx_exp = idx.unsqueeze(0).unsqueeze(-1).expand(n_heads, -1, head_dim)
-            ck = keys[b].gather(1, idx_exp)    # (n_heads, k_kept, head_dim)
+            ck = keys[b].gather(1, idx_exp)  # (n_heads, k_kept, head_dim)
             cv = values[b].gather(1, idx_exp)  # (n_heads, k_kept, head_dim)
 
             compressed_k_list.append(ck)

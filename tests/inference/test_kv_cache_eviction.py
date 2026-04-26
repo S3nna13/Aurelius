@@ -16,10 +16,10 @@ from src.inference.kv_cache_eviction import (
     select_victims,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 class FakeClock:
     """Deterministic, strictly-increasing ns clock for LRU/LFU assertions."""
@@ -41,6 +41,7 @@ def clock() -> FakeClock:
 # ---------------------------------------------------------------------------
 # Construction / validation
 # ---------------------------------------------------------------------------
+
 
 def test_construct_valid_defaults(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=1024, clock_ns=clock)
@@ -76,6 +77,7 @@ def test_construct_rejects_non_enum_policy():
 # admit — validation
 # ---------------------------------------------------------------------------
 
+
 def test_admit_rejects_negative_size(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=100, clock_ns=clock)
     with pytest.raises(EvictionError, match="size_bytes"):
@@ -97,6 +99,7 @@ def test_admit_rejects_non_cache_entry(clock):
 # ---------------------------------------------------------------------------
 # admit — basic behavior
 # ---------------------------------------------------------------------------
+
 
 def test_admit_empty_cache_returns_empty_decision(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=100, clock_ns=clock)
@@ -150,6 +153,7 @@ def test_admit_larger_than_capacity_raises(clock):
 # Policy-specific scenarios
 # ---------------------------------------------------------------------------
 
+
 def test_lru_evicts_least_recently_touched(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=30, clock_ns=clock)
     engine.admit(CacheEntry("A", 10))
@@ -169,7 +173,8 @@ def test_lfu_evicts_least_used(clock):
     engine.admit(CacheEntry("A", 10))
     engine.admit(CacheEntry("B", 10))
     engine.admit(CacheEntry("C", 10))
-    engine.touch("A"); engine.touch("A")
+    engine.touch("A")
+    engine.touch("A")
     engine.touch("B")
     decision = engine.admit(CacheEntry("D", 10))
     assert decision.evicted == ("C",)
@@ -198,7 +203,10 @@ def test_weighted_evicts_lowest_density(clock):
 
 def test_sink_preserving_pins_first_n_insertions(clock):
     engine = EvictionEngine(
-        EvictionPolicy.SINK_PRESERVING, capacity_bytes=40, sink_count=2, clock_ns=clock,
+        EvictionPolicy.SINK_PRESERVING,
+        capacity_bytes=40,
+        sink_count=2,
+        clock_ns=clock,
     )
     engine.admit(CacheEntry("S1", 10))
     engine.admit(CacheEntry("S2", 10))
@@ -214,7 +222,10 @@ def test_sink_preserving_pins_first_n_insertions(clock):
 
 def test_sink_preserving_never_evicts_even_when_they_are_lru(clock):
     engine = EvictionEngine(
-        EvictionPolicy.SINK_PRESERVING, capacity_bytes=20, sink_count=1, clock_ns=clock,
+        EvictionPolicy.SINK_PRESERVING,
+        capacity_bytes=20,
+        sink_count=1,
+        clock_ns=clock,
     )
     engine.admit(CacheEntry("SINK", 10))  # never touched again
     engine.admit(CacheEntry("X", 10))
@@ -227,7 +238,10 @@ def test_sink_preserving_never_evicts_even_when_they_are_lru(clock):
 
 def test_sink_preserving_with_sink_count_zero_behaves_like_lru(clock):
     sp = EvictionEngine(
-        EvictionPolicy.SINK_PRESERVING, capacity_bytes=30, sink_count=0, clock_ns=FakeClock(),
+        EvictionPolicy.SINK_PRESERVING,
+        capacity_bytes=30,
+        sink_count=0,
+        clock_ns=FakeClock(),
     )
     lru = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=30, clock_ns=FakeClock())
     for engine in (sp, lru):
@@ -244,7 +258,8 @@ def test_lru_honors_per_entry_is_sink_flag(clock):
     engine.admit(CacheEntry("A", 10, is_sink=True))  # pinned via flag
     engine.admit(CacheEntry("B", 10))
     engine.admit(CacheEntry("C", 10))
-    engine.touch("B"); engine.touch("C")  # A is still "oldest"
+    engine.touch("B")
+    engine.touch("C")  # A is still "oldest"
     decision = engine.admit(CacheEntry("D", 10))
     assert "A" in engine
     assert decision.evicted == ("B",)
@@ -252,7 +267,10 @@ def test_lru_honors_per_entry_is_sink_flag(clock):
 
 def test_re_admitting_sink_preserves_pin(clock):
     engine = EvictionEngine(
-        EvictionPolicy.SINK_PRESERVING, capacity_bytes=50, sink_count=1, clock_ns=clock,
+        EvictionPolicy.SINK_PRESERVING,
+        capacity_bytes=50,
+        sink_count=1,
+        clock_ns=clock,
     )
     engine.admit(CacheEntry("SINK", 10))
     engine.admit(CacheEntry("X", 10))
@@ -263,7 +281,9 @@ def test_re_admitting_sink_preserves_pin(clock):
     assert refresh.reason == "refresh"
     assert "SINK" in engine
     # Touching survivors must not touch SINK off.
-    engine.touch("X"); engine.touch("Y"); engine.touch("Z")
+    engine.touch("X")
+    engine.touch("Y")
+    engine.touch("Z")
     decision = engine.admit(CacheEntry("W", 10))
     assert "SINK" in engine
     assert decision.evicted  # a non-sink had to go
@@ -272,6 +292,7 @@ def test_re_admitting_sink_preserves_pin(clock):
 # ---------------------------------------------------------------------------
 # touch / evict
 # ---------------------------------------------------------------------------
+
 
 def test_touch_unknown_key_raises(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=100, clock_ns=clock)
@@ -300,6 +321,7 @@ def test_evict_unknown_raises(clock):
 # Introspection
 # ---------------------------------------------------------------------------
 
+
 def test_total_bytes_equals_sum_of_sizes(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=1000, clock_ns=clock)
     engine.admit(CacheEntry("a", 100))
@@ -324,7 +346,10 @@ def test_contains_len_and_keys(clock):
 
 def test_snapshot_is_json_serializable(clock):
     engine = EvictionEngine(
-        EvictionPolicy.WEIGHTED, capacity_bytes=100, sink_count=1, clock_ns=clock,
+        EvictionPolicy.WEIGHTED,
+        capacity_bytes=100,
+        sink_count=1,
+        clock_ns=clock,
     )
     engine.admit(CacheEntry("a", 20, weight=3.0, is_sink=True))
     engine.admit(CacheEntry("b", 10, weight=1.5))
@@ -343,6 +368,7 @@ def test_snapshot_is_json_serializable(clock):
 # ---------------------------------------------------------------------------
 # select_victims (pure function)
 # ---------------------------------------------------------------------------
+
 
 def _build_ctx():
     """Fixture context: A, B, C inserted in that order."""
@@ -391,7 +417,12 @@ def test_select_victims_weighted_picks_lowest_density():
 def test_select_victims_sink_preserving_pins_first_n():
     entries, uses, last, order = _build_ctx()
     chosen = select_victims(
-        EvictionPolicy.SINK_PRESERVING, entries, uses, last, order, sink_count=2,
+        EvictionPolicy.SINK_PRESERVING,
+        entries,
+        uses,
+        last,
+        order,
+        sink_count=2,
         bytes_needed=10,
     )
     # Only C is evictable; A and B are pinned even though B has the
@@ -403,8 +434,13 @@ def test_select_victims_raises_when_infeasible():
     entries, uses, last, order = _build_ctx()
     with pytest.raises(EvictionError, match="insufficient_capacity"):
         select_victims(
-            EvictionPolicy.SINK_PRESERVING, entries, uses, last, order,
-            sink_count=3, bytes_needed=10,
+            EvictionPolicy.SINK_PRESERVING,
+            entries,
+            uses,
+            last,
+            order,
+            sink_count=3,
+            bytes_needed=10,
         )
 
 
@@ -418,11 +454,12 @@ def test_select_victims_takes_multiple_keys_if_needed():
 # Determinism / tie-breaks
 # ---------------------------------------------------------------------------
 
+
 def test_deterministic_clock_drives_lru_choice(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=20, clock_ns=clock)
     engine.admit(CacheEntry("A", 10))  # touch_ns baseline 1000
     engine.admit(CacheEntry("B", 10))  # touch_ns baseline 1001
-    engine.touch("A")                   # A now newest
+    engine.touch("A")  # A now newest
     decision = engine.admit(CacheEntry("C", 10))  # must evict B
     assert decision.evicted == ("B",)
 
@@ -440,6 +477,7 @@ def test_lru_tie_break_is_insertion_order():
 # Registry
 # ---------------------------------------------------------------------------
 
+
 def test_eviction_policy_registry_is_complete():
     assert set(EVICTION_POLICY_REGISTRY.keys()) == {p.value for p in EvictionPolicy}
     for cls in EVICTION_POLICY_REGISTRY.values():
@@ -449,6 +487,7 @@ def test_eviction_policy_registry_is_complete():
 # ---------------------------------------------------------------------------
 # Large-scale sanity
 # ---------------------------------------------------------------------------
+
 
 def test_large_scale_stable_size(clock):
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=500, clock_ns=clock)
@@ -465,9 +504,13 @@ def test_large_scale_stable_size(clock):
 # Transactional property
 # ---------------------------------------------------------------------------
 
+
 def test_admit_is_transactional_on_failure(clock):
     engine = EvictionEngine(
-        EvictionPolicy.SINK_PRESERVING, capacity_bytes=20, sink_count=2, clock_ns=clock,
+        EvictionPolicy.SINK_PRESERVING,
+        capacity_bytes=20,
+        sink_count=2,
+        clock_ns=clock,
     )
     engine.admit(CacheEntry("S1", 10))
     engine.admit(CacheEntry("S2", 10))
@@ -486,7 +529,8 @@ def test_refresh_with_eviction(clock):
     engine.admit(CacheEntry("A", 10))
     engine.admit(CacheEntry("B", 10))
     engine.admit(CacheEntry("C", 10))
-    engine.touch("A"); engine.touch("C")  # B is LRU
+    engine.touch("A")
+    engine.touch("C")  # B is LRU
     decision = engine.admit(CacheEntry("A", 20))  # A grows; need 10 freed
     assert decision.reason == "refresh_with_eviction"
     assert decision.evicted == ("B",)

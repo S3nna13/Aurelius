@@ -1,16 +1,16 @@
 """Tests for ScheduleFreeAdamW and ScheduleFreeSGD optimizers."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.schedule_free import ScheduleFreeAdamW, ScheduleFreeSGD
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def tiny_linear():
     """Return a fresh nn.Linear(8, 4) with a fixed seed."""
@@ -20,12 +20,13 @@ def tiny_linear():
 
 def quadratic_loss(params_list):
     """Simple quadratic: sum of squared parameter values."""
-    return sum((p ** 2).sum() for p in params_list)
+    return sum((p**2).sum() for p in params_list)
 
 
 # ---------------------------------------------------------------------------
 # Test 1: ScheduleFreeAdamW default hyperparameters
 # ---------------------------------------------------------------------------
+
 
 def test_adamw_default_hyperparams():
     """ScheduleFreeAdamW must instantiate with documented defaults."""
@@ -44,6 +45,7 @@ def test_adamw_default_hyperparams():
 # Test 2: ScheduleFreeSGD default hyperparameters
 # ---------------------------------------------------------------------------
 
+
 def test_sgd_default_hyperparams():
     """ScheduleFreeSGD must instantiate with documented defaults."""
     model = tiny_linear()
@@ -60,6 +62,7 @@ def test_sgd_default_hyperparams():
 # Test 3: Adam variant reduces loss on quadratic over 20 steps
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_reduces_loss():
     """ScheduleFreeAdamW must reduce loss on f(x)=||x||^2 over 20 steps."""
     torch.manual_seed(0)
@@ -70,7 +73,7 @@ def test_adamw_reduces_loss():
     opt.train()
     for _ in range(20):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         losses.append(loss.item())
         loss.backward()
         opt.step()
@@ -84,6 +87,7 @@ def test_adamw_reduces_loss():
 # Test 4: SGD variant reduces loss on quadratic over 30 steps
 # ---------------------------------------------------------------------------
 
+
 def test_sgd_reduces_loss():
     """ScheduleFreeSGD must reduce loss on f(x)=||x||^2 over 30 steps."""
     torch.manual_seed(1)
@@ -94,7 +98,7 @@ def test_sgd_reduces_loss():
     opt.train()
     for _ in range(30):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         losses.append(loss.item())
         loss.backward()
         opt.step()
@@ -108,6 +112,7 @@ def test_sgd_reduces_loss():
 # Test 5: eval() mode switches to averaged weights (different from z)
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_eval_mode_differs_from_z():
     """After several steps, x (eval params) must differ from z (train params)."""
     torch.manual_seed(2)
@@ -117,7 +122,7 @@ def test_adamw_eval_mode_differs_from_z():
     opt.train()
     for _ in range(10):
         opt.zero_grad()
-        loss = (x_param ** 2).sum()
+        loss = (x_param**2).sum()
         loss.backward()
         opt.step()
 
@@ -138,6 +143,7 @@ def test_adamw_eval_mode_differs_from_z():
 # Test 6: train() mode switches back after eval()
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_train_restores_z():
     """train() after eval() must restore z-sequence into param.data."""
     torch.manual_seed(3)
@@ -147,14 +153,14 @@ def test_adamw_train_restores_z():
     opt.train()
     for _ in range(8):
         opt.zero_grad()
-        loss = (x_param ** 2).sum()
+        loss = (x_param**2).sum()
         loss.backward()
         opt.step()
 
     z_snapshot = x_param.data.clone()
 
-    opt.eval()                      # switch to x
-    opt.train()                     # switch back to z
+    opt.eval()  # switch to x
+    opt.train()  # switch back to z
 
     assert torch.allclose(x_param.data, z_snapshot), (
         "train() did not restore z-sequence after eval()"
@@ -164,6 +170,7 @@ def test_adamw_train_restores_z():
 # ---------------------------------------------------------------------------
 # Test 7: warmup_steps linearly ramps lr
 # ---------------------------------------------------------------------------
+
 
 def test_adamw_warmup_ramps_lr():
     """With warmup_steps=10, effective lr at step 1 < effective lr at step 10."""
@@ -189,17 +196,16 @@ def test_adamw_warmup_ramps_lr():
     for _ in range(10):
         p.grad = torch.ones_like(p)
         opt2.step()
-    p_before10 = p.data.clone()
+    p.data.clone()
     p.grad = torch.ones_like(p)
     # Read the update at exactly step 10 by looking at accumulated update
     # Instead, compare that step-1 update is smaller than the full-warmup update
     # We compare the states directly.
-    state1 = opt.state[p]["exp_avg"].item()
+    opt.state[p]["exp_avg"].item()
     # The key check: step 1 used warmup_factor 0.1, step 10 used 1.0
     # So first step's update size should be smaller
     # Check via z update difference stored in state
-    z_after_step1 = opt.state[p]["z"].item()
-    z_init = 5.0  # initial value of z
+    opt.state[p]["z"].item()
 
     # Effective update is step_size * exp_avg / denom
     # With beta1=0, exp_avg = grad = 1, step_size proportional to effective_lr
@@ -236,6 +242,7 @@ def test_adamw_warmup_ramps_lr():
 # Test 8: weight_decay shrinks parameter norms over time
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_weight_decay_shrinks_norms():
     """With weight_decay > 0, parameter norms should decrease over 20 steps."""
     torch.manual_seed(5)
@@ -266,6 +273,7 @@ def test_adamw_weight_decay_shrinks_norms():
 # Test 9: zero_grad + step without error (no closure)
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_zero_grad_step_no_error():
     """ScheduleFreeAdamW.step() without closure must not raise."""
     model = tiny_linear()
@@ -289,6 +297,7 @@ def test_adamw_zero_grad_step_no_error():
 # Test 10: step() with closure works
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_step_with_closure():
     """step(closure) must call closure and return loss value."""
     torch.manual_seed(6)
@@ -298,7 +307,7 @@ def test_adamw_step_with_closure():
 
     def closure():
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         loss.backward()
         return loss
 
@@ -310,6 +319,7 @@ def test_adamw_step_with_closure():
 # ---------------------------------------------------------------------------
 # Test 11: Multiple param groups work correctly
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_param_groups():
     """Both ScheduleFreeAdamW and SGD must handle multiple param groups."""
@@ -343,6 +353,7 @@ def test_multiple_param_groups():
 # Test 12: r=0.5 (recent-biased averaging) doesn't crash
 # ---------------------------------------------------------------------------
 
+
 def test_recent_biased_averaging_no_crash():
     """r=0.5 recent-biased averaging must run without errors for both variants."""
     torch.manual_seed(8)
@@ -352,7 +363,7 @@ def test_recent_biased_averaging_no_crash():
     opt_adam.train()
     for _ in range(10):
         opt_adam.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         loss.backward()
         opt_adam.step()
 
@@ -362,7 +373,7 @@ def test_recent_biased_averaging_no_crash():
     opt_sgd.train()
     for _ in range(10):
         opt_sgd.zero_grad()
-        loss = (y ** 2).sum()
+        loss = (y**2).sum()
         loss.backward()
         opt_sgd.step()
 
@@ -374,6 +385,7 @@ def test_recent_biased_averaging_no_crash():
 # Test 13: Calling eval() twice is idempotent
 # ---------------------------------------------------------------------------
 
+
 def test_eval_twice_is_idempotent():
     """Calling eval() twice must not crash and must give the same result."""
     torch.manual_seed(9)
@@ -383,7 +395,7 @@ def test_eval_twice_is_idempotent():
 
     for _ in range(5):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         loss.backward()
         opt.step()
 
@@ -402,6 +414,7 @@ def test_eval_twice_is_idempotent():
 # Test 14: Parameters after many steps differ between train and eval mode
 # ---------------------------------------------------------------------------
 
+
 def test_train_vs_eval_params_differ_after_many_steps():
     """After 50 steps, z (train) and x (eval) must be meaningfully different."""
     torch.manual_seed(10)
@@ -411,7 +424,7 @@ def test_train_vs_eval_params_differ_after_many_steps():
     opt.train()
     for _ in range(50):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         loss.backward()
         opt.step()
 

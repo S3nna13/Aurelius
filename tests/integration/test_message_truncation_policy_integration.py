@@ -6,8 +6,6 @@ and operates correctly on a real ChatML-produced message list.
 
 from __future__ import annotations
 
-import pytest
-
 import src.chat as chat
 from src.chat.chatml_template import ChatMLTemplate, Message
 
@@ -57,9 +55,7 @@ def test_prior_chat_entries_remain_intact_and_input_not_mutated():
     msgs = _render_and_parse(raw)
     snapshot = [dict(m) for m in msgs]
 
-    pol = chat.MessageTruncationPolicy(
-        "keep_system_and_last_n", max_turns=2
-    )
+    pol = chat.MessageTruncationPolicy("keep_system_and_last_n", max_turns=2)
     out = pol.apply(msgs)
 
     # Input list and its contents unchanged.
@@ -70,9 +66,7 @@ def test_prior_chat_entries_remain_intact_and_input_not_mutated():
 
 
 def test_summarize_strategy_integration_with_chatml_list():
-    raw = [
-        {"role": "user", "content": "x" * 40} for _ in range(6)
-    ]
+    raw = [{"role": "user", "content": "x" * 40} for _ in range(6)]
     msgs = _render_and_parse(raw)
 
     def summarize(batch):
@@ -88,7 +82,7 @@ def test_summarize_strategy_integration_with_chatml_list():
     assert any(m["content"].startswith("summary-of-") for m in out.messages)
     # Remaining non-summary messages are a suffix of the original.
     tail = [m for m in out.messages if not m["content"].startswith("summary-of-")]
-    assert tail == raw[-len(tail):]
+    assert tail == raw[-len(tail) :]
 
 
 def test_truncated_output_still_encodable_by_chatml():
@@ -99,9 +93,7 @@ def test_truncated_output_still_encodable_by_chatml():
         {"role": "user", "content": "again"},
     ]
     msgs = _render_and_parse(raw)
-    pol = chat.MessageTruncationPolicy(
-        "keep_system_and_last_n", max_turns=1
-    )
+    pol = chat.MessageTruncationPolicy("keep_system_and_last_n", max_turns=1)
     out = pol.apply(msgs)
 
     # The truncated list must itself round-trip through ChatML.

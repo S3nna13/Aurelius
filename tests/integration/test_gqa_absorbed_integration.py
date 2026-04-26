@@ -10,13 +10,13 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 
 # ---------------------------------------------------------------------------
 # Shared integration fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def integration_model() -> GQAAbsorbedAttention:
@@ -36,6 +36,7 @@ def integration_model() -> GQAAbsorbedAttention:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_integration_both_paths_match(integration_model: GQAAbsorbedAttention) -> None:
     """Standard and absorbed paths must agree to rtol=1e-4."""

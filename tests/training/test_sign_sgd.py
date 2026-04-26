@@ -17,6 +17,7 @@ Coverage targets (arXiv:1802.04434 and arXiv:2102.02888):
 13. 1-bit Adam: quantization scale = ||m_corrected||_1 / d
 14. 1-bit Adam: compressed gradient has exactly 2 unique absolute values (0 or α)
 """
+
 from __future__ import annotations
 
 import math
@@ -26,7 +27,6 @@ import torch
 import torch.nn as nn
 
 from src.training.sign_sgd import OneBitAdam, SignSGD
-
 
 # ============================================================================
 # Helpers
@@ -42,7 +42,7 @@ def _quadratic_params(n: int = 8, seed: int = 0):
 
 def _quadratic_loss(p: torch.Tensor) -> torch.Tensor:
     """L(θ) = ||θ||² — minimum at θ=0."""
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 # ============================================================================
@@ -97,9 +97,7 @@ def test_sign_sgd_correct_direction_quadratic():
     opt.step()
 
     # Each element should have moved closer to 0.
-    assert (p.detach().abs() < p_before.abs()).all(), (
-        "Not all elements moved toward zero."
-    )
+    assert (p.detach().abs() < p_before.abs()).all(), "Not all elements moved toward zero."
 
 
 # ============================================================================
@@ -146,14 +144,14 @@ def test_sign_sgd_weight_decay_changes_update():
     # Without wd: g_tilde = [1.0, 1.0]  → sign = [+1, +1]  (same here, so
     # pick a case where wd flips the sign)
     theta0 = torch.tensor([-3.0, 2.0], requires_grad=True)
-    g_raw = torch.tensor([0.1, -0.1])   # small gradient
+    g_raw = torch.tensor([0.1, -0.1])  # small gradient
     # g_tilde[0] = 0.1 + 0.1 * (-3) = -0.2  → sign = -1
     # g_tilde[1] = -0.1 + 0.1 * 2   = +0.1  → sign = +1
 
     p_wd = theta0.clone().detach().requires_grad_(True)
     p_wd.grad = g_raw.clone()
     opt_wd = SignSGD([p_wd], lr=lr, momentum=0.0, weight_decay=wd)
-    p_wd_before = p_wd.detach().clone()
+    p_wd.detach().clone()
     opt_wd.step()
 
     p_no_wd = theta0.clone().detach().requires_grad_(True)
@@ -215,9 +213,7 @@ def test_one_bit_adam_v_frozen_after_warmup():
 
     # v (live buffer) should equal v_frozen; v_frozen itself must be identical
     v_frozen = opt.state[p]["v_frozen"]
-    assert torch.equal(v_frozen, v_after_warmup), (
-        "v_frozen changed after warm-up ended."
-    )
+    assert torch.equal(v_frozen, v_after_warmup), "v_frozen changed after warm-up ended."
     # The running v buffer must not have changed either.
     assert torch.equal(opt.state[p]["v"], v_after_warmup), (
         "Running v buffer changed during compression phase."
@@ -252,7 +248,7 @@ def test_one_bit_adam_compression_quantized_values():
     denom = v_frozen.sqrt().add_(1e-8)
 
     # Recover the effective q_t from the param delta
-    delta = (p_before - p.detach()) * denom / 1e-3   # lr=1e-3
+    delta = (p_before - p.detach()) * denom / 1e-3  # lr=1e-3
 
     # All elements of delta should have the same absolute value (±α).
     # Use relative tolerance to handle float32 arithmetic rounding.
@@ -264,8 +260,7 @@ def test_one_bit_adam_compression_quantized_values():
     spread = (nonzero_abs.max() - nonzero_abs.min()).item()
     scale = nonzero_abs.mean().item()
     assert spread / (scale + 1e-12) < 1e-3, (
-        f"Expected all |delta| ≈ α, but spread/scale={spread/scale:.6f}. "
-        f"Values: {nonzero_abs}"
+        f"Expected all |delta| ≈ α, but spread/scale={spread / scale:.6f}. Values: {nonzero_abs}"
     )
 
 
@@ -296,7 +291,7 @@ def test_one_bit_adam_error_feedback_residual_small():
     e = opt.state[p]["e"]
     # Reconstruct m_corrected = q_t + e_t.  We recover q_t from the param delta.
     v_frozen = opt.state[p]["v_frozen"]
-    denom = v_frozen.sqrt().add_(1e-8)
+    v_frozen.sqrt().add_(1e-8)
     # (we don't have p_before here, but we can bound the residual differently)
     # By definition e_t = m_corrected - q_t where q_t = α * sign(m_corrected).
     # The residual |e_t[i]| = |m_corrected[i]| - α  (if sign nonzero).
@@ -477,8 +472,7 @@ def test_one_bit_adam_scale_formula():
     alpha_expected = (m_corrected.abs().sum() / d).item()
 
     assert math.isclose(alpha_observed, alpha_expected, rel_tol=1e-4), (
-        f"Scale mismatch: observed={alpha_observed:.6f}, "
-        f"expected={alpha_expected:.6f}"
+        f"Scale mismatch: observed={alpha_observed:.6f}, expected={alpha_expected:.6f}"
     )
 
 
@@ -527,5 +521,5 @@ def test_one_bit_adam_compressed_gradient_two_values():
     scale = nonzero_abs.mean().item()
     assert spread / (scale + 1e-12) < 1e-3, (
         f"Expected all |q_t| ≈ α (one unique scale), "
-        f"but spread/scale={spread/(scale+1e-12):.6f}. Values: {nonzero_abs}"
+        f"but spread/scale={spread / (scale + 1e-12):.6f}. Values: {nonzero_abs}"
     )

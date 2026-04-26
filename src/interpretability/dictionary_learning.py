@@ -6,6 +6,7 @@ Distinct from sae_trainer.py: this module learns an overcomplete dictionary
 by alternating minimization between sparse code assignment (Orthogonal
 Matching Pursuit) and a K-SVD-style atom-by-atom dictionary update.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,9 +39,7 @@ class DictionaryLearner:
         if n_atoms <= 0:
             raise ValueError(f"n_atoms must be > 0, got {n_atoms}")
         if sparsity_target <= 0:
-            raise ValueError(
-                f"sparsity_target must be > 0, got {sparsity_target}"
-            )
+            raise ValueError(f"sparsity_target must be > 0, got {sparsity_target}")
         if max_iters <= 0:
             raise ValueError(f"max_iters must be > 0, got {max_iters}")
         self.n_atoms = n_atoms
@@ -73,9 +72,7 @@ class DictionaryLearner:
         zero_mask = col_norms < 1e-10
         if zero_mask.any():
             n_zero = int(zero_mask.sum().item())
-            D[:, zero_mask] = torch.randn(
-                D_dim, n_zero, device=device, dtype=dtype
-            )
+            D[:, zero_mask] = torch.randn(D_dim, n_zero, device=device, dtype=dtype)
         return self._normalize_cols(D)
 
     # -------- public API --------
@@ -96,9 +93,7 @@ class DictionaryLearner:
         N, D_dim = X.shape
         D_dim2, K = D.shape
         if D_dim != D_dim2:
-            raise ValueError(
-                f"X/D dim mismatch: X has {D_dim}, D has {D_dim2}"
-            )
+            raise ValueError(f"X/D dim mismatch: X has {D_dim}, D has {D_dim2}")
         device, dtype = X.device, X.dtype
         alpha = torch.zeros(N, K, device=device, dtype=dtype)
         k_sparse = min(self.sparsity_target, K, D_dim)
@@ -177,7 +172,7 @@ class DictionaryLearner:
             # rank-1 approximation via SVD
             try:
                 U, S, Vh = torch.linalg.svd(E_k, full_matrices=False)
-            except Exception:
+            except Exception:  # noqa: S112
                 continue
             if S.numel() == 0 or S[0].item() < 1e-12:
                 continue
@@ -202,9 +197,7 @@ class DictionaryLearner:
             eye = torch.eye(D_dim, device=X.device, dtype=X.dtype)
             D[:, :k] = eye[:, :k]
             if self.n_atoms > D_dim:
-                extra = torch.randn(
-                    D_dim, self.n_atoms - D_dim, device=X.device, dtype=X.dtype
-                )
+                extra = torch.randn(D_dim, self.n_atoms - D_dim, device=X.device, dtype=X.dtype)
                 D[:, D_dim:] = self._normalize_cols(extra)
             alpha = torch.zeros(N, self.n_atoms, device=X.device, dtype=X.dtype)
             return DictionaryResult(D=D, alpha=alpha, reconstruction_error=0.0, n_iters=0)
@@ -219,18 +212,12 @@ class DictionaryLearner:
             # soft-threshold with l1_lambda for gentle shrinkage (keeps
             # sparsity but dampens tiny coefficients).
             if self.l1_lambda > 0:
-                alpha = torch.sign(alpha) * torch.clamp(
-                    alpha.abs() - self.l1_lambda, min=0.0
-                )
+                alpha = torch.sign(alpha) * torch.clamp(alpha.abs() - self.l1_lambda, min=0.0)
             D, alpha = self._ksvd_update(X, D, alpha)
             recon = alpha @ D.T
             err = float(((X - recon) ** 2).mean().item())
             if abs(prev_err - err) < self.tol:
-                return DictionaryResult(
-                    D=D, alpha=alpha, reconstruction_error=err, n_iters=it
-                )
+                return DictionaryResult(D=D, alpha=alpha, reconstruction_error=err, n_iters=it)
             prev_err = err
 
-        return DictionaryResult(
-            D=D, alpha=alpha, reconstruction_error=err, n_iters=self.max_iters
-        )
+        return DictionaryResult(D=D, alpha=alpha, reconstruction_error=err, n_iters=self.max_iters)

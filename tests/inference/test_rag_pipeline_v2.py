@@ -8,25 +8,31 @@ import pytest
 import torch
 
 from src.inference.rag_pipeline_v2 import (
-    RAGConfig,
     Document,
     EmbeddingIndex,
-    build_rag_prompt,
-    score_document_relevance,
-    deduplicate_docs,
+    RAGConfig,
     RAGPipeline,
+    build_rag_prompt,
+    deduplicate_docs,
+    score_document_relevance,
 )
 
 DIM = 32
 
+
 # Tiny mock functions used across tests
-_mock_encoder = lambda text: torch.randn(DIM)
-_mock_generator = lambda prompt: "Generated response."
+def _mock_encoder(text):
+    return torch.randn(DIM)
+
+
+def _mock_generator(prompt):
+    return "Generated response."
 
 
 # ---------------------------------------------------------------------------
 # Helper: build a small index with n_docs random entries
 # ---------------------------------------------------------------------------
+
 
 def _make_index(n: int = 5, dim: int = DIM) -> EmbeddingIndex:
     idx = EmbeddingIndex(dim=dim)
@@ -38,6 +44,7 @@ def _make_index(n: int = 5, dim: int = DIM) -> EmbeddingIndex:
 # ---------------------------------------------------------------------------
 # 1. RAGConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_ragconfig_defaults():
     cfg = RAGConfig()
@@ -52,6 +59,7 @@ def test_ragconfig_defaults():
 # ---------------------------------------------------------------------------
 # 2. Document creation
 # ---------------------------------------------------------------------------
+
 
 def test_document_creation_basic():
     doc = Document(doc_id="d1", text="Hello world")
@@ -72,6 +80,7 @@ def test_document_creation_with_embedding_and_score():
 # 3. EmbeddingIndex add / len
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_index_add_increases_len():
     idx = EmbeddingIndex(dim=DIM)
     assert len(idx) == 0
@@ -84,6 +93,7 @@ def test_embedding_index_add_increases_len():
 # ---------------------------------------------------------------------------
 # 4. EmbeddingIndex search returns k docs
 # ---------------------------------------------------------------------------
+
 
 def test_embedding_index_search_returns_k_docs():
     idx = _make_index(n=10)
@@ -98,19 +108,19 @@ def test_embedding_index_search_returns_k_docs():
 # 5. EmbeddingIndex search returns docs sorted by score descending
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_index_search_sorted_by_score_desc():
     idx = _make_index(n=8)
     query_emb = torch.randn(DIM)
     results = idx.search(query_emb, k=5)
     scores = [d.score for d in results]
-    assert scores == sorted(scores, reverse=True), (
-        f"Results are not sorted descending: {scores}"
-    )
+    assert scores == sorted(scores, reverse=True), f"Results are not sorted descending: {scores}"
 
 
 # ---------------------------------------------------------------------------
 # 6. build_rag_prompt contains query
 # ---------------------------------------------------------------------------
+
 
 def test_build_rag_prompt_contains_query():
     cfg = RAGConfig()
@@ -125,6 +135,7 @@ def test_build_rag_prompt_contains_query():
 # 7. build_rag_prompt contains doc text
 # ---------------------------------------------------------------------------
 
+
 def test_build_rag_prompt_contains_doc_text():
     cfg = RAGConfig()
     doc_text = "This is a document about transformers."
@@ -138,6 +149,7 @@ def test_build_rag_prompt_contains_doc_text():
 # 8. score_document_relevance is in [-1, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_score_document_relevance_in_range():
     for _ in range(20):
         q = torch.randn(DIM)
@@ -150,6 +162,7 @@ def test_score_document_relevance_in_range():
 # ---------------------------------------------------------------------------
 # 9. deduplicate_docs removes identical embeddings
 # ---------------------------------------------------------------------------
+
 
 def test_deduplicate_docs_removes_identical():
     emb = torch.randn(DIM)
@@ -167,6 +180,7 @@ def test_deduplicate_docs_removes_identical():
 # ---------------------------------------------------------------------------
 # 10. deduplicate_docs keeps different docs
 # ---------------------------------------------------------------------------
+
 
 def test_deduplicate_docs_keeps_different():
     # Orthogonal embeddings -> cosine sim = 0, well below any reasonable threshold
@@ -186,6 +200,7 @@ def test_deduplicate_docs_keeps_different():
 # 11. RAGPipeline.encode_query is L2-normalized
 # ---------------------------------------------------------------------------
 
+
 def test_ragpipeline_encode_query_normalized():
     idx = _make_index(n=3)
     pipeline = RAGPipeline(_mock_encoder, _mock_generator, idx, RAGConfig())
@@ -198,6 +213,7 @@ def test_ragpipeline_encode_query_normalized():
 # 12. RAGPipeline.retrieve length <= k
 # ---------------------------------------------------------------------------
 
+
 def test_ragpipeline_retrieve_length_lte_k():
     idx = _make_index(n=5)
     cfg = RAGConfig(n_docs=3, deduplicate=False)
@@ -209,6 +225,7 @@ def test_ragpipeline_retrieve_length_lte_k():
 # ---------------------------------------------------------------------------
 # 13. RAGPipeline.generate returns tuple (str, list)
 # ---------------------------------------------------------------------------
+
 
 def test_ragpipeline_generate_returns_tuple():
     idx = _make_index(n=5)
@@ -225,6 +242,7 @@ def test_ragpipeline_generate_returns_tuple():
 # 14. get_retrieval_stats keys present
 # ---------------------------------------------------------------------------
 
+
 def test_get_retrieval_stats_keys_present():
     idx = _make_index(n=4)
     pipeline = RAGPipeline(_mock_encoder, _mock_generator, idx, RAGConfig())
@@ -240,6 +258,7 @@ def test_get_retrieval_stats_keys_present():
 # 15. Empty index search returns empty list
 # ---------------------------------------------------------------------------
 
+
 def test_empty_index_search_returns_empty_list():
     idx = EmbeddingIndex(dim=DIM)
     query_emb = torch.randn(DIM)
@@ -250,6 +269,7 @@ def test_empty_index_search_returns_empty_list():
 # ---------------------------------------------------------------------------
 # 16. get_retrieval_stats with empty docs returns zeros
 # ---------------------------------------------------------------------------
+
 
 def test_get_retrieval_stats_empty_docs():
     idx = EmbeddingIndex(dim=DIM)

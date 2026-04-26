@@ -1,9 +1,10 @@
 """Tests for reward_shaper_v2 — advanced reward shaping utilities."""
+
 from __future__ import annotations
 
 import torch
 
-from src.simulation.reward_shaper_v2 import RewardShaperV2, shaped_reward, potential_based_reward
+from src.simulation.reward_shaper_v2 import RewardShaperV2, potential_based_reward, shaped_reward
 
 
 class TestShapedReward:

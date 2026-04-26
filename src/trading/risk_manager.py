@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import math
-import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
 
-from src.trading.portfolio import Portfolio, PortfolioMetrics
+from src.trading.portfolio import Portfolio
 
 RISK_REGISTRY: dict[str, RiskManager] = {}
 
@@ -70,16 +66,16 @@ class RiskManager:
 
         cash_pct = (metrics.cash / metrics.total_value * 100) if metrics.total_value > 0 else 100
         if cash_pct < self.rules.min_cash_pct:
-            violations.append(
-                f"Cash {cash_pct:.1f}% below minimum {self.rules.min_cash_pct}%"
-            )
+            violations.append(f"Cash {cash_pct:.1f}% below minimum {self.rules.min_cash_pct}%")
             score += 15
 
         for symbol, pos in self.portfolio.positions.items():
-            pos_pct = (pos.market_value / metrics.total_value * 100) if metrics.total_value > 0 else 0
+            pos_pct = (
+                (pos.market_value / metrics.total_value * 100) if metrics.total_value > 0 else 0
+            )
             if pos_pct > self.rules.max_concentration_pct:
                 violations.append(
-                    f"{symbol} concentration {pos_pct:.1f}% exceeds {self.rules.max_concentration_pct}%"
+                    f"{symbol} concentration {pos_pct:.1f}% exceeds {self.rules.max_concentration_pct}%"  # noqa: E501
                 )
                 score += 20
 
@@ -121,7 +117,11 @@ class RiskManager:
         cost = quantity * price
         if cost > self.portfolio.cash:
             return False
-        pos_pct = (cost / self.portfolio.total_equity() * 100) if self.portfolio.total_equity() > 0 else 100
+        pos_pct = (
+            (cost / self.portfolio.total_equity() * 100)
+            if self.portfolio.total_equity() > 0
+            else 100
+        )
         if pos_pct > self.rules.max_position_size_pct:
             return False
         return True
@@ -131,7 +131,7 @@ class RiskManager:
         return max_cost / price if price > 0 else 0
 
     def _compute_daily_returns(self) -> list[float]:
-        if hasattr(self.portfolio, '_equity_curve'):
+        if hasattr(self.portfolio, "_equity_curve"):
             curve = self.portfolio._equity_curve  # noqa: SLF001
             if len(curve) < 2:
                 return []
@@ -160,6 +160,6 @@ class RiskManager:
         if total == 0:
             return 0.0
         weights = [v / total for v in values]
-        hhi = sum(w ** 2 for w in weights)
+        hhi = sum(w**2 for w in weights)
         normalized = (hhi - 1 / len(values)) / (1 - 1 / len(values)) if len(values) > 1 else 1.0
         return normalized * 100

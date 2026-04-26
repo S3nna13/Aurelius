@@ -5,15 +5,15 @@ from __future__ import annotations
 import pytest
 
 from src.security.ip_allowlist import (
-    CIDRBlock,
     IP_ALLOWLIST_REGISTRY,
+    CIDRBlock,
     IPAllowlist,
 )
-
 
 # ---------------------------------------------------------------------------
 # CIDRBlock — construction
 # ---------------------------------------------------------------------------
+
 
 class TestCIDRBlockConstruction:
     def test_from_string_slash24(self):
@@ -58,6 +58,7 @@ class TestCIDRBlockConstruction:
 # CIDRBlock.contains
 # ---------------------------------------------------------------------------
 
+
 class TestCIDRBlockContains:
     def test_contains_ip_in_slash24(self):
         block = CIDRBlock.from_string("192.168.1.0/24")
@@ -87,7 +88,7 @@ class TestCIDRBlockContains:
         block = CIDRBlock.from_string("0.0.0.0/0")
         assert block.contains("1.2.3.4") is True
         assert block.contains("255.255.255.255") is True
-        assert block.contains("0.0.0.0") is True
+        assert block.contains("0.0.0.0") is True  # noqa: S104
 
     def test_loopback_in_range(self):
         block = CIDRBlock.from_string("127.0.0.0/8")
@@ -102,6 +103,7 @@ class TestCIDRBlockContains:
 # IPAllowlist — default behaviour
 # ---------------------------------------------------------------------------
 
+
 class TestIPAllowlistDefaults:
     def test_empty_allowlist_allows_all(self):
         al = IPAllowlist()
@@ -115,6 +117,7 @@ class TestIPAllowlistDefaults:
 # ---------------------------------------------------------------------------
 # IPAllowlist — allow blocks
 # ---------------------------------------------------------------------------
+
 
 class TestIPAllowlistAllow:
     def test_allow_block_permits_ip_in_range(self):
@@ -140,6 +143,7 @@ class TestIPAllowlistAllow:
 # IPAllowlist — deny blocks
 # ---------------------------------------------------------------------------
 
+
 class TestIPAllowlistDeny:
     def test_deny_block_blocks_ip(self):
         al = IPAllowlist()
@@ -163,6 +167,7 @@ class TestIPAllowlistDeny:
 # ---------------------------------------------------------------------------
 # IPAllowlist.check
 # ---------------------------------------------------------------------------
+
 
 class TestIPAllowlistCheck:
     def test_check_returns_dict_with_required_keys(self):
@@ -202,6 +207,7 @@ class TestIPAllowlistCheck:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

@@ -12,7 +12,6 @@ from src.retrieval.code_aware_tokenizer import (
     CodeAwareTokenizer,
 )
 
-
 # --- language detection ---------------------------------------------------- #
 
 

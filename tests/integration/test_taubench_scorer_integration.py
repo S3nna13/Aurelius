@@ -21,8 +21,7 @@ from src.eval.taubench_scorer import (
     TauBenchTrajectory,
 )
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
-
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 # ---------------------------------------------------------------------------
 # Registry presence
@@ -219,9 +218,9 @@ def test_adversarial_malformed_trajectories_no_crash():
     bad_traj = TauBenchTrajectory(
         task_id="bad-001",
         turns=[
-            {"role": "assistant"},          # missing tool_calls key
+            {"role": "assistant"},  # missing tool_calls key
             {"role": "tool", "tool_calls": None},  # None tool_calls
-            {"role": "user", "tool_calls": 42},    # wrong type
+            {"role": "user", "tool_calls": 42},  # wrong type
         ],
         final_state={},
         success=False,

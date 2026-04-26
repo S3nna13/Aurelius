@@ -29,9 +29,7 @@ Registry
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch  # imported for project consistency; tensor ops used in per-position
 
@@ -46,8 +44,8 @@ from src.eval import BENCHMARK_REGISTRY
 class SpecAcceptConfig:
     """Hyper-parameters for the speculative acceptance evaluator."""
 
-    max_draft_len: int = 8   # K: maximum draft tokens per speculative step
-    n_trials: int = 1000     # Monte Carlo trial count (used by callers if needed)
+    max_draft_len: int = 8  # K: maximum draft tokens per speculative step
+    n_trials: int = 1000  # Monte Carlo trial count (used by callers if needed)
 
 
 # ---------------------------------------------------------------------------
@@ -72,9 +70,9 @@ class SpecStep:
                       (normally 1 in standard speculative decoding)
     """
 
-    draft_tokens: List[int]
-    accepted_tokens: List[int]
-    bonus_token: Optional[int] = None
+    draft_tokens: list[int]
+    accepted_tokens: list[int]
+    bonus_token: int | None = None
     target_calls: int = 1
 
 
@@ -125,14 +123,14 @@ class SpeculativeAcceptanceEval:
         Controls ``max_draft_len`` (K) and ``n_trials``.
     """
 
-    def __init__(self, config: Optional[SpecAcceptConfig] = None) -> None:
+    def __init__(self, config: SpecAcceptConfig | None = None) -> None:
         self.config = config or SpecAcceptConfig()
 
     # ------------------------------------------------------------------
     # Core metrics
     # ------------------------------------------------------------------
 
-    def compute_acceptance_rate(self, steps: List[SpecStep]) -> float:
+    def compute_acceptance_rate(self, steps: list[SpecStep]) -> float:
         """
         Empirical acceptance rate α = total_accepted / total_draft across
         all steps.
@@ -145,7 +143,7 @@ class SpeculativeAcceptanceEval:
         total_accepted = sum(len(s.accepted_tokens) for s in steps)
         return total_accepted / total_draft
 
-    def mean_accepted_per_step(self, steps: List[SpecStep]) -> float:
+    def mean_accepted_per_step(self, steps: list[SpecStep]) -> float:
         """
         Mean number of tokens generated per target-model call.
 
@@ -154,10 +152,7 @@ class SpeculativeAcceptanceEval:
         """
         if not steps:
             return 0.0
-        total = sum(
-            len(s.accepted_tokens) + (1 if s.bonus_token is not None else 0)
-            for s in steps
-        )
+        total = sum(len(s.accepted_tokens) + (1 if s.bonus_token is not None else 0) for s in steps)
         return total / len(steps)
 
     def theoretical_speedup(self, alpha: float, k: int) -> float:
@@ -191,7 +186,7 @@ class SpeculativeAcceptanceEval:
         # Numerically stable closed form
         return (1.0 - alpha ** (k + 1)) / (1.0 - alpha)
 
-    def per_position_acceptance(self, steps: List[SpecStep]) -> List[float]:
+    def per_position_acceptance(self, steps: list[SpecStep]) -> list[float]:
         """
         For each draft position ``i`` in ``0..K-1``, estimate the probability
         that the token at position ``i`` is accepted.
@@ -205,7 +200,7 @@ class SpeculativeAcceptanceEval:
         steps where that position existed.
         """
         K = self.config.max_draft_len
-        counts = torch.zeros(K, dtype=torch.float32)    # steps with token at pos i
+        counts = torch.zeros(K, dtype=torch.float32)  # steps with token at pos i
         accepted = torch.zeros(K, dtype=torch.float32)  # steps where pos i accepted
 
         for step in steps:
@@ -228,7 +223,7 @@ class SpeculativeAcceptanceEval:
     # Aggregate evaluation
     # ------------------------------------------------------------------
 
-    def evaluate(self, steps: List[SpecStep]) -> SpecEvalResult:
+    def evaluate(self, steps: list[SpecStep]) -> SpecEvalResult:
         """
         Compute all acceptance metrics from a list of :class:`SpecStep` objects.
 
@@ -263,7 +258,7 @@ class SpeculativeAcceptanceEval:
             draft_efficiency=alpha,  # same quantity by definition
         )
 
-    def aggregate(self, results: List[SpecEvalResult]) -> Dict[str, float]:
+    def aggregate(self, results: list[SpecEvalResult]) -> dict[str, float]:
         """
         Compute the mean of each scalar metric across *results*.
 
@@ -286,15 +281,11 @@ class SpeculativeAcceptanceEval:
             "acceptance_rate_mean": sum(r.acceptance_rate for r in results) / n,
             "speedup_mean": sum(r.theoretical_speedup for r in results) / n,
             "efficiency_mean": sum(r.draft_efficiency for r in results) / n,
-            "mean_accepted_per_step_mean": sum(
-                r.mean_accepted_per_step for r in results
-            ) / n,
+            "mean_accepted_per_step_mean": sum(r.mean_accepted_per_step for r in results) / n,
             "n_steps_mean": sum(r.n_steps for r in results) / n,
         }
 
-    def acceptance_curve(
-        self, alpha_range: List[float], k: int
-    ) -> Dict[float, float]:
+    def acceptance_curve(self, alpha_range: list[float], k: int) -> dict[float, float]:
         """
         Compute the theoretical speedup for each alpha value in *alpha_range*
         with draft length *k*.

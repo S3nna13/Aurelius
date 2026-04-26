@@ -29,8 +29,9 @@ from __future__ import annotations
 import logging
 import math
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 __all__ = ["PlanNode", "BeamPlanner"]
 
@@ -72,13 +73,13 @@ class PlanNode:
     """
 
     id: str
-    parent_id: Optional[str]
+    parent_id: str | None
     depth: int
     description: str
-    expected_tool: Optional[str]
+    expected_tool: str | None
     expected_effect: str
     score: float = 0.0
-    children: list["PlanNode"] = field(default_factory=list)
+    children: list[PlanNode] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -222,7 +223,7 @@ class BeamPlanner:
         if not isinstance(root, PlanNode):
             raise TypeError("root must be a PlanNode")
 
-        best_leaf: Optional[PlanNode] = None
+        best_leaf: PlanNode | None = None
         best_total = -math.inf
         best_depth = -1
         stack: list[tuple[PlanNode, float]] = [(root, 0.0)]
@@ -232,10 +233,7 @@ class BeamPlanner:
                 # Exclude the synthetic root from the sum.
                 total = running if node.parent_id is not None else 0.0
                 tiebreak_depth = node.depth
-                if (
-                    total > best_total
-                    or (total == best_total and tiebreak_depth > best_depth)
-                ):
+                if total > best_total or (total == best_total and tiebreak_depth > best_depth):
                     best_leaf = node
                     best_total = total
                     best_depth = tiebreak_depth
@@ -250,7 +248,7 @@ class BeamPlanner:
         index: dict[str, PlanNode] = {}
         self._index_tree(root, index)
         chain: list[PlanNode] = []
-        cur: Optional[PlanNode] = best_leaf
+        cur: PlanNode | None = best_leaf
         while cur is not None:
             chain.append(cur)
             if cur.parent_id is None:
@@ -301,13 +299,9 @@ class BeamPlanner:
         # passed to generate_fn purely as local context.
         return [node]
 
-    def _coerce_proposal(
-        self, raw: Any, parent: PlanNode
-    ) -> Optional[PlanNode]:
+    def _coerce_proposal(self, raw: Any, parent: PlanNode) -> PlanNode | None:
         if not isinstance(raw, dict):
-            _LOG.warning(
-                "dropping proposal of type %s (expected dict)", type(raw).__name__
-            )
+            _LOG.warning("dropping proposal of type %s (expected dict)", type(raw).__name__)
             return None
         missing = [k for k in _REQUIRED_KEYS if k not in raw]
         if missing:
@@ -317,9 +311,7 @@ class BeamPlanner:
         effect = raw.get("expected_effect")
         tool = raw.get("expected_tool")
         if not isinstance(description, str) or not isinstance(effect, str):
-            _LOG.warning(
-                "dropping proposal with non-string description/effect"
-            )
+            _LOG.warning("dropping proposal with non-string description/effect")
             return None
         if tool is not None and not isinstance(tool, str):
             _LOG.warning("dropping proposal with non-string expected_tool")
@@ -347,9 +339,7 @@ class BeamPlanner:
         try:
             value = float(value)
         except (TypeError, ValueError):
-            _LOG.warning(
-                "scorer_fn returned non-numeric %r; clamping to -inf", value
-            )
+            _LOG.warning("scorer_fn returned non-numeric %r; clamping to -inf", value)
             return -math.inf
         if math.isnan(value) or math.isinf(value):
             _LOG.warning("scorer_fn returned non-finite %r; clamping to -inf", value)

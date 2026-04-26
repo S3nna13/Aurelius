@@ -13,12 +13,12 @@ Reference:
 NOTE: This module is distinct from fisher_merge.py which provides a simpler
 batch-dataloader-based API.  Here we operate on raw Tensor samples.
 """
+
 from __future__ import annotations
 
 import copy
 import logging
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FisherMergeConfig:
     """Configuration for Fisher-weighted model merging.
@@ -42,6 +43,7 @@ class FisherMergeConfig:
         normalize: If True, normalize Fisher weights before merging.
         merge_strategy: One of "fisher_weighted", "diagonal_fim", "kronecker_approx".
     """
+
     n_samples: int = 64
     fisher_floor: float = 1e-6
     normalize: bool = True
@@ -51,6 +53,7 @@ class FisherMergeConfig:
 # ---------------------------------------------------------------------------
 # Diagonal Fisher estimation
 # ---------------------------------------------------------------------------
+
 
 def compute_diagonal_fisher(
     model: nn.Module,
@@ -131,6 +134,7 @@ def compute_diagonal_fisher(
 # Two-model Fisher-weighted merge
 # ---------------------------------------------------------------------------
 
+
 def fisher_merge_two(
     model_a: nn.Module,
     model_b: nn.Module,
@@ -200,6 +204,7 @@ def fisher_merge_two(
 # Apply state dict
 # ---------------------------------------------------------------------------
 
+
 def apply_state_dict(model: nn.Module, state_dict: dict[str, Tensor]) -> None:
     """Load a state dict into model in-place.
 
@@ -217,6 +222,7 @@ def apply_state_dict(model: nn.Module, state_dict: dict[str, Tensor]) -> None:
 # ---------------------------------------------------------------------------
 # RegMean merging
 # ---------------------------------------------------------------------------
+
 
 def regmean_merge(
     model_a: nn.Module,
@@ -268,6 +274,7 @@ def regmean_merge(
                     mag = inp[0].detach().float().norm().item()
                     magnitudes[layer_name] = magnitudes.get(layer_name, 0.0) + mag
                     counts[layer_name] = counts.get(layer_name, 0) + 1
+
             return _hook
 
         for name, module in model.named_modules():
@@ -280,7 +287,7 @@ def regmean_merge(
                 inp = sample if sample.dim() > 1 else sample.unsqueeze(0)
                 try:
                     model(inp)
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
         for h in hooks:
@@ -302,8 +309,7 @@ def regmean_merge(
     merged: dict[str, Tensor] = {}
 
     linear_prefixes: list[str] = [
-        name for name, module in model_a.named_modules()
-        if isinstance(module, nn.Linear)
+        name for name, module in model_a.named_modules() if isinstance(module, nn.Linear)
     ]
 
     def _find_prefix(param_name: str):
@@ -340,6 +346,7 @@ def regmean_merge(
 # ---------------------------------------------------------------------------
 # FisherMerger class
 # ---------------------------------------------------------------------------
+
 
 class FisherMerger:
     """High-level API for Fisher-weighted multi-model merging."""
@@ -388,15 +395,10 @@ class FisherMerger:
             return models[0].state_dict()
 
         # Compute Fisher for every model up-front
-        fishers = [
-            self.compute_fisher(model, data)
-            for model, data in zip(models, datasets)
-        ]
+        fishers = [self.compute_fisher(model, data) for model, data in zip(models, datasets)]
 
         # Iteratively merge pairs
-        current_state = fisher_merge_two(
-            models[0], models[1], fishers[0], fishers[1], self.config
-        )
+        current_state = fisher_merge_two(models[0], models[1], fishers[0], fishers[1], self.config)
 
         for i in range(2, len(models)):
             tmp_model = copy.deepcopy(models[0])
@@ -450,7 +452,7 @@ class FisherMerger:
                         )
                         total += loss.item()
                         count += 1
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
             return total / max(count, 1)
 

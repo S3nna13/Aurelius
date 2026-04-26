@@ -10,10 +10,10 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Data class
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MCPSession:
@@ -27,6 +27,7 @@ class MCPSession:
 # ---------------------------------------------------------------------------
 # SessionStore
 # ---------------------------------------------------------------------------
+
 
 class SessionStore:
     """In-memory session store with capacity limits and TTL expiry."""
@@ -65,9 +66,7 @@ class SessionStore:
         Raises ValueError if the store is at capacity.
         """
         if len(self._sessions) >= self._max_sessions:
-            raise ValueError(
-                f"Session store at capacity ({self._max_sessions} sessions)"
-            )
+            raise ValueError(f"Session store at capacity ({self._max_sessions} sessions)")
 
         now = time.monotonic()
         session_id = uuid.uuid4().hex[:16]
@@ -112,9 +111,7 @@ class SessionStore:
         """Remove all expired sessions.  Returns the count removed."""
         ts = self._now(now)
         to_delete = [
-            sid
-            for sid, session in self._sessions.items()
-            if self._is_expired(session, ts)
+            sid for sid, session in self._sessions.items() if self._is_expired(session, ts)
         ]
         for sid in to_delete:
             del self._sessions[sid]
@@ -123,11 +120,7 @@ class SessionStore:
     def active_count(self, now: float | None = None) -> int:
         """Return the number of non-expired sessions."""
         ts = self._now(now)
-        return sum(
-            1
-            for session in self._sessions.values()
-            if not self._is_expired(session, ts)
-        )
+        return sum(1 for session in self._sessions.values() if not self._is_expired(session, ts))
 
 
 # ---------------------------------------------------------------------------

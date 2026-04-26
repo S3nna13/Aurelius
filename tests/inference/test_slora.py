@@ -8,16 +8,13 @@ Test configuration: in_features=32, out_features=64, rank=4
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
 
 from src.inference.slora import (
-    LoRAAdapter,
-    SLoRALinear,
     SLoRALayer,
+    SLoRALinear,
     SLoRARegistry,
 )
 
@@ -25,11 +22,11 @@ from src.inference.slora import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
-IN_F  = 32
+IN_F = 32
 OUT_F = 64
-RANK  = 4
+RANK = 4
 BATCH = 3
-SEQ   = 8
+SEQ = 8
 
 
 def make_registry(max_adapters: int = 8) -> SLoRARegistry:
@@ -45,8 +42,8 @@ def make_ab(
     """Return (A, B) tensors with consistent shapes."""
     g = torch.Generator()
     g.manual_seed(seed)
-    A = torch.randn(rank, in_f, generator=g)      # (r, d_in)
-    B = torch.randn(out_f, rank, generator=g)     # (d_out, r)
+    A = torch.randn(rank, in_f, generator=g)  # (r, d_in)
+    B = torch.randn(out_f, rank, generator=g)  # (d_out, r)
     return A, B
 
 
@@ -65,24 +62,24 @@ def make_input(batch: int = BATCH, seq: int = SEQ, seed: int = 42) -> torch.Tens
 # 1. Output shape matches nn.Linear
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape_matches_linear():
     layer = make_layer()
     x = make_input()
     out = layer(x, [None] * BATCH)
-    assert out.shape == (BATCH, SEQ, OUT_F), (
-        f"Expected ({BATCH}, {SEQ}, {OUT_F}), got {out.shape}"
-    )
+    assert out.shape == (BATCH, SEQ, OUT_F), f"Expected ({BATCH}, {SEQ}, {OUT_F}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 2. No adapter (adapter_ids=[None]): output equals base linear
 # ---------------------------------------------------------------------------
 
+
 def test_no_adapter_equals_base_linear():
     layer = make_layer()
     x = make_input(batch=1)
     out_slora = layer(x, [None])
-    out_base  = layer.W_base(x)
+    out_base = layer.W_base(x)
     assert torch.allclose(out_slora, out_base, atol=1e-6), (
         "With adapter_ids=[None], SLoRALinear should equal W_base(x)."
     )
@@ -91,6 +88,7 @@ def test_no_adapter_equals_base_linear():
 # ---------------------------------------------------------------------------
 # 3. With adapter: output = base + lora_delta
 # ---------------------------------------------------------------------------
+
 
 def test_output_equals_base_plus_lora_delta():
     registry = make_registry()
@@ -105,18 +103,17 @@ def test_output_equals_base_plus_lora_delta():
 
     # Manually compute expected delta
     with torch.no_grad():
-        expected_base  = layer.W_base(x)
+        expected_base = layer.W_base(x)
         expected_delta = (x @ A.T) @ B.T * scaling
-        expected       = expected_base + expected_delta
+        expected = expected_base + expected_delta
 
-    assert torch.allclose(out_slora, expected, atol=1e-5), (
-        "output should equal base + LoRA delta."
-    )
+    assert torch.allclose(out_slora, expected, atol=1e-5), "output should equal base + LoRA delta."
 
 
 # ---------------------------------------------------------------------------
 # 4. Different adapters in same batch produce different outputs
 # ---------------------------------------------------------------------------
+
 
 def test_different_adapters_produce_different_outputs():
     registry = make_registry()
@@ -126,7 +123,7 @@ def test_different_adapters_produce_different_outputs():
     registry.swap_in("adp1", A1, B1, RANK)
 
     layer = make_layer(registry)
-    x     = make_input(batch=2, seed=10)
+    x = make_input(batch=2, seed=10)
 
     out = layer(x, ["adp0", "adp1"])
     # Each row used a different adapter; deltas differ so outputs must differ.
@@ -138,6 +135,7 @@ def test_different_adapters_produce_different_outputs():
 # ---------------------------------------------------------------------------
 # 5. Same adapter full-batch == per-item application (consistency)
 # ---------------------------------------------------------------------------
+
 
 def test_same_adapter_batch_consistency():
     registry = make_registry()
@@ -160,6 +158,7 @@ def test_same_adapter_batch_consistency():
 # 6. swap_out removes adapter; subsequent access raises KeyError
 # ---------------------------------------------------------------------------
 
+
 def test_swap_out_removes_adapter():
     registry = make_registry()
     A, B = make_ab()
@@ -177,6 +176,7 @@ def test_swap_out_removes_adapter():
 # 7. max_adapters limit enforced
 # ---------------------------------------------------------------------------
 
+
 def test_max_adapters_limit_raises():
     registry = make_registry(max_adapters=2)
     A, B = make_ab()
@@ -190,6 +190,7 @@ def test_max_adapters_limit_raises():
 # ---------------------------------------------------------------------------
 # 8. Mixed None and real adapter_ids — correct selective application
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_none_and_real_adapter_ids():
     registry = make_registry()
@@ -210,8 +211,8 @@ def test_mixed_none_and_real_adapter_ids():
         )
 
     # Item 1 should differ from base
-    base_1 = layer.W_base(x[1 : 2])
-    assert not torch.allclose(out[1 : 2], base_1, atol=1e-6), (
+    base_1 = layer.W_base(x[1:2])
+    assert not torch.allclose(out[1:2], base_1, atol=1e-6), (
         "Batch item 1 (adapter='adp0') should differ from base output."
     )
 
@@ -219,6 +220,7 @@ def test_mixed_none_and_real_adapter_ids():
 # ---------------------------------------------------------------------------
 # 9. Gradient flows through base weights
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_base_weights():
     registry = make_registry()
@@ -233,17 +235,14 @@ def test_gradient_flows_through_base_weights():
     loss = out.sum()
     loss.backward()
 
-    assert layer.W_base.weight.grad is not None, (
-        "Gradient should flow through W_base.weight."
-    )
-    assert layer.W_base.weight.grad.abs().sum() > 0, (
-        "W_base.weight gradient should be non-zero."
-    )
+    assert layer.W_base.weight.grad is not None, "Gradient should flow through W_base.weight."
+    assert layer.W_base.weight.grad.abs().sum() > 0, "W_base.weight gradient should be non-zero."
 
 
 # ---------------------------------------------------------------------------
 # 10. Gradient does NOT flow through A, B in registry (frozen adapters)
 # ---------------------------------------------------------------------------
+
 
 def test_no_gradient_through_adapter_weights():
     registry = make_registry()
@@ -268,6 +267,7 @@ def test_no_gradient_through_adapter_weights():
 # 11. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
 
+
 def test_determinism_under_manual_seed():
     def run(seed: int) -> torch.Tensor:
         torch.manual_seed(seed)
@@ -281,14 +281,13 @@ def test_determinism_under_manual_seed():
 
     out1 = run(42)
     out2 = run(42)
-    assert torch.allclose(out1, out2), (
-        "Identical seeds should produce identical outputs."
-    )
+    assert torch.allclose(out1, out2), "Identical seeds should produce identical outputs."
 
 
 # ---------------------------------------------------------------------------
 # 12. No NaN/Inf on normal inputs
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_or_inf():
     registry = make_registry()
@@ -306,6 +305,7 @@ def test_no_nan_or_inf():
 # 13. scaling=0.0 → output equals base (delta cancelled)
 # ---------------------------------------------------------------------------
 
+
 def test_scaling_zero_equals_base():
     registry = make_registry()
     A, B = make_ab(seed=9)
@@ -315,7 +315,7 @@ def test_scaling_zero_equals_base():
     x = make_input(batch=1)
 
     out_slora = layer(x, ["adp0"])
-    out_base  = layer.W_base(x)
+    out_base = layer.W_base(x)
 
     assert torch.allclose(out_slora, out_base, atol=1e-6), (
         "scaling=0.0 should zero-out the LoRA delta, giving the base output."
@@ -325,6 +325,7 @@ def test_scaling_zero_equals_base():
 # ---------------------------------------------------------------------------
 # 14. rank=1 edge case works
 # ---------------------------------------------------------------------------
+
 
 def test_rank_one_edge_case():
     registry = make_registry()
@@ -345,10 +346,11 @@ def test_rank_one_edge_case():
 # 15. Unknown adapter_id raises KeyError
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_adapter_id_raises_key_error():
     registry = make_registry()
-    layer    = make_layer(registry)
-    x        = make_input(batch=1)
+    layer = make_layer(registry)
+    x = make_input(batch=1)
 
     with pytest.raises(KeyError):
         layer(x, ["nonexistent_adapter"])
@@ -357,6 +359,7 @@ def test_unknown_adapter_id_raises_key_error():
 # ---------------------------------------------------------------------------
 # Bonus: SLoRALayer wraps existing nn.Linear correctly
 # ---------------------------------------------------------------------------
+
 
 def test_slora_layer_wrapper_matches_slora_linear():
     torch.manual_seed(0)

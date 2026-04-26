@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -120,14 +119,9 @@ class AsyncRLTrainer:
         Returns:
             True when current_version - rollout_version > max_staleness.
         """
-        return (
-            trajectory.current_version - trajectory.rollout_version
-            > self.config.max_staleness
-        )
+        return trajectory.current_version - trajectory.rollout_version > self.config.max_staleness
 
-    def _filter_trajectories(
-        self, trajectories: List[Trajectory]
-    ) -> List[Trajectory]:
+    def _filter_trajectories(self, trajectories: list[Trajectory]) -> list[Trajectory]:
         """Remove stale and too-short trajectories; stamp current_version.
 
         Args:
@@ -136,7 +130,7 @@ class AsyncRLTrainer:
         Returns:
             Filtered list with current_version updated to self._version.
         """
-        filtered: List[Trajectory] = []
+        filtered: list[Trajectory] = []
         for traj in trajectories:
             traj.current_version = self._version
             if len(traj.token_ids) < self.config.min_trajectory_len:
@@ -146,9 +140,7 @@ class AsyncRLTrainer:
             filtered.append(traj)
         return filtered
 
-    def _group_reward_baseline(
-        self, trajectories: List[Trajectory]
-    ) -> List[torch.Tensor]:
+    def _group_reward_baseline(self, trajectories: list[Trajectory]) -> list[torch.Tensor]:
         """Subtract group mean reward to produce per-trajectory advantages.
 
         Trajectories are split into consecutive groups of size config.group_size.
@@ -162,14 +154,16 @@ class AsyncRLTrainer:
             List of scalar advantage tensors aligned with trajectories.
         """
         n = len(trajectories)
-        advantages: List[torch.Tensor] = [torch.tensor(0.0)] * n
+        advantages: list[torch.Tensor] = [torch.tensor(0.0)] * n
 
         g = self.config.group_size
         for start in range(0, n, g):
             group = trajectories[start : start + g]
             group_rewards = torch.stack(
                 [
-                    t.rewards.float().mean() if t.rewards.numel() > 1 else t.rewards.float().squeeze()
+                    t.rewards.float().mean()
+                    if t.rewards.numel() > 1
+                    else t.rewards.float().squeeze()
                     for t in group
                 ]
             )
@@ -204,8 +198,8 @@ class AsyncRLTrainer:
         _, logits, _ = self.model(input_ids)
         # logits: (1, T, vocab)
         # shift: predict token[1..T] from position [0..T-1]
-        shift_logits = logits[0, :-1, :]      # (T-1, vocab)
-        shift_targets = input_ids[0, 1:]      # (T-1,)
+        shift_logits = logits[0, :-1, :]  # (T-1, vocab)
+        shift_targets = input_ids[0, 1:]  # (T-1,)
 
         log_probs = F.log_softmax(shift_logits, dim=-1)
         token_log_probs = log_probs[
@@ -216,9 +210,9 @@ class AsyncRLTrainer:
 
     def train_step(
         self,
-        trajectories: List[Trajectory],
+        trajectories: list[Trajectory],
         optimizer: torch.optim.Optimizer,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Perform one asynchronous RL update step.
 
         Steps: filter -> compute advantages -> compute current log probs ->
@@ -277,9 +271,7 @@ class AsyncRLTrainer:
             total_loss.backward()
             optimizer.step()
 
-        mean_adv = float(
-            torch.stack([a.detach() for a in advantages]).mean().item()
-        )
+        mean_adv = float(torch.stack([a.detach() for a in advantages]).mean().item())
 
         return {
             "loss": total_loss.item(),

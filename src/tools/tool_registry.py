@@ -1,8 +1,9 @@
 """Core tool registry: ToolSpec definitions, invocation dispatch."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -34,7 +35,9 @@ class ToolRegistry:
     def invoke(self, name: str, **kwargs) -> ToolResult:
         """Call handler(**kwargs), wraps output in ToolResult; catches Exception."""
         if name not in self._handlers:
-            return ToolResult(tool_name=name, success=False, output="", error=f"unknown tool: {name!r}")
+            return ToolResult(
+                tool_name=name, success=False, output="", error=f"unknown tool: {name!r}"
+            )
         try:
             result = self._handlers[name](**kwargs)
             if isinstance(result, ToolResult):

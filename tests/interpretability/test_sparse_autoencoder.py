@@ -1,4 +1,5 @@
 """Tests for src/interpretability/sparse_autoencoder.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -8,7 +9,6 @@ import torch.nn as nn
 from src.interpretability.sparse_autoencoder import (
     SAEConfig,
     SparseAutoencoder,
-    SAE_REGISTRY,
 )
 
 
@@ -25,6 +25,7 @@ def sae(config) -> SparseAutoencoder:
 # ---------------------------------------------------------------------------
 # Instantiation
 # ---------------------------------------------------------------------------
+
 
 def test_sae_is_nn_module(sae):
     assert isinstance(sae, nn.Module)
@@ -48,6 +49,7 @@ def test_decoder_shape(config, sae):
 # ---------------------------------------------------------------------------
 # forward
 # ---------------------------------------------------------------------------
+
 
 def test_forward_output_shapes(config, sae):
     x = torch.randn(8, config.input_dim)
@@ -73,6 +75,7 @@ def test_hidden_nonnegative_relu(config, sae):
 # ---------------------------------------------------------------------------
 # loss
 # ---------------------------------------------------------------------------
+
 
 def test_loss_is_scalar(config, sae):
     x = torch.randn(8, config.input_dim)
@@ -110,6 +113,7 @@ def test_loss_decreases_with_training(config):
 # ---------------------------------------------------------------------------
 # get_live_features
 # ---------------------------------------------------------------------------
+
 
 def test_get_live_features_returns_tensor(config, sae):
     x = torch.randn(16, config.input_dim)

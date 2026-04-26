@@ -5,7 +5,6 @@ Import path: aurelius.model.grouped_query_attention
 
 import pytest
 import torch
-
 from aurelius.model.grouped_query_attention import (
     GQAConfig,
     GQALayer,
@@ -131,9 +130,7 @@ def test_gqa_equal_heads_same_shape(x: torch.Tensor):
 
 
 def test_gqa_single_kv_head(x: torch.Tensor):
-    cfg_mqa = GQAConfig(
-        d_model=D_MODEL, n_q_heads=N_Q_HEADS, n_kv_heads=1, head_dim=HEAD_DIM
-    )
+    cfg_mqa = GQAConfig(d_model=D_MODEL, n_q_heads=N_Q_HEADS, n_kv_heads=1, head_dim=HEAD_DIM)
     model = GroupedQueryAttention(cfg_mqa)
     out = model(x)
     assert out.shape == (B, T, D_MODEL), f"MQA shape wrong: {out.shape}"
@@ -153,7 +150,7 @@ def test_causal_mask_no_future_leakage(gqa: GroupedQueryAttention, x: torch.Tens
 
         # Corrupt all tokens strictly after `pivot`
         x_corrupt = x.clone()
-        x_corrupt[:, pivot + 1:, :] = torch.randn_like(x_corrupt[:, pivot + 1:, :])
+        x_corrupt[:, pivot + 1 :, :] = torch.randn_like(x_corrupt[:, pivot + 1 :, :])
         out_corrupt = gqa(x_corrupt)
 
     # Output up to and including pivot must be identical

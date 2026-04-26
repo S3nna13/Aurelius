@@ -6,14 +6,13 @@ Locates UI elements by selector or spatial position.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class ElementQuery:
     selector: str
     selector_type: str = "css"
-    region: Optional[tuple[int, int, int, int]] = None  # (x, y, w, h)
+    region: tuple[int, int, int, int] | None = None  # (x, y, w, h)
 
 
 @dataclass(frozen=True)
@@ -55,7 +54,7 @@ class ElementLocator:
             results.append(el)
         return results
 
-    def find_at(self, x: int, y: int) -> Optional[LocatedElement]:
+    def find_at(self, x: int, y: int) -> LocatedElement | None:
         for el in self._elements:
             if el.x <= x <= el.x + el.width and el.y <= y <= el.y + el.height:
                 return el

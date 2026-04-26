@@ -1,11 +1,12 @@
 """Tests for sequence packing with intra-document masking."""
+
 import torch
-import pytest
+
 from src.data.packing import (
-    pack_sequences,
+    PackedSequence,
     build_intra_doc_mask,
     collate_packed_batch,
-    PackedSequence,
+    pack_sequences,
 )
 
 

@@ -3,10 +3,12 @@
 LoRA++: Different learning rates for A (small) and B (large) matrices.
 RSLoRA: Scale by 1/sqrt(r) instead of alpha/r for stable training at high ranks.
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,9 +18,9 @@ from torch.optim import Optimizer
 @dataclass
 class LoRAPlusConfig:
     rank: int = 8
-    alpha: float = 16.0          # scaling factor
-    lr_ratio: float = 16.0       # B lr = lr_A * lr_ratio
-    use_rslora: bool = False     # if True, use RSLoRA scaling (1/sqrt(r))
+    alpha: float = 16.0  # scaling factor
+    lr_ratio: float = 16.0  # B lr = lr_A * lr_ratio
+    use_rslora: bool = False  # if True, use RSLoRA scaling (1/sqrt(r))
     dropout: float = 0.0
 
 
@@ -41,9 +43,7 @@ class LoRAPlusLinear(nn.Module):
         r = cfg.rank
 
         # Base weight (frozen)
-        self.weight = nn.Parameter(
-            torch.zeros(out_features, in_features), requires_grad=False
-        )
+        self.weight = nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
 
         # LoRA matrices
         self.A = nn.Parameter(torch.empty(r, in_features))
@@ -81,7 +81,7 @@ class LoRAPlusLinear(nn.Module):
 def create_loraplus_optimizer(
     loraplus_layers: list[LoRAPlusLinear],
     base_lr: float = 1e-4,
-    optimizer_cls=None,    # defaults to torch.optim.AdamW
+    optimizer_cls=None,  # defaults to torch.optim.AdamW
     **optimizer_kwargs,
 ) -> Optimizer:
     """Create an optimizer with asymmetric A/B learning rates for LoRA++ layers.
@@ -96,6 +96,7 @@ def create_loraplus_optimizer(
     """
     if optimizer_cls is None:
         from torch.optim import AdamW
+
         optimizer_cls = AdamW
 
     param_groups = []

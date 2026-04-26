@@ -1,4 +1,5 @@
 """Tests for ThoughtTokenTrainer — pause token / latent reasoning training."""
+
 from __future__ import annotations
 
 import pytest
@@ -20,7 +21,7 @@ D_MODEL = 16
 VOCAB_SIZE = 32
 N_THOUGHT_TOKENS = 3
 B = 2
-T = 5   # prompt length
+T = 5  # prompt length
 T_R = 4  # response length
 
 
@@ -169,9 +170,7 @@ def test_prompt_and_thought_masked_when_no_loss(inserter, input_ids, response_id
     labels = inserter.create_labels(augmented_ids, thought_mask, response_ids)
     # Positions 0 .. T+K-1 (prompt + thoughts) should all be -100
     prefix_labels = labels[:, : T + N_THOUGHT_TOKENS]
-    assert (prefix_labels == -100).all(), (
-        f"Expected all -100 in prefix, got: {prefix_labels}"
-    )
+    assert (prefix_labels == -100).all(), f"Expected all -100 in prefix, got: {prefix_labels}"
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +263,7 @@ def test_train_step_loss_finite_positive(trainer, input_ids, response_ids):
     assert result["loss"] > 0.0
     assert result["loss"] == result["loss"]  # not NaN
     import math
+
     assert math.isfinite(result["loss"])
 
 

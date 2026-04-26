@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.mixture_training import (
-    MixtureConfig,
     GatingNetwork,
+    MixtureConfig,
     MixtureTrainer,
     compute_component_loss,
     compute_soft_assignments,
@@ -53,7 +52,7 @@ def _assignments() -> torch.Tensor:
 def _per_sample_loss() -> torch.Tensor:
     """(N,) positive per-sample losses."""
     torch.manual_seed(1)
-    return torch.rand(N) + 0.1   # ensure all > 0
+    return torch.rand(N) + 0.1  # ensure all > 0
 
 
 def _dummy_model() -> nn.Module:
@@ -64,6 +63,7 @@ def _dummy_model() -> nn.Module:
 # ---------------------------------------------------------------------------
 # MixtureConfig
 # ---------------------------------------------------------------------------
+
 
 class TestMixtureConfig:
     def test_defaults(self) -> None:
@@ -84,6 +84,7 @@ class TestMixtureConfig:
 # ---------------------------------------------------------------------------
 # compute_soft_assignments
 # ---------------------------------------------------------------------------
+
 
 class TestComputeSoftAssignments:
     def test_output_shape(self) -> None:
@@ -110,6 +111,7 @@ class TestComputeSoftAssignments:
 # update_centroids
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateCentroids:
     def test_output_shape(self) -> None:
         c = update_centroids(_embeddings(), _assignments())
@@ -135,6 +137,7 @@ class TestUpdateCentroids:
 # em_step
 # ---------------------------------------------------------------------------
 
+
 class TestEmStep:
     def test_returns_assignments_shape(self) -> None:
         a, _ = em_step(_embeddings(), _centroids(), temperature=1.0)
@@ -156,6 +159,7 @@ class TestEmStep:
 # ---------------------------------------------------------------------------
 # compute_component_loss
 # ---------------------------------------------------------------------------
+
 
 class TestComputeComponentLoss:
     def test_output_shape(self) -> None:
@@ -182,6 +186,7 @@ class TestComputeComponentLoss:
 # ---------------------------------------------------------------------------
 # mixture_weighted_loss
 # ---------------------------------------------------------------------------
+
 
 class TestMixtureWeightedLoss:
     def test_is_scalar(self) -> None:
@@ -212,6 +217,7 @@ class TestMixtureWeightedLoss:
 # ---------------------------------------------------------------------------
 # GatingNetwork
 # ---------------------------------------------------------------------------
+
 
 class TestGatingNetwork:
     def _net(self) -> GatingNetwork:
@@ -250,6 +256,7 @@ class TestGatingNetwork:
 # ---------------------------------------------------------------------------
 # MixtureTrainer
 # ---------------------------------------------------------------------------
+
 
 class TestMixtureTrainer:
     def _trainer(self) -> MixtureTrainer:

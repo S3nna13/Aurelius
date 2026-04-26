@@ -7,7 +7,6 @@ Every test performs at least a forward pass.
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.model_merging_v3 import (
     DAREPruner,
@@ -17,10 +16,10 @@ from src.training.model_merging_v3 import (
     TIESMerger,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mlp(seed: int = 0) -> nn.Module:
     """Create a tiny 2-layer MLP (16→16→16) with reproducible weights."""
@@ -44,6 +43,7 @@ def forward_backward(model: nn.Module) -> None:
 # ---------------------------------------------------------------------------
 # ParameterVector tests
 # ---------------------------------------------------------------------------
+
 
 def test_parameter_vector_to_vector_shape():
     """to_vector returns a 1-D tensor of length n_params."""
@@ -87,6 +87,7 @@ def test_parameter_vector_task_vector_base_zero():
 # ---------------------------------------------------------------------------
 # SLERPMerger tests
 # ---------------------------------------------------------------------------
+
 
 def test_slerp_output_shape_matches_input():
     """merge output shape equals input shape."""
@@ -147,6 +148,7 @@ def test_slerp_merge_models_output_shape():
 # TIESMerger tests
 # ---------------------------------------------------------------------------
 
+
 def test_ties_trim_nonzero_fraction():
     """After trim, the number of non-zeros ≤ top_k_fraction * total."""
     merger = TIESMerger(top_k_fraction=0.2)
@@ -206,6 +208,7 @@ def test_ties_merge_improves_sign_agreement():
 # DAREPruner tests
 # ---------------------------------------------------------------------------
 
+
 def test_dare_prune_zero_fraction():
     """Fraction of zeros in pruned vector is approximately drop_rate (±5%)."""
     pruner = DAREPruner(drop_rate=0.9, seed=0)
@@ -255,6 +258,7 @@ def test_dare_merge_output_shape():
 # ModelMergeEvaluator tests
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_parameter_interference_range():
     """parameter_interference returns a value in [-1, 1]."""
     evaluator = ModelMergeEvaluator()
@@ -291,6 +295,7 @@ def test_evaluator_magnitude_preservation_identical():
 # ---------------------------------------------------------------------------
 # Integration: TIES merge of 3 models vs simple average
 # ---------------------------------------------------------------------------
+
 
 def test_ties_differs_from_simple_average():
     """TIES merge result differs from simple arithmetic average of task vectors."""

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class SummarizerConfig:
     """Configuration for hierarchical summarization."""
+
     chunk_size: int = 256
     overlap: int = 32
     max_summary_tokens: int = 64
@@ -20,6 +22,7 @@ class SummarizerConfig:
 @dataclass
 class TextChunk:
     """A chunk of text with its token representation."""
+
     text: str
     token_ids: list
     start_pos: int
@@ -45,12 +48,14 @@ def chunk_document(token_ids, chunk_size, overlap):
     i = 0
     while i < len(token_ids):
         chunk = token_ids[i : i + chunk_size]
-        chunks.append(TextChunk(
-            text="",
-            token_ids=chunk,
-            start_pos=i,
-            level=0,
-        ))
+        chunks.append(
+            TextChunk(
+                text="",
+                token_ids=chunk,
+                start_pos=i,
+                level=0,
+            )
+        )
         if i + chunk_size >= len(token_ids):
             break
         i += stride
@@ -120,7 +125,7 @@ def greedy_summarize(model, input_ids, max_new_tokens, tokenizer_decode):
             next_token = int(logits[0, -1].argmax(dim=-1).item())
             generated.append(next_token)
 
-    new_tokens = generated[len(input_ids):]
+    new_tokens = generated[len(input_ids) :]
     return tokenizer_decode(new_tokens)
 
 
@@ -149,12 +154,14 @@ class HierarchicalSummarizer:
         for chunk in chunks:
             summary_text = self.summarize_chunk(chunk)
             summary_ids = self.tokenizer_encode(summary_text)
-            new_chunks.append(TextChunk(
-                text=summary_text,
-                token_ids=summary_ids,
-                start_pos=pos,
-                level=chunk.level + 1,
-            ))
+            new_chunks.append(
+                TextChunk(
+                    text=summary_text,
+                    token_ids=summary_ids,
+                    start_pos=pos,
+                    level=chunk.level + 1,
+                )
+            )
             pos += len(summary_ids)
         return new_chunks
 

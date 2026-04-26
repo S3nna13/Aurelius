@@ -17,17 +17,16 @@ Reference:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NGPTConfig:
@@ -60,6 +59,7 @@ class NGPTConfig:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _l2_normalize(x: torch.Tensor, dim: int = -1, eps: float = 1e-12) -> torch.Tensor:
     """Return x normalized to unit L2 norm along *dim*."""
     return x / (x.norm(dim=dim, keepdim=True).clamp(min=eps))
@@ -81,6 +81,7 @@ def normalize_weights(module: nn.Module, eps: float = 1e-12) -> None:
 # ---------------------------------------------------------------------------
 # Normalized Embedding
 # ---------------------------------------------------------------------------
+
 
 class NormalizedEmbedding(nn.Module):
     """Token embedding table whose output vectors are L2-normalized.
@@ -110,6 +111,7 @@ class NormalizedEmbedding(nn.Module):
 # nGPT Attention
 # ---------------------------------------------------------------------------
 
+
 class NGPTAttention(nn.Module):
     """Multi-head self-attention on the unit hypersphere.
 
@@ -137,9 +139,7 @@ class NGPTAttention(nn.Module):
         # Learnable per-head QK scale (initialized to sqrt(head_dim))
         # Shape: (1, n_heads, 1, 1) for broadcasting over (B, H, T, T)
         init_scale = math.sqrt(config.head_dim)
-        self.sqk_scale = nn.Parameter(
-            torch.full((config.n_heads,), init_scale)
-        )
+        self.sqk_scale = nn.Parameter(torch.full((config.n_heads,), init_scale))
 
         self._init_weights()
 
@@ -154,7 +154,7 @@ class NGPTAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute normalized multi-head self-attention.
 
@@ -186,18 +186,19 @@ class NGPTAttention(nn.Module):
         if mask is not None:
             scores = scores + mask
 
-        attn_weights = F.softmax(scores, dim=-1)               # (B, H, T, T)
+        attn_weights = F.softmax(scores, dim=-1)  # (B, H, T, T)
 
         # Aggregate values
-        out = torch.matmul(attn_weights, v)                    # (B, H, T, D)
+        out = torch.matmul(attn_weights, v)  # (B, H, T, D)
         out = out.transpose(1, 2).contiguous().view(B, T, H * D)
 
-        return self.out_proj(out)                              # (B, T, d_model)
+        return self.out_proj(out)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # nGPT MLP
 # ---------------------------------------------------------------------------
+
 
 class _NGPTMLP(nn.Module):
     """SwiGLU-style MLP used inside nGPTBlock.
@@ -208,7 +209,7 @@ class _NGPTMLP(nn.Module):
     def __init__(self, d_model: int, d_ff: int) -> None:
         super().__init__()
         self.gate_proj = nn.Linear(d_model, d_ff, bias=False)
-        self.up_proj   = nn.Linear(d_model, d_ff, bias=False)
+        self.up_proj = nn.Linear(d_model, d_ff, bias=False)
         self.down_proj = nn.Linear(d_ff, d_model, bias=False)
 
         for proj in (self.gate_proj, self.up_proj, self.down_proj):
@@ -224,6 +225,7 @@ class _NGPTMLP(nn.Module):
 # ---------------------------------------------------------------------------
 # nGPT Block
 # ---------------------------------------------------------------------------
+
 
 class NGPTBlock(nn.Module):
     """Single nGPT block.
@@ -243,24 +245,20 @@ class NGPTBlock(nn.Module):
     def __init__(self, config: NGPTConfig) -> None:
         super().__init__()
         self.attn = NGPTAttention(config)
-        self.mlp  = _NGPTMLP(config.d_model, config.d_ff)
+        self.mlp = _NGPTMLP(config.d_model, config.d_ff)
 
         # Eigenlearning rates: one scalar per hidden dimension
         # Stored as raw logits, converted with sigmoid to (0, 1)
         alpha_a_init = math.log(config.alpha_attn / (1.0 - config.alpha_attn + 1e-7))
-        alpha_m_init = math.log(config.alpha_mlp  / (1.0 - config.alpha_mlp  + 1e-7))
+        alpha_m_init = math.log(config.alpha_mlp / (1.0 - config.alpha_mlp + 1e-7))
 
-        self.alpha_attn = nn.Parameter(
-            torch.full((config.d_model,), alpha_a_init)
-        )
-        self.alpha_mlp = nn.Parameter(
-            torch.full((config.d_model,), alpha_m_init)
-        )
+        self.alpha_attn = nn.Parameter(torch.full((config.d_model,), alpha_a_init))
+        self.alpha_mlp = nn.Parameter(torch.full((config.d_model,), alpha_m_init))
 
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -272,12 +270,12 @@ class NGPTBlock(nn.Module):
         """
         # --- Attention sub-block ---
         h_a = _l2_normalize(self.attn(x, mask), dim=-1)
-        alpha_a = torch.sigmoid(self.alpha_attn)              # (d_model,)
+        alpha_a = torch.sigmoid(self.alpha_attn)  # (d_model,)
         x = _l2_normalize(x + alpha_a * (h_a - x), dim=-1)
 
         # --- MLP sub-block ---
         h_m = _l2_normalize(self.mlp(x), dim=-1)
-        alpha_m = torch.sigmoid(self.alpha_mlp)               # (d_model,)
+        alpha_m = torch.sigmoid(self.alpha_mlp)  # (d_model,)
         x = _l2_normalize(x + alpha_m * (h_m - x), dim=-1)
 
         return x
@@ -286,6 +284,7 @@ class NGPTBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Full nGPT Model
 # ---------------------------------------------------------------------------
+
 
 class NGPTModel(nn.Module):
     """Full nGPT language model.
@@ -310,9 +309,7 @@ class NGPTModel(nn.Module):
         self.config = config
 
         self.embedding = NormalizedEmbedding(config.vocab_size, config.d_model)
-        self.blocks = nn.ModuleList(
-            [NGPTBlock(config) for _ in range(config.n_layers)]
-        )
+        self.blocks = nn.ModuleList([NGPTBlock(config) for _ in range(config.n_layers)])
         # Plain linear head — no normalization on logits
         self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
         nn.init.normal_(self.lm_head.weight, std=0.02)
@@ -320,7 +317,7 @@ class NGPTModel(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Run the nGPT forward pass.
 
@@ -333,9 +330,9 @@ class NGPTModel(nn.Module):
         Returns:
             logits: (B, T, vocab_size) — raw un-normalized scores.
         """
-        x = self.embedding(input_ids)          # (B, T, d_model), unit norm
+        x = self.embedding(input_ids)  # (B, T, d_model), unit norm
 
         for block in self.blocks:
-            x = block(x, mask)                 # (B, T, d_model), unit norm
+            x = block(x, mask)  # (B, T, d_model), unit norm
 
-        return self.lm_head(x)                 # (B, T, vocab_size), NOT normalized
+        return self.lm_head(x)  # (B, T, vocab_size), NOT normalized

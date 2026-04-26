@@ -16,19 +16,19 @@ STILL3Trainer       -- trainer class with all algorithm components
 
 The trainer is registered in TRAINING_REGISTRY["still3"].
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # STILL3Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class STILL3Config:
@@ -57,6 +57,7 @@ class STILL3Config:
 # STILL3Trainer
 # ---------------------------------------------------------------------------
 
+
 class STILL3Trainer:
     """STILL-3 training algorithm.
 
@@ -67,16 +68,14 @@ class STILL3Trainer:
         config: STILL3Config instance (uses defaults if None).
     """
 
-    def __init__(self, config: Optional[STILL3Config] = None) -> None:
+    def __init__(self, config: STILL3Config | None = None) -> None:
         self.config = config if config is not None else STILL3Config()
 
     # ------------------------------------------------------------------
     # Filtering
     # ------------------------------------------------------------------
 
-    def filter_by_std(
-        self, rewards_per_group: List[List[float]]
-    ) -> List[List[float]]:
+    def filter_by_std(self, rewards_per_group: list[list[float]]) -> list[list[float]]:
         """Discard groups whose reward std is below ``min_std_threshold``.
 
         Groups where all rewards are identical (or nearly so) provide no
@@ -92,7 +91,7 @@ class STILL3Trainer:
             ``std(rewards) >= min_std_threshold`` are kept.
         """
         threshold = self.config.min_std_threshold
-        filtered: List[List[float]] = []
+        filtered: list[list[float]] = []
         for group in rewards_per_group:
             if len(group) == 0:
                 continue
@@ -121,17 +120,17 @@ class STILL3Trainer:
             the batch dimension B and the time dimension T.
         """
         # log_softmax for numerical stability
-        log_probs = F.log_softmax(logits, dim=-1)          # [B, T, V]
-        probs = log_probs.exp()                             # [B, T, V]
+        log_probs = F.log_softmax(logits, dim=-1)  # [B, T, V]
+        probs = log_probs.exp()  # [B, T, V]
         # entropy per token: -sum_v p(v) log p(v)
-        token_entropy = -(probs * log_probs).sum(dim=-1)   # [B, T]
-        return token_entropy.mean()                         # scalar
+        token_entropy = -(probs * log_probs).sum(dim=-1)  # [B, T]
+        return token_entropy.mean()  # scalar
 
     # ------------------------------------------------------------------
     # Reward normalisation
     # ------------------------------------------------------------------
 
-    def normalize_group_rewards(self, rewards: List[float]) -> List[float]:
+    def normalize_group_rewards(self, rewards: list[float]) -> list[float]:
         """Z-score normalise rewards within a single group.
 
         Args:
@@ -157,7 +156,7 @@ class STILL3Trainer:
         self,
         log_probs: Tensor,
         rewards: Tensor,
-        old_log_probs: Optional[Tensor] = None,
+        old_log_probs: Tensor | None = None,
     ) -> Tensor:
         """REINFORCE-style policy gradient loss with optional PPO clipping.
 
@@ -194,8 +193,8 @@ class STILL3Trainer:
         logits: Tensor,
         log_probs: Tensor,
         rewards: Tensor,
-        old_log_probs: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Dict[str, float]]:
+        old_log_probs: Tensor | None = None,
+    ) -> tuple[Tensor, dict[str, float]]:
         """Compute combined STILL-3 loss: policy gradient minus entropy bonus.
 
         ``total = policy_loss - entropy_coeff * entropy_bonus``
@@ -221,7 +220,7 @@ class STILL3Trainer:
 
         total = policy_loss - self.config.entropy_coeff * entropy_bonus
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "policy_loss": policy_loss.item(),
             "entropy_bonus": entropy_bonus.item(),
             "total": total.item(),
@@ -232,9 +231,7 @@ class STILL3Trainer:
     # Full pipeline helper
     # ------------------------------------------------------------------
 
-    def filter_and_prepare(
-        self, groups: List[Dict]
-    ) -> List[Dict]:
+    def filter_and_prepare(self, groups: list[dict]) -> list[dict]:
         """Apply std filtering and optional reward normalisation to groups.
 
         Each group dict must contain at minimum a ``"rewards"`` key (list of
@@ -250,7 +247,7 @@ class STILL3Trainer:
         """
         threshold = self.config.min_std_threshold
 
-        kept_groups: List[Dict] = []
+        kept_groups: list[dict] = []
         for g in groups:
             rewards = g["rewards"]
             if len(rewards) == 0:
@@ -262,7 +259,7 @@ class STILL3Trainer:
 
         # Normalise rewards within each kept group
         if self.config.normalize_rewards:
-            result: List[Dict] = []
+            result: list[dict] = []
             for g in kept_groups:
                 new_g = dict(g)  # shallow copy to avoid mutating caller's dict
                 new_g["rewards"] = self.normalize_group_rewards(g["rewards"])

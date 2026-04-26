@@ -1,13 +1,15 @@
 """Workflow dead-letter queue for failed step handling."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 @dataclass
 class DeadLetteredStep:
     """A workflow step that failed and was moved to DLQ."""
+
     step_id: str
     workflow_id: str
     error: str
@@ -17,7 +19,7 @@ class DeadLetteredStep:
 
     def __post_init__(self) -> None:
         if not self.failed_at:
-            self.failed_at = datetime.now(timezone.utc).isoformat()
+            self.failed_at = datetime.now(UTC).isoformat()
 
 
 @dataclass

@@ -7,11 +7,10 @@ window: truncation, middle summarization, and sliding window.
 from __future__ import annotations
 
 import math
-from enum import Enum
-from typing import List
+from enum import StrEnum
 
 
-class WindowPolicy(str, Enum):
+class WindowPolicy(StrEnum):
     TRUNCATE_LEFT = "truncate_left"
     TRUNCATE_RIGHT = "truncate_right"
     SUMMARIZE_MIDDLE = "summarize_middle"

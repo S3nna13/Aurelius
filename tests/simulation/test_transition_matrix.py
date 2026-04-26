@@ -3,8 +3,8 @@
 import unittest
 
 from src.simulation.transition_matrix import (
-    TRANSITION_MATRIX_REGISTRY,
     REGISTRY,
+    TRANSITION_MATRIX_REGISTRY,
     TransitionMatrix,
 )
 

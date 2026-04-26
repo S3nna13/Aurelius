@@ -3,7 +3,11 @@
 import pytest
 import torch
 
-from src.model.expert_recycling import inactive_expert_mask, recycled_fraction, recycle_expert_weights
+from src.model.expert_recycling import (
+    inactive_expert_mask,
+    recycle_expert_weights,
+    recycled_fraction,
+)
 
 
 def test_inactive_expert_mask_marks_low_usage():
@@ -36,9 +40,10 @@ def test_recycle_expert_weights_rejects_bad_source_expert():
 
 def test_recycle_expert_weights_rejects_bad_noise_scale():
     with pytest.raises(ValueError):
-        recycle_expert_weights(torch.ones(2, 3), torch.tensor([True, False]), source_expert=0, noise_scale=-1.0)
+        recycle_expert_weights(
+            torch.ones(2, 3), torch.tensor([True, False]), source_expert=0, noise_scale=-1.0
+        )
 
 
 def test_recycled_fraction_handles_empty_mask():
     assert recycled_fraction(torch.tensor([], dtype=torch.bool)).item() == pytest.approx(0.0)
-

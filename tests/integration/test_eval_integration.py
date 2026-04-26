@@ -6,14 +6,11 @@ clean-room implementation.
 
 from __future__ import annotations
 
-import pytest
-
 from src.eval.webarena_scorer import (
     WEBARENA_TASK_REGISTRY,
     WebArenaResult,
     WebArenaScorer,
 )
-
 
 # ---------------------------------------------------------------------------
 # WebArena scorer integration
@@ -86,9 +83,24 @@ def test_osworld_scorer_batch() -> None:
     tasks_subset = {tid: OSWORLD_TASK_REGISTRY[tid] for tid in task_ids}
 
     results = [
-        OSWorldResult(task_id=task_ids[0], app=OSWORLD_TASK_REGISTRY[task_ids[0]].app, completed=True, steps_taken=2),
-        OSWorldResult(task_id=task_ids[1], app=OSWORLD_TASK_REGISTRY[task_ids[1]].app, completed=True, steps_taken=4),
-        OSWorldResult(task_id=task_ids[2], app=OSWORLD_TASK_REGISTRY[task_ids[2]].app, completed=False, steps_taken=1),
+        OSWorldResult(
+            task_id=task_ids[0],
+            app=OSWORLD_TASK_REGISTRY[task_ids[0]].app,
+            completed=True,
+            steps_taken=2,
+        ),
+        OSWorldResult(
+            task_id=task_ids[1],
+            app=OSWORLD_TASK_REGISTRY[task_ids[1]].app,
+            completed=True,
+            steps_taken=4,
+        ),
+        OSWorldResult(
+            task_id=task_ids[2],
+            app=OSWORLD_TASK_REGISTRY[task_ids[2]].app,
+            completed=False,
+            steps_taken=1,
+        ),
     ]
 
     metrics = scorer.score_batch(results, tasks_subset)

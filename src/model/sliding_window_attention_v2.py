@@ -6,8 +6,7 @@ Sliding window attention: each token attends only to the W tokens before it
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -71,7 +70,9 @@ class SlidingWindowAttention(nn.Module):
         if causal:
             window_mask = self._build_window_mask(T, self.config.window_size, x.device)
             # Mask out positions outside the window by setting to -inf
-            attn_scores = attn_scores.masked_fill(~window_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+            attn_scores = attn_scores.masked_fill(
+                ~window_mask.unsqueeze(0).unsqueeze(0), float("-inf")
+            )
 
         attn_weights = F.softmax(attn_scores, dim=-1)
         attn_weights = torch.nan_to_num(attn_weights, nan=0.0)

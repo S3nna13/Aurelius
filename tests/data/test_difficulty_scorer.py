@@ -1,24 +1,23 @@
 """Tests for DifficultyScorer."""
+
 import math
-import tempfile
-from pathlib import Path
 
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.data.difficulty_scorer import (
     DifficultyScore,
     DifficultyScoreConfig,
     DifficultyScorer,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -76,6 +75,7 @@ def tiny_dataloader():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_difficulty_score_dataclass():
     """DifficultyScore has index, perplexity, loss, n_tokens."""

@@ -8,8 +8,8 @@ from src.eval.faithfulness import (
     embedding_alignment,
     faithfulness_report,
     hallucination_rate,
-    normalize_text,
     ngrams,
+    normalize_text,
 )
 
 

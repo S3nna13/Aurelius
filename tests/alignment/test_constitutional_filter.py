@@ -1,4 +1,5 @@
 """Tests for constitutional_filter.py - automated dataset filtering pipeline."""
+
 from __future__ import annotations
 
 import pytest
@@ -13,12 +14,11 @@ from src.alignment.constitutional_filter import (
     ModelBasedScorer,
     score_text_heuristic,
 )
-from src.model.config import AureliusConfig
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture for model-based tests
 # ---------------------------------------------------------------------------
+
 
 class _TinyModel(nn.Module):
     """Minimal model matching the Aurelius API: loss, logits, pkv = model(input_ids)."""
@@ -30,10 +30,10 @@ class _TinyModel(nn.Module):
         self.proj = nn.Linear(64, vocab_size)
 
     def forward(self, input_ids: torch.Tensor):
-        x = self.embed(input_ids)          # (B, T, 64)
-        logits = self.proj(x)              # (B, T, vocab_size)
-        loss = logits.mean()               # dummy scalar
-        return loss, logits, None          # (loss, logits, past_key_values)
+        x = self.embed(input_ids)  # (B, T, 64)
+        logits = self.proj(x)  # (B, T, vocab_size)
+        loss = logits.mean()  # dummy scalar
+        return loss, logits, None  # (loss, logits, past_key_values)
 
 
 @pytest.fixture(scope="module")
@@ -67,6 +67,7 @@ def model_scorer(tiny_model: _TinyModel) -> ModelBasedScorer:
 # 1. ConstitutionalPrinciple fields
 # ---------------------------------------------------------------------------
 
+
 def test_constitutional_principle_fields() -> None:
     """ConstitutionalPrinciple has name, description, critique_prompt, revision_prompt, weight."""
     p = ConstitutionalPrinciple(
@@ -98,6 +99,7 @@ def test_constitutional_principle_default_weight() -> None:
 # 2. SAFETY_PRINCIPLES has 4 principles
 # ---------------------------------------------------------------------------
 
+
 def test_safety_principles_count() -> None:
     """SAFETY_PRINCIPLES must contain exactly 4 built-in principles."""
     assert len(SAFETY_PRINCIPLES) == 4
@@ -112,6 +114,7 @@ def test_safety_principles_names() -> None:
 # ---------------------------------------------------------------------------
 # 3. FilterScore fields
 # ---------------------------------------------------------------------------
+
 
 def test_filter_score_fields() -> None:
     """FilterScore has principle_name, score, passed, critique."""
@@ -137,6 +140,7 @@ def test_filter_score_default_critique() -> None:
 # 4. score_text_heuristic harmlessness: harmful text -> score < 0.5
 # ---------------------------------------------------------------------------
 
+
 def test_heuristic_harmlessness_harmful_text() -> None:
     """Harmful text should receive a harmlessness score < 0.5."""
     harmful_text = "I will kill you with a weapon and do something illegal and dangerous."
@@ -151,6 +155,7 @@ def test_heuristic_harmlessness_harmful_text() -> None:
 # 5. score_text_heuristic harmlessness: safe text -> score >= 0.5
 # ---------------------------------------------------------------------------
 
+
 def test_heuristic_harmlessness_safe_text() -> None:
     """Safe, benign text should receive a harmlessness score >= 0.5."""
     safe_text = "The sky is blue and the weather is pleasant today."
@@ -164,6 +169,7 @@ def test_heuristic_harmlessness_safe_text() -> None:
 # 6. score_text_heuristic helpfulness: short text -> low score
 # ---------------------------------------------------------------------------
 
+
 def test_heuristic_helpfulness_short_text() -> None:
     """Very short text should score low on helpfulness."""
     short_text = "Yes."
@@ -176,6 +182,7 @@ def test_heuristic_helpfulness_short_text() -> None:
 # ---------------------------------------------------------------------------
 # 7. score_text_heuristic helpfulness: long helpful text -> higher score
 # ---------------------------------------------------------------------------
+
 
 def test_heuristic_helpfulness_long_text() -> None:
     """Long substantive text should score higher on helpfulness."""
@@ -194,6 +201,7 @@ def test_heuristic_helpfulness_long_text() -> None:
 # 8. ConstitutionalFilter.filter_sample returns (bool, list)
 # ---------------------------------------------------------------------------
 
+
 def test_filter_sample_return_types() -> None:
     """filter_sample must return a (bool, list) tuple."""
     cf = ConstitutionalFilter()
@@ -208,6 +216,7 @@ def test_filter_sample_return_types() -> None:
 # ---------------------------------------------------------------------------
 # 9. ConstitutionalFilter.filter_sample scores list length = n_principles
 # ---------------------------------------------------------------------------
+
 
 def test_filter_sample_scores_length() -> None:
     """scores list length should equal number of principles."""
@@ -229,6 +238,7 @@ def test_filter_sample_scores_are_filter_score_instances() -> None:
 # 10. ConstitutionalFilter.filter_dataset returns (list, dict)
 # ---------------------------------------------------------------------------
 
+
 def test_filter_dataset_return_types() -> None:
     """filter_dataset must return (list, dict)."""
     cf = ConstitutionalFilter()
@@ -248,6 +258,7 @@ def test_filter_dataset_return_types() -> None:
 # 11. ConstitutionalFilter.filter_dataset stats has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_filter_dataset_stats_keys() -> None:
     """stats dict must have total, accepted, rejection_rate, per_principle_pass_rate."""
     cf = ConstitutionalFilter()
@@ -263,6 +274,7 @@ def test_filter_dataset_stats_keys() -> None:
 # ---------------------------------------------------------------------------
 # 12. ConstitutionalFilter.filter_dataset acceptance_rate in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_filter_dataset_rejection_rate_range() -> None:
     """rejection_rate must be in [0, 1]."""
@@ -291,6 +303,7 @@ def test_filter_dataset_counts_consistent() -> None:
 # ---------------------------------------------------------------------------
 # 13. ConstitutionalFilter.get_rejection_reasons returns list of strings
 # ---------------------------------------------------------------------------
+
 
 def test_get_rejection_reasons_returns_list_of_strings() -> None:
     """get_rejection_reasons must return a list of strings."""
@@ -324,6 +337,7 @@ def test_get_rejection_reasons_empty_when_all_pass() -> None:
 # 14. ModelBasedScorer.score_response returns FilterScore with score in [0,1]
 # ---------------------------------------------------------------------------
 
+
 def test_model_scorer_score_response_returns_filter_score(
     model_scorer: ModelBasedScorer,
 ) -> None:
@@ -343,6 +357,7 @@ def test_model_scorer_score_response_returns_filter_score(
 # ---------------------------------------------------------------------------
 # 15. ModelBasedScorer.revise_response returns non-empty string
 # ---------------------------------------------------------------------------
+
 
 def test_model_scorer_revise_response_returns_string(
     model_scorer: ModelBasedScorer,

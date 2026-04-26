@@ -1,4 +1,5 @@
 """Session manager with time-limited tokens and rotation policy."""
+
 from __future__ import annotations
 
 import time
@@ -28,8 +29,10 @@ class SessionManager:
         token = uuid.uuid4().hex
         now = time.monotonic()
         session = Session(
-            token=token, user=user,
-            created=now, expires=now + self.duration_seconds,
+            token=token,
+            user=user,
+            created=now,
+            expires=now + self.duration_seconds,
             metadata=meta,
         )
         self._sessions[token] = session

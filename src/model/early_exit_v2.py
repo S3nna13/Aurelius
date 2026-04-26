@@ -18,15 +18,16 @@ Components:
 
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
+import torch
+import torch.nn as nn
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PatienceConfig:
@@ -54,6 +55,7 @@ class PatienceConfig:
 # Decision record
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenExitDecision:
     """Records the exit decision for a single token position.
@@ -67,13 +69,14 @@ class TokenExitDecision:
 
     token_pos: int
     exit_layer: int
-    exit_reason: str   # "confidence" | "patience" | "max_depth"
+    exit_reason: str  # "confidence" | "patience" | "max_depth"
     confidence: float
 
 
 # ---------------------------------------------------------------------------
 # Patience tracker
 # ---------------------------------------------------------------------------
+
 
 class PatienceTracker:
     """Tracks per-token consecutive-argmax stability across layers.
@@ -108,7 +111,7 @@ class PatienceTracker:
         current_argmax = tok_logits.argmax(dim=-1)  # (T,)
 
         # Compare to last recorded argmax
-        same = (current_argmax == self._last_argmax)  # (T,) bool
+        same = current_argmax == self._last_argmax  # (T,) bool
 
         # Increment where same, reset to 1 where different
         # (1 because we just saw one occurrence of this argmax)
@@ -131,6 +134,7 @@ class PatienceTracker:
 # ---------------------------------------------------------------------------
 # Token-level early exit module
 # ---------------------------------------------------------------------------
+
 
 class TokenLevelEarlyExit(nn.Module):
     """Wraps an AureliusTransformer with token-level patience-based early exit.
@@ -157,13 +161,15 @@ class TokenLevelEarlyExit(nn.Module):
         d_model = base_model.config.d_model
 
         # One lightweight confidence classifier per layer
-        self.exit_classifiers = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(d_model, 1),
-                nn.Sigmoid(),
-            )
-            for _ in range(n_layers)
-        ])
+        self.exit_classifiers = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(d_model, 1),
+                    nn.Sigmoid(),
+                )
+                for _ in range(n_layers)
+            ]
+        )
 
     # ------------------------------------------------------------------
     # Forward
@@ -200,8 +206,8 @@ class TokenLevelEarlyExit(nn.Module):
         device = input_ids.device
 
         # Embed tokens and get RoPE freqs
-        x = bm.embed(input_ids)           # (B, T, D)
-        freqs_cis = bm.freqs_cis[:T]      # (T, ...)
+        x = bm.embed(input_ids)  # (B, T, D)
+        freqs_cis = bm.freqs_cis[:T]  # (T, ...)
 
         # Per-token exit tracking
         token_exited = torch.zeros(T, dtype=torch.bool, device=device)
@@ -220,19 +226,19 @@ class TokenLevelEarlyExit(nn.Module):
 
         for layer_idx, layer in enumerate(bm.layers):
             # Run the transformer layer
-            x, _kv = layer(x, freqs_cis)   # (B, T, D)
+            x, _kv = layer(x, freqs_cis)  # (B, T, D)
 
             # Skip exit checks until min_layers have been processed
             if layer_idx < self.config.min_layers - 1:
                 continue
 
             # Compute full logits for exit decisions
-            x_normed = bm.norm(x)               # (B, T, D)
-            logits = bm.lm_head(x_normed)       # (B, T, V)
+            x_normed = bm.norm(x)  # (B, T, D)
+            logits = bm.lm_head(x_normed)  # (B, T, V)
 
             # Per-token confidence: use first batch element for token-level decisions
-            probs = logits[0].softmax(dim=-1)   # (T, V)
-            conf = probs.max(dim=-1).values     # (T,)
+            probs = logits[0].softmax(dim=-1)  # (T, V)
+            conf = probs.max(dim=-1).values  # (T,)
 
             # --- Confidence-based exit ---
             if self.config.exit_on_confidence:

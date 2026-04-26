@@ -10,7 +10,6 @@ import pytest
 
 from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

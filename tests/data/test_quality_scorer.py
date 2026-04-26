@@ -11,7 +11,6 @@ from src.data.quality_scorer import (
     DatasetQualityScorer,
     PerplexityScorer,
     QualitySignals,
-    ScoredExample,
     compute_dedup_score,
     compute_instruction_relevance,
     compute_length_score,
@@ -20,26 +19,27 @@ from src.data.quality_scorer import (
     simhash,
 )
 
-
 # ---------------------------------------------------------------------------
 # MockModel for perplexity tests
 # ---------------------------------------------------------------------------
+
 
 class MockModel(nn.Module):
     """nn.Embedding(256, 16) + nn.Linear(16, 256) -> (loss, logits, None).
     loss = F.cross_entropy of logits[:, :-1] vs input[:, 1:]
     """
+
     def __init__(self) -> None:
         super().__init__()
         self.embed = nn.Embedding(256, 16)
         self.proj = nn.Linear(16, 256)
 
     def forward(self, input_ids: torch.Tensor):
-        emb = self.embed(input_ids)          # (B, T, 16)
-        logits = self.proj(emb)              # (B, T, 256)
+        emb = self.embed(input_ids)  # (B, T, 16)
+        logits = self.proj(emb)  # (B, T, 256)
         # Shift for language-model loss
-        shift_logits = logits[:, :-1, :].contiguous()   # (B, T-1, 256)
-        shift_labels = input_ids[:, 1:].contiguous()     # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, 256)
+        shift_labels = input_ids[:, 1:].contiguous()  # (B, T-1)
         loss = F.cross_entropy(
             shift_logits.view(-1, 256),
             shift_labels.view(-1),
@@ -57,6 +57,7 @@ def make_scorer() -> PerplexityScorer:
 # 1. compute_length_score — ideal range returns 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_length_score_ideal_range():
     text = "x" * 400  # within [100, 800]
     score = compute_length_score(text)
@@ -66,6 +67,7 @@ def test_length_score_ideal_range():
 # ---------------------------------------------------------------------------
 # 2. compute_length_score — too short returns < 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_length_score_too_short():
     text = "x" * 10  # below min_len=50
@@ -77,6 +79,7 @@ def test_length_score_too_short():
 # 3. compute_length_score — too long returns < 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_length_score_too_long():
     text = "x" * 3000  # above max_len=2000
     score = compute_length_score(text)
@@ -86,6 +89,7 @@ def test_length_score_too_long():
 # ---------------------------------------------------------------------------
 # 4. compute_ngram_novelty — unique text vs empty reference = 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_novelty_empty_reference():
     text = "the quick brown fox jumps over the lazy dog in the park"
@@ -97,6 +101,7 @@ def test_ngram_novelty_empty_reference():
 # 5. compute_ngram_novelty — identical text vs reference ~= 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_novelty_identical_reference():
     text = "the quick brown fox jumps over the lazy dog in the park today"
     score = compute_ngram_novelty(text, reference_texts=[text], n=4)
@@ -106,6 +111,7 @@ def test_ngram_novelty_identical_reference():
 # ---------------------------------------------------------------------------
 # 6. simhash — same text gives same hash (deterministic)
 # ---------------------------------------------------------------------------
+
 
 def test_simhash_deterministic():
     text = "hello world this is a deterministic test"
@@ -118,6 +124,7 @@ def test_simhash_deterministic():
 # 7. simhash — different texts give different hashes
 # ---------------------------------------------------------------------------
 
+
 def test_simhash_different_texts():
     h1 = simhash("aaaaaaaaaaaaaaaa bbbbbbb ccccccc ddddddd eeeeeee fffff")
     h2 = simhash("zzzzzzzzzzzzzzzzz qqqqqqq rrrrrrr sssssss ttttttt uuuuuu")
@@ -128,6 +135,7 @@ def test_simhash_different_texts():
 # 8. hamming_distance(x, x) = 0
 # ---------------------------------------------------------------------------
 
+
 def test_hamming_distance_same():
     x = simhash("some text here")
     assert hamming_distance(x, x) == 0
@@ -137,6 +145,7 @@ def test_hamming_distance_same():
 # 9. hamming_distance(0, 2**64-1) = 64
 # ---------------------------------------------------------------------------
 
+
 def test_hamming_distance_all_bits():
     assert hamming_distance(0, 2**64 - 1, n_bits=64) == 64
 
@@ -144,6 +153,7 @@ def test_hamming_distance_all_bits():
 # ---------------------------------------------------------------------------
 # 10. compute_dedup_score — first occurrence returns 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_dedup_score_first_occurrence():
     seen: set = set()
@@ -155,6 +165,7 @@ def test_dedup_score_first_occurrence():
 # ---------------------------------------------------------------------------
 # 11. compute_dedup_score — near-duplicate returns 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_dedup_score_near_duplicate():
     seen: set = set()
@@ -170,6 +181,7 @@ def test_dedup_score_near_duplicate():
 # 12. compute_instruction_relevance — response contains keywords -> high score
 # ---------------------------------------------------------------------------
 
+
 def test_instruction_relevance_high():
     instruction = "Explain how neural networks learn through backpropagation"
     response = "Neural networks learn through backpropagation by computing gradients."
@@ -181,6 +193,7 @@ def test_instruction_relevance_high():
 # 13. compute_instruction_relevance — unrelated response -> low score
 # ---------------------------------------------------------------------------
 
+
 def test_instruction_relevance_low():
     instruction = "Explain quantum entanglement physics experiments"
     response = "I enjoy cooking pasta carbonara with eggs and cheese."
@@ -191,6 +204,7 @@ def test_instruction_relevance_low():
 # ---------------------------------------------------------------------------
 # 14. DatasetQualityScorer.score_example — composite in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_score_example_composite_in_range():
     scorer = DatasetQualityScorer()
@@ -209,6 +223,7 @@ def test_score_example_composite_in_range():
 # ---------------------------------------------------------------------------
 # 15. DatasetQualityScorer.score_dataset — returns sorted list (lower rank = higher composite)
 # ---------------------------------------------------------------------------
+
 
 def test_score_dataset_sorted_by_rank():
     scorer = DatasetQualityScorer()
@@ -252,6 +267,7 @@ def test_score_dataset_sorted_by_rank():
 # ---------------------------------------------------------------------------
 # 16. filter_top_k — returns exactly k examples
 # ---------------------------------------------------------------------------
+
 
 def test_filter_top_k_returns_k():
     scorer = DatasetQualityScorer()

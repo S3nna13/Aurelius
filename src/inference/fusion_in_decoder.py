@@ -10,15 +10,17 @@ Generative Models for Open Domain Question Answering".
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class FiDConfig:
     """Configuration for Fusion-in-Decoder."""
+
     n_passages: int = 5
     max_passage_len: int = 32
     max_answer_len: int = 16
@@ -71,14 +73,12 @@ def encode_passages(model: nn.Module, passage_ids_list: list[torch.Tensor]) -> t
         if hs.shape[1] >= T:
             aligned.append(hs[:, :T, :])
         else:
-            pad = torch.zeros(
-                1, T - hs.shape[1], hs.shape[2], dtype=hs.dtype, device=hs.device
-            )
+            pad = torch.zeros(1, T - hs.shape[1], hs.shape[2], dtype=hs.dtype, device=hs.device)
             aligned.append(torch.cat([hs, pad], dim=1))
 
     # Stack: (n_passages, 1, T, d_model) -> mean over passages -> (1, T, d_model)
     stacked = torch.stack(aligned, dim=0)  # (n_passages, 1, T, d_model)
-    fused = stacked.mean(dim=0)             # (1, T, d_model)
+    fused = stacked.mean(dim=0)  # (1, T, d_model)
     return fused
 
 
@@ -96,7 +96,7 @@ def fuse_representations(hidden_states_list: list[torch.Tensor]) -> torch.Tensor
         raise ValueError("hidden_states_list must not be empty")
 
     stacked = torch.stack(hidden_states_list, dim=0)  # (n_passages, 1, T, d_model)
-    fused = stacked.mean(dim=0)                        # (1, T, d_model)
+    fused = stacked.mean(dim=0)  # (1, T, d_model)
     return fused
 
 
@@ -175,7 +175,7 @@ class FusionInDecoder:
                 generated = torch.cat([generated, next_token], dim=1)
 
         # Return only the newly generated tokens
-        new_tokens = generated[0, prefix.shape[1]:]
+        new_tokens = generated[0, prefix.shape[1] :]
         return new_tokens
 
     def score_passages(

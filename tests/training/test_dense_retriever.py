@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.dense_retriever import (
-    DPRTrainer,
     DenseEncoder,
+    DPRTrainer,
     RetrieverConfig,
     in_batch_negatives_loss,
 )

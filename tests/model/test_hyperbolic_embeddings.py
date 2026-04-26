@@ -1,7 +1,7 @@
 """Tests for hyperbolic_embeddings.py — Poincaré ball module."""
 
 import math
-import pytest
+
 import torch
 
 from src.model.hyperbolic_embeddings import (
@@ -27,6 +27,7 @@ C = 1.0
 # HyperbolicConfig
 # ---------------------------------------------------------------------------
 
+
 def test_hyperbolic_config_defaults():
     cfg = HyperbolicConfig()
     assert cfg.dim == 64
@@ -38,6 +39,7 @@ def test_hyperbolic_config_defaults():
 # ---------------------------------------------------------------------------
 # poincare_distance
 # ---------------------------------------------------------------------------
+
 
 def test_poincare_distance_non_negative():
     u = torch.randn(B, DIM) * 0.3
@@ -65,17 +67,21 @@ def test_poincare_distance_symmetric():
 # expmap0
 # ---------------------------------------------------------------------------
 
+
 def test_expmap0_output_inside_unit_ball():
     """For c=1 the Poincaré ball has radius 1; output norms should be < 1."""
     v = torch.randn(B, DIM)
     y = expmap0(v, c=C)
     norms = y.norm(dim=-1)
-    assert (norms < 1.0).all(), f"expmap0 output should be inside unit ball, got max norm {norms.max()}"
+    assert (norms < 1.0).all(), (
+        f"expmap0 output should be inside unit ball, got max norm {norms.max()}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # logmap0
 # ---------------------------------------------------------------------------
+
 
 def test_logmap0_inverse_of_expmap0():
     # Use small-norm vectors so tanh doesn't saturate and roundtrip is exact.
@@ -89,13 +95,16 @@ def test_logmap0_inverse_of_expmap0():
 # project_to_ball
 # ---------------------------------------------------------------------------
 
+
 def test_project_to_ball_norm_clipped():
     cfg = HyperbolicConfig(dim=DIM, curvature=C, clip_r=2.3)
     x = torch.randn(B, DIM) * 10.0  # large vectors well outside ball
     projected = project_to_ball(x, c=cfg.curvature, clip_r=cfg.clip_r)
     max_norm = cfg.clip_r / math.sqrt(cfg.curvature)
     norms = projected.norm(dim=-1)
-    assert (norms <= max_norm + 1e-6).all(), f"Projected norms should be <= {max_norm}, got {norms.max()}"
+    assert (norms <= max_norm + 1e-6).all(), (
+        f"Projected norms should be <= {max_norm}, got {norms.max()}"
+    )
 
 
 def test_project_to_ball_inball_points_unchanged():
@@ -112,6 +121,7 @@ def test_project_to_ball_inball_points_unchanged():
 # ---------------------------------------------------------------------------
 # PoincareEmbedding
 # ---------------------------------------------------------------------------
+
 
 def test_poincare_embedding_output_shape():
     cfg = HyperbolicConfig(dim=DIM)
@@ -145,6 +155,7 @@ def test_poincare_embedding_differentiable():
 # HyperbolicLinear
 # ---------------------------------------------------------------------------
 
+
 def test_hyperbolic_linear_output_inside_ball():
     cfg = HyperbolicConfig(dim=DIM, curvature=1.0)
     layer = HyperbolicLinear(DIM, DIM, cfg)
@@ -153,7 +164,9 @@ def test_hyperbolic_linear_output_inside_ball():
     x = expmap0(v, c=cfg.curvature)
     out = layer(x)
     norms = out.norm(dim=-1)
-    assert (norms < 1.0).all(), f"HyperbolicLinear output must be inside unit ball, got max norm {norms.max()}"
+    assert (norms < 1.0).all(), (
+        f"HyperbolicLinear output must be inside unit ball, got max norm {norms.max()}"
+    )
 
 
 def test_hyperbolic_linear_output_shape():
@@ -169,6 +182,7 @@ def test_hyperbolic_linear_output_shape():
 # ---------------------------------------------------------------------------
 # Different indices → different embeddings
 # ---------------------------------------------------------------------------
+
 
 def test_different_indices_give_different_embeddings():
     cfg = HyperbolicConfig(dim=DIM)

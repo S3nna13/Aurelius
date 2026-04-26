@@ -4,6 +4,7 @@ Tiny configs: vocab=16, d_model=8, seq_len=8, compression_ratio=0.5,
 chunk_size=4.  All tests run forward/backward passes -- not just
 instantiation.
 """
+
 from __future__ import annotations
 
 import math
@@ -40,8 +41,8 @@ class _TinyModel(nn.Module):
         self.head = nn.Linear(D_MODEL, VOCAB)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        x = self.embedding(input_ids)   # (B, T, D_MODEL)
-        return self.head(x)             # (B, T, VOCAB)
+        x = self.embedding(input_ids)  # (B, T, D_MODEL)
+        return self.head(x)  # (B, T, VOCAB)
 
 
 class _MHAModel(nn.Module):
@@ -89,17 +90,17 @@ def ids():
 # Test 1: TokenImportanceScorer.perplexity_score -- shape (T,)
 # ---------------------------------------------------------------------------
 
+
 def test_perplexity_score_shape(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
     scores = scorer.perplexity_score(ids)
-    assert scores.shape == (SEQ_LEN,), (
-        f"Expected shape ({SEQ_LEN},), got {scores.shape}"
-    )
+    assert scores.shape == (SEQ_LEN,), f"Expected shape ({SEQ_LEN},), got {scores.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: TokenImportanceScorer.perplexity_score -- all values >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_perplexity_score_nonneg(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
@@ -110,6 +111,7 @@ def test_perplexity_score_nonneg(tiny_model, ids):
 # ---------------------------------------------------------------------------
 # Test 3: perplexity_score -- higher surprise tokens get higher scores
 # ---------------------------------------------------------------------------
+
 
 def test_perplexity_score_relative_surprise(tiny_model):
     """Tokens the model finds surprising should receive higher scores."""
@@ -128,6 +130,7 @@ def test_perplexity_score_relative_surprise(tiny_model):
 # Test 4: TokenSelector.select -- kept_ids shape <= original, keeps first+last
 # ---------------------------------------------------------------------------
 
+
 def test_selector_keeps_first_last(ids):
     selector = TokenSelector(compression_ratio=COMP_RATIO)
     scores = torch.rand(SEQ_LEN)
@@ -143,19 +146,19 @@ def test_selector_keeps_first_last(ids):
 # Test 5: TokenSelector.select -- kept_indices sorted ascending
 # ---------------------------------------------------------------------------
 
+
 def test_selector_indices_sorted(ids):
     selector = TokenSelector(compression_ratio=COMP_RATIO)
     scores = torch.rand(SEQ_LEN)
     _, kept_indices = selector.select(scores, ids)
     indices_list = kept_indices.tolist()
-    assert indices_list == sorted(indices_list), (
-        f"kept_indices are not sorted: {indices_list}"
-    )
+    assert indices_list == sorted(indices_list), f"kept_indices are not sorted: {indices_list}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: TokenSelector.target_length = ceil(T * compression_ratio)
 # ---------------------------------------------------------------------------
+
 
 def test_selector_target_length():
     for ratio in [0.0, 0.3, 0.5, 0.75, 1.0]:
@@ -166,14 +169,14 @@ def test_selector_target_length():
             expected_raw = math.ceil(T * ratio)
             expected = max(expected_min, expected_raw)
             assert tl == expected, (
-                f"target_length({T}) with ratio={ratio}: "
-                f"got {tl}, expected {expected}"
+                f"target_length({T}) with ratio={ratio}: got {tl}, expected {expected}"
             )
 
 
 # ---------------------------------------------------------------------------
 # Test 7: ChunkCompressor.compress_chunk -- len(output) <= len(input)
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_compress_chunk_shorter(tiny_model):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
@@ -191,6 +194,7 @@ def test_chunk_compress_chunk_shorter(tiny_model):
 # Test 8: ChunkCompressor.compress -- stats has all 3 keys, ratio <= 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_chunk_compress_stats_keys(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
     selector = TokenSelector(compression_ratio=COMP_RATIO)
@@ -206,6 +210,7 @@ def test_chunk_compress_stats_keys(tiny_model, ids):
 # ---------------------------------------------------------------------------
 # Test 9: ChunkCompressor.compress -- original_len correct, compressed_len <= orig
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_compress_lengths(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
@@ -228,13 +233,12 @@ def test_chunk_compress_lengths(tiny_model, ids):
 # Test 10: SemanticPreserver.semantic_similarity -- in [-1,1], 1.0 for identical
 # ---------------------------------------------------------------------------
 
+
 def test_semantic_similarity_range_and_identity(tiny_model, ids):
     sp = SemanticPreserver(tiny_model)
     sim_self = sp.semantic_similarity(ids, ids)
     assert -1.0 <= sim_self <= 1.0, f"sim_self={sim_self} out of [-1,1]"
-    assert abs(sim_self - 1.0) < 1e-4, (
-        f"Expected ~1.0 for identical sequences, got {sim_self}"
-    )
+    assert abs(sim_self - 1.0) < 1e-4, f"Expected ~1.0 for identical sequences, got {sim_self}"
 
     ids2 = torch.randint(0, VOCAB, (1, SEQ_LEN))
     sim_diff = sp.semantic_similarity(ids, ids2)
@@ -244,6 +248,7 @@ def test_semantic_similarity_range_and_identity(tiny_model, ids):
 # ---------------------------------------------------------------------------
 # Test 11: SemanticPreserver.perplexity_ratio -- > 0 (finite positive float)
 # ---------------------------------------------------------------------------
+
 
 def test_perplexity_ratio_positive(tiny_model, ids):
     sp = SemanticPreserver(tiny_model)
@@ -260,6 +265,7 @@ def test_perplexity_ratio_positive(tiny_model, ids):
 # ---------------------------------------------------------------------------
 # Test 12: IterativeCompressor.compress -- ratio <= target OR n_iters == max
 # ---------------------------------------------------------------------------
+
 
 def test_iterative_compress_ratio_or_max_iters(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
@@ -278,19 +284,19 @@ def test_iterative_compress_ratio_or_max_iters(tiny_model, ids):
 # Test 13: IterativeCompressor -- n_iterations <= max_iterations
 # ---------------------------------------------------------------------------
 
+
 def test_iterative_compress_n_iters_bounded(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
     max_iters = 3
     ic = IterativeCompressor(scorer, target_ratio=0.1, max_iterations=max_iters)
     _, n_iters = ic.compress(ids)
-    assert n_iters <= max_iters, (
-        f"n_iterations={n_iters} exceeds max_iterations={max_iters}"
-    )
+    assert n_iters <= max_iters, f"n_iterations={n_iters} exceeds max_iterations={max_iters}"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: compression_ratio=1.0 -> keep all tokens
 # ---------------------------------------------------------------------------
+
 
 def test_selector_ratio_one_keeps_all(tiny_model, ids):
     scorer = TokenImportanceScorer(tiny_model, method="perplexity")
@@ -298,14 +304,14 @@ def test_selector_ratio_one_keeps_all(tiny_model, ids):
     scores = scorer.score(ids)
     kept_ids, kept_indices = selector.select(scores, ids)
     assert kept_ids.shape[0] == SEQ_LEN, (
-        f"compression_ratio=1.0 should keep all {SEQ_LEN} tokens, "
-        f"got {kept_ids.shape[0]}"
+        f"compression_ratio=1.0 should keep all {SEQ_LEN} tokens, got {kept_ids.shape[0]}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 15: Multiple chunk sizes -- same compression_ratio regardless of chunk_size
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_size_independence(tiny_model):
     """The compression_ratio is set by TokenSelector, not by chunk_size.
@@ -326,6 +332,4 @@ def test_chunk_size_independence(tiny_model):
 
     # All ratios should be reasonably close to COMP_RATIO
     for r in ratios:
-        assert abs(r - COMP_RATIO) <= 0.5, (
-            f"Ratio {r} is too far from target {COMP_RATIO}."
-        )
+        assert abs(r - COMP_RATIO) <= 0.5, f"Ratio {r} is too far from target {COMP_RATIO}."

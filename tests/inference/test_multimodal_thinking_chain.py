@@ -1,4 +1,5 @@
 """Unit tests for src/inference/multimodal_thinking_chain.py — 15 tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -13,10 +14,10 @@ from src.inference.multimodal_thinking_chain import (
     VisionStepLimitError,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_tokens(n: int, start: int = 1) -> list[int]:
     """Return a list of n sequential token IDs starting at `start`."""
@@ -33,6 +34,7 @@ def default_chain(**kwargs) -> MultimodalThinkingChain:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = MultimodalThinkingConfig()
     assert cfg.max_steps == 50
@@ -45,6 +47,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_add_think_step
 # ---------------------------------------------------------------------------
+
 
 def test_add_think_step():
     chain = MultimodalThinkingChain()
@@ -62,6 +65,7 @@ def test_add_think_step():
 # 3. test_add_vision_step
 # ---------------------------------------------------------------------------
 
+
 def test_add_vision_step():
     chain = MultimodalThinkingChain()
     tokens = make_tokens(20)
@@ -75,6 +79,7 @@ def test_add_vision_step():
 # ---------------------------------------------------------------------------
 # 4. test_add_tool_call_step
 # ---------------------------------------------------------------------------
+
 
 def test_add_tool_call_step():
     chain = MultimodalThinkingChain()
@@ -92,6 +97,7 @@ def test_add_tool_call_step():
 # 5. test_step_truncated
 # ---------------------------------------------------------------------------
 
+
 def test_step_truncated():
     chain = default_chain(max_tokens_per_step=8)
     long_tokens = make_tokens(20)
@@ -107,6 +113,7 @@ def test_step_truncated():
 # 6. test_max_steps_raises
 # ---------------------------------------------------------------------------
 
+
 def test_max_steps_raises():
     chain = default_chain(max_steps=3)
     for _ in range(3):
@@ -119,6 +126,7 @@ def test_max_steps_raises():
 # ---------------------------------------------------------------------------
 # 7. test_thinking_budget_exceeded_raises
 # ---------------------------------------------------------------------------
+
 
 def test_thinking_budget_exceeded_raises():
     chain = default_chain(max_thinking_tokens=20, max_steps=10)
@@ -133,6 +141,7 @@ def test_thinking_budget_exceeded_raises():
 # 8. test_vision_limit_raises
 # ---------------------------------------------------------------------------
 
+
 def test_vision_limit_raises():
     chain = default_chain(vision_step_limit=2, max_steps=10)
     chain.add_step(StepType.VISION, make_tokens(5))
@@ -145,6 +154,7 @@ def test_vision_limit_raises():
 # ---------------------------------------------------------------------------
 # 9. test_get_flat_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_get_flat_tokens():
     chain = MultimodalThinkingChain()
@@ -164,6 +174,7 @@ def test_get_flat_tokens():
 # 10. test_budget_remaining_correct
 # ---------------------------------------------------------------------------
 
+
 def test_budget_remaining_correct():
     chain = default_chain(max_steps=10, max_thinking_tokens=100, vision_step_limit=5)
     chain.add_step(StepType.THINK, make_tokens(30))
@@ -171,14 +182,15 @@ def test_budget_remaining_correct():
     chain.add_step(StepType.TOOL_CALL, make_tokens(5))
 
     remaining = chain.budget_remaining()
-    assert remaining["steps"] == 7          # 10 - 3
+    assert remaining["steps"] == 7  # 10 - 3
     assert remaining["thinking_tokens"] == 70  # 100 - 30
-    assert remaining["vision_steps"] == 4   # 5 - 1
+    assert remaining["vision_steps"] == 4  # 5 - 1
 
 
 # ---------------------------------------------------------------------------
 # 11. test_validate_interleave_true — think before tool, interleave=False → valid
 # ---------------------------------------------------------------------------
+
 
 def test_validate_interleave_true():
     chain = default_chain(allow_interleave=False)
@@ -192,6 +204,7 @@ def test_validate_interleave_true():
 # 12. test_validate_interleave_false — tool before think, interleave=False → invalid
 # ---------------------------------------------------------------------------
 
+
 def test_validate_interleave_false():
     chain = default_chain(allow_interleave=False, max_steps=10)
     chain.add_step(StepType.TOOL_CALL, make_tokens(3))
@@ -203,6 +216,7 @@ def test_validate_interleave_false():
 # ---------------------------------------------------------------------------
 # 13. test_validate_interleave_always_true — allow_interleave=True → always True
 # ---------------------------------------------------------------------------
+
 
 def test_validate_interleave_always_true():
     chain = default_chain(allow_interleave=True, max_steps=10)
@@ -216,6 +230,7 @@ def test_validate_interleave_always_true():
 # ---------------------------------------------------------------------------
 # 14. test_to_summary_keys
 # ---------------------------------------------------------------------------
+
 
 def test_to_summary_keys():
     chain = MultimodalThinkingChain()
@@ -240,6 +255,7 @@ def test_to_summary_keys():
 # ---------------------------------------------------------------------------
 # 15. test_mixed_chain — add THINK + VISION + TOOL_CALL + TEXT, flat tokens correct
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_chain():
     chain = default_chain(max_steps=10, max_thinking_tokens=500, vision_step_limit=5)

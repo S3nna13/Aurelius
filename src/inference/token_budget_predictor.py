@@ -6,30 +6,30 @@ and compute-efficient inference.
 
 Inspired by: Muennighoff et al. 2025 (token budget forcing)
 """
+
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # BudgetCategory
 # ---------------------------------------------------------------------------
 
+
 class BudgetCategory(Enum):
     """Coarse-grained response-length category."""
 
-    SHORT = 0   # < 50 tokens
+    SHORT = 0  # < 50 tokens
     MEDIUM = 1  # 50–200 tokens
-    LONG = 2    # > 200 tokens
+    LONG = 2  # > 200 tokens
 
     @classmethod
-    def from_length(cls, length: int) -> "BudgetCategory":
+    def from_length(cls, length: int) -> BudgetCategory:
         """Map an integer token count to a BudgetCategory.
 
         Args:
@@ -49,6 +49,7 @@ class BudgetCategory(Enum):
 # ---------------------------------------------------------------------------
 # TokenBudgetPredictor
 # ---------------------------------------------------------------------------
+
 
 class TokenBudgetPredictor(nn.Module):
     """Predicts response length (token budget) from a query hidden state.
@@ -90,9 +91,9 @@ class TokenBudgetPredictor(nn.Module):
             ``(B,)`` float tensor of predicted token counts clamped to
             ``[1, max_budget]``.
         """
-        x = F.relu(self.reg_fc1(query_hidden))    # (B, hidden_size)
-        x = self.reg_fc2(x)                        # (B, 1)
-        x = F.softplus(x).squeeze(-1)             # (B,)
+        x = F.relu(self.reg_fc1(query_hidden))  # (B, hidden_size)
+        x = self.reg_fc2(x)  # (B, 1)
+        x = F.softplus(x).squeeze(-1)  # (B,)
         return x.clamp(1.0, float(self.max_budget))
 
     def predict_category(self, query_hidden: Tensor) -> Tensor:
@@ -105,8 +106,8 @@ class TokenBudgetPredictor(nn.Module):
             ``(B,)`` long tensor of category indices (0 = SHORT, 1 = MEDIUM,
             2 = LONG).
         """
-        logits = self.cls_head(query_hidden)   # (B, 3)
-        return logits.argmax(dim=-1)           # (B,) long
+        logits = self.cls_head(query_hidden)  # (B, 3)
+        return logits.argmax(dim=-1)  # (B,) long
 
     def forward(self, query_hidden: Tensor) -> tuple[Tensor, Tensor]:
         """Convenience forward returning (budget, category).
@@ -123,6 +124,7 @@ class TokenBudgetPredictor(nn.Module):
 # ---------------------------------------------------------------------------
 # BudgetLoss
 # ---------------------------------------------------------------------------
+
 
 class BudgetLoss(nn.Module):
     """Combined regression + classification loss for training the predictor.
@@ -142,7 +144,7 @@ class BudgetLoss(nn.Module):
         query_hidden: Tensor,
         predictor: TokenBudgetPredictor,
         target_lengths: Tensor,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Compute the combined budget prediction loss.
 
         Args:
@@ -161,7 +163,7 @@ class BudgetLoss(nn.Module):
         # --- Classification ---
         logits = predictor.cls_head(query_hidden)  # (B, 3)
         cls_target = torch.tensor(
-            [BudgetCategory.from_length(int(l.item())).value for l in target_lengths],
+            [BudgetCategory.from_length(int(line.item())).value for line in target_lengths],
             dtype=torch.long,
             device=query_hidden.device,
         )
@@ -179,6 +181,7 @@ class BudgetLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # AdaptiveStopCriteria
 # ---------------------------------------------------------------------------
+
 
 class AdaptiveStopCriteria:
     """Decides whether generation should stop based on a predicted budget.
@@ -231,6 +234,7 @@ class AdaptiveStopCriteria:
 # ---------------------------------------------------------------------------
 # BudgetCalibrator
 # ---------------------------------------------------------------------------
+
 
 class BudgetCalibrator:
     """Post-hoc linear calibration: ``calibrated = a * predicted + b``.

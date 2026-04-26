@@ -91,7 +91,7 @@ def test_pre_registered_motions_present():
 
 
 def test_ui_surface_imports_compose_and_play_available():
-    from src.ui import compose_layout, get_panel_layout, get_motion, play
+    from src.ui import compose_layout, get_motion, get_panel_layout, play
 
     layout = get_panel_layout("stoic-focus")
     out = compose_layout(

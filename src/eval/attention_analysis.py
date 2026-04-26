@@ -9,7 +9,7 @@ Provides extended analysis components complementing attention_patterns.py:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -84,7 +84,7 @@ def extract_attention_weights(
     for layer_idx, h in hidden_states.items():
         # h: (B, T, D)
         B, T, D = h.shape
-        n_layers = getattr(model, "config", None)
+        getattr(model, "config", None)
         # Determine number of heads from config or default to 2
         n_heads = 2  # default; will be updated from model config
         try:

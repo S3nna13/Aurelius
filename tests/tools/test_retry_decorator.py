@@ -1,9 +1,8 @@
 """Tests for retry decorator."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.tools.retry_decorator import retry, RetryConfig
+from src.tools.retry_decorator import RetryConfig, retry
 
 
 class TestRetryDecorator:

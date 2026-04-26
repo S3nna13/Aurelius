@@ -1,28 +1,29 @@
 """Tests for test-time compute scaling: majority voting, reward-guided search, MCTS."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.test_time_scaling import (
+    BeamMCTS,
     ScalingConfig,
-    nucleus_sample,
+    StepLevelScorer,
+    TestTimeScaler,
     generate_samples,
     majority_vote,
+    nucleus_sample,
     self_consistency_vote,
-    StepLevelScorer,
-    BeamMCTS,
-    TestTimeScaler,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
 VOCAB_SIZE = 256
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -71,6 +72,7 @@ def dummy_decode(token_ids: list[int]) -> str:
 # 1. test_scaling_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_scaling_config_defaults():
     cfg = ScalingConfig()
     assert cfg.n_samples == 8
@@ -85,6 +87,7 @@ def test_scaling_config_defaults():
 # 2. test_nucleus_sample_valid_token
 # ---------------------------------------------------------------------------
 
+
 def test_nucleus_sample_valid_token():
     V = VOCAB_SIZE
     torch.manual_seed(1)
@@ -98,12 +101,13 @@ def test_nucleus_sample_valid_token():
 # 3. test_nucleus_sample_top1_deterministic
 # ---------------------------------------------------------------------------
 
+
 def test_nucleus_sample_top1_deterministic():
     """With top_p=1.0 and temperature near-zero the argmax token is always chosen."""
     V = VOCAB_SIZE
     logits = torch.zeros(V)
     best_token = 42
-    logits[best_token] = 100.0   # overwhelmingly highest
+    logits[best_token] = 100.0  # overwhelmingly highest
 
     results = {nucleus_sample(logits, top_p=1.0, temperature=0.01) for _ in range(10)}
     assert results == {best_token}
@@ -113,6 +117,7 @@ def test_nucleus_sample_top1_deterministic():
 # 4. test_generate_samples_count
 # ---------------------------------------------------------------------------
 
+
 def test_generate_samples_count(small_model, prompt_tensor, fast_config):
     samples = generate_samples(small_model, prompt_tensor, fast_config)
     assert len(samples) == fast_config.n_samples
@@ -121,6 +126,7 @@ def test_generate_samples_count(small_model, prompt_tensor, fast_config):
 # ---------------------------------------------------------------------------
 # 5. test_generate_samples_nonempty
 # ---------------------------------------------------------------------------
+
 
 def test_generate_samples_nonempty(small_model, prompt_tensor, fast_config):
     samples = generate_samples(small_model, prompt_tensor, fast_config)
@@ -132,6 +138,7 @@ def test_generate_samples_nonempty(small_model, prompt_tensor, fast_config):
 # 6. test_majority_vote_most_common
 # ---------------------------------------------------------------------------
 
+
 def test_majority_vote_most_common():
     answers = ["apple", "banana", "apple", "apple", "banana"]
     assert majority_vote(answers) == "apple"
@@ -140,6 +147,7 @@ def test_majority_vote_most_common():
 # ---------------------------------------------------------------------------
 # 7. test_majority_vote_tie_first
 # ---------------------------------------------------------------------------
+
 
 def test_majority_vote_tie_first():
     # "cat" appears first but both appear once — should return first encountered
@@ -152,6 +160,7 @@ def test_majority_vote_tie_first():
 # 8. test_self_consistency_probabilities_sum
 # ---------------------------------------------------------------------------
 
+
 def test_self_consistency_probabilities_sum():
     answers = ["yes", "no", "yes", "maybe", "no", "yes"]
     probs = self_consistency_vote(answers, normalize=True)
@@ -162,6 +171,7 @@ def test_self_consistency_probabilities_sum():
 # 9. test_step_level_scorer_returns_float
 # ---------------------------------------------------------------------------
 
+
 def test_step_level_scorer_returns_float(small_model):
     scorer = StepLevelScorer(small_model, dummy_encode)
     score = scorer.score_step("Hello world", "Next step")
@@ -171,6 +181,7 @@ def test_step_level_scorer_returns_float(small_model):
 # ---------------------------------------------------------------------------
 # 10. test_test_time_scaler_generate_and_vote_returns_str
 # ---------------------------------------------------------------------------
+
 
 def test_test_time_scaler_generate_and_vote_returns_str(small_model, fast_config):
     scaler = TestTimeScaler(
@@ -186,6 +197,7 @@ def test_test_time_scaler_generate_and_vote_returns_str(small_model, fast_config
 # ---------------------------------------------------------------------------
 # 11. test_test_time_scaler_vote_dict_keys
 # ---------------------------------------------------------------------------
+
 
 def test_test_time_scaler_vote_dict_keys(small_model, fast_config):
     scaler = TestTimeScaler(
@@ -204,6 +216,7 @@ def test_test_time_scaler_vote_dict_keys(small_model, fast_config):
 # ---------------------------------------------------------------------------
 # 12. test_scale_compute_override_n_samples
 # ---------------------------------------------------------------------------
+
 
 def test_scale_compute_override_n_samples(small_model):
     config = ScalingConfig(n_samples=2, max_new_tokens=4)
@@ -224,6 +237,7 @@ def test_scale_compute_override_n_samples(small_model):
 # 13. test_majority_vote_empty_returns_empty_string
 # ---------------------------------------------------------------------------
 
+
 def test_majority_vote_empty_returns_empty_string():
     assert majority_vote([]) == ""
 
@@ -231,6 +245,7 @@ def test_majority_vote_empty_returns_empty_string():
 # ---------------------------------------------------------------------------
 # 14. test_self_consistency_unnormalized_counts
 # ---------------------------------------------------------------------------
+
 
 def test_self_consistency_unnormalized_counts():
     answers = ["X", "X", "Y"]
@@ -242,6 +257,7 @@ def test_self_consistency_unnormalized_counts():
 # ---------------------------------------------------------------------------
 # 15. test_beam_mcts_search_returns_nonempty_list
 # ---------------------------------------------------------------------------
+
 
 def test_beam_mcts_search_returns_nonempty_list(small_model, small_cfg):
     cfg = ScalingConfig(n_samples=2, max_new_tokens=8, temperature=1.0)
@@ -256,6 +272,7 @@ def test_beam_mcts_search_returns_nonempty_list(small_model, small_cfg):
 # ---------------------------------------------------------------------------
 # 16. test_scale_compute_no_override
 # ---------------------------------------------------------------------------
+
 
 def test_scale_compute_no_override(small_model):
     config = ScalingConfig(n_samples=2, max_new_tokens=4, voting_method="self_consistency")
@@ -273,6 +290,7 @@ def test_scale_compute_no_override(small_model):
 # 17. test_step_level_scorer_score_steps_length
 # ---------------------------------------------------------------------------
 
+
 def test_step_level_scorer_score_steps_length(small_model):
     scorer = StepLevelScorer(small_model, dummy_encode)
     steps = ["first step", "second step", "third step"]
@@ -284,6 +302,7 @@ def test_step_level_scorer_score_steps_length(small_model):
 # ---------------------------------------------------------------------------
 # 18. test_generate_samples_token_ids_in_range
 # ---------------------------------------------------------------------------
+
 
 def test_generate_samples_token_ids_in_range(small_model, prompt_tensor, fast_config):
     samples = generate_samples(small_model, prompt_tensor, fast_config)

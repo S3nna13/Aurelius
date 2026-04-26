@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class FusionStrategy(str, Enum):
+class FusionStrategy(StrEnum):
     RRF = "rrf"
     LINEAR = "linear"
     CONVEX = "convex"

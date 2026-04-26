@@ -1,8 +1,11 @@
 """Tests for standalone perplexity evaluator."""
+
 import math
-import torch
+
 import pytest
-from src.eval.perplexity import compute_perplexity, perplexity_on_dataset, PerplexityResult
+import torch
+
+from src.eval.perplexity import compute_perplexity, perplexity_on_dataset
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -11,8 +14,14 @@ from src.model.transformer import AureliusTransformer
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 

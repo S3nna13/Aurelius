@@ -1,4 +1,5 @@
 """Tests for src/training/model_merge_advanced.py."""
+
 from __future__ import annotations
 
 import pytest
@@ -122,7 +123,7 @@ def test_dare_prune_rescaling_preserves_expected_magnitude():
     # Only average over non-zero elements (they are rescaled by 1/density)
     nonzero = pruned["w"][pruned["w"] != 0]
     if len(nonzero) > 0:
-        pruned_mean_abs = nonzero.abs().mean().item()
+        nonzero.abs().mean().item()
         # The kept values are original * (1/density), so mean(|kept|) = mean(|orig|)/density
         # But the overall mean E[|pruned|] = density * mean(|kept|) = mean(|orig|)
         overall_mean_abs = pruned["w"].abs().mean().item()

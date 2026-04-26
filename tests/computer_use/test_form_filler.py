@@ -4,19 +4,20 @@ Tests for form_filler.py  (>=28 tests)
 """
 
 import pytest
+
 from src.computer_use.form_filler import (
-    FieldType,
-    FormField,
-    FormFillResult,
-    FormFiller,
     FORM_FILLER_REGISTRY,
     REGISTRY,
+    FieldType,
+    FormField,
+    FormFiller,
+    FormFillResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_filler(*fields: FormField) -> FormFiller:
     ff = FormFiller()
@@ -61,6 +62,7 @@ def password_field(fid: str = "pw") -> FormField:
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_registry_contains_default():
     assert "default" in FORM_FILLER_REGISTRY
 
@@ -77,6 +79,7 @@ def test_registry_default_is_class():
 # FormFillResult — frozen
 # ---------------------------------------------------------------------------
 
+
 def test_form_fill_result_frozen():
     r = FormFillResult(field_id="f", value="v", success=True)
     with pytest.raises((AttributeError, TypeError)):
@@ -91,6 +94,7 @@ def test_form_fill_result_defaults():
 # ---------------------------------------------------------------------------
 # TEXT fill
 # ---------------------------------------------------------------------------
+
 
 def test_fill_text_success():
     ff = make_filler(text_field())
@@ -122,6 +126,7 @@ def test_fill_textarea_success():
 # EMAIL fill
 # ---------------------------------------------------------------------------
 
+
 def test_fill_email_valid():
     ff = make_filler(email_field())
     r = ff.fill("email", "user@example.com")
@@ -145,6 +150,7 @@ def test_fill_email_invalid_returns_value():
 # ---------------------------------------------------------------------------
 # NUMBER fill
 # ---------------------------------------------------------------------------
+
 
 def test_fill_number_integer():
     ff = make_filler(number_field())
@@ -175,6 +181,7 @@ def test_fill_number_invalid():
 # CHECKBOX fill
 # ---------------------------------------------------------------------------
 
+
 def test_fill_checkbox_true():
     ff = make_filler(checkbox_field())
     r = ff.fill("agree", "true")
@@ -204,6 +211,7 @@ def test_fill_checkbox_invalid_bool_cased():
 # SELECT fill
 # ---------------------------------------------------------------------------
 
+
 def test_fill_select_valid_option():
     ff = make_filler(select_field())
     r = ff.fill("color", "red")
@@ -227,6 +235,7 @@ def test_fill_select_invalid_returns_field_id():
 # Required field validation
 # ---------------------------------------------------------------------------
 
+
 def test_required_field_empty_value_error():
     ff = make_filler(text_field(required=True))
     r = ff.fill("name", "")
@@ -249,6 +258,7 @@ def test_required_email_empty():
 # ---------------------------------------------------------------------------
 # fill_form
 # ---------------------------------------------------------------------------
+
 
 def test_fill_form_returns_list():
     ff = make_filler(text_field("first"), text_field("last"))
@@ -275,6 +285,7 @@ def test_fill_form_empty_dict():
 # validate
 # ---------------------------------------------------------------------------
 
+
 def test_validate_true():
     ff = make_filler(email_field())
     assert ff.validate("email", "a@b.com") is True
@@ -293,6 +304,7 @@ def test_validate_unknown_field():
 # ---------------------------------------------------------------------------
 # Unregistered field
 # ---------------------------------------------------------------------------
+
 
 def test_fill_unregistered_field():
     ff = FormFiller()

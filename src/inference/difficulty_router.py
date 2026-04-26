@@ -2,21 +2,66 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
-_MATH_KEYWORDS = {"math", "proof", "theorem", "lemma", "corollary", "integral",
-                  "derivative", "equation", "algebra", "calculus", "statistics",
-                  "probability", "matrix", "vector", "eigenvalue", "gradient"}
+_MATH_KEYWORDS = {
+    "math",
+    "proof",
+    "theorem",
+    "lemma",
+    "corollary",
+    "integral",
+    "derivative",
+    "equation",
+    "algebra",
+    "calculus",
+    "statistics",
+    "probability",
+    "matrix",
+    "vector",
+    "eigenvalue",
+    "gradient",
+}
 
-_CODE_KEYWORDS = {"function", "algorithm", "implement", "code", "class", "debug",
-                  "compile", "runtime", "recursion", "complexity", "python",
-                  "javascript", "typescript", "sql", "api", "async", "concurrency"}
+_CODE_KEYWORDS = {
+    "function",
+    "algorithm",
+    "implement",
+    "code",
+    "class",
+    "debug",
+    "compile",
+    "runtime",
+    "recursion",
+    "complexity",
+    "python",
+    "javascript",
+    "typescript",
+    "sql",
+    "api",
+    "async",
+    "concurrency",
+}
 
-_SIMPLE_KEYWORDS = {"hi", "hello", "thanks", "thank", "greet", "hey", "bye",
-                    "goodbye", "please", "ok", "okay", "yes", "no", "sure"}
+_SIMPLE_KEYWORDS = {
+    "hi",
+    "hello",
+    "thanks",
+    "thank",
+    "greet",
+    "hey",
+    "bye",
+    "goodbye",
+    "please",
+    "ok",
+    "okay",
+    "yes",
+    "no",
+    "sure",
+}
 
 
-class RouterStrategy(str, Enum):
+class RouterStrategy(StrEnum):
     HEURISTIC = "heuristic"
     MATRIX_FACTOR = "mf"
     HYBRID = "hybrid"

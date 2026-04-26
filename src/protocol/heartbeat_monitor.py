@@ -6,8 +6,8 @@ import re
 import threading
 import time
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 class HeartbeatError(ValueError):
@@ -68,7 +68,7 @@ class HeartbeatMonitor:
         if cb is not None:
             try:
                 cb(conn_id, old_status, new_status)
-            except Exception:
+            except Exception:  # noqa: S110
                 # Callback errors must not break monitor state  # noqa: S110
                 pass
 

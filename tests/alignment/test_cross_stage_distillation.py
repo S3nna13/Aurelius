@@ -5,7 +5,6 @@ Tiny test config: B=2, T=8, V=32 (vocab size).
 
 import pytest
 import torch
-import torch.nn.functional as F
 
 from src.alignment.cross_stage_distillation import CrossStageDistillation
 
@@ -37,18 +36,18 @@ def rl_loss():
 # Test 1: alpha=0 → output equals rl_loss (KL term zeroed)
 # ---------------------------------------------------------------------------
 
+
 def test_alpha_zero_passthrough(random_logits, rl_loss):
     csd = CrossStageDistillation(alpha=0.0)
     student, teacher = random_logits
     out = csd.loss(rl_loss, student, teacher)
-    assert torch.allclose(out, rl_loss), (
-        f"With alpha=0 expected output == rl_loss, got {out}"
-    )
+    assert torch.allclose(out, rl_loss), f"With alpha=0 expected output == rl_loss, got {out}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: KL is non-negative → total loss >= rl_loss when alpha > 0
 # ---------------------------------------------------------------------------
+
 
 def test_kl_nonnegative_total_loss_ge_rl(random_logits, rl_loss):
     csd = CrossStageDistillation(alpha=0.5)
@@ -63,6 +62,7 @@ def test_kl_nonnegative_total_loss_ge_rl(random_logits, rl_loss):
 # Test 3: student == teacher (identical logits) → KL ≈ 0 → loss ≈ rl_loss
 # ---------------------------------------------------------------------------
 
+
 def test_identical_logits_kl_zero(rl_loss):
     csd = CrossStageDistillation(alpha=1.0)
     logits = torch.randn(B, T, V)
@@ -75,6 +75,7 @@ def test_identical_logits_kl_zero(rl_loss):
 # ---------------------------------------------------------------------------
 # Test 4: gradient flows through student_logits, not teacher
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_student(rl_loss):
     csd = CrossStageDistillation(alpha=0.2)
@@ -92,6 +93,7 @@ def test_gradient_flows_through_student(rl_loss):
 # Test 5: teacher_logits detached → teacher grad is None after backward
 # ---------------------------------------------------------------------------
 
+
 def test_teacher_grad_none_after_backward(rl_loss):
     csd = CrossStageDistillation(alpha=0.2)
     student = torch.randn(B, T, V, requires_grad=True)
@@ -100,14 +102,13 @@ def test_teacher_grad_none_after_backward(rl_loss):
     out = csd.loss(rl_loss, student, teacher)
     out.backward()
 
-    assert teacher.grad is None, (
-        "Teacher logits are detached — teacher.grad must remain None"
-    )
+    assert teacher.grad is None, "Teacher logits are detached — teacher.grad must remain None"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: attention_mask all zeros → KL contribution zeroed out
 # ---------------------------------------------------------------------------
+
 
 def test_all_zero_mask_zeroes_kl(random_logits, rl_loss):
     csd = CrossStageDistillation(alpha=1.0)
@@ -123,6 +124,7 @@ def test_all_zero_mask_zeroes_kl(random_logits, rl_loss):
 # ---------------------------------------------------------------------------
 # Test 7: attention_mask all ones → same result as no mask
 # ---------------------------------------------------------------------------
+
 
 def test_all_ones_mask_same_as_no_mask(random_logits, rl_loss):
     csd = CrossStageDistillation(alpha=0.3)
@@ -141,6 +143,7 @@ def test_all_ones_mask_same_as_no_mask(random_logits, rl_loss):
 # Test 8: finite output on random logits (no NaN / Inf)
 # ---------------------------------------------------------------------------
 
+
 def test_finite_output_random_logits(rl_loss):
     csd = CrossStageDistillation(alpha=0.1)
     for seed in range(5):
@@ -154,6 +157,7 @@ def test_finite_output_random_logits(rl_loss):
 # ---------------------------------------------------------------------------
 # Test 9: alpha=1.0 → loss > rl_loss when student != teacher
 # ---------------------------------------------------------------------------
+
 
 def test_alpha_one_increases_loss(random_logits, rl_loss):
     csd = CrossStageDistillation(alpha=1.0)
@@ -170,6 +174,7 @@ def test_alpha_one_increases_loss(random_logits, rl_loss):
 # Test 10: doubling alpha doubles the KL contribution
 # ---------------------------------------------------------------------------
 
+
 def test_doubling_alpha_doubles_kl_contribution(random_logits, rl_loss):
     student, teacher = random_logits
 
@@ -183,14 +188,14 @@ def test_doubling_alpha_doubles_kl_contribution(random_logits, rl_loss):
     kl_contrib2 = (out2 - rl_loss).item()
 
     assert abs(kl_contrib2 - 2.0 * kl_contrib1) < 1e-4, (
-        f"Doubling alpha should double KL contribution: "
-        f"2×{kl_contrib1:.6f} vs {kl_contrib2:.6f}"
+        f"Doubling alpha should double KL contribution: 2×{kl_contrib1:.6f} vs {kl_contrib2:.6f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 11: batch_size=1, seq_len=1 edge case
 # ---------------------------------------------------------------------------
+
 
 def test_single_token_edge_case():
     csd = CrossStageDistillation(alpha=0.1)
@@ -206,18 +211,18 @@ def test_single_token_edge_case():
 # Test 12: output is scalar (shape == [])
 # ---------------------------------------------------------------------------
 
+
 def test_output_is_scalar(random_logits, rl_loss):
     csd = CrossStageDistillation(alpha=0.1)
     student, teacher = random_logits
     out = csd.loss(rl_loss, student, teacher)
-    assert out.shape == torch.Size([]), (
-        f"Output must be a scalar tensor, got shape {out.shape}"
-    )
+    assert out.shape == torch.Size([]), f"Output must be a scalar tensor, got shape {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Bonus Test 13: partial attention mask (mix of 0s and 1s)
 # ---------------------------------------------------------------------------
+
 
 def test_partial_attention_mask(random_logits, rl_loss):
     """Partial mask should give a result strictly between the all-zero and all-ones cases."""

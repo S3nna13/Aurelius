@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field
-from typing import Dict, List
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PreprocessConfig:
@@ -30,6 +29,7 @@ class PreprocessConfig:
 # Standalone utility functions
 # ---------------------------------------------------------------------------
 
+
 def normalize_whitespace_fn(text: str) -> str:
     """Collapse multiple spaces/tabs/newlines into single spaces; strip edges."""
     # Replace all whitespace sequences (spaces, tabs, newlines, etc.) with a single space
@@ -42,7 +42,7 @@ def remove_html_tags(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text)
 
 
-def filter_by_length(texts: List[str], min_len: int, max_len: int) -> List[str]:
+def filter_by_length(texts: list[str], min_len: int, max_len: int) -> list[str]:
     """Keep texts whose character count is within [min_len, max_len] inclusive."""
     return [t for t in texts if min_len <= len(t) <= max_len]
 
@@ -70,6 +70,7 @@ def compute_text_hash(text: str) -> str:
 # Exact deduplication
 # ---------------------------------------------------------------------------
 
+
 class ExactDeduplicator:
     """Deduplicates texts by exact SHA-256 hash comparison."""
 
@@ -84,10 +85,10 @@ class ExactDeduplicator:
         self._seen.add(h)
         return True
 
-    def deduplicate(self, texts: List[str]) -> List[str]:
+    def deduplicate(self, texts: list[str]) -> list[str]:
         """Return deduplicated list preserving original order."""
         seen: set[str] = set()
-        result: List[str] = []
+        result: list[str] = []
         for t in texts:
             h = compute_text_hash(t)
             if h not in seen:
@@ -103,6 +104,7 @@ class ExactDeduplicator:
 # MinHash approximate deduplication
 # ---------------------------------------------------------------------------
 
+
 class MinHashDeduplicator:
     """Approximate near-duplicate detection via MinHash on character tri-grams."""
 
@@ -115,9 +117,9 @@ class MinHashDeduplicator:
         self.n_hashes = n_hashes
         self.threshold = threshold
         self.seed = seed
-        self._signatures: List[List[int]] = []
+        self._signatures: list[list[int]] = []
 
-    def _compute_minhash(self, text: str) -> List[int]:
+    def _compute_minhash(self, text: str) -> list[int]:
         """Compute n_hashes MinHash signatures using character 3-grams."""
         ngrams: set[str] = set()
         n = 3
@@ -132,8 +134,8 @@ class MinHashDeduplicator:
             # Empty text → all zeros
             return [0] * self.n_hashes
 
-        sig: List[int] = []
-        mod = 2 ** 32
+        sig: list[int] = []
+        mod = 2**32
         for i in range(self.n_hashes):
             min_val = mod  # sentinel larger than any hash % mod
             for gram in ngrams:
@@ -143,7 +145,7 @@ class MinHashDeduplicator:
             sig.append(min_val)
         return sig
 
-    def is_near_duplicate(self, text: str, candidate_sig: List[int]) -> bool:
+    def is_near_duplicate(self, text: str, candidate_sig: list[int]) -> bool:
         """
         Estimate Jaccard similarity via MinHash: fraction of matching hash values.
         Returns True if estimated similarity >= threshold.
@@ -153,10 +155,10 @@ class MinHashDeduplicator:
         estimated_jaccard = matches / self.n_hashes
         return estimated_jaccard >= self.threshold
 
-    def deduplicate(self, texts: List[str]) -> List[str]:
+    def deduplicate(self, texts: list[str]) -> list[str]:
         """Streaming dedup: keep first occurrence, drop near-duplicates."""
-        kept_sigs: List[List[int]] = []
-        result: List[str] = []
+        kept_sigs: list[list[int]] = []
+        result: list[str] = []
 
         for text in texts:
             sig = self._compute_minhash(text)
@@ -178,6 +180,7 @@ class MinHashDeduplicator:
 # TextCleaner
 # ---------------------------------------------------------------------------
 
+
 class TextCleaner:
     """Apply a configured sequence of cleaning steps to texts."""
 
@@ -192,12 +195,12 @@ class TextCleaner:
             text = normalize_whitespace_fn(text)
         return text
 
-    def clean_batch(self, texts: List[str]) -> List[str]:
+    def clean_batch(self, texts: list[str]) -> list[str]:
         """
         Apply clean() to each text, then filter by length and (optionally)
         UTF-8 validity.  Returns only texts that pass all filters.
         """
-        cleaned: List[str] = []
+        cleaned: list[str] = []
         for t in texts:
             c = self.clean(t)
             # Length filter
@@ -209,19 +212,13 @@ class TextCleaner:
             cleaned.append(c)
         return cleaned
 
-    def get_stats(
-        self, original: List[str], cleaned: List[str]
-    ) -> Dict[str, float]:
+    def get_stats(self, original: list[str], cleaned: list[str]) -> dict[str, float]:
         """Return summary statistics comparing original vs cleaned lists."""
         n_original = len(original)
         n_kept = len(cleaned)
         filter_rate = 1.0 - (n_kept / n_original) if n_original > 0 else 0.0
-        mean_length_before = (
-            sum(len(t) for t in original) / n_original if n_original > 0 else 0.0
-        )
-        mean_length_after = (
-            sum(len(t) for t in cleaned) / n_kept if n_kept > 0 else 0.0
-        )
+        mean_length_before = sum(len(t) for t in original) / n_original if n_original > 0 else 0.0
+        mean_length_after = sum(len(t) for t in cleaned) / n_kept if n_kept > 0 else 0.0
         return {
             "n_original": float(n_original),
             "n_kept": float(n_kept),

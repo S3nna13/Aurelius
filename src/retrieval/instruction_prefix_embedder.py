@@ -23,12 +23,11 @@ Public surface:
 
 from __future__ import annotations
 
-from typing import Callable, List
+from collections.abc import Callable
 
 import torch
 
 from .dense_embedding_trainer import DenseEmbedder
-
 
 INSTRUCTION_PREFIXES: dict[str, str] = {
     "query": "Represent this sentence for searching relevant passages: ",
@@ -62,17 +61,14 @@ class InstructionPrefixEmbedder:
     def __init__(
         self,
         dense_embedder: DenseEmbedder,
-        tokenizer: Callable[[str], List[int]],
+        tokenizer: Callable[[str], list[int]],
     ) -> None:
         if not isinstance(dense_embedder, DenseEmbedder):
             raise TypeError(
-                "dense_embedder must be DenseEmbedder, got "
-                f"{type(dense_embedder).__name__}"
+                f"dense_embedder must be DenseEmbedder, got {type(dense_embedder).__name__}"
             )
         if not callable(tokenizer):
-            raise TypeError(
-                f"tokenizer must be callable, got {type(tokenizer).__name__}"
-            )
+            raise TypeError(f"tokenizer must be callable, got {type(tokenizer).__name__}")
         self.dense_embedder = dense_embedder
         self.tokenizer = tokenizer
 
@@ -81,10 +77,7 @@ class InstructionPrefixEmbedder:
     # ------------------------------------------------------------------
     def _resolve_prefix(self, task: str) -> str:
         if task not in INSTRUCTION_PREFIXES:
-            raise KeyError(
-                f"unknown task {task!r}; known tasks: "
-                f"{sorted(INSTRUCTION_PREFIXES)}"
-            )
+            raise KeyError(f"unknown task {task!r}; known tasks: {sorted(INSTRUCTION_PREFIXES)}")
         return INSTRUCTION_PREFIXES[task]
 
     def _tokenize(self, text: str, task: str) -> torch.Tensor:
@@ -92,10 +85,7 @@ class InstructionPrefixEmbedder:
         prefixed = prefix + text
         ids = self.tokenizer(prefixed)
         if not isinstance(ids, list):
-            raise TypeError(
-                "tokenizer must return list[int], got "
-                f"{type(ids).__name__}"
-            )
+            raise TypeError(f"tokenizer must return list[int], got {type(ids).__name__}")
         max_len = self.dense_embedder.config.max_seq_len
         if len(ids) == 0:
             # Preserve at least one token so the encoder receives a
@@ -122,7 +112,7 @@ class InstructionPrefixEmbedder:
             out = self.dense_embedder(ids)  # [1, D]
         return out.squeeze(0)
 
-    def encode_batch(self, texts: List[str], task: str) -> torch.Tensor:
+    def encode_batch(self, texts: list[str], task: str) -> torch.Tensor:
         """Encode a list of texts to ``[B, embed_dim]``.
 
         Pads each row to the batch max length with ``pad_token_id`` so
@@ -130,16 +120,12 @@ class InstructionPrefixEmbedder:
         attention mask already zeroes those positions out.
         """
         if not isinstance(texts, list):
-            raise TypeError(
-                f"texts must be list[str], got {type(texts).__name__}"
-            )
+            raise TypeError(f"texts must be list[str], got {type(texts).__name__}")
         if len(texts) == 0:
             raise ValueError("texts must be non-empty")
         for t in texts:
             if not isinstance(t, str):
-                raise TypeError(
-                    f"all texts must be str, got {type(t).__name__}"
-                )
+                raise TypeError(f"all texts must be str, got {type(t).__name__}")
         token_lists = [self._tokenize(t, task).tolist() for t in texts]
         max_len = max(len(ids) for ids in token_lists)
         pad_id = self.dense_embedder.config.pad_token_id
@@ -153,19 +139,17 @@ class InstructionPrefixEmbedder:
     def similarity(
         self,
         query: str,
-        passages: List[str],
+        passages: list[str],
         query_task: str = "query",
         passage_task: str = "passage",
-    ) -> List[float]:
+    ) -> list[float]:
         """Return cosine similarities between ``query`` and each passage.
 
         Embeddings are already L2-normalized by :class:`DenseEmbedder`,
         so a single inner product is the cosine similarity.
         """
         if not isinstance(passages, list):
-            raise TypeError(
-                f"passages must be list[str], got {type(passages).__name__}"
-            )
+            raise TypeError(f"passages must be list[str], got {type(passages).__name__}")
         if len(passages) == 0:
             raise ValueError("passages must be non-empty")
         q = self.encode(query, task=query_task)  # [D]

@@ -4,12 +4,10 @@ Provides exponential jitter backoff for 429/5xx retry logic and thread-safe
 token bucket primitives for both global and per-user rate limits.
 """
 
-import time
-import threading
-import math
 import random
-from dataclasses import dataclass, field
-from collections import defaultdict
+import threading
+import time
+from dataclasses import dataclass
 
 
 @dataclass
@@ -63,9 +61,7 @@ class RateLimiterV2:
 
     def __init__(self, config: RateLimitConfig = None):
         self.config = config or RateLimitConfig()
-        self._global_bucket = TokenBucketV2(
-            self.config.requests_per_second, self.config.burst
-        )
+        self._global_bucket = TokenBucketV2(self.config.requests_per_second, self.config.burst)
         self._user_buckets: dict[str, TokenBucketV2] = {}
         self._lock = threading.Lock()
 
@@ -102,7 +98,7 @@ class RateLimiterV2:
         jitter: float = 0.3,
     ) -> float:
         """Exponential backoff with jitter for 429/5xx retries."""
-        delay = min(cap, base * (2 ** attempt))
+        delay = min(cap, base * (2**attempt))
         jitter_factor = 1.0 + random.uniform(-jitter, jitter)
         return max(0.0, delay * jitter_factor)
 
@@ -112,6 +108,7 @@ RATE_LIMITER_V2 = RateLimiterV2()
 # Register in the shared SERVING_REGISTRY if available.
 try:
     from src.serving import SERVING_REGISTRY  # type: ignore
+
     SERVING_REGISTRY["rate_limiter_v2"] = RATE_LIMITER_V2
 except ImportError:
     pass

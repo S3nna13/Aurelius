@@ -6,14 +6,12 @@ Pure Python / PyTorch only — no transformers, einops, scipy, sklearn.
 
 from __future__ import annotations
 
-import pytest
-
 from src.data.vision_token_mixer import VisionTokenMixer, VisionTokenMixerConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mixer(**kwargs) -> VisionTokenMixer:
     cfg = VisionTokenMixerConfig(**kwargs)
@@ -34,6 +32,7 @@ def _make_vision(n: int, start: int = 2) -> list[int]:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = VisionTokenMixerConfig()
     assert cfg.vision_ratio == 0.1
@@ -46,6 +45,7 @@ def test_config_defaults():
 # 2. test_mix_empty_vision
 # ---------------------------------------------------------------------------
 
+
 def test_mix_empty_vision():
     mixer = _make_mixer()
     text = _make_text(50)
@@ -57,6 +57,7 @@ def test_mix_empty_vision():
 # 3. test_mix_ratio_achieved
 # ---------------------------------------------------------------------------
 
+
 def test_mix_ratio_achieved():
     mixer = _make_mixer(vision_ratio=0.1)
     text = _make_text(90)
@@ -64,14 +65,13 @@ def test_mix_ratio_achieved():
     result = mixer.mix(text, vision)
     vision_set = set(vision)
     actual_ratio = mixer.compute_ratio(result, vision_set)
-    assert abs(actual_ratio - 0.1) <= 0.02, (
-        f"Expected ratio ~0.1, got {actual_ratio:.4f}"
-    )
+    assert abs(actual_ratio - 0.1) <= 0.02, f"Expected ratio ~0.1, got {actual_ratio:.4f}"
 
 
 # ---------------------------------------------------------------------------
 # 4. test_mix_vision_tokens_distributed
 # ---------------------------------------------------------------------------
+
 
 def test_mix_vision_tokens_distributed():
     """Vision tokens should NOT all appear at the very front or very back."""
@@ -95,6 +95,7 @@ def test_mix_vision_tokens_distributed():
 # 5. test_mix_no_vision_duplicates
 # ---------------------------------------------------------------------------
 
+
 def test_mix_no_vision_duplicates():
     mixer = _make_mixer(vision_ratio=0.1)
     text = _make_text(90)
@@ -112,6 +113,7 @@ def test_mix_no_vision_duplicates():
 # 6. test_mix_text_preserved
 # ---------------------------------------------------------------------------
 
+
 def test_mix_text_preserved():
     """All original text tokens appear in the output and their relative order is preserved."""
     mixer = _make_mixer(vision_ratio=0.1)
@@ -121,14 +123,13 @@ def test_mix_text_preserved():
 
     vision_set = set(vision)
     text_in_result = [t for t in result if t not in vision_set]
-    assert text_in_result == text, (
-        "Text tokens are not fully preserved (order or content mismatch)"
-    )
+    assert text_in_result == text, "Text tokens are not fully preserved (order or content mismatch)"
 
 
 # ---------------------------------------------------------------------------
 # 7. test_mix_excess_vision_truncated
 # ---------------------------------------------------------------------------
+
 
 def test_mix_excess_vision_truncated():
     """When vision_ids supplies more tokens than the ratio allows, they are truncated."""
@@ -150,6 +151,7 @@ def test_mix_excess_vision_truncated():
 # 8. test_mix_empty_text
 # ---------------------------------------------------------------------------
 
+
 def test_mix_empty_text():
     """When text_ids is empty, mix() should return vision_ids without raising."""
     mixer = _make_mixer(vision_ratio=0.1)
@@ -162,6 +164,7 @@ def test_mix_empty_text():
 # ---------------------------------------------------------------------------
 # 9. test_mix_batch
 # ---------------------------------------------------------------------------
+
 
 def test_mix_batch():
     mixer = _make_mixer(vision_ratio=0.1)
@@ -183,6 +186,7 @@ def test_mix_batch():
 # ---------------------------------------------------------------------------
 # 10. test_vision_mask_correct
 # ---------------------------------------------------------------------------
+
 
 def test_vision_mask_correct():
     """vision_mask should be 1 at every vision token position and 0 elsewhere."""
@@ -207,6 +211,7 @@ def test_vision_mask_correct():
 # 11. test_compute_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_compute_ratio():
     mixer = _make_mixer()
     # Known sequence: 2 vision tokens (ids 2, 3) out of 10 total => ratio = 0.2
@@ -225,6 +230,7 @@ def test_compute_ratio_empty():
 # 12. test_determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     """Same inputs must always produce the same output."""
     mixer = _make_mixer(vision_ratio=0.1)
@@ -239,6 +245,7 @@ def test_determinism():
 # 13. test_zero_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_zero_ratio():
     mixer = _make_mixer(vision_ratio=0.0)
     text = _make_text(50)
@@ -250,6 +257,7 @@ def test_zero_ratio():
 # ---------------------------------------------------------------------------
 # 14. test_full_ratio
 # ---------------------------------------------------------------------------
+
 
 def test_full_ratio():
     mixer = _make_mixer(vision_ratio=1.0)
@@ -263,6 +271,7 @@ def test_full_ratio():
 # ---------------------------------------------------------------------------
 # 15. test_large_sequence
 # ---------------------------------------------------------------------------
+
 
 def test_large_sequence():
     mixer = _make_mixer(vision_ratio=0.1)

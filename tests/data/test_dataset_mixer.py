@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import math
 import statistics
-from typing import Dict, List
-
-import pytest
 
 from aurelius.data.dataset_mixer import (
     AdaptiveMixer,
@@ -19,10 +15,10 @@ from aurelius.data.dataset_mixer import (
     normalize_weights,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_source(name: str, n: int = 15, weight: float = 1.0, domain: str = "general") -> DataSource:
     """Create a DataSource with n simple example dicts."""
@@ -30,7 +26,7 @@ def make_source(name: str, n: int = 15, weight: float = 1.0, domain: str = "gene
     return DataSource(name=name, data=data, weight=weight, domain=domain)
 
 
-def make_sources() -> List[DataSource]:
+def make_sources() -> list[DataSource]:
     return [
         make_source("src_a", n=10, weight=2.0, domain="code"),
         make_source("src_b", n=20, weight=1.0, domain="text"),
@@ -42,6 +38,7 @@ def make_sources() -> List[DataSource]:
 # 1. normalize_weights sums to 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_weights_sums_to_one():
     weights = [1.0, 2.0, 3.0]
     result = normalize_weights(weights)
@@ -51,6 +48,7 @@ def test_normalize_weights_sums_to_one():
 # ---------------------------------------------------------------------------
 # 2. normalize_weights high temperature → more uniform (lower std)
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_weights_temperature_effect():
     weights = [0.1, 1.0, 5.0]
@@ -63,6 +61,7 @@ def test_normalize_weights_temperature_effect():
 # 3. compute_proportional_weights: larger source gets higher weight
 # ---------------------------------------------------------------------------
 
+
 def test_proportional_weights_larger_gets_more():
     sizes = [100, 1000, 500]
     weights = compute_proportional_weights(sizes, alpha=0.7)
@@ -74,6 +73,7 @@ def test_proportional_weights_larger_gets_more():
 # ---------------------------------------------------------------------------
 # 4. compute_proportional_weights alpha=0 → uniform weights
 # ---------------------------------------------------------------------------
+
 
 def test_proportional_weights_alpha_zero_uniform():
     sizes = [50, 200, 900]
@@ -88,6 +88,7 @@ def test_proportional_weights_alpha_zero_uniform():
 # 5. compute_domain_weights: sources in same domain share domain weight
 # ---------------------------------------------------------------------------
 
+
 def test_domain_weights_shared_equally():
     sources = [
         make_source("a", domain="code"),
@@ -101,13 +102,14 @@ def test_domain_weights_shared_equally():
     # text source gets 0.4
     # Since they already sum to 1.0, normalization is identity
     assert abs(weights[0] - weights[1]) < 1e-9  # same domain share
-    assert weights[2] > weights[0]              # text has larger share
+    assert weights[2] > weights[0]  # text has larger share
     assert abs(sum(weights) - 1.0) < 1e-9
 
 
 # ---------------------------------------------------------------------------
 # 6. CurriculumScheduler.get_weights returns list of length == n_sources
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_scheduler_weights_length():
     sources = make_sources()
@@ -121,9 +123,12 @@ def test_curriculum_scheduler_weights_length():
 # 7. CurriculumScheduler.is_warmed_up: False before warmup, True after
 # ---------------------------------------------------------------------------
 
+
 def test_curriculum_scheduler_warmup():
     sources = make_sources()
-    scheduler = CurriculumScheduler(sources, easy_domains=["code"], n_steps=1000, warmup_fraction=0.3)
+    scheduler = CurriculumScheduler(
+        sources, easy_domains=["code"], n_steps=1000, warmup_fraction=0.3
+    )
     warmup_steps = int(1000 * 0.3)  # 300
 
     assert not scheduler.is_warmed_up(0)
@@ -137,6 +142,7 @@ def test_curriculum_scheduler_warmup():
 # 8. DatasetMixer.sample_batch returns (examples, source_names) with correct length
 # ---------------------------------------------------------------------------
 
+
 def test_sample_batch_length():
     sources = make_sources()
     mixer = DatasetMixer(sources, MixerConfig(seed=0))
@@ -148,6 +154,7 @@ def test_sample_batch_length():
 # ---------------------------------------------------------------------------
 # 9. source_names all in source name set
 # ---------------------------------------------------------------------------
+
 
 def test_sample_batch_source_names_valid():
     sources = make_sources()
@@ -161,6 +168,7 @@ def test_sample_batch_source_names_valid():
 # ---------------------------------------------------------------------------
 # 10. DatasetMixer iterator yields dict examples
 # ---------------------------------------------------------------------------
+
 
 def test_iterator_yields_dicts():
     sources = make_sources()
@@ -176,6 +184,7 @@ def test_iterator_yields_dicts():
 # ---------------------------------------------------------------------------
 # 11. DatasetMixer over many samples: each source sampled proportional to weight
 # ---------------------------------------------------------------------------
+
 
 def test_sampling_proportional_to_weight():
     sources = [
@@ -195,6 +204,7 @@ def test_sampling_proportional_to_weight():
 # ---------------------------------------------------------------------------
 # 12. DatasetMixer.update_weights changes sampling distribution
 # ---------------------------------------------------------------------------
+
 
 def test_update_weights_changes_distribution():
     sources = [
@@ -218,6 +228,7 @@ def test_update_weights_changes_distribution():
 # 13. DatasetMixer.get_stats returns dict with source name keys
 # ---------------------------------------------------------------------------
 
+
 def test_get_stats_has_all_source_keys():
     sources = make_sources()
     mixer = DatasetMixer(sources, MixerConfig(seed=3))
@@ -232,6 +243,7 @@ def test_get_stats_has_all_source_keys():
 # ---------------------------------------------------------------------------
 # 14. AdaptiveMixer.update_from_loss increases weight for high-loss source
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_mixer_update_from_loss_increases_weight():
     sources = [
@@ -251,6 +263,7 @@ def test_adaptive_mixer_update_from_loss_increases_weight():
 # 15. AdaptiveMixer.get_adapted_weights returns dict with all source names
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_mixer_get_adapted_weights_all_sources():
     sources = make_sources()
     mixer = AdaptiveMixer(sources, MixerConfig(seed=6))
@@ -263,6 +276,7 @@ def test_adaptive_mixer_get_adapted_weights_all_sources():
 # ---------------------------------------------------------------------------
 # 16. DatasetMixer with curriculum strategy: weights change over steps
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_weights_change_over_steps():
     sources = [
@@ -286,6 +300,7 @@ def test_curriculum_weights_change_over_steps():
 # ---------------------------------------------------------------------------
 # Bonus: weight_history records updates
 # ---------------------------------------------------------------------------
+
 
 def test_weight_history_records_updates():
     sources = make_sources()

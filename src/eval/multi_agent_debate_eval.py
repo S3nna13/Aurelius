@@ -16,48 +16,51 @@ Cycle 137-D
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import combinations
-from typing import List
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DebateConfig:
     """Configuration for the debate evaluation."""
+
     n_agents: int = 3
     n_rounds: int = 3
-    convergence_threshold: float = 0.8   # Jaccard similarity for "consensus"
-    ngram_n: int = 2                      # n for n-gram diversity (unused in base impl — word-level used)
+    convergence_threshold: float = 0.8  # Jaccard similarity for "consensus"
+    ngram_n: int = 2  # n for n-gram diversity (unused in base impl — word-level used)
 
 
 @dataclass
 class AgentTurn:
     """A single turn by one agent in the debate."""
+
     agent_id: int
     round_idx: int
-    position: str           # agent's stated position / answer
-    arguments: List[str]    # key claims made this turn
+    position: str  # agent's stated position / answer
+    arguments: list[str]  # key claims made this turn
 
 
 @dataclass
 class DebateEvalResult:
     """Evaluation result for one debate."""
+
     n_agents: int
     n_rounds: int
-    position_drift: float           # fraction of agents that changed position
-    final_consensus: float          # Jaccard similarity of final positions
-    argument_diversity: float       # mean pairwise diversity of arguments
-    round_convergence: List[float]  # per-round consensus scores
-    overall: float                  # weighted composite
+    position_drift: float  # fraction of agents that changed position
+    final_consensus: float  # Jaccard similarity of final positions
+    argument_diversity: float  # mean pairwise diversity of arguments
+    round_convergence: list[float]  # per-round consensus scores
+    overall: float  # weighted composite
 
 
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class DebateEvaluator:
     """
@@ -93,7 +96,7 @@ class DebateEvaluator:
     # Metric 1: Position drift
     # ------------------------------------------------------------------
 
-    def position_drift(self, turns: List[AgentTurn]) -> float:
+    def position_drift(self, turns: list[AgentTurn]) -> float:
         """
         For each agent compare their round-0 position to their final-round
         position.  drift = 1 - mean(jaccard(initial, final)) across agents.
@@ -102,14 +105,14 @@ class DebateEvaluator:
         A value of 1.0 means every agent completely changed position.
         """
         # Collect per-agent turns, keyed by agent_id
-        by_agent: dict[int, List[AgentTurn]] = {}
+        by_agent: dict[int, list[AgentTurn]] = {}
         for t in turns:
             by_agent.setdefault(t.agent_id, []).append(t)
 
         if not by_agent:
             return 0.0
 
-        similarities: List[float] = []
+        similarities: list[float] = []
         for agent_turns in by_agent.values():
             sorted_turns = sorted(agent_turns, key=lambda x: x.round_idx)
             initial = sorted_turns[0].position
@@ -123,7 +126,7 @@ class DebateEvaluator:
     # Metric 2: Consensus at a given round
     # ------------------------------------------------------------------
 
-    def consensus(self, turns: List[AgentTurn], round_idx: int) -> float:
+    def consensus(self, turns: list[AgentTurn], round_idx: int) -> float:
         """
         Mean pairwise Jaccard similarity of all agents' positions at round_idx.
 
@@ -146,7 +149,7 @@ class DebateEvaluator:
     # Metric 3: Argument diversity (final round)
     # ------------------------------------------------------------------
 
-    def argument_diversity(self, turns: List[AgentTurn]) -> float:
+    def argument_diversity(self, turns: list[AgentTurn]) -> float:
         """
         Extract all arguments from the final round across all agents and
         compute mean pairwise diversity = 1 - jaccard(arg_i, arg_j).
@@ -161,7 +164,7 @@ class DebateEvaluator:
         final_turns = [t for t in turns if t.round_idx == final_round]
 
         # Gather all individual argument strings
-        all_args: List[str] = []
+        all_args: list[str] = []
         for t in final_turns:
             all_args.extend(t.arguments)
 
@@ -176,7 +179,7 @@ class DebateEvaluator:
     # Main evaluation
     # ------------------------------------------------------------------
 
-    def evaluate(self, turns: List[AgentTurn]) -> DebateEvalResult:
+    def evaluate(self, turns: list[AgentTurn]) -> DebateEvalResult:
         """
         Compute all metrics and return a DebateEvalResult.
 
@@ -198,9 +201,7 @@ class DebateEvaluator:
         n_rounds = max(all_rounds) + 1  # 0-indexed
 
         # Per-round convergence
-        round_convergence = [
-            self.consensus(turns, r) for r in range(n_rounds)
-        ]
+        round_convergence = [self.consensus(turns, r) for r in range(n_rounds)]
 
         drift = self.position_drift(turns)
         final_round = n_rounds - 1
@@ -226,9 +227,7 @@ class DebateEvaluator:
     # Batch evaluation
     # ------------------------------------------------------------------
 
-    def evaluate_batch(
-        self, debate_sets: List[List[AgentTurn]]
-    ) -> List[DebateEvalResult]:
+    def evaluate_batch(self, debate_sets: list[list[AgentTurn]]) -> list[DebateEvalResult]:
         """Evaluate multiple debates and return a list of results."""
         return [self.evaluate(turns) for turns in debate_sets]
 
@@ -236,7 +235,7 @@ class DebateEvaluator:
     # Aggregate
     # ------------------------------------------------------------------
 
-    def aggregate(self, results: List[DebateEvalResult]) -> dict[str, float]:
+    def aggregate(self, results: list[DebateEvalResult]) -> dict[str, float]:
         """
         Compute mean of each scalar metric across a list of DebateEvalResults.
 
@@ -252,10 +251,7 @@ class DebateEvaluator:
             }
 
         keys = ["position_drift", "final_consensus", "argument_diversity", "overall"]
-        return {
-            k: sum(getattr(r, k) for r in results) / len(results)
-            for k in keys
-        }
+        return {k: sum(getattr(r, k) for r in results) / len(results) for k in keys}
 
 
 # ---------------------------------------------------------------------------

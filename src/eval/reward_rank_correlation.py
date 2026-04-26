@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import torch
 from torch import Tensor
 
 
@@ -95,7 +94,7 @@ class KendallTau:
                         tied_y += 1
 
         # tau-b denominator accounts for ties
-        n_pairs = concordant + discordant + tied_x + tied_y
+        concordant + discordant + tied_x + tied_y
         denom = ((concordant + discordant + tied_x) * (concordant + discordant + tied_y)) ** 0.5
         if denom == 0.0:
             return 0.0

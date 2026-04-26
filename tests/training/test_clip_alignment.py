@@ -1,10 +1,13 @@
 """Tests for CLIP-style contrastive alignment (symmetric InfoNCE)."""
+
 from __future__ import annotations
 
 import math
-import torch
-import pytest
 
+import torch
+
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.clip_alignment import (
     CLIPAlignmentConfig,
     CLIPAlignmentLayer,
@@ -13,13 +16,11 @@ from src.training.clip_alignment import (
     contrastive_accuracy,
     hard_negative_mining,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _rand_normalized(B: int, D: int) -> torch.Tensor:
     x = torch.randn(B, D)
@@ -29,8 +30,14 @@ def _rand_normalized(B: int, D: int) -> torch.Tensor:
 def _make_model() -> AureliusTransformer:
     torch.manual_seed(42)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 
@@ -38,6 +45,7 @@ def _make_model() -> AureliusTransformer:
 # ---------------------------------------------------------------------------
 # clip_loss tests
 # ---------------------------------------------------------------------------
+
 
 def test_clip_loss_shape():
     """clip_loss must return a scalar tensor."""
@@ -67,7 +75,7 @@ def test_clip_loss_decreases_with_alignment():
     random_loss = clip_loss(base, shuffled, log_temp)
 
     assert aligned_loss.item() < random_loss.item(), (
-        f"Aligned loss ({aligned_loss.item():.4f}) should be < random loss ({random_loss.item():.4f})"
+        f"Aligned loss ({aligned_loss.item():.4f}) should be < random loss ({random_loss.item():.4f})"  # noqa: E501
     )
 
 
@@ -76,7 +84,7 @@ def test_clip_loss_diagonal_positive():
     torch.manual_seed(1)
     B, D = 6, 32
     embeds = _rand_normalized(B, D)
-    log_temp = torch.tensor(math.log(0.07))
+    torch.tensor(math.log(0.07))
 
     # Compute similarity matrix manually
     sim = embeds @ embeds.T  # (B, B)
@@ -92,6 +100,7 @@ def test_clip_loss_diagonal_positive():
 # ---------------------------------------------------------------------------
 # contrastive_accuracy tests
 # ---------------------------------------------------------------------------
+
 
 def test_contrastive_accuracy_perfect():
     """Identical normalized embeddings → accuracy = 1.0."""
@@ -119,6 +128,7 @@ def test_contrastive_accuracy_random():
 # ---------------------------------------------------------------------------
 # CLIPAlignmentLayer tests
 # ---------------------------------------------------------------------------
+
 
 def _make_layer(
     text_dim: int = 64,
@@ -200,9 +210,7 @@ def test_clip_alignment_layer_forward_returns_loss():
 
     result = layer(text_h, mod_f)
 
-    assert isinstance(result, tuple) and len(result) == 3, (
-        "forward() must return a 3-tuple"
-    )
+    assert isinstance(result, tuple) and len(result) == 3, "forward() must return a 3-tuple"
     text_proj, mod_proj, loss = result
     assert text_proj.shape == (B, emb_dim)
     assert mod_proj.shape == (B, emb_dim)
@@ -213,6 +221,7 @@ def test_clip_alignment_layer_forward_returns_loss():
 # ---------------------------------------------------------------------------
 # CLIPAlignmentTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_clip_alignment_trainer_train_step_metrics():
     """train_step must return dict with 'loss', 'accuracy', 'temperature' keys."""
@@ -244,6 +253,7 @@ def test_clip_alignment_trainer_train_step_metrics():
 # ---------------------------------------------------------------------------
 # hard_negative_mining tests
 # ---------------------------------------------------------------------------
+
 
 def test_hard_negative_mining_shape():
     """Output batch must be larger than input batch by n_hard_negatives per sample."""

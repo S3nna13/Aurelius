@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.search.semantic_search import (
+    SEMANTIC_SEARCH,
     SemanticDocument,
     SemanticSearch,
-    SEMANTIC_SEARCH,
 )
-
 
 # ---------------------------------------------------------------------------
 # SemanticDocument
 # ---------------------------------------------------------------------------
+
 
 class TestSemanticDocument:
     def test_doc_id_field(self):
@@ -42,6 +40,7 @@ class TestSemanticDocument:
 # ---------------------------------------------------------------------------
 # SemanticSearch
 # ---------------------------------------------------------------------------
+
 
 class TestSemanticSearchAdd:
     def test_add_increases_len(self):

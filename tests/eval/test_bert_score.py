@@ -14,10 +14,10 @@ from src.eval.bert_score import (
     cosine_similarity_matrix,
 )
 
-
 # ---------------------------------------------------------------------------
 # cosine_similarity_matrix
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_similarity_matrix_shape():
     a = torch.randn(4, 8)
@@ -37,6 +37,7 @@ def test_cosine_similarity_identical():
 # ---------------------------------------------------------------------------
 # bert_precision / bert_recall
 # ---------------------------------------------------------------------------
+
 
 def test_bert_precision_range():
     torch.manual_seed(42)
@@ -58,6 +59,7 @@ def test_bert_recall_range():
 # bert_f1
 # ---------------------------------------------------------------------------
 
+
 def test_bert_f1_harmonic_mean():
     p, r = 0.8, 0.6
     expected = 2 * p * r / (p + r)
@@ -71,6 +73,7 @@ def test_bert_f1_zero():
 # ---------------------------------------------------------------------------
 # EmbeddingBERTScore
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_scorer():
@@ -112,6 +115,7 @@ def test_corpus_score_keys(small_scorer):
 # ---------------------------------------------------------------------------
 # compute_idf_weights
 # ---------------------------------------------------------------------------
+
 
 def test_idf_weights_shape():
     corpus = [[1, 2, 3], [2, 3, 4], [3, 4, 5]]

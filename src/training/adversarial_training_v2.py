@@ -16,18 +16,18 @@ AdvTrainingConfig          – Dataclass of all hyperparameters
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AdvTrainingConfig:
@@ -57,6 +57,7 @@ class AdvTrainingConfig:
 # Helper utilities
 # ---------------------------------------------------------------------------
 
+
 def _get_embedding_layer(model: nn.Module) -> nn.Embedding:
     """Return the embedding layer from *model*.
 
@@ -69,8 +70,7 @@ def _get_embedding_layer(model: nn.Module) -> nn.Embedding:
             if isinstance(layer, nn.Embedding):
                 return layer
     raise AttributeError(
-        "Cannot locate embedding layer on model.  "
-        "Expose it as model.embedding (nn.Embedding)."
+        "Cannot locate embedding layer on model.  Expose it as model.embedding (nn.Embedding)."
     )
 
 
@@ -106,6 +106,7 @@ def _forward_with_embeds(
 # ---------------------------------------------------------------------------
 # EmbeddingPGD
 # ---------------------------------------------------------------------------
+
 
 class EmbeddingPGD:
     """Projected Gradient Descent (PGD) adversarial attack in embedding space.
@@ -207,6 +208,7 @@ class EmbeddingPGD:
 # AdversarialSuffixGenerator
 # ---------------------------------------------------------------------------
 
+
 class AdversarialSuffixGenerator:
     """Optimise a continuous suffix in embedding space to maximise target loss.
 
@@ -262,7 +264,7 @@ class AdversarialSuffixGenerator:
             prefix_emb = embed_layer(input_ids)  # [B, T, d]
 
         B = prefix_emb.shape[0]
-        d = self.suffix_embeddings.shape[-1]
+        self.suffix_embeddings.shape[-1]
 
         # Reinitialise suffix as a leaf tensor requiring grad.
         suffix = self.suffix_embeddings.clone().detach().requires_grad_(True)
@@ -317,6 +319,7 @@ class AdversarialSuffixGenerator:
 # FreeAdversarialTraining
 # ---------------------------------------------------------------------------
 
+
 class FreeAdversarialTraining:
     """Free Adversarial Training (Free-AT).
 
@@ -342,14 +345,14 @@ class FreeAdversarialTraining:
         self.epsilon = epsilon
         self.m = m
         # Accumulated perturbation; initialised lazily on first call.
-        self.delta: Optional[Tensor] = None
+        self.delta: Tensor | None = None
 
     # ------------------------------------------------------------------
     def free_step(
         self,
         input_ids: Tensor,
         labels: Tensor,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """One free adversarial training step (m replay sub-steps).
 
         Parameters
@@ -391,9 +394,9 @@ class FreeAdversarialTraining:
     # ------------------------------------------------------------------
     def train_epoch(
         self,
-        data_iter: Iterator[Tuple[Tensor, Tensor]],
+        data_iter: Iterator[tuple[Tensor, Tensor]],
         optimizer: torch.optim.Optimizer,
-    ) -> List[float]:
+    ) -> list[float]:
         """Train for one epoch using free adversarial training.
 
         Parameters
@@ -406,7 +409,7 @@ class FreeAdversarialTraining:
         List of per-batch loss values.
         """
         self.model.train()
-        losses: List[float] = []
+        losses: list[float] = []
 
         for input_ids, labels in data_iter:
             optimizer.zero_grad()
@@ -421,6 +424,7 @@ class FreeAdversarialTraining:
 # ---------------------------------------------------------------------------
 # VirtualAdversarialTraining
 # ---------------------------------------------------------------------------
+
 
 class VirtualAdversarialTraining:
     """Virtual Adversarial Training (VAT) for LLMs.
@@ -547,6 +551,7 @@ class VirtualAdversarialTraining:
 # AdversarialDataAugmentation
 # ---------------------------------------------------------------------------
 
+
 class AdversarialDataAugmentation:
     """Mix clean and adversarial examples for data augmentation.
 
@@ -572,7 +577,7 @@ class AdversarialDataAugmentation:
         model: nn.Module,
         input_ids: Tensor,
         labels: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Return augmented (input_ids, labels) with a mix of clean and PGD examples.
 
         ``augment_frac`` of the batch indices are replaced by PGD adversarial

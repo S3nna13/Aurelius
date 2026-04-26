@@ -8,17 +8,16 @@ Pure PyTorch only. No external dependencies beyond stdlib + torch.
 from __future__ import annotations
 
 import math
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # GreenRedPartitioner
 # ---------------------------------------------------------------------------
+
 
 class GreenRedPartitioner:
     """Partition vocabulary into green/red lists per context token."""
@@ -30,7 +29,7 @@ class GreenRedPartitioner:
         self._n_green = int(math.floor(gamma * vocab_size))
 
     # ------------------------------------------------------------------
-    def partition(self, context_hash: int) -> Tuple[Tensor, Tensor]:
+    def partition(self, context_hash: int) -> tuple[Tensor, Tensor]:
         """Return (green_ids, red_ids) for the given context hash.
 
         Uses (context_hash XOR seed_key) as the RNG seed so that
@@ -60,6 +59,7 @@ class GreenRedPartitioner:
 # WatermarkLogitsProcessor
 # ---------------------------------------------------------------------------
 
+
 class WatermarkLogitsProcessor:
     """Modify logits to bias toward green-list tokens."""
 
@@ -88,6 +88,7 @@ class WatermarkLogitsProcessor:
 # WatermarkDetector
 # ---------------------------------------------------------------------------
 
+
 class WatermarkDetector:
     """Statistical test for watermark presence (z-score based)."""
 
@@ -96,7 +97,7 @@ class WatermarkDetector:
         self.z_threshold = z_threshold
 
     # ------------------------------------------------------------------
-    def count_green_tokens(self, token_ids: Tensor) -> Tuple[int, int]:
+    def count_green_tokens(self, token_ids: Tensor) -> tuple[int, int]:
         """Count how many tokens fall in their respective green lists.
 
         For position i, the context is token_ids[i-1].  Position 0 is
@@ -127,7 +128,7 @@ class WatermarkDetector:
         return float(numerator / denominator)
 
     # ------------------------------------------------------------------
-    def detect(self, token_ids: Tensor) -> Tuple[bool, float, float]:
+    def detect(self, token_ids: Tensor) -> tuple[bool, float, float]:
         """Detect watermark presence.
 
         Returns:
@@ -148,13 +149,14 @@ class WatermarkDetector:
 # LearnedWatermarkDetector
 # ---------------------------------------------------------------------------
 
+
 class LearnedWatermarkDetector(nn.Module):
     """Trainable binary classifier to detect watermarked sequences."""
 
     def __init__(self, vocab_size: int, embed_dim: int = 32, n_layers: int = 2) -> None:
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        mlp_layers: List[nn.Module] = []
+        mlp_layers: list[nn.Module] = []
         for _ in range(n_layers):
             mlp_layers.append(nn.Linear(embed_dim, embed_dim))
             mlp_layers.append(nn.ReLU())
@@ -168,10 +170,10 @@ class LearnedWatermarkDetector(nn.Module):
         token_ids: (B, T)
         """
         # Embed + mean-pool over sequence dimension
-        x = self.embedding(token_ids)          # (B, T, D)
-        x = x.mean(dim=1)                      # (B, D)
-        x = self.mlp(x)                        # (B, D)
-        x = self.head(x).squeeze(-1)           # (B,)
+        x = self.embedding(token_ids)  # (B, T, D)
+        x = x.mean(dim=1)  # (B, D)
+        x = self.mlp(x)  # (B, D)
+        x = self.head(x).squeeze(-1)  # (B,)
         return torch.sigmoid(x)
 
     # ------------------------------------------------------------------
@@ -181,13 +183,14 @@ class LearnedWatermarkDetector(nn.Module):
         token_ids: (B, T)
         labels:    (B,) float in {0, 1}
         """
-        probs = self.forward(token_ids)        # (B,)
+        probs = self.forward(token_ids)  # (B,)
         return F.binary_cross_entropy(probs, labels)
 
 
 # ---------------------------------------------------------------------------
 # WatermarkBenchmark
 # ---------------------------------------------------------------------------
+
 
 class WatermarkBenchmark:
     """Evaluate watermark quality via TPR/FPR, KL distortion, and perplexity."""
@@ -198,20 +201,20 @@ class WatermarkBenchmark:
     # ------------------------------------------------------------------
     def tpr_at_fpr(
         self,
-        watermarked_sequences: List[Tensor],
-        clean_sequences: List[Tensor],
+        watermarked_sequences: list[Tensor],
+        clean_sequences: list[Tensor],
         fpr_target: float = 0.01,
     ) -> float:
         """True-positive rate on watermarked sequences at the given FPR.
 
         FPR is controlled by finding the z-score threshold on clean sequences.
         """
-        clean_z: List[float] = []
+        clean_z: list[float] = []
         for seq in clean_sequences:
             _, z, _ = self.detector.detect(seq)
             clean_z.append(z)
 
-        wm_z: List[float] = []
+        wm_z: list[float] = []
         for seq in watermarked_sequences:
             _, z, _ = self.detector.detect(seq)
             wm_z.append(z)
@@ -237,9 +240,7 @@ class WatermarkBenchmark:
         return float(tp) / float(n_wm)
 
     # ------------------------------------------------------------------
-    def distortion_score(
-        self, original_logits: Tensor, watermarked_logits: Tensor
-    ) -> float:
+    def distortion_score(self, original_logits: Tensor, watermarked_logits: Tensor) -> float:
         """Mean KL divergence KL(original || watermarked) over batch.
 
         logits shape: (B, V) or (V,)
@@ -253,13 +254,11 @@ class WatermarkBenchmark:
         p = torch.exp(log_p)
 
         # KL(p || q) = sum_x p(x) * (log p(x) - log q(x))
-        kl = (p * (log_p - log_q)).sum(dim=-1)   # (B,)
+        kl = (p * (log_p - log_q)).sum(dim=-1)  # (B,)
         return float(kl.mean().item())
 
     # ------------------------------------------------------------------
-    def perplexity_impact(
-        self, watermarked_logprobs: Tensor, clean_logprobs: Tensor
-    ) -> float:
+    def perplexity_impact(self, watermarked_logprobs: Tensor, clean_logprobs: Tensor) -> float:
         """Ratio of watermarked perplexity to clean perplexity.
 
         logprobs: (T,) token log-probabilities (negative values expected).

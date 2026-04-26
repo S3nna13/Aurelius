@@ -51,13 +51,20 @@ class ServeConfigBuilder:
     def to_vllm_args(self) -> list[str]:
         c = self.config
         args = [
-            "--model", c.model_path,
-            "--host", c.host,
-            "--port", str(c.port),
-            "--dtype", c.dtype,
-            "--max-model-len", str(c.max_seq_len),
-            "--gpu-memory-utilization", str(c.gpu_memory_utilization),
-            "--max-num-seqs", str(c.max_batch_size),
+            "--model",
+            c.model_path,
+            "--host",
+            c.host,
+            "--port",
+            str(c.port),
+            "--dtype",
+            c.dtype,
+            "--max-model-len",
+            str(c.max_seq_len),
+            "--gpu-memory-utilization",
+            str(c.gpu_memory_utilization),
+            "--max-num-seqs",
+            str(c.max_batch_size),
         ]
         return args
 

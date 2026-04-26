@@ -3,20 +3,21 @@
 Provides utilities for monitoring token consumption during LLM inference,
 estimating API/compute costs, and enforcing configurable token budgets.
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Tuple
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BudgetConfig:
     """Configuration for token budget limits and cost rates."""
+
     max_tokens: int = 10_000
     max_prompt_tokens: int = 4_096
     max_completion_tokens: int = 2_048
@@ -29,18 +30,21 @@ class BudgetConfig:
 # Usage dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenUsage:
     """Accumulated token usage for a single call or over multiple calls."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
-    total_tokens: int = 0          # always prompt_tokens + completion_tokens
+    total_tokens: int = 0  # always prompt_tokens + completion_tokens
     estimated_cost: float = 0.0
 
 
 # ---------------------------------------------------------------------------
 # Pure functions
 # ---------------------------------------------------------------------------
+
 
 def compute_token_usage(
     prompt_len: int,
@@ -73,7 +77,7 @@ def compute_token_usage(
 def check_budget(
     usage: TokenUsage,
     config: BudgetConfig,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Check whether *usage* is within the limits defined by *config*.
 
     Args:
@@ -93,12 +97,12 @@ def check_budget(
     if usage.prompt_tokens > config.max_prompt_tokens:
         return (
             False,
-            f"prompt_tokens {usage.prompt_tokens} exceeds max_prompt_tokens {config.max_prompt_tokens}",
+            f"prompt_tokens {usage.prompt_tokens} exceeds max_prompt_tokens {config.max_prompt_tokens}",  # noqa: E501
         )
     if usage.completion_tokens > config.max_completion_tokens:
         return (
             False,
-            f"completion_tokens {usage.completion_tokens} exceeds max_completion_tokens {config.max_completion_tokens}",
+            f"completion_tokens {usage.completion_tokens} exceeds max_completion_tokens {config.max_completion_tokens}",  # noqa: E501
         )
     return (True, "")
 
@@ -106,6 +110,7 @@ def check_budget(
 # ---------------------------------------------------------------------------
 # Tracker class
 # ---------------------------------------------------------------------------
+
 
 class TokenBudgetTracker:
     """Stateful tracker that accumulates token usage across multiple inference calls.
@@ -185,9 +190,7 @@ class TokenBudgetTracker:
         """
         usage = self.total_usage()
         budget_fraction = (
-            usage.total_tokens / self._config.max_tokens
-            if self._config.max_tokens > 0
-            else 0.0
+            usage.total_tokens / self._config.max_tokens if self._config.max_tokens > 0 else 0.0
         )
         return {
             "prompt_tokens": usage.prompt_tokens,
@@ -202,6 +205,7 @@ class TokenBudgetTracker:
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
 
 def estimate_tokens_from_chars(text: str, chars_per_token: float = 4.0) -> int:
     """Estimate token count from character count.
@@ -219,10 +223,10 @@ def estimate_tokens_from_chars(text: str, chars_per_token: float = 4.0) -> int:
 
 
 def truncate_to_budget(
-    token_ids: List[int],
+    token_ids: list[int],
     max_tokens: int,
     side: str = "left",
-) -> List[int]:
+) -> list[int]:
     """Truncate a token-id sequence to at most *max_tokens* tokens.
 
     Args:
@@ -245,6 +249,6 @@ def truncate_to_budget(
     if len(token_ids) <= max_tokens:
         return list(token_ids)
     if side == "left":
-        return token_ids[len(token_ids) - max_tokens:]
+        return token_ids[len(token_ids) - max_tokens :]
     # side == "right"
     return token_ids[:max_tokens]

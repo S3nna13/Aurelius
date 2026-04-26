@@ -7,12 +7,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class ContentCategory(Enum):
     SAFE = "safe"
@@ -28,37 +27,63 @@ class ContentCategory(Enum):
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ClassificationResult:
     """Result of classifying a single text."""
+
     text: str
     category: ContentCategory
     confidence: float
-    evidence: List[str]
+    evidence: list[str]
 
 
 # ---------------------------------------------------------------------------
 # Keyword lists per category
 # ---------------------------------------------------------------------------
 
-_CATEGORY_KEYWORDS: dict[ContentCategory, List[str]] = {
+_CATEGORY_KEYWORDS: dict[ContentCategory, list[str]] = {
     ContentCategory.VIOLENCE: [
-        "kill", "murder", "weapon", "bomb", "attack", "shoot", "stab",
+        "kill",
+        "murder",
+        "weapon",
+        "bomb",
+        "attack",
+        "shoot",
+        "stab",
     ],
     ContentCategory.HATE: [
-        "slur", "racist", "bigot", "supremacist", "dehumanize",
+        "slur",
+        "racist",
+        "bigot",
+        "supremacist",
+        "dehumanize",
     ],
     ContentCategory.SEXUAL: [
-        "explicit", "nude", "pornographic", "sexual content",
+        "explicit",
+        "nude",
+        "pornographic",
+        "sexual content",
     ],
     ContentCategory.SELF_HARM: [
-        "suicide", "self-harm", "cutting", "overdose",
+        "suicide",
+        "self-harm",
+        "cutting",
+        "overdose",
     ],
     ContentCategory.ILLEGAL: [
-        "cocaine", "heroin", "counterfeit", "launder", "trafficking",
+        "cocaine",
+        "heroin",
+        "counterfeit",
+        "launder",
+        "trafficking",
     ],
     ContentCategory.SPAM: [
-        "click here", "win money", "free offer", "limited time", "act now",
+        "click here",
+        "win money",
+        "free offer",
+        "limited time",
+        "act now",
     ],
 }
 
@@ -67,12 +92,13 @@ _CATEGORY_KEYWORDS: dict[ContentCategory, List[str]] = {
 # Classifier
 # ---------------------------------------------------------------------------
 
+
 class ContentClassifier:
     """Keyword-based content safety classifier."""
 
     def __init__(self) -> None:
         # Store as-is; matching is done against lowercased text
-        self._keywords: dict[ContentCategory, List[str]] = {
+        self._keywords: dict[ContentCategory, list[str]] = {
             cat: list(kws) for cat, kws in _CATEGORY_KEYWORDS.items()
         }
 
@@ -121,13 +147,11 @@ class ContentClassifier:
             evidence=evidence,
         )
 
-    def batch_classify(self, texts: List[str]) -> List[ClassificationResult]:
+    def batch_classify(self, texts: list[str]) -> list[ClassificationResult]:
         """Classify a list of texts, returning one result per text."""
         return [self.classify(t) for t in texts]
 
-    def safe_to_serve(
-        self, result: ClassificationResult, threshold: float = 0.5
-    ) -> bool:
+    def safe_to_serve(self, result: ClassificationResult, threshold: float = 0.5) -> bool:
         """Return True if the result is safe to serve.
 
         A result is safe to serve if:

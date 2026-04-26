@@ -20,8 +20,8 @@ Covers ≥12 distinct test cases as required by the project spec:
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.agent.toolformer_data_gen import (
     Tool,
@@ -30,7 +30,6 @@ from src.agent.toolformer_data_gen import (
     ToolformerDataGenerator,
     _CharLM,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -119,8 +118,8 @@ def test_toolformer_config_defaults():
 
 def test_toolformer_config_custom():
     cfg = ToolformerConfig(
-        api_token="<CALL(",
-        close_token=")>",
+        api_token="<CALL(",  # noqa: S106
+        close_token=")>",  # noqa: S106
         result_sep=" => ",
         utility_threshold=0.5,
         max_candidates_per_position=3,
@@ -189,7 +188,9 @@ def test_filter_by_utility_custom_threshold():
 
 def test_format_training_example_contains_api_token():
     gen = _make_generator()
-    ann = ToolCallAnnotation(position=0, tool_name="calc", args={"input": "2+2"}, result="4", utility_gain=0.5)
+    ann = ToolCallAnnotation(
+        position=0, tool_name="calc", args={"input": "2+2"}, result="4", utility_gain=0.5
+    )
     text = "hello world"
     formatted = gen.format_training_example(text, [ann])
     assert "[API(" in formatted
@@ -202,7 +203,11 @@ def test_format_training_example_notation_structure():
     cfg = ToolformerConfig(utility_threshold=0.0)
     gen = ToolformerDataGenerator(config=cfg)
     ann = ToolCallAnnotation(
-        position=5, tool_name="search", args={"input": "python"}, result="a language", utility_gain=1.0
+        position=5,
+        tool_name="search",
+        args={"input": "python"},
+        result="a language",
+        utility_gain=1.0,
     )
     formatted = gen.format_training_example("Hello world", [ann])
     # Must contain the call with args

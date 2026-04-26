@@ -9,10 +9,12 @@ The model iteratively:
 
 This loop is the core of the autonomous continuous improvement system.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -22,32 +24,34 @@ logger = logging.getLogger("aurelius.self_improve")
 
 @dataclass
 class SelfImproveConfig:
-    n_synthetic_examples: int = 100   # examples to generate per round
-    top_fraction: float = 0.7         # keep top 70% by reward score
-    min_examples_to_train: int = 10   # skip round if fewer pass filter
-    sft_steps: int = 50               # gradient steps per round
+    n_synthetic_examples: int = 100  # examples to generate per round
+    top_fraction: float = 0.7  # keep top 70% by reward score
+    min_examples_to_train: int = 10  # skip round if fewer pass filter
+    sft_steps: int = 50  # gradient steps per round
     sft_lr: float = 1e-5
-    max_rounds: int = 5               # number of improvement rounds
-    eval_interval_rounds: int = 1     # evaluate every N rounds
-    reward_threshold: float = 0.0     # only keep examples with reward > threshold
-    max_new_tokens: int = 64          # generation length for synthetic data
+    max_rounds: int = 5  # number of improvement rounds
+    eval_interval_rounds: int = 1  # evaluate every N rounds
+    reward_threshold: float = 0.0  # only keep examples with reward > threshold
+    max_new_tokens: int = 64  # generation length for synthetic data
 
 
 @dataclass
 class RoundResult:
     """Results from one self-improvement round."""
+
     round_idx: int
     n_generated: int
-    n_kept: int              # after reward filtering
+    n_kept: int  # after reward filtering
     mean_reward_kept: float  # mean reward of kept examples
-    sft_loss: float | None   # training loss (None if skipped)
+    sft_loss: float | None  # training loss (None if skipped)
     eval_perplexity: float | None  # perplexity after this round
-    improved: bool | None    # vs previous round (None if no prev eval)
+    improved: bool | None  # vs previous round (None if no prev eval)
 
 
 @dataclass
 class SelfImproveReport:
     """Full report across all rounds."""
+
     config: SelfImproveConfig
     rounds: list[RoundResult] = field(default_factory=list)
 
@@ -117,7 +121,7 @@ class SelfImprover:
 
     def score_with_reward_model(
         self,
-        prompts: list[torch.Tensor],    # list of (S_prompt,)
+        prompts: list[torch.Tensor],  # list of (S_prompt,)
         responses: list[torch.Tensor],  # list of (S_resp,)
     ) -> torch.Tensor:
         """Score each (prompt, response) pair with the reward model.
@@ -133,8 +137,11 @@ class SelfImprover:
                 # Concatenate prompt + response into one sequence
                 seq = torch.cat([prompt, response], dim=0)  # (S_prompt + S_resp,)
                 # Clamp to model's max_seq_len if needed
-                backbone = getattr(self.reward_model, "backbone_fn",
-                                   getattr(self.reward_model, "backbone", self.reward_model))
+                backbone = getattr(
+                    self.reward_model,
+                    "backbone_fn",
+                    getattr(self.reward_model, "backbone", self.reward_model),
+                )
                 backbone_cfg = getattr(backbone, "config", None)
                 if backbone_cfg is not None and hasattr(backbone_cfg, "max_seq_len"):
                     max_seq_len = backbone_cfg.max_seq_len
@@ -150,7 +157,7 @@ class SelfImprover:
     def filter_by_reward(
         self,
         examples: list[tuple[torch.Tensor, torch.Tensor]],  # list of (input_ids, labels)
-        rewards: torch.Tensor,   # (N,)
+        rewards: torch.Tensor,  # (N,)
     ) -> tuple[list[tuple[torch.Tensor, torch.Tensor]], float]:
         """Keep top_fraction examples by reward score.
 
@@ -209,7 +216,7 @@ class SelfImprover:
             label_list.append(labels)
 
         all_input_ids = torch.stack(input_id_list)  # (N, max_len)
-        all_labels = torch.stack(label_list)         # (N, max_len)
+        all_labels = torch.stack(label_list)  # (N, max_len)
 
         dataset = TensorDataset(all_input_ids, all_labels)
         batch_size = max(1, len(examples) // 4 + 1)
@@ -243,6 +250,7 @@ class SelfImprover:
         if self.eval_loader is None:
             return None
         from src.eval.perplexity import perplexity_on_dataset
+
         result = perplexity_on_dataset(self.model, self.eval_loader)
         return result.perplexity
 
@@ -254,7 +262,9 @@ class SelfImprover:
         """Execute one self-improvement round."""
         cfg = self.cfg
 
-        logger.info("Round %d: generating %d synthetic examples...", round_idx, cfg.n_synthetic_examples)
+        logger.info(
+            "Round %d: generating %d synthetic examples...", round_idx, cfg.n_synthetic_examples
+        )
 
         # Step 1: Generate synthetic responses
         responses = self.generate_synthetic_batch(cfg.n_synthetic_examples, prompt_template)
@@ -271,7 +281,7 @@ class SelfImprover:
         for prompt, response in zip(prompts, responses):
             full_seq = torch.cat([prompt, response], dim=0)
             labels = full_seq.clone()
-            labels[:len(prompt)] = -100
+            labels[: len(prompt)] = -100
             raw_examples.append((full_seq, labels))
 
         # Step 4: Filter by reward
@@ -280,7 +290,10 @@ class SelfImprover:
 
         logger.info(
             "Round %d: kept %d/%d examples (mean_reward=%.4f)",
-            round_idx, n_kept, n_generated, mean_reward_kept,
+            round_idx,
+            n_kept,
+            n_generated,
+            mean_reward_kept,
         )
 
         # Step 5: SFT fine-tuning
@@ -291,7 +304,9 @@ class SelfImprover:
         else:
             logger.info(
                 "Round %d: skipping SFT (only %d examples, need %d)",
-                round_idx, n_kept, cfg.min_examples_to_train,
+                round_idx,
+                n_kept,
+                cfg.min_examples_to_train,
             )
 
         # Step 6: Check perplexity
@@ -306,7 +321,9 @@ class SelfImprover:
                 self._prev_perplexity = ppl
                 logger.info(
                     "Round %d: perplexity=%.4f improved=%s",
-                    round_idx, ppl, improved,
+                    round_idx,
+                    ppl,
+                    improved,
                 )
 
         return RoundResult(
@@ -329,7 +346,8 @@ class SelfImprover:
 
         logger.info(
             "Starting self-improvement loop: %d rounds, %d examples/round",
-            cfg.max_rounds, cfg.n_synthetic_examples,
+            cfg.max_rounds,
+            cfg.n_synthetic_examples,
         )
 
         for round_idx in range(cfg.max_rounds):

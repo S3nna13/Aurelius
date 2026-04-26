@@ -1,4 +1,5 @@
 """Tests for debate-based alignment (Irving et al., 2018)."""
+
 from __future__ import annotations
 
 import pytest
@@ -11,10 +12,10 @@ from src.alignment.debate_irving import (
     DebateSession,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tiny mock model
 # ---------------------------------------------------------------------------
+
 
 class _MockModel(nn.Module):
     """Deterministic tiny mock model for testing.
@@ -70,6 +71,7 @@ def debate_session(mock_model: _MockModel) -> DebateSession:
 # DebateArgument dataclass
 # ---------------------------------------------------------------------------
 
+
 def test_debate_argument_dataclass() -> None:
     """DebateArgument stores all fields correctly."""
     arg = DebateArgument(
@@ -88,13 +90,12 @@ def test_debate_argument_dataclass() -> None:
 # DebateSession tests
 # ---------------------------------------------------------------------------
 
+
 def test_debate_session_runs(debate_session: DebateSession) -> None:
     """run_debate returns a dict with all required keys."""
     result = debate_session.run_debate("Python is better than JavaScript.")
     required_keys = {"claim", "arguments", "winner", "judge_reasoning"}
-    assert required_keys <= result.keys(), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    assert required_keys <= result.keys(), f"Missing keys: {required_keys - result.keys()}"
     assert result["claim"] == "Python is better than JavaScript."
     assert isinstance(result["arguments"], list)
     assert isinstance(result["judge_reasoning"], str)
@@ -103,9 +104,7 @@ def test_debate_session_runs(debate_session: DebateSession) -> None:
 def test_debate_winner_valid(debate_session: DebateSession) -> None:
     """winner is one of 'for', 'against', or 'tie'."""
     result = debate_session.run_debate("Test claim.")
-    assert result["winner"] in ("for", "against", "tie"), (
-        f"Invalid winner: {result['winner']!r}"
-    )
+    assert result["winner"] in ("for", "against", "tie"), f"Invalid winner: {result['winner']!r}"
 
 
 def test_debate_argument_count(mock_model: _MockModel) -> None:
@@ -127,6 +126,7 @@ def test_debate_argument_count(mock_model: _MockModel) -> None:
 # ---------------------------------------------------------------------------
 # DebateDataCollector tests
 # ---------------------------------------------------------------------------
+
 
 def _make_debate_result(winner: str = "for") -> dict:
     """Build a minimal debate result dict."""

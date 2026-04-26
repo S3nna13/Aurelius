@@ -9,37 +9,37 @@ detector that can attach to any nn.Module.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OutlierReport:
     """Per-layer outlier analysis report."""
 
     layer_name: str
-    outlier_dims: List[int]          # channel indices with outlier activations
-    outlier_scores: List[float]      # score per outlier dim
+    outlier_dims: list[int]  # channel indices with outlier activations
+    outlier_scores: list[float]  # score per outlier dim
     mean_activation: float
     max_activation: float
-    outlier_ratio: float             # fraction of dims that are outliers
-    suggested_scale: float           # suggested per-channel scale for quantization
+    outlier_ratio: float  # fraction of dims that are outliers
+    suggested_scale: float  # suggested per-channel scale for quantization
 
 
 @dataclass
 class ModelOutlierSummary:
     """Aggregate outlier summary across all monitored layers."""
 
-    per_layer_reports: Dict[str, OutlierReport]
+    per_layer_reports: dict[str, OutlierReport]
     total_outlier_dims: int
-    most_problematic_layers: List[str]   # sorted by outlier_ratio descending
+    most_problematic_layers: list[str]  # sorted by outlier_ratio descending
     global_outlier_ratio: float
 
 
@@ -47,10 +47,11 @@ class ModelOutlierSummary:
 # Detection utility functions
 # ---------------------------------------------------------------------------
 
+
 def detect_outliers_iqr(
     activations: torch.Tensor,
     threshold: float = 3.0,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """IQR-based outlier detection.
 
     Args:
@@ -92,7 +93,7 @@ def detect_outliers_iqr(
 def detect_outliers_zscore(
     activations: torch.Tensor,
     threshold: float = 3.0,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Z-score outlier detection.
 
     Args:
@@ -121,7 +122,7 @@ def detect_outliers_zscore(
 
 def compute_per_channel_stats(
     activation_tensor: torch.Tensor,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Compute per-channel statistics across batch/seq dimensions.
 
     Args:
@@ -147,9 +148,7 @@ def compute_per_channel_stats(
         max_ = flat.max(dim=0).values
         absmax = flat.abs().max(dim=0).values
     else:
-        raise ValueError(
-            f"activation_tensor must be 2D (N, d) or 3D (B, T, d), got {t.ndim}D"
-        )
+        raise ValueError(f"activation_tensor must be 2D (N, d) or 3D (B, T, d), got {t.ndim}D")
 
     return {"mean": mean, "std": std, "max": max_, "absmax": absmax}
 
@@ -157,7 +156,7 @@ def compute_per_channel_stats(
 def suggest_quantization_scale(
     activations: torch.Tensor,
     n_bits: int = 8,
-    outlier_dims: Optional[torch.Tensor] = None,
+    outlier_dims: torch.Tensor | None = None,
     outlier_scale_factor: float = 4.0,
 ) -> torch.Tensor:
     """Suggest per-channel quantization scales.
@@ -193,6 +192,7 @@ def suggest_quantization_scale(
 # ActivationOutlierDetector
 # ---------------------------------------------------------------------------
 
+
 class ActivationOutlierDetector:
     """Attach hooks to model layers, collect activations, detect outliers.
 
@@ -208,7 +208,7 @@ class ActivationOutlierDetector:
     def __init__(
         self,
         model: nn.Module,
-        target_modules: Optional[List[str]] = None,
+        target_modules: list[str] | None = None,
         method: str = "iqr",
         threshold: float = 3.0,
         n_bits: int = 8,
@@ -230,7 +230,7 @@ class ActivationOutlierDetector:
         self.n_bits = n_bits
 
         # Determine which modules to hook
-        self._target_names: List[str] = []
+        self._target_names: list[str] = []
         if target_modules is not None:
             self._target_names = list(target_modules)
         else:
@@ -239,17 +239,15 @@ class ActivationOutlierDetector:
                     self._target_names.append(name)
 
         # Storage: layer_name -> list of per-channel absmax tensors (one per forward pass)
-        self._absmax_store: Dict[str, List[torch.Tensor]] = {
-            n: [] for n in self._target_names
-        }
-        self._hooks: List[Any] = []
+        self._absmax_store: dict[str, list[torch.Tensor]] = {n: [] for n in self._target_names}
+        self._hooks: list[Any] = []
         self._n_samples: int = 0
 
         self._register_hooks()
 
     def _register_hooks(self) -> None:
         """Register forward hooks on target layers."""
-        name_to_module: Dict[str, nn.Module] = dict(self.model.named_modules())
+        name_to_module: dict[str, nn.Module] = dict(self.model.named_modules())
 
         for name in self._target_names:
             if name not in name_to_module:
@@ -291,7 +289,7 @@ class ActivationOutlierDetector:
 
         Clears collected data after analysis.
         """
-        per_layer_reports: Dict[str, OutlierReport] = {}
+        per_layer_reports: dict[str, OutlierReport] = {}
 
         for name in self._target_names:
             stored = self._absmax_store.get(name, [])
@@ -299,8 +297,8 @@ class ActivationOutlierDetector:
                 continue
 
             # Stack all collected absmax tensors and take channel-wise max
-            stacked = torch.stack(stored, dim=0)   # (S, d)
-            absmax = stacked.max(dim=0).values      # (d,)
+            stacked = torch.stack(stored, dim=0)  # (S, d)
+            absmax = stacked.max(dim=0).values  # (d,)
 
             if self.method == "iqr":
                 outlier_mask, scores = detect_outliers_iqr(absmax, self.threshold)
@@ -343,8 +341,7 @@ class ActivationOutlierDetector:
 
         if per_layer_reports:
             global_outlier_ratio = float(
-                sum(r.outlier_ratio for r in per_layer_reports.values())
-                / len(per_layer_reports)
+                sum(r.outlier_ratio for r in per_layer_reports.values()) / len(per_layer_reports)
             )
         else:
             global_outlier_ratio = 0.0
@@ -377,10 +374,11 @@ class ActivationOutlierDetector:
 # Visualization helper (no plotting — returns stats dict)
 # ---------------------------------------------------------------------------
 
+
 def visualize_outlier_distribution(
     activations: torch.Tensor,
     outlier_mask: torch.Tensor,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return statistics for visualization (no actual plotting).
 
     Args:

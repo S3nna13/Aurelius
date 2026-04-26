@@ -10,6 +10,7 @@ Closed-form centroids — no scipy required:
   Antiderivative of t*p(t):  2t^3 - (3/2)t^4
   Antiderivative of p(t):    3t^2 - 2t^3
 """
+
 from __future__ import annotations
 
 import torch
@@ -21,6 +22,7 @@ _CODEBOOK_CACHE: dict[int, torch.Tensor] = {}
 # ---------------------------------------------------------------------------
 # Closed-form Beta(2,2) integrals
 # ---------------------------------------------------------------------------
+
 
 def _beta22_cdf(t: float) -> float:
     """CDF of Beta(2,2): F(t) = 3t^2 - 2t^3."""
@@ -54,6 +56,7 @@ def _centroid(lo: float, hi: float) -> float:
 # Lloyd-Max iteration
 # ---------------------------------------------------------------------------
 
+
 def compute_lloyd_max_codebook(n_codes: int, n_iter: int = 100) -> torch.Tensor:
     """Compute the Lloyd-Max quantization codebook for Beta(2,2).
 
@@ -75,7 +78,9 @@ def compute_lloyd_max_codebook(n_codes: int, n_iter: int = 100) -> torch.Tensor:
 
     for _ in range(n_iter):
         # Decision boundaries: midpoints between adjacent centroids
-        boundaries = [0.0] + [(centroids[i] + centroids[i + 1]) / 2.0 for i in range(n_codes - 1)] + [1.0]
+        boundaries = (
+            [0.0] + [(centroids[i] + centroids[i + 1]) / 2.0 for i in range(n_codes - 1)] + [1.0]
+        )
 
         # Update centroids using closed-form Beta(2,2) integrals
         new_centroids = []

@@ -5,6 +5,7 @@ attention layer. Supports MLP reparameterization for training stability.
 
 Reference: Li & Liang 2021, arXiv:2101.00190
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,7 +17,7 @@ from torch import Tensor
 
 @dataclass
 class PrefixConfig:
-    prefix_length: int = 10        # number of prefix tokens per layer
+    prefix_length: int = 10  # number of prefix tokens per layer
     n_layers: int = 24
     n_kv_heads: int = 8
     head_dim: int = 128
@@ -61,8 +62,7 @@ class PrefixTuning(nn.Module):
         else:
             # Direct parameters: (n_layers, 2, prefix_length, n_kv_heads, head_dim)
             self.prefix_params = nn.Parameter(
-                torch.randn(cfg.n_layers, 2, cfg.prefix_length, cfg.n_kv_heads, cfg.head_dim)
-                * 0.02
+                torch.randn(cfg.n_layers, 2, cfg.prefix_length, cfg.n_kv_heads, cfg.head_dim) * 0.02
             )
 
     def _get_prefix_output(self) -> Tensor:
@@ -145,8 +145,8 @@ class PrefixTuning(nn.Module):
 
 def apply_prefix_to_attention(
     prefix_tuning: PrefixTuning,
-    k: Tensor,   # (B, S, n_kv_heads, head_dim) — original keys
-    v: Tensor,   # (B, S, n_kv_heads, head_dim) — original values
+    k: Tensor,  # (B, S, n_kv_heads, head_dim) — original keys
+    v: Tensor,  # (B, S, n_kv_heads, head_dim) — original values
     layer_idx: int,
 ) -> tuple[Tensor, Tensor]:
     """Prepend prefix K/V vectors to the full k, v tensors.
@@ -227,6 +227,7 @@ class PrefixTuningTrainer:
 # New API: PrefixEncoder, PrefixTuningModel, PrefixTuner
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PrefixEncoderConfig:
     """Configuration for the new-style PrefixEncoder (Li & Liang 2021).
@@ -270,9 +271,7 @@ class PrefixEncoder(nn.Module):
             )
         else:
             # Direct learnable parameters
-            self.prefix_params = nn.Parameter(
-                torch.randn(cfg.prefix_length, total_dim) * 0.02
-            )
+            self.prefix_params = nn.Parameter(torch.randn(cfg.prefix_length, total_dim) * 0.02)
 
         self.dropout = nn.Dropout(p=cfg.dropout)
 
@@ -409,7 +408,7 @@ class PrefixTuningModel(nn.Module):
         x = torch.cat([prefix_hidden, x], dim=1)
 
         # Get RoPE frequencies from backbone if available
-        has_freqs = hasattr(self.backbone, 'freqs_cis')
+        has_freqs = hasattr(self.backbone, "freqs_cis")
 
         total_len = x.shape[1]
 
@@ -431,7 +430,7 @@ class PrefixTuningModel(nn.Module):
 
         # Slice off the prefix positions to return only input token logits
         # logits: (B, prefix_length + T, V) -> (B, T, V)
-        logits = logits[:, self.prefix_cfg.prefix_length:, :]
+        logits = logits[:, self.prefix_cfg.prefix_length :, :]
 
         return logits
 
@@ -452,9 +451,7 @@ class PrefixTuner:
         if optimizer is not None:
             self.optimizer = optimizer
         else:
-            self.optimizer = torch.optim.Adam(
-                model.prefix_encoder.parameters(), lr=lr
-            )
+            self.optimizer = torch.optim.Adam(model.prefix_encoder.parameters(), lr=lr)
 
     def train_step(self, input_ids: Tensor) -> dict:
         """Execute one training step.

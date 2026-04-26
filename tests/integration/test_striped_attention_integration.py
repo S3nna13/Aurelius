@@ -11,11 +11,11 @@ verifies that:
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.model.striped_attention import StripedAttention, StripedAttentionConfig
 from src.model import MODEL_COMPONENT_REGISTRY
+from src.model.striped_attention import StripedAttention, StripedAttentionConfig
 
 # ---------------------------------------------------------------------------
 # Integration config (tiny, matches spec)
@@ -79,9 +79,7 @@ def test_integration_head_type_mask_alternates(
 ) -> None:
     """head_type_mask correctly alternates global/local for n_heads=4."""
     mask = integration_model.head_type_mask()
-    assert mask == ["global", "local", "global", "local"], (
-        f"Expected alternating mask, got {mask}"
-    )
+    assert mask == ["global", "local", "global", "local"], f"Expected alternating mask, got {mask}"
 
 
 def test_integration_registry() -> None:

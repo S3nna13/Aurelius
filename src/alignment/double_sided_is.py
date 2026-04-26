@@ -6,7 +6,6 @@ Drop-in training utility for token-level policy optimisation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -61,7 +60,7 @@ class DoubleSidedISLoss(nn.Module):
         self,
         log_pi_theta: Tensor,
         log_pi_old: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compute ratio diagnostics.
 
         Returns:

@@ -13,7 +13,6 @@ from src.retrieval.code_aware_embedder import (
     stub_token_embed,
 )
 
-
 SNIPPET = '''\
 import os
 from typing import List
@@ -185,6 +184,7 @@ def test_determinism_with_stub_embed_fn():
 def test_wrong_dim_raises():
     def bad_fn(tok):
         return [0.0] * 7  # wrong dim
+
     emb = CodeAwareEmbedder(bad_fn, d_embed=384)
     with pytest.raises(ValueError):
         emb.embed("x = 1")
@@ -192,7 +192,7 @@ def test_wrong_dim_raises():
 
 def test_very_long_code_handled():
     emb = CodeAwareEmbedder(_fn())
-    huge = ("def f_{0}(): pass\n".format(0)) * 50_000
+    huge = (f"def f_{0}(): pass\n") * 50_000
     v = emb.embed(huge)
     assert len(v) == 384
     norm = math.sqrt(sum(x * x for x in v))

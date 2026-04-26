@@ -1,4 +1,5 @@
 """Tests for src/multiagent/belief_state.py."""
+
 from __future__ import annotations
 
 import pytest

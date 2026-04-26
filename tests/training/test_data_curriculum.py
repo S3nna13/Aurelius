@@ -1,6 +1,5 @@
 """Tests for src/training/data_curriculum.py — multi-source adaptive curriculum."""
 
-import pytest
 import torch
 
 from src.training.data_curriculum import (
@@ -13,10 +12,10 @@ from src.training.data_curriculum import (
     normalize_weights,
 )
 
-
 # ---------------------------------------------------------------------------
 # DataSource
 # ---------------------------------------------------------------------------
+
 
 def test_datasource_defaults():
     src = DataSource(name="wiki")
@@ -36,6 +35,7 @@ def test_datasource_custom_fields():
 # ---------------------------------------------------------------------------
 # CurriculumConfig
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_config_fields():
     cfg = CurriculumConfig(n_sources=4)
@@ -65,6 +65,7 @@ def test_curriculum_config_custom():
 # normalize_weights
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_weights_sums_to_one():
     w = torch.tensor([1.0, 2.0, 3.0, 4.0])
     result = normalize_weights(w)
@@ -72,7 +73,7 @@ def test_normalize_weights_sums_to_one():
 
 
 def test_normalize_weights_min_floor():
-    # One weight is below the floor; after clipping and normalizing it should not be negligibly small
+    # One weight is below the floor; after clipping and normalizing it should not be negligibly small  # noqa: E501
     w = torch.tensor([0.001, 1.0, 1.0])
     result = normalize_weights(w, min_weight=0.05)
     # The floor is applied before normalization, so no raw weight < 0.05 exists
@@ -91,6 +92,7 @@ def test_normalize_weights_shape_preserved():
 # ---------------------------------------------------------------------------
 # compute_loss_adaptive_weights
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_adaptive_weights_shape():
     losses = torch.tensor([0.5, 1.0, 2.0])
@@ -117,6 +119,7 @@ def test_compute_loss_adaptive_weights_higher_loss_higher_weight():
 # ---------------------------------------------------------------------------
 # compute_difficulty_mask
 # ---------------------------------------------------------------------------
+
 
 def test_compute_difficulty_mask_step_zero_only_easy():
     sources = [
@@ -153,6 +156,7 @@ def test_compute_difficulty_mask_shape():
 # diversity_regularization
 # ---------------------------------------------------------------------------
 
+
 def test_diversity_regularization_pushes_toward_uniform():
     # Two domains: "a" has 1 source with weight 0.9, "b" has 1 source with weight 0.1
     sources = [
@@ -180,6 +184,7 @@ def test_diversity_regularization_sums_to_one():
 # ---------------------------------------------------------------------------
 # AdaptiveCurriculumSampler
 # ---------------------------------------------------------------------------
+
 
 def _make_sampler():
     sources = [

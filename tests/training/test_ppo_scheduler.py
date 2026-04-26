@@ -1,7 +1,7 @@
-import math
 import pytest
 import torch
 import torch.nn as nn
+
 from src.training.ppo_scheduler import (
     AdaptiveKLConfig,
     AdaptiveKLController,
@@ -9,10 +9,10 @@ from src.training.ppo_scheduler import (
     PPOWarmupScheduler,
 )
 
-
 # ---------------------------------------------------------------------------
 # AdaptiveKLConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_kl_config_defaults():
     cfg = AdaptiveKLConfig()
@@ -32,6 +32,7 @@ def test_adaptive_kl_initial_coef():
 # ---------------------------------------------------------------------------
 # AdaptiveKLController behaviour tests
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_kl_increases_on_high_kl():
     """kl > 2 * target_kl should multiply kl_coef by 1.5."""
@@ -105,7 +106,7 @@ def test_adaptive_kl_updates_on_horizon():
     for i in range(horizon - 1):
         result = ctrl.update(0.5)  # high KL > 2 * target
         assert result == pytest.approx(initial_coef), (
-            f"kl_coef should not change before horizon; step {i+1}"
+            f"kl_coef should not change before horizon; step {i + 1}"
         )
 
     # The horizon-th update should trigger adaptation
@@ -130,6 +131,7 @@ def test_adaptive_kl_get_stats():
 # FixedKLController tests
 # ---------------------------------------------------------------------------
 
+
 def test_fixed_kl_unchanged():
     """FixedKLController.update() must always return the original kl_coef."""
     coef = 0.3
@@ -143,6 +145,7 @@ def test_fixed_kl_unchanged():
 # ---------------------------------------------------------------------------
 # PPOWarmupScheduler tests
 # ---------------------------------------------------------------------------
+
 
 def _make_optimizer(lr: float = 1e-3):
     model = nn.Linear(4, 4)
@@ -189,9 +192,7 @@ def test_ppo_warmup_scheduler_cosine_decay():
         post_warmup_lrs.append(sched.step())
 
     # The cosine phase should produce a generally decreasing sequence
-    assert post_warmup_lrs[0] > post_warmup_lrs[-1], (
-        "LR should decrease over cosine decay phase"
-    )
+    assert post_warmup_lrs[0] > post_warmup_lrs[-1], "LR should decrease over cosine decay phase"
     # Final LR should be close to min_lr (default min_lr_ratio=0.1 → 1e-4)
     expected_min = base_lr * 0.1
     assert post_warmup_lrs[-1] == pytest.approx(expected_min, rel=0.05)

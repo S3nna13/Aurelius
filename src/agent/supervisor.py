@@ -1,13 +1,16 @@
+from __future__ import annotations
+
+from typing import Any
+
 """Agent supervisor for lifecycle and health management.
 
 Tracks state transitions, enforces restart budgets, and surfaces crashes.
 Fail closed: unhealthy agents are marked crashed, not silently restarted.
 """
-from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
-from enum import Enum
+import time  # noqa: E402
+from dataclasses import dataclass  # noqa: E402
+from enum import Enum  # noqa: E402
 
 
 class AgentState(Enum):

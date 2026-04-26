@@ -4,7 +4,6 @@ import pytest
 import torch
 
 from src.inference.cot_verifier import (
-    BestOfNVerifier,
     ChainOfThoughtVerifier,
     StepVerifier,
     VerifierConfig,
@@ -16,13 +15,19 @@ from src.inference.cot_verifier import (
 torch.manual_seed(0)
 
 D_MODEL = 32
-TOKENIZE_FN = lambda text: [ord(c) % 256 for c in text]
+
+
+def TOKENIZE_FN(text):
+    return [ord(c) % 256 for c in text]
+
+
 SAMPLE_COT = "Step 1: compute 2+2\nStep 2: result is 4\nAnswer: 4"
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def default_config():
@@ -47,6 +52,7 @@ def cot_verifier(step_verifier, default_config):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_verifier_config_defaults():
     cfg = VerifierConfig()

@@ -1,34 +1,37 @@
-"""Neural Architecture Search primitives: mixed operations, weight sharing, and DARTS-style search."""
+"""Neural Architecture Search primitives: mixed operations, weight sharing, and DARTS-style search."""  # noqa: E501
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NASConfig:
     """Configuration for NAS search space and training."""
-    n_ops: int = 4                  # number of candidate operations
+
+    n_ops: int = 4  # number of candidate operations
     d_model: int = 64
-    temperature: float = 1.0        # Gumbel-softmax temperature
-    straight_through: bool = True   # use straight-through gradient estimator
+    temperature: float = 1.0  # Gumbel-softmax temperature
+    straight_through: bool = True  # use straight-through gradient estimator
 
 
 # ---------------------------------------------------------------------------
 # Base operations
 # ---------------------------------------------------------------------------
 
+
 class NASOperation(nn.Module):
     """Abstract base class for NAS candidate operations."""
+
     name: str = "base"
 
     def forward(self, x: Tensor) -> Tensor:
@@ -37,6 +40,7 @@ class NASOperation(nn.Module):
 
 class IdentityOp(NASOperation):
     """Pass-through operation: output equals input."""
+
     name: str = "identity"
 
     def forward(self, x: Tensor) -> Tensor:
@@ -45,6 +49,7 @@ class IdentityOp(NASOperation):
 
 class ZeroOp(NASOperation):
     """Zero operation: output is all zeros with same shape as input."""
+
     name: str = "zero"
 
     def forward(self, x: Tensor) -> Tensor:
@@ -53,6 +58,7 @@ class ZeroOp(NASOperation):
 
 class LinearOp(NASOperation):
     """Linear projection operation."""
+
     name: str = "linear"
 
     def __init__(self, d_model: int) -> None:
@@ -65,6 +71,7 @@ class LinearOp(NASOperation):
 
 class ConvOp(NASOperation):
     """1-D convolution operation over the sequence dimension."""
+
     name: str = "conv"
 
     def __init__(self, d_model: int) -> None:
@@ -81,6 +88,7 @@ class ConvOp(NASOperation):
 # ---------------------------------------------------------------------------
 # Mixed operation
 # ---------------------------------------------------------------------------
+
 
 class MixedOperation(nn.Module):
     """Combines multiple NAS operations with learnable architecture weights."""
@@ -138,6 +146,7 @@ class MixedOperation(nn.Module):
 # ---------------------------------------------------------------------------
 # DARTS Cell
 # ---------------------------------------------------------------------------
+
 
 def _default_config() -> NASConfig:
     return NASConfig()
@@ -221,6 +230,7 @@ class DARTSCell(nn.Module):
 # Discretize architecture
 # ---------------------------------------------------------------------------
 
+
 def discretize_architecture(cell: DARTSCell, top_k: int = 2) -> dict[str, str]:
     """Select the top-k operation per node edge by architecture weight.
 
@@ -233,7 +243,7 @@ def discretize_architecture(cell: DARTSCell, top_k: int = 2) -> dict[str, str]:
         # Find op indices sorted by weight (descending)
         sorted_indices = weights.argsort(descending=True)
         i = int(edge.split("->")[1].replace("node", "")) - 1  # 0-indexed destination node
-        j = int(edge.split("->")[0].replace("node", ""))       # source node index
+        j = int(edge.split("->")[0].replace("node", ""))  # source node index
         mixed_op: MixedOperation = cell.ops[i][j]  # type: ignore[assignment,index]
         for k in range(min(top_k, len(sorted_indices))):
             idx = int(sorted_indices[k].item())
@@ -246,6 +256,7 @@ def discretize_architecture(cell: DARTSCell, top_k: int = 2) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # NAS Architecture Optimizer
 # ---------------------------------------------------------------------------
+
 
 class NASArchitectureOptimizer:
     """Separate optimizers for architecture weights and model weights (DARTS style)."""

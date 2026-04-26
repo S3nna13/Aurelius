@@ -4,12 +4,11 @@ Measures and analyzes training efficiency: tokens/sec, flops/sec, memory usage,
 step time breakdown, and bottleneck identification.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any
 import time
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 @dataclass
@@ -35,9 +34,9 @@ class ProfileSummary:
     mean_backward_ms: float
     mean_optimizer_ms: float
     peak_memory_mb: float
-    forward_fraction: float    # forward_ms / total_ms
-    backward_fraction: float   # backward_ms / total_ms
-    bottleneck: str            # "forward" | "backward" | "optimizer" | "balanced"
+    forward_fraction: float  # forward_ms / total_ms
+    backward_fraction: float  # backward_ms / total_ms
+    bottleneck: str  # "forward" | "backward" | "optimizer" | "balanced"
 
 
 class Timer:
@@ -101,7 +100,7 @@ def estimate_model_memory_mb(model: nn.Module, dtype: torch.dtype = torch.float3
     }
     bytes_per_param = dtype_to_bytes.get(dtype, 4)
     n_params = sum(p.numel() for p in model.parameters())
-    return (n_params * bytes_per_param) / (1024 ** 2)
+    return (n_params * bytes_per_param) / (1024**2)
 
 
 class MemoryTracker:
@@ -115,12 +114,12 @@ class MemoryTracker:
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
 
-    def snapshot(self) -> Dict[str, float]:
+    def snapshot(self) -> dict[str, float]:
         """Return {'allocated_mb': ..., 'reserved_mb': ..., 'peak_mb': ...}"""
         if torch.cuda.is_available():
-            allocated = torch.cuda.memory_allocated() / (1024 ** 2)
-            reserved = torch.cuda.memory_reserved() / (1024 ** 2)
-            peak = torch.cuda.max_memory_allocated() / (1024 ** 2)
+            allocated = torch.cuda.memory_allocated() / (1024**2)
+            reserved = torch.cuda.memory_reserved() / (1024**2)
+            peak = torch.cuda.max_memory_allocated() / (1024**2)
         else:
             allocated = 0.0
             reserved = 0.0
@@ -149,11 +148,11 @@ class ThroughputProfiler:
         self.model = model
         self.warmup_steps = warmup_steps
         self.sync_cuda = sync_cuda
-        self._history: List[StepProfile] = []
+        self._history: list[StepProfile] = []
 
     def profile_step(
         self,
-        input_ids: torch.Tensor,     # (B, T)
+        input_ids: torch.Tensor,  # (B, T)
         optimizer: torch.optim.Optimizer,
         step: int = 0,
     ) -> StepProfile:
@@ -205,7 +204,7 @@ class ThroughputProfiler:
 
         # Get peak memory
         if torch.cuda.is_available():
-            peak_memory_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
+            peak_memory_mb = torch.cuda.max_memory_allocated() / (1024**2)
         else:
             peak_memory_mb = 0.0
 
@@ -226,7 +225,7 @@ class ThroughputProfiler:
 
     def run(
         self,
-        input_ids: torch.Tensor,    # (B, T) — same batch reused for profiling
+        input_ids: torch.Tensor,  # (B, T) — same batch reused for profiling
         optimizer: torch.optim.Optimizer,
         n_steps: int = 10,
     ) -> ProfileSummary:
@@ -236,7 +235,7 @@ class ThroughputProfiler:
 
         # Exclude warmup steps from summary
         measured = self._history[-n_steps:]  # steps from this run
-        measured = measured[self.warmup_steps:]
+        measured = measured[self.warmup_steps :]
 
         if not measured:
             # Edge case: all steps are warmup
@@ -283,7 +282,7 @@ class ThroughputProfiler:
         )
         return summary
 
-    def get_history(self) -> List[StepProfile]:
+    def get_history(self) -> list[StepProfile]:
         """Return all profiled step records."""
         return list(self._history)
 

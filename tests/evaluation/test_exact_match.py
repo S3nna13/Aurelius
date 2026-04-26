@@ -1,7 +1,6 @@
 """Tests for exact match scorer."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.evaluation.exact_match import ExactMatchScorer
 

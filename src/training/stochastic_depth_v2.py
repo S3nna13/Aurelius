@@ -3,16 +3,17 @@
 Randomly skip transformer layers during training to improve robustness and
 enable inference-time speed/quality trade-offs. Pure PyTorch — no external deps.
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # StochasticDepthSchedule
 # ---------------------------------------------------------------------------
+
 
 class StochasticDepthSchedule:
     """Per-layer drop probability schedule.
@@ -30,9 +31,7 @@ class StochasticDepthSchedule:
 
     def __init__(self, n_layers: int, mode: str = "linear", max_prob: float = 0.5) -> None:
         if mode not in self.VALID_MODES:
-            raise ValueError(
-                f"Unknown mode {mode!r}. Expected one of {self.VALID_MODES}."
-            )
+            raise ValueError(f"Unknown mode {mode!r}. Expected one of {self.VALID_MODES}.")
         if not (0.0 <= max_prob <= 1.0):
             raise ValueError(f"max_prob must be in [0, 1], got {max_prob}")
         if n_layers < 1:
@@ -74,6 +73,7 @@ class StochasticDepthSchedule:
 # ---------------------------------------------------------------------------
 # StochasticDepth
 # ---------------------------------------------------------------------------
+
 
 class StochasticDepth(nn.Module):
     """Wraps a module to randomly skip it during training.
@@ -136,6 +136,7 @@ class StochasticDepth(nn.Module):
 # LayerDropTransformer
 # ---------------------------------------------------------------------------
 
+
 class _TransformerBlock(nn.Module):
     """Minimal transformer block: self-attention + feed-forward with residuals."""
 
@@ -183,14 +184,16 @@ class LayerDropTransformer(nn.Module):
         self._inference_sublayer_count: int | None = None
 
         self.embed = nn.Embedding(vocab_size, d_model)
-        self.layers = nn.ModuleList([
-            StochasticDepth(
-                _TransformerBlock(d_model, n_heads),
-                drop_prob=drop_schedule.prob(i),
-                scale_by_keep=True,
-            )
-            for i in range(n_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                StochasticDepth(
+                    _TransformerBlock(d_model, n_heads),
+                    drop_prob=drop_schedule.prob(i),
+                    scale_by_keep=True,
+                )
+                for i in range(n_layers)
+            ]
+        )
         self.norm = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
@@ -202,9 +205,7 @@ class LayerDropTransformer(nn.Module):
                Pass None to restore full-depth inference.
         """
         if k < 1 or k > self.n_layers:
-            raise ValueError(
-                f"k must be in [1, {self.n_layers}], got {k}"
-            )
+            raise ValueError(f"k must be in [1, {self.n_layers}], got {k}")
         self._inference_sublayer_count = k
 
     def forward(self, input_ids: Tensor) -> Tensor:
@@ -237,6 +238,7 @@ class LayerDropTransformer(nn.Module):
 # ---------------------------------------------------------------------------
 # DropPathMixer
 # ---------------------------------------------------------------------------
+
 
 class DropPathMixer(nn.Module):
     """Sample drop decisions per example in the batch (sample-wise stochastic depth).
@@ -273,9 +275,7 @@ class DropPathMixer(nn.Module):
         B = x.shape[0]
         keep_prob = 1.0 - self.drop_prob
         # Bernoulli mask per sample, broadcast over (T, D).
-        mask = torch.bernoulli(
-            torch.full((B, 1, 1), keep_prob, device=x.device, dtype=x.dtype)
-        )
+        mask = torch.bernoulli(torch.full((B, 1, 1), keep_prob, device=x.device, dtype=x.dtype))
         # Scale so expected value of masked residual equals the original residual.
         mask = mask / keep_prob
         return x + mask * residual
@@ -284,6 +284,7 @@ class DropPathMixer(nn.Module):
 # ---------------------------------------------------------------------------
 # StochasticDepthAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class StochasticDepthAnalyzer:
     """Collect and summarize per-step layer drop statistics.

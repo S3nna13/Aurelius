@@ -3,6 +3,7 @@
 Given a list of token IDs to keep, creates a remapped model with a smaller
 embedding table. Provides a remapping function for converting old IDs → new IDs.
 """
+
 from __future__ import annotations
 
 import copy

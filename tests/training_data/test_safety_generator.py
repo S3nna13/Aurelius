@@ -56,7 +56,16 @@ def test_generate_example_privacy() -> None:
     g = SafetyDataGenerator({})
     ex = g.generate_example("privacy_aware")
     assert ex["category"] == "privacy_aware"
-    keywords = ["cannot", "can't", "private", "privacy", "personally", "won't", "should not", "confidential"]
+    keywords = [
+        "cannot",
+        "can't",
+        "private",
+        "privacy",
+        "personally",
+        "won't",
+        "should not",
+        "confidential",
+    ]
     assert any(k in ex["response"].lower() for k in keywords)
 
 
@@ -116,14 +125,36 @@ def test_refusal_is_polite() -> None:
     g = SafetyDataGenerator({})
     templates = g.__class__._refusal_templates()
     for instruction, response in templates:
-        assert "cannot" in response or "can't" in response or "won't" in response or "sorry" in response.lower() or "unable" in response.lower()
+        assert (
+            "cannot" in response
+            or "can't" in response
+            or "won't" in response
+            or "sorry" in response.lower()
+            or "unable" in response.lower()
+        )
 
 
 def test_jailbreak_detects_manipulation() -> None:
     g = SafetyDataGenerator({})
     templates = g.__class__._jailbreak_templates()
     for instruction, response in templates:
-        keywords = ["recognize", "jailbreak", "attempt", "manipulation", "understand", "aware", "see that", "framing", "fictional", "won't", "don't respond", "don't participate", "remain bound", "doesn't change", "pressure tactic"]
+        keywords = [
+            "recognize",
+            "jailbreak",
+            "attempt",
+            "manipulation",
+            "understand",
+            "aware",
+            "see that",
+            "framing",
+            "fictional",
+            "won't",
+            "don't respond",
+            "don't participate",
+            "remain bound",
+            "doesn't change",
+            "pressure tactic",
+        ]
     assert any(k in response.lower() for k in keywords)
 
 

@@ -1,7 +1,7 @@
 """Tests for src/training/activation_offload.py — 12 tests."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -38,6 +38,7 @@ SMALL_CFG = AureliusConfig(
 # 1. OffloadConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_offload_config_defaults():
     cfg = OffloadConfig()
     assert cfg.offload_to_cpu is True
@@ -52,6 +53,7 @@ def test_offload_config_defaults():
 # 2. get_dtype — float32
 # ---------------------------------------------------------------------------
 
+
 def test_get_dtype_float32():
     assert get_dtype("float32") is torch.float32
 
@@ -60,6 +62,7 @@ def test_get_dtype_float32():
 # 3. get_dtype — bfloat16
 # ---------------------------------------------------------------------------
 
+
 def test_get_dtype_bfloat16():
     assert get_dtype("bfloat16") is torch.bfloat16
 
@@ -67,6 +70,7 @@ def test_get_dtype_bfloat16():
 # ---------------------------------------------------------------------------
 # 4. CPUOffloadTensor — restored tensor has same shape
 # ---------------------------------------------------------------------------
+
 
 def test_cpu_offload_tensor_restore_shape():
     t = torch.randn(3, 4, 5)
@@ -79,6 +83,7 @@ def test_cpu_offload_tensor_restore_shape():
 # 5. CPUOffloadTensor — restored values match original
 # ---------------------------------------------------------------------------
 
+
 def test_cpu_offload_tensor_restore_values():
     t = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     offloaded = CPUOffloadTensor(t, pin_memory=False)
@@ -90,6 +95,7 @@ def test_cpu_offload_tensor_restore_values():
 # 6. selective_checkpoint_layers — explicit checkpoint_layers respected
 # ---------------------------------------------------------------------------
 
+
 def test_selective_checkpoint_explicit():
     cfg = OffloadConfig(checkpoint_layers=[0, 3, 5])
     result = selective_checkpoint_layers(8, cfg)
@@ -99,6 +105,7 @@ def test_selective_checkpoint_explicit():
 # ---------------------------------------------------------------------------
 # 7. selective_checkpoint_layers — ratio=0.5 gives ~half the layers
 # ---------------------------------------------------------------------------
+
 
 def test_selective_checkpoint_ratio():
     cfg = OffloadConfig(checkpoint_layers=[], checkpoint_ratio=0.5)
@@ -113,6 +120,7 @@ def test_selective_checkpoint_ratio():
 # 8. MemoryTracker.snapshot — returns a float
 # ---------------------------------------------------------------------------
 
+
 def test_memory_tracker_snapshot():
     tracker = MemoryTracker()
     value = tracker.snapshot()
@@ -122,6 +130,7 @@ def test_memory_tracker_snapshot():
 # ---------------------------------------------------------------------------
 # 9. MemoryTracker.summary — has expected keys
 # ---------------------------------------------------------------------------
+
 
 def test_memory_tracker_summary_keys():
     tracker = MemoryTracker()
@@ -135,6 +144,7 @@ def test_memory_tracker_summary_keys():
 # ---------------------------------------------------------------------------
 # 10. GradientCheckpointWrapper — output shape matches unwrapped
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_checkpoint_wrapper_output_shape():
     linear = nn.Linear(16, 16)
@@ -153,6 +163,7 @@ def test_gradient_checkpoint_wrapper_output_shape():
 # ---------------------------------------------------------------------------
 # 11. apply_selective_checkpointing — selected layers are wrapped
 # ---------------------------------------------------------------------------
+
 
 def test_apply_selective_checkpointing_wraps_layers():
     layers = nn.ModuleList([nn.Linear(8, 8) for _ in range(8)])
@@ -176,6 +187,7 @@ def test_apply_selective_checkpointing_wraps_layers():
 # ---------------------------------------------------------------------------
 # 12. MemoryEfficientTrainer.train_step — returns loss and memory_mb
 # ---------------------------------------------------------------------------
+
 
 def test_memory_efficient_trainer_step_keys():
     model = AureliusTransformer(SMALL_CFG)

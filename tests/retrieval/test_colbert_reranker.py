@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.retrieval.colbert_reranker import ColBERTConfig, ColBERTReranker
 from src.retrieval.reciprocal_rank_fusion import RankedDoc

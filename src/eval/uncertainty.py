@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class UncertaintyConfig:
@@ -30,6 +29,7 @@ class UncertaintyConfig:
 # Core entropy helper
 # ---------------------------------------------------------------------------
 
+
 def _entropy(probs: Tensor) -> Tensor:
     """Shannon entropy over the last dimension of *probs*.
 
@@ -45,6 +45,7 @@ def _entropy(probs: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def compute_predictive_entropy(probs: Tensor) -> Tensor:
     """Compute Shannon entropy of a probability distribution.
@@ -69,10 +70,10 @@ def compute_mutual_information(probs_samples: Tensor) -> Tensor:
     Returns:
         (B,) mutual information values (non-negative).
     """
-    mean_probs = probs_samples.mean(dim=0)           # (B, vocab)
-    h_mean = _entropy(mean_probs)                    # (B,)
-    h_samples = _entropy(probs_samples)              # (S, B)
-    mean_h = h_samples.mean(dim=0)                  # (B,)
+    mean_probs = probs_samples.mean(dim=0)  # (B, vocab)
+    h_mean = _entropy(mean_probs)  # (B,)
+    h_samples = _entropy(probs_samples)  # (S, B)
+    mean_h = h_samples.mean(dim=0)  # (B,)
     return torch.clamp(h_mean - mean_h, min=0.0)
 
 
@@ -122,7 +123,7 @@ def detect_uncertainty_threshold(uncertainties: Tensor, threshold: float) -> Ten
 
 def compute_epistemic_aleatoric_split(
     probs_samples: Tensor,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Decompose total uncertainty into epistemic and aleatoric components.
 
     total     = H(E[p])            (B,)
@@ -135,8 +136,8 @@ def compute_epistemic_aleatoric_split(
     Returns:
         (epistemic, aleatoric) each of shape (B,).
     """
-    mean_probs = probs_samples.mean(dim=0)           # (B, vocab)
-    total = _entropy(mean_probs)                     # (B,)
+    mean_probs = probs_samples.mean(dim=0)  # (B, vocab)
+    total = _entropy(mean_probs)  # (B,)
     aleatoric = _entropy(probs_samples).mean(dim=0)  # (B,)
     epistemic = torch.clamp(total - aleatoric, min=0.0)
     return epistemic, aleatoric
@@ -145,6 +146,7 @@ def compute_epistemic_aleatoric_split(
 # ---------------------------------------------------------------------------
 # MC-Dropout estimator
 # ---------------------------------------------------------------------------
+
 
 class MCDropoutEstimator:
     """Wraps an nn.Module to perform MC-Dropout uncertainty estimation."""
@@ -173,11 +175,11 @@ class MCDropoutEstimator:
         samples = []
         with torch.no_grad():
             for _ in range(self.config.n_mc_samples):
-                logits = self.model(input_ids)       # (B, T, vocab)
+                logits = self.model(input_ids)  # (B, T, vocab)
                 samples.append(logits)
-        return torch.stack(samples, dim=0)           # (S, B, T, vocab)
+        return torch.stack(samples, dim=0)  # (S, B, T, vocab)
 
-    def estimate(self, input_ids: Tensor) -> Dict[str, Tensor]:
+    def estimate(self, input_ids: Tensor) -> dict[str, Tensor]:
         """Full uncertainty estimate for input_ids.
 
         Returns a dict with:
@@ -185,14 +187,14 @@ class MCDropoutEstimator:
             predictive_entropy : (B, T)
             mutual_information : (B, T)
         """
-        logit_samples = self.sample(input_ids)       # (S, B, T, vocab)
+        logit_samples = self.sample(input_ids)  # (S, B, T, vocab)
         S, B, T, V = logit_samples.shape
 
         scaled = logit_samples / max(self.config.temperature, 1e-8)
-        prob_samples = F.softmax(scaled, dim=-1)     # (S, B, T, vocab)
+        prob_samples = F.softmax(scaled, dim=-1)  # (S, B, T, vocab)
 
-        mean_probs = prob_samples.mean(dim=0)        # (B, T, vocab)
-        predictive_entropy = _entropy(mean_probs)    # (B, T)
+        mean_probs = prob_samples.mean(dim=0)  # (B, T, vocab)
+        predictive_entropy = _entropy(mean_probs)  # (B, T)
 
         # Per-token mutual information: reshape to (S, B*T, vocab)
         prob_flat = prob_samples.view(S, B * T, V)

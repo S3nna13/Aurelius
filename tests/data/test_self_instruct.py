@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.data.self_instruct import (
     Instruction,
     InstructionPool,
     SelfInstructPipeline,
-    build_instruction_prompt,
     build_instance_prompt,
+    build_instruction_prompt,
     filter_instruction,
     is_classification_task,
     make_seed_instructions,
@@ -17,10 +15,10 @@ from src.data.self_instruct import (
     rouge_l_similarity,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mock generate_fn
 # ---------------------------------------------------------------------------
+
 
 def mock_generate_fn(prompt: str) -> str:
     """Returns a numbered list of three instructions."""
@@ -34,6 +32,7 @@ def mock_generate_fn(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 # ROUGE-L tests
 # ---------------------------------------------------------------------------
+
 
 def test_rouge_l_identical():
     """rouge_l_similarity of identical strings should be ~1.0."""
@@ -62,6 +61,7 @@ def test_rouge_l_one_empty():
 # ---------------------------------------------------------------------------
 # filter_instruction tests
 # ---------------------------------------------------------------------------
+
 
 def test_filter_passes_novel_instruction():
     """A clearly novel, well-formed instruction should pass all filters."""
@@ -93,6 +93,7 @@ def test_filter_rejects_too_long():
 # is_classification_task tests
 # ---------------------------------------------------------------------------
 
+
 def test_is_classification_positive():
     """Sentiment classification question should be detected as classification."""
     assert is_classification_task("Is this review positive or negative?") is True
@@ -105,20 +106,19 @@ def test_is_classification_negative():
 
 def test_is_classification_classify_keyword():
     """Instructions containing 'classify' should be detected as classification."""
-    assert is_classification_task("Classify the following text into one of three categories.") is True
+    assert (
+        is_classification_task("Classify the following text into one of three categories.") is True
+    )
 
 
 # ---------------------------------------------------------------------------
 # parse_generated_instructions tests
 # ---------------------------------------------------------------------------
 
+
 def test_parse_numbered_list():
     """parse_generated_instructions should correctly split a numbered list."""
-    raw = (
-        "1. Write a poem about cats.\n"
-        "2. Summarize this document.\n"
-        "3. Translate to French."
-    )
+    raw = "1. Write a poem about cats.\n2. Summarize this document.\n3. Translate to French."
     result = parse_generated_instructions(raw)
     assert len(result) == 3
     assert result[0] == "Write a poem about cats."
@@ -135,6 +135,7 @@ def test_parse_empty_string():
 # ---------------------------------------------------------------------------
 # build_instruction_prompt tests
 # ---------------------------------------------------------------------------
+
 
 def test_build_instruction_prompt_nonempty():
     """build_instruction_prompt should return a non-empty string containing instructions."""
@@ -167,6 +168,7 @@ def test_build_instance_prompt_nonempty():
 # InstructionPool tests
 # ---------------------------------------------------------------------------
 
+
 def test_pool_deduplication():
     """InstructionPool.add() should reject instructions too similar to existing ones."""
     seeds = make_seed_instructions()
@@ -174,7 +176,9 @@ def test_pool_deduplication():
     initial_size = len(pool)
 
     # Attempt to add something nearly identical to an existing seed
-    duplicate = Instruction(instruction="Write a short poem about the changing seasons.", source="generated")
+    duplicate = Instruction(
+        instruction="Write a short poem about the changing seasons.", source="generated"
+    )
     added = pool.add(duplicate)
     assert added is False
     assert len(pool) == initial_size
@@ -221,6 +225,7 @@ def test_pool_len():
 # ---------------------------------------------------------------------------
 # SelfInstructPipeline tests
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_run_returns_instructions():
     """SelfInstructPipeline.run() should return a list of Instruction objects."""
@@ -290,6 +295,7 @@ def test_pipeline_generated_source_label():
 # ---------------------------------------------------------------------------
 # make_seed_instructions tests
 # ---------------------------------------------------------------------------
+
 
 def test_make_seed_instructions_count():
     """make_seed_instructions should return exactly 20 seeds."""

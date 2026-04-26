@@ -9,10 +9,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MultimodalSFTConfig:
@@ -30,6 +30,7 @@ class MultimodalSFTConfig:
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MultimodalExample:
     """A single multimodal training example with interleaved image and text tokens."""
@@ -43,6 +44,7 @@ class MultimodalExample:
 # ---------------------------------------------------------------------------
 # Core functions
 # ---------------------------------------------------------------------------
+
 
 def expand_image_tokens(
     text_ids: list[int],
@@ -138,6 +140,7 @@ def inject_image_features(
 # Collator
 # ---------------------------------------------------------------------------
 
+
 class MultimodalSFTCollator:
     """Collates MultimodalExample list into batch tensors."""
 
@@ -182,14 +185,18 @@ class MultimodalSFTCollator:
                 image_positions = [p for p in image_positions if p < max_len]
             else:
                 pad_len = max_len - T
-                input_ids_padded = torch.cat([
-                    expanded_ids,
-                    torch.full((pad_len,), self.pad_id, dtype=torch.long),
-                ])
-                labels_padded = torch.cat([
-                    expanded_labels,
-                    torch.full((pad_len,), -100, dtype=torch.long),
-                ])
+                input_ids_padded = torch.cat(
+                    [
+                        expanded_ids,
+                        torch.full((pad_len,), self.pad_id, dtype=torch.long),
+                    ]
+                )
+                labels_padded = torch.cat(
+                    [
+                        expanded_labels,
+                        torch.full((pad_len,), -100, dtype=torch.long),
+                    ]
+                )
 
             batch_input_ids.append(input_ids_padded)
             batch_labels.append(labels_padded)
@@ -205,6 +212,7 @@ class MultimodalSFTCollator:
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class MultimodalSFTTrainer:
     """SFT trainer for multimodal instruction following."""

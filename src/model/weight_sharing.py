@@ -6,20 +6,24 @@ Two independent techniques:
 
 Reference: Lan et al. 2019, arXiv:1909.11942
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
+
 from .config import AureliusConfig
 
 
 @dataclass
 class WeightSharingConfig:
     """Configuration for weight reduction techniques."""
-    factorized_embed_dim: int = 128    # embedding bottleneck dimension
-    share_layers: bool = False         # if True, all layers share weights
-    n_shared_groups: int = 1           # 1=all layers share, 2=split in half, etc.
+
+    factorized_embed_dim: int = 128  # embedding bottleneck dimension
+    share_layers: bool = False  # if True, all layers share weights
+    n_shared_groups: int = 1  # 1=all layers share, 2=split in half, etc.
     # n_shared_groups=1: layers 0-23 all same weights
     # n_shared_groups=2: layers 0-11 share one set, 12-23 another
     # n_shared_groups=4: 4 groups of 6 layers each
@@ -38,8 +42,8 @@ class FactorizedEmbedding(nn.Module):
     def __init__(
         self,
         vocab_size: int,
-        embed_dim: int,     # bottleneck
-        d_model: int,       # output dimension
+        embed_dim: int,  # bottleneck
+        d_model: int,  # output dimension
         padding_idx: int | None = None,
     ) -> None:
         super().__init__()
@@ -110,8 +114,7 @@ def apply_cross_layer_sharing(
 
     if n_shared_groups < 1 or n_shared_groups > n_layers:
         raise ValueError(
-            f"n_shared_groups must be between 1 and n_layers ({n_layers}), "
-            f"got {n_shared_groups}"
+            f"n_shared_groups must be between 1 and n_layers ({n_layers}), got {n_shared_groups}"
         )
 
     # Assign layers using interleaved (round-robin) grouping:
@@ -151,8 +154,7 @@ def _iter_all_params_with_duplicates(model: nn.Module):
     # Non-layer module params (deduplicated by PyTorch — that's fine here)
     for module in model.modules():
         if id(module) not in layer_ids:
-            for p in module.parameters(recurse=False):
-                yield p
+            yield from module.parameters(recurse=False)
 
     # Layer params: iterate the list directly (duplicates included)
     if hasattr(model, "layers"):

@@ -10,18 +10,16 @@ Uses a tiny AureliusTransformer:
 
 from __future__ import annotations
 
-import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.circuit_discovery import (
     CircuitConfig,
     CircuitDiscoverer,
     ComponentScore,
-    compute_indirect_effect,
     visualize_circuit,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 TINY_CFG = AureliusConfig(
     n_layers=2,

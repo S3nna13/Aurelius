@@ -3,9 +3,11 @@
 Uses tiny configurations (VOCAB=16, D=8, B=2, T=6) so tests run fast.
 Small nn.Module-based student/teacher models ensure differentiable training.
 """
+
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
@@ -14,13 +16,13 @@ from torch import Tensor
 
 from src.training.knowledge_distillation import (
     KDConfig,
-    soft_cross_entropy,
-    forward_kl_loss,
-    reverse_kl_loss,
-    mse_distillation_loss,
-    combined_kd_loss,
     KnowledgeDistillationTrainer,
+    combined_kd_loss,
+    forward_kl_loss,
     layer_wise_distillation_loss,
+    mse_distillation_loss,
+    reverse_kl_loss,
+    soft_cross_entropy,
 )
 
 # ---------------------------------------------------------------------------
@@ -35,6 +37,7 @@ T = 6
 # ---------------------------------------------------------------------------
 # Tiny model helpers
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal token-level language model: Embedding -> Linear -> logits."""
@@ -65,20 +68,24 @@ def make_teacher() -> TinyLM:
 
 def make_student_fn(model: TinyLM):
     """Wrap a TinyLM as a plain callable."""
+
     def fn(token_ids: Tensor) -> Tensor:
         return model(token_ids)
+
     return fn
 
 
 def make_teacher_fn(model: TinyLM):
     def fn(token_ids: Tensor) -> Tensor:
         return model(token_ids)
+
     return fn
 
 
 # ---------------------------------------------------------------------------
 # 1. KDConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_kdconfig_defaults():
     cfg = KDConfig()
@@ -91,6 +98,7 @@ def test_kdconfig_defaults():
 # 2. soft_cross_entropy returns a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_soft_cross_entropy_scalar():
     s = torch.randn(B, T, VOCAB)
     t = torch.randn(B, T, VOCAB)
@@ -101,6 +109,7 @@ def test_soft_cross_entropy_scalar():
 # ---------------------------------------------------------------------------
 # 3. soft_cross_entropy >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_soft_cross_entropy_nonnegative():
     torch.manual_seed(42)
@@ -114,6 +123,7 @@ def test_soft_cross_entropy_nonnegative():
 # 4. forward_kl_loss >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_forward_kl_nonnegative():
     torch.manual_seed(7)
     s = torch.randn(B, T, VOCAB)
@@ -125,6 +135,7 @@ def test_forward_kl_nonnegative():
 # ---------------------------------------------------------------------------
 # 5. reverse_kl_loss >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_reverse_kl_nonnegative():
     torch.manual_seed(13)
@@ -138,6 +149,7 @@ def test_reverse_kl_nonnegative():
 # 6. mse_distillation_loss >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_mse_distillation_nonnegative():
     torch.manual_seed(99)
     s = torch.randn(B, T, VOCAB)
@@ -149,6 +161,7 @@ def test_mse_distillation_nonnegative():
 # ---------------------------------------------------------------------------
 # 7. combined_kd_loss returns (total, kd, ce) — 3 tensors
 # ---------------------------------------------------------------------------
+
 
 def test_combined_kd_loss_returns_three_tensors():
     s = torch.randn(B, T, VOCAB)
@@ -168,6 +181,7 @@ def test_combined_kd_loss_returns_three_tensors():
 # 8. total = alpha * kd + (1 - alpha) * ce
 # ---------------------------------------------------------------------------
 
+
 def test_combined_kd_loss_total_formula():
     torch.manual_seed(5)
     s = torch.randn(B, T, VOCAB)
@@ -177,14 +191,13 @@ def test_combined_kd_loss_total_formula():
     cfg = KDConfig(alpha=alpha)
     total, kd, ce = combined_kd_loss(s, t, labels, cfg)
     expected = alpha * kd.item() + (1.0 - alpha) * ce.item()
-    assert abs(total.item() - expected) < 1e-5, (
-        f"total={total.item():.6f}, expected={expected:.6f}"
-    )
+    assert abs(total.item() - expected) < 1e-5, f"total={total.item():.6f}, expected={expected:.6f}"
 
 
 # ---------------------------------------------------------------------------
 # 9. train_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_keys():
     student = make_student()
@@ -211,6 +224,7 @@ def test_train_step_keys():
 # 10. train_step loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_loss_finite():
     student = make_student()
     teacher = make_teacher()
@@ -228,13 +242,14 @@ def test_train_step_loss_finite():
     result = trainer.train_step(token_ids, labels)
 
     assert math.isfinite(result["total_loss"]), "total_loss should be finite"
-    assert math.isfinite(result["kd_loss"]),    "kd_loss should be finite"
-    assert math.isfinite(result["ce_loss"]),    "ce_loss should be finite"
+    assert math.isfinite(result["kd_loss"]), "kd_loss should be finite"
+    assert math.isfinite(result["ce_loss"]), "ce_loss should be finite"
 
 
 # ---------------------------------------------------------------------------
 # 11. evaluate runs under no_grad (student params unchanged)
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_no_grad():
     student = make_student()
@@ -267,6 +282,7 @@ def test_evaluate_no_grad():
 # 12. layer_wise_distillation_loss shape is () (scalar)
 # ---------------------------------------------------------------------------
 
+
 def test_layer_wise_distillation_loss_scalar():
     s = torch.randn(B, T, D)
     t = torch.randn(B, T, D)
@@ -277,6 +293,7 @@ def test_layer_wise_distillation_loss_scalar():
 # ---------------------------------------------------------------------------
 # 13. temperature=1 gives regular (un-softened) KD
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_one_matches_manual_kl():
     """At T=1, soft_cross_entropy should match plain KL(teacher||student)."""
@@ -300,6 +317,7 @@ def test_temperature_one_matches_manual_kl():
 # 14. alpha=1.0 makes total_loss == kd_loss (CE weight is 0)
 # ---------------------------------------------------------------------------
 
+
 def test_alpha_one_ignores_ce():
     torch.manual_seed(77)
     s = torch.randn(B, T, VOCAB)
@@ -316,6 +334,7 @@ def test_alpha_one_ignores_ce():
 # 15. layer_wise_distillation_loss raises ValueError on shape mismatch
 # ---------------------------------------------------------------------------
 
+
 def test_layer_wise_distillation_loss_shape_mismatch_raises():
     s = torch.randn(B, T, D)
     t = torch.randn(B, T, D * 2)  # different hidden dim
@@ -327,6 +346,7 @@ def test_layer_wise_distillation_loss_shape_mismatch_raises():
 # 16. mse_distillation_loss is 0 when inputs are identical
 # ---------------------------------------------------------------------------
 
+
 def test_mse_distillation_loss_zero_on_equal():
     x = torch.randn(B, T, VOCAB)
     loss = mse_distillation_loss(x, x.clone())
@@ -336,6 +356,7 @@ def test_mse_distillation_loss_zero_on_equal():
 # ---------------------------------------------------------------------------
 # 17. reverse_kl != forward_kl for asymmetric distributions
 # ---------------------------------------------------------------------------
+
 
 def test_forward_reverse_kl_differ():
     torch.manual_seed(200)
@@ -353,6 +374,7 @@ def test_forward_reverse_kl_differ():
 # ---------------------------------------------------------------------------
 # 18. combined_kd_loss works with "mse" and "reverse_kl" types
 # ---------------------------------------------------------------------------
+
 
 def test_combined_kd_loss_mse_type():
     s = torch.randn(B, T, VOCAB)

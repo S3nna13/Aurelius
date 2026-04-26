@@ -2,24 +2,24 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.rlaif import (
     RLAIFConfig,
-    generate_response,
-    ai_judge_score,
-    rank_responses,
-    preference_pair_from_rankings,
     RLAIFTrainer,
     _sequence_log_probs,
+    ai_judge_score,
+    generate_response,
+    preference_pair_from_rankings,
+    rank_responses,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
 # ---------------------------------------------------------------------------
+
 
 def _make_tiny_model() -> nn.Module:
     from src.model.config import AureliusConfig
@@ -62,6 +62,7 @@ def prompt_ids() -> torch.Tensor:
 # 1. RLAIFConfig tests
 # ===================================================================
 
+
 def test_config_defaults():
     """RLAIFConfig should have correct default values."""
     cfg = RLAIFConfig()
@@ -74,8 +75,9 @@ def test_config_defaults():
 
 def test_config_custom_values():
     """RLAIFConfig should accept custom values."""
-    cfg = RLAIFConfig(n_samples=8, beta=0.2, ai_judge_temperature=0.5,
-                      max_response_tokens=32, reward_scale=2.0)
+    cfg = RLAIFConfig(
+        n_samples=8, beta=0.2, ai_judge_temperature=0.5, max_response_tokens=32, reward_scale=2.0
+    )
     assert cfg.n_samples == 8
     assert cfg.beta == 0.2
     assert cfg.ai_judge_temperature == 0.5
@@ -86,6 +88,7 @@ def test_config_custom_values():
 # ===================================================================
 # 2. generate_response tests
 # ===================================================================
+
 
 def test_generate_response_shape(tiny_model, prompt_ids):
     """generate_response should return (1, max_tokens) tensor."""
@@ -118,6 +121,7 @@ def test_generate_response_temperature(tiny_model, prompt_ids):
 # 3. ai_judge_score tests
 # ===================================================================
 
+
 def test_ai_judge_score_returns_float(tiny_model, prompt_ids):
     """ai_judge_score should return a float."""
     response_ids = torch.randint(0, 256, (1, 6))
@@ -143,6 +147,7 @@ def test_ai_judge_score_empty_response(tiny_model, prompt_ids):
 # ===================================================================
 # 4. rank_responses tests
 # ===================================================================
+
 
 def test_rank_responses_sorted(tiny_model, prompt_ids):
     """rank_responses should return responses sorted by score descending."""
@@ -174,6 +179,7 @@ def test_rank_responses_tuple_structure(tiny_model, prompt_ids):
 # 5. preference_pair_from_rankings tests
 # ===================================================================
 
+
 def test_preference_pair_best_worst():
     """preference_pair_from_rankings should pick best and worst."""
     r1 = torch.tensor([[10, 20]])
@@ -199,6 +205,7 @@ def test_preference_pair_two_items():
 # 6. _sequence_log_probs tests
 # ===================================================================
 
+
 def test_sequence_log_probs_is_scalar(tiny_model, prompt_ids):
     """_sequence_log_probs should return a scalar tensor."""
     response_ids = torch.randint(0, 256, (1, 4))
@@ -216,6 +223,7 @@ def test_sequence_log_probs_negative(tiny_model, prompt_ids):
 # ===================================================================
 # 7. RLAIFTrainer tests
 # ===================================================================
+
 
 def test_trainer_init(tiny_model, judge_model):
     """RLAIFTrainer should initialise without error."""

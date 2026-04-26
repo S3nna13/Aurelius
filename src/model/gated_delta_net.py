@@ -34,7 +34,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -97,6 +96,7 @@ class GatedDeltaNetLayer(nn.Module):
         # Initialise beta bias so sigmoid(bias) ≈ beta_init
         if config.beta_init > 0.0 and config.beta_init < 1.0:
             import math
+
             init_bias = math.log(config.beta_init / (1.0 - config.beta_init))
             nn.init.constant_(self.beta_proj.bias, init_bias)
 
@@ -129,15 +129,15 @@ class GatedDeltaNetLayer(nn.Module):
         H, D = self.config.n_heads, self.config.d_head
 
         # ---- projections ------------------------------------------------
-        Q = self.q_proj(x).view(B, T, H, D)     # (B, T, H, D)
-        K = self.k_proj(x).view(B, T, H, D)     # (B, T, H, D)
-        V = self.v_proj(x).view(B, T, H, D)     # (B, T, H, D)
+        Q = self.q_proj(x).view(B, T, H, D)  # (B, T, H, D)
+        K = self.k_proj(x).view(B, T, H, D)  # (B, T, H, D)
+        V = self.v_proj(x).view(B, T, H, D)  # (B, T, H, D)
         # Gates: (B, T, H)  — in (0, 1)
         alpha = torch.sigmoid(self.alpha_proj(x))  # forget gate
-        beta  = torch.sigmoid(self.beta_proj(x))   # write gate
+        beta = torch.sigmoid(self.beta_proj(x))  # write gate
 
         # L2-normalise keys along the head dimension (prevents state explosion)
-        K = F.normalize(K, p=2, dim=-1)             # (B, T, H, D)
+        K = F.normalize(K, p=2, dim=-1)  # (B, T, H, D)
 
         # ---- initialise recurrent state ---------------------------------
         if state is None:
@@ -150,29 +150,29 @@ class GatedDeltaNetLayer(nn.Module):
         # y_t = S_t q_t
         outputs: list[torch.Tensor] = []
         for t in range(T):
-            q_t     = Q[:, t, :, :]      # (B, H, D)
-            k_t     = K[:, t, :, :]      # (B, H, D)
-            v_t     = V[:, t, :, :]      # (B, H, D)
-            alpha_t = alpha[:, t, :]     # (B, H)  — scalar per head
-            beta_t  = beta[:, t, :]      # (B, H)  — scalar per head
+            q_t = Q[:, t, :, :]  # (B, H, D)
+            k_t = K[:, t, :, :]  # (B, H, D)
+            v_t = V[:, t, :, :]  # (B, H, D)
+            alpha_t = alpha[:, t, :]  # (B, H)  — scalar per head
+            beta_t = beta[:, t, :]  # (B, H)  — scalar per head
 
             # Outer product: v_t ⊗ k_t  — shape (B, H, D, D)
             # [b, h, i, j] = v_t[b,h,i] * k_t[b,h,j]
             outer = torch.einsum("bhi,bhj->bhij", v_t, k_t)
 
             # Broadcast gates to (B, H, 1, 1) for elementwise state ops
-            alpha_exp = alpha_t.unsqueeze(-1).unsqueeze(-1)   # (B, H, 1, 1)
-            beta_exp  = beta_t.unsqueeze(-1).unsqueeze(-1)    # (B, H, 1, 1)
+            alpha_exp = alpha_t.unsqueeze(-1).unsqueeze(-1)  # (B, H, 1, 1)
+            beta_exp = beta_t.unsqueeze(-1).unsqueeze(-1)  # (B, H, 1, 1)
 
             # State update: S_t = α_t * S_{t-1} + β_t * (v_t ⊗ k_t)
-            S = alpha_exp * S + beta_exp * outer              # (B, H, D, D)
+            S = alpha_exp * S + beta_exp * outer  # (B, H, D, D)
 
             # Read out: y_t = S_t q_t
             # S[b,h,:,:] @ q_t[b,h,:]  =>  (B, H, D)
-            y_t = torch.einsum("bhij,bhj->bhi", S, q_t)      # (B, H, D)
-            outputs.append(y_t.unsqueeze(1))                  # (B, 1, H, D)
+            y_t = torch.einsum("bhij,bhj->bhi", S, q_t)  # (B, H, D)
+            outputs.append(y_t.unsqueeze(1))  # (B, 1, H, D)
 
         # (B, T, H, D) -> (B, T, H*D)
         out = torch.cat(outputs, dim=1).view(B, T, H * D)
 
-        return self.out_proj(out), S   # (B, T, d_model), (B, H, D, D)
+        return self.out_proj(out), S  # (B, T, d_model), (B, H, D, D)

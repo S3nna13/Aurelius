@@ -6,12 +6,10 @@ Meta AI Apache-2.0, clean-room reimplementation.
 
 from __future__ import annotations
 
-from typing import Any
-
-
 # ---------------------------------------------------------------------------
 # Registry error
 # ---------------------------------------------------------------------------
+
 
 class MultimodalRegistryError(Exception):
     """Raised when a requested registry key does not exist (no silent fallbacks)."""
@@ -30,6 +28,7 @@ MODALITY_TOKENIZER_REGISTRY: dict[str, type] = {}
 # ---------------------------------------------------------------------------
 # Vision encoder registry
 # ---------------------------------------------------------------------------
+
 
 def register_vision_encoder(name: str, cls: type) -> None:
     """Register a vision encoder class under *name*.
@@ -55,8 +54,7 @@ def get_vision_encoder(name: str) -> type:
     """
     if name not in VISION_ENCODER_REGISTRY:
         raise MultimodalRegistryError(
-            f"Vision encoder {name!r} not found. "
-            f"Available: {list(VISION_ENCODER_REGISTRY.keys())}"
+            f"Vision encoder {name!r} not found. Available: {list(VISION_ENCODER_REGISTRY.keys())}"
         )
     return VISION_ENCODER_REGISTRY[name]
 
@@ -69,6 +67,7 @@ def list_vision_encoders() -> list[str]:
 # ---------------------------------------------------------------------------
 # Audio encoder registry
 # ---------------------------------------------------------------------------
+
 
 def register_audio_encoder(name: str, cls: type) -> None:
     """Register an audio encoder class under *name*."""
@@ -83,8 +82,7 @@ def get_audio_encoder(name: str) -> type:
     """
     if name not in AUDIO_ENCODER_REGISTRY:
         raise MultimodalRegistryError(
-            f"Audio encoder {name!r} not found. "
-            f"Available: {list(AUDIO_ENCODER_REGISTRY.keys())}"
+            f"Audio encoder {name!r} not found. Available: {list(AUDIO_ENCODER_REGISTRY.keys())}"
         )
     return AUDIO_ENCODER_REGISTRY[name]
 
@@ -97,6 +95,7 @@ def list_audio_encoders() -> list[str]:
 # ---------------------------------------------------------------------------
 # Modality projector registry
 # ---------------------------------------------------------------------------
+
 
 def register_modality_projector(name: str, cls: type) -> None:
     """Register a modality projector class under *name*."""
@@ -125,6 +124,7 @@ def list_modality_projectors() -> list[str]:
 # ---------------------------------------------------------------------------
 # Modality tokenizer registry
 # ---------------------------------------------------------------------------
+
 
 def register_modality_tokenizer(name: str, cls: type) -> None:
     """Register a modality tokenizer class under *name*."""

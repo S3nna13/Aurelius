@@ -11,16 +11,15 @@ Inspired by: Khot et al. 2023 (Decomposed Prompting)
 from __future__ import annotations
 
 from collections import deque
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ReasoningNode
 # ---------------------------------------------------------------------------
+
 
 class ReasoningNode:
     """A single node in the reasoning DAG.
@@ -40,12 +39,12 @@ class ReasoningNode:
         self,
         node_id: int,
         question_embedding: Tensor,
-        dependencies: Optional[List[int]] = None,
+        dependencies: list[int] | None = None,
     ) -> None:
         self.node_id: int = node_id
         self.question_embedding: Tensor = question_embedding
-        self.dependencies: List[int] = dependencies if dependencies is not None else []
-        self.answer_embedding: Optional[Tensor] = None
+        self.dependencies: list[int] = dependencies if dependencies is not None else []
+        self.answer_embedding: Tensor | None = None
         self.is_solved: bool = False
 
     def solve(self, answer: Tensor) -> None:
@@ -57,6 +56,7 @@ class ReasoningNode:
 # ---------------------------------------------------------------------------
 # ReasoningGraph
 # ---------------------------------------------------------------------------
+
 
 class ReasoningGraph:
     """Directed acyclic graph of :class:`ReasoningNode` objects.
@@ -70,7 +70,7 @@ class ReasoningGraph:
         question.
     """
 
-    def __init__(self, nodes: Dict[int, ReasoningNode], root_id: int) -> None:
+    def __init__(self, nodes: dict[int, ReasoningNode], root_id: int) -> None:
         self.nodes = nodes
         self.root_id = root_id
 
@@ -78,7 +78,7 @@ class ReasoningGraph:
     # Graph-structure helpers
     # ------------------------------------------------------------------
 
-    def topological_order(self) -> List[int]:
+    def topological_order(self) -> list[int]:
         """Return node ids in a valid topological order (Kahn's algorithm).
 
         Dependencies always appear before the nodes that depend on them.
@@ -89,8 +89,8 @@ class ReasoningGraph:
             If the graph contains a cycle.
         """
         # Build in-degree count and adjacency list (edge: dep → dependent)
-        in_degree: Dict[int, int] = {nid: 0 for nid in self.nodes}
-        children: Dict[int, List[int]] = {nid: [] for nid in self.nodes}
+        in_degree: dict[int, int] = {nid: 0 for nid in self.nodes}
+        children: dict[int, list[int]] = {nid: [] for nid in self.nodes}
 
         for nid, node in self.nodes.items():
             for dep in node.dependencies:
@@ -99,7 +99,7 @@ class ReasoningGraph:
 
         # Start with all nodes that have no incoming edges
         queue: deque[int] = deque(nid for nid, deg in in_degree.items() if deg == 0)
-        order: List[int] = []
+        order: list[int] = []
 
         while queue:
             nid = queue.popleft()
@@ -138,12 +138,10 @@ class ReasoningGraph:
                     return False
         return True
 
-    def unsolved_leaves(self) -> List[int]:
+    def unsolved_leaves(self) -> list[int]:
         """Return ids of nodes that have no dependencies and are not yet solved."""
         return [
-            nid
-            for nid, node in self.nodes.items()
-            if not node.dependencies and not node.is_solved
+            nid for nid, node in self.nodes.items() if not node.dependencies and not node.is_solved
         ]
 
     def all_solved(self) -> bool:
@@ -154,6 +152,7 @@ class ReasoningGraph:
 # ---------------------------------------------------------------------------
 # NodeSolver
 # ---------------------------------------------------------------------------
+
 
 class NodeSolver(nn.Module):
     """Produces an answer embedding for a single reasoning node.
@@ -193,15 +192,16 @@ class NodeSolver(nn.Module):
         """
         if context.shape[0] == 0:
             context = torch.zeros(1, self.d_model, dtype=question.dtype, device=question.device)
-        context_mean = context.mean(dim=0)           # (d_model,)
+        context_mean = context.mean(dim=0)  # (d_model,)
         combined = torch.cat([question, context_mean], dim=0)  # (d_model * 2,)
         out = self.linear(combined)
-        return self.activation(out)                  # (d_model,)
+        return self.activation(out)  # (d_model,)
 
 
 # ---------------------------------------------------------------------------
 # AnswerAggregator
 # ---------------------------------------------------------------------------
+
 
 class AnswerAggregator(nn.Module):
     """Projects the root node answer embedding to class logits.
@@ -237,6 +237,7 @@ class AnswerAggregator(nn.Module):
 # ---------------------------------------------------------------------------
 # GraphReasoner
 # ---------------------------------------------------------------------------
+
 
 class GraphReasoner(nn.Module):
     """Orchestrates bottom-up solving of a :class:`ReasoningGraph`.
@@ -288,7 +289,8 @@ class GraphReasoner(nn.Module):
             else:
                 d_model = node.question_embedding.shape[0]
                 dep_answers = torch.zeros(
-                    1, d_model,
+                    1,
+                    d_model,
                     dtype=node.question_embedding.dtype,
                     device=node.question_embedding.device,
                 )
@@ -299,7 +301,7 @@ class GraphReasoner(nn.Module):
         root_answer = graph.nodes[graph.root_id].answer_embedding
         return self.aggregator.forward(root_answer)
 
-    def solve_batch(self, graphs: List[ReasoningGraph]) -> Tensor:
+    def solve_batch(self, graphs: list[ReasoningGraph]) -> Tensor:
         """Solve a list of graphs independently and stack the results.
 
         Parameters

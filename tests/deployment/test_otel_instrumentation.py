@@ -6,8 +6,6 @@ SLSA supply-chain attestation spec, Apache-2.0.
 
 from __future__ import annotations
 
-import pytest
-
 from src.deployment.otel_instrumentation import (
     DEFAULT_METRICS,
     DEFAULT_TRACER,
@@ -17,7 +15,6 @@ from src.deployment.otel_instrumentation import (
     SpanKind,
     Tracer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tracer — start_span

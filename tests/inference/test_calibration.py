@@ -1,18 +1,18 @@
-import pytest
 import torch
+
 from src.inference.calibration import (
     CalibrationResult,
-    expected_calibration_error,
+    SequenceCalibrator,
     TemperatureCalibrator,
     TopKCalibrator,
-    SequenceCalibrator,
+    expected_calibration_error,
     reliability_diagram_data,
 )
-
 
 # ---------------------------------------------------------------------------
 # ECE tests
 # ---------------------------------------------------------------------------
+
 
 def test_ece_perfect_calibration():
     """When confidence equals accuracy bucket-wise, ECE should be near 0."""
@@ -55,6 +55,7 @@ def test_mce_upper_bounds_ece():
 # TemperatureCalibrator tests
 # ---------------------------------------------------------------------------
 
+
 def test_temperature_calibrator_init():
     """Temperature should be positive after initialization."""
     cal = TemperatureCalibrator(init_temperature=1.5)
@@ -79,7 +80,7 @@ def test_temperature_calibrator_fit():
     losses = cal.fit(logits, labels, n_steps=5, lr=0.01)
     assert isinstance(losses, list)
     assert len(losses) == 5
-    assert all(isinstance(l, float) for l in losses)
+    assert all(isinstance(line, float) for line in losses)
 
 
 def test_temperature_lowers_after_overconfident_fit():
@@ -104,6 +105,7 @@ def test_temperature_lowers_after_overconfident_fit():
 # TopKCalibrator tests
 # ---------------------------------------------------------------------------
 
+
 def test_topk_calibrator_fit_returns_threshold():
     """fit() should return a float threshold in [0, 1]."""
     torch.manual_seed(2)
@@ -118,6 +120,7 @@ def test_topk_calibrator_fit_returns_threshold():
 # ---------------------------------------------------------------------------
 # SequenceCalibrator tests
 # ---------------------------------------------------------------------------
+
 
 def test_sequence_calibrator_mean_log():
     """score() should return a float."""
@@ -145,6 +148,7 @@ def test_sequence_calibrator_compare():
 # ---------------------------------------------------------------------------
 # reliability_diagram_data tests
 # ---------------------------------------------------------------------------
+
 
 def test_reliability_diagram_data_keys():
     """reliability_diagram_data should return dict with required keys."""

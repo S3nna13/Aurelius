@@ -7,20 +7,18 @@ import json
 import pytest
 
 from src.chat.kimi_template import (
-    IM_USER,
+    CHAT_TEMPLATE_REGISTRY,
     IM_ASSISTANT,
-    IM_SYSTEM,
-    IM_MIDDLE,
     IM_END,
+    IM_MIDDLE,
+    IM_SYSTEM,
+    IM_USER,
+    TOOL_CALL_BEGIN,
     TOOL_CALLS_BEGIN,
     TOOL_CALLS_END,
-    TOOL_CALL_BEGIN,
-    TOOL_CALL_ARG_BEGIN,
-    TOOL_CALL_END,
     KimiChatTemplate,
     render_content,
     set_role,
-    CHAT_TEMPLATE_REGISTRY,
 )
 
 

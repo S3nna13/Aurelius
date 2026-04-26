@@ -3,6 +3,7 @@
 Standalone attention variants with benchmarking utilities.
 All variants are self-contained and do not depend on AureliusTransformer internals.
 """
+
 from __future__ import annotations
 
 import math
@@ -18,20 +19,21 @@ from torch import Tensor
 class AttentionVariantConfig:
     d_model: int = 256
     n_heads: int = 8
-    n_kv_heads: int = 1          # 1 = MQA, n_heads = MHA, else = GQA
+    n_kv_heads: int = 1  # 1 = MQA, n_heads = MHA, else = GQA
     head_dim: int = 32
     dropout: float = 0.0
-    use_rope: bool = False        # simplified sinusoidal position bias instead
+    use_rope: bool = False  # simplified sinusoidal position bias instead
 
 
 # ---------------------------------------------------------------------------
 # Core attention function
 # ---------------------------------------------------------------------------
 
+
 def mha_attention(
-    q: Tensor,               # (B, H, T, head_dim)
-    k: Tensor,               # (B, H_kv, T, head_dim)
-    v: Tensor,               # (B, H_kv, T, head_dim)
+    q: Tensor,  # (B, H, T, head_dim)
+    k: Tensor,  # (B, H_kv, T, head_dim)
+    v: Tensor,  # (B, H_kv, T, head_dim)
     mask: Tensor | None = None,  # (T, T) causal mask
     dropout: float = 0.0,
 ) -> Tensor:
@@ -72,6 +74,7 @@ def mha_attention(
 # Multi-Head Attention (MHA)
 # ---------------------------------------------------------------------------
 
+
 class MultiHeadAttention(nn.Module):
     """Standard multi-head attention (n_kv_heads == n_heads)."""
 
@@ -106,6 +109,7 @@ class MultiHeadAttention(nn.Module):
 # Multi-Query Attention (MQA)
 # ---------------------------------------------------------------------------
 
+
 class MultiQueryAttention(nn.Module):
     """Multi-query attention: n_kv_heads == 1 (shared K/V across all Q heads)."""
 
@@ -127,8 +131,8 @@ class MultiQueryAttention(nn.Module):
         B, T, _ = x.shape
 
         q = self.q_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)  # (B, H, T, hd)
-        k = self.k_proj(x).view(B, T, 1, self.head_dim).transpose(1, 2)              # (B, 1, T, hd)
-        v = self.v_proj(x).view(B, T, 1, self.head_dim).transpose(1, 2)              # (B, 1, T, hd)
+        k = self.k_proj(x).view(B, T, 1, self.head_dim).transpose(1, 2)  # (B, 1, T, hd)
+        v = self.v_proj(x).view(B, T, 1, self.head_dim).transpose(1, 2)  # (B, 1, T, hd)
 
         out = mha_attention(q, k, v, mask=mask, dropout=self.dropout if self.training else 0.0)
         out = out.transpose(1, 2).contiguous().view(B, T, self.n_heads * self.head_dim)
@@ -138,6 +142,7 @@ class MultiQueryAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Grouped-Query Attention (GQA)
 # ---------------------------------------------------------------------------
+
 
 class GroupedQueryAttention(nn.Module):
     """Grouped-query attention: 1 < n_kv_heads < n_heads."""
@@ -163,8 +168,10 @@ class GroupedQueryAttention(nn.Module):
     def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         B, T, _ = x.shape
 
-        q = self.q_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)     # (B, H, T, hd)
-        k = self.k_proj(x).view(B, T, self.n_kv_heads, self.head_dim).transpose(1, 2)  # (B, H_kv, T, hd)
+        q = self.q_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)  # (B, H, T, hd)
+        k = (
+            self.k_proj(x).view(B, T, self.n_kv_heads, self.head_dim).transpose(1, 2)
+        )  # (B, H_kv, T, hd)
         v = self.v_proj(x).view(B, T, self.n_kv_heads, self.head_dim).transpose(1, 2)
 
         out = mha_attention(q, k, v, mask=mask, dropout=self.dropout if self.training else 0.0)
@@ -175,6 +182,7 @@ class GroupedQueryAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Cross-Attention
 # ---------------------------------------------------------------------------
+
 
 class CrossAttention(nn.Module):
     """Cross-attention: Q from decoder, K/V from encoder."""
@@ -198,8 +206,12 @@ class CrossAttention(nn.Module):
         B, T_q, _ = query.shape
         T_kv = context.shape[1]
 
-        q = self.q_proj(query).view(B, T_q, self.n_heads, self.head_dim).transpose(1, 2)       # (B, H, T_q, hd)
-        k = self.k_proj(context).view(B, T_kv, self.n_kv_heads, self.head_dim).transpose(1, 2) # (B, H_kv, T_kv, hd)
+        q = (
+            self.q_proj(query).view(B, T_q, self.n_heads, self.head_dim).transpose(1, 2)
+        )  # (B, H, T_q, hd)
+        k = (
+            self.k_proj(context).view(B, T_kv, self.n_kv_heads, self.head_dim).transpose(1, 2)
+        )  # (B, H_kv, T_kv, hd)
         v = self.v_proj(context).view(B, T_kv, self.n_kv_heads, self.head_dim).transpose(1, 2)
 
         # For cross-attention, expand kv heads if needed
@@ -227,6 +239,7 @@ class CrossAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Benchmarking / analysis utilities
 # ---------------------------------------------------------------------------
+
 
 def count_kv_parameters(n_heads: int, n_kv_heads: int, head_dim: int, d_model: int) -> int:
     """Count K and V projection parameters.

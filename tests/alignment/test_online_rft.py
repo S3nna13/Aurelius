@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.alignment.online_rft import (
@@ -12,7 +11,6 @@ from src.alignment.online_rft import (
     OnlineRFTTrainer,
     RFTSample,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -98,9 +96,7 @@ def test_filter_min_keep():
     kept = trainer.filter_candidates(candidates)
 
     min_keep = math.ceil(8 * 0.25)
-    assert len(kept) >= min_keep, (
-        f"Expected at least {min_keep} kept, got {len(kept)}"
-    )
+    assert len(kept) >= min_keep, f"Expected at least {min_keep} kept, got {len(kept)}"
 
 
 # ---------------------------------------------------------------------------
@@ -117,9 +113,7 @@ def test_filter_top_k():
     kept = trainer.filter_candidates(candidates)
 
     expected_k = math.ceil(8 * 0.5)
-    assert len(kept) == expected_k, (
-        f"Expected {expected_k} kept, got {len(kept)}"
-    )
+    assert len(kept) == expected_k, f"Expected {expected_k} kept, got {len(kept)}"
 
 
 # ---------------------------------------------------------------------------
@@ -137,9 +131,7 @@ def test_filter_empty_correct():
     kept = trainer.filter_candidates(candidates)
 
     min_keep = math.ceil(8 * 0.125)
-    assert len(kept) >= min_keep, (
-        f"Expected at least {min_keep} when none correct, got {len(kept)}"
-    )
+    assert len(kept) >= min_keep, f"Expected at least {min_keep} when none correct, got {len(kept)}"
 
 
 # ---------------------------------------------------------------------------
@@ -290,9 +282,7 @@ def test_statistics_keys():
     stats = trainer.statistics(candidates, kept)
 
     required = {"n_candidates", "n_kept", "keep_rate", "n_correct", "mean_reward"}
-    assert required <= set(stats.keys()), (
-        f"Missing keys: {required - set(stats.keys())}"
-    )
+    assert required <= set(stats.keys()), f"Missing keys: {required - set(stats.keys())}"
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +313,5 @@ def test_statistics_n_correct():
     kept = trainer.filter_candidates(candidates)
     stats = trainer.statistics(candidates, kept)
 
-    assert stats["n_correct"] == 3, (
-        f"Expected n_correct=3, got {stats['n_correct']}"
-    )
+    assert stats["n_correct"] == 3, f"Expected n_correct=3, got {stats['n_correct']}"
     assert stats["n_candidates"] == 8

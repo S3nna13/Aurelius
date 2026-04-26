@@ -1,19 +1,22 @@
 """Speculative decoding v2: draft model + target verification with acceptance rate tracking."""
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class SpeculativeConfig:
     """Configuration for speculative decoding v2."""
-    n_draft_tokens: int = 4   # tokens to draft per step
+
+    n_draft_tokens: int = 4  # tokens to draft per step
     max_new_tokens: int = 64
     temperature: float = 1.0
-    top_k: int = 0            # 0 = disabled
+    top_k: int = 0  # 0 = disabled
     top_p: float = 1.0
 
 
@@ -121,10 +124,8 @@ def draft_tokens(
         draft_log_probs[b, t] is the log prob of draft_ids[b, t] under the
         draft distribution at step t.
     """
-    B = input_ids.shape[0]
+    input_ids.shape[0]
     n = config.n_draft_tokens
-    device = input_ids.device
-    dtype = input_ids.dtype
 
     all_draft_ids: list[torch.Tensor] = []
     all_log_probs: list[torch.Tensor] = []
@@ -132,8 +133,8 @@ def draft_tokens(
     current = input_ids.clone()
 
     for _ in range(n):
-        _, logits, _ = draft_model(current)   # (B, seq_len_so_far, vocab)
-        step_logits = logits[:, -1, :]        # (B, vocab)
+        _, logits, _ = draft_model(current)  # (B, seq_len_so_far, vocab)
+        step_logits = logits[:, -1, :]  # (B, vocab)
 
         token = sample_token(
             step_logits,
@@ -151,7 +152,7 @@ def draft_tokens(
 
         current = torch.cat([current, token.unsqueeze(1)], dim=1)
 
-    draft_ids = torch.stack(all_draft_ids, dim=1)      # (B, n)
+    draft_ids = torch.stack(all_draft_ids, dim=1)  # (B, n)
     draft_log_probs = torch.stack(all_log_probs, dim=1)  # (B, n)
     return draft_ids, draft_log_probs
 
@@ -189,7 +190,7 @@ def verify_tokens(
 
     # Single forward pass over context + all draft tokens
     verify_input = torch.cat([input_ids, draft_ids], dim=1)  # (B, seq_len + n_draft)
-    _, target_logits, _ = target_model(verify_input)          # (B, seq_len+n_draft, vocab)
+    _, target_logits, _ = target_model(verify_input)  # (B, seq_len+n_draft, vocab)
 
     accepted_tokens: list[torch.Tensor] = []
     n_accepted = 0
@@ -204,7 +205,7 @@ def verify_tokens(
             t_logits = t_logits / config.temperature
 
         t_log_probs = F.log_softmax(t_logits, dim=-1)  # (B, vocab)
-        t_probs = t_log_probs.exp()                    # (B, vocab)
+        t_probs = t_log_probs.exp()  # (B, vocab)
 
         # Draft probabilities (per-sample, per-token)
         d_log_probs_t = draft_log_probs[:, t]  # (B,)

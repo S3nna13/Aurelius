@@ -1,16 +1,15 @@
 """Tests for src/training/curriculum_scheduler.py."""
 
-import pytest
 from src.training.curriculum_scheduler import (
     CurriculumScheduler,
     CurriculumStage,
     DifficultyLevel,
 )
 
-
 # ---------------------------------------------------------------------------
 # DifficultyLevel enum
 # ---------------------------------------------------------------------------
+
 
 class TestDifficultyLevel:
     def test_easy_value(self):
@@ -35,6 +34,7 @@ class TestDifficultyLevel:
 # ---------------------------------------------------------------------------
 # CurriculumStage dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCurriculumStage:
     def test_stage_id(self):
@@ -73,6 +73,7 @@ class TestCurriculumStage:
 # ---------------------------------------------------------------------------
 # CurriculumScheduler
 # ---------------------------------------------------------------------------
+
 
 class TestCurriculumSchedulerInit:
     def test_default_has_four_stages(self):

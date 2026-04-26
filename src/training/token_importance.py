@@ -1,14 +1,13 @@
-"""Token importance scoring for curriculum training: identify informative tokens for selective training."""
+"""Token importance scoring for curriculum training: identify informative tokens for selective training."""  # noqa: E501
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -65,7 +64,7 @@ def score_tokens_by_loss(
     # Predict token t+1 from position t → shift by one
     # targets: positions 1..T-1, predictions: positions 0..T-2
     shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
-    shift_targets = input_ids[:, 1:].contiguous()   # (B, T-1)
+    shift_targets = input_ids[:, 1:].contiguous()  # (B, T-1)
 
     B, T_minus_1, V = shift_logits.shape
 
@@ -93,8 +92,8 @@ def score_tokens_by_attention(
         entropy: ``(B, T)`` float tensor — higher = more uncertain / important.
     """
     # Entropy: -sum(p * log p) = -sum(softmax * log_softmax)
-    log_probs = F.log_softmax(logits, dim=-1)   # (B, T, V)
-    probs = torch.exp(log_probs)                # (B, T, V)
+    log_probs = F.log_softmax(logits, dim=-1)  # (B, T, V)
+    probs = torch.exp(log_probs)  # (B, T, V)
     entropy = -(probs * log_probs).sum(dim=-1)  # (B, T)
     return entropy
 
@@ -279,8 +278,7 @@ class SelectiveTrainer:
         # token_scores is (B, T-1); prepend a zero score for the first position
         # so that it aligns with the labels tensor which has length T.
         padded_scores = torch.cat(
-            [torch.zeros(B, 1, device=token_scores.device, dtype=token_scores.dtype),
-             token_scores],
+            [torch.zeros(B, 1, device=token_scores.device, dtype=token_scores.dtype), token_scores],
             dim=1,
         )  # (B, T)
 

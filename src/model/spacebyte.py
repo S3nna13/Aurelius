@@ -20,29 +20,28 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpaceByteConfig:
     """Hyper-parameters for SpaceByte (Section 2 notation)."""
 
-    vocab_size: int = 256       # byte vocabulary {0 .. 255}
-    patch_byte: int = 0x20      # byte value that triggers a new patch boundary
-    d_local: int = 64           # d_l — local model hidden dim
-    d_global: int = 128         # d_g — global model hidden dim
-    n_local_layers: int = 1     # depth of local transformer L
-    n_global_layers: int = 2    # depth of global transformer G
-    n_heads_local: int = 2      # attention heads in L
-    n_heads_global: int = 2     # attention heads in G
+    vocab_size: int = 256  # byte vocabulary {0 .. 255}
+    patch_byte: int = 0x20  # byte value that triggers a new patch boundary
+    d_local: int = 64  # d_l — local model hidden dim
+    d_global: int = 128  # d_g — global model hidden dim
+    n_local_layers: int = 1  # depth of local transformer L
+    n_global_layers: int = 2  # depth of global transformer G
+    n_heads_local: int = 2  # attention heads in L
+    n_heads_global: int = 2  # attention heads in G
     dropout: float = 0.0
 
 
@@ -50,15 +49,14 @@ class SpaceByteConfig:
 # Building blocks: causal Transformer (independent of megabyte.py)
 # ---------------------------------------------------------------------------
 
+
 class _CausalSelfAttention(nn.Module):
     """Multi-head causal self-attention (training path; no KV-cache)."""
 
     def __init__(self, d_model: int, n_heads: int, dropout: float = 0.0) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model={d_model} must be divisible by n_heads={n_heads}"
-            )
+            raise ValueError(f"d_model={d_model} must be divisible by n_heads={n_heads}")
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.scale = math.sqrt(self.head_dim)
@@ -68,8 +66,8 @@ class _CausalSelfAttention(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
-        qkv = self.qkv(x)                               # (B, T, 3*C)
-        q, k, v = qkv.split(C, dim=-1)                  # each (B, T, C)
+        qkv = self.qkv(x)  # (B, T, 3*C)
+        q, k, v = qkv.split(C, dim=-1)  # each (B, T, C)
 
         def split_heads(t: torch.Tensor) -> torch.Tensor:
             return t.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
@@ -86,7 +84,7 @@ class _CausalSelfAttention(nn.Module):
         attn_weights = F.softmax(attn_weights, dim=-1)
         attn_weights = F.dropout(attn_weights, p=self.dropout, training=self.training)
 
-        out = torch.matmul(attn_weights, v)              # (B, n_heads, T, head_dim)
+        out = torch.matmul(attn_weights, v)  # (B, n_heads, T, head_dim)
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         return self.out_proj(out)
 
@@ -152,6 +150,7 @@ class LocalTransformer(_CausalTransformer):
 # ---------------------------------------------------------------------------
 # SpaceByte main model
 # ---------------------------------------------------------------------------
+
 
 class SpaceByteModel(nn.Module):
     """SpaceByte model (Section 2, arXiv:2404.14408).
@@ -239,7 +238,7 @@ class SpaceByteModel(nn.Module):
     # Patch boundary detection (Section 2)
     # ------------------------------------------------------------------
 
-    def find_patch_boundaries(self, byte_ids: torch.LongTensor) -> List[int]:
+    def find_patch_boundaries(self, byte_ids: torch.LongTensor) -> list[int]:
         """Return list of patch-start indices for a single sequence.
 
         A new patch begins at position t when byte_ids[t] == patch_byte.
@@ -260,7 +259,7 @@ class SpaceByteModel(nn.Module):
                 f"find_patch_boundaries expects a 1-D tensor, got shape {byte_ids.shape}"
             )
         patch_byte = self.config.patch_byte
-        boundaries: List[int] = [0]
+        boundaries: list[int] = [0]
         ids = byte_ids.tolist()
         for t in range(1, len(ids)):
             if ids[t] == patch_byte:
@@ -310,55 +309,53 @@ class SpaceByteModel(nn.Module):
 
         # n_patches and patch spans: patch p covers bytes [boundaries[p], boundaries[p+1])
         # Append sentinel T so the last patch is well-defined.
-        patch_starts = boundaries                       # list of n_patches start indices
-        patch_ends = boundaries[1:] + [T]              # list of n_patches end indices
+        patch_starts = boundaries  # list of n_patches start indices
+        patch_ends = boundaries[1:] + [T]  # list of n_patches end indices
         n_patches = len(patch_starts)
 
         # ---- Step 1: byte embeddings ----
-        e = self.byte_embed(byte_ids)                  # (B, T, d_l)
+        e = self.byte_embed(byte_ids)  # (B, T, d_l)
 
         # ---- Step 2: build global input (one vector per patch via mean-pool) ----
         # patch_embed: (B, n_patches, d_l) → project → (B, n_patches, d_g)
         patch_vecs = torch.stack(
-            [e[:, patch_starts[p]:patch_ends[p], :].mean(dim=1) for p in range(n_patches)],
+            [e[:, patch_starts[p] : patch_ends[p], :].mean(dim=1) for p in range(n_patches)],
             dim=1,
-        )                                               # (B, n_patches, d_l)
-        x_g = self.patch_proj(patch_vecs)              # (B, n_patches, d_g)
+        )  # (B, n_patches, d_l)
+        x_g = self.patch_proj(patch_vecs)  # (B, n_patches, d_g)
 
         # ---- Step 3: global transformer ----
-        h_g = self.global_transformer(x_g)             # (B, n_patches, d_g)
+        h_g = self.global_transformer(x_g)  # (B, n_patches, d_g)
 
         # ---- Step 4: local transformer per patch ----
         # For efficiency we run each patch sequentially (B=1 is the simple case;
         # B>1 with uniform boundaries is handled by the same batched ops).
-        all_logits: List[torch.Tensor] = []
+        all_logits: list[torch.Tensor] = []
 
         for p in range(n_patches):
             s, end = patch_starts[p], patch_ends[p]
-            patch_len = end - s                         # number of bytes in patch p
+            patch_len = end - s  # number of bytes in patch p
 
             # Global context for this patch: (B, 1, d_l)
             global_ctx = self.global_to_local(h_g[:, p, :]).unsqueeze(1)  # (B, 1, d_l)
 
             if patch_len == 1:
                 # Single byte: local input = just the global context prefix
-                local_in = global_ctx                   # (B, 1, d_l)
+                local_in = global_ctx  # (B, 1, d_l)
             else:
                 # Teacher-forced: prepend global_ctx, drop the last byte of the patch
-                tok_inp = e[:, s:end - 1, :]           # (B, patch_len-1, d_l)
+                tok_inp = e[:, s : end - 1, :]  # (B, patch_len-1, d_l)
                 local_in = torch.cat([global_ctx, tok_inp], dim=1)  # (B, patch_len, d_l)
 
-            local_out = self.local_transformer(local_in)    # (B, patch_len, d_l)
-            logits_p = self.output_proj(local_out)          # (B, patch_len, 256)
+            local_out = self.local_transformer(local_in)  # (B, patch_len, d_l)
+            logits_p = self.output_proj(local_out)  # (B, patch_len, 256)
             all_logits.append(logits_p)
 
         # ---- Step 5: concatenate ----
-        logits = torch.cat(all_logits, dim=1)              # (B, T, 256)
+        logits = torch.cat(all_logits, dim=1)  # (B, T, 256)
 
         if logits.shape[1] != T:
-            raise RuntimeError(
-                f"Internal error: logits T-dim={logits.shape[1]} != expected T={T}."
-            )
+            raise RuntimeError(f"Internal error: logits T-dim={logits.shape[1]} != expected T={T}.")
 
         if targets is not None:
             loss = F.cross_entropy(

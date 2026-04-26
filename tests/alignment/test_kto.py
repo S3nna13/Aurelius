@@ -6,16 +6,15 @@ import copy
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.kto import KTODataset, KTOLoss, KTOTrainer
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tiny_cfg():
@@ -58,6 +57,7 @@ def _mixed_labels(batch_size: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # KTOLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_kto_loss_scalar(kto_loss):
     """forward returns (loss, dict); loss is scalar."""
@@ -137,6 +137,7 @@ def test_kto_kl_nonneg(kto_loss):
 # KTOTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_kto_trainer_step_keys(tiny_model):
     """train_step returns dict with loss key."""
     ref_model = copy.deepcopy(tiny_model)
@@ -154,6 +155,7 @@ def test_kto_trainer_step_keys(tiny_model):
 # ---------------------------------------------------------------------------
 # KTODataset tests
 # ---------------------------------------------------------------------------
+
 
 def test_kto_dataset_add_and_len():
     """dataset grows after add()."""

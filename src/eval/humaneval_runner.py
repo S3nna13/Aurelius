@@ -16,14 +16,10 @@ Dependencies: stdlib only (subprocess, textwrap, time, ast).
 
 from __future__ import annotations
 
-import ast
 import subprocess
 import sys
-import textwrap
 import time
-from dataclasses import dataclass, field
-from typing import Optional
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -62,7 +58,7 @@ class ExecutionResult:
 
     task_id: str
     passed: bool
-    error: Optional[str]
+    error: str | None
     runtime_ms: float
 
 
@@ -143,7 +139,7 @@ class HumanEvalRunner:
     # Problem loading
     # ------------------------------------------------------------------
 
-    def load_problems(self, path: Optional[str] = None) -> list[HumanEvalProblem]:
+    def load_problems(self, path: str | None = None) -> list[HumanEvalProblem]:
         """Load HumanEval problems from *path* (JSONL format), or return stubs.
 
         If *path* is ``None`` or the file cannot be read, returns 3 built-in
@@ -178,7 +174,7 @@ class HumanEvalRunner:
                         )
                 if problems:
                     return problems
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         return self._stub_problems()
@@ -189,10 +185,7 @@ class HumanEvalRunner:
         return [
             HumanEvalProblem(
                 task_id="HumanEval/stub_0",
-                prompt=(
-                    "def add(a: int, b: int) -> int:\n"
-                    '    """Return the sum of a and b."""\n'
-                ),
+                prompt=('def add(a: int, b: int) -> int:\n    """Return the sum of a and b."""\n'),
                 canonical_solution="    return a + b\n",
                 test=(
                     "def check(candidate):\n"
@@ -204,10 +197,7 @@ class HumanEvalRunner:
             ),
             HumanEvalProblem(
                 task_id="HumanEval/stub_1",
-                prompt=(
-                    "def is_even(n: int) -> bool:\n"
-                    '    """Return True if n is even."""\n'
-                ),
+                prompt=('def is_even(n: int) -> bool:\n    """Return True if n is even."""\n'),
                 canonical_solution="    return n % 2 == 0\n",
                 test=(
                     "def check(candidate):\n"
@@ -272,11 +262,11 @@ class HumanEvalRunner:
         )
 
         t0 = time.monotonic()
-        error_msg: Optional[str] = None
+        error_msg: str | None = None
         passed = False
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 [sys.executable, "-c", script],
                 capture_output=True,
                 text=True,

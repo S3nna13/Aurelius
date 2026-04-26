@@ -13,13 +13,12 @@ with Aurelius-native typing and failure-threshold circuit breaker.
 from __future__ import annotations
 
 import re
-import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from dataclasses import asdict, dataclass, field
-from typing import Any, Callable
-
+from dataclasses import dataclass, field
+from typing import Any
 
 # Canonical status strings. ``success`` is used for the happy path; the
 # others are error classifications derived from the raised exception or

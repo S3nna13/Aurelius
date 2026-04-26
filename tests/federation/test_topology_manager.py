@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.federation.topology_manager import (
+    TOPOLOGY_MANAGER_REGISTRY,
     FedNode,
     NodeRole,
     TopologyManager,
-    TOPOLOGY_MANAGER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_node(
     node_id: str,
@@ -35,6 +35,7 @@ def make_node(
 # ---------------------------------------------------------------------------
 # FedNode dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestFedNode:
     def test_required_fields_stored(self):
@@ -67,6 +68,7 @@ class TestFedNode:
 # ---------------------------------------------------------------------------
 # add_node
 # ---------------------------------------------------------------------------
+
 
 class TestAddNode:
     def test_add_node_increases_count(self):
@@ -103,6 +105,7 @@ class TestAddNode:
 # remove_node
 # ---------------------------------------------------------------------------
 
+
 class TestRemoveNode:
     def test_remove_existing_returns_true(self):
         tm = TopologyManager()
@@ -131,6 +134,7 @@ class TestRemoveNode:
 # get_node
 # ---------------------------------------------------------------------------
 
+
 class TestGetNode:
     def test_get_existing_node(self):
         tm = TopologyManager()
@@ -153,6 +157,7 @@ class TestGetNode:
 # ---------------------------------------------------------------------------
 # nodes_by_role
 # ---------------------------------------------------------------------------
+
 
 class TestNodesByRole:
     def test_nodes_by_role_returns_correct_role(self):
@@ -188,6 +193,7 @@ class TestNodesByRole:
 # available_clients
 # ---------------------------------------------------------------------------
 
+
 class TestAvailableClients:
     def test_available_clients_only_available_clients(self):
         tm = TopologyManager()
@@ -222,6 +228,7 @@ class TestAvailableClients:
 # set_availability
 # ---------------------------------------------------------------------------
 
+
 class TestSetAvailability:
     def test_set_availability_to_false(self):
         tm = TopologyManager()
@@ -252,6 +259,7 @@ class TestSetAvailability:
 # node_count
 # ---------------------------------------------------------------------------
 
+
 class TestNodeCount:
     def test_initial_count_zero(self):
         tm = TopologyManager()
@@ -274,6 +282,7 @@ class TestNodeCount:
 # ---------------------------------------------------------------------------
 # topology_summary
 # ---------------------------------------------------------------------------
+
 
 class TestTopologySummary:
     def test_summary_has_required_keys(self):
@@ -323,6 +332,7 @@ class TestTopologySummary:
 # ---------------------------------------------------------------------------
 # TOPOLOGY_MANAGER_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestTopologyManagerRegistry:
     def test_registry_exists(self):

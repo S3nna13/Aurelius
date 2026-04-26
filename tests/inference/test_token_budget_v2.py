@@ -9,24 +9,25 @@ Covers:
 - estimate_tokens_from_chars
 - truncate_to_budget (left / right / no-op)
 """
+
 from __future__ import annotations
 
 import pytest
 
 from src.inference.token_budget_v2 import (
     BudgetConfig,
-    TokenUsage,
     TokenBudgetTracker,
+    TokenUsage,
     check_budget,
     compute_token_usage,
     estimate_tokens_from_chars,
     truncate_to_budget,
 )
 
-
 # ---------------------------------------------------------------------------
 # BudgetConfig
 # ---------------------------------------------------------------------------
+
 
 class TestBudgetConfig:
     def test_defaults(self):
@@ -48,6 +49,7 @@ class TestBudgetConfig:
 # TokenUsage
 # ---------------------------------------------------------------------------
 
+
 class TestTokenUsage:
     def test_defaults_all_zero(self):
         usage = TokenUsage()
@@ -60,6 +62,7 @@ class TestTokenUsage:
 # ---------------------------------------------------------------------------
 # compute_token_usage
 # ---------------------------------------------------------------------------
+
 
 class TestComputeTokenUsage:
     def setup_method(self):
@@ -90,6 +93,7 @@ class TestComputeTokenUsage:
 # ---------------------------------------------------------------------------
 # check_budget
 # ---------------------------------------------------------------------------
+
 
 class TestCheckBudget:
     def setup_method(self):
@@ -136,6 +140,7 @@ class TestCheckBudget:
 # ---------------------------------------------------------------------------
 # TokenBudgetTracker
 # ---------------------------------------------------------------------------
+
 
 class TestTokenBudgetTracker:
     def setup_method(self):
@@ -224,6 +229,7 @@ class TestTokenBudgetTracker:
 # estimate_tokens_from_chars
 # ---------------------------------------------------------------------------
 
+
 class TestEstimateTokensFromChars:
     def test_returns_positive_int_for_nonempty(self):
         result = estimate_tokens_from_chars("hello world")
@@ -249,6 +255,7 @@ class TestEstimateTokensFromChars:
 # ---------------------------------------------------------------------------
 # truncate_to_budget
 # ---------------------------------------------------------------------------
+
 
 class TestTruncateToBudget:
     def test_left_truncation_keeps_end(self):

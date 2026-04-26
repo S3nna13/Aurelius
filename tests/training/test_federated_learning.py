@@ -8,14 +8,13 @@ import torch
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.federated_learning import (
-    FedConfig,
     ClientUpdate,
+    FedConfig,
+    FederatedServer,
     fedavg_aggregate,
     fedprox_loss,
     simulate_client_update,
-    FederatedServer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -66,6 +65,7 @@ def make_delta(model: AureliusTransformer, fill: float = 0.1) -> dict[str, torch
 # Test 1: FedConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_fedconfig_defaults():
     """FedConfig has the correct default values."""
     cfg = FedConfig()
@@ -81,6 +81,7 @@ def test_fedconfig_defaults():
 # Test 2: ClientUpdate fields
 # ---------------------------------------------------------------------------
 
+
 def test_client_update_fields():
     """ClientUpdate holds client_id, delta_weights, n_samples, and loss."""
     delta = {"w": torch.zeros(3)}
@@ -94,6 +95,7 @@ def test_client_update_fields():
 # ---------------------------------------------------------------------------
 # Test 3: fedavg_aggregate equal samples → equal weights
 # ---------------------------------------------------------------------------
+
 
 def test_fedavg_aggregate_equal_samples_equal_weights():
     """With equal n_samples, fedavg_aggregate produces the arithmetic mean of deltas."""
@@ -112,6 +114,7 @@ def test_fedavg_aggregate_equal_samples_equal_weights():
 # Test 4: fedavg_aggregate more samples → higher weight
 # ---------------------------------------------------------------------------
 
+
 def test_fedavg_aggregate_more_samples_higher_weight():
     """Client with more samples should contribute more to the aggregated delta."""
     delta_a = {"w": torch.tensor([0.0])}
@@ -128,6 +131,7 @@ def test_fedavg_aggregate_more_samples_higher_weight():
 # ---------------------------------------------------------------------------
 # Test 5: fedavg_aggregate returns dict with same keys as input
 # ---------------------------------------------------------------------------
+
 
 def test_fedavg_aggregate_same_keys():
     """fedavg_aggregate output has the same keys as the input deltas."""
@@ -149,6 +153,7 @@ def test_fedavg_aggregate_same_keys():
 # Test 6: fedprox_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_fedprox_loss_returns_scalar():
     """fedprox_loss returns a scalar tensor."""
     params = {"w": torch.tensor([1.0, 2.0])}
@@ -161,6 +166,7 @@ def test_fedprox_loss_returns_scalar():
 # Test 7: fedprox_loss zero when params equal
 # ---------------------------------------------------------------------------
 
+
 def test_fedprox_loss_zero_when_equal():
     """fedprox_loss is zero when local and global params are identical."""
     params = {"w": torch.tensor([1.5, -2.3, 0.7])}
@@ -171,6 +177,7 @@ def test_fedprox_loss_zero_when_equal():
 # ---------------------------------------------------------------------------
 # Test 8: fedprox_loss positive when params differ
 # ---------------------------------------------------------------------------
+
 
 def test_fedprox_loss_positive_when_differ():
     """fedprox_loss is strictly positive when local and global params differ."""
@@ -183,6 +190,7 @@ def test_fedprox_loss_positive_when_differ():
 # ---------------------------------------------------------------------------
 # Test 9: simulate_client_update returns ClientUpdate
 # ---------------------------------------------------------------------------
+
 
 def test_simulate_client_update_returns_client_update():
     """simulate_client_update returns a ClientUpdate instance."""
@@ -198,6 +206,7 @@ def test_simulate_client_update_returns_client_update():
 # Test 10: simulate_client_update delta has same keys as model params
 # ---------------------------------------------------------------------------
 
+
 def test_simulate_client_update_delta_keys_match_model():
     """delta_weights in ClientUpdate has the same keys as the model's named parameters."""
     model = tiny_model()
@@ -211,6 +220,7 @@ def test_simulate_client_update_delta_keys_match_model():
 # ---------------------------------------------------------------------------
 # Test 11: FederatedServer.select_clients returns list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_federated_server_select_clients_returns_list_of_ints():
     """select_clients returns a list of integer client IDs."""
@@ -226,6 +236,7 @@ def test_federated_server_select_clients_returns_list_of_ints():
 # Test 12: FederatedServer.select_clients length = fraction * n_clients
 # ---------------------------------------------------------------------------
 
+
 def test_federated_server_select_clients_correct_length():
     """select_clients returns max(1, int(fraction_fit * n_clients)) client IDs."""
     model = tiny_model()
@@ -239,6 +250,7 @@ def test_federated_server_select_clients_correct_length():
 # ---------------------------------------------------------------------------
 # Test 13: FederatedServer.aggregate_and_update returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_federated_server_aggregate_and_update_returns_required_keys():
     """aggregate_and_update returns dict with 'round', 'n_clients', 'mean_loss', 'weight_norm'."""
@@ -259,6 +271,7 @@ def test_federated_server_aggregate_and_update_returns_required_keys():
 # Test 14: FederatedServer.federated_round returns dict with "mean_loss"
 # ---------------------------------------------------------------------------
 
+
 def test_federated_round_returns_mean_loss():
     """federated_round returns a dict containing 'mean_loss'."""
     model = tiny_model()
@@ -272,6 +285,7 @@ def test_federated_round_returns_mean_loss():
 # ---------------------------------------------------------------------------
 # Test 15: fedavg_aggregate with single update returns same delta
 # ---------------------------------------------------------------------------
+
 
 def test_fedavg_aggregate_single_update_returns_same_delta():
     """With one update, fedavg_aggregate returns the same delta (weight = 1.0)."""

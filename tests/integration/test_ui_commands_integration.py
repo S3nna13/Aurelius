@@ -9,16 +9,13 @@ import pytest
 from rich.console import Console
 
 import src.ui as ui
-from src.ui.command_palette import COMMAND_PALETTE_REGISTRY, CommandPalette
+from src.ui.keyboard_nav import KeyboardNav
 from src.ui.status_hierarchy import (
-    STATUS_TREE_REGISTRY,
     StatusLevel,
     StatusNode,
     StatusState,
     StatusTree,
 )
-from src.ui.keyboard_nav import KeyboardNav, KEYBOARD_NAV_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # src.ui namespace exposes COMMAND_PALETTE_REGISTRY
@@ -76,12 +73,14 @@ def test_status_tree_three_nodes_render_no_crash() -> None:
 
 def test_status_tree_update_state_integration() -> None:
     tree = StatusTree()
-    tree.add_node(StatusNode(
-        id="check-node",
-        level=StatusLevel.TASK,
-        state=StatusState.IDLE,
-        label="Check",
-    ))
+    tree.add_node(
+        StatusNode(
+            id="check-node",
+            level=StatusLevel.TASK,
+            state=StatusState.IDLE,
+            label="Check",
+        )
+    )
     tree.update_state("check-node", StatusState.SUCCESS, progress=1.0)
     node = tree.get_node("check-node")
     assert node.state == StatusState.SUCCESS
@@ -306,7 +305,7 @@ def test_hotkey_overlay_render() -> None:
 
 def test_split_pane_lifecycle() -> None:
     """Add 2 panes, hide one, resize the other, render with content_map."""
-    from src.ui.split_pane import PaneConfig, SplitPane, SplitPaneError
+    from src.ui.split_pane import PaneConfig, SplitPane
 
     pane = SplitPane()
     pane.add_pane(PaneConfig(pane_id="editor", title="Editor", weight=2.0))
@@ -333,8 +332,8 @@ def test_split_pane_lifecycle() -> None:
 
 def test_model_info_panel_update() -> None:
     """Update manifest entries, render, verify to_dict round-trip."""
-    from src.ui.model_info_panel import ModelInfoPanel, ModelInfoError
-    import pytest
+
+    from src.ui.model_info_panel import ModelInfoError, ModelInfoPanel
 
     panel = ModelInfoPanel()
     panel.update("family_name", "aurelius")
@@ -346,6 +345,7 @@ def test_model_info_panel_update() -> None:
     assert panel.get("vocab_size").value == 32768
 
     import pytest as _pytest
+
     with _pytest.raises(ModelInfoError):
         panel.update("nonexistent", 0)
 

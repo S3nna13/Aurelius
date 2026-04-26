@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -34,22 +32,22 @@ class ActiveLearner:
     def coreset_score(
         self,
         embeddings: Tensor,
-        selected_embeddings: Optional[Tensor],
+        selected_embeddings: Tensor | None,
     ) -> Tensor:
         if selected_embeddings is None or selected_embeddings.shape[0] == 0:
             return torch.ones(embeddings.shape[0], dtype=embeddings.dtype)
 
         # Pairwise squared L2 distances: (N, M)
         diffs = embeddings.unsqueeze(1) - selected_embeddings.unsqueeze(0)
-        dists = (diffs ** 2).sum(dim=-1).sqrt()
+        dists = (diffs**2).sum(dim=-1).sqrt()
         min_dists, _ = dists.min(dim=-1)
         return min_dists
 
     def select(
         self,
         probs: Tensor,
-        embeddings: Optional[Tensor] = None,
-        already_selected_mask: Optional[Tensor] = None,
+        embeddings: Tensor | None = None,
+        already_selected_mask: Tensor | None = None,
     ) -> Tensor:
         strategy = self.config.strategy
         n = self.config.n_select
@@ -76,6 +74,6 @@ class ActiveLearner:
         _, indices = scores.topk(n, largest=True, sorted=True)
         return indices.long()
 
-    def update_pool(self, pool_ids: List[int], selected_ids: List[int]) -> List[int]:
+    def update_pool(self, pool_ids: list[int], selected_ids: list[int]) -> list[int]:
         selected_set = set(selected_ids)
         return [pid for pid in pool_ids if pid not in selected_set]

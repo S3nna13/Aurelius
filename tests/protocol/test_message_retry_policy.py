@@ -1,15 +1,15 @@
 """Tests for message_retry_policy — pure delay computation."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.protocol.message_retry_policy import (
+    DEFAULT_RETRY_POLICY,
+    RETRY_POLICY_REGISTRY,
     BackoffStrategy,
     RetryPolicy,
-    RETRY_POLICY_REGISTRY,
-    DEFAULT_RETRY_POLICY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixed strategy
@@ -41,9 +41,7 @@ def test_linear_delay_increases():
 
 
 def test_exponential_delay_doubles():
-    p = RetryPolicy(
-        strategy=BackoffStrategy.EXPONENTIAL, base_delay_seconds=1.0, jitter=False
-    )
+    p = RetryPolicy(strategy=BackoffStrategy.EXPONENTIAL, base_delay_seconds=1.0, jitter=False)
     assert p.delay(1) == 1.0
     assert p.delay(2) == 2.0
     assert p.delay(3) == 4.0

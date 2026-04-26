@@ -16,7 +16,7 @@ Reference: https://llama.meta.com/docs/model-cards-and-prompt-formats/meta-llama
 from __future__ import annotations
 
 import re
-from typing import Callable, Iterable, List
+from collections.abc import Callable, Iterable
 
 from .chatml_template import Message
 
@@ -70,7 +70,7 @@ class Llama3Template:
 
     def encode(
         self,
-        messages: List[Message],
+        messages: list[Message],
         add_generation_prompt: bool = False,
     ) -> str:
         """Serialize messages to a Llama-3 chat string.
@@ -89,21 +89,17 @@ class Llama3Template:
         if not messages and not add_generation_prompt:
             return ""
 
-        parts: List[str] = [BEGIN_OF_TEXT]
+        parts: list[str] = [BEGIN_OF_TEXT]
         for idx, msg in enumerate(messages):
             if not isinstance(msg, Message):
-                raise Llama3FormatError(
-                    f"messages[{idx}] is not a Message dataclass"
-                )
+                raise Llama3FormatError(f"messages[{idx}] is not a Message dataclass")
             if msg.role not in VALID_ROLES:
                 raise Llama3FormatError(
                     f"messages[{idx}] has invalid role={msg.role!r}; "
                     f"valid roles are {sorted(VALID_ROLES)}"
                 )
             _validate_content(msg.role, msg.content)
-            parts.append(
-                f"{START_HEADER}{msg.role}{END_HEADER}\n\n{msg.content}{EOT}"
-            )
+            parts.append(f"{START_HEADER}{msg.role}{END_HEADER}\n\n{msg.content}{EOT}")
 
         if add_generation_prompt:
             parts.append(f"{START_HEADER}assistant{END_HEADER}\n\n")
@@ -112,7 +108,7 @@ class Llama3Template:
 
     # ------------------------------------------------------------------ decode
 
-    def decode(self, text: str) -> List[Message]:
+    def decode(self, text: str) -> list[Message]:
         """Parse a Llama-3 chat string back into Message objects.
 
         Tolerates a leading ``<|begin_of_text|>``, inter-message
@@ -134,7 +130,7 @@ class Llama3Template:
         else:
             pos = 0
 
-        messages: List[Message] = []
+        messages: list[Message] = []
         n = len(text)
 
         while pos < n:
@@ -146,8 +142,7 @@ class Llama3Template:
 
             if not text.startswith(START_HEADER, pos):
                 raise Llama3FormatError(
-                    f"expected {START_HEADER!r} at offset {pos}, got "
-                    f"{text[pos:pos + 32]!r}"
+                    f"expected {START_HEADER!r} at offset {pos}, got {text[pos : pos + 32]!r}"
                 )
 
             m = _MESSAGE_RE.match(text, pos)
@@ -155,15 +150,14 @@ class Llama3Template:
                 # Possibly an open generation prompt:
                 # <|start_header_id|>role<|end_header_id|>\n\n... with
                 # no closing <|eot_id|>. Accept only as the final fragment.
-                after_start = text[pos + len(START_HEADER):]
+                after_start = text[pos + len(START_HEADER) :]
                 end_idx = after_start.find(END_HEADER)
                 if end_idx == -1:
                     raise Llama3FormatError(
-                        f"malformed header at offset {pos}: missing "
-                        f"{END_HEADER!r}"
+                        f"malformed header at offset {pos}: missing {END_HEADER!r}"
                     )
                 role = after_start[:end_idx]
-                remainder = after_start[end_idx + len(END_HEADER):]
+                remainder = after_start[end_idx + len(END_HEADER) :]
                 # Any further control token in the tail means malformed,
                 # not just a dangling open prompt.
                 for tok in _CONTROL_TOKENS:
@@ -173,9 +167,7 @@ class Llama3Template:
                             f"{EOT!r} terminator before next control token"
                         )
                 if role not in VALID_ROLES:
-                    raise Llama3FormatError(
-                        f"invalid role {role!r} in open generation prompt"
-                    )
+                    raise Llama3FormatError(f"invalid role {role!r} in open generation prompt")
                 # Dangling open prompt. Stop parsing.
                 return messages
 
@@ -183,16 +175,14 @@ class Llama3Template:
             content = m.group("content")
             if role not in VALID_ROLES:
                 raise Llama3FormatError(
-                    f"invalid role {role!r} at offset {pos}; "
-                    f"valid roles are {sorted(VALID_ROLES)}"
+                    f"invalid role {role!r} at offset {pos}; valid roles are {sorted(VALID_ROLES)}"
                 )
             # Non-greedy regex means a nested control token would be
             # captured in ``content``; reject to avoid smuggling.
             for tok in _CONTROL_TOKENS:
                 if tok in content:
                     raise Llama3FormatError(
-                        f"nested Llama-3 control token {tok!r} inside "
-                        f"message at offset {pos}"
+                        f"nested Llama-3 control token {tok!r} inside message at offset {pos}"
                     )
             messages.append(Message(role=role, content=content))
             pos = m.end()
@@ -203,10 +193,10 @@ class Llama3Template:
 
     def encode_token_ids(
         self,
-        messages: List[Message],
+        messages: list[Message],
         tokenizer: Callable[[str], Iterable[int]],
         add_generation_prompt: bool = False,
-    ) -> List[int]:
+    ) -> list[int]:
         """Encode messages to a flat list of token ids.
 
         ``tokenizer`` is any callable mapping ``str -> Iterable[int]``.
@@ -217,18 +207,13 @@ class Llama3Template:
         any specific BPE/SentencePiece impl.
         """
         if not callable(tokenizer):
-            raise Llama3FormatError(
-                "tokenizer must be callable: str -> list[int]"
-            )
-        rendered = self.encode(
-            messages, add_generation_prompt=add_generation_prompt
-        )
+            raise Llama3FormatError("tokenizer must be callable: str -> list[int]")
+        rendered = self.encode(messages, add_generation_prompt=add_generation_prompt)
         ids = tokenizer(rendered)
         out = list(ids)
         for i, tok in enumerate(out):
             if not isinstance(tok, int):
                 raise Llama3FormatError(
-                    f"tokenizer returned non-int at position {i}: "
-                    f"{type(tok).__name__}"
+                    f"tokenizer returned non-int at position {i}: {type(tok).__name__}"
                 )
         return out

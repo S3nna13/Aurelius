@@ -4,33 +4,36 @@ Train models to prefer reasoning chains that lead to correct answers over chains
 that lead to incorrect answers. Uses DPO-style contrastive loss on
 (question, correct_cot, wrong_cot) triples.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration and data dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CCoTConfig:
     """Configuration for Contrastive Chain-of-Thought training."""
-    beta: float = 0.1           # KL regularization temperature
-    margin: float = 0.5         # minimum preference margin
-    max_seq_len: int = 512      # maximum sequence length
-    cot_weight: float = 1.0     # weight for CoT loss vs answer loss
-    use_sft_loss: bool = True   # also train on correct CoT with SFT
+
+    beta: float = 0.1  # KL regularization temperature
+    margin: float = 0.5  # minimum preference margin
+    max_seq_len: int = 512  # maximum sequence length
+    cot_weight: float = 1.0  # weight for CoT loss vs answer loss
+    use_sft_loss: bool = True  # also train on correct CoT with SFT
 
 
 @dataclass
 class CCoTExample:
     """A single contrastive CoT training example."""
+
     question: str
     correct_cot: str
     correct_answer: str
@@ -41,6 +44,7 @@ class CCoTExample:
 # ---------------------------------------------------------------------------
 # Core utility: sequence log-prob
 # ---------------------------------------------------------------------------
+
 
 def compute_sequence_log_prob(
     model: nn.Module,
@@ -64,21 +68,22 @@ def compute_sequence_log_prob(
     log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # (B, T-1, vocab_size)
 
     # Gather log-prob of actual next token
-    targets = input_ids[:, 1:].unsqueeze(-1)               # (B, T-1, 1)
-    token_lp = log_probs.gather(2, targets).squeeze(-1)    # (B, T-1)
+    targets = input_ids[:, 1:].unsqueeze(-1)  # (B, T-1, 1)
+    token_lp = log_probs.gather(2, targets).squeeze(-1)  # (B, T-1)
 
     # Shift mask to align with next-token predictions
-    mask = response_mask[:, 1:].float()                    # (B, T-1)
+    mask = response_mask[:, 1:].float()  # (B, T-1)
 
     # Mean over masked positions; guard against all-zero mask
-    masked_sum = (token_lp * mask).sum(dim=-1)             # (B,)
-    mask_count = mask.sum(dim=-1).clamp(min=1.0)           # (B,)
-    return masked_sum / mask_count                         # (B,)
+    masked_sum = (token_lp * mask).sum(dim=-1)  # (B,)
+    mask_count = mask.sum(dim=-1).clamp(min=1.0)  # (B,)
+    return masked_sum / mask_count  # (B,)
 
 
 # ---------------------------------------------------------------------------
 # Tokenization helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_sequence_with_mask(
     question: str,
@@ -105,7 +110,7 @@ def _build_sequence_with_mask(
         full_ids = full_ids[:max_seq_len]
         mask_vals = mask_vals[:max_seq_len]
 
-    input_ids = torch.tensor(full_ids, dtype=torch.long).unsqueeze(0)       # (1, L)
+    input_ids = torch.tensor(full_ids, dtype=torch.long).unsqueeze(0)  # (1, L)
     response_mask = torch.tensor(mask_vals, dtype=torch.bool).unsqueeze(0)  # (1, L)
     return input_ids, response_mask
 
@@ -113,6 +118,7 @@ def _build_sequence_with_mask(
 # ---------------------------------------------------------------------------
 # Main loss function
 # ---------------------------------------------------------------------------
+
 
 def compute_ccot_loss(
     model: nn.Module,
@@ -141,17 +147,23 @@ def compute_ccot_loss(
     for ex in examples:
         # Build sequences
         correct_ids, correct_mask = _build_sequence_with_mask(
-            ex.question, ex.correct_cot, ex.correct_answer,
-            tokenizer_encode, config.max_seq_len,
+            ex.question,
+            ex.correct_cot,
+            ex.correct_answer,
+            tokenizer_encode,
+            config.max_seq_len,
         )
         wrong_ids, wrong_mask = _build_sequence_with_mask(
-            ex.question, ex.wrong_cot, ex.wrong_answer,
-            tokenizer_encode, config.max_seq_len,
+            ex.question,
+            ex.wrong_cot,
+            ex.wrong_answer,
+            tokenizer_encode,
+            config.max_seq_len,
         )
 
         # Policy log-probs
         log_pi_correct = compute_sequence_log_prob(model, correct_ids, correct_mask)  # (1,)
-        log_pi_wrong = compute_sequence_log_prob(model, wrong_ids, wrong_mask)         # (1,)
+        log_pi_wrong = compute_sequence_log_prob(model, wrong_ids, wrong_mask)  # (1,)
 
         # Reference log-probs (no gradient)
         with torch.no_grad():
@@ -159,9 +171,10 @@ def compute_ccot_loss(
             log_ref_wrong = compute_sequence_log_prob(ref_model, wrong_ids, wrong_mask)
 
         # DPO-style contrastive loss with margin
-        reward_margin = config.beta * (
-            (log_pi_correct - log_ref_correct) - (log_pi_wrong - log_ref_wrong)
-        ) - config.margin
+        reward_margin = (
+            config.beta * ((log_pi_correct - log_ref_correct) - (log_pi_wrong - log_ref_wrong))
+            - config.margin
+        )
 
         c_loss = -F.logsigmoid(reward_margin).mean()
         contrastive_losses.append(c_loss)
@@ -173,10 +186,10 @@ def compute_ccot_loss(
 
         # SFT loss on correct CoT tokens
         if config.use_sft_loss:
-            _, logits, _ = model(correct_ids)             # (1, L, vocab_size)
+            _, logits, _ = model(correct_ids)  # (1, L, vocab_size)
             shift_logits = logits[:, :-1, :].contiguous()  # (1, L-1, vocab_size)
-            shift_labels = correct_ids[:, 1:].contiguous() # (1, L-1)
-            shift_mask = correct_mask[:, 1:].float()       # (1, L-1)
+            shift_labels = correct_ids[:, 1:].contiguous()  # (1, L-1)
+            shift_mask = correct_mask[:, 1:].float()  # (1, L-1)
 
             token_losses = F.cross_entropy(
                 shift_logits.view(-1, shift_logits.size(-1)),
@@ -207,12 +220,18 @@ def compute_ccot_loss(
         margin_vals: list[float] = []
         for ex in examples:
             c_ids, c_mask = _build_sequence_with_mask(
-                ex.question, ex.correct_cot, ex.correct_answer,
-                tokenizer_encode, config.max_seq_len,
+                ex.question,
+                ex.correct_cot,
+                ex.correct_answer,
+                tokenizer_encode,
+                config.max_seq_len,
             )
             w_ids, w_mask = _build_sequence_with_mask(
-                ex.question, ex.wrong_cot, ex.wrong_answer,
-                tokenizer_encode, config.max_seq_len,
+                ex.question,
+                ex.wrong_cot,
+                ex.wrong_answer,
+                tokenizer_encode,
+                config.max_seq_len,
             )
             lpc = compute_sequence_log_prob(model, c_ids, c_mask)
             lpw = compute_sequence_log_prob(model, w_ids, w_mask)
@@ -232,6 +251,7 @@ def compute_ccot_loss(
 # ---------------------------------------------------------------------------
 # CoT Quality Scorer
 # ---------------------------------------------------------------------------
+
 
 def _generate_tokens(
     model: nn.Module,
@@ -298,10 +318,7 @@ class CoTQualityScorer:
         Returns:
             List of (score, cot, answer) sorted descending by score.
         """
-        scored = [
-            (self.score_cot(question, cot, answer), cot, answer)
-            for cot, answer in cots
-        ]
+        scored = [(self.score_cot(question, cot, answer), cot, answer) for cot, answer in cots]
         scored.sort(key=lambda x: x[0], reverse=True)
         return scored
 
@@ -359,6 +376,7 @@ class CoTQualityScorer:
 # ---------------------------------------------------------------------------
 # CCoT Trainer
 # ---------------------------------------------------------------------------
+
 
 class CCoTTrainer:
     """Trainer for Contrastive Chain-of-Thought alignment."""

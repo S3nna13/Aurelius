@@ -1,8 +1,10 @@
 """Tests for src/tools/edit_tool.py — at least 18 tests."""
+
 from __future__ import annotations
 
 import pytest
-from src.tools.edit_tool import EditTool, EditOperation, _MAX_CONTENT_LEN
+
+from src.tools.edit_tool import _MAX_CONTENT_LEN, EditOperation, EditTool
 
 
 @pytest.fixture
@@ -11,6 +13,7 @@ def tool():
 
 
 # ── apply_edit: basic replace ─────────────────────────────────────────────────
+
 
 def test_apply_edit_basic(tool):
     result = tool.apply_edit("hello world", "world", "Python")
@@ -28,6 +31,7 @@ def test_apply_edit_multiline(tool):
 
 # ── apply_edit: search not found ──────────────────────────────────────────────
 
+
 def test_apply_edit_not_found(tool):
     result = tool.apply_edit("hello world", "missing", "replacement")
     assert not result.success
@@ -35,6 +39,7 @@ def test_apply_edit_not_found(tool):
 
 
 # ── apply_edit: search found multiple times ───────────────────────────────────
+
 
 def test_apply_edit_ambiguous(tool):
     result = tool.apply_edit("foo foo foo", "foo", "bar")
@@ -50,6 +55,7 @@ def test_apply_edit_ambiguous_two(tool):
 
 # ── apply_edit: empty search ──────────────────────────────────────────────────
 
+
 def test_apply_edit_empty_search(tool):
     result = tool.apply_edit("some content", "", "replacement")
     assert not result.success
@@ -57,6 +63,7 @@ def test_apply_edit_empty_search(tool):
 
 
 # ── apply_edit: content over size limit ───────────────────────────────────────
+
 
 def test_apply_edit_content_too_large(tool):
     big = "x" * (_MAX_CONTENT_LEN + 1)
@@ -67,6 +74,7 @@ def test_apply_edit_content_too_large(tool):
 
 # ── apply_edit: search and replace are same string ───────────────────────────
 
+
 def test_apply_edit_same_search_replace(tool):
     result = tool.apply_edit("keep this text", "keep", "keep")
     assert result.success
@@ -74,6 +82,7 @@ def test_apply_edit_same_search_replace(tool):
 
 
 # ── apply_edit: replace with empty string (deletion) ─────────────────────────
+
 
 def test_apply_edit_delete(tool):
     result = tool.apply_edit("remove this part here", "remove this part ", "")
@@ -83,6 +92,7 @@ def test_apply_edit_delete(tool):
 
 # ── apply_edit: only one occurrence replaced (not all) ───────────────────────
 
+
 def test_apply_edit_only_once(tool):
     # "unique_token" appears exactly once — make sure only that occurrence goes
     result = tool.apply_edit("start unique_token end", "unique_token", "REPLACED")
@@ -91,6 +101,7 @@ def test_apply_edit_only_once(tool):
 
 
 # ── apply_edits: sequence of edits applied in order ───────────────────────────
+
 
 def test_apply_edits_sequence(tool):
     ops = [
@@ -114,11 +125,12 @@ def test_apply_edits_multiple_distinct(tool):
 
 # ── apply_edits: stops at first failure ───────────────────────────────────────
 
+
 def test_apply_edits_stops_on_failure(tool):
     ops = [
         EditOperation(search="exists", replace="found"),
-        EditOperation(search="missing", replace="nope"),   # should fail
-        EditOperation(search="found", replace="final"),    # should never run
+        EditOperation(search="missing", replace="nope"),  # should fail
+        EditOperation(search="found", replace="final"),  # should never run
     ]
     result = tool.apply_edits("exists here", ops)
     assert not result.success
@@ -126,6 +138,7 @@ def test_apply_edits_stops_on_failure(tool):
 
 
 # ── unified_diff ──────────────────────────────────────────────────────────────
+
 
 def test_unified_diff_changed(tool):
     orig = "line1\nline2\nline3\n"
@@ -149,6 +162,7 @@ def test_unified_diff_fromfile_tofile(tool):
 
 # ── Adversarial: binary-ish content (null bytes in search) ───────────────────
 
+
 def test_apply_edit_null_bytes(tool):
     content = "before\x00TARGET\x00after"
     result = tool.apply_edit(content, "\x00TARGET\x00", "_REPLACED_")
@@ -157,6 +171,7 @@ def test_apply_edit_null_bytes(tool):
 
 
 # ── Adversarial: very large search string (within limit) ─────────────────────
+
 
 def test_apply_edit_large_search_within_limit(tool):
     search = "A" * 10_000
@@ -167,6 +182,7 @@ def test_apply_edit_large_search_within_limit(tool):
 
 
 # ── apply_edits: empty ops list ───────────────────────────────────────────────
+
 
 def test_apply_edits_empty_ops(tool):
     result = tool.apply_edits("unchanged content", [])

@@ -7,16 +7,15 @@ Pure native PyTorch — no external dependencies beyond stdlib + torch.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Standard RoPE
 # ---------------------------------------------------------------------------
+
 
 class RotaryEmbedding(nn.Module):
     """Standard Rotary Position Embedding (RoPE).
@@ -38,13 +37,13 @@ class RotaryEmbedding(nn.Module):
 
         # Precompute theta_i = 1 / base^(2i/d) for i in 0..d//2-1
         # Shape: (head_dim // 2,)
-        half = head_dim // 2
+        head_dim // 2
         i = torch.arange(0, head_dim, 2, dtype=torch.float32)  # [0, 2, 4, ...]
         inv_freqs = 1.0 / (base ** (i / head_dim))
         self.register_buffer("inv_freqs", inv_freqs, persistent=False)
 
         self._cached_seq_len: int = -1
-        self._cached_freqs: Optional[Tensor] = None
+        self._cached_freqs: Tensor | None = None
 
     def _compute_freqs(self, seq_len: int) -> Tensor:
         """Compute complex exponential frequency table.
@@ -111,6 +110,7 @@ class RotaryEmbedding(nn.Module):
 # NTK-aware scaled RoPE
 # ---------------------------------------------------------------------------
 
+
 class NTKRoPE(RotaryEmbedding):
     """NTK-aware scaled RoPE for context-length extension.
 
@@ -142,6 +142,7 @@ class NTKRoPE(RotaryEmbedding):
 # ---------------------------------------------------------------------------
 # YaRN RoPE
 # ---------------------------------------------------------------------------
+
 
 class YaRNRoPE(nn.Module):
     """YaRN: Yet Another RoPE extensioN.
@@ -179,7 +180,7 @@ class YaRNRoPE(nn.Module):
         self.mscale = mscale
 
         self._cached_seq_len: int = -1
-        self._cached_freqs: Optional[Tensor] = None
+        self._cached_freqs: Tensor | None = None
 
     def _ramp_fn(self, wavelength: float) -> float:
         """Compute interpolation coefficient (ramp) for a given wavelength.
@@ -283,6 +284,7 @@ class YaRNRoPE(nn.Module):
 # Dynamic NTK RoPE
 # ---------------------------------------------------------------------------
 
+
 class DynamicNTKRoPE(nn.Module):
     """Dynamic NTK RoPE: adapts scale at runtime based on sequence length.
 
@@ -369,6 +371,7 @@ class DynamicNTKRoPE(nn.Module):
 # ---------------------------------------------------------------------------
 # RoPE Analyzer
 # ---------------------------------------------------------------------------
+
 
 class RoPEAnalyzer:
     """Analyze properties of RoPE and its variants.
@@ -477,8 +480,8 @@ class RoPEAnalyzer:
 
         # Query = identity at position seq_pos, zeros elsewhere
         # Shape: (1, 1, total_len, head_dim)
-        q = torch.zeros(1, 1, total_len, head_dim)
-        k = torch.zeros(1, 1, total_len, head_dim)
+        torch.zeros(1, 1, total_len, head_dim)
+        torch.zeros(1, 1, total_len, head_dim)
 
         # Fill the target position with identity basis vectors one column at a time
         rot_cols = []

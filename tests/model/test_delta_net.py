@@ -3,22 +3,20 @@
 Reference: arXiv:2406.06484.
 """
 
-import pytest
 import torch
 
-from src.model.delta_net import DeltaNetCell, DeltaNetLayer, DeltaNetBlock
-
+from src.model.delta_net import DeltaNetBlock, DeltaNetCell, DeltaNetLayer
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-D = 16    # d_head for cell tests
-B = 2     # batch size
-T = 12    # sequence length
-DM = 64   # d_model for layer/block tests
-NH = 4    # n_heads for layer/block tests
-DFF = 128 # d_ff for block tests
+D = 16  # d_head for cell tests
+B = 2  # batch size
+T = 12  # sequence length
+DM = 64  # d_model for layer/block tests
+NH = 4  # n_heads for layer/block tests
+DFF = 128  # d_ff for block tests
 
 
 def make_cell() -> DeltaNetCell:
@@ -86,15 +84,16 @@ def test_cell_zero_state_output_zero():
     cell = make_cell()
     # Craft k orthogonal to q
     q = torch.zeros(1, 1, D)
-    q[..., 0] = 1.0           # q = e_0
+    q[..., 0] = 1.0  # q = e_0
     k = torch.zeros(1, 1, D)
-    k[..., 1] = 1.0           # k = e_1  (orthogonal to q)
+    k[..., 1] = 1.0  # k = e_1  (orthogonal to q)
     v = torch.randn(1, 1, D)
     beta = torch.sigmoid(torch.randn(1, 1))
     W = zero_state(1, 1, D)
     o, _ = cell.step(q, k, v, beta, W)
-    assert torch.allclose(o, torch.zeros_like(o), atol=1e-6), \
+    assert torch.allclose(o, torch.zeros_like(o), atol=1e-6), (
         "With W=0 and k orthogonal to q, output should be zero"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -126,14 +125,15 @@ def test_layer_causal():
 
     torch.manual_seed(0)
     x_short = torch.randn(1, T, DM)
-    x_long  = torch.cat([x_short, torch.randn(1, 5, DM)], dim=1)
+    x_long = torch.cat([x_short, torch.randn(1, 5, DM)], dim=1)
 
     with torch.no_grad():
-        out_short = layer(x_short)          # (1, T, DM)
-        out_long  = layer(x_long)           # (1, T+5, DM)
+        out_short = layer(x_short)  # (1, T, DM)
+        out_long = layer(x_long)  # (1, T+5, DM)
 
-    assert torch.allclose(out_short, out_long[:, :T, :], atol=1e-5), \
+    assert torch.allclose(out_short, out_long[:, :T, :], atol=1e-5), (
         "Layer is not causal: earlier outputs change when future tokens are appended"
+    )
 
 
 def test_layer_gradient_flow():
@@ -188,8 +188,7 @@ def test_block_residual_nontrivial():
     block = make_block()
     x = torch.randn(B, T, DM)
     out = block(x)
-    assert not torch.allclose(out, x), \
-        "Block output equals input — transformation appears trivial"
+    assert not torch.allclose(out, x), "Block output equals input — transformation appears trivial"
 
 
 def test_block_gradient_flow():

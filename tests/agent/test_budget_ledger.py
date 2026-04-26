@@ -156,9 +156,7 @@ def test_charge_rejects_unknown_resource():
 
 
 def test_charge_below_soft_returns_ok():
-    ledger = BudgetLedger(
-        limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),)
-    )
+    ledger = BudgetLedger(limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),))
     assert ledger.charge("tokens", 50.0) == BudgetSeverity.OK
 
 
@@ -168,9 +166,7 @@ def test_charge_below_soft_returns_ok():
 
 
 def test_charge_above_soft_returns_soft():
-    ledger = BudgetLedger(
-        limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),)
-    )
+    ledger = BudgetLedger(limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),))
     sev = ledger.charge("tokens", 85.0)
     assert sev == BudgetSeverity.SOFT
 
@@ -181,9 +177,7 @@ def test_charge_above_soft_returns_soft():
 
 
 def test_charge_exactly_at_hard_is_soft():
-    ledger = BudgetLedger(
-        limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),)
-    )
+    ledger = BudgetLedger(limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),))
     sev = ledger.charge("tokens", 100.0)
     assert sev == BudgetSeverity.SOFT
     assert ledger.spent("tokens") == 100.0
@@ -195,9 +189,7 @@ def test_charge_exactly_at_hard_is_soft():
 
 
 def test_charge_over_hard_raises_and_leaves_state_unchanged():
-    ledger = BudgetLedger(
-        limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),)
-    )
+    ledger = BudgetLedger(limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),))
     assert ledger.charge("tokens", 50.0) == BudgetSeverity.OK
     with pytest.raises(BudgetExhaustedError):
         ledger.charge("tokens", 60.0)  # 50 + 60 = 110 > 100
@@ -211,9 +203,7 @@ def test_charge_over_hard_raises_and_leaves_state_unchanged():
 
 
 def test_charge_at_soft_boundary_is_ok_strict_gt():
-    ledger = BudgetLedger(
-        limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),)
-    )
+    ledger = BudgetLedger(limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),))
     # Exactly at 80 (the soft threshold) — strict-greater-than semantics
     # mean severity is still OK.
     sev = ledger.charge("tokens", 80.0)
@@ -526,9 +516,7 @@ def test_remaining_unknown_resource_raises():
 
 
 def test_charge_progression_ok_soft_then_raise():
-    ledger = BudgetLedger(
-        limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),)
-    )
+    ledger = BudgetLedger(limits=(ResourceLimit("tokens", 100.0, soft_fraction=0.8),))
     assert ledger.charge("tokens", 40.0) == BudgetSeverity.OK
     assert ledger.charge("tokens", 30.0) == BudgetSeverity.OK  # 70, still OK
     assert ledger.charge("tokens", 20.0) == BudgetSeverity.SOFT  # 90, over 80

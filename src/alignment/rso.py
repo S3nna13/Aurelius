@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -36,6 +35,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # RSOSampler
 # ---------------------------------------------------------------------------
+
 
 class RSOSampler:
     """Rejection-sampling wrapper (Algorithm 1 of Liu et al., 2023).
@@ -51,7 +51,7 @@ class RSOSampler:
     the accepted responses by R to construct (y_w, y_l) pairs.
     """
 
-    def __init__(self, seed: Optional[int] = None) -> None:
+    def __init__(self, seed: int | None = None) -> None:
         self._rng = torch.Generator()
         if seed is not None:
             self._rng.manual_seed(seed)
@@ -115,15 +115,13 @@ class RSOSampler:
         accept_probs = torch.exp(r - r_max)  # shape (N,)
 
         # Draw uniform samples and apply accept/reject
-        u = torch.rand(N, generator=self._rng, dtype=torch.float32,
-                       device=reward_scores.device)
+        u = torch.rand(N, generator=self._rng, dtype=torch.float32, device=reward_scores.device)
         accepted_mask = u < accept_probs  # shape (N,)
         accepted_indices = accepted_mask.nonzero(as_tuple=False).squeeze(1)
 
         if accepted_indices.numel() == 0:
             # Guarantee at least the highest-reward sample is returned
-            accepted_indices = torch.tensor([int(r.argmax())],
-                                            device=reward_scores.device)
+            accepted_indices = torch.tensor([int(r.argmax())], device=reward_scores.device)
 
         # Sort by descending reward and take top-n_samples
         order = r[accepted_indices].argsort(descending=True)
@@ -135,6 +133,7 @@ class RSOSampler:
 # ---------------------------------------------------------------------------
 # RSOLoss
 # ---------------------------------------------------------------------------
+
 
 class RSOLoss:
     """RSO loss function (Sections 3 and 4, Liu et al., 2023).
@@ -181,7 +180,7 @@ class RSOLoss:
         ref_log_probs_l: torch.Tensor,
         reward_w: torch.Tensor,
         reward_l: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute the RSO loss for a batch of preference pairs.
 
         Paper variable mapping:
@@ -219,9 +218,7 @@ class RSOLoss:
         }
         for name, t in shapes.items():
             if t.ndim != 1 or t.shape[0] != B:
-                raise ValueError(
-                    f"{name} must have shape ({B},); got {t.shape}"
-                )
+                raise ValueError(f"{name} must have shape ({B},); got {t.shape}")
 
         # --- DPO margin (beta * diff, paper eq. directly) ------------------
         # diff = (log pi(y_w) - log pi_ref(y_w)) - (log pi(y_l) - log pi_ref(y_l))
@@ -254,7 +251,7 @@ class RSOLoss:
             # accuracy: fraction where the model correctly prefers y_w over y_l
             accuracy = (margin > 0).float().mean()
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "reward_margin": reward_margin.item(),
             "importance_weight_mean": iw_mean.item(),
             "accuracy": accuracy.item(),
@@ -267,18 +264,20 @@ class RSOLoss:
 # RSOConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RSOConfig:
     """Configuration for RSOTrainer."""
 
     beta: float = 0.1
     use_importance_weights: bool = True
-    seed: Optional[int] = 42
+    seed: int | None = 42
 
 
 # ---------------------------------------------------------------------------
 # RSOTrainer
 # ---------------------------------------------------------------------------
+
 
 class RSOTrainer:
     """Thin training wrapper around RSOLoss.
@@ -308,7 +307,7 @@ class RSOTrainer:
         self,
         model: nn.Module,
         ref_model: nn.Module,
-        config: Optional[RSOConfig] = None,
+        config: RSOConfig | None = None,
     ) -> None:
         self.model = model
         self.ref_model = ref_model
@@ -330,7 +329,7 @@ class RSOTrainer:
 
     def compute_loss(
         self,
-        batch: Dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
     ) -> torch.Tensor:
         """Compute the RSO loss for a pre-built batch.
 
@@ -347,8 +346,7 @@ class RSOTrainer:
         missing = [k for k in self._REQUIRED_KEYS if k not in batch]
         if missing:
             raise KeyError(
-                f"Batch is missing required keys: {missing!r}. "
-                f"Required: {self._REQUIRED_KEYS}"
+                f"Batch is missing required keys: {missing!r}. Required: {self._REQUIRED_KEYS}"
             )
 
         loss, _ = self._loss_fn(

@@ -1,18 +1,21 @@
-"""Speculative decoding v2: full rejection sampling with draft model and theoretical acceptance rate tracking."""
+"""Speculative decoding v2: full rejection sampling with draft model and theoretical acceptance rate tracking."""  # noqa: E501
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
 
 
 @dataclass
 class SpeculativeConfig:
     """Configuration for speculative decoding v2."""
-    n_draft_tokens: int = 4       # tokens to draft per step
+
+    n_draft_tokens: int = 4  # tokens to draft per step
     max_new_tokens: int = 64
-    temperature: float = 1.0      # target model temperature
+    temperature: float = 1.0  # target model temperature
     draft_temperature: float = 1.0
     track_acceptance: bool = True  # track acceptance statistics
 
@@ -109,13 +112,19 @@ def speculative_decode_step(
         draft_tokens.append(token_id)
         draft_probs.append(probs)
         draft_input = torch.cat(
-            [draft_input, torch.tensor([[token_id]], dtype=prompt_ids.dtype, device=prompt_ids.device)],
+            [
+                draft_input,
+                torch.tensor([[token_id]], dtype=prompt_ids.dtype, device=prompt_ids.device),
+            ],
             dim=1,
         )
 
     # Step 2: Target model verifies all n_draft tokens in one forward pass
     verify_input = torch.cat(
-        [prompt_ids, torch.tensor([draft_tokens], dtype=prompt_ids.dtype, device=prompt_ids.device)],
+        [
+            prompt_ids,
+            torch.tensor([draft_tokens], dtype=prompt_ids.dtype, device=prompt_ids.device),
+        ],
         dim=1,
     )
     target_logits = _get_logits(target_model, verify_input)  # (prompt_len + n_draft, vocab)
@@ -288,7 +297,7 @@ def estimate_draft_quality(
 
     for _ in range(n_eval):
         target_logits = _get_logits(target_model, current_ids)[-1]  # (vocab,)
-        draft_logits = _get_logits(draft_model, current_ids)[-1]    # (vocab,)
+        draft_logits = _get_logits(draft_model, current_ids)[-1]  # (vocab,)
 
         target_probs = F.softmax(target_logits, dim=-1)
         draft_probs = F.softmax(draft_logits, dim=-1)
@@ -305,7 +314,10 @@ def estimate_draft_quality(
 
         # Advance context with target's greedy token
         current_ids = torch.cat(
-            [current_ids, torch.tensor([[target_token]], dtype=current_ids.dtype, device=current_ids.device)],
+            [
+                current_ids,
+                torch.tensor([[target_token]], dtype=current_ids.dtype, device=current_ids.device),
+            ],
             dim=1,
         )
 

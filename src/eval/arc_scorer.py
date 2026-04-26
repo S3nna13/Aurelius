@@ -9,14 +9,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass
 class ARCQuestion:
     question_id: str
     question: str
-    choices: Dict[str, str]
+    choices: dict[str, str]
     correct_key: str
     difficulty: str = "Easy"
 
@@ -28,7 +27,7 @@ class ARCResult:
     is_correct: bool
 
 
-_LETTER_PATTERNS: List[re.Pattern[str]] = [
+_LETTER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\(\s*([A-Da-d])\s*\)"),
     re.compile(r"\b([A-Da-d])\s*\)"),
     re.compile(r"^\s*([A-Da-d])\b", re.MULTILINE),
@@ -39,7 +38,7 @@ class ARCScorer:
     def __init__(self) -> None:
         pass
 
-    def parse_answer(self, model_output: str, choices: Dict[str, str]) -> str:
+    def parse_answer(self, model_output: str, choices: dict[str, str]) -> str:
         for pat in _LETTER_PATTERNS:
             m = pat.search(model_output)
             if m:
@@ -62,9 +61,9 @@ class ARCScorer:
 
     def score_batch(
         self,
-        questions: List[ARCQuestion],
-        answers: List[str],
-    ) -> Dict[str, object]:
+        questions: list[ARCQuestion],
+        answers: list[str],
+    ) -> dict[str, object]:
         results = [self.score_answer(q, a) for q, a in zip(questions, answers)]
         n_total = len(results)
         n_correct = sum(1 for r in results if r.is_correct)
@@ -75,11 +74,13 @@ class ARCScorer:
 
         easy_accuracy = (
             sum(1 for r in easy_results if r.is_correct) / len(easy_results)
-            if easy_results else 0.0
+            if easy_results
+            else 0.0
         )
         challenge_accuracy = (
             sum(1 for r in challenge_results if r.is_correct) / len(challenge_results)
-            if challenge_results else 0.0
+            if challenge_results
+            else 0.0
         )
 
         return {
@@ -90,7 +91,7 @@ class ARCScorer:
             "n_total": n_total,
         }
 
-    def load_sample_questions(self) -> List[ARCQuestion]:
+    def load_sample_questions(self) -> list[ARCQuestion]:
         return [
             ARCQuestion(
                 question_id="arc_0",
@@ -102,7 +103,12 @@ class ARCScorer:
             ARCQuestion(
                 question_id="arc_1",
                 question="What is the primary function of the human heart?",
-                choices={"A": "Filter blood", "B": "Pump blood", "C": "Produce blood cells", "D": "Digest nutrients"},
+                choices={
+                    "A": "Filter blood",
+                    "B": "Pump blood",
+                    "C": "Produce blood cells",
+                    "D": "Digest nutrients",
+                },
                 correct_key="B",
                 difficulty="Easy",
             ),
@@ -115,22 +121,32 @@ class ARCScorer:
             ),
             ARCQuestion(
                 question_id="arc_3",
-                question="A student notices that a metal rod expands when heated. This best demonstrates which property of matter?",
-                choices={"A": "Thermal conductivity", "B": "Thermal expansion", "C": "Heat capacity", "D": "Latent heat"},
+                question="A student notices that a metal rod expands when heated. This best demonstrates which property of matter?",  # noqa: E501
+                choices={
+                    "A": "Thermal conductivity",
+                    "B": "Thermal expansion",
+                    "C": "Heat capacity",
+                    "D": "Latent heat",
+                },
                 correct_key="B",
                 difficulty="Challenge",
             ),
             ARCQuestion(
                 question_id="arc_4",
                 question="Which factor most directly affects the rate of a chemical reaction?",
-                choices={"A": "Color of the reactants", "B": "Mass of the container", "C": "Temperature of the reactants", "D": "Shape of the reaction vessel"},
+                choices={
+                    "A": "Color of the reactants",
+                    "B": "Mass of the container",
+                    "C": "Temperature of the reactants",
+                    "D": "Shape of the reaction vessel",
+                },
                 correct_key="C",
                 difficulty="Challenge",
             ),
         ]
 
 
-ARC_REGISTRY: Dict[str, type] = {"default": ARCScorer}
+ARC_REGISTRY: dict[str, type] = {"default": ARCScorer}
 
 __all__ = [
     "ARCQuestion",

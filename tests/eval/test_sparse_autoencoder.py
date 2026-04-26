@@ -1,16 +1,15 @@
-"""Tests for sparse_autoencoder.py — 12 tests covering SAEConfig, SparseAutoencoder, sae_loss, SAETrainer, and utility functions."""
+"""Tests for sparse_autoencoder.py — 12 tests covering SAEConfig, SparseAutoencoder, sae_loss, SAETrainer, and utility functions."""  # noqa: E501
 
 import pytest
 import torch
 
 from src.eval.sparse_autoencoder import (
     SAEConfig,
-    SparseAutoencoder,
-    sae_loss,
     SAETrainer,
-    extract_features_from_model,
-    find_top_activating_examples,
+    SparseAutoencoder,
     compute_feature_statistics,
+    find_top_activating_examples,
+    sae_loss,
 )
 
 # ---------------------------------------------------------------------------

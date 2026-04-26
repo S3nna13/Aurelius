@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import ClassVar
 
 
-class JailbreakSignal(str, Enum):
+class JailbreakSignal(StrEnum):
     ROLE_PLAY = "role_play"
     IGNORE_INSTRUCTIONS = "ignore_instructions"
     HYPOTHETICAL = "hypothetical"

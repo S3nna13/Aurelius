@@ -10,13 +10,10 @@ Pure stdlib + torch only — no external ML dependencies.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # AttentionSinkDetector
@@ -35,7 +32,7 @@ class AttentionSinkDetector:
         self.n_sink_candidates = n_sink_candidates
 
     # ------------------------------------------------------------------
-    def detect(self, attn_weights: Tensor) -> Tuple[Tensor, Tensor]:
+    def detect(self, attn_weights: Tensor) -> tuple[Tensor, Tensor]:
         """Detect sink tokens from a full attention weight matrix.
 
         Args:
@@ -48,9 +45,7 @@ class AttentionSinkDetector:
             sink_scores: (B, T) float — mean received attention per position.
         """
         if attn_weights.dim() != 4:
-            raise ValueError(
-                f"attn_weights must be 4-D (B, H, T, T), got {attn_weights.dim()}-D"
-            )
+            raise ValueError(f"attn_weights must be 4-D (B, H, T, T), got {attn_weights.dim()}-D")
         B, H, T_q, T_k = attn_weights.shape
         # Average over heads and query positions → (B, T_k)
         sink_scores: Tensor = attn_weights.mean(dim=1).mean(dim=1)  # (B, T_k)
@@ -100,17 +95,17 @@ class StreamingKVCache:
         self.window_size = window_size
 
         # Stored as (B, H, T, D_head) or None when empty
-        self._sink_keys:   Optional[Tensor] = None
-        self._sink_values: Optional[Tensor] = None
-        self._win_keys:    Optional[Tensor] = None
-        self._win_values:  Optional[Tensor] = None
+        self._sink_keys: Tensor | None = None
+        self._sink_values: Tensor | None = None
+        self._win_keys: Tensor | None = None
+        self._win_values: Tensor | None = None
 
     # ------------------------------------------------------------------
     def update(
         self,
         new_keys: Tensor,
         new_values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Incorporate new KV pairs and return the full retained cache.
 
         Args:
@@ -130,29 +125,29 @@ class StreamingKVCache:
             # We have no cache yet; new tokens fill sinks first.
             T_new = new_keys.size(2)
             sink_len = min(self.n_sinks, T_new)
-            self._sink_keys   = new_keys[:, :, :sink_len, :]
+            self._sink_keys = new_keys[:, :, :sink_len, :]
             self._sink_values = new_values[:, :, :sink_len, :]
 
-            remaining_keys   = new_keys[:, :, sink_len:, :]
+            remaining_keys = new_keys[:, :, sink_len:, :]
             remaining_values = new_values[:, :, sink_len:, :]
 
             if remaining_keys.size(2) > 0:
-                self._win_keys   = remaining_keys
+                self._win_keys = remaining_keys
                 self._win_values = remaining_values
             # else: window stays None (empty)
         else:
             # Append new tokens to the sliding window
             if self._win_keys is None:
-                self._win_keys   = new_keys
+                self._win_keys = new_keys
                 self._win_values = new_values
             else:
-                self._win_keys   = torch.cat([self._win_keys,   new_keys],   dim=2)
+                self._win_keys = torch.cat([self._win_keys, new_keys], dim=2)
                 self._win_values = torch.cat([self._win_values, new_values], dim=2)
 
         # --- 2. Truncate window to last window_size tokens -----------------
         if self._win_keys is not None and self._win_keys.size(2) > self.window_size:
-            self._win_keys   = self._win_keys[:, :, -self.window_size:, :]
-            self._win_values = self._win_values[:, :, -self.window_size:, :]
+            self._win_keys = self._win_keys[:, :, -self.window_size :, :]
+            self._win_values = self._win_values[:, :, -self.window_size :, :]
 
         # --- 3. Assemble output --------------------------------------------
         parts_k = [self._sink_keys]
@@ -161,7 +156,7 @@ class StreamingKVCache:
             parts_k.append(self._win_keys)
             parts_v.append(self._win_values)
 
-        kept_keys   = torch.cat(parts_k, dim=2)
+        kept_keys = torch.cat(parts_k, dim=2)
         kept_values = torch.cat(parts_v, dim=2)
         return kept_keys, kept_values
 
@@ -178,10 +173,10 @@ class StreamingKVCache:
     # ------------------------------------------------------------------
     def reset(self) -> None:
         """Clear all cached KV pairs."""
-        self._sink_keys   = None
+        self._sink_keys = None
         self._sink_values = None
-        self._win_keys    = None
-        self._win_values  = None
+        self._win_keys = None
+        self._win_values = None
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +251,7 @@ class SinkAwareAttention(nn.Module):
         """
         B, T, _ = x.shape
 
-        q = self._split_heads(self.q_proj(x))   # (B, H, T, D_head)
+        q = self._split_heads(self.q_proj(x))  # (B, H, T, D_head)
         k = self._split_heads(self.k_proj(x))
         v = self._split_heads(self.v_proj(x))
 
@@ -264,7 +259,7 @@ class SinkAwareAttention(nn.Module):
         ctx_k, ctx_v = self.kv_cache.update(k, v)  # (B, H, T_ctx, D_head)
 
         # Scaled dot-product attention
-        scale = self.d_head ** -0.5
+        scale = self.d_head**-0.5
         attn_logits = torch.matmul(q, ctx_k.transpose(-2, -1)) * scale  # (B,H,T,T_ctx)
 
         # Causal mask over the context window
@@ -281,7 +276,7 @@ class SinkAwareAttention(nn.Module):
             attn_weights = torch.where(nan_rows, torch.zeros_like(attn_weights), attn_weights)
 
         out = torch.matmul(attn_weights, ctx_v)  # (B, H, T, D_head)
-        out = self._merge_heads(out)              # (B, T, D)
+        out = self._merge_heads(out)  # (B, T, D)
         return self.out_proj(out)
 
 
@@ -434,7 +429,7 @@ class SinkAnalyzer:
         return float(max(0.0, min(1.0, ratio)))
 
     # ------------------------------------------------------------------
-    def sink_stability(self, attn_weights_list: List[Tensor]) -> float:
+    def sink_stability(self, attn_weights_list: list[Tensor]) -> float:
         """Standard deviation of sink_ratio across a list of attention weight
         tensors (e.g. one per layer).
 
@@ -458,7 +453,7 @@ class SinkAnalyzer:
 
         mean_r = sum(ratios) / len(ratios)
         variance = sum((r - mean_r) ** 2 for r in ratios) / len(ratios)
-        return float(variance ** 0.5)
+        return float(variance**0.5)
 
     # ------------------------------------------------------------------
     def window_coverage(

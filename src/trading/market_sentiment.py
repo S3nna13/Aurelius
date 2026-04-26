@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
 
 
 class SentimentLabel(Enum):
@@ -25,8 +25,34 @@ class SentimentResult:
     source: SentimentSource
 
 
-_POSITIVE_WORDS = {"great", "good", "excellent", "positive", "up", "beat", "growth", "profit", "gain", "bullish", "strong", "outperform"}
-_NEGATIVE_WORDS = {"terrible", "bad", "poor", "negative", "down", "loss", "decline", "bankrupt", "bearish", "weak", "underperform", "drop"}
+_POSITIVE_WORDS = {
+    "great",
+    "good",
+    "excellent",
+    "positive",
+    "up",
+    "beat",
+    "growth",
+    "profit",
+    "gain",
+    "bullish",
+    "strong",
+    "outperform",
+}
+_NEGATIVE_WORDS = {
+    "terrible",
+    "bad",
+    "poor",
+    "negative",
+    "down",
+    "loss",
+    "decline",
+    "bankrupt",
+    "bearish",
+    "weak",
+    "underperform",
+    "drop",
+}
 
 
 def analyze_sentiment(text: str, source: SentimentSource) -> SentimentResult:

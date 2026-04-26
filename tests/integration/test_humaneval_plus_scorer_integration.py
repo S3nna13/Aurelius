@@ -22,12 +22,8 @@ from src.eval.humaneval_plus_scorer import (  # noqa: E402
 def test_metric_registry_has_humaneval_plus():
     assert "humaneval_plus" in eval_pkg.METRIC_REGISTRY
     assert "humaneval_plus" in eval_pkg.BENCHMARK_REGISTRY
-    assert eval_pkg.METRIC_REGISTRY["humaneval_plus"] is (
-        eval_pkg.humaneval_plus_score_problems
-    )
-    assert eval_pkg.BENCHMARK_REGISTRY["humaneval_plus"] is (
-        eval_pkg.HumanEvalPlusProblem
-    )
+    assert eval_pkg.METRIC_REGISTRY["humaneval_plus"] is (eval_pkg.humaneval_plus_score_problems)
+    assert eval_pkg.BENCHMARK_REGISTRY["humaneval_plus"] is (eval_pkg.HumanEvalPlusProblem)
 
 
 def test_prior_registry_entries_still_present():

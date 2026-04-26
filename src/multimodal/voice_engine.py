@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import io
-import json
 import os
 import subprocess
-import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 
 class VoiceEngineState(Enum):
@@ -63,7 +60,7 @@ class VoiceEngine:
         voices: list[str] = ["default"]
         try:
             result = subprocess.run(
-                ["say", "-v", "?"],
+                ["say", "-v", "?"],  # noqa: S607
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -72,7 +69,7 @@ class VoiceEngine:
                 parts = line.split()
                 if parts:
                     voices.append(parts[0].rstrip())
-        except Exception:
+        except Exception:  # noqa: S110
             pass
         return voices
 
@@ -92,8 +89,8 @@ class VoiceEngine:
 
     def _synthesize_internal(self, text: str, voice: str) -> bytes:
         if os.name == "posix":
-            result = subprocess.run(
-                ["say", "-v", voice if voice != "default" else "Samantha", text],
+            result = subprocess.run(  # noqa: S603
+                ["say", "-v", voice if voice != "default" else "Samantha", text],  # noqa: S607
                 capture_output=True,
                 timeout=30,
             )
@@ -109,7 +106,9 @@ class VoiceEngine:
         try:
             with sr.Microphone() as source:
                 recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=self.config.phrase_limit_s)
+                audio = recognizer.listen(
+                    source, timeout=timeout, phrase_time_limit=self.config.phrase_limit_s
+                )
                 return audio.get_wav_data()
         except Exception:
             return b""

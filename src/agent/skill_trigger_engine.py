@@ -6,7 +6,6 @@ executes matched skills via the skill executor.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -68,9 +67,7 @@ class SkillTriggerEngine:
         seen: dict[str, MatchedSkill] = {}
 
         # Query catalog if available
-        if self.skill_catalog is not None and hasattr(
-            self.skill_catalog, "find_by_trigger"
-        ):
+        if self.skill_catalog is not None and hasattr(self.skill_catalog, "find_by_trigger"):
             try:
                 catalog_matches = self.skill_catalog.find_by_trigger(text)
                 for skill in catalog_matches:

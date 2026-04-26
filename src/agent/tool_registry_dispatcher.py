@@ -21,8 +21,9 @@ import concurrent.futures
 import copy
 import time
 import traceback
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 __all__ = [
     "ToolSpec",
@@ -58,7 +59,7 @@ class ToolSpec:
     fn: Callable[..., Any]
     schema: dict
     description: str = ""
-    rate_limit_per_minute: Optional[int] = None
+    rate_limit_per_minute: int | None = None
     per_call_timeout: float = 5.0
     max_result_chars: int = 16384
 
@@ -70,7 +71,7 @@ class ToolInvocationResult:
     name: str
     ok: bool
     value: Any
-    error: Optional[str]
+    error: str | None
     duration_ms: float
     truncated: bool
 
@@ -81,7 +82,7 @@ class SessionBudget:
 
     total_calls: int = 32
     total_wall_seconds: float = 60.0
-    per_tool_calls: Optional[dict[str, int]] = None
+    per_tool_calls: dict[str, int] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -105,9 +106,7 @@ class _TokenBucket:
         now = self._clock()
         elapsed = now - self._last
         if elapsed > 0:
-            self._tokens = min(
-                self._capacity, self._tokens + elapsed * self._refill_rate
-            )
+            self._tokens = min(self._capacity, self._tokens + elapsed * self._refill_rate)
             self._last = now
 
     def try_consume(self) -> bool:
@@ -123,7 +122,7 @@ class _TokenBucket:
 # ---------------------------------------------------------------------------
 
 
-def _validate_schema(value: Any, schema: dict, depth: int = 0) -> Optional[str]:
+def _validate_schema(value: Any, schema: dict, depth: int = 0) -> str | None:
     """Return an error message or ``None`` if value conforms to schema."""
 
     if depth > _MAX_SCHEMA_DEPTH:
@@ -185,7 +184,7 @@ class _AuditEntry:
     name: str
     arguments: dict
     ok: bool
-    error: Optional[str]
+    error: str | None
     duration_ms: float
     truncated: bool
     timestamp: float
@@ -212,8 +211,8 @@ class ToolRegistryDispatcher:
 
     def __init__(
         self,
-        budget: Optional[SessionBudget] = None,
-        redactor: Optional[Callable[[str], str]] = None,
+        budget: SessionBudget | None = None,
+        redactor: Callable[[str], str] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ):
         self._specs: dict[str, ToolSpec] = {}
@@ -223,7 +222,7 @@ class ToolRegistryDispatcher:
         self._clock = clock
         self._call_count = 0
         self._per_tool_count: dict[str, int] = {}
-        self._wall_start: Optional[float] = None
+        self._wall_start: float | None = None
         self._rate_buckets: dict[str, _TokenBucket] = {}
         self._audit: list[_AuditEntry] = []
         self._executor = concurrent.futures.ThreadPoolExecutor(
@@ -289,9 +288,7 @@ class ToolRegistryDispatcher:
 
         spec = self._specs.get(name)
         if spec is None:
-            return self._finish(
-                name, arguments, None, "unknown_tool", start, truncated=False
-            )
+            return self._finish(name, arguments, None, "unknown_tool", start, truncated=False)
 
         # Budget: total calls.
         if self._call_count >= self._budget.total_calls:
@@ -328,9 +325,7 @@ class ToolRegistryDispatcher:
 
         # Argument validation.
         if not isinstance(arguments, dict):
-            return self._finish(
-                name, arguments, spec, "invalid_arguments:not_a_dict", start, False
-            )
+            return self._finish(name, arguments, spec, "invalid_arguments:not_a_dict", start, False)
         schema_err = _validate_schema(arguments, spec.schema)
         if schema_err is not None:
             return self._finish(
@@ -345,9 +340,7 @@ class ToolRegistryDispatcher:
         # Rate limit check (consumes a token).
         bucket = self._rate_buckets.get(name)
         if bucket is not None and not bucket.try_consume():
-            return self._finish(
-                name, arguments, spec, "rate_limited", start, truncated=False
-            )
+            return self._finish(name, arguments, spec, "rate_limited", start, truncated=False)
 
         # Count this call against the budget regardless of outcome.
         self._call_count += 1
@@ -378,9 +371,7 @@ class ToolRegistryDispatcher:
             )
 
         if isinstance(value, _ToolFailure):
-            return self._finish(
-                name, arguments, spec, value.message, start, truncated=False
-            )
+            return self._finish(name, arguments, spec, value.message, start, truncated=False)
 
         # Truncation.
         truncated = False
@@ -388,9 +379,7 @@ class ToolRegistryDispatcher:
             value = value[: spec.max_result_chars]
             truncated = True
 
-        return self._finish(
-            name, arguments, spec, None, start, truncated=truncated, value=value
-        )
+        return self._finish(name, arguments, spec, None, start, truncated=truncated, value=value)
 
     # -- internals ----------------------------------------------------------
 
@@ -409,8 +398,8 @@ class ToolRegistryDispatcher:
         self,
         name: str,
         arguments: dict,
-        spec: Optional[ToolSpec],
-        error: Optional[str],
+        spec: ToolSpec | None,
+        error: str | None,
         start: float,
         truncated: bool,
         value: Any = None,
@@ -434,9 +423,11 @@ class ToolRegistryDispatcher:
         # Audit every attempt (pre-redaction arguments are deep-copied to
         # freeze the snapshot, then redacted lazily for readability).
         try:
-            audit_args = copy.deepcopy(arguments) if isinstance(arguments, dict) else {
-                "_raw": repr(arguments)
-            }
+            audit_args = (
+                copy.deepcopy(arguments)
+                if isinstance(arguments, dict)
+                else {"_raw": repr(arguments)}
+            )
         except Exception:
             audit_args = {"_raw": "<uncopyable>"}
         if self._redactor is not None:
@@ -465,7 +456,7 @@ class ToolRegistryDispatcher:
     def __del__(self):  # pragma: no cover - best-effort cleanup
         try:
             self._executor.shutdown(wait=False, cancel_futures=True)
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
 

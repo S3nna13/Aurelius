@@ -1,9 +1,11 @@
 """Tool execution timeout wrapper with cancellation support."""
+
 from __future__ import annotations
 
 import signal
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 
 class TimeoutError(RuntimeError):

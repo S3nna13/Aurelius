@@ -14,22 +14,22 @@ New features vs. the basic mod.py:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .config import AureliusConfig
 from .attention import GroupedQueryAttention, precompute_rope_frequencies
+from .config import AureliusConfig
 from .ffn import SwiGLUFFN
 from .rms_norm import RMSNorm
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MoDv2Config:
@@ -44,7 +44,7 @@ class MoDv2Config:
     """
 
     capacity_factor: float = 0.5
-    routing_type: str = "top_k"          # "top_k" | "top_p" | "threshold"
+    routing_type: str = "top_k"  # "top_k" | "top_p" | "threshold"
     router_aux_loss_coeff: float = 0.01
     router_z_loss_coeff: float = 0.001
     use_aux_loss: bool = True
@@ -53,6 +53,7 @@ class MoDv2Config:
 # ---------------------------------------------------------------------------
 # Router
 # ---------------------------------------------------------------------------
+
 
 class RouterV2(nn.Module):
     """Improved MoD router with auxiliary losses.
@@ -87,9 +88,7 @@ class RouterV2(nn.Module):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _select_top_k(
-        self, logits: torch.Tensor, capacity: int
-    ) -> torch.Tensor:
+    def _select_top_k(self, logits: torch.Tensor, capacity: int) -> torch.Tensor:
         """Return boolean mask (B, T) with top-capacity tokens selected."""
         B, T = logits.shape
         # topk returns (values, indices)
@@ -98,9 +97,7 @@ class RouterV2(nn.Module):
         mask.scatter_(1, top_idx, True)
         return mask
 
-    def _select_top_p(
-        self, logits: torch.Tensor, capacity: int
-    ) -> torch.Tensor:
+    def _select_top_p(self, logits: torch.Tensor, capacity: int) -> torch.Tensor:
         """Return boolean mask selecting tokens via cumulative softmax (top-p).
 
         Selects the *smallest* set of tokens whose cumulative probability
@@ -146,9 +143,7 @@ class RouterV2(nn.Module):
     # Forward
     # ------------------------------------------------------------------
 
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute routing decisions and auxiliary losses.
 
         Args:
@@ -178,8 +173,7 @@ class RouterV2(nn.Module):
             selected_mask = self._select_threshold(logits)
         else:
             raise ValueError(
-                f"Unknown routing_type={routing_type!r}. "
-                "Expected 'top_k', 'top_p', or 'threshold'."
+                f"Unknown routing_type={routing_type!r}. Expected 'top_k', 'top_p', or 'threshold'."
             )
 
         # --- Build routing_weights: softmax over selected logits ---
@@ -221,7 +215,7 @@ class RouterV2(nn.Module):
 
             # Z-loss: penalise large logits via log(sum(exp(logits)))^2
             log_sum_exp = torch.logsumexp(logits, dim=-1)  # (B,)
-            z_loss = (log_sum_exp ** 2).mean()
+            z_loss = (log_sum_exp**2).mean()
 
             aux_loss = (
                 self.cfg.router_aux_loss_coeff * load_balance_loss
@@ -273,6 +267,7 @@ class RouterV2(nn.Module):
 # ---------------------------------------------------------------------------
 # MoD Layer
 # ---------------------------------------------------------------------------
+
 
 class MoDv2Layer(nn.Module):
     """MoD v2 layer: routes tokens through sublayer, others skip via residual.
@@ -360,6 +355,7 @@ class MoDv2Layer(nn.Module):
 # Full Transformer
 # ---------------------------------------------------------------------------
 
+
 class MoDv2Transformer(nn.Module):
     """Full decoder-only transformer using MoDv2 routing on every layer.
 
@@ -395,9 +391,7 @@ class MoDv2Transformer(nn.Module):
         self.attn_norms = nn.ModuleList(
             [RMSNorm(config.d_model, eps=config.rms_norm_eps) for _ in range(config.n_layers)]
         )
-        self.attns = nn.ModuleList(
-            [GroupedQueryAttention(config) for _ in range(config.n_layers)]
-        )
+        self.attns = nn.ModuleList([GroupedQueryAttention(config) for _ in range(config.n_layers)])
         self.ffn_norms = nn.ModuleList(
             [RMSNorm(config.d_model, eps=config.rms_norm_eps) for _ in range(config.n_layers)]
         )
@@ -469,9 +463,7 @@ class MoDv2Transformer(nn.Module):
             past_kv = past_key_values[i] if past_key_values is not None else None
 
             # Attention sub-layer (all tokens)
-            attn_out, kv = self.attns[i](
-                self.attn_norms[i](x), freqs_cis, mask, past_kv
-            )
+            attn_out, kv = self.attns[i](self.attn_norms[i](x), freqs_cis, mask, past_kv)
             x = x + attn_out
             present_key_values.append(kv)
 
@@ -502,6 +494,7 @@ class MoDv2Transformer(nn.Module):
 # ---------------------------------------------------------------------------
 # Capacity Tracker
 # ---------------------------------------------------------------------------
+
 
 class CapacityTracker:
     """Track per-layer routing statistics across multiple forward passes.
@@ -556,7 +549,5 @@ class CapacityTracker:
             stats[f"layer_{i}_std"] = std_val
             all_fractions.extend(fracs)
 
-        stats["overall_mean"] = (
-            sum(all_fractions) / len(all_fractions) if all_fractions else 0.0
-        )
+        stats["overall_mean"] = sum(all_fractions) / len(all_fractions) if all_fractions else 0.0
         return stats

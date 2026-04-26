@@ -23,9 +23,7 @@ def test_p_zero_returns_unchanged() -> None:
 
 
 def test_p_one_replace_replaces_all_non_special() -> None:
-    td = TokenDropout(
-        p=1.0, mask_token_id=99, mode="replace", exclude_special_ids=(7,)
-    )
+    td = TokenDropout(p=1.0, mask_token_id=99, mode="replace", exclude_special_ids=(7,))
     ids = torch.tensor([[1, 2, 7, 3, 7, 4]])
     new_ids, _ = td.apply(ids, rng=_gen(0))
     expected = torch.tensor([[99, 99, 7, 99, 7, 99]])
@@ -49,9 +47,7 @@ def test_both_mode_replaces_and_masks() -> None:
 
 
 def test_exclude_special_ids_preserved() -> None:
-    td = TokenDropout(
-        p=1.0, mask_token_id=0, mode="both", exclude_special_ids=(10, 11)
-    )
+    td = TokenDropout(p=1.0, mask_token_id=0, mode="both", exclude_special_ids=(10, 11))
     ids = torch.tensor([[10, 5, 11, 6, 10]])
     new_ids, mask = td.apply(ids, rng=_gen(0))
     # Specials unchanged, non-specials replaced.

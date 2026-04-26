@@ -1,9 +1,10 @@
 """MAML (Model-Agnostic Meta-Learning) for Aurelius LLM."""
+
 from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration and data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MAMLConfig:
@@ -32,7 +34,7 @@ class MAMLConfig:
     inner_lr: float = 0.01
     meta_lr: float = 1e-3
     n_tasks: int = 4
-    first_order: bool = True      # FOMAML approximation
+    first_order: bool = True  # FOMAML approximation
     task_batch_size: int = 8
 
     # --- Spec-aligned aliases ---
@@ -56,14 +58,15 @@ class MAMLConfig:
 class Task:
     """A single meta-learning task."""
 
-    support_ids: Tensor   # few-shot examples  (B, T)
-    query_ids: Tensor     # evaluation set     (B, T)
+    support_ids: Tensor  # few-shot examples  (B, T)
+    query_ids: Tensor  # evaluation set     (B, T)
     task_id: str = ""
 
 
 # ---------------------------------------------------------------------------
 # Core functional utilities
 # ---------------------------------------------------------------------------
+
 
 def compute_task_loss(model: nn.Module, input_ids: Tensor) -> Tensor:
     """Cross-entropy next-token prediction loss, shifted by 1.
@@ -89,6 +92,7 @@ def compute_task_loss(model: nn.Module, input_ids: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # New spec-aligned API: clone_parameters, inner_update, maml_loss
 # ---------------------------------------------------------------------------
+
 
 def clone_parameters(model: nn.Module) -> OrderedDict:
     """Return an OrderedDict of cloned parameter tensors.
@@ -140,15 +144,18 @@ def inner_update(
         working_params: OrderedDict = clone_parameters(model)
     else:
         working_params = OrderedDict(
-            (name, p.data.clone().requires_grad_(p.requires_grad if hasattr(p, 'requires_grad') else True))
+            (
+                name,
+                p.data.clone().requires_grad_(
+                    p.requires_grad if hasattr(p, "requires_grad") else True
+                ),
+            )
             for name, p in params.items()
         )
 
     # Save original model state so we can restore after inner updates
     original_state: dict[str, Tensor] = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-        if param.requires_grad
+        name: param.data.clone() for name, param in model.named_parameters() if param.requires_grad
     }
 
     for _ in range(n_steps):
@@ -230,9 +237,7 @@ def maml_loss(
     """
     # Save current model params
     original_state: dict[str, Tensor] = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-        if param.requires_grad
+        name: param.data.clone() for name, param in model.named_parameters() if param.requires_grad
     }
 
     # Load updated params into model
@@ -281,9 +286,7 @@ def inner_loop(
     """
     # Snapshot original weights so we can restore after adaptation
     original_state: dict[str, Tensor] = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-        if param.requires_grad
+        name: param.data.clone() for name, param in model.named_parameters() if param.requires_grad
     }
 
     if config.n_inner_steps == 0:
@@ -314,9 +317,7 @@ def inner_loop(
 
     # Capture the adapted parameter values
     adapted: dict[str, Tensor] = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-        if param.requires_grad
+        name: param.data.clone() for name, param in model.named_parameters() if param.requires_grad
     }
 
     # Restore model to original weights
@@ -326,7 +327,6 @@ def inner_loop(
                 param.data.copy_(original_state[name])
 
     return adapted
-
 
 
 def apply_adapted_params(model: nn.Module, adapted_params: dict[str, Tensor]) -> None:
@@ -348,6 +348,7 @@ def restore_params(model: nn.Module, original_params: dict[str, Tensor]) -> None
 # ---------------------------------------------------------------------------
 # MAMLTrainer
 # ---------------------------------------------------------------------------
+
 
 class MAMLTrainer:
     """Implements the MAML outer loop over a batch of tasks.
@@ -464,6 +465,7 @@ class MAMLTrainer:
         if n_steps is not None:
             # Temporarily override n_inner_steps
             import dataclasses
+
             cfg = dataclasses.replace(cfg, n_inner_steps=n_steps)
         adapted = inner_loop(self.model, task, cfg)
         # Restore model to original state (inner_loop may have modified it)

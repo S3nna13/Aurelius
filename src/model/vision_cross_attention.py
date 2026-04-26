@@ -35,7 +35,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -70,8 +69,7 @@ class VisionCrossAttnConfig:
     def __post_init__(self) -> None:
         if self.n_heads % self.n_kv_heads != 0:
             raise ValueError(
-                f"n_heads ({self.n_heads}) must be divisible by "
-                f"n_kv_heads ({self.n_kv_heads})."
+                f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})."
             )
 
     @property
@@ -200,9 +198,7 @@ class VisionCrossAttention(nn.Module):
         cfg = self.config
         B, T_text, _ = text_hidden.shape
 
-        attn_weights, v = self._compute_attn_weights(
-            text_hidden, vision_tokens, vision_mask
-        )
+        attn_weights, v = self._compute_attn_weights(text_hidden, vision_tokens, vision_mask)
 
         # Dropout on weights
         attn_weights = self.attn_drop(attn_weights)  # (B, n_heads, T_text, T_vis)
@@ -237,7 +233,5 @@ class VisionCrossAttention(nn.Module):
             Attention weights ``(B, n_heads, T_text, T_vis)``.
         """
         with torch.no_grad():
-            weights, _ = self._compute_attn_weights(
-                text_hidden, vision_tokens, vision_mask
-            )
+            weights, _ = self._compute_attn_weights(text_hidden, vision_tokens, vision_mask)
         return weights

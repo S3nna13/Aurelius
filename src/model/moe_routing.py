@@ -15,17 +15,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RoutingConfig:
@@ -41,11 +40,12 @@ class RoutingConfig:
 # Routing functions
 # ---------------------------------------------------------------------------
 
+
 def topk_routing(
     logits: Tensor,
     k: int,
     noise_std: float = 0.0,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Top-k routing.
 
     Args:
@@ -72,7 +72,7 @@ def topk_routing(
 def expert_choice_routing(
     logits: Tensor,
     capacity: int,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Expert-choice routing: each expert independently selects its top-capacity tokens.
 
     Args:
@@ -102,6 +102,7 @@ def expert_choice_routing(
 # Auxiliary losses
 # ---------------------------------------------------------------------------
 
+
 def compute_router_z_loss(logits: Tensor, coef: float = 1e-3) -> Tensor:
     """Z-loss to prevent router logit collapse.
 
@@ -116,7 +117,7 @@ def compute_router_z_loss(logits: Tensor, coef: float = 1e-3) -> Tensor:
     """
     # log(sum(exp(logits))) = logsumexp along expert dim
     log_z = torch.logsumexp(logits, dim=-1)  # (S,)
-    loss = coef * (log_z ** 2).mean()
+    loss = coef * (log_z**2).mean()
     return loss
 
 
@@ -161,6 +162,7 @@ def compute_load_balance_loss(
 # Router module
 # ---------------------------------------------------------------------------
 
+
 class Router(nn.Module):
     """Standard top-k router with auxiliary losses.
 
@@ -175,7 +177,7 @@ class Router(nn.Module):
         self.config = config
         self.proj = nn.Linear(d_model, config.n_experts, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """
         Args:
             x: (B, T, d_model)
@@ -216,6 +218,7 @@ class Router(nn.Module):
 # SwitchRouter module
 # ---------------------------------------------------------------------------
 
+
 class SwitchRouter(nn.Module):
     """Switch Transformer-style top-1 router with capacity-based token dropping.
 
@@ -230,7 +233,7 @@ class SwitchRouter(nn.Module):
         self.config = config
         self.proj = nn.Linear(d_model, config.n_experts, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """
         Args:
             x: (B, T, d_model)

@@ -12,21 +12,21 @@ N=16 samples, T=8 tokens per sample.
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.activation_clustering import (
     ClusteringConfig,
     ClusterResult,
+    cluster_token_sequences,
+    extract_layer_activations,
     kmeans_cluster,
+    nearest_cluster_examples,
     pairwise_distances,
     silhouette_score,
-    extract_layer_activations,
-    cluster_token_sequences,
-    nearest_cluster_examples,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny constants
@@ -43,10 +43,10 @@ TINY_CONFIG = AureliusConfig(
     max_seq_len=32,
 )
 
-N = 16    # number of samples
-T = 8     # sequence length
-D = 64    # d_model
-K = 4     # n_clusters
+N = 16  # number of samples
+T = 8  # sequence length
+D = 64  # d_model
+K = 4  # n_clusters
 VOCAB = 256
 
 torch.manual_seed(42)
@@ -71,19 +71,19 @@ def _make_activations(n: int = N, d: int = D) -> torch.Tensor:
 # 1. pairwise_distances shape is (N, M)
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_distances_shape():
     torch.manual_seed(1)
     a = torch.randn(N, D)
     b = torch.randn(K, D)
     dist = pairwise_distances(a, b)
-    assert dist.shape == (N, K), (
-        f"Expected shape ({N}, {K}), got {dist.shape}"
-    )
+    assert dist.shape == (N, K), f"Expected shape ({N}, {K}), got {dist.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 2. pairwise_distances diagonal is 0 when a == b
 # ---------------------------------------------------------------------------
+
 
 def test_pairwise_distances_diagonal_zero():
     torch.manual_seed(2)
@@ -99,6 +99,7 @@ def test_pairwise_distances_diagonal_zero():
 # 3. kmeans_cluster returns ClusterResult
 # ---------------------------------------------------------------------------
 
+
 def test_kmeans_returns_cluster_result():
     acts = _make_activations()
     result = kmeans_cluster(acts, n_clusters=K, n_init=2, max_iter=20, seed=42)
@@ -109,30 +110,29 @@ def test_kmeans_returns_cluster_result():
 # 4. kmeans_cluster labels shape is (N,)
 # ---------------------------------------------------------------------------
 
+
 def test_kmeans_labels_shape():
     acts = _make_activations()
     result = kmeans_cluster(acts, n_clusters=K, n_init=2, max_iter=20, seed=42)
-    assert result.labels.shape == (N,), (
-        f"Expected labels shape ({N},), got {result.labels.shape}"
-    )
+    assert result.labels.shape == (N,), f"Expected labels shape ({N},), got {result.labels.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 5. kmeans_cluster unique labels count <= n_clusters
 # ---------------------------------------------------------------------------
 
+
 def test_kmeans_unique_labels_count():
     acts = _make_activations()
     result = kmeans_cluster(acts, n_clusters=K, n_init=2, max_iter=20, seed=42)
     n_unique = result.labels.unique().shape[0]
-    assert n_unique <= K, (
-        f"Expected at most {K} unique labels, got {n_unique}"
-    )
+    assert n_unique <= K, f"Expected at most {K} unique labels, got {n_unique}"
 
 
 # ---------------------------------------------------------------------------
 # 6. kmeans_cluster inertia is finite and non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_kmeans_inertia_finite_nonneg():
     acts = _make_activations()
@@ -146,6 +146,7 @@ def test_kmeans_inertia_finite_nonneg():
 # 7. silhouette_score returns float in [-1, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_silhouette_score_range():
     torch.manual_seed(5)
     acts = torch.randn(20, D)
@@ -158,6 +159,7 @@ def test_silhouette_score_range():
 # ---------------------------------------------------------------------------
 # 8. silhouette_score with well-separated clusters -> score > 0
 # ---------------------------------------------------------------------------
+
 
 def test_silhouette_score_well_separated():
     """Clusters placed far apart in d-dimensional space should yield score > 0."""
@@ -182,33 +184,32 @@ def test_silhouette_score_well_separated():
 # 9. extract_layer_activations position="last" returns (N, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_extract_layer_activations_last_shape():
     torch.manual_seed(9)
     model = _make_model()
     input_ids = _make_input_ids()
     acts = extract_layer_activations(model, input_ids, layer_idx=-1, position="last")
-    assert acts.shape == (N, D), (
-        f"Expected shape ({N}, {D}), got {acts.shape}"
-    )
+    assert acts.shape == (N, D), f"Expected shape ({N}, {D}), got {acts.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 10. extract_layer_activations position="mean" returns (N, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_extract_layer_activations_mean_shape():
     torch.manual_seed(10)
     model = _make_model()
     input_ids = _make_input_ids()
     acts = extract_layer_activations(model, input_ids, layer_idx=0, position="mean")
-    assert acts.shape == (N, D), (
-        f"Expected shape ({N}, {D}), got {acts.shape}"
-    )
+    assert acts.shape == (N, D), f"Expected shape ({N}, {D}), got {acts.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 11. cluster_token_sequences returns ClusterResult
 # ---------------------------------------------------------------------------
+
 
 def test_cluster_token_sequences_returns_cluster_result():
     torch.manual_seed(11)
@@ -229,20 +230,20 @@ def test_cluster_token_sequences_returns_cluster_result():
 # 12. nearest_cluster_examples returns k indices
 # ---------------------------------------------------------------------------
 
+
 def test_nearest_cluster_examples_returns_k_indices():
     torch.manual_seed(12)
     acts = _make_activations()
     result = kmeans_cluster(acts, n_clusters=K, n_init=2, max_iter=20, seed=42)
     top_k = 3
     indices = nearest_cluster_examples(acts, result, cluster_idx=0, top_k=top_k)
-    assert indices.shape == (top_k,), (
-        f"Expected {top_k} indices, got shape {indices.shape}"
-    )
+    assert indices.shape == (top_k,), f"Expected {top_k} indices, got shape {indices.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 13. All returned indices are valid (in range [0, N))
 # ---------------------------------------------------------------------------
+
 
 def test_nearest_cluster_examples_indices_valid():
     torch.manual_seed(13)
@@ -259,6 +260,7 @@ def test_nearest_cluster_examples_indices_valid():
 # 14. ClusteringConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_clustering_config_defaults():
     cfg = ClusteringConfig()
     assert cfg.n_clusters == 4
@@ -272,6 +274,7 @@ def test_clustering_config_defaults():
 # ---------------------------------------------------------------------------
 # 15. centroids shape is (n_clusters, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_kmeans_centroids_shape():
     acts = _make_activations()
@@ -287,6 +290,7 @@ def test_kmeans_centroids_shape():
 # ---------------------------------------------------------------------------
 # 16. n_iter is a positive integer
 # ---------------------------------------------------------------------------
+
 
 def test_kmeans_n_iter_positive_int():
     acts = _make_activations()

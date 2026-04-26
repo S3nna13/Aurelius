@@ -3,19 +3,19 @@
 Scores text across six harm categories using pattern matching.
 No external ML frameworks required.
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List
-
+from dataclasses import dataclass
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # Enums / dataclasses
 # ---------------------------------------------------------------------------
 
-class ToxicityCategory(str, Enum):
+
+class ToxicityCategory(StrEnum):
     HATE = "hate"
     VIOLENCE = "violence"
     SEXUAL = "sexual"
@@ -27,7 +27,7 @@ class ToxicityCategory(str, Enum):
 @dataclass
 class ToxicityScore:
     text: str
-    scores: Dict[ToxicityCategory, float]
+    scores: dict[ToxicityCategory, float]
     overall: float
     flagged: bool
 
@@ -36,10 +36,11 @@ class ToxicityScore:
 # Scorer
 # ---------------------------------------------------------------------------
 
+
 class ToxicityScorer:
     """Heuristic toxicity scorer using pattern matching per category."""
 
-    PATTERNS: Dict[ToxicityCategory, List[str]] = {
+    PATTERNS: dict[ToxicityCategory, list[str]] = {
         ToxicityCategory.HATE: [
             r"\b(hate|despise)\s+(all\s+)?(those\s+)?(people|them|you)\b",
             r"\b(subhuman|inferior race|white supremac|racial slur)\b",
@@ -99,7 +100,7 @@ class ToxicityScorer:
         """
         lower = text.lower()
         word_count = max(len(text.split()), 1)
-        category_scores: Dict[ToxicityCategory, float] = {}
+        category_scores: dict[ToxicityCategory, float] = {}
 
         for category, patterns in self.PATTERNS.items():
             match_count = 0
@@ -120,9 +121,7 @@ class ToxicityScorer:
             flagged=flagged,
         )
 
-    def batch_score(
-        self, texts: List[str], threshold: float = 0.5
-    ) -> List[ToxicityScore]:
+    def batch_score(self, texts: list[str], threshold: float = 0.5) -> list[ToxicityScore]:
         """Score a list of texts.
 
         Args:

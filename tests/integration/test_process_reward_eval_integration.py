@@ -7,18 +7,18 @@ ranges, and the registry is correctly wired.
 
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.process_reward_eval import (
     PRMEvalConfig,
     ProcessRewardEval,
     SolutionEval,
     StepPrediction,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Fixture: 5 solutions with mixed step correctness and PRM scores
 # ---------------------------------------------------------------------------
+
 
 def _build_solutions() -> list[SolutionEval]:
     threshold = 0.5
@@ -64,7 +64,12 @@ def _build_solutions() -> list[SolutionEval]:
         # Solution 4: high PRM, correct final
         SolutionEval(
             problem_id="prob_4",
-            steps=[step(0, 0.95, True), step(1, 0.88, True), step(2, 0.91, True), step(3, 0.93, True)],
+            steps=[
+                step(0, 0.95, True),
+                step(1, 0.88, True),
+                step(2, 0.91, True),
+                step(3, 0.93, True),
+            ],
             final_answer_correct=True,
             prm_final_score=0.88,
         ),
@@ -75,6 +80,7 @@ def _build_solutions() -> list[SolutionEval]:
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_process_reward_eval_full_pipeline():
     """End-to-end: build solutions, evaluate, check all keys and value ranges."""
@@ -94,9 +100,7 @@ def test_process_reward_eval_full_pipeline():
         "mean_position",
         "calibration_error",
     }
-    assert expected_keys.issubset(result.keys()), (
-        f"Missing keys: {expected_keys - result.keys()}"
-    )
+    assert expected_keys.issubset(result.keys()), f"Missing keys: {expected_keys - result.keys()}"
 
     # step_accuracy in [0, 1]
     assert 0.0 <= result["step_accuracy"] <= 1.0

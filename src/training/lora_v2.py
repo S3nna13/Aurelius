@@ -6,34 +6,35 @@ weights. Only lora_A and lora_B are trained; base weights are frozen.
 Reference: Hu et al., "LoRA: Low-Rank Adaptation of Large Language Models"
 https://arxiv.org/abs/2106.09685
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LoRAConfig:
     r: int = 8
     lora_alpha: float = 16.0
     lora_dropout: float = 0.0
-    target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
+    target_modules: list[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
     merge_weights: bool = False
 
 
 # ---------------------------------------------------------------------------
 # LoRALinear
 # ---------------------------------------------------------------------------
+
 
 class LoRALinear(nn.Module):
     """Drop-in replacement for nn.Linear with a LoRA adapter."""
@@ -54,9 +55,7 @@ class LoRALinear(nn.Module):
         self.scaling = lora_alpha / r
 
         # Frozen base weight
-        self.weight = nn.Parameter(
-            torch.empty(out_features, in_features), requires_grad=False
-        )
+        self.weight = nn.Parameter(torch.empty(out_features, in_features), requires_grad=False)
         self.bias = nn.Parameter(torch.zeros(out_features), requires_grad=False) if bias else None
 
         # Trainable low-rank adapters
@@ -67,7 +66,7 @@ class LoRALinear(nn.Module):
         self.lora_dropout = nn.Dropout(p=lora_dropout) if lora_dropout > 0 else nn.Identity()
 
         # Stored delta for unmerge
-        self._merged_delta: Optional[Tensor] = None
+        self._merged_delta: Tensor | None = None
 
         self._init_weights()
 
@@ -78,9 +77,9 @@ class LoRALinear(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         base = F.linear(x, self.weight, self.bias)
-        lora_delta = F.linear(
-            F.linear(self.lora_dropout(x), self.lora_A), self.lora_B
-        ) * self.scaling
+        lora_delta = (
+            F.linear(F.linear(self.lora_dropout(x), self.lora_A), self.lora_B) * self.scaling
+        )
         return base + lora_delta
 
     def merge(self) -> None:
@@ -101,6 +100,7 @@ class LoRALinear(nn.Module):
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def count_trainable_parameters(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -145,6 +145,7 @@ def apply_lora(
 # LoRAModel
 # ---------------------------------------------------------------------------
 
+
 class LoRAModel(nn.Module):
     """Wraps a base model and replaces target Linear layers with LoRALinear."""
 
@@ -152,14 +153,14 @@ class LoRAModel(nn.Module):
         self,
         base_model: nn.Module,
         config: LoRAConfig,
-        module_names: Optional[List[str]] = None,
+        module_names: list[str] | None = None,
     ) -> None:
         super().__init__()
         self.base_model = base_model
         self.config = config
         self._replace_linears(module_names)
 
-    def _replace_linears(self, module_names: Optional[List[str]]) -> None:
+    def _replace_linears(self, module_names: list[str] | None) -> None:
         for name, module in list(self.base_model.named_modules()):
             if not isinstance(module, nn.Linear):
                 continue
@@ -178,7 +179,7 @@ class LoRAModel(nn.Module):
     def forward(self, *args, **kwargs):
         return self.base_model(*args, **kwargs)
 
-    def get_lora_params(self) -> List[Tensor]:
+    def get_lora_params(self) -> list[Tensor]:
         """Return all lora_A and lora_B parameter tensors."""
         params = []
         for module in self.base_model.modules():
@@ -193,7 +194,7 @@ class LoRAModel(nn.Module):
             if isinstance(module, LoRALinear):
                 module.merge()
 
-    def save_adapter(self) -> Dict[str, Tensor]:
+    def save_adapter(self) -> dict[str, Tensor]:
         """Return a state dict containing only LoRA adapter parameters."""
         adapter_state = {}
         for name, module in self.base_model.named_modules():

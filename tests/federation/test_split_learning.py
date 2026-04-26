@@ -103,27 +103,21 @@ def test_pending_batches_zero_initially() -> None:
 
 def test_compute_server_gradient_identity() -> None:
     c = _coord()
-    s = SmashData(
-        client_id="c1", layer_index=6, activations=[1.0, 2.0, 3.0], labels=[0]
-    )
+    s = SmashData(client_id="c1", layer_index=6, activations=[1.0, 2.0, 3.0], labels=[0])
     packet = c.compute_server_gradient(s, lambda x: list(x))
     assert packet.gradients == [0.0, 0.0, 0.0]
 
 
 def test_compute_server_gradient_diff() -> None:
     c = _coord()
-    s = SmashData(
-        client_id="c1", layer_index=6, activations=[1.0, 2.0, 3.0], labels=[0]
-    )
+    s = SmashData(client_id="c1", layer_index=6, activations=[1.0, 2.0, 3.0], labels=[0])
     packet = c.compute_server_gradient(s, lambda x: [v + 1.0 for v in x])
     assert packet.gradients == [1.0, 1.0, 1.0]
 
 
 def test_compute_server_gradient_shorter_output() -> None:
     c = _coord()
-    s = SmashData(
-        client_id="c1", layer_index=6, activations=[1.0, 2.0, 3.0], labels=[0]
-    )
+    s = SmashData(client_id="c1", layer_index=6, activations=[1.0, 2.0, 3.0], labels=[0])
     packet = c.compute_server_gradient(s, lambda x: [x[0] * 2.0])
     assert packet.gradients == [1.0]
 

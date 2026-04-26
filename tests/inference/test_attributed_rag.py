@@ -5,19 +5,19 @@ from __future__ import annotations
 import pytest
 
 from src.inference.attributed_rag import (
-    AttributionConfig,
     AttributedRAGPipeline,
-    CitedDocument,
+    AttributionConfig,
     CitationVerifier,
+    CitedDocument,
     compute_citation_recall,
     extract_citations_from_text,
     insert_citations,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_docs(n: int = 3) -> list[CitedDocument]:
     return [
@@ -34,18 +34,21 @@ def _make_docs(n: int = 3) -> list[CitedDocument]:
 def _mock_retriever(docs: list[CitedDocument]):
     def _retriever(query: str) -> list[CitedDocument]:
         return docs
+
     return _retriever
 
 
 def _mock_generator(fixed_response: str):
     def _generator(prompt: str) -> str:
         return fixed_response
+
     return _generator
 
 
 # ---------------------------------------------------------------------------
 # 1. test_attribution_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_attribution_config_defaults():
     config = AttributionConfig()
@@ -59,6 +62,7 @@ def test_attribution_config_defaults():
 # 2. test_cited_document_format_bracket
 # ---------------------------------------------------------------------------
 
+
 def test_cited_document_format_bracket():
     doc = CitedDocument(doc_id=3, text="Some text.", title="MyDoc")
     assert doc.format_citation("bracket") == "[3]"
@@ -68,6 +72,7 @@ def test_cited_document_format_bracket():
 # 3. test_cited_document_format_superscript
 # ---------------------------------------------------------------------------
 
+
 def test_cited_document_format_superscript():
     doc = CitedDocument(doc_id=7, text="Some text.", title="MyDoc")
     assert doc.format_citation("superscript") == "^7"
@@ -76,6 +81,7 @@ def test_cited_document_format_superscript():
 # ---------------------------------------------------------------------------
 # 4. test_insert_citations_adds_markers
 # ---------------------------------------------------------------------------
+
 
 def test_insert_citations_adds_markers():
     response = "The sky is blue. Water is wet."
@@ -89,6 +95,7 @@ def test_insert_citations_adds_markers():
 # 5. test_extract_citations_from_text_bracket
 # ---------------------------------------------------------------------------
 
+
 def test_extract_citations_from_text_bracket():
     text = "According to [1] and [2], this is true."
     ids = extract_citations_from_text(text)
@@ -99,6 +106,7 @@ def test_extract_citations_from_text_bracket():
 # ---------------------------------------------------------------------------
 # 6. test_extract_citations_sorted_unique
 # ---------------------------------------------------------------------------
+
 
 def test_extract_citations_sorted_unique():
     text = "See [3], [1], [3], ^2 for details."
@@ -113,6 +121,7 @@ def test_extract_citations_sorted_unique():
 # 7. test_compute_citation_recall_full_overlap
 # ---------------------------------------------------------------------------
 
+
 def test_compute_citation_recall_full_overlap():
     sentence = "The sky is blue."
     doc = CitedDocument(doc_id=1, text="The sky is blue.", title="")
@@ -125,6 +134,7 @@ def test_compute_citation_recall_full_overlap():
 # 8. test_compute_citation_recall_no_overlap
 # ---------------------------------------------------------------------------
 
+
 def test_compute_citation_recall_no_overlap():
     sentence = "The sky is blue."
     doc = CitedDocument(doc_id=1, text="Quantum mechanics governs subatomic particles.", title="")
@@ -136,6 +146,7 @@ def test_compute_citation_recall_no_overlap():
 # ---------------------------------------------------------------------------
 # 9. test_attributed_rag_generate_keys
 # ---------------------------------------------------------------------------
+
 
 def test_attributed_rag_generate_keys():
     docs = _make_docs(3)
@@ -157,6 +168,7 @@ def test_attributed_rag_generate_keys():
 # 10. test_citation_verifier_verify_sentence_identical
 # ---------------------------------------------------------------------------
 
+
 def test_citation_verifier_verify_sentence_identical():
     config = AttributionConfig()
     verifier = CitationVerifier(config)
@@ -169,6 +181,7 @@ def test_citation_verifier_verify_sentence_identical():
 # ---------------------------------------------------------------------------
 # 11. test_citation_verifier_verify_response_keys
 # ---------------------------------------------------------------------------
+
 
 def test_citation_verifier_verify_response_keys():
     config = AttributionConfig(min_citation_overlap=0.5)

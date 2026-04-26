@@ -1,7 +1,9 @@
 """Tests for Medusa multi-token prediction heads."""
-import torch
+
 import pytest
-from src.inference.medusa import MedusaModel, MedusaConfig
+import torch
+
+from src.inference.medusa import MedusaConfig, MedusaModel
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -10,8 +12,14 @@ from src.model.transformer import AureliusTransformer
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
@@ -67,12 +75,13 @@ def test_medusa_generate_preserves_prompt(small_model):
     mm = MedusaModel(small_model)
     prompt = torch.randint(0, 256, (1, 6))
     output = mm.generate(prompt)
-    assert torch.equal(output[:, :prompt.shape[1]], prompt)
+    assert torch.equal(output[:, : prompt.shape[1]], prompt)
 
 
 def test_medusa_head_loss_trains(small_model):
     """A training step on Medusa heads must update their weights."""
     import torch.optim as optim
+
     mm = MedusaModel(small_model, freeze_base=True)
     optimizer = optim.AdamW([p for p in mm.parameters() if p.requires_grad], lr=1e-3)
 

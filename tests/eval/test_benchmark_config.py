@@ -1,12 +1,11 @@
 """Tests for extended eval benchmark configuration."""
-import pytest
 
 from src.eval.benchmark_config import (
     ALL_BENCHMARKS,
     BENCHMARK_BY_NAME,
-    MATH500,
     GPQA_DIAMOND,
     LIVECODEBENCH,
+    MATH500,
 )
 
 

@@ -1,7 +1,6 @@
 """Tests for text chunker."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.text_chunker import TextChunker
 

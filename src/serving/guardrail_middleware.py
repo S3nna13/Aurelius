@@ -45,8 +45,8 @@ subsequent stages see the modified text.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
 
 from src.safety.jailbreak_detector import JailbreakDetector
 from src.safety.output_safety_filter import OutputSafetyFilter
@@ -88,8 +88,8 @@ class MiddlewareDecision:
 
     allowed: bool
     reason: str
-    modified_input: Optional[str] = None
-    modified_output: Optional[str] = None
+    modified_input: str | None = None
+    modified_output: str | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -127,8 +127,8 @@ class GuardrailMiddleware:
 
     def __init__(
         self,
-        pre_handler: Optional[PreHandler] = None,
-        post_handler: Optional[PostHandler] = None,
+        pre_handler: PreHandler | None = None,
+        post_handler: PostHandler | None = None,
         enable_default_pre: bool = True,
         enable_default_post: bool = True,
     ) -> None:
@@ -162,34 +162,36 @@ class GuardrailMiddleware:
         always resolve to ``allowed=True``.
         """
         if not isinstance(request, str):
-            raise TypeError(
-                f"request must be str, got {type(request).__name__}"
-            )
+            raise TypeError(f"request must be str, got {type(request).__name__}")
         if self._custom_pre is not None:
             decision = self._custom_pre(request)
             self._validate_decision(decision, "pre_handler")
             _LOGGER.debug(
                 "pre_check(custom): allowed=%s reason=%s",
-                decision.allowed, decision.reason,
+                decision.allowed,
+                decision.reason,
             )
             return decision
 
         if not self._enable_default_pre:
             return MiddlewareDecision(
-                allowed=True, reason="pre check disabled",
+                allowed=True,
+                reason="pre check disabled",
             )
 
         # Default: jailbreak + prompt-injection heuristics.
         if not request:
             return MiddlewareDecision(
-                allowed=True, reason="empty request",
+                allowed=True,
+                reason="empty request",
             )
 
         jb = self._default_jailbreak.score(request)  # type: ignore[union-attr]
         if jb.is_jailbreak:
             _LOGGER.info(
                 "pre_check blocked: jailbreak score=%.3f signals=%s",
-                jb.score, jb.triggered_signals,
+                jb.score,
+                jb.triggered_signals,
             )
             return MiddlewareDecision(
                 allowed=False,
@@ -200,18 +202,19 @@ class GuardrailMiddleware:
             )
 
         inj = self._default_injection.scan(  # type: ignore[union-attr]
-            request, source="user_input",
+            request,
+            source="user_input",
         )
         if inj.is_injection:
             _LOGGER.info(
                 "pre_check blocked: prompt injection score=%.3f signals=%s",
-                inj.score, inj.signals,
+                inj.score,
+                inj.signals,
             )
             return MiddlewareDecision(
                 allowed=False,
                 reason=(
-                    f"prompt injection scanner fired "
-                    f"(score={inj.score:.3f}, signals={inj.signals})"
+                    f"prompt injection scanner fired (score={inj.score:.3f}, signals={inj.signals})"
                 ),
             )
 
@@ -220,30 +223,29 @@ class GuardrailMiddleware:
     def post_check(self, request: str, response: str) -> MiddlewareDecision:
         """Run the post phase on a completed ``response``."""
         if not isinstance(request, str):
-            raise TypeError(
-                f"request must be str, got {type(request).__name__}"
-            )
+            raise TypeError(f"request must be str, got {type(request).__name__}")
         if not isinstance(response, str):
-            raise TypeError(
-                f"response must be str, got {type(response).__name__}"
-            )
+            raise TypeError(f"response must be str, got {type(response).__name__}")
         if self._custom_post is not None:
             decision = self._custom_post(request, response)
             self._validate_decision(decision, "post_handler")
             _LOGGER.debug(
                 "post_check(custom): allowed=%s reason=%s",
-                decision.allowed, decision.reason,
+                decision.allowed,
+                decision.reason,
             )
             return decision
 
         if not self._enable_default_post:
             return MiddlewareDecision(
-                allowed=True, reason="post check disabled",
+                allowed=True,
+                reason="post check disabled",
             )
 
         if not response:
             return MiddlewareDecision(
-                allowed=True, reason="empty response",
+                allowed=True,
+                reason="empty response",
             )
 
         fd = self._default_output_filter.filter(response)  # type: ignore[union-attr]
@@ -268,7 +270,7 @@ class GuardrailMiddleware:
 
     def wrap_generate(
         self, generate_fn: Callable[[str], str]
-    ) -> Callable[[str], Tuple[str, List[MiddlewareDecision]]]:
+    ) -> Callable[[str], tuple[str, list[MiddlewareDecision]]]:
         """Return a wrapped generator that enforces pre + post guardrails.
 
         The returned callable has signature ``(request) -> (response,
@@ -281,24 +283,19 @@ class GuardrailMiddleware:
         if not callable(generate_fn):
             raise TypeError("generate_fn must be callable")
 
-        def _wrapped(request: str) -> Tuple[str, List[MiddlewareDecision]]:
-            decisions: List[MiddlewareDecision] = []
+        def _wrapped(request: str) -> tuple[str, list[MiddlewareDecision]]:
+            decisions: list[MiddlewareDecision] = []
             pre = self.pre_check(request)
             decisions.append(pre)
             if not pre.allowed:
                 _LOGGER.info("wrap_generate: pre blocked: %s", pre.reason)
                 return REFUSAL_STRING, decisions
 
-            effective_request = (
-                pre.modified_input if pre.modified_input is not None else request
-            )
+            effective_request = pre.modified_input if pre.modified_input is not None else request
             # ``generate_fn`` exceptions intentionally propagate.
             response = generate_fn(effective_request)
             if not isinstance(response, str):
-                raise TypeError(
-                    "generate_fn must return str, got "
-                    f"{type(response).__name__}"
-                )
+                raise TypeError(f"generate_fn must return str, got {type(response).__name__}")
 
             post = self.post_check(effective_request, response)
             decisions.append(post)
@@ -307,9 +304,7 @@ class GuardrailMiddleware:
                 return REFUSAL_STRING, decisions
 
             effective_response = (
-                post.modified_output
-                if post.modified_output is not None
-                else response
+                post.modified_output if post.modified_output is not None else response
             )
             return effective_response, decisions
 
@@ -323,6 +318,5 @@ class GuardrailMiddleware:
     def _validate_decision(decision: object, origin: str) -> None:
         if not isinstance(decision, MiddlewareDecision):
             raise TypeError(
-                f"{origin} must return MiddlewareDecision, got "
-                f"{type(decision).__name__}"
+                f"{origin} must return MiddlewareDecision, got {type(decision).__name__}"
             )

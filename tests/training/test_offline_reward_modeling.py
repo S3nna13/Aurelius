@@ -26,18 +26,18 @@ import math
 import pytest
 import torch
 
+from src.training import TRAINING_REGISTRY
 from src.training.offline_reward_modeling import (
     RewardBatch,
     RewardHead,
     RewardModelConfig,
     RewardModelTrainer,
 )
-from src.training import TRAINING_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_batch(
     B: int = 2,
@@ -79,6 +79,7 @@ def _make_head(d_model: int = 16, dropout: float = 0.0) -> RewardHead:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = RewardModelConfig()
     assert cfg.d_model == 2048
@@ -90,6 +91,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_reward_head_output_shape
 # ---------------------------------------------------------------------------
+
 
 def test_reward_head_output_shape():
     B, T, d = 4, 10, 32
@@ -103,6 +105,7 @@ def test_reward_head_output_shape():
 # ---------------------------------------------------------------------------
 # 3. test_reward_head_last_token
 # ---------------------------------------------------------------------------
+
 
 def test_reward_head_last_token():
     """Reward head must extract the last *valid* token, not the last position."""
@@ -127,7 +130,7 @@ def test_reward_head_last_token():
 
     # Shift valid window to positions 0..3 (no signal there).
     mask2 = torch.zeros(B, T)
-    mask2[:, : 4] = 1.0  # last valid = 3
+    mask2[:, :4] = 1.0  # last valid = 3
 
     reward_without_signal = head(hidden, mask2)
 
@@ -141,6 +144,7 @@ def test_reward_head_last_token():
 # ---------------------------------------------------------------------------
 # 4. test_reward_head_zero_mask
 # ---------------------------------------------------------------------------
+
 
 def test_reward_head_zero_mask():
     """All-zero mask should not crash; fall back to the last position (T-1)."""
@@ -158,6 +162,7 @@ def test_reward_head_zero_mask():
 # 5. test_bradley_terry_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_bradley_terry_loss_scalar():
     trainer = RewardModelTrainer()
     r_w = torch.randn(4)
@@ -169,6 +174,7 @@ def test_bradley_terry_loss_scalar():
 # ---------------------------------------------------------------------------
 # 6. test_bradley_terry_loss_positive
 # ---------------------------------------------------------------------------
+
 
 def test_bradley_terry_loss_positive():
     """For random rewards the BT loss should be positive (log-sigmoid < 0)."""
@@ -183,6 +189,7 @@ def test_bradley_terry_loss_positive():
 # ---------------------------------------------------------------------------
 # 7. test_bradley_terry_loss_preferred
 # ---------------------------------------------------------------------------
+
 
 def test_bradley_terry_loss_preferred():
     """Large r_w - r_l yields loss near 0; small gap yields higher loss."""
@@ -205,21 +212,18 @@ def test_bradley_terry_loss_preferred():
 # 8. test_margin_effect
 # ---------------------------------------------------------------------------
 
+
 def test_margin_effect():
     """A positive margin should produce higher loss than zero margin for the same gap."""
     B = 4
     r_w = torch.full((B,), 1.0)
     r_l = torch.full((B,), 0.0)
 
-    trainer_no_margin = RewardModelTrainer(
-        RewardModelConfig(center_rewards=False, margin=0.0)
-    )
-    trainer_margin = RewardModelTrainer(
-        RewardModelConfig(center_rewards=False, margin=1.5)
-    )
+    trainer_no_margin = RewardModelTrainer(RewardModelConfig(center_rewards=False, margin=0.0))
+    trainer_margin = RewardModelTrainer(RewardModelConfig(center_rewards=False, margin=1.5))
 
     loss_no_margin = trainer_no_margin.bradley_terry_loss(r_w, r_l).item()
-    loss_margin    = trainer_margin.bradley_terry_loss(r_w, r_l).item()
+    loss_margin = trainer_margin.bradley_terry_loss(r_w, r_l).item()
 
     assert loss_margin > loss_no_margin, (
         f"expected margin loss ({loss_margin:.6f}) > no-margin loss ({loss_no_margin:.6f})"
@@ -230,6 +234,7 @@ def test_margin_effect():
 # 9. test_center_rewards
 # ---------------------------------------------------------------------------
 
+
 def test_center_rewards():
     """Centering rewards should not change the relative gap (r_w - r_l)."""
     B = 6
@@ -238,10 +243,10 @@ def test_center_rewards():
     r_l = torch.randn(B) - 2.0
 
     cfg_center = RewardModelConfig(center_rewards=True, margin=0.0)
-    cfg_raw    = RewardModelConfig(center_rewards=False, margin=0.0)
+    cfg_raw = RewardModelConfig(center_rewards=False, margin=0.0)
 
     loss_center = RewardModelTrainer(cfg_center).bradley_terry_loss(r_w, r_l).item()
-    loss_raw    = RewardModelTrainer(cfg_raw).bradley_terry_loss(r_w, r_l).item()
+    loss_raw = RewardModelTrainer(cfg_raw).bradley_terry_loss(r_w, r_l).item()
 
     # After centering: (r_w - mean) - (r_l - mean) = r_w - r_l -> same gap.
     assert loss_center == pytest.approx(loss_raw, rel=1e-5), (
@@ -252,6 +257,7 @@ def test_center_rewards():
 # ---------------------------------------------------------------------------
 # 10. test_accuracy_range
 # ---------------------------------------------------------------------------
+
 
 def test_accuracy_range():
     torch.manual_seed(1)
@@ -266,6 +272,7 @@ def test_accuracy_range():
 # 11. test_accuracy_perfect
 # ---------------------------------------------------------------------------
 
+
 def test_accuracy_perfect():
     """r_w >> r_l for every pair -> accuracy = 1.0."""
     trainer = RewardModelTrainer()
@@ -279,9 +286,10 @@ def test_accuracy_perfect():
 # 12. test_total_loss_keys
 # ---------------------------------------------------------------------------
 
+
 def test_total_loss_keys():
     batch = _make_batch()
-    head  = _make_head()
+    head = _make_head()
     trainer = RewardModelTrainer()
     out = trainer.total_loss(batch, head)
     required = {"loss", "reward_chosen_mean", "reward_rejected_mean", "reward_gap"}
@@ -292,9 +300,10 @@ def test_total_loss_keys():
 # 13. test_total_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_total_loss_scalar():
     batch = _make_batch()
-    head  = _make_head()
+    head = _make_head()
     trainer = RewardModelTrainer()
     out = trainer.total_loss(batch, head)
     for key, val in out.items():
@@ -305,10 +314,11 @@ def test_total_loss_scalar():
 # 14. test_gradient_flows
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows():
     """Loss backward should propagate non-None, finite gradients through the head."""
     B, T, d = 3, 8, 16
-    cfg  = RewardModelConfig(d_model=d)
+    cfg = RewardModelConfig(d_model=d)
     head = RewardHead(cfg)
     trainer = RewardModelTrainer(cfg)
 
@@ -333,6 +343,7 @@ def test_gradient_flows():
 # Integration test
 # ---------------------------------------------------------------------------
 
+
 def test_integration_forward_backward():
     """Full forward + backward with B=4, T=16, d_model=64."""
     B, T, d = 4, 16, 64
@@ -343,16 +354,18 @@ def test_integration_forward_backward():
         center_rewards=True,
         margin=0.1,
     )
-    head    = RewardHead(cfg)
+    head = RewardHead(cfg)
     trainer = RewardModelTrainer(cfg)
 
     torch.manual_seed(12345)
-    chosen_hidden   = torch.randn(B, T, d)
+    chosen_hidden = torch.randn(B, T, d)
     rejected_hidden = torch.randn(B, T, d)
 
     # Realistic masks: last 3 tokens are padding.
-    chosen_mask   = torch.ones(B, T);   chosen_mask[:, -3:]   = 0.0
-    rejected_mask = torch.ones(B, T);   rejected_mask[:, -3:] = 0.0
+    chosen_mask = torch.ones(B, T)
+    chosen_mask[:, -3:] = 0.0
+    rejected_mask = torch.ones(B, T)
+    rejected_mask[:, -3:] = 0.0
 
     batch = RewardBatch(
         chosen_hidden=chosen_hidden,

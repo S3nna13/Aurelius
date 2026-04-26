@@ -15,17 +15,17 @@ from __future__ import annotations
 
 import pytest
 
+from src.inference import DECODER_REGISTRY
 from src.inference.chunk_prefill_scheduler import (
     ChunkPrefillConfig,
     ChunkPrefillScheduler,
     Request,
 )
-from src.inference import DECODER_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Registry wiring
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_registry_wired():
     assert "chunk_prefill" in DECODER_REGISTRY
@@ -35,6 +35,7 @@ def test_decoder_registry_wired():
 # ---------------------------------------------------------------------------
 # Full prefill-to-decode pipeline
 # ---------------------------------------------------------------------------
+
 
 def test_full_prefill_to_decode_pipeline():
     """Step through schedule_batch until all 3 requests are decoding."""

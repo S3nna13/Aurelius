@@ -1,5 +1,7 @@
 """Tests for AureliusConfig."""
+
 import pytest
+
 from src.model.config import AureliusConfig
 
 
@@ -40,5 +42,7 @@ def test_invalid_kv_heads_raises():
 
 def test_small_config_for_tests():
     """Small config used in tests to keep things fast."""
-    cfg = AureliusConfig(n_layers=2, d_model=256, n_heads=4, n_kv_heads=2, head_dim=64, d_ff=512, vocab_size=1000)
+    cfg = AureliusConfig(
+        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2, head_dim=64, d_ff=512, vocab_size=1000
+    )
     assert cfg.d_model == cfg.n_heads * cfg.head_dim

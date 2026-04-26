@@ -1,8 +1,9 @@
 """Tests for ParallelBlock (parallel attention + FFN residual)."""
 
-import torch
 import pytest
-from src.model.parallel_residual import ParallelConfig, ParallelBlock
+import torch
+
+from src.model.parallel_residual import ParallelBlock, ParallelConfig
 
 
 @pytest.fixture

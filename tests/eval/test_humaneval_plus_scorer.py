@@ -12,6 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from src.eval import humaneval_scorer as _hm_scorer  # noqa: E402
 from src.eval.humaneval_plus_scorer import (  # noqa: E402
     HumanEvalPlusProblem,
     HumanEvalPlusResult,
@@ -19,7 +20,6 @@ from src.eval.humaneval_plus_scorer import (  # noqa: E402
     score_problems,
     score_single,
 )
-from src.eval import humaneval_scorer as _hm_scorer  # noqa: E402
 
 
 def _add_problem(plus_tests=None, task_id="add/1"):

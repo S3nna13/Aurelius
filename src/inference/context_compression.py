@@ -10,19 +10,18 @@ Strategies implemented:
 - Strided subsampling
 - Local average pooling
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CompressionConfig:
@@ -34,6 +33,7 @@ class CompressionConfig:
         method: Scoring method to use — ``"attention_score"`` or ``"norm"``.
         stride: Step size used by :func:`strided_compression`.
     """
+
     target_ratio: float = 0.5
     min_tokens: int = 64
     method: str = "attention_score"
@@ -43,6 +43,7 @@ class CompressionConfig:
 # ---------------------------------------------------------------------------
 # Scoring functions
 # ---------------------------------------------------------------------------
+
 
 def score_tokens_by_attention(hidden: torch.Tensor, query: torch.Tensor) -> torch.Tensor:
     """Score each token by its dot-product relevance to a query vector.
@@ -75,11 +76,12 @@ def score_tokens_by_norm(hidden: torch.Tensor) -> torch.Tensor:
 # Selection
 # ---------------------------------------------------------------------------
 
+
 def select_top_tokens(
     scores: torch.Tensor,
     k: int,
     preserve_order: bool = True,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Select the top-*k* tokens per sequence according to *scores*.
 
     Args:
@@ -112,6 +114,7 @@ def select_top_tokens(
 # ---------------------------------------------------------------------------
 # Structural compression
 # ---------------------------------------------------------------------------
+
 
 def strided_compression(hidden: torch.Tensor, stride: int) -> torch.Tensor:
     """Keep every *stride*-th token.
@@ -148,6 +151,7 @@ def local_pooling_compression(hidden: torch.Tensor, pool_size: int) -> torch.Ten
 # Module
 # ---------------------------------------------------------------------------
 
+
 class ContextCompressor(nn.Module):
     """Learnable context compressor using attention-score-based token selection.
 
@@ -168,7 +172,7 @@ class ContextCompressor(nn.Module):
         # Learnable query vector (d_model,)
         self.query = nn.Parameter(torch.randn(d_model))
 
-    def forward(self, hidden: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, hidden: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Compress *hidden* by selecting the most relevant tokens.
 
         Args:
@@ -207,6 +211,7 @@ class ContextCompressor(nn.Module):
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def compute_compression_ratio(original_len: int, compressed_len: int) -> float:
     """Return the ratio of compressed to original sequence length.

@@ -1,14 +1,15 @@
 """Dashboard exporter: export metrics to multiple dashboard formats."""
+
 from __future__ import annotations
 
 import csv
 import io
 import json
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class ExportFormat(str, Enum):
+class ExportFormat(StrEnum):
     JSON = "json"
     PROMETHEUS = "prometheus"
     INFLUXDB_LINE = "influxdb_line"
@@ -42,9 +43,7 @@ class DashboardExporter:
             if p.labels:
                 label_str = (
                     "{"
-                    + ",".join(
-                        f'{k}="{_escape_prom(str(v))}"' for k, v in p.labels.items()
-                    )
+                    + ",".join(f'{k}="{_escape_prom(str(v))}"' for k, v in p.labels.items())
                     + "}"
                 )
             else:
@@ -58,8 +57,7 @@ class DashboardExporter:
         for p in points:
             if p.labels:
                 tag_set = ",".join(
-                    f"{_escape_influx(k)}={_escape_influx(str(v))}"
-                    for k, v in p.labels.items()
+                    f"{_escape_influx(k)}={_escape_influx(str(v))}" for k, v in p.labels.items()
                 )
                 prefix = f"{p.name},{tag_set}"
             else:
@@ -73,9 +71,7 @@ class DashboardExporter:
         writer = csv.writer(buf)
         writer.writerow(["name", "value", "labels_json", "timestamp"])
         for p in points:
-            writer.writerow(
-                [p.name, p.value, json.dumps(dict(p.labels)), p.timestamp]
-            )
+            writer.writerow([p.name, p.value, json.dumps(dict(p.labels)), p.timestamp])
         return buf.getvalue()
 
     def export(self, points: list[MetricPoint], fmt: ExportFormat) -> str:

@@ -1,9 +1,9 @@
 """Mixture of Depths: dynamic token routing through transformer layers."""
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -31,7 +31,7 @@ def token_router(
     x: Tensor,
     router: nn.Linear,
     capacity: float,
-) -> Tuple[Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor]:
     """Score tokens and select the top-capacity fraction for processing.
 
     Args:
@@ -119,7 +119,7 @@ def compute_mod_aux_loss(
         Non-negative scalar loss tensor.
     """
     B, T = router_scores.shape
-    k = max(1, math.ceil(capacity * T))
+    max(1, math.ceil(capacity * T))
 
     # Compute fraction of tokens "selected" per batch item using a soft proxy:
     # use sigmoid of (score - threshold) to make it differentiable, but for
@@ -152,7 +152,7 @@ class MoDLayer(nn.Module):
         self.config = config
         self.router = nn.Linear(config.d_model, 1, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Route top-k tokens through layer, scatter results back with weights.
 
         Args:
@@ -179,10 +179,12 @@ class MoDLayer(nn.Module):
 
         # Compute auxiliary load-balancing loss
         with torch.no_grad():
-            raw_scores = self.router(x).squeeze(-1)  # (B, T)
+            self.router(x).squeeze(-1)  # (B, T)
         # Recompute with grad for the loss
         raw_scores_grad = self.router(x).squeeze(-1)
-        aux_loss = compute_mod_aux_loss(raw_scores_grad, self.config.capacity, self.config.aux_loss_coef)
+        aux_loss = compute_mod_aux_loss(
+            raw_scores_grad, self.config.capacity, self.config.aux_loss_coef
+        )
 
         return output, aux_loss
 
@@ -198,14 +200,12 @@ class MoDTransformer(nn.Module):
         config: ``MoDConfig`` controlling routing behaviour.
     """
 
-    def __init__(self, layers: List[nn.Module], config: MoDConfig) -> None:
+    def __init__(self, layers: list[nn.Module], config: MoDConfig) -> None:
         super().__init__()
         self.config = config
-        self.mod_layers = nn.ModuleList(
-            MoDLayer(layer, config) for layer in layers
-        )
+        self.mod_layers = nn.ModuleList(MoDLayer(layer, config) for layer in layers)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Sequential forward through all MoDLayers, summing aux losses.
 
         Args:

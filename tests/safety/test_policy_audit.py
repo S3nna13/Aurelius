@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from src.safety.policy_audit import (
-    AuditEntry,
     POLICY_AUDIT_LOG,
+    AuditEntry,
     PolicyAuditLog,
     PolicyDecision,
 )
 
-
 # ---------------------------------------------------------------------------
 # PolicyDecision enum values (4)
 # ---------------------------------------------------------------------------
+
 
 def test_decision_allow_value():
     assert PolicyDecision.ALLOW == "allow"
@@ -42,6 +40,7 @@ def test_decision_has_four_members():
 # AuditEntry auto-generates id
 # ---------------------------------------------------------------------------
 
+
 def test_audit_entry_id_auto_generated():
     e = AuditEntry.create("policy_a", PolicyDecision.ALLOW)
     assert e.id is not None
@@ -63,6 +62,7 @@ def test_audit_entry_id_is_hex():
 # AuditEntry timestamp
 # ---------------------------------------------------------------------------
 
+
 def test_audit_entry_timestamp_is_string():
     e = AuditEntry.create("policy_a", PolicyDecision.ALLOW)
     assert isinstance(e.timestamp, str)
@@ -76,6 +76,7 @@ def test_audit_entry_timestamp_not_empty():
 # ---------------------------------------------------------------------------
 # AuditEntry input_hash
 # ---------------------------------------------------------------------------
+
 
 def test_audit_entry_input_hash_16_chars_when_provided():
     e = AuditEntry.create("policy_a", PolicyDecision.BLOCK, input_text="some input text")
@@ -107,6 +108,7 @@ def test_audit_entry_different_input_different_hash():
 # ---------------------------------------------------------------------------
 # PolicyAuditLog.record()
 # ---------------------------------------------------------------------------
+
 
 def test_record_returns_audit_entry():
     log = PolicyAuditLog()
@@ -148,6 +150,7 @@ def test_record_with_input_text_creates_hash():
 # ---------------------------------------------------------------------------
 # query() — filtering
 # ---------------------------------------------------------------------------
+
 
 def test_query_no_args_returns_all():
     log = PolicyAuditLog()
@@ -197,6 +200,7 @@ def test_query_no_match_returns_empty():
 # ---------------------------------------------------------------------------
 # stats()
 # ---------------------------------------------------------------------------
+
 
 def test_stats_returns_dict_with_total():
     log = PolicyAuditLog()
@@ -248,6 +252,7 @@ def test_stats_by_policy_correct():
 # export_jsonl()
 # ---------------------------------------------------------------------------
 
+
 def test_export_jsonl_returns_string():
     log = PolicyAuditLog()
     log.record("p", PolicyDecision.ALLOW)
@@ -288,6 +293,7 @@ def test_export_jsonl_empty_log():
 # clear()
 # ---------------------------------------------------------------------------
 
+
 def test_clear_removes_all():
     log = PolicyAuditLog()
     log.record("p", PolicyDecision.ALLOW)
@@ -312,6 +318,7 @@ def test_clear_empty_log_returns_zero():
 # ---------------------------------------------------------------------------
 # POLICY_AUDIT_LOG global instance
 # ---------------------------------------------------------------------------
+
 
 def test_policy_audit_log_exists():
     assert POLICY_AUDIT_LOG is not None

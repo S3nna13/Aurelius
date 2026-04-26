@@ -1,12 +1,13 @@
 """Tests for tool_chain_validator."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.tools.tool_chain_validator import (
+    TOOL_CHAIN_VALIDATOR_REGISTRY,
     ToolChainError,
     ToolChainValidator,
-    TOOL_CHAIN_VALIDATOR_REGISTRY,
 )
 
 

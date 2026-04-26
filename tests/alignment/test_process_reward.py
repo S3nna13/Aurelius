@@ -1,8 +1,9 @@
 import pytest
 import torch
+
+from src.alignment.process_reward import PRMConfig, ProcessRewardModel, prm_loss
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.alignment.process_reward import PRMConfig, ProcessRewardModel, prm_loss
 
 
 @pytest.fixture
@@ -78,8 +79,6 @@ def test_prm_loss_scalar():
 def test_prm_loss_partial_mask():
     scores = torch.randn(2, 4)
     labels = torch.zeros(2, 4)
-    mask = torch.tensor(
-        [[True, True, False, False], [True, False, False, False]]
-    )
+    mask = torch.tensor([[True, True, False, False], [True, False, False, False]])
     loss = prm_loss(scores, labels, mask)
     assert loss.ndim == 0

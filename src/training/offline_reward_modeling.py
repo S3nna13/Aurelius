@@ -24,17 +24,17 @@ Pure native PyTorch only; no external dependencies beyond stdlib + torch.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # RewardModelConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RewardModelConfig:
@@ -62,6 +62,7 @@ class RewardModelConfig:
 # RewardBatch
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RewardBatch:
     """Input batch for a single reward-model training step.
@@ -86,6 +87,7 @@ class RewardBatch:
 # ---------------------------------------------------------------------------
 # RewardHead
 # ---------------------------------------------------------------------------
+
 
 class RewardHead(nn.Module):
     """Scalar reward regression head.
@@ -123,7 +125,7 @@ class RewardHead(nn.Module):
         # For each row, masked positions contribute their index; padding = -1.
         masked_positions = torch.where(
             mask.bool(),
-            positions.unsqueeze(0),          # [1, T] → broadcast to [B, T]
+            positions.unsqueeze(0),  # [1, T] → broadcast to [B, T]
             torch.full_like(positions, -1).unsqueeze(0),
         )  # [B, T]
         last_idx = masked_positions.max(dim=1).values  # [B]
@@ -158,6 +160,7 @@ class RewardHead(nn.Module):
 # RewardModelTrainer
 # ---------------------------------------------------------------------------
 
+
 class RewardModelTrainer:
     """Stateless Bradley-Terry reward-model loss computation.
 
@@ -177,7 +180,7 @@ class RewardModelTrainer:
 
     def bradley_terry_loss(
         self,
-        reward_chosen: Tensor,    # [B]
+        reward_chosen: Tensor,  # [B]
         reward_rejected: Tensor,  # [B]
     ) -> Tensor:
         """Compute the Bradley-Terry pairwise preference loss.
@@ -242,7 +245,7 @@ class RewardModelTrainer:
             * ``"reward_rejected_mean"`` -- mean scalar reward for rejected responses.
             * ``"reward_gap"``           -- mean of (r_w - r_l) across the batch.
         """
-        r_w = head(batch.chosen_hidden, batch.chosen_mask)    # [B]
+        r_w = head(batch.chosen_hidden, batch.chosen_mask)  # [B]
         r_l = head(batch.rejected_hidden, batch.rejected_mask)  # [B]
 
         loss = self.bradley_terry_loss(r_w, r_l)

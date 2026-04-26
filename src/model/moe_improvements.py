@@ -1,7 +1,7 @@
-"""MoE improvements: Switch routing, Z-loss regularization, expert dropout, and token dropping strategies."""
+"""MoE improvements: Switch routing, Z-loss regularization, expert dropout, and token dropping strategies."""  # noqa: E501
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -13,12 +13,12 @@ from torch import Tensor
 @dataclass
 class MoEImprovementsConfig:
     n_experts: int = 8
-    top_k: int = 1                  # Switch Transformer uses top-1
-    capacity_factor: float = 1.25   # expert capacity = capacity_factor * tokens / n_experts
+    top_k: int = 1  # Switch Transformer uses top-1
+    capacity_factor: float = 1.25  # expert capacity = capacity_factor * tokens / n_experts
     z_loss_coeff: float = 0.001
-    expert_dropout: float = 0.0     # randomly disable experts during training
-    noise_std: float = 0.01         # jitter noise for router logits
-    use_aux_loss: bool = True        # load balancing auxiliary loss
+    expert_dropout: float = 0.0  # randomly disable experts during training
+    noise_std: float = 0.01  # jitter noise for router logits
+    use_aux_loss: bool = True  # load balancing auxiliary loss
 
 
 def compute_z_loss(router_logits: Tensor, coeff: float = 0.001) -> Tensor:
@@ -35,7 +35,7 @@ def compute_z_loss(router_logits: Tensor, coeff: float = 0.001) -> Tensor:
     """
     # log(sum(exp(logits))) = logsumexp for numerical stability
     log_z = torch.logsumexp(router_logits, dim=-1)  # (B*T,)
-    z_loss = coeff * (log_z ** 2).mean()
+    z_loss = coeff * (log_z**2).mean()
     return z_loss
 
 
@@ -54,11 +54,11 @@ def compute_switch_aux_loss(router_probs: Tensor, expert_indices: Tensor) -> Ten
         scalar aux_loss
     """
     n_experts = router_probs.shape[-1]
-    n_tokens = router_probs.shape[0]
+    router_probs.shape[0]
 
     # f_i: fraction of tokens dispatched to each expert
     one_hot = F.one_hot(expert_indices, num_classes=n_experts).float()  # (B*T, E)
-    f_i = one_hot.mean(dim=0)   # (E,)
+    f_i = one_hot.mean(dim=0)  # (E,)
 
     # P_i: mean routing probability for each expert
     P_i = router_probs.mean(dim=0)  # (E,)
@@ -143,7 +143,9 @@ class SwitchRouter(nn.Module):
         overflow_count = 0
 
         for e in range(self.n_experts):
-            token_positions = (expert_indices == e).nonzero(as_tuple=True)[0]  # positions assigned to expert e
+            token_positions = (expert_indices == e).nonzero(as_tuple=True)[
+                0
+            ]  # positions assigned to expert e
             n_assigned = token_positions.shape[0]
             if n_assigned == 0:
                 continue
@@ -215,10 +217,12 @@ class ImprovedMoELayer(nn.Module):
             noise_std=config.noise_std,
         )
 
-        self.experts = nn.ModuleList([
-            ExpertWithDropout(d_model, d_ff, config.expert_dropout)
-            for _ in range(config.n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                ExpertWithDropout(d_model, d_ff, config.expert_dropout)
+                for _ in range(config.n_experts)
+            ]
+        )
 
     def forward(self, hidden: Tensor) -> tuple[Tensor, dict]:
         """Route tokens, dispatch to experts, gather outputs.
@@ -256,7 +260,7 @@ class ImprovedMoELayer(nn.Module):
         output = output_flat.reshape(B, T, D)
 
         # Compute losses
-        router_logits_for_z = self.router.gate(hidden_flat.detach())
+        self.router.gate(hidden_flat.detach())
         # Use actual gate logits (without noise) for z_loss for stability
         router_logits_actual = self.router.gate(hidden_flat)
         z_loss_val = compute_z_loss(router_logits_actual, self.config.z_loss_coeff)

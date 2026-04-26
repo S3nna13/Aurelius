@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AttributionConfig:
-    citation_format: str = "bracket"       # "bracket" [1] | "superscript" ^1 | "inline" (Source: ...)
+    citation_format: str = "bracket"  # "bracket" [1] | "superscript" ^1 | "inline" (Source: ...)
     max_docs: int = 5
-    min_citation_overlap: float = 0.5      # min word overlap to count as supported
+    min_citation_overlap: float = 0.5  # min word overlap to count as supported
     require_citation: bool = True
 
 
 # ---------------------------------------------------------------------------
 # Core data structure
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CitedDocument:
@@ -48,6 +49,7 @@ class CitedDocument:
 # ---------------------------------------------------------------------------
 # Citation insertion helpers
 # ---------------------------------------------------------------------------
+
 
 def insert_citations(
     response: str,
@@ -82,8 +84,7 @@ def insert_citations(
         doc_ids = sentence_citations.get(stripped, [])
         if doc_ids:
             markers = "".join(
-                CitedDocument(doc_id=d, text="").format_citation(format)
-                for d in sorted(doc_ids)
+                CitedDocument(doc_id=d, text="").format_citation(format) for d in sorted(doc_ids)
             )
             result_parts.append(part + markers)
         else:
@@ -95,6 +96,7 @@ def insert_citations(
 # ---------------------------------------------------------------------------
 # Recall metric
 # ---------------------------------------------------------------------------
+
 
 def _word_overlap(a: str, b: str) -> float:
     """Compute word-level F1 overlap between two strings."""
@@ -146,6 +148,7 @@ def compute_citation_recall(
 # Citation extraction
 # ---------------------------------------------------------------------------
 
+
 def extract_citations_from_text(text: str) -> list[int]:
     """Extract citation numbers from text containing [1], [2], ^1, ^2, etc.
 
@@ -164,6 +167,7 @@ def extract_citations_from_text(text: str) -> list[int]:
 # ---------------------------------------------------------------------------
 # End-to-end attributed RAG pipeline
 # ---------------------------------------------------------------------------
+
 
 class AttributedRAGPipeline:
     """End-to-end RAG pipeline with source attribution."""
@@ -220,9 +224,7 @@ class AttributedRAGPipeline:
             "n_docs_retrieved": len(docs),
         }
 
-    def evaluate_attribution(
-        self, query: str, gold_response: str
-    ) -> dict[str, float]:
+    def evaluate_attribution(self, query: str, gold_response: str) -> dict[str, float]:
         """Generate a response and evaluate citation recall vs a gold response.
 
         Args:
@@ -250,6 +252,7 @@ class AttributedRAGPipeline:
 # Citation verifier
 # ---------------------------------------------------------------------------
 
+
 class CitationVerifier:
     """Verify that cited documents actually support the claimed sentences."""
 
@@ -264,9 +267,7 @@ class CitationVerifier:
         """
         return _word_overlap(sentence, doc.text)
 
-    def verify_response(
-        self, response: str, docs: list[CitedDocument]
-    ) -> dict[str, float]:
+    def verify_response(self, response: str, docs: list[CitedDocument]) -> dict[str, float]:
         """Check each response sentence against all docs.
 
         A sentence is considered supported if at least one doc has

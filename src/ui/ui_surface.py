@@ -21,9 +21,7 @@ from src.ui.errors import UIError
 
 _SURFACE_ID_RE = re.compile(r"^[a-z0-9_\-]+$")
 _ACTION_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-_MODIFIER_KEY_RE = re.compile(
-    r"^(?:ctrl|alt|shift|meta)-[a-z0-9]$"
-)
+_MODIFIER_KEY_RE = re.compile(r"^(?:ctrl|alt|shift|meta)-[a-z0-9]$")
 _NAMED_KEYS = frozenset(
     {
         "esc",
@@ -91,9 +89,7 @@ class UISurface:
         if not isinstance(self.surface_id, str) or not self.surface_id:
             raise UIError("surface_id must be a non-empty str")
         if not _SURFACE_ID_RE.match(self.surface_id):
-            raise UIError(
-                f"surface_id={self.surface_id!r} must match [a-z0-9_-]+"
-            )
+            raise UIError(f"surface_id={self.surface_id!r} must match [a-z0-9_-]+")
 
         if not isinstance(self.title, str) or self.title == "":
             raise UIError("title must be a non-empty str")
@@ -102,33 +98,23 @@ class UISurface:
             raise UIError("panels must be a non-empty tuple of str")
         for idx, p in enumerate(self.panels):
             if not isinstance(p, str) or p == "":
-                raise UIError(
-                    f"panels[{idx}] must be a non-empty str, got {p!r}"
-                )
+                raise UIError(f"panels[{idx}] must be a non-empty str, got {p!r}")
 
         if not isinstance(self.default_layout, str) or self.default_layout == "":
             raise UIError("default_layout must be a non-empty str")
 
-        if self.motion is not None and (
-            not isinstance(self.motion, str) or self.motion == ""
-        ):
+        if self.motion is not None and (not isinstance(self.motion, str) or self.motion == ""):
             raise UIError("motion must be None or a non-empty str")
 
         if not isinstance(self.keyboard_map, dict):
             raise UIError("keyboard_map must be a dict[str, str]")
         for k, v in self.keyboard_map.items():
             if not _is_valid_key(k):
-                raise UIError(
-                    f"keyboard_map key {k!r} is not a recognised key spec"
-                )
+                raise UIError(f"keyboard_map key {k!r} is not a recognised key spec")
             if not isinstance(v, str) or v == "":
-                raise UIError(
-                    f"keyboard_map[{k!r}] must be a non-empty str, got {v!r}"
-                )
+                raise UIError(f"keyboard_map[{k!r}] must be a non-empty str, got {v!r}")
             if not _ACTION_RE.match(v):
-                raise UIError(
-                    f"keyboard_map[{k!r}]={v!r} is not a snake_case action name"
-                )
+                raise UIError(f"keyboard_map[{k!r}]={v!r} is not a snake_case action name")
 
 
 UI_SURFACE_REGISTRY: dict[str, UISurface] = {}
@@ -144,9 +130,7 @@ def register_ui_surface(surface: UISurface) -> None:
     if not isinstance(surface, UISurface):
         raise UIError("register_ui_surface requires a UISurface instance")
     if surface.surface_id in UI_SURFACE_REGISTRY:
-        raise UIError(
-            f"UI surface {surface.surface_id!r} is already registered"
-        )
+        raise UIError(f"UI surface {surface.surface_id!r} is already registered")
     UI_SURFACE_REGISTRY[surface.surface_id] = surface
 
 

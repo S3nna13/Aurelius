@@ -9,8 +9,7 @@ Only rich, stdlib, and project-local imports are used.
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from rich.console import Console
 from rich.panel import Panel
@@ -100,9 +99,7 @@ class StreamingRenderer:
             StreamingRendererError: If *chunk* is not a :class:`TokenChunk`.
         """
         if not isinstance(chunk, TokenChunk):
-            raise StreamingRendererError(
-                f"chunk must be a TokenChunk, got {type(chunk).__name__}"
-            )
+            raise StreamingRendererError(f"chunk must be a TokenChunk, got {type(chunk).__name__}")
         if self._state in (StreamingState.COMPLETE, StreamingState.ERROR):
             raise StreamingRendererError(
                 f"cannot push chunk in state {self._state.value!r}; call reset() first"
@@ -120,9 +117,7 @@ class StreamingRenderer:
             StreamingRendererError: If *chunks* is not a list.
         """
         if not isinstance(chunks, list):
-            raise StreamingRendererError(
-                f"chunks must be a list, got {type(chunks).__name__}"
-            )
+            raise StreamingRendererError(f"chunks must be a list, got {type(chunks).__name__}")
         for chunk in chunks:
             self.push_chunk(chunk)
 

@@ -7,17 +7,17 @@ All tests use small dimensions:
 """
 
 import math
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.state_space_model import (
-    RMSNorm,
-    SSMKernel,
-    S6Block,
     MambaBlock,
-    MambaLanguageModel,
     MambaConfig,
+    MambaLanguageModel,
+    RMSNorm,
+    S6Block,
+    SSMKernel,
 )
 
 # ---------------------------------------------------------------------------
@@ -48,6 +48,7 @@ def _make_ids() -> torch.Tensor:
 # RMSNorm tests
 # ===========================================================================
 
+
 def test_rmsnorm_output_shape():
     """RMSNorm should not change the tensor shape."""
     norm = RMSNorm(D_MODEL)
@@ -77,6 +78,7 @@ def test_rmsnorm_learnable_weight():
 # SSMKernel tests
 # ===========================================================================
 
+
 def _make_ssm_kernel(d_model: int = D_MODEL) -> SSMKernel:
     torch.manual_seed(2)
     d_inner = d_model * EXPAND
@@ -87,7 +89,7 @@ def test_ssm_discretize_A_bar_shape():
     """SSMKernel.discretize should return A_bar of shape [B, d_model, d_state]."""
     d_inner = D_MODEL * EXPAND
     kernel = _make_ssm_kernel()
-    A = -torch.exp(kernel.A_log)                     # [d_inner, d_state]
+    A = -torch.exp(kernel.A_log)  # [d_inner, d_state]
     B_mat = torch.randn(B, d_inner, D_STATE)
     dt = torch.rand(B, d_inner).add(0.01)
     A_bar, B_bar = kernel.discretize(A, B_mat, dt)
@@ -148,6 +150,7 @@ def test_ssm_D_skip_contributes_to_output():
 # S6Block tests
 # ===========================================================================
 
+
 def _make_s6block() -> S6Block:
     torch.manual_seed(4)
     return S6Block(D_MODEL, d_state=D_STATE, d_conv=D_CONV, expand=EXPAND)
@@ -199,6 +202,7 @@ def test_s6block_different_inputs_different_outputs():
 # MambaBlock tests
 # ===========================================================================
 
+
 def _make_mamba_block() -> MambaBlock:
     torch.manual_seed(5)
     return MambaBlock(D_MODEL, d_state=D_STATE)
@@ -241,6 +245,7 @@ def test_mambablock_prenorm_applied_before_s6():
 # ===========================================================================
 # MambaLanguageModel tests
 # ===========================================================================
+
 
 def _make_lm() -> MambaLanguageModel:
     torch.manual_seed(6)
@@ -292,6 +297,7 @@ def test_mamba_lm_embedding_used():
 # ===========================================================================
 # MambaConfig tests
 # ===========================================================================
+
 
 def test_mamba_config_defaults():
     """MambaConfig should have the specified default values."""

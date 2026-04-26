@@ -13,16 +13,15 @@ import hashlib
 import pytest
 
 from src.serving.auth_middleware import (
-    APIKey,
     AUTH_MIDDLEWARE_REGISTRY,
+    DEFAULT_AUTH_MIDDLEWARE,
+    APIKey,
     AuthConfig,
     AuthMiddleware,
     AuthResult,
-    DEFAULT_AUTH_MIDDLEWARE,
     _sha256_hex,
     _timing_safe_equal,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -52,6 +51,7 @@ def open_middleware() -> AuthMiddleware:
 # 1. Valid Bearer token → authenticated=True
 # ---------------------------------------------------------------------------
 
+
 def test_valid_bearer_token(middleware: AuthMiddleware) -> None:
     result = middleware.authenticate({"Authorization": f"Bearer {RAW_KEY}"})
     assert result.authenticated is True
@@ -71,6 +71,7 @@ def test_bearer_token_case_insensitive_prefix(middleware: AuthMiddleware) -> Non
 # 2. Valid X-API-Key header → authenticated=True
 # ---------------------------------------------------------------------------
 
+
 def test_valid_x_api_key(middleware: AuthMiddleware) -> None:
     result = middleware.authenticate({"X-API-Key": RAW_KEY})
     assert result.authenticated is True
@@ -87,6 +88,7 @@ def test_x_api_key_header_case_insensitive(middleware: AuthMiddleware) -> None:
 # ---------------------------------------------------------------------------
 # 3. Wrong key → authenticated=False
 # ---------------------------------------------------------------------------
+
 
 def test_wrong_bearer_token(middleware: AuthMiddleware) -> None:
     result = middleware.authenticate({"Authorization": "Bearer totally-wrong-key"})
@@ -105,6 +107,7 @@ def test_wrong_x_api_key(middleware: AuthMiddleware) -> None:
 # 4. Missing header when require_auth=True → authenticated=False
 # ---------------------------------------------------------------------------
 
+
 def test_missing_header_require_auth_true(middleware: AuthMiddleware) -> None:
     result = middleware.authenticate({})
     assert result.authenticated is False
@@ -119,6 +122,7 @@ def test_missing_header_with_unrelated_headers(middleware: AuthMiddleware) -> No
 # ---------------------------------------------------------------------------
 # 5. require_auth=False + no header → authenticated=True (dev mode)
 # ---------------------------------------------------------------------------
+
 
 def test_dev_mode_no_header_passes(open_middleware: AuthMiddleware) -> None:
     result = open_middleware.authenticate({})
@@ -136,6 +140,7 @@ def test_dev_mode_with_valid_key_also_passes(open_middleware: AuthMiddleware) ->
 # ---------------------------------------------------------------------------
 # 6. Scope check: key has {"read"}, requires "write" → False
 # ---------------------------------------------------------------------------
+
 
 def test_scope_check_missing_scope(middleware: AuthMiddleware) -> None:
     """Add a read-only key and verify it fails a write scope check."""
@@ -167,6 +172,7 @@ def test_scope_check_unauthenticated_result() -> None:
 # 7. Key removal: after remove_key, same key → authenticated=False
 # ---------------------------------------------------------------------------
 
+
 def test_remove_key_revokes_access(middleware: AuthMiddleware) -> None:
     # Confirm it works before removal.
     before = middleware.authenticate({"X-API-Key": RAW_KEY})
@@ -193,11 +199,11 @@ def test_has_key(middleware: AuthMiddleware) -> None:
 # 8. Timing safety: comparison does NOT short-circuit
 # ---------------------------------------------------------------------------
 
+
 def test_timing_safe_equal_uses_hmac_compare_digest() -> None:
     """_timing_safe_equal must return False for non-equal strings without
     short-circuiting.  We verify by ensuring the function is backed by
     hmac.compare_digest (qualitative, not timing-based)."""
-    import hmac as _hmac
     import inspect
 
     source = inspect.getsource(_timing_safe_equal)
@@ -228,6 +234,7 @@ def test_authenticate_always_hashes_supplied_key(middleware: AuthMiddleware) -> 
 # 9. Adversarial: empty string key → does not crash
 # ---------------------------------------------------------------------------
 
+
 def test_empty_string_key_does_not_crash(middleware: AuthMiddleware) -> None:
     result = middleware.authenticate({"X-API-Key": ""})
     # An empty key should simply not match any registered key.
@@ -254,6 +261,7 @@ def test_bearer_empty_after_prefix(middleware: AuthMiddleware) -> None:
 # 10. Adversarial: very long key (10 KB) → handles without error
 # ---------------------------------------------------------------------------
 
+
 def test_very_long_key_does_not_crash(middleware: AuthMiddleware) -> None:
     long_key = "x" * 10_240  # 10 KB
     result = middleware.authenticate({"X-API-Key": long_key})
@@ -272,6 +280,7 @@ def test_add_and_authenticate_very_long_key(middleware: AuthMiddleware) -> None:
 # ---------------------------------------------------------------------------
 # 11. Module-level registry sanity checks
 # ---------------------------------------------------------------------------
+
 
 def test_auth_middleware_registry_is_dict() -> None:
     assert isinstance(AUTH_MIDDLEWARE_REGISTRY, dict)
@@ -292,6 +301,7 @@ def test_default_auth_middleware_is_closed() -> None:
 # 12. add_key returns correct APIKey
 # ---------------------------------------------------------------------------
 
+
 def test_add_key_returns_api_key() -> None:
     mw = AuthMiddleware(AuthConfig(keys={}, require_auth=True))
     api_key = mw.add_key("svc", "mysecret", frozenset({"admin"}), rate_limit_rps=200.0)
@@ -306,6 +316,7 @@ def test_add_key_returns_api_key() -> None:
 # ---------------------------------------------------------------------------
 # 13. Multiple keys coexist without collision
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_keys_no_collision() -> None:
     mw = AuthMiddleware(AuthConfig(keys={}, require_auth=True))
@@ -329,16 +340,19 @@ def test_multiple_keys_no_collision() -> None:
 # 14. Bearer takes precedence over X-API-Key when both are present
 # ---------------------------------------------------------------------------
 
+
 def test_bearer_takes_precedence_over_x_api_key() -> None:
     mw = AuthMiddleware(AuthConfig(keys={}, require_auth=True))
     mw.add_key("bearer-key", "bearer-secret", frozenset({"read"}))
     mw.add_key("api-key", "apikey-secret", frozenset({"write"}))
 
     # Valid Bearer, invalid X-API-Key.
-    result = mw.authenticate({
-        "Authorization": "Bearer bearer-secret",
-        "X-API-Key": "apikey-secret",
-    })
+    result = mw.authenticate(
+        {
+            "Authorization": "Bearer bearer-secret",
+            "X-API-Key": "apikey-secret",
+        }
+    )
     # Bearer is tried first; it succeeds — key_id is "bearer-key".
     assert result.authenticated is True
     assert result.key_id == "bearer-key"

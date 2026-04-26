@@ -33,15 +33,13 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
 
 # --------------------------------------------------------------------------- #
 # Default principles
 # --------------------------------------------------------------------------- #
 
 
-DEFAULT_PRINCIPLES: Dict[str, Dict[str, object]] = {
+DEFAULT_PRINCIPLES: dict[str, dict[str, object]] = {
     "helpful": {
         "description": (
             "The response engages with the user's request, provides concrete "
@@ -188,9 +186,9 @@ class PrincipleScore:
 class ConstitutionalReport:
     """Aggregate constitutional-adherence report."""
 
-    principle_scores: List[PrincipleScore]
+    principle_scores: list[PrincipleScore]
     overall: float
-    flagged_principles: List[str] = field(default_factory=list)
+    flagged_principles: list[str] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
@@ -214,13 +212,13 @@ class ConstitutionalPrinciplesScorer:
 
     def __init__(
         self,
-        principles: Optional[Dict[str, Dict[str, object]]] = None,
-        custom_weights: Optional[Dict[str, float]] = None,
+        principles: dict[str, dict[str, object]] | None = None,
+        custom_weights: dict[str, float] | None = None,
     ) -> None:
         src = principles if principles is not None else DEFAULT_PRINCIPLES
         # Deep-ish copy so callers can mutate DEFAULT_PRINCIPLES later without
         # surprising previously-constructed scorers.
-        self._principles: Dict[str, Dict[str, object]] = {}
+        self._principles: dict[str, dict[str, object]] = {}
         for name, spec in src.items():
             self._principles[name] = {
                 "description": spec.get("description", ""),
@@ -232,7 +230,7 @@ class ConstitutionalPrinciplesScorer:
             for name, w in custom_weights.items():
                 if name in self._principles:
                     self._principles[name]["weight"] = float(w)
-        self._compiled: Dict[str, Dict[str, list]] = {}
+        self._compiled: dict[str, dict[str, list]] = {}
         self._recompile_all()
 
     # ------------------------------------------------------------------ #
@@ -251,8 +249,8 @@ class ConstitutionalPrinciplesScorer:
         self,
         name: str,
         description: str,
-        positive: List[str],
-        negative: List[str],
+        positive: list[str],
+        negative: list[str],
         weight: float = 1.0,
     ) -> None:
         """Register a new principle. Overwrites if ``name`` already exists."""
@@ -289,10 +287,10 @@ class ConstitutionalPrinciplesScorer:
         if not isinstance(text, str):
             raise TypeError("text must be a string")
         norm = _normalise(text)
-        per: List[PrincipleScore] = []
+        per: list[PrincipleScore] = []
         total_w = 0.0
         weighted_sum = 0.0
-        flagged: List[str] = []
+        flagged: list[str] = []
         for name, spec in self._principles.items():
             compiled = self._compiled[name]
             pos = sum(len(p.findall(norm)) for p in compiled["positive"])

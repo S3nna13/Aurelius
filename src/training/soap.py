@@ -157,8 +157,8 @@ class SOAP(Optimizer):
                     exp_avg_sq.mul_(beta2).addcmul_(g_hat, g_hat, value=1.0 - beta2)
 
                     # Bias-corrected moments
-                    bc1 = 1.0 - beta1 ** t
-                    bc2 = 1.0 - beta2 ** t
+                    bc1 = 1.0 - beta1**t
+                    bc2 = 1.0 - beta2**t
                     m_hat = exp_avg / bc1
                     v_hat = exp_avg_sq / bc2
 
@@ -173,8 +173,8 @@ class SOAP(Optimizer):
                     exp_avg.mul_(beta1).add_(grad, alpha=1.0 - beta1)
                     exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
-                    bc1 = 1.0 - beta1 ** t
-                    bc2 = 1.0 - beta2 ** t
+                    bc1 = 1.0 - beta1**t
+                    bc2 = 1.0 - beta2**t
                     m_hat = exp_avg / bc1
                     v_hat = exp_avg_sq / bc2
 

@@ -10,10 +10,10 @@ from __future__ import annotations
 import pytest
 
 from src.inference import (
+    SCHEDULER_REGISTRY,
     BatchStep,
     ContinuousBatchingScheduler,
     InferenceRequest,
-    SCHEDULER_REGISTRY,
 )
 
 

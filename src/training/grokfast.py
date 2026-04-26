@@ -17,6 +17,7 @@ Usage (wrapped optimizer):
     gf_opt = GrokFastOptimizer(optimizer, model, alpha=0.98, lamb=2.0)
     gf_opt.step()     # applies grokfast then advances optimizer
 """
+
 from __future__ import annotations
 
 from collections import deque

@@ -1,7 +1,8 @@
 """LoRA rank allocation: sensitivity-based budget allocation and adaptive rank pruning."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -12,11 +13,11 @@ from torch import Tensor
 class RankAllocationConfig:
     """Configuration for LoRA rank allocation."""
 
-    total_rank_budget: int = 64       # total rank across all adapters
-    min_rank: int = 1                 # minimum rank per adapter
-    max_rank: int = 16                # maximum rank per adapter
+    total_rank_budget: int = 64  # total rank across all adapters
+    min_rank: int = 1  # minimum rank per adapter
+    max_rank: int = 16  # maximum rank per adapter
     sensitivity_method: str = "gradient"  # "gradient" | "singular_value" | "uniform"
-    prune_threshold: float = 0.01     # prune singular values below this
+    prune_threshold: float = 0.01  # prune singular values below this
 
 
 class LoRAAdapter(nn.Module):
@@ -99,7 +100,7 @@ def compute_singular_value_sensitivity(adapter: LoRAAdapter) -> float:
     total = S.sum().item()
     if total <= 0.0:
         return 0.0
-    return (S[0].item() / total)
+    return S[0].item() / total
 
 
 def allocate_ranks_uniform(n_adapters: int, config: RankAllocationConfig) -> list[int]:
@@ -201,9 +202,9 @@ def prune_low_rank_components(adapter: LoRAAdapter, threshold: float) -> int:
     if not mask.any():
         mask[0] = True  # Always keep at least 1 component
 
-    U_kept = U[:, mask]     # (out_features, k)
-    S_kept = S[mask]        # (k,)
-    Vh_kept = Vh[mask, :]   # (k, in_features)
+    U_kept = U[:, mask]  # (out_features, k)
+    S_kept = S[mask]  # (k,)
+    Vh_kept = Vh[mask, :]  # (k, in_features)
 
     k = S_kept.shape[0]
     original_rank = S.shape[0]
@@ -218,8 +219,8 @@ def prune_low_rank_components(adapter: LoRAAdapter, threshold: float) -> int:
 
     sqrt_S = S_kept.sqrt()  # (k,)
     # new_A shape: (k, in_features), new_B shape: (out_features, k)
-    new_A = (sqrt_S.unsqueeze(1) * Vh_kept) / (scaling ** 0.5)
-    new_B = (U_kept * sqrt_S.unsqueeze(0)) / (scaling ** 0.5)
+    new_A = (sqrt_S.unsqueeze(1) * Vh_kept) / (scaling**0.5)
+    new_B = (U_kept * sqrt_S.unsqueeze(0)) / (scaling**0.5)
 
     # Cast back to original dtype
     dtype = adapter.lora_A.dtype

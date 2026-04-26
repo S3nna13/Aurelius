@@ -15,7 +15,7 @@ from src.model import (
     slerp_merge,
     ties_merge,
 )
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 def test_merging_registry_contains_all_strategies() -> None:
@@ -51,8 +51,6 @@ def test_end_to_end_linear_via_modelmerger() -> None:
     assert isinstance(result, MergeResult)
     assert result.contributors == ("ckpt_a", "ckpt_b")
     assert torch.allclose(result.state_dict["embed.weight"], torch.full((8, 4), 0.5))
-    assert torch.allclose(
-        result.state_dict["blocks.0.attn.q.weight"], torch.full((4, 4), 2.0)
-    )
+    assert torch.allclose(result.state_dict["blocks.0.attn.q.weight"], torch.full((4, 4), 2.0))
     assert torch.allclose(result.state_dict["ln.weight"], torch.full((4,), 3.0))
     assert set(result.state_dict.keys()) == set(a.keys())

@@ -17,13 +17,14 @@ from src.alignment.online_rl_trainer import (
 # Constants
 # ---------------------------------------------------------------------------
 
-B = 2   # batch size
-T = 8   # time steps for GAE sequences
+B = 2  # batch size
+T = 8  # time steps for GAE sequences
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def config():
@@ -57,6 +58,7 @@ def _make_batch(B: int = B, seed: int = 0) -> dict:
 # OnlineRLConfig tests (1-2)
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """Default config should have expected hyper-parameters."""
     cfg = OnlineRLConfig()
@@ -78,6 +80,7 @@ def test_config_custom():
 # ---------------------------------------------------------------------------
 # GAEComputation tests (3-7)
 # ---------------------------------------------------------------------------
+
 
 def test_gae_lengths():
     """GAE output lists should have same length as input."""
@@ -137,6 +140,7 @@ def test_gae_single_step():
 # compute_policy_loss tests (8-9)
 # ---------------------------------------------------------------------------
 
+
 def test_policy_loss_scalar(trainer):
     """compute_policy_loss should return a scalar tensor."""
     logp = torch.randn(B)
@@ -161,6 +165,7 @@ def test_policy_loss_gradient_flows(trainer):
 # compute_value_loss tests (10)
 # ---------------------------------------------------------------------------
 
+
 def test_value_loss_scalar_finite(trainer):
     """compute_value_loss should return a finite scalar."""
     values = torch.randn(B, requires_grad=True)
@@ -175,6 +180,7 @@ def test_value_loss_scalar_finite(trainer):
 # ---------------------------------------------------------------------------
 # train_step tests (11-14)
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_expected_keys(trainer):
     """train_step must return dict with policy_loss, value_loss, entropy, total_loss, kl."""
@@ -223,8 +229,10 @@ def test_train_step_kl_approx(trainer):
 # Registry test (15)
 # ---------------------------------------------------------------------------
 
+
 def test_registry_entry():
     """ALIGNMENT_REGISTRY['online_rl'] should be OnlineRLTrainer."""
     from src.alignment import ALIGNMENT_REGISTRY  # noqa: F401
+
     assert "online_rl" in ALIGNMENT_REGISTRY
     assert ALIGNMENT_REGISTRY["online_rl"] is OnlineRLTrainer

@@ -3,18 +3,19 @@
 Implements exact match, token F1, ROUGE-L, and BLEU from scratch.
 All string normalization: lowercase + strip punctuation + collapse whitespace.
 """
+
 from __future__ import annotations
 
-import re
 import math
+import re
 from collections import Counter
 
 
 def normalize_text(text: str) -> str:
     """Lowercase, remove punctuation, collapse whitespace."""
     text = text.lower()
-    text = re.sub(r'[^\w\s]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"[^\w\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
@@ -107,7 +108,7 @@ def ngrams(tokens: list[str], n: int) -> Counter:
     """Count n-grams in token list."""
     if n <= 0 or len(tokens) < n:
         return Counter()
-    grams = [tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)]
+    grams = [tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
     return Counter(grams)
 
 
@@ -133,9 +134,7 @@ def bleu(
         return 0.0
 
     # Best reference length: closest to prediction length
-    ref_len = min(
-        (abs(len(r) - pred_len), len(r)) for r in ref_token_lists
-    )[1]
+    ref_len = min((abs(len(r) - pred_len), len(r)) for r in ref_token_lists)[1]
 
     # Brevity penalty
     if pred_len >= ref_len:
@@ -161,8 +160,7 @@ def bleu(
         clipped_count = 0
         for gram, count in pred_ngrams.items():
             max_ref_count = max(
-                ngrams(ref_tokens, n).get(gram, 0)
-                for ref_tokens in ref_token_lists
+                ngrams(ref_tokens, n).get(gram, 0) for ref_tokens in ref_token_lists
             )
             clipped_count += min(count, max_ref_count)
 

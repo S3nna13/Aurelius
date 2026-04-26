@@ -10,12 +10,12 @@ observation), and ``reflector`` (summarizes the run).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, List
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -34,18 +34,18 @@ class LoopStep:
 @dataclass(frozen=True)
 class LoopResult:
     task: str
-    steps: List[LoopStep]
+    steps: list[LoopStep]
     reflection: str
     succeeded: bool
     total_steps: int
 
 
-def _parse_steps(plan_text: str, max_steps: int) -> List[str]:
+def _parse_steps(plan_text: str, max_steps: int) -> list[str]:
     """Extract ``"1. ..."`` or ``"1) ..."`` lines; fall back to non-empty lines.
 
     Direct port of the reference ``_parse_numbered_steps``.
     """
-    lines: List[str] = []
+    lines: list[str] = []
     for raw in plan_text.splitlines():
         m = re.match(r"^\s*\d+[\.)]\s*(.+)$", raw.strip())
         if m:
@@ -65,7 +65,7 @@ def _parse_steps(plan_text: str, max_steps: int) -> List[str]:
 class PlanObserveReflect:
     """Callable-driven PLAN -> ACT -> OBSERVE -> REFLECT loop."""
 
-    def plan(self, task: str, planner: Callable[[str], str]) -> List[str]:
+    def plan(self, task: str, planner: Callable[[str], str]) -> list[str]:
         plan_text = planner(task)
         steps = _parse_steps(plan_text or "", max_steps=999)
         if not steps:
@@ -79,7 +79,7 @@ class PlanObserveReflect:
     def reflect(
         self,
         task: str,
-        steps: List[LoopStep],
+        steps: list[LoopStep],
         reflector: Callable[[str], str],
     ) -> str:
         summary_lines = [f"Task: {task}"]
@@ -105,7 +105,7 @@ class PlanObserveReflect:
             step_descriptions = [task]
         step_descriptions = step_descriptions[:max_steps]
 
-        executed: List[LoopStep] = []
+        executed: list[LoopStep] = []
         for i, desc in enumerate(step_descriptions, start=1):
             try:
                 observation = actor(desc)

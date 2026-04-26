@@ -24,18 +24,18 @@ Eagle3Decoder     — orchestrates drafting + verification; registered in DECODE
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Eagle3Config:
@@ -43,16 +43,17 @@ class Eagle3Config:
 
     d_model: int = 2048
     vocab_size: int = 128000
-    max_draft_len: int = 8        # maximum tokens to draft per step
-    min_draft_len: int = 1        # minimum tokens to draft per step
-    confidence_threshold: float = 0.8   # stop drafting if confidence falls below this
-    confidence_head_hidden: Optional[int] = None  # defaults to d_model // 4
+    max_draft_len: int = 8  # maximum tokens to draft per step
+    min_draft_len: int = 1  # minimum tokens to draft per step
+    confidence_threshold: float = 0.8  # stop drafting if confidence falls below this
+    confidence_head_hidden: int | None = None  # defaults to d_model // 4
     temperature: float = 1.0
 
 
 # ---------------------------------------------------------------------------
 # Confidence Head
 # ---------------------------------------------------------------------------
+
 
 class ConfidenceHead(nn.Module):
     """Predicts acceptance probability for a draft token from a hidden state.
@@ -84,6 +85,7 @@ class ConfidenceHead(nn.Module):
 # ---------------------------------------------------------------------------
 # Eagle3 Drafter
 # ---------------------------------------------------------------------------
+
 
 class Eagle3Drafter(nn.Module):
     """Draft model with confidence-gated variable-length drafting.
@@ -120,8 +122,8 @@ class Eagle3Drafter(nn.Module):
             next_hidden: [B, d_model]   — updated hidden state
             confidence:  [B]            — predicted acceptance probability in (0, 1)
         """
-        next_hidden = F.gelu(self.fc(hidden))      # [B, d_model]
-        logits = self.lm_head(next_hidden)          # [B, vocab_size]
+        next_hidden = F.gelu(self.fc(hidden))  # [B, d_model]
+        logits = self.lm_head(next_hidden)  # [B, vocab_size]
         confidence = self.confidence_head(next_hidden)  # [B]
         return logits, next_hidden, confidence
 
@@ -132,7 +134,7 @@ class Eagle3Drafter(nn.Module):
     def draft(
         self,
         initial_hidden: Tensor,
-        n_tokens: Optional[int] = None,
+        n_tokens: int | None = None,
     ) -> dict:
         """Draft up to *n_tokens* (or max_draft_len) tokens with early stopping.
 
@@ -171,8 +173,8 @@ class Eagle3Drafter(nn.Module):
                 token = torch.multinomial(probs, num_samples=1).squeeze(-1)  # [B]
 
             # Advance hidden state by incorporating the new token embedding
-            token_emb = self.embed(token)   # [B, d_model]
-            hidden = hidden + token_emb     # residual-style update
+            token_emb = self.embed(token)  # [B, d_model]
+            hidden = hidden + token_emb  # residual-style update
 
             draft_tokens.append(token)
             draft_logits.append(logits)
@@ -196,6 +198,7 @@ class Eagle3Drafter(nn.Module):
 # Eagle3 Verifier
 # ---------------------------------------------------------------------------
 
+
 class Eagle3Verifier:
     """Simulates the target-model verifier using speculative rejection sampling.
 
@@ -209,7 +212,7 @@ class Eagle3Verifier:
     def verify(
         draft_tokens: list[Tensor],
         target_probs: list[Tensor],
-        draft_logits: Optional[list[Tensor]] = None,
+        draft_logits: list[Tensor] | None = None,
     ) -> tuple[list[bool], int]:
         """Verify drafted tokens against target model probabilities.
 
@@ -257,6 +260,7 @@ class Eagle3Verifier:
 # ---------------------------------------------------------------------------
 # Eagle3 Decoder
 # ---------------------------------------------------------------------------
+
 
 class Eagle3Decoder:
     """Orchestrates Eagle3 drafting + verification.
@@ -346,8 +350,9 @@ class Eagle3Decoder:
 
 try:
     from src.inference import DECODER_REGISTRY  # type: ignore[attr-defined]
+
     DECODER_REGISTRY["eagle3"] = Eagle3Decoder
-except Exception:
+except Exception:  # noqa: S110
     # Registry not yet initialised; will be wired in __init__.py
     pass
 

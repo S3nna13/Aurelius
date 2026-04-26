@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 import torch
 import torch.nn as nn
 
@@ -20,7 +18,7 @@ class GradSampleHook:
     def _forward_hook(
         self,
         module: nn.Linear,
-        input: Tuple[torch.Tensor, ...],
+        input: tuple[torch.Tensor, ...],
         output: torch.Tensor,
     ) -> None:
         module._saved_activations = input[0].detach()
@@ -28,8 +26,8 @@ class GradSampleHook:
     def _backward_hook(
         self,
         module: nn.Linear,
-        grad_input: Tuple[torch.Tensor, ...],
-        grad_output: Tuple[torch.Tensor, ...],
+        grad_input: tuple[torch.Tensor, ...],
+        grad_output: tuple[torch.Tensor, ...],
     ) -> None:
         saved = module._saved_activations
         go = grad_output[0]
@@ -51,8 +49,8 @@ class PerSampleClipper:
     def __init__(self, model: nn.Module, max_grad_norm: float) -> None:
         self.model = model
         self.max_grad_norm = max_grad_norm
-        self._hooks: List[GradSampleHook] = []
-        self._linear_layers: List[Tuple[str, nn.Linear]] = []
+        self._hooks: list[GradSampleHook] = []
+        self._linear_layers: list[tuple[str, nn.Linear]] = []
 
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -80,7 +78,7 @@ class PerSampleClipper:
         clipped = per_sample_grads * scale.view(B, 1, 1)
         return clipped.sum(dim=0)
 
-    def step(self, loss: torch.Tensor) -> Dict[str, float]:
+    def step(self, loss: torch.Tensor) -> dict[str, float]:
         """Run backward pass and replace each linear layer's .grad with the
         clipped, summed per-sample gradient.
 
@@ -92,7 +90,7 @@ class PerSampleClipper:
         """
         loss.backward()
 
-        stats: Dict[str, float] = {}
+        stats: dict[str, float] = {}
         for name, module in self._linear_layers:
             psg = module._per_sample_grads  # (B, out, in)
 

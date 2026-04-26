@@ -3,9 +3,8 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
 
 PORTFOLIO_REGISTRY: dict[str, Portfolio] = {}
 
@@ -37,7 +36,7 @@ class Trade:
     side: OrderSide
     quantity: float
     price: float
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     trade_id: str = ""
     commission: float = 0.0
     pnl: float = 0.0
@@ -91,7 +90,7 @@ class Portfolio:
         self.positions: dict[str, Position] = {}
         self.trades: list[Trade] = []
         self._equity_curve: list[float] = [initial_cash]
-        self._timestamps: list[datetime] = [datetime.now(timezone.utc)]
+        self._timestamps: list[datetime] = [datetime.now(UTC)]
 
     def buy(self, symbol: str, quantity: float, price: float) -> Trade:
         cost = quantity * price
@@ -130,7 +129,9 @@ class Portfolio:
     def sell(self, symbol: str, quantity: float, price: float) -> Trade:
         pos = self.positions.get(symbol)
         if pos is None or abs(pos.quantity) < quantity:
-            raise ValueError(f"Insufficient position: have {pos.quantity if pos else 0}, want {quantity}")
+            raise ValueError(
+                f"Insufficient position: have {pos.quantity if pos else 0}, want {quantity}"
+            )
         proceeds = quantity * price
         cost_of_sold = quantity * pos.avg_price
         realized = proceeds - cost_of_sold
@@ -164,7 +165,9 @@ class Portfolio:
         if pos is not None:
             pos.market_price = price
             pos.unrealized_pnl = pos.quantity * (price - pos.avg_price)
-            pos.return_pct = ((price - pos.avg_price) / pos.avg_price * 100) if pos.avg_price != 0 else 0.0
+            pos.return_pct = (
+                ((price - pos.avg_price) / pos.avg_price * 100) if pos.avg_price != 0 else 0.0
+            )
 
     def total_equity(self) -> float:
         pos_value = sum(p.market_value for p in self.positions.values())
@@ -176,7 +179,9 @@ class Portfolio:
         unrealized = sum(p.unrealized_pnl for p in self.positions.values())
         realized = sum(t.pnl for t in self.trades)
         total_ret = unrealized + realized
-        ret_pct = (total_ret / (total_value - total_ret) * 100) if (total_value - total_ret) != 0 else 0.0
+        ret_pct = (
+            (total_ret / (total_value - total_ret) * 100) if (total_value - total_ret) != 0 else 0.0
+        )
         wins = sum(1 for t in self.trades if t.pnl > 0)
         losses = sum(1 for t in self.trades if t.pnl < 0)
         num_trades = len(self.trades)
@@ -201,7 +206,7 @@ class Portfolio:
 
     def _update_equity(self) -> None:
         self._equity_curve.append(self.total_equity())
-        self._timestamps.append(datetime.now(timezone.utc))
+        self._timestamps.append(datetime.now(UTC))
 
     def _compute_sharpe(self, risk_free: float = 0.0) -> float:
         if len(self._equity_curve) < 2:

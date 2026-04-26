@@ -10,8 +10,10 @@ Phase 0 (budget-limited):
 Phase 1 (standard scaling):
     reward = mean_reward  (unrestricted)
 """
-import torch
+
 from dataclasses import dataclass
+
+import torch
 
 
 @dataclass

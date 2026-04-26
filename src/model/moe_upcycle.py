@@ -6,6 +6,7 @@ The router is initialized with small random weights so all experts start equal.
 
 Reference: Komatsuzaki et al. (2022) "Sparse Upcycling" arXiv:2212.09535
 """
+
 from __future__ import annotations
 
 import copy
@@ -21,10 +22,10 @@ from .moe import MoEConfig, SparseMoEFFN
 
 @dataclass
 class UpcycleConfig:
-    n_experts: int = 8       # how many expert copies to make per layer
-    top_k: int = 2           # experts activated per token
+    n_experts: int = 8  # how many expert copies to make per layer
+    top_k: int = 2  # experts activated per token
     load_balance_alpha: float = 0.01
-    upcycle_all_layers: bool = True   # if False, only upcycle layers in layer_indices
+    upcycle_all_layers: bool = True  # if False, only upcycle layers in layer_indices
     layer_indices: list[int] | None = None  # only used when upcycle_all_layers=False
 
 
@@ -62,6 +63,7 @@ def _make_moe_block_forward(block):
     But SparseMoEFFN returns (output, aux_loss). This wrapper unpacks the tuple
     and discards aux_loss so the block's output contract is unchanged.
     """
+
     def forward(
         x: torch.Tensor,
         freqs_cis: torch.Tensor,

@@ -2,18 +2,19 @@
 
 Tiny config: D=16, N_MEM=4, D_MEM=8, B=2, T=8
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.model.recurrent_memory_v2 import (
-    RecurrentConfig,
     GatedMemoryUpdate,
     MemoryAttention,
+    RecurrentConfig,
     RecurrentTransformerLayer,
-    init_memory,
     apply_state_decay,
+    init_memory,
 )
 
 D = 16
@@ -27,6 +28,7 @@ T = 8
 # Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = RecurrentConfig()
     assert cfg.d_model == 512
@@ -39,6 +41,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # GatedMemoryUpdate
 # ---------------------------------------------------------------------------
+
 
 def test_gated_memory_update_shape():
     update = GatedMemoryUpdate(D, D_MEM)
@@ -68,6 +71,7 @@ def test_gated_memory_update_output_finite():
 # MemoryAttention
 # ---------------------------------------------------------------------------
 
+
 def test_memory_attention_shape():
     attn = MemoryAttention(D, N_MEM)
     hidden = torch.randn(B, T, D)
@@ -87,6 +91,7 @@ def test_memory_attention_output_finite():
 # ---------------------------------------------------------------------------
 # RecurrentTransformerLayer
 # ---------------------------------------------------------------------------
+
 
 def test_recurrent_layer_output_x_shape():
     cfg = RecurrentConfig(d_model=D, n_memory_tokens=N_MEM)
@@ -128,6 +133,7 @@ def test_recurrent_layer_memory_changes():
 # ---------------------------------------------------------------------------
 # init_memory / apply_state_decay
 # ---------------------------------------------------------------------------
+
 
 def test_init_memory_shape_and_zeros():
     mem = init_memory(B, N_MEM, D)

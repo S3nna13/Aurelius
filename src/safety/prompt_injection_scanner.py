@@ -53,7 +53,6 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
 
 # --------------------------------------------------------------------------- #
 # Catalogs
@@ -62,7 +61,7 @@ from typing import Dict, List, Tuple
 # Imperative / re-targeting patterns. These are the canonical Greshake et al.
 # indirect-injection forms — instructions written as if the document were the
 # operator. Matched case-insensitively against the NFKC-normalised input.
-_EMBEDDED_INSTRUCTION_PATTERNS: Tuple[str, ...] = (
+_EMBEDDED_INSTRUCTION_PATTERNS: tuple[str, ...] = (
     r"\bignore\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above|preceding)\b",
     r"\bdisregard\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above|preceding)\b",
     r"\bforget\s+(?:everything|all|what|the\s+above|previous)\b",
@@ -85,7 +84,7 @@ _EMBEDDED_INSTRUCTION_PATTERNS: Tuple[str, ...] = (
 # HTML / Markdown injection surfaces. Comments, script/iframe tags, and on*
 # event-handler attributes are the classic vectors for hiding instructions
 # in a rendered document.
-_HTML_INJECTION_PATTERNS: Tuple[str, ...] = (
+_HTML_INJECTION_PATTERNS: tuple[str, ...] = (
     r"<!--[\s\S]*?-->",
     r"<\s*script\b[^>]*>",
     r"<\s*/\s*script\s*>",
@@ -100,7 +99,7 @@ _HTML_INJECTION_PATTERNS: Tuple[str, ...] = (
 # classic exfil/execution vectors. ngrok/RequestBin/webhook.site are the
 # canonical attacker-callback hosts seen in indirect-injection proofs of
 # concept.
-_SUSPICIOUS_URL_PATTERNS: Tuple[str, ...] = (
+_SUSPICIOUS_URL_PATTERNS: tuple[str, ...] = (
     r"\bdata:[a-z0-9.+-]+/[a-z0-9.+-]+[;,]",
     r"\bjavascript\s*:",
     r"\bvbscript\s*:",
@@ -118,7 +117,7 @@ _SUSPICIOUS_URL_PATTERNS: Tuple[str, ...] = (
 # Role-break tokens — same catalog as the jailbreak detector but we score
 # them in the *indirect* context. An attacker-planted role token inside a
 # web page is essentially always adversarial.
-_ROLE_BREAK_PATTERNS: Tuple[str, ...] = (
+_ROLE_BREAK_PATTERNS: tuple[str, ...] = (
     r"<\|im_start\|>",
     r"<\|im_end\|>",
     r"<\|system\|>",
@@ -194,22 +193,57 @@ _SHADOW_SCRIPTS = frozenset({"CYRILLIC", "GREEK"})
 # constant factor.
 _CONFUSABLE_FOLD = {
     # Cyrillic lowercase lookalikes.
-    "\u0430": "a", "\u0435": "e", "\u043e": "o", "\u0440": "p",
-    "\u0441": "c", "\u0443": "y", "\u0445": "x", "\u0456": "i",
-    "\u0458": "j", "\u04cf": "l", "\u0501": "d", "\u051b": "q",
-    "\u051d": "w", "\u0491": "g", "\u04bb": "h", "\u0433": "r",
+    "\u0430": "a",
+    "\u0435": "e",
+    "\u043e": "o",
+    "\u0440": "p",
+    "\u0441": "c",
+    "\u0443": "y",
+    "\u0445": "x",
+    "\u0456": "i",
+    "\u0458": "j",
+    "\u04cf": "l",
+    "\u0501": "d",
+    "\u051b": "q",
+    "\u051d": "w",
+    "\u0491": "g",
+    "\u04bb": "h",
+    "\u0433": "r",
     # Cyrillic uppercase lookalikes.
-    "\u0410": "A", "\u0412": "B", "\u0415": "E", "\u041a": "K",
-    "\u041c": "M", "\u041d": "H", "\u041e": "O", "\u0420": "P",
-    "\u0421": "C", "\u0422": "T", "\u0425": "X", "\u04c0": "I",
+    "\u0410": "A",
+    "\u0412": "B",
+    "\u0415": "E",
+    "\u041a": "K",
+    "\u041c": "M",
+    "\u041d": "H",
+    "\u041e": "O",
+    "\u0420": "P",
+    "\u0421": "C",
+    "\u0422": "T",
+    "\u0425": "X",
+    "\u04c0": "I",
     # Greek lowercase lookalikes.
-    "\u03bf": "o", "\u03b1": "a", "\u03c1": "p", "\u03bd": "v",
-    "\u03c5": "u", "\u03b9": "i",
+    "\u03bf": "o",
+    "\u03b1": "a",
+    "\u03c1": "p",
+    "\u03bd": "v",
+    "\u03c5": "u",
+    "\u03b9": "i",
     # Greek uppercase lookalikes.
-    "\u0391": "A", "\u0392": "B", "\u0395": "E", "\u0396": "Z",
-    "\u0397": "H", "\u0399": "I", "\u039a": "K", "\u039c": "M",
-    "\u039d": "N", "\u039f": "O", "\u03a1": "P", "\u03a4": "T",
-    "\u03a5": "Y", "\u03a7": "X",
+    "\u0391": "A",
+    "\u0392": "B",
+    "\u0395": "E",
+    "\u0396": "Z",
+    "\u0397": "H",
+    "\u0399": "I",
+    "\u039a": "K",
+    "\u039c": "M",
+    "\u039d": "N",
+    "\u039f": "O",
+    "\u03a1": "P",
+    "\u03a4": "T",
+    "\u03a5": "Y",
+    "\u03a7": "X",
 }
 
 
@@ -231,9 +265,9 @@ class InjectionScore:
     """
 
     score: float
-    signals: List[str]
+    signals: list[str]
     is_injection: bool
-    details: Dict[str, object] = field(default_factory=dict)
+    details: dict[str, object] = field(default_factory=dict)
 
 
 class PromptInjectionScanner:
@@ -332,7 +366,7 @@ class PromptInjectionScanner:
         elif total > 1.0:
             total = 1.0
 
-        signals: List[str] = []
+        signals: list[str] = []
         if embedded_sub > 0.0:
             signals.append("embedded_instruction")
         if html_sub > 0.0:
@@ -406,7 +440,7 @@ class PromptInjectionScanner:
                     return ""
         try:
             content = unicodedata.normalize("NFKC", content)
-        except Exception:
+        except Exception:  # noqa: S110
             pass
         content = _CTRL_RE.sub("", content)
         if len(content) > _MAX_SCAN_BYTES:
@@ -603,7 +637,7 @@ class PromptInjectionScanner:
 # ``unicodedata.name`` for an alphabetic codepoint is the script name
 # ("LATIN SMALL LETTER A", "CYRILLIC SMALL LETTER O", …). We cache the
 # resolution per codepoint to keep hot-path scanning fast.
-_SCRIPT_CACHE: Dict[str, str] = {}
+_SCRIPT_CACHE: dict[str, str] = {}
 
 
 def _script_of(ch: str) -> str | None:

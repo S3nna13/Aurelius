@@ -1,20 +1,21 @@
 """Sequence-to-sequence evaluation metrics: ROUGE variants, METEOR approximation, chrF."""
+
 from __future__ import annotations
 
 import re
 from collections import Counter
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _normalize(text: str) -> str:
     """Lowercase, strip punctuation, collapse whitespace."""
     text = text.lower()
-    text = re.sub(r'[^\w\s]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"[^\w\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
@@ -25,13 +26,13 @@ def _tokenize(text: str) -> list[str]:
 def _ngrams(tokens: list[str], n: int) -> Counter:
     if n <= 0 or len(tokens) < n:
         return Counter()
-    return Counter(tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1))
+    return Counter(tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1))
 
 
 def _char_ngrams(text: str, n: int) -> Counter:
     if n <= 0 or len(text) < n:
         return Counter()
-    return Counter(text[i:i + n] for i in range(len(text) - n + 1))
+    return Counter(text[i : i + n] for i in range(len(text) - n + 1))
 
 
 def _lcs_length_chars(a: str, b: str) -> int:
@@ -69,6 +70,7 @@ def _edit_distance(a: list[str], b: list[str]) -> int:
 # ---------------------------------------------------------------------------
 # 1. ROUGE-N
 # ---------------------------------------------------------------------------
+
 
 def rouge_n(hypothesis: str, reference: str, n: int = 2) -> dict[str, float]:
     """N-gram ROUGE: precision, recall, F1.
@@ -109,6 +111,7 @@ def rouge_n(hypothesis: str, reference: str, n: int = 2) -> dict[str, float]:
 # 2. ROUGE-L (character-level LCS)
 # ---------------------------------------------------------------------------
 
+
 def rouge_l(hypothesis: str, reference: str) -> dict[str, float]:
     """LCS-based ROUGE-L using character-level LCS.
 
@@ -142,6 +145,7 @@ def rouge_l(hypothesis: str, reference: str) -> dict[str, float]:
 # 3. ROUGE-W (Weighted LCS)
 # ---------------------------------------------------------------------------
 
+
 def rouge_w(hypothesis: str, reference: str, weight: float = 1.2) -> float:
     """Weighted LCS ROUGE — consecutive matches weighted more heavily.
 
@@ -170,7 +174,7 @@ def rouge_w(hypothesis: str, reference: str, weight: float = 1.2) -> float:
             if hyp[i - 1] == ref[j - 1]:
                 k = c[i - 1][j - 1]  # consecutive run length before this match
                 c[i][j] = k + 1
-                w[i][j] = w[i - 1][j - 1] + (k + 1) ** weight - k ** weight
+                w[i][j] = w[i - 1][j - 1] + (k + 1) ** weight - k**weight
             else:
                 c[i][j] = 0.0
                 w[i][j] = max(w[i - 1][j], w[i][j - 1])
@@ -179,8 +183,8 @@ def rouge_w(hypothesis: str, reference: str, weight: float = 1.2) -> float:
 
     # Normalisation factors: f(|hyp|) and f(|ref|) using same power function
     # f(x) = x^weight as the "perfect" score for a sequence of length x
-    norm_hyp = m ** weight
-    norm_ref = n ** weight
+    norm_hyp = m**weight
+    norm_ref = n**weight
 
     if norm_hyp == 0 or norm_ref == 0:
         return 0.0
@@ -191,13 +195,14 @@ def rouge_w(hypothesis: str, reference: str, weight: float = 1.2) -> float:
     if precision + recall == 0:
         return 0.0
 
-    f1 = (1 + weight ** 2) * precision * recall / (weight ** 2 * precision + recall)
+    f1 = (1 + weight**2) * precision * recall / (weight**2 * precision + recall)
     return min(f1, 1.0)
 
 
 # ---------------------------------------------------------------------------
 # 4. METEOR (approximation, exact match only)
 # ---------------------------------------------------------------------------
+
 
 def meteor_score(
     hypothesis: str,
@@ -249,7 +254,7 @@ def meteor_score(
             chunks += 1
 
     fragmentation = chunks / matched
-    penalty = gamma * (fragmentation ** beta)
+    penalty = gamma * (fragmentation**beta)
 
     score = (1 - penalty) * (precision * recall) / (alpha * precision + (1 - alpha) * recall)
     return max(0.0, score)
@@ -258,6 +263,7 @@ def meteor_score(
 # ---------------------------------------------------------------------------
 # 5. chrF
 # ---------------------------------------------------------------------------
+
 
 def chrf_score(hypothesis: str, reference: str, n: int = 6, beta: float = 2.0) -> float:
     """Character n-gram F-score (chrF).
@@ -297,16 +303,17 @@ def chrf_score(hypothesis: str, reference: str, n: int = 6, beta: float = 2.0) -
     avg_precision = total_precision / active
     avg_recall = total_recall / active
 
-    denom = beta ** 2 * avg_precision + avg_recall
+    denom = beta**2 * avg_precision + avg_recall
     if denom == 0:
         return 0.0
 
-    return (1 + beta ** 2) * avg_precision * avg_recall / denom
+    return (1 + beta**2) * avg_precision * avg_recall / denom
 
 
 # ---------------------------------------------------------------------------
 # 6. TER
 # ---------------------------------------------------------------------------
+
 
 def ter_score(hypothesis: str, reference: str) -> float:
     """Translation Edit Rate.
@@ -328,6 +335,7 @@ def ter_score(hypothesis: str, reference: str) -> float:
 # 7. Seq2SeqMetrics dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Seq2SeqMetrics:
     """Aggregated seq2seq evaluation scores."""
@@ -348,6 +356,7 @@ class Seq2SeqMetrics:
 # ---------------------------------------------------------------------------
 # 8. evaluate_seq2seq
 # ---------------------------------------------------------------------------
+
 
 def evaluate_seq2seq(hypothesis: str, reference: str) -> Seq2SeqMetrics:
     """Compute all seq2seq metrics for a single hypothesis/reference pair."""
@@ -371,6 +380,7 @@ def evaluate_seq2seq(hypothesis: str, reference: str) -> Seq2SeqMetrics:
 # ---------------------------------------------------------------------------
 # 9. corpus_seq2seq_metrics
 # ---------------------------------------------------------------------------
+
 
 def corpus_seq2seq_metrics(
     hypotheses: list[str],

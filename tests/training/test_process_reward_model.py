@@ -7,7 +7,6 @@ All tests run without GPU (CPU only); no HuggingFace / external deps.
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -24,7 +23,7 @@ from src.training.process_reward_model import (
 # Tiny config shared by all tests
 # ---------------------------------------------------------------------------
 
-STEP_TOKEN_ID = 5   # must be < vocab_size (256)
+STEP_TOKEN_ID = 5  # must be < vocab_size (256)
 
 
 def tiny_config() -> AureliusConfig:
@@ -38,7 +37,7 @@ def tiny_config() -> AureliusConfig:
         vocab_size=256,
         max_seq_len=64,
     )
-    cfg.prm_step_token_id = STEP_TOKEN_ID   # type: ignore[attr-defined]
+    cfg.prm_step_token_id = STEP_TOKEN_ID  # type: ignore[attr-defined]
     return cfg
 
 
@@ -62,6 +61,7 @@ def make_input(B: int = 2, T: int = 16, n_steps: int = 2) -> torch.Tensor:
 # Test 1: ProcessRewardModel initializes from AureliusConfig
 # ---------------------------------------------------------------------------
 
+
 def test_prm_init_from_aurelius_config():
     prm = make_prm()
     assert isinstance(prm, ProcessRewardModel)
@@ -73,6 +73,7 @@ def test_prm_init_from_aurelius_config():
 # ---------------------------------------------------------------------------
 # Test 2: Forward with no labels returns (None, step_rewards) with correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_forward_no_labels_shape():
     prm = make_prm()
@@ -89,6 +90,7 @@ def test_forward_no_labels_shape():
 # ---------------------------------------------------------------------------
 # Test 3: Forward with labels returns (loss, step_rewards), loss is scalar finite
 # ---------------------------------------------------------------------------
+
 
 def test_forward_with_labels_returns_finite_loss():
     prm = make_prm()
@@ -107,6 +109,7 @@ def test_forward_with_labels_returns_finite_loss():
 # ---------------------------------------------------------------------------
 # Test 4: loss.backward() produces finite gradients in PRMHead params
 # ---------------------------------------------------------------------------
+
 
 def test_backward_finite_gradients():
     prm = make_prm()
@@ -127,6 +130,7 @@ def test_backward_finite_gradients():
 # Test 5: PRMHead output shape [B, num_steps, 1] -> squeezed to [B, num_steps]
 # ---------------------------------------------------------------------------
 
+
 def test_prm_head_output_shape():
     head = PRMHead(d_model=64)
     B, S, D = 3, 5, 64
@@ -134,17 +138,18 @@ def test_prm_head_output_shape():
     # Apply head to flat [B*S, D] then reshape
     flat = hidden.view(B * S, D)
     out_flat = head.linear(flat).squeeze(-1)  # [B*S]
-    out = out_flat.view(B, S)                  # [B, S]
+    out = out_flat.view(B, S)  # [B, S]
     assert out.shape == (B, S)
 
     # Also verify the PRMHead.forward path with [N, D] input
-    out2 = head(flat)   # [B*S]
+    out2 = head(flat)  # [B*S]
     assert out2.shape == (B * S,)
 
 
 # ---------------------------------------------------------------------------
 # Test 6: StepDataCollator single example -> correct tensors
 # ---------------------------------------------------------------------------
+
 
 def test_collator_single_example():
     collator = StepDataCollator(pad_id=0)
@@ -169,6 +174,7 @@ def test_collator_single_example():
 # ---------------------------------------------------------------------------
 # Test 7: StepDataCollator batch with different step counts -> padded correctly
 # ---------------------------------------------------------------------------
+
 
 def test_collator_variable_step_counts():
     collator = StepDataCollator(pad_id=0)
@@ -205,6 +211,7 @@ def test_collator_variable_step_counts():
 # Test 8: StepDataCollator step_positions correctly extracted
 # ---------------------------------------------------------------------------
 
+
 def test_collator_step_positions_correct():
     collator = StepDataCollator(pad_id=0)
     ex = {
@@ -221,10 +228,11 @@ def test_collator_step_positions_correct():
 # Test 9: PRMLoss ignores positions with label=-1
 # ---------------------------------------------------------------------------
 
+
 def test_prm_loss_ignores_padding():
     loss_fn = PRMLoss()
-    logits = torch.tensor([[2.0, -1.0, 0.5]])   # [1, 3]
-    labels = torch.tensor([[1, -1, -1]])          # [1, 3]; only first is valid
+    logits = torch.tensor([[2.0, -1.0, 0.5]])  # [1, 3]
+    labels = torch.tensor([[1, -1, -1]])  # [1, 3]; only first is valid
 
     loss = loss_fn(logits, labels)
 
@@ -239,10 +247,11 @@ def test_prm_loss_ignores_padding():
 # Test 10: PRMLoss correct positions contribute to loss
 # ---------------------------------------------------------------------------
 
+
 def test_prm_loss_valid_positions_contribute():
     loss_fn = PRMLoss()
-    logits = torch.tensor([[1.0, -1.0]])          # [1, 2]
-    labels = torch.tensor([[1, 0]])               # [1, 2]; both valid
+    logits = torch.tensor([[1.0, -1.0]])  # [1, 2]
+    labels = torch.tensor([[1, 0]])  # [1, 2]; both valid
 
     loss = loss_fn(logits, labels)
 
@@ -257,13 +266,14 @@ def test_prm_loss_valid_positions_contribute():
 # Test 11: PRMInference.score_chain returns list of floats, one per step
 # ---------------------------------------------------------------------------
 
+
 def test_prm_inference_score_chain():
     prm = make_prm()
     prm.train(False)  # set to eval mode without using .eval()
     inference = PRMInference(prm, aggregation="min")
 
     chain = "step one content\n\nstep two content\n\nstep three"
-    scores = inference.score_chain(chain, step_token="\n\n")
+    scores = inference.score_chain(chain, step_token="\n\n")  # noqa: S106
 
     assert isinstance(scores, list)
     # 2 delimiters => 2 step tokens inserted => 2 scores
@@ -277,6 +287,7 @@ def test_prm_inference_score_chain():
 # Test 12: PRMInference.select_best picks chain with highest min-step-score
 # ---------------------------------------------------------------------------
 
+
 def test_prm_inference_select_best_min():
     prm = make_prm()
     prm.train(False)
@@ -284,12 +295,12 @@ def test_prm_inference_select_best_min():
     # Patch score_chain to return deterministic values
     call_count = [0]
     returns = [
-        [0.9, 0.8],    # candidate 0 -- min=0.8
-        [0.5, 0.3],    # candidate 1 -- min=0.3
+        [0.9, 0.8],  # candidate 0 -- min=0.8
+        [0.5, 0.3],  # candidate 1 -- min=0.3
         [0.95, 0.85],  # candidate 2 -- min=0.85  <-- best
     ]
 
-    def mock_score_chain(chain, step_token="\n\n"):
+    def mock_score_chain(chain, step_token="\n\n"):  # noqa: S107
         idx = call_count[0]
         call_count[0] += 1
         return returns[idx]
@@ -298,7 +309,7 @@ def test_prm_inference_select_best_min():
     inference.score_chain = mock_score_chain  # type: ignore[method-assign]
 
     candidates = [["a", "b"], ["c", "d"], ["e", "f"]]
-    best = inference.select_best(candidates, step_token="\n\n")
+    best = inference.select_best(candidates, step_token="\n\n")  # noqa: S106
     assert best == 2
 
 
@@ -306,17 +317,18 @@ def test_prm_inference_select_best_min():
 # Test 13: PRMInference.select_best with aggregation="mean"
 # ---------------------------------------------------------------------------
 
+
 def test_prm_inference_select_best_mean():
     prm = make_prm()
     prm.train(False)
 
     call_count = [0]
     returns = [
-        [0.9, 0.2],   # candidate 0 -- mean=0.55
+        [0.9, 0.2],  # candidate 0 -- mean=0.55
         [0.8, 0.85],  # candidate 1 -- mean=0.825  <-- best
     ]
 
-    def mock_score_chain(chain, step_token="\n\n"):
+    def mock_score_chain(chain, step_token="\n\n"):  # noqa: S107
         idx = call_count[0]
         call_count[0] += 1
         return returns[idx]
@@ -325,13 +337,14 @@ def test_prm_inference_select_best_mean():
     inference.score_chain = mock_score_chain  # type: ignore[method-assign]
 
     candidates = [["step1a", "step1b"], ["step2a", "step2b"]]
-    best = inference.select_best(candidates, step_token="\n\n")
+    best = inference.select_best(candidates, step_token="\n\n")  # noqa: S106
     assert best == 1
 
 
 # ---------------------------------------------------------------------------
 # Test 14: Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_under_manual_seed():
     def run_once():
@@ -352,6 +365,7 @@ def test_determinism_under_manual_seed():
 # Test 15a: Edge case -- chain with single step
 # ---------------------------------------------------------------------------
 
+
 def test_single_step_chain():
     prm = make_prm()
     prm.train(False)
@@ -368,6 +382,7 @@ def test_single_step_chain():
 # ---------------------------------------------------------------------------
 # Test 15b: Edge case -- chain with no step tokens
 # ---------------------------------------------------------------------------
+
 
 def test_no_step_tokens():
     prm = make_prm()
@@ -387,6 +402,7 @@ def test_no_step_tokens():
 # ---------------------------------------------------------------------------
 # Test 16: PRMLoss all-padding returns zero (differentiable)
 # ---------------------------------------------------------------------------
+
 
 def test_prm_loss_all_padding_returns_zero():
     loss_fn = PRMLoss()

@@ -1,17 +1,19 @@
 """Tests for src/simulation/reward_shaper.py — 10+ tests."""
+
 import pytest
+
 from src.simulation.reward_shaper import (
-    RewardShapeType,
-    RewardShaperConfig,
-    RewardShaper,
     PotentialFunction,
+    RewardShaper,
+    RewardShaperConfig,
+    RewardShapeType,
     _DefaultPotential,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def dense_shaper():
@@ -33,6 +35,7 @@ def curiosity_shaper():
 
 class _DistancePotential:
     """Simple potential: negative manhattan distance to (4, 4)."""
+
     def __call__(self, state: dict) -> float:
         return -(abs(state.get("x", 0) - 4) + abs(state.get("y", 0) - 4))
 
@@ -40,6 +43,7 @@ class _DistancePotential:
 # ---------------------------------------------------------------------------
 # 1. DENSE: pass-through within clip_range
 # ---------------------------------------------------------------------------
+
 
 def test_dense_passthrough(dense_shaper):
     r = dense_shaper.shape(0.5, {}, {}, done=False)
@@ -61,6 +65,7 @@ def test_dense_clip_lower(dense_shaper):
 # 2. SPARSE
 # ---------------------------------------------------------------------------
 
+
 def test_sparse_zero_on_non_terminal():
     cfg = RewardShaperConfig(shape_type=RewardShapeType.SPARSE)
     shaper = RewardShaper(cfg)
@@ -79,12 +84,13 @@ def test_sparse_preserves_on_terminal():
 # 3. POTENTIAL_BASED
 # ---------------------------------------------------------------------------
 
+
 def test_potential_based_shaping():
     cfg = RewardShaperConfig(shape_type=RewardShapeType.POTENTIAL_BASED, gamma=0.99)
     phi = _DistancePotential()
     shaper = RewardShaper(cfg, potential_fn=phi)
-    s = {"x": 0, "y": 0}    # phi = -(4+4) = -8
-    s2 = {"x": 1, "y": 0}   # phi = -(3+4) = -7
+    s = {"x": 0, "y": 0}  # phi = -(4+4) = -8
+    s2 = {"x": 1, "y": 0}  # phi = -(3+4) = -7
     raw = -0.01
     expected = raw + 0.99 * (-7) - (-8)
     r = shaper.shape(raw, s, s2, done=False)
@@ -102,6 +108,7 @@ def test_potential_based_default_zero_potential():
 # ---------------------------------------------------------------------------
 # 4. CURIOSITY
 # ---------------------------------------------------------------------------
+
 
 def test_curiosity_bonus_first_visit(curiosity_shaper):
     # beta=1.0, count=1 → bonus = 1/sqrt(1) = 1.0
@@ -130,6 +137,7 @@ def test_curiosity_reset_clears_counts(curiosity_shaper):
 # 5. CLIP
 # ---------------------------------------------------------------------------
 
+
 def test_clip_strategy(clip_shaper):
     assert clip_shaper.shape(5.0, {}, {}, done=False) == pytest.approx(1.0)
     assert clip_shaper.shape(-5.0, {}, {}, done=False) == pytest.approx(-1.0)
@@ -139,6 +147,7 @@ def test_clip_strategy(clip_shaper):
 # ---------------------------------------------------------------------------
 # 6. PotentialFunction protocol
 # ---------------------------------------------------------------------------
+
 
 def test_default_potential_returns_zero():
     phi = _DefaultPotential()
@@ -154,6 +163,7 @@ def test_custom_potential_satisfies_protocol():
 # 7. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = RewardShaperConfig()
     assert cfg.shape_type == RewardShapeType.DENSE
@@ -165,6 +175,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 8. RewardShapeType enum values
 # ---------------------------------------------------------------------------
+
 
 def test_shape_type_values():
     assert RewardShapeType.DENSE == "dense"

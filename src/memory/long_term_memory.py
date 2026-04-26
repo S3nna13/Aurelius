@@ -4,6 +4,7 @@ Inspired by memory consolidation in cognitive science (Atkinson & Shiffrin 1968)
 and Generative Agents memory stream (Park et al. 2303.17580); Aurelius-native
 implementation. License: MIT.
 """
+
 from __future__ import annotations
 
 import math
@@ -21,7 +22,7 @@ _MAX_TAGS = 64
 class LTMEntry:
     key: str
     value: Any
-    importance: float          # 0.0–1.0; higher = more important
+    importance: float  # 0.0–1.0; higher = more important
     created_at: float = field(default_factory=time.monotonic)
     last_accessed: float = field(default_factory=time.monotonic)
     access_count: int = 0
@@ -57,8 +58,9 @@ class LongTermMemory:
         self.decay_rate = decay_rate
         self._store: dict[str, LTMEntry] = {}
 
-    def store(self, key: str, value: Any, importance: float = 0.5,
-              tags: set[str] | None = None) -> LTMEntry:
+    def store(
+        self, key: str, value: Any, importance: float = 0.5, tags: set[str] | None = None
+    ) -> LTMEntry:
         """Store a memory entry. Evicts lowest-score entry if at capacity."""
         if len(key) > _MAX_KEY_LEN:
             raise ValueError(f"key exceeds {_MAX_KEY_LEN} chars")
@@ -101,9 +103,9 @@ class LongTermMemory:
         if k < 1:
             raise ValueError("k must be >= 1")
         now = time.monotonic()
-        return sorted(self._store.values(),
-                      key=lambda e: e.score(now, self.decay_rate),
-                      reverse=True)[:k]
+        return sorted(
+            self._store.values(), key=lambda e: e.score(now, self.decay_rate), reverse=True
+        )[:k]
 
     def _evict_one(self) -> None:
         """Evict the entry with the lowest current score."""

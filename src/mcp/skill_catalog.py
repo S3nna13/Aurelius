@@ -10,7 +10,6 @@ Inspired by Anthropic Claude Code skills system (MIT), Goose extension/MCP
 from __future__ import annotations
 
 import re
-import time
 from dataclasses import dataclass, field
 
 # Semantic version pattern: X.Y.Z (integers only, no pre-release suffix)
@@ -90,9 +89,7 @@ class SkillCatalog:
     @staticmethod
     def _validate(skill: SkillMetadata) -> None:
         if not isinstance(skill.skill_id, str) or not skill.skill_id.strip():
-            raise SkillCatalogError(
-                f"skill_id must be a non-empty string, got {skill.skill_id!r}"
-            )
+            raise SkillCatalogError(f"skill_id must be a non-empty string, got {skill.skill_id!r}")
         if not _SEMVER_RE.match(skill.version):
             raise SkillCatalogError(
                 f"version must match 'X.Y.Z' (semver integers), got {skill.version!r}"
@@ -165,9 +162,7 @@ class SkillCatalog:
         """Append *record* to the invocation history."""
         self._invocations.append(record)
 
-    def invocation_history(
-        self, skill_id: str | None = None
-    ) -> list[SkillInvocationRecord]:
+    def invocation_history(self, skill_id: str | None = None) -> list[SkillInvocationRecord]:
         """Return invocation records, optionally filtered to *skill_id*."""
         if skill_id is None:
             return list(self._invocations)

@@ -16,16 +16,14 @@ Loss:
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # SPIN Loss
 # ---------------------------------------------------------------------------
+
 
 class SPINLoss(nn.Module):
     """SPIN loss function (DPO-style, using previous iteration as reference).
@@ -44,7 +42,7 @@ class SPINLoss(nn.Module):
         pi_gen: torch.Tensor,
         ref_real: torch.Tensor,
         ref_gen: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Compute SPIN loss.
 
         Args:
@@ -60,18 +58,18 @@ class SPINLoss(nn.Module):
                 "reward_gen":  mean beta * (pi_gen - ref_gen).
                 "margin":      mean (reward_real - reward_gen).
         """
-        reward_real = self.beta * (pi_real - ref_real)   # (B,)
-        reward_gen  = self.beta * (pi_gen  - ref_gen)    # (B,)
+        reward_real = self.beta * (pi_real - ref_real)  # (B,)
+        reward_gen = self.beta * (pi_gen - ref_gen)  # (B,)
 
         loss = -F.logsigmoid(reward_real - reward_gen).mean()
 
         accuracy = (reward_real > reward_gen).float().mean().item()
 
-        metrics: Dict = {
-            "accuracy":    accuracy,
+        metrics: dict = {
+            "accuracy": accuracy,
             "reward_real": reward_real.mean().item(),
-            "reward_gen":  reward_gen.mean().item(),
-            "margin":      (reward_real - reward_gen).mean().item(),
+            "reward_gen": reward_gen.mean().item(),
+            "margin": (reward_real - reward_gen).mean().item(),
         }
 
         return loss, metrics
@@ -80,6 +78,7 @@ class SPINLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # SPIN Data Collector
 # ---------------------------------------------------------------------------
+
 
 class SPINDataCollector:
     """Builds training pairs from real and generated log-probability sequences.
@@ -104,9 +103,9 @@ class SPINDataCollector:
 
     def build_pairs(
         self,
-        real_log_probs: List[torch.Tensor],
-        gen_log_probs: List[torch.Tensor],
-    ) -> List[Tuple[torch.Tensor, torch.Tensor]]:
+        real_log_probs: list[torch.Tensor],
+        gen_log_probs: list[torch.Tensor],
+    ) -> list[tuple[torch.Tensor, torch.Tensor]]:
         """Zip real and generated log-prob sequences into (real, gen) pairs.
 
         Args:
@@ -125,6 +124,7 @@ class SPINDataCollector:
 # ---------------------------------------------------------------------------
 # SPIN Trainer
 # ---------------------------------------------------------------------------
+
 
 class SPINTrainer:
     """Orchestrates SPIN training: one policy model vs. a frozen reference.
@@ -175,16 +175,16 @@ class SPINTrainer:
         Returns:
             Per-sequence log probability.  Shape (B,).
         """
-        logits = model(input_ids)                           # (B, T, V)
-        log_probs = F.log_softmax(logits, dim=-1)           # (B, T, V)
+        logits = model(input_ids)  # (B, T, V)
+        log_probs = F.log_softmax(logits, dim=-1)  # (B, T, V)
 
         # Clamp labels to valid range for gather; masked positions excluded below.
-        labels_clamped = labels.clamp(min=0)                # (B, T)
-        token_log_probs = log_probs.gather(
-            dim=2, index=labels_clamped.unsqueeze(-1)
-        ).squeeze(-1)                                       # (B, T)
+        labels_clamped = labels.clamp(min=0)  # (B, T)
+        token_log_probs = log_probs.gather(dim=2, index=labels_clamped.unsqueeze(-1)).squeeze(
+            -1
+        )  # (B, T)
 
-        mask = (labels != -100).float()                     # (B, T)
+        mask = (labels != -100).float()  # (B, T)
         sequence_log_probs = (token_log_probs * mask).sum(dim=-1)  # (B,)
         return sequence_log_probs
 
@@ -193,7 +193,7 @@ class SPINTrainer:
         real_ids: torch.LongTensor,
         gen_ids: torch.LongTensor,
         labels: torch.LongTensor,
-    ) -> Tuple[torch.Tensor, Dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Run one SPIN training step.
 
         1. Compute policy log probs for real and generated sequences.
@@ -212,12 +212,12 @@ class SPINTrainer:
         # Policy log probs (with grad)
         self.policy_model.train()
         pi_real = self.compute_sequence_log_prob(self.policy_model, real_ids, labels)
-        pi_gen  = self.compute_sequence_log_prob(self.policy_model, gen_ids,  labels)
+        pi_gen = self.compute_sequence_log_prob(self.policy_model, gen_ids, labels)
 
         # Reference log probs (frozen, no grad)
         with torch.no_grad():
             ref_real = self.compute_sequence_log_prob(self.ref_model, real_ids, labels)
-            ref_gen  = self.compute_sequence_log_prob(self.ref_model, gen_ids,  labels)
+            ref_gen = self.compute_sequence_log_prob(self.ref_model, gen_ids, labels)
 
         loss, metrics = self.loss_fn(pi_real, pi_gen, ref_real, ref_gen)
 

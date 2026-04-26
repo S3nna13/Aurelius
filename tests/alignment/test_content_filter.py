@@ -1,9 +1,8 @@
 """Tests for src/alignment/content_filter.py — 12 tests."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.alignment.content_filter import (
     AuditLog,
@@ -16,10 +15,10 @@ from src.alignment.content_filter import (
     detect_pii,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. FilterConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_filter_config_defaults():
     cfg = FilterConfig()
@@ -40,6 +39,7 @@ def test_filter_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. FilterDecision fields
 # ---------------------------------------------------------------------------
+
 
 def test_filter_decision_fields():
     now = time.time()
@@ -63,6 +63,7 @@ def test_filter_decision_fields():
 # 3. CategoryScorer output keys
 # ---------------------------------------------------------------------------
 
+
 def test_category_scorer_output_keys():
     cats = ["harmful", "explicit", "hate", "spam", "pii"]
     scorer = CategoryScorer(d_model=16, categories=cats)
@@ -73,6 +74,7 @@ def test_category_scorer_output_keys():
 # ---------------------------------------------------------------------------
 # 4. CategoryScorer score range [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_category_scorer_score_range():
     cats = ["harmful", "explicit", "hate"]
@@ -86,6 +88,7 @@ def test_category_scorer_score_range():
 # 5. EnsembleFilter output keys
 # ---------------------------------------------------------------------------
 
+
 def test_ensemble_filter_output_keys():
     cfg = FilterConfig()
     ef = EnsembleFilter(cfg, d_model=16)
@@ -96,6 +99,7 @@ def test_ensemble_filter_output_keys():
 # ---------------------------------------------------------------------------
 # 6. EnsembleFilter ensemble_method=max
 # ---------------------------------------------------------------------------
+
 
 def test_ensemble_filter_ensemble_method_max():
     cfg = FilterConfig(ensemble_method="max", n_ensemble=3)
@@ -110,6 +114,7 @@ def test_ensemble_filter_ensemble_method_max():
 # 7. ContentFilter returns a FilterDecision
 # ---------------------------------------------------------------------------
 
+
 def test_content_filter_returns_decision():
     cfg = FilterConfig()
     cf = ContentFilter(cfg, d_model=16)
@@ -121,6 +126,7 @@ def test_content_filter_returns_decision():
 # 8. ContentFilter is_safe is a bool
 # ---------------------------------------------------------------------------
 
+
 def test_content_filter_is_safe_type():
     cfg = FilterConfig()
     cf = ContentFilter(cfg, d_model=16)
@@ -131,6 +137,7 @@ def test_content_filter_is_safe_type():
 # ---------------------------------------------------------------------------
 # 9. AuditLog add and stats
 # ---------------------------------------------------------------------------
+
 
 def test_audit_log_add_and_stats():
     log = AuditLog()
@@ -156,6 +163,7 @@ def test_audit_log_add_and_stats():
 # 10. detect_pii detects email
 # ---------------------------------------------------------------------------
 
+
 def test_detect_pii_email():
     found = detect_pii("Contact me at user@example.com for details.")
     assert "email" in found
@@ -165,6 +173,7 @@ def test_detect_pii_email():
 # 11. detect_pii returns empty for clean text
 # ---------------------------------------------------------------------------
 
+
 def test_detect_pii_no_pii():
     found = detect_pii("The quick brown fox jumps over the lazy dog.")
     assert found == []
@@ -173,6 +182,7 @@ def test_detect_pii_no_pii():
 # ---------------------------------------------------------------------------
 # 12. compute_filter_metrics returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_compute_filter_metrics_keys():
     decisions = [

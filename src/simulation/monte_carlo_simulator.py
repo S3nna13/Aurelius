@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import random
 import statistics
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -30,9 +30,7 @@ class MonteCarloSimulator:
         self.config = config if config is not None else MCConfig()
         self._rng = random.Random(self.config.seed)
 
-    def compute_returns(
-        self, rewards: list[float], gamma: float | None = None
-    ) -> list[float]:
+    def compute_returns(self, rewards: list[float], gamma: float | None = None) -> list[float]:
         """Compute discounted returns G_t = r_t + gamma * G_{t+1}, working backwards."""
         if gamma is None:
             gamma = self.config.gamma

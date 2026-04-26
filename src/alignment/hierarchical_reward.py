@@ -4,9 +4,8 @@ Decomposes reward into multiple learned sub-objectives, each corresponding
 to a different quality dimension (helpfulness, safety, quality, etc.).
 Aggregates via learned weights or explicit weighting schemes.
 """
-from __future__ import annotations
 
-from typing import Dict, List
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
@@ -65,7 +64,7 @@ class HierarchicalRewardModel(nn.Module):
     def __init__(
         self,
         d_model: int,
-        criteria: List[RewardCriterion],
+        criteria: list[RewardCriterion],
         weight_scheme: CriterionWeights,
     ) -> None:
         super().__init__()
@@ -73,7 +72,7 @@ class HierarchicalRewardModel(nn.Module):
         self.criteria = nn.ModuleList(criteria)
         self.weight_scheme = weight_scheme
 
-    def forward(self, hidden: Tensor) -> Dict[str, Tensor]:
+    def forward(self, hidden: Tensor) -> dict[str, Tensor]:
         """Compute hierarchical reward.
 
         Args:
@@ -87,8 +86,8 @@ class HierarchicalRewardModel(nn.Module):
         """
         weights = self.weight_scheme.get_weights()  # (n_criteria,)
 
-        criterion_scores: Dict[str, Tensor] = {}
-        scores_list: List[Tensor] = []
+        criterion_scores: dict[str, Tensor] = {}
+        scores_list: list[Tensor] = []
         for criterion in self.criteria:
             score = criterion(hidden)  # (B,)
             criterion_scores[criterion.name] = score
@@ -104,11 +103,11 @@ class HierarchicalRewardModel(nn.Module):
             "weights": weights,
         }
 
-    def criterion_names(self) -> List[str]:
+    def criterion_names(self) -> list[str]:
         """Returns list of criterion names in order."""
         return [c.name for c in self.criteria]
 
-    def breakdown(self, hidden: Tensor) -> Dict[str, float]:
+    def breakdown(self, hidden: Tensor) -> dict[str, float]:
         """Returns mean score per criterion and total as a float dict.
 
         Args:
@@ -118,7 +117,7 @@ class HierarchicalRewardModel(nn.Module):
             dict mapping criterion name -> mean score (float), plus 'total'.
         """
         out = self.forward(hidden)
-        result: Dict[str, float] = {}
+        result: dict[str, float] = {}
         for name, score in out["criterion_scores"].items():
             result[name] = score.mean().item()
         result["total"] = out["total_reward"].mean().item()
@@ -136,9 +135,7 @@ class HierarchicalRewardLoss:
         self.reward_model = reward_model
         self.margin = margin
 
-    def preference_loss(
-        self, hidden_w: Tensor, hidden_l: Tensor
-    ) -> Dict[str, float]:
+    def preference_loss(self, hidden_w: Tensor, hidden_l: Tensor) -> dict[str, float]:
         """Bradley-Terry preference loss.
 
         Args:
@@ -208,9 +205,7 @@ class MultiObjectiveRewardOptimizer:
         total = weights.sum()
         self.weights = weights / total if total > 0 else weights.clone()
 
-    def scalarize(
-        self, criterion_scores: Dict[str, Tensor], criteria_order: List[str]
-    ) -> Tensor:
+    def scalarize(self, criterion_scores: dict[str, Tensor], criteria_order: list[str]) -> Tensor:
         """Weighted-sum scalarisation of per-criterion score tensors.
 
         Args:
@@ -238,7 +233,4 @@ class MultiObjectiveRewardOptimizer:
         Returns:
             True if b dominates a.
         """
-        return bool(
-            (scores_b >= scores_a).all().item()
-            and (scores_b > scores_a).any().item()
-        )
+        return bool((scores_b >= scores_a).all().item() and (scores_b > scores_a).any().item())

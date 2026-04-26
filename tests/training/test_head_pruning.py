@@ -1,4 +1,5 @@
 """Tests for attention head pruning (head_pruning.py)."""
+
 import pytest
 import torch
 
@@ -13,10 +14,10 @@ from src.training.head_pruning import (
     estimate_flop_reduction,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_model():
@@ -38,6 +39,7 @@ def small_model():
 # Test 1: compute_head_importance_l1 returns list of HeadImportanceScore
 # ---------------------------------------------------------------------------
 
+
 def test_head_importance_l1_returns_scores(small_model):
     scores = compute_head_importance_l1(small_model)
     assert isinstance(scores, list)
@@ -49,6 +51,7 @@ def test_head_importance_l1_returns_scores(small_model):
 # Test 2: returns n_layers * n_heads scores
 # ---------------------------------------------------------------------------
 
+
 def test_head_importance_l1_count(small_model):
     cfg = small_model.config
     scores = compute_head_importance_l1(small_model)
@@ -59,6 +62,7 @@ def test_head_importance_l1_count(small_model):
 # Test 3: HeadMask initialises with all ones
 # ---------------------------------------------------------------------------
 
+
 def test_head_mask_init_ones():
     mask = HeadMask(n_layers=2, n_heads=4)
     assert torch.all(mask.mask == 1.0).item()
@@ -67,6 +71,7 @@ def test_head_mask_init_ones():
 # ---------------------------------------------------------------------------
 # Test 4: prune_head sets mask entry to 0
 # ---------------------------------------------------------------------------
+
 
 def test_head_mask_prune_head():
     mask = HeadMask(n_layers=2, n_heads=4)
@@ -77,6 +82,7 @@ def test_head_mask_prune_head():
 # ---------------------------------------------------------------------------
 # Test 5: active_heads returns correct count after pruning
 # ---------------------------------------------------------------------------
+
 
 def test_head_mask_active_heads():
     mask = HeadMask(n_layers=2, n_heads=4)
@@ -90,6 +96,7 @@ def test_head_mask_active_heads():
 # Test 6: StructuredHeadPruner.prune returns dict with required keys
 # ---------------------------------------------------------------------------
 
+
 def test_structured_pruner_prune_returns_stats(small_model):
     cfg = HeadPruningConfig(target_sparsity=0.5, importance_metric="l1_norm")
     pruner = StructuredHeadPruner(small_model, cfg)
@@ -102,6 +109,7 @@ def test_structured_pruner_prune_returns_stats(small_model):
 # ---------------------------------------------------------------------------
 # Test 7: after prune with target=0.5, ~50% of heads are masked
 # ---------------------------------------------------------------------------
+
 
 def test_structured_pruner_sparsity(small_model):
     cfg = HeadPruningConfig(target_sparsity=0.5, importance_metric="l1_norm")
@@ -119,6 +127,7 @@ def test_structured_pruner_sparsity(small_model):
 # Test 8: pruning_stats returns all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_pruning_stats_keys(small_model):
     cfg = HeadPruningConfig(target_sparsity=0.25, importance_metric="l1_norm")
     pruner = StructuredHeadPruner(small_model, cfg)
@@ -132,6 +141,7 @@ def test_pruning_stats_keys(small_model):
 # Test 9: estimate_flop_reduction returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_flop_reduction_range():
     result = estimate_flop_reduction(
         n_layers=2, n_heads=4, head_dim=16, seq_len=64, n_pruned_heads=2
@@ -143,6 +153,7 @@ def test_estimate_flop_reduction_range():
 # ---------------------------------------------------------------------------
 # Test 10: n_pruned_heads == n_heads => 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_flop_reduction_all_pruned():
     n_heads = 4

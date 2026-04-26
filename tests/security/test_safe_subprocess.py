@@ -121,11 +121,7 @@ def test_minimal_env_when_no_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_stdout_stderr_captured() -> None:
-    code = (
-        "import sys; "
-        "sys.stdout.write('O'); "
-        "sys.stderr.write('E'); "
-    )
+    code = "import sys; sys.stdout.write('O'); sys.stderr.write('E'); "
     res = run_safe(
         [PY, "-c", code],
         timeout=5.0,
@@ -280,8 +276,9 @@ def test_cwd_is_honored(tmp_path: Path) -> None:
     )
     assert res.returncode == 0
     # tmp_path may resolve symlinks; compare resolved
-    assert str(tmp_path.resolve()) in os.path.realpath(res.stdout.strip()) \
-        or res.stdout.strip() == str(tmp_path)
+    assert str(tmp_path.resolve()) in os.path.realpath(
+        res.stdout.strip()
+    ) or res.stdout.strip() == str(tmp_path)
 
 
 # ---------------------------------------------------------------------------

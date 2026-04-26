@@ -4,11 +4,11 @@ Manages conversation history, ChatML prompt construction, and token
 generation without an external server. Provides a simple Python API
 for interactive use and batch inference.
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Iterator
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -29,7 +29,7 @@ DEFAULT_SYSTEM = (
 
 @dataclass
 class Message:
-    role: str    # "system", "user", or "assistant"
+    role: str  # "system", "user", or "assistant"
     content: str
 
 
@@ -39,7 +39,7 @@ class GenerationConfig:
     temperature: float = 0.7
     top_p: float = 0.9
     eos_token_id: int | None = None
-    repetition_penalty: float = 1.0   # > 1 penalizes repeated tokens
+    repetition_penalty: float = 1.0  # > 1 penalizes repeated tokens
 
 
 def format_chatml_messages(messages: list[Message]) -> str:
@@ -252,13 +252,14 @@ def load_model_for_chat(
         This requires a tokenizer saved at checkpoints/tokenizer/ or specified
         separately. Adjust the tokenizer path as needed for your setup.
     """
-    from src.training.checkpoint import load_checkpoint
-    from src.model.config import AureliusConfig
-    from src.model.transformer import AureliusTransformer
-
     # Load config from meta.json
     import json
     from pathlib import Path
+
+    from src.model.config import AureliusConfig
+    from src.model.transformer import AureliusTransformer
+    from src.training.checkpoint import load_checkpoint
+
     meta_path = Path(checkpoint_dir) / "meta.json"
     if meta_path.exists():
         with open(meta_path) as f:

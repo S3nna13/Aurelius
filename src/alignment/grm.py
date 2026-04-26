@@ -14,11 +14,13 @@ References
 Kimi K2.5: arXiv:2602.02276, §3.5
 GLM-5:     arXiv:2602.15763, §4.2
 """
+
 from __future__ import annotations
 
-import torch
 from dataclasses import dataclass, field
-from typing import Dict, Literal, Optional
+from typing import Literal
+
+import torch
 
 DIMENSIONS = ["helpfulness", "adherence", "relevance", "detail"]
 
@@ -40,9 +42,7 @@ class GRMConfig:
                      scoring when ``rule_reward`` is ``None``.
     """
 
-    weights: Dict[str, float] = field(
-        default_factory=lambda: {d: 0.25 for d in DIMENSIONS}
-    )
+    weights: dict[str, float] = field(default_factory=lambda: {d: 0.25 for d in DIMENSIONS})
     mode: Literal["grm", "rule"] = "grm"
 
 
@@ -64,12 +64,12 @@ class GenerativeRewardModel:
     tensor(0.7500)
     """
 
-    def __init__(self, config: Optional[GRMConfig] = None) -> None:
+    def __init__(self, config: GRMConfig | None = None) -> None:
         self.config = config or GRMConfig()
         w = self.config.weights
         total = sum(w.values()) or 1.0
         # Normalised weight dict — guaranteed to sum to 1.0
-        self._w: Dict[str, float] = {k: v / total for k, v in w.items()}
+        self._w: dict[str, float] = {k: v / total for k, v in w.items()}
 
     # ------------------------------------------------------------------
     # Public API
@@ -77,8 +77,8 @@ class GenerativeRewardModel:
 
     def score(
         self,
-        dim_scores: Dict[str, float | torch.Tensor],
-        rule_reward: Optional[float | torch.Tensor] = None,
+        dim_scores: dict[str, float | torch.Tensor],
+        rule_reward: float | torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute a scalar reward in [0, 1].
 

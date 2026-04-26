@@ -10,6 +10,7 @@ Implements Switch Transformer / Mixtral-style sparse MoE:
 Usage:
     from aurelius.model.moe import RouterConfig, TopKRouter, ExpertFFN, SparseMoELayer, MoEBlock
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,10 +20,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # RouterConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RouterConfig:
@@ -37,6 +38,7 @@ class RouterConfig:
 # ---------------------------------------------------------------------------
 # TopKRouter
 # ---------------------------------------------------------------------------
+
 
 class TopKRouter(nn.Module):
     """Sparse top-K router.
@@ -119,6 +121,7 @@ class TopKRouter(nn.Module):
 # ExpertFFN
 # ---------------------------------------------------------------------------
 
+
 class ExpertFFN(nn.Module):
     """Single expert: 2-layer MLP with SiLU activation.
 
@@ -145,6 +148,7 @@ class ExpertFFN(nn.Module):
 # ---------------------------------------------------------------------------
 # SparseMoELayer
 # ---------------------------------------------------------------------------
+
 
 class SparseMoELayer(nn.Module):
     """Sparse top-K Mixture-of-Experts layer.
@@ -183,24 +187,24 @@ class SparseMoELayer(nn.Module):
         # dispatch_weights:  (B, T, top_k)
         # dispatch_indices:  (B, T, top_k)
 
-        x_flat = x.reshape(B * T, D)                # (N, D)
-        w_flat = dispatch_weights.reshape(B * T, self.top_k)   # (N, top_k)
-        idx_flat = dispatch_indices.reshape(B * T, self.top_k) # (N, top_k)
+        x_flat = x.reshape(B * T, D)  # (N, D)
+        w_flat = dispatch_weights.reshape(B * T, self.top_k)  # (N, top_k)
+        idx_flat = dispatch_indices.reshape(B * T, self.top_k)  # (N, top_k)
 
         output = torch.zeros_like(x_flat)  # (N, D)
 
         # Iterate over experts: gather assigned tokens, run FFN, scatter back
         for expert_id in range(self.n_experts):
             # mask: (N, top_k) — True where this expert is selected
-            mask = idx_flat == expert_id            # (N, top_k)
+            mask = idx_flat == expert_id  # (N, top_k)
             # token_mask: (N,) — True if token is routed here in any slot
-            token_mask = mask.any(dim=-1)           # (N,)
+            token_mask = mask.any(dim=-1)  # (N,)
 
             if not token_mask.any():
                 continue
 
             # Tokens assigned to this expert
-            expert_input = x_flat[token_mask]       # (n_tok, D)
+            expert_input = x_flat[token_mask]  # (n_tok, D)
             expert_out = self.experts[expert_id](expert_input)  # (n_tok, D)
 
             # Weight: sum over slots (at most one slot per expert per token)
@@ -218,6 +222,7 @@ class SparseMoELayer(nn.Module):
 # MoEBlock
 # ---------------------------------------------------------------------------
 
+
 class MoEBlock(nn.Module):
     """Transformer-style block with a Sparse MoE FFN sub-layer.
 
@@ -230,7 +235,7 @@ class MoEBlock(nn.Module):
         n_experts: number of experts
         top_k:     number of experts each token is routed to
         n_heads:   number of attention heads
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
@@ -244,9 +249,13 @@ class MoEBlock(nn.Module):
 
         # Use nn.RMSNorm if available (PyTorch >= 2.4), else LayerNorm
         if hasattr(nn, "RMSNorm"):
-            norm_cls = lambda: nn.RMSNorm(d_model)
+
+            def norm_cls():
+                return nn.RMSNorm(d_model)
         else:
-            norm_cls = lambda: nn.LayerNorm(d_model)
+
+            def norm_cls():
+                return nn.LayerNorm(d_model)
 
         self.norm1 = norm_cls()
         self.norm2 = norm_cls()
@@ -287,6 +296,7 @@ class MoEBlock(nn.Module):
 # MoEConfig  (used by SparseMoEFFN, BalancedMoEFFN, upcycle helpers)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MoEConfig:
     """Configuration for Sparse MoE FFN layers.
@@ -310,6 +320,7 @@ class MoEConfig:
 # SparseMoEFFN  (drop-in SwiGLUFFN replacement; returns (output, aux_loss))
 # ---------------------------------------------------------------------------
 
+
 class SparseMoEFFN(nn.Module):
     """Sparse MoE FFN layer — drop-in replacement for SwiGLUFFN.
 
@@ -326,7 +337,7 @@ class SparseMoEFFN(nn.Module):
         aux_loss: scalar = load_balance_alpha * router_loss
     """
 
-    def __init__(self, config, moe_cfg: "MoEConfig | None" = None) -> None:
+    def __init__(self, config, moe_cfg: MoEConfig | None = None) -> None:
         super().__init__()
         self.moe_cfg = moe_cfg if moe_cfg is not None else MoEConfig()
         self.load_balance_alpha = self.moe_cfg.load_balance_alpha

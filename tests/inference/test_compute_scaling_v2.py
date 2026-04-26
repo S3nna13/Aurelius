@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
-import torch
 import pytest
-
+import torch
 from aurelius.inference.compute_scaling_v2 import (
     BestOfN,
     ComputeScalingOrchestrator,
@@ -15,12 +12,12 @@ from aurelius.inference.compute_scaling_v2 import (
     SelfRefiner,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
-def _scorer(candidates: List[str]) -> torch.Tensor:
+
+def _scorer(candidates: list[str]) -> torch.Tensor:
     """Return a fixed score for each candidate based on its length."""
     return torch.tensor([float(len(c)) for c in candidates])
 
@@ -47,6 +44,7 @@ def _make_refiner(n_steps: int = 3) -> SelfRefiner:
 # InferenceScalingConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestInferenceScalingConfig:
     def test_defaults(self):
         cfg = InferenceScalingConfig()
@@ -56,7 +54,9 @@ class TestInferenceScalingConfig:
         assert cfg.temperature == 1.0
 
     def test_custom_values(self):
-        cfg = InferenceScalingConfig(n_samples=4, strategy="majority_vote", n_refinement_steps=5, temperature=0.7)
+        cfg = InferenceScalingConfig(
+            n_samples=4, strategy="majority_vote", n_refinement_steps=5, temperature=0.7
+        )
         assert cfg.n_samples == 4
         assert cfg.strategy == "majority_vote"
         assert cfg.n_refinement_steps == 5
@@ -66,6 +66,7 @@ class TestInferenceScalingConfig:
 # ---------------------------------------------------------------------------
 # BestOfN tests
 # ---------------------------------------------------------------------------
+
 
 class TestBestOfN:
     def test_select_returns_tuple(self):
@@ -90,8 +91,8 @@ class TestBestOfN:
     def test_select_batch_returns_one_per_prompt(self):
         bon = BestOfN(_scorer)
         batch = [
-            ["a", "bb", "ccc"],    # best: "ccc"
-            ["hello", "hi"],       # best: "hello"
+            ["a", "bb", "ccc"],  # best: "ccc"
+            ["hello", "hi"],  # best: "hello"
         ]
         results = bon.select_batch(batch)
         assert len(results) == 2
@@ -107,6 +108,7 @@ class TestBestOfN:
 # ---------------------------------------------------------------------------
 # MajorityVoter tests
 # ---------------------------------------------------------------------------
+
 
 class TestMajorityVoter:
     def test_vote_finds_majority(self):
@@ -126,13 +128,13 @@ class TestMajorityVoter:
 
     def test_confidence_correct(self):
         voter = MajorityVoter(_identity_extractor)
-        counts: Dict[str, int] = {"yes": 6, "no": 4}
+        counts: dict[str, int] = {"yes": 6, "no": 4}
         conf = voter.confidence(counts)
         assert conf == pytest.approx(0.6)
 
     def test_confidence_unanimous(self):
         voter = MajorityVoter(_identity_extractor)
-        counts: Dict[str, int] = {"yes": 5}
+        counts: dict[str, int] = {"yes": 5}
         assert voter.confidence(counts) == pytest.approx(1.0)
 
     def test_confidence_zero_total(self):
@@ -143,6 +145,7 @@ class TestMajorityVoter:
 # ---------------------------------------------------------------------------
 # SelfRefiner tests
 # ---------------------------------------------------------------------------
+
 
 class TestSelfRefiner:
     def test_refine_returns_tuple(self):
@@ -188,6 +191,7 @@ class TestSelfRefiner:
 # ---------------------------------------------------------------------------
 # ComputeScalingOrchestrator tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeScalingOrchestrator:
     def _make_orchestrator(self, strategy: str) -> ComputeScalingOrchestrator:

@@ -10,19 +10,20 @@ Classes:
     PPOBuffer         - experience replay buffer for PPO
     PPOTrainer        - full RLHF PPO training loop
 """
+
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ValueHead
 # ---------------------------------------------------------------------------
+
 
 class ValueHead(nn.Module):
     """Scalar value estimator on top of transformer hidden states.
@@ -56,6 +57,7 @@ class ValueHead(nn.Module):
 # ---------------------------------------------------------------------------
 # GAEComputation
 # ---------------------------------------------------------------------------
+
 
 class GAEComputation:
     """Generalized Advantage Estimation (GAE-Lambda).
@@ -107,6 +109,7 @@ class GAEComputation:
 # PPOLoss
 # ---------------------------------------------------------------------------
 
+
 class PPOLoss(nn.Module):
     """Clipped PPO surrogate loss with value, entropy, and KL components.
 
@@ -138,7 +141,7 @@ class PPOLoss(nn.Module):
         values: Tensor,
         returns: Tensor,
         ref_log_probs: Tensor,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Compute PPO loss components.
 
         All inputs are (B, T) tensors.
@@ -184,6 +187,7 @@ class PPOLoss(nn.Module):
 # PPOBuffer
 # ---------------------------------------------------------------------------
 
+
 class PPOBuffer:
     """Fixed-capacity experience buffer for PPO.
 
@@ -192,7 +196,7 @@ class PPOBuffer:
 
     def __init__(self, capacity: int) -> None:
         self.capacity = capacity
-        self._data: List[Dict[str, Tensor]] = []
+        self._data: list[dict[str, Tensor]] = []
 
     def add(
         self,
@@ -213,7 +217,7 @@ class PPOBuffer:
             }
         )
 
-    def get_batch(self) -> Dict[str, Tensor]:
+    def get_batch(self) -> dict[str, Tensor]:
         """Return all stored episodes stacked along dim=0."""
         if not self._data:
             raise RuntimeError("PPOBuffer is empty.")
@@ -232,6 +236,7 @@ class PPOBuffer:
 # ---------------------------------------------------------------------------
 # PPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class PPOTrainer:
     """Full RLHF PPO training loop.
@@ -277,7 +282,7 @@ class PPOTrainer:
     # ------------------------------------------------------------------
 
     @torch.no_grad()
-    def rollout(self, input_ids: Tensor, max_new_tokens: int = 16) -> Dict[str, Tensor]:
+    def rollout(self, input_ids: Tensor, max_new_tokens: int = 16) -> dict[str, Tensor]:
         """Generate sequences, collect log-probs, values, and rewards.
 
         Args:
@@ -294,11 +299,11 @@ class PPOTrainer:
         self.policy_model.eval()
         self.value_head.eval()
 
-        B = input_ids.shape[0]
+        input_ids.shape[0]
         generated = input_ids.clone()
 
-        collected_log_probs: List[Tensor] = []
-        collected_values: List[Tensor] = []
+        collected_log_probs: list[Tensor] = []
+        collected_values: list[Tensor] = []
 
         for _ in range(max_new_tokens):
             logits, hidden_states = self.policy_model(generated)
@@ -336,7 +341,7 @@ class PPOTrainer:
     # train_epoch
     # ------------------------------------------------------------------
 
-    def train_epoch(self, input_ids: Tensor) -> Dict[str, float]:
+    def train_epoch(self, input_ids: Tensor) -> dict[str, float]:
         """Collect a rollout then perform ppo_epochs of PPO updates.
 
         Args:
@@ -367,13 +372,13 @@ class PPOTrainer:
         with torch.no_grad():
             ref_logits, _ = self.ref_model(sequences)
             gen_tokens = sequences[:, T_prompt:]
-            ref_lp_all = F.log_softmax(ref_logits[:, T_prompt - 1:-1, :], dim=-1)
+            ref_lp_all = F.log_softmax(ref_logits[:, T_prompt - 1 : -1, :], dim=-1)
             ref_log_probs = ref_lp_all.gather(2, gen_tokens.unsqueeze(-1)).squeeze(-1)
 
-        total_losses: List[float] = []
-        pol_losses: List[float] = []
-        val_losses: List[float] = []
-        kl_losses: List[float] = []
+        total_losses: list[float] = []
+        pol_losses: list[float] = []
+        val_losses: list[float] = []
+        kl_losses: list[float] = []
 
         self.policy_model.train()
         self.value_head.train()
@@ -382,10 +387,10 @@ class PPOTrainer:
             logits, hidden_states = self.policy_model(sequences)
             gen_tokens = sequences[:, T_prompt:]
 
-            curr_lp_all = F.log_softmax(logits[:, T_prompt - 1:-1, :], dim=-1)
+            curr_lp_all = F.log_softmax(logits[:, T_prompt - 1 : -1, :], dim=-1)
             curr_log_probs = curr_lp_all.gather(2, gen_tokens.unsqueeze(-1)).squeeze(-1)
 
-            curr_values = self.value_head(hidden_states[:, T_prompt - 1:-1, :])
+            curr_values = self.value_head(hidden_states[:, T_prompt - 1 : -1, :])
 
             loss_dict = self.ppo_loss_fn(
                 log_probs=curr_log_probs,

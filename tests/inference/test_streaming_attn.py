@@ -1,17 +1,16 @@
-"""Tests for src/inference/streaming_attn.py — StreamingLLM attention sink + sliding window cache."""
+"""Tests for src/inference/streaming_attn.py — StreamingLLM attention sink + sliding window cache."""  # noqa: E501
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.inference.streaming_attn import (
-    StreamingConfig,
-    SinkTokenCache,
     SinkAttention,
-    compute_position_ids_for_cache,
+    SinkTokenCache,
+    StreamingConfig,
     compute_cache_efficiency,
+    compute_position_ids_for_cache,
 )
 
 # ---------------------------------------------------------------------------
@@ -36,6 +35,7 @@ SMALL_CFG = StreamingConfig(
 # 1. StreamingConfig defaults
 # ===========================================================================
 
+
 def test_streaming_config_defaults():
     cfg = StreamingConfig()
     assert cfg.n_sink_tokens == 4
@@ -47,6 +47,7 @@ def test_streaming_config_defaults():
 # ===========================================================================
 # 2. SinkTokenCache.update returns correct shapes
 # ===========================================================================
+
 
 def test_sink_token_cache_update_shape():
     cache = SinkTokenCache(SMALL_CFG, n_layers=2, n_heads=N_HEADS, head_dim=HEAD_DIM)
@@ -62,6 +63,7 @@ def test_sink_token_cache_update_shape():
 # 3. SinkTokenCache with small input (< window_size) keeps all tokens
 # ===========================================================================
 
+
 def test_sink_token_cache_small_input_keeps_all():
     cache = SinkTokenCache(SMALL_CFG, n_layers=1, n_heads=N_HEADS, head_dim=HEAD_DIM)
     # Feed 5 tokens — below window_size=8 and max_cache_size=10, should keep all
@@ -76,6 +78,7 @@ def test_sink_token_cache_small_input_keeps_all():
 # ===========================================================================
 # 4. SinkTokenCache with large input evicts middle but keeps sinks
 # ===========================================================================
+
 
 def test_sink_token_cache_large_input_keeps_sinks():
     cache = SinkTokenCache(SMALL_CFG, n_layers=1, n_heads=N_HEADS, head_dim=HEAD_DIM)
@@ -106,6 +109,7 @@ def test_sink_token_cache_large_input_keeps_sinks():
 # 5. SinkTokenCache.clear resets size to 0
 # ===========================================================================
 
+
 def test_sink_token_cache_clear():
     cache = SinkTokenCache(SMALL_CFG, n_layers=1, n_heads=N_HEADS, head_dim=HEAD_DIM)
     k = torch.randn(1, N_HEADS, 4, HEAD_DIM)
@@ -119,6 +123,7 @@ def test_sink_token_cache_clear():
 # ===========================================================================
 # 6. SinkTokenCache size never exceeds max_cache_size
 # ===========================================================================
+
 
 def test_sink_token_cache_size_never_exceeds_max():
     cache = SinkTokenCache(SMALL_CFG, n_layers=1, n_heads=N_HEADS, head_dim=HEAD_DIM)
@@ -135,6 +140,7 @@ def test_sink_token_cache_size_never_exceeds_max():
 # 7. compute_position_ids_for_cache output shape is (cache_size,)
 # ===========================================================================
 
+
 def test_compute_position_ids_shape():
     cache_size = 10
     pos = compute_position_ids_for_cache(seq_len=20, cache_size=cache_size, n_sink=N_SINK)
@@ -145,6 +151,7 @@ def test_compute_position_ids_shape():
 # ===========================================================================
 # 8. compute_position_ids_for_cache sink positions are 0..n_sink-1
 # ===========================================================================
+
 
 def test_compute_position_ids_sink_values():
     cache_size = 10
@@ -158,6 +165,7 @@ def test_compute_position_ids_sink_values():
 # 9. SinkAttention output shape (B, T, d_model)
 # ===========================================================================
 
+
 def test_sink_attention_output_shape():
     torch.manual_seed(0)
     attn = SinkAttention(D_MODEL, N_HEADS, HEAD_DIM, SMALL_CFG)
@@ -170,6 +178,7 @@ def test_sink_attention_output_shape():
 # ===========================================================================
 # 10. SinkAttention cache grows with sequential calls
 # ===========================================================================
+
 
 def test_sink_attention_cache_grows():
     torch.manual_seed(1)
@@ -192,6 +201,7 @@ def test_sink_attention_cache_grows():
 # ===========================================================================
 # 11. SinkAttention result differs from standard attention after long context
 # ===========================================================================
+
 
 def test_sink_attention_differs_from_standard_after_long_context():
     """After filling the cache, the sink module compresses context; outputs differ."""
@@ -216,9 +226,12 @@ def test_sink_attention_differs_from_standard_after_long_context():
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             import math
+
             B, T, _ = x.shape
+
             def sh(t):
                 return t.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+
             q, k, v = sh(self.q_proj(x)), sh(self.k_proj(x)), sh(self.v_proj(x))
             scale = math.sqrt(self.head_dim)
             scores = torch.matmul(q, k.transpose(-2, -1)) / scale
@@ -258,6 +271,7 @@ def test_sink_attention_differs_from_standard_after_long_context():
 # 12. compute_cache_efficiency compression_ratio < 1 for long sequences
 # ===========================================================================
 
+
 def test_cache_efficiency_compression_ratio():
     cfg = SMALL_CFG  # max_cache_size = 10
     seq_len = 100  # much longer than max_cache_size
@@ -270,6 +284,7 @@ def test_cache_efficiency_compression_ratio():
 # ===========================================================================
 # 13. compute_cache_efficiency sink_fraction = n_sink / max_cache_size
 # ===========================================================================
+
 
 def test_cache_efficiency_sink_fraction():
     cfg = SMALL_CFG

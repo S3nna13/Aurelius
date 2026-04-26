@@ -1,15 +1,16 @@
 """Vocabulary and tokenization analysis: fertility, coverage, efficiency metrics."""
+
 from __future__ import annotations
 
 import math
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Callable
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # VocabStats dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VocabStats:
@@ -17,15 +18,16 @@ class VocabStats:
 
     vocab_size: int
     n_special_tokens: int = 0
-    coverage: float = 0.0        # fraction of corpus unique words present in vocab
-    fertility: float = 0.0       # avg subword tokens per word
-    oov_rate: float = 0.0        # fraction of words NOT in vocab
+    coverage: float = 0.0  # fraction of corpus unique words present in vocab
+    fertility: float = 0.0  # avg subword tokens per word
+    oov_rate: float = 0.0  # fraction of words NOT in vocab
     compression_ratio: float = 0.0  # char_count / token_count
 
 
 # ---------------------------------------------------------------------------
 # Standalone metric functions
 # ---------------------------------------------------------------------------
+
 
 def compute_fertility(
     texts: list[str],
@@ -157,6 +159,7 @@ def compute_zipf_exponent(token_freqs: list[int]) -> float:
 # TokenizerAnalyzer class
 # ---------------------------------------------------------------------------
 
+
 class TokenizerAnalyzer:
     """High-level analyser wrapping a tokenize function."""
 
@@ -256,6 +259,7 @@ class TokenizerAnalyzer:
 # compare_tokenizers
 # ---------------------------------------------------------------------------
 
+
 def compare_tokenizers(
     tokenize_a: Callable[[str], list[int]],
     tokenize_b: Callable[[str], list[int]],
@@ -285,6 +289,7 @@ def compare_tokenizers(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _distribution_stats(values: list[int | float]) -> dict[str, float]:
     """Return mean/std/max/min for a list of numeric values."""

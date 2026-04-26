@@ -21,7 +21,6 @@ from src.model.interface_contract import (
     validate_interface_contract,
 )
 
-
 _REQUIRED_TOP_LEVEL_SECTIONS = (
     "metadata",
     "purpose",
@@ -123,13 +122,37 @@ def _build_contract_payload() -> dict:
             "complete": ["write final artifact"],
         },
         "mode_semantics": {
-            "ask": {"intent": "clarify", "tool_policy": "minimal", "default_constraints": ["no writes"]},
-            "code": {"intent": "implement", "tool_policy": "edit", "default_constraints": ["approval"]},
-            "debug": {"intent": "debug", "tool_policy": "inspect", "default_constraints": ["approval"]},
-            "architect": {"intent": "design", "tool_policy": "read", "default_constraints": ["plan"]},
+            "ask": {
+                "intent": "clarify",
+                "tool_policy": "minimal",
+                "default_constraints": ["no writes"],
+            },
+            "code": {
+                "intent": "implement",
+                "tool_policy": "edit",
+                "default_constraints": ["approval"],
+            },
+            "debug": {
+                "intent": "debug",
+                "tool_policy": "inspect",
+                "default_constraints": ["approval"],
+            },
+            "architect": {
+                "intent": "design",
+                "tool_policy": "read",
+                "default_constraints": ["plan"],
+            },
             "review": {"intent": "audit", "tool_policy": "read", "default_constraints": ["risks"]},
-            "background": {"intent": "run", "tool_policy": "persistent", "default_constraints": ["checkpoint"]},
-            "chat": {"intent": "chat", "tool_policy": "minimal", "default_constraints": ["escalate"]},
+            "background": {
+                "intent": "run",
+                "tool_policy": "persistent",
+                "default_constraints": ["checkpoint"],
+            },
+            "chat": {
+                "intent": "chat",
+                "tool_policy": "minimal",
+                "default_constraints": ["escalate"],
+            },
         },
         "skill_contract": {
             "packaging_shape": ["skill-name/SKILL.md"],
@@ -182,17 +205,19 @@ def _build_schema_payload() -> dict:
 
 
 def _build_prompt_yaml_text() -> str:
-    return "\n".join([
-        "metadata:",
-        "  title: Aurelius Canonical Interface Contract",
-        "  doc_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.md",
-        "  schema_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.schema.json",
-        "  json_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.json",
-        "",
-        "purpose:",
-        "  summary: canonical interface",
-        "",
-    ])
+    return "\n".join(
+        [
+            "metadata:",
+            "  title: Aurelius Canonical Interface Contract",
+            "  doc_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.md",
+            "  schema_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.schema.json",  # noqa: E501
+            "  json_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.json",
+            "",
+            "purpose:",
+            "  summary: canonical interface",
+            "",
+        ]
+    )
 
 
 def _write_artifacts(
@@ -250,10 +275,7 @@ def test_load_bundle_reads_and_validates_all_contract_artifacts(tmp_path):
     assert load_interface_contract_markdown(repo_root=tmp_path) == bundle.markdown_text
     assert load_interface_contract_json(repo_root=tmp_path) == bundle.contract_json
     assert load_interface_contract_schema(repo_root=tmp_path) == bundle.schema_json
-    assert (
-        load_interface_contract_prompt_yaml_text(repo_root=tmp_path)
-        == bundle.prompt_yaml_text
-    )
+    assert load_interface_contract_prompt_yaml_text(repo_root=tmp_path) == bundle.prompt_yaml_text
 
 
 def test_validate_interface_contract_rejects_missing_top_level_section(tmp_path):
@@ -295,16 +317,20 @@ def test_load_interface_contract_json_fails_loudly_on_malformed_json(tmp_path):
 
 
 def test_validate_interface_contract_rejects_prompt_yaml_with_missing_companion_path(tmp_path):
-    prompt_yaml_text = "\n".join([
-        "metadata:",
-        "  title: Aurelius Canonical Interface Contract",
-        "  doc_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.md",
-        "  json_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.json",
-        "",
-    ])
+    prompt_yaml_text = "\n".join(
+        [
+            "metadata:",
+            "  title: Aurelius Canonical Interface Contract",
+            "  doc_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.md",
+            "  json_path: docs/plans/2026-04-21-aurelius-canonical-interface-contract.json",
+            "",
+        ]
+    )
     _write_artifacts(tmp_path, prompt_yaml_text=prompt_yaml_text)
 
-    with pytest.raises(InterfaceContractError, match="prompt YAML metadata missing companion paths"):
+    with pytest.raises(
+        InterfaceContractError, match="prompt YAML metadata missing companion paths"
+    ):
         load_interface_contract_bundle(repo_root=tmp_path)
 
 

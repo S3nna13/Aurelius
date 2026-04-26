@@ -19,17 +19,17 @@ Reference:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StepPreferenceExample:
@@ -67,14 +67,14 @@ class StepPreferenceExample:
             val = getattr(self, name)
             if not isinstance(val, Tensor):
                 raise TypeError(
-                    f"StepPreferenceExample.{name} must be a torch.Tensor, "
-                    f"got {type(val).__name__}"
+                    f"StepPreferenceExample.{name} must be a torch.Tensor, got {type(val).__name__}"
                 )
 
 
 # ---------------------------------------------------------------------------
 # Loss
 # ---------------------------------------------------------------------------
+
 
 def step_dpo_loss(
     chosen_logprobs: Tensor,
@@ -129,6 +129,7 @@ def step_dpo_loss(
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class StepDPOTrainer:
     """Trainer for Step-DPO.
 
@@ -148,8 +149,8 @@ class StepDPOTrainer:
 
     def __init__(
         self,
-        policy_logprob_fn: Optional[Callable[[StepPreferenceExample], dict]] = None,
-        ref_logprob_fn: Optional[Callable[[StepPreferenceExample], dict]] = None,
+        policy_logprob_fn: Callable[[StepPreferenceExample], dict] | None = None,
+        ref_logprob_fn: Callable[[StepPreferenceExample], dict] | None = None,
         beta: float = 0.1,
     ) -> None:
         if beta < 0:
@@ -160,7 +161,7 @@ class StepDPOTrainer:
 
     # -- helpers ----------------------------------------------------------
 
-    def _gather(self, batch: List[StepPreferenceExample]):
+    def _gather(self, batch: list[StepPreferenceExample]):
         """Materialise per-example log-prob tensors from the batch.
 
         If ``policy_logprob_fn`` is provided it is called per-example and is
@@ -171,10 +172,10 @@ class StepDPOTrainer:
         if len(batch) == 0:
             raise ValueError("StepDPOTrainer: batch must be non-empty")
 
-        chosen_lp: List[Tensor] = []
-        rejected_lp: List[Tensor] = []
-        chosen_ref_lp: List[Tensor] = []
-        rejected_ref_lp: List[Tensor] = []
+        chosen_lp: list[Tensor] = []
+        rejected_lp: list[Tensor] = []
+        chosen_ref_lp: list[Tensor] = []
+        rejected_ref_lp: list[Tensor] = []
 
         for ex in batch:
             if self.policy_logprob_fn is not None:
@@ -202,12 +203,12 @@ class StepDPOTrainer:
 
     # -- API --------------------------------------------------------------
 
-    def compute_loss(self, batch: List[StepPreferenceExample]) -> Tensor:
+    def compute_loss(self, batch: list[StepPreferenceExample]) -> Tensor:
         """Compute the Step-DPO loss over a batch of examples."""
         c, r, cr, rr = self._gather(batch)
         return step_dpo_loss(c, r, cr, rr, beta=self.beta)
 
-    def compute_loss_and_metrics(self, batch: List[StepPreferenceExample]):
+    def compute_loss_and_metrics(self, batch: list[StepPreferenceExample]):
         c, r, cr, rr = self._gather(batch)
         loss = step_dpo_loss(c, r, cr, rr, beta=self.beta)
         with torch.no_grad():
@@ -217,7 +218,7 @@ class StepDPOTrainer:
             "reward_margin": float(reward_margin.item()),
         }
 
-    def step(self, optimizer, batch: List[StepPreferenceExample]) -> dict:
+    def step(self, optimizer, batch: list[StepPreferenceExample]) -> dict:
         """Run one optimization step and return metrics."""
         optimizer.zero_grad()
         loss, metrics = self.compute_loss_and_metrics(batch)

@@ -10,7 +10,6 @@ from src.alignment.adversarial_code_battle import (
 )
 from src.model.config import AureliusConfig
 
-
 _EV_CALL = "ev" + "al(user_input)"
 _SHELL_TRUE = "she" + "ll=T" + "rue"
 

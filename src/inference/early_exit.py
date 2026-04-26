@@ -61,7 +61,9 @@ def compute_confidence(logits: Tensor, metric: str) -> Tensor:
         return margin
 
     else:
-        raise ValueError(f"Unknown confidence metric: {metric!r}. Choose from 'max_prob', 'entropy', 'margin'.")
+        raise ValueError(
+            f"Unknown confidence metric: {metric!r}. Choose from 'max_prob', 'entropy', 'margin'."
+        )
 
 
 class ExitClassifier(nn.Module):
@@ -132,6 +134,7 @@ class EarlyExitWrapper(nn.Module):
                     hidden = output
                 # Capture last token: (B, d_model)
                 captured[layer_idx] = hidden[:, -1, :].detach()
+
             return hook_fn
 
         for i, layer in enumerate(self.model.layers):
@@ -190,7 +193,11 @@ class EarlyExitWrapper(nn.Module):
 
             confidence = compute_confidence(logits_at_exit, metric)  # (B,)
 
-            threshold = exit_thresholds[exit_idx] if exit_idx < len(exit_thresholds) else exit_thresholds[-1]
+            threshold = (
+                exit_thresholds[exit_idx]
+                if exit_idx < len(exit_thresholds)
+                else exit_thresholds[-1]
+            )
 
             # Exit if ALL samples in batch are confident enough
             if confidence.min().item() >= threshold:
@@ -234,7 +241,7 @@ class EarlyExitWrapper(nn.Module):
         mean_exit_layer = float(sum(exit_layers_collected)) / max(len(exit_layers_collected), 1)
 
         # "Early exit" means the model stopped before the last layer
-        early_exit_count = sum(1 for l in exit_layers_collected if l < n_layers - 1)
+        early_exit_count = sum(1 for line in exit_layers_collected if line < n_layers - 1)
         early_exit_rate = early_exit_count / max(len(exit_layers_collected), 1)
 
         # Naive speedup: ratio of full depth to average exit depth (+1 to avoid div-by-zero)
@@ -287,6 +294,7 @@ def train_exit_classifiers(
                 else:
                     hidden = output
                 captured[layer_idx] = hidden[:, -1, :]  # (1, d_model), keep grad
+
             return hook_fn
 
         for i, layer in enumerate(model.layers):

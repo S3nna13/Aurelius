@@ -10,17 +10,16 @@ Reference: "Token Merging: Your ViT but Faster" (Bolya et al. 2022)
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Bipartite Soft Matching
 # ---------------------------------------------------------------------------
+
 
 class BipartiteSoftMatching:
     """Match and merge similar tokens using bipartite soft matching.
@@ -35,7 +34,7 @@ class BipartiteSoftMatching:
             raise ValueError(f"r must be >= 0, got {r}")
         self.r = r
 
-    def match(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def match(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Find the top-r most-similar A–B token pairs with unique B assignment.
 
         Each B token can be matched to at most one A token, ensuring that
@@ -101,15 +100,17 @@ class BipartiteSoftMatching:
         # Build unmerge weights: tokens involved in a merge have count=2, rest=1
         # Positions in A: 2*a_idx; positions in B: 2*b_idx+1
         counts = x.new_ones(B, T)  # (B, T)
-        a_orig = top_a_idx * 2          # (B, r)  — original positions in A
-        b_orig = top_b_idx * 2 + 1      # (B, r)  — original positions in B
+        a_orig = top_a_idx * 2  # (B, r)  — original positions in A
+        b_orig = top_b_idx * 2 + 1  # (B, r)  — original positions in B
 
         # Mark merged positions with count 2
         for bi in range(B):
-            counts[bi].scatter_(0, a_orig[bi],
-                                2.0 * torch.ones(r, dtype=counts.dtype, device=x.device))
-            counts[bi].scatter_(0, b_orig[bi],
-                                2.0 * torch.ones(r, dtype=counts.dtype, device=x.device))
+            counts[bi].scatter_(
+                0, a_orig[bi], 2.0 * torch.ones(r, dtype=counts.dtype, device=x.device)
+            )
+            counts[bi].scatter_(
+                0, b_orig[bi], 2.0 * torch.ones(r, dtype=counts.dtype, device=x.device)
+            )
 
         unmerge_weights = (1.0 / counts).unsqueeze(-1)  # (B, T, 1)
 
@@ -150,7 +151,7 @@ class BipartiteSoftMatching:
         x_a = x[:, 0::2, :]  # (B, T_a, D)
         x_b = x[:, 1::2, :]  # (B, T_b, D)
 
-        T_a = x_a.shape[1]
+        x_a.shape[1]
         T_b = x_b.shape[1]
 
         a_idx = merge_indices[:, :, 0]  # (B, r)
@@ -171,8 +172,9 @@ class BipartiteSoftMatching:
         # Remove matched B positions — build boolean keep mask for B
         keep_b_mask = torch.ones(B, T_b, dtype=torch.bool, device=x.device)
         for bi in range(B):
-            keep_b_mask[bi].scatter_(0, b_idx[bi],
-                                     torch.zeros(r, dtype=torch.bool, device=x.device))
+            keep_b_mask[bi].scatter_(
+                0, b_idx[bi], torch.zeros(r, dtype=torch.bool, device=x.device)
+            )
 
         # Gather unmatched B tokens per batch item
         # Pad to uniform shape using a simple loop (T_b - r unmatched per item)
@@ -191,6 +193,7 @@ class BipartiteSoftMatching:
 # ---------------------------------------------------------------------------
 # Token Unmerger
 # ---------------------------------------------------------------------------
+
 
 class TokenUnmerger:
     """Restore original sequence length after processing merged tokens."""
@@ -226,23 +229,22 @@ class TokenUnmerger:
         T_a = math.ceil(original_T / 2)
         T_b = original_T // 2
 
-        x_a_mod = merged_x[:, :T_a, :]        # (B, T_a, D)
-        unmatched_b = merged_x[:, T_a:, :]    # (B, T_b-r, D)
+        x_a_mod = merged_x[:, :T_a, :]  # (B, T_a, D)
+        unmatched_b = merged_x[:, T_a:, :]  # (B, T_b-r, D)
 
         a_idx = merge_indices[:, :, 0]  # (B, r)
         b_idx = merge_indices[:, :, 1]  # (B, r)
 
         # Reconstruct x_b: place unmatched tokens back, fill matched slots with
         # the corresponding merged (a_mod) token.
-        x_b_restored = torch.zeros(B, T_b, D, device=merged_x.device,
-                                   dtype=merged_x.dtype)
+        x_b_restored = torch.zeros(B, T_b, D, device=merged_x.device, dtype=merged_x.dtype)
 
         # Build keep_b_mask to find where unmatched B slots are
         keep_b_mask = torch.ones(B, T_b, dtype=torch.bool, device=merged_x.device)
         for bi in range(B):
-            keep_b_mask[bi].scatter_(0, b_idx[bi],
-                                     torch.zeros(r, dtype=torch.bool,
-                                                 device=merged_x.device))
+            keep_b_mask[bi].scatter_(
+                0, b_idx[bi], torch.zeros(r, dtype=torch.bool, device=merged_x.device)
+            )
 
         # Place unmatched B tokens
         for bi in range(B):
@@ -253,13 +255,10 @@ class TokenUnmerger:
         merged_vals = x_a_mod.gather(1, a_idx_exp)  # (B, r, D) — merged value at A
 
         for bi in range(B):
-            x_b_restored[bi].scatter_(0,
-                                      b_idx[bi].unsqueeze(-1).expand(r, D),
-                                      merged_vals[bi])
+            x_b_restored[bi].scatter_(0, b_idx[bi].unsqueeze(-1).expand(r, D), merged_vals[bi])
 
         # Interleave A and B back into original positions
-        output = torch.zeros(B, original_T, D, device=merged_x.device,
-                             dtype=merged_x.dtype)
+        output = torch.zeros(B, original_T, D, device=merged_x.device, dtype=merged_x.dtype)
         output[:, 0::2, :] = x_a_mod
         output[:, 1::2, :] = x_b_restored
 
@@ -269,6 +268,7 @@ class TokenUnmerger:
 # ---------------------------------------------------------------------------
 # ToMe Attention
 # ---------------------------------------------------------------------------
+
 
 class ToMeAttention(nn.Module):
     """Multi-head self-attention with Token Merging integrated.
@@ -301,7 +301,7 @@ class ToMeAttention(nn.Module):
         out = (attn @ v).transpose(1, 2).contiguous().view(B, T, D)
         return self.out_proj(out)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Dict]:
+    def forward(self, x: Tensor) -> tuple[Tensor, dict]:
         """
         Args:
             x: (B, T, D)
@@ -316,9 +316,9 @@ class ToMeAttention(nn.Module):
         if r == 0:
             output = self._attention(x)
             merge_info = {
-                'original_T': T,
-                'merged_T': T,
-                'compression_ratio': 1.0,
+                "original_T": T,
+                "merged_T": T,
+                "compression_ratio": 1.0,
             }
             return output, merge_info
 
@@ -337,9 +337,9 @@ class ToMeAttention(nn.Module):
         output = unmerger.unmerge(attn_out, merge_indices, T, unmerge_weights)  # (B, T, D)
 
         merge_info = {
-            'original_T': T,
-            'merged_T': T_merged,
-            'compression_ratio': T_merged / T,
+            "original_T": T,
+            "merged_T": T_merged,
+            "compression_ratio": T_merged / T,
         }
         return output, merge_info
 
@@ -347,6 +347,7 @@ class ToMeAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # ToMe Transformer Block
 # ---------------------------------------------------------------------------
+
 
 class ToMeTransformerBlock(nn.Module):
     """Full transformer block using ToMe attention."""
@@ -362,7 +363,7 @@ class ToMeTransformerBlock(nn.Module):
             nn.Linear(d_model * 4, d_model),
         )
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, float]:
+    def forward(self, x: Tensor) -> tuple[Tensor, float]:
         """
         Args:
             x: (B, T, D)
@@ -374,12 +375,13 @@ class ToMeTransformerBlock(nn.Module):
         attn_out, merge_info = self.attn(self.norm1(x))
         x = x + attn_out
         x = x + self.ffn(self.norm2(x))
-        return x, merge_info['compression_ratio']
+        return x, merge_info["compression_ratio"]
 
 
 # ---------------------------------------------------------------------------
 # ToMe Full Model
 # ---------------------------------------------------------------------------
+
 
 class ToMeModel(nn.Module):
     """Full transformer with Token Merging applied at every layer."""
@@ -400,7 +402,7 @@ class ToMeModel(nn.Module):
         self.norm = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
-    def forward(self, input_ids: Tensor) -> Tuple[Tensor, float]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, float]:
         """
         Args:
             input_ids: (B, T) integer token ids
@@ -429,15 +431,14 @@ class ToMeModel(nn.Module):
 # Efficiency Analyzer
 # ---------------------------------------------------------------------------
 
+
 class ToMeEfficiencyAnalyzer:
     """Analyze theoretical efficiency gains from token merging."""
 
     def __init__(self) -> None:
         pass
 
-    def theoretical_speedup(
-        self, T: int, r_per_layer: int, n_layers: int
-    ) -> float:
+    def theoretical_speedup(self, T: int, r_per_layer: int, n_layers: int) -> float:
         """Compute attention-FLOPs speedup: T_initial / T_final.
 
         Attention cost scales as O(T^2), so speedup = (T_initial / T_final)^2
@@ -450,17 +451,15 @@ class ToMeEfficiencyAnalyzer:
         total_initial = 0.0
         total_final = 0.0
         for _ in range(n_layers):
-            total_initial += T ** 2  # always compare against base T
-            total_final += T_current ** 2
+            total_initial += T**2  # always compare against base T
+            total_final += T_current**2
             T_current = max(1, T_current - r_per_layer)
         # Return ratio of initial to final cumulative attention cost
         if total_final == 0:
-            return float('inf')
+            return float("inf")
         return total_initial / total_final
 
-    def compression_per_layer(
-        self, T: int, r: int, n_layers: int
-    ) -> List[int]:
+    def compression_per_layer(self, T: int, r: int, n_layers: int) -> list[int]:
         """Return sequence length after each layer.
 
         Args:
@@ -478,9 +477,7 @@ class ToMeEfficiencyAnalyzer:
             lengths.append(T_current)
         return lengths
 
-    def flop_reduction(
-        self, T: int, r: int, d_model: int, n_heads: int
-    ) -> float:
+    def flop_reduction(self, T: int, r: int, d_model: int, n_heads: int) -> float:
         """Fraction of attention FLOPs saved in one layer by merging r pairs.
 
         Attention cost ~ T^2 * d_model (QK^T is the dominant term).
@@ -489,7 +486,7 @@ class ToMeEfficiencyAnalyzer:
             fraction_saved: float in (0, 1)
         """
         T_merged = max(1, T - r)
-        flops_original = T ** 2 * d_model
-        flops_merged = T_merged ** 2 * d_model
+        flops_original = T**2 * d_model
+        flops_merged = T_merged**2 * d_model
         saved = (flops_original - flops_merged) / flops_original
         return float(saved)

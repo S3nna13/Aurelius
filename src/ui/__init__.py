@@ -2,12 +2,80 @@
 
 from __future__ import annotations
 
+from src.ui.aurelius_shell import (
+    AureliusShell,
+    AureliusShellError,
+    MessageEnvelope,
+    SkillRecord,
+    WorkflowRun,
+    WorkflowStep,
+    Workstream,
+)
 from src.ui.branding import (
     DEFAULT_BRANDING,
     MASCOT_ASCII,
     AureliusBranding,
 )
+from src.ui.color_theme import (
+    COLOR_THEME_REGISTRY,
+    DEFAULT_THEME,
+    ColorDepth,
+    ColorSpec,
+    ColorTheme,
+    ThemeRenderer,
+    get_theme,
+    register_theme,
+)
+from src.ui.command_palette import (
+    COMMAND_PALETTE_REGISTRY,
+    CommandEntry,
+    CommandPalette,
+    CommandPaletteError,
+    CommandPaletteState,
+)
+from src.ui.context_menu import (
+    CONTEXT_MENU_REGISTRY,
+    ContextMenu,
+    ContextMenuRegistry,
+    MenuItem,
+    MenuItemKind,
+)
+from src.ui.debug_panel import (
+    DEBUG_PANEL_REGISTRY,
+    DebugMetric,
+    DebugPanel,
+    DebugPanelError,
+    DebugSection,
+)
+from src.ui.diff_viewer import (
+    DiffChunk,
+    DiffLine,
+    DiffViewer,
+    DiffViewerError,
+    ParsedDiff,
+    parse_unified_diff,
+)
 from src.ui.errors import UIError
+from src.ui.hotkey_overlay import (
+    DEFAULT_HOTKEY_OVERLAY,
+    HOTKEY_OVERLAY_REGISTRY,
+    HotkeyGroup,
+    HotkeyOverlay,
+    HotkeyOverlayError,
+)
+from src.ui.keyboard_nav import (
+    KEYBOARD_NAV_REGISTRY,
+    KeyBinding,
+    KeyBindingError,
+    KeyboardNav,
+)
+from src.ui.model_info_panel import (
+    DEFAULT_MODEL_INFO_PANEL,
+    MODEL_INFO_PANEL_REGISTRY,
+    ModelInfoEntry,
+    ModelInfoError,
+    ModelInfoPanel,
+)
 from src.ui.motion import (
     MOTION_REGISTRY,
     MotionSpec,
@@ -15,6 +83,17 @@ from src.ui.motion import (
     list_motions,
     play,
     register_motion,
+)
+from src.ui.notification_drawer import (
+    DEFAULT_NOTIFICATION_DRAWER,
+    Notification,
+    NotificationDrawer,
+    NotificationLevel,
+)
+from src.ui.onboarding import (
+    ONBOARDING_REGISTRY,
+    OnboardingFlow,
+    OnboardingStep,
 )
 from src.ui.panel_layout import (
     PANEL_LAYOUT_REGISTRY,
@@ -24,6 +103,56 @@ from src.ui.panel_layout import (
     list_panel_layouts,
     register_panel_layout,
 )
+from src.ui.progress_renderer import (
+    PROGRESS_RENDERER_REGISTRY,
+    ETAEstimator,
+    ProgressError,
+    ProgressRenderer,
+    ProgressTask,
+)
+from src.ui.session_manager import (
+    DEFAULT_SESSION_MANAGER,
+    SESSION_MANAGER_REGISTRY,
+    AureliusSession,
+    SessionManager,
+    SessionManagerError,
+    SessionState,
+)
+from src.ui.split_pane import (
+    SPLIT_PANE_REGISTRY,
+    PaneConfig,
+    SplitDirection,
+    SplitPane,
+    SplitPaneError,
+)
+from src.ui.status_hierarchy import (
+    STATUS_TREE_REGISTRY,
+    StatusLevel,
+    StatusNode,
+    StatusState,
+    StatusTree,
+)
+from src.ui.streaming_renderer import (
+    STREAMING_RENDERER_REGISTRY,
+    StreamingRenderer,
+    StreamingRendererError,
+    StreamingState,
+    TokenChunk,
+)
+from src.ui.task_panel import (
+    TASK_PANEL_REGISTRY,
+    TaskEntry,
+    TaskPanel,
+    TaskPanelError,
+)
+from src.ui.tooltip import TOOLTIP_REGISTRY, TooltipRegistry, TooltipRenderer
+from src.ui.transcript_viewer import (
+    TRANSCRIPT_VIEWER_REGISTRY,
+    TranscriptEntry,
+    TranscriptRole,
+    TranscriptViewer,
+    TranscriptViewerError,
+)
 from src.ui.ui_surface import (
     UI_SURFACE_REGISTRY,
     UISurface,
@@ -31,136 +160,7 @@ from src.ui.ui_surface import (
     list_ui_surfaces,
     register_ui_surface,
 )
-from src.ui.aurelius_shell import (
-    AureliusShell,
-    AureliusShellError,
-    MessageEnvelope,
-    SkillRecord,
-    Workstream,
-    WorkflowRun,
-    WorkflowStep,
-)
 from src.ui.welcome import WelcomePanel, render_welcome
-from src.ui.command_palette import (
-    CommandEntry,
-    CommandPalette,
-    CommandPaletteError,
-    CommandPaletteState,
-    COMMAND_PALETTE_REGISTRY,
-)
-from src.ui.status_hierarchy import (
-    StatusLevel,
-    StatusState,
-    StatusNode,
-    StatusTree,
-    STATUS_TREE_REGISTRY,
-)
-from src.ui.keyboard_nav import (
-    KeyBinding,
-    KeyBindingError,
-    KeyboardNav,
-    KEYBOARD_NAV_REGISTRY,
-)
-from src.ui.onboarding import (
-    OnboardingStep,
-    OnboardingFlow,
-    ONBOARDING_REGISTRY,
-)
-from src.ui.transcript_viewer import (
-    TranscriptRole,
-    TranscriptEntry,
-    TranscriptViewer,
-    TRANSCRIPT_VIEWER_REGISTRY,
-    TranscriptViewerError,
-)
-from src.ui.diff_viewer import (
-    DiffLine,
-    DiffChunk,
-    ParsedDiff,
-    parse_unified_diff,
-    DiffViewer,
-    DiffViewerError,
-)
-from src.ui.task_panel import (
-    TaskEntry,
-    TaskPanel,
-    TASK_PANEL_REGISTRY,
-    TaskPanelError,
-)
-from src.ui.streaming_renderer import (
-    TokenChunk,
-    StreamingState,
-    StreamingRenderer,
-    STREAMING_RENDERER_REGISTRY,
-    StreamingRendererError,
-)
-from src.ui.session_manager import (
-    SessionState,
-    AureliusSession,
-    SessionManager,
-    DEFAULT_SESSION_MANAGER,
-    SESSION_MANAGER_REGISTRY,
-    SessionManagerError,
-)
-from src.ui.debug_panel import (
-    DebugMetric,
-    DebugSection,
-    DebugPanel,
-    DebugPanelError,
-    DEBUG_PANEL_REGISTRY,
-)
-from src.ui.progress_renderer import (
-    ProgressTask,
-    ETAEstimator,
-    ProgressRenderer,
-    ProgressError,
-    PROGRESS_RENDERER_REGISTRY,
-)
-from src.ui.hotkey_overlay import (
-    HotkeyGroup,
-    HotkeyOverlay,
-    HotkeyOverlayError,
-    HOTKEY_OVERLAY_REGISTRY,
-    DEFAULT_HOTKEY_OVERLAY,
-)
-from src.ui.split_pane import (
-    SplitDirection,
-    PaneConfig,
-    SplitPane,
-    SplitPaneError,
-    SPLIT_PANE_REGISTRY,
-)
-from src.ui.model_info_panel import (
-    ModelInfoEntry,
-    ModelInfoPanel,
-    ModelInfoError,
-    MODEL_INFO_PANEL_REGISTRY,
-    DEFAULT_MODEL_INFO_PANEL,
-)
-from src.ui.tooltip import TooltipRenderer, TooltipRegistry, TOOLTIP_REGISTRY
-from src.ui.context_menu import (
-    MenuItemKind,
-    MenuItem,
-    ContextMenu,
-    ContextMenuRegistry,
-    CONTEXT_MENU_REGISTRY,
-)
-from src.ui.notification_drawer import (
-    NotificationLevel,
-    Notification,
-    NotificationDrawer,
-    DEFAULT_NOTIFICATION_DRAWER,
-)
-from src.ui.color_theme import (
-    ColorDepth,
-    ColorSpec,
-    ColorTheme,
-    ThemeRenderer,
-    COLOR_THEME_REGISTRY,
-    DEFAULT_THEME,
-    get_theme,
-    register_theme,
-)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(

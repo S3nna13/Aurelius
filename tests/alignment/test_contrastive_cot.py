@@ -1,4 +1,5 @@
 """Tests for contrastive chain-of-thought (CCoT) alignment module."""
+
 from __future__ import annotations
 
 import copy
@@ -17,10 +18,10 @@ from src.alignment.contrastive_cot import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -88,6 +89,7 @@ def examples(example):
 # 1. CCoTConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ccot_config_defaults():
     cfg = CCoTConfig()
     assert cfg.beta == 0.1
@@ -100,6 +102,7 @@ def test_ccot_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. CCoTExample fields
 # ---------------------------------------------------------------------------
+
 
 def test_ccot_example_fields(example):
     assert hasattr(example, "question")
@@ -118,12 +121,13 @@ def test_ccot_example_fields(example):
 # 3. compute_sequence_log_prob shape (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sequence_log_prob_shape(small_model):
     torch.manual_seed(1)
     B, T = 1, 16
     input_ids = torch.randint(0, 256, (B, T))
     mask = torch.zeros(B, T, dtype=torch.bool)
-    mask[:, T // 2:] = True
+    mask[:, T // 2 :] = True
 
     lp = compute_sequence_log_prob(small_model, input_ids, mask)
     assert lp.shape == (B,), f"Expected shape ({B},), got {lp.shape}"
@@ -132,6 +136,7 @@ def test_compute_sequence_log_prob_shape(small_model):
 # ---------------------------------------------------------------------------
 # 4. compute_sequence_log_prob all-masked -> returns 0 or handles gracefully
 # ---------------------------------------------------------------------------
+
 
 def test_compute_sequence_log_prob_all_zero_mask(small_model):
     torch.manual_seed(2)
@@ -148,6 +153,7 @@ def test_compute_sequence_log_prob_all_zero_mask(small_model):
 # 5. compute_sequence_log_prob values <= 0 (log probs)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sequence_log_prob_values_nonpositive(small_model):
     torch.manual_seed(3)
     B, T = 1, 16
@@ -163,6 +169,7 @@ def test_compute_sequence_log_prob_values_nonpositive(small_model):
 # 6. compute_ccot_loss returns (Tensor, dict)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_ccot_loss_return_types(small_model, ref_model, examples, ccot_cfg):
     loss, metrics = compute_ccot_loss(small_model, ref_model, examples, _tokenize, ccot_cfg)
     assert isinstance(loss, torch.Tensor)
@@ -173,6 +180,7 @@ def test_compute_ccot_loss_return_types(small_model, ref_model, examples, ccot_c
 # 7. compute_ccot_loss loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_compute_ccot_loss_finite(small_model, ref_model, examples, ccot_cfg):
     loss, _ = compute_ccot_loss(small_model, ref_model, examples, _tokenize, ccot_cfg)
     assert torch.isfinite(loss), f"Loss must be finite, got {loss.item()}"
@@ -182,17 +190,17 @@ def test_compute_ccot_loss_finite(small_model, ref_model, examples, ccot_cfg):
 # 8. compute_ccot_loss dict has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_ccot_loss_dict_keys(small_model, ref_model, examples, ccot_cfg):
     _, metrics = compute_ccot_loss(small_model, ref_model, examples, _tokenize, ccot_cfg)
     required_keys = {"contrastive_loss", "sft_loss", "margin_achieved", "accuracy"}
-    assert required_keys.issubset(metrics.keys()), (
-        f"Missing keys: {required_keys - metrics.keys()}"
-    )
+    assert required_keys.issubset(metrics.keys()), f"Missing keys: {required_keys - metrics.keys()}"
 
 
 # ---------------------------------------------------------------------------
 # 9. compute_ccot_loss accuracy in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_ccot_loss_accuracy_range(small_model, ref_model, examples, ccot_cfg):
     _, metrics = compute_ccot_loss(small_model, ref_model, examples, _tokenize, ccot_cfg)
@@ -204,6 +212,7 @@ def test_compute_ccot_loss_accuracy_range(small_model, ref_model, examples, ccot
 # 10. CoTQualityScorer.score_cot returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_score_cot_range(small_model):
     scorer = CoTQualityScorer(small_model, _tokenize, _detokenize)
     score = scorer.score_cot("What is 2+2?", "We add them.", "4")
@@ -214,6 +223,7 @@ def test_scorer_score_cot_range(small_model):
 # ---------------------------------------------------------------------------
 # 11. CoTQualityScorer.rank_cots returns sorted list
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_rank_cots_sorted(small_model):
     scorer = CoTQualityScorer(small_model, _tokenize, _detokenize)
@@ -231,6 +241,7 @@ def test_scorer_rank_cots_sorted(small_model):
 # 12. CoTQualityScorer.rank_cots length matches input
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_rank_cots_length(small_model):
     scorer = CoTQualityScorer(small_model, _tokenize, _detokenize)
     cots = [
@@ -246,6 +257,7 @@ def test_scorer_rank_cots_length(small_model):
 # ---------------------------------------------------------------------------
 # 13. CCoTTrainer.train_step returns dict with "loss" key
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_loss_key(small_model, ref_model, examples, ccot_cfg):
     model_copy = copy.deepcopy(small_model)
@@ -273,6 +285,7 @@ def test_trainer_train_step_loss_key(small_model, ref_model, examples, ccot_cfg)
 # 14. CCoTTrainer.evaluate returns dict with "accuracy" key
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_evaluate_accuracy_key(small_model, ref_model, examples, ccot_cfg):
     model_copy = copy.deepcopy(small_model)
     ref_copy = copy.deepcopy(small_model)
@@ -299,6 +312,7 @@ def test_trainer_evaluate_accuracy_key(small_model, ref_model, examples, ccot_cf
 # ---------------------------------------------------------------------------
 # 15. CoTQualityScorer.generate_contrastive_pairs returns CCoTExample list
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_generate_contrastive_pairs(small_model):
     scorer = CoTQualityScorer(small_model, _tokenize, _detokenize)

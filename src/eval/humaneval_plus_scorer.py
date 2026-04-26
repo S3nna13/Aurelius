@@ -38,10 +38,8 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from .humaneval_scorer import pass_at_k
-
 
 __all__ = [
     "HumanEvalPlusProblem",
@@ -74,19 +72,11 @@ class HumanEvalPlusResult:
     base_fail_count: int
     plus_fail_count: int
     duration_ms: float
-    error: Optional[str]
+    error: str | None
 
 
 def _build_program(prompt: str, completion: str, test: str, entry_point: str) -> str:
-    return (
-        prompt
-        + completion
-        + "\n"
-        + test
-        + "\ncheck("
-        + entry_point
-        + ")\n"
-    )
+    return prompt + completion + "\n" + test + "\ncheck(" + entry_point + ")\n"
 
 
 def _make_preexec(max_memory_mb: int, timeout_seconds: float):
@@ -143,7 +133,7 @@ def _run_one_test(
     entry_point: str,
     timeout_seconds: float,
     max_memory_mb: int,
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     program = _build_program(prompt, completion, test, entry_point)
     preexec = _make_preexec(max_memory_mb, timeout_seconds)
 
@@ -156,7 +146,7 @@ def _run_one_test(
     child_env["PYTHONDONTWRITEBYTECODE"] = "1"
 
     try:
-        completed = subprocess.run(
+        completed = subprocess.run(  # noqa: S603
             [sys.executable, "-I", "-c", program],
             capture_output=True,
             timeout=timeout_seconds,
@@ -215,7 +205,7 @@ def score_single(
         )
 
     plus_fail_count = 0
-    first_plus_err: Optional[str] = None
+    first_plus_err: str | None = None
     for ptest in problem.plus_tests:
         p_passed, p_err = _run_one_test(
             problem.prompt,
@@ -255,8 +245,7 @@ def score_problems(
     """Aggregate HumanEval+ scores across many problems and samples."""
     if len(problems) != len(completions):
         raise ValueError(
-            f"problems and completions must align: "
-            f"{len(problems)} vs {len(completions)}"
+            f"problems and completions must align: {len(problems)} vs {len(completions)}"
         )
     for k in k_values:
         if not isinstance(k, int) or k <= 0:
@@ -281,14 +270,11 @@ def score_problems(
     tasks = []
     for pi, (problem, samples) in enumerate(zip(problems, completions)):
         if not samples:
-            raise ValueError(
-                f"problem {problem.task_id} has zero completions; "
-                f"pass@k is undefined"
-            )
+            raise ValueError(f"problem {problem.task_id} has zero completions; pass@k is undefined")
         for si, comp in enumerate(samples):
             tasks.append((pi, si, problem, comp))
 
-    sample_results: list[list[Optional[HumanEvalPlusResult]]] = [
+    sample_results: list[list[HumanEvalPlusResult | None]] = [
         [None] * len(samples) for samples in completions
     ]
 

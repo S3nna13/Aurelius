@@ -92,6 +92,7 @@ def tmp_lock(tmp_path: Path):
         p = tmp_path / name
         p.write_text(content)
         return p
+
     return _write
 
 
@@ -175,9 +176,9 @@ def test_cyclonedx_1_5_schema_compliance(tmp_lock, tmp_path):
 def test_purl_format_correctness(tmp_lock, tmp_path):
     _, data = _run(tmp_lock, MULTI_PACKAGE_LOCK, tmp_path)
     for comp in data["components"]:
-        assert re.fullmatch(
-            r"pkg:pypi/[A-Za-z0-9_.-]+@[A-Za-z0-9_.\-+]+", comp["purl"]
-        ), comp["purl"]
+        assert re.fullmatch(r"pkg:pypi/[A-Za-z0-9_.-]+@[A-Za-z0-9_.\-+]+", comp["purl"]), comp[
+            "purl"
+        ]
 
 
 def test_serial_number_is_urn_uuid(tmp_lock, tmp_path):
@@ -191,9 +192,7 @@ def test_serial_number_is_urn_uuid(tmp_lock, tmp_path):
 def test_timestamp_is_iso8601_z(tmp_lock, tmp_path):
     _, data = _run(tmp_lock, SINGLE_PACKAGE_LOCK, tmp_path)
     ts = data["metadata"]["timestamp"]
-    assert re.fullmatch(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z", ts
-    ), ts
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z", ts), ts
 
 
 def test_bom_ref_unique_per_component(tmp_lock, tmp_path):

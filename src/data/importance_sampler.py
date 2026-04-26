@@ -1,18 +1,19 @@
 """Importance-weighted sampling for curriculum training."""
 
+from dataclasses import dataclass
+
 import torch
 from torch.utils.data import WeightedRandomSampler
-from dataclasses import dataclass
 
 
 @dataclass
 class ImportanceSamplerConfig:
-    temperature: float = 1.0       # weight = perplexity^(1/temperature)
+    temperature: float = 1.0  # weight = perplexity^(1/temperature)
     # T < 1: sharper (focus harder)
     # T > 1: flatter (more uniform)
     # T -> inf: uniform
-    min_weight: float = 0.01       # floor weight to prevent starvation
-    ema_alpha: float = 0.3         # smoothing for online weight updates
+    min_weight: float = 0.01  # floor weight to prevent starvation
+    ema_alpha: float = 0.3  # smoothing for online weight updates
 
 
 class ImportanceWeightedSampler:
@@ -50,7 +51,7 @@ class ImportanceWeightedSampler:
 
         # weight = ppl^(1/T)
         exponent = 1.0 / max(self.cfg.temperature, 1e-8)
-        raw = ppl ** exponent
+        raw = ppl**exponent
 
         # Apply min_weight floor
         raw = raw.clamp(min=self.cfg.min_weight)
@@ -95,8 +96,8 @@ class DynamicCurriculumSampler:
         self,
         n_examples: int,
         total_steps: int,
-        start_temperature: float = 10.0,   # near-uniform early
-        end_temperature: float = 1.0,      # focused late
+        start_temperature: float = 10.0,  # near-uniform early
+        end_temperature: float = 1.0,  # focused late
         cfg: ImportanceSamplerConfig | None = None,
     ):
         self.total_steps = total_steps

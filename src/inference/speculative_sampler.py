@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -24,38 +23,36 @@ class DraftToken:
 
 @dataclass
 class VerificationResult:
-    accepted_tokens: List[int]
-    rejection_point: Optional[int]
+    accepted_tokens: list[int]
+    rejection_point: int | None
     acceptance_rate: float
 
 
 class SpeculativeSampler:
     """Draft-verify speculative decoding sampler."""
 
-    def __init__(self, config: Optional[SpeculativeConfig] = None) -> None:
+    def __init__(self, config: SpeculativeConfig | None = None) -> None:
         self.config = config if config is not None else SpeculativeConfig()
 
-    def sample_draft(self, logits_sequence: List[List[float]]) -> List[DraftToken]:
+    def sample_draft(self, logits_sequence: list[list[float]]) -> list[DraftToken]:
         """For each position's logits: apply temperature, take argmax.
 
         Returns a list of DraftToken, one per position.
         """
-        draft_tokens: List[DraftToken] = []
+        draft_tokens: list[DraftToken] = []
         for position, logits in enumerate(logits_sequence):
             # Apply temperature scaling
             temp = self.config.temperature
             if temp <= 0.0:
                 temp = 1e-8
-            scaled = [l / temp for l in logits]
+            scaled = [line / temp for line in logits]
 
             # Argmax selection (deterministic)
             token_id = max(range(len(scaled)), key=lambda i: scaled[i])
 
             # Compute log-softmax for the selected token to get logprob
             max_val = scaled[token_id]
-            log_sum_exp = max_val + math.log(
-                sum(math.exp(s - max_val) for s in scaled)
-            )
+            log_sum_exp = max_val + math.log(sum(math.exp(s - max_val) for s in scaled))
             logprob = scaled[token_id] - log_sum_exp
 
             draft_tokens.append(DraftToken(token_id=token_id, logprob=logprob, position=position))
@@ -63,8 +60,8 @@ class SpeculativeSampler:
 
     def verify(
         self,
-        draft_tokens: List[DraftToken],
-        target_logprobs: List[float],
+        draft_tokens: list[DraftToken],
+        target_logprobs: list[float],
     ) -> VerificationResult:
         """Verify draft tokens against target model log-probs.
 
@@ -78,8 +75,8 @@ class SpeculativeSampler:
                 acceptance_rate=0.0,
             )
 
-        accepted_tokens: List[int] = []
-        rejection_point: Optional[int] = None
+        accepted_tokens: list[int] = []
+        rejection_point: int | None = None
         fixed_threshold = 0.5
 
         for i, draft_token in enumerate(draft_tokens):
@@ -100,7 +97,7 @@ class SpeculativeSampler:
             acceptance_rate=acceptance_rate,
         )
 
-    def efficiency_gain(self, results: List[VerificationResult]) -> float:
+    def efficiency_gain(self, results: list[VerificationResult]) -> float:
         """Mean acceptance_rate across results; 0.0 if empty."""
         if not results:
             return 0.0

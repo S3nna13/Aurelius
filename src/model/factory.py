@@ -19,8 +19,9 @@ For test isolation, the factory also ships a lightweight
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from src.model.manifest import FamilyManifest
@@ -62,16 +63,14 @@ def _resolve_class(dotted_path: str) -> type:
     """Resolve ``module.sub.ClassName`` via :mod:`importlib`."""
     if not isinstance(dotted_path, str) or "." not in dotted_path:
         raise FactoryError(
-            f"backbone_class must be a dotted path 'module.ClassName', "
-            f"got {dotted_path!r}"
+            f"backbone_class must be a dotted path 'module.ClassName', got {dotted_path!r}"
         )
     module_path, _, attr = dotted_path.rpartition(".")
     try:
         module = importlib.import_module(module_path)
     except ImportError as exc:
         raise FactoryError(
-            f"could not import module {module_path!r} for backbone_class "
-            f"{dotted_path!r}: {exc}"
+            f"could not import module {module_path!r} for backbone_class {dotted_path!r}: {exc}"
         ) from exc
     if not hasattr(module, attr):
         raise FactoryError(
@@ -83,7 +82,7 @@ def _resolve_class(dotted_path: str) -> type:
 
 def _default_aurelius_builder(
     backbone_cls: type,
-    manifest: "FamilyManifest",
+    manifest: FamilyManifest,
     aurelius_config: Any | None,
 ) -> Any:
     """Default builder for :class:`AureliusTransformer`-shaped classes.
@@ -99,7 +98,7 @@ def _default_aurelius_builder(
 
 def _dummy_builder(
     backbone_cls: type,
-    manifest: "FamilyManifest",
+    manifest: FamilyManifest,
     aurelius_config: Any | None,
 ) -> Any:
     """Builder for the in-module :class:`_DummyBackbone` stub."""
@@ -137,18 +136,15 @@ def register_backbone_builder(
     """
     if not isinstance(backbone_class_path, str) or not backbone_class_path:
         raise FactoryError(
-            f"backbone_class_path must be a non-empty string, got "
-            f"{backbone_class_path!r}"
+            f"backbone_class_path must be a non-empty string, got {backbone_class_path!r}"
         )
     if not callable(builder_fn):
-        raise FactoryError(
-            f"builder_fn must be callable, got {type(builder_fn).__name__}"
-        )
+        raise FactoryError(f"builder_fn must be callable, got {type(builder_fn).__name__}")
     DEFAULT_BACKBONE_BUILDERS[backbone_class_path] = builder_fn
 
 
 def build_backbone_from_manifest(
-    manifest: "FamilyManifest",
+    manifest: FamilyManifest,
     aurelius_config: Any | None = None,
 ) -> Any:
     """Instantiate the backbone class named by ``manifest.backbone_class``.
@@ -162,15 +158,12 @@ def build_backbone_from_manifest(
     from src.model.manifest import FamilyManifest
 
     if not isinstance(manifest, FamilyManifest):
-        raise FactoryError(
-            f"manifest must be a FamilyManifest, got {type(manifest).__name__}"
-        )
+        raise FactoryError(f"manifest must be a FamilyManifest, got {type(manifest).__name__}")
 
     dotted = manifest.backbone_class
     if not isinstance(dotted, str) or not dotted:
         raise FactoryError(
-            f"manifest.backbone_class must be a non-empty dotted path, got "
-            f"{dotted!r}"
+            f"manifest.backbone_class must be a non-empty dotted path, got {dotted!r}"
         )
 
     backbone_cls = _resolve_class(dotted)
@@ -182,18 +175,14 @@ def build_backbone_from_manifest(
                 return backbone_cls()
             return backbone_cls(aurelius_config)
         except TypeError as exc:
-            raise FactoryError(
-                f"generic builder failed for {dotted!r}: {exc}"
-            ) from exc
+            raise FactoryError(f"generic builder failed for {dotted!r}: {exc}") from exc
 
     try:
         return builder(backbone_cls, manifest, aurelius_config)
     except FactoryError:
         raise
     except Exception as exc:
-        raise FactoryError(
-            f"builder for {dotted!r} raised: {exc}"
-        ) from exc
+        raise FactoryError(f"builder for {dotted!r} raised: {exc}") from exc
 
 
 def build_from_variant_id(
@@ -208,15 +197,13 @@ def build_from_variant_id(
     present; otherwise it falls back directly to the manifest registry.
     """
     if not isinstance(variant_id, str) or not variant_id:
-        raise FactoryError(
-            f"variant_id must be a non-empty string, got {variant_id!r}"
-        )
+        raise FactoryError(f"variant_id must be a non-empty string, got {variant_id!r}")
 
     manifest = _lookup_manifest_for_variant(variant_id)
     return build_backbone_from_manifest(manifest, aurelius_config=aurelius_config)
 
 
-def _lookup_manifest_for_variant(variant_id: str) -> "FamilyManifest":
+def _lookup_manifest_for_variant(variant_id: str) -> FamilyManifest:
     """Resolve ``variant_id`` to a manifest.
 
     Prefers the variant registry from :mod:`src.model.family` when that

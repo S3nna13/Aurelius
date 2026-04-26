@@ -1,13 +1,13 @@
 """Tests for src/federation/model_versioning.py"""
-import pytest
+
 import torch
 
 from src.federation.model_versioning import ModelVersion, ModelVersionRegistry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh() -> ModelVersionRegistry:
     return ModelVersionRegistry()
@@ -20,6 +20,7 @@ def params(keys=("w1", "w2")) -> dict[str, torch.Tensor]:
 # ---------------------------------------------------------------------------
 # ModelVersion dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_model_version_auto_uuid():
     v1 = ModelVersion(round_number=1, param_hash="abc")
@@ -36,6 +37,7 @@ def test_model_version_defaults():
 # ---------------------------------------------------------------------------
 # register
 # ---------------------------------------------------------------------------
+
 
 def test_register_returns_version():
     reg = fresh()
@@ -71,6 +73,7 @@ def test_register_stores_metadata():
 # get / get_by_round
 # ---------------------------------------------------------------------------
 
+
 def test_get_by_id():
     reg = fresh()
     v = reg.register(1, params())
@@ -97,6 +100,7 @@ def test_get_by_round_nonexistent():
 # list_versions
 # ---------------------------------------------------------------------------
 
+
 def test_list_versions_sorted():
     reg = fresh()
     reg.register(3, params())
@@ -115,6 +119,7 @@ def test_list_versions_empty():
 # ---------------------------------------------------------------------------
 # diff_rounds
 # ---------------------------------------------------------------------------
+
 
 def test_diff_rounds_added():
     reg = fresh()

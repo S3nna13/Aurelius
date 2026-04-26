@@ -10,7 +10,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +56,7 @@ class BenchmarkResult:
 # ---------------------------------------------------------------------------
 # Core evaluation runner
 # ---------------------------------------------------------------------------
+
 
 class EvalHarness:
     """Run lm-evaluation-harness benchmarks against Aurelius checkpoints.
@@ -137,7 +138,9 @@ class EvalHarness:
             )
             results.append(result)
             logger.info(
-                "  %s  (%.1fs elapsed)", result.summary_line(), elapsed,
+                "  %s  (%.1fs elapsed)",
+                result.summary_line(),
+                elapsed,
             )
 
         self._save_results(results, checkpoint_path, checkpoint_step)
@@ -175,8 +178,7 @@ class EvalHarness:
         for name in names:
             if name not in BENCHMARK_BY_NAME:
                 raise ValueError(
-                    f"Unknown benchmark {name!r}. "
-                    f"Available: {list(BENCHMARK_BY_NAME)}"
+                    f"Unknown benchmark {name!r}. Available: {list(BENCHMARK_BY_NAME)}"
                 )
             specs.append(BENCHMARK_BY_NAME[name])
         return specs
@@ -260,7 +262,7 @@ class EvalHarness:
         checkpoint_step: int | None,
     ) -> Path:
         """Write a per-checkpoint JSON results file."""
-        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
         step_tag = f"_step{checkpoint_step}" if checkpoint_step is not None else ""
         filename = f"eval_{checkpoint_path.name}{step_tag}_{ts}.json"
         out_path = self.results_dir / filename
@@ -272,16 +274,18 @@ class EvalHarness:
             "results": [],
         }
         for r in results:
-            payload["results"].append({
-                "benchmark": r.benchmark.name,
-                "task": r.benchmark.task,
-                "metric": r.benchmark.metric,
-                "score": r.score,
-                "expected_low": r.benchmark.expected_low,
-                "expected_high": r.benchmark.expected_high,
-                "status": r.status,
-                "num_fewshot": r.benchmark.num_fewshot,
-            })
+            payload["results"].append(
+                {
+                    "benchmark": r.benchmark.name,
+                    "task": r.benchmark.task,
+                    "metric": r.benchmark.metric,
+                    "score": r.score,
+                    "expected_low": r.benchmark.expected_low,
+                    "expected_high": r.benchmark.expected_high,
+                    "status": r.status,
+                    "num_fewshot": r.benchmark.num_fewshot,
+                }
+            )
 
         out_path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
@@ -294,6 +298,7 @@ class EvalHarness:
 # ---------------------------------------------------------------------------
 # CLI entry-point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Evaluate an Aurelius checkpoint from the command line."""

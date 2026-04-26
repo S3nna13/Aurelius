@@ -26,4 +26,3 @@ def verdict_flip_rate(verdicts: list[str]) -> float:
         return 0.0
     flips = sum(left != right for left, right in zip(verdicts, verdicts[1:]))
     return flips / (len(verdicts) - 1)
-

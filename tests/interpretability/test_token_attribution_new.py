@@ -5,7 +5,11 @@ model-coupled TokenAttribution class, this test file imports directly
 from a lightweight helper module. We test the module-level constructs
 described in the cycle-148 spec via a thin adapter defined here.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # Inline implementation for spec-compliant TokenAttributor
@@ -13,15 +17,11 @@ from __future__ import annotations
 #  spec's interface here by re-implementing the lightweight pieces inline
 #  so the existing file is never overwritten.)
 # ---------------------------------------------------------------------------
-
 import pytest
 import torch
-from dataclasses import dataclass
-from enum import Enum
-from typing import List
 
 
-class AttributionMethod(str, Enum):
+class AttributionMethod(StrEnum):
     GRAD_NORM = "grad_norm"
     GRAD_INPUT = "grad_input"
     INTEGRATED_GRAD = "integrated_grad"
@@ -37,24 +37,20 @@ class TokenAttribution:
 
 
 class TokenAttributor:
-    def attribute_grad_norm(
-        self, embeddings: torch.Tensor, loss: torch.Tensor
-    ) -> List[float]:
+    def attribute_grad_norm(self, embeddings: torch.Tensor, loss: torch.Tensor) -> list[float]:
         grad = torch.autograd.grad(loss, embeddings, create_graph=False)[0]
         return grad.norm(dim=-1).detach().tolist()
 
-    def attribute_grad_input(
-        self, embeddings: torch.Tensor, loss: torch.Tensor
-    ) -> List[float]:
+    def attribute_grad_input(self, embeddings: torch.Tensor, loss: torch.Tensor) -> list[float]:
         grad = torch.autograd.grad(loss, embeddings, create_graph=False)[0]
         return (grad * embeddings).norm(dim=-1).detach().tolist()
 
     def attribute(
         self,
-        token_ids: List[int],
-        scores: List[float],
+        token_ids: list[int],
+        scores: list[float],
         method: AttributionMethod,
-    ) -> List[TokenAttribution]:
+    ) -> list[TokenAttribution]:
         paired = [
             TokenAttribution(
                 token_idx=i,
@@ -71,6 +67,7 @@ class TokenAttributor:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def attributor() -> TokenAttributor:
     return TokenAttributor()
@@ -86,6 +83,7 @@ def _make_embedding_loss(seq_len: int = 5, d_model: int = 8):
 # ---------------------------------------------------------------------------
 # attribute_grad_norm
 # ---------------------------------------------------------------------------
+
 
 def test_grad_norm_returns_list(attributor):
     emb, loss = _make_embedding_loss()
@@ -110,6 +108,7 @@ def test_grad_norm_nonneg(attributor):
 # attribute_grad_input
 # ---------------------------------------------------------------------------
 
+
 def test_grad_input_returns_list(attributor):
     emb, loss = _make_embedding_loss()
     result = attributor.attribute_grad_input(emb, loss)
@@ -132,6 +131,7 @@ def test_grad_input_nonneg(attributor):
 # ---------------------------------------------------------------------------
 # attribute
 # ---------------------------------------------------------------------------
+
 
 def test_attribute_returns_list_of_token_attributions(attributor):
     scores = [0.5, 0.1, 0.9, 0.3]
@@ -170,6 +170,7 @@ def test_attribute_token_idx_preserved(attributor):
 # ---------------------------------------------------------------------------
 # AttributionMethod enum
 # ---------------------------------------------------------------------------
+
 
 def test_attribution_method_values():
     assert AttributionMethod.GRAD_NORM == "grad_norm"

@@ -9,13 +9,13 @@ Tests cover:
 """
 
 import math
+
 import torch
-import pytest
 
 from src.model.hierarchical_softmax import (
-    HuffmanTree,
-    HierarchicalSoftmax,
     AdaptiveSoftmax,
+    HierarchicalSoftmax,
+    HuffmanTree,
     SoftmaxConfig,
 )
 
@@ -41,6 +41,7 @@ def make_varied_freqs(vocab_size: int = VOCAB_SIZE) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # HuffmanTree tests  (1-5)
 # ---------------------------------------------------------------------------
+
 
 def test_huffman_all_words_reachable():
     """All vocab words must appear in the encoding."""
@@ -85,6 +86,7 @@ def test_huffman_encode_vocab_covers_all():
 # HierarchicalSoftmax tests  (6-11)
 # ---------------------------------------------------------------------------
 
+
 def make_hsoftmax() -> HierarchicalSoftmax:
     return HierarchicalSoftmax(D_MODEL, VOCAB_SIZE, make_freqs())
 
@@ -115,10 +117,10 @@ def test_hsoftmax_loss_finite_positive():
     """Loss must be a finite positive scalar."""
     model = make_hsoftmax()
     inp, tgt = make_input()
-    l = model.loss(inp, tgt)
-    assert l.ndim == 0, "Loss must be scalar"
-    assert math.isfinite(l.item()), "Loss must be finite"
-    assert l.item() > 0, "Loss must be positive"
+    lo = model.loss(inp, tgt)
+    assert lo.ndim == 0, "Loss must be scalar"
+    assert math.isfinite(lo.item()), "Loss must be finite"
+    assert lo.item() > 0, "Loss must be positive"
 
 
 def test_hsoftmax_sample_shape():
@@ -134,8 +136,7 @@ def test_hsoftmax_sample_valid_vocab():
     model = make_hsoftmax()
     inp, _ = make_input()
     out = model.sample(inp)
-    assert (out >= 0).all() and (out < VOCAB_SIZE).all(), \
-        f"Out-of-range sample: {out}"
+    assert (out >= 0).all() and (out < VOCAB_SIZE).all(), f"Out-of-range sample: {out}"
 
 
 def test_hsoftmax_loss_backward():
@@ -143,8 +144,8 @@ def test_hsoftmax_loss_backward():
     model = make_hsoftmax()
     inp, tgt = make_input()
     inp = inp.requires_grad_(True)
-    l = model.loss(inp, tgt)
-    l.backward()
+    lo = model.loss(inp, tgt)
+    lo.backward()
     assert model.inner_weights.grad is not None, "inner_weights has no grad"
     assert inp.grad is not None, "input has no grad"
     assert not torch.isnan(model.inner_weights.grad).any(), "NaN in inner_weights grad"
@@ -153,6 +154,7 @@ def test_hsoftmax_loss_backward():
 # ---------------------------------------------------------------------------
 # AdaptiveSoftmax tests  (12-15)
 # ---------------------------------------------------------------------------
+
 
 def make_adaptive() -> AdaptiveSoftmax:
     return AdaptiveSoftmax(D_MODEL, VOCAB_SIZE, CUTOFFS, factor=2.0)
@@ -178,10 +180,10 @@ def test_adaptive_loss_finite_positive():
     """Adaptive loss must be a finite positive scalar."""
     model = make_adaptive()
     inp, tgt = make_input()
-    l = model.loss(inp, tgt)
-    assert l.ndim == 0, "Loss must be scalar"
-    assert math.isfinite(l.item()), "Loss must be finite"
-    assert l.item() > 0, "Loss must be positive"
+    lo = model.loss(inp, tgt)
+    assert lo.ndim == 0, "Loss must be scalar"
+    assert math.isfinite(lo.item()), "Loss must be finite"
+    assert lo.item() > 0, "Loss must be positive"
 
 
 def test_adaptive_loss_backward():
@@ -189,8 +191,8 @@ def test_adaptive_loss_backward():
     model = make_adaptive()
     inp = torch.randn(BATCH, D_MODEL, requires_grad=True)
     tgt = torch.randint(0, VOCAB_SIZE, (BATCH,))
-    l = model.loss(inp, tgt)
-    l.backward()
+    lo = model.loss(inp, tgt)
+    lo.backward()
     assert inp.grad is not None, "input has no grad"
     assert not torch.isnan(inp.grad).any(), "NaN in input grad"
     # At least head weights must have gradients
@@ -200,6 +202,7 @@ def test_adaptive_loss_backward():
 # ---------------------------------------------------------------------------
 # SoftmaxConfig  (16)
 # ---------------------------------------------------------------------------
+
 
 def test_softmax_config_defaults():
     """SoftmaxConfig must have the specified default values."""

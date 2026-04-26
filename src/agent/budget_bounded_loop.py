@@ -11,8 +11,9 @@ normal tool error string so the trace remains auditable.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from .react_loop import AgentTrace, ReActLoop
 

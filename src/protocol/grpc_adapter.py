@@ -1,11 +1,12 @@
 """gRPC-style message format adapter (pure Python, no grpcio)."""
+
 from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
 
 
 class GRPCStatus(int, Enum):
@@ -42,9 +43,7 @@ class GRPCResponse:
 
 class GRPCAdapter:
     @staticmethod
-    def build_request(
-        service: str, method: str, payload: dict, **metadata: str
-    ) -> GRPCMessage:
+    def build_request(service: str, method: str, payload: dict, **metadata: str) -> GRPCMessage:
         return GRPCMessage(
             service=service,
             method=method,

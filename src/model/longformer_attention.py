@@ -1,16 +1,17 @@
 """Longformer-style attention: sliding window local + global tokens with optional dilation."""
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
 from torch import Tensor
 
 
 @dataclass
 class LongformerConfig:
-    window_size: int = 64      # one-sided window (attend to w tokens left and right)
-    n_global_tokens: int = 1   # first n_global_tokens tokens attend globally
-    dilation: int = 1          # stride between attended tokens (1 = no dilation)
+    window_size: int = 64  # one-sided window (attend to w tokens left and right)
+    n_global_tokens: int = 1  # first n_global_tokens tokens attend globally
+    dilation: int = 1  # stride between attended tokens (1 = no dilation)
     d_model: int = 64
     n_heads: int = 2
 
@@ -48,8 +49,8 @@ def create_global_attention_mask(T: int, n_global: int) -> Tensor:
     mask = torch.zeros(T, T, dtype=torch.bool)
     if n_global > 0:
         g = min(n_global, T)
-        mask[:g, :] = True   # global tokens attend to all
-        mask[:, :g] = True   # all tokens attend to global tokens
+        mask[:g, :] = True  # global tokens attend to all
+        mask[:, :g] = True  # all tokens attend to global tokens
     return mask
 
 
@@ -94,9 +95,7 @@ class LongformerSelfAttention(nn.Module):
             T, self.config.window_size, self.config.dilation
         ).to(device)
 
-        global_mask = create_global_attention_mask(
-            T, self.config.n_global_tokens
-        ).to(device)
+        global_mask = create_global_attention_mask(T, self.config.n_global_tokens).to(device)
 
         # Add any extra global tokens passed at runtime
         if global_token_ids:
@@ -121,7 +120,7 @@ class LongformerSelfAttention(nn.Module):
         Q, K, V = split_heads(Q), split_heads(K), split_heads(V)
 
         # Compute scaled dot-product scores: (B, n_heads, T, T)
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         scores = torch.matmul(Q, K.transpose(-2, -1)) * scale
 
         # Apply mask: zero out disallowed pairs with large negative value

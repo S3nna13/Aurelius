@@ -17,16 +17,18 @@ Tests cover:
  14. No NaN/Inf on extreme log_probs (±100)
  15. clip_fraction in metrics ∈ [0, 1]
 """
+
 import math
+
 import pytest
 import torch
 
-from src.alignment.dapo import DAPOLoss, DAPOFilter, DAPOTrainer
-
+from src.alignment.dapo import DAPOFilter, DAPOLoss, DAPOTrainer
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_inputs(
     batch: int = 2,
@@ -49,6 +51,7 @@ def make_inputs(
 # Test 1: Loss is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_loss_is_scalar():
     loss_fn = DAPOLoss()
     log_probs, old_log_probs, advantages = make_inputs()
@@ -59,6 +62,7 @@ def test_loss_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 2: Gradients are finite
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_finite():
     loss_fn = DAPOLoss()
@@ -72,6 +76,7 @@ def test_gradients_finite():
 # ---------------------------------------------------------------------------
 # Test 3: Determinism
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     loss_fn = DAPOLoss(eps_low=0.1, eps_high=0.2, beta_entropy=0.001)
@@ -89,6 +94,7 @@ def test_determinism():
 # Test 4: batch_size=1, seq_len=1 edge case
 # ---------------------------------------------------------------------------
 
+
 def test_single_token():
     loss_fn = DAPOLoss()
     log_probs = torch.tensor([[-0.3]], requires_grad=True)
@@ -104,6 +110,7 @@ def test_single_token():
 # ---------------------------------------------------------------------------
 # Test 5: Positive advantage + high ratio → clipped at 1+ε_high
 # ---------------------------------------------------------------------------
+
 
 def test_positive_advantage_high_ratio_clipped_at_eps_high():
     """When A > 0 and r > 1+ε_high, the objective should be capped (clipped).
@@ -133,6 +140,7 @@ def test_positive_advantage_high_ratio_clipped_at_eps_high():
 # ---------------------------------------------------------------------------
 # Test 6: Negative advantage + low ratio → clipped at 1-ε_low
 # ---------------------------------------------------------------------------
+
 
 def test_negative_advantage_low_ratio_clipped_at_eps_low():
     """When A < 0 and r < 1-ε_low, the objective should be capped.
@@ -167,7 +175,7 @@ def test_negative_advantage_low_ratio_clipped_at_eps_low():
 
     # r < 1-ε_low and A < 0: clipping should be active
     assert metrics["clip_fraction"] > 0.0, (
-        f"Expected clipping for r < 1-ε_low with A < 0, got clip_fraction={metrics['clip_fraction']}"
+        f"Expected clipping for r < 1-ε_low with A < 0, got clip_fraction={metrics['clip_fraction']}"  # noqa: E501
     )
     assert math.isfinite(loss.item())
 
@@ -175,6 +183,7 @@ def test_negative_advantage_low_ratio_clipped_at_eps_low():
 # ---------------------------------------------------------------------------
 # Test 7: Decoupled clip: ε_high > ε_low → asymmetric clipping
 # ---------------------------------------------------------------------------
+
 
 def test_decoupled_clip_asymmetry():
     """Verify that ε_high and ε_low produce different clipping behavior.
@@ -211,6 +220,7 @@ def test_decoupled_clip_asymmetry():
 # Test 8: DAPOFilter all rewards=1 → should_keep=False
 # ---------------------------------------------------------------------------
 
+
 def test_filter_all_correct():
     f = DAPOFilter()
     rewards = torch.ones(8)
@@ -220,6 +230,7 @@ def test_filter_all_correct():
 # ---------------------------------------------------------------------------
 # Test 9: DAPOFilter all rewards=0 → should_keep=False
 # ---------------------------------------------------------------------------
+
 
 def test_filter_all_wrong():
     f = DAPOFilter()
@@ -231,6 +242,7 @@ def test_filter_all_wrong():
 # Test 10: DAPOFilter mixed rewards → should_keep=True
 # ---------------------------------------------------------------------------
 
+
 def test_filter_mixed_rewards():
     f = DAPOFilter()
     rewards = torch.tensor([1.0, 0.0, 1.0, 0.0])
@@ -240,6 +252,7 @@ def test_filter_mixed_rewards():
 # ---------------------------------------------------------------------------
 # Test 11: Entropy bonus: beta_entropy=0 → entropy term doesn't affect loss
 # ---------------------------------------------------------------------------
+
 
 def test_entropy_bonus_zero_beta():
     """With beta_entropy=0, providing entropy should not change loss."""
@@ -259,6 +272,7 @@ def test_entropy_bonus_zero_beta():
 # ---------------------------------------------------------------------------
 # Test 12: Token-level normalization
 # ---------------------------------------------------------------------------
+
 
 def test_token_level_normalization():
     """Loss should be mean over tokens, not sum over sequences.
@@ -291,6 +305,7 @@ def test_token_level_normalization():
 # Test 13: No NaN/Inf on zero advantages
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_zero_advantages():
     loss_fn = DAPOLoss()
     log_probs, old_log_probs, advantages = make_inputs(advantage_val=0.0)
@@ -303,6 +318,7 @@ def test_no_nan_zero_advantages():
 # ---------------------------------------------------------------------------
 # Test 14: No NaN/Inf on extreme log_probs (±100)
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_extreme_log_probs():
     loss_fn = DAPOLoss()
@@ -322,6 +338,7 @@ def test_no_nan_extreme_log_probs():
 # Test 15: clip_fraction in metrics ∈ [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_clip_fraction_in_range():
     loss_fn = DAPOLoss(eps_low=0.1, eps_high=0.2)
     log_probs, old_log_probs, advantages = make_inputs(log_prob_val=-0.3, old_log_prob_val=-0.5)
@@ -333,6 +350,7 @@ def test_clip_fraction_in_range():
 # ---------------------------------------------------------------------------
 # Bonus: DAPOTrainer.compute_loss integration test
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_compute_loss():
     trainer = DAPOTrainer(eps_low=0.1, eps_high=0.2, beta_entropy=0.001)

@@ -24,12 +24,10 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.mechanic import MechanicWrapper
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -52,7 +50,9 @@ def _make_sgd_mechanic(params, lr: float = 0.01, s_init: float = 1e-3, **kwargs)
     return MechanicWrapper(base, s_init=s_init, **kwargs)
 
 
-def _make_adam_mechanic(params, lr: float = 0.01, s_init: float = 1e-3, **kwargs) -> MechanicWrapper:
+def _make_adam_mechanic(
+    params, lr: float = 0.01, s_init: float = 1e-3, **kwargs
+) -> MechanicWrapper:
     base = torch.optim.Adam(params if isinstance(params, list) else [params], lr=lr)
     return MechanicWrapper(base, s_init=s_init, **kwargs)
 
@@ -176,9 +176,7 @@ def test_s_k_non_negative():
     opt = _make_adam_mechanic([x], s_init=1e-3, num_bets=6)
     for _ in range(20):
         _one_step(opt, x)
-    assert (opt._s_k >= 0).all(), (
-        f"All s_k must be non-negative; got {opt._s_k}"
-    )
+    assert (opt._s_k >= 0).all(), f"All s_k must be non-negative; got {opt._s_k}"
 
 
 # ---------------------------------------------------------------------------

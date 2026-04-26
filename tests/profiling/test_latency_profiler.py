@@ -1,4 +1,5 @@
 """Tests for latency_profiler — fine-grained latency measurement."""
+
 from __future__ import annotations
 
 import time

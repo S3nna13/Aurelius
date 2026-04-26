@@ -1,18 +1,15 @@
 """Tests for consensus_voter — ballot tallying and tie breaking."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.multiagent.consensus_voter import (
+    CONSENSUS_VOTER_REGISTRY,
+    DEFAULT_CONSENSUS_VOTER,
     Ballot,
-    ConsensusResult,
     ConsensusVoter,
     TieBreak,
     Vote,
-    CONSENSUS_VOTER_REGISTRY,
-    DEFAULT_CONSENSUS_VOTER,
 )
-
 
 # ---------------------------------------------------------------------------
 # Majority threshold

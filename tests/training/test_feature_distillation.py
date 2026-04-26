@@ -1,26 +1,27 @@
 """Tests for feature-level knowledge distillation (FeatDistillConfig API)."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.feature_distillation import (
     FeatDistillConfig,
     FeatureAdapter,
-    extract_features,
-    compute_feature_loss,
-    compute_attention_transfer_loss,
-    soft_label_loss,
     FeatureDistillTrainer,
+    compute_attention_transfer_loss,
+    compute_feature_loss,
+    extract_features,
+    soft_label_loss,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model(seed: int = 42) -> AureliusTransformer:
     torch.manual_seed(seed)
@@ -54,6 +55,7 @@ def _make_trainer(
 # Test 1: FeatDistillConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_feat_distill_config_defaults():
     cfg = FeatDistillConfig()
     assert cfg.temperature == 4.0
@@ -67,6 +69,7 @@ def test_feat_distill_config_defaults():
 # Test 2: FeatureAdapter output shape
 # ---------------------------------------------------------------------------
 
+
 def test_feature_adapter_output_shape():
     B, T, D_s, D_t = 2, 8, 32, 64
     adapter = FeatureAdapter(student_dim=D_s, teacher_dim=D_t)
@@ -79,6 +82,7 @@ def test_feature_adapter_output_shape():
 # Test 3: extract_features returns correct layer keys
 # ---------------------------------------------------------------------------
 
+
 def test_extract_features_returns_correct_keys():
     model = _make_model()
     input_ids = torch.randint(0, 256, (1, 16))
@@ -90,6 +94,7 @@ def test_extract_features_returns_correct_keys():
 # ---------------------------------------------------------------------------
 # Test 4: extract_features tensor shape (B, T, D)
 # ---------------------------------------------------------------------------
+
 
 def test_extract_features_tensor_shape():
     model = _make_model()
@@ -106,6 +111,7 @@ def test_extract_features_tensor_shape():
 # Test 5: compute_feature_loss returns scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_compute_feature_loss_returns_scalar():
     B, T, D = 2, 8, 64
     s_feats = {0: torch.randn(B, T, D), 1: torch.randn(B, T, D)}
@@ -119,6 +125,7 @@ def test_compute_feature_loss_returns_scalar():
 # Test 6: compute_feature_loss zero when features equal
 # ---------------------------------------------------------------------------
 
+
 def test_compute_feature_loss_zero_for_equal_features():
     B, T, D = 2, 8, 64
     h = torch.randn(B, T, D)
@@ -130,6 +137,7 @@ def test_compute_feature_loss_zero_for_equal_features():
 # ---------------------------------------------------------------------------
 # Test 7: compute_attention_transfer_loss returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_compute_attention_transfer_loss_returns_scalar():
     B, T, Ds, Dt = 2, 8, 64, 64
@@ -144,6 +152,7 @@ def test_compute_attention_transfer_loss_returns_scalar():
 # Test 8: compute_attention_transfer_loss zero for identical hidden states
 # ---------------------------------------------------------------------------
 
+
 def test_compute_attention_transfer_loss_zero_for_identical():
     B, T, D = 2, 8, 64
     h = torch.randn(B, T, D) + 1.0  # avoid all-zero attention map
@@ -154,6 +163,7 @@ def test_compute_attention_transfer_loss_zero_for_identical():
 # ---------------------------------------------------------------------------
 # Test 9: soft_label_loss returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_soft_label_loss_returns_scalar():
     B, T, V = 2, 8, 256
@@ -167,6 +177,7 @@ def test_soft_label_loss_returns_scalar():
 # ---------------------------------------------------------------------------
 # Test 10: soft_label_loss — higher temperature produces smoother distributions
 # ---------------------------------------------------------------------------
+
 
 def test_soft_label_loss_higher_temperature_smoother():
     """Higher temperature softens logits, reducing loss variance across batches."""
@@ -194,6 +205,7 @@ def test_soft_label_loss_higher_temperature_smoother():
 # Test 11: FeatureDistillTrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_returns_required_keys():
     trainer, _ = _make_trainer()
     input_ids = torch.randint(0, 256, (2, 16))
@@ -205,6 +217,7 @@ def test_trainer_train_step_returns_required_keys():
 # ---------------------------------------------------------------------------
 # Test 12: FeatureDistillTrainer.train_step all losses finite
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_all_losses_finite():
     trainer, _ = _make_trainer()
@@ -218,6 +231,7 @@ def test_trainer_train_step_all_losses_finite():
 # Test 13: FeatureDistillTrainer.evaluate returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_evaluate_returns_required_keys():
     trainer, _ = _make_trainer()
     input_ids = torch.randint(0, 256, (2, 16))
@@ -230,6 +244,7 @@ def test_trainer_evaluate_returns_required_keys():
 # Test 14: Teacher model is frozen (no grad after init)
 # ---------------------------------------------------------------------------
 
+
 def test_teacher_model_frozen():
     trainer, _ = _make_trainer()
     for p in trainer.teacher.parameters():
@@ -239,6 +254,7 @@ def test_teacher_model_frozen():
 # ---------------------------------------------------------------------------
 # Test 15: compute_feature_loss with adapters works without error
 # ---------------------------------------------------------------------------
+
 
 def test_compute_feature_loss_with_adapters():
     B, T, D_s, D_t = 2, 8, 32, 64

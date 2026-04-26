@@ -8,17 +8,17 @@ Measures:
 
 Cycle 132-D.
 """
+
 from __future__ import annotations
 
-import json
 import re
-from dataclasses import dataclass, field
-from typing import Any, Optional
-
+from dataclasses import dataclass
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ToolCall:
@@ -38,19 +38,20 @@ class ToolBenchSample:
 
 @dataclass
 class ToolBenchConfig:
-    param_match_threshold: float = 0.8   # fraction of params that must match
-    order_sensitive: bool = True          # does tool call order matter?
-    partial_credit: bool = True           # partial credit for partial param match
+    param_match_threshold: float = 0.8  # fraction of params that must match
+    order_sensitive: bool = True  # does tool call order matter?
+    partial_credit: bool = True  # partial credit for partial param match
 
 
 # ---------------------------------------------------------------------------
 # Core evaluator
 # ---------------------------------------------------------------------------
 
+
 class ToolBench:
     """Evaluate agent tool-use quality across a list of ToolBenchSamples."""
 
-    def __init__(self, config: Optional[ToolBenchConfig] = None) -> None:
+    def __init__(self, config: ToolBenchConfig | None = None) -> None:
         self.config = config or ToolBenchConfig()
 
     # ------------------------------------------------------------------
@@ -69,9 +70,7 @@ class ToolBench:
             # has no extra params (or we simply credit it fully).
             return 1.0
         matches = sum(
-            1
-            for k, v in expected.items()
-            if k in predicted and str(predicted[k]) == str(v)
+            1 for k, v in expected.items() if k in predicted and str(predicted[k]) == str(v)
         )
         return matches / len(expected)
 
@@ -113,9 +112,7 @@ class ToolBench:
                 # Position-by-position comparison up to len(expected)
                 n = len(expected_names)
                 pred_slice = predicted_names[:n]
-                matches = sum(
-                    1 for e, p in zip(expected_names, pred_slice) if e == p
-                )
+                matches = sum(1 for e, p in zip(expected_names, pred_slice) if e == p)
                 total_score += matches / n
             else:
                 # Set-based: how many expected names appear in predicted
@@ -205,9 +202,7 @@ class ToolBench:
         if not raw_responses:
             return 0.0
 
-        n_valid = sum(
-            1 for resp in raw_responses if self._FORMAT_RE.search(resp) is not None
-        )
+        n_valid = sum(1 for resp in raw_responses if self._FORMAT_RE.search(resp) is not None)
         return n_valid / len(raw_responses)
 
     # ------------------------------------------------------------------
@@ -217,7 +212,7 @@ class ToolBench:
     def evaluate(
         self,
         samples: list[ToolBenchSample],
-        raw_responses: Optional[list[str]] = None,
+        raw_responses: list[str] | None = None,
     ) -> dict:
         """Run all metrics and return a results dict.
 

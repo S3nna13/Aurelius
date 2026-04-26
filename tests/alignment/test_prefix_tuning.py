@@ -1,20 +1,20 @@
 """Tests for PrefixTuning: layer-wise soft prefix tuning (Li & Liang 2021)."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.prefix_tuning import (
     PrefixConfig,
-    PrefixTuning,
-    apply_prefix_to_attention,
-    PrefixTuningTrainer,
-    PrefixEncoderConfig,
     PrefixEncoder,
-    prepend_prefix_to_kv,
-    PrefixTuningModel,
+    PrefixEncoderConfig,
     PrefixTuner,
+    PrefixTuning,
+    PrefixTuningModel,
+    PrefixTuningTrainer,
+    apply_prefix_to_attention,
+    prepend_prefix_to_kv,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -41,20 +41,31 @@ CFG_SMALL_NO_MLP = PrefixConfig(
 
 # Tiny Aurelius config for integration tests
 TINY_AURELIUS = AureliusConfig(
-    n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-    head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+    n_layers=2,
+    d_model=64,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
 )
 
 # Matching PrefixEncoderConfig
 TINY_PREFIX_CFG = PrefixEncoderConfig(
-    prefix_length=10, d_model=64, n_layers=2,
-    dropout=0.0, reparameterize=True, reparam_hidden=512,
+    prefix_length=10,
+    d_model=64,
+    n_layers=2,
+    dropout=0.0,
+    reparameterize=True,
+    reparam_hidden=512,
 )
 
 
 # ---------------------------------------------------------------------------
 # Helper: make a tiny backbone
 # ---------------------------------------------------------------------------
+
 
 def make_simple_backbone() -> nn.Module:
     """Tiny linear backbone for trainer tests."""
@@ -74,6 +85,7 @@ def make_tiny_model() -> AureliusTransformer:
 # 1. test_prefix_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_config_defaults():
     cfg = PrefixConfig()
     assert cfg.prefix_length == 10
@@ -88,6 +100,7 @@ def test_prefix_config_defaults():
 # 2. test_prefix_tuning_get_prefix_kv_shape
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_get_prefix_kv_shape():
     model = PrefixTuning(CFG_SMALL)
     prefix_k, prefix_v = model.get_prefix_kv(0)
@@ -99,6 +112,7 @@ def test_prefix_tuning_get_prefix_kv_shape():
 # ---------------------------------------------------------------------------
 # 3. test_prefix_tuning_all_layers_count
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_tuning_all_layers_count():
     model = PrefixTuning(CFG_SMALL)
@@ -112,10 +126,15 @@ def test_prefix_tuning_all_layers_count():
 # 4. test_prefix_tuning_with_mlp
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_with_mlp():
     cfg = PrefixConfig(
-        prefix_length=4, n_layers=3, n_kv_heads=2, head_dim=8,
-        dropout=0.0, use_mlp_reparameterization=True,
+        prefix_length=4,
+        n_layers=3,
+        n_kv_heads=2,
+        head_dim=8,
+        dropout=0.0,
+        use_mlp_reparameterization=True,
     )
     model = PrefixTuning(cfg)
     prefix_k, prefix_v = model.get_prefix_kv(0)
@@ -127,10 +146,15 @@ def test_prefix_tuning_with_mlp():
 # 5. test_prefix_tuning_without_mlp
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_without_mlp():
     cfg = PrefixConfig(
-        prefix_length=4, n_layers=3, n_kv_heads=2, head_dim=8,
-        dropout=0.0, use_mlp_reparameterization=False,
+        prefix_length=4,
+        n_layers=3,
+        n_kv_heads=2,
+        head_dim=8,
+        dropout=0.0,
+        use_mlp_reparameterization=False,
     )
     model = PrefixTuning(cfg)
     prefix_k, prefix_v = model.get_prefix_kv(0)
@@ -141,6 +165,7 @@ def test_prefix_tuning_without_mlp():
 # ---------------------------------------------------------------------------
 # 6. test_apply_prefix_to_attention_shape
 # ---------------------------------------------------------------------------
+
 
 def test_apply_prefix_to_attention_shape():
     B, S = 2, 6
@@ -163,6 +188,7 @@ def test_apply_prefix_to_attention_shape():
 # 7. test_apply_prefix_expands_batch
 # ---------------------------------------------------------------------------
 
+
 def test_apply_prefix_expands_batch():
     B, S = 4, 10
     prefix_model = PrefixTuning(CFG_SMALL)
@@ -184,6 +210,7 @@ def test_apply_prefix_expands_batch():
 # 8. test_prefix_tuning_trainer_freeze
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_trainer_freeze():
     backbone = make_simple_backbone()
     prefix_model = PrefixTuning(CFG_SMALL)
@@ -200,6 +227,7 @@ def test_prefix_tuning_trainer_freeze():
 # 9. test_prefix_tuning_trainer_unfreeze
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_trainer_unfreeze():
     backbone = make_simple_backbone()
     prefix_model = PrefixTuning(CFG_SMALL)
@@ -215,6 +243,7 @@ def test_prefix_tuning_trainer_unfreeze():
 # ---------------------------------------------------------------------------
 # 10. test_prefix_tuning_trainer_trainable_params
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_tuning_trainer_trainable_params():
     backbone = make_simple_backbone()
@@ -241,6 +270,7 @@ def test_prefix_tuning_trainer_trainable_params():
 # 11. test_prefix_tuning_param_count
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_param_count():
     backbone = make_simple_backbone()
     prefix_model = PrefixTuning(CFG_SMALL)
@@ -264,6 +294,7 @@ def test_prefix_tuning_param_count():
 # 12. test_prefix_tuning_gradients_flow
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_gradients_flow():
     B, S = 2, 5
     prefix_model = PrefixTuning(CFG_SMALL)
@@ -276,10 +307,11 @@ def test_prefix_tuning_gradients_flow():
 
     # At least one prefix parameter should have a gradient
     has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in prefix_model.parameters()
+        p.grad is not None and p.grad.abs().sum().item() > 0 for p in prefix_model.parameters()
     )
-    assert has_grad, "At least one prefix parameter should have a non-zero gradient after backward()"
+    assert has_grad, (
+        "At least one prefix parameter should have a non-zero gradient after backward()"
+    )
 
 
 # ===========================================================================
@@ -290,6 +322,7 @@ def test_prefix_tuning_gradients_flow():
 # ---------------------------------------------------------------------------
 # 13. test_prefix_encoder_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_encoder_config_defaults():
     cfg = PrefixEncoderConfig()
@@ -305,10 +338,15 @@ def test_prefix_encoder_config_defaults():
 # 14. test_prefix_encoder_output_shape_with_reparam
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_output_shape_with_reparam():
     cfg = PrefixEncoderConfig(
-        prefix_length=10, d_model=64, n_layers=2,
-        dropout=0.0, reparameterize=True, reparam_hidden=512,
+        prefix_length=10,
+        d_model=64,
+        n_layers=2,
+        dropout=0.0,
+        reparameterize=True,
+        reparam_hidden=512,
     )
     encoder = PrefixEncoder(cfg)
     out = encoder()
@@ -321,10 +359,15 @@ def test_prefix_encoder_output_shape_with_reparam():
 # 15. test_prefix_encoder_output_shape_without_reparam
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_output_shape_without_reparam():
     cfg = PrefixEncoderConfig(
-        prefix_length=8, d_model=32, n_layers=3,
-        dropout=0.0, reparameterize=False, reparam_hidden=256,
+        prefix_length=8,
+        d_model=32,
+        n_layers=3,
+        dropout=0.0,
+        reparameterize=False,
+        reparam_hidden=256,
     )
     encoder = PrefixEncoder(cfg)
     out = encoder()
@@ -337,10 +380,15 @@ def test_prefix_encoder_output_shape_without_reparam():
 # 16. test_prefix_encoder_gradients_flow_reparam
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_gradients_flow_reparam():
     cfg = PrefixEncoderConfig(
-        prefix_length=5, d_model=16, n_layers=2,
-        dropout=0.0, reparameterize=True, reparam_hidden=64,
+        prefix_length=5,
+        d_model=16,
+        n_layers=2,
+        dropout=0.0,
+        reparameterize=True,
+        reparam_hidden=64,
     )
     encoder = PrefixEncoder(cfg)
     out = encoder()
@@ -348,8 +396,7 @@ def test_prefix_encoder_gradients_flow_reparam():
     loss.backward()
 
     has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in encoder.parameters()
+        p.grad is not None and p.grad.abs().sum().item() > 0 for p in encoder.parameters()
     )
     assert has_grad, "Gradients should flow through reparameterized PrefixEncoder"
 
@@ -358,19 +405,22 @@ def test_prefix_encoder_gradients_flow_reparam():
 # 17. test_prefix_encoder_gradients_flow_no_reparam
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_gradients_flow_no_reparam():
     cfg = PrefixEncoderConfig(
-        prefix_length=5, d_model=16, n_layers=2,
-        dropout=0.0, reparameterize=False, reparam_hidden=64,
+        prefix_length=5,
+        d_model=16,
+        n_layers=2,
+        dropout=0.0,
+        reparameterize=False,
+        reparam_hidden=64,
     )
     encoder = PrefixEncoder(cfg)
     out = encoder()
     loss = out.sum()
     loss.backward()
 
-    assert encoder.prefix_params.grad is not None, (
-        "Direct prefix_params should have gradients"
-    )
+    assert encoder.prefix_params.grad is not None, "Direct prefix_params should have gradients"
     assert encoder.prefix_params.grad.abs().sum().item() > 0
 
 
@@ -378,35 +428,39 @@ def test_prefix_encoder_gradients_flow_no_reparam():
 # 18. test_prefix_encoder_has_mlp_when_reparam
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_has_mlp_when_reparam():
     cfg = PrefixEncoderConfig(reparameterize=True)
     encoder = PrefixEncoder(cfg)
-    assert hasattr(encoder, 'mlp'), "Reparameterized encoder should have MLP"
-    assert hasattr(encoder, 'embedding'), "Reparameterized encoder should have embedding"
+    assert hasattr(encoder, "mlp"), "Reparameterized encoder should have MLP"
+    assert hasattr(encoder, "embedding"), "Reparameterized encoder should have embedding"
 
 
 # ---------------------------------------------------------------------------
 # 19. test_prefix_encoder_has_direct_params_when_no_reparam
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_has_direct_params_when_no_reparam():
     cfg = PrefixEncoderConfig(reparameterize=False)
     encoder = PrefixEncoder(cfg)
-    assert hasattr(encoder, 'prefix_params'), (
+    assert hasattr(encoder, "prefix_params"), (
         "Non-reparameterized encoder should have prefix_params"
     )
-    assert not hasattr(encoder, 'mlp'), (
-        "Non-reparameterized encoder should not have MLP"
-    )
+    assert not hasattr(encoder, "mlp"), "Non-reparameterized encoder should not have MLP"
 
 
 # ---------------------------------------------------------------------------
 # 20. test_prepend_prefix_to_kv_with_past
 # ---------------------------------------------------------------------------
 
+
 def test_prepend_prefix_to_kv_with_past():
     cfg = PrefixEncoderConfig(
-        prefix_length=4, d_model=16, n_layers=2, dropout=0.0,
+        prefix_length=4,
+        d_model=16,
+        n_layers=2,
+        dropout=0.0,
     )
     encoder = PrefixEncoder(cfg)
     prefix_kv = encoder()  # (2, 2, 4, 16)
@@ -425,9 +479,13 @@ def test_prepend_prefix_to_kv_with_past():
 # 21. test_prepend_prefix_to_kv_without_past
 # ---------------------------------------------------------------------------
 
+
 def test_prepend_prefix_to_kv_without_past():
     cfg = PrefixEncoderConfig(
-        prefix_length=6, d_model=32, n_layers=3, dropout=0.0,
+        prefix_length=6,
+        d_model=32,
+        n_layers=3,
+        dropout=0.0,
     )
     encoder = PrefixEncoder(cfg)
     prefix_kv = encoder()  # (3, 2, 6, 32)
@@ -443,9 +501,13 @@ def test_prepend_prefix_to_kv_without_past():
 # 22. test_prepend_prefix_to_kv_preserves_original
 # ---------------------------------------------------------------------------
 
+
 def test_prepend_prefix_to_kv_preserves_original():
     cfg = PrefixEncoderConfig(
-        prefix_length=3, d_model=8, n_layers=2, dropout=0.0,
+        prefix_length=3,
+        d_model=8,
+        n_layers=2,
+        dropout=0.0,
     )
     encoder = PrefixEncoder(cfg)
     prefix_kv = encoder()
@@ -465,6 +527,7 @@ def test_prepend_prefix_to_kv_preserves_original():
 # 23. test_prefix_tuning_model_freezes_backbone
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_model_freezes_backbone():
     backbone = make_tiny_model()
     pt_model = PrefixTuningModel(backbone, TINY_PREFIX_CFG)
@@ -480,6 +543,7 @@ def test_prefix_tuning_model_freezes_backbone():
 # 24. test_prefix_tuning_model_trainable_count
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuning_model_trainable_count():
     backbone = make_tiny_model()
     pt_model = PrefixTuningModel(backbone, TINY_PREFIX_CFG)
@@ -490,14 +554,13 @@ def test_prefix_tuning_model_trainable_count():
     assert n_trainable > 0, "Should have trainable prefix parameters"
     assert n_total > n_trainable, "Total should exceed trainable (backbone is frozen but counted)"
     # Prefix params should be fewer than total (backbone has its own params)
-    assert n_trainable < n_total, (
-        "Trainable prefix params should be fewer than total params"
-    )
+    assert n_trainable < n_total, "Trainable prefix params should be fewer than total params"
 
 
 # ---------------------------------------------------------------------------
 # 25. test_prefix_tuning_model_get_prefix_logits_shape
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_tuning_model_get_prefix_logits_shape():
     backbone = make_tiny_model()
@@ -510,14 +573,13 @@ def test_prefix_tuning_model_get_prefix_logits_shape():
     with torch.no_grad():
         logits = pt_model.get_prefix_logits(input_ids)
 
-    assert logits.shape == (B, T, 256), (
-        f"Expected logits shape (2, 20, 256), got {logits.shape}"
-    )
+    assert logits.shape == (B, T, 256), f"Expected logits shape (2, 20, 256), got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 26. test_prefix_tuner_train_step_returns_dict
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_tuner_train_step_returns_dict():
     backbone = make_tiny_model()
@@ -540,12 +602,17 @@ def test_prefix_tuner_train_step_returns_dict():
 # 27. test_prefix_tuner_loss_decreases
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuner_loss_decreases():
     torch.manual_seed(42)
     backbone = make_tiny_model()
     cfg = PrefixEncoderConfig(
-        prefix_length=5, d_model=64, n_layers=2,
-        dropout=0.0, reparameterize=True, reparam_hidden=128,
+        prefix_length=5,
+        d_model=64,
+        n_layers=2,
+        dropout=0.0,
+        reparameterize=True,
+        reparam_hidden=128,
     )
     pt_model = PrefixTuningModel(backbone, cfg)
     tuner = PrefixTuner(pt_model, lr=1e-2)
@@ -568,16 +635,14 @@ def test_prefix_tuner_loss_decreases():
 # 28. test_prefix_tuner_backbone_stays_frozen
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_tuner_backbone_stays_frozen():
     backbone = make_tiny_model()
     pt_model = PrefixTuningModel(backbone, TINY_PREFIX_CFG)
     tuner = PrefixTuner(pt_model, lr=1e-3)
 
     # Record backbone weights before training
-    backbone_weights_before = {
-        name: p.clone()
-        for name, p in backbone.named_parameters()
-    }
+    backbone_weights_before = {name: p.clone() for name, p in backbone.named_parameters()}
 
     B, T = 2, 16
     input_ids = torch.randint(0, 256, (B, T))
@@ -593,6 +658,7 @@ def test_prefix_tuner_backbone_stays_frozen():
 # ---------------------------------------------------------------------------
 # 29. test_prefix_tuner_with_custom_optimizer
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_tuner_with_custom_optimizer():
     backbone = make_tiny_model()
@@ -612,11 +678,16 @@ def test_prefix_tuner_with_custom_optimizer():
 # 30. test_prefix_encoder_different_layer_counts
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_encoder_different_layer_counts():
     for n_layers in [1, 4, 8]:
         cfg = PrefixEncoderConfig(
-            prefix_length=5, d_model=16, n_layers=n_layers,
-            dropout=0.0, reparameterize=True, reparam_hidden=64,
+            prefix_length=5,
+            d_model=16,
+            n_layers=n_layers,
+            dropout=0.0,
+            reparameterize=True,
+            reparam_hidden=64,
         )
         encoder = PrefixEncoder(cfg)
         out = encoder()
@@ -629,9 +700,13 @@ def test_prefix_encoder_different_layer_counts():
 # 31. test_prepend_prefix_to_kv_different_layers
 # ---------------------------------------------------------------------------
 
+
 def test_prepend_prefix_to_kv_different_layers():
     cfg = PrefixEncoderConfig(
-        prefix_length=4, d_model=16, n_layers=3, dropout=0.0,
+        prefix_length=4,
+        d_model=16,
+        n_layers=3,
+        dropout=0.0,
     )
     encoder = PrefixEncoder(cfg)
     prefix_kv = encoder()

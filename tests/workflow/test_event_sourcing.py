@@ -3,10 +3,10 @@ import json
 import pytest
 
 from src.workflow.event_sourcing import (
+    WORKFLOW_EVENT_STORE,
     EventType,
     WorkflowEvent,
     WorkflowEventStore,
-    WORKFLOW_EVENT_STORE,
 )
 
 

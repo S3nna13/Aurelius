@@ -1,14 +1,15 @@
 """Tests for src/compression/speculative_decoding_compressor.py — 8+ tests."""
+
 import math
+
 import pytest
 import torch
+
 from src.compression.speculative_decoding_compressor import (
-    SDCConfig,
     DraftBuffer,
-    SpeculativeCompressionMetrics,
+    SDCConfig,
     SpeculativeDecodingCompressor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -39,6 +40,7 @@ def _target_lp(token_id: int, vocab: int = VOCAB, good: bool = True) -> torch.Te
 # ---------------------------------------------------------------------------
 # 1. DraftBuffer
 # ---------------------------------------------------------------------------
+
 
 def test_draft_buffer_push_and_len():
     buf = DraftBuffer(capacity=8)
@@ -73,9 +75,10 @@ def test_draft_buffer_clear():
 # 2. compress_step — acceptance
 # ---------------------------------------------------------------------------
 
+
 def test_accepts_token_above_threshold(compressor):
     # log(0.9) > log(0.8) → accepted
-    draft = _logits(5).unsqueeze(0)       # shape (1, 16)
+    draft = _logits(5).unsqueeze(0)  # shape (1, 16)
     target = torch.tensor([[math.log(0.9)] * VOCAB])  # shape (1, 16)
     accepted = compressor.compress_step(draft, target)
     assert 5 in accepted
@@ -96,7 +99,9 @@ def test_prefix_acceptance_stops_at_first_rejection(compressor):
     for i in range(3):
         draft[i, i] = 10.0  # greedy tokens: 0, 1, 2
     # target lp: pos 0 good, pos 1 bad, pos 2 good
-    target_lp = torch.tensor([math.log(0.9), math.log(0.5), math.log(0.9)]).unsqueeze(1).expand(3, VOCAB)
+    target_lp = (
+        torch.tensor([math.log(0.9), math.log(0.5), math.log(0.9)]).unsqueeze(1).expand(3, VOCAB)
+    )
     accepted = compressor.compress_step(draft, target_lp)
     assert len(accepted) == 1
     assert accepted[0] == 0
@@ -105,6 +110,7 @@ def test_prefix_acceptance_stops_at_first_rejection(compressor):
 # ---------------------------------------------------------------------------
 # 3. Metrics
 # ---------------------------------------------------------------------------
+
 
 def test_metrics_zero_before_any_step():
     c = SpeculativeDecodingCompressor()
@@ -133,6 +139,7 @@ def test_metrics_compression_ratio_between_0_and_1(compressor):
 # ---------------------------------------------------------------------------
 # 4. SDCConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_sdc_config_defaults():
     cfg = SDCConfig()

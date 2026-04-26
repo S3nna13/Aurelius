@@ -12,7 +12,6 @@ import math
 
 import torch
 import torch.nn as nn
-
 from aurelius.training.gradient_accumulation import (
     AccumulationStats,
     GradientAccumulator,
@@ -61,6 +60,7 @@ def make_batch() -> tuple[torch.Tensor, torch.Tensor]:
 # ---------------------------------------------------------------------------
 # MicroBatchSplitter tests
 # ---------------------------------------------------------------------------
+
 
 def test_splitter_correct_n_micro_batches():
     """split() returns the expected number of micro-batches."""
@@ -111,6 +111,7 @@ def test_splitter_effective_batch_size():
 # GradientAccumulator tests
 # ---------------------------------------------------------------------------
 
+
 def test_accumulator_gradients_accumulate():
     """Gradients should accumulate across multiple step() calls."""
     model = make_mlp()
@@ -153,9 +154,7 @@ def test_accumulator_is_last_triggers_optimizer_step():
     accum.step(loss2, is_last=True)
 
     params_after = list(model.parameters())
-    changed = any(
-        not torch.equal(pb, pa) for pb, pa in zip(params_before, params_after)
-    )
+    changed = any(not torch.equal(pb, pa) for pb, pa in zip(params_before, params_after))
     assert changed, "Parameters should change after is_last=True step"
 
 
@@ -174,9 +173,7 @@ def test_accumulator_not_last_does_not_trigger_optimizer_step():
     accum.step(loss, is_last=False)
 
     params_after = list(model.parameters())
-    unchanged = all(
-        torch.equal(pb, pa) for pb, pa in zip(params_before, params_after)
-    )
+    unchanged = all(torch.equal(pb, pa) for pb, pa in zip(params_before, params_after))
     assert unchanged, "Parameters must not change when is_last=False"
 
 
@@ -200,6 +197,7 @@ def test_accumulator_grad_norm_non_negative():
 # ---------------------------------------------------------------------------
 # VirtualBatchTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_virtual_trainer_train_step_keys():
     """train_step must return dict with loss, grad_norm, n_micro_batches."""
@@ -250,6 +248,7 @@ def test_virtual_trainer_verify_equivalence():
 # LossScaler tests
 # ---------------------------------------------------------------------------
 
+
 def test_loss_scaler_scale():
     """scale() should return loss * current_scale."""
     scaler = LossScaler(init_scale=256.0)
@@ -276,6 +275,7 @@ def test_loss_scaler_update_no_inf_for_growth_interval_increases_scale():
 # ---------------------------------------------------------------------------
 # AccumulationStats tests
 # ---------------------------------------------------------------------------
+
 
 def test_accumulation_stats_mean_loss():
     """mean_loss should return the mean of all recorded losses."""

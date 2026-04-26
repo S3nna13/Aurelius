@@ -10,7 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import math
 import pytest
 import torch
 import torch.nn as nn
@@ -18,12 +17,11 @@ from torch import Tensor
 
 from src.eval.gradient_attribution import (
     AttributionConfig,
-    VanillaGradients,
     GradientXInput,
     IntegratedGradients,
     KernelSHAPApproximator,
+    VanillaGradients,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -61,14 +59,17 @@ def embeddings(model) -> Tensor:
 
 def target_fn_factory(model: nn.Module):
     """Return a target_fn that uses the given model."""
+
     def _fn(emb: Tensor) -> Tensor:
         return model(emb)
+
     return _fn
 
 
 # ---------------------------------------------------------------------------
 # AttributionConfig
 # ---------------------------------------------------------------------------
+
 
 def test_attribution_config_defaults():
     cfg = AttributionConfig()
@@ -87,6 +88,7 @@ def test_attribution_config_custom():
 # ---------------------------------------------------------------------------
 # VanillaGradients
 # ---------------------------------------------------------------------------
+
 
 def test_vanilla_gradients_attribute_shape(model, embeddings):
     """attribute() must return shape (B, T)."""
@@ -113,7 +115,9 @@ def test_vanilla_gradients_zero_input(model):
             return (x * 0).sum()
 
     zero_model = ZeroModel()
-    fn = lambda emb: zero_model(emb)
+
+    def fn(emb):
+        return zero_model(emb)
 
     zero_emb = torch.zeros(B, T, D)
     out = vg.attribute(zero_emb, fn)
@@ -141,6 +145,7 @@ def test_vanilla_gradients_saliency_nonnegative(model, embeddings):
 # ---------------------------------------------------------------------------
 # GradientXInput
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_x_input_shape(model, embeddings):
     """attribute() must return shape (B, T)."""
@@ -172,6 +177,7 @@ def test_gradient_x_input_b1_t4(model, embeddings):
 # ---------------------------------------------------------------------------
 # IntegratedGradients
 # ---------------------------------------------------------------------------
+
 
 def test_integrated_gradients_shape(model, embeddings):
     """attribute() must return shape (B, T)."""
@@ -232,6 +238,7 @@ def test_integrated_gradients_b1_t4(model, embeddings):
 # ---------------------------------------------------------------------------
 # KernelSHAPApproximator
 # ---------------------------------------------------------------------------
+
 
 def test_kernel_shap_shape(model, embeddings):
     """attribute() must return shape (T,)."""

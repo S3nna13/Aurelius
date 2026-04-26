@@ -2,40 +2,36 @@
 
 Pure PyTorch implementation — no HuggingFace, no scipy, no sklearn.
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SimilarityConfig:
     """Configuration for semantic similarity evaluation."""
 
-    pooling: str = "mean"          # "mean" | "cls" | "max"
+    pooling: str = "mean"  # "mean" | "cls" | "max"
     normalize: bool = True
     similarity_metric: str = "cosine"  # "cosine" | "dot" | "l2"
 
     def __post_init__(self) -> None:
         valid_pooling = {"mean", "cls", "max"}
         if self.pooling not in valid_pooling:
-            raise ValueError(
-                f"pooling must be one of {valid_pooling}, got {self.pooling!r}"
-            )
+            raise ValueError(f"pooling must be one of {valid_pooling}, got {self.pooling!r}")
         valid_metrics = {"cosine", "dot", "l2"}
         if self.similarity_metric not in valid_metrics:
             raise ValueError(
-                f"similarity_metric must be one of {valid_metrics}, "
-                f"got {self.similarity_metric!r}"
+                f"similarity_metric must be one of {valid_metrics}, got {self.similarity_metric!r}"
             )
 
 
@@ -43,9 +39,10 @@ class SimilarityConfig:
 # Pooling
 # ---------------------------------------------------------------------------
 
+
 def pool_hidden_states(
     hidden: Tensor,
-    attention_mask: Optional[Tensor] = None,
+    attention_mask: Tensor | None = None,
     mode: str = "mean",
 ) -> Tensor:
     """Pool a sequence of hidden states to a single vector per example.
@@ -80,8 +77,8 @@ def pool_hidden_states(
 
     if mode == "mean":
         # Masked mean: sum real tokens / count of real tokens.
-        summed = (hidden * mask_f).sum(dim=1)             # (B, D)
-        counts = mask_f.sum(dim=1).clamp(min=1.0)         # (B, 1)
+        summed = (hidden * mask_f).sum(dim=1)  # (B, D)
+        counts = mask_f.sum(dim=1).clamp(min=1.0)  # (B, 1)
         return summed / counts
 
     elif mode == "max":
@@ -97,6 +94,7 @@ def pool_hidden_states(
 # ---------------------------------------------------------------------------
 # Pairwise cosine similarity
 # ---------------------------------------------------------------------------
+
 
 def compute_cosine_similarity(a: Tensor, b: Tensor) -> Tensor:
     """Compute element-wise cosine similarity between paired embeddings.
@@ -117,6 +115,7 @@ def compute_cosine_similarity(a: Tensor, b: Tensor) -> Tensor:
 # Pairwise similarity matrix
 # ---------------------------------------------------------------------------
 
+
 def compute_pairwise_similarity(
     embeddings: Tensor,
     metric: str = "cosine",
@@ -132,14 +131,14 @@ def compute_pairwise_similarity(
     """
     if metric == "cosine":
         normed = F.normalize(embeddings, p=2, dim=-1)  # (N, D)
-        return normed @ normed.T                        # (N, N)
+        return normed @ normed.T  # (N, N)
 
     elif metric == "dot":
-        return embeddings @ embeddings.T                # (N, N)
+        return embeddings @ embeddings.T  # (N, N)
 
     elif metric == "l2":
         # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 a·b
-        sq_norm = (embeddings ** 2).sum(dim=-1, keepdim=True)  # (N, 1)
+        sq_norm = (embeddings**2).sum(dim=-1, keepdim=True)  # (N, 1)
         sq_dist = sq_norm + sq_norm.T - 2.0 * (embeddings @ embeddings.T)
         sq_dist = sq_dist.clamp(min=0.0)
         return -sq_dist.sqrt()  # negative L2 distance (N, N)
@@ -151,6 +150,7 @@ def compute_pairwise_similarity(
 # ---------------------------------------------------------------------------
 # Alignment score
 # ---------------------------------------------------------------------------
+
 
 def embedding_alignment_score(
     source_embs: Tensor,
@@ -173,6 +173,7 @@ def embedding_alignment_score(
 # Uniformity score  (Wang & Isola 2020)
 # ---------------------------------------------------------------------------
 
+
 def embedding_uniformity_score(embeddings: Tensor) -> float:
     """Uniformity loss from Wang & Isola 2020.
 
@@ -191,13 +192,13 @@ def embedding_uniformity_score(embeddings: Tensor) -> float:
         raise ValueError("Need at least 2 embeddings for uniformity score.")
 
     # Squared pairwise distances via the identity ||a-b||^2 = ||a||^2 + ||b||^2 - 2*a·b.
-    sq_norm = (embeddings ** 2).sum(dim=-1, keepdim=True)          # (N, 1)
+    sq_norm = (embeddings**2).sum(dim=-1, keepdim=True)  # (N, 1)
     sq_dist = sq_norm + sq_norm.T - 2.0 * (embeddings @ embeddings.T)  # (N, N)
     sq_dist = sq_dist.clamp(min=0.0)
 
     # Collect upper-triangular pairs (i < j).
     i_idx, j_idx = torch.triu_indices(N, N, offset=1)
-    pairwise_sq = sq_dist[i_idx, j_idx]           # (N*(N-1)/2,)
+    pairwise_sq = sq_dist[i_idx, j_idx]  # (N*(N-1)/2,)
 
     # Uniformity loss.
     loss = torch.log(torch.exp(-2.0 * pairwise_sq).mean())
@@ -208,6 +209,7 @@ def embedding_uniformity_score(embeddings: Tensor) -> float:
 # SemanticSimilarityScorer
 # ---------------------------------------------------------------------------
 
+
 class SemanticSimilarityScorer:
     """Encode hidden states and compute semantic similarity metrics."""
 
@@ -217,7 +219,7 @@ class SemanticSimilarityScorer:
     def encode(
         self,
         hidden_states: Tensor,
-        attention_mask: Optional[Tensor] = None,
+        attention_mask: Tensor | None = None,
     ) -> Tensor:
         """Pool hidden states and optionally L2-normalize.
 
@@ -243,8 +245,8 @@ class SemanticSimilarityScorer:
         self,
         hidden_a: Tensor,
         hidden_b: Tensor,
-        mask_a: Optional[Tensor] = None,
-        mask_b: Optional[Tensor] = None,
+        mask_a: Tensor | None = None,
+        mask_b: Tensor | None = None,
     ) -> Tensor:
         """Compute element-wise similarity for paired sequences.
 
@@ -278,7 +280,7 @@ class SemanticSimilarityScorer:
     def similarity_matrix(
         self,
         hidden: Tensor,
-        mask: Optional[Tensor] = None,
+        mask: Tensor | None = None,
     ) -> Tensor:
         """Compute all-pairs similarity matrix.
 
@@ -296,6 +298,7 @@ class SemanticSimilarityScorer:
 # ---------------------------------------------------------------------------
 # Retrieval metrics
 # ---------------------------------------------------------------------------
+
 
 def compute_retrieval_metrics(
     query_embs: Tensor,

@@ -2,26 +2,27 @@
 
 Tiny config: small vocabs, short JSON strings.
 """
+
 from __future__ import annotations
 
 import json
-import pytest
+
 import torch
 
 from src.inference.structured_output_v2 import (
-    OutputSchema,
-    is_valid_json,
-    extract_json_from_text,
-    validate_schema,
-    build_json_grammar_logit_mask,
-    StructuredOutputParser,
     JSONModeDecoder,
+    OutputSchema,
+    StructuredOutputParser,
+    build_json_grammar_logit_mask,
+    extract_json_from_text,
+    is_valid_json,
+    validate_schema,
 )
-
 
 # ---------------------------------------------------------------------------
 # OutputSchema defaults
 # ---------------------------------------------------------------------------
+
 
 def test_output_schema_defaults():
     schema = OutputSchema()
@@ -47,30 +48,32 @@ def test_output_schema_custom():
 # is_valid_json
 # ---------------------------------------------------------------------------
 
+
 def test_is_valid_json_valid_object():
     assert is_valid_json('{"a": 1}') is True
 
 
 def test_is_valid_json_valid_array():
-    assert is_valid_json('[1, 2, 3]') is True
+    assert is_valid_json("[1, 2, 3]") is True
 
 
 def test_is_valid_json_valid_primitives():
     assert is_valid_json('"hello"') is True
-    assert is_valid_json('42') is True
-    assert is_valid_json('true') is True
-    assert is_valid_json('null') is True
+    assert is_valid_json("42") is True
+    assert is_valid_json("true") is True
+    assert is_valid_json("null") is True
 
 
 def test_is_valid_json_invalid():
-    assert is_valid_json('{bad json}') is False
-    assert is_valid_json('') is False
-    assert is_valid_json('hello world') is False
+    assert is_valid_json("{bad json}") is False
+    assert is_valid_json("") is False
+    assert is_valid_json("hello world") is False
 
 
 # ---------------------------------------------------------------------------
 # extract_json_from_text
 # ---------------------------------------------------------------------------
+
 
 def test_extract_json_finds_object():
     text = 'Here is the result: {"name": "Alice", "age": 30} and trailing text.'
@@ -82,7 +85,7 @@ def test_extract_json_finds_object():
 
 
 def test_extract_json_finds_array():
-    text = 'Output: [1, 2, 3] done.'
+    text = "Output: [1, 2, 3] done."
     result = extract_json_from_text(text)
     assert result is not None
     assert json.loads(result) == [1, 2, 3]
@@ -96,6 +99,7 @@ def test_extract_json_returns_none_when_absent():
 # ---------------------------------------------------------------------------
 # validate_schema
 # ---------------------------------------------------------------------------
+
 
 def test_validate_schema_passes_all_keys():
     schema = OutputSchema(required_keys=["name", "score"], value_types={"score": "int"})
@@ -126,7 +130,13 @@ def test_validate_schema_bool_not_int():
 
 def test_validate_schema_all_types_correct():
     schema = OutputSchema(
-        value_types={"name": "str", "score": "float", "active": "bool", "tags": "list", "meta": "dict"}
+        value_types={
+            "name": "str",
+            "score": "float",
+            "active": "bool",
+            "tags": "list",
+            "meta": "dict",
+        }
     )
     data = {"name": "test", "score": 3.14, "active": True, "tags": ["a"], "meta": {"x": 1}}
     valid, errors = validate_schema(data, schema)
@@ -137,22 +147,23 @@ def test_validate_schema_all_types_correct():
 # build_json_grammar_logit_mask
 # ---------------------------------------------------------------------------
 
+
 def test_mask_shape():
-    vocab = ['"', '{', '[', 'a', ',', '}', ']']
+    vocab = ['"', "{", "[", "a", ",", "}", "]"]
     mask = build_json_grammar_logit_mask("", vocab)
     assert mask.shape == (len(vocab),)
     assert mask.dtype == torch.float32
 
 
 def test_mask_values_zero_or_neg_inf():
-    vocab = ['"', '{', '[', 'a', ',', '}']
+    vocab = ['"', "{", "[", "a", ",", "}"]
     mask = build_json_grammar_logit_mask("", vocab)
     for val in mask.tolist():
         assert val == 0.0 or val == float("-inf")
 
 
 def test_mask_expect_value_allows_open_brace():
-    vocab = ['{', 'a', ' ']
+    vocab = ["{", "a", " "]
     mask = build_json_grammar_logit_mask("", vocab)
     # '{' starts a value, should be allowed
     assert mask[0] == 0.0
@@ -161,6 +172,7 @@ def test_mask_expect_value_allows_open_brace():
 # ---------------------------------------------------------------------------
 # StructuredOutputParser
 # ---------------------------------------------------------------------------
+
 
 def test_parser_parse_returns_dict():
     schema = OutputSchema(required_keys=["x"])
@@ -198,7 +210,7 @@ def test_parser_repair_removes_trailing_comma():
 def test_parser_batch_parse_length():
     schema = OutputSchema(required_keys=["v"])
     parser = StructuredOutputParser(schema)
-    texts = ['{"v": 1}', 'not json', '{"v": 2}', '{}']
+    texts = ['{"v": 1}', "not json", '{"v": 2}', "{}"]
     results = parser.batch_parse(texts)
     assert len(results) == 4
     assert results[0] is not None
@@ -211,8 +223,9 @@ def test_parser_batch_parse_length():
 # JSONModeDecoder
 # ---------------------------------------------------------------------------
 
+
 def test_json_mode_decoder_returns_string():
-    vocab = ['"', '{', '}', ':', 'k', 'v', ',', ' ', '<eos>']
+    vocab = ['"', "{", "}", ":", "k", "v", ",", " ", "<eos>"]
     eos_token_id = 8
     token_sequence = [1, 0, 4, 0, 3, 0, 5, 0, 2, eos_token_id]
     call_count = [0]

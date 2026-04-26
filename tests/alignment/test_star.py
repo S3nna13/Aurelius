@@ -6,21 +6,17 @@ Covers STaRSample, STaRFilter, STaRLoss, and STaRTrainer.
 from __future__ import annotations
 
 import dataclasses
-from typing import List
 
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.alignment.star import STaRFilter, STaRLoss, STaRSample, STaRTrainer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_samples(correct_flags: List[bool]) -> List[STaRSample]:
+def _make_samples(correct_flags: list[bool]) -> list[STaRSample]:
     """Build a list of STaRSample with the given correctness flags."""
     return [
         STaRSample(
@@ -33,7 +29,9 @@ def _make_samples(correct_flags: List[bool]) -> List[STaRSample]:
     ]
 
 
-def _make_logits(B: int = 2, T: int = 8, V: int = 16, *, requires_grad: bool = False) -> torch.Tensor:
+def _make_logits(
+    B: int = 2, T: int = 8, V: int = 16, *, requires_grad: bool = False
+) -> torch.Tensor:
     """Create random logits tensor, optionally requiring gradient."""
     t = torch.randn(B, T, V)
     if requires_grad:

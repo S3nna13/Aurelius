@@ -3,17 +3,17 @@
 Provides tools to identify dead neurons and monosemantic (selective)
 neurons from activation tensors.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NeuronActivationStats:
@@ -22,12 +22,13 @@ class NeuronActivationStats:
     mean: float
     std: float
     max_val: float
-    top_tokens: List[int]  # top-5 flat position indices by activation magnitude
+    top_tokens: list[int]  # top-5 flat position indices by activation magnitude
 
 
 # ---------------------------------------------------------------------------
 # Analyzer
 # ---------------------------------------------------------------------------
+
 
 class NeuronActivationAnalyzer:
     """Compute per-neuron activation statistics from forward-pass activations."""
@@ -36,7 +37,7 @@ class NeuronActivationAnalyzer:
         self,
         activations: torch.Tensor,
         layer_idx: int,
-    ) -> List[NeuronActivationStats]:
+    ) -> list[NeuronActivationStats]:
         """Compute per-neuron statistics from an activation tensor.
 
         Args:
@@ -56,11 +57,11 @@ class NeuronActivationAnalyzer:
         # Flatten to (B*S, D) for per-neuron statistics
         flat = activations.reshape(B * S, D)  # (N, D)
 
-        means = flat.mean(dim=0)     # (D,)
-        stds = flat.std(dim=0)       # (D,)
+        means = flat.mean(dim=0)  # (D,)
+        stds = flat.std(dim=0)  # (D,)
         maxvals = flat.abs().max(dim=0).values  # (D,) — magnitude max
 
-        stats: List[NeuronActivationStats] = []
+        stats: list[NeuronActivationStats] = []
         # Top-5 flat positions by magnitude for each neuron
         k = min(5, B * S)
         for neuron_idx in range(D):
@@ -80,9 +81,9 @@ class NeuronActivationAnalyzer:
 
     def find_dead_neurons(
         self,
-        stats: List[NeuronActivationStats],
+        stats: list[NeuronActivationStats],
         threshold: float = 0.01,
-    ) -> List[int]:
+    ) -> list[int]:
         """Return neuron indices whose max activation is below threshold.
 
         A neuron is considered dead if it never activates significantly,
@@ -95,15 +96,13 @@ class NeuronActivationAnalyzer:
         Returns:
             Sorted list of dead neuron indices.
         """
-        return sorted(
-            s.neuron_idx for s in stats if s.max_val < threshold
-        )
+        return sorted(s.neuron_idx for s in stats if s.max_val < threshold)
 
     def find_monosemantic_neurons(
         self,
-        stats: List[NeuronActivationStats],
+        stats: list[NeuronActivationStats],
         mono_threshold: float = 0.9,
-    ) -> List[int]:
+    ) -> list[int]:
         """Return neuron indices that appear monosemantic (selective activation).
 
         Proxy: std / |mean| < mono_threshold when |mean| > 0.
@@ -117,7 +116,7 @@ class NeuronActivationAnalyzer:
         Returns:
             Sorted list of monosemantic neuron indices.
         """
-        result: List[int] = []
+        result: list[int] = []
         for s in stats:
             abs_mean = abs(s.mean)
             if abs_mean > 1e-8:

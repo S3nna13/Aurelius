@@ -11,17 +11,17 @@ Parameters used throughout:
 """
 
 import math
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.icl_retrieval import (
-    DemonstrationStore,
     DemonstrationEncoder,
     DemonstrationSelector,
+    DemonstrationStore,
     ICLPromptAssembler,
-    ICLRetrievalTrainer,
     ICLRetrievalConfig,
+    ICLRetrievalTrainer,
 )
 
 # ---------------------------------------------------------------------------
@@ -50,9 +50,7 @@ def make_store(n: int = 10) -> DemonstrationStore:
 
 
 def make_encoder() -> DemonstrationEncoder:
-    return DemonstrationEncoder(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_layers=2
-    )
+    return DemonstrationEncoder(d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_layers=2)
 
 
 def make_query_ids(length: int = T) -> torch.Tensor:
@@ -66,6 +64,7 @@ def make_batch_ids(batch: int = B, length: int = T) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # DemonstrationStore tests
 # ---------------------------------------------------------------------------
+
 
 def test_store_add_increases_size():
     store = DemonstrationStore(d_model=D_MODEL, capacity=CAPACITY)
@@ -125,6 +124,7 @@ def test_store_add_batch_increases_size():
 # DemonstrationEncoder tests
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_forward_output_shape():
     encoder = make_encoder()
     input_ids = make_batch_ids(B, T)
@@ -142,6 +142,7 @@ def test_encoder_output_is_finite():
 # ---------------------------------------------------------------------------
 # DemonstrationSelector tests
 # ---------------------------------------------------------------------------
+
 
 def test_selector_select_random_returns_k():
     store = make_store(n=10)
@@ -199,6 +200,7 @@ def test_selector_select_by_coverage_returns_k():
 # ICLPromptAssembler tests
 # ---------------------------------------------------------------------------
 
+
 def test_assembler_output_is_1d_tensor():
     assembler = ICLPromptAssembler(max_demo_tokens=32, separator_id=0)
     demos = [
@@ -224,10 +226,7 @@ def test_assembler_length_greater_than_query():
 def test_assembler_reorder_returns_same_k():
     assembler = ICLPromptAssembler()
     encoder = make_encoder()
-    demos = [
-        {"input": [1, 2], "output": [3], "label": i}
-        for i in range(K)
-    ]
+    demos = [{"input": [1, 2], "output": [3], "label": i} for i in range(K)]
     query_ids = make_query_ids(T)
     reordered = assembler.reorder_by_similarity(demos, query_ids, encoder)
     assert len(reordered) == K
@@ -238,10 +237,7 @@ def test_assembler_reorder_sorts_ascending_similarity():
     assembler = ICLPromptAssembler()
     encoder = make_encoder()
     query_ids = make_query_ids(T)
-    demos = [
-        {"input": [1, 2], "output": [3], "label": i}
-        for i in range(4)
-    ]
+    demos = [{"input": [1, 2], "output": [3], "label": i} for i in range(4)]
     reordered = assembler.reorder_by_similarity(demos, query_ids, encoder)
     # Verify it's still a list of dicts with correct length
     assert isinstance(reordered, list)
@@ -252,16 +248,11 @@ def test_assembler_reorder_sorts_ascending_similarity():
 
 def test_assembler_truncate_reduces_if_needed():
     assembler = ICLPromptAssembler()
-    demos = [
-        {"input": [1, 2, 3, 4, 5], "output": [6, 7, 8], "label": i}
-        for i in range(5)
-    ]
+    demos = [{"input": [1, 2, 3, 4, 5], "output": [6, 7, 8], "label": i} for i in range(5)]
     # Budget is very small — should drop some demos
     budget = 5
     result = assembler.truncate_to_budget(demos, budget)
-    total_tokens = sum(
-        len(d.get("input", [])) + len(d.get("output", [])) for d in result
-    )
+    total_tokens = sum(len(d.get("input", [])) + len(d.get("output", [])) for d in result)
     assert total_tokens <= budget or len(result) == 0
 
 
@@ -277,6 +268,7 @@ def test_assembler_truncate_no_change_if_within_budget():
 # ---------------------------------------------------------------------------
 # ICLRetrievalTrainer tests
 # ---------------------------------------------------------------------------
+
 
 class _DummyLM(nn.Module):
     def forward(self, x):
@@ -319,12 +311,13 @@ def test_trainer_loss_decreases_with_perfect_pairs():
         losses.append(loss.item())
 
     # At minimum the loss should be finite throughout
-    assert all(math.isfinite(l) for l in losses)
+    assert all(math.isfinite(line) for line in losses)
 
 
 # ---------------------------------------------------------------------------
 # ICLRetrievalConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = ICLRetrievalConfig()

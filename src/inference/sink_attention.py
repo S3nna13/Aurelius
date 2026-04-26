@@ -29,8 +29,9 @@ def apply_sink_attention(scores: torch.Tensor, sink_tokens: int, window_size: in
     return scores.masked_fill(~mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
 
-def sink_attention_weights(scores: torch.Tensor, sink_tokens: int, window_size: int) -> torch.Tensor:
+def sink_attention_weights(
+    scores: torch.Tensor, sink_tokens: int, window_size: int
+) -> torch.Tensor:
     """Return normalized sink attention weights."""
     masked = apply_sink_attention(scores, sink_tokens, window_size)
     return torch.softmax(masked, dim=-1)
-

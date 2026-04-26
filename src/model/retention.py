@@ -8,16 +8,16 @@ Supports three compute modes:
   - Recurrent  (inference):        O(1) per step — RNN-like state update
   - Chunkwise  (long sequences):   O(C*N) — process in fixed-size chunks
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -83,7 +83,7 @@ class MultiScaleRetention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, dropout: float = 0.0) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -122,8 +122,8 @@ class MultiScaleRetention(nn.Module):
         """Apply GroupNorm to (B, T, d_model) tensor."""
         # GroupNorm expects (B, C, *) — treat T as spatial dim
         B, T, C = x.shape
-        x = x.transpose(1, 2)   # (B, C, T)
-        x = self.group_norm(x)   # (B, C, T)
+        x = x.transpose(1, 2)  # (B, C, T)
+        x = self.group_norm(x)  # (B, C, T)
         return x.transpose(1, 2)  # (B, T, C)
 
     # ------------------------------------------------------------------
@@ -152,7 +152,7 @@ class MultiScaleRetention(nn.Module):
         scores = self.drop(scores)
 
         out = torch.matmul(scores, V)  # (B, H, T, head_dim)
-        out = self._merge_heads(out)   # (B, T, d_model)
+        out = self._merge_heads(out)  # (B, T, d_model)
         out = self._apply_group_norm(out)
         return self.out_proj(out)
 
@@ -195,9 +195,9 @@ class MultiScaleRetention(nn.Module):
         out = out.reshape(B, self.d_model)  # (B, d_model)
 
         # GroupNorm expects (B, C) — treat as (B, d_model, 1)
-        out_t = out.unsqueeze(2)   # (B, d_model, 1) — GroupNorm spatial
+        out_t = out.unsqueeze(2)  # (B, d_model, 1) — GroupNorm spatial
         out_t = self.group_norm(out_t)
-        out = out_t.squeeze(2)     # (B, d_model)
+        out = out_t.squeeze(2)  # (B, d_model)
         out = self.out_proj(out)
 
         return out, new_s
@@ -260,7 +260,7 @@ class MultiScaleRetention(nn.Module):
             # gammas: (H,) -> (H, 1)
             decay_cross = torch.pow(
                 gammas.unsqueeze(1),  # (H, 1)
-                pos.unsqueeze(0),     # (1, C)
+                pos.unsqueeze(0),  # (1, C)
             )  # (H, C)
 
             # state: (B, H, D, D); Q: (B, H, C, D)
@@ -269,7 +269,7 @@ class MultiScaleRetention(nn.Module):
             cross_out = cross_out * decay_cross.unsqueeze(0).unsqueeze(-1) / math.sqrt(D)
             # (B, H, C, D) * (1, H, C, 1)
 
-            out_chunk = (intra_out + cross_out)  # (B, H, C, D)
+            out_chunk = intra_out + cross_out  # (B, H, C, D)
             out_chunk = self._merge_heads(out_chunk)  # (B, C, d_model)
             out_chunk = self._apply_group_norm(out_chunk)
 
@@ -282,7 +282,7 @@ class MultiScaleRetention(nn.Module):
             # Add new KV contributions: for position i in chunk, decay = gamma^(C-1-i)
             # kv_i = K[i]^T V[i], weighted by gamma^(C-1-i)
             decay_kv = torch.pow(
-                gammas.unsqueeze(1),           # (H, 1)
+                gammas.unsqueeze(1),  # (H, 1)
                 torch.arange(C - 1, -1, -1, device=device, dtype=x.dtype).unsqueeze(0),  # (1, C)
             )  # (H, C)
 
@@ -292,7 +292,9 @@ class MultiScaleRetention(nn.Module):
             # weighted sum: (B, H, D, D)
             weighted_kv = torch.einsum(
                 "bhci,bhcj,hc->bhij",
-                K, V, decay_kv,
+                K,
+                V,
+                decay_kv,
             )  # (B, H, D, D)
 
             state = state + weighted_kv

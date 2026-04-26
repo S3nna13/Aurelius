@@ -7,8 +7,8 @@ Test parameters: d=16, N=8, M=6, B=2, T_a=6, T_b=4
 """
 
 import math
+
 import torch
-import pytest
 
 from src.training.optimal_transport_v2 import (
     CostMatrix,
@@ -47,6 +47,7 @@ def make_cost(n: int, m: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # CostMatrix tests
 # ---------------------------------------------------------------------------
+
 
 def test_l2_cost_shape():
     X = torch.randn(N, D)
@@ -92,8 +93,8 @@ def test_token_edit_cost_diagonal_zeros():
 def test_token_edit_cost_off_diagonal_one():
     """Different tokens must have cost 1."""
     # Two non-overlapping token sequences
-    seq_a = torch.zeros(4, dtype=torch.long)     # all token 0
-    seq_b = torch.ones(4, dtype=torch.long)      # all token 1
+    seq_a = torch.zeros(4, dtype=torch.long)  # all token 0
+    seq_b = torch.ones(4, dtype=torch.long)  # all token 1
     C = CostMatrix.token_edit_cost(seq_a, seq_b)
     assert (C == 1).all(), "token_edit_cost between different tokens should be 1"
 
@@ -101,6 +102,7 @@ def test_token_edit_cost_off_diagonal_one():
 # ---------------------------------------------------------------------------
 # SinkhornSolver tests
 # ---------------------------------------------------------------------------
+
 
 def test_sinkhorn_plan_shape():
     solver = SinkhornSolver(eps=0.1, n_iters=50)
@@ -170,6 +172,7 @@ def test_sinkhorn_plan_non_negative():
 # EarthMoversDistance tests
 # ---------------------------------------------------------------------------
 
+
 def test_emd_output_shape():
     emd = EarthMoversDistance(eps=0.1, n_iters=30)
     p = torch.ones(B, N) / N
@@ -201,6 +204,7 @@ def test_emd_uniform_returns_tensor():
 # ---------------------------------------------------------------------------
 # OTSequenceAligner tests
 # ---------------------------------------------------------------------------
+
 
 def test_align_sequences_plan_shape():
     solver = SinkhornSolver(eps=0.1, n_iters=50)
@@ -253,6 +257,7 @@ def test_barycentric_projection_finite():
 # OTDistillationLoss tests
 # ---------------------------------------------------------------------------
 
+
 def test_ot_distillation_loss_scalar():
     loss_fn = OTDistillationLoss(eps=0.1, n_iters=30, lambda_ot=1.0)
     student = torch.randn(B, T_A, D)
@@ -290,6 +295,7 @@ def test_ot_distillation_loss_same_length():
 # SlicedWasserstein tests
 # ---------------------------------------------------------------------------
 
+
 def test_sliced_wasserstein_non_negative():
     sw = SlicedWasserstein(n_projections=50)
     X = torch.randn(N, D)
@@ -323,6 +329,7 @@ def test_sliced_wasserstein_symmetric():
 # ---------------------------------------------------------------------------
 # OTConfig dataclass test
 # ---------------------------------------------------------------------------
+
 
 def test_ot_config_defaults():
     cfg = OTConfig()

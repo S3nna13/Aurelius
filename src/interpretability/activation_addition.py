@@ -18,17 +18,16 @@ Pure PyTorch — no HuggingFace.
 from __future__ import annotations
 
 import contextlib
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SteeringVector
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SteeringVector:
@@ -41,6 +40,7 @@ class SteeringVector:
     coefficient  : Default scaling factor applied during generation.
     label        : Human-readable description (e.g. "happy - sad").
     """
+
     direction: Tensor
     layer_idx: int
     coefficient: float = 1.0
@@ -50,6 +50,7 @@ class SteeringVector:
 # ---------------------------------------------------------------------------
 # ActivationAddition
 # ---------------------------------------------------------------------------
+
 
 class ActivationAddition:
     """Implements Activation Addition steering for an AureliusTransformer.
@@ -71,7 +72,7 @@ class ActivationAddition:
     def __init__(
         self,
         model: nn.Module,
-        layers_to_hook: Optional[List[int]] = None,
+        layers_to_hook: list[int] | None = None,
     ) -> None:
         self.model = model
         self.layers: nn.ModuleList = model.layers  # type: ignore[assignment]
@@ -81,11 +82,11 @@ class ActivationAddition:
         self.layers_to_hook = layers_to_hook
 
         # Active steering hooks (added/removed by apply_steering context manager)
-        self._steering_hooks: List[torch.utils.hooks.RemovableHook] = []
+        self._steering_hooks: list[torch.utils.hooks.RemovableHook] = []
 
         # Placeholder so remove_hooks() has something to clear even before any
         # capture hooks are registered.
-        self._capture_hooks: List[torch.utils.hooks.RemovableHook] = []
+        self._capture_hooks: list[torch.utils.hooks.RemovableHook] = []
 
     # ------------------------------------------------------------------
     # Public API
@@ -113,7 +114,7 @@ class ActivationAddition:
                 f"Hooked layers: {self.layers_to_hook}"
             )
 
-        captured: Dict[int, Tensor] = {}
+        captured: dict[int, Tensor] = {}
         layer = self.layers[layer_idx]
 
         def _capture_hook(module: nn.Module, inputs, output) -> None:
@@ -187,7 +188,7 @@ class ActivationAddition:
     def apply_steering(
         self,
         steering_vector: SteeringVector,
-        coefficient: Optional[float] = None,
+        coefficient: float | None = None,
     ):
         """Context manager that injects a steering vector during forward passes.
 
@@ -224,7 +225,7 @@ class ActivationAddition:
     def generate_steered(
         self,
         input_ids: Tensor,
-        steering_vectors: List[SteeringVector],
+        steering_vectors: list[SteeringVector],
         max_new_tokens: int = 20,
     ) -> Tensor:
         """Autoregressively generate tokens with steering vectors applied.
@@ -239,6 +240,7 @@ class ActivationAddition:
         -------
         (batch, prompt_len + max_new_tokens) token ids.
         """
+
         # Stack all context managers
         @contextlib.contextmanager
         def _all_steered():
@@ -273,6 +275,7 @@ class ActivationAddition:
 # SteeringVectorBank
 # ---------------------------------------------------------------------------
 
+
 class SteeringVectorBank:
     """A named store for SteeringVector objects with composition support.
 
@@ -285,7 +288,7 @@ class SteeringVectorBank:
     """
 
     def __init__(self) -> None:
-        self._store: Dict[str, SteeringVector] = {}
+        self._store: dict[str, SteeringVector] = {}
 
     def add(self, vector: SteeringVector, name: str) -> None:
         """Store *vector* under *name*."""
@@ -299,8 +302,8 @@ class SteeringVectorBank:
 
     def compose(
         self,
-        names: List[str],
-        weights: Optional[List[float]] = None,
+        names: list[str],
+        weights: list[float] | None = None,
     ) -> SteeringVector:
         """Return a new SteeringVector as the (optionally weighted) average.
 

@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import time
 import types
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from src.agent.plugin_hook import PluginHookRegistry
 
@@ -23,9 +24,7 @@ class SandboxConfig:
 
     timeout_seconds: float = 5.0
     max_memory_mb: int | None = None
-    denied_imports: list[str] = field(
-        default_factory=lambda: ["os", "subprocess", "sys", "socket"]
-    )
+    denied_imports: list[str] = field(default_factory=lambda: ["os", "subprocess", "sys", "socket"])
     allow_network: bool = False
 
     def __post_init__(self) -> None:
@@ -57,9 +56,7 @@ class PluginSandbox:
     ) -> SandboxResult:
         """Execute *callable_fn* after inspecting its globals for denied imports."""
         if not callable(callable_fn):
-            raise TypeError(
-                f"callable_fn must be callable, got {type(callable_fn).__name__}"
-            )
+            raise TypeError(f"callable_fn must be callable, got {type(callable_fn).__name__}")
 
         # Check globals for denied imports
         violation = self._check_callable_globals(callable_fn)

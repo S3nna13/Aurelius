@@ -7,32 +7,33 @@ integration schemes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ODEConfig:
     """Configuration for a NeuralODEBlock."""
 
-    n_steps: int = 4          # number of integration steps
-    step_size: float = 0.25   # dt per step (t spans [0, 1])
+    n_steps: int = 4  # number of integration steps
+    step_size: float = 0.25  # dt per step (t spans [0, 1])
     d_model: int = 64
-    solver: str = "euler"     # "euler" | "rk4" | "midpoint"
-    augment_dim: int = 0      # extra dims appended to state before integration
+    solver: str = "euler"  # "euler" | "rk4" | "midpoint"
+    augment_dim: int = 0  # extra dims appended to state before integration
 
 
 # ---------------------------------------------------------------------------
 # ODE dynamics function
 # ---------------------------------------------------------------------------
+
 
 class ODEFunction(nn.Module):
     """The right-hand-side dynamics f(t, h) of the neural ODE.
@@ -71,6 +72,7 @@ class ODEFunction(nn.Module):
 # ---------------------------------------------------------------------------
 # ODE solvers (standalone functions)
 # ---------------------------------------------------------------------------
+
 
 def euler_solve(
     f: Callable[[float, Tensor], Tensor],
@@ -166,6 +168,7 @@ def midpoint_solve(
 # NeuralODEBlock
 # ---------------------------------------------------------------------------
 
+
 class NeuralODEBlock(nn.Module):
     """Integrates hidden states through learned continuous dynamics.
 
@@ -214,6 +217,7 @@ class NeuralODEBlock(nn.Module):
 # ODETransformerBlock
 # ---------------------------------------------------------------------------
 
+
 class ODETransformerBlock(nn.Module):
     """Transformer block that replaces depth-wise layers with a Neural ODE.
 
@@ -243,6 +247,7 @@ class ODETransformerBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Trajectory utility
 # ---------------------------------------------------------------------------
+
 
 def compute_trajectory(
     ode_block: NeuralODEBlock,

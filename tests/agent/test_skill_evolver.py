@@ -84,9 +84,7 @@ def test_crystallize_parent_task_link(evolver):
 
 
 def test_crystallize_no_parent_match(evolver):
-    skill = evolver.crystallize(
-        {"task_name": "orphan", "steps": [], "parent_task": "nonexistent"}
-    )
+    skill = evolver.crystallize({"task_name": "orphan", "steps": [], "parent_task": "nonexistent"})
     assert skill.parent_skill_id is None
 
 
@@ -109,9 +107,7 @@ def test_match_by_description(evolver):
 
 
 def test_match_by_step(evolver):
-    evolver.crystallize(
-        {"task_name": "x", "steps": [{"action": "git push", "success": True}]}
-    )
+    evolver.crystallize({"task_name": "x", "steps": [{"action": "git push", "success": True}]})
     results = evolver.match("git")
     assert len(results) == 1
 
@@ -139,9 +135,7 @@ def test_refine_add_preconditions(evolver):
 
 def test_refine_replace_steps(evolver):
     skill = evolver.crystallize(SIMPLE_TASK)
-    updated = evolver.refine(
-        skill.skill_id, {"replace_steps": ["new_step_1", "new_step_2"]}
-    )
+    updated = evolver.refine(skill.skill_id, {"replace_steps": ["new_step_1", "new_step_2"]})
     assert updated.steps == ["new_step_1", "new_step_2"]
 
 
@@ -184,9 +178,7 @@ def test_refine_unknown_skill(evolver):
 
 def test_get_skill_tree_single_root(evolver):
     root = evolver.crystallize({"task_name": "root", "steps": []})
-    _child = evolver.crystallize(
-        {"task_name": "child", "steps": [], "parent_task": "root"}
-    )
+    _child = evolver.crystallize({"task_name": "child", "steps": [], "parent_task": "root"})
     tree = evolver.get_skill_tree(root.skill_id)
     assert tree["name"] == "root"
     assert len(tree["children"]) == 1
@@ -257,9 +249,7 @@ def test_forget_removes_skill(evolver):
 
 def test_forget_orphans_children(evolver):
     root = evolver.crystallize({"task_name": "root", "steps": []})
-    child = evolver.crystallize(
-        {"task_name": "child", "steps": [], "parent_task": "root"}
-    )
+    child = evolver.crystallize({"task_name": "child", "steps": [], "parent_task": "root"})
     evolver.forget(root.skill_id)
     assert child.parent_skill_id is None
 

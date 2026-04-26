@@ -31,11 +31,9 @@ real API rather than providing true memory savings.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
-
 
 __all__ = [
     "ShardSpec",
@@ -120,9 +118,9 @@ def shard_tensor(t: torch.Tensor, spec: ShardSpec) -> torch.Tensor:
 
 
 def gather_tensor(
-    shards: List[torch.Tensor],
+    shards: list[torch.Tensor],
     original_numel: int | None = None,
-    original_shape: Tuple[int, ...] | None = None,
+    original_shape: tuple[int, ...] | None = None,
 ) -> torch.Tensor:
     """Simulated all-gather: concatenate shards and restore the original shape.
 
@@ -183,11 +181,11 @@ class FSDPLite(nn.Module):
         #     behalf of peer ranks).
         #   - the local shard stored as an nn.Parameter so it shows up in
         #     self.parameters() (and so gradients flow to it).
-        self._param_shapes: Dict[str, Tuple[int, ...]] = {}
-        self._param_numels: Dict[str, int] = {}
-        self._peer_shards: Dict[str, List[torch.Tensor]] = {}
+        self._param_shapes: dict[str, tuple[int, ...]] = {}
+        self._param_numels: dict[str, int] = {}
+        self._peer_shards: dict[str, list[torch.Tensor]] = {}
         self._local_shards = nn.ParameterDict()
-        self._param_names: List[str] = []
+        self._param_names: list[str] = []
 
         for name, p in list(module.named_parameters()):
             safe = name.replace(".", "__")
@@ -197,7 +195,7 @@ class FSDPLite(nn.Module):
 
             # Build all shards from the current full parameter (simulates an
             # initial distribution where every rank already has its own slice).
-            all_shards: List[torch.Tensor] = []
+            all_shards: list[torch.Tensor] = []
             if spec.world_size == 1:
                 all_shards = [p.data.reshape(-1).detach().clone()]
             else:
@@ -224,7 +222,7 @@ class FSDPLite(nn.Module):
         if self.spec.world_size == 1:
             return local.reshape(self._param_shapes[safe])
 
-        ordered: List[torch.Tensor] = []
+        ordered: list[torch.Tensor] = []
         peer_iter = iter(peers)
         for r in range(self.spec.world_size):
             if r == self.spec.rank:
@@ -246,9 +244,9 @@ class FSDPLite(nn.Module):
         return self._allgather_stub(safe)
 
     # ------------------------------------------------------------- fwd / api
-    def _write_full_params_into_inner(self) -> Dict[str, torch.Tensor]:
+    def _write_full_params_into_inner(self) -> dict[str, torch.Tensor]:
         """Replace inner params with gathered tensors; return backups for restore."""
-        backups: Dict[str, torch.Tensor] = {}
+        backups: dict[str, torch.Tensor] = {}
         for name in self._param_names:
             safe = self._safe(name)
             full = self._allgather_stub(safe)
@@ -260,7 +258,7 @@ class FSDPLite(nn.Module):
             setattr(mod, attr, full)
         return backups
 
-    def _restore_inner(self, backups: Dict[str, torch.Tensor]) -> None:
+    def _restore_inner(self, backups: dict[str, torch.Tensor]) -> None:
         for name, original in backups.items():
             mod, attr = self._resolve(name)
             if hasattr(mod, attr):
@@ -270,7 +268,7 @@ class FSDPLite(nn.Module):
                     pass
             setattr(mod, attr, original)
 
-    def _resolve(self, dotted: str) -> Tuple[nn.Module, str]:
+    def _resolve(self, dotted: str) -> tuple[nn.Module, str]:
         parts = dotted.split(".")
         mod: nn.Module = self.inner
         for p in parts[:-1]:
@@ -302,7 +300,9 @@ class FSDPLite(nn.Module):
     def parameters(self, recurse: bool = True):  # type: ignore[override]
         return iter(self._local_shards.values())
 
-    def named_parameters(self, prefix: str = "", recurse: bool = True, remove_duplicate: bool = True):  # type: ignore[override]
+    def named_parameters(
+        self, prefix: str = "", recurse: bool = True, remove_duplicate: bool = True
+    ):  # type: ignore[override]
         for name in self._param_names:
             safe = self._safe(name)
             yield (f"{prefix}{name}" if prefix else name), self._local_shards[safe]

@@ -49,4 +49,3 @@ def test_ensemble_std_rejects_bad_rank():
 def test_reward_ensemble_report_scalar_disagreement():
     report = reward_ensemble_report(make_scores())
     assert report.disagreement.ndim == 0
-

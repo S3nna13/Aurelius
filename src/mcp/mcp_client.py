@@ -161,7 +161,7 @@ class MCPClient:
             if resp.error is None:
                 return resp
         # Return whatever the last attempt produced.
-        assert resp is not None  # max_retries >= 1 guaranteed by usage
+        assert resp is not None  # max_retries >= 1 guaranteed by usage  # noqa: S101
         return resp
 
 

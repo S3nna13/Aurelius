@@ -34,10 +34,7 @@ def test_swarm_scaler_integration():
 
     # --- submit 50 tasks with mixed priorities (0, 5, 10) --------------------
     random.seed(42)
-    payloads = [
-        {"task_id": i, "value": i + 1}
-        for i in range(50)
-    ]
+    payloads = [{"task_id": i, "value": i + 1} for i in range(50)]
     priorities = [random.choice([0, 5, 10]) for _ in range(50)]
 
     ids = scaler.submit_tasks(payloads, priorities=priorities)
@@ -84,9 +81,7 @@ def test_swarm_scaler_integration():
     assert speedup == pytest.approx(10.0), f"Expected speedup=10.0, got {speedup}"
 
     # --- registry wired correctly --------------------------------------------
-    assert "swarm_scaler" in AGENT_LOOP_REGISTRY, (
-        "AGENT_LOOP_REGISTRY must contain 'swarm_scaler'"
-    )
+    assert "swarm_scaler" in AGENT_LOOP_REGISTRY, "AGENT_LOOP_REGISTRY must contain 'swarm_scaler'"
     assert AGENT_LOOP_REGISTRY["swarm_scaler"] is SwarmScaler, (
         "AGENT_LOOP_REGISTRY['swarm_scaler'] must be the SwarmScaler class"
     )

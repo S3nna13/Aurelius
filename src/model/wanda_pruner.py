@@ -14,16 +14,15 @@ feature actually contributes to the output.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class WandaConfig:
@@ -49,6 +48,7 @@ class WandaConfig:
 # Scorer
 # ---------------------------------------------------------------------------
 
+
 class WandaScorer:
     """Accumulates calibration activations and computes Wanda importance scores.
 
@@ -63,7 +63,7 @@ class WandaScorer:
 
     def __init__(self, config: WandaConfig) -> None:
         self.config = config
-        self._norm_sq: Optional[Tensor] = None  # [in_features] running sum of ||x_j||^2
+        self._norm_sq: Tensor | None = None  # [in_features] running sum of ||x_j||^2
         self._n_samples: int = 0
 
     # ------------------------------------------------------------------
@@ -147,6 +147,7 @@ class WandaScorer:
 # ---------------------------------------------------------------------------
 # Pruner
 # ---------------------------------------------------------------------------
+
 
 class WandaPruner:
     """Applies Wanda importance-score-based pruning to a weight matrix.
@@ -237,7 +238,7 @@ class WandaPruner:
 
         W = W.clone()
         # Reshape to [out_features, in_features // m, m]
-        W_grouped      = W.reshape(out_features, in_features // m, m)
+        W_grouped = W.reshape(out_features, in_features // m, m)
         scores_grouped = scores.reshape(out_features, in_features // m, m)
 
         # Within each group of M values, find the top-N indices

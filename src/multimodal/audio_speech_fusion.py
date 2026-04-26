@@ -9,14 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import torch
 import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpeechFusionConfig:
@@ -33,6 +32,7 @@ class SpeechFusionConfig:
 # ---------------------------------------------------------------------------
 # AudioTextAligner
 # ---------------------------------------------------------------------------
+
 
 class AudioTextAligner(nn.Module):
     """Single-layer audio-text alignment: text tokens attend to audio tokens via cross-attention.
@@ -59,7 +59,9 @@ class AudioTextAligner(nn.Module):
         super().__init__()
         self.audio_proj = nn.Linear(audio_d_model, fused_d_model)
         self.text_proj = nn.Linear(text_d_model, fused_d_model)
-        self.cross_attn = nn.MultiheadAttention(fused_d_model, n_heads, dropout=dropout, batch_first=True)
+        self.cross_attn = nn.MultiheadAttention(
+            fused_d_model, n_heads, dropout=dropout, batch_first=True
+        )
         self.ln = nn.LayerNorm(fused_d_model)
 
     def forward(self, audio: Tensor, text: Tensor) -> Tensor:
@@ -73,14 +75,14 @@ class AudioTextAligner(nn.Module):
             (B, T_t, fused_d_model) — text features enriched with audio context.
         """
         # Project both modalities to shared fused space
-        audio_fused = self.audio_proj(audio)   # (B, T_a, fused_d_model)
-        text_fused = self.text_proj(text)       # (B, T_t, fused_d_model)
+        audio_fused = self.audio_proj(audio)  # (B, T_a, fused_d_model)
+        text_fused = self.text_proj(text)  # (B, T_t, fused_d_model)
 
         # Cross-attention: text queries attend to audio keys/values
         ca_out, _ = self.cross_attn(text_fused, audio_fused, audio_fused)
 
         # Residual + LayerNorm
-        out = self.ln(text_fused + ca_out)      # (B, T_t, fused_d_model)
+        out = self.ln(text_fused + ca_out)  # (B, T_t, fused_d_model)
 
         return out
 
@@ -88,6 +90,7 @@ class AudioTextAligner(nn.Module):
 # ---------------------------------------------------------------------------
 # SpeechFusionEncoder
 # ---------------------------------------------------------------------------
+
 
 class SpeechFusionEncoder(nn.Module):
     """Stack of AudioTextAligner layers for deep audio-speech fusion.
@@ -136,7 +139,7 @@ class SpeechFusionEncoder(nn.Module):
         self.output_proj = nn.Linear(fused_d_model, fused_d_model)
 
     @classmethod
-    def from_config(cls, cfg: SpeechFusionConfig) -> "SpeechFusionEncoder":
+    def from_config(cls, cfg: SpeechFusionConfig) -> SpeechFusionEncoder:
         """Construct a SpeechFusionEncoder from a SpeechFusionConfig.
 
         Args:

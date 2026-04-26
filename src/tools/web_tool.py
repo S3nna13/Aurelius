@@ -4,31 +4,36 @@ Security-first design: URL allowlist, response size cap, no cookie persistence,
 no credential forwarding. Inspired by OpenDevin browser tool
 (OpenDevin/OpenDevin, Apache-2.0). License: MIT.
 """
+
 from __future__ import annotations
 
 import re
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
-from .tool_registry import ToolResult, ToolSpec, TOOL_REGISTRY
 
-_MAX_RESPONSE_BYTES = 500_000    # 500KB
+from .tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
+
+_MAX_RESPONSE_BYTES = 500_000  # 500KB
 _MAX_URL_LEN = 2048
-_REQUEST_TIMEOUT = 10            # seconds
+_REQUEST_TIMEOUT = 10  # seconds
 _ALLOWED_SCHEMES = frozenset(["https", "http"])
 
-_DENY_HOST_PATTERNS: tuple[re.Pattern, ...] = tuple(re.compile(p) for p in [
-    r"^169\.254\.",             # link-local
-    r"^127\.",                  # loopback
-    r"^10\.",                   # RFC1918
-    r"^172\.(1[6-9]|2\d|3[01])\.",  # RFC1918
-    r"^192\.168\.",             # RFC1918
-    r"^::1$",                   # IPv6 loopback
-    r"^fd",                     # IPv6 ULA
-    r"localhost$",
-    r"metadata\.google\.internal",
-    r"169\.254\.169\.254",      # AWS/GCP IMDS
-])
+_DENY_HOST_PATTERNS: tuple[re.Pattern, ...] = tuple(
+    re.compile(p)
+    for p in [
+        r"^169\.254\.",  # link-local
+        r"^127\.",  # loopback
+        r"^10\.",  # RFC1918
+        r"^172\.(1[6-9]|2\d|3[01])\.",  # RFC1918
+        r"^192\.168\.",  # RFC1918
+        r"^::1$",  # IPv6 loopback
+        r"^fd",  # IPv6 ULA
+        r"localhost$",
+        r"metadata\.google\.internal",
+        r"169\.254\.169\.254",  # AWS/GCP IMDS
+    ]
+)
 
 
 def _is_safe_url(url: str) -> tuple[bool, str]:
@@ -55,7 +60,7 @@ class WebTool:
         if not safe:
             return ToolResult(tool_name="web", success=False, output="", error=reason)
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})  # noqa: S310
             # URL scheme and host are validated via _is_safe_url before open.
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
                 raw = resp.read(_MAX_RESPONSE_BYTES)

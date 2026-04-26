@@ -31,36 +31,91 @@ class TaskDecomposer:
             (
                 ["open", "launch"],
                 [
-                    {"description": "Navigate to application", "action_type": "NAVIGATE", "target": "app", "estimated_ms": 300},
-                    {"description": "Take screenshot of result", "action_type": "SCREENSHOT", "target": "", "estimated_ms": 100},
+                    {
+                        "description": "Navigate to application",
+                        "action_type": "NAVIGATE",
+                        "target": "app",
+                        "estimated_ms": 300,
+                    },
+                    {
+                        "description": "Take screenshot of result",
+                        "action_type": "SCREENSHOT",
+                        "target": "",
+                        "estimated_ms": 100,
+                    },
                 ],
             ),
             (
                 ["type", "enter"],
                 [
-                    {"description": "Click on target field", "action_type": "CLICK", "target": "field", "estimated_ms": 100},
-                    {"description": "Type the specified text", "action_type": "TYPE", "target": "field", "estimated_ms": 200},
-                    {"description": "Take screenshot of result", "action_type": "SCREENSHOT", "target": "", "estimated_ms": 100},
+                    {
+                        "description": "Click on target field",
+                        "action_type": "CLICK",
+                        "target": "field",
+                        "estimated_ms": 100,
+                    },
+                    {
+                        "description": "Type the specified text",
+                        "action_type": "TYPE",
+                        "target": "field",
+                        "estimated_ms": 200,
+                    },
+                    {
+                        "description": "Take screenshot of result",
+                        "action_type": "SCREENSHOT",
+                        "target": "",
+                        "estimated_ms": 100,
+                    },
                 ],
             ),
             (
                 ["click"],
                 [
-                    {"description": "Take screenshot to locate target", "action_type": "SCREENSHOT", "target": "", "estimated_ms": 100},
-                    {"description": "Click the specified target", "action_type": "CLICK", "target": "target", "estimated_ms": 100},
+                    {
+                        "description": "Take screenshot to locate target",
+                        "action_type": "SCREENSHOT",
+                        "target": "",
+                        "estimated_ms": 100,
+                    },
+                    {
+                        "description": "Click the specified target",
+                        "action_type": "CLICK",
+                        "target": "target",
+                        "estimated_ms": 100,
+                    },
                 ],
             ),
             (
                 ["scroll"],
                 [
-                    {"description": "Scroll in the specified direction", "action_type": "SCROLL", "target": "direction", "estimated_ms": 200},
-                    {"description": "Take screenshot of result", "action_type": "SCREENSHOT", "target": "", "estimated_ms": 100},
+                    {
+                        "description": "Scroll in the specified direction",
+                        "action_type": "SCROLL",
+                        "target": "direction",
+                        "estimated_ms": 200,
+                    },
+                    {
+                        "description": "Take screenshot of result",
+                        "action_type": "SCREENSHOT",
+                        "target": "",
+                        "estimated_ms": 100,
+                    },
                 ],
             ),
         ]
         self._default_steps: list[dict] = [
-            {"description": "Take screenshot to assess state", "action_type": "SCREENSHOT", "target": "", "estimated_ms": 100},
-            {"description": "Wait for task completion", "action_type": "WAIT", "target": "", "estimated_ms": 500},
+            {
+                "description": "Take screenshot to assess state",
+                "action_type": "SCREENSHOT",
+                "target": "",
+                "estimated_ms": 100,
+            },
+            {
+                "description": "Wait for task completion",
+                "action_type": "WAIT",
+                "target": "",
+                "estimated_ms": 500,
+            },
         ]
 
     def decompose(self, task: str) -> DecomposedTask:

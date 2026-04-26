@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class ToggleState(Enum):
@@ -77,7 +76,7 @@ class FeatureToggleManager:
         """Return sorted list of all registered toggle names."""
         return sorted(self._toggles.keys())
 
-    def get(self, name: str) -> Optional[FeatureToggle]:
+    def get(self, name: str) -> FeatureToggle | None:
         """Return the FeatureToggle for *name*, or None if not found."""
         return self._toggles.get(name)
 

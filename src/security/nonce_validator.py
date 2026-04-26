@@ -2,6 +2,7 @@
 
 Trail of Bits: validate before trusting, reject stale messages.
 """
+
 from __future__ import annotations
 
 import time

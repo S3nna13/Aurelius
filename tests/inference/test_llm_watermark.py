@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 
 import torch
-import pytest
 
 from src.inference.llm_watermark import (
     GreenRedPartitioner,
@@ -34,6 +33,7 @@ BATCH = 2
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _partitioner() -> GreenRedPartitioner:
     return GreenRedPartitioner(vocab_size=VOCAB, gamma=GAMMA, seed_key=42)
@@ -120,9 +120,9 @@ def test_logits_processor_green_boosted() -> None:
         ctx_hash = p.context_hash(input_ids[b])
         green_ids, _ = p.partition(ctx_hash)
         # All green positions should be exactly DELTA
-        assert torch.allclose(
-            out[b, green_ids], torch.full_like(out[b, green_ids], DELTA)
-        ), f"Batch {b}: green logits should be boosted by delta={DELTA}"
+        assert torch.allclose(out[b, green_ids], torch.full_like(out[b, green_ids], DELTA)), (
+            f"Batch {b}: green logits should be boosted by delta={DELTA}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +138,9 @@ def test_logits_processor_red_unchanged() -> None:
     for b in range(BATCH):
         ctx_hash = p.context_hash(input_ids[b])
         _, red_ids = p.partition(ctx_hash)
-        assert torch.allclose(
-            out[b, red_ids], torch.zeros_like(out[b, red_ids])
-        ), f"Batch {b}: red logits must remain unchanged"
+        assert torch.allclose(out[b, red_ids], torch.zeros_like(out[b, red_ids])), (
+            f"Batch {b}: red logits must remain unchanged"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +265,7 @@ def test_distortion_score_nonneg_and_zero_for_identical() -> None:
     assert abs(score_same) < 1e-5, f"Identical logits → distortion 0, got {score_same}"
 
     wm_logits = logits.clone()
-    wm_logits[:, :VOCAB // 2] += 3.0
+    wm_logits[:, : VOCAB // 2] += 3.0
     score_diff = bench.distortion_score(logits, wm_logits)
     assert score_diff >= 0.0, f"Distortion score must be ≥ 0, got {score_diff}"
 
@@ -276,8 +276,8 @@ def test_distortion_score_nonneg_and_zero_for_identical() -> None:
 def test_perplexity_impact_positive() -> None:
     det = _detector()
     bench = WatermarkBenchmark(det)
-    clean_lp = torch.full((SEQ_LEN,), -1.0)          # log probs = -1.0
-    wm_lp = torch.full((SEQ_LEN,), -2.0)             # worse log probs
+    clean_lp = torch.full((SEQ_LEN,), -1.0)  # log probs = -1.0
+    wm_lp = torch.full((SEQ_LEN,), -2.0)  # worse log probs
     impact = bench.perplexity_impact(wm_lp, clean_lp)
     assert impact > 0.0, f"perplexity_impact must be positive, got {impact}"
     assert impact > 1.0, "Watermarked perplexity should be higher than clean when lp is worse"

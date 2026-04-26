@@ -21,7 +21,6 @@ from dataclasses import dataclass
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -185,9 +184,7 @@ class CPOTrainer:
             Scalar loss tensor.
         """
         log_p_w = self.sequence_log_prob(batch.chosen_log_probs, batch.chosen_mask)
-        log_p_l = self.sequence_log_prob(
-            batch.rejected_log_probs, batch.rejected_mask
-        )
+        log_p_l = self.sequence_log_prob(batch.rejected_log_probs, batch.rejected_mask)
         log_ratio = log_p_w - log_p_l
         return -F.logsigmoid(self.config.beta * log_ratio).mean()
 
@@ -218,9 +215,7 @@ class CPOTrainer:
 
         # Recompute log-ratio for diagnostics
         log_p_w = self.sequence_log_prob(batch.chosen_log_probs, batch.chosen_mask)
-        log_p_l = self.sequence_log_prob(
-            batch.rejected_log_probs, batch.rejected_mask
-        )
+        log_p_l = self.sequence_log_prob(batch.rejected_log_probs, batch.rejected_mask)
         log_ratio = log_p_w - log_p_l
 
         combined = cfg.sft_weight * sft + pref
@@ -251,12 +246,8 @@ class CPOTrainer:
             - ``"log_ratio_mean"``        — mean log-ratio across the batch.
         """
         with torch.no_grad():
-            log_p_w = self.sequence_log_prob(
-                batch.chosen_log_probs, batch.chosen_mask
-            )
-            log_p_l = self.sequence_log_prob(
-                batch.rejected_log_probs, batch.rejected_mask
-            )
+            log_p_w = self.sequence_log_prob(batch.chosen_log_probs, batch.chosen_mask)
+            log_p_l = self.sequence_log_prob(batch.rejected_log_probs, batch.rejected_mask)
             log_ratio = log_p_w - log_p_l
             reward_acc = (log_ratio > 0).float().mean().item()
 

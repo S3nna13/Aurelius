@@ -4,9 +4,6 @@ Tests for LARS and LAMB optimizers.
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
 
@@ -17,10 +14,10 @@ from src.training.lars_lamb import (
     get_param_groups_for_lars,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_linear(in_features=16, out_features=8, bias=True):
     """Return a small nn.Linear for testing."""
@@ -42,12 +39,13 @@ def make_mlp():
 def quadratic_loss(model, x):
     """Simple MSE loss against zero target."""
     out = model(x)
-    return (out ** 2).mean()
+    return (out**2).mean()
 
 
 # ---------------------------------------------------------------------------
 # Test 1: LARS instantiates with correct defaults
 # ---------------------------------------------------------------------------
+
 
 def test_lars_instantiates_defaults():
     model = make_linear()
@@ -63,6 +61,7 @@ def test_lars_instantiates_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: LAMB instantiates with correct defaults
 # ---------------------------------------------------------------------------
+
 
 def test_lamb_instantiates_defaults():
     model = make_linear()
@@ -80,6 +79,7 @@ def test_lamb_instantiates_defaults():
 # ---------------------------------------------------------------------------
 # Test 3: LARS step reduces loss on simple quadratic over 50 steps
 # ---------------------------------------------------------------------------
+
 
 def test_lars_reduces_loss_quadratic():
     torch.manual_seed(0)
@@ -105,6 +105,7 @@ def test_lars_reduces_loss_quadratic():
 # Test 4: LAMB step reduces loss on simple quadratic over 30 steps
 # ---------------------------------------------------------------------------
 
+
 def test_lamb_reduces_loss_quadratic():
     torch.manual_seed(0)
     model = make_linear()
@@ -129,6 +130,7 @@ def test_lamb_reduces_loss_quadratic():
 # Test 5: compute_trust_ratio returns positive value
 # ---------------------------------------------------------------------------
 
+
 def test_compute_trust_ratio_positive():
     torch.manual_seed(1)
     param = torch.randn(8, 16)
@@ -140,6 +142,7 @@ def test_compute_trust_ratio_positive():
 # ---------------------------------------------------------------------------
 # Test 6: compute_trust_ratio with zero param returns small value (no div by zero)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_trust_ratio_zero_param():
     param = torch.zeros(8, 16)
@@ -155,6 +158,7 @@ def test_compute_trust_ratio_zero_param():
 # Test 7: compute_trust_ratio with zero grad returns large value (param/eps)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_trust_ratio_zero_grad():
     torch.manual_seed(2)
     param = torch.randn(8, 16)
@@ -164,15 +168,14 @@ def test_compute_trust_ratio_zero_grad():
     # With zero grad and zero weight_decay, ratio ~ param_norm / eps
     ratio = compute_trust_ratio(param, grad, weight_decay=0.0, eps=eps)
     expected = param_norm / eps
-    assert abs(ratio - expected) < 1.0, (
-        f"Expected ratio ~{expected:.2f}, got {ratio:.2f}"
-    )
+    assert abs(ratio - expected) < 1.0, f"Expected ratio ~{expected:.2f}, got {ratio:.2f}"
     assert ratio > 1.0, f"Expected large ratio for zero grad, got {ratio}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: LARS trust ratio scales layer learning rate (effective lr != base lr)
 # ---------------------------------------------------------------------------
+
 
 def test_lars_trust_ratio_scales_lr():
     """
@@ -190,10 +193,22 @@ def test_lars_trust_ratio_scales_lr():
 
     x = torch.randn(32, 16)
 
-    opt_a = LARS(model_a.parameters(), lr=0.1, momentum=0.0, weight_decay=0.0,
-                 trust_coefficient=0.001, exclude_bias_and_bn=True)
-    opt_b = LARS(model_b.parameters(), lr=0.1, momentum=0.0, weight_decay=0.0,
-                 trust_coefficient=1.0, exclude_bias_and_bn=True)
+    opt_a = LARS(
+        model_a.parameters(),
+        lr=0.1,
+        momentum=0.0,
+        weight_decay=0.0,
+        trust_coefficient=0.001,
+        exclude_bias_and_bn=True,
+    )
+    opt_b = LARS(
+        model_b.parameters(),
+        lr=0.1,
+        momentum=0.0,
+        weight_decay=0.0,
+        trust_coefficient=1.0,
+        exclude_bias_and_bn=True,
+    )
 
     opt_a.zero_grad()
     quadratic_loss(model_a, x).backward()
@@ -212,6 +227,7 @@ def test_lars_trust_ratio_scales_lr():
 # ---------------------------------------------------------------------------
 # Test 9: LAMB step with adam_w_mode=True applies decoupled weight decay
 # ---------------------------------------------------------------------------
+
 
 def test_lamb_adam_w_mode_decoupled_weight_decay():
     """
@@ -250,11 +266,11 @@ def test_lamb_adam_w_mode_decoupled_weight_decay():
 # Test 10: LARS with momentum=0.0 works (no velocity accumulation)
 # ---------------------------------------------------------------------------
 
+
 def test_lars_no_momentum():
     torch.manual_seed(6)
     model = make_linear()
-    opt = LARS(model.parameters(), lr=0.1, momentum=0.0, weight_decay=0.0,
-               trust_coefficient=1.0)
+    opt = LARS(model.parameters(), lr=0.1, momentum=0.0, weight_decay=0.0, trust_coefficient=1.0)
     x = torch.randn(32, 16)
 
     initial_loss = quadratic_loss(model, x).item()
@@ -283,6 +299,7 @@ def test_lars_no_momentum():
 # Test 11: LAMB betas: moment estimates update with correct decay
 # ---------------------------------------------------------------------------
 
+
 def test_lamb_betas_moment_estimates():
     """
     After one step, verify the moment estimates follow the update rules exactly.
@@ -306,7 +323,7 @@ def test_lamb_betas_moment_estimates():
 
     # After step 1: exp_avg = (1-beta1)*grad; exp_avg_sq = (1-beta2)*grad^2
     expected_m = (1.0 - beta1) * grad_before
-    expected_v = (1.0 - beta2) * grad_before ** 2
+    expected_v = (1.0 - beta2) * grad_before**2
 
     assert torch.allclose(exp_avg, expected_m, atol=1e-6), (
         f"exp_avg mismatch: max diff = {(exp_avg - expected_m).abs().max():.2e}"
@@ -320,6 +337,7 @@ def test_lamb_betas_moment_estimates():
 # Test 12: get_param_groups_for_lars returns 2 groups
 # ---------------------------------------------------------------------------
 
+
 def test_get_param_groups_returns_two_groups():
     model = make_mlp()
     groups = get_param_groups_for_lars(model, weight_decay=1e-4)
@@ -329,6 +347,7 @@ def test_get_param_groups_returns_two_groups():
 # ---------------------------------------------------------------------------
 # Test 13: get_param_groups_for_lars: bias params in no-weight-decay group
 # ---------------------------------------------------------------------------
+
 
 def test_get_param_groups_bias_in_no_decay_group():
     model = make_linear(bias=True)
@@ -360,6 +379,7 @@ def test_get_param_groups_bias_in_no_decay_group():
 # Test 14: LARS exclude_bias_and_bn=True: bias params don't get trust ratio scaling
 # ---------------------------------------------------------------------------
 
+
 def test_lars_exclude_bias_no_trust_ratio():
     """
     When exclude_bias_and_bn=True, 1D params (bias) should not get trust ratio.
@@ -387,6 +407,7 @@ def test_lars_exclude_bias_no_trust_ratio():
 # Test 15: LAMB clamp_value limits trust ratio (test with tiny grad)
 # ---------------------------------------------------------------------------
 
+
 def test_lamb_clamp_trust_ratio():
     """
     When the gradient is extremely tiny, the trust ratio would be huge.
@@ -413,7 +434,7 @@ def test_lamb_clamp_trust_ratio():
     quadratic_loss(model, x).backward()
 
     # Manually compute what trust ratio would be unbounded
-    grad = model.weight.grad.clone()
+    model.weight.grad.clone()
     param = model.weight.clone()
 
     opt.step()
@@ -442,6 +463,7 @@ def test_lamb_clamp_trust_ratio():
 # Test 16: Both optimizers work with multiple param groups
 # ---------------------------------------------------------------------------
 
+
 def test_both_optimizers_multiple_param_groups():
     """
     Both LARS and LAMB should work when initialized with multiple param groups
@@ -463,8 +485,7 @@ def test_both_optimizers_multiple_param_groups():
         {"params": params_group3, "lr": 1e-3},
     ]
 
-    opt_lars = LARS(lars_groups, lr=0.005, momentum=0.9, weight_decay=0.0,
-                    trust_coefficient=1.0)
+    opt_lars = LARS(lars_groups, lr=0.005, momentum=0.9, weight_decay=0.0, trust_coefficient=1.0)
     opt_lamb = LAMB(lamb_groups, lr=1e-3, weight_decay=0.0)
 
     x = torch.randn(16, 16)
@@ -473,14 +494,14 @@ def test_both_optimizers_multiple_param_groups():
     opt_lars.zero_grad()
     # Use only params from groups
     out = model(x)
-    loss = (out ** 2).mean()
+    loss = (out**2).mean()
     loss.backward()
     opt_lars.step()
 
     # LAMB forward/backward
     opt_lamb.zero_grad()
     out = model(x)
-    loss = (out ** 2).mean()
+    loss = (out**2).mean()
     loss.backward()
     opt_lamb.step()
 

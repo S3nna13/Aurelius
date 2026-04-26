@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from src.model.config import AureliusConfig
 from src.safety import (
-    SAFETY_FILTER_REGISTRY,
     RULE_ENGINE_SEED_RULES,
+    SAFETY_FILTER_REGISTRY,
     RuleEngine,
 )
 

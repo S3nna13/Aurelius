@@ -13,45 +13,46 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.computer_use.screen_parser import SCREEN_PARSER_REGISTRY  # noqa: F401
-    from src.computer_use.gui_action import GUI_ACTION_REGISTRY  # noqa: F401
-    from src.computer_use.browser_driver import (  # noqa: F401
-        BrowserDriver,
-        StubBrowserDriver,
-        BrowserDriverError,
-        BROWSER_DRIVER_REGISTRY,
-    )
-    from src.computer_use.trajectory_replay import (  # noqa: F401
-        TrajectoryRecorder,
-        TrajectoryReplayer,
-        Trajectory,
-        TRAJECTORY_REGISTRY,
-    )
-    from src.computer_use.webarena_eval import (  # noqa: F401
-        WebArenaHarness,
-        WebTask,
-        TaskResult,
-        SuccessEvaluator,
-        WebArenaError,
-        WEBARENA_HARNESS_REGISTRY,
-        WEBARENA_DEFAULT_TASKS,
+    from src.computer_use.action_planner import (
+        COMPUTER_USE_REGISTRY as COMPUTER_USE_REGISTRY,
     )
     from src.computer_use.action_planner import (  # noqa: F401
-        ActionPlanner,
         ActionPlan,
-        PlannedAction,
+        ActionPlanner,
         ActionType,
-        COMPUTER_USE_REGISTRY as _ACTION_PLANNER_REGISTRY,
+        PlannedAction,
     )
-    from src.computer_use.screen_state_tracker import (  # noqa: F401
-        ScreenStateTracker,
-        ScreenState,
-        ScreenRegion,
-        COMPUTER_USE_REGISTRY as _SCREEN_STATE_REGISTRY,
+    from src.computer_use.browser_driver import (  # noqa: F401
+        BROWSER_DRIVER_REGISTRY,
+        BrowserDriver,
+        BrowserDriverError,
+        StubBrowserDriver,
     )
+    from src.computer_use.gui_action import GUI_ACTION_REGISTRY  # noqa: F401
     from src.computer_use.screen_analyzer import (  # noqa: F401
-        ScreenAnalyzer,
         SCREEN_ANALYZER_REGISTRY,
+        ScreenAnalyzer,
+    )
+    from src.computer_use.screen_parser import SCREEN_PARSER_REGISTRY  # noqa: F401
+    from src.computer_use.screen_state_tracker import (  # noqa: F401
+        ScreenRegion,
+        ScreenState,
+        ScreenStateTracker,
+    )
+    from src.computer_use.trajectory_replay import (  # noqa: F401
+        TRAJECTORY_REGISTRY,
+        Trajectory,
+        TrajectoryRecorder,
+        TrajectoryReplayer,
+    )
+    from src.computer_use.webarena_eval import (  # noqa: F401
+        WEBARENA_DEFAULT_TASKS,
+        WEBARENA_HARNESS_REGISTRY,
+        SuccessEvaluator,
+        TaskResult,
+        WebArenaError,
+        WebArenaHarness,
+        WebTask,
     )
 
 __all__ = [
@@ -99,7 +100,17 @@ __all__ = [
     "WEBARENA_DEFAULT_TASKS",
 ]
 
-_SUBMODULES = ("screen_parser", "gui_action", "action_verifier", "browser_driver", "trajectory_replay", "webarena_eval", "action_planner", "screen_state_tracker", "screen_analyzer")
+_SUBMODULES = (
+    "screen_parser",
+    "gui_action",
+    "action_verifier",
+    "browser_driver",
+    "trajectory_replay",
+    "webarena_eval",
+    "action_planner",
+    "screen_state_tracker",
+    "screen_analyzer",
+)
 
 _REGISTRY_ATTRS: dict[str, tuple[str, str]] = {
     "SCREEN_PARSER_REGISTRY": ("screen_parser", "SCREEN_PARSER_REGISTRY"),
@@ -155,9 +166,4 @@ def __getattr__(name: str):
 
 
 def __dir__() -> list[str]:
-    return sorted(
-        set(globals())
-        | set(_SUBMODULES)
-        | set(_REGISTRY_ATTRS)
-        | set(_CLASS_ATTRS)
-    )
+    return sorted(set(globals()) | set(_SUBMODULES) | set(_REGISTRY_ATTRS) | set(_CLASS_ATTRS))

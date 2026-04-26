@@ -9,15 +9,13 @@ Verifies that:
 
 from __future__ import annotations
 
-import pytest
-
 from src.chat import CHAT_TEMPLATE_REGISTRY
 from src.chat.harmony_template import HarmonyTemplate
-
 
 # ---------------------------------------------------------------------------
 # 1. Registry contains "harmony"
 # ---------------------------------------------------------------------------
+
 
 def test_harmony_key_in_registry() -> None:
     assert "harmony" in CHAT_TEMPLATE_REGISTRY, (
@@ -29,6 +27,7 @@ def test_harmony_key_in_registry() -> None:
 # 2. Registry value is a HarmonyTemplate instance
 # ---------------------------------------------------------------------------
 
+
 def test_harmony_registry_value_is_instance() -> None:
     assert isinstance(CHAT_TEMPLATE_REGISTRY["harmony"], HarmonyTemplate)
 
@@ -36,6 +35,7 @@ def test_harmony_registry_value_is_instance() -> None:
 # ---------------------------------------------------------------------------
 # 3. Construct from registry, render user+assistant, check delimiters
 # ---------------------------------------------------------------------------
+
 
 def test_render_user_assistant_from_registry() -> None:
     tpl = CHAT_TEMPLATE_REGISTRY["harmony"]
@@ -62,25 +62,24 @@ def test_render_user_assistant_from_registry() -> None:
 # 4. Existing registry key "chatml" is unaffected (regression guard)
 # ---------------------------------------------------------------------------
 
+
 def test_chatml_key_still_present_after_harmony_registration() -> None:
-    assert "chatml" in CHAT_TEMPLATE_REGISTRY, (
-        "Registering 'harmony' must not remove 'chatml'"
-    )
+    assert "chatml" in CHAT_TEMPLATE_REGISTRY, "Registering 'harmony' must not remove 'chatml'"
 
 
 # ---------------------------------------------------------------------------
 # 5. Existing registry key "llama3" is unaffected (regression guard)
 # ---------------------------------------------------------------------------
 
+
 def test_llama3_key_still_present_after_harmony_registration() -> None:
-    assert "llama3" in CHAT_TEMPLATE_REGISTRY, (
-        "Registering 'harmony' must not remove 'llama3'"
-    )
+    assert "llama3" in CHAT_TEMPLATE_REGISTRY, "Registering 'harmony' must not remove 'llama3'"
 
 
 # ---------------------------------------------------------------------------
 # Additional integration scenarios
 # ---------------------------------------------------------------------------
+
 
 def test_system_user_assistant_tool_pipeline_from_registry() -> None:
     """Full pipeline: system → user → assistant (with think) → tool → assistant."""

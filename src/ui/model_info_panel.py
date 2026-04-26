@@ -8,7 +8,7 @@ Only rich, stdlib, and project-local imports are used.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from rich.console import Console
@@ -101,10 +101,7 @@ class ModelInfoPanel:
             ModelInfoError: If *key* is not found.
         """
         if key not in self._entries:
-            raise ModelInfoError(
-                f"entry {key!r} not found; "
-                f"available: {list(self._entries)}"
-            )
+            raise ModelInfoError(f"entry {key!r} not found; available: {list(self._entries)}")
         self._entries[key].value = value
 
     def get(self, key: str) -> ModelInfoEntry:
@@ -117,10 +114,7 @@ class ModelInfoPanel:
             ModelInfoError: If *key* is not found.
         """
         if key not in self._entries:
-            raise ModelInfoError(
-                f"entry {key!r} not found; "
-                f"available: {list(self._entries)}"
-            )
+            raise ModelInfoError(f"entry {key!r} not found; available: {list(self._entries)}")
         return self._entries[key]
 
     def entries_by_category(self, category: str) -> list[ModelInfoEntry]:

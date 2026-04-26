@@ -1,27 +1,27 @@
 """Tests for src/training/reward_shaping.py"""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.training.reward_shaping import (
-    RewardShapingConfig,
-    RewardShaper,
     EWMARewardNormalizer,
+    RewardShaper,
+    RewardShapingConfig,
+    apply_potential_shaping,
+    compute_discounted_returns,
+    length_penalty,
     normalize_rewards,
-    normalize_rewards_zscore,
     normalize_rewards_minmax,
     normalize_rewards_rank,
-    compute_discounted_returns,
-    apply_potential_shaping,
-    length_penalty,
+    normalize_rewards_zscore,
     repetition_penalty,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Config defaults
 # ---------------------------------------------------------------------------
+
 
 def test_reward_shaping_config_defaults():
     cfg = RewardShapingConfig()
@@ -37,6 +37,7 @@ def test_reward_shaping_config_defaults():
 # 2. Z-score normalization
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_zscore_mean_std():
     rewards = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
     normalized = normalize_rewards_zscore(rewards)
@@ -47,6 +48,7 @@ def test_normalize_zscore_mean_std():
 # ---------------------------------------------------------------------------
 # 3. Min-max normalization
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_minmax_range():
     rewards = torch.tensor([1.0, 3.0, 5.0, 7.0, 9.0])
@@ -59,6 +61,7 @@ def test_normalize_minmax_range():
 # 4. Rank normalization
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_rank_range():
     rewards = torch.tensor([10.0, -5.0, 3.0, 1.0, 0.0])
     normalized = normalize_rewards_rank(rewards)
@@ -70,6 +73,7 @@ def test_normalize_rank_range():
 # 5. "none" normalization unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_none_unchanged():
     rewards = torch.tensor([3.0, -1.5, 0.0, 7.2])
     out = normalize_rewards(rewards, method="none")
@@ -79,6 +83,7 @@ def test_normalize_none_unchanged():
 # ---------------------------------------------------------------------------
 # 6. Discounted returns gamma=1
 # ---------------------------------------------------------------------------
+
 
 def test_discounted_returns_gamma1():
     # With gamma=1, G_t = sum of all rewards from t onward
@@ -93,6 +98,7 @@ def test_discounted_returns_gamma1():
 # 7. Discounted returns gamma=0
 # ---------------------------------------------------------------------------
 
+
 def test_discounted_returns_gamma0():
     # With gamma=0, G_t = r_t (no future)
     rewards = torch.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # (2, 3)
@@ -103,6 +109,7 @@ def test_discounted_returns_gamma0():
 # ---------------------------------------------------------------------------
 # 8. Potential shaping shape
 # ---------------------------------------------------------------------------
+
 
 def test_potential_shaping_shape():
     B, T = 4, 6
@@ -116,6 +123,7 @@ def test_potential_shaping_shape():
 # 9. Length penalty: in range -> 0
 # ---------------------------------------------------------------------------
 
+
 def test_length_penalty_in_range():
     # 15 non-pad tokens per sequence, range [10, 200]
     token_ids = torch.ones(4, 15, dtype=torch.long)  # no padding
@@ -126,6 +134,7 @@ def test_length_penalty_in_range():
 # ---------------------------------------------------------------------------
 # 10. Repetition penalty: no repeats -> 0
 # ---------------------------------------------------------------------------
+
 
 def test_repetition_penalty_unique():
     # All unique tokens -> all bigrams unique -> penalty=0
@@ -139,6 +148,7 @@ def test_repetition_penalty_unique():
 # ---------------------------------------------------------------------------
 # 11. EWMA normalizer updates
 # ---------------------------------------------------------------------------
+
 
 def test_ewma_normalizer_updates():
     norm = EWMARewardNormalizer(alpha=0.5)
@@ -155,6 +165,7 @@ def test_ewma_normalizer_updates():
 # ---------------------------------------------------------------------------
 # 12. RewardShaper output shape
 # ---------------------------------------------------------------------------
+
 
 def test_reward_shaper_shape_output():
     cfg = RewardShapingConfig(normalize_method="zscore", clip_range=5.0)

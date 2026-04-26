@@ -6,10 +6,10 @@ import pytest
 
 from src.chat.persona_switcher import PersonaDefinition, PersonaSwitcher
 
-
 # ---------------------------------------------------------------------------
 # PersonaDefinition dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_persona_definition_defaults():
     pd = PersonaDefinition(name="test", system_prompt="hello")
@@ -26,6 +26,7 @@ def test_persona_definition_with_metadata():
 # ---------------------------------------------------------------------------
 # PersonaSwitcher — class-based tests
 # ---------------------------------------------------------------------------
+
 
 class TestPersonaSwitcher:
     def test_default_persona(self):

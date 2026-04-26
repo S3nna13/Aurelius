@@ -17,12 +17,10 @@ Test inventory (14 tests):
  14.  test_different_inputs_differ       — distinct inputs produce distinct outputs
 """
 
-import pytest
 import torch
-
 from aurelius.model.cosformer import (
-    CosformerBlock,
     CosformerAttention,
+    CosformerBlock,
     CosformerKernel,
     CosformerLayer,
 )
@@ -44,12 +42,13 @@ def _rand(*shape):
 # CosformerKernel tests
 # ---------------------------------------------------------------------------
 
+
 def test_kernel_doubles_last_dim():
     """Output last dim should be exactly 2 * input last dim."""
     kernel = CosformerKernel()
     x = _rand(B, T, D_HEAD)
     out = kernel(x)
-    assert out.shape == (B, T, 2 * D_HEAD), f"Expected ({B}, {T}, {2*D_HEAD}), got {out.shape}"
+    assert out.shape == (B, T, 2 * D_HEAD), f"Expected ({B}, {T}, {2 * D_HEAD}), got {out.shape}"
 
 
 def test_kernel_outputs_nonneg():
@@ -63,6 +62,7 @@ def test_kernel_outputs_nonneg():
 # ---------------------------------------------------------------------------
 # CosformerAttention tests
 # ---------------------------------------------------------------------------
+
 
 def test_attention_output_shape():
     """Non-causal CosformerAttention must return (B, T, d_head)."""
@@ -116,21 +116,22 @@ def test_causal_prefix_consistency():
     k_long_v1 = torch.cat([k_short, extension], dim=1)
     k_long_v2 = torch.cat([k_short, extension * 2], dim=1)  # different future K
     v_long_v1 = torch.cat([v_short, extension], dim=1)
-    v_long_v2 = torch.cat([v_short, -extension], dim=1)    # different future V
+    v_long_v2 = torch.cat([v_short, -extension], dim=1)  # different future V
 
     with torch.no_grad():
         out_v1 = attn(q_long, k_long_v1, v_long_v1, causal=True)
         out_v2 = attn(q_long, k_long_v2, v_long_v2, causal=True)
 
     # Past outputs (positions 0..T_short-1) must be identical regardless of future
-    assert torch.allclose(
-        out_v1[:, :T_short, :], out_v2[:, :T_short, :], atol=1e-4
-    ), "Causal prefix changed when future tokens were modified"
+    assert torch.allclose(out_v1[:, :T_short, :], out_v2[:, :T_short, :], atol=1e-4), (
+        "Causal prefix changed when future tokens were modified"
+    )
 
 
 # ---------------------------------------------------------------------------
 # CosformerLayer tests
 # ---------------------------------------------------------------------------
+
 
 def test_layer_output_shape():
     """CosformerLayer must return (B, T, d_model)."""
@@ -163,6 +164,7 @@ def test_layer_gradients():
 # Edge cases
 # ---------------------------------------------------------------------------
 
+
 def test_batch1_seqlen1():
     """CosformerLayer must handle B=1, T=1 without error."""
     layer = CosformerLayer(D_MODEL, N_HEADS)
@@ -175,6 +177,7 @@ def test_batch1_seqlen1():
 # ---------------------------------------------------------------------------
 # CosformerBlock tests
 # ---------------------------------------------------------------------------
+
 
 def test_block_output_shape():
     """CosformerBlock must return (B, T, d_model)."""

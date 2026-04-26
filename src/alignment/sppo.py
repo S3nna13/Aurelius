@@ -35,17 +35,14 @@ Difference from DPO (arXiv:2305.18290):
 
 from __future__ import annotations
 
-import math
-from typing import Dict, Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # SPPOLoss
 # ---------------------------------------------------------------------------
+
 
 class SPPOLoss(nn.Module):
     """SPPO loss (eq. 11, Wu et al. 2024).
@@ -69,8 +66,8 @@ class SPPOLoss(nn.Module):
         log_probs_l: torch.Tensor,
         ref_log_probs_w: torch.Tensor,
         ref_log_probs_l: torch.Tensor,
-        T: Optional[float] = None,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        T: float | None = None,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute SPPO loss.
 
         Parameters
@@ -97,11 +94,11 @@ class SPPOLoss(nn.Module):
         temperature = T if T is not None else self.T
 
         # Implicit reward for chosen and rejected (eq. 11 numerator terms)
-        r_w = log_probs_w - ref_log_probs_w   # log π(y_w) − log π_ref(y_w)
-        r_l = log_probs_l - ref_log_probs_l   # log π(y_l) − log π_ref(y_l)
+        r_w = log_probs_w - ref_log_probs_w  # log π(y_w) − log π_ref(y_w)
+        r_l = log_probs_l - ref_log_probs_l  # log π(y_l) − log π_ref(y_l)
 
         # Reward margin (diff in paper notation)
-        diff = r_w - r_l                       # shape (B,)
+        diff = r_w - r_l  # shape (B,)
 
         # Win-probability approximation (eq. 11)
         # p_hat = σ(diff / T)
@@ -110,7 +107,7 @@ class SPPOLoss(nn.Module):
         # MLE loss: −E[log p_hat] = −E[logsigmoid(diff / T)]
         loss = -F.logsigmoid(diff / temperature).mean()
 
-        metrics: Dict[str, torch.Tensor] = {
+        metrics: dict[str, torch.Tensor] = {
             "win_prob": win_prob.mean().detach(),
             "reward_margin": diff.mean().detach(),
         }
@@ -123,16 +120,15 @@ class SPPOLoss(nn.Module):
         log_probs_l: torch.Tensor,
         ref_log_probs_w: torch.Tensor,
         ref_log_probs_l: torch.Tensor,
-        T: Optional[float] = None,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-        return super().__call__(
-            log_probs_w, log_probs_l, ref_log_probs_w, ref_log_probs_l, T
-        )
+        T: float | None = None,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        return super().__call__(log_probs_w, log_probs_l, ref_log_probs_w, ref_log_probs_l, T)
 
 
 # ---------------------------------------------------------------------------
 # SPPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class SPPOTrainer:
     """Minimal SPPO trainer wrapper for integration with the Aurelius pipeline.
@@ -160,8 +156,8 @@ class SPPOTrainer:
     def __init__(
         self,
         T: float = 0.1,
-        model: Optional[nn.Module] = None,
-        ref_model: Optional[nn.Module] = None,
+        model: nn.Module | None = None,
+        ref_model: nn.Module | None = None,
     ) -> None:
         self.T = T
         self.model = model
@@ -170,8 +166,8 @@ class SPPOTrainer:
 
     def compute_loss(
         self,
-        batch: Dict[str, torch.Tensor],
-        T: Optional[float] = None,
+        batch: dict[str, torch.Tensor],
+        T: float | None = None,
     ) -> torch.Tensor:
         """Compute SPPO loss from a pre-processed batch.
 

@@ -12,24 +12,22 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-import src.optimizers as optim_pkg
 from src.optimizers import OPTIMIZER_REGISTRY, MuonClip
-
 
 # ---------------------------------------------------------------------------
 # 1. Registry contains "muonclip"
 # ---------------------------------------------------------------------------
 
+
 def test_muonclip_in_registry():
-    assert "muonclip" in OPTIMIZER_REGISTRY, (
-        "'muonclip' key missing from OPTIMIZER_REGISTRY"
-    )
+    assert "muonclip" in OPTIMIZER_REGISTRY, "'muonclip' key missing from OPTIMIZER_REGISTRY"
     assert OPTIMIZER_REGISTRY["muonclip"] is MuonClip
 
 
 # ---------------------------------------------------------------------------
 # 2. Construct from registry and run 5 training steps
 # ---------------------------------------------------------------------------
+
 
 def test_registry_construct_and_train():
     torch.manual_seed(0)
@@ -53,6 +51,7 @@ def test_registry_construct_and_train():
 # ---------------------------------------------------------------------------
 # 3. Pre-existing registry entries are still present (regression guard)
 # ---------------------------------------------------------------------------
+
 
 def test_existing_registry_entries_intact():
     """Ensure adding 'muonclip' did not remove any prior registry entry."""

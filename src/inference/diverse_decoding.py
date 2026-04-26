@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import math
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass, field
 
 
 @dataclass
@@ -13,10 +13,10 @@ class DiverseBeamConfig:
     """Configuration for diverse beam search decoding."""
 
     num_beams: int = 4
-    num_beam_groups: int = 2          # number of diverse groups
-    diversity_penalty: float = 0.5    # penalize tokens chosen by previous groups
-    length_penalty: float = 1.0       # alpha in score / (length^alpha)
-    min_length: int = 0               # minimum generation length
+    num_beam_groups: int = 2  # number of diverse groups
+    diversity_penalty: float = 0.5  # penalize tokens chosen by previous groups
+    length_penalty: float = 1.0  # alpha in score / (length^alpha)
+    min_length: int = 0  # minimum generation length
     max_new_tokens: int = 20
     temperature: float = 1.0
 
@@ -26,7 +26,7 @@ class BeamHypothesis:
     """A single beam hypothesis."""
 
     token_ids: list[int]
-    score: float          # cumulative log prob
+    score: float  # cumulative log prob
     length: int
     group_id: int = 0
 
@@ -34,7 +34,7 @@ class BeamHypothesis:
         """Return length-penalized score: score / (length^length_penalty)."""
         if self.length == 0:
             return self.score
-        return self.score / (self.length ** length_penalty)
+        return self.score / (self.length**length_penalty)
 
 
 class BeamSearchDecoder:

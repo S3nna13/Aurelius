@@ -25,7 +25,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # Maximum length of a code string accepted for sandboxed evaluation.
 _MAX_EXEC_LEN = 100_000
 
@@ -138,9 +137,7 @@ def sanitize_code(code: str, allowed_modules: list[str]) -> tuple[bool, str]:
             return False, reason
 
     # Check all import statements against the allowed list
-    import_pattern = re.compile(
-        r"^\s*(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)", re.MULTILINE
-    )
+    import_pattern = re.compile(r"^\s*(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)", re.MULTILINE)
     for m in import_pattern.finditer(code):
         module = m.group(1)
         if module not in allowed_modules:
@@ -153,13 +150,23 @@ def sanitize_code(code: str, allowed_modules: list[str]) -> tuple[bool, str]:
 # Execution helpers
 # ---------------------------------------------------------------------------
 
-import builtins as _builtins_mod
+import builtins as _builtins_mod  # noqa: E402
 
 _SAFE_BUILTINS = {
     name: getattr(_builtins_mod, name)
     for name in dir(_builtins_mod)
-    if name not in ("open", "exec", "eval", "__import__", "compile", "input",
-                    "breakpoint", "__loader__", "__spec__")
+    if name
+    not in (
+        "open",
+        "exec",
+        "eval",
+        "__import__",
+        "compile",
+        "input",
+        "breakpoint",
+        "__loader__",
+        "__spec__",
+    )
     and not name.startswith("__")
 }
 # Re-add essentials that start with __ so class definitions and name lookups work

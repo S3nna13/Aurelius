@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import difflib
 import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Mapping
 
 
 @dataclass
@@ -44,7 +44,7 @@ class DiffResult:
     """
 
     diff: str
-    changed_files: List[str] = field(default_factory=list)
+    changed_files: list[str] = field(default_factory=list)
     line_changes: int = 0
 
 
@@ -90,8 +90,8 @@ class UnifiedDiffGenerator:
                 self._check_text(c, f"{label}[{p!r}]")
 
         all_paths = sorted(set(before) | set(after))
-        hunks: List[str] = []
-        changed: List[str] = []
+        hunks: list[str] = []
+        changed: list[str] = []
         line_changes = 0
 
         for path in all_paths:
@@ -168,9 +168,7 @@ class UnifiedDiffGenerator:
     # ------------------------------------------------------------------
     # Round-trip
     # ------------------------------------------------------------------
-    def apply_round_trip(
-        self, before: Mapping[str, str], diff: str
-    ) -> Dict[str, str]:
+    def apply_round_trip(self, before: Mapping[str, str], diff: str) -> dict[str, str]:
         """Apply ``diff`` to an in-memory ``before`` map and return the new state.
 
         Materializes ``before`` into a temp directory, delegates to
@@ -206,7 +204,7 @@ class UnifiedDiffGenerator:
             if not ok:
                 raise RuntimeError("apply_patch_via_python failed on diff")
 
-            result: Dict[str, str] = {}
+            result: dict[str, str] = {}
             for path in root.rglob("*"):
                 if path.is_file():
                     rel = str(path.relative_to(root))
@@ -222,7 +220,7 @@ class UnifiedDiffGenerator:
             raise TypeError(f"{label} must be str, got {type(value).__name__}")
 
     @staticmethod
-    def _split_keep_newlines(text: str) -> List[str]:
+    def _split_keep_newlines(text: str) -> list[str]:
         """Split into lines *without* keepends for unified_diff consumption.
 
         We deliberately strip newlines so we can control the ``\\ No
@@ -255,7 +253,7 @@ class UnifiedDiffGenerator:
         lines = list(diff_iter)
         if not lines:
             return None
-        out: List[str] = []
+        out: list[str] = []
         last_tag: str | None = None
         for raw in lines:
             out.append(raw + "\n")

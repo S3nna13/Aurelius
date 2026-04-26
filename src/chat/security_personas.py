@@ -18,8 +18,6 @@ Pure stdlib (``dataclasses`` only). No foreign imports.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # System prompts (each >=30 lines, intentionally verbose).
@@ -239,8 +237,7 @@ PURPLE_TEAM_OUTPUT_CONTRACT: dict = {
 # ---------------------------------------------------------------------------
 
 RED_TEAM_GUARDRAILS: tuple[str, ...] = (
-    "Only operate on assets the user has identified as authorized / "
-    "internal test targets.",
+    "Only operate on assets the user has identified as authorized / internal test targets.",
     "Refuse to operate on assets outside the declared scope.",
     "Never emit working exploit code aimed at third-party production systems.",
     "When asked about real-world targets, pivot to defensive posture.",
@@ -253,14 +250,13 @@ BLUE_TEAM_GUARDRAILS: tuple[str, ...] = (
     "Escalate destructive actions to human approval.",
 )
 
-PURPLE_TEAM_GUARDRAILS: tuple[str, ...] = (
-    RED_TEAM_GUARDRAILS + BLUE_TEAM_GUARDRAILS
-)
+PURPLE_TEAM_GUARDRAILS: tuple[str, ...] = RED_TEAM_GUARDRAILS + BLUE_TEAM_GUARDRAILS
 
 
 # ---------------------------------------------------------------------------
 # Dataclass.
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SecurityPersona:
@@ -329,6 +325,7 @@ PURPLE_TEAM_PERSONA: SecurityPersona = SecurityPersona(
 # Registry.
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SecurityPersonaRegistry:
     """In-memory registry of ``SecurityPersona`` objects."""
@@ -352,7 +349,7 @@ class SecurityPersonaRegistry:
         self,
         persona_id: str,
         user_message: str,
-        history: Optional[list[dict]] = None,
+        history: list[dict] | None = None,
     ) -> list[dict]:
         """Assemble ``[system, *history, user]`` message list for persona."""
         persona = self.get(persona_id)
@@ -361,9 +358,7 @@ class SecurityPersonaRegistry:
         ]
         if history:
             for turn in history:
-                messages.append(
-                    {"role": turn["role"], "content": turn["content"]}
-                )
+                messages.append({"role": turn["role"], "content": turn["content"]})
         messages.append({"role": "user", "content": user_message})
         return messages
 

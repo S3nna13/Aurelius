@@ -2,9 +2,8 @@
 
 All tests use tiny configs (small vocab, short sequences) and pure PyTorch.
 """
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import pytest
 import torch
@@ -54,6 +53,7 @@ def _uniform_model_fn(ids: torch.Tensor) -> torch.Tensor:
 # 1. BeamConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestBeamConfigDefaults:
     def test_beam_width_default(self):
         cfg = BeamConfig()
@@ -92,6 +92,7 @@ class TestBeamConfigDefaults:
 # 2. apply_length_penalty
 # ---------------------------------------------------------------------------
 
+
 class TestApplyLengthPenalty:
     def test_shorter_gets_higher_normalized_score(self):
         """With alpha > 0, a sequence with a better per-token score wins.
@@ -104,7 +105,7 @@ class TestApplyLengthPenalty:
         with length, so the long sequence's larger raw score is penalised more.
         """
         # Equal per-token quality: score ≈ length * (-1.0)
-        scores = torch.tensor([-3.0, -10.0])   # short (len 3) vs long (len 10)
+        scores = torch.tensor([-3.0, -10.0])  # short (len 3) vs long (len 10)
         lengths = torch.tensor([3, 10])
         normed = apply_length_penalty(scores, lengths, alpha=1.0)
         # short: -3.0 / ((5+3)/6)^1 = -3.0 / 1.333 ≈ -2.25
@@ -136,7 +137,7 @@ class TestApplyLengthPenalty:
         scores = torch.tensor([1.0])
         lengths = torch.tensor([1])
         alpha = 1.0
-        expected = 1.0 / ((5.0 + 1.0) / 6.0) ** alpha   # = 1.0
+        expected = 1.0 / ((5.0 + 1.0) / 6.0) ** alpha  # = 1.0
         out = apply_length_penalty(scores, lengths, alpha)
         assert out[0].item() == pytest.approx(expected, rel=1e-5)
 
@@ -145,24 +146,25 @@ class TestApplyLengthPenalty:
 # 3. apply_repetition_penalty
 # ---------------------------------------------------------------------------
 
+
 class TestApplyRepetitionPenalty:
     def test_penalizes_positive_repeated_token(self):
         logits = torch.zeros(VOCAB)
-        logits[5] = 4.0                          # positive logit
+        logits[5] = 4.0  # positive logit
         input_ids = torch.tensor([5])
         out = apply_repetition_penalty(logits, input_ids, penalty=2.0)
-        assert out[5].item() == pytest.approx(2.0)   # 4.0 / 2.0
+        assert out[5].item() == pytest.approx(2.0)  # 4.0 / 2.0
 
     def test_penalizes_negative_repeated_token(self):
         logits = torch.zeros(VOCAB)
-        logits[5] = -4.0                         # negative logit
+        logits[5] = -4.0  # negative logit
         input_ids = torch.tensor([5])
         out = apply_repetition_penalty(logits, input_ids, penalty=2.0)
         assert out[5].item() == pytest.approx(-8.0)  # -4.0 * 2.0
 
     def test_unseen_tokens_unchanged(self):
         logits = torch.ones(VOCAB) * 3.0
-        input_ids = torch.tensor([0, 1])         # only tokens 0 and 1 are penalized
+        input_ids = torch.tensor([0, 1])  # only tokens 0 and 1 are penalized
         out = apply_repetition_penalty(logits, input_ids, penalty=3.0)
         # Tokens 2..VOCAB-1 should be untouched
         assert torch.allclose(out[2:], torch.ones(VOCAB - 2) * 3.0)
@@ -187,6 +189,7 @@ class TestApplyRepetitionPenalty:
 # ---------------------------------------------------------------------------
 # 4. get_ngram_blocked_tokens
 # ---------------------------------------------------------------------------
+
 
 class TestGetNgramBlockedTokens:
     def test_returns_set(self):
@@ -223,6 +226,7 @@ class TestGetNgramBlockedTokens:
 # 5. BeamHypothesis fields
 # ---------------------------------------------------------------------------
 
+
 class TestBeamHypothesis:
     def test_has_token_ids_field(self):
         hyp = BeamHypothesis(token_ids=[1, 2, 3], score=-1.5, length=3)
@@ -240,6 +244,7 @@ class TestBeamHypothesis:
 # ---------------------------------------------------------------------------
 # 6. BeamSearchDecoder.initialize_beams
 # ---------------------------------------------------------------------------
+
 
 class TestInitializeBeams:
     def test_creates_beam_width_hypotheses(self):
@@ -266,7 +271,7 @@ class TestInitializeBeams:
     def test_accepts_2d_prompt(self):
         cfg = BeamConfig(beam_width=2, eos_token_id=EOS)
         decoder = BeamSearchDecoder(_random_model_fn, cfg)
-        prompt_2d = _make_prompt().unsqueeze(0)   # (1, T)
+        prompt_2d = _make_prompt().unsqueeze(0)  # (1, T)
         beams = decoder.initialize_beams(prompt_2d)
         assert len(beams) == 2
 
@@ -274,6 +279,7 @@ class TestInitializeBeams:
 # ---------------------------------------------------------------------------
 # 7. BeamSearchDecoder.decode
 # ---------------------------------------------------------------------------
+
 
 class TestDecode:
     def test_returns_1d_tensor(self):
@@ -293,7 +299,7 @@ class TestDecode:
         decoder = BeamSearchDecoder(_random_model_fn, cfg)
         prompt = _make_prompt()
         out = decoder.decode(prompt)
-        assert out[: PROMPT_LEN].tolist() == prompt.tolist()
+        assert out[:PROMPT_LEN].tolist() == prompt.tolist()
 
     def test_eos_model_terminates_early(self):
         """A model that always emits EOS should stop after one new token."""
@@ -313,6 +319,7 @@ class TestDecode:
 # ---------------------------------------------------------------------------
 # 8. BeamSearchDecoder.decode_with_scores
 # ---------------------------------------------------------------------------
+
 
 class TestDecodeWithScores:
     def test_returns_list(self):
@@ -334,9 +341,7 @@ class TestDecodeWithScores:
         decoder = BeamSearchDecoder(_random_model_fn, cfg)
         result = decoder.decode_with_scores(_make_prompt())
         scores = [s for _, s in result]
-        assert scores == sorted(scores, reverse=True), (
-            f"Expected sorted descending, got {scores}"
-        )
+        assert scores == sorted(scores, reverse=True), f"Expected sorted descending, got {scores}"
 
     def test_sequences_start_with_prompt(self):
         cfg = BeamConfig(beam_width=2, max_new_tokens=3, eos_token_id=EOS)
@@ -344,20 +349,23 @@ class TestDecodeWithScores:
         prompt = _make_prompt()
         result = decoder.decode_with_scores(prompt)
         for seq, _ in result:
-            assert seq[: PROMPT_LEN].tolist() == prompt.tolist()
+            assert seq[:PROMPT_LEN].tolist() == prompt.tolist()
 
 
 # ---------------------------------------------------------------------------
 # 9. Integration: repetition penalty actually reduces repeated token probability
 # ---------------------------------------------------------------------------
 
+
 class TestRepetitionPenaltyIntegration:
     def test_high_penalty_changes_output(self):
         """With extreme repetition penalty the decoder should avoid repeating tokens."""
-        cfg_no_pen = BeamConfig(beam_width=2, max_new_tokens=5,
-                                eos_token_id=EOS, repetition_penalty=1.0)
-        cfg_pen = BeamConfig(beam_width=2, max_new_tokens=5,
-                             eos_token_id=EOS, repetition_penalty=100.0)
+        cfg_no_pen = BeamConfig(
+            beam_width=2, max_new_tokens=5, eos_token_id=EOS, repetition_penalty=1.0
+        )
+        cfg_pen = BeamConfig(
+            beam_width=2, max_new_tokens=5, eos_token_id=EOS, repetition_penalty=100.0
+        )
         decoder_no = BeamSearchDecoder(_uniform_model_fn, cfg_no_pen)
         decoder_yes = BeamSearchDecoder(_uniform_model_fn, cfg_pen)
         out_no = decoder_no.decode(_make_prompt())
@@ -372,10 +380,10 @@ class TestRepetitionPenaltyIntegration:
 # 10. Integration: n-gram blocking suppresses repeated n-grams
 # ---------------------------------------------------------------------------
 
+
 class TestNgramBlockingIntegration:
     def test_no_repeat_ngram_does_not_crash(self):
-        cfg = BeamConfig(beam_width=2, max_new_tokens=6,
-                         eos_token_id=EOS, no_repeat_ngram_size=2)
+        cfg = BeamConfig(beam_width=2, max_new_tokens=6, eos_token_id=EOS, no_repeat_ngram_size=2)
         decoder = BeamSearchDecoder(_random_model_fn, cfg)
         out = decoder.decode(_make_prompt())
         assert out.dim() == 1

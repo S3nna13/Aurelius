@@ -14,10 +14,10 @@ from torch import Tensor
 class ContrastiveDecodingConfig:
     """Configuration for contrastive decoding (Li et al. 2023)."""
 
-    alpha: float = 0.1         # adaptive plausibility threshold (fraction of max prob)
-    temperature: float = 1.0   # sampling temperature applied to both models
-    max_new_tokens: int = 64   # number of tokens to generate
-    top_k: int = 50            # top-k filtering applied after plausibility masking
+    alpha: float = 0.1  # adaptive plausibility threshold (fraction of max prob)
+    temperature: float = 1.0  # sampling temperature applied to both models
+    max_new_tokens: int = 64  # number of tokens to generate
+    top_k: int = 50  # top-k filtering applied after plausibility masking
 
 
 def compute_cd_score(
@@ -59,9 +59,9 @@ def apply_adaptive_plausibility(
     Returns:
         Masked CD scores of shape (B, vocab_size).
     """
-    expert_probs = F.softmax(expert_logits, dim=-1)                     # (B, V)
-    max_prob = expert_probs.max(dim=-1, keepdim=True).values            # (B, 1)
-    plausible = expert_probs >= alpha * max_prob                        # (B, V)
+    expert_probs = F.softmax(expert_logits, dim=-1)  # (B, V)
+    max_prob = expert_probs.max(dim=-1, keepdim=True).values  # (B, 1)
+    plausible = expert_probs >= alpha * max_prob  # (B, V)
     return cd_scores.masked_fill(~plausible, float("-inf"))
 
 
@@ -104,7 +104,7 @@ def contrastive_sample(
     if bad.any():
         uniform = torch.ones_like(probs) / probs.size(-1)
         probs = torch.where(bad, uniform, probs)
-    token_ids = torch.multinomial(probs, num_samples=1).squeeze(-1)     # (B,)
+    token_ids = torch.multinomial(probs, num_samples=1).squeeze(-1)  # (B,)
     return token_ids
 
 
@@ -144,11 +144,11 @@ class ContrastiveDecoder:
         cd_score_sum = 0.0
 
         for _ in range(self.config.max_new_tokens):
-            _, expert_logits_full, _ = self.expert(seq)    # (B, T, V)
+            _, expert_logits_full, _ = self.expert(seq)  # (B, T, V)
             _, amateur_logits_full, _ = self.amateur(seq)  # (B, T, V)
 
-            expert_last = expert_logits_full[:, -1, :]     # (B, V)
-            amateur_last = amateur_logits_full[:, -1, :]   # (B, V)
+            expert_last = expert_logits_full[:, -1, :]  # (B, V)
+            amateur_last = amateur_logits_full[:, -1, :]  # (B, V)
 
             # Compute CD scores before masking to record selected token's score
             cd_scores_raw = compute_cd_score(
@@ -159,15 +159,13 @@ class ContrastiveDecoder:
 
             # Accumulate the mean CD score across batch for selected tokens
             # next_tokens: (B,) — gather the score for each selected token
-            selected_scores = cd_scores_raw[
-                torch.arange(next_tokens.size(0)), next_tokens
-            ]  # (B,)
+            selected_scores = cd_scores_raw[torch.arange(next_tokens.size(0)), next_tokens]  # (B,)
             cd_score_sum += selected_scores.mean().item()
 
-            generated_tokens.append(next_tokens.unsqueeze(1))          # (B, 1)
+            generated_tokens.append(next_tokens.unsqueeze(1))  # (B, 1)
             seq = torch.cat([seq, next_tokens.unsqueeze(1)], dim=1)
 
-        generated_ids = torch.cat(generated_tokens, dim=1)             # (B, max_new_tokens)
+        generated_ids = torch.cat(generated_tokens, dim=1)  # (B, max_new_tokens)
         n = self.config.max_new_tokens
         stats: dict = {
             "n_tokens": n,
@@ -197,7 +195,7 @@ def measure_repetition(token_ids: Tensor, window: int = 16) -> float:
 
     n_repeated = 0
     for t in range(T):
-        context = ids[max(0, t - window): t]
+        context = ids[max(0, t - window) : t]
         if ids[t] in context:
             n_repeated += 1
 

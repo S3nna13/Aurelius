@@ -24,9 +24,7 @@ class ChainOfThoughtScorer:
 
     _max_length: int = 50_000
 
-    def score(
-        self, reasoning: str, expected_answer: str | None = None
-    ) -> dict[str, float]:
+    def score(self, reasoning: str, expected_answer: str | None = None) -> dict[str, float]:
         """Score chain-of-thought reasoning.
 
         Returns:
@@ -37,9 +35,7 @@ class ChainOfThoughtScorer:
             ValueError: If reasoning is empty, exceeds max length, or wrong type.
         """
         if not isinstance(reasoning, str):
-            raise ValueError(
-                f"reasoning must be a string, got {type(reasoning).__name__}"
-            )
+            raise ValueError(f"reasoning must be a string, got {type(reasoning).__name__}")
         if expected_answer is not None and not isinstance(expected_answer, str):
             raise ValueError(
                 f"expected_answer must be a string or None, got {type(expected_answer).__name__}"

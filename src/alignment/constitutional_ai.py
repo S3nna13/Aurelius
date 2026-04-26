@@ -5,20 +5,20 @@ and DPO-style training loss.
 
 Also retains the original SL-CAI critique/revision loop for backward compatibility.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ===========================================================================
 # Constitutional principle + constitution
 # ===========================================================================
+
 
 @dataclass
 class ConstitutionalPrinciple:
@@ -38,13 +38,11 @@ class ConstitutionalPrinciple:
 class Constitution:
     """Ordered collection of ConstitutionalPrinciple objects."""
 
-    def __init__(self, principles: List[ConstitutionalPrinciple]) -> None:
+    def __init__(self, principles: list[ConstitutionalPrinciple]) -> None:
         if not principles:
             raise ValueError("Constitution requires at least one principle.")
-        self._principles: List[ConstitutionalPrinciple] = list(principles)
-        self._by_name: Dict[str, ConstitutionalPrinciple] = {
-            p.name: p for p in self._principles
-        }
+        self._principles: list[ConstitutionalPrinciple] = list(principles)
+        self._by_name: dict[str, ConstitutionalPrinciple] = {p.name: p for p in self._principles}
 
     def get_principle(self, name: str) -> ConstitutionalPrinciple:
         """Return the principle with the given name."""
@@ -54,7 +52,7 @@ class Constitution:
         """Sum of all principle weights."""
         return sum(p.weight for p in self._principles)
 
-    def weighted_score(self, scores: Dict[str, float]) -> float:
+    def weighted_score(self, scores: dict[str, float]) -> float:
         """Compute weighted average of per-principle scores."""
         total = 0.0
         for p in self._principles:
@@ -63,7 +61,7 @@ class Constitution:
         return total / tw if tw > 0.0 else 0.0
 
     @classmethod
-    def from_dicts(cls, dicts: List[Dict]) -> "Constitution":
+    def from_dicts(cls, dicts: list[dict]) -> Constitution:
         """Build a Constitution from a list of dicts."""
         principles = [
             ConstitutionalPrinciple(
@@ -86,6 +84,7 @@ class Constitution:
 # Constitutional scorer
 # ===========================================================================
 
+
 class ConstitutionalScorer:
     """Score responses against a Constitution using log-probability tensors."""
 
@@ -94,8 +93,8 @@ class ConstitutionalScorer:
 
     def score_response(
         self,
-        response_log_probs: List[Tensor],
-        principle_weights: Optional[List[float]] = None,
+        response_log_probs: list[Tensor],
+        principle_weights: list[float] | None = None,
     ) -> Tensor:
         """Compute a per-principle score for a single response.
 
@@ -112,7 +111,7 @@ class ConstitutionalScorer:
     def aggregate_score(
         self,
         principle_scores: Tensor,
-        weights: Optional[Tensor] = None,
+        weights: Tensor | None = None,
     ) -> Tensor:
         """Weighted mean of per-principle scores -> scalar."""
         if weights is None:
@@ -128,6 +127,7 @@ class ConstitutionalScorer:
 # ===========================================================================
 # CAI loss (DPO-style preference loss)
 # ===========================================================================
+
 
 class CAILoss(nn.Module):
     """Constitutional AI preference loss (DPO formulation).
@@ -145,7 +145,7 @@ class CAILoss(nn.Module):
         rejected_log_probs: Tensor,
         ref_chosen: Tensor,
         ref_rejected: Tensor,
-    ) -> Tuple[Tensor, Dict]:
+    ) -> tuple[Tensor, dict]:
         """Compute the CAI/DPO loss.
 
         Returns:
@@ -160,7 +160,7 @@ class CAILoss(nn.Module):
             accuracy = (logit > 0).float().mean()
             margin = logit.mean()
 
-        metrics: Dict = {
+        metrics: dict = {
             "loss": loss.detach().item(),
             "accuracy": accuracy.item(),
             "margin": margin.item(),
@@ -171,6 +171,7 @@ class CAILoss(nn.Module):
 # ===========================================================================
 # CAI trainer
 # ===========================================================================
+
 
 class CAITrainer:
     """Wraps policy and frozen reference model for CAI/DPO training."""
@@ -201,7 +202,7 @@ class CAITrainer:
         rejected_lp: Tensor,
         ref_chosen: Tensor,
         ref_rejected: Tensor,
-    ) -> Dict:
+    ) -> dict:
         """Perform a single CAI training step.
 
         Returns:
@@ -218,6 +219,7 @@ class CAITrainer:
 # ===========================================================================
 # Legacy SL-CAI critique/revision loop (retained for backward compatibility)
 # ===========================================================================
+
 
 @dataclass
 class ConstitutionalAIConfig:
@@ -244,7 +246,9 @@ def default_principles() -> list[Principle]:
     """Return a small set of default principles."""
     return [
         Principle("helpful", "Be helpful", "Is the response helpful?", "Make it more helpful."),
-        Principle("harmless", "Avoid harm", "Does the response avoid harm?", "Remove harmful content."),
+        Principle(
+            "harmless", "Avoid harm", "Does the response avoid harm?", "Remove harmful content."
+        ),
         Principle("honest", "Be honest", "Is the response honest?", "Correct any inaccuracies."),
         Principle("concise", "Be concise", "Is the response concise?", "Make it shorter."),
     ]
@@ -278,7 +282,7 @@ def compute_critique_loss(
     ref_logits: Tensor,
     target_ids: Tensor,
     principle_scores: Tensor,
-    config: "ConstitutionalAIConfig",
+    config: ConstitutionalAIConfig,
 ) -> tuple[Tensor, dict]:
     """Compute Constitutional AI training loss (legacy SL-CAI variant)."""
     B, T, V = policy_logits.shape
@@ -304,11 +308,7 @@ def compute_critique_loss(
     ).clamp(min=0.0)
 
     principle_reward = principle_scores.mean()
-    total_loss = (
-        config.sft_loss_coeff * sft_loss
-        + config.kl_coeff * kl_loss
-        - principle_reward
-    )
+    total_loss = config.sft_loss_coeff * sft_loss + config.kl_coeff * kl_loss - principle_reward
 
     metrics: dict = {
         "sft_loss": sft_loss.detach().item(),
@@ -387,7 +387,11 @@ class ConstitutionalAITrainer:
         with torch.no_grad():
             _, ref_logits, _ = self.ref_model(revised_ids)
         loss, metrics = compute_critique_loss(
-            policy_logits, ref_logits, revised_ids, principle_scores, self.config,
+            policy_logits,
+            ref_logits,
+            revised_ids,
+            principle_scores,
+            self.config,
         )
         self.optimizer.zero_grad()
         loss.backward()

@@ -10,18 +10,17 @@ Reference: https://arxiv.org/abs/2210.15097
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Adaptive Plausibility Filter
 # ---------------------------------------------------------------------------
+
 
 class AdaptivePlausibilityFilter(nn.Module):
     """Filter tokens to the plausible set for a given alpha threshold.
@@ -51,15 +50,16 @@ class AdaptivePlausibilityFilter(nn.Module):
         Returns:
             mask: (B, V) bool tensor; True where the token is plausible.
         """
-        probs = F.softmax(expert_logits, dim=-1)          # (B, V)
+        probs = F.softmax(expert_logits, dim=-1)  # (B, V)
         max_prob = probs.max(dim=-1, keepdim=True).values  # (B, 1)
-        mask = probs >= self.alpha * max_prob              # (B, V)
+        mask = probs >= self.alpha * max_prob  # (B, V)
         return mask
 
 
 # ---------------------------------------------------------------------------
 # Contrastive Logits
 # ---------------------------------------------------------------------------
+
 
 class ContrastiveLogits(nn.Module):
     """Core contrastive scoring module.
@@ -91,12 +91,12 @@ class ContrastiveLogits(nn.Module):
         Returns:
             scores: (B, V) contrastive scores; implausible positions are -inf.
         """
-        mask = self.filter(expert_logits)                  # (B, V) bool
+        mask = self.filter(expert_logits)  # (B, V) bool
 
         log_p_expert = F.log_softmax(expert_logits, dim=-1)
         log_p_amateur = F.log_softmax(amateur_logits, dim=-1)
 
-        scores = log_p_expert - log_p_amateur              # (B, V)
+        scores = log_p_expert - log_p_amateur  # (B, V)
         scores = scores.masked_fill(~mask, float("-inf"))
         return scores
 
@@ -104,6 +104,7 @@ class ContrastiveLogits(nn.Module):
 # ---------------------------------------------------------------------------
 # Amateur Model Wrapper
 # ---------------------------------------------------------------------------
+
 
 class AmateurModelWrapper(nn.Module):
     """Lightweight wrapper that scales amateur logits by 1/temperature.
@@ -137,6 +138,7 @@ class AmateurModelWrapper(nn.Module):
 # ---------------------------------------------------------------------------
 # Contrastive Decoder
 # ---------------------------------------------------------------------------
+
 
 class ContrastiveDecoder(nn.Module):
     """Autoregressive text generation using contrastive decoding.
@@ -193,19 +195,19 @@ class ContrastiveDecoder(nn.Module):
         with torch.no_grad():
             for _ in range(max_new_tokens):
                 # --- expert ---
-                expert_out = self.expert_model(generated)   # (B, T', V)
-                expert_logits = expert_out[:, -1, :]        # (B, V)
+                expert_out = self.expert_model(generated)  # (B, T', V)
+                expert_logits = expert_out[:, -1, :]  # (B, V)
 
                 # --- amateur ---
-                amateur_out = self.amateur_model(generated) # (B, T', V)
-                amateur_logits = amateur_out[:, -1, :]      # (B, V)
+                amateur_out = self.amateur_model(generated)  # (B, T', V)
+                amateur_logits = amateur_out[:, -1, :]  # (B, V)
 
                 # --- contrastive scores ---
                 scores = self.scorer(expert_logits, amateur_logits)  # (B, V)
                 scores = scores / self.temperature
 
                 # greedy decoding: argmax over plausible tokens
-                next_token = scores.argmax(dim=-1, keepdim=True)    # (B, 1)
+                next_token = scores.argmax(dim=-1, keepdim=True)  # (B, 1)
                 generated = torch.cat([generated, next_token], dim=1)
 
         return generated
@@ -214,6 +216,7 @@ class ContrastiveDecoder(nn.Module):
 # ---------------------------------------------------------------------------
 # Configuration Dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ContrastiveDecodingConfig:
@@ -230,13 +233,9 @@ class ContrastiveDecodingConfig:
         Raises:
             AssertionError: if any field is out of range.
         """
-        assert 0.0 < self.alpha < 1.0, (
-            f"alpha must be in (0, 1), got {self.alpha}"
-        )
-        assert self.temperature > 0.0, (
-            f"temperature must be > 0, got {self.temperature}"
-        )
-        assert self.amateur_temperature > 0.0, (
+        assert 0.0 < self.alpha < 1.0, f"alpha must be in (0, 1), got {self.alpha}"  # noqa: S101
+        assert self.temperature > 0.0, f"temperature must be > 0, got {self.temperature}"  # noqa: S101
+        assert self.amateur_temperature > 0.0, (  # noqa: S101
             f"amateur_temperature must be > 0, got {self.amateur_temperature}"
         )
 
@@ -244,6 +243,7 @@ class ContrastiveDecodingConfig:
 # ---------------------------------------------------------------------------
 # Contrastive Scoring Metrics
 # ---------------------------------------------------------------------------
+
 
 class ContrastiveScoringMetrics:
     """Evaluate quality of contrastive vs. greedy decoding outputs."""
@@ -280,7 +280,7 @@ class ContrastiveScoringMetrics:
             B, T, V = logits.shape
             logits = logits.reshape(B * T, V)
         probs = F.softmax(logits, dim=-1)
-        max_probs = probs.max(dim=-1).values   # (N,)
+        max_probs = probs.max(dim=-1).values  # (N,)
         return float(max_probs.mean().item())
 
     def score_gap(self, contrastive_logits: torch.Tensor) -> float:
@@ -302,5 +302,5 @@ class ContrastiveScoringMetrics:
             return 0.0
 
         top2 = torch.topk(finite, k=2, dim=-1).values  # (B, 2)
-        gaps = top2[:, 0] - top2[:, 1]                  # (B,)
+        gaps = top2[:, 0] - top2[:, 1]  # (B,)
         return float(gaps.mean().item())

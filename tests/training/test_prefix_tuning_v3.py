@@ -6,7 +6,6 @@ n_layers=2, seq_len=8, batch=2.
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -36,6 +35,7 @@ PREFIX_HIDDEN = 32  # small for tests
 # Minimal backbone for PrefixTuningModel tests
 # ---------------------------------------------------------------------------
 
+
 class TinyBackbone(nn.Module):
     """Minimal backbone: embedding + linear lm_head."""
 
@@ -51,6 +51,7 @@ class TinyBackbone(nn.Module):
 # ---------------------------------------------------------------------------
 # Helper factories
 # ---------------------------------------------------------------------------
+
 
 def make_input_ids(B: int = BATCH, T: int = SEQ_LEN) -> torch.Tensor:
     return torch.randint(0, VOCAB, (B, T))
@@ -74,6 +75,7 @@ def make_prefix_tuning_model(n_prefix: int = N_TOKENS, use_reparam: bool = True)
 # 1. SoftPromptEmbedding: output shape (B, n_tokens, D)
 # ===========================================================================
 
+
 def test_soft_prompt_embedding_shape():
     spe = SoftPromptEmbedding(n_tokens=N_TOKENS, d_model=D_MODEL)
     out = spe(BATCH)
@@ -86,33 +88,30 @@ def test_soft_prompt_embedding_shape():
 # 2. SoftPromptEmbedding: prompt_embeddings requires_grad=True
 # ===========================================================================
 
+
 def test_soft_prompt_embedding_requires_grad():
     spe = SoftPromptEmbedding(n_tokens=N_TOKENS, d_model=D_MODEL)
-    assert spe.prompt_embeddings.requires_grad, (
-        "prompt_embeddings must require grad"
-    )
+    assert spe.prompt_embeddings.requires_grad, "prompt_embeddings must require grad"
 
 
 # ===========================================================================
 # 3. SoftPromptEmbedding: backward flows through prompt_embeddings
 # ===========================================================================
 
+
 def test_soft_prompt_embedding_backward():
     spe = SoftPromptEmbedding(n_tokens=N_TOKENS, d_model=D_MODEL)
     out = spe(BATCH)
     loss = out.sum()
     loss.backward()
-    assert spe.prompt_embeddings.grad is not None, (
-        "grad should flow to prompt_embeddings"
-    )
-    assert not torch.all(spe.prompt_embeddings.grad == 0), (
-        "grad should be non-zero"
-    )
+    assert spe.prompt_embeddings.grad is not None, "grad should flow to prompt_embeddings"
+    assert not torch.all(spe.prompt_embeddings.grad == 0), "grad should be non-zero"
 
 
 # ===========================================================================
 # 4. SoftPromptEmbedding: expand works for batch=1 and batch=4
 # ===========================================================================
+
 
 def test_soft_prompt_embedding_batch_sizes():
     spe = SoftPromptEmbedding(n_tokens=N_TOKENS, d_model=D_MODEL)
@@ -125,6 +124,7 @@ def test_soft_prompt_embedding_batch_sizes():
 # ===========================================================================
 # 5. PrefixEncoder: output shape (n_layers, 2, B, n_heads, n_tokens, head_dim)
 # ===========================================================================
+
 
 def test_prefix_encoder_output_shape():
     enc = PrefixEncoder(
@@ -142,6 +142,7 @@ def test_prefix_encoder_output_shape():
 # ===========================================================================
 # 6. PrefixEncoder: backward flows to prefix_params
 # ===========================================================================
+
 
 def test_prefix_encoder_backward():
     enc = PrefixEncoder(
@@ -161,6 +162,7 @@ def test_prefix_encoder_backward():
 # 7. PrefixAttention: output shape (B, T, D)
 # ===========================================================================
 
+
 def test_prefix_attention_output_shape():
     attn = PrefixAttention(d_model=D_MODEL, n_heads=N_HEADS, n_prefix_tokens=N_TOKENS)
     x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
@@ -177,6 +179,7 @@ def test_prefix_attention_output_shape():
 #    We also verify that the prefix_k / prefix_v parameters participate in the
 #    forward graph by checking that output changes when prefix params change.
 # ===========================================================================
+
 
 def test_prefix_attention_extended_keys():
     torch.manual_seed(0)
@@ -202,6 +205,7 @@ def test_prefix_attention_extended_keys():
 # 9. PrefixAttention: backward flows to prefix_k and prefix_v
 # ===========================================================================
 
+
 def test_prefix_attention_backward():
     attn = PrefixAttention(d_model=D_MODEL, n_heads=N_HEADS, n_prefix_tokens=N_TOKENS)
     x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
@@ -215,17 +219,17 @@ def test_prefix_attention_backward():
 # 10. PrefixTuningModel: backbone params are frozen (requires_grad=False)
 # ===========================================================================
 
+
 def test_prefix_tuning_model_backbone_frozen():
     model = make_prefix_tuning_model()
     for name, param in model.backbone.named_parameters():
-        assert not param.requires_grad, (
-            f"Backbone param '{name}' should be frozen"
-        )
+        assert not param.requires_grad, f"Backbone param '{name}' should be frozen"
 
 
 # ===========================================================================
 # 11. PrefixTuningModel: prefix params are trainable (requires_grad=True)
 # ===========================================================================
+
 
 def test_prefix_tuning_model_prefix_trainable():
     model = make_prefix_tuning_model()
@@ -236,6 +240,7 @@ def test_prefix_tuning_model_prefix_trainable():
 # ===========================================================================
 # 12. PrefixTuningModel: forward output shape (B, T, V)
 # ===========================================================================
+
 
 def test_prefix_tuning_model_forward_shape():
     model = make_prefix_tuning_model()
@@ -253,12 +258,11 @@ def test_prefix_tuning_model_forward_shape():
 #     the backbone (embedding 256 + lm_head 256 = 512, all frozen).
 # ===========================================================================
 
+
 def test_prefix_tuning_trainer_train_step():
     # use_reparam=False avoids the MLP overhead so prefix is tiny vs backbone
     model = make_prefix_tuning_model(use_reparam=False)
-    optimizer = torch.optim.Adam(
-        [p for p in model.parameters() if p.requires_grad], lr=1e-3
-    )
+    optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=1e-3)
     trainer = PrefixTuningTrainer(model, optimizer)
 
     input_ids = make_input_ids()
@@ -279,11 +283,10 @@ def test_prefix_tuning_trainer_train_step():
 # 14. PrefixTuningTrainer: grad flows to prefix params only after train_step
 # ===========================================================================
 
+
 def test_prefix_tuning_trainer_grad_only_on_prefix():
     model = make_prefix_tuning_model()
-    optimizer = torch.optim.Adam(
-        [p for p in model.parameters() if p.requires_grad], lr=1e-3
-    )
+    optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=1e-3)
     trainer = PrefixTuningTrainer(model, optimizer)
 
     input_ids = make_input_ids()
@@ -292,21 +295,17 @@ def test_prefix_tuning_trainer_grad_only_on_prefix():
 
     # All backbone params must have no grad
     for name, param in model.backbone.named_parameters():
-        assert param.grad is None, (
-            f"Backbone param '{name}' must not have grad after train_step"
-        )
+        assert param.grad is None, f"Backbone param '{name}' must not have grad after train_step"
 
     # At least one prefix param must have a grad
-    trainable_grads = [
-        p.grad for p in model.parameters()
-        if p.requires_grad and p.grad is not None
-    ]
+    trainable_grads = [p.grad for p in model.parameters() if p.requires_grad and p.grad is not None]
     assert len(trainable_grads) > 0, "Prefix params must have grads after train_step"
 
 
 # ===========================================================================
 # 15. Border case: n_tokens=0 gives same output shape as no-prefix baseline
 # ===========================================================================
+
 
 def test_prefix_tuning_zero_tokens_border():
     backbone = TinyBackbone()

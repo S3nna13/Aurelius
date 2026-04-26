@@ -3,15 +3,17 @@
 Verifies that the class is correctly wired into MODEL_COMPONENT_REGISTRY
 via src/model/__init__.py, and that the routing API works end-to-end.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 # ---------------------------------------------------------------------------
 # 1. "dp_aware_moe_routing" present in MODEL_COMPONENT_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_dp_aware_moe_routing_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
+
     assert "dp_aware_moe_routing" in MODEL_COMPONENT_REGISTRY, (
         "MODEL_COMPONENT_REGISTRY missing 'dp_aware_moe_routing' key"
     )
@@ -20,6 +22,7 @@ def test_dp_aware_moe_routing_in_registry():
 # ---------------------------------------------------------------------------
 # 2. Construct from registry, rank_for_session returns valid rank
 # ---------------------------------------------------------------------------
+
 
 def test_registry_construct_and_rank_for_session():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -34,6 +37,7 @@ def test_registry_construct_and_rank_for_session():
 # ---------------------------------------------------------------------------
 # 3. route_batch of 3 sessions → 3 results with ranks in range
 # ---------------------------------------------------------------------------
+
 
 def test_registry_route_batch_three_sessions():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -57,6 +61,7 @@ def test_registry_route_batch_three_sessions():
 # ---------------------------------------------------------------------------
 # 4. Regression guard: existing MODEL_COMPONENT_REGISTRY keys still present
 # ---------------------------------------------------------------------------
+
 
 def test_existing_registry_keys_regression():
     """Ensure adding dp_aware_moe_routing did not remove pre-existing keys."""

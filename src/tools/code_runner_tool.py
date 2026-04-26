@@ -9,10 +9,18 @@ from dataclasses import dataclass, field
 class CodeRunnerConfig:
     timeout_s: float = 5.0
     max_output_bytes: int = 65536
-    allowed_modules: list[str] = field(default_factory=lambda: [
-        "math", "json", "re", "collections", "itertools",
-        "functools", "string", "datetime",
-    ])
+    allowed_modules: list[str] = field(
+        default_factory=lambda: [
+            "math",
+            "json",
+            "re",
+            "collections",
+            "itertools",
+            "functools",
+            "string",
+            "datetime",
+        ]
+    )
 
 
 @dataclass(frozen=True)
@@ -29,7 +37,7 @@ class CodeRunnerTool:
 
     def run(self, code: str) -> CodeRunnerResult:
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 [sys.executable, "-c", code],
                 capture_output=True,
                 timeout=self.config.timeout_s,
@@ -45,7 +53,15 @@ class CodeRunnerTool:
             return CodeRunnerResult(stdout="", stderr="timeout", exit_code=-1, timed_out=True)
 
     def is_safe(self, code: str) -> bool:
-        forbidden = ["import os", "import sys", "subprocess", "__import__", "open(", "eval(", "exec("]
+        forbidden = [
+            "import os",
+            "import sys",
+            "subprocess",
+            "__import__",
+            "open(",
+            "eval(",
+            "exec(",
+        ]
         return not any(tok in code for tok in forbidden)
 
 

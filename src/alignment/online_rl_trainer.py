@@ -6,7 +6,6 @@ surrogate objective for policy optimisation.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -159,20 +158,14 @@ class OnlineRLTrainer:
 
         cfg = self.config
 
-        policy_loss = self.compute_policy_loss(
-            logprobs, old_logprobs, advantages, cfg.clip_eps
-        )
+        policy_loss = self.compute_policy_loss(logprobs, old_logprobs, advantages, cfg.clip_eps)
         value_loss = self.compute_value_loss(values, returns)
 
         # KL divergence approximation: E[old_logp - logp]
         with torch.no_grad():
             kl = (old_logprobs - logprobs).mean()
 
-        total_loss = (
-            policy_loss
-            + cfg.value_coef * value_loss
-            - cfg.entropy_coef * entropy
-        )
+        total_loss = policy_loss + cfg.value_coef * value_loss - cfg.entropy_coef * entropy
 
         return {
             "policy_loss": policy_loss,

@@ -11,31 +11,33 @@ from __future__ import annotations
 from src.computer_use.gui_action import ActionType, GUIAction
 from src.computer_use.screen_parser import AccessibilityNode, ScreenSnapshot
 
-
 # ---------------------------------------------------------------------------
 # Deny list
 # ---------------------------------------------------------------------------
 
-VERIFIER_DENY_LIST: frozenset[str] = frozenset({
-    "delete",
-    "format",
-    "shutdown",
-    "rm",
-    "rmdir",
-    "drop",
-    "wipe",
-    "erase",
-    "terminate",
-    "kill",
-    "poweroff",
-    "reboot",
-    "destroy",
-})
+VERIFIER_DENY_LIST: frozenset[str] = frozenset(
+    {
+        "delete",
+        "format",
+        "shutdown",
+        "rm",
+        "rmdir",
+        "drop",
+        "wipe",
+        "erase",
+        "terminate",
+        "kill",
+        "poweroff",
+        "reboot",
+        "destroy",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Verifier
 # ---------------------------------------------------------------------------
+
 
 class ActionVerifier:
     """Verifies the safety and feasibility of GUIActions against a ScreenSnapshot."""
@@ -110,9 +112,8 @@ class ActionVerifier:
 # Trajectory verifier
 # ---------------------------------------------------------------------------
 
-def verify_trajectory(
-    actions: list[GUIAction], snapshot: ScreenSnapshot
-) -> list[tuple[bool, str]]:
+
+def verify_trajectory(actions: list[GUIAction], snapshot: ScreenSnapshot) -> list[tuple[bool, str]]:
     """Verify a sequence of actions against a single snapshot.
 
     Parameters

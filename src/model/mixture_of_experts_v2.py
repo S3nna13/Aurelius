@@ -8,20 +8,20 @@ Implements Switch Transformer / Mixtral-style sparse MoE with:
 
 Pure PyTorch / stdlib only — no external dependencies.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Expert
 # ---------------------------------------------------------------------------
+
 
 class Expert(nn.Module):
     """Single FFN expert: Linear -> activation -> Linear."""
@@ -35,7 +35,9 @@ class Expert(nn.Module):
     def __init__(self, d_model: int, d_ff: int, activation: str = "gelu") -> None:
         super().__init__()
         if activation not in self._ACTIVATIONS:
-            raise ValueError(f"activation must be one of {list(self._ACTIVATIONS)}, got {activation!r}")
+            raise ValueError(
+                f"activation must be one of {list(self._ACTIVATIONS)}, got {activation!r}"
+            )
         self.fc1 = nn.Linear(d_model, d_ff)
         self.fc2 = nn.Linear(d_ff, d_model)
         self.act_fn = self._ACTIVATIONS[activation]
@@ -49,6 +51,7 @@ class Expert(nn.Module):
 # TopKRouter
 # ---------------------------------------------------------------------------
 
+
 class TopKRouter(nn.Module):
     """Route tokens to top-k experts using a learned linear gate."""
 
@@ -60,7 +63,7 @@ class TopKRouter(nn.Module):
         self.top_k = top_k
         self.gate = nn.Linear(d_model, n_experts, bias=False)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """x: (B, T, D) or (N, D).
 
         Returns
@@ -69,24 +72,25 @@ class TopKRouter(nn.Module):
         expert_indices   : (N, top_k)  LongTensor of chosen expert ids
         """
         if x.dim() == 3:
-            x_flat = x.view(-1, x.shape[-1])   # (N, D)
+            x_flat = x.view(-1, x.shape[-1])  # (N, D)
         else:
             x_flat = x
 
-        logits = self.gate(x_flat)            # (N, E)
-        probs = F.softmax(logits, dim=-1)     # (N, E)
+        logits = self.gate(x_flat)  # (N, E)
+        probs = F.softmax(logits, dim=-1)  # (N, E)
 
         top_weights, top_indices = torch.topk(probs, self.top_k, dim=-1)  # (N, top_k)
 
         # Renormalize so weights sum to 1 per token
         top_weights = top_weights / (top_weights.sum(dim=-1, keepdim=True) + 1e-9)
 
-        return top_weights, top_indices   # (N, top_k), (N, top_k) LongTensor
+        return top_weights, top_indices  # (N, top_k), (N, top_k) LongTensor
 
 
 # ---------------------------------------------------------------------------
 # ExpertCapacityBuffer
 # ---------------------------------------------------------------------------
+
 
 class ExpertCapacityBuffer(nn.Module):
     """Enforce per-expert token capacity limits (no learnable parameters)."""
@@ -106,7 +110,7 @@ class ExpertCapacityBuffer(nn.Module):
         dispatch_weights: Tensor,
         expert_indices: Tensor,
         n_tokens: int,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Cap each expert to capacity tokens; overflow tokens get weight=0.
 
         Parameters
@@ -137,13 +141,14 @@ class ExpertCapacityBuffer(nn.Module):
                     expert_count[e] += 1
 
         # A token is overflowed if all its routing weights became zero
-        overflow_mask = (weights_capped.sum(dim=-1) == 0.0)  # (N,)
+        overflow_mask = weights_capped.sum(dim=-1) == 0.0  # (N,)
         return weights_capped, expert_indices, overflow_mask
 
 
 # ---------------------------------------------------------------------------
 # MoELayer
 # ---------------------------------------------------------------------------
+
 
 class MoELayer(nn.Module):
     """Sparse Mixture-of-Experts feed-forward layer."""
@@ -179,22 +184,22 @@ class MoELayer(nn.Module):
         one_hot = torch.zeros(N, E, device=router_probs.device, dtype=router_probs.dtype)
         one_hot.scatter_(1, expert_indices, 1.0)
         assigned = one_hot.clamp(max=1.0)  # (N, E) — each expert counted once per token
-        f = assigned.mean(dim=0)           # (E,)
+        f = assigned.mean(dim=0)  # (E,)
 
         # p_i: mean router probability for expert i
-        p = router_probs.mean(dim=0)       # (E,)
+        p = router_probs.mean(dim=0)  # (E,)
 
         return E * (f * p).sum()
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """x: (B, T, D) -> (output: (B, T, D), aux_loss: scalar)."""
         B, T, D = x.shape
         N = B * T
         x_flat = x.view(N, D)  # (N, D)
 
         # Full softmax probs for aux loss
-        logits = self.router.gate(x_flat)                        # (N, E)
-        router_probs = F.softmax(logits, dim=-1)                 # (N, E)
+        logits = self.router.gate(x_flat)  # (N, E)
+        router_probs = F.softmax(logits, dim=-1)  # (N, E)
 
         top_weights_raw, top_indices = torch.topk(router_probs, self.top_k, dim=-1)
         # Renormalize
@@ -210,14 +215,14 @@ class MoELayer(nn.Module):
 
         for e_idx, expert in enumerate(self.experts):
             # Tokens that use this expert in any slot
-            mask = (top_indices == e_idx)  # (N, top_k) bool
+            mask = top_indices == e_idx  # (N, top_k) bool
             token_mask = mask.any(dim=-1)  # (N,)
             if not token_mask.any():
                 continue
 
             global_positions = token_mask.nonzero(as_tuple=True)[0]  # indices in [0, N)
-            tokens_in = x_flat[global_positions]    # (n_e, D)
-            expert_out = expert(tokens_in)          # (n_e, D)
+            tokens_in = x_flat[global_positions]  # (n_e, D)
+            expert_out = expert(tokens_in)  # (n_e, D)
 
             for slot in range(self.top_k):
                 slot_mask_global = mask[:, slot]  # (N,) bool
@@ -238,6 +243,7 @@ class MoELayer(nn.Module):
 # ---------------------------------------------------------------------------
 # MoETransformerBlock
 # ---------------------------------------------------------------------------
+
 
 class MoETransformerBlock(nn.Module):
     """Transformer block where the FFN is replaced by MoELayer."""
@@ -261,7 +267,7 @@ class MoETransformerBlock(nn.Module):
         mask = torch.full((seq_len, seq_len), float("-inf"), device=device)
         return torch.triu(mask, diagonal=1)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """x: (B, T, D) -> (output: (B, T, D), aux_loss: scalar)."""
         T = x.shape[1]
         causal = self._causal_mask(T, x.device)
@@ -279,6 +285,7 @@ class MoETransformerBlock(nn.Module):
 # MoEModel
 # ---------------------------------------------------------------------------
 
+
 class MoEModel(nn.Module):
     """Full language model with MoE transformer blocks."""
 
@@ -294,14 +301,13 @@ class MoEModel(nn.Module):
     ) -> None:
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.blocks = nn.ModuleList([
-            MoETransformerBlock(d_model, n_heads, n_experts, d_ff, top_k)
-            for _ in range(n_layers)
-        ])
+        self.blocks = nn.ModuleList(
+            [MoETransformerBlock(d_model, n_heads, n_experts, d_ff, top_k) for _ in range(n_layers)]
+        )
         self.norm = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
-    def forward(self, input_ids: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """input_ids: (B, T) LongTensor -> (logits: (B, T, V), total_aux_loss: scalar)."""
         x = self.embedding(input_ids)
         total_aux = torch.tensor(0.0, device=x.device)
@@ -313,7 +319,7 @@ class MoEModel(nn.Module):
         return logits, total_aux
 
     @torch.no_grad()
-    def router_statistics(self, input_ids: Tensor) -> Dict[str, object]:
+    def router_statistics(self, input_ids: Tensor) -> dict[str, object]:
         """Compute routing statistics across all blocks.
 
         Returns
@@ -345,7 +351,7 @@ class MoEModel(nn.Module):
             one_hot = torch.zeros(N, E, device=x.device)
             one_hot.scatter_(1, top_indices, 1.0)
             assigned = one_hot.clamp(max=1.0)
-            f = assigned.mean(dim=0)   # (E,)
+            f = assigned.mean(dim=0)  # (E,)
             all_f.append(f)
 
             moe_out, _ = moe(x_normed)
@@ -353,8 +359,8 @@ class MoEModel(nn.Module):
 
         x = self.norm(x)
 
-        stacked = torch.stack(all_f, dim=0)   # (n_layers, E)
-        mean_f = stacked.mean(dim=0)           # (E,)
+        stacked = torch.stack(all_f, dim=0)  # (n_layers, E)
+        mean_f = stacked.mean(dim=0)  # (E,)
 
         mean_utilization = float(mean_f.mean().item())
         std_util = float(mean_f.std().item())

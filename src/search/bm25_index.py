@@ -3,6 +3,7 @@
 Inspired by Robertson & Zaragoza (2009) "The Probabilistic Relevance Framework:
 BM25 and Beyond"; clean-room implementation. License: MIT.
 """
+
 from __future__ import annotations
 
 import math
@@ -26,9 +27,9 @@ class BM25Index:
     def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
         self.k1 = k1
         self.b = b
-        self._tf: dict[str, dict[str, int]] = {}       # doc_id -> {token: count}
-        self._lengths: dict[str, int] = {}             # doc_id -> token count
-        self._df: dict[str, int] = defaultdict(int)    # token -> doc freq
+        self._tf: dict[str, dict[str, int]] = {}  # doc_id -> {token: count}
+        self._lengths: dict[str, int] = {}  # doc_id -> token count
+        self._df: dict[str, int] = defaultdict(int)  # token -> doc freq
         self._metadata: dict[str, dict] = {}
 
     @property

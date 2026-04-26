@@ -12,19 +12,17 @@ References:
 
 from __future__ import annotations
 
-import copy
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ReasoningStep:
@@ -44,6 +42,7 @@ class ReasoningStep:
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StepwiseDPOConfig:
@@ -72,10 +71,11 @@ class StepwiseDPOConfig:
 # Standalone helper functions
 # ---------------------------------------------------------------------------
 
+
 def parse_reasoning_steps(
     response_ids: Tensor,
     separator_id: int,
-) -> List[Tensor]:
+) -> list[Tensor]:
     """Split a response tensor into individual reasoning steps.
 
     Splits at positions where the token equals separator_id. The separator
@@ -90,9 +90,7 @@ def parse_reasoning_steps(
         List of 1-D tensors, one per step, excluding separator tokens.
     """
     if response_ids.dim() != 1:
-        raise ValueError(
-            f"response_ids must be 1-D, got shape {tuple(response_ids.shape)}"
-        )
+        raise ValueError(f"response_ids must be 1-D, got shape {tuple(response_ids.shape)}")
 
     sep_positions = (response_ids == separator_id).nonzero(as_tuple=False).squeeze(-1)
 
@@ -100,7 +98,7 @@ def parse_reasoning_steps(
         # No separator found - return full response as a single step
         return [response_ids]
 
-    steps: List[Tensor] = []
+    steps: list[Tensor] = []
     prev = 0
     for pos in sep_positions.tolist():
         steps.append(response_ids[prev:pos])
@@ -112,9 +110,9 @@ def parse_reasoning_steps(
 
 
 def label_steps_by_prefix_match(
-    steps: List[Tensor],
-    correct_steps: List[Tensor],
-) -> List[bool]:
+    steps: list[Tensor],
+    correct_steps: list[Tensor],
+) -> list[bool]:
     """Label each step as correct if its first token matches the corresponding
     correct step's first token.
 
@@ -127,7 +125,7 @@ def label_steps_by_prefix_match(
     Returns:
         List of bool labels, one per element in steps.
     """
-    labels: List[bool] = []
+    labels: list[bool] = []
     for i, step in enumerate(steps):
         if i >= len(correct_steps):
             labels.append(False)
@@ -143,6 +141,7 @@ def label_steps_by_prefix_match(
 # ---------------------------------------------------------------------------
 # Stepwise DPO Trainer
 # ---------------------------------------------------------------------------
+
 
 class StepwiseDPOTrainer:
     """Trainer for Stepwise Direct Preference Optimization.
@@ -225,9 +224,7 @@ class StepwiseDPOTrainer:
         """
         # exponents[i] = n_steps - i  =>  arange from n_steps down to 1
         exponents = torch.arange(n_steps, 0, -1, dtype=torch.float32)
-        weights = torch.pow(
-            torch.tensor(self.step_weight_decay, dtype=torch.float32), exponents
-        )
+        weights = torch.pow(torch.tensor(self.step_weight_decay, dtype=torch.float32), exponents)
         # Normalize so weights sum to 1
         weights = weights / weights.sum().clamp(min=1e-8)
         return weights
@@ -235,9 +232,9 @@ class StepwiseDPOTrainer:
     def compute_step_log_probs(
         self,
         model: nn.Module,
-        step_ids_list: List[Tensor],
+        step_ids_list: list[Tensor],
         context_ids: Tensor,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Compute log probabilities for each step conditioned on context + prior steps.
 
         For step k, the input to the model is:
@@ -252,7 +249,7 @@ class StepwiseDPOTrainer:
         Returns:
             List of (step_len,) log probability tensors, one per step.
         """
-        step_logps: List[Tensor] = []
+        step_logps: list[Tensor] = []
 
         # Build cumulative prefix: context + steps[0..k-1]
         prefix = context_ids  # (prefix_len,)
@@ -289,9 +286,9 @@ class StepwiseDPOTrainer:
             relevant_logps = log_probs_all[start:end]  # (step_len, V)
             target_ids = step_ids  # (step_len,)
 
-            token_logps = relevant_logps.gather(
-                -1, target_ids.unsqueeze(-1)
-            ).squeeze(-1)  # (step_len,)
+            token_logps = relevant_logps.gather(-1, target_ids.unsqueeze(-1)).squeeze(
+                -1
+            )  # (step_len,)
 
             step_logps.append(token_logps)
 
@@ -302,13 +299,13 @@ class StepwiseDPOTrainer:
 
     def compute_stepwise_dpo_loss(
         self,
-        chosen_steps: List[ReasoningStep],
-        rejected_steps: List[ReasoningStep],
-        chosen_step_logps: List[Tensor],
-        rejected_step_logps: List[Tensor],
-        ref_chosen_logps: List[Tensor],
-        ref_rejected_logps: List[Tensor],
-    ) -> Tuple[Tensor, Dict]:
+        chosen_steps: list[ReasoningStep],
+        rejected_steps: list[ReasoningStep],
+        chosen_step_logps: list[Tensor],
+        rejected_step_logps: list[Tensor],
+        ref_chosen_logps: list[Tensor],
+        ref_rejected_logps: list[Tensor],
+    ) -> tuple[Tensor, dict]:
         """Compute the stepwise DPO loss across all step pairs.
 
         For each step index i, computes a standard DPO loss using the
@@ -354,9 +351,9 @@ class StepwiseDPOTrainer:
 
         weights = self.compute_step_weights(n_steps)  # (n_steps,)
 
-        step_losses: List[Tensor] = []
-        chosen_rewards_list: List[float] = []
-        rejected_rewards_list: List[float] = []
+        step_losses: list[Tensor] = []
+        chosen_rewards_list: list[float] = []
+        rejected_rewards_list: list[float] = []
 
         for i in range(n_steps):
             # Aggregate log probs over the step (sum over tokens)
@@ -389,7 +386,7 @@ class StepwiseDPOTrainer:
         rejected_r = torch.tensor(rejected_rewards_list)
         accuracy = float((chosen_r > rejected_r).float().mean().item())
 
-        metrics: Dict = {
+        metrics: dict = {
             "loss": total_loss.detach().item(),
             "mean_chosen_reward": float(chosen_r.mean().item()),
             "mean_rejected_reward": float(rejected_r.mean().item()),
@@ -402,10 +399,10 @@ class StepwiseDPOTrainer:
 
     def train_step(
         self,
-        chosen_steps: List[ReasoningStep],
-        rejected_steps: List[ReasoningStep],
+        chosen_steps: list[ReasoningStep],
+        rejected_steps: list[ReasoningStep],
         context_ids: Tensor,
-    ) -> Dict:
+    ) -> dict:
         """Execute a single training forward pass and return metrics.
 
         Computes log probs under both policy and reference models, then
@@ -425,9 +422,7 @@ class StepwiseDPOTrainer:
 
         # Policy log probs (with grad)
         self.policy.train()
-        chosen_step_logps = self.compute_step_log_probs(
-            self.policy, chosen_ids_list, context_ids
-        )
+        chosen_step_logps = self.compute_step_log_probs(self.policy, chosen_ids_list, context_ids)
         rejected_step_logps = self.compute_step_log_probs(
             self.policy, rejected_ids_list, context_ids
         )

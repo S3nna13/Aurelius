@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import tempfile
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -44,6 +43,7 @@ def _write_checkpoint(state: dict, tmp: str, max_gb: float = 100.0) -> str:
 # load_manifest
 # ---------------------------------------------------------------------------
 
+
 def test_load_manifest_returns_manifest():
     with tempfile.TemporaryDirectory() as tmp:
         _write_checkpoint(_tiny_state(), tmp)
@@ -64,6 +64,7 @@ def test_load_manifest_key_count():
 # ---------------------------------------------------------------------------
 # load_shard
 # ---------------------------------------------------------------------------
+
 
 def test_load_shard_returns_tensors():
     with tempfile.TemporaryDirectory() as tmp:
@@ -88,6 +89,7 @@ def test_load_shard_correct_shapes():
 # ---------------------------------------------------------------------------
 # load_state_dict
 # ---------------------------------------------------------------------------
+
 
 def test_load_state_dict_all_keys():
     state = _tiny_state()
@@ -121,6 +123,7 @@ def test_load_state_dict_multi_shard():
 # load_into_model
 # ---------------------------------------------------------------------------
 
+
 def test_load_into_model_no_missing_keys():
     model = _simple_model()
     with tempfile.TemporaryDirectory() as tmp:
@@ -145,6 +148,7 @@ def test_load_into_model_returns_tuple():
 # ---------------------------------------------------------------------------
 # partial_load
 # ---------------------------------------------------------------------------
+
 
 def test_partial_load_count():
     model = _simple_model()

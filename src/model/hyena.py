@@ -8,7 +8,6 @@ small MLP, computed via FFT for O(N log N) complexity.
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class HyenaFilter(nn.Module):
@@ -61,10 +60,10 @@ class HyenaFilter(nn.Module):
             Tensor of shape (order, d_model, seq_len)
         """
         pos = self.positions[:seq_len]  # (seq_len, 1)
-        h = self.filter_mlp(pos)        # (seq_len, order * d_model)
+        h = self.filter_mlp(pos)  # (seq_len, order * d_model)
         # Reshape to (order, d_model, seq_len)
         h = h.view(seq_len, self.order, self.d_model)  # (seq_len, order, d_model)
-        h = h.permute(1, 2, 0)                          # (order, d_model, seq_len)
+        h = h.permute(1, 2, 0)  # (order, d_model, seq_len)
         return h
 
 
@@ -123,15 +122,15 @@ class HyenaOperator(nn.Module):
         fft_len = 2 * seq_len
 
         # FFT along the sequence dimension
-        U = torch.fft.rfft(u, n=fft_len, dim=-1)   # (B, d_model, fft_len//2+1)
-        K = torch.fft.rfft(k, n=fft_len, dim=-1)   # (d_model, fft_len//2+1)
+        U = torch.fft.rfft(u, n=fft_len, dim=-1)  # (B, d_model, fft_len//2+1)
+        K = torch.fft.rfft(k, n=fft_len, dim=-1)  # (d_model, fft_len//2+1)
 
         # Broadcast and multiply
-        Y = U * K.unsqueeze(0)                       # (B, d_model, fft_len//2+1)
+        Y = U * K.unsqueeze(0)  # (B, d_model, fft_len//2+1)
 
         # IFFT and take causal part
-        y = torch.fft.irfft(Y, n=fft_len, dim=-1)   # (B, d_model, fft_len)
-        return y[..., :seq_len]                       # (B, d_model, L)
+        y = torch.fft.irfft(Y, n=fft_len, dim=-1)  # (B, d_model, fft_len)
+        return y[..., :seq_len]  # (B, d_model, L)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -144,28 +143,28 @@ class HyenaOperator(nn.Module):
         B, L, _ = x.shape
 
         # 1. Project to (order+1) streams
-        proj = self.in_proj(x)                          # (B, L, (order+1)*d_model)
+        proj = self.in_proj(x)  # (B, L, (order+1)*d_model)
 
         # 2. Split into [v, z_1, ..., z_order]
-        streams = proj.split(self.d_model, dim=-1)      # list of (B, L, d_model), len=order+1
-        v = streams[0]                                  # (B, L, d_model) — gating signal
-        zs = streams[1:]                                # order streams
+        streams = proj.split(self.d_model, dim=-1)  # list of (B, L, d_model), len=order+1
+        v = streams[0]  # (B, L, d_model) — gating signal
+        zs = streams[1:]  # order streams
 
         # 3. Transpose to (B, d_model, L) for conv
-        v = v.transpose(1, 2)                           # (B, d_model, L)
-        zs = [z.transpose(1, 2) for z in zs]           # list of (B, d_model, L)
+        v = v.transpose(1, 2)  # (B, d_model, L)
+        zs = [z.transpose(1, 2) for z in zs]  # list of (B, d_model, L)
 
         # 4. Generate all kernels: (order, d_model, L)
-        kernels = self.filter(L)                        # (order, d_model, L)
+        kernels = self.filter(L)  # (order, d_model, L)
 
         # 5. Recurrent gating: y = fft_conv(z_i, h_i) * y
         y = v
         for i in range(self.order):
-            y = self.fft_conv(zs[i], kernels[i]) * y   # (B, d_model, L)
+            y = self.fft_conv(zs[i], kernels[i]) * y  # (B, d_model, L)
 
         # 6. Transpose back and project
-        y = y.transpose(1, 2)                           # (B, L, d_model)
-        out = self.out_proj(y)                          # (B, L, d_model)
+        y = y.transpose(1, 2)  # (B, L, d_model)
+        out = self.out_proj(y)  # (B, L, d_model)
         return out
 
 

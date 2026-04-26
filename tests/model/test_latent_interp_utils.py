@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.model.latent_interp_utils import (
@@ -65,9 +64,7 @@ def test_slerp_t0_direction_matches_v0():
     v1 = torch.randn(D)
     result = slerp(v0, v1, 0.0)
     eps = 1e-6
-    cos_sim = torch.dot(
-        result / (result.norm() + eps), v0 / (v0.norm() + eps)
-    )
+    cos_sim = torch.dot(result / (result.norm() + eps), v0 / (v0.norm() + eps))
     assert cos_sim.item() > 0.999
 
 
@@ -78,9 +75,7 @@ def test_slerp_t1_direction_matches_v1():
     v1 = torch.randn(D)
     result = slerp(v0, v1, 1.0)
     eps = 1e-6
-    cos_sim = torch.dot(
-        result / (result.norm() + eps), v1 / (v1.norm() + eps)
-    )
+    cos_sim = torch.dot(result / (result.norm() + eps), v1 / (v1.norm() + eps))
     assert cos_sim.item() > 0.999
 
 
@@ -96,9 +91,7 @@ def test_slerp_parallel_vector_fallback():
     assert not torch.isnan(result).any()
     # Should point in the same direction as v
     eps = 1e-6
-    cos_sim = torch.dot(
-        result / (result.norm() + eps), v / (v.norm() + eps)
-    )
+    cos_sim = torch.dot(result / (result.norm() + eps), v / (v.norm() + eps))
     assert cos_sim.item() > 0.99
 
 
@@ -191,6 +184,4 @@ def test_slerp_midpoint_norm_between_endpoints():
 
     lo = min(norm0, norm1) * 0.5
     hi = max(norm0, norm1) * 2.0
-    assert lo <= norm_mid <= hi, (
-        f"mid norm {norm_mid:.4f} not between {norm0:.4f} and {norm1:.4f}"
-    )
+    assert lo <= norm_mid <= hi, f"mid norm {norm_mid:.4f} not between {norm0:.4f} and {norm1:.4f}"

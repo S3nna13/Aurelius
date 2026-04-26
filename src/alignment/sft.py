@@ -28,9 +28,8 @@ def _datasets_module() -> Any:
     try:
         return importlib.import_module("datasets")
     except ImportError as exc:  # pragma: no cover - dependency not installed in tests
-        raise ImportError(
-            "The 'datasets' package is required for SFT dataset loading."
-        ) from exc
+        raise ImportError("The 'datasets' package is required for SFT dataset loading.") from exc
+
 
 # ---------------------------------------------------------------------------
 # ChatML formatting
@@ -64,6 +63,7 @@ def format_chatml(
 # SFT configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SFTConfig:
     """Configuration for supervised fine-tuning."""
@@ -77,8 +77,13 @@ class SFTConfig:
     lora_alpha: int = 128
     lora_dropout: float = 0.05
     lora_target_modules: tuple[str, ...] = (
-        "q_proj", "v_proj", "k_proj", "o_proj",
-        "gate_proj", "up_proj", "down_proj",
+        "q_proj",
+        "v_proj",
+        "k_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
     )
 
     # Training
@@ -116,6 +121,7 @@ class SFTConfig:
 # Dataset loading and processing
 # ---------------------------------------------------------------------------
 
+
 def _load_oasst2(min_score: float) -> Any:
     """Load OASST2 dataset, filtering to assistant replies with score > min_score.
 
@@ -151,10 +157,12 @@ def _load_oasst2(min_score: float) -> Any:
         if parent is None or parent["role"] != "prompter":
             continue
 
-        pairs.append({
-            "instruction": parent["text"],
-            "response": msg["text"],
-        })
+        pairs.append(
+            {
+                "instruction": parent["text"],
+                "response": msg["text"],
+            }
+        )
 
     logger.info("OASST2: extracted %d instruction-response pairs", len(pairs))
     return hf_datasets.Dataset.from_list(pairs)
@@ -172,10 +180,12 @@ def _load_dolly() -> Any:
         context = row.get("context", "")
         if context:
             instruction = f"{instruction}\n\nContext: {context}"
-        pairs.append({
-            "instruction": instruction,
-            "response": row["response"],
-        })
+        pairs.append(
+            {
+                "instruction": instruction,
+                "response": row["response"],
+            }
+        )
 
     logger.info("Dolly-15k: loaded %d instruction-response pairs", len(pairs))
     return hf_datasets.Dataset.from_list(pairs)
@@ -210,6 +220,7 @@ def formatting_func(example: dict[str, str]) -> str:
 # Tokenization
 # ---------------------------------------------------------------------------
 
+
 def tokenize_for_sft(text: str, tokenizer, max_len: int) -> dict[str, torch.Tensor]:
     """Tokenize a ChatML-formatted string with prompt masking.
 
@@ -232,10 +243,12 @@ def tokenize_for_sft(text: str, tokenizer, max_len: int) -> dict[str, torch.Tens
     pad_len = max_len - len(token_ids)
     input_ids = torch.tensor(token_ids, dtype=torch.long)
     if pad_len > 0:
-        input_ids = torch.cat([
-            input_ids,
-            torch.full((pad_len,), tokenizer.pad_token_id, dtype=torch.long),
-        ])
+        input_ids = torch.cat(
+            [
+                input_ids,
+                torch.full((pad_len,), tokenizer.pad_token_id, dtype=torch.long),
+            ]
+        )
 
     # Find the split point: encode up to and including <|assistant|>
     assistant_marker = CHATML_ASSISTANT  # "<|assistant|>"
@@ -259,6 +272,7 @@ def tokenize_for_sft(text: str, tokenizer, max_len: int) -> dict[str, torch.Tens
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def _resolve_target_modules(model: nn.Module, short_names: tuple[str, ...]) -> list[str]:
     """Return full dotted module paths whose last component is in short_names.
@@ -324,6 +338,7 @@ def _cosine_warmup(
 # Native SFT Runner
 # ---------------------------------------------------------------------------
 
+
 class NativeSFTRunner:
     """Runs SFT training using native PyTorch with DoRA adapters."""
 
@@ -373,7 +388,7 @@ class NativeSFTRunner:
 
         # Stack into tensors for DataLoader
         all_input_ids = torch.stack([d["input_ids"] for d in tokenized])  # (N, max_len)
-        all_labels = torch.stack([d["labels"] for d in tokenized])        # (N, max_len)
+        all_labels = torch.stack([d["labels"] for d in tokenized])  # (N, max_len)
 
         dataset = TensorDataset(all_input_ids, all_labels)
         loader = DataLoader(
@@ -425,7 +440,10 @@ class NativeSFTRunner:
                 if global_step % self.cfg.logging_steps == 0:
                     logger.info(
                         "epoch=%d step=%d loss=%.4f lr=%.2e",
-                        epoch + 1, global_step, loss.item(), lr,
+                        epoch + 1,
+                        global_step,
+                        loss.item(),
+                        lr,
                     )
 
             avg_loss = epoch_loss / max(steps_per_epoch, 1)
@@ -442,6 +460,7 @@ class NativeSFTRunner:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     """CLI entry point for SFT training."""
     import argparse
@@ -454,11 +473,15 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Aurelius 1.3B SFT Training")
     parser.add_argument(
-        "--model", type=str, default="checkpoints/aurelius-1.3b/latest",
+        "--model",
+        type=str,
+        default="checkpoints/aurelius-1.3b/latest",
         help="Path to base model checkpoint",
     )
     parser.add_argument(
-        "--tokenizer", type=str, default="tokenizers/aurelius-128k",
+        "--tokenizer",
+        type=str,
+        default="tokenizers/aurelius-128k",
         help="Path to tokenizer",
     )
     parser.add_argument("--output-dir", type=str, default="checkpoints/aurelius-1.3b-sft")
@@ -489,9 +512,7 @@ def main() -> None:
     # Model and tokenizer must be provided externally for native training.
     # This CLI is a placeholder; integrate with your model loading code.
     logger.info("SFT config: %s", cfg)
-    logger.info(
-        "To run training, instantiate NativeSFTRunner(model, tokenizer, cfg).train()"
-    )
+    logger.info("To run training, instantiate NativeSFTRunner(model, tokenizer, cfg).train()")
 
 
 if __name__ == "__main__":

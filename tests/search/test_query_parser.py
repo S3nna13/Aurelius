@@ -3,16 +3,16 @@
 import pytest
 
 from src.search.query_parser import (
+    QUERY_PARSER_REGISTRY,
     QueryParser,
     QueryToken,
     TokenType,
-    QUERY_PARSER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tokenize(query: str):
     return QueryParser().tokenize(query)
@@ -30,6 +30,7 @@ def _terms(query: str):
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 class TestRegistry:
     def test_registry_exists(self):
         assert QUERY_PARSER_REGISTRY is not None
@@ -45,6 +46,7 @@ class TestRegistry:
 # QueryToken dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestQueryToken:
     def test_query_token_frozen(self):
         tok = QueryToken(type=TokenType.TERM, value="hello")
@@ -58,6 +60,7 @@ class TestQueryToken:
 # ---------------------------------------------------------------------------
 # Tokenizer
 # ---------------------------------------------------------------------------
+
 
 class TestTokenize:
     def test_single_term(self):
@@ -117,6 +120,7 @@ class TestTokenize:
 # ---------------------------------------------------------------------------
 # Parser – AST structure
 # ---------------------------------------------------------------------------
+
 
 class TestParseSingleTerm:
     def test_single_term_ast(self):
@@ -217,6 +221,7 @@ class TestParseEmpty:
 # ---------------------------------------------------------------------------
 # extract_terms
 # ---------------------------------------------------------------------------
+
 
 class TestExtractTerms:
     def test_single_term_extracted(self):

@@ -6,24 +6,24 @@ Project test config: AureliusConfig(
 )
 """
 
+import pytest
 import torch
 import torch.nn.functional as F
-import pytest
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.multi_token_prediction import (
     MTPConfig,
     MTPHead,
-    MultiTokenPredictionModel,
     MTPTrainer,
+    MultiTokenPredictionModel,
     acceptance_rate_stats,
 )
-
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg():
@@ -60,6 +60,7 @@ def mtp_model(base_model, mtp_cfg):
 # test_mtp_head_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_head_output_shape(cfg):
     """MTPHead: (B, T, D) -> (B, T, V)."""
     B, T = 2, 16
@@ -74,6 +75,7 @@ def test_mtp_head_output_shape(cfg):
 # ---------------------------------------------------------------------------
 # test_mtp_model_forward_no_labels
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_model_forward_no_labels(mtp_model, cfg):
     """Without labels: returns (None, logits, pkv) tuple."""
@@ -92,6 +94,7 @@ def test_mtp_model_forward_no_labels(mtp_model, cfg):
 # test_mtp_model_forward_with_labels
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_model_forward_with_labels(mtp_model, cfg):
     """With labels: loss > 0."""
     B, T = 2, 16
@@ -107,6 +110,7 @@ def test_mtp_model_forward_with_labels(mtp_model, cfg):
 # ---------------------------------------------------------------------------
 # test_mtp_model_loss_is_mean_of_all_heads
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_model_loss_is_mean_of_all_heads(base_model, cfg):
     """Total loss is bounded by the min and max of individual head losses."""
@@ -147,6 +151,7 @@ def test_mtp_model_loss_is_mean_of_all_heads(base_model, cfg):
 # test_mtp_parallel_decode_length
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_parallel_decode_length(mtp_model, cfg):
     """parallel_decode returns exactly n_tokens token ids."""
     input_ids = torch.randint(0, cfg.vocab_size, (1, 8))
@@ -160,6 +165,7 @@ def test_mtp_parallel_decode_length(mtp_model, cfg):
 # ---------------------------------------------------------------------------
 # test_mtp_trainer_step_keys
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_trainer_step_keys(base_model, cfg):
     """MTPTrainer.train_step returns dict with 'loss', 'main_loss', 'aux_loss'."""
@@ -179,12 +185,11 @@ def test_mtp_trainer_step_keys(base_model, cfg):
 # test_mtp_trainer_step_loss_positive
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_trainer_step_loss_positive(base_model, cfg):
     """MTPTrainer.train_step: loss > 0."""
     mtp_config = MTPConfig(n_heads=2, shared_head=False, head_type="linear")
-    optimizer = torch.optim.Adam(
-        list(base_model.parameters()), lr=1e-4
-    )
+    optimizer = torch.optim.Adam(list(base_model.parameters()), lr=1e-4)
     trainer = MTPTrainer(base_model, mtp_config, optimizer, max_seq_len=64)
 
     input_ids = torch.randint(0, cfg.vocab_size, (2, 16))
@@ -197,6 +202,7 @@ def test_mtp_trainer_step_loss_positive(base_model, cfg):
 # ---------------------------------------------------------------------------
 # test_acceptance_rate_stats_keys
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_rate_stats_keys(cfg):
     """acceptance_rate_stats returns dict with head accuracy keys."""
@@ -219,19 +225,19 @@ def test_acceptance_rate_stats_keys(cfg):
 # test_mtp_config_n_heads
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_config_n_heads(base_model, cfg):
     """Model has the correct number of MTP heads created."""
     for n in [1, 3, 6]:
         mtp_config = MTPConfig(n_heads=n, shared_head=False, head_type="linear")
         model = MultiTokenPredictionModel(base_model, mtp_config)
-        assert len(model.mtp_heads) == n, (
-            f"Expected {n} MTP heads, got {len(model.mtp_heads)}"
-        )
+        assert len(model.mtp_heads) == n, f"Expected {n} MTP heads, got {len(model.mtp_heads)}"
 
 
 # ---------------------------------------------------------------------------
 # test_mtp_shared_head
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_shared_head(base_model, cfg):
     """With shared_head=True, all heads share the same parameters."""

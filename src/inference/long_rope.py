@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -14,8 +12,8 @@ class LongRoPEConfig:
     base: float = 10000.0
     original_max: int = 4096
     extended_max: int = 131072
-    short_factor: Optional[list] = None
-    long_factor: Optional[list] = None
+    short_factor: list | None = None
+    long_factor: list | None = None
 
 
 class LongRoPEEmbedding(nn.Module):
@@ -47,7 +45,7 @@ class LongRoPEEmbedding(nn.Module):
         self.register_buffer("long_factor", long_t, persistent=False)
 
         exponents = torch.arange(0, half, dtype=torch.float32) * 2.0 / config.dim
-        base_inv_freq = 1.0 / (config.base ** exponents)
+        base_inv_freq = 1.0 / (config.base**exponents)
         self.register_buffer("base_inv_freq", base_inv_freq, persistent=False)
 
     def _get_factors(self, seq_len: int) -> torch.Tensor:

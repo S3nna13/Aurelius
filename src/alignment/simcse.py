@@ -9,19 +9,21 @@ Diagonal entries are positives (same sentence, different dropout); off-diagonal 
 Reference: Gao et al. 2021 "SimCSE: Simple Contrastive Learning of Sentence Embeddings"
            arXiv:2104.08821
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class SimCSEConfig:
-    temperature: float = 0.05    # contrastive temperature (lower = sharper)
-    pooling: str = "mean"        # "mean", "last", "max"
-    normalize: bool = True       # L2-normalize embeddings before cosine sim
+    temperature: float = 0.05  # contrastive temperature (lower = sharper)
+    pooling: str = "mean"  # "mean", "last", "max"
+    normalize: bool = True  # L2-normalize embeddings before cosine sim
 
 
 def simcse_loss(
@@ -108,7 +110,7 @@ class SimCSETrainer:
 
     def __init__(
         self,
-        model: nn.Module,          # AureliusTransformer
+        model: nn.Module,  # AureliusTransformer
         cfg: SimCSEConfig | None = None,
         lr: float = 3e-5,
     ) -> None:

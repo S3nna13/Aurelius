@@ -11,10 +11,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # MicroBatchSplitter
 # ---------------------------------------------------------------------------
+
 
 class MicroBatchSplitter:
     """Split a batch into micro-batches along dim=0."""
@@ -38,9 +38,7 @@ class MicroBatchSplitter:
             if t.size(0) != batch_size:
                 raise ValueError("All tensors must have the same size along dim=0")
 
-        chunks_per_tensor = [
-            torch.split(t, self.micro_batch_size, dim=0) for t in tensors
-        ]
+        chunks_per_tensor = [torch.split(t, self.micro_batch_size, dim=0) for t in tensors]
         n = len(chunks_per_tensor[0])
         return [tuple(chunks_per_tensor[j][i] for j in range(len(tensors))) for i in range(n)]
 
@@ -57,6 +55,7 @@ class MicroBatchSplitter:
 # GradientAccumulator
 # ---------------------------------------------------------------------------
 
+
 class GradientAccumulator:
     """Accumulate gradients over multiple backward passes before updating.
 
@@ -67,8 +66,9 @@ class GradientAccumulator:
             accum.step(loss, is_last=is_last)
     """
 
-    def __init__(self, model: nn.Module, optimizer: torch.optim.Optimizer,
-                 n_accumulation_steps: int) -> None:
+    def __init__(
+        self, model: nn.Module, optimizer: torch.optim.Optimizer, n_accumulation_steps: int
+    ) -> None:
         if n_accumulation_steps < 1:
             raise ValueError(f"n_accumulation_steps must be >= 1, got {n_accumulation_steps}")
         self.model = model
@@ -121,6 +121,7 @@ class GradientAccumulator:
 # VirtualBatchTrainer
 # ---------------------------------------------------------------------------
 
+
 class VirtualBatchTrainer:
     """Train with a large virtual batch via gradient accumulation.
 
@@ -128,8 +129,13 @@ class VirtualBatchTrainer:
     only ``micro_batch_size`` examples are held in memory at once.
     """
 
-    def __init__(self, model: nn.Module, optimizer: torch.optim.Optimizer,
-                 virtual_batch_size: int, micro_batch_size: int) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        virtual_batch_size: int,
+        micro_batch_size: int,
+    ) -> None:
         if virtual_batch_size % micro_batch_size != 0:
             raise ValueError(
                 f"virtual_batch_size ({virtual_batch_size}) must be divisible "
@@ -163,11 +169,9 @@ class VirtualBatchTrainer:
 
         total_loss: float = 0.0
         for i, (mb_ids, mb_labels) in enumerate(micro_batches):
-            is_last = (i == n - 1)
+            is_last = i == n - 1
             output = self.model(mb_ids)
-            loss = nn.functional.cross_entropy(
-                output.view(-1, output.size(-1)), mb_labels.view(-1)
-            )
+            loss = nn.functional.cross_entropy(output.view(-1, output.size(-1)), mb_labels.view(-1))
             total_loss += loss.item()
             self._accumulator.step(loss, is_last=is_last)
 
@@ -177,8 +181,9 @@ class VirtualBatchTrainer:
             "n_micro_batches": n,
         }
 
-    def verify_equivalence(self, model: nn.Module, input_ids: Tensor,
-                           labels: Tensor, tol: float = 1e-4) -> bool:
+    def verify_equivalence(
+        self, model: nn.Module, input_ids: Tensor, labels: Tensor, tol: float = 1e-4
+    ) -> bool:
         """Check that accumulated gradients match full-batch gradients within tol.
 
         Parameters
@@ -200,21 +205,15 @@ class VirtualBatchTrainer:
         ref_optim = torch.optim.SGD(model.parameters(), lr=0.0)
         ref_optim.zero_grad()
         out = model(input_ids)
-        loss = nn.functional.cross_entropy(
-            out.view(-1, out.size(-1)), labels.view(-1)
-        )
+        loss = nn.functional.cross_entropy(out.view(-1, out.size(-1)), labels.view(-1))
         loss.backward()
         ref_grads = {
-            name: p.grad.clone()
-            for name, p in model.named_parameters()
-            if p.grad is not None
+            name: p.grad.clone() for name, p in model.named_parameters() if p.grad is not None
         }
 
         # Accumulated gradients are already stored in self.model after train_step
         accum_grads = {
-            name: p.grad.clone()
-            for name, p in self.model.named_parameters()
-            if p.grad is not None
+            name: p.grad.clone() for name, p in self.model.named_parameters() if p.grad is not None
         }
 
         # Re-run train_step so gradients are freshly accumulated
@@ -223,16 +222,12 @@ class VirtualBatchTrainer:
         n = len(micro_batches)
         for i, (mb_ids, mb_labels) in enumerate(micro_batches):
             out = self.model(mb_ids)
-            loss_mb = nn.functional.cross_entropy(
-                out.view(-1, out.size(-1)), mb_labels.view(-1)
-            )
+            loss_mb = nn.functional.cross_entropy(out.view(-1, out.size(-1)), mb_labels.view(-1))
             scaled = loss_mb / n
             scaled.backward()
 
         accum_grads = {
-            name: p.grad.clone()
-            for name, p in self.model.named_parameters()
-            if p.grad is not None
+            name: p.grad.clone() for name, p in self.model.named_parameters() if p.grad is not None
         }
 
         for name, ref_g in ref_grads.items():
@@ -248,6 +243,7 @@ class VirtualBatchTrainer:
 # LossScaler
 # ---------------------------------------------------------------------------
 
+
 class LossScaler:
     """Mixed-precision loss scaling for stable float16 training simulation.
 
@@ -255,8 +251,13 @@ class LossScaler:
     values are detected in gradients.
     """
 
-    def __init__(self, init_scale: float = 65536.0, growth_factor: float = 2.0,
-                 backoff_factor: float = 0.5, growth_interval: int = 2000) -> None:
+    def __init__(
+        self,
+        init_scale: float = 65536.0,
+        growth_factor: float = 2.0,
+        backoff_factor: float = 0.5,
+        growth_interval: int = 2000,
+    ) -> None:
         self._scale = float(init_scale)
         self.growth_factor = growth_factor
         self.backoff_factor = backoff_factor
@@ -304,6 +305,7 @@ class LossScaler:
 # ---------------------------------------------------------------------------
 # AccumulationStats
 # ---------------------------------------------------------------------------
+
 
 class AccumulationStats:
     """Track training statistics across accumulation steps."""

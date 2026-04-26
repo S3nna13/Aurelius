@@ -18,17 +18,15 @@ RWKV6Model      : embedding + stack of blocks (returns hidden states).
 
 from __future__ import annotations
 
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # RWKV6TimeMix
 # ---------------------------------------------------------------------------
+
 
 class RWKV6TimeMix(nn.Module):
     """RWKV-6 time-mixing with data-dependent (dynamic) decay.
@@ -44,10 +42,10 @@ class RWKV6TimeMix(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
-        self.d_head  = d_model // n_heads
+        self.d_head = d_model // n_heads
 
         # ---- data-dependent gate projections --------------------------------
         # All produce (B, T, d_model); separate linear layers, no bias (as in paper).
@@ -95,12 +93,13 @@ class RWKV6TimeMix(nn.Module):
             out : (B, T, d_model)
         """
         B, T, D = x.shape
-        H, dh   = self.n_heads, self.d_head
+        H, dh = self.n_heads, self.d_head
 
         # ---- time-shift (mix current token with previous token) -------------
         # Prepend zero for position 0.
-        x_prev = torch.cat([torch.zeros(B, 1, D, device=x.device, dtype=x.dtype),
-                             x[:, :-1, :]], dim=1)  # (B, T, D)
+        x_prev = torch.cat(
+            [torch.zeros(B, 1, D, device=x.device, dtype=x.dtype), x[:, :-1, :]], dim=1
+        )  # (B, T, D)
 
         xr = self.time_mix_r * x + (1.0 - self.time_mix_r) * x_prev
         xk = self.time_mix_k * x + (1.0 - self.time_mix_k) * x_prev
@@ -108,18 +107,18 @@ class RWKV6TimeMix(nn.Module):
         xw = self.time_mix_w * x + (1.0 - self.time_mix_w) * x_prev
 
         # ---- projections ----------------------------------------------------
-        r = torch.sigmoid(self.W_r(xr))          # (B, T, D)
-        k = self.W_k(xk)                          # (B, T, D)
-        v = self.W_v(xv)                          # (B, T, D)
+        r = torch.sigmoid(self.W_r(xr))  # (B, T, D)
+        k = self.W_k(xk)  # (B, T, D)
+        v = self.W_v(xv)  # (B, T, D)
         # dynamic per-token log-decay; negative so actual decay < 1.
-        w = -F.softplus(-self.W_w(xw)) - 1e-4    # (B, T, D)  ≤ 0
+        w = -F.softplus(-self.W_w(xw)) - 1e-4  # (B, T, D)  ≤ 0
 
         # ---- reshape to multi-head ------------------------------------------
         # (B, T, H, dh)
         r = r.view(B, T, H, dh)
         k = k.view(B, T, H, dh)
         v = v.view(B, T, H, dh)
-        w = w.view(B, T, H, dh)           # log-decay per head-dim
+        w = w.view(B, T, H, dh)  # log-decay per head-dim
 
         # ---- recurrent computation over T -----------------------------------
         # State s_t ∈ R^{dh × dh} per head.  We unroll the recurrence:
@@ -136,14 +135,14 @@ class RWKV6TimeMix(nn.Module):
 
         outputs = []
         for t in range(T):
-            r_t = r[:, t, :, :]    # (B, H, dh)
-            k_t = k[:, t, :, :]    # (B, H, dh)
-            v_t = v[:, t, :, :]    # (B, H, dh)
-            w_t = w[:, t, :, :]    # (B, H, dh)  log-decay
+            r_t = r[:, t, :, :]  # (B, H, dh)
+            k_t = k[:, t, :, :]  # (B, H, dh)
+            v_t = v[:, t, :, :]  # (B, H, dh)
+            w_t = w[:, t, :, :]  # (B, H, dh)  log-decay
 
             # Current-token bonus: exp(u + k_t) * v_t as rank-1 update.
             # u shape (H, dh) → (1, H, dh).
-            u_k = self.u.unsqueeze(0) + k_t              # (B, H, dh)
+            u_k = self.u.unsqueeze(0) + k_t  # (B, H, dh)
             # kv_bonus: outer product per head (B, H, dh, dh)
             kv_bonus = torch.einsum("bhk,bhv->bhkv", torch.exp(u_k), v_t)
 
@@ -156,22 +155,22 @@ class RWKV6TimeMix(nn.Module):
 
             # Update state: s_t = exp(w_t) * s_{t-1} + k_t^T ⊗ v_t
             # decay: exp(w_t) broadcast over state dims.
-            decay = torch.exp(w_t)                        # (B, H, dh)
+            decay = torch.exp(w_t)  # (B, H, dh)
             # (B, H, dh) → (B, H, dh, 1) for broadcasting across state rows.
-            decay_mat = decay.unsqueeze(-1)               # (B, H, dh, 1)
+            decay_mat = decay.unsqueeze(-1)  # (B, H, dh, 1)
             kv_t = torch.einsum("bhk,bhv->bhkv", k_t, v_t)  # (B, H, dh, dh)
             s = decay_mat * s + kv_t
 
         # Stack outputs: list of T tensors (B, H, dh) → (B, T, H, dh)
-        out = torch.stack(outputs, dim=1)   # (B, T, H, dh)
+        out = torch.stack(outputs, dim=1)  # (B, T, H, dh)
 
         # ---- layer norm per head, then gate with r --------------------------
-        out = self.ln_x(out)                # (B, T, H, dh)
-        out = out * r                       # (B, T, H, dh)
+        out = self.ln_x(out)  # (B, T, H, dh)
+        out = out * r  # (B, T, H, dh)
 
         # ---- reshape back and project output --------------------------------
-        out = out.reshape(B, T, D)          # (B, T, D)
-        out = self.W_o(out)                 # (B, T, D)
+        out = out.reshape(B, T, D)  # (B, T, D)
+        out = self.W_o(out)  # (B, T, D)
 
         return out
 
@@ -179,6 +178,7 @@ class RWKV6TimeMix(nn.Module):
 # ---------------------------------------------------------------------------
 # RWKV6ChannelMix
 # ---------------------------------------------------------------------------
+
 
 class RWKV6ChannelMix(nn.Module):
     """RWKV-6 channel-mixing (FFN) with squared-ReLU gating.
@@ -199,8 +199,8 @@ class RWKV6ChannelMix(nn.Module):
         self.time_mix_k = nn.Parameter(torch.full((1, 1, d_model), 0.5))
 
         self.W_r = nn.Linear(d_model, d_model, bias=False)
-        self.W_k = nn.Linear(d_model, d_ff,    bias=False)
-        self.W_v = nn.Linear(d_ff,    d_model, bias=False)
+        self.W_k = nn.Linear(d_model, d_ff, bias=False)
+        self.W_v = nn.Linear(d_ff, d_model, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -213,22 +213,24 @@ class RWKV6ChannelMix(nn.Module):
         B, T, D = x.shape
 
         # Time-shift: mix x_t with x_{t-1}.
-        x_prev = torch.cat([torch.zeros(B, 1, D, device=x.device, dtype=x.dtype),
-                             x[:, :-1, :]], dim=1)  # (B, T, D)
+        x_prev = torch.cat(
+            [torch.zeros(B, 1, D, device=x.device, dtype=x.dtype), x[:, :-1, :]], dim=1
+        )  # (B, T, D)
 
         xr = self.time_mix_r * x + (1.0 - self.time_mix_r) * x_prev
         xk = self.time_mix_k * x + (1.0 - self.time_mix_k) * x_prev
 
-        r = torch.sigmoid(self.W_r(xr))         # (B, T, D)
-        k = F.relu(self.W_k(xk)) ** 2           # squared-ReLU, (B, T, d_ff)
+        r = torch.sigmoid(self.W_r(xr))  # (B, T, D)
+        k = F.relu(self.W_k(xk)) ** 2  # squared-ReLU, (B, T, d_ff)
 
-        out = r * self.W_v(k)                   # (B, T, D)
+        out = r * self.W_v(k)  # (B, T, D)
         return out
 
 
 # ---------------------------------------------------------------------------
 # RWKV6Block
 # ---------------------------------------------------------------------------
+
 
 class RWKV6Block(nn.Module):
     """Pre-norm RWKV-6 block: LayerNorm + TimeMix + LayerNorm + ChannelMix.
@@ -242,7 +244,7 @@ class RWKV6Block(nn.Module):
         super().__init__()
         self.ln1 = nn.LayerNorm(d_model)
         self.ln2 = nn.LayerNorm(d_model)
-        self.time_mix    = RWKV6TimeMix(d_model, n_heads)
+        self.time_mix = RWKV6TimeMix(d_model, n_heads)
         self.channel_mix = RWKV6ChannelMix(d_model)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -262,6 +264,7 @@ class RWKV6Block(nn.Module):
 # RWKV6Model
 # ---------------------------------------------------------------------------
 
+
 class RWKV6Model(nn.Module):
     """Stack of RWKV-6 blocks with token embedding.
 
@@ -277,15 +280,13 @@ class RWKV6Model(nn.Module):
     def __init__(
         self,
         vocab_size: int,
-        d_model:    int,
-        n_heads:    int,
-        n_layers:   int,
+        d_model: int,
+        n_heads: int,
+        n_layers: int,
     ) -> None:
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.blocks     = nn.ModuleList(
-            [RWKV6Block(d_model, n_heads) for _ in range(n_layers)]
-        )
+        self.blocks = nn.ModuleList([RWKV6Block(d_model, n_heads) for _ in range(n_layers)])
         self.ln_out = nn.LayerNorm(d_model)
 
         self._init_weights()
@@ -301,7 +302,7 @@ class RWKV6Model(nn.Module):
         Returns:
             hidden : (B, T, d_model)
         """
-        x = self.embedding(input_ids)   # (B, T, d_model)
+        x = self.embedding(input_ids)  # (B, T, d_model)
         for block in self.blocks:
             x = block(x)
         x = self.ln_out(x)

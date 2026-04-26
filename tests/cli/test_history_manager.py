@@ -8,7 +8,7 @@ import threading
 
 import pytest
 
-from src.cli.history_manager import HistoryEntry, HistoryError, HistoryManager
+from src.cli.history_manager import HistoryError, HistoryManager
 
 
 class TestAddAndRetrieve:

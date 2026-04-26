@@ -9,12 +9,11 @@ Normalization prevents bias toward short answer choices.
 
 No external benchmark dependencies required — just pass question/choice dicts.
 """
+
 from __future__ import annotations
 
 import logging
-import math
 from dataclasses import dataclass, field
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -26,19 +25,21 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MultipleChoiceItem:
     """A single multiple-choice benchmark item."""
-    question: str              # The question/context/premise
-    choices: list[str]         # List of answer choices (A, B, C, D...)
-    correct_idx: int           # Index of the correct answer (0-based)
+
+    question: str  # The question/context/premise
+    choices: list[str]  # List of answer choices (A, B, C, D...)
+    correct_idx: int  # Index of the correct answer (0-based)
     metadata: dict = field(default_factory=dict)  # Optional metadata
 
 
 @dataclass
 class EvalResult:
     """Result of scoring one multiple-choice item."""
+
     item: MultipleChoiceItem
     predicted_idx: int
     correct: bool
-    scores: list[float]        # Log-prob score for each choice
+    scores: list[float]  # Log-prob score for each choice
 
     @property
     def predicted_choice(self) -> str:
@@ -52,6 +53,7 @@ class EvalResult:
 @dataclass
 class BenchmarkResult:
     """Aggregated results for a benchmark."""
+
     name: str
     accuracy: float
     n_correct: int
@@ -126,13 +128,13 @@ def score_completion(
     completion_start = total_len - n_completion
 
     log_probs = F.log_softmax(logits[0, :-1], dim=-1)  # (total_len-1, vocab)
-    targets = input_ids[0, 1:]                          # (total_len-1,)
+    targets = input_ids[0, 1:]  # (total_len-1,)
 
     # Gather log-probs for each target token
     token_log_probs = log_probs.gather(1, targets.unsqueeze(1)).squeeze(1)  # (total_len-1,)
 
     # Sum log-probs for completion tokens (indices completion_start-1 to total_len-2)
-    completion_log_probs = token_log_probs[completion_start - 1:]  # n_completion values
+    completion_log_probs = token_log_probs[completion_start - 1 :]  # n_completion values
     total_log_prob = completion_log_probs.sum().item()
 
     if normalize:
@@ -163,7 +165,7 @@ def score_item(
         scores.append(score)
 
     predicted_idx = max(range(len(scores)), key=lambda i: scores[i])
-    correct = (predicted_idx == item.correct_idx)
+    correct = predicted_idx == item.correct_idx
 
     return EvalResult(
         item=item,
@@ -231,7 +233,12 @@ AURELIUS_SANITY_BENCHMARK: list[MultipleChoiceItem] = [
     ),
     MultipleChoiceItem(
         question="Water freezes at",
-        choices=["100 degrees Celsius", "0 degrees Celsius", "50 degrees Celsius", "-100 degrees Celsius"],
+        choices=[
+            "100 degrees Celsius",
+            "0 degrees Celsius",
+            "50 degrees Celsius",
+            "-100 degrees Celsius",
+        ],
         correct_idx=1,
     ),
     MultipleChoiceItem(

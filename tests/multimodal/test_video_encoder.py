@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.multimodal.video_encoder import (
     VIDEO_ENCODER_REGISTRY,
     Temporal3DPatchEmbed,
-    TemporalPositionEncoding,
     VideoEncoder,
     VideoEncoderConfig,
 )
@@ -192,4 +190,5 @@ def test_video_encoder_registry_temporal_3d_instantiable():
 def test_video_encoder_registered_in_vision_encoder_registry():
     """VideoEncoder must be wired into VISION_ENCODER_REGISTRY via the module import."""
     from src.multimodal.multimodal_registry import VISION_ENCODER_REGISTRY
+
     assert "VideoEncoder" in VISION_ENCODER_REGISTRY

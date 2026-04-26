@@ -18,8 +18,6 @@ broadcast over the outer-product state.
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Gated Linear Attention
@@ -55,11 +53,11 @@ class GatedLinearAttention(nn.Module):
         self.head_dim = head_dim
         inner_dim = n_heads * head_dim
 
-        self.q_proj    = nn.Linear(d_model, inner_dim, bias=False)
-        self.k_proj    = nn.Linear(d_model, inner_dim, bias=False)
-        self.v_proj    = nn.Linear(d_model, inner_dim, bias=False)
+        self.q_proj = nn.Linear(d_model, inner_dim, bias=False)
+        self.k_proj = nn.Linear(d_model, inner_dim, bias=False)
+        self.v_proj = nn.Linear(d_model, inner_dim, bias=False)
         self.gate_proj = nn.Linear(d_model, inner_dim, bias=True)
-        self.out_proj  = nn.Linear(inner_dim, d_model, bias=False)
+        self.out_proj = nn.Linear(inner_dim, d_model, bias=False)
 
     # ------------------------------------------------------------------
     # Recurrent mode
@@ -84,11 +82,11 @@ class GatedLinearAttention(nn.Module):
         H, D = self.n_heads, self.head_dim
 
         # Project all positions at once — cheaper than per-step linear
-        Q = self.q_proj(x).view(B, L, H, D)        # (B, L, H, D)
-        K = self.k_proj(x).view(B, L, H, D)        # (B, L, H, D)
-        V = self.v_proj(x).view(B, L, H, D)        # (B, L, H, D)
+        Q = self.q_proj(x).view(B, L, H, D)  # (B, L, H, D)
+        K = self.k_proj(x).view(B, L, H, D)  # (B, L, H, D)
+        V = self.v_proj(x).view(B, L, H, D)  # (B, L, H, D)
         G = torch.sigmoid(
-            self.gate_proj(x).view(B, L, H, D)     # (B, L, H, D)
+            self.gate_proj(x).view(B, L, H, D)  # (B, L, H, D)
         )
 
         # Running state: (B, H, D, D)
@@ -99,10 +97,10 @@ class GatedLinearAttention(nn.Module):
 
         outputs = []
         for t in range(L):
-            q_t = Q[:, t, :, :]   # (B, H, D)
-            k_t = K[:, t, :, :]   # (B, H, D)
-            v_t = V[:, t, :, :]   # (B, H, D)
-            g_t = G[:, t, :, :]   # (B, H, D)  gate ∈ (0,1)
+            q_t = Q[:, t, :, :]  # (B, H, D)
+            k_t = K[:, t, :, :]  # (B, H, D)
+            v_t = V[:, t, :, :]  # (B, H, D)
+            g_t = G[:, t, :, :]  # (B, H, D)  gate ∈ (0,1)
 
             # kv outer product: (B, H, D, D)
             kv_t = torch.einsum("bhd,bhe->bhde", k_t, v_t)
@@ -119,7 +117,7 @@ class GatedLinearAttention(nn.Module):
 
         # (B, L, H, D) → (B, L, H*D)
         out = torch.cat(outputs, dim=1).view(B, L, H * D)
-        out = self.out_proj(out)   # (B, L, d_model)
+        out = self.out_proj(out)  # (B, L, d_model)
         return out, state
 
     # ------------------------------------------------------------------

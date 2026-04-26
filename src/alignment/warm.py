@@ -14,17 +14,16 @@ Key observations from the paper:
 
 Pure PyTorch implementation — no HuggingFace, einops, flash_attn, etc.
 """
+
 from __future__ import annotations
 
 import copy
-from typing import Dict, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torch.optim import Optimizer
-
 
 # ---------------------------------------------------------------------------
 # WARMRewardModel
@@ -72,12 +71,10 @@ class WARMRewardModel(nn.Module):
         elif h.dim() == 2:
             pass  # already (B, d_model)
         else:
-            raise ValueError(
-                f"backbone output must be 2-D or 3-D, got {h.dim()}-D"
-            )
+            raise ValueError(f"backbone output must be 2-D or 3-D, got {h.dim()}-D")
 
         reward = self.reward_head(h)  # (B, 1)
-        return reward.squeeze(-1)      # (B,)
+        return reward.squeeze(-1)  # (B,)
 
 
 # ---------------------------------------------------------------------------
@@ -97,19 +94,19 @@ class WARMEnsemble:
                 mutations do not affect stored weights.
     """
 
-    def __init__(self, models: List[nn.Module]) -> None:
+    def __init__(self, models: list[nn.Module]) -> None:
         if not models:
             raise ValueError("models must be a non-empty list")
-        self._state_dicts: List[Dict[str, Tensor]] = [
+        self._state_dicts: list[dict[str, Tensor]] = [
             {k: v.clone() for k, v in m.state_dict().items()} for m in models
         ]
-        self._models: List[nn.Module] = models
+        self._models: list[nn.Module] = models
 
     # ------------------------------------------------------------------
     # Weight-space averaging
     # ------------------------------------------------------------------
 
-    def average_weights(self) -> Dict[str, Tensor]:
+    def average_weights(self) -> dict[str, Tensor]:
         """Return a state dict that is the uniform average of all models.
 
         Returns:
@@ -117,7 +114,7 @@ class WARMEnsemble:
             the individual models.
         """
         k = len(self._state_dicts)
-        averaged: Dict[str, Tensor] = {}
+        averaged: dict[str, Tensor] = {}
         for key in self._state_dicts[0]:
             acc = torch.zeros_like(self._state_dicts[0][key], dtype=torch.float32)
             for sd in self._state_dicts:
@@ -157,14 +154,14 @@ class WARMEnsemble:
         Returns:
             (B,) averaged prediction tensor.
         """
-        all_preds: List[Tensor] = []
+        all_preds: list[Tensor] = []
         for model in self._models:
             with torch.no_grad():
                 out = model(x)
             out = out.squeeze(-1)  # ensure (B,)
             all_preds.append(out)
         stacked = torch.stack(all_preds, dim=0)  # (n_models, B)
-        return stacked.mean(dim=0)               # (B,)
+        return stacked.mean(dim=0)  # (B,)
 
 
 # ---------------------------------------------------------------------------
@@ -185,14 +182,10 @@ class WARMInterpolation:
     """
 
     def __init__(self, model_a: nn.Module, model_b: nn.Module) -> None:
-        self._sd_a: Dict[str, Tensor] = {
-            k: v.clone() for k, v in model_a.state_dict().items()
-        }
-        self._sd_b: Dict[str, Tensor] = {
-            k: v.clone() for k, v in model_b.state_dict().items()
-        }
+        self._sd_a: dict[str, Tensor] = {k: v.clone() for k, v in model_a.state_dict().items()}
+        self._sd_b: dict[str, Tensor] = {k: v.clone() for k, v in model_b.state_dict().items()}
 
-    def interpolate(self, alpha: float) -> Dict[str, Tensor]:
+    def interpolate(self, alpha: float) -> dict[str, Tensor]:
         """Return (1 - alpha) * W_a + alpha * W_b state dict.
 
         Args:
@@ -203,7 +196,7 @@ class WARMInterpolation:
         Returns:
             Interpolated state dict.
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in self._sd_a:
             wa = self._sd_a[key].float()
             wb = self._sd_b[key].float()
@@ -211,7 +204,7 @@ class WARMInterpolation:
             result[key] = blended.to(self._sd_a[key].dtype)
         return result
 
-    def sweep(self, alphas: List[float], base_model: nn.Module) -> List[nn.Module]:
+    def sweep(self, alphas: list[float], base_model: nn.Module) -> list[nn.Module]:
         """Return a list of interpolated models, one per alpha value.
 
         Args:
@@ -224,7 +217,7 @@ class WARMInterpolation:
             List of nn.Modules, one per alpha, with weights set to the
             corresponding interpolated state dict.
         """
-        models: List[nn.Module] = []
+        models: list[nn.Module] = []
         for alpha in alphas:
             sd = self.interpolate(alpha)
             m = copy.deepcopy(base_model)
@@ -259,8 +252,8 @@ class WARMTrainer:
 
     def __init__(
         self,
-        models: List[WARMRewardModel],
-        optimizers: List[Optimizer],
+        models: list[WARMRewardModel],
+        optimizers: list[Optimizer],
     ) -> None:
         if len(models) != len(optimizers):
             raise ValueError(
@@ -275,7 +268,7 @@ class WARMTrainer:
         self,
         x_w: Tensor,
         x_l: Tensor,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Perform one gradient step on all models using the BT preference loss.
 
         Args:
@@ -285,7 +278,7 @@ class WARMTrainer:
         Returns:
             List of per-model loss tensors (scalar, detached).
         """
-        losses: List[Tensor] = []
+        losses: list[Tensor] = []
         for model, optimizer in zip(self.models, self.optimizers):
             model.train()
             optimizer.zero_grad()

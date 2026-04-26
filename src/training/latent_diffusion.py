@@ -17,6 +17,7 @@ Components
 - ldm_loss               : DDPM MSE loss in latent space
 - LatentDiffusionTrainer : train_step + DDPM sample -> token ids
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,10 +27,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LatentDiffusionConfig:
@@ -57,6 +58,7 @@ class LatentDiffusionConfig:
 # ---------------------------------------------------------------------------
 # Encoder / Decoder
 # ---------------------------------------------------------------------------
+
 
 class TextEncoder(nn.Module):
     """Encode token ids into continuous latent vectors.
@@ -116,6 +118,7 @@ class TextDecoder(nn.Module):
 # Denoiser
 # ---------------------------------------------------------------------------
 
+
 class LatentDenoiser(nn.Module):
     """Predict the noise added to latents at a given diffusion timestep.
 
@@ -163,6 +166,7 @@ class LatentDenoiser(nn.Module):
 # Noise schedule
 # ---------------------------------------------------------------------------
 
+
 def ldm_noise_schedule(
     n_timesteps: int,
     beta_start: float,
@@ -202,6 +206,7 @@ def ldm_noise_schedule(
 # Forward diffusion (q sample)
 # ---------------------------------------------------------------------------
 
+
 def ldm_q_sample(
     z0: Tensor,
     t: Tensor,
@@ -221,7 +226,7 @@ def ldm_q_sample(
     -------
     (z_t, noise) : both shape (B, T, latent_dim)
     """
-    sqrt_alpha = schedule["sqrt_alphas_cumprod"].to(z0.device)[t]      # (B,)
+    sqrt_alpha = schedule["sqrt_alphas_cumprod"].to(z0.device)[t]  # (B,)
     sqrt_one_minus = schedule["sqrt_one_minus_alphas_cumprod"].to(z0.device)[t]  # (B,)
 
     # Broadcast over (T, latent_dim)
@@ -236,6 +241,7 @@ def ldm_q_sample(
 # ---------------------------------------------------------------------------
 # Diffusion loss
 # ---------------------------------------------------------------------------
+
 
 def ldm_loss(
     denoiser: nn.Module,
@@ -287,6 +293,7 @@ def ldm_loss(
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class LatentDiffusionTrainer:
     """Orchestrates training and sampling for latent text diffusion.
 
@@ -313,9 +320,7 @@ class LatentDiffusionTrainer:
         self.config = config
         self.optimizer = optimizer
 
-        self.schedule = ldm_noise_schedule(
-            config.n_timesteps, config.beta_start, config.beta_end
-        )
+        self.schedule = ldm_noise_schedule(config.n_timesteps, config.beta_start, config.beta_end)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -428,14 +433,18 @@ class LatentDiffusionTrainer:
                 alpha_t = alphas[t_int]
 
                 coef1 = (alpha_bar_prev.sqrt() * beta_t) / (1.0 - alpha_bar_t).clamp(min=1e-8)
-                coef2 = (alpha_t.sqrt() * (1.0 - alpha_bar_prev)) / (1.0 - alpha_bar_t).clamp(min=1e-8)
+                coef2 = (alpha_t.sqrt() * (1.0 - alpha_bar_prev)) / (1.0 - alpha_bar_t).clamp(
+                    min=1e-8
+                )
                 posterior_mean = coef1 * z0_pred + coef2 * z
 
-                posterior_var = beta_t * (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t).clamp(min=1e-8)
+                posterior_var = (
+                    beta_t * (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t).clamp(min=1e-8)
+                )
                 noise = torch.randn_like(z)
                 z = posterior_mean + posterior_var.clamp(min=0.0).sqrt() * noise
 
         # Decode latents to logits, then argmax for token ids
-        logits = self.decoder(z)          # (B, T, vocab_size)
+        logits = self.decoder(z)  # (B, T, vocab_size)
         token_ids = logits.argmax(dim=-1)  # (B, T)
         return token_ids.long()

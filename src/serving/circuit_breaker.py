@@ -21,9 +21,10 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, List, Optional
+from typing import Any
 
 
 class CircuitState(Enum):
@@ -66,14 +67,14 @@ class CircuitBreaker:
     _state: CircuitState = field(default=CircuitState.CLOSED, init=False)
     _consecutive_failures: int = field(default=0, init=False)
     _probe_successes: int = field(default=0, init=False)
-    _opened_at: Optional[float] = field(default=None, init=False)
+    _opened_at: float | None = field(default=None, init=False)
     _current_recovery_timeout_s: float = field(default=0.0, init=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     total_calls: int = field(default=0, init=False)
     successes: int = field(default=0, init=False)
     failures: int = field(default=0, init=False)
-    state_transitions: List[CircuitStateTransition] = field(
+    state_transitions: list[CircuitStateTransition] = field(
         default_factory=list, init=False, repr=False
     )
 
@@ -153,9 +154,7 @@ class CircuitBreaker:
             if self._state == CircuitState.CLOSED:
                 self._consecutive_failures += 1
                 if self._consecutive_failures >= self.failure_threshold:
-                    self._open_locked(
-                        f"{self._consecutive_failures} consecutive failures"
-                    )
+                    self._open_locked(f"{self._consecutive_failures} consecutive failures")
             elif self._state == CircuitState.HALF_OPEN:
                 # Any failure during probe re-opens with backoff.
                 self._open_locked("probe failure during half-open")
@@ -194,9 +193,7 @@ class CircuitBreaker:
             self._maybe_half_open_locked()
             self.total_calls += 1
             if self._state == CircuitState.OPEN:
-                raise CircuitOpenError(
-                    f"circuit '{self.name}' is OPEN; short-circuiting call"
-                )
+                raise CircuitOpenError(f"circuit '{self.name}' is OPEN; short-circuiting call")
         try:
             result = fn(*args, **kwargs)
         except Exception:
@@ -207,14 +204,12 @@ class CircuitBreaker:
 
     # Context manager: acts as a gate -- enter checks state, exit
     # records success or failure based on whether an exception escaped.
-    def __enter__(self) -> "CircuitBreaker":
+    def __enter__(self) -> CircuitBreaker:
         with self._lock:
             self._maybe_half_open_locked()
             self.total_calls += 1
             if self._state == CircuitState.OPEN:
-                raise CircuitOpenError(
-                    f"circuit '{self.name}' is OPEN; short-circuiting call"
-                )
+                raise CircuitOpenError(f"circuit '{self.name}' is OPEN; short-circuiting call")
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:

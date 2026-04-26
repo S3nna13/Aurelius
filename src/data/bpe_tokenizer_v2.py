@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # ByteVocabulary
 # ---------------------------------------------------------------------------
+
 
 class ByteVocabulary:
     """Initial byte-level vocabulary with 256 single-byte tokens (0-255)."""
@@ -43,6 +42,7 @@ class ByteVocabulary:
 # BPEMergeRule
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BPEMergeRule:
     """A single BPE merge rule: (left, right) -> merged_token."""
@@ -52,14 +52,13 @@ class BPEMergeRule:
     frequency: int
 
     def __repr__(self) -> str:
-        return (
-            f"BPEMergeRule({self.pair} -> {self.merged_token}, freq={self.frequency})"
-        )
+        return f"BPEMergeRule({self.pair} -> {self.merged_token}, freq={self.frequency})"
 
 
 # ---------------------------------------------------------------------------
 # BPETrainer
 # ---------------------------------------------------------------------------
+
 
 class BPETrainer:
     """Learns BPE merge rules from a text corpus."""
@@ -70,9 +69,7 @@ class BPETrainer:
         self.vocab_size = vocab_size
 
     # ------------------------------------------------------------------
-    def _count_pairs(
-        self, token_sequences: list[list[int]]
-    ) -> dict[tuple[int, int], int]:
+    def _count_pairs(self, token_sequences: list[list[int]]) -> dict[tuple[int, int], int]:
         """Count all adjacent pairs across all sequences."""
         counts: dict[tuple[int, int], int] = {}
         for seq in token_sequences:
@@ -139,13 +136,14 @@ class BPETrainer:
 # BPEVocabulary
 # ---------------------------------------------------------------------------
 
+
 class BPEVocabulary:
     """Full token-to-bytes mapping: 256 base bytes + learned merges."""
 
     def __init__(
         self,
         merge_rules: list[BPEMergeRule],
-        vocab: Optional[dict[int, bytes]] = None,
+        vocab: dict[int, bytes] | None = None,
     ) -> None:
         self._merge_rules = merge_rules
 
@@ -189,6 +187,7 @@ class BPEVocabulary:
 # BPETokenizer
 # ---------------------------------------------------------------------------
 
+
 class BPETokenizer:
     """Full BPE tokenizer: train → encode → decode, with JSON persistence."""
 
@@ -197,7 +196,7 @@ class BPETokenizer:
         self._trainer = BPETrainer(vocab_size=vocab_size)
         self._merge_rules: list[BPEMergeRule] = []
         self._bv = ByteVocabulary()
-        self._vocabulary: Optional[BPEVocabulary] = None
+        self._vocabulary: BPEVocabulary | None = None
         # Ordered list of (pair, new_token) for encoding
         self._pair_to_token: dict[tuple[int, int], int] = {}
 
@@ -206,9 +205,7 @@ class BPETokenizer:
         """Train BPE on *texts*."""
         self._merge_rules = self._trainer.train(texts)
         self._vocabulary = BPEVocabulary(self._merge_rules)
-        self._pair_to_token = {
-            rule.pair: rule.merged_token for rule in self._merge_rules
-        }
+        self._pair_to_token = {rule.pair: rule.merged_token for rule in self._merge_rules}
 
     # ------------------------------------------------------------------
     def encode(self, text: str) -> list[int]:
@@ -228,9 +225,7 @@ class BPETokenizer:
         return tokens
 
     @staticmethod
-    def _apply_single_merge(
-        tokens: list[int], pair: tuple[int, int], new_token: int
-    ) -> list[int]:
+    def _apply_single_merge(tokens: list[int], pair: tuple[int, int], new_token: int) -> list[int]:
         left, right = pair
         result: list[int] = []
         i = 0
@@ -277,7 +272,7 @@ class BPETokenizer:
 
     def load_vocab(self, path: str) -> None:
         """Load merge rules from JSON produced by save_vocab."""
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         self.vocab_size = data["vocab_size"]
         self._merge_rules = [
@@ -289,9 +284,7 @@ class BPETokenizer:
             for entry in data["merge_rules"]
         ]
         self._vocabulary = BPEVocabulary(self._merge_rules)
-        self._pair_to_token = {
-            rule.pair: rule.merged_token for rule in self._merge_rules
-        }
+        self._pair_to_token = {rule.pair: rule.merged_token for rule in self._merge_rules}
 
     # ------------------------------------------------------------------
     def compression_ratio(self, text: str) -> float:

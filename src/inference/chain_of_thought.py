@@ -1,9 +1,9 @@
 """Chain-of-thought prompting: structured multi-step reasoning with evaluation."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
-import re
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ class CoTConfig:
     max_reasoning_tokens: int = 128
     max_answer_tokens: int = 32
     temperature: float = 0.7
-    n_samples: int = 1             # for self-consistency (majority vote)
+    n_samples: int = 1  # for self-consistency (majority vote)
     cot_trigger: str = "Let's think step by step."
     answer_trigger: str = "Therefore, the answer is:"
 
@@ -23,14 +23,16 @@ class CoTConfig:
 @dataclass
 class ReasoningStep:
     """One step in a chain of thought."""
+
     step_idx: int
-    content: str           # text of this step
-    confidence: float      # estimated confidence (0-1)
+    content: str  # text of this step
+    confidence: float  # estimated confidence (0-1)
 
 
 @dataclass
 class CoTOutput:
     """Full chain-of-thought output."""
+
     reasoning_steps: list[ReasoningStep]
     final_answer: str
     raw_tokens: list[int]
@@ -54,7 +56,7 @@ def extract_final_answer(text: str, answer_trigger: str) -> str:
     idx = text.find(answer_trigger)
     if idx == -1:
         return ""
-    return text[idx + len(answer_trigger):].strip()
+    return text[idx + len(answer_trigger) :].strip()
 
 
 def compute_step_confidence(
@@ -123,9 +125,7 @@ def greedy_decode_n_tokens(
             else:
                 feed_ids = current_ids
 
-            _loss, logits, past_key_values = model(
-                feed_ids, past_key_values=past_key_values
-            )
+            _loss, logits, past_key_values = model(feed_ids, past_key_values=past_key_values)
 
             # logits: (1, S, vocab_size) — take last position
             last_logits = logits[0, -1, :]  # (vocab_size,)

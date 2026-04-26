@@ -1,4 +1,5 @@
 """Constitutional AI training loop: critique -> revision -> SFT on revised outputs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from torch import Tensor
 @dataclass
 class CAIConfig:
     """Configuration for the CAI training loop."""
+
     n_critique_rounds: int = 3
     max_new_tokens_critique: int = 64
     max_new_tokens_revision: int = 128
@@ -66,9 +68,7 @@ def greedy_generate(model: nn.Module, input_ids: Tensor, max_new_tokens: int) ->
 
     with torch.no_grad():
         for _ in range(max_new_tokens):
-            _, logits, past_key_values = model(
-                current_ids, past_key_values=past_key_values
-            )
+            _, logits, past_key_values = model(current_ids, past_key_values=past_key_values)
             # Greedy: take argmax of last token's logits
             next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (1, 1)
             generated.append(next_token)
@@ -102,9 +102,7 @@ def stochastic_generate(
 
     with torch.no_grad():
         for _ in range(max_new_tokens):
-            _, logits, past_key_values = model(
-                current_ids, past_key_values=past_key_values
-            )
+            _, logits, past_key_values = model(current_ids, past_key_values=past_key_values)
             last_logits = logits[0, -1, :]  # (vocab_size,)
             token_id = top_k_sample(last_logits, top_k=top_k, temperature=temperature)
             next_token = torch.tensor([[token_id]], dtype=torch.long, device=input_ids.device)
@@ -117,6 +115,7 @@ def stochastic_generate(
 @dataclass
 class CritiqueRevisionPair:
     """Stores a single critique-revision example for SFT training."""
+
     prompt_ids: Tensor
     initial_ids: Tensor
     critique_ids: Tensor
@@ -157,12 +156,8 @@ class CAITrainer:
         revision_suffix_ids = tokenizer_encode("Revised response:")
 
         device = next(model.parameters()).device
-        self._critique_suffix = torch.tensor(
-            [critique_suffix_ids], dtype=torch.long, device=device
-        )
-        self._revision_suffix = torch.tensor(
-            [revision_suffix_ids], dtype=torch.long, device=device
-        )
+        self._critique_suffix = torch.tensor([critique_suffix_ids], dtype=torch.long, device=device)
+        self._revision_suffix = torch.tensor([revision_suffix_ids], dtype=torch.long, device=device)
 
     def generate_critique_prompt(self, prompt_ids: Tensor, response_ids: Tensor) -> Tensor:
         """Build a critique prompt by concatenating prompt + response + critique suffix.
@@ -197,7 +192,7 @@ class CAITrainer:
 
         Returns:
             (1, T_p + T_r + T_critique_suffix + T_c + T_revision_suffix) concatenated ids.
-        """
+        """  # noqa: E501
         device = prompt_ids.device
         critique_suffix = self._critique_suffix.to(device)
         revision_suffix = self._revision_suffix.to(device)
@@ -220,9 +215,7 @@ class CAITrainer:
             CritiqueRevisionPair with all four tensors.
         """
         # 1. Generate initial response greedily
-        initial_ids = greedy_generate(
-            self.model, prompt_ids, self.config.max_new_tokens_revision
-        )
+        initial_ids = greedy_generate(self.model, prompt_ids, self.config.max_new_tokens_revision)
 
         # 2. Generate critique stochastically
         critique_prompt_ids = self.generate_critique_prompt(prompt_ids, initial_ids)
@@ -235,9 +228,7 @@ class CAITrainer:
         )
 
         # 3. Generate revised response greedily
-        revision_prompt_ids = self.generate_revision_prompt(
-            prompt_ids, initial_ids, critique_ids
-        )
+        revision_prompt_ids = self.generate_revision_prompt(prompt_ids, initial_ids, critique_ids)
         revised_ids = greedy_generate(
             self.model, revision_prompt_ids, self.config.max_new_tokens_revision
         )

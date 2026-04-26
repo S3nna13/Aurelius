@@ -1,6 +1,8 @@
 """Tests for PolarQuant Stage 1 compression."""
-import torch
+
 import pytest
+import torch
+
 from src.inference.turboquant.polar_quant import PolarQuant, PolarQuantState
 
 
@@ -42,8 +44,9 @@ def test_residual_is_x_minus_reconstruction(pq):
     x = torch.randn(2, 4, 32)
     state, residual = pq.compress(x)
     x_hat = pq.decompress(state)
-    assert torch.allclose(residual.float() + x_hat.float(), x.float(), atol=1e-5), \
+    assert torch.allclose(residual.float() + x_hat.float(), x.float(), atol=1e-5), (
         f"Max diff: {(residual.float() + x_hat.float() - x.float()).abs().max()}"
+    )
 
 
 def test_rotation_matrix_is_orthogonal(pq):

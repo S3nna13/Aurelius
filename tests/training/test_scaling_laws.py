@@ -3,17 +3,14 @@ Tests for src/training/scaling_laws.py — Chinchilla / neural scaling law utili
 """
 
 import math
-import pytest
 
 from src.training.scaling_laws import (
     ChinchillaPredictor,
     ComputeOptimalScheduler,
-    ScalingConfig,
     compute_training_budget,
     kaplan_scaling_law,
     recommended_model_size,
 )
-
 
 # ---------------------------------------------------------------------------
 # ChinchillaPredictor.loss
@@ -138,9 +135,7 @@ def test_recommended_model_size_architecture():
     d_model = result["d_model"]
     n_heads = result["n_heads"]
     assert n_heads >= 1
-    assert d_model % n_heads == 0, (
-        f"d_model={d_model} is not divisible by n_heads={n_heads}"
-    )
+    assert d_model % n_heads == 0, f"d_model={d_model} is not divisible by n_heads={n_heads}"
 
 
 # ---------------------------------------------------------------------------

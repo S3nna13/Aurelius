@@ -65,9 +65,17 @@ def test_all_masked_positions_raises():
 def test_shape_errors():
     crit = ToolCallSupervisionLoss()
     with pytest.raises(ValueError):
-        crit(torch.randn(4, 8), torch.zeros(2, 4, dtype=torch.long), torch.zeros(2, 4, dtype=torch.bool))
+        crit(
+            torch.randn(4, 8),
+            torch.zeros(2, 4, dtype=torch.long),
+            torch.zeros(2, 4, dtype=torch.bool),
+        )
     with pytest.raises(ValueError):
-        crit(torch.randn(2, 4, 8), torch.zeros(2, 5, dtype=torch.long), torch.zeros(2, 4, dtype=torch.bool))
+        crit(
+            torch.randn(2, 4, 8),
+            torch.zeros(2, 5, dtype=torch.long),
+            torch.zeros(2, 4, dtype=torch.bool),
+        )
 
 
 def test_bool_mask_required():

@@ -49,7 +49,7 @@ def test_score_heuristic_greet_penalty(router):
 def test_score_heuristic_clamps_to_zero_one(router):
     score = router.score_heuristic("thanks" * 100)
     assert 0.0 <= score <= 1.0
-    long_math = ("prove theorem " * 50)
+    long_math = "prove theorem " * 50
     score2 = router.score_heuristic(long_math)
     assert 0.0 <= score2 <= 1.0
 
@@ -78,7 +78,9 @@ def test_route_returns_routing_decision(router):
 
 def test_route_routed_to_strong_above_threshold():
     r = DifficultyRouter(threshold=0.0, strategy=RouterStrategy.HEURISTIC)
-    decision = r.route("prove the theorem about matrix eigenvalue decomposition calculus integral gradient")
+    decision = r.route(
+        "prove the theorem about matrix eigenvalue decomposition calculus integral gradient"
+    )
     assert decision.routed_to == "strong"
 
 

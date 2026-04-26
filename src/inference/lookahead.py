@@ -8,22 +8,23 @@ speedups when the cache predicts well.
 
 from __future__ import annotations
 
+from collections import defaultdict
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
-from collections import defaultdict
-from dataclasses import dataclass, field
 
 
 @dataclass
 class LookaheadConfig:
     """Configuration for lookahead decoding."""
 
-    ngram_size: int = 3          # n-gram size for cache
+    ngram_size: int = 3  # n-gram size for cache
     max_new_tokens: int = 64
     temperature: float = 1.0
     top_p: float = 0.9
     eos_token_id: int | None = None
-    lookahead_steps: int = 2    # how many future tokens to try accepting
+    lookahead_steps: int = 2  # how many future tokens to try accepting
 
 
 class NGramCache:

@@ -11,17 +11,16 @@ API contract:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # MTPConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MTPConfig:
@@ -30,7 +29,7 @@ class MTPConfig:
     n_future_tokens: int = 4
     d_model: int = 64
     vocab_size: int = 256
-    loss_weights: Optional[List[float]] = None
+    loss_weights: list[float] | None = None
 
     def __post_init__(self) -> None:
         if self.loss_weights is None:
@@ -45,6 +44,7 @@ class MTPConfig:
 # ---------------------------------------------------------------------------
 # MTPHead
 # ---------------------------------------------------------------------------
+
 
 class MTPHead(nn.Module):
     """n_future_tokens separate linear heads projecting hidden states to vocab logits.
@@ -73,6 +73,7 @@ class MTPHead(nn.Module):
 # ---------------------------------------------------------------------------
 # mtp_loss
 # ---------------------------------------------------------------------------
+
 
 def mtp_loss(
     logits_list: list[torch.Tensor],
@@ -115,6 +116,7 @@ def mtp_loss(
 # MTPModel
 # ---------------------------------------------------------------------------
 
+
 class MTPModel(nn.Module):
     """Wraps a backbone transformer + MTPHead.
 
@@ -146,9 +148,7 @@ class MTPModel(nn.Module):
         x = self.backbone.norm(x)
         return x
 
-    def forward(
-        self, input_ids: torch.Tensor
-    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
+    def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         Args:
             input_ids: (B, T) token ids.
@@ -167,6 +167,7 @@ class MTPModel(nn.Module):
 # ---------------------------------------------------------------------------
 # MTPTrainer
 # ---------------------------------------------------------------------------
+
 
 class MTPTrainer:
     """Training helper for MTPModel.

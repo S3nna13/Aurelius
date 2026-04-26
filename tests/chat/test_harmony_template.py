@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.chat.harmony_template import HarmonyTemplate, VALID_ROLES
-
+from src.chat.harmony_template import VALID_ROLES, HarmonyTemplate
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tpl() -> HarmonyTemplate:
@@ -32,6 +32,7 @@ _TOOL = {"role": "tool", "content": '{"result": 42}'}
 # Test 1 — starts with BOS token
 # ---------------------------------------------------------------------------
 
+
 def test_starts_with_bos(tpl: HarmonyTemplate) -> None:
     out = tpl.render([_USER])
     assert out.startswith("<|begin_of_text|>"), (
@@ -43,6 +44,7 @@ def test_starts_with_bos(tpl: HarmonyTemplate) -> None:
 # Test 2 — system delimiters
 # ---------------------------------------------------------------------------
 
+
 def test_system_delimiters(tpl: HarmonyTemplate) -> None:
     out = tpl.render([_SYS])
     assert "<|system|>" in out
@@ -52,6 +54,7 @@ def test_system_delimiters(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — user delimiters
 # ---------------------------------------------------------------------------
+
 
 def test_user_delimiters(tpl: HarmonyTemplate) -> None:
     out = tpl.render([_USER])
@@ -63,6 +66,7 @@ def test_user_delimiters(tpl: HarmonyTemplate) -> None:
 # Test 4 — assistant delimiters
 # ---------------------------------------------------------------------------
 
+
 def test_assistant_delimiters(tpl: HarmonyTemplate) -> None:
     out = tpl.render([_ASST])
     assert "<|assistant|>" in out
@@ -72,6 +76,7 @@ def test_assistant_delimiters(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Test 5 — tool-result delimiters
 # ---------------------------------------------------------------------------
+
 
 def test_tool_result_delimiters(tpl: HarmonyTemplate) -> None:
     out = tpl.render([_TOOL])
@@ -83,6 +88,7 @@ def test_tool_result_delimiters(tpl: HarmonyTemplate) -> None:
 # Test 6 — thinking wrapped in <think>...</think>
 # ---------------------------------------------------------------------------
 
+
 def test_thinking_wrapped(tpl: HarmonyTemplate) -> None:
     msg = {"role": "assistant", "content": "answer", "thinking": "step-by-step"}
     out = tpl.render([msg])
@@ -93,6 +99,7 @@ def test_thinking_wrapped(tpl: HarmonyTemplate) -> None:
 # Test 7 — no thinking field → no <think> tag
 # ---------------------------------------------------------------------------
 
+
 def test_no_thinking_no_think_tag(tpl: HarmonyTemplate) -> None:
     out = tpl.render([_ASST])
     assert "<think>" not in out
@@ -101,6 +108,7 @@ def test_no_thinking_no_think_tag(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Test 8 — tool_calls in assistant turn
 # ---------------------------------------------------------------------------
+
 
 def test_tool_call_in_assistant(tpl: HarmonyTemplate) -> None:
     msg = {"role": "assistant", "content": "", "tool_calls": ["fn()"]}
@@ -112,6 +120,7 @@ def test_tool_call_in_assistant(tpl: HarmonyTemplate) -> None:
 # Test 9 — unknown role raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_role_raises(tpl: HarmonyTemplate) -> None:
     with pytest.raises(ValueError, match="Unknown role"):
         tpl.render([{"role": "invalid", "content": "oops"}])
@@ -120,6 +129,7 @@ def test_unknown_role_raises(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Test 10 — empty message list does not crash
 # ---------------------------------------------------------------------------
+
 
 def test_empty_messages_no_crash(tpl: HarmonyTemplate) -> None:
     out = tpl.render([])
@@ -130,6 +140,7 @@ def test_empty_messages_no_crash(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Test 11 — role order is preserved (system → user → assistant)
 # ---------------------------------------------------------------------------
+
 
 def test_role_order_preserved(tpl: HarmonyTemplate) -> None:
     msgs = [_SYS, _USER, _ASST]
@@ -144,6 +155,7 @@ def test_role_order_preserved(tpl: HarmonyTemplate) -> None:
 # Test 12 — add_eos=True appends <|end_of_text|>
 # ---------------------------------------------------------------------------
 
+
 def test_add_eos_flag() -> None:
     tpl_eos = HarmonyTemplate(add_eos=True)
     out = tpl_eos.render([_USER])
@@ -153,6 +165,7 @@ def test_add_eos_flag() -> None:
 # ---------------------------------------------------------------------------
 # Test 13 — add_eos=False (default) does NOT append EOS token
 # ---------------------------------------------------------------------------
+
 
 def test_add_eos_false(tpl: HarmonyTemplate) -> None:
     assert not tpl.add_eos
@@ -164,6 +177,7 @@ def test_add_eos_false(tpl: HarmonyTemplate) -> None:
 # Test 14 — content appears verbatim in output
 # ---------------------------------------------------------------------------
 
+
 def test_content_preserved(tpl: HarmonyTemplate) -> None:
     payload = "verbatim content with punctuation: 2 + 2 == 4!"
     out = tpl.render([{"role": "user", "content": payload}])
@@ -173,6 +187,7 @@ def test_content_preserved(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Test 15 — parse_roles round-trip
 # ---------------------------------------------------------------------------
+
 
 def test_parse_roles_round_trip(tpl: HarmonyTemplate) -> None:
     msgs = [
@@ -192,6 +207,7 @@ def test_parse_roles_round_trip(tpl: HarmonyTemplate) -> None:
 # ---------------------------------------------------------------------------
 # Additional tests (beyond minimum 14+1)
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_tool_calls_in_one_assistant_turn(tpl: HarmonyTemplate) -> None:
     msg = {

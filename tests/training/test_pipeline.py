@@ -1,24 +1,35 @@
 """Tests for the autonomous training pipeline."""
-import torch
+
 import pytest
-from src.training.pipeline import TrainingPipeline, PipelineConfig, PipelineResult
+import torch
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.pipeline import PipelineConfig, TrainingPipeline
 
 
 @pytest.fixture
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 
 
 class FakeTok:
-    def encode(self, text): return [1, 2, 3]
-    def decode(self, ids): return "response"
+    def encode(self, text):
+        return [1, 2, 3]
+
+    def decode(self, ids):
+        return "response"
 
 
 def _make_sft_batch(n=4, seq_len=16):
@@ -43,6 +54,7 @@ def test_pipeline_run_eval_only(tmp_path, small_model):
     assert len(results) == 1
     assert results[0].eval_ppl is not None
     import math
+
     assert math.isfinite(results[0].eval_ppl)
     assert results[0].sft_loss is None
 
@@ -65,6 +77,7 @@ def test_pipeline_sft_phase_returns_loss(tmp_path, small_model):
     assert len(results) == 1
     assert results[0].sft_loss is not None
     import math
+
     assert math.isfinite(results[0].sft_loss)
 
 
@@ -85,6 +98,7 @@ def test_pipeline_creates_checkpoint(tmp_path, small_model):
     assert all(r.checkpoint_path is not None for r in results)
     # Checkpoint directories must exist
     from pathlib import Path
+
     for r in results:
         assert Path(r.checkpoint_path).exists()
 

@@ -1,31 +1,29 @@
 """Tests for anthropic_datasets_ext.py — all use mock data, no network requests."""
+
 from __future__ import annotations
 
 import base64
-import math
 from itertools import cycle
 
-import pytest
-
 from src.data.anthropic_datasets_ext import (
-    # global opinions
-    GlobalOpinionSample,
-    GlobalOpinionsDataset,
-    compute_opinion_kl_divergence,
-    # values-in-the-wild
-    ValueFrequency,
-    ValueTreeNode,
-    ValuesFrequencyDataset,
-    ValuesTreeDataset,
+    AlignmentFakingDataset,
+    # alignment faking
+    AlignmentFakingSample,
     # election questions
     ElectionQuestionSample,
     ElectionQuestionsDataset,
+    # global opinions
+    GlobalOpinionSample,
+    GlobalOpinionsDataset,
+    InterviewDataset,
     # interviews
     InterviewTranscript,
-    InterviewDataset,
-    # alignment faking
-    AlignmentFakingSample,
-    AlignmentFakingDataset,
+    # values-in-the-wild
+    ValueFrequency,
+    ValuesFrequencyDataset,
+    ValuesTreeDataset,
+    ValueTreeNode,
+    compute_opinion_kl_divergence,
     decrypt_alignment_faking_response,
 )
 
@@ -38,14 +36,13 @@ _KEY = b"MO_transcripts_should_not_appear_in_pretraining_corpora"
 
 def _encrypt(text: str) -> str:
     """Inverse of decrypt_alignment_faking_response (no canary prefix)."""
-    return base64.b64encode(
-        bytes(a ^ b for a, b in zip(text.encode(), cycle(_KEY)))
-    ).decode()
+    return base64.b64encode(bytes(a ^ b for a, b in zip(text.encode(), cycle(_KEY)))).decode()
 
 
 # ---------------------------------------------------------------------------
 # GlobalOpinions
 # ---------------------------------------------------------------------------
+
 
 def _make_global_opinions() -> GlobalOpinionsDataset:
     samples = [
@@ -96,6 +93,7 @@ def test_compute_opinion_kl_divergence_positive():
 # ValuesFrequency
 # ---------------------------------------------------------------------------
 
+
 def _make_values_freq() -> ValuesFrequencyDataset:
     values = [
         ValueFrequency(value="honesty", pct_convos=0.4),
@@ -123,23 +121,40 @@ def test_values_frequency_weights_sum_to_one():
 # ValuesTree
 # ---------------------------------------------------------------------------
 
+
 def _make_values_tree() -> ValuesTreeDataset:
     nodes = [
         ValueTreeNode(
-            cluster_id="cat-1", name="Ethics", level=3,
-            parent_cluster_id="", pct_total_occurrences=0.4, description="Top-level ethics",
+            cluster_id="cat-1",
+            name="Ethics",
+            level=3,
+            parent_cluster_id="",
+            pct_total_occurrences=0.4,
+            description="Top-level ethics",
         ),
         ValueTreeNode(
-            cluster_id="sub-1", name="Honesty", level=2,
-            parent_cluster_id="cat-1", pct_total_occurrences=0.2, description="Honesty cluster",
+            cluster_id="sub-1",
+            name="Honesty",
+            level=2,
+            parent_cluster_id="cat-1",
+            pct_total_occurrences=0.2,
+            description="Honesty cluster",
         ),
         ValueTreeNode(
-            cluster_id="sub-2", name="Integrity", level=2,
-            parent_cluster_id="cat-1", pct_total_occurrences=0.2, description="Integrity cluster",
+            cluster_id="sub-2",
+            name="Integrity",
+            level=2,
+            parent_cluster_id="cat-1",
+            pct_total_occurrences=0.2,
+            description="Integrity cluster",
         ),
         ValueTreeNode(
-            cluster_id="leaf-1", name="truth-telling", level=0,
-            parent_cluster_id="sub-1", pct_total_occurrences=0.1, description="",
+            cluster_id="leaf-1",
+            name="truth-telling",
+            level=0,
+            parent_cluster_id="sub-1",
+            pct_total_occurrences=0.1,
+            description="",
         ),
     ]
     return ValuesTreeDataset(nodes)
@@ -164,6 +179,7 @@ def test_values_tree_get_children():
 # ---------------------------------------------------------------------------
 # ElectionQuestions
 # ---------------------------------------------------------------------------
+
 
 def _make_election_questions() -> ElectionQuestionsDataset:
     samples = [
@@ -199,6 +215,7 @@ def test_election_questions_is_harmful_field():
 # InterviewDataset
 # ---------------------------------------------------------------------------
 
+
 def _make_interview_dataset() -> InterviewDataset:
     transcripts = [
         InterviewTranscript(transcript_id="abc123456", text="Interview text 1", split="workforce"),
@@ -225,6 +242,7 @@ def test_interview_dataset_by_split():
 # ---------------------------------------------------------------------------
 # AlignmentFaking
 # ---------------------------------------------------------------------------
+
 
 def test_decrypt_alignment_faking_response():
     plaintext = "hello world"

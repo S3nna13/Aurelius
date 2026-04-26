@@ -2,6 +2,7 @@
 
 Pure functions for computing retry delays. No side effects.
 """
+
 from __future__ import annotations
 
 import random

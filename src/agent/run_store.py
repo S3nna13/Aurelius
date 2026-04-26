@@ -3,11 +3,10 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -36,7 +35,7 @@ class AgentRunState:
     checkpoint_log: list[dict] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class AgentRunStore:
@@ -60,7 +59,7 @@ class AgentRunStore:
         self._runs[run_id] = state
         return state
 
-    def get(self, run_id: str) -> Optional[AgentRunState]:
+    def get(self, run_id: str) -> AgentRunState | None:
         return self._runs.get(run_id)
 
     def transition(self, run_id: str, new_status: RunStatus) -> AgentRunState:
@@ -72,9 +71,7 @@ class AgentRunStore:
 
         if new_status == RunStatus.RUNNING and state.status == RunStatus.FAILED:
             if state.retry_budget <= 0:
-                raise ValueError(
-                    f"Cannot retry run {run_id!r}: retry_budget exhausted"
-                )
+                raise ValueError(f"Cannot retry run {run_id!r}: retry_budget exhausted")
             state.retry_budget -= 1
         elif new_status not in allowed:
             raise ValueError(
@@ -97,13 +94,9 @@ class AgentRunStore:
         if state is None:
             raise KeyError(f"Run {run_id!r} not found")
         if state.status != RunStatus.FAILED:
-            raise ValueError(
-                f"retry() requires FAILED status, got {state.status!r}"
-            )
+            raise ValueError(f"retry() requires FAILED status, got {state.status!r}")
         if state.retry_budget <= 0:
-            raise RuntimeError(
-                f"Run {run_id!r} has no remaining retry budget"
-            )
+            raise RuntimeError(f"Run {run_id!r} has no remaining retry budget")
         return self.transition(run_id, RunStatus.RUNNING)
 
     def list_by_status(self, status: RunStatus) -> list[AgentRunState]:

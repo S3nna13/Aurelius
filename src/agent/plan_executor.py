@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     DONE = "done"
@@ -27,9 +26,9 @@ class PlanStep:
 class PlanExecutor:
     """Execute a plan composed of interdependent steps."""
 
-    def __init__(self, steps: Optional[list[PlanStep]] = None) -> None:
+    def __init__(self, steps: list[PlanStep] | None = None) -> None:
         self._steps: dict[str, PlanStep] = {}
-        for step in (steps or []):
+        for step in steps or []:
             self._steps[step.id] = step
 
     def add_step(self, step: PlanStep) -> None:
@@ -42,7 +41,8 @@ class PlanExecutor:
             if step.status != StepStatus.PENDING:
                 continue
             if all(
-                self._steps.get(dep_id, PlanStep("_", "_", status=StepStatus.PENDING)).status == StepStatus.DONE
+                self._steps.get(dep_id, PlanStep("_", "_", status=StepStatus.PENDING)).status
+                == StepStatus.DONE
                 for dep_id in step.depends_on
             ):
                 ready.append(step)

@@ -11,12 +11,13 @@ Run with:
 """
 
 import pytest
-from src.eval.math_eval import MathEval, MathEvalConfig
 
+from src.eval.math_eval import MathEval
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def evaluator() -> MathEval:
@@ -63,9 +64,7 @@ def test_mixed_evaluate_accuracy(evaluator):
 
 def test_mixed_evaluate_by_category(evaluator):
     """Per-category breakdown should be correct."""
-    result = evaluator.evaluate(
-        MIXED_PREDICTIONS, MIXED_GROUND_TRUTHS, categories=MIXED_CATEGORIES
-    )
+    result = evaluator.evaluate(MIXED_PREDICTIONS, MIXED_GROUND_TRUTHS, categories=MIXED_CATEGORIES)
     assert "by_category" in result
     by_cat = result["by_category"]
 
@@ -88,9 +87,7 @@ def test_mixed_evaluate_by_category(evaluator):
 
 def test_mixed_evaluate_fraction_correct(evaluator):
     """Fraction answer '1/4' should match ground truth '0.25'."""
-    result = evaluator.evaluate(
-        [MIXED_PREDICTIONS[1]], [MIXED_GROUND_TRUTHS[1]]
-    )
+    result = evaluator.evaluate([MIXED_PREDICTIONS[1]], [MIXED_GROUND_TRUTHS[1]])
     assert result["n_correct"] == 1
 
 
@@ -99,9 +96,9 @@ def test_mixed_evaluate_fraction_correct(evaluator):
 # ---------------------------------------------------------------------------
 
 AIME_PREDICTIONS = [
-    "By inspection, \\boxed{042}.",       # 42 → correct
-    "We get \\boxed{314}.",               # 314 → correct
-    "The answer must be \\boxed{500}.",   # 500 → correct
+    "By inspection, \\boxed{042}.",  # 42 → correct
+    "We get \\boxed{314}.",  # 314 → correct
+    "The answer must be \\boxed{500}.",  # 500 → correct
 ]
 
 AIME_GROUND_TRUTHS = ["42", "314", "500"]
@@ -117,7 +114,7 @@ def test_aime_score_all_correct(evaluator):
 def test_aime_score_partial(evaluator):
     """One wrong AIME answer → score=2, accuracy≈0.667."""
     preds = list(AIME_PREDICTIONS)
-    preds[2] = "The answer is \\boxed{999}."   # wrong (gt=500)
+    preds[2] = "The answer is \\boxed{999}."  # wrong (gt=500)
     result = evaluator.aime_score(preds, AIME_GROUND_TRUTHS)
     assert result["score"] == 2
     assert result["accuracy"] == pytest.approx(2 / 3)
@@ -127,9 +124,11 @@ def test_aime_score_partial(evaluator):
 # Registry wiring
 # ---------------------------------------------------------------------------
 
+
 def test_registry_wired():
     """BENCHMARK_REGISTRY['math_eval'] should be the MathEval class."""
     # Import through the package to trigger the registry wiring.
     from src.eval import BENCHMARK_REGISTRY  # type: ignore
+
     assert "math_eval" in BENCHMARK_REGISTRY
     assert BENCHMARK_REGISTRY["math_eval"] is MathEval

@@ -7,9 +7,6 @@ Pure PyTorch — no HuggingFace, scipy, or sklearn.
 
 from __future__ import annotations
 
-import math
-from typing import Dict
-
 import pytest
 import torch
 import torch.nn as nn
@@ -37,7 +34,7 @@ def tiny_linear() -> nn.Linear:
     return nn.Linear(D, D)
 
 
-def make_state_dict(seed: int) -> Dict[str, torch.Tensor]:
+def make_state_dict(seed: int) -> dict[str, torch.Tensor]:
     """Create a reproducible state dict for a tiny Linear(D, D)."""
     torch.manual_seed(seed)
     m = tiny_linear()
@@ -53,6 +50,7 @@ def make_model(seed: int) -> nn.Linear:
 # ---------------------------------------------------------------------------
 # 1. MergeConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestMergeConfigDefaults:
     def test_default_method(self):
@@ -75,6 +73,7 @@ class TestMergeConfigDefaults:
 # ---------------------------------------------------------------------------
 # 2. linear_merge — correctness
 # ---------------------------------------------------------------------------
+
 
 class TestLinearMerge:
     def test_equal_weights_is_simple_average(self):
@@ -120,6 +119,7 @@ class TestLinearMerge:
 # ---------------------------------------------------------------------------
 # 3. slerp_merge — boundary conditions
 # ---------------------------------------------------------------------------
+
 
 class TestSlerpMerge:
     def test_t0_returns_first_model(self):
@@ -170,6 +170,7 @@ class TestSlerpMerge:
 # 4. compute_task_vector / apply_task_vector
 # ---------------------------------------------------------------------------
 
+
 class TestTaskVector:
     def test_compute_task_vector_difference(self):
         base = make_state_dict(0)
@@ -206,6 +207,7 @@ class TestTaskVector:
 # 5. TIES merging
 # ---------------------------------------------------------------------------
 
+
 class TestTiesMerge:
     def test_ties_output_has_same_keys_as_base(self):
         base = make_state_dict(0)
@@ -234,6 +236,7 @@ class TestTiesMerge:
 # 6. DARE masking
 # ---------------------------------------------------------------------------
 
+
 class TestDareMask:
     def test_dare_density1_close_to_identity(self):
         """density=1.0 keeps all elements — masked vector should equal original."""
@@ -259,9 +262,7 @@ class TestDareMask:
             # and others must be ~2x the original; check at least one zero exists
             if orig.numel() > 4:
                 zero_count = (mask_v == 0).sum().item()
-                assert zero_count > 0, (
-                    f"Key '{k}': expected some zeros for density=0.5, got none."
-                )
+                assert zero_count > 0, f"Key '{k}': expected some zeros for density=0.5, got none."
 
     def test_dare_output_has_all_keys(self):
         tv = compute_task_vector(make_state_dict(0), make_state_dict(1))
@@ -278,6 +279,7 @@ class TestDareMask:
 # ---------------------------------------------------------------------------
 # 7. ModelMerger integration
 # ---------------------------------------------------------------------------
+
 
 class TestModelMerger:
     def test_merge_returns_dict(self):

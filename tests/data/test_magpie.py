@@ -1,14 +1,15 @@
 """Tests for Magpie self-instruct synthesizer."""
-import torch
+
 import pytest
-from unittest.mock import MagicMock, patch
-from src.data.magpie import MagpieSynthesizer, MagpieConfig, MagpieSample
+
+from src.data.magpie import MagpieConfig, MagpieSample, MagpieSynthesizer
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 
 class MockTokenizer:
     """Minimal tokenizer stub for testing."""
+
     def encode(self, text: str) -> list[int]:
         # Simple char-level encoding for testing
         return [ord(c) % 100 for c in text]
@@ -20,8 +21,14 @@ class MockTokenizer:
 @pytest.fixture
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2,
-        head_dim=64, d_ff=512, vocab_size=256, max_seq_len=128,
+        n_layers=2,
+        d_model=256,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=64,
+        d_ff=512,
+        vocab_size=256,
+        max_seq_len=128,
     )
     return AureliusTransformer(cfg)
 

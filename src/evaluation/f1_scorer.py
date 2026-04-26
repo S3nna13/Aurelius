@@ -23,7 +23,7 @@ class F1Scorer:
     def _normalize(self, text: str) -> list[str]:
         """Lowercase, remove punctuation, and split into tokens."""
         text = text.lower()
-        text = re.sub(r'[^\w\s]', '', text)
+        text = re.sub(r"[^\w\s]", "", text)
         return text.split()
 
     def score(self, prediction: str, gold: str) -> F1Result:
@@ -67,9 +67,7 @@ class F1Scorer:
             gold_tokens=len(gold_tokens),
         )
 
-    def batch_score(
-        self, predictions: list[str], golds: list[str]
-    ) -> list[F1Result]:
+    def batch_score(self, predictions: list[str], golds: list[str]) -> list[F1Result]:
         """Compute F1 for each prediction/gold pair.
 
         Raises ValueError if lengths differ.

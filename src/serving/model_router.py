@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import threading
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class RoutingPolicy(str, Enum):
+class RoutingPolicy(StrEnum):
     ROUND_ROBIN = "round_robin"
     LEAST_LOADED = "least_loaded"
     HASH_CONSISTENT = "hash_consistent"
@@ -37,7 +36,7 @@ class ModelRouter:
     """Routes requests to registered ModelEndpoints based on a RoutingPolicy."""
 
     def __init__(self) -> None:
-        self._endpoints: Dict[str, ModelEndpoint] = {}
+        self._endpoints: dict[str, ModelEndpoint] = {}
         self._rr_index: int = 0
         self._lock = threading.Lock()
 
@@ -63,7 +62,7 @@ class ModelRouter:
         self,
         request_key: str,
         policy: RoutingPolicy = RoutingPolicy.LEAST_LOADED,
-    ) -> Optional[ModelEndpoint]:
+    ) -> ModelEndpoint | None:
         """Select an endpoint according to *policy*.
 
         Returns ``None`` when no endpoints are registered.
@@ -82,15 +81,10 @@ class ModelRouter:
                 return min(active, key=lambda e: e.active_requests)
 
             if policy == RoutingPolicy.HASH_CONSISTENT:
-                idx = (
-                    int(
-                        hashlib.sha256(
-                            request_key.encode(), usedforsecurity=False
-                        ).hexdigest(),
-                        16,
-                    )
-                    % len(active)
-                )
+                idx = int(
+                    hashlib.sha256(request_key.encode(), usedforsecurity=False).hexdigest(),
+                    16,
+                ) % len(active)
                 return active[idx]
 
             if policy == RoutingPolicy.LATENCY_AWARE:
@@ -129,7 +123,7 @@ class ModelRouter:
     # ------------------------------------------------------------------
 
     @property
-    def endpoints(self) -> List[ModelEndpoint]:
+    def endpoints(self) -> list[ModelEndpoint]:
         """Return a snapshot of registered endpoints."""
         with self._lock:
             return list(self._endpoints.values())

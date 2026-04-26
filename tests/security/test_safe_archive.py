@@ -11,13 +11,12 @@ from pathlib import Path
 import pytest
 
 from src.security.safe_archive import (
-    ArchiveError,
     SAFE_EXTRACTOR_REGISTRY,
+    ArchiveError,
     SafeTarExtractor,
     SafeZipExtractor,
     safe_extract,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

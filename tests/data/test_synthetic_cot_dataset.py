@@ -1,15 +1,14 @@
 """Tests for src/data/synthetic_cot_dataset.py"""
+
 import json
 import pathlib
 import tempfile
 
-import pytest
-
 from src.data.synthetic_cot_dataset import (
-    CoTExample,
-    CoTDatasetConfig,
-    SyntheticCoTDataset,
     COT_DATASET_REGISTRY,
+    CoTDatasetConfig,
+    CoTExample,
+    SyntheticCoTDataset,
 )
 
 
@@ -23,7 +22,7 @@ def test_generate_math_example_returns_cot_example():
 def test_generate_math_example_chain_has_multiple_lines():
     ds = SyntheticCoTDataset()
     ex = ds.generate_math_example(seed=0)
-    lines = [l for l in ex.chain_of_thought.split("\n") if l.strip()]
+    lines = [line for line in ex.chain_of_thought.split("\n") if line.strip()]
     assert len(lines) >= 2
 
 
@@ -43,7 +42,7 @@ def test_generate_logic_example_returns_cot_example():
 def test_generate_logic_example_chain_has_multiple_lines():
     ds = SyntheticCoTDataset()
     ex = ds.generate_logic_example(seed=1)
-    lines = [l for l in ex.chain_of_thought.split("\n") if l.strip()]
+    lines = [line for line in ex.chain_of_thought.split("\n") if line.strip()]
     assert len(lines) >= 2
 
 

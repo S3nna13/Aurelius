@@ -10,13 +10,11 @@ of the output space.  The algorithm is described in:
 
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Tuple
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -52,7 +50,7 @@ class DiverseBeamConfig:
 
 
 def compute_diversity_penalty(
-    prev_group_tokens: List[int],
+    prev_group_tokens: list[int],
     vocab_size: int,
     penalty: float,
 ) -> torch.Tensor:
@@ -82,11 +80,11 @@ def compute_diversity_penalty(
 
 def group_beam_search_step(
     logits: torch.Tensor,
-    beams: List[Tuple[List[int], float]],
+    beams: list[tuple[list[int], float]],
     diversity_penalty: torch.Tensor,
     beam_width: int,
     temperature: float = 1.0,
-) -> List[Tuple[List[int], float]]:
+) -> list[tuple[list[int], float]]:
     """Perform one beam-search expansion step for a single group.
 
     Args:
@@ -105,7 +103,7 @@ def group_beam_search_step(
         by score descending.
     """
     vocab_size = logits.shape[0]
-    candidates: List[Tuple[List[int], float]] = []
+    candidates: list[tuple[list[int], float]] = []
 
     for seq, score in beams:
         # Apply temperature.
@@ -142,7 +140,7 @@ def group_beam_search_step(
 # ---------------------------------------------------------------------------
 
 
-def _token_edit_distance(a: List[int], b: List[int]) -> int:
+def _token_edit_distance(a: list[int], b: list[int]) -> int:
     """Compute Levenshtein edit distance between two token sequences."""
     m, n = len(a), len(b)
     # Allocate DP table (two rows suffice).
@@ -159,7 +157,7 @@ def _token_edit_distance(a: List[int], b: List[int]) -> int:
     return prev[n]
 
 
-def compute_sequence_diversity(sequences: List[torch.Tensor]) -> float:
+def compute_sequence_diversity(sequences: list[torch.Tensor]) -> float:
     """Compute mean pairwise token-level edit distance between sequences.
 
     Args:
@@ -224,9 +222,7 @@ class DiverseBeamSearch:
     # Initialisation
     # ------------------------------------------------------------------
 
-    def initialize_groups(
-        self, prompt: torch.Tensor
-    ) -> List[List[Tuple[List[int], float]]]:
+    def initialize_groups(self, prompt: torch.Tensor) -> list[list[tuple[list[int], float]]]:
         """Create n_groups groups, each with beam_width // n_groups beams.
 
         All beams start from the prompt token ids with a raw log-prob of 0.
@@ -239,8 +235,8 @@ class DiverseBeamSearch:
             (token_sequence, score) tuples of length beam_width // n_groups.
         """
         prompt_tokens = prompt.tolist()
-        initial_beam: Tuple[List[int], float] = (list(prompt_tokens), 0.0)
-        groups: List[List[Tuple[List[int], float]]] = []
+        initial_beam: tuple[list[int], float] = (list(prompt_tokens), 0.0)
+        groups: list[list[tuple[list[int], float]]] = []
         for _ in range(self.config.n_groups):
             groups.append([initial_beam] * self._beams_per_group)
         return groups
@@ -251,12 +247,12 @@ class DiverseBeamSearch:
 
     def _step_all_groups(
         self,
-        groups: List[List[Tuple[List[int], float]]],
-    ) -> List[List[Tuple[List[int], float]]]:
+        groups: list[list[tuple[list[int], float]]],
+    ) -> list[list[tuple[list[int], float]]]:
         """Run one decoding step across all groups with diversity penalty."""
         cfg = self.config
-        new_groups: List[List[Tuple[List[int], float]]] = []
-        prev_group_tokens: List[int] = []
+        new_groups: list[list[tuple[list[int], float]]] = []
+        prev_group_tokens: list[int] = []
 
         for g, beams in enumerate(groups):
             # Use the best (first) beam's sequence to query the model.
@@ -293,7 +289,7 @@ class DiverseBeamSearch:
     # Public search interface
     # ------------------------------------------------------------------
 
-    def search(self, prompt: torch.Tensor) -> List[torch.Tensor]:
+    def search(self, prompt: torch.Tensor) -> list[torch.Tensor]:
         """Run diverse beam search and return the best sequence per group.
 
         Args:
@@ -311,22 +307,19 @@ class DiverseBeamSearch:
 
             # Early stopping: check if best beam in every group ends with EOS.
             all_done = all(
-                beams and beams[0][0] and beams[0][0][-1] == self.eos_token_id
-                for beams in groups
+                beams and beams[0][0] and beams[0][0][-1] == self.eos_token_id for beams in groups
             )
             if all_done:
                 break
 
         # Extract best beam per group.
-        results: List[torch.Tensor] = []
+        results: list[torch.Tensor] = []
         for beams in groups:
             best_seq, _ = beams[0]
             results.append(torch.tensor(best_seq, dtype=torch.long))
         return results
 
-    def search_with_scores(
-        self, prompt: torch.Tensor
-    ) -> List[Tuple[torch.Tensor, float]]:
+    def search_with_scores(self, prompt: torch.Tensor) -> list[tuple[torch.Tensor, float]]:
         """Run diverse beam search and return (sequence, normalised_score) pairs.
 
         Scores are length-normalised: raw_log_prob / len^length_penalty.
@@ -346,18 +339,17 @@ class DiverseBeamSearch:
             groups = self._step_all_groups(groups)
 
             all_done = all(
-                beams and beams[0][0] and beams[0][0][-1] == self.eos_token_id
-                for beams in groups
+                beams and beams[0][0] and beams[0][0][-1] == self.eos_token_id for beams in groups
             )
             if all_done:
                 break
 
-        output: List[Tuple[torch.Tensor, float]] = []
+        output: list[tuple[torch.Tensor, float]] = []
         for beams in groups:
             best_seq, raw_score = beams[0]
             length = len(best_seq)
             if length > 0:
-                norm_score = raw_score / (length ** cfg.length_penalty)
+                norm_score = raw_score / (length**cfg.length_penalty)
             else:
                 norm_score = raw_score
             output.append((torch.tensor(best_seq, dtype=torch.long), norm_score))

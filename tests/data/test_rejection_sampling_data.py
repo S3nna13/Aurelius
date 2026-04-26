@@ -16,8 +16,10 @@ from src.data.rejection_sampling_data import PreferencePair, RejectionSampler
 def make_counter_generate():
     """generate_fn that returns f'{prompt}::{i}' with i monotonically increasing."""
     c = count()
+
     def gen(prompt: str) -> str:
         return f"{prompt}::{next(c)}"
+
     return gen
 
 

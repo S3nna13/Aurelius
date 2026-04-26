@@ -1,12 +1,11 @@
 """Tests for src/eval/benchmark_runner.py"""
 
-import pytest
-from src.eval.benchmark_runner import RunConfig, BenchmarkResult, BenchmarkRunner
-
+from src.eval.benchmark_runner import BenchmarkResult, BenchmarkRunner, RunConfig
 
 # ---------------------------------------------------------------------------
 # RunConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_runconfig_default_max_samples():
     cfg = RunConfig(benchmark_names=["foo"])
@@ -39,6 +38,7 @@ def test_runconfig_custom_values():
 # BenchmarkResult fields
 # ---------------------------------------------------------------------------
 
+
 def test_benchmarkresult_fields():
     r = BenchmarkResult("foo", 0.9, 10, 1.23)
     assert r.benchmark_name == "foo"
@@ -62,6 +62,7 @@ def test_benchmarkresult_custom_metadata():
 # BenchmarkRunner construction
 # ---------------------------------------------------------------------------
 
+
 def test_runner_accepts_empty_registry():
     runner = BenchmarkRunner(benchmark_registry={})
     assert runner is not None
@@ -81,6 +82,7 @@ def test_runner_default_registry_not_none():
 # ---------------------------------------------------------------------------
 # run_benchmark
 # ---------------------------------------------------------------------------
+
 
 def _make_runner_with_stub(score_val=0.75, total_val=10):
     class StubBenchmark:
@@ -161,6 +163,7 @@ def test_run_benchmark_evaluate_exception_returns_zero_score():
 # run_all
 # ---------------------------------------------------------------------------
 
+
 def _make_multi_runner():
     class Bench:
         def __init__(self, acc):
@@ -208,6 +211,7 @@ def test_run_all_contains_all_names():
 # report
 # ---------------------------------------------------------------------------
 
+
 def test_report_returns_string():
     runner = _make_multi_runner()
     results = runner.run_all({"q1": "a1"})
@@ -247,6 +251,7 @@ def test_report_empty_list():
 # ---------------------------------------------------------------------------
 # best
 # ---------------------------------------------------------------------------
+
 
 def test_best_returns_none_for_empty():
     runner = BenchmarkRunner(benchmark_registry={})

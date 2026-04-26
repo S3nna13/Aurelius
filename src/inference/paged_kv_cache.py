@@ -9,7 +9,6 @@ enabling page sharing between sequences for prefix caching.
 from __future__ import annotations
 
 from collections import deque
-from typing import Optional
 
 import torch
 
@@ -48,7 +47,11 @@ class PagePool:
         # Pre-allocate all pages: (n_pages, 2, page_size, n_kv_heads, head_dim)
         # Index 0 along dim 1 = keys, index 1 = values
         self.storage = torch.zeros(
-            n_pages, 2, page_size, n_kv_heads, head_dim,
+            n_pages,
+            2,
+            page_size,
+            n_kv_heads,
+            head_dim,
             dtype=torch.float32,
             device=self.device,
         )
@@ -63,9 +66,7 @@ class PagePool:
     def allocate_page(self) -> int:
         """Get a free page_id. Raises RuntimeError if pool is exhausted."""
         if not self._free_pages:
-            raise RuntimeError(
-                f"PagePool exhausted: all {self.n_pages} pages are in use."
-            )
+            raise RuntimeError(f"PagePool exhausted: all {self.n_pages} pages are in use.")
         return self._free_pages.popleft()
 
     def free_page(self, page_id: int) -> None:
@@ -172,7 +173,9 @@ class SequenceKVCache:
         n_tokens = self._n_filled[layer]
         if n_tokens == 0:
             empty = torch.zeros(
-                0, self._pool.n_kv_heads, self._pool.head_dim,
+                0,
+                self._pool.n_kv_heads,
+                self._pool.head_dim,
                 dtype=torch.float32,
                 device=self._pool.device,
             )

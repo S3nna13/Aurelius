@@ -23,7 +23,6 @@ from src.training.influence_functions import (
     top_influential_examples,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -146,9 +145,9 @@ class TestHvp:
 
         for h1, h2 in zip(hv_v, hv_av):
             # h2 should equal alpha * h1
-            assert torch.allclose(
-                alpha * h1, h2, atol=1e-4
-            ), f"HVP linearity failed: max diff = {(alpha * h1 - h2).abs().max()}"
+            assert torch.allclose(alpha * h1, h2, atol=1e-4), (
+                f"HVP linearity failed: max diff = {(alpha * h1 - h2).abs().max()}"
+            )
 
     def test_hvp_returns_finite_values(self):
         """All elements of the HVP result must be finite."""
@@ -292,6 +291,7 @@ class TestComputeInfluenceScores:
         config = InfluenceConfig(n_recursion_depth=3, n_samples=N_TRAIN, top_k=3)
 
         import random
+
         random.seed(42)
         torch.manual_seed(50)
         scores_a = compute_influence_scores(model, _loss_fn, dataset, test_x, test_y, config)

@@ -35,10 +35,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Feature map
 # ---------------------------------------------------------------------------
+
 
 class CosformerKernel(nn.Module):
     """Positive-definite feature map phi(x) = [relu(x), relu(-x)].
@@ -56,7 +56,10 @@ class CosformerKernel(nn.Module):
 # Helper: cosine position reweighting
 # ---------------------------------------------------------------------------
 
-def _cos_sin_position_bias(T: int, device: torch.device, dtype: torch.dtype) -> tuple[Tensor, Tensor]:
+
+def _cos_sin_position_bias(
+    T: int, device: torch.device, dtype: torch.dtype
+) -> tuple[Tensor, Tensor]:
     """Return cos and sin position weights of shape (T, 1).
 
     cos_w[t] = cos(pi * t / (2 * T))
@@ -76,6 +79,7 @@ def _cos_sin_position_bias(T: int, device: torch.device, dtype: torch.dtype) -> 
 # ---------------------------------------------------------------------------
 # Single-head attention
 # ---------------------------------------------------------------------------
+
 
 class CosformerAttention(nn.Module):
     """Single-head cosFormer attention.
@@ -142,13 +146,13 @@ class CosformerAttention(nn.Module):
         O = (Q' @ (K'^T @ V)) / (Q' @ sum_k(K') + eps)
         """
         # kv : (B, 4d, d_head)  — aggregate across time first
-        kv = torch.einsum("bti,btj->bij", k, v)   # (B, 4d, d_v)
+        kv = torch.einsum("bti,btj->bij", k, v)  # (B, 4d, d_v)
         # numerator: (B, T, d_head)
         out_num = torch.einsum("bti,bij->btj", q, kv)
 
         # denominator: sum of K' over time -> (B, 1, 4d), then contract with Q'
-        k_sum = k.sum(dim=1, keepdim=True)               # (B, 1, 4d)
-        denom = (q * k_sum).sum(dim=-1, keepdim=True)    # (B, T, 1)
+        k_sum = k.sum(dim=1, keepdim=True)  # (B, 1, 4d)
+        denom = (q * k_sum).sum(dim=-1, keepdim=True)  # (B, T, 1)
         denom = denom.clamp(min=self.eps)
 
         return out_num / denom  # (B, T, d_head)
@@ -169,7 +173,7 @@ class CosformerAttention(nn.Module):
         device, dtype = q.device, q.dtype
 
         S = torch.zeros(B, feat_dim, d_v, device=device, dtype=dtype)  # (B, 4d, d_v)
-        z = torch.zeros(B, feat_dim, device=device, dtype=dtype)        # (B, 4d)
+        z = torch.zeros(B, feat_dim, device=device, dtype=dtype)  # (B, 4d)
         outputs = []
 
         for t in range(T):
@@ -179,13 +183,13 @@ class CosformerAttention(nn.Module):
 
             # Update state
             S = S + torch.einsum("bi,bj->bij", kt, vt)  # (B, 4d, d_v)
-            z = z + kt                                    # (B, 4d)
+            z = z + kt  # (B, 4d)
 
             # Compute output for step t
-            num = torch.einsum("bi,bij->bj", qt, S)      # (B, d_v)
-            den = (qt * z).sum(dim=-1, keepdim=True)     # (B, 1)
+            num = torch.einsum("bi,bij->bj", qt, S)  # (B, d_v)
+            den = (qt * z).sum(dim=-1, keepdim=True)  # (B, 1)
             den = den.clamp(min=self.eps)
-            outputs.append((num / den).unsqueeze(1))     # (B, 1, d_v)
+            outputs.append((num / den).unsqueeze(1))  # (B, 1, d_v)
 
         return torch.cat(outputs, dim=1)  # (B, T, d_v)
 
@@ -193,6 +197,7 @@ class CosformerAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Multi-head layer
 # ---------------------------------------------------------------------------
+
 
 class CosformerLayer(nn.Module):
     """Multi-head cosFormer attention layer.
@@ -259,6 +264,7 @@ class CosformerLayer(nn.Module):
 # RMSNorm (local, no external deps)
 # ---------------------------------------------------------------------------
 
+
 class _RMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6) -> None:
         super().__init__()
@@ -273,6 +279,7 @@ class _RMSNorm(nn.Module):
 # ---------------------------------------------------------------------------
 # Full block
 # ---------------------------------------------------------------------------
+
 
 class CosformerBlock(nn.Module):
     """CosformerLayer + FFN + RMSNorm (pre-norm style).

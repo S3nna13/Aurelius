@@ -1,17 +1,16 @@
 """Flash attention simulation: tiled/chunked attention computation for memory efficiency (without flash-attn library).
-
 Implements the tiling algorithm of FlashAttention (Dao et al. 2022), computing
 attention in tiles over both Q and KV dimensions to avoid materializing the
 full (T, T) attention matrix. Uses the online softmax trick for numerical stability.
 
 This is DIFFERENT from memory_efficient_attn.py which only chunks over KV.
 Here we tile over both Q blocks and KV blocks simultaneously.
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -39,9 +38,9 @@ class FlashAttnConfig:
 
 
 def online_softmax_update(
-    prev_max: Tensor,    # (B, H, T_q, 1)
-    prev_sum: Tensor,    # (B, H, T_q, 1)
-    prev_out: Tensor,    # (B, H, T_q, D)
+    prev_max: Tensor,  # (B, H, T_q, 1)
+    prev_sum: Tensor,  # (B, H, T_q, 1)
+    prev_out: Tensor,  # (B, H, T_q, D)
     new_scores: Tensor,  # (B, H, T_q, T_kv)
     new_values: Tensor,  # (B, H, T_kv, D)
 ) -> tuple[Tensor, Tensor, Tensor]:
@@ -135,12 +134,8 @@ def flash_attention_forward(
         running_max = torch.full(
             (B, H, T_q_block, 1), float("-inf"), dtype=torch.float32, device=device
         )
-        running_sum = torch.zeros(
-            (B, H, T_q_block, 1), dtype=torch.float32, device=device
-        )
-        running_out = torch.zeros(
-            (B, H, T_q_block, D), dtype=torch.float32, device=device
-        )
+        running_sum = torch.zeros((B, H, T_q_block, 1), dtype=torch.float32, device=device)
+        running_out = torch.zeros((B, H, T_q_block, D), dtype=torch.float32, device=device)
 
         # Q position indices for causal masking: absolute positions in sequence
         q_positions = torch.arange(q_start, q_end, device=device)  # (T_q_block,)
@@ -194,7 +189,7 @@ class TiledAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, config: FlashAttnConfig) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -252,7 +247,9 @@ def compare_with_standard_attention(
     """
     # Standard attention using PyTorch's built-in SDPA
     standard_output = F.scaled_dot_product_attention(
-        query, key, value,
+        query,
+        key,
+        value,
         attn_mask=None,
         dropout_p=0.0,
         is_causal=causal,

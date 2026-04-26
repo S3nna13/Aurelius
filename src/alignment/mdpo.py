@@ -7,31 +7,30 @@ Reference:
     - Tomar et al. (2020): Mirror Descent Policy Optimization
     - Ziegler et al. (2019): Fine-Tuning Language Models from Human Preferences
 """
+
 from __future__ import annotations
 
-import copy
-import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MDPOConfig:
     """Configuration for MDPO training."""
-    kl_coef: float = 0.1         # KL penalty coefficient beta
-    lr: float = 1e-5             # learning rate
-    n_steps: int = 4             # gradient steps per batch
-    max_grad_norm: float = 1.0   # gradient clipping
-    reward_scale: float = 1.0    # scale rewards before applying
-    entropy_coef: float = 0.01   # entropy bonus coefficient
+
+    kl_coef: float = 0.1  # KL penalty coefficient beta
+    lr: float = 1e-5  # learning rate
+    n_steps: int = 4  # gradient steps per batch
+    max_grad_norm: float = 1.0  # gradient clipping
+    reward_scale: float = 1.0  # scale rewards before applying
+    entropy_coef: float = 0.01  # entropy bonus coefficient
     max_seq_len: int = 64
 
 
@@ -39,18 +38,21 @@ class MDPOConfig:
 # Data container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MDPOBatch:
     """A single MDPO training batch."""
-    input_ids: torch.Tensor      # (B, T) prompt + response token ids
-    rewards: torch.Tensor        # (B,) scalar reward per sequence
+
+    input_ids: torch.Tensor  # (B, T) prompt + response token ids
+    rewards: torch.Tensor  # (B,) scalar reward per sequence
     ref_log_probs: torch.Tensor  # (B, T) log probs under reference policy
-    prompt_len: int              # length of prompt prefix (not trained on)
+    prompt_len: int  # length of prompt prefix (not trained on)
 
 
 # ---------------------------------------------------------------------------
 # Core utilities
 # ---------------------------------------------------------------------------
+
 
 def sequence_log_probs(
     model: nn.Module,
@@ -83,12 +85,12 @@ def sequence_log_probs(
     # Target token ids: positions [prompt_len+1, ..., T-1] => input_ids[:, prompt_len+1:]
     # This yields T - prompt_len - 1 response tokens, matching the spec.
     start = prompt_len
-    ctx_log_probs = log_probs_all[:, start:-1, :]   # (B, S, V)
-    target_ids = input_ids[:, start + 1:]           # (B, S)
+    ctx_log_probs = log_probs_all[:, start:-1, :]  # (B, S, V)
+    target_ids = input_ids[:, start + 1 :]  # (B, S)
 
-    token_log_probs = ctx_log_probs.gather(
-        dim=-1, index=target_ids.unsqueeze(-1)
-    ).squeeze(-1)  # (B, S)
+    token_log_probs = ctx_log_probs.gather(dim=-1, index=target_ids.unsqueeze(-1)).squeeze(
+        -1
+    )  # (B, S)
 
     return token_log_probs
 
@@ -96,6 +98,7 @@ def sequence_log_probs(
 # ---------------------------------------------------------------------------
 # Loss
 # ---------------------------------------------------------------------------
+
 
 def mdpo_loss(
     log_probs: torch.Tensor,
@@ -147,6 +150,7 @@ def mdpo_loss(
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class MDPOTrainer:
     """Online MDPO trainer with KL-proximal regularization."""
 
@@ -156,9 +160,7 @@ class MDPOTrainer:
         self.config = config
         for p in self.ref_model.parameters():
             p.requires_grad_(False)
-        self.optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=config.lr
-        )
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=config.lr)
 
     def train_step(self, batch: MDPOBatch) -> dict:
         """Single MDPO update step.  Runs config.n_steps gradient steps.
@@ -177,10 +179,8 @@ class MDPOTrainer:
             prompt_len = batch.prompt_len
             start = prompt_len
             ctx_log_probs = log_probs_all[:, start:-1, :]
-            target_ids = batch.input_ids[:, start + 1:]
-            log_probs = ctx_log_probs.gather(
-                dim=-1, index=target_ids.unsqueeze(-1)
-            ).squeeze(-1)
+            target_ids = batch.input_ids[:, start + 1 :]
+            log_probs = ctx_log_probs.gather(dim=-1, index=target_ids.unsqueeze(-1)).squeeze(-1)
 
             scaled_rewards = batch.rewards * self.config.reward_scale
 
@@ -194,9 +194,7 @@ class MDPOTrainer:
 
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(
-                self.model.parameters(), self.config.max_grad_norm
-            )
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
             self.optimizer.step()
 
         return metrics
@@ -219,9 +217,7 @@ class MDPOTrainer:
         """
         self.ref_model.model_eval_mode = True
         self.ref_model.eval()
-        ref_log_probs = sequence_log_probs(
-            self.ref_model, input_ids, prompt_len=prompt_len
-        )
+        ref_log_probs = sequence_log_probs(self.ref_model, input_ids, prompt_len=prompt_len)
 
         return MDPOBatch(
             input_ids=input_ids,

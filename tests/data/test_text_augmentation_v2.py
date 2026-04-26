@@ -1,16 +1,17 @@
 """Tests for src/data/text_augmentation.py (AugmentationConfig / TextAugmentor API)"""
+
 import random
+
 import pytest
 
 from src.data.text_augmentation import (
     AugmentationConfig,
+    TextAugmentor,
+    compute_edit_distance,
+    random_char_noise,
     random_word_deletion,
     random_word_swap,
-    random_char_noise,
-    random_word_insertion,
     synonym_swap_simple,
-    compute_edit_distance,
-    TextAugmentor,
 )
 
 TEXT = "The quick brown fox jumps over the lazy dog"
@@ -20,6 +21,7 @@ RNG = random.Random(0)
 # ---------------------------------------------------------------------------
 # AugmentationConfig
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = AugmentationConfig()
@@ -33,6 +35,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # random_word_deletion
 # ---------------------------------------------------------------------------
+
 
 def test_deletion_removes_words():
     rng = random.Random(1)
@@ -58,6 +61,7 @@ def test_deletion_p_zero_unchanged():
 # random_word_swap
 # ---------------------------------------------------------------------------
 
+
 def test_swap_changes_order():
     rng = random.Random(42)
     # High p to guarantee at least one swap
@@ -75,6 +79,7 @@ def test_swap_p_zero_unchanged():
 # ---------------------------------------------------------------------------
 # random_char_noise
 # ---------------------------------------------------------------------------
+
 
 def test_char_noise_changes_chars():
     rng = random.Random(99)
@@ -100,6 +105,7 @@ def test_char_noise_p_zero_unchanged():
 # synonym_swap_simple
 # ---------------------------------------------------------------------------
 
+
 def test_synonym_swap_replaces():
     swap_map = {"quick": "fast", "lazy": "sleepy"}
     result = synonym_swap_simple(TEXT, swap_map)
@@ -124,6 +130,7 @@ def test_synonym_swap_no_match_unchanged():
 # compute_edit_distance
 # ---------------------------------------------------------------------------
 
+
 def test_edit_distance_identical():
     assert compute_edit_distance(TEXT, TEXT) == 0
 
@@ -143,6 +150,7 @@ def test_edit_distance_empty():
 # ---------------------------------------------------------------------------
 # TextAugmentor
 # ---------------------------------------------------------------------------
+
 
 def test_augmentor_returns_string():
     aug = TextAugmentor(AugmentationConfig(seed=0))
@@ -173,7 +181,12 @@ def test_get_augment_stats_keys():
     aug = TextAugmentor(AugmentationConfig(seed=0))
     augmented = aug.augment(TEXT)
     stats = aug.get_augment_stats(TEXT, augmented)
-    for key in ["word_count_original", "word_count_augmented", "edit_distance_ratio", "words_changed_ratio"]:
+    for key in [
+        "word_count_original",
+        "word_count_augmented",
+        "edit_distance_ratio",
+        "words_changed_ratio",
+    ]:
         assert key in stats
 
 

@@ -7,13 +7,9 @@ clone model via KL-divergence minimisation.
 
 from __future__ import annotations
 
-from typing import List
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
-from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 
@@ -126,7 +122,7 @@ class ModelExtractor:
         dataset_ids: torch.Tensor,
         n_epochs: int,
         lr: float,
-    ) -> List[float]:
+    ) -> list[float]:
         """Run the full extraction loop over the provided dataset.
 
         Each element of dataset_ids is treated as a separate input batch. The
@@ -150,7 +146,7 @@ class ModelExtractor:
         if dataset_ids.dim() == 2:
             dataset_ids = dataset_ids.unsqueeze(1)
 
-        losses: List[float] = []
+        losses: list[float] = []
 
         for _epoch in range(n_epochs):
             for batch_ids in dataset_ids:

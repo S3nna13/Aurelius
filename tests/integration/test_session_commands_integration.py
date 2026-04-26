@@ -56,7 +56,9 @@ def test_main_session_list_command_runs_end_to_end(tmp_path, capsys):
     session = runtime.create_session(workspace=tmp_path / "workspace")
     runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
 
-    rc = cli_main.main(["session", "list", "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)])
+    rc = cli_main.main(
+        ["session", "list", "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)]
+    )
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
@@ -71,7 +73,15 @@ def test_main_session_show_command_runs_end_to_end(tmp_path, capsys):
     runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
 
     rc = cli_main.main(
-        ["session", "show", session.session_id, "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)]
+        [
+            "session",
+            "show",
+            session.session_id,
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path),
+        ]
     )
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
@@ -85,7 +95,9 @@ def test_main_session_show_command_runs_end_to_end(tmp_path, capsys):
 def test_main_session_thread_list_command_runs_end_to_end(tmp_path, capsys):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    workstream = runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
+    workstream = runtime.create_workstream(
+        session.session_id, "integration", workspace=tmp_path / "workspace"
+    )
     thread = runtime.create_thread(
         {
             "title": "Integration session thread",
@@ -122,7 +134,9 @@ def test_main_session_thread_list_command_runs_end_to_end(tmp_path, capsys):
 def test_main_session_workstream_show_command_runs_end_to_end(tmp_path, capsys):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    workstream = runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
+    workstream = runtime.create_workstream(
+        session.session_id, "integration", workspace=tmp_path / "workspace"
+    )
     thread = runtime.create_thread(
         {
             "title": "Integration session workstream",
@@ -160,7 +174,9 @@ def test_main_session_workstream_show_command_runs_end_to_end(tmp_path, capsys):
 def test_main_session_export_and_import_commands_run_end_to_end(tmp_path, capsys):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    workstream = runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
+    workstream = runtime.create_workstream(
+        session.session_id, "integration", workspace=tmp_path / "workspace"
+    )
     thread = runtime.create_thread(
         {
             "title": "Integration export thread",

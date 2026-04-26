@@ -1,4 +1,5 @@
 """Tests for websocket_protocol."""
+
 from __future__ import annotations
 
 from src.protocol.websocket_protocol import (

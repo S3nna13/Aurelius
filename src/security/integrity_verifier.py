@@ -2,6 +2,7 @@
 
 Trail of Bits: validate file integrity before trusting inputs.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -46,7 +47,10 @@ class IntegrityVerifier:
         with open(path, "rb") as f:
             current_sha = hashlib.sha256(f.read()).hexdigest()
         if current_sha != record.sha256:
-            return False, f"SHA-256 mismatch (expected {record.sha256[:16]}..., got {current_sha[:16]}...)"
+            return (
+                False,
+                f"SHA-256 mismatch (expected {record.sha256[:16]}..., got {current_sha[:16]}...)",
+            )
         return True, "ok"
 
     def verify_all(self) -> dict[str, tuple[bool, str]]:

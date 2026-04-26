@@ -13,19 +13,17 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List
-
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # Algorithm enum
 # ---------------------------------------------------------------------------
 
 
-class RateLimitAlgorithm(str, Enum):
+class RateLimitAlgorithm(StrEnum):
     TOKEN_BUCKET = "token_bucket"
     FIXED_WINDOW = "fixed_window"
-    SLIDING_LOG  = "sliding_log"
+    SLIDING_LOG = "sliding_log"
 
 
 # ---------------------------------------------------------------------------
@@ -36,17 +34,17 @@ class RateLimitAlgorithm(str, Enum):
 @dataclass(frozen=True)
 class RateLimitConfig:
     algorithm: RateLimitAlgorithm = RateLimitAlgorithm.TOKEN_BUCKET
-    rate:      float               = 100.0   # tokens refilled per second
-    burst:     int                 = 10      # max tokens / max requests per window
-    window_s:  float               = 1.0     # window length in seconds
+    rate: float = 100.0  # tokens refilled per second
+    burst: int = 10  # max tokens / max requests per window
+    window_s: float = 1.0  # window length in seconds
 
 
 @dataclass(frozen=True)
 class RateLimitResult:
-    allowed:       bool
-    remaining:     int
+    allowed: bool
+    remaining: int
     reset_after_s: float
-    client_id:     str
+    client_id: str
 
 
 # ---------------------------------------------------------------------------
@@ -69,13 +67,13 @@ class RateLimitingMiddleware:
         self.config: RateLimitConfig = config if config is not None else RateLimitConfig()
 
         # TOKEN_BUCKET: {client_id: [tokens_float, last_refill_time]}
-        self._buckets: Dict[str, List[float]] = {}
+        self._buckets: dict[str, list[float]] = {}
 
         # FIXED_WINDOW: {client_id: [count, window_start]}
-        self._windows: Dict[str, List[float]] = {}
+        self._windows: dict[str, list[float]] = {}
 
         # SLIDING_LOG: {client_id: [timestamp, ...]}
-        self._logs: Dict[str, List[float]] = defaultdict(list)
+        self._logs: dict[str, list[float]] = defaultdict(list)
 
     # ------------------------------------------------------------------
     # Public API
@@ -102,9 +100,7 @@ class RateLimitingMiddleware:
 
     def stats(self) -> dict:
         """Return aggregate statistics."""
-        all_clients: set = (
-            set(self._buckets) | set(self._windows) | set(self._logs)
-        )
+        all_clients: set = set(self._buckets) | set(self._windows) | set(self._logs)
         return {
             "total_clients": len(all_clients),
             "algorithm": self.config.algorithm.value,
@@ -116,7 +112,7 @@ class RateLimitingMiddleware:
 
     def _check_token_bucket(self, client_id: str, now: float) -> RateLimitResult:
         burst = self.config.burst
-        rate  = self.config.rate
+        rate = self.config.rate
 
         if client_id not in self._buckets:
             # Start with a full bucket
@@ -124,7 +120,7 @@ class RateLimitingMiddleware:
 
         tokens, last = self._buckets[client_id]
         elapsed = max(0.0, now - last)
-        tokens  = min(float(burst), tokens + elapsed * rate)
+        tokens = min(float(burst), tokens + elapsed * rate)
 
         if tokens >= 1.0:
             tokens -= 1.0
@@ -134,7 +130,7 @@ class RateLimitingMiddleware:
 
         self._buckets[client_id] = [tokens, now]
 
-        remaining     = int(tokens)
+        remaining = int(tokens)
         reset_after_s = 0.0 if allowed else (1.0 - tokens) / rate if rate > 0 else 0.0
 
         return RateLimitResult(
@@ -145,7 +141,7 @@ class RateLimitingMiddleware:
         )
 
     def _check_fixed_window(self, client_id: str, now: float) -> RateLimitResult:
-        burst    = self.config.burst
+        burst = self.config.burst
         window_s = self.config.window_s
 
         if client_id not in self._windows:
@@ -156,17 +152,17 @@ class RateLimitingMiddleware:
         # If we are past the current window, reset
         if now >= window_start + window_s:
             window_start = now
-            count        = 0.0
+            count = 0.0
 
         if count < burst:
-            count  += 1
+            count += 1
             allowed = True
         else:
             allowed = False
 
         self._windows[client_id] = [count, window_start]
 
-        remaining     = max(0, burst - int(count))
+        remaining = max(0, burst - int(count))
         reset_after_s = (window_start + window_s) - now
 
         return RateLimitResult(
@@ -177,9 +173,9 @@ class RateLimitingMiddleware:
         )
 
     def _check_sliding_log(self, client_id: str, now: float) -> RateLimitResult:
-        burst    = self.config.burst
+        burst = self.config.burst
         window_s = self.config.window_s
-        log      = self._logs[client_id]
+        log = self._logs[client_id]
 
         # Evict timestamps older than window_s
         cutoff = now - window_s

@@ -1,12 +1,12 @@
 """Evaluation pipeline: preprocessing, batch evaluation, aggregation, caching."""
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable
+from enum import StrEnum
 
 
-class EvalStage(str, Enum):
+class EvalStage(StrEnum):
     PREPROCESS = "preprocess"
     EVALUATE = "evaluate"
     POSTPROCESS = "postprocess"

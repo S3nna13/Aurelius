@@ -1,14 +1,12 @@
 """Tests for src/protocol/protocol_negotiator.py"""
 
-import pytest
 from src.protocol.protocol_negotiator import (
+    PROTOCOL_NEGOTIATOR_REGISTRY,
     NegotiationOutcome,
     ProtocolCapability,
     ProtocolNegotiator,
     ProtocolVersion,
-    PROTOCOL_NEGOTIATOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -17,7 +15,7 @@ from src.protocol.protocol_negotiator import (
 
 def _neg(versions=None, caps=None):
     versions = versions or [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
-    caps     = caps     or []
+    caps = caps or []
     return ProtocolNegotiator(supported_versions=versions, capabilities=caps)
 
 
@@ -82,34 +80,34 @@ def test_protocol_version_patch_ordering():
 
 def test_highest_common_exact_overlap():
     neg = _neg()
-    a   = [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
-    b   = [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
+    a = [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
+    b = [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
     assert neg.highest_common(a, b) == ProtocolVersion(2, 0)
 
 
 def test_highest_common_partial_overlap():
     neg = _neg()
-    a   = [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
-    b   = [ProtocolVersion(1, 0)]
+    a = [ProtocolVersion(1, 0), ProtocolVersion(2, 0)]
+    b = [ProtocolVersion(1, 0)]
     assert neg.highest_common(a, b) == ProtocolVersion(1, 0)
 
 
 def test_highest_common_no_overlap_returns_none():
     neg = _neg()
-    a   = [ProtocolVersion(1, 0)]
-    b   = [ProtocolVersion(2, 0)]
+    a = [ProtocolVersion(1, 0)]
+    b = [ProtocolVersion(2, 0)]
     assert neg.highest_common(a, b) is None
 
 
 def test_highest_common_selects_max():
-    neg    = _neg()
+    neg = _neg()
     shared = [ProtocolVersion(1, 0), ProtocolVersion(1, 1), ProtocolVersion(2, 0)]
     assert neg.highest_common(shared, shared) == ProtocolVersion(2, 0)
 
 
 def test_highest_common_single_element():
     neg = _neg()
-    v   = ProtocolVersion(4, 2, 1)
+    v = ProtocolVersion(4, 2, 1)
     assert neg.highest_common([v], [v]) == v
 
 
@@ -119,19 +117,19 @@ def test_highest_common_single_element():
 
 
 def test_negotiate_exact_version_match_accepted():
-    neg    = _neg(versions=[ProtocolVersion(1, 0)])
+    neg = _neg(versions=[ProtocolVersion(1, 0)])
     result = neg.negotiate([ProtocolVersion(1, 0)], [])
     assert result["outcome"] == NegotiationOutcome.ACCEPTED.value
 
 
 def test_negotiate_accepted_version_string_correct():
-    neg    = _neg(versions=[ProtocolVersion(1, 2, 3)])
+    neg = _neg(versions=[ProtocolVersion(1, 2, 3)])
     result = neg.negotiate([ProtocolVersion(1, 2, 3)], [])
     assert result["version"] == "1.2.3"
 
 
 def test_negotiate_accepted_no_missing():
-    neg    = _neg(versions=[ProtocolVersion(1, 0)], caps=[])
+    neg = _neg(versions=[ProtocolVersion(1, 0)], caps=[])
     result = neg.negotiate([ProtocolVersion(1, 0)], [])
     assert result["missing_required"] == []
     assert result["optional_missing"] == []
@@ -143,13 +141,13 @@ def test_negotiate_accepted_no_missing():
 
 
 def test_negotiate_no_common_version_rejected():
-    neg    = _neg(versions=[ProtocolVersion(1, 0)])
+    neg = _neg(versions=[ProtocolVersion(1, 0)])
     result = neg.negotiate([ProtocolVersion(2, 0)], [])
     assert result["outcome"] == NegotiationOutcome.REJECTED.value
 
 
 def test_negotiate_no_common_version_none():
-    neg    = _neg(versions=[ProtocolVersion(1, 0)])
+    neg = _neg(versions=[ProtocolVersion(1, 0)])
     result = neg.negotiate([ProtocolVersion(2, 0)], [])
     assert result["version"] is None
 
@@ -161,10 +159,10 @@ def test_negotiate_no_common_version_none():
 
 def test_negotiate_missing_required_rejected():
     caps = [ProtocolCapability("streaming", required=True)]
-    neg  = _neg(caps=caps)
+    neg = _neg(caps=caps)
     result = neg.negotiate(
         [ProtocolVersion(1, 0)],
-        [],   # client offers nothing
+        [],  # client offers nothing
     )
     assert result["outcome"] == NegotiationOutcome.REJECTED.value
 
@@ -172,16 +170,16 @@ def test_negotiate_missing_required_rejected():
 def test_negotiate_missing_required_listed():
     caps = [
         ProtocolCapability("streaming", required=True),
-        ProtocolCapability("vision",    required=True),
+        ProtocolCapability("vision", required=True),
     ]
-    neg    = _neg(caps=caps)
+    neg = _neg(caps=caps)
     result = neg.negotiate([ProtocolVersion(1, 0)], ["streaming"])
     assert "vision" in result["missing_required"]
 
 
 def test_negotiate_missing_required_version_is_none():
     caps = [ProtocolCapability("tool_use", required=True)]
-    neg  = _neg(caps=caps)
+    neg = _neg(caps=caps)
     result = neg.negotiate([ProtocolVersion(1, 0)], [])
     assert result["version"] is None
 
@@ -193,21 +191,21 @@ def test_negotiate_missing_required_version_is_none():
 
 def test_negotiate_optional_missing_accepted():
     caps = [ProtocolCapability("streaming", required=False)]
-    neg  = _neg(caps=caps)
+    neg = _neg(caps=caps)
     result = neg.negotiate([ProtocolVersion(1, 0)], [])
     assert result["outcome"] == NegotiationOutcome.ACCEPTED.value
 
 
 def test_negotiate_optional_missing_listed():
     caps = [ProtocolCapability("vision", required=False)]
-    neg  = _neg(caps=caps)
+    neg = _neg(caps=caps)
     result = neg.negotiate([ProtocolVersion(1, 0)], [])
     assert "vision" in result["optional_missing"]
 
 
 def test_negotiate_optional_present_not_in_missing():
     caps = [ProtocolCapability("streaming", required=False)]
-    neg  = _neg(caps=caps)
+    neg = _neg(caps=caps)
     result = neg.negotiate([ProtocolVersion(1, 0)], ["streaming"])
     assert result["optional_missing"] == []
 

@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.ui.notification_drawer import (
-    NotificationLevel,
+    DEFAULT_NOTIFICATION_DRAWER,
     Notification,
     NotificationDrawer,
-    DEFAULT_NOTIFICATION_DRAWER,
+    NotificationLevel,
 )
-
 
 # ---------------------------------------------------------------------------
 # NotificationLevel enum

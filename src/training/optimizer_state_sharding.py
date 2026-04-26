@@ -21,8 +21,8 @@ updated ``theta_t`` is gathered back into the original parameter tensors.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 import torch
 import torch.nn as nn

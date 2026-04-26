@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -27,6 +27,7 @@ RUNTIME_REGISTRY: dict[str, object] = {}
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProfilerConfig:
     enabled: bool = True
@@ -38,6 +39,7 @@ class ProfilerConfig:
 # ---------------------------------------------------------------------------
 # Profiler context manager
 # ---------------------------------------------------------------------------
+
 
 class AureliusProfiler:
     """Context manager wrapping torch.profiler.profile.
@@ -61,7 +63,7 @@ class AureliusProfiler:
     # Context manager protocol
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "AureliusProfiler":
+    def __enter__(self) -> AureliusProfiler:
         if not self.config.enabled:
             return self
         activities = [torch.profiler.ProfilerActivity.CPU]
@@ -129,7 +131,7 @@ class AureliusProfiler:
 
         return {
             "total_flops": total_flops,
-            "memory_peak_mb": memory_peak_bytes / (1024 ** 2),
+            "memory_peak_mb": memory_peak_bytes / (1024**2),
             "top5_ops": top5,
         }
 
@@ -147,7 +149,7 @@ class AureliusProfiler:
             try:
                 self._profiler.export_chrome_trace(path)
                 return
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # Fall through to stub writer on any error
         # Write a minimal valid Chrome trace so callers can always read the file
         stub = {"traceEvents": [], "meta": {"aurelius": True}}

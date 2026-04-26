@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from .vulnerability_schema import VulnCollection, VulnFinding, VulnSeverity
 
 
-class ReportFormat(str, Enum):
+class ReportFormat(StrEnum):
     TEXT = "text"
     MARKDOWN = "markdown"
     JSON = "json"
@@ -115,12 +115,8 @@ class SecurityReportBuilder:
         out: list[str] = ["<html><body>"]
         for s in sections:
             out.append(f"<h2>{s.title}</h2>")
-            bullets = [
-                line[2:] for line in s.content.splitlines() if line.startswith("- ")
-            ]
-            non_bullets = [
-                line for line in s.content.splitlines() if not line.startswith("- ")
-            ]
+            bullets = [line[2:] for line in s.content.splitlines() if line.startswith("- ")]
+            non_bullets = [line for line in s.content.splitlines() if not line.startswith("- ")]
             if non_bullets:
                 out.append("<p>" + "<br/>".join(non_bullets) + "</p>")
             if bullets:

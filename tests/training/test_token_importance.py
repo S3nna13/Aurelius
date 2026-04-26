@@ -6,15 +6,14 @@ import math
 
 import pytest
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.token_importance import (
+    SelectiveTrainer,
     TokenImportanceConfig,
     TokenImportanceCurriculum,
-    SelectiveTrainer,
     build_masked_labels,
     score_tokens_by_attention,
     score_tokens_by_loss,
@@ -126,16 +125,16 @@ def test_select_important_tokens_top_k_fraction():
 
 def test_build_masked_labels_minus100_where_false(labels):
     mask = torch.zeros(B, T, dtype=torch.bool)
-    mask[:, :T // 2] = True
+    mask[:, : T // 2] = True
     masked = build_masked_labels(labels, mask)
-    assert (masked[:, T // 2:] == -100).all()
+    assert (masked[:, T // 2 :] == -100).all()
 
 
 def test_build_masked_labels_preserves_important(labels):
     mask = torch.zeros(B, T, dtype=torch.bool)
-    mask[:, :T // 2] = True
+    mask[:, : T // 2] = True
     masked = build_masked_labels(labels, mask)
-    assert (masked[:, :T // 2] == labels[:, :T // 2]).all()
+    assert (masked[:, : T // 2] == labels[:, : T // 2]).all()
 
 
 def test_curriculum_fraction_at_step_0():

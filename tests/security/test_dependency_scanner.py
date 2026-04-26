@@ -1,7 +1,6 @@
 """Tests for dependency scanner."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.dependency_scanner import DependencyScanner, VulnFinding
 

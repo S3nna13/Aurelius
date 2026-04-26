@@ -34,9 +34,8 @@ import math
 import random
 import re
 import statistics
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Sequence, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -76,8 +75,8 @@ PAIRWISE_SYSTEM_PROMPT = (
     "Compare the two model responses and pick the better answer overall "
     "(accuracy, helpfulness, depth, and instruction-following). Avoid "
     "position bias. After a brief explanation, output your final verdict by "
-    "strictly following this format: \"[[A]]\" if assistant A is better, "
-    "\"[[B]]\" if assistant B is better, and \"[[C]]\" for a tie."
+    'strictly following this format: "[[A]]" if assistant A is better, '
+    '"[[B]]" if assistant B is better, and "[[C]]" for a tie.'
 )
 
 
@@ -211,8 +210,8 @@ class ArenaHardScorer:
     def run_round_robin(
         self,
         problems: Sequence[ArenaProblem],
-        responses: Dict[str, List[str]],
-    ) -> List[ArenaComparison]:
+        responses: dict[str, list[str]],
+    ) -> list[ArenaComparison]:
         """All unordered model pairs on all problems.
 
         ``responses[model_name][i]`` is the model's answer for ``problems[i]``.
@@ -227,11 +226,10 @@ class ArenaHardScorer:
                 raise TypeError(f"responses[{m!r}] must be a list")
             if len(answers) != n:
                 raise ValueError(
-                    f"responses[{m!r}] has {len(answers)} answers; "
-                    f"expected {n} to match problems"
+                    f"responses[{m!r}] has {len(answers)} answers; expected {n} to match problems"
                 )
 
-        comparisons: List[ArenaComparison] = []
+        comparisons: list[ArenaComparison] = []
         for i, problem in enumerate(problems):
             for a_idx in range(len(model_names)):
                 for b_idx in range(a_idx + 1, len(model_names)):
@@ -255,7 +253,7 @@ class ArenaHardScorer:
         model_names: Sequence[str],
         n_iters: int = 100,
         lr: float = 0.1,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Fit BT log-ratings via iterative (observed - expected) updates.
 
         Ties count as 0.5 for each side. Invalid comparisons are skipped.
@@ -271,12 +269,12 @@ class ArenaHardScorer:
             if not isinstance(n, str) or not n:
                 raise ValueError("model_names must be non-empty strings")
 
-        ratings: Dict[str, float] = {m: 0.0 for m in names}
+        ratings: dict[str, float] = {m: 0.0 for m in names}
         if not names:
             return ratings
 
         # Filter relevant comparisons up front.
-        valid: List[ArenaComparison] = []
+        valid: list[ArenaComparison] = []
         name_set = set(names)
         for c in comparisons:
             if c.winner == "invalid":
@@ -289,7 +287,7 @@ class ArenaHardScorer:
             return ratings
 
         for _ in range(max(0, int(n_iters))):
-            grad: Dict[str, float] = {m: 0.0 for m in names}
+            grad: dict[str, float] = {m: 0.0 for m in names}
             for c in valid:
                 ra = ratings[c.model_a]
                 rb = ratings[c.model_b]
@@ -331,7 +329,7 @@ class ArenaHardScorer:
         n_iters: int = 100,
         lr: float = 0.1,
         seed: int | None = None,
-    ) -> Dict[str, Tuple[float, float, float]]:
+    ) -> dict[str, tuple[float, float, float]]:
         """Non-parametric bootstrap over the *comparisons* list.
 
         Returns ``{model_name: (mean, lo, hi)}`` at the requested two-sided
@@ -349,25 +347,21 @@ class ArenaHardScorer:
         comps = list(comparisons)
 
         # Point estimate on the full set, for anchor "mean".
-        point_ratings = ArenaHardScorer.fit_bradley_terry(
-            comps, names, n_iters=n_iters, lr=lr
-        )
+        point_ratings = ArenaHardScorer.fit_bradley_terry(comps, names, n_iters=n_iters, lr=lr)
 
         if not comps:
             return {m: (point_ratings.get(m, 0.0), 0.0, 0.0) for m in names}
 
-        samples: Dict[str, List[float]] = {m: [] for m in names}
+        samples: dict[str, list[float]] = {m: [] for m in names}
         n = len(comps)
         for _ in range(n_bootstrap):
             resample = [comps[rng.randrange(n)] for _ in range(n)]
-            r = ArenaHardScorer.fit_bradley_terry(
-                resample, names, n_iters=n_iters, lr=lr
-            )
+            r = ArenaHardScorer.fit_bradley_terry(resample, names, n_iters=n_iters, lr=lr)
             for m in names:
                 samples[m].append(r[m])
 
         alpha = (1.0 - ci) / 2.0
-        out: Dict[str, Tuple[float, float, float]] = {}
+        out: dict[str, tuple[float, float, float]] = {}
         for m in names:
             vals = sorted(samples[m])
             lo_idx = max(0, min(len(vals) - 1, int(math.floor(alpha * len(vals)))))

@@ -1,14 +1,15 @@
 """Tests for src/model/embedding_compression.py."""
-import torch
+
 import pytest
+import torch
 
 from src.model.embedding_compression import (
-    EmbedConfig,
-    FactorizedEmbedding,
     ClusteredEmbedding,
+    EmbedConfig,
+    EmbeddingCompressor,
+    FactorizedEmbedding,
     TiedEmbedding,
     estimate_embedding_memory,
-    EmbeddingCompressor,
 )
 
 # Shared constants
@@ -95,7 +96,7 @@ def test_tied_embedding_weight_shared():
     assert torch.equal(model.weight, model.weight.T.T)
     # Both embed and unembed reference the same parameter object
     input_ids = torch.randint(0, VOCAB_SIZE, (BATCH_SIZE, SEQ_LEN))
-    embed_out = model.embed(input_ids)
+    model.embed(input_ids)
     # Verify unembed is w @ weight.T (reconstruction check)
     hidden = torch.randn(BATCH_SIZE, SEQ_LEN, D_MODEL)
     unembed_out = model.unembed(hidden)

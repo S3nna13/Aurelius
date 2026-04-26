@@ -1,14 +1,12 @@
 """Tests for src/serving/response_cache.py"""
 
 import time
-import pytest
+
 from src.serving.response_cache import (
-    CachePolicy,
+    SERVING_REGISTRY,
     CachedResponse,
     ResponseCache,
-    SERVING_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # CachedResponse expiry

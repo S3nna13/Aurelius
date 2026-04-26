@@ -32,7 +32,6 @@ from src.eval.taubench_scorer import (
     TauBenchTrajectory,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -49,8 +48,12 @@ def _make_task(
         task_id=task_id,
         instruction="Do the thing.",
         tools=[{"name": "search_code"}, {"name": "edit_file"}],
-        expected_actions=expected_actions if expected_actions is not None else ["search_code", "edit_file"],
-        success_criteria=success_criteria if success_criteria is not None else {
+        expected_actions=expected_actions
+        if expected_actions is not None
+        else ["search_code", "edit_file"],
+        success_criteria=success_criteria
+        if success_criteria is not None
+        else {
             "required_tool_calls": ["search_code", "edit_file"],
             "required_state": {"done": True},
         },
@@ -365,7 +368,12 @@ def test_trajectory_no_tool_calls():
     traj = TauBenchTrajectory(
         task_id="t-001",
         turns=[
-            {"role": "assistant", "content": "I will think about this.", "tool_calls": [], "tool_results": []},
+            {
+                "role": "assistant",
+                "content": "I will think about this.",
+                "tool_calls": [],
+                "tool_results": [],
+            },
         ],
         final_state={},
         success=False,

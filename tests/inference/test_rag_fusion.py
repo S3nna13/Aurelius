@@ -3,28 +3,34 @@
 import pytest
 import torch
 
+from src.inference.rag_fusion import (
+    Document,
+    MockRetriever,
+    RAGFusionConfig,
+    RAGFusionPipeline,
+    compute_query_doc_similarity,
+    generate_query_variations,
+    reciprocal_rank_fusion,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.rag_fusion import (
-    RAGFusionConfig,
-    Document,
-    compute_query_doc_similarity,
-    reciprocal_rank_fusion,
-    generate_query_variations,
-    MockRetriever,
-    RAGFusionPipeline,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     torch.manual_seed(0)
     model = AureliusTransformer(cfg)
@@ -53,10 +59,7 @@ def _sample_docs(n: int = 8) -> list:
         "reinforcement learning agents",
         "generative adversarial networks",
     ]
-    return [
-        Document(doc_id=str(i), text=topics[i % len(topics)])
-        for i in range(n)
-    ]
+    return [Document(doc_id=str(i), text=topics[i % len(topics)]) for i in range(n)]
 
 
 @pytest.fixture
@@ -79,6 +82,7 @@ def pipeline(small_model, retriever):
 # 1. RAGFusionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_rag_fusion_config_defaults():
     cfg = RAGFusionConfig()
     assert cfg.n_queries == 4
@@ -91,6 +95,7 @@ def test_rag_fusion_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. Document fields
 # ---------------------------------------------------------------------------
+
 
 def test_document_fields():
     doc = Document(doc_id="abc", text="hello world", score=0.9, source="wiki")
@@ -110,6 +115,7 @@ def test_document_defaults():
 # 3. compute_query_doc_similarity — identical strings → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_identical():
     s = "machine learning algorithms"
     assert compute_query_doc_similarity(s, s) == pytest.approx(1.0)
@@ -118,6 +124,7 @@ def test_similarity_identical():
 # ---------------------------------------------------------------------------
 # 4. compute_query_doc_similarity — unrelated strings → 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_similarity_unrelated():
     # Strings chosen so they share no character trigrams
@@ -129,6 +136,7 @@ def test_similarity_unrelated():
 # 5. compute_query_doc_similarity — partial overlap → (0, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_partial_overlap():
     q = "machine learning"
     d = "machine vision systems"
@@ -139,6 +147,7 @@ def test_similarity_partial_overlap():
 # ---------------------------------------------------------------------------
 # 6. reciprocal_rank_fusion — returns correct count
 # ---------------------------------------------------------------------------
+
 
 def test_rrf_returns_correct_count():
     list1 = [Document(doc_id=str(i), text=f"doc {i}") for i in range(5)]
@@ -152,6 +161,7 @@ def test_rrf_returns_correct_count():
 # 7. reciprocal_rank_fusion — deduplicates documents
 # ---------------------------------------------------------------------------
 
+
 def test_rrf_deduplicates():
     doc = Document(doc_id="shared", text="shared doc")
     list1 = [doc, Document(doc_id="a", text="doc a")]
@@ -164,6 +174,7 @@ def test_rrf_deduplicates():
 # ---------------------------------------------------------------------------
 # 8. reciprocal_rank_fusion — doc in more lists → higher score
 # ---------------------------------------------------------------------------
+
 
 def test_rrf_more_lists_higher_score():
     shared = Document(doc_id="shared", text="shared")
@@ -182,6 +193,7 @@ def test_rrf_more_lists_higher_score():
 # 9. MockRetriever.retrieve — returns top_k docs
 # ---------------------------------------------------------------------------
 
+
 def test_mock_retriever_top_k(docs):
     r = MockRetriever(docs)
     results = r.retrieve("neural networks", top_k=3)
@@ -197,6 +209,7 @@ def test_mock_retriever_top_k_capped(docs):
 # ---------------------------------------------------------------------------
 # 10. MockRetriever.retrieve — scores documents
 # ---------------------------------------------------------------------------
+
 
 def test_mock_retriever_scores_set(docs):
     r = MockRetriever(docs)
@@ -217,6 +230,7 @@ def test_mock_retriever_scores_sorted(docs):
 # 11. RAGFusionPipeline.retrieve_and_fuse — returns list of Document
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_retrieve_and_fuse_returns_documents(pipeline):
     results = pipeline.retrieve_and_fuse("machine learning")
     assert isinstance(results, list)
@@ -236,6 +250,7 @@ def test_pipeline_retrieve_and_fuse_respects_final_top_k(small_model, docs):
 # ---------------------------------------------------------------------------
 # 12. RAGFusionPipeline.build_context — contains doc text
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_build_context_contains_text():
     docs_list = [
@@ -265,19 +280,23 @@ def test_pipeline_build_context_format():
 # 13. RAGFusionPipeline.generate_answer — returns string
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_generate_answer_returns_string(pipeline):
     answer = pipeline.generate_answer("What is ML?", "Machine learning is a field of AI.")
     assert isinstance(answer, str)
 
 
 def test_pipeline_generate_answer_nonempty(pipeline):
-    answer = pipeline.generate_answer("What is AI?", "AI stands for artificial intelligence.", max_new_tokens=8)
+    answer = pipeline.generate_answer(
+        "What is AI?", "AI stands for artificial intelligence.", max_new_tokens=8
+    )
     assert len(answer) > 0
 
 
 # ---------------------------------------------------------------------------
 # 14. RAGFusionPipeline.run — returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_run_returns_required_keys(pipeline):
     result = pipeline.run("neural network training")
@@ -308,6 +327,7 @@ def test_pipeline_run_queries_used_is_list(pipeline):
 # ---------------------------------------------------------------------------
 # 15. generate_query_variations — returns list of strings
 # ---------------------------------------------------------------------------
+
 
 def test_generate_query_variations_returns_list(small_model):
     variations = generate_query_variations(

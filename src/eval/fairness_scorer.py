@@ -91,9 +91,7 @@ class FairnessScorer:
         if not text:
             raise ValueError("text must be non-empty")
         if len(text) > _MAX_TEXT_LENGTH:
-            raise ValueError(
-                f"text length {len(text)} exceeds maximum {_MAX_TEXT_LENGTH}"
-            )
+            raise ValueError(f"text length {len(text)} exceeds maximum {_MAX_TEXT_LENGTH}")
 
     def _detect_stereotypes(self, text: str) -> float:
         """Detect stereotypical phrases in *text*.
@@ -119,12 +117,8 @@ class FairnessScorer:
         """
         tokens = text.lower().split()
 
-        has_male = any(
-            token.strip(".,;:!?\"'()[]{{}}") in _MALE_PRONOUNS for token in tokens
-        )
-        has_female = any(
-            token.strip(".,;:!?\"'()[]{{}}") in _FEMALE_PRONOUNS for token in tokens
-        )
+        has_male = any(token.strip(".,;:!?\"'()[]{{}}") in _MALE_PRONOUNS for token in tokens)
+        has_female = any(token.strip(".,;:!?\"'()[]{{}}") in _FEMALE_PRONOUNS for token in tokens)
 
         if not (has_male and has_female):
             return 1.0

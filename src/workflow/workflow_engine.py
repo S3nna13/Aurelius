@@ -1,10 +1,10 @@
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable
+from enum import StrEnum
 
 
-class WorkflowState(str, Enum):
+class WorkflowState(StrEnum):
     IDLE = "idle"
     RUNNING = "running"
     PAUSED = "paused"

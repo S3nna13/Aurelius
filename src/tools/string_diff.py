@@ -1,4 +1,5 @@
 """String diff utility for comparing tool outputs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,9 +26,9 @@ class StringDiff:
         old_set = set(old_lines)
         new_set = set(new_lines)
         return DiffResult(
-            added=[l for l in new_lines if l not in old_set],
-            removed=[l for l in old_lines if l not in new_set],
-            unchanged=[l for l in new_lines if l in old_set],
+            added=[line for line in new_lines if line not in old_set],
+            removed=[line for line in old_lines if line not in new_set],
+            unchanged=[line for line in new_lines if line in old_set],
         )
 
     def similarity(self, a: str, b: str) -> float:

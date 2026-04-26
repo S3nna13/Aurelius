@@ -1,14 +1,17 @@
 """Tests for src/reasoning/mcts_reasoner.py — at least 20 tests."""
+
 from __future__ import annotations
+
 import math
+
 import pytest
 
-from src.reasoning.mcts_reasoner import MCTSNode, MCTSReasoner, MCTS_REASONER, _MAX_STATE_LEN
-
+from src.reasoning.mcts_reasoner import _MAX_STATE_LEN, MCTS_REASONER, MCTSNode, MCTSReasoner
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_reasoner(**kwargs) -> MCTSReasoner:
     return MCTSReasoner(**kwargs)
@@ -30,6 +33,7 @@ def build_chain(reasoner: MCTSReasoner, depth: int = 3) -> tuple[MCTSNode, list[
 # 1. Root creation
 # ---------------------------------------------------------------------------
 
+
 def test_root_creation_basic():
     r = MCTSReasoner()
     root = r.create_root("hello world")
@@ -43,6 +47,7 @@ def test_root_creation_basic():
 # ---------------------------------------------------------------------------
 # 2. State truncation at _MAX_STATE_LEN
 # ---------------------------------------------------------------------------
+
 
 def test_root_state_truncation():
     long_state = "x" * (_MAX_STATE_LEN + 100)
@@ -63,6 +68,7 @@ def test_child_state_truncation():
 # 3. Expand with priors
 # ---------------------------------------------------------------------------
 
+
 def test_expand_with_priors():
     r = MCTSReasoner()
     root = r.create_root("root")
@@ -79,6 +85,7 @@ def test_expand_with_priors():
 # 4. Expand without priors defaults to 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_expand_without_priors():
     r = MCTSReasoner()
     root = r.create_root("root")
@@ -90,6 +97,7 @@ def test_expand_without_priors():
 # ---------------------------------------------------------------------------
 # 5. Prior out of range raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_expand_prior_zero_raises():
     r = MCTSReasoner()
@@ -116,6 +124,7 @@ def test_expand_prior_negative_raises():
 # 6. Priors length mismatch raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_expand_priors_length_mismatch():
     r = MCTSReasoner()
     root = r.create_root("root")
@@ -126,6 +135,7 @@ def test_expand_priors_length_mismatch():
 # ---------------------------------------------------------------------------
 # 7. UCB1 formula correctness
 # ---------------------------------------------------------------------------
+
 
 def test_ucb1_unvisited_node():
     """Unvisited node: value=0, exploration = c * sqrt(log(N)/1)."""
@@ -155,6 +165,7 @@ def test_ucb1_parent_visits_zero_clamped():
 # 8. backup_path propagates correctly up 3-level tree
 # ---------------------------------------------------------------------------
 
+
 def test_backup_path_three_levels():
     r = MCTSReasoner()
     root, nodes = build_chain(r, depth=3)
@@ -177,6 +188,7 @@ def test_backup_path_multiple_calls_accumulate():
 # ---------------------------------------------------------------------------
 # 9. backup with out-of-range value raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_backup_out_of_range_high():
     r = MCTSReasoner()
@@ -203,6 +215,7 @@ def test_backup_path_out_of_range_raises():
 # 10. select_child returns max UCB1 child
 # ---------------------------------------------------------------------------
 
+
 def test_select_child_returns_max_ucb1():
     r = MCTSReasoner(c_puct=1.414)
     root = r.create_root("root")
@@ -224,6 +237,7 @@ def test_select_child_returns_max_ucb1():
 # 11. select_child on leaf (no children) raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_select_child_leaf_raises():
     r = MCTSReasoner()
     root = r.create_root("root")
@@ -234,6 +248,7 @@ def test_select_child_leaf_raises():
 # ---------------------------------------------------------------------------
 # 12. best_child returns max-visits child
 # ---------------------------------------------------------------------------
+
 
 def test_best_child_returns_max_visits():
     r = MCTSReasoner()
@@ -256,6 +271,7 @@ def test_best_child_no_children_raises():
 # 13. best_path follows best children to leaf
 # ---------------------------------------------------------------------------
 
+
 def test_best_path_follows_best_children():
     r = MCTSReasoner()
     root = r.create_root("root")
@@ -272,6 +288,7 @@ def test_best_path_follows_best_children():
 # ---------------------------------------------------------------------------
 # 14. rollout_path budget enforcement
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_path_respects_budget():
     r = MCTSReasoner(max_depth=100)
@@ -305,6 +322,7 @@ def test_rollout_path_budget_negative_raises():
 # 15. Determinism: same initial state → same UCB1 scores
 # ---------------------------------------------------------------------------
 
+
 def test_ucb1_determinism():
     node_a = MCTSNode(state="same", parent_id=None, visits=3, total_value=1.5)
     node_b = MCTSNode(state="same", parent_id=None, visits=3, total_value=1.5)
@@ -314,6 +332,7 @@ def test_ucb1_determinism():
 # ---------------------------------------------------------------------------
 # 16. Edge: single node (no children), max_depth=1
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_path_single_node_no_children():
     r = MCTSReasoner(max_depth=1)
@@ -326,6 +345,7 @@ def test_rollout_path_single_node_no_children():
 # 17. MCTS_REASONER singleton is usable
 # ---------------------------------------------------------------------------
 
+
 def test_mcts_reasoner_singleton():
     root = MCTS_REASONER.create_root("test")
     assert root.state == "test"
@@ -334,6 +354,7 @@ def test_mcts_reasoner_singleton():
 # ---------------------------------------------------------------------------
 # 18. node.value property
 # ---------------------------------------------------------------------------
+
 
 def test_node_value_zero_visits():
     node = MCTSNode(state="s", parent_id=None)
@@ -348,6 +369,7 @@ def test_node_value_with_visits():
 # ---------------------------------------------------------------------------
 # 19. rollout_path stops at max_depth
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_path_max_depth():
     r = MCTSReasoner(max_depth=3)
@@ -364,6 +386,7 @@ def test_rollout_path_max_depth():
 # ---------------------------------------------------------------------------
 # 20. expand adds children to node.children list
 # ---------------------------------------------------------------------------
+
 
 def test_expand_mutates_node_children():
     r = MCTSReasoner()

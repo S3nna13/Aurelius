@@ -1,13 +1,11 @@
 """Cross-provider parallel consensus with pluggable adjudicator."""
+
 from __future__ import annotations
 
 import asyncio
 import hashlib
-import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
-
+from dataclasses import dataclass
+from enum import StrEnum
 
 __all__ = [
     "ProviderResponse",
@@ -27,7 +25,7 @@ class ProviderResponse:
     confidence: float
 
 
-class AdjudicationStrategy(str, Enum):
+class AdjudicationStrategy(StrEnum):
     MAJORITY = "majority"
     HIGHEST_CONFIDENCE = "highest"
     LLM_ADJUDICATOR = "llm"
@@ -66,7 +64,7 @@ class ParallelConsensusEngine:
     def __init__(
         self,
         strategy: AdjudicationStrategy = AdjudicationStrategy.WEIGHTED,
-        providers: Optional[list[str]] = None,
+        providers: list[str] | None = None,
     ) -> None:
         self._strategy = strategy
         self._providers: list[str] = list(providers) if providers else list(_DEFAULT_PROVIDERS)
@@ -97,6 +95,7 @@ class ParallelConsensusEngine:
             winner = max(responses, key=lambda r: len(r.response))
         elif strategy == AdjudicationStrategy.MAJORITY:
             from collections import Counter
+
             counts: Counter[str] = Counter(r.response for r in responses)
             top_response = counts.most_common(1)[0][0]
             winner = next(r for r in responses if r.response == top_response)

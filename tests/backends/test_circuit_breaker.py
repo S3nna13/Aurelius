@@ -1,14 +1,16 @@
 """Tests for src.backends.circuit_breaker."""
+
 from __future__ import annotations
 
 import time
+
 import pytest
 
 from src.backends.circuit_breaker import (
+    CIRCUIT_BREAKER_REGISTRY,
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitState,
-    CIRCUIT_BREAKER_REGISTRY,
 )
 
 

@@ -14,14 +14,15 @@
   11. no NaN/Inf with extreme log_probs (-100, 0)
   12. gradient flows through compute_implicit_rewards
 """
+
 from __future__ import annotations
 
 import math
-import torch
+
 import pytest
+import torch
 
 from src.alignment.prime import PRIMEConfig, PRIMEReward
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -68,6 +69,7 @@ def partial_mask():
 # Test 1 — output shape (B, T)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_implicit_rewards_shape(default_module, full_mask):
     """compute_implicit_rewards must return a (B, T) tensor."""
     log_probs = torch.randn(B, T)
@@ -80,17 +82,20 @@ def test_compute_implicit_rewards_shape(default_module, full_mask):
 # Test 2 — equal log_probs → zero reward
 # ---------------------------------------------------------------------------
 
+
 def test_equal_log_probs_zero_reward(default_module, full_mask):
     """When policy == reference, the implicit reward must be exactly zero."""
     log_probs = torch.randn(B, T)
     out = default_module.compute_implicit_rewards(log_probs, log_probs, full_mask)
-    assert torch.allclose(out, torch.zeros_like(out)), \
+    assert torch.allclose(out, torch.zeros_like(out)), (
         "Equal log_probs should yield zero implicit rewards."
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 3 — policy better than ref → positive reward
 # ---------------------------------------------------------------------------
+
 
 def test_positive_reward_when_policy_better(default_module, full_mask):
     """log_prob > ref_log_prob must produce positive implicit rewards."""
@@ -104,19 +109,22 @@ def test_positive_reward_when_policy_better(default_module, full_mask):
 # Test 4 — mask zeros out padding
 # ---------------------------------------------------------------------------
 
+
 def test_mask_zeros_padding(default_module, partial_mask):
     """Positions where mask==0 must have reward exactly 0."""
     log_probs = torch.randn(B, T)
     ref_log_probs = torch.randn(B, T)
     out = default_module.compute_implicit_rewards(log_probs, ref_log_probs, partial_mask)
     padding_rewards = out[partial_mask == 0]
-    assert torch.allclose(padding_rewards, torch.zeros_like(padding_rewards)), \
+    assert torch.allclose(padding_rewards, torch.zeros_like(padding_rewards)), (
         "Padded positions must have zero reward."
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 5 — aggregate credit_mode="last"
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_last_picks_last_valid(last_module, partial_mask):
     """credit_mode='last' must return the reward at the last valid token."""
@@ -131,13 +139,13 @@ def test_aggregate_last_picks_last_valid(last_module, partial_mask):
     assert step.shape == (B,), f"Expected (B,)={B}, got {step.shape}"
     # For each row the last valid token has value float(i+1)
     expected = torch.tensor([float(i + 1) for i in range(B)])
-    assert torch.allclose(step, expected), \
-        f"Expected {expected.tolist()}, got {step.tolist()}"
+    assert torch.allclose(step, expected), f"Expected {expected.tolist()}, got {step.tolist()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6 — aggregate credit_mode="mean"
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_mean_averages_valid(mean_module, partial_mask):
     """credit_mode='mean' must equal the mean of valid token rewards."""
@@ -150,13 +158,15 @@ def test_aggregate_mean_averages_valid(mean_module, partial_mask):
     valid_counts = [10, 8, 6, 4]
     for i, n in enumerate(valid_counts):
         expected_mean = token_rewards[i, :n].mean()
-        assert torch.isclose(step[i], expected_mean, atol=1e-5), \
+        assert torch.isclose(step[i], expected_mean, atol=1e-5), (
             f"Row {i}: expected {expected_mean.item():.6f}, got {step[i].item():.6f}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Test 7 — forward returns (Tensor, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_forward_returns_tuple(default_module, full_mask):
     """forward() must return a (Tensor, dict) tuple."""
@@ -166,8 +176,7 @@ def test_forward_returns_tuple(default_module, full_mask):
 
     result = default_module(log_probs, ref_log_probs, outcome_rewards, full_mask)
 
-    assert isinstance(result, tuple) and len(result) == 2, \
-        "forward must return a 2-tuple."
+    assert isinstance(result, tuple) and len(result) == 2, "forward must return a 2-tuple."
     dense, metrics = result
     assert isinstance(dense, torch.Tensor), "First element must be a Tensor."
     assert isinstance(metrics, dict), "Second element must be a dict."
@@ -176,6 +185,7 @@ def test_forward_returns_tuple(default_module, full_mask):
 # ---------------------------------------------------------------------------
 # Test 8 — forward dense_rewards shape (B, T)
 # ---------------------------------------------------------------------------
+
 
 def test_forward_output_shape(default_module, full_mask):
     """forward() dense_rewards must have shape (B, T)."""
@@ -191,6 +201,7 @@ def test_forward_output_shape(default_module, full_mask):
 # ---------------------------------------------------------------------------
 # Test 9 — outcome_rewards contribute to aggregate
 # ---------------------------------------------------------------------------
+
 
 def test_outcome_rewards_added(full_mask):
     """Outcome rewards must shift the combined reward by their value."""
@@ -208,13 +219,15 @@ def test_outcome_rewards_added(full_mask):
     # dense reward at valid positions should differ by exactly 5
     diff = (dense_b - dense_a) * full_mask.float()
     expected_diff = outcome_b.unsqueeze(1).expand(B, T) * full_mask.float()
-    assert torch.allclose(diff, expected_diff, atol=1e-5), \
+    assert torch.allclose(diff, expected_diff, atol=1e-5), (
         "Outcome reward must shift dense rewards by outcome value."
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 10 — normalize=True → unit std
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_unit_std(full_mask):
     """With normalize=True the token rewards (before outcome) must have unit std."""
@@ -231,13 +244,15 @@ def test_normalize_unit_std(full_mask):
     valid_rewards = dense[full_mask == 1]
     std = valid_rewards.std()
     # Should be close to 1 — allow tolerance due to finite-sample normalization
-    assert torch.isclose(std, torch.tensor(1.0), atol=0.1), \
+    assert torch.isclose(std, torch.tensor(1.0), atol=0.1), (
         f"Expected std ≈ 1.0 after normalization, got {std.item():.4f}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 11 — no NaN/Inf with extreme log_probs
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf_extreme_log_probs(default_module, full_mask):
     """No NaN or Inf should appear with extreme log_prob values (-100, 0)."""
@@ -256,6 +271,7 @@ def test_no_nan_inf_extreme_log_probs(default_module, full_mask):
 # ---------------------------------------------------------------------------
 # Test 12 — gradient flows through compute_implicit_rewards
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows(default_module, full_mask):
     """Gradients must flow back through compute_implicit_rewards to log_probs."""

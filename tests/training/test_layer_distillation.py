@@ -1,24 +1,22 @@
 """Tests for layer-wise knowledge distillation (layer_distillation.py)."""
+
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
-import pytest
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.layer_distillation import (
+    HiddenStateProjector,
     LayerDistillConfig,
     LayerDistillTrainer,
-    HiddenStateProjector,
     extract_layer_hidden_states,
     hidden_state_alignment_loss,
     patient_kd_loss,
     relation_based_loss,
     soft_label_loss,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,6 +59,7 @@ def _make_trainer(same_model: bool = True):
 # 1. test_config_loss_weights
 # ---------------------------------------------------------------------------
 
+
 def test_config_loss_weights():
     cfg = LayerDistillConfig(teacher_layers=[0], student_layers=[0])
     assert "task" in cfg.loss_weights
@@ -73,6 +72,7 @@ def test_config_loss_weights():
 # 2. test_extract_hidden_states_count
 # ---------------------------------------------------------------------------
 
+
 def test_extract_hidden_states_count():
     model = _make_model()
     input_ids = torch.randint(0, 256, (2, 8))
@@ -84,6 +84,7 @@ def test_extract_hidden_states_count():
 # ---------------------------------------------------------------------------
 # 3. test_extract_hidden_states_shape
 # ---------------------------------------------------------------------------
+
 
 def test_extract_hidden_states_shape():
     model = _make_model()
@@ -102,6 +103,7 @@ def test_extract_hidden_states_shape():
 # 4. test_relation_based_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_relation_based_loss_scalar():
     t_h = torch.randn(4, 8, 64)
     s_h = torch.randn(4, 8, 64)
@@ -113,6 +115,7 @@ def test_relation_based_loss_scalar():
 # 5. test_relation_based_loss_identical
 # ---------------------------------------------------------------------------
 
+
 def test_relation_based_loss_identical():
     x = torch.randn(4, 8, 64)
     loss = relation_based_loss(x, x)
@@ -122,6 +125,7 @@ def test_relation_based_loss_identical():
 # ---------------------------------------------------------------------------
 # 6. test_hidden_alignment_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_hidden_alignment_loss_scalar():
     t_h = torch.randn(2, 8, 64)
@@ -134,6 +138,7 @@ def test_hidden_alignment_loss_scalar():
 # 7. test_hidden_alignment_loss_identical
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_alignment_loss_identical():
     x = torch.randn(2, 8, 64)
     loss = hidden_state_alignment_loss(x, x)
@@ -143,6 +148,7 @@ def test_hidden_alignment_loss_identical():
 # ---------------------------------------------------------------------------
 # 8. test_soft_label_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_soft_label_loss_scalar():
     student_logits = torch.randn(16, 256)
@@ -155,6 +161,7 @@ def test_soft_label_loss_scalar():
 # 9. test_soft_label_loss_identical
 # ---------------------------------------------------------------------------
 
+
 def test_soft_label_loss_identical():
     logits = torch.randn(16, 256)
     loss = soft_label_loss(logits, logits, temperature=4.0)
@@ -164,6 +171,7 @@ def test_soft_label_loss_identical():
 # ---------------------------------------------------------------------------
 # 10. test_patient_kd_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_patient_kd_loss_scalar():
     teacher_hiddens = [torch.randn(2, 8, 64) for _ in range(2)]
@@ -175,6 +183,7 @@ def test_patient_kd_loss_scalar():
 # ---------------------------------------------------------------------------
 # 11. test_hidden_state_projector_shape
 # ---------------------------------------------------------------------------
+
 
 def test_hidden_state_projector_shape():
     B, T = 2, 8
@@ -188,6 +197,7 @@ def test_hidden_state_projector_shape():
 # ---------------------------------------------------------------------------
 # 12. test_layer_distill_trainer_step_keys
 # ---------------------------------------------------------------------------
+
 
 def test_layer_distill_trainer_step_keys():
     trainer, _, _ = _make_trainer()
@@ -204,6 +214,7 @@ def test_layer_distill_trainer_step_keys():
 # 13. test_layer_distill_trainer_loss_positive
 # ---------------------------------------------------------------------------
 
+
 def test_layer_distill_trainer_loss_positive():
     trainer, _, _ = _make_trainer()
     input_ids = torch.randint(0, 256, (2, 8))
@@ -216,6 +227,7 @@ def test_layer_distill_trainer_loss_positive():
 # 14. test_evaluate_alignment_keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_alignment_keys():
     trainer, _, _ = _make_trainer()
     input_ids = torch.randint(0, 256, (2, 8))
@@ -226,6 +238,7 @@ def test_evaluate_alignment_keys():
 # ---------------------------------------------------------------------------
 # 15. test_evaluate_alignment_range
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_alignment_range():
     trainer, _, _ = _make_trainer()

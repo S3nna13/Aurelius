@@ -4,10 +4,11 @@ Interactive terminal chat REPL for Aurelius.
 Run directly: python -m src.serving.terminal_chat
 Or:           python -m src.serving.terminal_chat --system "You are a Python tutor"
 """
+
 from __future__ import annotations
 
 import sys
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 # ChatML special tokens (must match tokenizer_config.json)
 _SYSTEM_TOKEN = "<|system|>"
@@ -35,12 +36,11 @@ _WELCOME_BANNER = (
     "  /quit            — exit\n"
     "  /reset           — clear conversation history\n"
     "  /history         — show conversation history\n"
-    "  /system <prompt> — replace the system prompt\n"
-    + "-" * 50
+    "  /system <prompt> — replace the system prompt\n" + "-" * 50
 )
 
 
-def build_chatml_prompt(messages: List[Dict], system_prompt: str) -> str:
+def build_chatml_prompt(messages: list[dict], system_prompt: str) -> str:
     """Build a ChatML prompt string from a message list and a system prompt.
 
     Args:
@@ -50,7 +50,7 @@ def build_chatml_prompt(messages: List[Dict], system_prompt: str) -> str:
     Returns:
         Formatted ChatML string ready for tokenization.
     """
-    parts: List[str] = []
+    parts: list[str] = []
     parts.append(f"{_SYSTEM_TOKEN}\n{system_prompt}{_END_TOKEN}\n")
     for msg in messages:
         role = msg.get("role", "")
@@ -81,9 +81,9 @@ class TerminalChat:
         model=None,
         tokenizer=None,
         gen_config=None,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         use_colors: bool = True,
-        generate_fn: Optional[Callable[[str], str]] = None,
+        generate_fn: Callable[[str], str] | None = None,
     ) -> None:
         self.model = model
         self.tokenizer = tokenizer
@@ -93,7 +93,7 @@ class TerminalChat:
         self.generate_fn: Callable[[str], str] = (
             generate_fn if generate_fn is not None else lambda _prompt: _MOCK_RESPONSE
         )
-        self.history: List[Dict] = []
+        self.history: list[dict] = []
 
     def _colorize(self, text: str, color: str) -> str:
         """Wrap text in ANSI escape codes for the given color name.
@@ -195,11 +195,11 @@ class TerminalChat:
                 continue
 
             if user_input.startswith("/system "):
-                new_prompt = user_input[len("/system "):].strip()
+                new_prompt = user_input[len("/system ") :].strip()
                 if new_prompt:
                     self.system_prompt = new_prompt
                     self.reset()
-                    print(self._colorize(f"[System prompt updated. History cleared.]", "yellow"))
+                    print(self._colorize("[System prompt updated. History cleared.]", "yellow"))
                 else:
                     print(self._colorize("[Usage: /system <new prompt text>]", "yellow"))
                 continue
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    generate_fn: Optional[Callable[[str], str]] = None
+    generate_fn: Callable[[str], str] | None = None
 
     if args.model_path is not None:
         try:
@@ -251,7 +251,9 @@ if __name__ == "__main__":
                 return _session.chat.__func__(_session, "")
 
         except Exception as exc:
-            print(f"[Warning] Could not load model from {args.model_path!r}: {exc}", file=sys.stderr)
+            print(
+                f"[Warning] Could not load model from {args.model_path!r}: {exc}", file=sys.stderr
+            )
             print("[Falling back to mock generate_fn]", file=sys.stderr)
 
     tc = TerminalChat(

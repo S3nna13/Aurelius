@@ -1,4 +1,5 @@
 """Tests for evolutionary model merge search."""
+
 from __future__ import annotations
 
 import copy
@@ -9,17 +10,17 @@ import torch
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.evolutionary_merge import (
-    EvoMergeConfig,
     EvolutionaryMerger,
+    EvoMergeConfig,
     Individual,
     evaluate_model,
     linear_merge,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_cfg() -> AureliusConfig:
     return AureliusConfig(
@@ -52,6 +53,7 @@ def _score_fn(model) -> float:
 # EvoMergeConfig
 # ---------------------------------------------------------------------------
 
+
 def test_evo_merge_config_defaults():
     cfg = EvoMergeConfig()
     assert cfg.population_size == 10
@@ -64,6 +66,7 @@ def test_evo_merge_config_defaults():
 # ---------------------------------------------------------------------------
 # linear_merge
 # ---------------------------------------------------------------------------
+
 
 def test_linear_merge_returns_state_dict_with_same_keys():
     m1 = _tiny_model(0)
@@ -109,6 +112,7 @@ def test_linear_merge_coefficients_weighted_sum():
 # Individual
 # ---------------------------------------------------------------------------
 
+
 def test_individual_dataclass_fields():
     ind = Individual(coefficients=[0.5, 0.5], fitness=1.23)
     assert ind.coefficients == [0.5, 0.5]
@@ -123,6 +127,7 @@ def test_individual_default_fitness():
 # ---------------------------------------------------------------------------
 # EvolutionaryMerger.initialize_population
 # ---------------------------------------------------------------------------
+
 
 def test_initialize_population_returns_correct_count():
     m1, m2 = _tiny_model(0), _tiny_model(1)
@@ -143,6 +148,7 @@ def test_initialize_population_coefficients_sum_to_one():
 # mutate
 # ---------------------------------------------------------------------------
 
+
 def test_mutate_returns_individual_summing_to_one():
     m1, m2 = _tiny_model(0), _tiny_model(1)
     merger = EvolutionaryMerger([m1, m2], _tiny_config())
@@ -155,6 +161,7 @@ def test_mutate_returns_individual_summing_to_one():
 # ---------------------------------------------------------------------------
 # crossover
 # ---------------------------------------------------------------------------
+
 
 def test_crossover_returns_individual_summing_to_one():
     m1, m2 = _tiny_model(0), _tiny_model(1)
@@ -180,6 +187,7 @@ def test_crossover_coefficients_non_negative():
 # ---------------------------------------------------------------------------
 # evolve
 # ---------------------------------------------------------------------------
+
 
 def test_evolve_returns_individual():
     m1, m2 = _tiny_model(0), _tiny_model(1)
@@ -207,12 +215,13 @@ def test_evolve_improves_over_random_baseline():
 
     assert isinstance(best.fitness, float)
     assert best.fitness == best.fitness  # not NaN
-    assert abs(best.fitness) < 1e9      # finite
+    assert abs(best.fitness) < 1e9  # finite
 
 
 # ---------------------------------------------------------------------------
 # get_merged_state_dict
 # ---------------------------------------------------------------------------
+
 
 def test_get_merged_state_dict_returns_correct_keys():
     m1, m2 = _tiny_model(0), _tiny_model(1)
@@ -225,6 +234,7 @@ def test_get_merged_state_dict_returns_correct_keys():
 # ---------------------------------------------------------------------------
 # evaluate_model
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_model_calls_score_fn_and_returns_float():
     m = _tiny_model(0)

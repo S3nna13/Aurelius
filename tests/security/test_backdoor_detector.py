@@ -108,8 +108,8 @@ def test_superimpose_tokens_from_union(detector):
     b = torch.randint(100, 150, (1, 32))
     out = detector._superimpose(a, b)
     # Each position must match either a or b at that position
-    from_a = (out == a)
-    from_b = (out == b)
+    from_a = out == a
+    from_b = out == b
     assert (from_a | from_b).all(), "Some tokens came from neither input"
 
 
@@ -143,17 +143,13 @@ def test_is_trojan_returns_bool(detector, input_ids, reference_pool):
 
 def test_is_trojan_high_threshold_returns_true(model, input_ids, reference_pool):
     """With a very high threshold, any input is flagged as trojaned."""
-    high_thresh_detector = STRIPDetector(
-        model, n_perturbations=4, entropy_threshold=1e9
-    )
+    high_thresh_detector = STRIPDetector(model, n_perturbations=4, entropy_threshold=1e9)
     assert high_thresh_detector.is_trojan(input_ids, reference_pool) is True
 
 
 def test_is_trojan_low_threshold_returns_false(model, input_ids, reference_pool):
     """With a threshold of 0, no input is flagged as trojaned."""
-    low_thresh_detector = STRIPDetector(
-        model, n_perturbations=4, entropy_threshold=0.0
-    )
+    low_thresh_detector = STRIPDetector(model, n_perturbations=4, entropy_threshold=0.0)
     assert low_thresh_detector.is_trojan(input_ids, reference_pool) is False
 
 

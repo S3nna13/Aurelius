@@ -1,5 +1,5 @@
 """Tests for KnowledgeTransfer weight transfer utilities."""
-import pytest
+
 import torch
 import torch.nn as nn
 
@@ -34,7 +34,9 @@ class TestTransferConfig:
         assert cfg.interpolation_alpha == 0.5
 
     def test_custom(self):
-        cfg = TransferConfig(layers_to_transfer=[0, 1], transfer_mode="interpolate", interpolation_alpha=0.3)
+        cfg = TransferConfig(
+            layers_to_transfer=[0, 1], transfer_mode="interpolate", interpolation_alpha=0.3
+        )
         assert cfg.layers_to_transfer == [0, 1]
         assert cfg.interpolation_alpha == 0.3
 
@@ -154,7 +156,7 @@ class TestPartialTransfer:
         src, tgt = _linear_pair()
         tgt_weight_orig = tgt.weight.clone()
         kt = KnowledgeTransfer()
-        result = kt.partial_transfer(src, tgt, "bias")
+        kt.partial_transfer(src, tgt, "bias")
         assert torch.allclose(tgt.bias, src.bias)
         assert torch.allclose(tgt.weight, tgt_weight_orig)
 

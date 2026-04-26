@@ -16,6 +16,7 @@ FFN structure (SwiGLU):
 Pruning removes rows from gate_proj and up_proj,
 and corresponding columns from down_proj.
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,15 +25,14 @@ from typing import NamedTuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class PruningConfig:
-    pruning_ratio: float = 0.2        # fraction of FFN neurons to remove
-    n_calibration_steps: int = 100    # batches for importance scoring
+    pruning_ratio: float = 0.2  # fraction of FFN neurons to remove
+    n_calibration_steps: int = 100  # batches for importance scoring
     calibration_batch_size: int = 4
 
 
@@ -80,10 +80,13 @@ def compute_ffn_importance(
 
     for name, module in model.named_modules():
         if name in importances:
+
             def make_hook(n):
                 def hook(mod, inp, out):
                     activations[n] = out.detach()
+
                 return hook
+
             hooks.append(module.gate_proj.register_forward_hook(make_hook(name)))
 
     n = 0
@@ -105,7 +108,7 @@ def compute_ffn_importance(
         for ffn_name, module in model.named_modules():
             if ffn_name in importances and hasattr(module, "gate_proj"):
                 g = module.gate_proj.weight.grad  # (d_ff, d_model)
-                w = module.gate_proj.weight.data   # (d_ff, d_model)
+                w = module.gate_proj.weight.data  # (d_ff, d_model)
                 if g is not None:
                     # Per-neuron importance = sum over in_features of (g*w)^2
                     importances[ffn_name] += (g * w).pow(2).sum(dim=1)
@@ -152,7 +155,11 @@ def prune_ffn_neurons(
         for part in ffn_name.split("."):
             module = getattr(module, part)
 
-        if not (hasattr(module, "gate_proj") and hasattr(module, "up_proj") and hasattr(module, "down_proj")):
+        if not (
+            hasattr(module, "gate_proj")
+            and hasattr(module, "up_proj")
+            and hasattr(module, "down_proj")
+        ):
             continue
 
         d_ff = importance.shape[0]
@@ -183,7 +190,10 @@ def prune_ffn_neurons(
         layers_pruned.append(ffn_name)
         logger.info(
             "Pruned %s: %d → %d neurons (%.1f%% removed)",
-            ffn_name, d_ff, n_keep, pruning_ratio * 100,
+            ffn_name,
+            d_ff,
+            n_keep,
+            pruning_ratio * 100,
         )
 
     pruned_params = sum(p.numel() for p in model.parameters())
@@ -215,7 +225,9 @@ def prune_model(
     if cfg is None:
         cfg = PruningConfig()
 
-    logger.info("Computing FFN importance scores (%d calibration steps)...", cfg.n_calibration_steps)
+    logger.info(
+        "Computing FFN importance scores (%d calibration steps)...", cfg.n_calibration_steps
+    )
     importances = compute_ffn_importance(model, dataloader, n_steps=cfg.n_calibration_steps)
 
     if not importances:
@@ -223,5 +235,7 @@ def prune_model(
         n = sum(p.numel() for p in model.parameters())
         return PruningResult(n, n, 1.0, [])
 
-    logger.info("Pruning %d FFN layers at %.0f%% ratio...", len(importances), cfg.pruning_ratio * 100)
+    logger.info(
+        "Pruning %d FFN layers at %.0f%% ratio...", len(importances), cfg.pruning_ratio * 100
+    )
     return prune_ffn_neurons(model, importances, cfg.pruning_ratio)

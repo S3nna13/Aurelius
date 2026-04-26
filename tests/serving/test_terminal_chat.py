@@ -1,7 +1,6 @@
 """Tests for the interactive terminal chat REPL."""
-import pytest
-from src.serving.terminal_chat import TerminalChat, build_chatml_prompt
 
+from src.serving.terminal_chat import TerminalChat, build_chatml_prompt
 
 _MOCK_RESPONSE = "[model not loaded — mock response]"
 
@@ -9,6 +8,7 @@ _MOCK_RESPONSE = "[model not loaded — mock response]"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_chat(**kwargs) -> TerminalChat:
     """Return a TerminalChat instance using the default mock generate_fn."""
@@ -18,6 +18,7 @@ def _make_chat(**kwargs) -> TerminalChat:
 # ---------------------------------------------------------------------------
 # Test 1: TerminalChat instantiates with default args
 # ---------------------------------------------------------------------------
+
 
 def test_instantiation_defaults():
     tc = _make_chat()
@@ -32,6 +33,7 @@ def test_instantiation_defaults():
 # Test 2: add_message increases history length
 # ---------------------------------------------------------------------------
 
+
 def test_add_message_increases_history():
     tc = _make_chat()
     assert len(tc.history) == 0
@@ -45,6 +47,7 @@ def test_add_message_increases_history():
 # Test 3: build_prompt returns a non-empty string
 # ---------------------------------------------------------------------------
 
+
 def test_build_prompt_nonempty():
     tc = _make_chat()
     tc.add_message("user", "What is 2 + 2?")
@@ -57,6 +60,7 @@ def test_build_prompt_nonempty():
 # Test 4: build_prompt includes the user message
 # ---------------------------------------------------------------------------
 
+
 def test_build_prompt_includes_user_message():
     tc = _make_chat()
     tc.add_message("user", "tell me about entropy")
@@ -67,6 +71,7 @@ def test_build_prompt_includes_user_message():
 # ---------------------------------------------------------------------------
 # Test 5: reset clears history back to 0 user/assistant messages
 # ---------------------------------------------------------------------------
+
 
 def test_reset_clears_history():
     tc = _make_chat()
@@ -82,6 +87,7 @@ def test_reset_clears_history():
 # Test 6: chat returns a string
 # ---------------------------------------------------------------------------
 
+
 def test_chat_returns_string():
     tc = _make_chat()
     result = tc.chat("Hello, Aurelius!")
@@ -91,6 +97,7 @@ def test_chat_returns_string():
 # ---------------------------------------------------------------------------
 # Test 7: chat adds both user and assistant messages to history
 # ---------------------------------------------------------------------------
+
 
 def test_chat_adds_both_messages():
     tc = _make_chat()
@@ -106,6 +113,7 @@ def test_chat_adds_both_messages():
 # Test 8: _colorize with use_colors=True wraps in ANSI codes
 # ---------------------------------------------------------------------------
 
+
 def test_colorize_with_colors_contains_ansi():
     tc = _make_chat(use_colors=True)
     result = tc._colorize("hello", "blue")
@@ -115,6 +123,7 @@ def test_colorize_with_colors_contains_ansi():
 # ---------------------------------------------------------------------------
 # Test 9: _colorize with use_colors=False returns plain text
 # ---------------------------------------------------------------------------
+
 
 def test_colorize_without_colors_returns_plain():
     tc = _make_chat(use_colors=False)
@@ -128,6 +137,7 @@ def test_colorize_without_colors_returns_plain():
 # Test 10: build_chatml_prompt returns string containing system content
 # ---------------------------------------------------------------------------
 
+
 def test_build_chatml_prompt_contains_system():
     messages = [{"role": "user", "content": "Hi"}]
     prompt = build_chatml_prompt(messages, "You are a helpful assistant.")
@@ -138,6 +148,7 @@ def test_build_chatml_prompt_contains_system():
 # Test 11: build_chatml_prompt returns string containing user content
 # ---------------------------------------------------------------------------
 
+
 def test_build_chatml_prompt_contains_user():
     messages = [{"role": "user", "content": "What is quantum computing?"}]
     prompt = build_chatml_prompt(messages, "Be concise.")
@@ -147,6 +158,7 @@ def test_build_chatml_prompt_contains_user():
 # ---------------------------------------------------------------------------
 # Test 12: Special command /reset clears history (via reset() directly)
 # ---------------------------------------------------------------------------
+
 
 def test_reset_command_clears_history_direct():
     tc = _make_chat()
@@ -161,6 +173,7 @@ def test_reset_command_clears_history_direct():
 # Test 13: chat with mock generate_fn returns the mock string
 # ---------------------------------------------------------------------------
 
+
 def test_chat_mock_generate_fn_returns_mock_string():
     tc = _make_chat()
     result = tc.chat("Anything at all")
@@ -171,8 +184,11 @@ def test_chat_mock_generate_fn_returns_mock_string():
 # Test 14: chat with custom generate_fn uses that callable
 # ---------------------------------------------------------------------------
 
+
 def test_chat_custom_generate_fn():
-    custom_fn = lambda prompt: "custom response"
+    def custom_fn(prompt):
+        return "custom response"
+
     tc = TerminalChat(generate_fn=custom_fn)
     result = tc.chat("Hello")
     assert result == "custom response"

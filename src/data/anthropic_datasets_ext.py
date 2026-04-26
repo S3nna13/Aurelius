@@ -11,14 +11,13 @@ Datasets covered:
 
 from __future__ import annotations
 
-import importlib
 import base64
+import importlib
 import json
 import math
 import re
 from dataclasses import dataclass
 from itertools import cycle
-from typing import Optional
 
 from torch.utils.data import Dataset
 
@@ -33,6 +32,7 @@ def _load_dataset(*args, **kwargs):
         ) from exc
     return datasets_mod.load_dataset(*args, **kwargs)
 
+
 # ── XOR decryption key ───────────────────────────────────────────────────────
 KEY = b"MO_transcripts_should_not_appear_in_pretraining_corpora"
 
@@ -45,8 +45,8 @@ KEY = b"MO_transcripts_should_not_appear_in_pretraining_corpora"
 class GlobalOpinionSample:
     question: str
     options: list[str]
-    country_distributions: dict[str, list[float]]   # country → [pct per option]
-    source: str   # "GAS" or "WVS"
+    country_distributions: dict[str, list[float]]  # country → [pct per option]
+    source: str  # "GAS" or "WVS"
 
 
 class GlobalOpinionsDataset(Dataset):
@@ -70,7 +70,7 @@ def _parse_field(raw) -> object:
     return raw
 
 
-def load_global_opinions(cache_dir: Optional[str] = None) -> GlobalOpinionsDataset:
+def load_global_opinions(cache_dir: str | None = None) -> GlobalOpinionsDataset:
     """Load Anthropic/llm_global_opinions from HuggingFace.
 
     Parses selections/options fields (stored as JSON strings in the raw data).
@@ -98,12 +98,14 @@ def load_global_opinions(cache_dir: Optional[str] = None) -> GlobalOpinionsDatas
             if isinstance(pct_list, (list, tuple)):
                 country_distributions[country] = [float(p) for p in pct_list]
 
-        samples.append(GlobalOpinionSample(
-            question=str(row["question"]),
-            options=list(options) if not isinstance(options, list) else options,
-            country_distributions=country_distributions,
-            source=str(row["source"]),
-        ))
+        samples.append(
+            GlobalOpinionSample(
+                question=str(row["question"]),
+                options=list(options) if not isinstance(options, list) else options,
+                country_distributions=country_distributions,
+                source=str(row["source"]),
+            )
+        )
 
     return GlobalOpinionsDataset(samples)
 
@@ -156,10 +158,10 @@ class ValueFrequency:
 class ValueTreeNode:
     cluster_id: str
     name: str
-    level: int               # 0=individual value, 3=top-level category
+    level: int  # 0=individual value, 3=top-level category
     parent_cluster_id: str
     pct_total_occurrences: float
-    description: str         # empty string for level 0
+    description: str  # empty string for level 0
 
 
 class ValuesFrequencyDataset(Dataset):
@@ -201,7 +203,7 @@ class ValuesTreeDataset(Dataset):
         return [n for n in self._nodes if n.parent_cluster_id == cluster_id]
 
 
-def load_values_frequencies(cache_dir: Optional[str] = None) -> ValuesFrequencyDataset:
+def load_values_frequencies(cache_dir: str | None = None) -> ValuesFrequencyDataset:
     """Load values_frequencies config from Anthropic/values-in-the-wild."""
     raw = _load_dataset(
         "Anthropic/values-in-the-wild",
@@ -210,13 +212,12 @@ def load_values_frequencies(cache_dir: Optional[str] = None) -> ValuesFrequencyD
         cache_dir=cache_dir,
     )
     values = [
-        ValueFrequency(value=str(row["value"]), pct_convos=float(row["pct_convos"]))
-        for row in raw
+        ValueFrequency(value=str(row["value"]), pct_convos=float(row["pct_convos"])) for row in raw
     ]
     return ValuesFrequencyDataset(values)
 
 
-def load_values_tree(cache_dir: Optional[str] = None) -> ValuesTreeDataset:
+def load_values_tree(cache_dir: str | None = None) -> ValuesTreeDataset:
     """Load values_tree config from Anthropic/values-in-the-wild."""
     raw = _load_dataset(
         "Anthropic/values-in-the-wild",
@@ -229,7 +230,9 @@ def load_values_tree(cache_dir: Optional[str] = None) -> ValuesTreeDataset:
             cluster_id=str(row["cluster_id"]),
             name=str(row["name"]),
             level=int(row["level"]),
-            parent_cluster_id=str(row["parent_cluster_id"]) if row["parent_cluster_id"] is not None else "",
+            parent_cluster_id=str(row["parent_cluster_id"])
+            if row["parent_cluster_id"] is not None
+            else "",
             pct_total_occurrences=float(row["pct_total_occurrences"]),
             description=str(row["description"]) if row["description"] is not None else "",
         )
@@ -246,7 +249,7 @@ def load_values_tree(cache_dir: Optional[str] = None) -> ValuesTreeDataset:
 @dataclass
 class ElectionQuestionSample:
     question: str
-    label: str        # "Harmless" or "Harmful"
+    label: str  # "Harmless" or "Harmful"
     is_harmful: bool  # True if label == "Harmful"
 
 
@@ -267,7 +270,7 @@ class ElectionQuestionsDataset(Dataset):
         return [s for s in self._samples if not s.is_harmful]
 
 
-def load_election_questions(cache_dir: Optional[str] = None) -> ElectionQuestionsDataset:
+def load_election_questions(cache_dir: str | None = None) -> ElectionQuestionsDataset:
     """Load Anthropic/election_questions (test split)."""
     raw = _load_dataset(
         "Anthropic/election_questions",
@@ -294,7 +297,7 @@ def load_election_questions(cache_dir: Optional[str] = None) -> ElectionQuestion
 class InterviewTranscript:
     transcript_id: str
     text: str
-    split: str   # "workforce", "creatives", "scientists"
+    split: str  # "workforce", "creatives", "scientists"
 
 
 class InterviewDataset(Dataset):
@@ -316,8 +319,8 @@ _ALL_INTERVIEW_SPLITS = ["workforce", "creatives", "scientists"]
 
 
 def load_interviews(
-    splits: Optional[list[str]] = None,
-    cache_dir: Optional[str] = None,
+    splits: list[str] | None = None,
+    cache_dir: str | None = None,
 ) -> InterviewDataset:
     """Load Anthropic/AnthropicInterviewer.
 
@@ -336,11 +339,13 @@ def load_interviews(
             cache_dir=cache_dir,
         )
         for row in raw:
-            transcripts.append(InterviewTranscript(
-                transcript_id=str(row["transcript_id"]),
-                text=str(row["text"]),
-                split=split_name,
-            ))
+            transcripts.append(
+                InterviewTranscript(
+                    transcript_id=str(row["transcript_id"]),
+                    text=str(row["text"]),
+                    split=split_name,
+                )
+            )
 
     return InterviewDataset(transcripts)
 
@@ -371,7 +376,7 @@ def decrypt_alignment_faking_response(encrypted_response: str) -> str:
 @dataclass
 class AlignmentFakingSample:
     user_input: str
-    response: str               # decrypted
+    response: str  # decrypted
     alignment_faking: bool
     alignment_faking_prob: float | None
     compliance: bool
@@ -412,7 +417,7 @@ class AlignmentFakingDataset(Dataset):
 
 def load_alignment_faking(
     n_rows: int | None = None,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
 ) -> AlignmentFakingDataset:
     """Load Anthropic/alignment-faking-rl (train split).
 
@@ -441,16 +446,18 @@ def load_alignment_faking(
             decrypted = ""
 
         prob = row.get("alignment_faking_prob")
-        samples.append(AlignmentFakingSample(
-            user_input=str(row["user_input"]),
-            response=decrypted,
-            alignment_faking=bool(row["alignment_faking"]),
-            alignment_faking_prob=float(prob) if prob is not None else None,
-            compliance=bool(row["compliance"]),
-            total_reward=float(row["total_reward"]),
-            is_free_tier_user=bool(row["is_free_tier_user"]),
-            experiment_name=str(row["experiment_name"]),
-            step=int(row["step"]),
-        ))
+        samples.append(
+            AlignmentFakingSample(
+                user_input=str(row["user_input"]),
+                response=decrypted,
+                alignment_faking=bool(row["alignment_faking"]),
+                alignment_faking_prob=float(prob) if prob is not None else None,
+                compliance=bool(row["compliance"]),
+                total_reward=float(row["total_reward"]),
+                is_free_tier_user=bool(row["is_free_tier_user"]),
+                experiment_name=str(row["experiment_name"]),
+                step=int(row["step"]),
+            )
+        )
 
     return AlignmentFakingDataset(samples)

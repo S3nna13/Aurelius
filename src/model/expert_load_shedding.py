@@ -36,4 +36,3 @@ def kept_fraction(assignments: torch.Tensor) -> torch.Tensor:
     if assignments.numel() == 0:
         return torch.tensor(0.0)
     return (assignments >= 0).float().mean()
-

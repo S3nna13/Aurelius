@@ -78,7 +78,7 @@ def test_import_has_no_unexpected_side_effects() -> None:
     assert set(["xml", "json"]).issubset(agent_mod.TOOL_CALL_PARSER_REGISTRY.keys())
 
     forbidden = {"torch", "transformers", "einops"}
-    loaded = set(sys.modules.keys())
+    set(sys.modules.keys())
     # Any of these being present is a side-effect we must not introduce
     # ourselves. We only assert that importing src.agent did not newly
     # *pull them in*; we cannot control an already-imported environment,

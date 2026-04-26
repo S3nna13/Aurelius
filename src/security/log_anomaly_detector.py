@@ -25,8 +25,8 @@ from __future__ import annotations
 import math
 import warnings
 from collections import Counter, defaultdict, deque
-from dataclasses import dataclass, field
-from typing import Any, Deque, Dict, Iterable, List, Optional, Set, Tuple
+from collections.abc import Iterable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -151,28 +151,28 @@ class LogAnomalyDetector:
         # Per-minute request volume stats
         self._volume = _Welford()
         # (minute_bucket -> count) — we keep the most recent and flush older
-        self._minute_counts: Dict[int, int] = defaultdict(int)
-        self._current_minute: Optional[int] = None
+        self._minute_counts: dict[int, int] = defaultdict(int)
+        self._current_minute: int | None = None
 
         # Rolling window of (timestamp, source_ip, user_agent)
-        self._window: Deque[Tuple[float, Optional[str], Optional[str]]] = deque()
+        self._window: deque[tuple[float, str | None, str | None]] = deque()
         self._window_ip_counts: Counter = Counter()
         self._window_ua_counts: Counter = Counter()
 
         # Set of tokens observed before the rolling window started tracking
         # them (so "rare new token" is well defined).
-        self._known_ips: Set[str] = set()
-        self._known_uas: Set[str] = set()
+        self._known_ips: set[str] = set()
+        self._known_uas: set[str] = set()
 
         # Auth failure sliding deques keyed by source_ip
-        self._auth_fails: Dict[str, Deque[float]] = defaultdict(deque)
-        self._auth_cluster_fired: Dict[str, float] = {}
+        self._auth_fails: dict[str, deque[float]] = defaultdict(deque)
+        self._auth_cluster_fired: dict[str, float] = {}
 
         # Trained hours-of-activity (set of ints 0..23). Empty => disabled.
-        self._trained_hours: Set[int] = set()
+        self._trained_hours: set[int] = set()
 
         # Anomaly queue — cleared by detect_anomalies()
-        self._pending: List[LogAnomaly] = []
+        self._pending: list[LogAnomaly] = []
 
         # Counters for .stats()
         self._observed = 0
@@ -190,7 +190,7 @@ class LogAnomalyDetector:
         the off-hours check is disabled.
         """
 
-        cleaned: Set[int] = set()
+        cleaned: set[int] = set()
         for h in hours:
             try:
                 hi = int(h)
@@ -426,7 +426,7 @@ class LogAnomalyDetector:
     # ------------------------------------------------------------------
     # Public consumption API
 
-    def detect_anomalies(self) -> List[LogAnomaly]:
+    def detect_anomalies(self) -> list[LogAnomaly]:
         """Return anomalies accumulated since the last call and clear the queue.
 
         Note: this also finalises the current minute into the volume stats so

@@ -1,16 +1,17 @@
 """Tests for activation steering vectors (arXiv:2310.01405)."""
+
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.inference.steering import (
-    SteeringConfig,
-    SteeringVector,
-    extract_hidden_states_at_layer,
-    compute_steering_vector,
     SteeringHook,
+    SteeringVector,
+    compute_steering_vector,
+    extract_hidden_states_at_layer,
     generate_with_steering,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # Small model config shared across all tests
 N_LAYERS = 4
@@ -45,6 +46,7 @@ def small_model():
 # extract_hidden_states_at_layer
 # ---------------------------------------------------------------------------
 
+
 def test_extract_hidden_states_shape(small_model):
     """Returns (B, D) tensor."""
     B, S = 3, 8
@@ -72,6 +74,7 @@ def test_extract_hidden_states_last_pool(small_model):
 # ---------------------------------------------------------------------------
 # compute_steering_vector
 # ---------------------------------------------------------------------------
+
 
 def test_compute_steering_vector_shape(small_model):
     """Steering vector direction has shape (D,)."""
@@ -107,6 +110,7 @@ def test_compute_steering_vector_not_normalized(small_model):
 # SteeringHook
 # ---------------------------------------------------------------------------
 
+
 def test_steering_hook_context_manager(small_model):
     """SteeringHook can be used as a context manager without crashing."""
     direction = torch.randn(D_MODEL)
@@ -140,15 +144,14 @@ def test_steering_hook_modifies_output(small_model):
 # generate_with_steering
 # ---------------------------------------------------------------------------
 
+
 def test_generate_with_steering_returns_tensor(small_model):
     """generate_with_steering returns a Tensor."""
     direction = torch.randn(D_MODEL)
     direction = direction / direction.norm()
     sv = SteeringVector(direction=direction, layer_idx=1)
     input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    output = generate_with_steering(
-        small_model, input_ids, sv, max_new_tokens=5, alpha=1.0
-    )
+    output = generate_with_steering(small_model, input_ids, sv, max_new_tokens=5, alpha=1.0)
     assert isinstance(output, torch.Tensor)
 
 
@@ -159,15 +162,14 @@ def test_generate_with_steering_length(small_model):
     sv = SteeringVector(direction=direction, layer_idx=1)
     input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
     max_new = 8
-    output = generate_with_steering(
-        small_model, input_ids, sv, max_new_tokens=max_new, alpha=1.0
-    )
+    output = generate_with_steering(small_model, input_ids, sv, max_new_tokens=max_new, alpha=1.0)
     assert output.shape[0] <= max_new
 
 
 # ---------------------------------------------------------------------------
 # SteeringVector dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_steering_vector_name():
     """name field is accessible on SteeringVector."""

@@ -1,9 +1,10 @@
 """Tests for prompt templates."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.chat.prompt_templates import PromptTemplate, PromptRegistry
+from src.chat.prompt_templates import PromptRegistry, PromptTemplate
 
 
 class TestPromptTemplate:

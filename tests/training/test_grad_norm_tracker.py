@@ -1,21 +1,27 @@
 import pytest
 import torch
-import torch.nn as nn
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.grad_norm_tracker import (
     GradNormConfig,
     GradNormTracker,
-    compute_global_grad_norm,
     clip_by_adaptive_norm,
+    compute_global_grad_norm,
 )
 
 
 @pytest.fixture
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     torch.manual_seed(42)
     return AureliusTransformer(cfg)
@@ -32,6 +38,7 @@ def _run_backward(model):
 # ---------------------------------------------------------------------------
 # compute_global_grad_norm
 # ---------------------------------------------------------------------------
+
 
 def test_compute_global_grad_norm_zero_no_grads(small_model):
     """Returns 0.0 when no backward pass has been run (no .grad tensors)."""
@@ -50,6 +57,7 @@ def test_compute_global_grad_norm_positive(small_model):
 # ---------------------------------------------------------------------------
 # GradNormTracker.step
 # ---------------------------------------------------------------------------
+
 
 def test_grad_norm_tracker_step_returns_metrics(small_model):
     """step() dict has all required keys with correct types."""

@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.retrieval.multi_hop_retriever import (
-    HopResult,
+    RETRIEVAL_REGISTRY,
     MultiHopConfig,
     MultiHopRetriever,
-    RETRIEVAL_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Minimal stub retriever
 # ---------------------------------------------------------------------------
+
 
 class _StubRetriever:
     """Returns fixed (doc_id, score) pairs regardless of query."""

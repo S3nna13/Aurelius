@@ -9,10 +9,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ALiBi helpers
 # ---------------------------------------------------------------------------
+
 
 def get_alibi_slopes(n_heads: int) -> Tensor:
     """Compute ALiBi slopes for each attention head.
@@ -26,9 +26,10 @@ def get_alibi_slopes(n_heads: int) -> Tensor:
     Returns:
         Tensor of shape (n_heads,) with values in (0, 1).
     """
+
     def _slopes_for_pow2(n: int) -> Tensor:
         base = 2 ** (-8 / n)
-        return torch.tensor([base ** i for i in range(1, n + 1)], dtype=torch.float32)
+        return torch.tensor([base**i for i in range(1, n + 1)], dtype=torch.float32)
 
     # Check if n_heads is a power of 2
     if n_heads & (n_heads - 1) == 0:
@@ -85,6 +86,7 @@ def compute_alibi_bias(seq_len: int, slopes: Tensor) -> Tensor:
 # ALiBi Attention module
 # ---------------------------------------------------------------------------
 
+
 class ALiBiAttention(nn.Module):
     """Self-attention with ALiBi positional bias.
 
@@ -95,7 +97,7 @@ class ALiBiAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.d_model = d_model
         self.head_dim = d_model // n_heads
@@ -125,7 +127,7 @@ class ALiBiAttention(nn.Module):
         v = self.v_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
 
         # Scaled dot-product attention scores: (B, n_heads, T, T)
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         scores = torch.matmul(q, k.transpose(-2, -1)) * scale
 
         # Add ALiBi bias: (n_heads, T, T) -> broadcast over batch
@@ -147,6 +149,7 @@ class ALiBiAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Sinusoidal encoding
 # ---------------------------------------------------------------------------
+
 
 def sinusoidal_encoding(seq_len: int, d_model: int, base: float = 10000.0) -> Tensor:
     """Classic fixed sinusoidal positional encoding (Vaswani et al. 2017).
@@ -177,6 +180,7 @@ def sinusoidal_encoding(seq_len: int, d_model: int, base: float = 10000.0) -> Te
 # Learned positional encoding
 # ---------------------------------------------------------------------------
 
+
 class LearnedPositionalEncoding(nn.Module):
     """Fully learned positional embeddings via an nn.Embedding table.
 
@@ -205,6 +209,7 @@ class LearnedPositionalEncoding(nn.Module):
 # ---------------------------------------------------------------------------
 # T5 relative position bias (bucket indices as float tensor)
 # ---------------------------------------------------------------------------
+
 
 def t5_relative_position_bias(
     n_heads: int,
@@ -243,9 +248,7 @@ def t5_relative_position_bias(
     # Log-scale bucket for larger distances
     log_ratio = math.log(max_distance / max_exact) if max_distance > max_exact else 1.0
     val_if_large = max_exact + (
-        torch.log(rel_pos.float().clamp(min=1) / max_exact)
-        / log_ratio
-        * (num_buckets - max_exact)
+        torch.log(rel_pos.float().clamp(min=1) / max_exact) / log_ratio * (num_buckets - max_exact)
     ).long().clamp(max=num_buckets - 1)
 
     buckets = torch.where(is_small, rel_pos, val_if_large)  # (T, T)
@@ -258,6 +261,7 @@ def t5_relative_position_bias(
 # ---------------------------------------------------------------------------
 # Sandwich positional encoding
 # ---------------------------------------------------------------------------
+
 
 class SandwichPositionalEncoding(nn.Module):
     """Sandwich encoding: average of sinusoidal and learned positional encodings.

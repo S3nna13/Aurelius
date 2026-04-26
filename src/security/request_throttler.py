@@ -2,6 +2,7 @@
 
 Trail of Bits: rate-limit at the entry point, fail closed.
 """
+
 from __future__ import annotations
 
 import time

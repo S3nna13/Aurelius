@@ -35,7 +35,7 @@ def test_end_to_end_pass_at_1_on_toy_problem():
 
     problem = HumanEvalProblem(
         task_id="int/0",
-        prompt="def add(a, b):\n    \"\"\"Return a+b.\"\"\"\n",
+        prompt='def add(a, b):\n    """Return a+b."""\n',
         canonical_solution="    return a + b\n",
         test=(
             "def check(candidate):\n"
@@ -47,8 +47,6 @@ def test_end_to_end_pass_at_1_on_toy_problem():
 
     completions = [["    return a + b\n", "    return a - b\n"]]
 
-    out = score_problems(
-        [problem], completions, k_values=[1], max_workers=2, timeout_seconds=5.0
-    )
+    out = score_problems([problem], completions, k_values=[1], max_workers=2, timeout_seconds=5.0)
     assert out["n_problems"] == 1
     assert out["pass@1"] == pytest.approx(0.5)

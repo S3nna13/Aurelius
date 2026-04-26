@@ -35,7 +35,7 @@ from __future__ import annotations
 import math
 import re
 from collections import defaultdict
-from typing import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 __all__ = ["BM25Retriever", "default_tokenizer"]
 
@@ -170,9 +170,7 @@ class BM25Retriever:
 
         for doc_id, doc in enumerate(docs):
             if not isinstance(doc, str):
-                raise TypeError(
-                    f"docs[{doc_id}] must be str, got {type(doc).__name__}"
-                )
+                raise TypeError(f"docs[{doc_id}] must be str, got {type(doc).__name__}")
             tokens = self._tokenizer(doc)
             if not isinstance(tokens, list):
                 # Accept any iterable, but normalize to list for consistency.
@@ -217,9 +215,7 @@ class BM25Retriever:
 
     def _require_indexed(self) -> None:
         if not self._indexed:
-            raise RuntimeError(
-                "BM25Retriever has no corpus; call add_documents() first."
-            )
+            raise RuntimeError("BM25Retriever has no corpus; call add_documents() first.")
 
     def _score_tokens(self, q_tokens: Iterable[str]) -> dict[int, float]:
         """Accumulate BM25 scores for the given query tokens.
@@ -297,9 +293,7 @@ class BM25Retriever:
         items = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
         return [(doc_id, score) for doc_id, score in items[:k_eff]]
 
-    def query_batch(
-        self, qs: Sequence[str], k: int = 10
-    ) -> list[list[tuple[int, float]]]:
+    def query_batch(self, qs: Sequence[str], k: int = 10) -> list[list[tuple[int, float]]]:
         """Vectorized query interface for throughput.
 
         Each element of ``qs`` is scored independently; the result is
@@ -325,9 +319,7 @@ class BM25Retriever:
         """
         self._require_indexed()
         if not (0 <= doc_id < self._doc_count):
-            raise IndexError(
-                f"doc_id {doc_id} out of range [0, {self._doc_count})"
-            )
+            raise IndexError(f"doc_id {doc_id} out of range [0, {self._doc_count})")
         if not q:
             return 0.0
         q_tokens = self._tokenizer(q)

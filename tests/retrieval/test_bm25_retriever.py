@@ -9,7 +9,6 @@ import pytest
 
 from src.retrieval.bm25_retriever import BM25Retriever, default_tokenizer
 
-
 CORPUS = [
     "the quick brown fox jumps over the lazy dog",
     "never gonna give you up never gonna let you down",
@@ -129,9 +128,9 @@ def test_duplicate_documents_same_score():
 def test_idf_hand_computed():
     # 3-doc corpus with known term frequencies.
     docs = [
-        "apple banana",       # doc 0: apple(1), banana(1)
-        "apple cherry",       # doc 1: apple(1), cherry(1)
-        "banana cherry date", # doc 2: banana(1), cherry(1), date(1)
+        "apple banana",  # doc 0: apple(1), banana(1)
+        "apple cherry",  # doc 1: apple(1), cherry(1)
+        "banana cherry date",  # doc 2: banana(1), cherry(1), date(1)
     ]
     r = BM25Retriever()
     r.add_documents(docs)

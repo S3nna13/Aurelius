@@ -10,6 +10,7 @@ Self-certainty = -KL(model distribution || uniform)
 A higher score means the model assigns more peaked probability distributions
 to its own outputs -- a proxy for generation quality without external reward models.
 """
+
 from __future__ import annotations
 
 import math

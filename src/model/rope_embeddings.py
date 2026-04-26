@@ -7,7 +7,6 @@ explicit position encodings.
 
 import math
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -25,6 +24,7 @@ class RoPEConfig:
         scale: Positional scaling factor for NTK/YaRN-lite style extension.
                Divides the angle, effectively increasing the effective context.
     """
+
     d_head: int = 64
     max_seq_len: int = 2048
     base: float = 10000.0
@@ -54,13 +54,13 @@ def compute_freqs_cis(
     """
     # theta_i = 1 / (base^(2i / d_head)) for i in [0, d_head//2)
     i = torch.arange(0, d_head, 2, dtype=torch.float32)  # (d_head//2,)
-    theta = 1.0 / (base ** (i / d_head))                  # (d_head//2,)
+    theta = 1.0 / (base ** (i / d_head))  # (d_head//2,)
 
     # positions t in [0, max_seq_len)
-    t = torch.arange(max_seq_len, dtype=torch.float32)    # (max_seq_len,)
+    t = torch.arange(max_seq_len, dtype=torch.float32)  # (max_seq_len,)
 
     # angles[t, i] = t * theta_i / scale
-    angles = torch.outer(t, theta) / scale                 # (max_seq_len, d_head//2)
+    angles = torch.outer(t, theta) / scale  # (max_seq_len, d_head//2)
 
     # freqs_cis = exp(j * angles) = cos(angles) + j*sin(angles)
     freqs_cis = torch.polar(torch.ones_like(angles), angles)  # complex64
@@ -83,7 +83,7 @@ def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor) -> torch.Tensor:
         Rotated tensor of same shape as x: (B, T, n_heads, d_head).
     """
     B, T, n_heads, d_head = x.shape
-    assert d_head % 2 == 0, "d_head must be even for RoPE"
+    assert d_head % 2 == 0, "d_head must be even for RoPE"  # noqa: S101
 
     # Reshape to complex: (B, T, n_heads, d_head//2)
     x_complex = torch.view_as_complex(x.float().reshape(B, T, n_heads, d_head // 2, 2))
@@ -131,9 +131,9 @@ def rotate_half(x: torch.Tensor) -> torch.Tensor:
         Tensor of same shape as x.
     """
     d = x.shape[-1]
-    assert d % 2 == 0, "Last dimension must be even for rotate_half"
-    x1 = x[..., : d // 2]   # first half
-    x2 = x[..., d // 2 :]   # second half
+    assert d % 2 == 0, "Last dimension must be even for rotate_half"  # noqa: S101
+    x1 = x[..., : d // 2]  # first half
+    x2 = x[..., d // 2 :]  # second half
     return torch.cat([-x2, x1], dim=-1)
 
 
@@ -142,7 +142,7 @@ def apply_rotary_emb_real(
     k: torch.Tensor,
     cos: torch.Tensor,
     sin: torch.Tensor,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Apply RoPE using the real-valued (cos/sin) formulation.
 
     Rotation formula:
@@ -177,7 +177,7 @@ class RoPEAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, config: RoPEConfig) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -201,7 +201,7 @@ class RoPEAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        freqs_cis: Optional[torch.Tensor] = None,
+        freqs_cis: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute RoPE attention.
 

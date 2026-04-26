@@ -184,9 +184,7 @@ class OutputCompressor:
                 compressed_branch.append(line)
 
         result = self.compress("\n".join(compressed_branch))
-        result.strategies_applied = list(
-            dict.fromkeys(strategies + result.strategies_applied)
-        )
+        result.strategies_applied = list(dict.fromkeys(strategies + result.strategies_applied))
         return result
 
     def compress_ls(self, text: str) -> CompressionResult:

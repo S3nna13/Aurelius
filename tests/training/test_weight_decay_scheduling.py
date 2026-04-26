@@ -16,7 +16,6 @@ from src.training.weight_decay_scheduling import (
     normalized_weight_decay,
 )
 
-
 TINY = {
     "n_layers": 2,
     "d_model": 64,

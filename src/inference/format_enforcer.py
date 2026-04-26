@@ -9,16 +9,16 @@ prefix validation over string tokens) — here we operate at the raw byte
 from __future__ import annotations
 
 import string
-from dataclasses import dataclass, field
-from typing import Callable, List
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # FormatSpec
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FormatSpec:
@@ -35,6 +35,7 @@ class FormatSpec:
 # TokenMask
 # ---------------------------------------------------------------------------
 
+
 class TokenMask:
     """Maintains a boolean mask over the vocabulary and converts to logit biases."""
 
@@ -47,12 +48,12 @@ class TokenMask:
     # Mutation helpers
     # ------------------------------------------------------------------
 
-    def allow_all(self) -> "TokenMask":
+    def allow_all(self) -> TokenMask:
         """Set all tokens as allowed and return self."""
         self._mask = [True] * self.vocab_size
         return self
 
-    def allow_only(self, token_ids: list[int]) -> "TokenMask":
+    def allow_only(self, token_ids: list[int]) -> TokenMask:
         """Allow only the specified token IDs; block everything else."""
         self._mask = [False] * self.vocab_size
         for tid in token_ids:
@@ -60,7 +61,7 @@ class TokenMask:
                 self._mask[tid] = True
         return self
 
-    def block(self, token_ids: list[int]) -> "TokenMask":
+    def block(self, token_ids: list[int]) -> TokenMask:
         """Block the specified token IDs."""
         for tid in token_ids:
             if 0 <= tid < self.vocab_size:
@@ -158,6 +159,7 @@ class JsonStateMachine:
 # FormatEnforcer
 # ---------------------------------------------------------------------------
 
+
 class FormatEnforcer:
     """Applies format constraints to logits at each generation step."""
 
@@ -240,12 +242,13 @@ class FormatEnforcer:
         suf = self._suffix_bytes
         if len(generated) < len(suf):
             return False
-        return generated[-len(suf):] == suf
+        return generated[-len(suf) :] == suf
 
 
 # ---------------------------------------------------------------------------
 # ConstrainedGenerator
 # ---------------------------------------------------------------------------
+
 
 class ConstrainedGenerator:
     """Wraps a model with format-constrained autoregressive generation."""
@@ -330,7 +333,6 @@ class ConstrainedGenerator:
             max_length=self.spec.max_length,
             allowed_chars=self.spec.allowed_chars,
         )
-        original_spec = self._enforcer.spec
         original_enforcer = self._enforcer
         self._enforcer = FormatEnforcer(json_spec, self.tokenizer_encode, self.vocab_size)
         result = self.generate(prompt, max_new_tokens=self.spec.max_length)

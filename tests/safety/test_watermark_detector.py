@@ -1,16 +1,16 @@
 """Tests for src/safety/watermark_detector.py"""
+
 from __future__ import annotations
 
-import math
 import random
 
 import pytest
 
 from src.safety.watermark_detector import (
+    SAFETY_REGISTRY,
     WatermarkConfig,
     WatermarkDetector,
     WatermarkScheme,
-    SAFETY_REGISTRY,
 )
 
 
@@ -26,6 +26,7 @@ def _make_config(scheme: WatermarkScheme = WatermarkScheme.GREEN_LIST) -> Waterm
 # ---------------------------------------------------------------------------
 # Basic interface
 # ---------------------------------------------------------------------------
+
 
 def test_detect_returns_float(detector):
     config = _make_config()
@@ -48,6 +49,7 @@ def test_is_watermarked_returns_bool(detector):
 # Statistical properties
 # ---------------------------------------------------------------------------
 
+
 def test_random_sequence_low_z_score(detector):
     """Random tokens should yield a z-score close to 0 on average."""
     config = _make_config()
@@ -64,8 +66,10 @@ def test_all_green_list_tokens_high_z_score(detector):
     vocab_size = 1000
     # Find tokens that ARE in the green list
     from src.safety.watermark_detector import _extended_green_list_member
+
     green_tokens = [
-        t for t in range(vocab_size)
+        t
+        for t in range(vocab_size)
         if _extended_green_list_member(t, config.key, vocab_size, config.gamma)
     ]
     assert len(green_tokens) > 0
@@ -79,12 +83,15 @@ def test_z_score_increases_with_more_green_tokens(detector):
     config = _make_config()
     vocab_size = 1000
     from src.safety.watermark_detector import _extended_green_list_member
+
     green_tokens = [
-        t for t in range(vocab_size)
+        t
+        for t in range(vocab_size)
         if _extended_green_list_member(t, config.key, vocab_size, config.gamma)
     ]
     red_tokens = [
-        t for t in range(vocab_size)
+        t
+        for t in range(vocab_size)
         if not _extended_green_list_member(t, config.key, vocab_size, config.gamma)
     ]
     # mostly red
@@ -99,6 +106,7 @@ def test_z_score_increases_with_more_green_tokens(detector):
 # ---------------------------------------------------------------------------
 # Schemes
 # ---------------------------------------------------------------------------
+
 
 def test_all_schemes_accept_tokens(detector):
     token_ids = list(range(50))
@@ -118,6 +126,7 @@ def test_multi_hash_scheme(detector):
 # is_watermarked threshold
 # ---------------------------------------------------------------------------
 
+
 def test_not_watermarked_below_threshold(detector):
     config = _make_config()
     rng = random.Random(1)
@@ -129,8 +138,10 @@ def test_is_watermarked_custom_threshold(detector):
     config = _make_config()
     vocab_size = 1000
     from src.safety.watermark_detector import _extended_green_list_member
+
     green_tokens = [
-        t for t in range(vocab_size)
+        t
+        for t in range(vocab_size)
         if _extended_green_list_member(t, config.key, vocab_size, config.gamma)
     ]
     token_ids = (green_tokens * 50)[:200]
@@ -140,6 +151,7 @@ def test_is_watermarked_custom_threshold(detector):
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_safety_registry_contains_detector():
     assert "watermark_detector" in SAFETY_REGISTRY

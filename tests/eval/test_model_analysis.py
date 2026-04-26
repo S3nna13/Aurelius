@@ -5,17 +5,16 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.model_analysis import (
-    ModelStats,
+    ArchitectureSummary,
+    activation_histogram,
+    compare_models,
     count_parameters,
     estimate_flops,
     weight_statistics,
-    activation_histogram,
-    ArchitectureSummary,
-    compare_models,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 
 @pytest.fixture
@@ -40,6 +39,7 @@ def small_model(small_cfg):
 # ---------------------------------------------------------------------------
 # count_parameters tests
 # ---------------------------------------------------------------------------
+
 
 def test_count_parameters_total(small_model):
     stats = count_parameters(small_model)
@@ -78,6 +78,7 @@ def test_count_parameters_no_double_counting(small_model):
 # estimate_flops tests
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_flops_returns_dict(small_model):
     result = estimate_flops(small_model, seq_len=16, batch_size=1)
     required_keys = {"total_flops", "attention_flops", "ffn_flops", "lm_head_flops", "tflops"}
@@ -92,6 +93,7 @@ def test_estimate_flops_tflops_positive(small_model):
 # ---------------------------------------------------------------------------
 # weight_statistics tests
 # ---------------------------------------------------------------------------
+
 
 def test_weight_statistics_keys(small_model):
     result = weight_statistics(small_model)
@@ -108,6 +110,7 @@ def test_weight_statistics_l2_positive(small_model):
 # activation_histogram tests
 # ---------------------------------------------------------------------------
 
+
 def test_activation_histogram_shape(small_model):
     input_ids = torch.randint(0, 256, (1, 8))
     result = activation_histogram(small_model, input_ids, n_bins=50)
@@ -123,6 +126,7 @@ def test_activation_histogram_shape(small_model):
 # ArchitectureSummary tests
 # ---------------------------------------------------------------------------
 
+
 def test_architecture_summary_string(small_model):
     summary = ArchitectureSummary(small_model)
     s = summary.summary_string()
@@ -132,6 +136,7 @@ def test_architecture_summary_string(small_model):
 # ---------------------------------------------------------------------------
 # compare_models tests
 # ---------------------------------------------------------------------------
+
 
 def test_compare_models_same_model(small_model):
     result = compare_models(small_model, small_model, "M", "M")

@@ -37,7 +37,7 @@ def test_publish_config_defaults():
 
 
 def test_publish_config_custom():
-    c = PublishConfig(repo_id="u/m", token="tok", private=True, commit_message="msg")
+    c = PublishConfig(repo_id="u/m", token="tok", private=True, commit_message="msg")  # noqa: S106
     assert c.private is True
     assert c.token == "tok"
     assert c.commit_message == "msg"
@@ -76,16 +76,19 @@ def test_generate_model_card_tags_aurelius():
 
 
 def test_generate_model_card_tags_task_and_framework():
-    md = generate_model_card(
-        _card_data(task_type="code", training_framework="peft")
-    )
+    md = generate_model_card(_card_data(task_type="code", training_framework="peft"))
     assert "- code" in md
     assert "- peft" in md
 
 
 def test_generate_model_card_sections():
     md = generate_model_card(_card_data())
-    for section in ("# aurelius-1.4B", "## Model Description", "## Training", "## Evaluation Metrics"):
+    for section in (
+        "# aurelius-1.4B",
+        "## Model Description",
+        "## Training",
+        "## Evaluation Metrics",
+    ):
         assert section in md
 
 
@@ -179,7 +182,7 @@ def test_hub_publisher_dry_run_when_token_but_no_hf(
     import src.training.hub_publisher as hp
 
     monkeypatch.setattr(hp, "_HF_HUB_AVAILABLE", False)
-    pub = hp.HubPublisher(PublishConfig(repo_id="u/m", token="tok"))
+    pub = hp.HubPublisher(PublishConfig(repo_id="u/m", token="tok"))  # noqa: S106
     result = pub.publish(str(tmp_path), _card_data())
     assert result["status"] == "dry_run"
 

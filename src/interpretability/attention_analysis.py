@@ -10,19 +10,19 @@ Pure PyTorch — no HuggingFace, no scipy, no sklearn.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # AttentionConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AttentionConfig:
     """Configuration for attention analysis experiments."""
+
     n_heads: int = 8
     n_layers: int = 12
     track_entropy: bool = True
@@ -32,6 +32,7 @@ class AttentionConfig:
 # ---------------------------------------------------------------------------
 # compute_attention_entropy
 # ---------------------------------------------------------------------------
+
 
 def compute_attention_entropy(attn_weights: Tensor) -> Tensor:
     """
@@ -57,6 +58,7 @@ def compute_attention_entropy(attn_weights: Tensor) -> Tensor:
 # compute_mean_attention_distance
 # ---------------------------------------------------------------------------
 
+
 def compute_mean_attention_distance(attn_weights: Tensor) -> Tensor:
     """
     Compute the weighted-average |i - j| distance per head per query.
@@ -74,7 +76,9 @@ def compute_mean_attention_distance(attn_weights: Tensor) -> Tensor:
     positions = torch.arange(T, dtype=attn_weights.dtype, device=attn_weights.device)
     # For each query i, the key positions are 0..T-1; we want |i - j|
     # query_positions: (T, 1), key_positions: (1, T) → distances: (T, T)
-    distances = (positions.unsqueeze(0) - positions.unsqueeze(1)).abs()  # (T, T) where [i,j] = |i-j|
+    distances = (
+        positions.unsqueeze(0) - positions.unsqueeze(1)
+    ).abs()  # (T, T) where [i,j] = |i-j|
     # distances[i, j] = |i - j|; broadcast over heads: (H, T, T)
     distances = distances.unsqueeze(0).expand(H, T, T)  # (H, T, T)
     # Weighted average over key dim
@@ -85,6 +89,7 @@ def compute_mean_attention_distance(attn_weights: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # compute_head_agreement
 # ---------------------------------------------------------------------------
+
 
 def compute_head_agreement(attn1: Tensor, attn2: Tensor) -> Tensor:
     """
@@ -101,18 +106,19 @@ def compute_head_agreement(attn1: Tensor, attn2: Tensor) -> Tensor:
     """
     H, T, _ = attn1.shape
     # Flatten T*T for each head
-    flat1 = attn1.reshape(H, T * T)   # (H, T*T)
-    flat2 = attn2.reshape(H, T * T)   # (H, T*T)
+    flat1 = attn1.reshape(H, T * T)  # (H, T*T)
+    flat2 = attn2.reshape(H, T * T)  # (H, T*T)
 
-    dot   = (flat1 * flat2).sum(dim=-1)                   # (H,)
-    norm1 = flat1.norm(dim=-1).clamp(min=1e-9)            # (H,)
-    norm2 = flat2.norm(dim=-1).clamp(min=1e-9)            # (H,)
-    return dot / (norm1 * norm2)                           # (H,)
+    dot = (flat1 * flat2).sum(dim=-1)  # (H,)
+    norm1 = flat1.norm(dim=-1).clamp(min=1e-9)  # (H,)
+    norm2 = flat2.norm(dim=-1).clamp(min=1e-9)  # (H,)
+    return dot / (norm1 * norm2)  # (H,)
 
 
 # ---------------------------------------------------------------------------
 # find_diagonal_heads
 # ---------------------------------------------------------------------------
+
 
 def find_diagonal_heads(attn_weights: Tensor, threshold: float = 0.5) -> Tensor:
     """
@@ -134,13 +140,14 @@ def find_diagonal_heads(attn_weights: Tensor, threshold: float = 0.5) -> Tensor:
     # Extract main diagonal for each head: attn_weights[:, i, i]
     # torch.diagonal returns shape (T, H) with offset=0 on last two dims
     diag = torch.diagonal(attn_weights, offset=0, dim1=1, dim2=2)  # (H, T)
-    mean_diag = diag.mean(dim=-1)                                   # (H,)
+    mean_diag = diag.mean(dim=-1)  # (H,)
     return mean_diag > threshold
 
 
 # ---------------------------------------------------------------------------
 # find_previous_token_heads
 # ---------------------------------------------------------------------------
+
 
 def find_previous_token_heads(attn_weights: Tensor, threshold: float = 0.3) -> Tensor:
     """
@@ -166,15 +173,16 @@ def find_previous_token_heads(attn_weights: Tensor, threshold: float = 0.3) -> T
     # Rows 1..T-1 (query), column i-1 (key) → super-diagonal of the key-offset matrix
     # Use indexing: query indices = [1, 2, ..., T-1], key indices = [0, 1, ..., T-2]
     query_idx = torch.arange(1, T, device=attn_weights.device)
-    key_idx   = torch.arange(0, T - 1, device=attn_weights.device)
+    key_idx = torch.arange(0, T - 1, device=attn_weights.device)
     prev_attn = attn_weights[:, query_idx, key_idx]  # (H, T-1)
-    mean_prev = prev_attn.mean(dim=-1)               # (H,)
+    mean_prev = prev_attn.mean(dim=-1)  # (H,)
     return mean_prev > threshold
 
 
 # ---------------------------------------------------------------------------
 # compute_attention_sink_score
 # ---------------------------------------------------------------------------
+
 
 def compute_attention_sink_score(attn_weights: Tensor, sink_position: int = 0) -> Tensor:
     """
@@ -192,13 +200,14 @@ def compute_attention_sink_score(attn_weights: Tensor, sink_position: int = 0) -
     Tensor of shape (H,) — sink score per head, in [0, 1].
     """
     # attn_weights[:, :, sink_position] has shape (H, T)
-    sink_attn = attn_weights[:, :, sink_position]   # (H, T)
-    return sink_attn.mean(dim=-1)                    # (H,)
+    sink_attn = attn_weights[:, :, sink_position]  # (H, T)
+    return sink_attn.mean(dim=-1)  # (H,)
 
 
 # ---------------------------------------------------------------------------
 # AttentionAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class AttentionAnalyzer:
     """High-level API for attention pattern characterisation."""
@@ -210,7 +219,7 @@ class AttentionAnalyzer:
     # analyze_layer
     # ------------------------------------------------------------------
 
-    def analyze_layer(self, attn_weights: Tensor) -> Dict[str, Tensor]:
+    def analyze_layer(self, attn_weights: Tensor) -> dict[str, Tensor]:
         """
         Run all analyses on one layer's attention weights.
 
@@ -227,7 +236,7 @@ class AttentionAnalyzer:
             "prev_token_heads" : (H,) bool
             "sink_scores"      : (H,)
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
 
         result["entropy"] = compute_attention_entropy(attn_weights)
         result["mean_distance"] = compute_mean_attention_distance(attn_weights)
@@ -241,7 +250,7 @@ class AttentionAnalyzer:
     # summarize
     # ------------------------------------------------------------------
 
-    def summarize(self, analysis: Dict[str, Tensor]) -> Dict[str, float]:
+    def summarize(self, analysis: dict[str, Tensor]) -> dict[str, float]:
         """
         Reduce an analysis dict to scalar summary statistics.
 
@@ -259,9 +268,9 @@ class AttentionAnalyzer:
             "max_sink_score"  : float
         """
         return {
-            "mean_entropy":   analysis["entropy"].mean().item(),
-            "mean_distance":  analysis["mean_distance"].mean().item(),
-            "n_diagonal":     analysis["diagonal_heads"].sum().item(),
-            "n_prev_token":   analysis["prev_token_heads"].sum().item(),
+            "mean_entropy": analysis["entropy"].mean().item(),
+            "mean_distance": analysis["mean_distance"].mean().item(),
+            "n_diagonal": analysis["diagonal_heads"].sum().item(),
+            "n_prev_token": analysis["prev_token_heads"].sum().item(),
             "max_sink_score": analysis["sink_scores"].max().item(),
         }

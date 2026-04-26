@@ -5,8 +5,7 @@ pass.  The cache is built once at construction time and sliced per-batch.
 """
 
 import math
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -34,11 +33,12 @@ class RopeCacheConfig:
 # Core math helpers
 # ---------------------------------------------------------------------------
 
+
 def build_cos_sin_cache(
     d_head: int,
     max_seq_len: int,
     base: float = 10000.0,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Pre-compute cosine and sine tables for RoPE.
 
     For dimension index i in [0, d_head//2):
@@ -53,21 +53,21 @@ def build_cos_sin_cache(
     Returns:
         Tuple (cos_cache, sin_cache) each of shape (max_seq_len, d_head // 2).
     """
-    assert d_head % 2 == 0, "d_head must be even for RoPE"
+    assert d_head % 2 == 0, "d_head must be even for RoPE"  # noqa: S101
     half = d_head // 2
 
     # theta_i = 1 / (base^(2*i / d_head)) for i in [0, half)
-    i = torch.arange(0, half, dtype=torch.float32)         # (half,)
-    theta = 1.0 / (base ** (2.0 * i / d_head))             # (half,)
+    i = torch.arange(0, half, dtype=torch.float32)  # (half,)
+    theta = 1.0 / (base ** (2.0 * i / d_head))  # (half,)
 
     # positions
-    t = torch.arange(max_seq_len, dtype=torch.float32)     # (max_seq_len,)
+    t = torch.arange(max_seq_len, dtype=torch.float32)  # (max_seq_len,)
 
     # angles[pos, i] = pos * theta_i
-    angles = torch.outer(t, theta)                          # (max_seq_len, half)
+    angles = torch.outer(t, theta)  # (max_seq_len, half)
 
-    cos_cache = angles.cos()                                # (max_seq_len, half)
-    sin_cache = angles.sin()                                # (max_seq_len, half)
+    cos_cache = angles.cos()  # (max_seq_len, half)
+    sin_cache = angles.sin()  # (max_seq_len, half)
 
     return cos_cache, sin_cache
 
@@ -85,9 +85,9 @@ def rotate_half(x: torch.Tensor) -> torch.Tensor:
         Tensor of same shape as x.
     """
     d = x.shape[-1]
-    assert d % 2 == 0, "Last dimension must be even for rotate_half"
-    x1 = x[..., : d // 2]   # first half
-    x2 = x[..., d // 2 :]   # second half
+    assert d % 2 == 0, "Last dimension must be even for rotate_half"  # noqa: S101
+    x1 = x[..., : d // 2]  # first half
+    x2 = x[..., d // 2 :]  # second half
     return torch.cat([-x2, x1], dim=-1)
 
 
@@ -118,16 +118,16 @@ def apply_rotary_with_cache(
     """
     T = x.shape[seq_dim]
     d_head = x.shape[-1]
-    half = d_head // 2
+    d_head // 2
 
     # Slice to actual sequence length
-    cos_t = cos[:T]   # (T, half)
-    sin_t = sin[:T]   # (T, half)
+    cos_t = cos[:T]  # (T, half)
+    sin_t = sin[:T]  # (T, half)
 
     # Expand cos/sin to full d_head by repeating each half: [cos|cos]  [sin|sin]
     # This matches the split [x1, x2] -> [x1*cos - x2*sin, x1*sin + x2*cos]
-    cos_full = torch.cat([cos_t, cos_t], dim=-1)   # (T, d_head)
-    sin_full = torch.cat([sin_t, sin_t], dim=-1)   # (T, d_head)
+    cos_full = torch.cat([cos_t, cos_t], dim=-1)  # (T, d_head)
+    sin_full = torch.cat([sin_t, sin_t], dim=-1)  # (T, d_head)
 
     # Broadcast over all leading dims: x is (..., T, d_head)
     return x * cos_full + rotate_half(x) * sin_full
@@ -136,6 +136,7 @@ def apply_rotary_with_cache(
 # ---------------------------------------------------------------------------
 # RopeCache class
 # ---------------------------------------------------------------------------
+
 
 class RopeCache:
     """Stores pre-computed cos/sin RoPE tables and applies them on demand.
@@ -162,7 +163,7 @@ class RopeCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def get(self, seq_len: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get(self, seq_len: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Return (cos, sin) sliced to seq_len positions.
 
         Args:
@@ -195,6 +196,7 @@ class RopeCache:
 # CachedRoPEAttention nn.Module
 # ---------------------------------------------------------------------------
 
+
 class CachedRoPEAttention(nn.Module):
     """Multi-head self-attention with cached RoPE applied to Q and K.
 
@@ -211,7 +213,7 @@ class CachedRoPEAttention(nn.Module):
         config: RopeCacheConfig,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
 
         self.d_model = d_model
         self.n_heads = n_heads
@@ -239,7 +241,7 @@ class CachedRoPEAttention(nn.Module):
         B, T, _ = x.shape
 
         # Project
-        q = self.q_proj(x)   # (B, T, d_model)
+        q = self.q_proj(x)  # (B, T, d_model)
         k = self.k_proj(x)
         v = self.v_proj(x)
 
@@ -277,7 +279,7 @@ class CachedRoPEAttention(nn.Module):
         attn_scores = attn_scores + causal_mask
         attn_weights = F.softmax(attn_scores, dim=-1)
 
-        attn_out = torch.matmul(attn_weights, v)   # (B, n_heads, T, d_head)
+        attn_out = torch.matmul(attn_weights, v)  # (B, n_heads, T, d_head)
 
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(B, T, self.d_model)

@@ -1,17 +1,17 @@
 """Tests for src/inference/awq_quant.py — AWQ weight quantization."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.awq_quant import (
+    AWQCalibrator,
+    AWQLinear,
     absmax_per_channel,
     compute_awq_scale,
-    quantize_weight_awq,
     dequantize_weight_awq,
-    AWQLinear,
-    AWQCalibrator,
+    quantize_weight_awq,
 )
 
 # ---------------------------------------------------------------------------
@@ -46,13 +46,12 @@ def make_activations_2d(seed=SEED + 2) -> torch.Tensor:
 # 1. absmax_per_channel returns shape (in_features,)
 # ---------------------------------------------------------------------------
 
+
 def test_absmax_per_channel_shape_2d():
     """absmax_per_channel on (N, in_features) returns (in_features,)."""
     acts = make_activations_2d()
     result = absmax_per_channel(acts)
-    assert result.shape == (IN_FEATURES,), (
-        f"Expected ({IN_FEATURES},), got {result.shape}"
-    )
+    assert result.shape == (IN_FEATURES,), f"Expected ({IN_FEATURES},), got {result.shape}"
 
 
 def test_absmax_per_channel_shape_list_3d():
@@ -60,14 +59,13 @@ def test_absmax_per_channel_shape_list_3d():
     torch.manual_seed(SEED)
     acts_list = [torch.randn(BATCH, SEQ_LEN, IN_FEATURES) for _ in range(3)]
     result = absmax_per_channel(acts_list)
-    assert result.shape == (IN_FEATURES,), (
-        f"Expected ({IN_FEATURES},), got {result.shape}"
-    )
+    assert result.shape == (IN_FEATURES,), f"Expected ({IN_FEATURES},), got {result.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 2. absmax_per_channel values are non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_absmax_per_channel_nonnegative():
     """absmax_per_channel values must be >= 0."""
@@ -90,23 +88,26 @@ def test_absmax_per_channel_matches_manual():
 # 3. compute_awq_scale returns correct shape for group_size quantization
 # ---------------------------------------------------------------------------
 
+
 def test_compute_awq_scale_shape():
     """compute_awq_scale returns (n_groups,) where n_groups = in_features // group_size."""
     w = make_weight()
     act_stats = make_activation_stats()
     n_groups = IN_FEATURES // GROUP_SIZE
 
-    scale = compute_awq_scale(w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5)
-    assert scale.shape == (n_groups,), (
-        f"Expected ({n_groups},), got {scale.shape}"
+    scale = compute_awq_scale(
+        w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5
     )
+    assert scale.shape == (n_groups,), f"Expected ({n_groups},), got {scale.shape}"
 
 
 def test_compute_awq_scale_positive():
     """All scale values from compute_awq_scale must be positive."""
     w = make_weight()
     act_stats = make_activation_stats()
-    scale = compute_awq_scale(w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5)
+    scale = compute_awq_scale(
+        w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5
+    )
     assert (scale > 0).all(), "AWQ scale values must be positive"
 
 
@@ -114,35 +115,41 @@ def test_compute_awq_scale_positive():
 # 4. quantize_weight_awq returns integer-valued weight_int
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_weight_awq_integer_valued():
     """weight_int from quantize_weight_awq must contain integer values."""
     w = make_weight()
     act_stats = make_activation_stats()
-    scale = compute_awq_scale(w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5)
+    scale = compute_awq_scale(
+        w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5
+    )
 
-    weight_int, scale_pg, zero_pg = quantize_weight_awq(w, scale, n_bits=N_BITS, group_size=GROUP_SIZE)
+    weight_int, scale_pg, zero_pg = quantize_weight_awq(
+        w, scale, n_bits=N_BITS, group_size=GROUP_SIZE
+    )
 
     # Cast to float and check all values are integers
     w_float = weight_int.float()
-    assert torch.all(w_float == w_float.round()), (
-        "weight_int must contain integer-valued entries"
-    )
+    assert torch.all(w_float == w_float.round()), "weight_int must contain integer-valued entries"
 
 
 # ---------------------------------------------------------------------------
 # 5. quantize_weight_awq weight_int values in [-2^(n_bits-1), 2^(n_bits-1)-1]
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_weight_awq_value_range():
     """weight_int values must be within [-8, 7] for n_bits=4."""
     w = make_weight()
     act_stats = make_activation_stats()
-    scale = compute_awq_scale(w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5)
+    scale = compute_awq_scale(
+        w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5
+    )
 
     weight_int, _, _ = quantize_weight_awq(w, scale, n_bits=N_BITS, group_size=GROUP_SIZE)
 
-    qmin = -(2 ** (N_BITS - 1))       # -8
-    qmax = 2 ** (N_BITS - 1) - 1       # 7
+    qmin = -(2 ** (N_BITS - 1))  # -8
+    qmax = 2 ** (N_BITS - 1) - 1  # 7
     w_int = weight_int.to(torch.int32)
     assert w_int.min().item() >= qmin, f"Min value {w_int.min().item()} < {qmin}"
     assert w_int.max().item() <= qmax, f"Max value {w_int.max().item()} > {qmax}"
@@ -152,18 +159,23 @@ def test_quantize_weight_awq_value_range():
 # 6. dequantize_weight_awq(quantize_weight_awq(W)) ≈ W (within quantization error)
 # ---------------------------------------------------------------------------
 
+
 def test_dequantize_roundtrip():
     """Dequantize(quantize(W)) should approximate W within INT4 quantization error."""
     w = make_weight()
     act_stats = make_activation_stats()
-    scale = compute_awq_scale(w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5)
+    scale = compute_awq_scale(
+        w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=5
+    )
 
-    weight_int, scale_pg, zero_pg = quantize_weight_awq(w, scale, n_bits=N_BITS, group_size=GROUP_SIZE)
+    weight_int, scale_pg, zero_pg = quantize_weight_awq(
+        w, scale, n_bits=N_BITS, group_size=GROUP_SIZE
+    )
     w_hat = dequantize_weight_awq(weight_int, scale_pg, zero_pg, group_size=GROUP_SIZE)
 
     assert w_hat.shape == w.shape, f"Shape mismatch: {w_hat.shape} != {w.shape}"
     # Allow generous tolerance for 4-bit quantization
-    max_err = (w_hat - w).abs().max().item()
+    (w_hat - w).abs().max().item()
     # The dequantized result is W_scaled (AWQ-scaled), not the original W.
     # We just check the shape and that it's finite.
     assert torch.isfinite(w_hat).all(), "Dequantized weights contain inf/nan"
@@ -173,6 +185,7 @@ def test_dequantize_roundtrip():
 # 7. Quantization error is smaller with AWQ scale vs uniform scale (quality test)
 # ---------------------------------------------------------------------------
 
+
 def test_awq_scale_reduces_error():
     """AWQ scale should provide competitive or better quantization vs uniform scale."""
     torch.manual_seed(SEED)
@@ -180,14 +193,20 @@ def test_awq_scale_reduces_error():
     act_stats = make_activation_stats()
 
     # AWQ scale
-    awq_scale = compute_awq_scale(w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=20)
-    w_int_awq, scale_awq, zero_awq = quantize_weight_awq(w, awq_scale, n_bits=N_BITS, group_size=GROUP_SIZE)
+    awq_scale = compute_awq_scale(
+        w, act_stats, n_bits=N_BITS, group_size=GROUP_SIZE, scale_search_steps=20
+    )
+    w_int_awq, scale_awq, zero_awq = quantize_weight_awq(
+        w, awq_scale, n_bits=N_BITS, group_size=GROUP_SIZE
+    )
     w_hat_awq = dequantize_weight_awq(w_int_awq, scale_awq, zero_awq, group_size=GROUP_SIZE)
 
     # Uniform scale (all ones)
     n_groups = IN_FEATURES // GROUP_SIZE
     uniform_scale = torch.ones(n_groups)
-    w_int_uni, scale_uni, zero_uni = quantize_weight_awq(w, uniform_scale, n_bits=N_BITS, group_size=GROUP_SIZE)
+    w_int_uni, scale_uni, zero_uni = quantize_weight_awq(
+        w, uniform_scale, n_bits=N_BITS, group_size=GROUP_SIZE
+    )
     w_hat_uni = dequantize_weight_awq(w_int_uni, scale_uni, zero_uni, group_size=GROUP_SIZE)
 
     # Both should reconstruct finite values
@@ -202,6 +221,7 @@ def test_awq_scale_reduces_error():
 # ---------------------------------------------------------------------------
 # 8. AWQLinear instantiates with correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_awq_linear_init_shapes():
     """AWQLinear buffers should have the expected shapes after construction."""
@@ -233,6 +253,7 @@ def test_awq_linear_init_shapes():
 # 9. AWQLinear.from_linear() creates module with same in/out features as original
 # ---------------------------------------------------------------------------
 
+
 def test_awq_linear_from_linear_features():
     """AWQLinear.from_linear() should preserve in_features and out_features."""
     torch.manual_seed(SEED)
@@ -259,12 +280,15 @@ def test_awq_linear_from_linear_features():
 # 10. AWQLinear forward output shape matches nn.Linear output shape
 # ---------------------------------------------------------------------------
 
+
 def test_awq_linear_forward_shape():
     """AWQLinear forward should return the same output shape as nn.Linear."""
     torch.manual_seed(SEED)
     linear = nn.Linear(IN_FEATURES, OUT_FEATURES, bias=True)
     act_stats = make_activation_stats()
-    awq_layer = AWQLinear.from_linear(linear, act_stats, group_size=GROUP_SIZE, n_bits=N_BITS, scale_search_steps=5)
+    awq_layer = AWQLinear.from_linear(
+        linear, act_stats, group_size=GROUP_SIZE, n_bits=N_BITS, scale_search_steps=5
+    )
 
     torch.manual_seed(SEED + 10)
     x = torch.randn(BATCH, SEQ_LEN, IN_FEATURES)
@@ -282,12 +306,15 @@ def test_awq_linear_forward_shape():
 # 11. AWQLinear forward is numerically close to original Linear (within quant error)
 # ---------------------------------------------------------------------------
 
+
 def test_awq_linear_forward_close_to_original():
     """AWQLinear forward should be reasonably close to original nn.Linear."""
     torch.manual_seed(SEED)
     linear = nn.Linear(IN_FEATURES, OUT_FEATURES, bias=False)
     act_stats = make_activation_stats()
-    awq_layer = AWQLinear.from_linear(linear, act_stats, group_size=GROUP_SIZE, n_bits=N_BITS, scale_search_steps=10)
+    awq_layer = AWQLinear.from_linear(
+        linear, act_stats, group_size=GROUP_SIZE, n_bits=N_BITS, scale_search_steps=10
+    )
 
     torch.manual_seed(SEED + 20)
     x = torch.randn(BATCH, IN_FEATURES)
@@ -297,7 +324,7 @@ def test_awq_linear_forward_close_to_original():
         y_awq = awq_layer(x)
 
     # INT4 quantization introduces error; allow generous tolerance
-    max_diff = (y_orig - y_awq).abs().max().item()
+    (y_orig - y_awq).abs().max().item()
     mean_diff = (y_orig - y_awq).abs().mean().item()
     # Check output is finite and within a reasonable bound
     assert torch.isfinite(y_awq).all(), "AWQ forward output contains inf/nan"
@@ -309,6 +336,7 @@ def test_awq_linear_forward_close_to_original():
 # 12. group_size=None (whole-tensor quantization) doesn't crash
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_whole_tensor_no_crash():
     """quantize_weight_awq and dequantize_weight_awq with group_size=None should not crash."""
     w = make_weight()
@@ -316,7 +344,9 @@ def test_quantize_whole_tensor_no_crash():
     uniform_scale = torch.ones(n_groups_fallback)
 
     # Should not raise
-    weight_int, scale_pg, zero_pg = quantize_weight_awq(w, uniform_scale, n_bits=N_BITS, group_size=None)
+    weight_int, scale_pg, zero_pg = quantize_weight_awq(
+        w, uniform_scale, n_bits=N_BITS, group_size=None
+    )
     w_hat = dequantize_weight_awq(weight_int, scale_pg, zero_pg, group_size=None)
 
     assert torch.isfinite(w_hat).all(), "Whole-tensor dequantized weights contain inf/nan"
@@ -327,17 +357,18 @@ def test_quantize_whole_tensor_no_crash():
 # 13. n_bits=8 quantization works alongside n_bits=4
 # ---------------------------------------------------------------------------
 
+
 def test_int8_quantization():
     """quantize_weight_awq should work correctly with n_bits=8."""
     w = make_weight()
-    act_stats = make_activation_stats()
+    make_activation_stats()
     n_groups = IN_FEATURES // GROUP_SIZE
     scale = torch.ones(n_groups)
 
     weight_int8, scale_pg, zero_pg = quantize_weight_awq(w, scale, n_bits=8, group_size=GROUP_SIZE)
 
-    qmin_8 = -(2 ** 7)       # -128
-    qmax_8 = 2 ** 7 - 1       # 127
+    qmin_8 = -(2**7)  # -128
+    qmax_8 = 2**7 - 1  # 127
 
     w_int = weight_int8.to(torch.int32)
     assert w_int.min().item() >= qmin_8, f"INT8 min {w_int.min().item()} < {qmin_8}"
@@ -352,14 +383,13 @@ def test_int8_quantization():
 
     err_8 = (w_hat - w * scale.repeat_interleave(GROUP_SIZE).unsqueeze(0)).abs().mean().item()
     err_4 = (w_hat4 - w * scale.repeat_interleave(GROUP_SIZE).unsqueeze(0)).abs().mean().item()
-    assert err_8 <= err_4 + 1e-3, (
-        f"INT8 error ({err_8:.4f}) should be <= INT4 error ({err_4:.4f})"
-    )
+    assert err_8 <= err_4 + 1e-3, f"INT8 error ({err_8:.4f}) should be <= INT4 error ({err_4:.4f})"
 
 
 # ---------------------------------------------------------------------------
 # 14. AWQCalibrator.collect() returns dict with activation stats
 # ---------------------------------------------------------------------------
+
 
 def test_awq_calibrator_collect_returns_dict():
     """AWQCalibrator.collect() should return a dict of module_name -> Tensor."""
@@ -394,6 +424,7 @@ def test_awq_calibrator_collect_returns_dict():
 # 15. AWQCalibrator.quantize_model() returns model with replaced layers
 # ---------------------------------------------------------------------------
 
+
 def test_awq_calibrator_quantize_model_replaces_layers():
     """quantize_model() should replace nn.Linear layers with AWQLinear."""
     torch.manual_seed(SEED)
@@ -419,12 +450,15 @@ def test_awq_calibrator_quantize_model_replaces_layers():
 
     # At least some Linear layers should be replaced
     replaced = [m for m in quantized_model.modules() if isinstance(m, AWQLinear)]
-    assert len(replaced) > 0, "quantize_model() should replace at least one nn.Linear with AWQLinear"
+    assert len(replaced) > 0, (
+        "quantize_model() should replace at least one nn.Linear with AWQLinear"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 16. Quantized model forward pass runs without error
 # ---------------------------------------------------------------------------
+
 
 def test_quantized_model_forward_runs():
     """Quantized model should run forward pass without errors."""

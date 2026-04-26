@@ -389,7 +389,11 @@ def test_interface_workflow_run_command_executes_approval_gated_workflow():
                 "minimum_scope": "allow_once",
                 "decision": "allow",
             },
-            {"kind": "tool_call", "tool_name": "search_repo", "arguments": {"query": "AureliusShell"}},
+            {
+                "kind": "tool_call",
+                "tool_name": "search_repo",
+                "arguments": {"query": "AureliusShell"},
+            },
         ],
     }
 
@@ -432,7 +436,9 @@ def test_interface_mode_set_command_updates_shell_state():
 def test_interface_capability_schema_command_outputs_versioned_schema():
     parser = _parser()
     schema_buf = io.StringIO()
-    schema_args = parser.parse_args(["interface", "--repo-root", str(_repo_root()), "capability", "schema"])
+    schema_args = parser.parse_args(
+        ["interface", "--repo-root", str(_repo_root()), "capability", "schema"]
+    )
     rc = dispatch_interface_command(schema_args, schema_buf)
     payload = json.loads(schema_buf.getvalue())
 
@@ -447,7 +453,9 @@ def test_interface_persistent_channel_and_journal_commands(tmp_path):
     runtime = AureliusInterfaceRuntime(
         runtime.framework,
         root_dir=_repo_root(),
-        session_manager=runtime.session_manager.__class__(state_dir=tmp_path / "sessions", root_dir=_repo_root()),
+        session_manager=runtime.session_manager.__class__(
+            state_dir=tmp_path / "sessions", root_dir=_repo_root()
+        ),
         skill_catalog=runtime.skill_catalog,
     )
     session = runtime.create_session(session_id="session-cli", workspace=str(tmp_path))

@@ -5,11 +5,8 @@ Uses only tiny corpora so the suite is fast.
 
 from __future__ import annotations
 
-import json
 import os
 import tempfile
-
-import pytest
 
 from src.data.bpe_tokenizer_v2 import (
     BPEMergeRule,
@@ -174,9 +171,7 @@ def test_save_load_vocab_preserves_encoding():
     ids_before = tok.encode(text)
 
     tok2 = BPETokenizer(vocab_size=290)
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as fh:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
         path = fh.name
     try:
         tok.save_vocab(path)

@@ -9,16 +9,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # SemanticClusterer
 # ---------------------------------------------------------------------------
+
 
 class SemanticClusterer:
     """Groups generated sequences into semantic clusters."""
@@ -26,7 +25,7 @@ class SemanticClusterer:
     def __init__(self, similarity_threshold: float = 0.5) -> None:
         self.similarity_threshold = similarity_threshold
 
-    def jaccard_similarity(self, a: List[int], b: List[int]) -> float:
+    def jaccard_similarity(self, a: list[int], b: list[int]) -> float:
         """Jaccard similarity between two token sequences (treated as sets)."""
         set_a = set(a)
         set_b = set(b)
@@ -36,7 +35,7 @@ class SemanticClusterer:
         union = len(set_a | set_b)
         return intersection / union if union > 0 else 0.0
 
-    def cluster_by_token_overlap(self, sequences: List[List[int]]) -> List[int]:
+    def cluster_by_token_overlap(self, sequences: list[list[int]]) -> list[int]:
         """Greedy Jaccard clustering.
 
         Assign each sequence to the first existing cluster whose representative
@@ -45,8 +44,8 @@ class SemanticClusterer:
         if not sequences:
             return []
 
-        cluster_ids: List[int] = []
-        representatives: List[List[int]] = []
+        cluster_ids: list[int] = []
+        representatives: list[list[int]] = []
 
         for seq in sequences:
             assigned = -1
@@ -61,7 +60,7 @@ class SemanticClusterer:
 
         return cluster_ids
 
-    def cluster_by_embedding(self, embeddings: torch.Tensor) -> List[int]:
+    def cluster_by_embedding(self, embeddings: torch.Tensor) -> list[int]:
         """Distance-based clustering using cosine similarity.
 
         Greedy: assign to the first existing cluster centre whose cosine
@@ -78,8 +77,8 @@ class SemanticClusterer:
 
         normed = F.normalize(embeddings.float(), dim=-1)  # [N, d]
 
-        cluster_ids: List[int] = []
-        centres: List[torch.Tensor] = []
+        cluster_ids: list[int] = []
+        centres: list[torch.Tensor] = []
 
         for i in range(n):
             vec = normed[i]
@@ -101,6 +100,7 @@ class SemanticClusterer:
 # SemanticEntropy
 # ---------------------------------------------------------------------------
 
+
 class SemanticEntropy:
     """Semantic entropy for free-form generation."""
 
@@ -110,8 +110,8 @@ class SemanticEntropy:
 
     def compute(
         self,
-        sequences: List[List[int]],
-        log_probs: List[float],
+        sequences: list[list[int]],
+        log_probs: list[float],
     ) -> float:
         """Estimate semantic entropy.
 
@@ -144,7 +144,7 @@ class SemanticEntropy:
 
         return float(entropy)
 
-    def predictive_entropy(self, log_probs: List[float]) -> float:
+    def predictive_entropy(self, log_probs: list[float]) -> float:
         """Standard entropy over individual sequences: -sum_i p_i * log p_i."""
         if not log_probs:
             return 0.0
@@ -165,8 +165,8 @@ class SemanticEntropy:
 
     def excess_entropy(
         self,
-        sequences: List[List[int]],
-        log_probs: List[float],
+        sequences: list[list[int]],
+        log_probs: list[float],
     ) -> float:
         """predictive_entropy - semantic_entropy (within-cluster ambiguity).
 
@@ -180,6 +180,7 @@ class SemanticEntropy:
 # ---------------------------------------------------------------------------
 # GenerationSampler
 # ---------------------------------------------------------------------------
+
 
 class GenerationSampler:
     """Samples token sequences from a language model with temperature + nucleus."""
@@ -221,9 +222,9 @@ class GenerationSampler:
 
     def sample_sequence(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new: int,
-    ) -> Tuple[List[int], float]:
+    ) -> tuple[list[int], float]:
         """Temperature + nucleus sampling.
 
         Returns:
@@ -233,7 +234,7 @@ class GenerationSampler:
         device = next(self.model.parameters()).device
 
         context = list(input_ids)
-        generated: List[int] = []
+        generated: list[int] = []
         total_log_prob = 0.0
 
         with torch.no_grad():
@@ -263,10 +264,10 @@ class GenerationSampler:
 
     def sample_n(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         n: int,
         max_new: int,
-    ) -> List[Tuple[List[int], float]]:
+    ) -> list[tuple[list[int], float]]:
         """Draw n independent samples."""
         return [self.sample_sequence(input_ids, max_new) for _ in range(n)]
 
@@ -274,6 +275,7 @@ class GenerationSampler:
 # ---------------------------------------------------------------------------
 # SetBasedUncertainty
 # ---------------------------------------------------------------------------
+
 
 class SetBasedUncertainty:
     """Set-based uncertainty metrics."""
@@ -283,7 +285,7 @@ class SetBasedUncertainty:
 
     def answer_set_size(
         self,
-        sequences: List[List[int]],
+        sequences: list[list[int]],
         clusterer: SemanticClusterer,
     ) -> int:
         """Number of distinct semantic clusters."""
@@ -294,9 +296,9 @@ class SetBasedUncertainty:
 
     def p_true_estimate(
         self,
-        sequences: List[List[int]],
-        log_probs: List[float],
-        verifier_scores: List[float],
+        sequences: list[list[int]],
+        log_probs: list[float],
+        verifier_scores: list[float],
     ) -> float:
         """Weighted average of verifier scores by sequence probability."""
         if not sequences:
@@ -312,7 +314,7 @@ class SetBasedUncertainty:
         scores_t = torch.tensor(verifier_scores, dtype=torch.float64)
         return float(torch.dot(probs, scores_t).item())
 
-    def confidence_score(self, log_probs: List[float]) -> float:
+    def confidence_score(self, log_probs: list[float]) -> float:
         """Geometric mean of probabilities: exp(mean(log_probs))."""
         if not log_probs:
             return 0.0
@@ -324,18 +326,19 @@ class SetBasedUncertainty:
 # UncertaintyCalibrator
 # ---------------------------------------------------------------------------
 
+
 class UncertaintyCalibrator:
     """Bin-based isotonic calibrator for uncertainty scores."""
 
     def __init__(self) -> None:
-        self._bin_edges: List[float] = []
-        self._bin_values: List[float] = []
+        self._bin_edges: list[float] = []
+        self._bin_values: list[float] = []
         self._fitted = False
 
     def fit(
         self,
-        predictions: List[float],
-        labels: List[int],
+        predictions: list[float],
+        labels: list[int],
         n_bins: int = 10,
     ) -> None:
         """Bin predictions and compute average label per bin."""
@@ -348,7 +351,7 @@ class UncertaintyCalibrator:
             bin_sum[b] += float(lab)
             bin_cnt[b] += 1
 
-        bin_values: List[float] = []
+        bin_values: list[float] = []
         for b in range(n_bins):
             if bin_cnt[b] > 0:
                 bin_values.append(bin_sum[b] / bin_cnt[b])
@@ -362,7 +365,7 @@ class UncertaintyCalibrator:
         self._fitted = True
 
     @staticmethod
-    def _isotonic_regression(values: List[float]) -> List[float]:
+    def _isotonic_regression(values: list[float]) -> list[float]:
         """Pool adjacent violators algorithm for non-decreasing isotonic fit."""
         n = len(values)
         if n == 0:
@@ -390,8 +393,8 @@ class UncertaintyCalibrator:
 
     def ece(
         self,
-        uncertainties: List[float],
-        labels: List[int],
+        uncertainties: list[float],
+        labels: list[int],
         n_bins: int = 10,
     ) -> float:
         """Expected Calibration Error in [0, 1].
@@ -427,6 +430,7 @@ class UncertaintyCalibrator:
 # ---------------------------------------------------------------------------
 # SemanticEntropyConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SemanticEntropyConfig:

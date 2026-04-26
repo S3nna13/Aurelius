@@ -14,8 +14,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -82,7 +81,7 @@ class RequestBatcher:
     # Batch formation
     # ------------------------------------------------------------------
 
-    def try_form_batch(self) -> Optional[Batch]:
+    def try_form_batch(self) -> Batch | None:
         """Attempt to form a :class:`Batch` from the current queue.
 
         A batch is returned when:
@@ -105,10 +104,7 @@ class RequestBatcher:
         now = time.monotonic()
         oldest_wait_ms = (now - self._queue[0].enqueued_at) * 1000.0
 
-        should_batch = (
-            len(self._queue) >= self.max_batch_size
-            or oldest_wait_ms >= self.max_wait_ms
-        )
+        should_batch = len(self._queue) >= self.max_batch_size or oldest_wait_ms >= self.max_wait_ms
 
         if not should_batch:
             return None

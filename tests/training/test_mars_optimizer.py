@@ -1,16 +1,16 @@
 """Tests for the MARS optimizer."""
+
 import copy
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.mars_optimizer import MARSOptimizer
-
 
 # ---------------------------------------------------------------------------
 # Test 1: Basic instantiation with default params
 # ---------------------------------------------------------------------------
+
 
 def test_instantiation_defaults():
     """MARSOptimizer must be constructable and store correct default hyperparams."""
@@ -30,6 +30,7 @@ def test_instantiation_defaults():
 # Test 2: Single step updates parameters
 # ---------------------------------------------------------------------------
 
+
 def test_single_step_updates_params():
     """Parameters must change after a single MARS optimizer step."""
     p = nn.Parameter(torch.randn(8, 8))
@@ -48,6 +49,7 @@ def test_single_step_updates_params():
 # Test 3: Loss decreases on simple quadratic over 100 steps
 # ---------------------------------------------------------------------------
 
+
 def test_quadratic_loss_decreases():
     """Loss must decrease when minimizing f(x) = ||x||^2 over 100 steps."""
     x = nn.Parameter(torch.randn(32) * 3.0)
@@ -56,13 +58,13 @@ def test_quadratic_loss_decreases():
     initial_loss = None
     for _ in range(100):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         if initial_loss is None:
             initial_loss = loss.item()
         loss.backward()
         opt.step()
 
-    final_loss = (x ** 2).sum().item()
+    final_loss = (x**2).sum().item()
     assert final_loss < initial_loss, (
         f"Loss did not decrease: initial={initial_loss:.4f}, final={final_loss:.4f}"
     )
@@ -71,6 +73,7 @@ def test_quadratic_loss_decreases():
 # ---------------------------------------------------------------------------
 # Test 4: Weight decay shrinks params without gradients
 # ---------------------------------------------------------------------------
+
 
 def test_weight_decay_shrinks_params():
     """With weight_decay > 0 and zero gradients, parameters must shrink toward 0."""
@@ -92,6 +95,7 @@ def test_weight_decay_shrinks_params():
 # Test 5: gamma=0 gives standard Adam behaviour
 # ---------------------------------------------------------------------------
 
+
 def test_gamma_zero_equals_adam():
     """With gamma=0, MARS should produce updates identical to standard AdamW."""
     torch.manual_seed(42)
@@ -102,9 +106,7 @@ def test_gamma_zero_equals_adam():
     opt_mars = MARSOptimizer(
         [p_mars], lr=1e-3, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0, gamma=0.0
     )
-    opt_adam = torch.optim.AdamW(
-        [p_adam], lr=1e-3, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0
-    )
+    opt_adam = torch.optim.AdamW([p_adam], lr=1e-3, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0)
 
     torch.manual_seed(0)
     for _ in range(5):
@@ -123,6 +125,7 @@ def test_gamma_zero_equals_adam():
 # ---------------------------------------------------------------------------
 # Test 6: get_lr() returns correct learning rates
 # ---------------------------------------------------------------------------
+
 
 def test_get_lr_returns_correct_values():
     """get_lr() must return the lr for each parameter group."""
@@ -149,6 +152,7 @@ def test_get_lr_single_group():
 # Test 7: zero_variance_reduction() resets last_grad to None
 # ---------------------------------------------------------------------------
 
+
 def test_zero_variance_reduction_resets_last_grad():
     """zero_variance_reduction() must set last_grad to None for all params."""
     p = nn.Parameter(torch.randn(8))
@@ -174,6 +178,7 @@ def test_zero_variance_reduction_resets_last_grad():
 # ---------------------------------------------------------------------------
 # Test 8: State dict save/load preserves optimizer state
 # ---------------------------------------------------------------------------
+
 
 def test_state_dict_save_load():
     """State dict round-trip must preserve optimizer state tensors."""
@@ -211,6 +216,7 @@ def test_state_dict_save_load():
 # Test 9: Works with parameter groups having different lrs
 # ---------------------------------------------------------------------------
 
+
 def test_parameter_groups_different_lrs():
     """Different param groups with distinct lrs must both update independently."""
     p1 = nn.Parameter(torch.ones(8, 8))
@@ -243,6 +249,7 @@ def test_parameter_groups_different_lrs():
 # Test 10: gradient clipping compatible
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_clipping_compatible():
     """MARS optimizer must work correctly after torch.nn.utils.clip_grad_norm_."""
     model = nn.Linear(16, 16)
@@ -260,10 +267,7 @@ def test_gradient_clipping_compatible():
 
     opt.step()
 
-    changed = any(
-        not torch.allclose(p.data, before[name])
-        for name, p in model.named_parameters()
-    )
+    changed = any(not torch.allclose(p.data, before[name]) for name, p in model.named_parameters())
     assert changed, "No parameters were updated after gradient clipping + optimizer step"
 
     # Ensure no NaNs or Infs in parameters

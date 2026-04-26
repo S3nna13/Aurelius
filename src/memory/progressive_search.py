@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 class ProgressiveSearchError(Exception):
@@ -135,9 +134,7 @@ class ProgressiveSearcher:
         """Fetch surrounding temporal context within ±*radius* in timestamp-sorted index."""
         # Find position in timestamp-sorted list
         try:
-            pos = next(
-                i for i, e in enumerate(ts_sorted) if e.entry_id == entry.entry_id
-            )
+            pos = next(i for i, e in enumerate(ts_sorted) if e.entry_id == entry.entry_id)
         except StopIteration:
             return []
 

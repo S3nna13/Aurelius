@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 from src.alignment.rloo import (
@@ -16,7 +15,6 @@ from src.alignment.rloo import (
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Tiny model helpers
@@ -46,7 +44,10 @@ def _make_trainer(
 ) -> tuple[RLOOTrainer, AureliusTransformer]:
     model = _make_model()
     optimizer = optim.SGD(model.parameters(), lr=1e-4)
-    reward_fn = lambda responses: torch.ones(len(responses))
+
+    def reward_fn(responses):
+        return torch.ones(len(responses))
+
     trainer = RLOOTrainer(
         model=model,
         reward_fn=reward_fn,
@@ -62,11 +63,22 @@ def _make_trainer(
 # 1. rloo_advantage_estimator: mean advantage per group ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_rloo_advantage_mean_per_group_zero():
     """For any set of rewards, the within-group mean advantage should be ~0."""
     k = 4
-    rewards = torch.tensor([1.0, 2.0, 3.0, 4.0,   # group 0
-                             0.5, 1.5, 2.5, 3.5])  # group 1
+    rewards = torch.tensor(
+        [
+            1.0,
+            2.0,
+            3.0,
+            4.0,  # group 0
+            0.5,
+            1.5,
+            2.5,
+            3.5,
+        ]
+    )  # group 1
     advantages = rloo_advantage_estimator(rewards, k)
     n = rewards.shape[0] // k
     adv_grouped = advantages.view(n, k)
@@ -79,6 +91,7 @@ def test_rloo_advantage_mean_per_group_zero():
 # ---------------------------------------------------------------------------
 # 2. Higher reward → positive advantage
 # ---------------------------------------------------------------------------
+
 
 def test_rloo_higher_reward_positive_advantage():
     """The response with the highest reward in a group must have a positive advantage."""
@@ -98,6 +111,7 @@ def test_rloo_higher_reward_positive_advantage():
 # 3. k=1 → zero advantages
 # ---------------------------------------------------------------------------
 
+
 def test_rloo_k1_zero_advantages():
     """With only one response per prompt there is no baseline, so advantages = 0."""
     k = 1
@@ -112,6 +126,7 @@ def test_rloo_k1_zero_advantages():
 # 4. RLOOConfig default values
 # ---------------------------------------------------------------------------
 
+
 def test_rloo_config_defaults():
     cfg = RLOOConfig()
     assert cfg.k_responses == 4
@@ -124,6 +139,7 @@ def test_rloo_config_defaults():
 # ---------------------------------------------------------------------------
 # 5. compute_rloo_advantages output shape matches input
 # ---------------------------------------------------------------------------
+
 
 def test_compute_rloo_advantages_shape():
     trainer, _ = _make_trainer(k=4)
@@ -139,6 +155,7 @@ def test_compute_rloo_advantages_shape():
 # 6. compute_policy_gradient_loss returns scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_pg_loss_is_scalar():
     trainer, _ = _make_trainer()
     B = 8
@@ -152,6 +169,7 @@ def test_pg_loss_is_scalar():
 # ---------------------------------------------------------------------------
 # 7. KL penalty increases when log_probs diverge from ref_log_probs
 # ---------------------------------------------------------------------------
+
 
 def test_kl_penalty_increases_with_divergence():
     trainer, _ = _make_trainer()
@@ -174,10 +192,11 @@ def test_kl_penalty_increases_with_divergence():
 # 8. train_step returns dict with all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_required_keys():
     trainer, model = _make_trainer(k=2)
-    B = 2   # prompts × k_responses
-    T = 6   # sequence length (must be > 1 for teacher-forcing shift)
+    B = 2  # prompts × k_responses
+    T = 6  # sequence length (must be > 1 for teacher-forcing shift)
 
     torch.manual_seed(0)
     input_ids = torch.randint(0, TINY_CFG.vocab_size, (B, T))
@@ -187,14 +206,13 @@ def test_train_step_required_keys():
     result = trainer.train_step(input_ids, ref_log_probs, rewards)
 
     required = {"loss", "pg_loss", "kl_loss", "mean_reward", "mean_advantage"}
-    assert required.issubset(result.keys()), (
-        f"Missing keys: {required - result.keys()}"
-    )
+    assert required.issubset(result.keys()), f"Missing keys: {required - result.keys()}"
 
 
 # ---------------------------------------------------------------------------
 # 9. normalize_advantages=True makes advantages zero-mean, unit-variance
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_advantages_zero_mean_unit_var():
     """After normalisation the advantage tensor should be z-scored."""
@@ -218,6 +236,7 @@ def test_normalize_advantages_zero_mean_unit_var():
 # ---------------------------------------------------------------------------
 # 10. Gradient flows through pg_loss correctly
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_pg_loss():
     """loss.backward() must not raise and must produce non-None gradients."""

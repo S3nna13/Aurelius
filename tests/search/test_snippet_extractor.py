@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.search.snippet_extractor import (
+    SNIPPET_EXTRACTOR_REGISTRY,
     Snippet,
     SnippetConfig,
     SnippetExtractor,
-    SNIPPET_EXTRACTOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):
@@ -30,6 +30,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # Frozen dataclasses
 # ---------------------------------------------------------------------------
+
 
 class TestSnippetFrozen:
     def test_snippet_is_frozen(self):
@@ -68,6 +69,7 @@ class TestSnippetConfigFrozen:
 # ---------------------------------------------------------------------------
 # SnippetExtractor.extract
 # ---------------------------------------------------------------------------
+
 
 class TestExtractBasic:
     def test_extract_finds_term_in_doc(self):
@@ -188,6 +190,7 @@ class TestExtractMerging:
 # SnippetExtractor.highlight
 # ---------------------------------------------------------------------------
 
+
 class TestHighlight:
     def test_highlight_wraps_term(self):
         extractor = SnippetExtractor()
@@ -209,7 +212,9 @@ class TestHighlight:
 
     def test_highlight_multiple_terms(self):
         extractor = SnippetExtractor()
-        s = Snippet(text="alpha and beta", start_pos=0, end_pos=14, score=2.0, query_terms=["alpha", "beta"])
+        s = Snippet(
+            text="alpha and beta", start_pos=0, end_pos=14, score=2.0, query_terms=["alpha", "beta"]
+        )
         result = extractor.highlight(s)
         assert "**alpha**" in result
         assert "**beta**" in result

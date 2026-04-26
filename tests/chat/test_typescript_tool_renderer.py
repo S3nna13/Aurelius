@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.chat.typescript_tool_renderer import (
-    ts_type,
+    TS_TOOL_RENDERER,
+    TypeScriptToolRenderer,
     render_function_signature,
     render_namespace,
     render_tools_markdown,
-    TypeScriptToolRenderer,
-    TS_TOOL_RENDERER,
+    ts_type,
 )
-
 
 # ---------------------------------------------------------------------------
 # ts_type

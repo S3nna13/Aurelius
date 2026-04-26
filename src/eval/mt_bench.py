@@ -6,13 +6,13 @@ Pure PyTorch only — no HuggingFace, scipy, or sklearn dependencies.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Category constants
 # ---------------------------------------------------------------------------
+
 
 class MTBenchCategory:
     WRITING = "writing"
@@ -29,20 +29,21 @@ class MTBenchCategory:
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MTBenchQuestion:
     question_id: int
     category: str
-    turns: List[str]
-    reference_answer: Optional[str] = None
+    turns: list[str]
+    reference_answer: str | None = None
 
 
 @dataclass
 class MTBenchResult:
     question_id: int
     category: str
-    scores: List[float]
-    judge_outputs: List[str]
+    scores: list[float]
+    judge_outputs: list[str]
     mean_score: float = field(init=False)
 
     def __post_init__(self) -> None:
@@ -61,7 +62,7 @@ _SCORE_PATTERNS = [
 ]
 
 
-def extract_score_from_text(text: str) -> Optional[float]:
+def extract_score_from_text(text: str) -> float | None:
     """Parse a numeric score (1-10) from judge output text.
 
     Tries the following patterns in order:
@@ -88,6 +89,7 @@ def extract_score_from_text(text: str) -> Optional[float]:
 # Judge prompt builder
 # ---------------------------------------------------------------------------
 
+
 def build_judge_prompt(question: str, response: str, category: str = "general") -> str:
     """Build a structured prompt asking the judge to rate the response 1-10.
 
@@ -110,6 +112,7 @@ def build_judge_prompt(question: str, response: str, category: str = "general") 
 # ---------------------------------------------------------------------------
 # Judge model
 # ---------------------------------------------------------------------------
+
 
 class JudgeModel:
     """Wraps a generate function and provides scoring utilities."""
@@ -135,20 +138,18 @@ class JudgeModel:
 
     def score_multi_turn(
         self,
-        questions: List[str],
-        responses: List[str],
+        questions: list[str],
+        responses: list[str],
         category: str,
-    ) -> List[float]:
+    ) -> list[float]:
         """Score each (question, response) pair independently."""
-        return [
-            self.score_response(q, r, category)
-            for q, r in zip(questions, responses)
-        ]
+        return [self.score_response(q, r, category) for q, r in zip(questions, responses)]
 
 
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class MTBenchEvaluator:
     """End-to-end MT-Bench evaluator."""
@@ -167,8 +168,8 @@ class MTBenchEvaluator:
 
     def evaluate_question(self, question: MTBenchQuestion) -> MTBenchResult:
         """For each turn, generate a response then score it."""
-        scores: List[float] = []
-        judge_outputs: List[str] = []
+        scores: list[float] = []
+        judge_outputs: list[str] = []
 
         for turn_prompt in question.turns:
             response = self.generate_response(turn_prompt)
@@ -185,11 +186,11 @@ class MTBenchEvaluator:
             judge_outputs=judge_outputs,
         )
 
-    def evaluate_all(self, questions: List[MTBenchQuestion]) -> List[MTBenchResult]:
+    def evaluate_all(self, questions: list[MTBenchQuestion]) -> list[MTBenchResult]:
         """Evaluate every question and return a list of results."""
         return [self.evaluate_question(q) for q in questions]
 
-    def compute_summary(self, results: List[MTBenchResult]) -> Dict:
+    def compute_summary(self, results: list[MTBenchResult]) -> dict:
         """Compute overall and per-category mean scores.
 
         Returns:
@@ -202,13 +203,12 @@ class MTBenchEvaluator:
         if not results:
             return {"overall_score": 0.0, "per_category": {}, "n_questions": 0}
 
-        per_category: Dict[str, List[float]] = {}
+        per_category: dict[str, list[float]] = {}
         for result in results:
             per_category.setdefault(result.category, []).append(result.mean_score)
 
-        per_category_means: Dict[str, float] = {
-            cat: sum(scores) / len(scores)
-            for cat, scores in per_category.items()
+        per_category_means: dict[str, float] = {
+            cat: sum(scores) / len(scores) for cat, scores in per_category.items()
         }
 
         overall = sum(r.mean_score for r in results) / len(results)
@@ -224,7 +224,8 @@ class MTBenchEvaluator:
 # Sample questions
 # ---------------------------------------------------------------------------
 
-def get_sample_questions() -> List[MTBenchQuestion]:
+
+def get_sample_questions() -> list[MTBenchQuestion]:
     """Return 5 sample MT-Bench style questions covering different categories."""
     return [
         MTBenchQuestion(
@@ -254,7 +255,7 @@ def get_sample_questions() -> List[MTBenchQuestion]:
             question_id=4,
             category=MTBenchCategory.REASONING,
             turns=[
-                "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",
+                "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",  # noqa: E501
             ],
         ),
         MTBenchQuestion(

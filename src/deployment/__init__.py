@@ -40,11 +40,19 @@ __all__ = [
 # Additive only; reuses ARTIFACT_BUILDER_REGISTRY above and leaves all prior
 # entries untouched.
 from src.deployment.github_actions import (
-    GHActionsGenerator as _GHActionsGenerator,
-    GHActionsWorkflow as _GHActionsWorkflow,
     GHActionsError as _GHActionsError,
-    GHActionsTrigger as _GHActionsTrigger,
+)
+from src.deployment.github_actions import (
+    GHActionsGenerator as _GHActionsGenerator,
+)
+from src.deployment.github_actions import (
     GHActionsJob as _GHActionsJob,
+)
+from src.deployment.github_actions import (
+    GHActionsTrigger as _GHActionsTrigger,
+)
+from src.deployment.github_actions import (
+    GHActionsWorkflow as _GHActionsWorkflow,
 )
 
 GHActionsGenerator = _GHActionsGenerator
@@ -53,7 +61,7 @@ GHActionsError = _GHActionsError
 GHActionsTrigger = _GHActionsTrigger
 GHActionsJob = _GHActionsJob
 
-ARTIFACT_BUILDER_REGISTRY.setdefault("github_actions", _GHActionsGenerator)
+ARTIFACT_BUILDER_REGISTRY.setdefault("github_actions", _GHActionsGenerator)  # type: ignore[arg-type]
 
 __all__ = list(__all__) + [
     "GHActionsGenerator",
@@ -66,10 +74,20 @@ __all__ = list(__all__) + [
 # --- Rollout manager ----------------------------------------------------------
 from src.deployment.rollout_manager import (
     CANARY_3_STAGE as _CANARY_3_STAGE,
+)
+from src.deployment.rollout_manager import (
     ROLLOUT_REGISTRY as _ROLLOUT_REGISTRY,
+)
+from src.deployment.rollout_manager import (
     RolloutManager as _RolloutManager,
+)
+from src.deployment.rollout_manager import (
     RolloutPlan as _RolloutPlan,
+)
+from src.deployment.rollout_manager import (
     RolloutStage as _RolloutStage,
+)
+from src.deployment.rollout_manager import (
     RolloutStrategy as _RolloutStrategy,
 )
 
@@ -92,8 +110,14 @@ __all__ = list(__all__) + [
 # --- Secret provider ----------------------------------------------------------
 from src.deployment.secret_provider import (
     SECRET_PROVIDER_REGISTRY as _SECRET_PROVIDER_REGISTRY,
+)
+from src.deployment.secret_provider import (
     SecretBackend as _SecretBackend,
+)
+from src.deployment.secret_provider import (
     SecretProvider as _SecretProvider,
+)
+from src.deployment.secret_provider import (
     SecretValue as _SecretValue,
 )
 
@@ -110,17 +134,34 @@ __all__ = list(__all__) + [
 ]
 
 # --- Kubernetes operator (additive, cycle-146) ---------------------------------
+# --- A/B test router ----------------------------------------------------------
+from src.deployment.ab_test_router import (  # noqa: E402,F401
+    AB_TEST_ROUTER_REGISTRY,
+    ABTestRouter,
+    Assignment,
+    Variant,
+)
+
+# --- Canary controller --------------------------------------------------------
+from src.deployment.canary_controller import (  # noqa: E402,F401
+    CANARY_CONTROLLER_REGISTRY,
+    DEFAULT_STAGES,
+    CanaryController,
+    CanaryStage,
+    CanaryState,
+)
+
+# --- Config drift detector ----------------------------------------------------
+from src.deployment.config_drift_detector import (  # noqa: E402,F401
+    CONFIG_DRIFT_DETECTOR_REGISTRY,
+    ConfigDriftDetector,
+    ConfigField,
+    DriftReport,
+)
 from src.deployment.kubernetes_operator import (  # noqa: E402,F401
     K8S_OPERATOR_REGISTRY,
     KubernetesOperator,
     ModelDeploymentSpec,
-)
-
-# --- Serve config (additive, cycle-146) ----------------------------------------
-from src.deployment.serve_config import (  # noqa: E402,F401
-    SERVE_CONFIG_REGISTRY,
-    ServeConfigBuilder,
-    ServeDeploymentConfig,
 )
 
 # --- Model packager (additive, cycle-146) --------------------------------------
@@ -130,27 +171,9 @@ from src.deployment.model_packager import (  # noqa: E402,F401
     PackageManifest,
 )
 
-# --- Canary controller --------------------------------------------------------
-from src.deployment.canary_controller import (  # noqa: E402,F401
-    CANARY_CONTROLLER_REGISTRY,
-    CanaryController,
-    CanaryStage,
-    CanaryState,
-    DEFAULT_STAGES,
-)
-
-# --- A/B test router ----------------------------------------------------------
-from src.deployment.ab_test_router import (  # noqa: E402,F401
-    AB_TEST_ROUTER_REGISTRY,
-    ABTestRouter,
-    Assignment,
-    Variant,
-)
-
-# --- Config drift detector ----------------------------------------------------
-from src.deployment.config_drift_detector import (  # noqa: E402,F401
-    CONFIG_DRIFT_DETECTOR_REGISTRY,
-    ConfigDriftDetector,
-    ConfigField,
-    DriftReport,
+# --- Serve config (additive, cycle-146) ----------------------------------------
+from src.deployment.serve_config import (  # noqa: E402,F401
+    SERVE_CONFIG_REGISTRY,
+    ServeConfigBuilder,
+    ServeDeploymentConfig,
 )

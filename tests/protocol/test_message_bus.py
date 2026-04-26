@@ -1,16 +1,16 @@
 """Tests for src/protocol/message_bus.py (~50 tests)."""
-import pytest
+
 from src.protocol.message_bus import (
+    MESSAGE_BUS,
     AgentMessage,
     MessageBus,
     MessageEnvelope,
-    MESSAGE_BUS,
 )
-
 
 # ---------------------------------------------------------------------------
 # MessageEnvelope
 # ---------------------------------------------------------------------------
+
 
 def make_envelope(**kwargs):
     defaults = dict(sender="alice", recipient="bob", topic="chat", payload={})
@@ -46,6 +46,7 @@ class TestMessageEnvelope:
 
     def test_timestamp_iso_format(self):
         from datetime import datetime
+
         e = make_envelope()
         # Should parse without error
         datetime.fromisoformat(e.timestamp)
@@ -76,7 +77,7 @@ class TestMessageEnvelope:
         assert e.priority == 5
 
     def test_explicit_id_override(self):
-        e = make_envelope()
+        make_envelope()
         e2 = MessageEnvelope(sender="a", recipient="b", topic="t", payload={}, id="abcd1234")
         assert e2.id == "abcd1234"
 
@@ -84,6 +85,7 @@ class TestMessageEnvelope:
 # ---------------------------------------------------------------------------
 # AgentMessage
 # ---------------------------------------------------------------------------
+
 
 def make_message(**kwargs):
     envelope = make_envelope()
@@ -116,6 +118,7 @@ class TestAgentMessage:
 # ---------------------------------------------------------------------------
 # MessageBus
 # ---------------------------------------------------------------------------
+
 
 class TestMessageBus:
     def setup_method(self):

@@ -9,8 +9,6 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -24,9 +22,7 @@ class VocabConfig:
     vocab_size: int = 50257
     min_freq: int = 1
     max_token_len: int = 20
-    special_tokens: List[str] = field(
-        default_factory=lambda: ["<pad>", "<eos>", "<bos>", "<unk>"]
-    )
+    special_tokens: list[str] = field(default_factory=lambda: ["<pad>", "<eos>", "<bos>", "<unk>"])
 
 
 # ---------------------------------------------------------------------------
@@ -34,19 +30,19 @@ class VocabConfig:
 # ---------------------------------------------------------------------------
 
 
-def compute_token_frequencies(token_ids: List[int], vocab_size: int) -> List[int]:
+def compute_token_frequencies(token_ids: list[int], vocab_size: int) -> list[int]:
     """Return a list of length *vocab_size* where index i = count of token i.
 
     Runs in O(n) time.  Token ids outside [0, vocab_size) are silently ignored.
     """
-    freqs: List[int] = [0] * vocab_size
+    freqs: list[int] = [0] * vocab_size
     for tid in token_ids:
         if 0 <= tid < vocab_size:
             freqs[tid] += 1
     return freqs
 
 
-def compute_zipf_exponent(frequencies: List[int]) -> float:
+def compute_zipf_exponent(frequencies: list[int]) -> float:
     """Fit Zipf's law to *frequencies* and return the exponent alpha.
 
     Method: linear regression on log(rank) vs log(freq) for all non-zero
@@ -78,7 +74,7 @@ def compute_zipf_exponent(frequencies: List[int]) -> float:
     return -slope  # return alpha (positive)
 
 
-def find_rare_tokens(frequencies: List[int], min_freq: int) -> List[int]:
+def find_rare_tokens(frequencies: list[int], min_freq: int) -> list[int]:
     """Return sorted list of token indices with 0 < freq < min_freq.
 
     These are tokens that appear in the corpus but are rare.
@@ -86,12 +82,12 @@ def find_rare_tokens(frequencies: List[int], min_freq: int) -> List[int]:
     return sorted(i for i, f in enumerate(frequencies) if 0 < f < min_freq)
 
 
-def find_dead_tokens(frequencies: List[int]) -> List[int]:
+def find_dead_tokens(frequencies: list[int]) -> list[int]:
     """Return sorted list of token indices that never appeared (freq == 0)."""
     return [i for i, f in enumerate(frequencies) if f == 0]
 
 
-def compute_token_length_distribution(vocab: Dict[int, str]) -> dict:
+def compute_token_length_distribution(vocab: dict[int, str]) -> dict:
     """Analyse the string lengths of tokens in *vocab*.
 
     Returns a dict with keys:
@@ -124,7 +120,7 @@ def compute_token_length_distribution(vocab: Dict[int, str]) -> dict:
     }
 
 
-def compute_fertility(text_tokens: List[int], char_count: int) -> float:
+def compute_fertility(text_tokens: list[int], char_count: int) -> float:
     """Return characters-per-token ratio (char_count / len(text_tokens)).
 
     Returns 0.0 on division-by-zero (empty token list).
@@ -134,7 +130,7 @@ def compute_fertility(text_tokens: List[int], char_count: int) -> float:
     return char_count / len(text_tokens)
 
 
-def estimate_compression_ratio(text: str, token_ids: List[int]) -> float:
+def estimate_compression_ratio(text: str, token_ids: list[int]) -> float:
     """Return bytes-per-token ratio: len(text.encode()) / len(token_ids).
 
     Returns 0.0 when token_ids is empty.
@@ -156,7 +152,7 @@ _PUNCT_CHARS = set("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
 class VocabAnalyzer:
     """High-level vocabulary analysis over a {id: token_string} vocab dict."""
 
-    def __init__(self, vocab: Dict[int, str], config: VocabConfig) -> None:
+    def __init__(self, vocab: dict[int, str], config: VocabConfig) -> None:
         self.vocab = vocab
         self.config = config
 
@@ -164,7 +160,7 @@ class VocabAnalyzer:
     # Public API
     # ------------------------------------------------------------------
 
-    def analyze_corpus(self, token_ids: List[int]) -> dict:
+    def analyze_corpus(self, token_ids: list[int]) -> dict:
         """Run all analyses on *token_ids* and return a summary dict.
 
         Keys returned:
@@ -202,9 +198,7 @@ class VocabAnalyzer:
             "coverage": coverage,
         }
 
-    def find_similar_tokens(
-        self, token_id: int, n: int = 5
-    ) -> List[Tuple[int, float]]:
+    def find_similar_tokens(self, token_id: int, n: int = 5) -> list[tuple[int, float]]:
         """Find *n* vocab tokens whose string length is closest to *token_id*'s.
 
         Returns list of (id, length_diff) sorted by length_diff ascending,
@@ -214,7 +208,7 @@ class VocabAnalyzer:
             return []
 
         target_len = len(self.vocab[token_id])
-        candidates: List[Tuple[int, float]] = []
+        candidates: list[tuple[int, float]] = []
         for tid, tok in self.vocab.items():
             if tid == token_id:
                 continue
@@ -247,9 +241,7 @@ class VocabAnalyzer:
             stripped = tok.strip()
 
             # Special tokens
-            if tok in special_set or (
-                stripped.startswith("<") and stripped.endswith(">")
-            ):
+            if tok in special_set or (stripped.startswith("<") and stripped.endswith(">")):
                 n_special += 1
                 continue
 

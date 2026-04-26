@@ -8,11 +8,11 @@ References:
     Wang et al. 2021 (TENT) — https://arxiv.org/abs/2006.10726
     Zhang et al. 2022 (MEMO) — https://arxiv.org/abs/2110.09506
 """
+
 from __future__ import annotations
 
-import math
 import logging
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # AdaptableParams
 # ---------------------------------------------------------------------------
 
+
 class AdaptableParams:
     """Identifies which parameters to adapt during TTA.
 
@@ -37,18 +38,18 @@ class AdaptableParams:
             - 'last_layer': only params of the last nn.Linear found in model
     """
 
-    def __init__(self, model: nn.Module, adapt_mode: str = 'affine') -> None:
-        if adapt_mode not in ('affine', 'all', 'last_layer'):
+    def __init__(self, model: nn.Module, adapt_mode: str = "affine") -> None:
+        if adapt_mode not in ("affine", "all", "last_layer"):
             raise ValueError(
                 f"adapt_mode must be 'affine', 'all', or 'last_layer'; got {adapt_mode!r}"
             )
         self.model = model
         self.adapt_mode = adapt_mode
 
-    def get_adapt_params(self) -> List[nn.Parameter]:
+    def get_adapt_params(self) -> list[nn.Parameter]:
         """Return parameters to adapt based on adapt_mode."""
-        if self.adapt_mode == 'affine':
-            params: List[nn.Parameter] = []
+        if self.adapt_mode == "affine":
+            params: list[nn.Parameter] = []
             for module in self.model.modules():
                 if isinstance(module, (nn.LayerNorm, nn.BatchNorm1d)):
                     if module.weight is not None:
@@ -57,7 +58,7 @@ class AdaptableParams:
                         params.append(module.bias)
             return params
 
-        elif self.adapt_mode == 'all':
+        elif self.adapt_mode == "all":
             return [p for p in self.model.parameters() if p.requires_grad]
 
         else:  # 'last_layer'
@@ -91,6 +92,7 @@ class AdaptableParams:
 # EntropyMinimizer  (TENT)
 # ---------------------------------------------------------------------------
 
+
 class EntropyMinimizer:
     """Core TTA via entropy minimization (TENT).
 
@@ -104,7 +106,7 @@ class EntropyMinimizer:
     def __init__(
         self,
         model_fn: Callable,
-        adapt_params: List[nn.Parameter],
+        adapt_params: list[nn.Parameter],
         lr: float = 0.001,
         n_steps: int = 1,
     ) -> None:
@@ -126,7 +128,7 @@ class EntropyMinimizer:
         probs = torch.softmax(logits, dim=-1)
         return -(probs * torch.log(probs + 1e-10)).sum(dim=-1)
 
-    def adapt_step(self, x: Tensor) -> Tuple[Tensor, float]:
+    def adapt_step(self, x: Tensor) -> tuple[Tensor, float]:
         """Run one (or n_steps) adaptation step(s) minimizing prediction entropy.
 
         Args:
@@ -139,14 +141,14 @@ class EntropyMinimizer:
         """
         # Compute initial entropy before any updates (no grad)
         with torch.no_grad():
-            init_logits_full = self.model_fn(x)          # (B, T, V)
-            init_logits = init_logits_full[:, -1, :]      # (B, V)
+            init_logits_full = self.model_fn(x)  # (B, T, V)
+            init_logits = init_logits_full[:, -1, :]  # (B, V)
             initial_entropy = self.entropy(init_logits).mean().item()
 
         for _ in range(self.n_steps):
             self.optimizer.zero_grad()
-            logits_full = self.model_fn(x)               # (B, T, V)
-            logits = logits_full[:, -1, :]               # (B, V)
+            logits_full = self.model_fn(x)  # (B, T, V)
+            logits = logits_full[:, -1, :]  # (B, V)
             loss = self.entropy(logits).mean()
             loss.backward()
             self.optimizer.step()
@@ -162,6 +164,7 @@ class EntropyMinimizer:
 # ---------------------------------------------------------------------------
 # AugmentationPool  (for MEMO)
 # ---------------------------------------------------------------------------
+
 
 class AugmentationPool:
     """Generates augmented versions of token input for MEMO.
@@ -187,7 +190,7 @@ class AugmentationPool:
             Tensor of shape (n_augmentations, T).
         """
         B, T = token_ids.shape
-        assert B == 1, "augment_token_ids expects a single example (B=1)"
+        assert B == 1, "augment_token_ids expects a single example (B=1)"  # noqa: S101
 
         # Repeat the single example n_augmentations times: (N, T)
         repeated = token_ids.expand(self.n_augmentations, T).clone()
@@ -206,6 +209,7 @@ class AugmentationPool:
 # MEMOAdapter  (MEMO)
 # ---------------------------------------------------------------------------
 
+
 class MEMOAdapter:
     """MEMO: minimize marginal entropy over augmentations.
 
@@ -220,7 +224,7 @@ class MEMOAdapter:
     def __init__(
         self,
         model_fn: Callable,
-        adapt_params: List[nn.Parameter],
+        adapt_params: list[nn.Parameter],
         aug_pool: AugmentationPool,
         vocab_size: int,
         lr: float = 0.001,
@@ -240,12 +244,12 @@ class MEMOAdapter:
         Returns:
             Scalar tensor: entropy of the marginal prediction.
         """
-        probs = torch.softmax(logits_batch, dim=-1)       # (N_aug, V)
-        marginal = probs.mean(dim=0)                       # (V,)
+        probs = torch.softmax(logits_batch, dim=-1)  # (N_aug, V)
+        marginal = probs.mean(dim=0)  # (V,)
         h = -(marginal * torch.log(marginal + 1e-10)).sum()
         return h
 
-    def adapt_step(self, x: Tensor) -> Dict[str, float]:
+    def adapt_step(self, x: Tensor) -> dict[str, float]:
         """Run one MEMO adaptation step.
 
         Args:
@@ -258,14 +262,14 @@ class MEMOAdapter:
         aug_ids = self.aug_pool.augment_token_ids(x, self.vocab_size)
 
         self.optimizer.zero_grad()
-        logits_full = self.model_fn(aug_ids)              # (N_aug, T, V)
-        logits_last = logits_full[:, -1, :]               # (N_aug, V)
+        logits_full = self.model_fn(aug_ids)  # (N_aug, T, V)
+        logits_last = logits_full[:, -1, :]  # (N_aug, V)
 
         loss = self.marginal_entropy(logits_last)
         loss.backward()
         self.optimizer.step()
 
         return {
-            'marginal_entropy': loss.item(),
-            'n_augmentations': self.aug_pool.n_augmentations,
+            "marginal_entropy": loss.item(),
+            "n_augmentations": self.aug_pool.n_augmentations,
         }

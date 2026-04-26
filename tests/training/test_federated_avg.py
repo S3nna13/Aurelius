@@ -7,7 +7,6 @@ from collections import OrderedDict
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -21,7 +20,6 @@ from src.training.federated_avg import (
     get_model_weights,
     set_model_weights,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
@@ -107,7 +105,9 @@ def test_get_model_weights_is_copy(tiny_model):
     original_val = weights[first_key].clone()
     weights[first_key].fill_(999.0)
     model_val = dict(tiny_model.named_parameters())[first_key].detach()
-    assert torch.allclose(model_val, original_val), "get_model_weights should return copies, not views"
+    assert torch.allclose(model_val, original_val), (
+        "get_model_weights should return copies, not views"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -132,8 +132,7 @@ def test_set_model_weights_round_trip(tiny_model):
 
 def test_set_model_weights_updates_in_place(tiny_model):
     new_weights = OrderedDict(
-        (name, torch.ones_like(param))
-        for name, param in tiny_model.named_parameters()
+        (name, torch.ones_like(param)) for name, param in tiny_model.named_parameters()
     )
     set_model_weights(tiny_model, new_weights)
     for name, param in tiny_model.named_parameters():
@@ -259,9 +258,7 @@ def test_fedprox_penalty_scales_with_mu(tiny_model):
             p.add_(1.0)
     penalty_low = fedprox_penalty(tiny_model, global_weights, mu=0.1)
     penalty_high = fedprox_penalty(tiny_model, global_weights, mu=1.0)
-    assert penalty_high.item() > penalty_low.item(), (
-        "Higher mu should produce larger penalty"
-    )
+    assert penalty_high.item() > penalty_low.item(), "Higher mu should produce larger penalty"
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +289,7 @@ def test_federated_client_local_train_updates_weights(tiny_model, input_ids):
     updated_weights, _ = client.local_train(input_ids)
     # At least one parameter should differ after training
     any_changed = any(
-        not torch.allclose(original_weights[k], updated_weights[k])
-        for k in original_weights
+        not torch.allclose(original_weights[k], updated_weights[k]) for k in original_weights
     )
     assert any_changed, "Local training should update at least one parameter"
 
@@ -348,7 +344,7 @@ def test_federated_server_fedmedian_aggregation(tiny_model):
     w2 = OrderedDict((n, torch.full_like(p, 2.0)) for n, p in tiny_model.named_parameters())
     w3 = OrderedDict((n, torch.full_like(p, 4.0)) for n, p in tiny_model.named_parameters())
 
-    aggregated = server.aggregate_round([(w1, 10), (w2, 10), (w3, 10)])
+    server.aggregate_round([(w1, 10), (w2, 10), (w3, 10)])
     # Median of [0, 2, 4] = 2
     for name, param in tiny_model.named_parameters():
         expected = torch.full_like(param, 2.0)

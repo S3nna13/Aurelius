@@ -16,16 +16,15 @@ interpretability setting).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PatchscopeConfig:
@@ -35,9 +34,10 @@ class PatchscopeConfig:
     Actual index resolution is deferred to runtime so the config is
     model-agnostic.
     """
-    source_layer: int = -1     # layer from which to extract hidden state
+
+    source_layer: int = -1  # layer from which to extract hidden state
     source_position: int = -1  # token position to extract (-1 = last token)
-    target_layer: int = 0      # layer at which to inject the hidden state
+    target_layer: int = 0  # layer at which to inject the hidden state
     target_position: int = -1  # token position at which to inject (-1 = last)
 
 
@@ -45,20 +45,20 @@ class PatchscopeConfig:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _resolve_index(idx: int, length: int) -> int:
     """Resolve a possibly-negative index into [0, length)."""
     if idx < 0:
         idx = length + idx
     if not (0 <= idx < length):
-        raise IndexError(
-            f"Index {idx} is out of range for dimension of size {length}."
-        )
+        raise IndexError(f"Index {idx} is out of range for dimension of size {length}.")
     return idx
 
 
 # ---------------------------------------------------------------------------
 # Patchscope
 # ---------------------------------------------------------------------------
+
 
 class Patchscope:
     """Patchscope: extract and re-inject hidden states via forward hooks.
@@ -75,7 +75,7 @@ class Patchscope:
     def __init__(
         self,
         model: nn.Module,
-        config: Optional[PatchscopeConfig] = None,
+        config: PatchscopeConfig | None = None,
     ) -> None:
         self.model = model
         self.config = config or PatchscopeConfig()
@@ -124,7 +124,7 @@ class Patchscope:
             output: tuple,
         ) -> None:
             # TransformerBlock.forward returns (hidden, kv).
-            hidden = output[0]          # (B, T, d_model)
+            hidden = output[0]  # (B, T, d_model)
             captured.append(hidden[:, src_pos_idx, :].detach().clone())
 
         handle = self.model.layers[src_layer_idx].register_forward_hook(  # type: ignore[index]
@@ -170,7 +170,7 @@ class Patchscope:
             output: tuple,
         ) -> tuple:
             # output is (hidden_state, kv) from TransformerBlock.
-            h, kv = output[0], output[1]    # h: (B, T, d_model)
+            h, kv = output[0], output[1]  # h: (B, T, d_model)
             h = h.clone()
             h[:, tgt_pos_idx, :] = hidden
             return (h, kv)
@@ -204,5 +204,5 @@ class Patchscope:
         -------
         Tensor of shape (B, T_tgt, vocab_size) — output logits after injection.
         """
-        hidden = self.extract(source_ids)           # (B, d_model)
+        hidden = self.extract(source_ids)  # (B, d_model)
         return self.inject_and_decode(target_ids, hidden)  # (B, T_tgt, vocab_size)

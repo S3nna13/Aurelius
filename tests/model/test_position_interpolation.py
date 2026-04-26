@@ -6,19 +6,18 @@ All tests use pure PyTorch tensors only.
 
 from __future__ import annotations
 
-import math
 import pytest
 import torch
 
 from src.model.position_interpolation_v2 import (
     PIConfig,
-    compute_scale_factor,
-    interpolate_freqs_cis,
-    build_interpolated_freqs_cis,
-    ntk_aware_freqs_cis,
-    yarn_freqs_cis,
     PositionInterpolator,
     _standard_freqs_cis,
+    build_interpolated_freqs_cis,
+    compute_scale_factor,
+    interpolate_freqs_cis,
+    ntk_aware_freqs_cis,
+    yarn_freqs_cis,
 )
 
 # ---------------------------------------------------------------------------
@@ -36,6 +35,7 @@ T = 8
 # 1. PIConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_piconfig_defaults():
     cfg = PIConfig()
     assert cfg.d_head == 64
@@ -48,6 +48,7 @@ def test_piconfig_defaults():
 # ---------------------------------------------------------------------------
 # 2. compute_scale_factor linear = extended / original
 # ---------------------------------------------------------------------------
+
 
 def test_compute_scale_factor_linear():
     cfg = PIConfig(
@@ -63,6 +64,7 @@ def test_compute_scale_factor_linear():
 # ---------------------------------------------------------------------------
 # 3. compute_scale_factor NTK != linear
 # ---------------------------------------------------------------------------
+
 
 def test_compute_scale_factor_ntk_differs_from_linear():
     cfg_lin = PIConfig(
@@ -86,6 +88,7 @@ def test_compute_scale_factor_ntk_differs_from_linear():
 # 4. build_interpolated_freqs_cis shape (EXT_LEN, D_HEAD // 2)
 # ---------------------------------------------------------------------------
 
+
 def test_build_interpolated_freqs_cis_shape():
     cfg = PIConfig(
         d_head=D_HEAD,
@@ -101,6 +104,7 @@ def test_build_interpolated_freqs_cis_shape():
 # 5. interpolated freqs_cis is complex dtype
 # ---------------------------------------------------------------------------
 
+
 def test_build_interpolated_freqs_cis_complex_dtype():
     cfg = PIConfig(
         d_head=D_HEAD,
@@ -115,6 +119,7 @@ def test_build_interpolated_freqs_cis_complex_dtype():
 # ---------------------------------------------------------------------------
 # 6. freqs_cis unit magnitude (|e^{i*theta}| = 1)
 # ---------------------------------------------------------------------------
+
 
 def test_freqs_cis_unit_magnitude():
     cfg = PIConfig(
@@ -132,6 +137,7 @@ def test_freqs_cis_unit_magnitude():
 # 7. ntk_aware_freqs_cis shape
 # ---------------------------------------------------------------------------
 
+
 def test_ntk_aware_freqs_cis_shape():
     scale = 2.0
     freqs = ntk_aware_freqs_cis(D_HEAD, EXT_LEN, base=10000.0, scale=scale)
@@ -142,6 +148,7 @@ def test_ntk_aware_freqs_cis_shape():
 # 8. yarn_freqs_cis shape
 # ---------------------------------------------------------------------------
 
+
 def test_yarn_freqs_cis_shape():
     scale = 2.0
     freqs = yarn_freqs_cis(D_HEAD, EXT_LEN, base=10000.0, scale=scale)
@@ -151,6 +158,7 @@ def test_yarn_freqs_cis_shape():
 # ---------------------------------------------------------------------------
 # 9. PositionInterpolator.get_freqs_cis shape for short seq_len
 # ---------------------------------------------------------------------------
+
 
 def test_position_interpolator_get_freqs_cis_shape_short():
     cfg = PIConfig(
@@ -167,6 +175,7 @@ def test_position_interpolator_get_freqs_cis_shape_short():
 # ---------------------------------------------------------------------------
 # 10. get_freqs_cis for extended length (> original_max_seq_len) works
 # ---------------------------------------------------------------------------
+
 
 def test_position_interpolator_get_freqs_cis_extended():
     cfg = PIConfig(
@@ -185,6 +194,7 @@ def test_position_interpolator_get_freqs_cis_extended():
 # 11. extend_context output shape
 # ---------------------------------------------------------------------------
 
+
 def test_extend_context_output_shape():
     cfg = PIConfig(
         d_head=D_HEAD,
@@ -201,6 +211,7 @@ def test_extend_context_output_shape():
 # ---------------------------------------------------------------------------
 # 12. linear and NTK produce different freqs_cis for same seq_len
 # ---------------------------------------------------------------------------
+
 
 def test_linear_and_ntk_differ():
     seq_len = EXT_LEN
@@ -230,6 +241,7 @@ def test_linear_and_ntk_differ():
 # 13. scale_factor > 1 when extended > original
 # ---------------------------------------------------------------------------
 
+
 def test_scale_factor_greater_than_one():
     for method in ("linear", "ntk", "yarn"):
         cfg = PIConfig(
@@ -246,6 +258,7 @@ def test_scale_factor_greater_than_one():
 # 14. YaRN and NTK produce different freqs_cis
 # ---------------------------------------------------------------------------
 
+
 def test_yarn_and_ntk_differ():
     scale = EXT_LEN / ORIG_LEN
 
@@ -260,6 +273,7 @@ def test_yarn_and_ntk_differ():
 # 15. freqs_cis preserves periodicity — magnitude = 1 for all methods
 # ---------------------------------------------------------------------------
 
+
 def test_freqs_cis_unit_magnitude_all_methods():
     scale = EXT_LEN / ORIG_LEN
 
@@ -269,13 +283,14 @@ def test_freqs_cis_unit_magnitude_all_methods():
     for name, freqs in [("ntk", freqs_ntk), ("yarn", freqs_yarn)]:
         mags = freqs.abs()
         assert torch.allclose(mags, torch.ones_like(mags), atol=1e-5), (
-            f"Method {name} magnitude not 1: max_dev={( mags - 1).abs().max().item()}"
+            f"Method {name} magnitude not 1: max_dev={(mags - 1).abs().max().item()}"
         )
 
 
 # ---------------------------------------------------------------------------
 # 16. interpolate_freqs_cis produces correct output shape
 # ---------------------------------------------------------------------------
+
 
 def test_interpolate_freqs_cis_shape():
     original = _standard_freqs_cis(D_HEAD, ORIG_LEN, 10000.0)
@@ -288,6 +303,7 @@ def test_interpolate_freqs_cis_shape():
 # ---------------------------------------------------------------------------
 # 17. PositionInterpolator caches results (same object returned on second call)
 # ---------------------------------------------------------------------------
+
 
 def test_position_interpolator_caches():
     cfg = PIConfig(
@@ -305,6 +321,7 @@ def test_position_interpolator_caches():
 # ---------------------------------------------------------------------------
 # 18. build_interpolated_freqs_cis works for NTK method
 # ---------------------------------------------------------------------------
+
 
 def test_build_interpolated_freqs_cis_ntk():
     cfg = PIConfig(
@@ -325,6 +342,7 @@ def test_build_interpolated_freqs_cis_ntk():
 # 19. build_interpolated_freqs_cis works for YaRN method
 # ---------------------------------------------------------------------------
 
+
 def test_build_interpolated_freqs_cis_yarn():
     cfg = PIConfig(
         d_head=D_HEAD,
@@ -341,6 +359,7 @@ def test_build_interpolated_freqs_cis_yarn():
 # 20. NTK scale = ratio^(d_head/(d_head-2)) matches manual computation
 # ---------------------------------------------------------------------------
 
+
 def test_ntk_scale_factor_formula():
     cfg = PIConfig(
         d_head=D_HEAD,
@@ -351,5 +370,5 @@ def test_ntk_scale_factor_formula():
     scale = compute_scale_factor(cfg)
     ratio = EXT_LEN / ORIG_LEN
     exponent = D_HEAD / (D_HEAD - 2)
-    expected = ratio ** exponent
+    expected = ratio**exponent
     assert scale == pytest.approx(expected, rel=1e-6)

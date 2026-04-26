@@ -1,29 +1,34 @@
 """Tests for rlvr_trainer.py — RLVRConfig, VerifiableProblem, verifiers,
 generate_rollouts, rlvr_loss, and RLVRTrainer."""
-import math
+
 import pytest
 import torch
 
 from src.alignment.rlvr_trainer import (
     RLVRConfig,
+    RLVRTrainer,
     VerifiableProblem,
-    math_verifier,
     format_verifier,
     generate_rollouts,
+    math_verifier,
     rlvr_loss,
-    RLVRTrainer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Tiny model config (matches architecture context)
 # ---------------------------------------------------------------------------
 
 TINY_CFG = AureliusConfig(
-    n_layers=2, d_model=64, n_heads=4, n_kv_heads=2,
-    head_dim=16, d_ff=128, vocab_size=256, max_seq_len=64,
+    n_layers=2,
+    d_model=64,
+    n_heads=4,
+    n_kv_heads=2,
+    head_dim=16,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=64,
 )
 
 RLVR_CFG = RLVRConfig(
@@ -33,7 +38,9 @@ RLVR_CFG = RLVRConfig(
     n_ppo_steps=1,
 )
 
-DECODE = lambda ids: bytes([i % 256 for i in ids]).decode('utf-8', errors='replace')
+
+def DECODE(ids):
+    return bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
 
 
 @pytest.fixture
@@ -66,6 +73,7 @@ def verifiable_problem(prompt_ids):
 # 1. math_verifier: correct answer -> 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_math_verifier_correct():
     assert math_verifier("The answer is 42", "42") == pytest.approx(1.0)
 
@@ -74,6 +82,7 @@ def test_math_verifier_correct():
 # 2. math_verifier: wrong answer -> 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_math_verifier_wrong():
     assert math_verifier("The answer is 99", "42") == pytest.approx(0.0)
 
@@ -81,6 +90,7 @@ def test_math_verifier_wrong():
 # ---------------------------------------------------------------------------
 # 3. math_verifier: handles float answers
 # ---------------------------------------------------------------------------
+
 
 def test_math_verifier_float():
     assert math_verifier("Result: 3.14", "3.14") == pytest.approx(1.0)
@@ -91,6 +101,7 @@ def test_math_verifier_float():
 # 4. format_verifier: matching substring -> 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_format_verifier_match():
     assert format_verifier("Hello world", "world") == pytest.approx(1.0)
 
@@ -99,6 +110,7 @@ def test_format_verifier_match():
 # 5. format_verifier: non-matching -> 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_format_verifier_no_match():
     assert format_verifier("Hello world", "xyz_zzz_abc_123") == pytest.approx(0.0)
 
@@ -106,6 +118,7 @@ def test_format_verifier_no_match():
 # ---------------------------------------------------------------------------
 # 6. VerifiableProblem constructs correctly
 # ---------------------------------------------------------------------------
+
 
 def test_verifiable_problem_construction(prompt_ids):
     vp = VerifiableProblem(
@@ -121,6 +134,7 @@ def test_verifiable_problem_construction(prompt_ids):
 # ---------------------------------------------------------------------------
 # 7. generate_rollouts returns list of dicts
 # ---------------------------------------------------------------------------
+
 
 def test_generate_rollouts_returns_list(tiny_model, verifiable_problem):
     torch.manual_seed(0)
@@ -138,6 +152,7 @@ def test_generate_rollouts_returns_list(tiny_model, verifiable_problem):
 # ---------------------------------------------------------------------------
 # 8. Each rollout dict has prompt_ids, response_ids, reward
 # ---------------------------------------------------------------------------
+
 
 def test_generate_rollouts_dict_keys(tiny_model, verifiable_problem):
     torch.manual_seed(1)
@@ -161,6 +176,7 @@ def test_generate_rollouts_dict_keys(tiny_model, verifiable_problem):
 # 9. rlvr_loss returns (Tensor, dict)
 # ---------------------------------------------------------------------------
 
+
 def test_rlvr_loss_return_types(tiny_model, tiny_ref_model, verifiable_problem):
     torch.manual_seed(2)
     rollouts = generate_rollouts(
@@ -178,6 +194,7 @@ def test_rlvr_loss_return_types(tiny_model, tiny_ref_model, verifiable_problem):
 # ---------------------------------------------------------------------------
 # 10. dict has keys: policy_loss, kl, mean_reward, reward_std
 # ---------------------------------------------------------------------------
+
 
 def test_rlvr_loss_metric_keys(tiny_model, tiny_ref_model, verifiable_problem):
     torch.manual_seed(3)
@@ -197,6 +214,7 @@ def test_rlvr_loss_metric_keys(tiny_model, tiny_ref_model, verifiable_problem):
 # 11. RLVRTrainer constructs without error
 # ---------------------------------------------------------------------------
 
+
 def test_rlvr_trainer_constructs(tiny_model, tiny_ref_model):
     trainer = RLVRTrainer(
         model=tiny_model,
@@ -213,6 +231,7 @@ def test_rlvr_trainer_constructs(tiny_model, tiny_ref_model):
 # ---------------------------------------------------------------------------
 # 12. RLVRTrainer.step returns metrics dict
 # ---------------------------------------------------------------------------
+
 
 def test_rlvr_trainer_step_returns_metrics(tiny_model, tiny_ref_model, verifiable_problem):
     torch.manual_seed(4)
@@ -234,6 +253,7 @@ def test_rlvr_trainer_step_returns_metrics(tiny_model, tiny_ref_model, verifiabl
 # 13. rlvr_loss loss is finite scalar
 # ---------------------------------------------------------------------------
 
+
 def test_rlvr_loss_finite_scalar(tiny_model, tiny_ref_model, verifiable_problem):
     torch.manual_seed(5)
     rollouts = generate_rollouts(
@@ -252,6 +272,7 @@ def test_rlvr_loss_finite_scalar(tiny_model, tiny_ref_model, verifiable_problem)
 # 14. generate_rollouts: response length matches max_new_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_generate_rollouts_response_length(tiny_model, verifiable_problem):
     torch.manual_seed(6)
     result = generate_rollouts(
@@ -268,6 +289,7 @@ def test_generate_rollouts_response_length(tiny_model, verifiable_problem):
 # ---------------------------------------------------------------------------
 # 15. RLVRConfig defaults are correct
 # ---------------------------------------------------------------------------
+
 
 def test_rlvr_config_defaults():
     cfg = RLVRConfig()

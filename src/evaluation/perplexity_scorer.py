@@ -52,9 +52,7 @@ class PerplexityScorer:
             return "b"
         return "tie"
 
-    def batch_score(
-        self, examples: list[tuple[str, list[float]]]
-    ) -> list[PerplexityResult]:
+    def batch_score(self, examples: list[tuple[str, list[float]]]) -> list[PerplexityResult]:
         """Run from_log_probs for each (text, log_probs) pair."""
         return [self.from_log_probs(text, log_probs) for text, log_probs in examples]
 

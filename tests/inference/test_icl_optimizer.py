@@ -7,18 +7,18 @@ All tests run forward (and some backward) passes.
 from __future__ import annotations
 
 import math
-import random
+
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytest
 
 from src.inference.icl_optimizer import (
     DemonstrationExample,
     ExemplarSelector,
-    PromptOrdering,
-    ICLPromptBuilder,
     ICLEvaluator,
+    ICLPromptBuilder,
+    PromptOrdering,
 )
 
 # ---------------------------------------------------------------------------
@@ -52,6 +52,7 @@ def model():
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_demo(inp_len: int = 3, lbl_len: int = 2, d: int = D_MODEL) -> DemonstrationExample:
     inp = torch.randint(0, VOCAB, (inp_len,))
     lbl = torch.randint(0, VOCAB, (lbl_len,))
@@ -67,6 +68,7 @@ def make_pool(n: int = 6) -> list:
 # 1. DemonstrationExample.to_sequence: length = input + 1 + label
 # ---------------------------------------------------------------------------
 
+
 def test_to_sequence_length():
     demo = make_demo(inp_len=3, lbl_len=2)
     sep_id = 1
@@ -77,6 +79,7 @@ def test_to_sequence_length():
 # ---------------------------------------------------------------------------
 # 2. DemonstrationExample.to_sequence: contains separator
 # ---------------------------------------------------------------------------
+
 
 def test_to_sequence_contains_separator():
     demo = make_demo(inp_len=3, lbl_len=2)
@@ -90,6 +93,7 @@ def test_to_sequence_contains_separator():
 # 3. DemonstrationExample.length: correct count
 # ---------------------------------------------------------------------------
 
+
 def test_demonstration_length():
     demo = make_demo(inp_len=4, lbl_len=3)
     assert demo.length() == 4 + 1 + 3
@@ -98,6 +102,7 @@ def test_demonstration_length():
 # ---------------------------------------------------------------------------
 # 4. ExemplarSelector.random_select: returns k examples from pool
 # ---------------------------------------------------------------------------
+
 
 def test_random_select_returns_k():
     pool = make_pool(6)
@@ -112,6 +117,7 @@ def test_random_select_returns_k():
 # ---------------------------------------------------------------------------
 # 5. ExemplarSelector.similarity_select: most similar example first, shape correct
 # ---------------------------------------------------------------------------
+
 
 def test_similarity_select_ordering():
     pool = make_pool(6)
@@ -129,6 +135,7 @@ def test_similarity_select_ordering():
 # 6. ExemplarSelector.diverse_select: returns k distinct examples
 # ---------------------------------------------------------------------------
 
+
 def test_diverse_select_distinct():
     pool = make_pool(6)
     query = F.normalize(torch.randn(D_MODEL), dim=0)
@@ -142,6 +149,7 @@ def test_diverse_select_distinct():
 # 7. PromptOrdering.similarity_order: sorted by cos sim, shape preserving
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_order_shape():
     examples = make_pool(4)
     query = F.normalize(torch.randn(D_MODEL), dim=0)
@@ -150,8 +158,7 @@ def test_similarity_order_shape():
     assert len(ordered) == len(examples)
     # Most similar last
     sims = [
-        float(F.cosine_similarity(query.unsqueeze(0), ex.embedding.unsqueeze(0)))
-        for ex in ordered
+        float(F.cosine_similarity(query.unsqueeze(0), ex.embedding.unsqueeze(0))) for ex in ordered
     ]
     assert sims == sorted(sims), f"Expected ascending order: {sims}"
 
@@ -159,6 +166,7 @@ def test_similarity_order_shape():
 # ---------------------------------------------------------------------------
 # 8. PromptOrdering.curriculum_order: ascending difficulty
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_order_ascending():
     examples = make_pool(4)
@@ -176,6 +184,7 @@ def test_curriculum_order_ascending():
 # 9. ICLPromptBuilder.build: output is 1D tensor, contains query_ids at end
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_builder_1d_query_at_end():
     demos = [make_demo(2, 2) for _ in range(2)]
     query = torch.randint(0, VOCAB, (3,))
@@ -190,6 +199,7 @@ def test_prompt_builder_1d_query_at_end():
 # 10. ICLPromptBuilder.build: length <= max_length (truncation works)
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_builder_truncation():
     # Make many long demos to force truncation
     demos = [make_demo(5, 5) for _ in range(10)]
@@ -203,6 +213,7 @@ def test_prompt_builder_truncation():
 # 11. ICLPromptBuilder.n_shots_that_fit: <= len(demonstrations), >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_n_shots_that_fit_bounds():
     demos = [make_demo(2, 2) for _ in range(5)]
     query = torch.randint(0, VOCAB, (3,))
@@ -214,6 +225,7 @@ def test_n_shots_that_fit_bounds():
 # ---------------------------------------------------------------------------
 # 12. ICLEvaluator.score_sequence: returns negative float (log probability)
 # ---------------------------------------------------------------------------
+
 
 def test_score_sequence_negative(model):
     ev = ICLEvaluator(model)
@@ -227,6 +239,7 @@ def test_score_sequence_negative(model):
 # ---------------------------------------------------------------------------
 # 13. ICLEvaluator.accuracy: returns float in [0,1]
 # ---------------------------------------------------------------------------
+
 
 def test_accuracy_range(model):
     ev = ICLEvaluator(model)
@@ -246,6 +259,7 @@ def test_accuracy_range(model):
 # 14. ICLEvaluator.calibration_bias: returns finite float
 # ---------------------------------------------------------------------------
 
+
 def test_calibration_bias_finite(model):
     ev = ICLEvaluator(model)
     prompts = [torch.randint(0, VOCAB, (4,)) for _ in range(2)]
@@ -258,6 +272,7 @@ def test_calibration_bias_finite(model):
 # ---------------------------------------------------------------------------
 # 15. More shots -> longer prompt (until max_length)
 # ---------------------------------------------------------------------------
+
 
 def test_more_shots_longer_prompt():
     query = torch.randint(0, VOCAB, (2,))
@@ -277,6 +292,7 @@ def test_more_shots_longer_prompt():
 # ---------------------------------------------------------------------------
 # 16. ExemplarSelector with k=0: returns empty list
 # ---------------------------------------------------------------------------
+
 
 def test_k_zero_returns_empty():
     pool = make_pool(4)

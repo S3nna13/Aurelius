@@ -62,6 +62,7 @@ def make_ids() -> torch.Tensor:
 # SpectralNorm tests
 # ---------------------------------------------------------------------------
 
+
 def test_spectral_norm_compute_sigma_positive():
     """compute_sigma should return a positive scalar."""
     sn = SpectralNorm(n_power_iterations=5)
@@ -117,6 +118,7 @@ def test_spectral_norm_remove_restores_forward():
 # OrthogonalRegularizer tests
 # ---------------------------------------------------------------------------
 
+
 def test_orthogonal_loss_non_negative():
     """Orthogonal loss must be non-negative for arbitrary weight."""
     reg = OrthogonalRegularizer()
@@ -139,7 +141,7 @@ def test_orthogonal_init_produces_near_orthogonal():
     W = torch.empty(8, 8)
     W_orth = OrthogonalRegularizer.orthogonal_init(W)
     gram = W_orth.mm(W_orth.t())
-    I = torch.eye(8)
+    I = torch.eye(8)  # noqa: E741
     err = (gram - I).norm().item()
     assert err < 1e-4, f"Orthogonal init deviation: {err}"
 
@@ -156,6 +158,7 @@ def test_orthogonal_apply_to_model_returns_scalar():
 # ---------------------------------------------------------------------------
 # GradientPenalty tests
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_norm_penalty_non_negative():
     """gradient_norm_penalty should return a non-negative scalar."""
@@ -191,6 +194,7 @@ def test_gradient_norm_penalty_is_scalar():
 # ---------------------------------------------------------------------------
 # WeightConstraints tests
 # ---------------------------------------------------------------------------
+
 
 def test_clip_weights_bounds():
     """After clip_weights all non-bias params should be within [-max_norm, max_norm]."""
@@ -242,6 +246,7 @@ def test_nuclear_norm_non_negative():
 # LipschitzConstraint tests
 # ---------------------------------------------------------------------------
 
+
 def test_lipschitz_enforce_via_clipping_bounds_singular_values():
     """After enforce_via_clipping all singular values should be ≤ k."""
     k = 0.5
@@ -266,6 +271,7 @@ def test_lipschitz_estimate_lipschitz_positive():
 # RegularizedTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_regularized_trainer_train_step_finite():
     """train_step should return finite (task_loss, reg_loss)."""
     model = make_model()
@@ -289,6 +295,7 @@ def test_regularized_trainer_apply_constraints_runs():
 # ---------------------------------------------------------------------------
 # RegConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_regconfig_defaults():
     """RegConfig should have the specified default values."""

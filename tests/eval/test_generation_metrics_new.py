@@ -3,9 +3,8 @@
 Covers: tokenize_simple, compute_ngrams, meteor_score, compute_idf,
         cider_score, sentence_bleu, aggregate_scores, GenerationEvaluator.
 """
-from __future__ import annotations
 
-import math
+from __future__ import annotations
 
 import pytest
 
@@ -20,10 +19,10 @@ from src.eval.generation_metrics_new import (
     tokenize_simple,
 )
 
-
 # ---------------------------------------------------------------------------
 # tokenize_simple
 # ---------------------------------------------------------------------------
+
 
 class TestTokenizeSimple:
     def test_lowercases(self):
@@ -59,6 +58,7 @@ class TestTokenizeSimple:
 # compute_ngrams
 # ---------------------------------------------------------------------------
 
+
 class TestComputeNgrams:
     def test_bigram_count(self):
         """Bigram counts should match manual count."""
@@ -80,6 +80,7 @@ class TestComputeNgrams:
 
     def test_returns_counter(self):
         from collections import Counter
+
         result = compute_ngrams(["a", "b", "c"], 2)
         assert isinstance(result, Counter)
 
@@ -87,6 +88,7 @@ class TestComputeNgrams:
 # ---------------------------------------------------------------------------
 # meteor_score
 # ---------------------------------------------------------------------------
+
 
 class TestMeteorScore:
     def test_perfect_match_is_one(self):
@@ -126,6 +128,7 @@ class TestMeteorScore:
 # compute_idf
 # ---------------------------------------------------------------------------
 
+
 class TestComputeIdf:
     def test_returns_dict_with_correct_keys(self):
         """All corpus words appear as keys in the IDF dict."""
@@ -155,6 +158,7 @@ class TestComputeIdf:
 # cider_score
 # ---------------------------------------------------------------------------
 
+
 class TestCiderScore:
     def test_identical_hypothesis_and_reference(self):
         """Identical hypothesis and single reference → high score (>= 5.0)."""
@@ -183,6 +187,7 @@ class TestCiderScore:
 # ---------------------------------------------------------------------------
 # sentence_bleu
 # ---------------------------------------------------------------------------
+
 
 class TestSentenceBleu:
     def test_identical_hypothesis_is_one(self):
@@ -216,6 +221,7 @@ class TestSentenceBleu:
 # ---------------------------------------------------------------------------
 # aggregate_scores
 # ---------------------------------------------------------------------------
+
 
 class TestAggregateScores:
     HYPS = ["the cat sat on the mat", "the dog ran fast", "hello world"]
@@ -253,6 +259,7 @@ class TestAggregateScores:
 # ---------------------------------------------------------------------------
 # GenerationEvaluator
 # ---------------------------------------------------------------------------
+
 
 class TestGenerationEvaluator:
     def test_score_pair_has_all_metric_keys(self):

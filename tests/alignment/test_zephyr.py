@@ -1,14 +1,12 @@
 """Tests for src/alignment/zephyr.py"""
 
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.alignment.zephyr import (
     AIFeedbackScorer,
     PreferenceDataBuilder,
-    dDPOLoss,
     ZephyrTrainer,
+    dDPOLoss,
 )
 
 SEED = 42
@@ -18,6 +16,7 @@ B = 4
 # ---------------------------------------------------------------------------
 # AIFeedbackScorer
 # ---------------------------------------------------------------------------
+
 
 def test_score_batch_output_shape():
     scorer = AIFeedbackScorer()
@@ -45,6 +44,7 @@ def test_score_batch_single_token():
 # ---------------------------------------------------------------------------
 # PreferenceDataBuilder
 # ---------------------------------------------------------------------------
+
 
 def test_build_pairs_chosen_higher_score():
     scorer = AIFeedbackScorer()
@@ -84,6 +84,7 @@ def test_build_batch_pairs_length():
 # dDPOLoss
 # ---------------------------------------------------------------------------
 
+
 def test_ddpo_loss_scalar():
     loss_fn = dDPOLoss(beta=0.1)
     pi_w = torch.randn(B)
@@ -103,8 +104,7 @@ def test_ddpo_loss_finite():
 
 def test_ddpo_accuracy_in_range():
     loss_fn = dDPOLoss()
-    loss, metrics = loss_fn(torch.randn(B), torch.randn(B),
-                            torch.zeros(B), torch.zeros(B))
+    loss, metrics = loss_fn(torch.randn(B), torch.randn(B), torch.zeros(B), torch.zeros(B))
     assert 0.0 <= metrics["accuracy"].item() <= 1.0
 
 
@@ -129,6 +129,7 @@ def test_ddpo_gradient_flows():
 # ---------------------------------------------------------------------------
 # ZephyrTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_dsft_step_finite():
     torch.manual_seed(SEED)

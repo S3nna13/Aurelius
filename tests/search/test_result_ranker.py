@@ -5,15 +5,15 @@ from __future__ import annotations
 import pytest
 
 from src.search.result_ranker import (
+    RESULT_RANKER,
     RankedResult,
     ResultRanker,
-    RESULT_RANKER,
 )
-
 
 # ---------------------------------------------------------------------------
 # RankedResult
 # ---------------------------------------------------------------------------
+
 
 class TestRankedResult:
     def test_result_id_field(self):
@@ -40,6 +40,7 @@ class TestRankedResult:
 # ---------------------------------------------------------------------------
 # ResultRanker
 # ---------------------------------------------------------------------------
+
 
 class TestReciprocalRankFusion:
     def setup_method(self):
@@ -159,10 +160,7 @@ class TestNormalizeScores:
         assert normed[0].rank == 5
 
     def test_scores_in_range(self):
-        results = [
-            RankedResult(result_id=f"d{i}", score=float(i), rank=i + 1)
-            for i in range(10)
-        ]
+        results = [RankedResult(result_id=f"d{i}", score=float(i), rank=i + 1) for i in range(10)]
         normed = self.ranker.normalize_scores(results)
         for r in normed:
             assert 0.0 <= r.score <= 1.0
@@ -209,18 +207,12 @@ class TestDeduplicate:
         assert self.ranker.deduplicate([]) == []
 
     def test_all_unique(self):
-        results = [
-            RankedResult(result_id=f"d{i}", score=float(i), rank=i + 1)
-            for i in range(5)
-        ]
+        results = [RankedResult(result_id=f"d{i}", score=float(i), rank=i + 1) for i in range(5)]
         deduped = self.ranker.deduplicate(results)
         assert len(deduped) == 5
 
     def test_all_same_id(self):
-        results = [
-            RankedResult(result_id="x", score=float(i), rank=i + 1)
-            for i in range(5)
-        ]
+        results = [RankedResult(result_id="x", score=float(i), rank=i + 1) for i in range(5)]
         deduped = self.ranker.deduplicate(results)
         assert len(deduped) == 1
         assert deduped[0].score == 0.0  # first occurrence

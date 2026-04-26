@@ -7,14 +7,13 @@ All tests use pure PyTorch — no HuggingFace, scipy, or sklearn.
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.token_healing import (
-    TokenHealingConfig,
-    get_token_prefix_logit_bias,
-    apply_logit_bias,
-    greedy_extend,
     TokenHealer,
+    TokenHealingConfig,
+    apply_logit_bias,
+    get_token_prefix_logit_bias,
+    greedy_extend,
 )
 
 # ---------------------------------------------------------------------------
@@ -49,6 +48,7 @@ def make_ids(B: int = BATCH, T: int = SEQ_LEN) -> torch.Tensor:
 # 1. TokenHealingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = TokenHealingConfig()
     assert cfg.n_rollback_tokens == 1
@@ -58,7 +58,9 @@ def test_config_defaults():
 
 
 def test_config_custom():
-    cfg = TokenHealingConfig(n_rollback_tokens=2, top_k_candidates=5, temperature=0.7, max_new_tokens=20)
+    cfg = TokenHealingConfig(
+        n_rollback_tokens=2, top_k_candidates=5, temperature=0.7, max_new_tokens=20
+    )
     assert cfg.n_rollback_tokens == 2
     assert cfg.top_k_candidates == 5
     assert cfg.temperature == 0.7
@@ -68,6 +70,7 @@ def test_config_custom():
 # ---------------------------------------------------------------------------
 # 2. get_token_prefix_logit_bias
 # ---------------------------------------------------------------------------
+
 
 def test_logit_bias_shape():
     bias = get_token_prefix_logit_bias(VOCAB_SIZE, [0, 5, 10])
@@ -104,6 +107,7 @@ def test_logit_bias_all_allowed_all_zero():
 # 3. apply_logit_bias
 # ---------------------------------------------------------------------------
 
+
 def test_apply_logit_bias_output_shape():
     logits = torch.zeros(BATCH, SEQ_LEN, VOCAB_SIZE)
     bias = torch.zeros(VOCAB_SIZE)
@@ -136,6 +140,7 @@ def test_apply_logit_bias_blocks_forbidden_tokens():
 # 4. TokenHealer.rollback_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_rollback_tokens_shapes():
     model_fn = make_mock_model(seed=0)
     healer = TokenHealer(model_fn)
@@ -166,6 +171,7 @@ def test_rollback_tokens_content():
 # ---------------------------------------------------------------------------
 # 5. TokenHealer.get_continuation_candidates
 # ---------------------------------------------------------------------------
+
 
 def test_candidates_shape():
     model_fn = make_mock_model(seed=1)
@@ -201,6 +207,7 @@ def test_candidates_top_k_clamped_to_vocab():
 # 6. TokenHealer.heal — output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_heal_output_shape_matches_input():
     model_fn = make_mock_model(seed=4)
     healer = TokenHealer(model_fn)
@@ -233,6 +240,7 @@ def test_heal_last_token_in_vocab():
 # 7. TokenHealer.heal_and_continue — output length
 # ---------------------------------------------------------------------------
 
+
 def test_heal_and_continue_length():
     """heal_and_continue should return input_len + n_new tokens."""
     model_fn = make_mock_model(seed=7)
@@ -241,9 +249,7 @@ def test_heal_and_continue_length():
     ids = make_ids(B=1, T=SEQ_LEN)
     result = healer.heal_and_continue(ids, n_new=n_new)
     expected_len = SEQ_LEN + n_new
-    assert result.shape == (1, expected_len), (
-        f"Expected (1, {expected_len}), got {result.shape}"
-    )
+    assert result.shape == (1, expected_len), f"Expected (1, {expected_len}), got {result.shape}"
 
 
 def test_heal_and_continue_zero_new_tokens():
@@ -258,6 +264,7 @@ def test_heal_and_continue_zero_new_tokens():
 # ---------------------------------------------------------------------------
 # 8. greedy_extend
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_extend_length():
     model_fn = make_mock_model(seed=9)
@@ -286,6 +293,7 @@ def test_greedy_extend_tokens_in_vocab():
 # ---------------------------------------------------------------------------
 # 9. Logit bias blocks forbidden tokens end-to-end (argmax test)
 # ---------------------------------------------------------------------------
+
 
 def test_logit_bias_blocks_all_but_one():
     """When only one token is allowed, argmax must be that token."""

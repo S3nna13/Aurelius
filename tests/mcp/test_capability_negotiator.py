@@ -1,13 +1,20 @@
 """Tests for capability_negotiator."""
+
 from __future__ import annotations
+
 import pytest
-from src.mcp.capability_negotiator import CapabilityNegotiator, CAPABILITY_NEGOTIATOR_REGISTRY
+
+from src.mcp.capability_negotiator import CAPABILITY_NEGOTIATOR_REGISTRY, CapabilityNegotiator
+
 
 class TestCapabilityNegotiator:
     def test_negotiate_intersection(self):
         n = CapabilityNegotiator()
         n.offer_capabilities(["tools.list", "tools.call", "resources.read"])
-        assert n.negotiate(["tools.list", "tools.call", "prompts.get"]) == ["tools.call", "tools.list"]
+        assert n.negotiate(["tools.list", "tools.call", "prompts.get"]) == [
+            "tools.call",
+            "tools.list",
+        ]
 
     def test_negotiate_empty_remote(self):
         n = CapabilityNegotiator()
@@ -46,6 +53,7 @@ class TestCapabilityNegotiator:
         n.remove_capability("missing")
         assert n.list_supported() == []
 
+
 class TestCapabilityNegotiatorValidation:
     def test_empty_string_raises(self):
         n = CapabilityNegotiator()
@@ -81,6 +89,7 @@ class TestCapabilityNegotiatorValidation:
         n = CapabilityNegotiator()
         with pytest.raises(ValueError):
             n.can_handle("")
+
 
 class TestCapabilityNegotiatorRegistry:
     def test_registry_is_dict(self):

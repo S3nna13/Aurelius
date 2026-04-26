@@ -1,19 +1,17 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.trading.backtester import (
-    Backtester,
-    BacktestConfig,
-    BacktestResult,
-    TradeRecord,
     BACKTESTER_REGISTRY,
-    register_strategy,
+    BacktestConfig,
+    Backtester,
+    BacktestResult,
     list_strategies,
+    register_strategy,
 )
 from src.trading.market_data import OHLCVData
-from src.trading.portfolio import OrderSide
 from src.trading.trading_agent import TradingSignal
 
 
@@ -66,7 +64,7 @@ def _make_bars(symbol: str, count: int = 10, start_price: float = 100.0) -> list
     for i in range(count):
         price += (i % 3 - 1) * 2
         bar = OHLCVData(
-            timestamp=datetime(2024, 1, 1 + i, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 1, 1 + i, tzinfo=UTC),
             open=price - 1,
             high=price + 2,
             low=price - 2,

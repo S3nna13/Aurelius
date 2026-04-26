@@ -6,10 +6,10 @@ Tests for src/data/vocab_builder.py  (≥28 test methods)
 import unittest
 
 from src.data.vocab_builder import (
-    Vocabulary,
+    VOCAB_BUILDER_REGISTRY,
     VocabConfig,
     VocabEntry,
-    VOCAB_BUILDER_REGISTRY,
+    Vocabulary,
 )
 
 
@@ -17,19 +17,19 @@ class TestVocabEntryDataclass(unittest.TestCase):
     """Tests for the VocabEntry frozen dataclass."""
 
     def test_fields_stored(self):
-        entry = VocabEntry(token="hello", token_id=5, freq=10)
+        entry = VocabEntry(token="hello", token_id=5, freq=10)  # noqa: S106
         self.assertEqual(entry.token, "hello")
         self.assertEqual(entry.token_id, 5)
         self.assertEqual(entry.freq, 10)
 
     def test_frozen_raises_on_assignment(self):
-        entry = VocabEntry(token="hello", token_id=5, freq=10)
+        entry = VocabEntry(token="hello", token_id=5, freq=10)  # noqa: S106
         with self.assertRaises((AttributeError, TypeError)):
             entry.token = "world"  # type: ignore[misc]
 
     def test_equality(self):
-        e1 = VocabEntry(token="a", token_id=0, freq=1)
-        e2 = VocabEntry(token="a", token_id=0, freq=1)
+        e1 = VocabEntry(token="a", token_id=0, freq=1)  # noqa: S106
+        e2 = VocabEntry(token="a", token_id=0, freq=1)  # noqa: S106
         self.assertEqual(e1, e2)
 
 
@@ -120,7 +120,7 @@ class TestVocabularyBuild(unittest.TestCase):
     def test_build_respects_min_freq(self):
         v = self._make_vocab(["apple banana apple"], min_freq=2)
         vocab = v.build()
-        self.assertIn("apple", vocab)   # freq=2
+        self.assertIn("apple", vocab)  # freq=2
         self.assertNotIn("banana", vocab)  # freq=1
 
     def test_build_respects_max_vocab(self):

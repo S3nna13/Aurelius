@@ -1,10 +1,10 @@
 """Multi-turn context compression: truncation strategies, token budget enforcement."""
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CompressionStrategy(str, Enum):
+class CompressionStrategy(StrEnum):
     TRUNCATE_OLDEST = "truncate_oldest"
     SUMMARIZE_MIDDLE = "summarize_middle"
     DROP_TOOL_RESULTS = "drop_tool_results"
@@ -55,9 +55,7 @@ class ContextCompressor:
             # Fallback: return everything uncompressed.
             return [CompressedTurn(role=t["role"], content=t["content"]) for t in turns]
 
-    def compression_ratio(
-        self, original: list[dict], compressed: list[CompressedTurn]
-    ) -> float:
+    def compression_ratio(self, original: list[dict], compressed: list[CompressedTurn]) -> float:
         """Return len(compressed) / len(original).
 
         Returns 1.0 when *original* is empty (no compression needed).
@@ -75,7 +73,7 @@ class ContextCompressor:
         system_turns = [t for t in turns if t.get("role") == "system"]
         non_system = [t for t in turns if t.get("role") != "system"]
 
-        kept_non_system = non_system[-self.max_turns:] if self.max_turns > 0 else []
+        kept_non_system = non_system[-self.max_turns :] if self.max_turns > 0 else []
 
         result: list[CompressedTurn] = []
         for t in system_turns:
@@ -95,7 +93,7 @@ class ContextCompressor:
             return [CompressedTurn(role=t["role"], content=t["content"]) for t in turns]
 
         first_turns = turns[:keep_first]
-        last_turns = turns[n - keep_last:] if keep_last > 0 else []
+        last_turns = turns[n - keep_last :] if keep_last > 0 else []
         middle_count = n - keep_first - len(last_turns)
 
         result: list[CompressedTurn] = []
@@ -119,7 +117,7 @@ class ContextCompressor:
     def _drop_tool_results(self, turns: list[dict]) -> list[CompressedTurn]:
         """Remove turns where role=='tool', then keep last max_turns of remaining."""
         non_tool = [t for t in turns if t.get("role") != "tool"]
-        kept = non_tool[-self.max_turns:] if self.max_turns > 0 else []
+        kept = non_tool[-self.max_turns :] if self.max_turns > 0 else []
         return [CompressedTurn(role=t["role"], content=t["content"]) for t in kept]
 
 

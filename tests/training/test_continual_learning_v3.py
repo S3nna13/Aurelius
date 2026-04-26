@@ -12,10 +12,10 @@ Covers:
 Uses a tiny inline model — no other Aurelius files imported.
 Dimensions: d_model=16, n_tasks=2, seq_len=4, batch=2, n_steps=3.
 """
+
 from __future__ import annotations
 
-import math
-from typing import Iterator, Tuple
+from collections.abc import Iterator
 
 import torch
 import torch.nn as nn
@@ -61,14 +61,14 @@ def _make_model() -> TinyModel:
     return TinyModel(D_MODEL)
 
 
-def _make_batch() -> Tuple[torch.Tensor, torch.Tensor]:
+def _make_batch() -> tuple[torch.Tensor, torch.Tensor]:
     """Return a random (inputs, targets) pair with shape [BATCH, SEQ_LEN, D_MODEL]."""
     x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
     y = torch.randn(BATCH, SEQ_LEN, D_MODEL)
     return x, y
 
 
-def _dataloader_fn() -> Iterator[Tuple[torch.Tensor, torch.Tensor]]:
+def _dataloader_fn() -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
     """Yields a fixed number of batches."""
     for _ in range(5):
         yield _make_batch()
@@ -83,6 +83,7 @@ def _data_fn():
 # FisherInformationEstimator tests
 # ---------------------------------------------------------------------------
 
+
 def test_fisher_returns_dict_matching_param_names():
     """compute_diagonal_fisher keys match model.named_parameters() names."""
     model = _make_model()
@@ -90,9 +91,7 @@ def test_fisher_returns_dict_matching_param_names():
     criterion = nn.MSELoss()
     fisher = estimator.compute_diagonal_fisher(_dataloader_fn, criterion)
 
-    expected_names = {
-        name for name, p in model.named_parameters() if p.requires_grad
-    }
+    expected_names = {name for name, p in model.named_parameters() if p.requires_grad}
     assert set(fisher.keys()) == expected_names
 
 
@@ -125,15 +124,12 @@ def test_fisher_shapes_match_params():
 # EWCRegularizer tests
 # ---------------------------------------------------------------------------
 
+
 def test_ewc_consolidate_stores_theta_star():
     """After consolidate, _anchors contains one entry with theta_star."""
     model = _make_model()
     ewc = EWCRegularizer(model, lambda_ewc=100.0)
-    fisher = {
-        name: torch.ones_like(p)
-        for name, p in model.named_parameters()
-        if p.requires_grad
-    }
+    fisher = {name: torch.ones_like(p) for name, p in model.named_parameters() if p.requires_grad}
     assert len(ewc._anchors) == 0
     ewc.consolidate(fisher)
     assert len(ewc._anchors) == 1
@@ -150,11 +146,7 @@ def test_ewc_penalty_zero_when_params_unchanged():
     """Penalty should be 0 immediately after consolidate (params unchanged)."""
     model = _make_model()
     ewc = EWCRegularizer(model, lambda_ewc=1000.0)
-    fisher = {
-        name: torch.ones_like(p)
-        for name, p in model.named_parameters()
-        if p.requires_grad
-    }
+    fisher = {name: torch.ones_like(p) for name, p in model.named_parameters() if p.requires_grad}
     ewc.consolidate(fisher)
     p = ewc.penalty(model)
     assert p.item() < 1e-6, f"Expected ~0 penalty, got {p.item()}"
@@ -164,11 +156,7 @@ def test_ewc_penalty_positive_after_param_update():
     """Penalty should be > 0 after model parameters are modified."""
     model = _make_model()
     ewc = EWCRegularizer(model, lambda_ewc=1000.0)
-    fisher = {
-        name: torch.ones_like(p)
-        for name, p in model.named_parameters()
-        if p.requires_grad
-    }
+    fisher = {name: torch.ones_like(p) for name, p in model.named_parameters() if p.requires_grad}
     ewc.consolidate(fisher)
 
     # Perturb all parameters.
@@ -184,11 +172,7 @@ def test_ewc_loss_geq_task_loss():
     """ewc_loss >= task_loss (penalty is non-negative)."""
     model = _make_model()
     ewc = EWCRegularizer(model, lambda_ewc=1.0)
-    fisher = {
-        name: torch.ones_like(p)
-        for name, p in model.named_parameters()
-        if p.requires_grad
-    }
+    fisher = {name: torch.ones_like(p) for name, p in model.named_parameters() if p.requires_grad}
     ewc.consolidate(fisher)
 
     # Perturb to ensure non-zero penalty.
@@ -213,11 +197,10 @@ def test_ewc_penalty_zero_before_consolidate():
 # OnlineEWC tests
 # ---------------------------------------------------------------------------
 
+
 def _make_fisher(model: nn.Module, value: float = 1.0) -> dict:
     return {
-        name: torch.full_like(p, value)
-        for name, p in model.named_parameters()
-        if p.requires_grad
+        name: torch.full_like(p, value) for name, p in model.named_parameters() if p.requires_grad
     }
 
 
@@ -264,6 +247,7 @@ def test_online_ewc_penalty_zero_before_consolidate():
 # ---------------------------------------------------------------------------
 # PackNetManager tests
 # ---------------------------------------------------------------------------
+
 
 def test_packnet_prune_creates_mask():
     """prune_for_task creates a mask entry for the given task."""
@@ -339,6 +323,7 @@ def test_packnet_freeze_and_unfreeze():
 # ProgressiveNNColumn tests
 # ---------------------------------------------------------------------------
 
+
 def test_progressive_output_shape():
     """forward returns [B, T, d_model]."""
     model = ProgressiveNNColumn(D_MODEL, N_TASKS)
@@ -366,14 +351,13 @@ def test_progressive_different_tasks_different_outputs():
     out0 = model(x, task_id=0)
     out1 = model(x, task_id=1)
 
-    assert not torch.allclose(out0, out1), (
-        "Task-0 and task-1 should produce different outputs"
-    )
+    assert not torch.allclose(out0, out1), "Task-0 and task-1 should produce different outputs"
 
 
 # ---------------------------------------------------------------------------
 # ContinualTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_task_returns_loss_list():
     """train_task should return a list of floats with length == n_steps."""
@@ -443,6 +427,7 @@ def test_trainer_evaluate_forgetting_returns_float():
 # ContinualConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_continual_config_defaults():
     """ContinualConfig should have the correct default values."""
     cfg = ContinualConfig()
@@ -456,8 +441,9 @@ def test_continual_config_defaults():
 
 def test_continual_config_custom_values():
     """ContinualConfig should accept custom values."""
-    cfg = ContinualConfig(lambda_ewc=500.0, gamma=0.5, prune_fraction=0.3,
-                          n_tasks=5, strategy="packnet")
+    cfg = ContinualConfig(
+        lambda_ewc=500.0, gamma=0.5, prune_fraction=0.3, n_tasks=5, strategy="packnet"
+    )
 
     assert cfg.lambda_ewc == 500.0
     assert cfg.gamma == 0.5

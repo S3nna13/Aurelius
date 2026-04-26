@@ -11,19 +11,19 @@ bitsandbytes, peft, diffusers, datasets, accelerate, or deepspeed.
 
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Solution Verifiers
 # ---------------------------------------------------------------------------
+
 
 class SolutionVerifier(ABC):
     """Abstract base class for verifying whether a generated solution is correct."""
@@ -85,6 +85,7 @@ class EnsembleVerifier(SolutionVerifier):
 # Solution Sampler
 # ---------------------------------------------------------------------------
 
+
 class SolutionSampler:
     """Sample multiple candidate solutions autoregressively from a model."""
 
@@ -103,7 +104,6 @@ class SolutionSampler:
     @torch.no_grad()
     def _generate_one(self, prompt_ids: Tensor, temperature: float) -> tuple[Tensor, float]:
         """Generate a single sequence and return (tokens, log_prob_sum)."""
-        device = prompt_ids.device
         ids = prompt_ids.clone()  # (seq,)
         log_prob_accum = 0.0
 
@@ -135,7 +135,7 @@ class SolutionSampler:
             ids = torch.cat([ids, next_token.squeeze(0).unsqueeze(0)], dim=0)
 
         # Return only the generated part
-        generated = ids[prompt_ids.numel():]
+        generated = ids[prompt_ids.numel() :]
         return generated, log_prob_accum
 
     def sample(self, prompt_ids: Tensor) -> tuple[list[Tensor], list[float]]:
@@ -164,6 +164,7 @@ class SolutionSampler:
 # ---------------------------------------------------------------------------
 # Rejection Filter
 # ---------------------------------------------------------------------------
+
 
 class RejectionFilter:
     """Filter candidate solutions by correctness using a SolutionVerifier."""
@@ -216,6 +217,7 @@ class RejectionFilter:
 # RFT Dataset
 # ---------------------------------------------------------------------------
 
+
 class RFTDataset:
     """Dataset of filtered correct (prompt, solution) pairs."""
 
@@ -255,9 +257,7 @@ class RFTDataset:
         """Return dataset statistics."""
         n_examples = len(self._solutions)
         mean_solution_length = (
-            float(sum(s.numel() for s in self._solutions)) / n_examples
-            if n_examples > 0
-            else 0.0
+            float(sum(s.numel() for s in self._solutions)) / n_examples if n_examples > 0 else 0.0
         )
         unique_prompts = len({tuple(p.tolist()) for p in self._prompts})
         return {
@@ -270,6 +270,7 @@ class RFTDataset:
 # ---------------------------------------------------------------------------
 # RFT Trainer
 # ---------------------------------------------------------------------------
+
 
 class RFTTrainer:
     """Iterative self-improvement trainer via rejection fine-tuning."""
@@ -335,7 +336,7 @@ class RFTTrainer:
                 # Construct input: prompt + solution (minus last token)
                 # Target: solution tokens
                 input_ids = torch.cat([prompt_ids, solution_ids[:-1]], dim=0).unsqueeze(0)
-                target_ids = solution_ids.unsqueeze(0)
+                solution_ids.unsqueeze(0)
 
                 out = self.model(input_ids)
                 if isinstance(out, tuple):
@@ -344,7 +345,9 @@ class RFTTrainer:
                     logits = out
                 # logits: (1, seq_len, vocab)
                 # We only need the logits corresponding to the solution part
-                sol_len = solution_ids.numel() - 1 if solution_ids.numel() > 1 else solution_ids.numel()
+                sol_len = (
+                    solution_ids.numel() - 1 if solution_ids.numel() > 1 else solution_ids.numel()
+                )
                 # logits shape: (1, prompt_len + sol_len - 1, vocab) or (1, seq, vocab)
                 if logits.dim() == 3:
                     # Take last sol_len positions (corresponding to predicting each solution token)

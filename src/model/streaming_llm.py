@@ -115,16 +115,14 @@ class KVCache:
                 sink_k = existing_k[:, :, :sink, :]
                 sink_v = existing_v[:, :, :sink, :]
                 # Drop the token at index `sink` (oldest recent).
-                recent_k = existing_k[:, :, sink + 1:, :]
-                recent_v = existing_v[:, :, sink + 1:, :]
+                recent_k = existing_k[:, :, sink + 1 :, :]
+                recent_v = existing_v[:, :, sink + 1 :, :]
                 self._keys[layer_idx] = torch.cat([sink_k, recent_k, new_k], dim=2)
                 self._values[layer_idx] = torch.cat([sink_v, recent_v, new_v], dim=2)
 
         return self._keys[layer_idx], self._values[layer_idx]
 
-    def get(
-        self, layer_idx: int
-    ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+    def get(self, layer_idx: int) -> tuple[torch.Tensor | None, torch.Tensor | None]:
         """Return (keys, values) for layer_idx, or (None, None) if empty."""
         return self._keys[layer_idx], self._values[layer_idx]
 
@@ -197,7 +195,7 @@ class SinkAttentionWrapper(nn.Module):
         # Decode mode -------------------------------------------------------
         # x is a single new token: (1, 1, d_model)
         B, S, d = x.shape
-        assert S == 1, "Streaming decode mode expects single-token input (S=1)"
+        assert S == 1, "Streaming decode mode expects single-token input (S=1)"  # noqa: S101
 
         # We need to run attention over the full cached context.
         # Retrieve existing cache for this layer.
@@ -233,7 +231,7 @@ class SinkAttentionWrapper(nn.Module):
 
         if freqs_cis is not None:
             # Slice to the position of the current token.
-            token_freqs = freqs_cis[past_len: past_len + S]
+            token_freqs = freqs_cis[past_len : past_len + S]
             out, new_kv = self.attention(x, token_freqs, mask, past_kv_for_attn)
         else:
             out, new_kv = self.attention(x, **kwargs)
@@ -344,8 +342,7 @@ class StreamingGenerator:
         Returns:
             Next token id as a Python int.
         """
-        device = input_ids.device
-        model_cfg = getattr(self.model, "config", None)
+        getattr(self.model, "config", None)
 
         if self._cache.cache_size == 0:
             # Prefill: run full forward pass to populate KV cache.
@@ -360,14 +357,16 @@ class StreamingGenerator:
 
                 if T <= max_size:
                     # Fits: store as-is (transposed to our cache format).
-                    self._cache._keys[layer_idx] = pk.transpose(1, 2)   # (1, n_kv_heads, T, head_dim)
+                    self._cache._keys[layer_idx] = pk.transpose(
+                        1, 2
+                    )  # (1, n_kv_heads, T, head_dim)
                     self._cache._values[layer_idx] = pv.transpose(1, 2)
                 else:
                     # Truncate: keep sink + last window_size tokens.
                     sink_k = pk[:, :sink, :, :]
                     sink_v = pv[:, :sink, :, :]
-                    recent_k = pk[:, T - self.config.window_size:, :, :]
-                    recent_v = pv[:, T - self.config.window_size:, :, :]
+                    recent_k = pk[:, T - self.config.window_size :, :, :]
+                    recent_v = pv[:, T - self.config.window_size :, :, :]
                     k_stored = torch.cat([sink_k, recent_k], dim=1)
                     v_stored = torch.cat([sink_v, recent_v], dim=1)
                     self._cache._keys[layer_idx] = k_stored.transpose(1, 2)
@@ -391,9 +390,7 @@ class StreamingGenerator:
             return next_token_id
 
     @torch.no_grad()
-    def stream(
-        self, prompt_ids: list[int], max_tokens: int = 100
-    ) -> list[int]:
+    def stream(self, prompt_ids: list[int], max_tokens: int = 100) -> list[int]:
         """Generate max_tokens tokens autoregressively.
 
         Args:

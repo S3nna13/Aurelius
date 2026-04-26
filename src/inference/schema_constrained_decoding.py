@@ -10,15 +10,16 @@ Distinct from constrained_decoding.py (beam/prefix trie) and grammar_constrained
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # FSMState
 # ---------------------------------------------------------------------------
+
 
 class FSMState:
     """Represents a state in the finite state machine."""
@@ -26,7 +27,7 @@ class FSMState:
     def __init__(self, state_id: int, accepting: bool = False) -> None:
         self.state_id: int = state_id
         self.accepting: bool = accepting
-        self.transitions: Dict[str, int] = {}
+        self.transitions: dict[str, int] = {}
 
     def add_transition(self, category: str, next_state: int) -> None:
         """Register a transition from this state on the given token category."""
@@ -36,6 +37,7 @@ class FSMState:
 # ---------------------------------------------------------------------------
 # TokenCategory
 # ---------------------------------------------------------------------------
+
 
 class TokenCategory:
     """Classifies tokens into structural categories for JSON-like schemas.
@@ -48,16 +50,14 @@ class TokenCategory:
         4 -> 'number'
     """
 
-    _CATEGORIES = ('open_brace', 'close_brace', 'string', 'colon', 'number')
+    _CATEGORIES = ("open_brace", "close_brace", "string", "colon", "number")
 
     def __init__(self, vocab_size: int) -> None:
         self.vocab_size = vocab_size
         # Precompute mapping: token_id -> category string
-        self._token_to_cat: List[str] = [
-            self._CATEGORIES[i % 5] for i in range(vocab_size)
-        ]
+        self._token_to_cat: list[str] = [self._CATEGORIES[i % 5] for i in range(vocab_size)]
         # Precompute reverse mapping: category -> list of token ids
-        self._cat_to_tokens: Dict[str, List[int]] = {c: [] for c in self._CATEGORIES}
+        self._cat_to_tokens: dict[str, list[int]] = {c: [] for c in self._CATEGORIES}
         for tid, cat in enumerate(self._token_to_cat):
             self._cat_to_tokens[cat].append(tid)
 
@@ -65,7 +65,7 @@ class TokenCategory:
         """Return the category string for the given token id."""
         return self._token_to_cat[token_id]
 
-    def tokens_for_category(self, cat: str) -> List[int]:
+    def tokens_for_category(self, cat: str) -> list[int]:
         """Return all token ids belonging to the given category."""
         return list(self._cat_to_tokens[cat])
 
@@ -73,6 +73,7 @@ class TokenCategory:
 # ---------------------------------------------------------------------------
 # JsonSchemeFSM
 # ---------------------------------------------------------------------------
+
 
 class JsonSchemeFSM:
     """Pre-built FSM for simple ``{"key": value}`` JSON structure.
@@ -98,24 +99,22 @@ class JsonSchemeFSM:
         s4 = FSMState(4, accepting=False)
         s5 = FSMState(5, accepting=True)
 
-        s0.add_transition('open_brace', 1)
-        s1.add_transition('string', 2)
-        s2.add_transition('colon', 3)
-        s3.add_transition('string', 4)
-        s3.add_transition('number', 4)
-        s4.add_transition('close_brace', 5)
+        s0.add_transition("open_brace", 1)
+        s1.add_transition("string", 2)
+        s2.add_transition("colon", 3)
+        s3.add_transition("string", 4)
+        s3.add_transition("number", 4)
+        s4.add_transition("close_brace", 5)
         # s5 has no transitions (done/accepting)
 
-        self.states: Dict[int, FSMState] = {
-            0: s0, 1: s1, 2: s2, 3: s3, 4: s4, 5: s5
-        }
+        self.states: dict[int, FSMState] = {0: s0, 1: s1, 2: s2, 3: s3, 4: s4, 5: s5}
         self.current_state: int = 0
 
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
 
-    def valid_categories(self) -> List[str]:
+    def valid_categories(self) -> list[str]:
         """Return valid next token categories from the current state."""
         state = self.states[self.current_state]
         return list(state.transitions.keys())
@@ -154,6 +153,7 @@ class JsonSchemeFSM:
 # FSMConstrainedDecoder
 # ---------------------------------------------------------------------------
 
+
 class FSMConstrainedDecoder:
     """Applies FSM constraints during greedy decoding.
 
@@ -184,14 +184,14 @@ class FSMConstrainedDecoder:
         """
         mask = self.fsm.valid_token_mask()  # (V,) bool
         masked = logits.clone()
-        masked[~mask] = float('-inf')
+        masked[~mask] = float("-inf")
         return masked
 
     def generate(
         self,
         prompt_ids: Tensor,
         max_new_tokens: int,
-    ) -> Tuple[Tensor, bool]:
+    ) -> tuple[Tensor, bool]:
         """Greedy generation with FSM token masking.
 
         Args:
@@ -206,12 +206,12 @@ class FSMConstrainedDecoder:
         self.fsm.reset()
         # Build running context: shape (1, T)
         context = prompt_ids.unsqueeze(0) if prompt_ids.dim() == 1 else prompt_ids
-        generated: List[int] = []
+        generated: list[int] = []
 
         for _ in range(max_new_tokens):
             # Get logits from model
             logits_3d = self.model_fn(context)  # (1, T, V)
-            last_logits = logits_3d[0, -1, :]   # (V,)
+            last_logits = logits_3d[0, -1, :]  # (V,)
 
             # Apply FSM mask
             masked_logits = self.apply_fsm_mask(last_logits)
@@ -242,6 +242,7 @@ class FSMConstrainedDecoder:
 # ConstraintSatisfactionChecker
 # ---------------------------------------------------------------------------
 
+
 class ConstraintSatisfactionChecker:
     """Verifies that a generated sequence satisfies schema constraints.
 
@@ -252,7 +253,7 @@ class ConstraintSatisfactionChecker:
     def __init__(self, fsm: JsonSchemeFSM) -> None:
         self.fsm = fsm
 
-    def check_sequence(self, token_ids: Tensor) -> Dict[str, Any]:
+    def check_sequence(self, token_ids: Tensor) -> dict[str, Any]:
         """Replay tokens through the FSM and report constraint satisfaction.
 
         Args:
@@ -268,7 +269,7 @@ class ConstraintSatisfactionChecker:
         """
         self.fsm.reset()
         n_valid = 0
-        failed_at: Optional[int] = None
+        failed_at: int | None = None
 
         ids = token_ids.tolist() if isinstance(token_ids, Tensor) else list(token_ids)
 
@@ -282,12 +283,12 @@ class ConstraintSatisfactionChecker:
 
         valid = (failed_at is None) and self.fsm.is_complete()
         return {
-            'valid': valid,
-            'n_valid_transitions': n_valid,
-            'failed_at': failed_at,
+            "valid": valid,
+            "n_valid_transitions": n_valid,
+            "failed_at": failed_at,
         }
 
-    def violation_positions(self, token_ids: Tensor) -> List[int]:
+    def violation_positions(self, token_ids: Tensor) -> list[int]:
         """Return positions where the FSM transition failed.
 
         Args:
@@ -297,7 +298,7 @@ class ConstraintSatisfactionChecker:
             List of integer positions (0-indexed) where a transition failed.
         """
         self.fsm.reset()
-        violations: List[int] = []
+        violations: list[int] = []
 
         ids = token_ids.tolist() if isinstance(token_ids, Tensor) else list(token_ids)
 

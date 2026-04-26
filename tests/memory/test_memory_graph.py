@@ -14,10 +14,10 @@ from src.memory.memory_graph import (
     MemoryNode,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def graph():
@@ -41,6 +41,7 @@ def populated_graph():
 # ---------------------------------------------------------------------------
 # MemoryNode dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryNode:
     def test_node_creation_defaults(self):
@@ -67,6 +68,7 @@ class TestMemoryNode:
 # MemoryEdge dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryEdge:
     def test_edge_creation_defaults(self):
         e = MemoryEdge("a", "b", "likes")
@@ -88,6 +90,7 @@ class TestMemoryEdge:
 # ---------------------------------------------------------------------------
 # MemoryGraph: add / get
 # ---------------------------------------------------------------------------
+
 
 class TestAddGetNode:
     def test_add_and_get_node(self, graph):
@@ -118,6 +121,7 @@ class TestAddGetNode:
 # MemoryGraph: add_edge
 # ---------------------------------------------------------------------------
 
+
 class TestAddEdge:
     def test_add_edge_valid(self, graph):
         graph.add_node(MemoryNode("a", "A"))
@@ -145,6 +149,7 @@ class TestAddEdge:
 # ---------------------------------------------------------------------------
 # MemoryGraph: neighbors
 # ---------------------------------------------------------------------------
+
 
 class TestNeighbors:
     def test_neighbors_no_filter(self, populated_graph):
@@ -179,6 +184,7 @@ class TestNeighbors:
 # ---------------------------------------------------------------------------
 # MemoryGraph: shortest_path
 # ---------------------------------------------------------------------------
+
 
 class TestShortestPath:
     def test_shortest_path_direct(self, populated_graph):
@@ -224,6 +230,7 @@ class TestShortestPath:
 # MemoryGraph: remove_node
 # ---------------------------------------------------------------------------
 
+
 class TestRemoveNode:
     def test_remove_node_decrements_count(self, populated_graph):
         before = populated_graph.node_count()
@@ -260,6 +267,7 @@ class TestRemoveNode:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):

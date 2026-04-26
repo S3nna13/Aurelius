@@ -53,16 +53,16 @@ __all__ = [
 class JsonParseState(Enum):
     """Coarse parse state used by the incremental JSON validator."""
 
-    START = auto()          # nothing emitted yet
-    IN_OBJECT = auto()      # inside a { … } block
-    IN_ARRAY = auto()       # inside a [ … ] block
-    IN_STRING = auto()      # inside a " … " value
-    IN_NUMBER = auto()      # accumulating numeric digits / decimal
-    IN_BOOL_NULL = auto()   # accumulating true/false/null literal
-    AFTER_KEY = auto()      # after an object key, expecting ':'
-    AFTER_COLON = auto()    # after ':', expecting a value
-    AFTER_VALUE = auto()    # after a complete value, expecting ',' or '}'/'  ]'
-    COMPLETE = auto()       # the top-level value is closed
+    START = auto()  # nothing emitted yet
+    IN_OBJECT = auto()  # inside a { … } block
+    IN_ARRAY = auto()  # inside a [ … ] block
+    IN_STRING = auto()  # inside a " … " value
+    IN_NUMBER = auto()  # accumulating numeric digits / decimal
+    IN_BOOL_NULL = auto()  # accumulating true/false/null literal
+    AFTER_KEY = auto()  # after an object key, expecting ':'
+    AFTER_COLON = auto()  # after ':', expecting a value
+    AFTER_VALUE = auto()  # after a complete value, expecting ',' or '}'/'  ]'
+    COMPLETE = auto()  # the top-level value is closed
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ _SCALAR_TYPES = frozenset({"string", "number", "integer", "boolean", "null"})
 # Characters that can legally start a JSON value.
 _VALUE_START_CHARS = frozenset('"0123456789-tfn{[')
 
-_WS = frozenset(' \t\n\r')
+_WS = frozenset(" \t\n\r")
 
 
 def _lstrip_ws(s: str, pos: int) -> int:
@@ -95,6 +95,7 @@ def _is_valid_json(text: str) -> tuple[bool, Any]:
 # ---------------------------------------------------------------------------
 # Incremental prefix validator — the algorithmic core
 # ---------------------------------------------------------------------------
+
 
 class _JsonPrefixValidator:
     """Stateless incremental JSON prefix validator.
@@ -207,7 +208,7 @@ class _JsonPrefixValidator:
         i = 1
         while i < len(p):
             ch = p[i]
-            if ch == '\\':
+            if ch == "\\":
                 i += 2  # skip escaped char
                 continue
             if ch == '"':
@@ -223,22 +224,22 @@ class _JsonPrefixValidator:
         if not p:
             return True
         # A valid number partial must match a number prefix pattern.
-        pattern = r'^-?(?:0|[1-9]\d*)(?:\.\d*)?(?:[eE][+-]?\d*)?$'
+        pattern = r"^-?(?:0|[1-9]\d*)(?:\.\d*)?(?:[eE][+-]?\d*)?$"
         if integer_only:
-            pattern = r'^-?(?:0|[1-9]\d*)$'
+            pattern = r"^-?(?:0|[1-9]\d*)$"
         return bool(re.match(pattern, p))
 
     def _check_object_prefix(self, schema: dict, partial: str) -> bool:
         p = partial.lstrip()
         if not p:
             return True
-        if p[0] != '{':
+        if p[0] != "{":
             return False
         # Use depth tracking; try to parse as much as possible.
         # Optimistic: if partial ends mid-string or mid-value, it's still valid.
         try:
             json.loads(p)
-            return True   # complete & valid object
+            return True  # complete & valid object
         except json.JSONDecodeError as exc:
             # Accept "incomplete" but not "malformed".
             return _is_incomplete_error(exc, p)
@@ -247,7 +248,7 @@ class _JsonPrefixValidator:
         p = partial.lstrip()
         if not p:
             return True
-        if p[0] != '[':
+        if p[0] != "[":
             return False
         try:
             json.loads(p)
@@ -354,9 +355,7 @@ class StructuredOutputDecoder:
             equal ``self.vocab_size``.
         """
         if len(vocab) != self.vocab_size:
-            raise ValueError(
-                f"vocab length {len(vocab)} != vocab_size {self.vocab_size}"
-            )
+            raise ValueError(f"vocab length {len(vocab)} != vocab_size {self.vocab_size}")
 
         is_done = self.is_complete(schema, partial_output)
         mask = torch.zeros(self.vocab_size, dtype=torch.bool)
@@ -590,9 +589,7 @@ class GrammarConstrainedDecoder:
         if not isinstance(grammar_states, dict):
             raise ValueError("grammar_states must be a dict")
         if initial_state not in grammar_states:
-            raise ValueError(
-                f"initial_state '{initial_state}' not found in grammar_states"
-            )
+            raise ValueError(f"initial_state '{initial_state}' not found in grammar_states")
         self.vocab_size = vocab_size
         self.eos_token_id = eos_token_id
         self.grammar_states = grammar_states
@@ -622,9 +619,7 @@ class GrammarConstrainedDecoder:
     # Mask computation
     # ------------------------------------------------------------------
 
-    def build_token_mask(
-        self, vocab: list[str], state: str | None = None
-    ) -> torch.Tensor:
+    def build_token_mask(self, vocab: list[str], state: str | None = None) -> torch.Tensor:
         """Return a boolean mask of shape [vocab_size] for the given state.
 
         Parameters
@@ -635,9 +630,7 @@ class GrammarConstrainedDecoder:
             Grammar state to use.  Defaults to ``self.current_state``.
         """
         if len(vocab) != self.vocab_size:
-            raise ValueError(
-                f"vocab length {len(vocab)} != vocab_size {self.vocab_size}"
-            )
+            raise ValueError(f"vocab length {len(vocab)} != vocab_size {self.vocab_size}")
         state = state or self._current_state
         allowed_strings = self.grammar_states.get(state, [])
         allowed_set = set(allowed_strings)

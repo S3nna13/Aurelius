@@ -78,7 +78,7 @@ class AureliusSession:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AureliusSession":
+    def from_dict(cls, data: dict[str, Any]) -> AureliusSession:
         """Restore an :class:`AureliusSession` from a serialised snapshot.
 
         Args:
@@ -99,9 +99,7 @@ class AureliusSession:
                 task_count=int(data.get("task_count", 0)),
             )
         except (KeyError, ValueError) as exc:
-            raise SessionManagerError(
-                f"failed to restore AureliusSession: {exc}"
-            ) from exc
+            raise SessionManagerError(f"failed to restore AureliusSession: {exc}") from exc
 
 
 class SessionManager:
@@ -185,9 +183,7 @@ class SessionManager:
                 not a :class:`SessionState`.
         """
         if not isinstance(state, SessionState):
-            raise SessionManagerError(
-                f"state must be a SessionState, got {type(state).__name__}"
-            )
+            raise SessionManagerError(f"state must be a SessionState, got {type(state).__name__}")
         session = self.get(session_id)
         session.state = state
         session.updated_at = time.time()
@@ -270,12 +266,7 @@ class SessionManager:
         Returns:
             A dict with a ``sessions`` key mapping *session_id* → session dict.
         """
-        return {
-            "sessions": {
-                sid: session.to_dict()
-                for sid, session in self._sessions.items()
-            }
-        }
+        return {"sessions": {sid: session.to_dict() for sid, session in self._sessions.items()}}
 
     def load_from_dict(self, data: dict[str, Any]) -> None:
         """Restore sessions from a snapshot previously produced by :meth:`save_to_dict`.
@@ -356,5 +347,5 @@ def _format_timestamp(ts: float) -> str:
     """Format a Unix timestamp as a human-readable local time string."""
     import datetime
 
-    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.UTC)
     return dt.strftime("%Y-%m-%d %H:%M:%S")

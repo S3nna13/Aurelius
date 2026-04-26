@@ -30,9 +30,7 @@ def test_build_multi_value_niah_returns_pair_all_values_present():
 
 def test_build_variable_tracking_chain_resolves():
     bench = RULERBenchmark()
-    prompt, expected = bench.build_variable_tracking(
-        512, n_vars=4, chain_length=4, seed=7
-    )
+    prompt, expected = bench.build_variable_tracking(512, n_vars=4, chain_length=4, seed=7)
     assert isinstance(prompt, str)
     assert isinstance(expected, str)
     # Target chain's root assignment must be present verbatim.
@@ -57,6 +55,7 @@ def test_build_aggregation_sum_verified():
     assert str(expected) not in prompt or True  # sum usually not spelled
     # Extract recorded values and verify sum matches.
     import re
+
     vals = [int(x) for x in re.findall(r"recorded value is (\d+)", prompt)]
     assert sum(vals) == expected
 
@@ -66,6 +65,7 @@ def test_build_aggregation_max_verified():
     prompt, expected = bench.build_aggregation(512, operation="max", seed=5)
     assert isinstance(expected, int) and expected > 0
     import re
+
     vals = [int(x) for x in re.findall(r"recorded value is (\d+)", prompt)]
     assert max(vals) == expected
 

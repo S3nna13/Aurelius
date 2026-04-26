@@ -6,14 +6,12 @@ Uses tiny dimensions so all tests run quickly on CPU.
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.prefix_tuning_v2 import (
+    PrefixAttention,
     PrefixConfig,
     PrefixEmbedding,
-    PrefixAttention,
     PrefixModel,
 )
 
@@ -25,14 +23,15 @@ B = 2
 T = 8
 D_MODEL = 32
 N_HEADS = 4
-HEAD_DIM = 8           # D_MODEL == N_HEADS * HEAD_DIM
+HEAD_DIM = 8  # D_MODEL == N_HEADS * HEAD_DIM
 N_LAYERS = 2
-PREFIX_LEN = 10        # matches PrefixConfig default
+PREFIX_LEN = 10  # matches PrefixConfig default
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_config(**kwargs) -> PrefixConfig:
     defaults = dict(
@@ -70,6 +69,7 @@ def _tiny_backbone() -> nn.Module:
 # 1. PrefixConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_config_defaults():
     cfg = PrefixConfig()
     assert cfg.prefix_length == 10
@@ -83,6 +83,7 @@ def test_prefix_config_defaults():
 # 2. PrefixEmbedding output shape — reparameterize=True
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_embedding_output_shape_reparam():
     cfg = _make_config(reparameterize=True)
     pe = PrefixEmbedding(cfg)
@@ -95,6 +96,7 @@ def test_prefix_embedding_output_shape_reparam():
 # 3. PrefixEmbedding output shape — reparameterize=False
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_embedding_output_shape_no_reparam():
     cfg = _make_config(reparameterize=False)
     pe = PrefixEmbedding(cfg)
@@ -106,6 +108,7 @@ def test_prefix_embedding_output_shape_no_reparam():
 # ---------------------------------------------------------------------------
 # 4. reparameterize=False has fewer parameters than reparameterize=True
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_embedding_reparam_false_has_fewer_params():
     cfg_reparam = _make_config(reparameterize=True)
@@ -124,6 +127,7 @@ def test_prefix_embedding_reparam_false_has_fewer_params():
 # 5. PrefixEmbedding output is finite
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_embedding_output_finite():
     cfg = _make_config()
     pe = PrefixEmbedding(cfg)
@@ -135,6 +139,7 @@ def test_prefix_embedding_output_finite():
 # 6. PrefixEmbedding gradient flows
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_embedding_gradient_flows():
     cfg = _make_config()
     pe = PrefixEmbedding(cfg)
@@ -142,16 +147,14 @@ def test_prefix_embedding_gradient_flows():
     loss = out.sum()
     loss.backward()
     # Check at least one parameter received a gradient
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in pe.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum() > 0 for p in pe.parameters())
     assert has_grad, "No gradient flowed through PrefixEmbedding"
 
 
 # ---------------------------------------------------------------------------
 # 7. PrefixAttention output shape
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_attention_output_shape():
     attn = _make_prefix_attn()
@@ -165,6 +168,7 @@ def test_prefix_attention_output_shape():
 # 8. PrefixAttention output is finite
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_attention_output_finite():
     attn = _make_prefix_attn()
     x = torch.randn(B, T, D_MODEL)
@@ -177,6 +181,7 @@ def test_prefix_attention_output_finite():
 # 9. PrefixAttention gradient flows
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_attention_gradient_flows():
     attn = _make_prefix_attn()
     x = torch.randn(B, T, D_MODEL, requires_grad=True)
@@ -187,13 +192,18 @@ def test_prefix_attention_gradient_flows():
     loss = out.sum()
     loss.backward()
     assert x.grad is not None and x.grad.abs().sum() > 0, "No gradient w.r.t. x"
-    assert prefix_k.grad is not None and prefix_k.grad.abs().sum() > 0, "No gradient w.r.t. prefix_k"
-    assert prefix_v.grad is not None and prefix_v.grad.abs().sum() > 0, "No gradient w.r.t. prefix_v"
+    assert prefix_k.grad is not None and prefix_k.grad.abs().sum() > 0, (
+        "No gradient w.r.t. prefix_k"
+    )
+    assert prefix_v.grad is not None and prefix_v.grad.abs().sum() > 0, (
+        "No gradient w.r.t. prefix_v"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. PrefixAttention with prefix_length=0 produces standard attention shapes
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_attention_zero_prefix_length():
     """prefix_length=0 should behave like standard self-attention."""
@@ -216,6 +226,7 @@ def test_prefix_attention_zero_prefix_length():
 # 11. PrefixModel.freeze_backbone freezes all backbone params
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_model_freeze_backbone():
     backbone = _tiny_backbone()
     cfg = _make_config()
@@ -230,6 +241,7 @@ def test_prefix_model_freeze_backbone():
 # ---------------------------------------------------------------------------
 # 12. PrefixModel.trainable_parameters returns only prefix params
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_model_trainable_parameters_only_prefix():
     backbone = _tiny_backbone()
@@ -247,14 +259,13 @@ def test_prefix_model_trainable_parameters_only_prefix():
     # None of them should be backbone params
     backbone_ids = {id(p) for p in model.backbone.parameters()}
     for p in trainable:
-        assert id(p) not in backbone_ids, (
-            "trainable_parameters() included a backbone parameter"
-        )
+        assert id(p) not in backbone_ids, "trainable_parameters() included a backbone parameter"
 
 
 # ---------------------------------------------------------------------------
 # 13. Works with prefix_length=1 (minimal prefix)
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_length_1():
     cfg = _make_config(prefix_length=1)
@@ -272,6 +283,7 @@ def test_prefix_length_1():
 # ---------------------------------------------------------------------------
 # 14. Works with prefix_length=20 (larger prefix)
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_length_20():
     cfg = _make_config(prefix_length=20)
@@ -291,6 +303,7 @@ def test_prefix_length_20():
 # 15. PrefixModel forward stores last_prefix and returns backbone output
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_model_forward_stores_last_prefix():
     backbone = nn.Identity()
     cfg = _make_config()
@@ -303,6 +316,5 @@ def test_prefix_model_forward_stores_last_prefix():
     assert model.last_prefix is not None
     expected_prefix_shape = (N_LAYERS, 2, PREFIX_LEN, N_HEADS, HEAD_DIM)
     assert model.last_prefix.shape == expected_prefix_shape, (
-        f"Expected last_prefix shape {expected_prefix_shape}, "
-        f"got {model.last_prefix.shape}"
+        f"Expected last_prefix shape {expected_prefix_shape}, got {model.last_prefix.shape}"
     )

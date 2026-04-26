@@ -1,22 +1,24 @@
 """Commonsense reasoning evaluation: HellaSwag-style, Winogrande-style, and ARC-style tasks."""
+
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Data structure
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CommonsenseTask:
     """A single commonsense reasoning task."""
-    task_type: str       # "hellaswag" | "winogrande" | "arc"
+
+    task_type: str  # "hellaswag" | "winogrande" | "arc"
     context: str
     choices: list[str]
     correct_idx: int
@@ -115,7 +117,12 @@ _WINOGRANDE_TEMPLATES = [
 _ARC_TEMPLATES = [
     {
         "context": "What is the boiling point of water at standard atmospheric pressure?",
-        "choices": ["100 degrees Celsius", "0 degrees Celsius", "50 degrees Celsius", "200 degrees Celsius"],
+        "choices": [
+            "100 degrees Celsius",
+            "0 degrees Celsius",
+            "50 degrees Celsius",
+            "200 degrees Celsius",
+        ],
         "correct_idx": 0,
     },
     {
@@ -150,7 +157,12 @@ _ARC_TEMPLATES = [
     },
     {
         "context": "What is the freezing point of water at standard atmospheric pressure?",
-        "choices": ["0 degrees Celsius", "100 degrees Celsius", "-50 degrees Celsius", "37 degrees Celsius"],
+        "choices": [
+            "0 degrees Celsius",
+            "100 degrees Celsius",
+            "-50 degrees Celsius",
+            "37 degrees Celsius",
+        ],
         "correct_idx": 0,
     },
     {
@@ -181,12 +193,14 @@ def generate_hellaswag_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
         correct_pos = rng.randint(0, 3)
         all_choices.insert(correct_pos, correct_text)
 
-        tasks.append(CommonsenseTask(
-            task_type="hellaswag",
-            context=context,
-            choices=all_choices,
-            correct_idx=correct_pos,
-        ))
+        tasks.append(
+            CommonsenseTask(
+                task_type="hellaswag",
+                context=context,
+                choices=all_choices,
+                correct_idx=correct_pos,
+            )
+        )
 
     return tasks
 
@@ -206,12 +220,14 @@ def generate_winogrande_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
             choices = list(reversed(choices))
             correct_idx = len(choices) - 1 - correct_idx
 
-        tasks.append(CommonsenseTask(
-            task_type="winogrande",
-            context=template["context"],
-            choices=choices,
-            correct_idx=correct_idx,
-        ))
+        tasks.append(
+            CommonsenseTask(
+                task_type="winogrande",
+                context=template["context"],
+                choices=choices,
+                correct_idx=correct_idx,
+            )
+        )
 
     return tasks
 
@@ -230,12 +246,14 @@ def generate_arc_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
         rng.shuffle(choices)
         correct_idx = choices.index(correct_text)
 
-        tasks.append(CommonsenseTask(
-            task_type="arc",
-            context=template["context"],
-            choices=choices,
-            correct_idx=correct_idx,
-        ))
+        tasks.append(
+            CommonsenseTask(
+                task_type="arc",
+                context=template["context"],
+                choices=choices,
+                correct_idx=correct_idx,
+            )
+        )
 
     return tasks
 
@@ -243,6 +261,7 @@ def generate_arc_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
 # ---------------------------------------------------------------------------
 # Scoring utilities
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def score_task_by_likelihood(
@@ -290,7 +309,7 @@ def score_task_by_likelihood(
         targets = input_ids[0, 1:]
 
         token_log_probs = log_probs.gather(1, targets.unsqueeze(1)).squeeze(1)
-        choice_log_probs = token_log_probs[completion_start - 1:]
+        choice_log_probs = token_log_probs[completion_start - 1 :]
         score = choice_log_probs.sum().item()
         scores.append(score)
 
@@ -301,10 +320,7 @@ def compute_accuracy(predictions: list[int], tasks: list[CommonsenseTask]) -> fl
     """Compute fraction of correct predictions."""
     if not tasks:
         return 0.0
-    n_correct = sum(
-        pred == task.correct_idx
-        for pred, task in zip(predictions, tasks)
-    )
+    n_correct = sum(pred == task.correct_idx for pred, task in zip(predictions, tasks))
     return n_correct / len(tasks)
 
 
@@ -320,6 +336,7 @@ def length_normalize_scores(scores: list[float], choices: list[str]) -> list[flo
 # ---------------------------------------------------------------------------
 # Evaluator class
 # ---------------------------------------------------------------------------
+
 
 class CommonsenseEvaluator:
     """Evaluates an AureliusTransformer on commonsense reasoning tasks."""
@@ -346,10 +363,7 @@ class CommonsenseEvaluator:
 
         accuracy = compute_accuracy(predictions, tasks)
         n_total = len(tasks)
-        n_correct = sum(
-            pred == task.correct_idx
-            for pred, task in zip(predictions, tasks)
-        )
+        n_correct = sum(pred == task.correct_idx for pred, task in zip(predictions, tasks))
 
         type_groups: dict[str, list[tuple[int, CommonsenseTask]]] = {}
         for pred, task in zip(predictions, tasks):

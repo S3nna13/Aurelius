@@ -7,7 +7,6 @@ parameters are updated during fine-tuning.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -118,6 +117,7 @@ class AdaptedLayer(nn.Module):
 # Utility helpers
 # ---------------------------------------------------------------------------
 
+
 def _is_adapter(module: nn.Module) -> bool:
     """Return True if *module* is one of the adapter types."""
     return isinstance(module, (BottleneckAdapter, ParallelAdapter))
@@ -153,6 +153,7 @@ def freeze_base_parameters(model: nn.Module) -> None:
 # ---------------------------------------------------------------------------
 # AdapterModel
 # ---------------------------------------------------------------------------
+
 
 class AdapterModel(nn.Module):
     """Wraps a base model, inserting BottleneckAdapters after every nn.Linear.
@@ -196,7 +197,7 @@ class AdapterModel(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return self.base_model(x)
 
-    def get_adapter_state_dict(self) -> Dict[str, Tensor]:
+    def get_adapter_state_dict(self) -> dict[str, Tensor]:
         """Return a state-dict containing only adapter parameters."""
         # Collect parameter ids that belong to any adapter submodule
         adapter_param_ids: set[int] = set()
@@ -205,7 +206,7 @@ class AdapterModel(nn.Module):
                 for p in module.parameters():
                     adapter_param_ids.add(id(p))
 
-        adapter_sd: Dict[str, Tensor] = {}
+        adapter_sd: dict[str, Tensor] = {}
         for name, param in self.named_parameters():
             if id(param) in adapter_param_ids:
                 adapter_sd[name] = param
@@ -215,6 +216,7 @@ class AdapterModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Efficiency metric
 # ---------------------------------------------------------------------------
+
 
 def compute_adapter_efficiency(base_params: int, adapter_params: int) -> float:
     """Fraction of total parameters that are in the adapter.

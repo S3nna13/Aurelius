@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -51,15 +50,15 @@ class ReportGenerator:
         lines.append(f"# {self.config.title}")
         lines.append("")
         lines.append(f"**Author:** {self.config.author}")
-        lines.append(f"**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+        lines.append(f"**Date:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}")
         if self.config.company:
             lines.append(f"**Company:** {self.config.company}")
         lines.append("")
         stats = self.summary_stats()
         lines.append("## Summary")
         lines.append("")
-        lines.append(f"| Severity | Count |")
-        lines.append(f"|----------|-------|")
+        lines.append("| Severity | Count |")
+        lines.append("|----------|-------|")
         for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"):
             lines.append(f"| {sev} | {stats[sev]} |")
         lines.append("")
@@ -94,7 +93,7 @@ class ReportGenerator:
             "report": {
                 "title": self.config.title,
                 "author": self.config.author,
-                "date": datetime.now(timezone.utc).isoformat(),
+                "date": datetime.now(UTC).isoformat(),
                 "company": self.config.company,
             },
             "summary": self.summary_stats(),
@@ -114,7 +113,7 @@ class ReportGenerator:
         return json.dumps(data, indent=2)
 
     def to_html(self) -> str:
-        md = self.to_markdown()
+        self.to_markdown()
         html_lines: list[str] = [
             "<!DOCTYPE html>",
             '<html><head><meta charset="utf-8">',
@@ -134,7 +133,11 @@ class ReportGenerator:
             html_lines.append(f"<tr><td>{sev}</td><td>{stats[sev]}</td></tr>")
         html_lines.append("</table>")
         for i, f in enumerate(self._findings, 1):
-            css_class = f.severity.lower() if f.severity.lower() in ("critical", "high", "medium", "low") else "info"
+            css_class = (
+                f.severity.lower()
+                if f.severity.lower() in ("critical", "high", "medium", "low")
+                else "info"
+            )
             html_lines.append(f'<div class="finding {css_class}">')
             html_lines.append(f"<h3>Finding {i}: {f.title}</h3>")
             html_lines.append(f"<p><strong>Severity:</strong> {f.severity}</p>")

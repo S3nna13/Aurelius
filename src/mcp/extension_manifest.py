@@ -91,15 +91,13 @@ class ExtensionManifestValidator:
             errors.append("extension_id must be a non-empty string")
         elif not _EXTENSION_ID_RE.match(manifest.extension_id):
             errors.append(
-                f"extension_id must match '^[a-z][a-z0-9-]*$', "
-                f"got {manifest.extension_id!r}"
+                f"extension_id must match '^[a-z][a-z0-9-]*$', got {manifest.extension_id!r}"
             )
 
         # --- version (strict semver X.Y.Z) ---
         if not _SEMVER_RE.match(manifest.version):
             errors.append(
-                f"version must match semantic versioning 'X.Y.Z', "
-                f"got {manifest.version!r}"
+                f"version must match semantic versioning 'X.Y.Z', got {manifest.version!r}"
             )
 
         # --- display_name ---
@@ -108,9 +106,7 @@ class ExtensionManifestValidator:
 
         # --- description ---
         if not manifest.description or len(manifest.description) < 10:
-            errors.append(
-                "description must be a non-empty string with at least 10 characters"
-            )
+            errors.append("description must be a non-empty string with at least 10 characters")
 
         # --- mcp_version ---
         if manifest.mcp_version not in self.KNOWN_MCP_VERSIONS:

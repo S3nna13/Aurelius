@@ -14,13 +14,14 @@ Fisher-weighted merge formula (element-wise):
 
 where F_i is the diagonal Fisher for model i and theta_i its parameters.
 """
+
 from __future__ import annotations
 
 import copy
 import logging
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 import torch
 import torch.nn as nn
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Fisher estimation
 # ---------------------------------------------------------------------------
+
 
 def compute_fisher(
     model: nn.Module,
@@ -110,6 +112,7 @@ def compute_fisher(
 # Fisher-weighted merge
 # ---------------------------------------------------------------------------
 
+
 def fisher_merge(
     models: list[nn.Module],
     fishers: list[dict[str, Tensor]],
@@ -159,8 +162,7 @@ def fisher_merge(
         if not has_fisher:
             # Fall back to arithmetic mean
             tensors = [
-                s[name].float() for s in states
-                if name in s and s[name].shape == base_tensor.shape
+                s[name].float() for s in states if name in s and s[name].shape == base_tensor.shape
             ]
             if tensors:
                 merged_state[name] = torch.stack(tensors).mean(0).to(base_tensor.dtype)
@@ -208,6 +210,7 @@ def fisher_merge(
 # End-to-end convenience function
 # ---------------------------------------------------------------------------
 
+
 def fisher_merge_models(
     base_model: nn.Module,
     models: list[nn.Module],
@@ -248,13 +251,14 @@ def fisher_merge_models(
 # Analysis / diagnostics
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FisherMergeResult:
     """Summary statistics for a Fisher-weighted merge."""
 
     n_models: int
     n_params: int
-    mean_fisher_weight: float     # average Fisher value across all params/models
+    mean_fisher_weight: float  # average Fisher value across all params/models
     merge_time_ms: float
     param_names: list[str] = field(default_factory=list)
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.agent.interface_runtime import AureliusInterfaceRuntime
 import src.cli.main as cli_main
+from src.agent.interface_runtime import AureliusInterfaceRuntime
 
 
 def _repo_root() -> Path:
@@ -66,7 +66,9 @@ def test_main_interface_persistent_channel_and_summary_commands_run_end_to_end(t
     runtime = AureliusInterfaceRuntime(
         runtime.framework,
         root_dir=_repo_root(),
-        session_manager=runtime.session_manager.__class__(state_dir=state_dir, root_dir=_repo_root()),
+        session_manager=runtime.session_manager.__class__(
+            state_dir=state_dir, root_dir=_repo_root()
+        ),
         skill_catalog=runtime.skill_catalog,
     )
     session = runtime.create_session(session_id="session-main", workspace=str(tmp_path))

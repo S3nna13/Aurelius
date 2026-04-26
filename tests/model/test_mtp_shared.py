@@ -2,13 +2,13 @@
 
 Tiny config: d_model=64, vocab_size=256, n_heads=3.
 """
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.mtp_shared import SharedMTPHead
-
 
 D_MODEL = 64
 VOCAB_SIZE = 256
@@ -33,6 +33,7 @@ def hidden(model: SharedMTPHead) -> torch.Tensor:
 # 1. Output structure
 # ---------------------------------------------------------------------------
 
+
 def test_output_is_list_of_n_heads(model: SharedMTPHead, hidden: torch.Tensor):
     out = model(hidden)
     assert isinstance(out, list)
@@ -51,6 +52,7 @@ def test_logit_shape(model: SharedMTPHead, hidden: torch.Tensor):
 # 2. Weight sharing
 # ---------------------------------------------------------------------------
 
+
 def test_shared_weight_same_tensor(model: SharedMTPHead, hidden: torch.Tensor):
     """All heads route through the same shared_proj.weight storage."""
     ptr = model.shared_proj.weight.data_ptr()
@@ -66,14 +68,13 @@ def test_shared_weight_same_tensor(model: SharedMTPHead, hidden: torch.Tensor):
 def test_input_projs_different(model: SharedMTPHead):
     """Each per-head input projection uses a distinct weight tensor."""
     ptrs = [p.weight.data_ptr() for p in model.input_projs]
-    assert len(set(ptrs)) == N_HEADS, (
-        "All input_projs should have distinct weight tensors"
-    )
+    assert len(set(ptrs)) == N_HEADS, "All input_projs should have distinct weight tensors"
 
 
 # ---------------------------------------------------------------------------
 # 3. Gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_shared(model: SharedMTPHead, hidden: torch.Tensor):
     """Backward pass populates shared_proj.weight.grad."""
@@ -117,6 +118,7 @@ def test_gradient_flows_all_heads(model: SharedMTPHead, hidden: torch.Tensor):
 # 4. Numerical stability
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf(model: SharedMTPHead):
     torch.manual_seed(42)
     h = torch.randn(B, T, D_MODEL)
@@ -141,6 +143,7 @@ def test_determinism(model: SharedMTPHead):
 # 5. Acceptance rate
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_rate_perfect(model: SharedMTPHead):
     """Construct logits whose argmax == shifted targets → rate should be 1.0."""
     torch.manual_seed(0)
@@ -153,7 +156,7 @@ def test_acceptance_rate_perfect(model: SharedMTPHead):
         offset = i + 1
         if offset < T:
             # Set a high value at the correct token index for positions that matter
-            gt = targets[:, offset:]               # [B, T-offset]
+            gt = targets[:, offset:]  # [B, T-offset]
             valid_len = gt.shape[1]
             for b in range(B):
                 for t_idx in range(valid_len):
@@ -173,7 +176,7 @@ def test_acceptance_rate_zero(model: SharedMTPHead):
     logits_list = []
     for _ in range(N_HEADS):
         logits = torch.zeros(B, T, VOCAB_SIZE)
-        logits[:, :, 1] = 100.0   # argmax always → token 1
+        logits[:, :, 1] = 100.0  # argmax always → token 1
         logits_list.append(logits)
 
     rate = model.acceptance_rate(logits_list, targets)
@@ -203,6 +206,7 @@ def test_single_token_seq(model: SharedMTPHead):
 # ---------------------------------------------------------------------------
 # 6. n_heads flexibility
 # ---------------------------------------------------------------------------
+
 
 def test_n_heads_1():
     """n_heads=1 → forward returns a list of 1 tensor."""

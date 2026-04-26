@@ -23,16 +23,16 @@ Pure PyTorch — no HuggingFace, no scipy, no sklearn, no einops.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # _split_heads_from_o_proj_input
 # ---------------------------------------------------------------------------
+
 
 def _split_heads(x: Tensor, n_heads: int) -> Tensor:
     """Split the last dimension of x into n_heads chunks.
@@ -52,6 +52,7 @@ def _split_heads(x: Tensor, n_heads: int) -> Tensor:
 # ---------------------------------------------------------------------------
 # FunctionVectorExtractor
 # ---------------------------------------------------------------------------
+
 
 class FunctionVectorExtractor:
     """Extract function vectors from attention head outputs at a given layer.
@@ -104,9 +105,7 @@ class FunctionVectorExtractor:
         """Return the list/ModuleList of transformer blocks."""
         if hasattr(self.model, "layers"):
             return self.model.layers
-        raise AttributeError(
-            "model has no .layers attribute; cannot locate transformer blocks."
-        )
+        raise AttributeError("model has no .layers attribute; cannot locate transformer blocks.")
 
     # ------------------------------------------------------------------
     # extract
@@ -115,7 +114,7 @@ class FunctionVectorExtractor:
     def extract(
         self,
         input_ids: Tensor,
-        positions: Optional[List[int]] = None,
+        positions: list[int] | None = None,
     ) -> Tensor:
         """Extract and average attention head outputs across demonstrations.
 
@@ -133,9 +132,7 @@ class FunctionVectorExtractor:
                 To get the scalar global FV_task, call .mean(0) on the result.
         """
         if input_ids.dim() != 2:
-            raise ValueError(
-                f"input_ids must be (N, T), got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be (N, T), got shape {tuple(input_ids.shape)}")
         N, T = input_ids.shape
 
         # We capture the INPUT to the o_proj rather than its output so we can
@@ -212,9 +209,7 @@ class FunctionVectorExtractor:
             importance: (n_heads,) — causal importance score per head.
         """
         if zero_shot.dim() != 2 or zero_shot.shape[0] != 1:
-            raise ValueError(
-                f"zero_shot must be (1, T), got shape {tuple(zero_shot.shape)}"
-            )
+            raise ValueError(f"zero_shot must be (1, T), got shape {tuple(zero_shot.shape)}")
 
         # Extract FV per head: (n_heads, head_dim)
         fv = self.extract(demonstrations)
@@ -234,9 +229,7 @@ class FunctionVectorExtractor:
             # Expand FV_h into a full d_model vector by placing it in the
             # correct head slot; other heads are zeroed.
             fv_full = torch.zeros(
-                self.model.config.d_model
-                if hasattr(self.model, "config")
-                else n_heads * head_dim,
+                self.model.config.d_model if hasattr(self.model, "config") else n_heads * head_dim,
                 dtype=fv.dtype,
                 device=fv.device,
             )
@@ -253,6 +246,7 @@ class FunctionVectorExtractor:
 # ---------------------------------------------------------------------------
 # FunctionVectorInjector
 # ---------------------------------------------------------------------------
+
 
 class FunctionVectorInjector:
     """Inject a function vector into the model's residual stream.
@@ -299,21 +293,15 @@ class FunctionVectorInjector:
             logits: (1, T, vocab_size)
         """
         if input_ids.dim() != 2:
-            raise ValueError(
-                f"input_ids must be (1, T), got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be (1, T), got shape {tuple(input_ids.shape)}")
         if fv.dim() != 1:
-            raise ValueError(
-                f"fv must be 1-D (d_model,), got shape {tuple(fv.shape)}"
-            )
+            raise ValueError(f"fv must be 1-D (d_model,), got shape {tuple(fv.shape)}")
 
         T = input_ids.shape[1]
         pos = position if position >= 0 else T + position  # normalise
 
         if not (0 <= pos < T):
-            raise ValueError(
-                f"position {position} is out of range for sequence length {T}."
-            )
+            raise ValueError(f"position {position} is out of range for sequence length {T}.")
 
         # We hook the *forward pre-hook* of the target layer's TransformerBlock so
         # that we can modify the hidden state x before it enters the block.
@@ -345,21 +333,20 @@ class FunctionVectorInjector:
     def _get_layers(self):
         if hasattr(self.model, "layers"):
             return self.model.layers
-        raise AttributeError(
-            "model has no .layers attribute; cannot locate transformer blocks."
-        )
+        raise AttributeError("model has no .layers attribute; cannot locate transformer blocks.")
 
 
 # ---------------------------------------------------------------------------
 # Convenience: build_task_fv
 # ---------------------------------------------------------------------------
 
+
 def build_task_fv(
     model: nn.Module,
     demonstrations: Tensor,
     layer: int = 0,
-    positions: Optional[List[int]] = None,
-    top_k: Optional[int] = None,
+    positions: list[int] | None = None,
+    top_k: int | None = None,
 ) -> Tensor:
     """Compute the global task function vector FV_task.
 

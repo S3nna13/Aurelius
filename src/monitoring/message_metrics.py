@@ -3,13 +3,13 @@
 Wraps send/receive operations on a MessageBus and emits counters,
 gauges, and histograms via MetricsCollector.
 """
+
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Callable
 
-from src.monitoring.prometheus_metrics import MetricsCollector, METRICS_COLLECTOR
+from src.monitoring.prometheus_metrics import METRICS_COLLECTOR, MetricsCollector
 from src.multiagent.message_bus import AgentMessage, MessageBus
 
 
@@ -44,16 +44,12 @@ class MessageMetrics:
         error: bool = False,
     ) -> None:
         labels = {"msg_type": msg_type}
-        self._collector.increment_counter(
-            self._name("messages_sent_total"), 1.0, labels
-        )
+        self._collector.increment_counter(self._name("messages_sent_total"), 1.0, labels)
         self._collector.observe_histogram(
             self._name("send_latency_seconds"), latency_seconds, labels
         )
         if error:
-            self._collector.increment_counter(
-                self._name("send_errors_total"), 1.0, labels
-            )
+            self._collector.increment_counter(self._name("send_errors_total"), 1.0, labels)
 
     def record_received(self, msg_type: str = "unknown", count: int = 1) -> None:
         labels = {"msg_type": msg_type}
@@ -64,7 +60,7 @@ class MessageMetrics:
     def record_pending(self, count: int) -> None:
         self._collector.set_gauge(self._name("pending_messages"), float(count))
 
-    def wrap(self, bus: MessageBus) -> "InstrumentedMessageBus":
+    def wrap(self, bus: MessageBus) -> InstrumentedMessageBus:
         """Return an InstrumentedMessageBus that proxies to *bus*."""
         return InstrumentedMessageBus(bus, self)
 
@@ -96,9 +92,7 @@ class InstrumentedMessageBus:
         msgs = self._bus.receive(agent_id)
         if msgs:
             # approximate: count by msg_type of first message for label
-            self._metrics.record_received(
-                msg_type=msgs[0].msg_type, count=len(msgs)
-            )
+            self._metrics.record_received(msg_type=msgs[0].msg_type, count=len(msgs))
         return msgs
 
     def pending_count(self, agent_id: str | None = None) -> int:

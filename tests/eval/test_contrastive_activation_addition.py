@@ -10,16 +10,14 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-from torch import Tensor
-from typing import List
-
 from aurelius.eval.contrastive_activation_addition import (
-    CAAConfig,
     ActivationCollector,
+    CAAConfig,
+    CAAEvaluator,
     CAAExtractor,
     CAASteeringHook,
-    CAAEvaluator,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -37,14 +35,14 @@ N_LAYERS = 3
 
 
 @pytest.fixture(scope="module")
-def layers() -> List[nn.Module]:
+def layers() -> list[nn.Module]:
     """Three nn.Linear(D, D) layers used as stand-in transformer blocks."""
     torch.manual_seed(0)
     return [nn.Linear(D, D) for _ in range(N_LAYERS)]
 
 
 @pytest.fixture(scope="module")
-def model_fn(layers: List[nn.Module]):
+def model_fn(layers: list[nn.Module]):
     """Tiny 'model': passes input through each layer sequentially.
 
     Accepts LongTensor (B, T) — converts to float embeddings (B, T, D)
@@ -80,7 +78,7 @@ def default_config() -> CAAConfig:
 
 
 @pytest.fixture(scope="module")
-def extractor(default_config: CAAConfig, layers: List[nn.Module]) -> CAAExtractor:
+def extractor(default_config: CAAConfig, layers: list[nn.Module]) -> CAAExtractor:
     return CAAExtractor(config=default_config, layers=layers)
 
 
@@ -168,9 +166,7 @@ class TestActivationCollector:
 
 
 class TestCAAExtractor:
-    def test_extract_returns_shape_d(
-        self, extractor, model_fn, input_ids_pos, input_ids_neg
-    ):
+    def test_extract_returns_shape_d(self, extractor, model_fn, input_ids_pos, input_ids_neg):
         sv = extractor.extract(model_fn, input_ids_pos, input_ids_neg)
         assert sv.shape == (D,), f"Expected ({D},), got {sv.shape}"
 
@@ -218,13 +214,13 @@ class TestCAAExtractor:
 class TestCAASteeringHook:
     def _run_with_hook(
         self,
-        layers: List[nn.Module],
+        layers: list[nn.Module],
         model_fn,
         input_ids: Tensor,
         sv: Tensor,
         alpha: float,
         target_layer_idx: int,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         collector = ActivationCollector(layers)
         hook = CAASteeringHook(sv, alpha=alpha, token_position=-1)
         hook.attach(layers[target_layer_idx])
@@ -243,9 +239,9 @@ class TestCAASteeringHook:
         )
 
         # Activations at the hooked layer (or downstream) must differ
-        assert not torch.allclose(
-            base_acts[1], steered_acts[1]
-        ), "Steering hook should have changed activations."
+        assert not torch.allclose(base_acts[1], steered_acts[1]), (
+            "Steering hook should have changed activations."
+        )
 
     def test_detach_restores_original_behavior(self, layers, model_fn, steering_vector):
         """After detach(), the hook no longer affects outputs."""
@@ -264,9 +260,9 @@ class TestCAASteeringHook:
         collector_post = ActivationCollector(layers)
         post_acts = collector_post.collect(model_fn, input_ids)
 
-        assert torch.allclose(
-            base_acts[1], post_acts[1]
-        ), "After detach, outputs should be identical to baseline."
+        assert torch.allclose(base_acts[1], post_acts[1]), (
+            "After detach, outputs should be identical to baseline."
+        )
 
     def test_alpha_zero_produces_no_change(self, layers, model_fn, steering_vector):
         """alpha=0 should produce exactly the same output as no steering."""
@@ -279,9 +275,9 @@ class TestCAASteeringHook:
             layers, model_fn, input_ids, steering_vector, alpha=0.0, target_layer_idx=1
         )
 
-        assert torch.allclose(
-            base_acts[1], steered_acts[1], atol=1e-6
-        ), "alpha=0 should produce identical outputs to baseline."
+        assert torch.allclose(base_acts[1], steered_acts[1], atol=1e-6), (
+            "alpha=0 should produce identical outputs to baseline."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +290,7 @@ class TestCAAEvaluator:
         self,
         extractor: CAAExtractor,
         default_config: CAAConfig,
-        layers: List[nn.Module],
+        layers: list[nn.Module],
         model_fn,
         steering_vector: Tensor,
     ):
@@ -314,7 +310,7 @@ class TestCAAEvaluator:
         self,
         extractor: CAAExtractor,
         default_config: CAAConfig,
-        layers: List[nn.Module],
+        layers: list[nn.Module],
         model_fn,
         steering_vector: Tensor,
     ):
@@ -329,15 +325,15 @@ class TestCAAEvaluator:
         )
         base = result["baseline_activations"][default_config.layer_idx]
         steered = result["steered_activations"][default_config.layer_idx]
-        assert not torch.allclose(
-            base, steered
-        ), "Steering should change activations at the target layer."
+        assert not torch.allclose(base, steered), (
+            "Steering should change activations at the target layer."
+        )
 
     def test_steer_and_compare_activation_list_lengths(
         self,
         extractor: CAAExtractor,
         default_config: CAAConfig,
-        layers: List[nn.Module],
+        layers: list[nn.Module],
         model_fn,
         steering_vector: Tensor,
     ):

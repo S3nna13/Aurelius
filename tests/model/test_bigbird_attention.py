@@ -1,13 +1,11 @@
 """Tests for BigBird-style sparse attention module."""
 
 import torch
-import pytest
-from torch import Tensor
 
 from src.model.bigbird_attention import (
-    BigBirdConfig,
     BigBirdAttention,
     BigBirdBlock,
+    BigBirdConfig,
     compute_attention_sparsity,
     count_attended_positions,
     create_bigbird_mask,
@@ -144,7 +142,7 @@ def test_sparse_attention_with_full_mask_equals_standard():
     k = torch.randn(B, H, T, D)
     v = torch.randn(B, H, T, D)
     full_mask = torch.ones(T, T, dtype=torch.bool)
-    scale = D ** -0.5
+    scale = D**-0.5
 
     # sparse_attention_with_mask with full mask
     out_sparse = sparse_attention_with_mask(q, k, v, full_mask, scale=scale)
@@ -174,16 +172,14 @@ def test_bigbird_attention_shape():
     model = BigBirdAttention(cfg)
     x = torch.randn(B, T, D_MODEL)
     out = model(x, seed=0)
-    assert out.shape == (B, T, D_MODEL), (
-        f"Expected shape ({B}, {T}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"Expected shape ({B}, {T}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 14. test_bigbird_attention_different_seeds
 # ---------------------------------------------------------------------------
 def test_bigbird_attention_different_seeds():
-    cfg = BigBirdConfig(
+    BigBirdConfig(
         window_size=WINDOW,
         n_global_tokens=N_GLOBAL,
         n_random_keys=N_RANDOM,
@@ -214,9 +210,7 @@ def test_bigbird_block_shape():
     block = BigBirdBlock(cfg)
     x = torch.randn(B, T, D_MODEL)
     out = block(x)
-    assert out.shape == (B, T, D_MODEL), (
-        f"Expected shape ({B}, {T}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"Expected shape ({B}, {T}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------

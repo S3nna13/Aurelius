@@ -1,10 +1,11 @@
 """Self-consistency: Wang et al. 2022 'Self-Consistency Improves Chain of Thought Reasoning'."""
+
 from __future__ import annotations
 
 import re
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -28,10 +29,10 @@ class SelfConsistency:
 
     def extract_answer(self, text: str) -> str:
         for pattern in [
-            r'####\s*(.+)',
-            r'[Aa]nswer:\s*(.+)',
-            r'=\s*([^\n]+)',
-            r'[Tt]he answer is\s*(.+)',
+            r"####\s*(.+)",
+            r"[Aa]nswer:\s*(.+)",
+            r"=\s*([^\n]+)",
+            r"[Tt]he answer is\s*(.+)",
         ]:
             m = re.search(pattern, text)
             if m:
@@ -42,7 +43,7 @@ class SelfConsistency:
         if self.config.aggregation == "weighted_vote":
             weights: dict[str, float] = {}
             for s in samples:
-                m = re.match(r'WEIGHT:([\d.]+):(.*)', s)
+                m = re.match(r"WEIGHT:([\d.]+):(.*)", s)
                 if m:
                     w = float(m.group(1))
                     ans = m.group(2).strip()

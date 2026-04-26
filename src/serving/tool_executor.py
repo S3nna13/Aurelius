@@ -1,11 +1,11 @@
 import ast
+import datetime
+import json
 import operator
 import re
-import json
-import datetime
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple, Any
-
+from typing import Any
 
 # Maximum length of a calculator expression accepted by the built-in tool.
 # Guards against pathological inputs and protects the parser.
@@ -33,17 +33,11 @@ def _calc_walk(node: ast.AST) -> Any:
     if isinstance(node, ast.Expression):
         return _calc_walk(node.body)
     if isinstance(node, ast.Constant):
-        if isinstance(node.value, (int, float)) and not isinstance(
-            node.value, bool
-        ):
+        if isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
             return node.value
-        raise ValueError(
-            f"Disallowed constant type: {type(node.value).__name__}"
-        )
+        raise ValueError(f"Disallowed constant type: {type(node.value).__name__}")
     if isinstance(node, ast.BinOp) and type(node.op) in _BINOPS:
-        return _BINOPS[type(node.op)](
-            _calc_walk(node.left), _calc_walk(node.right)
-        )
+        return _BINOPS[type(node.op)](_calc_walk(node.left), _calc_walk(node.right))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOPS:
         return _UNARYOPS[type(node.op)](_calc_walk(node.operand))
     raise ValueError(f"Disallowed node type: {type(node).__name__}")
@@ -54,7 +48,7 @@ class ToolResult:
     tool_name: str
     output: str
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -74,9 +68,7 @@ def _safe_eval(expression: str) -> Any:
         of the Python dynamic-code primitive.
     """
     if not expression or len(expression) > _MAX_EXPR_LEN:
-        raise ValueError(
-            f"expression rejected by size guard: len={len(expression)}"
-        )
+        raise ValueError(f"expression rejected by size guard: len={len(expression)}")
     # ast.Num was removed in Python 3.14; ast.Constant covers all literals.
     tree = ast.parse(expression.strip(), mode="eval")
     return _calc_walk(tree)
@@ -92,9 +84,7 @@ def parse_literal(text: str) -> Any:
     if not isinstance(text, str):
         raise TypeError(f"parse_literal expects str, got {type(text).__name__}")
     if not text or len(text) > _MAX_EXPR_LEN:
-        raise ValueError(
-            f"literal rejected by size guard: len={len(text)}"
-        )
+        raise ValueError(f"literal rejected by size guard: len={len(text)}")
     return ast.literal_eval(text)
 
 
@@ -130,18 +120,18 @@ _TOOL_CALL_RE = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
 
 
 class ToolExecutor:
-    def __init__(self, tools: Optional[List[Tool]] = None) -> None:
-        self._tools: Dict[str, Tool] = {}
-        for tool in (_BUILTIN_TOOLS if tools is None else tools):
+    def __init__(self, tools: list[Tool] | None = None) -> None:
+        self._tools: dict[str, Tool] = {}
+        for tool in _BUILTIN_TOOLS if tools is None else tools:
             self.register(tool)
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
 
-    def list_tools(self) -> List[str]:
+    def list_tools(self) -> list[str]:
         return list(self._tools.keys())
 
-    def parse_tool_call(self, text: str) -> Optional[Dict]:
+    def parse_tool_call(self, text: str) -> dict | None:
         match = _TOOL_CALL_RE.search(text)
         if not match:
             return None
@@ -154,7 +144,7 @@ class ToolExecutor:
             return None
         return parsed
 
-    def execute(self, tool_name: str, args: Dict[str, Any]) -> ToolResult:
+    def execute(self, tool_name: str, args: dict[str, Any]) -> ToolResult:
         if tool_name not in self._tools:
             return ToolResult(
                 tool_name=tool_name,
@@ -174,7 +164,7 @@ class ToolExecutor:
                 error=str(exc),
             )
 
-    def process(self, model_output: str) -> Tuple[Optional[ToolResult], str]:
+    def process(self, model_output: str) -> tuple[ToolResult | None, str]:
         parsed = self.parse_tool_call(model_output)
         if parsed is None:
             return None, model_output

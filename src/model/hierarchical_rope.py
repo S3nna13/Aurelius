@@ -18,10 +18,10 @@ from torch import Tensor
 class HierarchicalRoPEConfig:
     head_dim: int = 32
     max_seq_len: int = 512
-    n_scales: int = 3               # number of hierarchical levels
+    n_scales: int = 3  # number of hierarchical levels
     scale_factors: list[float] = field(default_factory=lambda: [1.0, 4.0, 16.0])
     base: float = 10000.0
-    rope_fraction: float = 1.0      # fraction of head_dim for positional encoding
+    rope_fraction: float = 1.0  # fraction of head_dim for positional encoding
 
 
 def compute_rope_frequencies(
@@ -42,8 +42,8 @@ def compute_rope_frequencies(
 
 
 def apply_rope_single_scale(
-    x: Tensor,          # (B, H, T, D)
-    freqs: Tensor,      # (head_dim//2,)
+    x: Tensor,  # (B, H, T, D)
+    freqs: Tensor,  # (head_dim//2,)
     positions: Tensor,  # (T,)
 ) -> Tensor:
     """Apply RoPE rotation at a single scale.
@@ -63,11 +63,11 @@ def apply_rope_single_scale(
 
     # split x into even and odd indices
     x_even = x[..., 0::2]  # (B, H, T, half)
-    x_odd  = x[..., 1::2]  # (B, H, T, half)
+    x_odd = x[..., 1::2]  # (B, H, T, half)
 
     # 2D rotation
     x_rot_even = x_even * cos - x_odd * sin
-    x_rot_odd  = x_even * sin + x_odd * cos
+    x_rot_odd = x_even * sin + x_odd * cos
 
     # interleave back
     out = torch.stack([x_rot_even, x_rot_odd], dim=-1)  # (B, H, T, half, 2)
@@ -76,9 +76,9 @@ def apply_rope_single_scale(
 
 
 def apply_hierarchical_rope(
-    x: Tensor,              # (B, H, T, D)
+    x: Tensor,  # (B, H, T, D)
     cfg: HierarchicalRoPEConfig,
-    positions: Tensor | None = None,   # (T,) if None use 0..T-1
+    positions: Tensor | None = None,  # (T,) if None use 0..T-1
 ) -> Tensor:
     """Apply hierarchical RoPE: average of RoPE at each scale.
 
@@ -109,9 +109,9 @@ def compute_position_bias(
     For each scale, compute log(1 + |i - j|) / scale for all (i, j) pairs.
     Average across scales. Returns (T, T) bias tensor.
     """
-    i_idx = torch.arange(seq_len).unsqueeze(1).float()   # (T, 1)
-    j_idx = torch.arange(seq_len).unsqueeze(0).float()   # (1, T)
-    dist = (i_idx - j_idx).abs()                          # (T, T)
+    i_idx = torch.arange(seq_len).unsqueeze(1).float()  # (T, 1)
+    j_idx = torch.arange(seq_len).unsqueeze(0).float()  # (1, T)
+    dist = (i_idx - j_idx).abs()  # (T, T)
 
     bias_sum = torch.zeros(seq_len, seq_len)
     for scale in scale_factors:
@@ -169,7 +169,7 @@ class HierarchicalRoPEAttention(nn.Module):
 
 
 def interpolate_rope_frequencies(
-    freqs: Tensor,      # (head_dim//2,)
+    freqs: Tensor,  # (head_dim//2,)
     target_scale: float,
     current_scale: float = 1.0,
 ) -> Tensor:
@@ -200,8 +200,7 @@ class RoPEScaleScheduler:
             return list(self.target_scales)
         t = min(step / self.warmup_steps, 1.0)
         return [
-            init + t * (target - init)
-            for init, target in zip(self.init_scales, self.target_scales)
+            init + t * (target - init) for init, target in zip(self.init_scales, self.target_scales)
         ]
 
     def update(self, step: int) -> None:

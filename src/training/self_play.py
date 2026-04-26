@@ -30,9 +30,9 @@ class SelfPlayConfig:
 class SelfPlayRollout:
     """A single generated response with its score."""
 
-    prompt_ids: torch.Tensor   # (S_prompt,) 1-D
+    prompt_ids: torch.Tensor  # (S_prompt,) 1-D
     response_ids: torch.Tensor  # (S_resp,) 1-D
-    score: float                # mean log-prob of response tokens
+    score: float  # mean log-prob of response tokens
 
 
 @dataclass

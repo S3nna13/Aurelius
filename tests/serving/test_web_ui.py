@@ -6,6 +6,8 @@ import io
 import json
 from types import SimpleNamespace
 
+from src.serving.auth_middleware import AuthConfig, AuthMiddleware
+from src.serving.rate_limiter import RateLimitConfig, TokenBucketLimiter
 from src.serving.web_ui import (
     HTML_TEMPLATE,
     WebUIHandler,
@@ -13,8 +15,6 @@ from src.serving.web_ui import (
     create_ui_server,
     make_mock_generate_fn,
 )
-from src.serving.auth_middleware import AuthConfig, AuthMiddleware
-from src.serving.rate_limiter import RateLimitConfig, TokenBucketLimiter
 
 
 class _NoCloseBytesIO(io.BytesIO):
@@ -336,9 +336,7 @@ def test_health_skips_auth():
 
 
 def test_rate_limiter_rejects_api_chat_when_exceeded():
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=0.0, burst_size=0)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=0.0, burst_size=0))
     payload = {"message": "hello", "history": []}
     status, headers, body = _invoke(
         WebUIHandler,
@@ -353,9 +351,7 @@ def test_rate_limiter_rejects_api_chat_when_exceeded():
 
 
 def test_rate_limiter_allows_api_chat_when_within_limit():
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=100.0, burst_size=10)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=100.0, burst_size=10))
     payload = {"message": "hello", "history": []}
     status, _, body = _invoke(
         WebUIHandler,
@@ -370,9 +366,7 @@ def test_rate_limiter_allows_api_chat_when_within_limit():
 
 def test_create_ui_server_forwards_auth_and_rate_limiter():
     mw = _auth_mw()
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=1.0, burst_size=1)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=1.0, burst_size=1))
     srv = create_ui_server(
         "127.0.0.1",
         0,

@@ -7,20 +7,20 @@ a unified KVCacheManager, and utility functions for cache analysis.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EvictionConfig:
     """Configuration for KV-cache eviction policies."""
+
     max_cache_size: int = 512
     n_sink_tokens: int = 4
     n_recent_tokens: int = 64
@@ -31,6 +31,7 @@ class EvictionConfig:
 # ---------------------------------------------------------------------------
 # StreamingLLM eviction
 # ---------------------------------------------------------------------------
+
 
 class StreamingLLMEviction:
     """Always keep the first *n_sink* tokens and the last *n_recent* tokens.
@@ -47,7 +48,7 @@ class StreamingLLMEviction:
         self,
         keys: Tensor,
         values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Evict tokens outside the sink + recent window.
 
         Args:
@@ -81,6 +82,7 @@ class StreamingLLMEviction:
 # Heavy-Hitter Oracle (H2O) eviction
 # ---------------------------------------------------------------------------
 
+
 class HeavyHitterEviction:
     """Eviction based on cumulative attention scores (H2O policy).
 
@@ -91,7 +93,7 @@ class HeavyHitterEviction:
 
     def __init__(self, config: EvictionConfig) -> None:
         self.config = config
-        self.scores: Optional[Tensor] = None  # (T,)
+        self.scores: Tensor | None = None  # (T,)
 
     # ------------------------------------------------------------------
     def update_scores(self, attn_weights: Tensor) -> None:
@@ -126,7 +128,7 @@ class HeavyHitterEviction:
         self,
         keys: Tensor,
         values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Return keys/values keeping top-scored positions + sink tokens.
 
         Args:
@@ -176,7 +178,8 @@ class HeavyHitterEviction:
 # Utility functions
 # ---------------------------------------------------------------------------
 
-def compute_cache_hit_rate(requested: List[int], cached: List[int]) -> float:
+
+def compute_cache_hit_rate(requested: list[int], cached: list[int]) -> float:
     """Fraction of requested token positions found in the cache.
 
     Args:
@@ -222,6 +225,7 @@ def estimate_cache_memory(
 # KVCacheManager
 # ---------------------------------------------------------------------------
 
+
 class KVCacheManager:
     """Manages a rolling KV-cache using the StreamingLLM eviction policy.
 
@@ -236,15 +240,15 @@ class KVCacheManager:
     def __init__(self, config: EvictionConfig) -> None:
         self.config = config
         self._eviction = StreamingLLMEviction(config)
-        self._keys: Optional[Tensor] = None
-        self._values: Optional[Tensor] = None
+        self._keys: Tensor | None = None
+        self._values: Tensor | None = None
 
     # ------------------------------------------------------------------
     def update(
         self,
         new_keys: Tensor,
         new_values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Append new K/V pairs and evict if over budget.
 
         Args:

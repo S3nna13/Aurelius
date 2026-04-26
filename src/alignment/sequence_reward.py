@@ -3,21 +3,23 @@
 Train a reward model on preference data and use it to score completions.
 Uses a pooling strategy over hidden states and Bradley-Terry preference loss.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class SequenceRewardConfig:
-    pooling: str = "last"           # "last" | "mean" | "max" -- how to pool hidden states
-    reward_head_dim: int = 128      # hidden dim of reward MLP head
-    margin: float = 0.5             # Bradley-Terry margin
+    pooling: str = "last"  # "last" | "mean" | "max" -- how to pool hidden states
+    reward_head_dim: int = 128  # hidden dim of reward MLP head
+    margin: float = 0.5  # Bradley-Terry margin
     label_smoothing: float = 0.0
-    normalize_rewards: bool = True   # z-score normalize reward outputs
+    normalize_rewards: bool = True  # z-score normalize reward outputs
     dropout: float = 0.1
 
 
@@ -206,7 +208,9 @@ class RewardModelTrainerV2:
         return {
             "loss": loss.item(),
             "accuracy": compute_reward_accuracy(chosen_rewards.detach(), rejected_rewards.detach()),
-            "mean_margin": compute_reward_margin(chosen_rewards.detach(), rejected_rewards.detach()),
+            "mean_margin": compute_reward_margin(
+                chosen_rewards.detach(), rejected_rewards.detach()
+            ),
             "mean_chosen_reward": chosen_rewards.detach().mean().item(),
             "mean_rejected_reward": rejected_rewards.detach().mean().item(),
         }

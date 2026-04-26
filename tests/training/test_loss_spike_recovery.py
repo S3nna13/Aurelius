@@ -2,7 +2,7 @@
 
 Run with:
     cd ~/Desktop/Aurelius && .venv/bin/python3.13 -m pytest tests/training/test_loss_spike_recovery.py -v
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
@@ -14,13 +14,12 @@ import torch.nn as nn
 import torch.optim as optim
 
 from src.training.loss_spike_recovery import (
-    SpikeConfig,
-    LossHistory,
     CheckpointBuffer,
+    LossHistory,
     LossSpikeRecovery,
+    SpikeConfig,
     adaptive_grad_clip,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -64,7 +63,7 @@ def test_loss_history_mean_and_std():
 
     # population std
     variance = sum((x - expected_mean) ** 2 for x in values) / len(values)
-    expected_std = variance ** 0.5
+    expected_std = variance**0.5
     assert abs(history.std - expected_std) < 1e-6
 
 
@@ -195,7 +194,7 @@ def test_loss_spike_recovery_recovered_true_after_spike(mlp, optimizer):
     config = SpikeConfig(
         window_size=10,
         spike_threshold=2.0,
-        grad_norm_limit=1e9,   # disable grad-norm spike so only loss spike fires
+        grad_norm_limit=1e9,  # disable grad-norm spike so only loss spike fires
         min_steps_before_check=0,
         cooldown_steps=0,
         max_recoveries=5,

@@ -8,8 +8,14 @@ import torch
 from src.inference.long_rope import LongRoPEConfig, LongRoPEEmbedding
 
 
-def make_emb(dim=64, base=10000.0, original_max=4096, extended_max=131072,
-             short_factor=None, long_factor=None):
+def make_emb(
+    dim=64,
+    base=10000.0,
+    original_max=4096,
+    extended_max=131072,
+    short_factor=None,
+    long_factor=None,
+):
     cfg = LongRoPEConfig(
         dim=dim,
         base=base,

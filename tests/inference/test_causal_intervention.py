@@ -1,15 +1,16 @@
 """Tests for causal intervention and counterfactual generation."""
+
 import pytest
 import torch
 
+from src.inference.causal_intervention import (
+    ActivationPatcher,
+    CausalTracer,
+    InterventionConfig,
+    counterfactual_logits,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.causal_intervention import (
-    InterventionConfig,
-    ActivationPatcher,
-    counterfactual_logits,
-    CausalTracer,
-)
 
 # ---------------------------------------------------------------------------
 # Shared small-model config (fast: 2 layers, d_model=64)
@@ -46,6 +47,7 @@ def small_model():
 # 1. InterventionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_intervention_config_defaults():
     cfg = InterventionConfig()
     assert cfg.intervention_layer == 0
@@ -56,6 +58,7 @@ def test_intervention_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. ActivationPatcher.patch returns correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_activation_patcher_patch_shape(small_model):
     B, T = 1, 4
@@ -70,6 +73,7 @@ def test_activation_patcher_patch_shape(small_model):
 # 3. ActivationPatcher.patch with zero patch doesn't crash
 # ---------------------------------------------------------------------------
 
+
 def test_activation_patcher_zero_patch_no_crash(small_model):
     B, T = 1, 4
     input_ids = torch.randint(0, VOCAB_SIZE, (B, T))
@@ -83,6 +87,7 @@ def test_activation_patcher_zero_patch_no_crash(small_model):
 # ---------------------------------------------------------------------------
 # 4. restore() removes hooks (model.parameters() unchanged)
 # ---------------------------------------------------------------------------
+
 
 def test_activation_patcher_restore_removes_hooks(small_model):
     B, T = 1, 4
@@ -104,6 +109,7 @@ def test_activation_patcher_restore_removes_hooks(small_model):
 # 5. counterfactual_logits shape matches (1, T, V)
 # ---------------------------------------------------------------------------
 
+
 def test_counterfactual_logits_shape(small_model):
     T = 4
     original_ids = torch.randint(0, VOCAB_SIZE, (1, T))
@@ -115,6 +121,7 @@ def test_counterfactual_logits_shape(small_model):
 # ---------------------------------------------------------------------------
 # 6. counterfactual_logits same input = same output
 # ---------------------------------------------------------------------------
+
 
 def test_counterfactual_logits_same_input(small_model):
     T = 4
@@ -132,6 +139,7 @@ def test_counterfactual_logits_same_input(small_model):
 # 7. CausalTracer.trace returns shape (n_layers, seq_len)
 # ---------------------------------------------------------------------------
 
+
 def test_causal_tracer_trace_shape(small_model):
     T = 4
     input_ids = torch.randint(0, VOCAB_SIZE, (1, T))
@@ -144,6 +152,7 @@ def test_causal_tracer_trace_shape(small_model):
 # 8. CausalTracer.trace values are non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_causal_tracer_trace_nonnegative(small_model):
     T = 4
     input_ids = torch.randint(0, VOCAB_SIZE, (1, T))
@@ -155,6 +164,7 @@ def test_causal_tracer_trace_nonnegative(small_model):
 # ---------------------------------------------------------------------------
 # 9. Multiple layer patches are independent
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_layer_patches_independent(small_model):
     B, T = 1, 4
@@ -176,6 +186,7 @@ def test_multiple_layer_patches_independent(small_model):
 # 10. Hook removal doesn't affect model params
 # ---------------------------------------------------------------------------
 
+
 def test_hook_removal_does_not_affect_params(small_model):
     params_before = {n: p.clone() for n, p in small_model.named_parameters()}
 
@@ -194,6 +205,7 @@ def test_hook_removal_does_not_affect_params(small_model):
 # 11. Patch at dim 0 vs dim 1 gives different logits
 # ---------------------------------------------------------------------------
 
+
 def test_patch_dim_0_vs_dim_1_different(small_model):
     B, T = 1, 4
     input_ids = torch.randint(0, VOCAB_SIZE, (B, T))
@@ -211,6 +223,7 @@ def test_patch_dim_0_vs_dim_1_different(small_model):
 # 12. CausalTracer.trace with target_position=0 works
 # ---------------------------------------------------------------------------
 
+
 def test_causal_tracer_trace_target_position_zero(small_model):
     T = 4
     input_ids = torch.randint(0, VOCAB_SIZE, (1, T))
@@ -223,6 +236,7 @@ def test_causal_tracer_trace_target_position_zero(small_model):
 # ---------------------------------------------------------------------------
 # 13. Intervention at last layer has larger effect than first layer
 # ---------------------------------------------------------------------------
+
 
 def test_last_layer_intervention_larger_effect(small_model):
     """Both layers have non-zero effect on adjacent token, and patching
@@ -242,7 +256,9 @@ def test_last_layer_intervention_larger_effect(small_model):
     large_val = 1e4
 
     cfg_first = InterventionConfig(intervention_layer=0, intervention_dim=0, patch_value=large_val)
-    cfg_last = InterventionConfig(intervention_layer=N_LAYERS - 1, intervention_dim=0, patch_value=large_val)
+    cfg_last = InterventionConfig(
+        intervention_layer=N_LAYERS - 1, intervention_dim=0, patch_value=large_val
+    )
 
     logits_first = ActivationPatcher(small_model, cfg_first).patch(input_ids)
     logits_last = ActivationPatcher(small_model, cfg_last).patch(input_ids)
@@ -266,6 +282,7 @@ def test_last_layer_intervention_larger_effect(small_model):
 # ---------------------------------------------------------------------------
 # 14. Batch size 1 and 2 both work
 # ---------------------------------------------------------------------------
+
 
 def test_batch_size_1_and_2(small_model):
     T = 4

@@ -1,4 +1,5 @@
 """DARE model merging: Drop And REscale (arXiv 2311.03099)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -33,9 +34,7 @@ class DAREMerger:
     ) -> dict[str, torch.Tensor]:
         return {k: finetuned[k] - base[k] for k in base}
 
-    def sparsify(
-        self, task_vector: dict[str, torch.Tensor]
-    ) -> dict[str, torch.Tensor]:
+    def sparsify(self, task_vector: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         rng = torch.Generator()
         rng.manual_seed(self.config.seed)
         result: dict[str, torch.Tensor] = {}
@@ -63,9 +62,7 @@ class DAREMerger:
         if len(weights) != n:
             raise ValueError("len(weights) must equal len(finetuned_models)")
 
-        task_vectors = [
-            self.compute_task_vector(base, ft) for ft in finetuned_models
-        ]
+        task_vectors = [self.compute_task_vector(base, ft) for ft in finetuned_models]
         sparse_vectors = [self.sparsify(tv) for tv in task_vectors]
 
         merged: dict[str, torch.Tensor] = {}

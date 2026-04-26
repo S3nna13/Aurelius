@@ -19,19 +19,18 @@ Typical usage::
 
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MixtureConsistencyConfig:
@@ -64,6 +63,7 @@ class MixtureConsistencyConfig:
 # Standalone augmentation function
 # ---------------------------------------------------------------------------
 
+
 def token_dropout_augment(
     input_ids: Tensor,
     dropout_rate: float = 0.15,
@@ -94,6 +94,7 @@ def token_dropout_augment(
 # ---------------------------------------------------------------------------
 # Loss class
 # ---------------------------------------------------------------------------
+
 
 class MixtureConsistencyLoss(nn.Module):
     """Computes consistency loss between two augmented views of an input.
@@ -222,6 +223,7 @@ class MixtureConsistencyLoss(nn.Module):
 # Trainer class
 # ---------------------------------------------------------------------------
 
+
 class MixtureConsistencyTrainer:
     """Training wrapper that combines task loss with consistency regularization.
 
@@ -249,19 +251,15 @@ class MixtureConsistencyTrainer:
         model: nn.Module,
         base_loss_fn: Callable[[Tensor, Tensor], Tensor],
         consistency_weight: float = 0.1,
-        augment_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        augment_fn: Callable[[Tensor], Tensor] | None = None,
     ) -> None:
         self.model = model
         self.base_loss_fn = base_loss_fn
         self.consistency_weight = consistency_weight
         self.augment_fn = augment_fn if augment_fn is not None else token_dropout_augment
-        self._consistency_loss_fn = MixtureConsistencyLoss(
-            consistency_weight=consistency_weight
-        )
+        self._consistency_loss_fn = MixtureConsistencyLoss(consistency_weight=consistency_weight)
 
-    def create_augmented_pair(
-        self, input_ids: Tensor
-    ) -> Tuple[Tensor, Tensor]:
+    def create_augmented_pair(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Create two independently augmented views of *input_ids*.
 
         Args:
@@ -303,9 +301,7 @@ class MixtureConsistencyTrainer:
         view1, view2 = self.create_augmented_pair(input_ids)
         logits1 = self.model(view1)
         logits2 = self.model(view2)
-        consistency_loss = self._consistency_loss_fn.compute_consistency_loss(
-            logits1, logits2
-        )
+        consistency_loss = self._consistency_loss_fn.compute_consistency_loss(logits1, logits2)
 
         total_loss = base_loss + self.consistency_weight * consistency_loss
 
@@ -327,9 +323,10 @@ class MixtureConsistencyTrainer:
 # Evaluation utility
 # ---------------------------------------------------------------------------
 
+
 def compute_pairwise_consistency(
     model: nn.Module,
-    dataset: List[Tensor],
+    dataset: list[Tensor],
     n_pairs: int = 100,
 ) -> float:
     """Measure a model's output consistency on augmented pairs from *dataset*.
@@ -349,7 +346,7 @@ def compute_pairwise_consistency(
         consistent, ``0`` means maximally inconsistent.
     """
     model.train(False)
-    scores: List[float] = []
+    scores: list[float] = []
     n_samples = min(n_pairs, len(dataset))
 
     indices = torch.randperm(len(dataset))[:n_samples].tolist()

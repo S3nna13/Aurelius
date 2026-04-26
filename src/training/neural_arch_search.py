@@ -1,4 +1,5 @@
 """Differentiable neural architecture search (DARTS-style) for transformer config selection."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -38,10 +39,7 @@ class ArchitectureWeights(nn.Module):
 
     def get_probs(self) -> dict[str, Tensor]:
         """Return softmax probabilities for each architecture dimension."""
-        return {
-            key: F.softmax(param, dim=0)
-            for key, param in self.arch_params.items()
-        }
+        return {key: F.softmax(param, dim=0) for key, param in self.arch_params.items()}
 
     def get_best(self) -> dict[str, Any]:
         """Return argmax choice for each dimension."""
@@ -61,9 +59,7 @@ class ArchitectureWeights(nn.Module):
         return torch.stack(entropies).mean()
 
 
-def gumbel_softmax_sample(
-    logits: Tensor, temperature: float, hard: bool = False
-) -> Tensor:
+def gumbel_softmax_sample(logits: Tensor, temperature: float, hard: bool = False) -> Tensor:
     """Standard Gumbel-softmax sampling.
 
     Adds Gumbel noise, divides by temperature, applies softmax.
@@ -136,9 +132,7 @@ class NASSearcher:
 
         # Single set of arch logits for the mixed operation over all candidates
         self.arch_logits = nn.Parameter(torch.zeros(len(self.candidates)))
-        self.mixed_op = MixedOperation(
-            list(self.candidates), self.arch_logits
-        )
+        self.mixed_op = MixedOperation(list(self.candidates), self.arch_logits)
 
     def build_candidates(self) -> nn.ModuleList:
         """Create all FFN candidates from search space combinations."""

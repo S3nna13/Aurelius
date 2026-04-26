@@ -8,22 +8,21 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.knowledge_distillation_v2 import (
     DistillationConfig,
-    SoftTargetLoss,
     DistillationLoss,
     DistillationTrainer,
+    SoftTargetLoss,
 )
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-V = 16   # vocab size
-D = 32   # embedding dim
-B = 2    # batch size
-T = 6    # sequence length
+V = 16  # vocab size
+D = 32  # embedding dim
+B = 2  # batch size
+T = 6  # sequence length
 
 
 class _TinyLM(nn.Module):
@@ -54,6 +53,7 @@ def _random_labels(ignore_first: bool = False) -> torch.LongTensor:
 # DistillationConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestDistillationConfigDefaults:
     def test_temperature_default(self):
         cfg = DistillationConfig()
@@ -71,6 +71,7 @@ class TestDistillationConfigDefaults:
 # ---------------------------------------------------------------------------
 # SoftTargetLoss.soft_probs
 # ---------------------------------------------------------------------------
+
 
 class TestSoftProbs:
     def test_sums_to_one(self):
@@ -96,6 +97,7 @@ class TestSoftProbs:
 # ---------------------------------------------------------------------------
 # Individual KL / JSD / MSE losses
 # ---------------------------------------------------------------------------
+
 
 class TestSoftTargetLossVariants:
     @pytest.fixture(autouse=True)
@@ -150,6 +152,7 @@ class TestSoftTargetLossVariants:
 # DistillationLoss
 # ---------------------------------------------------------------------------
 
+
 class TestDistillationLoss:
     def test_task_loss_handles_ignore_index(self):
         """task_loss should not crash with -100 labels and still return a finite scalar."""
@@ -200,6 +203,7 @@ class TestDistillationLoss:
 # DistillationTrainer
 # ---------------------------------------------------------------------------
 
+
 class TestDistillationTrainer:
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -209,9 +213,7 @@ class TestDistillationTrainer:
         cfg = DistillationConfig(loss_type="forward_kl")
         loss_fn = DistillationLoss(cfg)
         optimizer = torch.optim.SGD(self.student.parameters(), lr=1e-3)
-        self.trainer = DistillationTrainer(
-            self.student, self.teacher, optimizer, loss_fn
-        )
+        self.trainer = DistillationTrainer(self.student, self.teacher, optimizer, loss_fn)
 
     def test_freeze_teacher_all_params(self):
         """After freeze_teacher(), every teacher parameter must have requires_grad=False."""

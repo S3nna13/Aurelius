@@ -8,10 +8,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Core interpolation helper
 # ---------------------------------------------------------------------------
+
 
 def interpolate_inputs(baseline: Tensor, inputs: Tensor, alpha: float) -> Tensor:
     """Linear interpolation between baseline and inputs.
@@ -23,13 +23,14 @@ def interpolate_inputs(baseline: Tensor, inputs: Tensor, alpha: float) -> Tensor
 
     Returns:
         Interpolated tensor of the same shape as inputs.
-    """
+    """  # noqa: E501
     return baseline + alpha * (inputs - baseline)
 
 
 # ---------------------------------------------------------------------------
 # Embedding-hook utility
 # ---------------------------------------------------------------------------
+
 
 def _get_embedding_layer(model: nn.Module) -> nn.Embedding:
     """Return the token embedding layer from an AureliusTransformer (or similar)."""
@@ -48,6 +49,7 @@ def _get_embedding_layer(model: nn.Module) -> nn.Embedding:
 # ---------------------------------------------------------------------------
 # Core Integrated Gradients computation
 # ---------------------------------------------------------------------------
+
 
 def compute_integrated_gradients(
     model: nn.Module,
@@ -79,7 +81,7 @@ def compute_integrated_gradients(
     # Embed baseline and input once (no grad needed -- only for delta)
     with torch.no_grad():
         baseline_emb = embedding_layer(baseline_ids).detach()  # (1, T, d)
-        inputs_emb = embedding_layer(input_ids).detach()       # (1, T, d)
+        inputs_emb = embedding_layer(input_ids).detach()  # (1, T, d)
     delta_emb = inputs_emb - baseline_emb  # (1, T, d)
 
     accumulated_grads = torch.zeros_like(inputs_emb)  # (1, T, d)
@@ -98,6 +100,7 @@ def compute_integrated_gradients(
         def _make_hook(emb_tensor):
             def _fwd_hook(module, inp, output):
                 return emb_tensor
+
             return _fwd_hook
 
         handle = embedding_layer.register_forward_hook(_make_hook(interp_emb))
@@ -130,6 +133,7 @@ def compute_integrated_gradients(
 # Configuration dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class IGConfig:
     """Configuration for IntegratedGradientsExplainer."""
@@ -142,6 +146,7 @@ class IGConfig:
 # ---------------------------------------------------------------------------
 # High-level explainer class
 # ---------------------------------------------------------------------------
+
 
 class IntegratedGradientsExplainer:
     """Wraps compute_integrated_gradients with a convenient high-level API."""
@@ -197,6 +202,7 @@ class IntegratedGradientsExplainer:
 # SmoothGrad
 # ---------------------------------------------------------------------------
 
+
 def smooth_grad(
     model: nn.Module,
     input_ids: Tensor,
@@ -227,7 +233,7 @@ def smooth_grad(
     with torch.no_grad():
         inputs_emb_clean = embedding_layer(input_ids).detach()  # (1, T, d)
         baseline_ids = torch.full_like(input_ids, fill_value=0)
-        baseline_emb = embedding_layer(baseline_ids).detach()   # (1, T, d)
+        baseline_emb = embedding_layer(baseline_ids).detach()  # (1, T, d)
 
     accumulated = torch.zeros(input_ids.shape[1])  # (T,)
 
@@ -247,6 +253,7 @@ def smooth_grad(
             def _make_hook(emb_tensor):
                 def _fwd_hook(module, inp, output):
                     return emb_tensor
+
                 return _fwd_hook
 
             handle = embedding_layer.register_forward_hook(_make_hook(interp_emb))

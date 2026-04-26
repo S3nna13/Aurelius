@@ -4,18 +4,19 @@ Tests for element_locator.py  (>=28 tests)
 """
 
 import pytest
+
 from src.computer_use.element_locator import (
+    ELEMENT_LOCATOR_REGISTRY,
+    REGISTRY,
     ElementLocator,
     ElementQuery,
     LocatedElement,
-    ELEMENT_LOCATOR_REGISTRY,
-    REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_element(
     element_id: str = "e1",
@@ -43,6 +44,7 @@ def make_element(
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_registry_contains_default():
     assert "default" in ELEMENT_LOCATOR_REGISTRY
 
@@ -58,6 +60,7 @@ def test_registry_default_is_class():
 # ---------------------------------------------------------------------------
 # LocatedElement — frozen / properties
 # ---------------------------------------------------------------------------
+
 
 def test_located_element_frozen():
     el = make_element()
@@ -95,6 +98,7 @@ def test_located_element_defaults():
 # ElementQuery — frozen
 # ---------------------------------------------------------------------------
 
+
 def test_element_query_frozen():
     q = ElementQuery(selector="#btn")
     with pytest.raises((AttributeError, TypeError)):
@@ -115,6 +119,7 @@ def test_element_query_with_region():
 # ---------------------------------------------------------------------------
 # ElementLocator — register and find
 # ---------------------------------------------------------------------------
+
 
 def test_register_and_find_by_selector():
     loc = ElementLocator()
@@ -188,6 +193,7 @@ def test_find_region_boundary_inclusive():
 # ElementLocator — find_at
 # ---------------------------------------------------------------------------
 
+
 def test_find_at_inside():
     loc = ElementLocator()
     el = make_element(x=10, y=10, width=80, height=40)
@@ -199,8 +205,8 @@ def test_find_at_on_edge():
     loc = ElementLocator()
     el = make_element(x=10, y=10, width=80, height=40)
     loc.register(el)
-    assert loc.find_at(10, 10) is el   # top-left corner
-    assert loc.find_at(90, 50) is el   # bottom-right corner
+    assert loc.find_at(10, 10) is el  # top-left corner
+    assert loc.find_at(90, 50) is el  # bottom-right corner
 
 
 def test_find_at_outside_returns_none():
@@ -229,6 +235,7 @@ def test_find_at_returns_first_match():
 # ElementLocator — visible_elements
 # ---------------------------------------------------------------------------
 
+
 def test_visible_elements_filters_invisible():
     loc = ElementLocator()
     visible = make_element("v1", "#visible", visible=True)
@@ -254,6 +261,7 @@ def test_visible_elements_empty():
 # ---------------------------------------------------------------------------
 # ElementLocator — clear
 # ---------------------------------------------------------------------------
+
 
 def test_clear_empties_registry():
     loc = ElementLocator()

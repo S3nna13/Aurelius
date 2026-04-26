@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -39,7 +37,7 @@ class _CausalSelfAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int = 4) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.qkv = nn.Linear(d_model, 3 * d_model, bias=False)
@@ -121,9 +119,7 @@ class DebaterModel(nn.Module):
         return self.lm_head(x)  # [B, T, vocab_size]
 
     @torch.no_grad()
-    def generate_argument(
-        self, context_ids: torch.Tensor, max_new: int
-    ) -> torch.Tensor:
+    def generate_argument(self, context_ids: torch.Tensor, max_new: int) -> torch.Tensor:
         """Greedy autoregressive decoding.
 
         Args:
@@ -287,9 +283,7 @@ class SelfPlayDebateTrainer:
         self.opt_judge = torch.optim.Adam(judge.parameters(), lr=lr_judge)
         self._debate_round = DebateRound(debater_a, debater_b, judge)
 
-    def judge_step(
-        self, transcript_ids: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def judge_step(self, transcript_ids: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         """Train the judge to classify which debater is correct.
 
         Args:
@@ -338,10 +332,10 @@ class SelfPlayDebateTrainer:
         q_len = question_ids.shape[1]
         logits_a = self.debater_a(gen_a[:, :-1])  # [B, T+max_new-1, vocab]
         gen_tokens_a = gen_a[:, q_len:]  # [B, max_new]
-        log_probs_a = F.log_softmax(logits_a[:, q_len - 1:, :], dim=-1)  # [B, max_new, vocab]
-        selected_log_probs_a = log_probs_a.gather(
-            2, gen_tokens_a.unsqueeze(-1)
-        ).squeeze(-1)  # [B, max_new]
+        log_probs_a = F.log_softmax(logits_a[:, q_len - 1 :, :], dim=-1)  # [B, max_new, vocab]
+        selected_log_probs_a = log_probs_a.gather(2, gen_tokens_a.unsqueeze(-1)).squeeze(
+            -1
+        )  # [B, max_new]
         sum_log_prob_a = selected_log_probs_a.sum(dim=1)  # [B]
         # Maximise: loss = -reward * log_prob
         loss_a = -(reward_signal * sum_log_prob_a).mean()
@@ -358,10 +352,8 @@ class SelfPlayDebateTrainer:
 
         logits_b_full = self.debater_b(gen_b[:, :-1])
         gen_tokens_b = gen_b[:, q_len:]
-        log_probs_b = F.log_softmax(logits_b_full[:, q_len - 1:, :], dim=-1)
-        selected_log_probs_b = log_probs_b.gather(
-            2, gen_tokens_b.unsqueeze(-1)
-        ).squeeze(-1)
+        log_probs_b = F.log_softmax(logits_b_full[:, q_len - 1 :, :], dim=-1)
+        selected_log_probs_b = log_probs_b.gather(2, gen_tokens_b.unsqueeze(-1)).squeeze(-1)
         sum_log_prob_b = selected_log_probs_b.sum(dim=1)
         # Adversarial: b tries to win *against* a, so reward for b is inverted
         reward_b = 1.0 - reward_signal
@@ -389,9 +381,7 @@ class SelfPlayDebateTrainer:
         """
         # Run debate (no grad, just for judge training data)
         with torch.no_grad():
-            result = self._debate_round.run_round(
-                question_ids, n_turns=n_turns, max_new=max_new
-            )
+            result = self._debate_round.run_round(question_ids, n_turns=n_turns, max_new=max_new)
 
         transcript = result.transcript_ids
 
@@ -421,7 +411,7 @@ class SelfPlayDebateTrainer:
 class DebateEvaluator:
     """Computes aggregate metrics over a list of DebateResult objects."""
 
-    def win_rate(self, results: List[DebateResult]) -> dict:
+    def win_rate(self, results: list[DebateResult]) -> dict:
         """Fraction of wins for a, b, and ties.
 
         Args:
@@ -439,7 +429,7 @@ class DebateEvaluator:
         ties = sum(1 for r in results if r.winner == "tie") / n
         return {"a_wins": a_wins, "b_wins": b_wins, "ties": ties}
 
-    def argument_diversity(self, results: List[DebateResult]) -> float:
+    def argument_diversity(self, results: list[DebateResult]) -> float:
         """Average pairwise token-level edit distance between transcripts.
 
         Args:
@@ -462,7 +452,7 @@ class DebateEvaluator:
 
         return total_dist / count if count > 0 else 0.0
 
-    def judge_confidence(self, results: List[DebateResult]) -> float:
+    def judge_confidence(self, results: list[DebateResult]) -> float:
         """Mean |a_score - 0.5| * 2.  0 = random, 1 = certain.
 
         Args:
@@ -473,9 +463,7 @@ class DebateEvaluator:
         """
         if not results:
             return 0.0
-        return float(
-            sum(abs(r.a_score - 0.5) * 2.0 for r in results) / len(results)
-        )
+        return float(sum(abs(r.a_score - 0.5) * 2.0 for r in results) / len(results))
 
 
 def _token_edit_distance(seq_a: list, seq_b: list) -> int:

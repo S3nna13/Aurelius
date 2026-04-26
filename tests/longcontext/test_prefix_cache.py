@@ -8,7 +8,6 @@ import pytest
 
 from src.longcontext.prefix_cache import PrefixCache, PrefixEntry
 
-
 BLOCK = 16
 MIN_PREFIX = 16
 
@@ -175,8 +174,7 @@ def test_thousand_insertions_lookup_under_one_second() -> None:
     lookup_elapsed = time.perf_counter() - t0
 
     assert lookup_elapsed < 1.0, (
-        f"1000 lookups took {lookup_elapsed:.3f}s "
-        f"(insert took {insert_elapsed:.3f}s)"
+        f"1000 lookups took {lookup_elapsed:.3f}s (insert took {insert_elapsed:.3f}s)"
     )
 
 

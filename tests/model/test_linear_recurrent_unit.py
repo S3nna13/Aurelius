@@ -11,12 +11,10 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
-import torch.nn as nn
 
-from src.model.linear_recurrent_unit import LRUConfig, LRULayer
 from src.model import MODEL_COMPONENT_REGISTRY
+from src.model.linear_recurrent_unit import LRUConfig, LRULayer
 
 # ---------------------------------------------------------------------------
 # Shared tiny test fixtures
@@ -27,7 +25,7 @@ D_STATE = 32
 R_MIN = 0.0
 R_MAX = 0.9
 
-B = 2   # batch size
+B = 2  # batch size
 T = 16  # sequence length
 
 
@@ -70,16 +68,14 @@ def test_get_a_magnitude():
     """
     layer = make_layer()
     A_re, A_im = layer.get_A()
-    mag = torch.sqrt(A_re ** 2 + A_im ** 2)
+    mag = torch.sqrt(A_re**2 + A_im**2)
 
     # Non-negative (complex modulus is always >= 0)
     assert (mag >= 0).all(), "Magnitudes must be non-negative"
     # Stability: strictly less than 1
     assert (mag < 1).all(), "Magnitudes must be strictly less than 1 (stable)"
     # Upper bound at init: should not exceed r_max
-    assert (mag <= R_MAX + 1e-5).all(), (
-        f"All initial magnitudes should be <= r_max={R_MAX}"
-    )
+    assert (mag <= R_MAX + 1e-5).all(), f"All initial magnitudes should be <= r_max={R_MAX}"
 
 
 # ===========================================================================
@@ -128,8 +124,8 @@ def test_stability():
     A_re, A_im = layer.get_A()
     gamma = layer.get_gamma()
 
-    mag_sq = A_re ** 2 + A_im ** 2
-    gamma_sq = gamma ** 2
+    mag_sq = A_re**2 + A_im**2
+    gamma_sq = gamma**2
 
     identity = mag_sq + gamma_sq
     assert torch.allclose(identity, torch.ones_like(identity), atol=1e-5), (
@@ -148,9 +144,7 @@ def test_forward_shape():
     x = torch.randn(B, T, D_MODEL)
     y = layer(x)
 
-    assert y.shape == (B, T, D_MODEL), (
-        f"Expected ({B}, {T}, {D_MODEL}), got {y.shape}"
-    )
+    assert y.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {y.shape}"
 
 
 # ===========================================================================
@@ -202,9 +196,7 @@ def test_skip_connection():
 def test_state_size():
     """state_size() must return 2 * d_state."""
     layer = make_layer()
-    assert layer.state_size() == 2 * D_STATE, (
-        f"Expected {2 * D_STATE}, got {layer.state_size()}"
-    )
+    assert layer.state_size() == 2 * D_STATE, f"Expected {2 * D_STATE}, got {layer.state_size()}"
 
 
 # ===========================================================================
@@ -314,9 +306,7 @@ def test_batch_independence():
 
 def test_registry():
     """LRULayer must be registered under key 'lru' in MODEL_COMPONENT_REGISTRY."""
-    assert "lru" in MODEL_COMPONENT_REGISTRY, (
-        "'lru' key not found in MODEL_COMPONENT_REGISTRY"
-    )
+    assert "lru" in MODEL_COMPONENT_REGISTRY, "'lru' key not found in MODEL_COMPONENT_REGISTRY"
     assert MODEL_COMPONENT_REGISTRY["lru"] is LRULayer, (
         "MODEL_COMPONENT_REGISTRY['lru'] should point to LRULayer"
     )

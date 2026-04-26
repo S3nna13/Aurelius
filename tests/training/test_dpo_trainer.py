@@ -9,7 +9,7 @@ Tiny model config: vocab=16, d_model=8, seq_len=8, batch=2.
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
 import torch.nn as nn
 
@@ -34,6 +34,7 @@ BATCH = 2
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal Embedding + Linear language model for testing.
@@ -75,6 +76,7 @@ def make_trainer(beta: float = 0.1) -> tuple[DPOTrainer, TinyLM]:
 # ---------------------------------------------------------------------------
 # DPOLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_is_scalar() -> None:
     """DPO loss output must be a scalar (0-d) tensor."""
@@ -148,6 +150,7 @@ def test_dpo_loss_rewards_detached() -> None:
 # SequenceLogProbs tests
 # ---------------------------------------------------------------------------
 
+
 def test_seq_logprobs_output_shape() -> None:
     """SequenceLogProbs.compute must return shape (batch,)."""
     model = TinyLM()
@@ -192,6 +195,7 @@ def test_seq_logprobs_values_are_finite() -> None:
 # ReferenceModelManager tests
 # ---------------------------------------------------------------------------
 
+
 def test_ref_model_params_frozen() -> None:
     """All reference model parameters must have requires_grad=False."""
     policy = TinyLM()
@@ -221,6 +225,7 @@ def test_ref_model_output_matches_direct_call() -> None:
 # DPOTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_step_returns_all_keys() -> None:
     """train_step must return dict with loss, chosen_reward, rejected_reward, reward_margin."""
     trainer, _ = make_trainer()
@@ -244,8 +249,7 @@ def test_trainer_reward_margin_shape() -> None:
     chosen_ids, chosen_labels, rejected_ids, rejected_labels = make_batch()
     result = trainer.train_step(chosen_ids, chosen_labels, rejected_ids, rejected_labels)
     assert result["reward_margin"].shape == (BATCH,), (
-        f"reward_margin shape mismatch: expected ({BATCH},), "
-        f"got {result['reward_margin'].shape}"
+        f"reward_margin shape mismatch: expected ({BATCH},), got {result['reward_margin'].shape}"
     )
 
 
@@ -277,14 +281,13 @@ def test_trainer_grads_finite_after_clip() -> None:
 
     for name, param in policy.named_parameters():
         if param.grad is not None:
-            assert torch.isfinite(param.grad).all(), (
-                f"Non-finite grad in parameter '{name}'"
-            )
+            assert torch.isfinite(param.grad).all(), f"Non-finite grad in parameter '{name}'"
 
 
 # ---------------------------------------------------------------------------
 # PreferenceDataset tests
 # ---------------------------------------------------------------------------
+
 
 def test_preference_dataset_len() -> None:
     """PreferenceDataset must report the correct length."""

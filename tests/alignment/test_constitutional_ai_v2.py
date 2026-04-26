@@ -2,9 +2,8 @@
 
 Uses tiny configs so every test runs in milliseconds with no external deps.
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.alignment.constitutional_ai_v2 import (
     CAIConfig,
@@ -16,7 +15,6 @@ from src.alignment.constitutional_ai_v2 import (
     score_principle_adherence,
     select_worst_principle,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -208,7 +206,14 @@ def test_run_revision_loop_length():
 def test_run_revision_loop_dict_keys():
     session = CAISession(_tiny_config(n_revisions=1))
     history = session.run_revision_loop("Initial answer.")
-    required_keys = {"iteration", "principle", "critique", "revision", "score_before", "score_after"}
+    required_keys = {
+        "iteration",
+        "principle",
+        "critique",
+        "revision",
+        "score_before",
+        "score_after",
+    }
     assert required_keys.issubset(history[0].keys())
 
 

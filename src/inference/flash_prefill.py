@@ -7,7 +7,9 @@ import math
 import torch
 
 
-def causal_attention_scores(query: torch.Tensor, key: torch.Tensor, scale: float | None = None) -> torch.Tensor:
+def causal_attention_scores(
+    query: torch.Tensor, key: torch.Tensor, scale: float | None = None
+) -> torch.Tensor:
     """Compute causal attention scores for a full sequence prefill."""
     if query.shape != key.shape or query.dim() != 4:
         raise ValueError("query and key must be matching 4D tensors")
@@ -15,7 +17,9 @@ def causal_attention_scores(query: torch.Tensor, key: torch.Tensor, scale: float
         scale = 1.0 / math.sqrt(query.size(-1))
     scores = torch.einsum("bthd,bshd->bhts", query * scale, key)
     seq_len = query.size(1)
-    causal = torch.triu(torch.ones(seq_len, seq_len, device=query.device, dtype=torch.bool), diagonal=1)
+    causal = torch.triu(
+        torch.ones(seq_len, seq_len, device=query.device, dtype=torch.bool), diagonal=1
+    )
     return scores.masked_fill(causal.unsqueeze(0).unsqueeze(0), float("-inf"))
 
 
@@ -28,7 +32,9 @@ def flash_prefill(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -
     return torch.einsum("bhts,bshd->bthd", weights, value)
 
 
-def flash_prefill_with_prefix(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
+def flash_prefill_with_prefix(
+    query: torch.Tensor, key: torch.Tensor, value: torch.Tensor
+) -> torch.Tensor:
     """Prefill chunk queries against a longer causal prefix."""
     if query.dim() != 4 or key.dim() != 4 or value.dim() != 4:
         raise ValueError("query, key, and value must be 4D")

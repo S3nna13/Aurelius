@@ -4,13 +4,13 @@ import pytest
 import torch
 
 from src.alignment.reward_shaping import (
+    CompositeRewardFunction,
     RewardShapingConfig,
     RunningMeanStd,
     clip_rewards,
+    diversity_bonus,
     kl_reward_penalty,
     length_penalty,
-    diversity_bonus,
-    CompositeRewardFunction,
 )
 
 B, T = 4, 8
@@ -19,6 +19,7 @@ B, T = 4, 8
 # ---------------------------------------------------------------------------
 # RewardShapingConfig
 # ---------------------------------------------------------------------------
+
 
 def test_reward_shaping_config_defaults():
     cfg = RewardShapingConfig()
@@ -33,6 +34,7 @@ def test_reward_shaping_config_defaults():
 # ---------------------------------------------------------------------------
 # clip_rewards
 # ---------------------------------------------------------------------------
+
 
 def test_clip_rewards_clips_out_of_range():
     rewards = torch.tensor([-10.0, -6.0, 0.0, 6.0, 10.0])
@@ -52,6 +54,7 @@ def test_clip_rewards_does_not_modify_in_range():
 # ---------------------------------------------------------------------------
 # RunningMeanStd
 # ---------------------------------------------------------------------------
+
 
 def test_running_mean_std_update_and_properties():
     rms = RunningMeanStd(alpha=1.0)  # alpha=1 → fully replace on first update
@@ -76,6 +79,7 @@ def test_running_mean_std_normalize_reduces_scale():
 # kl_reward_penalty
 # ---------------------------------------------------------------------------
 
+
 def test_kl_reward_penalty_shape():
     log_probs_policy = torch.randn(B, T)
     log_probs_ref = torch.randn(B, T)
@@ -92,6 +96,7 @@ def test_kl_reward_penalty_zero_when_same():
 # ---------------------------------------------------------------------------
 # length_penalty
 # ---------------------------------------------------------------------------
+
 
 def test_length_penalty_shape():
     seq_lengths = torch.randint(1, T + 1, (B,))
@@ -113,6 +118,7 @@ def test_length_penalty_negative_coeff_gives_negative():
 # diversity_bonus
 # ---------------------------------------------------------------------------
 
+
 def test_diversity_bonus_shape():
     ids_batch = [torch.randint(0, 100, (T,)) for _ in range(B)]
     bonus = diversity_bonus(ids_batch, coeff=1.0)
@@ -130,6 +136,7 @@ def test_diversity_bonus_identical_sequences_zero():
 # ---------------------------------------------------------------------------
 # CompositeRewardFunction
 # ---------------------------------------------------------------------------
+
 
 def test_composite_reward_function_returns_shape():
     cfg = RewardShapingConfig(

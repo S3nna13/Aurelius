@@ -1,17 +1,17 @@
 """Tests for MAML / Reptile meta-learning module."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 from torch import nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.meta_learning import (
-    MetaLearningConfig,
     MetaLearner,
+    MetaLearningConfig,
     compute_task_loss,
-    fomaml_meta_gradient,
     inner_loop_update,
     reptile_update,
 )
@@ -67,18 +67,21 @@ def _make_tasks(n: int = 2) -> list[dict]:
     tasks = []
     for _ in range(n):
         ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
-        tasks.append({
-            "support_ids": ids,
-            "support_labels": ids.clone(),
-            "query_ids": ids,
-            "query_labels": ids.clone(),
-        })
+        tasks.append(
+            {
+                "support_ids": ids,
+                "support_labels": ids.clone(),
+                "query_ids": ids,
+                "query_labels": ids.clone(),
+            }
+        )
     return tasks
 
 
 # ---------------------------------------------------------------------------
 # MetaLearningConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     """MetaLearningConfig should have correct default values."""
@@ -94,6 +97,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # compute_task_loss tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_task_loss_scalar(model, support_ids, support_labels):
     """compute_task_loss must return a scalar (0-dim) tensor."""
@@ -111,6 +115,7 @@ def test_compute_task_loss_finite(model, support_ids, support_labels):
 # inner_loop_update tests
 # ---------------------------------------------------------------------------
 
+
 def test_inner_loop_update_returns_dict(model, support_ids, support_labels):
     """inner_loop_update must return a dict keyed by parameter names."""
     param_names = {name for name, p in model.named_parameters() if p.requires_grad}
@@ -124,16 +129,14 @@ def test_inner_loop_update_params_differ(model, support_ids, support_labels):
     original = {name: p.data.clone() for name, p in model.named_parameters() if p.requires_grad}
     adapted = inner_loop_update(model, support_ids, support_labels, inner_lr=0.01, n_steps=1)
 
-    any_changed = any(
-        not torch.equal(original[name], adapted[name])
-        for name in original
-    )
+    any_changed = any(not torch.equal(original[name], adapted[name]) for name in original)
     assert any_changed, "No parameter changed after inner loop — gradients may be zero"
 
 
 # ---------------------------------------------------------------------------
 # reptile_update tests
 # ---------------------------------------------------------------------------
+
 
 def _make_param_dicts(seed_orig: int = 0, seed_adapt: int = 1):
     torch.manual_seed(seed_orig)
@@ -154,7 +157,7 @@ def test_reptile_update_moves_toward_adapted():
         dist_before = (adapted[name] - original[name]).norm().item()
         dist_after = (adapted[name] - updated[name]).norm().item()
         assert dist_after < dist_before + 1e-6, (
-            f"Param '{name}': distance didn't decrease (before={dist_before:.4f}, after={dist_after:.4f})"
+            f"Param '{name}': distance didn't decrease (before={dist_before:.4f}, after={dist_after:.4f})"  # noqa: E501
         )
 
 
@@ -182,6 +185,7 @@ def test_reptile_update_outer_lr_one():
 # MetaLearner.meta_step tests
 # ---------------------------------------------------------------------------
 
+
 def test_meta_step_returns_correct_keys(meta_learner):
     """meta_step must return dict with 'meta_loss', 'n_tasks', 'mean_inner_loss'."""
     tasks = _make_tasks(n=2)
@@ -202,6 +206,7 @@ def test_meta_step_n_tasks_matches_input(meta_learner):
 # MetaLearner.adapt tests
 # ---------------------------------------------------------------------------
 
+
 def test_adapt_returns_nn_module(meta_learner, support_ids, support_labels):
     """adapt must return an nn.Module."""
     adapted_model = meta_learner.adapt(support_ids, support_labels)
@@ -211,9 +216,7 @@ def test_adapt_returns_nn_module(meta_learner, support_ids, support_labels):
 def test_adapt_changed_params_from_original(meta_learner, support_ids, support_labels):
     """Adapted model weights must differ from original model weights."""
     original_params = {
-        name: p.data.clone()
-        for name, p in meta_learner.model.named_parameters()
-        if p.requires_grad
+        name: p.data.clone() for name, p in meta_learner.model.named_parameters() if p.requires_grad
     }
 
     adapted_model = meta_learner.adapt(support_ids, support_labels)
@@ -223,4 +226,6 @@ def test_adapt_changed_params_from_original(meta_learner, support_ids, support_l
         for name, p in adapted_model.named_parameters()
         if name in original_params
     )
-    assert any_changed, "adapt() returned a model with identical weights — inner loop may not have run"
+    assert any_changed, (
+        "adapt() returned a model with identical weights — inner loop may not have run"
+    )

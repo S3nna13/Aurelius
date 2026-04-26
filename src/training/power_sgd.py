@@ -2,13 +2,14 @@
 PowerSGD: Low-rank gradient compression via power iteration.
 Reference: Vogels et al. 2019, "PowerSGD: Practical Low-Rank Gradient Compression for Distributed Optimization"
 Pure PyTorch implementation — no external dependencies.
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from torch import Tensor
-from typing import Any
 
 
 class LowRankApproximation:
@@ -24,7 +25,7 @@ class LowRankApproximation:
         # Randomized SVD: sketch with random projection
         omega = torch.randn(m, rank, dtype=G.dtype, device=G.device)
         Q, _ = torch.linalg.qr(G.T @ omega)  # Q: (n, rank)
-        P = G @ Q                              # P: (m, rank)
+        P = G @ Q  # P: (m, rank)
         return P, Q
 
     def reconstruct(self, P: Tensor, Q: Tensor) -> Tensor:
@@ -58,9 +59,9 @@ class PowerIteration:
         Q, _ = torch.linalg.qr(Q)  # Q: (n, rank)
 
         for _ in range(self.n_iter):
-            P = G @ Q           # (m, rank)
+            P = G @ Q  # (m, rank)
             P, _ = torch.linalg.qr(P)
-            Q = G.T @ P         # (n, rank)
+            Q = G.T @ P  # (n, rank)
             Q, _ = torch.linalg.qr(Q)
 
         # Final P without re-orthogonalization for efficiency
@@ -207,9 +208,7 @@ class CompressionStats:
                 total_skipped += 1
 
         mean_ratio = (
-            sum(compression_ratios) / len(compression_ratios)
-            if compression_ratios
-            else 0.0
+            sum(compression_ratios) / len(compression_ratios) if compression_ratios else 0.0
         )
         mean_error = (
             sum(reconstruction_errors) / len(reconstruction_errors)

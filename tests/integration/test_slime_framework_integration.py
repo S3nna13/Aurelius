@@ -1,11 +1,11 @@
 """Integration tests for the Slime RL Framework wired into TRAINING_REGISTRY."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.training import TRAINING_REGISTRY
 from src.training.slime_framework import SlimeTaskRouter, make_default_router
-
 
 # ---------------------------------------------------------------------------
 # 1. Registry presence
@@ -14,8 +14,7 @@ from src.training.slime_framework import SlimeTaskRouter, make_default_router
 
 def test_slime_in_training_registry() -> None:
     assert "slime" in TRAINING_REGISTRY, (
-        "'slime' key missing from TRAINING_REGISTRY; "
-        "check src/training/__init__.py"
+        "'slime' key missing from TRAINING_REGISTRY; check src/training/__init__.py"
     )
 
 
@@ -29,8 +28,12 @@ def test_registry_value_is_slime_task_router() -> None:
 
 
 def test_construct_router_from_registry_and_route_swe() -> None:
-    RouterCls = TRAINING_REGISTRY["slime"]
-    router = make_default_router.__func__() if hasattr(make_default_router, "__func__") else make_default_router()
+    TRAINING_REGISTRY["slime"]
+    router = (
+        make_default_router.__func__()
+        if hasattr(make_default_router, "__func__")
+        else make_default_router()
+    )
     task = router.route("swe")
     assert task.verify("hello", "hello") is True
     assert task.verify("hello", "world") is False
@@ -70,9 +73,7 @@ def test_existing_async_rl_key_present() -> None:
 
 
 def test_existing_tito_key_present() -> None:
-    assert "tito" in TRAINING_REGISTRY, (
-        "Regression: 'tito' key was removed from TRAINING_REGISTRY"
-    )
+    assert "tito" in TRAINING_REGISTRY, "Regression: 'tito' key was removed from TRAINING_REGISTRY"
 
 
 # ---------------------------------------------------------------------------

@@ -69,7 +69,7 @@ class PatchEmbedding(nn.Module):
             Float tensor of shape (B, n_patches, global_d_model).
         """
         B, T = x.shape
-        assert T % self.patch_size == 0, (
+        assert T % self.patch_size == 0, (  # noqa: S101
             f"Sequence length {T} must be divisible by patch_size {self.patch_size}"
         )
         n_patches = T // self.patch_size
@@ -85,7 +85,7 @@ class _TransformerBlock(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, ff_mult: int = 4) -> None:
         super().__init__()
-        assert d_model % n_heads == 0
+        assert d_model % n_heads == 0  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -212,9 +212,7 @@ class MegabyteModel(nn.Module):
         )
 
         # Project global context down to local_d_model for injection
-        self.global_to_local = nn.Linear(
-            config.global_d_model, config.local_d_model, bias=False
-        )
+        self.global_to_local = nn.Linear(config.global_d_model, config.local_d_model, bias=False)
 
         # Local byte embedding
         self.byte_embed = nn.Embedding(config.vocab_size, config.local_d_model)
@@ -246,7 +244,7 @@ class MegabyteModel(nn.Module):
         """
         B, T = input_ids.shape
         P = self.patch_size
-        assert T % P == 0, f"T={T} must be divisible by patch_size={P}"
+        assert T % P == 0, f"T={T} must be divisible by patch_size={P}"  # noqa: S101
         n_patches = T // P
 
         # --- Global model ---
@@ -281,7 +279,7 @@ class MegabyteModel(nn.Module):
 
         # Compute next-token prediction loss (shift by 1)
         shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, vocab_size)
-        shift_labels = input_ids[:, 1:].contiguous()   # (B, T-1)
+        shift_labels = input_ids[:, 1:].contiguous()  # (B, T-1)
 
         loss = F.cross_entropy(
             shift_logits.reshape(-1, self.config.vocab_size),

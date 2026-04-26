@@ -23,7 +23,6 @@ Test coverage (14 tests):
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.pyramid_kv import PyramidKVCache, PyramidKVScheduler
@@ -94,15 +93,13 @@ def make_kv_attn(
 # PyramidKVScheduler tests
 # ---------------------------------------------------------------------------
 
-class TestPyramidKVScheduler:
 
+class TestPyramidKVScheduler:
     # Test 1: all_budgets() length == n_layers
     def test_all_budgets_length(self):
         sched = make_scheduler()
         budgets = sched.all_budgets()
-        assert len(budgets) == N_LAYERS, (
-            f"Expected {N_LAYERS} budgets, got {len(budgets)}"
-        )
+        assert len(budgets) == N_LAYERS, f"Expected {N_LAYERS} budgets, got {len(budgets)}"
 
     # Test 2: sum(all_budgets()) ≈ total_budget (within rounding)
     def test_all_budgets_sum_approximately_total(self):
@@ -127,9 +124,7 @@ class TestPyramidKVScheduler:
         sched = make_scheduler()
         budgets = sched.all_budgets()
         for i, b in enumerate(budgets):
-            assert b >= MIN_BUDGET, (
-                f"Layer {i} budget {b} is below min_budget {MIN_BUDGET}"
-            )
+            assert b >= MIN_BUDGET, f"Layer {i} budget {b} is below min_budget {MIN_BUDGET}"
 
     # Test 5: n_layers=1 — single layer receives all budget
     def test_single_layer_gets_all_budget(self):
@@ -144,18 +139,14 @@ class TestPyramidKVScheduler:
         sched = make_scheduler(n_layers=4, total_budget=6, min_budget=4)
         budgets = sched.all_budgets()
         for i, b in enumerate(budgets):
-            assert b == 4, (
-                f"Layer {i} should get min_budget=4 when total is too tight, got {b}"
-            )
+            assert b == 4, f"Layer {i} should get min_budget=4 when total is too tight, got {b}"
 
     # Test 10: schedule='linear' — budgets decrease from layer 0 to L-1
     def test_linear_schedule_decreases(self):
         sched = make_scheduler(schedule="linear", n_layers=6, total_budget=60, min_budget=4)
         budgets = sched.all_budgets()
         # Overall should decrease (first > last)
-        assert budgets[0] >= budgets[-1], (
-            f"Linear schedule: expected non-increasing, got {budgets}"
-        )
+        assert budgets[0] >= budgets[-1], f"Linear schedule: expected non-increasing, got {budgets}"
         # Verify strictly no large increase between consecutive layers
         # (allow off-by-1 rounding noise between adjacent layers but overall trend down)
         for i in range(1, len(budgets)):
@@ -176,8 +167,8 @@ class TestPyramidKVScheduler:
 # PyramidKVCache tests
 # ---------------------------------------------------------------------------
 
-class TestPyramidKVCache:
 
+class TestPyramidKVCache:
     # Test 6: compress() output shape correct (k ≤ b_l)
     def test_compress_output_shape(self):
         cache = make_cache()
@@ -189,9 +180,7 @@ class TestPyramidKVCache:
             B_out, H_out, k_out, D_out = ck.shape
             assert B_out == B
             assert H_out == N_HEADS
-            assert k_out <= b_l, (
-                f"Layer {layer_idx}: retained {k_out} > budget {b_l}"
-            )
+            assert k_out <= b_l, f"Layer {layer_idx}: retained {k_out} > budget {b_l}"
             assert D_out == HEAD_DIM
 
     # Test 7: compress() keys and values have identical shape
@@ -240,7 +229,7 @@ class TestPyramidKVCache:
             retained.append(ck.shape[2])
         # Layer 0 (highest budget) should retain >= layer L-1 (lowest budget)
         assert retained[0] >= retained[-1], (
-            f"Layer 0 retained {retained[0]}, layer {N_LAYERS-1} retained {retained[-1]}; "
+            f"Layer 0 retained {retained[0]}, layer {N_LAYERS - 1} retained {retained[-1]}; "
             f"expected layer 0 to retain at least as many"
         )
 

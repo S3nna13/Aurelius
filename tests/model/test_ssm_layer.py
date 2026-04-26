@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.ssm_layer import (
+    SSMBlock,
     SSMConfig,
     SSMLayer,
-    SSMBlock,
     count_ssm_parameters,
     init_A_matrix,
     selective_scan,
@@ -18,8 +17,8 @@ from src.model.ssm_layer import (
 # Shared fixtures / constants
 # ---------------------------------------------------------------------------
 
-B = 2   # batch size
-T = 8   # sequence length
+B = 2  # batch size
+T = 8  # sequence length
 D = 32  # d_model (smaller for speed)
 
 SMALL_CFG = SSMConfig(d_model=D, d_state=8, dt_rank=2, expand=2)
@@ -28,6 +27,7 @@ SMALL_CFG = SSMConfig(d_model=D, d_state=8, dt_rank=2, expand=2)
 # ---------------------------------------------------------------------------
 # 1. SSMConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = SSMConfig()
@@ -39,6 +39,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2 and 3. init_A_matrix
 # ---------------------------------------------------------------------------
+
 
 def test_init_A_matrix_shape():
     d_model, d_state = 16, 8
@@ -56,6 +57,7 @@ def test_init_A_matrix_range():
 # ---------------------------------------------------------------------------
 # 4 to 6. selective_scan
 # ---------------------------------------------------------------------------
+
 
 def test_selective_scan_shape():
     N = 8
@@ -109,6 +111,7 @@ def test_selective_scan_seq_len_1():
 # 7 to 10. SSMLayer
 # ---------------------------------------------------------------------------
 
+
 def test_ssm_layer_output_shape():
     layer = SSMLayer(SMALL_CFG)
     x = torch.randn(B, T, D)
@@ -157,6 +160,7 @@ def test_ssm_layer_different_seq_lens():
 # 11 and 12. SSMBlock
 # ---------------------------------------------------------------------------
 
+
 def test_ssm_block_shape():
     block = SSMBlock(SMALL_CFG)
     x = torch.randn(B, T, D)
@@ -177,6 +181,7 @@ def test_ssm_block_residual():
 # 13 and 14. count_ssm_parameters
 # ---------------------------------------------------------------------------
 
+
 def test_count_ssm_parameters_positive():
     n = count_ssm_parameters(SMALL_CFG)
     assert n > 0, "Parameter count should be positive"
@@ -195,6 +200,7 @@ def test_count_ssm_parameters_consistent():
 # ---------------------------------------------------------------------------
 # 15. Gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_ssm_layer_gradient_flows():
     """loss.backward() should complete without errors."""

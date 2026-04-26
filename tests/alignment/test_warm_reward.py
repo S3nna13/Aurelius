@@ -1,7 +1,7 @@
 """Tests for WARM: Weight-Averaged Reward Models."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -9,12 +9,11 @@ from torch import Tensor
 from src.alignment.warm_reward import (
     WARMConfig,
     WARMEnsemble,
-    linear_merge,
-    dare_merge,
     compute_reward_margin,
+    dare_merge,
+    linear_merge,
     warm_reward_score,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / shared fixtures
@@ -48,7 +47,7 @@ class ScalarRewardModel(nn.Module):
         if x.dtype in (torch.long, torch.int):
             x = x.float()
         out = self.linear(x.float())  # (batch, 1)
-        return out.squeeze(-1)         # (batch,)
+        return out.squeeze(-1)  # (batch,)
 
 
 def model_factory(in_features: int = 8) -> nn.Module:
@@ -116,7 +115,7 @@ def test_dare_merge_density1_equals_linear():
     sds = [make_state_dict(seed=i) for i in range(3)]
 
     dare_result = dare_merge(sds, density=1.0, seed=0)
-    linear_result = linear_merge(sds)
+    linear_merge(sds)
 
     # With density=1.0 dare_merge averages (K-1) deltas over base, while
     # linear_merge averages K state dicts uniformly.  These differ slightly
@@ -199,9 +198,7 @@ def test_warm_ensemble_merge_three_checkpoints():
         "Merged state_dict must have same keys as checkpoints"
     )
     for key in merged:
-        assert merged[key].shape == ref_sd[key].shape, (
-            f"Merged tensor shape mismatch for key {key}"
-        )
+        assert merged[key].shape == ref_sd[key].shape, f"Merged tensor shape mismatch for key {key}"
         assert torch.isfinite(merged[key]).all(), (
             f"Merged weights contain non-finite values for key {key}"
         )
@@ -234,7 +231,6 @@ def test_compute_disagreement_shape():
 
 def test_compute_disagreement_higher_variance():
     """Models with wider spread of predictions must yield higher disagreement."""
-    batch = 4
     ensemble = WARMEnsemble(model_factory, n_models=3)
 
     # Low disagreement: all models agree
@@ -277,9 +273,7 @@ def test_compute_reward_margin_returns_mean_and_std():
 
     # Verify mean_margin formula: mean(rewards[:, chosen] - rewards[:, rejected])
     expected_mean = (rewards[:, chosen_idx] - rewards[:, rejected_idx]).mean()
-    assert torch.allclose(mean_margin, expected_mean, atol=1e-5), (
-        "mean_margin formula mismatch"
-    )
+    assert torch.allclose(mean_margin, expected_mean, atol=1e-5), "mean_margin formula mismatch"
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +327,4 @@ def test_warm_reward_score_vote_binary():
     unique_vals = result.unique().tolist()
     allowed = {0.0, 1.0}
     for v in unique_vals:
-        assert v in allowed, (
-            f"warm_reward_score 'vote' must return values in {{0, 1}}, got {v}"
-        )
+        assert v in allowed, f"warm_reward_score 'vote' must return values in {{0, 1}}, got {v}"

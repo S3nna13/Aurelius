@@ -16,7 +16,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -54,8 +53,8 @@ class VectorMemoryBank:
 
         self.keys: Tensor = torch.zeros(capacity, d_key)
         self.values: Tensor = torch.zeros(capacity, d_val)
-        self.size: int = 0           # number of valid entries  (≤ capacity)
-        self._write_ptr: int = 0     # next write position in the circular buffer
+        self.size: int = 0  # number of valid entries  (≤ capacity)
+        self._write_ptr: int = 0  # next write position in the circular buffer
 
     # ------------------------------------------------------------------
     # Mutation
@@ -81,8 +80,10 @@ class VectorMemoryBank:
         while written < n:
             space_until_end = self.capacity - self._write_ptr
             chunk = min(n - written, space_until_end)
-            self.keys[self._write_ptr: self._write_ptr + chunk] = keys[written: written + chunk]
-            self.values[self._write_ptr: self._write_ptr + chunk] = values[written: written + chunk]
+            self.keys[self._write_ptr : self._write_ptr + chunk] = keys[written : written + chunk]
+            self.values[self._write_ptr : self._write_ptr + chunk] = values[
+                written : written + chunk
+            ]
             self._write_ptr = (self._write_ptr + chunk) % self.capacity
             written += chunk
 
@@ -112,11 +113,11 @@ class VectorMemoryBank:
 
         # Work only on the valid portion of the buffer.
         k_eff = min(k, self.size)
-        valid_keys = self.keys[: self.size].to(q.device)          # (size, d_key)
-        q_norm = F.normalize(q, dim=-1)                            # (B, d_key)
-        k_norm = F.normalize(valid_keys, dim=-1)                   # (size, d_key)
-        sims = q_norm @ k_norm.T                                   # (B, size)
-        scores, indices = sims.topk(k_eff, dim=-1, sorted=True)   # (B, k_eff)
+        valid_keys = self.keys[: self.size].to(q.device)  # (size, d_key)
+        q_norm = F.normalize(q, dim=-1)  # (B, d_key)
+        k_norm = F.normalize(valid_keys, dim=-1)  # (size, d_key)
+        sims = q_norm @ k_norm.T  # (B, size)
+        scores, indices = sims.topk(k_eff, dim=-1, sorted=True)  # (B, k_eff)
         return indices, scores
 
     def retrieve(self, q: Tensor, k: int) -> Tensor:
@@ -137,14 +138,14 @@ class VectorMemoryBank:
             k_eff = min(k, self.capacity)
             return torch.zeros(B, k_eff, self.d_val, device=device)
 
-        indices, _ = self.query(q, k)                       # (B, k_eff)
+        indices, _ = self.query(q, k)  # (B, k_eff)
         _, k_eff = indices.shape
         valid_values = self.values[: self.size].to(device)  # (size, d_val)
 
         # Gather: flat index into valid_values
-        flat_idx = indices.reshape(-1)                      # (B*k_eff,)
-        retrieved = valid_values[flat_idx]                  # (B*k_eff, d_val)
-        return retrieved.reshape(B, k_eff, self.d_val)      # (B, k_eff, d_val)
+        flat_idx = indices.reshape(-1)  # (B*k_eff,)
+        retrieved = valid_values[flat_idx]  # (B*k_eff, d_val)
+        return retrieved.reshape(B, k_eff, self.d_val)  # (B, k_eff, d_val)
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +162,7 @@ class CrossAttentionRetriever(nn.Module):
 
     def __init__(self, d_model: int, d_mem: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.d_mem = d_mem
         self.n_heads = n_heads
@@ -190,20 +191,20 @@ class CrossAttentionRetriever(nn.Module):
         H = self.n_heads
         hd = self.head_dim
 
-        Q = self.q_proj(query)        # (B, T, d_model)
-        K = self.k_proj(retrieved)    # (B, k, d_model)
-        V = self.v_proj(retrieved)    # (B, k, d_model)
+        Q = self.q_proj(query)  # (B, T, d_model)
+        K = self.k_proj(retrieved)  # (B, k, d_model)
+        V = self.v_proj(retrieved)  # (B, k, d_model)
 
         # Reshape to (B, H, T, hd) / (B, H, k, hd)
-        Q = Q.reshape(B, T, H, hd).transpose(1, 2)   # (B, H, T, hd)
-        K = K.reshape(B, k, H, hd).transpose(1, 2)   # (B, H, k, hd)
-        V = V.reshape(B, k, H, hd).transpose(1, 2)   # (B, H, k, hd)
+        Q = Q.reshape(B, T, H, hd).transpose(1, 2)  # (B, H, T, hd)
+        K = K.reshape(B, k, H, hd).transpose(1, 2)  # (B, H, k, hd)
+        V = V.reshape(B, k, H, hd).transpose(1, 2)  # (B, H, k, hd)
 
         attn_weights = (Q @ K.transpose(-2, -1)) / self._scale  # (B, H, T, k)
         attn_weights = F.softmax(attn_weights, dim=-1)
 
-        out = attn_weights @ V                                   # (B, H, T, hd)
-        out = out.transpose(1, 2).reshape(B, T, self.d_model)   # (B, T, d_model)
+        out = attn_weights @ V  # (B, H, T, hd)
+        out = out.transpose(1, 2).reshape(B, T, self.d_model)  # (B, T, d_model)
         return self.out_proj(out)
 
 
@@ -246,14 +247,14 @@ class RATLayer(nn.Module):
             (B, T, d_model) — augmented hidden states.
         """
         # Query key: mean-pool over sequence
-        q = x.mean(dim=1)                           # (B, d_model)
+        q = x.mean(dim=1)  # (B, d_model)
 
         # Retrieve k documents from the memory bank
-        retrieved = memory_bank.retrieve(q, self.k_retrieved)   # (B, k, d_mem)
+        retrieved = memory_bank.retrieve(q, self.k_retrieved)  # (B, k, d_mem)
         retrieved = retrieved.to(x.device)
 
         # Cross-attend
-        ctx = self.retriever(x, retrieved)           # (B, T, d_model)
+        ctx = self.retriever(x, retrieved)  # (B, T, d_model)
 
         # Blend via sigmoid gate
         return x + self.gate * ctx
@@ -269,7 +270,7 @@ class _TransformerBlock(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0
+        assert d_model % n_heads == 0  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -292,9 +293,9 @@ class _TransformerBlock(nn.Module):
 
         # --- Self-attention ---
         h = self.norm1(x)
-        qkv = self.qkv(h)                             # (B, T, 3*d_model)
+        qkv = self.qkv(h)  # (B, T, 3*d_model)
         Q, K, V = qkv.split(self.d_model, dim=-1)
-        Q = Q.reshape(B, T, H, hd).transpose(1, 2)   # (B, H, T, hd)
+        Q = Q.reshape(B, T, H, hd).transpose(1, 2)  # (B, H, T, hd)
         K = K.reshape(B, T, H, hd).transpose(1, 2)
         V = V.reshape(B, T, H, hd).transpose(1, 2)
 
@@ -304,7 +305,7 @@ class _TransformerBlock(nn.Module):
         attn = attn.masked_fill(~mask, float("-inf"))
         attn = F.softmax(attn, dim=-1)
 
-        out = attn @ V                                # (B, H, T, hd)
+        out = attn @ V  # (B, H, T, hd)
         out = out.transpose(1, 2).reshape(B, T, self.d_model)
         out = self.o_proj(out)
         x = x + out
@@ -373,14 +374,14 @@ class RATModel(nn.Module):
         """
         B, T = input_ids.shape
         positions = torch.arange(T, device=input_ids.device).unsqueeze(0)  # (1, T)
-        x = self.embedding(input_ids) + self.pos_embedding(positions)       # (B, T, d_model)
+        x = self.embedding(input_ids) + self.pos_embedding(positions)  # (B, T, d_model)
 
         for tf_block, rat_layer in zip(self.transformer_layers, self.rat_layers):
             x = tf_block(x)
             x = rat_layer(x, self.memory_bank)
 
         x = self.norm(x)
-        return self.lm_head(x)   # (B, T, vocab_size)
+        return self.lm_head(x)  # (B, T, vocab_size)
 
     # ------------------------------------------------------------------
 
@@ -403,7 +404,7 @@ class RATModel(nn.Module):
             x = tf_block(x)
 
         # Mean-pool over the sequence dimension → (B, d_model)
-        pooled = x.mean(dim=1)   # (B, d_model)
+        pooled = x.mean(dim=1)  # (B, d_model)
 
         # Store pooled vector as both key and value
         self.memory_bank.add(pooled, pooled)
@@ -454,7 +455,7 @@ class RATTrainer:
         self.model.encode_to_memory(prefix)
 
         # Full forward pass
-        logits = self.model(input_ids)   # (B, T, vocab_size)
+        logits = self.model(input_ids)  # (B, T, vocab_size)
 
         # Cross-entropy loss (flat)
         loss = F.cross_entropy(

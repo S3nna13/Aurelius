@@ -9,32 +9,31 @@ At each pondering step:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PonderConfig:
     d_model: int = 64
-    max_steps: int = 8          # maximum pondering steps
+    max_steps: int = 8  # maximum pondering steps
     halt_threshold: float = 0.9  # cumulative halt probability threshold
-    lambda_p: float = 0.01      # geometric prior regularization weight
-    p_geometric: float = 0.2    # geometric prior success probability
+    lambda_p: float = 0.01  # geometric prior regularization weight
+    p_geometric: float = 0.2  # geometric prior success probability
 
 
 # ---------------------------------------------------------------------------
 # Halting Unit
 # ---------------------------------------------------------------------------
+
 
 class HaltingUnit(nn.Module):
     """Computes halting probability at each step: h_t = sigmoid(linear(hidden))."""
@@ -54,6 +53,7 @@ class HaltingUnit(nn.Module):
 # ---------------------------------------------------------------------------
 # PonderNet
 # ---------------------------------------------------------------------------
+
 
 class PonderNet(nn.Module):
     """Wraps a base model with adaptive computation (pondering).
@@ -75,7 +75,7 @@ class PonderNet(nn.Module):
     # ------------------------------------------------------------------
     # Internal helper: run base model, return (hidden, logits)
     # ------------------------------------------------------------------
-    def _run_base(self, input_ids: Tensor) -> Tuple[Tensor, Tensor]:
+    def _run_base(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Run the base model and return (hidden_states, logits).
 
         Handles both plain Tensor outputs and the
@@ -119,7 +119,7 @@ class PonderNet(nn.Module):
     # ------------------------------------------------------------------
     # Forward
     # ------------------------------------------------------------------
-    def forward(self, input_ids: Tensor) -> Tuple[Tensor, dict]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, dict]:
         """
         Returns: (weighted_logits, info_dict)
         weighted_logits: (B, T, vocab) weighted combination of per-step logits
@@ -127,8 +127,8 @@ class PonderNet(nn.Module):
         """
         B = input_ids.shape[0]
 
-        all_halt_probs: List[Tensor] = []   # each: (B,)
-        all_logits: List[Tensor] = []       # each: (B, T, vocab)
+        all_halt_probs: list[Tensor] = []  # each: (B,)
+        all_logits: list[Tensor] = []  # each: (B, T, vocab)
 
         # Cumulative NOT-halted probability — starts at 1.0 for each batch item
         cum_not_halted = torch.ones(B, device=input_ids.device, dtype=torch.float32)
@@ -170,7 +170,7 @@ class PonderNet(nn.Module):
         halt_probs = torch.stack(all_halt_probs, dim=1)
 
         # Recompute step weights for the info dict (mirrors the loop logic)
-        step_weights_list: List[Tensor] = []
+        step_weights_list: list[Tensor] = []
         cnot = torch.ones(B, device=input_ids.device, dtype=torch.float32)
         for i in range(n_steps):
             h = halt_probs[:, i]
@@ -187,7 +187,7 @@ class PonderNet(nn.Module):
             "step_weights": step_weights,
         }
 
-        assert weighted_logits is not None
+        assert weighted_logits is not None  # noqa: S101
         return weighted_logits, info
 
     # ------------------------------------------------------------------
@@ -196,9 +196,9 @@ class PonderNet(nn.Module):
     @torch.no_grad()
     def adaptive_generate(
         self,
-        input_ids: Tensor,   # (T,)
+        input_ids: Tensor,  # (T,)
         max_new_tokens: int = 8,
-    ) -> Tuple[Tensor, List[int]]:
+    ) -> tuple[Tensor, list[int]]:
         """Generate tokens with adaptive computation.
         Returns (generated_ids, steps_per_token) where steps_per_token is list of int."""
         # Ensure 2-D input: (1, T)
@@ -207,8 +207,8 @@ class PonderNet(nn.Module):
         else:
             ids = input_ids
 
-        generated_ids: List[int] = []
-        steps_per_token: List[int] = []
+        generated_ids: list[int] = []
+        steps_per_token: list[int] = []
 
         for _ in range(max_new_tokens):
             weighted_logits, info = self.forward(ids)
@@ -218,12 +218,15 @@ class PonderNet(nn.Module):
             steps_per_token.append(info["n_steps"])
             ids = torch.cat([ids, next_token_id], dim=1)
 
-        return torch.tensor(generated_ids, dtype=torch.long, device=input_ids.device), steps_per_token
+        return torch.tensor(
+            generated_ids, dtype=torch.long, device=input_ids.device
+        ), steps_per_token
 
 
 # ---------------------------------------------------------------------------
 # Geometric prior helper
 # ---------------------------------------------------------------------------
+
 
 def geometric_prior(n_steps: int, p: float = 0.2) -> Tensor:
     """Geometric distribution PMF: P(halt at step t) = (1-p)^(t-1) * p.
@@ -238,13 +241,14 @@ def geometric_prior(n_steps: int, p: float = 0.2) -> Tensor:
 # Loss
 # ---------------------------------------------------------------------------
 
+
 def ponder_loss(
-    weighted_logits: Tensor,    # (B, T, vocab) from PonderNet.forward
-    target_ids: Tensor,         # (B, T)
-    halt_probs: Tensor,         # (B, n_steps) halting probabilities
+    weighted_logits: Tensor,  # (B, T, vocab) from PonderNet.forward
+    target_ids: Tensor,  # (B, T)
+    halt_probs: Tensor,  # (B, n_steps) halting probabilities
     lambda_p: float = 0.01,
     p_geometric: float = 0.2,
-) -> Tuple[Tensor, dict]:
+) -> tuple[Tensor, dict]:
     """Total loss = NLL + lambda_p * KL(halting || geometric_prior).
 
     KL = sum_t p(halt_t) * log(p(halt_t) / geom(t))
@@ -264,7 +268,7 @@ def ponder_loss(
     # Recompute per-step halting weights from halt_probs
     # p(halt at step t) = prod_{i<t}(1-h_i) * h_t
     cnot = torch.ones(B, 1, device=halt_probs.device)
-    step_weights_list: List[Tensor] = []
+    step_weights_list: list[Tensor] = []
     for i in range(n_steps):
         h = halt_probs[:, i : i + 1]
         if i == n_steps - 1:

@@ -16,18 +16,18 @@ import math
 import pytest
 import torch
 
+from src.training import TRAINING_REGISTRY
 from src.training.swe_rl import (
     SWEPatch,
     SWERLConfig,
     SWERLTrainer,
     SWETask,
 )
-from src.training import TRAINING_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def trainer() -> SWERLTrainer:
@@ -61,7 +61,13 @@ def tasks() -> list[SWETask]:
             task_id="hard_task",
             repo_context="def parse(src): pass",
             issue_description="Fix parser to handle edge cases.",
-            test_cases=["test_parse_1", "test_parse_2", "test_parse_3", "test_parse_4", "test_parse_5"],
+            test_cases=[
+                "test_parse_1",
+                "test_parse_2",
+                "test_parse_3",
+                "test_parse_4",
+                "test_parse_5",
+            ],
             difficulty="hard",
         ),
     ]
@@ -69,8 +75,10 @@ def tasks() -> list[SWETask]:
 
 def _make_verifier(passes: int):
     """Return a verifier that always returns (passes, total)."""
+
     def verifier(patch_text: str, test_cases: list[str]) -> tuple[int, int]:
         return (passes, len(test_cases))
+
     return verifier
 
 
@@ -84,6 +92,7 @@ verifier_hard = _make_verifier(0)
 # Helper: build one patch per task
 # ---------------------------------------------------------------------------
 
+
 def _patch_for(task: SWETask, attempt: int = 0) -> SWEPatch:
     return SWEPatch(
         task_id=task.task_id,
@@ -96,6 +105,7 @@ def _patch_for(task: SWETask, attempt: int = 0) -> SWEPatch:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_integration_evaluate_easy_task(trainer, tasks):
     """Easy task with all-pass verifier → resolved=True, correct reward."""
@@ -142,7 +152,7 @@ def test_integration_best_of_n(trainer, tasks):
     task = tasks[1]  # medium
 
     call_idx = [0]
-    pass_counts = [0, 2, 5]   # attempt 0→0, 1→2, 2→5
+    pass_counts = [0, 2, 5]  # attempt 0→0, 1→2, 2→5
 
     def staged_verifier(patch_text: str, test_cases: list[str]) -> tuple[int, int]:
         p = pass_counts[call_idx[0]]
@@ -194,7 +204,7 @@ def test_integration_policy_loss_backward(trainer):
     rewards = torch.tensor([0.75, 0.6, 0.0])
 
     loss = trainer.compute_policy_loss(log_probs, rewards)
-    assert loss.ndim == 0   # scalar
+    assert loss.ndim == 0  # scalar
 
     loss.backward()
     assert log_probs.grad is not None

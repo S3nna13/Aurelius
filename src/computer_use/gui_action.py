@@ -15,10 +15,10 @@ from typing import Any
 
 from src.computer_use.screen_parser import AccessibilityNode, ScreenSnapshot
 
-
 # ---------------------------------------------------------------------------
 # Enums and data structures
 # ---------------------------------------------------------------------------
+
 
 class ActionType(Enum):
     """Supported GUI action types."""
@@ -51,6 +51,7 @@ class GUIActionError(Exception):
 # Abstract predictor
 # ---------------------------------------------------------------------------
 
+
 class ActionPredictor(ABC):
     """Abstract interface for GUI action predictors."""
 
@@ -76,6 +77,7 @@ class ActionPredictor(ABC):
 # Rule-based predictor (no ML dependencies)
 # ---------------------------------------------------------------------------
 
+
 class RuleBasedPredictor(ActionPredictor):
     """Simple deterministic predictor.
 
@@ -87,10 +89,26 @@ class RuleBasedPredictor(ActionPredictor):
     """
 
     # Words that are too generic to be useful as search keywords.
-    _STOP_WORDS: frozenset[str] = frozenset({
-        "a", "an", "the", "on", "in", "at", "to", "for",
-        "of", "and", "or", "with", "is", "it", "do", "go",
-    })
+    _STOP_WORDS: frozenset[str] = frozenset(
+        {
+            "a",
+            "an",
+            "the",
+            "on",
+            "in",
+            "at",
+            "to",
+            "for",
+            "of",
+            "and",
+            "or",
+            "with",
+            "is",
+            "it",
+            "do",
+            "go",
+        }
+    )
 
     def predict(self, snapshot: ScreenSnapshot, goal: str) -> list[GUIAction]:
         """Return a CLICK action for the first matching node, or [] if none found."""
@@ -120,9 +138,7 @@ class RuleBasedPredictor(ActionPredictor):
         )
         return [action]
 
-    def _find_node(
-        self, node: AccessibilityNode, keywords: list[str]
-    ) -> AccessibilityNode | None:
+    def _find_node(self, node: AccessibilityNode, keywords: list[str]) -> AccessibilityNode | None:
         """Depth-first search for first node whose name matches any keyword."""
         node_name_lower = node.name.lower()
         if any(kw in node_name_lower for kw in keywords):
@@ -166,7 +182,6 @@ def get_action_predictor(name: str) -> type[ActionPredictor]:
     """
     if name not in GUI_ACTION_REGISTRY:
         raise KeyError(
-            f"No ActionPredictor registered as {name!r}. "
-            f"Available: {sorted(GUI_ACTION_REGISTRY)}"
+            f"No ActionPredictor registered as {name!r}. Available: {sorted(GUI_ACTION_REGISTRY)}"
         )
     return GUI_ACTION_REGISTRY[name]

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.memory_augmented import (
-    MemoryConfig,
     ExternalMemoryBank,
-    MemoryAttentionLayer,
     MemorizingTransformerBlock,
+    MemoryAttentionLayer,
+    MemoryConfig,
     MemoryUtilizationTracker,
     build_memory_augmented_model,
 )

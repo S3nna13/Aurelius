@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
 
 MetricSnapshot = dict[str, float]
 ConditionFn = Callable[[MetricSnapshot], tuple[bool, str, float | None]]

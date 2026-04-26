@@ -10,15 +10,15 @@ from __future__ import annotations
 import pytest
 
 from src.interpretability.attention_flow import (
+    ATTENTION_FLOW_REGISTRY,
     AttentionFlow,
     AttentionFlowAnalyzer,
-    ATTENTION_FLOW_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform_weights(n: int) -> list[list[float]]:
     """n x n uniform attention matrix (each row sums to 1)."""
@@ -43,6 +43,7 @@ def _make_analyzer(num_layers: int = 3, num_heads: int = 4) -> AttentionFlowAnal
 # ---------------------------------------------------------------------------
 # 1. AttentionFlow dataclass — basic fields
 # ---------------------------------------------------------------------------
+
 
 class TestAttentionFlowDataclass:
     def test_fields_stored_correctly(self):
@@ -83,6 +84,7 @@ class TestAttentionFlowDataclass:
 # 2. AttentionFlowAnalyzer — constructor
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzerConstructor:
     def test_num_layers_stored(self):
         a = AttentionFlowAnalyzer(num_layers=6, num_heads=8)
@@ -100,6 +102,7 @@ class TestAnalyzerConstructor:
 # ---------------------------------------------------------------------------
 # 3. record — return type and filtering
 # ---------------------------------------------------------------------------
+
 
 class TestRecord:
     def test_record_returns_list(self):
@@ -180,6 +183,7 @@ class TestRecord:
 # 4. top_flows
 # ---------------------------------------------------------------------------
 
+
 class TestTopFlows:
     def test_top_flows_returns_list(self):
         a = _make_analyzer()
@@ -228,6 +232,7 @@ class TestTopFlows:
 # ---------------------------------------------------------------------------
 # 5. layer_summary
 # ---------------------------------------------------------------------------
+
 
 class TestLayerSummary:
     def test_layer_summary_keys(self):
@@ -286,6 +291,7 @@ class TestLayerSummary:
 # 6. head_importance
 # ---------------------------------------------------------------------------
 
+
 class TestHeadImportance:
     def test_head_importance_length_equals_num_heads(self):
         a = _make_analyzer(num_layers=2, num_heads=4)
@@ -336,6 +342,7 @@ class TestHeadImportance:
 # 7. reset
 # ---------------------------------------------------------------------------
 
+
 class TestReset:
     def test_reset_clears_top_flows(self):
         a = _make_analyzer()
@@ -368,6 +375,7 @@ class TestReset:
 # ---------------------------------------------------------------------------
 # 8. REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -73,6 +73,4 @@ class KernelProfiler:
         self._records.clear()
 
 
-KERNEL_PROFILER_REGISTRY: dict[str, type[KernelProfiler]] = {
-    "default": KernelProfiler
-}
+KERNEL_PROFILER_REGISTRY: dict[str, type[KernelProfiler]] = {"default": KernelProfiler}

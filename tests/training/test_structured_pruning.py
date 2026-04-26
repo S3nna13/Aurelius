@@ -6,6 +6,7 @@ apply_head_mask, apply_ffn_mask, count_active_parameters, and StructuredPruner
 score_heads, get_prune_mask, prune_linear_neurons, prune_ffn_layer,
 PruningScheduler, and the new StructuredPruner (hard-pruning variant).
 """
+
 from __future__ import annotations
 
 import math
@@ -19,26 +20,26 @@ from src.model.transformer import AureliusTransformer
 from src.training.structured_pruning import (
     FFNImportanceScorer,
     HeadImportanceScorer,
+    # Hard-pruning API
+    PruningConfig,
+    PruningScheduler,
     # Soft-pruning StructuredPruner is shadowed; import the new hard-pruning one
     StructuredPruner,
     StructuredPruningConfig,
     apply_ffn_mask,
     apply_head_mask,
     count_active_parameters,
-    # Hard-pruning API
-    PruningConfig,
-    score_neurons,
-    score_heads,
     get_prune_mask,
-    prune_linear_neurons,
     prune_ffn_layer,
-    PruningScheduler,
+    prune_linear_neurons,
+    score_heads,
+    score_neurons,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_model():
@@ -66,6 +67,7 @@ def calibration_data():
 # Test 1: StructuredPruningConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_structured_pruning_config_defaults():
     cfg = StructuredPruningConfig()
     assert cfg.head_pruning_ratio == 0.25
@@ -77,6 +79,7 @@ def test_structured_pruning_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: HeadImportanceScorer.compute_head_importance returns dict with layer keys
 # ---------------------------------------------------------------------------
+
 
 def test_head_importance_scorer_returns_dict_with_layer_keys(small_model, calibration_data):
     cfg = StructuredPruningConfig(importance_metric="magnitude")
@@ -92,6 +95,7 @@ def test_head_importance_scorer_returns_dict_with_layer_keys(small_model, calibr
 # Test 3: HeadImportanceScorer importance shape matches n_heads
 # ---------------------------------------------------------------------------
 
+
 def test_head_importance_shape_matches_n_heads(small_model, calibration_data):
     cfg = StructuredPruningConfig(importance_metric="magnitude")
     scorer = HeadImportanceScorer(small_model, cfg)
@@ -106,6 +110,7 @@ def test_head_importance_shape_matches_n_heads(small_model, calibration_data):
 # ---------------------------------------------------------------------------
 # Test 4: HeadImportanceScorer.get_heads_to_prune returns correct fraction
 # ---------------------------------------------------------------------------
+
 
 def test_get_heads_to_prune_correct_fraction(small_model, calibration_data):
     ratio = 0.5
@@ -128,6 +133,7 @@ def test_get_heads_to_prune_correct_fraction(small_model, calibration_data):
 # Test 5: FFNImportanceScorer.compute_neuron_importance returns dict with correct shapes
 # ---------------------------------------------------------------------------
 
+
 def test_ffn_importance_scorer_shapes(small_model, calibration_data):
     cfg = StructuredPruningConfig(importance_metric="magnitude")
     scorer = FFNImportanceScorer(small_model, cfg)
@@ -145,6 +151,7 @@ def test_ffn_importance_scorer_shapes(small_model, calibration_data):
 # ---------------------------------------------------------------------------
 # Test 6: FFNImportanceScorer.get_neurons_to_prune returns correct fraction
 # ---------------------------------------------------------------------------
+
 
 def test_get_neurons_to_prune_correct_fraction(small_model, calibration_data):
     ratio = 0.25
@@ -164,6 +171,7 @@ def test_get_neurons_to_prune_correct_fraction(small_model, calibration_data):
 # ---------------------------------------------------------------------------
 # Test 7: apply_ffn_mask zeroes out specified neuron weights
 # ---------------------------------------------------------------------------
+
 
 def test_apply_ffn_mask_zeroes_neuron_weights(small_model):
     # Pick neurons 0 and 1 in layer 0
@@ -186,6 +194,7 @@ def test_apply_ffn_mask_zeroes_neuron_weights(small_model):
 # Test 8: apply_ffn_mask doesn't affect unmasked neurons
 # ---------------------------------------------------------------------------
 
+
 def test_apply_ffn_mask_does_not_affect_unmasked(small_model):
     # Record weight of neuron 5 before
     ffn = small_model.layers[0].ffn
@@ -204,6 +213,7 @@ def test_apply_ffn_mask_does_not_affect_unmasked(small_model):
 # Test 9: count_active_parameters returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_count_active_parameters_keys(small_model):
     result = count_active_parameters(small_model)
     assert "total" in result
@@ -215,6 +225,7 @@ def test_count_active_parameters_keys(small_model):
 # Test 10: count_active_parameters sparsity in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_count_active_parameters_sparsity_range(small_model):
     result = count_active_parameters(small_model)
     assert 0.0 <= result["sparsity"] <= 1.0
@@ -225,6 +236,7 @@ def test_count_active_parameters_sparsity_range(small_model):
 # ---------------------------------------------------------------------------
 # Test 11: StructuredPruner.calibrate returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_structured_pruner_calibrate_keys(small_model, calibration_data):
     cfg = StructuredPruningConfig()
@@ -240,6 +252,7 @@ def test_structured_pruner_calibrate_keys(small_model, calibration_data):
 # Test 12: StructuredPruner.prune returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_structured_pruner_prune_keys(small_model, calibration_data):
     cfg = StructuredPruningConfig(head_pruning_ratio=0.25, ffn_pruning_ratio=0.25)
     pruner = StructuredPruner(small_model, cfg)
@@ -253,6 +266,7 @@ def test_structured_pruner_prune_keys(small_model, calibration_data):
 # Test 13: StructuredPruner.prune sparsity > 0 after pruning
 # ---------------------------------------------------------------------------
 
+
 def test_structured_pruner_prune_increases_sparsity(small_model, calibration_data):
     cfg = StructuredPruningConfig(head_pruning_ratio=0.5, ffn_pruning_ratio=0.5)
     pruner = StructuredPruner(small_model, cfg)
@@ -263,6 +277,7 @@ def test_structured_pruner_prune_increases_sparsity(small_model, calibration_dat
 # ---------------------------------------------------------------------------
 # Test 14: StructuredPruner.recover_accuracy returns finite float
 # ---------------------------------------------------------------------------
+
 
 def test_structured_pruner_recover_accuracy_returns_finite(small_model, calibration_data):
     cfg = StructuredPruningConfig(head_pruning_ratio=0.25, ffn_pruning_ratio=0.25)
@@ -278,11 +293,11 @@ def test_structured_pruner_recover_accuracy_returns_finite(small_model, calibrat
 # Test 15: count_active_parameters sparsity increases after pruning
 # ---------------------------------------------------------------------------
 
+
 def test_sparsity_increases_after_pruning(small_model, calibration_data):
     before = count_active_parameters(small_model)["sparsity"]
     cfg = StructuredPruningConfig(head_pruning_ratio=0.5, ffn_pruning_ratio=0.5)
     # Use the legacy soft-pruner directly to avoid the class name collision
-    from src.training import structured_pruning as _sp
     # HeadImportanceScorer + FFNImportanceScorer + apply_* are the soft-pruning path
     head_scorer = HeadImportanceScorer(small_model, cfg)
     ffn_scorer = FFNImportanceScorer(small_model, cfg)
@@ -297,6 +312,7 @@ def test_sparsity_increases_after_pruning(small_model, calibration_data):
 # ===========================================================================
 # Hard-pruning API tests (16 tests)
 # ===========================================================================
+
 
 @pytest.fixture
 def tiny_model():

@@ -13,7 +13,6 @@ from src.inference.best_of_n_reranking import (
     select_best_of_n,
 )
 
-
 TINY_CFG = BestOfNRerankingConfig(
     vocab_size=256,
     d_model=64,

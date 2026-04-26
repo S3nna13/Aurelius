@@ -1,34 +1,37 @@
 """Test-time compute scaling: majority voting, reward-guided search, and step-level Monte Carlo."""
+
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ScalingConfig:
     """Configuration for test-time compute scaling."""
+
     n_samples: int = 8
     max_new_tokens: int = 64
     temperature: float = 0.8
     top_p: float = 0.95
-    voting_method: str = "majority"   # "majority" | "reward_weighted" | "self_consistency"
-    use_step_level: bool = False       # step-level vs answer-level
+    voting_method: str = "majority"  # "majority" | "reward_weighted" | "self_consistency"
+    use_step_level: bool = False  # step-level vs answer-level
 
 
 # ---------------------------------------------------------------------------
 # Nucleus sampling
 # ---------------------------------------------------------------------------
+
 
 def nucleus_sample(logits: Tensor, top_p: float = 0.95, temperature: float = 1.0) -> int:
     """Top-p (nucleus) sampling from logits of shape (V,).
@@ -69,6 +72,7 @@ def nucleus_sample(logits: Tensor, top_p: float = 0.95, temperature: float = 1.0
 # Sample generation
 # ---------------------------------------------------------------------------
 
+
 def generate_samples(
     model: nn.Module,
     prompt_ids: Tensor,
@@ -94,7 +98,7 @@ def generate_samples(
 
             for _ in range(config.max_new_tokens):
                 _, logits, _ = model(current_ids)  # (1, T, V)
-                next_logits = logits[0, -1, :]     # (V,)
+                next_logits = logits[0, -1, :]  # (V,)
 
                 token_id = nucleus_sample(
                     next_logits,
@@ -115,6 +119,7 @@ def generate_samples(
 # ---------------------------------------------------------------------------
 # Voting utilities
 # ---------------------------------------------------------------------------
+
 
 def majority_vote(answers: list[str]) -> str:
     """Return the most common answer string.
@@ -148,6 +153,7 @@ def self_consistency_vote(answers: list[str], normalize: bool = True) -> dict[st
 # ---------------------------------------------------------------------------
 # Step-level scorer
 # ---------------------------------------------------------------------------
+
 
 class StepLevelScorer:
     """Scores individual reasoning steps (proxy for process reward model)."""
@@ -199,6 +205,7 @@ class StepLevelScorer:
 # Beam MCTS
 # ---------------------------------------------------------------------------
 
+
 class BeamMCTS:
     """Simple beam search with step-level scoring (MCTS-inspired)."""
 
@@ -232,7 +239,7 @@ class BeamMCTS:
 
                 for _ in range(step_len):
                     _, logits, _ = self.model(current_ids)  # (1, T, V)
-                    next_logits = logits[0, -1, :]           # (V,)
+                    next_logits = logits[0, -1, :]  # (V,)
                     token_id = nucleus_sample(
                         next_logits,
                         top_p=self.config.top_p,
@@ -245,9 +252,7 @@ class BeamMCTS:
                 # Score the continuation using log-likelihood directly
                 cont_tensor = torch.tensor(continuation, dtype=torch.long)
                 beam_tensor = torch.tensor([beam], dtype=torch.long)
-                full_ids = torch.cat(
-                    [beam_tensor, cont_tensor.unsqueeze(0)], dim=1
-                )
+                full_ids = torch.cat([beam_tensor, cont_tensor.unsqueeze(0)], dim=1)
                 _, logits, _ = self.model(full_ids)
                 beam_len = len(beam)
                 cont_len = len(continuation)
@@ -285,6 +290,7 @@ class BeamMCTS:
 # ---------------------------------------------------------------------------
 # Main interface
 # ---------------------------------------------------------------------------
+
 
 class TestTimeScaler:
     """Main interface for test-time compute scaling."""

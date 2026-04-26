@@ -15,9 +15,18 @@ Meta AI Apache-2.0, clean-room reimplementation.
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
+# Register model-side vision encoders
+# ---------------------------------------------------------------------------
+from src.model.vision_encoder import (  # noqa: E402
+    MultimodalEmbedding,
+    PatchEmbedding,
+    VisionTransformer,
+    VisualProjection,
+)
+
+# ---------------------------------------------------------------------------
 # Modality contract surface (stdlib-only, no torch dependency)
 # ---------------------------------------------------------------------------
-
 from src.multimodal.contract import (
     AUDIO_MODALITY_CONTRACT,
     DOCUMENT_MODALITY_CONTRACT,
@@ -34,9 +43,19 @@ from src.multimodal.contract import (
 )
 
 # ---------------------------------------------------------------------------
+# Modality tokenizer types
+# ---------------------------------------------------------------------------
+from src.multimodal.modality_tokenizer import (
+    ModalityToken,
+    ModalityTokenizer,
+    ModalityTokenizerError,
+    ModalityType,
+    PassthroughModalityTokenizer,
+)
+
+# ---------------------------------------------------------------------------
 # Registry singletons and CRUD helpers
 # ---------------------------------------------------------------------------
-
 from src.multimodal.multimodal_registry import (
     AUDIO_ENCODER_REGISTRY,
     MODALITY_PROJECTOR_REGISTRY,
@@ -55,29 +74,6 @@ from src.multimodal.multimodal_registry import (
     register_modality_projector,
     register_modality_tokenizer,
     register_vision_encoder,
-)
-
-# ---------------------------------------------------------------------------
-# Modality tokenizer types
-# ---------------------------------------------------------------------------
-
-from src.multimodal.modality_tokenizer import (
-    ModalityToken,
-    ModalityTokenizer,
-    ModalityTokenizerError,
-    ModalityType,
-    PassthroughModalityTokenizer,
-)
-
-# ---------------------------------------------------------------------------
-# Register model-side vision encoders
-# ---------------------------------------------------------------------------
-
-from src.model.vision_encoder import (  # noqa: E402
-    MultimodalEmbedding,
-    PatchEmbedding,
-    VisualProjection,
-    VisionTransformer,
 )
 
 register_vision_encoder("VisionTransformer", VisionTransformer)
@@ -137,6 +133,15 @@ register_vision_encoder("VideoEncoder", VideoEncoder)
 # Cross-modal attention (Q-Former style)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Audio-speech fusion
+# ---------------------------------------------------------------------------
+from src.multimodal.audio_speech_fusion import (  # noqa: E402
+    SPEECH_FUSION_REGISTRY,
+    AudioTextAligner,
+    SpeechFusionConfig,
+    SpeechFusionEncoder,
+)
 from src.multimodal.cross_modal_attention import (  # noqa: E402
     CROSS_MODAL_REGISTRY,
     CrossModalAttentionLayer,
@@ -145,33 +150,8 @@ from src.multimodal.cross_modal_attention import (  # noqa: E402
 )
 
 # ---------------------------------------------------------------------------
-# Audio-speech fusion
-# ---------------------------------------------------------------------------
-
-from src.multimodal.audio_speech_fusion import (  # noqa: E402
-    SPEECH_FUSION_REGISTRY,
-    AudioTextAligner,
-    SpeechFusionConfig,
-    SpeechFusionEncoder,
-)
-
-# ---------------------------------------------------------------------------
-# Multimodal token fusion (late fusion: text + vision + audio)
-# ---------------------------------------------------------------------------
-
-from src.multimodal.multimodal_token_fusion import (  # noqa: E402
-    MULTIMODAL_FUSION_REGISTRY,
-    FusionStrategy,
-    GatedFusion,
-    MultimodalTokenFusion,
-    TokenFusionConfig,
-    WeightedSumFusion,
-)
-
-# ---------------------------------------------------------------------------
 # Document understanding (table/form/layout processor)
 # ---------------------------------------------------------------------------
-
 from src.multimodal.document_understanding import (  # noqa: E402
     DOCUMENT_EMBEDDER_REGISTRY,
     DOCUMENT_PARSER_REGISTRY,
@@ -182,6 +162,18 @@ from src.multimodal.document_understanding import (  # noqa: E402
     DocumentRegion,
     DocumentRegionType,
     JSONLayoutParser,
+)
+
+# ---------------------------------------------------------------------------
+# Multimodal token fusion (late fusion: text + vision + audio)
+# ---------------------------------------------------------------------------
+from src.multimodal.multimodal_token_fusion import (  # noqa: E402
+    MULTIMODAL_FUSION_REGISTRY,
+    FusionStrategy,
+    GatedFusion,
+    MultimodalTokenFusion,
+    TokenFusionConfig,
+    WeightedSumFusion,
 )
 
 # ---------------------------------------------------------------------------
@@ -263,25 +255,27 @@ __all__ = [
 
 # --- ViT encoder (additive, cycle-146) -----------------------------------------
 from src.multimodal.vit_encoder import (  # noqa: E402,F401
+    VIT_REGISTRY,
     ViTConfig,
     ViTEncoder,
     ViTPatchEmbedding,
-    VIT_REGISTRY,
 )
+
 VISION_ENCODER_REGISTRY.update({k: v for k, v in VIT_REGISTRY.items()})
 
 # --- Vision projector v2 (additive, cycle-146) ---------------------------------
 from src.multimodal.vision_projector_v2 import (  # noqa: E402,F401
+    VISION_PROJECTOR_V2_REGISTRY,
     ProjectorConfig,
     VisionProjectorV2,
-    VISION_PROJECTOR_V2_REGISTRY,
 )
+
 MODALITY_PROJECTOR_REGISTRY.update(VISION_PROJECTOR_V2_REGISTRY)
 
 # --- OCR module (additive, cycle-146) ------------------------------------------
 from src.multimodal.ocr_module import (  # noqa: E402,F401
+    OCR_MODULE_REGISTRY,
     OCRConfig,
     OCRModule,
     TextRegionEncoder,
-    OCR_MODULE_REGISTRY,
 )

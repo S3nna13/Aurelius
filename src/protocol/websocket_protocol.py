@@ -1,9 +1,10 @@
 """WebSocket protocol handler: frame model and connection state machine."""
+
 from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 
 
 class WSOpcode(int, Enum):
@@ -23,7 +24,7 @@ class WSFrame:
     masked: bool = False
 
 
-class WSConnectionState(str, Enum):
+class WSConnectionState(StrEnum):
     CONNECTING = "connecting"
     OPEN = "open"
     CLOSING = "closing"

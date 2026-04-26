@@ -1,4 +1,5 @@
 """Tests for abductive_reasoner — abductive inference engine."""
+
 from __future__ import annotations
 
 from src.reasoning.abductive_reasoner import (

@@ -1,7 +1,6 @@
 """Tests for query engine."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.tools.query_engine import QueryEngine
 

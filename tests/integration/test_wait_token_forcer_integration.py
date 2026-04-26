@@ -5,22 +5,21 @@ Verifies:
 * reset() correctly restores state.
 * DECODER_REGISTRY["wait_token_forcer"] is wired correctly.
 """
+
 from __future__ import annotations
 
-import pytest
-
-from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConfig
 import src.inference as inference_pkg
-
+from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConfig
 
 END_THINK = 151645
-WAIT_TOK  = 151649
-MIN_TOKS  = 64
+WAIT_TOK = 151649
+MIN_TOKS = 64
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _seq_ending_end_think(n: int) -> list[int]:
     """Return a list of n tokens where the last one is END_THINK."""
@@ -30,6 +29,7 @@ def _seq_ending_end_think(n: int) -> list[int]:
 # ---------------------------------------------------------------------------
 # Integration: injection limit across repeated process_sequence calls
 # ---------------------------------------------------------------------------
+
 
 def test_injection_limit_across_calls():
     """Only 3 injections happen when process_sequence is called 5 times."""
@@ -49,6 +49,7 @@ def test_injection_limit_across_calls():
 # ---------------------------------------------------------------------------
 # Integration: reset() restores state for reuse
 # ---------------------------------------------------------------------------
+
 
 def test_reset_restores_full_budget():
     """After reset(), a fresh round of injections is possible."""
@@ -81,6 +82,7 @@ def test_reset_restores_full_budget():
 # Integration: DECODER_REGISTRY wired correctly
 # ---------------------------------------------------------------------------
 
+
 def test_registry_wired():
     """DECODER_REGISTRY['wait_token_forcer'] resolves to WaitTokenForcer."""
     registry = inference_pkg.DECODER_REGISTRY
@@ -101,6 +103,7 @@ def test_instantiation_from_registry():
 # ---------------------------------------------------------------------------
 # Integration: stats are consistent throughout lifecycle
 # ---------------------------------------------------------------------------
+
 
 def test_stats_lifecycle():
     """injection_stats values stay internally consistent throughout a lifecycle."""

@@ -1,4 +1,5 @@
 """Tool chain validator with dependency and cycle detection."""
+
 from __future__ import annotations
 
 import re

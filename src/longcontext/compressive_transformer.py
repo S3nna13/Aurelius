@@ -19,21 +19,19 @@ All K/V tensors are ``(batch, n_heads, seq, head_dim)``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 @dataclass
 class CompressiveMemoryState:
     """Snapshot of the two-level memory."""
 
-    recent_k: Optional[torch.Tensor]
-    recent_v: Optional[torch.Tensor]
-    compressed_k: Optional[torch.Tensor]
-    compressed_v: Optional[torch.Tensor]
+    recent_k: torch.Tensor | None
+    recent_v: torch.Tensor | None
+    compressed_k: torch.Tensor | None
+    compressed_v: torch.Tensor | None
 
 
 _VALID_FNS = ("mean_pool", "max_pool", "conv1d")
@@ -68,9 +66,7 @@ class CompressiveMemory(nn.Module):
     ) -> None:
         super().__init__()
         if compression_fn not in _VALID_FNS:
-            raise ValueError(
-                f"compression_fn must be one of {_VALID_FNS}, got {compression_fn!r}"
-            )
+            raise ValueError(f"compression_fn must be one of {_VALID_FNS}, got {compression_fn!r}")
         if n_heads <= 0 or head_dim <= 0:
             raise ValueError("n_heads and head_dim must be positive")
         if recent_size <= 0 or compressed_size <= 0:
@@ -109,21 +105,21 @@ class CompressiveMemory(nn.Module):
             self.k_conv = None
             self.v_conv = None
 
-        self._batch_size: Optional[int] = None
-        self._device: Optional[torch.device] = None
-        self._dtype: Optional[torch.dtype] = None
+        self._batch_size: int | None = None
+        self._device: torch.device | None = None
+        self._dtype: torch.dtype | None = None
         # Buffers (None until reset).
-        self._recent_k: Optional[torch.Tensor] = None
-        self._recent_v: Optional[torch.Tensor] = None
-        self._compressed_k: Optional[torch.Tensor] = None
-        self._compressed_v: Optional[torch.Tensor] = None
+        self._recent_k: torch.Tensor | None = None
+        self._recent_v: torch.Tensor | None = None
+        self._compressed_k: torch.Tensor | None = None
+        self._compressed_v: torch.Tensor | None = None
 
     # ------------------------------------------------------------------ api
 
     def reset(
         self,
         batch_size: int,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         dtype: torch.dtype = torch.float32,
     ) -> None:
         """Clear all memory and fix the expected batch size."""
@@ -145,7 +141,7 @@ class CompressiveMemory(nn.Module):
             compressed_v=self._compressed_v,
         )
 
-    def concatenated_kv(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def concatenated_kv(self) -> tuple[torch.Tensor, torch.Tensor]:
         """Return ``(K, V)`` with ``[compressed | recent]`` layout.
 
         If both levels are empty, returns zero-length tensors with the
@@ -168,9 +164,7 @@ class CompressiveMemory(nn.Module):
             return empty, empty.clone()
         return torch.cat(parts_k, dim=2), torch.cat(parts_v, dim=2)
 
-    def update(
-        self, new_k: torch.Tensor, new_v: torch.Tensor
-    ) -> CompressiveMemoryState:
+    def update(self, new_k: torch.Tensor, new_v: torch.Tensor) -> CompressiveMemoryState:
         """Append ``new_k`` / ``new_v`` to recent memory, evicting/compressing overflow.
 
         Both tensors must be shape ``(batch, n_heads, seq_new, head_dim)``.
@@ -183,9 +177,7 @@ class CompressiveMemory(nn.Module):
             raise ValueError("expected 4D tensors (B, H, S, D)")
         B, H, S, D = new_k.shape
         if B != self._batch_size:
-            raise ValueError(
-                f"batch size {B} does not match reset() batch size {self._batch_size}"
-            )
+            raise ValueError(f"batch size {B} does not match reset() batch size {self._batch_size}")
         if H != self.n_heads or D != self.head_dim:
             raise ValueError(
                 f"expected n_heads={self.n_heads}, head_dim={self.head_dim}; "
@@ -242,7 +234,7 @@ class CompressiveMemory(nn.Module):
         """
         B, H, S, D = x.shape
         rate = self.compression_rate
-        assert S % rate == 0, "caller must ensure divisibility"
+        assert S % rate == 0, "caller must ensure divisibility"  # noqa: S101
 
         if self.compression_fn == "mean_pool":
             return x.reshape(B, H, S // rate, rate, D).mean(dim=3)

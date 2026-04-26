@@ -9,16 +9,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass(frozen=True)
 class LogitLensResult:
     """Result of projecting a single (layer, position) through the unembedding."""
+
     layer: int
     position: int
-    top_token_ids: List[int]
-    top_logits: List[float]
+    top_token_ids: list[int]
+    top_logits: list[float]
     entropy: float
 
 
@@ -28,7 +28,7 @@ class LogitLensAnalyzer:
     def __init__(self, vocab_size: int) -> None:
         self.vocab_size = vocab_size
 
-    def _softmax(self, logits: List[float]) -> List[float]:
+    def _softmax(self, logits: list[float]) -> list[float]:
         """Numerically stable softmax (subtract max before exp).
 
         Args:
@@ -48,8 +48,8 @@ class LogitLensAnalyzer:
         self,
         layer: int,
         position: int,
-        hidden: List[float],
-        unembedding: List[List[float]],
+        hidden: list[float],
+        unembedding: list[list[float]],
     ) -> LogitLensResult:
         """Project a hidden state through the unembedding matrix.
 
@@ -67,7 +67,7 @@ class LogitLensAnalyzer:
             LogitLensResult with top-5 token ids/logits and entropy.
         """
         # Matrix-vector product: logits[v] = dot(unembedding[v], hidden)
-        logits: List[float] = []
+        logits: list[float] = []
         for vocab_row in unembedding:
             dot = sum(w * h for w, h in zip(vocab_row, hidden))
             logits.append(dot)
@@ -92,9 +92,9 @@ class LogitLensAnalyzer:
 
     def layer_trajectories(
         self,
-        results: List[LogitLensResult],
+        results: list[LogitLensResult],
         token_id: int,
-    ) -> List[float]:
+    ) -> list[float]:
         """Return the logit value for a given token_id across results sorted by layer.
 
         Args:
@@ -105,7 +105,7 @@ class LogitLensAnalyzer:
             List of logit values, one per result sorted by layer ascending.
         """
         sorted_results = sorted(results, key=lambda r: r.layer)
-        trajectory: List[float] = []
+        trajectory: list[float] = []
         for result in sorted_results:
             # Find the logit for token_id among top tokens, else 0.0
             if token_id in result.top_token_ids:
@@ -117,8 +117,8 @@ class LogitLensAnalyzer:
 
     def entropy_by_layer(
         self,
-        results: List[LogitLensResult],
-    ) -> Dict[int, float]:
+        results: list[LogitLensResult],
+    ) -> dict[int, float]:
         """Compute mean entropy for each layer across all results at that layer.
 
         Args:
@@ -127,15 +127,14 @@ class LogitLensAnalyzer:
         Returns:
             Dict mapping layer index to mean entropy at that layer.
         """
-        layer_entropies: Dict[int, List[float]] = {}
+        layer_entropies: dict[int, list[float]] = {}
         for result in results:
             if result.layer not in layer_entropies:
                 layer_entropies[result.layer] = []
             layer_entropies[result.layer].append(result.entropy)
 
         return {
-            layer: sum(entropies) / len(entropies)
-            for layer, entropies in layer_entropies.items()
+            layer: sum(entropies) / len(entropies) for layer, entropies in layer_entropies.items()
         }
 
 

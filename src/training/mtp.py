@@ -21,10 +21,10 @@ import torch.nn.functional as F
 # RMSNorm is small and always available.
 from src.model.rms_norm import RMSNorm
 
-
 # ---------------------------------------------------------------------------
 # MTPHead
 # ---------------------------------------------------------------------------
+
 
 class MTPHead(nn.Module):
     """Single MTP prediction head for one future depth.
@@ -40,7 +40,7 @@ class MTPHead(nn.Module):
 
     def __init__(self, d_model: int, vocab_size: int, depth: int, eps: float = 1e-6) -> None:
         super().__init__()
-        assert depth >= 1, "depth must be >= 1"
+        assert depth >= 1, "depth must be >= 1"  # noqa: S101
         self.depth = depth
         self.norm = RMSNorm(d_model, eps=eps)
         self.proj = nn.Linear(d_model, vocab_size, bias=False)
@@ -60,6 +60,7 @@ class MTPHead(nn.Module):
 # ---------------------------------------------------------------------------
 # MTPObjective
 # ---------------------------------------------------------------------------
+
 
 class MTPObjective(nn.Module):
     """Auxiliary MTP objective: k heads, one per future depth (1 … k).
@@ -111,10 +112,10 @@ class MTPObjective(nn.Module):
 
         for head in self.heads:
             d = head.depth
-            h_slice = hidden_states[:, :-d, :]       # (B, S-d, d_model)
-            targets = input_ids[:, d:]               # (B, S-d)
+            h_slice = hidden_states[:, :-d, :]  # (B, S-d, d_model)
+            targets = input_ids[:, d:]  # (B, S-d)
 
-            logits = head(h_slice)                   # (B, S-d, vocab_size)
+            logits = head(h_slice)  # (B, S-d, vocab_size)
             B, Sd, V = logits.shape
 
             loss = F.cross_entropy(
@@ -130,6 +131,7 @@ class MTPObjective(nn.Module):
 # ---------------------------------------------------------------------------
 # MTPTrainer
 # ---------------------------------------------------------------------------
+
 
 class MTPTrainer:
     """Trains a main transformer model with an auxiliary MTP objective.
@@ -215,9 +217,7 @@ class MTPTrainer:
         total_loss.backward()
 
         if self.grad_clip:
-            all_params = (
-                list(self.model.parameters()) + list(self.mtp_objective.parameters())
-            )
+            all_params = list(self.model.parameters()) + list(self.mtp_objective.parameters())
             nn.utils.clip_grad_norm_(all_params, self.grad_clip)
 
         self.optimizer.step()

@@ -5,26 +5,28 @@ theme registry, and a reduced-color mode for accessibility.
 Inspired by kimi-cli terminal theming (MoonshotAI/kimi-cli, MIT);
 Aurelius-native implementation. License: MIT.
 """
+
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
 class ColorDepth(Enum):
-    NONE = "none"       # no colors (dumb terminal or env override)
-    ANSI16 = "ansi16"   # basic 16 ANSI colors
-    ANSI256 = "ansi256" # 256-color xterm
+    NONE = "none"  # no colors (dumb terminal or env override)
+    ANSI16 = "ansi16"  # basic 16 ANSI colors
+    ANSI256 = "ansi256"  # 256-color xterm
     TRUECOLOR = "truecolor"  # 24-bit RGB
 
 
 @dataclass(frozen=True)
 class ColorSpec:
     """A single color with fallbacks for different color depths."""
-    truecolor: tuple[int, int, int]    # RGB (0-255 each)
-    ansi256: int                        # 0-255
-    ansi16: int                         # 0-15
+
+    truecolor: tuple[int, int, int]  # RGB (0-255 each)
+    ansi256: int  # 0-255
+    ansi16: int  # 0-15
     name: str = ""
 
     def __post_init__(self) -> None:
@@ -41,6 +43,7 @@ class ColorSpec:
 @dataclass
 class ColorTheme:
     """A named color palette for the Aurelius UI."""
+
     name: str
     primary: ColorSpec
     secondary: ColorSpec
@@ -57,10 +60,14 @@ class ColorTheme:
     def get(self, role: str) -> ColorSpec:
         """Get a ColorSpec by role name. Raises KeyError on unknown role."""
         roles = {
-            "primary": self.primary, "secondary": self.secondary,
-            "accent": self.accent, "success": self.success,
-            "warning": self.warning, "error": self.error,
-            "muted": self.muted, "background": self.background,
+            "primary": self.primary,
+            "secondary": self.secondary,
+            "accent": self.accent,
+            "success": self.success,
+            "warning": self.warning,
+            "error": self.error,
+            "muted": self.muted,
+            "background": self.background,
             "foreground": self.foreground,
         }
         if role not in roles:
@@ -68,8 +75,17 @@ class ColorTheme:
         return roles[role]
 
     def role_names(self) -> list[str]:
-        return ["primary", "secondary", "accent", "success", "warning",
-                "error", "muted", "background", "foreground"]
+        return [
+            "primary",
+            "secondary",
+            "accent",
+            "success",
+            "warning",
+            "error",
+            "muted",
+            "background",
+            "foreground",
+        ]
 
 
 class ThemeRenderer:
@@ -121,7 +137,10 @@ class ThemeRenderer:
     def strip_ansi(self, text: str) -> str:
         """Remove all ANSI escape sequences from text."""
         import re
-        return re.sub(r"\x1b\[[0-9;]*[mKHJFABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]", "", text)
+
+        return re.sub(
+            r"\x1b\[[0-9;]*[mKHJFABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]", "", text
+        )
 
 
 # ---------------------------------------------------------------------------

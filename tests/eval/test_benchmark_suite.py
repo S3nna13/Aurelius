@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
@@ -54,14 +52,16 @@ def ppl_samples():
 def mc_questions():
     questions = []
     for i in range(N_SAMPLES):
-        questions.append({
-            "context_ids": torch.randint(0, 256, (SEQ_LEN,)),
-            "choice_ids": [
-                torch.randint(0, 256, (4,)),
-                torch.randint(0, 256, (4,)),
-            ],
-            "correct_idx": 0,
-        })
+        questions.append(
+            {
+                "context_ids": torch.randint(0, 256, (SEQ_LEN,)),
+                "choice_ids": [
+                    torch.randint(0, 256, (4,)),
+                    torch.randint(0, 256, (4,)),
+                ],
+                "correct_idx": 0,
+            }
+        )
     return questions
 
 
@@ -83,6 +83,7 @@ def byte_decode(ids):
 # 1. BenchmarkTask fields accessible
 # ---------------------------------------------------------------------------
 
+
 def test_benchmark_task_fields():
     task = BenchmarkTask(name="my_task", task_type="perplexity", n_samples=50, weight=2.0)
     assert task.name == "my_task"
@@ -94,6 +95,7 @@ def test_benchmark_task_fields():
 # ---------------------------------------------------------------------------
 # 2. BenchmarkResult fields accessible
 # ---------------------------------------------------------------------------
+
 
 def test_benchmark_result_fields():
     res = BenchmarkResult(task_name="foo", metric=0.5, n_evaluated=10, details={"x": 1})
@@ -107,6 +109,7 @@ def test_benchmark_result_fields():
 # 3. evaluate_perplexity_task returns BenchmarkResult
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_perplexity_task_returns_type(model, ppl_samples):
     result = evaluate_perplexity_task(model, ppl_samples, max_len=SEQ_LEN)
     assert isinstance(result, BenchmarkResult)
@@ -115,6 +118,7 @@ def test_evaluate_perplexity_task_returns_type(model, ppl_samples):
 # ---------------------------------------------------------------------------
 # 4. perplexity metric > 0
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_perplexity_metric_positive(model, ppl_samples):
     result = evaluate_perplexity_task(model, ppl_samples, max_len=SEQ_LEN)
@@ -125,6 +129,7 @@ def test_evaluate_perplexity_metric_positive(model, ppl_samples):
 # 5. evaluate_multiple_choice_task returns BenchmarkResult
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_multiple_choice_task_returns_type(model, mc_questions):
     result = evaluate_multiple_choice_task(model, mc_questions, task_name="mc_test")
     assert isinstance(result, BenchmarkResult)
@@ -134,6 +139,7 @@ def test_evaluate_multiple_choice_task_returns_type(model, mc_questions):
 # 6. multiple_choice accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_multiple_choice_accuracy_range(model, mc_questions):
     result = evaluate_multiple_choice_task(model, mc_questions, task_name="mc_test")
     assert 0.0 <= result.metric <= 1.0
@@ -142,6 +148,7 @@ def test_evaluate_multiple_choice_accuracy_range(model, mc_questions):
 # ---------------------------------------------------------------------------
 # 7. evaluate_generation_task returns BenchmarkResult
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_generation_task_returns_type(model, gen_prompts, gen_references):
     result = evaluate_generation_task(
@@ -154,6 +161,7 @@ def test_evaluate_generation_task_returns_type(model, gen_prompts, gen_reference
 # 8. generation exact_match in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_generation_exact_match_range(model, gen_prompts, gen_references):
     result = evaluate_generation_task(
         model, gen_prompts, gen_references, byte_decode, MAX_NEW_TOKENS, "gen_test"
@@ -164,6 +172,7 @@ def test_evaluate_generation_exact_match_range(model, gen_prompts, gen_reference
 # ---------------------------------------------------------------------------
 # 9. BenchmarkSuite.run_all returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_run_all_returns_required_keys(model, ppl_samples, mc_questions):
     tasks = [
@@ -185,6 +194,7 @@ def test_run_all_returns_required_keys(model, ppl_samples, mc_questions):
 # 10. aggregate_score is float in [0, inf)
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_score_is_float_nonnegative(model, ppl_samples):
     tasks = [BenchmarkTask(name="ppl_task", task_type="perplexity")]
     suite = BenchmarkSuite(tasks, model)
@@ -197,6 +207,7 @@ def test_aggregate_score_is_float_nonnegative(model, ppl_samples):
 # ---------------------------------------------------------------------------
 # 11. task_scores has all task names as keys
 # ---------------------------------------------------------------------------
+
 
 def test_task_scores_has_all_names(model, ppl_samples, mc_questions):
     tasks = [
@@ -217,6 +228,7 @@ def test_task_scores_has_all_names(model, ppl_samples, mc_questions):
 # 12. BenchmarkSuite with single perplexity task works
 # ---------------------------------------------------------------------------
 
+
 def test_suite_single_perplexity_task(model, ppl_samples):
     tasks = [BenchmarkTask(name="ppl_only", task_type="perplexity", weight=1.0)]
     suite = BenchmarkSuite(tasks, model)
@@ -229,6 +241,7 @@ def test_suite_single_perplexity_task(model, ppl_samples):
 # ---------------------------------------------------------------------------
 # 13. aggregate_score weighted correctly (higher weight = more influence)
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_score_weighted_correctly(model):
     # Two tasks with metrics 10.0 and 1.0; weight 9:1 should pull score near 10
@@ -251,6 +264,7 @@ def test_aggregate_score_weighted_correctly(model):
 # ---------------------------------------------------------------------------
 # 14. run_all with 2 tasks returns 2 results
 # ---------------------------------------------------------------------------
+
 
 def test_run_all_two_tasks_two_results(model, ppl_samples, mc_questions):
     tasks = [

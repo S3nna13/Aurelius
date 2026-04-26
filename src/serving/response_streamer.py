@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -52,7 +51,7 @@ class ResponseStreamer:
                 ``StreamConfig()`` when ``None``.
     """
 
-    def __init__(self, config: Optional[StreamConfig] = None) -> None:
+    def __init__(self, config: StreamConfig | None = None) -> None:
         self.config: StreamConfig = config if config is not None else StreamConfig()
 
     # ------------------------------------------------------------------
@@ -84,9 +83,7 @@ class ResponseStreamer:
             start = i * size
             end = start + size
             is_final = i == total - 1
-            chunks.append(
-                StreamChunk(chunk_id=i, text=text[start:end], is_final=is_final)
-            )
+            chunks.append(StreamChunk(chunk_id=i, text=text[start:end], is_final=is_final))
 
         return chunks
 
@@ -108,9 +105,7 @@ class ResponseStreamer:
         chunks: list[StreamChunk] = []
         last_idx = len(tokens) - 1
         for i, token in enumerate(tokens):
-            chunks.append(
-                StreamChunk(chunk_id=i, text=token, is_final=(i == last_idx))
-            )
+            chunks.append(StreamChunk(chunk_id=i, text=token, is_final=(i == last_idx)))
 
         return chunks
 

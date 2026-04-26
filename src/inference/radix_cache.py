@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -24,8 +22,8 @@ class CacheBlock:
 
     block_id: int
     token_ids: tuple[int, ...]  # token sequence for this block
-    ref_count: int = 0          # how many requests currently reference this block
-    last_access: float = 0.0    # timestamp for LRU eviction
+    ref_count: int = 0  # how many requests currently reference this block
+    last_access: float = 0.0  # timestamp for LRU eviction
     metadata: dict = field(default_factory=dict)
 
 
@@ -34,8 +32,8 @@ class RadixCacheConfig:
     """Configuration for the radix cache."""
 
     max_blocks: int = 1024
-    block_size: int = 16         # tokens per block
-    eviction_policy: str = "lru" # "lru" or "lfu"
+    block_size: int = 16  # tokens per block
+    eviction_policy: str = "lru"  # "lru" or "lfu"
 
 
 class RadixNode:
@@ -43,7 +41,7 @@ class RadixNode:
 
     def __init__(self) -> None:
         self.children: dict[int, RadixNode] = {}
-        self.block: Optional[CacheBlock] = None  # None for internal nodes without a block
+        self.block: CacheBlock | None = None  # None for internal nodes without a block
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +58,7 @@ class RadixCache:
     requests are never displaced.
     """
 
-    def __init__(self, config: Optional[RadixCacheConfig] = None) -> None:
+    def __init__(self, config: RadixCacheConfig | None = None) -> None:
         self._config = config or RadixCacheConfig()
         self._root = RadixNode()
         # Flat index of all blocks by block_id for O(1) ref/deref/eviction.
@@ -71,7 +69,7 @@ class RadixCache:
     # Core operations
     # ------------------------------------------------------------------
 
-    def match_prefix(self, token_ids: list[int]) -> tuple[int, Optional[CacheBlock]]:
+    def match_prefix(self, token_ids: list[int]) -> tuple[int, CacheBlock | None]:
         """Find the longest prefix of token_ids that exists in the cache.
 
         Returns:
@@ -81,7 +79,7 @@ class RadixCache:
         """
         node = self._root
         matched_len = 0
-        last_block: Optional[CacheBlock] = None
+        last_block: CacheBlock | None = None
 
         for tok in token_ids:
             if tok not in node.children:
@@ -207,7 +205,7 @@ class RadixCache:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _select_eviction_candidate(self) -> Optional[CacheBlock]:
+    def _select_eviction_candidate(self) -> CacheBlock | None:
         """Pick the best eviction candidate according to the configured policy.
 
         Returns None if no evictable block exists (all have ref_count > 0).
@@ -230,9 +228,7 @@ class RadixCache:
         self._blocks.pop(block.block_id, None)
         self._remove_from_trie(self._root, block.token_ids, 0)
 
-    def _remove_from_trie(
-        self, node: RadixNode, token_ids: tuple[int, ...], depth: int
-    ) -> bool:
+    def _remove_from_trie(self, node: RadixNode, token_ids: tuple[int, ...], depth: int) -> bool:
         """Recursively remove the leaf node for token_ids from the trie.
 
         Returns True if the node should be pruned from its parent (it has no
@@ -259,8 +255,8 @@ class RadixCache:
 # ---------------------------------------------------------------------------
 
 try:
-    DECODER_REGISTRY  # type: ignore[name-defined]
+    DECODER_REGISTRY  # type: ignore[used-before-def]
 except NameError:
-    DECODER_REGISTRY: dict[str, object] = {}  # type: ignore[assignment]
+    DECODER_REGISTRY: dict[str, object] = {}  # type: ignore[no-redef]
 
-DECODER_REGISTRY["radix_cache"] = RadixCache  # type: ignore[name-defined]
+DECODER_REGISTRY["radix_cache"] = RadixCache  # type: ignore[used-before-def]

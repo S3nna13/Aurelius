@@ -6,14 +6,10 @@ strategies following StreamingLLM and H2O findings.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
-import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -25,7 +21,9 @@ class KVCacheConfig:
     """Configuration for KV cache compression."""
 
     max_cache_size: int = 512
-    eviction_strategy: str = "attention_sink"  # "attention_sink" | "recent" | "random" | "heavy_hitter"
+    eviction_strategy: str = (
+        "attention_sink"  # "attention_sink" | "recent" | "random" | "heavy_hitter"
+    )
     sink_tokens: int = 4
     recent_tokens: int = 256
     heavy_hitter_ratio: float = 0.2
@@ -40,7 +38,7 @@ def evict_attention_sink(
     keys: Tensor,
     values: Tensor,
     config: KVCacheConfig,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Keep first sink_tokens + last (max_cache_size - sink_tokens) tokens.
 
     Args:
@@ -72,7 +70,7 @@ def evict_recent_only(
     keys: Tensor,
     values: Tensor,
     config: KVCacheConfig,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Keep only last max_cache_size tokens.
 
     Args:
@@ -94,9 +92,9 @@ def evict_recent_only(
 def evict_heavy_hitter(
     keys: Tensor,
     values: Tensor,
-    attention_weights: Optional[Tensor],
+    attention_weights: Tensor | None,
     config: KVCacheConfig,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Keep top-k tokens by mean attention score plus sink tokens.
 
     Args:
@@ -143,7 +141,7 @@ def _evict_random(
     keys: Tensor,
     values: Tensor,
     config: KVCacheConfig,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Keep sink_tokens + random sample of remaining up to max_cache_size."""
     T = keys.shape[2]
     if T <= config.max_cache_size:
@@ -180,15 +178,15 @@ class KVCache:
         self.n_heads = n_heads
         self.head_dim = head_dim
 
-        self.keys: List[Optional[Tensor]] = [None] * n_layers
-        self.values: List[Optional[Tensor]] = [None] * n_layers
+        self.keys: list[Tensor | None] = [None] * n_layers
+        self.values: list[Tensor | None] = [None] * n_layers
 
     def update(
         self,
         layer_idx: int,
         new_keys: Tensor,
         new_values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Append new_keys/new_values and evict if over max_cache_size.
 
         Args:
@@ -216,7 +214,7 @@ class KVCache:
 
         return k, v
 
-    def _evict(self, keys: Tensor, values: Tensor) -> Tuple[Tensor, Tensor]:
+    def _evict(self, keys: Tensor, values: Tensor) -> tuple[Tensor, Tensor]:
         strategy = self.config.eviction_strategy
         if strategy == "attention_sink":
             return evict_attention_sink(keys, values, self.config)
@@ -229,7 +227,7 @@ class KVCache:
         else:
             raise ValueError(f"Unknown eviction_strategy: {strategy!r}")
 
-    def get(self, layer_idx: int) -> Optional[Tuple[Tensor, Tensor]]:
+    def get(self, layer_idx: int) -> tuple[Tensor, Tensor] | None:
         """Return (keys, values) for layer, or None if not yet populated."""
         k = self.keys[layer_idx]
         v = self.values[layer_idx]
@@ -287,7 +285,7 @@ class CompressedKVCache(KVCache):
         layer_idx: int,
         new_keys: Tensor,
         new_values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Update cache and track eviction statistics."""
         # Size before append
         before_size = 0 if self.keys[layer_idx] is None else self.keys[layer_idx].shape[2]

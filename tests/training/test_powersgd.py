@@ -2,19 +2,17 @@
 
 All tests use pure PyTorch — no scipy, sklearn, or heavy ML frameworks.
 """
+
 from __future__ import annotations
 
-import math
-
 import torch
-import pytest
 
 from src.training.powersgd import PowerSGDCompressor, PowerSGDOptimizer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_low_rank_matrix(m: int, n: int, rank: int, seed: int = 0) -> torch.Tensor:
     """Return a random matrix with exact rank `rank`."""
@@ -28,6 +26,7 @@ def _make_low_rank_matrix(m: int, n: int, rank: int, seed: int = 0) -> torch.Ten
 # ===========================================================================
 # Test 1 — compress() output shapes: M is (m, r), Q is (n, r)
 # ===========================================================================
+
 
 def test_compress_output_shapes():
     m, n, r = 32, 16, 4
@@ -44,6 +43,7 @@ def test_compress_output_shapes():
 # ===========================================================================
 # Test 2 — Q columns are orthonormal: Q^T @ Q ≈ I
 # ===========================================================================
+
 
 def test_q_columns_orthonormal():
     m, n, r = 64, 32, 6
@@ -62,6 +62,7 @@ def test_q_columns_orthonormal():
 # Test 3 — decompress(compress(G)) ≈ G for low-rank matrices
 #           (exact reconstruction when rank >= true rank)
 # ===========================================================================
+
 
 def test_exact_reconstruction_low_rank():
     m, n, true_rank = 40, 20, 3
@@ -83,6 +84,7 @@ def test_exact_reconstruction_low_rank():
 # Test 4 — Reconstruction error < Frobenius norm of G for random G, r=1
 # ===========================================================================
 
+
 def test_reconstruction_error_less_than_grad_norm():
     torch.manual_seed(7)
     m, n = 50, 30
@@ -94,14 +96,13 @@ def test_reconstruction_error_less_than_grad_norm():
 
     frob_error = torch.norm(G - G_hat, p="fro").item()
     frob_G = torch.norm(G, p="fro").item()
-    assert frob_error < frob_G, (
-        f"Reconstruction error {frob_error:.4f} >= G norm {frob_G:.4f}"
-    )
+    assert frob_error < frob_G, f"Reconstruction error {frob_error:.4f} >= G norm {frob_G:.4f}"
 
 
 # ===========================================================================
 # Test 5 — Error feedback: residual stored; next call adds e_t to input
 # ===========================================================================
+
 
 def test_error_feedback_stored_and_applied():
     torch.manual_seed(13)
@@ -111,7 +112,7 @@ def test_error_feedback_stored_and_applied():
 
     G1 = torch.randn(m, n)
     # First step: no prior feedback
-    out1 = comp.step(G1)
+    comp.step(G1)
     assert comp._error_feedback is not None, "error_feedback should be stored after first step"
     assert comp._error_feedback.shape == G1.shape
 
@@ -137,6 +138,7 @@ def test_error_feedback_stored_and_applied():
 # Test 6 — 1-D tensors pass through unmodified
 # ===========================================================================
 
+
 def test_1d_tensor_passthrough():
     bias = torch.randn(64)
     comp = PowerSGDCompressor(rank=4)
@@ -160,6 +162,7 @@ def test_1d_tensor_step_passthrough():
 # Test 7 — n_power_iter=0 still produces valid (M, Q) without iteration
 # ===========================================================================
 
+
 def test_zero_power_iterations():
     m, n, r = 20, 10, 3
     G = torch.randn(m, n)
@@ -176,6 +179,7 @@ def test_zero_power_iterations():
 # ===========================================================================
 # Test 8 — PowerSGDOptimizer: params move after step
 # ===========================================================================
+
 
 def test_optimizer_params_move():
     torch.manual_seed(0)
@@ -194,6 +198,7 @@ def test_optimizer_params_move():
 # Test 9 — PowerSGDOptimizer: param movement is finite (no NaN/Inf)
 # ===========================================================================
 
+
 def test_optimizer_params_finite():
     torch.manual_seed(1)
     param = torch.nn.Parameter(torch.randn(32, 16))
@@ -208,6 +213,7 @@ def test_optimizer_params_finite():
 # ===========================================================================
 # Test 10 — Determinism: same seed → same compressed output
 # ===========================================================================
+
 
 def test_determinism_same_seed():
     G = torch.randn(24, 12)
@@ -228,6 +234,7 @@ def test_determinism_same_seed():
 # Test 11 — rank >= min(m, n) → clamped gracefully (no error)
 # ===========================================================================
 
+
 def test_rank_clamped_gracefully():
     m, n = 8, 6
     G = torch.randn(m, n)
@@ -244,6 +251,7 @@ def test_rank_clamped_gracefully():
 # Test 12 — Error feedback accumulates correctly across 2 steps
 # ===========================================================================
 
+
 def test_error_feedback_accumulates_two_steps():
     torch.manual_seed(99)
     m, n = 20, 12
@@ -256,7 +264,7 @@ def test_error_feedback_accumulates_two_steps():
     e1 = comp._error_feedback.clone()
 
     # Reconstruct step 1: G1 approximation = out1, residual = G1 - out1
-    expected_e1 = (G1 - out1)
+    expected_e1 = G1 - out1
     assert torch.allclose(e1, expected_e1, atol=1e-5), (
         "error feedback after step 1 should equal G1 - G1_approx"
     )
@@ -265,24 +273,23 @@ def test_error_feedback_accumulates_two_steps():
     e2 = comp._error_feedback.clone()
 
     # After step 2: error feedback = (G2 + e1) - out2
-    expected_e2 = (G2 + e1 - out2)
-    assert torch.allclose(e2, expected_e2, atol=1e-5), (
-        "error feedback after step 2 incorrect"
-    )
+    expected_e2 = G2 + e1 - out2
+    assert torch.allclose(e2, expected_e2, atol=1e-5), "error feedback after step 2 incorrect"
 
 
 # ===========================================================================
 # Test 13 — Compression ratio: M+Q storage < G storage for r < n/2
 # ===========================================================================
 
+
 def test_compression_ratio():
-    m, n, r = 128, 64, 8   # r=8 << n/2=32 → compressed < original
+    m, n, r = 128, 64, 8  # r=8 << n/2=32 → compressed < original
     G = torch.randn(m, n)
 
     comp = PowerSGDCompressor(rank=r, n_power_iter=1)
     M, Q, _ = comp.compress(G)
 
-    original_elements = G.numel()            # m * n = 8192
+    original_elements = G.numel()  # m * n = 8192
     compressed_elements = M.numel() + Q.numel()  # m*r + n*r = (m+n)*r
 
     assert compressed_elements < original_elements, (
@@ -293,6 +300,7 @@ def test_compression_ratio():
 # ===========================================================================
 # Test 14 — Large gradient stability: no NaN/Inf on inputs scaled to 1000
 # ===========================================================================
+
 
 def test_large_gradient_stability():
     torch.manual_seed(5)

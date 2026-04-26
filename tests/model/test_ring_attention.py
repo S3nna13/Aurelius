@@ -6,13 +6,12 @@ Tiny config used throughout:
 """
 
 import math
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+
 import pytest
+import torch
+import torch.nn.functional as F
 
 from src.model.ring_attention import RingAttention
-
 
 # ---------------------------------------------------------------------------
 # Shared tiny config
@@ -152,9 +151,7 @@ def test_causal_correctness():
 
     with torch.no_grad():
         ring_out = model(x)
-        ref_out = reference_causal_attn(
-            x, model.W_q, model.W_k, model.W_v, model.W_o, N_HEADS
-        )
+        ref_out = reference_causal_attn(x, model.W_q, model.W_k, model.W_v, model.W_o, N_HEADS)
 
     assert torch.allclose(ring_out, ref_out, atol=1e-4), (
         f"Max diff: {(ring_out - ref_out).abs().max().item():.2e}"

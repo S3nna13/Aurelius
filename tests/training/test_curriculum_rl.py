@@ -24,12 +24,12 @@ import pytest
 from src.training.curriculum_rl import (
     CurriculumRLConfig,
     CurriculumRLSampler,
-    TaskDifficulty,
 )
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_sampler(**cfg_kwargs) -> CurriculumRLSampler:
     """Return a sampler with the given config overrides."""
@@ -43,17 +43,19 @@ def _register_n(sampler: CurriculumRLSampler, n: int, base_difficulty: float = 0
         sampler.register_task(f"task_{i}", difficulty=base_difficulty)
 
 
-def _drive_to_accuracy(sampler: CurriculumRLSampler, task_id: str,
-                       target_accuracy: float, n_steps: int = 200) -> None:
+def _drive_to_accuracy(
+    sampler: CurriculumRLSampler, task_id: str, target_accuracy: float, n_steps: int = 200
+) -> None:
     """Feed the sampler enough updates so recent_accuracy converges near target_accuracy."""
     for _ in range(n_steps):
-        is_correct = (target_accuracy >= 0.5)  # deterministic shortcut
+        is_correct = target_accuracy >= 0.5  # deterministic shortcut
         sampler.update(task_id, is_correct=is_correct)
 
 
 # ---------------------------------------------------------------------------
 # 1. Config defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = CurriculumRLConfig()
@@ -68,6 +70,7 @@ def test_config_defaults():
 # 2. Register task
 # ---------------------------------------------------------------------------
 
+
 def test_register_task():
     sampler = _make_sampler()
     sampler.register_task("task_a", difficulty=0.3)
@@ -79,6 +82,7 @@ def test_register_task():
 # 3. Register duplicate raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_register_duplicate_raises():
     sampler = _make_sampler()
     sampler.register_task("task_a", difficulty=0.3)
@@ -89,6 +93,7 @@ def test_register_duplicate_raises():
 # ---------------------------------------------------------------------------
 # 4. Update correct increases accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_update_correct():
     sampler = _make_sampler()
@@ -103,6 +108,7 @@ def test_update_correct():
 # 5. Update incorrect decreases accuracy
 # ---------------------------------------------------------------------------
 
+
 def test_update_incorrect():
     sampler = _make_sampler()
     sampler.register_task("task_a", difficulty=0.5)
@@ -116,6 +122,7 @@ def test_update_incorrect():
 # 6. Update unknown task raises KeyError
 # ---------------------------------------------------------------------------
 
+
 def test_update_unknown_raises():
     sampler = _make_sampler()
     with pytest.raises(KeyError, match="not registered"):
@@ -125,6 +132,7 @@ def test_update_unknown_raises():
 # ---------------------------------------------------------------------------
 # 7. In learning zone — new task (not enough attempts)
 # ---------------------------------------------------------------------------
+
 
 def test_in_learning_zone_new_task():
     sampler = _make_sampler(min_attempts_before_skip=5)
@@ -140,6 +148,7 @@ def test_in_learning_zone_new_task():
 # ---------------------------------------------------------------------------
 # 8. Not in learning zone — task is "easy"
 # ---------------------------------------------------------------------------
+
 
 def test_in_learning_zone_easy():
     sampler = _make_sampler(
@@ -160,6 +169,7 @@ def test_in_learning_zone_easy():
 # 9. Not in learning zone — task is "hard"
 # ---------------------------------------------------------------------------
 
+
 def test_in_learning_zone_hard():
     sampler = _make_sampler(
         easy_threshold=0.85,
@@ -178,6 +188,7 @@ def test_in_learning_zone_hard():
 # ---------------------------------------------------------------------------
 # 10. In learning zone — accuracy in medium range
 # ---------------------------------------------------------------------------
+
 
 def test_in_learning_zone_medium():
     sampler = _make_sampler(
@@ -199,6 +210,7 @@ def test_in_learning_zone_medium():
 # 11. sample(n) returns exactly n items
 # ---------------------------------------------------------------------------
 
+
 def test_sample_count():
     sampler = _make_sampler()
     _register_n(sampler, 5)
@@ -209,6 +221,7 @@ def test_sample_count():
 # ---------------------------------------------------------------------------
 # 12. Sampled IDs are all registered
 # ---------------------------------------------------------------------------
+
 
 def test_sample_valid_ids():
     sampler = _make_sampler()
@@ -222,6 +235,7 @@ def test_sample_valid_ids():
 # ---------------------------------------------------------------------------
 # 13. Sampler prefers learning-zone tasks (≥90% of draws from zone)
 # ---------------------------------------------------------------------------
+
 
 def test_sample_prefers_zone():
     # exploration_prob=0 so every draw is from learning zone
@@ -245,14 +259,13 @@ def test_sample_prefers_zone():
     results = sampler.sample(n=n_samples, rng_seed=7)
     zone_hits = sum(1 for r in results if r in zone_ids)
     # With exploration_prob=0, all draws should be from zone tasks
-    assert zone_hits == n_samples, (
-        f"Expected {n_samples} zone hits, got {zone_hits}"
-    )
+    assert zone_hits == n_samples, f"Expected {n_samples} zone hits, got {zone_hits}"
 
 
 # ---------------------------------------------------------------------------
 # 14. statistics() returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_keys():
     sampler = _make_sampler()
@@ -265,6 +278,7 @@ def test_statistics_keys():
 # ---------------------------------------------------------------------------
 # 15. statistics() n_in_zone counts correctly
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_n_in_zone():
     sampler = _make_sampler(

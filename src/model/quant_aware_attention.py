@@ -12,16 +12,15 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # FakeQuantize
 # ---------------------------------------------------------------------------
+
 
 class FakeQuantize(nn.Module):
     """Simulates symmetric quantization with Straight-Through Estimator (STE).
@@ -111,6 +110,7 @@ class FakeQuantize(nn.Module):
 # QuantConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class QuantConfig:
     """Configuration for quantization-aware attention.
@@ -135,6 +135,7 @@ class QuantConfig:
 # ---------------------------------------------------------------------------
 # QuantAwareAttention
 # ---------------------------------------------------------------------------
+
 
 class QuantAwareAttention(nn.Module):
     """Standard multi-head attention with optional fake quantization.
@@ -161,12 +162,12 @@ class QuantAwareAttention(nn.Module):
         if config is None:
             config = QuantConfig()
 
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
 
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
-        self.scale = self.d_head ** -0.5
+        self.scale = self.d_head**-0.5
         self.config = config
 
         # Projection layers
@@ -177,20 +178,12 @@ class QuantAwareAttention(nn.Module):
 
         # Optional quantizers
         self.weight_quantizer = (
-            FakeQuantize(config.weight_bits, per_channel=True)
-            if config.quantize_weights
-            else None
+            FakeQuantize(config.weight_bits, per_channel=True) if config.quantize_weights else None
         )
         self.act_quantizer = (
-            FakeQuantize(config.activation_bits)
-            if config.quantize_activations
-            else None
+            FakeQuantize(config.activation_bits) if config.quantize_activations else None
         )
-        self.kv_quantizer = (
-            FakeQuantize(config.kv_bits)
-            if config.quantize_kv
-            else None
-        )
+        self.kv_quantizer = FakeQuantize(config.kv_bits) if config.quantize_kv else None
 
     # ------------------------------------------------------------------
     # Quantization helpers
@@ -249,9 +242,9 @@ class QuantAwareAttention(nn.Module):
         v = self._quantize_kv(v)
 
         # ---- Scaled dot-product attention --------------------------------
-        attn = (q @ k.transpose(-2, -1)) * self.scale        # (B, H, T, T)
+        attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, T, T)
         attn = F.softmax(attn, dim=-1)
-        out = attn @ v                                         # (B, H, T, d_head)
+        out = attn @ v  # (B, H, T, d_head)
 
         # ---- Merge heads -------------------------------------------------
         out = out.transpose(1, 2).contiguous().view(B, T, self.d_model)
@@ -265,6 +258,7 @@ class QuantAwareAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # QuantCalibrator
 # ---------------------------------------------------------------------------
+
 
 class QuantCalibrator:
     """Calibrates quantization scales on representative data.
@@ -281,7 +275,7 @@ class QuantCalibrator:
     def __init__(self, model: nn.Module) -> None:
         self.model = model
         # Collect all FakeQuantize submodules with their names
-        self._quantizers: Dict[str, FakeQuantize] = {
+        self._quantizers: dict[str, FakeQuantize] = {
             name: module
             for name, module in model.named_modules()
             if isinstance(module, FakeQuantize)
@@ -300,7 +294,7 @@ class QuantCalibrator:
         with torch.no_grad():
             self.model(x)
 
-    def get_quantizer_stats(self) -> Dict[str, int]:
+    def get_quantizer_stats(self) -> dict[str, int]:
         """Return a mapping of quantizer name to bit width.
 
         Returns:

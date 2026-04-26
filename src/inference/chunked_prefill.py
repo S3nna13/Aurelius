@@ -7,10 +7,7 @@ memory usage from prompt length.
 
 from __future__ import annotations
 
-import math
-import time
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -29,7 +26,7 @@ class PrefillStats:
 @dataclass
 class ChunkedPrefillConfig:
     chunk_size: int = 512
-    overlap: int = 0            # optional token overlap between chunks
+    overlap: int = 0  # optional token overlap between chunks
     use_kv_cache: bool = True
 
 
@@ -58,7 +55,7 @@ class ChunkedPrefillEngine:
     def get_chunk_schedule(
         self,
         seq_len: int,
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """
         Returns list of (start, end) pairs for each chunk.
         Accounts for overlap.
@@ -84,7 +81,7 @@ class ChunkedPrefillEngine:
     def prefill(
         self,
         prompt_ids: Tensor,  # (B, T_prompt)
-    ) -> Tuple[Tensor, PrefillStats]:
+    ) -> tuple[Tensor, PrefillStats]:
         """
         Process prompt in chunks. Returns:
         - final_logits: (B, T_prompt, V) — logits for the full prompt
@@ -124,10 +121,10 @@ class ChunkedPrefillEngine:
 
     def prefill_and_decode(
         self,
-        prompt_ids: Tensor,          # (B, T_prompt)
+        prompt_ids: Tensor,  # (B, T_prompt)
         max_new_tokens: int = 10,
-        temperature: float = 0.0,    # 0.0 = greedy
-    ) -> Tuple[Tensor, PrefillStats]:
+        temperature: float = 0.0,  # 0.0 = greedy
+    ) -> tuple[Tensor, PrefillStats]:
         """
         Chunked prefill then greedy/sampled decode.
         Returns (output_ids: (B, T_prompt + max_new_tokens), stats).
@@ -138,13 +135,13 @@ class ChunkedPrefillEngine:
         # Autoregressive decode
         generated = prompt_ids
         for _ in range(max_new_tokens):
-            logits = self._forward(generated)   # (B, current_len, V)
-            next_logits = logits[:, -1, :]      # (B, V)
+            logits = self._forward(generated)  # (B, current_len, V)
+            next_logits = logits[:, -1, :]  # (B, V)
             if temperature == 0.0:
                 next_token = next_logits.argmax(dim=-1, keepdim=True)  # (B, 1)
             else:
                 probs = torch.softmax(next_logits / temperature, dim=-1)
-                next_token = torch.multinomial(probs, num_samples=1)    # (B, 1)
+                next_token = torch.multinomial(probs, num_samples=1)  # (B, 1)
             generated = torch.cat([generated, next_token], dim=1)
 
         return generated, stats
@@ -154,7 +151,7 @@ def chunk_sequence(
     input_ids: Tensor,  # (B, T)
     chunk_size: int,
     overlap: int = 0,
-) -> List[Tensor]:
+) -> list[Tensor]:
     """Split (B, T) into list of (B, chunk_size) tensors (last may be smaller)."""
     B, T = input_ids.shape
     chunks = []
@@ -172,7 +169,7 @@ def chunk_sequence(
 
 
 def merge_chunked_logits(
-    chunk_logits: List[Tensor],  # list of (B, chunk_T, V)
+    chunk_logits: list[Tensor],  # list of (B, chunk_T, V)
     overlap: int = 0,
 ) -> Tensor:
     """Concatenate chunk logits, removing overlap tokens. Returns (B, T_total, V)."""

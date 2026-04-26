@@ -1,23 +1,20 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.trading.market_data import (
     MarketDataProvider,
     OHLCVData,
-    SymbolInfo,
-    BarSize,
-    MARKET_DATA_REGISTRY,
-    register_provider,
-    list_providers,
     get_provider,
+    list_providers,
+    register_provider,
 )
 
 
 def _make_bar(close: float, timestamp: datetime | None = None) -> OHLCVData:
     return OHLCVData(
-        timestamp=timestamp or datetime.now(timezone.utc),
+        timestamp=timestamp or datetime.now(UTC),
         open=close - 1,
         high=close + 2,
         low=close - 2,
@@ -30,29 +27,45 @@ def _make_bar(close: float, timestamp: datetime | None = None) -> OHLCVData:
 class TestOHLCVData(unittest.TestCase):
     def test_spread(self):
         bar = OHLCVData(
-            timestamp=datetime.now(timezone.utc),
-            open=100, high=110, low=90, close=105, volume=1000,
+            timestamp=datetime.now(UTC),
+            open=100,
+            high=110,
+            low=90,
+            close=105,
+            volume=1000,
         )
         assert bar.spread == 20
 
     def test_change(self):
         bar = OHLCVData(
-            timestamp=datetime.now(timezone.utc),
-            open=100, high=110, low=90, close=105, volume=1000,
+            timestamp=datetime.now(UTC),
+            open=100,
+            high=110,
+            low=90,
+            close=105,
+            volume=1000,
         )
         assert bar.change == 5
 
     def test_change_pct_positive(self):
         bar = OHLCVData(
-            timestamp=datetime.now(timezone.utc),
-            open=100, high=110, low=90, close=110, volume=1000,
+            timestamp=datetime.now(UTC),
+            open=100,
+            high=110,
+            low=90,
+            close=110,
+            volume=1000,
         )
         assert bar.change_pct == 10.0
 
     def test_change_pct_zero_open(self):
         bar = OHLCVData(
-            timestamp=datetime.now(timezone.utc),
-            open=0, high=10, low=0, close=5, volume=1000,
+            timestamp=datetime.now(UTC),
+            open=0,
+            high=10,
+            low=0,
+            close=5,
+            volume=1000,
         )
         assert bar.change_pct == 0.0
 

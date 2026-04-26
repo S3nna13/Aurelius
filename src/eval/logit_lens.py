@@ -11,15 +11,12 @@ layer, giving insight into how predictions form through the network.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -64,7 +61,7 @@ class LogitLens:
     def __init__(
         self,
         unembed: nn.Linear,
-        layer_norm: Optional[nn.Module] = None,
+        layer_norm: nn.Module | None = None,
     ) -> None:
         self.unembed = unembed
         self.layer_norm = layer_norm
@@ -137,16 +134,16 @@ class LogitLensAnalyzer:
                 to the hidden state produced by layer *i*.
     """
 
-    def __init__(self, lenses: List[LogitLens]) -> None:
+    def __init__(self, lenses: list[LogitLens]) -> None:
         self.lenses = lenses
 
     # ------------------------------------------------------------------
 
     def analyze(
         self,
-        layer_hiddens: List[Tensor],
-        layer_idx: Optional[List[int]] = None,
-    ) -> Dict:
+        layer_hiddens: list[Tensor],
+        layer_idx: list[int] | None = None,
+    ) -> dict:
         """Project every layer's hidden state and collect results.
 
         Args:
@@ -164,17 +161,17 @@ class LogitLensAnalyzer:
         if layer_idx is None:
             layer_idx = list(range(len(layer_hiddens)))
 
-        logits_list: List[Tensor] = []
-        top1_list: List[torch.LongTensor] = []
-        entropy_list: List[Tensor] = []
+        logits_list: list[Tensor] = []
+        top1_list: list[torch.LongTensor] = []
+        entropy_list: list[Tensor] = []
 
         for i, li in enumerate(layer_idx):
             lens = self.lenses[li] if li < len(self.lenses) else self.lenses[i]
             hidden = layer_hiddens[i]
 
-            logits = lens.project(hidden)          # (B, T, V)
-            top1 = logits.argmax(dim=-1)           # (B, T)
-            ent = lens.entropy(hidden)             # (B, T)
+            logits = lens.project(hidden)  # (B, T, V)
+            top1 = logits.argmax(dim=-1)  # (B, T)
+            ent = lens.entropy(hidden)  # (B, T)
 
             logits_list.append(logits)
             top1_list.append(top1)
@@ -190,9 +187,9 @@ class LogitLensAnalyzer:
 
     def rank_of_true_token(
         self,
-        layer_hiddens: List[Tensor],
+        layer_hiddens: list[Tensor],
         true_tokens: torch.LongTensor,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Compute the rank of the true token in each layer's projection.
 
         Rank 0 means the true token is the top-predicted token; rank *V-1*
@@ -206,7 +203,7 @@ class LogitLensAnalyzer:
         Returns:
             List of long tensors of shape *(B, T)*, one per layer.
         """
-        ranks_per_layer: List[Tensor] = []
+        ranks_per_layer: list[Tensor] = []
 
         for i, (hidden, lens) in enumerate(zip(layer_hiddens, self.lenses)):
             logits = lens.project(hidden)  # (B, T, V)
@@ -219,7 +216,7 @@ class LogitLensAnalyzer:
             # ranks[b, t] = (sorted_indices[b, t, :] == true_tokens[b, t]).nonzero()[0]
             B, T, V = sorted_indices.shape
             true_expanded = true_tokens.unsqueeze(-1).expand(B, T, V)  # (B, T, V)
-            matches = (sorted_indices == true_expanded)  # (B, T, V) bool
+            matches = sorted_indices == true_expanded  # (B, T, V) bool
             # argmax along last dim gives the first True index = rank
             rank = matches.long().argmax(dim=-1)  # (B, T)
 
@@ -247,16 +244,16 @@ class LogitLensTracker:
         layers: List of ``nn.Module`` objects to hook (one per layer).
     """
 
-    def __init__(self, layers: List[nn.Module]) -> None:
+    def __init__(self, layers: list[nn.Module]) -> None:
         self.layers = layers
-        self._hiddens: List[Tensor] = []
-        self._hooks: List[torch.utils.hooks.RemovableHook] = []
+        self._hiddens: list[Tensor] = []
+        self._hooks: list[torch.utils.hooks.RemovableHook] = []
 
     # ------------------------------------------------------------------
     # Context manager interface
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "LogitLensTracker":
+    def __enter__(self) -> LogitLensTracker:
         self._install_hooks()
         return self
 
@@ -270,6 +267,7 @@ class LogitLensTracker:
     def _install_hooks(self) -> None:
         """Register a forward hook on every tracked layer."""
         for layer in self.layers:
+
             def _make_hook():
                 def _hook(module: nn.Module, inputs, output):
                     # Some layers return tuples (hidden, cache, …); grab first element.
@@ -294,7 +292,7 @@ class LogitLensTracker:
     # Data access
     # ------------------------------------------------------------------
 
-    def get_hiddens(self) -> List[Tensor]:
+    def get_hiddens(self) -> list[Tensor]:
         """Return collected hidden states (one tensor per layer per call).
 
         Returns:

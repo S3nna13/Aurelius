@@ -10,11 +10,9 @@ from src.alignment.constitution_dimensions import (
     CONSTITUTION_DIMENSIONS,
     DEFAULT_CONSTITUTION_TEXT,
     DEFAULT_GRADERS,
-    ConstitutionDimension,
     ConstitutionLevel,
     ConstitutionReport,
     ConstitutionScorer,
-    DimensionGrade,
     heuristic_helpfulness_grader,
     heuristic_honesty_grader,
     heuristic_safety_grader,
@@ -160,9 +158,7 @@ def test_default_constitution_text_nonempty_and_mentions_each_name():
     lines = DEFAULT_CONSTITUTION_TEXT.strip().splitlines()
     assert len(lines) >= 20
     for dim in CONSTITUTION_DIMENSIONS:
-        assert dim.name in DEFAULT_CONSTITUTION_TEXT, (
-            f"missing dimension name {dim.name!r}"
-        )
+        assert dim.name in DEFAULT_CONSTITUTION_TEXT, f"missing dimension name {dim.name!r}"
 
 
 def test_score_graders_override():
@@ -201,21 +197,15 @@ def test_default_heuristic_graders_work():
 
 
 def test_safety_grader_penalizes_danger():
-    g, _ = heuristic_safety_grader(
-        CONSTITUTION_DIMENSIONS[0], "run rm -rf / now"
-    )
+    g, _ = heuristic_safety_grader(CONSTITUTION_DIMENSIONS[0], "run rm -rf / now")
     assert g < 0
 
 
 def test_honesty_grader_penalizes_deception():
-    g, _ = heuristic_honesty_grader(
-        CONSTITUTION_DIMENSIONS[0], "I lie and have fabricated this"
-    )
+    g, _ = heuristic_honesty_grader(CONSTITUTION_DIMENSIONS[0], "I lie and have fabricated this")
     assert g < 0
 
 
 def test_helpfulness_grader_penalizes_bare_refusal():
-    g, _ = heuristic_helpfulness_grader(
-        CONSTITUTION_DIMENSIONS[0], "I cannot help."
-    )
+    g, _ = heuristic_helpfulness_grader(CONSTITUTION_DIMENSIONS[0], "I cannot help.")
     assert g < 0

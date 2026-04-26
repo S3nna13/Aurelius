@@ -7,25 +7,24 @@ relations (sequential, window, dependency) define edges.
 
 import math
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # TokenGraph
 # ---------------------------------------------------------------------------
+
 
 class TokenGraph:
     """Holds node features and an edge index for a single token graph."""
 
     def __init__(
         self,
-        node_features: torch.Tensor,          # [N, d]
-        edge_index: torch.Tensor,             # [2, E]
-        edge_attr: Optional[torch.Tensor] = None,  # [E, d_e]
+        node_features: torch.Tensor,  # [N, d]
+        edge_index: torch.Tensor,  # [2, E]
+        edge_attr: torch.Tensor | None = None,  # [E, d_e]
     ) -> None:
         self.node_features = node_features
         self.edge_index = edge_index
@@ -48,15 +47,15 @@ class TokenGraph:
         """Each token → next token: 0→1, 1→2, …   shape [2, seq_len-1]."""
         if seq_len <= 1:
             return torch.zeros(2, 0, dtype=torch.long)
-        src = torch.arange(seq_len - 1, dtype=torch.long)   # 0,1,...,T-2
-        dst = src + 1                                         # 1,2,...,T-1
-        return torch.stack([src, dst], dim=0)                # [2, T-1]
+        src = torch.arange(seq_len - 1, dtype=torch.long)  # 0,1,...,T-2
+        dst = src + 1  # 1,2,...,T-1
+        return torch.stack([src, dst], dim=0)  # [2, T-1]
 
     @staticmethod
     def add_window_edges(seq_len: int, window: int = 3) -> torch.Tensor:
         """Each token connects to tokens within ±window (excluding self)."""
-        srcs: List[int] = []
-        dsts: List[int] = []
+        srcs: list[int] = []
+        dsts: list[int] = []
         for i in range(seq_len):
             lo = max(0, i - window)
             hi = min(seq_len - 1, i + window)
@@ -67,25 +66,23 @@ class TokenGraph:
         if not srcs:
             return torch.zeros(2, 0, dtype=torch.long)
         return torch.stack(
-            [torch.tensor(srcs, dtype=torch.long),
-             torch.tensor(dsts, dtype=torch.long)],
+            [torch.tensor(srcs, dtype=torch.long), torch.tensor(dsts, dtype=torch.long)],
             dim=0,
         )
 
     @staticmethod
     def add_dependency_edges(seq_len: int) -> torch.Tensor:
         """All previous tokens → current token (complete causal DAG)."""
-        srcs: List[int] = []
-        dsts: List[int] = []
-        for dst in range(1, seq_len):          # token 0 has no predecessors
+        srcs: list[int] = []
+        dsts: list[int] = []
+        for dst in range(1, seq_len):  # token 0 has no predecessors
             for src in range(dst):
                 srcs.append(src)
                 dsts.append(dst)
         if not srcs:
             return torch.zeros(2, 0, dtype=torch.long)
         return torch.stack(
-            [torch.tensor(srcs, dtype=torch.long),
-             torch.tensor(dsts, dtype=torch.long)],
+            [torch.tensor(srcs, dtype=torch.long), torch.tensor(dsts, dtype=torch.long)],
             dim=0,
         )
 
@@ -93,6 +90,7 @@ class TokenGraph:
 # ---------------------------------------------------------------------------
 # GNNLayer
 # ---------------------------------------------------------------------------
+
 
 class GNNLayer(nn.Module):
     """
@@ -105,29 +103,27 @@ class GNNLayer(nn.Module):
 
     def __init__(self, d_in: int, d_out: int, aggregation: str = "mean") -> None:
         super().__init__()
-        assert aggregation in ("mean", "max", "sum"), (
-            f"Unknown aggregation '{aggregation}'"
-        )
+        assert aggregation in ("mean", "max", "sum"), f"Unknown aggregation '{aggregation}'"  # noqa: S101
         self.aggregation = aggregation
         self.W_self = nn.Linear(d_in, d_out)
         self.W_neighbor = nn.Linear(d_in, d_out)
 
     def forward(
         self,
-        x: torch.Tensor,           # [N, d_in]
+        x: torch.Tensor,  # [N, d_in]
         edge_index: torch.Tensor,  # [2, E]
-    ) -> torch.Tensor:             # [N, d_out]
+    ) -> torch.Tensor:  # [N, d_out]
         N = x.size(0)
-        self_term = self.W_self(x)   # [N, d_out]
+        self_term = self.W_self(x)  # [N, d_out]
 
         if edge_index.size(1) == 0:
             # No edges — no neighbor contribution
             neighbor_term = torch.zeros_like(self_term)
         else:
-            src, dst = edge_index[0], edge_index[1]    # each [E]
+            src, dst = edge_index[0], edge_index[1]  # each [E]
             # Gather source features
-            x_src = x[src]                             # [E, d_in]
-            msg = self.W_neighbor(x_src)               # [E, d_out]
+            x_src = x[src]  # [E, d_in]
+            msg = self.W_neighbor(x_src)  # [E, d_out]
 
             d_out = self_term.size(1)
             if self.aggregation == "mean":
@@ -135,7 +131,8 @@ class GNNLayer(nn.Module):
                 count = torch.zeros(N, 1, device=x.device, dtype=x.dtype)
                 agg.scatter_add_(0, dst.unsqueeze(1).expand_as(msg), msg)
                 count.scatter_add_(
-                    0, dst.unsqueeze(1),
+                    0,
+                    dst.unsqueeze(1),
                     torch.ones(dst.size(0), 1, device=x.device, dtype=x.dtype),
                 )
                 count = count.clamp(min=1.0)
@@ -146,9 +143,7 @@ class GNNLayer(nn.Module):
                 neighbor_term = agg
             else:  # max
                 # Initialize with -inf so nodes with no neighbors get 0 after clamp
-                agg = torch.full(
-                    (N, d_out), float("-inf"), device=x.device, dtype=x.dtype
-                )
+                agg = torch.full((N, d_out), float("-inf"), device=x.device, dtype=x.dtype)
                 # scatter max
                 for e in range(dst.size(0)):
                     d_i = dst[e].item()
@@ -164,6 +159,7 @@ class GNNLayer(nn.Module):
 # GATLayer
 # ---------------------------------------------------------------------------
 
+
 class GATLayer(nn.Module):
     """
     Graph Attention Network layer (Veličković et al., 2018).
@@ -176,16 +172,14 @@ class GATLayer(nn.Module):
 
     def __init__(self, d_in: int, d_out: int, n_heads: int = 4) -> None:
         super().__init__()
-        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
+        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.d_head = d_out // n_heads
 
         # One linear per head (weight sharing across edges via per-node projections)
-        self.W = nn.Linear(d_in, d_out, bias=False)         # [d_in → n_heads*d_head]
+        self.W = nn.Linear(d_in, d_out, bias=False)  # [d_in → n_heads*d_head]
         # Attention vector: 2*d_head per head, stored as [n_heads, 2*d_head]
-        self.attn_vec = nn.Parameter(
-            torch.Tensor(n_heads, 2 * self.d_head)
-        )
+        self.attn_vec = nn.Parameter(torch.Tensor(n_heads, 2 * self.d_head))
         self.leaky = nn.LeakyReLU(negative_slope=0.2)
         self.out_proj = nn.Linear(d_out, d_out)
         self._reset_parameters()
@@ -195,9 +189,9 @@ class GATLayer(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,           # [N, d_in]
+        x: torch.Tensor,  # [N, d_in]
         edge_index: torch.Tensor,  # [2, E]
-    ) -> torch.Tensor:             # [N, d_out]
+    ) -> torch.Tensor:  # [N, d_out]
         N = x.size(0)
         H = self.n_heads
         d_h = self.d_head
@@ -210,23 +204,22 @@ class GATLayer(nn.Module):
             # No edges — return self-projection
             return F.elu(self.out_proj(Wx.reshape(N, d_out)))
 
-        src, dst = edge_index[0], edge_index[1]   # [E]
+        src, dst = edge_index[0], edge_index[1]  # [E]
         E = src.size(0)
 
         # Features at source and destination: [E, H, d_h]
-        h_src = Wx[src]   # [E, H, d_h]
-        h_dst = Wx[dst]   # [E, H, d_h]
+        h_src = Wx[src]  # [E, H, d_h]
+        h_dst = Wx[dst]  # [E, H, d_h]
 
         # Attention logit: [E, H]
         # attn_vec: [H, 2*d_h] → split into a_i [H, d_h] and a_j [H, d_h]
-        a_i = self.attn_vec[:, :d_h]   # [H, d_h]
-        a_j = self.attn_vec[:, d_h:]   # [H, d_h]
+        a_i = self.attn_vec[:, :d_h]  # [H, d_h]
+        a_j = self.attn_vec[:, d_h:]  # [H, d_h]
 
         # e_ij = LeakyReLU( (h_src · a_i) + (h_dst · a_j) )
         # h_src: [E, H, d_h], a_i: [H, d_h] → einsum → [E, H]
         e = self.leaky(
-            (h_src * a_i.unsqueeze(0)).sum(-1) +
-            (h_dst * a_j.unsqueeze(0)).sum(-1)
+            (h_src * a_i.unsqueeze(0)).sum(-1) + (h_dst * a_j.unsqueeze(0)).sum(-1)
         )  # [E, H]
 
         # Softmax per destination node per head
@@ -243,19 +236,19 @@ class GATLayer(nn.Module):
             reduce="amax",
             include_self=True,
         )
-        e_shifted = e - e_max[dst]   # [E, H]
+        e_shifted = e - e_max[dst]  # [E, H]
         exp_e = torch.exp(e_shifted)  # [E, H]
 
         # Sum of exps per destination
         exp_sum = torch.zeros(N, H, device=x.device, dtype=x.dtype)
         exp_sum.scatter_add_(0, dst.unsqueeze(1).expand(E, H), exp_e)
         # Normalise
-        alpha = exp_e / (exp_sum[dst] + 1e-16)   # [E, H]
+        alpha = exp_e / (exp_sum[dst] + 1e-16)  # [E, H]
 
         # Weighted aggregation: [N, H, d_h]
         agg = torch.zeros(N, H, d_h, device=x.device, dtype=x.dtype)
         # alpha: [E, H, 1] * h_src: [E, H, d_h] → weighted messages [E, H, d_h]
-        weighted = alpha.unsqueeze(-1) * h_src    # [E, H, d_h]
+        weighted = alpha.unsqueeze(-1) * h_src  # [E, H, d_h]
         dst_exp = dst.unsqueeze(1).unsqueeze(2).expand(E, H, d_h)
         agg.scatter_add_(0, dst_exp, weighted)
 
@@ -268,6 +261,7 @@ class GATLayer(nn.Module):
 # GraphTransformerLayer
 # ---------------------------------------------------------------------------
 
+
 class GraphTransformerLayer(nn.Module):
     """
     Transformer self-attention layer masked by graph adjacency.
@@ -278,7 +272,7 @@ class GraphTransformerLayer(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0
+        assert d_model % n_heads == 0  # noqa: S101
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
         self.scale = math.sqrt(self.d_head)
@@ -291,9 +285,9 @@ class GraphTransformerLayer(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,           # [N, d_model]
+        x: torch.Tensor,  # [N, d_model]
         edge_index: torch.Tensor,  # [2, E]
-    ) -> torch.Tensor:             # [N, d_model]
+    ) -> torch.Tensor:  # [N, d_model]
         N, d_model = x.shape
         H = self.n_heads
         d_h = self.d_head
@@ -314,7 +308,7 @@ class GraphTransformerLayer(nn.Module):
         V = self.v_proj(x).view(N, H, d_h).transpose(0, 1)  # [H, N, d_h]
 
         # Attention scores [H, N, N]
-        scores = torch.bmm(Q, K.transpose(1, 2)) / self.scale   # [H, N, N]
+        scores = torch.bmm(Q, K.transpose(1, 2)) / self.scale  # [H, N, N]
         # Apply mask: blocked positions → -inf
         scores = scores.masked_fill(mask.unsqueeze(0), float("-inf"))
         attn = F.softmax(scores, dim=-1)
@@ -323,7 +317,7 @@ class GraphTransformerLayer(nn.Module):
         # In practice self-connection is always allowed above, so this is a safeguard
         attn = torch.nan_to_num(attn, nan=0.0)
 
-        out = torch.bmm(attn, V)              # [H, N, d_h]
+        out = torch.bmm(attn, V)  # [H, N, d_h]
         out = out.transpose(0, 1).reshape(N, d_model)  # [N, d_model]
         out = self.out_proj(out)
         return self.norm(x + out)
@@ -333,20 +327,22 @@ class GraphTransformerLayer(nn.Module):
 # GNNConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GNNConfig:
     d_model: int = 32
     vocab_size: int = 64
     n_layers: int = 2
     n_heads: int = 4
-    gnn_type: str = "gat"           # "gnn" | "gat" | "graph_transformer"
-    graph_type: str = "window"      # "sequential" | "window" | "dependency"
+    gnn_type: str = "gat"  # "gnn" | "gat" | "graph_transformer"
+    graph_type: str = "window"  # "sequential" | "window" | "dependency"
     window_size: int = 3
 
 
 # ---------------------------------------------------------------------------
 # GNNLanguageModel
 # ---------------------------------------------------------------------------
+
 
 class GNNLanguageModel(nn.Module):
     """
@@ -388,9 +384,7 @@ class GNNLanguageModel(nn.Module):
             elif gnn_type == "gat":
                 self.gnn_layers.append(GATLayer(d_model, d_model, n_heads=n_heads))
             elif gnn_type == "graph_transformer":
-                self.gnn_layers.append(
-                    GraphTransformerLayer(d_model, n_heads=n_heads)
-                )
+                self.gnn_layers.append(GraphTransformerLayer(d_model, n_heads=n_heads))
             else:
                 raise ValueError(f"Unknown gnn_type: '{gnn_type}'")
 
@@ -401,8 +395,9 @@ class GNNLanguageModel(nn.Module):
     # ------------------------------------------------------------------
 
     def build_graph(
-        self, input_ids: torch.Tensor  # [B, T]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self,
+        input_ids: torch.Tensor,  # [B, T]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Construct per-sequence graphs and concatenate them for batched GNN.
 
@@ -411,9 +406,9 @@ class GNNLanguageModel(nn.Module):
             batch_vector [B*T]        — maps each node to its sequence index
         """
         B, T = input_ids.shape
-        all_src: List[torch.Tensor] = []
-        all_dst: List[torch.Tensor] = []
-        batch_parts: List[torch.Tensor] = []
+        all_src: list[torch.Tensor] = []
+        all_dst: list[torch.Tensor] = []
+        batch_parts: list[torch.Tensor] = []
 
         for b in range(B):
             offset = b * T
@@ -430,9 +425,7 @@ class GNNLanguageModel(nn.Module):
                 all_src.append(ei[0] + offset)
                 all_dst.append(ei[1] + offset)
 
-            batch_parts.append(
-                torch.full((T,), b, dtype=torch.long, device=input_ids.device)
-            )
+            batch_parts.append(torch.full((T,), b, dtype=torch.long, device=input_ids.device))
 
         batch_vector = torch.cat(batch_parts, dim=0)  # [B*T]
 
@@ -450,19 +443,20 @@ class GNNLanguageModel(nn.Module):
     # ------------------------------------------------------------------
 
     def forward(
-        self, input_ids: torch.Tensor  # [B, T]
-    ) -> torch.Tensor:                  # [B, T, vocab_size]
+        self,
+        input_ids: torch.Tensor,  # [B, T]
+    ) -> torch.Tensor:  # [B, T, vocab_size]
         B, T = input_ids.shape
 
         # Node features: flatten batch, embed
-        x = self.embedding(input_ids.view(B * T))   # [B*T, d_model]
+        x = self.embedding(input_ids.view(B * T))  # [B*T, d_model]
 
         edge_index, _ = self.build_graph(input_ids)
 
         for layer in self.gnn_layers:
-            x = layer(x, edge_index)                 # [B*T, d_model]
+            x = layer(x, edge_index)  # [B*T, d_model]
 
-        logits = self.lm_head(x)                     # [B*T, vocab_size]
+        logits = self.lm_head(x)  # [B*T, vocab_size]
         return logits.view(B, T, self.vocab_size)
 
     # ------------------------------------------------------------------
@@ -470,17 +464,18 @@ class GNNLanguageModel(nn.Module):
     # ------------------------------------------------------------------
 
     def compute_loss(
-        self, input_ids: torch.Tensor  # [B, T]
-    ) -> torch.Tensor:                  # scalar
+        self,
+        input_ids: torch.Tensor,  # [B, T]
+    ) -> torch.Tensor:  # scalar
         """
         Standard next-token prediction loss.
         Predicts token t+1 from token t; uses tokens 0..T-2 as inputs,
         tokens 1..T-1 as targets.
         """
-        logits = self.forward(input_ids)         # [B, T, vocab_size]
+        logits = self.forward(input_ids)  # [B, T, vocab_size]
         # Shift: predict next token
         shift_logits = logits[:, :-1, :].contiguous()  # [B, T-1, vocab]
-        shift_labels = input_ids[:, 1:].contiguous()   # [B, T-1]
+        shift_labels = input_ids[:, 1:].contiguous()  # [B, T-1]
         loss = F.cross_entropy(
             shift_logits.view(-1, self.vocab_size),
             shift_labels.view(-1),

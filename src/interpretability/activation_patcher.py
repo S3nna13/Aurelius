@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -39,7 +39,11 @@ class ActivationPatcher:
             if not isinstance(output, torch.Tensor):
                 return output
             patched = output.clone()
-            value = torch.zeros_like(output[:, patch.token_idx, :]) if fill is None else fill.to(output.device)
+            value = (
+                torch.zeros_like(output[:, patch.token_idx, :])
+                if fill is None
+                else fill.to(output.device)
+            )
             patched[:, patch.token_idx, :] = value
             return patched
 

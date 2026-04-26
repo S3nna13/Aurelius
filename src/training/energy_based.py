@@ -58,7 +58,7 @@ def compute_energy(model: object, input_ids: Tensor) -> Tensor:
 
     # Shift for next-token prediction
     shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
-    shift_targets = input_ids[:, 1:].contiguous()    # (B, T-1)
+    shift_targets = input_ids[:, 1:].contiguous()  # (B, T-1)
 
     # Per-token cross-entropy (equivalent to -log_softmax at target token)
     per_token_loss = F.cross_entropy(

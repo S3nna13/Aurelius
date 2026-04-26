@@ -7,7 +7,6 @@ signal for training a reward model via Bradley-Terry preference loss.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -118,14 +117,10 @@ class JudgeModel:
             shift_logits = logits[0, :-1, :]  # (T-1, vocab_size)
             shift_labels = argument_ids[0, 1:]  # (T-1,)
             log_probs = F.log_softmax(shift_logits, dim=-1)  # (T-1, vocab_size)
-            token_log_probs = log_probs[
-                torch.arange(shift_labels.shape[0]), shift_labels
-            ]  # (T-1,)
+            token_log_probs = log_probs[torch.arange(shift_labels.shape[0]), shift_labels]  # (T-1,)
             return float(token_log_probs.mean().item())
 
-    def compare(
-        self, ids_a: torch.Tensor, ids_b: torch.Tensor
-    ) -> tuple[float, float]:
+    def compare(self, ids_a: torch.Tensor, ids_b: torch.Tensor) -> tuple[float, float]:
         """Score two arguments and return probabilities that sum to 1.
 
         Args:

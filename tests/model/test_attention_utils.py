@@ -1,19 +1,17 @@
 """Tests for attention memory analysis and block tiling utilities."""
-import math
-import pytest
 
 from src.model.attention_utils import (
     AttentionMemoryStats,
     BlockTilingConfig,
-    compute_optimal_block_size,
     attention_flops,
+    compute_optimal_block_size,
     memory_bandwidth_bound_at_seqlen,
 )
-
 
 # ---------------------------------------------------------------------------
 # AttentionMemoryStats
 # ---------------------------------------------------------------------------
+
 
 def test_attention_memory_stats_qkv_bytes():
     stats = AttentionMemoryStats(seq_len=512, n_heads=8, head_dim=64, dtype_bytes=2)
@@ -46,6 +44,7 @@ def test_memory_ratio_large_seqlen():
 # ---------------------------------------------------------------------------
 # compute_optimal_block_size
 # ---------------------------------------------------------------------------
+
 
 def test_compute_optimal_block_size_returns_config():
     config = compute_optimal_block_size(
@@ -83,6 +82,7 @@ def test_compute_optimal_block_size_power_of_2():
 # ---------------------------------------------------------------------------
 # attention_flops
 # ---------------------------------------------------------------------------
+
 
 def test_attention_flops_causal_half():
     """Causal attention should use approximately half the FLOPs of non-causal."""

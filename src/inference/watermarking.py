@@ -7,8 +7,7 @@ Detection works by computing a z-score on the fraction of green tokens.
 
 import hashlib
 import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -30,7 +29,7 @@ def get_green_list(
     vocab_size: int,
     gamma: float,
     key: int,
-) -> List[int]:
+) -> list[int]:
     """Deterministically partition vocabulary into green and red lists.
 
     Uses a hash of (prev_token, key) to seed a PRNG, then randomly permutes
@@ -45,7 +44,7 @@ def get_green_list(
     Returns:
         Sorted list of green token ids (length ≈ gamma * vocab_size).
     """
-    raw = f"{key}:{prev_token}".encode("utf-8")
+    raw = f"{key}:{prev_token}".encode()
     hash_int = int(hashlib.sha256(raw).hexdigest(), 16)
 
     rng = torch.Generator()
@@ -58,7 +57,7 @@ def get_green_list(
 
 def apply_watermark_bias(
     logits: Tensor,
-    green_list: List[int],
+    green_list: list[int],
     delta: float,
 ) -> Tensor:
     """Add delta to logits of green-list tokens.
@@ -79,11 +78,11 @@ def apply_watermark_bias(
 
 
 def detect_watermark_score(
-    token_ids: List[int],
+    token_ids: list[int],
     vocab_size: int,
     gamma: float,
     key: int,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Compute z-score for watermark detection over a token sequence.
 
     For each consecutive pair (token_ids[i-1], token_ids[i]) the function
@@ -150,7 +149,7 @@ class WatermarkDetector:
         self.config = config
         self.z_threshold = z_threshold
 
-    def detect(self, token_ids: List[int]) -> Dict[str, float]:
+    def detect(self, token_ids: list[int]) -> dict[str, float]:
         """Compute watermark detection statistics for a single sequence.
 
         Args:
@@ -171,7 +170,7 @@ class WatermarkDetector:
             "is_watermarked": float(z_score > self.z_threshold),
         }
 
-    def batch_detect(self, sequences: List[List[int]]) -> List[Dict[str, float]]:
+    def batch_detect(self, sequences: list[list[int]]) -> list[dict[str, float]]:
         """Run detection on a batch of sequences.
 
         Args:

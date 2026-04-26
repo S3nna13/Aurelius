@@ -1,32 +1,34 @@
 """Knowledge distillation: train a small student model to mimic a larger teacher
 by matching output distributions (soft targets).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class KDConfig:
     """Configuration for knowledge distillation training."""
-    temperature: float = 4.0          # softmax temperature for soft labels
-    alpha: float = 0.5                # weight on KD loss: total = alpha*kd + (1-alpha)*ce
+
+    temperature: float = 4.0  # softmax temperature for soft labels
+    alpha: float = 0.5  # weight on KD loss: total = alpha*kd + (1-alpha)*ce
     kd_loss_type: str = "forward_kl"  # "forward_kl" | "reverse_kl" | "mse"
 
 
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def soft_cross_entropy(
     student_logits: Tensor,
@@ -56,7 +58,7 @@ def soft_cross_entropy(
         student_log_soft.reshape(-1, V),
         teacher_soft.reshape(-1, V),
         reduction="batchmean",
-    ) * (temperature ** 2)
+    ) * (temperature**2)
     return loss
 
 
@@ -101,7 +103,7 @@ def reverse_kl_loss(
         teacher_log_soft.reshape(-1, V),
         student_soft.reshape(-1, V),
         reduction="batchmean",
-    ) * (temperature ** 2)
+    ) * (temperature**2)
     return loss
 
 
@@ -126,7 +128,7 @@ def combined_kd_loss(
     teacher_logits: Tensor,
     labels: Tensor,
     config: KDConfig,
-) -> Tuple[Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor]:
     """Combine knowledge-distillation loss with standard cross-entropy.
 
     total_loss = alpha * kd_loss + (1 - alpha) * ce_loss
@@ -175,6 +177,7 @@ def combined_kd_loss(
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class KnowledgeDistillationTrainer:
     """Train a student model to mimic a teacher via knowledge distillation.
 
@@ -194,7 +197,7 @@ class KnowledgeDistillationTrainer:
         self.optimizer = optimizer
         self.config = config
 
-    def train_step(self, token_ids: Tensor, labels: Tensor) -> Dict[str, float]:
+    def train_step(self, token_ids: Tensor, labels: Tensor) -> dict[str, float]:
         """Run one training step.
 
         1. Teacher forward (no grad).
@@ -230,7 +233,7 @@ class KnowledgeDistillationTrainer:
             "ce_loss": ce_loss.item(),
         }
 
-    def evaluate(self, token_ids: Tensor, labels: Tensor) -> Dict[str, float]:
+    def evaluate(self, token_ids: Tensor, labels: Tensor) -> dict[str, float]:
         """Compute losses without gradient tracking.
 
         Args:
@@ -258,6 +261,7 @@ class KnowledgeDistillationTrainer:
 # ---------------------------------------------------------------------------
 # Layer-wise (hidden-state) distillation
 # ---------------------------------------------------------------------------
+
 
 def layer_wise_distillation_loss(
     student_hidden: Tensor,

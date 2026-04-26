@@ -8,16 +8,18 @@ import pytest
 import torch
 
 from src.training.gradient_noise_scheduler import (
-    GradientNoiseScheduler,
     NOISE_SCHEDULER_REGISTRY,
+    GradientNoiseScheduler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_gradients(seed: int = 0, shapes: list[tuple[int, ...]] | None = None) -> list[torch.Tensor]:
+
+def _make_gradients(
+    seed: int = 0, shapes: list[tuple[int, ...]] | None = None
+) -> list[torch.Tensor]:
     """Return a list of deterministic gradient tensors."""
     torch.manual_seed(seed)
     shapes = shapes or [(10,)]
@@ -27,6 +29,7 @@ def _make_gradients(seed: int = 0, shapes: list[tuple[int, ...]] | None = None) 
 # ---------------------------------------------------------------------------
 # Initialisation & validation
 # ---------------------------------------------------------------------------
+
 
 class TestInit:
     def test_default_values(self):
@@ -69,6 +72,7 @@ class TestValidation:
 # Decay schedules
 # ---------------------------------------------------------------------------
 
+
 class TestExponentialDecay:
     def test_scale_decreases_over_steps(self):
         s = GradientNoiseScheduler(decay="exponential", decay_rate=0.9)
@@ -77,11 +81,9 @@ class TestExponentialDecay:
             assert scales[i] > scales[i + 1]
 
     def test_formula(self):
-        s = GradientNoiseScheduler(
-            initial_scale=0.1, decay="exponential", decay_rate=0.95
-        )
+        s = GradientNoiseScheduler(initial_scale=0.1, decay="exponential", decay_rate=0.95)
         for step in [0, 1, 5, 10]:
-            expected = 0.1 * (0.95 ** step)
+            expected = 0.1 * (0.95**step)
             assert s.get_scale(step) == pytest.approx(expected)
 
 
@@ -93,9 +95,7 @@ class TestLinearDecay:
             assert scales[i] >= scales[i + 1]
 
     def test_formula_and_clamping(self):
-        s = GradientNoiseScheduler(
-            initial_scale=1.0, decay="linear", decay_rate=0.3
-        )
+        s = GradientNoiseScheduler(initial_scale=1.0, decay="linear", decay_rate=0.3)
         assert s.get_scale(0) == pytest.approx(1.0)
         assert s.get_scale(1) == pytest.approx(0.7)
         assert s.get_scale(2) == pytest.approx(0.4)
@@ -115,14 +115,13 @@ class TestConstantDecay:
 # Noise injection — all combinations
 # ---------------------------------------------------------------------------
 
+
 class TestAddNoise:
     @pytest.mark.parametrize("noise_type", ["gaussian", "laplace"])
     @pytest.mark.parametrize("decay", ["exponential", "linear", "constant"])
     def test_add_noise_changes_values(self, noise_type: str, decay: str):
         torch.manual_seed(42)
-        s = GradientNoiseScheduler(
-            noise_type=noise_type, decay=decay, decay_rate=0.5
-        )
+        s = GradientNoiseScheduler(noise_type=noise_type, decay=decay, decay_rate=0.5)
         grads = _make_gradients(seed=1)
         original = grads[0].clone()
         s.add_noise(grads, step=0)
@@ -155,9 +154,7 @@ class TestAddNoise:
         s.add_noise([g1], step=5)
         if decay == "constant":
             # Same scale -> distributions are identical; means should be close.
-            assert g0.abs().mean().item() == pytest.approx(
-                g1.abs().mean().item(), rel=0.1
-            )
+            assert g0.abs().mean().item() == pytest.approx(g1.abs().mean().item(), rel=0.1)
         else:
             assert g0.abs().mean() > g1.abs().mean()
 
@@ -171,6 +168,7 @@ class TestAddNoise:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_is_empty_dict_by_default(self):
@@ -186,6 +184,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # Thread safety
 # ---------------------------------------------------------------------------
+
 
 class TestThreadSafety:
     def test_concurrent_add_noise(self):

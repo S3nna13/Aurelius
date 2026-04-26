@@ -11,7 +11,6 @@ from src.ui.onboarding import (
     OnboardingStep,
 )
 
-
 # ---------------------------------------------------------------------------
 # Registry population
 # ---------------------------------------------------------------------------
@@ -42,12 +41,14 @@ def test_first_run_step_ids() -> None:
 
 def _fresh_flow() -> OnboardingFlow:
     """Return a fresh 4-step flow for each test (avoids shared-state issues)."""
-    return OnboardingFlow([
-        OnboardingStep(id="s1", title="Step 1", description="desc 1"),
-        OnboardingStep(id="s2", title="Step 2", description="desc 2"),
-        OnboardingStep(id="s3", title="Step 3", description="desc 3"),
-        OnboardingStep(id="s4", title="Step 4", description="desc 4"),
-    ])
+    return OnboardingFlow(
+        [
+            OnboardingStep(id="s1", title="Step 1", description="desc 1"),
+            OnboardingStep(id="s2", title="Step 2", description="desc 2"),
+            OnboardingStep(id="s3", title="Step 3", description="desc 3"),
+            OnboardingStep(id="s4", title="Step 4", description="desc 4"),
+        ]
+    )
 
 
 def test_advance_marks_current_step_completed() -> None:

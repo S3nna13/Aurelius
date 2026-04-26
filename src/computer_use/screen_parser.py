@@ -13,10 +13,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AccessibilityNode:
@@ -25,7 +25,7 @@ class AccessibilityNode:
     role: str
     name: str
     bbox: tuple[int, int, int, int] | None = None
-    children: list["AccessibilityNode"] = field(default_factory=list)
+    children: list[AccessibilityNode] = field(default_factory=list)
     attributes: dict[str, Any] = field(default_factory=dict)
 
 
@@ -43,6 +43,7 @@ class ScreenSnapshot:
 # ---------------------------------------------------------------------------
 # Abstract base
 # ---------------------------------------------------------------------------
+
 
 class ScreenParser(ABC):
     """Abstract interface for screen parsers."""
@@ -66,6 +67,7 @@ class ScreenParser(ABC):
 # ---------------------------------------------------------------------------
 # JSON tree parser (pure stdlib — no OS calls)
 # ---------------------------------------------------------------------------
+
 
 class JSONTreeParser(ScreenParser):
     """Parses an accessibility tree from a JSON dict representation.
@@ -108,7 +110,9 @@ class JSONTreeParser(ScreenParser):
             raise KeyError(f"Missing required key in raw_data: {exc}") from exc
 
         if width <= 0 or height <= 0:
-            raise ValueError(f"width and height must be positive; got width={width}, height={height}")
+            raise ValueError(
+                f"width and height must be positive; got width={width}, height={height}"
+            )
 
         if "root" not in raw_data:
             raise KeyError("Missing required key in raw_data: 'root'")
@@ -154,8 +158,7 @@ class JSONTreeParser(ScreenParser):
         attributes: dict[str, Any] = dict(node_dict.get("attributes") or {})
 
         children: list[AccessibilityNode] = [
-            self._parse_node(child)
-            for child in (node_dict.get("children") or [])
+            self._parse_node(child) for child in (node_dict.get("children") or [])
         ]
 
         return AccessibilityNode(
@@ -199,7 +202,6 @@ def get_screen_parser(name: str) -> type[ScreenParser]:
     """
     if name not in SCREEN_PARSER_REGISTRY:
         raise KeyError(
-            f"No ScreenParser registered as {name!r}. "
-            f"Available: {sorted(SCREEN_PARSER_REGISTRY)}"
+            f"No ScreenParser registered as {name!r}. Available: {sorted(SCREEN_PARSER_REGISTRY)}"
         )
     return SCREEN_PARSER_REGISTRY[name]

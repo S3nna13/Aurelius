@@ -80,7 +80,7 @@ def test_retrieval_import_does_not_pull_in_src_model() -> None:
         "or m.startswith('src.model.'))\n"
         "print(repr(leaked))\n"
     )
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,

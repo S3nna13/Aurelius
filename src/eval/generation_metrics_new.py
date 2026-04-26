@@ -10,19 +10,19 @@ Implements:
 - aggregate_scores      : corpus-level mean/min/max for a given metric
 - GenerationEvaluator   : convenience class wrapping all metrics
 """
+
 from __future__ import annotations
 
 import math
 import re
 from collections import Counter
-from typing import Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Tokenization
 # ---------------------------------------------------------------------------
 
-def tokenize_simple(text: str) -> List[str]:
+
+def tokenize_simple(text: str) -> list[str]:
     """Lowercase and split on whitespace/punctuation; filter empty strings."""
     tokens = re.split(r"[\s\W]+", text.lower())
     return [t for t in tokens if t]
@@ -32,16 +32,18 @@ def tokenize_simple(text: str) -> List[str]:
 # N-gram counter
 # ---------------------------------------------------------------------------
 
-def compute_ngrams(tokens: List[str], n: int) -> Counter:
+
+def compute_ngrams(tokens: list[str], n: int) -> Counter:
     """Return a Counter of n-gram tuples from *tokens*."""
     if n <= 0 or len(tokens) < n:
         return Counter()
-    return Counter(tuple(tokens[i: i + n]) for i in range(len(tokens) - n + 1))
+    return Counter(tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1))
 
 
 # ---------------------------------------------------------------------------
 # METEOR
 # ---------------------------------------------------------------------------
+
 
 def meteor_score(
     hypothesis: str,
@@ -87,18 +89,16 @@ def meteor_score(
     # --- chunk penalty ---
     # Build a set of (word, ref_position) pairs that are matched, then scan
     # hypothesis left-to-right and count contiguous runs in ref order.
-    ref_word_positions: dict[str, List[int]] = {}
+    ref_word_positions: dict[str, list[int]] = {}
     for pos, word in enumerate(ref_tokens):
         ref_word_positions.setdefault(word, []).append(pos)
 
     # Greedy alignment: for each hypothesis token (in order) find the
     # earliest available reference position.
-    available: dict[str, List[int]] = {
-        w: sorted(ps) for w, ps in ref_word_positions.items()
-    }
+    available: dict[str, list[int]] = {w: sorted(ps) for w, ps in ref_word_positions.items()}
     used: dict[str, int] = {w: 0 for w in available}  # pointer into available list
 
-    aligned_ref_positions: List[Optional[int]] = []
+    aligned_ref_positions: list[int | None] = []
     for word in hyp_tokens:
         bucket = available.get(word)
         idx = used.get(word, 0)
@@ -129,7 +129,8 @@ def meteor_score(
 # IDF
 # ---------------------------------------------------------------------------
 
-def compute_idf(corpus: List[str]) -> Dict[str, float]:
+
+def compute_idf(corpus: list[str]) -> dict[str, float]:
     """Compute IDF for each word: log((N+1) / (df+1)).
 
     *corpus* is a list of strings (documents).  Each document is tokenized
@@ -149,9 +150,10 @@ def compute_idf(corpus: List[str]) -> Dict[str, float]:
 # CIDEr
 # ---------------------------------------------------------------------------
 
+
 def cider_score(
     hypothesis: str,
-    references: List[str],
+    references: list[str],
     n_max: int = 4,
 ) -> float:
     """Compute CIDEr score between *hypothesis* and *references*.
@@ -172,11 +174,8 @@ def cider_score(
     total = 0.0
     for n in range(1, n_max + 1):
         # Build n-gram strings for IDF computation
-        def ngram_str(tokens: List[str]) -> str:
-            return " ".join(
-                "_".join(tokens[i: i + n])
-                for i in range(max(0, len(tokens) - n + 1))
-            )
+        def ngram_str(tokens: list[str]) -> str:
+            return " ".join("_".join(tokens[i : i + n]) for i in range(max(0, len(tokens) - n + 1)))
 
         ref_ngram_docs = [ngram_str(tl) for tl in ref_token_lists]
         idf = compute_idf(ref_ngram_docs)
@@ -186,10 +185,10 @@ def cider_score(
         all_idf_zero = all(v == 0.0 for v in idf.values()) if idf else True
         default_idf = 1.0 if all_idf_zero else math.log((len(references) + 1) / 1)
 
-        def tfidf_vec(tokens: List[str]) -> Dict[str, float]:
+        def tfidf_vec(tokens: list[str]) -> dict[str, float]:
             ngrams = compute_ngrams(tokens, n)
             total_ng = sum(ngrams.values()) or 1
-            vec: Dict[str, float] = {}
+            vec: dict[str, float] = {}
             for gram, cnt in ngrams.items():
                 key = "_".join(gram)
                 tf = cnt / total_ng
@@ -206,7 +205,7 @@ def cider_score(
         if not all_keys:
             continue
 
-        mean_ref: Dict[str, float] = {}
+        mean_ref: dict[str, float] = {}
         for k in all_keys:
             mean_ref[k] = sum(rv.get(k, 0.0) for rv in ref_vecs) / len(ref_vecs)
 
@@ -231,6 +230,7 @@ def cider_score(
 # ---------------------------------------------------------------------------
 # Sentence BLEU
 # ---------------------------------------------------------------------------
+
 
 def sentence_bleu(hypothesis: str, reference: str, max_n: int = 4) -> float:
     """Sentence-level BLEU-1..max_n with brevity penalty.
@@ -284,10 +284,10 @@ _METRIC_FN = {
 
 
 def aggregate_scores(
-    hypotheses: List[str],
-    references: List[str],
+    hypotheses: list[str],
+    references: list[str],
     metric: str,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Corpus-level mean/min/max for *metric* over aligned hyp/ref pairs.
 
     *metric* must be one of "bleu", "meteor", "cider".
@@ -315,25 +315,26 @@ def aggregate_scores(
 # GenerationEvaluator
 # ---------------------------------------------------------------------------
 
+
 class GenerationEvaluator:
     """Convenience evaluator wrapping BLEU, METEOR, and CIDEr."""
 
     DEFAULT_METRICS = ["bleu", "meteor", "cider"]
 
-    def __init__(self, metrics: Optional[List[str]] = None) -> None:
+    def __init__(self, metrics: list[str] | None = None) -> None:
         self.metrics = metrics if metrics is not None else list(self.DEFAULT_METRICS)
         for m in self.metrics:
             if m not in _METRIC_FN:
                 raise ValueError(f"Unknown metric '{m}'")
 
-    def score_pair(self, hyp: str, ref: str) -> Dict[str, float]:
+    def score_pair(self, hyp: str, ref: str) -> dict[str, float]:
         """Score a single (hypothesis, reference) pair with all configured metrics."""
         return {m: _METRIC_FN[m](hyp, ref) for m in self.metrics}
 
     def score_corpus(
         self,
-        hyps: List[str],
-        refs: List[str],
-    ) -> Dict[str, Dict[str, float]]:
+        hyps: list[str],
+        refs: list[str],
+    ) -> dict[str, dict[str, float]]:
         """Return per-metric aggregate stats over aligned corpus pairs."""
         return {m: aggregate_scores(hyps, refs, m) for m in self.metrics}

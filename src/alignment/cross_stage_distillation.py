@@ -15,9 +15,10 @@ where:
 Teacher logits are always detached — no gradient flows through the teacher.
 """
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
@@ -59,8 +60,8 @@ class CrossStageDistillation:
             return rl_loss
 
         # Teacher logits detached — no gradient through the teacher branch.
-        p_teacher = F.softmax(teacher_logits.detach(), dim=-1)          # [B, T, V]
-        log_p_student = F.log_softmax(student_logits, dim=-1)           # [B, T, V]
+        p_teacher = F.softmax(teacher_logits.detach(), dim=-1)  # [B, T, V]
+        log_p_student = F.log_softmax(student_logits, dim=-1)  # [B, T, V]
 
         # Per-token KL: KL(pi_theta || pi_teacher) at each position.
         # kl_div expects (log_input, target) and returns element-wise values.

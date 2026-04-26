@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from dataclasses import dataclass
 
 import numpy as np
 import torch
@@ -30,7 +29,7 @@ class GradNormStats:
     """
 
     global_norm: float
-    layer_norms: Dict[str, float]
+    layer_norms: dict[str, float]
     step: int
     clipped: bool = False
 
@@ -47,7 +46,7 @@ def compute_grad_norms(model: nn.Module, step: int = 0) -> GradNormStats:
     Returns:
         GradNormStats with global_norm, layer_norms dict, and step.
     """
-    layer_norms: Dict[str, float] = {}
+    layer_norms: dict[str, float] = {}
     sq_sum = 0.0
 
     for name, param in model.named_parameters():
@@ -55,7 +54,7 @@ def compute_grad_norms(model: nn.Module, step: int = 0) -> GradNormStats:
             continue
         norm = param.grad.detach().norm(2).item()
         layer_norms[name] = norm
-        sq_sum += norm ** 2
+        sq_sum += norm**2
 
     global_norm = math.sqrt(sq_sum)
     return GradNormStats(global_norm=global_norm, layer_norms=layer_norms, step=step)
@@ -140,7 +139,7 @@ def clip_grad_norm_adaptive(
     model: nn.Module,
     monitor: GradNormMonitor,
     multiplier: float = 2.0,
-) -> Tuple[float, bool]:
+) -> tuple[float, bool]:
     """Apply adaptive gradient norm clipping based on running statistics.
 
     Computes the current global gradient norm and clips if the norm

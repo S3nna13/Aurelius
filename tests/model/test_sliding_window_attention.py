@@ -5,15 +5,13 @@ Uses tiny configs (small D, T, W) to keep execution fast.
 All tests are pure PyTorch — no HuggingFace, no scipy, no sklearn.
 """
 
-import math
-
 import pytest
 import torch
 
 from src.model.sliding_window_attention import (
+    SlidingWindowAttention,
     SWABlock,
     SWAConfig,
-    SlidingWindowAttention,
     build_sliding_window_mask,
     count_attended_positions,
     sliding_window_attention,
@@ -22,15 +20,16 @@ from src.model.sliding_window_attention import (
 # ---------------------------------------------------------------------------
 # Tiny test parameters
 # ---------------------------------------------------------------------------
-B, T, D = 2, 12, 16   # batch, seq_len, d_model
-H = 2                  # heads
-W = 4                  # window_size
-d_head = D // H        # 8
+B, T, D = 2, 12, 16  # batch, seq_len, d_model
+H = 2  # heads
+W = 4  # window_size
+d_head = D // H  # 8
 
 
 # ---------------------------------------------------------------------------
 # 1. SWAConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestSWAConfig:
     def test_defaults(self):
@@ -54,6 +53,7 @@ class TestSWAConfig:
 # 2. build_sliding_window_mask — shape
 # ---------------------------------------------------------------------------
 
+
 class TestBuildMaskShape:
     def test_shape_causal(self):
         mask = build_sliding_window_mask(T, W, causal=True)
@@ -72,6 +72,7 @@ class TestBuildMaskShape:
 # 3. build_sliding_window_mask — causal: no future attending
 # ---------------------------------------------------------------------------
 
+
 class TestBuildMaskCausal:
     def setup_method(self):
         self.mask = build_sliding_window_mask(T, W, causal=True)
@@ -81,15 +82,13 @@ class TestBuildMaskCausal:
         for i in range(T):
             for j in range(i + 1, T):
                 assert self.mask[i, j] == float("-inf"), (
-                    f"mask[{i},{j}] should be -inf (future), got {self.mask[i,j]}"
+                    f"mask[{i},{j}] should be -inf (future), got {self.mask[i, j]}"
                 )
 
     def test_diagonal_is_zero_causal(self):
         """Each token can attend to itself."""
         for i in range(T):
-            assert self.mask[i, i] == 0.0, (
-                f"mask[{i},{i}] should be 0.0 (self-attend)"
-            )
+            assert self.mask[i, i] == 0.0, f"mask[{i},{i}] should be 0.0 (self-attend)"
 
     def test_within_window_is_zero_causal(self):
         """Positions within the window (and not future) must be 0.0."""
@@ -97,7 +96,7 @@ class TestBuildMaskCausal:
         for i in range(T):
             for j in range(max(0, i - half), i + 1):
                 assert self.mask[i, j] == 0.0, (
-                    f"mask[{i},{j}] should be 0.0 (in window), got {self.mask[i,j]}"
+                    f"mask[{i},{j}] should be 0.0 (in window), got {self.mask[i, j]}"
                 )
 
     def test_outside_window_is_neg_inf_causal(self):
@@ -113,6 +112,7 @@ class TestBuildMaskCausal:
 # ---------------------------------------------------------------------------
 # 4. build_sliding_window_mask — non-causal: symmetric
 # ---------------------------------------------------------------------------
+
 
 class TestBuildMaskNonCausal:
     def setup_method(self):
@@ -132,6 +132,7 @@ class TestBuildMaskNonCausal:
 # ---------------------------------------------------------------------------
 # 5. build_sliding_window_mask — values are only 0.0 or -inf
 # ---------------------------------------------------------------------------
+
 
 class TestBuildMaskValues:
     def test_only_zero_or_neg_inf_causal(self):
@@ -153,6 +154,7 @@ class TestBuildMaskValues:
 # 6. sliding_window_attention — output shape (B, T, d_head)
 # ---------------------------------------------------------------------------
 
+
 class TestSlidingWindowAttentionShape:
     def _make_qkv(self):
         q = torch.randn(B, T, d_head)
@@ -163,7 +165,7 @@ class TestSlidingWindowAttentionShape:
     def test_output_shape_causal(self):
         q, k, v = self._make_qkv()
         out = sliding_window_attention(q, k, v, window_size=W, causal=True)
-        assert out.shape == (B, T, d_head), f"Expected {(B,T,d_head)}, got {out.shape}"
+        assert out.shape == (B, T, d_head), f"Expected {(B, T, d_head)}, got {out.shape}"
 
     def test_output_shape_noncausal(self):
         q, k, v = self._make_qkv()
@@ -180,6 +182,7 @@ class TestSlidingWindowAttentionShape:
 # ---------------------------------------------------------------------------
 # 7. sliding_window_attention — output finite
 # ---------------------------------------------------------------------------
+
 
 class TestSlidingWindowAttentionFinite:
     def test_output_finite_causal(self):
@@ -201,13 +204,14 @@ class TestSlidingWindowAttentionFinite:
 # 8. SlidingWindowAttention — forward shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 class TestSlidingWindowAttentionModuleShape:
     def test_output_shape(self):
         cfg = SWAConfig(d_model=D, n_heads=H, window_size=W)
         attn = SlidingWindowAttention(cfg)
         x = torch.randn(B, T, D)
         out = attn(x)
-        assert out.shape == (B, T, D), f"Expected {(B,T,D)}, got {out.shape}"
+        assert out.shape == (B, T, D), f"Expected {(B, T, D)}, got {out.shape}"
 
     def test_output_shape_noncausal(self):
         cfg = SWAConfig(d_model=D, n_heads=H, window_size=W, causal=False)
@@ -220,6 +224,7 @@ class TestSlidingWindowAttentionModuleShape:
 # ---------------------------------------------------------------------------
 # 9. SlidingWindowAttention — output finite
 # ---------------------------------------------------------------------------
+
 
 class TestSlidingWindowAttentionModuleFinite:
     def test_output_finite(self):
@@ -243,13 +248,14 @@ class TestSlidingWindowAttentionModuleFinite:
 # 10. SWABlock — forward shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 class TestSWABlockShape:
     def test_output_shape(self):
         cfg = SWAConfig(d_model=D, n_heads=H, window_size=W)
         block = SWABlock(cfg)
         x = torch.randn(B, T, D)
         out = block(x)
-        assert out.shape == (B, T, D), f"Expected {(B,T,D)}, got {out.shape}"
+        assert out.shape == (B, T, D), f"Expected {(B, T, D)}, got {out.shape}"
 
     def test_output_shape_noncausal(self):
         cfg = SWAConfig(d_model=D, n_heads=H, window_size=W, causal=False)
@@ -262,6 +268,7 @@ class TestSWABlockShape:
 # ---------------------------------------------------------------------------
 # 11. SWABlock — output finite
 # ---------------------------------------------------------------------------
+
 
 class TestSWABlockFinite:
     def test_output_finite(self):
@@ -293,12 +300,11 @@ class TestSWABlockFinite:
 # 12. count_attended_positions — causal < T*T
 # ---------------------------------------------------------------------------
 
+
 class TestCountAttendedPositions:
     def test_causal_less_than_full(self):
         total = count_attended_positions(T, W, causal=True)
-        assert total < T * T, (
-            f"Causal attended count {total} should be less than T^2={T*T}"
-        )
+        assert total < T * T, f"Causal attended count {total} should be less than T^2={T * T}"
 
     def test_causal_positive(self):
         total = count_attended_positions(T, W, causal=True)
@@ -347,7 +353,5 @@ class TestCountAttendedPositions:
         """When window covers entire sequence (W >= 2T), causal becomes lower-triangular."""
         big_W = T * 3
         total = count_attended_positions(T, big_W, causal=True)
-        expected = T * (T + 1) // 2   # full lower triangle
-        assert total == expected, (
-            f"With big window causal, expected {expected} but got {total}"
-        )
+        expected = T * (T + 1) // 2  # full lower triangle
+        assert total == expected, f"With big window causal, expected {expected} but got {total}"

@@ -14,8 +14,8 @@ from __future__ import annotations
 import hashlib
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -39,7 +39,7 @@ class PrefixEntry:
     refcount: int = 0
 
 
-def _hash_block(block: Tuple[int, ...]) -> str:
+def _hash_block(block: tuple[int, ...]) -> str:
     """Deterministic hash of a block of token ids.
 
     Uses BLAKE2b (stdlib) for speed + collision resistance; the block is
@@ -56,8 +56,8 @@ class _TrieNode:
     __slots__ = ("children", "entry")
 
     def __init__(self) -> None:
-        self.children: Dict[str, "_TrieNode"] = {}
-        self.entry: Optional[PrefixEntry] = None
+        self.children: dict[str, _TrieNode] = {}
+        self.entry: PrefixEntry | None = None
 
 
 class PrefixCache:
@@ -83,17 +83,12 @@ class PrefixCache:
         block_size: int = 16,
     ) -> None:
         if not isinstance(block_size, int) or block_size <= 0:
-            raise ValueError(
-                f"block_size must be a positive int, got {block_size!r}"
-            )
+            raise ValueError(f"block_size must be a positive int, got {block_size!r}")
         if not isinstance(max_entries, int) or max_entries <= 0:
-            raise ValueError(
-                f"max_entries must be a positive int, got {max_entries!r}"
-            )
+            raise ValueError(f"max_entries must be a positive int, got {max_entries!r}")
         if not isinstance(min_prefix_tokens, int) or min_prefix_tokens < 0:
             raise ValueError(
-                f"min_prefix_tokens must be a non-negative int, "
-                f"got {min_prefix_tokens!r}"
+                f"min_prefix_tokens must be a non-negative int, got {min_prefix_tokens!r}"
             )
 
         self.max_entries = max_entries
@@ -103,11 +98,11 @@ class PrefixCache:
         self._root = _TrieNode()
         # OrderedDict acts as the LRU index: oldest access first.
         # Keyed by tokens_hash -> PrefixEntry.
-        self._lru: "OrderedDict[str, PrefixEntry]" = OrderedDict()
+        self._lru: OrderedDict[str, PrefixEntry] = OrderedDict()
         # tokens_hash -> trie node holding the entry (for O(1) removal).
-        self._nodes: Dict[str, _TrieNode] = {}
+        self._nodes: dict[str, _TrieNode] = {}
         # tokens_hash -> path of (parent_node, edge_key) for pruning.
-        self._paths: Dict[str, List[Tuple[_TrieNode, str]]] = {}
+        self._paths: dict[str, list[tuple[_TrieNode, str]]] = {}
 
         self._hits = 0
         self._misses = 0
@@ -117,9 +112,7 @@ class PrefixCache:
     # ------------------------------------------------------------------
     # Lookup
     # ------------------------------------------------------------------
-    def find_longest_prefix(
-        self, tokens: List[int]
-    ) -> Tuple[int, Optional[PrefixEntry]]:
+    def find_longest_prefix(self, tokens: list[int]) -> tuple[int, PrefixEntry | None]:
         """Return ``(matched_token_count, entry)`` for the longest prefix.
 
         Only block-aligned prefixes whose length is ``>= min_prefix_tokens``
@@ -130,7 +123,7 @@ class PrefixCache:
             return 0, None
 
         node = self._root
-        best_entry: Optional[PrefixEntry] = None
+        best_entry: PrefixEntry | None = None
         best_len = 0
         n_full_blocks = len(tokens) // self.block_size
 
@@ -161,7 +154,7 @@ class PrefixCache:
     # ------------------------------------------------------------------
     # Insert
     # ------------------------------------------------------------------
-    def insert(self, tokens: List[int], kv_ref: Any) -> None:
+    def insert(self, tokens: list[int], kv_ref: Any) -> None:
         """Install ``tokens`` -> ``kv_ref`` into the cache.
 
         The full token list is split into ``block_size`` chunks. Each
@@ -173,7 +166,7 @@ class PrefixCache:
             return
 
         node = self._root
-        path: List[Tuple[_TrieNode, str]] = []
+        path: list[tuple[_TrieNode, str]] = []
         n_full_blocks = len(tokens) // self.block_size
 
         for i in range(n_full_blocks):
@@ -215,13 +208,13 @@ class PrefixCache:
     # ------------------------------------------------------------------
     # Eviction
     # ------------------------------------------------------------------
-    def evict_lru(self) -> Optional[PrefixEntry]:
+    def evict_lru(self) -> PrefixEntry | None:
         """Evict the least-recently-used unpinned entry.
 
         Entries with ``refcount > 0`` are skipped. Returns the evicted
         entry or ``None`` if every entry is pinned / the cache is empty.
         """
-        victim_hash: Optional[str] = None
+        victim_hash: str | None = None
         for tokens_hash, entry in self._lru.items():
             if entry.refcount <= 0:
                 victim_hash = tokens_hash
@@ -249,7 +242,7 @@ class PrefixCache:
     # ------------------------------------------------------------------
     # Introspection
     # ------------------------------------------------------------------
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Return aggregate counters for this cache instance."""
         return {
             "entries": len(self._lru),

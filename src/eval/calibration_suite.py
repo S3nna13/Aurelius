@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -17,7 +15,7 @@ class CalibrationBins:
             raise ValueError(f"n_bins must be >= 1, got {n_bins}")
         self.n_bins = n_bins
 
-    def bin(self, confidences: Tensor, correct: Tensor) -> Dict[str, Tensor]:
+    def bin(self, confidences: Tensor, correct: Tensor) -> dict[str, Tensor]:
         """Bin samples by confidence and compute per-bin statistics.
 
         Args:
@@ -32,7 +30,7 @@ class CalibrationBins:
         """
         confidences = confidences.float()
         correct = correct.float()
-        n = confidences.shape[0]
+        confidences.shape[0]
 
         bin_confidences = torch.zeros(self.n_bins, dtype=torch.float)
         bin_accuracies = torch.zeros(self.n_bins, dtype=torch.float)
@@ -83,7 +81,7 @@ class ReliabilityDiagram:
     def __init__(self, bins: CalibrationBins) -> None:
         self.bins = bins
 
-    def compute(self, confidences: Tensor, correct: Tensor) -> Dict:
+    def compute(self, confidences: Tensor, correct: Tensor) -> dict:
         """Compute reliability diagram data.
 
         Args:
@@ -173,7 +171,7 @@ class CalibrationEvaluator:
         self._diagram = ReliabilityDiagram(bins=self._bins)
         self._brier = BrierScore()
 
-    def evaluate(self, logits: Tensor, labels: Tensor) -> Dict[str, float]:
+    def evaluate(self, logits: Tensor, labels: Tensor) -> dict[str, float]:
         """Compute all calibration metrics.
 
         Args:

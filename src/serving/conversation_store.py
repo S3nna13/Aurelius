@@ -5,10 +5,10 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Dict, List
 
 try:
     from filelock import FileLock
+
     _HAS_FILELOCK = True
 except ImportError:  # pragma: no cover - optional dependency
     _HAS_FILELOCK = False
@@ -35,7 +35,7 @@ class ConversationStore:
             raise ValueError("conversation_id escapes storage directory")
         return path
 
-    def save(self, conversation_id: str, messages: List[Dict]) -> None:
+    def save(self, conversation_id: str, messages: list[dict]) -> None:
         """Atomically persist *messages* to disk."""
         path = self._path(conversation_id)
         payload = json.dumps(messages, ensure_ascii=False, indent=2)
@@ -66,14 +66,14 @@ class ConversationStore:
         else:
             _write()
 
-    def load(self, conversation_id: str) -> List[Dict]:
+    def load(self, conversation_id: str) -> list[dict]:
         path = self._path(conversation_id)
         if not path.exists():
             return []
         with open(path, encoding="utf-8") as f:
             return json.load(f)
 
-    def list_conversations(self) -> List[str]:
+    def list_conversations(self) -> list[str]:
         return [p.stem for p in self.storage_dir.iterdir() if p.suffix == ".json"]
 
     def delete(self, conversation_id: str) -> bool:

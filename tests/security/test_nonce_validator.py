@@ -1,9 +1,8 @@
 """Tests for nonce validator."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.security.nonce_validator import NonceValidator
 

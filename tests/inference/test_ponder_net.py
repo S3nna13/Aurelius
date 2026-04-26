@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.ponder_net import (
-    PonderConfig,
     HaltingUnit,
+    PonderConfig,
     PonderNet,
     geometric_prior,
     ponder_loss,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny config / fixtures
@@ -55,6 +55,7 @@ def ponder_net(base_model: AureliusTransformer) -> PonderNet:
 # 1. HaltingUnit output shape is (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_halting_unit_output_shape():
     torch.manual_seed(0)
     hu = HaltingUnit(d_model=64)
@@ -66,6 +67,7 @@ def test_halting_unit_output_shape():
 # ---------------------------------------------------------------------------
 # 2. HaltingUnit output in (0, 1) — sigmoid activation
 # ---------------------------------------------------------------------------
+
 
 def test_halting_unit_output_range():
     torch.manual_seed(1)
@@ -79,6 +81,7 @@ def test_halting_unit_output_range():
 # ---------------------------------------------------------------------------
 # 3. PonderNet forward returns (Tensor, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_ponder_net_forward_return_types(ponder_net: PonderNet):
     torch.manual_seed(2)
@@ -95,6 +98,7 @@ def test_ponder_net_forward_return_types(ponder_net: PonderNet):
 # 4. weighted_logits shape is (B, T, vocab)
 # ---------------------------------------------------------------------------
 
+
 def test_ponder_net_logits_shape(ponder_net: PonderNet):
     torch.manual_seed(3)
     B, T = 2, 8
@@ -106,6 +110,7 @@ def test_ponder_net_logits_shape(ponder_net: PonderNet):
 # ---------------------------------------------------------------------------
 # 5. info_dict has required keys: n_steps, halt_probs, step_weights
 # ---------------------------------------------------------------------------
+
 
 def test_ponder_net_info_dict_keys(ponder_net: PonderNet):
     torch.manual_seed(4)
@@ -120,6 +125,7 @@ def test_ponder_net_info_dict_keys(ponder_net: PonderNet):
 # 6. n_steps <= config.max_steps
 # ---------------------------------------------------------------------------
 
+
 def test_ponder_net_n_steps_bounded(ponder_net: PonderNet):
     torch.manual_seed(5)
     ids = torch.randint(0, 256, (2, 6))
@@ -133,6 +139,7 @@ def test_ponder_net_n_steps_bounded(ponder_net: PonderNet):
 # ---------------------------------------------------------------------------
 # 7. step_weights sum to ~1 per batch item
 # ---------------------------------------------------------------------------
+
 
 def test_ponder_net_step_weights_sum_to_one(ponder_net: PonderNet):
     torch.manual_seed(6)
@@ -149,6 +156,7 @@ def test_ponder_net_step_weights_sum_to_one(ponder_net: PonderNet):
 # 8. adaptive_generate returns tensor of length max_new_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_generate_output_length(ponder_net: PonderNet):
     torch.manual_seed(7)
     prompt = torch.randint(0, 256, (4,))
@@ -162,6 +170,7 @@ def test_adaptive_generate_output_length(ponder_net: PonderNet):
 # ---------------------------------------------------------------------------
 # 9. steps_per_token length equals max_new_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_generate_steps_per_token_length(ponder_net: PonderNet):
     torch.manual_seed(8)
@@ -177,6 +186,7 @@ def test_adaptive_generate_steps_per_token_length(ponder_net: PonderNet):
 # 10. geometric_prior sums to ~1
 # ---------------------------------------------------------------------------
 
+
 def test_geometric_prior_sums_to_one():
     prior = geometric_prior(n_steps=8, p=0.2)
     assert abs(prior.sum().item() - 1.0) < 1e-5, (
@@ -187,6 +197,7 @@ def test_geometric_prior_sums_to_one():
 # ---------------------------------------------------------------------------
 # 11. geometric_prior is monotonically decreasing for p > 0
 # ---------------------------------------------------------------------------
+
 
 def test_geometric_prior_monotonically_decreasing():
     prior = geometric_prior(n_steps=8, p=0.2)
@@ -199,6 +210,7 @@ def test_geometric_prior_monotonically_decreasing():
 # ---------------------------------------------------------------------------
 # 12. ponder_loss returns (Tensor, dict) with nll/kl_reg/total keys
 # ---------------------------------------------------------------------------
+
 
 def test_ponder_loss_return_structure(ponder_net: PonderNet):
     torch.manual_seed(9)
@@ -227,6 +239,7 @@ def test_ponder_loss_return_structure(ponder_net: PonderNet):
 # 13. ponder_loss total matches nll + lambda_p * kl_reg
 # ---------------------------------------------------------------------------
 
+
 def test_ponder_loss_total_consistency(ponder_net: PonderNet):
     torch.manual_seed(10)
     B, T = 2, 8
@@ -247,6 +260,7 @@ def test_ponder_loss_total_consistency(ponder_net: PonderNet):
 # 14. halt_probs shape is (B, n_steps)
 # ---------------------------------------------------------------------------
 
+
 def test_ponder_net_halt_probs_shape(ponder_net: PonderNet):
     torch.manual_seed(11)
     B, T = 3, 6
@@ -262,6 +276,7 @@ def test_ponder_net_halt_probs_shape(ponder_net: PonderNet):
 # ---------------------------------------------------------------------------
 # 15. steps_per_token values are within [1, max_steps]
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_generate_steps_in_range(ponder_net: PonderNet):
     torch.manual_seed(12)

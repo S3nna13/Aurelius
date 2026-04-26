@@ -12,12 +12,12 @@ Components:
   - count_active_parameters: measure sparsity
   - StructuredPruner: high-level orchestrator
 """
+
 from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StructuredPruningConfig:
@@ -51,6 +52,7 @@ class StructuredPruningConfig:
 # ---------------------------------------------------------------------------
 # Head importance
 # ---------------------------------------------------------------------------
+
 
 class HeadImportanceScorer:
     """Compute and rank attention head importance."""
@@ -113,25 +115,27 @@ class HeadImportanceScorer:
             if hasattr(attn, "o_proj"):
                 w = attn.o_proj.weight.data  # (d_model, n_heads * head_dim)
                 for h in range(n_heads):
-                    col_slice = w[:, h * head_dim:(h + 1) * head_dim]
+                    col_slice = w[:, h * head_dim : (h + 1) * head_dim]
                     scores[h] = col_slice.abs().mean()
             elif hasattr(attn, "out_proj"):
                 w = attn.out_proj.weight.data
                 for h in range(n_heads):
-                    col_slice = w[:, h * head_dim:(h + 1) * head_dim]
+                    col_slice = w[:, h * head_dim : (h + 1) * head_dim]
                     scores[h] = col_slice.abs().mean()
             else:
                 # Fallback: use q_proj rows
                 if hasattr(attn, "q_proj"):
                     w = attn.q_proj.weight.data  # (n_heads * head_dim, d_model)
                     for h in range(n_heads):
-                        row_slice = w[h * head_dim:(h + 1) * head_dim, :]
+                        row_slice = w[h * head_dim : (h + 1) * head_dim, :]
                         scores[h] = row_slice.abs().mean()
 
             result[i] = scores
         return result
 
-    def _gradient_head_importance(self, layers, calibration_data: list[Tensor]) -> dict[int, Tensor]:
+    def _gradient_head_importance(
+        self, layers, calibration_data: list[Tensor]
+    ) -> dict[int, Tensor]:
         """Score heads by accumulated gradient magnitude of o_proj columns."""
         n_layers = len(layers)
         head_counts = []
@@ -160,7 +164,7 @@ class HeadImportanceScorer:
                     batch[:, 1:].reshape(-1),
                 )
                 loss.backward()
-            except Exception:
+            except Exception:  # noqa: S112
                 continue
 
             for i, layer in enumerate(layers):
@@ -180,7 +184,9 @@ class HeadImportanceScorer:
                 if proj is not None:
                     g = proj.weight.grad  # (d_model, n_heads * head_dim)
                     for h in range(n_heads):
-                        grad_accum[i][h] += g[:, h * head_dim:(h + 1) * head_dim].abs().mean().item()
+                        grad_accum[i][h] += (
+                            g[:, h * head_dim : (h + 1) * head_dim].abs().mean().item()
+                        )
 
         self.model.zero_grad()
         if not was_training:
@@ -235,6 +241,7 @@ class HeadImportanceScorer:
 # FFN importance
 # ---------------------------------------------------------------------------
 
+
 class FFNImportanceScorer:
     """Compute and rank FFN neuron importance."""
 
@@ -275,7 +282,7 @@ class FFNImportanceScorer:
         return result
 
     def _gradient_ffn_importance(self, layers, calibration_data: list[Tensor]) -> dict[int, Tensor]:
-        n_layers = len(layers)
+        len(layers)
         d_ff_map: dict[int, int] = {}
         for i, layer in enumerate(layers):
             ffn = layer.ffn if hasattr(layer, "ffn") else None
@@ -298,7 +305,7 @@ class FFNImportanceScorer:
                     batch[:, 1:].reshape(-1),
                 )
                 loss.backward()
-            except Exception:
+            except Exception:  # noqa: S112
                 continue
 
             for i in grad_accum:
@@ -352,6 +359,7 @@ class FFNImportanceScorer:
 # ---------------------------------------------------------------------------
 # Apply masks
 # ---------------------------------------------------------------------------
+
 
 def apply_head_mask(model: nn.Module, heads_to_prune: dict[int, list[int]]) -> None:
     """Zero out weights of pruned attention heads in o_proj columns.
@@ -447,6 +455,7 @@ def apply_ffn_mask(model: nn.Module, neurons_to_prune: dict[int, list[int]]) -> 
 # Count active parameters
 # ---------------------------------------------------------------------------
 
+
 def count_active_parameters(model: nn.Module) -> dict:
     """Count total and non-zero parameters.
 
@@ -468,6 +477,7 @@ def count_active_parameters(model: nn.Module) -> dict:
 # ---------------------------------------------------------------------------
 # High-level StructuredPruner
 # ---------------------------------------------------------------------------
+
 
 class StructuredPruner:
     """High-level orchestrator for structured pruning."""
@@ -568,14 +578,15 @@ class StructuredPruner:
 # The functions below complement the soft-masking approach above by
 # physically shrinking weight tensors so inference actually speeds up.
 
+
 @dataclass
 class PruningConfig:
     """Configuration for hard structured pruning."""
 
-    pruning_type: str = "neuron"    # "neuron" | "head" | "layer"
-    prune_ratio: float = 0.3        # fraction to prune
-    criterion: str = "magnitude"    # "magnitude" | "random"
-    min_remaining: int = 1          # minimum units to keep
+    pruning_type: str = "neuron"  # "neuron" | "head" | "layer"
+    prune_ratio: float = 0.3  # fraction to prune
+    criterion: str = "magnitude"  # "magnitude" | "random"
+    min_remaining: int = 1  # minimum units to keep
 
 
 def score_neurons(weight: Tensor) -> Tensor:
@@ -604,7 +615,7 @@ def score_heads(attn_weight: Tensor, n_heads: int) -> Tensor:
     head_size = out_features // n_heads
     scores = torch.zeros(n_heads, device=attn_weight.device, dtype=attn_weight.dtype)
     for h in range(n_heads):
-        rows = attn_weight[h * head_size: (h + 1) * head_size, :]
+        rows = attn_weight[h * head_size : (h + 1) * head_size, :]
         scores[h] = rows.abs().mean()
     return scores
 
@@ -778,7 +789,7 @@ class PruningScheduler:
         return step > 0 and step % prune_every == 0
 
 
-class StructuredPruner:  # type: ignore[no-redef]
+class UnifiedStructuredPruner:
     """Unified structured pruner supporting both soft-masking and hard-pruning.
 
     When constructed with a ``PruningConfig`` and an ``optimizer`` (three-arg
@@ -850,7 +861,9 @@ class StructuredPruner:  # type: ignore[no-redef]
     ) -> float:
         """Finetune model for n_steps to recover accuracy after pruning (soft mode)."""
         import math as _math
+
         import torch.nn.functional as _F
+
         model.train()
         final_loss = float("inf")
         data_cycle = finetune_data * (_math.ceil(n_steps / max(1, len(finetune_data))))
@@ -906,6 +919,7 @@ class StructuredPruner:  # type: ignore[no-redef]
 
         if loss is None:
             import torch.nn.functional as _F
+
             B, T, V = _logits.shape
             loss = _F.cross_entropy(
                 _logits[:, :-1].reshape(-1, V),

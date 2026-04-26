@@ -1,7 +1,7 @@
 """Tests for MoE with top-p routing (moe_topk.py)."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.model.moe_topk import (
@@ -13,10 +13,10 @@ from src.model.moe_topk import (
     top_p_routing,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. MoETopPConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = MoETopPConfig()
@@ -33,6 +33,7 @@ def test_config_defaults():
 # 2. ExpertFFN output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_expert_ffn_output_shape():
     d_model, d_ff = 64, 128
     expert = ExpertFFN(d_model, d_ff)
@@ -44,6 +45,7 @@ def test_expert_ffn_output_shape():
 # ---------------------------------------------------------------------------
 # 3. ExpertFFN is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_expert_ffn_differentiable():
     expert = ExpertFFN(32, 64)
@@ -59,6 +61,7 @@ def test_expert_ffn_differentiable():
 # 4. top_p_routing output shapes
 # ---------------------------------------------------------------------------
 
+
 def test_top_p_routing_output_shapes():
     B, T, n_experts, max_experts = 3, 7, 8, 4
     N = B * T
@@ -71,6 +74,7 @@ def test_top_p_routing_output_shapes():
 # ---------------------------------------------------------------------------
 # 5. top_p_routing selected_weights sum <= 1.0 per token
 # ---------------------------------------------------------------------------
+
 
 def test_top_p_routing_weights_sum():
     N, n_experts = 20, 8
@@ -86,6 +90,7 @@ def test_top_p_routing_weights_sum():
 # 6. top_p_routing selected_indices in [-1, n_experts)
 # ---------------------------------------------------------------------------
 
+
 def test_top_p_routing_indices_valid():
     N, n_experts = 15, 8
     logits = torch.randn(N, n_experts)
@@ -98,6 +103,7 @@ def test_top_p_routing_indices_valid():
 # ---------------------------------------------------------------------------
 # 7. top_p_routing with top_p=1.0 uses up to max_experts
 # ---------------------------------------------------------------------------
+
 
 def test_top_p_routing_full_coverage():
     """With top_p=1.0, every token should use max_experts experts."""
@@ -114,6 +120,7 @@ def test_top_p_routing_full_coverage():
 # 8. top_p_routing with top_p=0.0 uses min_experts
 # ---------------------------------------------------------------------------
 
+
 def test_top_p_routing_min_experts():
     """With top_p=0.0, every token should use exactly min_experts experts."""
     N, n_experts, min_experts = 10, 8, 1
@@ -129,6 +136,7 @@ def test_top_p_routing_min_experts():
 # 9. top_p_aux_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_top_p_aux_loss_scalar():
     N, n_experts = 12, 8
     logits = torch.randn(N, n_experts)
@@ -141,6 +149,7 @@ def test_top_p_aux_loss_scalar():
 # 10. top_p_aux_loss >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_top_p_aux_loss_nonneg():
     N, n_experts = 12, 8
     logits = torch.randn(N, n_experts)
@@ -152,6 +161,7 @@ def test_top_p_aux_loss_nonneg():
 # ---------------------------------------------------------------------------
 # 11. MoETopPLayer output shape is (B, T, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_moe_layer_output_shape():
     cfg = MoETopPConfig(n_experts=4, d_model=32, d_ff=64, max_experts=2)
@@ -166,6 +176,7 @@ def test_moe_layer_output_shape():
 # 12. MoETopPLayer aux_loss is scalar >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_moe_layer_aux_loss():
     cfg = MoETopPConfig(n_experts=4, d_model=32, d_ff=64, max_experts=2)
     layer = MoETopPLayer(cfg)
@@ -178,6 +189,7 @@ def test_moe_layer_aux_loss():
 # ---------------------------------------------------------------------------
 # 13. MoETopPLayer.routing_stats returns dict with expected keys
 # ---------------------------------------------------------------------------
+
 
 def test_moe_layer_routing_stats():
     cfg = MoETopPConfig(n_experts=4, d_model=32, d_ff=64, max_experts=2)
@@ -196,6 +208,7 @@ def test_moe_layer_routing_stats():
 # 14. MoETopPTransformer output logits shape is (B, T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_transformer_logits_shape():
     cfg = MoETopPConfig(n_experts=4, d_model=32, d_ff=64, max_experts=2)
     vocab_size = 128
@@ -210,6 +223,7 @@ def test_transformer_logits_shape():
 # 15. MoETopPTransformer aux_loss is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_transformer_aux_loss_scalar():
     cfg = MoETopPConfig(n_experts=4, d_model=32, d_ff=64, max_experts=2)
     model = MoETopPTransformer(cfg, n_layers=2, vocab_size=128)
@@ -221,6 +235,7 @@ def test_transformer_aux_loss_scalar():
 # ---------------------------------------------------------------------------
 # 16. MoETopPTransformer is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_transformer_differentiable():
     cfg = MoETopPConfig(n_experts=4, d_model=32, d_ff=64, max_experts=2)

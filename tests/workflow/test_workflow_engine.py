@@ -1,9 +1,9 @@
 from src.workflow.workflow_engine import (
+    WORKFLOW_ENGINE_REGISTRY,
+    Transition,
+    WorkflowContext,
     WorkflowEngine,
     WorkflowState,
-    WorkflowContext,
-    Transition,
-    WORKFLOW_ENGINE_REGISTRY,
 )
 
 
@@ -243,9 +243,11 @@ def test_history_length_matches_triggers():
 
 
 def test_custom_transitions_override_defaults():
-    eng = WorkflowEngine(transitions=[
-        Transition(WorkflowState.IDLE, WorkflowState.COMPLETED, "finish"),
-    ])
+    eng = WorkflowEngine(
+        transitions=[
+            Transition(WorkflowState.IDLE, WorkflowState.COMPLETED, "finish"),
+        ]
+    )
     ctx = WorkflowContext()
     assert eng.can_trigger(ctx, "start") is False
     assert eng.trigger(ctx, "finish")

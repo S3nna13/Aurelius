@@ -5,21 +5,22 @@ with mock functions.  The solver is correct 50 % of the time (deterministic
 alternation), so the measured accuracy should be exactly 0.5 for an even
 number of tasks.
 """
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
+from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.absolute_zero import (
     AbsoluteZeroConfig,
     AbsoluteZeroTrainer,
 )
-from src.alignment import ALIGNMENT_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_propose_fn():
     """Returns a propose_fn that emits non-leaking token sequences.
@@ -65,6 +66,7 @@ def _build_solve_fn(tasks_ref: list):
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_full_pipeline_integration():
     """Full pipeline: propose → solve → leakage → PG."""

@@ -1,10 +1,10 @@
 """Delta checkpoint compression: store weight deltas between checkpoints to save space."""
+
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import torch
 from torch import Tensor
@@ -13,10 +13,11 @@ from torch import Tensor
 @dataclass
 class DeltaConfig:
     """Configuration for delta checkpoint compression."""
-    compression: str = "none"   # "none" | "top_k" | "threshold"
-    top_k_ratio: float = 0.1    # keep top-10% of changed weights by magnitude
-    threshold: float = 1e-4     # min delta magnitude to store
-    dtype: str = "float32"      # storage dtype
+
+    compression: str = "none"  # "none" | "top_k" | "threshold"
+    top_k_ratio: float = 0.1  # keep top-10% of changed weights by magnitude
+    threshold: float = 1e-4  # min delta magnitude to store
+    dtype: str = "float32"  # storage dtype
 
 
 def compute_delta(state_a: dict, state_b: dict) -> dict[str, Tensor]:
@@ -134,7 +135,7 @@ class DeltaCheckpointManager:
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
-        self._base_state: Optional[dict] = None
+        self._base_state: dict | None = None
         self._checkpoints: list[str] = []  # list of (name, path) pairs stored as "name"
 
     def save_base(self, state_dict: dict, name: str = "base") -> None:
@@ -193,7 +194,7 @@ class DeltaCheckpointManager:
             raise FileNotFoundError(f"Checkpoint not found: {path}")
 
         # Determine if this is the base checkpoint
-        is_base = (len(self._checkpoints) > 0 and name == self._checkpoints[0])
+        is_base = len(self._checkpoints) > 0 and name == self._checkpoints[0]
 
         if is_base:
             return torch.load(path, map_location="cpu", weights_only=True)

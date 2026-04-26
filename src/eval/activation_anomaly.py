@@ -13,19 +13,19 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration and report dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AnomalyConfig:
     """Configuration for activation anomaly detection."""
 
-    z_score_threshold: float = 3.0       # z-score for outlier detection
+    z_score_threshold: float = 3.0  # z-score for outlier detection
     dead_neuron_threshold: float = 0.01  # fraction of activations near zero
-    exploding_threshold: float = 100.0   # absolute value threshold
-    n_calibration_samples: int = 10      # samples to compute baseline stats
+    exploding_threshold: float = 100.0  # absolute value threshold
+    n_calibration_samples: int = 10  # samples to compute baseline stats
     layers_to_monitor: list[int] = field(default_factory=lambda: [0, 1])
 
 
@@ -34,8 +34,8 @@ class AnomalyReport:
     """A single detected anomaly in layer activations."""
 
     layer_idx: int
-    anomaly_type: str        # "dead" | "exploding" | "outlier" | "nan" | "inf"
-    severity: float          # 0-1
+    anomaly_type: str  # "dead" | "exploding" | "outlier" | "nan" | "inf"
+    severity: float  # 0-1
     description: str
     affected_fraction: float
 
@@ -43,6 +43,7 @@ class AnomalyReport:
 # ---------------------------------------------------------------------------
 # Detection utility functions
 # ---------------------------------------------------------------------------
+
 
 def detect_nan_inf(activations: Tensor) -> tuple[bool, bool]:
     """Check for NaN and Inf in activations.
@@ -68,7 +69,7 @@ def detect_exploding_activations(
 
 
 def detect_dead_neurons(
-    activations: Tensor,     # (B, T, D)
+    activations: Tensor,  # (B, T, D)
     threshold: float = 0.01,
 ) -> float:
     """Compute fraction of neurons (D dimension) that are almost always near zero.
@@ -94,7 +95,7 @@ def detect_dead_neurons(
 
 
 def compute_activation_statistics(
-    activations: Tensor,     # (B, T, D)
+    activations: Tensor,  # (B, T, D)
 ) -> dict[str, float]:
     """Compute summary statistics over all elements.
 
@@ -114,8 +115,8 @@ def compute_activation_statistics(
         skewness = 0.0
     else:
         centered = flat - mean
-        kurtosis = float(((centered ** 4).mean() / (std ** 4)) - 3.0)
-        skewness = float((centered ** 3).mean() / (std ** 3))
+        kurtosis = float(((centered**4).mean() / (std**4)) - 3.0)
+        skewness = float((centered**3).mean() / (std**3))
 
     return {
         "mean": float(mean),
@@ -145,8 +146,8 @@ def detect_outlier_activations(
 
 
 def compute_layer_similarity(
-    activations_a: Tensor,   # (B, T, D)
-    activations_b: Tensor,   # (B, T, D)
+    activations_a: Tensor,  # (B, T, D)
+    activations_b: Tensor,  # (B, T, D)
 ) -> float:
     """Mean cosine similarity between corresponding (B*T) activation vectors."""
     # Flatten to (N, D)
@@ -163,6 +164,7 @@ def compute_layer_similarity(
 # ---------------------------------------------------------------------------
 # ActivationMonitor
 # ---------------------------------------------------------------------------
+
 
 class ActivationMonitor:
     """Monitor model activations during forward pass via hooks."""
@@ -188,6 +190,7 @@ class ActivationMonitor:
                     else:
                         captured = out[0].detach()
                     self._activations.setdefault(idx, []).append(captured)
+
                 return hook
 
             layer = self.model.layers[layer_idx]
@@ -217,6 +220,7 @@ class ActivationMonitor:
 # ---------------------------------------------------------------------------
 # AnomalyDetector
 # ---------------------------------------------------------------------------
+
 
 class AnomalyDetector:
     """Detect and report activation anomalies."""
@@ -277,21 +281,25 @@ class AnomalyDetector:
             # 1. NaN / Inf
             has_nan, has_inf = detect_nan_inf(act)
             if has_nan:
-                reports.append(AnomalyReport(
-                    layer_idx=layer_idx,
-                    anomaly_type="nan",
-                    severity=1.0,
-                    description=f"Layer {layer_idx}: NaN values detected in activations.",
-                    affected_fraction=float(torch.isnan(act).float().mean().item()),
-                ))
+                reports.append(
+                    AnomalyReport(
+                        layer_idx=layer_idx,
+                        anomaly_type="nan",
+                        severity=1.0,
+                        description=f"Layer {layer_idx}: NaN values detected in activations.",
+                        affected_fraction=float(torch.isnan(act).float().mean().item()),
+                    )
+                )
             if has_inf:
-                reports.append(AnomalyReport(
-                    layer_idx=layer_idx,
-                    anomaly_type="inf",
-                    severity=1.0,
-                    description=f"Layer {layer_idx}: Inf values detected in activations.",
-                    affected_fraction=float(torch.isinf(act).float().mean().item()),
-                ))
+                reports.append(
+                    AnomalyReport(
+                        layer_idx=layer_idx,
+                        anomaly_type="inf",
+                        severity=1.0,
+                        description=f"Layer {layer_idx}: Inf values detected in activations.",
+                        affected_fraction=float(torch.isinf(act).float().mean().item()),
+                    )
+                )
 
             # Skip further checks if NaN/Inf present (metrics would be unreliable)
             if has_nan or has_inf:
@@ -301,28 +309,32 @@ class AnomalyDetector:
             exploding_frac = detect_exploding_activations(act, self.cfg.exploding_threshold)
             if exploding_frac > 0.0:
                 severity = min(1.0, exploding_frac * 10.0)
-                reports.append(AnomalyReport(
-                    layer_idx=layer_idx,
-                    anomaly_type="exploding",
-                    severity=severity,
-                    description=(
-                        f"Layer {layer_idx}: {exploding_frac:.2%} of activations exceed "
-                        f"threshold {self.cfg.exploding_threshold}."
-                    ),
-                    affected_fraction=exploding_frac,
-                ))
+                reports.append(
+                    AnomalyReport(
+                        layer_idx=layer_idx,
+                        anomaly_type="exploding",
+                        severity=severity,
+                        description=(
+                            f"Layer {layer_idx}: {exploding_frac:.2%} of activations exceed "
+                            f"threshold {self.cfg.exploding_threshold}."
+                        ),
+                        affected_fraction=exploding_frac,
+                    )
+                )
 
             # 3. Dead neurons
             dead_frac = detect_dead_neurons(act, self.cfg.dead_neuron_threshold)
             if dead_frac > 0.05:  # report only if more than 5% dead
                 severity = min(1.0, dead_frac)
-                reports.append(AnomalyReport(
-                    layer_idx=layer_idx,
-                    anomaly_type="dead",
-                    severity=severity,
-                    description=f"Layer {layer_idx}: {dead_frac:.2%} of neurons are dead.",
-                    affected_fraction=dead_frac,
-                ))
+                reports.append(
+                    AnomalyReport(
+                        layer_idx=layer_idx,
+                        anomaly_type="dead",
+                        severity=severity,
+                        description=f"Layer {layer_idx}: {dead_frac:.2%} of neurons are dead.",
+                        affected_fraction=dead_frac,
+                    )
+                )
 
             # 4. Outlier activations (only if calibrated)
             if layer_idx in self._baseline:
@@ -335,16 +347,18 @@ class AnomalyDetector:
                 )
                 if outlier_frac > 0.01:  # report only if more than 1% outliers
                     severity = min(1.0, outlier_frac * 5.0)
-                    reports.append(AnomalyReport(
-                        layer_idx=layer_idx,
-                        anomaly_type="outlier",
-                        severity=severity,
-                        description=(
-                            f"Layer {layer_idx}: {outlier_frac:.2%} of activations are "
-                            f"statistical outliers (z>{self.cfg.z_score_threshold})."
-                        ),
-                        affected_fraction=outlier_frac,
-                    ))
+                    reports.append(
+                        AnomalyReport(
+                            layer_idx=layer_idx,
+                            anomaly_type="outlier",
+                            severity=severity,
+                            description=(
+                                f"Layer {layer_idx}: {outlier_frac:.2%} of activations are "
+                                f"statistical outliers (z>{self.cfg.z_score_threshold})."
+                            ),
+                            affected_fraction=outlier_frac,
+                        )
+                    )
 
         monitor.clear()
         return reports
@@ -354,9 +368,7 @@ class AnomalyDetector:
         n_nan = sum(1 for r in reports if r.anomaly_type == "nan")
         n_exploding = sum(1 for r in reports if r.anomaly_type == "exploding")
         n_dead = sum(1 for r in reports if r.anomaly_type == "dead")
-        mean_severity = (
-            float(sum(r.severity for r in reports) / len(reports)) if reports else 0.0
-        )
+        mean_severity = float(sum(r.severity for r in reports) / len(reports)) if reports else 0.0
         return {
             "n_anomalies": len(reports),
             "n_nan": n_nan,

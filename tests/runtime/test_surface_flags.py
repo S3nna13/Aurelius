@@ -2,23 +2,15 @@
 
 from __future__ import annotations
 
-from src.runtime.feature_flags import FeatureFlag, FeatureFlagRegistry
+from src.runtime.feature_flags import FeatureFlagRegistry
 from src.runtime.surface_flags import (
-    SafetyFlags,
-    EvalFlags,
-    ServingFlags,
     AgentFlags,
-    ChatFlags,
+    EvalFlags,
     InferenceFlags,
+    SafetyFlags,
+    ServingFlags,
     TrainingFlags,
-    DataFlags,
-    RetrievalFlags,
-    LongcontextFlags,
-    AlignmentFlags,
-    ModelFlags,
-    SecurityFlags,
     register_all_surface_flags,
-    FEATURE_FLAG_REGISTRY,
 )
 
 
@@ -80,6 +72,7 @@ def test_training_flags_structure():
 
 def test_env_override_enables_flag():
     import os
+
     os.environ["AURELIUS_FF_SAFETY_HALLUCINATION_GUARD"] = "1"
     try:
         registry = FeatureFlagRegistry()
@@ -91,6 +84,7 @@ def test_env_override_enables_flag():
 
 def test_config_delegates_to_registry():
     from src.model.config import AureliusConfig
+
     cfg = AureliusConfig()
     assert cfg.safety_hallucination_guard_enabled is False
     assert cfg.agent_budget_bounded_loop_enabled is False
@@ -99,6 +93,7 @@ def test_config_delegates_to_registry():
 
 def test_config_backward_compatible_shape():
     from src.model.config import AureliusConfig
+
     cfg = AureliusConfig()
     assert cfg.d_model == 2048
     assert cfg.n_heads == 16
@@ -109,7 +104,9 @@ def test_config_backward_compatible_shape():
 
 
 def test_config_post_init_still_validates():
-    from src.model.config import AureliusConfig
     import pytest
+
+    from src.model.config import AureliusConfig
+
     with pytest.raises(AssertionError):
         AureliusConfig(d_model=999, n_heads=16, head_dim=128)

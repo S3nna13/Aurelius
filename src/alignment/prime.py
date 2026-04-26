@@ -5,29 +5,32 @@ without explicit step annotations. The key insight is that the log-prob ratio
 log(π_θ(a_t|s_t) / π_ref(a_t|s_t)) provides a dense reward signal at every
 token, which PRIME aggregates into step-level rewards for RL training.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PRIMEConfig:
     """Configuration for PRIME process reward extraction."""
-    beta: float = 0.05          # KL penalty weight
-    credit_mode: str = "last"   # "last" | "mean" | "cumsum" — credit assignment
-    normalize: bool = True      # normalize rewards to unit std across the sequence
+
+    beta: float = 0.05  # KL penalty weight
+    credit_mode: str = "last"  # "last" | "mean" | "cumsum" — credit assignment
+    normalize: bool = True  # normalize rewards to unit std across the sequence
 
 
 # ---------------------------------------------------------------------------
 # Core module
 # ---------------------------------------------------------------------------
+
 
 class PRIMEReward(nn.Module):
     """Extract dense implicit process rewards from policy vs. reference log-probs.
@@ -41,7 +44,7 @@ class PRIMEReward(nn.Module):
         config: PRIMEConfig instance controlling beta, credit_mode, normalize.
     """
 
-    def __init__(self, config: Optional[PRIMEConfig] = None) -> None:
+    def __init__(self, config: PRIMEConfig | None = None) -> None:
         super().__init__()
         self.config = config if config is not None else PRIMEConfig()
 
@@ -51,9 +54,9 @@ class PRIMEReward(nn.Module):
 
     def compute_implicit_rewards(
         self,
-        log_probs: torch.Tensor,      # (B, T) policy log-probs per token
+        log_probs: torch.Tensor,  # (B, T) policy log-probs per token
         ref_log_probs: torch.Tensor,  # (B, T) reference log-probs
-        mask: torch.Tensor,           # (B, T) valid token mask (1=valid, 0=pad)
+        mask: torch.Tensor,  # (B, T) valid token mask (1=valid, 0=pad)
     ) -> torch.Tensor:
         """Per-token implicit reward = log(π_θ / π_ref).
 
@@ -71,14 +74,14 @@ class PRIMEReward(nn.Module):
             token_rewards: (B, T) — implicit reward at each valid token position;
                            zero at masked (padding) positions.
         """
-        token_rewards = log_probs - ref_log_probs          # (B, T) log-ratio
-        token_rewards = token_rewards * mask.float()        # zero out padding
+        token_rewards = log_probs - ref_log_probs  # (B, T) log-ratio
+        token_rewards = token_rewards * mask.float()  # zero out padding
         return token_rewards
 
     def aggregate_step_rewards(
         self,
         token_rewards: torch.Tensor,  # (B, T)
-        mask: torch.Tensor,           # (B, T)
+        mask: torch.Tensor,  # (B, T)
     ) -> torch.Tensor:
         """Aggregate per-token rewards to a single step/sequence-level scalar.
 
@@ -100,23 +103,20 @@ class PRIMEReward(nn.Module):
         if mode == "last":
             # Index of the last valid position in each row
             # Sum along T; subtract 1 to get 0-based index; clamp to [0, T-1]
-            last_idx = mask_f.sum(dim=1).long() - 1          # (B,)
+            last_idx = mask_f.sum(dim=1).long() - 1  # (B,)
             last_idx = last_idx.clamp(min=0)
-            step_rewards = token_rewards.gather(
-                1, last_idx.unsqueeze(1)
-            ).squeeze(1)                                      # (B,)
+            step_rewards = token_rewards.gather(1, last_idx.unsqueeze(1)).squeeze(1)  # (B,)
 
         elif mode == "mean":
             valid_counts = mask_f.sum(dim=1).clamp(min=1.0)  # (B,)
             step_rewards = token_rewards.sum(dim=1) / valid_counts  # (B,)
 
         elif mode == "cumsum":
-            step_rewards = token_rewards.sum(dim=1)           # (B,)
+            step_rewards = token_rewards.sum(dim=1)  # (B,)
 
         else:
             raise ValueError(
-                f"Unknown credit_mode '{mode}'. "
-                "Choose from: 'last', 'mean', 'cumsum'."
+                f"Unknown credit_mode '{mode}'. Choose from: 'last', 'mean', 'cumsum'."
             )
 
         return step_rewards
@@ -127,10 +127,10 @@ class PRIMEReward(nn.Module):
 
     def forward(
         self,
-        log_probs: torch.Tensor,        # (B, T) policy log-probs
-        ref_log_probs: torch.Tensor,    # (B, T) reference log-probs
+        log_probs: torch.Tensor,  # (B, T) policy log-probs
+        ref_log_probs: torch.Tensor,  # (B, T) reference log-probs
         outcome_rewards: torch.Tensor,  # (B,)  sparse outcome reward
-        mask: torch.Tensor,             # (B, T) valid token mask
+        mask: torch.Tensor,  # (B, T) valid token mask
     ) -> tuple[torch.Tensor, dict]:
         """Compute full PRIME reward: implicit token rewards + outcome.
 
@@ -166,7 +166,7 @@ class PRIMEReward(nn.Module):
 
         # Step 3: aggregate to step level and add outcome reward
         step_rewards = self.aggregate_step_rewards(token_rewards, mask)  # (B,)
-        combined_step = step_rewards + outcome_rewards                    # (B,)
+        combined_step = step_rewards + outcome_rewards  # (B,)
 
         # Step 4: broadcast outcome back to token level (add to each valid position)
         dense_rewards = token_rewards + outcome_rewards.unsqueeze(1) * mask.float()

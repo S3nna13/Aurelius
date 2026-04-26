@@ -9,7 +9,6 @@ Verify:
 
 from __future__ import annotations
 
-import importlib
 import sys
 
 import pytest
@@ -46,12 +45,10 @@ def test_toy_attention_uses_cached_kv_and_positions():
     k_stream = torch.randn(B, H, total, D)
     v_stream = torch.randn(B, H, total, D)
     for t in range(total):
-        cache.append(k_stream[:, :, t:t + 1, :], v_stream[:, :, t:t + 1, :], t)
+        cache.append(k_stream[:, :, t : t + 1, :], v_stream[:, :, t : t + 1, :], t)
 
     # Pull the final cached view by appending one more token.
-    ck, cv, cp = cache.append(
-        torch.randn(B, H, 1, D), torch.randn(B, H, 1, D), total
-    )
+    ck, cv, cp = cache.append(torch.randn(B, H, 1, D), torch.randn(B, H, 1, D), total)
     assert ck.shape == (B, H, 4 + 32, D)
     assert cp.shape == (4 + 32,)
     # Sinks get their absolute positions, window gets shifted positions.
@@ -60,7 +57,7 @@ def test_toy_attention_uses_cached_kv_and_positions():
 
     # Toy attention: query from the "current" position attends to cache.
     q = torch.randn(B, H, 1, D)
-    scores = torch.matmul(q, ck.transpose(-2, -1)) / (D ** 0.5)
+    scores = torch.matmul(q, ck.transpose(-2, -1)) / (D**0.5)
     attn = torch.softmax(scores, dim=-1)
     out = torch.matmul(attn, cv)
     assert out.shape == (B, H, 1, D)
@@ -73,6 +70,7 @@ def test_importing_longcontext_does_not_import_model():
     # `from src.model.rms_norm import RMSNorm`, causing isinstance checks
     # in unrelated downstream tests (e.g. test_replace_norms_count) to fail.
     import subprocess
+
     result = subprocess.run(
         [
             sys.executable,

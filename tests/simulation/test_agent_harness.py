@@ -1,4 +1,5 @@
 """Tests for src/simulation/agent_harness.py — ~50 tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,10 +11,10 @@ from src.simulation.agent_harness import (
 )
 from src.simulation.environment import EnvAction, EnvState, GridWorldEnv
 
-
 # ---------------------------------------------------------------------------
 # Trajectory dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestTrajectory:
     def _make_traj(self, env_name="gridworld", steps=None, total_reward=0.0, success=False):
@@ -49,6 +50,7 @@ class TestTrajectory:
 # AgentHarness construction
 # ---------------------------------------------------------------------------
 
+
 class TestAgentHarnessInit:
     def test_default_env_is_gridworld(self):
         harness = AgentHarness()
@@ -69,6 +71,7 @@ class TestAgentHarnessInit:
 # ---------------------------------------------------------------------------
 # run_episode
 # ---------------------------------------------------------------------------
+
 
 class TestRunEpisode:
     def test_returns_trajectory(self):
@@ -104,6 +107,7 @@ class TestRunEpisode:
 
     def test_steps_are_env_steps(self):
         from src.simulation.environment import EnvStep
+
         harness = AgentHarness()
         traj = harness.run_episode(AgentHarness.random_policy, max_steps=5)
         for s in traj.steps:
@@ -119,6 +123,7 @@ class TestRunEpisode:
 # ---------------------------------------------------------------------------
 # greedy_policy
 # ---------------------------------------------------------------------------
+
 
 class TestGreedyPolicy:
     def test_reaches_goal_in_few_steps(self):
@@ -166,6 +171,7 @@ class TestGreedyPolicy:
 # run_n_episodes
 # ---------------------------------------------------------------------------
 
+
 class TestRunNEpisodes:
     def test_returns_n_trajectories(self):
         harness = AgentHarness()
@@ -192,6 +198,7 @@ class TestRunNEpisodes:
 # ---------------------------------------------------------------------------
 # success_rate
 # ---------------------------------------------------------------------------
+
 
 class TestSuccessRate:
     def _traj(self, success: bool) -> Trajectory:
@@ -222,6 +229,7 @@ class TestSuccessRate:
 # ---------------------------------------------------------------------------
 # random_policy
 # ---------------------------------------------------------------------------
+
 
 class TestRandomPolicy:
     def test_returns_env_action(self):

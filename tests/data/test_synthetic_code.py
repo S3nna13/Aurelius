@@ -1,28 +1,27 @@
 """Tests for src/data/synthetic_code.py"""
-import pytest
 
 from src.data.synthetic_code import (
+    SEED_SNIPPETS,
     CodeExample,
     MutationConfig,
-    count_cyclomatic_complexity,
-    classify_difficulty,
-    extract_function_names,
-    extract_imports,
-    rename_variables,
-    add_type_hints,
+    SyntheticCodePipeline,
     add_docstring,
+    add_type_hints,
     apply_mutations,
     build_oss_instruct_prompt,
-    parse_test_cases_from_text,
+    classify_difficulty,
+    count_cyclomatic_complexity,
+    extract_function_names,
+    extract_imports,
     generate_test_cases,
-    SyntheticCodePipeline,
-    SEED_SNIPPETS,
+    parse_test_cases_from_text,
+    rename_variables,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock generate_fn
 # ---------------------------------------------------------------------------
+
 
 def mock_generate(prompt: str) -> str:
     return (
@@ -35,6 +34,7 @@ def mock_generate(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 # Complexity heuristics
 # ---------------------------------------------------------------------------
+
 
 def test_complexity_simple_function():
     code = "def f():\n    pass\n"
@@ -73,6 +73,7 @@ def test_classify_hard():
 # AST utilities
 # ---------------------------------------------------------------------------
 
+
 def test_extract_function_names_simple():
     code = "def foo():\n    pass\ndef bar():\n    pass\n"
     names = extract_function_names(code)
@@ -100,6 +101,7 @@ def test_extract_imports_empty_on_error():
 # ---------------------------------------------------------------------------
 # Mutations
 # ---------------------------------------------------------------------------
+
 
 def test_rename_variables_with_mapping():
     code = "x = 1\ny = x + 2\n"
@@ -139,6 +141,7 @@ def test_apply_mutations_runs_without_error():
 # Instruction / prompt generation
 # ---------------------------------------------------------------------------
 
+
 def test_build_oss_instruct_prompt_nonempty():
     prompt = build_oss_instruct_prompt("def foo(): pass", "python")
     assert len(prompt) > 0
@@ -155,10 +158,10 @@ def test_build_oss_instruct_prompt_contains_code():
 # Test case parsing
 # ---------------------------------------------------------------------------
 
+
 def test_parse_test_cases_extracts_def_test_blocks():
     text = (
-        "def test_one():\n    assert add(1, 2) == 3\n\n"
-        "def test_two():\n    assert add(0, 0) == 0\n"
+        "def test_one():\n    assert add(1, 2) == 3\n\ndef test_two():\n    assert add(0, 0) == 0\n"
     )
     cases = parse_test_cases_from_text(text)
     assert len(cases) >= 1
@@ -173,6 +176,7 @@ def test_generate_test_cases_returns_list():
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_run_returns_code_examples():
     pipeline = SyntheticCodePipeline(generate_fn=mock_generate, seed_snippets=SEED_SNIPPETS[:3])

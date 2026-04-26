@@ -9,9 +9,7 @@ import torch
 
 from src.longcontext.compressive_transformer import (
     CompressiveMemory,
-    CompressiveMemoryState,
 )
-
 
 B, H, D = 2, 4, 16
 RECENT = 8
@@ -176,8 +174,12 @@ def test_overflow_beyond_compressed_evicts_oldest():
 def test_invalid_compression_fn_raises():
     with pytest.raises(ValueError):
         CompressiveMemory(
-            n_heads=H, head_dim=D, recent_size=RECENT, compressed_size=COMP,
-            compression_rate=RATE, compression_fn="bogus",
+            n_heads=H,
+            head_dim=D,
+            recent_size=RECENT,
+            compressed_size=COMP,
+            compression_rate=RATE,
+            compression_fn="bogus",
         )
 
 
@@ -192,8 +194,12 @@ def test_batch_mismatch_after_reset_raises():
 def test_eviction_indivisible_raises():
     # recent=8, rate=4 -> pushing 9 tokens evicts 1, not divisible by 4.
     m = CompressiveMemory(
-        n_heads=H, head_dim=D, recent_size=8, compressed_size=8,
-        compression_rate=4, compression_fn="mean_pool",
+        n_heads=H,
+        head_dim=D,
+        recent_size=8,
+        compressed_size=8,
+        compression_rate=4,
+        compression_fn="mean_pool",
     )
     m.reset(batch_size=B)
     k = torch.randn(B, H, 9, D)

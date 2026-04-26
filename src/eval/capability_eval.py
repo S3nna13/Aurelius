@@ -1,12 +1,11 @@
-"""Self-evaluation harness: measure model capabilities across reasoning, knowledge, and generation tasks."""
+"""Self-evaluation harness: measure model capabilities across reasoning, knowledge, and generation tasks."""  # noqa: E501
 
 from __future__ import annotations
 
-import math
 import random
 import string
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -165,7 +164,12 @@ class CapabilityEvaluator:
         if example.choices is not None:
             predicted_idx = self.mc_evaluator.predict(example.prompt, example.choices)
             predicted_answer = example.choices[predicted_idx]
-            return 1.0 if self.em_scorer.normalize(predicted_answer) == self.em_scorer.normalize(example.gold_answer) else 0.0
+            return (
+                1.0
+                if self.em_scorer.normalize(predicted_answer)
+                == self.em_scorer.normalize(example.gold_answer)
+                else 0.0
+            )
         else:
             prediction = self.generator.generate(example.prompt, self.config.max_new_tokens)
             return self.em_scorer.score(prediction, example.gold_answer)
@@ -217,7 +221,7 @@ class CapabilityEvaluator:
 
 def create_synthetic_examples(n_per_task: int = 5, seed: int = 42) -> list[EvalExample]:
     """Create simple synthetic eval examples for each task."""
-    rng = random.Random(seed)
+    random.Random(seed)
     examples: list[EvalExample] = []
 
     # --- reasoning ---

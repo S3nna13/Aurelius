@@ -10,14 +10,13 @@ from __future__ import annotations
 import time
 import uuid
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Deque
-
 
 # ---------------------------------------------------------------------------
 # Enums & data classes
 # ---------------------------------------------------------------------------
+
 
 class EventLevel(Enum):
     DEBUG = 10
@@ -40,6 +39,7 @@ class LogEvent:
 # MCPEventLogger
 # ---------------------------------------------------------------------------
 
+
 class MCPEventLogger:
     """In-memory structured event logger for MCP operations."""
 
@@ -51,7 +51,7 @@ class MCPEventLogger:
         self._min_level = min_level
         self._max_events = max_events
         # deque keeps insertion order; oldest at left, newest at right
-        self._events: Deque[LogEvent] = deque()
+        self._events: deque[LogEvent] = deque()
 
     # ------------------------------------------------------------------
     # Core log method
@@ -152,6 +152,4 @@ class MCPEventLogger:
 # Registry
 # ---------------------------------------------------------------------------
 
-MCP_EVENT_LOGGER_REGISTRY: dict[str, type[MCPEventLogger]] = {
-    "default": MCPEventLogger
-}
+MCP_EVENT_LOGGER_REGISTRY: dict[str, type[MCPEventLogger]] = {"default": MCPEventLogger}

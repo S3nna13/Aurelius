@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from dataclasses import dataclass
+
 import torch
 from torch.utils.data import DataLoader
-from dataclasses import dataclass
-from typing import Iterator
 
 
 @dataclass
 class MixerConfig:
-    weights: list[float]           # mixing weight for each source (will be normalized)
-    temperature: float = 1.0       # temperature scaling: w_i -> w_i^(1/T) before normalizing
+    weights: list[float]  # mixing weight for each source (will be normalized)
+    temperature: float = 1.0  # temperature scaling: w_i -> w_i^(1/T) before normalizing
     # T < 1: sharper (more concentrated on high-weight sources)
     # T > 1: flatter (more uniform)
 
@@ -97,8 +98,7 @@ class LossAdaptiveMixer(DataMixer):
     def record_loss(self, source_idx: int, loss: float) -> None:
         """Update EMA loss for source_idx and reweight accordingly."""
         self._ema_losses[source_idx] = (
-            self.ema_alpha * loss
-            + (1 - self.ema_alpha) * self._ema_losses[source_idx]
+            self.ema_alpha * loss + (1 - self.ema_alpha) * self._ema_losses[source_idx]
         )
         # Reweight: higher loss -> higher weight
         self.update_weights(self._ema_losses)

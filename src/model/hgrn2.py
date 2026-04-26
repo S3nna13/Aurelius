@@ -37,10 +37,10 @@ from torch import Tensor
 
 from .rms_norm import RMSNorm
 
-
 # ---------------------------------------------------------------------------
 # HGRN2Cell: single-step recurrence
 # ---------------------------------------------------------------------------
+
 
 class HGRN2Cell(nn.Module):
     """Single-step HGRN2 recurrence.
@@ -87,32 +87,33 @@ class HGRN2Cell(nn.Module):
         lb = self.lower_bound
 
         # Forget gate: clipped to [lower_bound, 1]
-        f = lb + (1.0 - lb) * torch.sigmoid(self.W_f(x))   # (B, d_model)
+        f = lb + (1.0 - lb) * torch.sigmoid(self.W_f(x))  # (B, d_model)
 
         # Input value via SiLU
-        u = F.silu(self.W_u(x))                              # (B, d_model)
+        u = F.silu(self.W_u(x))  # (B, d_model)
 
         # State-expanded versions of forget gate and value
-        forget_exp = f.repeat_interleave(E, dim=-1)          # (B, d_model*E)
-        i_exp = 1.0 - forget_exp                             # (B, d_model*E)
-        u_exp = u.repeat_interleave(E, dim=-1)               # (B, d_model*E)
+        forget_exp = f.repeat_interleave(E, dim=-1)  # (B, d_model*E)
+        i_exp = 1.0 - forget_exp  # (B, d_model*E)
+        u_exp = u.repeat_interleave(E, dim=-1)  # (B, d_model*E)
 
         # Recurrence
-        h_new = forget_exp * h + i_exp * u_exp               # (B, d_model*E)
+        h_new = forget_exp * h + i_exp * u_exp  # (B, d_model*E)
 
         # Contract: reshape → sum over E axis, normalise
         y = h_new.reshape(B, self.d_model, E).sum(dim=-1) / math.sqrt(E)  # (B, d_model)
 
         # Output gate
-        o = torch.sigmoid(self.W_o(x))                       # (B, d_model)
+        o = torch.sigmoid(self.W_o(x))  # (B, d_model)
 
-        out = o * y                                           # (B, d_model)
+        out = o * y  # (B, d_model)
         return out, h_new
 
 
 # ---------------------------------------------------------------------------
 # HGRN2Layer: full-sequence processing
 # ---------------------------------------------------------------------------
+
 
 class HGRN2Layer(nn.Module):
     """Full-sequence HGRN2 layer.
@@ -160,13 +161,14 @@ class HGRN2Layer(nn.Module):
 # SwiGLU FFN (local, no external deps)
 # ---------------------------------------------------------------------------
 
+
 class _SwiGLUFFN(nn.Module):
     """SwiGLU feed-forward network: gate_proj × silu(up_proj) → down_proj."""
 
     def __init__(self, d_model: int, d_ff: int) -> None:
         super().__init__()
         self.gate_proj = nn.Linear(d_model, d_ff, bias=False)
-        self.up_proj   = nn.Linear(d_model, d_ff, bias=False)
+        self.up_proj = nn.Linear(d_model, d_ff, bias=False)
         self.down_proj = nn.Linear(d_ff, d_model, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -176,6 +178,7 @@ class _SwiGLUFFN(nn.Module):
 # ---------------------------------------------------------------------------
 # HGRN2Block: HGRN2Layer + SwiGLU FFN with pre-norm and residuals
 # ---------------------------------------------------------------------------
+
 
 class HGRN2Block(nn.Module):
     """HGRN2 block: pre-norm HGRN2Layer + pre-norm SwiGLU FFN with residuals.
@@ -198,9 +201,9 @@ class HGRN2Block(nn.Module):
     ) -> None:
         super().__init__()
         self.rnn_norm = RMSNorm(d_model)
-        self.rnn      = HGRN2Layer(d_model, expand=expand)
+        self.rnn = HGRN2Layer(d_model, expand=expand)
         self.ffn_norm = RMSNorm(d_model)
-        self.ffn      = _SwiGLUFFN(d_model, d_ff)
+        self.ffn = _SwiGLUFFN(d_model, d_ff)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -218,6 +221,7 @@ class HGRN2Block(nn.Module):
 # ---------------------------------------------------------------------------
 # HGRN2Model: full language model backbone
 # ---------------------------------------------------------------------------
+
 
 class HGRN2Model(nn.Module):
     """HGRN2 language model backbone.
@@ -263,8 +267,8 @@ class HGRN2Model(nn.Module):
         Returns:
             (B, T, d_model) float tensor of hidden states.
         """
-        x = self.embed(input_ids)   # (B, T, d_model)
+        x = self.embed(input_ids)  # (B, T, d_model)
         for block in self.blocks:
             x = block(x)
-        x = self.norm_f(x)          # (B, T, d_model)
+        x = self.norm_f(x)  # (B, T, d_model)
         return x

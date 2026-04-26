@@ -12,22 +12,21 @@ Cycle 136-F.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 # Registry import — additive, leaves all prior entries untouched.
 from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PassAtKConfig:
     """Configuration for the Pass@k evaluator."""
 
-    k_values: List[int]
+    k_values: list[int]
     """List of k values to evaluate, e.g. [1, 5, 10, 100]."""
 
     n_samples: int = 200
@@ -65,6 +64,7 @@ class PassAtKResult:
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class PassAtKEvaluator:
     """Unbiased pass@k estimator (Chen et al. 2021).
@@ -121,7 +121,7 @@ class PassAtKEvaluator:
     # Batch estimator
     # ------------------------------------------------------------------
 
-    def estimate_batch(self, results: List[ProblemResult], k: int) -> float:
+    def estimate_batch(self, results: list[ProblemResult], k: int) -> float:
         """Return the mean pass@k across all problems.
 
         Parameters
@@ -138,16 +138,14 @@ class PassAtKEvaluator:
         """
         if not results:
             return 0.0
-        total = sum(
-            self.estimate_single(r.n_samples, r.n_correct, k) for r in results
-        )
+        total = sum(self.estimate_single(r.n_samples, r.n_correct, k) for r in results)
         return total / len(results)
 
     # ------------------------------------------------------------------
     # Full evaluation
     # ------------------------------------------------------------------
 
-    def evaluate(self, results: List[ProblemResult]) -> List[PassAtKResult]:
+    def evaluate(self, results: list[ProblemResult]) -> list[PassAtKResult]:
         """Compute pass@k for every k in ``config.k_values``.
 
         Parameters
@@ -160,7 +158,7 @@ class PassAtKEvaluator:
         list[PassAtKResult]
             One entry per k value in :attr:`PassAtKConfig.k_values`.
         """
-        out: List[PassAtKResult] = []
+        out: list[PassAtKResult] = []
         for k in self.config.k_values:
             val = self.estimate_batch(results, k)
             out.append(PassAtKResult(k=k, pass_at_k=val, n_problems=len(results)))
@@ -170,7 +168,7 @@ class PassAtKEvaluator:
     # Summary dict
     # ------------------------------------------------------------------
 
-    def summary(self, results: List[ProblemResult]) -> dict[str, float]:
+    def summary(self, results: list[ProblemResult]) -> dict[str, float]:
         """Return a ``{"pass@k": value}`` dict for all configured k values.
 
         Parameters
@@ -183,18 +181,13 @@ class PassAtKEvaluator:
         dict[str, float]
             Keys are ``"pass@1"``, ``"pass@5"``, etc.
         """
-        return {
-            f"pass@{r.k}": r.pass_at_k
-            for r in self.evaluate(results)
-        }
+        return {f"pass@{r.k}": r.pass_at_k for r in self.evaluate(results)}
 
     # ------------------------------------------------------------------
     # Difficulty distribution
     # ------------------------------------------------------------------
 
-    def difficulty_distribution(
-        self, results: List[ProblemResult]
-    ) -> dict[str, int]:
+    def difficulty_distribution(self, results: list[ProblemResult]) -> dict[str, int]:
         """Bucket problems by solve-rate into four difficulty categories.
 
         Categories

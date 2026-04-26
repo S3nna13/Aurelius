@@ -11,17 +11,17 @@ Pure PyTorch + stdlib.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
 
 
 @dataclass
 class LRRangeTestResult:
-    lrs: List[float] = field(default_factory=list)
-    losses: List[float] = field(default_factory=list)
+    lrs: list[float] = field(default_factory=list)
+    losses: list[float] = field(default_factory=list)
     best_lr: float = 0.0
     best_lr_div_10: float = 0.0
-    divergence_lr: Optional[float] = None
+    divergence_lr: float | None = None
 
 
 class LRRangeTest:
@@ -75,7 +75,7 @@ class LRRangeTest:
         self.smooth_factor = float(smooth_factor)
         self.divergence_threshold = float(divergence_threshold)
 
-    def _lr_schedule(self) -> List[float]:
+    def _lr_schedule(self) -> list[float]:
         # Geometric (exponential) spacing between lr_start and lr_end.
         log_start = math.log(self.lr_start)
         log_end = math.log(self.lr_end)
@@ -85,13 +85,13 @@ class LRRangeTest:
     def run(self) -> LRRangeTestResult:
         lrs_schedule = self._lr_schedule()
 
-        lrs: List[float] = []
-        losses: List[float] = []
-        smoothed_losses: List[float] = []
+        lrs: list[float] = []
+        losses: list[float] = []
+        smoothed_losses: list[float] = []
 
         avg = 0.0
         min_smoothed = math.inf
-        divergence_lr: Optional[float] = None
+        divergence_lr: float | None = None
 
         for i, lr in enumerate(lrs_schedule):
             loss = float(self.train_step_fn(lr))
@@ -132,7 +132,7 @@ class LRRangeTest:
         )
 
     @staticmethod
-    def _find_best_lr(lrs: List[float], smoothed: List[float]) -> float:
+    def _find_best_lr(lrs: list[float], smoothed: list[float]) -> float:
         """LR at steepest descent (minimum gradient of smoothed loss).
 
         The gradient is taken in log-LR space, which matches Smith's

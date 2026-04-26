@@ -42,7 +42,7 @@ class PerceiverCrossAttention(nn.Module):
         super().__init__()
         self.n_heads = n_heads
         self.d_head = d_head if d_head is not None else d_latent // n_heads
-        self.scale = self.d_head ** -0.5
+        self.scale = self.d_head**-0.5
 
         inner = n_heads * self.d_head
         self.q_proj = nn.Linear(d_latent, inner)
@@ -62,9 +62,9 @@ class PerceiverCrossAttention(nn.Module):
         N = context.shape[1]
         H, D = self.n_heads, self.d_head
 
-        q = self.q_proj(latent)          # (B, M, H*D)
-        kv = self.kv_proj(context)       # (B, N, 2*H*D)
-        k, v = kv.chunk(2, dim=-1)       # each (B, N, H*D)
+        q = self.q_proj(latent)  # (B, M, H*D)
+        kv = self.kv_proj(context)  # (B, N, 2*H*D)
+        k, v = kv.chunk(2, dim=-1)  # each (B, N, H*D)
 
         # Reshape to (B, H, seq, D)
         q = q.view(B, M, H, D).transpose(1, 2)
@@ -72,9 +72,9 @@ class PerceiverCrossAttention(nn.Module):
         v = v.view(B, N, H, D).transpose(1, 2)
 
         # Scaled dot-product attention
-        attn = (q @ k.transpose(-2, -1)) * self.scale   # (B, H, M, N)
+        attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, M, N)
         attn = torch.softmax(attn, dim=-1)
-        out = attn @ v                                    # (B, H, M, D)
+        out = attn @ v  # (B, H, M, D)
 
         # Merge heads and project
         out = out.transpose(1, 2).contiguous().view(B, M, H * D)
@@ -146,20 +146,20 @@ class LinearCrossAttention(nn.Module):
         Returns:
             (B, M, d_model)
         """
-        Q = self._kernel(self.q_proj(x))        # (B, M, d_head)
+        Q = self._kernel(self.q_proj(x))  # (B, M, d_head)
         K = self._kernel(self.k_proj(context))  # (B, N, d_head)
-        V = self.v_proj(context)                # (B, N, d_head)
+        V = self.v_proj(context)  # (B, N, d_head)
 
         # Linear attention via associativity:
         #   numerator:   Q @ (K^T @ V)    — shape (B, M, d_head)
         #   denominator: Q @ K.sum(dim=1) — shape (B, M, 1)
-        KtV = K.transpose(-2, -1) @ V           # (B, d_head, d_head)
-        num = Q @ KtV                            # (B, M, d_head)
+        KtV = K.transpose(-2, -1) @ V  # (B, d_head, d_head)
+        num = Q @ KtV  # (B, M, d_head)
 
-        K_sum = K.sum(dim=1, keepdim=True)       # (B, 1, d_head)
+        K_sum = K.sum(dim=1, keepdim=True)  # (B, 1, d_head)
         denom = (Q @ K_sum.transpose(-2, -1)) + 1e-6  # (B, M, 1)
 
-        out = num / denom                        # (B, M, d_head)
+        out = num / denom  # (B, M, d_head)
         return self.out_proj(out)
 
 
@@ -205,7 +205,9 @@ class CrossAttentionLayer(nn.Module):
         elif variant == "linear":
             self.cross_attn = LinearCrossAttention(d_model, d_context)
         else:
-            raise ValueError(f"Unknown variant '{variant}'. Choose 'gated', 'perceiver', or 'linear'.")
+            raise ValueError(
+                f"Unknown variant '{variant}'. Choose 'gated', 'perceiver', or 'linear'."
+            )
 
         self.variant = variant
 

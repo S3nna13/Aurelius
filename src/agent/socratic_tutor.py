@@ -83,9 +83,7 @@ class SocraticTutor:
             self._mastery[user_id] = {}
             self._question_streaks[user_id] = {}
             for cid, concept in self._concepts.items():
-                self._mastery[user_id][cid] = ConceptMastery(
-                    concept_id=cid, name=concept["name"]
-                )
+                self._mastery[user_id][cid] = ConceptMastery(concept_id=cid, name=concept["name"])
                 num_questions = len(concept.get("questions", []))
                 self._question_streaks[user_id][cid] = [0] * num_questions
 
@@ -120,9 +118,7 @@ class SocraticTutor:
                 return idx
         return None
 
-    def ask_question(
-        self, session_id: str, concept_id: str | None = None
-    ) -> dict[str, Any]:
+    def ask_question(self, session_id: str, concept_id: str | None = None) -> dict[str, Any]:
         """Return the next question for the requested or auto-selected concept."""
         if session_id not in self._sessions:
             raise SocraticTutorError(f"Session {session_id!r} not found.")
@@ -135,9 +131,7 @@ class SocraticTutor:
         elif concept_id not in self._concepts:
             raise SocraticTutorError(f"Concept {concept_id!r} not found.")
         elif not self._prerequisites_met(user_id, self._concepts[concept_id]):
-            raise SocraticTutorError(
-                f"Prerequisites for concept {concept_id!r} are not met."
-            )
+            raise SocraticTutorError(f"Prerequisites for concept {concept_id!r} are not met.")
 
         session.active_concept_id = concept_id
         concept = self._concepts[concept_id]
@@ -185,8 +179,7 @@ class SocraticTutor:
 
         answer_lower = answer.lower()
         correct = any(
-            pat.lower() in answer_lower
-            for pat in question_data["expected_answer_patterns"]
+            pat.lower() in answer_lower for pat in question_data["expected_answer_patterns"]
         )
 
         self._ensure_user_mastery(user_id)
@@ -273,9 +266,7 @@ class SocraticTutor:
             self._question_streaks[user_id][concept_id] = [0] * num_questions
         else:
             for cid, concept in self._concepts.items():
-                self._mastery[user_id][cid] = ConceptMastery(
-                    concept_id=cid, name=concept["name"]
-                )
+                self._mastery[user_id][cid] = ConceptMastery(concept_id=cid, name=concept["name"])
                 num_questions = len(concept.get("questions", []))
                 self._question_streaks[user_id][cid] = [0] * num_questions
 

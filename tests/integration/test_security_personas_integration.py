@@ -12,7 +12,7 @@ from src.chat.security_personas import (
     SecurityPersonaRegistry,
 )
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 def test_security_personas_registered_in_chat_template_registry() -> None:

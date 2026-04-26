@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .awq_quantizer import AWQConfig, AWQQuantizer
 from .gptq_quantizer import GPTQConfig, GPTQQuantizer
@@ -24,6 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class BenchmarkResult:
@@ -39,6 +40,7 @@ class BenchmarkResult:
 # Benchmark driver
 # ---------------------------------------------------------------------------
 
+
 class QuantBenchmark:
     """Run and compare quantization methods on identical weight tensors."""
 
@@ -52,7 +54,7 @@ class QuantBenchmark:
 
     def run_gptq(
         self,
-        weight: "torch.Tensor",
+        weight: torch.Tensor,
         config: GPTQConfig | None = None,
     ) -> BenchmarkResult:
         cfg = config if config is not None else GPTQConfig()
@@ -74,8 +76,8 @@ class QuantBenchmark:
 
     def run_awq(
         self,
-        weight: "torch.Tensor",
-        activation_sample: "torch.Tensor",
+        weight: torch.Tensor,
+        activation_sample: torch.Tensor,
         config: AWQConfig | None = None,
     ) -> BenchmarkResult:
         cfg = config if config is not None else AWQConfig()
@@ -114,7 +116,7 @@ class QuantBenchmark:
         }
 
     def report(self, results: list[BenchmarkResult]) -> str:
-        header = f"{'method':<8} {'bits':>4} {'group':>6} {'mse':>12} {'compression':>12} {'time_ms':>10}"
+        header = f"{'method':<8} {'bits':>4} {'group':>6} {'mse':>12} {'compression':>12} {'time_ms':>10}"  # noqa: E501
         sep = "-" * len(header)
         lines = [header, sep]
         for r in results:

@@ -12,15 +12,14 @@ Coverage:
 """
 
 import torch
-import pytest
 
 from src.model.graph_neural_lm import (
-    TokenGraph,
-    GNNLayer,
     GATLayer,
-    GraphTransformerLayer,
-    GNNLanguageModel,
     GNNConfig,
+    GNNLanguageModel,
+    GNNLayer,
+    GraphTransformerLayer,
+    TokenGraph,
 )
 
 # ── shared fixtures ─────────────────────────────────────────────────────────
@@ -52,9 +51,10 @@ def make_input():
 
 # ── 1. TokenGraph: add_sequential_edges shape ───────────────────────────────
 
+
 def test_sequential_edges_shape():
     ei = TokenGraph.add_sequential_edges(T)
-    assert ei.shape == (2, T - 1), f"Expected [2, {T-1}], got {ei.shape}"
+    assert ei.shape == (2, T - 1), f"Expected [2, {T - 1}], got {ei.shape}"
 
 
 def test_sequential_edges_values():
@@ -66,6 +66,7 @@ def test_sequential_edges_values():
 
 
 # ── 2. TokenGraph: add_window_edges within-bound connections only ────────────
+
 
 def test_window_edges_within_bound():
     ei = TokenGraph.add_window_edges(T, window=WINDOW)
@@ -91,6 +92,7 @@ def test_window_edges_symmetric():
 
 # ── 3. TokenGraph: add_dependency_edges causal (no future edges) ─────────────
 
+
 def test_dependency_edges_causal():
     ei = TokenGraph.add_dependency_edges(T)
     src, dst = ei[0], ei[1]
@@ -107,6 +109,7 @@ def test_dependency_edges_complete_dag():
 
 # ── 4. GNNLayer forward output shape ────────────────────────────────────────
 
+
 def test_gnn_layer_output_shape():
     N, d_in, d_out = 10, 16, 16
     layer = GNNLayer(d_in, d_out, aggregation="mean")
@@ -117,6 +120,7 @@ def test_gnn_layer_output_shape():
 
 
 # ── 5. GNNLayer aggregation="mean" vs "max" produce different outputs ────────
+
 
 def test_gnn_layer_aggregation_mean_vs_max():
     torch.manual_seed(0)
@@ -135,12 +139,11 @@ def test_gnn_layer_aggregation_mean_vs_max():
 
     out_mean = layer_mean(x, ei)
     out_max = layer_max(x, ei)
-    assert not torch.allclose(out_mean, out_max), (
-        "mean and max aggregation should differ"
-    )
+    assert not torch.allclose(out_mean, out_max), "mean and max aggregation should differ"
 
 
 # ── 6. GNNLayer with isolated nodes (no incoming edges) ─────────────────────
+
 
 def test_gnn_layer_isolated_nodes():
     N, d = 5, 16
@@ -154,6 +157,7 @@ def test_gnn_layer_isolated_nodes():
 
 # ── 7. GATLayer forward output shape ────────────────────────────────────────
 
+
 def test_gat_layer_output_shape():
     N, d_in, d_out = 10, 16, 16
     layer = GATLayer(d_in, d_out, n_heads=N_HEADS)
@@ -164,6 +168,7 @@ def test_gat_layer_output_shape():
 
 
 # ── 8. GATLayer attention weights sum to 1 per node ─────────────────────────
+
 
 def test_gat_attention_weights_sum_to_one():
     """
@@ -190,33 +195,36 @@ def test_gat_attention_weights_sum_to_one():
         a_i = layer.attn_vec[:, :d_h]
         a_j = layer.attn_vec[:, d_h:]
         e = layer.leaky(
-            (h_src * a_i.unsqueeze(0)).sum(-1) +
-            (h_dst * a_j.unsqueeze(0)).sum(-1)
+            (h_src * a_i.unsqueeze(0)).sum(-1) + (h_dst * a_j.unsqueeze(0)).sum(-1)
         )  # [E, H]
 
         e_max = torch.full((N, H), float("-inf"))
         e_max.scatter_reduce_(
-            0, dst.unsqueeze(1).expand(E, H), e,
-            reduce="amax", include_self=True,
+            0,
+            dst.unsqueeze(1).expand(E, H),
+            e,
+            reduce="amax",
+            include_self=True,
         )
         e_shifted = e - e_max[dst]
         exp_e = torch.exp(e_shifted)
         exp_sum = torch.zeros(N, H)
         exp_sum.scatter_add_(0, dst.unsqueeze(1).expand(E, H), exp_e)
-        alpha = exp_e / (exp_sum[dst] + 1e-16)   # [E, H]
+        alpha = exp_e / (exp_sum[dst] + 1e-16)  # [E, H]
 
         alpha_sum = torch.zeros(N, H)
         alpha_sum.scatter_add_(0, dst.unsqueeze(1).expand(E, H), alpha)
 
         has_in_edge = torch.zeros(N, dtype=torch.bool)
         has_in_edge[dst] = True
-        sums = alpha_sum[has_in_edge]   # [k, H]
+        sums = alpha_sum[has_in_edge]  # [k, H]
         assert torch.allclose(sums, torch.ones_like(sums), atol=1e-4), (
             f"Attention weights don't sum to 1: {sums}"
         )
 
 
 # ── 9. GraphTransformerLayer forward output shape ───────────────────────────
+
 
 def test_graph_transformer_layer_output_shape():
     N, d = 10, 16
@@ -229,16 +237,16 @@ def test_graph_transformer_layer_output_shape():
 
 # ── 10. GNNLanguageModel forward output shape ───────────────────────────────
 
+
 def test_model_forward_output_shape():
     model = make_model()
     ids = make_input()
     logits = model(ids)
-    assert logits.shape == (B, T, VOCAB), (
-        f"Expected [{B},{T},{VOCAB}], got {logits.shape}"
-    )
+    assert logits.shape == (B, T, VOCAB), f"Expected [{B},{T},{VOCAB}], got {logits.shape}"
 
 
 # ── 11. GNNLanguageModel compute_loss is finite positive scalar ──────────────
+
 
 def test_model_loss_finite_positive():
     model = make_model()
@@ -250,6 +258,7 @@ def test_model_loss_finite_positive():
 
 
 # ── 12. GNNLanguageModel compute_loss backward (gradients flow) ──────────────
+
 
 def test_model_loss_backward():
     model = make_model()
@@ -266,6 +275,7 @@ def test_model_loss_backward():
 
 # ── 13. GNNLanguageModel graph_type="sequential" works ───────────────────────
 
+
 def test_model_sequential_graph():
     model = make_model(gnn_type="gnn", graph_type="sequential")
     ids = make_input()
@@ -276,6 +286,7 @@ def test_model_sequential_graph():
 
 
 # ── 14. GNNLanguageModel graph_type="window" works ───────────────────────────
+
 
 def test_model_window_graph():
     model = make_model(gnn_type="gat", graph_type="window")
@@ -288,6 +299,7 @@ def test_model_window_graph():
 
 # ── 15. build_graph returns valid edge_index with correct max node index ──────
 
+
 def test_build_graph_valid_edge_index():
     model = make_model(graph_type="window")
     ids = make_input()
@@ -295,9 +307,7 @@ def test_build_graph_valid_edge_index():
 
     total_nodes = B * T
 
-    assert batch_vector.shape == (total_nodes,), (
-        f"batch_vector shape: {batch_vector.shape}"
-    )
+    assert batch_vector.shape == (total_nodes,), f"batch_vector shape: {batch_vector.shape}"
 
     if edge_index.size(1) > 0:
         assert edge_index.min().item() >= 0
@@ -310,6 +320,7 @@ def test_build_graph_valid_edge_index():
 
 
 # ── 16. GNNConfig defaults ────────────────────────────────────────────────────
+
 
 def test_gnn_config_defaults():
     cfg = GNNConfig()
@@ -324,6 +335,7 @@ def test_gnn_config_defaults():
 
 # ── 17. GNNLanguageModel with graph_type="dependency" works ──────────────────
 
+
 def test_model_dependency_graph():
     model = make_model(gnn_type="gnn", graph_type="dependency")
     ids = make_input()
@@ -334,6 +346,7 @@ def test_model_dependency_graph():
 
 
 # ── 18. GraphTransformerLayer with no edges (isolated tokens) ─────────────────
+
 
 def test_graph_transformer_no_edges():
     N, d = 6, 16

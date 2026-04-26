@@ -1,9 +1,9 @@
 import random
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class LBStrategy(str, Enum):
+class LBStrategy(StrEnum):
     ROUND_ROBIN = "round_robin"
     LEAST_CONNECTIONS = "least_connections"
     WEIGHTED_ROUND_ROBIN = "weighted_round_robin"
@@ -37,7 +37,7 @@ class LoadBalancer:
             return None
 
         if self.strategy == LBStrategy.ROUND_ROBIN:
-            all_healthy_names = {n.name for n in healthy}
+            {n.name for n in healthy}
             start = self._rr_index % len(self._nodes)
             for i in range(len(self._nodes)):
                 node = self._nodes[(start + i) % len(self._nodes)]

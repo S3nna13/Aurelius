@@ -4,7 +4,6 @@ Pure PyTorch only — no PIL, cv2, torchvision, scipy, sklearn, or numpy.
 Images are torch.Tensor[C, H, W] with values in [0, 1].
 """
 
-import pytest
 import torch
 
 from src.data.programmatic_image_tools import (
@@ -13,7 +12,6 @@ from src.data.programmatic_image_tools import (
     detect_objects,
     pixel_distance,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -148,7 +146,7 @@ def test_detect_objects_one_blob():
 def test_detect_objects_two_blobs():
     """Two isolated 2×2 blobs → list of 2 dicts."""
     image = _solid(0.0, H=16, W=16)
-    image = _bright_patch(image, 1, 3, 1, 3)   # top-left 2×2
+    image = _bright_patch(image, 1, 3, 1, 3)  # top-left 2×2
     image = _bright_patch(image, 10, 12, 10, 12)  # bottom-right 2×2
     objs = detect_objects(image, threshold=0.5, min_size=1)
     assert len(objs) == 2

@@ -1,14 +1,13 @@
 """Tests for src/model/position_encodings.py."""
 
 import torch
-import pytest
 
 from src.model.position_encodings import (
     ALiBiPositionBias,
-    xPosEmbedding,
     NoPE,
     T5RelativePositionBias,
     get_position_encoding,
+    xPosEmbedding,
 )
 
 N_HEADS = 4
@@ -19,6 +18,7 @@ DEVICE = torch.device("cpu")
 # ---------------------------------------------------------------------------
 # ALiBi tests
 # ---------------------------------------------------------------------------
+
 
 def test_alibi_slopes_shape():
     alibi = ALiBiPositionBias(n_heads=N_HEADS)
@@ -67,6 +67,7 @@ def test_alibi_forward_changes_scores():
 # xPos tests
 # ---------------------------------------------------------------------------
 
+
 def test_xpos_output_shapes():
     xpos = xPosEmbedding(head_dim=HEAD_DIM)
     q = torch.randn(2, N_HEADS, 8, HEAD_DIM)
@@ -91,6 +92,7 @@ def test_xpos_scales_are_different_q_k():
 # NoPE tests
 # ---------------------------------------------------------------------------
 
+
 def test_nope_passthrough():
     nope = NoPE()
     q = torch.randn(2, N_HEADS, 8, HEAD_DIM)
@@ -103,6 +105,7 @@ def test_nope_passthrough():
 # ---------------------------------------------------------------------------
 # T5 Relative Position Bias tests
 # ---------------------------------------------------------------------------
+
 
 def test_t5_bias_shape():
     t5 = T5RelativePositionBias(n_heads=N_HEADS)
@@ -117,14 +120,13 @@ def test_t5_bias_learnable():
     assert isinstance(t5.embedding, torch.nn.Embedding), (
         "T5RelativePositionBias.embedding should be nn.Embedding"
     )
-    assert t5.embedding.weight.requires_grad, (
-        "T5 embedding weights should require grad (learnable)"
-    )
+    assert t5.embedding.weight.requires_grad, "T5 embedding weights should require grad (learnable)"
 
 
 # ---------------------------------------------------------------------------
 # Factory tests
 # ---------------------------------------------------------------------------
+
 
 def test_get_position_encoding_factory():
     alibi = get_position_encoding("alibi", n_heads=N_HEADS, head_dim=HEAD_DIM)

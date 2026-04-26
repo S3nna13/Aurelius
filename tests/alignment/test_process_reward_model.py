@@ -5,7 +5,6 @@ import math
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.alignment.process_reward_model import (
     PRMHead,
     PRMLoss,

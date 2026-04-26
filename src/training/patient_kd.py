@@ -1,33 +1,35 @@
 """Patient Knowledge Distillation (Sun et al., 2019) and soft-target distillation variants."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PKDConfig:
     """Configuration for Patient Knowledge Distillation."""
+
     n_student_layers: int = 2
     n_teacher_layers: int = 4
-    patience_strategy: str = "last"   # "last" | "skip" | "every_other"
-    beta: float = 500.0               # weight for hidden state distillation loss
-    temperature: float = 4.0         # for soft label distillation
-    normalize_hidden: bool = True     # L2-normalize hidden states before MSE
+    patience_strategy: str = "last"  # "last" | "skip" | "every_other"
+    beta: float = 500.0  # weight for hidden state distillation loss
+    temperature: float = 4.0  # for soft label distillation
+    normalize_hidden: bool = True  # L2-normalize hidden states before MSE
 
 
 # ---------------------------------------------------------------------------
 # Layer mapping
 # ---------------------------------------------------------------------------
+
 
 def get_patient_layers(n_teacher: int, n_student: int, strategy: str) -> list[int]:
     """Return which teacher layer indices map to each student layer.
@@ -56,6 +58,7 @@ def get_patient_layers(n_teacher: int, n_student: int, strategy: str) -> list[in
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def pkd_hidden_loss(
     student_hiddens: list[Tensor],
@@ -135,6 +138,7 @@ def attention_transfer_loss(
 # PKD Loss Module
 # ---------------------------------------------------------------------------
 
+
 class PKDLoss(nn.Module):
     """Combined Patient KD loss: soft KL + beta * hidden MSE.
 
@@ -154,7 +158,7 @@ class PKDLoss(nn.Module):
         )
 
         if student_d_model != teacher_d_model:
-            self.projections: Optional[nn.ModuleList] = nn.ModuleList(
+            self.projections: nn.ModuleList | None = nn.ModuleList(
                 [
                     nn.Linear(student_d_model, teacher_d_model, bias=False)
                     for _ in range(config.n_student_layers)
@@ -195,7 +199,7 @@ class PKDLoss(nn.Module):
             F.log_softmax(student_logits / T, dim=-1),
             F.softmax(teacher_logits / T, dim=-1),
             reduction="batchmean",
-        ) * (T ** 2)
+        ) * (T**2)
 
         hidden_loss = pkd_hidden_loss(
             projected,
@@ -217,6 +221,7 @@ class PKDLoss(nn.Module):
 # Patient KD Trainer
 # ---------------------------------------------------------------------------
 
+
 class PatientKDTrainer:
     """Trains a student model using Patient Knowledge Distillation.
 
@@ -231,7 +236,7 @@ class PatientKDTrainer:
         self,
         student: nn.Module,
         teacher: nn.Module,
-        optimizer: "torch.optim.Optimizer",
+        optimizer: torch.optim.Optimizer,
         config: PKDConfig,
     ) -> None:
         self.student = student
@@ -256,9 +261,7 @@ class PatientKDTrainer:
                 return m.embedding_dim
         raise RuntimeError("Cannot infer d_model from model")
 
-    def extract_hiddens(
-        self, model: nn.Module, input_ids: Tensor
-    ) -> tuple[Tensor, list[Tensor]]:
+    def extract_hiddens(self, model: nn.Module, input_ids: Tensor) -> tuple[Tensor, list[Tensor]]:
         """Run forward with hooks to collect per-layer hidden states.
 
         Args:
@@ -276,6 +279,7 @@ class PatientKDTrainer:
                 # TransformerBlock returns (hidden_tensor, kv_tuple)
                 h = out[0] if isinstance(out, (tuple, list)) else out
                 storage.append(h.detach())
+
             return hook
 
         for layer in model.layers:

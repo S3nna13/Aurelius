@@ -6,6 +6,7 @@ hyperparameters.
 SWE-bench Verified performance gradient:
   low=47.9%  medium=52.6%  high=62.4%
 """
+
 from __future__ import annotations
 
 import re

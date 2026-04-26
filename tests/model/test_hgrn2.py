@@ -9,14 +9,9 @@ Tiny config used throughout:
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
-import torch.nn as nn
-
-from aurelius.model.hgrn2 import HGRN2Cell, HGRN2Layer, HGRN2Block, HGRN2Model
-
+from aurelius.model.hgrn2 import HGRN2Block, HGRN2Cell, HGRN2Layer, HGRN2Model
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -33,6 +28,7 @@ LOWER_BOUND = 1.0 / 32
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cell() -> HGRN2Cell:
@@ -68,6 +64,7 @@ def model() -> HGRN2Model:
 # Test 1: HGRN2Cell.step output shapes
 # ---------------------------------------------------------------------------
 
+
 def test_cell_step_output_shapes(cell: HGRN2Cell):
     """HGRN2Cell.step must return out (B, d_model) and h_new (B, d_model*expand)."""
     B = 3
@@ -76,9 +73,7 @@ def test_cell_step_output_shapes(cell: HGRN2Cell):
 
     out, h_new = cell.step(x, h)
 
-    assert out.shape == (B, D_MODEL), (
-        f"out shape: expected ({B}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, D_MODEL), f"out shape: expected ({B}, {D_MODEL}), got {out.shape}"
     assert h_new.shape == (B, D_MODEL * EXPAND), (
         f"h_new shape: expected ({B}, {D_MODEL * EXPAND}), got {h_new.shape}"
     )
@@ -87,6 +82,7 @@ def test_cell_step_output_shapes(cell: HGRN2Cell):
 # ---------------------------------------------------------------------------
 # Test 2: Cell output is finite
 # ---------------------------------------------------------------------------
+
 
 def test_cell_output_finite(cell: HGRN2Cell):
     """HGRN2Cell.step output must be finite (no NaN / Inf)."""
@@ -105,11 +101,12 @@ def test_cell_output_finite(cell: HGRN2Cell):
 # Test 3: Forget gate in [lower_bound, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_forget_gate_range(cell: HGRN2Cell):
     """Forget gate values must lie in [lower_bound, 1] for any input."""
     torch.manual_seed(7)
     B = 8
-    x = torch.randn(B, D_MODEL) * 10.0   # large inputs to stress-test clamping
+    x = torch.randn(B, D_MODEL) * 10.0  # large inputs to stress-test clamping
 
     # Compute the forget gate directly (mirrors cell implementation)
     lb = LOWER_BOUND
@@ -122,6 +119,7 @@ def test_forget_gate_range(cell: HGRN2Cell):
 # ---------------------------------------------------------------------------
 # Test 4: Zero input produces finite output
 # ---------------------------------------------------------------------------
+
 
 def test_cell_zero_input_finite(cell: HGRN2Cell):
     """Zero input must not produce NaN or Inf in the cell output."""
@@ -139,6 +137,7 @@ def test_cell_zero_input_finite(cell: HGRN2Cell):
 # Test 5: HGRN2Layer output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_layer_output_shape(layer: HGRN2Layer):
     """HGRN2Layer.forward must return (B, T, d_model)."""
     B, T = 2, 16
@@ -146,14 +145,13 @@ def test_layer_output_shape(layer: HGRN2Layer):
 
     out = layer(x)
 
-    assert out.shape == (B, T, D_MODEL), (
-        f"expected ({B}, {T}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"expected ({B}, {T}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: Layer output finite
 # ---------------------------------------------------------------------------
+
 
 def test_layer_output_finite(layer: HGRN2Layer):
     """HGRN2Layer output must be finite."""
@@ -170,6 +168,7 @@ def test_layer_output_finite(layer: HGRN2Layer):
 # Test 7: Causal property -- earlier outputs are unaffected by future tokens
 # ---------------------------------------------------------------------------
 
+
 def test_layer_causal(layer: HGRN2Layer):
     """HGRN2Layer is causal: output[:, :t, :] is the same whether the sequence
     has T tokens or T+3 extra tokens appended."""
@@ -181,19 +180,19 @@ def test_layer_causal(layer: HGRN2Layer):
     x_short = x[:, :T, :].clone()
 
     with torch.no_grad():
-        out_full  = layer(x)
+        out_full = layer(x)
         out_short = layer(x_short)
 
     # The first T positions must match
     assert torch.allclose(out_full[:, :T, :], out_short, atol=1e-5), (
-        f"Causal check failed: max diff = "
-        f"{(out_full[:, :T, :] - out_short).abs().max():.6f}"
+        f"Causal check failed: max diff = {(out_full[:, :T, :] - out_short).abs().max():.6f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 8: Gradient flows through HGRN2Layer
 # ---------------------------------------------------------------------------
+
 
 def test_layer_gradient_flow(layer: HGRN2Layer):
     """loss.backward() must complete and produce non-None gradients in HGRN2Layer."""
@@ -213,6 +212,7 @@ def test_layer_gradient_flow(layer: HGRN2Layer):
 # Test 9: Batch=1, seq_len=1 works correctly
 # ---------------------------------------------------------------------------
 
+
 def test_layer_single_token(layer: HGRN2Layer):
     """HGRN2Layer must handle B=1, T=1 without error."""
     x = torch.randn(1, 1, D_MODEL)
@@ -226,6 +226,7 @@ def test_layer_single_token(layer: HGRN2Layer):
 # Test 10: HGRN2Block output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_block_output_shape(block: HGRN2Block):
     """HGRN2Block.forward must return (B, T, d_model)."""
     B, T = 3, 12
@@ -233,14 +234,13 @@ def test_block_output_shape(block: HGRN2Block):
 
     out = block(x)
 
-    assert out.shape == (B, T, D_MODEL), (
-        f"expected ({B}, {T}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"expected ({B}, {T}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 11: Block output finite
 # ---------------------------------------------------------------------------
+
 
 def test_block_output_finite(block: HGRN2Block):
     """HGRN2Block output must be finite."""
@@ -256,6 +256,7 @@ def test_block_output_finite(block: HGRN2Block):
 # ---------------------------------------------------------------------------
 # Test 12: Block residual is non-trivial (output != input)
 # ---------------------------------------------------------------------------
+
 
 def test_block_residual_nontrivial(block: HGRN2Block):
     """HGRN2Block output must differ from its input (residual is active)."""
@@ -276,6 +277,7 @@ def test_block_residual_nontrivial(block: HGRN2Block):
 # Test 13: HGRN2Model output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_model_output_shape(model: HGRN2Model):
     """HGRN2Model.forward must return (B, T, d_model)."""
     B, T = 2, 16
@@ -283,14 +285,13 @@ def test_model_output_shape(model: HGRN2Model):
 
     out = model(input_ids)
 
-    assert out.shape == (B, T, D_MODEL), (
-        f"expected ({B}, {T}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"expected ({B}, {T}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: Gradient flows through HGRN2Model
 # ---------------------------------------------------------------------------
+
 
 def test_model_gradient_flow(model: HGRN2Model):
     """loss.backward() must complete and produce non-None gradients in HGRN2Model."""

@@ -1,20 +1,22 @@
 """Tests for src/compression/weight_sharing.py (≥28 tests)."""
+
 from __future__ import annotations
 
 import dataclasses
+
 import pytest
 
 from src.compression.weight_sharing import (
+    WEIGHT_SHARING_REGISTRY,
     SharingGroup,
     WeightSharing,
     WeightSharingConfig,
-    WEIGHT_SHARING_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # WeightSharingConfig
 # ---------------------------------------------------------------------------
+
 
 class TestWeightSharingConfig:
     def test_defaults(self):
@@ -42,6 +44,7 @@ class TestWeightSharingConfig:
 # SharingGroup
 # ---------------------------------------------------------------------------
 
+
 class TestSharingGroup:
     def test_fields_stored(self):
         sg = SharingGroup(group_id="g1", param_names=["w1", "w2"], shared_value=[0.5, -0.5])
@@ -58,6 +61,7 @@ class TestSharingGroup:
 # ---------------------------------------------------------------------------
 # WeightSharing.cluster_weights
 # ---------------------------------------------------------------------------
+
 
 class TestClusterWeights:
     def _ws(self, k: int = 4) -> WeightSharing:
@@ -126,6 +130,7 @@ class TestClusterWeights:
 # WeightSharing.reconstruct
 # ---------------------------------------------------------------------------
 
+
 class TestReconstruct:
     def test_replaces_with_centroid(self):
         ws = WeightSharing()
@@ -156,6 +161,7 @@ class TestReconstruct:
 # WeightSharing.compression_ratio
 # ---------------------------------------------------------------------------
 
+
 class TestCompressionRatio:
     def test_ratio_below_one_for_large_count(self):
         ws = WeightSharing(WeightSharingConfig(num_clusters=256, bits=8))
@@ -179,6 +185,7 @@ class TestCompressionRatio:
 # ---------------------------------------------------------------------------
 # WeightSharing.create_group
 # ---------------------------------------------------------------------------
+
 
 class TestCreateGroup:
     def test_group_id_stored(self):
@@ -211,6 +218,7 @@ class TestCreateGroup:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

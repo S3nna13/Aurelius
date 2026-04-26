@@ -16,7 +16,6 @@ from src.training.sam_sharpness import (
     sam_sharpness_loss,
 )
 
-
 TINY_CFG = AureliusConfig(
     n_layers=2,
     d_model=64,

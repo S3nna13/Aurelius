@@ -11,14 +11,17 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 _SAFE_SKILL_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
-from src.model.interface_framework import InterfaceFrameworkError, SkillBundle
-from src.safety.skill_scanner import SkillScanner, _parse_yaml_frontmatter
+from datetime import UTC  # noqa: E402
+
+from src.model.interface_framework import InterfaceFrameworkError, SkillBundle  # noqa: E402
+from src.safety.skill_scanner import SkillScanner, _parse_yaml_frontmatter  # noqa: E402
 
 __all__ = [
     "SkillCatalogEntry",
@@ -31,9 +34,9 @@ _INSTRUCTION_FILENAMES = ("AGENTS.md", "SOUL.md", "TOOLS.md")
 
 
 def _utc_now() -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_non_empty(value: str, field_name: str) -> str:
@@ -59,9 +62,7 @@ def _validate_skill_id(skill_id: str) -> str:
     # Defence-in-depth: explicit rejection of traversal segments
     lower = skill_id.lower()
     if ".." in lower or "//" in skill_id or "\\" in skill_id:
-        raise InterfaceFrameworkError(
-            f"skill_id {skill_id!r} contains path-traversal patterns"
-        )
+        raise InterfaceFrameworkError(f"skill_id {skill_id!r} contains path-traversal patterns")
     return skill_id
 
 
@@ -154,7 +155,15 @@ class SkillCatalogEntry:
 
     def __post_init__(self) -> None:
         _validate_skill_id(self.skill_id)
-        for field_name in ("name", "description", "scope", "instructions", "source_path", "source_kind", "allow_level"):
+        for field_name in (
+            "name",
+            "description",
+            "scope",
+            "instructions",
+            "source_path",
+            "source_kind",
+            "allow_level",
+        ):
             _require_non_empty(getattr(self, field_name), field_name)
         if self.scope not in {"global", "org", "repo", "thread"}:
             raise InterfaceFrameworkError(
@@ -217,14 +226,22 @@ class SkillCatalog:
         self.repo_root = Path(repo_root).expanduser().resolve()
         if not self.repo_root.exists():
             raise InterfaceFrameworkError(f"repo_root does not exist: {self.repo_root}")
-        self.global_root = Path(global_root).expanduser().resolve() if global_root is not None else (Path.home() / ".aurelius" / "skills")
+        self.global_root = (
+            Path(global_root).expanduser().resolve()
+            if global_root is not None
+            else (Path.home() / ".aurelius" / "skills")
+        )
         default_archive_roots = (
             self.repo_root / ".aurelius" / "archive" / "skills",
             Path.home() / ".aurelius" / "archive" / "skills",
         )
         roots = archive_roots if archive_roots is not None else default_archive_roots
         self.archive_roots = tuple(Path(root).expanduser().resolve() for root in roots)
-        self.state_dir = Path(state_dir).expanduser().resolve() if state_dir is not None else (self.repo_root / ".aurelius" / "skills")
+        self.state_dir = (
+            Path(state_dir).expanduser().resolve()
+            if state_dir is not None
+            else (self.repo_root / ".aurelius" / "skills")
+        )
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.scanner = scanner or SkillScanner()
         self._entries: dict[str, SkillCatalogEntry] = {}
@@ -507,7 +524,9 @@ class SkillCatalog:
             candidates.extend(root.rglob(filename))
         for skill_md in sorted(set(candidates)):
             skill_root = skill_md.parent
-            entry = self._build_entry(skill_root, source_kind=source_kind, archived=(source_kind == "archive"))
+            entry = self._build_entry(
+                skill_root, source_kind=source_kind, archived=(source_kind == "archive")
+            )
             self._entries.setdefault(entry.skill_id, entry)
             if entry.active:
                 self._active_skill_ids.add(entry.skill_id)
@@ -524,9 +543,13 @@ class SkillCatalog:
             try:
                 metadata = json.loads(_read_text(metadata_path))
             except json.JSONDecodeError as exc:
-                raise InterfaceFrameworkError(f"metadata.json must contain valid JSON: {metadata_path}") from exc
+                raise InterfaceFrameworkError(
+                    f"metadata.json must contain valid JSON: {metadata_path}"
+                ) from exc
             if not isinstance(metadata, dict):
-                raise InterfaceFrameworkError(f"metadata.json must decode to an object: {metadata_path}")
+                raise InterfaceFrameworkError(
+                    f"metadata.json must decode to an object: {metadata_path}"
+                )
         merged = {**metadata, **frontmatter}
         skill_id = _validate_skill_id(str(merged.get("skill_id") or root.name))
         name = str(merged.get("name") or root.name)
@@ -575,7 +598,9 @@ class SkillCatalog:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            raise InterfaceFrameworkError(f"active_skills.json must contain valid JSON: {path}") from exc
+            raise InterfaceFrameworkError(
+                f"active_skills.json must contain valid JSON: {path}"
+            ) from exc
         if not isinstance(payload, list):
             raise InterfaceFrameworkError(f"active_skills.json must be a list: {path}")
         return {str(item) for item in payload if isinstance(item, str)}

@@ -7,6 +7,7 @@ original weights after prediction.
 Reference: Sun et al. "Test-Time Training with Self-Supervision for
 Generalization under Distribution Shifts" (ICML 2020).
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TTTConfig:
     """Hyper-parameters for test-time training."""
@@ -37,6 +39,7 @@ class TTTConfig:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def create_masked_lm_task(
     input_ids: torch.Tensor,
@@ -101,6 +104,7 @@ def get_adapt_params(model: nn.Module, adapt_layers: list) -> list:
 # ---------------------------------------------------------------------------
 # Main class
 # ---------------------------------------------------------------------------
+
 
 class TestTimeTrainer:
     """Adapts a model at inference time using masked-LM self-supervised signal.

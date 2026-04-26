@@ -13,10 +13,10 @@ from src.runtime.session_manager import (
     SessionState,
 )
 
-
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):
@@ -29,6 +29,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # Session dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestSessionDataclass:
     def test_session_default_state(self):
@@ -51,6 +52,7 @@ class TestSessionDataclass:
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 class TestCreate:
     def test_create_returns_session(self):
@@ -113,6 +115,7 @@ class TestCreate:
 # get
 # ---------------------------------------------------------------------------
 
+
 class TestGet:
     def test_get_existing_session(self):
         mgr = SessionManager()
@@ -127,6 +130,7 @@ class TestGet:
 # ---------------------------------------------------------------------------
 # touch
 # ---------------------------------------------------------------------------
+
 
 class TestTouch:
     def test_touch_returns_true_for_existing(self):
@@ -157,6 +161,7 @@ class TestTouch:
 # ---------------------------------------------------------------------------
 # expire_idle
 # ---------------------------------------------------------------------------
+
 
 class TestExpireIdle:
     def test_expire_idle_marks_expired(self):
@@ -202,6 +207,7 @@ class TestExpireIdle:
 # terminate
 # ---------------------------------------------------------------------------
 
+
 class TestTerminate:
     def test_terminate_returns_true(self):
         mgr = SessionManager()
@@ -222,6 +228,7 @@ class TestTerminate:
 # ---------------------------------------------------------------------------
 # active_count
 # ---------------------------------------------------------------------------
+
 
 class TestActiveCount:
     def test_active_count_initial(self):
@@ -248,6 +255,7 @@ class TestActiveCount:
 # ---------------------------------------------------------------------------
 # cleanup
 # ---------------------------------------------------------------------------
+
 
 class TestCleanup:
     def test_cleanup_removes_terminated(self):

@@ -9,7 +9,6 @@ This module is dependency-free beyond ``torch`` and is side-effect-free.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
 
 import torch
 from torch import Tensor
@@ -28,7 +27,7 @@ class PageTable:
     """
 
     request_id: str
-    logical_pages: List[int] = field(default_factory=list)
+    logical_pages: list[int] = field(default_factory=list)
 
 
 class PagedKVCache:
@@ -68,13 +67,13 @@ class PagedKVCache:
 
         # Free list is maintained in ascending order so allocations are
         # deterministic given identical call sequences.
-        self._free_pages: List[int] = list(range(num_pages))
+        self._free_pages: list[int] = list(range(num_pages))
         # request_id -> PageTable
-        self._tables: Dict[str, PageTable] = {}
+        self._tables: dict[str, PageTable] = {}
         # request_id -> token count (write-visible length)
-        self._lengths: Dict[str, int] = {}
+        self._lengths: dict[str, int] = {}
         # physical page id -> reference count (for prefix sharing)
-        self._refcount: List[int] = [0] * num_pages
+        self._refcount: list[int] = [0] * num_pages
 
     # ------------------------------------------------------------------
     # Introspection
@@ -90,11 +89,9 @@ class PagedKVCache:
     # ------------------------------------------------------------------
     # Allocation
     # ------------------------------------------------------------------
-    def _take_pages(self, n: int) -> List[int]:
+    def _take_pages(self, n: int) -> list[int]:
         if n > len(self._free_pages):
-            raise PagedKVOutOfMemory(
-                f"need {n} pages, only {len(self._free_pages)} free"
-            )
+            raise PagedKVOutOfMemory(f"need {n} pages, only {len(self._free_pages)} free")
         taken = self._free_pages[:n]
         self._free_pages = self._free_pages[n:]
         for p in taken:
@@ -133,7 +130,7 @@ class PagedKVCache:
     # ------------------------------------------------------------------
     # I/O
     # ------------------------------------------------------------------
-    def _locate(self, request_id: str, token_position: int) -> Tuple[int, int]:
+    def _locate(self, request_id: str, token_position: int) -> tuple[int, int]:
         if request_id not in self._tables:
             raise KeyError(f"unknown request_id {request_id!r}")
         if token_position < 0:
@@ -156,13 +153,9 @@ class PagedKVCache:
     ) -> None:
         expected_shape = (self.n_heads, self.head_dim)
         if tuple(k_vec.shape) != expected_shape:
-            raise ValueError(
-                f"k_vec shape {tuple(k_vec.shape)} != expected {expected_shape}"
-            )
+            raise ValueError(f"k_vec shape {tuple(k_vec.shape)} != expected {expected_shape}")
         if tuple(v_vec.shape) != expected_shape:
-            raise ValueError(
-                f"v_vec shape {tuple(v_vec.shape)} != expected {expected_shape}"
-            )
+            raise ValueError(f"v_vec shape {tuple(v_vec.shape)} != expected {expected_shape}")
         phys, offset = self._locate(request_id, token_position)
         # Copy-on-write: if this physical page is shared, clone it before
         # writing so we don't corrupt other requests sharing the prefix.
@@ -183,16 +176,14 @@ class PagedKVCache:
         if token_position + 1 > length:
             self._lengths[request_id] = token_position + 1
 
-    def read(self, request_id: str, start: int, end: int) -> Tuple[Tensor, Tensor]:
+    def read(self, request_id: str, start: int, end: int) -> tuple[Tensor, Tensor]:
         if request_id not in self._tables:
             raise KeyError(f"unknown request_id {request_id!r}")
         if start < 0 or end < start:
             raise IndexError(f"invalid read range [{start}, {end})")
         length = self._lengths.get(request_id, 0)
         if end > length:
-            raise IndexError(
-                f"read end {end} exceeds written length {length} for {request_id!r}"
-            )
+            raise IndexError(f"read end {end} exceeds written length {length} for {request_id!r}")
         n = end - start
         out_k = torch.empty((n, self.n_heads, self.head_dim), dtype=self.dtype)
         out_v = torch.empty((n, self.n_heads, self.head_dim), dtype=self.dtype)

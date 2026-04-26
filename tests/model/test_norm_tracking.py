@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -20,10 +19,10 @@ from src.model.norm_tracking import (
     compute_tensor_stats,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> nn.Sequential:
     """Two-layer linear model for testing (D=8)."""
@@ -47,6 +46,7 @@ def _forward_backward(model: nn.Module, B: int = 2, D: int = 8):
 # TrackingConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestTrackingConfig:
     def test_defaults(self):
         cfg = TrackingConfig()
@@ -66,6 +66,7 @@ class TestTrackingConfig:
 # ---------------------------------------------------------------------------
 # RunningStats tests
 # ---------------------------------------------------------------------------
+
 
 class TestRunningStats:
     def test_update_changes_mean(self):
@@ -159,6 +160,7 @@ class TestComputeTensorStats:
 # LayerStatsHook tests
 # ---------------------------------------------------------------------------
 
+
 class TestLayerStatsHook:
     def test_register_and_forward_captures_stats(self):
         model = _tiny_model()
@@ -219,6 +221,7 @@ class TestLayerStatsHook:
 # ---------------------------------------------------------------------------
 # ActivationTracker tests
 # ---------------------------------------------------------------------------
+
 
 class TestActivationTracker:
     def test_attach_detach_no_error(self):
@@ -330,6 +333,7 @@ class TestActivationTracker:
 # ---------------------------------------------------------------------------
 # compute_gradient_norm_per_layer tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeGradientNormPerLayer:
     def test_returns_dict_after_backward(self):

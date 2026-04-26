@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import bisect
-import dataclasses
 import statistics
-import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
 
 MARKET_DATA_REGISTRY: dict[str, type[MarketDataProvider]] = {}
 
@@ -119,7 +115,7 @@ class MarketDataProvider:
         cached = self.get_cached(symbol)
         if len(cached) < period + 1:
             return None
-        closes = [o.close for o in cached[-(period + 1):]]
+        closes = [o.close for o in cached[-(period + 1) :]]
         gains = []
         losses = []
         for i in range(1, len(closes)):

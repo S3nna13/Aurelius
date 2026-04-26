@@ -3,6 +3,7 @@
 Provides task-specific heads on a shared backbone transformer, a soft task
 router, weighted multi-task loss, and a trainer that orchestrates them.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,14 +12,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # TaskConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TaskConfig:
     """Configuration for a single task in the multi-task setup."""
+
     task_name: str
     task_type: str  # "classification" | "generation" | "regression"
     n_classes: int = 2
@@ -28,6 +30,7 @@ class TaskConfig:
 # ---------------------------------------------------------------------------
 # TaskHead
 # ---------------------------------------------------------------------------
+
 
 class TaskHead(nn.Module):
     """Task-specific projection head on top of a shared backbone.
@@ -66,6 +69,7 @@ class TaskHead(nn.Module):
 # MultiTaskRouter
 # ---------------------------------------------------------------------------
 
+
 class MultiTaskRouter(nn.Module):
     """Soft task router: produces per-sample task weight distribution.
 
@@ -86,14 +90,15 @@ class MultiTaskRouter(nn.Module):
         Returns:
             (B, n_tasks) task weights summing to 1 along dim=1.
         """
-        pooled = hidden_states.mean(dim=1)   # (B, d_model)
-        logits = self.linear(pooled)          # (B, n_tasks)
+        pooled = hidden_states.mean(dim=1)  # (B, d_model)
+        logits = self.linear(pooled)  # (B, n_tasks)
         return F.softmax(logits, dim=-1)
 
 
 # ---------------------------------------------------------------------------
 # compute_multitask_loss
 # ---------------------------------------------------------------------------
+
 
 def compute_multitask_loss(
     task_losses: dict[str, torch.Tensor],
@@ -121,6 +126,7 @@ def compute_multitask_loss(
 # ---------------------------------------------------------------------------
 # MultiTaskTrainer
 # ---------------------------------------------------------------------------
+
 
 class MultiTaskTrainer:
     """Trains a shared backbone together with per-task heads.
@@ -244,13 +250,13 @@ class MultiTaskTrainer:
         input_ids: torch.Tensor,
     ) -> torch.Tensor:
         """Compute scalar loss for one task given post-backbone hidden states."""
-        output = head(hidden)          # (B, T, C)
+        output = head(hidden)  # (B, T, C)
         B, T, C = output.shape
         tc = head.task_config
 
         if tc.task_type == "classification":
             labels = (input_ids[:, 1:] % tc.n_classes).long()  # (B, T-1)
-            logits = output[:, :-1, :].contiguous()             # (B, T-1, C)
+            logits = output[:, :-1, :].contiguous()  # (B, T-1, C)
             return F.cross_entropy(logits.reshape(-1, C), labels.reshape(-1))
 
         elif tc.task_type == "regression":

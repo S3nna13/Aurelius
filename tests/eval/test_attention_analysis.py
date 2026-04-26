@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.attention_analysis import (
     AttentionAnalysisConfig,
     AttentionPattern,
@@ -20,7 +16,8 @@ from src.eval.attention_analysis import (
     detect_induction_heads,
     extract_attention_weights,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -325,8 +322,6 @@ def test_cluster_all_heads_assigned():
     for members in clusters.values():
         assigned.extend(members)
     # All heads should be assigned
-    assert len(assigned) == len(patterns), (
-        f"Expected {len(patterns)} assigned, got {len(assigned)}"
-    )
+    assert len(assigned) == len(patterns), f"Expected {len(patterns)} assigned, got {len(assigned)}"
     # No duplicates
     assert len(set(assigned)) == len(assigned)

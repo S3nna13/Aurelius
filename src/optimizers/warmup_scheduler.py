@@ -1,4 +1,5 @@
 """Learning rate warmup scheduler with linear/cosine options."""
+
 from __future__ import annotations
 
 import math

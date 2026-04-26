@@ -1,8 +1,7 @@
 """Tests for src/model/token_skip.py"""
 
-import torch
 import pytest
-
+import torch
 from aurelius.model.token_skip import (
     ConfidenceGate,
     SkippableLayer,
@@ -84,6 +83,7 @@ def test_exit_mask_depends_on_threshold(x):
 
 def _make_skippable_layer() -> SkippableLayer:
     import torch.nn as nn
+
     layer = nn.Sequential(nn.Linear(D_MODEL, D_MODEL), nn.GELU())
     gate = ConfidenceGate(D_MODEL, threshold=0.5)
     return SkippableLayer(layer, gate)
@@ -183,6 +183,4 @@ def test_skip_rate_loss_zero_when_mean_equals_target():
     # Fractions that average to exactly target.
     fractions = [0.2, 0.4, 0.6]  # mean = 0.4
     loss = loss_fn(fractions)
-    assert loss.item() == pytest.approx(0.0, abs=1e-6), (
-        f"Expected loss ≈ 0, got {loss.item()}"
-    )
+    assert loss.item() == pytest.approx(0.0, abs=1e-6), f"Expected loss ≈ 0, got {loss.item()}"

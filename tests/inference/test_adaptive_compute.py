@@ -5,18 +5,19 @@ returning (None, logits, None) to simulate a transformer-style interface.
 
 vocab=64, d_model=16, T_prompt=4, max_new_tokens=5
 """
+
 import pytest
 import torch
 import torch.nn as nn
 
 from src.inference.adaptive_compute import (
-    ComputeBudget,
-    InferenceResult,
-    ConfidenceEstimator,
-    BestOfNSelector,
-    SequentialReviser,
-    ComputeBudgetPredictor,
     AdaptiveInferenceEngine,
+    BestOfNSelector,
+    ComputeBudget,
+    ComputeBudgetPredictor,
+    ConfidenceEstimator,
+    InferenceResult,
+    SequentialReviser,
 )
 
 # ---------------------------------------------------------------------------
@@ -32,6 +33,7 @@ MAX_NEW_TOKENS = 5
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 class MockModel(nn.Module):
     """Tiny model: Embedding + Linear, returns (None, logits, None)."""
 
@@ -42,8 +44,8 @@ class MockModel(nn.Module):
 
     def forward(self, input_ids: torch.Tensor):
         # input_ids: (B, T)
-        x = self.embedding(input_ids)   # (B, T, d_model)
-        logits = self.lm_head(x)         # (B, T, vocab)
+        x = self.embedding(input_ids)  # (B, T, d_model)
+        logits = self.lm_head(x)  # (B, T, vocab)
         return (None, logits, None)
 
 
@@ -67,6 +69,7 @@ def encode_fn():
 # ---------------------------------------------------------------------------
 # ConfidenceEstimator tests (tests 1-4)
 # ---------------------------------------------------------------------------
+
 
 def test_confidence_max_prob_in_range():
     """Test 1: max_prob returns value in [0, 1]."""
@@ -113,6 +116,7 @@ def test_confidence_methods_differ():
 # BestOfNSelector tests (tests 5-8)
 # ---------------------------------------------------------------------------
 
+
 def test_generate_one_returns_tuple(mock_model, prompt_ids):
     """Test 5: generate_one returns a (output_ids, confidence) tuple."""
     selector = BestOfNSelector(mock_model, temperature=1.0)
@@ -131,9 +135,7 @@ def test_generate_one_output_shape(mock_model, prompt_ids):
     total_len = T_PROMPT + MAX_NEW_TOKENS
     # Accept either (1, total) or (total,) shape
     flat_len = output_ids.numel()
-    assert flat_len == total_len, (
-        f"Expected {total_len} tokens total, got shape {output_ids.shape}"
-    )
+    assert flat_len == total_len, f"Expected {total_len} tokens total, got shape {output_ids.shape}"
 
 
 def test_select_best_returns_inference_result(mock_model, prompt_ids):
@@ -153,6 +155,7 @@ def test_select_best_n_tokens_used_positive(mock_model, prompt_ids):
 # ---------------------------------------------------------------------------
 # SequentialReviser tests (tests 9-10)
 # ---------------------------------------------------------------------------
+
 
 def test_sequential_reviser_returns_inference_result(mock_model, prompt_ids, encode_fn):
     """Test 9: SequentialReviser.run returns an InferenceResult."""
@@ -184,6 +187,7 @@ def test_sequential_reviser_iterations_bounded(mock_model, prompt_ids, encode_fn
 # ---------------------------------------------------------------------------
 # ComputeBudgetPredictor tests (tests 11-13)
 # ---------------------------------------------------------------------------
+
 
 def test_budget_predictor_forward_shape():
     """Test 11: forward returns (B, 3) budget logits."""
@@ -233,6 +237,7 @@ def test_budget_predictor_medium_budget_n_candidates():
 # AdaptiveInferenceEngine tests (tests 14-16)
 # ---------------------------------------------------------------------------
 
+
 def test_engine_infer_returns_inference_result(mock_model, prompt_ids):
     """Test 14: AdaptiveInferenceEngine.infer returns InferenceResult."""
     engine = AdaptiveInferenceEngine(model=mock_model)
@@ -259,14 +264,13 @@ def test_inference_result_confidence_in_range(mock_model, prompt_ids):
     """Test 16: InferenceResult.confidence in [0, 1]."""
     engine = AdaptiveInferenceEngine(model=mock_model)
     result = engine.infer(prompt_ids)
-    assert 0.0 <= result.confidence <= 1.0, (
-        f"confidence {result.confidence} not in [0, 1]"
-    )
+    assert 0.0 <= result.confidence <= 1.0, f"confidence {result.confidence} not in [0, 1]"
 
 
 # ---------------------------------------------------------------------------
 # Extra integration tests
 # ---------------------------------------------------------------------------
+
 
 def test_engine_with_budget_predictor(mock_model, prompt_ids):
     """Engine uses budget predictor when provided."""

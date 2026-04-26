@@ -18,7 +18,6 @@ from src.training.simcse import (
     SimCSETrainer,
     SupervisedSimCSELoss,
     UnsupervisedSimCSELoss,
-    _spearman,
 )
 
 # ---------------------------------------------------------------------------
@@ -61,6 +60,7 @@ def make_input(batch: int = BATCH, seq: int = SEQ_LEN) -> torch.Tensor:
 # Test 1: SimCSEEncoder forward shape with pooling="cls"
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_forward_shape_cls():
     enc = make_encoder(pooling="cls")
     x = make_input()
@@ -75,6 +75,7 @@ def test_encoder_forward_shape_cls():
 # Test 2: SimCSEEncoder forward shape with pooling="mean"
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_forward_shape_mean():
     enc = make_encoder(pooling="mean")
     x = make_input()
@@ -86,6 +87,7 @@ def test_encoder_forward_shape_mean():
 # ---------------------------------------------------------------------------
 # Test 3: SimCSEEncoder forward shape with pooling="last"
 # ---------------------------------------------------------------------------
+
 
 def test_encoder_forward_shape_last():
     enc = make_encoder(pooling="last")
@@ -99,19 +101,20 @@ def test_encoder_forward_shape_last():
 # Test 4: SimCSEEncoder.normalize produces unit L2 norms
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_normalize_unit_norm():
     enc = make_encoder()
     x = make_input()
     emb = enc(x)
     normed = enc.normalize(emb)
     norms = normed.norm(dim=-1)
-    assert torch.allclose(norms, torch.ones(BATCH), atol=1e-5), \
-        f"L2 norms not 1: {norms}"
+    assert torch.allclose(norms, torch.ones(BATCH), atol=1e-5), f"L2 norms not 1: {norms}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: UnsupervisedSimCSELoss forward returns finite scalar + valid cosines
 # ---------------------------------------------------------------------------
+
 
 def test_unsupervised_loss_forward_finite():
     enc = make_encoder()
@@ -129,6 +132,7 @@ def test_unsupervised_loss_forward_finite():
 # ---------------------------------------------------------------------------
 # Test 6: UnsupervisedSimCSELoss — pos_sim > neg_sim after training steps
 # ---------------------------------------------------------------------------
+
 
 def test_unsupervised_loss_pos_greater_neg_after_training():
     torch.manual_seed(1)
@@ -155,6 +159,7 @@ def test_unsupervised_loss_pos_greater_neg_after_training():
 # Test 7: UnsupervisedSimCSELoss — gradients flow to encoder parameters
 # ---------------------------------------------------------------------------
 
+
 def test_unsupervised_loss_grad_flows():
     enc = make_encoder()
     enc.train()
@@ -176,6 +181,7 @@ def test_unsupervised_loss_grad_flows():
 # Test 8: SupervisedSimCSELoss forward returns finite scalar
 # ---------------------------------------------------------------------------
 
+
 def test_supervised_loss_forward_finite():
     enc = make_encoder()
     enc.train()
@@ -194,6 +200,7 @@ def test_supervised_loss_forward_finite():
 # ---------------------------------------------------------------------------
 # Test 9: SupervisedSimCSELoss — gradients flow to encoder parameters
 # ---------------------------------------------------------------------------
+
 
 def test_supervised_loss_grad_flows():
     enc = make_encoder()
@@ -218,6 +225,7 @@ def test_supervised_loss_grad_flows():
 # Test 10: AlignmentUniformityLoss.alignment >= 0, and = 0 for identical vectors
 # ---------------------------------------------------------------------------
 
+
 def test_alignment_nonneg_and_zero_for_identical():
     au = AlignmentUniformityLoss(t=2.0)
     torch.manual_seed(7)
@@ -240,6 +248,7 @@ def test_alignment_nonneg_and_zero_for_identical():
 # Test 11: AlignmentUniformityLoss.uniformity is finite and negative for diverse embeddings
 # ---------------------------------------------------------------------------
 
+
 def test_uniformity_finite_negative():
     au = AlignmentUniformityLoss(t=2.0)
     torch.manual_seed(9)
@@ -249,12 +258,15 @@ def test_uniformity_finite_negative():
     unif = au.uniformity(z)
     assert torch.isfinite(unif), f"uniformity not finite: {unif}"
     # For diverse embeddings the value should be negative (log of something < 1)
-    assert unif.item() < 0.0, f"uniformity should be negative for diverse vectors, got {unif.item()}"
+    assert unif.item() < 0.0, (
+        f"uniformity should be negative for diverse vectors, got {unif.item()}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 12: AlignmentUniformityLoss.loss = weighted sum of components
 # ---------------------------------------------------------------------------
+
 
 def test_alignment_uniformity_loss_weighted_sum():
     au = AlignmentUniformityLoss(t=2.0)
@@ -299,20 +311,21 @@ def test_alignment_uniformity_loss_weighted_sum():
 # Test 13: SimCSETrainer unsupervised — train_step returns all keys, loss finite
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_unsupervised_train_step():
     enc = make_encoder()
     opt = torch.optim.Adam(enc.parameters(), lr=1e-3)
     trainer = SimCSETrainer(enc, opt, mode="unsupervised")
     x = make_input()
     result = trainer.train_step(x)
-    assert set(result.keys()) == {"loss", "pos_sim", "neg_sim"}, \
-        f"Missing keys: {result.keys()}"
+    assert set(result.keys()) == {"loss", "pos_sim", "neg_sim"}, f"Missing keys: {result.keys()}"
     assert math.isfinite(result["loss"]), f"loss not finite: {result['loss']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: SimCSETrainer supervised — requires positive+negative, returns all keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_supervised_train_step():
     enc = make_encoder()
@@ -336,6 +349,7 @@ def test_trainer_supervised_train_step():
 # Test 15: SimCSETrainer.evaluate_sts returns float in [-1, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_evaluate_sts():
     enc = make_encoder()
     opt = torch.optim.Adam(enc.parameters(), lr=1e-3)
@@ -344,8 +358,7 @@ def test_trainer_evaluate_sts():
     # Build pairs and scores: create 6 pairs with varying similarity
     torch.manual_seed(3)
     pairs = [
-        (torch.randint(0, VOCAB, (SEQ_LEN,)), torch.randint(0, VOCAB, (SEQ_LEN,)))
-        for _ in range(6)
+        (torch.randint(0, VOCAB, (SEQ_LEN,)), torch.randint(0, VOCAB, (SEQ_LEN,))) for _ in range(6)
     ]
     scores = [0.1, 0.3, 0.5, 0.6, 0.8, 0.9]
 
@@ -357,6 +370,7 @@ def test_trainer_evaluate_sts():
 # ---------------------------------------------------------------------------
 # Test 16: Temperature effect — lower temperature gives higher loss magnitude
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_effect_on_loss():
     """Lower temperature scales logits by 1/tau, making the softmax sharper.
@@ -405,6 +419,7 @@ def test_temperature_effect_on_loss():
 # Test 17: Identical inputs — pos_sim approx 1, loss near minimum
 # ---------------------------------------------------------------------------
 
+
 def test_identical_inputs_high_pos_sim():
     """When the same input always produces the same embedding (no dropout),
     pos_sim should be ~1 and loss should be near its minimum (log(1/B))."""
@@ -422,7 +437,9 @@ def test_identical_inputs_high_pos_sim():
     # In eval mode, both passes give the same output
     loss, avg_pos, avg_neg = loss_fn(enc, x)
 
-    assert avg_pos.item() > 0.99, f"pos_sim should be ~1.0 for identical embeddings, got {avg_pos.item():.4f}"
+    assert avg_pos.item() > 0.99, (
+        f"pos_sim should be ~1.0 for identical embeddings, got {avg_pos.item():.4f}"
+    )
     # Minimum possible loss for NT-Xent with perfect positives = log(B)
     # (all off-diagonal similarities also = 1 here, so loss = log(B))
     assert torch.isfinite(loss), f"loss not finite: {loss}"

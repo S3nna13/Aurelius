@@ -3,21 +3,21 @@
 Uses regex-based signal detection plus a base64 payload heuristic.
 No external ML frameworks required.
 """
+
 from __future__ import annotations
 
 import base64
 import binascii
 import re
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List
-
+from dataclasses import dataclass
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # Enums / dataclasses
 # ---------------------------------------------------------------------------
 
-class InjectionSignal(str, Enum):
+
+class InjectionSignal(StrEnum):
     ROLE_OVERRIDE = "role_override"
     INSTRUCTION_IGNORE = "instruction_ignore"
     SYSTEM_LEAK = "system_leak"
@@ -28,7 +28,7 @@ class InjectionSignal(str, Enum):
 @dataclass
 class InjectionResult:
     text: str
-    signals: List[InjectionSignal]
+    signals: list[InjectionSignal]
     score: float
     blocked: bool
 
@@ -76,7 +76,7 @@ class PromptInjectionDetector:
             InjectionResult with detected signals, composite score, and
             blocked flag (score >= 0.3).
         """
-        signals: List[InjectionSignal] = []
+        signals: list[InjectionSignal] = []
 
         # Regex-based signals
         for signal, pattern in _SIGNAL_PATTERNS.items():

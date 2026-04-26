@@ -1,10 +1,15 @@
 """Tests for weight quantization."""
+
 import torch
-import pytest
+
 from src.inference.quantize import (
-    quantize_tensor_int8, dequantize_int8,
-    quantize_tensor_int4, dequantize_int4,
-    QuantizedLinear, QuantConfig, quantize_model, estimate_memory_savings,
+    QuantConfig,
+    QuantizedLinear,
+    dequantize_int4,
+    dequantize_int8,
+    quantize_model,
+    quantize_tensor_int4,
+    quantize_tensor_int8,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -68,8 +73,14 @@ def test_quantize_model_replaces_linears():
     """quantize_model must replace nn.Linear layers (except skipped) with QuantizedLinear."""
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     model = AureliusTransformer(cfg)
 
@@ -84,8 +95,14 @@ def test_quantized_model_forward():
     """Quantized model must still produce valid outputs."""
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     model = AureliusTransformer(cfg)
     quantize_model(model, QuantConfig(bits=8))

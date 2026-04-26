@@ -6,29 +6,29 @@ training the student to produce chain-of-thought rationales that mimic the teach
 Combined loss: alpha * L_cot + (1-alpha) * L_answer
 With optional KD soft targets from teacher logits.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CoTDistillConfig:
-    alpha: float = 0.5            # weight for CoT loss (1-alpha for answer loss)
-    temperature: float = 2.0      # KD temperature for soft targets
+    alpha: float = 0.5  # weight for CoT loss (1-alpha for answer loss)
+    temperature: float = 2.0  # KD temperature for soft targets
     lr: float = 1e-4
     max_seq_len: int = 64
     n_steps: int = 4
-    cot_loss_type: str = "ce"     # "ce" (cross-entropy) or "kl" (KL from teacher logits)
+    cot_loss_type: str = "ce"  # "ce" (cross-entropy) or "kl" (KL from teacher logits)
     answer_loss_weight: float = 1.0
 
 
@@ -36,23 +36,26 @@ class CoTDistillConfig:
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CoTSample:
     """A training sample with reasoning chain."""
-    question_ids: Tensor          # (T_q,) tokenized question
-    reasoning_ids: Tensor         # (T_r,) tokenized chain-of-thought
-    answer_ids: Tensor            # (T_a,) tokenized final answer
-    teacher_logits: Optional[Tensor] = None  # (T_r + T_a, vocab) optional teacher soft targets
+
+    question_ids: Tensor  # (T_q,) tokenized question
+    reasoning_ids: Tensor  # (T_r,) tokenized chain-of-thought
+    answer_ids: Tensor  # (T_a,) tokenized final answer
+    teacher_logits: Tensor | None = None  # (T_r + T_a, vocab) optional teacher soft targets
 
 
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
 
+
 def cot_cross_entropy_loss(
-    student_logits: Tensor,   # (B, T, vocab)
-    target_ids: Tensor,       # (B, T)
-    reasoning_mask: Tensor,   # (B, T) 1 for CoT tokens, 0 for answer tokens
+    student_logits: Tensor,  # (B, T, vocab)
+    target_ids: Tensor,  # (B, T)
+    reasoning_mask: Tensor,  # (B, T) 1 for CoT tokens, 0 for answer tokens
     alpha: float = 0.5,
 ) -> tuple[Tensor, dict[str, float]]:
     """Weighted CE: alpha * L_cot + (1-alpha) * L_answer.
@@ -62,10 +65,10 @@ def cot_cross_entropy_loss(
     B, T, V = student_logits.shape
 
     # Flatten for per-token CE
-    logits_flat = student_logits.reshape(-1, V)         # (B*T, vocab)
-    targets_flat = target_ids.reshape(-1)               # (B*T,)
+    logits_flat = student_logits.reshape(-1, V)  # (B*T, vocab)
+    targets_flat = target_ids.reshape(-1)  # (B*T,)
     reasoning_mask_flat = reasoning_mask.reshape(-1).float()  # (B*T,)
-    answer_mask_flat = 1.0 - reasoning_mask_flat        # (B*T,)
+    answer_mask_flat = 1.0 - reasoning_mask_flat  # (B*T,)
 
     # Per-token CE (no reduction)
     per_token_ce = F.cross_entropy(logits_flat, targets_flat, reduction="none")  # (B*T,)
@@ -89,9 +92,9 @@ def cot_cross_entropy_loss(
 
 
 def knowledge_distillation_loss(
-    student_logits: Tensor,    # (B, T, vocab)
-    teacher_logits: Tensor,    # (B, T, vocab)
-    target_ids: Tensor,        # (B, T)
+    student_logits: Tensor,  # (B, T, vocab)
+    teacher_logits: Tensor,  # (B, T, vocab)
+    target_ids: Tensor,  # (B, T)
     temperature: float = 2.0,
     alpha: float = 0.5,
 ) -> Tensor:
@@ -116,7 +119,7 @@ def knowledge_distillation_loss(
         student_log_soft.reshape(-1, V),
         teacher_soft.reshape(-1, V),
         reduction="batchmean",
-    ) * (temperature ** 2)  # T^2 compensation for reduced gradient magnitude
+    ) * (temperature**2)  # T^2 compensation for reduced gradient magnitude
 
     total_loss = alpha * kl_loss + (1.0 - alpha) * hard_loss
     return total_loss
@@ -125,6 +128,7 @@ def knowledge_distillation_loss(
 # ---------------------------------------------------------------------------
 # Batch preparation
 # ---------------------------------------------------------------------------
+
 
 def prepare_cot_batch(
     samples: list[CoTSample],
@@ -163,8 +167,8 @@ def prepare_cot_batch(
             full_seq = full_seq[:max_raw]
 
         # input = all tokens except last; target = all tokens except first (shifted)
-        inp = full_seq[:-1]   # (T-1,)
-        tgt = full_seq[1:]    # (T-1,)
+        inp = full_seq[:-1]  # (T-1,)
+        tgt = full_seq[1:]  # (T-1,)
         seq_len = inp.shape[0]
 
         # Build reasoning mask for the *input* positions.
@@ -199,8 +203,8 @@ def prepare_cot_batch(
         attention_mask_list.append(attn_mask)
 
     return {
-        "input_ids": torch.stack(input_ids_list),           # (B, T)
-        "target_ids": torch.stack(target_ids_list),          # (B, T)
+        "input_ids": torch.stack(input_ids_list),  # (B, T)
+        "target_ids": torch.stack(target_ids_list),  # (B, T)
         "reasoning_mask": torch.stack(reasoning_mask_list),  # (B, T)
         "attention_mask": torch.stack(attention_mask_list),  # (B, T)
     }
@@ -210,13 +214,14 @@ def prepare_cot_batch(
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class CoTDistillTrainer:
     """Chain-of-Thought distillation trainer (Ho et al. 2022)."""
 
     def __init__(
         self,
         student: nn.Module,
-        teacher: Optional[nn.Module],
+        teacher: nn.Module | None,
         config: CoTDistillConfig,
     ) -> None:
         self.student = student
@@ -275,7 +280,7 @@ class CoTDistillTrainer:
     def generate_rationale(
         self,
         model: nn.Module,
-        question_ids: Tensor,   # (T_q,)
+        question_ids: Tensor,  # (T_q,)
         max_new_tokens: int = 16,
     ) -> Tensor:
         """Autoregressively generate a rationale continuation.

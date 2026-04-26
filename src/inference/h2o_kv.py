@@ -25,15 +25,13 @@ Paper notation preserved in variable names:
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # H2OEvictionPolicy
 # ---------------------------------------------------------------------------
+
 
 class H2OEvictionPolicy:
     """Select the cache index to evict given per-token cumulative scores.
@@ -65,9 +63,7 @@ class H2OEvictionPolicy:
                         (no evictable candidate exists).
         """
         if scores.ndim != 1:
-            raise ValueError(
-                f"scores must be 1-D, got shape {tuple(scores.shape)}"
-            )
+            raise ValueError(f"scores must be 1-D, got shape {tuple(scores.shape)}")
         if recent_mask.shape != scores.shape:
             raise ValueError(
                 f"recent_mask shape {tuple(recent_mask.shape)} must match "
@@ -91,6 +87,7 @@ class H2OEvictionPolicy:
 # ---------------------------------------------------------------------------
 # H2OCache
 # ---------------------------------------------------------------------------
+
 
 class H2OCache:
     """Fixed-size KV cache that evicts light tokens via the H2O policy.
@@ -118,28 +115,27 @@ class H2OCache:
         self,
         max_size: int = 256,
         recent_window: int = 32,
-        eviction_policy: Optional[H2OEvictionPolicy] = None,
+        eviction_policy: H2OEvictionPolicy | None = None,
     ) -> None:
         if max_size < 1:
             raise ValueError(f"max_size must be ≥ 1, got {max_size}")
         if recent_window < 0:
             raise ValueError(f"recent_window must be ≥ 0, got {recent_window}")
 
-        self._k: int = max_size            # k  in paper
-        self._w: int = recent_window       # w  in paper
+        self._k: int = max_size  # k  in paper
+        self._w: int = recent_window  # w  in paper
         self._policy: H2OEvictionPolicy = (
-            eviction_policy if eviction_policy is not None
-            else H2OEvictionPolicy()
+            eviction_policy if eviction_policy is not None else H2OEvictionPolicy()
         )
 
         # Stored KV tensors.  Shape: (B, n_heads, cache_len, head_dim).
         # None until the first call to update().
-        self._keys:   Optional[Tensor] = None
-        self._values: Optional[Tensor] = None
+        self._keys: Tensor | None = None
+        self._values: Tensor | None = None
 
         # Cumulative importance scores s_j.
         # Shape: (B, n_heads, cache_len) — one per head per batch element.
-        self._scores: Optional[Tensor] = None
+        self._scores: Tensor | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -147,7 +143,7 @@ class H2OCache:
 
     def update(
         self,
-        new_key:   Tensor,
+        new_key: Tensor,
         new_value: Tensor,
         attn_scores_to_new_token: Tensor,
     ) -> None:
@@ -177,8 +173,7 @@ class H2OCache:
         # ---- shape validation ----------------------------------------
         if new_key.ndim != 4 or new_key.shape[2] != 1:
             raise ValueError(
-                f"new_key must have shape (B, n_heads, 1, head_dim), "
-                f"got {tuple(new_key.shape)}"
+                f"new_key must have shape (B, n_heads, 1, head_dim), got {tuple(new_key.shape)}"
             )
         if new_value.shape != new_key.shape:
             raise ValueError(
@@ -190,7 +185,7 @@ class H2OCache:
 
         if self._keys is None:
             # First token — initialise empty cache then append below.
-            self._keys   = new_key.clone()
+            self._keys = new_key.clone()
             self._values = new_value.clone()
             # score for this first token starts at 0
             self._scores = torch.zeros(B, H, 1, device=new_key.device, dtype=torch.float32)
@@ -212,9 +207,9 @@ class H2OCache:
         self._scores = self._scores + a_t  # broadcast over (B, H, cache_len)
 
         # ---- Step 3: append new token ----------------------------------
-        self._keys   = torch.cat([self._keys,   new_key],   dim=2)
+        self._keys = torch.cat([self._keys, new_key], dim=2)
         self._values = torch.cat([self._values, new_value], dim=2)
-        new_score    = torch.zeros(B, H, 1, device=new_key.device, dtype=torch.float32)
+        new_score = torch.zeros(B, H, 1, device=new_key.device, dtype=torch.float32)
         self._scores = torch.cat([self._scores, new_score], dim=2)
 
         # ---- Step 4: evict if over budget ------------------------------
@@ -222,7 +217,7 @@ class H2OCache:
         if new_cache_len > self._k:
             self._evict_one()
 
-    def get_kv(self) -> Tuple[Tensor, Tensor]:
+    def get_kv(self) -> tuple[Tensor, Tensor]:
         """Return the current cached keys and values.
 
         Returns:
@@ -233,9 +228,7 @@ class H2OCache:
             RuntimeError: if the cache is empty (no calls to ``update`` yet).
         """
         if self._keys is None:
-            raise RuntimeError(
-                "Cache is empty.  Call update() at least once before get_kv()."
-            )
+            raise RuntimeError("Cache is empty.  Call update() at least once before get_kv().")
         return self._keys, self._values
 
     @property
@@ -261,7 +254,7 @@ class H2OCache:
         # Build recent_mask: protect the last w positions.
         recent_mask = torch.zeros(cache_len, dtype=torch.bool)
         if self._w > 0:
-            recent_mask[-self._w:] = True
+            recent_mask[-self._w :] = True
 
         # When w >= k, every non-new position is protected; just drop index 0.
         # (This handles the degenerate case without raising in the policy.)
@@ -277,6 +270,6 @@ class H2OCache:
         keep = [i for i in range(cache_len) if i != evict_idx]
         keep_t = torch.tensor(keep, device=self._keys.device)
 
-        self._keys   = self._keys.index_select(2, keep_t)
+        self._keys = self._keys.index_select(2, keep_t)
         self._values = self._values.index_select(2, keep_t)
         self._scores = self._scores.index_select(2, keep_t)

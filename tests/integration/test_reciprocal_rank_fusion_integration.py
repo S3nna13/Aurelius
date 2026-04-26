@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from src.retrieval import (
     FUSION_REGISTRY,
+    RETRIEVER_REGISTRY,
     BM25Retriever,
     HybridRetriever,
-    RETRIEVER_REGISTRY,
     borda_count,
     comb_mnz,
     comb_sum,
@@ -53,9 +53,7 @@ def test_hybrid_retriever_regression_still_works():
         "reciprocal rank fusion combines rankers",
         "dense retrieval embeds text into vectors",
     ]
-    hybrid = HybridRetriever(
-        sparse_retriever=BM25Retriever(), embed_fn=_embed, fusion="rrf"
-    )
+    hybrid = HybridRetriever(sparse_retriever=BM25Retriever(), embed_fn=_embed, fusion="rrf")
     hybrid.add_documents(corpus)
     hits = hybrid.query("rank fusion", k=3)
     assert len(hits) == 3

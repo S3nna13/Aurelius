@@ -7,17 +7,16 @@ from __future__ import annotations
 
 import random as _random
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # DemonstrationExample
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DemonstrationExample:
@@ -25,7 +24,7 @@ class DemonstrationExample:
 
     input_ids: Tensor
     label_ids: Tensor
-    embedding: Optional[Tensor] = None
+    embedding: Tensor | None = None
     metadata: dict = field(default_factory=dict)
 
     def to_sequence(self, separator_id: int = 1) -> Tensor:
@@ -41,6 +40,7 @@ class DemonstrationExample:
 # ---------------------------------------------------------------------------
 # ExemplarSelector
 # ---------------------------------------------------------------------------
+
 
 def _cosine_sim(a: Tensor, b: Tensor) -> Tensor:
     """Cosine similarity between 1-D vectors a and b."""
@@ -64,20 +64,20 @@ class ExemplarSelector:
 
     def random_select(
         self,
-        pool: List[DemonstrationExample],
-        query_embedding: Optional[Tensor] = None,
-    ) -> List[DemonstrationExample]:
+        pool: list[DemonstrationExample],
+        query_embedding: Tensor | None = None,
+    ) -> list[DemonstrationExample]:
         """Return k randomly sampled examples (without replacement when possible)."""
         k = min(self.k, len(pool))
         return _random.sample(pool, k)
 
     def similarity_select(
         self,
-        pool: List[DemonstrationExample],
+        pool: list[DemonstrationExample],
         query_embedding: Tensor,
-    ) -> List[DemonstrationExample]:
+    ) -> list[DemonstrationExample]:
         """Return the top-k examples most similar to query_embedding."""
-        scored: List[tuple] = []
+        scored: list[tuple] = []
         for ex in pool:
             if ex.embedding is None:
                 raise ValueError("similarity_select requires every example to have an embedding.")
@@ -89,9 +89,9 @@ class ExemplarSelector:
 
     def diverse_select(
         self,
-        pool: List[DemonstrationExample],
+        pool: list[DemonstrationExample],
         query_embedding: Tensor,
-    ) -> List[DemonstrationExample]:
+    ) -> list[DemonstrationExample]:
         """Greedy diversity: start with most-similar, then maximise min-distance."""
         if not pool:
             return []
@@ -116,8 +116,7 @@ class ExemplarSelector:
             for idx in remaining:
                 emb_idx = pool[idx].embedding.float()
                 min_dist = min(
-                    float(1.0 - _cosine_sim(emb_idx, pool[s].embedding))
-                    for s in selected_indices
+                    float(1.0 - _cosine_sim(emb_idx, pool[s].embedding)) for s in selected_indices
                 )
                 if min_dist > best_score:
                     best_score = min_dist
@@ -129,9 +128,9 @@ class ExemplarSelector:
 
     def select(
         self,
-        pool: List[DemonstrationExample],
-        query_embedding: Optional[Tensor] = None,
-    ) -> List[DemonstrationExample]:
+        pool: list[DemonstrationExample],
+        query_embedding: Tensor | None = None,
+    ) -> list[DemonstrationExample]:
         """Dispatch to the configured selection method."""
         if self.method == "random":
             return self.random_select(pool, query_embedding)
@@ -150,13 +149,14 @@ class ExemplarSelector:
 # PromptOrdering
 # ---------------------------------------------------------------------------
 
+
 class PromptOrdering:
     """Reorder demonstrations for best ICL performance."""
 
     def __init__(self) -> None:
         pass
 
-    def random_order(self, examples: List[DemonstrationExample]) -> List[DemonstrationExample]:
+    def random_order(self, examples: list[DemonstrationExample]) -> list[DemonstrationExample]:
         """Return a shuffled copy."""
         shuffled = list(examples)
         _random.shuffle(shuffled)
@@ -164,10 +164,11 @@ class PromptOrdering:
 
     def similarity_order(
         self,
-        examples: List[DemonstrationExample],
+        examples: list[DemonstrationExample],
         query_embedding: Tensor,
-    ) -> List[DemonstrationExample]:
+    ) -> list[DemonstrationExample]:
         """Sort by cosine similarity to query -- most similar last (recency bias)."""
+
         def _sim(ex: DemonstrationExample) -> float:
             if ex.embedding is None:
                 raise ValueError("similarity_order requires every example to have an embedding.")
@@ -177,9 +178,9 @@ class PromptOrdering:
 
     def curriculum_order(
         self,
-        examples: List[DemonstrationExample],
-        difficulty_scores: List[float],
-    ) -> List[DemonstrationExample]:
+        examples: list[DemonstrationExample],
+        difficulty_scores: list[float],
+    ) -> list[DemonstrationExample]:
         """Sort easy-to-hard: ascending difficulty_scores."""
         if len(examples) != len(difficulty_scores):
             raise ValueError("examples and difficulty_scores must have the same length.")
@@ -191,6 +192,7 @@ class PromptOrdering:
 # ICLPromptBuilder
 # ---------------------------------------------------------------------------
 
+
 class ICLPromptBuilder:
     """Construct a full ICL prompt tensor from demonstrations + query."""
 
@@ -200,14 +202,14 @@ class ICLPromptBuilder:
 
     def build(
         self,
-        demonstrations: List[DemonstrationExample],
+        demonstrations: list[DemonstrationExample],
         query_ids: Tensor,
     ) -> Tensor:
-        """Concatenate demos (each followed by separator) then query; truncate from left if needed."""
+        """Concatenate demos (each followed by separator) then query; truncate from left if needed."""  # noqa: E501
         query_len = int(query_ids.shape[0])
 
         # Build individual demo sequences (each ends with separator)
-        demo_seqs: List[Tensor] = []
+        demo_seqs: list[Tensor] = []
         for demo in demonstrations:
             seq = demo.to_sequence(self.separator_id)
             sep = torch.tensor([self.separator_id], dtype=query_ids.dtype)
@@ -215,7 +217,7 @@ class ICLPromptBuilder:
 
         # Greedy right-to-left packing: always include query, add demos from last
         budget = self.max_length - query_len
-        selected_demo_seqs: List[Tensor] = []
+        selected_demo_seqs: list[Tensor] = []
         for seq in reversed(demo_seqs):
             if budget >= int(seq.shape[0]):
                 selected_demo_seqs.insert(0, seq)
@@ -225,12 +227,12 @@ class ICLPromptBuilder:
         result = torch.cat(parts, dim=0)
         # Hard truncation from the left as safety net
         if result.shape[0] > self.max_length:
-            result = result[-self.max_length:]
+            result = result[-self.max_length :]
         return result
 
     def n_shots_that_fit(
         self,
-        demonstrations: List[DemonstrationExample],
+        demonstrations: list[DemonstrationExample],
         query_ids: Tensor,
     ) -> int:
         """Maximum k such that the first k demonstrations + query fit in max_length."""
@@ -254,6 +256,7 @@ class ICLPromptBuilder:
 # ICLScorer  (model-scoring utilities, avoids name collision with built-ins)
 # ---------------------------------------------------------------------------
 
+
 class ICLScorer:
     """Score ICL prompts using a language model (forward/backward capable)."""
 
@@ -265,12 +268,12 @@ class ICLScorer:
         self.model.train(False)
         with torch.no_grad():
             full_ids = torch.cat([prompt_ids, label_ids], dim=0)  # (T,)
-            input_ids = full_ids.unsqueeze(0)                      # (1, T)
+            input_ids = full_ids.unsqueeze(0)  # (1, T)
 
-            logits = self.model(input_ids)                         # (1, T, V)
-            logits = logits.squeeze(0)                             # (T, V)
+            logits = self.model(input_ids)  # (1, T, V)
+            logits = logits.squeeze(0)  # (T, V)
 
-            log_probs = F.log_softmax(logits, dim=-1)              # (T, V)
+            log_probs = F.log_softmax(logits, dim=-1)  # (T, V)
 
             prompt_len = int(prompt_ids.shape[0])
             label_len = int(label_ids.shape[0])
@@ -284,9 +287,9 @@ class ICLScorer:
 
     def accuracy(
         self,
-        prompts: List[Tensor],
-        labels: List[Tensor],
-        candidates: List[List[Tensor]],
+        prompts: list[Tensor],
+        labels: list[Tensor],
+        candidates: list[list[Tensor]],
     ) -> float:
         """Predict completion via argmax scoring; return fraction correct."""
         if not prompts:
@@ -302,8 +305,8 @@ class ICLScorer:
 
     def calibration_bias(
         self,
-        prompts: List[Tensor],
-        labels: List[Tensor],
+        prompts: list[Tensor],
+        labels: list[Tensor],
     ) -> float:
         """Estimate calibration bias relative to a content-free (empty) context."""
         if not prompts:
@@ -321,6 +324,8 @@ class ICLScorer:
 # ICLEvaluator  (alias kept for API compatibility)
 # ---------------------------------------------------------------------------
 
+
 class ICLEvaluator(ICLScorer):
     """Alias for ICLScorer -- evaluates ICL performance via model scoring."""
+
     pass

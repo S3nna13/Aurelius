@@ -5,9 +5,6 @@ Test configuration: n_layers=4, d_model=64, vocab_size=256  (tiny, fast).
 
 from __future__ import annotations
 
-import math
-from typing import List
-
 import pytest
 import torch
 import torch.nn as nn
@@ -27,8 +24,8 @@ from src.inference.calm import (
 N_LAYERS = 4
 D_MODEL = 64
 VOCAB_SIZE = 256
-B = 2   # batch size
-T = 5   # sequence length
+B = 2  # batch size
+T = 5  # sequence length
 
 
 def _make_lm_head(d_model: int = D_MODEL, vocab_size: int = VOCAB_SIZE) -> nn.Linear:
@@ -43,7 +40,7 @@ def _make_layer_outputs(
     seq_len: int = T,
     d_model: int = D_MODEL,
     seed: int = 42,
-) -> List[Tensor]:
+) -> list[Tensor]:
     torch.manual_seed(seed)
     return [torch.randn(batch, seq_len, d_model) for _ in range(n_layers)]
 
@@ -64,8 +61,8 @@ def _uniform_logits(vocab_size: int = VOCAB_SIZE) -> Tensor:
 # CALMConfidenceScorer tests (1-4)
 # ---------------------------------------------------------------------------
 
-class TestCALMConfidenceScorer:
 
+class TestCALMConfidenceScorer:
     @pytest.mark.parametrize("method", ["softmax_max", "softmax_entropy"])
     def test_output_in_unit_interval(self, method: str) -> None:
         """Test 1 & 2: Both methods return score ∈ [0, 1]."""
@@ -114,8 +111,8 @@ class TestCALMConfidenceScorer:
 # CALMEarlyExitDecoder tests (5-12)
 # ---------------------------------------------------------------------------
 
-class TestCALMEarlyExitDecoder:
 
+class TestCALMEarlyExitDecoder:
     def test_exits_at_correct_layer_when_threshold_met(self) -> None:
         """Test 5: Decoder exits at the first layer that meets the threshold."""
         lm_head = _make_lm_head()
@@ -148,7 +145,7 @@ class TestCALMEarlyExitDecoder:
         )
         _, exit_layer, _ = decoder.forward(layer_outputs, lm_head)
         assert exit_layer == N_LAYERS - 1, (
-            f"Expected exit at layer {N_LAYERS-1}, got {exit_layer}"
+            f"Expected exit at layer {N_LAYERS - 1}, got {exit_layer}"
         )
 
     def test_exit_layer_in_valid_range(self) -> None:
@@ -156,9 +153,7 @@ class TestCALMEarlyExitDecoder:
         lm_head = _make_lm_head()
         for threshold in [0.0, 0.5, 0.9, 1.01]:
             layer_outputs = _make_layer_outputs(seed=threshold * 100)
-            decoder = CALMEarlyExitDecoder(
-                n_layers=N_LAYERS, threshold=threshold
-            )
+            decoder = CALMEarlyExitDecoder(n_layers=N_LAYERS, threshold=threshold)
             _, exit_layer, _ = decoder.forward(layer_outputs, lm_head)
             assert 0 <= exit_layer <= N_LAYERS - 1, (
                 f"exit_layer {exit_layer} out of range for threshold={threshold}"
@@ -221,7 +216,7 @@ class TestCALMEarlyExitDecoder:
         decoder = CALMEarlyExitDecoder(n_layers=N_LAYERS, threshold=1.01)
         _, exit_layer, _ = decoder.forward(lo, lm_head)
         assert exit_layer == N_LAYERS - 1, (
-            f"Expected exit at layer {N_LAYERS-1}, got {exit_layer}"
+            f"Expected exit at layer {N_LAYERS - 1}, got {exit_layer}"
         )
 
     def test_wrong_number_of_layer_outputs_raises(self) -> None:
@@ -237,15 +232,11 @@ class TestCALMEarlyExitDecoder:
 # CALMCalibrator tests (14-15)
 # ---------------------------------------------------------------------------
 
-class TestCALMCalibrator:
 
-    def _make_calibration_set(
-        self, n_examples: int = 20, seed: int = 7
-    ) -> List[List[Tensor]]:
+class TestCALMCalibrator:
+    def _make_calibration_set(self, n_examples: int = 20, seed: int = 7) -> list[list[Tensor]]:
         torch.manual_seed(seed)
-        return [
-            _make_layer_outputs(seed=seed + i) for i in range(n_examples)
-        ]
+        return [_make_layer_outputs(seed=seed + i) for i in range(n_examples)]
 
     def test_returned_threshold_in_unit_interval(self) -> None:
         """Test 14: Calibrated λ is in [0, 1]."""
@@ -262,18 +253,16 @@ class TestCALMCalibrator:
         cal_set = self._make_calibration_set()
         calibrator = CALMCalibrator()
         λ_high = calibrator.calibrate(cal_set, lm_head, target_coverage=0.99)
-        λ_low  = calibrator.calibrate(cal_set, lm_head, target_coverage=0.50)
-        assert λ_low <= λ_high, (
-            f"Expected λ_low ({λ_low:.4f}) <= λ_high ({λ_high:.4f})"
-        )
+        λ_low = calibrator.calibrate(cal_set, lm_head, target_coverage=0.50)
+        assert λ_low <= λ_high, f"Expected λ_low ({λ_low:.4f}) <= λ_high ({λ_high:.4f})"
 
 
 # ---------------------------------------------------------------------------
 # CALMDecoder tests (16-17)
 # ---------------------------------------------------------------------------
 
-class TestCALMDecoder:
 
+class TestCALMDecoder:
     def test_easy_inputs_exit_early(self) -> None:
         """Test 16: On easy (peaked) inputs, avg exit layer < n_layers - 1."""
         lm_head = _make_lm_head()
@@ -289,7 +278,7 @@ class TestCALMDecoder:
             threshold=0.5,
             confidence_method="softmax_max",
         )
-        all_exit_layers: List[int] = []
+        all_exit_layers: list[int] = []
         # Simulate multiple decoding steps (each with same easy inputs)
         for _ in range(10):
             _, exit_layers, confidences = decoder.decode_step(layer_outputs)
@@ -298,9 +287,7 @@ class TestCALMDecoder:
                 assert 0.0 <= c <= 1.0
 
         avg = CALMDecoder.average_exit_layer(all_exit_layers)
-        assert avg < N_LAYERS - 1, (
-            f"Expected average exit layer < {N_LAYERS - 1}, got {avg}"
-        )
+        assert avg < N_LAYERS - 1, f"Expected average exit layer < {N_LAYERS - 1}, got {avg}"
 
     def test_average_exit_layer_empty_raises(self) -> None:
         """Defensive: empty exit_layers list raises ValueError."""
@@ -311,9 +298,7 @@ class TestCALMDecoder:
         """Test 17: decode_step returns correct output shapes."""
         lm_head = _make_lm_head()
         lo = _make_layer_outputs()
-        decoder = CALMDecoder(
-            n_layers=N_LAYERS, lm_head=lm_head, threshold=0.8
-        )
+        decoder = CALMDecoder(n_layers=N_LAYERS, lm_head=lm_head, threshold=0.8)
         token_ids, exit_layers, confidences = decoder.decode_step(lo)
         assert token_ids.shape == (B, T)
         assert token_ids.dtype == torch.long

@@ -2,26 +2,24 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.serving.responses_api import (
     RESPONSE_COMPLETED,
     RESPONSE_CREATED,
     RESPONSES_API_REGISTRY,
     InputItem,
     ResponseOutputItem,
-    ResponseTool,
     ResponsesAPIHandler,
     ResponsesAPIModel,
     ResponsesAPIRequest,
     ResponsesAPIResponse,
     ResponsesAPIValidator,
+    ResponseTool,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _valid_request(**overrides) -> ResponsesAPIRequest:
     defaults = dict(
@@ -35,6 +33,7 @@ def _valid_request(**overrides) -> ResponsesAPIRequest:
 # ---------------------------------------------------------------------------
 # Dataclass construction
 # ---------------------------------------------------------------------------
+
 
 class TestDataclassConstruction:
     def test_request_defaults(self):
@@ -85,6 +84,7 @@ class TestDataclassConstruction:
 # ResponsesAPIModel enum
 # ---------------------------------------------------------------------------
 
+
 class TestResponsesAPIModel:
     def test_enum_has_aurelius_base(self):
         assert ResponsesAPIModel.base.value == "aurelius-base"
@@ -102,6 +102,7 @@ class TestResponsesAPIModel:
 # ---------------------------------------------------------------------------
 # Validator — request
 # ---------------------------------------------------------------------------
+
 
 class TestValidatorRequest:
     def setup_method(self):
@@ -157,6 +158,7 @@ class TestValidatorRequest:
 # Validator — response
 # ---------------------------------------------------------------------------
 
+
 class TestValidatorResponse:
     def setup_method(self):
         self.v = ResponsesAPIValidator()
@@ -169,6 +171,7 @@ class TestValidatorResponse:
 
     def test_empty_id_returns_error(self):
         import time
+
         resp = ResponsesAPIResponse(
             id="",
             model="aurelius-base",
@@ -184,6 +187,7 @@ class TestValidatorResponse:
 # ---------------------------------------------------------------------------
 # Handler — create_response
 # ---------------------------------------------------------------------------
+
 
 class TestHandlerCreateResponse:
     def setup_method(self):
@@ -232,6 +236,7 @@ class TestHandlerCreateResponse:
 # Handler — stream_events
 # ---------------------------------------------------------------------------
 
+
 class TestHandlerStreamEvents:
     def setup_method(self):
         self.handler = ResponsesAPIHandler()
@@ -261,6 +266,7 @@ class TestHandlerStreamEvents:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_responses_api_registry_contains_default(self):

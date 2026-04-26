@@ -11,8 +11,8 @@ import pytest
 
 import src.retrieval as retrieval_pkg
 from src.retrieval import (
-    BM25Retriever,
     HARD_NEGATIVE_STRATEGIES,
+    BM25Retriever,
     HardNegative,
     HardNegativeMiner,
 )

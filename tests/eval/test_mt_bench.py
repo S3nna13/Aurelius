@@ -5,25 +5,27 @@ from __future__ import annotations
 import pytest
 
 from src.eval.mt_bench import (
+    JudgeModel,
     MTBenchCategory,
     MTBenchEvaluator,
     MTBenchQuestion,
     MTBenchResult,
-    JudgeModel,
     build_judge_prompt,
     extract_score_from_text,
     get_sample_questions,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def make_generate_fn(response: str = "Score: 8"):
     """Return a deterministic generate function."""
+
     def generate_fn(prompt: str) -> str:
         return response
+
     return generate_fn
 
 
@@ -31,7 +33,9 @@ def make_judge(response: str = "Score: 8") -> JudgeModel:
     return JudgeModel(generate_fn=make_generate_fn(response))
 
 
-def make_evaluator(model_response: str = "This is a great answer.", judge_response: str = "Score: 8"):
+def make_evaluator(
+    model_response: str = "This is a great answer.", judge_response: str = "Score: 8"
+):
     """Build an evaluator where model returns model_response and judge returns judge_response."""
     judge = make_judge(judge_response)
     # model generate_fn always returns model_response; judge uses its own generate_fn internally
@@ -42,6 +46,7 @@ def make_evaluator(model_response: str = "This is a great answer.", judge_respon
 # 1. extract_score_from_text — "Score: 7" -> 7.0
 # ---------------------------------------------------------------------------
 
+
 def test_extract_score_from_score_prefix():
     assert extract_score_from_text("Score: 7") == pytest.approx(7.0)
 
@@ -49,6 +54,7 @@ def test_extract_score_from_score_prefix():
 # ---------------------------------------------------------------------------
 # 2. extract_score_from_text — "Rating: 9" -> 9.0
 # ---------------------------------------------------------------------------
+
 
 def test_extract_score_from_rating_prefix():
     assert extract_score_from_text("Rating: 9") == pytest.approx(9.0)
@@ -58,6 +64,7 @@ def test_extract_score_from_rating_prefix():
 # 3. extract_score_from_text — "8/10" -> 8.0
 # ---------------------------------------------------------------------------
 
+
 def test_extract_score_from_slash_ten():
     assert extract_score_from_text("The model scored 8/10 overall.") == pytest.approx(8.0)
 
@@ -66,6 +73,7 @@ def test_extract_score_from_slash_ten():
 # 4. extract_score_from_text — garbage returns None
 # ---------------------------------------------------------------------------
 
+
 def test_extract_score_returns_none_on_garbage():
     assert extract_score_from_text("no numeric score here at all!") is None
 
@@ -73,6 +81,7 @@ def test_extract_score_returns_none_on_garbage():
 # ---------------------------------------------------------------------------
 # 5. build_judge_prompt — contains question and response text
 # ---------------------------------------------------------------------------
+
 
 def test_build_judge_prompt_contains_question_and_response():
     q = "What is 2 + 2?"
@@ -86,6 +95,7 @@ def test_build_judge_prompt_contains_question_and_response():
 # 6. build_judge_prompt — instructs "Score: X" output
 # ---------------------------------------------------------------------------
 
+
 def test_build_judge_prompt_instructs_score_output():
     prompt = build_judge_prompt("q", "r")
     assert "Score:" in prompt
@@ -94,6 +104,7 @@ def test_build_judge_prompt_instructs_score_output():
 # ---------------------------------------------------------------------------
 # 7. JudgeModel.score_response — returns float in [1, 10]
 # ---------------------------------------------------------------------------
+
 
 def test_judge_model_score_response_returns_float_in_range():
     judge = make_judge("Score: 6")
@@ -106,6 +117,7 @@ def test_judge_model_score_response_returns_float_in_range():
 # 8. JudgeModel with mock returning "Score: 8" -> 8.0
 # ---------------------------------------------------------------------------
 
+
 def test_judge_model_score_response_parses_correctly():
     judge = make_judge("Score: 8")
     score = judge.score_response("question", "response", "general")
@@ -115,6 +127,7 @@ def test_judge_model_score_response_parses_correctly():
 # ---------------------------------------------------------------------------
 # 9. score_multi_turn length matches input
 # ---------------------------------------------------------------------------
+
 
 def test_score_multi_turn_length_matches_input():
     judge = make_judge("Score: 7")
@@ -127,6 +140,7 @@ def test_score_multi_turn_length_matches_input():
 # ---------------------------------------------------------------------------
 # 10. MTBenchQuestion dataclass creation
 # ---------------------------------------------------------------------------
+
 
 def test_mtbench_question_dataclass_creation():
     q = MTBenchQuestion(
@@ -145,6 +159,7 @@ def test_mtbench_question_dataclass_creation():
 # 11. MTBenchResult mean_score computed correctly
 # ---------------------------------------------------------------------------
 
+
 def test_mtbench_result_mean_score_computed():
     result = MTBenchResult(
         question_id=1,
@@ -158,6 +173,7 @@ def test_mtbench_result_mean_score_computed():
 # ---------------------------------------------------------------------------
 # 12. MTBenchEvaluator.evaluate_question returns MTBenchResult
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_question_returns_mtbench_result():
     evaluator = make_evaluator(judge_response="Score: 7")
@@ -175,12 +191,10 @@ def test_evaluate_question_returns_mtbench_result():
 # 13. evaluate_all length matches input questions
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_all_length_matches_input():
     evaluator = make_evaluator(judge_response="Score: 5")
-    questions = [
-        MTBenchQuestion(question_id=i, category="math", turns=[f"Q{i}"])
-        for i in range(4)
-    ]
+    questions = [MTBenchQuestion(question_id=i, category="math", turns=[f"Q{i}"]) for i in range(4)]
     results = evaluator.evaluate_all(questions)
     assert len(results) == len(questions)
 
@@ -188,6 +202,7 @@ def test_evaluate_all_length_matches_input():
 # ---------------------------------------------------------------------------
 # 14. compute_summary keys (overall_score, per_category, n_questions)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_summary_has_required_keys():
     evaluator = make_evaluator(judge_response="Score: 8")
@@ -206,6 +221,7 @@ def test_compute_summary_has_required_keys():
 # 15. compute_summary overall_score in [0, 10]
 # ---------------------------------------------------------------------------
 
+
 def test_compute_summary_overall_score_in_range():
     evaluator = make_evaluator(judge_response="Score: 9")
     questions = [MTBenchQuestion(question_id=1, category="stem", turns=["Q"])]
@@ -218,11 +234,11 @@ def test_compute_summary_overall_score_in_range():
 # 16. compute_summary n_questions matches
 # ---------------------------------------------------------------------------
 
+
 def test_compute_summary_n_questions_matches():
     evaluator = make_evaluator(judge_response="Score: 6")
     questions = [
-        MTBenchQuestion(question_id=i, category="reasoning", turns=[f"Q{i}"])
-        for i in range(5)
+        MTBenchQuestion(question_id=i, category="reasoning", turns=[f"Q{i}"]) for i in range(5)
     ]
     results = evaluator.evaluate_all(questions)
     summary = evaluator.compute_summary(results)
@@ -232,6 +248,7 @@ def test_compute_summary_n_questions_matches():
 # ---------------------------------------------------------------------------
 # 17. get_sample_questions returns list of MTBenchQuestion
 # ---------------------------------------------------------------------------
+
 
 def test_get_sample_questions_returns_list_of_mtbench_questions():
     questions = get_sample_questions()
@@ -244,6 +261,7 @@ def test_get_sample_questions_returns_list_of_mtbench_questions():
 # ---------------------------------------------------------------------------
 # 18. per_category contains correct categories from evaluated questions
 # ---------------------------------------------------------------------------
+
 
 def test_compute_summary_per_category_contains_correct_categories():
     evaluator = make_evaluator(judge_response="Score: 7")
@@ -262,6 +280,7 @@ def test_compute_summary_per_category_contains_correct_categories():
 # 19. score default 5.0 when no score parseable
 # ---------------------------------------------------------------------------
 
+
 def test_score_default_5_when_no_score_parseable():
     judge = make_judge("No score here, just chatter.")
     score = judge.score_response("question", "response", "general")
@@ -271,6 +290,7 @@ def test_score_default_5_when_no_score_parseable():
 # ---------------------------------------------------------------------------
 # 20. MTBenchResult scores list length matches turns
 # ---------------------------------------------------------------------------
+
 
 def test_mtbench_result_scores_length_matches_turns():
     evaluator = make_evaluator(judge_response="Score: 8")

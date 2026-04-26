@@ -7,16 +7,14 @@ common token-id prefixes, supporting LRU, LFU, and FIFO eviction policies.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
-import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CacheConfig:
@@ -32,8 +30,7 @@ class CacheConfig:
         valid_policies = {"lru", "lfu", "fifo"}
         if self.eviction_policy not in valid_policies:
             raise ValueError(
-                f"eviction_policy must be one of {valid_policies}, "
-                f"got {self.eviction_policy!r}"
+                f"eviction_policy must be one of {valid_policies}, got {self.eviction_policy!r}"
             )
 
 
@@ -41,17 +38,18 @@ class CacheConfig:
 # Cache key
 # ---------------------------------------------------------------------------
 
+
 class CacheKey:
     """Hashable wrapper around a tuple of token ids."""
 
     __slots__ = ("_ids",)
 
-    def __init__(self, token_ids: Tuple[int, ...]) -> None:
-        self._ids: Tuple[int, ...] = tuple(token_ids)
+    def __init__(self, token_ids: tuple[int, ...]) -> None:
+        self._ids: tuple[int, ...] = tuple(token_ids)
 
     # expose the underlying tuple for iteration / slicing in helpers
     @property
-    def ids(self) -> Tuple[int, ...]:
+    def ids(self) -> tuple[int, ...]:
         return self._ids
 
     def __hash__(self) -> int:
@@ -73,38 +71,38 @@ class CacheKey:
 # Cache entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CacheEntry:
     """One cached prefix entry."""
 
     key: CacheKey
-    kv_states: List[Tensor]          # one tensor per layer
+    kv_states: list[Tensor]  # one tensor per layer
     hit_count: int = 0
-    timestamp: float = 0.0           # creation time (or last-access for LRU)
+    timestamp: float = 0.0  # creation time (or last-access for LRU)
 
 
 # ---------------------------------------------------------------------------
 # Main cache
 # ---------------------------------------------------------------------------
 
+
 class PrefixCache:
     """Cache that maps token-id prefixes to pre-computed KV states."""
 
     def __init__(self, config: CacheConfig) -> None:
         self.config = config
-        self._store: Dict[CacheKey, CacheEntry] = {}
+        self._store: dict[CacheKey, CacheEntry] = {}
         self._total_hits: int = 0
         self._total_lookups: int = 0
         # FIFO: we track insertion order via a list of keys
-        self._insertion_order: List[CacheKey] = []
+        self._insertion_order: list[CacheKey] = []
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def lookup(
-        self, token_ids: List[int]
-    ) -> Optional[Tuple[int, List[Tensor]]]:
+    def lookup(self, token_ids: list[int]) -> tuple[int, list[Tensor]] | None:
         """Find the longest cached prefix of *token_ids*.
 
         Returns ``(prefix_len, kv_states)`` on a hit, or ``None`` on a miss.
@@ -112,7 +110,7 @@ class PrefixCache:
         """
         self._total_lookups += 1
 
-        best_key: Optional[CacheKey] = None
+        best_key: CacheKey | None = None
         best_len: int = 0
 
         for key, entry in self._store.items():
@@ -131,7 +129,7 @@ class PrefixCache:
         self._total_hits += 1
         return best_len, entry.kv_states
 
-    def store(self, token_ids: List[int], kv_states: List[Tensor]) -> None:
+    def store(self, token_ids: list[int], kv_states: list[Tensor]) -> None:
         """Store *kv_states* keyed by *token_ids*.
 
         Silently ignores sequences longer than ``max_prefix_len``.
@@ -192,9 +190,7 @@ class PrefixCache:
             else:
                 return  # nothing to evict
 
-        self._insertion_order = [
-            k for k in self._insertion_order if k != victim.key
-        ]
+        self._insertion_order = [k for k in self._insertion_order if k != victim.key]
         del self._store[victim.key]
 
     def hit_rate(self) -> float:
@@ -219,9 +215,8 @@ class PrefixCache:
 # Utility functions
 # ---------------------------------------------------------------------------
 
-def compute_prefix_savings(
-    original_len: int, cached_prefix_len: int, n_layers: int
-) -> float:
+
+def compute_prefix_savings(original_len: int, cached_prefix_len: int, n_layers: int) -> float:
     """Fraction of KV computation saved by reusing a cached prefix.
 
     ``savings = (cached_prefix_len * n_layers) / (original_len * n_layers)``
@@ -234,7 +229,7 @@ def compute_prefix_savings(
     return float(max(0.0, min(1.0, savings)))
 
 
-def find_common_prefix(sequences: List[List[int]]) -> List[int]:
+def find_common_prefix(sequences: list[list[int]]) -> list[int]:
     """Return the longest common prefix shared by **all** *sequences*.
 
     Returns an empty list when *sequences* is empty or no common prefix exists.
@@ -242,7 +237,7 @@ def find_common_prefix(sequences: List[List[int]]) -> List[int]:
     if not sequences:
         return []
 
-    prefix: List[int] = []
+    prefix: list[int] = []
     for tokens in zip(*sequences):
         if len(set(tokens)) == 1:
             prefix.append(tokens[0])

@@ -1,4 +1,5 @@
 """Prompt template engine for dynamic prompt construction."""
+
 from __future__ import annotations
 
 import re
@@ -17,6 +18,7 @@ class PromptTemplate:
         def replacer(match: re.Match) -> str:
             key = match.group(1)
             return str(kwargs.get(key, match.group(0)))
+
         return self._pattern.sub(replacer, self.template)
 
     def variables(self) -> list[str]:

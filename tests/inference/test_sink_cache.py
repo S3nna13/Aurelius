@@ -19,7 +19,9 @@ def test_sink_window_indices_handles_short_sequence():
 def test_compress_kv_cache_reduces_sequence_length():
     keys = torch.randn(1, 10, 2, 4)
     values = torch.randn(1, 10, 2, 4)
-    compressed_k, compressed_v, indices = compress_kv_cache(keys, values, sink_tokens=2, window_size=3)
+    compressed_k, compressed_v, indices = compress_kv_cache(
+        keys, values, sink_tokens=2, window_size=3
+    )
     assert compressed_k.shape[1] == len(indices)
     assert compressed_v.shape[1] == len(indices)
 

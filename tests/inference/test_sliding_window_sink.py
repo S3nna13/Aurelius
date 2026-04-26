@@ -14,7 +14,6 @@ from src.inference.sliding_window_sink import (
 )
 from src.model.config import AureliusConfig
 
-
 TINY_CFG = AureliusConfig(
     n_layers=2,
     d_model=64,

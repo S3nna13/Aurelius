@@ -4,30 +4,31 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any
 
 
 @dataclass
 class DataSource:
     name: str
-    data: List[Dict]            # list of {"input_ids": ..., "labels": ...} or similar
-    weight: float = 1.0         # initial sampling weight
-    domain: str = "general"     # domain label for domain-aware mixing
-    metadata: Dict = field(default_factory=dict)
+    data: list[dict]  # list of {"input_ids": ..., "labels": ...} or similar
+    weight: float = 1.0  # initial sampling weight
+    domain: str = "general"  # domain label for domain-aware mixing
+    metadata: dict = field(default_factory=dict)
 
 
 @dataclass
 class MixerConfig:
     strategy: str = "weighted"  # "weighted" | "proportional" | "curriculum" | "domain_aware"
-    temperature: float = 1.0    # for softmax weighting (higher = more uniform)
-    min_weight: float = 0.01    # minimum weight per source
+    temperature: float = 1.0  # for softmax weighting (higher = more uniform)
+    min_weight: float = 0.01  # minimum weight per source
     curriculum_steps: int = 1000
-    domain_weights: Dict[str, float] = field(default_factory=dict)
+    domain_weights: dict[str, float] = field(default_factory=dict)
     seed: int = 42
 
 
-def normalize_weights(weights: List[float], temperature: float = 1.0) -> List[float]:
+def normalize_weights(weights: list[float], temperature: float = 1.0) -> list[float]:
     """
     Normalize weights to sum to 1.0 with temperature scaling.
     Temperature > 1 → more uniform; temperature < 1 → sharper.
@@ -46,16 +47,16 @@ def normalize_weights(weights: List[float], temperature: float = 1.0) -> List[fl
 
 
 def compute_proportional_weights(
-    source_sizes: List[int],
-    alpha: float = 0.7,          # exponent for size weighting (1.0=proportional, 0.5=sqrt)
-) -> List[float]:
+    source_sizes: list[int],
+    alpha: float = 0.7,  # exponent for size weighting (1.0=proportional, 0.5=sqrt)
+) -> list[float]:
     """
     Compute weights proportional to dataset_size^alpha.
     Larger datasets get more weight, but not fully proportional (avoid dominance).
     """
     if not source_sizes:
         return []
-    powered = [s ** alpha for s in source_sizes]
+    powered = [s**alpha for s in source_sizes]
     total = sum(powered)
     if total == 0:
         n = len(source_sizes)
@@ -64,9 +65,9 @@ def compute_proportional_weights(
 
 
 def compute_domain_weights(
-    sources: List[DataSource],
-    domain_config: Dict[str, float],  # domain_name → target weight
-) -> List[float]:
+    sources: list[DataSource],
+    domain_config: dict[str, float],  # domain_name → target weight
+) -> list[float]:
     """
     Compute per-source weights based on domain assignments.
     Sources in the same domain share their domain's total weight equally.
@@ -75,7 +76,7 @@ def compute_domain_weights(
         return []
 
     # Count sources per domain
-    domain_counts: Dict[str, int] = {}
+    domain_counts: dict[str, int] = {}
     for src in sources:
         domain_counts[src.domain] = domain_counts.get(src.domain, 0) + 1
 
@@ -113,8 +114,8 @@ class CurriculumScheduler:
 
     def __init__(
         self,
-        sources: List[DataSource],
-        easy_domains: Optional[List[str]] = None,  # domains to prioritize early
+        sources: list[DataSource],
+        easy_domains: list[str] | None = None,  # domains to prioritize early
         n_steps: int = 1000,
         warmup_fraction: float = 0.3,
     ):
@@ -125,18 +126,18 @@ class CurriculumScheduler:
         self._warmup_steps = int(n_steps * warmup_fraction)
 
         # Precompute base weights: easy_domains boosted at step 0, faded by end
-        n = len(sources)
+        len(sources)
         self._easy_indices = [i for i, s in enumerate(sources) if s.domain in self.easy_domains]
         self._hard_indices = [i for i, s in enumerate(sources) if s.domain not in self.easy_domains]
 
-    def get_weights(self, step: int) -> List[float]:
+    def get_weights(self, step: int) -> list[float]:
         """Return current mixing weights at given step."""
         n = len(self.sources)
         if n == 0:
             return []
 
         # Progress from 0.0 (step=0) to 1.0 (step=n_steps)
-        progress = min(step / max(self.n_steps, 1), 1.0)
+        min(step / max(self.n_steps, 1), 1.0)
 
         weights = []
         for i, src in enumerate(self.sources):
@@ -144,7 +145,9 @@ class CurriculumScheduler:
             if i in self._easy_indices:
                 # Easy domains: boosted early (factor 2→1 over warmup, then 1→0.5 after)
                 if step <= self._warmup_steps:
-                    boost = 2.0 - (step / max(self._warmup_steps, 1)) if self._warmup_steps > 0 else 1.0
+                    boost = (
+                        2.0 - (step / max(self._warmup_steps, 1)) if self._warmup_steps > 0 else 1.0
+                    )
                 else:
                     post = (step - self._warmup_steps) / max(self.n_steps - self._warmup_steps, 1)
                     boost = 1.0 - 0.5 * post
@@ -152,7 +155,11 @@ class CurriculumScheduler:
             else:
                 # Hard domains: suppressed early, boosted late
                 if step <= self._warmup_steps:
-                    suppress = 0.5 + 0.5 * (step / max(self._warmup_steps, 1)) if self._warmup_steps > 0 else 1.0
+                    suppress = (
+                        0.5 + 0.5 * (step / max(self._warmup_steps, 1))
+                        if self._warmup_steps > 0
+                        else 1.0
+                    )
                 else:
                     post = (step - self._warmup_steps) / max(self.n_steps - self._warmup_steps, 1)
                     suppress = 1.0 + 0.5 * post
@@ -176,7 +183,7 @@ class DatasetMixer:
 
     def __init__(
         self,
-        sources: List[DataSource],
+        sources: list[DataSource],
         config: MixerConfig = None,
     ):
         self.sources = sources
@@ -184,8 +191,8 @@ class DatasetMixer:
         self._rng = random.Random(self.config.seed)
 
         # Per-source indices for cycling
-        self._indices: List[List[int]] = []
-        self._cursors: List[int] = []
+        self._indices: list[list[int]] = []
+        self._cursors: list[int] = []
         for src in sources:
             idx = list(range(len(src.data)))
             self._rng.shuffle(idx)
@@ -193,14 +200,14 @@ class DatasetMixer:
             self._cursors.append(0)
 
         # Weight history and stats
-        self._weight_history: List[Dict[str, float]] = []
-        self._stats: Dict[str, int] = {src.name: 0 for src in sources}
+        self._weight_history: list[dict[str, float]] = []
+        self._stats: dict[str, int] = {src.name: 0 for src in sources}
 
         # Curriculum scheduler (only for curriculum strategy)
-        self._curriculum: Optional[CurriculumScheduler] = None
+        self._curriculum: CurriculumScheduler | None = None
         if self.config.strategy == "curriculum":
             # Treat sources with lower index as "easy" if no domain specified
-            easy_domains = list({s.domain for s in sources[:max(1, len(sources) // 2)]})
+            easy_domains = list({s.domain for s in sources[: max(1, len(sources) // 2)]})
             self._curriculum = CurriculumScheduler(
                 sources=sources,
                 easy_domains=easy_domains,
@@ -208,9 +215,9 @@ class DatasetMixer:
             )
 
         # Dynamic weights (mutable copy of source weights)
-        self._weights: Dict[str, float] = {src.name: src.weight for src in sources}
+        self._weights: dict[str, float] = {src.name: src.weight for src in sources}
 
-    def _sample_source(self, weights: List[float]) -> int:
+    def _sample_source(self, weights: list[float]) -> int:
         """Weighted random selection of source index."""
         r = self._rng.random()
         cumulative = 0.0
@@ -220,7 +227,7 @@ class DatasetMixer:
                 return i
         return len(weights) - 1
 
-    def _get_current_weights(self, step: int = 0) -> List[float]:
+    def _get_current_weights(self, step: int = 0) -> list[float]:
         """Get weights for current step (accounts for curriculum)."""
         strategy = self.config.strategy
 
@@ -242,7 +249,7 @@ class DatasetMixer:
         total = sum(clipped)
         return [w / total for w in clipped]
 
-    def _next_example(self, source_idx: int) -> Dict:
+    def _next_example(self, source_idx: int) -> dict:
         """Get the next example from a source, cycling when exhausted."""
         src = self.sources[source_idx]
         cursor = self._cursors[source_idx]
@@ -258,7 +265,7 @@ class DatasetMixer:
         self._cursors[source_idx] = cursor + 1
         return example
 
-    def __iter__(self) -> Iterator[Dict]:
+    def __iter__(self) -> Iterator[dict]:
         """Infinite iterator yielding examples from mixed sources."""
         step = 0
         while True:
@@ -273,13 +280,13 @@ class DatasetMixer:
         self,
         batch_size: int,
         step: int = 0,
-    ) -> Tuple[List[Dict], List[str]]:
+    ) -> tuple[list[dict], list[str]]:
         """
         Sample a batch of examples.
         Returns (examples, source_names) so caller knows which source each came from.
         """
-        examples: List[Dict] = []
-        source_names: List[str] = []
+        examples: list[dict] = []
+        source_names: list[str] = []
 
         weights = self._get_current_weights(step)
         for _ in range(batch_size):
@@ -299,17 +306,19 @@ class DatasetMixer:
         old_weight = self._weights[source_name]
         self._weights[source_name] = new_weight
         # Record history
-        self._weight_history.append({
-            "source": source_name,
-            "old_weight": old_weight,
-            "new_weight": new_weight,
-        })
+        self._weight_history.append(
+            {
+                "source": source_name,
+                "old_weight": old_weight,
+                "new_weight": new_weight,
+            }
+        )
 
-    def get_weight_history(self) -> List[Dict[str, float]]:
+    def get_weight_history(self) -> list[dict[str, float]]:
         """Return history of weight adjustments."""
         return list(self._weight_history)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Return sampling statistics: {source_name: sample_count, ...}"""
         return dict(self._stats)
 
@@ -322,14 +331,14 @@ class AdaptiveMixer(DatasetMixer):
 
     def __init__(
         self,
-        sources: List[DataSource],
+        sources: list[DataSource],
         config: MixerConfig = None,
         adaptation_rate: float = 0.1,
     ):
         super().__init__(sources, config)
         self.adaptation_rate = adaptation_rate
         # Track EMA of losses per source
-        self._ema_losses: Dict[str, float] = {src.name: 1.0 for src in sources}
+        self._ema_losses: dict[str, float] = {src.name: 1.0 for src in sources}
 
     def update_from_loss(
         self,
@@ -351,6 +360,6 @@ class AdaptiveMixer(DatasetMixer):
         # Update the mixer weight to reflect EMA loss (higher loss → higher weight)
         self.update_weights(source_name, new_ema)
 
-    def get_adapted_weights(self) -> Dict[str, float]:
+    def get_adapted_weights(self) -> dict[str, float]:
         """Return current adapted weights per source."""
         return {name: self._weights[name] for name in self._weights}

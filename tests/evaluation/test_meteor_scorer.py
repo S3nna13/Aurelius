@@ -1,4 +1,5 @@
 """Tests for meteor_scorer — METEOR evaluation metric."""
+
 from __future__ import annotations
 
 import pytest

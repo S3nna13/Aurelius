@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.retrieval.hybrid_fusion_v2 import (
+    HYBRID_FUSION_REGISTRY,
     FusionResult,
     FusionStrategy,
-    HYBRID_FUSION_REGISTRY,
     HybridFusionV2,
 )
-
 
 # ---------------------------------------------------------------------------
 # FusionStrategy enum
 # ---------------------------------------------------------------------------
+
 
 class TestFusionStrategy:
     def test_rrf_value(self):
@@ -36,6 +34,7 @@ class TestFusionStrategy:
 # ---------------------------------------------------------------------------
 # FusionResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestFusionResult:
     def test_fields(self):
@@ -65,6 +64,7 @@ class TestFusionResult:
 # ---------------------------------------------------------------------------
 # HybridFusionV2.fuse — LINEAR strategy
 # ---------------------------------------------------------------------------
+
 
 class TestHybridFusionV2Linear:
     def setup_method(self):
@@ -126,6 +126,7 @@ class TestHybridFusionV2Linear:
 # HybridFusionV2.fuse — CONVEX strategy
 # ---------------------------------------------------------------------------
 
+
 class TestHybridFusionV2Convex:
     def test_convex_result_between_sparse_and_dense(self):
         fuser = HybridFusionV2(strategy=FusionStrategy.CONVEX, alpha=0.5)
@@ -156,6 +157,7 @@ class TestHybridFusionV2Convex:
 # ---------------------------------------------------------------------------
 # HybridFusionV2.fuse — RRF strategy
 # ---------------------------------------------------------------------------
+
 
 class TestHybridFusionV2RRF:
     def setup_method(self):
@@ -198,6 +200,7 @@ class TestHybridFusionV2RRF:
 # ---------------------------------------------------------------------------
 # HybridFusionV2.tune_alpha
 # ---------------------------------------------------------------------------
+
 
 class TestHybridFusionV2TuneAlpha:
     def setup_method(self):
@@ -247,6 +250,7 @@ class TestHybridFusionV2TuneAlpha:
 # ---------------------------------------------------------------------------
 # HYBRID_FUSION_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestHybridFusionRegistry:
     def test_has_rrf(self):

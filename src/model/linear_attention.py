@@ -25,19 +25,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LinearAttnConfig:
     d_model: int = 64
     n_heads: int = 2
     head_dim: int = 32
-    feature_map: str = "elu"      # "elu" | "relu" | "random_fourier"
-    n_features: int = 64          # used only for random_fourier / orf / rff
-    method: str = "orf"           # "orf" | "rff" — for random_features()
+    feature_map: str = "elu"  # "elu" | "relu" | "random_fourier"
+    n_features: int = 64  # used only for random_fourier / orf / rff
+    method: str = "orf"  # "orf" | "rff" — for random_features()
     causal: bool = True
     eps: float = 1e-6
 
@@ -45,6 +45,7 @@ class LinearAttnConfig:
 # ---------------------------------------------------------------------------
 # Feature maps
 # ---------------------------------------------------------------------------
+
 
 def elu_feature_map(x: Tensor) -> Tensor:
     """ELU+1 feature map: ELU(x) + 1 (always positive)."""
@@ -57,9 +58,9 @@ def relu_feature_map(x: Tensor) -> Tensor:
 
 
 def random_fourier_features(
-    x: Tensor,      # (..., D)
+    x: Tensor,  # (..., D)
     omega: Tensor,  # (D, n_features)
-    bias: Tensor,   # (n_features,)
+    bias: Tensor,  # (n_features,)
 ) -> Tensor:
     """Random Fourier Features: cos(x @ omega + bias) * sqrt(2 / n_features).
 
@@ -75,10 +76,11 @@ def random_fourier_features(
 # Core attention functions
 # ---------------------------------------------------------------------------
 
+
 def linear_attention_causal(
-    q: Tensor,      # (B, H, T, D_k) — feature-mapped queries
-    k: Tensor,      # (B, H, T, D_k) — feature-mapped keys
-    v: Tensor,      # (B, H, T, D_v)
+    q: Tensor,  # (B, H, T, D_k) — feature-mapped queries
+    k: Tensor,  # (B, H, T, D_k) — feature-mapped keys
+    v: Tensor,  # (B, H, T, D_v)
     eps: float = 1e-6,
 ) -> Tensor:
     """Causal linear attention via sequential scan.
@@ -97,14 +99,14 @@ def linear_attention_causal(
     B, H, T, D_k = q.shape
     D_v = v.shape[-1]
 
-    S = q.new_zeros(B, H, D_k, D_v)   # running KV state
-    z = q.new_zeros(B, H, D_k)         # running key normaliser
+    S = q.new_zeros(B, H, D_k, D_v)  # running KV state
+    z = q.new_zeros(B, H, D_k)  # running key normaliser
 
     outputs = []
     for t in range(T):
-        k_t = k[:, :, t, :]    # (B, H, D_k)
-        v_t = v[:, :, t, :]    # (B, H, D_v)
-        q_t = q[:, :, t, :]    # (B, H, D_k)
+        k_t = k[:, :, t, :]  # (B, H, D_k)
+        v_t = v[:, :, t, :]  # (B, H, D_v)
+        q_t = q[:, :, t, :]  # (B, H, D_k)
 
         # Outer product update: (B, H, D_k, 1) * (B, H, 1, D_v) -> (B, H, D_k, D_v)
         S = S + torch.einsum("bhd,bhe->bhde", k_t, v_t)
@@ -115,15 +117,15 @@ def linear_attention_causal(
         # Denominator: q_t · z  -> (B, H, 1)
         den = (torch.einsum("bhd,bhd->bh", q_t, z) + eps).unsqueeze(-1)
 
-        outputs.append((num / den).unsqueeze(2))   # (B, H, 1, D_v)
+        outputs.append((num / den).unsqueeze(2))  # (B, H, 1, D_v)
 
-    return torch.cat(outputs, dim=2)   # (B, H, T, D_v)
+    return torch.cat(outputs, dim=2)  # (B, H, T, D_v)
 
 
 def linear_attention_noncausal(
-    q: Tensor,      # (B, H, T, D_k)
-    k: Tensor,      # (B, H, T, D_k)
-    v: Tensor,      # (B, H, T, D_v)
+    q: Tensor,  # (B, H, T, D_k)
+    k: Tensor,  # (B, H, T, D_k)
+    v: Tensor,  # (B, H, T, D_v)
     eps: float = 1e-6,
 ) -> Tensor:
     """Non-causal linear attention: O(T*D²) instead of O(T²).
@@ -144,12 +146,13 @@ def linear_attention_noncausal(
     # Denominator: (B, H, T, D_k) * (B, H, 1, D_k) -> (B, H, T, 1)
     den = (torch.einsum("bhtd,bhd->bht", q, z) + eps).unsqueeze(-1)
 
-    return num / den   # (B, H, T, D_v)
+    return num / den  # (B, H, T, D_v)
 
 
 # ---------------------------------------------------------------------------
 # Module
 # ---------------------------------------------------------------------------
+
 
 class LinearAttention(nn.Module):
     """Multi-head linear attention with configurable kernel feature map."""
@@ -195,17 +198,17 @@ class LinearAttention(nn.Module):
 
         # Project and reshape to (B, H, T, head_dim)
         def _proj_reshape(proj: nn.Linear) -> Tensor:
-            out = proj(x)                      # (B, T, H*hd)
-            out = out.view(B, T, H, hd)        # (B, T, H, hd)
-            return out.permute(0, 2, 1, 3)     # (B, H, T, hd)
+            out = proj(x)  # (B, T, H*hd)
+            out = out.view(B, T, H, hd)  # (B, T, H, hd)
+            return out.permute(0, 2, 1, 3)  # (B, H, T, hd)
 
         q = _proj_reshape(self.q_proj)
         k = _proj_reshape(self.k_proj)
         v = _proj_reshape(self.v_proj)
 
         # Apply feature maps to Q and K
-        q = self.apply_feature_map(q)   # (B, H, T, hd)
-        k = self.apply_feature_map(k)   # (B, H, T, hd)
+        q = self.apply_feature_map(q)  # (B, H, T, hd)
+        k = self.apply_feature_map(k)  # (B, H, T, hd)
 
         # Attention
         if self.cfg.causal:
@@ -215,16 +218,17 @@ class LinearAttention(nn.Module):
 
         # y: (B, H, T, hd) -> (B, T, H*hd)
         y = y.permute(0, 2, 1, 3).contiguous().view(B, T, H * hd)
-        return self.out_proj(y)   # (B, T, D)
+        return self.out_proj(y)  # (B, T, D)
 
 
 # ---------------------------------------------------------------------------
 # FAVOR+ / Performer random feature maps
 # ---------------------------------------------------------------------------
 
+
 def random_features(
-    query: Tensor,          # (B, H, T, head_dim)
-    key: Tensor,            # (B, H, T, head_dim)
+    query: Tensor,  # (B, H, T, head_dim)
+    key: Tensor,  # (B, H, T, head_dim)
     n_features: int,
     method: str = "orf",
 ) -> tuple[Tensor, Tensor]:
@@ -285,9 +289,9 @@ def random_features(
 
 
 def linear_attention(
-    q_prime: Tensor,    # (B, H, T, n_features)
-    k_prime: Tensor,    # (B, H, T, n_features)
-    v: Tensor,          # (B, H, T, head_dim)
+    q_prime: Tensor,  # (B, H, T, n_features)
+    k_prime: Tensor,  # (B, H, T, n_features)
+    v: Tensor,  # (B, H, T, head_dim)
     causal: bool = True,
     eps: float = 1e-6,
 ) -> Tensor:
@@ -307,6 +311,7 @@ def linear_attention(
 # ---------------------------------------------------------------------------
 # LinearAttentionLayer — drop-in replacement using FAVOR+ random features
 # ---------------------------------------------------------------------------
+
 
 class LinearAttentionLayer(nn.Module):
     """Drop-in linear attention layer using FAVOR+ random feature maps.
@@ -335,27 +340,26 @@ class LinearAttentionLayer(nn.Module):
         hd = self._head_dim
 
         def _reshape(proj: nn.Linear) -> Tensor:
-            out = proj(x)                    # (B, T, H*hd)
-            out = out.view(B, T, H, hd)      # (B, T, H, hd)
-            return out.permute(0, 2, 1, 3)   # (B, H, T, hd)
+            out = proj(x)  # (B, T, H*hd)
+            out = out.view(B, T, H, hd)  # (B, T, H, hd)
+            return out.permute(0, 2, 1, 3)  # (B, H, T, hd)
 
         q = _reshape(self.q_proj)
         k = _reshape(self.k_proj)
         v = _reshape(self.v_proj)
 
-        q_prime, k_prime = random_features(
-            q, k, self.config.n_features, method=self.config.method
-        )
+        q_prime, k_prime = random_features(q, k, self.config.n_features, method=self.config.method)
 
         y = linear_attention(q_prime, k_prime, v, causal=self.config.causal)
         # y: (B, H, T, hd) -> (B, T, H*hd)
         y = y.permute(0, 2, 1, 3).contiguous().view(B, T, H * hd)
-        return self.out_proj(y)   # (B, T, d_model)
+        return self.out_proj(y)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # Approximation error helper
 # ---------------------------------------------------------------------------
+
 
 def attention_approximation_error(
     exact_attn: Tensor,
@@ -376,6 +380,7 @@ def attention_approximation_error(
 # Complexity helper
 # ---------------------------------------------------------------------------
 
+
 def compute_linear_attention_complexity(T: int, D: int, H: int) -> dict[str, int]:
     """Return ops counts for linear vs standard attention.
 
@@ -391,6 +396,7 @@ def compute_linear_attention_complexity(T: int, D: int, H: int) -> dict[str, int
 # ---------------------------------------------------------------------------
 # Transformer block
 # ---------------------------------------------------------------------------
+
 
 class LinearAttentionBlock(nn.Module):
     """Pre-norm transformer block using linear attention."""

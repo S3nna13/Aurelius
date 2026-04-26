@@ -54,12 +54,10 @@ def test_end_to_end_two_problem_score():
     )
 
     completions = [
-        ["def add(a, b):\n    return a + b\n"],   # correct
-        ["def mul(a, b):\n    return a + b\n"],   # wrong
+        ["def add(a, b):\n    return a + b\n"],  # correct
+        ["def mul(a, b):\n    return a + b\n"],  # wrong
     ]
 
-    out = score_problems(
-        [p1, p2], completions, k_values=[1], max_workers=2, timeout_seconds=5.0
-    )
+    out = score_problems([p1, p2], completions, k_values=[1], max_workers=2, timeout_seconds=5.0)
     assert out["n_problems"] == 2
     assert out["pass@1"] == pytest.approx(0.5)

@@ -6,17 +6,18 @@ Tiny inline reward models; n_obj=2, B=2, T=4, d_model=16.
 """
 
 import math
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.multi_objective_rlhf import (
+    MOConfig,
+    MOPPOTrainer,
     MultiObjectiveReward,
     ParetoFront,
-    WeightSampler,
-    MOPPOTrainer,
     RewardWeightScheduler,
-    MOConfig,
+    WeightSampler,
 )
 
 # ---------------------------------------------------------------------------
@@ -184,10 +185,10 @@ def test_pareto_front_get_pareto_front_removes_dominated():
     pf = ParetoFront()
     # A dominates B
     w_a = torch.tensor([0.5, 0.5])
-    r_a = torch.tensor([1.0, 1.0])   # dominates everything below
+    r_a = torch.tensor([1.0, 1.0])  # dominates everything below
 
     w_b = torch.tensor([0.5, 0.5])
-    r_b = torch.tensor([0.3, 0.3])   # dominated by A
+    r_b = torch.tensor([0.3, 0.3])  # dominated by A
 
     pf.update(w_a, r_a, loss=0.2)
     pf.update(w_b, r_b, loss=0.8)
@@ -360,7 +361,7 @@ def test_reward_weight_scheduler_alternating_cycles():
 
 def test_reward_weight_scheduler_output_sums_to_one():
     """All schedule types produce weight vectors summing to 1."""
-    ids = make_input_ids()
+    make_input_ids()
     for schedule in ("uniform", "alternating", "random"):
         sched = RewardWeightScheduler(N_OBJ, schedule=schedule)
         for t in range(5):

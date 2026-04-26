@@ -1,21 +1,20 @@
 """Tests for src.memory.long_term_memory — 25+ tests."""
+
 from __future__ import annotations
 
-import math
 import time
 
 import pytest
 
 from src.memory.long_term_memory import (
-    LTMEntry,
-    LongTermMemory,
-    LONG_TERM_MEMORY,
-    _MAX_KEY_LEN,
-    _MAX_VALUE_STR_LEN,
     _MAX_CAPACITY,
+    _MAX_KEY_LEN,
     _MAX_TAGS,
+    _MAX_VALUE_STR_LEN,
+    LONG_TERM_MEMORY,
+    LongTermMemory,
+    LTMEntry,
 )
-
 
 # ---------------------------------------------------------------------------
 # LTMEntry construction and basic validation
@@ -221,7 +220,7 @@ def test_capacity_eviction_on_overflow():
     ltm.store("a", 1, importance=0.5)
     ltm.store("b", 2, importance=0.5)
     ltm.store("c", 3, importance=0.5)
-    ltm.store("d", 4, importance=0.5)   # must evict one
+    ltm.store("d", 4, importance=0.5)  # must evict one
     assert len(ltm) == 3
 
 

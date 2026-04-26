@@ -1,7 +1,5 @@
 """Tests for Kirchenbauer et al. style LLM watermarking."""
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
@@ -15,10 +13,10 @@ from src.inference.watermark import (
     detect_watermark,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def config():
@@ -48,6 +46,7 @@ class DummyModel(nn.Module):
 # WatermarkConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = WatermarkConfig()
     assert cfg.gamma == 0.25
@@ -67,6 +66,7 @@ def test_config_custom_values():
 # ---------------------------------------------------------------------------
 # compute_green_list
 # ---------------------------------------------------------------------------
+
 
 def test_green_list_size_default(config):
     gl = compute_green_list(0, config.vocab_size, config.gamma, config.seed)
@@ -107,6 +107,7 @@ def test_green_list_indices_in_range(config):
 # apply_watermark
 # ---------------------------------------------------------------------------
 
+
 def test_apply_watermark_increases_green_logits(config):
     logits = torch.zeros(config.vocab_size)
     result = apply_watermark(logits, 10, config)
@@ -140,6 +141,7 @@ def test_apply_watermark_does_not_modify_input(config):
 # ---------------------------------------------------------------------------
 # detect_watermark
 # ---------------------------------------------------------------------------
+
 
 def test_detect_watermark_high_green_fraction(config_large):
     """All-green tokens should give green_fraction close to 1.0."""
@@ -220,6 +222,7 @@ def test_detect_watermark_returns_required_keys(config):
 # WatermarkGenerator
 # ---------------------------------------------------------------------------
 
+
 def test_generator_returns_tensor():
     cfg = WatermarkConfig(vocab_size=256)
     model = DummyModel(vocab_size=256)
@@ -262,6 +265,7 @@ def test_generator_accepts_2d_input():
 # ---------------------------------------------------------------------------
 # WatermarkDetector class
 # ---------------------------------------------------------------------------
+
 
 def test_detector_returns_dict(config):
     det = WatermarkDetector(config)

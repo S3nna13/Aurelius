@@ -6,7 +6,6 @@ Config: n_layers=4, n_heads=2, d_head=8, total_budget=64
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.adaptive_kv_budget import (
@@ -26,7 +25,7 @@ D_HEAD = 8
 TOTAL_BUDGET = 64
 MIN_BUDGET = 16
 
-B = 2   # batch size
+B = 2  # batch size
 T = 10  # sequence length for KV tensors
 
 
@@ -43,6 +42,7 @@ def make_kv(b: int = B, h: int = N_HEADS, t: int = T, d: int = D_HEAD) -> torch.
 # ===========================================================================
 # AttentionPatternStats
 # ===========================================================================
+
 
 class TestAttentionPatternStatsUpdateCount:
     """Test 1 — update() increments update_count."""
@@ -106,6 +106,7 @@ class TestAttentionPatternStatsEntropyProfile:
 # KVBudgetAllocator
 # ===========================================================================
 
+
 class TestKVBudgetAllocatorUniformShape:
     """Test 6 — allocate_uniform returns a list of length n_layers."""
 
@@ -121,9 +122,7 @@ class TestKVBudgetAllocatorUniformSum:
     def test_uniform_allocation_sum(self):
         alloc = KVBudgetAllocator(N_LAYERS, TOTAL_BUDGET, MIN_BUDGET)
         budgets = alloc.allocate_uniform()
-        assert sum(budgets) == TOTAL_BUDGET, (
-            f"Expected sum={TOTAL_BUDGET}, got {sum(budgets)}"
-        )
+        assert sum(budgets) == TOTAL_BUDGET, f"Expected sum={TOTAL_BUDGET}, got {sum(budgets)}"
 
 
 class TestKVBudgetAllocatorByEntropyShape:
@@ -153,6 +152,7 @@ class TestKVBudgetAllocatorByEntropyMinimum:
 # ===========================================================================
 # LayerKVCache
 # ===========================================================================
+
 
 class TestLayerKVCacheUpdateShape:
     """Test 10 — update returns (B, H, ≤budget, d_head) tensors."""
@@ -225,6 +225,7 @@ class TestLayerKVCacheClear:
 # ===========================================================================
 # AdaptiveKVCacheManager
 # ===========================================================================
+
 
 class TestAdaptiveKVCacheManagerUpdateLayer:
     """Test 14 — update_layer returns a tensor pair."""

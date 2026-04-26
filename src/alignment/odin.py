@@ -19,9 +19,7 @@ Pure PyTorch implementation following the same conventions as dpo.py.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -49,7 +47,7 @@ class ODINConfig:
     """
 
     beta: float = 0.1
-    length_penalty: float = 1.0   # λ — weight for length penalty
+    length_penalty: float = 1.0  # λ — weight for length penalty
     normalize_length: bool = True  # divide log-ratios by sequence length
 
 
@@ -83,13 +81,13 @@ class ODINLoss(nn.Module):
 
     def forward(
         self,
-        chosen_log_probs: torch.Tensor,      # (B, T_w)  per-token log π_θ(y_w|x)
-        rejected_log_probs: torch.Tensor,    # (B, T_l)  per-token log π_θ(y_l|x)
+        chosen_log_probs: torch.Tensor,  # (B, T_w)  per-token log π_θ(y_w|x)
+        rejected_log_probs: torch.Tensor,  # (B, T_l)  per-token log π_θ(y_l|x)
         ref_chosen_log_probs: torch.Tensor,  # (B, T_w)  per-token log π_ref(y_w|x)
-        ref_rejected_log_probs: torch.Tensor,# (B, T_l)  per-token log π_ref(y_l|x)
-        chosen_mask: torch.Tensor,           # (B, T_w)  valid-token mask
-        rejected_mask: torch.Tensor,         # (B, T_l)  valid-token mask
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        ref_rejected_log_probs: torch.Tensor,  # (B, T_l)  per-token log π_ref(y_l|x)
+        chosen_mask: torch.Tensor,  # (B, T_w)  valid-token mask
+        rejected_mask: torch.Tensor,  # (B, T_l)  valid-token mask
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute ODIN loss.
 
         Args:
@@ -111,8 +109,8 @@ class ODINLoss(nn.Module):
         rejected_mask_f = rejected_mask.float()
 
         # Sequence lengths (number of valid tokens per example)
-        chosen_len = chosen_mask_f.sum(dim=-1).clamp(min=1.0)    # (B,)
-        rejected_len = rejected_mask_f.sum(dim=-1).clamp(min=1.0) # (B,)
+        chosen_len = chosen_mask_f.sum(dim=-1).clamp(min=1.0)  # (B,)
+        rejected_len = rejected_mask_f.sum(dim=-1).clamp(min=1.0)  # (B,)
 
         # Sum per-token log-probs over valid positions → (B,)
         pi_chosen_sum = (chosen_log_probs * chosen_mask_f).sum(dim=-1)
@@ -121,8 +119,8 @@ class ODINLoss(nn.Module):
         ref_rejected_sum = (ref_rejected_log_probs * rejected_mask_f).sum(dim=-1)
 
         # Implicit rewards: r_i = log π_θ(y_i|x) − log π_ref(y_i|x)
-        r_chosen = pi_chosen_sum - ref_chosen_sum       # (B,)
-        r_rejected = pi_rejected_sum - ref_rejected_sum # (B,)
+        r_chosen = pi_chosen_sum - ref_chosen_sum  # (B,)
+        r_rejected = pi_rejected_sum - ref_rejected_sum  # (B,)
 
         # Length normalisation: divide by |y_i| (and scale by λ)
         if cfg.normalize_length:
@@ -130,16 +128,16 @@ class ODINLoss(nn.Module):
             r_rejected = r_rejected / (rejected_len * cfg.length_penalty)
 
         # ODIN preference margin and loss (equation 4, arXiv:2402.07319)
-        margin = cfg.beta * (r_chosen - r_rejected)   # (B,)
+        margin = cfg.beta * (r_chosen - r_rejected)  # (B,)
         loss = -F.logsigmoid(margin).mean()
 
         # Detach rewards for metrics to avoid holding onto the computation graph
         with torch.no_grad():
-            metrics: Dict[str, float] = {
-                "chosen_reward":   r_chosen.mean().item(),
+            metrics: dict[str, float] = {
+                "chosen_reward": r_chosen.mean().item(),
                 "rejected_reward": r_rejected.mean().item(),
-                "reward_margin":   (r_chosen - r_rejected).mean().item(),
-                "chosen_length":   chosen_len.mean().item(),
+                "reward_margin": (r_chosen - r_rejected).mean().item(),
+                "chosen_length": chosen_len.mean().item(),
                 "rejected_length": rejected_len.mean().item(),
             }
 

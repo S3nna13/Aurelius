@@ -8,17 +8,15 @@ Pure PyTorch only — no transformers, einops, or other external deps.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ContrastivePairCollector
 # ---------------------------------------------------------------------------
+
 
 class ContrastivePairCollector:
     """Collect activations from positive/negative concept pairs.
@@ -63,6 +61,7 @@ class ContrastivePairCollector:
 # ConceptVectorExtractor
 # ---------------------------------------------------------------------------
 
+
 class ConceptVectorExtractor:
     """Extract a concept direction from contrastive activation pairs.
 
@@ -74,7 +73,9 @@ class ConceptVectorExtractor:
 
     def __init__(self, method: str = "mean_diff") -> None:
         if method not in ("mean_diff", "pca", "logistic"):
-            raise ValueError(f"Unknown method: {method!r}. Choose 'mean_diff', 'pca', or 'logistic'.")
+            raise ValueError(
+                f"Unknown method: {method!r}. Choose 'mean_diff', 'pca', or 'logistic'."
+            )
         self.method = method
 
     # ------------------------------------------------------------------
@@ -125,11 +126,14 @@ class ConceptVectorExtractor:
         """
         N_pos = pos.shape[0]
         N_neg = neg.shape[0]
-        X = torch.cat([pos, neg], dim=0).float()          # (N_pos+N_neg, D)
-        y = torch.cat([
-            torch.ones(N_pos, 1),
-            torch.zeros(N_neg, 1),
-        ], dim=0)                                           # (N_pos+N_neg, 1)
+        X = torch.cat([pos, neg], dim=0).float()  # (N_pos+N_neg, D)
+        y = torch.cat(
+            [
+                torch.ones(N_pos, 1),
+                torch.zeros(N_neg, 1),
+            ],
+            dim=0,
+        )  # (N_pos+N_neg, 1)
 
         linear = nn.Linear(X.shape[1], 1, bias=True)
         nn.init.zeros_(linear.weight)
@@ -139,7 +143,7 @@ class ConceptVectorExtractor:
 
         for _ in range(n_steps):
             optimizer.zero_grad()
-            logits = linear(X)                              # (N, 1)
+            logits = linear(X)  # (N, 1)
             loss = F.binary_cross_entropy_with_logits(logits, y)
             loss.backward()
             optimizer.step()
@@ -174,6 +178,7 @@ class ConceptVectorExtractor:
 # ActivationHook
 # ---------------------------------------------------------------------------
 
+
 class ActivationHook:
     """PyTorch forward hook that captures or modifies layer activations.
 
@@ -188,10 +193,10 @@ class ActivationHook:
             raise ValueError(f"Unknown mode: {mode!r}. Choose 'capture', 'add', or 'project_out'.")
         self.layer_idx = layer_idx
         self.mode = mode
-        self.captured: Optional[Tensor] = None
-        self.steering_vector: Optional[Tensor] = None
+        self.captured: Tensor | None = None
+        self.steering_vector: Tensor | None = None
         self.alpha: float = 1.0
-        self.handle: Optional[torch.utils.hooks.RemovableHook] = None
+        self.handle: torch.utils.hooks.RemovableHook | None = None
 
     def hook_fn(self, module: nn.Module, input: tuple, output: Tensor) -> Tensor:
         """Forward hook callback.
@@ -258,6 +263,7 @@ class ActivationHook:
 # ---------------------------------------------------------------------------
 # ActivationSteerer
 # ---------------------------------------------------------------------------
+
 
 class ActivationSteerer:
     """Apply concept-vector steering to a model at inference time.
@@ -332,6 +338,7 @@ class ActivationSteerer:
 # SteeringEffect
 # ---------------------------------------------------------------------------
 
+
 class SteeringEffect:
     """Measure the effect of activation steering on model output distributions."""
 
@@ -360,11 +367,11 @@ class SteeringEffect:
             steered_logits = steered_logits.unsqueeze(0)
 
         # Last position
-        orig_last = original_logits[:, -1, :]   # (B, V)
-        steer_last = steered_logits[:, -1, :]   # (B, V)
+        orig_last = original_logits[:, -1, :]  # (B, V)
+        steer_last = steered_logits[:, -1, :]  # (B, V)
 
-        orig_lp = F.log_softmax(orig_last.float(), dim=-1)[:, target_token]   # (B,)
-        steer_lp = F.log_softmax(steer_last.float(), dim=-1)[:, target_token] # (B,)
+        orig_lp = F.log_softmax(orig_last.float(), dim=-1)[:, target_token]  # (B,)
+        steer_lp = F.log_softmax(steer_last.float(), dim=-1)[:, target_token]  # (B,)
 
         return (steer_lp - orig_lp).mean().item()
 
@@ -386,13 +393,13 @@ class SteeringEffect:
             original_logits = original_logits.unsqueeze(0)
             steered_logits = steered_logits.unsqueeze(0)
 
-        orig_last = original_logits[:, -1, :].float()    # (B, V)
-        steer_last = steered_logits[:, -1, :].float()    # (B, V)
+        orig_last = original_logits[:, -1, :].float()  # (B, V)
+        steer_last = steered_logits[:, -1, :].float()  # (B, V)
 
         # KL(P || Q) where P = original, Q = steered
-        p_log = F.log_softmax(orig_last, dim=-1)   # (B, V)
+        p_log = F.log_softmax(orig_last, dim=-1)  # (B, V)
         q_log = F.log_softmax(steer_last, dim=-1)  # (B, V)
-        p = p_log.exp()                             # (B, V)
+        p = p_log.exp()  # (B, V)
 
         # Sum over vocab, mean over batch
         kl = (p * (p_log - q_log)).sum(dim=-1).mean()
@@ -418,8 +425,8 @@ class SteeringEffect:
             original_logits = original_logits.unsqueeze(0)
             steered_logits = steered_logits.unsqueeze(0)
 
-        orig_last = original_logits[:, -1, :]    # (B, V)
-        steer_last = steered_logits[:, -1, :]    # (B, V)
+        orig_last = original_logits[:, -1, :]  # (B, V)
+        steer_last = steered_logits[:, -1, :]  # (B, V)
 
         batch_size = orig_last.shape[0]
         total_jaccard = 0.0

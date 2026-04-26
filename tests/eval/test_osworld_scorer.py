@@ -5,16 +5,12 @@ OSWorld: Xie et al. 2024 (2406.14800, Apache-2.0), clean-room reimplementation.
 
 from __future__ import annotations
 
-import pytest
-
 from src.eval.osworld_scorer import (
     OSWORLD_TASK_REGISTRY,
-    OSWorldMetrics,
     OSWorldResult,
     OSWorldScorer,
     OSWorldTask,
 )
-
 
 # ---------------------------------------------------------------------------
 # Dataclass defaults
@@ -36,7 +32,11 @@ def test_osworld_task_defaults() -> None:
 def test_osworld_task_all_difficulties() -> None:
     for diff in ("easy", "medium", "hard"):
         task = OSWorldTask(
-            task_id="t", app="a", instruction="i", reference_answers=[], difficulty=diff  # type: ignore[arg-type]
+            task_id="t",
+            app="a",
+            instruction="i",
+            reference_answers=[],
+            difficulty=diff,  # type: ignore[arg-type]
         )
         assert task.difficulty == diff
 
@@ -179,9 +179,9 @@ def test_score_batch_by_app_groups_correctly() -> None:
     scorer = OSWorldScorer()
     tasks = _make_tasks()
     results = [
-        OSWorldResult("t1", "chrome", True, 1),   # chrome pass
-        OSWorldResult("t2", "vscode", False, 2),   # vscode fail
-        OSWorldResult("t3", "chrome", True, 3),    # chrome pass
+        OSWorldResult("t1", "chrome", True, 1),  # chrome pass
+        OSWorldResult("t2", "vscode", False, 2),  # vscode fail
+        OSWorldResult("t3", "chrome", True, 3),  # chrome pass
         OSWorldResult("t4", "terminal", True, 4),  # terminal pass
     ]
     metrics = scorer.score_batch(results, tasks)
@@ -262,9 +262,8 @@ def test_osworld_task_registry_covers_all_difficulties() -> None:
 
 def test_benchmark_registry_contains_osworld() -> None:
     """BENCHMARK_REGISTRY in src.eval must have 'osworld' key after import."""
-    from src.eval import BENCHMARK_REGISTRY  # noqa: PLC0415
-
     # osworld_scorer registers itself on import; trigger it.
     import src.eval.osworld_scorer  # noqa: F401, PLC0415
+    from src.eval import BENCHMARK_REGISTRY  # noqa: PLC0415
 
     assert "osworld" in BENCHMARK_REGISTRY

@@ -9,6 +9,7 @@ Pure PyTorch only — no external attention libraries.
 """
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -48,8 +49,8 @@ class AttentionMaskBuilder:
             (T, T) bool tensor.
         """
         T = self.seq_len
-        rows = torch.arange(T, device=self.device).unsqueeze(1)   # (T, 1)
-        cols = torch.arange(T, device=self.device).unsqueeze(0)   # (1, T)
+        rows = torch.arange(T, device=self.device).unsqueeze(1)  # (T, 1)
+        cols = torch.arange(T, device=self.device).unsqueeze(0)  # (1, T)
         # causal: col <= row
         causal = cols <= rows
         # window: col >= row - window_size + 1
@@ -67,8 +68,8 @@ class AttentionMaskBuilder:
             (T, T) bool tensor.
         """
         T = self.seq_len
-        rows = torch.arange(T, device=self.device).unsqueeze(1)   # (T, 1)
-        cols = torch.arange(T, device=self.device).unsqueeze(0)   # (1, T)
+        rows = torch.arange(T, device=self.device).unsqueeze(1)  # (T, 1)
+        cols = torch.arange(T, device=self.device).unsqueeze(0)  # (1, T)
 
         causal = cols <= rows
         local = cols >= (rows - window_size + 1)
@@ -88,17 +89,17 @@ class AttentionMaskBuilder:
             (T, T) bool tensor.
         """
         T = self.seq_len
-        rows = torch.arange(T, device=self.device).unsqueeze(1)   # (T, 1)
-        cols = torch.arange(T, device=self.device).unsqueeze(0)   # (1, T)
+        rows = torch.arange(T, device=self.device).unsqueeze(1)  # (T, 1)
+        cols = torch.arange(T, device=self.device).unsqueeze(0)  # (1, T)
 
         causal = cols <= rows
 
         # Rule 1: global rows attend everywhere (causal)
-        is_global_row = rows < n_global          # (T, 1) broadcasts
+        is_global_row = rows < n_global  # (T, 1) broadcasts
         global_row_mask = is_global_row & causal
 
         # Rule 2: all rows can attend to global columns (causal)
-        is_global_col = cols < n_global          # (1, T) broadcasts
+        is_global_col = cols < n_global  # (1, T) broadcasts
         global_col_mask = is_global_col & causal
 
         # Rule 3: local window
@@ -110,6 +111,7 @@ class AttentionMaskBuilder:
 # ---------------------------------------------------------------------------
 # Helper: project to Q, K, V and split into heads
 # ---------------------------------------------------------------------------
+
 
 def _split_heads(x: Tensor, n_heads: int) -> Tensor:
     """(B, T, D) → (B, n_heads, T, head_dim)."""
@@ -135,6 +137,7 @@ def _masked_softmax(scores: Tensor, mask: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # SlidingWindowAttention
 # ---------------------------------------------------------------------------
+
 
 class SlidingWindowAttention(nn.Module):
     """Causal sliding-window attention (Longformer-style).
@@ -164,10 +167,10 @@ class SlidingWindowAttention(nn.Module):
         B, T, D = x.shape
         device = x.device
 
-        qkv = self.qkv(x)                          # (B, T, 3D)
-        q, k, v = qkv.chunk(3, dim=-1)             # each (B, T, D)
+        qkv = self.qkv(x)  # (B, T, 3D)
+        q, k, v = qkv.chunk(3, dim=-1)  # each (B, T, D)
 
-        q = _split_heads(q, self.n_heads)           # (B, H, T, d_h)
+        q = _split_heads(q, self.n_heads)  # (B, H, T, d_h)
         k = _split_heads(k, self.n_heads)
         v = _split_heads(v, self.n_heads)
 
@@ -175,18 +178,19 @@ class SlidingWindowAttention(nn.Module):
         scores = torch.matmul(q, k.transpose(-2, -1)) / scale  # (B, H, T, T)
 
         builder = AttentionMaskBuilder(T, device=str(device))
-        mask = builder.sliding_window(self.window_size)         # (T, T)
-        mask = mask.unsqueeze(0).unsqueeze(0)                   # (1, 1, T, T)
+        mask = builder.sliding_window(self.window_size)  # (T, T)
+        mask = mask.unsqueeze(0).unsqueeze(0)  # (1, 1, T, T)
 
-        attn = _masked_softmax(scores, mask)                    # (B, H, T, T)
-        out = torch.matmul(attn, v)                             # (B, H, T, d_h)
-        out = _merge_heads(out)                                 # (B, T, D)
+        attn = _masked_softmax(scores, mask)  # (B, H, T, T)
+        out = torch.matmul(attn, v)  # (B, H, T, d_h)
+        out = _merge_heads(out)  # (B, T, D)
         return self.out_proj(out)
 
 
 # ---------------------------------------------------------------------------
 # StridedAttention
 # ---------------------------------------------------------------------------
+
 
 class StridedAttention(nn.Module):
     """Dilated strided attention for long-range dependencies.
@@ -247,6 +251,7 @@ class StridedAttention(nn.Module):
 # BigBirdAttention
 # ---------------------------------------------------------------------------
 
+
 class BigBirdAttention(nn.Module):
     """Combined random + window + global attention (BigBird-style).
 
@@ -287,7 +292,7 @@ class BigBirdAttention(nn.Module):
         rng = torch.Generator(device=device)
         rng.manual_seed(self.seed)
 
-        rows = torch.arange(T, device=device)
+        torch.arange(T, device=device)
         cols = torch.arange(T, device=device)
 
         for i in range(T):
@@ -337,6 +342,7 @@ class BigBirdAttention(nn.Module):
 # LearnedSparseAttention
 # ---------------------------------------------------------------------------
 
+
 class LearnedSparseAttention(nn.Module):
     """Top-k sparse attention: keep only the k highest-scoring keys per query.
 
@@ -373,7 +379,7 @@ class LearnedSparseAttention(nn.Module):
         qkv = self.qkv(x)
         q, k, v = qkv.chunk(3, dim=-1)
 
-        q = _split_heads(q, self.n_heads)   # (B, H, T, d_h)
+        q = _split_heads(q, self.n_heads)  # (B, H, T, d_h)
         k = _split_heads(k, self.n_heads)
         v = _split_heads(v, self.n_heads)
 
@@ -392,8 +398,8 @@ class LearnedSparseAttention(nn.Module):
         #    We build the mask row by row via kthvalue on the score tensor.
 
         # Number of valid positions per query (row i has i+1 causal slots)
-        valid_counts = torch.arange(1, T + 1, device=device)          # (T,)
-        k_eff = torch.clamp(valid_counts, max=self.k)                  # (T,)
+        valid_counts = torch.arange(1, T + 1, device=device)  # (T,)
+        torch.clamp(valid_counts, max=self.k)  # (T,)
 
         # Expand scores to (B*H, T, T) for easier row-wise operation
         BH = B * self.n_heads
@@ -401,7 +407,7 @@ class LearnedSparseAttention(nn.Module):
 
         topk_mask = torch.zeros(BH, T, T, dtype=torch.bool, device=device)
         for i in range(T):
-            n_valid = i + 1          # number of causal positions
+            n_valid = i + 1  # number of causal positions
             ki = min(self.k, n_valid)
 
             # scores for causal positions of row i: (BH, n_valid)
@@ -434,6 +440,7 @@ class LearnedSparseAttention(nn.Module):
 # SparseAttentionBlock
 # ---------------------------------------------------------------------------
 
+
 class SparseAttentionBlock(nn.Module):
     """Transformer block with configurable sparse attention.
 
@@ -455,9 +462,7 @@ class SparseAttentionBlock(nn.Module):
     ) -> None:
         super().__init__()
         if pattern not in self._PATTERNS:
-            raise ValueError(
-                f"Unknown pattern '{pattern}'. Choose from {self._PATTERNS}."
-            )
+            raise ValueError(f"Unknown pattern '{pattern}'. Choose from {self._PATTERNS}.")
         self.d_model = d_model
         self.n_heads = n_heads
         self.pattern = pattern

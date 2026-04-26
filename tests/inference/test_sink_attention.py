@@ -3,7 +3,11 @@
 import pytest
 import torch
 
-from src.inference.sink_attention import apply_sink_attention, sink_attention_mask, sink_attention_weights
+from src.inference.sink_attention import (
+    apply_sink_attention,
+    sink_attention_mask,
+    sink_attention_weights,
+)
 
 
 def test_sink_attention_mask_shape():
@@ -44,4 +48,3 @@ def test_sink_attention_mask_rejects_negative_args():
 def test_apply_sink_attention_rejects_bad_rank():
     with pytest.raises(ValueError):
         apply_sink_attention(torch.randn(2, 3, 4), sink_tokens=1, window_size=2)
-

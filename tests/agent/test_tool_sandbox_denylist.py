@@ -160,9 +160,7 @@ def test_determinism():
     first = guard.evaluate("sh", args)
     for _ in range(5):
         other = guard.evaluate("sh", args)
-        assert [r.id for r in other.violated_rules] == [
-            r.id for r in first.violated_rules
-        ]
+        assert [r.id for r in other.violated_rules] == [r.id for r in first.violated_rules]
         assert other.allowed == first.allowed
         assert other.advice == first.advice
 

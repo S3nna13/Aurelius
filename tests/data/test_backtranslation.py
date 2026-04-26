@@ -1,18 +1,18 @@
 """Tests for src/data/backtranslation.py"""
-import pytest
 
 from src.data.backtranslation import (
     BacktranslationConfig,
-    BacktranslationSample,
     BacktranslationPipeline,
+    BacktranslationSample,
     build_backtranslation_prompt,
-    score_instruction_quality,
     deduplicate_samples,
+    score_instruction_quality,
 )
 
 # ---------------------------------------------------------------------------
 # Mock generate_fn
 # ---------------------------------------------------------------------------
+
 
 def mock_generate(prompt: str) -> str:
     return "Explain how machine learning models are trained with gradient descent."
@@ -25,6 +25,7 @@ def mock_generate_short(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 # BacktranslationConfig
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = BacktranslationConfig()
@@ -43,6 +44,7 @@ def test_config_custom():
 # ---------------------------------------------------------------------------
 # build_backtranslation_prompt
 # ---------------------------------------------------------------------------
+
 
 def test_build_prompt_contains_source():
     text = "Machine learning is a subset of artificial intelligence."
@@ -69,13 +71,16 @@ def test_build_prompt_template_wraps():
 # score_instruction_quality
 # ---------------------------------------------------------------------------
 
+
 def test_score_quality_returns_float():
     q = score_instruction_quality("Explain how neural networks work.", "Neural networks learn.")
     assert isinstance(q, float)
 
 
 def test_score_quality_in_range():
-    q = score_instruction_quality("How do transformers process text sequences?", "Transformers use attention.")
+    q = score_instruction_quality(
+        "How do transformers process text sequences?", "Transformers use attention."
+    )
     assert 0.0 <= q <= 1.0
 
 
@@ -98,6 +103,7 @@ def test_score_quality_very_short_instruction_low():
 # ---------------------------------------------------------------------------
 # deduplicate_samples
 # ---------------------------------------------------------------------------
+
 
 def _make_sample(instruction: str) -> BacktranslationSample:
     return BacktranslationSample(

@@ -4,8 +4,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.training.lora_adapter_manager import LoRAConfig, LoRALayer, LoRAAdapterManager
-from src.training.adapter_composition import AdapterComposer, ComposedAdapter, CompositionMode
+from src.training.adapter_composition import AdapterComposer, CompositionMode
+from src.training.lora_adapter_manager import LoRAAdapterManager, LoRAConfig
 
 
 def _manager_with_adapters(names: list[str]) -> tuple[LoRAAdapterManager, dict]:
@@ -20,6 +20,7 @@ def _manager_with_adapters(names: list[str]) -> tuple[LoRAAdapterManager, dict]:
 
 # ---- CompositionMode ----
 
+
 def test_composition_mode_values():
     assert CompositionMode.ADD == "add"
     assert CompositionMode.WEIGHTED == "weighted"
@@ -27,6 +28,7 @@ def test_composition_mode_values():
 
 
 # ---- AdapterComposer.compose ----
+
 
 def test_compose_raises_on_missing_adapter():
     mgr, _ = _manager_with_adapters(["a1"])
@@ -73,6 +75,7 @@ def test_compose_sequential_mode():
 
 
 # ---- AdapterComposer.apply ----
+
 
 def test_apply_add_output_shape():
     mgr, _ = _manager_with_adapters(["a1", "a2"])
@@ -130,6 +133,7 @@ def test_apply_weighted_at_init_equals_input():
 
 
 # ---- AdapterComposer.merge_to_delta ----
+
 
 def test_merge_to_delta_shape():
     mgr, _ = _manager_with_adapters(["a1", "a2"])

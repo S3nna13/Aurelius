@@ -1,7 +1,6 @@
 """Tests for token generator."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.token_generator import TokenGenerator
 

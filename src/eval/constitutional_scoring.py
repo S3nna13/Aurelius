@@ -32,6 +32,8 @@ def principle_breakdown(text: str, principles: list[ConstitutionalPrinciple]) ->
     return {principle.name: principle_score(text, principle) for principle in principles}
 
 
-def passes_constitution(text: str, principles: list[ConstitutionalPrinciple], threshold: float = 0.0) -> bool:
+def passes_constitution(
+    text: str, principles: list[ConstitutionalPrinciple], threshold: float = 0.0
+) -> bool:
     """Check whether text exceeds a constitutional threshold."""
     return constitutional_score(text, principles) >= threshold

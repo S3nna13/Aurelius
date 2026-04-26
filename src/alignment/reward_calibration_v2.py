@@ -9,11 +9,10 @@ This v2 module introduces:
 - IsotonicCalibrator pure-PyTorch PAVA implementation
 - calibrate_reward_scores convenience function
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -23,10 +22,10 @@ from torch import Tensor
 
 @dataclass
 class CalibrationConfig:
-    method: str = "temperature"   # "temperature", "platt", "isotonic"
-    n_bins: int = 10              # bins for ECE computation
-    lr: float = 0.01             # learning rate for parameter optimization
-    max_iter: int = 200          # max optimization iterations
+    method: str = "temperature"  # "temperature", "platt", "isotonic"
+    n_bins: int = 10  # bins for ECE computation
+    lr: float = 0.01  # learning rate for parameter optimization
+    max_iter: int = 200  # max optimization iterations
 
 
 def expected_calibration_error(
@@ -122,9 +121,7 @@ class TemperatureScaler(nn.Module):
         scores_d = scores.detach().float()
         labels_d = labels.detach().float()
 
-        optimizer = torch.optim.LBFGS(
-            [self.temperature], lr=config.lr, max_iter=config.max_iter
-        )
+        optimizer = torch.optim.LBFGS([self.temperature], lr=config.lr, max_iter=config.max_iter)
 
         def closure():
             optimizer.zero_grad()
@@ -187,9 +184,7 @@ class PlattScaler(nn.Module):
         scores_d = scores.detach().float()
         labels_d = labels.detach().float()
 
-        optimizer = torch.optim.LBFGS(
-            [self.a, self.b], lr=config.lr, max_iter=config.max_iter
-        )
+        optimizer = torch.optim.LBFGS([self.a, self.b], lr=config.lr, max_iter=config.max_iter)
 
         def closure():
             optimizer.zero_grad()
@@ -217,8 +212,8 @@ class IsotonicCalibrator:
     """Pure PyTorch isotonic regression calibration via pool adjacent violators."""
 
     def __init__(self) -> None:
-        self._x_breakpoints: Optional[Tensor] = None
-        self._y_breakpoints: Optional[Tensor] = None
+        self._x_breakpoints: Tensor | None = None
+        self._y_breakpoints: Tensor | None = None
 
     def fit(self, scores: Tensor, labels: Tensor) -> None:
         """Fit isotonic regression on scores -> labels mapping.
@@ -357,8 +352,7 @@ def calibrate_reward_scores(
 
     else:
         raise ValueError(
-            f"Unknown calibration method: {method!r}. "
-            "Choose 'temperature', 'platt', or 'isotonic'."
+            f"Unknown calibration method: {method!r}. Choose 'temperature', 'platt', or 'isotonic'."
         )
 
     # Ensure method is stored as str in the dict

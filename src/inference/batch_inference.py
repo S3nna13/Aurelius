@@ -6,16 +6,15 @@ from __future__ import annotations
 import hashlib
 import time
 from collections import OrderedDict
-from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # DynamicPadder
 # ---------------------------------------------------------------------------
+
 
 class DynamicPadder:
     """Pad variable-length sequences to a common length within a batch."""
@@ -46,8 +45,8 @@ class DynamicPadder:
                 padded[i, :L] = seq
                 attention_mask[i, :L] = True
             else:  # left
-                padded[i, max_len - L:] = seq
-                attention_mask[i, max_len - L:] = True
+                padded[i, max_len - L :] = seq
+                attention_mask[i, max_len - L :] = True
 
         return padded, attention_mask
 
@@ -73,6 +72,7 @@ class DynamicPadder:
 # ---------------------------------------------------------------------------
 # BucketBatcher
 # ---------------------------------------------------------------------------
+
 
 class BucketBatcher:
     """Group sequences into length buckets for efficient batching."""
@@ -112,8 +112,8 @@ class BucketBatcher:
         if best_idx == -1:
             return None
 
-        batch_items = self._buckets[best_idx][:self.batch_size]
-        self._buckets[best_idx] = self._buckets[best_idx][self.batch_size:]
+        batch_items = self._buckets[best_idx][: self.batch_size]
+        self._buckets[best_idx] = self._buckets[best_idx][self.batch_size :]
 
         sequences = [item[0] for item in batch_items]
         metadata_list = [item[1] for item in batch_items]
@@ -147,6 +147,7 @@ class BucketBatcher:
 # ---------------------------------------------------------------------------
 # ContinuousBatcher
 # ---------------------------------------------------------------------------
+
 
 class _ActiveRequest:
     """Internal state for a single in-flight generation request."""
@@ -193,7 +194,7 @@ class ContinuousBatcher:
             return {}
 
         # Take up to max_batch_size active requests
-        active_items = list(self._active.items())[:self.max_batch_size]
+        active_items = list(self._active.items())[: self.max_batch_size]
 
         # Find max length among current contexts
         max_len = max(req.token_ids.size(0) for _, req in active_items)
@@ -247,6 +248,7 @@ class ContinuousBatcher:
 # ---------------------------------------------------------------------------
 # ThroughputBenchmark
 # ---------------------------------------------------------------------------
+
 
 class ThroughputBenchmark:
     """Measure inference throughput and latency."""
@@ -330,6 +332,7 @@ class ThroughputBenchmark:
 # PrefixCacheManager
 # ---------------------------------------------------------------------------
 
+
 def _hash_ids(ids: Tensor) -> str:
     """Deterministic hash of a token id tensor (no NumPy required)."""
     # Convert each element to 4-byte little-endian and concatenate
@@ -360,7 +363,7 @@ class PrefixCacheManager:
             captured["output"] = output.detach().clone()
 
         # Find the first nn.Linear in the model
-        first_linear: Optional[nn.Linear] = None
+        first_linear: nn.Linear | None = None
         for m in self.model.modules():
             if isinstance(m, nn.Linear):
                 first_linear = m

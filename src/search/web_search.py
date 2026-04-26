@@ -33,31 +33,31 @@ _DEFAULT_STUB_RESULTS: list[SearchResult] = [
     SearchResult(
         title="Python Programming Language - Official Site",
         url="https://www.python.org",
-        snippet="Python is a high-level, general-purpose programming language emphasizing code readability.",
+        snippet="Python is a high-level, general-purpose programming language emphasizing code readability.",  # noqa: E501
         score=0.95,
     ),
     SearchResult(
         title="Machine Learning: An Introduction",
         url="https://example.com/machine-learning-intro",
-        snippet="Machine learning is a branch of artificial intelligence enabling systems to learn from data.",
+        snippet="Machine learning is a branch of artificial intelligence enabling systems to learn from data.",  # noqa: E501
         score=0.90,
     ),
     SearchResult(
         title="Transformers: Attention Is All You Need",
         url="https://arxiv.org/abs/1706.03762",
-        snippet="Transformers introduced the attention mechanism that revolutionized NLP and deep learning.",
+        snippet="Transformers introduced the attention mechanism that revolutionized NLP and deep learning.",  # noqa: E501
         score=0.88,
     ),
     SearchResult(
         title="Neural Networks Explained",
         url="https://example.com/neural-networks",
-        snippet="Neural networks are computational models loosely inspired by biological neural networks in brains.",
+        snippet="Neural networks are computational models loosely inspired by biological neural networks in brains.",  # noqa: E501
         score=0.85,
     ),
     SearchResult(
         title="Large Language Models Overview",
         url="https://example.com/language-models",
-        snippet="Language models predict the probability of token sequences, powering modern AI assistants.",
+        snippet="Language models predict the probability of token sequences, powering modern AI assistants.",  # noqa: E501
         score=0.82,
     ),
 ]

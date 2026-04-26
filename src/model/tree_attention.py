@@ -15,23 +15,22 @@ Variable notation follows the paper:
 """
 
 import math
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Tuple
-
 
 # ---------------------------------------------------------------------------
 # Core: online softmax primitives
 # ---------------------------------------------------------------------------
 
+
 def _leaf_attention(
     Q_i: torch.Tensor,  # (L, h)
-    K: torch.Tensor,    # (T, h)  — full context per leaf
-    V: torch.Tensor,    # (T, h)
+    K: torch.Tensor,  # (T, h)  — full context per leaf
+    V: torch.Tensor,  # (T, h)
     causal: bool,
-    leaf_start: int,    # token index of first Q token in this leaf
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    leaf_start: int,  # token index of first Q token in this leaf
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Compute (m_i, s_i, o_i) for one leaf attending to the full K/V.
 
@@ -50,22 +49,22 @@ def _leaf_attention(
 
     if causal:
         # token j is visible to query token (leaf_start + row r) iff j <= leaf_start + r
-        rows = torch.arange(L, device=Q_i.device).unsqueeze(1)   # (L, 1)
-        cols = torch.arange(T, device=Q_i.device).unsqueeze(0)   # (1, T)
-        mask = cols > (leaf_start + rows)                          # (L, T) True = masked
+        rows = torch.arange(L, device=Q_i.device).unsqueeze(1)  # (L, 1)
+        cols = torch.arange(T, device=Q_i.device).unsqueeze(0)  # (1, T)
+        mask = cols > (leaf_start + rows)  # (L, T) True = masked
         S_i = S_i.masked_fill(mask, float("-inf"))
 
     # m_i = rowmax(S_i)    shape (L, 1)
-    m_i = S_i.amax(dim=-1, keepdim=True)                          # (L, 1)
+    m_i = S_i.amax(dim=-1, keepdim=True)  # (L, 1)
 
     # exp(S_i - m_i)       shape (L, T)
     exp_S = torch.exp(S_i - m_i)
 
     # s_i = rowsum(exp_S)  shape (L, 1)
-    s_i = exp_S.sum(dim=-1, keepdim=True)                         # (L, 1)
+    s_i = exp_S.sum(dim=-1, keepdim=True)  # (L, 1)
 
     # o_i = exp_S @ V      shape (L, h)  — unnormalised partial output
-    o_i = torch.matmul(exp_S, V)                                  # (L, h)
+    o_i = torch.matmul(exp_S, V)  # (L, h)
 
     return m_i, s_i, o_i
 
@@ -77,7 +76,7 @@ def _merge_two(
     m_right: torch.Tensor,
     s_right: torch.Tensor,
     o_right: torch.Tensor,  # (L, h)  — unnormalised: sum_j exp(S_ij - m_right) * V_j
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Numerically stable merge of two (m, s, o) tuples (paper Section 3, tree reduction).
 
@@ -93,12 +92,12 @@ def _merge_two(
 
     This gives the normalised attention output for the combined partition.
     """
-    m_merged = torch.maximum(m_left, m_right)                     # (L, 1)
+    m_merged = torch.maximum(m_left, m_right)  # (L, 1)
 
-    alpha_l = torch.exp(m_left  - m_merged)                       # (L, 1)
-    alpha_r = torch.exp(m_right - m_merged)                       # (L, 1)
+    alpha_l = torch.exp(m_left - m_merged)  # (L, 1)
+    alpha_r = torch.exp(m_right - m_merged)  # (L, 1)
 
-    s_merged = alpha_l * s_left + alpha_r * s_right               # (L, 1)
+    s_merged = alpha_l * s_left + alpha_r * s_right  # (L, 1)
 
     # o_merged: normalised weighted-value sum over the combined partition
     o_merged = (alpha_l * o_left + alpha_r * o_right) / s_merged  # (L, h)
@@ -110,12 +109,13 @@ def _merge_two(
 # Single-head tree attention
 # ---------------------------------------------------------------------------
 
+
 def _tree_attention_single_head(
-    Q: torch.Tensor,   # (T, h)
-    K: torch.Tensor,   # (T, h)
-    V: torch.Tensor,   # (T, h)
-    N: int,            # number of leaf chunks
-    L: int,            # chunk size
+    Q: torch.Tensor,  # (T, h)
+    K: torch.Tensor,  # (T, h)
+    V: torch.Tensor,  # (T, h)
+    N: int,  # number of leaf chunks
+    L: int,  # chunk size
     causal: bool,
 ) -> torch.Tensor:
     """
@@ -126,9 +126,9 @@ def _tree_attention_single_head(
     The tree reduction merges pairs up to the root, yielding exact attention output.
     """
     # ---- Step 1: leaf computations ----
-    leaves: list[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
+    leaves: list[tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
     for i in range(N):
-        Q_i = Q[i * L : (i + 1) * L, :]          # (L, h)
+        Q_i = Q[i * L : (i + 1) * L, :]  # (L, h)
         leaf_start = i * L
         m_i, s_i, o_i = _leaf_attention(Q_i, K, V, causal=causal, leaf_start=leaf_start)
         leaves.append((m_i, s_i, o_i))
@@ -158,14 +158,15 @@ def _tree_attention_single_head(
     o_parts = []
     for m_i, s_i, o_i in leaves:
         # Normalise: divide by s_i (was kept unnormalised inside _leaf_attention)
-        o_parts.append(o_i / s_i)   # (L, h)
+        o_parts.append(o_i / s_i)  # (L, h)
 
-    return torch.cat(o_parts, dim=0)   # (T, h)
+    return torch.cat(o_parts, dim=0)  # (T, h)
 
 
 # ---------------------------------------------------------------------------
 # Module
 # ---------------------------------------------------------------------------
+
 
 class TreeAttention(nn.Module):
     """
@@ -193,11 +194,9 @@ class TreeAttention(nn.Module):
     ) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model ({d_model}) must be divisible by n_heads ({n_heads})."
-            )
+            raise ValueError(f"d_model ({d_model}) must be divisible by n_heads ({n_heads}).")
         self.d_model = d_model
-        self.n_heads = n_heads       # H in paper
+        self.n_heads = n_heads  # H in paper
         self.h = d_model // n_heads  # head dimension, h in paper
         self.chunk_size = chunk_size  # L in paper
         self.causal = causal
@@ -223,7 +222,7 @@ class TreeAttention(nn.Module):
         ValueError  if T is not divisible by chunk_size
         """
         B, T, D = x.shape
-        L = self.chunk_size      # chunk size (leaf size)
+        L = self.chunk_size  # chunk size (leaf size)
 
         if T % L != 0:
             raise ValueError(
@@ -231,12 +230,12 @@ class TreeAttention(nn.Module):
                 "Pad the sequence or choose a compatible chunk_size."
             )
 
-        N = T // L               # number of leaf chunks
+        N = T // L  # number of leaf chunks
 
         # Project: (B, T, d_model)
-        Q_full = self.W_Q(x)     # (B, T, d_model)
-        K_full = self.W_K(x)     # (B, T, d_model)
-        V_full = self.W_V(x)     # (B, T, d_model)
+        Q_full = self.W_Q(x)  # (B, T, d_model)
+        K_full = self.W_K(x)  # (B, T, d_model)
+        V_full = self.W_V(x)  # (B, T, d_model)
 
         # Reshape to (B, H, T, h)
         def _split_heads(t: torch.Tensor) -> torch.Tensor:
@@ -251,9 +250,9 @@ class TreeAttention(nn.Module):
 
         for b in range(B):
             for head in range(self.n_heads):
-                Q_bh = Q_heads[b, head]   # (T, h)
-                K_bh = K_heads[b, head]   # (T, h)
-                V_bh = V_heads[b, head]   # (T, h)
+                Q_bh = Q_heads[b, head]  # (T, h)
+                K_bh = K_heads[b, head]  # (T, h)
+                V_bh = V_heads[b, head]  # (T, h)
 
                 out_heads[b, head] = _tree_attention_single_head(
                     Q_bh, K_bh, V_bh, N=N, L=L, causal=self.causal
@@ -269,6 +268,7 @@ class TreeAttention(nn.Module):
 # Convenience: expose merge primitive for tests
 # ---------------------------------------------------------------------------
 
+
 def merge_two_chunks(
     m_left: torch.Tensor,
     s_left: torch.Tensor,
@@ -276,6 +276,6 @@ def merge_two_chunks(
     m_right: torch.Tensor,
     s_right: torch.Tensor,
     o_right: torch.Tensor,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Public wrapper around _merge_two for unit testing."""
     return _merge_two(m_left, s_left, o_left, m_right, s_right, o_right)

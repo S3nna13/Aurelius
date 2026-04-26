@@ -6,19 +6,20 @@ via input x gradient or integrated gradients.
 
 Pure torch. No foreign imports.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict, Any
+from dataclasses import dataclass, field
+from typing import Any
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AttributionNode:
@@ -26,14 +27,16 @@ class AttributionNode:
     unit: int
     activation: float
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {"layer": int(self.layer), "unit": int(self.unit),
-                "activation": float(self.activation)}
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "layer": int(self.layer),
+            "unit": int(self.unit),
+            "activation": float(self.activation),
+        }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "AttributionNode":
-        return cls(layer=int(d["layer"]), unit=int(d["unit"]),
-                   activation=float(d["activation"]))
+    def from_dict(cls, d: dict[str, Any]) -> AttributionNode:
+        return cls(layer=int(d["layer"]), unit=int(d["unit"]), activation=float(d["activation"]))
 
 
 @dataclass
@@ -42,12 +45,11 @@ class AttributionEdge:
     dst: AttributionNode
     weight: float
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {"src": self.src.to_dict(), "dst": self.dst.to_dict(),
-                "weight": float(self.weight)}
+    def to_dict(self) -> dict[str, Any]:
+        return {"src": self.src.to_dict(), "dst": self.dst.to_dict(), "weight": float(self.weight)}
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "AttributionEdge":
+    def from_dict(cls, d: dict[str, Any]) -> AttributionEdge:
         return cls(
             src=AttributionNode.from_dict(d["src"]),
             dst=AttributionNode.from_dict(d["dst"]),
@@ -57,17 +59,17 @@ class AttributionEdge:
 
 @dataclass
 class AttributionGraph:
-    nodes: List[AttributionNode] = field(default_factory=list)
-    edges: List[AttributionEdge] = field(default_factory=list)
+    nodes: list[AttributionNode] = field(default_factory=list)
+    edges: list[AttributionEdge] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "nodes": [n.to_dict() for n in self.nodes],
             "edges": [e.to_dict() for e in self.edges],
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "AttributionGraph":
+    def from_dict(cls, d: dict[str, Any]) -> AttributionGraph:
         return cls(
             nodes=[AttributionNode.from_dict(n) for n in d.get("nodes", [])],
             edges=[AttributionEdge.from_dict(e) for e in d.get("edges", [])],
@@ -84,6 +86,7 @@ class AttributionGraph:
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
+
 
 class AttributionGraphBuilder:
     """Build an attribution graph over named submodules of a torch model.
@@ -106,16 +109,14 @@ class AttributionGraphBuilder:
     def __init__(
         self,
         model: nn.Module,
-        layer_names: Optional[List[str]] = None,
+        layer_names: list[str] | None = None,
         method: str = "input_x_grad",
         top_k_per_node: int = 8,
     ) -> None:
         if layer_names is not None and len(layer_names) == 0:
             raise ValueError("layer_names must be non-empty if provided")
         if method not in self._VALID_METHODS:
-            raise ValueError(
-                f"Unknown method {method!r}; valid: {self._VALID_METHODS}"
-            )
+            raise ValueError(f"Unknown method {method!r}; valid: {self._VALID_METHODS}")
         if top_k_per_node <= 0:
             raise ValueError("top_k_per_node must be positive")
 
@@ -130,7 +131,7 @@ class AttributionGraphBuilder:
         self.layer_names = list(layer_names)
 
         # Resolve modules
-        self._modules: List[nn.Module] = []
+        self._modules: list[nn.Module] = []
         for name in self.layer_names:
             mod = self._resolve(name)
             if mod is None:
@@ -138,7 +139,7 @@ class AttributionGraphBuilder:
             self._modules.append(mod)
 
     # ---------------------- module resolution ----------------------
-    def _resolve(self, dotted: str) -> Optional[nn.Module]:
+    def _resolve(self, dotted: str) -> nn.Module | None:
         obj: Any = self.model
         for part in dotted.split("."):
             if not hasattr(obj, part):
@@ -152,15 +153,16 @@ class AttributionGraphBuilder:
         return obj if isinstance(obj, nn.Module) else None
 
     # ---------------------- hook capture ----------------------
-    def _capture(self, x: Tensor) -> List[Tensor]:
+    def _capture(self, x: Tensor) -> list[Tensor]:
         """Forward pass; return list of activations (retain_grad) per layer."""
-        acts: List[Optional[Tensor]] = [None] * len(self._modules)
+        acts: list[Tensor | None] = [None] * len(self._modules)
 
         def make_hook(idx: int):
             def hook(_module, _inp, out):
                 t = out if isinstance(out, Tensor) else out[0]
                 t.retain_grad()
                 acts[idx] = t
+
             return hook
 
         handles = []
@@ -173,7 +175,7 @@ class AttributionGraphBuilder:
                 h.remove()
 
         # assemble
-        out: List[Tensor] = []
+        out: list[Tensor] = []
         for a in acts:
             if a is None:
                 raise RuntimeError("Layer forward hook never fired")
@@ -233,9 +235,7 @@ class AttributionGraphBuilder:
         if target_layer < 0:
             target_layer += L
         if target_layer < 0 or target_layer >= L:
-            raise IndexError(
-                f"target_layer out of range (got {target_layer}, have {L} layers)"
-            )
+            raise IndexError(f"target_layer out of range (got {target_layer}, have {L} layers)")
 
         # Forward to record activations.
         x = input_ids.detach().clone().to(torch.float32).requires_grad_(True)
@@ -246,9 +246,7 @@ class AttributionGraphBuilder:
         flat = tgt_act.reshape(tgt_act.shape[0], -1)
         n_units = flat.shape[1]
         if target_unit < 0 or target_unit >= n_units:
-            raise IndexError(
-                f"target_unit {target_unit} out of range (layer has {n_units})"
-            )
+            raise IndexError(f"target_unit {target_unit} out of range (layer has {n_units})")
         scalar = flat[:, target_unit].sum()
 
         # Backprop once; this gives grad w.r.t. every captured activation.
@@ -256,7 +254,7 @@ class AttributionGraphBuilder:
         scalar.backward(retain_graph=False)
 
         # Now compute attribution per layer: act * grad (input_x_grad) or IG.
-        attributions: List[Tensor] = []
+        attributions: list[Tensor] = []
         for a in acts:
             g = a.grad
             if g is None:
@@ -264,19 +262,17 @@ class AttributionGraphBuilder:
                 attributions.append(torch.zeros_like(a.detach()))
             else:
                 if self.method == "input_x_grad":
-                    attributions.append((a.detach() * g.detach()))
+                    attributions.append(a.detach() * g.detach())
                 else:  # integrated_gradients along activation path from 0 -> a
-                    attributions.append(
-                        self._ig_on_activation(acts, a, g, n_steps=16)
-                    )
+                    attributions.append(self._ig_on_activation(acts, a, g, n_steps=16))
 
         # Flatten per layer to [units]
         per_layer_attr = [attr.reshape(attr.shape[0], -1).mean(dim=0) for attr in attributions]
         per_layer_act = [a.detach().reshape(a.shape[0], -1).mean(dim=0) for a in acts]
 
         # Build nodes (all units in all involved layers, up to target).
-        nodes: List[AttributionNode] = []
-        node_index: Dict[tuple, AttributionNode] = {}
+        nodes: list[AttributionNode] = []
+        node_index: dict[tuple, AttributionNode] = {}
         for li in range(target_layer + 1):
             for ui in range(per_layer_act[li].numel()):
                 n = AttributionNode(
@@ -288,7 +284,7 @@ class AttributionGraphBuilder:
                 node_index[(li, ui)] = n
 
         # Build edges: from layer i to layer i+1 (forward only, acyclic).
-        edges: List[AttributionEdge] = []
+        edges: list[AttributionEdge] = []
         for li in range(target_layer):
             src_attr = per_layer_attr[li]
             dst_attr = per_layer_attr[li + 1]
@@ -305,18 +301,20 @@ class AttributionGraphBuilder:
                 for j in range(k):
                     d = int(top_dst_idx[j].item())
                     w = float((src_vec[s] * dst_vec[d]).item())
-                    edges.append(AttributionEdge(
-                        src=node_index[(li, s)],
-                        dst=node_index[(li + 1, d)],
-                        weight=w,
-                    ))
+                    edges.append(
+                        AttributionEdge(
+                            src=node_index[(li, s)],
+                            dst=node_index[(li + 1, d)],
+                            weight=w,
+                        )
+                    )
 
         return AttributionGraph(nodes=nodes, edges=edges)
 
     # ---------------------- helpers ----------------------
     def _ig_on_activation(
         self,
-        all_acts: List[Tensor],
+        all_acts: list[Tensor],
         a: Tensor,
         g: Tensor,
         n_steps: int = 16,

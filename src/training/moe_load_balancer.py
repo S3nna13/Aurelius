@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -69,7 +68,7 @@ def compute_aux_loss(router_probs: Tensor, expert_indices: Tensor) -> Tensor:
 
     total_selections = expert_mask.sum().clamp(min=1.0)
     f_i = expert_mask.sum(dim=0) / total_selections  # (n_experts,)
-    P_i = router_probs.mean(dim=0)                   # (n_experts,)
+    P_i = router_probs.mean(dim=0)  # (n_experts,)
 
     return n_experts * (f_i * P_i).sum()
 
@@ -91,7 +90,7 @@ def compute_z_loss(router_logits: Tensor) -> Tensor:
         Scalar tensor — z-loss (non-negative).
     """
     log_z = torch.logsumexp(router_logits, dim=-1)  # (N,)
-    return (log_z ** 2).mean()
+    return (log_z**2).mean()
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +108,7 @@ def compute_expert_utilization(expert_indices: Tensor, n_experts: int) -> Tensor
     Returns:
         (n_experts,) tensor of utilization fractions that sum to 1.
     """
-    n_tokens = expert_indices.shape[0]
+    expert_indices.shape[0]
     counts = torch.zeros(n_experts, device=expert_indices.device, dtype=torch.float32)
     # Flatten all expert assignments and count
     flat_indices = expert_indices.reshape(-1)
@@ -145,8 +144,8 @@ class RouterLinear(nn.Module):
             (router_probs, router_logits) both of shape (..., n_experts).
             router_probs = softmax(router_logits).
         """
-        router_logits = self.linear(x)                    # (..., n_experts)
-        router_probs = F.softmax(router_logits, dim=-1)   # (..., n_experts)
+        router_logits = self.linear(x)  # (..., n_experts)
+        router_probs = F.softmax(router_logits, dim=-1)  # (..., n_experts)
         return router_probs, router_logits
 
 
@@ -183,14 +182,16 @@ class LoadBalancedMoELayer(nn.Module):
 
         self.router = RouterLinear(d_model, n_experts)
 
-        self.experts = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(d_model, d_expert),
-                nn.ReLU(),
-                nn.Linear(d_expert, d_model),
-            )
-            for _ in range(n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(d_model, d_expert),
+                    nn.ReLU(),
+                    nn.Linear(d_expert, d_model),
+                )
+                for _ in range(n_experts)
+            ]
+        )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Forward pass.
@@ -242,21 +243,18 @@ class LoadBalancedMoELayer(nn.Module):
             if assigned.numel() == 0:
                 continue
 
-            tokens = x_flat[assigned]         # (M, D)
+            tokens = x_flat[assigned]  # (M, D)
             expert_out = self.experts[e](tokens)  # (M, D)
 
             # Retrieve per-token routing weight for expert e
             # top_k_indices[assigned] is (M, top_k); find slot where == e
-            assigned_top_k = top_k_indices[assigned]        # (M, top_k)
-            match_mask = (assigned_top_k == e).float()      # (M, top_k)
+            assigned_top_k = top_k_indices[assigned]  # (M, top_k)
+            match_mask = (assigned_top_k == e).float()  # (M, top_k)
             weights = (top_k_probs[assigned] * match_mask).sum(dim=-1, keepdim=True)  # (M, 1)
 
             output_flat[assigned] += weights * expert_out
 
-        total_aux = (
-            self.config.aux_loss_coeff * aux_loss
-            + self.config.z_loss_coeff * z_loss
-        )
+        total_aux = self.config.aux_loss_coeff * aux_loss + self.config.z_loss_coeff * z_loss
 
         output = output_flat.view(original_shape)
         return output, total_aux

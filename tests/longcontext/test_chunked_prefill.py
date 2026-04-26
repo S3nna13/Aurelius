@@ -10,7 +10,6 @@ from src.longcontext.chunked_prefill import (
     ChunkedPrefillConfig,
 )
 
-
 B = 2
 S = 32
 CHUNK = 8
@@ -74,9 +73,7 @@ def test_run_chunk_fn_last_token_returns_last_per_chunk():
 
     out = sched.run_chunk_fn(ids, chunk_fn=last_token, concat_dim=1)
     assert out.shape == (B, S // CHUNK)
-    expected = torch.stack(
-        [ids[:, CHUNK - 1 + i * CHUNK] for i in range(S // CHUNK)], dim=1
-    )
+    expected = torch.stack([ids[:, CHUNK - 1 + i * CHUNK] for i in range(S // CHUNK)], dim=1)
     assert torch.equal(out, expected)
 
 
@@ -116,7 +113,10 @@ def test_overlap_ge_chunk_size_raises():
 def test_determinism_same_output_for_same_input():
     sched = ChunkedPrefill(ChunkedPrefillConfig(chunk_size=CHUNK, overlap=2))
     ids = _ids()
-    fn = lambda x: x.float().mul(2.0)
+
+    def fn(x):
+        return x.float().mul(2.0)
+
     a = sched.run_chunk_fn(ids, chunk_fn=fn, concat_dim=1)
     b = sched.run_chunk_fn(ids, chunk_fn=fn, concat_dim=1)
     assert torch.equal(a, b)

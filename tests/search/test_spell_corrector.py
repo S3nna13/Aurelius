@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.search.spell_corrector import (
+    _DEFAULT_DICTIONARY,
+    SPELL_CORRECTOR_REGISTRY,
     Correction,
     SpellCorrector,
-    SPELL_CORRECTOR_REGISTRY,
-    _DEFAULT_DICTIONARY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):
@@ -30,6 +30,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # Frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCorrectionFrozen:
     def test_correction_is_frozen(self):
@@ -49,14 +50,31 @@ class TestCorrectionFrozen:
 # Default dictionary
 # ---------------------------------------------------------------------------
 
+
 class TestDefaultDictionary:
     def test_default_dictionary_has_100_words(self):
         assert len(_DEFAULT_DICTIONARY) >= 100
 
     def test_required_words_present(self):
         required = [
-            "the", "and", "for", "are", "but", "not", "you", "all", "any",
-            "can", "her", "was", "one", "our", "out", "day", "get", "has",
+            "the",
+            "and",
+            "for",
+            "are",
+            "but",
+            "not",
+            "you",
+            "all",
+            "any",
+            "can",
+            "her",
+            "was",
+            "one",
+            "our",
+            "out",
+            "day",
+            "get",
+            "has",
         ]
         for word in required:
             assert word in _DEFAULT_DICTIONARY
@@ -65,6 +83,7 @@ class TestDefaultDictionary:
 # ---------------------------------------------------------------------------
 # _edit_distance
 # ---------------------------------------------------------------------------
+
 
 class TestEditDistance:
     def setup_method(self):
@@ -101,6 +120,7 @@ class TestEditDistance:
 # ---------------------------------------------------------------------------
 # correct
 # ---------------------------------------------------------------------------
+
 
 class TestCorrect:
     def setup_method(self):
@@ -147,6 +167,7 @@ class TestCorrect:
 # correct_query
 # ---------------------------------------------------------------------------
 
+
 class TestCorrectQuery:
     def setup_method(self):
         self.sc = SpellCorrector()
@@ -172,6 +193,7 @@ class TestCorrectQuery:
 # ---------------------------------------------------------------------------
 # add_word
 # ---------------------------------------------------------------------------
+
 
 class TestAddWord:
     def test_add_word_expands_dictionary(self):
@@ -200,6 +222,7 @@ class TestAddWord:
 # ---------------------------------------------------------------------------
 # suggestions
 # ---------------------------------------------------------------------------
+
 
 class TestSuggestions:
     def setup_method(self):

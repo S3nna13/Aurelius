@@ -140,9 +140,7 @@ def test_fim_transform_contains_special_tokens():
 def test_fim_transform_output_length():
     ids = _rand_ids(SEQ_LEN)
     out = fim_transform(ids, prefix_token=1, suffix_token=2, middle_token=3, rng=random.Random(9))
-    assert out.shape[0] == SEQ_LEN + 3, (
-        f"expected length {SEQ_LEN + 3}, got {out.shape[0]}"
-    )
+    assert out.shape[0] == SEQ_LEN + 3, f"expected length {SEQ_LEN + 3}, got {out.shape[0]}"
 
 
 # ---------------------------------------------------------------------------

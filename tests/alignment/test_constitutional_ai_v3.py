@@ -17,18 +17,17 @@
   - principle_weights summing to 1.0 give aggregate in (0, 1)
   - Full critique + revision cycle succeeds end-to-end
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.alignment.constitutional_ai_v3 import (
+    CAITrainer,
+    ConstitutionalFilter,
     ConstitutionalPrinciple,
     CritiqueHead,
     RevisionScorer,
-    CAITrainer,
-    ConstitutionalFilter,
 )
 
 # ---------------------------------------------------------------------------
@@ -267,7 +266,7 @@ def test_constitutional_filter_should_revise_dtype_and_shape():
     mask = filt.should_revise(scores)
     assert mask.dtype == torch.bool
     assert mask.shape == (BATCH,)
-    assert mask[0].item() is True   # 0.3 < 0.5
+    assert mask[0].item() is True  # 0.3 < 0.5
     assert mask[1].item() is False  # 0.7 >= 0.5
 
 
@@ -300,8 +299,9 @@ def test_critique_head_aggregate_zero_weight():
     weights = torch.tensor([1.0, 1.0, 0.0])
     agg = head.aggregate(scores, weights)
     # Should average only the first two => 1.0
-    assert torch.allclose(agg, torch.tensor([1.0]), atol=1e-5), \
+    assert torch.allclose(agg, torch.tensor([1.0]), atol=1e-5), (
         f"Expected 1.0 when zero-weight principle excluded, got {agg}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -327,8 +327,9 @@ def test_critique_step_all_harmless_loss_decreases():
         result = trainer.critique_step(input_ids, labels)
 
     final_loss = result["critique_loss"]
-    assert final_loss < initial_loss, \
+    assert final_loss < initial_loss, (
         f"Loss should decrease with all-harmless labels: {initial_loss} -> {final_loss}"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 
 from src.quantization.gptq_calibration import (
@@ -11,10 +10,10 @@ from src.quantization.gptq_calibration import (
     GPTQConfig,
 )
 
-
 # ---------------------------------------------------------------------------
 # GPTQConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestGPTQConfigDefaults:
     def test_bits_default(self):
@@ -54,6 +53,7 @@ class TestGPTQConfigDefaults:
 # CalibrationStats fields
 # ---------------------------------------------------------------------------
 
+
 class TestCalibrationStatsFields:
     def test_has_layer_name(self):
         s = CalibrationStats(
@@ -89,6 +89,7 @@ class TestCalibrationStatsFields:
 # ---------------------------------------------------------------------------
 # GPTQCalibrator.accumulate
 # ---------------------------------------------------------------------------
+
 
 class TestAccumulate:
     def test_accumulate_no_crash(self):
@@ -134,6 +135,7 @@ class TestAccumulate:
 # ---------------------------------------------------------------------------
 # GPTQCalibrator.finalize
 # ---------------------------------------------------------------------------
+
 
 class TestFinalize:
     def test_finalize_returns_calibration_stats(self):
@@ -202,6 +204,7 @@ class TestFinalize:
 # quantize_weight
 # ---------------------------------------------------------------------------
 
+
 class TestQuantizeWeight:
     def test_values_in_range_4bit(self):
         cal = GPTQCalibrator()
@@ -268,6 +271,7 @@ class TestQuantizeWeight:
 # dequantize
 # ---------------------------------------------------------------------------
 
+
 class TestDequantize:
     def test_returns_list_of_float(self):
         cal = GPTQCalibrator()
@@ -307,6 +311,7 @@ class TestDequantize:
 # ---------------------------------------------------------------------------
 # compute_scale
 # ---------------------------------------------------------------------------
+
 
 class TestComputeScale:
     def test_scale_positive(self):
@@ -356,6 +361,7 @@ class TestComputeScale:
 # Round-trip reconstruction error
 # ---------------------------------------------------------------------------
 
+
 class TestRoundTrip:
     def test_reconstruction_within_one_step_4bit(self):
         cal = GPTQCalibrator()
@@ -366,7 +372,7 @@ class TestRoundTrip:
         dq = cal.dequantize(q, scale, zp)
         for orig, rec in zip(w, dq):
             assert abs(orig - rec) <= scale + 1e-6, (
-                f"Reconstruction error {abs(orig-rec):.4f} > scale {scale:.4f} for w={orig}"
+                f"Reconstruction error {abs(orig - rec):.4f} > scale {scale:.4f} for w={orig}"
             )
 
     def test_reconstruction_within_one_step_8bit(self):

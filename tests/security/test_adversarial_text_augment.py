@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.security.adversarial_text_augment import AdversarialAugmenter, AugConfig
 

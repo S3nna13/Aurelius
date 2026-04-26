@@ -1,14 +1,15 @@
 """Tests for src/alignment/dpo_trainer.py — ~50 tests."""
+
 import pytest
 import torch
 from torch import Tensor
 
+from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.dpo_trainer import (
     DPOConfig,
     DPOLoss,
     DPOTrainer,
 )
-from src.alignment import ALIGNMENT_REGISTRY
 
 B = 4  # batch size for tests
 
@@ -16,6 +17,7 @@ B = 4  # batch size for tests
 # ---------------------------------------------------------------------------
 # DPOConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_default_beta():
     cfg = DPOConfig()
@@ -66,6 +68,7 @@ def test_config_custom_loss_type_ipo():
 # DPOLoss — sigmoid
 # ---------------------------------------------------------------------------
 
+
 def _make_logps(b: int = B) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     torch.manual_seed(0)
     pc = torch.randn(b)
@@ -114,6 +117,7 @@ def test_dpo_loss_sigmoid_loss_is_finite():
 # DPOLoss — hinge
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_hinge_returns_tuple_of_three():
     loss_fn = DPOLoss(DPOConfig(loss_type="hinge"))
     pc, pr, rc, rr = _make_logps()
@@ -146,6 +150,7 @@ def test_dpo_loss_hinge_loss_is_finite():
 # DPOLoss — ipo
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_ipo_returns_tuple_of_three():
     loss_fn = DPOLoss(DPOConfig(loss_type="ipo"))
     pc, pr, rc, rr = _make_logps()
@@ -177,6 +182,7 @@ def test_dpo_loss_ipo_loss_is_finite():
 # ---------------------------------------------------------------------------
 # reference_free=True
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_reference_free_sigmoid_runs():
     loss_fn = DPOLoss(DPOConfig(reference_free=True))
@@ -212,6 +218,7 @@ def test_dpo_loss_reference_free_chosen_rewards_uses_policy_only():
 # ---------------------------------------------------------------------------
 # Reward formulas
 # ---------------------------------------------------------------------------
+
 
 def test_chosen_rewards_equals_beta_times_chosen_log_ratio():
     cfg = DPOConfig(beta=0.2)
@@ -276,6 +283,7 @@ def test_rejected_rewards_are_detached():
 # Label smoothing
 # ---------------------------------------------------------------------------
 
+
 def test_label_smoothing_changes_loss():
     pc, pr, rc, rr = _make_logps()
     loss_no_smooth, _, _ = DPOLoss(DPOConfig(label_smoothing=0.0))(pc, pr, rc, rr)
@@ -293,6 +301,7 @@ def test_label_smoothing_zero_same_as_default():
 # ---------------------------------------------------------------------------
 # DPOTrainer.compute_loss
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_compute_loss_returns_dict():
     trainer = DPOTrainer()
@@ -340,7 +349,9 @@ def test_trainer_compute_loss_reward_margin_is_difference():
     trainer = DPOTrainer()
     pc, pr, rc, rr = _make_logps()
     result = trainer.compute_loss(pc, pr, rc, rr)
-    assert abs(result["reward_margin"] - (result["chosen_reward"] - result["rejected_reward"])) < 1e-5
+    assert (
+        abs(result["reward_margin"] - (result["chosen_reward"] - result["rejected_reward"])) < 1e-5
+    )
 
 
 def test_trainer_compute_loss_reference_free():
@@ -354,6 +365,7 @@ def test_trainer_compute_loss_reference_free():
 # ---------------------------------------------------------------------------
 # DPOTrainer.reward_accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_reward_accuracy_all_chosen_higher_returns_one():
     trainer = DPOTrainer()
@@ -391,6 +403,7 @@ def test_trainer_reward_accuracy_returns_float():
 # ALIGNMENT_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_alignment_registry_has_dpo():
     assert "dpo" in ALIGNMENT_REGISTRY
 
@@ -399,4 +412,4 @@ def test_alignment_registry_dpo_is_dpo_trainer():
     assert isinstance(ALIGNMENT_REGISTRY["dpo"], DPOTrainer)
 
 
-import math
+import math  # noqa: E402

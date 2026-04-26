@@ -1,14 +1,14 @@
 """Log aggregator: ring-buffered structured log store with query support."""
+
 from __future__ import annotations
 
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -41,7 +41,7 @@ class LogAggregator:
         level: LogLevel,
         logger: str,
         message: str,
-        context: Optional[dict] = None,
+        context: dict | None = None,
     ) -> None:
         """Append a log entry to the ring buffer."""
         entry = LogEntry(
@@ -59,9 +59,9 @@ class LogAggregator:
 
     def query(
         self,
-        level: Optional[LogLevel] = None,
-        logger: Optional[str] = None,
-        since: Optional[float] = None,
+        level: LogLevel | None = None,
+        logger: str | None = None,
+        since: float | None = None,
         limit: int = 100,
     ) -> list[LogEntry]:
         """Return up to *limit* entries matching the given filters (newest last)."""
@@ -89,8 +89,7 @@ class LogAggregator:
         error_count = sum(
             1
             for e in self._buffer
-            if e.timestamp >= cutoff
-            and e.level in (LogLevel.ERROR, LogLevel.CRITICAL)
+            if e.timestamp >= cutoff and e.level in (LogLevel.ERROR, LogLevel.CRITICAL)
         )
         return error_count / window_seconds if window_seconds > 0 else 0.0
 
@@ -100,8 +99,9 @@ _LOG_AGGREGATOR = LogAggregator()
 
 try:
     from src.monitoring import MONITORING_REGISTRY as _REG  # type: ignore[import]
+
     _REG["log_aggregator"] = _LOG_AGGREGATOR
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 MONITORING_REGISTRY: dict[str, object] = {"log_aggregator": _LOG_AGGREGATOR}

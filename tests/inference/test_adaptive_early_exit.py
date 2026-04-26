@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 
 import torch
-import pytest
 
 from src.inference.adaptive_early_exit import (
     AdaptiveEarlyExitModel,

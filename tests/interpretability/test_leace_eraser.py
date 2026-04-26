@@ -22,14 +22,13 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
-from src.interpretability.leace_eraser import LeaceEraser, ConceptEraser
-
+from src.interpretability.leace_eraser import ConceptEraser, LeaceEraser
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_data(
     N: int = 200,
@@ -77,6 +76,7 @@ def _linear_probe_acc(X: torch.Tensor, y: torch.Tensor) -> float:
 # Test 1: Shape preservation
 # ---------------------------------------------------------------------------
 
+
 def test_shape_preservation():
     X, y = _make_data(N=100, d=16)
     eraser = LeaceEraser.fit(X, y)
@@ -88,16 +88,17 @@ def test_shape_preservation():
 # Test 2: Concept direction erased — linear probe ≈ chance (50%)
 # ---------------------------------------------------------------------------
 
+
 def test_concept_erased_linear_probe():
     """Fit eraser on train split; train probe on erased-train; evaluate on erased-test."""
     # Draw a single dataset and split — same distribution for train and test
     X_all, y_all = _make_data(N=600, d=32, seed=42)
     X_train, y_train = X_all[:400], y_all[:400]
-    X_test,  y_test  = X_all[400:], y_all[400:]
+    X_test, y_test = X_all[400:], y_all[400:]
 
     eraser = LeaceEraser.fit(X_train, y_train)
     X_train_e = eraser.transform(X_train)
-    X_test_e  = eraser.transform(X_test)
+    X_test_e = eraser.transform(X_test)
 
     # Train linear probe on erased train split, evaluate on erased test split
     X_tr = X_train_e.detach()
@@ -108,9 +109,7 @@ def test_concept_erased_linear_probe():
 
     def closure():
         opt.zero_grad()
-        loss = nn.functional.binary_cross_entropy_with_logits(
-            X_tr @ w + b, y_train.float()
-        )
+        loss = nn.functional.binary_cross_entropy_with_logits(X_tr @ w + b, y_train.float())
         loss.backward()
         return loss
 
@@ -126,6 +125,7 @@ def test_concept_erased_linear_probe():
 # ---------------------------------------------------------------------------
 # Test 3: Low distortion for orthogonal concept
 # ---------------------------------------------------------------------------
+
 
 def test_low_distortion_orthogonal_concept():
     """When concept direction is dim-0 and dims 1..d-1 are irrelevant,
@@ -147,6 +147,7 @@ def test_low_distortion_orthogonal_concept():
 # Test 4: Projection idempotency  transform(transform(X)) ≈ transform(X)
 # ---------------------------------------------------------------------------
 
+
 def test_idempotency():
     X, y = _make_data(N=200, d=24, seed=1)
     eraser = LeaceEraser.fit(X, y)
@@ -160,6 +161,7 @@ def test_idempotency():
 # ---------------------------------------------------------------------------
 # Test 5: Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     def _run(seed: int) -> torch.Tensor:
@@ -177,6 +179,7 @@ def test_determinism():
 # Test 6: Gradient flow through transform
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flow():
     X, y = _make_data(N=50, d=16, seed=3)
     X_leaf = X.clone().requires_grad_(True)
@@ -191,6 +194,7 @@ def test_gradient_flow():
 # ---------------------------------------------------------------------------
 # Test 7: ConceptEraser online == LeaceEraser batch
 # ---------------------------------------------------------------------------
+
 
 def test_concept_eraser_matches_batch():
     X, y = _make_data(N=200, d=20, seed=5)
@@ -213,6 +217,7 @@ def test_concept_eraser_matches_batch():
 # Test 8: Edge case d = 1
 # ---------------------------------------------------------------------------
 
+
 def test_edge_case_d1():
     torch.manual_seed(10)
     N = 100
@@ -231,6 +236,7 @@ def test_edge_case_d1():
 # Test 9: Edge case — perfectly balanced classes (N_0 = N_1)
 # ---------------------------------------------------------------------------
 
+
 def test_balanced_classes():
     N = 200  # exactly 100 per class
     torch.manual_seed(11)
@@ -248,12 +254,13 @@ def test_balanced_classes():
 # Test 10: Numerical stability (near-singular covariance)
 # ---------------------------------------------------------------------------
 
+
 def test_numerical_stability_near_singular():
     """All samples in class-1 have identical features in dims 1..d-1."""
     torch.manual_seed(13)
     N, d = 100, 16
     X = torch.zeros(N, d)
-    X[:, 0] = torch.randn(N)   # only dim 0 varies
+    X[:, 0] = torch.randn(N)  # only dim 0 varies
     y = torch.zeros(N, dtype=torch.long)
     y[N // 2 :] = 1
     X[y == 1, 0] += 1.0
@@ -266,6 +273,7 @@ def test_numerical_stability_near_singular():
 # ---------------------------------------------------------------------------
 # Test 11: Multi-erase — applying LEACE twice for the same concept == once
 # ---------------------------------------------------------------------------
+
 
 def test_multi_erase_idempotent():
     X, y = _make_data(N=200, d=24, seed=15)
@@ -282,6 +290,7 @@ def test_multi_erase_idempotent():
 # Test 12: Erased direction — dot product constant across classes
 # ---------------------------------------------------------------------------
 
+
 def test_erased_direction_constant_across_classes():
     """After erasure, projecting onto w should give the same value for all x."""
     X, y = _make_data(N=300, d=32, seed=17)
@@ -289,7 +298,7 @@ def test_erased_direction_constant_across_classes():
     X_erased = eraser.transform(X)
     w = eraser.w.to(X_erased.device)
 
-    proj = X_erased @ w           # (N,)
+    proj = X_erased @ w  # (N,)
     proj_0 = proj[y == 0]
     proj_1 = proj[y == 1]
 
@@ -302,6 +311,7 @@ def test_erased_direction_constant_across_classes():
 # ---------------------------------------------------------------------------
 # Test 13: ConceptEraser multi-batch updates consistent with single batch
 # ---------------------------------------------------------------------------
+
 
 def test_concept_eraser_multi_batch():
     """Split data into two halves; online updates should match batch on full set."""
@@ -318,24 +328,25 @@ def test_concept_eraser_multi_batch():
     batch = LeaceEraser.fit(X, y)
 
     X_online = online(X)
-    X_batch  = batch.transform(X)
+    X_batch = batch.transform(X)
 
     # Should be close but not necessarily identical (order of updates matters)
     # Check that the concept is erased in both
     acc_online = _linear_probe_acc(X_online.detach(), y.float())
-    acc_batch  = _linear_probe_acc(X_batch.detach(), y.float())
+    acc_batch = _linear_probe_acc(X_batch.detach(), y.float())
     assert acc_online < 0.60, f"Online eraser: probe acc {acc_online:.3f} too high"
-    assert acc_batch  < 0.60, f"Batch eraser: probe acc {acc_batch:.3f} too high"
+    assert acc_batch < 0.60, f"Batch eraser: probe acc {acc_batch:.3f} too high"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: LeaceEraser on a single 1-D input vector
 # ---------------------------------------------------------------------------
 
+
 def test_single_vector_input():
     X, y = _make_data(N=100, d=16, seed=25)
     eraser = LeaceEraser.fit(X, y)
-    single = X[0]                          # shape (d,)
+    single = X[0]  # shape (d,)
     out = eraser.transform(single)
     assert out.shape == single.shape, f"Expected {single.shape}, got {out.shape}"
     assert not torch.isnan(out).any()

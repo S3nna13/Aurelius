@@ -7,8 +7,6 @@ Every test runs actual forward / backward passes where applicable.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
@@ -39,8 +37,8 @@ class TinyLM(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # input_ids: (B, T) → logits: (B, T, V)
-        x = self.embed(input_ids)       # (B, T, d_model)
-        return self.proj(x)             # (B, T, V)
+        x = self.embed(input_ids)  # (B, T, d_model)
+        return self.proj(x)  # (B, T, V)
 
 
 @pytest.fixture()
@@ -59,10 +57,11 @@ def input_ids():
 # Helper pools
 # ---------------------------------------------------------------------------
 
+
 def make_pool(*seqs_and_lps):
     """make_pool([1,2,3], -1.0, [4,5,6], -2.0, ...)"""
     seqs = list(seqs_and_lps[0::2])
-    lps  = list(seqs_and_lps[1::2])
+    lps = list(seqs_and_lps[1::2])
     return HypothesisPool(seqs, lps)
 
 
@@ -70,8 +69,8 @@ def make_pool(*seqs_and_lps):
 # SequenceSimilarity tests
 # ===========================================================================
 
-class TestSequenceSimilarity:
 
+class TestSequenceSimilarity:
     # 1. ngram_f1: identical sequences → 1.0
     def test_ngram_f1_identical(self):
         sim = SequenceSimilarity(mode="ngram_f1")
@@ -112,8 +111,8 @@ class TestSequenceSimilarity:
 # HypothesisPool tests
 # ===========================================================================
 
-class TestHypothesisPool:
 
+class TestHypothesisPool:
     # 6. normalized_probs sum to 1.0
     def test_normalized_probs_sum(self):
         pool = make_pool([1, 2], -1.0, [3, 4], -2.0, [5, 6], -0.5)
@@ -132,16 +131,20 @@ class TestHypothesisPool:
     # 8. top_k returns k sequences with highest log_probs
     def test_top_k(self):
         pool = make_pool(
-            [1], -3.0,
-            [2], -1.0,
-            [3], -0.5,
-            [4], -2.0,
+            [1],
+            -3.0,
+            [2],
+            -1.0,
+            [3],
+            -0.5,
+            [4],
+            -2.0,
         )
         top2 = pool.top_k(2)
         assert len(top2) == 2
         # Both should have log_prob ≥ all others not in top2
         top2_lps = set(top2.log_probs)
-        remaining_lps = [lp for lp in pool.log_probs if lp not in top2_lps]
+        [lp for lp in pool.log_probs if lp not in top2_lps]
         # Every returned lp must be ≥ every excluded lp
         # (Use sorted approach for robustness)
         sorted_all = sorted(pool.log_probs, reverse=True)
@@ -165,8 +168,8 @@ class TestHypothesisPool:
 # MBRScorer tests
 # ===========================================================================
 
-class TestMBRScorer:
 
+class TestMBRScorer:
     # 10. score_hypothesis returns float in [0, 1]
     def test_score_hypothesis_in_range(self):
         sim = SequenceSimilarity(mode="ngram_f1")
@@ -195,8 +198,8 @@ class TestMBRScorer:
 # MBRDecoder tests
 # ===========================================================================
 
-class TestMBRDecoder:
 
+class TestMBRDecoder:
     # 12. _sample_sequence: returns (list[int], float), ids in valid vocab range
     def test_sample_sequence_valid(self, tiny_model, input_ids):
         sim = SequenceSimilarity(mode="ngram_f1")
@@ -224,8 +227,8 @@ class TestMBRDecoder:
 # MBRAnalytics tests
 # ===========================================================================
 
-class TestMBRAnalytics:
 
+class TestMBRAnalytics:
     # 14. diversity: returns float in [0, 1]
     def test_diversity_in_range(self):
         analytics = MBRAnalytics()
@@ -263,8 +266,8 @@ class TestMBRAnalytics:
 # Edge-case / integration test
 # ===========================================================================
 
-class TestMBREdgeCases:
 
+class TestMBREdgeCases:
     # 17. n_samples=1: MBRDecoder.decode returns the single sample as best
     def test_n_samples_1_trivial_best(self, tiny_model, input_ids):
         sim = SequenceSimilarity(mode="exact_match")

@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional
 
 __all__ = ["BoNCandidate", "BestOfNReranker"]
 
@@ -70,8 +70,7 @@ class BestOfNReranker:
             raise ValueError(f"n must be >= 1, got {n}")
         if aggregation not in _VALID_AGGREGATIONS:
             raise ValueError(
-                f"aggregation must be one of {_VALID_AGGREGATIONS}, "
-                f"got {aggregation!r}"
+                f"aggregation must be one of {_VALID_AGGREGATIONS}, got {aggregation!r}"
             )
         self.generate_fn = generate_fn
         self.reward_fn = reward_fn
@@ -80,21 +79,19 @@ class BestOfNReranker:
 
     # ------------------------------------------------------------------ core
 
-    def _sample_and_score(self, prompt: str) -> List[BoNCandidate]:
+    def _sample_and_score(self, prompt: str) -> list[BoNCandidate]:
         """Sample ``n`` responses and score each. Preserves generation index
         for deterministic tie-breaking.
 
         Returns a list of ``BoNCandidate`` with a provisional ``rank`` equal to
         their generation index; callers are expected to re-rank.
         """
-        raw: List[tuple[int, str, float]] = []
+        raw: list[tuple[int, str, float]] = []
         for i in range(self.n):
             try:
                 response = self.generate_fn(prompt)
             except Exception as exc:  # noqa: BLE001 - spec: skip + log
-                _LOGGER.warning(
-                    "generate_fn raised on candidate %d: %r; skipping", i, exc
-                )
+                _LOGGER.warning("generate_fn raised on candidate %d: %r; skipping", i, exc)
                 continue
             try:
                 reward = float(self.reward_fn(prompt, response))
@@ -122,7 +119,7 @@ class BestOfNReranker:
 
     # ------------------------------------------------------------------ api
 
-    def rerank(self, prompt: str) -> List[BoNCandidate]:
+    def rerank(self, prompt: str) -> list[BoNCandidate]:
         """Return all ``n`` candidates sorted by reward descending.
 
         Candidates whose ``generate_fn`` raised are omitted. Candidates whose
@@ -141,8 +138,7 @@ class BestOfNReranker:
         ranked = self._sample_and_score(prompt)
         if not ranked:
             raise RuntimeError(
-                "BestOfNReranker.best: all generate_fn calls failed; "
-                "no candidates available."
+                "BestOfNReranker.best: all generate_fn calls failed; no candidates available."
             )
         return ranked[0]
 
@@ -164,14 +160,12 @@ class BestOfNReranker:
         """
         # Need the raw sampling order for deterministic tie-breaking by
         # generation index, so sample directly here.
-        raw: List[tuple[int, str, float]] = []
+        raw: list[tuple[int, str, float]] = []
         for i in range(self.n):
             try:
                 response = self.generate_fn(prompt)
             except Exception as exc:  # noqa: BLE001
-                _LOGGER.warning(
-                    "generate_fn raised on candidate %d: %r; skipping", i, exc
-                )
+                _LOGGER.warning("generate_fn raised on candidate %d: %r; skipping", i, exc)
                 continue
             try:
                 reward = float(self.reward_fn(prompt, response))
@@ -187,9 +181,7 @@ class BestOfNReranker:
             raw.append((i, response, reward))
 
         if not raw:
-            raise RuntimeError(
-                "BestOfNReranker.weighted_vote: all generate_fn calls failed."
-            )
+            raise RuntimeError("BestOfNReranker.weighted_vote: all generate_fn calls failed.")
 
         # Group by extracted answer.
         sums: dict[str, float] = {}

@@ -6,10 +6,10 @@ states causally affect model outputs.
 Reference: Meng et al. 2022 "Locating and Editing Factual Associations in GPT"
            (arXiv:2202.05262)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -18,9 +18,10 @@ import torch.nn as nn
 @dataclass
 class InterventionConfig:
     """Configuration for a single activation intervention."""
-    intervention_layer: int = 0    # which transformer layer to intervene on
-    intervention_dim: int = 0      # which hidden dimension to patch
-    patch_value: float = 0.0       # value to write into that dimension
+
+    intervention_layer: int = 0  # which transformer layer to intervene on
+    intervention_dim: int = 0  # which hidden dimension to patch
+    patch_value: float = 0.0  # value to write into that dimension
 
 
 class ActivationPatcher:
@@ -160,11 +161,14 @@ class CausalTracer:
 
             capture_handles = []
             for layer_idx in range(self.n_layers):
+
                 def make_capture(idx):
                     def hook(module, input, output):
                         hs = output[0] if isinstance(output, tuple) else output
                         clean_hs[idx] = hs.detach().clone()
+
                     return hook
+
                 h = self.model.layers[layer_idx].register_forward_hook(make_capture(layer_idx))
                 capture_handles.append(h)
 
@@ -172,7 +176,7 @@ class CausalTracer:
             for h in capture_handles:
                 h.remove()
 
-            clean_probs = clean_logits[0, target_position].softmax(dim=-1)  # (V,)
+            clean_logits[0, target_position].softmax(dim=-1)  # (V,)
 
             # ----------------------------------------------------------------
             # Step 2: Create corrupted input (add noise to embedding)
@@ -207,6 +211,7 @@ class CausalTracer:
                                 out = output.clone()
                                 out[:, p, :] = c_slice
                                 return out
+
                         return hook
 
                     handle = self.model.layers[layer_idx].register_forward_hook(

@@ -13,8 +13,8 @@ References:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -26,20 +26,22 @@ Tensor = torch.Tensor
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RLOOConfig:
     """Hyperparameters for the RLOO policy gradient trainer."""
 
-    k_responses: int = 4          # number of completions sampled per prompt
-    kl_coef: float = 0.01         # KL penalty coefficient against reference policy
-    clip_ratio: float = 0.2       # PPO-style importance ratio clipping bound
-    gamma: float = 1.0            # discount factor (1.0 = episodic / no discount)
+    k_responses: int = 4  # number of completions sampled per prompt
+    kl_coef: float = 0.01  # KL penalty coefficient against reference policy
+    clip_ratio: float = 0.2  # PPO-style importance ratio clipping bound
+    gamma: float = 1.0  # discount factor (1.0 = episodic / no discount)
     normalize_advantages: bool = True  # z-score advantages before computing loss
 
 
 # ---------------------------------------------------------------------------
 # Standalone advantage estimator
 # ---------------------------------------------------------------------------
+
 
 def rloo_advantage_estimator(rewards: Tensor, k: int) -> Tensor:
     """Compute RLOO advantages for a flat batch of rewards.
@@ -62,18 +64,19 @@ def rloo_advantage_estimator(rewards: Tensor, k: int) -> Tensor:
 
     # Reshape to (n, k) for vectorised group operations
     n = rewards.shape[0] // k
-    r = rewards.view(n, k)          # (n, k)
+    r = rewards.view(n, k)  # (n, k)
 
-    group_sum = r.sum(dim=1, keepdim=True)          # (n, 1)
+    group_sum = r.sum(dim=1, keepdim=True)  # (n, 1)
     # baseline_i = (sum_j - r_i) / (k - 1)
-    baselines = (group_sum - r) / (k - 1)           # (n, k)
-    advantages = (r - baselines).view(-1)            # (n*k,)
+    baselines = (group_sum - r) / (k - 1)  # (n, k)
+    advantages = (r - baselines).view(-1)  # (n*k,)
     return advantages
 
 
 # ---------------------------------------------------------------------------
 # RLOOTrainer
 # ---------------------------------------------------------------------------
+
 
 class RLOOTrainer:
     """RLOO policy gradient trainer.
@@ -158,9 +161,7 @@ class RLOOTrainer:
             # but we still apply the clipping structure so it degrades
             # gracefully when used off-policy.
             ratio = torch.ones_like(log_probs)
-            surr_clipped = torch.clamp(
-                ratio, 1.0 - self.clip_ratio, 1.0 + self.clip_ratio
-            ) * adv
+            surr_clipped = torch.clamp(ratio, 1.0 - self.clip_ratio, 1.0 + self.clip_ratio) * adv
             pg_loss = -torch.mean(torch.min(surr_unclipped, surr_clipped))
         else:
             pg_loss = -torch.mean(log_probs * adv)
@@ -223,14 +224,14 @@ class RLOOTrainer:
         if isinstance(output, tuple):
             logits = output[1]  # (B, T, V)
         else:
-            logits = output     # assume direct logits
+            logits = output  # assume direct logits
 
         # Compute per-token log-probs for the *target* tokens (teacher-forced)
         # target = input_ids shifted left by 1
         log_probs_all = torch.nn.functional.log_softmax(logits[:, :-1, :], dim=-1)  # (B, T-1, V)
-        target_ids = input_ids[:, 1:].unsqueeze(-1)                                  # (B, T-1, 1)
-        token_log_probs = log_probs_all.gather(2, target_ids).squeeze(-1)            # (B, T-1)
-        log_probs = token_log_probs.sum(dim=-1)                                      # (B,)
+        target_ids = input_ids[:, 1:].unsqueeze(-1)  # (B, T-1, 1)
+        token_log_probs = log_probs_all.gather(2, target_ids).squeeze(-1)  # (B, T-1)
+        log_probs = token_log_probs.sum(dim=-1)  # (B,)
 
         # ------------------------------------------------------------------
         # 2. RLOO advantages

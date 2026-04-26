@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.runtime.model_gc import (
     MODEL_GC_REGISTRY,
     GCPolicy,
@@ -13,10 +11,10 @@ from src.runtime.model_gc import (
     ModelHandle,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_handle(
     model_id: str = "m1",
@@ -36,6 +34,7 @@ def make_handle(
 # REGISTRY
 # ---------------------------------------------------------------------------
 
+
 class TestRegistry:
     def test_registry_has_default_key(self):
         assert "default" in MODEL_GC_REGISTRY
@@ -47,6 +46,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # ModelHandle dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestModelHandle:
     def test_handle_stores_fields(self):
@@ -64,6 +64,7 @@ class TestModelHandle:
 # ---------------------------------------------------------------------------
 # register
 # ---------------------------------------------------------------------------
+
 
 class TestRegister:
     def test_register_adds_handle(self):
@@ -91,6 +92,7 @@ class TestRegister:
 # ---------------------------------------------------------------------------
 # acquire
 # ---------------------------------------------------------------------------
+
 
 class TestAcquire:
     def test_acquire_returns_true_for_registered(self):
@@ -132,6 +134,7 @@ class TestAcquire:
 # release
 # ---------------------------------------------------------------------------
 
+
 class TestRelease:
     def test_release_returns_true_for_registered(self):
         mgr = ModelGCManager()
@@ -161,13 +164,14 @@ class TestRelease:
 # evict_candidates
 # ---------------------------------------------------------------------------
 
+
 class TestEvictCandidates:
     def _manager_with_handles(self, policy: GCPolicy) -> ModelGCManager:
         mgr = ModelGCManager(policy=policy)
         mgr.register(ModelHandle("oldest", 100, last_used=1.0, ref_count=0))
         mgr.register(ModelHandle("middle", 100, last_used=2.0, ref_count=0))
         mgr.register(ModelHandle("newest", 100, last_used=3.0, ref_count=0))
-        mgr.register(ModelHandle("held",   100, last_used=0.5, ref_count=1))
+        mgr.register(ModelHandle("held", 100, last_used=0.5, ref_count=1))
         return mgr
 
     def test_lru_sorted_oldest_first(self):
@@ -212,6 +216,7 @@ class TestEvictCandidates:
 # evict
 # ---------------------------------------------------------------------------
 
+
 class TestEvict:
     def test_evict_returns_true_if_existed(self):
         mgr = ModelGCManager()
@@ -232,6 +237,7 @@ class TestEvict:
 # ---------------------------------------------------------------------------
 # total_memory
 # ---------------------------------------------------------------------------
+
 
 class TestTotalMemory:
     def test_total_memory_empty(self):
@@ -255,6 +261,7 @@ class TestTotalMemory:
 # ---------------------------------------------------------------------------
 # status
 # ---------------------------------------------------------------------------
+
 
 class TestStatus:
     def test_status_returns_list(self):

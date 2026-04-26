@@ -8,18 +8,19 @@ Pure PyTorch — no heavy dependencies.
 from __future__ import annotations
 
 import math
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.model_sparsification import (
-    MagnitudePruner,
-    MovementPruner,
-    SparsityScheduler,
     HeadPruner,
     LoRARegrowth,
+    MagnitudePruner,
+    MovementPruner,
     PruningTrainer,
     SparsificationConfig,
+    SparsityScheduler,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,14 +46,9 @@ class TinyTransformer(nn.Module):
         super().__init__()
         self.embed = nn.Embedding(vocab_size, d_model)
         self.layers = nn.ModuleList(
-            [
-                nn.MultiheadAttention(d_model, n_heads, batch_first=True)
-                for _ in range(n_layers)
-            ]
+            [nn.MultiheadAttention(d_model, n_heads, batch_first=True) for _ in range(n_layers)]
         )
-        self.ffns = nn.ModuleList(
-            [nn.Linear(d_model, d_model) for _ in range(n_layers)]
-        )
+        self.ffns = nn.ModuleList([nn.Linear(d_model, d_model) for _ in range(n_layers)])
         self.head = nn.Linear(d_model, vocab_size)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -127,9 +123,7 @@ def test_magnitude_actual_sparsity_approx_target():
     pruner.apply_masks(model, masks)
     sparsity = pruner.actual_sparsity(model)
     # Allow ±5 percentage points tolerance
-    assert abs(sparsity - target) < 0.05, (
-        f"Sparsity {sparsity:.3f} not close to target {target}"
-    )
+    assert abs(sparsity - target) < 0.05, f"Sparsity {sparsity:.3f} not close to target {target}"
 
 
 # ---------------------------------------------------------------------------
@@ -186,28 +180,22 @@ def test_movement_create_masks_binary():
 
 
 def test_scheduler_at_begin_step_returns_initial():
-    sched = SparsityScheduler(
-        initial_sparsity=0.1, final_sparsity=0.9, begin_step=0, end_step=1000
-    )
+    sched = SparsityScheduler(initial_sparsity=0.1, final_sparsity=0.9, begin_step=0, end_step=1000)
     assert sched.current_sparsity(0) == pytest.approx(0.1, abs=1e-6)
 
 
 def test_scheduler_at_end_step_returns_final():
-    sched = SparsityScheduler(
-        initial_sparsity=0.0, final_sparsity=0.9, begin_step=0, end_step=1000
-    )
+    sched = SparsityScheduler(initial_sparsity=0.0, final_sparsity=0.9, begin_step=0, end_step=1000)
     assert sched.current_sparsity(1000) == pytest.approx(0.9, abs=1e-6)
 
 
 def test_scheduler_monotonically_increasing():
-    sched = SparsityScheduler(
-        initial_sparsity=0.0, final_sparsity=0.9, begin_step=0, end_step=1000
-    )
+    sched = SparsityScheduler(initial_sparsity=0.0, final_sparsity=0.9, begin_step=0, end_step=1000)
     steps = list(range(0, 1001, 50))
     sparsities = [sched.current_sparsity(s) for s in steps]
     for i in range(1, len(sparsities)):
         assert sparsities[i] >= sparsities[i - 1] - 1e-9, (
-            f"Non-monotone at step {steps[i]}: {sparsities[i-1]:.4f} → {sparsities[i]:.4f}"
+            f"Non-monotone at step {steps[i]}: {sparsities[i - 1]:.4f} → {sparsities[i]:.4f}"
         )
 
 
@@ -219,9 +207,7 @@ def test_scheduler_should_prune_at_multiples_of_freq():
         assert sched.should_prune(step, freq=freq), f"Expected prune at step {step}"
     # Should NOT prune at non-multiples
     for step in [50, 150, 333]:
-        assert not sched.should_prune(step, freq=freq), (
-            f"Unexpected prune at step {step}"
-        )
+        assert not sched.should_prune(step, freq=freq), f"Unexpected prune at step {step}"
 
 
 def test_scheduler_should_not_prune_outside_range():
@@ -267,9 +253,7 @@ def test_head_pruner_prune_heads_correct_count():
     n_to_prune = 2
     to_prune = pruner.prune_heads(importance, n_to_prune=n_to_prune)
     total_pruned = sum(len(v) for v in to_prune.values())
-    assert total_pruned == n_to_prune, (
-        f"Expected {n_to_prune} pruned heads, got {total_pruned}"
-    )
+    assert total_pruned == n_to_prune, f"Expected {n_to_prune} pruned heads, got {total_pruned}"
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +279,10 @@ def test_pruning_trainer_sparsity_increases_over_steps():
     model = make_model()
     pruner = MagnitudePruner(model, target_sparsity=0.9)
     scheduler = SparsityScheduler(
-        initial_sparsity=0.0, final_sparsity=0.9, begin_step=0, end_step=200,
+        initial_sparsity=0.0,
+        final_sparsity=0.9,
+        begin_step=0,
+        end_step=200,
     )
     trainer = PruningTrainer(model, pruner, scheduler, lr=1e-4)
     input_ids, labels = make_input()
@@ -307,9 +294,7 @@ def test_pruning_trainer_sparsity_increases_over_steps():
         sparsities.append(sp)
 
     # Sparsity at last checkpoint should be strictly greater than at first
-    assert sparsities[-1] > sparsities[0], (
-        f"Sparsity did not increase: {sparsities}"
-    )
+    assert sparsities[-1] > sparsities[0], f"Sparsity did not increase: {sparsities}"
 
 
 # ---------------------------------------------------------------------------

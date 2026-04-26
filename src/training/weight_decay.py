@@ -17,9 +17,7 @@ class WeightDecayConfig:
     wd_schedule: str = "constant"  # "constant" | "cosine" | "linear_warmup"
     layer_wise_scaling: bool = False  # scale WD per layer depth
     layer_scale_factor: float = 0.9  # multiply WD by this per layer
-    exclude_patterns: list[str] = field(
-        default_factory=lambda: ["bias", "norm", "embedding"]
-    )
+    exclude_patterns: list[str] = field(default_factory=lambda: ["bias", "norm", "embedding"])
     warmup_steps: int = 100
     total_steps: int = 10000
 
@@ -43,15 +41,13 @@ def compute_layer_index(name: str) -> int:
     return -1
 
 
-def layer_wise_wd(
-    base_wd: float, layer_idx: int, n_layers: int, scale_factor: float
-) -> float:
+def layer_wise_wd(base_wd: float, layer_idx: int, n_layers: int, scale_factor: float) -> float:
     """Compute layer-wise weight decay.
 
     Deeper layers get lower WD: base_wd * scale_factor^(n_layers - 1 - layer_idx).
     Layer 0 (first) gets highest WD, last layer gets lowest.
     """
-    return base_wd * (scale_factor ** layer_idx)
+    return base_wd * (scale_factor**layer_idx)
 
 
 def scheduled_wd(base_wd: float, step: int, config: WeightDecayConfig) -> float:
@@ -74,9 +70,7 @@ def scheduled_wd(base_wd: float, step: int, config: WeightDecayConfig) -> float:
         raise ValueError(f"Unknown WD schedule: {config.wd_schedule}")
 
 
-def build_param_groups(
-    model: nn.Module, config: WeightDecayConfig
-) -> list[dict]:
+def build_param_groups(model: nn.Module, config: WeightDecayConfig) -> list[dict]:
     """Group model parameters for optimizer with appropriate weight decay.
 
     Returns list of optimizer param groups:

@@ -9,23 +9,24 @@ Supports three task types:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BenchmarkTask:
     """Specification for a single benchmark task."""
+
     name: str
-    task_type: str          # "multiple_choice" | "generation" | "perplexity"
+    task_type: str  # "multiple_choice" | "generation" | "perplexity"
     n_samples: int = 100
     weight: float = 1.0
 
@@ -33,6 +34,7 @@ class BenchmarkTask:
 @dataclass
 class BenchmarkResult:
     """Result of running a single benchmark task."""
+
     task_name: str
     metric: float
     n_evaluated: int
@@ -42,6 +44,7 @@ class BenchmarkResult:
 # ---------------------------------------------------------------------------
 # Perplexity evaluation
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def evaluate_perplexity_task(
@@ -69,18 +72,18 @@ def evaluate_perplexity_task(
     for sample in samples:
         ids = sample.to(device)
         if ids.dim() == 1:
-            ids = ids.unsqueeze(0)          # (1, T)
-        ids = ids[:, :max_len]              # truncate
+            ids = ids.unsqueeze(0)  # (1, T)
+        ids = ids[:, :max_len]  # truncate
 
         T = ids.shape[1]
         if T < 2:
             per_sample_ppl.append(float("inf"))
             continue
 
-        _, logits, _ = model(ids)           # logits: (1, T, vocab)
+        _, logits, _ = model(ids)  # logits: (1, T, vocab)
 
-        shift_logits = logits[:, :-1, :].contiguous()   # (1, T-1, V)
-        shift_targets = ids[:, 1:].contiguous()         # (1, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (1, T-1, V)
+        shift_targets = ids[:, 1:].contiguous()  # (1, T-1)
 
         nll = F.cross_entropy(
             shift_logits.view(-1, shift_logits.size(-1)),
@@ -110,6 +113,7 @@ def evaluate_perplexity_task(
 # Multiple-choice evaluation
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def _nll_of_choice(
     model: nn.Module,
@@ -126,18 +130,18 @@ def _nll_of_choice(
     if ch.dim() == 1:
         ch = ch.unsqueeze(0)
 
-    full = torch.cat([ctx, ch], dim=1)   # (1, T_ctx + T_ch)
+    full = torch.cat([ctx, ch], dim=1)  # (1, T_ctx + T_ch)
 
-    _, logits, _ = model(full)           # (1, T, V)
+    _, logits, _ = model(full)  # (1, T, V)
 
-    shift_logits = logits[:, :-1, :]    # (1, T-1, V)
-    shift_targets = full[:, 1:]         # (1, T-1)
+    shift_logits = logits[:, :-1, :]  # (1, T-1, V)
+    shift_targets = full[:, 1:]  # (1, T-1)
 
     nll_all = F.cross_entropy(
         shift_logits.view(-1, shift_logits.size(-1)),
         shift_targets.view(-1),
         reduction="none",
-    )                                    # (T-1,)
+    )  # (T-1,)
 
     n_ch = ch.shape[1]
     choice_nll = nll_all[-(n_ch):]
@@ -173,10 +177,7 @@ def evaluate_multiple_choice_task(
         choice_ids_list = q["choice_ids"]
         correct_idx = int(q.get("correct_idx", 0))
 
-        nlls = [
-            _nll_of_choice(model, context_ids, ch, device)
-            for ch in choice_ids_list
-        ]
+        nlls = [_nll_of_choice(model, context_ids, ch, device) for ch in choice_ids_list]
         pred = int(min(range(len(nlls)), key=lambda i: nlls[i]))
         predictions.append(pred)
         if pred == correct_idx:
@@ -196,6 +197,7 @@ def evaluate_multiple_choice_task(
 # Generation / exact-match evaluation
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def _greedy_generate(
     model: nn.Module,
@@ -211,7 +213,7 @@ def _greedy_generate(
     generated = []
     for _ in range(max_new_tokens):
         _, logits, _ = model(ids)
-        next_token = logits[:, -1, :].argmax(dim=-1)   # (1,)
+        next_token = logits[:, -1, :].argmax(dim=-1)  # (1,)
         generated.append(next_token.item())
         ids = torch.cat([ids, next_token.unsqueeze(0)], dim=1)
 
@@ -266,6 +268,7 @@ def evaluate_generation_task(
 # ---------------------------------------------------------------------------
 # BenchmarkSuite
 # ---------------------------------------------------------------------------
+
 
 class BenchmarkSuite:
     """Runs multiple benchmark tasks and aggregates results.

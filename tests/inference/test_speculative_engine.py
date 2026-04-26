@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.speculative_engine import SpecConfig, SpecResult, SpeculativeEngine
-
 
 VOCAB = 64
 N_DRAFT = 4
@@ -86,7 +84,6 @@ class TestDraft:
 class TestVerify:
     def _run_verify(self, engine, draft_tok):
         n = len(draft_tok)
-        v = engine.config.vocab_size
         draft_logits = peaked_logits(n, tok=draft_tok[0])
         target_logits = peaked_logits(n + 1, tok=draft_tok[0])
         return engine.verify(draft_tok, draft_logits, target_logits)
@@ -116,7 +113,6 @@ class TestVerify:
         torch.manual_seed(0)
         engine = make_engine()
         n = N_DRAFT
-        v = VOCAB
         logits = peaked_logits(n, tok=5, peak=100.0)
         target_logits = peaked_logits(n + 1, tok=5, peak=100.0)
         draft_tokens = [5] * n

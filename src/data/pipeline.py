@@ -28,21 +28,24 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 from datatrove.executor import LocalPipelineExecutor
-from datatrove.pipeline.dedup import MinhashDedupSignature, MinhashDedupBuckets, MinhashDedupCluster, MinhashDedupFilter
+from datatrove.pipeline.dedup import (
+    MinhashDedupBuckets,
+    MinhashDedupCluster,
+    MinhashDedupFilter,
+    MinhashDedupSignature,
+)
 from datatrove.pipeline.filters import (
     C4QualityFilter,
     FineWebQualityFilter,
     GopherQualityFilter,
-    LanguageFilter,
     LambdaFilter,
+    LanguageFilter,
 )
-from datatrove.pipeline.readers import ParquetReader, JsonlReader
+from datatrove.pipeline.readers import JsonlReader, ParquetReader
 from datatrove.pipeline.writers import ParquetWriter
 
 logger = logging.getLogger(__name__)
@@ -51,6 +54,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True, slots=True)
 class PipelineConfig:
@@ -92,6 +96,7 @@ class PipelineConfig:
 # Pipeline builders
 # ---------------------------------------------------------------------------
 
+
 def _get_reader(
     config: PipelineConfig,
     glob_pattern: str | None = None,
@@ -131,7 +136,9 @@ def build_filter_pipeline(
         C4QualityFilter(),
         FineWebQualityFilter(),
         LambdaFilter(
-            filter_function=lambda doc: doc.metadata.get("int_score", doc.metadata.get("score", 0)) >= config.edu_score_min,
+            filter_function=lambda doc: (
+                doc.metadata.get("int_score", doc.metadata.get("score", 0)) >= config.edu_score_min
+            ),
             name="EduScoreFilter",
         ),
         ParquetWriter(
@@ -247,6 +254,7 @@ def build_minhash_filter_pipeline(
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+
 def run_full_pipeline(config: PipelineConfig) -> None:
     """Execute the complete pipeline: filter -> dedup (4-stage MinHash).
 
@@ -266,14 +274,13 @@ def run_full_pipeline(config: PipelineConfig) -> None:
         executor.run()
         logger.info("Completed stage: %s", name)
 
-    logger.info(
-        "Pipeline complete. Clean data at: %s/deduped", config.output_path
-    )
+    logger.info("Pipeline complete. Clean data at: %s/deduped", config.output_path)
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def parse_args(argv: Sequence[str] | None = None) -> PipelineConfig:
     parser = argparse.ArgumentParser(

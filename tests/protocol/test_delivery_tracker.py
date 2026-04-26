@@ -1,19 +1,16 @@
 """Tests for delivery_tracker — message reliability state machine."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.protocol.delivery_tracker import (
+    DEFAULT_DELIVERY_TRACKER,
+    DELIVERY_TRACKER_REGISTRY,
     DeliveryConfig,
-    DeliveryRecord,
     DeliveryStatus,
     DeliveryTracker,
-    DELIVERY_TRACKER_REGISTRY,
-    DEFAULT_DELIVERY_TRACKER,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registration
@@ -172,7 +169,9 @@ def test_stats_aggregation():
     dt.register("a", "alice")
     dt.register("b", "bob")
     dt.ack("b")
-    dt.mark_failed("c",)
+    dt.mark_failed(
+        "c",
+    )
     # c not registered, so only a and b count
     stats = dt.stats()
     assert stats["pending"] == 1

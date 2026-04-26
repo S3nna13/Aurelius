@@ -7,10 +7,10 @@ import torch
 
 import src.retrieval as retrieval
 from src.retrieval import (
+    EMBEDDING_REGISTRY,
     INSTRUCTION_PREFIXES,
     DenseEmbedder,
     EmbedderConfig,
-    EMBEDDING_REGISTRY,
     InstructionPrefixEmbedder,
 )
 
@@ -78,9 +78,7 @@ def test_end_to_end_self_match_peaks_at_one() -> None:
     wrapper = _build()
     q = "needle"
     passages = ["haystack one", "needle", "haystack three"]
-    sims = wrapper.similarity(
-        q, passages, query_task="passage", passage_task="passage"
-    )
+    sims = wrapper.similarity(q, passages, query_task="passage", passage_task="passage")
     # Same text + same task => cosine sim == 1.0.
     assert sims[1] == pytest.approx(1.0, abs=1e-5)
     assert sims[1] >= max(sims[0], sims[2])

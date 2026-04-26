@@ -6,13 +6,12 @@ Stdlib-only.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Turn:
@@ -36,10 +35,11 @@ class CompressionConfig:
 # Compressor
 # ---------------------------------------------------------------------------
 
+
 class ContextCompressor:
     """Compresses a list of conversation turns to fit within a token budget."""
 
-    def __init__(self, config: Optional[CompressionConfig] = None) -> None:
+    def __init__(self, config: CompressionConfig | None = None) -> None:
         self._config: CompressionConfig = config if config is not None else CompressionConfig()
 
     # --- helpers ----------------------------------------------------------
@@ -54,7 +54,7 @@ class ContextCompressor:
             return list(turns)
 
         # Split: recent vs. older
-        recent = turns[-cfg.keep_recent:] if cfg.keep_recent > 0 else []
+        recent = turns[-cfg.keep_recent :] if cfg.keep_recent > 0 else []
         older = turns[: len(turns) - cfg.keep_recent] if cfg.keep_recent > 0 else turns
 
         # Summarize older turns by extracting every Nth word

@@ -1,7 +1,6 @@
 """Tests for deterministic simulation runner."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.simulation.deterministic_runner import DeterministicRunner
 
@@ -9,7 +8,10 @@ from src.simulation.deterministic_runner import DeterministicRunner
 class TestDeterministicRunner:
     def test_run_returns_history(self):
         runner = DeterministicRunner(seed=42)
-        env = lambda: {"pos": 0}
+
+        def env():
+            return {"pos": 0}
+
         history = runner.run(env, steps=10)
         assert len(history) <= 10
         assert all(hasattr(s, "action") for s in history)

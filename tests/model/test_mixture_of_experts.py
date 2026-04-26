@@ -1,15 +1,15 @@
 """Tests for src/model/mixture_of_experts.py"""
+
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.mixture_of_experts import (
-    MoEConfig,
     ExpertFFN,
+    MoEBlock,
+    MoEConfig,
+    SparseMoELayer,
     TopKRouter,
     compute_load_balancing_loss,
-    SparseMoELayer,
-    MoEBlock,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,6 +45,7 @@ def input_tensor():
 # MoEConfig
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = MoEConfig()
     assert cfg.n_experts == 8
@@ -55,6 +56,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # ExpertFFN
 # ---------------------------------------------------------------------------
+
 
 def test_expert_ffn_output_shape(cfg):
     expert = ExpertFFN(D_MODEL, D_FF)
@@ -74,6 +76,7 @@ def test_expert_ffn_gradient_flows(cfg):
 # ---------------------------------------------------------------------------
 # TopKRouter
 # ---------------------------------------------------------------------------
+
 
 def test_router_probs_shape(cfg):
     router = TopKRouter(D_MODEL, N_EXPERTS, TOP_K)
@@ -112,6 +115,7 @@ def test_router_indices_in_range(cfg):
 # compute_load_balancing_loss
 # ---------------------------------------------------------------------------
 
+
 def test_aux_loss_is_scalar(cfg):
     N = BATCH * SEQ
     probs = torch.softmax(torch.randn(N, N_EXPERTS), dim=-1)
@@ -141,6 +145,7 @@ def test_aux_loss_has_gradient(cfg):
 # ---------------------------------------------------------------------------
 # SparseMoELayer
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_moe_output_shape(cfg, input_tensor):
     moe = SparseMoELayer(cfg)
@@ -177,6 +182,7 @@ def test_sparse_moe_output_finite(cfg, input_tensor):
 # ---------------------------------------------------------------------------
 # MoEBlock
 # ---------------------------------------------------------------------------
+
 
 def test_moe_block_output_shape(cfg, input_tensor):
     block = MoEBlock(cfg)

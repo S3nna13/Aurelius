@@ -1,20 +1,23 @@
 """Tree speculative decoding: draft tree construction and parallel target verification."""
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass
-
 
 # ---------------------------------------------------------------------------
 # Configuration and data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TreeSpecConfig:
     """Configuration for tree speculative decoding."""
-    branch_factor: int = 2    # number of branches at each node
-    tree_depth: int = 3       # depth of draft tree
+
+    branch_factor: int = 2  # number of branches at each node
+    tree_depth: int = 3  # depth of draft tree
     max_new_tokens: int = 64
     temperature: float = 1.0
 
@@ -22,15 +25,17 @@ class TreeSpecConfig:
 @dataclass
 class TreeNode:
     """A single node in the draft tree (flat representation)."""
+
     token_id: int
     log_prob: float
-    parent_idx: int   # index in flat node list; -1 for root-level nodes
-    depth: int        # 1-indexed; depth=1 means child of root context
+    parent_idx: int  # index in flat node list; -1 for root-level nodes
+    depth: int  # 1-indexed; depth=1 means child of root context
 
 
 # ---------------------------------------------------------------------------
 # Draft tree construction
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def build_draft_tree(
@@ -117,6 +122,7 @@ def build_draft_tree(
 # Path extraction
 # ---------------------------------------------------------------------------
 
+
 def flatten_tree_paths(nodes: list[TreeNode]) -> list[list[int]]:
     """Extract all root-to-leaf paths as token id sequences.
 
@@ -157,6 +163,7 @@ def flatten_tree_paths(nodes: list[TreeNode]) -> list[list[int]]:
 # Tree verification
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def verify_tree(
     target_model,
@@ -191,7 +198,7 @@ def verify_tree(
     if not paths:
         return [], 0
 
-    first_path = paths[0]
+    paths[0]
 
     # Run target model on input_ids
     _, target_logits, _ = target_model(input_ids)
@@ -206,7 +213,6 @@ def verify_tree(
 
     # Find the first path's nodes in flat order (BFS: depth-1 nodes appear first)
     # First depth-1 node is nodes[0]
-    path_nodes: list[TreeNode] = []
     # Walk nodes to reconstruct first-path nodes
     # Leaf of first path: find it
     leaf_of_first_path = _find_first_leaf(nodes)
@@ -277,6 +283,7 @@ def _find_first_leaf(nodes: list[TreeNode]) -> int:
 # High-level decoder
 # ---------------------------------------------------------------------------
 
+
 class TreeSpecDecoder:
     """Tree speculative decoder: drafts a tree, verifies against target, repeats.
 
@@ -341,7 +348,7 @@ class TreeSpecDecoder:
             if total_tokens >= cfg.max_new_tokens:
                 break
 
-        generated_ids = current_ids[:, input_ids.shape[1]:]
+        generated_ids = current_ids[:, input_ids.shape[1] :]
 
         stats = {
             "n_steps": n_steps,

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
+from enum import StrEnum
 
 from .vulnerability_schema import VulnCollection, VulnFinding, VulnSeverity
 
 
-class SARIFLevel(str, Enum):
+class SARIFLevel(StrEnum):
     ERROR = "error"
     WARNING = "warning"
     NOTE = "note"

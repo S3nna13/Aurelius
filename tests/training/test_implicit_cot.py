@@ -1,20 +1,18 @@
 """Tests for src/training/implicit_cot.py — Implicit Chain-of-Thought training."""
+
 from __future__ import annotations
 
-import copy
 import math
 
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.implicit_cot import (
     ImplicitCoTConfig,
     ImplicitCoTLoss,
     ImplicitCoTTrainer,
     ReasoningStateProjector,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny language model used throughout the tests
@@ -174,8 +172,8 @@ def test_distillation_loss_scalar_and_finite(loss_fn):
 
 
 def test_distillation_loss_mismatched_dims(loss_fn):
-    s_hidden = torch.randn(B, T, D)       # student dim = 32
-    t_hidden = torch.randn(B, T, D * 2)   # teacher dim = 64
+    s_hidden = torch.randn(B, T, D)  # student dim = 32
+    t_hidden = torch.randn(B, T, D * 2)  # teacher dim = 64
     loss = loss_fn.distillation_loss(s_hidden, t_hidden)
     assert loss.ndim == 0
     assert math.isfinite(loss.item())
@@ -255,10 +253,7 @@ def test_train_step_loss_is_finite(trainer, input_ids, labels):
 
 def test_train_step_updates_student_weights(trainer, input_ids, labels):
     # Snapshot student weights before a step
-    before = {
-        name: param.data.clone()
-        for name, param in trainer.student.named_parameters()
-    }
+    before = {name: param.data.clone() for name, param in trainer.student.named_parameters()}
 
     trainer.train_step(input_ids, labels)
 

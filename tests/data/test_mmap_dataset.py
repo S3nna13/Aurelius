@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import struct
 import tempfile
 
 import numpy as np
@@ -10,10 +9,10 @@ import torch
 
 from src.data.mmap_dataset import MmapConfig, MmapDataset
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _write_tokens(path: str, n: int, dtype: str = "uint16") -> np.ndarray:
     rng = np.random.default_rng(0)
@@ -25,6 +24,7 @@ def _write_tokens(path: str, n: int, dtype: str = "uint16") -> np.ndarray:
 # ---------------------------------------------------------------------------
 # MmapConfig tests
 # ---------------------------------------------------------------------------
+
 
 class TestMmapConfig:
     def test_defaults(self):
@@ -43,6 +43,7 @@ class TestMmapConfig:
 # ---------------------------------------------------------------------------
 # Stub (no file) behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestMmapDatasetStub:
     def setup_method(self):
@@ -100,6 +101,7 @@ class TestMmapDatasetStub:
 # ---------------------------------------------------------------------------
 # Real file (memmap) behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestMmapDatasetFile:
     def test_len_calculation_no_stride(self):

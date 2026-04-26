@@ -6,28 +6,28 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from src.quantization.awq_quantizer import (
+from src.quantization.awq_quantizer import (  # noqa: E402
+    AWQ_QUANTIZER_REGISTRY,
+    QUANTIZATION_REGISTRY,
     ActivationStats,
     AWQConfig,
     AWQQuantizer,
     AWQScaleSearch,
-    AWQ_QUANTIZER_REGISTRY,
-    QUANTIZATION_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
-def tiny_weight() -> "torch.Tensor":
+def tiny_weight() -> torch.Tensor:
     torch.manual_seed(0)
     return torch.randn(4, 8)
 
 
 @pytest.fixture()
-def tiny_activations() -> "torch.Tensor":
+def tiny_activations() -> torch.Tensor:
     torch.manual_seed(1)
     return torch.randn(16, 8)
 
@@ -45,6 +45,7 @@ def config8bit() -> AWQConfig:
 # ---------------------------------------------------------------------------
 # AWQConfig
 # ---------------------------------------------------------------------------
+
 
 class TestAWQConfig:
     def test_defaults(self):
@@ -70,6 +71,7 @@ class TestAWQConfig:
 # ActivationStats
 # ---------------------------------------------------------------------------
 
+
 class TestActivationStats:
     def test_frozen(self, tiny_activations):
         q = AWQQuantizer()
@@ -88,6 +90,7 @@ class TestActivationStats:
 # ---------------------------------------------------------------------------
 # collect_activation_stats
 # ---------------------------------------------------------------------------
+
 
 class TestCollectActivationStats:
     def test_shape_2d(self, tiny_activations):
@@ -122,6 +125,7 @@ class TestCollectActivationStats:
 # compute_scale_factor
 # ---------------------------------------------------------------------------
 
+
 class TestComputeScaleFactor:
     def test_shape(self, tiny_weight, tiny_activations):
         q = AWQQuantizer()
@@ -155,6 +159,7 @@ class TestComputeScaleFactor:
 # ---------------------------------------------------------------------------
 # quantize_with_scales / reconstruction_error
 # ---------------------------------------------------------------------------
+
 
 class TestQuantizeWithScales:
     def test_shapes(self, tiny_weight, tiny_activations, config4bit):
@@ -227,6 +232,7 @@ class TestReconstructionError:
 # Legacy scale search
 # ---------------------------------------------------------------------------
 
+
 class TestLegacyAWQScaleSearch:
     def test_shape(self, tiny_weight, tiny_activations):
         s = AWQScaleSearch()
@@ -242,6 +248,7 @@ class TestLegacyAWQScaleSearch:
 # ---------------------------------------------------------------------------
 # Legacy layer API
 # ---------------------------------------------------------------------------
+
 
 class TestLegacyQuantizeLayer:
     def test_roundtrip(self, tiny_weight, tiny_activations, config8bit):
@@ -261,6 +268,7 @@ class TestLegacyQuantizeLayer:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_awq_legacy(self):

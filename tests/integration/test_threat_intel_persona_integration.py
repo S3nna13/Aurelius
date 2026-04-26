@@ -11,7 +11,7 @@ from src.chat.threat_intel_persona import (
     ThreatIntelPersona,
 )
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 def test_threat_intel_persona_registered_in_chat_template_registry() -> None:

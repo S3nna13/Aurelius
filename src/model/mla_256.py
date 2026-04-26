@@ -3,20 +3,22 @@ head_dim 192→256, n_heads reduced by 1/3.
 Muon Split: per-head weight orthogonalization for scale-stable training.
 Reduces KV cache at decode time vs standard MLA while improving training stability.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class MLA256Config:
     d_model: int = 512
-    n_heads: int = 8         # reduced by 1/3 from base (e.g. 12 → 8)
-    head_dim: int = 256      # increased from 192
-    kv_lrank: int = 64       # low-rank KV compression dimension (latent dim)
+    n_heads: int = 8  # reduced by 1/3 from base (e.g. 12 → 8)
+    head_dim: int = 256  # increased from 192
+    kv_lrank: int = 64  # low-rank KV compression dimension (latent dim)
 
 
 class MLA256Attention(nn.Module):
@@ -55,9 +57,7 @@ class MLA256Attention(nn.Module):
     # Muon Split — per-head Newton-Schulz orthogonalization
     # ------------------------------------------------------------------
 
-    def _orthogonalize_per_head(
-        self, weight: torch.Tensor, n_heads: int
-    ) -> torch.Tensor:
+    def _orthogonalize_per_head(self, weight: torch.Tensor, n_heads: int) -> torch.Tensor:
         """Per-head Newton-Schulz 2-step orthogonalization (Muon Split).
 
         Each head's weight slice is orthogonalized independently so that
@@ -78,13 +78,13 @@ class MLA256Attention(nn.Module):
                     # Tall matrix: transpose, orthogonalize rows, transpose back
                     m = m.T
                     A = m @ m.T
-                    I = torch.eye(A.shape[0], device=A.device, dtype=A.dtype)
-                    B = 1.5 * I - 0.5 * A
+                    _I = torch.eye(A.shape[0], device=A.device, dtype=A.dtype)
+                    B = 1.5 * _I - 0.5 * A
                     m = (B @ m).T
                 else:
                     A = m @ m.T
-                    I = torch.eye(A.shape[0], device=A.device, dtype=A.dtype)
-                    B = 1.5 * I - 0.5 * A
+                    _I = torch.eye(A.shape[0], device=A.device, dtype=A.dtype)
+                    B = 1.5 * _I - 0.5 * A
                     m = B @ m
                 orth_chunks.append(m.reshape(chunk.shape))
             return torch.cat(orth_chunks, dim=0)
@@ -130,7 +130,7 @@ class MLA256Attention(nn.Module):
         # each [B, n_heads, T, head_dim]
 
         # Scaled dot-product attention
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         attn_weights = torch.matmul(q, k.transpose(-1, -2)) * scale  # [B, n_heads, T, T]
         attn_weights = F.softmax(attn_weights, dim=-1)
 

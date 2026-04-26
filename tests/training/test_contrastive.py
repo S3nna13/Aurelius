@@ -1,9 +1,9 @@
 """Tests for src/training/contrastive.py (SimCSE-style contrastive learning)."""
+
 from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -16,10 +16,10 @@ from src.training.contrastive import (
     simcse_loss,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_cfg() -> AureliusConfig:
@@ -62,6 +62,7 @@ def input_ids() -> torch.Tensor:
 # 1. ContrastiveConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_contrastive_config_defaults():
     cfg = ContrastiveConfig()
     assert cfg.temperature == 0.05
@@ -73,6 +74,7 @@ def test_contrastive_config_defaults():
 # ---------------------------------------------------------------------------
 # 2-4. pool_hidden_states
 # ---------------------------------------------------------------------------
+
 
 def test_pool_mean_shape():
     hidden = torch.randn(4, 16, 64)
@@ -97,6 +99,7 @@ def test_pool_last_matches_last_token():
 # ---------------------------------------------------------------------------
 # 5-10. simcse_loss
 # ---------------------------------------------------------------------------
+
 
 def test_simcse_loss_returns_tensor_and_dict():
     z1 = torch.randn(4, 64)
@@ -154,6 +157,7 @@ def test_simcse_loss_identical_pairs_high_accuracy():
 # 11-12. TextEncoder
 # ---------------------------------------------------------------------------
 
+
 def test_text_encoder_encode_shape(encoder: TextEncoder, input_ids: torch.Tensor):
     with torch.no_grad():
         out = encoder.encode(input_ids)
@@ -172,6 +176,7 @@ def test_text_encoder_with_projection_dim(tiny_model: AureliusTransformer, input
 # 13-14. SimCSETrainer.train_step
 # ---------------------------------------------------------------------------
 
+
 def _make_trainer(tiny_model: AureliusTransformer) -> SimCSETrainer:
     cfg = ContrastiveConfig(temperature=0.05)
     enc = TextEncoder(backbone=tiny_model, config=cfg)
@@ -186,7 +191,9 @@ def test_simcse_trainer_train_step_keys(tiny_model: AureliusTransformer, input_i
         assert key in result, f"Missing key: {key}"
 
 
-def test_simcse_trainer_train_step_loss_finite(tiny_model: AureliusTransformer, input_ids: torch.Tensor):
+def test_simcse_trainer_train_step_loss_finite(
+    tiny_model: AureliusTransformer, input_ids: torch.Tensor
+):
     trainer = _make_trainer(tiny_model)
     result = trainer.train_step(input_ids)
     assert isinstance(result["loss"], float)
@@ -197,7 +204,10 @@ def test_simcse_trainer_train_step_loss_finite(tiny_model: AureliusTransformer, 
 # 15. HardNegativeSimCSETrainer
 # ---------------------------------------------------------------------------
 
-def test_hard_negative_trainer_returns_correct_keys(tiny_model: AureliusTransformer, input_ids: torch.Tensor):
+
+def test_hard_negative_trainer_returns_correct_keys(
+    tiny_model: AureliusTransformer, input_ids: torch.Tensor
+):
     cfg = ContrastiveConfig(temperature=0.05, hard_negative_weight=1.0)
     enc = TextEncoder(backbone=tiny_model, config=cfg)
     opt = torch.optim.Adam(enc.parameters(), lr=1e-4)
@@ -214,6 +224,7 @@ def test_hard_negative_trainer_returns_correct_keys(tiny_model: AureliusTransfor
 # ---------------------------------------------------------------------------
 # 16. Dropout produces different outputs on two forward passes in train mode
 # ---------------------------------------------------------------------------
+
 
 def test_train_mode_dropout_produces_different_outputs(input_ids: torch.Tensor):
     """Two calls to encode() in train mode should differ when dropout > 0."""

@@ -1,7 +1,9 @@
 """Tests for Muon optimizer."""
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
+
 from src.training.muon import Muon, _newton_schulz
 
 
@@ -97,6 +99,4 @@ def test_muon_weight_decay():
     optimizer.step()
 
     # With weight_decay, norm should decrease
-    assert linear.weight.norm() < 32 * 64 ** 0.5  # less than initialized all-ones norm
-
-
+    assert linear.weight.norm() < 32 * 64**0.5  # less than initialized all-ones norm

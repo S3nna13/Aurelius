@@ -9,15 +9,14 @@ the visual-reasoning signal.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ZeroVisionSFTConfig:
@@ -32,12 +31,13 @@ class ZeroVisionSFTConfig:
 
     tool_call_weight: float = 3.0
     pad_id: int = 0
-    tool_call_token_ids: Optional[list[int]] = field(default=None)
+    tool_call_token_ids: list[int] | None = field(default=None)
 
 
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class ZeroVisionSFTTrainer:
     """Text-only SFT trainer with tool-call token upweighting.
@@ -47,7 +47,7 @@ class ZeroVisionSFTTrainer:
     trainer stays decoupled from the model architecture.
     """
 
-    def __init__(self, config: Optional[ZeroVisionSFTConfig] = None) -> None:
+    def __init__(self, config: ZeroVisionSFTConfig | None = None) -> None:
         if config is None:
             config = ZeroVisionSFTConfig()
         self.config = config
@@ -166,7 +166,7 @@ class ZeroVisionSFTTrainer:
         loss = self.compute_loss(logits, labels, tool_call_mask)
 
         # Count non-pad tokens in labels
-        non_pad = (labels != self.config.pad_id)
+        non_pad = labels != self.config.pad_id
         n_tokens: int = int(non_pad.sum().item())
 
         # Count tool-call tokens that are also non-pad

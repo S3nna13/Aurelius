@@ -122,8 +122,8 @@ class ADOPT(Optimizer):
                 state["step"] += 1
                 t: int = state["step"]
 
-                m: torch.Tensor = state["exp_avg"]       # m_{t-1}
-                v: torch.Tensor = state["exp_avg_sq"]    # v_{t-1}
+                m: torch.Tensor = state["exp_avg"]  # m_{t-1}
+                v: torch.Tensor = state["exp_avg_sq"]  # v_{t-1}
 
                 # ------------------------------------------------------------------ #
                 # Coupled weight decay (L2 regularisation via gradient augmentation) #
@@ -155,8 +155,8 @@ class ADOPT(Optimizer):
                 # General step t ≥ 2                                                  #
                 # ------------------------------------------------------------------ #
                 # g̃_t = g_t / max(sqrt(v_{t-1}), ε)
-                denom = v.sqrt().clamp_(min=eps)   # max(sqrt(v_{t-1}), ε)
-                g_tilde = g_t / denom              # g̃_t
+                denom = v.sqrt().clamp_(min=eps)  # max(sqrt(v_{t-1}), ε)
+                g_tilde = g_t / denom  # g̃_t
 
                 # m_t = β1 · m_{t-1} + (1 − β1) · g̃_t
                 m.mul_(beta1).add_(g_tilde, alpha=1.0 - beta1)

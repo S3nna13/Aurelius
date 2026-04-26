@@ -3,6 +3,7 @@
 Extends the simple MessageBus with topic-based broadcast and
 subscriber-group routing. All inputs treated as untrusted.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

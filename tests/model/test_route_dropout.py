@@ -43,4 +43,3 @@ def test_apply_route_dropout_changes_distribution():
 def test_route_survival_rate_scalar_output():
     rate = route_survival_rate(torch.tensor([True, False, True]))
     assert rate.ndim == 0
-

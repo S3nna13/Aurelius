@@ -8,19 +8,18 @@ References:
   - OpenAI packing approach (GPT-3 SFT)
   - LLaMA-Factory multipack sampler
 """
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PackedSequence:
@@ -35,15 +34,17 @@ class PackedSequence:
         labels:         Optional 1D tensor aligned with token_ids; padding positions
                         are filled with -100 so they are ignored by cross-entropy.
     """
+
     token_ids: Tensor
     position_ids: Tensor
-    seq_boundaries: List[int]
-    labels: Optional[Tensor] = field(default=None)
+    seq_boundaries: list[int]
+    labels: Tensor | None = field(default=None)
 
 
 # ---------------------------------------------------------------------------
 # Core packer
 # ---------------------------------------------------------------------------
+
 
 class SequencePacker:
     """Bins a list of 1-D token-id tensors into packed chunks via FFD.
@@ -63,7 +64,7 @@ class SequencePacker:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_bins(self, sequences: List[Tensor]) -> List[List[int]]:
+    def _build_bins(self, sequences: list[Tensor]) -> list[list[int]]:
         """First-fit decreasing bin packing.
 
         Returns a list of bins, where each bin is a list of original indices
@@ -74,8 +75,8 @@ class SequencePacker:
         lengths = [min(len(s), self.max_length) for s in sequences]
         order = sorted(range(len(sequences)), key=lambda i: lengths[i], reverse=True)
 
-        bin_contents: List[List[int]] = []   # list of [seq_idx, ...]
-        bin_remaining: List[int] = []        # remaining capacity per bin
+        bin_contents: list[list[int]] = []  # list of [seq_idx, ...]
+        bin_remaining: list[int] = []  # remaining capacity per bin
 
         for idx in order:
             seq_len = lengths[idx]
@@ -94,19 +95,19 @@ class SequencePacker:
 
     def _assemble_packed(
         self,
-        bin_indices: List[int],
-        sequences: List[Tensor],
-        labels_list: Optional[List[Tensor]] = None,
+        bin_indices: list[int],
+        sequences: list[Tensor],
+        labels_list: list[Tensor] | None = None,
     ) -> PackedSequence:
         """Concatenate sequences in a bin and pad to max_length."""
-        parts_tokens: List[Tensor] = []
-        parts_pos: List[Tensor] = []
-        parts_labels: List[Tensor] = []
-        seq_boundaries: List[int] = []
+        parts_tokens: list[Tensor] = []
+        parts_pos: list[Tensor] = []
+        parts_labels: list[Tensor] = []
+        seq_boundaries: list[int] = []
         cursor = 0
 
         for idx in bin_indices:
-            seq = sequences[idx][:self.max_length]  # truncate if > max_length
+            seq = sequences[idx][: self.max_length]  # truncate if > max_length
             seq_len = len(seq)
             seq_boundaries.append(cursor)
 
@@ -114,7 +115,7 @@ class SequencePacker:
             parts_pos.append(torch.arange(seq_len, dtype=torch.long))
 
             if labels_list is not None:
-                lbl = labels_list[idx][:self.max_length]
+                lbl = labels_list[idx][: self.max_length]
                 parts_labels.append(lbl)
 
             cursor += seq_len
@@ -128,25 +129,31 @@ class SequencePacker:
 
         # Pad token_ids and position_ids
         if pad_len > 0:
-            token_ids = torch.cat([
-                token_ids,
-                torch.full((pad_len,), self.pad_token_id, dtype=token_ids.dtype),
-            ])
+            token_ids = torch.cat(
+                [
+                    token_ids,
+                    torch.full((pad_len,), self.pad_token_id, dtype=token_ids.dtype),
+                ]
+            )
             # Position ids for padding: continue counting (or 0 — we use 0)
-            position_ids = torch.cat([
-                position_ids,
-                torch.zeros(pad_len, dtype=torch.long),
-            ])
+            position_ids = torch.cat(
+                [
+                    position_ids,
+                    torch.zeros(pad_len, dtype=torch.long),
+                ]
+            )
 
         # Handle labels
-        labels: Optional[Tensor] = None
+        labels: Tensor | None = None
         if labels_list is not None:
             labels = torch.cat(parts_labels)
             if pad_len > 0:
-                labels = torch.cat([
-                    labels,
-                    torch.full((pad_len,), -100, dtype=labels.dtype),
-                ])
+                labels = torch.cat(
+                    [
+                        labels,
+                        torch.full((pad_len,), -100, dtype=labels.dtype),
+                    ]
+                )
 
         return PackedSequence(
             token_ids=token_ids,
@@ -159,7 +166,7 @@ class SequencePacker:
     # Public API
     # ------------------------------------------------------------------
 
-    def pack(self, sequences: List[Tensor]) -> List[PackedSequence]:
+    def pack(self, sequences: list[Tensor]) -> list[PackedSequence]:
         """Pack a list of 1-D token-id tensors into PackedSequence chunks.
 
         Each chunk has length exactly max_length (padded if necessary).
@@ -179,9 +186,9 @@ class SequencePacker:
 
     def pack_with_labels(
         self,
-        sequences: List[Tensor],
-        labels: List[Tensor],
-    ) -> List[PackedSequence]:
+        sequences: list[Tensor],
+        labels: list[Tensor],
+    ) -> list[PackedSequence]:
         """Pack token-id tensors together with aligned label tensors.
 
         Padding positions in labels are filled with -100 (ignored by CE loss).
@@ -209,6 +216,7 @@ class SequencePacker:
 # Statistics
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PackingStats:
     """Packing efficiency statistics.
@@ -220,6 +228,7 @@ class PackingStats:
         padding_tokens: Number of padding tokens added (n_bins * max_length - total_tokens).
         efficiency:     Fraction of non-padding tokens = total_tokens / (n_bins * max_length).
     """
+
     n_sequences: int
     n_bins: int
     total_tokens: int
@@ -228,8 +237,8 @@ class PackingStats:
 
     def __init__(
         self,
-        sequences: List[Tensor],
-        bins: List[List[int]],
+        sequences: list[Tensor],
+        bins: list[list[int]],
         max_length: int,
     ) -> None:
         self.n_sequences = len(sequences)
@@ -243,8 +252,8 @@ class PackingStats:
     def from_packer(
         cls,
         packer: SequencePacker,
-        sequences: List[Tensor],
-    ) -> "PackingStats":
+        sequences: list[Tensor],
+    ) -> PackingStats:
         """Convenience factory: compute stats from a packer and sequences."""
         bins = packer._build_bins(sequences)
         return cls(sequences, bins, packer.max_length)
@@ -253,6 +262,7 @@ class PackingStats:
 # ---------------------------------------------------------------------------
 # Collator
 # ---------------------------------------------------------------------------
+
 
 class PackedBatchCollator:
     """PyTorch collate_fn that packs a batch of dict items into padded tensors.
@@ -276,9 +286,9 @@ class PackedBatchCollator:
     def __init__(self, packer: SequencePacker) -> None:
         self.packer = packer
 
-    def __call__(self, batch: List[Dict]) -> Dict[str, Tensor]:
-        sequences: List[Tensor] = []
-        labels_list: Optional[List[Tensor]] = []
+    def __call__(self, batch: list[dict]) -> dict[str, Tensor]:
+        sequences: list[Tensor] = []
+        labels_list: list[Tensor] | None = []
         has_labels = any("labels" in item for item in batch)
 
         for item in batch:
@@ -343,8 +353,8 @@ class PackedBatchCollator:
     def _compute_real_len(
         self,
         ps: PackedSequence,
-        sequences: List[Tensor],
-        packed: List[PackedSequence],
+        sequences: list[Tensor],
+        packed: list[PackedSequence],
         bin_idx: int,
     ) -> int:
         """Determine number of real (non-padding) tokens in this packed sequence.

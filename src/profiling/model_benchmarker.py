@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -70,9 +70,7 @@ class ModelBenchmarker:
         fn: Callable,
         input_factory: Callable,
     ) -> list[BenchmarkStats]:
-        return [
-            self.run(fn, bs, input_factory) for bs in self.config.batch_sizes
-        ]
+        return [self.run(fn, bs, input_factory) for bs in self.config.batch_sizes]
 
     def report(self, stats_list: list[BenchmarkStats]) -> str:
         if not stats_list:

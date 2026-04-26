@@ -1,9 +1,8 @@
 """Tests for event emitter."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.tools.event_emitter import EventEmitter, Event
+from src.tools.event_emitter import Event, EventEmitter
 
 
 class TestEventEmitter:
@@ -20,7 +19,10 @@ class TestEventEmitter:
 
     def test_off(self):
         ee = EventEmitter()
-        def handler(event): pass
+
+        def handler(event):
+            pass
+
         ee.on("e", handler)
         assert ee.listener_count("e") == 1
         ee.off("e", handler)

@@ -6,13 +6,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 from src.eval.sparse_circuits import (
+    Circuit,
+    CircuitFinder,
+    FeatureAnalyzer,
     SparseAutoencoder,
     SparseFeature,
-    Circuit,
-    FeatureAnalyzer,
-    CircuitFinder,
-    train_sae_step,
     compute_feature_correlation,
+    train_sae_step,
 )
 
 # ---------------------------------------------------------------------------
@@ -61,6 +61,7 @@ def feature_analyzer(sae):
 # Test 1: SparseAutoencoder forward returns tuple of 3
 # ---------------------------------------------------------------------------
 
+
 def test_sae_forward_returns_three_tensors(sae, activations):
     result = sae(activations)
     assert isinstance(result, tuple)
@@ -70,6 +71,7 @@ def test_sae_forward_returns_three_tensors(sae, activations):
 # ---------------------------------------------------------------------------
 # Test 2: Reconstruction shape == input shape
 # ---------------------------------------------------------------------------
+
 
 def test_sae_reconstruction_shape(sae, activations):
     reconstruction, features, loss = sae(activations)
@@ -82,6 +84,7 @@ def test_sae_reconstruction_shape(sae, activations):
 # Test 3: Features shape == (B, n_features)
 # ---------------------------------------------------------------------------
 
+
 def test_sae_features_shape(sae, activations):
     reconstruction, features, loss = sae(activations)
     assert features.shape == (B, N_FEATURES), (
@@ -93,6 +96,7 @@ def test_sae_features_shape(sae, activations):
 # Test 4: Features are non-negative (ReLU)
 # ---------------------------------------------------------------------------
 
+
 def test_sae_features_nonnegative(sae, activations):
     reconstruction, features, loss = sae(activations)
     assert (features >= 0).all(), "All feature activations must be non-negative (ReLU output)"
@@ -101,6 +105,7 @@ def test_sae_features_nonnegative(sae, activations):
 # ---------------------------------------------------------------------------
 # Test 5: Features are sparse (mean active per sample < 0.5 * n_features)
 # ---------------------------------------------------------------------------
+
 
 def test_sae_features_sparse(sae):
     torch.manual_seed(0)
@@ -117,6 +122,7 @@ def test_sae_features_sparse(sae):
 # Test 6: train_sae_step returns dict with 'loss' key
 # ---------------------------------------------------------------------------
 
+
 def test_train_sae_step_returns_dict_with_loss(sae, activations):
     optimizer = optim.Adam(sae.parameters(), lr=1e-3)
     result = train_sae_step(sae, activations, optimizer)
@@ -127,6 +133,7 @@ def test_train_sae_step_returns_dict_with_loss(sae, activations):
 # ---------------------------------------------------------------------------
 # Test 7: train_sae_step reduces loss over 10 steps
 # ---------------------------------------------------------------------------
+
 
 def test_train_sae_step_reduces_loss(sae):
     torch.manual_seed(123)
@@ -146,6 +153,7 @@ def test_train_sae_step_reduces_loss(sae):
 # Test 8: FeatureAnalyzer.analyze_batch returns list of SparseFeature
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_batch_returns_list_of_sparse_features(feature_analyzer, large_activations):
     result = feature_analyzer.analyze_batch(large_activations)
     assert isinstance(result, list), "analyze_batch must return a list"
@@ -159,6 +167,7 @@ def test_analyze_batch_returns_list_of_sparse_features(feature_analyzer, large_a
 # Test 9: SparseFeature.activation_freq in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_sparse_feature_activation_freq_in_range(feature_analyzer, large_activations):
     features = feature_analyzer.analyze_batch(large_activations)
     for f in features:
@@ -170,6 +179,7 @@ def test_sparse_feature_activation_freq_in_range(feature_analyzer, large_activat
 # ---------------------------------------------------------------------------
 # Test 10: FeatureAnalyzer.find_top_features returns list of (int, float) tuples
 # ---------------------------------------------------------------------------
+
 
 def test_find_top_features_returns_tuples(feature_analyzer, activations):
     result = feature_analyzer.find_top_features(activations, top_k=10)
@@ -185,6 +195,7 @@ def test_find_top_features_returns_tuples(feature_analyzer, activations):
 # Test 11: find_top_features length <= top_k
 # ---------------------------------------------------------------------------
 
+
 def test_find_top_features_length(feature_analyzer, activations):
     top_k = 10
     result = feature_analyzer.find_top_features(activations, top_k=top_k)
@@ -197,6 +208,7 @@ def test_find_top_features_length(feature_analyzer, activations):
 # Test 12: CircuitFinder.find_circuit_greedy returns Circuit
 # ---------------------------------------------------------------------------
 
+
 def test_find_circuit_greedy_returns_circuit(circuit_finder, activations):
     result = circuit_finder.find_circuit_greedy(activations, max_features=5)
     assert isinstance(result, Circuit), (
@@ -208,6 +220,7 @@ def test_find_circuit_greedy_returns_circuit(circuit_finder, activations):
 # Test 13: Circuit.faithfulness_score in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_circuit_faithfulness_score_in_range(circuit_finder, activations):
     circuit = circuit_finder.find_circuit_greedy(activations, max_features=5)
     assert 0.0 <= circuit.faithfulness_score <= 1.0, (
@@ -218,6 +231,7 @@ def test_circuit_faithfulness_score_in_range(circuit_finder, activations):
 # ---------------------------------------------------------------------------
 # Test 14: CircuitFinder.ablate_features returns tensor of same shape as input
 # ---------------------------------------------------------------------------
+
 
 def test_ablate_features_shape(circuit_finder, activations):
     # Use a few arbitrary feature ids
@@ -233,19 +247,19 @@ def test_ablate_features_shape(circuit_finder, activations):
 # Test 15: compute_feature_correlation returns dict
 # ---------------------------------------------------------------------------
 
+
 def test_compute_feature_correlation_returns_dict():
     torch.manual_seed(0)
     feat_acts = torch.rand(N, N_FEATURES)
     result = compute_feature_correlation(feat_acts, top_k=5)
     assert isinstance(result, dict), "compute_feature_correlation must return a dict"
-    assert len(result) == N_FEATURES, (
-        f"Dict should have {N_FEATURES} keys, got {len(result)}"
-    )
+    assert len(result) == N_FEATURES, f"Dict should have {N_FEATURES} keys, got {len(result)}"
 
 
 # ---------------------------------------------------------------------------
 # Test 16: Feature correlation values in [-1, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_feature_correlation_values_in_range():
     torch.manual_seed(1)

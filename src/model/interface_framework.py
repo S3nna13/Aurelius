@@ -11,13 +11,15 @@ from __future__ import annotations
 import copy
 import json
 import uuid
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from src.agent.background_executor import BackgroundTask, TaskStatus
 from src.agent.mcp_client import MCP_PROTOCOL_VERSION
+
 from .family import get_variant_by_id
 from .interface_contract import (
     InterfaceContractBundle,
@@ -149,9 +151,7 @@ class SkillBundle:
             if not isinstance(value, tuple):
                 raise InterfaceFrameworkError(f"{field_name} must be a tuple")
             if not all(isinstance(item, str) and item for item in value):
-                raise InterfaceFrameworkError(
-                    f"{field_name} entries must be non-empty strings"
-                )
+                raise InterfaceFrameworkError(f"{field_name} entries must be non-empty strings")
         if self.version is not None and not isinstance(self.version, str):
             raise InterfaceFrameworkError("version must be str or None")
         if self.provenance is not None and not isinstance(self.provenance, str):
@@ -187,12 +187,10 @@ class ApprovalRequest:
         for field_name in ("category", "action_summary", "reason", "minimum_scope"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise InterfaceFrameworkError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
         if self.decision not in _KNOWN_APPROVAL_DECISIONS:
             raise InterfaceFrameworkError(
-                f"decision must be one of {sorted(_KNOWN_APPROVAL_DECISIONS)}, got {self.decision!r}"
+                f"decision must be one of {sorted(_KNOWN_APPROVAL_DECISIONS)}, got {self.decision!r}"  # noqa: E501
             )
         if not isinstance(self.affected_resources, tuple):
             raise InterfaceFrameworkError("affected_resources must be a tuple")
@@ -260,9 +258,7 @@ class MessageEnvelope:
         for field_name in ("envelope_id", "channel_id", "sender", "kind", "created_at"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise InterfaceFrameworkError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
         if self.kind not in _KNOWN_MESSAGE_KINDS:
             raise InterfaceFrameworkError(
                 f"kind must be one of {sorted(_KNOWN_MESSAGE_KINDS)}, got {self.kind!r}"
@@ -305,9 +301,7 @@ class Workstream:
         for field_name in ("workstream_id", "session_id", "name", "created_at", "updated_at"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise InterfaceFrameworkError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
         if self.status not in _KNOWN_WORKSTREAM_STATUSES:
             raise InterfaceFrameworkError(
                 f"status must be one of {sorted(_KNOWN_WORKSTREAM_STATUSES)}, got {self.status!r}"
@@ -321,9 +315,7 @@ class Workstream:
             if not isinstance(value, tuple):
                 raise InterfaceFrameworkError(f"{tuple_name} must be a tuple")
             if not all(isinstance(item, str) and item for item in value):
-                raise InterfaceFrameworkError(
-                    f"{tuple_name} entries must be non-empty strings"
-                )
+                raise InterfaceFrameworkError(f"{tuple_name} entries must be non-empty strings")
         if not isinstance(self.queued_items, tuple):
             raise InterfaceFrameworkError("queued_items must be a tuple")
         if not all(isinstance(item, dict) for item in self.queued_items):
@@ -362,9 +354,7 @@ class TaskThreadSpec:
         for field_name in ("title", "mode", "task_prompt", "host"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise InterfaceFrameworkError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
         if self.workspace is not None and not isinstance(self.workspace, str):
             raise InterfaceFrameworkError("workspace must be str or None")
         if self.session_id is not None and not isinstance(self.session_id, str):
@@ -391,7 +381,9 @@ class TaskThreadSpec:
             raise InterfaceFrameworkError("attached_skills entries must be non-empty strings")
         if self.repo_instructions is not None and not isinstance(self.repo_instructions, str):
             raise InterfaceFrameworkError("repo_instructions must be str or None")
-        if self.workspace_instructions is not None and not isinstance(self.workspace_instructions, str):
+        if self.workspace_instructions is not None and not isinstance(
+            self.workspace_instructions, str
+        ):
             raise InterfaceFrameworkError("workspace_instructions must be str or None")
         if not isinstance(self.metadata, dict):
             raise InterfaceFrameworkError("metadata must be a dict")
@@ -450,9 +442,7 @@ class TaskThread:
                     raise InterfaceFrameworkError("memory_summary must be a string")
                 continue
             if not isinstance(value, str) or not value.strip():
-                raise InterfaceFrameworkError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
         if self.status not in _KNOWN_THREAD_STATUSES:
             raise InterfaceFrameworkError(
                 f"status must be one of {sorted(_KNOWN_THREAD_STATUSES)}, got {self.status!r}"
@@ -473,7 +463,9 @@ class TaskThread:
             raise InterfaceFrameworkError("channel must be str or None")
         if self.repo_instructions is not None and not isinstance(self.repo_instructions, str):
             raise InterfaceFrameworkError("repo_instructions must be str or None")
-        if self.workspace_instructions is not None and not isinstance(self.workspace_instructions, str):
+        if self.workspace_instructions is not None and not isinstance(
+            self.workspace_instructions, str
+        ):
             raise InterfaceFrameworkError("workspace_instructions must be str or None")
         if self.parent_thread_id is not None and not isinstance(self.parent_thread_id, str):
             raise InterfaceFrameworkError("parent_thread_id must be str or None")
@@ -496,9 +488,7 @@ class TaskThread:
             if not isinstance(value, tuple):
                 raise InterfaceFrameworkError(f"{tuple_name} must be a tuple")
             if not all(isinstance(item, str) and item for item in value):
-                raise InterfaceFrameworkError(
-                    f"{tuple_name} entries must be non-empty strings"
-                )
+                raise InterfaceFrameworkError(f"{tuple_name} entries must be non-empty strings")
         if not isinstance(self.steps, tuple):
             raise InterfaceFrameworkError("steps must be a tuple")
         if not all(isinstance(item, dict) for item in self.steps):
@@ -546,9 +536,7 @@ class Checkpoint:
         for field_name in ("checkpoint_id", "thread_id", "created_at", "memory_summary"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise InterfaceFrameworkError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
         if not isinstance(self.lineage, tuple):
             raise InterfaceFrameworkError("lineage must be a tuple")
         if not all(isinstance(item, str) and item for item in self.lineage):
@@ -572,9 +560,7 @@ class Checkpoint:
         if not isinstance(self.pending_approval_ids, tuple):
             raise InterfaceFrameworkError("pending_approval_ids must be a tuple")
         if not all(isinstance(item, str) and item for item in self.pending_approval_ids):
-            raise InterfaceFrameworkError(
-                "pending_approval_ids entries must be non-empty strings"
-            )
+            raise InterfaceFrameworkError("pending_approval_ids entries must be non-empty strings")
         if not isinstance(self.active_job_ids, tuple):
             raise InterfaceFrameworkError("active_job_ids must be a tuple")
         if not all(isinstance(item, str) and item for item in self.active_job_ids):
@@ -618,7 +604,7 @@ class AureliusInterfaceFramework:
         cls,
         root_dir: str | Path | None = None,
         variant_id: str | None = None,
-    ) -> "AureliusInterfaceFramework":
+    ) -> AureliusInterfaceFramework:
         bundle = load_interface_contract_bundle(repo_root=root_dir)
         return cls(bundle, root_dir=root_dir, variant_id=variant_id)
 
@@ -669,9 +655,7 @@ class AureliusInterfaceFramework:
     def create_thread(self, spec: TaskThreadSpec) -> TaskThread:
         """Normalize a task spec into a deterministic task thread."""
         if not isinstance(spec, TaskThreadSpec):
-            raise InterfaceFrameworkError(
-                f"spec must be TaskThreadSpec, got {type(spec).__name__}"
-            )
+            raise InterfaceFrameworkError(f"spec must be TaskThreadSpec, got {type(spec).__name__}")
         mode = self.select_mode(spec.mode)
         if spec.host not in self.host_catalog:
             raise InterfaceFrameworkError(
@@ -705,9 +689,18 @@ class AureliusInterfaceFramework:
             lineage=lineage,
             task_prompt=spec.task_prompt,
             memory_summary=spec.metadata.get("memory_summary", "") if spec.metadata else "",
-            last_model_response=spec.metadata.get("last_model_response") if isinstance(spec.metadata, Mapping) else None,
-            last_tool_result=copy.deepcopy(spec.metadata.get("last_tool_result")) if isinstance(spec.metadata, Mapping) and isinstance(spec.metadata.get("last_tool_result"), dict) else None,
-            active_job_ids=_string_tuple(spec.metadata.get("active_job_ids", ()), "metadata.active_job_ids") if isinstance(spec.metadata, Mapping) and "active_job_ids" in spec.metadata else tuple(),
+            last_model_response=spec.metadata.get("last_model_response")
+            if isinstance(spec.metadata, Mapping)
+            else None,
+            last_tool_result=copy.deepcopy(spec.metadata.get("last_tool_result"))
+            if isinstance(spec.metadata, Mapping)
+            and isinstance(spec.metadata.get("last_tool_result"), dict)
+            else None,
+            active_job_ids=_string_tuple(
+                spec.metadata.get("active_job_ids", ()), "metadata.active_job_ids"
+            )
+            if isinstance(spec.metadata, Mapping) and "active_job_ids" in spec.metadata
+            else tuple(),
             message_history=tuple(),
             metadata=copy.deepcopy(spec.metadata),
         )
@@ -715,7 +708,10 @@ class AureliusInterfaceFramework:
     def attach_skills(
         self,
         thread: TaskThread,
-        skill_inputs: tuple[str | SkillBundle, ...] | list[str | SkillBundle] | tuple[str, ...] | list[str],
+        skill_inputs: tuple[str | SkillBundle, ...]
+        | list[str | SkillBundle]
+        | tuple[str, ...]
+        | list[str],
     ) -> TaskThread:
         """Normalize and deduplicate skill ids without a second registry."""
         _require_thread(thread)
@@ -728,7 +724,7 @@ class AureliusInterfaceFramework:
             existing[skill.skill_id] = skill
             ordered.append(skill)
         instruction_stack = list(thread.instruction_stack)
-        for skill in ordered[len(thread.skills):]:
+        for skill in ordered[len(thread.skills) :]:
             instruction_stack.append(
                 f"skill instructions: {skill.skill_id}"
                 + (f" ({skill.version})" if skill.version else "")
@@ -809,7 +805,9 @@ class AureliusInterfaceFramework:
             workstream_name=thread.workstream_name,
             pending_approval_ids=thread.approvals,
             active_job_ids=thread.active_job_ids,
-            tool_observations=tuple(copy.deepcopy(item) for item in self._tool_observations.get(thread.thread_id, ())),
+            tool_observations=tuple(
+                copy.deepcopy(item) for item in self._tool_observations.get(thread.thread_id, ())
+            ),
         )
 
     def resume_thread(self, checkpoint: Checkpoint) -> TaskThread:
@@ -917,7 +915,9 @@ class AureliusInterfaceFramework:
             parent_thread_id=thread.thread_id,
         )
         child = self.create_thread(child_spec)
-        parent_checkpoint_id = thread.checkpoints[-1] if thread.checkpoints else thread.parent_checkpoint_id
+        parent_checkpoint_id = (
+            thread.checkpoints[-1] if thread.checkpoints else thread.parent_checkpoint_id
+        )
         return replace(
             child,
             lineage=thread.lineage + (thread.thread_id,),
@@ -964,7 +964,9 @@ class AureliusInterfaceFramework:
         """Return the tracked background job or raise loudly if unknown."""
         return self._resolve_job(job)
 
-    def list_background_jobs(self, thread: TaskThread | str | None = None) -> tuple[BackgroundJob, ...]:
+    def list_background_jobs(
+        self, thread: TaskThread | str | None = None
+    ) -> tuple[BackgroundJob, ...]:
         """Return tracked background jobs, optionally filtered by thread."""
         if thread is None:
             return tuple(self._background_jobs.values())
@@ -973,7 +975,9 @@ class AureliusInterfaceFramework:
             raise InterfaceFrameworkError("thread must be TaskThread, thread id, or None")
         return tuple(job for job in self._background_jobs.values() if job.thread_id == thread_id)
 
-    def list_tool_observations(self, thread: TaskThread | str | None = None) -> tuple[dict[str, Any], ...]:
+    def list_tool_observations(
+        self, thread: TaskThread | str | None = None
+    ) -> tuple[dict[str, Any], ...]:
         """Return the normalized tool-call audit trail."""
         if thread is None:
             observations: list[dict[str, Any]] = []
@@ -1071,9 +1075,7 @@ class AureliusInterfaceFramework:
             "workspace": thread.workspace if thread is not None else None,
             "channel": thread.channel if thread is not None else None,
         }
-        required_fields = tuple(
-            self.contract["canonical_nouns"]["tool_call"]["normalized_fields"]
-        )
+        required_fields = tuple(self.contract["canonical_nouns"]["tool_call"]["normalized_fields"])
         missing = [field for field in _TOOL_CALL_REQUIRED_FIELDS if field not in required_fields]
         if missing:
             raise InterfaceFrameworkError(
@@ -1096,9 +1098,7 @@ class AureliusInterfaceFramework:
             raise InterfaceFrameworkError("mode_catalog must not be empty")
         missing_hosts = [host for host in _CANONICAL_HOSTS if host not in self.host_catalog]
         if missing_hosts:
-            raise InterfaceFrameworkError(
-                f"host_catalog missing canonical hosts: {missing_hosts}"
-            )
+            raise InterfaceFrameworkError(f"host_catalog missing canonical hosts: {missing_hosts}")
         task_thread_fields = tuple(self.contract["canonical_nouns"]["task_thread"]["fields"])
         for required_field in ("thread_id", "title", "mode", "status"):
             if required_field not in task_thread_fields:
@@ -1111,11 +1111,15 @@ class AureliusInterfaceFramework:
             raise InterfaceFrameworkError(
                 f"contract skill.scope_values missing runtime-required scopes: {missing_scopes}"
             )
-        normalized_fields = tuple(self.contract["canonical_nouns"]["tool_call"]["normalized_fields"])
-        missing_tool_fields = [field for field in _TOOL_CALL_REQUIRED_FIELDS if field not in normalized_fields]
+        normalized_fields = tuple(
+            self.contract["canonical_nouns"]["tool_call"]["normalized_fields"]
+        )
+        missing_tool_fields = [
+            field for field in _TOOL_CALL_REQUIRED_FIELDS if field not in normalized_fields
+        ]
         if missing_tool_fields:
             raise InterfaceFrameworkError(
-                f"contract tool_call.normalized_fields missing runtime-required fields: {missing_tool_fields}"
+                f"contract tool_call.normalized_fields missing runtime-required fields: {missing_tool_fields}"  # noqa: E501
             )
 
     def _build_mode_catalog(self, contract: Mapping[str, Any]) -> dict[str, ModePolicy]:
@@ -1132,12 +1136,16 @@ class AureliusInterfaceFramework:
             tool_policy = payload.get("tool_policy")
             default_constraints = payload.get("default_constraints", ())
             if not isinstance(intent, str) or not intent.strip():
-                raise InterfaceFrameworkError(f"mode_semantics.{name}.intent must be a non-empty string")
+                raise InterfaceFrameworkError(
+                    f"mode_semantics.{name}.intent must be a non-empty string"
+                )
             if not isinstance(tool_policy, str) or not tool_policy.strip():
                 raise InterfaceFrameworkError(
                     f"mode_semantics.{name}.tool_policy must be a non-empty string"
                 )
-            constraints = _string_tuple(default_constraints, f"mode_semantics.{name}.default_constraints")
+            constraints = _string_tuple(
+                default_constraints, f"mode_semantics.{name}.default_constraints"
+            )
             catalog[name] = ModePolicy(
                 name=name,
                 intent=intent,
@@ -1156,9 +1164,13 @@ class AureliusInterfaceFramework:
                 raise InterfaceFrameworkError("host names must be strings")
             if not isinstance(payload, Mapping):
                 raise InterfaceFrameworkError(f"host_adapters.{name} must be a mapping")
-            capabilities = _string_tuple(payload.get("must_support", ()), f"host_adapters.{name}.must_support")
+            capabilities = _string_tuple(
+                payload.get("must_support", ()), f"host_adapters.{name}.must_support"
+            )
             if not capabilities:
-                raise InterfaceFrameworkError(f"host_adapters.{name}.must_support must not be empty")
+                raise InterfaceFrameworkError(
+                    f"host_adapters.{name}.must_support must not be empty"
+                )
             catalog[name] = capabilities
         return catalog
 
@@ -1227,7 +1239,10 @@ class AureliusInterfaceFramework:
 
     def _normalize_skill_inputs(
         self,
-        skill_inputs: tuple[str | SkillBundle, ...] | list[str | SkillBundle] | tuple[str, ...] | list[str],
+        skill_inputs: tuple[str | SkillBundle, ...]
+        | list[str | SkillBundle]
+        | tuple[str, ...]
+        | list[str],
     ) -> tuple[SkillBundle, ...]:
         if isinstance(skill_inputs, (str, SkillBundle)):
             raise InterfaceFrameworkError("skill_inputs must be a sequence, not a single item")
@@ -1306,11 +1321,9 @@ def _json_safe_dataclass(value: Any) -> dict[str, Any]:
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_thread(thread: TaskThread) -> None:
     if not isinstance(thread, TaskThread):
-        raise InterfaceFrameworkError(
-            f"expected TaskThread, got {type(thread).__name__}"
-        )
+        raise InterfaceFrameworkError(f"expected TaskThread, got {type(thread).__name__}")

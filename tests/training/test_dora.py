@@ -5,16 +5,15 @@ Import path: aurelius.training.dora
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-
-from aurelius.training.dora import DoRALinear, DoRAModel, _col_norms, _normalize_cols
-
+from aurelius.training.dora import DoRALinear, DoRAModel, _col_norms
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def simple_linear() -> nn.Linear:
@@ -34,20 +33,20 @@ def dora_from_linear(simple_linear) -> DoRALinear:
 # Test 1: Output shape matches nn.Linear
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape_matches_linear(simple_linear, dora_from_linear):
     """DoRALinear output shape must equal nn.Linear output shape."""
     torch.manual_seed(0)
     x = torch.randn(3, 16)
     expected = simple_linear(x)
     actual = dora_from_linear(x)
-    assert actual.shape == expected.shape, (
-        f"Shape mismatch: {actual.shape} vs {expected.shape}"
-    )
+    assert actual.shape == expected.shape, f"Shape mismatch: {actual.shape} vs {expected.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: At init (B=0), output equals original Linear
 # ---------------------------------------------------------------------------
+
 
 def test_output_equals_original_at_init(simple_linear, dora_from_linear):
     """With B=0, DoRALinear output must equal the original nn.Linear output."""
@@ -63,17 +62,17 @@ def test_output_equals_original_at_init(simple_linear, dora_from_linear):
 # Test 3: m initialized to column norms of weight_0
 # ---------------------------------------------------------------------------
 
+
 def test_m_initialized_to_col_norms(simple_linear, dora_from_linear):
     """m should equal the per-output-column norms of weight_0."""
     expected_norms = _col_norms(dora_from_linear.weight_0)  # (1, out)
-    torch.testing.assert_close(
-        dora_from_linear.m.data, expected_norms, rtol=1e-5, atol=1e-6
-    )
+    torch.testing.assert_close(dora_from_linear.m.data, expected_norms, rtol=1e-5, atol=1e-6)
 
 
 # ---------------------------------------------------------------------------
 # Test 4: A initialized non-zero, B initialized zero
 # ---------------------------------------------------------------------------
+
 
 def test_lora_A_nonzero_B_zero():
     """lora_A should be non-zero; lora_B should be all zeros at init."""
@@ -85,6 +84,7 @@ def test_lora_A_nonzero_B_zero():
 # ---------------------------------------------------------------------------
 # Test 5: Only m, A, B have requires_grad; weight_0 is frozen
 # ---------------------------------------------------------------------------
+
 
 def test_grad_flags(dora_from_linear):
     """weight_0 must be frozen; m, lora_A, lora_B must be trainable."""
@@ -105,6 +105,7 @@ def test_grad_flags(dora_from_linear):
 # Test 6: Gradients flow through m and B after loss.backward()
 # ---------------------------------------------------------------------------
 
+
 def test_gradients_flow(dora_from_linear):
     """After backward, m and lora_B must have non-None gradients."""
     torch.manual_seed(1)
@@ -124,6 +125,7 @@ def test_gradients_flow(dora_from_linear):
 # Test 7: from_linear preserves weight and bias
 # ---------------------------------------------------------------------------
 
+
 def test_from_linear_preserves_weight_and_bias(simple_linear):
     """from_linear must copy weight and bias from the source Linear."""
     dora = DoRALinear.from_linear(simple_linear, rank=4)
@@ -134,6 +136,7 @@ def test_from_linear_preserves_weight_and_bias(simple_linear):
 # ---------------------------------------------------------------------------
 # Test 8: merge() returns nn.Linear with correct output
 # ---------------------------------------------------------------------------
+
 
 def test_merge_returns_linear_with_correct_output(dora_from_linear):
     """Merged nn.Linear must produce the same output as DoRALinear."""
@@ -150,6 +153,7 @@ def test_merge_returns_linear_with_correct_output(dora_from_linear):
 # ---------------------------------------------------------------------------
 # Test 9: After one optimizer step, output changes
 # ---------------------------------------------------------------------------
+
 
 def test_output_changes_after_optimizer_step(dora_from_linear):
     """After one gradient step, the layer output must differ from initial."""
@@ -170,17 +174,17 @@ def test_output_changes_after_optimizer_step(dora_from_linear):
     with torch.no_grad():
         out_after = dora_from_linear(x)
 
-    assert not torch.allclose(out_before, out_after), (
-        "Output should change after an optimizer step"
-    )
+    assert not torch.allclose(out_before, out_after), "Output should change after an optimizer step"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: DoRAModel replaces target layers
 # ---------------------------------------------------------------------------
 
+
 def test_doramodel_replaces_target_layers():
     """DoRAModel must swap the specified Linear layers for DoRALinear."""
+
     class TinyModel(nn.Module):
         def __init__(self):
             super().__init__()
@@ -205,8 +209,10 @@ def test_doramodel_replaces_target_layers():
 # Test 11: DoRAModel.trainable_parameters excludes weight_0
 # ---------------------------------------------------------------------------
 
+
 def test_doramodel_trainable_parameters_exclude_weight0():
     """trainable_parameters() must not include any weight_0 buffers."""
+
     class TinyModel(nn.Module):
         def __init__(self):
             super().__init__()
@@ -235,6 +241,7 @@ def test_doramodel_trainable_parameters_exclude_weight0():
 # Test 12: Works with rank=1
 # ---------------------------------------------------------------------------
 
+
 def test_rank_one():
     """DoRALinear should work correctly with rank=1."""
     torch.manual_seed(7)
@@ -255,6 +262,7 @@ def test_rank_one():
 # Bonus Test 13: merge() returns correct type and shape attrs
 # ---------------------------------------------------------------------------
 
+
 def test_merge_shape_attributes(dora_from_linear):
     """Merged Linear must have in_features and out_features matching original."""
     merged = dora_from_linear.merge()
@@ -266,6 +274,7 @@ def test_merge_shape_attributes(dora_from_linear):
 # ---------------------------------------------------------------------------
 # Bonus Test 14: from_linear with no bias
 # ---------------------------------------------------------------------------
+
 
 def test_from_linear_no_bias():
     """from_linear with bias=False Linear must produce a DoRALinear without bias."""

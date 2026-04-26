@@ -2,6 +2,7 @@
 
 Kimi K2.6-inspired 256K adaptive token budget prioritisation.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -12,7 +13,6 @@ from src.longcontext.context_budget_controller import (
     ContextSegment,
     SegmentPriority,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -191,9 +191,7 @@ def test_evict_critical_never():
     """CRITICAL segments (evictable=False) are never evicted."""
     ctrl = _ctrl(max_tokens=1_000, reserve_tokens=100, trigger_ratio=0.85)
     # Only segment is non-evictable → no eviction possible
-    ctrl.add_segment(
-        ContextSegment("crit", 900, SegmentPriority.CRITICAL, evictable=False)
-    )
+    ctrl.add_segment(ContextSegment("crit", 900, SegmentPriority.CRITICAL, evictable=False))
     assert ctrl.needs_eviction() is True
     evicted = ctrl.evict()
     assert evicted == []

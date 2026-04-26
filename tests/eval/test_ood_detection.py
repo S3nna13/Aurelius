@@ -1,13 +1,11 @@
 """Tests for src/eval/ood_detection.py"""
 
-import pytest
 import torch
-
 from aurelius.eval.ood_detection import (
-    MaxSoftmaxScorer,
     EnergyScorer,
-    MahalanobisScorer,
     KNNScorer,
+    MahalanobisScorer,
+    MaxSoftmaxScorer,
     OODDetector,
 )
 
@@ -18,6 +16,7 @@ B, C, D = 8, 16, 32  # batch, classes, feature dim
 # ---------------------------------------------------------------------------
 # MaxSoftmaxScorer
 # ---------------------------------------------------------------------------
+
 
 def test_msp_output_range():
     torch.manual_seed(SEED)
@@ -53,6 +52,7 @@ def test_msp_peaked_high_score():
 # ---------------------------------------------------------------------------
 # EnergyScorer
 # ---------------------------------------------------------------------------
+
 
 def test_energy_output_finite():
     torch.manual_seed(SEED)
@@ -91,6 +91,7 @@ def test_energy_no_nan_zeros():
 # MahalanobisScorer
 # ---------------------------------------------------------------------------
 
+
 def test_mahalanobis_fit_score_shape():
     torch.manual_seed(SEED)
     scorer = MahalanobisScorer()
@@ -108,8 +109,7 @@ def test_mahalanobis_in_dist_scores_higher():
     c0 = torch.randn(30, D) + torch.full((D,), 10.0)
     c1 = torch.randn(30, D) - torch.full((D,), 10.0)
     train = torch.cat([c0, c1])
-    labels = torch.cat([torch.zeros(30, dtype=torch.long),
-                        torch.ones(30, dtype=torch.long)])
+    labels = torch.cat([torch.zeros(30, dtype=torch.long), torch.ones(30, dtype=torch.long)])
     scorer = MahalanobisScorer()
     scorer.fit(train, labels)
 
@@ -148,6 +148,7 @@ def test_mahalanobis_batch1():
 # KNNScorer
 # ---------------------------------------------------------------------------
 
+
 def test_knn_fit_score_shape():
     torch.manual_seed(SEED)
     scorer = KNNScorer(k=3)
@@ -160,10 +161,10 @@ def test_knn_fit_score_shape():
 def test_knn_in_dist_scores_higher():
     torch.manual_seed(SEED)
     train = torch.randn(50, D)
-    scorer = KNNScorer(k=3, metric='cosine')
+    scorer = KNNScorer(k=3, metric="cosine")
     scorer.fit(train)
 
-    in_dist = train[:5] + torch.randn(5, D) * 0.01   # near training points
+    in_dist = train[:5] + torch.randn(5, D) * 0.01  # near training points
     ood = torch.randn(5, D) * 0.01 + torch.full((D,), 100.0)  # far from all training
 
     s_in = scorer.score(in_dist).mean()
@@ -189,7 +190,7 @@ def test_knn_k_clamp():
 
 def test_knn_l2_metric():
     torch.manual_seed(SEED)
-    scorer = KNNScorer(k=3, metric='l2')
+    scorer = KNNScorer(k=3, metric="l2")
     scorer.fit(torch.randn(20, D))
     scores = scorer.score(torch.randn(B, D))
     assert scores.shape == (B,)
@@ -206,6 +207,7 @@ def test_knn_batch1():
 # ---------------------------------------------------------------------------
 # OODDetector
 # ---------------------------------------------------------------------------
+
 
 def test_detector_predict_shape():
     torch.manual_seed(SEED)

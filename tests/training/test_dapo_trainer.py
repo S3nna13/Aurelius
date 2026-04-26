@@ -6,6 +6,7 @@ plus one integration test with a full forward + backward pass.
 
 Tiny config: d_model=64, n_heads=4, vocab_size=256 (per project constraints).
 """
+
 from __future__ import annotations
 
 import math
@@ -14,13 +15,11 @@ import sys
 
 import pytest
 import torch
-import torch.nn as nn
 
 # Make src importable when running from repo root or tests directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.training.dapo_trainer import DAPOBatch, DAPOConfig, DAPOTrainer
-
 
 # ---------------------------------------------------------------------------
 # Constants & helpers
@@ -29,7 +28,7 @@ from src.training.dapo_trainer import DAPOBatch, DAPOConfig, DAPOTrainer
 VOCAB = 256
 D_MODEL = 64
 N_HEADS = 4
-G = 4   # group size (tiny)
+G = 4  # group size (tiny)
 T = 16  # sequence length (tiny)
 
 
@@ -71,6 +70,7 @@ def _make_batch(
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults() -> None:
     """DAPOConfig should have the documented default hyperparameters."""
     cfg = DAPOConfig()
@@ -86,6 +86,7 @@ def test_config_defaults() -> None:
 # 2. test_compute_advantages_zero_mean
 # ---------------------------------------------------------------------------
 
+
 def test_compute_advantages_zero_mean() -> None:
     """Normalised advantages must have mean ~0 for non-uniform rewards."""
     trainer = DAPOTrainer()
@@ -97,6 +98,7 @@ def test_compute_advantages_zero_mean() -> None:
 # ---------------------------------------------------------------------------
 # 3. test_compute_advantages_normalized
 # ---------------------------------------------------------------------------
+
 
 def test_compute_advantages_normalized() -> None:
     """Population std of normalised advantages should be ≈ 1."""
@@ -110,6 +112,7 @@ def test_compute_advantages_normalized() -> None:
 # ---------------------------------------------------------------------------
 # 4. test_policy_loss_positive_adv
 # ---------------------------------------------------------------------------
+
 
 def test_policy_loss_positive_adv() -> None:
     """With positive advantages and ratio == 1, policy loss should be negative."""
@@ -136,6 +139,7 @@ def test_policy_loss_positive_adv() -> None:
 # 5. test_clip_high_asymmetry
 # ---------------------------------------------------------------------------
 
+
 def test_clip_high_asymmetry() -> None:
     """clip_high > clip_low means upper bound is further from 1 than lower bound."""
     cfg = DAPOConfig(clip_low=0.2, clip_high=0.28)
@@ -151,6 +155,7 @@ def test_clip_high_asymmetry() -> None:
 # ---------------------------------------------------------------------------
 # 6. test_entropy_bonus_reduces_loss
 # ---------------------------------------------------------------------------
+
 
 def test_entropy_bonus_reduces_loss() -> None:
     """Non-zero entropy_coeff should change total loss value vs coeff=0."""
@@ -171,6 +176,7 @@ def test_entropy_bonus_reduces_loss() -> None:
 # 7. test_attention_mask_respected
 # ---------------------------------------------------------------------------
 
+
 def test_attention_mask_respected() -> None:
     """Masking the last token column must change the computed loss."""
     batch_full = _make_batch(mask_last=False)
@@ -180,14 +186,13 @@ def test_attention_mask_respected() -> None:
     loss_full = trainer.compute_policy_loss(batch_full).item()
     loss_masked = trainer.compute_policy_loss(batch_masked).item()
 
-    assert loss_full != pytest.approx(loss_masked), (
-        "Masking tokens should change the policy loss"
-    )
+    assert loss_full != pytest.approx(loss_masked), "Masking tokens should change the policy loss"
 
 
 # ---------------------------------------------------------------------------
 # 8. test_is_group_diverse_all_same
 # ---------------------------------------------------------------------------
+
 
 def test_is_group_diverse_all_same() -> None:
     """is_group_diverse returns False when all rewards are identical."""
@@ -201,6 +206,7 @@ def test_is_group_diverse_all_same() -> None:
 # ---------------------------------------------------------------------------
 # 9. test_is_group_diverse_mixed
 # ---------------------------------------------------------------------------
+
 
 def test_is_group_diverse_mixed() -> None:
     """is_group_diverse returns True when rewards are mixed."""
@@ -216,6 +222,7 @@ def test_is_group_diverse_mixed() -> None:
 # 10. test_total_loss_keys
 # ---------------------------------------------------------------------------
 
+
 def test_total_loss_keys() -> None:
     """total_loss must return a dict with exactly the required keys."""
     trainer = DAPOTrainer()
@@ -223,14 +230,13 @@ def test_total_loss_keys() -> None:
     result = trainer.total_loss(batch)
 
     required = {"loss", "pg_loss", "entropy_bonus", "kl_loss"}
-    assert set(result.keys()) == required, (
-        f"Got keys: {set(result.keys())}"
-    )
+    assert set(result.keys()) == required, f"Got keys: {set(result.keys())}"
 
 
 # ---------------------------------------------------------------------------
 # 11. test_total_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_total_loss_scalar() -> None:
     """total_loss['loss'] must be a 0-dim (scalar) tensor."""
@@ -247,6 +253,7 @@ def test_total_loss_scalar() -> None:
 # ---------------------------------------------------------------------------
 # 12. test_statistics_keys
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_keys() -> None:
     """statistics() must return a dict with all four required keys."""
@@ -265,6 +272,7 @@ def test_statistics_keys() -> None:
 # 13. test_zero_kl_coeff
 # ---------------------------------------------------------------------------
 
+
 def test_zero_kl_coeff() -> None:
     """kl_loss entry should be zero (or very close) when kl_coeff == 0."""
     trainer = DAPOTrainer(DAPOConfig(kl_coeff=0.0))
@@ -278,6 +286,7 @@ def test_zero_kl_coeff() -> None:
 # ---------------------------------------------------------------------------
 # 14. test_gradient_flows
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows() -> None:
     """loss.backward() must propagate a non-None, non-zero gradient to log_probs."""
@@ -295,13 +304,14 @@ def test_gradient_flows() -> None:
 # 15. test_nonzero_kl_coeff
 # ---------------------------------------------------------------------------
 
+
 def test_nonzero_kl_coeff() -> None:
     """kl_loss entry should be non-zero when kl_coeff != 0 and policies differ."""
     trainer = DAPOTrainer(DAPOConfig(kl_coeff=0.1))
     torch.manual_seed(1)
     batch = DAPOBatch(
         token_ids=torch.randint(0, VOCAB, (G, T)),
-        log_probs=torch.randn(G, T),        # policy != ref -> non-zero KL
+        log_probs=torch.randn(G, T),  # policy != ref -> non-zero KL
         ref_log_probs=torch.randn(G, T),
         rewards=torch.rand(G),
         attention_mask=torch.ones(G, T),
@@ -316,9 +326,11 @@ def test_nonzero_kl_coeff() -> None:
 # 16. test_registry_entry
 # ---------------------------------------------------------------------------
 
+
 def test_registry_entry() -> None:
     """TRAINING_REGISTRY['dapo'] must point to DAPOTrainer."""
     from src.training import TRAINING_REGISTRY
+
     assert "dapo" in TRAINING_REGISTRY, "TRAINING_REGISTRY missing 'dapo' key"
     assert TRAINING_REGISTRY["dapo"] is DAPOTrainer
 
@@ -326,6 +338,7 @@ def test_registry_entry() -> None:
 # ---------------------------------------------------------------------------
 # Integration test — full forward + backward, G=4 T=16 vocab=256
 # ---------------------------------------------------------------------------
+
 
 def test_integration_forward_backward() -> None:
     """Full integration test: construct trainer, build batch, run total_loss,

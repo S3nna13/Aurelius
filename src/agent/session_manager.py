@@ -11,14 +11,16 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 # File locking for multi-process safety
 try:
-    from filelock import FileLock, Timeout as FileLockTimeout
+    from filelock import FileLock
+
     _HAS_FILELOCK = True
 except ImportError:  # pragma: no cover - optional dependency
     _HAS_FILELOCK = False
@@ -33,6 +35,7 @@ from src.model.interface_framework import (
     TaskThread,
     Workstream,
 )
+
 from .session_journal import (
     SessionJournal,
     SessionJournalBranch,
@@ -56,10 +59,10 @@ _SESSION_EXPORT_SCHEMA_VERSION = "1.0"
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
-import re
+import re  # noqa: E402
 
 _SAFE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
@@ -84,9 +87,7 @@ def _safe_filename(value: str, field_name: str) -> str:
         )
     lower = value.lower()
     if ".." in lower:
-        raise InterfaceFrameworkError(
-            f"{field_name} contains directory-traversal patterns"
-        )
+        raise InterfaceFrameworkError(f"{field_name} contains directory-traversal patterns")
     return value
 
 
@@ -105,8 +106,10 @@ def _json_safe(value: Any) -> Any:
 
     Non-serializable objects are coerced to strings rather than crashing.
     """
+
     def _default(obj: Any) -> Any:
         return str(obj)
+
     try:
         return json.loads(json.dumps(value, sort_keys=True, default=_default))
     except (TypeError, ValueError) as exc:
@@ -149,9 +152,7 @@ def _message_from_payload(payload: Mapping[str, Any]) -> MessageEnvelope:
 
 def _thread_from_payload(payload: Mapping[str, Any]) -> TaskThread:
     skills = tuple(_skill_from_payload(item) for item in payload.get("skills", ()))
-    messages = tuple(
-        _message_from_payload(item) for item in payload.get("message_history", ())
-    )
+    messages = tuple(_message_from_payload(item) for item in payload.get("message_history", ()))
     return TaskThread(
         thread_id=_require_non_empty(str(payload["thread_id"]), "thread_id"),
         title=_require_non_empty(str(payload["title"]), "title"),
@@ -187,9 +188,7 @@ def _thread_from_payload(payload: Mapping[str, Any]) -> TaskThread:
 
 
 def _workstream_from_payload(payload: Mapping[str, Any]) -> Workstream:
-    messages = tuple(
-        _message_from_payload(item) for item in payload.get("messages", ())
-    )
+    messages = tuple(_message_from_payload(item) for item in payload.get("messages", ()))
     queued_items = tuple(dict(item) for item in payload.get("queued_items", ()))
     return Workstream(
         workstream_id=_require_non_empty(str(payload["workstream_id"]), "workstream_id"),
@@ -248,7 +247,15 @@ class WorkItem:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for field_name in ("item_id", "session_id", "workstream_id", "kind", "title", "created_at", "updated_at"):
+        for field_name in (
+            "item_id",
+            "session_id",
+            "workstream_id",
+            "kind",
+            "title",
+            "created_at",
+            "updated_at",
+        ):
             _require_non_empty(getattr(self, field_name), field_name)
         if self.status not in _WORK_ITEM_STATUSES:
             raise InterfaceFrameworkError(
@@ -322,7 +329,7 @@ class SessionRecord:
             raise InterfaceFrameworkError("metadata must be a dict")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "SessionRecord":
+    def from_dict(cls, payload: Mapping[str, Any]) -> SessionRecord:
         if not isinstance(payload, Mapping):
             raise InterfaceFrameworkError("session payload must be a mapping")
         workstreams = {
@@ -342,9 +349,13 @@ class SessionRecord:
                 affected_resources=tuple(value.get("affected_resources", ())),
                 reason=_require_non_empty(str(value["reason"]), "reason"),
                 reversible=value.get("reversible", False),
-                minimum_scope=_require_non_empty(str(value.get("minimum_scope", "allow_once")), "minimum_scope"),
+                minimum_scope=_require_non_empty(
+                    str(value.get("minimum_scope", "allow_once")), "minimum_scope"
+                ),
                 decision=str(value.get("decision", "pending")),
-                created_at=_require_non_empty(str(value.get("created_at", _utc_now())), "created_at"),
+                created_at=_require_non_empty(
+                    str(value.get("created_at", _utc_now())), "created_at"
+                ),
                 decided_at=value.get("decided_at"),
                 metadata=dict(value.get("metadata", {})),
             )
@@ -354,10 +365,7 @@ class SessionRecord:
             key: _checkpoint_from_payload(value)
             for key, value in dict(payload.get("checkpoints", {})).items()
         }
-        jobs = {
-            key: BackgroundJob(**value)
-            for key, value in dict(payload.get("jobs", {})).items()
-        }
+        jobs = {key: BackgroundJob(**value) for key, value in dict(payload.get("jobs", {})).items()}
         messages = {
             key: _message_from_payload(value)
             for key, value in dict(payload.get("messages", {})).items()
@@ -378,7 +386,10 @@ class SessionRecord:
             checkpoints=checkpoints,
             jobs=jobs,
             messages=messages,
-            tool_calls={k: [dict(entry) for entry in v] for k, v in dict(payload.get("tool_calls", {})).items()},
+            tool_calls={
+                k: [dict(entry) for entry in v]
+                for k, v in dict(payload.get("tool_calls", {})).items()
+            },
             queue=queue,
             metadata=dict(payload.get("metadata", {})),
         )
@@ -720,7 +731,9 @@ class SessionManager:
             f"unknown workstream: {workstream_id!r} in session {session_id!r}"
         )
 
-    def set_workstream_status(self, session_id: str, workstream_id_or_name: str, status: str) -> Workstream:
+    def set_workstream_status(
+        self, session_id: str, workstream_id_or_name: str, status: str
+    ) -> Workstream:
         if status not in _WORKSTREAM_STATUSES:
             raise InterfaceFrameworkError(
                 f"status must be one of {sorted(_WORKSTREAM_STATUSES)}, got {status!r}"
@@ -936,7 +949,9 @@ class SessionManager:
                 }
                 for compaction in compactions
             ],
-            "latest_compaction": _json_safe(asdict(latest_compaction)) if latest_compaction is not None else None,
+            "latest_compaction": _json_safe(asdict(latest_compaction))
+            if latest_compaction is not None
+            else None,
         }
 
     # ------------------------------------------------------------------
@@ -1033,7 +1048,9 @@ class SessionManager:
         if workstream is not None:
             session.workstreams[workstream.workstream_id] = replace(
                 workstream,
-                checkpoint_ids=tuple(dict.fromkeys(workstream.checkpoint_ids + (checkpoint.checkpoint_id,))),
+                checkpoint_ids=tuple(
+                    dict.fromkeys(workstream.checkpoint_ids + (checkpoint.checkpoint_id,))
+                ),
                 updated_at=_utc_now(),
             )
         session.memory_summary = checkpoint.memory_summary
@@ -1111,7 +1128,9 @@ class SessionManager:
             messages = [message for message in messages if message.workstream_id == workstream_id]
         return sorted(messages, key=lambda item: (item.created_at, item.envelope_id))
 
-    def register_tool_call(self, session_id: str, thread_id: str, entry: dict[str, Any]) -> dict[str, Any]:
+    def register_tool_call(
+        self, session_id: str, thread_id: str, entry: dict[str, Any]
+    ) -> dict[str, Any]:
         session = self._require_session(session_id)
         session.tool_calls.setdefault(thread_id, []).append(dict(entry))
         session.updated_at = _utc_now()
@@ -1125,7 +1144,9 @@ class SessionManager:
         )
         return entry
 
-    def list_tool_calls(self, session_id: str, thread_id: str | None = None) -> list[dict[str, Any]]:
+    def list_tool_calls(
+        self, session_id: str, thread_id: str | None = None
+    ) -> list[dict[str, Any]]:
         session = self.get_session(session_id)
         if session is None:
             return []
@@ -1232,7 +1253,7 @@ class SessionManager:
                 workstream,
                 queued_items=updated_items,
                 updated_at=_utc_now(),
-                )
+            )
         self._persist(session)
         self._record_journal_entry(
             session_id,
@@ -1274,7 +1295,9 @@ class SessionManager:
             return None
         return session.jobs.get(job_id)
 
-    def list_background_jobs(self, session_id: str, workstream_id: str | None = None) -> list[BackgroundJob]:
+    def list_background_jobs(
+        self, session_id: str, workstream_id: str | None = None
+    ) -> list[BackgroundJob]:
         session = self.get_session(session_id)
         if session is None:
             return []
@@ -1451,13 +1474,9 @@ class SessionManager:
             if _HAS_FILELOCK:
                 lock_path = path.with_suffix(".json.lock")
                 with FileLock(str(lock_path), timeout=5):
-                    path.write_text(
-                        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
-                    )
+                    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
             else:
-                path.write_text(
-                    json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
-                )
+                path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         except OSError as exc:  # pragma: no cover - filesystem failure
             raise InterfaceFrameworkError(f"cannot persist session: {path}") from exc
 

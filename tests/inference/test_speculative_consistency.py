@@ -4,23 +4,24 @@
 consistency checking, acceptance stats, distribution testing, threshold
 calibration and the ConsistencyReport dataclass.
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.speculative_consistency import (
-    SpeculativeConsistencyConfig,
     ConsistencyReport,
+    SpeculativeConsistencyChecker,
+    SpeculativeConsistencyConfig,
     greedy_decode,
     speculative_decode_simple,
-    SpeculativeConsistencyChecker,
 )
 
 # ---------------------------------------------------------------------------
 # Mock models
 # ---------------------------------------------------------------------------
+
 
 class TargetModel(nn.Module):
     def __init__(self, vocab_size: int = 256) -> None:
@@ -45,7 +46,7 @@ class DraftModel(nn.Module):
     def forward(self, input_ids, **kwargs):
         B, T = input_ids.shape
         logits = torch.zeros(B, T, self.vocab_size)
-        logits[:, :, 1] = 10.0 * self.agreement          # controlled agreement
+        logits[:, :, 1] = 10.0 * self.agreement  # controlled agreement
         logits[:, :, 2] = 10.0 * (1 - self.agreement)
         return (None, logits, None)
 
@@ -62,6 +63,7 @@ PROMPT = torch.tensor([[5, 6, 7, 8]])  # (1, 4)
 # Test 1: SpeculativeConsistencyConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SpeculativeConsistencyConfig()
     assert cfg.n_test_samples == 100
@@ -73,6 +75,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: greedy_decode returns longer sequence than input
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_decode_longer_than_input():
     model = TargetModel(VOCAB)
@@ -86,6 +89,7 @@ def test_greedy_decode_longer_than_input():
 # Test 3: greedy_decode is deterministic
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decode_deterministic():
     model = TargetModel(VOCAB)
     out1 = greedy_decode(model, PROMPT, max_new_tokens=5)
@@ -96,6 +100,7 @@ def test_greedy_decode_deterministic():
 # ---------------------------------------------------------------------------
 # Test 4: speculative_decode_simple returns valid sequence
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_decode_simple_valid():
     target = TargetModel(VOCAB)
@@ -110,6 +115,7 @@ def test_speculative_decode_simple_valid():
 # Test 5: With identical draft + target (agreement=1.0), verify_single is True
 # ---------------------------------------------------------------------------
 
+
 def test_verify_single_consistent():
     target = TargetModel(VOCAB)
     draft = DraftModel(VOCAB, agreement=1.0)
@@ -121,6 +127,7 @@ def test_verify_single_consistent():
 # ---------------------------------------------------------------------------
 # Test 6: compute_acceptance_stats returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_stats_keys():
     target = TargetModel(VOCAB)
@@ -137,6 +144,7 @@ def test_acceptance_stats_keys():
 # Test 7: Mean acceptance rate is in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_rate_range():
     target = TargetModel(VOCAB)
     draft = DraftModel(VOCAB, agreement=1.0)
@@ -148,6 +156,7 @@ def test_acceptance_rate_range():
 # ---------------------------------------------------------------------------
 # Test 8: distribution_test returns dict with 'kl_divergence' key
 # ---------------------------------------------------------------------------
+
 
 def test_distribution_test_keys():
     target = TargetModel(VOCAB)
@@ -163,6 +172,7 @@ def test_distribution_test_keys():
 # Test 9: kl_divergence >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_kl_divergence_nonnegative():
     target = TargetModel(VOCAB)
     draft = DraftModel(VOCAB, agreement=1.0)
@@ -174,6 +184,7 @@ def test_kl_divergence_nonnegative():
 # ---------------------------------------------------------------------------
 # Test 10: calibrate_threshold returns float in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_threshold_range():
     target = TargetModel(VOCAB)
@@ -187,6 +198,7 @@ def test_calibrate_threshold_range():
 # ---------------------------------------------------------------------------
 # Test 11: ConsistencyReport has all required fields
 # ---------------------------------------------------------------------------
+
 
 def test_consistency_report_fields():
     report = ConsistencyReport(
@@ -206,6 +218,7 @@ def test_consistency_report_fields():
 # ---------------------------------------------------------------------------
 # Test 12: greedy_decode with max_new_tokens=5 returns exactly 5 new tokens
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_decode_exact_length():
     model = TargetModel(VOCAB)

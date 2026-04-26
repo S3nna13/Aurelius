@@ -17,18 +17,17 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Union
-
 
 # ---------------------------------------------------------------------------
 # Core focal loss function
 # ---------------------------------------------------------------------------
 
+
 def focal_loss(
     logits: torch.Tensor,
     targets: torch.Tensor,
     gamma: float = 2.0,
-    alpha: Union[float, torch.Tensor, None] = None,
+    alpha: float | torch.Tensor | None = None,
     ignore_index: int = -100,
     reduction: str = "mean",
 ) -> torch.Tensor:
@@ -110,6 +109,7 @@ def focal_loss(
 # Label-smoothed focal loss
 # ---------------------------------------------------------------------------
 
+
 def label_smoothed_focal_loss(
     logits: torch.Tensor,
     targets: torch.Tensor,
@@ -142,13 +142,15 @@ def label_smoothed_focal_loss(
         return logits_flat.new_zeros(())
 
     # Standard CE (unsmoothed) used to compute p_t for focal weighting
-    ce_hard = F.cross_entropy(logits_flat, targets_flat, reduction="none", ignore_index=ignore_index)
+    ce_hard = F.cross_entropy(
+        logits_flat, targets_flat, reduction="none", ignore_index=ignore_index
+    )
     p_t = torch.exp(-ce_hard)
     focal_weight = (1.0 - p_t) ** gamma
 
     # Smoothed CE: mix one-hot with uniform distribution
     # CE_smooth = (1-s)*CE_hard + s * mean(log_softmax over all classes)
-    log_probs = F.log_softmax(logits_flat, dim=-1)  # (N, C)
+    F.log_softmax(logits_flat, dim=-1)  # (N, C)
     # Hard CE contribution: -(1-s) * log_prob[target]
     ce_smooth = F.cross_entropy(
         logits_flat,
@@ -166,6 +168,7 @@ def label_smoothed_focal_loss(
 # ---------------------------------------------------------------------------
 # Poly Loss
 # ---------------------------------------------------------------------------
+
 
 def poly_loss(
     logits: torch.Tensor,
@@ -208,6 +211,7 @@ def poly_loss(
 # Adaptive gamma scheduler
 # ---------------------------------------------------------------------------
 
+
 class AdaptiveGammaScheduler:
     """Dynamically adjust focal loss gamma based on training progress.
 
@@ -241,6 +245,7 @@ class AdaptiveGammaScheduler:
 # ---------------------------------------------------------------------------
 # FocalLossTrainer
 # ---------------------------------------------------------------------------
+
 
 class FocalLossTrainer:
     """Trainer that replaces standard cross-entropy with focal loss.

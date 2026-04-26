@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import random
 
 import pytest
@@ -10,8 +9,8 @@ import torch
 import torch.nn.functional as F
 
 from src.inference.in_context_learning import (
-    ICLConfig,
     FewShotExample,
+    ICLConfig,
     ICLEvaluator,
     calibrate_logits,
     compute_embedding,
@@ -22,7 +21,6 @@ from src.inference.in_context_learning import (
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,10 +54,7 @@ def _decode(ids: list[int]) -> str:
 
 
 def _make_pool(n: int = 6, with_emb: bool = False) -> list[FewShotExample]:
-    examples = [
-        FewShotExample(input=f"question {i}", output=f"answer {i}")
-        for i in range(n)
-    ]
+    examples = [FewShotExample(input=f"question {i}", output=f"answer {i}") for i in range(n)]
     if with_emb:
         for ex in examples:
             raw = torch.randn(256)

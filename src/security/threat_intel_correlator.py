@@ -12,7 +12,6 @@ from __future__ import annotations
 import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -36,7 +35,7 @@ class CorrelatedIOC:
     source_count: int
     source_names: list[str]
     confidence: float
-    first_seen: Optional[str] = None
+    first_seen: str | None = None
 
 
 @dataclass

@@ -1,6 +1,7 @@
 """Tests for src/inference/abstention.py — confidence estimation and selective prediction."""
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
@@ -12,10 +13,10 @@ from src.inference.abstention import (
     SemanticUncertainty,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mock model for MCDropoutEstimator tests
 # ---------------------------------------------------------------------------
+
 
 class MockModel(nn.Module):
     def __init__(self, vocab=32):
@@ -70,6 +71,7 @@ def mc_estimator(mock_model):
 # ConfidenceEstimator tests
 # ---------------------------------------------------------------------------
 
+
 def test_token_entropy_shape(estimator, uniform_logits):
     """token_entropy should return shape (B, S)."""
     entropy = estimator.token_entropy(uniform_logits)
@@ -86,9 +88,9 @@ def test_uniform_distribution_max_entropy(estimator, uniform_logits):
     """Uniform distribution should have entropy equal to log(V)."""
     entropy = estimator.token_entropy(uniform_logits)
     expected = math.log(VOCAB)
-    assert torch.allclose(
-        entropy, torch.full_like(entropy, expected), atol=1e-4
-    ), f"Expected uniform entropy ~{expected:.4f}, got {entropy[0, 0].item():.4f}"
+    assert torch.allclose(entropy, torch.full_like(entropy, expected), atol=1e-4), (
+        f"Expected uniform entropy ~{expected:.4f}, got {entropy[0, 0].item():.4f}"
+    )
 
 
 def test_peaked_distribution_low_entropy(estimator, peaked_logits):
@@ -116,21 +118,26 @@ def test_top_k_confidence_range(estimator, uniform_logits):
     """top_k_confidence must return values in [0, 1]."""
     topk = estimator.top_k_confidence(uniform_logits, k=5)
     assert topk.shape == (B, S)
-    assert (topk >= 0.0).all() and (topk <= 1.0 + 1e-6).all(), f"top-k confidence out of range"
+    assert (topk >= 0.0).all() and (topk <= 1.0 + 1e-6).all(), "top-k confidence out of range"
 
 
 # ---------------------------------------------------------------------------
 # MCDropoutEstimator tests
 # ---------------------------------------------------------------------------
 
+
 def test_mc_dropout_returns_dict(mc_estimator):
     """estimate() must return a dict with the required keys."""
     input_ids = torch.randint(0, 10, (1, 8))
     result = mc_estimator.estimate(input_ids)
-    required_keys = {"mean_logits", "variance", "mean_entropy", "predictive_entropy", "mutual_information"}
-    assert required_keys.issubset(result.keys()), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    required_keys = {
+        "mean_logits",
+        "variance",
+        "mean_entropy",
+        "predictive_entropy",
+        "mutual_information",
+    }
+    assert required_keys.issubset(result.keys()), f"Missing keys: {required_keys - result.keys()}"
 
 
 def test_mc_dropout_mutual_info_nonneg(mc_estimator):
@@ -144,6 +151,7 @@ def test_mc_dropout_mutual_info_nonneg(mc_estimator):
 # ---------------------------------------------------------------------------
 # SelectivePredictor tests
 # ---------------------------------------------------------------------------
+
 
 def _make_selective_predictor(threshold):
     estimator = ConfidenceEstimator(model=None, threshold=threshold)
@@ -184,8 +192,8 @@ def test_abstention_rate():
     """abstention_rate should equal n_abstained / (n_abstained + n_answered)."""
     predictor = _make_selective_predictor(threshold=0.5)
 
-    uniform_logits = torch.zeros(1, 8, VOCAB)          # will abstain
-    peaked_logits = torch.zeros(1, 8, VOCAB)            # will answer
+    uniform_logits = torch.zeros(1, 8, VOCAB)  # will abstain
+    peaked_logits = torch.zeros(1, 8, VOCAB)  # will answer
     peaked_logits[:, :, 0] = 100.0
 
     input_ids = torch.zeros(1, 4, dtype=torch.long)
@@ -207,6 +215,7 @@ def test_abstention_rate():
 # ---------------------------------------------------------------------------
 # SemanticUncertainty tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sem():

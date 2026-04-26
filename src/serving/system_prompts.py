@@ -1,8 +1,6 @@
 """Curated system prompt library for Aurelius personas."""
 
-from typing import Dict, List, Optional
-
-SYSTEM_PROMPTS: Dict[str, str] = {
+SYSTEM_PROMPTS: dict[str, str] = {
     "default": (
         "You are Aurelius, a helpful, harmless, and honest AI assistant. "
         "You answer questions clearly and accurately, admit when you are uncertain, "
@@ -43,8 +41,8 @@ SYSTEM_PROMPTS: Dict[str, str] = {
 class SystemPromptLibrary:
     """A registry of named system prompts with lookup, rendering, and message-building utilities."""
 
-    def __init__(self, custom_prompts: Optional[Dict[str, str]] = None) -> None:
-        self._prompts: Dict[str, str] = dict(SYSTEM_PROMPTS)
+    def __init__(self, custom_prompts: dict[str, str] | None = None) -> None:
+        self._prompts: dict[str, str] = dict(SYSTEM_PROMPTS)
         if custom_prompts:
             self._prompts.update(custom_prompts)
 
@@ -52,7 +50,7 @@ class SystemPromptLibrary:
         """Return the prompt for *name*, or the fallback prompt if *name* is not found."""
         return self._prompts.get(name, self._prompts[fallback])
 
-    def list_personas(self) -> List[str]:
+    def list_personas(self) -> list[str]:
         """Return a sorted list of all available persona names."""
         return sorted(self._prompts.keys())
 
@@ -65,7 +63,7 @@ class SystemPromptLibrary:
         prompt = self.get(name)
         return prompt.format(**kwargs) if kwargs else prompt
 
-    def build_messages(self, persona: str, user_message: str) -> List[Dict]:
+    def build_messages(self, persona: str, user_message: str) -> list[dict]:
         """Build a minimal chat message list with a system turn and a user turn."""
         return [
             {"role": "system", "content": self.get(persona)},

@@ -1,11 +1,12 @@
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
 
 
 @dataclass
 class GradAccumConfig:
-    n_accum: int = 8           # number of micro-steps per optimizer step
+    n_accum: int = 8  # number of micro-steps per optimizer step
     clip_grad_norm: float | None = 1.0  # gradient clipping (None = no clip)
 
 
@@ -80,9 +81,7 @@ class GradAccumManager:
 
     def _do_optimizer_step(self) -> None:
         if self.cfg.clip_grad_norm is not None:
-            torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), self.cfg.clip_grad_norm
-            )
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.clip_grad_norm)
         self.optimizer.step()
         self.optimizer.zero_grad()
         self._accum_steps = 0

@@ -11,19 +11,18 @@ References:
 
 from __future__ import annotations
 
-import copy
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TokenDPOConfig:
@@ -48,6 +47,7 @@ class TokenDPOConfig:
 # ---------------------------------------------------------------------------
 # Standalone helper functions
 # ---------------------------------------------------------------------------
+
 
 def compute_per_token_advantages(
     chosen_logps: Tensor,
@@ -76,6 +76,7 @@ def compute_per_token_advantages(
 # Token-level DPO Trainer
 # ---------------------------------------------------------------------------
 
+
 class TokenDPOTrainer:
     """Trainer for Token-level Direct Preference Optimization.
 
@@ -101,9 +102,9 @@ class TokenDPOTrainer:
         policy: nn.Module,
         ref_policy: nn.Module,
         beta: float = 0.1,
-        token_weight_fn: Optional[Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]] = None,
+        token_weight_fn: Callable[[Tensor, Tensor], tuple[Tensor, Tensor]] | None = None,
         normalize_weights: bool = True,
-        config: Optional[TokenDPOConfig] = None,
+        config: TokenDPOConfig | None = None,
     ) -> None:
         self.policy = policy
         self.ref_policy = ref_policy
@@ -211,9 +212,9 @@ class TokenDPOTrainer:
         policy_rejected_logps: Tensor,
         ref_chosen_logps: Tensor,
         ref_rejected_logps: Tensor,
-        chosen_weights: Optional[Tensor] = None,
-        rejected_weights: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Dict]:
+        chosen_weights: Tensor | None = None,
+        rejected_weights: Tensor | None = None,
+    ) -> tuple[Tensor, dict]:
         """Compute token-level DPO loss.
 
         When token weights are provided, each token's contribution to the
@@ -249,15 +250,15 @@ class TokenDPOTrainer:
             rejected_weights = rejected_weights / rejected_w_sum
 
         # Weighted sequence-level log probs
-        pi_chosen = (policy_chosen_logps * chosen_weights).sum(dim=-1)      # (batch,)
+        pi_chosen = (policy_chosen_logps * chosen_weights).sum(dim=-1)  # (batch,)
         pi_rejected = (policy_rejected_logps * rejected_weights).sum(dim=-1)  # (batch,)
-        ref_chosen = (ref_chosen_logps * chosen_weights).sum(dim=-1)          # (batch,)
-        ref_rejected = (ref_rejected_logps * rejected_weights).sum(dim=-1)    # (batch,)
+        ref_chosen = (ref_chosen_logps * chosen_weights).sum(dim=-1)  # (batch,)
+        ref_rejected = (ref_rejected_logps * rejected_weights).sum(dim=-1)  # (batch,)
 
         # Implicit rewards
-        chosen_rewards = self.config.beta * (pi_chosen - ref_chosen)       # (batch,)
+        chosen_rewards = self.config.beta * (pi_chosen - ref_chosen)  # (batch,)
         rejected_rewards = self.config.beta * (pi_rejected - ref_rejected)  # (batch,)
-        reward_diff = chosen_rewards - rejected_rewards                      # (batch,)
+        reward_diff = chosen_rewards - rejected_rewards  # (batch,)
 
         if self.config.loss_type == "sigmoid":
             loss = -F.logsigmoid(reward_diff).mean()
@@ -267,13 +268,12 @@ class TokenDPOTrainer:
             loss = ((reward_diff - 1.0 / (2.0 * self.config.beta)) ** 2).mean()
         else:
             raise ValueError(
-                f"Unknown loss_type: {self.config.loss_type!r}. "
-                "Use 'sigmoid', 'hinge', or 'ipo'."
+                f"Unknown loss_type: {self.config.loss_type!r}. Use 'sigmoid', 'hinge', or 'ipo'."
             )
 
         accuracy = (chosen_rewards.detach() > rejected_rewards.detach()).float().mean().item()
 
-        metrics: Dict = {
+        metrics: dict = {
             "loss": loss.item(),
             "chosen_rewards": chosen_rewards.detach().mean().item(),
             "rejected_rewards": rejected_rewards.detach().mean().item(),
@@ -288,7 +288,7 @@ class TokenDPOTrainer:
         rejected_ids: Tensor,
         chosen_labels: Tensor,
         rejected_labels: Tensor,
-    ) -> Dict:
+    ) -> dict:
         """Perform one token-level DPO training step.
 
         Args:
@@ -302,9 +302,7 @@ class TokenDPOTrainer:
         """
         self.policy.train()
 
-        policy_chosen_logps = self.compute_token_log_probs(
-            self.policy, chosen_ids, chosen_labels
-        )
+        policy_chosen_logps = self.compute_token_log_probs(self.policy, chosen_ids, chosen_labels)
         policy_rejected_logps = self.compute_token_log_probs(
             self.policy, rejected_ids, rejected_labels
         )
@@ -318,8 +316,8 @@ class TokenDPOTrainer:
             )
 
         # Compute token weights
-        chosen_weights: Optional[Tensor] = None
-        rejected_weights: Optional[Tensor] = None
+        chosen_weights: Tensor | None = None
+        rejected_weights: Tensor | None = None
 
         if self.token_weight_fn is not None:
             chosen_weights, rejected_weights = self.token_weight_fn(chosen_ids, rejected_ids)

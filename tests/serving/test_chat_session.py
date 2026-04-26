@@ -1,22 +1,37 @@
 """Tests for native chat session interface."""
-import torch
-import pytest
+
 from unittest.mock import MagicMock
-from src.serving.chat_session import (
-    ChatSession, GenerationConfig, Message,
-    format_chatml_messages, apply_repetition_penalty,
-    SYSTEM_TOKEN, USER_TOKEN, ASSISTANT_TOKEN, END_TOKEN,
-)
+
+import pytest
+import torch
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.serving.chat_session import (
+    ASSISTANT_TOKEN,
+    END_TOKEN,
+    SYSTEM_TOKEN,
+    USER_TOKEN,
+    ChatSession,
+    GenerationConfig,
+    Message,
+    apply_repetition_penalty,
+    format_chatml_messages,
+)
 
 
 @pytest.fixture
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 

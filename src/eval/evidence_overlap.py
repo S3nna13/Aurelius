@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+")
 
 
@@ -42,4 +41,3 @@ def max_evidence_overlap(query: str, passages: list[str]) -> float:
     if not passages:
         return 0.0
     return max(evidence_jaccard(query, passage) for passage in passages)
-

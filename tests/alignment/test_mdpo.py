@@ -1,20 +1,21 @@
 """Tests for MDPO (Mirror Descent Policy Optimization) — 12+ tests."""
+
 from __future__ import annotations
 
 import math
-import torch
+
 import pytest
+import torch
 
 from src.alignment.mdpo import (
-    MDPOConfig,
     MDPOBatch,
+    MDPOConfig,
     MDPOTrainer,
     mdpo_loss,
     sequence_log_probs,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -68,6 +69,7 @@ def rewards():
 # 1. MDPOConfig defaults are sensible
 # ---------------------------------------------------------------------------
 
+
 def test_mdpo_config_defaults():
     cfg = MDPOConfig()
     assert cfg.kl_coef == pytest.approx(0.1)
@@ -83,17 +85,17 @@ def test_mdpo_config_defaults():
 # 2. sequence_log_probs returns (B, T-prompt_len-1) shape
 # ---------------------------------------------------------------------------
 
+
 def test_sequence_log_probs_shape(tiny_model, input_ids):
     lp = sequence_log_probs(tiny_model, input_ids, prompt_len=PROMPT_LEN)
     expected_len = T - PROMPT_LEN - 1
-    assert lp.shape == (B, expected_len), (
-        f"Expected ({B}, {expected_len}), got {lp.shape}"
-    )
+    assert lp.shape == (B, expected_len), f"Expected ({B}, {expected_len}), got {lp.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 3. sequence_log_probs returns finite values
 # ---------------------------------------------------------------------------
+
 
 def test_sequence_log_probs_finite(tiny_model, input_ids):
     lp = sequence_log_probs(tiny_model, input_ids, prompt_len=PROMPT_LEN)
@@ -104,6 +106,7 @@ def test_sequence_log_probs_finite(tiny_model, input_ids):
 # 4. sequence_log_probs values are negative (log probs <= 0)
 # ---------------------------------------------------------------------------
 
+
 def test_sequence_log_probs_non_positive(tiny_model, input_ids):
     lp = sequence_log_probs(tiny_model, input_ids, prompt_len=PROMPT_LEN)
     assert (lp <= 0).all(), "Log probs must be <= 0; found positive values"
@@ -112,6 +115,7 @@ def test_sequence_log_probs_non_positive(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # 5. mdpo_loss returns (scalar_tensor, dict) tuple
 # ---------------------------------------------------------------------------
+
 
 def test_mdpo_loss_returns_tuple(tiny_model, input_ids, rewards):
     S = T - PROMPT_LEN - 1
@@ -130,6 +134,7 @@ def test_mdpo_loss_returns_tuple(tiny_model, input_ids, rewards):
 # 6. mdpo_loss dict has keys: 'loss', 'reward', 'kl', 'entropy'
 # ---------------------------------------------------------------------------
 
+
 def test_mdpo_loss_dict_keys(rewards):
     S = T - PROMPT_LEN - 1
     torch.manual_seed(11)
@@ -144,6 +149,7 @@ def test_mdpo_loss_dict_keys(rewards):
 # 7. mdpo_loss loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_mdpo_loss_finite(rewards):
     S = T - PROMPT_LEN - 1
     torch.manual_seed(12)
@@ -157,6 +163,7 @@ def test_mdpo_loss_finite(rewards):
 # 8. mdpo_loss KL is non-negative (given log_probs >= ref_log_probs on avg)
 #    We test that when policy == ref, KL == 0
 # ---------------------------------------------------------------------------
+
 
 def test_mdpo_loss_kl_zero_when_equal(rewards):
     S = T - PROMPT_LEN - 1
@@ -182,6 +189,7 @@ def test_mdpo_loss_kl_nonneg_typical(rewards):
 # 9. mdpo_loss entropy is non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_mdpo_loss_entropy_nonneg(rewards):
     S = T - PROMPT_LEN - 1
     torch.manual_seed(15)
@@ -189,14 +197,13 @@ def test_mdpo_loss_entropy_nonneg(rewards):
     lp = -torch.rand(B, S) * 5.0  # values in [-5, 0]
     ref_lp = lp.clone()
     _, metrics = mdpo_loss(lp, ref_lp, rewards)
-    assert metrics["entropy"] >= 0.0, (
-        f"Entropy should be non-negative, got {metrics['entropy']}"
-    )
+    assert metrics["entropy"] >= 0.0, f"Entropy should be non-negative, got {metrics['entropy']}"
 
 
 # ---------------------------------------------------------------------------
 # 10. MDPOTrainer constructs without error
 # ---------------------------------------------------------------------------
+
 
 def test_mdpo_trainer_constructs(tiny_model, tiny_ref_model):
     cfg = MDPOConfig()
@@ -209,6 +216,7 @@ def test_mdpo_trainer_constructs(tiny_model, tiny_ref_model):
 # ---------------------------------------------------------------------------
 # 11. MDPOTrainer.make_batch returns MDPOBatch with correct ref_log_probs shape
 # ---------------------------------------------------------------------------
+
 
 def test_mdpo_trainer_make_batch_shape(tiny_model, tiny_ref_model, input_ids, rewards):
     torch.manual_seed(20)
@@ -227,6 +235,7 @@ def test_mdpo_trainer_make_batch_shape(tiny_model, tiny_ref_model, input_ids, re
 # 12. MDPOTrainer.train_step returns dict with required keys
 # ---------------------------------------------------------------------------
 
+
 def test_mdpo_trainer_train_step_keys(tiny_model, tiny_ref_model, input_ids, rewards):
     torch.manual_seed(30)
     cfg = MDPOConfig(n_steps=1)  # 1 step for speed
@@ -240,6 +249,7 @@ def test_mdpo_trainer_train_step_keys(tiny_model, tiny_ref_model, input_ids, rew
 # ---------------------------------------------------------------------------
 # Bonus: train_step returns finite metrics
 # ---------------------------------------------------------------------------
+
 
 def test_mdpo_trainer_train_step_finite(tiny_model, tiny_ref_model, input_ids, rewards):
     torch.manual_seed(31)

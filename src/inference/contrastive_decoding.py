@@ -13,8 +13,8 @@ import torch.nn.functional as F
 class ContrastiveDecodeConfig:
     """Configuration for Contrastive Decoding."""
 
-    alpha: float = 0.1          # plausibility threshold
-    temperature: float = 1.0    # sampling temperature
+    alpha: float = 0.1  # plausibility threshold
+    temperature: float = 1.0  # sampling temperature
     max_new_tokens: int = 64
 
 

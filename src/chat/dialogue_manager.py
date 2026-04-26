@@ -3,10 +3,10 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class DialogueState(str, Enum):
+class DialogueState(StrEnum):
     GREETING = "greeting"
     INFORMATION_GATHERING = "information_gathering"
     TASK_EXECUTION = "task_execution"
@@ -16,9 +16,7 @@ class DialogueState(str, Enum):
     ERROR = "error"
 
 
-_CLARIFICATION_KEYWORDS = frozenset(
-    ["what do you mean", "could you explain", "clarify"]
-)
+_CLARIFICATION_KEYWORDS = frozenset(["what do you mean", "could you explain", "clarify"])
 _CLOSING_KEYWORDS = frozenset(["thank you", "thanks", "bye", "goodbye", "done"])
 
 
@@ -119,9 +117,7 @@ class DialogueManager:
         if any(kw in candidate for kw in _CLARIFICATION_KEYWORDS):
             return DialogueState.CLARIFICATION
 
-        if self._required_slots and all(
-            s in ctx.slot_values for s in self._required_slots
-        ):
+        if self._required_slots and all(s in ctx.slot_values for s in self._required_slots):
             return DialogueState.CONFIRMATION
 
         if not self._required_slots:
@@ -129,18 +125,12 @@ class DialogueManager:
 
         filled = sum(1 for s in self._required_slots if s in ctx.slot_values)
         ratio = filled / len(self._required_slots)
-        return (
-            DialogueState.TASK_EXECUTION
-            if ratio >= 0.5
-            else DialogueState.INFORMATION_GATHERING
-        )
+        return DialogueState.TASK_EXECUTION if ratio >= 0.5 else DialogueState.INFORMATION_GATHERING
 
     def get_context(self, dialogue_id: str) -> DialogueContext | None:
         return self._dialogues.get(dialogue_id)
 
-    def get_history(
-        self, dialogue_id: str, last_n: int | None = None
-    ) -> list[Turn]:
+    def get_history(self, dialogue_id: str, last_n: int | None = None) -> list[Turn]:
         ctx = self._dialogues.get(dialogue_id)
         if ctx is None:
             return []

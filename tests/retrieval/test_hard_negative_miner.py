@@ -10,11 +10,10 @@ import torch
 
 from src.retrieval.bm25_retriever import BM25Retriever
 from src.retrieval.hard_negative_miner import (
+    STRATEGIES,
     HardNegative,
     HardNegativeMiner,
-    STRATEGIES,
 )
-
 
 # ---------------------------------------------------------------------- #
 # Fakes                                                                    #
@@ -73,9 +72,7 @@ def indexed_bm25(corpus: list[str]) -> BM25Retriever:
 def test_bm25_hard_selects_topk_non_positive(
     indexed_bm25: BM25Retriever, corpus: list[str]
 ) -> None:
-    miner = HardNegativeMiner(
-        retriever=indexed_bm25, strategy="bm25_hard", k=2
-    )
+    miner = HardNegativeMiner(retriever=indexed_bm25, strategy="bm25_hard", k=2)
     pos = "the cat sat on the mat"
     negs = miner.mine("cat feline", pos, corpus)
     assert len(negs) == 2
@@ -87,9 +84,7 @@ def test_bm25_hard_selects_topk_non_positive(
 
 
 def test_embedding_hard_selects_topk_nearest(corpus: list[str]) -> None:
-    miner = HardNegativeMiner(
-        embedder=_FakeEmbedder(), strategy="embedding_hard", k=3
-    )
+    miner = HardNegativeMiner(embedder=_FakeEmbedder(), strategy="embedding_hard", k=3)
     pos = "the cat sat on the mat"
     negs = miner.mine("cat", pos, corpus)
     assert len(negs) == 3
@@ -120,9 +115,7 @@ def test_in_batch_returns_n_minus_one(corpus: list[str]) -> None:
 def test_k_larger_than_corpus_minus_positive_returns_all(
     indexed_bm25: BM25Retriever, corpus: list[str]
 ) -> None:
-    miner = HardNegativeMiner(
-        retriever=indexed_bm25, strategy="bm25_hard", k=100
-    )
+    miner = HardNegativeMiner(retriever=indexed_bm25, strategy="bm25_hard", k=100)
     pos = corpus[0]
     # Query matches several but not all; BM25 only returns docs with
     # overlap. Use a broad query so all corpus docs get scored.
@@ -131,19 +124,13 @@ def test_k_larger_than_corpus_minus_positive_returns_all(
     assert pos not in ids
     assert len(ids) <= len(corpus) - 1
     # Embedding-hard will always score the full corpus:
-    emb_miner = HardNegativeMiner(
-        embedder=_FakeEmbedder(), strategy="embedding_hard", k=100
-    )
+    emb_miner = HardNegativeMiner(embedder=_FakeEmbedder(), strategy="embedding_hard", k=100)
     negs2 = emb_miner.mine("anything", pos, corpus)
     assert len(negs2) == len(corpus) - 1
 
 
-def test_missing_positive_raises(
-    indexed_bm25: BM25Retriever, corpus: list[str]
-) -> None:
-    miner = HardNegativeMiner(
-        retriever=indexed_bm25, strategy="bm25_hard", k=2
-    )
+def test_missing_positive_raises(indexed_bm25: BM25Retriever, corpus: list[str]) -> None:
+    miner = HardNegativeMiner(retriever=indexed_bm25, strategy="bm25_hard", k=2)
     with pytest.raises(ValueError, match="positive_doc_id"):
         miner.mine("q", "not in corpus at all", corpus)
 
@@ -186,9 +173,7 @@ def test_determinism(corpus: list[str]) -> None:
 
 
 def test_empty_corpus_raises(indexed_bm25: BM25Retriever) -> None:
-    miner = HardNegativeMiner(
-        retriever=indexed_bm25, strategy="bm25_hard", k=2
-    )
+    miner = HardNegativeMiner(retriever=indexed_bm25, strategy="bm25_hard", k=2)
     with pytest.raises(ValueError, match="corpus must be non-empty"):
         miner.mine("q", "x", [])
 
@@ -197,9 +182,7 @@ def test_mine_batch_returns_list_of_lists_with_correct_length(
     corpus: list[str],
 ) -> None:
     # Use embedding strategy so we don't have to pre-index.
-    miner = HardNegativeMiner(
-        embedder=_FakeEmbedder(), strategy="embedding_hard", k=2
-    )
+    miner = HardNegativeMiner(embedder=_FakeEmbedder(), strategy="embedding_hard", k=2)
     queries = ["cat", "dog", "bird"]
     positives = [corpus[0], corpus[1], corpus[2]]
     out = miner.mine_batch(queries, positives, corpus)

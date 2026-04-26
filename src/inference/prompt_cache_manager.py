@@ -123,9 +123,7 @@ class PromptCacheManager:
         n = len(token_ids)
         return self._config.min_prefix_tokens <= n <= self._config.max_prefix_tokens
 
-    def get_cached_prefix(
-        self, full_prompt_ids: list[int]
-    ) -> tuple[PrefixEntry | None, int]:
+    def get_cached_prefix(self, full_prompt_ids: list[int]) -> tuple[PrefixEntry | None, int]:
         best_entry: PrefixEntry | None = None
         best_len = 0
         now = time.time()

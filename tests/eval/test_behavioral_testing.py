@@ -8,14 +8,13 @@ from src.eval.behavioral_testing import (
     InvarianceTest,
     MinimumFunctionalityTest,
     PerturbationGenerator,
-    TestCase,
     TestResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # TestResult
 # ---------------------------------------------------------------------------
+
 
 def test_test_result_pass_rate():
     result = TestResult(test_name="foo", passed=7, total=10)
@@ -36,6 +35,7 @@ def test_test_result_zero_total():
 # ---------------------------------------------------------------------------
 # MinimumFunctionalityTest
 # ---------------------------------------------------------------------------
+
 
 def test_mft_generate_cases_count():
     cases = [("hello world", 1), ("goodbye world", 0), ("neutral text", 1)]
@@ -65,6 +65,7 @@ def test_mft_evaluate_wrong_model():
 # InvarianceTest
 # ---------------------------------------------------------------------------
 
+
 def test_invariance_test_case_count():
     pairs = [
         ("I love this movie", "I really love this movie"),
@@ -80,6 +81,7 @@ def test_invariance_test_case_count():
 # ---------------------------------------------------------------------------
 # DirectionalTest
 # ---------------------------------------------------------------------------
+
 
 def test_directional_test_evaluate():
     # model returns second char parsed as int if possible, else 0
@@ -102,6 +104,7 @@ def test_directional_test_evaluate():
 # PerturbationGenerator
 # ---------------------------------------------------------------------------
 
+
 def test_perturbation_random_deletion_shorter():
     gen = PerturbationGenerator()
     text = "the quick brown fox jumps over the lazy dog"
@@ -122,6 +125,7 @@ def test_perturbation_add_typo():
 # ---------------------------------------------------------------------------
 # BehavioralTestSuite
 # ---------------------------------------------------------------------------
+
 
 def test_behavioral_suite_run_returns_all():
     mft = MinimumFunctionalityTest([("hello", 1), ("world", 0)])

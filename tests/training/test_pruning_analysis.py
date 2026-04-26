@@ -1,7 +1,6 @@
 """Tests for pruning_analysis.py — post-hoc pruning analysis utilities."""
-from __future__ import annotations
 
-import math
+from __future__ import annotations
 
 import pytest
 import torch
@@ -15,10 +14,10 @@ from src.training.pruning_analysis import (
     SparsityStats,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _small_model(seed: int = 0) -> nn.Sequential:
     torch.manual_seed(seed)
@@ -28,6 +27,7 @@ def _small_model(seed: int = 0) -> nn.Sequential:
 # ---------------------------------------------------------------------------
 # SparsityStats
 # ---------------------------------------------------------------------------
+
 
 def test_layer_sparsity_all_nonzero():
     stats = SparsityStats()
@@ -68,6 +68,7 @@ def test_total_sparsity_all_zero():
 # ---------------------------------------------------------------------------
 # MagnitudePruner
 # ---------------------------------------------------------------------------
+
 
 def test_prune_tensor_zeros_correct_fraction():
     torch.manual_seed(42)
@@ -132,6 +133,7 @@ def test_prune_model_applies_sparsity():
 # GradientSensitivityPruner
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sensitivity_shape():
     pruner = GradientSensitivityPruner(sparsity=0.5)
     param = nn.Parameter(torch.randn(8, 4))
@@ -166,6 +168,7 @@ def test_prune_by_sensitivity_none_grad_fallback():
 # ---------------------------------------------------------------------------
 # LotteryTicketAnalyzer
 # ---------------------------------------------------------------------------
+
 
 def test_save_initial_weights_clones():
     torch.manual_seed(3)
@@ -217,6 +220,7 @@ def test_ticket_similarity_identical():
 # PruningScheduler
 # ---------------------------------------------------------------------------
 
+
 def test_sparsity_at_start_equals_initial():
     scheduler = PruningScheduler(
         initial_sparsity=0.1,
@@ -251,25 +255,19 @@ def test_sparsity_monotone_increasing():
 
 
 def test_should_prune_true_at_frequency():
-    scheduler = PruningScheduler(
-        start_step=0, end_step=1000, frequency=100
-    )
+    scheduler = PruningScheduler(start_step=0, end_step=1000, frequency=100)
     assert scheduler.should_prune(0)
     assert scheduler.should_prune(100)
     assert scheduler.should_prune(500)
 
 
 def test_should_prune_false_outside_range():
-    scheduler = PruningScheduler(
-        start_step=100, end_step=500, frequency=100
-    )
-    assert not scheduler.should_prune(50)   # before start
+    scheduler = PruningScheduler(start_step=100, end_step=500, frequency=100)
+    assert not scheduler.should_prune(50)  # before start
     assert not scheduler.should_prune(600)  # after end
 
 
 def test_should_prune_false_off_frequency():
-    scheduler = PruningScheduler(
-        start_step=0, end_step=1000, frequency=100
-    )
+    scheduler = PruningScheduler(start_step=0, end_step=1000, frequency=100)
     assert not scheduler.should_prune(150)
     assert not scheduler.should_prune(99)

@@ -4,12 +4,12 @@ Computes a stable identity hash over a tokenizer's vocabulary/merges/specials,
 validates manifests, and diffs identities to surface breaking changes across
 variants. Pure stdlib; additive-within-file only.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass, field
-from typing import Optional
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class ContractMismatch(Exception):
 @dataclass(frozen=True)
 class ContractVerdict:
     matches: bool
-    expected_hash: Optional[str]
+    expected_hash: str | None
     actual_hash: str
     differences: tuple[str, ...] = field(default_factory=tuple)
 
@@ -53,9 +53,7 @@ def _canonical_json(identity: TokenizerIdentity) -> str:
     return json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-def compute_tokenizer_hash(
-    identity: TokenizerIdentity, digest_algo: str = "sha256"
-) -> str:
+def compute_tokenizer_hash(identity: TokenizerIdentity, digest_algo: str = "sha256") -> str:
     """Canonicalize identity to JSON and hash via hashlib."""
     if digest_algo not in hashlib.algorithms_available:
         raise ValueError(f"unsupported digest algorithm: {digest_algo}")
@@ -71,9 +69,7 @@ TOKENIZER_IDENTITY_REGISTRY: dict[str, TokenizerIdentity] = {}
 def register_identity(identity: TokenizerIdentity) -> None:
     """Register an identity by name; duplicate names raise ContractMismatch."""
     if identity.name in TOKENIZER_IDENTITY_REGISTRY:
-        raise ContractMismatch(
-            f"tokenizer identity already registered: {identity.name}"
-        )
+        raise ContractMismatch(f"tokenizer identity already registered: {identity.name}")
     TOKENIZER_IDENTITY_REGISTRY[identity.name] = identity
 
 
@@ -83,7 +79,7 @@ class TokenizerContractValidator:
     def validate(
         self,
         identity: TokenizerIdentity,
-        expected_hash: Optional[str],
+        expected_hash: str | None,
     ) -> ContractVerdict:
         actual = compute_tokenizer_hash(identity)
         if expected_hash is None:
@@ -111,9 +107,7 @@ class TokenizerContractValidator:
             differences=diffs,
         )
 
-    def diff_identities(
-        self, a: TokenizerIdentity, b: TokenizerIdentity
-    ) -> tuple[str, ...]:
+    def diff_identities(self, a: TokenizerIdentity, b: TokenizerIdentity) -> tuple[str, ...]:
         diffs: list[str] = []
         for field_name in (
             "name",

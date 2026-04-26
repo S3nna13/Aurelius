@@ -1,4 +1,5 @@
 """Tests for Token Budget & Adaptive Generation."""
+
 import pytest
 import torch
 
@@ -13,10 +14,10 @@ from src.inference.token_budget import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Tiny model helper
 # ---------------------------------------------------------------------------
+
 
 def _make_model() -> AureliusTransformer:
     torch.manual_seed(0)
@@ -40,6 +41,7 @@ VOCAB_SIZE = 256
 # BudgetConfig tests
 # ===================================================================
 
+
 class TestBudgetConfig:
     def test_defaults(self):
         """BudgetConfig defaults match spec."""
@@ -52,8 +54,9 @@ class TestBudgetConfig:
 
     def test_custom_values(self):
         """BudgetConfig accepts custom values."""
-        cfg = BudgetConfig(max_tokens=1024, target_efficiency=0.5, adaptive=False,
-                           eos_token_id=2, pad_token_id=1)
+        cfg = BudgetConfig(
+            max_tokens=1024, target_efficiency=0.5, adaptive=False, eos_token_id=2, pad_token_id=1
+        )
         assert cfg.max_tokens == 1024
         assert cfg.target_efficiency == 0.5
         assert cfg.adaptive is False
@@ -64,6 +67,7 @@ class TestBudgetConfig:
 # ===================================================================
 # TokenBudget tests
 # ===================================================================
+
 
 class TestTokenBudget:
     def test_initial_state(self):
@@ -120,6 +124,7 @@ class TestTokenBudget:
 # estimate_sequence_complexity tests
 # ===================================================================
 
+
 class TestEstimateSequenceComplexity:
     def test_returns_float_in_range(self):
         """Complexity score must be a float in [0, 1]."""
@@ -141,6 +146,7 @@ class TestEstimateSequenceComplexity:
 # ===================================================================
 # adaptive_max_tokens tests
 # ===================================================================
+
 
 class TestAdaptiveMaxTokens:
     def test_simple_halves(self):
@@ -188,6 +194,7 @@ class TestAdaptiveMaxTokens:
 # budget_aware_generate tests
 # ===================================================================
 
+
 class TestBudgetAwareGenerate:
     def test_respects_budget(self):
         """Never generates more tokens than the budget allows."""
@@ -218,6 +225,7 @@ class TestBudgetAwareGenerate:
 # ===================================================================
 # BudgetedGenerator tests
 # ===================================================================
+
 
 class TestBudgetedGenerator:
     def test_generate_returns_dict(self):

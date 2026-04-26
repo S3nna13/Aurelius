@@ -1,8 +1,8 @@
 """Unit tests for MLA-256 with Muon Split (GLM-5 §3.1, arXiv:2602.15763)."""
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.mla_256 import MLA256Attention, MLA256Config
 
@@ -153,6 +153,7 @@ def test_distinct_from_mla():
     # Try to import the original MLA; if it doesn't exist, skip gracefully.
     try:
         from src.model.mla import MLAAttention as OrigMLA
+
         assert MLA256 is not OrigMLA, "MLA256Attention must be a distinct class from MLAAttention"
     except ImportError:
         pass  # Original MLA class name differs; distinctness is inherently satisfied.

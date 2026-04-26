@@ -19,16 +19,15 @@ import pytest
 import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.latent_steering import (
-    SteeringConfig,
     LatentSteerer,
+    SteeringConfig,
     apply_steering_hook,
     compute_steering_vector,
     extract_hidden_states,
     lerp_hidden,
 )
-
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -69,6 +68,7 @@ def steering_vec():
 # SteeringConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestSteeringConfig:
     def test_default_alpha(self):
         cfg = SteeringConfig()
@@ -96,6 +96,7 @@ class TestSteeringConfig:
 # ---------------------------------------------------------------------------
 # extract_hidden_states tests
 # ---------------------------------------------------------------------------
+
 
 class TestExtractHiddenStates:
     def test_shape_layer_0(self, model, input_ids):
@@ -128,6 +129,7 @@ class TestExtractHiddenStates:
 # ---------------------------------------------------------------------------
 # compute_steering_vector tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeSteeringVector:
     def test_shape(self, model):
@@ -162,10 +164,10 @@ class TestComputeSteeringVector:
 # apply_steering_hook tests
 # ---------------------------------------------------------------------------
 
+
 class TestApplySteeringHook:
     def test_returns_handle_with_remove(self, model, steering_vec):
-        handle = apply_steering_hook(model, steering_vec, alpha=1.0,
-                                     method="add", layer_idx=0)
+        handle = apply_steering_hook(model, steering_vec, alpha=1.0, method="add", layer_idx=0)
         assert hasattr(handle, "remove")
         assert callable(handle.remove)
         handle.remove()
@@ -175,8 +177,7 @@ class TestApplySteeringHook:
         with torch.no_grad():
             _, logits_before, _ = model(input_ids)
 
-        handle = apply_steering_hook(model, steering_vec, alpha=1.0,
-                                     method="add", layer_idx=0)
+        handle = apply_steering_hook(model, steering_vec, alpha=1.0, method="add", layer_idx=0)
         with torch.no_grad():
             _, logits_after, _ = model(input_ids)
         handle.remove()
@@ -188,8 +189,7 @@ class TestApplySteeringHook:
         with torch.no_grad():
             _, logits_before, _ = model(input_ids)
 
-        handle = apply_steering_hook(model, steering_vec, alpha=1.0,
-                                     method="project", layer_idx=0)
+        handle = apply_steering_hook(model, steering_vec, alpha=1.0, method="project", layer_idx=0)
         with torch.no_grad():
             _, logits_after, _ = model(input_ids)
         handle.remove()
@@ -201,8 +201,7 @@ class TestApplySteeringHook:
         with torch.no_grad():
             _, logits_baseline, _ = model(input_ids)
 
-        handle = apply_steering_hook(model, steering_vec, alpha=5.0,
-                                     method="add", layer_idx=0)
+        handle = apply_steering_hook(model, steering_vec, alpha=5.0, method="add", layer_idx=0)
         handle.remove()
 
         with torch.no_grad():
@@ -215,8 +214,7 @@ class TestApplySteeringHook:
         with torch.no_grad():
             _, logits_before, _ = model(input_ids)
 
-        handle = apply_steering_hook(model, steering_vec, alpha=1.0,
-                                     method="lerp", layer_idx=0)
+        handle = apply_steering_hook(model, steering_vec, alpha=1.0, method="lerp", layer_idx=0)
         with torch.no_grad():
             _, logits_after, _ = model(input_ids)
         handle.remove()
@@ -224,8 +222,9 @@ class TestApplySteeringHook:
         assert not torch.allclose(logits_before, logits_after)
 
     def test_invalid_method_raises(self, model, steering_vec, input_ids):
-        handle = apply_steering_hook(model, steering_vec, alpha=1.0,
-                                     method="invalid_method", layer_idx=0)
+        handle = apply_steering_hook(
+            model, steering_vec, alpha=1.0, method="invalid_method", layer_idx=0
+        )
         with pytest.raises(ValueError):
             with torch.no_grad():
                 model(input_ids)
@@ -235,6 +234,7 @@ class TestApplySteeringHook:
 # ---------------------------------------------------------------------------
 # lerp_hidden tests
 # ---------------------------------------------------------------------------
+
 
 class TestLerpHidden:
     def test_output_shape(self):
@@ -266,6 +266,7 @@ class TestLerpHidden:
 # ---------------------------------------------------------------------------
 # LatentSteerer tests
 # ---------------------------------------------------------------------------
+
 
 class TestLatentSteerer:
     def _make_steerer(self, model, method="add"):

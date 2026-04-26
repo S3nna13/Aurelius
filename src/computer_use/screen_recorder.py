@@ -5,8 +5,8 @@ Records screen state snapshots over time.
 
 from __future__ import annotations
 
-import time
 import collections
+import time
 from dataclasses import dataclass
 
 

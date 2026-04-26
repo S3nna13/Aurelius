@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import time
 import unittest
 
-from src.trading.portfolio import Portfolio, OrderSide, OrderStatus
+from src.trading.portfolio import OrderSide, OrderStatus, Portfolio
 from src.trading.trading_agent import (
-    TradingAgent,
-    TradingSignal,
+    AGENT_REGISTRY,
+    AgentConfig,
     Order,
     OrderType,
-    AgentConfig,
-    AGENT_REGISTRY,
-    register_agent,
+    TradingAgent,
+    TradingSignal,
     list_agents,
+    register_agent,
 )
 
 
@@ -81,9 +80,7 @@ class TestTradingAgent(unittest.TestCase):
         assert signal == TradingSignal.HOLD
 
     def test_generate_signal_sma_crossover_bullish(self):
-        signal = self.agent.generate_signal(
-            "AAPL", 160.0, {"sma_short": 155, "sma_long": 150}
-        )
+        signal = self.agent.generate_signal("AAPL", 160.0, {"sma_short": 155, "sma_long": 150})
         assert signal in (TradingSignal.BUY, TradingSignal.HOLD)
 
     def test_execute_signal_buy(self):
@@ -115,7 +112,9 @@ class TestTradingAgent(unittest.TestCase):
         self.agent.execute_signal("AAPL", TradingSignal.BUY, 100.0)
         result = self.agent.apply_stop_loss("AAPL", 85.0)
         assert result
-        assert "AAPL" not in self.portfolio.positions or self.portfolio.positions["AAPL"].quantity == 0
+        assert (
+            "AAPL" not in self.portfolio.positions or self.portfolio.positions["AAPL"].quantity == 0
+        )
 
     def test_stop_loss_not_triggered(self):
         self.agent.execute_signal("AAPL", TradingSignal.BUY, 100.0)
@@ -126,7 +125,9 @@ class TestTradingAgent(unittest.TestCase):
         self.agent.execute_signal("AAPL", TradingSignal.BUY, 100.0)
         result = self.agent.apply_take_profit("AAPL", 130.0)
         assert result
-        assert "AAPL" not in self.portfolio.positions or self.portfolio.positions["AAPL"].quantity == 0
+        assert (
+            "AAPL" not in self.portfolio.positions or self.portfolio.positions["AAPL"].quantity == 0
+        )
 
     def test_take_profit_not_triggered(self):
         self.agent.execute_signal("AAPL", TradingSignal.BUY, 100.0)

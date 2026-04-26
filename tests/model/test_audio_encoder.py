@@ -1,17 +1,17 @@
 """Tests for pure-PyTorch Whisper-style mel spectrogram extractor and audio encoder."""
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.model.audio_encoder import (
     MelConfig,
     MelSpectrogramExtractor,
     WhisperStyleEncoder,
-    build_mel_filterbank,
     build_hann_window,
+    build_mel_filterbank,
     hz_to_mel,
     mel_to_hz,
     stft,
@@ -143,7 +143,7 @@ def test_mel_extractor_batched():
     extractor.eval()
     single = torch.randn(N_SAMPLES)
     with torch.no_grad():
-        out_single = extractor(single)              # (n_mels, n_frames)
+        out_single = extractor(single)  # (n_mels, n_frames)
         out_batched = extractor(single.unsqueeze(0))  # (1, n_mels, n_frames)
     assert torch.allclose(out_single, out_batched.squeeze(0), atol=1e-5), (
         "Batched and single results differ"

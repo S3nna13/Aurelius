@@ -6,15 +6,13 @@ based on singular value importance scoring (Zhang et al. 2023).
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # SVDLoRALayer
 # ---------------------------------------------------------------------------
+
 
 class SVDLoRALayer(nn.Module):
     """LoRA layer parameterized via SVD decomposition.
@@ -78,6 +76,7 @@ class SVDLoRALayer(nn.Module):
 # RankBudgetAllocator
 # ---------------------------------------------------------------------------
 
+
 class RankBudgetAllocator:
     """Allocates rank budget across AdaLoRA layers based on importance scores."""
 
@@ -93,8 +92,8 @@ class RankBudgetAllocator:
 
     def compute_allocation(
         self,
-        importance_scores: Dict[str, torch.Tensor],
-    ) -> Dict[str, int]:
+        importance_scores: dict[str, torch.Tensor],
+    ) -> dict[str, int]:
         """Compute new rank per layer proportional to importance scores.
 
         Args:
@@ -111,8 +110,7 @@ class RankBudgetAllocator:
 
         # Compute per-layer importance as sum of scores
         layer_importance = {
-            name: float(scores.sum().item())
-            for name, scores in importance_scores.items()
+            name: float(scores.sum().item()) for name, scores in importance_scores.items()
         }
 
         total_importance = sum(layer_importance.values())
@@ -129,8 +127,7 @@ class RankBudgetAllocator:
             }
             # Floor, clamp to [1, initial_rank]
             allocation = {
-                name: max(1, min(self.initial_rank, int(raw[name])))
-                for name in layer_names
+                name: max(1, min(self.initial_rank, int(raw[name]))) for name in layer_names
             }
 
         # Enforce global budget: greedily reduce layers with most rank
@@ -152,7 +149,7 @@ class RankBudgetAllocator:
         layer_name: str,
         new_rank: int,
         current_rank: int,
-    ) -> List[int]:
+    ) -> list[int]:
         """Return indices of singular values to prune (zero out).
 
         Pruned positions are those with the lowest importance that push the
@@ -181,6 +178,7 @@ class RankBudgetAllocator:
 # AdaLoRAMask
 # ---------------------------------------------------------------------------
 
+
 class AdaLoRAMask:
     """Manages which singular values are active for an SVDLoRALayer."""
 
@@ -188,7 +186,7 @@ class AdaLoRAMask:
         self.rank = rank
         self._mask: torch.Tensor = torch.ones(rank, dtype=torch.bool)
 
-    def set_mask(self, active_indices: List[int]) -> None:
+    def set_mask(self, active_indices: list[int]) -> None:
         """Set which ranks are active; all others will be zeroed.
 
         Args:
@@ -217,6 +215,7 @@ class AdaLoRAMask:
 # ---------------------------------------------------------------------------
 # AdaLoRARegularizer
 # ---------------------------------------------------------------------------
+
 
 class AdaLoRARegularizer:
     """Orthogonality regularization for P and Q matrices."""
@@ -248,7 +247,7 @@ class AdaLoRARegularizer:
 
         return self.beta * (p_penalty + q_penalty)
 
-    def total_loss(self, lora_layers: Dict[str, SVDLoRALayer]) -> torch.Tensor:
+    def total_loss(self, lora_layers: dict[str, SVDLoRALayer]) -> torch.Tensor:
         """Sum orthogonality penalty over all layers.
 
         Args:
@@ -259,8 +258,8 @@ class AdaLoRARegularizer:
         """
         total = None
         for layer in lora_layers.values():
-            l = self.loss(layer)
-            total = l if total is None else total + l
+            lo = self.loss(layer)
+            total = lo if total is None else total + lo
         if total is None:
             return torch.tensor(0.0)
         return total
@@ -270,13 +269,14 @@ class AdaLoRARegularizer:
 # AdaLoRATrainer
 # ---------------------------------------------------------------------------
 
+
 class AdaLoRATrainer:
     """Training wrapper with adaptive rank updates for SVDLoRA layers."""
 
     def __init__(
         self,
         model: nn.Module,
-        lora_layers: Dict[str, SVDLoRALayer],
+        lora_layers: dict[str, SVDLoRALayer],
         optimizer: torch.optim.Optimizer,
         rank_update_interval: int = 10,
         total_rank_budget: int = 32,
@@ -288,9 +288,8 @@ class AdaLoRATrainer:
         self.total_rank_budget = total_rank_budget
 
         self._step = 0
-        self._masks: Dict[str, AdaLoRAMask] = {
-            name: AdaLoRAMask(layer.rank)
-            for name, layer in lora_layers.items()
+        self._masks: dict[str, AdaLoRAMask] = {
+            name: AdaLoRAMask(layer.rank) for name, layer in lora_layers.items()
         }
         # Initial mask: all active
         for name, mask in self._masks.items():
@@ -308,7 +307,7 @@ class AdaLoRATrainer:
         self,
         input_ids: torch.Tensor,
         labels: torch.Tensor,
-    ) -> Dict:
+    ) -> dict:
         """Run one training step.
 
         Args:
@@ -337,10 +336,7 @@ class AdaLoRATrainer:
         if self._step % self.rank_update_interval == 0:
             self.update_ranks()
 
-        per_layer_ranks = {
-            name: self._masks[name].active_count()
-            for name in self.lora_layers
-        }
+        per_layer_ranks = {name: self._masks[name].active_count() for name in self.lora_layers}
         total_active_rank = sum(per_layer_ranks.values())
 
         return {
@@ -352,14 +348,12 @@ class AdaLoRATrainer:
     def update_ranks(self) -> None:
         """Reallocate rank budget based on current importance scores."""
         importance_scores = {
-            name: layer.importance_score()
-            for name, layer in self.lora_layers.items()
+            name: layer.importance_score() for name, layer in self.lora_layers.items()
         }
         new_allocation = self._allocator.compute_allocation(importance_scores)
 
         for name, layer in self.lora_layers.items():
             new_rank = new_allocation.get(name, 1)
-            current_rank = layer.rank
 
             # Determine active indices: keep top-new_rank by importance
             scores = importance_scores[name]  # (rank,)

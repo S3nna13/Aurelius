@@ -4,6 +4,7 @@ Provides a clean interface for applying, reverting, and evaluating
 rank-one fact edits (ROME-style) to the FFN down_proj weights of
 AureliusTransformer layers.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,9 +18,10 @@ from src.model.transformer import AureliusTransformer
 @dataclass
 class EditConfig:
     """Configuration for model editing."""
+
     n_edits: int = 1
-    layer_idx: int = -1          # which layer's FFN to edit; -1 = last layer
-    edit_method: str = "rank1"   # "rank1" | "ft"
+    layer_idx: int = -1  # which layer's FFN to edit; -1 = last layer
+    edit_method: str = "rank1"  # "rank1" | "ft"
     learning_rate: float = 1e-4
     n_steps: int = 10
 
@@ -27,8 +29,9 @@ class EditConfig:
 @dataclass
 class FactEdit:
     """Specification for a single fact edit."""
-    subject_ids: torch.Tensor    # (1, S) token ids for subject
-    target_ids: torch.Tensor     # (1, T) token ids for target
+
+    subject_ids: torch.Tensor  # (1, S) token ids for subject
+    target_ids: torch.Tensor  # (1, T) token ids for target
     relation: str = ""
 
 
@@ -133,7 +136,7 @@ class ModelEditor:
             self.model(edit.subject_ids)
         h.remove()
 
-        key_ff = subject_acts[0]    # (d_ff,)
+        key_ff = subject_acts[0]  # (d_ff,)
 
         val_hidden: list[torch.Tensor] = []
 
@@ -146,7 +149,7 @@ class ModelEditor:
             self.model(edit.target_ids)
         h.remove()
 
-        val_ff = val_hidden[0]      # (d_model,)
+        val_ff = val_hidden[0]  # (d_model,)
         return key_ff, val_ff
 
     def apply_edit(self, edit: FactEdit) -> dict:

@@ -67,11 +67,11 @@ __all__ += ["TaskDifficulty", "CurriculumRLConfig", "CurriculumRLSampler"]
 
 # SWE-RL Trainer — software engineering RL with test-verifier rewards (Cycle 131-B)
 from src.training.swe_rl import (  # noqa: E402
-    SWETask,
     SWEPatch,
     SWEResult,
     SWERLConfig,
     SWERLTrainer,
+    SWETask,
 )
 
 TRAINING_REGISTRY["swe_rl"] = SWERLTrainer
@@ -98,8 +98,8 @@ __all__ += ["IPOConfig", "IPOBatch", "IPOTrainer"]
 
 # Token Credit Assignment — uniform/discounted/GAE/end-decay (Cycle 135-E)
 from src.training.token_credit_assignment import (  # noqa: E402
-    TokenCreditConfig,
     TokenCreditAssigner,
+    TokenCreditConfig,
 )
 
 # Registry entry is set inside token_credit_assignment.py after import.
@@ -108,9 +108,9 @@ __all__ += ["TokenCreditConfig", "TokenCreditAssigner"]
 
 # Offline Reward Modeling — Bradley-Terry pairwise preference model (Cycle 136-D)
 from src.training.offline_reward_modeling import (  # noqa: E402
-    RewardModelConfig,
     RewardBatch,
     RewardHead,
+    RewardModelConfig,
     RewardModelTrainer,
 )
 
@@ -120,10 +120,10 @@ __all__ += ["RewardModelConfig", "RewardBatch", "RewardHead", "RewardModelTraine
 
 # MCTS RL Trainer — AlphaZero-style MCTS policy/value training (Cycle 137-C)
 from src.training.mcts_rl_trainer import (  # noqa: E402
-    MCTSRLConfig,
     MCTSNode,
-    MCTSStats,
+    MCTSRLConfig,
     MCTSRLTrainer,
+    MCTSStats,
 )
 
 # Registry entry is set inside mcts_rl_trainer.py after import.
@@ -139,17 +139,17 @@ __all__ += ["NCEConfig", "NCEObjectives"]
 
 # Curriculum Scheduler — difficulty progression + mastery gating
 from src.training.curriculum_scheduler import (  # noqa: E402
-    DifficultyLevel,
-    CurriculumStage,
     CurriculumScheduler,
+    CurriculumStage,
+    DifficultyLevel,
 )
 
 __all__ += ["DifficultyLevel", "CurriculumStage", "CurriculumScheduler"]
 
 # Gradient Checkpoint Manager — segment selection + memory/recompute estimation
 from src.training.gradient_checkpoint_manager import (  # noqa: E402
-    CheckpointPolicy,
     CheckpointConfig,
+    CheckpointPolicy,
     GradientCheckpointManager,
 )
 

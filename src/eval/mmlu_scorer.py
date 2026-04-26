@@ -11,9 +11,8 @@ raise explicitly.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -25,24 +24,20 @@ class MMLUProblem:
     question_id: str
     subject: str
     question: str
-    choices: List[str]
+    choices: list[str]
     correct_index: int
 
     def __post_init__(self) -> None:
         if len(self.choices) != 4:
-            raise ValueError(
-                f"MMLU is 4-way multiple choice; got {len(self.choices)} choices"
-            )
+            raise ValueError(f"MMLU is 4-way multiple choice; got {len(self.choices)} choices")
         if not (0 <= self.correct_index < 4):
-            raise ValueError(
-                f"correct_index must be in [0,4); got {self.correct_index}"
-            )
+            raise ValueError(f"correct_index must be in [0,4); got {self.correct_index}")
 
 
 @dataclass
 class MMLUResult:
     question_id: str
-    predicted_letter: Optional[str]
+    predicted_letter: str | None
     correct: bool
     subject: str
 
@@ -52,7 +47,7 @@ class MMLUResult:
 # ---------------------------------------------------------------------------
 
 
-CANONICAL_EXEMPLARS: List[MMLUProblem] = [
+CANONICAL_EXEMPLARS: list[MMLUProblem] = [
     MMLUProblem(
         question_id="canonical_0",
         subject="abstract_algebra",
@@ -101,13 +96,7 @@ COT_SUFFIX = "Let's think step by step."
 
 def _format_example(problem: MMLUProblem, include_answer: bool = False) -> str:
     a, b, c, d = problem.choices
-    body = (
-        f"{problem.question}\n"
-        f"A) {a}\n"
-        f"B) {b}\n"
-        f"C) {c}\n"
-        f"D) {d}"
-    )
+    body = f"{problem.question}\nA) {a}\nB) {b}\nC) {c}\nD) {d}"
     if include_answer:
         letter = _INDEX_TO_LETTER[problem.correct_index]
         body = body + f"\nAnswer: {letter}"
@@ -116,7 +105,7 @@ def _format_example(problem: MMLUProblem, include_answer: bool = False) -> str:
 
 def format_prompt(
     problem: MMLUProblem,
-    few_shot_examples: Optional[List[MMLUProblem]] = None,
+    few_shot_examples: list[MMLUProblem] | None = None,
     cot: bool = False,
 ) -> str:
     """Format an MMLU prompt.
@@ -125,7 +114,7 @@ def format_prompt(
     their gold letters. If ``cot`` is True, the final instruction asks the
     model to reason step by step and end with ``Final answer: (X)``.
     """
-    parts: List[str] = []
+    parts: list[str] = []
     subject_name = problem.subject.replace("_", " ")
     parts.append(
         f"The following are multiple choice questions (with answers) about {subject_name}."
@@ -155,7 +144,7 @@ def format_prompt(
 # ---------------------------------------------------------------------------
 
 
-_ANSWER_PATTERNS: List[re.Pattern[str]] = [
+_ANSWER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\[\[\s*([A-Da-d])\s*\]\]"),
     re.compile(r"final\s+answer\s*(?:is\s*)?[:\-]?\s*\(?\s*([A-Da-d])\s*\)?", re.IGNORECASE),
     re.compile(r"\banswer\s*(?:is|:)\s*\(?\s*([A-Da-d])\s*\)?", re.IGNORECASE),
@@ -166,7 +155,7 @@ _ANSWER_PATTERNS: List[re.Pattern[str]] = [
 ]
 
 
-def parse_answer_letter(response: str) -> Optional[str]:
+def parse_answer_letter(response: str) -> str | None:
     """Extract the chosen letter from a free-form response.
 
     Returns one of "A", "B", "C", "D" or None if no letter is found.
@@ -206,7 +195,7 @@ class MMLUScorer:
 
     def __init__(
         self,
-        generate_fn: Optional[Callable[[str], str]] = None,
+        generate_fn: Callable[[str], str] | None = None,
         n_shots: int = 5,
         cot: bool = False,
     ) -> None:
@@ -221,7 +210,7 @@ class MMLUScorer:
     def format_prompt(
         self,
         problem: MMLUProblem,
-        few_shot_examples: Optional[List[MMLUProblem]] = None,
+        few_shot_examples: list[MMLUProblem] | None = None,
     ) -> str:
         if few_shot_examples is None and self.n_shots > 0:
             few_shot_examples = CANONICAL_EXEMPLARS[: self.n_shots]
@@ -247,13 +236,12 @@ class MMLUScorer:
 
     def score(
         self,
-        problems: List[MMLUProblem],
-        responses: List[str],
-    ) -> Dict[str, object]:
+        problems: list[MMLUProblem],
+        responses: list[str],
+    ) -> dict[str, object]:
         if len(problems) != len(responses):
             raise ValueError(
-                f"problems/responses length mismatch: "
-                f"{len(problems)} vs {len(responses)}"
+                f"problems/responses length mismatch: {len(problems)} vs {len(responses)}"
             )
 
         n = len(problems)
@@ -270,11 +258,9 @@ class MMLUScorer:
         n_correct = sum(1 for r in results if r.correct)
         n_valid = sum(1 for r in results if r.predicted_letter is not None)
 
-        per_subject: Dict[str, Dict[str, float]] = {}
+        per_subject: dict[str, dict[str, float]] = {}
         for prob, res in zip(problems, results):
-            entry = per_subject.setdefault(
-                prob.subject, {"n": 0, "correct": 0, "accuracy": 0.0}
-            )
+            entry = per_subject.setdefault(prob.subject, {"n": 0, "correct": 0, "accuracy": 0.0})
             entry["n"] += 1
             if res.correct:
                 entry["correct"] += 1
@@ -292,13 +278,11 @@ class MMLUScorer:
 
     def run(
         self,
-        problems: List[MMLUProblem],
-        few_shot_pool: Optional[List[MMLUProblem]] = None,
-    ) -> List[MMLUResult]:
+        problems: list[MMLUProblem],
+        few_shot_pool: list[MMLUProblem] | None = None,
+    ) -> list[MMLUResult]:
         if self.generate_fn is None:
-            raise ValueError(
-                "MMLUScorer.run requires generate_fn to be provided at construction"
-            )
+            raise ValueError("MMLUScorer.run requires generate_fn to be provided at construction")
 
         if self.n_shots > 0:
             if few_shot_pool is None:
@@ -309,14 +293,12 @@ class MMLUScorer:
         else:
             shots = None
 
-        out: List[MMLUResult] = []
+        out: list[MMLUResult] = []
         for p in problems:
             prompt = format_prompt(p, shots, cot=self.cot)
             resp = self.generate_fn(prompt)
             if not isinstance(resp, str):
-                raise TypeError(
-                    f"generate_fn must return str; got {type(resp).__name__}"
-                )
+                raise TypeError(f"generate_fn must return str; got {type(resp).__name__}")
             out.append(self.score_one(p, resp))
         return out
 

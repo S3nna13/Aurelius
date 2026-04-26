@@ -119,9 +119,10 @@ def test_hashing_is_deterministic():
     c1.put("hello", "a", params={"k": 1, "j": 2})
     c2.put("hello", "b", params={"j": 2, "k": 1})
     # Same prompt + same (sorted) params -> same key across caches.
-    assert c1.get("hello", {"k": 1, "j": 2}).prompt_hash == c2.get(
-        "hello", {"j": 2, "k": 1}
-    ).prompt_hash
+    assert (
+        c1.get("hello", {"k": 1, "j": 2}).prompt_hash
+        == c2.get("hello", {"j": 2, "k": 1}).prompt_hash
+    )
 
 
 def test_hit_count_increments_on_each_get():

@@ -9,16 +9,16 @@ fine-tuning.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config / dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SteeringConfig:
@@ -31,10 +31,11 @@ class SteeringConfig:
         mode: "add" | "project_out" | "clamp"
         clamp_value: Threshold used when mode="clamp".
     """
+
     layer_indices: list[int]
     coefficient: float = 1.0
     normalize: bool = True
-    mode: str = "add"          # "add" | "project_out" | "clamp"
+    mode: str = "add"  # "add" | "project_out" | "clamp"
     clamp_value: float = 5.0
 
 
@@ -48,7 +49,8 @@ class SteeringVector:
         concept: Human-readable name of the concept being steered.
         explained_variance: Explained variance from PCA fit; 0.0 for mean-diff.
     """
-    direction: torch.Tensor      # (d_model,)
+
+    direction: torch.Tensor  # (d_model,)
     layer_idx: int
     concept: str = "steering"
     explained_variance: float = 0.0
@@ -58,9 +60,10 @@ class SteeringVector:
 # Standalone extraction helpers
 # ---------------------------------------------------------------------------
 
+
 def extract_mean_diff_vector(
-    positive_activations: torch.Tensor,   # (N_pos, D)
-    negative_activations: torch.Tensor,   # (N_neg, D)
+    positive_activations: torch.Tensor,  # (N_pos, D)
+    negative_activations: torch.Tensor,  # (N_neg, D)
     normalize: bool = True,
 ) -> torch.Tensor:
     """Compute mean-difference steering vector: mean(pos) - mean(neg).
@@ -80,7 +83,7 @@ def extract_mean_diff_vector(
 
 
 def extract_pca_vector(
-    contrastive_activations: torch.Tensor,   # (2*N, D)
+    contrastive_activations: torch.Tensor,  # (2*N, D)
     normalize: bool = True,
 ) -> tuple[torch.Tensor, float]:
     """Extract the top PCA component from contrastive activations.
@@ -104,7 +107,7 @@ def extract_pca_vector(
 
     # Explained variance ratio = S[0]^2 / sum(S_all^2)
     # With q=1 we only have S[0]; compute total variance from data directly
-    total_var = (centered ** 2).sum()
+    total_var = (centered**2).sum()
     if total_var.item() == 0.0:
         explained_var = 0.0
     else:
@@ -119,9 +122,10 @@ def extract_pca_vector(
 # collect_activations
 # ---------------------------------------------------------------------------
 
+
 def collect_activations(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (B, T)
+    input_ids: torch.Tensor,  # (B, T)
     layer_idx: int,
 ) -> torch.Tensor:
     """Collect mean-pooled activations from layer ``layer_idx``.
@@ -163,6 +167,7 @@ def collect_activations(
 # SteeringHook  (context manager for a single layer)
 # ---------------------------------------------------------------------------
 
+
 class SteeringHook:
     """Context manager that injects a steering vector into one layer's output.
 
@@ -193,7 +198,7 @@ class SteeringHook:
     # Context manager protocol
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "SteeringHook":
+    def __enter__(self) -> SteeringHook:
         layer_idx = self.steering_vector.layer_idx
 
         def _hook(module, inputs, output):
@@ -236,8 +241,8 @@ class SteeringHook:
         elif mode == "project_out":
             # Remove the component along direction from every token position
             # proj shape: (B, T, 1) * (D,) -> (B, T, D)
-            proj_scalar = (output @ direction.unsqueeze(-1))  # (B, T, 1)
-            proj = proj_scalar * direction                     # (B, T, D)
+            proj_scalar = output @ direction.unsqueeze(-1)  # (B, T, 1)
+            proj = proj_scalar * direction  # (B, T, D)
             output = output - proj
 
         elif mode == "clamp":
@@ -245,7 +250,7 @@ class SteeringHook:
             proj_scalar = output @ direction  # (B, T)
             clamped = proj_scalar.clamp(-self.cfg.clamp_value, self.cfg.clamp_value)
             diff = (clamped - proj_scalar).unsqueeze(-1)  # (B, T, 1)
-            output = output + diff * direction             # adjust in-direction component
+            output = output + diff * direction  # adjust in-direction component
 
         else:
             raise ValueError(f"Unknown steering mode: {mode!r}")
@@ -256,6 +261,7 @@ class SteeringHook:
 # ---------------------------------------------------------------------------
 # ActivationSteerer  (high-level API)
 # ---------------------------------------------------------------------------
+
 
 class ActivationSteerer:
     """Extract steering vectors and apply them at inference time.
@@ -275,9 +281,9 @@ class ActivationSteerer:
 
     def fit_from_pairs(
         self,
-        positive_ids: torch.Tensor,   # (N, T)
-        negative_ids: torch.Tensor,   # (N, T)
-        method: str = "mean_diff",    # "mean_diff" | "pca"
+        positive_ids: torch.Tensor,  # (N, T)
+        negative_ids: torch.Tensor,  # (N, T)
+        method: str = "mean_diff",  # "mean_diff" | "pca"
     ) -> list[SteeringVector]:
         """Extract steering vectors for each configured layer.
 
@@ -296,8 +302,8 @@ class ActivationSteerer:
         vectors: list[SteeringVector] = []
 
         for layer_idx in self.cfg.layer_indices:
-            pos_acts = collect_activations(self.model, positive_ids, layer_idx)   # (N, D)
-            neg_acts = collect_activations(self.model, negative_ids, layer_idx)   # (N, D)
+            pos_acts = collect_activations(self.model, positive_ids, layer_idx)  # (N, D)
+            neg_acts = collect_activations(self.model, negative_ids, layer_idx)  # (N, D)
 
             if method == "mean_diff":
                 direction = extract_mean_diff_vector(
@@ -312,12 +318,14 @@ class ActivationSteerer:
             else:
                 raise ValueError(f"Unknown method: {method!r}")
 
-            vectors.append(SteeringVector(
-                direction=direction,
-                layer_idx=layer_idx,
-                concept="steering",
-                explained_variance=explained_var,
-            ))
+            vectors.append(
+                SteeringVector(
+                    direction=direction,
+                    layer_idx=layer_idx,
+                    concept="steering",
+                    explained_variance=explained_var,
+                )
+            )
 
         return vectors
 
@@ -327,7 +335,7 @@ class ActivationSteerer:
 
     def steer(
         self,
-        input_ids: torch.Tensor,           # (1, T) or (B, T)
+        input_ids: torch.Tensor,  # (1, T) or (B, T)
         steering_vectors: list[SteeringVector],
         max_new_tokens: int = 10,
     ) -> torch.Tensor:
@@ -347,16 +355,13 @@ class ActivationSteerer:
         self.model.eval()
 
         # Build list of context managers
-        hooks = [
-            SteeringHook(self.model, sv, self.cfg)
-            for sv in steering_vectors
-        ]
+        hooks = [SteeringHook(self.model, sv, self.cfg) for sv in steering_vectors]
 
         generated: list[torch.Tensor] = []
         cur_ids = input_ids  # (1, T)
 
         # Enter all hooks
-        handles = [h.__enter__() for h in hooks]
+        [h.__enter__() for h in hooks]
         try:
             with torch.no_grad():
                 for _ in range(max_new_tokens):
@@ -392,8 +397,6 @@ class ActivationSteerer:
         Returns:
             Mean projection (float).
         """
-        acts = collect_activations(
-            self.model, input_ids, steering_vector.layer_idx
-        )  # (B, D)
+        acts = collect_activations(self.model, input_ids, steering_vector.layer_idx)  # (B, D)
         direction = steering_vector.direction.to(acts.device)  # (D,)
         return float((acts @ direction).mean().item())

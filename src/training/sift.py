@@ -28,13 +28,11 @@ Usage::
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # InfluenceScorer
@@ -63,7 +61,7 @@ class InfluenceScorer:
     def __init__(
         self,
         model: nn.Module,
-        probe_params: Optional[List[str]] = None,
+        probe_params: list[str] | None = None,
     ) -> None:
         self.model = model
 
@@ -72,17 +70,13 @@ class InfluenceScorer:
         if probe_params is not None:
             missing = [n for n in probe_params if n not in named]
             if missing:
-                raise ValueError(
-                    f"InfluenceScorer: probe_params not found in model: {missing}"
-                )
-            self._params: List[nn.Parameter] = [named[n] for n in probe_params]
+                raise ValueError(f"InfluenceScorer: probe_params not found in model: {missing}")
+            self._params: list[nn.Parameter] = [named[n] for n in probe_params]
         else:
             self._params = [p for p in model.parameters() if p.requires_grad]
 
         if not self._params:
-            raise ValueError(
-                "InfluenceScorer: no parameters available for gradient probing."
-            )
+            raise ValueError("InfluenceScorer: no parameters available for gradient probing.")
 
     # ------------------------------------------------------------------
     # Public API
@@ -171,7 +165,7 @@ class SIFTFilter:
     def __init__(
         self,
         threshold: float = 0.0,
-        top_k: Optional[float] = None,
+        top_k: float | None = None,
     ) -> None:
         if top_k is not None and not (0.0 < top_k <= 1.0):
             raise ValueError(f"top_k must be in (0, 1], got {top_k}.")
@@ -263,7 +257,7 @@ class SIFTLoss:
         self,
         logits: Tensor,
         targets: Tensor,
-        weights: Optional[Tensor] = None,
+        weights: Tensor | None = None,
     ) -> Tensor:
         """Compute (optionally weighted) SFT loss.
 
@@ -345,7 +339,7 @@ class SIFTTrainer:
         batch_targets: Tensor,
         val_logits: Tensor,
         val_targets: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Perform one selective SFT update step.
 
         Influence proxy: per-sample validation loss minus per-sample training
@@ -369,9 +363,7 @@ class SIFTTrainer:
         # ------------------------------------------------------------------
         with torch.no_grad():
             # Per-sample training losses: (B,)
-            train_per_sample = self.loss_fn._per_sample_loss(
-                batch_logits, batch_targets
-            )
+            train_per_sample = self.loss_fn._per_sample_loss(batch_logits, batch_targets)
 
             # Scalar validation loss used as reference baseline.
             val_per_sample = self.loss_fn._per_sample_loss(val_logits, val_targets)
@@ -398,7 +390,7 @@ class SIFTTrainer:
                 "fraction_kept": fraction_kept,
             }
 
-        kept_logits = batch_logits[mask]   # (n_kept, T, V)
+        kept_logits = batch_logits[mask]  # (n_kept, T, V)
         kept_targets = batch_targets[mask]  # (n_kept, T)
 
         # Optionally weight by proxy score magnitude for kept samples.

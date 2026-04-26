@@ -84,26 +84,20 @@ class TestFeatureToggleManagerPercentage(unittest.TestCase):
 
     def test_percentage_deterministic(self):
         mgr = FeatureToggleManager()
-        mgr.register(
-            FeatureToggle(name="pct", state=ToggleState.PERCENTAGE, percentage=50.0)
-        )
+        mgr.register(FeatureToggle(name="pct", state=ToggleState.PERCENTAGE, percentage=50.0))
         result1 = mgr.is_enabled("pct", "userA")
         result2 = mgr.is_enabled("pct", "userA")
         self.assertEqual(result1, result2)
 
     def test_percentage_zero_always_false(self):
         mgr = FeatureToggleManager()
-        mgr.register(
-            FeatureToggle(name="p0", state=ToggleState.PERCENTAGE, percentage=0.0)
-        )
+        mgr.register(FeatureToggle(name="p0", state=ToggleState.PERCENTAGE, percentage=0.0))
         for uid in ["u1", "u2", "u3", "u4"]:
             self.assertFalse(mgr.is_enabled("p0", uid))
 
     def test_percentage_100_always_true(self):
         mgr = FeatureToggleManager()
-        mgr.register(
-            FeatureToggle(name="p100", state=ToggleState.PERCENTAGE, percentage=100.0)
-        )
+        mgr.register(FeatureToggle(name="p100", state=ToggleState.PERCENTAGE, percentage=100.0))
         for uid in ["u1", "u2", "u3", "u4"]:
             self.assertTrue(mgr.is_enabled("p100", uid))
 
@@ -111,9 +105,7 @@ class TestFeatureToggleManagerPercentage(unittest.TestCase):
         """Manually verify one user against the hash formula."""
         mgr = FeatureToggleManager()
         pct = 50.0
-        mgr.register(
-            FeatureToggle(name="btest", state=ToggleState.PERCENTAGE, percentage=pct)
-        )
+        mgr.register(FeatureToggle(name="btest", state=ToggleState.PERCENTAGE, percentage=pct))
         uid = "boundary_user"
         bucket = self._bucket("btest", uid)
         expected = bucket < pct

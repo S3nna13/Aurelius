@@ -3,29 +3,30 @@
 Writes model weights to GGUF binary format (version 3).
 Enables loading Aurelius models in llama.cpp, ollama, etc.
 """
+
 from __future__ import annotations
 
-import struct
 import io
-from dataclasses import dataclass, field
+import struct
+from dataclasses import dataclass
 from pathlib import Path
+
 import torch
 import torch.nn as nn
-
 
 # GGUF constants
 GGUF_MAGIC = 0x46554747
 GGUF_VERSION = 3
 
 # Metadata value types
-GGUF_TYPE_UINT32  = 4
+GGUF_TYPE_UINT32 = 4
 GGUF_TYPE_FLOAT32 = 6
-GGUF_TYPE_STRING  = 8
-GGUF_TYPE_UINT64  = 10
+GGUF_TYPE_STRING = 8
+GGUF_TYPE_UINT64 = 10
 
 # Tensor data types
-GGUF_TENSOR_F32  = 0
-GGUF_TENSOR_F16  = 1
+GGUF_TENSOR_F32 = 0
+GGUF_TENSOR_F16 = 1
 GGUF_TENSOR_BF16 = 30
 
 
@@ -73,6 +74,7 @@ def tensor_to_gguf_type(t: torch.Tensor) -> int:
 @dataclass
 class GGUFTensorInfo:
     """Info about one tensor to write."""
+
     name: str
     tensor: torch.Tensor
     gguf_type: int
@@ -167,7 +169,9 @@ def _build_metadata(
             kv_count += 1
 
         if hasattr(cfg, "rms_norm_eps"):
-            write_kv_float32(buf, f"{arch_prefix}.attention.layer_norm_rms_epsilon", cfg.rms_norm_eps)
+            write_kv_float32(
+                buf, f"{arch_prefix}.attention.layer_norm_rms_epsilon", cfg.rms_norm_eps
+            )
             kv_count += 1
 
     return kv_count
@@ -177,8 +181,8 @@ def export_to_gguf(
     model: nn.Module,
     output_path: str | Path,
     model_name: str = "aurelius",
-    arch: str = "llama",    # architecture string for llama.cpp
-    quantize_f16: bool = True,   # convert to f16 for smaller files
+    arch: str = "llama",  # architecture string for llama.cpp
+    quantize_f16: bool = True,  # convert to f16 for smaller files
     alignment: int = 32,
 ) -> dict[str, int]:
     """Export model to GGUF format.

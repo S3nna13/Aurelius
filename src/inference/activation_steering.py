@@ -8,10 +8,10 @@ References:
     Zou et al. 2023 "Representation Engineering: A Top-Down Approach to AI Transparency"
     Turner et al. 2023 "Activation Addition: Steering Language Models Without Optimization"
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -21,6 +21,7 @@ from torch.utils.hooks import RemovableHandle
 @dataclass
 class SteeringConfig:
     """Configuration for activation steering."""
+
     layer_idx: int = 0
     coeff: float = 1.0
     normalize: bool = True
@@ -29,6 +30,7 @@ class SteeringConfig:
 # ---------------------------------------------------------------------------
 # compute_steering_vector
 # ---------------------------------------------------------------------------
+
 
 def compute_steering_vector(
     model: nn.Module,
@@ -50,15 +52,16 @@ def compute_steering_vector(
     Returns:
         Steering vector of shape (d_model,).
     """
-    pos_activations: List[torch.Tensor] = []
-    neg_activations: List[torch.Tensor] = []
+    pos_activations: list[torch.Tensor] = []
+    neg_activations: list[torch.Tensor] = []
 
-    def _make_hook(storage: List[torch.Tensor]):
+    def _make_hook(storage: list[torch.Tensor]):
         def hook(module, input, output):
             # TransformerBlock returns (hidden, kv) — take hidden
             hidden = output[0] if isinstance(output, tuple) else output
             # last token position, mean over batch
             storage.append(hidden[:, -1, :].detach())
+
         return hook
 
     with torch.no_grad():
@@ -86,6 +89,7 @@ def compute_steering_vector(
 # ---------------------------------------------------------------------------
 # SteeringHook
 # ---------------------------------------------------------------------------
+
 
 class SteeringHook:
     """Forward hook that adds a steering vector to hidden states at a given layer."""
@@ -130,6 +134,7 @@ class SteeringHook:
 # ActivationSteerer
 # ---------------------------------------------------------------------------
 
+
 class ActivationSteerer:
     """Manages steering vectors and steered generation."""
 
@@ -137,7 +142,7 @@ class ActivationSteerer:
         self.model = model
         self.config = config
         self._steering_vector: torch.Tensor | None = None
-        self._handles: List[RemovableHandle] = []
+        self._handles: list[RemovableHandle] = []
 
     def add_steering_vector(self, vector: torch.Tensor) -> None:
         """Store the steering vector (normalized if config.normalize).
@@ -204,6 +209,7 @@ class ActivationSteerer:
 # contrastive_activation_addition
 # ---------------------------------------------------------------------------
 
+
 def contrastive_activation_addition(
     model: nn.Module,
     base_ids: torch.Tensor,
@@ -228,9 +234,7 @@ def contrastive_activation_addition(
     Returns:
         Logits of shape (1, T, vocab_size).
     """
-    steering_vector = compute_steering_vector(
-        model, positive_ids, negative_ids, layer_idx
-    )
+    steering_vector = compute_steering_vector(model, positive_ids, negative_ids, layer_idx)
 
     config = SteeringConfig(layer_idx=layer_idx, coeff=coeff, normalize=True)
     hook = SteeringHook(steering_vector, config)

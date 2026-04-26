@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import fields
 
 from src.model import (
+    DEFAULT_BACKBONE_BUILDERS,
     AureliusConfig,
     CompatibilityError,
     CompatibilityVerdict,
-    DEFAULT_BACKBONE_BUILDERS,
     FactoryError,
     FamilyManifest,
     assert_compatible,
@@ -60,9 +60,7 @@ def test_aurelius_config_surface_unchanged():
 def test_compatibility_roundtrip_on_reference_manifest():
     from src.model.manifest import AURELIUS_REFERENCE_MANIFEST
 
-    verdict = check_manifest_compatibility(
-        AURELIUS_REFERENCE_MANIFEST, AURELIUS_REFERENCE_MANIFEST
-    )
+    verdict = check_manifest_compatibility(AURELIUS_REFERENCE_MANIFEST, AURELIUS_REFERENCE_MANIFEST)
     assert verdict.compatible is True
     assert verdict.severity == "exact"
     assert_compatible(verdict)

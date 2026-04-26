@@ -10,15 +10,14 @@ Inspired by: AdaKV, DuoAttention (2024), per-layer KV compression research.
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # AttentionPatternStats
 # ---------------------------------------------------------------------------
+
 
 class AttentionPatternStats:
     """Tracks attention entropy per layer to guide budget allocation.
@@ -31,7 +30,7 @@ class AttentionPatternStats:
     def __init__(self, n_layers: int, n_heads: int) -> None:
         self.n_layers = n_layers
         self.n_heads = n_heads
-        self.entropy_history: List[List[float]] = [[] for _ in range(n_layers)]
+        self.entropy_history: list[list[float]] = [[] for _ in range(n_layers)]
         self.update_count: int = 0
 
     def update(self, layer_idx: int, attn_weights: Tensor) -> None:
@@ -56,7 +55,7 @@ class AttentionPatternStats:
             return 0.0
         return sum(history) / len(history)
 
-    def entropy_profile(self) -> List[float]:
+    def entropy_profile(self) -> list[float]:
         """Return per-layer mean entropy as a list of length *n_layers*."""
         return [self.mean_entropy(i) for i in range(self.n_layers)]
 
@@ -64,6 +63,7 @@ class AttentionPatternStats:
 # ---------------------------------------------------------------------------
 # KVBudgetAllocator
 # ---------------------------------------------------------------------------
+
 
 class KVBudgetAllocator:
     """Allocates a total KV token budget across transformer layers.
@@ -88,7 +88,7 @@ class KVBudgetAllocator:
     # Allocation strategies
     # ------------------------------------------------------------------
 
-    def allocate_uniform(self) -> List[int]:
+    def allocate_uniform(self) -> list[int]:
         """Distribute budget equally; remainder added to the last layer."""
         base = self.total_budget // self.n_layers
         budgets = [base] * self.n_layers
@@ -96,7 +96,7 @@ class KVBudgetAllocator:
         budgets[-1] += remainder
         return budgets
 
-    def allocate_by_entropy(self, entropy_profile: List[float]) -> List[int]:
+    def allocate_by_entropy(self, entropy_profile: list[float]) -> list[int]:
         """Distribute budget proportionally to per-layer entropy (via softmax).
 
         Higher entropy → more budget.  Every layer is guaranteed at least
@@ -161,7 +161,7 @@ class KVBudgetAllocator:
 
         return budgets
 
-    def allocate_by_layer_type(self, layer_types: List[str]) -> List[int]:
+    def allocate_by_layer_type(self, layer_types: list[str]) -> list[int]:
         """Assign budgets based on categorical layer type labels.
 
         Types and their relative weights:
@@ -178,7 +178,7 @@ class KVBudgetAllocator:
             List of *n_layers* positive ints approximately summing to *total_budget*.
         """
         base = self.total_budget // self.n_layers
-        raw: List[int] = []
+        raw: list[int] = []
         for lt in layer_types:
             if lt == "full":
                 raw.append(base * 2)
@@ -206,6 +206,7 @@ class KVBudgetAllocator:
 # LayerKVCache
 # ---------------------------------------------------------------------------
 
+
 class LayerKVCache:
     """Fixed-budget KV cache for a single transformer layer.
 
@@ -221,8 +222,8 @@ class LayerKVCache:
         self.budget = budget
         self.n_heads = n_heads
         self.d_head = d_head
-        self.keys: Optional[Tensor] = None
-        self.values: Optional[Tensor] = None
+        self.keys: Tensor | None = None
+        self.values: Tensor | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -232,7 +233,7 @@ class LayerKVCache:
         self,
         new_keys: Tensor,
         new_values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Append new KV pairs and return the (truncated) full cache.
 
         Args:
@@ -251,8 +252,8 @@ class LayerKVCache:
 
         # Truncate to last `budget` tokens
         if self.keys.shape[2] > self.budget:
-            self.keys = self.keys[:, :, -self.budget:, :]
-            self.values = self.values[:, :, -self.budget:, :]
+            self.keys = self.keys[:, :, -self.budget :, :]
+            self.values = self.values[:, :, -self.budget :, :]
 
         return self.keys, self.values
 
@@ -271,6 +272,7 @@ class LayerKVCache:
 # ---------------------------------------------------------------------------
 # AdaptiveKVCacheManager
 # ---------------------------------------------------------------------------
+
 
 class AdaptiveKVCacheManager:
     """Manages per-layer KV caches with adaptive budget allocation.
@@ -298,10 +300,8 @@ class AdaptiveKVCacheManager:
         self.total_budget = total_budget
 
         self.allocator = KVBudgetAllocator(n_layers, total_budget)
-        self.budgets: List[int] = self.allocator.allocate_uniform()
-        self.caches: List[LayerKVCache] = [
-            LayerKVCache(b, n_heads, d_head) for b in self.budgets
-        ]
+        self.budgets: list[int] = self.allocator.allocate_uniform()
+        self.caches: list[LayerKVCache] = [LayerKVCache(b, n_heads, d_head) for b in self.budgets]
         self.stats = AttentionPatternStats(n_layers, n_heads)
 
     # ------------------------------------------------------------------
@@ -313,7 +313,7 @@ class AdaptiveKVCacheManager:
         layer_idx: int,
         keys: Tensor,
         values: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Append KV pairs to the specified layer's cache.
 
         Args:
@@ -335,9 +335,7 @@ class AdaptiveKVCacheManager:
         self.budgets = self.allocator.allocate_by_entropy(profile)
         for cache in self.caches:
             cache.clear()
-        self.caches = [
-            LayerKVCache(b, self.n_heads, self.d_head) for b in self.budgets
-        ]
+        self.caches = [LayerKVCache(b, self.n_heads, self.d_head) for b in self.budgets]
 
     def total_cached_tokens(self) -> int:
         """Return total number of tokens currently held across all layer caches."""

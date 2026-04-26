@@ -4,20 +4,19 @@ import pytest
 import torch
 import torch.nn as nn
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.warm_start import (
+    DepthGrowthScheduler,
+    LayerDropout,
     WarmStartConfig,
     WarmStartInitializer,
-    LayerDropout,
-    DepthGrowthScheduler,
     count_matchable_params,
-    muggle_init,
     interpolation_warm_start,
+    muggle_init,
     prefix_warm_start,
     warm_start_state,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixture
@@ -44,6 +43,7 @@ def make_model() -> AureliusTransformer:
 # ---------------------------------------------------------------------------
 # Original tests (preserved)
 # ---------------------------------------------------------------------------
+
 
 def test_warm_start_state_loads_matching_keys():
     target = {"a": torch.zeros(2), "b": torch.ones(3)}
@@ -94,6 +94,7 @@ def test_prefix_warm_start_rejects_bad_dim():
 # New tests: WarmStartInitializer, LayerDropout, DepthGrowthScheduler,
 #            muggle_init, count_matchable_params
 # ---------------------------------------------------------------------------
+
 
 def test_interpolate_weights_blends_params():
     """After alpha=1.0 interpolation, target params equal source params."""
@@ -175,9 +176,7 @@ def test_depth_growth_scheduler_anneals():
     scheduler = DepthGrowthScheduler(modules, initial_prob=initial, anneal_steps=steps)
 
     current_prob = scheduler.step(steps // 2)
-    assert abs(current_prob - initial / 2) < 1e-6, (
-        f"Expected ~{initial/2}, got {current_prob}"
-    )
+    assert abs(current_prob - initial / 2) < 1e-6, f"Expected ~{initial / 2}, got {current_prob}"
     for m in modules:
         assert abs(m.drop_prob - initial / 2) < 1e-6
 
@@ -199,8 +198,15 @@ def test_depth_growth_scheduler_reaches_zero():
 def test_muggle_init_modifies_embed():
     """muggle_init changes the embed weight norm."""
     config = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=4, n_kv_heads=2, head_dim=16,
-        d_ff=128, vocab_size=256, max_seq_len=64, tie_embeddings=False,
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
+        tie_embeddings=False,
     )
     torch.manual_seed(7)
     model = AureliusTransformer(config)
@@ -209,16 +215,21 @@ def test_muggle_init_modifies_embed():
     muggle_init(model)
     after_norm = model.embed.weight.norm().item()
 
-    assert abs(before_norm - after_norm) > 1e-6, (
-        "muggle_init did not change embed weight norm"
-    )
+    assert abs(before_norm - after_norm) > 1e-6, "muggle_init did not change embed weight norm"
 
 
 def test_count_matchable_params_returns_correct_counts():
     """Test count_matchable_params with a small model and crafted source dict."""
     config = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=4, n_kv_heads=2, head_dim=16,
-        d_ff=128, vocab_size=256, max_seq_len=64, tie_embeddings=False,
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
+        tie_embeddings=False,
     )
     model = AureliusTransformer(config)
     target_params = dict(model.named_parameters())
@@ -252,6 +263,4 @@ def test_warm_start_apply_scratch():
     init.apply(model)
 
     for name, param in model.named_parameters():
-        assert torch.equal(param, original_params[name]), (
-            f"Scratch strategy modified param {name}"
-        )
+        assert torch.equal(param, original_params[name]), f"Scratch strategy modified param {name}"

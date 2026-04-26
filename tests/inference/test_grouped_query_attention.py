@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
@@ -42,8 +40,14 @@ class TestGroupedQueryAttentionInit:
     def test_projection_shapes(self):
         gqa = make_module(**SMALL)
         assert gqa.q_proj.weight.shape == (SMALL["n_heads"] * SMALL["head_dim"], SMALL["d_model"])
-        assert gqa.k_proj.weight.shape == (SMALL["n_kv_heads"] * SMALL["head_dim"], SMALL["d_model"])
-        assert gqa.v_proj.weight.shape == (SMALL["n_kv_heads"] * SMALL["head_dim"], SMALL["d_model"])
+        assert gqa.k_proj.weight.shape == (
+            SMALL["n_kv_heads"] * SMALL["head_dim"],
+            SMALL["d_model"],
+        )
+        assert gqa.v_proj.weight.shape == (
+            SMALL["n_kv_heads"] * SMALL["head_dim"],
+            SMALL["d_model"],
+        )
         assert gqa.o_proj.weight.shape == (SMALL["d_model"], SMALL["n_heads"] * SMALL["head_dim"])
 
     def test_n_groups_property(self):

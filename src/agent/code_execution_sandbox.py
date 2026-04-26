@@ -30,7 +30,6 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 try:  # pragma: no cover - platform branch
     import resource  # type: ignore[attr-defined]
@@ -86,7 +85,7 @@ class ExecutionResult:
     stderr: str
     duration_ms: float
     timed_out: bool
-    memory_mb_peak: Optional[float] = None
+    memory_mb_peak: float | None = None
     truncated_stdout: bool = False
     truncated_stderr: bool = False
 
@@ -131,7 +130,7 @@ class CodeExecutionSandbox:
 
     def __init__(
         self,
-        python_path: Optional[str] = None,
+        python_path: str | None = None,
         timeout: float = 10.0,
         max_memory_mb: int = 512,
         max_output_chars: int = 65536,
@@ -141,13 +140,9 @@ class CodeExecutionSandbox:
         if timeout <= 0:
             raise ValueError(f"timeout must be > 0, got {timeout!r}")
         if max_memory_mb <= 0:
-            raise ValueError(
-                f"max_memory_mb must be > 0, got {max_memory_mb!r}"
-            )
+            raise ValueError(f"max_memory_mb must be > 0, got {max_memory_mb!r}")
         if max_output_chars < 0:
-            raise ValueError(
-                f"max_output_chars must be >= 0, got {max_output_chars!r}"
-            )
+            raise ValueError(f"max_output_chars must be >= 0, got {max_output_chars!r}")
         self.python_path = python_path or sys.executable
         self.timeout = float(timeout)
         self.max_memory_mb = int(max_memory_mb)
@@ -158,7 +153,7 @@ class CodeExecutionSandbox:
     def execute(
         self,
         code: str,
-        stdin_text: Optional[str] = None,
+        stdin_text: str | None = None,
     ) -> ExecutionResult:
         argv = [self.python_path, "-I", "-S", "-c", code]
         return self._run(argv, stdin_text=stdin_text)
@@ -166,7 +161,7 @@ class CodeExecutionSandbox:
     def execute_file(
         self,
         path: str,
-        args: Optional[list[str]] = None,
+        args: list[str] | None = None,
     ) -> ExecutionResult:
         if not os.path.isfile(path):
             raise FileNotFoundError(path)
@@ -194,20 +189,16 @@ class CodeExecutionSandbox:
     def _run(
         self,
         argv: list[str],
-        stdin_text: Optional[str],
+        stdin_text: str | None,
     ) -> ExecutionResult:
         tmpdir = tempfile.mkdtemp(prefix="aurelius_sbx_")
         env = self._build_env()
-        preexec = _build_preexec(
-            self.max_memory_mb, cpu_seconds=int(self.timeout) + 1
-        )
+        preexec = _build_preexec(self.max_memory_mb, cpu_seconds=int(self.timeout) + 1)
 
-        mem_before: Optional[int] = None
+        mem_before: int | None = None
         if _HAS_RESOURCE:
             try:
-                mem_before = resource.getrusage(
-                    resource.RUSAGE_CHILDREN
-                ).ru_maxrss
+                mem_before = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
             except OSError:
                 mem_before = None
 
@@ -247,12 +238,10 @@ class CodeExecutionSandbox:
             duration_ms = (time.perf_counter() - t0) * 1000.0
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-        memory_mb_peak: Optional[float] = None
+        memory_mb_peak: float | None = None
         if _HAS_RESOURCE:
             try:
-                after = resource.getrusage(
-                    resource.RUSAGE_CHILDREN
-                ).ru_maxrss
+                after = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
                 raw = max(after - (mem_before or 0), after)
                 if raw > 10**9:
                     memory_mb_peak = raw / (1024.0 * 1024.0)

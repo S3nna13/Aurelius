@@ -16,10 +16,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NCEConfig:
@@ -44,6 +44,7 @@ class NCEConfig:
 # ---------------------------------------------------------------------------
 # InfoNCE loss (explicit negatives)
 # ---------------------------------------------------------------------------
+
 
 def info_nce_loss(
     anchors: Tensor,
@@ -70,24 +71,25 @@ def info_nce_loss(
     sim_pos = F.cosine_similarity(anchors, positives, dim=-1)  # (B,)
 
     # Negative similarities via bmm: (B, K)
-    anchors_norm = F.normalize(anchors, dim=-1)     # (B, D)
-    negs_norm = F.normalize(negatives, dim=-1)      # (B, K, D)
+    anchors_norm = F.normalize(anchors, dim=-1)  # (B, D)
+    negs_norm = F.normalize(negatives, dim=-1)  # (B, K, D)
     # (B, K, D) x (B, D, 1) -> (B, K, 1) -> (B, K)
     sim_neg = torch.bmm(negs_norm, anchors_norm.unsqueeze(-1)).squeeze(-1)
 
     # Scale by temperature
-    sim_pos_scaled = sim_pos / temperature           # (B,)
-    sim_neg_scaled = sim_neg / temperature           # (B, K)
+    sim_pos_scaled = sim_pos / temperature  # (B,)
+    sim_neg_scaled = sim_neg / temperature  # (B, K)
 
     # loss_i = logsumexp([sim_pos, sim_neg_0..K]) - sim_pos
     logits = torch.cat([sim_pos_scaled.unsqueeze(1), sim_neg_scaled], dim=1)  # (B, K+1)
-    loss = torch.logsumexp(logits, dim=1) - sim_pos_scaled   # (B,)
+    loss = torch.logsumexp(logits, dim=1) - sim_pos_scaled  # (B,)
     return loss.mean()
 
 
 # ---------------------------------------------------------------------------
 # In-batch InfoNCE loss (SimCSE-style)
 # ---------------------------------------------------------------------------
+
 
 def in_batch_nce_loss(
     embeddings_a: Tensor,
@@ -107,10 +109,10 @@ def in_batch_nce_loss(
     Returns:
         Scalar loss tensor.
     """
-    a = F.normalize(embeddings_a, dim=-1)   # (B, D)
-    b = F.normalize(embeddings_b, dim=-1)   # (B, D)
+    a = F.normalize(embeddings_a, dim=-1)  # (B, D)
+    b = F.normalize(embeddings_b, dim=-1)  # (B, D)
 
-    logits = torch.matmul(a, b.T) / temperature   # (B, B)
+    logits = torch.matmul(a, b.T) / temperature  # (B, B)
 
     B = embeddings_a.shape[0]
     targets = torch.arange(B, device=embeddings_a.device)
@@ -121,6 +123,7 @@ def in_batch_nce_loss(
 # ---------------------------------------------------------------------------
 # Hard negative mining
 # ---------------------------------------------------------------------------
+
 
 def hard_negative_mining(
     anchor: Tensor,
@@ -139,9 +142,9 @@ def hard_negative_mining(
     Returns:
         (top_k,) LongTensor of candidate indices.
     """
-    a_norm = F.normalize(anchor.unsqueeze(0), dim=-1)   # (1, D)
-    c_norm = F.normalize(candidates, dim=-1)             # (N, D)
-    sims = (c_norm @ a_norm.T).squeeze(-1)               # (N,)
+    a_norm = F.normalize(anchor.unsqueeze(0), dim=-1)  # (1, D)
+    c_norm = F.normalize(candidates, dim=-1)  # (N, D)
+    sims = (c_norm @ a_norm.T).squeeze(-1)  # (N,)
 
     if exclude_idx is not None:
         sims = sims.clone()
@@ -154,6 +157,7 @@ def hard_negative_mining(
 # ---------------------------------------------------------------------------
 # Random negative sampling
 # ---------------------------------------------------------------------------
+
 
 def sample_random_negatives(
     batch_size: int,
@@ -179,8 +183,11 @@ def sample_random_negatives(
         generator = torch.Generator()
         generator.manual_seed(seed)
         return torch.randint(
-            0, vocab_size, (batch_size, n_negatives, seq_len),
-            generator=generator, dtype=torch.long,
+            0,
+            vocab_size,
+            (batch_size, n_negatives, seq_len),
+            generator=generator,
+            dtype=torch.long,
         )
     return torch.randint(0, vocab_size, (batch_size, n_negatives, seq_len), dtype=torch.long)
 
@@ -188,6 +195,7 @@ def sample_random_negatives(
 # ---------------------------------------------------------------------------
 # Embedding projector
 # ---------------------------------------------------------------------------
+
 
 class EmbeddingProjector(nn.Module):
     """Project backbone hidden states to a lower-dimensional embedding space.
@@ -209,8 +217,8 @@ class EmbeddingProjector(nn.Module):
         Returns:
             (B, embed_dim) L2-normalized embeddings.
         """
-        out = self.linear(x)         # (B, embed_dim)
-        out = self.norm(out)         # (B, embed_dim)
+        out = self.linear(x)  # (B, embed_dim)
+        out = self.norm(out)  # (B, embed_dim)
         out = F.normalize(out, dim=-1)  # unit norm
         return out
 
@@ -218,6 +226,7 @@ class EmbeddingProjector(nn.Module):
 # ---------------------------------------------------------------------------
 # NCE Embedding Trainer
 # ---------------------------------------------------------------------------
+
 
 class NCEEmbeddingTrainer:
     """Train embeddings using noise contrastive estimation."""
@@ -264,11 +273,11 @@ class NCEEmbeddingTrainer:
         hidden = captured[0]  # (B, T, D)
 
         if self.cfg.pooling == "mean":
-            pooled = hidden.mean(dim=1)      # (B, D)
+            pooled = hidden.mean(dim=1)  # (B, D)
         elif self.cfg.pooling == "last":
-            pooled = hidden[:, -1, :]        # (B, D)
+            pooled = hidden[:, -1, :]  # (B, D)
         elif self.cfg.pooling == "cls":
-            pooled = hidden[:, 0, :]         # (B, D)
+            pooled = hidden[:, 0, :]  # (B, D)
         else:
             raise ValueError(f"Unknown pooling strategy: {self.cfg.pooling!r}")
 
@@ -294,7 +303,7 @@ class NCEEmbeddingTrainer:
         self.projector.train()
         self.optimizer.zero_grad()
 
-        emb_a = self.get_embeddings(anchor_ids)    # (B, E)
+        emb_a = self.get_embeddings(anchor_ids)  # (B, E)
         emb_p = self.get_embeddings(positive_ids)  # (B, E)
 
         loss = in_batch_nce_loss(emb_a, emb_p, temperature=self.cfg.temperature)
@@ -338,13 +347,13 @@ class NCEEmbeddingTrainer:
         self.projector.eval()
 
         with torch.no_grad():
-            q_emb = self.get_embeddings(query_ids)    # (Q, E)
-            c_emb = self.get_embeddings(corpus_ids)   # (C, E)
+            q_emb = self.get_embeddings(query_ids)  # (Q, E)
+            c_emb = self.get_embeddings(corpus_ids)  # (C, E)
 
             q_norm = F.normalize(q_emb, dim=-1)
             c_norm = F.normalize(c_emb, dim=-1)
 
-            sim = torch.matmul(q_norm, c_norm.T)      # (Q, C)
+            sim = torch.matmul(q_norm, c_norm.T)  # (Q, C)
 
             Q = query_ids.shape[0]
             recall_at_1 = 0.0

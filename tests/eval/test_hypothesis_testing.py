@@ -4,18 +4,15 @@ import pytest
 
 from src.eval.hypothesis_testing import (
     HypothesisTestConfig,
-    TestResult,
     ModelComparisonSuite,
+    TestResult,
     bootstrap_confidence_interval,
+    # Legacy imports still work
     cohens_d,
     compute_power,
     mcnemar_test,
     paired_t_test,
     wilcoxon_signed_rank,
-    # Legacy imports still work
-    bootstrap_test,
-    permutation_test,
-    wilcoxon_signed_rank_test,
 )
 
 
@@ -138,8 +135,8 @@ def test_mcnemar_returns_result():
 # ---------------------------------------------------------------------------
 def test_mcnemar_symmetric():
     # Equal b and c → should fail to reject (symmetric, no advantage)
-    correct_a = [True,  False, True,  False, True,  False]
-    correct_b = [False, True,  False, True,  False, True]
+    correct_a = [True, False, True, False, True, False]
+    correct_b = [False, True, False, True, False, True]
     result = mcnemar_test(correct_a, correct_b)
     assert result.reject_null is False
 
@@ -159,7 +156,9 @@ def test_bootstrap_ci_contains_zero():
 def test_bootstrap_ci_excludes_zero():
     scores_a = [1.0] * 50
     scores_b = [0.0] * 50
-    lo, hi = bootstrap_confidence_interval(scores_a, scores_b, n_bootstrap=1000, alpha=0.05, seed=42)
+    lo, hi = bootstrap_confidence_interval(
+        scores_a, scores_b, n_bootstrap=1000, alpha=0.05, seed=42
+    )
     # Mean diff is 1.0; CI should be entirely above 0
     assert lo > 0.0
 
@@ -177,7 +176,6 @@ def test_cohens_d_zero():
 # 14. test_cohens_d_large
 # ---------------------------------------------------------------------------
 def test_cohens_d_large():
-    import statistics
     scores_a = [1.0] * 50
     scores_b = [0.0] * 50
     d = cohens_d(scores_a, scores_b)

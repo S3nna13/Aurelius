@@ -1,13 +1,13 @@
 """SLO tracker: define service-level objectives and evaluate compliance."""
+
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class SLOType(str, Enum):
+class SLOType(StrEnum):
     LATENCY = "LATENCY"
     AVAILABILITY = "AVAILABILITY"
     ERROR_RATE = "ERROR_RATE"
@@ -69,9 +69,7 @@ class SLOTracker:
 
         defn = self._definitions[slo_name]
         cutoff = time.monotonic() - defn.window_seconds
-        samples_in_window = [
-            v for ts, v in self._samples.get(slo_name, []) if ts >= cutoff
-        ]
+        samples_in_window = [v for ts, v in self._samples.get(slo_name, []) if ts >= cutoff]
 
         if not samples_in_window:
             # No data – treat as 0 mean
@@ -116,8 +114,9 @@ _SLO_TRACKER = SLOTracker()
 
 try:
     from src.monitoring import MONITORING_REGISTRY as _REG  # type: ignore[import]
+
     _REG["slo_tracker"] = _SLO_TRACKER
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 MONITORING_REGISTRY: dict[str, object] = {"slo_tracker": _SLO_TRACKER}

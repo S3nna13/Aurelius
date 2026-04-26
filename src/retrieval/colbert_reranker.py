@@ -93,7 +93,4 @@ class ColBERTReranker:
         queries: list[str],
         docs_per_query: list[list[RankedDoc]],
     ) -> list[list[RankedDoc]]:
-        return [
-            self.rerank(q, docs)
-            for q, docs in zip(queries, docs_per_query)
-        ]
+        return [self.rerank(q, docs) for q, docs in zip(queries, docs_per_query)]

@@ -1,11 +1,9 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from src.tools.document_converter import (
-    DOCUMENT_CONVERTER_REGISTRY,
     DEFAULT_DOCUMENT_CONVERTER,
+    DOCUMENT_CONVERTER_REGISTRY,
     ConversionResult,
     DocumentConversionError,
     DocumentConverter,
@@ -237,10 +235,7 @@ def test_file_not_found():
     result = converter.convert("/nonexistent/path/file.txt")
     assert result.success is False
     assert result.error_message is not None
-    assert (
-        "No such file" in result.error_message
-        or "not found" in result.error_message.lower()
-    )
+    assert "No such file" in result.error_message or "not found" in result.error_message.lower()
 
 
 def test_malformed_json():

@@ -1,32 +1,35 @@
 """Test-time compute scaling: best-of-n, iterative refinement, and tree search."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TTCConfig:
     """Configuration for test-time compute scaling."""
+
     n_samples: int = 8
     budget: int = 512
-    strategy: str = "best_of_n"   # "best_of_n" | "tree_search" | "iterative_refinement"
+    strategy: str = "best_of_n"  # "best_of_n" | "tree_search" | "iterative_refinement"
     temperature: float = 1.0
 
 
 # ---------------------------------------------------------------------------
 # Sampling utility
 # ---------------------------------------------------------------------------
+
 
 def sample_with_temperature(logits: Tensor, temperature: float) -> Tensor:
     """Sample a token id from logits using temperature scaling.
@@ -49,6 +52,7 @@ def sample_with_temperature(logits: Tensor, temperature: float) -> Tensor:
 # Greedy generation
 # ---------------------------------------------------------------------------
 
+
 def greedy_generate(model: nn.Module, input_ids: Tensor, max_tokens: int) -> Tensor:
     """Greedily generate up to max_tokens new tokens appended to input_ids.
 
@@ -64,8 +68,8 @@ def greedy_generate(model: nn.Module, input_ids: Tensor, max_tokens: int) -> Ten
 
     with torch.no_grad():
         for _ in range(max_tokens):
-            _, logits, _ = model(current_ids)    # (1, T, V)
-            next_logits = logits[0, -1, :]       # (V,)
+            _, logits, _ = model(current_ids)  # (1, T, V)
+            next_logits = logits[0, -1, :]  # (V,)
             next_token = next_logits.argmax(dim=-1, keepdim=True).unsqueeze(0)  # (1, 1)
             current_ids = torch.cat([current_ids, next_token], dim=1)
 
@@ -75,6 +79,7 @@ def greedy_generate(model: nn.Module, input_ids: Tensor, max_tokens: int) -> Ten
 # ---------------------------------------------------------------------------
 # Perplexity
 # ---------------------------------------------------------------------------
+
 
 def compute_perplexity(model: nn.Module, input_ids: Tensor) -> float:
     """Compute perplexity of a sequence under the model.
@@ -89,14 +94,14 @@ def compute_perplexity(model: nn.Module, input_ids: Tensor) -> float:
         Perplexity as a positive float.
     """
     with torch.no_grad():
-        _, logits, _ = model(input_ids)    # (1, T, V)
+        _, logits, _ = model(input_ids)  # (1, T, V)
 
     # Shift: predict token[t+1] from logits[t]
-    shift_logits = logits[0, :-1, :]   # (T-1, V)
-    shift_targets = input_ids[0, 1:]   # (T-1,)
+    shift_logits = logits[0, :-1, :]  # (T-1, V)
+    shift_targets = input_ids[0, 1:]  # (T-1,)
 
-    log_probs = F.log_softmax(shift_logits, dim=-1)                         # (T-1, V)
-    nll = -log_probs[torch.arange(shift_targets.size(0)), shift_targets]    # (T-1,)
+    log_probs = F.log_softmax(shift_logits, dim=-1)  # (T-1, V)
+    nll = -log_probs[torch.arange(shift_targets.size(0)), shift_targets]  # (T-1,)
     mean_nll = nll.mean().item()
     return math.exp(mean_nll)
 
@@ -105,11 +110,12 @@ def compute_perplexity(model: nn.Module, input_ids: Tensor) -> float:
 # Best-of-N generation
 # ---------------------------------------------------------------------------
 
+
 def best_of_n_generate(
     model: nn.Module,
     input_ids: Tensor,
     config: TTCConfig,
-    score_fn: Optional[Callable[[nn.Module, Tensor], float]] = None,
+    score_fn: Callable[[nn.Module, Tensor], float] | None = None,
 ) -> Tensor:
     """Generate n_samples completions and return the one with the highest score.
 
@@ -124,10 +130,12 @@ def best_of_n_generate(
         Best completion as a tensor of shape (1, T + generated_len).
     """
     if score_fn is None:
-        score_fn = lambda m, seq: -compute_perplexity(m, seq)
+
+        def score_fn(m, seq):
+            return -compute_perplexity(m, seq)
 
     max_new = max(1, config.budget // max(config.n_samples, 1))
-    best_seq: Optional[Tensor] = None
+    best_seq: Tensor | None = None
     best_score: float = float("-inf")
 
     with torch.no_grad():
@@ -135,8 +143,8 @@ def best_of_n_generate(
             current_ids = input_ids.clone()
 
             for _ in range(max_new):
-                _, logits, _ = model(current_ids)     # (1, T, V)
-                next_logits = logits[0, -1, :]        # (V,)
+                _, logits, _ = model(current_ids)  # (1, T, V)
+                next_logits = logits[0, -1, :]  # (V,)
                 next_token = sample_with_temperature(next_logits, config.temperature)
                 next_token = next_token.view(1, 1)
                 current_ids = torch.cat([current_ids, next_token], dim=1)
@@ -146,13 +154,14 @@ def best_of_n_generate(
                 best_score = score
                 best_seq = current_ids
 
-    assert best_seq is not None
+    assert best_seq is not None  # noqa: S101
     return best_seq
 
 
 # ---------------------------------------------------------------------------
 # Iterative refinement
 # ---------------------------------------------------------------------------
+
 
 def iterative_refine(
     model: nn.Module,
@@ -209,6 +218,7 @@ def iterative_refine(
 # TestTimeScaler
 # ---------------------------------------------------------------------------
 
+
 class TestTimeScaler:
     """Unified interface for test-time compute scaling strategies."""
 
@@ -222,7 +232,7 @@ class TestTimeScaler:
     def generate(
         self,
         input_ids: Tensor,
-        score_fn: Optional[Callable[[nn.Module, Tensor], float]] = None,
+        score_fn: Callable[[nn.Module, Tensor], float] | None = None,
     ) -> tuple[Tensor, float]:
         """Dispatch to the configured strategy and return (best_sequence, best_score).
 
@@ -234,23 +244,19 @@ class TestTimeScaler:
             (best_sequence, best_score) tuple.
         """
         if score_fn is None:
-            score_fn = lambda m, seq: -compute_perplexity(m, seq)
+
+            def score_fn(m, seq):
+                return -compute_perplexity(m, seq)
 
         strategy = self.config.strategy
 
         if strategy == "best_of_n":
-            best_seq = best_of_n_generate(
-                self.model, input_ids, self.config, score_fn
-            )
+            best_seq = best_of_n_generate(self.model, input_ids, self.config, score_fn)
         elif strategy == "iterative_refinement":
-            best_seq = iterative_refine(
-                self.model, input_ids, self.config
-            )
+            best_seq = iterative_refine(self.model, input_ids, self.config)
         elif strategy == "tree_search":
             # Simple tree search: run best_of_n with greedy scoring as a baseline
-            best_seq = best_of_n_generate(
-                self.model, input_ids, self.config, score_fn
-            )
+            best_seq = best_of_n_generate(self.model, input_ids, self.config, score_fn)
         else:
             raise ValueError(f"Unknown strategy: {self.config.strategy!r}")
 

@@ -6,16 +6,17 @@ Configuration used throughout:
 """
 
 import math
-import torch
+
 import pytest
+import torch
 
 from src.model.lstm_transformer import (
     LSTMMemoryCell,
-    MemoryAugmentedAttention,
     LSTMTransformerBlock,
-    LSTMTransformerModel,
-    SegmentedTrainer,
     LSTMTransformerConfig,
+    LSTMTransformerModel,
+    MemoryAugmentedAttention,
+    SegmentedTrainer,
 )
 
 # ---------------------------------------------------------------------------
@@ -61,6 +62,7 @@ def model():
 # LSTMMemoryCell tests
 # ---------------------------------------------------------------------------
 
+
 def test_lstm_cell_output_shape(cell):
     """LSTMMemoryCell forward output should be [B, d_memory]."""
     x = torch.randn(B, D_MODEL)
@@ -99,6 +101,7 @@ def test_lstm_cell_init_state_zeros(cell):
 # ---------------------------------------------------------------------------
 # MemoryAugmentedAttention tests
 # ---------------------------------------------------------------------------
+
 
 def test_attn_output_shape(attn):
     """MemoryAugmentedAttention output should be [B, T, d_model]."""
@@ -140,6 +143,7 @@ def test_attn_output_dtype(attn):
 # ---------------------------------------------------------------------------
 # LSTMTransformerBlock tests
 # ---------------------------------------------------------------------------
+
 
 def test_block_output_shape(block):
     """Block forward should return [B, T, d_model]."""
@@ -184,11 +188,14 @@ def test_block_new_state_shapes(block):
 # LSTMTransformerModel tests
 # ---------------------------------------------------------------------------
 
+
 def test_model_logits_shape(model):
     """Model forward should return logits [B, T, vocab_size]."""
     ids = torch.randint(0, VOCAB_SIZE, (B, T))
     logits, _ = model(ids)
-    assert logits.shape == (B, T, VOCAB_SIZE), f"Expected ({B}, {T}, {VOCAB_SIZE}), got {logits.shape}"
+    assert logits.shape == (B, T, VOCAB_SIZE), (
+        f"Expected ({B}, {T}, {VOCAB_SIZE}), got {logits.shape}"
+    )
 
 
 def test_model_new_states_length(model):
@@ -238,6 +245,7 @@ def test_model_explicit_states_forwarded(model):
 # SegmentedTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_segmented_trainer_returns_losses(model):
     """train_sequence should return a non-empty list of float losses."""
     trainer = SegmentedTrainer(model, lr=1e-3, segment_len=4)
@@ -246,7 +254,7 @@ def test_segmented_trainer_returns_losses(model):
     losses = trainer.train_sequence(ids, ids)
     assert isinstance(losses, list), "Expected a list of losses"
     assert len(losses) > 0, "Expected at least one segment loss"
-    for l in losses:
+    for l in losses:  # noqa: E741
         assert isinstance(l, float), f"Loss entry is not float: {type(l)}"
         assert math.isfinite(l), f"Non-finite loss: {l}"
 
@@ -285,7 +293,7 @@ def test_segmented_trainer_detaches_state():
     h0_probe = h0_det.clone().requires_grad_(True)
     c0_probe = c0_det.clone().requires_grad_(True)
 
-    seg1 = ids[:, segment_len:2 * segment_len]
+    seg1 = ids[:, segment_len : 2 * segment_len]
     logits1, _ = mdl(seg1, [(h0_probe, c0_probe)])
     loss1 = logits1.sum()
     loss1.backward()
@@ -303,6 +311,7 @@ def test_segmented_trainer_detaches_state():
 # ---------------------------------------------------------------------------
 # LSTMTransformerConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     """LSTMTransformerConfig should have the specified default values."""

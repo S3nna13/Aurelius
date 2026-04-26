@@ -1,15 +1,17 @@
 import math
+
 import pytest
+
 from src.profiling.latency_histogram import (
+    LATENCY_HISTOGRAM_REGISTRY,
     HistogramBucket,
     LatencyHistogram,
-    LATENCY_HISTOGRAM_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry_key():
     assert "default" in LATENCY_HISTOGRAM_REGISTRY
@@ -19,6 +21,7 @@ def test_registry_key():
 # ---------------------------------------------------------------------------
 # Empty histogram
 # ---------------------------------------------------------------------------
+
 
 def test_empty_total_count():
     h = LatencyHistogram()
@@ -55,6 +58,7 @@ def test_empty_to_dict_total_zero():
 # Record / count
 # ---------------------------------------------------------------------------
 
+
 def test_record_increments_total_count():
     h = LatencyHistogram()
     h.record(10.0)
@@ -88,6 +92,7 @@ def test_record_inf_bucket():
 # Mean
 # ---------------------------------------------------------------------------
 
+
 def test_mean_single_sample():
     h = LatencyHistogram()
     h.record(42.0)
@@ -104,6 +109,7 @@ def test_mean_multiple_samples():
 # ---------------------------------------------------------------------------
 # Percentile
 # ---------------------------------------------------------------------------
+
 
 def test_percentile_p50_single_sample():
     h = LatencyHistogram()
@@ -143,6 +149,7 @@ def test_percentile_p0_nonnegative():
 # Bucket list format
 # ---------------------------------------------------------------------------
 
+
 def test_buckets_returns_histogram_bucket_instances():
     h = LatencyHistogram()
     for b in h.buckets():
@@ -174,6 +181,7 @@ def test_buckets_frozen():
 # Reset
 # ---------------------------------------------------------------------------
 
+
 def test_reset_clears_total_count():
     h = LatencyHistogram()
     h.record(10.0)
@@ -198,6 +206,7 @@ def test_reset_clears_bucket_counts():
 # ---------------------------------------------------------------------------
 # to_dict
 # ---------------------------------------------------------------------------
+
 
 def test_to_dict_has_required_keys():
     h = LatencyHistogram()

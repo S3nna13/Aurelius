@@ -5,8 +5,7 @@ from __future__ import annotations
 import math
 import time
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -25,7 +24,7 @@ class SearchAnalytics:
 
     def __init__(self, max_log: int = 10000) -> None:
         self._max_log = max_log
-        self._logs: List[QueryLog] = []
+        self._logs: list[QueryLog] = []
 
     # ------------------------------------------------------------------
     # Ingestion
@@ -59,16 +58,14 @@ class SearchAnalytics:
     # Aggregate queries
     # ------------------------------------------------------------------
 
-    def top_queries(self, n: int = 10) -> List[Tuple[str, int]]:
+    def top_queries(self, n: int = 10) -> list[tuple[str, int]]:
         """Return the *n* most frequent queries as (query, count) sorted desc."""
         counter: Counter[str] = Counter(log.query for log in self._logs)
         return counter.most_common(n)
 
-    def zero_result_queries(self) -> List[str]:
+    def zero_result_queries(self) -> list[str]:
         """Unique queries that returned zero results, sorted lexicographically."""
-        return sorted(
-            {log.query for log in self._logs if log.result_count == 0}
-        )
+        return sorted({log.query for log in self._logs if log.result_count == 0})
 
     def mean_duration_ms(self) -> float:
         """Average query duration in milliseconds; 0.0 if no logs."""
@@ -83,9 +80,7 @@ class SearchAnalytics:
         clicked = sum(1 for log in self._logs if log.clicked_result)
         return clicked / len(self._logs)
 
-    def query_volume_by_hour(
-        self, now: Optional[float] = None
-    ) -> Dict[int, int]:
+    def query_volume_by_hour(self, now: float | None = None) -> dict[int, int]:
         """Return {hour_offset: count} where hour_offset = floor((now - ts) / 3600).
 
         Hour offset 0 is the most-recent hour; larger values are older.
@@ -93,13 +88,13 @@ class SearchAnalytics:
         """
         if now is None:
             now = time.monotonic()
-        volume: Dict[int, int] = {}
+        volume: dict[int, int] = {}
         for log in self._logs:
             offset = math.floor((now - log.timestamp) / 3600)
             volume[offset] = volume.get(offset, 0) + 1
         return volume
 
-    def stats(self) -> Dict[str, object]:
+    def stats(self) -> dict[str, object]:
         """Return a summary statistics dictionary."""
         total = len(self._logs)
         unique = len({log.query for log in self._logs})
@@ -118,4 +113,4 @@ class SearchAnalytics:
 # Registry
 # ---------------------------------------------------------------------------
 
-SEARCH_ANALYTICS_REGISTRY: Dict[str, type] = {"default": SearchAnalytics}
+SEARCH_ANALYTICS_REGISTRY: dict[str, type] = {"default": SearchAnalytics}

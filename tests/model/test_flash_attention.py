@@ -9,18 +9,18 @@ import torch
 import torch.nn.functional as F
 
 from src.model.flash_attention import (
-    FlashAttentionSimulator,
-    FlashConfig,
-    benchmark_attention_equivalence,
-    compute_memory_footprint,
-    online_softmax,
-    tiled_attention,
     # New components
     FlashAttentionConfig,
     FlashAttentionLayer,
+    FlashAttentionSimulator,
+    FlashConfig,
+    benchmark_attention_equivalence,
     chunked_attention,
+    compute_memory_footprint,
     flash_attention_forward,
     memory_efficiency_ratio,
+    online_softmax,
+    tiled_attention,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,9 +45,9 @@ def test_flash_config_defaults():
 # ---------------------------------------------------------------------------
 def test_online_softmax_shapes():
     scores = torch.randn(B, H, T, T)
-    m, l, p = online_softmax(scores)
+    m, item, p = online_softmax(scores)
     assert m.shape == (B, H, T, 1), f"m shape mismatch: {m.shape}"
-    assert l.shape == (B, H, T, 1), f"l shape mismatch: {l.shape}"
+    assert item.shape == (B, H, T, 1), f"l shape mismatch: {item.shape}"
     assert p.shape == (B, H, T, T), f"p shape mismatch: {p.shape}"
 
 
@@ -90,7 +90,7 @@ def test_tiled_attention_causal_masking():
     V_perturbed = V.clone()
     V_perturbed[:, :, T - 1, :] += 100.0  # large delta at the last position
 
-    out_after = tiled_attention(Q, K_perturbed := K, V_perturbed, block_size=BS, causal=True)
+    out_after = tiled_attention(Q, _K_perturbed := K, V_perturbed, block_size=BS, causal=True)
 
     # Output at position 0 should be unchanged (position 0 never attends to position T-1)
     assert torch.allclose(out_before[:, :, 0, :], out_after[:, :, 0, :], atol=1e-5), (
@@ -140,9 +140,7 @@ def test_flash_attention_simulator_different_block_sizes(block_size):
     model = FlashAttentionSimulator(d_model=D_MODEL, n_heads=H, config=cfg)
     x = torch.randn(B, T, D_MODEL)
     out = model(x)
-    assert out.shape == (B, T, D_MODEL), (
-        f"block_size={block_size}: unexpected shape {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"block_size={block_size}: unexpected shape {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -386,9 +384,7 @@ def test_flash_attention_layer_various_seq_lengths(seq_len):
     layer = FlashAttentionLayer(d_model=D_MODEL, n_heads=H, config=cfg)
     x = torch.randn(B, seq_len, D_MODEL)
     out = layer(x)
-    assert out.shape == (B, seq_len, D_MODEL), (
-        f"seq_len={seq_len}: unexpected shape {out.shape}"
-    )
+    assert out.shape == (B, seq_len, D_MODEL), f"seq_len={seq_len}: unexpected shape {out.shape}"
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 """Tests for DARE model merging (arXiv 2311.03099)."""
+
 from __future__ import annotations
 
 import pytest
@@ -13,6 +14,7 @@ def _sd(seed: int = 0) -> dict[str, torch.Tensor]:
 
 
 # --- DAREConfig ---
+
 
 def test_config_defaults():
     cfg = DAREConfig()
@@ -30,6 +32,7 @@ def test_config_custom():
 
 # --- MergeResult ---
 
+
 def test_merge_result_fields():
     sd = _sd()
     mr = MergeResult(merged_state_dict=sd, n_params_merged=32, drop_rate_applied=0.9)
@@ -38,6 +41,7 @@ def test_merge_result_fields():
 
 
 # --- DAREMerger init ---
+
 
 def test_merger_default_config():
     m = DAREMerger()
@@ -51,6 +55,7 @@ def test_merger_custom_config():
 
 
 # --- compute_task_vector ---
+
 
 def test_task_vector_zero_for_identical():
     base = _sd(0)
@@ -78,6 +83,7 @@ def test_task_vector_keys_match_base():
 
 
 # --- sparsify ---
+
 
 def test_sparsify_reduces_nonzero():
     base = {"w1": torch.randn(4, 4), "w2": torch.randn(4, 4)}
@@ -117,6 +123,7 @@ def test_sparsify_seed_deterministic():
 
 
 # --- merge ---
+
 
 def test_merge_returns_merge_result():
     base = _sd(0)

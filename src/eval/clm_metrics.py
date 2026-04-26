@@ -7,22 +7,23 @@ References:
 - Distinct-n: Li et al. 2016
 - Self-BLEU: Zhu et al. 2018
 """
+
 from __future__ import annotations
 
 import math
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CLMMetricsConfig:
     """Configuration for CLM evaluation metrics."""
-    ngram_sizes: List[int] = field(default_factory=lambda: [1, 2, 3, 4])
+
+    ngram_sizes: list[int] = field(default_factory=lambda: [1, 2, 3, 4])
     repetition_window: int = 32
     distinct_n: int = 2
     length_penalty_alpha: float = 0.0
@@ -32,14 +33,15 @@ class CLMMetricsConfig:
 # N-gram helpers
 # ---------------------------------------------------------------------------
 
-def _ngrams(tokens: List[int], n: int) -> List[Tuple[int, ...]]:
+
+def _ngrams(tokens: list[int], n: int) -> list[tuple[int, ...]]:
     """Return list of n-gram tuples from a token list."""
     if n <= 0 or len(tokens) < n:
         return []
     return [tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
 
-def compute_ngram_frequencies(tokens: List[int], n: int) -> Dict[Tuple[int, ...], int]:
+def compute_ngram_frequencies(tokens: list[int], n: int) -> dict[tuple[int, ...], int]:
     """Return {ngram_tuple: count} frequency dict for all n-grams in *tokens*.
 
     Args:
@@ -56,7 +58,8 @@ def compute_ngram_frequencies(tokens: List[int], n: int) -> Dict[Tuple[int, ...]
 # Distinct-n
 # ---------------------------------------------------------------------------
 
-def compute_distinct_n(tokens: List[int], n: int) -> float:
+
+def compute_distinct_n(tokens: list[int], n: int) -> float:
     """Distinct n-grams / total n-grams — measures lexical diversity.
 
     Returns 0.0 when the sequence is too short to form any n-gram.
@@ -80,7 +83,8 @@ def compute_distinct_n(tokens: List[int], n: int) -> float:
 # Repetition rate
 # ---------------------------------------------------------------------------
 
-def compute_repetition_rate(tokens: List[int], window: int) -> float:
+
+def compute_repetition_rate(tokens: list[int], window: int) -> float:
     """Fraction of tokens that already appeared in the preceding *window* tokens.
 
     For each position i the algorithm checks whether tokens[i] is in the
@@ -109,7 +113,8 @@ def compute_repetition_rate(tokens: List[int], window: int) -> float:
 # Self-BLEU
 # ---------------------------------------------------------------------------
 
-def _ngram_precision(hypothesis: List[int], references: List[List[int]], n: int) -> float:
+
+def _ngram_precision(hypothesis: list[int], references: list[list[int]], n: int) -> float:
     """Clipped n-gram precision of *hypothesis* against *references*."""
     hyp_grams = Counter(_ngrams(hypothesis, n))
     if not hyp_grams:
@@ -135,7 +140,7 @@ def _brevity_penalty(hyp_len: int, ref_len: float) -> float:
     return math.exp(1.0 - ref_len / hyp_len)
 
 
-def _bleu_single(hypothesis: List[int], references: List[List[int]], n: int) -> float:
+def _bleu_single(hypothesis: list[int], references: list[list[int]], n: int) -> float:
     """Sentence-level BLEU up to order *n* using geometric mean of precisions."""
     if not hypothesis or not references:
         return 0.0
@@ -155,7 +160,7 @@ def _bleu_single(hypothesis: List[int], references: List[List[int]], n: int) -> 
     return bp * math.exp(log_avg)
 
 
-def compute_self_bleu(sequences: List[List[int]], n: int = 4) -> float:
+def compute_self_bleu(sequences: list[list[int]], n: int = 4) -> float:
     """Mean BLEU of each sequence against the remaining sequences as references.
 
     Higher self-BLEU indicates more repetitive / less diverse output.
@@ -170,7 +175,7 @@ def compute_self_bleu(sequences: List[List[int]], n: int = 4) -> float:
     if len(sequences) < 2:
         return 0.0
 
-    scores: List[float] = []
+    scores: list[float] = []
     for i, hyp in enumerate(sequences):
         refs = [seq for j, seq in enumerate(sequences) if j != i]
         scores.append(_bleu_single(hyp, refs, n))
@@ -182,7 +187,8 @@ def compute_self_bleu(sequences: List[List[int]], n: int = 4) -> float:
 # Length statistics
 # ---------------------------------------------------------------------------
 
-def compute_length_stats(sequences: List[List[int]]) -> Dict[str, float]:
+
+def compute_length_stats(sequences: list[list[int]]) -> dict[str, float]:
     """Compute length statistics over a list of sequences.
 
     Args:
@@ -197,7 +203,7 @@ def compute_length_stats(sequences: List[List[int]]) -> Dict[str, float]:
     lengths = [len(s) for s in sequences]
     n = len(lengths)
     mean = sum(lengths) / n
-    variance = sum((l - mean) ** 2 for l in lengths) / n
+    variance = sum((line - mean) ** 2 for line in lengths) / n
     std = math.sqrt(variance)
     sorted_lengths = sorted(lengths)
     if n % 2 == 1:
@@ -218,7 +224,8 @@ def compute_length_stats(sequences: List[List[int]]) -> Dict[str, float]:
 # Vocabulary coverage
 # ---------------------------------------------------------------------------
 
-def compute_vocabulary_coverage(tokens: List[int], vocab_size: int) -> float:
+
+def compute_vocabulary_coverage(tokens: list[int], vocab_size: int) -> float:
     """Fraction of the vocabulary that appears at least once in *tokens*.
 
     Args:
@@ -238,13 +245,14 @@ def compute_vocabulary_coverage(tokens: List[int], vocab_size: int) -> float:
 # GenerationMetrics
 # ---------------------------------------------------------------------------
 
+
 class GenerationMetrics:
     """High-level evaluation wrapper that aggregates all CLM metrics."""
 
     def __init__(self, config: CLMMetricsConfig) -> None:
         self.config = config
 
-    def evaluate(self, sequences: List[List[int]], vocab_size: int) -> Dict[str, float]:
+    def evaluate(self, sequences: list[list[int]], vocab_size: int) -> dict[str, float]:
         """Compute all metrics for *sequences*.
 
         Args:
@@ -258,9 +266,9 @@ class GenerationMetrics:
                 "length_mean", "length_std", "vocab_coverage"
         """
         # Pool all tokens for sequence-level metrics
-        all_tokens: List[int] = [tok for seq in sequences for tok in seq]
+        all_tokens: list[int] = [tok for seq in sequences for tok in seq]
 
-        results: Dict[str, float] = {}
+        results: dict[str, float] = {}
 
         # Distinct-n for orders 1..4
         for k in [1, 2, 3, 4]:
@@ -279,9 +287,7 @@ class GenerationMetrics:
 
         return results
 
-    def compare(
-        self, metrics_a: Dict[str, float], metrics_b: Dict[str, float]
-    ) -> Dict[str, float]:
+    def compare(self, metrics_a: dict[str, float], metrics_b: dict[str, float]) -> dict[str, float]:
         """Return {key: b - a} differences for every key present in *metrics_a*.
 
         Args:

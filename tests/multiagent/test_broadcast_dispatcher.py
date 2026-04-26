@@ -1,15 +1,12 @@
 """Tests for broadcast_dispatcher — topic-based multi-cast on MessageBus."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.multiagent.broadcast_dispatcher import (
-    BroadcastDispatcher,
     BROADCAST_DISPATCHER_REGISTRY,
     DEFAULT_BROADCAST_DISPATCHER,
+    BroadcastDispatcher,
 )
-from src.multiagent.message_bus import AgentMessage
-
 
 # ---------------------------------------------------------------------------
 # Helpers

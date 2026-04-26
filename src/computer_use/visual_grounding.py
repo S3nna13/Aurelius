@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
 
 from src.computer_use.screen_parser import AccessibilityNode, ScreenSnapshot
-
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
+
 
 class VisualGroundingError(Exception):
     """Raised when visual grounding fails or receives invalid input."""
@@ -24,6 +23,7 @@ class VisualGroundingError(Exception):
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GroundedElement:
@@ -49,6 +49,7 @@ class GroundingResult:
 # ---------------------------------------------------------------------------
 # Main grounding interface
 # ---------------------------------------------------------------------------
+
 
 class VisualGrounding:
     """Maps (x, y) screen coordinates to UI elements from an accessibility tree.
@@ -105,10 +106,7 @@ class VisualGrounding:
         if not flat:
             return GroundingResult(x=x, y=y)
 
-        with_dist = [
-            (node, self._distance(x, y, node.bbox), z)
-            for node, z in flat
-        ]
+        with_dist = [(node, self._distance(x, y, node.bbox), z) for node, z in flat]
 
         exact = [
             GroundedElement(node=node, distance=d, z_index=z)
@@ -186,6 +184,7 @@ class VisualGrounding:
 # ---------------------------------------------------------------------------
 # Compound strategy (multiple tolerance passes)
 # ---------------------------------------------------------------------------
+
 
 class CompoundVisualGrounding:
     """Runs multiple :class:`VisualGrounding` strategies in order.

@@ -1,7 +1,7 @@
 """Tests for src/training/flow_matching.py."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.optim as optim
 
@@ -25,6 +25,7 @@ N_STEPS = 3
 # FlowConfig
 # ---------------------------------------------------------------------------
 
+
 def test_flow_config_defaults():
     cfg = FlowConfig()
     assert cfg.sigma == 0.1
@@ -36,6 +37,7 @@ def test_flow_config_defaults():
 # ---------------------------------------------------------------------------
 # sample_xt
 # ---------------------------------------------------------------------------
+
 
 def test_sample_xt_shape():
     x0 = torch.randn(B, D)
@@ -74,6 +76,7 @@ def test_sample_xt_t05_midpoint():
 # compute_ut
 # ---------------------------------------------------------------------------
 
+
 def test_compute_ut_value():
     x0 = torch.randn(B, D)
     x1 = torch.randn(B, D)
@@ -91,6 +94,7 @@ def test_compute_ut_shape():
 # ---------------------------------------------------------------------------
 # VectorFieldNet
 # ---------------------------------------------------------------------------
+
 
 def test_vfnet_output_shape():
     net = VectorFieldNet(d_model=D)
@@ -116,13 +120,14 @@ def test_vfnet_differentiable():
 # flow_matching_loss
 # ---------------------------------------------------------------------------
 
+
 def test_flow_matching_loss_scalar():
     net = VectorFieldNet(d_model=D)
     x0 = torch.randn(B, D)
     x1 = torch.randn(B, D)
     t = torch.rand(B)
     loss = flow_matching_loss(net, x0, x1, t)
-    assert loss.shape == ()   # scalar
+    assert loss.shape == ()  # scalar
     assert loss.item() >= 0.0
 
 
@@ -143,6 +148,7 @@ def test_flow_matching_loss_zero_when_x0_equals_x1():
 # euler_solve
 # ---------------------------------------------------------------------------
 
+
 def test_euler_solve_output_shape():
     net = VectorFieldNet(d_model=D)
     x0 = torch.randn(B, D)
@@ -153,6 +159,7 @@ def test_euler_solve_output_shape():
 # ---------------------------------------------------------------------------
 # FlowMatchingTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_returns_loss_key():
     net = VectorFieldNet(d_model=D)
@@ -196,6 +203,4 @@ def test_training_reduces_loss_over_steps():
         losses.append(result["loss"])
 
     # Loss over 5 steps should show a downward trend: last < first
-    assert losses[-1] < losses[0], (
-        f"Expected loss to decrease; got {losses}"
-    )
+    assert losses[-1] < losses[0], f"Expected loss to decrease; got {losses}"

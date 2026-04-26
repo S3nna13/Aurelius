@@ -6,17 +6,17 @@ MoETransformerBlock, and MoEModel.
 Tiny config: d_model=16, n_heads=2, n_experts=4, d_ff=32, top_k=2,
              seq_len=8, batch=2, n_layers=2, vocab=16.
 """
-import pytest
+
 import torch
 import torch.nn as nn
 
 from src.model.mixture_of_experts_v2 import (
     Expert,
-    TopKRouter,
     ExpertCapacityBuffer,
     MoELayer,
-    MoETransformerBlock,
     MoEModel,
+    MoETransformerBlock,
+    TopKRouter,
 )
 
 # ---------------------------------------------------------------------------
@@ -55,7 +55,9 @@ def test_expert_output_shape():
     expert = Expert(D_MODEL, D_FF, activation="gelu")
     x = make_tokens()
     out = expert(x)
-    assert out.shape == (BATCH * SEQ_LEN, D_MODEL), f"Expected {(BATCH * SEQ_LEN, D_MODEL)}, got {out.shape}"
+    assert out.shape == (BATCH * SEQ_LEN, D_MODEL), (
+        f"Expected {(BATCH * SEQ_LEN, D_MODEL)}, got {out.shape}"
+    )
 
 
 # ===========================================================================
@@ -130,7 +132,7 @@ def test_capacity_compute():
     n_tokens = 16
     top_k = 2
     cap = ecb.compute_capacity(n_tokens, top_k)
-    expected_raw = 1.25 * n_tokens * top_k / 4   # = 10.0
+    expected_raw = 1.25 * n_tokens * top_k / 4  # = 10.0
     assert cap >= 1
     assert cap == max(1, int(import_math_ceil(expected_raw)))
 
@@ -142,6 +144,7 @@ def test_capacity_compute():
 
 def import_math_ceil(x):
     import math
+
     return math.ceil(x)
 
 
@@ -194,9 +197,7 @@ def test_moe_layer_backward():
     # Router gate should have gradient
     assert layer.router.gate.weight.grad is not None, "Router gate has no gradient"
     # At least one expert should have a gradient
-    has_expert_grad = any(
-        p.grad is not None for e in layer.experts for p in e.parameters()
-    )
+    has_expert_grad = any(p.grad is not None for e in layer.experts for p in e.parameters())
     assert has_expert_grad, "No expert has a gradient"
 
 
@@ -264,7 +265,7 @@ def test_balanced_routing_n_experts_2_top_k_1():
     # Override gate weights to zeros so routing is uniform
     nn.init.zeros_(layer.router.gate.weight)
 
-    x = torch.randn(64, SEQ_LEN, D_MODEL)   # 64 * 8 = 512 tokens
+    x = torch.randn(64, SEQ_LEN, D_MODEL)  # 64 * 8 = 512 tokens
     out, aux = layer(x)
     # With zero gate weights, all logits are equal -> 50/50 split
     assert out.shape == (64, SEQ_LEN, D_MODEL)

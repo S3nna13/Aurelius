@@ -28,16 +28,16 @@ class LogMelSpectrogram(nn.Module):
             waveform = waveform.unsqueeze(0)
         batch, samples = waveform.shape
         T = samples // self.config.hop_length + 1
-        return torch.rand(batch, self.config.n_mels, T, device=waveform.device, dtype=waveform.dtype)
+        return torch.rand(
+            batch, self.config.n_mels, T, device=waveform.device, dtype=waveform.dtype
+        )
 
 
 class AudioEncoderBlock(nn.Module):
     def __init__(self, config: AudioEncoderConfig):
         super().__init__()
         self.norm1 = nn.LayerNorm(config.hidden_dim)
-        self.attn = nn.MultiheadAttention(
-            config.hidden_dim, config.n_heads, batch_first=True
-        )
+        self.attn = nn.MultiheadAttention(config.hidden_dim, config.n_heads, batch_first=True)
         self.norm2 = nn.LayerNorm(config.hidden_dim)
         self.ffn = nn.Sequential(
             nn.Linear(config.hidden_dim, config.hidden_dim * 4),

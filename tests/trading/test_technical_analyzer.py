@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from src.trading.technical_analyzer import TECHNICAL_ANALYZER, TechnicalIndicators
 
 

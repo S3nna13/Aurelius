@@ -8,13 +8,8 @@ Config: head_dim=8, base=10000.0, seq_len=8, batch=2, n_heads=2.
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
-from torch import Tensor
-
 from aurelius.model.rope_extensions_v2 import (
     DynamicNTKRoPE,
     NTKRoPE,
@@ -22,6 +17,7 @@ from aurelius.model.rope_extensions_v2 import (
     RotaryEmbedding,
     YaRNRoPE,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Shared tiny config constants
@@ -45,6 +41,7 @@ def _qk(seq_len: int = SEQ_LEN, head_dim: int = HEAD_DIM) -> tuple[Tensor, Tenso
 # 1. RotaryEmbedding: output shapes match input (B, H, T, D)
 # ===========================================================================
 
+
 def test_rotary_embedding_output_shapes():
     rope = RotaryEmbedding(head_dim=HEAD_DIM, base=BASE)
     q, k = _qk()
@@ -56,6 +53,7 @@ def test_rotary_embedding_output_shapes():
 # ===========================================================================
 # 2. RotaryEmbedding: position 0 → identity rotation (no change to vectors)
 # ===========================================================================
+
 
 def test_rotary_embedding_position_zero_identity():
     """At position 0 the rotation angle is 0, so output == input."""
@@ -70,6 +68,7 @@ def test_rotary_embedding_position_zero_identity():
 # ===========================================================================
 # 3. RotaryEmbedding: different positions → different rotations
 # ===========================================================================
+
 
 def test_rotary_embedding_different_positions_differ():
     """Positions 1, 2, 3, … must produce distinct rotations."""
@@ -89,6 +88,7 @@ def test_rotary_embedding_different_positions_differ():
 # 4. RotaryEmbedding: norm preserved ||q_rot|| == ||q||
 # ===========================================================================
 
+
 def test_rotary_embedding_norm_preserved():
     """RoPE is a rotation — must preserve L2 norm exactly."""
     rope = RotaryEmbedding(head_dim=HEAD_DIM, base=BASE)
@@ -106,6 +106,7 @@ def test_rotary_embedding_norm_preserved():
 # 5. NTKRoPE: base_new > original base (scaled up)
 # ===========================================================================
 
+
 def test_ntk_rope_base_scaled_up():
     """NTK-modified base must be strictly larger than original base."""
     scale_factor = 8.0
@@ -122,6 +123,7 @@ def test_ntk_rope_base_scaled_up():
 # 6. NTKRoPE.context_window_extension: equals scale_factor
 # ===========================================================================
 
+
 def test_ntk_rope_context_window_extension():
     scale_factor = 8.0
     rope = NTKRoPE(head_dim=HEAD_DIM, base=BASE, scale_factor=scale_factor)
@@ -133,19 +135,25 @@ def test_ntk_rope_context_window_extension():
 # 7. NTKRoPE: output shapes correct, norm preserved
 # ===========================================================================
 
+
 def test_ntk_rope_shapes_and_norm():
     rope = NTKRoPE(head_dim=HEAD_DIM, base=BASE, scale_factor=4.0)
     q, k = _qk()
     q_rot, k_rot = rope.forward(q, k)
     assert q_rot.shape == q.shape, f"q_rot shape {q_rot.shape} != {q.shape}"
     assert k_rot.shape == k.shape, f"k_rot shape {k_rot.shape} != {k.shape}"
-    assert torch.allclose(q.norm(dim=-1), q_rot.norm(dim=-1), atol=1e-5), "NTKRoPE norm not preserved"
-    assert torch.allclose(k.norm(dim=-1), k_rot.norm(dim=-1), atol=1e-5), "NTKRoPE norm not preserved"
+    assert torch.allclose(q.norm(dim=-1), q_rot.norm(dim=-1), atol=1e-5), (
+        "NTKRoPE norm not preserved"
+    )
+    assert torch.allclose(k.norm(dim=-1), k_rot.norm(dim=-1), atol=1e-5), (
+        "NTKRoPE norm not preserved"
+    )
 
 
 # ===========================================================================
 # 8. YaRNRoPE: output shapes correct (B, H, T, D)
 # ===========================================================================
+
 
 def test_yarn_rope_output_shapes():
     rope = YaRNRoPE(head_dim=HEAD_DIM, base=BASE, scale_factor=4.0)
@@ -158,6 +166,7 @@ def test_yarn_rope_output_shapes():
 # ===========================================================================
 # 9. YaRNRoPE: output differs from standard RoPE (scale_factor != 1)
 # ===========================================================================
+
 
 def test_yarn_rope_differs_from_standard():
     """YaRN with scale_factor > 1 should produce different output than standard RoPE."""
@@ -175,6 +184,7 @@ def test_yarn_rope_differs_from_standard():
 # 10. YaRNRoPE: norm approximately preserved (within 5% due to mscale correction)
 # ===========================================================================
 
+
 def test_yarn_rope_norm_approximately_preserved():
     """YaRN applies a magnitude correction (mscale), norm should be within 5%."""
     rope = YaRNRoPE(head_dim=HEAD_DIM, base=BASE, scale_factor=4.0, mscale=0.1)
@@ -182,7 +192,7 @@ def test_yarn_rope_norm_approximately_preserved():
     q_rot, k_rot = rope.forward(q, k)
     norm_in = q.norm(dim=-1)
     norm_out = q_rot.norm(dim=-1)
-    ratio = (norm_out / (norm_in + 1e-8))
+    ratio = norm_out / (norm_in + 1e-8)
     assert (ratio - 1.0).abs().max().item() < 0.05, (
         f"YaRN norm ratio out of 5% window: max deviation {(ratio - 1.0).abs().max().item():.4f}"
     )
@@ -192,6 +202,7 @@ def test_yarn_rope_norm_approximately_preserved():
 # 11. DynamicNTKRoPE: seq_len <= max_pos_emb → same as standard RoPE
 # ===========================================================================
 
+
 def test_dynamic_ntk_short_seq_matches_standard():
     """Within training range, DynamicNTKRoPE should match standard RoPE exactly."""
     max_pos = SEQ_LEN * 2  # 16, use seq_len=8 which is <= 16
@@ -200,13 +211,18 @@ def test_dynamic_ntk_short_seq_matches_standard():
     q, k = _qk()
     q_std, k_std = standard.forward(q, k)
     q_dyn, k_dyn = dynamic.forward(q, k)
-    assert torch.allclose(q_std, q_dyn, atol=1e-5), "DynamicNTK should match standard RoPE for short seqs"
-    assert torch.allclose(k_std, k_dyn, atol=1e-5), "DynamicNTK should match standard RoPE for short seqs"
+    assert torch.allclose(q_std, q_dyn, atol=1e-5), (
+        "DynamicNTK should match standard RoPE for short seqs"
+    )
+    assert torch.allclose(k_std, k_dyn, atol=1e-5), (
+        "DynamicNTK should match standard RoPE for short seqs"
+    )
 
 
 # ===========================================================================
 # 12. DynamicNTKRoPE: seq_len > max_pos_emb → different from standard (adaptive scaling)
 # ===========================================================================
+
 
 def test_dynamic_ntk_long_seq_differs_from_standard():
     """Beyond training range, DynamicNTKRoPE scales the base — output should differ."""
@@ -224,6 +240,7 @@ def test_dynamic_ntk_long_seq_differs_from_standard():
 # ===========================================================================
 # 13. RoPEAnalyzer.frequency_distribution: all keys present, min_freq < max_freq
 # ===========================================================================
+
 
 def test_rope_analyzer_frequency_distribution():
     analyzer = RoPEAnalyzer()
@@ -244,6 +261,7 @@ def test_rope_analyzer_frequency_distribution():
 # 14. RoPEAnalyzer.rotation_matrix: shape (D, D), near-orthogonal (|det| ≈ 1)
 # ===========================================================================
 
+
 def test_rope_analyzer_rotation_matrix():
     analyzer = RoPEAnalyzer()
     rope = RotaryEmbedding(head_dim=HEAD_DIM, base=BASE)
@@ -256,6 +274,7 @@ def test_rope_analyzer_rotation_matrix():
 # ===========================================================================
 # 15. Causal attention with RotaryEmbedding: full forward/backward pass succeeds
 # ===========================================================================
+
 
 def test_causal_attention_with_rotary_embedding_forward_backward():
     """Full forward + backward through a minimal causal self-attention block."""
@@ -280,7 +299,7 @@ def test_causal_attention_with_rotary_embedding_forward_backward():
     q_rot, k_rot = rope.forward(q, k)
 
     # Scaled dot-product with causal mask
-    scale = HEAD_DIM ** -0.5
+    scale = HEAD_DIM**-0.5
     attn_scores = (q_rot @ k_rot.transpose(-2, -1)) * scale  # (B, H, T, T)
     causal_mask = torch.triu(torch.ones(SEQ_LEN, SEQ_LEN), diagonal=1).bool()
     attn_scores = attn_scores.masked_fill(causal_mask, float("-inf"))

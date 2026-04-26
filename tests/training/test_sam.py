@@ -1,9 +1,9 @@
 """Tests for SAM (Sharpness-Aware Minimization) optimizer in src/training/sam.py."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -16,10 +16,10 @@ from src.training.sam import (
     restore_weights,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_cfg() -> AureliusConfig:
     return AureliusConfig(
@@ -51,6 +51,7 @@ def _make_optimizer(model: nn.Module, lr: float = 1e-3) -> torch.optim.Optimizer
 # 1. SAMConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_samconfig_defaults():
     cfg = SAMConfig()
     assert cfg.rho == 0.05
@@ -68,6 +69,7 @@ def test_samconfig_custom():
 # ---------------------------------------------------------------------------
 # 2. compute_grad_norm
 # ---------------------------------------------------------------------------
+
 
 def test_compute_grad_norm_zero_when_no_grads():
     model = _make_model()
@@ -100,6 +102,7 @@ def test_compute_grad_norm_returns_float():
 # ---------------------------------------------------------------------------
 # 3. perturb_weights
 # ---------------------------------------------------------------------------
+
 
 def test_perturb_weights_stores_backup():
     model = _make_model()
@@ -159,6 +162,7 @@ def test_perturb_weights_returns_float():
 # ---------------------------------------------------------------------------
 # 4. restore_weights
 # ---------------------------------------------------------------------------
+
 
 def test_restore_weights_restores_original_values():
     model = _make_model()
@@ -223,6 +227,7 @@ def test_restore_weights_cleans_backup():
 # 5. Adaptive vs non-adaptive
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_false_works():
     model = _make_model()
     input_ids = _make_input()
@@ -264,6 +269,7 @@ def test_adaptive_true_works():
 # ---------------------------------------------------------------------------
 # 6. SAMOptimizer
 # ---------------------------------------------------------------------------
+
 
 def test_sam_optimizer_first_step_perturbs_weights():
     model = _make_model()
@@ -341,6 +347,7 @@ def test_sam_optimizer_first_step_returns_tensor():
 # ---------------------------------------------------------------------------
 # 7. SAMTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_sam_trainer_train_step_returns_required_keys():
     model = _make_model()

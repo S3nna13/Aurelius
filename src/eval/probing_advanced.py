@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -14,7 +13,7 @@ from torch import Tensor
 class ProbingConfig:
     """Configuration for advanced probing experiments."""
 
-    probe_type: str = "linear"          # "linear" | "mlp" | "attention"
+    probe_type: str = "linear"  # "linear" | "mlp" | "attention"
     hidden_dim: int = 128
     n_layers_to_probe: list[int] | None = None  # None = all layers
     n_epochs: int = 10
@@ -73,6 +72,7 @@ def extract_layer_representations(
         def make_hook(layer_idx: int):
             def hook(module, inputs, output):
                 captured[layer_idx] = output[0].detach()
+
             return hook
 
         hooks.append(model.layers[idx].register_forward_hook(make_hook(idx)))
@@ -209,9 +209,7 @@ class MultiLayerProber:
         Returns:
             Dict mapping layer_idx -> {"train_acc": float, "probe_type": str}.
         """
-        representations = extract_layer_representations(
-            self.model, input_ids, layer_indices
-        )
+        representations = extract_layer_representations(self.model, input_ids, layer_indices)
 
         results: dict[int, dict] = {}
         for idx in layer_indices:

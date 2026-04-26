@@ -1,9 +1,10 @@
 """Tests for Spectrum SNR-based LoRA layer selection."""
-import math
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-from src.alignment.spectrum import compute_snr, SpectrumSelector, LayerSNR
+
+from src.alignment.spectrum import SpectrumSelector, compute_snr
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -11,8 +12,14 @@ from src.model.transformer import AureliusTransformer
 @pytest.fixture
 def small_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
@@ -67,7 +74,9 @@ def test_higher_snr_preferred():
 
     snr_signal = compute_snr(signal_weight)
     snr_noise = compute_snr(noise_weight)
-    assert snr_signal > snr_noise, f"Expected signal SNR {snr_signal:.3f} > noise SNR {snr_noise:.3f}"
+    assert snr_signal > snr_noise, (
+        f"Expected signal SNR {snr_signal:.3f} > noise SNR {snr_noise:.3f}"
+    )
 
 
 def test_invalid_fraction():

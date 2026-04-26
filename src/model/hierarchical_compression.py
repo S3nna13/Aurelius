@@ -1,4 +1,4 @@
-"""Hierarchical context compression: compress long sequences into summary tokens (AutoCompressor/ICAE-style)."""
+"""Hierarchical context compression: compress long sequences into summary tokens (AutoCompressor/ICAE-style)."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -27,9 +27,7 @@ class SegmentCompressor(nn.Module):
     def __init__(self, config: CompressionConfig):
         super().__init__()
         self.config = config
-        self.summary_tokens = nn.Parameter(
-            torch.randn(1, config.n_summary_tokens, config.d_model)
-        )
+        self.summary_tokens = nn.Parameter(torch.randn(1, config.n_summary_tokens, config.d_model))
         self.cross_attn = nn.MultiheadAttention(
             config.d_model,
             config.n_heads,
@@ -120,12 +118,8 @@ class CompressedContextAttention(nn.Module):
 
     def __init__(self, config: CompressionConfig):
         super().__init__()
-        self.self_attn = nn.MultiheadAttention(
-            config.d_model, config.n_heads, batch_first=True
-        )
-        self.cross_attn = nn.MultiheadAttention(
-            config.d_model, config.n_heads, batch_first=True
-        )
+        self.self_attn = nn.MultiheadAttention(config.d_model, config.n_heads, batch_first=True)
+        self.cross_attn = nn.MultiheadAttention(config.d_model, config.n_heads, batch_first=True)
         self.norm1 = nn.LayerNorm(config.d_model)
         self.norm2 = nn.LayerNorm(config.d_model)
         self.gate = nn.Parameter(torch.zeros(1))

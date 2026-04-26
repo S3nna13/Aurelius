@@ -30,18 +30,19 @@ Initialization (paper Section 3.2):
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Shared random matrix factory
 # ---------------------------------------------------------------------------
 
-def _make_shared_matrix(rows: int, cols: int, generator: Optional[torch.Generator] = None) -> torch.Tensor:
+
+def _make_shared_matrix(
+    rows: int, cols: int, generator: torch.Generator | None = None
+) -> torch.Tensor:
     """Allocate and Kaiming-uniform-initialise a frozen random matrix.
 
     The tensor is returned as a plain (non-Parameter) buffer so that it is
@@ -57,6 +58,7 @@ def _make_shared_matrix(rows: int, cols: int, generator: Optional[torch.Generato
 # ---------------------------------------------------------------------------
 # VeRALinear
 # ---------------------------------------------------------------------------
+
 
 class VeRALinear(nn.Module):
     """A linear layer augmented with VeRA adaptation.
@@ -87,8 +89,8 @@ class VeRALinear(nn.Module):
         in_features: int,
         out_features: int,
         rank: int,
-        shared_A: Optional[torch.Tensor] = None,
-        shared_B: Optional[torch.Tensor] = None,
+        shared_A: torch.Tensor | None = None,
+        shared_B: torch.Tensor | None = None,
         bias: bool = True,
     ) -> None:
         super().__init__()
@@ -97,13 +99,12 @@ class VeRALinear(nn.Module):
             raise ValueError(f"rank must be a positive integer, got {rank}")
         if rank > min(in_features, out_features):
             raise ValueError(
-                f"rank {rank} must be ≤ min(in_features={in_features}, "
-                f"out_features={out_features})"
+                f"rank {rank} must be ≤ min(in_features={in_features}, out_features={out_features})"
             )
 
-        self.in_features = in_features   # k
+        self.in_features = in_features  # k
         self.out_features = out_features  # m
-        self.rank = rank                  # r
+        self.rank = rank  # r
 
         # Base (frozen) linear — weights will be frozen when VeRAModel wraps
         # an existing nn.Linear, or kept trainable for standalone use.
@@ -117,13 +118,9 @@ class VeRALinear(nn.Module):
 
         # Validate shapes
         if shared_A.shape != (rank, in_features):
-            raise ValueError(
-                f"shared_A shape {tuple(shared_A.shape)} != ({rank}, {in_features})"
-            )
+            raise ValueError(f"shared_A shape {tuple(shared_A.shape)} != ({rank}, {in_features})")
         if shared_B.shape != (out_features, rank):
-            raise ValueError(
-                f"shared_B shape {tuple(shared_B.shape)} != ({out_features}, {rank})"
-            )
+            raise ValueError(f"shared_B shape {tuple(shared_B.shape)} != ({out_features}, {rank})")
 
         # Register as buffers so they move with .to(device) but are NOT parameters
         self.register_buffer("A", shared_A)  # r × k
@@ -132,8 +129,8 @@ class VeRALinear(nn.Module):
         # Per-layer trainable scaling vectors (paper eq. 3)
         # d_l ∈ R^r : init zeros  → initial delta = 0
         # b_l ∈ R^m : init ones
-        self.d = nn.Parameter(torch.zeros(rank))          # Λ_d diagonal
-        self.b = nn.Parameter(torch.ones(out_features))   # Λ_b diagonal
+        self.d = nn.Parameter(torch.zeros(rank))  # Λ_d diagonal
+        self.b = nn.Parameter(torch.ones(out_features))  # Λ_b diagonal
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Compute W^0(x) + b ⊙ (B (d ⊙ (A x^T)))  [row convention].
@@ -145,23 +142,21 @@ class VeRALinear(nn.Module):
         base = self.base_linear(x)
 
         # VeRA delta: x → A: (..., r)  → * d: (..., r)  → B: (..., m)  → * b
-        h = F.linear(x, self.A)          # (..., r)  — A is r×k
-        h = h * self.d                   # (..., r)  — element-wise Λ_d
-        h = F.linear(h, self.B)          # (..., m)  — B is m×r
-        h = h * self.b                   # (..., m)  — element-wise Λ_b
+        h = F.linear(x, self.A)  # (..., r)  — A is r×k
+        h = h * self.d  # (..., r)  — element-wise Λ_d
+        h = F.linear(h, self.B)  # (..., m)  — B is m×r
+        h = h * self.b  # (..., m)  — element-wise Λ_b
 
         return base + h
 
     def extra_repr(self) -> str:
-        return (
-            f"in_features={self.in_features}, out_features={self.out_features}, "
-            f"rank={self.rank}"
-        )
+        return f"in_features={self.in_features}, out_features={self.out_features}, rank={self.rank}"
 
 
 # ---------------------------------------------------------------------------
 # VeRAModel
 # ---------------------------------------------------------------------------
+
 
 class VeRAModel(nn.Module):
     """Wraps a base model replacing target nn.Linear layers with VeRALinear.
@@ -182,7 +177,7 @@ class VeRAModel(nn.Module):
     def __init__(
         self,
         base_model: nn.Module,
-        target_modules: List[str],
+        target_modules: list[str],
         rank: int,
     ) -> None:
         super().__init__()
@@ -216,20 +211,18 @@ class VeRAModel(nn.Module):
         # in_features) and a dict of B tensors keyed by out_features.
 
         # Collect targets
-        targets: List[tuple[str, nn.Linear]] = []
+        targets: list[tuple[str, nn.Linear]] = []
         for name, module in base_model.named_modules():
             if isinstance(module, nn.Linear):
                 if any(t in name for t in target_modules):
                     targets.append((name, module))
 
         if not targets:
-            raise ValueError(
-                f"No nn.Linear modules found matching target_modules={target_modules}"
-            )
+            raise ValueError(f"No nn.Linear modules found matching target_modules={target_modules}")
 
         # Build shared A (single, keyed by in_features)
-        shared_A_map: Dict[int, torch.Tensor] = {}
-        shared_B_map: Dict[tuple[int, int], torch.Tensor] = {}  # (out_features, in_features)
+        shared_A_map: dict[int, torch.Tensor] = {}
+        shared_B_map: dict[tuple[int, int], torch.Tensor] = {}  # (out_features, in_features)
 
         # Step 3: replace each target layer
         for full_name, linear_module in targets:

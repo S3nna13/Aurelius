@@ -5,6 +5,7 @@ without the full AureliusTransformer.
 
 Paper: Frankle & Carlin, arXiv:1803.03635
 """
+
 from __future__ import annotations
 
 import pytest
@@ -13,8 +14,8 @@ import torch.nn as nn
 
 from src.training.lottery_ticket import LotteryConfig, LotteryTicketPruner
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def tiny_mlp() -> nn.Module:
@@ -54,6 +55,7 @@ def pruner_with_saved(tiny_mlp) -> LotteryTicketPruner:
 
 # ── Test 1: save_initial_weights stores deep copies ───────────────────────────
 
+
 def test_save_initial_weights_deep_copy(pruner):
     """θ_0 must be independent copies, not references to live parameters."""
     pruner.save_initial_weights()
@@ -73,6 +75,7 @@ def test_save_initial_weights_deep_copy(pruner):
 
 # ── Test 2: compute_masks returns same keys as non-bias named parameters ───────
 
+
 def test_compute_masks_keys(pruner_with_saved):
     """compute_masks must return one entry per non-bias named parameter."""
     masks = pruner_with_saved.compute_masks()
@@ -86,6 +89,7 @@ def test_compute_masks_keys(pruner_with_saved):
 
 
 # ── Test 3: mask values are strictly 0 or 1 ───────────────────────────────────
+
 
 def test_compute_masks_binary(pruner_with_saved):
     """Each mask element must be exactly 0.0 or 1.0."""
@@ -101,6 +105,7 @@ def test_compute_masks_binary(pruner_with_saved):
 
 # ── Test 4: fraction of zeros ≈ pruning_rate ──────────────────────────────────
 
+
 def test_compute_masks_pruning_fraction(pruner_with_saved):
     """The fraction of zeros in returned masks must be close to pruning_rate."""
     rate = 0.20
@@ -111,12 +116,11 @@ def test_compute_masks_pruning_fraction(pruner_with_saved):
     actual_rate = zeros / total
 
     # Allow ±5 % tolerance (threshold ties can shift the count slightly).
-    assert abs(actual_rate - rate) < 0.05, (
-        f"Expected ~{rate:.0%} zeros, got {actual_rate:.2%}"
-    )
+    assert abs(actual_rate - rate) < 0.05, f"Expected ~{rate:.0%} zeros, got {actual_rate:.2%}"
 
 
 # ── Test 5: apply_masks zeros out pruned weights ──────────────────────────────
+
 
 def test_apply_masks_zeroes_weights(pruner_with_saved):
     """After apply_masks, parameters at mask==0 positions must equal 0."""
@@ -133,13 +137,11 @@ def test_apply_masks_zeroes_weights(pruner_with_saved):
 
 # ── Test 6: rewind_to_initial restores unmasked weights to θ_0 ───────────────
 
+
 def test_rewind_restores_unpruned_weights(pruner_with_saved):
     """Unmasked (kept) weights must equal θ_0 after rewind."""
     # Store θ_0 before any changes.
-    theta_0 = {
-        name: tensor.clone()
-        for name, tensor in pruner_with_saved.initial_weights.items()
-    }
+    theta_0 = {name: tensor.clone() for name, tensor in pruner_with_saved.initial_weights.items()}
 
     masks = pruner_with_saved.compute_masks()
 
@@ -160,6 +162,7 @@ def test_rewind_restores_unpruned_weights(pruner_with_saved):
 
 # ── Test 7: rewind_to_initial keeps masked weights at zero ────────────────────
 
+
 def test_rewind_keeps_pruned_zero(pruner_with_saved):
     """Pruned (mask==0) positions must stay exactly zero after rewind."""
     masks = pruner_with_saved.compute_masks()
@@ -175,15 +178,15 @@ def test_rewind_keeps_pruned_zero(pruner_with_saved):
 
 # ── Test 8: sparsity is 0 before any pruning ──────────────────────────────────
 
+
 def test_sparsity_zero_before_pruning(pruner):
     """A freshly constructed pruner must report 0 % sparsity."""
     # The fixture adds a small offset so no weight is accidentally zero.
-    assert pruner.sparsity() == pytest.approx(0.0), (
-        "Expected 0 % sparsity on untouched model"
-    )
+    assert pruner.sparsity() == pytest.approx(0.0), "Expected 0 % sparsity on untouched model"
 
 
 # ── Test 9: sparsity increases after run_round ────────────────────────────────
+
 
 def test_sparsity_increases_after_run_round(pruner_with_saved):
     """sparsity() must be strictly larger after run_round() than before."""
@@ -191,12 +194,11 @@ def test_sparsity_increases_after_run_round(pruner_with_saved):
     pruner_with_saved.run_round()
     after = pruner_with_saved.sparsity()
 
-    assert after > before, (
-        f"Expected sparsity to increase; before={before:.4f}, after={after:.4f}"
-    )
+    assert after > before, f"Expected sparsity to increase; before={before:.4f}, after={after:.4f}"
 
 
 # ── Test 10: global_pruning can fully prune small layers ──────────────────────
+
 
 def test_global_pruning_can_fully_prune_small_layer():
     """With global pruning and a high rate, small layers may be 100% pruned."""
@@ -205,12 +207,12 @@ def test_global_pruning_can_fully_prune_small_layer():
     # Deliberately create a model where layer A is tiny and layer B is large.
     # All weights in A are small; all weights in B are large.
     model = nn.Sequential(
-        nn.Linear(2, 2, bias=False),   # tiny: 4 weights — set to near-zero
-        nn.Linear(32, 32, bias=False), # large: 1024 weights — set to large values
+        nn.Linear(2, 2, bias=False),  # tiny: 4 weights — set to near-zero
+        nn.Linear(32, 32, bias=False),  # large: 1024 weights — set to large values
     )
     with torch.no_grad():
-        model[0].weight.data.fill_(0.001)   # all small magnitudes
-        model[1].weight.data.fill_(10.0)    # all large magnitudes
+        model[0].weight.data.fill_(0.001)  # all small magnitudes
+        model[1].weight.data.fill_(10.0)  # all large magnitudes
 
     config = LotteryConfig(pruning_rate=0.004, global_pruning=True)
     p = LotteryTicketPruner(model, config)
@@ -230,6 +232,7 @@ def test_global_pruning_can_fully_prune_small_layer():
 
 # ── Test 11: run_round increases sparsity by ≈ pruning_rate of remaining ───────
 
+
 def test_run_round_sparsity_delta(pruner_with_saved):
     """Sparsity increase per round should be ≈ pruning_rate * (1 - sparsity_before)."""
     rate = pruner_with_saved.config.pruning_rate  # 0.20
@@ -248,6 +251,7 @@ def test_run_round_sparsity_delta(pruner_with_saved):
 
 
 # ── Test 12: bias parameters are never modified ───────────────────────────────
+
 
 def test_bias_params_never_pruned(pruner_with_saved):
     """Bias parameters must be completely untouched by run_round()."""

@@ -2,25 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ReinforceConfig:
     """Hyperparameters for REINFORCE / RLOO policy gradient training."""
 
-    n_samples: int = 4          # rollouts per prompt
-    kl_coeff: float = 0.05      # KL penalty against reference model
-    gamma: float = 1.0          # discount factor (1.0 = no discount for text gen)
+    n_samples: int = 4  # rollouts per prompt
+    kl_coeff: float = 0.05  # KL penalty against reference model
+    gamma: float = 1.0  # discount factor (1.0 = no discount for text gen)
     normalize_rewards: bool = True
     max_new_tokens: int = 32
     temperature: float = 1.0
@@ -29,6 +29,7 @@ class ReinforceConfig:
 # ---------------------------------------------------------------------------
 # Core policy-gradient utilities
 # ---------------------------------------------------------------------------
+
 
 def compute_reinforce_loss(
     log_probs: Tensor,
@@ -48,8 +49,8 @@ def compute_reinforce_loss(
     if baseline is None:
         baseline = torch.zeros_like(rewards)
 
-    seq_log_probs = log_probs.sum(dim=-1)          # (B,)
-    advantages = rewards - baseline                 # (B,)
+    seq_log_probs = log_probs.sum(dim=-1)  # (B,)
+    advantages = rewards - baseline  # (B,)
     loss = -(advantages * seq_log_probs).mean()
     return loss
 
@@ -101,6 +102,7 @@ def compute_kl_penalty(
 # Rollout sampling
 # ---------------------------------------------------------------------------
 
+
 def sample_rollout(
     model,
     input_ids: Tensor,
@@ -150,13 +152,14 @@ def sample_rollout(
         cur_ids = next_token
 
     generated_ids = torch.cat(generated_ids_list, dim=1)  # (1, max_new_tokens)
-    log_probs_out = torch.cat(log_probs_list, dim=1)      # (1, max_new_tokens)
+    log_probs_out = torch.cat(log_probs_list, dim=1)  # (1, max_new_tokens)
     return generated_ids, log_probs_out
 
 
 # ---------------------------------------------------------------------------
 # ReinforceTrainer
 # ---------------------------------------------------------------------------
+
 
 class ReinforceTrainer:
     """Policy-gradient trainer using REINFORCE with RLOO baseline and KL penalty.
@@ -221,10 +224,10 @@ class ReinforceTrainer:
                 P = prompt_ids.shape[1]
                 T = gen_ids.shape[1]
                 ref_log_probs_all = F.log_softmax(ref_logits[:, :-1, :], dim=-1)  # (1, P+T-1, V)
-                ref_log_probs_gen = ref_log_probs_all[:, P - 1: P - 1 + T, :]     # (1, T, V)
-                ref_log_probs_tok = ref_log_probs_gen.gather(
-                    2, gen_ids.unsqueeze(-1)
-                ).squeeze(-1)  # (1, T)
+                ref_log_probs_gen = ref_log_probs_all[:, P - 1 : P - 1 + T, :]  # (1, T, V)
+                ref_log_probs_tok = ref_log_probs_gen.gather(2, gen_ids.unsqueeze(-1)).squeeze(
+                    -1
+                )  # (1, T)
 
             kl = compute_kl_penalty(log_probs, ref_log_probs_tok)  # (1, T)
             all_kl.append(kl)
@@ -237,10 +240,11 @@ class ReinforceTrainer:
             all_log_probs.append(log_probs)  # (1, T)
 
         # Stack across samples: (n_samples, T) and (n_samples,)
-        log_probs_batch = torch.cat(all_log_probs, dim=0)                        # (n_samples, T)
-        rewards_tensor = torch.tensor(all_rewards, dtype=torch.float32,
-                                      device=prompt_ids.device)                  # (n_samples,)
-        kl_batch = torch.cat(all_kl, dim=0)                                      # (n_samples, T)
+        log_probs_batch = torch.cat(all_log_probs, dim=0)  # (n_samples, T)
+        rewards_tensor = torch.tensor(
+            all_rewards, dtype=torch.float32, device=prompt_ids.device
+        )  # (n_samples,)
+        kl_batch = torch.cat(all_kl, dim=0)  # (n_samples, T)
 
         if cfg.normalize_rewards and cfg.n_samples > 1:
             std = rewards_tensor.std() + 1e-8

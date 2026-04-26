@@ -14,7 +14,6 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.model.multi_token_prediction_v2 import (
     MTPConfig,
     MTPDecoder,
@@ -153,9 +152,7 @@ class TestMultiTokenPredictor:
         predictor = MultiTokenPredictor(cfg)
         outputs = predictor(hidden)
         for i, out in enumerate(outputs):
-            assert out.shape == (B, T, V), (
-                f"Head {i}: expected {(B, T, V)}, got {out.shape}"
-            )
+            assert out.shape == (B, T, V), f"Head {i}: expected {(B, T, V)}, got {out.shape}"
 
     def test_trunk_is_present_when_share_trunk_true(self, cfg):
         predictor = MultiTokenPredictor(cfg)
@@ -242,9 +239,7 @@ class TestMTPDecoder:
         decoder = MTPDecoder(predictor)
         last_hidden = torch.randn(B, 1, D)
         drafts = decoder.draft_tokens(last_hidden)
-        assert drafts.shape == (B, K), (
-            f"Expected ({B}, {K}), got {drafts.shape}"
-        )
+        assert drafts.shape == (B, K), f"Expected ({B}, {K}), got {drafts.shape}"
 
     def test_draft_tokens_in_vocab_range(self, cfg):
         predictor = MultiTokenPredictor(cfg)

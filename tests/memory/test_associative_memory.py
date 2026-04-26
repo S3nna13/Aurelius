@@ -15,10 +15,10 @@ from src.memory.associative_memory import (
     Pattern,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def mem():
@@ -37,6 +37,7 @@ def mem_with_patterns():
 # ---------------------------------------------------------------------------
 # Pattern dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPattern:
     def test_pattern_creation(self):
@@ -57,6 +58,7 @@ class TestPattern:
 # ---------------------------------------------------------------------------
 # AssociativeMemory: store
 # ---------------------------------------------------------------------------
+
 
 class TestStore:
     def test_store_one_pattern(self, mem):
@@ -93,6 +95,7 @@ class TestStore:
 # ---------------------------------------------------------------------------
 # AssociativeMemory: recall
 # ---------------------------------------------------------------------------
+
 
 class TestRecall:
     def test_recall_empty_returns_empty(self, mem):
@@ -135,6 +138,7 @@ class TestRecall:
 # AssociativeMemory: forget
 # ---------------------------------------------------------------------------
 
+
 class TestForget:
     def test_forget_existing_returns_true(self, mem):
         mem.store(Pattern("x", [1.0]))
@@ -165,6 +169,7 @@ class TestForget:
 # AssociativeMemory: __len__
 # ---------------------------------------------------------------------------
 
+
 class TestLen:
     def test_len_empty(self, mem):
         assert len(mem) == 0
@@ -184,6 +189,7 @@ class TestLen:
 # ---------------------------------------------------------------------------
 # AssociativeMemory: similarity (static method)
 # ---------------------------------------------------------------------------
+
 
 class TestSimilarity:
     def test_similarity_identical_vectors_is_1(self):
@@ -220,6 +226,7 @@ class TestSimilarity:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):

@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.training.moe_load_balancer import (
-    LoadBalancerConfig,
-    compute_aux_loss,
-    compute_z_loss,
-    compute_expert_utilization,
-    RouterLinear,
     LoadBalancedMoELayer,
+    LoadBalancerConfig,
     LoadBalancerTracker,
+    RouterLinear,
+    compute_aux_loss,
+    compute_expert_utilization,
+    compute_z_loss,
 )
 
 # ---------------------------------------------------------------------------
@@ -67,7 +66,7 @@ def test_compute_aux_loss_uniform_routing_low_loss():
     # Compare against a very skewed routing
     skewed_probs = torch.zeros(N_TOKENS, N_EXPERTS)
     skewed_probs[:, 0] = 1.0  # all mass on expert 0
-    loss_skewed = compute_aux_loss(skewed_probs, expert_indices)
+    compute_aux_loss(skewed_probs, expert_indices)
 
     # Uniform should not be worse than strongly skewed
     assert loss_uniform.item() >= 0.0

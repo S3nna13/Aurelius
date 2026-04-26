@@ -1,4 +1,5 @@
 """JSONPath-like query engine for nested dict/list traversal."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

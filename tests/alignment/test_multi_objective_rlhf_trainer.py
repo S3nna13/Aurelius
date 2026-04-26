@@ -1,4 +1,5 @@
 """Tests for src/alignment/multi_objective_rlhf_trainer.py — 15 tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -49,6 +50,7 @@ def _log_probs(batch: int = 4) -> tuple[torch.Tensor, torch.Tensor]:
 # ObjectiveWeight / MOConfig
 # ---------------------------------------------------------------------------
 
+
 def test_objective_weight_fields():
     obj = ObjectiveWeight("helpfulness", 0.5)
     assert obj.name == "helpfulness"
@@ -76,6 +78,7 @@ def test_moconfig_custom():
 # ---------------------------------------------------------------------------
 # scalarize_rewards
 # ---------------------------------------------------------------------------
+
 
 def test_scalarize_returns_tensor():
     trainer = _make_trainer()
@@ -119,6 +122,7 @@ def test_scalarize_no_objectives_raises():
 # compute_advantages
 # ---------------------------------------------------------------------------
 
+
 def test_compute_advantages_shape():
     trainer = _make_trainer()
     rewards = torch.rand(6)
@@ -138,6 +142,7 @@ def test_compute_advantages_values():
 # ---------------------------------------------------------------------------
 # ppo_loss
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_loss_scalar():
     trainer = _make_trainer()
@@ -161,6 +166,7 @@ def test_ppo_loss_clipping():
 # ---------------------------------------------------------------------------
 # train_step
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_result():
     trainer = _make_trainer()
@@ -202,6 +208,7 @@ def test_train_step_weighted_reward_finite():
 # ---------------------------------------------------------------------------
 # pareto_check
 # ---------------------------------------------------------------------------
+
 
 def test_pareto_check_length():
     trainer = _make_trainer()

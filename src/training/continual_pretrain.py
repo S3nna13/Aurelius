@@ -12,17 +12,17 @@ References:
     Rolnick et al. 2019 (Experience Replay for Continual Learning)
     Vitter 1985 (Random Sampling with a Reservoir)
 """
+
 from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration dataclasses
@@ -33,8 +33,8 @@ from torch import Tensor
 class ReplayConfig:
     """Configuration for the experience replay buffer."""
 
-    buffer_size: int = 1000          # maximum number of sequences stored
-    replay_ratio: float = 0.3        # fraction of batch drawn from replay
+    buffer_size: int = 1000  # maximum number of sequences stored
+    replay_ratio: float = 0.3  # fraction of batch drawn from replay
     reservoir_sampling: bool = True  # use reservoir sampling when buffer is full
 
 
@@ -119,7 +119,7 @@ class ExperienceReplayBuffer:
 class DomainBatch:
     """A batch of token sequences from a single domain."""
 
-    tokens: Tensor               # shape (B, T)
+    tokens: Tensor  # shape (B, T)
     domain: str
     weights: Tensor | None = None
 
@@ -174,8 +174,8 @@ class ContinualPretrainer:
 
         # Manually compute shifted cross-entropy ignoring pad token (id=0).
         # logits: (B, T, V)  →  shift so position t predicts token t+1.
-        shift_logits = logits[:, :-1, :].contiguous()   # (B, T-1, V)
-        shift_labels = input_ids[:, 1:].contiguous()    # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
+        shift_labels = input_ids[:, 1:].contiguous()  # (B, T-1)
 
         B, T, V = shift_logits.shape
         loss = F.cross_entropy(

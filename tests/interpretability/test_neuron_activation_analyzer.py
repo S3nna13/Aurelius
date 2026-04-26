@@ -1,4 +1,5 @@
 """Tests for src/interpretability/neuron_activation_analyzer.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -6,7 +7,6 @@ import torch
 
 from src.interpretability.neuron_activation_analyzer import (
     NeuronActivationAnalyzer,
-    NeuronActivationStats,
 )
 
 
@@ -23,6 +23,7 @@ def _make_activations(batch: int = 2, seq: int = 4, d_model: int = 8) -> torch.T
 # ---------------------------------------------------------------------------
 # compute_stats
 # ---------------------------------------------------------------------------
+
 
 def test_compute_stats_returns_list(analyzer):
     acts = _make_activations()
@@ -76,6 +77,7 @@ def test_compute_stats_invalid_shape_raises(analyzer):
 # find_dead_neurons
 # ---------------------------------------------------------------------------
 
+
 def test_find_dead_neurons_returns_list(analyzer):
     acts = _make_activations()
     stats = analyzer.compute_stats(acts, layer_idx=0)
@@ -104,6 +106,7 @@ def test_find_dead_neurons_no_dead_in_normal_activations(analyzer):
 # ---------------------------------------------------------------------------
 # find_monosemantic_neurons
 # ---------------------------------------------------------------------------
+
 
 def test_find_monosemantic_returns_list(analyzer):
     acts = _make_activations()

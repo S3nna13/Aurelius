@@ -1,7 +1,6 @@
 """Scheduled sampling to reduce exposure bias during training."""
 
 import math
-from typing import Union
 
 import torch
 import torch.nn.functional as F
@@ -27,7 +26,7 @@ class ScheduledSampler:
             return max(0.0, 1.0 - step / total_steps)
 
         elif self.schedule == ScheduleType.EXPONENTIAL:
-            return float(self.k ** step)
+            return float(self.k**step)
 
         elif self.schedule == ScheduleType.SIGMOID:
             return float(self.k / (self.k + math.exp(step / 1000.0)))

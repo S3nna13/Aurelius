@@ -5,10 +5,10 @@ Arithmetic on task vectors enables capability editing, negation, and composition
 
 Reference: Ilharco et al. 2022, arXiv:2212.04089
 """
+
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -38,50 +38,39 @@ class TaskVector:
         elif pretrained is not None and finetuned is not None:
             self.vector = {
                 name: finetuned_param.data.clone() - pretrained_param.data.clone()
-                for (name, pretrained_param), (_, finetuned_param)
-                in zip(pretrained.named_parameters(), finetuned.named_parameters())
+                for (name, pretrained_param), (_, finetuned_param) in zip(
+                    pretrained.named_parameters(), finetuned.named_parameters()
+                )
             }
         else:
             raise ValueError("Must provide either (pretrained, finetuned) or vector")
 
-    def __add__(self, other: "TaskVector") -> "TaskVector":
+    def __add__(self, other: TaskVector) -> TaskVector:
         """Element-wise sum of two task vectors (for capability composition)."""
-        new_vector = {
-            name: self.vector[name] + other.vector[name]
-            for name in self.vector
-        }
+        new_vector = {name: self.vector[name] + other.vector[name] for name in self.vector}
         return TaskVector(vector=new_vector)
 
-    def __sub__(self, other: "TaskVector") -> "TaskVector":
+    def __sub__(self, other: TaskVector) -> TaskVector:
         """Element-wise difference of task vectors."""
-        new_vector = {
-            name: self.vector[name] - other.vector[name]
-            for name in self.vector
-        }
+        new_vector = {name: self.vector[name] - other.vector[name] for name in self.vector}
         return TaskVector(vector=new_vector)
 
-    def __mul__(self, scalar: float) -> "TaskVector":
+    def __mul__(self, scalar: float) -> TaskVector:
         """Scale task vector by a scalar."""
-        new_vector = {
-            name: self.vector[name] * scalar
-            for name in self.vector
-        }
+        new_vector = {name: self.vector[name] * scalar for name in self.vector}
         return TaskVector(vector=new_vector)
 
-    def __rmul__(self, scalar: float) -> "TaskVector":
+    def __rmul__(self, scalar: float) -> TaskVector:
         return self.__mul__(scalar)
 
-    def __neg__(self) -> "TaskVector":
+    def __neg__(self) -> TaskVector:
         """Negate task vector (for capability removal)."""
         return self.__mul__(-1.0)
 
     def norm(self) -> float:
         """Total L2 norm across all parameters."""
-        total_sq = sum(
-            param.float().norm().item() ** 2
-            for param in self.vector.values()
-        )
-        return total_sq ** 0.5
+        total_sq = sum(param.float().norm().item() ** 2 for param in self.vector.values())
+        return total_sq**0.5
 
     def apply(
         self,

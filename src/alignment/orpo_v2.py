@@ -18,17 +18,16 @@ Using mean log-prob as the proxy for p, the log-odds simplify to:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ORPOConfig:
@@ -39,6 +38,7 @@ class ORPOConfig:
         beta:    Label smoothing / temperature — reserved for future
                  extensions; not used in the base loss (default 0.1).
     """
+
     lambda_: float = 0.1
     beta: float = 0.1
 
@@ -46,6 +46,7 @@ class ORPOConfig:
 # ---------------------------------------------------------------------------
 # ORPOLoss
 # ---------------------------------------------------------------------------
+
 
 class ORPOLoss(nn.Module):
     """ORPO loss combining SFT NLL with a reference-free odds-ratio term.
@@ -92,7 +93,7 @@ class ORPOLoss(nn.Module):
         B, T, V = logits.shape
         # Shift: predict token t+1 from position t.
         shift_logits = logits[:, :-1, :].contiguous().view(-1, V)  # ((B*(T-1)), V)
-        shift_labels = labels[:, 1:].contiguous().view(-1)          # (B*(T-1),)
+        shift_labels = labels[:, 1:].contiguous().view(-1)  # (B*(T-1),)
 
         mask = shift_labels != -100
         if mask.sum() == 0:
@@ -126,7 +127,7 @@ class ORPOLoss(nn.Module):
         rejected_logits: Tensor,
         chosen_labels: torch.LongTensor,
         rejected_labels: torch.LongTensor,
-    ) -> Tuple[Tensor, Dict[str, Tensor]]:
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         """Compute ORPO loss.
 
         Args:
@@ -158,7 +159,7 @@ class ORPOLoss(nn.Module):
             lo_l = self.log_odds(log_p_l.detach())
             accuracy = (lo_w > lo_l).float().mean()
 
-        metrics: Dict[str, Tensor] = {
+        metrics: dict[str, Tensor] = {
             "sft_loss": l_sft.detach(),
             "odds_ratio_loss": l_or.detach(),
             "total_loss": total.detach(),
@@ -183,19 +184,17 @@ class ORPOLoss(nn.Module):
         """
         B, T, V = logits.shape
         # Shift as in causal LM: logit[t] predicts label[t+1].
-        shift_logits = logits[:, :-1, :]          # (B, T-1, V)
-        shift_labels = labels[:, 1:].clone()       # (B, T-1)
+        shift_logits = logits[:, :-1, :]  # (B, T-1, V)
+        shift_labels = labels[:, 1:].clone()  # (B, T-1)
 
         log_probs = F.log_softmax(shift_logits, dim=-1)  # (B, T-1, V)
 
         # Gather the log-prob of the actual target token.
         valid_labels = shift_labels.clone()
-        valid_labels[valid_labels == -100] = 0          # safe index; masked out below
-        per_token_lp = log_probs.gather(
-            2, valid_labels.unsqueeze(-1)
-        ).squeeze(-1)                                    # (B, T-1)
+        valid_labels[valid_labels == -100] = 0  # safe index; masked out below
+        per_token_lp = log_probs.gather(2, valid_labels.unsqueeze(-1)).squeeze(-1)  # (B, T-1)
 
-        mask = (shift_labels != -100).float()            # (B, T-1)
+        mask = (shift_labels != -100).float()  # (B, T-1)
         # Avoid division by zero for fully-masked sequences.
         denom = mask.sum(dim=1).clamp(min=1.0)
         mean_lp = (per_token_lp * mask).sum(dim=1) / denom  # (B,)
@@ -205,6 +204,7 @@ class ORPOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # ORPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class ORPOTrainer:
     """Thin training wrapper for ORPO.
@@ -258,7 +258,7 @@ class ORPOTrainer:
         rejected_logits: Tensor,
         chosen_labels: torch.LongTensor,
         rejected_labels: torch.LongTensor,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Run one ORPO optimisation step.
 
         ``chosen_logits`` **must** be the output of a forward pass through

@@ -7,8 +7,9 @@ maintaining autoregressive generation in the suffix (like GPT).
 
 from __future__ import annotations
 
-import torch
 from dataclasses import dataclass
+
+import torch
 
 
 @dataclass
@@ -17,7 +18,9 @@ class PrefixLMConfig:
 
     min_prefix_fraction: float = 0.1  # minimum prefix as fraction of sequence
     max_prefix_fraction: float = 0.9  # maximum prefix as fraction of sequence
-    mask_prefix_labels: bool = True  # if True, set prefix labels to -100 (don't compute loss on prefix)
+    mask_prefix_labels: bool = (
+        True  # if True, set prefix labels to -100 (don't compute loss on prefix)
+    )
 
 
 def make_prefix_lm_mask(seq_len: int, prefix_len: int) -> torch.Tensor:

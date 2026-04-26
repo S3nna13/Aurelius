@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tokenizers import Tokenizer, models, pre_tokenizers, trainers, decoders, processors
+from tokenizers import Tokenizer, decoders, models, pre_tokenizers, processors, trainers
 from tokenizers.normalizers import NFC
 
 if TYPE_CHECKING:
@@ -30,6 +30,7 @@ def _load_dataset(*args, **kwargs):
             "The 'datasets' package is required to stream HuggingFace datasets."
         ) from exc
     return datasets_mod.load_dataset(*args, **kwargs)
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -58,20 +59,20 @@ SPECIAL_TOKENS: list[str] = [
 # shift existing IDs.  Named special tokens occupy the first len(SPECIAL_TOKENS)
 # slots; the rest are "<|reserved_N|>".
 RESERVED_TOKENS: list[str] = SPECIAL_TOKENS + [
-    f"<|reserved_{i}|>"
-    for i in range(len(SPECIAL_TOKENS), NUM_RESERVED_SPECIAL)
+    f"<|reserved_{i}|>" for i in range(len(SPECIAL_TOKENS), NUM_RESERVED_SPECIAL)
 ]
 
 # Explicit multi-space tokens for code-heavy corpora.
 MULTI_SPACE_TOKENS: list[str] = [
-    "    ",   # 4 spaces (standard indent)
-    "  ",     # 2 spaces
+    "    ",  # 4 spaces (standard indent)
+    "  ",  # 2 spaces
     "        ",  # 8 spaces (double indent)
 ]
 
 # ---------------------------------------------------------------------------
 # Tokenizer wrapper
 # ---------------------------------------------------------------------------
+
 
 class AureliusTokenizer:
     """High-level wrapper around a byte-level BPE ``Tokenizer``.
@@ -212,7 +213,7 @@ class AureliusTokenizer:
         return tok_path
 
     @classmethod
-    def load(cls, directory: str | Path) -> "AureliusTokenizer":
+    def load(cls, directory: str | Path) -> AureliusTokenizer:
         """Load a previously-saved tokenizer from *directory*."""
         directory = Path(directory)
         tok_path = directory / "tokenizer.json"
@@ -232,7 +233,7 @@ class AureliusTokenizer:
         vocab_size: int = VOCAB_SIZE,
         min_frequency: int = 2,
         show_progress: bool = True,
-    ) -> "AureliusTokenizer":
+    ) -> AureliusTokenizer:
         """Train a new byte-level BPE tokenizer from an iterator of strings.
 
         Parameters
@@ -246,7 +247,7 @@ class AureliusTokenizer:
         show_progress:
             Display a progress bar during training.
         """
-        tokenizer = Tokenizer(models.BPE(unk_token="<|unk|>"))
+        tokenizer = Tokenizer(models.BPE(unk_token="<|unk|>"))  # noqa: S106
 
         # Normalizer: NFC unicode normalisation (preserves whitespace).
         tokenizer.normalizer = NFC()
@@ -283,7 +284,8 @@ class AureliusTokenizer:
 
         instance = cls(tokenizer)
         logger.info(
-            "Training complete. Final vocab_size=%d", instance.vocab_size,
+            "Training complete. Final vocab_size=%d",
+            instance.vocab_size,
         )
         return instance
 
@@ -302,9 +304,7 @@ class AureliusTokenizer:
         try:
             return self._special_map[name]
         except KeyError:
-            raise ValueError(
-                f"Special token {name!r} not found in vocabulary"
-            ) from None
+            raise ValueError(f"Special token {name!r} not found in vocabulary") from None
 
     def __repr__(self) -> str:
         return f"AureliusTokenizer(vocab_size={self.vocab_size})"
@@ -313,6 +313,7 @@ class AureliusTokenizer:
 # ---------------------------------------------------------------------------
 # Streaming dataset helper
 # ---------------------------------------------------------------------------
+
 
 def stream_hf_dataset(
     dataset_name: str = "allenai/dolma",
@@ -358,6 +359,7 @@ def stream_hf_dataset(
 # ---------------------------------------------------------------------------
 # CLI entry-point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Train the Aurelius tokenizer from the command line."""

@@ -8,16 +8,16 @@ Each test runs at least one forward (and where required, backward) pass.
 
 import math
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.chunked_attention_v3 import (
-    ChunkedAttentionConfig,
-    ChunkedSelfAttention,
-    ChunkedCrossAttention,
-    MemoryUsageEstimator,
     ChunkedAttentionBlock,
+    ChunkedAttentionConfig,
+    ChunkedCrossAttention,
+    ChunkedSelfAttention,
+    MemoryUsageEstimator,
 )
 
 # ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ def test_causal_mask_upper_triangle_zero():
     x1 = x.clone()
     x2 = x.clone()
     # Corrupt all tokens from position SEQ//2 onward
-    x2[:, SEQ // 2:, :] = torch.randn_like(x2[:, SEQ // 2:, :]) * 10.0
+    x2[:, SEQ // 2 :, :] = torch.randn_like(x2[:, SEQ // 2 :, :]) * 10.0
 
     out1 = model(x1)
     out2 = model(x2)
@@ -246,7 +246,9 @@ def test_chunked_memory_grows_linearly():
     # chunk_attn part: chunk * T; for fixed chunk it's linear in T
     chunk_attn1 = B * H * chunk * T1 * 4
     chunk_attn2 = B * H * chunk * T2 * 4
-    assert chunk_attn2 / chunk_attn1 == pytest.approx(2.0), "Chunk attention should scale linearly with T"
+    assert chunk_attn2 / chunk_attn1 == pytest.approx(2.0), (
+        "Chunk attention should scale linearly with T"
+    )
 
     # The standard attn matrix would scale 4× — chunked is less
     std_m1 = est.standard_attn_memory(B, H, T1, Dh)
@@ -269,7 +271,9 @@ def test_memory_reduction_ratio():
 
     # chunk_size = T: chunked == standard (both materialise T*T)
     ratio_eq = est.memory_reduction(B, H, T, Dh, chunk_size=T)
-    assert ratio_eq == pytest.approx(1.0), f"Expected ratio = 1.0 for chunk_size = T, got {ratio_eq}"
+    assert ratio_eq == pytest.approx(1.0), (
+        f"Expected ratio = 1.0 for chunk_size = T, got {ratio_eq}"
+    )
 
     # Larger chunk_size -> larger ratio (less memory saving)
     ratio_mid = est.memory_reduction(B, H, T, Dh, chunk_size=16)

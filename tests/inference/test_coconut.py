@@ -2,18 +2,16 @@
 
 Tiny test config: d_model=64, n_heads=4, vocab_size=256, seq_len=16.
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 
+from src.inference import DECODER_REGISTRY
 from src.inference.coconut import (
     CoCoNut,
     CoCoNutConfig,
-    ContinuousReasoningStep,
 )
-from src.inference import DECODER_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -38,6 +36,7 @@ def make_model(**kwargs) -> CoCoNut:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = CoCoNutConfig()
     assert cfg.n_continuous_steps == 8
@@ -51,6 +50,7 @@ def test_config_defaults():
 # 2. test_reason_shape_2d
 # ---------------------------------------------------------------------------
 
+
 def test_reason_shape_2d():
     model = make_model()
     h = torch.randn(BATCH, D_MODEL)
@@ -62,6 +62,7 @@ def test_reason_shape_2d():
 # 3. test_reason_shape_3d
 # ---------------------------------------------------------------------------
 
+
 def test_reason_shape_3d():
     model = make_model()
     h = torch.randn(BATCH, SEQ_LEN, D_MODEL)
@@ -72,6 +73,7 @@ def test_reason_shape_3d():
 # ---------------------------------------------------------------------------
 # 4. test_reason_changes_hidden
 # ---------------------------------------------------------------------------
+
 
 def test_reason_changes_hidden():
     """Model must actually transform the input (not be identity)."""
@@ -88,6 +90,7 @@ def test_reason_changes_hidden():
 # 5. test_n_steps_1
 # ---------------------------------------------------------------------------
 
+
 def test_n_steps_1():
     model = make_model(n_continuous_steps=1)
     h = torch.randn(BATCH, D_MODEL)
@@ -98,6 +101,7 @@ def test_n_steps_1():
 # ---------------------------------------------------------------------------
 # 6. test_n_steps_0
 # ---------------------------------------------------------------------------
+
 
 def test_n_steps_0():
     """Zero steps: reason() must return the input tensor unchanged."""
@@ -112,6 +116,7 @@ def test_n_steps_0():
 # 7. test_reason_with_trace_length
 # ---------------------------------------------------------------------------
 
+
 def test_reason_with_trace_length():
     n = 6
     model = make_model(n_continuous_steps=n)
@@ -124,6 +129,7 @@ def test_reason_with_trace_length():
 # 8. test_reason_with_trace_shapes
 # ---------------------------------------------------------------------------
 
+
 def test_reason_with_trace_shapes():
     model = make_model(n_continuous_steps=4)
     h = torch.randn(BATCH, SEQ_LEN, D_MODEL)
@@ -135,6 +141,7 @@ def test_reason_with_trace_shapes():
 # ---------------------------------------------------------------------------
 # 9. test_reason_with_trace_final
 # ---------------------------------------------------------------------------
+
 
 def test_reason_with_trace_final():
     """The last trace entry must equal the returned final hidden state."""
@@ -150,6 +157,7 @@ def test_reason_with_trace_final():
 # 10. test_gradients_flow
 # ---------------------------------------------------------------------------
 
+
 def test_gradients_flow():
     model = make_model()
     h = torch.randn(BATCH, D_MODEL, requires_grad=True)
@@ -157,16 +165,14 @@ def test_gradients_flow():
     loss = out.sum()
     loss.backward()
     # At least one parameter in the step projections must have received a grad
-    grads = [
-        p.grad for step in model.steps for p in step.parameters()
-        if p.grad is not None
-    ]
+    grads = [p.grad for step in model.steps for p in step.parameters() if p.grad is not None]
     assert len(grads) > 0, "No gradients flowed to step parameters"
 
 
 # ---------------------------------------------------------------------------
 # 11. test_forward_alias
 # ---------------------------------------------------------------------------
+
 
 def test_forward_alias():
     """forward() must return the same result as reason() for identical input."""
@@ -183,6 +189,7 @@ def test_forward_alias():
 # 12. test_determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     """In eval mode with dropout=0, identical inputs must produce identical outputs."""
     model = make_model(dropout=0.0)
@@ -197,6 +204,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # 13. test_batch_independence
 # ---------------------------------------------------------------------------
+
 
 def test_batch_independence():
     """Output for one sample must match a single-sample batch."""
@@ -214,6 +222,7 @@ def test_batch_independence():
 # 14. test_hidden_size_override
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_size_override():
     """A different continuous_step_hidden must still produce d_model output."""
     model = make_model(continuous_step_hidden=128)
@@ -225,6 +234,7 @@ def test_hidden_size_override():
 # ---------------------------------------------------------------------------
 # 15. test_registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry():
     assert "coconut" in DECODER_REGISTRY

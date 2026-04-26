@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.inference.diffusion_lm_inference import (
     ContinuousTimeDiffusionSampler,
     DiffusionLMQualityMetrics,
-    MDLMSampler,
     MaskNoiseSchedule,
+    MDLMSampler,
 )
 
 # ---------------------------------------------------------------------------
@@ -127,6 +126,7 @@ def test_sample_shape(mdlm_sampler):
 
 def test_sample_no_masks_at_end(mdlm_sampler):
     """After full sampling, the output should contain no mask tokens."""
+
     # Use a model_fn that never returns mask_token_id as top token
     def no_mask_model_fn(noisy_ids: torch.Tensor, t) -> torch.Tensor:  # noqa: ANN001
         B, T = noisy_ids.shape
@@ -136,9 +136,7 @@ def test_sample_no_masks_at_end(mdlm_sampler):
         return logits
 
     sched = MaskNoiseSchedule(n_steps=N_STEPS, mask_token_id=MASK_TOKEN_ID)
-    sampler = MDLMSampler(
-        model_fn=no_mask_model_fn, schedule=sched, vocab_size=VOCAB_SIZE
-    )
+    sampler = MDLMSampler(model_fn=no_mask_model_fn, schedule=sched, vocab_size=VOCAB_SIZE)
     result = sampler.sample(BATCH_SIZE, SEQ_LEN, n_steps=N_STEPS)
     assert (result != MASK_TOKEN_ID).all(), "Output still contains mask tokens"
 

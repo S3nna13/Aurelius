@@ -1,4 +1,5 @@
 """Vocabulary expansion: add new tokens to a trained model while preserving existing embeddings."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,10 +13,11 @@ from torch import Tensor
 @dataclass
 class VocabExpansionConfig:
     """Configuration for vocabulary expansion during continual learning."""
-    init_strategy: str = "mean"       # "mean" | "random" | "similar_token" | "zeros"
-    freeze_existing: bool = True      # freeze original token embeddings during fine-tuning
+
+    init_strategy: str = "mean"  # "mean" | "random" | "similar_token" | "zeros"
+    freeze_existing: bool = True  # freeze original token embeddings during fine-tuning
     new_token_lr_scale: float = 10.0  # scale LR for new tokens vs. existing
-    n_init_similar_tokens: int = 5    # for "similar_token": average N most similar existing tokens
+    n_init_similar_tokens: int = 5  # for "similar_token": average N most similar existing tokens
 
 
 def _init_new_rows(
@@ -248,6 +250,7 @@ class VocabExpander:
                     masked[:size] = 0.0
                     return masked
                 return grad
+
             return hook
 
         model = self.model
@@ -301,9 +304,7 @@ class VocabExpander:
                 new_token_params.append(lm_weight)
                 new_token_param_ids.add(id(lm_weight))
 
-        existing_params = [
-            p for p in all_params if id(p) not in new_token_param_ids
-        ]
+        existing_params = [p for p in all_params if id(p) not in new_token_param_ids]
 
         return [
             {"params": existing_params, "lr": base_lr},

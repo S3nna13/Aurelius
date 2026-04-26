@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
-
 from aurelius.model.hyper_attention import (
     HammingLSH,
     HyperAttention,

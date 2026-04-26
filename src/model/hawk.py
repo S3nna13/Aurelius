@@ -34,7 +34,6 @@ stateful (streaming / cached) inference.
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -43,10 +42,10 @@ from torch import Tensor
 
 from .rms_norm import RMSNorm
 
-
 # ---------------------------------------------------------------------------
 # RG-LRU: Real-Gated Linear Recurrence Unit
 # ---------------------------------------------------------------------------
+
 
 class RGLRU(nn.Module):
     """Real-Gated Linear Recurrence Unit — the core of Hawk.
@@ -71,16 +70,14 @@ class RGLRU(nn.Module):
         # a_t = exp(-8 * softplus(Λ) * r_t); softplus(Λ) > 0 → a_t ∈ (0,1).
         # We initialise Λ with log-spaced values so channels have diverse
         # decay timescales at start of training.
-        lambda_init = torch.linspace(
-            math.log(0.01), math.log(0.99), d_model
-        )  # log-spaced decay
+        lambda_init = torch.linspace(math.log(0.01), math.log(0.99), d_model)  # log-spaced decay
         self.Lambda = nn.Parameter(lambda_init)
 
     def forward(
         self,
         x: Tensor,
-        h0: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        h0: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
         """Scan x over time and return (outputs, h_T).
 
         Args:
@@ -98,25 +95,23 @@ class RGLRU(nn.Module):
         else:
             h = h0
 
-        outputs: List[Tensor] = []
+        outputs: list[Tensor] = []
 
         for t in range(T):
-            x_t = x[:, t, :]                          # (B, D)
+            x_t = x[:, t, :]  # (B, D)
 
-            r_t = torch.sigmoid(self.W_r(x_t))        # (B, D) recurrence gate
-            i_t = torch.sigmoid(self.W_i(x_t))        # (B, D) input gate
+            r_t = torch.sigmoid(self.W_r(x_t))  # (B, D) recurrence gate
+            i_t = torch.sigmoid(self.W_i(x_t))  # (B, D) input gate
 
             # a_t = exp(-8 * softplus(Λ) * r_t) ∈ (0, 1)
             # softplus ensures the argument to exp is always negative.
-            decay = 8.0 * F.softplus(self.Lambda)     # (D,) positive
-            a_t = torch.exp(-decay * r_t)             # (B, D), a_t ∈ (0,1)
+            decay = 8.0 * F.softplus(self.Lambda)  # (D,) positive
+            a_t = torch.exp(-decay * r_t)  # (B, D), a_t ∈ (0,1)
 
             # Variance-preserving state update
             # sqrt(1 - a²) factor keeps output variance ≈ 1 when x has unit var
-            scale = torch.sqrt(
-                torch.clamp(1.0 - a_t * a_t, min=0.0)
-            )                                          # (B, D)
-            h = a_t * h + scale * (i_t * x_t)        # (B, D)
+            scale = torch.sqrt(torch.clamp(1.0 - a_t * a_t, min=0.0))  # (B, D)
+            h = a_t * h + scale * (i_t * x_t)  # (B, D)
 
             outputs.append(h)
 
@@ -128,6 +123,7 @@ class RGLRU(nn.Module):
 # ---------------------------------------------------------------------------
 # Hawk Block
 # ---------------------------------------------------------------------------
+
 
 class HawkBlock(nn.Module):
     """A single Hawk recurrence block.
@@ -154,8 +150,8 @@ class HawkBlock(nn.Module):
     def forward(
         self,
         x: Tensor,
-        h0: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        h0: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
         """
         Args:
             x:  (B, T, d_model)
@@ -166,15 +162,15 @@ class HawkBlock(nn.Module):
             h_T: (B, d_model)
         """
         residual = x
-        normed = self.norm(x)                                   # (B, T, D)
+        normed = self.norm(x)  # (B, T, D)
 
-        projected = self.in_proj(normed)                        # (B, T, 2D)
-        x_proj, gate = projected.chunk(2, dim=-1)               # each (B, T, D)
+        projected = self.in_proj(normed)  # (B, T, 2D)
+        x_proj, gate = projected.chunk(2, dim=-1)  # each (B, T, D)
 
-        y, h_T = self.rglru(x_proj, h0=h0)                     # (B, T, D), (B, D)
+        y, h_T = self.rglru(x_proj, h0=h0)  # (B, T, D), (B, D)
 
-        gate_out = F.silu(gate) * y                             # (B, T, D)
-        out = self.out_proj(gate_out)                           # (B, T, D)
+        gate_out = F.silu(gate) * y  # (B, T, D)
+        out = self.out_proj(gate_out)  # (B, T, D)
 
         return residual + out, h_T
 
@@ -182,6 +178,7 @@ class HawkBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Hawk Model
 # ---------------------------------------------------------------------------
+
 
 class HawkModel(nn.Module):
     """Hawk: stacked RG-LRU blocks (pure recurrence, no attention).
@@ -204,7 +201,7 @@ class HawkModel(nn.Module):
         self,
         d_model: int,
         n_layers: int,
-        d_state: Optional[int] = None,
+        d_state: int | None = None,
     ) -> None:
         super().__init__()
         if d_state is not None and d_state != d_model:
@@ -216,15 +213,13 @@ class HawkModel(nn.Module):
         self.n_layers = n_layers
         self.d_state = d_model  # hidden state dimension equals d_model
 
-        self.layers = nn.ModuleList(
-            [HawkBlock(d_model) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([HawkBlock(d_model) for _ in range(n_layers)])
 
     def forward(
         self,
         x: Tensor,
-        hidden_states: Optional[List[Tensor]] = None,
-    ) -> Tuple[Tensor, List[Tensor]]:
+        hidden_states: list[Tensor] | None = None,
+    ) -> tuple[Tensor, list[Tensor]]:
         """
         Args:
             x:             (B, T, d_model) input tensor.
@@ -239,11 +234,10 @@ class HawkModel(nn.Module):
             hidden_states = [None] * self.n_layers  # type: ignore[list-item]
         elif len(hidden_states) != self.n_layers:
             raise ValueError(
-                f"Expected hidden_states of length {self.n_layers}, "
-                f"got {len(hidden_states)}."
+                f"Expected hidden_states of length {self.n_layers}, got {len(hidden_states)}."
             )
 
-        new_hidden_states: List[Tensor] = []
+        new_hidden_states: list[Tensor] = []
         h = x
         for layer, h0 in zip(self.layers, hidden_states):
             h, h_T = layer(h, h0=h0)

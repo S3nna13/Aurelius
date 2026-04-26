@@ -1,15 +1,16 @@
 """Tests for src/data/coreset_selection.py."""
 
-import torch
 import pytest
+import torch
+
 from src.data.coreset_selection import (
     CoresetConfig,
-    pairwise_cosine_sim,
-    pairwise_l2,
+    CoresetSelector,
     greedy_coreset,
     kcenter_coreset,
+    pairwise_cosine_sim,
+    pairwise_l2,
     random_coreset,
-    CoresetSelector,
 )
 
 # ---------------------------------------------------------------------------
@@ -29,6 +30,7 @@ def embeddings():
 # CoresetConfig
 # ---------------------------------------------------------------------------
 
+
 def test_coreset_config_defaults():
     cfg = CoresetConfig()
     assert cfg.n_select == 100
@@ -40,6 +42,7 @@ def test_coreset_config_defaults():
 # ---------------------------------------------------------------------------
 # pairwise_cosine_sim
 # ---------------------------------------------------------------------------
+
 
 def test_pairwise_cosine_sim_shape():
     M, N2 = 7, 11
@@ -70,6 +73,7 @@ def test_pairwise_cosine_sim_orthogonal_vectors():
 # pairwise_l2
 # ---------------------------------------------------------------------------
 
+
 def test_pairwise_l2_shape():
     M, N2 = 5, 9
     a = torch.randn(M, D)
@@ -90,6 +94,7 @@ def test_pairwise_l2_identical_points():
 # greedy_coreset
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_coreset_returns_correct_shape(embeddings):
     idx = greedy_coreset(embeddings, K)
     assert idx.shape == (K,)
@@ -109,6 +114,7 @@ def test_greedy_coreset_indices_in_valid_range(embeddings):
 # kcenter_coreset
 # ---------------------------------------------------------------------------
 
+
 def test_kcenter_coreset_returns_correct_shape(embeddings):
     idx = kcenter_coreset(embeddings, K)
     assert idx.shape == (K,)
@@ -122,6 +128,7 @@ def test_kcenter_coreset_indices_unique(embeddings):
 # ---------------------------------------------------------------------------
 # random_coreset
 # ---------------------------------------------------------------------------
+
 
 def test_random_coreset_returns_unique_indices(embeddings):
     idx = random_coreset(embeddings, K, seed=42)
@@ -137,6 +144,7 @@ def test_random_coreset_seed_reproducible(embeddings):
 # ---------------------------------------------------------------------------
 # CoresetSelector
 # ---------------------------------------------------------------------------
+
 
 def test_coreset_selector_select_returns_correct_count(embeddings):
     cfg = CoresetConfig(n_select=K, method="greedy")

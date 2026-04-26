@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 import time
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass
+
 
 @dataclass
 class RateLimitResult:
     allowed: bool
     retry_after: float = 0.0
+
 
 class ToolRateLimiter:
     def __init__(self, max_calls: int = 60, window: float = 60.0) -> None:
@@ -28,5 +31,6 @@ class ToolRateLimiter:
         now = time.monotonic()
         active = [t for t in calls if now - t < self.window]
         return {"calls": len(active), "remaining": max(0, self.max_calls - len(active))}
+
 
 TOOL_RATE_LIMITER = ToolRateLimiter()

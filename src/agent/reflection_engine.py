@@ -7,47 +7,49 @@ future behavior, goal alignment, efficiency, safety, and coherence.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class ReflectionType(Enum):
-    SELF_CRITIQUE   = "self_critique"
-    GOAL_ALIGNMENT  = "goal_alignment"
-    EFFICIENCY      = "efficiency"
-    SAFETY          = "safety"
-    COHERENCE       = "coherence"
+    SELF_CRITIQUE = "self_critique"
+    GOAL_ALIGNMENT = "goal_alignment"
+    EFFICIENCY = "efficiency"
+    SAFETY = "safety"
+    COHERENCE = "coherence"
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Reflection:
     """Immutable result of a single reflection pass."""
-    reflection_id:  str
+
+    reflection_id: str
     reflection_type: ReflectionType
-    input_summary:  str
-    critique:       str
-    suggestions:    list[str]
-    confidence:     float
+    input_summary: str
+    critique: str
+    suggestions: list[str]
+    confidence: float
 
     @classmethod
     def create(
         cls,
         reflection_type: ReflectionType,
-        input_summary:   str,
-        critique:        str,
-        suggestions:     list[str],
-        confidence:      float,
-        reflection_id:   str | None = None,
-    ) -> "Reflection":
+        input_summary: str,
+        critique: str,
+        suggestions: list[str],
+        confidence: float,
+        reflection_id: str | None = None,
+    ) -> Reflection:
         """Factory that auto-generates reflection_id when not provided."""
         rid = reflection_id if reflection_id is not None else uuid.uuid4().hex[:8]
         return cls(
@@ -63,6 +65,7 @@ class Reflection:
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
+
 
 class ReflectionEngine:
     """Produce rule-based reflections over past agent actions."""
@@ -98,8 +101,7 @@ class ReflectionEngine:
         if reflection_type is ReflectionType.SELF_CRITIQUE:
             critique = f"Completed {n} actions. Review for redundancy."
             suggestions = (
-                ["Consolidate duplicate steps"] if n > 5
-                else ["Continue current approach"]
+                ["Consolidate duplicate steps"] if n > 5 else ["Continue current approach"]
             )
 
         elif reflection_type is ReflectionType.GOAL_ALIGNMENT:

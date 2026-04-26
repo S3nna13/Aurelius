@@ -16,13 +16,11 @@ Reference design motivation:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Small building-block helpers (no external project imports needed)
@@ -47,7 +45,7 @@ class _MultiHeadSelfAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.scale = math.sqrt(self.head_dim)
@@ -109,9 +107,7 @@ class RecursionDepthRouter(nn.Module):
         self.proj = nn.Linear(d_model, max_depth, bias=True)
 
     # ------------------------------------------------------------------
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Predict per-token recursion depths.
 
         Args:
@@ -207,7 +203,7 @@ class RecursiveTransformerBlock(nn.Module):
         self,
         x: torch.Tensor,
         depths: torch.Tensor,
-        probs: Optional[torch.Tensor] = None,
+        probs: torch.Tensor | None = None,
         mode: str = "soft",
     ) -> torch.Tensor:
         """Apply variable depths per token.
@@ -236,9 +232,7 @@ class RecursiveTransformerBlock(nn.Module):
             return self._soft_apply(x, probs)
         return self._hard_apply(x, depths)
 
-    def _soft_apply(
-        self, x: torch.Tensor, probs: torch.Tensor
-    ) -> torch.Tensor:
+    def _soft_apply(self, x: torch.Tensor, probs: torch.Tensor) -> torch.Tensor:
         """Weighted combination across all depth levels.
 
         Computes hidden states h_d for d = 1 … max_depth, then returns
@@ -253,17 +247,15 @@ class RecursiveTransformerBlock(nn.Module):
             outputs.append(cur)  # depth d+1 output
 
         # Stack: (max_depth, B, T, C) → (B, T, max_depth, C)
-        stacked = torch.stack(outputs, dim=0)        # (max_depth, B, T, C)
-        stacked = stacked.permute(1, 2, 0, 3)        # (B, T, max_depth, C)
+        stacked = torch.stack(outputs, dim=0)  # (max_depth, B, T, C)
+        stacked = stacked.permute(1, 2, 0, 3)  # (B, T, max_depth, C)
 
         # probs: (B, T, max_depth, 1) for broadcasting
-        weights = probs.unsqueeze(-1)                # (B, T, max_depth, 1)
-        out = (stacked * weights).sum(dim=2)          # (B, T, C)
+        weights = probs.unsqueeze(-1)  # (B, T, max_depth, 1)
+        out = (stacked * weights).sum(dim=2)  # (B, T, C)
         return out
 
-    def _hard_apply(
-        self, x: torch.Tensor, depths: torch.Tensor
-    ) -> torch.Tensor:
+    def _hard_apply(self, x: torch.Tensor, depths: torch.Tensor) -> torch.Tensor:
         """Apply a different number of recursions per token.
 
         Tokens with the same depth are batched together for efficiency.
@@ -276,19 +268,19 @@ class RecursiveTransformerBlock(nn.Module):
             d = int(d)
             # depth index d means we apply (d+1) times
             n_apps = max(1, d + 1)
-            mask = (depths == d)  # (B, T) bool
+            mask = depths == d  # (B, T) bool
 
             if mask.any():
                 # Gather tokens at this depth, apply, scatter back
                 # We need to handle each (b, t) independently — flatten to
                 # (N, 1, C) where N = number of matching (b,t) pairs
-                flat_mask = mask.view(-1)               # (B*T,)
-                flat_x = x.view(B * T, C)               # (B*T, C)
-                selected = flat_x[flat_mask]             # (N, C)
-                selected = selected.unsqueeze(1)          # (N, 1, C)
+                flat_mask = mask.view(-1)  # (B*T,)
+                flat_x = x.view(B * T, C)  # (B*T, C)
+                selected = flat_x[flat_mask]  # (N, C)
+                selected = selected.unsqueeze(1)  # (N, 1, C)
 
                 applied = self.apply_n_times(selected, n_apps)  # (N, 1, C)
-                applied = applied.squeeze(1)              # (N, C)
+                applied = applied.squeeze(1)  # (N, C)
 
                 flat_out = out.view(B * T, C)
                 flat_out[flat_mask] = applied
@@ -301,7 +293,7 @@ class RecursiveTransformerBlock(nn.Module):
         self,
         x: torch.Tensor,
         depths: torch.Tensor,
-        probs: Optional[torch.Tensor] = None,
+        probs: torch.Tensor | None = None,
         mode: str = "soft",
     ) -> torch.Tensor:
         """Forward pass with per-token depth routing.
@@ -335,9 +327,7 @@ class MixtureOfRecursionsLayer(nn.Module):
         max_depth: Maximum recursion depth.
     """
 
-    def __init__(
-        self, d_model: int, n_heads: int, max_depth: int = 4
-    ) -> None:
+    def __init__(self, d_model: int, n_heads: int, max_depth: int = 4) -> None:
         super().__init__()
         self.max_depth = max_depth
         self.router = RecursionDepthRouter(d_model, max_depth)
@@ -357,13 +347,11 @@ class MixtureOfRecursionsLayer(nn.Module):
         Returns:
             Scalar tensor in ``[0, 1]``.
         """
-        exp_depth = self.router.expected_depth(probs)   # (B, T)
+        exp_depth = self.router.expected_depth(probs)  # (B, T)
         return exp_depth.mean() / (self.max_depth - 1 + 1e-8)
 
     # ------------------------------------------------------------------
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply router then recursive block.
 
         Args:
@@ -414,10 +402,7 @@ class MoRLanguageModel(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.layers = nn.ModuleList(
-            [
-                MixtureOfRecursionsLayer(d_model, n_heads, max_depth)
-                for _ in range(n_layers)
-            ]
+            [MixtureOfRecursionsLayer(d_model, n_heads, max_depth) for _ in range(n_layers)]
         )
         self.norm = _RMSNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
@@ -435,9 +420,7 @@ class MoRLanguageModel(nn.Module):
                 nn.init.normal_(module.weight, std=0.02)
 
     # ------------------------------------------------------------------
-    def forward(
-        self, input_ids: torch.Tensor
-    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
+    def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """Run forward pass through all MoR layers.
 
         Args:
@@ -448,7 +431,7 @@ class MoRLanguageModel(nn.Module):
             depth_info: List of length ``n_layers``, each entry is
                         ``(B, T, max_depth)`` depth probability tensors.
         """
-        x = self.embedding(input_ids)       # (B, T, d_model)
+        x = self.embedding(input_ids)  # (B, T, d_model)
         depth_info: list[torch.Tensor] = []
 
         for layer in self.layers:
@@ -456,7 +439,7 @@ class MoRLanguageModel(nn.Module):
             depth_info.append(probs)
 
         x = self.norm(x)
-        logits = self.lm_head(x)            # (B, T, vocab_size)
+        logits = self.lm_head(x)  # (B, T, vocab_size)
         return logits, depth_info
 
     # ------------------------------------------------------------------
@@ -479,11 +462,11 @@ class MoRLanguageModel(nn.Module):
             lm_loss:    Scalar cross-entropy loss.
             reg_loss:   Scalar depth regularisation loss.
         """
-        logits, depth_info = self(input_ids)   # (B, T, vocab), list of probs
+        logits, depth_info = self(input_ids)  # (B, T, vocab), list of probs
 
         # Shift for next-token prediction
-        shift_logits = logits[:, :-1, :].contiguous()    # (B, T-1, vocab)
-        shift_labels = input_ids[:, 1:].contiguous()     # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, vocab)
+        shift_labels = input_ids[:, 1:].contiguous()  # (B, T-1)
         lm_loss = F.cross_entropy(
             shift_logits.view(-1, self.vocab_size),
             shift_labels.view(-1),
@@ -493,7 +476,7 @@ class MoRLanguageModel(nn.Module):
         reg_losses: list[torch.Tensor] = []
         for layer_idx, probs in enumerate(depth_info):
             layer_module = self.layers[layer_idx]
-            assert isinstance(layer_module, MixtureOfRecursionsLayer)
+            assert isinstance(layer_module, MixtureOfRecursionsLayer)  # noqa: S101
             reg_losses.append(layer_module.depth_regularizer_loss(probs))
 
         reg_loss = torch.stack(reg_losses).mean()
@@ -536,17 +519,13 @@ class RecursionAnalyzer:
         for layer_idx in range(n_layers):
             depths_this_layer: list[torch.Tensor] = []
             for step_info in depth_infos:
-                probs = step_info[layer_idx]             # (B, T, max_depth)
+                probs = step_info[layer_idx]  # (B, T, max_depth)
                 max_depth = probs.shape[-1]
-                depth_vals = torch.arange(
-                    max_depth, dtype=probs.dtype, device=probs.device
-                )
+                depth_vals = torch.arange(max_depth, dtype=probs.dtype, device=probs.device)
                 exp_d = (probs * depth_vals).sum(dim=-1)  # (B, T)
                 depths_this_layer.append(exp_d.mean())
 
-            layer_means.append(
-                float(torch.stack(depths_this_layer).mean().item())
-            )
+            layer_means.append(float(torch.stack(depths_this_layer).mean().item()))
 
         return layer_means
 
@@ -563,7 +542,7 @@ class RecursionAnalyzer:
             Dictionary mapping depth index → fraction of tokens (sums to 1).
         """
         B, T, max_depth = probs.shape
-        depths = probs.argmax(dim=-1).view(-1)   # (B*T,)
+        depths = probs.argmax(dim=-1).view(-1)  # (B*T,)
         total = float(depths.numel())
         histogram: dict[int, float] = {}
         for d in range(max_depth):

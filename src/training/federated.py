@@ -1,38 +1,38 @@
-"""Federated learning simulation: FedAvg with differential privacy noise, client drift correction."""
+"""Federated learning simulation: FedAvg with differential privacy noise, client drift correction."""  # noqa: E501
 
 from __future__ import annotations
 
 import copy
 import random
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FederatedConfig:
     """Configuration for federated learning simulation with differential privacy."""
 
     n_clients: int = 10
-    fraction_clients: float = 0.3   # fraction selected per round
-    local_steps: int = 5            # local SGD steps per client
+    fraction_clients: float = 0.3  # fraction selected per round
+    local_steps: int = 5  # local SGD steps per client
     local_lr: float = 1e-3
-    noise_multiplier: float = 1.0   # DP Gaussian noise sigma
-    clip_norm: float = 1.0          # DP gradient clipping norm
-    aggregation: str = "fedavg"     # "fedavg" | "fedprox" | "scaffold"
-    mu: float = 0.01                # FedProx proximal term coefficient
+    noise_multiplier: float = 1.0  # DP Gaussian noise sigma
+    clip_norm: float = 1.0  # DP gradient clipping norm
+    aggregation: str = "fedavg"  # "fedavg" | "fedprox" | "scaffold"
+    mu: float = 0.01  # FedProx proximal term coefficient
 
 
 # ---------------------------------------------------------------------------
 # Differential Privacy utilities
 # ---------------------------------------------------------------------------
+
 
 def clip_gradients_dp(model: nn.Module, clip_norm: float) -> None:
     """Clip per-sample gradient norm to clip_norm (simulated as global grad-norm clip).
@@ -75,10 +75,11 @@ def add_dp_noise(
 # Aggregation
 # ---------------------------------------------------------------------------
 
+
 def fedavg_aggregate(
     global_params: dict[str, Tensor],
     client_params_list: list[dict[str, Tensor]],
-    weights: Optional[list[float]] = None,
+    weights: list[float] | None = None,
 ) -> dict[str, Tensor]:
     """Weighted average of client parameters (FedAvg).
 
@@ -103,9 +104,7 @@ def fedavg_aggregate(
     aggregated: dict[str, Tensor] = {}
     keys = list(client_params_list[0].keys())
     for key in keys:
-        stacked = torch.stack(
-            [client_params_list[i][key].float() * w[i] for i in range(n)]
-        )
+        stacked = torch.stack([client_params_list[i][key].float() * w[i] for i in range(n)])
         aggregated[key] = stacked.sum(dim=0).to(client_params_list[0][key].dtype)
 
     return aggregated
@@ -114,6 +113,7 @@ def fedavg_aggregate(
 # ---------------------------------------------------------------------------
 # FedProx proximal term
 # ---------------------------------------------------------------------------
+
 
 def fedprox_loss(
     model_params: dict[str, Tensor],
@@ -144,6 +144,7 @@ def fedprox_loss(
 # ---------------------------------------------------------------------------
 # ClientSimulator
 # ---------------------------------------------------------------------------
+
 
 class ClientSimulator:
     """Simulates a single federated learning client with DP training."""
@@ -228,7 +229,7 @@ class ClientSimulator:
         Args:
             params: Dict mapping parameter names to tensors.
         """
-        state_dict = self.model.state_dict()
+        self.model.state_dict()
         with torch.no_grad():
             for name, param in self.model.named_parameters():
                 if name in params:
@@ -238,6 +239,7 @@ class ClientSimulator:
 # ---------------------------------------------------------------------------
 # FederatedTrainer
 # ---------------------------------------------------------------------------
+
 
 class FederatedTrainer:
     """Coordinates federated training rounds with client selection and DP aggregation."""

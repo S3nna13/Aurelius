@@ -13,10 +13,9 @@ Pure PyTorch -- no HuggingFace dependency.
 
 from __future__ import annotations
 
-import copy
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -29,21 +28,23 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class IterativeDPOConfig:
     """Configuration for Iterative DPO training."""
 
-    beta: float = 0.1                   # KL penalty coefficient
-    n_iterations: int = 3               # number of outer DPO iterations
-    n_samples_per_prompt: int = 4       # responses sampled per prompt per iteration
-    reward_threshold: float = 0.0       # minimum reward margin to form a pair
-    max_new_tokens: int = 64            # max tokens generated per response
-    update_ref_every_n_iters: int = 1   # how often to update the reference policy
+    beta: float = 0.1  # KL penalty coefficient
+    n_iterations: int = 3  # number of outer DPO iterations
+    n_samples_per_prompt: int = 4  # responses sampled per prompt per iteration
+    reward_threshold: float = 0.0  # minimum reward margin to form a pair
+    max_new_tokens: int = 64  # max tokens generated per response
+    update_ref_every_n_iters: int = 1  # how often to update the reference policy
 
 
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class IterationResult:
@@ -59,6 +60,7 @@ class IterationResult:
 # ---------------------------------------------------------------------------
 # IterativeDPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class IterativeDPOTrainer:
     """Iterative DPO trainer: repeatedly samples from the current policy, scores
@@ -80,7 +82,7 @@ class IterativeDPOTrainer:
         ref_policy: nn.Module,
         reward_fn: Callable[[torch.Tensor], float],
         beta: float = 0.1,
-        config: Optional[IterativeDPOConfig] = None,
+        config: IterativeDPOConfig | None = None,
     ) -> None:
         self.policy = policy
         self.ref_policy = ref_policy
@@ -104,7 +106,7 @@ class IterativeDPOTrainer:
         prompt_ids: torch.Tensor,
         n_samples: int,
         max_new_tokens: int = 64,
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         """Sample n_samples responses from the current policy.
 
         Args:
@@ -116,20 +118,20 @@ class IterativeDPOTrainer:
             List of n_samples response tensors, each shape (max_new_tokens,).
         """
         self.policy.eval()
-        responses: List[torch.Tensor] = []
+        responses: list[torch.Tensor] = []
 
         with torch.no_grad():
             for _ in range(n_samples):
                 current = prompt_ids.clone()  # (1, prompt_len)
-                generated: List[torch.Tensor] = []
+                generated: list[torch.Tensor] = []
 
                 for _ in range(max_new_tokens):
                     _, logits, _ = self.policy(current)  # (1, seq, vocab)
-                    next_logits = logits[:, -1, :]        # (1, vocab)
+                    next_logits = logits[:, -1, :]  # (1, vocab)
                     log_p = F.log_softmax(next_logits, dim=-1)
                     probs = log_p.exp()
                     next_token = torch.multinomial(probs, num_samples=1)  # (1, 1)
-                    generated.append(next_token[0])   # (1,)
+                    generated.append(next_token[0])  # (1,)
                     current = torch.cat([current, next_token], dim=1)
 
                 resp = torch.cat(generated, dim=0)  # (max_new_tokens,)
@@ -145,9 +147,9 @@ class IterativeDPOTrainer:
     def create_preference_pairs(
         self,
         prompt_ids: torch.Tensor,
-        responses: List[torch.Tensor],
+        responses: list[torch.Tensor],
         rewards: torch.Tensor,
-    ) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, torch.Tensor] | None:
         """Select the best (chosen) and worst (rejected) response by reward.
 
         Args:
@@ -201,11 +203,9 @@ class IterativeDPOTrainer:
         # Response starts at prompt_len in full_ids; in shifted view that is prompt_len-1
         resp_start = prompt_len - 1
         T = response_ids.shape[1]
-        log_probs_resp = log_probs_all[:, resp_start: resp_start + T, :]  # (1, T, vocab)
+        log_probs_resp = log_probs_all[:, resp_start : resp_start + T, :]  # (1, T, vocab)
 
-        token_lp = log_probs_resp.gather(
-            2, response_ids.unsqueeze(-1)
-        ).squeeze(-1)  # (1, T)
+        token_lp = log_probs_resp.gather(2, response_ids.unsqueeze(-1)).squeeze(-1)  # (1, T)
 
         return token_lp.sum(dim=-1).squeeze(0)  # scalar
 
@@ -214,7 +214,7 @@ class IterativeDPOTrainer:
         prompt_ids: torch.Tensor,
         chosen_ids: torch.Tensor,
         rejected_ids: torch.Tensor,
-    ) -> Tuple[torch.Tensor, dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Compute the DPO loss for a single preference pair.
 
         Args:
@@ -229,22 +229,16 @@ class IterativeDPOTrainer:
         self.policy.train()
         self.ref_policy.eval()
 
-        chosen_b = chosen_ids.unsqueeze(0)      # (1, T)
+        chosen_b = chosen_ids.unsqueeze(0)  # (1, T)
         rejected_b = rejected_ids.unsqueeze(0)  # (1, T)
 
         # Policy log probs (with gradient)
-        pi_chosen_lp = self._compute_sequence_log_probs(
-            self.policy, prompt_ids, chosen_b
-        )
-        pi_rejected_lp = self._compute_sequence_log_probs(
-            self.policy, prompt_ids, rejected_b
-        )
+        pi_chosen_lp = self._compute_sequence_log_probs(self.policy, prompt_ids, chosen_b)
+        pi_rejected_lp = self._compute_sequence_log_probs(self.policy, prompt_ids, rejected_b)
 
         # Reference log probs (no gradient)
         with torch.no_grad():
-            ref_chosen_lp = self._compute_sequence_log_probs(
-                self.ref_policy, prompt_ids, chosen_b
-            )
+            ref_chosen_lp = self._compute_sequence_log_probs(self.ref_policy, prompt_ids, chosen_b)
             ref_rejected_lp = self._compute_sequence_log_probs(
                 self.ref_policy, prompt_ids, rejected_b
             )
@@ -269,7 +263,7 @@ class IterativeDPOTrainer:
     # Single iteration
     # ------------------------------------------------------------------
 
-    def run_iteration(self, prompts: List[torch.Tensor]) -> dict:
+    def run_iteration(self, prompts: list[torch.Tensor]) -> dict:
         """Run one DPO iteration over the provided prompts.
 
         For each prompt:
@@ -284,9 +278,9 @@ class IterativeDPOTrainer:
         Returns:
             Dict with keys: mean_reward, reward_margin, n_pairs, loss.
         """
-        all_rewards: List[float] = []
-        all_margins: List[float] = []
-        all_losses: List[torch.Tensor] = []
+        all_rewards: list[float] = []
+        all_margins: list[float] = []
+        all_losses: list[torch.Tensor] = []
         n_pairs = 0
 
         cfg = self.config
@@ -319,9 +313,7 @@ class IterativeDPOTrainer:
 
         mean_reward = float(sum(all_rewards) / len(all_rewards)) if all_rewards else 0.0
         mean_margin = float(sum(all_margins) / len(all_margins)) if all_margins else 0.0
-        mean_loss = (
-            torch.stack(all_losses).mean().item() if all_losses else 0.0
-        )
+        mean_loss = torch.stack(all_losses).mean().item() if all_losses else 0.0
 
         return {
             "mean_reward": mean_reward,
@@ -334,7 +326,7 @@ class IterativeDPOTrainer:
     # Full training run
     # ------------------------------------------------------------------
 
-    def run(self, prompts: List[torch.Tensor]) -> List[dict]:
+    def run(self, prompts: list[torch.Tensor]) -> list[dict]:
         """Run n_iterations rounds of Iterative DPO.
 
         Updates the reference policy every update_ref_every_n_iters iterations.
@@ -345,7 +337,7 @@ class IterativeDPOTrainer:
         Returns:
             List of per-iteration metric dicts (length == n_iterations).
         """
-        results: List[dict] = []
+        results: list[dict] = []
 
         for i in range(self.config.n_iterations):
             logger.info("Iterative DPO -- iteration %d/%d", i + 1, self.config.n_iterations)

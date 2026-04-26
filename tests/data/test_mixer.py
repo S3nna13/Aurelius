@@ -1,7 +1,8 @@
-import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
+
 from src.data.mixer import DataMixer, LossAdaptiveMixer, MixerConfig
+
 
 def _make_loader(n: int, value: int, batch_size: int = 2) -> DataLoader:
     """Create a loader that yields tensors filled with `value`."""
@@ -9,11 +10,13 @@ def _make_loader(n: int, value: int, batch_size: int = 2) -> DataLoader:
     ds = TensorDataset(data)
     return DataLoader(ds, batch_size=batch_size, shuffle=False)
 
+
 def test_mixer_yields_batches():
     loaders = [_make_loader(10, 0), _make_loader(10, 1)]
     mixer = DataMixer(loaders, MixerConfig(weights=[0.5, 0.5]))
     batch = next(mixer)
     assert batch is not None
+
 
 def test_mixer_weights_normalized():
     loaders = [_make_loader(10, 0), _make_loader(10, 1)]
@@ -22,6 +25,7 @@ def test_mixer_weights_normalized():
     assert abs(sum(probs) - 1.0) < 1e-5
     assert abs(probs[0] - 0.2) < 0.01
     assert abs(probs[1] - 0.8) < 0.01
+
 
 def test_mixer_samples_correct_distribution():
     """With extreme weights, almost all batches should come from source 0."""
@@ -35,6 +39,7 @@ def test_mixer_samples_correct_distribution():
         counts[int(val)] += 1
     assert counts[0] > counts[1]  # source 0 dominates
 
+
 def test_mixer_resets_exhausted_loader():
     """Mixer should reset when a loader runs out."""
     loaders = [_make_loader(4, 0, batch_size=2), _make_loader(4, 1, batch_size=2)]
@@ -44,11 +49,13 @@ def test_mixer_resets_exhausted_loader():
         batch = next(mixer)
         assert batch is not None
 
+
 def test_mixer_update_weights():
     loaders = [_make_loader(10, 0), _make_loader(10, 1)]
     mixer = DataMixer(loaders, MixerConfig(weights=[0.5, 0.5]))
     mixer.update_weights([0.9, 0.1])
     assert abs(mixer.current_weights[0] - 0.9) < 0.01
+
 
 def test_mixer_temperature_flattens():
     """High temperature should make weights more uniform."""
@@ -59,6 +66,7 @@ def test_mixer_temperature_flattens():
     mixer_flat = DataMixer(loaders, cfg_flat)
     # Flat mixer should have more uniform weights
     assert mixer_flat.current_weights[0] < mixer_sharp.current_weights[0]
+
 
 def test_loss_adaptive_mixer_reweights():
     loaders = [_make_loader(10, 0), _make_loader(10, 1)]

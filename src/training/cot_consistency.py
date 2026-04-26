@@ -11,13 +11,11 @@ References:
 from __future__ import annotations
 
 from collections import Counter
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # ChainOfThoughtSampler
@@ -127,7 +125,7 @@ class AnswerExtractor:
         if sep_positions.numel() > 0:
             idx = int(sep_positions[0])
             reasoning = chain[:idx]
-            answer = chain[idx + 1:]
+            answer = chain[idx + 1 :]
             # Guard against empty answer when separator is the last token
             if answer.numel() == 0:
                 answer = chain[-1:]
@@ -320,12 +318,12 @@ class STaRTrainer:
             if seq.numel() < 2:
                 continue
 
-            inp = seq[:-1].unsqueeze(0)   # (1, T-1)
-            tgt = seq[1:]                  # (T-1,)
+            inp = seq[:-1].unsqueeze(0)  # (1, T-1)
+            tgt = seq[1:]  # (T-1,)
 
-            logits = self.model(inp)       # (1, T-1, V)
+            logits = self.model(inp)  # (1, T-1, V)
             if logits.dim() == 3:
-                logits = logits[0]         # (T-1, V)
+                logits = logits[0]  # (T-1, V)
 
             loss = F.cross_entropy(logits, tgt)
             total_loss = total_loss + loss
@@ -362,19 +360,19 @@ class STaRTrainer:
                 continue
 
             inp = seq[:-1].unsqueeze(0)  # (1, T-1)
-            tgt = seq[1:]                # (T-1,)
+            tgt = seq[1:]  # (T-1,)
 
-            logits = self.model(inp)     # (1, T-1, V)
+            logits = self.model(inp)  # (1, T-1, V)
             if logits.dim() == 3:
-                logits = logits[0]       # (T-1, V)
+                logits = logits[0]  # (T-1, V)
 
             log_p_seq = F.log_softmax(logits, dim=-1)
 
             # Isolate log-probs for generated chain tokens only
             n_prompt = input_ids.numel()
-            chain_offset = n_prompt - 1   # tgt starts at seq[1]
+            chain_offset = n_prompt - 1  # tgt starts at seq[1]
             chain_log_p = log_p_seq[chain_offset:, :]  # (chain_len, V)
-            chain_tgt = tgt[chain_offset:]              # (chain_len,)
+            chain_tgt = tgt[chain_offset:]  # (chain_len,)
 
             if chain_tgt.numel() == 0:
                 diff_log_probs.append(torch.zeros(1, device=device).squeeze())

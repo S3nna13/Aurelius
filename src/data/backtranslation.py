@@ -8,17 +8,16 @@ Generates synthetic instruction-following data by:
 Based on the Backtranslation / Self-Instruct data augmentation paradigm.
 Pure Python — no external APIs.
 """
+
 from __future__ import annotations
 
-import hashlib
-import re
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BacktranslationSample:
@@ -26,7 +25,7 @@ class BacktranslationSample:
 
     instruction: str
     response: str
-    source_text: str       # original monolingual text used as "response"
+    source_text: str  # original monolingual text used as "response"
     source_language: str = "en"
     target_language: str = "en"
     quality_score: float = 0.0
@@ -39,10 +38,10 @@ class BacktranslationConfig:
 
     source_language: str = "en"
     target_language: str = "en"
-    min_source_length: int = 20    # chars
+    min_source_length: int = 20  # chars
     max_source_length: int = 2000
     min_instruction_length: int = 10
-    dedup_threshold: float = 0.9   # ROUGE-L threshold for filtering near-duplicates
+    dedup_threshold: float = 0.9  # ROUGE-L threshold for filtering near-duplicates
     n_instructions_per_source: int = 1  # how many instructions to generate per source
     filter_low_quality: bool = True
     quality_threshold: float = 0.3
@@ -90,6 +89,7 @@ def build_backtranslation_prompt(
 # Quality scoring
 # ---------------------------------------------------------------------------
 
+
 def _word_count(text: str) -> int:
     return len(text.split())
 
@@ -102,9 +102,25 @@ def _ends_with_question_or_imperative(text: str) -> bool:
     # Check for imperative-like starters
     first_word = stripped.split()[0].lower() if stripped.split() else ""
     imperative_starters = {
-        "write", "explain", "describe", "list", "compare", "analyze",
-        "summarize", "generate", "create", "provide", "give", "what",
-        "how", "why", "when", "translate", "calculate", "find", "identify",
+        "write",
+        "explain",
+        "describe",
+        "list",
+        "compare",
+        "analyze",
+        "summarize",
+        "generate",
+        "create",
+        "provide",
+        "give",
+        "what",
+        "how",
+        "why",
+        "when",
+        "translate",
+        "calculate",
+        "find",
+        "identify",
     }
     return first_word in imperative_starters
 
@@ -156,6 +172,7 @@ def score_instruction_quality(
 # Deduplication
 # ---------------------------------------------------------------------------
 
+
 def _rouge_l_f1(hyp: str, ref: str) -> float:
     """Lightweight ROUGE-L F1 using LCS (token-level)."""
     a = hyp.lower().split()
@@ -182,9 +199,9 @@ def _rouge_l_f1(hyp: str, ref: str) -> float:
 
 
 def deduplicate_samples(
-    samples: List[BacktranslationSample],
+    samples: list[BacktranslationSample],
     threshold: float = 0.9,
-) -> List[BacktranslationSample]:
+) -> list[BacktranslationSample]:
     """Remove near-duplicate samples based on ROUGE-L of instructions.
 
     Args:
@@ -194,7 +211,7 @@ def deduplicate_samples(
     Returns:
         Deduplicated list preserving order.
     """
-    kept: List[BacktranslationSample] = []
+    kept: list[BacktranslationSample] = []
     for candidate in samples:
         is_dup = False
         for accepted in kept:
@@ -210,6 +227,7 @@ def deduplicate_samples(
 # Main pipeline
 # ---------------------------------------------------------------------------
 
+
 class BacktranslationPipeline:
     """Generate synthetic instruction-following data via backtranslation.
 
@@ -224,7 +242,7 @@ class BacktranslationPipeline:
     def __init__(
         self,
         generate_fn: Callable[[str], str],
-        config: Optional[BacktranslationConfig] = None,
+        config: BacktranslationConfig | None = None,
     ) -> None:
         self.generate_fn = generate_fn
         self.config = config or BacktranslationConfig()
@@ -242,13 +260,13 @@ class BacktranslationPipeline:
         prompt = build_backtranslation_prompt(source_text, template_idx)
         raw = self.generate_fn(prompt)
         # Clean: take first sentence/line as the instruction
-        lines = [l.strip() for l in raw.strip().split("\n") if l.strip()]
+        lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
         return lines[0] if lines else raw.strip()
 
     def process_source(
         self,
         source_text: str,
-    ) -> List[BacktranslationSample]:
+    ) -> list[BacktranslationSample]:
         """Generate BacktranslationSamples from a single source text.
 
         Returns empty list if text fails length filter.
@@ -257,7 +275,7 @@ class BacktranslationPipeline:
             return []
 
         cfg = self.config
-        samples: List[BacktranslationSample] = []
+        samples: list[BacktranslationSample] = []
 
         for i in range(cfg.n_instructions_per_source):
             instruction = self.generate_instruction(source_text, template_idx=i)
@@ -285,9 +303,9 @@ class BacktranslationPipeline:
 
     def run(
         self,
-        source_texts: List[str],
+        source_texts: list[str],
         deduplicate: bool = True,
-    ) -> List[BacktranslationSample]:
+    ) -> list[BacktranslationSample]:
         """Process all source texts and return generated samples.
 
         Args:
@@ -297,7 +315,7 @@ class BacktranslationPipeline:
         Returns:
             List of BacktranslationSample sorted by quality score descending.
         """
-        all_samples: List[BacktranslationSample] = []
+        all_samples: list[BacktranslationSample] = []
         for text in source_texts:
             all_samples.extend(self.process_source(text))
 
@@ -309,8 +327,8 @@ class BacktranslationPipeline:
 
     def get_stats(
         self,
-        samples: List[BacktranslationSample],
-    ) -> Dict[str, float]:
+        samples: list[BacktranslationSample],
+    ) -> dict[str, float]:
         """Compute summary statistics over generated samples."""
         if not samples:
             return {

@@ -6,9 +6,7 @@ construction, then provides helpers to estimate memory usage and merge caches.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass
@@ -52,8 +50,7 @@ class ChunkPrefillScheduler:
         stride = config.chunk_size - config.overlap
         if stride <= 0:
             raise ValueError(
-                f"chunk_size ({config.chunk_size}) must be greater than "
-                f"overlap ({config.overlap})"
+                f"chunk_size ({config.chunk_size}) must be greater than overlap ({config.overlap})"
             )
 
         chunks: list[ChunkResult] = []
@@ -111,7 +108,9 @@ class ChunkPrefillScheduler:
 
         peak_tokens = max((len(c.token_ids) for c in chunks), default=0)
         peak_kv_bytes = peak_tokens * n_layers * bytes_per_token_per_layer
-        total_kv_bytes = sum(len(c.token_ids) for c in chunks) * n_layers * bytes_per_token_per_layer
+        total_kv_bytes = (
+            sum(len(c.token_ids) for c in chunks) * n_layers * bytes_per_token_per_layer
+        )
 
         return {
             "n_chunks": n_chunks,

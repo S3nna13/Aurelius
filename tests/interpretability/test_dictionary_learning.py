@@ -1,4 +1,5 @@
 """Unit tests for dictionary learning."""
+
 from __future__ import annotations
 
 import time
@@ -10,7 +11,6 @@ from src.interpretability.dictionary_learning import (
     DictionaryLearner,
     DictionaryResult,
 )
-
 
 N = 20
 D_DIM = 8
@@ -25,9 +25,7 @@ def _make_X(seed: int = 0, n: int = N, d: int = D_DIM) -> torch.Tensor:
 
 def test_fit_returns_result_with_correct_shapes() -> None:
     X = _make_X()
-    learner = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=5
-    )
+    learner = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=5)
     res = learner.fit(X)
     assert isinstance(res, DictionaryResult)
     assert res.D.shape == (D_DIM, N_ATOMS)
@@ -91,9 +89,7 @@ def test_encode_then_decode_near_identity_overcomplete() -> None:
 
 def test_atoms_are_l2_normalized() -> None:
     X = _make_X()
-    learner = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=4
-    )
+    learner = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=4)
     res = learner.fit(X)
     norms = res.D.norm(dim=0)
     assert torch.allclose(norms, torch.ones_like(norms), atol=1e-4)
@@ -102,13 +98,9 @@ def test_atoms_are_l2_normalized() -> None:
 def test_determinism_with_manual_seed() -> None:
     X = _make_X(0)
     torch.manual_seed(123)
-    r1 = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=5
-    ).fit(X)
+    r1 = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=5).fit(X)
     torch.manual_seed(123)
-    r2 = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=5
-    ).fit(X)
+    r2 = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=5).fit(X)
     assert torch.allclose(r1.D, r2.D, atol=1e-6)
     assert torch.allclose(r1.alpha, r2.alpha, atol=1e-6)
 
@@ -129,18 +121,14 @@ def test_invalid_sparsity_target_raises() -> None:
 
 def test_max_iters_one_runs_one_step() -> None:
     X = _make_X()
-    learner = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=1, tol=0.0
-    )
+    learner = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=1, tol=0.0)
     res = learner.fit(X)
     assert res.n_iters == 1
 
 
 def test_zero_variance_X_returns_zero_reconstruction() -> None:
     X = torch.zeros(N, D_DIM)
-    learner = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=3
-    )
+    learner = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=3)
     res = learner.fit(X)
     assert res.reconstruction_error == 0.0
     X_hat = learner.decode(res.alpha, res.D)
@@ -150,9 +138,7 @@ def test_zero_variance_X_returns_zero_reconstruction() -> None:
 def test_1000_sample_fit_under_2s() -> None:
     torch.manual_seed(0)
     X = torch.randn(1000, D_DIM)
-    learner = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=2
-    )
+    learner = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=2)
     t0 = time.perf_counter()
     res = learner.fit(X)
     dt = time.perf_counter() - t0
@@ -162,9 +148,7 @@ def test_1000_sample_fit_under_2s() -> None:
 
 def test_batch_size_one_degenerate() -> None:
     X = _make_X(n=1)
-    learner = DictionaryLearner(
-        n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=3
-    )
+    learner = DictionaryLearner(n_atoms=N_ATOMS, sparsity_target=SPARSITY, max_iters=3)
     res = learner.fit(X)
     assert res.D.shape == (D_DIM, N_ATOMS)
     assert res.alpha.shape == (1, N_ATOMS)
@@ -174,9 +158,7 @@ def test_undercomplete_more_dims_than_atoms() -> None:
     torch.manual_seed(0)
     d_dim, n_atoms = 16, 8
     X = torch.randn(N, d_dim)
-    learner = DictionaryLearner(
-        n_atoms=n_atoms, sparsity_target=3, max_iters=3
-    )
+    learner = DictionaryLearner(n_atoms=n_atoms, sparsity_target=3, max_iters=3)
     res = learner.fit(X)
     assert res.D.shape == (d_dim, n_atoms)
     assert res.alpha.shape == (N, n_atoms)

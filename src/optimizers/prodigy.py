@@ -11,8 +11,7 @@ implementation from the official Prodigy repository.
 
 from __future__ import annotations
 
-import math
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch.optim import Optimizer
@@ -108,7 +107,7 @@ class Prodigy(Optimizer):
 
         # beta3 controls the decay of the running numerator / s estimates.
         # Default beta3 = sqrt(beta2), matching the reference implementation.
-        beta3 = beta2 ** 0.5
+        beta3 = beta2**0.5
 
         # Running numerator (scalar) carried across calls.
         d_numerator = group0["d_numerator"] * beta3
@@ -148,7 +147,8 @@ class Prodigy(Optimizer):
                 # (matches the official Prodigy reference implementation).
                 d0 = group0["d0"]
                 numerator_acc = numerator_acc + (
-                    (d / d0) * dlr
+                    (d / d0)
+                    * dlr
                     * (p0.to(grad.dtype) - p.to(grad.dtype)).mul(grad).sum().float().cpu()
                 )
 
@@ -173,11 +173,15 @@ class Prodigy(Optimizer):
                 import torch.distributed as dist  # noqa: WPS433
 
                 if dist.is_available() and dist.is_initialized():
-                    t = torch.stack([numerator_acc, d_denom]).cuda() if torch.cuda.is_available() else torch.stack([numerator_acc, d_denom])
+                    t = (
+                        torch.stack([numerator_acc, d_denom]).cuda()
+                        if torch.cuda.is_available()
+                        else torch.stack([numerator_acc, d_denom])
+                    )
                     dist.all_reduce(t, op=dist.ReduceOp.SUM)
                     numerator_acc = t[0].cpu()
                     d_denom = t[1].cpu()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         d_numerator = d_numerator + numerator_acc.item()

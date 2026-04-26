@@ -27,25 +27,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpectralNormConfig:
     """Hyper-parameters for SpectralNormRegularizer."""
 
-    penalty_weight: float = 0.001   # λ — scales the spectral penalty in loss
-    power_iterations: int = 1       # k — number of power-iteration steps
-    target_sigma: float = 1.0       # desired maximum singular value
-    apply_to_linear: bool = True    # apply to nn.Linear weights
+    penalty_weight: float = 0.001  # λ — scales the spectral penalty in loss
+    power_iterations: int = 1  # k — number of power-iteration steps
+    target_sigma: float = 1.0  # desired maximum singular value
+    apply_to_linear: bool = True  # apply to nn.Linear weights
     apply_to_embedding: bool = False  # apply to nn.Embedding weights
 
 
 # ---------------------------------------------------------------------------
 # SpectralNormEstimator
 # ---------------------------------------------------------------------------
+
 
 class SpectralNormEstimator:
     """
@@ -113,9 +114,9 @@ class SpectralNormEstimator:
             Scalar spectral-norm estimate.
         """
         if W.ndim == 1:
-            W2 = W.unsqueeze(0)          # [1, n]
+            W2 = W.unsqueeze(0)  # [1, n]
         elif W.ndim == 2:
-            W2 = W                       # [out, in]
+            W2 = W  # [out, in]
         else:
             # Flatten all leading dims: [*, in] → [prod(*), in]
             W2 = W.reshape(-1, W.shape[-1])
@@ -147,6 +148,7 @@ class SpectralNormEstimator:
 # ---------------------------------------------------------------------------
 # SpectralNormRegularizer
 # ---------------------------------------------------------------------------
+
 
 class SpectralNormRegularizer:
     """
@@ -185,7 +187,7 @@ class SpectralNormRegularizer:
             Scalar penalty value (0 when σ ≤ target).
         """
         excess = F.relu(sigma - self.config.target_sigma)
-        return self.config.penalty_weight * excess ** 2
+        return self.config.penalty_weight * excess**2
 
     # ------------------------------------------------------------------
     # Module-level penalty
@@ -219,7 +221,9 @@ class SpectralNormRegularizer:
                 weight = mod.weight
 
             if weight is not None:
-                sigma = self.estimator.estimate(weight.detach() if not weight.requires_grad else weight)
+                sigma = self.estimator.estimate(
+                    weight.detach() if not weight.requires_grad else weight
+                )
                 sigmas.append(sigma)
                 penalties.append(self.penalty(sigma))
 
@@ -233,7 +237,7 @@ class SpectralNormRegularizer:
                 "n_layers_over_target": torch.tensor(0, dtype=torch.long),
             }
 
-        sigma_stack = torch.stack(sigmas)          # [n_layers]
+        sigma_stack = torch.stack(sigmas)  # [n_layers]
         total_penalty = torch.stack(penalties).sum()
         max_sigma = sigma_stack.max()
         mean_sigma = sigma_stack.mean()

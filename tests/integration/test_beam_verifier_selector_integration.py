@@ -6,7 +6,7 @@ import torch
 
 import src.inference as inf
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 def test_beam_registry():
@@ -22,7 +22,9 @@ def test_logit_bias_registry_intact():
 
 
 def test_smoke_select_with_flag():
-    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="inference.beam_verifier_selector", enabled=True))
+    FEATURE_FLAG_REGISTRY.register(
+        FeatureFlag(name="inference.beam_verifier_selector", enabled=True)
+    )
     cfg = AureliusConfig()
     assert cfg.inference_beam_verifier_selector_enabled is True
     s = torch.tensor([0.0, 2.0, 1.0])

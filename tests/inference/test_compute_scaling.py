@@ -3,25 +3,24 @@
 from __future__ import annotations
 
 import random
-from typing import List
 
 import pytest
 
 from src.inference.compute_scaling import (
-    ScalingConfig,
-    majority_vote,
-    weighted_majority_vote,
-    best_of_n,
-    normalize_scores,
-    compute_response_diversity,
     ComputeScaler,
     PassAtK,
+    ScalingConfig,
+    best_of_n,
+    compute_response_diversity,
+    majority_vote,
+    normalize_scores,
+    weighted_majority_vote,
 )
-
 
 # ---------------------------------------------------------------------------
 # Deterministic mock generate function
 # ---------------------------------------------------------------------------
+
 
 def make_mock_generate(seed: int = 42):
     """Return a generate_fn that picks randomly from ["A", "B", "C"]."""
@@ -36,6 +35,7 @@ def make_mock_generate(seed: int = 42):
 # ---------------------------------------------------------------------------
 # ScalingConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_scaling_config_defaults():
     cfg = ScalingConfig()
@@ -54,6 +54,7 @@ def test_scaling_config_custom():
 # ---------------------------------------------------------------------------
 # majority_vote
 # ---------------------------------------------------------------------------
+
 
 def test_majority_vote_correct():
     assert majority_vote(["A", "B", "A", "A", "B"]) == "A"
@@ -77,6 +78,7 @@ def test_majority_vote_single():
 # weighted_majority_vote
 # ---------------------------------------------------------------------------
 
+
 def test_weighted_majority_vote_equal_weights():
     # With equal weights, highest-count response should win (same as majority_vote)
     responses = ["A", "A", "B", "B", "B"]
@@ -95,6 +97,7 @@ def test_weighted_majority_vote_unequal_weights():
 # best_of_n
 # ---------------------------------------------------------------------------
 
+
 def test_best_of_n_correct():
     responses = ["low", "medium", "high"]
     scores = [0.1, 0.5, 0.9]
@@ -108,6 +111,7 @@ def test_best_of_n_single():
 # ---------------------------------------------------------------------------
 # normalize_scores
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_scores_sum_to_1():
     scores = [1.0, 2.0, 3.0]
@@ -128,6 +132,7 @@ def test_normalize_scores_empty():
 # ---------------------------------------------------------------------------
 # compute_response_diversity
 # ---------------------------------------------------------------------------
+
 
 def test_compute_response_diversity_all_same():
     # all same => 0.0
@@ -153,6 +158,7 @@ def test_compute_response_diversity_partial():
 # ---------------------------------------------------------------------------
 # ComputeScaler
 # ---------------------------------------------------------------------------
+
 
 def test_compute_scaler_generate_n_length():
     cfg = ScalingConfig(n_samples=5)
@@ -211,6 +217,7 @@ def test_compute_scaler_best_of_n_aggregation():
 # ---------------------------------------------------------------------------
 # PassAtK
 # ---------------------------------------------------------------------------
+
 
 def test_pass_at_k_n1_k1_c1():
     pak = PassAtK()

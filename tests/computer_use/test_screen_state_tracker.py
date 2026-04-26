@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from src.computer_use.screen_state_tracker import (
     COMPUTER_USE_REGISTRY,
-    ScreenRegion,
     ScreenState,
     ScreenStateTracker,
 )
@@ -38,13 +35,16 @@ def _make_raw_state(
 # update()
 # ---------------------------------------------------------------------------
 
+
 class TestUpdate:
     def test_returns_screen_state(self, tracker):
         state = tracker.update(_make_raw_state())
         assert isinstance(state, ScreenState)
 
     def test_parses_regions(self, tracker):
-        raw = _make_raw_state(regions=[{"x": 10, "y": 20, "width": 100, "height": 50, "label": "header"}])
+        raw = _make_raw_state(
+            regions=[{"x": 10, "y": 20, "width": 100, "height": 50, "label": "header"}]
+        )
         state = tracker.update(raw)
         assert len(state.regions) == 1
         r = state.regions[0]
@@ -65,10 +65,12 @@ class TestUpdate:
         assert state.timestamp == ts
 
     def test_first_state_change_mask_all_true(self, tracker):
-        raw = _make_raw_state(regions=[
-            {"x": 0, "y": 0, "width": 50, "height": 50, "label": "a"},
-            {"x": 50, "y": 0, "width": 50, "height": 50, "label": "b"},
-        ])
+        raw = _make_raw_state(
+            regions=[
+                {"x": 0, "y": 0, "width": 50, "height": 50, "label": "a"},
+                {"x": 50, "y": 0, "width": 50, "height": 50, "label": "b"},
+            ]
+        )
         state = tracker.update(raw)
         assert all(state.change_mask)
 
@@ -98,28 +100,45 @@ class TestUpdate:
 # diff()
 # ---------------------------------------------------------------------------
 
+
 class TestDiff:
     def test_diff_added_region(self, tracker):
-        s1 = tracker.update(_make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"}]))
-        s2 = tracker.update(_make_raw_state(regions=[
-            {"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"},
-            {"x": 10, "y": 0, "width": 10, "height": 10, "label": "b"},
-        ]))
+        s1 = tracker.update(
+            _make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"}])
+        )
+        s2 = tracker.update(
+            _make_raw_state(
+                regions=[
+                    {"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"},
+                    {"x": 10, "y": 0, "width": 10, "height": 10, "label": "b"},
+                ]
+            )
+        )
         changes = tracker.diff(s1, s2)
         assert any("added" in c.lower() and "b" in c for c in changes)
 
     def test_diff_removed_region(self, tracker):
-        s1 = tracker.update(_make_raw_state(regions=[
-            {"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"},
-            {"x": 10, "y": 0, "width": 10, "height": 10, "label": "b"},
-        ]))
-        s2 = tracker.update(_make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"}]))
+        s1 = tracker.update(
+            _make_raw_state(
+                regions=[
+                    {"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"},
+                    {"x": 10, "y": 0, "width": 10, "height": 10, "label": "b"},
+                ]
+            )
+        )
+        s2 = tracker.update(
+            _make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "a"}])
+        )
         changes = tracker.diff(s1, s2)
         assert any("removed" in c.lower() and "b" in c for c in changes)
 
     def test_diff_geometry_change(self, tracker):
-        s1 = tracker.update(_make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "btn"}]))
-        s2 = tracker.update(_make_raw_state(regions=[{"x": 5, "y": 5, "width": 20, "height": 20, "label": "btn"}]))
+        s1 = tracker.update(
+            _make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "btn"}])
+        )
+        s2 = tracker.update(
+            _make_raw_state(regions=[{"x": 5, "y": 5, "width": 20, "height": 20, "label": "btn"}])
+        )
         changes = tracker.diff(s1, s2)
         assert any("geometry" in c.lower() and "btn" in c for c in changes)
 
@@ -130,7 +149,9 @@ class TestDiff:
         assert any("focus" in c.lower() for c in changes)
 
     def test_diff_no_changes(self, tracker):
-        raw = _make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "x"}], focused="x")
+        raw = _make_raw_state(
+            regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "x"}], focused="x"
+        )
         s1 = tracker.update(raw)
         s2 = tracker.update(raw)
         changes = tracker.diff(s1, s2)
@@ -141,12 +162,15 @@ class TestDiff:
 # get_interactive_regions()
 # ---------------------------------------------------------------------------
 
+
 class TestGetInteractiveRegions:
     def test_returns_interactive_only(self, tracker):
-        raw = _make_raw_state(regions=[
-            {"x": 0, "y": 0, "width": 10, "height": 10, "label": "btn", "interactive": True},
-            {"x": 10, "y": 0, "width": 10, "height": 10, "label": "bg", "interactive": False},
-        ])
+        raw = _make_raw_state(
+            regions=[
+                {"x": 0, "y": 0, "width": 10, "height": 10, "label": "btn", "interactive": True},
+                {"x": 10, "y": 0, "width": 10, "height": 10, "label": "bg", "interactive": False},
+            ]
+        )
         tracker.update(raw)
         interactive = tracker.get_interactive_regions()
         assert len(interactive) == 1
@@ -157,7 +181,9 @@ class TestGetInteractiveRegions:
         assert result == []
 
     def test_no_interactive_key_excluded(self, tracker):
-        raw = _make_raw_state(regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "panel"}])
+        raw = _make_raw_state(
+            regions=[{"x": 0, "y": 0, "width": 10, "height": 10, "label": "panel"}]
+        )
         tracker.update(raw)
         assert tracker.get_interactive_regions() == []
 
@@ -165,6 +191,7 @@ class TestGetInteractiveRegions:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_key_present(self):

@@ -4,17 +4,17 @@ Uses a lightweight mock model so tests run quickly without loading
 Aurelius weights.  The mock model contains a single nn.MultiheadAttention
 layer so that _collect_attention_weights can capture real attention tensors.
 """
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.prompt_compression import (
     AttentionBasedCompressor,
     SelectiveContextCompressor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -66,15 +66,13 @@ def input_ids() -> torch.Tensor:
 # AttentionBasedCompressor tests
 # ---------------------------------------------------------------------------
 
-class TestAttentionBasedCompressor:
 
+class TestAttentionBasedCompressor:
     def test_score_tokens_shape(self, mock_model, input_ids):
         """score_tokens returns a 1-D tensor of length seq_len."""
         compressor = AttentionBasedCompressor(mock_model, keep_ratio=0.5)
         scores = compressor.score_tokens(input_ids)
-        assert scores.shape == (SEQ_LEN,), (
-            f"Expected shape ({SEQ_LEN},), got {scores.shape}"
-        )
+        assert scores.shape == (SEQ_LEN,), f"Expected shape ({SEQ_LEN},), got {scores.shape}"
 
     def test_score_tokens_nonneg(self, mock_model, input_ids):
         """All importance scores must be >= 0."""
@@ -110,9 +108,7 @@ class TestAttentionBasedCompressor:
 
     def test_uniform_strategy(self, mock_model, input_ids):
         """Uniform strategy gives equal scores for every token."""
-        compressor = AttentionBasedCompressor(
-            mock_model, keep_ratio=0.5, strategy="uniform"
-        )
+        compressor = AttentionBasedCompressor(mock_model, keep_ratio=0.5, strategy="uniform")
         scores = compressor.score_tokens(input_ids)
         expected = 1.0 / SEQ_LEN
         assert torch.allclose(scores, torch.full_like(scores, expected)), (
@@ -124,14 +120,12 @@ class TestAttentionBasedCompressor:
 # SelectiveContextCompressor
 # ---------------------------------------------------------------------------
 
-class TestSelectiveContextCompressor:
 
+class TestSelectiveContextCompressor:
     def test_selective_context_compress(self, mock_model, input_ids):
         """Output is shorter than input (with keep_ratio < 1 and >= 2 chunks)."""
         # chunk_size=8 -> 20 tokens -> 3 chunks; keep_ratio=0.5 -> keep 1-2 chunks
-        compressor = SelectiveContextCompressor(
-            mock_model, chunk_size=8, keep_ratio=0.5
-        )
+        compressor = SelectiveContextCompressor(mock_model, chunk_size=8, keep_ratio=0.5)
         compressed = compressor.compress(input_ids)
         assert compressed.shape[1] < SEQ_LEN, (
             f"Compressed length {compressed.shape[1]} is not < {SEQ_LEN}"
@@ -143,8 +137,8 @@ class TestSelectiveContextCompressor:
 # compression_ratio
 # ---------------------------------------------------------------------------
 
-class TestCompressionRatio:
 
+class TestCompressionRatio:
     def test_compression_ratio_calculation(self, mock_model):
         """compression_ratio(100, 50) == 0.5."""
         compressor = AttentionBasedCompressor(mock_model)

@@ -2,7 +2,6 @@
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -55,6 +54,7 @@ def _input_ids() -> torch.Tensor:
 # MemEffConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_memeffconfig_defaults():
     cfg = MemEffConfig()
     assert cfg.use_checkpointing is True
@@ -66,6 +66,7 @@ def test_memeffconfig_defaults():
 # ---------------------------------------------------------------------------
 # checkpointed_forward tests
 # ---------------------------------------------------------------------------
+
 
 def test_checkpointed_forward_output_shape():
     """checkpointed_forward returns the same output shape as a normal forward."""
@@ -88,6 +89,7 @@ def test_checkpointed_forward_differentiable():
 # ---------------------------------------------------------------------------
 # chunked_cross_entropy tests
 # ---------------------------------------------------------------------------
+
 
 def test_chunked_ce_returns_scalar():
     logits = torch.randn(BATCH, SEQ, VOCAB)
@@ -140,6 +142,7 @@ def test_chunked_ce_chunk1_equals_chunk_seq():
 # GradientAccumulator tests
 # ---------------------------------------------------------------------------
 
+
 def _make_accum(n: int = 4):
     model = nn.Linear(8, 1)
     accum = GradientAccumulator(model, n_accumulate=n)
@@ -179,6 +182,7 @@ def test_gradient_accumulator_current_step_increments():
 # MemoryTracker tests
 # ---------------------------------------------------------------------------
 
+
 def test_memory_tracker_record_returns_required_keys():
     tracker = MemoryTracker()
     result = tracker.record()
@@ -203,6 +207,7 @@ def test_memory_tracker_context_manager():
 # ---------------------------------------------------------------------------
 # MemEfficientTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def _make_trainer(chunk_size: int = 2) -> tuple[MemEfficientTrainer, AureliusTransformer]:
     model = _small_model()

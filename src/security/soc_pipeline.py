@@ -26,11 +26,11 @@ Design notes
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 import time
-from typing import Any, Callable, Dict, Iterable, List, Optional
-
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
+from typing import Any
 
 __all__ = [
     "SecurityEvent",
@@ -73,10 +73,10 @@ class SecurityEvent:
     source: str
     severity: str
     timestamp: str
-    raw_payload: Dict[str, Any]
-    enrichments: Dict[str, Any] = field(default_factory=dict)
-    decisions: List["TriageDecision"] = field(default_factory=list)
-    route: Optional[str] = None
+    raw_payload: dict[str, Any]
+    enrichments: dict[str, Any] = field(default_factory=dict)
+    decisions: list[TriageDecision] = field(default_factory=list)
+    route: str | None = None
 
 
 @dataclass
@@ -88,7 +88,7 @@ class Finding:
     entity_type: str
     issue_type: str
     severity: str
-    evidence: List[Dict[str, Any]]
+    evidence: list[dict[str, Any]]
     source: str
     environment: str
     discovered_at: str
@@ -101,20 +101,18 @@ class TriageDecision:
     decision: str
     priority: str
     rationale: str
-    evidence_refs: List[str]
+    evidence_refs: list[str]
     recommended_action: str
     requires_human: bool
 
     def __post_init__(self) -> None:
         if self.decision not in _VALID_DECISIONS:
             raise ValueError(
-                f"invalid decision {self.decision!r}; "
-                f"must be one of {sorted(_VALID_DECISIONS)}"
+                f"invalid decision {self.decision!r}; must be one of {sorted(_VALID_DECISIONS)}"
             )
         if self.priority not in _VALID_PRIORITIES:
             raise ValueError(
-                f"invalid priority {self.priority!r}; "
-                f"must be one of {sorted(_VALID_PRIORITIES)}"
+                f"invalid priority {self.priority!r}; must be one of {sorted(_VALID_PRIORITIES)}"
             )
 
 
@@ -185,9 +183,9 @@ class EnrichStage(PipelineStage):
 
     def __init__(
         self,
-        enricher_fns: Optional[Iterable[Callable[[SecurityEvent], Dict[str, Any]]]] = None,
+        enricher_fns: Iterable[Callable[[SecurityEvent], dict[str, Any]]] | None = None,
     ) -> None:
-        self.enricher_fns: List[Callable[[SecurityEvent], Dict[str, Any]]] = list(
+        self.enricher_fns: list[Callable[[SecurityEvent], dict[str, Any]]] = list(
             enricher_fns or []
         )
 
@@ -216,21 +214,21 @@ class DecideStage(PipelineStage):
 
     def __init__(
         self,
-        decider_fn: Optional[Callable[[SecurityEvent], TriageDecision]] = None,
-        rules: Optional[Iterable[Rule]] = None,
+        decider_fn: Callable[[SecurityEvent], TriageDecision] | None = None,
+        rules: Iterable[Rule] | None = None,
     ) -> None:
         self.decider_fn = decider_fn
-        self.rules: List[Rule] = list(rules or [])
+        self.rules: list[Rule] = list(rules or [])
 
     def process(self, event: SecurityEvent) -> SecurityEvent:
-        chosen: Optional[TriageDecision] = None
+        chosen: TriageDecision | None = None
         for rule in self.rules:
             try:
                 matched = bool(rule.predicate(event))
             except Exception as exc:  # pragma: no cover - defensive
-                event.enrichments.setdefault(
-                    "rule_errors", []
-                ).append({"rule": rule.name, "error": repr(exc)})
+                event.enrichments.setdefault("rule_errors", []).append(
+                    {"rule": rule.name, "error": repr(exc)}
+                )
                 continue
             if matched:
                 chosen = rule.decision
@@ -251,7 +249,7 @@ class DecideStage(PipelineStage):
         return event
 
 
-def default_route_table() -> Dict[str, str]:
+def default_route_table() -> dict[str, str]:
     """Built-in mapping from decision kind to destination queue."""
 
     return {
@@ -268,8 +266,8 @@ class RouteStage(PipelineStage):
 
     name = "route"
 
-    def __init__(self, route_table: Optional[Dict[str, str]] = None) -> None:
-        self.route_table: Dict[str, str] = (
+    def __init__(self, route_table: dict[str, str] | None = None) -> None:
+        self.route_table: dict[str, str] = (
             dict(route_table) if route_table is not None else default_route_table()
         )
 
@@ -314,22 +312,16 @@ def evidence_first_gate(decision: TriageDecision) -> TriageDecision:
 # ---------------------------------------------------------------------------
 
 
-def _validate_raw_event(raw: Any) -> Dict[str, Any]:
+def _validate_raw_event(raw: Any) -> dict[str, Any]:
     if not isinstance(raw, dict):
-        raise ValueError(
-            f"raw_event must be a dict, got {type(raw).__name__}"
-        )
+        raise ValueError(f"raw_event must be a dict, got {type(raw).__name__}")
     required = ("event_id", "source", "severity", "timestamp")
     missing = [k for k in required if k not in raw]
     if missing:
-        raise ValueError(
-            f"raw_event missing required keys: {missing}"
-        )
+        raise ValueError(f"raw_event missing required keys: {missing}")
     for k in required:
         if not isinstance(raw[k], str):
-            raise ValueError(
-                f"raw_event field {k!r} must be str, got {type(raw[k]).__name__}"
-            )
+            raise ValueError(f"raw_event field {k!r} must be str, got {type(raw[k]).__name__}")
     return raw
 
 
@@ -337,8 +329,8 @@ class SOCPipeline:
     """Ordered list of :class:`PipelineStage` instances."""
 
     def __init__(self, stages: Iterable[PipelineStage]) -> None:
-        self.stages: List[PipelineStage] = list(stages)
-        self._metrics: Dict[str, Dict[str, float]] = {}
+        self.stages: list[PipelineStage] = list(stages)
+        self._metrics: dict[str, dict[str, float]] = {}
         for stage in self.stages:
             self._metrics[stage.name] = {"count": 0.0, "total_latency_s": 0.0}
 
@@ -351,7 +343,7 @@ class SOCPipeline:
 
     # --- execution ------------------------------------------------------------
 
-    def run_one(self, raw_event: Dict[str, Any]) -> SecurityEvent:
+    def run_one(self, raw_event: dict[str, Any]) -> SecurityEvent:
         raw = _validate_raw_event(raw_event)
         event = SecurityEvent(
             event_id=raw["event_id"],
@@ -384,19 +376,17 @@ class SOCPipeline:
             self._record_metric(stage.name, time.perf_counter() - start)
         return event
 
-    def run_batch(self, raw_events: Iterable[Dict[str, Any]]) -> List[SecurityEvent]:
+    def run_batch(self, raw_events: Iterable[dict[str, Any]]) -> list[SecurityEvent]:
         return [self.run_one(r) for r in raw_events]
 
     # --- metrics --------------------------------------------------------------
 
     def _record_metric(self, stage_name: str, latency_s: float) -> None:
-        slot = self._metrics.setdefault(
-            stage_name, {"count": 0.0, "total_latency_s": 0.0}
-        )
+        slot = self._metrics.setdefault(stage_name, {"count": 0.0, "total_latency_s": 0.0})
         slot["count"] += 1.0
         slot["total_latency_s"] += latency_s
 
-    def metrics(self) -> Dict[str, Dict[str, float]]:
+    def metrics(self) -> dict[str, dict[str, float]]:
         """Return a deep-copied snapshot of per-stage counters."""
 
         return {k: dict(v) for k, v in self._metrics.items()}
@@ -407,7 +397,7 @@ class SOCPipeline:
 # ---------------------------------------------------------------------------
 
 
-def _stub_geoip_enricher(event: SecurityEvent) -> Dict[str, Any]:
+def _stub_geoip_enricher(event: SecurityEvent) -> dict[str, Any]:
     src_ip = str(event.raw_payload.get("src_ip", "")) if event.raw_payload else ""
     if not src_ip:
         return {}
@@ -417,7 +407,7 @@ def _stub_geoip_enricher(event: SecurityEvent) -> Dict[str, Any]:
     return {"geoip_bucket": bucket}
 
 
-def _stub_reputation_enricher(event: SecurityEvent) -> Dict[str, Any]:
+def _stub_reputation_enricher(event: SecurityEvent) -> dict[str, Any]:
     sev = event.severity
     known_bad = event.severity in ("critical", "high")
     return {"reputation": {"known_bad": known_bad, "observed_severity": sev}}

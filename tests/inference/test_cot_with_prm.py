@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.cot_with_prm import (
     CoTPRMConfig,
@@ -17,10 +17,10 @@ from src.inference.cot_with_prm import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg():
@@ -54,8 +54,8 @@ class SimplePRM(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # input_ids: (1, T)
-        x = self.embed(input_ids)       # (1, T, 16)
-        logits = self.linear(x)         # (1, T, 2)
+        x = self.embed(input_ids)  # (1, T, 16)
+        logits = self.linear(x)  # (1, T, 2)
         return logits
 
 
@@ -101,6 +101,7 @@ def decoder(small_model, prm, cot_cfg):
 # Tests: CoTPRMConfig
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = CoTPRMConfig()
     assert cfg.n_samples == 4
@@ -114,6 +115,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Tests: split_into_steps
 # ---------------------------------------------------------------------------
+
 
 def test_split_into_steps_basic():
     steps = split_into_steps("step one\nstep two\nstep three", "\n")
@@ -138,6 +140,7 @@ def test_split_into_steps_strips_whitespace():
 # ---------------------------------------------------------------------------
 # Tests: StepBeam
 # ---------------------------------------------------------------------------
+
 
 def test_step_beam_init():
     ids = torch.zeros(1, 4, dtype=torch.long)
@@ -172,6 +175,7 @@ def test_step_beam_text_joins_steps():
 # Tests: score_step_with_prm
 # ---------------------------------------------------------------------------
 
+
 def test_score_step_with_prm_returns_float(prm):
     context_ids = torch.tensor([[1, 2, 3]], dtype=torch.long)
     step_ids = torch.tensor([4, 5], dtype=torch.long)
@@ -190,6 +194,7 @@ def test_score_step_with_prm_in_range(prm):
 # Tests: sample_next_step
 # ---------------------------------------------------------------------------
 
+
 def test_sample_next_step_output_shapes(small_model, cot_cfg):
     torch.manual_seed(7)
     context_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
@@ -203,6 +208,7 @@ def test_sample_next_step_output_shapes(small_model, cot_cfg):
 # ---------------------------------------------------------------------------
 # Tests: CoTPRMDecoder.decode
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_returns_correct_keys(decoder):
     result = decoder.decode("What is 2+2?")

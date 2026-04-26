@@ -9,6 +9,7 @@ The two-step procedure:
     1. First step:  compute gradient, perturb weights to w_hat = w + rho * g/||g||
     2. Second step: compute gradient at w_hat, restore w, apply base optimizer step
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SAMConfig:
     """Configuration for SAM optimizer.
@@ -36,6 +38,7 @@ class SAMConfig:
         adaptive: Use Adaptive SAM (ASAM), scales eps by |w| element-wise.
         momentum: Momentum coefficient (informational; applies to base optimizer).
     """
+
     rho: float = 0.05
     adaptive: bool = False
     momentum: float = 0.9
@@ -44,6 +47,7 @@ class SAMConfig:
 # ---------------------------------------------------------------------------
 # Functional helpers
 # ---------------------------------------------------------------------------
+
 
 def compute_grad_norm(model: nn.Module) -> float:
     """Compute the global L2 norm of all parameter gradients.
@@ -60,7 +64,7 @@ def compute_grad_norm(model: nn.Module) -> float:
         if param.grad is not None:
             total_sq += param.grad.detach().norm().item() ** 2
             found_any = True
-    return float(total_sq ** 0.5) if found_any else 0.0
+    return float(total_sq**0.5) if found_any else 0.0
 
 
 def perturb_weights(
@@ -95,9 +99,11 @@ def perturb_weights(
             params_with_grad.append(param)
 
     # Compute global grad norm
-    grad_norm = float(
-        torch.sqrt(sum(g.norm() ** 2 for g in grads) + torch.tensor(0.0)).item()
-    ) if grads else 0.0
+    grad_norm = (
+        float(torch.sqrt(sum(g.norm() ** 2 for g in grads) + torch.tensor(0.0)).item())
+        if grads
+        else 0.0
+    )
 
     scale = rho / (grad_norm + eps)
 
@@ -132,6 +138,7 @@ def restore_weights(model: nn.Module) -> None:
 # Loss computation helper
 # ---------------------------------------------------------------------------
 
+
 def _compute_loss(model: nn.Module, input_ids: Tensor) -> Tensor:
     """Compute cross-entropy next-token prediction loss.
 
@@ -162,6 +169,7 @@ def _compute_loss(model: nn.Module, input_ids: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # SAMOptimizer
 # ---------------------------------------------------------------------------
+
 
 class SAMOptimizer:
     """SAM two-step optimizer wrapper.
@@ -228,6 +236,7 @@ class SAMOptimizer:
 # ---------------------------------------------------------------------------
 # SAMTrainer
 # ---------------------------------------------------------------------------
+
 
 class SAMTrainer:
     """High-level trainer that runs the full SAM two-step update per batch.

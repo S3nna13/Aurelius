@@ -1,4 +1,5 @@
 """MoE routing analysis: expert utilization, specialization, and routing visualization tools."""
+
 from __future__ import annotations
 
 import torch
@@ -47,7 +48,7 @@ def compute_expert_specialization(
     counts = torch.zeros(n_classes, device=device, dtype=dtype)
 
     for c in range(n_classes):
-        mask = token_labels == c           # (N,) bool
+        mask = token_labels == c  # (N,) bool
         n_c = mask.sum().item()
         if n_c == 0:
             continue
@@ -56,7 +57,7 @@ def compute_expert_specialization(
         spec[:, c] = router_probs[mask].mean(dim=0)  # (n_experts,)
 
     # Row-normalize: each expert's row sums to 1
-    row_sums = spec.sum(dim=-1, keepdim=True)          # (n_experts, 1)
+    row_sums = spec.sum(dim=-1, keepdim=True)  # (n_experts, 1)
     row_sums = row_sums.clamp(min=1e-10)
     spec = spec / row_sums
 
@@ -135,7 +136,7 @@ def track_routing_over_time(router_prob_history: list[Tensor]) -> dict:
         step_loads.append(stats["load_per_expert"])
         cvs.append(stats["cv"])
 
-    load_trajectory = torch.stack(step_loads, dim=0)   # (n_steps, n_experts)
+    load_trajectory = torch.stack(step_loads, dim=0)  # (n_steps, n_experts)
     mean_cv = float(sum(cvs) / len(cvs)) if cvs else 0.0
     load_variance = load_trajectory.var(dim=0, unbiased=False)  # (n_experts,)
 
@@ -178,9 +179,9 @@ class MoEAnalyzer:
                 "load_imbalance":  dict from compute_load_imbalance
                 "n_tokens_seen":   int — total tokens accumulated
         """
-        all_probs = torch.cat(self._router_probs, dim=0)   # (N_total, n_experts)
+        all_probs = torch.cat(self._router_probs, dim=0)  # (N_total, n_experts)
 
-        entropy = compute_routing_entropy(all_probs)         # (N_total,)
+        entropy = compute_routing_entropy(all_probs)  # (N_total,)
         mean_entropy = entropy.mean().item()
 
         load_imbalance = compute_load_imbalance(all_probs)

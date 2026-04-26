@@ -105,9 +105,7 @@ class TutorialEngine:
     def register_tutorial(self, tutorial: Tutorial) -> None:
         """Add a tutorial to the engine."""
         if tutorial.tutorial_id in self._tutorials:
-            raise TutorialEngineError(
-                f"Tutorial '{tutorial.tutorial_id}' is already registered."
-            )
+            raise TutorialEngineError(f"Tutorial '{tutorial.tutorial_id}' is already registered.")
         self._tutorials[tutorial.tutorial_id] = tutorial
 
     def start_tutorial(self, user_id: str, tutorial_id: str) -> TutorialProgress:
@@ -144,13 +142,10 @@ class TutorialEngine:
             if step.step_id == progress.current_step_id:
                 return step
         raise TutorialEngineError(
-            f"Current step '{progress.current_step_id}' not found in tutorial "
-            f"'{tutorial_id}'."
+            f"Current step '{progress.current_step_id}' not found in tutorial '{tutorial_id}'."
         )
 
-    def submit_step(
-        self, user_id: str, tutorial_id: str, result: dict[str, Any]
-    ) -> dict[str, Any]:
+    def submit_step(self, user_id: str, tutorial_id: str, result: dict[str, Any]) -> dict[str, Any]:
         """Check if the current step is complete and advance if so.
 
         Returns a dict with keys:
@@ -231,8 +226,7 @@ class TutorialEngine:
         available: list[Tutorial] = []
         for tutorial in self._tutorials.values():
             if all(
-                self._is_tutorial_completed(user_id, prereq)
-                for prereq in tutorial.prerequisites
+                self._is_tutorial_completed(user_id, prereq) for prereq in tutorial.prerequisites
             ):
                 available.append(tutorial)
         return available
@@ -253,16 +247,13 @@ class TutorialEngine:
     def stats(self) -> dict[str, Any]:
         """Return aggregate statistics about tutorials and completions."""
         total_tutorials = len(self._tutorials)
-        total_completions = sum(
-            1 for p in self._progress.values() if p.completed_at is not None
-        )
+        total_completions = sum(1 for p in self._progress.values() if p.completed_at is not None)
         avg_completion_rate = 0.0
         if self._progress:
             rates = [
                 len(p.completed_steps) / len(self._tutorials[p.tutorial_id].steps) * 100
                 for p in self._progress.values()
-                if p.tutorial_id in self._tutorials
-                and self._tutorials[p.tutorial_id].steps
+                if p.tutorial_id in self._tutorials and self._tutorials[p.tutorial_id].steps
             ]
             if rates:
                 avg_completion_rate = sum(rates) / len(rates)

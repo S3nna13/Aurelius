@@ -7,9 +7,9 @@ vocabularies from a corpus.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import dataclass
-import re
 
 
 @dataclass
@@ -56,7 +56,12 @@ class CharTokenizer:
         """Decode token IDs to string."""
         special_ids: set[int] = set()
         if skip_special:
-            for st in [self.cfg.pad_token, self.cfg.unk_token, self.cfg.bos_token, self.cfg.eos_token]:
+            for st in [
+                self.cfg.pad_token,
+                self.cfg.unk_token,
+                self.cfg.bos_token,
+                self.cfg.eos_token,
+            ]:
                 if st in self.token_to_id:
                     special_ids.add(self.token_to_id[st])
         chars: list[str] = []
@@ -105,7 +110,12 @@ class SimpleTokenizer:
         """Decode token IDs back to a space-joined string."""
         special_ids: set[int] = set()
         if skip_special:
-            for st in [self.cfg.pad_token, self.cfg.unk_token, self.cfg.bos_token, self.cfg.eos_token]:
+            for st in [
+                self.cfg.pad_token,
+                self.cfg.unk_token,
+                self.cfg.bos_token,
+                self.cfg.eos_token,
+            ]:
                 tid = self.token_to_id.get(st)
                 if tid is not None:
                     special_ids.add(tid)

@@ -8,39 +8,39 @@ of features responsible for specific model behaviors.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Set
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SparseFeature:
     feature_id: int
     activation_mean: float
-    activation_freq: float    # fraction of inputs that activate this feature
+    activation_freq: float  # fraction of inputs that activate this feature
     max_activation: float
-    top_tokens: List[int]     # token ids that most activate this feature
+    top_tokens: list[int]  # token ids that most activate this feature
 
 
 @dataclass
 class Circuit:
-    feature_ids: List[int]
+    feature_ids: list[int]
     layer_name: str
-    faithfulness_score: float   # how well circuit explains the output
-    completeness_score: float   # how much of the effect this circuit captures
-    minimality_score: float     # how minimal/sparse the circuit is
+    faithfulness_score: float  # how well circuit explains the output
+    completeness_score: float  # how much of the effect this circuit captures
+    minimality_score: float  # how minimal/sparse the circuit is
 
 
 # ---------------------------------------------------------------------------
 # SparseAutoencoder
 # ---------------------------------------------------------------------------
+
 
 class SparseAutoencoder(nn.Module):
     """
@@ -51,7 +51,7 @@ class SparseAutoencoder(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        n_features: int,      # typically >> input_dim (overcomplete)
+        n_features: int,  # typically >> input_dim (overcomplete)
         l1_coef: float = 1e-3,
     ) -> None:
         super().__init__()
@@ -78,7 +78,7 @@ class SparseAutoencoder(nn.Module):
         """features: (B, n_features) -> reconstruction: (B, d)"""
         return features @ self.W_dec + self.b_dec
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns (reconstruction, features, loss) where loss = MSE + l1_coef * L1(features)"""
         features = self.encode(x)
         reconstruction = self.decode(features)
@@ -97,11 +97,12 @@ class SparseAutoencoder(nn.Module):
 # Training step
 # ---------------------------------------------------------------------------
 
+
 def train_sae_step(
     sae: SparseAutoencoder,
     activations: torch.Tensor,  # (B, d)
     optimizer: torch.optim.Optimizer,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """One training step. Returns {'loss': ..., 'reconstruction': ..., 'sparsity': ...}"""
     sae.train()
     optimizer.zero_grad()
@@ -124,6 +125,7 @@ def train_sae_step(
 # FeatureAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class FeatureAnalyzer:
     """Analyze which features activate for given inputs."""
 
@@ -132,9 +134,9 @@ class FeatureAnalyzer:
 
     def analyze_batch(
         self,
-        activations: torch.Tensor,   # (N, d)
-        token_ids: Optional[torch.Tensor] = None,  # (N,) — which token produced each activation
-    ) -> List[SparseFeature]:
+        activations: torch.Tensor,  # (N, d)
+        token_ids: torch.Tensor | None = None,  # (N,) — which token produced each activation
+    ) -> list[SparseFeature]:
         """
         Compute statistics for each feature across N samples.
         Returns list of SparseFeature for features that activate at least once.
@@ -146,11 +148,11 @@ class FeatureAnalyzer:
         N = activations.shape[0]
         n_features = features.shape[1]
 
-        activation_mean = features.mean(dim=0)                    # (n_features,)
-        activation_freq = (features > 0).float().mean(dim=0)      # (n_features,)
-        max_activation = features.max(dim=0).values               # (n_features,)
+        activation_mean = features.mean(dim=0)  # (n_features,)
+        activation_freq = (features > 0).float().mean(dim=0)  # (n_features,)
+        max_activation = features.max(dim=0).values  # (n_features,)
 
-        sparse_features: List[SparseFeature] = []
+        sparse_features: list[SparseFeature] = []
         for fid in range(n_features):
             if max_activation[fid].item() <= 0.0:
                 continue  # never activated
@@ -163,13 +165,15 @@ class FeatureAnalyzer:
             else:
                 top_toks = feat_vals.topk(top_k).indices.tolist()
 
-            sparse_features.append(SparseFeature(
-                feature_id=fid,
-                activation_mean=activation_mean[fid].item(),
-                activation_freq=activation_freq[fid].item(),
-                max_activation=max_activation[fid].item(),
-                top_tokens=top_toks,
-            ))
+            sparse_features.append(
+                SparseFeature(
+                    feature_id=fid,
+                    activation_mean=activation_mean[fid].item(),
+                    activation_freq=activation_freq[fid].item(),
+                    max_activation=max_activation[fid].item(),
+                    top_tokens=top_toks,
+                )
+            )
 
         return sparse_features
 
@@ -177,7 +181,7 @@ class FeatureAnalyzer:
         self,
         activations: torch.Tensor,  # (B, d) activation for specific input
         top_k: int = 10,
-    ) -> List[Tuple[int, float]]:
+    ) -> list[tuple[int, float]]:
         """Returns [(feature_id, activation_value), ...] sorted by activation descending."""
         self.sae.eval()
         with torch.no_grad():
@@ -201,6 +205,7 @@ class FeatureAnalyzer:
 # CircuitFinder
 # ---------------------------------------------------------------------------
 
+
 class CircuitFinder:
     """Find minimal circuits of features explaining model behavior."""
 
@@ -216,10 +221,10 @@ class CircuitFinder:
 
     def find_circuit_greedy(
         self,
-        activations: torch.Tensor,   # (B, d) target activations
-        target_features: Optional[List[int]] = None,
+        activations: torch.Tensor,  # (B, d) target activations
+        target_features: list[int] | None = None,
         max_features: int = 20,
-        threshold: float = 0.9,      # faithfulness threshold to stop
+        threshold: float = 0.9,  # faithfulness threshold to stop
     ) -> Circuit:
         """
         Greedy circuit finding: iteratively add features that most improve
@@ -236,7 +241,7 @@ class CircuitFinder:
             active_anywhere = (all_features > 0).any(dim=0)  # (n_features,)
             candidate_ids = active_anywhere.nonzero(as_tuple=False).squeeze(-1).tolist()
 
-        circuit_ids: List[int] = []
+        circuit_ids: list[int] = []
         best_faithfulness = 0.0
 
         for _ in range(max_features):
@@ -279,8 +284,8 @@ class CircuitFinder:
 
     def compute_faithfulness(
         self,
-        original: torch.Tensor,      # (B, d)
-        circuit_features: List[int],
+        original: torch.Tensor,  # (B, d)
+        circuit_features: list[int],
         all_features: torch.Tensor,  # (B, n_features)
     ) -> float:
         """
@@ -302,9 +307,9 @@ class CircuitFinder:
 
     def ablate_features(
         self,
-        activations: torch.Tensor,   # (B, d)
-        feature_ids: List[int],
-        mode: str = "zero",          # "zero" | "mean"
+        activations: torch.Tensor,  # (B, d)
+        feature_ids: list[int],
+        mode: str = "zero",  # "zero" | "mean"
     ) -> torch.Tensor:
         """
         Ablate (zero out or replace with mean) specified features.
@@ -334,10 +339,11 @@ class CircuitFinder:
 # Feature correlation
 # ---------------------------------------------------------------------------
 
+
 def compute_feature_correlation(
     feature_activations: torch.Tensor,  # (N, n_features)
     top_k: int = 10,
-) -> Dict[int, List[Tuple[int, float]]]:
+) -> dict[int, list[tuple[int, float]]]:
     """
     Compute pairwise feature co-activation correlation.
     Returns {feature_id: [(correlated_feature_id, correlation), ...]} for top_k pairs.
@@ -346,19 +352,19 @@ def compute_feature_correlation(
     N, n_features = feature_activations.shape
 
     mean = feature_activations.mean(dim=0, keepdim=True)  # (1, n_features)
-    centered = feature_activations - mean                  # (N, n_features)
+    centered = feature_activations - mean  # (N, n_features)
 
-    std = centered.std(dim=0, unbiased=False)              # (n_features,)
+    std = centered.std(dim=0, unbiased=False)  # (n_features,)
     std = std.clamp(min=1e-8)
 
-    normed = centered / std.unsqueeze(0)                   # (N, n_features)
-    corr_matrix = (normed.T @ normed) / N                  # (n_features, n_features)
+    normed = centered / std.unsqueeze(0)  # (N, n_features)
+    corr_matrix = (normed.T @ normed) / N  # (n_features, n_features)
 
-    result: Dict[int, List[Tuple[int, float]]] = {}
+    result: dict[int, list[tuple[int, float]]] = {}
 
     for fid in range(n_features):
         row = corr_matrix[fid].clone()
-        row[fid] = float('-inf')
+        row[fid] = float("-inf")
 
         k = min(top_k, n_features - 1)
         topk_vals, topk_ids = row.topk(k)
@@ -366,7 +372,7 @@ def compute_feature_correlation(
         pairs = [
             (int(topk_ids[i].item()), float(topk_vals[i].item()))
             for i in range(k)
-            if topk_vals[i].item() != float('-inf')
+            if topk_vals[i].item() != float("-inf")
         ]
         result[fid] = pairs
 

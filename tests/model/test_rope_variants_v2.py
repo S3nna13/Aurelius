@@ -7,8 +7,6 @@ to keep execution fast.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
@@ -181,9 +179,7 @@ def test_build_rotation_matrix_shapes():
 def test_build_rotation_matrix_cos_range():
     freqs = compute_standard_freqs(D_HEAD)
     cos, sin = build_rotation_matrix(freqs, T)
-    assert (cos >= -1.0).all() and (cos <= 1.0).all(), (
-        "cos values must lie in [-1, 1]"
-    )
+    assert (cos >= -1.0).all() and (cos <= 1.0).all(), "cos values must lie in [-1, 1]"
 
 
 # ===========================================================================
@@ -326,9 +322,7 @@ def test_get_rope_freqs_standard_shape():
 def test_get_rope_freqs_all_types_shape(rope_type):
     cfg = RoPEConfig(d_head=D_HEAD, rope_type=rope_type, scale_factor=2.0)
     freqs = get_rope_freqs(cfg)
-    assert freqs.shape == (HALF,), (
-        f"[{rope_type}] Expected ({HALF},), got {freqs.shape}"
-    )
+    assert freqs.shape == (HALF,), f"[{rope_type}] Expected ({HALF},), got {freqs.shape}"
 
 
 # ===========================================================================

@@ -14,18 +14,17 @@ Coverage targets (12 tests):
 11.  test_empty_queue
 12.  test_heterogeneous_task_types
 """
+
 from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.training.async_rl_infra import RolloutOrchestrator, RolloutResult, RolloutTask
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_task(task_id: int, task_type: str = "swe", prompt: str = "hello") -> RolloutTask:
     return RolloutTask(task_id=task_id, task_type=task_type, prompt=prompt)
@@ -51,6 +50,7 @@ def _error_fn(task: RolloutTask) -> RolloutResult:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestEnqueue:
     def test_enqueue_adds_to_queue(self) -> None:

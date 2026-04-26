@@ -1,22 +1,22 @@
 """Tests for speculative_tree: tree speculative decoding."""
-import pytest
+
 import torch
 
 from src.inference.speculative_tree import (
-    TreeSpecConfig,
     TreeNode,
+    TreeSpecConfig,
+    TreeSpecDecoder,
     build_draft_tree,
     flatten_tree_paths,
     verify_tree,
-    TreeSpecDecoder,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model() -> AureliusTransformer:
     torch.manual_seed(0)
@@ -46,6 +46,7 @@ def _small_config() -> TreeSpecConfig:
 # 1. TreeSpecConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_tree_spec_config_defaults():
     cfg = TreeSpecConfig()
     assert cfg.branch_factor == 2
@@ -58,6 +59,7 @@ def test_tree_spec_config_defaults():
 # 2. TreeNode fields
 # ---------------------------------------------------------------------------
 
+
 def test_tree_node_fields():
     node = TreeNode(token_id=42, log_prob=-1.5, parent_idx=-1, depth=1)
     assert node.token_id == 42
@@ -69,6 +71,7 @@ def test_tree_node_fields():
 # ---------------------------------------------------------------------------
 # 3. build_draft_tree returns list of TreeNodes
 # ---------------------------------------------------------------------------
+
 
 def test_build_draft_tree_returns_list_of_tree_nodes():
     model = _make_model()
@@ -86,6 +89,7 @@ def test_build_draft_tree_returns_list_of_tree_nodes():
 # 4. build_draft_tree correct depth range
 # ---------------------------------------------------------------------------
 
+
 def test_build_draft_tree_correct_depth_range():
     model = _make_model()
     model.train(False)
@@ -99,6 +103,7 @@ def test_build_draft_tree_correct_depth_range():
 # ---------------------------------------------------------------------------
 # 5. build_draft_tree token_ids in valid range
 # ---------------------------------------------------------------------------
+
 
 def test_build_draft_tree_token_ids_valid_range():
     model = _make_model()
@@ -114,6 +119,7 @@ def test_build_draft_tree_token_ids_valid_range():
 # ---------------------------------------------------------------------------
 # 6. flatten_tree_paths returns list of lists
 # ---------------------------------------------------------------------------
+
 
 def test_flatten_tree_paths_returns_list_of_lists():
     model = _make_model()
@@ -133,6 +139,7 @@ def test_flatten_tree_paths_returns_list_of_lists():
 # 7. flatten_tree_paths path lengths <= tree_depth
 # ---------------------------------------------------------------------------
 
+
 def test_flatten_tree_paths_lengths_le_tree_depth():
     model = _make_model()
     model.train(False)
@@ -147,6 +154,7 @@ def test_flatten_tree_paths_lengths_le_tree_depth():
 # ---------------------------------------------------------------------------
 # 8. verify_tree returns tuple
 # ---------------------------------------------------------------------------
+
 
 def test_verify_tree_returns_tuple():
     model = _make_model()
@@ -166,6 +174,7 @@ def test_verify_tree_returns_tuple():
 # 9. verify_tree n_accepted <= len(nodes)
 # ---------------------------------------------------------------------------
 
+
 def test_verify_tree_n_accepted_le_len_nodes():
     model = _make_model()
     model.train(False)
@@ -179,6 +188,7 @@ def test_verify_tree_n_accepted_le_len_nodes():
 # ---------------------------------------------------------------------------
 # 10. TreeSpecDecoder.generate output shape (1, generated_len)
 # ---------------------------------------------------------------------------
+
 
 def test_tree_spec_decoder_generate_output_shape():
     torch.manual_seed(42)
@@ -198,6 +208,7 @@ def test_tree_spec_decoder_generate_output_shape():
 # 11. TreeSpecDecoder.generate stats keys present
 # ---------------------------------------------------------------------------
 
+
 def test_tree_spec_decoder_generate_stats_keys():
     torch.manual_seed(42)
     draft = _make_model()
@@ -216,6 +227,7 @@ def test_tree_spec_decoder_generate_stats_keys():
 # ---------------------------------------------------------------------------
 # 12. TreeSpecDecoder.generate total_tokens > 0
 # ---------------------------------------------------------------------------
+
 
 def test_tree_spec_decoder_generate_total_tokens_positive():
     torch.manual_seed(42)

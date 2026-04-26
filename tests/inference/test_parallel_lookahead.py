@@ -10,18 +10,16 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 from src.inference.parallel_lookahead import (
+    JacobiDecoder,
     LookaheadConfig,
     NGramCache,
-    JacobiDecoder,
+    estimate_speedup,
     generate_lookahead_branch,
     verify_draft,
-    estimate_speedup,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -75,6 +73,7 @@ def jacobi_decoder(small_model) -> JacobiDecoder:
 # 1. LookaheadConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_lookahead_config_defaults():
     cfg = LookaheadConfig()
     assert cfg.lookahead_window == 7
@@ -88,6 +87,7 @@ def test_lookahead_config_defaults():
 # 2. NGramCache starts empty
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_cache_starts_empty():
     cache = NGramCache(n=3)
     assert len(cache) == 0
@@ -96,6 +96,7 @@ def test_ngram_cache_starts_empty():
 # ---------------------------------------------------------------------------
 # 3. NGramCache.update adds n-grams
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_cache_update_adds_ngrams():
     cache = NGramCache(n=3)
@@ -107,6 +108,7 @@ def test_ngram_cache_update_adds_ngrams():
 # ---------------------------------------------------------------------------
 # 4. NGramCache.lookup finds correct continuations
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_cache_lookup_finds_continuation():
     cache = NGramCache(n=3)
@@ -121,6 +123,7 @@ def test_ngram_cache_lookup_finds_continuation():
 # 5. NGramCache.lookup returns empty for unknown context
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_cache_lookup_empty_on_miss():
     cache = NGramCache(n=3)
     cache.update([1, 2, 3])
@@ -131,6 +134,7 @@ def test_ngram_cache_lookup_empty_on_miss():
 # ---------------------------------------------------------------------------
 # 6. NGramCache.__len__ correct
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_cache_len_correct():
     cache = NGramCache(n=3)
@@ -147,6 +151,7 @@ def test_ngram_cache_len_correct():
 # 7. generate_lookahead_branch returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_generate_lookahead_branch_length(small_model):
     prefix = [10, 20, 30]
     branch_len = 4
@@ -159,6 +164,7 @@ def test_generate_lookahead_branch_length(small_model):
 # 8. generate_lookahead_branch tokens are valid vocab ids
 # ---------------------------------------------------------------------------
 
+
 def test_generate_lookahead_branch_valid_tokens(small_model):
     prefix = [0, 1, 2]
     draft = generate_lookahead_branch(small_model, prefix, branch_len=4)
@@ -170,6 +176,7 @@ def test_generate_lookahead_branch_valid_tokens(small_model):
 # ---------------------------------------------------------------------------
 # 9. verify_draft returns (list, int)
 # ---------------------------------------------------------------------------
+
 
 def test_verify_draft_return_types(small_model):
     prefix = [5, 10, 15]
@@ -186,6 +193,7 @@ def test_verify_draft_return_types(small_model):
 # 10. verify_draft n_accepted <= len(draft)
 # ---------------------------------------------------------------------------
 
+
 def test_verify_draft_n_accepted_bounded(small_model):
     prefix = [1, 2, 3]
     draft = [4, 5, 6]
@@ -196,6 +204,7 @@ def test_verify_draft_n_accepted_bounded(small_model):
 # ---------------------------------------------------------------------------
 # 11. verify_draft correct draft tokens are accepted
 # ---------------------------------------------------------------------------
+
 
 def test_verify_draft_accepted_tokens_match(small_model):
     """Accepted tokens must be a prefix of the draft list."""
@@ -210,6 +219,7 @@ def test_verify_draft_accepted_tokens_match(small_model):
 # 12. JacobiDecoder.decode returns (str, dict)
 # ---------------------------------------------------------------------------
 
+
 def test_jacobi_decoder_decode_return_types(jacobi_decoder):
     result = jacobi_decoder.decode("hello")
     assert isinstance(result, tuple)
@@ -223,6 +233,7 @@ def test_jacobi_decoder_decode_return_types(jacobi_decoder):
 # 13. JacobiDecoder.decode stats has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_jacobi_decoder_stats_keys(jacobi_decoder):
     _, stats = jacobi_decoder.decode("test")
     assert "tokens_generated" in stats
@@ -233,6 +244,7 @@ def test_jacobi_decoder_stats_keys(jacobi_decoder):
 # ---------------------------------------------------------------------------
 # 14. estimate_speedup returns float >= 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_speedup_returns_float():
     # With n_accepted_per_step >= 1 and small draft_cost, speedup > 1
@@ -252,6 +264,7 @@ def test_estimate_speedup_formula():
 # ---------------------------------------------------------------------------
 # 15. NGramCache round-trip: update then lookup
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_cache_roundtrip():
     cache = NGramCache(n=3)

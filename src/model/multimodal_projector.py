@@ -15,29 +15,28 @@ Usage:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ProjectorConfig:
     """Configuration for a single modality projector MLP."""
 
-    input_dim: int                  # source feature dim (e.g. 768 for CLIP)
-    output_dim: int                 # Aurelius d_model (e.g. 2048)
-    hidden_dim: int | None = None   # if None, use (input_dim + output_dim) // 2
-    n_layers: int = 2               # MLP depth (2 = one hidden layer)
-    activation: str = "gelu"        # "gelu" | "relu" | "silu"
+    input_dim: int  # source feature dim (e.g. 768 for CLIP)
+    output_dim: int  # Aurelius d_model (e.g. 2048)
+    hidden_dim: int | None = None  # if None, use (input_dim + output_dim) // 2
+    n_layers: int = 2  # MLP depth (2 = one hidden layer)
+    activation: str = "gelu"  # "gelu" | "relu" | "silu"
     dropout: float = 0.0
-    layer_norm_input: bool = True   # normalize input features first
+    layer_norm_input: bool = True  # normalize input features first
 
 
 # ---------------------------------------------------------------------------
@@ -66,16 +65,13 @@ class ModalityProjector(nn.Module):
 
         if cfg.activation not in _ACTIVATIONS:
             raise ValueError(
-                f"Unknown activation '{cfg.activation}'. "
-                f"Choose from {list(_ACTIVATIONS.keys())}."
+                f"Unknown activation '{cfg.activation}'. Choose from {list(_ACTIVATIONS.keys())}."
             )
         if cfg.n_layers < 1:
             raise ValueError(f"n_layers must be >= 1, got {cfg.n_layers}.")
 
         self.hidden_dim: int = (
-            cfg.hidden_dim
-            if cfg.hidden_dim is not None
-            else (cfg.input_dim + cfg.output_dim) // 2
+            cfg.hidden_dim if cfg.hidden_dim is not None else (cfg.input_dim + cfg.output_dim) // 2
         )
 
         act_cls = _ACTIVATIONS[cfg.activation]
@@ -123,6 +119,7 @@ class ModalityProjector(nn.Module):
 # MultiModalProjector
 # ---------------------------------------------------------------------------
 
+
 class MultiModalProjector(nn.Module):
     """Manages multiple modality-specific projectors.
 
@@ -148,8 +145,7 @@ class MultiModalProjector(nn.Module):
         """
         if modality not in self.projectors:
             raise KeyError(
-                f"Unknown modality '{modality}'. "
-                f"Registered: {list(self.projectors.keys())}."
+                f"Unknown modality '{modality}'. Registered: {list(self.projectors.keys())}."
             )
         return self.projectors[modality](features)
 
@@ -189,6 +185,7 @@ class MultiModalProjector(nn.Module):
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
 
 def build_projector(input_dim: int, output_dim: int, **kwargs) -> ModalityProjector:
     """Convenience factory: create a ModalityProjector from keyword args.

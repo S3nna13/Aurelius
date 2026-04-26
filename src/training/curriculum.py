@@ -3,26 +3,29 @@
 from __future__ import annotations
 
 import math
-import torch
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Iterator, List
+from typing import Any
+
+import torch
 
 
 class WeightMode(Enum):
-    UNIFORM = "uniform"          # no weighting (returns plain mean)
-    POSITION = "position"        # later positions get higher weight
-    FREQUENCY = "frequency"      # rare tokens get higher weight
-    CUSTOM = "custom"            # caller provides weight tensor
+    UNIFORM = "uniform"  # no weighting (returns plain mean)
+    POSITION = "position"  # later positions get higher weight
+    FREQUENCY = "frequency"  # rare tokens get higher weight
+    CUSTOM = "custom"  # caller provides weight tensor
 
 
 @dataclass
 class TokenCurriculumConfig:
     """Config for token-level loss weighting (original TokenWeighter config)."""
+
     mode: WeightMode = WeightMode.UNIFORM
-    position_exponent: float = 1.0   # weight = (pos / seq_len) ** exponent
-    freq_smoothing: float = 0.5      # add this to counts before inverting
-    normalize_weights: bool = True   # normalize weights to sum to 1 before applying
+    position_exponent: float = 1.0  # weight = (pos / seq_len) ** exponent
+    freq_smoothing: float = 0.5  # add this to counts before inverting
+    normalize_weights: bool = True  # normalize weights to sum to 1 before applying
 
 
 class TokenWeighter:
@@ -131,6 +134,7 @@ class CurriculumConfig:
         warmup_epochs: epochs to hold start_difficulty before ramping
         competence_threshold: fraction of dataset considered "mastered" to advance
     """
+
     strategy: str = "linear"
     n_epochs: int = 10
     start_difficulty: float = 0.0
@@ -194,10 +198,10 @@ def root_curriculum(epoch: int, config: CurriculumConfig) -> float:
 
 
 def filter_by_difficulty(
-    dataset: List[Any],
+    dataset: list[Any],
     threshold: float,
     score_fn: Callable[[Any], float],
-) -> List[Any]:
+) -> list[Any]:
     """Return samples whose difficulty score is <= threshold.
 
     Args:
@@ -222,7 +226,7 @@ class CurriculumSampler:
 
     def __init__(
         self,
-        dataset: List[Any],
+        dataset: list[Any],
         score_fn: Callable[[Any], float],
         config: CurriculumConfig,
     ) -> None:
@@ -231,7 +235,7 @@ class CurriculumSampler:
         self.config = config
         self._epoch: int = 0
         self._threshold: float = self._compute_threshold(0)
-        self._eligible: List[Any] = self._filter()
+        self._eligible: list[Any] = self._filter()
 
     # ------------------------------------------------------------------
     # Public API
@@ -258,7 +262,7 @@ class CurriculumSampler:
             return root_curriculum(epoch, self.config)
         return linear_curriculum(epoch, self.config)
 
-    def _filter(self) -> List[Any]:
+    def _filter(self) -> list[Any]:
         return filter_by_difficulty(self.dataset, self._threshold, self.score_fn)
 
 
@@ -269,7 +273,7 @@ class CurriculumTrainer:
         model: AureliusTransformer (or any model following the ``loss, logits, pkv = model(input_ids)`` API).
         optimizer: PyTorch optimizer.
         config: CurriculumConfig.
-    """
+    """  # noqa: E501
 
     def __init__(self, model: Any, optimizer: Any, config: CurriculumConfig) -> None:
         self.model = model

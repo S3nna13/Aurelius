@@ -15,35 +15,36 @@ DocumentRetriever     — word-overlap TF-IDF-style retriever over a document st
 ContextBuilder        — concatenates query + retrieved docs into a token sequence
 SpeculativeRAGDecoder — full RAG speculative generation loop
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpeculativeRAGConfig:
     """Configuration for Speculative RAG decoding."""
 
-    n_draft_tokens: int = 8       # tokens to draft per round
-    top_k_docs: int = 3           # docs to retrieve
+    n_draft_tokens: int = 8  # tokens to draft per round
+    top_k_docs: int = 3  # docs to retrieve
     draft_temperature: float = 1.0
     verify_temperature: float = 1.0
-    rerank: bool = False          # re-rank docs after draft
+    rerank: bool = False  # re-rank docs after draft
 
 
 # ---------------------------------------------------------------------------
 # Document and Retriever
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Document:
@@ -80,10 +81,10 @@ class DocumentRetriever:
         Initial list of :class:`Document` objects to index.
     """
 
-    def __init__(self, documents: List[Document]) -> None:
-        self._corpus: List[Document] = list(documents)
+    def __init__(self, documents: list[Document]) -> None:
+        self._corpus: list[Document] = list(documents)
 
-    def retrieve(self, query: str, top_k: int) -> List[Document]:
+    def retrieve(self, query: str, top_k: int) -> list[Document]:
         """Return the top-k documents scored by word overlap with *query*.
 
         Parameters
@@ -101,7 +102,7 @@ class DocumentRetriever:
         if not self._corpus:
             return []
 
-        scored: List[Document] = []
+        scored: list[Document] = []
         for doc in self._corpus:
             score = _word_overlap_score(query, doc.text)
             scored.append(Document(text=doc.text, doc_id=doc.doc_id, score=score))
@@ -109,7 +110,7 @@ class DocumentRetriever:
         scored.sort(key=lambda d: d.score, reverse=True)
         return scored[:top_k]
 
-    def add_documents(self, docs: List[Document]) -> None:
+    def add_documents(self, docs: list[Document]) -> None:
         """Append new documents to the corpus.
 
         Parameters
@@ -127,6 +128,7 @@ class DocumentRetriever:
 # Context Builder
 # ---------------------------------------------------------------------------
 
+
 class ContextBuilder:
     """Concatenates query + retrieved docs into a single token sequence.
 
@@ -137,10 +139,10 @@ class ContextBuilder:
 
     def build(
         self,
-        query_ids: Tensor,              # (T_q,)
-        doc_ids: List[Tensor],          # list of (T_d,) token sequences
+        query_ids: Tensor,  # (T_q,)
+        doc_ids: list[Tensor],  # list of (T_d,) token sequences
         max_len: int = 512,
-    ) -> Tensor:                        # (max_len,) or shorter
+    ) -> Tensor:  # (max_len,) or shorter
         """Build a context tensor from query and document token sequences.
 
         Parameters
@@ -156,17 +158,18 @@ class ContextBuilder:
         -------
         1-D int64 tensor of length ``<= max_len``.
         """
-        parts: List[Tensor] = [query_ids.reshape(-1)]
+        parts: list[Tensor] = [query_ids.reshape(-1)]
         for d in doc_ids:
             parts.append(d.reshape(-1))
 
-        context = torch.cat(parts, dim=0)   # (sum_T,)
+        context = torch.cat(parts, dim=0)  # (sum_T,)
         return context[:max_len]
 
 
 # ---------------------------------------------------------------------------
 # Mock models (self-contained, no imports from src/model)
 # ---------------------------------------------------------------------------
+
 
 class MockDraftModel(nn.Module):
     """Tiny random draft model for testing.
@@ -194,8 +197,8 @@ class MockDraftModel(nn.Module):
         -------
         ``(B, T, vocab_size)`` float logits.
         """
-        x = self.embed(input_ids)   # (B, T, hidden)
-        return self.proj(x)         # (B, T, vocab_size)
+        x = self.embed(input_ids)  # (B, T, hidden)
+        return self.proj(x)  # (B, T, vocab_size)
 
 
 class MockTargetModel(nn.Module):
@@ -223,13 +226,14 @@ class MockTargetModel(nn.Module):
         -------
         ``(B, T, vocab_size)`` float logits.
         """
-        x = self.embed(input_ids)   # (B, T, hidden)
-        return self.proj(x)         # (B, T, vocab_size)
+        x = self.embed(input_ids)  # (B, T, hidden)
+        return self.proj(x)  # (B, T, vocab_size)
 
 
 # ---------------------------------------------------------------------------
 # Speculative RAG Decoder
 # ---------------------------------------------------------------------------
+
 
 class SpeculativeRAGDecoder:
     """Full Speculative RAG generation loop.
@@ -290,7 +294,7 @@ class SpeculativeRAGDecoder:
         self,
         query_ids: Tensor,
         context_ids: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Draft *n_draft_tokens* tokens autoregressively using the draft model.
 
         Parameters
@@ -311,25 +315,25 @@ class SpeculativeRAGDecoder:
         # Add batch dimension
         current = context_ids.reshape(1, -1)  # (1, T_c)
 
-        all_ids: List[Tensor] = []
-        all_logits: List[Tensor] = []
+        all_ids: list[Tensor] = []
+        all_logits: list[Tensor] = []
 
         with torch.no_grad():
             for _ in range(n):
-                logits = self.draft_model(current)      # (1, T, V)
-                last_logit = logits[:, -1:, :]          # (1, 1, V)
-                last_logit_2d = logits[:, -1, :]        # (1, V)
+                logits = self.draft_model(current)  # (1, T, V)
+                last_logit = logits[:, -1:, :]  # (1, 1, V)
+                last_logit_2d = logits[:, -1, :]  # (1, V)
 
                 probs = F.softmax(last_logit_2d / temp, dim=-1)  # (1, V)
                 next_tok = torch.multinomial(probs, num_samples=1)  # (1, 1)
 
-                all_ids.append(next_tok)                # (1, 1)
-                all_logits.append(last_logit)           # (1, 1, V)
+                all_ids.append(next_tok)  # (1, 1)
+                all_logits.append(last_logit)  # (1, 1, V)
 
                 current = torch.cat([current, next_tok], dim=1)  # (1, T+1)
 
-        draft_ids = torch.cat(all_ids, dim=1)           # (1, n)
-        draft_logits = torch.cat(all_logits, dim=1)     # (1, n, V)
+        draft_ids = torch.cat(all_ids, dim=1)  # (1, n)
+        draft_logits = torch.cat(all_logits, dim=1)  # (1, n, V)
 
         return draft_ids, draft_logits
 
@@ -355,7 +359,7 @@ class SpeculativeRAGDecoder:
         -------
         target_logits : ``(1, T_c + n_draft, V)`` logits from the target model.
         """
-        ctx = context_ids.reshape(1, -1)    # (1, T_c)
+        ctx = context_ids.reshape(1, -1)  # (1, T_c)
         full_ids = torch.cat([ctx, draft_ids], dim=1)  # (1, T_c + n_draft)
 
         with torch.no_grad():
@@ -370,10 +374,10 @@ class SpeculativeRAGDecoder:
     def _accept_reject(
         self,
         context_len: int,
-        draft_ids: Tensor,          # (1, n_draft)
-        draft_logits: Tensor,       # (1, n_draft, V)
-        target_logits: Tensor,      # (1, T_c + n_draft, V)
-    ) -> Tuple[Tensor, int]:
+        draft_ids: Tensor,  # (1, n_draft)
+        draft_logits: Tensor,  # (1, n_draft, V)
+        target_logits: Tensor,  # (1, T_c + n_draft, V)
+    ) -> tuple[Tensor, int]:
         """Apply speculative acceptance sampling for each draft token.
 
         For each draft position *i*:
@@ -395,33 +399,33 @@ class SpeculativeRAGDecoder:
         v_temp = max(float(self.config.verify_temperature), 1e-8)
         n_draft = draft_ids.shape[1]
 
-        accepted: List[Tensor] = []
+        accepted: list[Tensor] = []
         n_accepted = 0
 
         for i in range(n_draft):
             # Draft distribution at step i
-            d_logit = draft_logits[:, i, :]                     # (1, V)
-            d_probs = F.softmax(d_logit / d_temp, dim=-1)       # (1, V)
+            d_logit = draft_logits[:, i, :]  # (1, V)
+            d_probs = F.softmax(d_logit / d_temp, dim=-1)  # (1, V)
 
             # Target distribution: position (context_len - 1 + i) predicts
             # the token at context_len + i, which is draft_ids[:, i].
             t_pos = context_len - 1 + i
-            t_logit = target_logits[:, t_pos, :]                # (1, V)
-            t_probs = F.softmax(t_logit / v_temp, dim=-1)       # (1, V)
+            t_logit = target_logits[:, t_pos, :]  # (1, V)
+            t_probs = F.softmax(t_logit / v_temp, dim=-1)  # (1, V)
 
-            draft_tok = draft_ids[:, i]                         # (1,)
-            p_draft = d_probs[0, draft_tok[0].item()]           # scalar
-            p_target = t_probs[0, draft_tok[0].item()]          # scalar
+            draft_tok = draft_ids[:, i]  # (1,)
+            p_draft = d_probs[0, draft_tok[0].item()]  # scalar
+            p_target = t_probs[0, draft_tok[0].item()]  # scalar
 
             accept_prob = min(1.0, (p_target / (p_draft + 1e-10)).item())
             u = torch.rand(1).item()
 
             if u < accept_prob:
-                accepted.append(draft_tok.unsqueeze(0))         # (1, 1)
+                accepted.append(draft_tok.unsqueeze(0))  # (1, 1)
                 n_accepted += 1
             else:
                 # Corrected distribution: max(0, p_target - p_draft)
-                adj = (t_probs - d_probs).clamp(min=0.0)        # (1, V)
+                adj = (t_probs - d_probs).clamp(min=0.0)  # (1, V)
                 adj_sum = adj.sum(dim=-1, keepdim=True)
                 adj = torch.where(
                     adj_sum < 1e-10,
@@ -435,13 +439,13 @@ class SpeculativeRAGDecoder:
         # Bonus token when all drafts accepted
         if n_accepted == n_draft:
             bonus_pos = context_len + n_draft - 1
-            bonus_logit = target_logits[:, bonus_pos, :]        # (1, V)
+            bonus_logit = target_logits[:, bonus_pos, :]  # (1, V)
             bonus_probs = F.softmax(bonus_logit / v_temp, dim=-1)
             bonus_tok = torch.multinomial(bonus_probs, num_samples=1)  # (1, 1)
             accepted.append(bonus_tok)
 
         if accepted:
-            accepted_ids = torch.cat(accepted, dim=1)           # (1, k)
+            accepted_ids = torch.cat(accepted, dim=1)  # (1, k)
         else:
             accepted_ids = torch.zeros(1, 0, dtype=torch.long)
 
@@ -453,16 +457,16 @@ class SpeculativeRAGDecoder:
 
     def _rerank_docs(
         self,
-        docs: List[Document],
-        draft_ids: Tensor,          # (1, n_draft)
-    ) -> List[Document]:
+        docs: list[Document],
+        draft_ids: Tensor,  # (1, n_draft)
+    ) -> list[Document]:
         """Re-rank retrieved docs based on word overlap with draft tokens.
 
         Uses the draft token ids as a surrogate query (converted to a
         space-separated string of ids) and re-scores each doc.
         """
         draft_query = " ".join(str(t.item()) for t in draft_ids.reshape(-1))
-        reranked: List[Document] = []
+        reranked: list[Document] = []
         for doc in docs:
             new_score = _word_overlap_score(draft_query, doc.text)
             reranked.append(Document(text=doc.text, doc_id=doc.doc_id, score=new_score))
@@ -475,9 +479,9 @@ class SpeculativeRAGDecoder:
 
     def generate(
         self,
-        query_ids: Tensor,          # (T_q,) or (1, T_q)
+        query_ids: Tensor,  # (T_q,) or (1, T_q)
         max_new_tokens: int = 32,
-    ) -> Tuple[Tensor, Dict]:
+    ) -> tuple[Tensor, dict]:
         """Full RAG speculative generation.
 
         Steps per round:
@@ -504,7 +508,7 @@ class SpeculativeRAGDecoder:
                      ``acceptance_rate``, and ``n_docs_retrieved``.
         """
         cfg = self.config
-        query_flat = query_ids.reshape(-1)              # (T_q,)
+        query_flat = query_ids.reshape(-1)  # (T_q,)
 
         # Retrieve documents
         query_text = self._query_to_text(query_flat)
@@ -516,18 +520,16 @@ class SpeculativeRAGDecoder:
         if hasattr(self.draft_model, "vocab_size"):
             vocab_size = self.draft_model.vocab_size
 
-        doc_token_seqs: List[Tensor] = [
+        doc_token_seqs: list[Tensor] = [
             self._tokenize_doc(doc, vocab_size=vocab_size) for doc in docs
         ]
 
         # Build the context (query + docs), cap at 512 tokens
         max_ctx = 512
-        context_ids = self._context_builder.build(
-            query_flat, doc_token_seqs, max_len=max_ctx
-        )
+        context_ids = self._context_builder.build(query_flat, doc_token_seqs, max_len=max_ctx)
 
         # Running output (just the generated portion, not the context docs)
-        output_ids: Tensor = query_flat.clone()         # (T_q,) initially
+        output_ids: Tensor = query_flat.clone()  # (T_q,) initially
 
         total_accepted = 0
         n_rounds = 0
@@ -549,9 +551,7 @@ class SpeculativeRAGDecoder:
             # Optional re-rank
             if cfg.rerank and docs:
                 docs = self._rerank_docs(docs, draft_ids)
-                doc_token_seqs = [
-                    self._tokenize_doc(d, vocab_size=vocab_size) for d in docs
-                ]
+                doc_token_seqs = [self._tokenize_doc(d, vocab_size=vocab_size) for d in docs]
                 context_ids = self._context_builder.build(
                     query_flat, doc_token_seqs, max_len=max_ctx
                 )
@@ -575,48 +575,38 @@ class SpeculativeRAGDecoder:
             # Append accepted tokens to context and output
             if accepted_ids.shape[1] > 0:
                 n_to_add = min(accepted_ids.shape[1], remaining)
-                new_toks = accepted_ids[:, :n_to_add]   # (1, k)
+                new_toks = accepted_ids[:, :n_to_add]  # (1, k)
 
                 # Extend context
-                context_ids = torch.cat(
-                    [context_ids.reshape(-1), new_toks.reshape(-1)], dim=0
-                )
+                context_ids = torch.cat([context_ids.reshape(-1), new_toks.reshape(-1)], dim=0)
                 # Truncate context to keep it manageable
                 if context_ids.shape[0] > max_ctx:
                     context_ids = context_ids[-max_ctx:]
 
                 # Extend output_ids
-                output_ids = torch.cat(
-                    [output_ids, new_toks.reshape(-1)], dim=0
-                )
+                output_ids = torch.cat([output_ids, new_toks.reshape(-1)], dim=0)
                 tokens_generated += n_to_add
             else:
                 # No token accepted: fallback — sample one token from target
                 with torch.no_grad():
                     fallback_input = context_ids.reshape(1, -1)
-                    fb_logits = self.target_model(fallback_input)     # (1, T, V)
+                    fb_logits = self.target_model(fallback_input)  # (1, T, V)
                     last_v_temp = max(float(cfg.verify_temperature), 1e-8)
                     fb_probs = F.softmax(fb_logits[:, -1, :] / last_v_temp, dim=-1)
                     fb_tok = torch.multinomial(fb_probs, num_samples=1)  # (1, 1)
 
-                context_ids = torch.cat(
-                    [context_ids, fb_tok.reshape(-1)], dim=0
-                )
+                context_ids = torch.cat([context_ids, fb_tok.reshape(-1)], dim=0)
                 if context_ids.shape[0] > max_ctx:
                     context_ids = context_ids[-max_ctx:]
 
-                output_ids = torch.cat(
-                    [output_ids, fb_tok.reshape(-1)], dim=0
-                )
+                output_ids = torch.cat([output_ids, fb_tok.reshape(-1)], dim=0)
                 tokens_generated += 1
 
         # Final stats
         total_draft_tokens = cfg.n_draft_tokens * n_rounds
-        acceptance_rate = (
-            total_accepted / total_draft_tokens if total_draft_tokens > 0 else 0.0
-        )
+        acceptance_rate = total_accepted / total_draft_tokens if total_draft_tokens > 0 else 0.0
 
-        stats: Dict = {
+        stats: dict = {
             "n_accepted": total_accepted,
             "n_rounds": n_rounds,
             "acceptance_rate": acceptance_rate,

@@ -5,7 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.agent import AureliusInterfaceRuntime, SessionManager, SkillCatalog, WorkflowShell, WorkItem
+from src.agent import (
+    AureliusInterfaceRuntime,
+    SessionManager,
+    SkillCatalog,
+    WorkflowShell,
+    WorkItem,
+)
 from src.model import AureliusInterfaceFramework
 
 
@@ -131,7 +137,9 @@ def test_interface_runtime_end_to_end_session_workstream_and_workflow(tmp_path):
     status = runtime.session_status(session.session_id)
     thread_status = reloaded_runtime.thread_status(session.session_id, thread.thread_id)
     stored_thread = reloaded_runtime.get_thread(session.session_id, thread.thread_id)
-    stored_checkpoint = reloaded_runtime.session_manager.get_checkpoint(session.session_id, run.checkpoint_ids[0])
+    stored_checkpoint = reloaded_runtime.session_manager.get_checkpoint(
+        session.session_id, run.checkpoint_ids[0]
+    )
     json.dumps(run.to_dict())
     json.dumps(runtime.describe())
 

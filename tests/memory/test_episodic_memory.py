@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 from src.memory.episodic_memory import EpisodicMemory, MemoryEntry
-
 
 # ---------------------------------------------------------------------------
 # MemoryEntry construction
@@ -26,7 +23,8 @@ def test_memory_entry_two_ids_differ():
 
 
 def test_memory_entry_timestamp_is_iso8601():
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     entry = MemoryEntry(role="user", content="ts test")
     # Should be parseable as ISO 8601 datetime
     dt = datetime.fromisoformat(entry.timestamp)
@@ -266,7 +264,7 @@ def test_forget_entry_not_retrievable_after():
 
 def test_forget_only_removes_target():
     mem = EpisodicMemory()
-    e1 = mem.store("user", "keep me")
+    mem.store("user", "keep me")
     e2 = mem.store("user", "remove me")
     mem.forget(e2.id)
     assert len(mem) == 1
@@ -307,7 +305,7 @@ def test_clear_on_empty_returns_zero():
 
 def test_max_entries_evicts_oldest():
     mem = EpisodicMemory(max_entries=3)
-    entries = [mem.store("user", f"msg {i}") for i in range(5)]
+    [mem.store("user", f"msg {i}") for i in range(5)]
     assert len(mem) == 3
 
 
@@ -321,7 +319,7 @@ def test_max_entries_retains_newest():
 
 def test_max_entries_one():
     mem = EpisodicMemory(max_entries=1)
-    e1 = mem.store("user", "first")
+    mem.store("user", "first")
     e2 = mem.store("user", "second")
     assert len(mem) == 1
     result = mem.retrieve_recent(1)

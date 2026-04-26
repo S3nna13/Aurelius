@@ -1,12 +1,12 @@
 """Unit + integration tests for src/alignment/cpo_trainer.py — 15 tests."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.alignment.cpo_trainer import CPOConfig, CPOBatch, CPOTrainer
 from src.alignment import ALIGNMENT_REGISTRY
-
+from src.alignment.cpo_trainer import CPOBatch, CPOConfig, CPOTrainer
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,7 +91,7 @@ def test_sequence_log_prob_masked():
     lp = torch.full((B, T), -1.0)
     lp[:, -1] = -999.0  # will be masked out
     mask = torch.ones(B, T)
-    mask[:, -1] = 0.0   # pad the last position
+    mask[:, -1] = 0.0  # pad the last position
 
     out = trainer.sequence_log_prob(lp, mask)
     # Mean over 5 valid tokens, each = -1  →  -1.0
@@ -106,7 +106,7 @@ def test_sequence_log_prob_masked():
 def test_sft_loss_positive():
     trainer = CPOTrainer()
     B, T = 4, 8
-    lp = torch.full((B, T), -2.0)   # strictly negative log-probs
+    lp = torch.full((B, T), -2.0)  # strictly negative log-probs
     mask = torch.ones(B, T)
     loss = trainer.sft_loss(lp, mask)
     assert loss.item() > 0, "SFT loss must be positive for negative log-probs"
@@ -208,9 +208,7 @@ def test_total_loss_keys():
     out = trainer.total_loss(batch)
 
     required = {"loss", "sft_loss", "pref_loss", "log_ratio_mean", "reward_accuracy"}
-    assert required <= out.keys(), (
-        f"Missing keys: {required - out.keys()}"
-    )
+    assert required <= out.keys(), f"Missing keys: {required - out.keys()}"
 
 
 # ---------------------------------------------------------------------------

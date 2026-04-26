@@ -48,13 +48,17 @@ class FakeServer:
 # handshake
 # ---------------------------------------------------------------------------
 def test_initialize_returns_handshake_dict():
-    server = FakeServer({
-        "initialize": _ok({
-            "protocolVersion": MCP_PROTOCOL_VERSION,
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": "stub", "version": "0.0.1"},
-        })
-    })
+    server = FakeServer(
+        {
+            "initialize": _ok(
+                {
+                    "protocolVersion": MCP_PROTOCOL_VERSION,
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "stub", "version": "0.0.1"},
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     info = client.initialize()
     assert info["protocolVersion"] == MCP_PROTOCOL_VERSION
@@ -76,16 +80,29 @@ def test_initialize_sent_with_client_metadata():
 # tools
 # ---------------------------------------------------------------------------
 def test_list_tools_parses_into_dataclasses():
-    server = FakeServer({
-        "tools/list": _ok({
-            "tools": [
-                {"name": "add", "description": "add two ints",
-                 "inputSchema": {"type": "object"}},
-                {"name": "echo", "description": "",
-                 "inputSchema": {"type": "object", "properties": {"s": {"type": "string"}}}},
-            ]
-        })
-    })
+    server = FakeServer(
+        {
+            "tools/list": _ok(
+                {
+                    "tools": [
+                        {
+                            "name": "add",
+                            "description": "add two ints",
+                            "inputSchema": {"type": "object"},
+                        },
+                        {
+                            "name": "echo",
+                            "description": "",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {"s": {"type": "string"}},
+                            },
+                        },
+                    ]
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     tools = client.list_tools()
     assert len(tools) == 2
@@ -96,12 +113,16 @@ def test_list_tools_parses_into_dataclasses():
 
 
 def test_call_tool_returns_result():
-    server = FakeServer({
-        "tools/call": _ok({
-            "content": [{"type": "text", "text": "42"}],
-            "isError": False,
-        })
-    })
+    server = FakeServer(
+        {
+            "tools/call": _ok(
+                {
+                    "content": [{"type": "text", "text": "42"}],
+                    "isError": False,
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     out = client.call_tool("add", {"a": 1, "b": 41})
     assert isinstance(out, MCPToolCallResult)
@@ -114,12 +135,16 @@ def test_call_tool_returns_result():
 
 
 def test_call_tool_marks_is_error():
-    server = FakeServer({
-        "tools/call": _ok({
-            "content": [{"type": "text", "text": "division by zero"}],
-            "isError": True,
-        })
-    })
+    server = FakeServer(
+        {
+            "tools/call": _ok(
+                {
+                    "content": [{"type": "text", "text": "division by zero"}],
+                    "isError": True,
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     out = client.call_tool("divide", {"a": 1, "b": 0})
     assert out.is_error is True
@@ -130,14 +155,18 @@ def test_call_tool_marks_is_error():
 # resources
 # ---------------------------------------------------------------------------
 def test_list_resources_returns_dataclasses():
-    server = FakeServer({
-        "resources/list": _ok({
-            "resources": [
-                {"uri": "file:///a.txt", "name": "a", "mimeType": "text/plain"},
-                {"uri": "file:///b.bin"},
-            ]
-        })
-    })
+    server = FakeServer(
+        {
+            "resources/list": _ok(
+                {
+                    "resources": [
+                        {"uri": "file:///a.txt", "name": "a", "mimeType": "text/plain"},
+                        {"uri": "file:///b.bin"},
+                    ]
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     resources = client.list_resources()
     assert len(resources) == 2
@@ -150,14 +179,18 @@ def test_list_resources_returns_dataclasses():
 
 
 def test_read_resource_returns_text():
-    server = FakeServer({
-        "resources/read": _ok({
-            "contents": [
-                {"uri": "file:///a.txt", "mimeType": "text/plain", "text": "hello "},
-                {"uri": "file:///a.txt", "mimeType": "text/plain", "text": "world"},
-            ]
-        })
-    })
+    server = FakeServer(
+        {
+            "resources/read": _ok(
+                {
+                    "contents": [
+                        {"uri": "file:///a.txt", "mimeType": "text/plain", "text": "hello "},
+                        {"uri": "file:///a.txt", "mimeType": "text/plain", "text": "world"},
+                    ]
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     assert client.read_resource("file:///a.txt") == "hello world"
 
@@ -166,15 +199,22 @@ def test_read_resource_returns_text():
 # prompts
 # ---------------------------------------------------------------------------
 def test_list_prompts_returns_dataclasses():
-    server = FakeServer({
-        "prompts/list": _ok({
-            "prompts": [
-                {"name": "greet", "description": "say hi",
-                 "arguments": [{"name": "who", "required": True}]},
-                {"name": "bare"},
-            ]
-        })
-    })
+    server = FakeServer(
+        {
+            "prompts/list": _ok(
+                {
+                    "prompts": [
+                        {
+                            "name": "greet",
+                            "description": "say hi",
+                            "arguments": [{"name": "who", "required": True}],
+                        },
+                        {"name": "bare"},
+                    ]
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     prompts = client.list_prompts()
     assert len(prompts) == 2
@@ -185,15 +225,19 @@ def test_list_prompts_returns_dataclasses():
 
 
 def test_get_prompt_renders_messages():
-    server = FakeServer({
-        "prompts/get": _ok({
-            "description": "greeting",
-            "messages": [
-                {"role": "system", "content": {"type": "text", "text": "Be nice."}},
-                {"role": "user", "content": [{"type": "text", "text": "Hello, Ada!"}]},
-            ],
-        })
-    })
+    server = FakeServer(
+        {
+            "prompts/get": _ok(
+                {
+                    "description": "greeting",
+                    "messages": [
+                        {"role": "system", "content": {"type": "text", "text": "Be nice."}},
+                        {"role": "user", "content": [{"type": "text", "text": "Hello, Ada!"}]},
+                    ],
+                }
+            )
+        }
+    )
     client = MCPClient(server)
     rendered = client.get_prompt("greet", {"who": "Ada"})
     assert "system: Be nice." in rendered
@@ -237,11 +281,9 @@ def test_server_error_raises():
 # determinism & id increment
 # ---------------------------------------------------------------------------
 def test_deterministic_identical_calls_identical_results():
-    server = FakeServer({
-        "tools/list": _ok({
-            "tools": [{"name": "t", "description": "", "inputSchema": {}}]
-        })
-    })
+    server = FakeServer(
+        {"tools/list": _ok({"tools": [{"name": "t", "description": "", "inputSchema": {}}]})}
+    )
     client = MCPClient(server)
     a = client.list_tools()
     b = client.list_tools()
@@ -249,11 +291,13 @@ def test_deterministic_identical_calls_identical_results():
 
 
 def test_request_id_increments_across_calls():
-    server = FakeServer({
-        "initialize": _ok({"protocolVersion": MCP_PROTOCOL_VERSION}),
-        "tools/list": _ok({"tools": []}),
-        "resources/list": _ok({"resources": []}),
-    })
+    server = FakeServer(
+        {
+            "initialize": _ok({"protocolVersion": MCP_PROTOCOL_VERSION}),
+            "tools/list": _ok({"tools": []}),
+            "resources/list": _ok({"resources": []}),
+        }
+    )
     client = MCPClient(server)
     client.initialize()
     assert client.last_request_id == 1

@@ -13,12 +13,11 @@ import ast
 import enum
 import random
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class FIMFormat(enum.Enum):
     """Fill-in-the-middle formatting strategy."""
@@ -32,6 +31,7 @@ class FIMFormat(enum.Enum):
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ASTNode:
     """Lightweight representation of a parsed AST node."""
@@ -39,8 +39,8 @@ class ASTNode:
     node_type: str
     start_line: int
     end_line: int
-    name: Optional[str] = None
-    children: list["ASTNode"] = field(default_factory=list)
+    name: str | None = None
+    children: list[ASTNode] = field(default_factory=list)
 
 
 @dataclass
@@ -51,12 +51,13 @@ class FIMSpan:
     suffix: str
     middle: str
     language: str = "python"
-    cursor_line: Optional[int] = None
+    cursor_line: int | None = None
 
 
 # ---------------------------------------------------------------------------
 # ASTAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class ASTAnalyzer:
     """Python AST analysis utilities (stdlib ``ast`` only)."""
@@ -81,7 +82,7 @@ class ASTAnalyzer:
                 nodes.append(ast_node)
         return nodes
 
-    def find_enclosing_scope(self, source: str, line: int) -> Optional[ASTNode]:
+    def find_enclosing_scope(self, source: str, line: int) -> ASTNode | None:
         """Return the innermost function/class node containing *line*.
 
         *line* is 1-based. Returns ``None`` if no such scope exists or on
@@ -92,7 +93,7 @@ class ASTAnalyzer:
         except SyntaxError:
             return None
 
-        best: Optional[ASTNode] = None
+        best: ASTNode | None = None
         best_size = float("inf")
 
         for node in ast.walk(tree):
@@ -145,10 +146,10 @@ class ASTAnalyzer:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _convert_node(self, node: ast.AST) -> Optional[ASTNode]:
+    def _convert_node(self, node: ast.AST) -> ASTNode | None:
         """Convert an ``ast.AST`` node to an :class:`ASTNode`."""
         node_type: str
-        name: Optional[str] = None
+        name: str | None = None
         start_line: int = getattr(node, "lineno", 0)
         end_line: int = getattr(node, "end_lineno", start_line) or start_line
 
@@ -179,6 +180,7 @@ class ASTAnalyzer:
 # ---------------------------------------------------------------------------
 # FIMTokenizer
 # ---------------------------------------------------------------------------
+
 
 class FIMTokenizer:
     """Format and parse fill-in-the-middle (FIM) prompts."""

@@ -12,6 +12,7 @@ Instead of a learned value-function baseline, RLOO uses the mean reward of the
 This yields an unbiased, low-variance policy gradient with no separate value
 network required.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,10 +20,10 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RLOOConfig:
@@ -34,6 +35,7 @@ class RLOOConfig:
         normalize_advantages: If True, z-score advantages across the whole batch.
         eps:                  Small constant for numerical stability.
     """
+
     k: int = 8
     kl_coeff: float = 0.05
     normalize_advantages: bool = True
@@ -43,6 +45,7 @@ class RLOOConfig:
 # ---------------------------------------------------------------------------
 # Batch
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RLOOBatch:
@@ -58,6 +61,7 @@ class RLOOBatch:
         rewards:        [B*k]    scalar reward for each response.
         attention_mask: [B*k, T] 1 for real tokens, 0 for padding.
     """
+
     log_probs: Tensor
     ref_log_probs: Tensor
     rewards: Tensor
@@ -67,6 +71,7 @@ class RLOOBatch:
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class RLOOTrainer:
     """REINFORCE Leave-One-Out policy gradient trainer.
@@ -105,15 +110,13 @@ class RLOOTrainer:
         k = self.config.k
         total = rewards.shape[0]
         if total % k != 0:
-            raise ValueError(
-                f"rewards.shape[0]={total} is not divisible by k={k}"
-            )
+            raise ValueError(f"rewards.shape[0]={total} is not divisible by k={k}")
         b = total // k
 
-        r = rewards.view(b, k)                        # [B, k]
-        sum_r = r.sum(dim=1, keepdim=True)            # [B, 1]
-        loo_baseline = (sum_r - r) / (k - 1)         # [B, k]
-        adv = (r - loo_baseline).view(-1)             # [B*k]
+        r = rewards.view(b, k)  # [B, k]
+        sum_r = r.sum(dim=1, keepdim=True)  # [B, 1]
+        loo_baseline = (sum_r - r) / (k - 1)  # [B, k]
+        adv = (r - loo_baseline).view(-1)  # [B*k]
 
         if self.config.normalize_advantages:
             adv = (adv - adv.mean()) / (adv.std() + self.config.eps)
@@ -142,7 +145,7 @@ class RLOOTrainer:
         Returns:
             Scalar mean KL over all unmasked token positions.
         """
-        per_token_kl = log_probs - ref_log_probs          # [B*k, T]
+        per_token_kl = log_probs - ref_log_probs  # [B*k, T]
         # Average only over tokens that are not padding
         masked_kl = per_token_kl * mask
         n_tokens = mask.sum().clamp(min=1.0)
@@ -163,10 +166,10 @@ class RLOOTrainer:
         Returns:
             Scalar policy-gradient loss (to be minimised).
         """
-        adv = self.compute_loo_advantages(batch.rewards)       # [B*k]
+        adv = self.compute_loo_advantages(batch.rewards)  # [B*k]
         # Broadcast advantage to token dimension
         adv_expanded = adv.unsqueeze(1) * batch.attention_mask  # [B*k, T]
-        pg = -adv_expanded * batch.log_probs                    # [B*k, T]
+        pg = -adv_expanded * batch.log_probs  # [B*k, T]
         n_tokens = batch.attention_mask.sum().clamp(min=1.0)
         return pg.sum() / n_tokens
 
@@ -217,9 +220,7 @@ class RLOOTrainer:
         """
         with torch.no_grad():
             adv = self.compute_loo_advantages(batch.rewards)
-            kl = self.compute_kl_penalty(
-                batch.log_probs, batch.ref_log_probs, batch.attention_mask
-            )
+            kl = self.compute_kl_penalty(batch.log_probs, batch.ref_log_probs, batch.attention_mask)
         return {
             "mean_advantage": adv.mean().item(),
             "std_advantage": adv.std().item(),

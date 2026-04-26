@@ -1,9 +1,8 @@
-import pytest
 from src.serving.load_balancer import (
+    LOAD_BALANCER_REGISTRY,
     BackendNode,
     LBStrategy,
     LoadBalancer,
-    LOAD_BALANCER_REGISTRY,
 )
 
 

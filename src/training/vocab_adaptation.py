@@ -3,33 +3,36 @@
 Supports expanding model vocabulary with new tokens, initializing their
 embeddings intelligently, and training with differentiated learning rates.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from collections import Counter
+from dataclasses import dataclass, field
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class VocabAdaptConfig:
     """Configuration for vocabulary adaptation."""
+
     new_tokens: list[str] = field(default_factory=list)
-    init_method: str = "mean"          # "mean" | "random" | "closest"
+    init_method: str = "mean"  # "mean" | "random" | "closest"
     freeze_old_embeddings: bool = False
-    scale_lr_new: float = 10.0         # LR multiplier for new token embeddings
+    scale_lr_new: float = 10.0  # LR multiplier for new token embeddings
 
 
 # ---------------------------------------------------------------------------
 # Similarity utilities
 # ---------------------------------------------------------------------------
+
 
 def compute_token_similarity(
     embed_weight: Tensor,
@@ -47,9 +50,9 @@ def compute_token_similarity(
         (similarities, indices) both shape (top_k,).
     """
     # Normalise for cosine similarity
-    norm_weight = F.normalize(embed_weight, dim=-1)          # (V, D)
+    norm_weight = F.normalize(embed_weight, dim=-1)  # (V, D)
     norm_query = F.normalize(query_embed.unsqueeze(0), dim=-1)  # (1, D)
-    sims = (norm_weight @ norm_query.T).squeeze(-1)           # (V,)
+    sims = (norm_weight @ norm_query.T).squeeze(-1)  # (V,)
     top_k = min(top_k, sims.shape[0])
     similarities, indices = torch.topk(sims, k=top_k)
     return similarities, indices
@@ -58,6 +61,7 @@ def compute_token_similarity(
 # ---------------------------------------------------------------------------
 # Embedding initialisation
 # ---------------------------------------------------------------------------
+
 
 def initialize_new_token_embedding(
     embed_weight: Tensor,
@@ -96,6 +100,7 @@ def initialize_new_token_embedding(
 # Vocabulary expansion
 # ---------------------------------------------------------------------------
 
+
 def expand_vocabulary(model: nn.Module, n_new_tokens: int, method: str = "mean") -> None:
     """Expand model.embed and model.lm_head by n_new_tokens rows.
 
@@ -115,7 +120,10 @@ def expand_vocabulary(model: nn.Module, n_new_tokens: int, method: str = "mean")
 
     # Build new rows for the embedding table
     new_rows = torch.stack(
-        [initialize_new_token_embedding(old_embed_weight, method=method) for _ in range(n_new_tokens)],
+        [
+            initialize_new_token_embedding(old_embed_weight, method=method)
+            for _ in range(n_new_tokens)
+        ],
         dim=0,
     )  # (n_new_tokens, D)
 
@@ -151,6 +159,7 @@ def expand_vocabulary(model: nn.Module, n_new_tokens: int, method: str = "mean")
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class VocabAdaptationTrainer:
     """Fine-tuning trainer that adapts a pre-trained model to new vocabulary.
 
@@ -184,13 +193,14 @@ class VocabAdaptationTrainer:
         # We keep the full embed.weight in group 1 but will override grad for old rows.
         new_embed_params = [self.model.embed.weight]  # full weight; hook clips old rows
         other_params = [
-            p for name, p in self.model.named_parameters()
+            p
+            for name, p in self.model.named_parameters()
             if name != "embed.weight" and p.requires_grad
         ]
 
         param_groups = [
             {"params": new_embed_params, "lr": base_lr * self.config.scale_lr_new},
-            {"params": other_params,     "lr": base_lr},
+            {"params": other_params, "lr": base_lr},
         ]
         return torch.optim.AdamW(param_groups, lr=base_lr)
 
@@ -270,6 +280,7 @@ class VocabAdaptationTrainer:
 # ---------------------------------------------------------------------------
 # Token usage analysis
 # ---------------------------------------------------------------------------
+
 
 def analyze_token_usage(
     input_ids: Tensor,

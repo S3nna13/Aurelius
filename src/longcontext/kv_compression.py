@@ -43,7 +43,6 @@ Non-goals
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 from torch import Tensor
@@ -54,8 +53,8 @@ _SCALE_EPS: float = 1e-8
 
 
 def quantize_per_head_symmetric(
-    x: Tensor, dim: Tuple[int, ...] | int = (-2, -1)
-) -> Tuple[Tensor, Tensor]:
+    x: Tensor, dim: tuple[int, ...] | int = (-2, -1)
+) -> tuple[Tensor, Tensor]:
     """Symmetric INT8 quantize reducing absmax over ``dim``.
 
     Parameters
@@ -76,9 +75,7 @@ def quantize_per_head_symmetric(
     if not torch.is_tensor(x):
         raise TypeError("quantize_per_head_symmetric expects a torch.Tensor")
     if not x.is_floating_point():
-        raise TypeError(
-            f"quantize_per_head_symmetric expects float input, got {x.dtype}"
-        )
+        raise TypeError(f"quantize_per_head_symmetric expects float input, got {x.dtype}")
 
     reduce_dims = (dim,) if isinstance(dim, int) else tuple(dim)
     # absmax over the requested dims, keep them for broadcast.
@@ -89,15 +86,13 @@ def quantize_per_head_symmetric(
     q = q.clamp_(-_INT8_MAX, _INT8_MAX).to(torch.int8)
 
     # Squeeze scale back to one-per-head shape (drop the kept reduce dims).
-    squeeze_dims = sorted(
-        (d if d >= 0 else d + x.dim()) for d in reduce_dims
-    )
+    squeeze_dims = sorted((d if d >= 0 else d + x.dim()) for d in reduce_dims)
     for d in reversed(squeeze_dims):
         scale = scale.squeeze(d)
     return q, scale
 
 
-def _dequantize(q: Tensor, scale: Tensor, reduce_dims: Tuple[int, ...]) -> Tensor:
+def _dequantize(q: Tensor, scale: Tensor, reduce_dims: tuple[int, ...]) -> Tensor:
     """Inverse of ``quantize_per_head_symmetric`` for the given reduce dims."""
     broadcast_scale = scale
     for d in sorted((d if d >= 0 else d + q.dim()) for d in reduce_dims):
@@ -155,7 +150,7 @@ class KVInt8Compressor:
         Number of attention heads ``H``.
     """
 
-    _REDUCE_DIMS: Tuple[int, int] = (-2, -1)
+    _REDUCE_DIMS: tuple[int, int] = (-2, -1)
 
     def __init__(self, head_dim: int, n_heads: int) -> None:
         if head_dim <= 0 or n_heads <= 0:
@@ -166,18 +161,12 @@ class KVInt8Compressor:
     # ------------------------------------------------------------------ util
     def _check_kv(self, k: Tensor, v: Tensor) -> None:
         if k.shape != v.shape:
-            raise ValueError(
-                f"K/V shape mismatch: {tuple(k.shape)} vs {tuple(v.shape)}"
-            )
+            raise ValueError(f"K/V shape mismatch: {tuple(k.shape)} vs {tuple(v.shape)}")
         if k.dim() != 4:
-            raise ValueError(
-                f"expected [B,H,S,D] (4D) tensors, got {k.dim()}D"
-            )
+            raise ValueError(f"expected [B,H,S,D] (4D) tensors, got {k.dim()}D")
         b, h, _s, d = k.shape
         if h != self.n_heads:
-            raise ValueError(
-                f"n_heads mismatch: tensor H={h}, compressor n_heads={self.n_heads}"
-            )
+            raise ValueError(f"n_heads mismatch: tensor H={h}, compressor n_heads={self.n_heads}")
         if d != self.head_dim:
             raise ValueError(
                 f"head_dim mismatch: tensor D={d}, compressor head_dim={self.head_dim}"
@@ -201,7 +190,7 @@ class KVInt8Compressor:
         )
 
     # ----------------------------------------------------------- decompress
-    def decompress(self, c: CompressedKV) -> Tuple[Tensor, Tensor]:
+    def decompress(self, c: CompressedKV) -> tuple[Tensor, Tensor]:
         """Inverse of ``compress``."""
         k = _dequantize(c.k_q, c.k_scale, self._REDUCE_DIMS).to(c.orig_dtype)
         v = _dequantize(c.v_q, c.v_scale, self._REDUCE_DIMS).to(c.orig_dtype)
@@ -211,9 +200,7 @@ class KVInt8Compressor:
         return k, v
 
     # --------------------------------------------------------------- append
-    def append(
-        self, c: CompressedKV, new_k: Tensor, new_v: Tensor
-    ) -> CompressedKV:
+    def append(self, c: CompressedKV, new_k: Tensor, new_v: Tensor) -> CompressedKV:
         """Streaming append: compress ``new_k``/``new_v`` and concat.
 
         The history buffer is not re-quantized. A joint scale is chosen
@@ -228,9 +215,7 @@ class KVInt8Compressor:
                 f"new K/V shape mismatch: {tuple(new_k.shape)} vs {tuple(new_v.shape)}"
             )
         if new_k.dim() != 4:
-            raise ValueError(
-                f"expected [B,H,S,D] tensors, got {new_k.dim()}D"
-            )
+            raise ValueError(f"expected [B,H,S,D] tensors, got {new_k.dim()}D")
         if new_k.shape[0] != c.k_q.shape[0] or new_k.shape[1] != c.k_q.shape[1]:
             raise ValueError(
                 "batch/head dims must match history "
@@ -238,8 +223,7 @@ class KVInt8Compressor:
             )
         if new_k.shape[-1] != c.k_q.shape[-1]:
             raise ValueError(
-                "head_dim must match history "
-                f"(got {new_k.shape[-1]}, history {c.k_q.shape[-1]})"
+                f"head_dim must match history (got {new_k.shape[-1]}, history {c.k_q.shape[-1]})"
             )
 
         k_q_hist, v_q_hist = c.k_q, c.v_q

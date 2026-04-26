@@ -7,10 +7,8 @@ and progressive depth scaling of AureliusTransformer models.
 from __future__ import annotations
 
 import copy
-import math
 from dataclasses import dataclass
 
-import torch
 import torch.nn as nn
 
 from .transformer import AureliusTransformer, TransformerBlock
@@ -125,13 +123,11 @@ def clone_model_with_depth(
     if strategy == "uniform":
         if target_n_layers == n_src:
             # Exact copy
-            new_layer_list = [copy.deepcopy(l) for l in src_layers]
+            new_layer_list = [copy.deepcopy(line) for line in src_layers]
         else:
             # Use linspace to pick evenly-spaced source indices
             indices = [
-                round(i * (n_src - 1) / (target_n_layers - 1))
-                if target_n_layers > 1
-                else 0
+                round(i * (n_src - 1) / (target_n_layers - 1)) if target_n_layers > 1 else 0
                 for i in range(target_n_layers)
             ]
             new_layer_list = [copy.deepcopy(src_layers[idx]) for idx in indices]
@@ -140,15 +136,13 @@ def clone_model_with_depth(
         if target_n_layers <= n_src:
             # Shrink: keep evenly spaced
             indices = [
-                round(i * (n_src - 1) / (target_n_layers - 1))
-                if target_n_layers > 1
-                else 0
+                round(i * (n_src - 1) / (target_n_layers - 1)) if target_n_layers > 1 else 0
                 for i in range(target_n_layers)
             ]
             new_layer_list = [copy.deepcopy(src_layers[idx]) for idx in indices]
         else:
             # Grow: start with all src layers, insert copies of middle layers
-            new_layer_list = [copy.deepcopy(l) for l in src_layers]
+            new_layer_list = [copy.deepcopy(line) for line in src_layers]
             mid = n_src // 2
             while len(new_layer_list) < target_n_layers:
                 new_layer_list.insert(mid, copy.deepcopy(src_layers[mid]))
@@ -171,6 +165,7 @@ def clone_model_with_depth(
 @dataclass
 class ScalingResult:
     """Statistics from a depth-scaling operation."""
+
     original_params: int
     new_params: int
     n_layers_original: int
@@ -212,8 +207,7 @@ def scale_model_depth(
             indices = [0]
         else:
             indices = [
-                round(i * (n_src - 1) / (target_n_layers - 1))
-                for i in range(target_n_layers)
+                round(i * (n_src - 1) / (target_n_layers - 1)) for i in range(target_n_layers)
             ]
         new_layer_list = [copy.deepcopy(src_layers[idx]) for idx in indices]
     else:

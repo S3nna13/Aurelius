@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -16,7 +16,7 @@ class GrammarConfig:
 
     max_new_tokens: int = 64
     grammar_type: str = "regex"  # "regex" | "json_schema" | "free"
-    pattern: str = ""            # regex pattern for "regex" mode
+    pattern: str = ""  # regex pattern for "regex" mode
     allow_any_on_fail: bool = True  # if FSM gets stuck, allow any token
 
 
@@ -57,7 +57,13 @@ class RegexFSM:
 
 
 # Characters considered structurally valid in JSON
-_JSON_ALLOWED_CHARS = set('{}[]":,. \t\n\r') | set("abcdefghijklmnopqrstuvwxyz") | set("ABCDEFGHIJKLMNOPQRSTUVWXYZ") | set("0123456789") | set("_-+*/\\")
+_JSON_ALLOWED_CHARS = (
+    set('{}[]":,. \t\n\r')
+    | set("abcdefghijklmnopqrstuvwxyz")
+    | set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    | set("0123456789")
+    | set("_-+*/\\")
+)
 
 
 def json_schema_mask(

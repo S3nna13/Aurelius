@@ -1,19 +1,20 @@
 """Tests for src/reasoning/reasoning_chain_manager.py — at least 20 tests."""
+
 from __future__ import annotations
+
 import pytest
 
 from src.reasoning.reasoning_chain_manager import (
-    ChainStep,
-    ChainStrategy,
-    ReasoningChainManager,
     CHAIN_MANAGER_REGISTRY,
     DEFAULT_CHAIN_MANAGER,
+    ChainStrategy,
+    ReasoningChainManager,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh() -> ReasoningChainManager:
     return ReasoningChainManager()
@@ -22,6 +23,7 @@ def fresh() -> ReasoningChainManager:
 # ---------------------------------------------------------------------------
 # 1. add_step with each strategy
 # ---------------------------------------------------------------------------
+
 
 def test_add_step_cot():
     mgr = fresh()
@@ -52,6 +54,7 @@ def test_add_step_scratchpad():
 # 2. Default strategy used when none provided
 # ---------------------------------------------------------------------------
 
+
 def test_add_step_default_strategy():
     mgr = ReasoningChainManager(default_strategy=ChainStrategy.TOT)
     step = mgr.add_step("no strategy given")
@@ -61,6 +64,7 @@ def test_add_step_default_strategy():
 # ---------------------------------------------------------------------------
 # 3. Content truncation at max_step_length
 # ---------------------------------------------------------------------------
+
 
 def test_content_truncation():
     mgr = ReasoningChainManager(max_step_length=10)
@@ -78,6 +82,7 @@ def test_content_not_truncated_when_short():
 # 4. max_steps overflow raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_max_steps_overflow():
     mgr = ReasoningChainManager(max_steps=3)
     for i in range(3):
@@ -89,6 +94,7 @@ def test_max_steps_overflow():
 # ---------------------------------------------------------------------------
 # 5. get_steps filtered by strategy
 # ---------------------------------------------------------------------------
+
 
 def test_get_steps_filtered():
     mgr = fresh()
@@ -117,6 +123,7 @@ def test_get_steps_empty_for_missing_strategy():
 # 6. summarize correctness
 # ---------------------------------------------------------------------------
 
+
 def test_summarize():
     mgr = fresh()
     mgr.add_step("line one", strategy=ChainStrategy.COT)
@@ -132,6 +139,7 @@ def test_summarize_empty():
 # ---------------------------------------------------------------------------
 # 7. export / from_export round-trip for all 4 strategies
 # ---------------------------------------------------------------------------
+
 
 def test_export_from_export_roundtrip():
     mgr = fresh()
@@ -155,6 +163,7 @@ def test_export_from_export_roundtrip():
 # 8. from_export with missing 'strategy' key raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_from_export_missing_strategy_key():
     with pytest.raises(ValueError, match="strategy"):
         ReasoningChainManager.from_export([{"content": "hello"}])
@@ -164,6 +173,7 @@ def test_from_export_missing_strategy_key():
 # 9. from_export with missing 'content' key raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_from_export_missing_content_key():
     with pytest.raises(ValueError, match="content"):
         ReasoningChainManager.from_export([{"strategy": "cot"}])
@@ -172,6 +182,7 @@ def test_from_export_missing_content_key():
 # ---------------------------------------------------------------------------
 # 10. clear() resets to empty
 # ---------------------------------------------------------------------------
+
 
 def test_clear():
     mgr = fresh()
@@ -186,6 +197,7 @@ def test_clear():
 # 11. Adversarial: null bytes in content
 # ---------------------------------------------------------------------------
 
+
 def test_null_bytes_in_content():
     mgr = fresh()
     content = "hello\x00world\x00"
@@ -196,6 +208,7 @@ def test_null_bytes_in_content():
 # ---------------------------------------------------------------------------
 # 12. Adversarial: very long content (truncated correctly)
 # ---------------------------------------------------------------------------
+
 
 def test_very_long_content_truncated():
     mgr = ReasoningChainManager(max_step_length=4096)
@@ -208,6 +221,7 @@ def test_very_long_content_truncated():
 # 13. Adversarial: all-whitespace content
 # ---------------------------------------------------------------------------
 
+
 def test_all_whitespace_content():
     mgr = fresh()
     step = mgr.add_step("   \t\n   ", strategy=ChainStrategy.SCRATCHPAD)
@@ -217,6 +231,7 @@ def test_all_whitespace_content():
 # ---------------------------------------------------------------------------
 # 14. Empty data list → empty chain manager
 # ---------------------------------------------------------------------------
+
 
 def test_from_export_empty_list():
     mgr = ReasoningChainManager.from_export([])
@@ -228,6 +243,7 @@ def test_from_export_empty_list():
 # 15. Score stored correctly
 # ---------------------------------------------------------------------------
 
+
 def test_score_stored():
     mgr = fresh()
     step = mgr.add_step("s", strategy=ChainStrategy.COT, score=0.75)
@@ -237,6 +253,7 @@ def test_score_stored():
 # ---------------------------------------------------------------------------
 # 16. Metadata stored correctly and isolated
 # ---------------------------------------------------------------------------
+
 
 def test_metadata_isolation():
     mgr = fresh()
@@ -250,6 +267,7 @@ def test_metadata_isolation():
 # 17. CHAIN_MANAGER_REGISTRY contains the expected key
 # ---------------------------------------------------------------------------
 
+
 def test_registry_contains_chain_manager():
     assert "chain_manager" in CHAIN_MANAGER_REGISTRY
     assert CHAIN_MANAGER_REGISTRY["chain_manager"] is ReasoningChainManager
@@ -259,6 +277,7 @@ def test_registry_contains_chain_manager():
 # 18. DEFAULT_CHAIN_MANAGER is a ReasoningChainManager instance
 # ---------------------------------------------------------------------------
 
+
 def test_default_chain_manager_singleton():
     assert isinstance(DEFAULT_CHAIN_MANAGER, ReasoningChainManager)
 
@@ -266,6 +285,7 @@ def test_default_chain_manager_singleton():
 # ---------------------------------------------------------------------------
 # 19. export produces correct dict structure
 # ---------------------------------------------------------------------------
+
 
 def test_export_structure():
     mgr = fresh()
@@ -283,6 +303,7 @@ def test_export_structure():
 # 20. get_steps returns a copy (mutation does not affect internal state)
 # ---------------------------------------------------------------------------
 
+
 def test_get_steps_returns_copy():
     mgr = fresh()
     mgr.add_step("original", strategy=ChainStrategy.COT)
@@ -295,6 +316,7 @@ def test_get_steps_returns_copy():
 # 21. add_step with no metadata defaults to empty dict
 # ---------------------------------------------------------------------------
 
+
 def test_add_step_no_metadata_defaults_to_empty():
     mgr = fresh()
     step = mgr.add_step("hello", strategy=ChainStrategy.COT)
@@ -304,6 +326,7 @@ def test_add_step_no_metadata_defaults_to_empty():
 # ---------------------------------------------------------------------------
 # 22. Multiple from_export calls are independent instances
 # ---------------------------------------------------------------------------
+
 
 def test_from_export_independent_instances():
     data = [{"strategy": "cot", "content": "step1", "score": 0.0, "metadata": {}}]

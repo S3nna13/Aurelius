@@ -2,35 +2,37 @@
 Synthetic augmentation for training data using model-free token-level techniques.
 Pure Python stdlib + PyTorch only.
 """
+
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 
 @dataclass
 class SyntheticAugConfig:
     """Configuration for synthetic augmentation."""
+
     p_mask: float = 0.15
     p_insert: float = 0.1
     p_replace: float = 0.1
     vocab_size: int = 32000
     mask_token_id: int = 103
     n_augments: int = 3
-    seed: Optional[int] = None
+    seed: int | None = None
 
 
 # ---------------------------------------------------------------------------
 # Standalone augmentation functions
 # ---------------------------------------------------------------------------
 
+
 def mask_tokens(
-    token_ids: List[int],
+    token_ids: list[int],
     p: float,
     mask_id: int,
     rng: random.Random,
-) -> List[int]:
+) -> list[int]:
     """Replace each token with mask_id with probability p.
 
     Guarantees at least one token remains unmasked.
@@ -40,7 +42,7 @@ def mask_tokens(
     if n == 0:
         return result
 
-    masked_indices: List[int] = []
+    masked_indices: list[int] = []
     for i in range(n):
         if rng.random() < p:
             masked_indices.append(i)
@@ -57,16 +59,16 @@ def mask_tokens(
 
 
 def random_token_insertion(
-    token_ids: List[int],
+    token_ids: list[int],
     p: float,
     vocab_size: int,
     rng: random.Random,
-) -> List[int]:
+) -> list[int]:
     """Insert a random token after each position with probability p.
 
     The resulting list may be longer than the original.
     """
-    result: List[int] = []
+    result: list[int] = []
     for tok in token_ids:
         result.append(tok)
         if rng.random() < p:
@@ -75,22 +77,19 @@ def random_token_insertion(
 
 
 def random_token_replacement(
-    token_ids: List[int],
+    token_ids: list[int],
     p: float,
     vocab_size: int,
     rng: random.Random,
-) -> List[int]:
+) -> list[int]:
     """Replace each token with a uniformly random token with probability p."""
-    return [
-        rng.randint(0, vocab_size - 1) if rng.random() < p else tok
-        for tok in token_ids
-    ]
+    return [rng.randint(0, vocab_size - 1) if rng.random() < p else tok for tok in token_ids]
 
 
 def sentence_order_permutation(
-    token_ids: List[int],
+    token_ids: list[int],
     sep_id: int = 13,
-) -> List[int]:
+) -> list[int]:
     """Split at sep_id boundaries, shuffle sentence segments, rejoin with sep_id.
 
     If fewer than 2 segments are present, returns the sequence unchanged.
@@ -99,8 +98,8 @@ def sentence_order_permutation(
         return list(token_ids)
 
     # Split into segments on sep_id; sep_id tokens are boundaries
-    segments: List[List[int]] = []
-    current: List[int] = []
+    segments: list[list[int]] = []
+    current: list[int] = []
     for tok in token_ids:
         if tok == sep_id:
             segments.append(current)
@@ -119,7 +118,7 @@ def sentence_order_permutation(
     random.shuffle(shuffled)
 
     # Rejoin with sep_id
-    result: List[int] = []
+    result: list[int] = []
     for idx, seg in enumerate(shuffled):
         result.extend(seg)
         if idx < len(shuffled) - 1:
@@ -128,12 +127,12 @@ def sentence_order_permutation(
 
 
 def span_masking(
-    token_ids: List[int],
+    token_ids: list[int],
     mask_ratio: float,
     max_span_len: int = 5,
     mask_id: int = 103,
     rng: random.Random = None,  # type: ignore[assignment]
-) -> List[int]:
+) -> list[int]:
     """Mask contiguous spans totalling approximately mask_ratio * len(tokens).
 
     Selects random spans of length 1..max_span_len until the budget is met or
@@ -168,7 +167,7 @@ def span_masking(
     return result
 
 
-def compute_token_overlap(seq_a: List[int], seq_b: List[int]) -> float:
+def compute_token_overlap(seq_a: list[int], seq_b: list[int]) -> float:
     """Jaccard similarity of token sets: |A ∩ B| / |A ∪ B|."""
     set_a = set(seq_a)
     set_b = set(seq_b)
@@ -183,10 +182,11 @@ def compute_token_overlap(seq_a: List[int], seq_b: List[int]) -> float:
 # SyntheticAugmentor class
 # ---------------------------------------------------------------------------
 
+
 class SyntheticAugmentor:
     """Applies a configurable pipeline of model-free token augmentations."""
 
-    _DEFAULT_METHODS: List[str] = ["mask", "replace"]
+    _DEFAULT_METHODS: list[str] = ["mask", "replace"]
 
     def __init__(self, config: SyntheticAugConfig) -> None:
         self.config = config
@@ -194,9 +194,9 @@ class SyntheticAugmentor:
 
     def augment(
         self,
-        token_ids: List[int],
-        methods: Optional[List[str]] = None,
-    ) -> List[int]:
+        token_ids: list[int],
+        methods: list[str] | None = None,
+    ) -> list[int]:
         """Apply configured augmentation methods in order.
 
         Available methods: "mask", "insert", "replace", "span_mask", "permute".
@@ -231,15 +231,15 @@ class SyntheticAugmentor:
 
     def augment_batch(
         self,
-        batch: List[List[int]],
+        batch: list[list[int]],
         n_augments: int = 1,
-    ) -> List[List[int]]:
+    ) -> list[list[int]]:
         """Augment each sequence n_augments times.
 
         Returns originals followed by all augmented versions:
         total length = len(batch) * (1 + n_augments).
         """
-        result: List[List[int]] = list(batch)
+        result: list[list[int]] = list(batch)
         for seq in batch:
             for _ in range(n_augments):
                 result.append(self.augment(seq))
@@ -247,9 +247,9 @@ class SyntheticAugmentor:
 
     def get_stats(
         self,
-        original: List[int],
-        augmented: List[int],
-    ) -> Dict[str, float]:
+        original: list[int],
+        augmented: list[int],
+    ) -> dict[str, float]:
         """Return statistics comparing original and augmented sequences."""
         original_len = float(len(original))
         augmented_len = float(len(augmented))

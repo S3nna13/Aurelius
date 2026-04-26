@@ -26,17 +26,17 @@ Pure PyTorch — no HuggingFace, einops, scipy, or sklearn.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # DASConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DASConfig:
@@ -59,6 +59,7 @@ class DASConfig:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_orthogonal(matrix: Tensor) -> Tensor:
     """Project *matrix* onto the Stiefel manifold via QR decomposition.
 
@@ -79,6 +80,7 @@ def make_orthogonal(matrix: Tensor) -> Tensor:
 # DistributedAlignmentSearch
 # ---------------------------------------------------------------------------
 
+
 class DistributedAlignmentSearch(nn.Module):
     """Learn an orthogonal rotation that aligns causal variables to subspaces.
 
@@ -90,7 +92,7 @@ class DistributedAlignmentSearch(nn.Module):
         DAS hyper-parameters.  Defaults to ``DASConfig()``.
     """
 
-    def __init__(self, d_model: int, config: Optional[DASConfig] = None) -> None:
+    def __init__(self, d_model: int, config: DASConfig | None = None) -> None:
         super().__init__()
         if config is None:
             config = DASConfig()
@@ -164,8 +166,8 @@ class DistributedAlignmentSearch(nn.Module):
         end = start + nd
 
         # Rotate both into the aligned basis.
-        base_rot = self.rotate(base_h)       # (B, d_model)
-        source_rot = self.rotate(source_h)   # (B, d_model)
+        base_rot = self.rotate(base_h)  # (B, d_model)
+        source_rot = self.rotate(source_h)  # (B, d_model)
 
         # Copy the causal-variable slice from source into base.
         intervened_rot = base_rot.clone()
@@ -184,7 +186,7 @@ class DistributedAlignmentSearch(nn.Module):
         source_inputs: Tensor,
         labels: Tensor,
         metric_fn: Callable[[Tensor, Tensor], Tensor],
-    ) -> List[float]:
+    ) -> list[float]:
         """Train the rotation to maximise causal alignment.
 
         At each step:
@@ -204,7 +206,7 @@ class DistributedAlignmentSearch(nn.Module):
             List of per-step loss values (length == config.n_steps).
         """
         optimizer = torch.optim.Adam([self.R], lr=self.config.lr)
-        loss_history: List[float] = []
+        loss_history: list[float] = []
 
         for _ in range(self.config.n_steps):
             optimizer.zero_grad()

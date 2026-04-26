@@ -1,49 +1,40 @@
 """Unit tests for src/eval/swarm_bench.py — 12+ tests covering SwarmBench."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.eval.swarm_bench import SwarmBench, SwarmBenchResult, SwarmTask
 from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
-
+from src.eval.swarm_bench import SwarmBench, SwarmBenchResult, SwarmTask
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_tasks(n: int, n_subtasks: int = 3) -> list[SwarmTask]:
-    return [
-        SwarmTask(task_id=i, description=f"task {i}", n_subtasks=n_subtasks)
-        for i in range(n)
-    ]
+    return [SwarmTask(task_id=i, description=f"task {i}", n_subtasks=n_subtasks) for i in range(n)]
 
 
 def mock_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
-    return SubAgentResult(
-        task_id=task.task_id, result="done", steps_used=5, status="completed"
-    )
+    return SubAgentResult(task_id=task.task_id, result="done", steps_used=5, status="completed")
 
 
 def failing_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
-    return SubAgentResult(
-        task_id=task.task_id, result=None, steps_used=3, status="error"
-    )
+    return SubAgentResult(task_id=task.task_id, result=None, steps_used=3, status="error")
 
 
 def half_failing_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
     """Completes even-indexed tasks, errors on odd-indexed."""
     if task.task_id % 2 == 0:
-        return SubAgentResult(
-            task_id=task.task_id, result="done", steps_used=5, status="completed"
-        )
-    return SubAgentResult(
-        task_id=task.task_id, result=None, steps_used=3, status="error"
-    )
+        return SubAgentResult(task_id=task.task_id, result="done", steps_used=5, status="completed")
+    return SubAgentResult(task_id=task.task_id, result=None, steps_used=3, status="error")
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_completion_rate_all_pass():
     """All tasks completed → completion_rate == 1.0."""

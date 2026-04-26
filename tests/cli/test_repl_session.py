@@ -1,13 +1,11 @@
 """Tests for src/cli/repl_session.py."""
 
-import pytest
-
 from src.cli.repl_session import ReplConfig, ReplMode, ReplSession
-
 
 # ---------------------------------------------------------------------------
 # Enum smoke tests
 # ---------------------------------------------------------------------------
+
 
 def test_repl_mode_values():
     assert ReplMode.INTERACTIVE == "interactive"
@@ -19,6 +17,7 @@ def test_repl_mode_values():
 # ReplConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_repl_config_defaults():
     cfg = ReplConfig(mode=ReplMode.INTERACTIVE)
     assert cfg.prompt == "aurelius> "
@@ -29,6 +28,7 @@ def test_repl_config_defaults():
 # ---------------------------------------------------------------------------
 # add_to_history / get_history
 # ---------------------------------------------------------------------------
+
 
 def test_add_and_get_history():
     session = ReplSession(ReplConfig(mode=ReplMode.INTERACTIVE))
@@ -59,6 +59,7 @@ def test_get_history_returns_copy():
 # ---------------------------------------------------------------------------
 # save_history / load_history
 # ---------------------------------------------------------------------------
+
 
 def test_save_and_load_history(tmp_path):
     session = ReplSession(ReplConfig(mode=ReplMode.INTERACTIVE))
@@ -91,6 +92,7 @@ def test_save_history_creates_file(tmp_path):
 # ---------------------------------------------------------------------------
 # format_prompt
 # ---------------------------------------------------------------------------
+
 
 def test_format_prompt_no_context():
     cfg = ReplConfig(mode=ReplMode.INTERACTIVE, prompt="aurelius> ")

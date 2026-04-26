@@ -9,8 +9,8 @@ from pathlib import Path
 
 from src.agent.interface_runtime import AureliusInterfaceRuntime
 from src.agent.session_manager import SessionManager
-from src.model import AureliusInterfaceFramework
 from src.cli.session_commands import build_session_parser, dispatch_session_command
+from src.model import AureliusInterfaceFramework
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -73,10 +73,14 @@ def test_session_parser_wires_nested_thread_and_workstream_subcommands():
 def test_session_list_outputs_persistent_sessions(tmp_path: Path):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    runtime.create_workstream(session.session_id, "cli-workstream", workspace=tmp_path / "workspace")
+    runtime.create_workstream(
+        session.session_id, "cli-workstream", workspace=tmp_path / "workspace"
+    )
 
     parser = _parser()
-    args = parser.parse_args(["session", "list", "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)])
+    args = parser.parse_args(
+        ["session", "list", "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)]
+    )
     buf = io.StringIO()
 
     rc = dispatch_session_command(args, buf)
@@ -109,7 +113,16 @@ def test_session_thread_list_outputs_persistent_threads(tmp_path: Path):
 
     parser = _parser()
     args = parser.parse_args(
-        ["session", "thread", "list", session.session_id, "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)]
+        [
+            "session",
+            "thread",
+            "list",
+            session.session_id,
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path),
+        ]
     )
     buf = io.StringIO()
 
@@ -176,11 +189,21 @@ def test_session_thread_show_outputs_thread_status_and_tool_calls(tmp_path: Path
 def test_session_show_outputs_counts_and_snapshot(tmp_path: Path):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    runtime.create_workstream(session.session_id, "cli-workstream", workspace=tmp_path / "workspace")
+    runtime.create_workstream(
+        session.session_id, "cli-workstream", workspace=tmp_path / "workspace"
+    )
 
     parser = _parser()
     args = parser.parse_args(
-        ["session", "show", session.session_id, "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)]
+        [
+            "session",
+            "show",
+            session.session_id,
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path),
+        ]
     )
     buf = io.StringIO()
 
@@ -196,7 +219,9 @@ def test_session_show_outputs_counts_and_snapshot(tmp_path: Path):
 def test_session_export_and_import_round_trip(tmp_path: Path):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    workstream = runtime.create_workstream(session.session_id, "cli-workstream", workspace=tmp_path / "workspace")
+    workstream = runtime.create_workstream(
+        session.session_id, "cli-workstream", workspace=tmp_path / "workspace"
+    )
     thread = runtime.create_thread(
         {
             "title": "Export thread",
@@ -270,7 +295,12 @@ def test_session_export_and_import_round_trip(tmp_path: Path):
     imported_session = imported_runtime.get_session(session.session_id)
     assert imported_session is not None
     assert imported_session.threads[thread.thread_id].thread_id == thread.thread_id
-    assert imported_runtime.list_messages(session.session_id, thread_id=thread.thread_id)[0]["payload"]["content"] == "export me"
+    assert (
+        imported_runtime.list_messages(session.session_id, thread_id=thread.thread_id)[0][
+            "payload"
+        ]["content"]
+        == "export me"
+    )
 
 
 def test_session_journal_list_outputs_branch_entries(tmp_path: Path):
@@ -327,7 +357,9 @@ def test_session_journal_list_outputs_branch_entries(tmp_path: Path):
 def test_session_workstream_list_outputs_named_workstreams(tmp_path: Path):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    runtime.create_workstream(session.session_id, "cli-workstream", workspace=tmp_path / "workspace")
+    runtime.create_workstream(
+        session.session_id, "cli-workstream", workspace=tmp_path / "workspace"
+    )
 
     parser = _parser()
     args = parser.parse_args(
@@ -402,7 +434,15 @@ def test_session_workstream_show_outputs_specific_workstream(tmp_path: Path):
 def test_session_show_unknown_session_errors(tmp_path: Path):
     parser = _parser()
     args = parser.parse_args(
-        ["session", "show", "missing", "--repo-root", str(_repo_root()), "--state-dir", str(tmp_path)]
+        [
+            "session",
+            "show",
+            "missing",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path),
+        ]
     )
     buf = io.StringIO()
 

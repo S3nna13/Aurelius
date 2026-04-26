@@ -13,8 +13,8 @@ from src.agent.plan_observe_reflect import (
     _parse_steps,
 )
 
-
 # ---------------------------------------------------------------- _parse_steps
+
 
 def test_parse_steps_dot_format():
     text = "1. first\n2. second\n3. third"
@@ -66,6 +66,7 @@ def test_parse_steps_preserves_extra_spacing_stripped():
 
 # -------------------------------------------------------------------- LoopStep
 
+
 def test_loopstep_is_frozen():
     step = LoopStep(index=1, description="x")
     with pytest.raises(Exception):
@@ -80,6 +81,7 @@ def test_loopstep_defaults():
 
 
 # ------------------------------------------------------------------- LoopResult
+
 
 def test_loopresult_is_frozen():
     r = LoopResult(task="t", steps=[], reflection="", succeeded=True, total_steps=0)
@@ -96,6 +98,7 @@ def test_loopresult_fields():
 
 
 # --------------------------------------------------------- PlanObserveReflect
+
 
 def test_registry_default_is_class():
     assert PLAN_OBSERVE_REFLECT_REGISTRY["default"] is PlanObserveReflect
@@ -116,7 +119,7 @@ def test_plan_fallback_when_no_numbered():
 def test_act_passes_step_to_actor():
     p = PlanObserveReflect()
     captured = []
-    obs = p.act("do thing", actor=lambda s: (captured.append(s) or "ok"))
+    obs = p.act("do thing", actor=lambda s: captured.append(s) or "ok")
     assert captured == ["do thing"]
     assert obs == "ok"
 
@@ -145,9 +148,16 @@ def test_reflect_summary_contains_task_and_steps():
 
 def test_run_full_happy_path():
     p = PlanObserveReflect()
-    planner = lambda t: "1. step A\n2. step B"
-    actor = lambda s: f"observed:{s}"
-    reflector = lambda summary: "all good"
+
+    def planner(t):
+        return "1. step A\n2. step B"
+
+    def actor(s):
+        return f"observed:{s}"
+
+    def reflector(summary):
+        return "all good"
+
     result = p.run("my task", planner, actor, reflector, max_steps=5)
     assert result.total_steps == 2
     assert result.succeeded is True
@@ -159,7 +169,10 @@ def test_run_full_happy_path():
 
 def test_run_caps_steps_at_max():
     p = PlanObserveReflect()
-    planner = lambda t: "1. a\n2. b\n3. c\n4. d\n5. e\n6. f"
+
+    def planner(t):
+        return "1. a\n2. b\n3. c\n4. d\n5. e\n6. f"
+
     result = p.run("t", planner, lambda s: "ok", lambda s: "r", max_steps=3)
     assert result.total_steps == 3
 
@@ -179,7 +192,9 @@ def test_run_step_failure_marks_failed():
             raise RuntimeError("boom")
         return "ok"
 
-    planner = lambda t: "1. good step\n2. bad step\n3. good again"
+    def planner(t):
+        return "1. good step\n2. bad step\n3. good again"
+
     result = p.run("t", planner, actor, lambda s: "r", max_steps=5)
     assert result.total_steps == 3
     assert result.steps[0].status == StepStatus.COMPLETED
@@ -192,7 +207,9 @@ def test_run_step_failure_marks_failed():
 def test_run_continues_after_failure():
     p = PlanObserveReflect()
     seen = []
-    planner = lambda t: "1. a\n2. b\n3. c"
+
+    def planner(t):
+        return "1. a\n2. b\n3. c"
 
     def actor(step: str) -> str:
         seen.append(step)

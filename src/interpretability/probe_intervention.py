@@ -11,22 +11,23 @@ Decoding in Transformer LMs":
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProbeConfig:
     """Configuration for probe intervention experiments."""
+
     d_model: int = 64
     n_classes: int = 2
     lr: float = 0.01
@@ -36,6 +37,7 @@ class ProbeConfig:
 # ---------------------------------------------------------------------------
 # Linear Probe
 # ---------------------------------------------------------------------------
+
 
 class LinearProbe(nn.Module):
     """Linear probe: maps hidden states to class logits.
@@ -96,6 +98,7 @@ class LinearProbe(nn.Module):
 # ---------------------------------------------------------------------------
 # Probe Trainer
 # ---------------------------------------------------------------------------
+
 
 class ProbeTrainer:
     """Trains a LinearProbe with Adam and evaluates it."""
@@ -160,6 +163,7 @@ class ProbeTrainer:
 # ---------------------------------------------------------------------------
 # Probe Intervention Experiment
 # ---------------------------------------------------------------------------
+
 
 class ProbeInterventionExperiment:
     """Combines representation extraction, causal intervention, and scrubbing.
@@ -234,7 +238,7 @@ class ProbeInterventionExperiment:
     def extract_representations(
         self,
         input_ids: Tensor,
-        layer_idx: Optional[int] = None,
+        layer_idx: int | None = None,
     ) -> Tensor:
         """Extract activations at the specified layer, mean-pooled over seq.
 
@@ -254,7 +258,7 @@ class ProbeInterventionExperiment:
         self,
         input_ids: Tensor,
         intervention_strength: float = 1.0,
-        metric_fn: Optional[Callable] = None,
+        metric_fn: Callable | None = None,
     ) -> float:
         """Measure the causal effect of patching along the probe direction.
 
@@ -272,6 +276,7 @@ class ProbeInterventionExperiment:
             delta: metric(patched_logits) - metric(clean_logits), a float.
         """
         if metric_fn is None:
+
             def metric_fn(logits: Tensor) -> float:
                 probs = logits[:, -1, :].softmax(dim=-1)
                 top_prob = probs.max(dim=-1).values
@@ -306,18 +311,18 @@ class ProbeInterventionExperiment:
             fraction in (-inf, 1] where 1.0 means the probe fully explains the
             difference and 0.0 means it explains nothing.
         """
-        x_clean = self._run_to_layer(clean_ids, self.layer_idx)       # (B, S, d_model)
+        x_clean = self._run_to_layer(clean_ids, self.layer_idx)  # (B, S, d_model)
         x_corrupted = self._run_to_layer(corrupted_ids, self.layer_idx)
 
         direction = self.probe.get_direction()  # (d_model,)
         d = direction  # unit vector
 
         # Project both representations onto the probe direction
-        proj_clean = (x_clean * d).sum(dim=-1, keepdim=True)       # (B, S, 1)
-        proj_corr = (x_corrupted * d).sum(dim=-1, keepdim=True)    # (B, S, 1)
+        proj_clean = (x_clean * d).sum(dim=-1, keepdim=True)  # (B, S, 1)
+        proj_corr = (x_corrupted * d).sum(dim=-1, keepdim=True)  # (B, S, 1)
 
         # Replace the clean probe-direction component with the corrupted one
-        x_scrubbed = x_clean + (proj_corr - proj_clean) * d        # (B, S, d_model)
+        x_scrubbed = x_clean + (proj_corr - proj_clean) * d  # (B, S, d_model)
 
         # Compute logits for all three conditions
         clean_logits = self._run_from_layer(x_clean.clone(), self.layer_idx)

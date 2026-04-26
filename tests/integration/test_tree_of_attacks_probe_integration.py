@@ -1,4 +1,5 @@
 """Integration test for the Tree-of-Attacks-with-Pruning (TAP) probe."""
+
 from __future__ import annotations
 
 from src.eval import (
@@ -34,9 +35,7 @@ def test_tap_config_flag_exists_on_aurelius_config():
 
 
 def test_small_probe_against_stubs_returns_tapresult():
-    probe = TreeOfAttacksProbe(
-        max_depth=2, beam_width=2, branch_factor=2, success_threshold=0.8
-    )
+    probe = TreeOfAttacksProbe(max_depth=2, beam_width=2, branch_factor=2, success_threshold=0.8)
     result = probe.run(
         "demonstrate on-topic compliance",
         stub_target_fn,

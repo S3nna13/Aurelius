@@ -53,14 +53,10 @@ class ModelWarmer:
             path = self._model_path
             if path.endswith(".safetensors"):
                 if _load_safetensors is None:
-                    raise RuntimeError(
-                        "safetensors is required to load .safetensors files"
-                    )
+                    raise RuntimeError("safetensors is required to load .safetensors files")
                 state_dict = _load_safetensors(path, device=self._device)
             else:
-                state_dict = torch.load(
-                    path, map_location=self._device, weights_only=True
-                )
+                state_dict = torch.load(path, map_location=self._device, weights_only=True)
                 if not isinstance(state_dict, dict):
                     raise TypeError(
                         f"Expected state dict from {path}, got {type(state_dict).__name__}"
@@ -84,7 +80,5 @@ class ModelWarmer:
         with self._lock:
             if self._state_dict is None:
                 return 0.0
-            total_bytes = sum(
-                t.numel() * t.element_size() for t in self._state_dict.values()
-            )
+            total_bytes = sum(t.numel() * t.element_size() for t in self._state_dict.values())
             return total_bytes / (1024 * 1024)

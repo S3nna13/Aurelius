@@ -1,9 +1,10 @@
 """Tests for access control."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.security.access_control import AccessControl, Role, Permission
+from src.security.access_control import AccessControl, Permission, Role
 
 
 class TestAccessControl:

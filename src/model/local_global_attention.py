@@ -15,8 +15,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .config import AureliusConfig
 from .attention import apply_rope, precompute_rope_frequencies
+from .config import AureliusConfig
 
 # RoPE theta values for each attention type (Gemma-3 convention)
 LOCAL_ROPE_THETA: float = 10_000.0
@@ -139,7 +139,9 @@ class LocalAttentionLayer(nn.Module):
         mask = _build_local_mask(S, self.window_size, device=device)
 
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=mask,
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
@@ -218,7 +220,9 @@ class GlobalAttentionLayer(nn.Module):
 
         # Full causal attention — no explicit mask needed
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=None,
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=True,

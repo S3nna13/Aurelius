@@ -1,10 +1,10 @@
 """Tests for encryptor."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.security.encryptor import SimpleEncryptor, _get_default_encryptor
-
 
 # Detect whether cryptography is available.
 _CRYPTOGAPHY_AVAILABLE = True

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.inference.request_classifier import ComplexityTier, TaskType
 
@@ -19,9 +19,15 @@ class RouteEntry:
 def _default_routes() -> list[RouteEntry]:
     entries: list[RouteEntry] = []
     for task_type in TaskType:
-        entries.append(RouteEntry(task_type=task_type, complexity=ComplexityTier.LOW, backend="cached"))
-        entries.append(RouteEntry(task_type=task_type, complexity=ComplexityTier.MEDIUM, backend="local"))
-        entries.append(RouteEntry(task_type=task_type, complexity=ComplexityTier.HIGH, backend="api"))
+        entries.append(
+            RouteEntry(task_type=task_type, complexity=ComplexityTier.LOW, backend="cached")
+        )
+        entries.append(
+            RouteEntry(task_type=task_type, complexity=ComplexityTier.MEDIUM, backend="local")
+        )
+        entries.append(
+            RouteEntry(task_type=task_type, complexity=ComplexityTier.HIGH, backend="api")
+        )
     return entries
 
 

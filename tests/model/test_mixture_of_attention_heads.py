@@ -5,19 +5,17 @@ Fixture dimensions:  d_model=16, vocab_size=16, n_layers=2,
                      d_head=8, B=2, T=8, window_size=3.
 """
 
-import math
-import pytest
 import torch
 
 from src.model.mixture_of_attention_heads import (
-    LocalAttentionHead,
     GlobalAttentionHead,
-    RelativePositionHead,
     HeadRouter,
+    LocalAttentionHead,
     MixtureOfAttentionHeads,
-    MoAHTransformerBlock,
-    MoAHLanguageModel,
     MoAHConfig,
+    MoAHLanguageModel,
+    MoAHTransformerBlock,
+    RelativePositionHead,
 )
 
 # ---------------------------------------------------------------------------
@@ -48,6 +46,7 @@ def _rand_ids() -> torch.Tensor:
 # LocalAttentionHead
 # ===========================================================================
 
+
 def test_local_attention_head_output_shape():
     head = LocalAttentionHead(D_MODEL, D_HEAD, window_size=WINDOW_SIZE)
     x = _rand_input()
@@ -72,7 +71,7 @@ def test_local_attention_head_window_mask_applied():
     """
     torch.manual_seed(0)
     head_narrow = LocalAttentionHead(D_MODEL, D_HEAD, window_size=0)
-    head_wide   = LocalAttentionHead(D_MODEL, D_HEAD, window_size=T)
+    head_wide = LocalAttentionHead(D_MODEL, D_HEAD, window_size=T)
 
     # Share weights so the only difference is the mask
     with torch.no_grad():
@@ -82,18 +81,18 @@ def test_local_attention_head_window_mask_applied():
 
     x = torch.randn(1, 6, D_MODEL)
     out_narrow = head_narrow(x)
-    out_wide   = head_wide(x)
+    out_wide = head_wide(x)
 
     # For T>1 the outputs should differ somewhere (window genuinely restricts)
     assert not torch.allclose(out_narrow, out_wide, atol=1e-5), (
-        "Window-0 and window-T heads produced identical outputs — "
-        "mask is not being applied."
+        "Window-0 and window-T heads produced identical outputs — mask is not being applied."
     )
 
 
 # ===========================================================================
 # GlobalAttentionHead
 # ===========================================================================
+
 
 def test_global_attention_head_output_shape():
     head = GlobalAttentionHead(D_MODEL, D_HEAD)
@@ -135,6 +134,7 @@ def test_global_attention_head_causal():
 # RelativePositionHead
 # ===========================================================================
 
+
 def test_relative_position_head_output_shape():
     head = RelativePositionHead(D_MODEL, D_HEAD, max_relative_pos=4)
     x = _rand_input()
@@ -152,6 +152,7 @@ def test_relative_position_head_no_nan():
 # ===========================================================================
 # HeadRouter
 # ===========================================================================
+
 
 def test_head_router_gates_shape():
     n_head_types = 3
@@ -193,10 +194,13 @@ def test_head_router_indices_in_range():
 # MixtureOfAttentionHeads
 # ===========================================================================
 
+
 def test_moah_output_shape():
     moah = MixtureOfAttentionHeads(
-        d_model=D_MODEL, d_head=D_HEAD,
-        n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     x = _rand_input()
@@ -206,8 +210,10 @@ def test_moah_output_shape():
 
 def test_moah_routing_stats_keys():
     moah = MixtureOfAttentionHeads(
-        d_model=D_MODEL, d_head=D_HEAD,
-        n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     moah(_rand_input())
@@ -220,8 +226,10 @@ def test_moah_routing_stats_keys():
 
 def test_moah_routing_stats_fractions_sum_to_one():
     moah = MixtureOfAttentionHeads(
-        d_model=D_MODEL, d_head=D_HEAD,
-        n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     moah(_rand_input())
@@ -232,8 +240,10 @@ def test_moah_routing_stats_fractions_sum_to_one():
 
 def test_moah_gradient_flows():
     moah = MixtureOfAttentionHeads(
-        d_model=D_MODEL, d_head=D_HEAD,
-        n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     x = _rand_input().requires_grad_(True)
@@ -248,10 +258,13 @@ def test_moah_gradient_flows():
 # MoAHTransformerBlock
 # ===========================================================================
 
+
 def test_moah_transformer_block_output_shape():
     block = MoAHTransformerBlock(
-        d_model=D_MODEL, d_head=D_HEAD,
-        n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     x = _rand_input()
@@ -262,8 +275,10 @@ def test_moah_transformer_block_output_shape():
 def test_moah_transformer_block_residual_not_zero():
     """Block output must differ from input (residual + attention are non-trivial)."""
     block = MoAHTransformerBlock(
-        d_model=D_MODEL, d_head=D_HEAD,
-        n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     x = _rand_input()
@@ -275,10 +290,15 @@ def test_moah_transformer_block_residual_not_zero():
 # MoAHLanguageModel
 # ===========================================================================
 
+
 def test_language_model_output_shape():
     model = MoAHLanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_layers=N_LAYERS,
-        d_head=D_HEAD, n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        vocab_size=VOCAB_SIZE,
+        n_layers=N_LAYERS,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     ids = _rand_ids()
@@ -290,8 +310,12 @@ def test_language_model_output_shape():
 
 def test_language_model_compute_loss_finite_positive():
     model = MoAHLanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_layers=N_LAYERS,
-        d_head=D_HEAD, n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        vocab_size=VOCAB_SIZE,
+        n_layers=N_LAYERS,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     ids = _rand_ids()
@@ -303,8 +327,12 @@ def test_language_model_compute_loss_finite_positive():
 
 def test_language_model_compute_loss_backward():
     model = MoAHLanguageModel(
-        d_model=D_MODEL, vocab_size=VOCAB_SIZE, n_layers=N_LAYERS,
-        d_head=D_HEAD, n_heads_per_type=N_HEADS_PER_TYPE, top_k=TOP_K,
+        d_model=D_MODEL,
+        vocab_size=VOCAB_SIZE,
+        n_layers=N_LAYERS,
+        d_head=D_HEAD,
+        n_heads_per_type=N_HEADS_PER_TYPE,
+        top_k=TOP_K,
         window_size=WINDOW_SIZE,
     )
     ids = _rand_ids()
@@ -312,16 +340,14 @@ def test_language_model_compute_loss_backward():
     loss.backward()
 
     # At least one parameter must have a gradient
-    has_grad = any(
-        p.grad is not None and not torch.isnan(p.grad).any()
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and not torch.isnan(p.grad).any() for p in model.parameters())
     assert has_grad, "No valid gradients found after backward pass"
 
 
 # ===========================================================================
 # MoAHConfig
 # ===========================================================================
+
 
 def test_moah_config_defaults():
     cfg = MoAHConfig()

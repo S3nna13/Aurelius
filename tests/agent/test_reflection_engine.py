@@ -11,23 +11,24 @@ from src.agent.reflection_engine import (
     ReflectionType,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_engine() -> ReflectionEngine:
     return ReflectionEngine()
 
 
 ACTIONS_SHORT = ["action_a", "action_b"]
-ACTIONS_LONG  = [f"action_{i}" for i in range(8)]
-ACTIONS_10    = [f"step_{i}" for i in range(10)]
+ACTIONS_LONG = [f"action_{i}" for i in range(8)]
+ACTIONS_10 = [f"step_{i}" for i in range(10)]
 
 
 # ---------------------------------------------------------------------------
 # Reflection dataclass – frozen / auto-id
 # ---------------------------------------------------------------------------
+
 
 class TestReflectionDataclass:
     def test_create_returns_reflection(self):
@@ -77,6 +78,7 @@ class TestReflectionDataclass:
 # ReflectionEngine – reflect – return type and fields
 # ---------------------------------------------------------------------------
 
+
 class TestReflectReturnType:
     def test_reflect_returns_reflection_instance(self):
         engine = make_engine()
@@ -97,6 +99,7 @@ class TestReflectReturnType:
 # ---------------------------------------------------------------------------
 # ReflectionEngine – SELF_CRITIQUE
 # ---------------------------------------------------------------------------
+
 
 class TestSelfCritique:
     def test_self_critique_returns_reflection(self):
@@ -123,6 +126,7 @@ class TestSelfCritique:
 # ---------------------------------------------------------------------------
 # ReflectionEngine – GOAL_ALIGNMENT
 # ---------------------------------------------------------------------------
+
 
 class TestGoalAlignment:
     def test_goal_alignment_includes_goal_in_critique(self):
@@ -153,6 +157,7 @@ class TestGoalAlignment:
 # ReflectionEngine – EFFICIENCY
 # ---------------------------------------------------------------------------
 
+
 class TestEfficiency:
     def test_efficiency_critique_contains_step_count(self):
         engine = make_engine()
@@ -179,6 +184,7 @@ class TestEfficiency:
 # ReflectionEngine – SAFETY
 # ---------------------------------------------------------------------------
 
+
 class TestSafety:
     def test_safety_fixed_critique(self):
         engine = make_engine()
@@ -195,6 +201,7 @@ class TestSafety:
 # ReflectionEngine – COHERENCE
 # ---------------------------------------------------------------------------
 
+
 class TestCoherence:
     def test_coherence_action_count_in_critique(self):
         engine = make_engine()
@@ -210,6 +217,7 @@ class TestCoherence:
 # ---------------------------------------------------------------------------
 # ReflectionEngine – confidence & input_summary
 # ---------------------------------------------------------------------------
+
 
 class TestConfidenceAndSummary:
     def test_confidence_zero_for_empty_actions(self):
@@ -251,6 +259,7 @@ class TestConfidenceAndSummary:
 # ---------------------------------------------------------------------------
 # ReflectionEngine – history & latest
 # ---------------------------------------------------------------------------
+
 
 class TestHistoryAndLatest:
     def test_history_starts_empty(self):
@@ -297,6 +306,7 @@ class TestHistoryAndLatest:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_contains_default(self):

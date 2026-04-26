@@ -3,21 +3,27 @@ Lightning Indexer selects top-k key positions per query (content-aware).
 Two-stage training: dense warm-up (train indexer only) → sparse adaptation.
 O(L^2) → O(L*k) attention computation.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
+
 
 @dataclass
 class DSAConfig:
     d_model: int = 512
     n_heads: int = 8
     top_k: int = 64
-    freeze_indexer: bool = False   # True during sparse adaptation if base model is frozen
+    freeze_indexer: bool = False  # True during sparse adaptation if base model is frozen
+
 
 class LightningIndexer(nn.Module):
     """Content-aware sparsity predictor: learns which key positions each query attends to."""
+
     def __init__(self, head_dim: int):
         super().__init__()
         self.score = nn.Linear(head_dim, 1, bias=False)
@@ -25,6 +31,7 @@ class LightningIndexer(nn.Module):
     def forward(self, k: torch.Tensor) -> torch.Tensor:
         # k: [B, n_heads, T, head_dim] → scores [B, n_heads, T]
         return self.score(k).squeeze(-1)
+
 
 class DSAAttention(nn.Module):
     def __init__(self, cfg: DSAConfig):
@@ -55,11 +62,11 @@ class DSAAttention(nn.Module):
 
         # Gather sparse K, V
         idx_exp = top_idx.unsqueeze(-1).expand(-1, -1, -1, self.head_dim)
-        k_sparse = k.gather(2, idx_exp)   # [B, n_heads, top_k, head_dim]
+        k_sparse = k.gather(2, idx_exp)  # [B, n_heads, top_k, head_dim]
         v_sparse = v.gather(2, idx_exp)
 
         # Scaled dot-product attention over sparse set
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         attn = F.softmax(torch.matmul(q, k_sparse.transpose(-1, -2)) * scale, dim=-1)
         out = torch.matmul(attn, v_sparse)  # [B, n_heads, T, head_dim]
         out = out.transpose(1, 2).reshape(B, T, self.cfg.d_model)

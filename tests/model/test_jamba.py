@@ -7,20 +7,19 @@ Pure PyTorch only — no HuggingFace, einops, mamba_ssm, etc.
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.jamba import (
-    JambaConfig,
-    JambaModel,
     JambaAttentionBlock,
+    JambaConfig,
     JambaMambaBlock,
+    JambaModel,
     jamba_tiny_config,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_model(cfg=None):
     """Create a tiny JambaModel; use default tiny config if none provided."""
@@ -37,6 +36,7 @@ def rand_input(B=2, T=8, d_model=64):
 # Test 1: Output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
@@ -49,13 +49,14 @@ def test_output_shape():
 # Test 2: hidden_states shape: list of Mamba-layer states, each (B, d_model, d_state)
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_states_shape():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
     B, T = 2, 8
     x = rand_input(B=B, T=T, d_model=cfg.d_model)
     _, hs = model(x)
-    n_mamba = sum(1 for l in model.layers if isinstance(l, JambaMambaBlock))
+    n_mamba = sum(1 for line in model.layers if isinstance(line, JambaMambaBlock))
     assert len(hs) == n_mamba, f"Expected {n_mamba} hidden states, got {len(hs)}"
     for i, h in enumerate(hs):
         assert h.shape == (B, cfg.d_model, cfg.d_state), (
@@ -66,6 +67,7 @@ def test_hidden_states_shape():
 # ---------------------------------------------------------------------------
 # Test 3: Gradient flow — backward gives finite grads on all params
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow():
     cfg = jamba_tiny_config()
@@ -82,6 +84,7 @@ def test_gradient_flow():
 # ---------------------------------------------------------------------------
 # Test 4: Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     cfg = jamba_tiny_config()
@@ -102,6 +105,7 @@ def test_determinism():
 # Test 5: batch=1, seq_len=1
 # ---------------------------------------------------------------------------
 
+
 def test_single_token_single_batch():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
@@ -115,6 +119,7 @@ def test_single_token_single_batch():
 # Test 6: hidden_states=None -> zero init, no crash
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_states_none_no_crash():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
@@ -127,6 +132,7 @@ def test_hidden_states_none_no_crash():
 # ---------------------------------------------------------------------------
 # Test 7: hidden_states passed -> used and updated
 # ---------------------------------------------------------------------------
+
 
 def test_hidden_states_passed_and_updated():
     cfg = jamba_tiny_config()
@@ -150,6 +156,7 @@ def test_hidden_states_passed_and_updated():
 # Test 8: No NaN/Inf on zeros input
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_zeros():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
@@ -164,6 +171,7 @@ def test_no_nan_inf_zeros():
 # Test 9: No NaN/Inf on large inputs
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_large_input():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
@@ -177,6 +185,7 @@ def test_no_nan_inf_large_input():
 # ---------------------------------------------------------------------------
 # Test 10: Attention layers at correct positions (layer_type attribute)
 # ---------------------------------------------------------------------------
+
 
 def test_attention_layers_correct_positions():
     cfg = jamba_tiny_config()  # attn_layer_offset=0, attn_every_k=4
@@ -199,13 +208,13 @@ def test_attention_layers_correct_positions():
 # Test 11: Number of attention blocks == expected count
 # ---------------------------------------------------------------------------
 
+
 def test_number_of_attention_blocks():
     cfg = jamba_tiny_config()  # n_layers=8, attn_every_k=4, offset=0
     model = make_model(cfg)
-    n_attn = sum(1 for l in model.layers if isinstance(l, JambaAttentionBlock))
+    n_attn = sum(1 for line in model.layers if isinstance(line, JambaAttentionBlock))
     expected = sum(
-        1 for i in range(cfg.n_layers)
-        if (i - cfg.attn_layer_offset) % cfg.attn_every_k == 0
+        1 for i in range(cfg.n_layers) if (i - cfg.attn_layer_offset) % cfg.attn_every_k == 0
     )
     assert n_attn == expected, f"Expected {expected} attention blocks, got {n_attn}"
 
@@ -213,6 +222,7 @@ def test_number_of_attention_blocks():
 # ---------------------------------------------------------------------------
 # Test 12: State carries context
 # ---------------------------------------------------------------------------
+
 
 def test_state_carries_context():
     cfg = jamba_tiny_config()
@@ -239,27 +249,27 @@ def test_state_carries_context():
 # Test 13: Different hidden_states -> different outputs
 # ---------------------------------------------------------------------------
 
+
 def test_different_hidden_states_give_different_outputs():
     cfg = jamba_tiny_config()
     model = make_model(cfg)
     x = rand_input(B=2, T=4, d_model=cfg.d_model)
 
     # Two different sets of hidden states
-    n_mamba = sum(1 for l in model.layers if isinstance(l, JambaMambaBlock))
+    n_mamba = sum(1 for line in model.layers if isinstance(line, JambaMambaBlock))
     hs_a = [torch.zeros(2, cfg.d_model, cfg.d_state) for _ in range(n_mamba)]
     hs_b = [torch.randn(2, cfg.d_model, cfg.d_state) for _ in range(n_mamba)]
 
     out_a, _ = model(x, hidden_states=hs_a)
     out_b, _ = model(x, hidden_states=hs_b)
 
-    assert not torch.allclose(out_a, out_b), (
-        "Different hidden_states produced identical outputs"
-    )
+    assert not torch.allclose(out_a, out_b), "Different hidden_states produced identical outputs"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: attn_every_k=1 -> all attention layers (pure transformer mode)
 # ---------------------------------------------------------------------------
+
 
 def test_all_attention_when_attn_every_k_1():
     cfg = JambaConfig(
@@ -273,8 +283,8 @@ def test_all_attention_when_attn_every_k_1():
         attn_every_k=1,
     )
     model = make_model(cfg)
-    n_attn = sum(1 for l in model.layers if isinstance(l, JambaAttentionBlock))
-    n_mamba = sum(1 for l in model.layers if isinstance(l, JambaMambaBlock))
+    n_attn = sum(1 for line in model.layers if isinstance(line, JambaAttentionBlock))
+    n_mamba = sum(1 for line in model.layers if isinstance(line, JambaMambaBlock))
     assert n_attn == cfg.n_layers, f"Expected all {cfg.n_layers} attn, got {n_attn}"
     assert n_mamba == 0, f"Expected 0 Mamba layers, got {n_mamba}"
 
@@ -289,6 +299,7 @@ def test_all_attention_when_attn_every_k_1():
 # Test 15: attn_every_k=n_layers -> single attention at offset, rest Mamba
 # ---------------------------------------------------------------------------
 
+
 def test_single_attention_rest_mamba():
     n_layers = 8
     cfg = JambaConfig(
@@ -302,8 +313,8 @@ def test_single_attention_rest_mamba():
         attn_every_k=n_layers,
     )
     model = make_model(cfg)
-    n_attn = sum(1 for l in model.layers if isinstance(l, JambaAttentionBlock))
-    n_mamba = sum(1 for l in model.layers if isinstance(l, JambaMambaBlock))
+    n_attn = sum(1 for line in model.layers if isinstance(line, JambaAttentionBlock))
+    n_mamba = sum(1 for line in model.layers if isinstance(line, JambaMambaBlock))
 
     # With attn_every_k=n_layers=8 and offset=0:
     # only layer 0 (8 is out of range) -> 1 attention block

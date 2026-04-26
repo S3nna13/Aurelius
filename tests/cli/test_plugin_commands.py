@@ -3,15 +3,15 @@
 import pytest
 
 from src.cli.plugin_commands import (
+    PLUGIN_COMMANDS,
     PluginCommandResult,
     PluginCommands,
-    PLUGIN_COMMANDS,
 )
-
 
 # ---------------------------------------------------------------------------
 # PluginCommandResult
 # ---------------------------------------------------------------------------
+
 
 class TestPluginCommandResult:
     def test_success_field_true(self):
@@ -44,6 +44,7 @@ class TestPluginCommandResult:
 # ---------------------------------------------------------------------------
 # PluginCommands — fresh instance per test
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def pc():
@@ -227,6 +228,7 @@ class TestUnregister:
 # ---------------------------------------------------------------------------
 # PLUGIN_COMMANDS singleton — pre-registered defaults
 # ---------------------------------------------------------------------------
+
 
 class TestPluginCommandsSingleton:
     def test_mcp_core_registered(self):

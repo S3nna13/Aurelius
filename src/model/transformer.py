@@ -36,7 +36,6 @@ class TransformerBlock(nn.Module):
         return x, kv
 
 
-
 class AureliusTransformer(nn.Module):
     """Aurelius 1.3B decoder-only transformer.
 
@@ -121,7 +120,7 @@ class AureliusTransformer(nn.Module):
                 present_key_values: List of (k, v) tensors, one per layer.
         """
         B, S = input_ids.shape
-        assert S <= self.config.max_seq_len, (
+        assert S <= self.config.max_seq_len, (  # noqa: S101
             f"Sequence length {S} exceeds max_seq_len {self.config.max_seq_len}"
         )
 
@@ -136,18 +135,22 @@ class AureliusTransformer(nn.Module):
         freqs_cis = self.freqs_cis[past_len : past_len + S]
 
         if self.config.use_gradient_checkpointing and past_key_values is not None:
-            raise ValueError("Gradient checkpointing is incompatible with KV cache (past_key_values)")
+            raise ValueError(
+                "Gradient checkpointing is incompatible with KV cache (past_key_values)"
+            )
 
         present_key_values: list[tuple[torch.Tensor, torch.Tensor]] = []
         for i, layer in enumerate(self.layers):
             past_kv = past_key_values[i] if past_key_values is not None else None
             if self.config.use_gradient_checkpointing and self.training:
-                # checkpoint needs all inputs as tensors; pass past_kv as None (no cache during training ckpt)
-                def make_ckpt_fn(l):
+                # checkpoint needs all inputs as tensors; pass past_kv as None (no cache during training ckpt)  # noqa: E501
+                def make_ckpt_fn(item):
                     def fn(x, freqs_cis, mask):
-                        out, kv = l(x, freqs_cis, mask, None)
+                        out, kv = item(x, freqs_cis, mask, None)  # noqa: E741
                         return out, kv[0], kv[1]
+
                     return fn
+
                 x, k, v = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)
                 kv = (k, v)
             else:
@@ -231,7 +234,7 @@ class AureliusTransformer(nn.Module):
         temperature: float = 1.0,
         top_p: float = 0.9,
         eos_token_id: int | None = None,
-    ) -> "Iterator[torch.Tensor]":
+    ) -> Iterator[torch.Tensor]:  # noqa: F821
         """Autoregressive generation yielding one token at a time.
 
         Same algorithm as generate(), but yields each new token as it is
@@ -247,8 +250,6 @@ class AureliusTransformer(nn.Module):
         Yields:
             (batch, 1) token id tensor for each generated token.
         """
-        from typing import Iterator
-        import torch.nn.functional as F
 
         B, _ = input_ids.shape
         past_key_values = None
@@ -332,7 +333,7 @@ def count_parameters(model: nn.Module) -> int:
 
 if __name__ == "__main__":
     config = AureliusConfig()
-    print(f"Aurelius Configuration:")
+    print("Aurelius Configuration:")
     print(f"  Layers:      {config.n_layers}")
     print(f"  Hidden dim:  {config.d_model}")
     print(f"  FFN dim:     {config.d_ff}")
@@ -351,7 +352,7 @@ if __name__ == "__main__":
 
     # Parameter breakdown
     param_counts = model.count_parameters()
-    print(f"\nParameter Breakdown:")
+    print("\nParameter Breakdown:")
     for name, count in param_counts.items():
         print(f"  {name:.<30} {count:>15,}")
 
@@ -369,5 +370,5 @@ if __name__ == "__main__":
 
     print(f"  Input shape:  {tokens.shape}")
     print(f"  Output shape: {logits.shape}")
-    assert logits.shape == (batch_size, seq_len, config.vocab_size), "Shape mismatch!"
+    assert logits.shape == (batch_size, seq_len, config.vocab_size), "Shape mismatch!"  # noqa: S101
     print("  Forward pass OK.")

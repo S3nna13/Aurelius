@@ -1,20 +1,17 @@
 """Tests for activation_search.py — activation library and learnable meta-activation."""
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.activation_search import (
-    ActivationInfo,
     ACTIVATION_REGISTRY,
-    get_activation,
-    Mish,
-    Squareplus,
-    StarReLU,
-    LearnableActivation,
+    ActivationInfo,
     ActivationSearchSpace,
+    LearnableActivation,
+    StarReLU,
+    get_activation,
 )
-
 
 # ── Activation library tests ──────────────────────────────────────────
 

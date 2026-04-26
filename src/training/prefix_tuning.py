@@ -6,17 +6,16 @@ keeping the base model frozen. Only the prefix parameters are trained.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PrefixConfig:
@@ -35,7 +34,7 @@ class PrefixConfig:
     """If True, hint to initialise prefix from vocabulary (not used internally
     here; callers may honour it when they have access to an embedding table)."""
 
-    reparam_hidden_dim: Optional[int] = None
+    reparam_hidden_dim: int | None = None
     """If set, use a reparameterization MLP with this hidden size instead of a
     direct nn.Parameter.  The MLP maps a (prefix_length,)-shaped index
     embedding through a two-layer network to produce (prefix_length, d_model)
@@ -45,6 +44,7 @@ class PrefixConfig:
 # ---------------------------------------------------------------------------
 # PrefixEmbedding
 # ---------------------------------------------------------------------------
+
 
 class PrefixEmbedding(nn.Module):
     """Learnable prefix token embeddings.
@@ -79,14 +79,15 @@ class PrefixEmbedding(nn.Module):
         """Return prefix embeddings of shape ``(prefix_length, d_model)``."""
         if self._use_reparam:
             # _input: (P,) -> (P, 1) -> MLP -> (P, D)
-            x = self._input.unsqueeze(-1)   # (P, 1)
-            return self.mlp(x)              # (P, D)
-        return self.prefix                  # (P, D)
+            x = self._input.unsqueeze(-1)  # (P, 1)
+            return self.mlp(x)  # (P, D)
+        return self.prefix  # (P, D)
 
 
 # ---------------------------------------------------------------------------
 # prepend_prefix
 # ---------------------------------------------------------------------------
+
 
 def prepend_prefix(prefix: Tensor, input_embeds: Tensor) -> Tensor:
     """Concatenate prefix tokens before input embeddings.
@@ -107,6 +108,7 @@ def prepend_prefix(prefix: Tensor, input_embeds: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # PrefixTuner
 # ---------------------------------------------------------------------------
+
 
 class PrefixTuner(nn.Module):
     """Wraps a backbone embedding and prepends a learnable prefix.
@@ -140,10 +142,10 @@ class PrefixTuner(nn.Module):
             ``(B, prefix_length + T, d_model)`` embeddings.
         """
         token_embeds = self.backbone_embed(token_ids)  # (B, T, D)
-        prefix = self.get_prefix_embeds()              # (P, D)
-        return prepend_prefix(prefix, token_embeds)    # (B, P+T, D)
+        prefix = self.get_prefix_embeds()  # (P, D)
+        return prepend_prefix(prefix, token_embeds)  # (B, P+T, D)
 
-    def get_trainable_params(self) -> List[nn.Parameter]:
+    def get_trainable_params(self) -> list[nn.Parameter]:
         """Return only the prefix parameters (backbone is frozen)."""
         return list(self.prefix_embedding.parameters())
 
@@ -151,6 +153,7 @@ class PrefixTuner(nn.Module):
 # ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
+
 
 def freeze_model(model: nn.Module) -> int:
     """Freeze all parameters in *model*.
@@ -184,6 +187,7 @@ def count_trainable_params(model: nn.Module) -> int:
 # PromptTuningConfig / SoftPrompt
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PromptTuningConfig:
     """Minimal configuration for simple soft-prompt tuning."""
@@ -194,7 +198,7 @@ class PromptTuningConfig:
     d_model: int = 512
     """Model embedding dimension."""
 
-    init_text: Optional[str] = None
+    init_text: str | None = None
     """Optional text hint for initialisation (not used internally)."""
 
 

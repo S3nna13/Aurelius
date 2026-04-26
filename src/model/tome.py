@@ -10,12 +10,9 @@ Reference:
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # 1. BipartiteSoftMatching
@@ -44,7 +41,7 @@ class BipartiteSoftMatching:
         self.r = r
 
     # ------------------------------------------------------------------
-    def match(self, metric: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def match(self, metric: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Select the top-r token pairs to merge.
 
         Args:
@@ -63,7 +60,7 @@ class BipartiteSoftMatching:
 
         # Split into A (even) and B (odd)
         a_idx = torch.arange(0, T - T % 2, 2, device=metric.device)  # (|A|,)
-        b_idx = torch.arange(1, T,          2, device=metric.device)  # (|B|,)
+        b_idx = torch.arange(1, T, 2, device=metric.device)  # (|B|,)
 
         n_a = a_idx.shape[0]
         n_b = b_idx.shape[0]
@@ -79,14 +76,14 @@ class BipartiteSoftMatching:
         b_vecs = metric[:, b_idx, :]  # (B, n_b, d)
 
         # Normalise for cosine similarity
-        a_norm = F.normalize(a_vecs, dim=-1)   # (B, n_a, d)
-        b_norm = F.normalize(b_vecs, dim=-1)   # (B, n_b, d)
+        a_norm = F.normalize(a_vecs, dim=-1)  # (B, n_a, d)
+        b_norm = F.normalize(b_vecs, dim=-1)  # (B, n_b, d)
 
         # Similarity matrix: (B, n_a, n_b)
         sim = torch.bmm(a_norm, b_norm.transpose(1, 2))
 
         # For each token in A, pick the most similar token in B
-        best_sim, best_b_local = sim.max(dim=2)   # (B, n_a)
+        best_sim, best_b_local = sim.max(dim=2)  # (B, n_a)
 
         # Pick the top-r_eff pairs by similarity score
         _, top_a_local = best_sim.topk(r_eff, dim=1)  # (B, r_eff)
@@ -95,9 +92,9 @@ class BipartiteSoftMatching:
         a_idx_expanded = a_idx.unsqueeze(0).expand(B, -1)  # (B, n_a)
         b_idx_expanded = b_idx.unsqueeze(0).expand(B, -1)  # (B, n_b)
 
-        src = a_idx_expanded.gather(1, top_a_local)          # (B, r_eff)
-        dst_local = best_b_local.gather(1, top_a_local)       # (B, r_eff)
-        dst = b_idx_expanded.gather(1, dst_local)             # (B, r_eff)
+        src = a_idx_expanded.gather(1, top_a_local)  # (B, r_eff)
+        dst_local = best_b_local.gather(1, top_a_local)  # (B, r_eff)
+        dst = b_idx_expanded.gather(1, dst_local)  # (B, r_eff)
 
         return src, dst
 
@@ -124,8 +121,8 @@ class ToMeMerger:
         x: torch.Tensor,
         src: torch.Tensor,
         dst: torch.Tensor,
-        size: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        size: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Merge r token pairs.
 
         Args:
@@ -151,9 +148,9 @@ class ToMeMerger:
             return x, size
 
         # Gather sizes for weighting (no in-place ops on differentiable tensors)
-        src_size = size.gather(1, src)           # (B, r)
-        dst_size = size.gather(1, dst)           # (B, r)
-        total    = src_size + dst_size           # (B, r)
+        src_size = size.gather(1, src)  # (B, r)
+        dst_size = size.gather(1, dst)  # (B, r)
+        total = src_size + dst_size  # (B, r)
 
         # Weighted merge value
         src_vals = x.gather(2, src.unsqueeze(-1).expand(-1, -1, d))  # (B, r, d)
@@ -173,10 +170,12 @@ class ToMeMerger:
 
         # Build keep mask: True for positions NOT in src
         keep = torch.ones(B, T, dtype=torch.bool, device=device)
-        keep.scatter_(1, src, False)  # src/dst are integer indices — safe in-place on non-differentiable bool mask
+        keep.scatter_(
+            1, src, False
+        )  # src/dst are integer indices — safe in-place on non-differentiable bool mask
 
         n_keep = T - r
-        x_merged  = x_updated[keep].view(B, n_keep, d)
+        x_merged = x_updated[keep].view(B, n_keep, d)
         sz_merged = sz_updated[keep].view(B, n_keep)
 
         return x_merged, sz_merged
@@ -204,7 +203,7 @@ class ToMeMerger:
             (B, T_orig, d)
         """
         B, T_reduced, d = x_merged.shape
-        r = src.shape[1]
+        src.shape[1]
         device = x_merged.device
 
         # Build a mapping: for each original position, which position in the
@@ -261,16 +260,16 @@ class ToMeAttention(nn.Module):
         super().__init__()
         if d_model % n_heads != 0:
             raise ValueError("d_model must be divisible by n_heads")
-        self.d_model  = d_model
-        self.n_heads  = n_heads
+        self.d_model = d_model
+        self.n_heads = n_heads
         self.head_dim = d_model // n_heads
-        self.r        = r
+        self.r = r
 
         self.qkv_proj = nn.Linear(d_model, 3 * d_model, bias=False)
-        self.out_proj  = nn.Linear(d_model, d_model, bias=False)
+        self.out_proj = nn.Linear(d_model, d_model, bias=False)
 
         self.matcher = BipartiteSoftMatching(r=r)
-        self.merger  = ToMeMerger()
+        self.merger = ToMeMerger()
 
     # ------------------------------------------------------------------
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -291,8 +290,8 @@ class ToMeAttention(nn.Module):
         T_red = x_reduced.shape[1]
 
         # 3. QKV projection on reduced sequence
-        qkv = self.qkv_proj(x_reduced)                 # (B, T_red, 3*d_model)
-        q, k, v = qkv.chunk(3, dim=-1)                  # each (B, T_red, d_model)
+        qkv = self.qkv_proj(x_reduced)  # (B, T_red, 3*d_model)
+        q, k, v = qkv.chunk(3, dim=-1)  # each (B, T_red, d_model)
 
         # Reshape to multi-head form
         def split_heads(t: torch.Tensor) -> torch.Tensor:
@@ -301,10 +300,10 @@ class ToMeAttention(nn.Module):
         q, k, v = split_heads(q), split_heads(k), split_heads(v)
 
         # 4. Scaled dot-product attention
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         attn_weights = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, H, T_red, T_red)
         attn_weights = F.softmax(attn_weights, dim=-1)
-        attn_out = torch.matmul(attn_weights, v)                     # (B, H, T_red, head_dim)
+        attn_out = torch.matmul(attn_weights, v)  # (B, H, T_red, head_dim)
 
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(B, T_red, self.d_model)
@@ -345,9 +344,9 @@ class ToMeBlock(nn.Module):
     ) -> None:
         super().__init__()
         self.attn_norm = _RMSNorm(d_model)
-        self.ffn_norm  = _RMSNorm(d_model)
-        self.attn      = ToMeAttention(d_model, n_heads, r=r)
-        self.ffn       = _FFN(d_model, d_ff)
+        self.ffn_norm = _RMSNorm(d_model)
+        self.attn = ToMeAttention(d_model, n_heads, r=r)
+        self.ffn = _FFN(d_model, d_ff)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -372,7 +371,7 @@ class _RMSNorm(nn.Module):
 
     def __init__(self, dim: int, eps: float = 1e-6) -> None:
         super().__init__()
-        self.eps    = eps
+        self.eps = eps
         self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

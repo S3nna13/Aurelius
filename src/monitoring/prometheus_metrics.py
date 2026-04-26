@@ -4,7 +4,6 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Any
 
 
 @dataclass
@@ -27,7 +26,9 @@ class MetricsCollector:
         self._histograms: dict[str, list[float]] = defaultdict(list)
         self._lock = Lock()
 
-    def increment_counter(self, name: str, value: float = 1.0, labels: dict[str, str] | None = None) -> None:
+    def increment_counter(
+        self, name: str, value: float = 1.0, labels: dict[str, str] | None = None
+    ) -> None:
         with self._lock:
             key = self._key(name, labels or {})
             self._counters[key] += value
@@ -37,7 +38,9 @@ class MetricsCollector:
             key = self._key(name, labels or {})
             self._gauges[key] = value
 
-    def observe_histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+    def observe_histogram(
+        self, name: str, value: float, labels: dict[str, str] | None = None
+    ) -> None:
         with self._lock:
             key = self._key(name, labels or {})
             self._histograms[key].append(value)
@@ -51,10 +54,21 @@ class MetricsCollector:
     def read_histogram(self, name: str, labels: dict[str, str] | None = None) -> list[float]:
         return self._histograms.get(self._key(name, labels or {}), [])
 
-    def histogram_summary(self, name: str, labels: dict[str, str] | None = None) -> dict[str, float]:
+    def histogram_summary(
+        self, name: str, labels: dict[str, str] | None = None
+    ) -> dict[str, float]:
         samples = self.read_histogram(name, labels)
         if not samples:
-            return {"count": 0, "sum": 0.0, "avg": 0.0, "min": 0.0, "max": 0.0, "p50": 0.0, "p95": 0.0, "p99": 0.0}
+            return {
+                "count": 0,
+                "sum": 0.0,
+                "avg": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+            }
         sorted_s = sorted(samples)
         n = len(sorted_s)
         return {

@@ -27,16 +27,15 @@ Algorithm (Section 3, paper notation preserved):
 
 from __future__ import annotations
 
-import math
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch.optim import Optimizer
 
-
 # ---------------------------------------------------------------------------
 # FLoRAProjector
 # ---------------------------------------------------------------------------
+
 
 class FLoRAProjector:
     """Manages seeded random projections R_t and C_t for a single weight matrix.
@@ -62,7 +61,7 @@ class FLoRAProjector:
 
         self.m = m
         self.n = n
-        self.r = rank           # paper variable: r
+        self.r = rank  # paper variable: r
         self.seed_offset = seed_offset
 
     # ------------------------------------------------------------------
@@ -102,9 +101,7 @@ class FLoRAProjector:
             G̃_t : Compressed gradient, shape (r, r).
         """
         if G_t.shape != (self.m, self.n):
-            raise ValueError(
-                f"Expected G_t shape ({self.m}, {self.n}), got {tuple(G_t.shape)}"
-            )
+            raise ValueError(f"Expected G_t shape ({self.m}, {self.n}), got {tuple(G_t.shape)}")
         R_t, C_t = self._draw_R_C(step, G_t.dtype, G_t.device)
         # G̃_t = R_t @ G_t @ C_t  →  (r×m) @ (m×n) @ (n×r) = (r, r)
         G_tilde = R_t @ G_t @ C_t
@@ -124,8 +121,7 @@ class FLoRAProjector:
         """
         if V_compressed.shape != (self.r, self.r):
             raise ValueError(
-                f"Expected V_compressed shape ({self.r}, {self.r}), "
-                f"got {tuple(V_compressed.shape)}"
+                f"Expected V_compressed shape ({self.r}, {self.r}), got {tuple(V_compressed.shape)}"
             )
         R_t, C_t = self._draw_R_C(step, V_compressed.dtype, V_compressed.device)
         # ΔW_t = R_t^T @ Ṽ_t @ C_t^T  →  (m×r) @ (r×r) @ (r×n) = (m, n)
@@ -136,6 +132,7 @@ class FLoRAProjector:
 # ---------------------------------------------------------------------------
 # FLoRAOptimizer
 # ---------------------------------------------------------------------------
+
 
 class FLoRAOptimizer(Optimizer):
     """Adam optimiser with FLoRA full-rank random-projection gradient compression.
@@ -234,8 +231,16 @@ class FLoRAOptimizer(Optimizer):
                 else:
                     # 2-D+ params: FLoRA compressed Adam
                     self._flora_step(
-                        p, grad, state,
-                        lr, rank, beta1, beta2, eps, weight_decay, seed_offset,
+                        p,
+                        grad,
+                        state,
+                        lr,
+                        rank,
+                        beta1,
+                        beta2,
+                        eps,
+                        weight_decay,
+                        seed_offset,
                     )
 
         return loss
@@ -258,8 +263,8 @@ class FLoRAOptimizer(Optimizer):
         """Standard Adam (decoupled weight decay) for bias / norm parameters."""
         if len(state) == 0:
             state["step"] = 0
-            state["m1"] = torch.zeros_like(p)   # first moment
-            state["m2"] = torch.zeros_like(p)   # second moment (uncentered)
+            state["m1"] = torch.zeros_like(p)  # first moment
+            state["m2"] = torch.zeros_like(p)  # second moment (uncentered)
 
         state["step"] += 1
         t = state["step"]
@@ -275,8 +280,8 @@ class FLoRAOptimizer(Optimizer):
         m2.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
         # Bias-corrected estimates
-        bc1 = 1.0 - beta1 ** t
-        bc2 = 1.0 - beta2 ** t
+        bc1 = 1.0 - beta1**t
+        bc2 = 1.0 - beta2**t
         m1_hat = m1 / bc1
         m2_hat = m2 / bc2
 
@@ -312,7 +317,7 @@ class FLoRAOptimizer(Optimizer):
         p_2d = p.view(m, n)
         grad_2d = grad.view(m, n)
 
-        r = min(rank, m, n)   # effective rank (can't exceed matrix dimensions)
+        r = min(rank, m, n)  # effective rank (can't exceed matrix dimensions)
 
         # ---- Initialise state ----
         if len(state) == 0:
@@ -334,24 +339,24 @@ class FLoRAOptimizer(Optimizer):
 
         # ---- Step 2: Project gradient into (r, r) space ----
         # G̃_t = R_t G_t C_t
-        G_tilde = projector.project(grad_2d, step=t)   # (r, r)
+        G_tilde = projector.project(grad_2d, step=t)  # (r, r)
 
         # ---- Step 3: Adam in compressed space ----
         m1.mul_(beta1).add_(G_tilde, alpha=1.0 - beta1)
         m2.mul_(beta2).addcmul_(G_tilde, G_tilde, value=1.0 - beta2)
 
         # Bias correction
-        bc1 = 1.0 - beta1 ** t
-        bc2 = 1.0 - beta2 ** t
+        bc1 = 1.0 - beta1**t
+        bc2 = 1.0 - beta2**t
         m1_hat = m1 / bc1
         m2_hat = m2 / bc2
 
         # Ṽ_t: Adam output in compressed (r, r) space
-        V_tilde = m1_hat / (m2_hat.sqrt().add_(eps))   # (r, r)
+        V_tilde = m1_hat / (m2_hat.sqrt().add_(eps))  # (r, r)
 
         # ---- Step 4: Unproject to (m, n) ----
         # ΔW_t = R_t^T Ṽ_t C_t^T
-        delta_W = projector.unproject(V_tilde, step=t)   # (m, n)
+        delta_W = projector.unproject(V_tilde, step=t)  # (m, n)
 
         # ---- Step 5: W_{t+1} = W_t - lr * ΔW_t ----
         p_2d.add_(delta_W, alpha=-lr)

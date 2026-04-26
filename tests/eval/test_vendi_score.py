@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.eval.vendi_score import (
@@ -22,10 +21,10 @@ from src.eval.vendi_score import (
     vendi_score,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def identity_kernel(n: int) -> torch.Tensor:
     """n×n identity matrix (maximally diverse kernel)."""
@@ -55,6 +54,7 @@ def make_identical_embeddings(n: int, d: int) -> torch.Tensor:
 # Test 1: identity kernel → VS = n (maximally diverse)
 # ---------------------------------------------------------------------------
 
+
 def test_vendi_score_identity_kernel():
     """K = I_n  =>  VS = n."""
     for n in (3, 5, 8):
@@ -66,6 +66,7 @@ def test_vendi_score_identity_kernel():
 # ---------------------------------------------------------------------------
 # Test 2: all-ones kernel → VS ≈ 1 (all samples identical)
 # ---------------------------------------------------------------------------
+
 
 def test_vendi_score_ones_kernel():
     """K = 1·1^T  =>  VS ≈ 1 (rank-1 matrix, single non-zero eigenvalue)."""
@@ -79,6 +80,7 @@ def test_vendi_score_ones_kernel():
 # Test 3: VS range — 1 ≤ VS ≤ n
 # ---------------------------------------------------------------------------
 
+
 def test_vendi_score_range():
     """VS is always in [1, n] for a valid PSD kernel."""
     torch.manual_seed(0)
@@ -87,14 +89,13 @@ def test_vendi_score_range():
         A = torch.randn(n, n)
         K = A @ A.T / n
         vs = vendi_score(K)
-        assert 1.0 - 1e-4 <= vs <= n + 1e-4, (
-            f"VS={vs} out of range [1, {n}] for n={n}"
-        )
+        assert 1.0 - 1e-4 <= vs <= n + 1e-4, f"VS={vs} out of range [1, {n}] for n={n}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: identical embeddings → VS ≈ 1
 # ---------------------------------------------------------------------------
+
 
 def test_embedding_vendi_score_identical():
     """n copies of the same embedding → VS ≈ 1 for all kernels."""
@@ -112,6 +113,7 @@ def test_embedding_vendi_score_identical():
 # Test 5: orthogonal embeddings → VS ≈ n
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_vendi_score_orthogonal():
     """n orthogonal unit embeddings → VS ≈ n for cosine and linear kernels."""
     n, d = 5, 8
@@ -126,6 +128,7 @@ def test_embedding_vendi_score_orthogonal():
 # ---------------------------------------------------------------------------
 # Test 6: cosine kernel produces PSD matrix
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_kernel_psd():
     """Cosine kernel matrix must be PSD (all eigenvalues ≥ 0)."""
@@ -144,6 +147,7 @@ def test_cosine_kernel_psd():
 # Test 7: token_vendi_score — all identical sequences → VS ≈ 1
 # ---------------------------------------------------------------------------
 
+
 def test_token_vendi_score_identical():
     """All identical token sequences → VS ≈ 1."""
     seq = [1, 2, 3, 4]
@@ -155,6 +159,7 @@ def test_token_vendi_score_identical():
 # ---------------------------------------------------------------------------
 # Test 8: token_vendi_score — all unique sequences → VS ≈ n
 # ---------------------------------------------------------------------------
+
 
 def test_token_vendi_score_unique():
     """All distinct token sequences → VS ≈ n."""
@@ -168,6 +173,7 @@ def test_token_vendi_score_unique():
 # Test 9: VendiScorer.score_batch returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_score_batch_length():
     """score_batch returns a list whose length equals the number of groups."""
     torch.manual_seed(3)
@@ -175,9 +181,7 @@ def test_scorer_score_batch_length():
     groups = [torch.randn(n, 16) for n in (3, 5, 7, 4)]
     results = scorer.score_batch(groups)
     assert isinstance(results, list), "score_batch must return a list"
-    assert len(results) == len(groups), (
-        f"Expected {len(groups)} scores, got {len(results)}"
-    )
+    assert len(results) == len(groups), f"Expected {len(groups)} scores, got {len(results)}"
     # Each score must be a float
     for i, s in enumerate(results):
         assert isinstance(s, float), f"results[{i}] is not a float: {type(s)}"
@@ -187,11 +191,12 @@ def test_scorer_score_batch_length():
 # Test 10: numerical stability with near-zero embeddings
 # ---------------------------------------------------------------------------
 
+
 def test_numerical_stability_near_zero():
     """Near-zero embeddings must not produce NaN or Inf scores."""
     torch.manual_seed(4)
     n, d = 8, 16
-    emb = torch.randn(n, d) * 1e-8   # very small magnitudes
+    emb = torch.randn(n, d) * 1e-8  # very small magnitudes
     for kernel in ("cosine", "linear", "rbf"):
         vs = embedding_vendi_score(emb, kernel=kernel)
         assert math.isfinite(vs), (
@@ -202,6 +207,7 @@ def test_numerical_stability_near_zero():
 # ---------------------------------------------------------------------------
 # Test 11: determinism — same input → same score
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     """Identical inputs must produce identical scores (no random state)."""
@@ -215,6 +221,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # Test 12: n=1 (single sample) → VS = 1
 # ---------------------------------------------------------------------------
+
 
 def test_single_sample():
     """A single sample always has VS = 1 regardless of kernel."""

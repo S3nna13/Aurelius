@@ -1,11 +1,13 @@
 """RLVR: Reinforcement Learning with Verifiable Rewards for math/code correctness."""
+
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 Tensor = torch.Tensor
 
@@ -34,7 +36,7 @@ class MathReward(VerifiableReward):
     """Extract final numeric answer from completion and compare to ground_truth."""
 
     def __call__(self, prompt: str, completion: str, ground_truth: str) -> float:
-        numbers = re.findall(r'-?\d+\.?\d*', completion)
+        numbers = re.findall(r"-?\d+\.?\d*", completion)
         if not numbers:
             return 0.0
         try:
@@ -57,7 +59,7 @@ class FormatReward(VerifiableReward):
 
     def __call__(self, prompt: str, completion: str, ground_truth: str) -> float:
         score = 0.0
-        if r'\boxed{' in completion:
+        if r"\boxed{" in completion:
             score += 0.5
         if len(completion) > 50:
             score += 0.5
@@ -118,8 +120,8 @@ def sample_completions(
             all_ids.append(torch.tensor(step_ids, dtype=torch.long))
             all_log_probs.append(torch.tensor(step_lps, dtype=torch.float32))
 
-    completions = torch.stack(all_ids, dim=0)        # (n_samples, max_new_tokens)
-    log_probs = torch.stack(all_log_probs, dim=0)    # (n_samples, max_new_tokens)
+    completions = torch.stack(all_ids, dim=0)  # (n_samples, max_new_tokens)
+    log_probs = torch.stack(all_log_probs, dim=0)  # (n_samples, max_new_tokens)
     return completions, log_probs
 
 
@@ -207,13 +209,12 @@ class RLVRTrainer:
         completions_text: list[str] = []
         for i in range(cfg.n_samples):
             ids = completion_ids[i].tolist()
-            text = bytes(tok % 256 for tok in ids).decode(errors='replace')
+            text = bytes(tok % 256 for tok in ids).decode(errors="replace")
             completions_text.append(text)
 
         # 3. Score with reward_fn
         reward_list = [
-            float(self.reward_fn(prompt_text, comp, ground_truth))
-            for comp in completions_text
+            float(self.reward_fn(prompt_text, comp, ground_truth)) for comp in completions_text
         ]
         rewards = torch.tensor(reward_list, dtype=torch.float32)
 
@@ -262,10 +263,8 @@ class RLVRTrainer:
 
         log_probs_all = F.log_softmax(logits[:, :-1, :], dim=-1)
 
-        completion_lp = log_probs_all[:, prompt_len - 1: prompt_len - 1 + T, :]
+        completion_lp = log_probs_all[:, prompt_len - 1 : prompt_len - 1 + T, :]
 
-        token_lp = completion_lp.gather(
-            2, completion_ids.unsqueeze(-1)
-        ).squeeze(-1)
+        token_lp = completion_lp.gather(2, completion_ids.unsqueeze(-1)).squeeze(-1)
 
         return token_lp

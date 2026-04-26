@@ -11,7 +11,6 @@ import torch
 from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.vision_projector import VisionProjector, VisionProjectorConfig
 
-
 # ---------------------------------------------------------------------------
 # Shared tiny config used across integration tests
 # ---------------------------------------------------------------------------
@@ -38,6 +37,7 @@ def make_model(temporal_pool: bool = True) -> VisionProjector:
 # 1. Registry key exists
 # ---------------------------------------------------------------------------
 
+
 def test_vision_projector_in_registry():
     """'vision_projector' key must be present in MODEL_COMPONENT_REGISTRY."""
     assert "vision_projector" in MODEL_COMPONENT_REGISTRY, (
@@ -48,6 +48,7 @@ def test_vision_projector_in_registry():
 # ---------------------------------------------------------------------------
 # 2. Registry entry is the correct class
 # ---------------------------------------------------------------------------
+
 
 def test_registry_entry_is_vision_projector_class():
     """Registry entry must be the VisionProjector class (not an instance)."""
@@ -60,6 +61,7 @@ def test_registry_entry_is_vision_projector_class():
 # ---------------------------------------------------------------------------
 # 3. Construct from registry and run a forward pass (with pooling)
 # ---------------------------------------------------------------------------
+
 
 def test_construct_from_registry_forward_pass_with_pool():
     """Construct via registry, run forward, assert output shape with temporal pooling."""
@@ -83,6 +85,7 @@ def test_construct_from_registry_forward_pass_with_pool():
 # 4. Forward pass without pooling
 # ---------------------------------------------------------------------------
 
+
 def test_forward_pass_no_pool():
     """Forward pass with temporal_pool=False preserves sequence length."""
     cls = MODEL_COMPONENT_REGISTRY["vision_projector"]
@@ -104,6 +107,7 @@ def test_forward_pass_no_pool():
 # 5. Backward pass works end-to-end
 # ---------------------------------------------------------------------------
 
+
 def test_backward_pass():
     """Backward pass through registry-constructed model produces valid gradients."""
     model = make_model(temporal_pool=True)
@@ -114,14 +118,13 @@ def test_backward_pass():
     assert model.proj.weight.grad is not None, (
         "proj.weight.grad must not be None after backward pass"
     )
-    assert not torch.isnan(model.proj.weight.grad).any(), (
-        "proj.weight.grad must not contain NaN"
-    )
+    assert not torch.isnan(model.proj.weight.grad).any(), "proj.weight.grad must not contain NaN"
 
 
 # ---------------------------------------------------------------------------
 # 6. Pre-existing registry keys are unaffected
 # ---------------------------------------------------------------------------
+
 
 def test_existing_registry_keys_unaffected():
     """Adding vision_projector must not remove any pre-existing registry keys."""

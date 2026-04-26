@@ -38,4 +38,3 @@ def test_expert_overflow_rejects_bad_indices():
 
 def test_kept_fraction_handles_empty_assignments():
     assert kept_fraction(torch.tensor([], dtype=torch.long)).item() == pytest.approx(0.0)
-

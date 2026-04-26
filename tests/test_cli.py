@@ -3,10 +3,10 @@ tests/test_cli.py
 
 Smoke tests for the aurelius CLI entry point.
 """
-import sys
+
 import pytest
 
-from src.cli.main import _build_parser, main, __version__, DEFAULT_SYSTEM
+from src.cli.main import DEFAULT_SYSTEM, __version__, _build_parser, main
 
 
 def test_version_string():
@@ -61,6 +61,7 @@ def test_default_system_nonempty():
 
 def test_mock_generate():
     from src.cli.main import _mock_generate
+
     result = _mock_generate("<|user|>\nhello<|end|>\n<|assistant|>\n")
     assert isinstance(result, str)
     assert len(result) > 0
@@ -68,5 +69,6 @@ def test_mock_generate():
 
 def test_build_parser_returns_parser():
     import argparse
+
     parser = _build_parser()
     assert isinstance(parser, argparse.ArgumentParser)

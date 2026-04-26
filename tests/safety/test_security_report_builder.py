@@ -19,7 +19,14 @@ from src.safety.vulnerability_schema import (
 
 def _collection():
     c = VulnCollection(target="app")
-    c.add(VulnFinding(title="SQLi", severity=VulnSeverity.CRITICAL, description="dbad", recommendation="escape"))
+    c.add(
+        VulnFinding(
+            title="SQLi",
+            severity=VulnSeverity.CRITICAL,
+            description="dbad",
+            recommendation="escape",
+        )
+    )
     c.add(VulnFinding(title="XSS", severity=VulnSeverity.HIGH, description="reflected"))
     c.add(VulnFinding(title="Info leak", severity=VulnSeverity.LOW))
     c.add(VulnFinding(title="Debug banner", severity=VulnSeverity.INFO))

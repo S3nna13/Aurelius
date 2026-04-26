@@ -7,8 +7,8 @@ following the Abadi et al. (2016) DP-SGD algorithm with RDP accounting.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 import torch
 import torch.nn as nn
@@ -46,7 +46,7 @@ class PrivacyAccountant:
             RDP ≈ steps * q² * α / (2σ²)
         where q is the sampling rate and σ is the noise multiplier.
         """
-        return steps * (self.sampling_rate ** 2) * alpha / (2.0 * self.config.noise_multiplier ** 2)
+        return steps * (self.sampling_rate**2) * alpha / (2.0 * self.config.noise_multiplier**2)
 
     def compute_epsilon(self, steps: int) -> float:
         """Convert accumulated RDP to (ε, δ)-DP via:
@@ -155,9 +155,7 @@ class DPTrainer:
         loss.backward()
 
         # Clip gradients and record norm before clipping
-        grad_norm = clip_gradients(
-            self.model.parameters(), self.config.max_grad_norm
-        )
+        grad_norm = clip_gradients(self.model.parameters(), self.config.max_grad_norm)
 
         # Add DP noise
         add_dp_noise(

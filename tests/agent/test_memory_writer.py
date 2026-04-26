@@ -11,10 +11,10 @@ from src.agent.memory_writer import (
     MemoryWriter,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_writer(**kwargs) -> MemoryWriter:
     return MemoryWriter(**kwargs)
@@ -23,6 +23,7 @@ def make_writer(**kwargs) -> MemoryWriter:
 # ---------------------------------------------------------------------------
 # MemoryRecord – frozen / auto-id
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryRecord:
     def test_create_returns_memory_record(self):
@@ -88,6 +89,7 @@ class TestMemoryRecord:
 # MemoryWriter – write
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryWriterWrite:
     def test_write_returns_memory_record(self):
         w = make_writer()
@@ -150,6 +152,7 @@ class TestMemoryWriterWrite:
 # MemoryWriter – recall
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryWriterRecall:
     def test_recall_all_returns_all(self):
         w = make_writer()
@@ -159,9 +162,9 @@ class TestMemoryWriterRecall:
 
     def test_recall_sorted_by_importance_desc(self):
         w = make_writer()
-        w.write(MemoryType.FACT, "low",  importance=0.1)
+        w.write(MemoryType.FACT, "low", importance=0.1)
         w.write(MemoryType.FACT, "high", importance=0.9)
-        w.write(MemoryType.FACT, "mid",  importance=0.5)
+        w.write(MemoryType.FACT, "mid", importance=0.5)
         results = w.recall()
         importances = [r.importance for r in results]
         assert importances == sorted(importances, reverse=True)
@@ -176,7 +179,7 @@ class TestMemoryWriterRecall:
 
     def test_recall_by_multiple_tags_all_required(self):
         w = make_writer()
-        w.write(MemoryType.FACT, "both",  tags=["a", "b"])
+        w.write(MemoryType.FACT, "both", tags=["a", "b"])
         w.write(MemoryType.FACT, "one_a", tags=["a"])
         results = w.recall(tags=["a", "b"])
         assert len(results) == 1
@@ -191,7 +194,7 @@ class TestMemoryWriterRecall:
 
     def test_recall_min_importance_filter(self):
         w = make_writer()
-        w.write(MemoryType.FACT, "low",  importance=0.2)
+        w.write(MemoryType.FACT, "low", importance=0.2)
         w.write(MemoryType.FACT, "high", importance=0.8)
         results = w.recall(min_importance=0.5)
         assert len(results) == 1
@@ -218,6 +221,7 @@ class TestMemoryWriterRecall:
 # ---------------------------------------------------------------------------
 # MemoryWriter – forget
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryWriterForget:
     def test_forget_existing_record_returns_true(self):
@@ -246,6 +250,7 @@ class TestMemoryWriterForget:
 # ---------------------------------------------------------------------------
 # MemoryWriter – len & stats
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryWriterStats:
     def test_len_empty(self):
@@ -293,6 +298,7 @@ class TestMemoryWriterStats:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_contains_default(self):

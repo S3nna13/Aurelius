@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.eval.head_pruning import (
-    HeadPruningConfig,
     HeadMask,
+    HeadPruningConfig,
     apply_head_pruning,
     compute_head_entropy,
     evaluate_pruning_impact,
@@ -16,7 +16,6 @@ from src.eval.head_pruning import (
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -53,6 +52,7 @@ def input_ids() -> torch.Tensor:
 # 1. HeadPruningConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_head_pruning_config_defaults():
     cfg = HeadPruningConfig()
     assert cfg.importance_metric == "gradient"
@@ -65,6 +65,7 @@ def test_head_pruning_config_defaults():
 # 2. compute_head_entropy output shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_head_entropy_shape():
     n_heads = 4
     attn = torch.softmax(torch.randn(B, n_heads, T, T), dim=-1)
@@ -75,6 +76,7 @@ def test_compute_head_entropy_shape():
 # ---------------------------------------------------------------------------
 # 3. compute_head_entropy: uniform attention has maximum entropy
 # ---------------------------------------------------------------------------
+
 
 def test_compute_head_entropy_uniform_is_max():
     n_heads = 4
@@ -94,6 +96,7 @@ def test_compute_head_entropy_uniform_is_max():
 # 4. compute_head_entropy: focused attention has lower entropy
 # ---------------------------------------------------------------------------
 
+
 def test_compute_head_entropy_focused_is_lower():
     n_heads = 4
     uniform = torch.full((B, n_heads, T, T), 1.0 / T)
@@ -112,6 +115,7 @@ def test_compute_head_entropy_focused_is_lower():
 # 5. score_heads_globally returns dict with correct layer keys
 # ---------------------------------------------------------------------------
 
+
 def test_score_heads_globally_returns_layer_keys(model, input_ids):
     cfg = HeadPruningConfig(importance_metric="gradient")
     scores = score_heads_globally(model, input_ids, cfg)
@@ -125,6 +129,7 @@ def test_score_heads_globally_returns_layer_keys(model, input_ids):
 # 6. score_heads_globally scores are non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_score_heads_globally_non_negative(model, input_ids):
     cfg = HeadPruningConfig(importance_metric="gradient")
     scores = score_heads_globally(model, input_ids, cfg)
@@ -135,6 +140,7 @@ def test_score_heads_globally_non_negative(model, input_ids):
 # ---------------------------------------------------------------------------
 # 7. select_heads_to_prune respects prune_fraction
 # ---------------------------------------------------------------------------
+
 
 def test_select_heads_to_prune_respects_fraction():
     n_layers = 2
@@ -147,14 +153,13 @@ def test_select_heads_to_prune_respects_fraction():
     total_pruned = sum(len(v) for v in heads_to_prune.values())
     total_heads = n_layers * n_heads
     expected = int(total_heads * cfg.prune_fraction)
-    assert total_pruned == expected, (
-        f"Expected {expected} heads pruned, got {total_pruned}"
-    )
+    assert total_pruned == expected, f"Expected {expected} heads pruned, got {total_pruned}"
 
 
 # ---------------------------------------------------------------------------
 # 8. select_heads_to_prune respects min_heads_per_layer (never prunes all heads)
 # ---------------------------------------------------------------------------
+
 
 def test_select_heads_to_prune_min_heads_respected():
     n_layers = 2
@@ -175,6 +180,7 @@ def test_select_heads_to_prune_min_heads_respected():
 # 9. HeadMask apply_mask output shape correct
 # ---------------------------------------------------------------------------
 
+
 def test_head_mask_apply_mask_shape():
     n_layers = 2
     n_heads = 4
@@ -183,14 +189,13 @@ def test_head_mask_apply_mask_shape():
 
     attn_out = torch.randn(B, n_heads, T, head_dim)
     result = mask_module.apply_mask(attn_out, layer_idx=0)
-    assert result.shape == attn_out.shape, (
-        f"Expected shape {attn_out.shape}, got {result.shape}"
-    )
+    assert result.shape == attn_out.shape, f"Expected shape {attn_out.shape}, got {result.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 10. HeadMask apply_mask with zeros zeroes output
 # ---------------------------------------------------------------------------
+
 
 def test_head_mask_apply_mask_zeros_output():
     n_layers = 2
@@ -212,6 +217,7 @@ def test_head_mask_apply_mask_zeros_output():
 # 11. apply_head_pruning modifies model (pruned head weights become zero)
 # ---------------------------------------------------------------------------
 
+
 def test_apply_head_pruning_zeros_weights():
     torch.manual_seed(42)
     m = AureliusTransformer(SMALL_CONFIG)
@@ -220,27 +226,25 @@ def test_apply_head_pruning_zeros_weights():
 
     o_proj_before = m.layers[0].attn.o_proj.weight.data.clone()
     assert not torch.allclose(
-        o_proj_before[:, :head_dim],
-        torch.zeros_like(o_proj_before[:, :head_dim])
+        o_proj_before[:, :head_dim], torch.zeros_like(o_proj_before[:, :head_dim])
     ), "Weights should be non-zero before pruning"
 
     apply_head_pruning(m, heads_to_prune)
 
     o_proj_after = m.layers[0].attn.o_proj.weight.data
     assert torch.allclose(
-        o_proj_after[:, :head_dim],
-        torch.zeros_like(o_proj_after[:, :head_dim])
+        o_proj_after[:, :head_dim], torch.zeros_like(o_proj_after[:, :head_dim])
     ), "Pruned head columns should be zeroed out"
 
-    assert torch.allclose(
-        o_proj_after[:, head_dim:],
-        o_proj_before[:, head_dim:]
-    ), "Unpruned head columns should remain unchanged"
+    assert torch.allclose(o_proj_after[:, head_dim:], o_proj_before[:, head_dim:]), (
+        "Unpruned head columns should remain unchanged"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 12. evaluate_pruning_impact returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_pruning_impact_keys():
     torch.manual_seed(42)
@@ -257,6 +261,7 @@ def test_evaluate_pruning_impact_keys():
 # ---------------------------------------------------------------------------
 # 13. evaluate_pruning_impact n_heads_pruned matches expected
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_pruning_impact_n_heads_pruned():
     torch.manual_seed(42)

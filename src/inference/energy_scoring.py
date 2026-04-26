@@ -12,7 +12,7 @@ Implements:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -130,13 +130,10 @@ class EnergyReranker:
         scores = []
         for cand in candidates:
             energy = compute_sequence_energy(self.model, cand)  # (B,) or (1,)
-            fluency = compute_fluency_score(self.model, cand)    # (B,) or (1,)
+            fluency = compute_fluency_score(self.model, cand)  # (B,) or (1,)
 
             # Combined: lower energy is better, higher fluency is better
-            combined = (
-                -self.config.energy_weight * energy
-                + self.config.fluency_weight * fluency
-            )
+            combined = -self.config.energy_weight * energy + self.config.fluency_weight * fluency
             # Average across batch dimension if needed
             scores.append(combined.mean())
 
@@ -245,11 +242,11 @@ def langevin_refine(
             emb_flat = emb.view(B * T, -1)  # (B*T, d_model)
             # Cosine-sim or L2
             # L2: (B*T, V)
-            emb_sq = (emb_flat ** 2).sum(dim=1, keepdim=True)       # (B*T, 1)
-            w_sq = (embed_weight ** 2).sum(dim=1, keepdim=True).T    # (1, V)
-            dot = emb_flat @ embed_weight.T                           # (B*T, V)
-            dist_sq = emb_sq + w_sq - 2.0 * dot                      # (B*T, V)
-            nearest = dist_sq.argmin(dim=1)                           # (B*T,)
+            emb_sq = (emb_flat**2).sum(dim=1, keepdim=True)  # (B*T, 1)
+            w_sq = (embed_weight**2).sum(dim=1, keepdim=True).T  # (1, V)
+            dot = emb_flat @ embed_weight.T  # (B*T, V)
+            dist_sq = emb_sq + w_sq - 2.0 * dot  # (B*T, V)
+            nearest = dist_sq.argmin(dim=1)  # (B*T,)
             refined_ids = nearest.view(B, T).long()
 
         return refined_ids

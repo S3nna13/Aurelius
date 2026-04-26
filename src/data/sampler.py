@@ -1,4 +1,5 @@
 """Data sampler with stratified and weighted sampling strategies."""
+
 from __future__ import annotations
 
 import random

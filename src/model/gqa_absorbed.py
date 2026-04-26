@@ -11,13 +11,12 @@ Reference: Absorbed-GQA derivation (2025).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -50,8 +49,7 @@ class GQAAbsorbedConfig:
     def __post_init__(self) -> None:
         if self.n_heads % self.n_kv_heads != 0:
             raise ValueError(
-                f"n_heads ({self.n_heads}) must be divisible by "
-                f"n_kv_heads ({self.n_kv_heads})."
+                f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})."
             )
 
     @property

@@ -6,8 +6,8 @@ refining the best output using configurable strategies.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Tuple
 
 import torch
 from torch import Tensor
@@ -26,7 +26,7 @@ class InferenceScalingConfig:
 class BestOfN:
     """Select the best candidate from N generations using a scorer function."""
 
-    def __init__(self, scorer_fn: Callable[[List[str]], Tensor]) -> None:
+    def __init__(self, scorer_fn: Callable[[list[str]], Tensor]) -> None:
         """
         Args:
             scorer_fn: Callable that accepts a list of N candidate strings and
@@ -35,7 +35,7 @@ class BestOfN:
         """
         self.scorer_fn = scorer_fn
 
-    def select(self, candidates: List[str]) -> Tuple[str, int]:
+    def select(self, candidates: list[str]) -> tuple[str, int]:
         """Return the best candidate and its index (argmax of scores).
 
         Args:
@@ -48,7 +48,7 @@ class BestOfN:
         best_idx: int = int(torch.argmax(scores).item())
         return candidates[best_idx], best_idx
 
-    def select_batch(self, candidates_per_prompt: List[List[str]]) -> List[str]:
+    def select_batch(self, candidates_per_prompt: list[list[str]]) -> list[str]:
         """Return the best candidate for each prompt in a batch.
 
         Args:
@@ -71,7 +71,7 @@ class MajorityVoter:
         """
         self.extractor_fn = extractor_fn
 
-    def vote(self, candidates: List[str]) -> Tuple[str, Dict[str, int]]:
+    def vote(self, candidates: list[str]) -> tuple[str, dict[str, int]]:
         """Return the majority answer and a dict of answer counts.
 
         Args:
@@ -81,13 +81,13 @@ class MajorityVoter:
             Tuple of (majority_answer, {answer: count, ...}).
         """
         answers = [self.extractor_fn(c) for c in candidates]
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for ans in answers:
             counts[ans] = counts.get(ans, 0) + 1
         majority_answer = max(counts, key=lambda a: counts[a])
         return majority_answer, counts
 
-    def confidence(self, answer_counts: Dict[str, int]) -> float:
+    def confidence(self, answer_counts: dict[str, int]) -> float:
         """Return max_count / total as a confidence in [0, 1].
 
         Args:
@@ -124,9 +124,7 @@ class SelfRefiner:
         self.critique_fn = critique_fn
         self.n_steps = n_steps
 
-    def refine(
-        self, prompt: str, initial_response: str
-    ) -> Tuple[str, List[str]]:
+    def refine(self, prompt: str, initial_response: str) -> tuple[str, list[str]]:
         """Refine initial_response for n_steps iterations.
 
         Each step: critique current response → generate improved response.
@@ -140,7 +138,7 @@ class SelfRefiner:
             contains the initial response plus one entry per refinement step
             (length == n_steps + 1).
         """
-        history: List[str] = [initial_response]
+        history: list[str] = [initial_response]
         current_response = initial_response
         for _ in range(self.n_steps):
             critique = self.critique_fn(prompt, current_response)
@@ -148,9 +146,7 @@ class SelfRefiner:
             history.append(current_response)
         return current_response, history
 
-    def refine_batch(
-        self, prompts: List[str], initial_responses: List[str]
-    ) -> List[str]:
+    def refine_batch(self, prompts: list[str], initial_responses: list[str]) -> list[str]:
         """Apply refine to each prompt/response pair.
 
         Args:
@@ -160,9 +156,7 @@ class SelfRefiner:
         Returns:
             List of final refined response strings.
         """
-        return [
-            self.refine(p, r)[0] for p, r in zip(prompts, initial_responses)
-        ]
+        return [self.refine(p, r)[0] for p, r in zip(prompts, initial_responses)]
 
 
 class ComputeScalingOrchestrator:
@@ -187,7 +181,7 @@ class ComputeScalingOrchestrator:
         self.voter = voter
         self.refiner = refiner
 
-    def run(self, prompt: str, candidates: List[str]) -> str:
+    def run(self, prompt: str, candidates: list[str]) -> str:
         """Run the configured scaling strategy and return the selected response.
 
         Args:

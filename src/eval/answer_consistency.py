@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+")
 
 
@@ -48,4 +47,3 @@ def mean_pairwise_consistency(answers: list[str]) -> float:
             total += lexical_overlap(left, right)
             count += 1
     return total / count
-

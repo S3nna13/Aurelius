@@ -9,7 +9,6 @@ Tiny test config: B=1, n_heads=4, head_dim=16, max_size=8, recent_window=2
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.h2o_kv import H2OCache, H2OEvictionPolicy
@@ -17,11 +16,11 @@ from src.inference.h2o_kv import H2OCache, H2OEvictionPolicy
 # ---------------------------------------------------------------------------
 # Shared tiny dimensions (paper: k=8, w=2)
 # ---------------------------------------------------------------------------
-B        = 1
-N_HEADS  = 4
+B = 1
+N_HEADS = 4
 HEAD_DIM = 16
-K        = 8   # max_size  (k in paper)
-W        = 2   # recent_window (w in paper)
+K = 8  # max_size  (k in paper)
+W = 2  # recent_window (w in paper)
 
 
 def make_kv(seq_len: int = 1) -> tuple[torch.Tensor, torch.Tensor]:
@@ -98,7 +97,7 @@ def test_evicts_least_attended():
 
     # Token 0: add with no prior cache
     k0, v0 = make_kv()
-    cache.update(k0, v0, make_attn(0))          # cache size = 1
+    cache.update(k0, v0, make_attn(0))  # cache size = 1
 
     # Tokens 1–3: give token 0 near-zero attention mass
     for _ in range(3):
@@ -107,14 +106,14 @@ def test_evicts_least_attended():
         attn = torch.zeros(B, N_HEADS, sz)
         # give mass to all positions except index 0
         attn[:, :, 1:] = 1.0
-        cache.update(k, v, attn)                # sizes 2, 3, 4
+        cache.update(k, v, attn)  # sizes 2, 3, 4
 
     assert cache.size == 4
 
     # Now add one more token — cache must evict the lowest-scored one (index 0)
     k_new, v_new = make_kv()
     attn_new = torch.zeros(B, N_HEADS, 4)
-    attn_new[:, :, 1:] = 1.0                   # still ignore index 0
+    attn_new[:, :, 1:] = 1.0  # still ignore index 0
     cache.update(k_new, v_new, attn_new)
 
     assert cache.size == 4, f"size should stay at 4, got {cache.size}"
@@ -137,8 +136,8 @@ def test_never_evicts_recent_window():
 
     # Capture the last 2 keys/values — they are in the recent window
     keys_before, vals_before = cache.get_kv()
-    recent_keys  = keys_before[:, :, -2:, :].clone()
-    recent_vals  = vals_before[:, :, -2:, :].clone()
+    recent_keys = keys_before[:, :, -2:, :].clone()
+    vals_before[:, :, -2:, :].clone()
 
     # Add a new token (forces eviction).
     k_new, v_new = make_kv()
@@ -153,14 +152,13 @@ def test_never_evicts_recent_window():
     # present somewhere in the updated cache.
     for head in range(N_HEADS):
         for ri in range(2):
-            ref_k = recent_keys[0, head, ri]    # (HEAD_DIM,)
+            ref_k = recent_keys[0, head, ri]  # (HEAD_DIM,)
             found = any(
                 torch.allclose(ref_k, keys_after[0, head, ci], atol=1e-6)
                 for ci in range(keys_after.shape[2])
             )
             assert found, (
-                f"Recent token {ri} (head {head}) was evicted despite being "
-                "in the recent window."
+                f"Recent token {ri} (head {head}) was evicted despite being in the recent window."
             )
 
 
@@ -192,7 +190,7 @@ def test_heavy_hitters_retained():
         k, v = make_kv()
         sz = cache.size
         attn = torch.zeros(B, N_HEADS, sz)
-        attn[:, :, 0] = 10.0                # heavy hitter gets all attention
+        attn[:, :, 0] = 10.0  # heavy hitter gets all attention
         cache.update(k, v, attn)
 
     assert cache.size == 4
@@ -207,8 +205,7 @@ def test_heavy_hitters_retained():
     keys, _ = cache.get_kv()
 
     hh_found = any(
-        torch.allclose(keys[0, 0, ci], hh_key[0, 0, 0], atol=1e-5)
-        for ci in range(keys.shape[2])
+        torch.allclose(keys[0, 0, ci], hh_key[0, 0, 0], atol=1e-5) for ci in range(keys.shape[2])
     )
     assert hh_found, "Heavy hitter was incorrectly evicted."
 
@@ -230,7 +227,7 @@ def test_light_tokens_evicted_first():
         k, v = make_kv()
         sz = cache.size
         attn = torch.zeros(B, N_HEADS, sz)
-        attn[:, :, 1:] = 1.0               # no attention to light token
+        attn[:, :, 1:] = 1.0  # no attention to light token
         cache.update(k, v, attn)
 
     # Token 4: triggers eviction
@@ -243,8 +240,7 @@ def test_light_tokens_evicted_first():
     keys, _ = cache.get_kv()
 
     light_found = any(
-        torch.allclose(keys[0, 0, ci], light_key[0, 0, 0], atol=1e-5)
-        for ci in range(keys.shape[2])
+        torch.allclose(keys[0, 0, ci], light_key[0, 0, 0], atol=1e-5) for ci in range(keys.shape[2])
     )
     assert not light_found, "Light token should have been evicted."
 
@@ -286,13 +282,13 @@ def test_determinism():
     """Two caches driven by identical inputs produce identical KV contents."""
     torch.manual_seed(42)
     n_steps = K + 3
-    keys_seq  = [torch.randn(B, N_HEADS, 1, HEAD_DIM) for _ in range(n_steps)]
-    vals_seq  = [torch.randn(B, N_HEADS, 1, HEAD_DIM) for _ in range(n_steps)]
+    keys_seq = [torch.randn(B, N_HEADS, 1, HEAD_DIM) for _ in range(n_steps)]
+    vals_seq = [torch.randn(B, N_HEADS, 1, HEAD_DIM) for _ in range(n_steps)]
     # Pre-generate attention tensors for each *possible* cache length
     # (0..K inclusive) and index by cache.size at each step.
     rng_attns = {
         l: (torch.rand(B, N_HEADS, l) if l > 0 else torch.zeros(B, N_HEADS, 0))
-        for l in range(K + 1)
+        for l in range(K + 1)  # noqa: E741
     }
 
     def run() -> tuple[torch.Tensor, torch.Tensor]:
@@ -320,10 +316,10 @@ def test_no_nan_inf_uniform():
         cache.update(k, v, attn)
 
     keys, vals = cache.get_kv()
-    assert not torch.any(torch.isnan(keys)),  "NaN in keys (uniform attn)"
-    assert not torch.any(torch.isinf(keys)),  "Inf in keys (uniform attn)"
-    assert not torch.any(torch.isnan(vals)),  "NaN in vals (uniform attn)"
-    assert not torch.any(torch.isinf(vals)),  "Inf in vals (uniform attn)"
+    assert not torch.any(torch.isnan(keys)), "NaN in keys (uniform attn)"
+    assert not torch.any(torch.isinf(keys)), "Inf in keys (uniform attn)"
+    assert not torch.any(torch.isnan(vals)), "NaN in vals (uniform attn)"
+    assert not torch.any(torch.isinf(vals)), "Inf in vals (uniform attn)"
 
 
 # ---------------------------------------------------------------------------
@@ -338,14 +334,14 @@ def test_no_nan_inf_peaked():
             attn = make_attn(0)
         else:
             attn = torch.zeros(B, N_HEADS, sz)
-            attn[:, :, 0] = 1.0             # all attention on first token
+            attn[:, :, 0] = 1.0  # all attention on first token
         cache.update(k, v, attn)
 
     keys, vals = cache.get_kv()
-    assert not torch.any(torch.isnan(keys)),  "NaN in keys (peaked attn)"
-    assert not torch.any(torch.isinf(keys)),  "Inf in keys (peaked attn)"
-    assert not torch.any(torch.isnan(vals)),  "NaN in vals (peaked attn)"
-    assert not torch.any(torch.isinf(vals)),  "Inf in vals (peaked attn)"
+    assert not torch.any(torch.isnan(keys)), "NaN in keys (peaked attn)"
+    assert not torch.any(torch.isinf(keys)), "Inf in keys (peaked attn)"
+    assert not torch.any(torch.isnan(vals)), "NaN in vals (peaked attn)"
+    assert not torch.any(torch.isinf(vals)), "Inf in vals (peaked attn)"
 
 
 # ---------------------------------------------------------------------------
@@ -356,7 +352,7 @@ def test_eviction_policy_selects_lowest_non_recent():
 
     # scores: [5, 1, 3, 9, 2]  recent_mask: [F, F, F, F, T]
     # lowest non-recent = index 1 (score=1)
-    scores      = torch.tensor([5.0, 1.0, 3.0, 9.0, 2.0])
+    scores = torch.tensor([5.0, 1.0, 3.0, 9.0, 2.0])
     recent_mask = torch.tensor([False, False, False, False, True])
     assert policy.select_evict(scores, recent_mask) == 1
 
@@ -386,14 +382,14 @@ def test_score_accumulation():
         k, v = make_kv()
         sz = cache.size
         attn = torch.zeros(B, N_HEADS, sz)
-        attn[:, :, 0] = 1.0               # all attention to token 0
+        attn[:, :, 0] = 1.0  # all attention to token 0
         cache.update(k, v, attn)
 
     # Internal scores: token 0 should have accumulated n_extra × 1.0
     # (it exists in the cache at index 0 since max_size=10 >> n_extra+1)
-    scores = cache._scores                 # (B, N_HEADS, cache_len)
+    scores = cache._scores  # (B, N_HEADS, cache_len)
     expected_score = float(n_extra)
-    actual_score   = float(scores[0, 0, 0].item())
+    actual_score = float(scores[0, 0, 0].item())
 
     assert abs(actual_score - expected_score) < 1e-4, (
         f"Expected accumulated score {expected_score}, got {actual_score}"

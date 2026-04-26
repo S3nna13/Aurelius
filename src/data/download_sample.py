@@ -23,13 +23,13 @@ Usage
 
 from __future__ import annotations
 
-import importlib
 import argparse
+import importlib
 import logging
-import sys
 import time
+from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -46,6 +46,7 @@ def _load_dataset(*args: Any, **kwargs: Any) -> Any:
             "The 'datasets' package is required to stream HuggingFace datasets."
         ) from exc
     return datasets_mod.load_dataset(*args, **kwargs)
+
 
 # ---------------------------------------------------------------------------
 # Token estimation
@@ -65,6 +66,7 @@ def estimate_tokens(text: str) -> int:
 # ---------------------------------------------------------------------------
 # Streaming downloader
 # ---------------------------------------------------------------------------
+
 
 def stream_dataset(
     dataset_id: str,
@@ -197,6 +199,7 @@ def _write_shard(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(

@@ -14,17 +14,15 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 from torch import Tensor
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.function_vectors import (
     FunctionVectorExtractor,
     FunctionVectorInjector,
     build_task_fv,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
@@ -42,10 +40,10 @@ TINY_CFG = AureliusConfig(
     tie_embeddings=True,
 )
 
-N_HEADS = TINY_CFG.n_heads       # 4
-HEAD_DIM = TINY_CFG.head_dim     # 16
-D_MODEL = TINY_CFG.d_model       # 64
-VOCAB = TINY_CFG.vocab_size      # 256
+N_HEADS = TINY_CFG.n_heads  # 4
+HEAD_DIM = TINY_CFG.head_dim  # 16
+D_MODEL = TINY_CFG.d_model  # 64
+VOCAB = TINY_CFG.vocab_size  # 256
 
 
 @pytest.fixture(scope="module")
@@ -67,6 +65,7 @@ def _make_input(n: int = 3, t: int = 8, seed: int = 0) -> Tensor:
 # 1. Shape: extract() returns (n_heads, head_dim) for tiny config
 # ---------------------------------------------------------------------------
 
+
 def test_extract_shape(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
     demos = _make_input(n=3, t=8)
@@ -80,6 +79,7 @@ def test_extract_shape(tiny_model):
 # 2. Extraction is deterministic: same input -> same FV
 # ---------------------------------------------------------------------------
 
+
 def test_extract_deterministic(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
     demos = _make_input(n=3, t=8, seed=7)
@@ -92,11 +92,12 @@ def test_extract_deterministic(tiny_model):
 # 3. FV norms: all head vectors have finite, non-zero norms
 # ---------------------------------------------------------------------------
 
+
 def test_extract_norms_finite_nonzero(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
     demos = _make_input(n=4, t=10)
-    fv = extractor.extract(demos)                   # (n_heads, head_dim)
-    norms = fv.norm(dim=-1)                         # (n_heads,)
+    fv = extractor.extract(demos)  # (n_heads, head_dim)
+    norms = fv.norm(dim=-1)  # (n_heads,)
     assert torch.all(torch.isfinite(norms)), "Some FV norms are not finite."
     assert torch.all(norms > 0), "Some FV norms are zero."
 
@@ -104,6 +105,7 @@ def test_extract_norms_finite_nonzero(tiny_model):
 # ---------------------------------------------------------------------------
 # 4. Importance scores shape: compute_head_importance returns (n_heads,)
 # ---------------------------------------------------------------------------
+
 
 def test_head_importance_shape(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
@@ -114,14 +116,13 @@ def test_head_importance_shape(tiny_model):
         return logits[0, -1, :].mean().item()
 
     importance = extractor.compute_head_importance(demos, zero_shot, metric_fn)
-    assert importance.shape == (N_HEADS,), (
-        f"Expected ({N_HEADS},), got {tuple(importance.shape)}"
-    )
+    assert importance.shape == (N_HEADS,), f"Expected ({N_HEADS},), got {tuple(importance.shape)}"
 
 
 # ---------------------------------------------------------------------------
 # 5. Injection runs: inject() returns logits of correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_inject_output_shape(tiny_model):
     T = 8
@@ -129,14 +130,13 @@ def test_inject_output_shape(tiny_model):
     fv = torch.zeros(D_MODEL)
     injector = FunctionVectorInjector(tiny_model, layer=0)
     logits = injector.inject(zero_shot, fv)
-    assert logits.shape == (1, T, VOCAB), (
-        f"Expected (1, {T}, {VOCAB}), got {tuple(logits.shape)}"
-    )
+    assert logits.shape == (1, T, VOCAB), f"Expected (1, {T}, {VOCAB}), got {tuple(logits.shape)}"
 
 
 # ---------------------------------------------------------------------------
 # 6. Injection changes output: logits with FV != logits without FV
 # ---------------------------------------------------------------------------
+
 
 def test_inject_changes_output(tiny_model):
     T = 8
@@ -158,6 +158,7 @@ def test_inject_changes_output(tiny_model):
 # 7. Zero FV injection: injecting zero vector does not change output
 # ---------------------------------------------------------------------------
 
+
 def test_zero_fv_injection_no_change(tiny_model):
     T = 8
     zero_shot = _make_input(n=1, t=T)
@@ -178,6 +179,7 @@ def test_zero_fv_injection_no_change(tiny_model):
 # 8. Gradient flow: FV is differentiable w.r.t. model parameters
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flow():
     torch.manual_seed(0)
     model = AureliusTransformer(TINY_CFG)
@@ -197,9 +199,9 @@ def test_gradient_flow():
     finally:
         handle.remove()
 
-    pre_proj = captured[0]   # (N, T, n_heads*head_dim)
+    pre_proj = captured[0]  # (N, T, n_heads*head_dim)
     out = pre_proj.reshape(*pre_proj.shape[:-1], N_HEADS, HEAD_DIM)
-    fv = out.mean(dim=(0, 1))   # (n_heads, head_dim)
+    fv = out.mean(dim=(0, 1))  # (n_heads, head_dim)
 
     loss = fv.sum()
     loss.backward()
@@ -212,12 +214,13 @@ def test_gradient_flow():
 # 9. Multiple demonstrations: FV with N>1 is mean over individual FVs
 # ---------------------------------------------------------------------------
 
+
 def test_fv_is_mean_of_individual(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
 
     demo1 = _make_input(n=1, t=8, seed=1)
     demo2 = _make_input(n=1, t=8, seed=2)
-    demos_combined = torch.cat([demo1, demo2], dim=0)   # (2, 8)
+    demos_combined = torch.cat([demo1, demo2], dim=0)  # (2, 8)
 
     fv_combined = extractor.extract(demos_combined)
 
@@ -248,6 +251,7 @@ def test_fv_is_mean_of_individual(tiny_model):
 # 10. Different layers: extractor/injector at different layers work
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("layer", [0, 1])
 def test_extract_at_different_layers(tiny_model, layer):
     extractor = FunctionVectorExtractor(tiny_model, layer=layer)
@@ -271,6 +275,7 @@ def test_inject_at_different_layers(tiny_model, layer):
 # 11. Edge case: single demonstration (N=1)
 # ---------------------------------------------------------------------------
 
+
 def test_extract_single_demonstration(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
     demo = _make_input(n=1, t=8)
@@ -282,6 +287,7 @@ def test_extract_single_demonstration(tiny_model):
 # ---------------------------------------------------------------------------
 # 12. No NaN/Inf in extracted FVs or injected logits
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf_in_fv(tiny_model):
     extractor = FunctionVectorExtractor(tiny_model, layer=0)
@@ -305,16 +311,15 @@ def test_no_nan_inf_in_injected_logits(tiny_model):
 # Bonus: build_task_fv convenience function
 # ---------------------------------------------------------------------------
 
+
 def test_build_task_fv_shape(tiny_model):
     demos = _make_input(n=3, t=8)
     fv_task = build_task_fv(tiny_model, demos, layer=0)
-    assert fv_task.shape == (D_MODEL,), (
-        f"Expected ({D_MODEL},), got {tuple(fv_task.shape)}"
-    )
+    assert fv_task.shape == (D_MODEL,), f"Expected ({D_MODEL},), got {tuple(fv_task.shape)}"
 
 
 def test_build_task_fv_top_k(tiny_model):
     demos = _make_input(n=3, t=8)
     fv_task = build_task_fv(tiny_model, demos, layer=0, top_k=2)
-    assert fv_task.shape == (2 * HEAD_DIM,)   # top-k heads x head_dim
+    assert fv_task.shape == (2 * HEAD_DIM,)  # top-k heads x head_dim
     assert torch.all(torch.isfinite(fv_task))

@@ -1,8 +1,9 @@
 import math
-import torch
-import numpy as np
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
+
+import numpy as np
+import torch
 
 
 @dataclass

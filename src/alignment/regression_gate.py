@@ -3,6 +3,7 @@
 Computes perplexity before and after adapter application.
 Rejects adapters that regress beyond a configurable threshold.
 """
+
 from __future__ import annotations
 
 import math
@@ -11,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 from src.model.transformer import AureliusTransformer
@@ -20,6 +20,7 @@ from src.model.transformer import AureliusTransformer
 @dataclass
 class GateResult:
     """Result of a regression gate check."""
+
     accepted: bool
     baseline_ppl: float
     new_ppl: float
@@ -106,13 +107,11 @@ class RegressionGate:
 
         if accepted:
             reason = (
-                f"Accepted: regression {regression_pct:.1f}% "
-                f"<= threshold {self.threshold_pct:.1f}%"
+                f"Accepted: regression {regression_pct:.1f}% <= threshold {self.threshold_pct:.1f}%"
             )
         else:
             reason = (
-                f"Rejected: regression {regression_pct:.1f}% "
-                f"> threshold {self.threshold_pct:.1f}%"
+                f"Rejected: regression {regression_pct:.1f}% > threshold {self.threshold_pct:.1f}%"
             )
             if adapter_path is not None:
                 self._archive_adapter(Path(adapter_path))

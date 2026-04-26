@@ -37,7 +37,13 @@ class SlidingWindowCausalMaskBuilder:
         if self.window_size < 1:
             raise ValueError("window_size must be >= 1")
 
-    def build(self, seq_len: int, *, device: torch.device | str = "cpu", dtype: torch.dtype = torch.float32) -> torch.Tensor:
+    def build(
+        self,
+        seq_len: int,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> torch.Tensor:
         """Return additive mask ``[1, 1, seq_len, seq_len]`` (0 = keep, neg = mask)."""
         if seq_len < 1:
             raise ValueError("seq_len must be >= 1")

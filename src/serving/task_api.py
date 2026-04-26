@@ -5,10 +5,10 @@ in-memory TaskStore. Production deployments would replace the store with a
 database backend.
 """
 
-import uuid
 import time
+import uuid
 from dataclasses import dataclass, field
-from typing import Literal, Any
+from typing import Literal
 
 RiskProfile = Literal["research", "balanced", "strict"]
 TaskStatus = Literal["pending", "running", "completed", "failed", "cancelled"]
@@ -124,6 +124,7 @@ TASK_STORE = TaskStore()
 # Register in the shared SERVING_REGISTRY if available.
 try:
     from src.serving import SERVING_REGISTRY  # type: ignore
+
     SERVING_REGISTRY["task_api"] = TASK_STORE
 except ImportError:
     pass

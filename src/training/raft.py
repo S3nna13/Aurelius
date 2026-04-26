@@ -6,13 +6,12 @@ Train model to use retrieved documents when relevant, and ignore them when irrel
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -23,10 +22,10 @@ from torch import Tensor
 class RAFTConfig:
     """Configuration for RAFT training."""
 
-    p_oracle: float = 0.8          # probability of including the oracle document
-    n_distractors: int = 3         # number of irrelevant documents to include
+    p_oracle: float = 0.8  # probability of including the oracle document
+    n_distractors: int = 3  # number of irrelevant documents to include
     max_seq_len: int = 512
-    cot_training: bool = True      # include chain-of-thought reasoning in labels
+    cot_training: bool = True  # include chain-of-thought reasoning in labels
     loss_only_on_answer: bool = True  # compute loss only on answer portion
 
 
@@ -40,10 +39,10 @@ class RAFTExample:
     """A single RAFT training example."""
 
     question: str
-    oracle_doc: str              # the relevant document containing the answer
-    distractor_docs: list[str]   # irrelevant documents
+    oracle_doc: str  # the relevant document containing the answer
+    distractor_docs: list[str]  # irrelevant documents
     answer: str
-    chain_of_thought: str = ""   # reasoning trace
+    chain_of_thought: str = ""  # reasoning trace
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +213,8 @@ class RAFTTrainer:
             padded_ids.append(F.pad(input_ids, (0, pad_len), value=0))
             padded_labels.append(F.pad(labels, (0, pad_len), value=-100))
 
-        input_ids_batch = torch.stack(padded_ids)   # (B, T)
-        labels_batch = torch.stack(padded_labels)   # (B, T)
+        input_ids_batch = torch.stack(padded_ids)  # (B, T)
+        labels_batch = torch.stack(padded_labels)  # (B, T)
 
         # Forward pass — use logits for custom masked loss
         _loss, logits, _past_kv = self.model(input_ids_batch)

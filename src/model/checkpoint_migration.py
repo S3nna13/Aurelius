@@ -17,8 +17,8 @@ Design notes
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Tuple
 
 
 class MigrationError(Exception):
@@ -32,10 +32,10 @@ class MigrationStep:
     from_version: str
     to_version: str
     description: str
-    apply: Callable[[Dict], Dict]
+    apply: Callable[[dict], dict]
 
 
-MIGRATION_REGISTRY: Dict[Tuple[str, str], MigrationStep] = {}
+MIGRATION_REGISTRY: dict[tuple[str, str], MigrationStep] = {}
 
 
 def register_migration(step: MigrationStep) -> None:
@@ -48,7 +48,7 @@ def register_migration(step: MigrationStep) -> None:
     MIGRATION_REGISTRY[key] = step
 
 
-def get_migration_path(from_version: str, to_version: str) -> List[MigrationStep]:
+def get_migration_path(from_version: str, to_version: str) -> list[MigrationStep]:
     """Return shortest sequence of steps from ``from_version`` to ``to_version``.
 
     Uses BFS over the registry's directed edges. Raises :class:`MigrationError`
@@ -68,7 +68,7 @@ def get_migration_path(from_version: str, to_version: str) -> List[MigrationStep
         raise MigrationError(f"unknown destination version: {to_version!r}")
 
     # BFS: track predecessor edges so we can reconstruct the path.
-    predecessor: Dict[str, Tuple[str, MigrationStep]] = {}
+    predecessor: dict[str, tuple[str, MigrationStep]] = {}
     queue: deque[str] = deque([from_version])
     visited: set[str] = {from_version}
     while queue:
@@ -83,12 +83,10 @@ def get_migration_path(from_version: str, to_version: str) -> List[MigrationStep
             queue.append(dst)
 
     if to_version not in predecessor:
-        raise MigrationError(
-            f"no migration path from {from_version!r} to {to_version!r}"
-        )
+        raise MigrationError(f"no migration path from {from_version!r} to {to_version!r}")
 
     # Reconstruct path by walking predecessors back to from_version.
-    path: List[MigrationStep] = []
+    path: list[MigrationStep] = []
     cursor = to_version
     while cursor != from_version:
         prev, step = predecessor[cursor]
@@ -101,9 +99,7 @@ def get_migration_path(from_version: str, to_version: str) -> List[MigrationStep
 class CheckpointMigrator:
     """Apply a sequence of registered migrations to a checkpoint state dict."""
 
-    def migrate(
-        self, state: Dict, from_version: str, to_version: str
-    ) -> Dict:
+    def migrate(self, state: dict, from_version: str, to_version: str) -> dict:
         path = get_migration_path(from_version, to_version)
         if not path:
             # Same-version no-op: shallow copy to honor the no-mutate contract.
@@ -116,12 +112,11 @@ class CheckpointMigrator:
         final_version = current.get("checkpoint_format_version")
         if final_version != to_version:
             raise MigrationError(
-                f"post-migration version mismatch: expected {to_version!r}, "
-                f"got {final_version!r}"
+                f"post-migration version mismatch: expected {to_version!r}, got {final_version!r}"
             )
         return current
 
-    def dry_run(self, from_version: str, to_version: str) -> List[str]:
+    def dry_run(self, from_version: str, to_version: str) -> list[str]:
         path = get_migration_path(from_version, to_version)
         return [step.description for step in path]
 
@@ -138,7 +133,7 @@ class CheckpointMigrator:
 # ---------------------------------------------------------------------------
 
 
-def _apply_1_0_0_to_1_1_0(state: Dict) -> Dict:
+def _apply_1_0_0_to_1_1_0(state: dict) -> dict:
     """Add optional ``training_recipe`` field (defaults to ``None``)."""
     new_state = dict(state)
     if "training_recipe" not in new_state:
@@ -147,7 +142,7 @@ def _apply_1_0_0_to_1_1_0(state: Dict) -> Dict:
     return new_state
 
 
-def _apply_1_1_0_to_2_0_0(state: Dict) -> Dict:
+def _apply_1_1_0_to_2_0_0(state: dict) -> dict:
     """Rename ``tokenizer_name`` -> ``tokenizer_id`` (major bump)."""
     new_state = dict(state)
     if "tokenizer_name" in new_state:

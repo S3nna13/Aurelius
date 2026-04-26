@@ -2,27 +2,27 @@
 Tests for src/training/throughput_profiler.py
 """
 
-import time
 import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from src.training.throughput_profiler import (
-    StepProfile,
-    ProfileSummary,
-    Timer,
-    estimate_model_flops,
-    estimate_model_params,
-    estimate_model_memory_mb,
-    ThroughputProfiler,
     MemoryTracker,
+    ProfileSummary,
+    StepProfile,
+    ThroughputProfiler,
+    Timer,
     compute_mfu,
+    estimate_model_flops,
+    estimate_model_memory_mb,
+    estimate_model_params,
 )
 
 # ---------------------------------------------------------------------------
 # MockLMModel
 # ---------------------------------------------------------------------------
+
 
 class MockLMModel(nn.Module):
     def __init__(self):
@@ -75,6 +75,7 @@ def profiler(model):
 # Test 1 — Timer.elapsed_ms is positive after an operation
 # ---------------------------------------------------------------------------
 
+
 def test_timer_elapsed_positive():
     with Timer() as t:
         _ = sum(range(10_000))
@@ -84,6 +85,7 @@ def test_timer_elapsed_positive():
 # ---------------------------------------------------------------------------
 # Test 2 — Timer works as context manager (returns Timer instance)
 # ---------------------------------------------------------------------------
+
 
 def test_timer_context_manager():
     timer = Timer()
@@ -96,6 +98,7 @@ def test_timer_context_manager():
 # ---------------------------------------------------------------------------
 # Test 3 — estimate_model_params returns correct count for Linear(8, 4) + bias = 40
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_model_params_linear():
     model = nn.Linear(8, 4)  # 8*4 weights + 4 bias = 36... wait, 8*4=32 + 4=36
@@ -127,6 +130,7 @@ def test_estimate_model_params_spec_40():
 # Test 4 — estimate_model_memory_mb returns positive float
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_model_memory_mb_positive(model):
     mem = estimate_model_memory_mb(model)
     assert isinstance(mem, float)
@@ -136,6 +140,7 @@ def test_estimate_model_memory_mb_positive(model):
 # ---------------------------------------------------------------------------
 # Test 5 — estimate_model_flops returns positive int
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_model_flops_positive(model):
     flops = estimate_model_flops(model, batch_size=B, seq_len=T)
@@ -147,6 +152,7 @@ def test_estimate_model_flops_positive(model):
 # Test 6 — ThroughputProfiler.profile_step returns StepProfile
 # ---------------------------------------------------------------------------
 
+
 def test_profile_step_returns_step_profile(profiler, input_ids, optimizer):
     result = profiler.profile_step(input_ids, optimizer, step=0)
     assert isinstance(result, StepProfile)
@@ -155,6 +161,7 @@ def test_profile_step_returns_step_profile(profiler, input_ids, optimizer):
 # ---------------------------------------------------------------------------
 # Test 7 — StepProfile.total_time_ms > 0
 # ---------------------------------------------------------------------------
+
 
 def test_step_profile_total_time_positive(profiler, input_ids, optimizer):
     result = profiler.profile_step(input_ids, optimizer, step=0)
@@ -165,6 +172,7 @@ def test_step_profile_total_time_positive(profiler, input_ids, optimizer):
 # Test 8 — StepProfile.tokens_per_sec > 0
 # ---------------------------------------------------------------------------
 
+
 def test_step_profile_tokens_per_sec_positive(profiler, input_ids, optimizer):
     result = profiler.profile_step(input_ids, optimizer, step=0)
     assert result.tokens_per_sec > 0.0
@@ -173,6 +181,7 @@ def test_step_profile_tokens_per_sec_positive(profiler, input_ids, optimizer):
 # ---------------------------------------------------------------------------
 # Test 9 — forward + backward <= total + 50ms margin
 # ---------------------------------------------------------------------------
+
 
 def test_step_profile_time_components_within_margin(profiler, input_ids, optimizer):
     result = profiler.profile_step(input_ids, optimizer, step=0)
@@ -183,6 +192,7 @@ def test_step_profile_time_components_within_margin(profiler, input_ids, optimiz
 # Test 10 — ThroughputProfiler.run returns ProfileSummary
 # ---------------------------------------------------------------------------
 
+
 def test_run_returns_profile_summary(profiler, input_ids, optimizer):
     summary = profiler.run(input_ids, optimizer, n_steps=N_STEPS)
     assert isinstance(summary, ProfileSummary)
@@ -191,6 +201,7 @@ def test_run_returns_profile_summary(profiler, input_ids, optimizer):
 # ---------------------------------------------------------------------------
 # Test 11 — ProfileSummary.n_steps == n_steps - warmup_steps
 # ---------------------------------------------------------------------------
+
 
 def test_summary_n_steps_excludes_warmup(profiler, input_ids, optimizer):
     summary = profiler.run(input_ids, optimizer, n_steps=N_STEPS)
@@ -201,6 +212,7 @@ def test_summary_n_steps_excludes_warmup(profiler, input_ids, optimizer):
 # Test 12 — ProfileSummary.mean_tokens_per_sec > 0
 # ---------------------------------------------------------------------------
 
+
 def test_summary_mean_tokens_per_sec_positive(profiler, input_ids, optimizer):
     summary = profiler.run(input_ids, optimizer, n_steps=N_STEPS)
     assert summary.mean_tokens_per_sec > 0.0
@@ -210,6 +222,7 @@ def test_summary_mean_tokens_per_sec_positive(profiler, input_ids, optimizer):
 # Test 13 — ProfileSummary.bottleneck is one of valid values
 # ---------------------------------------------------------------------------
 
+
 def test_summary_bottleneck_valid(profiler, input_ids, optimizer):
     summary = profiler.run(input_ids, optimizer, n_steps=N_STEPS)
     assert summary.bottleneck in {"forward", "backward", "optimizer", "balanced"}
@@ -218,6 +231,7 @@ def test_summary_bottleneck_valid(profiler, input_ids, optimizer):
 # ---------------------------------------------------------------------------
 # Test 14 — ThroughputProfiler.get_history returns list of StepProfile
 # ---------------------------------------------------------------------------
+
 
 def test_get_history_returns_list_of_step_profiles(profiler, input_ids, optimizer):
     profiler.run(input_ids, optimizer, n_steps=N_STEPS)
@@ -231,6 +245,7 @@ def test_get_history_returns_list_of_step_profiles(profiler, input_ids, optimize
 # Test 15 — MemoryTracker.snapshot returns dict with 'allocated_mb' key
 # ---------------------------------------------------------------------------
 
+
 def test_memory_tracker_snapshot_has_allocated_mb():
     tracker = MemoryTracker()
     snap = tracker.snapshot()
@@ -241,6 +256,7 @@ def test_memory_tracker_snapshot_has_allocated_mb():
 # ---------------------------------------------------------------------------
 # Test 16 — compute_mfu returns non-negative float
 # ---------------------------------------------------------------------------
+
 
 def test_compute_mfu_non_negative(model):
     mfu = compute_mfu(model, tokens_per_sec=1000.0, batch_size=B, seq_len=T)

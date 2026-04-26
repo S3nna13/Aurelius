@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -24,6 +23,7 @@ def _tiny_state() -> dict[str, torch.Tensor]:
 # ShardConfig
 # ---------------------------------------------------------------------------
 
+
 def test_shard_config_defaults():
     cfg = ShardConfig()
     assert cfg.max_shard_size_gb == pytest.approx(5.0)
@@ -40,6 +40,7 @@ def test_shard_config_custom():
 # ---------------------------------------------------------------------------
 # ShardManifest
 # ---------------------------------------------------------------------------
+
 
 def test_shard_manifest_fields():
     m = ShardManifest(
@@ -59,6 +60,7 @@ def test_shard_manifest_fields():
 # _estimate_size
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_size_float32():
     sharder = CheckpointSharder()
     t = torch.zeros(4, 4, dtype=torch.float32)
@@ -74,6 +76,7 @@ def test_estimate_size_float16():
 # ---------------------------------------------------------------------------
 # split_plan
 # ---------------------------------------------------------------------------
+
 
 def test_split_plan_single_shard_large_limit():
     sharder = CheckpointSharder(ShardConfig(max_shard_size_gb=100.0))
@@ -113,6 +116,7 @@ def test_split_plan_no_duplicates():
 # ---------------------------------------------------------------------------
 # shard (file I/O)
 # ---------------------------------------------------------------------------
+
 
 def test_shard_creates_manifest():
     sharder = CheckpointSharder(ShardConfig(max_shard_size_gb=100.0))
@@ -156,6 +160,7 @@ def test_shard_key_to_shard_coverage():
 # ---------------------------------------------------------------------------
 # manifest_from_dir
 # ---------------------------------------------------------------------------
+
 
 def test_manifest_from_dir_roundtrip():
     state = _tiny_state()

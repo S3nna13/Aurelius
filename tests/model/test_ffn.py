@@ -1,6 +1,8 @@
 """Tests for SwiGLU FFN."""
-import torch
+
 import pytest
+import torch
+
 from src.model.config import AureliusConfig
 from src.model.ffn import SwiGLUFFN
 
@@ -8,8 +10,13 @@ from src.model.ffn import SwiGLUFFN
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2, head_dim=64,
-        d_ff=512, vocab_size=1000,
+        n_layers=2,
+        d_model=256,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=64,
+        d_ff=512,
+        vocab_size=1000,
     )
 
 
@@ -34,7 +41,9 @@ def test_no_bias(small_cfg):
 
 def test_swiglu_activation():
     """SwiGLU = SiLU(W1(x)) * W3(x) — output should differ from simple MLP."""
-    cfg = AureliusConfig(n_layers=2, d_model=256, n_heads=4, n_kv_heads=2, head_dim=64, d_ff=512, vocab_size=1000)
+    cfg = AureliusConfig(
+        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2, head_dim=64, d_ff=512, vocab_size=1000
+    )
     ffn = SwiGLUFFN(cfg)
     x = torch.randn(1, 1, 256)
     with torch.no_grad():

@@ -17,7 +17,6 @@ from src.retrieval.reciprocal_rank_fusion import (
     reciprocal_rank_fusion,
 )
 
-
 ATOL = 1e-6
 
 
@@ -91,16 +90,12 @@ def test_rrf_weighted_formula():
 
 def test_rrf_weights_length_mismatch_raises():
     with pytest.raises(ValueError, match="weights length"):
-        reciprocal_rank_fusion(
-            [[("A", 0.0)], [("B", 0.0)]], weights=[1.0, 1.0, 1.0]
-        )
+        reciprocal_rank_fusion([[("A", 0.0)], [("B", 0.0)]], weights=[1.0, 1.0, 1.0])
 
 
 def test_rrf_negative_weight_raises():
     with pytest.raises(ValueError, match="non-negative"):
-        reciprocal_rank_fusion(
-            [[("A", 0.0)], [("B", 0.0)]], weights=[1.0, -0.5]
-        )
+        reciprocal_rank_fusion([[("A", 0.0)], [("B", 0.0)]], weights=[1.0, -0.5])
 
 
 def test_rrf_bad_k_raises():
@@ -180,12 +175,8 @@ def test_fuse_dispatcher_routes_correctly():
     ]
     assert fuse("rrf", rankings) == reciprocal_rank_fusion(rankings)
     assert fuse("borda", rankings) == borda_count(rankings)
-    assert fuse("combsum", rankings, normalize="none") == comb_sum(
-        rankings, normalize="none"
-    )
-    assert fuse("combmnz", rankings, normalize="none") == comb_mnz(
-        rankings, normalize="none"
-    )
+    assert fuse("combsum", rankings, normalize="none") == comb_sum(rankings, normalize="none")
+    assert fuse("combmnz", rankings, normalize="none") == comb_mnz(rankings, normalize="none")
 
 
 def test_fuse_invalid_method_raises():

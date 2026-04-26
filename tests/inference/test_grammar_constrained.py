@@ -3,17 +3,16 @@
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.grammar_constrained import (
+    ConstrainedDecoder,
     GrammarConfig,
     RegexFSM,
-    json_schema_mask,
     apply_grammar_mask,
+    json_schema_mask,
     validate_against_pattern,
-    ConstrainedDecoder,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -60,6 +59,7 @@ def _decode(token_id: int) -> str:
 # GrammarConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_grammar_config_defaults():
     cfg = GrammarConfig()
     assert cfg.max_new_tokens == 64
@@ -69,7 +69,9 @@ def test_grammar_config_defaults():
 
 
 def test_grammar_config_custom():
-    cfg = GrammarConfig(max_new_tokens=10, grammar_type="json_schema", pattern=r"\d+", allow_any_on_fail=False)
+    cfg = GrammarConfig(
+        max_new_tokens=10, grammar_type="json_schema", pattern=r"\d+", allow_any_on_fail=False
+    )
     assert cfg.max_new_tokens == 10
     assert cfg.grammar_type == "json_schema"
     assert cfg.pattern == r"\d+"
@@ -79,6 +81,7 @@ def test_grammar_config_custom():
 # ---------------------------------------------------------------------------
 # RegexFSM tests
 # ---------------------------------------------------------------------------
+
 
 def test_regex_fsm_allowed_tokens_shape():
     fsm = RegexFSM(r"\d+", VOCAB_SIZE)
@@ -122,6 +125,7 @@ def test_regex_fsm_advance_accumulates_text():
 # apply_grammar_mask tests
 # ---------------------------------------------------------------------------
 
+
 def test_apply_grammar_mask_blocks_zeros():
     logits = torch.tensor([1.0, 2.0, 3.0, 4.0])
     mask = torch.tensor([1.0, 0.0, 1.0, 0.0])
@@ -150,6 +154,7 @@ def test_apply_grammar_mask_does_not_modify_input():
 # json_schema_mask tests
 # ---------------------------------------------------------------------------
 
+
 def test_json_schema_mask_shape():
     mask = json_schema_mask({}, "", VOCAB_SIZE, _decode)
     assert mask.shape == (VOCAB_SIZE,)
@@ -169,6 +174,7 @@ def test_json_schema_mask_returns_tensor():
 # ---------------------------------------------------------------------------
 # validate_against_pattern tests
 # ---------------------------------------------------------------------------
+
 
 def test_validate_against_pattern_match():
     assert validate_against_pattern("12345", r"\d+") is True
@@ -190,6 +196,7 @@ def test_validate_against_pattern_empty():
 # ---------------------------------------------------------------------------
 # ConstrainedDecoder tests
 # ---------------------------------------------------------------------------
+
 
 def test_constrained_decoder_free_returns_string(small_model):
     cfg = GrammarConfig(max_new_tokens=4, grammar_type="free")
@@ -214,7 +221,9 @@ def test_constrained_decoder_stats_n_tokens(small_model):
 
 
 def test_constrained_decoder_regex_returns_string(small_model):
-    cfg = GrammarConfig(max_new_tokens=4, grammar_type="regex", pattern=r".*", allow_any_on_fail=True)
+    cfg = GrammarConfig(
+        max_new_tokens=4, grammar_type="regex", pattern=r".*", allow_any_on_fail=True
+    )
     decoder = ConstrainedDecoder(small_model, _encode, _decode, cfg)
     text, stats = decoder.generate("test")
     assert isinstance(text, str)

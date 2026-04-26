@@ -1,4 +1,5 @@
 """Tests for src/alignment/reward_distill.py — 16 tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -19,6 +20,7 @@ B = 4
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _linear_reward_model(hidden_dim: int, seed: int) -> nn.Module:
     """nn.Linear(hidden_dim, 1); forward(hidden) -> squeeze -> (B,)."""
@@ -66,6 +68,7 @@ def hidden_rejected():
 # Test 1 — RewardDistillTrainer instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_instantiates(teacher, student):
     trainer = RewardDistillTrainer(teacher, student)
     assert isinstance(trainer, RewardDistillTrainer)
@@ -74,6 +77,7 @@ def test_trainer_instantiates(teacher, student):
 # ---------------------------------------------------------------------------
 # Test 2 — regression_loss is non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_regression_loss_non_negative(trainer):
     s = torch.randn(B)
@@ -86,6 +90,7 @@ def test_regression_loss_non_negative(trainer):
 # Test 3 — regression_loss(x, x) ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_regression_loss_self_zero(trainer):
     x = torch.randn(B)
     loss = trainer.regression_loss(x, x.clone())
@@ -95,6 +100,7 @@ def test_regression_loss_self_zero(trainer):
 # ---------------------------------------------------------------------------
 # Test 4 — ranking_loss is non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_ranking_loss_non_negative(trainer):
     sc = torch.randn(B)
@@ -108,6 +114,7 @@ def test_ranking_loss_non_negative(trainer):
 # ---------------------------------------------------------------------------
 # Test 5 — ranking_loss penalizes wrong ordering (chosen < rejected => high loss)
 # ---------------------------------------------------------------------------
+
 
 def test_ranking_loss_penalizes_wrong_ordering(trainer):
     # chosen clearly worse than rejected
@@ -125,6 +132,7 @@ def test_ranking_loss_penalizes_wrong_ordering(trainer):
 # Test 6 — soft_target_loss is non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_soft_target_loss_non_negative(trainer):
     s_logits = torch.randn(B, 2)
     t_logits = torch.randn(B, 2)
@@ -136,6 +144,7 @@ def test_soft_target_loss_non_negative(trainer):
 # Test 7 — soft_target_loss(x, x) ≈ 0 (self-distillation)
 # ---------------------------------------------------------------------------
 
+
 def test_soft_target_loss_self_zero(trainer):
     logits = torch.randn(B, 2)
     loss = trainer.soft_target_loss(logits, logits.clone())
@@ -145,6 +154,7 @@ def test_soft_target_loss_self_zero(trainer):
 # ---------------------------------------------------------------------------
 # Test 8 — compute_total_loss returns (scalar tensor, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_total_loss_returns_scalar_and_dict(trainer, hidden_chosen, hidden_rejected):
     total, metrics = trainer.compute_total_loss(hidden_chosen, hidden_rejected)
@@ -157,15 +167,19 @@ def test_compute_total_loss_returns_scalar_and_dict(trainer, hidden_chosen, hidd
 # Test 9 — metrics dict has 'regression_loss' or 'ranking_loss' key
 # ---------------------------------------------------------------------------
 
+
 def test_compute_total_loss_metrics_has_expected_key(trainer, hidden_chosen, hidden_rejected):
     _, metrics = trainer.compute_total_loss(hidden_chosen, hidden_rejected)
     has_key = ("regression_loss" in metrics) or ("ranking_loss" in metrics)
-    assert has_key, f"Expected regression_loss or ranking_loss in metrics, got: {list(metrics.keys())}"
+    assert has_key, (
+        f"Expected regression_loss or ranking_loss in metrics, got: {list(metrics.keys())}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 10 — train_step returns dict with 'loss' key
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_dict_with_loss(trainer, hidden_chosen, hidden_rejected):
     result = trainer.train_step(hidden_chosen, hidden_rejected)
@@ -176,6 +190,7 @@ def test_train_step_returns_dict_with_loss(trainer, hidden_chosen, hidden_reject
 # ---------------------------------------------------------------------------
 # Test 11 — train_step reduces loss over 10 iterations
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_loss_decreases(teacher, student):
     torch.manual_seed(99)
@@ -192,6 +207,7 @@ def test_train_step_loss_decreases(teacher, student):
 # Test 12 — evaluate_agreement returns dict with 'sign_agreement' key
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_agreement_has_sign_agreement(trainer, hidden_chosen):
     teacher_rewards = torch.randn(B)
     result = trainer.evaluate_agreement(hidden_chosen, teacher_rewards)
@@ -202,6 +218,7 @@ def test_evaluate_agreement_has_sign_agreement(trainer, hidden_chosen):
 # ---------------------------------------------------------------------------
 # Test 13 — sign_agreement in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_agreement_sign_agreement_range(trainer, hidden_chosen):
     teacher_rewards = torch.randn(B)
@@ -214,6 +231,7 @@ def test_evaluate_agreement_sign_agreement_range(trainer, hidden_chosen):
 # Test 14 — rank_correlation(x, x) ≈ 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_rank_correlation_identical():
     x = torch.tensor([3.0, 1.0, 4.0, 1.5, 2.0])
     rho = rank_correlation(x, x.clone())
@@ -224,6 +242,7 @@ def test_rank_correlation_identical():
 # Test 15 — rank_correlation(x, -x) ≈ -1.0
 # ---------------------------------------------------------------------------
 
+
 def test_rank_correlation_reversed():
     x = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0])
     rho = rank_correlation(x, -x)
@@ -233,6 +252,7 @@ def test_rank_correlation_reversed():
 # ---------------------------------------------------------------------------
 # Test 16 — knowledge_distillation_reward returns scalar tensor
 # ---------------------------------------------------------------------------
+
 
 def test_knowledge_distillation_reward_scalar():
     teacher_r = torch.randn(B)

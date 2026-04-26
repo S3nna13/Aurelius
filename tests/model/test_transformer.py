@@ -1,6 +1,8 @@
 """Tests for the full AureliusTransformer."""
-import torch
+
 import pytest
+import torch
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer, count_parameters
 
@@ -8,8 +10,14 @@ from src.model.transformer import AureliusTransformer, count_parameters
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2,
-        head_dim=64, d_ff=512, vocab_size=1000, max_seq_len=128,
+        n_layers=2,
+        d_model=256,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=64,
+        d_ff=512,
+        vocab_size=1000,
+        max_seq_len=128,
     )
 
 
@@ -31,8 +39,14 @@ def test_tied_embeddings(small_cfg):
 
 def test_untied_embeddings():
     cfg = AureliusConfig(
-        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2,
-        head_dim=64, d_ff=512, vocab_size=1000, tie_embeddings=False,
+        n_layers=2,
+        d_model=256,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=64,
+        d_ff=512,
+        vocab_size=1000,
+        tie_embeddings=False,
     )
     model = AureliusTransformer(cfg)
     assert model.lm_head.weight is not model.embed.weight
@@ -127,13 +141,20 @@ def test_kv_cache_position_offset(small_model, small_cfg):
 
 
 def test_gradient_checkpointing_reduces_memory():
-    """With gradient checkpointing enabled, forward+backward must complete and weights must update."""
+    """With gradient checkpointing enabled, forward+backward must complete and weights must update."""  # noqa: E501
     import torch.optim as optim
+
     torch.manual_seed(0)
 
     cfg = AureliusConfig(
-        n_layers=4, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=4,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
         use_gradient_checkpointing=True,
     )
     model = AureliusTransformer(cfg)
@@ -150,15 +171,23 @@ def test_gradient_checkpointing_reduces_memory():
     optimizer.step()
 
     assert torch.isfinite(loss)
-    changed = any(not torch.equal(before[n], p) for n, p in model.named_parameters() if p.requires_grad)
+    changed = any(
+        not torch.equal(before[n], p) for n, p in model.named_parameters() if p.requires_grad
+    )
     assert changed, "No weights changed after gradient checkpointing backward"
 
 
 def test_gradient_checkpointing_incompatible_with_kv_cache():
     """Using gradient checkpointing with past_key_values must raise ValueError."""
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
         use_gradient_checkpointing=True,
     )
     model = AureliusTransformer(cfg)
@@ -174,8 +203,14 @@ def test_gradient_checkpointing_incompatible_with_kv_cache():
 def test_generate_stream_yields_tokens():
     """generate_stream must yield (B, 1) tensors."""
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     model = AureliusTransformer(cfg)
     prompt = torch.randint(0, 256, (1, 4))
@@ -190,8 +225,14 @@ def test_generate_stream_yields_tokens():
 def test_generate_stream_eos_stops():
     """generate_stream must stop at eos_token_id."""
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     torch.manual_seed(0)
     model = AureliusTransformer(cfg)

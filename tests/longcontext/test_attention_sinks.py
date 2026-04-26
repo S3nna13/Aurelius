@@ -9,13 +9,14 @@ import torch
 
 from src.longcontext.attention_sinks import AttentionSinkCache
 
-
 B = 2
 H_KV = 4
 D = 16
 
 
-def _rand(t_new: int, *, dtype=torch.float32, seed: int | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+def _rand(
+    t_new: int, *, dtype=torch.float32, seed: int | None = None
+) -> tuple[torch.Tensor, torch.Tensor]:
     if seed is not None:
         gen = torch.Generator().manual_seed(seed)
         k = torch.randn(B, H_KV, t_new, D, generator=gen, dtype=dtype)
@@ -70,8 +71,8 @@ def test_overflow_final_size_and_sinks_intact():
     torch.testing.assert_close(ck[:, :, :n_sinks, :], k_all[:, :, :n_sinks, :])
     torch.testing.assert_close(cv[:, :, :n_sinks, :], v_all[:, :, :n_sinks, :])
     # Window: final window tokens of output must equal last window_size input tokens.
-    torch.testing.assert_close(ck[:, :, n_sinks:, :], k_all[:, :, total - window:, :])
-    torch.testing.assert_close(cv[:, :, n_sinks:, :], v_all[:, :, total - window:, :])
+    torch.testing.assert_close(ck[:, :, n_sinks:, :], k_all[:, :, total - window :, :])
+    torch.testing.assert_close(cv[:, :, n_sinks:, :], v_all[:, :, total - window :, :])
 
     # Positions: sinks get 0..n_sinks-1; window gets n_sinks..n_sinks+window-1 (shifted).
     expected_pos = torch.arange(n_sinks + window, dtype=torch.long)
@@ -104,15 +105,11 @@ def test_window_contains_most_recent_tokens():
     k_all, v_all = _rand(total, seed=7)
     # Feed one at a time.
     for t in range(total):
-        cache.append(k_all[:, :, t:t + 1, :], v_all[:, :, t:t + 1, :], t)
+        cache.append(k_all[:, :, t : t + 1, :], v_all[:, :, t : t + 1, :], t)
 
     ck, cv, _ = cache._materialize_view()  # peek without appending
-    torch.testing.assert_close(
-        ck[:, :, n_sinks:, :], k_all[:, :, total - window:, :]
-    )
-    torch.testing.assert_close(
-        cv[:, :, n_sinks:, :], v_all[:, :, total - window:, :]
-    )
+    torch.testing.assert_close(ck[:, :, n_sinks:, :], k_all[:, :, total - window :, :])
+    torch.testing.assert_close(cv[:, :, n_sinks:, :], v_all[:, :, total - window :, :])
 
 
 def test_num_cached_tokens_progression():
@@ -191,8 +188,8 @@ def test_n_sinks_zero_pure_rolling_window():
     k_all, v_all = _rand(total, seed=17)
     ck, cv, cp = cache.append(k_all, v_all, 0)
     assert ck.shape[2] == window
-    torch.testing.assert_close(ck, k_all[:, :, total - window:, :])
-    torch.testing.assert_close(cv, v_all[:, :, total - window:, :])
+    torch.testing.assert_close(ck, k_all[:, :, total - window :, :])
+    torch.testing.assert_close(cv, v_all[:, :, total - window :, :])
     # Shifted positions start at n_sinks=0.
     torch.testing.assert_close(cp, torch.arange(window, dtype=torch.long))
 
@@ -202,7 +199,7 @@ def test_window_size_one_edge_case():
     total = 10
     k_all, v_all = _rand(total, seed=5)
     for t in range(total):
-        cache.append(k_all[:, :, t:t + 1, :], v_all[:, :, t:t + 1, :], t)
+        cache.append(k_all[:, :, t : t + 1, :], v_all[:, :, t : t + 1, :], t)
     ck, cv, cp = cache._materialize_view()
     assert ck.shape[2] == 3
     # Only the most-recent single token sits in the window.
@@ -219,16 +216,16 @@ def test_very_long_sequence_fast_and_correct():
     t0 = time.perf_counter()
     # Feed one-at-a-time to exercise the incremental eviction path.
     for t in range(total):
-        cache.append(k_all[:, :, t:t + 1, :], v_all[:, :, t:t + 1, :], t)
+        cache.append(k_all[:, :, t : t + 1, :], v_all[:, :, t : t + 1, :], t)
     elapsed = time.perf_counter() - t0
     assert elapsed < 3.0, f"too slow: {elapsed:.3f}s"
 
     ck, cv, cp = cache._materialize_view()
     assert ck.shape[2] == n_sinks + window
     torch.testing.assert_close(ck[:, :, :n_sinks, :], k_all[:, :, :n_sinks, :])
-    torch.testing.assert_close(ck[:, :, n_sinks:, :], k_all[:, :, total - window:, :])
+    torch.testing.assert_close(ck[:, :, n_sinks:, :], k_all[:, :, total - window :, :])
     torch.testing.assert_close(cv[:, :, :n_sinks, :], v_all[:, :, :n_sinks, :])
-    torch.testing.assert_close(cv[:, :, n_sinks:, :], v_all[:, :, total - window:, :])
+    torch.testing.assert_close(cv[:, :, n_sinks:, :], v_all[:, :, total - window :, :])
     # Positions are shifted, *not* the true absolute source positions.
     expected_pos = torch.arange(n_sinks + window, dtype=torch.long)
     torch.testing.assert_close(cp, expected_pos)

@@ -5,21 +5,22 @@ head_dim=16, d_ff=128, vocab_size=256, max_seq_len=32
 
 All sequences use T=8. Target token: 42.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.counterfactual_explanation import (
     CounterfactualConfig,
     CounterfactualResult,
-    token_edit_distance,
-    greedy_counterfactual,
     beam_search_counterfactual,
     counterfactual_feature_importance,
+    greedy_counterfactual,
+    token_edit_distance,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -33,6 +34,7 @@ TARGET_TOKEN = 42
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_config() -> AureliusConfig:
@@ -80,6 +82,7 @@ def cfg() -> CounterfactualConfig:
 # 1. token_edit_distance -- identical sequences -> 0
 # ---------------------------------------------------------------------------
 
+
 def test_edit_distance_identical():
     torch.manual_seed(1)
     ids = torch.randint(0, VOCAB_SIZE, (T,))
@@ -90,6 +93,7 @@ def test_edit_distance_identical():
 # 2. token_edit_distance -- fully different -> T
 # ---------------------------------------------------------------------------
 
+
 def test_edit_distance_fully_different():
     ids_a = torch.zeros(T, dtype=torch.long)
     ids_b = torch.ones(T, dtype=torch.long)
@@ -99,6 +103,7 @@ def test_edit_distance_fully_different():
 # ---------------------------------------------------------------------------
 # 3. token_edit_distance -- one substitution -> 1
 # ---------------------------------------------------------------------------
+
 
 def test_edit_distance_one_substitution():
     torch.manual_seed(2)
@@ -111,6 +116,7 @@ def test_edit_distance_one_substitution():
 # ---------------------------------------------------------------------------
 # 4. CounterfactualConfig defaults are sane
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = CounterfactualConfig()
@@ -125,6 +131,7 @@ def test_config_defaults():
 # 5. greedy_counterfactual returns CounterfactualResult
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_returns_result(model, input_ids, cfg):
     torch.manual_seed(10)
     result = greedy_counterfactual(model, input_ids, TARGET_TOKEN, cfg)
@@ -134,6 +141,7 @@ def test_greedy_returns_result(model, input_ids, cfg):
 # ---------------------------------------------------------------------------
 # 6. greedy_counterfactual n_substitutions <= max_substitutions
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_n_substitutions_bounded(model, input_ids, cfg):
     torch.manual_seed(11)
@@ -145,6 +153,7 @@ def test_greedy_n_substitutions_bounded(model, input_ids, cfg):
 # 7. greedy_counterfactual changed_positions length matches n_substitutions
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_changed_positions_length(model, input_ids, cfg):
     torch.manual_seed(12)
     result = greedy_counterfactual(model, input_ids, TARGET_TOKEN, cfg)
@@ -154,6 +163,7 @@ def test_greedy_changed_positions_length(model, input_ids, cfg):
 # ---------------------------------------------------------------------------
 # 8. greedy_counterfactual output shape: counterfactual_ids same length as input
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_output_shape(model, input_ids, cfg):
     torch.manual_seed(13)
@@ -165,6 +175,7 @@ def test_greedy_output_shape(model, input_ids, cfg):
 # 9. beam_search_counterfactual returns CounterfactualResult
 # ---------------------------------------------------------------------------
 
+
 def test_beam_returns_result(model, input_ids, cfg):
     torch.manual_seed(20)
     result = beam_search_counterfactual(model, input_ids, TARGET_TOKEN, cfg)
@@ -174,6 +185,7 @@ def test_beam_returns_result(model, input_ids, cfg):
 # ---------------------------------------------------------------------------
 # 10. counterfactual_feature_importance returns binary tensor of same length
 # ---------------------------------------------------------------------------
+
 
 def test_feature_importance_binary_same_length():
     torch.manual_seed(30)
@@ -191,6 +203,7 @@ def test_feature_importance_binary_same_length():
 # ---------------------------------------------------------------------------
 # 11. Importance mask has 1s exactly at changed positions
 # ---------------------------------------------------------------------------
+
 
 def test_feature_importance_ones_at_changed_positions():
     torch.manual_seed(31)
@@ -213,6 +226,7 @@ def test_feature_importance_ones_at_changed_positions():
 # 12. beam_search n_substitutions <= max_substitutions
 # ---------------------------------------------------------------------------
 
+
 def test_beam_n_substitutions_bounded(model, input_ids, cfg):
     torch.manual_seed(21)
     result = beam_search_counterfactual(model, input_ids, TARGET_TOKEN, cfg)
@@ -222,6 +236,7 @@ def test_beam_n_substitutions_bounded(model, input_ids, cfg):
 # ---------------------------------------------------------------------------
 # 13. greedy logits shapes are correct
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_logits_shapes(model, input_ids, cfg):
     torch.manual_seed(14)

@@ -1,7 +1,6 @@
 """Tests for API key manager."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.api_key_manager import APIKeyManager
 

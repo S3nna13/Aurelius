@@ -6,26 +6,24 @@ and LogitLens.
 
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
-
+import torch
 from aurelius.eval.tuned_lens import (
-    TunedLensTranslator,
+    LogitLens,
     TunedLensEvaluator,
     TunedLensTrainer,
-    LogitLens,
+    TunedLensTranslator,
 )
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-B = 2      # batch size
-T = 5      # sequence length
-D = 16     # d_model
-V = 32     # vocab size
-N = 3      # n_layers
+B = 2  # batch size
+T = 5  # sequence length
+D = 16  # d_model
+V = 32  # vocab size
+N = 3  # n_layers
 
 
 @pytest.fixture(scope="module")
@@ -89,6 +87,7 @@ def final_logits() -> torch.Tensor:
 # TunedLensTranslator tests
 # ---------------------------------------------------------------------------
 
+
 def test_translator_forward_shape(translator, hidden_states):
     """1. forward() output shape is (B, T, d_model)."""
     out = translator.forward(hidden_states, layer_idx=0)
@@ -124,6 +123,7 @@ def test_translator_gradient_flows(hidden_states):
 # TunedLensEvaluator tests
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_get_layer_logits_length(evaluator, hidden_states):
     """5. get_layer_logits() returns a list of length n_layers."""
     logits_list = evaluator.get_layer_logits(hidden_states)
@@ -152,6 +152,7 @@ def test_evaluator_entropy_nonnegative(evaluator, hidden_states):
 # ---------------------------------------------------------------------------
 # TunedLensTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_step_keys(trainer, hidden_states, final_logits):
     """9. train_step() returns a dict with 'loss' and 'mean_kl_per_layer' keys."""
@@ -183,6 +184,7 @@ def test_trainer_gradient_flows(unembed_fn, hidden_states, final_logits):
 # ---------------------------------------------------------------------------
 # LogitLens tests
 # ---------------------------------------------------------------------------
+
 
 def test_logit_lens_forward_length(logit_lens_instance, hidden_states):
     """12. LogitLens.forward() returns a list of length n_layers."""

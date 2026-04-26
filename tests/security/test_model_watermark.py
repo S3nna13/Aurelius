@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import copy
-
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -91,13 +88,15 @@ def test_extract_signature_returns_list_of_ints(triggers: list) -> None:
 @pytest.mark.slow
 def test_after_embedding_verify_score_above_threshold(triggers: list) -> None:
     """After embedding, verify() should return > 0.5. Allow 3 retries."""
-    embedder = WatermarkEmbedder(WatermarkConfig(
-        n_triggers=4,
-        trigger_length=8,
-        target_class=0,
-        lr=5e-3,
-        embed_steps=100,
-    ))
+    embedder = WatermarkEmbedder(
+        WatermarkConfig(
+            n_triggers=4,
+            trigger_length=8,
+            target_class=0,
+            lr=5e-3,
+            embed_steps=100,
+        )
+    )
     passed = False
     for seed in [42, 123, 999]:
         torch.manual_seed(seed)

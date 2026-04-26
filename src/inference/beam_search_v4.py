@@ -6,12 +6,12 @@ Pure PyTorch — no external dependencies beyond torch.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-from torch import LongTensor, FloatTensor
+from torch import FloatTensor, LongTensor
 
 
 @dataclass
@@ -28,8 +28,8 @@ class BeamSearchConfig:
 class Beam:
     """Represents a single beam hypothesis."""
 
-    def __init__(self, token_ids: List[int], score: float) -> None:
-        self.token_ids: List[int] = list(token_ids)
+    def __init__(self, token_ids: list[int], score: float) -> None:
+        self.token_ids: list[int] = list(token_ids)
         self.score: float = score
 
     @property
@@ -44,9 +44,9 @@ class Beam:
         """
         if self.length == 0:
             return self.score
-        return self.score / (self.length ** alpha)
+        return self.score / (self.length**alpha)
 
-    def extend(self, token_id: int, log_prob: float) -> "Beam":
+    def extend(self, token_id: int, log_prob: float) -> Beam:
         """Return a new Beam with token_id appended and log_prob added to score."""
         return Beam(
             token_ids=self.token_ids + [token_id],
@@ -54,10 +54,7 @@ class Beam:
         )
 
     def __repr__(self) -> str:
-        return (
-            f"Beam(length={self.length}, score={self.score:.4f}, "
-            f"tokens={self.token_ids})"
-        )
+        return f"Beam(length={self.length}, score={self.score:.4f}, tokens={self.token_ids})"
 
 
 class BeamSearch:
@@ -80,7 +77,7 @@ class BeamSearch:
         self.vocab_size = vocab_size
         self.config = config
 
-    def search(self, prompt_ids: LongTensor) -> List[Beam]:
+    def search(self, prompt_ids: LongTensor) -> list[Beam]:
         """Run beam search starting from prompt_ids.
 
         Args:
@@ -91,11 +88,11 @@ class BeamSearch:
             If no beams completed (hit EOS), returns the active beams instead.
         """
         cfg = self.config
-        prompt_tokens: List[int] = prompt_ids[0].tolist()
+        prompt_tokens: list[int] = prompt_ids[0].tolist()
 
         # Step 1: Initialize beam_size beams from the prompt.
-        active_beams: List[Beam] = [Beam(token_ids=prompt_tokens, score=0.0)]
-        finished_beams: List[Beam] = []
+        active_beams: list[Beam] = [Beam(token_ids=prompt_tokens, score=0.0)]
+        finished_beams: list[Beam] = []
 
         for step in range(cfg.max_new_tokens):
             if not active_beams:
@@ -120,7 +117,7 @@ class BeamSearch:
             num_generated = step  # 0-indexed: on step 0, we're generating token 1
 
             # Step 3: Expand each beam with top-beam_size tokens → beam_size² candidates.
-            candidates: List[Beam] = []
+            candidates: list[Beam] = []
             for beam_idx, beam in enumerate(active_beams):
                 beam_log_probs = log_probs[beam_idx]  # (V,)
 
@@ -145,7 +142,7 @@ class BeamSearch:
             candidates = candidates[: cfg.beam_size]
 
             # Step 5: Move completed beams (EOS token) to finished list.
-            new_active: List[Beam] = []
+            new_active: list[Beam] = []
             for beam in candidates:
                 if beam.token_ids[-1] == cfg.eos_token_id:
                     finished_beams.append(beam)
@@ -191,7 +188,7 @@ class BeamSearchDecoder:
     def decode(
         self,
         prompt_ids: LongTensor,
-        max_new_tokens: Optional[int] = None,
+        max_new_tokens: int | None = None,
     ) -> LongTensor:
         """Run beam search and return best beam's generated tokens as a tensor.
 

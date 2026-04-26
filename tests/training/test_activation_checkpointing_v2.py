@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.activation_checkpointing_v2 import (
     ActivationMemoryEstimator,
@@ -32,6 +31,7 @@ N_LAYERS = 4
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _simple_linear(d: int = D_MODEL) -> nn.Linear:
     return nn.Linear(d, d)
 
@@ -47,6 +47,7 @@ def _rand_input(b: int = BATCH, t: int = SEQ_LEN, d: int = D_MODEL) -> torch.Ten
 # ---------------------------------------------------------------------------
 # Test 1: CheckpointedModule output matches non-checkpointed output
 # ---------------------------------------------------------------------------
+
 
 def test_checkpointed_module_output_matches():
     torch.manual_seed(0)
@@ -70,6 +71,7 @@ def test_checkpointed_module_output_matches():
 # Test 2: CheckpointedModule backward succeeds and grads flow to params
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_module_backward_grad_flows():
     torch.manual_seed(1)
     layer = _simple_linear()
@@ -90,6 +92,7 @@ def test_checkpointed_module_backward_grad_flows():
 # Test 3: CheckpointedModule inference mode runs without checkpointing (no error)
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_module_inference_mode():
     torch.manual_seed(2)
     layer = _simple_linear()
@@ -107,6 +110,7 @@ def test_checkpointed_module_inference_mode():
 # ---------------------------------------------------------------------------
 # Test 4: memory_saved_estimate > 0 for any input shape
 # ---------------------------------------------------------------------------
+
 
 def test_memory_saved_estimate_positive():
     layer = _simple_linear()
@@ -126,6 +130,7 @@ def test_memory_saved_estimate_positive():
 # Test 5: SegmentedCheckpointing output shape matches for n_segments=1 and n_layers
 # ---------------------------------------------------------------------------
 
+
 def test_segmented_checkpointing_output_shape():
     torch.manual_seed(3)
     layers = _make_layer_list()
@@ -143,6 +148,7 @@ def test_segmented_checkpointing_output_shape():
 # ---------------------------------------------------------------------------
 # Test 6: SegmentedCheckpointing backward succeeds with n_segments=2
 # ---------------------------------------------------------------------------
+
 
 def test_segmented_checkpointing_backward():
     torch.manual_seed(4)
@@ -165,23 +171,21 @@ def test_segmented_checkpointing_backward():
 # Test 7: segment_boundaries length == n_segments, first boundary == 0
 # ---------------------------------------------------------------------------
 
+
 def test_segment_boundaries_structure():
     for n_seg in (1, 2, N_LAYERS):
         layers = _make_layer_list()
         seg = SegmentedCheckpointing(layers, n_segments=n_seg)
         boundaries = seg.segment_boundaries()
-        assert len(boundaries) == n_seg, (
-            f"Expected {n_seg} boundaries, got {len(boundaries)}"
-        )
-        assert boundaries[0] == 0, (
-            f"First boundary should be 0, got {boundaries[0]}"
-        )
+        assert len(boundaries) == n_seg, f"Expected {n_seg} boundaries, got {len(boundaries)}"
+        assert boundaries[0] == 0, f"First boundary should be 0, got {boundaries[0]}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: ActivationMemoryEstimator.estimate_transformer_layer > 0,
 #          increases with larger inputs
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_transformer_layer_positive_and_scaling():
     est = ActivationMemoryEstimator()
@@ -205,34 +209,33 @@ def test_estimate_transformer_layer_positive_and_scaling():
 # Test 9: full_model_memory is proportional (n * single layer)
 # ---------------------------------------------------------------------------
 
+
 def test_full_model_memory_proportional():
     est = ActivationMemoryEstimator()
     kwargs = dict(batch_size=BATCH, seq_len=SEQ_LEN, d_model=D_MODEL, n_heads=N_HEADS)
     single = est.estimate_transformer_layer(**kwargs)
     total = est.full_model_memory(N_LAYERS, **kwargs)
-    assert total == N_LAYERS * single, (
-        f"full_model_memory {total} != {N_LAYERS} * {single}"
-    )
+    assert total == N_LAYERS * single, f"full_model_memory {total} != {N_LAYERS} * {single}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: checkpointed_memory < full_model_memory for n_segments > 1
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_memory_less_than_full():
     est = ActivationMemoryEstimator()
     kwargs = dict(batch_size=BATCH, seq_len=SEQ_LEN, d_model=D_MODEL, n_heads=N_HEADS)
     full = est.full_model_memory(N_LAYERS, **kwargs)
     ckpt = est.checkpointed_memory(N_LAYERS, n_segments=2, **kwargs)
-    assert ckpt < full, (
-        f"checkpointed_memory {ckpt} should be < full_model_memory {full}"
-    )
+    assert ckpt < full, f"checkpointed_memory {ckpt} should be < full_model_memory {full}"
 
 
 # ---------------------------------------------------------------------------
 # Test 11: SelectiveCheckpointing.wrap_attention returns CheckpointedModule
 #           when checkpoint_attention=True
 # ---------------------------------------------------------------------------
+
 
 def test_selective_wrap_attention_checkpoints():
     sc = SelectiveCheckpointing(checkpoint_attention=True, checkpoint_ffn=False)
@@ -251,13 +254,12 @@ def test_selective_wrap_attention_checkpoints():
 # Test 12: SelectiveCheckpointing.wrap_ffn returns original when checkpoint_ffn=False
 # ---------------------------------------------------------------------------
 
+
 def test_selective_wrap_ffn_no_checkpoint():
     sc = SelectiveCheckpointing(checkpoint_attention=True, checkpoint_ffn=False)
     ffn = _simple_linear()
     wrapped = sc.wrap_ffn(ffn)
-    assert wrapped is ffn, (
-        "wrap_ffn should return the original module when checkpoint_ffn=False"
-    )
+    assert wrapped is ffn, "wrap_ffn should return the original module when checkpoint_ffn=False"
     x = _rand_input()
     out = wrapped(x)
     out.sum().backward()
@@ -266,6 +268,7 @@ def test_selective_wrap_ffn_no_checkpoint():
 # ---------------------------------------------------------------------------
 # Test 13: CheckpointingScheduler.recommend_segments returns int in [1, n_layers]
 # ---------------------------------------------------------------------------
+
 
 def test_scheduler_recommend_segments_range():
     sched = CheckpointingScheduler(memory_budget_gb=8.0)
@@ -277,14 +280,13 @@ def test_scheduler_recommend_segments_range():
         n_heads=N_HEADS,
     )
     assert isinstance(n_seg, int), f"recommend_segments should return int, got {type(n_seg)}"
-    assert 1 <= n_seg <= N_LAYERS, (
-        f"recommend_segments returned {n_seg}, expected [1, {N_LAYERS}]"
-    )
+    assert 1 <= n_seg <= N_LAYERS, f"recommend_segments returned {n_seg}, expected [1, {N_LAYERS}]"
 
 
 # ---------------------------------------------------------------------------
 # Test 14: Very large model -> CheckpointingScheduler recommends more segments
 # ---------------------------------------------------------------------------
+
 
 def test_scheduler_large_model_more_segments():
     tight_sched = CheckpointingScheduler(memory_budget_gb=0.0001)
@@ -313,6 +315,7 @@ def test_scheduler_large_model_more_segments():
 #           each layer checkpointed individually, output correct
 # ---------------------------------------------------------------------------
 
+
 def test_segmented_each_layer_individually():
     torch.manual_seed(5)
     layers = _make_layer_list()
@@ -337,4 +340,6 @@ def test_segmented_each_layer_individually():
     loss.backward()
     for layer in layers:
         if isinstance(layer, nn.Linear):
-            assert layer.weight.grad is not None, "Missing gradient after per-layer segmented backward"
+            assert layer.weight.grad is not None, (
+                "Missing gradient after per-layer segmented backward"
+            )

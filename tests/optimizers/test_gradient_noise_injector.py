@@ -1,7 +1,6 @@
 """Tests for gradient noise injector."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.optimizers.gradient_noise_injector import GradientNoiseInjector
 

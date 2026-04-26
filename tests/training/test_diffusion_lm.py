@@ -1,9 +1,10 @@
 """Tests for src/training/diffusion_lm.py."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.diffusion_lm import (
     DiffusionConfig,
@@ -19,11 +20,11 @@ from src.training.diffusion_lm import (
 # Shared fixtures / constants
 # ---------------------------------------------------------------------------
 
-T_STEPS = 10   # n_timesteps (small for fast tests)
-D = 16         # d_embed
-B = 2          # batch size
-SEQ = 4        # sequence length
-VOCAB = 50     # small vocab
+T_STEPS = 10  # n_timesteps (small for fast tests)
+D = 16  # d_embed
+B = 2  # batch size
+SEQ = 4  # sequence length
+VOCAB = 50  # small vocab
 
 
 @pytest.fixture()
@@ -56,6 +57,7 @@ def trainer(score_net, embed_layer, config) -> DiffusionLMTrainer:
 # 1. DiffusionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_diffusion_config_defaults():
     cfg = DiffusionConfig()
     assert cfg.n_timesteps == 100
@@ -69,6 +71,7 @@ def test_diffusion_config_defaults():
 # 2. get_noise_schedule returns shapes (T,) for both outputs
 # ---------------------------------------------------------------------------
 
+
 def test_noise_schedule_shapes(config, schedule):
     betas, alphas_cumprod = schedule
     assert betas.shape == (T_STEPS,)
@@ -79,6 +82,7 @@ def test_noise_schedule_shapes(config, schedule):
 # 3. betas monotonically increasing (linear schedule)
 # ---------------------------------------------------------------------------
 
+
 def test_betas_monotonically_increasing(schedule):
     betas, _ = schedule
     diffs = betas[1:] - betas[:-1]
@@ -88,6 +92,7 @@ def test_betas_monotonically_increasing(schedule):
 # ---------------------------------------------------------------------------
 # 4. alphas_cumprod decreasing from ~1 to near 0
 # ---------------------------------------------------------------------------
+
 
 def test_alphas_cumprod_decreasing(schedule):
     _, alphas_cumprod = schedule
@@ -104,6 +109,7 @@ def test_alphas_cumprod_decreasing(schedule):
 # 5. q_sample returns same shape as x0
 # ---------------------------------------------------------------------------
 
+
 def test_q_sample_shape(schedule):
     betas, alphas_cumprod = schedule
     x0 = torch.randn(B, SEQ, D)
@@ -115,6 +121,7 @@ def test_q_sample_shape(schedule):
 # ---------------------------------------------------------------------------
 # 6. q_sample t=0 -> x_t approximately x0 (low noise)
 # ---------------------------------------------------------------------------
+
 
 def test_q_sample_t0_low_noise(schedule):
     betas, alphas_cumprod = schedule
@@ -132,10 +139,11 @@ def test_q_sample_t0_low_noise(schedule):
 # 7. q_sample t=T-1 -> x_t approximately noise (high noise, alpha->0)
 # ---------------------------------------------------------------------------
 
+
 def test_q_sample_tmax_high_noise(schedule):
     betas, alphas_cumprod = schedule
-    x0 = torch.zeros(B, SEQ, D)      # zero signal
-    noise = torch.ones(B, SEQ, D)    # unit noise
+    x0 = torch.zeros(B, SEQ, D)  # zero signal
+    noise = torch.ones(B, SEQ, D)  # unit noise
     t = torch.full((B,), T_STEPS - 1, dtype=torch.long)
     x_t = q_sample(x0, t, alphas_cumprod, noise=noise)
     # x_t = sqrt(1 - alpha_T-1) * noise; with small alpha this approaches noise
@@ -148,6 +156,7 @@ def test_q_sample_tmax_high_noise(schedule):
 # 8. ScoreNetwork output shape matches x_t
 # ---------------------------------------------------------------------------
 
+
 def test_score_network_output_shape(score_net):
     x_t = torch.randn(B, SEQ, D)
     t = torch.randint(0, T_STEPS, (B,))
@@ -158,6 +167,7 @@ def test_score_network_output_shape(score_net):
 # ---------------------------------------------------------------------------
 # 9. ScoreNetwork is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_score_network_differentiable(score_net):
     x_t = torch.randn(B, SEQ, D, requires_grad=True)
@@ -173,6 +183,7 @@ def test_score_network_differentiable(score_net):
 # 10. diffusion_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_diffusion_loss_scalar(score_net, schedule):
     betas, alphas_cumprod = schedule
     x0 = torch.randn(B, SEQ, D)
@@ -184,6 +195,7 @@ def test_diffusion_loss_scalar(score_net, schedule):
 # ---------------------------------------------------------------------------
 # 11. diffusion_loss non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_diffusion_loss_nonnegative(score_net, schedule):
     betas, alphas_cumprod = schedule
@@ -197,6 +209,7 @@ def test_diffusion_loss_nonnegative(score_net, schedule):
 # 12. DiffusionLMTrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_keys(trainer):
     input_ids = torch.randint(0, VOCAB, (B, SEQ))
     result = trainer.train_step(input_ids)
@@ -208,6 +221,7 @@ def test_trainer_train_step_keys(trainer):
 # 13. DiffusionLMTrainer.generate returns (n_samples, seq_len, d_embed)
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_generate_shape(trainer, config):
     n_samples = 3
     seq_len = SEQ
@@ -218,6 +232,7 @@ def test_trainer_generate_shape(trainer, config):
 # ---------------------------------------------------------------------------
 # 14. ddpm_sample output shape correct
 # ---------------------------------------------------------------------------
+
 
 def test_ddpm_sample_shape(score_net, schedule):
     betas, alphas_cumprod = schedule

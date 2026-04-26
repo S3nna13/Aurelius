@@ -1,10 +1,10 @@
 """Curriculum scheduler: difficulty progression, mastery gating, dataset ordering."""
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class DifficultyLevel(str, Enum):
+class DifficultyLevel(StrEnum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
@@ -28,9 +28,9 @@ class CurriculumScheduler:
             self._stages = list(stages)
         else:
             self._stages = [
-                CurriculumStage(0, DifficultyLevel.EASY,   min_accuracy=0.7, max_steps=1000),
+                CurriculumStage(0, DifficultyLevel.EASY, min_accuracy=0.7, max_steps=1000),
                 CurriculumStage(1, DifficultyLevel.MEDIUM, min_accuracy=0.7, max_steps=1000),
-                CurriculumStage(2, DifficultyLevel.HARD,   min_accuracy=0.7, max_steps=1000),
+                CurriculumStage(2, DifficultyLevel.HARD, min_accuracy=0.7, max_steps=1000),
                 CurriculumStage(3, DifficultyLevel.EXPERT, min_accuracy=0.7, max_steps=1000),
             ]
         self._current_idx: int = 0

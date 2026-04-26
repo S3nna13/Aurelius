@@ -1,10 +1,9 @@
 import torch
-import pytest
+
 from src.multimodal.asr_decoder import (
-    ASRDecoderConfig,
-    ASRResult,
-    CTCDecoder,
     ASRDecoder,
+    ASRDecoderConfig,
+    CTCDecoder,
 )
 
 

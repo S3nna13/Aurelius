@@ -14,7 +14,9 @@ def sinusoidal_timestep_embedding(timesteps: torch.Tensor, dim: int) -> torch.Te
         raise ValueError(f"dim must be positive, got {dim}")
     half = dim // 2
     freqs = torch.exp(
-        -math.log(10000.0) * torch.arange(half, device=timesteps.device, dtype=torch.float32) / max(half - 1, 1)
+        -math.log(10000.0)
+        * torch.arange(half, device=timesteps.device, dtype=torch.float32)
+        / max(half - 1, 1)
     )
     args = timesteps.float().unsqueeze(-1) * freqs.unsqueeze(0)
     emb = torch.cat([torch.sin(args), torch.cos(args)], dim=-1)

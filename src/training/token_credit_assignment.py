@@ -28,16 +28,15 @@ Pure native PyTorch only; no external dependencies beyond stdlib + torch.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # TokenCreditConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TokenCreditConfig:
@@ -66,6 +65,7 @@ class TokenCreditConfig:
 # TokenCreditAssigner
 # ---------------------------------------------------------------------------
 
+
 class TokenCreditAssigner:
     """Distribute a response-level reward over individual tokens.
 
@@ -93,7 +93,7 @@ class TokenCreditAssigner:
         mask = mask.float()
         T_valid = mask.sum(dim=1, keepdim=True).clamp(min=self.config.eps)  # [B, 1]
         # Broadcast reward over time dimension
-        credits = (rewards.unsqueeze(1) / T_valid) * mask              # [B, T]
+        credits = (rewards.unsqueeze(1) / T_valid) * mask  # [B, T]
         return credits
 
     def discounted(self, rewards: Tensor, mask: Tensor) -> Tensor:
@@ -119,9 +119,9 @@ class TokenCreditAssigner:
         # exponent = T_valid - t - 1, clamped to ≥ 0 so padded positions don't
         # produce negative exponents that would give values > 1.
         exponent = (T_valid - t_idx.unsqueeze(0) - 1).clamp(min=0.0)  # [B, T]
-        discount = gamma ** exponent                                    # [B, T]
+        discount = gamma**exponent  # [B, T]
 
-        credits = rewards.unsqueeze(1) * discount * mask               # [B, T]
+        credits = rewards.unsqueeze(1) * discount * mask  # [B, T]
         return credits
 
     def end_decay(self, rewards: Tensor, mask: Tensor) -> Tensor:
@@ -147,9 +147,9 @@ class TokenCreditAssigner:
         T_valid = mask.sum(dim=1, keepdim=True)  # [B, 1]
 
         exponent = (T_valid - 1 - t_idx.unsqueeze(0)).clamp(min=0.0)  # [B, T]
-        decay_factor = rate ** exponent                                 # [B, T]
+        decay_factor = rate**exponent  # [B, T]
 
-        credits = rewards.unsqueeze(1) * decay_factor * mask           # [B, T]
+        credits = rewards.unsqueeze(1) * decay_factor * mask  # [B, T]
         return credits
 
     def gae(
@@ -204,8 +204,8 @@ class TokenCreditAssigner:
             valid_t = mask[:, t]  # [B]
             V_t = values[:, t]
             V_tp1 = values_ext[:, t + 1]
-            delta = r_t[:, t] + gamma * V_tp1 - V_t         # [B]
-            A_t = delta + gl * A_next                         # [B]
+            delta = r_t[:, t] + gamma * V_tp1 - V_t  # [B]
+            A_t = delta + gl * A_next  # [B]
             # Zero out for masked positions; also reset A_next for masked rows
             A_t = A_t * valid_t
             advantages[:, t] = A_t
@@ -223,7 +223,7 @@ class TokenCreditAssigner:
         self,
         rewards: Tensor,
         mask: Tensor,
-        values: Optional[Tensor] = None,
+        values: Tensor | None = None,
     ) -> Tensor:
         """Compute per-token credits and optionally normalise.
 
@@ -251,8 +251,7 @@ class TokenCreditAssigner:
         elif method == "gae":
             if values is None:
                 raise ValueError(
-                    "TokenCreditAssigner.assign: 'values' tensor is required "
-                    "for method='gae'."
+                    "TokenCreditAssigner.assign: 'values' tensor is required for method='gae'."
                 )
             credits = self.gae(rewards, values, mask)
         else:
@@ -286,9 +285,9 @@ class TokenCreditAssigner:
             return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0}
         return {
             "mean": float(valid.mean().item()),
-            "std":  float(valid.std().item()) if valid.numel() > 1 else 0.0,
-            "min":  float(valid.min().item()),
-            "max":  float(valid.max().item()),
+            "std": float(valid.std().item()) if valid.numel() > 1 else 0.0,
+            "min": float(valid.min().item()),
+            "max": float(valid.max().item()),
         }
 
     # ------------------------------------------------------------------
@@ -302,7 +301,11 @@ class TokenCreditAssigner:
         if valid.numel() == 0:
             return credits
         mean = valid.mean()
-        std = valid.std() if valid.numel() > 1 else torch.zeros(1, device=credits.device, dtype=credits.dtype).squeeze()
+        std = (
+            valid.std()
+            if valid.numel() > 1
+            else torch.zeros(1, device=credits.device, dtype=credits.dtype).squeeze()
+        )
         credits = (credits - mean) / (std + self.config.eps)
         # Re-zero masked positions that may have been shifted by the mean.
         credits = credits * mask_f

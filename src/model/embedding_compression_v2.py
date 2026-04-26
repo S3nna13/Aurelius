@@ -3,6 +3,7 @@
 Implements alternative embedding compression strategies with the new EmbedConfig API.
 V2 because embedding_compression.py already exists with a different API.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,7 +46,7 @@ class ProductQuantizedEmbedding(nn.Module):
 
     def __init__(self, vocab_size: int, d_model: int, n_codebooks: int, n_codes: int) -> None:
         super().__init__()
-        assert d_model % n_codebooks == 0, "d_model must be divisible by n_codebooks"
+        assert d_model % n_codebooks == 0, "d_model must be divisible by n_codebooks"  # noqa: S101
         self.n_codebooks = n_codebooks
         self.n_codes = n_codes
         self.sub_dim = d_model // n_codebooks

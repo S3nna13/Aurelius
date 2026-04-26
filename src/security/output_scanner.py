@@ -7,8 +7,8 @@ model outputs using pure statistical and rule-based analysis.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # PII regex patterns (module-level constants)
@@ -42,7 +42,7 @@ _RE_IPV4 = re.compile(
 )
 
 # Map pattern name to compiled regex
-_PII_PATTERNS: List[Tuple[str, re.Pattern]] = [
+_PII_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("email", _RE_EMAIL),
     ("us_phone", _RE_US_PHONE),
     ("ssn", _RE_SSN),
@@ -55,9 +55,9 @@ _PII_PATTERNS: List[Tuple[str, re.Pattern]] = [
 # ---------------------------------------------------------------------------
 # Ranges are intentionally arbitrary synthetic ranges used as a test proxy.
 # Each entry: (low_inclusive, high_inclusive, severity_weight)
-_TOXIC_RANGES: List[Tuple[int, int, float]] = [
-    (1, 20, 0.5),      # suspicious range – lower severity
-    (100, 110, 1.0),   # toxic range – full severity
+_TOXIC_RANGES: list[tuple[int, int, float]] = [
+    (1, 20, 0.5),  # suspicious range – lower severity
+    (100, 110, 1.0),  # toxic range – full severity
 ]
 
 
@@ -82,7 +82,7 @@ class ScanResult:
     has_pii: bool
     has_toxic: bool
     anomalous_length: bool
-    pii_types: List[str] = field(default_factory=list)
+    pii_types: list[str] = field(default_factory=list)
     toxic_score: float = 0.0
     length: int = 0
 
@@ -114,7 +114,7 @@ class OutputScanner:
     # PII detection
     # ------------------------------------------------------------------
 
-    def detect_pii_text(self, text: str) -> Tuple[bool, List[str]]:
+    def detect_pii_text(self, text: str) -> tuple[bool, list[str]]:
         """Detect PII patterns in a raw string.
 
         Args:
@@ -124,7 +124,7 @@ class OutputScanner:
             A tuple (found, pii_types) where found is True when any PII is
             detected and pii_types is the list of PII category names found.
         """
-        found_types: List[str] = []
+        found_types: list[str] = []
         for name, pattern in _PII_PATTERNS:
             if pattern.search(text):
                 found_types.append(name)
@@ -132,9 +132,9 @@ class OutputScanner:
 
     def detect_pii(
         self,
-        tokens: List[int],
-        token_to_str: Optional[Callable[[int], str]] = None,
-    ) -> Tuple[bool, List[str]]:
+        tokens: list[int],
+        token_to_str: Callable[[int], str] | None = None,
+    ) -> tuple[bool, list[str]]:
         """Detect PII patterns in a token sequence.
 
         Converts tokens to a string first, then applies regex scanning.
@@ -159,7 +159,7 @@ class OutputScanner:
     # Toxicity scoring
     # ------------------------------------------------------------------
 
-    def toxic_score(self, token_ids: List[int]) -> float:
+    def toxic_score(self, token_ids: list[int]) -> float:
         """Compute a heuristic toxicity score for a sequence of token ids.
 
         Tokens that fall within pre-defined synthetic ranges are counted as
@@ -196,7 +196,7 @@ class OutputScanner:
     def scan_text(
         self,
         text: str,
-        expected_max_length: Optional[int] = None,
+        expected_max_length: int | None = None,
     ) -> ScanResult:
         """Run all checks on a raw text string.
 
@@ -208,7 +208,9 @@ class OutputScanner:
         Returns:
             A ScanResult populated with results from all checks.
         """
-        max_len = expected_max_length if expected_max_length is not None else self.max_expected_length
+        max_len = (
+            expected_max_length if expected_max_length is not None else self.max_expected_length
+        )
         length = len(text)
 
         has_pii, pii_types = self.detect_pii_text(text)
@@ -228,8 +230,8 @@ class OutputScanner:
 
     def scan_tokens(
         self,
-        token_ids: List[int],
-        token_to_str: Optional[Callable[[int], str]] = None,
+        token_ids: list[int],
+        token_to_str: Callable[[int], str] | None = None,
     ) -> ScanResult:
         """Run all checks on a token id sequence.
 

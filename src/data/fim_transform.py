@@ -18,7 +18,7 @@ Special tokens
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 
 # ---------------------------------------------------------------------------
@@ -41,12 +41,12 @@ class FIMMode(Enum):
 class FIMConfig:
     """Knobs for the FIM transformation."""
 
-    fim_rate: float = 0.50       # fraction of examples that get FIM
-    psm_rate: float = 0.50       # of FIM examples, fraction using PSM
-    min_prefix_len: int = 1      # minimum characters in prefix
-    min_suffix_len: int = 1      # minimum characters in suffix
-    min_middle_len: int = 1      # minimum characters in middle
-    seed: int | None = None      # reproducible randomness
+    fim_rate: float = 0.50  # fraction of examples that get FIM
+    psm_rate: float = 0.50  # of FIM examples, fraction using PSM
+    min_prefix_len: int = 1  # minimum characters in prefix
+    min_suffix_len: int = 1  # minimum characters in suffix
+    min_middle_len: int = 1  # minimum characters in middle
+    seed: int | None = None  # reproducible randomness
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.fim_rate <= 1.0:
@@ -58,6 +58,7 @@ class FIMConfig:
 # ---------------------------------------------------------------------------
 # Core transformation
 # ---------------------------------------------------------------------------
+
 
 @dataclass(slots=True)
 class FIMResult:
@@ -156,13 +157,9 @@ def fim_transform(
     mode = FIMMode.PSM if rng.random() < config.psm_rate else FIMMode.SPM
 
     if mode is FIMMode.PSM:
-        transformed = (
-            f"{FIM_PREFIX}{prefix}{FIM_SUFFIX}{suffix}{FIM_MIDDLE}{middle}"
-        )
+        transformed = f"{FIM_PREFIX}{prefix}{FIM_SUFFIX}{suffix}{FIM_MIDDLE}{middle}"
     else:
-        transformed = (
-            f"{FIM_SUFFIX}{suffix}{FIM_PREFIX}{prefix}{FIM_MIDDLE}{middle}"
-        )
+        transformed = f"{FIM_SUFFIX}{suffix}{FIM_PREFIX}{prefix}{FIM_MIDDLE}{middle}"
 
     return FIMResult(
         text=transformed,
@@ -177,6 +174,7 @@ def fim_transform(
 # ---------------------------------------------------------------------------
 # Batch / streaming helpers
 # ---------------------------------------------------------------------------
+
 
 def fim_transform_batch(
     texts: list[str],

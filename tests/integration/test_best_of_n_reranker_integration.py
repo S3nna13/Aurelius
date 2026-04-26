@@ -44,8 +44,8 @@ def test_end_to_end_best_of_4():
 
 def test_existing_alignment_imports_still_work():
     # bond is the sibling module called out in the spec.
-    import src.alignment.bond  # noqa: F401
     import src.alignment  # noqa: F401
+    import src.alignment.bond  # noqa: F401
 
     # And the new module sits alongside it.
     from src.alignment import best_of_n_reranker  # noqa: F401

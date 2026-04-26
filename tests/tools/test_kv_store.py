@@ -1,9 +1,8 @@
 """Tests for KV store."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.tools.kv_store import KVStore
 

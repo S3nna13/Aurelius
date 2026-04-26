@@ -9,8 +9,12 @@ from src.training.pretraining_mix import CorpusSource
 
 def make_sources():
     return [
-        CurriculumSource(CorpusSource("web", weight=3.0), DifficultyBucket("easy", difficulty=0.1, weight=1.0)),
-        CurriculumSource(CorpusSource("math", weight=1.0), DifficultyBucket("hard", difficulty=1.0, weight=1.0)),
+        CurriculumSource(
+            CorpusSource("web", weight=3.0), DifficultyBucket("easy", difficulty=0.1, weight=1.0)
+        ),
+        CurriculumSource(
+            CorpusSource("math", weight=1.0), DifficultyBucket("hard", difficulty=1.0, weight=1.0)
+        ),
     ]
 
 

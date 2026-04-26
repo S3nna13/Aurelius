@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import math
 
-import torch
 import pytest
+import torch
 
 from src.model.token_pruning import (
+    AdaptiveTokenPruner,
     TokenPruningConfig,
+    TokenPruningLayer,
+    evaluate_pruning_efficiency,
     score_tokens_by_attention,
     score_tokens_by_gradient,
     select_important_tokens,
-    TokenPruningLayer,
-    AdaptiveTokenPruner,
-    evaluate_pruning_efficiency,
 )
 
 # ---------------------------------------------------------------------------
@@ -94,8 +94,7 @@ def test_select_important_tokens_ratio():
 def test_select_important_tokens_protect():
     torch.manual_seed(0)
     protect = [0, 3, 7]
-    cfg = TokenPruningConfig(keep_ratio=0.1, min_tokens=1,
-                             protect_positions=protect)
+    cfg = TokenPruningConfig(keep_ratio=0.1, min_tokens=1, protect_positions=protect)
     # Give protected positions very low scores so they would normally be pruned
     scores = torch.full((B, T), 1.0)
     for p in protect:
@@ -181,4 +180,4 @@ def test_evaluate_pruning_efficiency_keys():
     )
     # Sanity-check values
     assert result["kept_tokens"] + result["pruned_tokens"] == T
-    assert result["theoretical_speedup"] == pytest.approx(1.0 / KEEP_RATIO ** 2)
+    assert result["theoretical_speedup"] == pytest.approx(1.0 / KEEP_RATIO**2)

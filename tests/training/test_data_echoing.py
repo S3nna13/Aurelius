@@ -3,6 +3,8 @@
 import pytest
 import torch
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.data_echoing import (
     DataEchoBuffer,
     EchoConfig,
@@ -13,9 +15,6 @@ from src.training.data_echoing import (
     select_echoes,
     update_echo_metadata,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared test helpers

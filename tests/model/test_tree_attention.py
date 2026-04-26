@@ -5,7 +5,6 @@ Paper: Shyam et al., 2024. arXiv:2408.04093
 Config: d_model=64, n_heads=4, head_dim=16, chunk_size=8
 """
 
-import math
 import pytest
 import torch
 import torch.nn as nn
@@ -13,14 +12,13 @@ import torch.nn.functional as F
 
 from src.model.tree_attention import TreeAttention, merge_two_chunks
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
 D_MODEL = 64
 N_HEADS = 4
-HEAD_DIM = 16   # D_MODEL // N_HEADS
+HEAD_DIM = 16  # D_MODEL // N_HEADS
 CHUNK = 8
 
 
@@ -43,6 +41,7 @@ def ref_attention(x: torch.Tensor, model: TreeAttention) -> torch.Tensor:
 # Test 1: Output shape
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape():
     B, T = 2, 4 * CHUNK
     x = torch.randn(B, T, D_MODEL)
@@ -55,6 +54,7 @@ def test_output_shape():
 # Test 2: Equivalence to standard attention (non-causal)
 # ---------------------------------------------------------------------------
 
+
 def test_equivalence_to_standard_attention():
     torch.manual_seed(42)
     B, T = 1, 4 * CHUNK
@@ -64,7 +64,7 @@ def test_equivalence_to_standard_attention():
 
     with torch.no_grad():
         tree_out = model(x)
-        std_out  = ref_attention(x, model)
+        std_out = ref_attention(x, model)
 
     assert torch.allclose(tree_out, std_out, atol=1e-5), (
         f"Max diff: {(tree_out - std_out).abs().max().item():.2e}"
@@ -74,6 +74,7 @@ def test_equivalence_to_standard_attention():
 # ---------------------------------------------------------------------------
 # Test 3: Gradient flow on all parameters
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow():
     B, T = 2, 2 * CHUNK
@@ -91,6 +92,7 @@ def test_gradient_flow():
 # ---------------------------------------------------------------------------
 # Test 4: Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     B, T = 1, 4 * CHUNK
@@ -113,6 +115,7 @@ def test_determinism():
 # Test 5: batch=1, T = chunk_size (single leaf)
 # ---------------------------------------------------------------------------
 
+
 def test_single_leaf():
     B, T = 1, CHUNK
     x = torch.randn(B, T, D_MODEL)
@@ -121,7 +124,7 @@ def test_single_leaf():
 
     with torch.no_grad():
         tree_out = model(x)
-        std_out  = ref_attention(x, model)
+        std_out = ref_attention(x, model)
 
     assert tree_out.shape == (B, T, D_MODEL)
     assert torch.allclose(tree_out, std_out, atol=1e-5), (
@@ -133,6 +136,7 @@ def test_single_leaf():
 # Test 6: T = 4 * chunk_size (4 leaves, binary tree)
 # ---------------------------------------------------------------------------
 
+
 def test_four_leaves():
     torch.manual_seed(11)
     B, T = 2, 4 * CHUNK
@@ -142,7 +146,7 @@ def test_four_leaves():
 
     with torch.no_grad():
         tree_out = model(x)
-        std_out  = ref_attention(x, model)
+        std_out = ref_attention(x, model)
 
     assert torch.allclose(tree_out, std_out, atol=1e-5), (
         f"Max diff: {(tree_out - std_out).abs().max().item():.2e}"
@@ -153,6 +157,7 @@ def test_four_leaves():
 # Test 7: T = 8 * chunk_size (8 leaves, 3 levels)
 # ---------------------------------------------------------------------------
 
+
 def test_eight_leaves():
     torch.manual_seed(99)
     B, T = 1, 8 * CHUNK
@@ -162,7 +167,7 @@ def test_eight_leaves():
 
     with torch.no_grad():
         tree_out = model(x)
-        std_out  = ref_attention(x, model)
+        std_out = ref_attention(x, model)
 
     assert torch.allclose(tree_out, std_out, atol=1e-5), (
         f"Max diff: {(tree_out - std_out).abs().max().item():.2e}"
@@ -172,6 +177,7 @@ def test_eight_leaves():
 # ---------------------------------------------------------------------------
 # Test 8: T not divisible by chunk_size -> ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_non_divisible_sequence_raises():
     B, T = 1, CHUNK + 3
@@ -184,6 +190,7 @@ def test_non_divisible_sequence_raises():
 # ---------------------------------------------------------------------------
 # Test 9: No NaN/Inf on zeros input
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_on_zeros():
     B, T = 1, 4 * CHUNK
@@ -198,6 +205,7 @@ def test_no_nan_on_zeros():
 # Test 10: No NaN/Inf on large inputs
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_large_inputs():
     B, T = 1, 4 * CHUNK
     x = torch.randn(B, T, D_MODEL) * 1e3
@@ -211,6 +219,7 @@ def test_no_nan_on_large_inputs():
 # Test 11: Online softmax merge matches direct softmax on combined scores
 # ---------------------------------------------------------------------------
 
+
 def test_online_softmax_merge_correctness():
     """
     Construct two score vectors, compute (m, s, o) independently, merge with
@@ -220,12 +229,12 @@ def test_online_softmax_merge_correctness():
     torch.manual_seed(0)
     L = CHUNK
     h = HEAD_DIM
-    T_left  = 2 * CHUNK
+    T_left = 2 * CHUNK
     T_right = 2 * CHUNK
 
-    S_left  = torch.randn(L, T_left)
+    S_left = torch.randn(L, T_left)
     S_right = torch.randn(L, T_right)
-    V_left  = torch.randn(T_left,  h)
+    V_left = torch.randn(T_left, h)
     V_right = torch.randn(T_right, h)
 
     # Direct reference
@@ -237,7 +246,7 @@ def test_online_softmax_merge_correctness():
     m_l = S_left.amax(dim=-1, keepdim=True)
     exp_l = torch.exp(S_left - m_l)
     s_l = exp_l.sum(dim=-1, keepdim=True)
-    o_l = exp_l @ V_left   # unnormalised
+    o_l = exp_l @ V_left  # unnormalised
 
     # Online-softmax right
     m_r = S_right.amax(dim=-1, keepdim=True)
@@ -257,6 +266,7 @@ def test_online_softmax_merge_correctness():
 # Test 12: Multi-head (n_heads > 1) produces correct shape and finite outputs
 # ---------------------------------------------------------------------------
 
+
 def test_multi_head():
     torch.manual_seed(55)
     B, T = 2, 4 * CHUNK
@@ -271,6 +281,7 @@ def test_multi_head():
 # Test 13: causal=True does not crash and outputs are finite
 # ---------------------------------------------------------------------------
 
+
 def test_causal_no_crash():
     B, T = 1, 4 * CHUNK
     x = torch.randn(B, T, D_MODEL)
@@ -283,6 +294,7 @@ def test_causal_no_crash():
 # ---------------------------------------------------------------------------
 # Test 14: Numerical stability — no overflow on large logits
 # ---------------------------------------------------------------------------
+
 
 def test_numerical_stability_large_logits():
     """

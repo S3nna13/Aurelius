@@ -10,10 +10,11 @@ References:
     - Malkin et al., "Trajectory Balance: Improved Credit Assignment in GFlowNets",
       NeurIPS 2022.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -104,7 +105,7 @@ def trajectory_balance_loss(
         Scalar mean TB loss.
     """
     residual = log_Z + forward_log_probs - log_reward
-    return (residual ** 2).mean()
+    return (residual**2).mean()
 
 
 def detailed_balance_loss(
@@ -127,7 +128,7 @@ def detailed_balance_loss(
         Scalar mean DB loss.
     """
     residual = log_flow_s + log_pf - log_flow_sp - log_pb
-    return (residual ** 2).mean()
+    return (residual**2).mean()
 
 
 class GFlowNetTrainer:

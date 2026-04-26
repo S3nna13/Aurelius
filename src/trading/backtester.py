@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Protocol
+from datetime import datetime
+from typing import Protocol
 
-from src.trading.portfolio import OrderSide, Portfolio, PortfolioMetrics
 from src.trading.market_data import OHLCVData
+from src.trading.portfolio import OrderSide, Portfolio, PortfolioMetrics
 from src.trading.trading_agent import TradingAgent
 
 BACKTESTER_REGISTRY: dict[str, type[Strategy]] = {}
@@ -108,26 +108,28 @@ class Backtester:
 
         for t in portfolio.trades:
             commission = t.quantity * t.price * self.config.commission_pct
-            trades.append(TradeRecord(
-                timestamp=t.timestamp,
-                symbol=t.symbol,
-                side=t.side,
-                quantity=t.quantity,
-                price=t.price,
-                commission=commission,
-                pnl=t.pnl - commission,
-            ))
+            trades.append(
+                TradeRecord(
+                    timestamp=t.timestamp,
+                    symbol=t.symbol,
+                    side=t.side,
+                    quantity=t.quantity,
+                    price=t.price,
+                    commission=commission,
+                    pnl=t.pnl - commission,
+                )
+            )
 
         returns = self._compute_returns(equity_curve)
         sharpe = self._compute_sharpe(returns)
         sortino = self._compute_sortino(returns)
         max_dd = self._compute_max_drawdown(equity_curve)
 
-        wins = sum(1 for t in trades if t.pnl > 0)
-        losses = sum(1 for t in trades if t.pnl < 0)
+        sum(1 for t in trades if t.pnl > 0)
+        sum(1 for t in trades if t.pnl < 0)
         total_wins = sum(t.pnl for t in trades if t.pnl > 0)
         total_losses = abs(sum(t.pnl for t in trades if t.pnl < 0))
-        profit_factor = total_wins / total_losses if total_losses > 0 else float('inf')
+        profit_factor = total_wins / total_losses if total_losses > 0 else float("inf")
 
         total_return = metrics.total_return
         annualized_return = total_return * (252 / max(len(trades), 1)) if trades else 0

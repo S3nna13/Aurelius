@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Tuple
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -25,20 +25,20 @@ from typing import Any, Callable, Dict, List, Tuple
 @dataclass
 class IFEvalConstraint:
     type: str
-    kwargs: Dict[str, Any] = field(default_factory=dict)
+    kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class IFEvalProblem:
     prompt: str
-    constraints: List[IFEvalConstraint]
+    constraints: list[IFEvalConstraint]
 
 
 @dataclass
 class IFEvalResult:
-    passed: List[bool]
+    passed: list[bool]
     strict_pass: bool
-    per_constraint: List[Tuple[str, bool]]
+    per_constraint: list[tuple[str, bool]]
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ def _sentence_count(text: str) -> int:
     return len(parts)
 
 
-def _loose_variants(text: str) -> List[str]:
+def _loose_variants(text: str) -> list[str]:
     """Variants used for loose accuracy (Zhou et al. Appendix): strip
     markdown emphasis and leading/trailing whitespace, try lower-cased."""
     variants = [text]
@@ -88,7 +88,7 @@ def _loose_variants(text: str) -> List[str]:
 # ---------------------------------------------------------------------------
 
 
-def _check_length_words(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_length_words(response: str, kwargs: dict[str, Any]) -> bool:
     n = _word_count(response)
     lo = kwargs.get("min")
     hi = kwargs.get("max")
@@ -99,7 +99,7 @@ def _check_length_words(response: str, kwargs: Dict[str, Any]) -> bool:
     return True
 
 
-def _check_length_sentences(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_length_sentences(response: str, kwargs: dict[str, Any]) -> bool:
     n = _sentence_count(response)
     lo = kwargs.get("min")
     hi = kwargs.get("max")
@@ -110,7 +110,7 @@ def _check_length_sentences(response: str, kwargs: Dict[str, Any]) -> bool:
     return True
 
 
-def _check_contains_keyword(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_contains_keyword(response: str, kwargs: dict[str, Any]) -> bool:
     if "keyword" not in kwargs:
         raise ValueError("contains_keyword requires 'keyword'")
     kw = kwargs["keyword"]
@@ -120,7 +120,7 @@ def _check_contains_keyword(response: str, kwargs: Dict[str, Any]) -> bool:
     return needle in hay
 
 
-def _check_avoids_keyword(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_avoids_keyword(response: str, kwargs: dict[str, Any]) -> bool:
     if "keyword" not in kwargs:
         raise ValueError("avoids_keyword requires 'keyword'")
     kw = kwargs["keyword"]
@@ -130,7 +130,7 @@ def _check_avoids_keyword(response: str, kwargs: Dict[str, Any]) -> bool:
     return needle not in hay
 
 
-def _check_case(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_case(response: str, kwargs: dict[str, Any]) -> bool:
     mode = kwargs.get("mode")
     if mode not in ("lower", "upper", "title"):
         raise ValueError(f"case mode must be lower/upper/title, got {mode!r}")
@@ -157,7 +157,7 @@ def _check_case(response: str, kwargs: Dict[str, Any]) -> bool:
     return True
 
 
-def _check_json_format(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_json_format(response: str, kwargs: dict[str, Any]) -> bool:
     text = response.strip()
     # Allow fenced code blocks like ```json ... ```
     fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
@@ -172,7 +172,7 @@ def _check_json_format(response: str, kwargs: Dict[str, Any]) -> bool:
     return True
 
 
-def _check_start_with(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_start_with(response: str, kwargs: dict[str, Any]) -> bool:
     if "phrase" not in kwargs:
         raise ValueError("start_with requires 'phrase'")
     phrase = kwargs["phrase"]
@@ -183,7 +183,7 @@ def _check_start_with(response: str, kwargs: Dict[str, Any]) -> bool:
     return text.lower().startswith(phrase.lower())
 
 
-def _check_end_with(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_end_with(response: str, kwargs: dict[str, Any]) -> bool:
     if "phrase" not in kwargs:
         raise ValueError("end_with requires 'phrase'")
     phrase = kwargs["phrase"]
@@ -194,7 +194,7 @@ def _check_end_with(response: str, kwargs: Dict[str, Any]) -> bool:
     return text.lower().endswith(phrase.lower())
 
 
-def _check_min_bullets(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_min_bullets(response: str, kwargs: dict[str, Any]) -> bool:
     n = kwargs.get("n")
     if n is None:
         raise ValueError("min_bullets requires 'n'")
@@ -206,7 +206,7 @@ def _check_min_bullets(response: str, kwargs: Dict[str, Any]) -> bool:
     return count >= int(n)
 
 
-def _check_placeholder_present(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_placeholder_present(response: str, kwargs: dict[str, Any]) -> bool:
     marker = kwargs.get("marker")
     if marker is None:
         raise ValueError("placeholder_present requires 'marker'")
@@ -214,7 +214,7 @@ def _check_placeholder_present(response: str, kwargs: Dict[str, Any]) -> bool:
     return response.count(marker) >= min_count
 
 
-def _check_quote_count(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_quote_count(response: str, kwargs: dict[str, Any]) -> bool:
     # Count matched pairs of straight double quotes.
     lo = kwargs.get("min")
     hi = kwargs.get("max")
@@ -227,7 +227,7 @@ def _check_quote_count(response: str, kwargs: Dict[str, Any]) -> bool:
     return True
 
 
-def _check_max_punctuation(response: str, kwargs: Dict[str, Any]) -> bool:
+def _check_max_punctuation(response: str, kwargs: dict[str, Any]) -> bool:
     chars = kwargs.get("chars")
     hi = kwargs.get("max")
     if chars is None or hi is None:
@@ -241,13 +241,13 @@ def _check_max_punctuation(response: str, kwargs: Dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-CheckerFn = Callable[[str, Dict[str, Any]], bool]
+CheckerFn = Callable[[str, dict[str, Any]], bool]
 
 
 class IFEvalScorer:
     """Scores model responses against verifiable IFEval constraints."""
 
-    CHECKERS: Dict[str, CheckerFn] = {
+    CHECKERS: dict[str, CheckerFn] = {
         "length_words": _check_length_words,
         "length_sentences": _check_length_sentences,
         "contains_keyword": _check_contains_keyword,
@@ -273,14 +273,13 @@ class IFEvalScorer:
             raise ValueError(f"Unknown IFEval constraint type: {constraint.type!r}")
         kwargs = dict(constraint.kwargs)
         # Inject default case-sensitivity for text-matching constraints.
-        if constraint.type in ("contains_keyword", "avoids_keyword",
-                               "start_with", "end_with"):
+        if constraint.type in ("contains_keyword", "avoids_keyword", "start_with", "end_with"):
             kwargs.setdefault("case_sensitive", self.case_sensitive_default)
         return bool(fn(response, kwargs))
 
     def score_one(self, problem: IFEvalProblem, response: str) -> IFEvalResult:
-        passed: List[bool] = []
-        per_constraint: List[Tuple[str, bool]] = []
+        passed: list[bool] = []
+        per_constraint: list[tuple[str, bool]] = []
         for c in problem.constraints:
             ok = self._check_one(c, response)
             passed.append(ok)
@@ -304,9 +303,9 @@ class IFEvalScorer:
 
     def score(
         self,
-        problems: List[IFEvalProblem],
-        responses: List[str],
-    ) -> Dict[str, Any]:
+        problems: list[IFEvalProblem],
+        responses: list[str],
+    ) -> dict[str, Any]:
         if len(problems) != len(responses):
             raise ValueError(
                 f"problems ({len(problems)}) and responses ({len(responses)}) "
@@ -317,8 +316,8 @@ class IFEvalScorer:
 
         strict_hits = 0
         loose_hits = 0
-        per_type_total: Dict[str, int] = {}
-        per_type_pass: Dict[str, int] = {}
+        per_type_total: dict[str, int] = {}
+        per_type_pass: dict[str, int] = {}
 
         for problem, response in zip(problems, responses):
             result = self.score_one(problem, response)
@@ -332,10 +331,7 @@ class IFEvalScorer:
                     per_type_pass[ctype] = per_type_pass.get(ctype, 0) + 1
 
         n = len(problems)
-        per_type_accuracy = {
-            t: per_type_pass.get(t, 0) / per_type_total[t]
-            for t in per_type_total
-        }
+        per_type_accuracy = {t: per_type_pass.get(t, 0) / per_type_total[t] for t in per_type_total}
         return {
             "strict_accuracy": strict_hits / n,
             "loose_accuracy": loose_hits / n,

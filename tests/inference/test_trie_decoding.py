@@ -6,11 +6,11 @@ import pytest
 import torch
 
 from src.inference.trie_decoding import (
+    Trie,
+    TrieDecoder,
     TrieDecodingConfig,
     TrieNode,
-    Trie,
     constrained_logits,
-    TrieDecoder,
 )
 
 # ---------------------------------------------------------------------------
@@ -24,6 +24,7 @@ EOS = 0
 # ---------------------------------------------------------------------------
 # Tiny fake model
 # ---------------------------------------------------------------------------
+
 
 class TinyModel:
     """Returns uniform logits; greedy picks token 1 by slight bias."""
@@ -45,6 +46,7 @@ class TinyModel:
 # Test 1: TrieNode starts with no children
 # ---------------------------------------------------------------------------
 
+
 def test_trie_node_starts_empty():
     node = TrieNode()
     assert node.children == {}
@@ -54,6 +56,7 @@ def test_trie_node_starts_empty():
 # ---------------------------------------------------------------------------
 # Test 2: TrieNode.insert adds children
 # ---------------------------------------------------------------------------
+
 
 def test_trie_node_insert_adds_children():
     node = TrieNode()
@@ -68,6 +71,7 @@ def test_trie_node_insert_adds_children():
 # Test 3: TrieNode.valid_next_tokens returns correct ids
 # ---------------------------------------------------------------------------
 
+
 def test_trie_node_valid_next_tokens():
     node = TrieNode()
     node.insert([5])
@@ -79,6 +83,7 @@ def test_trie_node_valid_next_tokens():
 # ---------------------------------------------------------------------------
 # Test 4: TrieNode.is_terminal set correctly at end of sequence
 # ---------------------------------------------------------------------------
+
 
 def test_trie_node_is_terminal_at_end():
     node = TrieNode()
@@ -99,6 +104,7 @@ def test_trie_node_is_terminal_at_end():
 # Test 5: Trie.insert stores sequence
 # ---------------------------------------------------------------------------
 
+
 def test_trie_insert_stores_sequence():
     trie = Trie()
     trie.insert([10, 20])
@@ -111,6 +117,7 @@ def test_trie_insert_stores_sequence():
 # ---------------------------------------------------------------------------
 # Test 6: Trie.__contains__ True for inserted, False for others
 # ---------------------------------------------------------------------------
+
 
 def test_trie_contains_true_for_inserted():
     trie = Trie()
@@ -135,6 +142,7 @@ def test_trie_contains_false_for_absent():
 # Test 7: Trie.prefix_allowed_tokens returns valid next tokens
 # ---------------------------------------------------------------------------
 
+
 def test_trie_prefix_allowed_tokens_from_root():
     trie = Trie()
     trie.insert([5, 10])
@@ -156,6 +164,7 @@ def test_trie_prefix_allowed_tokens_after_first_token():
 # Test 8: Trie.prefix_allowed_tokens returns [] for invalid prefix
 # ---------------------------------------------------------------------------
 
+
 def test_trie_prefix_allowed_tokens_invalid_prefix():
     trie = Trie()
     trie.insert([5, 10])
@@ -167,6 +176,7 @@ def test_trie_prefix_allowed_tokens_invalid_prefix():
 # ---------------------------------------------------------------------------
 # Test 9: Trie.insert_batch inserts multiple sequences
 # ---------------------------------------------------------------------------
+
 
 def test_trie_insert_batch():
     trie = Trie()
@@ -180,6 +190,7 @@ def test_trie_insert_batch():
 # ---------------------------------------------------------------------------
 # Test 10: Trie.__len__ counts sequences
 # ---------------------------------------------------------------------------
+
 
 def test_trie_len():
     trie = Trie()
@@ -196,6 +207,7 @@ def test_trie_len():
 # Test 11: constrained_logits masks non-allowed tokens to -inf
 # ---------------------------------------------------------------------------
 
+
 def test_constrained_logits_non_allowed_are_neginf():
     logits = torch.zeros(VOCAB_SIZE)
     allowed = [3, 7]
@@ -208,6 +220,7 @@ def test_constrained_logits_non_allowed_are_neginf():
 # ---------------------------------------------------------------------------
 # Test 12: constrained_logits allowed tokens have finite values
 # ---------------------------------------------------------------------------
+
 
 def test_constrained_logits_allowed_are_finite():
     logits = torch.ones(VOCAB_SIZE)
@@ -237,6 +250,7 @@ def test_constrained_logits_temperature_scaling():
 # Test 13: TrieDecoder instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_trie_decoder_instantiates():
     model = TinyModel()
     trie = Trie()
@@ -251,6 +265,7 @@ def test_trie_decoder_instantiates():
 # ---------------------------------------------------------------------------
 # Test 14: TrieDecoder.generate returns (Tensor, dict) with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_trie_decoder_generate_returns_tensor_and_dict():
     model = TinyModel(preferred_token=1)
@@ -272,6 +287,7 @@ def test_trie_decoder_generate_returns_tensor_and_dict():
 # ---------------------------------------------------------------------------
 # Test 15: TrieDecoder.generate output tokens are subset of trie paths
 # ---------------------------------------------------------------------------
+
 
 def test_trie_decoder_generate_tokens_follow_trie():
     """Model prefers token 1; trie only allows [2, 3]. Decoder must follow trie."""
@@ -295,6 +311,7 @@ def test_trie_decoder_generate_tokens_follow_trie():
 # Test 16: TrieDecoder.batch_generate returns list of n_sequences tensors
 # ---------------------------------------------------------------------------
 
+
 def test_trie_decoder_batch_generate_returns_n_sequences():
     model = TinyModel(preferred_token=1)
     trie = Trie()
@@ -315,6 +332,7 @@ def test_trie_decoder_batch_generate_returns_n_sequences():
 # ---------------------------------------------------------------------------
 # Extra: generated_ids has correct length (max_new_tokens)
 # ---------------------------------------------------------------------------
+
 
 def test_trie_decoder_generate_output_length():
     model = TinyModel(preferred_token=2)

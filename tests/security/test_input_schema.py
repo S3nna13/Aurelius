@@ -1,7 +1,6 @@
 """Tests for input schema."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.input_schema import InputSchema, ParamSpec
 

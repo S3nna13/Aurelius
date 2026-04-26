@@ -3,6 +3,7 @@
 3 prediction heads share a single projection weight.
 Acceptance rate: 2.76 vs 2.55 unshared (DeepSeek-V3 baseline).
 """
+
 from __future__ import annotations
 
 import torch
@@ -28,9 +29,9 @@ class SharedMTPHead(nn.Module):
         # Single shared projection — all heads use the SAME weight tensor
         self.shared_proj = nn.Linear(d_model, vocab_size, bias=False)
         # Per-head input transforms (not shared)
-        self.input_projs = nn.ModuleList([
-            nn.Linear(d_model, d_model, bias=False) for _ in range(n_heads)
-        ])
+        self.input_projs = nn.ModuleList(
+            [nn.Linear(d_model, d_model, bias=False) for _ in range(n_heads)]
+        )
 
     def forward(self, hidden: torch.Tensor) -> list[torch.Tensor]:
         """Produce per-head logit tensors.
@@ -46,7 +47,7 @@ class SharedMTPHead(nn.Module):
     def acceptance_rate(
         self,
         logits_list: list[torch.Tensor],  # [B, T, V] each
-        targets: torch.Tensor,             # [B, T] token IDs
+        targets: torch.Tensor,  # [B, T] token IDs
     ) -> float:
         """Compute speculative-decoding acceptance rate.
 
@@ -63,12 +64,12 @@ class SharedMTPHead(nn.Module):
         """
         total, accepted = 0, 0
         for i, logits in enumerate(logits_list):
-            preds = logits.argmax(-1)          # [B, T]
+            preds = logits.argmax(-1)  # [B, T]
             offset = i + 1
             if offset >= targets.shape[1]:
                 continue
-            gt = targets[:, offset:]           # [B, T-offset]
-            pr = preds[:, :gt.shape[1]]        # [B, T-offset]
+            gt = targets[:, offset:]  # [B, T-offset]
+            pr = preds[:, : gt.shape[1]]  # [B, T-offset]
             accepted += (pr == gt).float().sum().item()
             total += gt.numel()
         return accepted / max(total, 1)

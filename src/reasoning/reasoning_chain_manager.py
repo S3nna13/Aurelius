@@ -3,7 +3,9 @@
 Inspired by Kimi-Dev patch-synthesis loop (MoonshotAI, MIT) and DeepSeek-R1
 reasoning chain; Aurelius-native unified API. License: MIT.
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -24,18 +26,27 @@ class ChainStep:
 
 
 class ReasoningChainManager:
-    def __init__(self, default_strategy: ChainStrategy = ChainStrategy.COT,
-                 max_steps: int = 256, max_step_length: int = 4096) -> None:
+    def __init__(
+        self,
+        default_strategy: ChainStrategy = ChainStrategy.COT,
+        max_steps: int = 256,
+        max_step_length: int = 4096,
+    ) -> None:
         self.default_strategy = default_strategy
         self.max_steps = max_steps
         self.max_step_length = max_step_length
         self._steps: list[ChainStep] = []
 
-    def add_step(self, content: str, strategy: ChainStrategy | None = None,
-                 score: float = 0.0, metadata: dict | None = None) -> ChainStep:
+    def add_step(
+        self,
+        content: str,
+        strategy: ChainStrategy | None = None,
+        score: float = 0.0,
+        metadata: dict | None = None,
+    ) -> ChainStep:
         if len(self._steps) >= self.max_steps:
             raise ValueError(f"max_steps {self.max_steps} reached")
-        content = content[:self.max_step_length]
+        content = content[: self.max_step_length]
         step = ChainStep(
             strategy=strategy if strategy is not None else self.default_strategy,
             content=content,
@@ -58,13 +69,17 @@ class ReasoningChainManager:
 
     def export(self) -> list[dict]:
         return [
-            {"strategy": s.strategy.value, "content": s.content,
-             "score": s.score, "metadata": dict(s.metadata)}
+            {
+                "strategy": s.strategy.value,
+                "content": s.content,
+                "score": s.score,
+                "metadata": dict(s.metadata),
+            }
             for s in self._steps
         ]
 
     @classmethod
-    def from_export(cls, data: list[dict]) -> "ReasoningChainManager":
+    def from_export(cls, data: list[dict]) -> ReasoningChainManager:
         mgr = cls()
         for item in data:
             if "strategy" not in item or "content" not in item:

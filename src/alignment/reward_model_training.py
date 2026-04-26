@@ -6,7 +6,7 @@ to produce quality scores and risk classifications simultaneously.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -77,11 +77,11 @@ class MultiHeadRewardModel(nn.Module):
             Tuple of ``(quality_score, risk_logits)`` where ``quality_score``
             has shape ``(B, 1)`` and ``risk_logits`` has shape ``(B, 4)``.
         """
-        text_repr = self.text_proj(text_hidden.mean(dim=1))   # (B, 256)
-        tabular_repr = self.tabular_proj(features_vec)         # (B, 256)
-        fused = torch.cat([text_repr, tabular_repr], dim=-1)   # (B, 512)
-        quality_score = self.quality_head(fused)               # (B, 1)
-        risk_logits = self.risk_head(fused)                    # (B, 4)
+        text_repr = self.text_proj(text_hidden.mean(dim=1))  # (B, 256)
+        tabular_repr = self.tabular_proj(features_vec)  # (B, 256)
+        fused = torch.cat([text_repr, tabular_repr], dim=-1)  # (B, 512)
+        quality_score = self.quality_head(fused)  # (B, 1)
+        risk_logits = self.risk_head(fused)  # (B, 4)
         return quality_score, risk_logits
 
 

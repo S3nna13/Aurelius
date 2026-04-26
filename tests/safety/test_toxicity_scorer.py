@@ -1,13 +1,14 @@
 """Tests for src/safety/toxicity_scorer.py"""
+
 from __future__ import annotations
 
 import pytest
 
 from src.safety.toxicity_scorer import (
+    SAFETY_REGISTRY,
     ToxicityCategory,
     ToxicityScore,
     ToxicityScorer,
-    SAFETY_REGISTRY,
 )
 
 
@@ -19,6 +20,7 @@ def scorer() -> ToxicityScorer:
 # ---------------------------------------------------------------------------
 # Basic interface
 # ---------------------------------------------------------------------------
+
 
 def test_score_returns_toxicity_score(scorer):
     result = scorer.score("hello world")
@@ -46,6 +48,7 @@ def test_overall_is_max_of_categories(scorer):
 # Clean text
 # ---------------------------------------------------------------------------
 
+
 def test_clean_text_not_flagged(scorer):
     result = scorer.score("The weather is lovely today.", threshold=0.5)
     assert not result.flagged
@@ -59,6 +62,7 @@ def test_clean_text_low_scores(scorer):
 # ---------------------------------------------------------------------------
 # Category-specific detection
 # ---------------------------------------------------------------------------
+
 
 def test_hate_pattern_detected(scorer):
     result = scorer.score("I hate all those people.", threshold=0.1)
@@ -89,6 +93,7 @@ def test_harassment_pattern_detected(scorer):
 # Threshold
 # ---------------------------------------------------------------------------
 
+
 def test_threshold_controls_flagged(scorer):
     text = "I hate all those people."
     # overall score for this text is >= 0 so threshold=2.0 (above max) won't flag
@@ -102,6 +107,7 @@ def test_threshold_controls_flagged(scorer):
 # ---------------------------------------------------------------------------
 # Batch scoring
 # ---------------------------------------------------------------------------
+
 
 def test_batch_score_returns_correct_length(scorer):
     texts = ["hello", "world", "foo bar baz"]
@@ -125,6 +131,7 @@ def test_batch_score_preserves_text(scorer):
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_safety_registry_contains_scorer():
     assert "toxicity_scorer" in SAFETY_REGISTRY

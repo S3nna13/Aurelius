@@ -4,10 +4,10 @@ import hashlib
 import json
 import logging
 import multiprocessing
-import os
 import random
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -105,7 +105,9 @@ class TokenizePipeline:
                 if not self.validate_shard(str(shard_file)):
                     logger.warning("Shard %s failed integrity check", shard_file)
 
-        logger.info("Tokenized %d texts into %d shards at %s", len(texts), len(shard_paths), output_dir)
+        logger.info(
+            "Tokenized %d texts into %d shards at %s", len(texts), len(shard_paths), output_dir
+        )
         return shard_paths
 
     def tokenize_jsonl(
@@ -120,7 +122,7 @@ class TokenizePipeline:
         if not input_file.exists():
             raise FileNotFoundError(f"Input file not found: {input_path}")
 
-        with open(input_file, "r", encoding="utf-8") as f:
+        with open(input_file, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:

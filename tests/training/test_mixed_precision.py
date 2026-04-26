@@ -1,20 +1,18 @@
 """Tests for src/training/mixed_precision.py."""
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.mixed_precision import (
-    MixedPrecisionConfig,
     DynamicLossScaler,
+    MixedPrecisionConfig,
     MixedPrecisionTrainer,
     autocast_forward,
     count_overflow_params,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -50,11 +48,12 @@ def _make_trainer(dtype="bfloat16"):
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_mp_config_defaults():
     cfg = MixedPrecisionConfig()
     assert cfg.enabled is True
     assert cfg.dtype == "float16"
-    assert cfg.initial_scale == 2 ** 16
+    assert cfg.initial_scale == 2**16
     assert cfg.growth_factor == 2.0
     assert cfg.backoff_factor == 0.5
     assert cfg.growth_interval == 2000

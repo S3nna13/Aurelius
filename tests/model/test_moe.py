@@ -2,12 +2,10 @@
 
 All imports use the public aurelius namespace as required.
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
-import torch.nn as nn
-
 from aurelius.model.moe import (
     ExpertFFN,
     MoEBlock,
@@ -36,6 +34,7 @@ def make_x(b=B, t=T, d=D_MODEL):
 # RouterConfig
 # ---------------------------------------------------------------------------
 
+
 def test_router_config_defaults():
     """RouterConfig fields default correctly."""
     cfg = RouterConfig(n_experts=8)
@@ -56,6 +55,7 @@ def test_router_config_custom():
 # ---------------------------------------------------------------------------
 # TopKRouter
 # ---------------------------------------------------------------------------
+
 
 def test_topk_router_output_shapes():
     """TopKRouter returns tensors of the correct shapes."""
@@ -114,10 +114,11 @@ def test_topk_router_jitter_noise_training():
 # ExpertFFN
 # ---------------------------------------------------------------------------
 
+
 def test_expert_ffn_output_shape():
     """ExpertFFN output must match input shape."""
     expert = ExpertFFN(D_MODEL, D_FF)
-    x = make_x()   # (B, T, D_MODEL)
+    x = make_x()  # (B, T, D_MODEL)
     out = expert(x)
     assert out.shape == x.shape, f"expected {x.shape}, got {out.shape}"
 
@@ -135,6 +136,7 @@ def test_expert_ffn_grad_flows():
 # ---------------------------------------------------------------------------
 # SparseMoELayer
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_moe_output_shape():
     """SparseMoELayer output must have same shape as input."""
@@ -168,6 +170,7 @@ def test_sparse_moe_grad_flows_to_input():
 # MoEBlock
 # ---------------------------------------------------------------------------
 
+
 def test_moe_block_output_shape():
     """MoEBlock output must have same shape as input."""
     block = MoEBlock(D_MODEL, D_FF, N_EXPERTS, TOP_K, N_HEADS)
@@ -199,6 +202,7 @@ def test_moe_block_grad_flows():
 # Load balancing
 # ---------------------------------------------------------------------------
 
+
 def test_load_balance_no_single_expert_dominates():
     """With random inputs no single expert should receive > 90% of tokens."""
     torch.manual_seed(42)
@@ -208,7 +212,7 @@ def test_load_balance_no_single_expert_dominates():
         _, indices, _ = layer.router(x)  # (16, 32, TOP_K)
 
     idx_flat = indices.reshape(-1)  # (16 * 32 * TOP_K,)
-    total = idx_flat.numel()
+    idx_flat.numel()
     for e in range(N_EXPERTS):
         frac = (idx_flat == e).float().mean().item()
         assert frac < 0.9, (
@@ -220,6 +224,7 @@ def test_load_balance_no_single_expert_dominates():
 # ---------------------------------------------------------------------------
 # top_k = 1
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_1_shapes():
     """top_k=1 (hard routing) must produce correct shapes and finite output."""

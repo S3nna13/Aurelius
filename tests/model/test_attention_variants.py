@@ -1,8 +1,7 @@
 """Tests for src/model/attention_variants.py — 16 tests total."""
+
 from __future__ import annotations
 
-import math
-import pytest
 import torch
 
 from src.model.attention_variants import (
@@ -19,6 +18,7 @@ from src.model.attention_variants import (
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def make_causal_mask(T: int) -> torch.Tensor:
     """(T, T) lower-triangular causal mask."""
@@ -50,6 +50,7 @@ def gqa_config(**kwargs) -> AttentionVariantConfig:
 # Test 1: AttentionVariantConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = AttentionVariantConfig()
     assert cfg.d_model == 256
@@ -64,6 +65,7 @@ def test_config_defaults():
 # Test 2: mha_attention output shape (B, H, T, head_dim)
 # ---------------------------------------------------------------------------
 
+
 def test_mha_attention_output_shape():
     B, H, T, hd = 2, 4, 8, 16
     q = torch.randn(B, H, T, hd)
@@ -77,6 +79,7 @@ def test_mha_attention_output_shape():
 # Test 3: mha_attention with H_kv < H (KV expansion)
 # ---------------------------------------------------------------------------
 
+
 def test_mha_attention_kv_expansion():
     B, H, H_kv, T, hd = 2, 8, 2, 6, 16
     q = torch.randn(B, H, T, hd)
@@ -89,6 +92,7 @@ def test_mha_attention_kv_expansion():
 # ---------------------------------------------------------------------------
 # Test 4: mha_attention causal mask prevents future attention
 # ---------------------------------------------------------------------------
+
 
 def test_mha_attention_causal_mask():
     B, H, T, hd = 1, 1, 4, 8
@@ -125,6 +129,7 @@ def test_mha_attention_causal_mask():
 # Test 5: MultiHeadAttention output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_mha_module_output_shape():
     cfg = mha_config()
     model = MultiHeadAttention(cfg)
@@ -136,6 +141,7 @@ def test_mha_module_output_shape():
 # ---------------------------------------------------------------------------
 # Test 6: MultiHeadAttention is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_mha_module_differentiable():
     cfg = mha_config()
@@ -152,6 +158,7 @@ def test_mha_module_differentiable():
 # Test 7: MultiQueryAttention output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_mqa_module_output_shape():
     cfg = mqa_config()
     model = MultiQueryAttention(cfg)
@@ -164,6 +171,7 @@ def test_mqa_module_output_shape():
 # Test 8: MultiQueryAttention fewer KV params than MHA
 # ---------------------------------------------------------------------------
 
+
 def test_mqa_fewer_kv_params_than_mha():
     cfg_mha = mha_config()
     cfg_mqa = mqa_config()
@@ -172,7 +180,11 @@ def test_mqa_fewer_kv_params_than_mha():
     mqa = MultiQueryAttention(cfg_mqa)
 
     def kv_params(m: torch.nn.Module) -> int:
-        return sum(p.numel() for name, p in m.named_parameters() if name in ("k_proj.weight", "v_proj.weight"))
+        return sum(
+            p.numel()
+            for name, p in m.named_parameters()
+            if name in ("k_proj.weight", "v_proj.weight")
+        )
 
     assert kv_params(mqa) < kv_params(mha)
 
@@ -180,6 +192,7 @@ def test_mqa_fewer_kv_params_than_mha():
 # ---------------------------------------------------------------------------
 # Test 9: GroupedQueryAttention output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_gqa_module_output_shape():
     cfg = gqa_config()
@@ -193,21 +206,32 @@ def test_gqa_module_output_shape():
 # Test 10: GroupedQueryAttention param count between MHA and MQA
 # ---------------------------------------------------------------------------
 
+
 def test_gqa_param_count_between_mha_and_mqa():
     d_model = 64
     n_heads = 8
     head_dim = 16
 
-    cfg_mha = AttentionVariantConfig(d_model=d_model, n_heads=n_heads, n_kv_heads=n_heads, head_dim=head_dim)
-    cfg_gqa = AttentionVariantConfig(d_model=d_model, n_heads=n_heads, n_kv_heads=4, head_dim=head_dim)
-    cfg_mqa = AttentionVariantConfig(d_model=d_model, n_heads=n_heads, n_kv_heads=1, head_dim=head_dim)
+    cfg_mha = AttentionVariantConfig(
+        d_model=d_model, n_heads=n_heads, n_kv_heads=n_heads, head_dim=head_dim
+    )
+    cfg_gqa = AttentionVariantConfig(
+        d_model=d_model, n_heads=n_heads, n_kv_heads=4, head_dim=head_dim
+    )
+    cfg_mqa = AttentionVariantConfig(
+        d_model=d_model, n_heads=n_heads, n_kv_heads=1, head_dim=head_dim
+    )
 
     mha = MultiHeadAttention(cfg_mha)
     gqa = GroupedQueryAttention(cfg_gqa)
     mqa = MultiQueryAttention(cfg_mqa)
 
     def kv_params(m: torch.nn.Module) -> int:
-        return sum(p.numel() for name, p in m.named_parameters() if name in ("k_proj.weight", "v_proj.weight"))
+        return sum(
+            p.numel()
+            for name, p in m.named_parameters()
+            if name in ("k_proj.weight", "v_proj.weight")
+        )
 
     assert kv_params(mqa) < kv_params(gqa) < kv_params(mha)
 
@@ -215,6 +239,7 @@ def test_gqa_param_count_between_mha_and_mqa():
 # ---------------------------------------------------------------------------
 # Test 11: CrossAttention output shape (B, T_q, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_cross_attention_output_shape():
     cfg = mha_config()
@@ -228,6 +253,7 @@ def test_cross_attention_output_shape():
 # ---------------------------------------------------------------------------
 # Test 12: CrossAttention T_q can differ from T_kv
 # ---------------------------------------------------------------------------
+
 
 def test_cross_attention_different_seq_lens():
     cfg = mha_config()
@@ -243,6 +269,7 @@ def test_cross_attention_different_seq_lens():
 # ---------------------------------------------------------------------------
 # Test 13: count_kv_parameters — MQA has 1/n_heads the KV params of MHA
 # ---------------------------------------------------------------------------
+
 
 def test_count_kv_parameters_mqa_ratio():
     n_heads = 8
@@ -261,6 +288,7 @@ def test_count_kv_parameters_mqa_ratio():
 # Test 14: attention_memory_ratio — MQA: 1/n_heads
 # ---------------------------------------------------------------------------
 
+
 def test_attention_memory_ratio_mqa():
     n_heads = 8
     ratio = attention_memory_ratio(n_heads=n_heads, n_kv_heads=1)
@@ -270,6 +298,7 @@ def test_attention_memory_ratio_mqa():
 # ---------------------------------------------------------------------------
 # Test 15: attention_memory_ratio — MHA: 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_attention_memory_ratio_mha():
     n_heads = 16
@@ -281,6 +310,7 @@ def test_attention_memory_ratio_mha():
 # Test 16: All attention variants produce same output shape for same config
 # ---------------------------------------------------------------------------
 
+
 def test_all_variants_same_output_shape():
     """MHA, GQA, and MQA should all produce (B, T, d_model) for the same input."""
     d_model = 64
@@ -288,9 +318,15 @@ def test_all_variants_same_output_shape():
     head_dim = 16
     B, T = 2, 10
 
-    cfg_mha = AttentionVariantConfig(d_model=d_model, n_heads=n_heads, n_kv_heads=n_heads, head_dim=head_dim)
-    cfg_gqa = AttentionVariantConfig(d_model=d_model, n_heads=n_heads, n_kv_heads=2, head_dim=head_dim)
-    cfg_mqa = AttentionVariantConfig(d_model=d_model, n_heads=n_heads, n_kv_heads=1, head_dim=head_dim)
+    cfg_mha = AttentionVariantConfig(
+        d_model=d_model, n_heads=n_heads, n_kv_heads=n_heads, head_dim=head_dim
+    )
+    cfg_gqa = AttentionVariantConfig(
+        d_model=d_model, n_heads=n_heads, n_kv_heads=2, head_dim=head_dim
+    )
+    cfg_mqa = AttentionVariantConfig(
+        d_model=d_model, n_heads=n_heads, n_kv_heads=1, head_dim=head_dim
+    )
 
     x = torch.randn(B, T, d_model)
     expected_shape = (B, T, d_model)
@@ -303,4 +339,6 @@ def test_all_variants_same_output_shape():
 
     for model in models:
         out = model(x)
-        assert out.shape == expected_shape, f"{type(model).__name__}: expected {expected_shape}, got {out.shape}"
+        assert out.shape == expected_shape, (
+            f"{type(model).__name__}: expected {expected_shape}, got {out.shape}"
+        )

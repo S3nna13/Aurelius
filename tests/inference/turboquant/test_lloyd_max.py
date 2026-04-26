@@ -1,7 +1,8 @@
 """Tests for Lloyd-Max codebook for Beta(2,2)."""
+
 import torch
-import pytest
-from src.inference.turboquant.lloyd_max import compute_lloyd_max_codebook, _CODEBOOK_CACHE
+
+from src.inference.turboquant.lloyd_max import _CODEBOOK_CACHE, compute_lloyd_max_codebook
 
 
 def test_codebook_length():
@@ -48,8 +49,9 @@ def test_codebook_symmetric():
     cb = compute_lloyd_max_codebook(8)
     # Mirror: codebook[i] + codebook[n-1-i] should be close to 1.0
     mirror_sum = cb + cb.flip(0)
-    assert torch.allclose(mirror_sum, torch.ones(8), atol=1e-4), \
+    assert torch.allclose(mirror_sum, torch.ones(8), atol=1e-4), (
         f"Codebook not symmetric: {mirror_sum}"
+    )
 
 
 def test_different_sizes_independent():

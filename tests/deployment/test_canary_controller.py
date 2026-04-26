@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+
 import pytest
 
 from src.deployment.canary_controller import (
@@ -13,10 +14,10 @@ from src.deployment.canary_controller import (
     CanaryState,
 )
 
-
 # ---------------------------------------------------------------------------
 # CanaryStage dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCanaryStage:
     def test_fields_set(self):
@@ -52,6 +53,7 @@ class TestCanaryStage:
 # Default stages
 # ---------------------------------------------------------------------------
 
+
 class TestDefaultStages:
     def test_default_stages_count(self):
         assert len(DEFAULT_STAGES) == 4
@@ -69,6 +71,7 @@ class TestDefaultStages:
 # ---------------------------------------------------------------------------
 # CanaryController — initial state
 # ---------------------------------------------------------------------------
+
 
 class TestCanaryControllerInit:
     def test_starts_at_stage_zero(self):
@@ -92,6 +95,7 @@ class TestCanaryControllerInit:
 # ---------------------------------------------------------------------------
 # CanaryController — advance (success path)
 # ---------------------------------------------------------------------------
+
 
 class TestCanaryControllerAdvanceSuccess:
     def test_advance_success_moves_to_next_stage(self):
@@ -138,6 +142,7 @@ class TestCanaryControllerAdvanceSuccess:
 # CanaryController — advance (failure path)
 # ---------------------------------------------------------------------------
 
+
 class TestCanaryControllerAdvanceFailure:
     def test_advance_below_threshold_sets_failed(self):
         cc = CanaryController()
@@ -166,6 +171,7 @@ class TestCanaryControllerAdvanceFailure:
 # CanaryController — rollback
 # ---------------------------------------------------------------------------
 
+
 class TestCanaryControllerRollback:
     def test_rollback_sets_rolled_back(self):
         cc = CanaryController()
@@ -187,6 +193,7 @@ class TestCanaryControllerRollback:
 # ---------------------------------------------------------------------------
 # CanaryController — traffic_pct
 # ---------------------------------------------------------------------------
+
 
 class TestCanaryControllerTrafficPct:
     def test_traffic_pct_initial(self):
@@ -219,6 +226,7 @@ class TestCanaryControllerTrafficPct:
 # CanaryController — summary
 # ---------------------------------------------------------------------------
 
+
 class TestCanaryControllerSummary:
     def test_summary_has_required_keys(self):
         cc = CanaryController()
@@ -248,6 +256,7 @@ class TestCanaryControllerSummary:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):

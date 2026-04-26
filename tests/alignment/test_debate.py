@@ -6,16 +6,15 @@ import pytest
 
 from src.alignment.debate import (
     DebateConfig,
-    DebateTurn,
-    DebateJudge,
     DebateDebater,
+    DebateJudge,
     DebateSession,
+    DebateTurn,
     aggregate_debate_results,
     format_debate_for_training,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -32,8 +31,13 @@ CONFIG = AureliusConfig(
     max_seq_len=512,
 )
 
-TOKENIZER_ENCODE = lambda t: list(t.encode("utf-8")[:32])
-TOKENIZER_DECODE = lambda ids: bytes(ids).decode("utf-8", errors="replace")
+
+def TOKENIZER_ENCODE(t):
+    return list(t.encode("utf-8")[:32])
+
+
+def TOKENIZER_DECODE(ids):
+    return bytes(ids).decode("utf-8", errors="replace")
 
 
 def make_model():
@@ -64,8 +68,7 @@ def make_session(question="Is Python better than Java?", positions=None):
     config = make_debate_config()
     model = make_model()
     debaters = [
-        make_debater(debater_id=i, model=model, config=config)
-        for i in range(config.n_debaters)
+        make_debater(debater_id=i, model=model, config=config) for i in range(config.n_debaters)
     ]
     judge = make_judge(model)
     return DebateSession(question, positions, debaters, judge, config)

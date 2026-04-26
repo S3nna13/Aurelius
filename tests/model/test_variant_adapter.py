@@ -48,9 +48,7 @@ def test_all_adapter_kinds_allowed():
 
 
 def test_lora_validates_rank_and_target_modules():
-    a = VariantAdapter(
-        id="v/lora", kind=AdapterKind.LORA, target_modules=("q", "k"), rank=8
-    )
+    a = VariantAdapter(id="v/lora", kind=AdapterKind.LORA, target_modules=("q", "k"), rank=8)
     assert a.rank == 8
     assert a.target_modules == ("q", "k")
 
@@ -62,9 +60,7 @@ def test_invalid_lora_missing_rank_raises():
 
 def test_invalid_lora_zero_rank_raises():
     with pytest.raises(AdapterValidationError):
-        VariantAdapter(
-            id="v/bad", kind=AdapterKind.LORA, target_modules=("q",), rank=0
-        )
+        VariantAdapter(id="v/bad", kind=AdapterKind.LORA, target_modules=("q",), rank=0)
 
 
 def test_invalid_lora_empty_target_modules_raises():

@@ -1,4 +1,5 @@
 """Tests for AgentHealthMonitor."""
+
 from __future__ import annotations
 
 import threading
@@ -7,15 +8,15 @@ import time
 import pytest
 
 from src.monitoring.agent_health_monitor import (
-    AgentHealthMonitor,
     AGENT_HEALTH_MONITOR_REGISTRY,
     DEFAULT_AGENT_HEALTH_MONITOR,
+    AgentHealthMonitor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
+
 
 class TestRegisterAgent:
     def setup_method(self):
@@ -50,6 +51,7 @@ class TestRegisterAgent:
 # Heartbeat
 # ---------------------------------------------------------------------------
 
+
 class TestRecordHeartbeat:
     def setup_method(self):
         self.monitor = AgentHealthMonitor()
@@ -78,6 +80,7 @@ class TestRecordHeartbeat:
 # Health check
 # ---------------------------------------------------------------------------
 
+
 class TestCheckHealth:
     def setup_method(self):
         self.monitor = AgentHealthMonitor()
@@ -97,6 +100,7 @@ class TestCheckHealth:
 # ---------------------------------------------------------------------------
 # Timeout detection
 # ---------------------------------------------------------------------------
+
 
 class TestTimeoutDetection:
     def setup_method(self):
@@ -118,6 +122,7 @@ class TestTimeoutDetection:
 # ---------------------------------------------------------------------------
 # Get unhealthy
 # ---------------------------------------------------------------------------
+
 
 class TestGetUnhealthy:
     def setup_method(self):
@@ -144,6 +149,7 @@ class TestGetUnhealthy:
 # Removal
 # ---------------------------------------------------------------------------
 
+
 class TestRemoveAgent:
     def setup_method(self):
         self.monitor = AgentHealthMonitor()
@@ -161,6 +167,7 @@ class TestRemoveAgent:
 # ---------------------------------------------------------------------------
 # Thread safety
 # ---------------------------------------------------------------------------
+
 
 class TestThreadSafety:
     def setup_method(self):
@@ -211,6 +218,7 @@ class TestThreadSafety:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_contains_default(self):

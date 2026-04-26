@@ -12,15 +12,14 @@ Covers:
 
 from __future__ import annotations
 
-import math
 import pytest
 
 from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingEvalConfig
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def evaluator() -> VisionGroundingEval:
@@ -37,6 +36,7 @@ def strict_evaluator() -> VisionGroundingEval:
 # 1. box_iou — identical boxes
 # ---------------------------------------------------------------------------
 
+
 def test_box_iou_identical(evaluator: VisionGroundingEval) -> None:
     box = (0.0, 0.0, 4.0, 4.0)
     assert evaluator.box_iou(box, box) == pytest.approx(1.0, abs=1e-6)
@@ -45,6 +45,7 @@ def test_box_iou_identical(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # 2. box_iou — no overlap
 # ---------------------------------------------------------------------------
+
 
 def test_box_iou_no_overlap(evaluator: VisionGroundingEval) -> None:
     box_a = (0.0, 0.0, 2.0, 2.0)
@@ -58,6 +59,7 @@ def test_box_iou_no_overlap(evaluator: VisionGroundingEval) -> None:
 #    Intersection = 1×1 = 1; Union = 4+4-1 = 7; IoU = 1/7 ≈ 0.1428…
 # ---------------------------------------------------------------------------
 
+
 def test_box_iou_partial(evaluator: VisionGroundingEval) -> None:
     box_a = (0.0, 0.0, 2.0, 2.0)
     box_b = (1.0, 1.0, 3.0, 3.0)
@@ -68,6 +70,7 @@ def test_box_iou_partial(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # 4. soft_iou_f1 — perfect match (pred == gt)
 # ---------------------------------------------------------------------------
+
 
 def test_soft_iou_f1_perfect(evaluator: VisionGroundingEval) -> None:
     boxes = [(0, 0, 10, 10), (20, 20, 30, 30)]
@@ -82,6 +85,7 @@ def test_soft_iou_f1_perfect(evaluator: VisionGroundingEval) -> None:
 # 5. soft_iou_f1 — no matching boxes (non-overlapping)
 # ---------------------------------------------------------------------------
 
+
 def test_soft_iou_f1_no_match(evaluator: VisionGroundingEval) -> None:
     pred = [(0, 0, 1, 1)]
     gt = [(100, 100, 200, 200)]
@@ -93,6 +97,7 @@ def test_soft_iou_f1_no_match(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # 6. soft_iou_f1 — empty predictions
 # ---------------------------------------------------------------------------
+
 
 def test_soft_iou_f1_empty_pred(evaluator: VisionGroundingEval) -> None:
     gt = [(0, 0, 10, 10)]
@@ -106,6 +111,7 @@ def test_soft_iou_f1_empty_pred(evaluator: VisionGroundingEval) -> None:
 # 7. soft_iou_f1 — empty ground truths
 # ---------------------------------------------------------------------------
 
+
 def test_soft_iou_f1_empty_gt(evaluator: VisionGroundingEval) -> None:
     pred = [(0, 0, 10, 10)]
     result = evaluator.soft_iou_f1(pred, [])
@@ -116,6 +122,7 @@ def test_soft_iou_f1_empty_gt(evaluator: VisionGroundingEval) -> None:
 # 8. normalized_edit_distance — identical strings
 # ---------------------------------------------------------------------------
 
+
 def test_ned_identical(evaluator: VisionGroundingEval) -> None:
     assert evaluator.normalized_edit_distance("hello", "hello") == pytest.approx(1.0, abs=1e-6)
 
@@ -123,6 +130,7 @@ def test_ned_identical(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # 9. normalized_edit_distance — both empty
 # ---------------------------------------------------------------------------
+
 
 def test_ned_empty_both(evaluator: VisionGroundingEval) -> None:
     # edit_distance("","")=0, denom=max(0,0,1)=1, NED=1-0/1=1.0
@@ -133,6 +141,7 @@ def test_ned_empty_both(evaluator: VisionGroundingEval) -> None:
 # 10. normalized_edit_distance — "kitten" vs "sitting"
 #     edit_distance = 3, max_len = 7, NED = 1 - 3/7 ≈ 0.5714
 # ---------------------------------------------------------------------------
+
 
 def test_ned_known(evaluator: VisionGroundingEval) -> None:
     ned = evaluator.normalized_edit_distance("kitten", "sitting")
@@ -145,6 +154,7 @@ def test_ned_known(evaluator: VisionGroundingEval) -> None:
 #     pred="", gt="abc" → edit_distance=3, denom=3, NED=1-3/3=0.0
 # ---------------------------------------------------------------------------
 
+
 def test_ned_empty_pred(evaluator: VisionGroundingEval) -> None:
     assert evaluator.normalized_edit_distance("", "abc") == pytest.approx(0.0, abs=1e-6)
 
@@ -152,6 +162,7 @@ def test_ned_empty_pred(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # 12. count_accuracy — exact match
 # ---------------------------------------------------------------------------
+
 
 def test_count_accuracy_exact(evaluator: VisionGroundingEval) -> None:
     assert evaluator.count_accuracy(5, 5) == pytest.approx(1.0, abs=1e-6)
@@ -161,6 +172,7 @@ def test_count_accuracy_exact(evaluator: VisionGroundingEval) -> None:
 # 13. count_accuracy — off by one (gt=5, pred=4)
 #     1 - |4-5| / max(5,1) = 1 - 1/5 = 0.8
 # ---------------------------------------------------------------------------
+
 
 def test_count_accuracy_off_by_one(evaluator: VisionGroundingEval) -> None:
     assert evaluator.count_accuracy(4, 5) == pytest.approx(0.8, abs=1e-6)
@@ -172,6 +184,7 @@ def test_count_accuracy_off_by_one(evaluator: VisionGroundingEval) -> None:
 #     gt=0, pred=3 → max(0, 1 - 3/1) = 0.0 (no crash)
 # ---------------------------------------------------------------------------
 
+
 def test_count_accuracy_zero_gt(evaluator: VisionGroundingEval) -> None:
     assert evaluator.count_accuracy(0, 0) == pytest.approx(1.0, abs=1e-6)
     assert evaluator.count_accuracy(3, 0) == pytest.approx(0.0, abs=1e-6)
@@ -180,6 +193,7 @@ def test_count_accuracy_zero_gt(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # 15. evaluate — aggregates over a list of 2 samples
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_aggregates(evaluator: VisionGroundingEval) -> None:
     predictions = [
@@ -202,6 +216,7 @@ def test_evaluate_aggregates(evaluator: VisionGroundingEval) -> None:
 # ---------------------------------------------------------------------------
 # Additional edge-case tests (taking total to 16)
 # ---------------------------------------------------------------------------
+
 
 # 16a. soft_iou_f1 — both empty → perfect score by convention (n_pred==0 and n_gt==0)
 def test_soft_iou_f1_both_empty(evaluator: VisionGroundingEval) -> None:

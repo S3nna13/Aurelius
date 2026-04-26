@@ -1,22 +1,22 @@
 """Tests for context distillation implementation (Askell et al. 2021)."""
-import copy
+
 import pytest
 import torch
 
 from src.alignment.context_distillation import (
     ContextDistillationConfig,
     ContextDistillationTrainer,
-    compute_teacher_logits,
     compute_student_logits,
+    compute_teacher_logits,
     context_distillation_loss,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg():
@@ -71,6 +71,7 @@ def cd_cfg():
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_compute_teacher_logits_shape(small_model, system_prompt_ids, message_ids, response_ids):
     """compute_teacher_logits must return (S_resp, V)."""
     logits = compute_teacher_logits(small_model, system_prompt_ids, message_ids, response_ids)
@@ -97,25 +98,37 @@ def test_teacher_student_logits_differ(small_model, system_prompt_ids, message_i
     )
 
 
-def test_context_distillation_loss_scalar(small_model, system_prompt_ids, message_ids, response_ids, cd_cfg):
+def test_context_distillation_loss_scalar(
+    small_model, system_prompt_ids, message_ids, response_ids, cd_cfg
+):
     """context_distillation_loss must return a scalar tensor."""
-    teacher_logits = compute_teacher_logits(small_model, system_prompt_ids, message_ids, response_ids)
+    teacher_logits = compute_teacher_logits(
+        small_model, system_prompt_ids, message_ids, response_ids
+    )
     student_logits = compute_student_logits(small_model, message_ids, response_ids)
     loss, _ = context_distillation_loss(student_logits, teacher_logits, response_ids, cd_cfg)
     assert loss.shape == (), f"Expected scalar, got shape {loss.shape}"
 
 
-def test_context_distillation_loss_finite(small_model, system_prompt_ids, message_ids, response_ids, cd_cfg):
+def test_context_distillation_loss_finite(
+    small_model, system_prompt_ids, message_ids, response_ids, cd_cfg
+):
     """context_distillation_loss must be finite."""
-    teacher_logits = compute_teacher_logits(small_model, system_prompt_ids, message_ids, response_ids)
+    teacher_logits = compute_teacher_logits(
+        small_model, system_prompt_ids, message_ids, response_ids
+    )
     student_logits = compute_student_logits(small_model, message_ids, response_ids)
     loss, _ = context_distillation_loss(student_logits, teacher_logits, response_ids, cd_cfg)
     assert torch.isfinite(loss), f"Loss is not finite: {loss.item()}"
 
 
-def test_context_distillation_loss_metrics(small_model, system_prompt_ids, message_ids, response_ids, cd_cfg):
+def test_context_distillation_loss_metrics(
+    small_model, system_prompt_ids, message_ids, response_ids, cd_cfg
+):
     """context_distillation_loss must return a dict with kl, ce, total keys."""
-    teacher_logits = compute_teacher_logits(small_model, system_prompt_ids, message_ids, response_ids)
+    teacher_logits = compute_teacher_logits(
+        small_model, system_prompt_ids, message_ids, response_ids
+    )
     student_logits = compute_student_logits(small_model, message_ids, response_ids)
     _, metrics = context_distillation_loss(student_logits, teacher_logits, response_ids, cd_cfg)
     assert "kl" in metrics, "Missing 'kl' key in metrics"
@@ -126,7 +139,9 @@ def test_context_distillation_loss_metrics(small_model, system_prompt_ids, messa
     assert isinstance(metrics["total"], float)
 
 
-def test_train_step_returns_metrics(small_model, system_prompt_ids, message_ids, response_ids, cd_cfg):
+def test_train_step_returns_metrics(
+    small_model, system_prompt_ids, message_ids, response_ids, cd_cfg
+):
     """train_step() must return finite metrics with kl, ce, total keys."""
     trainer = ContextDistillationTrainer(small_model, system_prompt_ids, cd_cfg)
     metrics = trainer.train_step(message_ids, response_ids)
@@ -138,14 +153,13 @@ def test_train_step_returns_metrics(small_model, system_prompt_ids, message_ids,
         assert torch.isfinite(torch.tensor(val)), f"metrics[{key!r}] = {val} is not finite"
 
 
-def test_train_step_updates_weights(small_model, system_prompt_ids, message_ids, response_ids, cd_cfg):
+def test_train_step_updates_weights(
+    small_model, system_prompt_ids, message_ids, response_ids, cd_cfg
+):
     """At least one weight must change after a train_step."""
     # Capture a snapshot of the last layer's parameters before training
     last_layer = list(small_model.layers)[-1]
-    params_before = {
-        name: p.clone().detach()
-        for name, p in last_layer.named_parameters()
-    }
+    params_before = {name: p.clone().detach() for name, p in last_layer.named_parameters()}
 
     trainer = ContextDistillationTrainer(small_model, system_prompt_ids, cd_cfg)
     trainer.train_step(message_ids, response_ids)

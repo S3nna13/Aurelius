@@ -2,31 +2,32 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NCEConfig:
     """Configuration for NCE-based language model loss."""
 
     n_noise_samples: int = 20
-    noise_dist: str = "unigram"          # "unigram" | "uniform"
-    noise_exponent: float = 0.75         # word2vec-style smoothing
+    noise_dist: str = "unigram"  # "unigram" | "uniform"
+    noise_exponent: float = 0.75  # word2vec-style smoothing
     temperature: float = 1.0
 
 
 # ---------------------------------------------------------------------------
 # Unigram sampler
 # ---------------------------------------------------------------------------
+
 
 class UnigramSampler:
     """Smoothed unigram noise sampler.
@@ -57,8 +58,9 @@ class UnigramSampler:
         if seed is not None:
             generator = torch.Generator()
             generator.manual_seed(seed)
-            return torch.multinomial(self.probs, num_samples=n, replacement=True,
-                                     generator=generator)
+            return torch.multinomial(
+                self.probs, num_samples=n, replacement=True, generator=generator
+            )
         return torch.multinomial(self.probs, num_samples=n, replacement=True)
 
     def log_prob(self, token_ids: Tensor) -> Tensor:
@@ -77,6 +79,7 @@ class UnigramSampler:
 # ---------------------------------------------------------------------------
 # NCE binary classification loss (functional)
 # ---------------------------------------------------------------------------
+
 
 def nce_loss(
     scores_pos: Tensor,
@@ -104,7 +107,7 @@ def nce_loss(
     """
     log_k = torch.tensor(float(k), device=scores_pos.device).log()
 
-    pos_terms = F.logsigmoid(scores_pos - log_k - log_noise_pos)   # (N,)
+    pos_terms = F.logsigmoid(scores_pos - log_k - log_noise_pos)  # (N,)
     neg_terms = F.logsigmoid(-(scores_neg - log_k - log_noise_neg))  # (M,)
 
     return -pos_terms.mean() - neg_terms.mean()
@@ -113,6 +116,7 @@ def nce_loss(
 # ---------------------------------------------------------------------------
 # Sampled softmax (TF-style)
 # ---------------------------------------------------------------------------
+
 
 def sampled_softmax_loss(
     logits: Tensor,
@@ -144,7 +148,7 @@ def sampled_softmax_loss(
     # Apply noise correction to sampled positions
     # We need the positions of sampled_ids within local_ids
     # The first len(targets) entries of `inverse` map targets; the rest map sampled_ids
-    sampled_local_idx = inverse[targets.shape[0]:]  # (S,) positions in local_ids
+    sampled_local_idx = inverse[targets.shape[0] :]  # (S,) positions in local_ids
 
     # Build correction vector of shape (L,) — zero for non-sampled tokens
     correction = torch.zeros(local_ids.shape[0], device=device)
@@ -156,7 +160,7 @@ def sampled_softmax_loss(
     local_logits = local_logits - correction.unsqueeze(0)  # (B, L)
 
     # Map target ids to their position in local_ids
-    target_local_idx = inverse[:targets.shape[0]]  # (B,)
+    target_local_idx = inverse[: targets.shape[0]]  # (B,)
 
     return F.cross_entropy(local_logits, target_local_idx)
 
@@ -164,6 +168,7 @@ def sampled_softmax_loss(
 # ---------------------------------------------------------------------------
 # NCE language model loss (nn.Module)
 # ---------------------------------------------------------------------------
+
 
 class NCELanguageModelLoss(nn.Module):
     """NCE-based language model loss for efficient large-vocabulary training.
@@ -209,8 +214,8 @@ class NCELanguageModelLoss(nn.Module):
         k = self.config.n_noise_samples
 
         # Flatten
-        hidden_flat = hidden.reshape(B * T, D)         # (N, D)
-        targets_flat = targets.reshape(B * T)           # (N,)
+        hidden_flat = hidden.reshape(B * T, D)  # (N, D)
+        targets_flat = targets.reshape(B * T)  # (N,)
         N = hidden_flat.shape[0]
 
         # Sample noise ids
@@ -218,7 +223,7 @@ class NCELanguageModelLoss(nn.Module):
             noise_ids = self.sampler.sample(k)
         else:
             noise_ids = torch.randint(0, self.vocab_size, (k,))
-        noise_ids = noise_ids.to(device)               # (k,)
+        noise_ids = noise_ids.to(device)  # (k,)
 
         # Full projection — (N, V)
         all_logits = self.output_proj(hidden_flat)
@@ -229,14 +234,14 @@ class NCELanguageModelLoss(nn.Module):
         scores_pos = all_logits[torch.arange(N, device=device), targets_flat]  # (N,)
 
         # Negative scores: (N, k)
-        scores_neg = all_logits[:, noise_ids]          # (N, k)
-        scores_neg_flat = scores_neg.reshape(-1)       # (N*k,)
+        scores_neg = all_logits[:, noise_ids]  # (N, k)
+        scores_neg_flat = scores_neg.reshape(-1)  # (N*k,)
 
         # Noise log-probs
         if self.sampler is not None:
-            log_noise_pos = self.sampler.log_prob(targets_flat.cpu()).to(device)     # (N,)
-            noise_ids_exp = noise_ids.unsqueeze(0).expand(N, k).reshape(-1)         # (N*k,)
-            log_noise_neg = self.sampler.log_prob(noise_ids_exp.cpu()).to(device)    # (N*k,)
+            log_noise_pos = self.sampler.log_prob(targets_flat.cpu()).to(device)  # (N,)
+            noise_ids_exp = noise_ids.unsqueeze(0).expand(N, k).reshape(-1)  # (N*k,)
+            log_noise_neg = self.sampler.log_prob(noise_ids_exp.cpu()).to(device)  # (N*k,)
         else:
             log_uniform = -torch.log(torch.tensor(float(self.vocab_size), device=device))
             log_noise_pos = torch.full((N,), log_uniform.item(), device=device)
@@ -254,6 +259,7 @@ class NCELanguageModelLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Comparison utility
 # ---------------------------------------------------------------------------
+
 
 def compare_nce_vs_softmax(
     model_scores: Tensor,
@@ -282,8 +288,8 @@ def compare_nce_vs_softmax(
     noise_ids = torch.randint(0, vocab_size, (k,), device=device)
     log_uniform = -torch.log(torch.tensor(float(vocab_size), device=device))
 
-    scores_pos = model_scores[torch.arange(B, device=device), targets]          # (B,)
-    scores_neg = model_scores[:, noise_ids].reshape(-1)                          # (B*k,)
+    scores_pos = model_scores[torch.arange(B, device=device), targets]  # (B,)
+    scores_neg = model_scores[:, noise_ids].reshape(-1)  # (B*k,)
     log_noise_pos = torch.full((B,), log_uniform.item(), device=device)
     log_noise_neg = torch.full((B * k,), log_uniform.item(), device=device)
 

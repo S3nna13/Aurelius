@@ -10,7 +10,7 @@ Reference: "ZClip: Adaptive Spike Mitigation for LLM Pre-Training"
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 
@@ -63,11 +63,8 @@ class ZClip:
             return 0.0
 
         # Compute total gradient norm (L2 across all parameters)
-        total_norm_sq = sum(
-            p.grad.detach().float().norm() ** 2
-            for p in params_with_grad
-        )
-        norm = float(total_norm_sq ** 0.5)
+        total_norm_sq = sum(p.grad.detach().float().norm() ** 2 for p in params_with_grad)
+        norm = float(total_norm_sq**0.5)
 
         # Guard against non-finite norms (NaN/Inf corrupting EMA state)
         if not math.isfinite(norm):

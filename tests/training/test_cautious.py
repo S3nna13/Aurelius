@@ -3,19 +3,19 @@
 Covers CautiousAdam, CautiousSGD, CautiousMask, and basic convergence/
 robustness properties.
 """
+
 from __future__ import annotations
 
-import math
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
-from src.training.cautious import CautiousAdam, CautiousSGD, CautiousMask, make_cautious
-
+from src.training.cautious import CautiousAdam, CautiousMask, CautiousSGD, make_cautious
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _simple_param(value: float = 2.0, requires_grad: bool = True) -> nn.Parameter:
     return nn.Parameter(torch.tensor([value]))
@@ -28,13 +28,14 @@ def _make_linear(in_f: int = 8, out_f: int = 4, seed: int = 0) -> nn.Linear:
 
 def _quadratic_loss(model: nn.Module, target: float = 0.0) -> torch.Tensor:
     """Sum-of-squares loss: drives all params toward *target*."""
-    total = sum((p ** 2).sum() for p in model.parameters())
+    total = sum((p**2).sum() for p in model.parameters())
     return total
 
 
 # ---------------------------------------------------------------------------
 # CautiousMask unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestCautiousMask:
     """Tests 3–6: mask properties."""
@@ -46,13 +47,12 @@ class TestCautiousMask:
         g_t = torch.randn(20)
         # Compute raw mask manually
         raw = (d_t * g_t > 0).float()
-        assert set(raw.unique().tolist()).issubset({0.0, 1.0}), \
-            "Raw mask must be binary (0 or 1)"
+        assert set(raw.unique().tolist()).issubset({0.0, 1.0}), "Raw mask must be binary (0 or 1)"
 
     def test_mask_one_where_same_sign(self):
         """Mask is 1 (before norm) where d_t and g_t have the same sign."""
-        d_t = torch.tensor([ 1.0, -1.0,  1.0, -1.0])
-        g_t = torch.tensor([ 2.0, -3.0, -1.0,  0.5])
+        d_t = torch.tensor([1.0, -1.0, 1.0, -1.0])
+        g_t = torch.tensor([2.0, -3.0, -1.0, 0.5])
         raw = (d_t * g_t > 0).float()
         # Positions 0 (+·+) and 1 (−·−) agree; positions 2 (+·−) and 3 (−·+) disagree
         assert raw[0] == 1.0 and raw[1] == 1.0
@@ -60,8 +60,8 @@ class TestCautiousMask:
 
     def test_mask_zero_where_opposite_sign(self):
         """Mask is 0 where d_t and g_t have opposite signs."""
-        d_t = torch.tensor([ 1.0, -1.0])
-        g_t = torch.tensor([-1.0,  1.0])
+        d_t = torch.tensor([1.0, -1.0])
+        g_t = torch.tensor([-1.0, 1.0])
         result = CautiousMask.apply(d_t, g_t)
         assert result[0].item() == pytest.approx(0.0)
         assert result[1].item() == pytest.approx(0.0)
@@ -75,14 +75,14 @@ class TestCautiousMask:
         nonzero = masked.abs() > 1e-12
         if nonzero.any():
             # masked_update and g_t should agree in sign wherever nonzero
-            products = (masked[nonzero] * g_t[nonzero])
-            assert (products > 0).all(), \
-                "Masked update elements must agree in sign with gradient"
+            products = masked[nonzero] * g_t[nonzero]
+            assert (products > 0).all(), "Masked update elements must agree in sign with gradient"
 
 
 # ---------------------------------------------------------------------------
 # CautiousAdam tests
 # ---------------------------------------------------------------------------
+
 
 class TestCautiousAdam:
     """Tests 1, 2, 7, 10–13."""
@@ -128,11 +128,13 @@ class TestCautiousAdam:
             opt.step()
             losses.append(loss.item())
 
-        assert losses[-1] < losses[0] * 0.5, \
+        assert losses[-1] < losses[0] * 0.5, (
             f"Loss did not decrease: {losses[0]:.4f} → {losses[-1]:.4f}"
+        )
 
     def test_determinism_under_seed(self):
         """Test 10: Same seed → same parameter trajectory."""
+
         def run():
             torch.manual_seed(99)
             model = _make_linear(seed=99)
@@ -195,11 +197,12 @@ class TestCautiousAdam:
 
     def test_all_disagree_mask_equals_all_zeros(self):
         """Test 14: When gradient reverses completely, masked update should be zero."""
-        d_t = torch.tensor([ 1.0,  2.0,  3.0])
-        g_t = torch.tensor([-1.0, -2.0, -3.0])   # opposite signs
+        d_t = torch.tensor([1.0, 2.0, 3.0])
+        g_t = torch.tensor([-1.0, -2.0, -3.0])  # opposite signs
         masked = CautiousMask.apply(d_t, g_t)
-        assert masked.abs().max().item() == pytest.approx(0.0), \
+        assert masked.abs().max().item() == pytest.approx(0.0), (
             "Expected all-zero masked update when gradient fully reversed"
+        )
 
     def test_cautious_adam_faster_than_adam_on_oscillating_loss(self):
         """Test 15: CautiousAdam should converge faster than vanilla Adam on an
@@ -210,7 +213,7 @@ class TestCautiousAdam:
             """Loss that creates sign-flipping gradients to trigger masking."""
             # Quadratic with a sign-oscillating linear perturbation
             sign = 1.0 if step % 2 == 0 else -1.0
-            return (p ** 2).sum() + sign * 5.0 * p.sum()
+            return (p**2).sum() + sign * 5.0 * p.sum()
 
         # Run CautiousAdam
         torch.manual_seed(15)
@@ -222,7 +225,7 @@ class TestCautiousAdam:
             loss = oscillating_loss(p_c, step)
             loss.backward()
             opt_c.step()
-            losses_c.append((p_c.data ** 2).sum().item())
+            losses_c.append((p_c.data**2).sum().item())
 
         # Run vanilla Adam
         torch.manual_seed(15)
@@ -234,7 +237,7 @@ class TestCautiousAdam:
             loss = oscillating_loss(p_a, step)
             loss.backward()
             opt_a.step()
-            losses_a.append((p_a.data ** 2).sum().item())
+            losses_a.append((p_a.data**2).sum().item())
 
         # Cautious should end up closer to zero than vanilla Adam on this task
         final_c = sum(losses_c[-10:]) / 10
@@ -247,6 +250,7 @@ class TestCautiousAdam:
 # ---------------------------------------------------------------------------
 # CautiousSGD tests
 # ---------------------------------------------------------------------------
+
 
 class TestCautiousSGD:
     """Tests 8–9."""
@@ -292,8 +296,9 @@ class TestCautiousSGD:
             opt.step()
             losses.append(loss.item())
 
-        assert losses[-1] < losses[0] * 0.5, \
+        assert losses[-1] < losses[0] * 0.5, (
             f"CautiousSGD did not converge: {losses[0]:.4f} → {losses[-1]:.4f}"
+        )
 
     def test_sgd_no_nan_on_large_gradients(self):
         """CautiousSGD stays finite under 100x gradient magnitudes."""
@@ -314,6 +319,7 @@ class TestCautiousSGD:
 # ---------------------------------------------------------------------------
 # make_cautious factory smoke test
 # ---------------------------------------------------------------------------
+
 
 class TestMakeCautious:
     def test_factory_wraps_sgd(self):

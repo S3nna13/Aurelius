@@ -10,16 +10,15 @@ Uses a tiny AureliusTransformer:
 
 from __future__ import annotations
 
-import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.sparse_feature_circuits import (
+    FeatureCircuitFinder,
     SparseAutoencoder,
     SparseCircuitConfig,
-    FeatureCircuitFinder,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 TINY_CFG = AureliusConfig(
     n_layers=2,

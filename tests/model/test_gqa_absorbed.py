@@ -8,9 +8,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -60,6 +59,7 @@ def absorbed_model(tiny_cfg: GQAAbsorbedConfig) -> GQAAbsorbedAttention:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults() -> None:
     cfg = GQAAbsorbedConfig()
     assert cfg.n_kv_heads == 8
@@ -73,6 +73,7 @@ def test_config_defaults() -> None:
 # 2. test_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape(standard_model: GQAAbsorbedAttention) -> None:
     x = torch.randn(2, 8, D_MODEL)
     with torch.no_grad():
@@ -83,6 +84,7 @@ def test_output_shape(standard_model: GQAAbsorbedAttention) -> None:
 # ---------------------------------------------------------------------------
 # 3. test_standard_gqa_runs
 # ---------------------------------------------------------------------------
+
 
 def test_standard_gqa_runs(standard_model: GQAAbsorbedAttention) -> None:
     x = torch.randn(2, 8, D_MODEL)
@@ -96,6 +98,7 @@ def test_standard_gqa_runs(standard_model: GQAAbsorbedAttention) -> None:
 # 4. test_absorbed_gqa_runs
 # ---------------------------------------------------------------------------
 
+
 def test_absorbed_gqa_runs(absorbed_model: GQAAbsorbedAttention) -> None:
     x = torch.randn(2, 8, D_MODEL)
     with torch.no_grad():
@@ -107,6 +110,7 @@ def test_absorbed_gqa_runs(absorbed_model: GQAAbsorbedAttention) -> None:
 # ---------------------------------------------------------------------------
 # 5. test_standard_vs_absorbed_agree
 # ---------------------------------------------------------------------------
+
 
 def test_standard_vs_absorbed_agree(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
@@ -126,6 +130,7 @@ def test_standard_vs_absorbed_agree(tiny_cfg: GQAAbsorbedConfig) -> None:
 # 6. test_kv_heads_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_kv_heads_ratio(standard_model: GQAAbsorbedAttention) -> None:
     assert standard_model.kv_heads_ratio() == pytest.approx(0.5)
 
@@ -133,6 +138,7 @@ def test_kv_heads_ratio(standard_model: GQAAbsorbedAttention) -> None:
 # ---------------------------------------------------------------------------
 # 7. test_gradients_standard
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_standard(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
@@ -151,6 +157,7 @@ def test_gradients_standard(tiny_cfg: GQAAbsorbedConfig) -> None:
 # 8. test_gradients_absorbed
 # ---------------------------------------------------------------------------
 
+
 def test_gradients_absorbed(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
     model.train()
@@ -167,6 +174,7 @@ def test_gradients_absorbed(tiny_cfg: GQAAbsorbedConfig) -> None:
 # ---------------------------------------------------------------------------
 # 9. test_n_kv_heads_equals_n_heads  (MHA case)
 # ---------------------------------------------------------------------------
+
 
 def test_n_kv_heads_equals_n_heads() -> None:
     cfg = GQAAbsorbedConfig(
@@ -189,6 +197,7 @@ def test_n_kv_heads_equals_n_heads() -> None:
 # 10. test_n_kv_heads_1  (MQA case)
 # ---------------------------------------------------------------------------
 
+
 def test_n_kv_heads_1() -> None:
     cfg = GQAAbsorbedConfig(
         d_model=D_MODEL,
@@ -210,6 +219,7 @@ def test_n_kv_heads_1() -> None:
 # 11. test_absorb_called
 # ---------------------------------------------------------------------------
 
+
 def test_absorb_called(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
     model.eval()
@@ -230,6 +240,7 @@ def test_absorb_called(tiny_cfg: GQAAbsorbedConfig) -> None:
 # 12. test_batch_size_one
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
     model.eval()
@@ -242,6 +253,7 @@ def test_batch_size_one(tiny_cfg: GQAAbsorbedConfig) -> None:
 # ---------------------------------------------------------------------------
 # 13. test_seq_len_one
 # ---------------------------------------------------------------------------
+
 
 def test_seq_len_one(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
@@ -256,6 +268,7 @@ def test_seq_len_one(tiny_cfg: GQAAbsorbedConfig) -> None:
 # 14. test_determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism(tiny_cfg: GQAAbsorbedConfig) -> None:
     model = GQAAbsorbedAttention(tiny_cfg)
     model.eval()
@@ -269,6 +282,7 @@ def test_determinism(tiny_cfg: GQAAbsorbedConfig) -> None:
 # ---------------------------------------------------------------------------
 # 15. test_registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry() -> None:
     assert "gqa_absorbed" in MODEL_COMPONENT_REGISTRY

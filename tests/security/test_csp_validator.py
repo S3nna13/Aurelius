@@ -1,7 +1,6 @@
 """Tests for CSP builder."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.csp_validator import CSPBuilder, CSPDirective
 

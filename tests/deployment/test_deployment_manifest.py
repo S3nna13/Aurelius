@@ -54,9 +54,7 @@ class TestContainerSpec(unittest.TestCase):
         self.assertEqual(cs.ports, [])
 
     def test_env_vars_stored(self):
-        cs = ContainerSpec(
-            image="app", tag="v1", resources=self.rs, env_vars={"KEY": "val"}
-        )
+        cs = ContainerSpec(image="app", tag="v1", resources=self.rs, env_vars={"KEY": "val"})
         self.assertEqual(cs.env_vars["KEY"], "val")
 
     def test_ports_stored(self):

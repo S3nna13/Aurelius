@@ -1,10 +1,8 @@
 """Tests for log shipping."""
+
 from __future__ import annotations
 
 import json
-from io import StringIO
-
-import pytest
 
 from src.monitoring.log_ship import (
     LogRecord,
@@ -15,6 +13,7 @@ from src.monitoring.log_ship import (
 
 class InMemoryDestination:
     """Test helper that stores records in memory."""
+
     def __init__(self):
         self.sent: list[list[dict]] = []
 

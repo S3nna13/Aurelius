@@ -4,22 +4,32 @@ Supports CommonLit Readability, Jigsaw Toxic Comment Classification,
 Google QUEST Q&A Labeling, and Feedback Prize discourse element formats.
 Pure Python, no network or torch dependencies.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
 
 # ---------------------------------------------------------------------------
 # Label constants
 # ---------------------------------------------------------------------------
 
 TOXICITY_LABEL_NAMES: list[str] = [
-    "toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate",
 ]
 
 DISCOURSE_TYPES: set[str] = {
-    "Lead", "Position", "Claim", "Evidence",
-    "Concluding Statement", "Counterclaim", "Rebuttal",
+    "Lead",
+    "Position",
+    "Claim",
+    "Evidence",
+    "Concluding Statement",
+    "Counterclaim",
+    "Rebuttal",
 }
 
 # All 30 QUEST float label column names (subset used for mock; full list for parsing)
@@ -61,9 +71,11 @@ QUEST_LABEL_COLUMNS: list[str] = [
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class JigsawSample:
     """A single Jigsaw Toxic Comment Classification sample."""
+
     id: str
     text: str
     toxic: int
@@ -76,10 +88,16 @@ class JigsawSample:
     @property
     def any_toxic(self) -> bool:
         """True if any toxicity label is set."""
-        return any([
-            self.toxic, self.severe_toxic, self.obscene,
-            self.threat, self.insult, self.identity_hate,
-        ])
+        return any(
+            [
+                self.toxic,
+                self.severe_toxic,
+                self.obscene,
+                self.threat,
+                self.insult,
+                self.identity_hate,
+            ]
+        )
 
     @property
     def toxicity_labels(self) -> list[str]:
@@ -98,6 +116,7 @@ class JigsawSample:
 @dataclass
 class QALabelSample:
     """A single Google QUEST Q&A Labeling sample."""
+
     qa_id: str
     question_title: str
     question_body: str
@@ -109,6 +128,7 @@ class QALabelSample:
 @dataclass
 class DiscourseElement:
     """A single Feedback Prize discourse element."""
+
     id: str
     discourse_id: str
     text: str
@@ -120,6 +140,7 @@ class DiscourseElement:
 # ---------------------------------------------------------------------------
 # Parsers
 # ---------------------------------------------------------------------------
+
 
 def parse_jigsaw_sample(row: dict) -> JigsawSample:
     """Parse a raw Jigsaw CSV row dict into a JigsawSample."""
@@ -170,6 +191,7 @@ def parse_discourse_element(row: dict) -> DiscourseElement:
 # Instruction formatters
 # ---------------------------------------------------------------------------
 
+
 def jigsaw_to_instruction(sample: JigsawSample) -> dict:
     """Convert a JigsawSample to an instruction-tuning dict."""
     return {
@@ -201,6 +223,7 @@ def discourse_to_instruction(element: DiscourseElement) -> dict:
 # Filters
 # ---------------------------------------------------------------------------
 
+
 def filter_toxic(
     samples: list[JigsawSample],
     min_label: str = "toxic",
@@ -219,20 +242,23 @@ def filter_toxic(
 # Mock data generators
 # ---------------------------------------------------------------------------
 
+
 def mock_jigsaw_data(n: int = 4) -> list[dict]:
     """Generate n synthetic Jigsaw CSV row dicts for testing."""
     rows = []
     for i in range(n):
-        rows.append({
-            "id": f"jig_{i:04d}",
-            "comment_text": f"This is comment number {i}.",
-            "toxic": i % 2,          # alternates 0/1
-            "severe_toxic": 0,
-            "obscene": i % 3 == 0,   # every third
-            "threat": 0,
-            "insult": 0,
-            "identity_hate": 0,
-        })
+        rows.append(
+            {
+                "id": f"jig_{i:04d}",
+                "comment_text": f"This is comment number {i}.",
+                "toxic": i % 2,  # alternates 0/1
+                "severe_toxic": 0,
+                "obscene": i % 3 == 0,  # every third
+                "threat": 0,
+                "insult": 0,
+                "identity_hate": 0,
+            }
+        )
     return rows
 
 
@@ -266,14 +292,16 @@ def mock_discourse_data(n: int = 4) -> list[dict]:
         dtype = types[i % len(types)]
         start = i * 100
         end = start + 50
-        rows.append({
-            "id": f"essay_{i:04d}",
-            "discourse_id": f"disc_{i:06d}",
-            "discourse_start": start,
-            "discourse_end": end,
-            "discourse_text": f"This is the {dtype.lower()} discourse text {i}.",
-            "discourse_type": dtype,
-            "discourse_type_num": i % len(types),
-            "predictionstring": f"{start} {start+1} {start+2}",
-        })
+        rows.append(
+            {
+                "id": f"essay_{i:04d}",
+                "discourse_id": f"disc_{i:06d}",
+                "discourse_start": start,
+                "discourse_end": end,
+                "discourse_text": f"This is the {dtype.lower()} discourse text {i}.",
+                "discourse_type": dtype,
+                "discourse_type_num": i % len(types),
+                "predictionstring": f"{start} {start + 1} {start + 2}",
+            }
+        )
     return rows

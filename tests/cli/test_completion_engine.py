@@ -1,13 +1,11 @@
 """Tests for src/cli/completion_engine.py."""
 
-import pytest
-
 from src.cli.completion_engine import Completion, CompletionEngine, CompletionKind
-
 
 # ---------------------------------------------------------------------------
 # Enum smoke tests
 # ---------------------------------------------------------------------------
+
 
 def test_completion_kind_values():
     assert CompletionKind.COMMAND == "command"
@@ -18,6 +16,7 @@ def test_completion_kind_values():
 # ---------------------------------------------------------------------------
 # Completion dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_completion_dataclass_defaults():
     c = Completion(text="/chat", kind=CompletionKind.COMMAND)
@@ -34,6 +33,7 @@ def test_completion_dataclass_fields():
 # ---------------------------------------------------------------------------
 # complete() — COMMAND completions
 # ---------------------------------------------------------------------------
+
 
 def test_complete_slash_returns_commands():
     engine = CompletionEngine()
@@ -61,6 +61,7 @@ def test_complete_slash_all_commands_present():
 # complete() — FILEPATH completions
 # ---------------------------------------------------------------------------
 
+
 def test_complete_dot_slash_returns_filepaths():
     engine = CompletionEngine()
     results = engine.complete("./")
@@ -84,6 +85,7 @@ def test_complete_absolute_path_returns_filepaths():
 # ---------------------------------------------------------------------------
 # complete() — HISTORY completions
 # ---------------------------------------------------------------------------
+
 
 def test_complete_exact_history_match():
     engine = CompletionEngine()
@@ -110,6 +112,7 @@ def test_complete_no_match_returns_empty():
 # register_command
 # ---------------------------------------------------------------------------
 
+
 def test_register_command_adds_to_completions():
     engine = CompletionEngine()
     engine.register_command("custom", "My custom command")
@@ -128,6 +131,7 @@ def test_register_command_no_duplicate():
 # ---------------------------------------------------------------------------
 # get_completions_for
 # ---------------------------------------------------------------------------
+
 
 def test_get_completions_for_chat():
     engine = CompletionEngine()

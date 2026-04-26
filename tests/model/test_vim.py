@@ -7,9 +7,7 @@ Tiny config: img_size=32, patch_size=8 → N=16 patches,
 from __future__ import annotations
 
 import torch
-import pytest
-
-from aurelius.model.vim import PatchEmbed, BidirectionalSSM, VimBlock, VisionMamba
+from aurelius.model.vim import BidirectionalSSM, PatchEmbed, VimBlock, VisionMamba
 
 # ---------------------------------------------------------------------------
 # Shared tiny config
@@ -174,8 +172,13 @@ def test_vision_mamba_gradient_flows():
 def test_vision_mamba_small_config():
     """VisionMamba must work with patch_size=8, img_size=32 (non-default config)."""
     m = VisionMamba(
-        img_size=32, patch_size=8, in_chans=3,
-        d_model=16, n_layers=1, n_classes=5, d_state=4,
+        img_size=32,
+        patch_size=8,
+        in_chans=3,
+        d_model=16,
+        n_layers=1,
+        n_classes=5,
+        d_state=4,
     )
     x = torch.randn(1, 3, 32, 32)
     out = m(x)

@@ -7,13 +7,12 @@ band.  All computation is pure PyTorch — no HuggingFace, no scipy, no sklearn.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -128,7 +127,7 @@ class PerplexityScorer:
 
     # ------------------------------------------------------------------
 
-    def score_texts(self, encoded_texts: List[Tensor]) -> List[float]:
+    def score_texts(self, encoded_texts: list[Tensor]) -> list[float]:
         """Pad a list of 1-D token tensors, score in batches, return perplexities.
 
         Args:
@@ -141,7 +140,7 @@ class PerplexityScorer:
             return []
 
         cfg = self.config
-        results: List[float] = []
+        results: list[float] = []
 
         # Process in batches.
         for start in range(0, len(encoded_texts), cfg.batch_size):
@@ -183,9 +182,7 @@ class PerplexityFilter:
 
     # ------------------------------------------------------------------
 
-    def filter_batch(
-        self, encoded_texts: List[Tensor]
-    ) -> Tuple[List[Tensor], List[float]]:
+    def filter_batch(self, encoded_texts: list[Tensor]) -> tuple[list[Tensor], list[float]]:
         """Filter a list of encoded sequences by perplexity.
 
         Args:
@@ -199,8 +196,8 @@ class PerplexityFilter:
             return [], []
 
         scores = self.scorer.score_texts(encoded_texts)
-        kept_texts: List[Tensor] = []
-        kept_scores: List[float] = []
+        kept_texts: list[Tensor] = []
+        kept_scores: list[float] = []
         lo, hi = self.config.min_perplexity, self.config.max_perplexity
 
         for seq, score in zip(encoded_texts, scores):
@@ -212,7 +209,7 @@ class PerplexityFilter:
 
     # ------------------------------------------------------------------
 
-    def get_stats(self, scores: List[float]) -> Dict[str, float]:
+    def get_stats(self, scores: list[float]) -> dict[str, float]:
         """Compute summary statistics for a list of perplexity scores.
 
         Uses a sort-based median (no scipy).
@@ -281,7 +278,7 @@ class DatasetPerplexityRanker:
 
     def rank(
         self,
-        encoded_texts: List[Tensor],
+        encoded_texts: list[Tensor],
         return_scores: bool = False,
     ):
         """Sort encoded texts by perplexity ascending.
@@ -310,9 +307,7 @@ class DatasetPerplexityRanker:
 
     # ------------------------------------------------------------------
 
-    def get_percentile_bucket(
-        self, score: float, scores: List[float], n_buckets: int = 10
-    ) -> int:
+    def get_percentile_bucket(self, score: float, scores: list[float], n_buckets: int = 10) -> int:
         """Return which decile (0-indexed) the given score falls into.
 
         Bucket 0  = bottom (lowest / best) perplexity range.

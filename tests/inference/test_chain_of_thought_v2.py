@@ -1,12 +1,11 @@
 """Tests for src/inference/chain_of_thought_v2.py (aurelius.inference.chain_of_thought_v2)."""
+
 from __future__ import annotations
 
 import math
-from typing import List
 
 import pytest
 import torch
-
 from aurelius.inference.chain_of_thought_v2 import (
     AnswerExtractor,
     CoTBudgetAllocator,
@@ -15,10 +14,10 @@ from aurelius.inference.chain_of_thought_v2 import (
     SelfConsistencyCoT,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def default_config() -> CoTConfig:
@@ -44,6 +43,7 @@ def sc(default_config: CoTConfig, extractor: AnswerExtractor) -> SelfConsistency
 # 1. CoTConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestCoTConfig:
     def test_defaults(self, default_config: CoTConfig) -> None:
         assert default_config.n_samples == 8
@@ -56,8 +56,8 @@ class TestCoTConfig:
 # 2–4. AnswerExtractor
 # ---------------------------------------------------------------------------
 
-class TestAnswerExtractor:
 
+class TestAnswerExtractor:
     def _make_trigger(self) -> torch.LongTensor:
         # trigger token ids: [10, 20, 30]
         return torch.tensor([10, 20, 30], dtype=torch.long)
@@ -122,8 +122,8 @@ class TestAnswerExtractor:
 # 6–8. CoTScorer
 # ---------------------------------------------------------------------------
 
-class TestCoTScorer:
 
+class TestCoTScorer:
     # ---- 6. score_reasoning_quality is scalar and finite -----------------
     def test_score_is_scalar_and_finite(self, scorer: CoTScorer) -> None:
         reasoning = torch.tensor([1, 2, 3, 4, 5], dtype=torch.long)
@@ -177,9 +177,9 @@ class TestCoTScorer:
 # 10–12. SelfConsistencyCoT
 # ---------------------------------------------------------------------------
 
-class TestSelfConsistencyCoT:
 
-    def _make_spans(self) -> List[torch.LongTensor]:
+class TestSelfConsistencyCoT:
+    def _make_spans(self) -> list[torch.LongTensor]:
         a = torch.tensor([42, 7], dtype=torch.long)
         b = torch.tensor([42, 7], dtype=torch.long)
         c = torch.tensor([99, 1], dtype=torch.long)
@@ -226,8 +226,8 @@ class TestSelfConsistencyCoT:
 # 13. CoTBudgetAllocator
 # ---------------------------------------------------------------------------
 
-class TestCoTBudgetAllocator:
 
+class TestCoTBudgetAllocator:
     # ---- 13. allocate respects budget ------------------------------------
     def test_allocate_within_budget(self) -> None:
         alloc = CoTBudgetAllocator(total_token_budget=1000)

@@ -8,16 +8,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Noise Schedule
 # ---------------------------------------------------------------------------
+
 
 class NoiseSchedule:
     """DDPM noise schedule (linear or cosine)."""
@@ -48,9 +47,7 @@ class NoiseSchedule:
         self.sqrt_alphas_cumprod: torch.Tensor = torch.sqrt(self.alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod: torch.Tensor = torch.sqrt(1.0 - self.alphas_cumprod)
 
-    def q_sample(
-        self, x0: torch.Tensor, t: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def q_sample(self, x0: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward diffusion: x_t = sqrt_alpha_bar_t * x0 + sqrt_1_minus_alpha_bar_t * eps.
 
         Args:
@@ -66,7 +63,7 @@ class NoiseSchedule:
         if t.dim() != 1 or t.size(0) != x0.size(0):
             raise ValueError("t must be 1D with length == batch size")
 
-        sqrt_alpha = self.sqrt_alphas_cumprod[t].to(x0.device)          # [B]
+        sqrt_alpha = self.sqrt_alphas_cumprod[t].to(x0.device)  # [B]
         sqrt_one_minus = self.sqrt_one_minus_alphas_cumprod[t].to(x0.device)  # [B]
 
         # Reshape for broadcasting: [B, 1, 1]
@@ -92,6 +89,7 @@ class NoiseSchedule:
 # Denoising Network
 # ---------------------------------------------------------------------------
 
+
 def _sinusoidal_embedding(t_normalized: torch.Tensor, dim: int) -> torch.Tensor:
     """Sinusoidal positional embedding for scalar timestep values.
 
@@ -108,7 +106,7 @@ def _sinusoidal_embedding(t_normalized: torch.Tensor, dim: int) -> torch.Tensor:
         / max(half - 1, 1)
     )
     args = t_normalized.float().unsqueeze(-1) * freqs.unsqueeze(0)  # [B, half]
-    emb = torch.cat([torch.sin(args), torch.cos(args)], dim=-1)      # [B, dim or dim-1]
+    emb = torch.cat([torch.sin(args), torch.cos(args)], dim=-1)  # [B, dim or dim-1]
     if dim % 2 == 1:
         emb = torch.cat([emb, torch.zeros(emb.size(0), 1, device=emb.device)], dim=-1)
     return emb
@@ -181,9 +179,9 @@ class DenoisingNetwork(nn.Module):
             raise ValueError(f"x_t must be 3D [B,T,d_model], got {x_t.shape}")
 
         # Build time conditioning: sinusoidal emb → MLP → [B, d_model]
-        t_normalized = t.float() / max(self.d_model - 1, 1)   # rough normalisation
+        t_normalized = t.float() / max(self.d_model - 1, 1)  # rough normalisation
         t_sin = _sinusoidal_embedding(t_normalized, self.d_model)  # [B, d_model]
-        t_emb = self.time_embed(t_sin)                              # [B, d_model]
+        t_emb = self.time_embed(t_sin)  # [B, d_model]
 
         # Add time embedding to every token position
         x = x_t + t_emb.unsqueeze(1)  # [B, T, d_model]
@@ -197,6 +195,7 @@ class DenoisingNetwork(nn.Module):
 # ---------------------------------------------------------------------------
 # DDPM Trainer
 # ---------------------------------------------------------------------------
+
 
 class DDPMTrainer:
     """Wraps a DenoisingNetwork with DDPM training and sampling utilities."""
@@ -309,6 +308,7 @@ class DDPMTrainer:
 # Latent Diffusion Language Model
 # ---------------------------------------------------------------------------
 
+
 class _TokenEncoder(nn.Module):
     """Simple transformer encoder: token_ids → dense embeddings."""
 
@@ -317,9 +317,7 @@ class _TokenEncoder(nn.Module):
         self.embedding = nn.Embedding(vocab_size, d_model)
         # Learnable positional encoding (max 2048 positions)
         self.pos_embedding = nn.Embedding(2048, d_model)
-        self.blocks = nn.ModuleList(
-            [_TransformerBlock(d_model, n_heads) for _ in range(n_layers)]
-        )
+        self.blocks = nn.ModuleList([_TransformerBlock(d_model, n_heads) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -436,6 +434,7 @@ class LatentDiffusionLM(nn.Module):
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DiffusionConfig:

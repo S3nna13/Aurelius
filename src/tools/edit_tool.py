@@ -3,20 +3,25 @@
 Inspired by Aider edit format (Aider-AI/aider, Apache-2.0) and Kimi-Dev
 patch-synthesis (MoonshotAI, MIT); Aurelius-native implementation. License: MIT.
 """
+
 from __future__ import annotations
 
 import difflib
-from dataclasses import dataclass, field
-from .tool_registry import ToolResult, ToolSpec, TOOL_REGISTRY
+from dataclasses import dataclass
 
-_MAX_CONTENT_LEN = 500_000   # 500KB per file content
-_MAX_DIFF_LEN = 200_000      # 200KB per diff
+from .tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
+
+_MAX_CONTENT_LEN = 500_000  # 500KB per file content
+_MAX_DIFF_LEN = 200_000  # 200KB per diff
+
 
 @dataclass
 class EditOperation:
     """A single search-and-replace edit operation."""
+
     search: str
     replace: str
+
 
 class EditTool:
     """Apply search-and-replace edits to file content strings."""
@@ -26,18 +31,31 @@ class EditTool:
         Fails if search string not found exactly once (no ambiguous edits).
         """
         if len(content) > _MAX_CONTENT_LEN:
-            return ToolResult(tool_name="edit", success=False, output="",
-                              error=f"content exceeds {_MAX_CONTENT_LEN} chars")
+            return ToolResult(
+                tool_name="edit",
+                success=False,
+                output="",
+                error=f"content exceeds {_MAX_CONTENT_LEN} chars",
+            )
         if not search:
-            return ToolResult(tool_name="edit", success=False, output="",
-                              error="search string must not be empty")
+            return ToolResult(
+                tool_name="edit", success=False, output="", error="search string must not be empty"
+            )
         count = content.count(search)
         if count == 0:
-            return ToolResult(tool_name="edit", success=False, output="",
-                              error="search string not found in content")
+            return ToolResult(
+                tool_name="edit",
+                success=False,
+                output="",
+                error="search string not found in content",
+            )
         if count > 1:
-            return ToolResult(tool_name="edit", success=False, output="",
-                              error=f"search string found {count} times (ambiguous edit)")
+            return ToolResult(
+                tool_name="edit",
+                success=False,
+                output="",
+                error=f"search string found {count} times (ambiguous edit)",
+            )
         new_content = content.replace(search, replace, 1)
         return ToolResult(tool_name="edit", success=True, output=new_content, error="")
 
@@ -51,13 +69,15 @@ class EditTool:
             current = result.output
         return ToolResult(tool_name="edit", success=True, output=current, error="")
 
-    def unified_diff(self, original: str, modified: str,
-                     fromfile: str = "original", tofile: str = "modified") -> str:
+    def unified_diff(
+        self, original: str, modified: str, fromfile: str = "original", tofile: str = "modified"
+    ) -> str:
         """Generate a unified diff string."""
         orig_lines = original.splitlines(keepends=True)
         mod_lines = modified.splitlines(keepends=True)
-        return "".join(difflib.unified_diff(orig_lines, mod_lines,
-                                             fromfile=fromfile, tofile=tofile))
+        return "".join(
+            difflib.unified_diff(orig_lines, mod_lines, fromfile=fromfile, tofile=tofile)
+        )
 
     def spec(self) -> ToolSpec:
         return ToolSpec(

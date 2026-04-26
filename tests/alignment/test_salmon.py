@@ -22,21 +22,16 @@ Covers:
 
 from __future__ import annotations
 
-from typing import List
-
 import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.salmon import (
+    _VOCAB_SIZE,
     PrincipleConditionedRM,
     SALMONFilter,
     SALMONLoss,
     SALMONScorer,
-    _EMBED_DIM,
-    _VOCAB_SIZE,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -72,6 +67,7 @@ def scorer_1() -> SALMONScorer:
 # Test 1 — SALMONScorer returns shape (n_principles,)
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_output_shape(scorer_3: SALMONScorer) -> None:
     prompt = _tok(8, seed=1)
     response = _tok(16, seed=2)
@@ -85,6 +81,7 @@ def test_scorer_output_shape(scorer_3: SALMONScorer) -> None:
 # Test 2 — aggregate_score returns a scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_score_is_scalar(scorer_3: SALMONScorer) -> None:
     prompt = _tok(8, seed=3)
     response = _tok(16, seed=4)
@@ -95,6 +92,7 @@ def test_aggregate_score_is_scalar(scorer_3: SALMONScorer) -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — Scores are finite for normal inputs
 # ---------------------------------------------------------------------------
+
 
 def test_scores_finite(scorer_3: SALMONScorer) -> None:
     prompt = _tok(10, seed=5)
@@ -108,6 +106,7 @@ def test_scores_finite(scorer_3: SALMONScorer) -> None:
 # ---------------------------------------------------------------------------
 # Test 4 — Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism() -> None:
     torch.manual_seed(99)
@@ -127,6 +126,7 @@ def test_determinism() -> None:
 # Test 5 — Higher overlap → higher score (monotonicity proxy)
 # ---------------------------------------------------------------------------
 
+
 def test_monotonicity_higher_overlap() -> None:
     """Responses whose mean embedding aligns with the principle embedding score
     higher than those that anti-align.
@@ -142,7 +142,7 @@ def test_monotonicity_higher_overlap() -> None:
     pcrm = scorer.pcrm
     D = pcrm.embed_dim
 
-    a_id = ord('A') % pcrm.principle_vocab_size
+    a_id = ord("A") % pcrm.principle_vocab_size
 
     # Craft a direction vector
     direction = torch.zeros(D)
@@ -156,12 +156,12 @@ def test_monotonicity_higher_overlap() -> None:
         # Token id 2 → anti-aligned with direction
         pcrm.token_embed.weight[2].copy_(-direction)
 
-    response_high = torch.ones(8, dtype=torch.long)   # all token id 1
-    response_low  = torch.full((8,), 2, dtype=torch.long)  # all token id 2
+    response_high = torch.ones(8, dtype=torch.long)  # all token id 1
+    response_low = torch.full((8,), 2, dtype=torch.long)  # all token id 2
     prompt = _tok(4, seed=20)
 
     score_high = scorer.aggregate_score(prompt, response_high).item()
-    score_low  = scorer.aggregate_score(prompt, response_low).item()
+    score_low = scorer.aggregate_score(prompt, response_low).item()
     assert score_high > score_low, (
         f"Expected score_high ({score_high:.4f}) > score_low ({score_low:.4f})"
     )
@@ -170,6 +170,7 @@ def test_monotonicity_higher_overlap() -> None:
 # ---------------------------------------------------------------------------
 # Test 6 — SALMONFilter selects highest-scoring candidate
 # ---------------------------------------------------------------------------
+
 
 def test_filter_selects_best(scorer_3: SALMONScorer) -> None:
     torch.manual_seed(55)
@@ -189,6 +190,7 @@ def test_filter_selects_best(scorer_3: SALMONScorer) -> None:
 # Test 7 — SALMONFilter with 1 candidate returns index 0
 # ---------------------------------------------------------------------------
 
+
 def test_filter_single_candidate(scorer_3: SALMONScorer) -> None:
     filt = SALMONFilter(scorer_3)
     prompt = _tok(8, seed=40)
@@ -202,6 +204,7 @@ def test_filter_single_candidate(scorer_3: SALMONScorer) -> None:
 # Test 8 — SALMONLoss is a scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_loss_is_scalar() -> None:
     loss_fn = SALMONLoss(alpha=0.1)
     winner_lp = torch.tensor(-2.5, requires_grad=True)
@@ -214,6 +217,7 @@ def test_loss_is_scalar() -> None:
 # ---------------------------------------------------------------------------
 # Test 9 — SALMONLoss gradients are finite
 # ---------------------------------------------------------------------------
+
 
 def test_loss_gradients_finite() -> None:
     loss_fn = SALMONLoss(alpha=0.1)
@@ -229,6 +233,7 @@ def test_loss_gradients_finite() -> None:
 # Test 10 — SALMONLoss decreases when winner log_prob increases
 # ---------------------------------------------------------------------------
 
+
 def test_loss_decreases_with_higher_winner_logprob() -> None:
     loss_fn = SALMONLoss(alpha=0.0)  # pure SFT, no contrastive
     loss_low = loss_fn(torch.tensor(-5.0), []).item()
@@ -243,6 +248,7 @@ def test_loss_decreases_with_higher_winner_logprob() -> None:
 # Test 11 — No NaN/Inf on zero-length (empty) sequences
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_empty_sequences(scorer_3: SALMONScorer) -> None:
     prompt = _tok(0)
     response = _tok(0)
@@ -256,6 +262,7 @@ def test_no_nan_on_empty_sequences(scorer_3: SALMONScorer) -> None:
 # Test 12 — No NaN/Inf on long sequences
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_long_sequences(scorer_3: SALMONScorer) -> None:
     prompt = _tok(512, seed=100)
     response = _tok(512, seed=101)
@@ -266,6 +273,7 @@ def test_no_nan_on_long_sequences(scorer_3: SALMONScorer) -> None:
 # ---------------------------------------------------------------------------
 # Test 13 — n_principles=1 edge case
 # ---------------------------------------------------------------------------
+
 
 def test_single_principle_scorer(scorer_1: SALMONScorer) -> None:
     prompt = _tok(8, seed=50)
@@ -281,6 +289,7 @@ def test_single_principle_scorer(scorer_1: SALMONScorer) -> None:
 # Test 14 — scores shape consistent with n_principles for varying K
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("k", [1, 2, 5, 10])
 def test_scores_shape_with_k_principles(k: int) -> None:
     torch.manual_seed(k)
@@ -295,6 +304,7 @@ def test_scores_shape_with_k_principles(k: int) -> None:
 # ---------------------------------------------------------------------------
 # Test 15 — "batch" dimension: multiple (prompt, response) pairs
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_pairs_independent(scorer_3: SALMONScorer) -> None:
     """Scoring several pairs should give independent, finite results."""
@@ -314,6 +324,7 @@ def test_multiple_pairs_independent(scorer_3: SALMONScorer) -> None:
 # ---------------------------------------------------------------------------
 # Bonus — PrincipleConditionedRM direct API
 # ---------------------------------------------------------------------------
+
 
 def test_pcrm_score_is_scalar_finite() -> None:
     torch.manual_seed(0)

@@ -1,13 +1,14 @@
 """Unit tests for the Crescendo multi-turn jailbreak probe."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.eval.crescendo_probe import (
+    ESCALATION_TEMPLATES,
     CrescendoProbe,
     CrescendoResult,
     CrescendoTurn,
-    ESCALATION_TEMPLATES,
     stub_judge_fn,
     stub_target_fn,
 )
@@ -30,8 +31,7 @@ def _turn_gated_target(history):
     if turn < 3:
         return "General educational overview."
     return (
-        "Detailed on-topic walkthrough, step-by-step, directly addressing "
-        "the objective explicitly."
+        "Detailed on-topic walkthrough, step-by-step, directly addressing the objective explicitly."
     )
 
 
@@ -112,8 +112,10 @@ def test_empty_seed_topic_auto_derives():
         seed_topic="",
     )
     # The first attacker message should have used the derived topic.
-    assert "photosynthesis" in result.turns[0].attacker_message.lower() \
+    assert (
+        "photosynthesis" in result.turns[0].attacker_message.lower()
         or "subject" in result.turns[0].attacker_message.lower()
+    )
 
 
 def test_judge_returns_non_bool_raises_type_error():
@@ -164,18 +166,13 @@ def test_unknown_escalation_strategy_raises():
 
 def test_reproduces_same_transcript_across_repeat_invocations():
     probe = CrescendoProbe(max_turns=4, max_backtracks=1)
-    runs = [
-        probe.run("repeat me", stub_target_fn, stub_judge_fn)
-        for _ in range(3)
-    ]
+    runs = [probe.run("repeat me", stub_target_fn, stub_judge_fn) for _ in range(3)]
     first = runs[0]
     for r in runs[1:]:
         assert r.succeeded == first.succeeded
         assert r.final_score == first.final_score
-        assert [t.attacker_message for t in r.turns] == \
-            [t.attacker_message for t in first.turns]
-        assert [t.target_response for t in r.turns] == \
-            [t.target_response for t in first.turns]
+        assert [t.attacker_message for t in r.turns] == [t.attacker_message for t in first.turns]
+        assert [t.target_response for t in r.turns] == [t.target_response for t in first.turns]
 
 
 def test_target_returning_non_string_raises_type_error():

@@ -1,24 +1,26 @@
 """Tests for weight_sharing_nas.py — Single-path One-Shot NAS and Slimmable Networks."""
+
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.optim as optim
 
 from src.training.weight_sharing_nas import (
+    OFABlock,
     OFAConfig,
     OFATrainer,
-    OFABlock,
     OneShotSuperNet,
     SlimmableLinear,
     SubnetSpec,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def config():
@@ -50,6 +52,7 @@ def input_ids():
 # 1. OFAConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ofa_config_defaults():
     cfg = OFAConfig()
     assert cfg.d_model_choices == [32, 48, 64]
@@ -63,6 +66,7 @@ def test_ofa_config_defaults():
 # 2. SubnetSpec fields
 # ---------------------------------------------------------------------------
 
+
 def test_subnet_spec_fields():
     spec = SubnetSpec(d_model=32, d_ff=64, n_layers=1)
     assert spec.d_model == 32
@@ -73,6 +77,7 @@ def test_subnet_spec_fields():
 # ---------------------------------------------------------------------------
 # 3. SlimmableLinear full output shape
 # ---------------------------------------------------------------------------
+
 
 def test_slimmable_linear_full_shape():
     layer = SlimmableLinear(max_in=64, max_out=128)
@@ -85,6 +90,7 @@ def test_slimmable_linear_full_shape():
 # 4. SlimmableLinear sliced output shape
 # ---------------------------------------------------------------------------
 
+
 def test_slimmable_linear_sliced_shape():
     layer = SlimmableLinear(max_in=64, max_out=128)
     x = torch.randn(2, 10, 32)
@@ -96,6 +102,7 @@ def test_slimmable_linear_sliced_shape():
 # 5. OFABlock output shape with full dims
 # ---------------------------------------------------------------------------
 
+
 def test_ofa_block_full_shape():
     block = OFABlock(max_d_model=64, max_d_ff=256)
     x = torch.randn(2, 8, 64)
@@ -106,6 +113,7 @@ def test_ofa_block_full_shape():
 # ---------------------------------------------------------------------------
 # 6. OFABlock output shape with smaller dims
 # ---------------------------------------------------------------------------
+
 
 def test_ofa_block_smaller_shape():
     block = OFABlock(max_d_model=64, max_d_ff=256)
@@ -119,6 +127,7 @@ def test_ofa_block_smaller_shape():
 # 7. OneShotSuperNet forward returns 3-tuple
 # ---------------------------------------------------------------------------
 
+
 def test_supernet_forward_returns_tuple(supernet, input_ids):
     result = supernet(input_ids)
     assert isinstance(result, tuple)
@@ -128,6 +137,7 @@ def test_supernet_forward_returns_tuple(supernet, input_ids):
 # ---------------------------------------------------------------------------
 # 8. OneShotSuperNet logits shape (B, T, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_supernet_logits_shape(supernet, input_ids):
     _, logits, _ = supernet(input_ids)
@@ -139,6 +149,7 @@ def test_supernet_logits_shape(supernet, input_ids):
 # 9. OneShotSuperNet.sample_subnet returns valid SubnetSpec
 # ---------------------------------------------------------------------------
 
+
 def test_sample_subnet_returns_spec(supernet):
     spec = supernet.sample_subnet()
     assert isinstance(spec, SubnetSpec)
@@ -147,6 +158,7 @@ def test_sample_subnet_returns_spec(supernet):
 # ---------------------------------------------------------------------------
 # 10. OneShotSuperNet.sample_subnet choices within config bounds
 # ---------------------------------------------------------------------------
+
 
 def test_sample_subnet_valid_choices(supernet, config):
     for _ in range(20):
@@ -160,6 +172,7 @@ def test_sample_subnet_valid_choices(supernet, config):
 # 11. OneShotSuperNet.get_subnet_params returns positive int
 # ---------------------------------------------------------------------------
 
+
 def test_get_subnet_params_positive(supernet):
     spec = SubnetSpec(d_model=32, d_ff=64, n_layers=1)
     n = supernet.get_subnet_params(spec)
@@ -170,6 +183,7 @@ def test_get_subnet_params_positive(supernet):
 # ---------------------------------------------------------------------------
 # 12. OFATrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_step_keys(trainer, input_ids):
     result = trainer.train_step(input_ids)
@@ -182,6 +196,7 @@ def test_trainer_step_keys(trainer, input_ids):
 # 13. OFATrainer.train_step loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_step_loss_finite(trainer, input_ids):
     result = trainer.train_step(input_ids)
     assert math.isfinite(result["loss"])
@@ -190,6 +205,7 @@ def test_trainer_step_loss_finite(trainer, input_ids):
 # ---------------------------------------------------------------------------
 # 14. OFATrainer.evaluate_subnet returns float
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_subnet_returns_float(trainer, supernet, input_ids):
     spec = SubnetSpec(d_model=32, d_ff=64, n_layers=1)

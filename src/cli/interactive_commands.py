@@ -1,8 +1,9 @@
 """Interactive CLI command dispatcher for agent shells."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -23,11 +24,15 @@ class CLICommand:
 class InteractiveCLI:
     commands: dict[str, CLICommand] = field(default_factory=dict, repr=False)
 
-    def register(self, name: str, handler: Callable, *,
-                 description: str = "",
-                 aliases: list[str] | None = None) -> None:
-        cmd = CLICommand(name=name, handler=handler, description=description,
-                         aliases=aliases or [])
+    def register(
+        self,
+        name: str,
+        handler: Callable,
+        *,
+        description: str = "",
+        aliases: list[str] | None = None,
+    ) -> None:
+        cmd = CLICommand(name=name, handler=handler, description=description, aliases=aliases or [])
         for alias in [name] + (aliases or []):
             self.commands[alias] = cmd
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+
 import pytest
 
 from src.deployment.ab_test_router import (
@@ -12,10 +13,10 @@ from src.deployment.ab_test_router import (
     Variant,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_equal_router() -> ABTestRouter:
     return ABTestRouter([Variant("A", 1.0), Variant("B", 1.0)])
@@ -28,6 +29,7 @@ def _make_single_router() -> ABTestRouter:
 # ---------------------------------------------------------------------------
 # Variant dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestVariant:
     def test_name_and_weight(self):
@@ -53,6 +55,7 @@ class TestVariant:
 # ---------------------------------------------------------------------------
 # Assignment frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestAssignment:
     def test_fields(self):
@@ -81,6 +84,7 @@ class TestAssignment:
 # ABTestRouter construction
 # ---------------------------------------------------------------------------
 
+
 class TestABTestRouterInit:
     def test_empty_variants_raises(self):
         with pytest.raises(ValueError):
@@ -103,6 +107,7 @@ class TestABTestRouterInit:
 # ---------------------------------------------------------------------------
 # ABTestRouter.assign — determinism & bucket range
 # ---------------------------------------------------------------------------
+
 
 class TestABTestRouterAssign:
     def test_single_variant_always_assigned(self):
@@ -150,6 +155,7 @@ class TestABTestRouterAssign:
 # ABTestRouter.assignment_stats
 # ---------------------------------------------------------------------------
 
+
 class TestAssignmentStats:
     def test_totals_match_input_length(self):
         router = _make_equal_router()
@@ -181,6 +187,7 @@ class TestAssignmentStats:
 # ABTestRouter.add_variant
 # ---------------------------------------------------------------------------
 
+
 class TestAddVariant:
     def test_add_variant_increases_count(self):
         router = _make_equal_router()
@@ -205,6 +212,7 @@ class TestAddVariant:
 # ---------------------------------------------------------------------------
 # ABTestRouter.remove_variant
 # ---------------------------------------------------------------------------
+
 
 class TestRemoveVariant:
     def test_remove_existing_returns_true(self):
@@ -239,6 +247,7 @@ class TestRemoveVariant:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):

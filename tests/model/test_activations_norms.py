@@ -12,14 +12,14 @@ import torch
 import torch.nn as nn
 
 from src.model.activations_norms import (
-    swish,
-    gelu_tanh,
-    SwiGLU,
+    CRMSNorm,
     GeGLU,
     RMSNorm,
     ScaleNorm,
-    CRMSNorm,
+    SwiGLU,
     compute_activation_stats,
+    gelu_tanh,
+    swish,
 )
 
 # ---------------------------------------------------------------------------
@@ -34,6 +34,7 @@ D_FFN = 32
 # ---------------------------------------------------------------------------
 # swish
 # ---------------------------------------------------------------------------
+
 
 def test_swish_output_shape():
     """swish output shape must match input shape."""
@@ -59,6 +60,7 @@ def test_swish_positive_for_large_positive_input():
 def test_swish_matches_silu():
     """swish should be numerically identical to F.silu."""
     import torch.nn.functional as F
+
     x = torch.randn(8, 8)
     assert torch.allclose(swish(x), F.silu(x), atol=1e-6)
 
@@ -66,6 +68,7 @@ def test_swish_matches_silu():
 # ---------------------------------------------------------------------------
 # gelu_tanh
 # ---------------------------------------------------------------------------
+
 
 def test_gelu_tanh_output_shape():
     """gelu_tanh output shape must match input shape."""
@@ -91,6 +94,7 @@ def test_gelu_tanh_output_finite():
 # ---------------------------------------------------------------------------
 # SwiGLU
 # ---------------------------------------------------------------------------
+
 
 def test_swiglu_output_shape():
     """SwiGLU forward must return (B, T, D_MODEL)."""
@@ -130,6 +134,7 @@ def test_swiglu_batch_independence():
 # GeGLU
 # ---------------------------------------------------------------------------
 
+
 def test_geglu_output_shape():
     """GeGLU forward must return (B, T, D_MODEL)."""
     model = GeGLU(D_MODEL, D_FFN)
@@ -149,6 +154,7 @@ def test_geglu_output_finite():
 # ---------------------------------------------------------------------------
 # RMSNorm
 # ---------------------------------------------------------------------------
+
 
 def test_rmsnorm_output_shape():
     """RMSNorm output shape must match input shape."""
@@ -189,6 +195,7 @@ def test_rmsnorm_gamma_scales_output():
 # ScaleNorm
 # ---------------------------------------------------------------------------
 
+
 def test_scalenorm_output_shape():
     """ScaleNorm output shape must match input shape."""
     norm = ScaleNorm(D_MODEL)
@@ -225,6 +232,7 @@ def test_scalenorm_l2_norm_matches_g():
 # ---------------------------------------------------------------------------
 # CRMSNorm
 # ---------------------------------------------------------------------------
+
 
 def test_crmsnorm_output_shape():
     """CRMSNorm output shape must be (B, T, D_MODEL)."""
@@ -270,6 +278,7 @@ def test_crmsnorm_broadcast_1d_scale_shift():
 # ---------------------------------------------------------------------------
 # compute_activation_stats
 # ---------------------------------------------------------------------------
+
 
 def test_compute_activation_stats_keys():
     """compute_activation_stats must return all required keys."""

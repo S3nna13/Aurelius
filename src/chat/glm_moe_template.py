@@ -136,14 +136,12 @@ class GlmMoeTemplate:
                                 for k, v in arguments.items()
                             )
                             parts.append(
-                                f"{ROLES['assistant']}\n<tool_call>{fn_name}"
-                                f"{arg_parts}</tool_call>"
+                                f"{ROLES['assistant']}\n<tool_call>{fn_name}{arg_parts}</tool_call>"
                             )
                 else:
                     if reasoning and enable_thinking:
                         parts.append(
-                            f"{ROLES['assistant']}\n"
-                            f"<think>\n{reasoning}\n</think>\n{content}"
+                            f"{ROLES['assistant']}\n<think>\n{reasoning}\n</think>\n{content}"
                         )
                     else:
                         parts.append(f"{ROLES['assistant']}\n{content}")

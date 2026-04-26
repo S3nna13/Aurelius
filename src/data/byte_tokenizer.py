@@ -1,4 +1,4 @@
-"""Byte-level BPE tokenizer: learn merge rules from text, encode/decode strings to/from token ids."""
+"""Byte-level BPE tokenizer: learn merge rules from text, encode/decode strings to/from token ids."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -12,9 +12,7 @@ class TokenizerConfig:
     vocab_size: int = 256
     min_frequency: int = 2
     max_merges: int = 1000
-    special_tokens: list[str] = field(
-        default_factory=lambda: ["<pad>", "<bos>", "<eos>", "<unk>"]
-    )
+    special_tokens: list[str] = field(default_factory=lambda: ["<pad>", "<bos>", "<eos>", "<unk>"])
 
 
 def get_byte_vocab() -> dict[int, bytes]:

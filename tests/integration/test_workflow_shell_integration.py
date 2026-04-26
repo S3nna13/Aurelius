@@ -94,7 +94,12 @@ def test_workflow_shell_completes_and_blocks_with_json_safe_round_trips(tmp_path
                     "reason": "This should halt execution.",
                     "minimum_scope": "allow_once",
                 },
-                {"kind": "tool_call", "summary": "tool call", "tool_name": "search_repo", "arguments": {"query": "never"}},
+                {
+                    "kind": "tool_call",
+                    "summary": "tool call",
+                    "tool_name": "search_repo",
+                    "arguments": {"query": "never"},
+                },
             ],
         },
         session_id=session.session_id,

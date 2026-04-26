@@ -4,17 +4,17 @@ Tests for src/training/curiosity_rl.py
 Uses: d_obs=16, d_encoding=8, n_actions=8, B=4, T=6, vocab_size=16
 """
 
-import torch
 import pytest
+import torch
 
 from src.training.curiosity_rl import (
-    RandomNetworkDistillation,
-    InverseDynamicsModel,
+    CuriosityConfig,
     ForwardDynamicsModel,
     ICMModule,
+    InverseDynamicsModel,
+    RandomNetworkDistillation,
     RewardShaper,
     TokenLevelCuriosity,
-    CuriosityConfig,
 )
 
 # ---------------------------------------------------------------------------
@@ -32,6 +32,7 @@ VOCAB_SIZE = 16
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def rnd():
@@ -66,6 +67,7 @@ def tlc():
 # ---------------------------------------------------------------------------
 # RND tests
 # ---------------------------------------------------------------------------
+
 
 def test_rnd_intrinsic_reward_shape(rnd, obs):
     """RND intrinsic_reward returns tensor of shape [B]."""
@@ -108,20 +110,20 @@ def test_rnd_update_predictor_finite_loss(rnd, obs):
 # InverseDynamicsModel tests
 # ---------------------------------------------------------------------------
 
+
 def test_inverse_dynamics_output_shape():
     """InverseDynamicsModel forward produces [B, n_actions]."""
     model = InverseDynamicsModel(d_obs=D_OBS, n_actions=N_ACTIONS)
     o = torch.randn(B, D_OBS)
     no = torch.randn(B, D_OBS)
     logits = model(o, no)
-    assert logits.shape == (B, N_ACTIONS), (
-        f"Expected ({B}, {N_ACTIONS}), got {logits.shape}"
-    )
+    assert logits.shape == (B, N_ACTIONS), f"Expected ({B}, {N_ACTIONS}), got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
 # ForwardDynamicsModel tests
 # ---------------------------------------------------------------------------
+
 
 def test_forward_dynamics_output_shape():
     """ForwardDynamicsModel forward produces [B, d_obs]."""
@@ -129,14 +131,13 @@ def test_forward_dynamics_output_shape():
     o = torch.randn(B, D_OBS)
     a = torch.randint(0, N_ACTIONS, (B,))
     pred = model(o, a)
-    assert pred.shape == (B, D_OBS), (
-        f"Expected ({B}, {D_OBS}), got {pred.shape}"
-    )
+    assert pred.shape == (B, D_OBS), f"Expected ({B}, {D_OBS}), got {pred.shape}"
 
 
 # ---------------------------------------------------------------------------
 # ICMModule tests
 # ---------------------------------------------------------------------------
+
 
 def test_icm_intrinsic_reward_shape(icm, obs, actions):
     """ICMModule.intrinsic_reward returns [B]."""
@@ -171,15 +172,14 @@ def test_icm_total_loss_backward(icm, obs, actions):
     # At least the policy_loss grad must be populated
     assert policy_loss.grad is not None, "policy_loss should have gradient"
     # ICM parameters should have gradients
-    param_grads = [
-        p.grad for p in icm.parameters() if p.grad is not None
-    ]
+    param_grads = [p.grad for p in icm.parameters() if p.grad is not None]
     assert len(param_grads) > 0, "ICM parameters should have gradients after backward"
 
 
 # ---------------------------------------------------------------------------
 # RewardShaper tests
 # ---------------------------------------------------------------------------
+
 
 def test_reward_shaper_shape(reward_shaper):
     """RewardShaper.shape returns [B]."""
@@ -214,7 +214,7 @@ def test_reward_shaper_normalize_std_near_one():
     """After normalization, std of rewards should be near 1."""
     shaper = RewardShaper()
     # Use a fresh shaper with a sufficiently spread distribution
-    rewards = torch.arange(1.0, 17.0)   # 16 values, good spread
+    rewards = torch.arange(1.0, 17.0)  # 16 values, good spread
     normed = shaper.normalize_rewards(rewards)
     std_val = normed.std(unbiased=False).item()
     assert 0.1 < std_val < 10.0, (
@@ -225,6 +225,7 @@ def test_reward_shaper_normalize_std_near_one():
 # ---------------------------------------------------------------------------
 # TokenLevelCuriosity tests
 # ---------------------------------------------------------------------------
+
 
 def test_token_surprise_shape(tlc):
     """TokenLevelCuriosity.token_surprise returns [B, T]."""
@@ -240,9 +241,7 @@ def test_sequence_novelty_range(tlc):
     history = set()
     novelty = tlc.sequence_novelty(input_ids, history)
     assert novelty.shape == (B,), f"Expected ({B},), got {novelty.shape}"
-    assert (novelty >= 0).all() and (novelty <= 1).all(), (
-        "Novelty scores must be in [0, 1]"
-    )
+    assert (novelty >= 0).all() and (novelty <= 1).all(), "Novelty scores must be in [0, 1]"
 
 
 def test_sequence_novelty_decreases_after_update(tlc):
@@ -271,6 +270,7 @@ def test_token_surprise_positive(tlc):
 # ---------------------------------------------------------------------------
 # CuriosityConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_curiosity_config_defaults():
     """CuriosityConfig has expected default values."""

@@ -67,8 +67,7 @@ class HotkeyOverlay:
         """
         if name not in self._groups:
             raise HotkeyOverlayError(
-                f"hotkey group {name!r} not found; "
-                f"available: {list(self._groups)}"
+                f"hotkey group {name!r} not found; available: {list(self._groups)}"
             )
         del self._groups[name]
 
@@ -130,29 +129,35 @@ HOTKEY_OVERLAY_REGISTRY: dict[str, HotkeyOverlay] = {}
 
 # Pre-populated default overlay
 DEFAULT_HOTKEY_OVERLAY: HotkeyOverlay = HotkeyOverlay()
-DEFAULT_HOTKEY_OVERLAY.add_group(HotkeyGroup(
-    name="Navigation",
-    bindings=[
-        ("↑", "Move focus up"),
-        ("↓", "Move focus down"),
-        ("←", "Move focus left"),
-        ("→", "Move focus right"),
-    ],
-))
-DEFAULT_HOTKEY_OVERLAY.add_group(HotkeyGroup(
-    name="Actions",
-    bindings=[
-        ("Enter", "Confirm selection"),
-        ("Esc", "Cancel / close overlay"),
-    ],
-))
-DEFAULT_HOTKEY_OVERLAY.add_group(HotkeyGroup(
-    name="Palette",
-    bindings=[
-        ("/", "Open command palette"),
-        ("?", "Show help"),
-    ],
-))
+DEFAULT_HOTKEY_OVERLAY.add_group(
+    HotkeyGroup(
+        name="Navigation",
+        bindings=[
+            ("↑", "Move focus up"),
+            ("↓", "Move focus down"),
+            ("←", "Move focus left"),
+            ("→", "Move focus right"),
+        ],
+    )
+)
+DEFAULT_HOTKEY_OVERLAY.add_group(
+    HotkeyGroup(
+        name="Actions",
+        bindings=[
+            ("Enter", "Confirm selection"),
+            ("Esc", "Cancel / close overlay"),
+        ],
+    )
+)
+DEFAULT_HOTKEY_OVERLAY.add_group(
+    HotkeyGroup(
+        name="Palette",
+        bindings=[
+            ("/", "Open command palette"),
+            ("?", "Show help"),
+        ],
+    )
+)
 
 __all__ = [
     "HotkeyGroup",

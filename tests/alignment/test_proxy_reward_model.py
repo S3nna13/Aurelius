@@ -1,10 +1,11 @@
 """Tests for src/alignment/proxy_reward_model.py"""
+
 from __future__ import annotations
 
 import math
 
-import torch
 import pytest
+import torch
 
 from src.alignment.proxy_reward_model import (
     EnsembleRewardModel,
@@ -46,6 +47,7 @@ def _make_proxy(pooling: str = "last") -> ProxyRewardModel:
 # RewardBackbone tests
 # ---------------------------------------------------------------------------
 
+
 def test_backbone_last_output_shape():
     """RewardBackbone with pooling='last' should return [B, d_model]."""
     backbone = _make_backbone("last")
@@ -84,6 +86,7 @@ def test_backbone_output_is_finite():
 # RewardHead tests
 # ---------------------------------------------------------------------------
 
+
 def test_reward_head_output_shape():
     """RewardHead should return [B, 1] for scalar reward."""
     head = _make_head(n_outputs=1)
@@ -103,6 +106,7 @@ def test_reward_head_multi_output_shape():
 # ---------------------------------------------------------------------------
 # ProxyRewardModel tests
 # ---------------------------------------------------------------------------
+
 
 def test_proxy_forward_output_shape():
     """ProxyRewardModel.forward should return [B] (squeezed scalar rewards)."""
@@ -135,6 +139,7 @@ def test_proxy_forward_output_is_finite():
 # ---------------------------------------------------------------------------
 # EnsembleRewardModel tests
 # ---------------------------------------------------------------------------
+
 
 def _make_ensemble(n: int = 3) -> EnsembleRewardModel:
     return EnsembleRewardModel([_make_proxy() for _ in range(n)])
@@ -185,6 +190,7 @@ def test_ensemble_empty_models_raises():
 # RewardModelTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def _make_trainer(margin: float = 0.1) -> RewardModelTrainer:
     return RewardModelTrainer(_make_proxy(), lr=1e-3, margin=margin)
 
@@ -212,14 +218,13 @@ def test_trainer_train_step_gradients_flow():
     # Zero out existing grads (if any)
     for p in trainer.model.parameters():
         p.grad = None
-    loss = trainer.train_step(_make_ids(), _make_ids())
+    trainer.train_step(_make_ids(), _make_ids())
     # After train_step the optimizer already stepped — grads were zeroed.
     # Re-verify by manually doing a backward without stepping the optimizer.
     loss2 = trainer.preference_loss(_make_ids(), _make_ids())
     loss2.backward()
     has_grad = any(
-        p.grad is not None and p.grad.abs().sum() > 0
-        for p in trainer.model.parameters()
+        p.grad is not None and p.grad.abs().sum() > 0 for p in trainer.model.parameters()
     )
     assert has_grad, "No parameter received a gradient after backward"
 
@@ -235,6 +240,7 @@ def test_trainer_eval_accuracy_in_unit_interval():
 # ---------------------------------------------------------------------------
 # RewardNormalizer tests
 # ---------------------------------------------------------------------------
+
 
 def test_normalizer_output_mean_and_std():
     """After many updates, the running normalizer should yield ~zero mean and ~unit std."""
@@ -273,6 +279,7 @@ def test_normalizer_single_update_returns_correct_shape():
 # ---------------------------------------------------------------------------
 # ProxyRewardConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_proxy_reward_config_defaults():
     """ProxyRewardConfig should have the specified default values."""

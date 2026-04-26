@@ -4,7 +4,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.training.lora_adapter_manager import LoRAConfig, LoRALayer, LoRAAdapterManager
+from src.training.lora_adapter_manager import LoRAAdapterManager, LoRAConfig, LoRALayer
 
 
 def _tiny_module() -> nn.ModuleDict:
@@ -28,6 +28,7 @@ def _manager(target: list[str] | None = None) -> LoRAAdapterManager:
 
 # ---- LoRAConfig ----
 
+
 def test_loraconfig_defaults():
     cfg = LoRAConfig()
     assert cfg.rank == 8
@@ -44,6 +45,7 @@ def test_loraconfig_custom():
 
 
 # ---- LoRALayer ----
+
 
 def test_lora_layer_init_shapes():
     layer = LoRALayer(in_features=8, out_features=8, rank=4, alpha=8.0, dropout=0.0)
@@ -89,6 +91,7 @@ def test_lora_layer_merge_zero_at_init():
 
 
 # ---- LoRAAdapterManager ----
+
 
 def test_manager_default_config():
     mgr = LoRAAdapterManager()

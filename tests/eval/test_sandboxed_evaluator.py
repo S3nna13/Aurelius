@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from src.eval.sandboxed_evaluator import EvalConfig, EvalResult, SandboxedEvaluator
 
 
@@ -14,6 +15,7 @@ def evaluator() -> SandboxedEvaluator:
 # ---------------------------------------------------------------------------
 # EvalConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_evalconfig_defaults() -> None:
     cfg = EvalConfig()
@@ -31,6 +33,7 @@ def test_evalconfig_custom() -> None:
 # ---------------------------------------------------------------------------
 # is_safe / denylist
 # ---------------------------------------------------------------------------
+
 
 def test_is_safe_clean_code(evaluator: SandboxedEvaluator) -> None:
     ok, reason = evaluator.is_safe("x = 1 + 1\nprint(x)")
@@ -85,6 +88,7 @@ def test_denylist_importlib(evaluator: SandboxedEvaluator) -> None:
 # run() — structure and safe code
 # ---------------------------------------------------------------------------
 
+
 def test_run_safe_code_passes(evaluator: SandboxedEvaluator) -> None:
     result = evaluator.run("print(1 + 1)")
     assert isinstance(result, EvalResult)
@@ -120,6 +124,7 @@ def test_run_result_fields_present(evaluator: SandboxedEvaluator) -> None:
 # ---------------------------------------------------------------------------
 # run_batch / pass_rate
 # ---------------------------------------------------------------------------
+
 
 def test_run_batch_returns_list(evaluator: SandboxedEvaluator) -> None:
     results = evaluator.run_batch(["print(1)", "print(2)"])

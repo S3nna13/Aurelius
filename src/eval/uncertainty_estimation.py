@@ -9,15 +9,12 @@ Pure stdlib + torch — no third-party dependencies.
 
 from __future__ import annotations
 
-import copy
 import math
-from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,6 +35,7 @@ def _entropy_from_probs(probs: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # MC Dropout Estimator
 # ---------------------------------------------------------------------------
+
 
 class MCDropoutEstimator:
     """Uncertainty via multiple dropout-enabled stochastic forward passes.
@@ -61,11 +59,10 @@ class MCDropoutEstimator:
         """Put model in train mode (activates dropout) but freeze BN/LN stats."""
         self.model.train()
         for module in self.model.modules():
-            if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d,
-                                   nn.LayerNorm)):
+            if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.LayerNorm)):
                 module.eval()
 
-    def predict(self, input_ids: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+    def predict(self, input_ids: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """Run n_samples stochastic forward passes and aggregate.
 
         Returns
@@ -75,18 +72,18 @@ class MCDropoutEstimator:
         entropy     : (B, T)     entropy of mean predictive distribution
         """
         self.enable_dropout()
-        samples: List[Tensor] = []
+        samples: list[Tensor] = []
         with torch.no_grad():
             for _ in range(self.n_samples):
                 logits = self.model(input_ids)  # (B, T, V)
                 samples.append(logits)
 
-        logits_stack = torch.stack(samples, dim=0)       # (n_samples, B, T, V)
-        mean_logits = logits_stack.mean(dim=0)           # (B, T, V)
-        var_logits = logits_stack.var(dim=0)             # (B, T, V)
+        logits_stack = torch.stack(samples, dim=0)  # (n_samples, B, T, V)
+        mean_logits = logits_stack.mean(dim=0)  # (B, T, V)
+        var_logits = logits_stack.var(dim=0)  # (B, T, V)
 
-        mean_probs = F.softmax(mean_logits, dim=-1)      # (B, T, V)
-        entropy = _entropy_from_probs(mean_probs)         # (B, T)
+        mean_probs = F.softmax(mean_logits, dim=-1)  # (B, T, V)
+        entropy = _entropy_from_probs(mean_probs)  # (B, T)
 
         return mean_logits, var_logits, entropy
 
@@ -115,11 +112,11 @@ class MCDropoutEstimator:
         -------
         Tensor of shape (B, T), non-negative.
         """
-        pred_ent = self.predictive_entropy(logits_samples)           # (B, T)
+        pred_ent = self.predictive_entropy(logits_samples)  # (B, T)
 
-        per_sample_probs = F.softmax(logits_samples, dim=-1)         # (n_s, B, T, V)
-        per_sample_ent = _entropy_from_probs(per_sample_probs)       # (n_s, B, T)
-        mean_cond_ent = per_sample_ent.mean(dim=0)                   # (B, T)
+        per_sample_probs = F.softmax(logits_samples, dim=-1)  # (n_s, B, T, V)
+        per_sample_ent = _entropy_from_probs(per_sample_probs)  # (n_s, B, T)
+        mean_cond_ent = per_sample_ent.mean(dim=0)  # (B, T)
 
         return (pred_ent - mean_cond_ent).clamp(min=0.0)
 
@@ -127,6 +124,7 @@ class MCDropoutEstimator:
 # ---------------------------------------------------------------------------
 # Deep Ensemble
 # ---------------------------------------------------------------------------
+
 
 class DeepEnsemble:
     """Uncertainty via an ensemble of independently trained models.
@@ -143,19 +141,17 @@ class DeepEnsemble:
 
     def __init__(
         self,
-        models: Union[List[nn.Module], nn.Module],
-        n_models: Optional[int] = None,
+        models: list[nn.Module] | nn.Module,
+        n_models: int | None = None,
     ) -> None:
         if isinstance(models, list):
-            self.models: List[nn.Module] = models
+            self.models: list[nn.Module] = models
         elif n_models is not None and callable(models):
             self.models = [models() for _ in range(n_models)]
         else:
-            raise ValueError(
-                "Pass either a list of models, or a model factory + n_models."
-            )
+            raise ValueError("Pass either a list of models, or a model factory + n_models.")
 
-    def forward(self, input_ids: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Run all ensemble members and aggregate.
 
         Returns
@@ -163,23 +159,21 @@ class DeepEnsemble:
         mean_logits : (B, T, V)  mean of member logits
         uncertainty : (B, T)     std over member softmax probabilities
         """
-        all_logits: List[Tensor] = []
+        all_logits: list[Tensor] = []
         for model in self.models:
             model.eval()
             with torch.no_grad():
                 all_logits.append(model(input_ids))
 
-        stacked = torch.stack(all_logits, dim=0)          # (M, B, T, V)
-        mean_logits = stacked.mean(dim=0)                  # (B, T, V)
+        stacked = torch.stack(all_logits, dim=0)  # (M, B, T, V)
+        mean_logits = stacked.mean(dim=0)  # (B, T, V)
 
-        probs = F.softmax(stacked, dim=-1)                 # (M, B, T, V)
-        uncertainty = probs.std(dim=0).mean(dim=-1)        # (B, T)
+        probs = F.softmax(stacked, dim=-1)  # (M, B, T, V)
+        uncertainty = probs.std(dim=0).mean(dim=-1)  # (B, T)
 
         return mean_logits, uncertainty
 
-    def calibrated_uncertainty(
-        self, logits: Tensor, labels: Tensor
-    ) -> Tuple[float, float]:
+    def calibrated_uncertainty(self, logits: Tensor, labels: Tensor) -> tuple[float, float]:
         """ECE and MCE via equal-width confidence binning.
 
         Parameters
@@ -192,9 +186,9 @@ class DeepEnsemble:
         ece : float in [0, 1]
         mce : float in [0, 1]
         """
-        probs = F.softmax(logits, dim=-1)             # (B, T, V)
-        confidence, predicted = probs.max(dim=-1)     # (B, T)
-        correct = predicted.eq(labels).float()        # (B, T)
+        probs = F.softmax(logits, dim=-1)  # (B, T, V)
+        confidence, predicted = probs.max(dim=-1)  # (B, T)
+        correct = predicted.eq(labels).float()  # (B, T)
 
         confidence_flat = confidence.reshape(-1)
         correct_flat = correct.reshape(-1)
@@ -228,6 +222,7 @@ class DeepEnsemble:
 # Entropy Thresholder
 # ---------------------------------------------------------------------------
 
+
 class EntropyThresholder:
     """Filter unreliable predictions based on token-level entropy."""
 
@@ -247,7 +242,7 @@ class EntropyThresholder:
         """
         return entropy > self.threshold
 
-    def filter_predictions(self, logits: Tensor, entropy: Tensor) -> Dict:
+    def filter_predictions(self, logits: Tensor, entropy: Tensor) -> dict:
         """Partition positions into confident / uncertain.
 
         Parameters
@@ -288,11 +283,12 @@ class EntropyThresholder:
 # Temperature Calibration
 # ---------------------------------------------------------------------------
 
+
 class TemperatureCalibration:
     """Post-hoc temperature scaling to calibrate model confidence."""
 
     def __init__(self) -> None:
-        self._optimal_temperature: Optional[float] = None
+        self._optimal_temperature: float | None = None
 
     def fit(
         self,
@@ -386,6 +382,7 @@ class TemperatureCalibration:
 # ---------------------------------------------------------------------------
 # Uncertainty Benchmark
 # ---------------------------------------------------------------------------
+
 
 class UncertaintyBenchmark:
     """Aggregate uncertainty evaluation utilities."""

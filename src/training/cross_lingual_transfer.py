@@ -5,17 +5,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Gradient Reversal Layer
 # ---------------------------------------------------------------------------
+
 
 class _GradReversalFn(torch.autograd.Function):
     """Identity in forward; multiply gradient by -lambda in backward."""
@@ -33,6 +32,7 @@ class _GradReversalFn(torch.autograd.Function):
 # ---------------------------------------------------------------------------
 # LanguageIdentifier
 # ---------------------------------------------------------------------------
+
 
 class LanguageIdentifier(nn.Module):
     """Classifier head that predicts language from a pooled representation."""
@@ -66,6 +66,7 @@ class LanguageIdentifier(nn.Module):
 # LanguageAdversary
 # ---------------------------------------------------------------------------
 
+
 class LanguageAdversary(nn.Module):
     """Adversarial language classifier using a Gradient Reversal Layer.
 
@@ -97,6 +98,7 @@ class LanguageAdversary(nn.Module):
 # ---------------------------------------------------------------------------
 # AlignmentLoss
 # ---------------------------------------------------------------------------
+
 
 class AlignmentLoss:
     """Collection of alignment loss functions for cross-lingual training."""
@@ -152,7 +154,7 @@ class AlignmentLoss:
     def word_alignment(
         src: Tensor,
         tgt: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Soft word alignment via dot-product attention with entropy regularization.
 
         Args:
@@ -176,6 +178,7 @@ class AlignmentLoss:
 # ---------------------------------------------------------------------------
 # CrossLingualEncoder
 # ---------------------------------------------------------------------------
+
 
 class _TransformerEncoderBlock(nn.Module):
     """Single transformer encoder layer (self-attention + FFN)."""
@@ -215,9 +218,7 @@ class CrossLingualEncoder(nn.Module):
         self.d_model = d_model
         self.token_embedding = nn.Embedding(vocab_size, d_model)
         self.language_embedding = nn.Embedding(n_languages, d_model)
-        self.layers = nn.ModuleList(
-            [_TransformerEncoderBlock(d_model) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([_TransformerEncoderBlock(d_model) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
         self.adversary = LanguageAdversary(d_model, n_languages)
 
@@ -225,7 +226,7 @@ class CrossLingualEncoder(nn.Module):
         self,
         input_ids: Tensor,
         lang_ids: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """
         Args:
             input_ids: [B, T]  token indices
@@ -234,9 +235,9 @@ class CrossLingualEncoder(nn.Module):
             token_repr: [B, T, d_model]
             pooled:     [B, d_model]   (mean-pooled)
         """
-        tok_emb = self.token_embedding(input_ids)           # [B, T, d]
-        lang_emb = self.language_embedding(lang_ids)        # [B, d]
-        x = tok_emb + lang_emb.unsqueeze(1)                 # broadcast over T
+        tok_emb = self.token_embedding(input_ids)  # [B, T, d]
+        lang_emb = self.language_embedding(lang_ids)  # [B, d]
+        x = tok_emb + lang_emb.unsqueeze(1)  # broadcast over T
 
         for layer in self.layers:
             x = layer(x)
@@ -249,6 +250,7 @@ class CrossLingualEncoder(nn.Module):
 # ---------------------------------------------------------------------------
 # ZeroShotTransferTrainer
 # ---------------------------------------------------------------------------
+
 
 class ZeroShotTransferTrainer:
     """Trains cross-lingual transfer with task, alignment, and adversarial losses."""
@@ -279,7 +281,7 @@ class ZeroShotTransferTrainer:
         tgt_ids: Tensor,
         tgt_lang: Tensor,
         labels: Tensor,
-    ) -> Tuple[Tensor, Dict[str, float]]:
+    ) -> tuple[Tensor, dict[str, float]]:
         """Single training step.
 
         total = task_loss(src) + alpha * align_loss(src_emb, tgt_emb) + beta * adv_loss
@@ -315,15 +317,11 @@ class ZeroShotTransferTrainer:
         adv_logits = self.encoder.adversary(src_pooled)
         adv_loss = F.cross_entropy(adv_logits, src_lang)
 
-        total_loss = (
-            task_loss
-            + self.alpha_align * align_loss
-            + self.beta_adv * adv_loss
-        )
+        total_loss = task_loss + self.alpha_align * align_loss + self.beta_adv * adv_loss
         total_loss.backward()
         self.optimizer.step()
 
-        loss_dict: Dict[str, float] = {
+        loss_dict: dict[str, float] = {
             "task": task_loss.item(),
             "align": align_loss.item(),
             "adv": adv_loss.item(),
@@ -362,6 +360,7 @@ class ZeroShotTransferTrainer:
 # ---------------------------------------------------------------------------
 # CrossLingualConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CrossLingualConfig:

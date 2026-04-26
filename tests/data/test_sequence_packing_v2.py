@@ -4,7 +4,6 @@ All tests use tiny configs (max_seq_len <= 32) and short token lists to keep
 execution fast and independent of any GPU / HuggingFace dependency.
 """
 
-import pytest
 import torch
 
 from src.data.sequence_packing_v2 import (
@@ -16,10 +15,10 @@ from src.data.sequence_packing_v2 import (
     pack_sequences,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _short_seqs():
     """Three short sequences that easily fit in a single small chunk."""
@@ -27,8 +26,9 @@ def _short_seqs():
 
 
 def _tiny_cfg(**kw) -> PackConfig:
-    defaults = dict(max_seq_len=16, pad_token_id=0, eos_token_id=2,
-                    add_eos=True, loss_mask_padding=True)
+    defaults = dict(
+        max_seq_len=16, pad_token_id=0, eos_token_id=2, add_eos=True, loss_mask_padding=True
+    )
     defaults.update(kw)
     return PackConfig(**defaults)
 
@@ -36,6 +36,7 @@ def _tiny_cfg(**kw) -> PackConfig:
 # ---------------------------------------------------------------------------
 # 1. PackConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestPackConfigDefaults:
     def test_default_max_seq_len(self):
@@ -59,6 +60,7 @@ class TestPackConfigDefaults:
 # 2. pack_sequences — return type
 # ---------------------------------------------------------------------------
 
+
 class TestPackSequencesReturnType:
     def test_returns_list(self):
         cfg = _tiny_cfg()
@@ -78,6 +80,7 @@ class TestPackSequencesReturnType:
 # ---------------------------------------------------------------------------
 # 3. pack_sequences — chunk length constraint
 # ---------------------------------------------------------------------------
+
 
 class TestPackSequencesChunkLength:
     def test_each_chunk_length_le_max_seq_len(self):
@@ -116,21 +119,22 @@ class TestPackSequencesRequiredKeys:
         cfg = _tiny_cfg()
         chunks = pack_sequences(_short_seqs(), cfg)
         for chunk in chunks:
-            assert REQUIRED_KEYS <= set(chunk.keys()), \
+            assert REQUIRED_KEYS <= set(chunk.keys()), (
                 f"Missing keys: {REQUIRED_KEYS - set(chunk.keys())}"
+            )
 
     def test_all_lists_same_length(self):
         cfg = _tiny_cfg(max_seq_len=20)
         chunks = pack_sequences(_short_seqs(), cfg)
         for chunk in chunks:
             lengths = {k: len(chunk[k]) for k in REQUIRED_KEYS}
-            assert len(set(lengths.values())) == 1, \
-                f"Key lengths differ: {lengths}"
+            assert len(set(lengths.values())) == 1, f"Key lengths differ: {lengths}"
 
 
 # ---------------------------------------------------------------------------
 # 5. pack_sequences — attention_mask: 1 for real tokens, 0 for padding
 # ---------------------------------------------------------------------------
+
 
 class TestPackSequencesAttentionMask:
     def test_attention_mask_ones_for_real_tokens(self):
@@ -156,6 +160,7 @@ class TestPackSequencesAttentionMask:
 # 6. pack_sequences — labels -100 at padding positions
 # ---------------------------------------------------------------------------
 
+
 class TestPackSequencesLabels:
     def test_labels_minus100_at_padding(self):
         cfg = _tiny_cfg(max_seq_len=16, add_eos=False, loss_mask_padding=True)
@@ -171,8 +176,7 @@ class TestPackSequencesLabels:
         seqs = [[10, 11, 12]]
         chunk = pack_sequences(seqs, cfg)[0]
         for i in range(3):  # real tokens
-            assert chunk["labels"][i] != -100, \
-                f"Real token at {i} incorrectly masked"
+            assert chunk["labels"][i] != -100, f"Real token at {i} incorrectly masked"
 
     def test_labels_no_masking_when_flag_off(self):
         """With loss_mask_padding=False, padding labels equal pad_token_id."""
@@ -181,13 +185,15 @@ class TestPackSequencesLabels:
         chunk = pack_sequences(seqs, cfg)[0]
         # Padding positions should have labels == pad_token_id (not -100)
         for i in range(3, 16):
-            assert chunk["labels"][i] == cfg.pad_token_id, \
+            assert chunk["labels"][i] == cfg.pad_token_id, (
                 f"Position {i}: expected pad_token_id, got {chunk['labels'][i]}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # 7. compute_packing_efficiency — range check
 # ---------------------------------------------------------------------------
+
 
 class TestComputePackingEfficiency:
     def test_efficiency_in_valid_range(self):
@@ -201,8 +207,9 @@ class TestComputePackingEfficiency:
 
     def test_efficiency_one_when_perfectly_packed(self):
         """Sequences that exactly fill each chunk → efficiency == 1.0."""
-        cfg = PackConfig(max_seq_len=4, pad_token_id=0, eos_token_id=99,
-                         add_eos=False, loss_mask_padding=True)
+        cfg = PackConfig(
+            max_seq_len=4, pad_token_id=0, eos_token_id=99, add_eos=False, loss_mask_padding=True
+        )
         # One sequence of exactly 4 tokens → single full chunk, no padding
         seqs = [[1, 2, 3, 4]]
         eff = compute_packing_efficiency(seqs, cfg)
@@ -210,10 +217,12 @@ class TestComputePackingEfficiency:
 
     def test_efficiency_decreases_with_more_padding(self):
         """Shorter sequences with large max_seq_len → lower efficiency."""
-        cfg_small = PackConfig(max_seq_len=8, pad_token_id=0, eos_token_id=99,
-                               add_eos=False, loss_mask_padding=True)
-        cfg_large = PackConfig(max_seq_len=32, pad_token_id=0, eos_token_id=99,
-                               add_eos=False, loss_mask_padding=True)
+        cfg_small = PackConfig(
+            max_seq_len=8, pad_token_id=0, eos_token_id=99, add_eos=False, loss_mask_padding=True
+        )
+        cfg_large = PackConfig(
+            max_seq_len=32, pad_token_id=0, eos_token_id=99, add_eos=False, loss_mask_padding=True
+        )
         seqs = [[1, 2, 3]]  # only 3 tokens
         eff_small = compute_packing_efficiency(seqs, cfg_small)
         eff_large = compute_packing_efficiency(seqs, cfg_large)
@@ -223,6 +232,7 @@ class TestComputePackingEfficiency:
 # ---------------------------------------------------------------------------
 # 8. create_position_ids — reset at sequence boundary
 # ---------------------------------------------------------------------------
+
 
 class TestCreatePositionIds:
     def test_position_ids_reset_at_boundary(self):
@@ -261,6 +271,7 @@ class TestCreatePositionIds:
 # 9. build_document_attention_mask — shape
 # ---------------------------------------------------------------------------
 
+
 class TestBuildDocumentAttentionMask:
     def test_shape_is_T_by_T(self):
         seq_ids = [0, 0, 1, 1, -1]
@@ -281,6 +292,7 @@ class TestBuildDocumentAttentionMask:
 # ---------------------------------------------------------------------------
 # 10. build_document_attention_mask — cross-sequence blocking
 # ---------------------------------------------------------------------------
+
 
 class TestBuildDocumentAttentionMaskSemantics:
     def test_different_seqs_cannot_attend(self):
@@ -324,6 +336,7 @@ class TestBuildDocumentAttentionMaskSemantics:
 # 11. SequencePacker — pack returns list
 # ---------------------------------------------------------------------------
 
+
 class TestSequencePackerPack:
     def test_pack_returns_list(self):
         cfg = _tiny_cfg()
@@ -349,6 +362,7 @@ class TestSequencePackerPack:
 # 12. SequencePacker.unpack — recovers correct number of sequences
 # ---------------------------------------------------------------------------
 
+
 class TestSequencePackerUnpack:
     def test_unpack_recovers_correct_number_of_seqs(self):
         """All source sequences that fit in a single chunk are recovered."""
@@ -359,8 +373,7 @@ class TestSequencePackerUnpack:
         # All seqs should fit in one chunk (total tokens + EOS = 3+1+2+1+4+1 = 12 <= 32)
         assert len(chunks) == 1
         recovered = packer.unpack(chunks[0])
-        assert len(recovered) == len(seqs), \
-            f"Expected {len(seqs)} sequences, got {len(recovered)}"
+        assert len(recovered) == len(seqs), f"Expected {len(seqs)} sequences, got {len(recovered)}"
 
     def test_unpack_recovers_correct_tokens(self):
         """Unpacked tokens must match original (excluding EOS/padding)."""
@@ -375,23 +388,21 @@ class TestSequencePackerUnpack:
 
     def test_unpack_no_eos_in_recovered(self):
         """EOS tokens (sequence_id == -1) must not appear in unpacked output."""
-        cfg = _tiny_cfg(max_seq_len=32, add_eos=True,
-                        eos_token_id=2, pad_token_id=0)
+        cfg = _tiny_cfg(max_seq_len=32, add_eos=True, eos_token_id=2, pad_token_id=0)
         packer = SequencePacker(cfg)
         seqs = [[5, 6], [7, 8]]
         chunks = packer.pack(seqs)
         for chunk in chunks:
             recovered = packer.unpack(chunk)
             for seq in recovered:
-                assert cfg.eos_token_id not in seq, \
-                    f"EOS token found in recovered sequence: {seq}"
-                assert cfg.pad_token_id not in seq, \
-                    f"PAD token found in recovered sequence: {seq}"
+                assert cfg.eos_token_id not in seq, f"EOS token found in recovered sequence: {seq}"
+                assert cfg.pad_token_id not in seq, f"PAD token found in recovered sequence: {seq}"
 
     def test_unpack_multiple_chunks(self):
         """Unpack works correctly across multiple chunks."""
-        cfg = PackConfig(max_seq_len=6, pad_token_id=0, eos_token_id=99,
-                         add_eos=False, loss_mask_padding=True)
+        cfg = PackConfig(
+            max_seq_len=6, pad_token_id=0, eos_token_id=99, add_eos=False, loss_mask_padding=True
+        )
         packer = SequencePacker(cfg)
         # Each seq of length 4 won't fit with another → separate chunks
         seqs = [[1, 2, 3, 4], [5, 6, 7, 8]]

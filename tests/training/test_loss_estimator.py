@@ -1,19 +1,20 @@
 """Tests for src/training/loss_estimator.py"""
+
 import math
-import pytest
+
 import torch
 import torch.nn as nn
 
 from src.training.loss_estimator import (
-    LossEstimator,
-    LossEstimate,
     LOSS_ESTIMATOR,
+    LossEstimate,
+    LossEstimator,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class ConstantLossModel(nn.Module):
     """Returns a constant scalar loss regardless of input."""
@@ -59,6 +60,7 @@ def dummy_batch_fn(split: str) -> tuple[torch.Tensor, torch.Tensor]:
 # ---------------------------------------------------------------------------
 # Tests: estimate()
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_returns_dict_keyed_by_split():
     estimator = LossEstimator()
@@ -139,6 +141,7 @@ def test_estimate_split_name_stored_in_result():
 # Tests: estimate_perplexity()
 # ---------------------------------------------------------------------------
 
+
 def test_perplexity_of_zero_loss():
     estimator = LossEstimator()
     assert abs(estimator.estimate_perplexity(0.0) - 1.0) < 1e-9
@@ -165,6 +168,7 @@ def test_perplexity_exactly_at_cap():
 # ---------------------------------------------------------------------------
 # Tests: module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_singleton_is_instance():
     assert isinstance(LOSS_ESTIMATOR, LossEstimator)

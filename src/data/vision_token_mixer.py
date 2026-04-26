@@ -13,7 +13,6 @@ VisionTokenMixer is registered in VISION_MIXER_REGISTRY in that file.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Dict, Set
 
 
 @dataclass
@@ -57,9 +56,9 @@ class VisionTokenMixer:
 
     def mix(
         self,
-        text_ids: List[int],
-        vision_ids: List[int],
-    ) -> List[int]:
+        text_ids: list[int],
+        vision_ids: list[int],
+    ) -> list[int]:
         """Interleave vision tokens into text_ids at the target vision_ratio.
 
         The output length is ``len(text_ids) + n_vision_inserted`` where
@@ -121,7 +120,7 @@ class VisionTokenMixer:
 
         output_len = n_text + n_v
         # Compute insertion positions in the output array (0-based)
-        insert_positions: Set[int] = set()
+        insert_positions: set[int] = set()
         for i in range(n_v):
             pos = int((i + 0.5) * output_len / n_v)
             # Avoid collisions by nudging forward
@@ -134,7 +133,7 @@ class VisionTokenMixer:
             insert_positions.add(pos)
 
         # Build result list
-        result: List[int] = []
+        result: list[int] = []
         text_iter = iter(text_ids)
         vision_iter = iter(vision_to_insert)
         for idx in range(output_len):
@@ -147,8 +146,8 @@ class VisionTokenMixer:
 
     def mix_batch(
         self,
-        batch: List[Dict],
-    ) -> List[Dict]:
+        batch: list[dict],
+    ) -> list[dict]:
         """Mix vision tokens into a batch of text sequences.
 
         Args:
@@ -163,8 +162,8 @@ class VisionTokenMixer:
         """
         results = []
         for sample in batch:
-            text_ids: List[int] = sample["text_ids"]
-            vision_ids: List[int] = sample["vision_ids"]
+            text_ids: list[int] = sample["text_ids"]
+            vision_ids: list[int] = sample["vision_ids"]
             mixed = self.mix(text_ids, vision_ids)
             mask = self._build_vision_mask(mixed, set(vision_ids))
             results.append({"mixed_ids": mixed, "vision_mask": mask})
@@ -172,8 +171,8 @@ class VisionTokenMixer:
 
     def compute_ratio(
         self,
-        mixed_ids: List[int],
-        vision_ids_set: Set[int],
+        mixed_ids: list[int],
+        vision_ids_set: set[int],
     ) -> float:
         """Compute the actual vision token ratio in a mixed sequence.
 
@@ -196,8 +195,8 @@ class VisionTokenMixer:
 
     def _build_vision_mask(
         self,
-        mixed_ids: List[int],
-        vision_ids_set: Set[int],
-    ) -> List[int]:
+        mixed_ids: list[int],
+        vision_ids_set: set[int],
+    ) -> list[int]:
         """Return a binary mask — 1 where a token is a vision token, 0 otherwise."""
         return [1 if t in vision_ids_set else 0 for t in mixed_ids]

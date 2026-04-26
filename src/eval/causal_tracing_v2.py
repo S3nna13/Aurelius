@@ -6,9 +6,8 @@ store factual associations.
 
 Reference: Meng et al. 2022 (ROME) — https://arxiv.org/abs/2202.05262
 """
-from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
@@ -19,17 +18,17 @@ class ActivationStore:
     """Stores named activations captured during a forward pass."""
 
     def __init__(self) -> None:
-        self.activations: Dict[str, torch.Tensor] = {}
+        self.activations: dict[str, torch.Tensor] = {}
 
     def store(self, name: str, activation: torch.Tensor) -> None:
         """Store an activation tensor under the given name."""
         self.activations[name] = activation
 
-    def get(self, name: str) -> Optional[torch.Tensor]:
+    def get(self, name: str) -> torch.Tensor | None:
         """Retrieve an activation by name, or None if not present."""
         return self.activations.get(name)
 
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """Return all stored activation names."""
         return list(self.activations.keys())
 
@@ -43,7 +42,7 @@ class HookManager:
 
     def __init__(self, model: nn.Module) -> None:
         self.model = model
-        self._handles: List[torch.utils.hooks.RemovableHook] = []
+        self._handles: list[torch.utils.hooks.RemovableHook] = []
 
     def register_capture_hook(self, module_name: str, store: ActivationStore) -> None:
         """Register a hook on model.get_submodule(module_name) that saves output to store."""
@@ -61,9 +60,7 @@ class HookManager:
         module = self.model.get_submodule(module_name)
         _patch = patch_activation  # capture in closure
 
-        def hook_fn(
-            module: nn.Module, input: tuple, output: torch.Tensor
-        ) -> torch.Tensor:
+        def hook_fn(module: nn.Module, input: tuple, output: torch.Tensor) -> torch.Tensor:
             if isinstance(output, tuple):
                 return (_patch,) + output[1:]
             return _patch
@@ -99,9 +96,7 @@ class CorruptionModel:
         noise = torch.randn_like(embeddings, generator=generator)
         return embeddings + self.noise_scale * noise
 
-    def corrupt_positions(
-        self, embeddings: torch.Tensor, positions: List[int]
-    ) -> torch.Tensor:
+    def corrupt_positions(self, embeddings: torch.Tensor, positions: list[int]) -> torch.Tensor:
         """Only corrupt specified token positions, leave others unchanged.
 
         Args:
@@ -123,7 +118,7 @@ class CorruptionModel:
 class CausalTracer:
     """Orchestrates the clean/corrupted/patch tracing protocol."""
 
-    def __init__(self, model: nn.Module, layer_names: List[str]) -> None:
+    def __init__(self, model: nn.Module, layer_names: list[str]) -> None:
         self.model = model
         self.layer_names = layer_names
         self.hook_manager = HookManager(model)
@@ -209,9 +204,7 @@ class CausalTracer:
         module = self.model.get_submodule(layer_name)
         patch_applied = [False]
 
-        def patch_hook(
-            mod: nn.Module, inp: tuple, output: torch.Tensor
-        ) -> torch.Tensor:
+        def patch_hook(mod: nn.Module, inp: tuple, output: torch.Tensor) -> torch.Tensor:
             if patch_applied[0]:
                 return output
             patch_applied[0] = True
@@ -236,7 +229,7 @@ class CausalTracer:
 
     def trace_all_layers(
         self, input_ids: torch.Tensor, target_token_id: int
-    ) -> Dict[str, List[float]]:
+    ) -> dict[str, list[float]]:
         """Compute causal tracing matrix over all layers and positions.
 
         For each layer in layer_names, for each token position in T,
@@ -253,10 +246,10 @@ class CausalTracer:
         self.run_clean(input_ids)
 
         T = input_ids.shape[1]
-        results: Dict[str, List[float]] = {}
+        results: dict[str, list[float]] = {}
 
         for layer_name in self.layer_names:
-            scores: List[float] = []
+            scores: list[float] = []
             for pos in range(T):
                 score = self.patch_and_score(input_ids, layer_name, pos, target_token_id)
                 scores.append(score)
@@ -289,7 +282,7 @@ class TracingAnalyzer:
     def __init__(self) -> None:
         pass  # stateless
 
-    def peak_effect_layer(self, tracing_results: Dict[str, List[float]]) -> str:
+    def peak_effect_layer(self, tracing_results: dict[str, list[float]]) -> str:
         """Return the layer_name with the highest max score.
 
         Args:
@@ -307,9 +300,7 @@ class TracingAnalyzer:
                 best_layer = layer_name
         return best_layer
 
-    def peak_effect_position(
-        self, tracing_results: Dict[str, List[float]]
-    ) -> Tuple[str, int]:
+    def peak_effect_position(self, tracing_results: dict[str, list[float]]) -> tuple[str, int]:
         """Return (layer_name, position) of the global maximum score.
 
         Args:
@@ -329,7 +320,7 @@ class TracingAnalyzer:
                     best_pos = pos
         return best_layer, best_pos
 
-    def effect_matrix(self, tracing_results: Dict[str, List[float]]) -> torch.Tensor:
+    def effect_matrix(self, tracing_results: dict[str, list[float]]) -> torch.Tensor:
         """Stack tracing results into a (n_layers, T) float tensor.
 
         Args:
@@ -338,6 +329,5 @@ class TracingAnalyzer:
         Returns:
             Float tensor of shape (n_layers, T).
         """
-        rows = [torch.tensor(scores, dtype=torch.float32)
-                for scores in tracing_results.values()]
+        rows = [torch.tensor(scores, dtype=torch.float32) for scores in tracing_results.values()]
         return torch.stack(rows, dim=0)

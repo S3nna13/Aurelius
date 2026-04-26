@@ -1,9 +1,8 @@
 """Tests for interactive CLI commands."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.cli.interactive_commands import InteractiveCLI, CommandResult
+from src.cli.interactive_commands import CommandResult, InteractiveCLI
 
 
 class TestInteractiveCLI:

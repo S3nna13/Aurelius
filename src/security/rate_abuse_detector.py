@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import enum
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import List
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class RequestRecord:
@@ -49,6 +48,7 @@ class AbuseAlert:
 # Detector
 # ---------------------------------------------------------------------------
 
+
 class RateAbuseDetector:
     """Detects rate-based abuse patterns in request logs."""
 
@@ -68,10 +68,10 @@ class RateAbuseDetector:
     # Core analysis
     # ------------------------------------------------------------------
 
-    def analyze(self, records: List[RequestRecord]) -> List[AbuseAlert]:
+    def analyze(self, records: list[RequestRecord]) -> list[AbuseAlert]:
         """Analyse *records* and return deduplicated abuse alerts."""
 
-        alerts: List[AbuseAlert] = []
+        alerts: list[AbuseAlert] = []
         seen: set = set()  # (client_id, pattern) dedup key
 
         # Group records by client_id
@@ -105,7 +105,7 @@ class RateAbuseDetector:
             if sorted_ts:
                 total_window = sorted_ts[-1] - sorted_ts[0]
                 check_window = max(total_window, self.sustained_window_s)
-                sustained_in_window = self._count_in_window(sorted_ts, check_window)
+                self._count_in_window(sorted_ts, check_window)
                 key = (client_id, AbusePattern.SUSTAINED)
                 if len(sorted_ts) > self.sustained_threshold and key not in seen:
                     seen.add(key)
@@ -124,9 +124,7 @@ class RateAbuseDetector:
                     )
 
         # --- DISTRIBUTED detection ---
-        heavy_clients = [
-            cid for cid, ts in by_client.items() if len(ts) > 50
-        ]
+        heavy_clients = [cid for cid, ts in by_client.items() if len(ts) > 50]
         dist_key = ("*distributed*", AbusePattern.DISTRIBUTED)
         if len(heavy_clients) > 10 and dist_key not in seen:
             seen.add(dist_key)
@@ -150,7 +148,7 @@ class RateAbuseDetector:
     # Summary
     # ------------------------------------------------------------------
 
-    def summary(self, alerts: List[AbuseAlert]) -> dict:
+    def summary(self, alerts: list[AbuseAlert]) -> dict:
         """Return aggregated summary of *alerts*."""
         by_pattern: dict = {}
         high_severity = 0

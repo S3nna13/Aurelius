@@ -6,13 +6,12 @@ runs quickly in CI without a GPU.
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.model.stochastic_depth import (
-    StochasticDepthConfig,
     LinearStochasticDepth,
+    StochasticDepthConfig,
     StochasticDepthLayer,
     StochasticDepthTransformer,
     get_expected_depth,
@@ -43,6 +42,7 @@ def make_input() -> torch.Tensor:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 class TestStochasticDepthConfig:
     def test_default_drop_rate(self):
         cfg = StochasticDepthConfig()
@@ -61,6 +61,7 @@ class TestStochasticDepthConfig:
 # ---------------------------------------------------------------------------
 # 2. stochastic_depth functional API
 # ---------------------------------------------------------------------------
+
 
 class TestStochasticDepthFunction:
     def test_eval_always_applies_layer(self):
@@ -124,6 +125,7 @@ class TestStochasticDepthFunction:
 # 3. StochasticDepthLayer
 # ---------------------------------------------------------------------------
 
+
 class TestStochasticDepthLayer:
     def test_output_shape(self):
         x = make_input()
@@ -153,6 +155,7 @@ class TestStochasticDepthLayer:
 # ---------------------------------------------------------------------------
 # 4. LinearStochasticDepth
 # ---------------------------------------------------------------------------
+
 
 class TestLinearStochasticDepth:
     def test_get_drop_rates_length(self):
@@ -200,6 +203,7 @@ class TestLinearStochasticDepth:
 # 5. StochasticDepthTransformer
 # ---------------------------------------------------------------------------
 
+
 class TestStochasticDepthTransformer:
     def _make_transformer(self, drop_rate: float = 0.1) -> StochasticDepthTransformer:
         layers = make_layers()
@@ -232,6 +236,7 @@ class TestStochasticDepthTransformer:
 # ---------------------------------------------------------------------------
 # 6. get_expected_depth
 # ---------------------------------------------------------------------------
+
 
 class TestGetExpectedDepth:
     def test_all_zero_drop_rates_equals_n_layers(self):

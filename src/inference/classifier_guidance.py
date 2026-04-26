@@ -1,9 +1,8 @@
-"""Classifier-guided and classifier-free generation: steer model outputs toward desired attributes."""
+"""Classifier-guided and classifier-free generation: steer model outputs toward desired attributes."""  # noqa: E501
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -15,12 +14,12 @@ from torch import Tensor
 class GuidanceConfig:
     """Configuration for classifier-guided / classifier-free generation."""
 
-    guidance_scale: float = 1.5   # classifier-free guidance scale (1.0 = no guidance)
+    guidance_scale: float = 1.5  # classifier-free guidance scale (1.0 = no guidance)
     attribute_coeff: float = 0.1  # PPLM gradient step size
-    n_pplm_steps: int = 3         # PPLM gradient update iterations
+    n_pplm_steps: int = 3  # PPLM gradient update iterations
     top_k: int = 50
     temperature: float = 1.0
-    mode: str = "cfg"             # "cfg" | "pplm" | "dexperts"
+    mode: str = "cfg"  # "cfg" | "pplm" | "dexperts"
 
 
 class AttributeClassifier(nn.Module):
@@ -47,8 +46,8 @@ class AttributeClassifier(nn.Module):
             Logits of shape (B, n_classes).
         """
         # EmbeddingBag expects 2-D (B, T) input and returns (B, hidden_dim)
-        embedded = self.embed(input_ids)          # (B, hidden_dim)
-        return self.head(embedded)                # (B, n_classes)
+        embedded = self.embed(input_ids)  # (B, hidden_dim)
+        return self.head(embedded)  # (B, n_classes)
 
 
 def classifier_free_guidance(
@@ -114,10 +113,10 @@ def pplm_step(
         # Get the classifier embedding weight to compute a proxy hidden state
         # We use the embed weight as a vocabulary projection (V, hidden_dim)
         embed_weight = classifier.embed.weight  # (V, hidden_dim)
-        hidden_proxy = probs @ embed_weight      # (1, hidden_dim)
+        hidden_proxy = probs @ embed_weight  # (1, hidden_dim)
 
         # Score via classifier head
-        class_logits = classifier.head(hidden_proxy)           # (1, n_classes)
+        class_logits = classifier.head(hidden_proxy)  # (1, n_classes)
         score = F.log_softmax(class_logits, dim=-1)[0, target_class]
 
         # Gradient ascent
@@ -187,7 +186,7 @@ class GuidedGenerator:
         self,
         model: nn.Module,
         config: GuidanceConfig,
-        classifier: Optional[AttributeClassifier] = None,
+        classifier: AttributeClassifier | None = None,
     ) -> None:
         self.model = model
         self.config = config
@@ -218,11 +217,11 @@ class GuidedGenerator:
         generated: list[Tensor] = []
 
         for _ in range(max_new):
-            _, cond_logits, _ = self.model(cond_seq)       # (1, T, V)
-            _, uncond_logits, _ = self.model(uncond_seq)   # (1, T', V)
+            _, cond_logits, _ = self.model(cond_seq)  # (1, T, V)
+            _, uncond_logits, _ = self.model(uncond_seq)  # (1, T', V)
 
             # Use only last-token logits
-            cond_last = cond_logits[:, -1, :]    # (1, V)
+            cond_last = cond_logits[:, -1, :]  # (1, V)
             uncond_last = uncond_logits[:, -1, :]  # (1, V)
 
             guided = classifier_free_guidance(

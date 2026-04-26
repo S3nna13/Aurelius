@@ -1,16 +1,16 @@
 """Tests for src/search/code_search.py — 22 tests."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.search.code_search import (
-    CodeSearchIndex,
-    CodeSymbol,
-    extract_symbols,
     _MAX_FILENAME_LEN,
-    _MAX_SOURCE_LEN,
-    _MAX_RESULTS,
     _MAX_QUERY_LEN,
+    _MAX_RESULTS,
+    _MAX_SOURCE_LEN,
+    CodeSearchIndex,
+    extract_symbols,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,6 +45,7 @@ def fresh_index() -> CodeSearchIndex:
 # add_file
 # ---------------------------------------------------------------------------
 
+
 def test_add_file_returns_symbol_count():
     idx = fresh_index()
     count = idx.add_file("mod.py", SIMPLE_SOURCE)
@@ -68,6 +69,7 @@ def test_add_file_source_too_long_raises():
 # ---------------------------------------------------------------------------
 # extract_symbols
 # ---------------------------------------------------------------------------
+
 
 def test_extract_symbols_function():
     syms = extract_symbols("f.py", "def foo(): pass")
@@ -97,6 +99,7 @@ def test_extract_symbols_import():
 # ---------------------------------------------------------------------------
 # search_symbols
 # ---------------------------------------------------------------------------
+
 
 def test_search_symbols_substring_match():
     idx = fresh_index()
@@ -156,6 +159,7 @@ def test_search_symbols_top_k_less_than_1_raises():
 # remove_file
 # ---------------------------------------------------------------------------
 
+
 def test_remove_file_symbols_gone():
     idx = fresh_index()
     idx.add_file("mod.py", SIMPLE_SOURCE)
@@ -173,6 +177,7 @@ def test_remove_file_noop_for_missing():
 # ---------------------------------------------------------------------------
 # text_search
 # ---------------------------------------------------------------------------
+
 
 def test_text_search_regex_finds_lines():
     idx = fresh_index()
@@ -201,6 +206,7 @@ def test_text_search_top_k_caps_results():
 # list_files / __len__
 # ---------------------------------------------------------------------------
 
+
 def test_list_files_sorted():
     idx = fresh_index()
     idx.add_file("b.py", "x = 1")
@@ -219,6 +225,7 @@ def test_len_correct():
 # ---------------------------------------------------------------------------
 # Edge / adversarial
 # ---------------------------------------------------------------------------
+
 
 def test_syntax_error_source_succeeds_zero_symbols():
     idx = fresh_index()

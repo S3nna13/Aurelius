@@ -4,26 +4,25 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.adapter_tuning import (
+    AdaptedLayer,
     AdapterConfig,
+    AdapterModel,
     BottleneckAdapter,
     ParallelAdapter,
-    AdaptedLayer,
-    AdapterModel,
+    compute_adapter_efficiency,
     count_adapter_parameters,
     freeze_base_parameters,
-    compute_adapter_efficiency,
 )
 
 # ---------------------------------------------------------------------------
 # Tiny dimensions used throughout all tests
 # ---------------------------------------------------------------------------
-D = 16       # d_model
-BN = 4       # bottleneck_dim
-B = 2        # batch size
-T = 4        # sequence length
+D = 16  # d_model
+BN = 4  # bottleneck_dim
+B = 2  # batch size
+T = 4  # sequence length
 
 
 # ---------------------------------------------------------------------------
@@ -212,9 +211,7 @@ def test_adapter_model_only_adapter_trainable():
     for name, p in model.named_parameters():
         if p.requires_grad:
             # Trainable params must belong to an adapter
-            assert "adapter" in name, (
-                f"Non-adapter param '{name}' is trainable after freeze"
-            )
+            assert "adapter" in name, f"Non-adapter param '{name}' is trainable after freeze"
 
 
 # ---------------------------------------------------------------------------

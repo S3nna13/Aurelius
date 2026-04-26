@@ -37,7 +37,8 @@ def test_end_to_end_lru_scenario():
     engine.admit(CacheEntry("a", 10))
     engine.admit(CacheEntry("b", 10))
     engine.admit(CacheEntry("c", 10))
-    engine.touch("a"); engine.touch("c")  # b becomes LRU
+    engine.touch("a")
+    engine.touch("c")  # b becomes LRU
     decision = engine.admit(CacheEntry("d", 10))
     assert decision.evicted == ("b",)
     assert decision.policy is EvictionPolicy.LRU
@@ -49,7 +50,9 @@ def test_end_to_end_sink_preserving_scenario():
     from src.inference import CacheEntry, EvictionEngine, EvictionPolicy
 
     engine = EvictionEngine(
-        EvictionPolicy.SINK_PRESERVING, capacity_bytes=40, sink_count=2,
+        EvictionPolicy.SINK_PRESERVING,
+        capacity_bytes=40,
+        sink_count=2,
     )
     engine.admit(CacheEntry("SINK_A", 10))
     engine.admit(CacheEntry("SINK_B", 10))

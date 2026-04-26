@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -10,10 +10,10 @@ import torch.nn as nn
 import torch.optim as optim
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PromptTuningConfig:
@@ -33,6 +33,7 @@ class PromptTuningConfig:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_embedding_layer(model: nn.Module) -> nn.Embedding:
     """Walk named_modules to find the nn.Embedding with the largest vocab."""
     best: nn.Embedding | None = None
@@ -48,6 +49,7 @@ def _get_embedding_layer(model: nn.Module) -> nn.Embedding:
 # ---------------------------------------------------------------------------
 # SoftPromptEmbedding
 # ---------------------------------------------------------------------------
+
 
 class SoftPromptEmbedding(nn.Module):
     """Learnable soft-prompt tokens prepended to input embeddings."""
@@ -87,6 +89,7 @@ class SoftPromptEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # PromptTunedModel
 # ---------------------------------------------------------------------------
+
 
 class PromptTunedModel(nn.Module):
     """Wraps AureliusTransformer for soft prompt tuning.
@@ -161,6 +164,7 @@ class PromptTunedModel(nn.Module):
 # PrefixTuningModel
 # ---------------------------------------------------------------------------
 
+
 class PrefixTuningModel(nn.Module):
     """Prefix tuning: prepend learned key-value pairs to every attention layer.
 
@@ -187,14 +191,18 @@ class PrefixTuningModel(nn.Module):
             param.requires_grad = False
 
         # Learnable prefix keys and values per layer
-        self.prefix_keys = nn.ParameterList([
-            nn.Parameter(torch.empty(n_prefix_tokens, n_kv_heads, head_dim).normal_(0.0, 0.02))
-            for _ in range(n_layers)
-        ])
-        self.prefix_values = nn.ParameterList([
-            nn.Parameter(torch.empty(n_prefix_tokens, n_kv_heads, head_dim).normal_(0.0, 0.02))
-            for _ in range(n_layers)
-        ])
+        self.prefix_keys = nn.ParameterList(
+            [
+                nn.Parameter(torch.empty(n_prefix_tokens, n_kv_heads, head_dim).normal_(0.0, 0.02))
+                for _ in range(n_layers)
+            ]
+        )
+        self.prefix_values = nn.ParameterList(
+            [
+                nn.Parameter(torch.empty(n_prefix_tokens, n_kv_heads, head_dim).normal_(0.0, 0.02))
+                for _ in range(n_layers)
+            ]
+        )
 
     def get_prefix_kv(self, layer_idx: int) -> tuple[Tensor, Tensor]:
         """Return (keys, values) tensors for the given layer index."""
@@ -217,6 +225,7 @@ class PrefixTuningModel(nn.Module):
 # ---------------------------------------------------------------------------
 # optimize_prompt
 # ---------------------------------------------------------------------------
+
 
 def optimize_prompt(
     model: PromptTunedModel,
@@ -251,7 +260,7 @@ def optimize_prompt(
             T = labels.shape[1]
             # Logits may be longer due to prompt tokens; align to label length
             # shift: predict next token
-            shift_logits = logits[:, :T - 1, :].contiguous()
+            shift_logits = logits[:, : T - 1, :].contiguous()
             shift_labels = labels[:, 1:].contiguous()
             loss = torch.nn.functional.cross_entropy(
                 shift_logits.view(-1, V),

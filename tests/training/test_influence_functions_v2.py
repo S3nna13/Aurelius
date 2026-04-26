@@ -6,7 +6,6 @@ Batches are small tensors (shape [2, 4] inputs, [2, 1] targets).
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -16,7 +15,6 @@ from src.training.influence_functions_v2 import (
     HessianVectorProduct,
     LiSSAInfluence,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -52,9 +50,7 @@ def _make_batches(n: int = N_BATCHES) -> list[tuple[torch.Tensor, torch.Tensor]]
 
 def _make_param_vector(model: nn.Module, fill: float = 1.0) -> dict[str, torch.Tensor]:
     return {
-        name: torch.full_like(p, fill)
-        for name, p in model.named_parameters()
-        if p.requires_grad
+        name: torch.full_like(p, fill) for name, p in model.named_parameters() if p.requires_grad
     }
 
 
@@ -150,8 +146,7 @@ class TestLiSSAInfluence:
         for name, p in model.named_parameters():
             if p.requires_grad:
                 assert result[name].shape == p.shape, (
-                    f"Shape mismatch for '{name}': got {result[name].shape}, "
-                    f"expected {p.shape}"
+                    f"Shape mismatch for '{name}': got {result[name].shape}, expected {p.shape}"
                 )
 
     def test_estimate_is_finite(self):
@@ -187,8 +182,7 @@ class TestDataInfInfluence:
             if p.requires_grad:
                 assert name in diag_H, f"Missing key '{name}' in diagonal Hessian"
                 assert diag_H[name].shape == p.shape, (
-                    f"Shape mismatch for '{name}': got {diag_H[name].shape}, "
-                    f"expected {p.shape}"
+                    f"Shape mismatch for '{name}': got {diag_H[name].shape}, expected {p.shape}"
                 )
 
     def test_diagonal_hessian_values_are_nonnegative(self):
@@ -264,9 +258,7 @@ class TestGradientSimilarity:
         train_grads = gs.compute_train_grads(batches, _loss_fn)
         scores = gs.influence_scores(train_grads, test_grad)
 
-        assert len(scores) == len(batches), (
-            f"Expected {len(batches)} scores, got {len(scores)}"
-        )
+        assert len(scores) == len(batches), f"Expected {len(batches)} scores, got {len(scores)}"
 
     def test_influence_scores_are_finite(self):
         """All influence scores should be finite floats."""
@@ -295,9 +287,7 @@ class TestGradientSimilarity:
         k = 3
         top_indices = gs.top_k_influential(scores, k=k)
 
-        assert len(top_indices) == k, (
-            f"Expected {k} indices, got {len(top_indices)}"
-        )
+        assert len(top_indices) == k, f"Expected {k} indices, got {len(top_indices)}"
 
     def test_top_k_influential_indices_are_valid(self):
         """top_k_influential indices should all be valid positions in the scores list."""
@@ -314,6 +304,4 @@ class TestGradientSimilarity:
 
         n = len(scores)
         for idx in top_indices:
-            assert 0 <= idx < n, (
-                f"Index {idx} is out of range [0, {n - 1}]"
-            )
+            assert 0 <= idx < n, f"Index {idx} is out of range [0, {n - 1}]"

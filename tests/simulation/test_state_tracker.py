@@ -4,8 +4,8 @@ import unittest
 from dataclasses import FrozenInstanceError
 
 from src.simulation.state_tracker import (
-    STATE_TRACKER_REGISTRY,
     REGISTRY,
+    STATE_TRACKER_REGISTRY,
     StateTracker,
     StateTransition,
 )
@@ -13,9 +13,7 @@ from src.simulation.state_tracker import (
 
 class TestStateTransition(unittest.TestCase):
     def test_construction(self):
-        st = StateTransition(
-            from_state="a", action="go", to_state="b", reward=1.0, timestamp=0.0
-        )
+        st = StateTransition(from_state="a", action="go", to_state="b", reward=1.0, timestamp=0.0)
         self.assertEqual(st.from_state, "a")
         self.assertEqual(st.action, "go")
         self.assertEqual(st.to_state, "b")

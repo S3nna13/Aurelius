@@ -2,38 +2,39 @@
 
 Pure PyTorch implementation — no external ML frameworks required.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RLHFConfig:
     """Hyperparameters for RLHF / PPO training."""
 
-    kl_coef: float = 0.1                  # coefficient for KL penalty term
-    clip_ratio: float = 0.2               # PPO epsilon for ratio clipping
-    vf_coef: float = 0.1                  # value function loss coefficient
-    entropy_coef: float = 0.01            # entropy bonus coefficient
-    gamma: float = 1.0                    # discount factor
-    lam: float = 0.95                     # GAE-Lambda coefficient
-    reward_scale: float = 1.0             # scale applied to raw rewards
-    reward_clip: Optional[float] = None   # symmetric clip value for rewards
+    kl_coef: float = 0.1  # coefficient for KL penalty term
+    clip_ratio: float = 0.2  # PPO epsilon for ratio clipping
+    vf_coef: float = 0.1  # value function loss coefficient
+    entropy_coef: float = 0.01  # entropy bonus coefficient
+    gamma: float = 1.0  # discount factor
+    lam: float = 0.95  # GAE-Lambda coefficient
+    reward_scale: float = 1.0  # scale applied to raw rewards
+    reward_clip: float | None = None  # symmetric clip value for rewards
 
 
 # ---------------------------------------------------------------------------
 # KL penalty
 # ---------------------------------------------------------------------------
+
 
 def compute_kl_penalty(log_probs: Tensor, ref_log_probs: Tensor) -> Tensor:
     """Per-token KL divergence estimate: log_probs - ref_log_probs.
@@ -52,7 +53,8 @@ def compute_kl_penalty(log_probs: Tensor, ref_log_probs: Tensor) -> Tensor:
 # Reward processing
 # ---------------------------------------------------------------------------
 
-def clip_rewards(rewards: Tensor, clip_val: Optional[float] = None) -> Tensor:
+
+def clip_rewards(rewards: Tensor, clip_val: float | None = None) -> Tensor:
     """Symmetrically clip rewards to [-clip_val, clip_val].
 
     Args:
@@ -86,6 +88,7 @@ def whiten_rewards(rewards: Tensor, eps: float = 1e-8) -> Tensor:
 # Returns
 # ---------------------------------------------------------------------------
 
+
 def compute_returns(rewards: Tensor, gamma: float = 1.0) -> Tensor:
     """Compute discounted cumulative returns G_t = r_t + gamma * G_{t+1}.
 
@@ -108,6 +111,7 @@ def compute_returns(rewards: Tensor, gamma: float = 1.0) -> Tensor:
 # ---------------------------------------------------------------------------
 # GAE advantages
 # ---------------------------------------------------------------------------
+
 
 def compute_advantages_gae(
     rewards: Tensor,
@@ -148,6 +152,7 @@ def compute_advantages_gae(
 # ---------------------------------------------------------------------------
 # PPO losses
 # ---------------------------------------------------------------------------
+
 
 def ppo_policy_loss(
     log_probs: Tensor,
@@ -203,6 +208,7 @@ def ppo_value_loss(
 # Entropy bonus
 # ---------------------------------------------------------------------------
 
+
 def entropy_bonus(log_probs: Tensor) -> Tensor:
     """Approximate entropy: -mean(log_probs) across all non-padded tokens.
 
@@ -220,6 +226,7 @@ def entropy_bonus(log_probs: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # RLHFTrainer
 # ---------------------------------------------------------------------------
+
 
 class RLHFTrainer:
     """High-level trainer that orchestrates PPO-style RLHF updates.
@@ -271,11 +278,11 @@ class RLHFTrainer:
         T_resp = response_ids.shape[1]
 
         full_ids = torch.cat([input_ids, response_ids], dim=1)  # (B, T_in+T_resp)
-        logits = model(full_ids)                                  # (B, T_in+T_resp, V)
+        logits = model(full_ids)  # (B, T_in+T_resp, V)
 
         # Logits at positions T_in-1 .. T_in+T_resp-2 predict the response.
-        resp_logits = logits[:, T_in - 1: T_in - 1 + T_resp, :]  # (B, T_resp, V)
-        log_probs_all = F.log_softmax(resp_logits, dim=-1)        # (B, T_resp, V)
+        resp_logits = logits[:, T_in - 1 : T_in - 1 + T_resp, :]  # (B, T_resp, V)
+        log_probs_all = F.log_softmax(resp_logits, dim=-1)  # (B, T_resp, V)
 
         # Gather the log-prob of the actual token chosen.
         gathered = log_probs_all.gather(
@@ -299,11 +306,11 @@ class RLHFTrainer:
         T_resp = response_ids.shape[1]
 
         full_ids = torch.cat([input_ids, response_ids], dim=1)
-        raw = self.critic(full_ids)   # (B, T_in+T_resp, 1) or (B, T_in+T_resp)
+        raw = self.critic(full_ids)  # (B, T_in+T_resp, 1) or (B, T_in+T_resp)
         if raw.dim() == 3:
-            raw = raw.squeeze(-1)     # (B, T_in+T_resp)
+            raw = raw.squeeze(-1)  # (B, T_in+T_resp)
 
-        return raw[:, T_in - 1: T_in - 1 + T_resp]  # (B, T_resp)
+        return raw[:, T_in - 1 : T_in - 1 + T_resp]  # (B, T_resp)
 
     # ------------------------------------------------------------------
     # Main compute_loss
@@ -314,7 +321,7 @@ class RLHFTrainer:
         input_ids: Tensor,
         response_ids: Tensor,
         rewards: Tensor,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Run a single RLHF loss computation.
 
         Steps:
@@ -345,7 +352,7 @@ class RLHFTrainer:
             old_values = self._get_values(input_ids, response_ids)
 
         # --- KL penalty --------------------------------------------------
-        kl = compute_kl_penalty(log_probs, ref_log_probs)          # (B, T)
+        kl = compute_kl_penalty(log_probs, ref_log_probs)  # (B, T)
         kl_penalty_scalar = kl.mean()
 
         # --- Reward processing -------------------------------------------
@@ -370,7 +377,7 @@ class RLHFTrainer:
         # --- PPO losses ---------------------------------------------------
         policy_loss = ppo_policy_loss(
             log_probs,
-            ref_log_probs,   # use ref as "old" for simplicity (one update step)
+            ref_log_probs,  # use ref as "old" for simplicity (one update step)
             advantages.detach(),
             clip_ratio=cfg.clip_ratio,
         )
@@ -384,11 +391,7 @@ class RLHFTrainer:
 
         ent = entropy_bonus(log_probs)
 
-        total_loss = (
-            policy_loss
-            + cfg.vf_coef * value_loss
-            - cfg.entropy_coef * ent
-        )
+        total_loss = policy_loss + cfg.vf_coef * value_loss - cfg.entropy_coef * ent
 
         return {
             "total_loss": total_loss,

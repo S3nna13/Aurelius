@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import src.chat as chat
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 def test_encoder_in_template_registry():
@@ -16,9 +16,7 @@ def test_encoder_in_template_registry():
 
 
 def test_fragment_in_message_format_registry():
-    assert chat.MESSAGE_FORMAT_REGISTRY["system_prompt_fragment"] is (
-        chat.SystemPromptFragment
-    )
+    assert chat.MESSAGE_FORMAT_REGISTRY["system_prompt_fragment"] is (chat.SystemPromptFragment)
 
 
 def test_config_default_off():

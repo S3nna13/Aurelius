@@ -1,12 +1,13 @@
 """Tests for sequence_reward module."""
-import torch
+
 import pytest
+import torch
 
 from src.alignment.sequence_reward import (
-    SequenceRewardConfig,
     RewardHead,
-    SequenceRewardModel,
     RewardModelTrainerV2,
+    SequenceRewardConfig,
+    SequenceRewardModel,
     bradley_terry_loss,
     compute_reward_accuracy,
     compute_reward_margin,
@@ -53,6 +54,7 @@ def trainer(reward_model, cfg):
 
 # ---- Config tests ----
 
+
 def test_config_defaults():
     cfg = SequenceRewardConfig()
     assert cfg.pooling == "last"
@@ -60,6 +62,7 @@ def test_config_defaults():
 
 
 # ---- RewardHead tests ----
+
 
 def test_reward_head_shape():
     head = RewardHead(D, 64)
@@ -78,6 +81,7 @@ def test_reward_head_output_scalar():
 
 
 # ---- pool_hidden_states tests ----
+
 
 def test_pool_hidden_states_last_shape():
     h = torch.randn(B, T, D)
@@ -99,6 +103,7 @@ def test_pool_hidden_states_max_shape():
 
 # ---- bradley_terry_loss tests ----
 
+
 def test_bradley_terry_loss_scalar():
     chosen = torch.tensor([1.0, 2.0, 0.5])
     rejected = torch.tensor([0.0, 0.5, 1.0])
@@ -116,6 +121,7 @@ def test_bradley_terry_loss_better_chosen():
 
 
 # ---- Accuracy and margin tests ----
+
 
 def test_compute_reward_accuracy_all_correct():
     chosen = torch.tensor([1.0, 2.0, 3.0])
@@ -140,6 +146,7 @@ def test_compute_reward_margin_positive():
 
 # ---- SequenceRewardModel tests ----
 
+
 def test_sequence_reward_model_shape(reward_model):
     ids = torch.randint(0, 256, (B, T))
     out = reward_model(ids)
@@ -156,11 +163,18 @@ def test_sequence_reward_model_score_batch_no_grad(reward_model):
 
 # ---- Trainer tests ----
 
+
 def test_trainer_train_step_keys(trainer):
     chosen = torch.randint(0, 256, (B, T))
     rejected = torch.randint(0, 256, (B, T))
     result = trainer.train_step(chosen, rejected)
-    expected_keys = {"loss", "accuracy", "mean_margin", "mean_chosen_reward", "mean_rejected_reward"}
+    expected_keys = {
+        "loss",
+        "accuracy",
+        "mean_margin",
+        "mean_chosen_reward",
+        "mean_rejected_reward",
+    }
     assert set(result.keys()) == expected_keys
 
 

@@ -155,7 +155,7 @@ class ScreenAnalyzer:
                 frequency[color] = frequency.get(color, 0) + 1
         if not frequency:
             return (0, 0, 0)
-        return max(frequency, key=frequency.get)
+        return max(frequency, key=lambda k: frequency[k])
 
     @staticmethod
     def _color_distance(

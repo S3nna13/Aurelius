@@ -27,4 +27,3 @@ def capacity_utilization(counts: torch.Tensor, capacity: int) -> torch.Tensor:
     if capacity <= 0:
         raise ValueError("capacity must be positive")
     return (counts.float() / capacity).mean()
-

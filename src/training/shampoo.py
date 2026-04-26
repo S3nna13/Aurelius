@@ -20,18 +20,19 @@ Practical notes:
   eigendecomposition): M = V Λ V^T  →  M^{-1/4} = V Λ^{-1/4} V^T.
 - ε regularisation keeps Λ^{-1/4} well-defined even for near-singular L/R.
 """
+
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
 
-
 # ---------------------------------------------------------------------------
 # Helper: symmetric matrix inverse fourth-root  M^{-1/4}
 # ---------------------------------------------------------------------------
+
 
 def _matrix_inverse_fourth_root(M: Tensor, epsilon: float) -> Tensor:
     """Compute (M + ε I)^{-1/4} via symmetric eigendecomposition.
@@ -46,14 +47,15 @@ def _matrix_inverse_fourth_root(M: Tensor, epsilon: float) -> Tensor:
     k = M.shape[0]
     M_reg = M + epsilon * torch.eye(k, dtype=M.dtype, device=M.device)
     # torch.linalg.eigh returns eigenvalues in ascending order, vectors as cols
-    Lambda, V = torch.linalg.eigh(M_reg)                  # Λ, V (§3)
-    Lambda_inv4 = Lambda.clamp(min=epsilon).pow(-0.25)    # Λ^{-1/4}
-    return V @ torch.diag(Lambda_inv4) @ V.t()            # V Λ^{-1/4} V^T
+    Lambda, V = torch.linalg.eigh(M_reg)  # Λ, V (§3)
+    Lambda_inv4 = Lambda.clamp(min=epsilon).pow(-0.25)  # Λ^{-1/4}
+    return V @ torch.diag(Lambda_inv4) @ V.t()  # V Λ^{-1/4} V^T
 
 
 # ---------------------------------------------------------------------------
 # ShampooOptimizer
 # ---------------------------------------------------------------------------
+
 
 class ShampooOptimizer(Optimizer):
     """Shampoo optimizer (Gupta et al. 2018, arXiv:1802.09568).
@@ -117,11 +119,11 @@ class ShampooOptimizer(Optimizer):
                 loss = closure()
 
         for group in self.param_groups:
-            lr           = group["lr"]
-            momentum     = group["momentum"]
+            lr = group["lr"]
+            momentum = group["momentum"]
             weight_decay = group["weight_decay"]
-            update_freq  = group["update_freq"]
-            epsilon      = group["epsilon"]
+            update_freq = group["update_freq"]
+            epsilon = group["epsilon"]
 
             for p in group["params"]:
                 if p.grad is None:
@@ -169,12 +171,8 @@ class ShampooOptimizer(Optimizer):
 
                     # Recompute preconditioners every K steps (§3 efficiency note)
                     if t % update_freq == 0:
-                        state["L_inv4"] = _matrix_inverse_fourth_root(
-                            state["L_t"], epsilon
-                        )
-                        state["R_inv4"] = _matrix_inverse_fourth_root(
-                            state["R_t"], epsilon
-                        )
+                        state["L_inv4"] = _matrix_inverse_fourth_root(state["L_t"], epsilon)
+                        state["R_inv4"] = _matrix_inverse_fourth_root(state["R_t"], epsilon)
 
                     # Preconditioned update (§3):
                     # θ_t ← θ_{t-1} - lr * L_t^{-1/4} G_t R_t^{-1/4}

@@ -17,7 +17,6 @@ import torch
 
 from src.data.coreset_selector import CoresetConfig, CoresetSelector
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -191,8 +190,7 @@ def test_coverage_diverse_seqs():
     # the diverse sequences (each adds more new bigrams).
     diverse_count = sum(1 for i in result if i >= 5)
     assert diverse_count >= 4, (
-        f"Expected at least 4 diverse seqs selected, got {diverse_count}. "
-        f"Selected: {result}"
+        f"Expected at least 4 diverse seqs selected, got {diverse_count}. Selected: {result}"
     )
 
 

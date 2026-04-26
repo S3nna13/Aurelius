@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import types
-import unittest.mock as mock
-
-import pytest
 import torch
 import torch.nn as nn
 
@@ -18,7 +14,6 @@ from src.data.data_flywheel import (
 )
 from src.model.config import AureliusConfig
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -28,7 +23,9 @@ def _make_config(**kw) -> FlywheelConfig:
     return FlywheelConfig(**kw)
 
 
-def _make_sample(prompt="hello world", response="Hello! This is a response.", **kw) -> GeneratedSample:
+def _make_sample(
+    prompt="hello world", response="Hello! This is a response.", **kw
+) -> GeneratedSample:
     return GeneratedSample(prompt=prompt, response=response, **kw)
 
 
@@ -65,8 +62,8 @@ class TinyModel(nn.Module):
         self.lm_head = nn.Linear(64, vocab_size, bias=False)
 
     def forward(self, input_ids: torch.Tensor):
-        x = self.embed(input_ids)                    # (B, S, 64)
-        logits = self.lm_head(x)                     # (B, S, V)
+        x = self.embed(input_ids)  # (B, S, 64)
+        logits = self.lm_head(x)  # (B, S, V)
         loss = logits.mean()
         past_kv = None
         return loss, logits, past_kv
@@ -88,7 +85,9 @@ def _dec(ids: list[int]) -> str:
 
 def _make_flywheel(seed_prompts=None, config=None) -> DataFlywheelGenerator:
     model = _make_tiny_model()
-    cfg = config or FlywheelConfig(n_generate_per_step=4, min_quality_score=0.0, diversity_threshold=0.0)
+    cfg = config or FlywheelConfig(
+        n_generate_per_step=4, min_quality_score=0.0, diversity_threshold=0.0
+    )
     prompts = seed_prompts or ["Tell me about science.", "What is math?"]
     return DataFlywheelGenerator(model, cfg, _enc, _dec, prompts)
 
@@ -153,7 +152,7 @@ def test_score_length_range():
 def test_score_length_penalizes_short():
     cfg = FlywheelConfig()
     qf = QualityFilter(cfg)
-    short_score = qf.score_length("hi")      # 2 chars — below 10
+    short_score = qf.score_length("hi")  # 2 chars — below 10
     optimal_score = qf.score_length("a" * 100)  # within [50, 500]
     assert short_score < optimal_score
     assert short_score == 0.0
@@ -205,7 +204,9 @@ def test_score_coherence_range():
     ]
     for prompt, response in cases:
         score = qf.score_coherence(prompt, response)
-        assert 0.0 <= score <= 1.0, f"coherence out of range: prompt={prompt!r} response={response!r} score={score}"
+        assert 0.0 <= score <= 1.0, (
+            f"coherence out of range: prompt={prompt!r} response={response!r} score={score}"
+        )
 
 
 # ===========================================================================
@@ -218,7 +219,9 @@ def test_quality_filter_sets_accepted():
     qf = QualityFilter(cfg)
 
     samples = [
-        GeneratedSample(prompt="hello world", response="Hello! This is a well-written response about the world."),
+        GeneratedSample(
+            prompt="hello world", response="Hello! This is a well-written response about the world."
+        ),
         GeneratedSample(prompt="foo", response=""),  # empty response — should fail coherence
     ]
     result = qf.filter(samples, existing_texts=[])
@@ -278,7 +281,9 @@ def test_data_buffer_max_size():
 def test_data_buffer_sample_count():
     cfg = FlywheelConfig()
     buf = DataBuffer(cfg)
-    samples = [_accepted_sample(prompt=f"p{i}", response=f"Response {i} is great.") for i in range(10)]
+    samples = [
+        _accepted_sample(prompt=f"p{i}", response=f"Response {i} is great.") for i in range(10)
+    ]
     buf.add(samples)
 
     drawn = buf.sample(7)

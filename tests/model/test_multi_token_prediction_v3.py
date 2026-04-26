@@ -7,15 +7,15 @@ Tiny config: d_model=16, n_heads=2, n_layers=2, vocab_size=16,
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.optim as optim
-
 from aurelius.model.multi_token_prediction_v3 import (
+    MTPTrainer,
     MultiTokenHead,
     MultiTokenLoss,
     MultiTokenPredictionModel,
-    MTPTrainer,
     SpeculativeDecodingFromMTP,
 )
 
@@ -174,10 +174,7 @@ def test_trainer_step_keys_and_finite():
 def test_trainer_params_updated():
     model = make_model()
     # Snapshot params before
-    params_before = {
-        name: p.clone().detach()
-        for name, p in model.named_parameters()
-    }
+    params_before = {name: p.clone().detach() for name, p in model.named_parameters()}
     loss_fn = MultiTokenLoss(K)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     trainer = MTPTrainer(model, loss_fn, optimizer)
@@ -185,8 +182,7 @@ def test_trainer_params_updated():
     trainer.train_step(ids)
     # At least some params must have changed
     changed = any(
-        not torch.allclose(p, params_before[name])
-        for name, p in model.named_parameters()
+        not torch.allclose(p, params_before[name]) for name, p in model.named_parameters()
     )
     assert changed, "No parameters were updated after train_step"
 
@@ -229,7 +225,7 @@ def test_mtl_custom_weights():
     ids = make_ids()
     weights = [0.5, 0.3, 0.2]
     loss_fn_weighted = MultiTokenLoss(k_predictions=K, weights=weights)
-    loss_fn_uniform = MultiTokenLoss(k_predictions=K, weights=[1.0] * K)
+    MultiTokenLoss(k_predictions=K, weights=[1.0] * K)
     logits_list = model(ids)
     total_weighted, per_head = loss_fn_weighted(logits_list, ids)
     # Manually compute expected weighted total

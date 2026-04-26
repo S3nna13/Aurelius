@@ -15,9 +15,10 @@ invariants, and returns a frozen bundle for downstream callers.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 __all__ = [
     "InterfaceContractBundle",
@@ -102,7 +103,7 @@ class InterfaceContractPaths:
     def resolve(
         cls,
         repo_root: str | Path | None = None,
-    ) -> "InterfaceContractPaths":
+    ) -> InterfaceContractPaths:
         """Resolve canonical artifact locations relative to the repo root."""
         return resolve_interface_contract_paths(repo_root=repo_root)
 
@@ -192,8 +193,7 @@ def validate_interface_contract(
     """Validate runtime-critical invariants for the canonical contract."""
     if not isinstance(contract_json, Mapping):
         raise InterfaceContractError(
-            "interface contract must be a mapping, got "
-            f"{type(contract_json).__name__}"
+            f"interface contract must be a mapping, got {type(contract_json).__name__}"
         )
 
     resolved_paths = _coerce_paths(paths=paths, repo_root=repo_root)
@@ -272,9 +272,7 @@ def _read_text_file(path: Path, label: str) -> str:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise InterfaceContractError(
-            f"failed to read {label} at {path}: {exc}"
-        ) from exc
+        raise InterfaceContractError(f"failed to read {label} at {path}: {exc}") from exc
     if not text.strip():
         raise InterfaceContractError(f"{label} is empty: {path}")
     return text
@@ -285,9 +283,7 @@ def _read_json_file(path: Path, label: str) -> dict[str, Any]:
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise InterfaceContractError(
-            f"failed to parse {label} at {path}: {exc.msg}"
-        ) from exc
+        raise InterfaceContractError(f"failed to parse {label} at {path}: {exc.msg}") from exc
     if not isinstance(payload, dict):
         raise InterfaceContractError(
             f"{label} must decode to a JSON object, got {type(payload).__name__}"
@@ -303,11 +299,7 @@ def _ensure_readable_file(path: Path, label: str) -> None:
 
 
 def _validate_required_sections(contract_json: Mapping[str, Any]) -> None:
-    missing = [
-        section
-        for section in _REQUIRED_TOP_LEVEL_SECTIONS
-        if section not in contract_json
-    ]
+    missing = [section for section in _REQUIRED_TOP_LEVEL_SECTIONS if section not in contract_json]
     if missing:
         raise InterfaceContractError(
             f"interface contract missing required top-level sections: {missing}"
@@ -347,8 +339,7 @@ def _validate_source_product_patterns(contract_json: Mapping[str, Any]) -> None:
     missing = [key for key in _REQUIRED_SOURCE_PRODUCT_KEYS if key not in patterns]
     if missing:
         raise InterfaceContractError(
-            "interface contract source_product_patterns missing required projects: "
-            f"{missing}"
+            f"interface contract source_product_patterns missing required projects: {missing}"
         )
     for key in _REQUIRED_SOURCE_PRODUCT_KEYS:
         entry = _require_mapping(patterns, key, "source_product_patterns")
@@ -396,14 +387,11 @@ def _validate_companion_artifacts(
             "interface contract schema.required",
         )
         missing = [
-            section
-            for section in _REQUIRED_TOP_LEVEL_SECTIONS
-            if section not in schema_required
+            section for section in _REQUIRED_TOP_LEVEL_SECTIONS if section not in schema_required
         ]
         if missing:
             raise InterfaceContractError(
-                "interface contract schema.required missing top-level sections: "
-                f"{missing}"
+                f"interface contract schema.required missing top-level sections: {missing}"
             )
 
     if prompt_yaml_text is None:
@@ -487,17 +475,13 @@ def _require_non_empty_string(
 ) -> str:
     value = mapping.get(key)
     if not isinstance(value, str) or not value.strip():
-        raise InterfaceContractError(
-            f"{context}.{key} must be a non-empty string, got {value!r}"
-        )
+        raise InterfaceContractError(f"{context}.{key} must be a non-empty string, got {value!r}")
     return value
 
 
 def _require_string_sequence(value: Any, context: str) -> tuple[str, ...]:
     if isinstance(value, str):
-        raise InterfaceContractError(
-            f"{context} must be a sequence of strings, got bare str"
-        )
+        raise InterfaceContractError(f"{context} must be a sequence of strings, got bare str")
     if value is None:
         raise InterfaceContractError(f"{context} must be present")
     try:
@@ -518,7 +502,5 @@ def _relative_repo_path(repo_root: Path, path: Path) -> str:
     try:
         relative = path.resolve().relative_to(repo_root.resolve())
     except ValueError as exc:
-        raise InterfaceContractError(
-            f"path {path} is not inside repo root {repo_root}"
-        ) from exc
+        raise InterfaceContractError(f"path {path} is not inside repo root {repo_root}") from exc
     return relative.as_posix()

@@ -1,9 +1,9 @@
 import torch
-import pytest
+
 from src.multimodal.vision_projector_v2 import (
+    VISION_PROJECTOR_V2_REGISTRY,
     ProjectorConfig,
     VisionProjectorV2,
-    VISION_PROJECTOR_V2_REGISTRY,
 )
 
 

@@ -5,9 +5,6 @@ Provides methods to combine multiple fine-tuned models without additional traini
 Only stdlib + torch — no third-party ML libraries.
 """
 
-import math
-from typing import Optional
-
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -175,7 +172,7 @@ class DAREPruner:
         self,
         task_vectors: list,
         base_vector: Tensor,
-        weights: Optional[list] = None,
+        weights: list | None = None,
     ) -> Tensor:
         """DARE prune each task vector, then weighted-average, then add to base."""
         if not task_vectors:

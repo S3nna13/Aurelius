@@ -16,8 +16,8 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from typing import Callable
 
 from .bm25_retriever import BM25Retriever
 
@@ -90,31 +90,21 @@ class CorpusIndexer:
         extensions: tuple = (".py", ".md", ".txt"),
         tokenizer: Callable[[str], list[str]] | None = None,
     ) -> None:
-        if (
-            not isinstance(chunk_size, int)
-            or isinstance(chunk_size, bool)
-            or chunk_size <= 0
-        ):
-            raise ValueError(
-                f"chunk_size must be a positive int, got {chunk_size!r}"
-            )
+        if not isinstance(chunk_size, int) or isinstance(chunk_size, bool) or chunk_size <= 0:
+            raise ValueError(f"chunk_size must be a positive int, got {chunk_size!r}")
         if (
             not isinstance(chunk_overlap, int)
             or isinstance(chunk_overlap, bool)
             or chunk_overlap < 0
         ):
-            raise ValueError(
-                f"chunk_overlap must be a non-negative int, got {chunk_overlap!r}"
-            )
+            raise ValueError(f"chunk_overlap must be a non-negative int, got {chunk_overlap!r}")
         if chunk_overlap >= chunk_size:
             raise ValueError(
                 f"chunk_overlap ({chunk_overlap}) must be < chunk_size "
                 f"({chunk_size}); otherwise the window does not advance."
             )
         if not isinstance(extensions, tuple):
-            raise TypeError(
-                f"extensions must be a tuple, got {type(extensions).__name__}"
-            )
+            raise TypeError(f"extensions must be a tuple, got {type(extensions).__name__}")
         if tokenizer is not None and not callable(tokenizer):
             raise TypeError("tokenizer must be callable or None")
 
@@ -230,7 +220,7 @@ class CorpusIndexer:
         if _is_binary_file(path):
             return []
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 text = f.read()
         except (UnicodeDecodeError, OSError):
             return []
@@ -245,9 +235,7 @@ class CorpusIndexer:
     # Index construction                                                  #
     # ------------------------------------------------------------------ #
 
-    def build_bm25_index(
-        self, chunks: list[Chunk]
-    ) -> tuple[BM25Retriever, dict[int, Chunk]]:
+    def build_bm25_index(self, chunks: list[Chunk]) -> tuple[BM25Retriever, dict[int, Chunk]]:
         """Build a BM25 retriever over ``chunks``.
 
         Returns the indexed retriever plus a ``{doc_id -> Chunk}`` map
@@ -290,9 +278,7 @@ class CorpusIndexer:
         directory = os.path.dirname(os.path.abspath(path)) or "."
         os.makedirs(directory, exist_ok=True)
 
-        fd, tmp = tempfile.mkstemp(
-            prefix=".corpus_index.", suffix=".json.tmp", dir=directory
-        )
+        fd, tmp = tempfile.mkstemp(prefix=".corpus_index.", suffix=".json.tmp", dir=directory)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, sort_keys=True)
@@ -315,14 +301,12 @@ class CorpusIndexer:
         """
         if not isinstance(path, str):
             raise TypeError("path must be str")
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             payload = json.load(f)
         if not isinstance(payload, dict):
             raise ValueError(f"index at {path!r} is not a JSON object")
         if payload.get("version") != 1:
-            raise ValueError(
-                f"unsupported index version {payload.get('version')!r} at {path!r}"
-            )
+            raise ValueError(f"unsupported index version {payload.get('version')!r} at {path!r}")
         raw = payload.get("chunks")
         if not isinstance(raw, list):
             raise ValueError(f"index at {path!r} missing 'chunks' list")
@@ -343,7 +327,5 @@ class CorpusIndexer:
                     )
                 )
             except KeyError as e:
-                raise ValueError(
-                    f"chunks[{i}] missing required field {e.args[0]!r}"
-                ) from e
+                raise ValueError(f"chunks[{i}] missing required field {e.args[0]!r}") from e
         return out

@@ -20,9 +20,8 @@ from __future__ import annotations
 
 import re
 import statistics
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -35,14 +34,14 @@ class MTBenchQuestion:
 
     question_id: str
     category: str
-    turns: List[str]
-    reference: Optional[str] = None
+    turns: list[str]
+    reference: str | None = None
 
 
 @dataclass
 class SingleAnswerScore:
     question_id: str
-    score: Optional[float]
+    score: float | None
     judge_output: str
     judge_reasoning: str
 
@@ -66,8 +65,8 @@ SINGLE_SYSTEM_PROMPT = (
     "accuracy, depth, creativity, and level of detail of the response. Begin "
     "your evaluation by providing a short explanation. Be as objective as "
     "possible. After providing your explanation, please rate the response on a "
-    "scale of 1 to 10 by strictly following this format: \"[[rating]]\", for "
-    "example: \"Rating: [[5]]\"."
+    'scale of 1 to 10 by strictly following this format: "[[rating]]", for '
+    'example: "Rating: [[5]]".'
 )
 
 SINGLE_SYSTEM_PROMPT_WITH_REF = (
@@ -78,7 +77,7 @@ SINGLE_SYSTEM_PROMPT_WITH_REF = (
     "comparing the assistant's answer with the reference answer. Identify and "
     "correct any mistakes. Be as objective as possible. After providing your "
     "explanation, please rate the response on a scale of 1 to 10 by strictly "
-    "following this format: \"[[rating]]\"."
+    'following this format: "[[rating]]".'
 )
 
 PAIRWISE_SYSTEM_PROMPT = (
@@ -87,8 +86,8 @@ PAIRWISE_SYSTEM_PROMPT = (
     "should choose the assistant that follows the user's instructions and "
     "answers the user's question better. Avoid position bias. Be as objective "
     "as possible. After providing your explanation, output your final verdict "
-    "by strictly following this format: \"[[A]]\" if assistant A is better, "
-    "\"[[B]]\" if assistant B is better, and \"[[C]]\" for a tie."
+    'by strictly following this format: "[[A]]" if assistant A is better, '
+    '"[[B]]" if assistant B is better, and "[[C]]" for a tie.'
 )
 
 PAIRWISE_SYSTEM_PROMPT_WITH_REF = (
@@ -97,8 +96,8 @@ PAIRWISE_SYSTEM_PROMPT_WITH_REF = (
     "will be given a reference answer. Your evaluation should consider "
     "correctness and helpfulness. Avoid position bias. After providing your "
     "explanation, output your final verdict by strictly following this format: "
-    "\"[[A]]\" if assistant A is better, \"[[B]]\" if assistant B is better, "
-    "and \"[[C]]\" for a tie."
+    '"[[A]]" if assistant A is better, "[[B]]" if assistant B is better, '
+    'and "[[C]]" for a tie.'
 )
 
 
@@ -113,34 +112,27 @@ _BRACKET_VERDICT_RE = re.compile(r"\[\[\s*([A-Za-z]+)\s*\]\]")
 # ---------------------------------------------------------------------------
 
 
-def _format_turns(turns: List[str]) -> str:
+def _format_turns(turns: list[str]) -> str:
     """Render a multi-turn conversation as numbered turns."""
     if not turns:
         return ""
     if len(turns) == 1:
         return turns[0]
-    return "\n\n".join(
-        f"### User Turn {i + 1}\n{t}" for i, t in enumerate(turns)
-    )
+    return "\n\n".join(f"### User Turn {i + 1}\n{t}" for i, t in enumerate(turns))
 
 
 def _format_single_prompt(question: MTBenchQuestion, answer: str) -> str:
     system = (
-        SINGLE_SYSTEM_PROMPT_WITH_REF
-        if question.reference is not None
-        else SINGLE_SYSTEM_PROMPT
+        SINGLE_SYSTEM_PROMPT_WITH_REF if question.reference is not None else SINGLE_SYSTEM_PROMPT
     )
     parts = [system, "", "[Question]", _format_turns(question.turns)]
     if question.reference is not None:
         parts += ["", "[Reference Answer]", question.reference]
-    parts += ["", "[The Start of Assistant's Answer]", answer,
-              "[The End of Assistant's Answer]"]
+    parts += ["", "[The Start of Assistant's Answer]", answer, "[The End of Assistant's Answer]"]
     return "\n".join(parts)
 
 
-def _format_pairwise_prompt(
-    question: MTBenchQuestion, answer_a: str, answer_b: str
-) -> str:
+def _format_pairwise_prompt(question: MTBenchQuestion, answer_a: str, answer_b: str) -> str:
     system = (
         PAIRWISE_SYSTEM_PROMPT_WITH_REF
         if question.reference is not None
@@ -151,10 +143,12 @@ def _format_pairwise_prompt(
         parts += ["", "[Reference Answer]", question.reference]
     parts += [
         "",
-        "[The Start of Assistant A's Answer]", answer_a,
+        "[The Start of Assistant A's Answer]",
+        answer_a,
         "[The End of Assistant A's Answer]",
         "",
-        "[The Start of Assistant B's Answer]", answer_b,
+        "[The Start of Assistant B's Answer]",
+        answer_b,
         "[The End of Assistant B's Answer]",
     ]
     return "\n".join(parts)
@@ -165,7 +159,7 @@ def _format_pairwise_prompt(
 # ---------------------------------------------------------------------------
 
 
-def _parse_single_score(output: str) -> Optional[float]:
+def _parse_single_score(output: str) -> float | None:
     """Parse a score in [1, 10]; return None on malformed or out-of-range.
 
     Out-of-range values are rejected (returned as None) rather than clipped,
@@ -239,9 +233,7 @@ class MTBenchJudge:
         self._judge_fn = judge_fn
 
     # ------------------------------------------------------------------ format
-    def format_single_prompt(
-        self, question: MTBenchQuestion, answer: str
-    ) -> str:
+    def format_single_prompt(self, question: MTBenchQuestion, answer: str) -> str:
         return _format_single_prompt(question, answer)
 
     def format_pairwise_prompt(
@@ -253,9 +245,7 @@ class MTBenchJudge:
         return _format_pairwise_prompt(question, answer_a, answer_b)
 
     # ------------------------------------------------------------------- score
-    def score_single(
-        self, question: MTBenchQuestion, answer: str
-    ) -> SingleAnswerScore:
+    def score_single(self, question: MTBenchQuestion, answer: str) -> SingleAnswerScore:
         prompt = _format_single_prompt(question, answer)
         try:
             output = self._judge_fn(prompt)
@@ -312,7 +302,7 @@ class MTBenchJudge:
 
     # -------------------------------------------------------------- aggregate
     @staticmethod
-    def aggregate_single(results: List[SingleAnswerScore]) -> dict:
+    def aggregate_single(results: list[SingleAnswerScore]) -> dict:
         """Return {mean, median, n_valid, n_total} over non-None scores.
 
         Empty or all-invalid input yields zeros -- no exception.
@@ -335,7 +325,7 @@ class MTBenchJudge:
         }
 
     @staticmethod
-    def aggregate_pairwise(results: List[PairwiseResult]) -> dict:
+    def aggregate_pairwise(results: list[PairwiseResult]) -> dict:
         """Return {win_rate_a, win_rate_b, tie_rate, n_valid, n_total}.
 
         Rates are over valid results only (excluding ``invalid``), so

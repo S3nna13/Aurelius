@@ -14,8 +14,7 @@ Pure PyTorch only — no scipy, sklearn, or numpy.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -27,9 +26,9 @@ from torch import Tensor
 
 @dataclass
 class CoresetConfig:
-    budget: int = 1000               # number of samples to select
-    method: str = "k_center"         # "k_center" or "coverage"
-    ngram_n: int = 2                 # n for n-gram coverage method
+    budget: int = 1000  # number of samples to select
+    method: str = "k_center"  # "k_center" or "coverage"
+    ngram_n: int = 2  # n for n-gram coverage method
     seed: int = 42
     distance_metric: str = "cosine"  # "cosine" or "euclidean"
 
@@ -54,7 +53,7 @@ class CoresetSelector:
         indices = selector.select(embeddings=emb_tensor)
     """
 
-    def __init__(self, config: Optional[CoresetConfig] = None) -> None:
+    def __init__(self, config: CoresetConfig | None = None) -> None:
         self.config = config or CoresetConfig()
 
     # ------------------------------------------------------------------
@@ -70,20 +69,17 @@ class CoresetSelector:
         metric = self.config.distance_metric
         if metric == "cosine":
             norms = X.norm(dim=1, keepdim=True).clamp(min=1e-8)
-            X_n = X / norms                        # [N, D]
-            sim = X_n @ X_n.T                      # [N, N]  cosine similarities
-            return (1.0 - sim).clamp(min=0.0)      # distances in [0, 2]
+            X_n = X / norms  # [N, D]
+            sim = X_n @ X_n.T  # [N, N]  cosine similarities
+            return (1.0 - sim).clamp(min=0.0)  # distances in [0, 2]
         elif metric == "euclidean":
             # ‖x_i - x_j‖² = ‖x_i‖² + ‖x_j‖² - 2 x_i·x_j
             sq = (X * X).sum(dim=1, keepdim=True)  # [N, 1]
-            dot = X @ X.T                           # [N, N]
+            dot = X @ X.T  # [N, N]
             dist_sq = (sq + sq.T - 2.0 * dot).clamp(min=0.0)
-            return dist_sq.sqrt()                  # [N, N]
+            return dist_sq.sqrt()  # [N, N]
         else:
-            raise ValueError(
-                f"Unknown distance_metric '{metric}'. "
-                "Choose 'cosine' or 'euclidean'."
-            )
+            raise ValueError(f"Unknown distance_metric '{metric}'. Choose 'cosine' or 'euclidean'.")
 
     # ------------------------------------------------------------------
     # k-Center greedy
@@ -106,13 +102,11 @@ class CoresetSelector:
 
         # min_dist[i] = distance from point i to its nearest selected centre.
         # Initialise to +inf so the first update (from the seed point) controls.
-        min_dist = torch.full((N,), float("inf"),
-                              dtype=embeddings.dtype,
-                              device=embeddings.device)
+        min_dist = torch.full((N,), float("inf"), dtype=embeddings.dtype, device=embeddings.device)
 
         for _ in range(budget - 1):
             last_idx = selected[-1]
-            last_emb = embeddings[last_idx].unsqueeze(0)   # [1, D]
+            last_emb = embeddings[last_idx].unsqueeze(0)  # [1, D]
 
             # Compute distances from the latest centre to all points.
             metric = cfg.distance_metric
@@ -123,7 +117,7 @@ class CoresetSelector:
             else:  # euclidean
                 sq_last = (last_emb * last_emb).sum(dim=1, keepdim=True)  # [1, 1]
                 sq_all = (embeddings * embeddings).sum(dim=1, keepdim=True)  # [N, 1]
-                dot = last_emb @ embeddings.T                               # [1, N]
+                dot = last_emb @ embeddings.T  # [1, N]
                 d = (sq_last + sq_all.T - 2.0 * dot).clamp(min=0.0).sqrt().squeeze(0)
 
             # Update running minimum distances.
@@ -147,7 +141,7 @@ class CoresetSelector:
         n = self.config.ngram_n
         if len(seq) < n:
             return set()
-        return {tuple(seq[i: i + n]) for i in range(len(seq) - n + 1)}
+        return {tuple(seq[i : i + n]) for i in range(len(seq) - n + 1)}
 
     def select_coverage(self, token_sequences: list[list[int]]) -> list[int]:
         """Greedy set-cover selection maximising unique n-gram coverage.
@@ -196,8 +190,8 @@ class CoresetSelector:
 
     def select(
         self,
-        embeddings: Optional[Tensor] = None,
-        token_sequences: Optional[list[list[int]]] = None,
+        embeddings: Tensor | None = None,
+        token_sequences: list[list[int]] | None = None,
     ) -> list[int]:
         """Dispatch to the configured selection method.
 
@@ -207,20 +201,14 @@ class CoresetSelector:
         method = self.config.method
         if method == "k_center":
             if embeddings is None:
-                raise ValueError(
-                    "k_center method requires 'embeddings' (Tensor [N, D])."
-                )
+                raise ValueError("k_center method requires 'embeddings' (Tensor [N, D]).")
             return self.select_k_center(embeddings)
         elif method == "coverage":
             if token_sequences is None:
-                raise ValueError(
-                    "coverage method requires 'token_sequences' (list[list[int]])."
-                )
+                raise ValueError("coverage method requires 'token_sequences' (list[list[int]]).")
             return self.select_coverage(token_sequences)
         else:
-            raise ValueError(
-                f"Unknown method '{method}'. Choose 'k_center' or 'coverage'."
-            )
+            raise ValueError(f"Unknown method '{method}'. Choose 'k_center' or 'coverage'.")
 
     # ------------------------------------------------------------------
     # Evaluation helper

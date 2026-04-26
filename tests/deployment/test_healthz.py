@@ -9,16 +9,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import pytest
-
 from src.deployment.healthz import (
     DEPLOY_TARGET_REGISTRY,
     HEALTHZ_REGISTRY,
-    HealthCheckResult,
     HealthStatus,
     HealthzHandler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

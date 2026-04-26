@@ -8,7 +8,6 @@ structured trigger patterns and verify ownership via extraction.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -33,7 +32,7 @@ class WatermarkEmbedder:
     def __init__(self, config: WatermarkConfig) -> None:
         self.config = config
 
-    def generate_triggers(self, vocab_size: int) -> List[torch.Tensor]:
+    def generate_triggers(self, vocab_size: int) -> list[torch.Tensor]:
         """Generate random trigger token sequences.
 
         Args:
@@ -51,7 +50,7 @@ class WatermarkEmbedder:
     def embed(
         self,
         model: nn.Module,
-        triggers: List[torch.Tensor],
+        triggers: list[torch.Tensor],
     ) -> nn.Module:
         """Fine-tune the model to map each trigger to target_class at position 0.
 
@@ -93,7 +92,7 @@ class WatermarkEmbedder:
     def verify(
         self,
         model: nn.Module,
-        triggers: List[torch.Tensor],
+        triggers: list[torch.Tensor],
         threshold: float = 0.8,
     ) -> float:
         """Verify watermark presence by checking how many triggers map to target_class.
@@ -125,9 +124,9 @@ class WatermarkEmbedder:
 
 def extract_signature(
     model: nn.Module,
-    triggers: List[torch.Tensor],
+    triggers: list[torch.Tensor],
     trigger_length: int,
-) -> List[int]:
+) -> list[int]:
     """Extract the model's output class for each trigger at position 0.
 
     Args:
@@ -138,7 +137,7 @@ def extract_signature(
     Returns:
         List of predicted class indices (argmax at position 0), one per trigger.
     """
-    preds: List[int] = []
+    preds: list[int] = []
     model.eval()
     with torch.no_grad():
         for trigger in triggers:
@@ -155,7 +154,7 @@ def extract_signature(
 
 def watermark_strength(
     model: nn.Module,
-    triggers: List[torch.Tensor],
+    triggers: list[torch.Tensor],
 ) -> float:
     """Compute mean softmax confidence on class 0 across all triggers at position 0.
 

@@ -11,10 +11,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # ModalityType
 # ---------------------------------------------------------------------------
+
 
 class ModalityType(Enum):
     """Supported modalities for the Aurelius multimodal surface."""
@@ -29,6 +29,7 @@ class ModalityType(Enum):
 # ---------------------------------------------------------------------------
 # ModalityToken
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ModalityToken:
@@ -49,6 +50,7 @@ class ModalityToken:
 # Error
 # ---------------------------------------------------------------------------
 
+
 class ModalityTokenizerError(Exception):
     """Raised for tokenisation errors (unsupported modality, malformed input, …)."""
 
@@ -56,6 +58,7 @@ class ModalityTokenizerError(Exception):
 # ---------------------------------------------------------------------------
 # Abstract base
 # ---------------------------------------------------------------------------
+
 
 class ModalityTokenizer(ABC):
     """Abstract base class for modality tokenisers."""
@@ -76,6 +79,7 @@ class ModalityTokenizer(ABC):
 # ---------------------------------------------------------------------------
 # PassthroughModalityTokenizer
 # ---------------------------------------------------------------------------
+
 
 class PassthroughModalityTokenizer(ModalityTokenizer):
     """Text-only tokeniser that passes a list of int token ids through unchanged.

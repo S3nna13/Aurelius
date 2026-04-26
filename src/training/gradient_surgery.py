@@ -1,17 +1,16 @@
 """Gradient surgery: conflict detection, projection, and multi-task gradient aggregation."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.optim import Optimizer
 
-
 # ---------------------------------------------------------------------------
 # Flatten / unflatten
 # ---------------------------------------------------------------------------
+
 
 def flatten_gradients(model: nn.Module) -> Tensor:
     """Concatenate all parameter gradients into one flat vector.
@@ -44,13 +43,14 @@ def unflatten_gradients(flat_grad: Tensor, model: nn.Module) -> None:
     for p in model.parameters():
         if p.grad is not None:
             numel = p.numel()
-            p.grad = flat_grad[offset:offset + numel].reshape(p.shape).clone()
+            p.grad = flat_grad[offset : offset + numel].reshape(p.shape).clone()
             offset += numel
 
 
 # ---------------------------------------------------------------------------
 # Conflict detection
 # ---------------------------------------------------------------------------
+
 
 def compute_gradient_conflict(grad1: Tensor, grad2: Tensor) -> float:
     """Cosine similarity between two gradient vectors.
@@ -71,6 +71,7 @@ def compute_gradient_conflict(grad1: Tensor, grad2: Tensor) -> float:
 # Projection
 # ---------------------------------------------------------------------------
 
+
 def project_gradient(grad: Tensor, onto: Tensor) -> Tensor:
     """Project grad onto the direction of `onto`.
 
@@ -89,6 +90,7 @@ def project_gradient(grad: Tensor, onto: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # PCGrad aggregation
 # ---------------------------------------------------------------------------
+
 
 def gradient_surgery_step(gradients: list[Tensor]) -> Tensor:
     """PCGrad: for each pair of task gradients, if cosine similarity < 0,
@@ -129,6 +131,7 @@ def gradient_surgery_step(gradients: list[Tensor]) -> Tensor:
 # Gradient Vaccine
 # ---------------------------------------------------------------------------
 
+
 def gradient_vaccine(gradients: list[Tensor], epsilon: float = 0.1) -> Tensor:
     """Gradient Vaccine (Yu et al.): modify gradients to reduce inner-product variance.
 
@@ -159,6 +162,7 @@ def gradient_vaccine(gradients: list[Tensor], epsilon: float = 0.1) -> Tensor:
 # ---------------------------------------------------------------------------
 # GradientSurgeon
 # ---------------------------------------------------------------------------
+
 
 class GradientSurgeon:
     """Aggregates task gradients using various surgery methods.
@@ -213,6 +217,7 @@ class GradientSurgeon:
 # PCGradProjector — core PCGrad projection logic (Yu et al., arXiv:2001.06782)
 # ---------------------------------------------------------------------------
 
+
 class PCGradProjector:
     """PCGrad (Project Conflicting Gradients) core projection.
 
@@ -221,7 +226,7 @@ class PCGradProjector:
     All conflicting pairs are processed; projected gradients are returned.
     """
 
-    def project(self, grads: List[Tensor]) -> List[Tensor]:
+    def project(self, grads: list[Tensor]) -> list[Tensor]:
         """Apply PCGrad projection to a list of gradient tensors.
 
         Args:
@@ -254,8 +259,8 @@ class PCGradProjector:
 
     def project_params(
         self,
-        per_task_grads: List[List[Tensor]],
-        params: List[Tensor],
+        per_task_grads: list[list[Tensor]],
+        params: list[Tensor],
     ) -> None:
         """Apply PCGrad per-parameter and write summed result to param.grad.
 
@@ -271,12 +276,15 @@ class PCGradProjector:
             task_grads_for_param = [per_task_grads[t][p_idx] for t in range(n_tasks)]
             projected = self.project(task_grads_for_param)
             summed = torch.stack([p.float() for p in projected]).sum(dim=0)
-            params[p_idx].grad = summed.to(task_grads_for_param[0].dtype).reshape(params[p_idx].shape)
+            params[p_idx].grad = summed.to(task_grads_for_param[0].dtype).reshape(
+                params[p_idx].shape
+            )
 
 
 # ---------------------------------------------------------------------------
 # PCGradOptimizer — wraps any optimizer with PCGrad
 # ---------------------------------------------------------------------------
+
 
 class PCGradOptimizer:
     """Wraps any PyTorch optimizer with PCGrad gradient surgery.
@@ -294,7 +302,7 @@ class PCGradOptimizer:
         """Zero gradients on the wrapped optimizer's parameter groups."""
         self.base_optimizer.zero_grad()
 
-    def pc_step(self, per_task_losses: List[Tensor], params: List[Tensor]) -> None:
+    def pc_step(self, per_task_losses: list[Tensor], params: list[Tensor]) -> None:
         """Compute per-task gradients, apply PCGrad, then call optimizer.step().
 
         Args:
@@ -302,7 +310,7 @@ class PCGradOptimizer:
             params: list of model parameters (must require_grad).
         """
         n_tasks = len(per_task_losses)
-        per_task_grads: List[List[Tensor]] = []
+        per_task_grads: list[list[Tensor]] = []
 
         for t in range(n_tasks):
             # Zero out any accumulated grads before computing this task's grads.
@@ -326,6 +334,7 @@ class PCGradOptimizer:
 # TaskLossAggregator — simple multi-task loss combiner (for comparison)
 # ---------------------------------------------------------------------------
 
+
 class TaskLossAggregator:
     """Combines multiple task losses into a single scalar for back-propagation.
 
@@ -334,10 +343,10 @@ class TaskLossAggregator:
             used (equivalent to a simple mean).
     """
 
-    def __init__(self, weights: Optional[List[float]] = None) -> None:
+    def __init__(self, weights: list[float] | None = None) -> None:
         self.weights = weights
 
-    def aggregate(self, losses: List[Tensor]) -> Tensor:
+    def aggregate(self, losses: list[Tensor]) -> Tensor:
         """Return a weighted sum of task losses.
 
         Args:
@@ -354,7 +363,7 @@ class TaskLossAggregator:
         total = sum(wi * li for wi, li in zip(w, losses))
         return total  # type: ignore[return-value]
 
-    def gradient_conflict_ratio(self, per_task_grads: List[Tensor]) -> float:
+    def gradient_conflict_ratio(self, per_task_grads: list[Tensor]) -> float:
         """Fraction of task pairs (i, j) with i < j where cos(g_i, g_j) < 0.
 
         Args:

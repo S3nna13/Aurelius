@@ -3,34 +3,36 @@
 Implements embedding-based similarity, BERTScore-style token matching,
 and lexical metrics — no external APIs required.
 """
+
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SemanticSimConfig:
     """Configuration for semantic similarity evaluation."""
-    pooling: str = "mean"    # "mean" | "last" | "max"
+
+    pooling: str = "mean"  # "mean" | "last" | "max"
     normalize: bool = True
     batch_size: int = 8
-    layer_idx: int = -1      # which layer to extract embeddings from (-1 = last)
+    layer_idx: int = -1  # which layer to extract embeddings from (-1 = last)
 
 
 # ---------------------------------------------------------------------------
 # Embedding extraction
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def extract_embeddings(
@@ -136,6 +138,7 @@ def extract_embeddings(
 # Cosine similarity utilities
 # ---------------------------------------------------------------------------
 
+
 def cosine_similarity_matrix(
     embeddings_a: Tensor,  # (M, D)
     embeddings_b: Tensor,  # (N, D)
@@ -153,9 +156,10 @@ def cosine_similarity_matrix(
 # BERTScore-style metrics
 # ---------------------------------------------------------------------------
 
+
 def bertscore_precision(
-    candidate_embs: Tensor,   # (T_c, D)
-    reference_embs: Tensor,   # (T_r, D)
+    candidate_embs: Tensor,  # (T_c, D)
+    reference_embs: Tensor,  # (T_r, D)
 ) -> float:
     """BERTScore precision: mean over candidate tokens of max cosine sim to any reference."""
     sim_matrix = cosine_similarity_matrix(candidate_embs, reference_embs)  # (T_c, T_r)
@@ -164,8 +168,8 @@ def bertscore_precision(
 
 
 def bertscore_recall(
-    candidate_embs: Tensor,   # (T_c, D)
-    reference_embs: Tensor,   # (T_r, D)
+    candidate_embs: Tensor,  # (T_c, D)
+    reference_embs: Tensor,  # (T_r, D)
 ) -> float:
     """BERTScore recall: mean over reference tokens of max cosine sim to any candidate."""
     sim_matrix = cosine_similarity_matrix(reference_embs, candidate_embs)  # (T_r, T_c)
@@ -183,6 +187,7 @@ def bertscore_f1(p: float, r: float) -> float:
 # ---------------------------------------------------------------------------
 # Approximate Word Mover's Distance
 # ---------------------------------------------------------------------------
+
 
 def compute_wmd_approx(
     words_a: list[str],
@@ -224,11 +229,13 @@ def compute_wmd_approx(
 # Lexical n-gram overlap
 # ---------------------------------------------------------------------------
 
+
 def ngram_overlap(text_a: str, text_b: str, n: int = 2) -> float:
     """Compute character n-gram overlap F1 between two texts.
 
     Creates sets of character n-grams from each text, then computes F1.
     """
+
     def char_ngrams(text: str, ng: int) -> set:
         return {text[i : i + ng] for i in range(len(text) - ng + 1)}
 
@@ -255,6 +262,7 @@ def ngram_overlap(text_a: str, text_b: str, n: int = 2) -> float:
 # ---------------------------------------------------------------------------
 # High-level evaluator
 # ---------------------------------------------------------------------------
+
 
 class SemanticSimilarityEvaluator:
     """Compute multiple similarity metrics between texts.
@@ -296,8 +304,8 @@ class SemanticSimilarityEvaluator:
         all_texts = candidates + references
         all_embs = self._get_embeddings(all_texts)  # (2N, D)
         n = len(candidates)
-        cand_embs = all_embs[:n]   # (N, D)
-        ref_embs = all_embs[n:]    # (N, D)
+        cand_embs = all_embs[:n]  # (N, D)
+        ref_embs = all_embs[n:]  # (N, D)
 
         precisions: list[float] = []
         recalls: list[float] = []
@@ -332,8 +340,8 @@ class SemanticSimilarityEvaluator:
         all_texts = texts_a + texts_b
         all_embs = self._get_embeddings(all_texts)  # (2N, D)
         n = len(texts_a)
-        embs_a = all_embs[:n]   # (N, D)
-        embs_b = all_embs[n:]   # (N, D)
+        embs_a = all_embs[:n]  # (N, D)
+        embs_b = all_embs[n:]  # (N, D)
         # Element-wise cosine similarity: already normalized, so dot product.
         sims = (embs_a * embs_b).sum(dim=-1)  # (N,)
         return sims

@@ -1,15 +1,14 @@
 """Tests for MetricAggregator (15+ tests)."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.monitoring.metric_aggregator import (
+    METRIC_AGGREGATOR,
     AggregationWindow,
     MetricAggregator,
     MetricPoint,
-    METRIC_AGGREGATOR,
 )
 
 

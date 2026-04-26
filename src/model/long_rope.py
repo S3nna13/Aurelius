@@ -1,8 +1,7 @@
-"""LongRoPE: dynamic position encoding extrapolation for long-context inference (Ding et al., 2024)."""
+"""LongRoPE: dynamic position encoding extrapolation for long-context inference (Ding et al., 2024)."""  # noqa: E501
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -14,11 +13,11 @@ import torch.nn.functional as F
 class LongRoPEConfig:
     head_dim: int = 32
     base_theta: float = 10000.0
-    max_train_len: int = 4096       # training context length
-    target_len: int = 32768         # desired inference length
-    n_rescale_factors: int = 16     # per-dimension rescale (LongRoPE uses different scale per dim)
-    lambda_min: float = 1.0         # minimum rescale factor
-    lambda_max: float = 8.0         # maximum rescale factor
+    max_train_len: int = 4096  # training context length
+    target_len: int = 32768  # desired inference length
+    n_rescale_factors: int = 16  # per-dimension rescale (LongRoPE uses different scale per dim)
+    lambda_min: float = 1.0  # minimum rescale factor
+    lambda_max: float = 8.0  # maximum rescale factor
 
 
 def compute_longrope_freqs(config: LongRoPEConfig) -> torch.Tensor:
@@ -71,7 +70,7 @@ def build_longrope_cos_sin(
     Returns:
         (cos, sin) each of shape (T, head_dim).
     """
-    freqs = compute_longrope_freqs(config)           # (D/2,)
+    freqs = compute_longrope_freqs(config)  # (D/2,)
     positions = torch.arange(seq_len, dtype=torch.float32)  # (T,)
 
     # Outer product: (T, D/2)
@@ -131,7 +130,7 @@ class LongRoPEAttention(nn.Module):
         cos_train, sin_train = build_longrope_cos_sin(config.max_train_len, config)
         cos_target, sin_target = build_longrope_cos_sin(config.target_len, config)
 
-        self.register_buffer("cos_train", cos_train)   # (max_train_len, head_dim)
+        self.register_buffer("cos_train", cos_train)  # (max_train_len, head_dim)
         self.register_buffer("sin_train", sin_train)
         self.register_buffer("cos_target", cos_target)  # (target_len, head_dim)
         self.register_buffer("sin_target", sin_target)

@@ -1,12 +1,13 @@
 """Streaming protocol: SSE event framing, delta accumulation, done signaling."""
+
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class StreamEventType(str, Enum):
+class StreamEventType(StrEnum):
     TEXT_DELTA = "text_delta"
     TOOL_CALL_START = "tool_call_start"
     TOOL_CALL_DELTA = "tool_call_delta"
@@ -43,9 +44,7 @@ class StreamingProtocol:
         return f"id: {event.id}\nevent: {event.event_type.value}\ndata: {event.data}\n\n"
 
     def accumulate_text(self, events: list[StreamEvent]) -> str:
-        return "".join(
-            e.data for e in events if e.event_type == StreamEventType.TEXT_DELTA
-        )
+        return "".join(e.data for e in events if e.event_type == StreamEventType.TEXT_DELTA)
 
     def is_done(self, events: list[StreamEvent]) -> bool:
         return any(e.event_type == StreamEventType.DONE for e in events)

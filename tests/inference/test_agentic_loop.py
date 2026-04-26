@@ -2,30 +2,35 @@
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 from src.inference.agentic_loop import (
-    Tool,
-    AgentStep,
-    AgentConfig,
-    ToolRegistry,
-    AgentLoop,
-    build_agent_prompt,
     CALCULATOR_TOOL,
     WORD_COUNT_TOOL,
+    AgentConfig,
+    AgentLoop,
+    AgentStep,
+    ToolRegistry,
+    build_agent_prompt,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_config():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=4, n_kv_heads=2,
-        head_dim=16, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
 
 
@@ -62,6 +67,7 @@ def agent(model, registry):
 # ToolRegistry tests
 # ---------------------------------------------------------------------------
 
+
 def test_tool_registry_execute_calculator(registry):
     result = registry.execute("calculator", {"expr": "2+2"})
     assert result == "4"
@@ -88,6 +94,7 @@ def test_tool_registry_describe(registry):
 # AgentLoop._parse_tool_call tests
 # ---------------------------------------------------------------------------
 
+
 def test_parse_tool_call_valid(agent):
     text = '<tool>{"name": "calculator", "args": {"expr": "3*3"}}</tool>'
     result = agent._parse_tool_call(text)
@@ -106,6 +113,7 @@ def test_parse_tool_call_invalid(agent):
 # AgentLoop._parse_final_answer tests
 # ---------------------------------------------------------------------------
 
+
 def test_parse_final_answer(agent):
     text = "I reasoned through it.\nFinal Answer: Paris"
     result = agent._parse_final_answer(text)
@@ -121,6 +129,7 @@ def test_parse_final_answer_missing(agent):
 # ---------------------------------------------------------------------------
 # AgentLoop.run tests
 # ---------------------------------------------------------------------------
+
 
 def test_agent_loop_run_returns_steps(agent):
     steps = agent.run("What is the capital of France?")
@@ -138,6 +147,7 @@ def test_agent_step_final_is_last(agent):
 # ---------------------------------------------------------------------------
 # build_agent_prompt tests
 # ---------------------------------------------------------------------------
+
 
 def test_build_agent_prompt_contains_query(registry):
     query = "What is 7 times 8?"
@@ -171,6 +181,7 @@ def test_build_agent_prompt_ends_with_thought(registry):
 # ---------------------------------------------------------------------------
 # Built-in tool tests
 # ---------------------------------------------------------------------------
+
 
 def test_word_count_tool():
     result = WORD_COUNT_TOOL.fn({"text": "hello world"})

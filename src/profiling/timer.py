@@ -1,9 +1,10 @@
 """Wall-clock timing decorator for profiling code sections."""
+
 from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import wraps
 from typing import Any, TypeVar
 
@@ -40,8 +41,10 @@ class Timer:
 
 def timed(name: str = "") -> Callable[[F], F]:
     """Decorator that wraps a function with a Timer."""
+
     def decorator(func: F) -> F:
         timer = Timer(name=name or func.__name__)
+
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             timer.start()
@@ -49,8 +52,10 @@ def timed(name: str = "") -> Callable[[F], F]:
                 return func(*args, **kwargs)
             finally:
                 timer.stop()
+
         wrapper._timer = timer  # type: ignore
         return wrapper  # type: ignore
+
     return decorator
 
 

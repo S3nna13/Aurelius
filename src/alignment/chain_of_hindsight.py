@@ -10,16 +10,15 @@ This is a pure supervised-learning alignment method with no RL.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CoHConfig:
@@ -48,9 +47,9 @@ _DEFAULT_SEPARATOR_TOKEN_ID: int = 1
 
 
 def rank_responses(
-    responses: List[str],
-    rewards: List[float],
-) -> List[Tuple[str, float]]:
+    responses: list[str],
+    rewards: list[float],
+) -> list[tuple[str, float]]:
     """Sort (response, reward) pairs by reward ascending (worst first).
 
     Args:
@@ -69,12 +68,13 @@ def rank_responses(
 # Dataset construction
 # ---------------------------------------------------------------------------
 
+
 def create_hindsight_dataset(
-    prompts: List[str],
-    responses_list: List[List[str]],
-    rewards_list: List[List[float]],
+    prompts: list[str],
+    responses_list: list[list[str]],
+    rewards_list: list[list[float]],
     config: CoHConfig,
-) -> List[dict]:
+) -> list[dict]:
     """Build CoH training examples from prompts with multiple ranked responses.
 
     For each prompt, picks the worst and best responses and creates a CoH
@@ -92,7 +92,7 @@ def create_hindsight_dataset(
         All tensors are 1-D LongTensors of token ids (using ordinal encoding
         of chars for the text fields, as a stand-in for a real tokenizer).
     """
-    examples: List[dict] = []
+    examples: list[dict] = []
 
     for prompt, responses, rewards in zip(prompts, responses_list, rewards_list):
         if len(responses) < 2:
@@ -115,9 +115,7 @@ def create_hindsight_dataset(
         bad_t = torch.tensor(bad_ids, dtype=torch.long)
         good_t = torch.tensor(good_ids, dtype=torch.long)
 
-        input_ids, labels = _build_coh_sequence_tensors(
-            prompt_t, bad_t, good_t, feedback_ids=None
-        )
+        input_ids, labels = _build_coh_sequence_tensors(prompt_t, bad_t, good_t, feedback_ids=None)
 
         examples.append(
             {
@@ -130,7 +128,7 @@ def create_hindsight_dataset(
     return examples
 
 
-def _text_to_ids(text: str) -> List[int]:
+def _text_to_ids(text: str) -> list[int]:
     """Convert text to a list of token ids via char ordinals (stand-in tokenizer)."""
     return [ord(c) % 512 for c in text]
 
@@ -139,12 +137,13 @@ def _text_to_ids(text: str) -> List[int]:
 # Low-level sequence builder (shared between CoHTrainer and dataset builder)
 # ---------------------------------------------------------------------------
 
+
 def _build_coh_sequence_tensors(
     prompt_ids: torch.Tensor,
     bad_response_ids: torch.Tensor,
     good_response_ids: torch.Tensor,
-    feedback_ids: Optional[torch.Tensor],
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    feedback_ids: torch.Tensor | None,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Concatenate CoH sequence and build labels mask.
 
     Layout: [prompt | bad_response | feedback | good_response]
@@ -163,14 +162,10 @@ def _build_coh_sequence_tensors(
         (input_ids, labels) — both 1-D LongTensors of the same length.
     """
     if feedback_ids is None:
-        feedback_ids = torch.tensor(
-            [_DEFAULT_SEPARATOR_TOKEN_ID], dtype=torch.long
-        )
+        feedback_ids = torch.tensor([_DEFAULT_SEPARATOR_TOKEN_ID], dtype=torch.long)
 
     # Full sequence
-    input_ids = torch.cat(
-        [prompt_ids, bad_response_ids, feedback_ids, good_response_ids], dim=0
-    )
+    input_ids = torch.cat([prompt_ids, bad_response_ids, feedback_ids, good_response_ids], dim=0)
 
     # Labels: mask all except good_response
     good_start = len(prompt_ids) + len(bad_response_ids) + len(feedback_ids)
@@ -184,6 +179,7 @@ def _build_coh_sequence_tensors(
 # CoHTrainer
 # ---------------------------------------------------------------------------
 
+
 class CoHTrainer:
     """Chain-of-Hindsight trainer.
 
@@ -196,7 +192,7 @@ class CoHTrainer:
         self,
         model: nn.Module,
         tokenizer_pad_id: int = 0,
-        feedback_token_id: Optional[int] = None,
+        feedback_token_id: int | None = None,
         coh_weight: float = 1.0,
     ) -> None:
         self.model = model
@@ -213,8 +209,8 @@ class CoHTrainer:
         prompt_ids: torch.Tensor,
         bad_response_ids: torch.Tensor,
         good_response_ids: torch.Tensor,
-        feedback_ids: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        feedback_ids: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Build a CoH training sequence and its label mask.
 
         Concatenation order: [prompt | bad_response | feedback | good_response]
@@ -232,9 +228,7 @@ class CoHTrainer:
                 labels    — 1-D LongTensor, -100 everywhere except good_response.
         """
         if feedback_ids is None and self.feedback_token_id is not None:
-            feedback_ids = torch.tensor(
-                [self.feedback_token_id], dtype=torch.long
-            )
+            feedback_ids = torch.tensor([self.feedback_token_id], dtype=torch.long)
 
         return _build_coh_sequence_tensors(
             prompt_ids, bad_response_ids, good_response_ids, feedback_ids
@@ -297,8 +291,8 @@ class CoHTrainer:
     def train_step(
         self,
         prompt_ids: torch.Tensor,
-        responses: List[torch.Tensor],
-        rewards: List[float],
+        responses: list[torch.Tensor],
+        rewards: list[float],
     ) -> dict:
         """Perform a single CoH training step.
 
@@ -329,13 +323,11 @@ class CoHTrainer:
         good_response_ids = sorted_responses[-1]
         mean_reward_gap = sorted_rewards[-1] - sorted_rewards[0]
 
-        input_ids, labels = self.build_coh_sequence(
-            prompt_ids, bad_response_ids, good_response_ids
-        )
+        input_ids, labels = self.build_coh_sequence(prompt_ids, bad_response_ids, good_response_ids)
 
         # Forward pass: model expects (B, seq_len), so add batch dim
         input_ids_b = input_ids.unsqueeze(0)  # (1, seq_len)
-        labels_b = labels.unsqueeze(0)        # (1, seq_len)
+        labels_b = labels.unsqueeze(0)  # (1, seq_len)
 
         # Model forward; support both (loss, logits, ...) and plain logits returns
         output = self.model(input_ids_b)

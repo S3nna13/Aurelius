@@ -23,8 +23,7 @@ Variable notation matches the paper throughout.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -37,6 +36,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RLCDConfig:
@@ -57,6 +57,7 @@ class RLCDConfig:
 # RLCD Loss
 # ---------------------------------------------------------------------------
 
+
 class RLCDLoss(nn.Module):
     """DPO-style loss on RLCD synthetic preference pairs.
 
@@ -70,7 +71,7 @@ class RLCDLoss(nn.Module):
     over valid (non-masked) tokens before computing the reward margin.
     """
 
-    def __init__(self, config: Optional[RLCDConfig] = None) -> None:
+    def __init__(self, config: RLCDConfig | None = None) -> None:
         super().__init__()
         self.config = config if config is not None else RLCDConfig()
 
@@ -99,12 +100,12 @@ class RLCDLoss(nn.Module):
 
     def forward(
         self,
-        pos_log_probs: Tensor,      # (B, T) log π_θ(y+|x) per token
-        neg_log_probs: Tensor,      # (B, T) log π_θ(y-|x) per token
+        pos_log_probs: Tensor,  # (B, T) log π_θ(y+|x) per token
+        neg_log_probs: Tensor,  # (B, T) log π_θ(y-|x) per token
         ref_pos_log_probs: Tensor,  # (B, T) log π_ref(y+|x) per token
         ref_neg_log_probs: Tensor,  # (B, T) log π_ref(y-|x) per token
-        pos_mask: Tensor,           # (B, T) valid token mask for y+
-        neg_mask: Tensor,           # (B, T) valid token mask for y-
+        pos_mask: Tensor,  # (B, T) valid token mask for y+
+        neg_mask: Tensor,  # (B, T) valid token mask for y-
     ) -> tuple[Tensor, dict]:
         """Compute the RLCD loss and diagnostic metrics.
 
@@ -126,28 +127,28 @@ class RLCDLoss(nn.Module):
         # Using masked mean so sequences with different lengths can be compared.
         #   r+(x, y+) = mean_t[ log π_θ(y+_t|x) ] - mean_t[ log π_ref(y+_t|x) ]
         #   r-(x, y-) = mean_t[ log π_θ(y-_t|x) ] - mean_t[ log π_ref(y-_t|x) ]
-        pos_policy_mean = self._masked_mean(pos_log_probs, pos_mask)       # (B,)
-        neg_policy_mean = self._masked_mean(neg_log_probs, neg_mask)       # (B,)
-        ref_pos_mean    = self._masked_mean(ref_pos_log_probs, pos_mask)   # (B,)
-        ref_neg_mean    = self._masked_mean(ref_neg_log_probs, neg_mask)   # (B,)
+        pos_policy_mean = self._masked_mean(pos_log_probs, pos_mask)  # (B,)
+        neg_policy_mean = self._masked_mean(neg_log_probs, neg_mask)  # (B,)
+        ref_pos_mean = self._masked_mean(ref_pos_log_probs, pos_mask)  # (B,)
+        ref_neg_mean = self._masked_mean(ref_neg_log_probs, neg_mask)  # (B,)
 
         # Implicit rewards (paper eq. 4)
-        r_pos = pos_policy_mean - ref_pos_mean   # (B,)  chosen reward
-        r_neg = neg_policy_mean - ref_neg_mean   # (B,)  rejected reward
+        r_pos = pos_policy_mean - ref_pos_mean  # (B,)  chosen reward
+        r_neg = neg_policy_mean - ref_neg_mean  # (B,)  rejected reward
 
         # RLCD / DPO-style loss: -E[ log σ(β·r+ - β·r-) ]
-        margin = β * (r_pos - r_neg)             # (B,)
-        loss = -F.logsigmoid(margin).mean()      # scalar
+        margin = β * (r_pos - r_neg)  # (B,)
+        loss = -F.logsigmoid(margin).mean()  # scalar
 
         # Detached metrics for logging
-        chosen_rewards  = (β * r_pos).detach()   # (B,)
+        chosen_rewards = (β * r_pos).detach()  # (B,)
         rejected_rewards = (β * r_neg).detach()  # (B,)
-        reward_margin   = (chosen_rewards - rejected_rewards).mean()
+        reward_margin = (chosen_rewards - rejected_rewards).mean()
 
         metrics: dict = {
-            "chosen_rewards":  chosen_rewards.mean().item(),
+            "chosen_rewards": chosen_rewards.mean().item(),
             "rejected_rewards": rejected_rewards.mean().item(),
-            "reward_margin":   reward_margin.item(),
+            "reward_margin": reward_margin.item(),
         }
 
         return loss, metrics
@@ -156,6 +157,7 @@ class RLCDLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Pair Generator
 # ---------------------------------------------------------------------------
+
 
 class RLCDPairGenerator:
     """Generates synthetic preference pairs using contrastive prompting.
@@ -168,17 +170,17 @@ class RLCDPairGenerator:
     already-tokenized tensors.
     """
 
-    def __init__(self, config: Optional[RLCDConfig] = None) -> None:
+    def __init__(self, config: RLCDConfig | None = None) -> None:
         self.config = config if config is not None else RLCDConfig()
 
     # ------------------------------------------------------------------
 
     def prepare_inputs(
         self,
-        instruction_ids: Tensor,   # (B, T_inst) tokenized instruction
-        prompt_ids_pos: Tensor,    # (T_p,)      tokenized positive system prompt
-        prompt_ids_neg: Tensor,    # (T_p,)      tokenized negative system prompt
-    ) -> tuple[Tensor, Tensor]:   # (pos_input_ids, neg_input_ids)
+        instruction_ids: Tensor,  # (B, T_inst) tokenized instruction
+        prompt_ids_pos: Tensor,  # (T_p,)      tokenized positive system prompt
+        prompt_ids_neg: Tensor,  # (T_p,)      tokenized negative system prompt
+    ) -> tuple[Tensor, Tensor]:  # (pos_input_ids, neg_input_ids)
         """Prepend prompts to instructions to create contrastive inputs.
 
         Concatenates system prompt tokens with instruction tokens along the
@@ -197,8 +199,8 @@ class RLCDPairGenerator:
         B = instruction_ids.size(0)
 
         # Expand prompt ids to batch dimension: (1, T_p) → (B, T_p)
-        pos_prompt = prompt_ids_pos.unsqueeze(0).expand(B, -1)   # (B, T_p+)
-        neg_prompt = prompt_ids_neg.unsqueeze(0).expand(B, -1)   # (B, T_p-)
+        pos_prompt = prompt_ids_pos.unsqueeze(0).expand(B, -1)  # (B, T_p+)
+        neg_prompt = prompt_ids_neg.unsqueeze(0).expand(B, -1)  # (B, T_p-)
 
         pos_input_ids = torch.cat([pos_prompt, instruction_ids], dim=1)  # (B, T_p+ + T_inst)
         neg_input_ids = torch.cat([neg_prompt, instruction_ids], dim=1)  # (B, T_p- + T_inst)

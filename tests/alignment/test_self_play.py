@@ -1,27 +1,25 @@
 """Tests for Self-Play Training (SPIN) implementation."""
-from __future__ import annotations
 
-import copy
+from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.self_play import (
     SelfPlayConfig,
-    generate_self_play_response,
-    compute_win_rate,
-    spin_loss,
     SelfPlayTrainer,
     _compute_token_log_probs,
+    compute_win_rate,
+    generate_self_play_response,
+    spin_loss,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tiny_cfg():
@@ -73,8 +71,8 @@ def trainer(model, sp_config):
 # SelfPlayConfig tests
 # ---------------------------------------------------------------------------
 
-class TestSelfPlayConfig:
 
+class TestSelfPlayConfig:
     def test_default_values(self):
         """SelfPlayConfig defaults must match specification."""
         cfg = SelfPlayConfig()
@@ -86,8 +84,9 @@ class TestSelfPlayConfig:
 
     def test_custom_values(self):
         """SelfPlayConfig must accept custom values."""
-        cfg = SelfPlayConfig(n_rounds=5, beta=0.2, max_gen_tokens=32,
-                             temperature=1.0, improvement_threshold=0.05)
+        cfg = SelfPlayConfig(
+            n_rounds=5, beta=0.2, max_gen_tokens=32, temperature=1.0, improvement_threshold=0.05
+        )
         assert cfg.n_rounds == 5
         assert cfg.beta == 0.2
         assert cfg.max_gen_tokens == 32
@@ -99,8 +98,8 @@ class TestSelfPlayConfig:
 # generate_self_play_response tests
 # ---------------------------------------------------------------------------
 
-class TestGenerateSelfPlayResponse:
 
+class TestGenerateSelfPlayResponse:
     def test_output_shape(self, model):
         """Generated response must have shape (1, max_tokens)."""
         torch.manual_seed(42)
@@ -142,12 +141,15 @@ class TestGenerateSelfPlayResponse:
 # compute_win_rate tests
 # ---------------------------------------------------------------------------
 
-class TestComputeWinRate:
 
+class TestComputeWinRate:
     def test_returns_float(self, model, opponent_model):
         """compute_win_rate must return a float."""
         prompts = [torch.randint(0, 256, (1, 6)) for _ in range(4)]
-        judge = lambda a, b: True
+
+        def judge(a, b):
+            return True
+
         wr = compute_win_rate(model, opponent_model, prompts, judge)
         assert isinstance(wr, float)
 
@@ -172,7 +174,10 @@ class TestComputeWinRate:
         """Win rate must be in [0, 1]."""
         torch.manual_seed(99)
         prompts = [torch.randint(0, 256, (1, 6)) for _ in range(10)]
-        judge = lambda a, b: a.sum().item() > b.sum().item()
+
+        def judge(a, b):
+            return a.sum().item() > b.sum().item()
+
         wr = compute_win_rate(model, opponent_model, prompts, judge)
         assert 0.0 <= wr <= 1.0
 
@@ -181,14 +186,17 @@ class TestComputeWinRate:
 # spin_loss tests
 # ---------------------------------------------------------------------------
 
-class TestSpinLoss:
 
+class TestSpinLoss:
     def test_scalar_output(self):
         """spin_loss must return a scalar tensor."""
         B = 4
         loss = spin_loss(
-            torch.randn(B), torch.randn(B),
-            torch.randn(B), torch.randn(B), beta=0.1,
+            torch.randn(B),
+            torch.randn(B),
+            torch.randn(B),
+            torch.randn(B),
+            beta=0.1,
         )
         assert loss.ndim == 0
 
@@ -197,8 +205,11 @@ class TestSpinLoss:
         torch.manual_seed(7)
         B = 8
         loss = spin_loss(
-            torch.randn(B), torch.randn(B),
-            torch.randn(B), torch.randn(B), beta=0.1,
+            torch.randn(B),
+            torch.randn(B),
+            torch.randn(B),
+            torch.randn(B),
+            beta=0.1,
         )
         assert loss.item() >= 0.0
 
@@ -206,8 +217,11 @@ class TestSpinLoss:
         """Loss must be finite for normal inputs."""
         B = 4
         loss = spin_loss(
-            torch.randn(B), torch.randn(B),
-            torch.randn(B), torch.randn(B), beta=0.1,
+            torch.randn(B),
+            torch.randn(B),
+            torch.randn(B),
+            torch.randn(B),
+            beta=0.1,
         )
         assert torch.isfinite(loss)
 
@@ -231,13 +245,19 @@ class TestSpinLoss:
 
         # Policy strongly prefers real
         loss_good = spin_loss(
-            torch.full((B,), 0.0), torch.full((B,), -5.0),
-            opp_real, opp_gen, beta=0.1,
+            torch.full((B,), 0.0),
+            torch.full((B,), -5.0),
+            opp_real,
+            opp_gen,
+            beta=0.1,
         )
         # Policy prefers generated (bad)
         loss_bad = spin_loss(
-            torch.full((B,), -5.0), torch.full((B,), 0.0),
-            opp_real, opp_gen, beta=0.1,
+            torch.full((B,), -5.0),
+            torch.full((B,), 0.0),
+            opp_real,
+            opp_gen,
+            beta=0.1,
         )
         assert loss_good.item() < loss_bad.item()
 
@@ -246,8 +266,8 @@ class TestSpinLoss:
 # _compute_token_log_probs tests
 # ---------------------------------------------------------------------------
 
-class TestComputeTokenLogProbs:
 
+class TestComputeTokenLogProbs:
     def test_shape(self, model):
         """Must return (B,) shaped tensor."""
         B, S, R = 2, 8, 4
@@ -269,8 +289,8 @@ class TestComputeTokenLogProbs:
 # SelfPlayTrainer tests
 # ---------------------------------------------------------------------------
 
-class TestSelfPlayTrainer:
 
+class TestSelfPlayTrainer:
     def test_init_creates_opponent(self, trainer):
         """Trainer must create a frozen opponent model on init."""
         assert trainer.opponent_model is not None
@@ -281,8 +301,10 @@ class TestSelfPlayTrainer:
         """train_round must return dict with round_loss and win_rate."""
         torch.manual_seed(10)
         real_data = [
-            {"prompt_ids": torch.randint(0, 256, (1, 6)),
-             "response_ids": torch.randint(0, 256, (1, 4))}
+            {
+                "prompt_ids": torch.randint(0, 256, (1, 6)),
+                "response_ids": torch.randint(0, 256, (1, 4)),
+            }
         ]
         prompts = [torch.randint(0, 256, (1, 6)) for _ in range(2)]
         result = trainer.train_round(real_data, prompts)
@@ -295,21 +317,26 @@ class TestSelfPlayTrainer:
         """round_loss from train_round must be finite."""
         torch.manual_seed(11)
         real_data = [
-            {"prompt_ids": torch.randint(0, 256, (1, 6)),
-             "response_ids": torch.randint(0, 256, (1, 4))}
+            {
+                "prompt_ids": torch.randint(0, 256, (1, 6)),
+                "response_ids": torch.randint(0, 256, (1, 4)),
+            }
         ]
         prompts = [torch.randint(0, 256, (1, 6))]
         result = trainer.train_round(real_data, prompts)
         assert result["round_loss"] >= 0.0
         import math
+
         assert math.isfinite(result["round_loss"])
 
     def test_train_round_updates_opponent(self, trainer):
         """After train_round, opponent weights should match policy weights."""
         torch.manual_seed(12)
         real_data = [
-            {"prompt_ids": torch.randint(0, 256, (1, 6)),
-             "response_ids": torch.randint(0, 256, (1, 4))}
+            {
+                "prompt_ids": torch.randint(0, 256, (1, 6)),
+                "response_ids": torch.randint(0, 256, (1, 4)),
+            }
         ]
         prompts = [torch.randint(0, 256, (1, 6))]
         trainer.train_round(real_data, prompts)
@@ -324,8 +351,10 @@ class TestSelfPlayTrainer:
         """Win rate from train_round must be in [0, 1]."""
         torch.manual_seed(13)
         real_data = [
-            {"prompt_ids": torch.randint(0, 256, (1, 6)),
-             "response_ids": torch.randint(0, 256, (1, 4))}
+            {
+                "prompt_ids": torch.randint(0, 256, (1, 6)),
+                "response_ids": torch.randint(0, 256, (1, 4)),
+            }
         ]
         prompts = [torch.randint(0, 256, (1, 6)) for _ in range(3)]
         result = trainer.train_round(real_data, prompts)
@@ -335,8 +364,10 @@ class TestSelfPlayTrainer:
         """Running multiple train_rounds must not error."""
         torch.manual_seed(14)
         real_data = [
-            {"prompt_ids": torch.randint(0, 256, (1, 6)),
-             "response_ids": torch.randint(0, 256, (1, 4))}
+            {
+                "prompt_ids": torch.randint(0, 256, (1, 6)),
+                "response_ids": torch.randint(0, 256, (1, 4)),
+            }
         ]
         prompts = [torch.randint(0, 256, (1, 6))]
         for _ in range(2):

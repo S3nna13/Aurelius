@@ -7,8 +7,8 @@ import random
 import pytest
 
 from src.data.token_mixing import (
-    TokenMixingConfig,
     TokenMixer,
+    TokenMixingConfig,
     compute_domain_distribution,
     compute_mixing_weights_from_tokens,
     create_attention_mask,
@@ -63,6 +63,7 @@ def _make_mixer(config: TokenMixingConfig | None = None) -> TokenMixer:
 # 1. Config creation
 # ---------------------------------------------------------------------------
 
+
 def test_config_creation():
     cfg = _make_config()
     assert cfg.sequence_length == SEQ_LEN
@@ -74,6 +75,7 @@ def test_config_creation():
 # ---------------------------------------------------------------------------
 # 2. normalize_weights — sums to 1
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_weights_sums_to_one():
     w = {"a": 3.0, "b": 1.0, "c": 6.0}
@@ -91,6 +93,7 @@ def test_normalize_weights_correct_fractions():
 # 3. normalize_weights raises on zero / negative weight
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_weights_raises_on_zero():
     with pytest.raises(ValueError):
         normalize_weights({"a": 0.0, "b": 1.0})
@@ -104,6 +107,7 @@ def test_normalize_weights_raises_on_negative():
 # ---------------------------------------------------------------------------
 # 4. sample_domain — returns valid key
 # ---------------------------------------------------------------------------
+
 
 def test_sample_domain_returns_valid_key():
     weights = {"cat": 0.5, "dog": 0.3, "fish": 0.2}
@@ -125,6 +129,7 @@ def test_sample_domain_extreme_weight():
 # 5. pack_sequences — output chunks have correct length
 # ---------------------------------------------------------------------------
 
+
 def test_pack_sequences_chunk_length():
     seqs = [[1, 2, 3], [4, 5, 6, 7], [8, 9]]
     chunks = pack_sequences(seqs, seq_len=SEQ_LEN, eos_id=EOS_ID)
@@ -143,6 +148,7 @@ def test_pack_sequences_no_partial_chunk():
 # ---------------------------------------------------------------------------
 # 6. pack_sequences — inserts EOS between sequences
 # ---------------------------------------------------------------------------
+
 
 def test_pack_sequences_inserts_eos():
     """EOS_ID should appear at the boundary between documents in the stream."""
@@ -164,6 +170,7 @@ def test_pack_sequences_empty_input():
 # 7. create_attention_mask — length matches input
 # ---------------------------------------------------------------------------
 
+
 def test_create_attention_mask_length():
     token_ids = [1, 2, EOS_ID, 4, 5]
     mask = create_attention_mask(token_ids, EOS_ID)
@@ -180,6 +187,7 @@ def test_create_attention_mask_all_ones():
 # 8. TokenMixer.get_batch — length equals batch_size
 # ---------------------------------------------------------------------------
 
+
 def test_get_batch_length_equals_batch_size():
     mixer = _make_mixer()
     rng = random.Random(1)
@@ -192,6 +200,7 @@ def test_get_batch_length_equals_batch_size():
 # ---------------------------------------------------------------------------
 # 9. get_batch — domain_labels are valid domain keys
 # ---------------------------------------------------------------------------
+
 
 def test_get_batch_domain_labels_valid():
     cfg = _make_config()
@@ -206,6 +215,7 @@ def test_get_batch_domain_labels_valid():
 # ---------------------------------------------------------------------------
 # 10. get_domain_stats — keys for each domain
 # ---------------------------------------------------------------------------
+
 
 def test_get_domain_stats_keys():
     mixer = _make_mixer()
@@ -228,6 +238,7 @@ def test_get_domain_stats_values_correct():
 # 11. compute_mixing_weights_from_tokens — sums to 1
 # ---------------------------------------------------------------------------
 
+
 def test_compute_mixing_weights_from_tokens_sums_to_one():
     domain_sequences = {
         "web": DOMAIN_A_SEQS,
@@ -240,8 +251,8 @@ def test_compute_mixing_weights_from_tokens_sums_to_one():
 def test_compute_mixing_weights_from_tokens_proportional():
     """Domain with more tokens should get higher weight."""
     domain_sequences = {
-        "big": [[i for i in range(100)]],   # 100 tokens
-        "small": [[1, 2, 3]],               # 3 tokens
+        "big": [[i for i in range(100)]],  # 100 tokens
+        "small": [[1, 2, 3]],  # 3 tokens
     }
     weights = compute_mixing_weights_from_tokens(domain_sequences)
     assert weights["big"] > weights["small"]
@@ -250,6 +261,7 @@ def test_compute_mixing_weights_from_tokens_proportional():
 # ---------------------------------------------------------------------------
 # 12. interleave_sequences — combines both sequences
 # ---------------------------------------------------------------------------
+
 
 def test_interleave_sequences_combines_both():
     a = [10, 20, 30]
@@ -269,6 +281,7 @@ def test_interleave_sequences_length():
 # ---------------------------------------------------------------------------
 # 13. compute_domain_distribution — sums to 1
 # ---------------------------------------------------------------------------
+
 
 def test_compute_domain_distribution_sums_to_one():
     labels = ["web", "books", "web", "code", "web"]
@@ -290,6 +303,7 @@ def test_compute_domain_distribution_empty():
 # ---------------------------------------------------------------------------
 # 14. get_batch — handles empty domain sequences gracefully
 # ---------------------------------------------------------------------------
+
 
 def test_get_batch_empty_sequences_graceful():
     """Mixer with all-empty domain sequences should return an empty batch."""

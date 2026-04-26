@@ -1,11 +1,13 @@
 """Tests for src/multiagent/role_play_manager.py"""
+
 import pytest
+
 from src.multiagent.role_play_manager import (
+    ROLE_PLAY_REGISTRY,
     AgentRole,
     RolePlayConfig,
     RolePlayManager,
     Utterance,
-    ROLE_PLAY_REGISTRY,
 )
 
 
@@ -85,7 +87,9 @@ def test_format_for_agent_expert_audience():
     mgr = RolePlayManager(RolePlayConfig(audience="expert"))
     role = AgentRole("Scientist", "Analyze data.")
     prompt = mgr.format_for_agent(role)
-    assert "expert" in prompt.lower() or "technical" in prompt.lower() or "precise" in prompt.lower()
+    assert (
+        "expert" in prompt.lower() or "technical" in prompt.lower() or "precise" in prompt.lower()
+    )
 
 
 def test_format_for_agent_child_audience():

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import io
 import json
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.backends.ollama_adapter import OllamaAdapter, OllamaConfig, OLLAMA_REGISTRY
+from src.backends.ollama_adapter import OLLAMA_REGISTRY, OllamaAdapter, OllamaConfig
 
 
 def _make_response(data: dict, status: int = 200):

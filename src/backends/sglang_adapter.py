@@ -79,9 +79,7 @@ class SGLangAdapter(BackendAdapter):
         try:
             import sglang  # noqa: F401 – availability check
         except ImportError as exc:
-            raise SGLangAdapterError(
-                "SGLang is not installed; pip install sglang"
-            ) from exc
+            raise SGLangAdapterError("SGLang is not installed; pip install sglang") from exc
 
         if self._config is None:
             raise SGLangAdapterError(
@@ -125,9 +123,7 @@ class SGLangAdapter(BackendAdapter):
         try:
             import sglang as sgl  # noqa: F401
         except ImportError as exc:
-            raise SGLangAdapterError(
-                "SGLang is not installed; pip install sglang"
-            ) from exc
+            raise SGLangAdapterError("SGLang is not installed; pip install sglang") from exc
 
         runtime = self._load_engine()
 
@@ -135,7 +131,7 @@ class SGLangAdapter(BackendAdapter):
         def _gen(s: Any) -> None:
             s += sgl.gen("output", max_new_tokens=max_new_tokens, temperature=temperature)
 
-        state = _gen.run(backend=runtime)
+        _gen.run(backend=runtime)
         # SGLang returns text; token IDs are not directly exposed in the
         # high-level API. Return an empty list as a safe stub — callers
         # requiring token IDs should use the runtime's tokenizer directly.
@@ -152,19 +148,16 @@ class SGLangAdapter(BackendAdapter):
         )
 
     def dtype_of(self, obj: Any) -> str:
-        raise SGLangAdapterError(
-            "SGLangAdapter is inference-only; dtype_of is not supported"
-        )
+        raise SGLangAdapterError("SGLangAdapter is inference-only; dtype_of is not supported")
 
     def device_of(self, obj: Any) -> str:
-        raise SGLangAdapterError(
-            "SGLangAdapter is inference-only; device_of is not supported"
-        )
+        raise SGLangAdapterError("SGLangAdapter is inference-only; device_of is not supported")
 
     def is_available(self) -> bool:
         """Return True iff SGLang can be imported in the current environment."""
         try:
             import sglang  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -173,6 +166,7 @@ class SGLangAdapter(BackendAdapter):
         info = super().runtime_info()
         if self.is_available():
             import sglang
+
             info["sglang_version"] = getattr(sglang, "__version__", "unknown")
         return info
 
@@ -201,6 +195,7 @@ class SGLangEngineAdapter(EngineAdapter):
         """Return True iff SGLang is importable."""
         try:
             import sglang  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -214,6 +209,7 @@ class SGLangEngineAdapter(EngineAdapter):
         }
         if self.is_available():
             import sglang
+
             desc["sglang_version"] = getattr(sglang, "__version__", "unknown")
         return desc
 

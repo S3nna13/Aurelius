@@ -9,9 +9,11 @@ low-quality prefixes before they can cascade into full bad responses.
 Reference: arXiv:2410.07524 "Speculative Rejection: Improving Language Model
 Efficiency with Token-level Quality Assessment"
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
 
@@ -22,14 +24,15 @@ class SpeculativeRejectionConfig:
     temperature: float = 1.0
     top_p: float = 0.9
     eos_token_id: int | None = None
-    quality_threshold: float = 0.3     # reject if quality score below this
-    max_rejections_per_step: int = 5   # max resamples before accepting anyway
+    quality_threshold: float = 0.3  # reject if quality score below this
+    max_rejections_per_step: int = 5  # max resamples before accepting anyway
     use_log_prob_quality: bool = True  # if True, use log-prob as quality proxy
 
 
 @dataclass
 class RejectionStats:
     """Statistics about rejections during generation."""
+
     total_steps: int = 0
     total_rejections: int = 0
     tokens_generated: int = 0
@@ -42,8 +45,8 @@ class RejectionStats:
 
 
 def log_prob_quality_score(
-    logits: torch.Tensor,      # (vocab_size,) logits for current step
-    sampled_token: int,        # the token sampled
+    logits: torch.Tensor,  # (vocab_size,) logits for current step
+    sampled_token: int,  # the token sampled
     temperature: float = 1.0,
 ) -> float:
     """Quality score based on token log-probability.
@@ -62,7 +65,7 @@ def log_prob_quality_score(
 
 
 def nucleus_sample_with_logit(
-    logits: torch.Tensor,   # (vocab_size,)
+    logits: torch.Tensor,  # (vocab_size,)
     top_p: float,
     temperature: float,
 ) -> tuple[int, float]:
@@ -97,10 +100,10 @@ def nucleus_sample_with_logit(
 @torch.no_grad()
 def speculative_rejection_generate(
     model: torch.nn.Module,
-    input_ids: torch.Tensor,      # (1, S) or (S,)
+    input_ids: torch.Tensor,  # (1, S) or (S,)
     cfg: SpeculativeRejectionConfig,
-    quality_fn=None,               # optional: callable(partial_seq, token, logits) -> float
-                                   # if None, uses log_prob_quality_score
+    quality_fn=None,  # optional: callable(partial_seq, token, logits) -> float
+    # if None, uses log_prob_quality_score
 ) -> tuple[torch.Tensor, RejectionStats]:
     """Generate tokens with speculative rejection sampling.
 
@@ -122,6 +125,7 @@ def speculative_rejection_generate(
     stats = RejectionStats()
 
     if quality_fn is None:
+
         def quality_fn(partial_seq: torch.Tensor, token: int, logits: torch.Tensor) -> float:
             return log_prob_quality_score(logits, token, cfg.temperature)
 
@@ -158,7 +162,7 @@ def speculative_rejection_generate(
                     accepted_token = token_id
                     break
 
-        assert accepted_token is not None
+        assert accepted_token is not None  # noqa: S101
         generated_tokens.append(accepted_token)
         stats.tokens_generated += 1
 

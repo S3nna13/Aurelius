@@ -17,7 +17,6 @@ from dataclasses import dataclass
 
 import torch
 
-
 # Maximum length of a calculator expression accepted by the built-in tool.
 _MAX_EXPR_LEN = 1_000
 
@@ -45,17 +44,11 @@ def _calc_walk(node: ast.AST) -> float | int:
     if isinstance(node, ast.Expression):
         return _calc_walk(node.body)
     if isinstance(node, ast.Constant):
-        if isinstance(node.value, (int, float)) and not isinstance(
-            node.value, bool
-        ):
+        if isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
             return node.value
-        raise ValueError(
-            f"Disallowed constant type: {type(node.value).__name__}"
-        )
+        raise ValueError(f"Disallowed constant type: {type(node.value).__name__}")
     if isinstance(node, ast.BinOp) and type(node.op) in _BINOPS:
-        return _BINOPS[type(node.op)](
-            _calc_walk(node.left), _calc_walk(node.right)
-        )
+        return _BINOPS[type(node.op)](_calc_walk(node.left), _calc_walk(node.right))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOPS:
         return _UNARYOPS[type(node.op)](_calc_walk(node.operand))
     raise ValueError(f"Disallowed node type: {type(node).__name__}")
@@ -68,9 +61,7 @@ def _safe_arith_eval(expression: str) -> float | int:
     user-supplied input (finding AUR-SEC-2026-0022). Only numeric literals
     and a small set of arithmetic operators are accepted."""
     if not expression or len(expression) > _MAX_EXPR_LEN:
-        raise ValueError(
-            f"expression rejected by size guard: len={len(expression)}"
-        )
+        raise ValueError(f"expression rejected by size guard: len={len(expression)}")
     tree = ast.parse(expression.strip(), mode="eval")
     return _calc_walk(tree)
 
@@ -93,11 +84,11 @@ class Tool:
 class AgentStep:
     """Record of one reasoning step in the agent loop."""
 
-    thought: str                   # model's reasoning text
-    tool_call: dict | None         # {'name': str, 'args': dict} or None
+    thought: str  # model's reasoning text
+    tool_call: dict | None  # {'name': str, 'args': dict} or None
     tool_result: str | None
     final_answer: str | None
-    is_final: bool                 # True when model produced Final Answer
+    is_final: bool  # True when model produced Final Answer
 
 
 @dataclass
@@ -105,10 +96,10 @@ class AgentConfig:
     """Configuration for the agent loop."""
 
     max_steps: int = 10
-    tool_call_pattern: str = r'<tool>(.*?)</tool>'
-    final_answer_pattern: str = r'Final Answer:\s*(.*?)(?:\n|$)'
+    tool_call_pattern: str = r"<tool>(.*?)</tool>"
+    final_answer_pattern: str = r"Final Answer:\s*(.*?)(?:\n|$)"
     max_new_tokens_per_step: int = 128
-    temperature: float = 0.0       # greedy by default
+    temperature: float = 0.0  # greedy by default
 
 
 # ---------------------------------------------------------------------------
@@ -206,9 +197,9 @@ class AgentLoop:
 
         with torch.no_grad():
             for _ in range(cfg.max_new_tokens_per_step):
-                output = self.model(current_ids)   # returns (loss, logits) tuple
-                logits = output[1]                 # (1, S, V)
-                next_logits = logits[0, -1, :]     # (V,)
+                output = self.model(current_ids)  # returns (loss, logits) tuple
+                logits = output[1]  # (1, S, V)
+                next_logits = logits[0, -1, :]  # (V,)
 
                 if cfg.temperature > 0.0:
                     probs = torch.softmax(next_logits / cfg.temperature, dim=-1)
@@ -271,9 +262,7 @@ class AgentLoop:
 
         for _step_idx in range(cfg.max_steps):
             input_ids = self.encode(context)
-            generated_text, matched_pattern = self._generate_until_stop(
-                input_ids, stop_patterns
-            )
+            generated_text, matched_pattern = self._generate_until_stop(input_ids, stop_patterns)
 
             tool_call: dict | None = None
             tool_result: str | None = None
@@ -290,9 +279,7 @@ class AgentLoop:
                     )
                     # Append result to context and continue
                     context = (
-                        context
-                        + generated_text
-                        + f"\n<tool_result>{tool_result}</tool_result>\n"
+                        context + generated_text + f"\n<tool_result>{tool_result}</tool_result>\n"
                     )
                 else:
                     # Could not parse tool call — treat as thought and stop
@@ -413,6 +400,7 @@ def build_agent_prompt(
 # ---------------------------------------------------------------------------
 # Built-in tools
 # ---------------------------------------------------------------------------
+
 
 def _calc_fn(args: dict) -> str:
     expr = args.get("expr", "0")

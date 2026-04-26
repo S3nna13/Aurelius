@@ -7,15 +7,14 @@ Pure PyTorch only — no third-party ML libraries.
 
 from __future__ import annotations
 
-import math
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # HaltingUnit
 # ---------------------------------------------------------------------------
+
 
 class HaltingUnit(nn.Module):
     """Per-token halting probability predictor.
@@ -55,6 +54,7 @@ class HaltingUnit(nn.Module):
 # ACTState
 # ---------------------------------------------------------------------------
 
+
 class ACTState:
     """Mutable state object that accumulates ACT information across recurrent steps."""
 
@@ -73,17 +73,11 @@ class ACTState:
         self.cumulative_prob: Tensor = torch.zeros(batch_size, seq_len, device=device)
         self.remainder: Tensor = torch.zeros(batch_size, seq_len, device=device)
         self.n_updates: Tensor = torch.zeros(batch_size, seq_len, device=device)
-        self.accumulated_output: Tensor = torch.zeros(
-            batch_size, seq_len, d_model, device=device
-        )
+        self.accumulated_output: Tensor = torch.zeros(batch_size, seq_len, d_model, device=device)
         # Bool mask: True means the token has already halted.
-        self.halted: Tensor = torch.zeros(
-            batch_size, seq_len, dtype=torch.bool, device=device
-        )
+        self.halted: Tensor = torch.zeros(batch_size, seq_len, dtype=torch.bool, device=device)
         # Keep the last step's output for the remainder term.
-        self._last_x: Tensor = torch.zeros(
-            batch_size, seq_len, d_model, device=device
-        )
+        self._last_x: Tensor = torch.zeros(batch_size, seq_len, d_model, device=device)
 
     # ------------------------------------------------------------------
 
@@ -131,9 +125,7 @@ class ACTState:
         )
 
         # Accumulate weighted outputs.
-        self.accumulated_output = (
-            self.accumulated_output + effective_p.unsqueeze(-1) * x
-        )
+        self.accumulated_output = self.accumulated_output + effective_p.unsqueeze(-1) * x
 
         # Store remainder values for tokens halting now.
         self.remainder = torch.where(
@@ -179,6 +171,7 @@ class ACTState:
 # UniversalTransformerLayer
 # ---------------------------------------------------------------------------
 
+
 class UniversalTransformerLayer(nn.Module):
     """A standard transformer block whose weights are shared across recurrent steps.
 
@@ -191,9 +184,7 @@ class UniversalTransformerLayer(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
 
-        self.self_attn = nn.MultiheadAttention(
-            d_model, n_heads, batch_first=True
-        )
+        self.self_attn = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
         self.ffn = nn.Sequential(
             nn.Linear(d_model, 4 * d_model),
             nn.GELU(),
@@ -218,15 +209,15 @@ class UniversalTransformerLayer(nn.Module):
 
         # Frequency denominators: shape (d//2,)
         i = torch.arange(0, d, 2, dtype=torch.float32, device=device)
-        denom = torch.pow(10000.0, i / d)          # (d//2,)
+        denom = torch.pow(10000.0, i / d)  # (d//2,)
 
         # step is a plain int — divide as a float scalar.
-        angles = step / denom                      # (d//2,)
+        angles = step / denom  # (d//2,)
 
         # Interleave sin / cos into a (D,) vector then reshape to (1, 1, D).
         enc = torch.zeros(d, device=device)
         half = d // 2
-        enc[0::2] = torch.sin(angles[:half + d % 2])
+        enc[0::2] = torch.sin(angles[: half + d % 2])
         enc[1::2] = torch.cos(angles[:half])
 
         return x + enc.view(1, 1, d).to(x.dtype)
@@ -260,6 +251,7 @@ class UniversalTransformerLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # ACTTransformer
 # ---------------------------------------------------------------------------
+
 
 class ACTTransformer(nn.Module):
     """Universal Transformer with Adaptive Computation Time halting.
@@ -310,8 +302,8 @@ class ACTTransformer(nn.Module):
         state = ACTState(B, T, self.d_model, device=str(device))
 
         for step in range(self.max_steps):
-            h = self.ut_layer(x, step)           # (B, T, D)
-            p = self.halting_unit(h)             # (B, T)
+            h = self.ut_layer(x, step)  # (B, T, D)
+            p = self.halting_unit(h)  # (B, T)
             state.update(h, p, threshold=self.act_threshold)
 
             if state.halted.all():
@@ -335,6 +327,7 @@ class ACTTransformer(nn.Module):
 # ---------------------------------------------------------------------------
 # FixedDepthUniversalTransformer
 # ---------------------------------------------------------------------------
+
 
 class FixedDepthUniversalTransformer(nn.Module):
     """Universal Transformer with a fixed (non-adaptive) number of recurrent steps.

@@ -1,4 +1,5 @@
 """Tests for prototypical_learning module — prototype-based few-shot learning."""
+
 from __future__ import annotations
 
 import pytest
@@ -9,8 +10,8 @@ from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.prototypical_learning import (
     ProtoConfig,
-    PrototypicalClassifier,
     ProtoNetTrainer,
+    PrototypicalClassifier,
     compute_prototypes,
     extract_embeddings,
     prototypical_loss,
@@ -31,6 +32,7 @@ N_QUERY = 3
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg() -> AureliusConfig:
@@ -94,6 +96,7 @@ def _make_query(n_way: int = N_WAY, n_query: int = N_QUERY):
 # 1. ProtoConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_proto_config_defaults():
     cfg = ProtoConfig()
     assert cfg.n_way == 5
@@ -107,6 +110,7 @@ def test_proto_config_defaults():
 # 2. extract_embeddings returns shape (B, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_extract_embeddings_shape(model):
     B = 3
     ids = _rand_ids(batch=B, seed=1)
@@ -117,6 +121,7 @@ def test_extract_embeddings_shape(model):
 # ---------------------------------------------------------------------------
 # 3. extract_embeddings L2-normalised (norm ≈ 1)
 # ---------------------------------------------------------------------------
+
 
 def test_extract_embeddings_l2_normalised(model):
     ids = _rand_ids(batch=4, seed=2)
@@ -131,6 +136,7 @@ def test_extract_embeddings_l2_normalised(model):
 # 4. compute_prototypes shape (n_classes, D)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_prototypes_shape():
     N, D, C = 6, 32, 3
     embs = torch.randn(N, D)
@@ -142,6 +148,7 @@ def test_compute_prototypes_shape():
 # ---------------------------------------------------------------------------
 # 5. compute_prototypes: 1 sample per class == that sample
 # ---------------------------------------------------------------------------
+
 
 def test_compute_prototypes_single_sample_per_class():
     D, C = 16, 3
@@ -156,6 +163,7 @@ def test_compute_prototypes_single_sample_per_class():
 # ---------------------------------------------------------------------------
 # 6. prototypical_loss returns (scalar Tensor, float)
 # ---------------------------------------------------------------------------
+
 
 def test_prototypical_loss_return_types():
     Q, D, C = 6, 32, 3
@@ -172,6 +180,7 @@ def test_prototypical_loss_return_types():
 # 7. prototypical_loss accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_prototypical_loss_accuracy_range():
     Q, D, C = 6, 32, 3
     q_embs = F_normalize(torch.randn(Q, D))
@@ -184,6 +193,7 @@ def test_prototypical_loss_accuracy_range():
 # ---------------------------------------------------------------------------
 # 8. prototypical_loss perfect alignment → high accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_prototypical_loss_perfect_alignment():
     """When query embeddings equal their class prototype, accuracy should be 1."""
@@ -200,6 +210,7 @@ def test_prototypical_loss_perfect_alignment():
 # 9. PrototypicalClassifier.fit stores prototypes shape (n_way, D)
 # ---------------------------------------------------------------------------
 
+
 def test_classifier_fit_stores_prototypes(model, proto_cfg):
     clf = PrototypicalClassifier(model, proto_cfg)
     support_ids, support_labels = _make_support()
@@ -213,6 +224,7 @@ def test_classifier_fit_stores_prototypes(model, proto_cfg):
 # ---------------------------------------------------------------------------
 # 10. PrototypicalClassifier.predict returns (B,) ints
 # ---------------------------------------------------------------------------
+
 
 def test_classifier_predict_returns_int_tensor(model, proto_cfg):
     clf = PrototypicalClassifier(model, proto_cfg)
@@ -229,6 +241,7 @@ def test_classifier_predict_returns_int_tensor(model, proto_cfg):
 # ---------------------------------------------------------------------------
 # 11. PrototypicalClassifier.predict_proba sums to 1 per query
 # ---------------------------------------------------------------------------
+
 
 def test_classifier_predict_proba_sums_to_one(model, proto_cfg):
     clf = PrototypicalClassifier(model, proto_cfg)
@@ -249,6 +262,7 @@ def test_classifier_predict_proba_sums_to_one(model, proto_cfg):
 # 12. ProtoNetTrainer.train_episode returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_episode_keys(model, proto_cfg):
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     trainer = ProtoNetTrainer(model, proto_cfg, opt)
@@ -263,6 +277,7 @@ def test_trainer_train_episode_keys(model, proto_cfg):
 # 13. train_episode accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_episode_accuracy_range(model, proto_cfg):
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     trainer = ProtoNetTrainer(model, proto_cfg, opt)
@@ -276,6 +291,7 @@ def test_trainer_train_episode_accuracy_range(model, proto_cfg):
 # ---------------------------------------------------------------------------
 # 14. Cosine distance option works without error
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_distance_option(model, small_cfg):
     cosine_cfg = ProtoConfig(
@@ -301,6 +317,8 @@ def test_cosine_distance_option(model, small_cfg):
 # Helper: thin wrapper so tests read clearly
 # ---------------------------------------------------------------------------
 
+
 def F_normalize(t: Tensor) -> Tensor:
     import torch.nn.functional as F
+
     return F.normalize(t, p=2, dim=-1)

@@ -2,23 +2,23 @@
 
 Import via the stable `aurelius.*` namespace as required by the project spec.
 """
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.eval.loss_landscape import (
-    LandscapeConfig,
     DirectionGenerator,
+    LandscapeConfig,
     LandscapeEvaluator,
     LandscapeStats,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def small_model() -> nn.Module:
@@ -63,6 +63,7 @@ def loss_inputs(small_model):
 # LandscapeConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_landscape_config_defaults():
     """LandscapeConfig should have documented default values."""
     cfg = LandscapeConfig()
@@ -83,6 +84,7 @@ def test_landscape_config_custom():
 # DirectionGenerator tests
 # ---------------------------------------------------------------------------
 
+
 def test_random_direction_shapes(direction_gen, small_model):
     """random_direction must return a list with one tensor per param, same shape."""
     direction = direction_gen.random_direction()
@@ -97,9 +99,7 @@ def test_random_direction_is_random(direction_gen):
     d1 = direction_gen.random_direction()
     d2 = direction_gen.random_direction()
     # At least one tensor pair should differ
-    any_different = any(
-        not torch.allclose(a, b) for a, b in zip(d1, d2)
-    )
+    any_different = any(not torch.allclose(a, b) for a, b in zip(d1, d2))
     assert any_different
 
 
@@ -119,17 +119,17 @@ def test_filter_normalize_direction_norms(direction_gen, small_model):
         theta = p.data
         if theta.dim() <= 1:
             # Single filter — whole-tensor norms must match
-            assert torch.isclose(
-                nd.norm(), theta.norm(), atol=1e-5
-            ), f"1-D norm mismatch: {nd.norm():.6f} vs {theta.norm():.6f}"
+            assert torch.isclose(nd.norm(), theta.norm(), atol=1e-5), (
+                f"1-D norm mismatch: {nd.norm():.6f} vs {theta.norm():.6f}"
+            )
         else:
             nd_2d = nd.view(nd.shape[0], -1)
             theta_2d = theta.view(theta.shape[0], -1)
             nd_norms = nd_2d.norm(dim=1)
             theta_norms = theta_2d.norm(dim=1)
-            assert torch.allclose(
-                nd_norms, theta_norms, atol=1e-5
-            ), "filter-wise norms do not match after normalization"
+            assert torch.allclose(nd_norms, theta_norms, atol=1e-5), (
+                "filter-wise norms do not match after normalization"
+            )
 
 
 def test_filter_normalize_direction_shapes(direction_gen, small_model):
@@ -160,21 +160,17 @@ def test_pca_direction_shapes(direction_gen, small_model):
 def test_pca_direction_component_selection(direction_gen, small_model):
     """Different components should (in general) give different directions."""
     torch.manual_seed(1)
-    trajectory = [
-        [torch.randn_like(p.data) for p in small_model.parameters()]
-        for _ in range(6)
-    ]
+    trajectory = [[torch.randn_like(p.data) for p in small_model.parameters()] for _ in range(6)]
     d0 = direction_gen.pca_direction(trajectory, component=0)
     d1 = direction_gen.pca_direction(trajectory, component=1)
-    any_different = any(
-        not torch.allclose(a, b) for a, b in zip(d0, d1)
-    )
+    any_different = any(not torch.allclose(a, b) for a, b in zip(d0, d1))
     assert any_different
 
 
 # ---------------------------------------------------------------------------
 # LandscapeEvaluator._perturb tests
 # ---------------------------------------------------------------------------
+
 
 def test_perturb_alpha_zero(evaluator, small_model):
     """At alpha=0, _perturb must return base unchanged."""
@@ -197,6 +193,7 @@ def test_perturb_alpha_one(evaluator, small_model):
 # ---------------------------------------------------------------------------
 # scan_1d tests
 # ---------------------------------------------------------------------------
+
 
 def test_scan_1d_returns_correct_keys(evaluator, small_model, loss_inputs):
     """scan_1d must return a dict with 'alphas' and 'losses' keys."""
@@ -245,6 +242,7 @@ def test_scan_1d_center_point_is_zero(evaluator, small_model, loss_inputs, defau
 # scan_2d tests
 # ---------------------------------------------------------------------------
 
+
 def test_scan_2d_losses_shape(evaluator, small_model, loss_inputs, default_config):
     """scan_2d losses must have shape (n_points, n_points)."""
     gen = DirectionGenerator(small_model)
@@ -283,6 +281,7 @@ def test_scan_2d_restores_params(evaluator, small_model, loss_inputs):
 # LandscapeStats tests
 # ---------------------------------------------------------------------------
 
+
 def test_sharpness_non_negative():
     """sharpness must always be >= 0."""
     stats = LandscapeStats()
@@ -312,7 +311,7 @@ def test_curvature_at_center_convex():
     stats = LandscapeStats()
     # f(x) = x^2: f''(0) = 2
     alphas = torch.linspace(-1.0, 1.0, 11)
-    losses = alphas ** 2
+    losses = alphas**2
     c = stats.curvature_at_center(losses, alphas)
     assert c > 0.0
 
@@ -329,7 +328,7 @@ def test_is_convex_true_for_parabola():
     """A parabolic (U-shaped) loss should be convex."""
     stats = LandscapeStats()
     alphas = torch.linspace(-1.0, 1.0, 11)
-    losses = alphas ** 2 + 1.0
+    losses = alphas**2 + 1.0
     assert stats.is_convex(losses) is True
 
 
@@ -337,5 +336,5 @@ def test_is_convex_false_for_concave():
     """An inverted parabola (∩-shaped) should NOT be convex."""
     stats = LandscapeStats()
     alphas = torch.linspace(-1.0, 1.0, 11)
-    losses = -(alphas ** 2) + 2.0
+    losses = -(alphas**2) + 2.0
     assert stats.is_convex(losses) is False

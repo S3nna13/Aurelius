@@ -7,7 +7,7 @@ Total budget: 300B tokens (~230x model parameters).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,9 +47,7 @@ class DataMixConfig:
             )
         weight_sum = sum(s.weight for s in self.sources)
         if abs(weight_sum - 1.0) > 0.01:
-            raise ValueError(
-                f"Sampling weights sum to {weight_sum}, expected ~1.0"
-            )
+            raise ValueError(f"Sampling weights sum to {weight_sum}, expected ~1.0")
 
 
 # ---------------------------------------------------------------------------
@@ -98,8 +96,7 @@ WIKIPEDIA_BOOKS = DatasetSource(
     hf_subset="20231101.en",
     target_tokens_billions=6.0,
     weight=0.02,
-    description="English Wikipedia snapshots combined with "
-    "public-domain book corpora.",
+    description="English Wikipedia snapshots combined with public-domain book corpora.",
 )
 
 ARXIV = DatasetSource(

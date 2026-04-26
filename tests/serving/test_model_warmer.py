@@ -7,7 +7,7 @@ import threading
 import pytest
 import torch
 
-from src.serving.model_warmer import ModelWarmer, WARMER_REGISTRY
+from src.serving.model_warmer import WARMER_REGISTRY, ModelWarmer
 
 
 def _make_pt_file(path: str) -> dict[str, torch.Tensor]:

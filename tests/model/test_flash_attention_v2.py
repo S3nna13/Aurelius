@@ -2,19 +2,19 @@
 
 Tiny config: D_MODEL=16, N_HEADS=2, D_HEAD=8, B=2, T=8, BQ=4, BK=4
 """
+
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
-import torch.nn as nn
 
 from src.model.flash_attention_v2 import (
-    FlashAttnV2Config,
-    tiled_attention_v2,
-    standard_attention_v2,
     FlashAttentionV2,
     FlashAttnV2Block,
+    FlashAttnV2Config,
+    standard_attention_v2,
+    tiled_attention_v2,
 )
 
 D_MODEL = 16
@@ -39,6 +39,7 @@ def _qkv():
 # Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = FlashAttnV2Config()
     assert cfg.d_model == 64
@@ -53,6 +54,7 @@ def test_config_defaults():
 # tiled_attention_v2 output shape
 # ---------------------------------------------------------------------------
 
+
 def test_tiled_attention_v2_shape():
     Q, K, V = _qkv()
     out = tiled_attention_v2(Q, K, V, block_q=BQ, block_k=BK, causal=True, scale=SCALE)
@@ -63,27 +65,30 @@ def test_tiled_attention_v2_shape():
 # Numerical equivalence causal=True
 # ---------------------------------------------------------------------------
 
+
 def test_tiled_vs_standard_causal():
     Q, K, V = _qkv()
     ref = standard_attention_v2(Q, K, V, causal=True, scale=SCALE)
     tiled = tiled_attention_v2(Q, K, V, block_q=BQ, block_k=BK, causal=True, scale=SCALE)
-    assert torch.allclose(tiled, ref, atol=1e-4), f"max diff={( tiled - ref).abs().max().item()}"
+    assert torch.allclose(tiled, ref, atol=1e-4), f"max diff={(tiled - ref).abs().max().item()}"
 
 
 # ---------------------------------------------------------------------------
 # Numerical equivalence causal=False
 # ---------------------------------------------------------------------------
 
+
 def test_tiled_vs_standard_non_causal():
     Q, K, V = _qkv()
     ref = standard_attention_v2(Q, K, V, causal=False, scale=SCALE)
     tiled = tiled_attention_v2(Q, K, V, block_q=BQ, block_k=BK, causal=False, scale=SCALE)
-    assert torch.allclose(tiled, ref, atol=1e-4), f"max diff={( tiled - ref).abs().max().item()}"
+    assert torch.allclose(tiled, ref, atol=1e-4), f"max diff={(tiled - ref).abs().max().item()}"
 
 
 # ---------------------------------------------------------------------------
 # Block size edge cases
 # ---------------------------------------------------------------------------
+
 
 def test_tiled_block_q_1():
     Q, K, V = _qkv()
@@ -116,6 +121,7 @@ def test_tiled_non_divisible_seq_len():
 # Attention weights sum to 1 (standard reference)
 # ---------------------------------------------------------------------------
 
+
 def test_standard_attention_finite():
     Q, K, V = _qkv()
     out = standard_attention_v2(Q, K, V, causal=True, scale=SCALE)
@@ -125,6 +131,7 @@ def test_standard_attention_finite():
 # ---------------------------------------------------------------------------
 # FlashAttentionV2 module
 # ---------------------------------------------------------------------------
+
 
 def test_flash_attention_v2_module_shape():
     cfg = FlashAttnV2Config(d_model=D_MODEL, n_heads=N_HEADS, block_size_q=BQ, block_size_k=BK)
@@ -156,6 +163,7 @@ def test_flash_attention_v2_gradient_flows():
 # ---------------------------------------------------------------------------
 # FlashAttnV2Block
 # ---------------------------------------------------------------------------
+
 
 def test_flash_attn_v2_block_shape():
     cfg = FlashAttnV2Config(d_model=D_MODEL, n_heads=N_HEADS, block_size_q=BQ, block_size_k=BK)

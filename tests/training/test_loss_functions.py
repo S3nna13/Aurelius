@@ -6,15 +6,13 @@ All tests use pure PyTorch — no HuggingFace, scipy, or sklearn.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn.functional as F
 
 from src.training.loss_functions import (
-    LossConfig,
     LMLoss,
+    LossConfig,
     compute_ppl_from_loss,
     cross_entropy_loss,
     focal_loss,
@@ -42,6 +40,7 @@ def make_random(seed: int = 0):
 # 1. LossConfig — default field values
 # ---------------------------------------------------------------------------
 
+
 def test_loss_config_defaults():
     cfg = LossConfig()
     assert cfg.label_smoothing == 0.0
@@ -54,6 +53,7 @@ def test_loss_config_defaults():
 # 2. cross_entropy_loss — returns a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_cross_entropy_loss_is_scalar():
     logits, labels = make_random(1)
     loss = cross_entropy_loss(logits, labels)
@@ -64,6 +64,7 @@ def test_cross_entropy_loss_is_scalar():
 # ---------------------------------------------------------------------------
 # 3. cross_entropy_loss — ignore_index positions do not contribute
 # ---------------------------------------------------------------------------
+
 
 def test_cross_entropy_loss_ignore_index():
     logits, labels = make_random(2)
@@ -78,19 +79,18 @@ def test_cross_entropy_loss_ignore_index():
     ref = F.cross_entropy(logits_valid, labels_valid, reduction="mean")
 
     loss = cross_entropy_loss(logits, labels_masked, ignore_index=-100, reduction="mean")
-    assert torch.allclose(loss, ref, atol=1e-5), (
-        f"Expected {ref.item():.6f}, got {loss.item():.6f}"
-    )
+    assert torch.allclose(loss, ref, atol=1e-5), f"Expected {ref.item():.6f}, got {loss.item():.6f}"
 
 
 # ---------------------------------------------------------------------------
 # 4. cross_entropy_loss — near-zero for near-perfect predictions
 # ---------------------------------------------------------------------------
 
+
 def test_cross_entropy_loss_near_zero_for_perfect_prediction():
     # All tokens predict class 0; all labels are 0
     logits = torch.zeros(B, T, V)
-    logits[:, :, 0] = 20.0          # very high confidence for class 0
+    logits[:, :, 0] = 20.0  # very high confidence for class 0
     labels = torch.zeros(B, T, dtype=torch.long)
 
     loss = cross_entropy_loss(logits, labels)
@@ -100,6 +100,7 @@ def test_cross_entropy_loss_near_zero_for_perfect_prediction():
 # ---------------------------------------------------------------------------
 # 5. label_smoothed_loss — returns a finite scalar
 # ---------------------------------------------------------------------------
+
 
 def test_label_smoothed_loss_is_scalar_and_finite():
     logits, labels = make_random(3)
@@ -112,6 +113,7 @@ def test_label_smoothed_loss_is_scalar_and_finite():
 # ---------------------------------------------------------------------------
 # 6. label_smoothed_loss > plain CE on easy (confident) examples
 # ---------------------------------------------------------------------------
+
 
 def test_label_smoothed_loss_greater_than_ce_on_easy_examples():
     # Very confident correct predictions — smoothing should inflate the loss
@@ -132,6 +134,7 @@ def test_label_smoothed_loss_greater_than_ce_on_easy_examples():
 # 7. focal_loss — returns a finite scalar
 # ---------------------------------------------------------------------------
 
+
 def test_focal_loss_is_scalar_and_finite():
     logits, labels = make_random(4)
     loss = focal_loss(logits, labels, gamma=2.0)
@@ -143,6 +146,7 @@ def test_focal_loss_is_scalar_and_finite():
 # ---------------------------------------------------------------------------
 # 8. token_weighted_loss — returns a scalar
 # ---------------------------------------------------------------------------
+
 
 def test_token_weighted_loss_is_scalar():
     torch.manual_seed(5)
@@ -157,6 +161,7 @@ def test_token_weighted_loss_is_scalar():
 # 9. token_weighted_loss — zero weights → zero loss
 # ---------------------------------------------------------------------------
 
+
 def test_token_weighted_loss_zero_weights_gives_zero():
     logits, labels = make_random(6)
     weights = torch.zeros(B, T)
@@ -170,6 +175,7 @@ def test_token_weighted_loss_zero_weights_gives_zero():
 # 10. z_loss — returns a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_z_loss_is_scalar():
     logits, _ = make_random(7)
     loss = z_loss(logits, coef=1e-4)
@@ -180,6 +186,7 @@ def test_z_loss_is_scalar():
 # 11. z_loss — is strictly positive
 # ---------------------------------------------------------------------------
 
+
 def test_z_loss_is_positive():
     logits, _ = make_random(8)
     loss = z_loss(logits, coef=1e-4)
@@ -189,6 +196,7 @@ def test_z_loss_is_positive():
 # ---------------------------------------------------------------------------
 # 12. compute_ppl_from_loss == exp(ce_loss)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_ppl_equals_exp_of_loss():
     logits, labels = make_random(9)
@@ -204,9 +212,10 @@ def test_compute_ppl_equals_exp_of_loss():
 # 13. LMLoss.forward — required output keys present
 # ---------------------------------------------------------------------------
 
+
 def test_lm_loss_forward_has_required_keys():
     logits, labels = make_random(10)
-    cfg = LossConfig()               # defaults: no smoothing, focal_gamma=2
+    cfg = LossConfig()  # defaults: no smoothing, focal_gamma=2
     module = LMLoss(cfg)
     out = module(logits, labels)
     assert "loss" in out, "'loss' key missing from LMLoss output"
@@ -218,27 +227,29 @@ def test_lm_loss_forward_has_required_keys():
 # 14. LMLoss.forward — loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_lm_loss_forward_loss_is_finite():
     logits, labels = make_random(11)
     cfg = LossConfig(label_smoothing=0.1)
     module = LMLoss(cfg)
     out = module(logits, labels)
     assert torch.isfinite(out["loss"]), f"LMLoss 'loss' is not finite: {out['loss']}"
-    assert torch.isfinite(out["ce_loss"]), f"LMLoss 'ce_loss' is not finite"
-    assert torch.isfinite(out["ppl"]), f"LMLoss 'ppl' is not finite"
+    assert torch.isfinite(out["ce_loss"]), "LMLoss 'ce_loss' is not finite"
+    assert torch.isfinite(out["ppl"]), "LMLoss 'ppl' is not finite"
 
 
 # ---------------------------------------------------------------------------
 # 15. LMLoss — focal branch selected when label_smoothing == 0 and gamma > 0
 # ---------------------------------------------------------------------------
 
+
 def test_lm_loss_focal_branch():
     logits, labels = make_random(12)
     cfg_focal = LossConfig(label_smoothing=0.0, focal_gamma=2.0)
-    cfg_ce    = LossConfig(label_smoothing=0.0, focal_gamma=0.0)
+    cfg_ce = LossConfig(label_smoothing=0.0, focal_gamma=0.0)
 
     out_focal = LMLoss(cfg_focal)(logits, labels)
-    out_ce    = LMLoss(cfg_ce)(logits, labels)
+    out_ce = LMLoss(cfg_ce)(logits, labels)
 
     # With random logits focal_loss != plain CE (gamma > 0 modulates weights)
     # ce_loss key should be the same between the two (both use cross_entropy_loss)

@@ -3,25 +3,24 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.token_merging import (
     ToMeConfig,
+    ToMeLayer,
+    apply_tome,
     compute_token_similarity,
+    estimate_speedup,
     find_merge_pairs,
     merge_tokens,
     unmerge_tokens,
-    ToMeLayer,
-    apply_tome,
-    estimate_speedup,
 )
-
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def tiny_cfg(**kwargs) -> AureliusConfig:
     """Minimal AureliusConfig for fast tests."""
@@ -51,6 +50,7 @@ B, T, D = 1, 8, 64
 # 1. ToMeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_tome_config_defaults():
     cfg = ToMeConfig()
     assert cfg.r == 8
@@ -63,6 +63,7 @@ def test_tome_config_defaults():
 # 2. compute_token_similarity — cosine shape (B, T, T)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_similarity_cosine_shape():
     x = torch.randn(B, T, D)
     sim = compute_token_similarity(x, metric="cosine")
@@ -72,6 +73,7 @@ def test_compute_similarity_cosine_shape():
 # ---------------------------------------------------------------------------
 # 3. compute_token_similarity — cosine diagonal approximately 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_similarity_cosine_diagonal():
     torch.manual_seed(0)
@@ -87,6 +89,7 @@ def test_compute_similarity_cosine_diagonal():
 # 4. compute_token_similarity — dot product shape (B, T, T)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_similarity_dot_shape():
     x = torch.randn(B, T, D)
     sim = compute_token_similarity(x, metric="dot")
@@ -97,6 +100,7 @@ def test_compute_similarity_dot_shape():
 # 5. compute_token_similarity — l2 shape (B, T, T)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_similarity_l2_shape():
     x = torch.randn(B, T, D)
     sim = compute_token_similarity(x, metric="l2")
@@ -106,6 +110,7 @@ def test_compute_similarity_l2_shape():
 # ---------------------------------------------------------------------------
 # 6. find_merge_pairs — returns at most r pairs
 # ---------------------------------------------------------------------------
+
 
 def test_find_merge_pairs_count():
     torch.manual_seed(0)
@@ -120,6 +125,7 @@ def test_find_merge_pairs_count():
 # 7. find_merge_pairs — pairs are adjacent (|i-j| == 1)
 # ---------------------------------------------------------------------------
 
+
 def test_find_merge_pairs_adjacent():
     torch.manual_seed(1)
     x = torch.randn(1, T, D)
@@ -132,6 +138,7 @@ def test_find_merge_pairs_adjacent():
 # ---------------------------------------------------------------------------
 # 8. merge_tokens — reduces sequence length by len(pairs)
 # ---------------------------------------------------------------------------
+
 
 def test_merge_tokens_reduces_length():
     torch.manual_seed(2)
@@ -148,6 +155,7 @@ def test_merge_tokens_reduces_length():
 # ---------------------------------------------------------------------------
 # 9. merge_tokens — mode="mean" gives correct average
 # ---------------------------------------------------------------------------
+
 
 def test_merge_tokens_mean_value():
     # Construct x so pair (0, 1) has a known merge result
@@ -170,6 +178,7 @@ def test_merge_tokens_mean_value():
 # 10. unmerge_tokens — restores original sequence length
 # ---------------------------------------------------------------------------
 
+
 def test_unmerge_tokens_restores_length():
     torch.manual_seed(3)
     x = torch.randn(B, T, D)
@@ -177,14 +186,13 @@ def test_unmerge_tokens_restores_length():
     pairs = find_merge_pairs(sim, r=2)
     merged = merge_tokens(x, pairs, mode="mean")
     restored = unmerge_tokens(merged, pairs, original_len=T)
-    assert restored.shape == (B, T, D), (
-        f"Expected ({B}, {T}, {D}), got {restored.shape}"
-    )
+    assert restored.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {restored.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 11. ToMeLayer — forward returns correct output shape
 # ---------------------------------------------------------------------------
+
 
 def test_tome_layer_forward_shape():
     torch.manual_seed(4)
@@ -194,6 +202,7 @@ def test_tome_layer_forward_shape():
     tome_layer = ToMeLayer(base_layer, config=cfg, layer_idx=0)
 
     from src.model.attention import precompute_rope_frequencies
+
     freqs_cis = precompute_rope_frequencies(32, T)
 
     x = torch.randn(B, T, D)
@@ -210,19 +219,19 @@ def test_tome_layer_forward_shape():
 # 12. apply_tome — wraps model layers with ToMeLayer
 # ---------------------------------------------------------------------------
 
+
 def test_apply_tome_wraps_layers():
     model = tiny_model()
     cfg = ToMeConfig(r=2)
     apply_tome(model, cfg)
     for i, layer in enumerate(model.layers):
-        assert isinstance(layer, ToMeLayer), (
-            f"Layer {i} is {type(layer)}, expected ToMeLayer"
-        )
+        assert isinstance(layer, ToMeLayer), f"Layer {i} is {type(layer)}, expected ToMeLayer"
 
 
 # ---------------------------------------------------------------------------
 # 13. apply_tome — model still produces output of same logit shape
 # ---------------------------------------------------------------------------
+
 
 def test_apply_tome_model_output_shape():
     torch.manual_seed(5)
@@ -244,6 +253,7 @@ def test_apply_tome_model_output_shape():
 # 14. estimate_speedup — returns float >= 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_speedup_ge_one():
     result = estimate_speedup(original_seq_len=64, r=4, n_layers=4)
     assert isinstance(result, float), "estimate_speedup should return a float"
@@ -254,17 +264,17 @@ def test_estimate_speedup_ge_one():
 # 15. estimate_speedup — increases with more layers
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_speedup_increases_with_layers():
     base = estimate_speedup(original_seq_len=64, r=4, n_layers=2)
     more = estimate_speedup(original_seq_len=64, r=4, n_layers=6)
-    assert more >= base, (
-        f"Speedup with more layers ({more}) should be >= fewer layers ({base})"
-    )
+    assert more >= base, f"Speedup with more layers ({more}) should be >= fewer layers ({base})"
 
 
 # ---------------------------------------------------------------------------
 # 16. ToMeLayer — skips merging when layer_idx < layer_start
 # ---------------------------------------------------------------------------
+
 
 def test_tome_layer_skips_below_layer_start():
     """When layer_idx < layer_start, output should equal base_layer output."""
@@ -275,6 +285,7 @@ def test_tome_layer_skips_below_layer_start():
     tome_layer = ToMeLayer(base_layer, config=cfg, layer_idx=0)
 
     from src.model.attention import precompute_rope_frequencies
+
     freqs_cis = precompute_rope_frequencies(32, T)
     x = torch.randn(B, T, D)
 
@@ -292,12 +303,11 @@ def test_tome_layer_skips_below_layer_start():
 # 17. find_merge_pairs — returns fewer pairs than r when T < 2r
 # ---------------------------------------------------------------------------
 
+
 def test_find_merge_pairs_small_sequence():
     """With T=4 and r=10, we get at most (4-1)//2 = 1 pair."""
     torch.manual_seed(7)
     x = torch.randn(1, 4, D)
     sim = compute_token_similarity(x, metric="cosine")
     pairs = find_merge_pairs(sim, r=10)
-    assert len(pairs) <= (4 - 1) // 2, (
-        f"Expected at most 1 pair for T=4, got {len(pairs)}"
-    )
+    assert len(pairs) <= (4 - 1) // 2, f"Expected at most 1 pair for T=4, got {len(pairs)}"

@@ -246,9 +246,7 @@ def test_unknown_input_fallback_to_chat():
 
 def test_empty_string_raises():
     parser = _fresh()
-    with pytest.raises(
-        NLCommandParseError, match="Input text must be a non-empty string"
-    ):
+    with pytest.raises(NLCommandParseError, match="Input text must be a non-empty string"):
         parser.parse("")
 
 
@@ -259,9 +257,7 @@ def test_empty_string_raises():
 
 def test_whitespace_only_raises():
     parser = _fresh()
-    with pytest.raises(
-        NLCommandParseError, match="Input text must be a non-empty string"
-    ):
+    with pytest.raises(NLCommandParseError, match="Input text must be a non-empty string"):
         parser.parse("   \t\n  ")
 
 

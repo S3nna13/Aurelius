@@ -1,16 +1,16 @@
 """Tests for src/reasoning/chain_of_thought.py"""
+
 from __future__ import annotations
 
-import pytest
 from src.reasoning.chain_of_thought import (
+    COT_REGISTRY,
     ChainOfThought,
     CoTFormat,
     CoTStep,
-    COT_REGISTRY,
 )
 
-
 # ---------- CoTFormat enum ----------
+
 
 class TestCoTFormat:
     def test_numbered_value(self):
@@ -28,6 +28,7 @@ class TestCoTFormat:
 
 # ---------- CoTStep dataclass ----------
 
+
 class TestCoTStep:
     def test_fields_present(self):
         s = CoTStep(index=0, content="hello")
@@ -44,6 +45,7 @@ class TestCoTStep:
 
 
 # ---------- parse_steps: NUMBERED ----------
+
 
 class TestParseStepsNumbered:
     def setup_method(self):
@@ -76,6 +78,7 @@ class TestParseStepsNumbered:
 
 # ---------- parse_steps: BULLET ----------
 
+
 class TestParseStepsBullet:
     def setup_method(self):
         self.cot = ChainOfThought(CoTFormat.BULLET)
@@ -99,6 +102,7 @@ class TestParseStepsBullet:
 
 
 # ---------- parse_steps: XML_TAGS ----------
+
 
 class TestParseStepsXml:
     def setup_method(self):
@@ -124,6 +128,7 @@ class TestParseStepsXml:
 
 # ---------- parse_steps: FREEFORM ----------
 
+
 class TestParseStepsFreeform:
     def setup_method(self):
         self.cot = ChainOfThought(CoTFormat.FREEFORM)
@@ -147,6 +152,7 @@ class TestParseStepsFreeform:
 
 # ---------- format_prompt ----------
 
+
 class TestFormatPrompt:
     def test_returns_non_empty(self):
         cot = ChainOfThought()
@@ -166,6 +172,7 @@ class TestFormatPrompt:
 
 
 # ---------- consistency_score ----------
+
 
 class TestConsistencyScore:
     def test_empty_returns_one(self):
@@ -189,6 +196,7 @@ class TestConsistencyScore:
 
 
 # ---------- to_text ----------
+
 
 class TestToText:
     def test_numbered_format(self):
@@ -227,6 +235,7 @@ class TestToText:
 
 
 # ---------- COT_REGISTRY ----------
+
 
 class TestCotRegistry:
     def test_has_numbered(self):

@@ -1,10 +1,10 @@
 """Tests for inference-time compute scaling (arXiv:2408.03314)."""
-import math
-import torch
-import pytest
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+import math
+
+import pytest
+import torch
+
 from src.inference.compute_optimal import (
     ComputeOptimalConfig,
     ComputeOptimalResult,
@@ -13,11 +13,13 @@ from src.inference.compute_optimal import (
     generate_n_samples,
     score_with_model,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -62,6 +64,7 @@ def fast_cfg():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = ComputeOptimalConfig()

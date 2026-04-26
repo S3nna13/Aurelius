@@ -1,19 +1,20 @@
 """Tests for src/multiagent/orchestrator.py."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.multiagent.orchestrator import (
+    ORCHESTRATOR,
     AgentSpec,
     Orchestrator,
     TaskAssignment,
-    ORCHESTRATOR,
 )
-
 
 # ---------------------------------------------------------------------------
 # AgentSpec
 # ---------------------------------------------------------------------------
+
 
 def test_agent_spec_auto_id():
     spec = AgentSpec(name="alpha")
@@ -50,6 +51,7 @@ def test_agent_spec_custom_id():
 # TaskAssignment
 # ---------------------------------------------------------------------------
 
+
 def test_task_assignment_auto_id():
     ta = TaskAssignment(agent_id="a1", task="do thing")
     assert ta.task_id
@@ -72,6 +74,7 @@ def test_task_assignment_defaults():
 # ---------------------------------------------------------------------------
 # Orchestrator.register_agent / agents()
 # ---------------------------------------------------------------------------
+
 
 def test_register_and_list():
     orch = Orchestrator()
@@ -97,6 +100,7 @@ def test_agents_empty_initially():
 # ---------------------------------------------------------------------------
 # assign()
 # ---------------------------------------------------------------------------
+
 
 def test_assign_returns_task_assignment():
     orch = Orchestrator()
@@ -134,6 +138,7 @@ def test_assign_stores_task():
 # complete()
 # ---------------------------------------------------------------------------
 
+
 def test_complete_returns_true_for_known_task():
     orch = Orchestrator()
     spec = AgentSpec(name="bot")
@@ -168,6 +173,7 @@ def test_complete_sets_result():
 # ---------------------------------------------------------------------------
 # fail()
 # ---------------------------------------------------------------------------
+
 
 def test_fail_returns_true_for_known_task():
     orch = Orchestrator()
@@ -206,6 +212,7 @@ def test_fail_increments_attempts():
 # retry_eligible()
 # ---------------------------------------------------------------------------
 
+
 def test_retry_eligible_true_when_within_retries():
     orch = Orchestrator(max_retries=2)
     ta = TaskAssignment(agent_id="a", task="t", status="failed", attempts=1)
@@ -239,6 +246,7 @@ def test_retry_eligible_false_for_done():
 # ---------------------------------------------------------------------------
 # pending_tasks()
 # ---------------------------------------------------------------------------
+
 
 def test_pending_tasks_includes_pending():
     orch = Orchestrator()
@@ -280,6 +288,7 @@ def test_pending_tasks_excludes_exhausted_failed():
 # summary()
 # ---------------------------------------------------------------------------
 
+
 def test_summary_empty():
     orch = Orchestrator()
     s = orch.summary()
@@ -292,7 +301,7 @@ def test_summary_counts():
     orch.register_agent(spec)
     t1 = orch.assign("t1", spec.agent_id)
     t2 = orch.assign("t2", spec.agent_id)
-    t3 = orch.assign("t3", spec.agent_id)
+    orch.assign("t3", spec.agent_id)
     orch.complete(t1.task_id, "done")
     orch.fail(t2.task_id)
     s = orch.summary()
@@ -305,6 +314,7 @@ def test_summary_counts():
 # ---------------------------------------------------------------------------
 # ORCHESTRATOR singleton
 # ---------------------------------------------------------------------------
+
 
 def test_orchestrator_singleton_exists():
     assert ORCHESTRATOR is not None

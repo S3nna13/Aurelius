@@ -1,6 +1,5 @@
 """Tests for hierarchical_compression module."""
 
-import pytest
 import torch
 
 from src.model.hierarchical_compression import (

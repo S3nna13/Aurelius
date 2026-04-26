@@ -8,10 +8,8 @@ Pure PyTorch only — no transformers, trl, einops, scipy, sklearn, PIL, cv2, ti
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.alignment.zero_vision_sft import ZeroVisionSFTConfig, ZeroVisionSFTTrainer
-
 
 VOCAB = 256
 SEQ = 16
@@ -26,9 +24,9 @@ def _synthetic_batch():
 
     # Targets: non-zero values in [1, VOCAB-1], with tool-call ids scattered in
     targets = torch.randint(1, VOCAB, (BATCH, SEQ))
-    targets[0, 2] = 10   # tool-call token
-    targets[1, 5] = 11   # tool-call token
-    targets[0, 9] = 12   # tool-call token
+    targets[0, 2] = 10  # tool-call token
+    targets[1, 5] = 11  # tool-call token
+    targets[0, 9] = 12  # tool-call token
     # Pad a few positions
     targets[0, 14] = 0
     targets[1, 15] = 0
@@ -54,9 +52,9 @@ def test_integration_compute_loss_scalar_and_backward():
     assert tool_call_mask.shape == (BATCH, SEQ)
 
     # Positions with tool-call ids should be 1
-    assert tool_call_mask[0, 2].item() == 1.0   # id=10
-    assert tool_call_mask[1, 5].item() == 1.0   # id=11
-    assert tool_call_mask[0, 9].item() == 1.0   # id=12
+    assert tool_call_mask[0, 2].item() == 1.0  # id=10
+    assert tool_call_mask[1, 5].item() == 1.0  # id=11
+    assert tool_call_mask[0, 9].item() == 1.0  # id=12
 
     # Compute loss
     loss = trainer.compute_loss(logits, targets, tool_call_mask)
@@ -102,7 +100,7 @@ def test_integration_train_step():
     non_pad = targets != cfg.pad_id
     tc_mask_ref = torch.zeros_like(targets, dtype=torch.bool)
     for tid in TOOL_IDS:
-        tc_mask_ref |= (targets == tid)
+        tc_mask_ref |= targets == tid
     expected_tc = int((tc_mask_ref & non_pad).sum().item())
     assert result["n_tool_call_tokens"] == expected_tc
     assert result["n_tool_call_tokens"] > 0  # sanity: at least one tool-call token present

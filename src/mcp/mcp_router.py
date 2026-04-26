@@ -8,13 +8,13 @@ parameterized patterns. All logic is pure Python stdlib; no external deps.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class RoutePattern:
@@ -32,6 +32,7 @@ class RouteMatch:
 # ---------------------------------------------------------------------------
 # MCPRouter
 # ---------------------------------------------------------------------------
+
 
 def _pattern_to_regex(path: str) -> tuple[re.Pattern[str], list[str]]:
     """Convert a path like '/models/{model_id}/predict' to a regex and param names."""
@@ -62,9 +63,7 @@ class MCPRouter:
             tuple[RoutePattern, Callable[[dict], dict], re.Pattern[str], list[str]]
         ] = []
 
-    def add_route(
-        self, pattern: RoutePattern, handler: Callable[[dict], dict]
-    ) -> None:
+    def add_route(self, pattern: RoutePattern, handler: Callable[[dict], dict]) -> None:
         """Register *handler* for the given *pattern*."""
         compiled, param_names = _pattern_to_regex(pattern.path)
         self._routes.append((pattern, handler, compiled, param_names))
@@ -110,7 +109,7 @@ class MCPRouter:
                 handler = h
                 break
 
-        assert handler is not None  # invariant: match() found it from self._routes
+        assert handler is not None  # invariant: match() found it from self._routes  # noqa: S101
 
         merged_payload = {**payload, **route_match.path_params}
         return handler(merged_payload)

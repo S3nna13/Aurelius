@@ -1,6 +1,7 @@
 """Tests for RMSNorm."""
+
 import torch
-import pytest
+
 from src.model.rms_norm import RMSNorm
 
 

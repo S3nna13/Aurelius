@@ -19,10 +19,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 import torch
-import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +34,12 @@ class NashMDMetrics:
     """Diagnostics returned alongside the scalar loss."""
 
     loss: torch.Tensor
-    nash_w: torch.Tensor       # P(y_w > y_l | x) per sample — eq. 9 notation
-    nash_l: torch.Tensor       # P(y_l > y_w | x) per sample
-    weight_w: torch.Tensor     # nash_w - 0.5  (centred weight for y_w)
-    weight_l: torch.Tensor     # nash_l - 0.5  (centred weight for y_l)
+    nash_w: torch.Tensor  # P(y_w > y_l | x) per sample — eq. 9 notation
+    nash_l: torch.Tensor  # P(y_l > y_w | x) per sample
+    weight_w: torch.Tensor  # nash_w - 0.5  (centred weight for y_w)
+    weight_l: torch.Tensor  # nash_l - 0.5  (centred weight for y_l)
     loss_policy: torch.Tensor  # pure Nash policy term
-    loss_kl: torch.Tensor      # KL regularisation term
+    loss_kl: torch.Tensor  # KL regularisation term
 
 
 class NashMDLoss:
@@ -123,13 +121,13 @@ class NashMDLoss:
 
         # ── Nash preference weights (paper eq. 9) ──────────────────────────
         # nash_w = P(y_w > y_l | x) = σ(r_w - r_l)
-        reward_diff = reward_w - reward_l           # (B,)
-        nash_w = torch.sigmoid(reward_diff)         # P(y_w > y_l | x) ∈ (0,1)
-        nash_l = 1.0 - nash_w                       # P(y_l > y_w | x)
+        reward_diff = reward_w - reward_l  # (B,)
+        nash_w = torch.sigmoid(reward_diff)  # P(y_w > y_l | x) ∈ (0,1)
+        nash_l = 1.0 - nash_w  # P(y_l > y_w | x)
 
         # Centred weights (subtract 0.5 so equal-reward pairs contribute 0)
-        weight_w = nash_w - 0.5                     # > 0 when y_w better
-        weight_l = nash_l - 0.5                     # < 0 when y_w better
+        weight_w = nash_w - 0.5  # > 0 when y_w better
+        weight_l = nash_l - 0.5  # < 0 when y_w better
 
         # ── Policy term ─────────────────────────────────────────────────────
         # L_policy = -(weight_w · log π(y_w) + weight_l · log π(y_l)).mean()
@@ -192,7 +190,7 @@ class NashMDTrainer:
         self.beta = beta
         self._loss_fn = NashMDLoss()
 
-    def compute_loss(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def compute_loss(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         """Compute Nash-MD loss from a batch dictionary.
 
         Args:

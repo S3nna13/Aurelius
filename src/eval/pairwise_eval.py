@@ -6,11 +6,11 @@ and computes win rate. Pure Python — no external dependencies.
 
 from __future__ import annotations
 
+import logging
 import random
 import re
-import logging
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config & result dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PairwiseConfig:
@@ -34,9 +35,9 @@ class PairwiseResult:
     """Result of a single pairwise comparison."""
 
     instruction: str
-    output_a: str          # model being evaluated
-    output_b: str          # reference
-    winner: str            # "A", "B", or "tie"
+    output_a: str  # model being evaluated
+    output_b: str  # reference
+    winner: str  # "A", "B", or "tie"
     judge_reasoning: str = ""
     confidence: float = 1.0
 
@@ -44,6 +45,7 @@ class PairwiseResult:
 # ---------------------------------------------------------------------------
 # Prompt building & parsing
 # ---------------------------------------------------------------------------
+
 
 def build_pairwise_prompt(instruction: str, output_a: str, output_b: str) -> str:
     """Build a prompt for an LLM judge to compare two responses.
@@ -97,6 +99,7 @@ def extract_pairwise_winner(judge_output: str) -> str:
 # Annotator
 # ---------------------------------------------------------------------------
 
+
 class PairwiseAnnotator:
     """Annotates instruction/response pairs using an LLM judge.
 
@@ -133,7 +136,7 @@ class PairwiseAnnotator:
         prompt = build_pairwise_prompt(instruction, output_a, output_b)
         n = self.config.n_annotators
 
-        votes: List[str] = []
+        votes: list[str] = []
         last_reasoning = ""
         for _ in range(n):
             judge_output = self.generate_fn(prompt)
@@ -141,7 +144,7 @@ class PairwiseAnnotator:
             votes.append(extract_pairwise_winner(judge_output))
 
         # Majority vote
-        counts: Dict[str, int] = {"A": 0, "B": 0, "tie": 0}
+        counts: dict[str, int] = {"A": 0, "B": 0, "tie": 0}
         for v in votes:
             counts[v] += 1
 
@@ -166,8 +169,8 @@ class PairwiseAnnotator:
 
     def annotate_batch(
         self,
-        items: List[Tuple[str, str, str]],
-    ) -> List[PairwiseResult]:
+        items: list[tuple[str, str, str]],
+    ) -> list[PairwiseResult]:
         """Annotate a batch of (instruction, output_a, output_b) tuples.
 
         Args:
@@ -183,7 +186,8 @@ class PairwiseAnnotator:
 # Win-rate computation
 # ---------------------------------------------------------------------------
 
-def compute_win_rate(results: List[PairwiseResult]) -> Dict[str, float]:
+
+def compute_win_rate(results: list[PairwiseResult]) -> dict[str, float]:
     """Compute aggregate win/loss/tie rates from a list of results.
 
     Args:
@@ -218,6 +222,7 @@ def compute_win_rate(results: List[PairwiseResult]) -> Dict[str, float]:
 # End-to-end pipeline
 # ---------------------------------------------------------------------------
 
+
 class AlpacaEvalPipeline:
     """End-to-end AlpacaEval-style evaluation pipeline.
 
@@ -230,10 +235,10 @@ class AlpacaEvalPipeline:
 
     def evaluate(
         self,
-        instructions: List[str],
-        model_outputs: List[str],
-        reference_outputs: List[str],
-    ) -> Dict[str, object]:
+        instructions: list[str],
+        model_outputs: list[str],
+        reference_outputs: list[str],
+    ) -> dict[str, object]:
         """Evaluate all instruction/output pairs.
 
         Args:
@@ -253,10 +258,10 @@ class AlpacaEvalPipeline:
 
     def bootstrap_confidence_interval(
         self,
-        results: List[PairwiseResult],
+        results: list[PairwiseResult],
         n_bootstrap: int = 100,
         ci: float = 0.95,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Compute a bootstrap confidence interval for win_rate.
 
         Args:
@@ -272,7 +277,7 @@ class AlpacaEvalPipeline:
 
         rng = random.Random(42)
         n = len(results)
-        bootstrap_rates: List[float] = []
+        bootstrap_rates: list[float] = []
 
         for _ in range(n_bootstrap):
             sample = [rng.choice(results) for _ in range(n)]

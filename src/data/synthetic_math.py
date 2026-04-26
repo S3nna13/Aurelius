@@ -10,26 +10,24 @@ Pure Python — no third-party dependencies.
 
 from __future__ import annotations
 
-import math
 import random
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MathProblem:
     """One synthetic math problem with a verifiable exact answer."""
 
     problem_id: str
-    problem_text: str            # natural-language problem statement
-    answer: str                  # exact answer as string (e.g. "42", "3/7", "120")
-    answer_numeric: Optional[float]  # float version if applicable, else None
-    difficulty: str              # "easy" | "medium" | "hard"
-    problem_type: str            # "arithmetic" | "algebra" | "combinatorics"
+    problem_text: str  # natural-language problem statement
+    answer: str  # exact answer as string (e.g. "42", "3/7", "120")
+    answer_numeric: float | None  # float version if applicable, else None
+    difficulty: str  # "easy" | "medium" | "hard"
+    problem_type: str  # "arithmetic" | "algebra" | "combinatorics"
     metadata: dict = field(default_factory=dict)
 
 
@@ -50,6 +48,7 @@ class SyntheticMathConfig:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _gcd(a: int, b: int) -> int:
     """Return the greatest common divisor of |a| and |b|."""
@@ -98,13 +97,14 @@ def _permutations(n: int, k: int) -> int:
         return 0
     result = 1
     for i in range(k):
-        result *= (n - i)
+        result *= n - i
     return result
 
 
 # ---------------------------------------------------------------------------
 # Generator
 # ---------------------------------------------------------------------------
+
 
 class SyntheticMathGenerator:
     """Generate synthetic math problems with exact, verifiable answers.
@@ -116,7 +116,7 @@ class SyntheticMathGenerator:
         seed 42 when *None*.
     """
 
-    def __init__(self, config: Optional[SyntheticMathConfig] = None) -> None:
+    def __init__(self, config: SyntheticMathConfig | None = None) -> None:
         self.config = config if config is not None else SyntheticMathConfig()
 
     # ------------------------------------------------------------------
@@ -143,7 +143,7 @@ class SyntheticMathGenerator:
                 answer_val = a * b
                 text = f"What is {a} \u00d7 {b}?"
             answer = str(answer_val)
-            answer_numeric: Optional[float] = float(answer_val)
+            answer_numeric: float | None = float(answer_val)
 
         elif difficulty == "medium":
             a = rng.randint(1, cap)
@@ -169,7 +169,7 @@ class SyntheticMathGenerator:
             answer_numeric = rn / rd
 
         return MathProblem(
-            problem_id="",          # filled by generate()
+            problem_id="",  # filled by generate()
             problem_text=text,
             answer=answer,
             answer_numeric=answer_numeric,
@@ -186,7 +186,7 @@ class SyntheticMathGenerator:
             b = a * x
             text = f"Solve for x: {a}x = {b}"
             answer = str(x)
-            answer_numeric: Optional[float] = float(x)
+            answer_numeric: float | None = float(x)
 
         elif difficulty == "medium":
             # ax + b = c  →  x = (c - b) / a
@@ -209,6 +209,7 @@ class SyntheticMathGenerator:
             # expand: a*x^2 - a*(r1+r2)*x + a*r1*r2
             b_coeff = -a_coeff * (r1 + r2)
             c_coeff = a_coeff * r1 * r2
+
             # Format the equation
             def _fmt_coeff(coeff: int, var: str, first: bool) -> str:
                 if coeff == 0:
@@ -249,7 +250,7 @@ class SyntheticMathGenerator:
             answer_val = _factorial(n)
             text = f"How many ways can {n} distinct objects be arranged in a row? (Compute {n}!)"
             answer = str(answer_val)
-            answer_numeric: Optional[float] = float(answer_val)
+            answer_numeric: float | None = float(answer_val)
 
         elif difficulty == "medium":
             # C(n, k)
@@ -291,7 +292,7 @@ class SyntheticMathGenerator:
     def generate(
         self,
         n: int,
-        problem_type: Optional[str] = None,
+        problem_type: str | None = None,
     ) -> list[MathProblem]:
         """Generate *n* synthetic math problems.
 

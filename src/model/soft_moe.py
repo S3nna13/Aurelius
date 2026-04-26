@@ -10,6 +10,7 @@ softmax normalisation.
 Reference: Puigcerver et al. (2023) "From Sparse to Soft Mixtures of Experts"
 https://arxiv.org/abs/2308.00951
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,17 +20,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SoftMoEConfig:
     """Configuration for a Soft MoE layer."""
 
     n_experts: int = 8
-    n_slots: int = 1        # number of processing slots per expert
+    n_slots: int = 1  # number of processing slots per expert
     d_model: int = 64
     d_ff: int = 256
     dropout: float = 0.1
@@ -38,6 +39,7 @@ class SoftMoEConfig:
 # ---------------------------------------------------------------------------
 # Expert FFN
 # ---------------------------------------------------------------------------
+
 
 class ExpertFFN(nn.Module):
     """Standard feed-forward expert: Linear → GELU → Dropout → Linear."""
@@ -58,6 +60,7 @@ class ExpertFFN(nn.Module):
 # Soft Router
 # ---------------------------------------------------------------------------
 
+
 class SoftRouter(nn.Module):
     """Computes continuous dispatch and combine weights via learned slot embeddings.
 
@@ -75,7 +78,7 @@ class SoftRouter(nn.Module):
         total_slots = n_experts * n_slots
         # Learnable slot embeddings — shape (total_slots, d_model)
         self.slots = nn.Parameter(torch.empty(total_slots, d_model))
-        nn.init.normal_(self.slots, std=d_model ** -0.5)
+        nn.init.normal_(self.slots, std=d_model**-0.5)
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """
@@ -104,6 +107,7 @@ class SoftRouter(nn.Module):
 # Soft MoE Layer
 # ---------------------------------------------------------------------------
 
+
 class SoftMoELayer(nn.Module):
     """Full Soft MoE layer: route → process via experts → aggregate.
 
@@ -114,10 +118,12 @@ class SoftMoELayer(nn.Module):
     def __init__(self, config: SoftMoEConfig) -> None:
         super().__init__()
         self.config = config
-        self.experts = nn.ModuleList([
-            ExpertFFN(config.d_model, config.d_ff, config.dropout)
-            for _ in range(config.n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                ExpertFFN(config.d_model, config.d_ff, config.dropout)
+                for _ in range(config.n_experts)
+            ]
+        )
         self.router = SoftRouter(config.d_model, config.n_experts, config.n_slots)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -158,6 +164,7 @@ class SoftMoELayer(nn.Module):
 # ---------------------------------------------------------------------------
 # Load statistics
 # ---------------------------------------------------------------------------
+
 
 def compute_load_stats(dispatch_weights: Tensor) -> dict:
     """Compute per-slot load statistics from dispatch weights.

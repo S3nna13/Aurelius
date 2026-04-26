@@ -10,7 +10,7 @@ when vLLM is not installed.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from src.backends.base import (
@@ -85,9 +85,7 @@ class VLLMAdapter(BackendAdapter):
             import vllm  # noqa: F401 – availability check
             from vllm import LLM, SamplingParams  # noqa: F401
         except ImportError as exc:
-            raise VLLMAdapterError(
-                "vLLM is not installed; pip install vllm"
-            ) from exc
+            raise VLLMAdapterError("vLLM is not installed; pip install vllm") from exc
 
         if self._config is None:
             raise VLLMAdapterError(
@@ -133,9 +131,7 @@ class VLLMAdapter(BackendAdapter):
         try:
             from vllm import SamplingParams
         except ImportError as exc:
-            raise VLLMAdapterError(
-                "vLLM is not installed; pip install vllm"
-            ) from exc
+            raise VLLMAdapterError("vLLM is not installed; pip install vllm") from exc
 
         engine = self._load_engine()
         sampling_params = SamplingParams(
@@ -162,19 +158,16 @@ class VLLMAdapter(BackendAdapter):
         )
 
     def dtype_of(self, obj: Any) -> str:
-        raise VLLMAdapterError(
-            "VLLMAdapter is inference-only; dtype_of is not supported"
-        )
+        raise VLLMAdapterError("VLLMAdapter is inference-only; dtype_of is not supported")
 
     def device_of(self, obj: Any) -> str:
-        raise VLLMAdapterError(
-            "VLLMAdapter is inference-only; device_of is not supported"
-        )
+        raise VLLMAdapterError("VLLMAdapter is inference-only; device_of is not supported")
 
     def is_available(self) -> bool:
         """Return True iff vLLM can be imported in the current environment."""
         try:
             import vllm  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -183,6 +176,7 @@ class VLLMAdapter(BackendAdapter):
         info = super().runtime_info()
         if self.is_available():
             import vllm
+
             info["vllm_version"] = vllm.__version__
         return info
 
@@ -211,6 +205,7 @@ class VLLMEngineAdapter(EngineAdapter):
         """Return True iff vLLM is importable."""
         try:
             import vllm  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -224,6 +219,7 @@ class VLLMEngineAdapter(EngineAdapter):
         }
         if self.is_available():
             import vllm
+
             desc["vllm_version"] = vllm.__version__
         return desc
 

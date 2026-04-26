@@ -28,8 +28,8 @@ Standard library only.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from .tool_registry_dispatcher import ToolInvocationResult, ToolRegistryDispatcher
 
@@ -84,8 +84,8 @@ class RecoveryDecision:
     strategy: str
     reason: str
     delay_seconds: float = 0.0
-    modified_args: Optional[dict] = None
-    fallback_tool: Optional[str] = None
+    modified_args: dict | None = None
+    fallback_tool: str | None = None
 
     def __post_init__(self) -> None:
         if self.strategy not in RecoveryStrategy.ALL:
@@ -102,9 +102,9 @@ class RecoveryPolicy:
     backoff_base: float = 0.5
     backoff_factor: float = 2.0
     max_delay: float = 10.0
-    fallback_map: Optional[dict[str, str]] = None
-    escalate_on: Optional[list[str]] = None
-    abort_on: Optional[list[str]] = None
+    fallback_map: dict[str, str] | None = None
+    escalate_on: list[str] | None = None
+    abort_on: list[str] | None = None
 
     def __post_init__(self) -> None:
         if self.max_retries < 0:
@@ -156,7 +156,7 @@ class ErrorClassifier:
     )
 
     @staticmethod
-    def classify(error: Optional[str]) -> str:
+    def classify(error: str | None) -> str:
         if error is None:
             return "internal_error"
         e = error.lower()
@@ -167,12 +167,7 @@ class ErrorClassifier:
             return "timeout"
         if "rate_limit" in e or "rate limited" in e or "ratelimit" in e:
             return "rate_limit"
-        if (
-            "permission" in e
-            or "forbidden" in e
-            or "unauthorized" in e
-            or "denied" in e
-        ):
+        if "permission" in e or "forbidden" in e or "unauthorized" in e or "denied" in e:
             return "permission_denied"
         if (
             "schema_error" in e
@@ -332,9 +327,7 @@ class RecoveringDispatcher:
         self,
         inner: ToolRegistryDispatcher,
         policy: RecoveryPolicy,
-        args_mutator: Optional[
-            Callable[[str, dict, ToolInvocationResult], dict]
-        ] = None,
+        args_mutator: Callable[[str, dict, ToolInvocationResult], dict] | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ):
         if inner is None:
@@ -368,7 +361,7 @@ class RecoveringDispatcher:
         attempt = 0
         cur_name = name
         cur_args = dict(arguments) if isinstance(arguments, dict) else arguments
-        last_result: Optional[ToolInvocationResult] = None
+        last_result: ToolInvocationResult | None = None
 
         while True:
             attempt += 1
@@ -395,9 +388,7 @@ class RecoveringDispatcher:
                     cur_args = decision.modified_args
                 elif self._args_mutator is not None:
                     try:
-                        new_args = self._args_mutator(
-                            cur_name, cur_args, last_result
-                        )
+                        new_args = self._args_mutator(cur_name, cur_args, last_result)
                     except Exception as exc:
                         # Mutator failure -> abort with an annotated result.
                         self._history.append(

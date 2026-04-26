@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -35,19 +35,19 @@ class RotaryEmbedding(nn.Module):
 
         if scaling == "none":
             effective_base = cfg.base
-            inv_freq = 1.0 / (effective_base ** exponents)
+            inv_freq = 1.0 / (effective_base**exponents)
 
         elif scaling == "linear":
-            inv_freq = 1.0 / (cfg.base ** exponents) / cfg.scaling_factor
+            inv_freq = 1.0 / (cfg.base**exponents) / cfg.scaling_factor
 
         elif scaling == "ntk":
             adjusted_base = cfg.base * (cfg.scaling_factor ** (cfg.dim / (cfg.dim - 2)))
-            inv_freq = 1.0 / (adjusted_base ** exponents)
+            inv_freq = 1.0 / (adjusted_base**exponents)
 
         elif scaling == "yarn":
             alpha = cfg.original_max_position
             beta = cfg.max_position
-            inv_freq_base = 1.0 / (cfg.base ** exponents)
+            inv_freq_base = 1.0 / (cfg.base**exponents)
             wavelengths = 2.0 * math.pi / inv_freq_base
             low_mask = wavelengths < (2.0 * math.pi * alpha / cfg.scaling_factor)
             high_mask = wavelengths > (2.0 * math.pi * beta / cfg.scaling_factor)
@@ -56,7 +56,9 @@ class RotaryEmbedding(nn.Module):
             scale[low_mask] = 1.0
             scale[high_mask] = cfg.scaling_factor
             if mid_mask.any():
-                w = (wavelengths[mid_mask] / (2.0 * math.pi) * cfg.scaling_factor - alpha) / (beta - alpha)
+                w = (wavelengths[mid_mask] / (2.0 * math.pi) * cfg.scaling_factor - alpha) / (
+                    beta - alpha
+                )
                 scale[mid_mask] = 1.0 - w + w * cfg.scaling_factor
             inv_freq = inv_freq_base / scale
 

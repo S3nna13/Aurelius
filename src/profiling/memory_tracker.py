@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import gc
-from typing import Any
 
 import torch
 import torch.nn as nn

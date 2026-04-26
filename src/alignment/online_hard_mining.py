@@ -11,48 +11,49 @@ Pure PyTorch implementation — no scipy, no sklearn, no HuggingFace.
 
 from __future__ import annotations
 
-import heapq
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HardExample:
     """A single hard preference pair with associated difficulty score."""
-    chosen_ids: torch.Tensor      # (T,)
-    rejected_ids: torch.Tensor    # (T,)
-    difficulty: float             # higher = harder
-    weight: float = 1.0          # sampling weight
+
+    chosen_ids: torch.Tensor  # (T,)
+    rejected_ids: torch.Tensor  # (T,)
+    difficulty: float  # higher = harder
+    weight: float = 1.0  # sampling weight
 
 
 @dataclass
 class MiningConfig:
     """Configuration for online hard example mining."""
-    strategy: str = "hardest"              # "hardest" | "semi-hard" | "curriculum"
-    top_k_ratio: float = 0.5              # keep top-K hardest (fraction of batch)
-    curriculum_warmup_steps: int = 100    # start easy, increase difficulty
-    temperature: float = 1.0             # for soft weighting
-    min_difficulty: float = 0.0          # ignore examples below this difficulty
-    max_buffer_size: int = 1000          # max examples in memory bank
+
+    strategy: str = "hardest"  # "hardest" | "semi-hard" | "curriculum"
+    top_k_ratio: float = 0.5  # keep top-K hardest (fraction of batch)
+    curriculum_warmup_steps: int = 100  # start easy, increase difficulty
+    temperature: float = 1.0  # for soft weighting
+    min_difficulty: float = 0.0  # ignore examples below this difficulty
+    max_buffer_size: int = 1000  # max examples in memory bank
 
 
 # ---------------------------------------------------------------------------
 # Difficulty computation
 # ---------------------------------------------------------------------------
 
+
 def compute_dpo_difficulty(
-    policy_logprobs_chosen: torch.Tensor,     # (B,)
-    policy_logprobs_rejected: torch.Tensor,   # (B,)
-    ref_logprobs_chosen: torch.Tensor,        # (B,)
-    ref_logprobs_rejected: torch.Tensor,      # (B,)
+    policy_logprobs_chosen: torch.Tensor,  # (B,)
+    policy_logprobs_rejected: torch.Tensor,  # (B,)
+    ref_logprobs_chosen: torch.Tensor,  # (B,)
+    ref_logprobs_rejected: torch.Tensor,  # (B,)
 ) -> torch.Tensor:
     """Compute DPO-based difficulty for each example in a batch.
 
@@ -72,7 +73,7 @@ def compute_dpo_difficulty(
 
 
 def compute_reward_difficulty(
-    rewards_chosen: torch.Tensor,    # (B,)
+    rewards_chosen: torch.Tensor,  # (B,)
     rewards_rejected: torch.Tensor,  # (B,)
     normalize: bool = True,
 ) -> torch.Tensor:
@@ -97,8 +98,9 @@ def compute_reward_difficulty(
 # Index selection
 # ---------------------------------------------------------------------------
 
+
 def select_hard_examples(
-    difficulties: torch.Tensor,   # (B,)
+    difficulties: torch.Tensor,  # (B,)
     strategy: str = "hardest",
     top_k_ratio: float = 0.5,
     temperature: float = 1.0,
@@ -141,14 +143,14 @@ def select_hard_examples(
 
     else:
         raise ValueError(
-            f"Unknown strategy '{strategy}'. "
-            "Choose from 'hardest', 'semi-hard', 'weighted'."
+            f"Unknown strategy '{strategy}'. Choose from 'hardest', 'semi-hard', 'weighted'."
         )
 
 
 # ---------------------------------------------------------------------------
 # Memory buffer
 # ---------------------------------------------------------------------------
+
 
 class HardExampleBuffer:
     """Memory bank of hard examples for replay during alignment training.
@@ -160,13 +162,13 @@ class HardExampleBuffer:
     def __init__(self, max_size: int = 1000, strategy: str = "hardest") -> None:
         self._max_size = max_size
         self._strategy = strategy
-        self._examples: List[HardExample] = []
+        self._examples: list[HardExample] = []
 
     # ------------------------------------------------------------------
     # Mutation
     # ------------------------------------------------------------------
 
-    def add(self, examples: List[HardExample]) -> None:
+    def add(self, examples: list[HardExample]) -> None:
         """Add examples to the buffer, evicting the easiest when over capacity."""
         self._examples.extend(examples)
         if len(self._examples) > self._max_size:
@@ -183,14 +185,12 @@ class HardExampleBuffer:
     # Sampling
     # ------------------------------------------------------------------
 
-    def sample(self, n: int) -> List[HardExample]:
+    def sample(self, n: int) -> list[HardExample]:
         """Sample n examples, weighted by difficulty score."""
         if not self._examples:
             return []
         n = min(n, len(self._examples))
-        difficulties = torch.tensor(
-            [ex.difficulty for ex in self._examples], dtype=torch.float32
-        )
+        difficulties = torch.tensor([ex.difficulty for ex in self._examples], dtype=torch.float32)
         # Soft-max weighting: harder examples get higher probability.
         weights = difficulties - difficulties.min() + 1e-6
         weights = weights / weights.sum()
@@ -209,6 +209,7 @@ class HardExampleBuffer:
 # Main miner class
 # ---------------------------------------------------------------------------
 
+
 class OnlineHardMiner:
     """Compute difficulties, select hard examples, and maintain a replay buffer.
 
@@ -218,7 +219,7 @@ class OnlineHardMiner:
 
     def __init__(
         self,
-        config: Optional[MiningConfig] = None,
+        config: MiningConfig | None = None,
         use_reward_model: bool = False,
     ) -> None:
         self._config = config or MiningConfig()
@@ -235,13 +236,13 @@ class OnlineHardMiner:
 
     def mine(
         self,
-        chosen_ids: torch.Tensor,               # (B, T)
-        rejected_ids: torch.Tensor,             # (B, T)
-        policy_logprobs_chosen: torch.Tensor,   # (B,)
-        policy_logprobs_rejected: torch.Tensor, # (B,)
-        ref_logprobs_chosen: Optional[torch.Tensor] = None,   # (B,)
-        ref_logprobs_rejected: Optional[torch.Tensor] = None, # (B,)
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        chosen_ids: torch.Tensor,  # (B, T)
+        rejected_ids: torch.Tensor,  # (B, T)
+        policy_logprobs_chosen: torch.Tensor,  # (B,)
+        policy_logprobs_rejected: torch.Tensor,  # (B,)
+        ref_logprobs_chosen: torch.Tensor | None = None,  # (B,)
+        ref_logprobs_rejected: torch.Tensor | None = None,  # (B,)
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Return hard-example subset of (chosen_ids, rejected_ids).
 
         Also stores the selected hard examples in the replay buffer and
@@ -357,14 +358,15 @@ class OnlineHardMiner:
 # DPO loss with hard example mining
 # ---------------------------------------------------------------------------
 
+
 def dpo_loss_with_mining(
-    policy_chosen_logps: torch.Tensor,    # (B,)
+    policy_chosen_logps: torch.Tensor,  # (B,)
     policy_rejected_logps: torch.Tensor,  # (B,)
-    ref_chosen_logps: torch.Tensor,       # (B,)
-    ref_rejected_logps: torch.Tensor,     # (B,)
+    ref_chosen_logps: torch.Tensor,  # (B,)
+    ref_rejected_logps: torch.Tensor,  # (B,)
     beta: float = 0.1,
-    mining_config: Optional[MiningConfig] = None,
-) -> Tuple[torch.Tensor, Dict[str, float]]:
+    mining_config: MiningConfig | None = None,
+) -> tuple[torch.Tensor, dict[str, float]]:
     """DPO loss with online hard example mining and difficulty-based weighting.
 
     Selects hard examples from the batch, upweights them in the loss, and
@@ -426,7 +428,7 @@ def dpo_loss_with_mining(
     loss = (weights * per_example_loss).mean()
 
     # --- metrics ---
-    metrics: Dict[str, float] = {
+    metrics: dict[str, float] = {
         "n_hard_examples": float(indices.shape[0]),
         "mean_difficulty": float(h_difficulties.mean().item()),
         "loss_unweighted": float(per_example_loss.mean().item()),

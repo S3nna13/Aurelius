@@ -16,7 +16,6 @@ from src.longcontext.yarn_position_extension import (
     yarn_mscale,
 )
 
-
 HEAD_DIM = 16
 SCALING = 4.0
 
@@ -96,9 +95,7 @@ def test_yarn_mscale_at_original_is_unity() -> None:
 def test_yarn_mscale_larger_at_extended_positions() -> None:
     cfg = _cfg()
     inside = yarn_mscale(cfg, cfg.original_max_seq_len // 2).item()
-    extended = yarn_mscale(
-        cfg, int(cfg.scaling_factor * cfg.original_max_seq_len)
-    ).item()
+    extended = yarn_mscale(cfg, int(cfg.scaling_factor * cfg.original_max_seq_len)).item()
     assert extended > inside
     assert extended > 1.0
 

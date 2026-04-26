@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 
 from src.inference.speculative_sampler import (
@@ -12,10 +11,10 @@ from src.inference.speculative_sampler import (
     VerificationResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # SpeculativeConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestSpeculativeConfigDefaults:
     def test_n_draft_default(self):
@@ -55,6 +54,7 @@ class TestSpeculativeConfigDefaults:
 # DraftToken fields
 # ---------------------------------------------------------------------------
 
+
 class TestDraftTokenFields:
     def test_token_id_field(self):
         dt = DraftToken(token_id=42, logprob=-0.5, position=0)
@@ -70,6 +70,7 @@ class TestDraftTokenFields:
 
     def test_draft_token_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(DraftToken)
 
 
@@ -77,9 +78,12 @@ class TestDraftTokenFields:
 # VerificationResult fields
 # ---------------------------------------------------------------------------
 
+
 class TestVerificationResultFields:
     def test_accepted_tokens_field(self):
-        vr = VerificationResult(accepted_tokens=[1, 2, 3], rejection_point=None, acceptance_rate=1.0)
+        vr = VerificationResult(
+            accepted_tokens=[1, 2, 3], rejection_point=None, acceptance_rate=1.0
+        )
         assert vr.accepted_tokens == [1, 2, 3]
 
     def test_rejection_point_none(self):
@@ -96,12 +100,14 @@ class TestVerificationResultFields:
 
     def test_verification_result_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(VerificationResult)
 
 
 # ---------------------------------------------------------------------------
 # SpeculativeSampler construction
 # ---------------------------------------------------------------------------
+
 
 class TestSpeculativeSamplerConstruction:
     def test_default_config_created_when_none(self):
@@ -121,6 +127,7 @@ class TestSpeculativeSamplerConstruction:
 # ---------------------------------------------------------------------------
 # SpeculativeSampler.sample_draft
 # ---------------------------------------------------------------------------
+
 
 class TestSampleDraft:
     def _sampler(self):
@@ -193,6 +200,7 @@ class TestSampleDraft:
 # ---------------------------------------------------------------------------
 # SpeculativeSampler.verify
 # ---------------------------------------------------------------------------
+
 
 class TestVerify:
     def _sampler(self):
@@ -270,6 +278,7 @@ class TestVerify:
 # SpeculativeSampler.efficiency_gain
 # ---------------------------------------------------------------------------
 
+
 class TestEfficiencyGain:
     def _sampler(self):
         return SpeculativeSampler()
@@ -281,8 +290,12 @@ class TestEfficiencyGain:
     def test_all_accepted(self):
         s = self._sampler()
         results = [
-            VerificationResult(accepted_tokens=[1, 2, 3], rejection_point=None, acceptance_rate=1.0),
-            VerificationResult(accepted_tokens=[4, 5, 6], rejection_point=None, acceptance_rate=1.0),
+            VerificationResult(
+                accepted_tokens=[1, 2, 3], rejection_point=None, acceptance_rate=1.0
+            ),
+            VerificationResult(
+                accepted_tokens=[4, 5, 6], rejection_point=None, acceptance_rate=1.0
+            ),
         ]
         assert s.efficiency_gain(results) == pytest.approx(1.0)
 
@@ -311,5 +324,7 @@ class TestEfficiencyGain:
 
     def test_single_result(self):
         s = self._sampler()
-        results = [VerificationResult(accepted_tokens=[1], rejection_point=None, acceptance_rate=0.75)]
+        results = [
+            VerificationResult(accepted_tokens=[1], rejection_point=None, acceptance_rate=0.75)
+        ]
         assert s.efficiency_gain(results) == pytest.approx(0.75)

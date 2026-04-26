@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 
 from src.quantization.smooth_quant import (
-    SmoothQuantConfig,
-    SmoothQuantCalibrator,
     SMOOTH_QUANT_REGISTRY,
+    SmoothQuantCalibrator,
+    SmoothQuantConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def approx(a: float, b: float, rel: float = 1e-6) -> bool:
     """Return True when *a* and *b* are within *rel* relative tolerance."""
@@ -26,6 +25,7 @@ def approx(a: float, b: float, rel: float = 1e-6) -> bool:
 # ---------------------------------------------------------------------------
 # SmoothQuantConfig
 # ---------------------------------------------------------------------------
+
 
 class TestSmoothQuantConfig:
     def test_defaults_alpha(self):
@@ -59,6 +59,7 @@ class TestSmoothQuantConfig:
 # SmoothQuantCalibrator — calibrate
 # ---------------------------------------------------------------------------
 
+
 class TestCalibrateBasic:
     def setup_method(self):
         self.cal = SmoothQuantCalibrator()
@@ -68,7 +69,7 @@ class TestCalibrateBasic:
         act = {"c0": 4.0}
         wt = {"c0": 9.0}
         scales = self.cal.calibrate(act, wt)
-        expected = (4.0 ** 0.5) / (9.0 ** 0.5 + 1e-5)
+        expected = (4.0**0.5) / (9.0**0.5 + 1e-5)
         assert approx(scales["c0"], expected)
 
     def test_calibrate_returns_dict(self):
@@ -134,6 +135,7 @@ class TestCalibrateBasic:
 # SmoothQuantCalibrator — apply_scale
 # ---------------------------------------------------------------------------
 
+
 class TestApplyScale:
     def setup_method(self):
         self.cal = SmoothQuantCalibrator()
@@ -167,6 +169,7 @@ class TestApplyScale:
 # SmoothQuantCalibrator — inverse_scale
 # ---------------------------------------------------------------------------
 
+
 class TestInverseScale:
     def setup_method(self):
         self.cal = SmoothQuantCalibrator()
@@ -193,7 +196,6 @@ class TestInverseScale:
 
     def test_round_trip_apply_then_inverse(self):
         """apply_scale then inverse_scale should approximately recover original."""
-        eps = 1e-5
         weights = [2.0, 4.0, 8.0]
         scales = [0.5, 2.0, 4.0]
         smoothed_w = self.cal.apply_scale(weights, scales)
@@ -207,6 +209,7 @@ class TestInverseScale:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):

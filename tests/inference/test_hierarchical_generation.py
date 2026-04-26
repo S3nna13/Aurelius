@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.hierarchical_generation import (
     HierarchicalConfig,
-    OutlineNode,
     HierarchicalGenerator,
-    generate_outline,
+    OutlineNode,
     compute_coherence_score,
+    generate_outline,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -65,6 +65,7 @@ def generator(small_model):
 # 1. HierarchicalConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_hierarchical_config_defaults():
     cfg = HierarchicalConfig()
     assert cfg.n_sections == 3
@@ -78,6 +79,7 @@ def test_hierarchical_config_defaults():
 # 2. OutlineNode fields
 # ---------------------------------------------------------------------------
 
+
 def test_outline_node_fields():
     node = OutlineNode(title="Introduction")
     assert node.title == "Introduction"
@@ -90,6 +92,7 @@ def test_outline_node_fields():
 # 3. OutlineNode.to_flat_list returns a flat list (leaf node)
 # ---------------------------------------------------------------------------
 
+
 def test_outline_node_to_flat_list_single():
     node = OutlineNode(title="Root")
     flat = node.to_flat_list()
@@ -101,6 +104,7 @@ def test_outline_node_to_flat_list_single():
 # ---------------------------------------------------------------------------
 # 4. OutlineNode.to_flat_list with children includes all nodes
 # ---------------------------------------------------------------------------
+
 
 def test_outline_node_to_flat_list_with_children():
     child1 = OutlineNode(title="Child A", level=2)
@@ -122,6 +126,7 @@ def test_outline_node_to_flat_list_with_children():
 # 5. generate_outline returns list of OutlineNode
 # ---------------------------------------------------------------------------
 
+
 def test_generate_outline_returns_list_of_nodes(small_model):
     result = generate_outline(
         small_model,
@@ -138,6 +143,7 @@ def test_generate_outline_returns_list_of_nodes(small_model):
 # ---------------------------------------------------------------------------
 # 6. generate_outline length <= n_sections
 # ---------------------------------------------------------------------------
+
 
 def test_generate_outline_length_at_most_n_sections(small_model):
     n = 4
@@ -157,6 +163,7 @@ def test_generate_outline_length_at_most_n_sections(small_model):
 # 7. generate_outline fallback provides exactly n_sections nodes
 # ---------------------------------------------------------------------------
 
+
 def test_generate_outline_fallback_provides_n_sections(small_model):
     """When parsing yields < n_sections titles, fallback gives exactly n_sections."""
     n = 10
@@ -175,6 +182,7 @@ def test_generate_outline_fallback_provides_n_sections(small_model):
 # 8. compute_coherence_score identical text -> 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_coherence_score_identical_text():
     text = "The quick brown fox jumps over the lazy dog"
     score = compute_coherence_score(text, text)
@@ -184,6 +192,7 @@ def test_coherence_score_identical_text():
 # ---------------------------------------------------------------------------
 # 9. compute_coherence_score unrelated text -> low score
 # ---------------------------------------------------------------------------
+
 
 def test_coherence_score_unrelated_text():
     prev = "aaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -195,6 +204,7 @@ def test_coherence_score_unrelated_text():
 # ---------------------------------------------------------------------------
 # 10. compute_coherence_score returns value in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_coherence_score_range():
     pairs = [
@@ -213,6 +223,7 @@ def test_coherence_score_range():
 # 11. HierarchicalGenerator.generate_section returns string
 # ---------------------------------------------------------------------------
 
+
 def test_generate_section_returns_string(generator):
     node = OutlineNode(title="Introduction")
     result = generator.generate_section(node, context="", max_new_tokens=4)
@@ -222,6 +233,7 @@ def test_generate_section_returns_string(generator):
 # ---------------------------------------------------------------------------
 # 12. HierarchicalGenerator.generate_document returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_generate_document_returns_dict_with_keys(generator):
     result = generator.generate_document("machine learning")
@@ -234,6 +246,7 @@ def test_generate_document_returns_dict_with_keys(generator):
 # 13. HierarchicalGenerator.generate_document document is string
 # ---------------------------------------------------------------------------
 
+
 def test_generate_document_document_is_string(generator):
     result = generator.generate_document("space exploration")
     assert isinstance(result["document"], str)
@@ -242,6 +255,7 @@ def test_generate_document_document_is_string(generator):
 # ---------------------------------------------------------------------------
 # 14. HierarchicalGenerator.generate_document coherence_scores length = n_sections - 1
 # ---------------------------------------------------------------------------
+
 
 def test_generate_document_coherence_scores_length(generator):
     result = generator.generate_document("renewable energy")
@@ -252,6 +266,7 @@ def test_generate_document_coherence_scores_length(generator):
 # ---------------------------------------------------------------------------
 # 15. HierarchicalGenerator.refine_section returns string
 # ---------------------------------------------------------------------------
+
 
 def test_refine_section_returns_string(generator):
     node = OutlineNode(title="Conclusion")

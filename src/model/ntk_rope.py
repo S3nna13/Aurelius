@@ -1,14 +1,14 @@
-import torch
-import math
 from dataclasses import dataclass
+
+import torch
 
 
 @dataclass
 class NTKRoPEConfig:
     head_dim: int = 128
-    max_seq_len: int = 32768        # target extended context length
-    theta: float = 500_000.0        # original RoPE theta
-    scale_factor: float = 4.0       # context extension factor
+    max_seq_len: int = 32768  # target extended context length
+    theta: float = 500_000.0  # original RoPE theta
+    scale_factor: float = 4.0  # context extension factor
     original_max_seq_len: int = 8192
 
 

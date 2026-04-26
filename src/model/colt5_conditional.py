@@ -35,27 +35,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CoLT5Config:
     """Hyperparameters for the CoLT5 conditional computation module."""
 
     d_model: int = 2048
-    d_ff_light: int = 512        # hidden dim for the light (cheap) FFN path
-    d_ff_heavy: int = 2048       # hidden dim for the heavy (expensive) FFN path
+    d_ff_light: int = 512  # hidden dim for the light (cheap) FFN path
+    d_ff_heavy: int = 2048  # hidden dim for the heavy (expensive) FFN path
     heavy_fraction: float = 0.25  # fraction of tokens routed to the heavy path
-    n_heavy_heads: int = 8        # heavy attention heads (reserved for future use)
-    n_light_heads: int = 2        # light attention heads (reserved for future use)
+    n_heavy_heads: int = 8  # heavy attention heads (reserved for future use)
+    n_light_heads: int = 2  # light attention heads (reserved for future use)
     dropout: float = 0.0
 
 
 # ---------------------------------------------------------------------------
 # CoLT5FFN — conditional light/heavy FFN with top-k routing
 # ---------------------------------------------------------------------------
+
 
 class CoLT5FFN(nn.Module):
     """Conditional FFN that applies a heavy path only to the top-k tokens.
@@ -143,9 +144,9 @@ class CoLT5FFN(nn.Module):
 
         # 6b. Gate heavy output by sigmoid(score) so router receives gradients.
         #     Gather the top-k scores, apply sigmoid, and broadcast over d_model.
-        top_k_scores = scores.gather(1, top_k_idx)          # [B, k]
-        gate = torch.sigmoid(top_k_scores).unsqueeze(-1)    # [B, k, 1]
-        heavy_out = heavy_out * gate                        # [B, k, d_model]
+        top_k_scores = scores.gather(1, top_k_idx)  # [B, k]
+        gate = torch.sigmoid(top_k_scores).unsqueeze(-1)  # [B, k, 1]
+        heavy_out = heavy_out * gate  # [B, k, d_model]
 
         # 7. Blend: add heavy output onto light output at the top-k positions
         output = light_out.scatter_add(1, idx_expanded, heavy_out)  # [B, T, d_model]
@@ -180,7 +181,7 @@ class CoLT5FFN(nn.Module):
         # Normalised entropy: H / log(T) so range is always [0, 1]
         probs = torch.softmax(routing_scores.float(), dim=-1)  # [B, T]
         log_probs = torch.log(probs + 1e-9)
-        entropy = -(probs * log_probs).sum(dim=-1)             # [B]
+        entropy = -(probs * log_probs).sum(dim=-1)  # [B]
         max_entropy = math.log(T) if T > 1 else 1.0
         score_entropy = float((entropy / max_entropy).mean().item())
 
@@ -193,6 +194,7 @@ class CoLT5FFN(nn.Module):
 # ---------------------------------------------------------------------------
 # CoLT5Block — pre-norm residual wrapper around CoLT5FFN
 # ---------------------------------------------------------------------------
+
 
 class CoLT5Block(nn.Module):
     """Full CoLT5 block: pre-norm residual + conditional light/heavy FFN.
@@ -242,6 +244,7 @@ class CoLT5Block(nn.Module):
 # Minimal RMSNorm (local, avoids cross-module import)
 # ---------------------------------------------------------------------------
 
+
 class _RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (Zhang & Sennrich 2019)."""
 
@@ -259,10 +262,12 @@ class _RMSNorm(nn.Module):
 # Registry — must be imported *after* MODEL_COMPONENT_REGISTRY is created
 # ---------------------------------------------------------------------------
 
+
 def _register() -> None:
     """Register CoLT5 components in MODEL_COMPONENT_REGISTRY."""
     try:
         from src.model import MODEL_COMPONENT_REGISTRY  # noqa: PLC0415
+
         MODEL_COMPONENT_REGISTRY["colt5_ffn"] = CoLT5FFN
         MODEL_COMPONENT_REGISTRY["colt5_block"] = CoLT5Block
     except ImportError:

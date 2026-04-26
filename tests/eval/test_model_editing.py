@@ -1,11 +1,10 @@
 """Tests for MEMIT-style mass editing, edit evaluation metrics, and editing-specific tests."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.model_editing import (
     EditRequest,
     EditResult,
@@ -15,12 +14,22 @@ from src.eval.model_editing import (
     compute_sequence_probability,
     rank_one_update,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 
 def make_model() -> AureliusTransformer:
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2, head_dim=32,
-        d_ff=128, vocab_size=256, max_seq_len=512, dropout=0.0, tie_embeddings=False,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
+        dropout=0.0,
+        tie_embeddings=False,
     )
     model = AureliusTransformer(cfg)
     model.eval()
@@ -53,8 +62,11 @@ def test_edit_request_optional_fields_default_none():
 # 3. EditRequest optional fields can be set
 def test_edit_request_optional_fields_set():
     req = EditRequest(
-        subject="Rome", prompt="Rome is in", target_new=" Italy",
-        target_old=" Germany", paraphrase_prompts=["The city of Rome is located in"],
+        subject="Rome",
+        prompt="Rome is in",
+        target_new=" Italy",
+        target_old=" Germany",
+        paraphrase_prompts=["The city of Rome is located in"],
     )
     assert req.target_old == " Germany"
     assert len(req.paraphrase_prompts) == 1
@@ -62,8 +74,9 @@ def test_edit_request_optional_fields_set():
 
 # 4. EditResult fields
 def test_edit_result_fields():
-    result = EditResult(success=True, efficacy=0.9, generalization=0.7,
-                        specificity=0.8, edit_id="abc-123")
+    result = EditResult(
+        success=True, efficacy=0.9, generalization=0.7, specificity=0.8, edit_id="abc-123"
+    )
     assert result.success is True
     assert result.efficacy == pytest.approx(0.9)
     assert result.generalization == pytest.approx(0.7)

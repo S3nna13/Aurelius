@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -12,7 +11,7 @@ class LoRAConfig:
     rank: int = 8
     alpha: float = 16.0
     dropout: float = 0.05
-    target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
+    target_modules: list[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
     merge_weights: bool = False
 
 
@@ -49,12 +48,12 @@ class LoRALayer(nn.Module):
 class LoRAAdapterManager:
     """Manage LoRA adapters: add, save, load, merge, switch."""
 
-    def __init__(self, config: Optional[LoRAConfig] = None) -> None:
+    def __init__(self, config: LoRAConfig | None = None) -> None:
         self.config = config or LoRAConfig()
-        self._adapters: Dict[str, Dict[str, LoRALayer]] = {}
+        self._adapters: dict[str, dict[str, LoRALayer]] = {}
 
-    def create_adapter(self, name: str, module: nn.Module) -> Dict[str, LoRALayer]:
-        layers: Dict[str, LoRALayer] = {}
+    def create_adapter(self, name: str, module: nn.Module) -> dict[str, LoRALayer]:
+        layers: dict[str, LoRALayer] = {}
         for mod_name, mod in module.named_modules():
             if not isinstance(mod, nn.Linear):
                 continue
@@ -70,13 +69,13 @@ class LoRAAdapterManager:
         self._adapters[name] = layers
         return layers
 
-    def register_adapter(self, name: str, layers: Dict[str, LoRALayer]) -> None:
+    def register_adapter(self, name: str, layers: dict[str, LoRALayer]) -> None:
         self._adapters[name] = layers
 
-    def get_adapter(self, name: str) -> Optional[Dict[str, LoRALayer]]:
+    def get_adapter(self, name: str) -> dict[str, LoRALayer] | None:
         return self._adapters.get(name)
 
-    def list_adapters(self) -> List[str]:
+    def list_adapters(self) -> list[str]:
         return list(self._adapters.keys())
 
     def remove_adapter(self, name: str) -> bool:

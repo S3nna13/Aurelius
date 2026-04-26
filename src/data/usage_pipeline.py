@@ -31,9 +31,7 @@ except ImportError as _exc:  # pragma: no cover
     ) from _exc
 
 
-DEFAULT_DB_PATH: str = os.environ.get(
-    "AURELIUS_USAGE_DB", "/var/lib/aurelius/usage.redb"
-)
+DEFAULT_DB_PATH: str = os.environ.get("AURELIUS_USAGE_DB", "/var/lib/aurelius/usage.redb")
 
 
 class UsagePipeline:

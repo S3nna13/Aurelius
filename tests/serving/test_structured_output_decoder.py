@@ -12,16 +12,14 @@ Covers all key public surfaces:
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
 from src.serving.structured_output_decoder import (
+    STRUCTURED_OUTPUT_REGISTRY,
     GrammarConstrainedDecoder,
     JsonParseState,
     StructuredOutputDecoder,
-    STRUCTURED_OUTPUT_REGISTRY,
     TokenTrie,
 )
 
@@ -31,6 +29,7 @@ from src.serving.structured_output_decoder import (
 
 VOCAB_SIZE = 256
 EOS_ID = 0
+
 
 # Tiny vocabulary: indices 0..255, token strings are single ASCII characters
 # plus a handful of JSON structural tokens placed at specific indices.
@@ -48,6 +47,7 @@ def _make_vocab() -> list[str]:
 
 
 VOCAB = _make_vocab()
+
 
 # Token ID helpers (index into VOCAB list)
 def _tok(ch: str) -> int:
@@ -178,7 +178,7 @@ def test_is_complete_object(decoder):
 
 def test_is_complete_object_missing_required(decoder):
     schema = {"type": "object", "required": ["x"]}
-    assert decoder.is_complete(schema, '{}') is False
+    assert decoder.is_complete(schema, "{}") is False
 
 
 def test_is_complete_enum(decoder):
@@ -318,7 +318,7 @@ def test_grammar_decoder_basic():
     mask = decoder.build_token_mask(vocab, state="start")
     assert mask.shape == (len(vocab),)
     # Only "{" (index 4) and not EOS should be set in "start"
-    assert mask[4].item() is True   # "{"
+    assert mask[4].item() is True  # "{"
     assert mask[1].item() is False  # "a" not allowed in start
 
 
@@ -336,7 +336,7 @@ def test_grammar_decoder_terminal_state_allows_eos():
         initial_state="start",
     )
     mask = decoder.build_token_mask(vocab, state="done")
-    assert mask[0].item() is True   # EOS allowed in terminal state
+    assert mask[0].item() is True  # EOS allowed in terminal state
 
 
 def test_grammar_decoder_constrained_logits():
@@ -350,8 +350,8 @@ def test_grammar_decoder_constrained_logits():
     )
     logits = torch.zeros(len(vocab))
     out = decoder.constrained_logits(logits, vocab)
-    assert out[2] == float("-inf")   # "b" not allowed
-    assert out[1] != float("-inf")   # "a" is allowed
+    assert out[2] == float("-inf")  # "b" not allowed
+    assert out[1] != float("-inf")  # "a" is allowed
 
 
 # ---------------------------------------------------------------------------
@@ -387,14 +387,12 @@ def test_malformed_grammar_initial_state_missing():
 def test_is_complete_nested_object(decoder):
     schema = {
         "type": "object",
-        "properties": {
-            "a": {"type": "number"}
-        },
+        "properties": {"a": {"type": "number"}},
         "required": ["a"],
     }
     assert decoder.is_complete(schema, '{"a": 42}') is True
     assert decoder.is_complete(schema, '{"a": "wrong"}') is False
-    assert decoder.is_complete(schema, '{}') is False
+    assert decoder.is_complete(schema, "{}") is False
 
 
 def test_is_valid_prefix_nested_object(decoder):
@@ -414,8 +412,8 @@ def test_is_valid_prefix_nested_object(decoder):
 def test_is_valid_prefix_anyof(decoder):
     schema = {"anyOf": [{"type": "string"}, {"type": "number"}]}
     assert decoder.is_valid_prefix(schema, '"hello') is True  # matches string branch
-    assert decoder.is_valid_prefix(schema, "42") is True       # matches number branch
-    assert decoder.is_valid_prefix(schema, "{") is False       # neither
+    assert decoder.is_valid_prefix(schema, "42") is True  # matches number branch
+    assert decoder.is_valid_prefix(schema, "{") is False  # neither
 
 
 def test_is_complete_anyof(decoder):

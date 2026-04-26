@@ -19,16 +19,12 @@ class TransitionMatrix:
         """Return the integer index of state, or None if not present."""
         return self._index.get(state, None)
 
-    def add_transition(
-        self, from_state: str, to_state: str, weight: float = 1.0
-    ) -> None:
+    def add_transition(self, from_state: str, to_state: str, weight: float = 1.0) -> None:
         """Accumulate weight for the from_state -> to_state edge."""
         fi = self._index.get(from_state)
         ti = self._index.get(to_state)
         if fi is None or ti is None:
-            raise KeyError(
-                f"Unknown state(s): from_state={from_state!r}, to_state={to_state!r}"
-            )
+            raise KeyError(f"Unknown state(s): from_state={from_state!r}, to_state={to_state!r}")
         self._raw[fi][ti] += weight
 
     def normalize(self) -> list[list[float]]:
@@ -46,9 +42,7 @@ class TransitionMatrix:
                 result.append([v / row_sum for v in row])
         return result
 
-    def stationary_distribution(
-        self, max_iter: int = 1000, tol: float = 1e-8
-    ) -> list[float]:
+    def stationary_distribution(self, max_iter: int = 1000, tol: float = 1e-8) -> list[float]:
         """Compute the stationary distribution via power iteration.
 
         Starts from a uniform distribution and multiplies by the row-stochastic

@@ -11,8 +11,8 @@ from src.agent.plugin_loader import (
     DEFAULT_PLUGIN_LOADER,
     PLUGIN_LOADER_REGISTRY,
     LoadedPlugin,
-    PluginLoadError,
     PluginLoader,
+    PluginLoadError,
 )
 from src.mcp.plugin_host import PluginManifest
 

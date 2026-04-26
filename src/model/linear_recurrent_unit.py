@@ -38,14 +38,12 @@ Output: (B, T, d_model)
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -113,9 +111,9 @@ class LRULayer(nn.Module):
         # We want mag to span [r_min, r_max].
         # Avoid log(0) at r_min=0 by clamping to a small positive value.
         u = torch.linspace(0, 1, d_state)  # [0, 1]
-        mag_init = r_min + (r_max - r_min) * u          # [r_min, r_max]
+        mag_init = r_min + (r_max - r_min) * u  # [r_min, r_max]
         mag_init = mag_init.clamp(min=1e-6, max=1.0 - 1e-6)
-        nu_init = -torch.log(mag_init)                  # = exp(nu) s.t. mag = exp(-exp(nu))
+        nu_init = -torch.log(mag_init)  # = exp(nu) s.t. mag = exp(-exp(nu))
         # nu = softplus(nu_log)  → nu_log = log(exp(nu) - 1)
         nu_log_init = torch.log(torch.expm1(nu_init).clamp(min=1e-6))
         self.nu_log = nn.Parameter(nu_log_init)
@@ -124,30 +122,20 @@ class LRULayer(nn.Module):
         # Phase parameterization                                              #
         # theta = exp(theta_log), initialized to span (0, max_phase).        #
         # ------------------------------------------------------------------ #
-        theta_init = torch.linspace(
-            math.log(1e-4), math.log(max_phase), d_state
-        )
+        theta_init = torch.linspace(math.log(1e-4), math.log(max_phase), d_state)
         self.theta_log = nn.Parameter(theta_init)
 
         # ------------------------------------------------------------------ #
         # Input projection B (complex): [d_state, d_model]                   #
         # ------------------------------------------------------------------ #
-        self.B_re = nn.Parameter(
-            torch.randn(d_state, d_model) / math.sqrt(d_model)
-        )
-        self.B_im = nn.Parameter(
-            torch.randn(d_state, d_model) / math.sqrt(d_model)
-        )
+        self.B_re = nn.Parameter(torch.randn(d_state, d_model) / math.sqrt(d_model))
+        self.B_im = nn.Parameter(torch.randn(d_state, d_model) / math.sqrt(d_model))
 
         # ------------------------------------------------------------------ #
         # Output projection C (complex): [d_model, d_state]                  #
         # ------------------------------------------------------------------ #
-        self.C_re = nn.Parameter(
-            torch.randn(d_model, d_state) / math.sqrt(d_state)
-        )
-        self.C_im = nn.Parameter(
-            torch.randn(d_model, d_state) / math.sqrt(d_state)
-        )
+        self.C_re = nn.Parameter(torch.randn(d_model, d_state) / math.sqrt(d_state))
+        self.C_im = nn.Parameter(torch.randn(d_model, d_state) / math.sqrt(d_state))
 
         # ------------------------------------------------------------------ #
         # Skip connection D: [d_model]                                       #
@@ -158,7 +146,7 @@ class LRULayer(nn.Module):
     # Derived quantities                                                      #
     # ---------------------------------------------------------------------- #
 
-    def get_A(self) -> Tuple[Tensor, Tensor]:
+    def get_A(self) -> tuple[Tensor, Tensor]:
         """Return the complex diagonal A as (A_re, A_im).
 
         Parameterization:
@@ -172,11 +160,11 @@ class LRULayer(nn.Module):
             A_re: Tensor of shape [d_state]
             A_im: Tensor of shape [d_state]
         """
-        nu = F.softplus(self.nu_log)          # [d_state], > 0
-        theta = torch.exp(self.theta_log)     # [d_state], > 0
-        mag = torch.exp(-torch.exp(nu))       # [d_state], in (0, 1)
-        A_re = mag * torch.cos(theta)         # [d_state]
-        A_im = mag * torch.sin(theta)         # [d_state]
+        nu = F.softplus(self.nu_log)  # [d_state], > 0
+        theta = torch.exp(self.theta_log)  # [d_state], > 0
+        mag = torch.exp(-torch.exp(nu))  # [d_state], in (0, 1)
+        A_re = mag * torch.cos(theta)  # [d_state]
+        A_im = mag * torch.sin(theta)  # [d_state]
         return A_re, A_im
 
     def get_gamma(self) -> Tensor:
@@ -189,10 +177,8 @@ class LRULayer(nn.Module):
             gamma: Tensor of shape [d_state], all values in (0, 1].
         """
         nu = F.softplus(self.nu_log)
-        mag = torch.exp(-torch.exp(nu))              # [d_state]
-        gamma = torch.sqrt(
-            torch.clamp(1.0 - mag * mag, min=0.0)
-        )                                            # [d_state]
+        mag = torch.exp(-torch.exp(nu))  # [d_state]
+        gamma = torch.sqrt(torch.clamp(1.0 - mag * mag, min=0.0))  # [d_state]
         return gamma
 
     # ---------------------------------------------------------------------- #
@@ -212,8 +198,8 @@ class LRULayer(nn.Module):
         d_state = self.config.d_state
 
         # Derive stable A and normalization factor once per forward pass.
-        A_re, A_im = self.get_A()       # [d_state]
-        gamma = self.get_gamma()        # [d_state]
+        A_re, A_im = self.get_A()  # [d_state]
+        gamma = self.get_gamma()  # [d_state]
 
         # Normalized B: gamma * (B_re + i*B_im)
         gB_re = gamma.unsqueeze(1) * self.B_re  # [d_state, d_model]
@@ -225,16 +211,16 @@ class LRULayer(nn.Module):
 
         outputs = []
         for t in range(T):
-            x_t = x[:, t, :]                       # [B, d_model]
+            x_t = x[:, t, :]  # [B, d_model]
 
             # Complex input projection: Bu = gB @ x_t
-            Bu_re = x_t @ gB_re.t()               # [B, d_state]
-            Bu_im = x_t @ gB_im.t()               # [B, d_state]
+            Bu_re = x_t @ gB_re.t()  # [B, d_state]
+            Bu_im = x_t @ gB_im.t()  # [B, d_state]
 
             # Complex state update: h_t = A * h_{t-1} + Bu_t
             # (a + ib)(c + id) = (ac - bd) + i(ad + bc)
-            new_h_re = A_re * h_re - A_im * h_im + Bu_re   # [B, d_state]
-            new_h_im = A_re * h_im + A_im * h_re + Bu_im   # [B, d_state]
+            new_h_re = A_re * h_re - A_im * h_im + Bu_re  # [B, d_state]
+            new_h_im = A_re * h_im + A_im * h_re + Bu_im  # [B, d_state]
 
             h_re = new_h_re
             h_im = new_h_im
@@ -242,9 +228,9 @@ class LRULayer(nn.Module):
             # Output projection: y_t = Re(C * h_t) + D * x_t
             # Re(C * h) = C_re @ h_re - C_im @ h_im
             y_t = (
-                h_re @ self.C_re.t()               # [B, d_model]
-                - h_im @ self.C_im.t()             # [B, d_model]
-                + self.D * x_t                     # [B, d_model]
+                h_re @ self.C_re.t()  # [B, d_model]
+                - h_im @ self.C_im.t()  # [B, d_model]
+                + self.D * x_t  # [B, d_model]
             )
 
             outputs.append(y_t)
@@ -273,4 +259,3 @@ class LRULayer(nn.Module):
             2 * d_state
         """
         return 2 * self.config.d_state
-

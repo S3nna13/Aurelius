@@ -9,20 +9,21 @@ Key strategies:
 3. Compute budget predictor: predict required compute from input features
 4. Early exit with confidence gate: stop generating when confidence is high enough
 """
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ComputeBudget:
@@ -34,7 +35,7 @@ class ComputeBudget:
 
 @dataclass
 class InferenceResult:
-    output_ids: torch.Tensor      # (T,) final output
+    output_ids: torch.Tensor  # (T,) final output
     n_tokens_used: int
     n_iterations: int
     confidence: float
@@ -45,6 +46,7 @@ class InferenceResult:
 # Confidence estimator
 # ---------------------------------------------------------------------------
 
+
 class ConfidenceEstimator:
     """Estimate model confidence from logits at each generation step."""
 
@@ -53,7 +55,9 @@ class ConfidenceEstimator:
         method: "max_prob" | "entropy" | "margin"
         """
         if method not in ("max_prob", "entropy", "margin"):
-            raise ValueError(f"Unknown method: {method}. Choose from 'max_prob', 'entropy', 'margin'.")
+            raise ValueError(
+                f"Unknown method: {method}. Choose from 'max_prob', 'entropy', 'margin'."
+            )
         self.method = method
 
     def estimate(self, logits: torch.Tensor) -> float:
@@ -97,12 +101,13 @@ class ConfidenceEstimator:
 # Greedy decode helper (pure PyTorch, no HuggingFace)
 # ---------------------------------------------------------------------------
 
+
 def _greedy_decode(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (1, T)
+    input_ids: torch.Tensor,  # (1, T)
     max_new_tokens: int,
     temperature: float = 1.0,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Simple autoregressive decode loop.
     The model is expected to return a tuple (_, logits, _) where logits: (B, T, vocab).
@@ -111,7 +116,7 @@ def _greedy_decode(
       all_logits: (max_new_tokens, vocab)  -- logits at each new step
     """
     model.train(False)
-    all_generated_logits: List[torch.Tensor] = []
+    all_generated_logits: list[torch.Tensor] = []
     ids = input_ids.clone()
 
     with torch.no_grad():
@@ -141,13 +146,14 @@ def _greedy_decode(
 # Best-of-N selector
 # ---------------------------------------------------------------------------
 
+
 class BestOfNSelector:
     """Generate N candidates, select best by verifier score."""
 
     def __init__(
         self,
         model: nn.Module,
-        verifier_fn: Optional[Callable[[torch.Tensor], float]] = None,
+        verifier_fn: Callable[[torch.Tensor], float] | None = None,
         temperature: float = 0.8,
     ):
         self.model = model
@@ -159,7 +165,7 @@ class BestOfNSelector:
         self,
         input_ids: torch.Tensor,  # (1, T_prompt)
         max_new_tokens: int = 20,
-    ) -> Tuple[torch.Tensor, float]:
+    ) -> tuple[torch.Tensor, float]:
         """Generate one candidate. Returns (output_ids, confidence)."""
         output_ids, all_logits = _greedy_decode(
             self.model, input_ids, max_new_tokens, temperature=self.temperature
@@ -174,7 +180,7 @@ class BestOfNSelector:
         max_new_tokens: int = 20,
     ) -> InferenceResult:
         """Generate n candidates, return best by verifier or confidence."""
-        best_output: Optional[torch.Tensor] = None
+        best_output: torch.Tensor | None = None
         best_score = float("-inf")
         best_confidence = 0.0
 
@@ -191,7 +197,7 @@ class BestOfNSelector:
                 best_output = output_ids
                 best_confidence = confidence
 
-        assert best_output is not None
+        assert best_output is not None  # noqa: S101
         n_new = best_output.shape[1] - input_ids.shape[1]
 
         return InferenceResult(
@@ -207,6 +213,7 @@ class BestOfNSelector:
 # Sequential reviser
 # ---------------------------------------------------------------------------
 
+
 class SequentialReviser:
     """
     Iteratively revise output by feeding it back to the model with a critique prompt.
@@ -218,7 +225,7 @@ class SequentialReviser:
     def __init__(
         self,
         model: nn.Module,
-        encode_fn: Callable[[str], List[int]],
+        encode_fn: Callable[[str], list[int]],
         max_iterations: int = 3,
         confidence_threshold: float = 0.85,
     ):
@@ -230,10 +237,10 @@ class SequentialReviser:
 
     def revise_once(
         self,
-        prompt_ids: torch.Tensor,    # (1, T_prompt)
-        current_ids: torch.Tensor,   # (1, T_current) -- previous output
+        prompt_ids: torch.Tensor,  # (1, T_prompt)
+        current_ids: torch.Tensor,  # (1, T_current) -- previous output
         max_new_tokens: int = 20,
-    ) -> Tuple[torch.Tensor, float]:
+    ) -> tuple[torch.Tensor, float]:
         """
         Build a revision prompt: [prompt, current_output, revision_instruction].
         Generate revised output. Return (new_output_ids, confidence).
@@ -248,7 +255,7 @@ class SequentialReviser:
             self.model, revision_input, max_new_tokens, temperature=1.0
         )
         # Extract only the newly generated portion
-        new_portion = output_ids[:, revision_input.shape[1]:]
+        new_portion = output_ids[:, revision_input.shape[1] :]
         confidence = self._confidence_estimator.estimate_sequence(all_logits)
         return new_portion, confidence
 
@@ -262,7 +269,7 @@ class SequentialReviser:
         output_ids, all_logits = _greedy_decode(
             self.model, prompt_ids, max_new_tokens, temperature=1.0
         )
-        current_output = output_ids[:, prompt_ids.shape[1]:]  # (1, max_new_tokens)
+        current_output = output_ids[:, prompt_ids.shape[1] :]  # (1, max_new_tokens)
         confidence = self._confidence_estimator.estimate_sequence(all_logits)
 
         total_tokens = max_new_tokens
@@ -293,6 +300,7 @@ class SequentialReviser:
 # Compute budget predictor
 # ---------------------------------------------------------------------------
 
+
 class ComputeBudgetPredictor(nn.Module):
     """
     Predict required compute budget from input token features.
@@ -309,16 +317,16 @@ class ComputeBudgetPredictor(nn.Module):
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """input_ids: (B, T) -> budget_logits: (B, 3)"""
         # Mean-pool embeddings over sequence length
-        embedded = self.embedding(input_ids)   # (B, T, d_model)
-        pooled = embedded.mean(dim=1)           # (B, d_model)
-        return self.classifier(pooled)          # (B, 3)
+        embedded = self.embedding(input_ids)  # (B, T, d_model)
+        pooled = embedded.mean(dim=1)  # (B, d_model)
+        return self.classifier(pooled)  # (B, 3)
 
-    def predict_budget(self, input_ids: torch.Tensor) -> List[str]:
+    def predict_budget(self, input_ids: torch.Tensor) -> list[str]:
         """Returns list of budget level strings ('low', 'medium', 'high')."""
         self.train(False)
         with torch.no_grad():
-            logits = self.forward(input_ids)    # (B, 3)
-            indices = logits.argmax(dim=-1)     # (B,)
+            logits = self.forward(input_ids)  # (B, 3)
+            indices = logits.argmax(dim=-1)  # (B,)
         return [self.BUDGET_LEVELS[i.item()] for i in indices]
 
     def to_compute_budget(self, budget_str: str) -> ComputeBudget:
@@ -350,6 +358,7 @@ class ComputeBudgetPredictor(nn.Module):
 # Adaptive inference engine
 # ---------------------------------------------------------------------------
 
+
 class AdaptiveInferenceEngine:
     """
     Top-level engine: predict budget, select strategy, run inference.
@@ -358,8 +367,8 @@ class AdaptiveInferenceEngine:
     def __init__(
         self,
         model: nn.Module,
-        budget_predictor: Optional[ComputeBudgetPredictor] = None,
-        default_budget: Optional[ComputeBudget] = None,
+        budget_predictor: ComputeBudgetPredictor | None = None,
+        default_budget: ComputeBudget | None = None,
     ):
         self.model = model
         self.budget_predictor = budget_predictor
@@ -368,8 +377,8 @@ class AdaptiveInferenceEngine:
 
     def infer(
         self,
-        input_ids: torch.Tensor,     # (1, T_prompt)
-        override_budget: Optional[ComputeBudget] = None,
+        input_ids: torch.Tensor,  # (1, T_prompt)
+        override_budget: ComputeBudget | None = None,
     ) -> InferenceResult:
         """
         Predict budget, run best-of-N or sequential revision based on budget.
@@ -416,7 +425,7 @@ class AdaptiveInferenceEngine:
 
     def batch_infer(
         self,
-        inputs: List[torch.Tensor],  # list of (1, T_i) tensors
-    ) -> List[InferenceResult]:
+        inputs: list[torch.Tensor],  # list of (1, T_i) tensors
+    ) -> list[InferenceResult]:
         """Run infer on each input independently."""
         return [self.infer(inp) for inp in inputs]

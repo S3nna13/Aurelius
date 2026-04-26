@@ -1,16 +1,16 @@
-"""Token-bucket rate limiter for the Aurelius serving surface. DoS defense per STRIDE-DoS. RATE_LIMIT_REGISTRY."""
+"""Token-bucket rate limiter for the Aurelius serving surface. DoS defense per STRIDE-DoS. RATE_LIMIT_REGISTRY."""  # noqa: E501
 
 from __future__ import annotations
 
-import time
 import threading
-from dataclasses import dataclass, field
-from typing import Dict, Tuple
+import time
+from dataclasses import dataclass
 
 
 @dataclass
 class RateLimitConfig:
     """Configuration for a token-bucket rate limiter."""
+
     requests_per_second: float
     burst_size: int
     per: str = "key"  # one of "key", "ip", "route", "global"
@@ -19,6 +19,7 @@ class RateLimitConfig:
 @dataclass
 class RateLimitResult:
     """Result of a rate limit check."""
+
     allowed: bool
     remaining: int
     retry_after_s: float
@@ -35,7 +36,7 @@ class _Bucket:
         self._tokens: float = float(capacity)
         self._last_refill: float = time.monotonic()
 
-    def consume(self) -> Tuple[bool, int, float]:
+    def consume(self) -> tuple[bool, int, float]:
         """
         Attempt to consume one token.
 
@@ -83,7 +84,7 @@ class TokenBucketLimiter:
 
     def __init__(self, config: RateLimitConfig) -> None:
         self.config = config
-        self._buckets: Dict[str, _Bucket] = {}
+        self._buckets: dict[str, _Bucket] = {}
         self._access_order: list[str] = []
         self._registry_lock = threading.Lock()
 
@@ -187,7 +188,7 @@ class RateLimiterChain:
                 return result
 
         # All passed — return last allowed result
-        assert last_result is not None
+        assert last_result is not None  # noqa: S101
         return last_result
 
 

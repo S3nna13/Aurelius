@@ -1,16 +1,17 @@
 """Integration test for the Agent Red Teaming (ART) benchmark."""
+
 from __future__ import annotations
 
 from src.eval import (
-    METRIC_REGISTRY,
+    ART_DEFAULT_ATTACKER_PROFILES,
     BENCHMARK_REGISTRY,
+    METRIC_REGISTRY,
     ARTBenchmark,
     ARTResult,
     AttackAttempt,
     AttackerProfile,
-    ART_DEFAULT_ATTACKER_PROFILES,
-    art_stub_target_fn,
     art_stub_judge_fn,
+    art_stub_target_fn,
     eval_agent_red_team_bench_enabled,
 )
 from src.model.config import AureliusConfig
@@ -38,12 +39,8 @@ def test_default_attacker_profiles_exported_and_sane():
 
 def test_end_to_end_art_run_against_stubs():
     prompts = ["UNSAFE:a", "safe-x", "UNSAFE:b", "safe-y"]
-    attempts = tuple(
-        AttackAttempt(p, "", False, 0.0, "") for p in prompts
-    )
-    profile = AttackerProfile(
-        id="mix", name="Mix", style="mixed", attempts=attempts
-    )
+    attempts = tuple(AttackAttempt(p, "", False, 0.0, "") for p in prompts)
+    profile = AttackerProfile(id="mix", name="Mix", style="mixed", attempts=attempts)
     bench = ARTBenchmark(
         art_stub_judge_fn,
         art_stub_target_fn,

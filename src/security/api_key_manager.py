@@ -1,4 +1,5 @@
 """Simple API key manager with rotation and hashing."""
+
 from __future__ import annotations
 
 import hashlib

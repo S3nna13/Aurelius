@@ -37,15 +37,15 @@ Paper variable notation:
 
 from __future__ import annotations
 
-from typing import List, Literal, Tuple
+from typing import Literal
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # PyramidKVScheduler
 # ---------------------------------------------------------------------------
+
 
 class PyramidKVScheduler:
     """Computes per-layer KV-cache budgets following the PyramidKV schedule.
@@ -76,12 +76,12 @@ class PyramidKVScheduler:
         if schedule not in ("pyramid", "linear"):
             raise ValueError(f"schedule must be 'pyramid' or 'linear', got {schedule!r}")
 
-        self.n_layers = n_layers       # L
+        self.n_layers = n_layers  # L
         self.total_budget = total_budget  # C
-        self.min_budget = min_budget   # b_min
+        self.min_budget = min_budget  # b_min
         self.schedule = schedule
 
-        self._budgets: List[int] = self._compute_budgets()
+        self._budgets: list[int] = self._compute_budgets()
 
     # ------------------------------------------------------------------
     # Public API
@@ -100,12 +100,10 @@ class PyramidKVScheduler:
             IndexError: if ``layer_idx`` is out of range.
         """
         if not (0 <= layer_idx < self.n_layers):
-            raise IndexError(
-                f"layer_idx {layer_idx} out of range [0, {self.n_layers - 1}]"
-            )
+            raise IndexError(f"layer_idx {layer_idx} out of range [0, {self.n_layers - 1}]")
         return self._budgets[layer_idx]
 
-    def all_budgets(self) -> List[int]:
+    def all_budgets(self) -> list[int]:
         """Return list of budgets for all layers (index 0 = first/bottom layer).
 
         Returns:
@@ -117,7 +115,7 @@ class PyramidKVScheduler:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _compute_budgets(self) -> List[int]:
+    def _compute_budgets(self) -> list[int]:
         """Compute and return all per-layer budgets."""
         L = self.n_layers
         C = self.total_budget
@@ -138,7 +136,7 @@ class PyramidKVScheduler:
         return budgets
 
     @staticmethod
-    def _pyramid_schedule(L: int, C: int, b_min: int) -> List[int]:
+    def _pyramid_schedule(L: int, C: int, b_min: int) -> list[int]:
         """Pyramid schedule: b_l ∝ (L - l + 1).
 
         Equation from Section 3.2:
@@ -152,9 +150,9 @@ class PyramidKVScheduler:
 
         # Compute exact (floating-point) allocations for l = 1..L
         # Layer 1 (l=1) is 0-indexed as layer_idx=0.
-        exact: List[float] = []
-        for l in range(1, L + 1):                # l is 1-indexed
-            w_l = L - l + 1                      # weight for layer l
+        exact: list[float] = []
+        for l in range(1, L + 1):  # noqa: E741
+            w_l = L - l + 1  # weight for layer l
             exact.append(C * w_l / denom)
 
         # Round-and-redistribute to preserve sum == C
@@ -163,7 +161,7 @@ class PyramidKVScheduler:
         return budgets
 
     @staticmethod
-    def _linear_schedule(L: int, C: int, b_min: int) -> List[int]:
+    def _linear_schedule(L: int, C: int, b_min: int) -> list[int]:
         """Linear schedule: budgets decrease uniformly from b_max to b_min.
 
         b_l = max(b_min, round(b_max - (b_max - b_min) * (l - 1) / (L - 1)))
@@ -179,8 +177,8 @@ class PyramidKVScheduler:
         b_max_f = 2.0 * C / L - b_min
         b_max = max(b_min, round(b_max_f))
 
-        budgets: List[int] = []
-        for l in range(1, L + 1):               # l is 1-indexed
+        budgets: list[int] = []
+        for l in range(1, L + 1):  # noqa: E741
             raw = b_max - (b_max - b_min) * (l - 1) / (L - 1)
             budgets.append(max(b_min, round(raw)))
 
@@ -188,7 +186,7 @@ class PyramidKVScheduler:
         return budgets
 
 
-def _redistribute(budgets: List[int], C: int, b_min: int) -> None:
+def _redistribute(budgets: list[int], C: int, b_min: int) -> None:
     """In-place adjustment so sum(budgets) == C while keeping each >= b_min.
 
     Adds/removes tokens greedily from the layer with the largest/smallest
@@ -225,6 +223,7 @@ def _redistribute(budgets: List[int], C: int, b_min: int) -> None:
 # ---------------------------------------------------------------------------
 # PyramidKVCache
 # ---------------------------------------------------------------------------
+
 
 class PyramidKVCache:
     """Compresses per-layer KV caches using the PyramidKV budget schedule.
@@ -271,7 +270,7 @@ class PyramidKVCache:
         keys: Tensor,
         values: Tensor,
         attn_weights: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Compress the KV cache for a single layer using the PyramidKV budget.
 
         Args:
@@ -290,9 +289,7 @@ class PyramidKVCache:
         """
         # ---- shape validation ----------------------------------------
         if keys.dim() != 4:
-            raise ValueError(
-                f"keys must be 4-D (B, n_heads, T, head_dim), got {keys.dim()}-D"
-            )
+            raise ValueError(f"keys must be 4-D (B, n_heads, T, head_dim), got {keys.dim()}-D")
         if keys.shape != values.shape:
             raise ValueError(
                 f"keys and values must have the same shape, "
@@ -300,8 +297,7 @@ class PyramidKVCache:
             )
         if attn_weights.dim() != 4:
             raise ValueError(
-                f"attn_weights must be 4-D (B, n_heads, T_obs, T), "
-                f"got {attn_weights.dim()}-D"
+                f"attn_weights must be 4-D (B, n_heads, T_obs, T), got {attn_weights.dim()}-D"
             )
 
         B, n_heads, T, head_dim = keys.shape
@@ -314,8 +310,8 @@ class PyramidKVCache:
             return keys.clone(), values.clone()
 
         # ---- Per-sample index selection  --------------------------------
-        compressed_k_list: List[Tensor] = []
-        compressed_v_list: List[Tensor] = []
+        compressed_k_list: list[Tensor] = []
+        compressed_v_list: list[Tensor] = []
 
         for b in range(B):
             attn_b = attn_weights[b : b + 1]  # (1, n_heads, T_obs, T)
@@ -323,7 +319,7 @@ class PyramidKVCache:
 
             # Gather: (n_heads, k_kept, head_dim)
             idx_exp = idx.unsqueeze(0).unsqueeze(-1).expand(n_heads, -1, head_dim)
-            ck = keys[b].gather(1, idx_exp)    # (n_heads, k_kept, head_dim)
+            ck = keys[b].gather(1, idx_exp)  # (n_heads, k_kept, head_dim)
             cv = values[b].gather(1, idx_exp)  # (n_heads, k_kept, head_dim)
 
             compressed_k_list.append(ck)
@@ -331,12 +327,8 @@ class PyramidKVCache:
 
         # Stack — all samples have the same k_kept (same T, same budget)
         min_kept = min(ck.shape[1] for ck in compressed_k_list)
-        compressed_keys = torch.stack(
-            [ck[:, :min_kept, :] for ck in compressed_k_list], dim=0
-        )
-        compressed_values = torch.stack(
-            [cv[:, :min_kept, :] for cv in compressed_v_list], dim=0
-        )
+        compressed_keys = torch.stack([ck[:, :min_kept, :] for ck in compressed_k_list], dim=0)
+        compressed_values = torch.stack([cv[:, :min_kept, :] for cv in compressed_v_list], dim=0)
 
         return compressed_keys, compressed_values
 
@@ -369,7 +361,7 @@ class PyramidKVCache:
         device = attn_weights.device
 
         # Clamp window to actual sequence
-        w = min(self.window_size, seq_len)   # w in paper
+        w = min(self.window_size, seq_len)  # w in paper
         obs_start = seq_len - w
 
         # Observation/recent window indices — always kept
@@ -390,8 +382,8 @@ class PyramidKVCache:
         # Importance score: imp_j = mean_over_heads( sum_over_T_obs( A[i,j] ) )
         # A: (1, n_heads, T_obs, T)  →  (n_heads, T)
         # ------------------------------------------------------------------
-        A = attn_weights[0]               # (n_heads, T_obs, T)
-        imp_per_head = A.sum(dim=1)        # (n_heads, T) — sum over T_obs
+        A = attn_weights[0]  # (n_heads, T_obs, T)
+        imp_per_head = A.sum(dim=1)  # (n_heads, T) — sum over T_obs
         imp: Tensor = imp_per_head.mean(dim=0)  # (T,) — mean over heads  → imp_j
 
         # Zero-out the recent window so it doesn't compete
@@ -403,9 +395,7 @@ class PyramidKVCache:
         if k_select <= 0:
             return obs_indices.sort().values
 
-        _, topk_idx = torch.topk(
-            imp_hist[:obs_start], k=k_select, largest=True, sorted=False
-        )
+        _, topk_idx = torch.topk(imp_hist[:obs_start], k=k_select, largest=True, sorted=False)
 
         # Union: historical K_snap ∪ recent window
         all_idx = torch.cat([topk_idx, obs_indices])

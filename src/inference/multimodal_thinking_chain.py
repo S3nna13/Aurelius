@@ -5,31 +5,31 @@ invocations and vision tokens during generation. The chain builder tracks the
 step sequence and enforces step limits (50 steps for vision, 98,304 thinking
 tokens total).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Enums and data classes
 # ---------------------------------------------------------------------------
 
+
 class StepType(Enum):
-    THINK = "think"              # reasoning tokens
-    TOOL_CALL = "tool_call"      # tool invocation (text)
+    THINK = "think"  # reasoning tokens
+    TOOL_CALL = "tool_call"  # tool invocation (text)
     TOOL_RESULT = "tool_result"  # tool response tokens
-    VISION = "vision"            # vision feature tokens
-    TEXT = "text"                # regular output text
+    VISION = "vision"  # vision feature tokens
+    TEXT = "text"  # regular output text
 
 
 @dataclass
 class ChainStep:
     step_idx: int
     step_type: StepType
-    tokens: list[int]           # token IDs for this step
-    token_count: int = 0        # auto-computed from len(tokens)
+    tokens: list[int]  # token IDs for this step
+    token_count: int = 0  # auto-computed from len(tokens)
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -38,16 +38,17 @@ class ChainStep:
 
 @dataclass
 class MultimodalThinkingConfig:
-    max_steps: int = 50                # max steps (vision mode limit)
-    max_thinking_tokens: int = 98304   # total THINK tokens across all steps
-    max_tokens_per_step: int = 4096    # per-step token limit
-    vision_step_limit: int = 50        # separate limit on VISION steps
-    allow_interleave: bool = True      # if False, thinking must come before all tool calls
+    max_steps: int = 50  # max steps (vision mode limit)
+    max_thinking_tokens: int = 98304  # total THINK tokens across all steps
+    max_tokens_per_step: int = 4096  # per-step token limit
+    vision_step_limit: int = 50  # separate limit on VISION steps
+    allow_interleave: bool = True  # if False, thinking must come before all tool calls
 
 
 # ---------------------------------------------------------------------------
 # Custom exceptions
 # ---------------------------------------------------------------------------
+
 
 class StepLimitError(ValueError):
     """Raised when adding a step would exceed max_steps."""
@@ -65,6 +66,7 @@ class VisionStepLimitError(ValueError):
 # Main class
 # ---------------------------------------------------------------------------
 
+
 class MultimodalThinkingChain:
     """Builds and manages an interleaved multimodal thinking chain.
 
@@ -75,7 +77,7 @@ class MultimodalThinkingChain:
     - max_tokens_per_step: per-step token limit (truncates silently)
     """
 
-    def __init__(self, config: Optional[MultimodalThinkingConfig] = None) -> None:
+    def __init__(self, config: MultimodalThinkingConfig | None = None) -> None:
         self.config = config if config is not None else MultimodalThinkingConfig()
         self._steps: list[ChainStep] = []
 
@@ -87,7 +89,7 @@ class MultimodalThinkingChain:
         self,
         step_type: StepType,
         tokens: list[int],
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> ChainStep:
         """Add a step to the chain.
 
@@ -103,9 +105,7 @@ class MultimodalThinkingChain:
 
         # 1. Check step count limit before adding
         if len(self._steps) >= cfg.max_steps:
-            raise StepLimitError(
-                f"Cannot add step: max_steps={cfg.max_steps} already reached."
-            )
+            raise StepLimitError(f"Cannot add step: max_steps={cfg.max_steps} already reached.")
 
         # 2. Truncate tokens to per-step limit
         if len(tokens) > cfg.max_tokens_per_step:
@@ -123,7 +123,7 @@ class MultimodalThinkingChain:
         if step_type is StepType.VISION:
             if self.vision_steps_used() >= cfg.vision_step_limit:
                 raise VisionStepLimitError(
-                    f"Cannot add VISION step: vision_step_limit={cfg.vision_step_limit} already reached."
+                    f"Cannot add VISION step: vision_step_limit={cfg.vision_step_limit} already reached."  # noqa: E501
                 )
 
         # 4. Create and store the step

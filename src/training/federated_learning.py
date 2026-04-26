@@ -4,33 +4,33 @@ from __future__ import annotations
 
 import copy
 import random
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FedConfig:
     """Configuration for federated learning simulation."""
 
     n_clients: int = 10
-    fraction_fit: float = 0.3       # fraction of clients selected per round
-    local_epochs: int = 2           # local training epochs per client
-    local_lr: float = 1e-3          # local SGD learning rate
-    aggregation: str = "fedavg"     # "fedavg" | "fedprox" | "scaffold"
-    mu: float = 0.01                # FedProx proximal coefficient
+    fraction_fit: float = 0.3  # fraction of clients selected per round
+    local_epochs: int = 2  # local training epochs per client
+    local_lr: float = 1e-3  # local SGD learning rate
+    aggregation: str = "fedavg"  # "fedavg" | "fedprox" | "scaffold"
+    mu: float = 0.01  # FedProx proximal coefficient
 
 
 # ---------------------------------------------------------------------------
 # ClientUpdate
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ClientUpdate:
@@ -45,6 +45,7 @@ class ClientUpdate:
 # ---------------------------------------------------------------------------
 # Aggregation
 # ---------------------------------------------------------------------------
+
 
 def fedavg_aggregate(updates: list[ClientUpdate]) -> dict[str, Tensor]:
     """Weighted average of weight deltas (FedAvg).
@@ -79,6 +80,7 @@ def fedavg_aggregate(updates: list[ClientUpdate]) -> dict[str, Tensor]:
 # FedProx proximal term
 # ---------------------------------------------------------------------------
 
+
 def fedprox_loss(
     local_params: dict[str, Tensor],
     global_params: dict[str, Tensor],
@@ -109,11 +111,12 @@ def fedprox_loss(
 # Client simulation
 # ---------------------------------------------------------------------------
 
+
 def simulate_client_update(
     model: nn.Module,
     client_data: list[Tensor],
     config: FedConfig,
-    global_params: Optional[dict[str, Tensor]] = None,
+    global_params: dict[str, Tensor] | None = None,
     client_id: int = 0,
 ) -> ClientUpdate:
     """Simulate local training on a single client.
@@ -189,6 +192,7 @@ def simulate_client_update(
 # FederatedServer
 # ---------------------------------------------------------------------------
 
+
 class FederatedServer:
     """Coordinates federated training rounds."""
 
@@ -253,9 +257,7 @@ class FederatedServer:
                     param.add_(aggregated_delta[name].to(param.device))
 
         mean_loss = sum(u.loss for u in updates) / len(updates)
-        weight_norm = sum(
-            p.norm().item() ** 2 for p in self.model.parameters()
-        ) ** 0.5
+        weight_norm = sum(p.norm().item() ** 2 for p in self.model.parameters()) ** 0.5
 
         self._round += 1
 

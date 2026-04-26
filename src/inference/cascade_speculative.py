@@ -5,21 +5,22 @@ Chain: [tiny drafter -> medium verifier/drafter -> large final verifier].
 Each level verifies and extends the draft from the level below, achieving
 higher acceptance rates than single-level speculation.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-from typing import List, Tuple
 
 
 @dataclass
 class CascadeConfig:
     """Configuration for cascade speculative decoding."""
 
-    draft_lengths: List[int] = field(default_factory=lambda: [4, 2])
-    acceptance_thresholds: List[float] = field(default_factory=lambda: [0.0, 0.0])
+    draft_lengths: list[int] = field(default_factory=lambda: [4, 2])
+    acceptance_thresholds: list[float] = field(default_factory=lambda: [0.0, 0.0])
     max_new_tokens: int = 512
 
 
@@ -40,18 +41,18 @@ class CascadeLevel:
     def draft(
         self,
         input_ids: torch.Tensor,  # (batch, T)
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate draft_len tokens autoregressively.
 
         Returns:
             draft_ids:     (batch, draft_len)
             draft_logprobs: (batch, draft_len, vocab_size)
         """
-        batch = input_ids.shape[0]
+        input_ids.shape[0]
         context = input_ids.clone()
 
-        draft_ids_list: List[torch.Tensor] = []
-        draft_logprobs_list: List[torch.Tensor] = []
+        draft_ids_list: list[torch.Tensor] = []
+        draft_logprobs_list: list[torch.Tensor] = []
 
         for _ in range(self.draft_len):
             _, logits, _ = self.model(context)
@@ -63,12 +64,12 @@ class CascadeLevel:
             # Greedy: pick argmax (batch,)
             next_token = probs.argmax(dim=-1)  # (batch,)
 
-            draft_ids_list.append(next_token.unsqueeze(1))       # (batch, 1)
-            draft_logprobs_list.append(log_probs.unsqueeze(1))   # (batch, 1, vocab_size)
+            draft_ids_list.append(next_token.unsqueeze(1))  # (batch, 1)
+            draft_logprobs_list.append(log_probs.unsqueeze(1))  # (batch, 1, vocab_size)
 
             context = torch.cat([context, next_token.unsqueeze(1)], dim=1)
 
-        draft_ids = torch.cat(draft_ids_list, dim=1)         # (batch, draft_len)
+        draft_ids = torch.cat(draft_ids_list, dim=1)  # (batch, draft_len)
         draft_logprobs = torch.cat(draft_logprobs_list, dim=1)  # (batch, draft_len, vocab_size)
 
         return draft_ids, draft_logprobs
@@ -76,9 +77,9 @@ class CascadeLevel:
     @torch.no_grad()
     def verify(
         self,
-        input_ids: torch.Tensor,   # (batch, T)
-        draft_ids: torch.Tensor,   # (batch, K)
-    ) -> Tuple[torch.Tensor, int]:
+        input_ids: torch.Tensor,  # (batch, T)
+        draft_ids: torch.Tensor,  # (batch, K)
+    ) -> tuple[torch.Tensor, int]:
         """Verify draft tokens in a single forward pass using greedy matching.
 
         Accepts tokens while argmax of model logits matches draft token.
@@ -98,13 +99,16 @@ class CascadeLevel:
         n_accepted = 0
         for k in range(K):
             # Position T-1+k in logits predicts draft token k
-            pos_logits = logits[:, T - 1 + k, :]      # (batch, vocab_size)
-            predicted = pos_logits.argmax(dim=-1)      # (batch,)
-            draft_token = draft_ids[:, k]              # (batch,)
+            pos_logits = logits[:, T - 1 + k, :]  # (batch, vocab_size)
+            predicted = pos_logits.argmax(dim=-1)  # (batch,)
+            draft_token = draft_ids[:, k]  # (batch,)
 
             # Check threshold: max probability must be >= acceptance_threshold
             max_prob = F.softmax(pos_logits, dim=-1).max(dim=-1).values  # (batch,)
-            if self.acceptance_threshold > 0.0 and max_prob.min().item() < self.acceptance_threshold:
+            if (
+                self.acceptance_threshold > 0.0
+                and max_prob.min().item() < self.acceptance_threshold
+            ):
                 break
 
             if (predicted == draft_token).all():
@@ -115,7 +119,7 @@ class CascadeLevel:
         if n_accepted > 0:
             accepted_tokens = draft_ids[:, :n_accepted]  # (batch, n_accepted)
         else:
-            accepted_tokens = draft_ids[:, :0]           # (batch, 0) empty
+            accepted_tokens = draft_ids[:, :0]  # (batch, 0) empty
 
         return accepted_tokens, n_accepted
 
@@ -129,7 +133,7 @@ class CascadeSpeculativeDecoder:
 
     def __init__(
         self,
-        levels: List[CascadeLevel],
+        levels: list[CascadeLevel],
         max_new_tokens: int = 512,
     ) -> None:
         if len(levels) < 2:
@@ -139,13 +143,13 @@ class CascadeSpeculativeDecoder:
 
         # Stats accumulators
         self._total_tokens: int = 0
-        self._level_accepted: List[List[int]] = [[] for _ in levels]
-        self._level_proposed: List[List[int]] = [[] for _ in levels]
+        self._level_accepted: list[list[int]] = [[] for _ in levels]
+        self._level_proposed: list[list[int]] = [[] for _ in levels]
 
     def decode_step(
         self,
         input_ids: torch.Tensor,  # (batch, T)
-    ) -> Tuple[torch.Tensor, dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Run one cascade decode step.
 
         Algorithm:
@@ -265,7 +269,7 @@ class CascadeSpeculativeDecoder:
         # vs 1 token per call without speculation
         final_proposed = self._level_proposed[-1]
         if final_proposed:
-            avg_proposed = sum(final_proposed) / len(final_proposed)
+            sum(final_proposed) / len(final_proposed)
             final_accepted = self._level_accepted[-1]
             avg_accepted = sum(final_accepted) / len(final_accepted) if final_accepted else 0.0
             cascade_speedup_estimate = max(1.0, avg_accepted)
@@ -280,8 +284,8 @@ class CascadeSpeculativeDecoder:
 
 
 def compute_cascade_acceptance_rate(
-    level_acceptances: List[List[int]],
-) -> List[float]:
+    level_acceptances: list[list[int]],
+) -> list[float]:
     """Compute per-level acceptance rate from acceptance counts per step.
 
     Args:
@@ -301,8 +305,8 @@ def compute_cascade_acceptance_rate(
 
 
 def build_cascade(
-    models: List[nn.Module],
-    draft_lengths: List[int],
+    models: list[nn.Module],
+    draft_lengths: list[int],
 ) -> CascadeSpeculativeDecoder:
     """Factory: build a CascadeSpeculativeDecoder from models and draft lengths.
 
@@ -321,8 +325,5 @@ def build_cascade(
     if len(models) < 2:
         raise ValueError("build_cascade requires at least 2 models.")
 
-    levels = [
-        CascadeLevel(model=m, draft_len=d)
-        for m, d in zip(models, draft_lengths)
-    ]
+    levels = [CascadeLevel(model=m, draft_len=d) for m, d in zip(models, draft_lengths)]
     return CascadeSpeculativeDecoder(levels=levels)

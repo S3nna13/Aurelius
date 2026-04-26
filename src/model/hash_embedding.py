@@ -8,17 +8,15 @@ No external dependencies beyond stdlib and PyTorch.
 """
 
 import math
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _poly_hash(token_ids: torch.Tensor, seed: int, vocab_size: int) -> torch.Tensor:
     """
@@ -36,7 +34,7 @@ def _poly_hash(token_ids: torch.Tensor, seed: int, vocab_size: int) -> torch.Ten
         Tensor of same shape with values in [0, vocab_size).
     """
     # Large primes make good multipliers / offsets
-    a = (seed * 1_000_003 + 7) | 1          # ensure odd
+    a = (seed * 1_000_003 + 7) | 1  # ensure odd
     b = (seed * 999_983 + 13) & 0xFFFF_FFFF
     return ((token_ids.long() * a + b) % vocab_size).long()
 
@@ -49,6 +47,7 @@ def _sign_bit(token_ids: torch.Tensor, bit_index: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # HashEmbedding
 # ---------------------------------------------------------------------------
+
 
 class HashEmbedding(nn.Module):
     """
@@ -79,7 +78,7 @@ class HashEmbedding(nn.Module):
             [nn.Embedding(hash_vocab_size, d_model) for _ in range(num_hashes)]
         )
         # signs is a list of seed integers; sign for hash i is derived from seed i
-        self.signs: List[int] = list(range(num_hashes))
+        self.signs: list[int] = list(range(num_hashes))
 
         # Kaiming-style initialisation
         std = math.sqrt(2.0 / (d_model * num_hashes))
@@ -101,19 +100,19 @@ class HashEmbedding(nn.Module):
             [B, T, d_model] float tensor
         """
         out = torch.zeros(
-            *token_ids.shape, self.d_model,
-            device=token_ids.device, dtype=torch.float32
+            *token_ids.shape, self.d_model, device=token_ids.device, dtype=torch.float32
         )
         for i, table in enumerate(self.tables):
-            idx = self.hash_fn(token_ids, seed=i)           # [B, T]
-            sign = _sign_bit(token_ids, i).unsqueeze(-1)    # [B, T, 1]
-            out = out + sign * table(idx)                   # [B, T, d]
+            idx = self.hash_fn(token_ids, seed=i)  # [B, T]
+            sign = _sign_bit(token_ids, i).unsqueeze(-1)  # [B, T, 1]
+            out = out + sign * table(idx)  # [B, T, d]
         return out
 
 
 # ---------------------------------------------------------------------------
 # FeatureHasher
 # ---------------------------------------------------------------------------
+
 
 class FeatureHasher(nn.Module):
     """
@@ -147,16 +146,17 @@ class FeatureHasher(nn.Module):
         Returns:
             [B, d_model] dense embedding
         """
-        bucket = (indices % self.n_features).long()          # [B, N]
-        sign = (2 * (indices % 2) - 1).float()               # [B, N]  ±1
-        looked_up = self.embedding(bucket)                   # [B, N, d]
+        bucket = (indices % self.n_features).long()  # [B, N]
+        sign = (2 * (indices % 2) - 1).float()  # [B, N]  ±1
+        looked_up = self.embedding(bucket)  # [B, N, d]
         weighted = sign.unsqueeze(-1) * looked_up * values.unsqueeze(-1)
-        return weighted.sum(dim=1)                           # [B, d]
+        return weighted.sum(dim=1)  # [B, d]
 
 
 # ---------------------------------------------------------------------------
 # SubwordHashEmbedding
 # ---------------------------------------------------------------------------
+
 
 class SubwordHashEmbedding(nn.Module):
     """
@@ -220,19 +220,20 @@ class SubwordHashEmbedding(nn.Module):
 
         # Character hash embedding
         # Flatten [B, T, L] → [B*T, L] for hash embedding
-        flat_char = char_ids.view(B * T, max_word_len)         # [B*T, L]
-        char_emb = self.char_hash_emb(flat_char)               # [B*T, L, char_dim]
-        char_emb = char_emb.mean(dim=1)                        # [B*T, char_dim]
-        char_emb = char_emb.view(B, T, self.char_dim)          # [B, T, char_dim]
+        flat_char = char_ids.view(B * T, max_word_len)  # [B*T, L]
+        char_emb = self.char_hash_emb(flat_char)  # [B*T, L, char_dim]
+        char_emb = char_emb.mean(dim=1)  # [B*T, char_dim]
+        char_emb = char_emb.view(B, T, self.char_dim)  # [B, T, char_dim]
 
         # Project to d_model and add
-        char_contrib = self.char_to_word_proj(char_emb)        # [B, T, d_model]
+        char_contrib = self.char_to_word_proj(char_emb)  # [B, T, d_model]
         return word_emb + char_contrib
 
 
 # ---------------------------------------------------------------------------
 # CompressedEmbeddingLayer
 # ---------------------------------------------------------------------------
+
 
 class CompressedEmbeddingLayer(nn.Module):
     """
@@ -267,7 +268,7 @@ class CompressedEmbeddingLayer(nn.Module):
         self.hash_emb = HashEmbedding(num_hashes, self.compressed_vocab, d_model)
         self.rank_adapt = nn.Linear(d_model, d_model)
 
-        nn.init.eye_(self.rank_adapt.weight)   # start as identity
+        nn.init.eye_(self.rank_adapt.weight)  # start as identity
         nn.init.zeros_(self.rank_adapt.bias)
 
     # ------------------------------------------------------------------
@@ -279,8 +280,8 @@ class CompressedEmbeddingLayer(nn.Module):
         Returns:
             [B, T, d_model]
         """
-        h = self.hash_emb(token_ids)          # [B, T, d_model]
-        return self.rank_adapt(h)             # [B, T, d_model]
+        h = self.hash_emb(token_ids)  # [B, T, d_model]
+        return self.rank_adapt(h)  # [B, T, d_model]
 
     # ------------------------------------------------------------------
     def compression_factor(self) -> float:
@@ -292,7 +293,7 @@ class CompressedEmbeddingLayer(nn.Module):
         compressed = (
             self.num_hashes * self.compressed_vocab * self.d_model
             + self.d_model * self.d_model  # rank_adapt weight
-            + self.d_model                 # rank_adapt bias
+            + self.d_model  # rank_adapt bias
         )
         return compressed / standard
 
@@ -300,6 +301,7 @@ class CompressedEmbeddingLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # EmbeddingCompressionBenchmark
 # ---------------------------------------------------------------------------
+
 
 class EmbeddingCompressionBenchmark:
     """
@@ -351,9 +353,9 @@ class EmbeddingCompressionBenchmark:
         Returns:
             Mean L2 distance (≥ 0).
         """
-        assert emb1.shape == emb2.shape, "Embedding tables must have the same shape"
+        assert emb1.shape == emb2.shape, "Embedding tables must have the same shape"  # noqa: S101
         diff = emb1.float() - emb2.float()
-        distances = diff.norm(dim=-1)          # [N]
+        distances = diff.norm(dim=-1)  # [N]
         return float(distances.mean().item())
 
 
@@ -361,9 +363,11 @@ class EmbeddingCompressionBenchmark:
 # HashEmbeddingConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HashEmbeddingConfig:
     """Configuration dataclass for hash embedding experiments."""
+
     num_hashes: int = 4
     hash_vocab_size: int = 1024
     d_model: int = 32

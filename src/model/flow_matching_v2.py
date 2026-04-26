@@ -15,18 +15,16 @@ Loss: E_{t,x_0,x_1} [ ||v_theta(x_t, t) - u_t||^2 ]
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # VectorField
 # ---------------------------------------------------------------------------
+
 
 class VectorField(nn.Module):
     """Time-conditioned MLP velocity field.
@@ -38,7 +36,7 @@ class VectorField(nn.Module):
     def __init__(self, d_model: int, hidden: int = 64, n_layers: int = 2) -> None:
         super().__init__()
         in_dim = d_model + 1  # concat x and t
-        layers: List[nn.Module] = []
+        layers: list[nn.Module] = []
         prev = in_dim
         for _ in range(n_layers):
             layers.append(nn.Linear(prev, hidden))
@@ -63,6 +61,7 @@ class VectorField(nn.Module):
 # ConditionalVectorField
 # ---------------------------------------------------------------------------
 
+
 class ConditionalVectorField(nn.Module):
     """Velocity field conditioned on a context embedding c.
 
@@ -81,9 +80,7 @@ class ConditionalVectorField(nn.Module):
             nn.Linear(hidden, d_model),
         )
 
-    def forward(
-        self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x:    [B, d_model]
@@ -99,6 +96,7 @@ class ConditionalVectorField(nn.Module):
 # ---------------------------------------------------------------------------
 # FlowMatchingLoss
 # ---------------------------------------------------------------------------
+
 
 class FlowMatchingLoss:
     """Conditional Flow Matching loss utilities."""
@@ -135,9 +133,7 @@ class FlowMatchingLoss:
     # CFM loss (unconditional)
     # ------------------------------------------------------------------
 
-    def cfm_loss(
-        self, model: VectorField, x1: torch.Tensor
-    ) -> torch.Tensor:
+    def cfm_loss(self, model: VectorField, x1: torch.Tensor) -> torch.Tensor:
         """Conditional flow matching loss.
 
         Args:
@@ -150,8 +146,8 @@ class FlowMatchingLoss:
         B, d = x1.shape
         device = x1.device
         # Sample time and source noise
-        t = torch.rand(B, 1, device=device)             # [B, 1]
-        x0 = torch.randn_like(x1)                       # [B, d]
+        t = torch.rand(B, 1, device=device)  # [B, 1]
+        x0 = torch.randn_like(x1)  # [B, d]
         xt, ut = self.optimal_transport_path(x0, x1, t)
         vt = model(xt, t)
         return F.mse_loss(vt, ut)
@@ -189,15 +185,14 @@ class FlowMatchingLoss:
 # EulerFlowSampler
 # ---------------------------------------------------------------------------
 
+
 class EulerFlowSampler:
     """Euler ODE solver for flow matching inference."""
 
     def __init__(self, n_steps: int = 100) -> None:
         self.n_steps = n_steps
 
-    def sample(
-        self, model: VectorField, x0: torch.Tensor
-    ) -> torch.Tensor:
+    def sample(self, model: VectorField, x0: torch.Tensor) -> torch.Tensor:
         """Integrate dx/dt = v_theta(x, t) from t=0 to t=1.
 
         Args:
@@ -224,7 +219,7 @@ class EulerFlowSampler:
         model: VectorField,
         x0: torch.Tensor,
         n_steps: int | None = None,
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         """Return all intermediate states including start and end.
 
         Returns:
@@ -250,6 +245,7 @@ class EulerFlowSampler:
 # ---------------------------------------------------------------------------
 # SequenceFlowModel
 # ---------------------------------------------------------------------------
+
 
 class SequenceFlowModel(nn.Module):
     """Flow matching over flattened token embeddings.
@@ -280,7 +276,7 @@ class SequenceFlowModel(nn.Module):
         Returns:
             z: [B, d_model*T]
         """
-        emb = self.embedding(input_ids)   # [B, T, d_model]
+        emb = self.embedding(input_ids)  # [B, T, d_model]
         return emb.reshape(emb.size(0), -1)
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
@@ -292,8 +288,8 @@ class SequenceFlowModel(nn.Module):
             logits: [B, T, vocab_size]
         """
         B = z.size(0)
-        h = z.reshape(B, self.seq_len, self.d_model)   # [B, T, d_model]
-        return self.lm_head(h)                          # [B, T, vocab_size]
+        h = z.reshape(B, self.seq_len, self.d_model)  # [B, T, d_model]
+        return self.lm_head(h)  # [B, T, vocab_size]
 
     def flow_loss(self, input_ids: torch.Tensor) -> torch.Tensor:
         """CFM loss on the embedded sequence.
@@ -303,7 +299,7 @@ class SequenceFlowModel(nn.Module):
         Returns:
             scalar loss
         """
-        x1 = self.encode(input_ids)   # [B, flat_dim]
+        x1 = self.encode(input_ids)  # [B, flat_dim]
         return self._loss_fn.cfm_loss(self.vector_field, x1)
 
     def sample_sequence(self, n_samples: int) -> torch.Tensor:
@@ -326,9 +322,11 @@ class SequenceFlowModel(nn.Module):
 # FlowMatchingConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FlowMatchingConfig:
     """Configuration for flow matching experiments."""
+
     d_model: int = 32
     vocab_size: int = 64
     seq_len: int = 8

@@ -3,14 +3,15 @@
 Tests verify canonicalization, ID remapping, boundary validation, and batch
 processing.  All 13 cases are independent; no fixtures require external deps.
 """
+
 import pytest
 
 from src.training.tito_gateway import TITOConfig, TITOGateway
 
-
 # ---------------------------------------------------------------------------
 # Shared config factory
 # ---------------------------------------------------------------------------
+
 
 def make_gateway(**kwargs) -> TITOGateway:
     """Return a TITOGateway with vocab_size=1000 plus any overrides."""
@@ -23,6 +24,7 @@ def make_gateway(**kwargs) -> TITOGateway:
 # 1. test_valid_sequence_passthrough
 # ---------------------------------------------------------------------------
 
+
 def test_valid_sequence_passthrough():
     """Valid IDs within [0, vocab_size) should pass through unchanged."""
     gw = make_gateway()
@@ -34,6 +36,7 @@ def test_valid_sequence_passthrough():
 # 2. test_empty_sequence
 # ---------------------------------------------------------------------------
 
+
 def test_empty_sequence():
     """Empty input should return an empty list."""
     gw = make_gateway()
@@ -43,6 +46,7 @@ def test_empty_sequence():
 # ---------------------------------------------------------------------------
 # 3. test_out_of_range_high
 # ---------------------------------------------------------------------------
+
 
 def test_out_of_range_high():
     """Token ID == vocab_size should raise ValueError (exclusive upper bound)."""
@@ -55,6 +59,7 @@ def test_out_of_range_high():
 # 4. test_out_of_range_negative
 # ---------------------------------------------------------------------------
 
+
 def test_out_of_range_negative():
     """Negative token IDs should raise ValueError."""
     gw = make_gateway()
@@ -65,6 +70,7 @@ def test_out_of_range_negative():
 # ---------------------------------------------------------------------------
 # 5. test_exactly_at_boundary
 # ---------------------------------------------------------------------------
+
 
 def test_exactly_at_boundary():
     """Token ID == vocab_size - 1 is the last valid ID and should not raise."""
@@ -77,6 +83,7 @@ def test_exactly_at_boundary():
 # 6. test_id_remapping
 # ---------------------------------------------------------------------------
 
+
 def test_id_remapping():
     """An ID present in id_remap should be replaced before validation."""
     gw = make_gateway(id_remap={50: 100})
@@ -88,6 +95,7 @@ def test_id_remapping():
 # 7. test_remap_then_validate
 # ---------------------------------------------------------------------------
 
+
 def test_remap_then_validate():
     """Remapped value that falls outside vocab_size should still raise."""
     gw = make_gateway(id_remap={50: 1001})
@@ -98,6 +106,7 @@ def test_remap_then_validate():
 # ---------------------------------------------------------------------------
 # 8. test_wrap_batch
 # ---------------------------------------------------------------------------
+
 
 def test_wrap_batch():
     """wrap_batch should apply canonicalize to every sequence in the batch."""
@@ -112,6 +121,7 @@ def test_wrap_batch():
 # 9. test_wrap_batch_empty
 # ---------------------------------------------------------------------------
 
+
 def test_wrap_batch_empty():
     """wrap_batch on an empty batch should return an empty list."""
     gw = make_gateway()
@@ -122,6 +132,7 @@ def test_wrap_batch_empty():
 # 10. test_validate_only_true
 # ---------------------------------------------------------------------------
 
+
 def test_validate_only_true():
     """validate_only should return True for a fully valid sequence."""
     gw = make_gateway()
@@ -131,6 +142,7 @@ def test_validate_only_true():
 # ---------------------------------------------------------------------------
 # 11. test_validate_only_raises
 # ---------------------------------------------------------------------------
+
 
 def test_validate_only_raises():
     """validate_only should raise ValueError for an invalid sequence."""
@@ -143,6 +155,7 @@ def test_validate_only_raises():
 # 12. test_pad_id_valid
 # ---------------------------------------------------------------------------
 
+
 def test_pad_id_valid():
     """The configured pad_id (0) should be a valid token and pass through."""
     gw = make_gateway(pad_id=0)
@@ -153,6 +166,7 @@ def test_pad_id_valid():
 # ---------------------------------------------------------------------------
 # 13. test_mixed_valid_invalid
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_valid_invalid():
     """A sequence where the second token is invalid should raise on that token."""

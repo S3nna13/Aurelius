@@ -2,15 +2,15 @@
 
 import pytest
 import torch
-import torch.nn as nn
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.checkpoint_analyzer import (
-    LayerMemoryStats,
     CheckpointAnalysis,
-    profile_layer_activations,
+    LayerMemoryStats,
     analyze_checkpoint_strategy,
     estimate_memory_with_checkpointing,
+    profile_layer_activations,
 )
 
 
@@ -37,6 +37,7 @@ def small_input():
 
 # ─── test 1 ───────────────────────────────────────────────────────────────────
 
+
 def test_profile_returns_layer_stats(small_model, small_input):
     """Returns one LayerMemoryStats per TransformerBlock."""
     stats = profile_layer_activations(small_model, small_input)
@@ -46,6 +47,7 @@ def test_profile_returns_layer_stats(small_model, small_input):
 
 
 # ─── test 2 ───────────────────────────────────────────────────────────────────
+
 
 def test_layer_stats_fields(small_model, small_input):
     """Each LayerMemoryStats has the required fields with correct types."""
@@ -62,6 +64,7 @@ def test_layer_stats_fields(small_model, small_input):
 
 # ─── test 3 ───────────────────────────────────────────────────────────────────
 
+
 def test_activation_bytes_positive(small_model, small_input):
     """activation_bytes > 0 for each layer."""
     stats = profile_layer_activations(small_model, small_input)
@@ -70,6 +73,7 @@ def test_activation_bytes_positive(small_model, small_input):
 
 
 # ─── test 4 ───────────────────────────────────────────────────────────────────
+
 
 def test_analyze_returns_checkpoint_analysis(small_model, small_input):
     """analyze_checkpoint_strategy returns a CheckpointAnalysis with all fields."""
@@ -88,6 +92,7 @@ def test_analyze_returns_checkpoint_analysis(small_model, small_input):
 
 # ─── test 5 ───────────────────────────────────────────────────────────────────
 
+
 def test_memory_savings_pct_range(small_model, small_input):
     """0.0 <= memory_savings_pct <= 1.0."""
     analysis = analyze_checkpoint_strategy(small_model, small_input, memory_budget_gb=16.0)
@@ -95,6 +100,7 @@ def test_memory_savings_pct_range(small_model, small_input):
 
 
 # ─── test 6 ───────────────────────────────────────────────────────────────────
+
 
 def test_recommended_layers_are_valid_indices(small_model, small_input):
     """All recommended layer indices are in [0, n_layers)."""
@@ -106,6 +112,7 @@ def test_recommended_layers_are_valid_indices(small_model, small_input):
 
 # ─── test 7 ───────────────────────────────────────────────────────────────────
 
+
 def test_no_checkpoint_needed_small_model(small_model, small_input):
     """Tiny model + large budget → no layers should be checkpointed."""
     analysis = analyze_checkpoint_strategy(small_model, small_input, memory_budget_gb=16.0)
@@ -115,6 +122,7 @@ def test_no_checkpoint_needed_small_model(small_model, small_input):
 
 # ─── test 8 ───────────────────────────────────────────────────────────────────
 
+
 def test_checkpoint_needed_tight_budget(small_model, small_input):
     """Tiny model + near-zero budget → some layers should be checkpointed."""
     analysis = analyze_checkpoint_strategy(small_model, small_input, memory_budget_gb=0.0001)
@@ -123,6 +131,7 @@ def test_checkpoint_needed_tight_budget(small_model, small_input):
 
 
 # ─── test 9 ───────────────────────────────────────────────────────────────────
+
 
 def test_estimate_memory_checkpointing_lower(small_model, small_input):
     """Checkpointing all layers produces a lower (or equal) estimate than none."""
@@ -134,6 +143,7 @@ def test_estimate_memory_checkpointing_lower(small_model, small_input):
 
 
 # ─── test 10 ──────────────────────────────────────────────────────────────────
+
 
 def test_strategy_field_valid(small_model, small_input):
     """strategy is one of 'none', 'uniform', or 'selective'."""

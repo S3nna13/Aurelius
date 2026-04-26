@@ -6,15 +6,14 @@ Tiny configs throughout:
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.attention_sink_v2 import (
     AttentionSinkDetector,
-    StreamingKVCache,
+    SinkAnalyzer,
     SinkAwareAttention,
     SinkTokenInitializer,
+    StreamingKVCache,
     StreamingLLMDecoder,
-    SinkAnalyzer,
 )
 
 # ---------------------------------------------------------------------------
@@ -176,7 +175,7 @@ def test_decoder_generate_shape_and_vocab():
         def __init__(self):
             super().__init__()
             self.embed = nn.Embedding(vocab_size, D)
-            self.proj  = nn.Linear(D, vocab_size)
+            self.proj = nn.Linear(D, vocab_size)
 
         def forward(self, ids):
             return self.proj(self.embed(ids))
@@ -237,9 +236,7 @@ def test_kv_cache_bounded_after_many_updates():
     for _ in range(10):  # 10 × single-token updates
         k, v = _rand_kv(t=1)
         cache.update(k, v)
-    assert cache.size() <= N_SINKS + WIN, (
-        f"Cache size {cache.size()} exceeds bound {N_SINKS + WIN}"
-    )
+    assert cache.size() <= N_SINKS + WIN, f"Cache size {cache.size()} exceeds bound {N_SINKS + WIN}"
 
 
 # ===========================================================================

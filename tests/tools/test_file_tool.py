@@ -1,18 +1,17 @@
 """Tests for FileTool: deny list, read/write/list_dir, spec."""
+
 from __future__ import annotations
 
 import os
 import tempfile
 
-import pytest
-
-from src.tools.file_tool import FileTool, FILE_TOOL, FILE_DENY_PATHS
-from src.tools.tool_registry import ToolResult, ToolSpec, TOOL_REGISTRY
-
+from src.tools.file_tool import FILE_DENY_PATHS, FILE_TOOL, FileTool
+from src.tools.tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
 
 # ---------------------------------------------------------------------------
 # FILE_DENY_PATHS
 # ---------------------------------------------------------------------------
+
 
 class TestFileDenyPaths:
     def test_is_frozenset(self):
@@ -37,6 +36,7 @@ class TestFileDenyPaths:
 # ---------------------------------------------------------------------------
 # FileTool.is_denied
 # ---------------------------------------------------------------------------
+
 
 class TestFileToolIsDenied:
     def test_etc_passwd_is_denied(self):
@@ -67,6 +67,7 @@ class TestFileToolIsDenied:
 # ---------------------------------------------------------------------------
 # FileTool.read
 # ---------------------------------------------------------------------------
+
 
 class TestFileToolRead:
     def test_read_non_existent_returns_failure(self):
@@ -128,6 +129,7 @@ class TestFileToolRead:
 # FileTool.write + round-trip
 # ---------------------------------------------------------------------------
 
+
 class TestFileToolWrite:
     def test_write_creates_file(self):
         tool = FileTool()
@@ -184,6 +186,7 @@ class TestFileToolWrite:
 # FileTool.list_dir
 # ---------------------------------------------------------------------------
 
+
 class TestFileToolListDir:
     def test_list_dir_valid_dir_succeeds(self):
         tool = FileTool()
@@ -235,6 +238,7 @@ class TestFileToolListDir:
 # FileTool.spec
 # ---------------------------------------------------------------------------
 
+
 class TestFileToolSpec:
     def test_spec_returns_toolspec(self):
         tool = FileTool()
@@ -277,6 +281,7 @@ class TestFileToolSpec:
 # ---------------------------------------------------------------------------
 # FILE_TOOL module-level instance + TOOL_REGISTRY integration
 # ---------------------------------------------------------------------------
+
 
 class TestFileToolInstance:
     def test_file_tool_exists(self):

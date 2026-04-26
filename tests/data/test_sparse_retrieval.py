@@ -3,6 +3,7 @@ Tests for src/data/sparse_retrieval.py
 """
 
 import pytest
+
 from src.data.sparse_retrieval import (
     BM25Config,
     BM25Index,
@@ -30,6 +31,7 @@ CORPUS = [
 # 1. BM25Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_bm25config_defaults():
     cfg = BM25Config()
     assert cfg.k1 == 1.5
@@ -40,6 +42,7 @@ def test_bm25config_defaults():
 # ---------------------------------------------------------------------------
 # 2. tokenize_bm25 lowercases and splits correctly
 # ---------------------------------------------------------------------------
+
 
 def test_tokenize_bm25_lowercase_and_split():
     tokens = tokenize_bm25("Hello, World! How are you?")
@@ -53,6 +56,7 @@ def test_tokenize_bm25_lowercase_and_split():
 # ---------------------------------------------------------------------------
 # 3. tokenize_bm25 filters empty strings
 # ---------------------------------------------------------------------------
+
 
 def test_tokenize_bm25_no_empty_strings():
     tokens = tokenize_bm25("  hello   world  ")
@@ -69,6 +73,7 @@ def test_tokenize_bm25_punctuation_only_produces_no_empties():
 # 4. BM25Index.build computes correct avgdl
 # ---------------------------------------------------------------------------
 
+
 def test_bm25index_build_avgdl():
     docs = ["one two three", "four five"]
     index = BM25Index()
@@ -80,6 +85,7 @@ def test_bm25index_build_avgdl():
 # ---------------------------------------------------------------------------
 # 5. BM25Index.build IDF is positive for known terms
 # ---------------------------------------------------------------------------
+
 
 def test_bm25index_build_idf_positive():
     index = BM25Index()
@@ -93,6 +99,7 @@ def test_bm25index_build_idf_positive():
 # 6. BM25Index.score — exact match scores higher than no match
 # ---------------------------------------------------------------------------
 
+
 def test_bm25index_score_match_vs_no_match():
     docs = ["machine learning is great", "the weather is sunny today"]
     index = BM25Index()
@@ -105,6 +112,7 @@ def test_bm25index_score_match_vs_no_match():
 # ---------------------------------------------------------------------------
 # 7. BM25Index.search returns correct count (top_k)
 # ---------------------------------------------------------------------------
+
 
 def test_bm25index_search_top_k_count():
     index = BM25Index()
@@ -124,6 +132,7 @@ def test_bm25index_search_top_k_at_most_n_docs():
 # 8. BM25Index.search — most relevant document ranks first
 # ---------------------------------------------------------------------------
 
+
 def test_bm25index_search_relevant_first():
     docs = [
         "Python programming language tutorial",
@@ -141,6 +150,7 @@ def test_bm25index_search_relevant_first():
 # 9. BM25Index.__len__
 # ---------------------------------------------------------------------------
 
+
 def test_bm25index_len():
     index = BM25Index()
     index.build(CORPUS)
@@ -157,6 +167,7 @@ def test_bm25index_len_empty():
 # 10. TF_IDF_Index.search returns relevant results
 # ---------------------------------------------------------------------------
 
+
 def test_tfidf_search_returns_results():
     index = TF_IDF_Index()
     index.build(CORPUS)
@@ -170,6 +181,7 @@ def test_tfidf_search_returns_results():
 # ---------------------------------------------------------------------------
 # 11. TF_IDF_Index exact match ranks first
 # ---------------------------------------------------------------------------
+
 
 def test_tfidf_exact_match_ranks_first():
     docs = [
@@ -188,6 +200,7 @@ def test_tfidf_exact_match_ranks_first():
 # 12. HybridRetriever.build works without error
 # ---------------------------------------------------------------------------
 
+
 def test_hybrid_retriever_build_no_error():
     retriever = HybridRetriever()
     retriever.build(CORPUS)  # should not raise
@@ -197,6 +210,7 @@ def test_hybrid_retriever_build_no_error():
 # ---------------------------------------------------------------------------
 # 13. HybridRetriever.search returns top_k results
 # ---------------------------------------------------------------------------
+
 
 def test_hybrid_retriever_search_top_k():
     retriever = HybridRetriever()
@@ -217,6 +231,7 @@ def test_hybrid_retriever_search_scores_in_range():
 # 14. build_rag_context returns string containing query
 # ---------------------------------------------------------------------------
 
+
 def test_build_rag_context_contains_query():
     index = BM25Index()
     index.build(CORPUS)
@@ -234,6 +249,7 @@ def test_build_rag_context_contains_context_header():
 # ---------------------------------------------------------------------------
 # 15. RAGContext fields accessible
 # ---------------------------------------------------------------------------
+
 
 def test_ragcontext_fields():
     ctx = RAGContext(

@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -16,16 +16,15 @@ import torch.nn.functional as F
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LongContextConfig:
     """Configuration for long-context evaluations."""
 
     max_context_len: int = 8192
-    n_distractors: int = 10          # filler sentences around needle
-    passkey_length: int = 5          # digit passkey length
-    eval_positions: list[float] = field(
-        default_factory=lambda: [0.1, 0.25, 0.5, 0.75, 0.9]
-    )
+    n_distractors: int = 10  # filler sentences around needle
+    passkey_length: int = 5  # digit passkey length
+    eval_positions: list[float] = field(default_factory=lambda: [0.1, 0.25, 0.5, 0.75, 0.9])
     seed: int = 42
 
 
@@ -34,26 +33,26 @@ class LongContextConfig:
 # ---------------------------------------------------------------------------
 
 _TEMPLATES = [
-    "The researchers conducted an extensive study on the behavioral patterns of various species found in temperate forests.",
-    "A recent analysis of economic trends suggests that global markets are becoming increasingly interconnected.",
-    "The ancient city was discovered by archaeologists who spent several decades excavating the site.",
-    "Scientists have developed a new method for synthesizing complex organic compounds under mild conditions.",
-    "The committee reviewed the proposed legislation and recommended several amendments before final passage.",
-    "Observations from the satellite array provided unprecedented detail about atmospheric circulation patterns.",
-    "The engineering team designed a new bridge structure capable of withstanding extreme weather events.",
-    "Local authorities implemented a series of measures to improve water quality in the surrounding rivers.",
-    "The manuscript, recovered from a monastery library, contained previously unknown historical accounts.",
-    "Advances in materials science have enabled the production of lighter and stronger composites for aerospace use.",
-    "The survey of public opinion revealed significant variation across different demographic groups.",
+    "The researchers conducted an extensive study on the behavioral patterns of various species found in temperate forests.",  # noqa: E501
+    "A recent analysis of economic trends suggests that global markets are becoming increasingly interconnected.",  # noqa: E501
+    "The ancient city was discovered by archaeologists who spent several decades excavating the site.",  # noqa: E501
+    "Scientists have developed a new method for synthesizing complex organic compounds under mild conditions.",  # noqa: E501
+    "The committee reviewed the proposed legislation and recommended several amendments before final passage.",  # noqa: E501
+    "Observations from the satellite array provided unprecedented detail about atmospheric circulation patterns.",  # noqa: E501
+    "The engineering team designed a new bridge structure capable of withstanding extreme weather events.",  # noqa: E501
+    "Local authorities implemented a series of measures to improve water quality in the surrounding rivers.",  # noqa: E501
+    "The manuscript, recovered from a monastery library, contained previously unknown historical accounts.",  # noqa: E501
+    "Advances in materials science have enabled the production of lighter and stronger composites for aerospace use.",  # noqa: E501
+    "The survey of public opinion revealed significant variation across different demographic groups.",  # noqa: E501
     "A comprehensive review of the literature was conducted to identify gaps in current knowledge.",
-    "The pilot program demonstrated measurable improvements in student outcomes across all grade levels.",
-    "Nutritional guidelines were updated following the publication of large-scale longitudinal studies.",
-    "The diplomatic summit concluded with a joint communique outlining shared objectives for the region.",
+    "The pilot program demonstrated measurable improvements in student outcomes across all grade levels.",  # noqa: E501
+    "Nutritional guidelines were updated following the publication of large-scale longitudinal studies.",  # noqa: E501
+    "The diplomatic summit concluded with a joint communique outlining shared objectives for the region.",  # noqa: E501
     "Geological surveys confirmed the presence of mineral deposits along the northern ridge.",
-    "The software platform was redesigned to improve accessibility for users with visual impairments.",
+    "The software platform was redesigned to improve accessibility for users with visual impairments.",  # noqa: E501
     "Urban planners proposed a mixed-use development strategy to address housing shortages.",
     "The expedition team documented over three hundred plant species in the highland ecosystem.",
-    "Financial regulators issued new guidance on risk disclosure requirements for investment products.",
+    "Financial regulators issued new guidance on risk disclosure requirements for investment products.",  # noqa: E501
 ]
 
 
@@ -77,6 +76,7 @@ def generate_distractor_text(rng: random.Random, n_sentences: int) -> str:
 # ---------------------------------------------------------------------------
 # Passkey prompt
 # ---------------------------------------------------------------------------
+
 
 def create_passkey_prompt(
     rng: random.Random,
@@ -106,16 +106,14 @@ def create_passkey_prompt(
     after_text = generate_distractor_text(rng, after_count)
 
     needle_sentence = f"The passkey is: {passkey}."
-    prompt = (
-        f"{before_text} {needle_sentence} {after_text} "
-        f"What is the passkey?"
-    )
+    prompt = f"{before_text} {needle_sentence} {after_text} What is the passkey?"
     return prompt, passkey
 
 
 # ---------------------------------------------------------------------------
 # Needle-in-haystack prompt
 # ---------------------------------------------------------------------------
+
 
 def create_needle_prompt(
     rng: random.Random,
@@ -152,6 +150,7 @@ def create_needle_prompt(
 # Output parsing
 # ---------------------------------------------------------------------------
 
+
 def extract_passkey_from_output(output: str, passkey_length: int) -> str | None:
     """Extract a numeric passkey from model output.
 
@@ -178,6 +177,7 @@ def extract_passkey_from_output(output: str, passkey_length: int) -> str | None:
 # ---------------------------------------------------------------------------
 # Greedy generation
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def greedy_generate_text(
@@ -206,7 +206,7 @@ def greedy_generate_text(
     input_ids = tokenizer_encode(prompt)
     # Truncate if necessary
     if len(input_ids) > max_seq_len - max_new:
-        input_ids = input_ids[-(max_seq_len - max_new):]
+        input_ids = input_ids[-(max_seq_len - max_new) :]
 
     generated: list[int] = []
     current_ids = input_ids[:]
@@ -226,6 +226,7 @@ def greedy_generate_text(
 # ---------------------------------------------------------------------------
 # Evaluator class
 # ---------------------------------------------------------------------------
+
 
 class LongContextEvaluator:
     """Runs long-context evaluation tasks against an Aurelius model."""
@@ -329,9 +330,7 @@ class LongContextEvaluator:
         """
         self.model.eval()
         device = next(self.model.parameters()).device
-        max_seq_len: int = getattr(
-            getattr(self.model, "config", None), "max_seq_len", 512
-        )
+        max_seq_len: int = getattr(getattr(self.model, "config", None), "max_seq_len", 512)
         chunk_size = min(chunk_size, max_seq_len)
 
         token_ids = self.tokenizer_encode(text)
@@ -356,9 +355,9 @@ class LongContextEvaluator:
             # logits: (1, S, V)
             log_probs = F.log_softmax(logits, dim=-1)  # (1, S, V)
             # Gather log-probs for target tokens
-            target_log_probs = log_probs[0, :, :].gather(
-                1, targets[0, :].unsqueeze(1)
-            ).squeeze(1)  # (S,)
+            target_log_probs = (
+                log_probs[0, :, :].gather(1, targets[0, :].unsqueeze(1)).squeeze(1)
+            )  # (S,)
 
             nll = -target_log_probs.mean().item()
             ppl = math.exp(nll) if math.isfinite(nll) else float("inf")

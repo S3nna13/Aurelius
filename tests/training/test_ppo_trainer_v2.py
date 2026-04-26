@@ -3,15 +3,11 @@
 15 tests covering ValueHead, GAEComputation, PPOLoss, PPOBuffer, and PPOTrainer.
 Tiny config: d_model=16, vocab=16, seq_len=8, batch=2, max_new_tokens=4, ppo_epochs=2.
 """
+
 from __future__ import annotations
 
-import copy
-
-import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 from aurelius.training.ppo_trainer_v2 import (
     GAEComputation,
     PPOBuffer,
@@ -37,6 +33,7 @@ PPO_EPOCHS = 2
 # Uses nn.Embedding + nn.Linear to produce (logits, hidden_states).
 # ---------------------------------------------------------------------------
 
+
 class TinyPolicy(nn.Module):
     """Embedding -> linear. Returns (logits, embeddings) as hidden states."""
 
@@ -46,8 +43,8 @@ class TinyPolicy(nn.Module):
         self.proj = nn.Linear(D_MODEL, VOCAB)
 
     def forward(self, input_ids: torch.Tensor):
-        hidden = self.embed(input_ids)        # (B, T, D)
-        logits = self.proj(hidden)            # (B, T, V)
+        hidden = self.embed(input_ids)  # (B, T, D)
+        logits = self.proj(hidden)  # (B, T, V)
         return logits, hidden
 
 
@@ -75,6 +72,7 @@ def dummy_reward_fn(sequences: torch.Tensor) -> torch.Tensor:
 # Test 1: ValueHead output shape
 # ---------------------------------------------------------------------------
 
+
 def test_value_head_output_shape():
     vh = make_value_head()
     x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
@@ -85,6 +83,7 @@ def test_value_head_output_shape():
 # ---------------------------------------------------------------------------
 # Test 2: ValueHead gradient flows
 # ---------------------------------------------------------------------------
+
 
 def test_value_head_grad_flows():
     vh = make_value_head()
@@ -100,6 +99,7 @@ def test_value_head_grad_flows():
 # Test 3: GAEComputation advantages + values approx returns (definition)
 # ---------------------------------------------------------------------------
 
+
 def test_gae_returns_definition():
     gae = GAEComputation(gamma=0.99, lam=0.95)
     rewards = torch.rand(BATCH, SEQ_LEN)
@@ -114,6 +114,7 @@ def test_gae_returns_definition():
 # Test 4: GAEComputation output shape
 # ---------------------------------------------------------------------------
 
+
 def test_gae_output_shape():
     gae = GAEComputation()
     rewards = torch.rand(BATCH, SEQ_LEN)
@@ -127,6 +128,7 @@ def test_gae_output_shape():
 # ---------------------------------------------------------------------------
 # Test 5: GAEComputation gamma=0 -> advantage[t] = rewards[t] - values[t]
 # ---------------------------------------------------------------------------
+
 
 def test_gae_gamma_zero_no_discounting():
     gae = GAEComputation(gamma=0.0, lam=0.95)
@@ -144,6 +146,7 @@ def test_gae_gamma_zero_no_discounting():
 # ---------------------------------------------------------------------------
 # Test 6: GAEComputation done=1 at step t -> no value propagation past that step
 # ---------------------------------------------------------------------------
+
 
 def test_gae_done_blocks_propagation():
     gae = GAEComputation(gamma=0.99, lam=0.95)
@@ -174,6 +177,7 @@ def test_gae_done_blocks_propagation():
 # Test 7: PPOLoss all keys present and finite
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_loss_keys_and_finite():
     loss_fn = PPOLoss()
     B, T = BATCH, SEQ_LEN
@@ -185,7 +189,14 @@ def test_ppo_loss_keys_and_finite():
     ref_log_probs = torch.randn(B, T)
 
     result = loss_fn(log_probs, old_log_probs, advantages, values, returns, ref_log_probs)
-    expected_keys = {"total", "policy_loss", "value_loss", "entropy_loss", "kl_loss", "clip_fraction"}
+    expected_keys = {
+        "total",
+        "policy_loss",
+        "value_loss",
+        "entropy_loss",
+        "kl_loss",
+        "clip_fraction",
+    }
     assert expected_keys == set(result.keys())
     for k, v in result.items():
         assert torch.isfinite(v), f"Loss component '{k}' is not finite: {v}"
@@ -194,6 +205,7 @@ def test_ppo_loss_keys_and_finite():
 # ---------------------------------------------------------------------------
 # Test 8: PPOLoss clip_fraction in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_loss_clip_fraction_range():
     loss_fn = PPOLoss(clip_eps=0.2)
@@ -214,6 +226,7 @@ def test_ppo_loss_clip_fraction_range():
 # Test 9: PPOLoss when log_probs == old_log_probs -> ratio=1, clip_fraction=0
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_loss_no_clip_when_ratio_one():
     loss_fn = PPOLoss(clip_eps=0.2)
     B, T = BATCH, SEQ_LEN
@@ -233,6 +246,7 @@ def test_ppo_loss_no_clip_when_ratio_one():
 # ---------------------------------------------------------------------------
 # Test 10: PPOBuffer add + get_batch correct shapes, clear empties
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_buffer_add_get_clear():
     buf = PPOBuffer(capacity=3)
@@ -259,6 +273,7 @@ def test_ppo_buffer_add_get_clear():
 # Test 11: PPOBuffer is_full() True after capacity episodes
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_buffer_is_full():
     capacity = 3
     buf = PPOBuffer(capacity=capacity)
@@ -278,6 +293,7 @@ def test_ppo_buffer_is_full():
 # ---------------------------------------------------------------------------
 # Test 12: PPOTrainer ref model frozen
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_trainer_ref_model_frozen():
     policy = make_policy()
@@ -299,6 +315,7 @@ def test_ppo_trainer_ref_model_frozen():
 # ---------------------------------------------------------------------------
 # Test 13: PPOTrainer.rollout returns correct keys and shapes
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_trainer_rollout_keys_and_shapes():
     policy = make_policy()
@@ -326,6 +343,7 @@ def test_ppo_trainer_rollout_keys_and_shapes():
 # ---------------------------------------------------------------------------
 # Test 14: PPOTrainer.rollout rewards come from reward_fn applied to sequences
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_trainer_rollout_rewards_from_reward_fn():
     called_with: list = []
@@ -358,6 +376,7 @@ def test_ppo_trainer_rollout_rewards_from_reward_fn():
 # Test 15: PPOTrainer.train_epoch returns all keys, loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_trainer_train_epoch_keys_and_finite():
     policy = make_policy()
     ref = make_ref()
@@ -384,6 +403,7 @@ def test_ppo_trainer_train_epoch_keys_and_finite():
 # ---------------------------------------------------------------------------
 # Test 16: PPOTrainer policy params updated after train_epoch
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_trainer_policy_params_updated():
     policy = make_policy()
@@ -416,6 +436,7 @@ def test_ppo_trainer_policy_params_updated():
 # ---------------------------------------------------------------------------
 # Test 17 (counts as test 15 in the spec): Full 2-epoch rollout+train cycle
 # ---------------------------------------------------------------------------
+
 
 def test_full_two_epoch_cycle():
     policy = make_policy()

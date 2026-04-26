@@ -1,4 +1,5 @@
 """Tests for ConstitutionalAIv2Pipeline."""
+
 from __future__ import annotations
 
 import pytest

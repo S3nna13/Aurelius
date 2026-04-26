@@ -7,11 +7,11 @@ Covers:
   - from_linear constructor
   - Determinism, NaN/Inf safety, edge cases
 """
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -21,10 +21,10 @@ from src.training.qlora import (
     QLoRALinear,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_weight(out: int, in_: int, seed: int = 0) -> torch.Tensor:
     g = torch.Generator()
@@ -47,9 +47,7 @@ def _make_linear(out: int, in_: int, seed: int = 42) -> nn.Linear:
 # ---------------------------------------------------------------------------
 def test_nf4_levels_count():
     """NF4_LEVELS must have exactly 16 quantization levels (4-bit → 2^4)."""
-    assert NF4_LEVELS.numel() == 16, (
-        f"Expected 16 NF4 levels, got {NF4_LEVELS.numel()}"
-    )
+    assert NF4_LEVELS.numel() == 16, f"Expected 16 NF4 levels, got {NF4_LEVELS.numel()}"
 
 
 # ---------------------------------------------------------------------------
@@ -73,9 +71,7 @@ def test_nf4_levels_symmetric():
     for i in range(16):
         a = levels[i].item()
         b = levels[15 - i].item()
-        assert abs(a + b) < 0.05, (
-            f"Symmetry violated at index {i}: {a:.4f} + {b:.4f} = {a+b:.4f}"
-        )
+        assert abs(a + b) < 0.05, f"Symmetry violated at index {i}: {a:.4f} + {b:.4f} = {a + b:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +247,7 @@ def test_no_nan_inf():
 def test_determinism():
     """Two identical QLoRALinear constructions with the same seed must produce
     identical outputs."""
+
     def _build_and_run(seed: int) -> torch.Tensor:
         torch.manual_seed(seed)
         linear = _make_linear(out=32, in_=64, seed=seed)

@@ -1,10 +1,10 @@
 """Streaming tool-call accumulation: partial JSON, delta events, finalization."""
 
 import json
-from enum import Enum
+from enum import StrEnum
 
 
-class ToolCallState(str, Enum):
+class ToolCallState(StrEnum):
     PENDING = "pending"
     STREAMING = "streaming"
     COMPLETE = "complete"

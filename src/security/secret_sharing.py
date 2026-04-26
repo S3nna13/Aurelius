@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 import torch
 from torch import Tensor
 
@@ -24,7 +22,7 @@ class SecretSharing:
         self.n_parties = n_parties
         self.device = device
 
-    def share(self, secret: Tensor) -> List[Tensor]:
+    def share(self, secret: Tensor) -> list[Tensor]:
         """Split *secret* into n_parties additive shares.
 
         Args:
@@ -33,7 +31,7 @@ class SecretSharing:
         Returns:
             List of n_parties tensors that sum exactly to *secret*.
         """
-        shares: List[Tensor] = []
+        shares: list[Tensor] = []
         running_sum = torch.zeros_like(secret)
         for _ in range(self.n_parties - 1):
             r = torch.rand_like(secret) * 2 - 1  # uniform in (-1, 1)
@@ -43,7 +41,7 @@ class SecretSharing:
         shares.append(last_share)
         return shares
 
-    def reconstruct(self, shares: List[Tensor]) -> Tensor:
+    def reconstruct(self, shares: list[Tensor]) -> Tensor:
         """Reconstruct a secret by summing all shares.
 
         Args:
@@ -57,9 +55,7 @@ class SecretSharing:
             result = result + s
         return result
 
-    def share_gradients(
-        self, state_dict: Dict[str, Tensor]
-    ) -> List[Dict[str, Tensor]]:
+    def share_gradients(self, state_dict: dict[str, Tensor]) -> list[dict[str, Tensor]]:
         """Apply additive sharing to every tensor in *state_dict*.
 
         Args:
@@ -70,16 +66,14 @@ class SecretSharing:
             keys as *state_dict* and contains that party's share of each
             tensor.
         """
-        per_party: List[Dict[str, Tensor]] = [{} for _ in range(self.n_parties)]
+        per_party: list[dict[str, Tensor]] = [{} for _ in range(self.n_parties)]
         for key, tensor in state_dict.items():
             shares = self.share(tensor)
             for i, s in enumerate(shares):
                 per_party[i][key] = s
         return per_party
 
-    def reconstruct_gradients(
-        self, party_dicts: List[Dict[str, Tensor]]
-    ) -> Dict[str, Tensor]:
+    def reconstruct_gradients(self, party_dicts: list[dict[str, Tensor]]) -> dict[str, Tensor]:
         """Reconstruct a state dict from per-party share dicts.
 
         Args:
@@ -89,13 +83,13 @@ class SecretSharing:
             Dict mapping each key to the reconstructed tensor.
         """
         keys = list(party_dicts[0].keys())
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in keys:
             shares = [pd[key] for pd in party_dicts]
             result[key] = self.reconstruct(shares)
         return result
 
-    def verify_reconstruction(self, secret: Tensor, shares: List[Tensor]) -> bool:
+    def verify_reconstruction(self, secret: Tensor, shares: list[Tensor]) -> bool:
         """Return True if *shares* reconstruct to a value close to *secret*.
 
         Args:

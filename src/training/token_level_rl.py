@@ -8,19 +8,17 @@ Pure PyTorch only — no external RL libraries required.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
-
 # ---------------------------------------------------------------------------
 # Token Reward Assigner
 # ---------------------------------------------------------------------------
+
 
 class TokenRewardAssigner:
     """Converts a scalar sequence reward into per-token reward signals.
@@ -37,9 +35,7 @@ class TokenRewardAssigner:
 
     def __init__(self, method: str = "dense", gamma: float = 0.99) -> None:
         if method not in self.VALID_METHODS:
-            raise ValueError(
-                f"Unknown method '{method}'. Choose from {self.VALID_METHODS}."
-            )
+            raise ValueError(f"Unknown method '{method}'. Choose from {self.VALID_METHODS}.")
         self.method = method
         self.gamma = gamma
 
@@ -72,16 +68,12 @@ class TokenRewardAssigner:
             return self._credit_propagation(sequence_reward, B, T, device)
 
     # ------------------------------------------------------------------
-    def _dense(
-        self, reward: torch.Tensor, B: int, T: int, device: torch.device
-    ) -> torch.Tensor:
+    def _dense(self, reward: torch.Tensor, B: int, T: int, device: torch.device) -> torch.Tensor:
         """Broadcast reward equally to all tokens."""
         token_r = reward.unsqueeze(1).expand(B, T)
         return token_r.clone()
 
-    def _sparse(
-        self, reward: torch.Tensor, B: int, T: int, device: torch.device
-    ) -> torch.Tensor:
+    def _sparse(self, reward: torch.Tensor, B: int, T: int, device: torch.device) -> torch.Tensor:
         """Reward only the last token; zeros elsewhere."""
         token_r = torch.zeros(B, T, device=device, dtype=reward.dtype)
         token_r[:, -1] = reward
@@ -93,7 +85,7 @@ class TokenRewardAssigner:
         """r_t = γ^(T-1-t) * R  (last token gets full reward, earlier tokens decay)."""
         # exponents: T-1, T-2, ..., 1, 0  (index 0 gets highest exponent)
         exponents = torch.arange(T - 1, -1, -1, device=device, dtype=torch.float32)
-        decay = self.gamma ** exponents  # shape [T]
+        decay = self.gamma**exponents  # shape [T]
         token_r = reward.float().unsqueeze(1) * decay.unsqueeze(0)  # [B, T]
         return token_r
 
@@ -114,6 +106,7 @@ class TokenRewardAssigner:
 # ---------------------------------------------------------------------------
 # Token-Level Value Head
 # ---------------------------------------------------------------------------
+
 
 class TokenLevelValueHead(nn.Module):
     """Projects hidden states to scalar value estimates per token.
@@ -144,6 +137,7 @@ class TokenLevelValueHead(nn.Module):
 # ---------------------------------------------------------------------------
 # Token Advantage Estimator
 # ---------------------------------------------------------------------------
+
 
 class TokenAdvantageEstimator:
     """Computes GAE advantages and discounted returns over token sequences.
@@ -187,8 +181,10 @@ class TokenAdvantageEstimator:
         gae_val = torch.zeros(B, device=rewards.device, dtype=rewards.dtype)
 
         for t in reversed(range(T)):
-            next_value = values[:, t + 1] if t + 1 < T else torch.zeros(
-                B, device=rewards.device, dtype=rewards.dtype
+            next_value = (
+                values[:, t + 1]
+                if t + 1 < T
+                else torch.zeros(B, device=rewards.device, dtype=rewards.dtype)
             )
             not_done = 1.0 - dones[:, t]
             delta = rewards[:, t] + self.gamma * next_value * not_done - values[:, t]
@@ -198,7 +194,7 @@ class TokenAdvantageEstimator:
         return advantages
 
     # ------------------------------------------------------------------
-    def returns(self, rewards: torch.Tensor, gamma: Optional[float] = None) -> torch.Tensor:
+    def returns(self, rewards: torch.Tensor, gamma: float | None = None) -> torch.Tensor:
         """Compute discounted returns G_t = r_t + γ·G_{t+1}.
 
         Parameters
@@ -224,6 +220,7 @@ class TokenAdvantageEstimator:
 # ---------------------------------------------------------------------------
 # Token-Level PPO
 # ---------------------------------------------------------------------------
+
 
 class TokenPPO(nn.Module):
     """Token-level Proximal Policy Optimization.
@@ -256,9 +253,7 @@ class TokenPPO(nn.Module):
         self.clip_eps = clip_eps
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef
-        self.optimizer = Adam(
-            list(policy.parameters()) + list(value_head.parameters()), lr=lr
-        )
+        self.optimizer = Adam(list(policy.parameters()) + list(value_head.parameters()), lr=lr)
 
     # ------------------------------------------------------------------
     def policy_loss(
@@ -332,7 +327,7 @@ class TokenPPO(nn.Module):
         returns: torch.Tensor,
         advantages: torch.Tensor,
         log_probs_dist: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute combined PPO loss.
 
         Parameters
@@ -355,9 +350,7 @@ class TokenPPO(nn.Module):
         return loss, policy_l, value_l, entropy_l
 
     # ------------------------------------------------------------------
-    def update_step(
-        self, input_ids: torch.Tensor, rewards: torch.Tensor
-    ) -> Dict[str, float]:
+    def update_step(self, input_ids: torch.Tensor, rewards: torch.Tensor) -> dict[str, float]:
         """Single PPO update step.
 
         Parameters
@@ -373,14 +366,14 @@ class TokenPPO(nn.Module):
 
         # --- forward pass (new policy) ---
         output = self.policy(input_ids)
-        logits: torch.Tensor = output["logits"]         # [B, T, V]
+        logits: torch.Tensor = output["logits"]  # [B, T, V]
         hidden: torch.Tensor = output["hidden_states"]  # [B, T, d_model]
 
         log_probs_dist = F.log_softmax(logits, dim=-1)  # [B, T, V]
         # Gather log-prob of each chosen token (teacher-forced)
-        log_probs_new = log_probs_dist.gather(
-            dim=-1, index=input_ids.unsqueeze(-1)
-        ).squeeze(-1)  # [B, T]
+        log_probs_new = log_probs_dist.gather(dim=-1, index=input_ids.unsqueeze(-1)).squeeze(
+            -1
+        )  # [B, T]
 
         # --- old policy (detached reference) ---
         with torch.no_grad():
@@ -425,6 +418,7 @@ class TokenPPO(nn.Module):
 # Token Credit Model
 # ---------------------------------------------------------------------------
 
+
 class TokenCreditModel(nn.Module):
     """Learns to predict per-token importance weights for credit assignment.
 
@@ -451,9 +445,7 @@ class TokenCreditModel(nn.Module):
         layers.append(nn.Linear(in_dim, 1))
         self.mlp = nn.Sequential(*layers)
 
-    def forward(
-        self, input_ids: torch.Tensor, sequence_reward: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, input_ids: torch.Tensor, sequence_reward: torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -476,6 +468,7 @@ class TokenCreditModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Configuration Dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TokenRLConfig:

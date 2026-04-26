@@ -8,31 +8,33 @@ Inspired by gpt-oss-20b microscaling (MX) format:
 
 Reference: OCP MX Specification, Microsoft MX / Microscaling formats.
 """
+
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-
 
 # FP8 E8M0 biased exponent range: 2^-126 … 2^127
-_FP8_MIN = 2.0 ** -126
-_FP8_MAX = 2.0 ** 127
+_FP8_MIN = 2.0**-126
+_FP8_MAX = 2.0**127
 
 
 @dataclass
 class MXFPConfig:
-    block_size: int = 32      # weights per scaling block (16 or 32)
-    bits: int = 4             # quantization bits for weights (4)
-    scale_bits: int = 8       # bits for block scale (FP8 emulated as FP32 clamped)
-    symmetric: bool = True    # symmetric quantization around zero
+    block_size: int = 32  # weights per scaling block (16 or 32)
+    bits: int = 4  # quantization bits for weights (4)
+    scale_bits: int = 8  # bits for block scale (FP8 emulated as FP32 clamped)
+    symmetric: bool = True  # symmetric quantization around zero
 
 
 # ---------------------------------------------------------------------------
 # Core quantize / dequantize
 # ---------------------------------------------------------------------------
+
 
 def mxfp4_quantize(
     weight: torch.Tensor,
@@ -67,8 +69,8 @@ def mxfp4_quantize(
     w_norm = w / block_scales.unsqueeze(-1)  # values in [-1, 1]
 
     # 4-bit symmetric: levels in [-(2^(bits-1)), 2^(bits-1)-1]
-    q_min = -(2 ** (cfg.bits - 1))      # -8 for bits=4
-    q_max = (2 ** (cfg.bits - 1)) - 1   #  7 for bits=4
+    q_min = -(2 ** (cfg.bits - 1))  # -8 for bits=4
+    q_max = (2 ** (cfg.bits - 1)) - 1  #  7 for bits=4
 
     w_q = (w_norm * q_max).round().clamp(q_min, q_max).to(torch.int8)
 
@@ -112,6 +114,7 @@ def mxfp4_dequantize(
 # Error metrics
 # ---------------------------------------------------------------------------
 
+
 def mxfp4_quantization_error(
     weight: torch.Tensor,
     cfg: MXFPConfig,
@@ -124,7 +127,7 @@ def mxfp4_quantization_error(
     q, scales = mxfp4_quantize(weight, cfg)
     reconstructed = mxfp4_dequantize(q, scales, cfg, tuple(weight.shape))
 
-    diff = (weight.float() - reconstructed)
+    diff = weight.float() - reconstructed
     mse = diff.pow(2).mean().item()
     max_error = diff.abs().max().item()
 
@@ -147,6 +150,7 @@ def mxfp4_quantization_error(
 # ---------------------------------------------------------------------------
 # MXFP4Linear layer
 # ---------------------------------------------------------------------------
+
 
 class MXFP4Linear(nn.Module):
     """Linear layer with MXFP4 quantized weights.
@@ -174,7 +178,7 @@ class MXFP4Linear(nn.Module):
         w = torch.empty(out_features, in_features)
         nn.init.kaiming_uniform_(w, a=math.sqrt(5))
         q, scales = mxfp4_quantize(w, cfg)
-        self.register_buffer("weight_q", q)           # int8
+        self.register_buffer("weight_q", q)  # int8
         self.register_buffer("block_scales", scales)  # float32
         self._orig_shape = (out_features, in_features)
 
@@ -188,7 +192,7 @@ class MXFP4Linear(nn.Module):
         cls,
         linear: nn.Linear,
         cfg: MXFPConfig | None = None,
-    ) -> "MXFP4Linear":
+    ) -> MXFP4Linear:
         """Convert an existing ``nn.Linear`` to MXFP4Linear."""
         if cfg is None:
             cfg = MXFPConfig()
@@ -212,9 +216,7 @@ class MXFP4Linear(nn.Module):
         return obj
 
     def _dequantized_weight(self) -> torch.Tensor:
-        return mxfp4_dequantize(
-            self.weight_q, self.block_scales, self.cfg, self._orig_shape
-        )
+        return mxfp4_dequantize(self.weight_q, self.block_scales, self.cfg, self._orig_shape)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         w = self._dequantized_weight()
@@ -245,6 +247,7 @@ class MXFP4Linear(nn.Module):
 # ---------------------------------------------------------------------------
 # Model-level helpers
 # ---------------------------------------------------------------------------
+
 
 def quantize_model(
     model: nn.Module,

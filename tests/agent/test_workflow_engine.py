@@ -7,7 +7,6 @@ import pytest
 from src.agent.workflow_engine import (
     DEFAULT_WORKFLOW_EXECUTOR,
     WORKFLOW_EXECUTOR_REGISTRY,
-    WorkflowCheckpoint,
     WorkflowDAG,
     WorkflowError,
     WorkflowExecutor,

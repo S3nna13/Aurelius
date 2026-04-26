@@ -4,18 +4,18 @@ Tiny config throughout:
     d_model=16, n_heads=2, n_layers=2, vocab=16
     n_memory=2, segment_size=4, seq_len=8, batch=2
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.recurrent_memory_v3 import (
-    RecurrentMemoryTokens,
-    SegmentProcessor,
-    RecurrentMemoryTransformer,
     MemoryUpdateGate,
+    RecurrentMemoryTokens,
+    RecurrentMemoryTransformer,
     RMTEvaluator,
+    SegmentProcessor,
 )
 
 # ---------------------------------------------------------------------------
@@ -188,7 +188,9 @@ def test_rmt_different_initial_memory_gives_different_logits():
     with torch.no_grad():
         logits_a, _ = model(ids, initial_memory=mem_a)
         logits_b, _ = model(ids, initial_memory=mem_b)
-    assert not torch.allclose(logits_a, logits_b), "different memory should produce different logits"
+    assert not torch.allclose(logits_a, logits_b), (
+        "different memory should produce different logits"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -11,7 +11,6 @@ import pytest
 
 from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
 
-
 # ---------------------------------------------------------------------------
 # Registry-level fixtures: snapshot + restore both registries around each test
 # ---------------------------------------------------------------------------
@@ -39,6 +38,7 @@ def _register_vllm() -> None:
     BACKEND_REGISTRY.pop("vllm", None)
     ENGINE_ADAPTER_REGISTRY.pop("vllm", None)
     from src.backends.vllm_adapter import register
+
     register()
 
 
@@ -47,6 +47,7 @@ def _register_sglang() -> None:
     BACKEND_REGISTRY.pop("sglang", None)
     ENGINE_ADAPTER_REGISTRY.pop("sglang", None)
     from src.backends.sglang_adapter import register
+
     register()
 
 
@@ -58,6 +59,7 @@ def _register_sglang() -> None:
 def test_vllm_in_backend_registry_after_import_and_register() -> None:
     """'vllm' must appear in BACKEND_REGISTRY after register() is called."""
     import src.backends  # noqa: F401 – ensure package is loaded
+
     _register_vllm()
     assert "vllm" in BACKEND_REGISTRY
 
@@ -65,6 +67,7 @@ def test_vllm_in_backend_registry_after_import_and_register() -> None:
 def test_vllm_in_engine_adapter_registry_after_import_and_register() -> None:
     """'vllm' must appear in ENGINE_ADAPTER_REGISTRY after register() is called."""
     import src.backends  # noqa: F401
+
     _register_vllm()
     assert "vllm" in ENGINE_ADAPTER_REGISTRY
 
@@ -91,6 +94,7 @@ def test_vllm_engine_adapter_is_correct_type() -> None:
 def test_sglang_in_backend_registry_after_import_and_register() -> None:
     """'sglang' must appear in BACKEND_REGISTRY after register() is called."""
     import src.backends  # noqa: F401
+
     _register_sglang()
     assert "sglang" in BACKEND_REGISTRY
 
@@ -98,6 +102,7 @@ def test_sglang_in_backend_registry_after_import_and_register() -> None:
 def test_sglang_in_engine_adapter_registry_after_import_and_register() -> None:
     """'sglang' must appear in ENGINE_ADAPTER_REGISTRY after register() is called."""
     import src.backends  # noqa: F401
+
     _register_sglang()
     assert "sglang" in ENGINE_ADAPTER_REGISTRY
 
@@ -124,6 +129,7 @@ def test_sglang_engine_adapter_is_correct_type() -> None:
 def test_select_backend_for_manifest_vllm_returns_vllm_adapter() -> None:
     """select_backend_for_manifest must return the registered VLLMAdapter instance."""
     import dataclasses
+
     from src.backends.registry import select_backend_for_manifest
     from src.backends.vllm_adapter import VLLMAdapter
     from src.model.manifest import AURELIUS_REFERENCE_MANIFEST
@@ -140,6 +146,7 @@ def test_select_backend_for_manifest_vllm_returns_vllm_adapter() -> None:
 def test_select_backend_for_manifest_sglang_returns_sglang_adapter() -> None:
     """select_backend_for_manifest must return the registered SGLangAdapter instance."""
     import dataclasses
+
     from src.backends.registry import select_backend_for_manifest
     from src.backends.sglang_adapter import SGLangAdapter
     from src.model.manifest import AURELIUS_REFERENCE_MANIFEST

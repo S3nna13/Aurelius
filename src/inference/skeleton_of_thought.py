@@ -19,18 +19,19 @@ Key benefits over single-pass generation
 * Each point expansion is independent → straightforward batching.
 * Plan gives structured, coherent output even with a weak model.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SoTConfig:
@@ -65,6 +66,7 @@ class SoTConfig:
 # Result dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SkeletonPoint:
     """One point from the skeleton plan, optionally expanded.
@@ -81,8 +83,8 @@ class SkeletonPoint:
     """
 
     index: int
-    text: List[int]
-    expanded: List[int] = field(default_factory=list)
+    text: list[int]
+    expanded: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -105,8 +107,8 @@ class SoTResult:
         ``len(skeleton_tokens) + sum(len(p.expanded) for p in points)``
     """
 
-    skeleton_tokens: List[int]
-    points: List[SkeletonPoint]
+    skeleton_tokens: list[int]
+    points: list[SkeletonPoint]
     expanded_text: str
     total_tokens: int
 
@@ -114,6 +116,7 @@ class SoTResult:
 # ---------------------------------------------------------------------------
 # Skeleton parser
 # ---------------------------------------------------------------------------
+
 
 class SkeletonParser:
     """Splits a skeleton token sequence into structured points.
@@ -133,7 +136,7 @@ class SkeletonParser:
 
     # ------------------------------------------------------------------
 
-    def parse(self, token_ids: List[int], vocab_size: int) -> List[int]:
+    def parse(self, token_ids: list[int], vocab_size: int) -> list[int]:
         """Return the start index of each point within *token_ids*.
 
         Points are delimited by ``sep_token_id``.  The first point
@@ -154,13 +157,13 @@ class SkeletonParser:
         """
         if not token_ids:
             return []
-        starts: List[int] = [0]
+        starts: list[int] = [0]
         for i, tok in enumerate(token_ids):
             if tok == self.sep_token_id and i + 1 < len(token_ids):
                 starts.append(i + 1)
         return starts
 
-    def count_points(self, token_ids: List[int]) -> int:
+    def count_points(self, token_ids: list[int]) -> int:
         """Count the number of skeleton points in *token_ids*.
 
         This equals the number of ``sep_token_id`` occurrences plus one
@@ -184,6 +187,7 @@ class SkeletonParser:
 # ---------------------------------------------------------------------------
 # Main decoder
 # ---------------------------------------------------------------------------
+
 
 class SkeletonOfThoughtDecoder:
     """Two-phase skeleton-then-expand decoding controller.
@@ -224,10 +228,10 @@ class SkeletonOfThoughtDecoder:
 
     def generate_skeleton(
         self,
-        prompt_tokens: List[int],
-        model_fn: Callable[[List[int]], Tensor],
+        prompt_tokens: list[int],
+        model_fn: Callable[[list[int]], Tensor],
         temperature: float = 1.0,
-    ) -> List[int]:
+    ) -> list[int]:
         """Generate the skeleton (plan) token sequence.
 
         Autoregressively samples tokens from *model_fn* until either the
@@ -253,10 +257,10 @@ class SkeletonOfThoughtDecoder:
         """
         temp = max(temperature, 1e-8)
         context = list(prompt_tokens)
-        generated: List[int] = []
+        generated: list[int] = []
 
         for _ in range(self.config.max_skeleton_tokens):
-            logits: Tensor = model_fn(context)          # (vocab,)
+            logits: Tensor = model_fn(context)  # (vocab,)
             if temperature != 1.0:
                 logits = logits / temp
             probs = torch.softmax(logits, dim=-1)
@@ -272,7 +276,7 @@ class SkeletonOfThoughtDecoder:
     # Phase 1 post-processing: parse skeleton into points
     # ------------------------------------------------------------------
 
-    def parse_skeleton(self, skeleton_tokens: List[int]) -> List[List[int]]:
+    def parse_skeleton(self, skeleton_tokens: list[int]) -> list[list[int]]:
         """Split skeleton token ids into per-point token-id lists.
 
         Parameters
@@ -292,11 +296,12 @@ class SkeletonOfThoughtDecoder:
 
         starts = self._parser.parse(skeleton_tokens, vocab_size=0)
         # Build segments between starts (separator token is excluded)
-        segments: List[List[int]] = []
+        segments: list[list[int]] = []
         for idx, start in enumerate(starts):
             end = starts[idx + 1] - 1 if idx + 1 < len(starts) else len(skeleton_tokens)
             segment = [
-                tok for tok in skeleton_tokens[start:end]
+                tok
+                for tok in skeleton_tokens[start:end]
                 if tok != self.sep_token_id and tok != self.eos_token_id
             ]
             segments.append(segment)
@@ -310,11 +315,11 @@ class SkeletonOfThoughtDecoder:
 
     def expand_point(
         self,
-        prompt_tokens: List[int],
-        point_tokens: List[int],
-        model_fn: Callable[[List[int]], Tensor],
+        prompt_tokens: list[int],
+        point_tokens: list[int],
+        model_fn: Callable[[list[int]], Tensor],
         temperature: float = 1.0,
-    ) -> List[int]:
+    ) -> list[int]:
         """Expand a single skeleton point into a full answer segment.
 
         The expansion context is ``prompt_tokens + point_tokens``; up to
@@ -338,7 +343,7 @@ class SkeletonOfThoughtDecoder:
         """
         temp = max(temperature, 1e-8)
         context = list(prompt_tokens) + list(point_tokens)
-        generated: List[int] = []
+        generated: list[int] = []
 
         for _ in range(self.config.max_point_tokens):
             logits: Tensor = model_fn(context)
@@ -359,9 +364,9 @@ class SkeletonOfThoughtDecoder:
 
     def expand_all(
         self,
-        prompt_tokens: List[int],
-        skeleton_tokens: List[int],
-        model_fn: Callable[[List[int]], Tensor],
+        prompt_tokens: list[int],
+        skeleton_tokens: list[int],
+        model_fn: Callable[[list[int]], Tensor],
         temperature: float = 1.0,
     ) -> SoTResult:
         """Run full skeleton parsing and sequential point expansion.
@@ -390,7 +395,7 @@ class SkeletonOfThoughtDecoder:
         """
         point_groups = self.parse_skeleton(skeleton_tokens)
 
-        skel_points: List[SkeletonPoint] = []
+        skel_points: list[SkeletonPoint] = []
         for idx, pt_toks in enumerate(point_groups):
             expansion = self.expand_point(
                 prompt_tokens=prompt_tokens,
@@ -401,7 +406,7 @@ class SkeletonOfThoughtDecoder:
             skel_points.append(SkeletonPoint(index=idx, text=pt_toks, expanded=expansion))
 
         # Build a human-readable joined string (token ids as placeholder text)
-        all_expanded_ids: List[int] = []
+        all_expanded_ids: list[int] = []
         for sp in skel_points:
             all_expanded_ids.extend(sp.expanded)
         expanded_text = " ".join(f"<{t}>" for t in all_expanded_ids)

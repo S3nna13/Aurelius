@@ -1,12 +1,14 @@
 """Tests for src/compression/lossless_packer.py — 8+ tests."""
+
 import pytest
 import torch
-from src.compression.lossless_packer import LosslessPacker, PackingStrategy
 
+from src.compression.lossless_packer import LosslessPacker, PackingStrategy
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def packer():
@@ -30,6 +32,7 @@ def _float_tensor(values, shape=None):
 # ---------------------------------------------------------------------------
 # 1. BIT_PACK
 # ---------------------------------------------------------------------------
+
 
 def test_bit_pack_roundtrip_4x4(packer):
     t = _int_tensor(list(range(16)), shape=(4, 4)).clamp(0, 15)
@@ -56,6 +59,7 @@ def test_bit_pack_produces_bytes(packer):
 # 2. RUN_LENGTH
 # ---------------------------------------------------------------------------
 
+
 def test_run_length_roundtrip_repeated_values(packer):
     t = _float_tensor([1.0, 1.0, 1.0, 2.0, 2.0, 3.0], shape=(6,))
     data = packer.pack(t, PackingStrategy.RUN_LENGTH)
@@ -74,6 +78,7 @@ def test_run_length_roundtrip_4x4(packer):
 # ---------------------------------------------------------------------------
 # 3. DELTA_ENCODE
 # ---------------------------------------------------------------------------
+
 
 def test_delta_encode_roundtrip_sorted_indices(packer):
     t = _float_tensor([0.0, 1.0, 2.0, 3.0, 4.0], shape=(5,))
@@ -94,6 +99,7 @@ def test_delta_encode_roundtrip_4x4(packer):
 # 4. COMBINED
 # ---------------------------------------------------------------------------
 
+
 def test_combined_roundtrip(packer):
     t = _int_tensor(list(range(16)), shape=(4, 4)).clamp(0, 15)
     data = packer.pack(t, PackingStrategy.COMBINED)
@@ -112,6 +118,7 @@ def test_combined_returns_bytes(packer):
 # 5. PackingStrategy enum
 # ---------------------------------------------------------------------------
 
+
 def test_packing_strategy_enum_values():
     assert PackingStrategy.BIT_PACK == "bit_pack"
     assert PackingStrategy.RUN_LENGTH == "run_length"
@@ -122,6 +129,7 @@ def test_packing_strategy_enum_values():
 # ---------------------------------------------------------------------------
 # 6. Unknown strategy raises
 # ---------------------------------------------------------------------------
+
 
 def test_unknown_strategy_raises(packer):
     with pytest.raises((ValueError, AttributeError, KeyError)):

@@ -32,4 +32,3 @@ def test_verdict_stability_handles_empty_input():
 
 def test_verdict_flip_rate_zero_for_constant_sequence():
     assert verdict_flip_rate(["a", "a", "a"]) == pytest.approx(0.0)
-

@@ -13,8 +13,8 @@ actually used).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
     import torch
@@ -23,6 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
 # ---------------------------------------------------------------------------
 # Lazy torch import helper
 # ---------------------------------------------------------------------------
+
 
 def _require_torch():
     try:
@@ -37,6 +38,7 @@ def _require_torch():
 # ---------------------------------------------------------------------------
 # Config / container dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GPTQConfig:
@@ -53,9 +55,9 @@ class GPTQConfig:
 class QuantizedLayer:
     """Immutable container for a quantized weight tensor."""
 
-    weight_int: "Optional[torch.Tensor]"
-    scale: "Optional[torch.Tensor]"
-    zero_point: "Optional[torch.Tensor]"
+    weight_int: torch.Tensor | None
+    scale: torch.Tensor | None
+    zero_point: torch.Tensor | None
     bits: int
     group_size: int
 
@@ -64,21 +66,20 @@ class QuantizedLayer:
 # Quantizer
 # ---------------------------------------------------------------------------
 
+
 class GPTQQuantizer:
     """GPTQ-style weight quantizer (round-to-nearest approximation)."""
 
     def __init__(self, config: GPTQConfig | None = None) -> None:
         self.config = config if config is not None else GPTQConfig()
         if self.config.bits < 2 or self.config.bits > 16:
-            raise ValueError(
-                f"bits must be in [2, 16], got {self.config.bits}"
-            )
+            raise ValueError(f"bits must be in [2, 16], got {self.config.bits}")
 
     # ------------------------------------------------------------------
     # Core API
     # ------------------------------------------------------------------
 
-    def quantize_weight(self, weight: "torch.Tensor") -> QuantizedLayer:
+    def quantize_weight(self, weight: torch.Tensor) -> QuantizedLayer:
         """Quantize a floating-point weight tensor to integer representation."""
         torch = _require_torch()
         if not isinstance(weight, torch.Tensor):
@@ -87,20 +88,18 @@ class GPTQQuantizer:
         bits = self.config.bits
         if self.config.sym:
             qmax = (1 << (bits - 1)) - 1  # e.g. 7 for 4-bit
-            qmin = -(1 << (bits - 1))     # e.g. -8 for 4-bit
+            qmin = -(1 << (bits - 1))  # e.g. -8 for 4-bit
             max_abs = weight.abs().max().clamp(min=1e-8)
             scale = max_abs / qmax
             w_int = (weight / scale).round().clamp(qmin, qmax).to(torch.int32)
             zero = torch.zeros((), dtype=weight.dtype, device=weight.device)
         else:
-            qmax = (1 << bits) - 1        # e.g. 15 for 4-bit
+            qmax = (1 << bits) - 1  # e.g. 15 for 4-bit
             w_min = weight.min()
             w_max = weight.max()
             scale = (w_max - w_min).clamp(min=1e-8) / qmax
             zero = (-w_min / scale).round()
-            w_int = (
-                (weight / scale + zero).round().clamp(0, qmax).to(torch.int32)
-            )
+            w_int = (weight / scale + zero).round().clamp(0, qmax).to(torch.int32)
 
         return QuantizedLayer(
             weight_int=w_int,
@@ -110,7 +109,7 @@ class GPTQQuantizer:
             group_size=self.config.group_size,
         )
 
-    def dequantize(self, layer: QuantizedLayer) -> "torch.Tensor":
+    def dequantize(self, layer: QuantizedLayer) -> torch.Tensor:
         """Reconstruct a float tensor from a :class:`QuantizedLayer`."""
         torch = _require_torch()
         if layer.weight_int is None or layer.scale is None:
@@ -130,11 +129,11 @@ class GPTQQuantizer:
 
     def quantize_error(
         self,
-        original: "torch.Tensor",
+        original: torch.Tensor,
         layer: QuantizedLayer,
     ) -> float:
         """Return mean squared reconstruction error."""
-        torch = _require_torch()
+        _require_torch()
         recon = self.dequantize(layer).to(original.dtype)
         return float(((recon - original) ** 2).mean().item())
 

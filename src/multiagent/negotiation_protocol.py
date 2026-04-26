@@ -1,13 +1,14 @@
 """Multi-agent negotiation with offer / counter-offer protocol."""
+
 from __future__ import annotations
 
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class NegotiationState(str, Enum):
+class NegotiationState(StrEnum):
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     AGREED = "agreed"

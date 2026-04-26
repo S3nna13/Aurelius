@@ -10,17 +10,19 @@ Reference: SmolLM3 (HuggingFace, 2025), SkyLadder (2025).
 
 from __future__ import annotations
 
-import torch
 from dataclasses import dataclass
 from typing import Any
+
+import torch
 
 
 @dataclass
 class PackedSequence:
     """A sequence packed from multiple documents with boundary metadata."""
+
     input_ids: list[int]
-    doc_ids: list[int]        # document index for each token position
-    doc_lengths: list[int]    # length of each original document
+    doc_ids: list[int]  # document index for each token position
+    doc_lengths: list[int]  # length of each original document
 
 
 def pack_sequences(
@@ -55,11 +57,13 @@ def pack_sequences(
         if len(current_ids) + len(seq) > max_len:
             # Current chunk is full: emit it and start a new one
             if current_ids:
-                packed.append(PackedSequence(
-                    input_ids=current_ids,
-                    doc_ids=current_doc_ids,
-                    doc_lengths=current_doc_lengths,
-                ))
+                packed.append(
+                    PackedSequence(
+                        input_ids=current_ids,
+                        doc_ids=current_doc_ids,
+                        doc_lengths=current_doc_lengths,
+                    )
+                )
             current_ids = []
             current_doc_ids = []
             current_doc_lengths = []
@@ -72,11 +76,13 @@ def pack_sequences(
 
     # Emit remaining tokens
     if current_ids:
-        packed.append(PackedSequence(
-            input_ids=current_ids,
-            doc_ids=current_doc_ids,
-            doc_lengths=current_doc_lengths,
-        ))
+        packed.append(
+            PackedSequence(
+                input_ids=current_ids,
+                doc_ids=current_doc_ids,
+                doc_lengths=current_doc_lengths,
+            )
+        )
 
     return packed
 

@@ -1,10 +1,12 @@
 """Tests for Sophia second-order optimizer."""
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-from src.training.sophia import Sophia
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.sophia import Sophia
 
 
 @pytest.fixture
@@ -50,8 +52,7 @@ def test_sophia_step_updates_params(small_model, small_cfg):
     opt.step()
 
     changed = any(
-        not torch.allclose(p.data, before[name])
-        for name, p in small_model.named_parameters()
+        not torch.allclose(p.data, before[name]) for name, p in small_model.named_parameters()
     )
     assert changed, "No parameters were updated after Sophia step"
 
@@ -197,7 +198,7 @@ def test_sophia_converges_quadratic():
     losses = []
     for _ in range(50):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         losses.append(loss.item())
         loss.backward()
         opt.step()
@@ -252,9 +253,7 @@ def test_sophia_param_group_support(small_model, small_cfg):
     first_grp_changed = not torch.allclose(params[0].data, before_first)
     last_grp_changed = not torch.allclose(params[-1].data, before_last)
 
-    assert first_grp_changed or last_grp_changed, (
-        "Neither param group produced any updates"
-    )
+    assert first_grp_changed or last_grp_changed, "Neither param group produced any updates"
     assert len(opt.param_groups) == 2
     assert opt.param_groups[0]["lr"] == 1e-3
     assert opt.param_groups[1]["lr"] == 5e-3

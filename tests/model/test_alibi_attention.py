@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
@@ -130,9 +128,7 @@ def test_bias_diagonal_zero():
     bias = build_alibi_bias(N_HEADS, SEQ, causal=False)
     for h in range(N_HEADS):
         diag = torch.diagonal(bias[h])
-        assert torch.allclose(diag, torch.zeros(SEQ)), (
-            f"Head {h}: diagonal should be 0, got {diag}"
-        )
+        assert torch.allclose(diag, torch.zeros(SEQ)), f"Head {h}: diagonal should be 0, got {diag}"
 
 
 # ---------------------------------------------------------------------------
@@ -255,9 +251,7 @@ def test_sequence_shorter_than_max_seq(attn):
     for seq_len in (1, 4, SEQ, MAX_SEQ):
         x_var = torch.randn(1, seq_len, D_MODEL)
         out = attn(x_var)
-        assert out.shape == (1, seq_len, D_MODEL), (
-            f"seq_len={seq_len}: shape mismatch"
-        )
+        assert out.shape == (1, seq_len, D_MODEL), f"seq_len={seq_len}: shape mismatch"
 
 
 # ---------------------------------------------------------------------------
@@ -280,9 +274,7 @@ def test_slopes_match_formula_power_of_2():
     slopes = get_alibi_slopes(n)
     for i, s in enumerate(slopes.tolist(), start=1):
         expected = 2.0 ** (-8.0 * i / n)
-        assert abs(s - expected) < 1e-6, (
-            f"Head {i}: expected {expected:.6f}, got {s:.6f}"
-        )
+        assert abs(s - expected) < 1e-6, f"Head {i}: expected {expected:.6f}, got {s:.6f}"
 
 
 # ---------------------------------------------------------------------------
@@ -297,5 +289,5 @@ def test_bias_lower_triangle_negative(cfg):
         for i in range(1, SEQ):
             for j in range(i):
                 assert bias[h, i, j] < 0, (
-                    f"Head {h}, pos ({i},{j}): expected negative bias, got {bias[h,i,j]}"
+                    f"Head {h}, pos ({i},{j}): expected negative bias, got {bias[h, i, j]}"
                 )

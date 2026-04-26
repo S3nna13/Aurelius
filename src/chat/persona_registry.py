@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class PersonaTone(str, Enum):
+class PersonaTone(StrEnum):
     FORMAL = "formal"
     CASUAL = "casual"
     TECHNICAL = "technical"
@@ -98,7 +97,7 @@ class PersonaRegistry:
         """Add or overwrite a persona."""
         self._personas[config.persona_id] = config
 
-    def get(self, persona_id: str) -> Optional[PersonaConfig]:
+    def get(self, persona_id: str) -> PersonaConfig | None:
         """Return the PersonaConfig for *persona_id*, or None if not found."""
         return self._personas.get(persona_id)
 

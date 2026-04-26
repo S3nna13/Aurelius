@@ -1,4 +1,5 @@
 """Scratchpad: mutable working surface for intermediate reasoning steps."""
+
 from __future__ import annotations
 
 import uuid

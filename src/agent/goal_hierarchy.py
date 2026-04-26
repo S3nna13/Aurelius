@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from enum import StrEnum
+from typing import Any
 
 
-class GoalStatus(str, Enum):
+class GoalStatus(StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -25,24 +25,24 @@ class GoalStatus(str, Enum):
 class Goal:
     description: str
     goal_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     status: GoalStatus = GoalStatus.PENDING
     priority: int = 0
-    children: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    children: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class GoalHierarchy:
     """In-memory tree of ``Goal`` objects indexed by ``goal_id``."""
 
     def __init__(self) -> None:
-        self._goals: Dict[str, Goal] = {}
+        self._goals: dict[str, Goal] = {}
 
     # --------------------------------------------------------------- mutation
     def add_goal(
         self,
         description: str,
-        parent_id: Optional[str] = None,
+        parent_id: str | None = None,
         priority: int = 0,
     ) -> Goal:
         if parent_id is not None and parent_id not in self._goals:
@@ -59,27 +59,27 @@ class GoalHierarchy:
         self._goals[goal_id].status = status
 
     # ---------------------------------------------------------------- queries
-    def get_goal(self, goal_id: str) -> Optional[Goal]:
+    def get_goal(self, goal_id: str) -> Goal | None:
         return self._goals.get(goal_id)
 
-    def children_of(self, goal_id: str) -> List[Goal]:
+    def children_of(self, goal_id: str) -> list[Goal]:
         goal = self._goals.get(goal_id)
         if goal is None:
             return []
         return [self._goals[cid] for cid in goal.children if cid in self._goals]
 
-    def root_goals(self) -> List[Goal]:
+    def root_goals(self) -> list[Goal]:
         return [g for g in self._goals.values() if g.parent_id is None]
 
-    def leaf_goals(self) -> List[Goal]:
+    def leaf_goals(self) -> list[Goal]:
         return [g for g in self._goals.values() if not g.children]
 
-    def active_path(self) -> List[Goal]:
+    def active_path(self) -> list[Goal]:
         actives = [g for g in self._goals.values() if g.status == GoalStatus.ACTIVE]
 
         def depth(g: Goal) -> int:
             d = 0
-            cur: Optional[Goal] = g
+            cur: Goal | None = g
             while cur is not None and cur.parent_id is not None:
                 cur = self._goals.get(cur.parent_id)
                 d += 1
@@ -95,8 +95,8 @@ class GoalHierarchy:
         return completed / len(self._goals)
 
     # ----------------------------------------------------------- serialization
-    def to_dict(self) -> Dict[str, Any]:
-        def serialize(goal: Goal) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
+        def serialize(goal: Goal) -> dict[str, Any]:
             return {
                 "goal_id": goal.goal_id,
                 "description": goal.description,

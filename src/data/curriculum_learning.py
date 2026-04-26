@@ -9,21 +9,22 @@ References:
     - Platanios et al. (2019) "Competence-based Curriculum Learning" (Baby Steps)
     - Swayamdipta et al. (2020) "Dataset Cartography"
 """
+
 from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # DifficultyScorer
 # ---------------------------------------------------------------------------
+
 
 class DifficultyScorer:
     """Compute per-example difficulty scores from various signals.
@@ -37,7 +38,7 @@ class DifficultyScorer:
         self,
         model: nn.Module,
         input_ids: torch.Tensor,  # [B, T]
-    ) -> torch.Tensor:            # [B]
+    ) -> torch.Tensor:  # [B]
         """Per-example perplexity: exp(mean cross-entropy over tokens).
 
         Performs a causal LM forward pass and computes per-example CE loss,
@@ -62,7 +63,7 @@ class DifficultyScorer:
 
         # Shift: predict token t+1 from position t
         shift_logits = logits[:, :-1, :].contiguous()  # [B, T-1, V]
-        shift_labels = input_ids[:, 1:].contiguous()    # [B, T-1]
+        shift_labels = input_ids[:, 1:].contiguous()  # [B, T-1]
 
         # Compute per-token log-probs
         log_probs = F.log_softmax(shift_logits, dim=-1)  # [B, T-1, V]
@@ -76,13 +77,13 @@ class DifficultyScorer:
         mean_nll = -token_lp.mean(dim=1)  # [B]
         # Cap to avoid float overflow (perplexity > e^20 is meaningless)
         mean_nll = mean_nll.clamp(max=20.0)
-        perplexity = mean_nll.exp()       # [B]
+        perplexity = mean_nll.exp()  # [B]
         return perplexity
 
     def length_score(
         self,
         input_ids: torch.Tensor,  # [B, T]
-    ) -> torch.Tensor:            # [B]
+    ) -> torch.Tensor:  # [B]
         """Normalized sequence length score in [0, 1].
 
         Longer sequences are scored higher (harder).  Token id 0 is treated
@@ -106,7 +107,7 @@ class DifficultyScorer:
         self,
         input_ids: torch.Tensor,  # [B, T]
         vocab_size: int,
-    ) -> torch.Tensor:            # [B]
+    ) -> torch.Tensor:  # [B]
         """Unique-token ratio per example: |unique tokens| / sequence_length.
 
         Values in [0, 1].  A sequence with all identical tokens has richness
@@ -131,8 +132,8 @@ class DifficultyScorer:
         self,
         model: nn.Module,
         input_ids: torch.Tensor,  # [B, T]
-        weights: Dict[str, float],
-    ) -> torch.Tensor:            # [B]
+        weights: dict[str, float],
+    ) -> torch.Tensor:  # [B]
         """Weighted combination of perplexity, length, and vocabulary richness.
 
         Each component is normalised to [0, 1] before weighting so that the
@@ -147,9 +148,9 @@ class DifficultyScorer:
         Returns:
             Float tensor [B] combined score.
         """
-        w_ppl  = weights.get("perplexity", 0.0)
-        w_len  = weights.get("length",     0.0)
-        w_voc  = weights.get("vocab",      0.0)
+        w_ppl = weights.get("perplexity", 0.0)
+        w_len = weights.get("length", 0.0)
+        w_voc = weights.get("vocab", 0.0)
 
         B = input_ids.size(0)
         combined = torch.zeros(B, dtype=torch.float32)
@@ -168,9 +169,7 @@ class DifficultyScorer:
 
         if w_voc != 0.0:
             vocab_size = int(input_ids.max().item()) + 1
-            combined = combined + w_voc * self.vocabulary_richness(
-                input_ids, vocab_size
-            ).float()
+            combined = combined + w_voc * self.vocabulary_richness(input_ids, vocab_size).float()
 
         return combined
 
@@ -178,6 +177,7 @@ class DifficultyScorer:
 # ---------------------------------------------------------------------------
 # PacingFunction
 # ---------------------------------------------------------------------------
+
 
 class PacingFunction:
     """Static-method collection for curriculum pacing schedules.
@@ -233,7 +233,7 @@ class PacingFunction:
         if total_steps <= 0:
             return 1.0
         t_norm = min(step / total_steps, 1.0)
-        val = math.sqrt(t_norm * (1.0 - c0 ** 2) + c0 ** 2)
+        val = math.sqrt(t_norm * (1.0 - c0**2) + c0**2)
         return float(min(max(val, 0.0), 1.0))
 
     @staticmethod
@@ -263,8 +263,8 @@ class PacingFunction:
     @staticmethod
     def step_pacing(
         step: int,
-        milestones: List[int],
-        fracs: List[float],
+        milestones: list[int],
+        fracs: list[float],
     ) -> float:
         """Step-function pacing: fixed fractions at milestone steps.
 
@@ -282,9 +282,7 @@ class PacingFunction:
         """
         if not milestones or not fracs:
             return 1.0
-        assert len(milestones) == len(fracs), (
-            "milestones and fracs must have the same length"
-        )
+        assert len(milestones) == len(fracs), "milestones and fracs must have the same length"  # noqa: S101
         current_frac = fracs[0]
         for milestone, frac in zip(milestones, fracs):
             if step >= milestone:
@@ -297,6 +295,7 @@ class PacingFunction:
 # ---------------------------------------------------------------------------
 # CurriculumDataset
 # ---------------------------------------------------------------------------
+
 
 class CurriculumDataset:
     """Curriculum-aware dataset wrapper.
@@ -315,10 +314,10 @@ class CurriculumDataset:
     def __init__(
         self,
         input_ids: torch.Tensor,  # [N, T]
-        scores: torch.Tensor,     # [N]
+        scores: torch.Tensor,  # [N]
         pacing_fn: Callable[[int], float],
     ) -> None:
-        assert input_ids.size(0) == scores.size(0), (
+        assert input_ids.size(0) == scores.size(0), (  # noqa: S101
             "input_ids and scores must have the same first dimension"
         )
         self.input_ids = input_ids
@@ -327,7 +326,7 @@ class CurriculumDataset:
         self.step: int = 0
 
         # Pre-sort indices from easiest (lowest score) to hardest (highest)
-        self._sorted_indices: List[int] = torch.argsort(scores).tolist()
+        self._sorted_indices: list[int] = torch.argsort(scores).tolist()
 
     # ------------------------------------------------------------------
     # Step management
@@ -341,7 +340,7 @@ class CurriculumDataset:
     # Batch sampling
     # ------------------------------------------------------------------
 
-    def _available_pool(self) -> List[int]:
+    def _available_pool(self) -> list[int]:
         """Indices of examples available at the current pacing fraction."""
         frac = self.pacing_fn(self.step)
         frac = min(max(frac, 0.0), 1.0)
@@ -393,6 +392,7 @@ class CurriculumDataset:
 # DataSelectionFilter
 # ---------------------------------------------------------------------------
 
+
 class DataSelectionFilter:
     """Filters for dataset quality and deduplication.
 
@@ -407,8 +407,8 @@ class DataSelectionFilter:
     def filter_by_score(
         self,
         input_ids: torch.Tensor,  # [N, T]
-        scores: torch.Tensor,     # [N]
-    ) -> torch.Tensor:            # [M, T]
+        scores: torch.Tensor,  # [N]
+    ) -> torch.Tensor:  # [M, T]
         """Keep only examples whose difficulty score is at or below threshold.
 
         Args:
@@ -425,7 +425,7 @@ class DataSelectionFilter:
         self,
         input_ids: torch.Tensor,  # [N, T]
         sim_threshold: float = 0.9,
-    ) -> torch.Tensor:            # [M, T]
+    ) -> torch.Tensor:  # [M, T]
         """Remove near-duplicate sequences using Jaccard similarity on token sets.
 
         Two sequences are near-duplicates if their token-set Jaccard
@@ -441,11 +441,11 @@ class DataSelectionFilter:
             LongTensor [M, T] with duplicates removed.
         """
         N = input_ids.size(0)
-        token_sets: List[set] = []
+        token_sets: list[set] = []
         for i in range(N):
             token_sets.append(set(input_ids[i].tolist()))
 
-        keep: List[int] = []
+        keep: list[int] = []
         for i in range(N):
             is_dup = False
             set_i = token_sets[i]
@@ -472,7 +472,7 @@ class DataSelectionFilter:
         input_ids: torch.Tensor,  # [N, T]
         min_len: int = 4,
         max_rep_ratio: float = 0.5,
-    ) -> torch.Tensor:            # [M, T]
+    ) -> torch.Tensor:  # [M, T]
         """Remove sequences that are too short or highly repetitive.
 
         A sequence is removed if:
@@ -488,7 +488,7 @@ class DataSelectionFilter:
             LongTensor [M, T] with low-quality sequences removed.
         """
         N = input_ids.size(0)
-        keep: List[int] = []
+        keep: list[int] = []
         for i in range(N):
             seq = input_ids[i]
             # Non-padding tokens (token 0 treated as pad)
@@ -511,6 +511,7 @@ class DataSelectionFilter:
 # ---------------------------------------------------------------------------
 # CurriculumTrainer
 # ---------------------------------------------------------------------------
+
 
 class CurriculumTrainer:
     """Minimal curriculum training loop around a CurriculumDataset.
@@ -588,15 +589,16 @@ class CurriculumTrainer:
         current_frac = self.dataset.pacing_fn(self.dataset.step)
         return {
             "current_frac": float(current_frac),
-            "step":         self.dataset.step,
-            "n_seen_easy":  self._n_seen_easy,
-            "n_seen_hard":  self._n_seen_hard,
+            "step": self.dataset.step,
+            "n_seen_easy": self._n_seen_easy,
+            "n_seen_hard": self._n_seen_hard,
         }
 
 
 # ---------------------------------------------------------------------------
 # CurriculumConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CurriculumConfig:
@@ -610,11 +612,12 @@ class CurriculumConfig:
         total_steps: total training steps (for continuous pacing schedules).
         batch_size:  training batch size.
     """
-    pacing:      str   = "competence"
-    start_frac:  float = 0.1
-    c0:          float = 0.01
-    total_steps: int   = 1000
-    batch_size:  int   = 4
+
+    pacing: str = "competence"
+    start_frac: float = 0.1
+    c0: float = 0.01
+    total_steps: int = 1000
+    batch_size: int = 4
 
     def build_pacing_fn(self) -> Callable[[int], float]:
         """Construct the pacing callable from config fields.

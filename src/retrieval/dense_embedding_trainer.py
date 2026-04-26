@@ -25,7 +25,6 @@ Public surface:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -90,9 +89,7 @@ class DenseEmbedder(nn.Module):
     def __init__(self, config: EmbedderConfig) -> None:
         super().__init__()
         if not isinstance(config, EmbedderConfig):
-            raise TypeError(
-                f"config must be EmbedderConfig, got {type(config).__name__}"
-            )
+            raise TypeError(f"config must be EmbedderConfig, got {type(config).__name__}")
         self.config = config
 
         self.token_embedding = nn.Embedding(
@@ -121,7 +118,7 @@ class DenseEmbedder(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Encode token ids into L2-normalized embeddings.
 
@@ -135,20 +132,15 @@ class DenseEmbedder(nn.Module):
             [B, embed_dim] float tensor with unit L2 norm per row.
         """
         if input_ids.dim() != 2:
-            raise ValueError(
-                f"input_ids must be 2-D [B, T], got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be 2-D [B, T], got shape {tuple(input_ids.shape)}")
         batch_size, seq_len = input_ids.shape
         if seq_len > self.config.max_seq_len:
             raise ValueError(
-                f"sequence length {seq_len} exceeds max_seq_len "
-                f"{self.config.max_seq_len}"
+                f"sequence length {seq_len} exceeds max_seq_len {self.config.max_seq_len}"
             )
 
         if attention_mask is None:
-            attention_mask = (input_ids != self.config.pad_token_id).to(
-                dtype=torch.long
-            )
+            attention_mask = (input_ids != self.config.pad_token_id).to(dtype=torch.long)
         else:
             if attention_mask.shape != input_ids.shape:
                 raise ValueError(
@@ -158,9 +150,11 @@ class DenseEmbedder(nn.Module):
                 )
             attention_mask = attention_mask.to(dtype=torch.long)
 
-        positions = torch.arange(
-            seq_len, device=input_ids.device, dtype=torch.long
-        ).unsqueeze(0).expand(batch_size, seq_len)
+        positions = (
+            torch.arange(seq_len, device=input_ids.device, dtype=torch.long)
+            .unsqueeze(0)
+            .expand(batch_size, seq_len)
+        )
 
         x = self.token_embedding(input_ids) + self.position_embedding(positions)
         x = self.embed_norm(x)
@@ -201,9 +195,7 @@ class InfoNCELoss(nn.Module):
             raise ValueError(f"temperature must be positive, got {temperature}")
         self.temperature = float(temperature)
 
-    def forward(
-        self, anchor: torch.Tensor, positive: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, anchor: torch.Tensor, positive: torch.Tensor) -> torch.Tensor:
         if anchor.dim() != 2 or positive.dim() != 2:
             raise ValueError(
                 "anchor and positive must be 2-D [B, D], got "
@@ -241,18 +233,13 @@ class EmbeddingTrainer:
         loss_fn: InfoNCELoss,
     ) -> None:
         if not isinstance(embedder, DenseEmbedder):
-            raise TypeError(
-                f"embedder must be DenseEmbedder, got {type(embedder).__name__}"
-            )
+            raise TypeError(f"embedder must be DenseEmbedder, got {type(embedder).__name__}")
         if not isinstance(optimizer, torch.optim.Optimizer):
             raise TypeError(
-                f"optimizer must be torch.optim.Optimizer, got "
-                f"{type(optimizer).__name__}"
+                f"optimizer must be torch.optim.Optimizer, got {type(optimizer).__name__}"
             )
         if not isinstance(loss_fn, InfoNCELoss):
-            raise TypeError(
-                f"loss_fn must be InfoNCELoss, got {type(loss_fn).__name__}"
-            )
+            raise TypeError(f"loss_fn must be InfoNCELoss, got {type(loss_fn).__name__}")
         self.embedder = embedder
         self.optimizer = optimizer
         self.loss_fn = loss_fn
@@ -261,8 +248,8 @@ class EmbeddingTrainer:
         self,
         anchor_ids: torch.Tensor,
         positive_ids: torch.Tensor,
-        anchor_mask: Optional[torch.Tensor] = None,
-        positive_mask: Optional[torch.Tensor] = None,
+        anchor_mask: torch.Tensor | None = None,
+        positive_mask: torch.Tensor | None = None,
     ) -> dict:
         """Run a single gradient-descent step on one paired batch."""
         if anchor_ids.shape[0] != positive_ids.shape[0]:

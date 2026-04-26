@@ -5,14 +5,16 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from src.backends.backend_health import (
+    BACKEND_HEALTH_REGISTRY,
     BackendHealthChecker,
     HealthReport,
     HealthStatus,
-    BACKEND_HEALTH_REGISTRY,
 )
 
 
-def _make_backend(health_method: str = "health", returns: bool = True, raises: Exception | None = None):
+def _make_backend(
+    health_method: str = "health", returns: bool = True, raises: Exception | None = None
+):
     b = MagicMock(spec=[health_method])
     method = getattr(b, health_method)
     if raises is not None:

@@ -1,10 +1,9 @@
 import time
-import pytest
+
 from src.serving.response_dedup import (
-    DedupEntry,
+    RESPONSE_DEDUP_REGISTRY,
     DedupStrategy,
     ResponseDedup,
-    RESPONSE_DEDUP_REGISTRY,
 )
 
 

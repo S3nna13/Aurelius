@@ -12,7 +12,6 @@ References:
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -47,7 +46,7 @@ class StructuralProbe(nn.Module):
         """
         diff = h_i - h_j  # (B, d_model)
         projected = diff @ self.B.T  # (B, rank)
-        return (projected ** 2).sum(dim=-1)  # (B,)
+        return (projected**2).sum(dim=-1)  # (B,)
 
     def distance_matrix(self, hidden_states: Tensor) -> Tensor:
         """Compute pairwise squared distances for all positions.
@@ -62,7 +61,7 @@ class StructuralProbe(nn.Module):
         projected = hidden_states @ self.B.T  # (T, rank)
 
         # ||Bh_i - Bh_j||^2 = ||Bh_i||^2 + ||Bh_j||^2 - 2 * <Bh_i, Bh_j>
-        sq_norms = (projected ** 2).sum(dim=-1)  # (T,)
+        sq_norms = (projected**2).sum(dim=-1)  # (T,)
         dot = projected @ projected.T  # (T, T)
         dist_mat = sq_norms.unsqueeze(1) + sq_norms.unsqueeze(0) - 2 * dot
         # Clamp to avoid small negatives from floating-point error
@@ -81,7 +80,9 @@ class StructuralProbe(nn.Module):
         pred = self.distance_matrix(hidden_states)
         T = hidden_states.shape[0]
         # Upper-triangle mask (excluding diagonal)
-        mask = torch.triu(torch.ones(T, T, dtype=torch.bool, device=hidden_states.device), diagonal=1)
+        mask = torch.triu(
+            torch.ones(T, T, dtype=torch.bool, device=hidden_states.device), diagonal=1
+        )
         return F.mse_loss(pred[mask], target_distances[mask])
 
 
@@ -104,11 +105,11 @@ class MDLProbeDataset:
         self.n_splits = n_splits
         self.N = representations.shape[0]
 
-    def split_fractions(self) -> List[float]:
+    def split_fractions(self) -> list[float]:
         """Returns fractions [1/2, 1/4, ..., 1/2^n_splits] for exponential splits."""
-        return [1.0 / (2 ** k) for k in range(1, self.n_splits + 1)]
+        return [1.0 / (2**k) for k in range(1, self.n_splits + 1)]
 
-    def get_split(self, fraction: float) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    def get_split(self, fraction: float) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         """Split data into train (first fraction*N) and test (rest).
 
         Args:
@@ -175,7 +176,7 @@ class MDLProbeTrainer:
             length = F.cross_entropy(logits, labels, reduction="sum").item()
         return length
 
-    def mdl_score(self, dataset: MDLProbeDataset) -> Dict[str, float]:
+    def mdl_score(self, dataset: MDLProbeDataset) -> dict[str, float]:
         """Compute MDL score via online coding over exponentially growing splits.
 
         Trains a probe on each fraction of data, measures codelength on the test
@@ -224,7 +225,7 @@ class ProbingBenchmark:
         test_repr: Tensor,
         test_labels: Tensor,
         n_epochs: int = 20,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Train a linear probe and report train/test accuracy.
 
         Args:
@@ -266,10 +267,10 @@ class ProbingBenchmark:
 
     def compare_layers(
         self,
-        layer_reprs: List[Tensor],
+        layer_reprs: list[Tensor],
         labels: Tensor,
         test_frac: float = 0.2,
-    ) -> List[Dict[str, float]]:
+    ) -> list[dict[str, float]]:
         """Run linear probe on each layer's representations.
 
         Args:
@@ -284,7 +285,7 @@ class ProbingBenchmark:
         n_test = max(1, int(test_frac * N))
         n_train = N - n_test
 
-        results: List[Dict[str, float]] = []
+        results: list[dict[str, float]] = []
         for repr_ in layer_reprs:
             train_repr = repr_[:n_train]
             train_labels = labels[:n_train]

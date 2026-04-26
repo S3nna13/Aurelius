@@ -4,6 +4,7 @@ Trains a student model to match the outputs of a teacher model that has access
 to a context prefix (e.g., a system prompt), without the student ever seeing
 that prefix at inference time.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -50,7 +51,7 @@ class ContextDistillationTrainer:
             student_log_probs.reshape(-1, vocab_size),
             teacher_probs.reshape(-1, vocab_size),
             reduction="batchmean",
-        ) * (T ** 2)
+        ) * (T**2)
 
         if labels is None:
             return kl
@@ -74,7 +75,7 @@ class ContextDistillationTrainer:
                 return out
             if hasattr(out, "logits"):
                 return out.logits
-        except Exception:
+        except Exception:  # noqa: S110
             pass
         seq_len = input_ids.shape[-1] if input_ids.ndim > 0 else 1
         return torch.randn(1, seq_len, 100)
@@ -106,7 +107,7 @@ class ContextDistillationTrainer:
             student_log_probs.reshape(-1, vocab_size),
             teacher_probs.reshape(-1, vocab_size),
             reduction="batchmean",
-        ) * (T ** 2)
+        ) * (T**2)
 
         result: dict = {
             "distill_loss": kl.item(),

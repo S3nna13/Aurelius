@@ -8,9 +8,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.model.vision_cross_attention import VisionCrossAttention, VisionCrossAttnConfig
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.vision_cross_attention import VisionCrossAttention, VisionCrossAttnConfig
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -130,8 +129,7 @@ def test_vision_mask_effect(
 
     masked_attn = weights[:, :, :, -1]
     assert masked_attn.abs().max().item() < 1e-6, (
-        f"Expected near-zero attention on masked token, "
-        f"got {masked_attn.abs().max().item()}"
+        f"Expected near-zero attention on masked token, got {masked_attn.abs().max().item()}"
     )
 
 
@@ -192,8 +190,7 @@ def test_attention_weights_sum_to_one(
         weights = tiny_model.attention_weights(text_hidden, vision_tokens)
     row_sums = weights.sum(dim=-1)  # (B, n_heads, T_text)
     assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), (
-        f"Attention row sums not close to 1; "
-        f"max deviation: {(row_sums - 1).abs().max().item()}"
+        f"Attention row sums not close to 1; max deviation: {(row_sums - 1).abs().max().item()}"
     )
 
 
@@ -342,8 +339,7 @@ def test_no_vision_tokens_empty_mask(tiny_cfg: VisionCrossAttnConfig) -> None:
         out = m(text, vision, vision_mask=vision_mask)
 
     assert out.abs().max().item() < 1e-6, (
-        f"Expected near-zero output when all vision tokens masked; "
-        f"got {out.abs().max().item()}"
+        f"Expected near-zero output when all vision tokens masked; got {out.abs().max().item()}"
     )
 
 

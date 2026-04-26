@@ -10,13 +10,13 @@ Provides:
 from __future__ import annotations
 
 import random
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, List
-
 
 # ---------------------------------------------------------------------------
 # Sample
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class CalibrationSample:
@@ -29,13 +29,14 @@ class CalibrationSample:
     """
 
     text: str
-    tokens: List[int]
+    tokens: list[int]
     source: str = ""
 
 
 # ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
+
 
 class CalibrationDataset:
     """Bounded, iterable container of :class:`CalibrationSample` objects.
@@ -55,7 +56,7 @@ class CalibrationDataset:
         if max_samples < 0:
             raise ValueError("max_samples must be non-negative.")
         self._max_samples: int = max_samples
-        self._samples: List[CalibrationSample] = []
+        self._samples: list[CalibrationSample] = []
 
     # ------------------------------------------------------------------
     # Mutation
@@ -92,7 +93,7 @@ class CalibrationDataset:
     # Analysis
     # ------------------------------------------------------------------
 
-    def token_counts(self) -> List[int]:
+    def token_counts(self) -> list[int]:
         """Return a list of token counts, one per sample."""
         return [len(s.tokens) for s in self._samples]
 
@@ -121,7 +122,7 @@ class CalibrationDataset:
     # Sub-sampling
     # ------------------------------------------------------------------
 
-    def subsample(self, n: int, seed: int = 42) -> "CalibrationDataset":
+    def subsample(self, n: int, seed: int = 42) -> CalibrationDataset:
         """Return a new :class:`CalibrationDataset` with *n* random samples.
 
         The selection is performed without replacement using
@@ -158,10 +159,7 @@ class CalibrationDataset:
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
-        return (
-            f"CalibrationDataset(count={len(self._samples)}, "
-            f"max_samples={self._max_samples})"
-        )
+        return f"CalibrationDataset(count={len(self._samples)}, max_samples={self._max_samples})"
 
 
 # ---------------------------------------------------------------------------

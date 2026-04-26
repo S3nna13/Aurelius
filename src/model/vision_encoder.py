@@ -8,28 +8,29 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VisionConfig:
     """Configuration for the vision encoder."""
 
-    image_size: int = 224       # input image size (H == W assumed)
-    patch_size: int = 16        # size of each image patch
-    n_channels: int = 3         # RGB input channels
-    d_vision: int = 256         # vision encoder hidden dim
-    n_vision_layers: int = 2    # number of transformer layers in vision encoder
-    n_vision_heads: int = 4     # number of attention heads in vision encoder
-    d_lm: int = 64              # language model embedding dim (for projection)
+    image_size: int = 224  # input image size (H == W assumed)
+    patch_size: int = 16  # size of each image patch
+    n_channels: int = 3  # RGB input channels
+    d_vision: int = 256  # vision encoder hidden dim
+    n_vision_layers: int = 2  # number of transformer layers in vision encoder
+    n_vision_heads: int = 4  # number of attention heads in vision encoder
+    d_lm: int = 64  # language model embedding dim (for projection)
     max_visual_tokens: int = 196  # (224 // 16) ** 2 = 196 patches
 
 
 # ---------------------------------------------------------------------------
 # PatchEmbedding
 # ---------------------------------------------------------------------------
+
 
 class PatchEmbedding(nn.Module):
     """Convert an image into a sequence of patch tokens.
@@ -79,7 +80,7 @@ class PatchEmbedding(nn.Module):
 
         # Expand CLS token across the batch and prepend.
         cls = self.cls_token.expand(B, -1, -1)  # (B, 1, d_vision)
-        x = torch.cat([cls, x], dim=1)           # (B, n_patches + 1, d_vision)
+        x = torch.cat([cls, x], dim=1)  # (B, n_patches + 1, d_vision)
 
         # Add positional embeddings.
         x = x + self.pos_embed
@@ -90,6 +91,7 @@ class PatchEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # VisionTransformer
 # ---------------------------------------------------------------------------
+
 
 class VisionTransformer(nn.Module):
     """Lightweight Vision Transformer (ViT) encoder.
@@ -105,15 +107,17 @@ class VisionTransformer(nn.Module):
         super().__init__()
         self.patch_embed = PatchEmbedding(config)
 
-        self.layers = nn.ModuleList([
-            nn.TransformerEncoderLayer(
-                d_model=config.d_vision,
-                nhead=config.n_vision_heads,
-                dim_feedforward=config.d_vision * 4,
-                batch_first=True,
-            )
-            for _ in range(config.n_vision_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                nn.TransformerEncoderLayer(
+                    d_model=config.d_vision,
+                    nhead=config.n_vision_heads,
+                    dim_feedforward=config.d_vision * 4,
+                    batch_first=True,
+                )
+                for _ in range(config.n_vision_layers)
+            ]
+        )
 
         self.norm = nn.LayerNorm(config.d_vision)
 
@@ -138,6 +142,7 @@ class VisionTransformer(nn.Module):
 # ---------------------------------------------------------------------------
 # VisualProjection
 # ---------------------------------------------------------------------------
+
 
 class VisualProjection(nn.Module):
     """Project visual tokens from vision encoder space to LM embedding space.
@@ -166,6 +171,7 @@ class VisualProjection(nn.Module):
 # ---------------------------------------------------------------------------
 # MultimodalEmbedding
 # ---------------------------------------------------------------------------
+
 
 class MultimodalEmbedding(nn.Module):
     """Combine text and visual tokens for multimodal language model input.
@@ -206,8 +212,8 @@ class MultimodalEmbedding(nn.Module):
             return text_embeds
 
         # Visual tokens: (B, n_v, d_vision) -> (B, n_v, d_lm)
-        visual_tokens = self.vision_encoder(images)      # (B, n_v, d_vision)
-        visual_embeds = self.projection(visual_tokens)   # (B, n_v, d_lm)
+        visual_tokens = self.vision_encoder(images)  # (B, n_v, d_vision)
+        visual_embeds = self.projection(visual_tokens)  # (B, n_v, d_lm)
 
         # Prepend visual tokens to text tokens.
         combined = torch.cat([visual_embeds, text_embeds], dim=1)  # (B, n_v + T, d_lm)
@@ -217,6 +223,7 @@ class MultimodalEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # Visual attention mask
 # ---------------------------------------------------------------------------
+
 
 def create_visual_attention_mask(n_visual: int, n_text: int) -> Tensor:
     """Create a combined attention mask for visual + text tokens.
@@ -245,6 +252,6 @@ def create_visual_attention_mask(n_visual: int, n_text: int) -> Tensor:
 
     # Text tokens: causal self-attention (lower-triangular within text block)
     for i in range(n_text):
-        mask[n_visual + i, n_visual: n_visual + i + 1] = True
+        mask[n_visual + i, n_visual : n_visual + i + 1] = True
 
     return mask

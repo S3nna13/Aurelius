@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import json
 import time
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 
-class ToolCallStatus(str, Enum):
+class ToolCallStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -119,7 +118,9 @@ class ToolUseTracer:
                     "tool_name": c.tool_name,
                     "args": c.args,
                     "status": c.status.value,
-                    "result": c.result if isinstance(c.result, (str, int, float, bool, list, dict, type(None))) else str(c.result),
+                    "result": c.result
+                    if isinstance(c.result, (str, int, float, bool, list, dict, type(None)))
+                    else str(c.result),
                     "error": c.error,
                     "started_at": c.started_at,
                     "completed_at": c.completed_at,

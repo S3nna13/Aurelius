@@ -2,12 +2,11 @@
 Chat template with reasoning scratchpad, tool-call format, and system prompt support.
 Both gpt-oss-120b and gpt-oss-20b were trained exclusively on this format.
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional
-
 
 VALID_ROLES = frozenset({"system", "user", "assistant", "tool"})
 
@@ -25,8 +24,8 @@ class HarmonyMessage:
 
     role: str
     content: str
-    channel: Optional[str] = None
-    name: Optional[str] = None
+    channel: str | None = None
+    name: str | None = None
 
 
 @dataclass
@@ -76,9 +75,7 @@ class HarmonyTemplate:
         for msg in messages:
             role = msg.get("role", "")
             if role not in VALID_ROLES:
-                raise ValueError(
-                    f"Unknown role {role!r}. Valid roles: {sorted(VALID_ROLES)}"
-                )
+                raise ValueError(f"Unknown role {role!r}. Valid roles: {sorted(VALID_ROLES)}")
             content = msg.get("content", "")
 
             if role == "system":
@@ -122,9 +119,7 @@ class HarmonyTemplate:
         roles: list[str] = []
         if "<|system|>" in rendered:
             roles.append("system")
-        for m in re.finditer(
-            r"<\|user\|>|<\|assistant\|>|<tool_result>", rendered
-        ):
+        for m in re.finditer(r"<\|user\|>|<\|assistant\|>|<tool_result>", rendered):
             tag = m.group()
             if tag == "<|user|>":
                 roles.append("user")

@@ -21,15 +21,14 @@ from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
-from typing import Dict, List
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Abstract base
 # ---------------------------------------------------------------------------
+
 
 class MembershipInferenceAttack(ABC):
     """Abstract base class for membership inference attacks.
@@ -55,6 +54,7 @@ class MembershipInferenceAttack(ABC):
 # 1. Loss-based attack
 # ---------------------------------------------------------------------------
 
+
 class LossAttack(MembershipInferenceAttack):
     """Loss-based membership inference attack (Shokri et al., 2017).
 
@@ -76,15 +76,14 @@ class LossAttack(MembershipInferenceAttack):
 
     def score(self, log_probs: Tensor) -> Tensor:  # (B, T) -> (B,)
         if log_probs.dim() != 2:
-            raise ValueError(
-                f"log_probs must be 2-D (B, T), got shape {tuple(log_probs.shape)}"
-            )
+            raise ValueError(f"log_probs must be 2-D (B, T), got shape {tuple(log_probs.shape)}")
         return log_probs.mean(dim=1)
 
 
 # ---------------------------------------------------------------------------
 # 2. Min-K% Prob attack
 # ---------------------------------------------------------------------------
+
 
 class MinKProbAttack(MembershipInferenceAttack):
     """Min-K% Prob membership inference attack (Shi et al., 2023).
@@ -106,9 +105,7 @@ class MinKProbAttack(MembershipInferenceAttack):
 
     def score(self, log_probs: Tensor) -> Tensor:  # (B, T) -> (B,)
         if log_probs.dim() != 2:
-            raise ValueError(
-                f"log_probs must be 2-D (B, T), got shape {tuple(log_probs.shape)}"
-            )
+            raise ValueError(f"log_probs must be 2-D (B, T), got shape {tuple(log_probs.shape)}")
         B, T = log_probs.shape
         k = max(1, math.ceil(T * self.k_percent))
         # topk on the *negated* tensor gives us the largest (least-negative)
@@ -122,6 +119,7 @@ class MinKProbAttack(MembershipInferenceAttack):
 # ---------------------------------------------------------------------------
 # 3. Likelihood Ratio attack
 # ---------------------------------------------------------------------------
+
 
 class LikelihoodRatioAttack(MembershipInferenceAttack):
     """Likelihood-ratio membership inference attack.
@@ -144,9 +142,7 @@ class LikelihoodRatioAttack(MembershipInferenceAttack):
 
     def score(self, log_probs: Tensor) -> Tensor:  # (B, T) -> (B,)
         if log_probs.dim() != 2:
-            raise ValueError(
-                f"log_probs must be 2-D (B, T), got shape {tuple(log_probs.shape)}"
-            )
+            raise ValueError(f"log_probs must be 2-D (B, T), got shape {tuple(log_probs.shape)}")
         baseline = log_probs.mean()
         return log_probs.mean(dim=1) - baseline
 
@@ -154,6 +150,7 @@ class LikelihoodRatioAttack(MembershipInferenceAttack):
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class MembershipInferenceEvaluator:
     """Evaluate membership inference attacks using pure-PyTorch metrics.
@@ -204,9 +201,7 @@ class MembershipInferenceEvaluator:
         return auc
 
     @staticmethod
-    def _tpr_at_fpr(
-        scores: Tensor, labels: Tensor, target_fpr: float = 0.1
-    ) -> Tensor:
+    def _tpr_at_fpr(scores: Tensor, labels: Tensor, target_fpr: float = 0.1) -> Tensor:
         """Compute TPR at a specific FPR threshold.
 
         Args:
@@ -244,7 +239,7 @@ class MembershipInferenceEvaluator:
         self,
         member_scores: Tensor,
         nonmember_scores: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Evaluate attack performance.
 
         Args:
@@ -287,6 +282,7 @@ class MembershipInferenceEvaluator:
 # Defense: Gradient Noise (DP-SGD style)
 # ---------------------------------------------------------------------------
 
+
 class GradientNoiseDefense:
     """Gradient clipping + Gaussian noise defense (DP-SGD style).
 
@@ -305,16 +301,14 @@ class GradientNoiseDefense:
 
     def __init__(self, noise_multiplier: float = 1.0) -> None:
         if noise_multiplier < 0:
-            raise ValueError(
-                f"noise_multiplier must be >= 0, got {noise_multiplier}"
-            )
+            raise ValueError(f"noise_multiplier must be >= 0, got {noise_multiplier}")
         self.noise_multiplier = noise_multiplier
 
     def clip_and_noise(
         self,
-        gradients: List[Tensor],
+        gradients: list[Tensor],
         max_norm: float,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Clip gradients to ``max_norm`` and add calibrated Gaussian noise.
 
         Args:
@@ -330,7 +324,7 @@ class GradientNoiseDefense:
         if not gradients:
             return []
 
-        noised: List[Tensor] = []
+        noised: list[Tensor] = []
         sigma = self.noise_multiplier * max_norm
 
         for grad in gradients:

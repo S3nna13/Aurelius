@@ -21,30 +21,31 @@ Pure PyTorch — no HuggingFace.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # SparseCircuitConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SparseCircuitConfig:
     """Configuration for sparse feature circuit discovery."""
 
-    n_features: int = 256        # SAE dictionary size (typically 4-16x d_model)
+    n_features: int = 256  # SAE dictionary size (typically 4-16x d_model)
     sparsity_coef: float = 0.01  # L1 penalty coefficient for feature sparsity
-    top_k: int = 10              # Number of top circuit features to return
+    top_k: int = 10  # Number of top circuit features to return
 
 
 # ---------------------------------------------------------------------------
 # SparseAutoencoder
 # ---------------------------------------------------------------------------
+
 
 class SparseAutoencoder(nn.Module):
     """Sparse Autoencoder (SAE) that decomposes model activations into an
@@ -121,7 +122,7 @@ class SparseAutoencoder(nn.Module):
     # forward
     # ------------------------------------------------------------------
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Run encode → decode.
 
         Parameters
@@ -140,9 +141,7 @@ class SparseAutoencoder(nn.Module):
     # compute_loss
     # ------------------------------------------------------------------
 
-    def compute_loss(
-        self, x: torch.Tensor
-    ) -> Tuple[torch.Tensor, dict]:
+    def compute_loss(self, x: torch.Tensor) -> tuple[torch.Tensor, dict]:
         """Compute SAE training loss.
 
         Loss = MSE reconstruction loss + sparsity_coef * mean L1 feature norm.
@@ -191,6 +190,7 @@ class SparseAutoencoder(nn.Module):
 # ---------------------------------------------------------------------------
 # FeatureCircuitFinder
 # ---------------------------------------------------------------------------
+
 
 class FeatureCircuitFinder:
     """Identifies circuit-relevant SAE features via activation patching.
@@ -346,7 +346,7 @@ class FeatureCircuitFinder:
         corrupted_ids: torch.Tensor,
         layer_idx: int,
         top_k: int = 10,
-    ) -> List[Tuple[int, float]]:
+    ) -> list[tuple[int, float]]:
         """Identify the top-k SAE features most causally relevant to the metric.
 
         For every feature index 0..n_features-1, compute the patching score
@@ -365,7 +365,7 @@ class FeatureCircuitFinder:
         List of (feature_idx, score) tuples, sorted by score descending.
         """
         n_features = self.sae.n_features
-        scores: List[Tuple[int, float]] = []
+        scores: list[tuple[int, float]] = []
 
         for feat_idx in range(n_features):
             score = self.patch_feature(clean_ids, corrupted_ids, layer_idx, feat_idx)

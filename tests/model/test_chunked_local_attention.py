@@ -9,7 +9,6 @@ import torch
 
 from src.model.chunked_local_attention import ChunkedLocalAttention
 
-
 D_MODEL = 32
 N_HEADS = 4
 HEAD_DIM = 8
@@ -109,21 +108,30 @@ def test_batch_one_and_seq_one_degenerate():
 def test_invalid_chunk_le_window_raises():
     with pytest.raises(ValueError, match="chunk_size"):
         ChunkedLocalAttention(
-            d_model=D_MODEL, n_heads=N_HEADS, head_dim=HEAD_DIM,
-            chunk_size=WINDOW, window_size=WINDOW,
+            d_model=D_MODEL,
+            n_heads=N_HEADS,
+            head_dim=HEAD_DIM,
+            chunk_size=WINDOW,
+            window_size=WINDOW,
         )
     with pytest.raises(ValueError, match="chunk_size"):
         ChunkedLocalAttention(
-            d_model=D_MODEL, n_heads=N_HEADS, head_dim=HEAD_DIM,
-            chunk_size=WINDOW - 1, window_size=WINDOW,
+            d_model=D_MODEL,
+            n_heads=N_HEADS,
+            head_dim=HEAD_DIM,
+            chunk_size=WINDOW - 1,
+            window_size=WINDOW,
         )
 
 
 def test_invalid_head_dim_times_heads_neq_d_model_raises():
     with pytest.raises(ValueError, match="d_model"):
         ChunkedLocalAttention(
-            d_model=D_MODEL, n_heads=N_HEADS, head_dim=HEAD_DIM + 1,
-            chunk_size=CHUNK, window_size=WINDOW,
+            d_model=D_MODEL,
+            n_heads=N_HEADS,
+            head_dim=HEAD_DIM + 1,
+            chunk_size=CHUNK,
+            window_size=WINDOW,
         )
 
 

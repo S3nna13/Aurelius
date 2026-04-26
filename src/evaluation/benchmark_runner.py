@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -28,9 +28,7 @@ class BenchmarkRunner:
     def __init__(self, suites: list[BenchmarkSuite]) -> None:
         self.suites = list(suites)
 
-    def run_suite(
-        self, suite: BenchmarkSuite, predict_fn: Callable[[str], str]
-    ) -> BenchmarkResult:
+    def run_suite(self, suite: BenchmarkSuite, predict_fn: Callable[[str], str]) -> BenchmarkResult:
         """Run all tasks in a suite and compute exact-match accuracy."""
         details: list[dict] = []
         correct_count = 0
@@ -61,9 +59,7 @@ class BenchmarkRunner:
             details=details,
         )
 
-    def run_all(
-        self, predict_fn: Callable[[str], str]
-    ) -> list[BenchmarkResult]:
+    def run_all(self, predict_fn: Callable[[str], str]) -> list[BenchmarkResult]:
         """Run all registered suites."""
         return [self.run_suite(suite, predict_fn) for suite in self.suites]
 

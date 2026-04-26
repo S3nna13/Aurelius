@@ -1,15 +1,15 @@
 """Tests for LoRA utilities: rank estimation, adapter merging, and LoRA layers."""
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.lora_utils import (
-    estimate_intrinsic_rank,
     LoRAAdapterInfo,
-    merge_lora_adapters,
     LoRALinear,
     MultiLoRALinear,
     analyze_lora_rank_distribution,
+    estimate_intrinsic_rank,
+    merge_lora_adapters,
 )
 
 IN, OUT, RANK = 16, 32, 4
@@ -18,6 +18,7 @@ IN, OUT, RANK = 16, 32, 4
 # ---------------------------------------------------------------------------
 # 1. estimate_intrinsic_rank
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_intrinsic_rank_full_rank():
     """A random full-rank matrix should require rank close to min(m, n)."""
@@ -46,6 +47,7 @@ def test_estimate_intrinsic_rank_low_rank():
 # 3. LoRAAdapterInfo
 # ---------------------------------------------------------------------------
 
+
 def test_lora_adapter_info_scale():
     alpha, rank = 16.0, 4
     A = torch.zeros(rank, IN)
@@ -66,6 +68,7 @@ def test_lora_adapter_info_delta_weight_shape():
 # ---------------------------------------------------------------------------
 # 5–6. merge_lora_adapters
 # ---------------------------------------------------------------------------
+
 
 def _make_adapter(name: str, seed: int) -> LoRAAdapterInfo:
     torch.manual_seed(seed)
@@ -101,6 +104,7 @@ def test_merge_lora_adapters_weighted():
 # 7–10. LoRALinear
 # ---------------------------------------------------------------------------
 
+
 def test_lora_linear_forward_shape():
     layer = LoRALinear(IN, OUT, rank=RANK)
     x = torch.randn(2, 8, IN)
@@ -129,6 +133,7 @@ def test_lora_linear_adapters_trainable():
 # 11. MultiLoRALinear
 # ---------------------------------------------------------------------------
 
+
 def test_multi_lora_linear_switch():
     """Switching the active adapter should change the forward output."""
     torch.manual_seed(0)
@@ -136,10 +141,10 @@ def test_multi_lora_linear_switch():
 
     # Give the two adapters different non-zero lora_A values so outputs differ
     with torch.no_grad():
-        layer.adapters[0].lora_A.fill_(0.1)   # type: ignore[union-attr]
-        layer.adapters[0].lora_B.fill_(0.1)   # type: ignore[union-attr]
-        layer.adapters[1].lora_A.fill_(0.5)   # type: ignore[union-attr]
-        layer.adapters[1].lora_B.fill_(0.5)   # type: ignore[union-attr]
+        layer.adapters[0].lora_A.fill_(0.1)  # type: ignore[union-attr]
+        layer.adapters[0].lora_B.fill_(0.1)  # type: ignore[union-attr]
+        layer.adapters[1].lora_A.fill_(0.5)  # type: ignore[union-attr]
+        layer.adapters[1].lora_B.fill_(0.5)  # type: ignore[union-attr]
 
     x = torch.randn(1, 4, IN)
 
@@ -155,6 +160,7 @@ def test_multi_lora_linear_switch():
 # ---------------------------------------------------------------------------
 # 12. analyze_lora_rank_distribution
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_lora_rank_distribution_keys():
     """Should return a dict keyed by all nn.Linear module names."""

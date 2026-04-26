@@ -6,22 +6,23 @@ Verifies:
 - format_compliance on 3 raw responses
 - BENCHMARK_REGISTRY["tool_bench"] is wired
 """
+
 from __future__ import annotations
 
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.tool_bench import (
     ToolBench,
     ToolBenchConfig,
     ToolBenchSample,
     ToolCall,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _tc(name: str, **params) -> ToolCall:
     return ToolCall(tool_name=name, parameters=dict(params))
@@ -62,15 +63,16 @@ SAMPLE_WRONG = _sample(
 SAMPLES = [SAMPLE_PERFECT, SAMPLE_PARTIAL, SAMPLE_WRONG]
 
 RAW_RESPONSES = [
-    '{"tool": "web_search", "parameters": {"query": "LLM benchmarks"}}',   # valid
-    'Call the calculator with 2+2',                                          # invalid
-    '{"tool": "database_query", "parameters": {"sql": "SELECT 1"}}',        # valid
+    '{"tool": "web_search", "parameters": {"query": "LLM benchmarks"}}',  # valid
+    "Call the calculator with 2+2",  # invalid
+    '{"tool": "database_query", "parameters": {"sql": "SELECT 1"}}',  # valid
 ]
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_registry_wired():
     """BENCHMARK_REGISTRY must contain a 'tool_bench' entry."""
@@ -81,16 +83,25 @@ def test_registry_wired():
 def test_evaluate_returns_all_metric_keys():
     bench = ToolBench()
     result = bench.evaluate(SAMPLES, raw_responses=RAW_RESPONSES)
-    for key in ("tool_selection", "parameter_accuracy", "sequence_exact_match",
-                "format_compliance", "n_samples"):
+    for key in (
+        "tool_selection",
+        "parameter_accuracy",
+        "sequence_exact_match",
+        "format_compliance",
+        "n_samples",
+    ):
         assert key in result, f"Missing key: {key}"
 
 
 def test_evaluate_metrics_in_unit_range():
     bench = ToolBench()
     result = bench.evaluate(SAMPLES, raw_responses=RAW_RESPONSES)
-    for key in ("tool_selection", "parameter_accuracy", "sequence_exact_match",
-                "format_compliance"):
+    for key in (
+        "tool_selection",
+        "parameter_accuracy",
+        "sequence_exact_match",
+        "format_compliance",
+    ):
         val = result[key]
         assert 0.0 <= val <= 1.0, f"{key}={val} out of [0,1]"
 

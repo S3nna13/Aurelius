@@ -2,24 +2,22 @@
 
 from __future__ import annotations
 
-import time
 import threading
-
-import pytest
+import time
 
 from src.serving.rate_limiter import (
-    RateLimitConfig,
-    RateLimitResult,
-    RateLimiterChain,
-    TokenBucketLimiter,
-    RATE_LIMIT_REGISTRY,
     DEFAULT_RATE_LIMITER,
+    RATE_LIMIT_REGISTRY,
+    RateLimitConfig,
+    RateLimiterChain,
+    RateLimitResult,
+    TokenBucketLimiter,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_limiter(rps: float = 10.0, burst: int = 5, per: str = "key") -> TokenBucketLimiter:
     return TokenBucketLimiter(RateLimitConfig(requests_per_second=rps, burst_size=burst, per=per))
@@ -28,6 +26,7 @@ def make_limiter(rps: float = 10.0, burst: int = 5, per: str = "key") -> TokenBu
 # ---------------------------------------------------------------------------
 # Basic correctness
 # ---------------------------------------------------------------------------
+
 
 class TestSingleRequest:
     def test_fresh_bucket_allowed(self):
@@ -85,6 +84,7 @@ class TestRefill:
 # Reset
 # ---------------------------------------------------------------------------
 
+
 class TestReset:
     def test_reset_clears_bucket(self):
         burst = 3
@@ -118,6 +118,7 @@ class TestReset:
 # Thread safety
 # ---------------------------------------------------------------------------
 
+
 class TestThreadSafety:
     def test_concurrent_requests_respect_burst(self):
         burst = 10
@@ -147,6 +148,7 @@ class TestThreadSafety:
 # ---------------------------------------------------------------------------
 # RateLimiterChain
 # ---------------------------------------------------------------------------
+
 
 class TestRateLimiterChain:
     def test_chain_all_allow(self):
@@ -198,6 +200,7 @@ class TestRateLimiterChain:
 # Adversarial inputs
 # ---------------------------------------------------------------------------
 
+
 class TestAdversarial:
     def test_empty_string_identifier(self):
         limiter = make_limiter()
@@ -216,6 +219,7 @@ class TestAdversarial:
 # ---------------------------------------------------------------------------
 # Global per-mode
 # ---------------------------------------------------------------------------
+
 
 class TestGlobalPer:
     def test_global_same_bucket_regardless_of_identifier(self):
@@ -243,6 +247,7 @@ class TestGlobalPer:
 # ---------------------------------------------------------------------------
 # Module-level singletons
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_default_limiter_in_registry(self):

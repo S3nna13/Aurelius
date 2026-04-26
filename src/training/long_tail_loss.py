@@ -17,16 +17,16 @@ All implementations are pure PyTorch — no external ML libraries required.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LongTailConfig:
@@ -40,6 +40,7 @@ class LongTailConfig:
         effective_num_beta:  Beta for effective-number weighting (close to 1).
         margin:              Additive margin applied to target logit (LDAM-style).
     """
+
     n_classes: int = 50257
     smoothing: float = 0.0
     focal_gamma: float = 0.0
@@ -51,6 +52,7 @@ class LongTailConfig:
 # ---------------------------------------------------------------------------
 # Weight computation helpers
 # ---------------------------------------------------------------------------
+
 
 def compute_class_weights(class_counts: torch.Tensor, power: float = 0.5) -> torch.Tensor:
     """Compute inverse-frequency class weights.
@@ -98,7 +100,7 @@ def compute_effective_num_weights(class_counts: torch.Tensor, beta: float = 0.99
         (n_classes,) float tensor of normalised class-balanced weights.
     """
     counts = class_counts.float().clamp(min=1.0)
-    effective_num = (1.0 - beta ** counts) / (1.0 - beta)
+    effective_num = (1.0 - beta**counts) / (1.0 - beta)
     weights = 1.0 / effective_num.clamp(min=1e-8)
     n_classes = counts.numel()
     weights = weights * (n_classes / weights.sum())
@@ -108,6 +110,7 @@ def compute_effective_num_weights(class_counts: torch.Tensor, beta: float = 0.99
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def class_balanced_loss(
     logits: torch.Tensor,
@@ -134,9 +137,7 @@ def class_balanced_loss(
     labels_flat = labels.reshape(-1)
 
     # Per-token CE (unreduced)
-    ce = F.cross_entropy(
-        logits_flat, labels_flat, reduction="none", ignore_index=ignore_index
-    )
+    ce = F.cross_entropy(logits_flat, labels_flat, reduction="none", ignore_index=ignore_index)
 
     valid_mask = labels_flat != ignore_index
 
@@ -234,6 +235,7 @@ def balanced_softmax_loss(
 # Seesaw Loss
 # ---------------------------------------------------------------------------
 
+
 class SeesawLoss(nn.Module):
     """Seesaw Loss for long-tailed recognition.
 
@@ -286,37 +288,37 @@ class SeesawLoss(nn.Module):
             Scalar mean seesaw loss over valid positions.
         """
         n_classes = self.n_classes
-        logits_flat = logits.reshape(-1, n_classes)          # (N, C)
-        labels_flat = labels.reshape(-1)                      # (N,)
+        logits_flat = logits.reshape(-1, n_classes)  # (N, C)
+        labels_flat = labels.reshape(-1)  # (N,)
 
         valid_mask = labels_flat != -100
         if not valid_mask.any():
             return logits_flat.new_zeros(())
 
-        lf = logits_flat[valid_mask]                          # (M, C)
-        lt = labels_flat[valid_mask]                          # (M,)
+        lf = logits_flat[valid_mask]  # (M, C)
+        lt = labels_flat[valid_mask]  # (M,)
 
         counts = class_counts.float().clamp(min=1.0).to(lf.device)  # (C,)
 
         # ---- Mitigation factor ------------------------------------------------
         # n_i: count of the ground-truth class for each sample  (M, 1)
-        n_i = counts[lt].unsqueeze(1)                          # (M, 1)
+        n_i = counts[lt].unsqueeze(1)  # (M, 1)
         # n_j: count of every class                             (1, C)
-        n_j = counts.unsqueeze(0)                              # (1, C)
+        n_j = counts.unsqueeze(0)  # (1, C)
 
-        ratio = (n_j / n_i.clamp(min=1e-8)).clamp(max=1.0)    # (M, C) in [0, 1]
-        mitigation = ratio.pow(self.p)                         # (M, C)
+        ratio = (n_j / n_i.clamp(min=1e-8)).clamp(max=1.0)  # (M, C) in [0, 1]
+        mitigation = ratio.pow(self.p)  # (M, C)
 
         # ---- Compensation factor ----------------------------------------------
         # s_i: score of ground-truth class for each sample     (M, 1)
-        s_i = lf.gather(1, lt.unsqueeze(1))                   # (M, 1)
+        s_i = lf.gather(1, lt.unsqueeze(1))  # (M, 1)
         # s_j: score of every class                            (M, C)
-        s_j = lf                                               # (M, C)
+        s_j = lf  # (M, C)
 
-        compensation = torch.sigmoid(self.q * (s_j - s_i))    # (M, C)
+        compensation = torch.sigmoid(self.q * (s_j - s_i))  # (M, C)
 
         # ---- Combined seesaw weight ------------------------------------------
-        seesaw_w = mitigation * compensation                   # (M, C)
+        seesaw_w = mitigation * compensation  # (M, C)
 
         # ---- Weighted cross-entropy ------------------------------------------
         # Replace standard softmax denominator with seesaw-weighted sum

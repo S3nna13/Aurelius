@@ -1,4 +1,5 @@
 """Tests for the Lion optimizer (EvoLved Sign Momentum)."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,7 +7,6 @@ import torch
 import torch.nn as nn
 
 from src.training.lion_optimizer import Lion
-
 
 # ---------------------------------------------------------------------------
 # Construction / validation
@@ -120,10 +120,12 @@ def test_multiple_param_groups_with_different_lr():
     p2.grad = torch.tensor([1.0, 1.0])
 
     lr1, lr2 = 1e-2, 1e-3
-    opt = Lion([
-        {"params": [p1], "lr": lr1},
-        {"params": [p2], "lr": lr2},
-    ])
+    opt = Lion(
+        [
+            {"params": [p1], "lr": lr1},
+            {"params": [p2], "lr": lr2},
+        ]
+    )
     before1 = p1.detach().clone()
     before2 = p2.detach().clone()
     opt.step()

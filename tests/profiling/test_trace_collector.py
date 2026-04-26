@@ -2,9 +2,9 @@ import json
 import time
 
 from src.profiling.trace_collector import (
-    TraceEvent,
-    TraceCollector,
     TRACE_COLLECTOR_REGISTRY,
+    TraceCollector,
+    TraceEvent,
 )
 
 

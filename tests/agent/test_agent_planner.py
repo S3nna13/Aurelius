@@ -9,7 +9,6 @@ import pytest
 
 from src.agent.agent_planner import BeamPlanner, PlanNode
 
-
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
@@ -57,8 +56,12 @@ def test_expand_produces_beam_width_children():
         max_depth=3,
     )
     root = PlanNode(
-        id="r", parent_id=None, depth=0, description="root",
-        expected_tool=None, expected_effect="",
+        id="r",
+        parent_id=None,
+        depth=0,
+        description="root",
+        expected_tool=None,
+        expected_effect="",
     )
     kids = planner.expand(root, task="t")
     assert len(kids) == 4
@@ -113,9 +116,7 @@ def test_to_execution_queue_yields_ordered_dicts():
     # Root is skipped.
     assert len(queue) == len(path) - 1
     assert [q["depth"] for q in queue] == list(range(1, len(path)))
-    assert {"description", "expected_tool", "expected_effect", "plan_id"} <= queue[
-        0
-    ].keys()
+    assert {"description", "expected_tool", "expected_effect", "plan_id"} <= queue[0].keys()
 
 
 def test_malformed_generate_output_is_dropped():
@@ -134,8 +135,12 @@ def test_malformed_generate_output_is_dropped():
         max_depth=1,
     )
     root = PlanNode(
-        id="r", parent_id=None, depth=0, description="root",
-        expected_tool=None, expected_effect="",
+        id="r",
+        parent_id=None,
+        depth=0,
+        description="root",
+        expected_tool=None,
+        expected_effect="",
     )
     kids = planner.expand(root, "task")
     assert len(kids) == 1
@@ -164,9 +169,7 @@ def test_empty_children_stops_planner_early():
         calls["n"] += 1
         # Expand once at depth 0, then refuse.
         if path[-1].depth == 0:
-            return [
-                {"description": "d1", "expected_tool": None, "expected_effect": ""}
-            ]
+            return [{"description": "d1", "expected_tool": None, "expected_effect": ""}]
         return []
 
     planner = BeamPlanner(

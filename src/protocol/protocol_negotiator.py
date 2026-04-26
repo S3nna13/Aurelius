@@ -10,10 +10,8 @@ Pure stdlib only.  No external dependencies.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional
-
+from dataclasses import dataclass
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # ProtocolVersion
@@ -30,19 +28,19 @@ class ProtocolVersion:
     def _as_tuple(self) -> tuple:
         return (self.major, self.minor, self.patch)
 
-    def __str__(self) -> str:                          # noqa: D105
+    def __str__(self) -> str:  # noqa: D105
         return f"{self.major}.{self.minor}.{self.patch}"
 
-    def __le__(self, other: "ProtocolVersion") -> bool:  # noqa: D105
+    def __le__(self, other: ProtocolVersion) -> bool:  # noqa: D105
         return self._as_tuple() <= other._as_tuple()
 
-    def __ge__(self, other: "ProtocolVersion") -> bool:  # noqa: D105
+    def __ge__(self, other: ProtocolVersion) -> bool:  # noqa: D105
         return self._as_tuple() >= other._as_tuple()
 
-    def __lt__(self, other: "ProtocolVersion") -> bool:  # noqa: D105
+    def __lt__(self, other: ProtocolVersion) -> bool:  # noqa: D105
         return self._as_tuple() < other._as_tuple()
 
-    def __gt__(self, other: "ProtocolVersion") -> bool:  # noqa: D105
+    def __gt__(self, other: ProtocolVersion) -> bool:  # noqa: D105
         return self._as_tuple() > other._as_tuple()
 
 
@@ -53,9 +51,9 @@ class ProtocolVersion:
 
 @dataclass(frozen=True)
 class ProtocolCapability:
-    name:        str
-    required:    bool = True
-    version_min: str  = "1.0.0"
+    name: str
+    required: bool = True
+    version_min: str = "1.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -63,9 +61,9 @@ class ProtocolCapability:
 # ---------------------------------------------------------------------------
 
 
-class NegotiationOutcome(str, Enum):
-    ACCEPTED   = "accepted"
-    REJECTED   = "rejected"
+class NegotiationOutcome(StrEnum):
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
     DOWNGRADED = "downgraded"
 
 
@@ -91,11 +89,11 @@ class ProtocolNegotiator:
 
     def __init__(
         self,
-        supported_versions: List[ProtocolVersion],
-        capabilities:       List[ProtocolCapability],
+        supported_versions: list[ProtocolVersion],
+        capabilities: list[ProtocolCapability],
     ) -> None:
-        self.supported_versions: List[ProtocolVersion] = supported_versions
-        self.capabilities:       List[ProtocolCapability] = capabilities
+        self.supported_versions: list[ProtocolVersion] = supported_versions
+        self.capabilities: list[ProtocolCapability] = capabilities
 
     # ------------------------------------------------------------------
     # Public API
@@ -103,8 +101,8 @@ class ProtocolNegotiator:
 
     def negotiate(
         self,
-        client_versions:     List[ProtocolVersion],
-        client_capabilities: List[str],
+        client_versions: list[ProtocolVersion],
+        client_capabilities: list[str],
     ) -> dict:
         """Find the best shared version and verify capabilities.
 
@@ -117,8 +115,8 @@ class ProtocolNegotiator:
         common_version = self.highest_common(self.supported_versions, client_versions)
 
         client_cap_set = set(client_capabilities)
-        missing_required: List[str] = []
-        optional_missing: List[str] = []
+        missing_required: list[str] = []
+        optional_missing: list[str] = []
 
         for cap in self.capabilities:
             if cap.name not in client_cap_set:
@@ -129,8 +127,8 @@ class ProtocolNegotiator:
 
         if common_version is None or missing_required:
             return {
-                "outcome":          NegotiationOutcome.REJECTED.value,
-                "version":          None,
+                "outcome": NegotiationOutcome.REJECTED.value,
+                "version": None,
                 "missing_required": missing_required,
                 "optional_missing": optional_missing,
             }
@@ -150,23 +148,23 @@ class ProtocolNegotiator:
             outcome = NegotiationOutcome.ACCEPTED
 
         return {
-            "outcome":          outcome.value,
-            "version":          str(common_version),
+            "outcome": outcome.value,
+            "version": str(common_version),
             "missing_required": missing_required,
             "optional_missing": optional_missing,
         }
 
     def highest_common(
         self,
-        a: List[ProtocolVersion],
-        b: List[ProtocolVersion],
-    ) -> Optional[ProtocolVersion]:
+        a: list[ProtocolVersion],
+        b: list[ProtocolVersion],
+    ) -> ProtocolVersion | None:
         """Return the highest :class:`ProtocolVersion` present in both *a* and *b*.
 
         Comparison is performed on ``(major, minor, patch)`` tuples.
         Returns ``None`` if there is no overlap.
         """
-        set_b  = {v._as_tuple() for v in b}
+        set_b = {v._as_tuple() for v in b}
         common = [v for v in a if v._as_tuple() in set_b]
         if not common:
             return None

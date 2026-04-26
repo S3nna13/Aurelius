@@ -1,16 +1,14 @@
 """Tests for src/data/rephrase.py."""
 
-import pytest
-
 from src.data.rephrase import (
     RephraseConfig,
     build_rephrase_prompt,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_text(length: int) -> str:
     """Return a string of exactly *length* 'a' characters."""
@@ -20,6 +18,7 @@ def _make_text(length: int) -> str:
 # ---------------------------------------------------------------------------
 # build_rephrase_prompt
 # ---------------------------------------------------------------------------
+
 
 def test_build_rephrase_prompt_basic():
     """Prompt must contain the input text."""

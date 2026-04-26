@@ -1,4 +1,5 @@
 """Tests for RAFT: Retrieval-Augmented Fine-Tuning."""
+
 from __future__ import annotations
 
 import random
@@ -16,7 +17,6 @@ from src.training.raft import (
     format_raft_prompt,
     format_raft_target,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

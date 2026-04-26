@@ -3,14 +3,13 @@
 Tiny config used throughout: d_model=64, n_heads=4, kv_lrank=16, head_dim=16.
 Run with: .venv/bin/python3.14 -m pytest tests/model/test_flash_mla.py -v
 """
+
 from __future__ import annotations
 
 import torch
-import pytest
 
-from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
 
 # ---------------------------------------------------------------------------
 # Shared tiny config (kv_lrank=16, n_heads=4, head_dim=16 → ratio=0.25)
@@ -42,6 +41,7 @@ def tiny_input(B: int = 2, T: int = 8) -> torch.Tensor:
 # Test 1 - config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = FlashMLAConfig()
     assert cfg.kv_lrank == 512
@@ -55,6 +55,7 @@ def test_config_defaults():
 # Test 2 - output shape
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape():
     model = make_model()
     x = tiny_input(B=2, T=8)
@@ -67,6 +68,7 @@ def test_output_shape():
 # Test 3 - compress_kv shape
 # ---------------------------------------------------------------------------
 
+
 def test_compress_kv_shape():
     model = make_model()
     x = tiny_input(B=3, T=5)
@@ -78,6 +80,7 @@ def test_compress_kv_shape():
 # ---------------------------------------------------------------------------
 # Test 4 - standard path runs
 # ---------------------------------------------------------------------------
+
 
 def test_standard_path_runs():
     model = make_model()
@@ -92,6 +95,7 @@ def test_standard_path_runs():
 # Test 5 - absorbed path runs
 # ---------------------------------------------------------------------------
 
+
 def test_absorbed_path_runs():
     model = make_model()
     model.absorb_projections()
@@ -105,6 +109,7 @@ def test_absorbed_path_runs():
 # ---------------------------------------------------------------------------
 # Test 6 - absorbed path matches standard path (rtol=1e-4)
 # ---------------------------------------------------------------------------
+
 
 def test_absorbed_matches_standard():
     torch.manual_seed(42)
@@ -123,6 +128,7 @@ def test_absorbed_matches_standard():
 # Test 7 - kv_cache_size_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_kv_cache_ratio():
     # kv_lrank=16, n_heads=4, head_dim=16 -> 16 / (4*16) = 0.25
     model = make_model()
@@ -133,6 +139,7 @@ def test_kv_cache_ratio():
 # ---------------------------------------------------------------------------
 # Test 8 - gradients flow
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_flow():
     model = FlashMLAAttention(TINY_CFG).train()
@@ -148,6 +155,7 @@ def test_gradients_flow():
 # ---------------------------------------------------------------------------
 # Test 9 - absorb_projections is idempotent
 # ---------------------------------------------------------------------------
+
 
 def test_absorb_idempotent():
     model = make_model()
@@ -166,6 +174,7 @@ def test_absorb_idempotent():
 # Test 10 - batch size one
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one():
     model = make_model()
     x = torch.randn(1, 8, TINY_CFG.d_model)
@@ -177,6 +186,7 @@ def test_batch_size_one():
 # ---------------------------------------------------------------------------
 # Test 11 - sequence length one (single token)
 # ---------------------------------------------------------------------------
+
 
 def test_seq_len_one():
     model = make_model()
@@ -190,6 +200,7 @@ def test_seq_len_one():
 # ---------------------------------------------------------------------------
 # Test 12 - determinism in eval mode
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     model = make_model()
@@ -205,6 +216,7 @@ def test_determinism():
 # Test 13 - compression is real (kv_lrank < n_heads * head_dim)
 # ---------------------------------------------------------------------------
 
+
 def test_compression_smaller_than_full():
     model = make_model()
     full_kv_size = TINY_CFG.n_heads * TINY_CFG.head_dim  # 64
@@ -218,10 +230,11 @@ def test_compression_smaller_than_full():
 # Test 14 - out_proj maps n_heads*head_dim to d_model
 # ---------------------------------------------------------------------------
 
+
 def test_out_proj_shape():
     model = make_model()
     expected_in = TINY_CFG.n_heads * TINY_CFG.head_dim  # 64
-    expected_out = TINY_CFG.d_model                      # 64
+    expected_out = TINY_CFG.d_model  # 64
     assert model.out_proj.in_features == expected_in
     assert model.out_proj.out_features == expected_out
 
@@ -229,6 +242,7 @@ def test_out_proj_shape():
 # ---------------------------------------------------------------------------
 # Test 15 - registry entry
 # ---------------------------------------------------------------------------
+
 
 def test_registry():
     assert "flash_mla" in MODEL_COMPONENT_REGISTRY

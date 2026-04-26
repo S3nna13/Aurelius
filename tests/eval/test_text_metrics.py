@@ -1,23 +1,26 @@
 """Tests for text generation evaluation metrics."""
+
 from __future__ import annotations
 
-import pytest
-from src.eval.text_metrics import (
-    normalize_text,
-    exact_match,
-    token_f1,
-    lcs_length,
-    rouge_l,
-    ngrams,
-    bleu,
-    corpus_metrics,
-)
 from collections import Counter
 
+import pytest
+
+from src.eval.text_metrics import (
+    bleu,
+    corpus_metrics,
+    exact_match,
+    lcs_length,
+    ngrams,
+    normalize_text,
+    rouge_l,
+    token_f1,
+)
 
 # ---------------------------------------------------------------------------
 # normalize_text
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_text_lowercase():
     assert normalize_text("Hello World") == "hello world"
@@ -30,6 +33,7 @@ def test_normalize_text_removes_punctuation():
 # ---------------------------------------------------------------------------
 # exact_match
 # ---------------------------------------------------------------------------
+
 
 def test_exact_match_true():
     assert exact_match("the cat sat", "the cat sat") == 1.0
@@ -46,6 +50,7 @@ def test_exact_match_normalized():
 # ---------------------------------------------------------------------------
 # token_f1
 # ---------------------------------------------------------------------------
+
 
 def test_token_f1_perfect():
     assert token_f1("a b c", "a b c") == pytest.approx(1.0)
@@ -67,6 +72,7 @@ def test_token_f1_partial():
 # lcs_length
 # ---------------------------------------------------------------------------
 
+
 def test_lcs_length_basic():
     assert lcs_length([1, 2, 3], [1, 3]) == 2
 
@@ -78,6 +84,7 @@ def test_lcs_length_empty():
 # ---------------------------------------------------------------------------
 # rouge_l
 # ---------------------------------------------------------------------------
+
 
 def test_rouge_l_perfect():
     assert rouge_l("a b c d", "a b c d") == pytest.approx(1.0)
@@ -98,6 +105,7 @@ def test_rouge_l_partial():
 # ngrams
 # ---------------------------------------------------------------------------
 
+
 def test_ngrams_unigrams():
     result = ngrams(["a", "b", "a"], 1)
     expected = Counter({("a",): 2, ("b",): 1})
@@ -113,6 +121,7 @@ def test_ngrams_bigrams():
 # ---------------------------------------------------------------------------
 # bleu
 # ---------------------------------------------------------------------------
+
 
 def test_bleu_perfect():
     score = bleu("the cat sat on the mat", ["the cat sat on the mat"])
@@ -133,6 +142,7 @@ def test_bleu_partial():
 # ---------------------------------------------------------------------------
 # corpus_metrics
 # ---------------------------------------------------------------------------
+
 
 def test_corpus_metrics_returns_all_keys():
     result = corpus_metrics(["hello world"], ["hello world"])

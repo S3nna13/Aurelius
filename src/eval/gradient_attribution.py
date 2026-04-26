@@ -11,17 +11,17 @@ Implements four attribution strategies using pure PyTorch:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AttributionConfig:
@@ -35,13 +35,14 @@ class AttributionConfig:
     """
 
     n_steps: int = 50
-    baseline: str = "zero"   # "zero" | "random"
+    baseline: str = "zero"  # "zero" | "random"
     normalize: bool = True
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _grad_wrt_embeddings(embeddings: Tensor, target_fn: Callable) -> Tensor:
     """Compute gradient of target_fn(embeddings) w.r.t. embeddings.
@@ -88,6 +89,7 @@ def _build_baseline(embeddings: Tensor, strategy: str) -> Tensor:
 # 1. Vanilla Gradients
 # ---------------------------------------------------------------------------
 
+
 class VanillaGradients:
     """Attribution via plain first-order gradients of the target w.r.t. embeddings.
 
@@ -112,9 +114,9 @@ class VanillaGradients:
             Attribution map of shape ``(B, T)`` — always non-negative.
         """
         emb = embeddings.detach().requires_grad_(True)
-        grads = _grad_wrt_embeddings(emb, target_fn)   # (B, T, d)
+        grads = _grad_wrt_embeddings(emb, target_fn)  # (B, T, d)
         # L2 norm over d
-        attribution = grads.norm(p=2, dim=-1)           # (B, T)
+        attribution = grads.norm(p=2, dim=-1)  # (B, T)
         return attribution
 
     # ------------------------------------------------------------------
@@ -129,14 +131,15 @@ class VanillaGradients:
             Saliency map of shape ``(B, T)`` — always non-negative.
         """
         emb = embeddings.detach().requires_grad_(True)
-        grads = _grad_wrt_embeddings(emb, target_fn)   # (B, T, d)
-        saliency = grads.abs().sum(dim=-1)              # (B, T)
+        grads = _grad_wrt_embeddings(emb, target_fn)  # (B, T, d)
+        saliency = grads.abs().sum(dim=-1)  # (B, T)
         return saliency
 
 
 # ---------------------------------------------------------------------------
 # 2. Gradient × Input
 # ---------------------------------------------------------------------------
+
 
 class GradientXInput:
     """Element-wise product of gradient and input, summed over the embedding dim.
@@ -164,14 +167,15 @@ class GradientXInput:
             Attribution map of shape ``(B, T)`` — can be negative.
         """
         emb = embeddings.detach().requires_grad_(True)
-        grads = _grad_wrt_embeddings(emb, target_fn)    # (B, T, d)
-        attribution = (grads * emb).sum(dim=-1)          # (B, T), signed
+        grads = _grad_wrt_embeddings(emb, target_fn)  # (B, T, d)
+        attribution = (grads * emb).sum(dim=-1)  # (B, T), signed
         return attribution
 
 
 # ---------------------------------------------------------------------------
 # 3. Integrated Gradients
 # ---------------------------------------------------------------------------
+
 
 class IntegratedGradients:
     """Integrated Gradients (Sundararajan, Taly & Yan, 2017).
@@ -190,7 +194,7 @@ class IntegratedGradients:
         self,
         embeddings: Tensor,
         target_fn: Callable,
-        baseline: Optional[Tensor] = None,
+        baseline: Tensor | None = None,
     ) -> Tensor:
         """Compute integrated gradients from *baseline* to *embeddings*.
 
@@ -223,7 +227,7 @@ class IntegratedGradients:
             grad_sum = grad_sum + weight * grads.detach()
 
         # Mean gradient (trapezoidal) × (input - baseline), summed over d
-        mean_grad = grad_sum / self.n_steps           # (B, T, d)
+        mean_grad = grad_sum / self.n_steps  # (B, T, d)
         attribution = (mean_grad * (embeddings - baseline)).sum(dim=-1)  # (B, T)
         return attribution
 
@@ -262,6 +266,7 @@ class IntegratedGradients:
 # ---------------------------------------------------------------------------
 # 4. Kernel SHAP Approximation
 # ---------------------------------------------------------------------------
+
 
 class KernelSHAPApproximator:
     """Approximate Shapley values via Kernel SHAP (Lundberg & Lee, 2017).
@@ -304,7 +309,7 @@ class KernelSHAPApproximator:
         self,
         embeddings: Tensor,
         target_fn: Callable,
-        baseline: Optional[Tensor] = None,
+        baseline: Tensor | None = None,
     ) -> Tensor:
         """Estimate per-token Shapley values.
 
@@ -337,7 +342,7 @@ class KernelSHAPApproximator:
 
         # Evaluate model at full input and baseline (for centering)
         with torch.no_grad():
-            f_full = target_fn(embeddings).item()
+            target_fn(embeddings).item()
             f_base = target_fn(baseline).item()
 
         # Sample random coalitions and collect (mask_vector, model_output)
@@ -350,9 +355,7 @@ class KernelSHAPApproximator:
 
         for _ in range(self.n_samples):
             # Random binary mask over T tokens
-            mask = torch.bernoulli(
-                torch.full((T,), 0.5), generator=rng
-            ).bool()  # (T,)
+            mask = torch.bernoulli(torch.full((T,), 0.5), generator=rng).bool()  # (T,)
 
             coalition_size = int(mask.sum().item())
             w = self._kernel_weight(T, coalition_size)
@@ -366,7 +369,7 @@ class KernelSHAPApproximator:
 
             # Build masked embedding: use real embedding for tokens in mask,
             # baseline otherwise
-            masked_emb = baseline.clone()                # (1, T, d)
+            masked_emb = baseline.clone()  # (1, T, d)
             masked_emb[0, mask, :] = embeddings[0, mask, :]
 
             with torch.no_grad():
@@ -379,19 +382,19 @@ class KernelSHAPApproximator:
 
         # Solve weighted least-squares:  Z phi ≈ y  (phi = Shapley values)
         # where Z is (n_samples, T) binary design matrix
-        Z = torch.tensor(masks_list, dtype=torch.float32)    # (n, T)
-        y = torch.tensor(outputs, dtype=torch.float32)       # (n,)
+        Z = torch.tensor(masks_list, dtype=torch.float32)  # (n, T)
+        y = torch.tensor(outputs, dtype=torch.float32)  # (n,)
         W = torch.diag(torch.tensor(weights, dtype=torch.float32))  # (n, n)
 
         # phi = (Z^T W Z)^{-1} Z^T W y
-        ZtW = Z.T @ W                                         # (T, n)
-        ZtWZ = ZtW @ Z                                        # (T, T)
-        ZtWy = ZtW @ y                                        # (T,)
+        ZtW = Z.T @ W  # (T, n)
+        ZtWZ = ZtW @ Z  # (T, T)
+        ZtWy = ZtW @ y  # (T,)
 
         # Add small ridge for numerical stability
         ridge = 1e-6 * torch.eye(T, dtype=torch.float32)
         try:
-            phi = torch.linalg.solve(ZtWZ + ridge, ZtWy)     # (T,)
+            phi = torch.linalg.solve(ZtWZ + ridge, ZtWy)  # (T,)
         except RuntimeError:
             # Fallback: pseudo-inverse
             phi = torch.linalg.lstsq(ZtWZ + ridge, ZtWy.unsqueeze(-1)).solution.squeeze(-1)

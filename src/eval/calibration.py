@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -135,7 +134,7 @@ def reliability_diagram_data(
     confidences: Tensor,
     accuracies: Tensor,
     n_bins: int = 10,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """Compute data for a reliability diagram.
 
     Args:
@@ -209,9 +208,7 @@ class TemperatureScaling(nn.Module):
 
     def __init__(self, temperature_init: float = 1.0) -> None:
         super().__init__()
-        self.log_temperature = nn.Parameter(
-            torch.tensor([temperature_init]).log()
-        )
+        self.log_temperature = nn.Parameter(torch.tensor([temperature_init]).log())
 
     @property
     def temperature(self) -> Tensor:
@@ -273,7 +270,7 @@ class ModelCalibrator:
     def __init__(self, config: CalibrationConfig) -> None:
         self.config = config
 
-    def evaluate(self, logits: Tensor, labels: Tensor) -> Dict[str, float]:
+    def evaluate(self, logits: Tensor, labels: Tensor) -> dict[str, float]:
         """Compute calibration metrics for given logits and labels.
 
         Args:

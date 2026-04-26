@@ -1,5 +1,6 @@
 import time
-from src.profiling.op_profiler import OpProfiler, OpRecord, OP_PROFILER_REGISTRY
+
+from src.profiling.op_profiler import OP_PROFILER_REGISTRY, OpProfiler
 
 
 def test_profile_records_time():

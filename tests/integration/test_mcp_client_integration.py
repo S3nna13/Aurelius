@@ -37,8 +37,11 @@ class StubMCPServer:
         try:
             result = self._dispatch(method, params)
         except KeyError as exc:
-            return {"jsonrpc": "2.0", "id": rid,
-                    "error": {"code": -32601, "message": f"method not found: {exc}"}}
+            return {
+                "jsonrpc": "2.0",
+                "id": rid,
+                "error": {"code": -32601, "message": f"method not found: {exc}"},
+            }
         return {"jsonrpc": "2.0", "id": rid, "result": result}
 
     def _dispatch(self, method: str, params: dict) -> dict:
@@ -50,51 +53,67 @@ class StubMCPServer:
                 "serverInfo": {"name": "stub-mcp", "version": "1.0"},
             }
         if method == "tools/list":
-            return {"tools": [{
-                "name": "add",
-                "description": "Add two integers.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {"a": {"type": "integer"},
-                                   "b": {"type": "integer"}},
-                    "required": ["a", "b"],
-                },
-            }]}
+            return {
+                "tools": [
+                    {
+                        "name": "add",
+                        "description": "Add two integers.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                            "required": ["a", "b"],
+                        },
+                    }
+                ]
+            }
         if method == "tools/call":
             name = params["name"]
             args = params["arguments"]
             if name == "add":
                 total = int(args["a"]) + int(args["b"])
-                return {"content": [{"type": "text", "text": str(total)}],
-                        "isError": False}
-            return {"content": [{"type": "text", "text": f"unknown tool {name}"}],
-                    "isError": True}
+                return {"content": [{"type": "text", "text": str(total)}], "isError": False}
+            return {"content": [{"type": "text", "text": f"unknown tool {name}"}], "isError": True}
         if method == "resources/list":
-            return {"resources": [{
-                "uri": "mem:///README.md",
-                "name": "README",
-                "mimeType": "text/markdown",
-            }]}
+            return {
+                "resources": [
+                    {
+                        "uri": "mem:///README.md",
+                        "name": "README",
+                        "mimeType": "text/markdown",
+                    }
+                ]
+            }
         if method == "resources/read":
             uri = params["uri"]
             if uri == "mem:///README.md":
-                return {"contents": [{
-                    "uri": uri, "mimeType": "text/markdown",
-                    "text": "# stub server\n",
-                }]}
+                return {
+                    "contents": [
+                        {
+                            "uri": uri,
+                            "mimeType": "text/markdown",
+                            "text": "# stub server\n",
+                        }
+                    ]
+                }
             raise KeyError(uri)
         if method == "prompts/list":
-            return {"prompts": [{
-                "name": "greet",
-                "description": "Greet a person.",
-                "arguments": [{"name": "who", "required": True}],
-            }]}
+            return {
+                "prompts": [
+                    {
+                        "name": "greet",
+                        "description": "Greet a person.",
+                        "arguments": [{"name": "who", "required": True}],
+                    }
+                ]
+            }
         if method == "prompts/get":
             who = (params.get("arguments") or {}).get("who", "world")
-            return {"description": "greeting",
-                    "messages": [{"role": "user",
-                                  "content": {"type": "text",
-                                              "text": f"Hello, {who}!"}}]}
+            return {
+                "description": "greeting",
+                "messages": [
+                    {"role": "user", "content": {"type": "text", "text": f"Hello, {who}!"}}
+                ],
+            }
         raise KeyError(method)
 
 
@@ -103,16 +122,31 @@ class StubMCPServer:
 # ---------------------------------------------------------------------------
 def test_mcp_client_exposed_via_agent_surface():
     assert agent_surface.MCPClient is MCPClient
-    for sym in ("MCPClient", "MCPToolSpec", "MCPToolCallResult",
-                "MCPResource", "MCPPrompt", "MCPProtocolError"):
+    for sym in (
+        "MCPClient",
+        "MCPToolSpec",
+        "MCPToolCallResult",
+        "MCPResource",
+        "MCPPrompt",
+        "MCPProtocolError",
+    ):
         assert sym in agent_surface.__all__
 
 
 def test_prior_agent_surface_entries_intact():
-    for prior in ("ReActLoop", "ToolRegistryDispatcher", "BeamPlanner",
-                  "RecoveringDispatcher", "UnifiedDiffGenerator",
-                  "ShellCommandPlanner", "CodeExecutionSandbox",
-                  "CodeTestRunner", "TaskDecomposer", "parse_json", "parse_xml"):
+    for prior in (
+        "ReActLoop",
+        "ToolRegistryDispatcher",
+        "BeamPlanner",
+        "RecoveringDispatcher",
+        "UnifiedDiffGenerator",
+        "ShellCommandPlanner",
+        "CodeExecutionSandbox",
+        "CodeTestRunner",
+        "TaskDecomposer",
+        "parse_json",
+        "parse_xml",
+    ):
         assert prior in agent_surface.__all__
         assert hasattr(agent_surface, prior)
 

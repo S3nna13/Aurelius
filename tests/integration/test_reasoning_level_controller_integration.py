@@ -6,15 +6,16 @@ package's DECODER_REGISTRY and behaves correctly when called through it.
 GPT-OSS-120B (arXiv:2508.10925).
 SWE-bench Verified: low=47.9%, medium=52.6%, high=62.4%.
 """
+
 from __future__ import annotations
 
 import src.inference as inference
 from src.inference import DECODER_REGISTRY, LEVEL_CONFIGS
 
-
 # ---------------------------------------------------------------------------
 # 1. "reasoning_level" key is registered
 # ---------------------------------------------------------------------------
+
 
 def test_reasoning_level_key_in_decoder_registry() -> None:
     assert "reasoning_level" in DECODER_REGISTRY
@@ -23,6 +24,7 @@ def test_reasoning_level_key_in_decoder_registry() -> None:
 # ---------------------------------------------------------------------------
 # 2. Call parse_reasoning_level via registry entry — correct config returned
 # ---------------------------------------------------------------------------
+
 
 def test_registry_entry_returns_correct_config_for_medium() -> None:
     parse_fn = DECODER_REGISTRY["reasoning_level"]
@@ -33,6 +35,7 @@ def test_registry_entry_returns_correct_config_for_medium() -> None:
 # ---------------------------------------------------------------------------
 # 3. All three levels accessible via the same registry entry
 # ---------------------------------------------------------------------------
+
 
 def test_all_three_levels_via_registry() -> None:
     parse_fn = DECODER_REGISTRY["reasoning_level"]
@@ -56,6 +59,7 @@ def test_all_three_levels_via_registry() -> None:
 # ---------------------------------------------------------------------------
 # 4. Regression guard: pre-existing inference package symbols intact
 # ---------------------------------------------------------------------------
+
 
 def test_existing_inference_package_symbols_intact() -> None:
     # SCHEDULER_REGISTRY was present before this cycle.

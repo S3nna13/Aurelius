@@ -1,7 +1,9 @@
 """Tests for contrastive search decoding."""
-import torch
+
 import pytest
-from src.inference.contrastive_search import contrastive_search, ContrastiveConfig, _get_last_hidden
+import torch
+
+from src.inference.contrastive_search import ContrastiveConfig, _get_last_hidden, contrastive_search
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -10,8 +12,14 @@ from src.model.transformer import AureliusTransformer
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
     return AureliusTransformer(cfg)
 
@@ -40,7 +48,7 @@ def test_contrastive_search_preserves_prompt(small_model):
     prompt = torch.randint(0, 256, (1, 6))
     cfg = ContrastiveConfig(k=2, alpha=0.5, max_new_tokens=4)
     output = contrastive_search(small_model, prompt, cfg)
-    assert torch.equal(output[:, :prompt.shape[1]], prompt)
+    assert torch.equal(output[:, : prompt.shape[1]], prompt)
 
 
 def test_contrastive_search_eos_stops(small_model):

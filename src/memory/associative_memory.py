@@ -14,6 +14,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Pattern:
     """An associative memory pattern identified by a string key."""
+
     key: str
     features: list[float]
 
@@ -58,9 +59,7 @@ class AssociativeMemory:
             )
         self._store[pattern.key] = pattern
 
-    def recall(
-        self, query_features: list[float], top_k: int = 1
-    ) -> list[Pattern]:
+    def recall(self, query_features: list[float], top_k: int = 1) -> list[Pattern]:
         """Retrieve the *top_k* most similar patterns by cosine similarity.
 
         Parameters
@@ -79,8 +78,7 @@ class AssociativeMemory:
             return []
 
         scored: list[tuple[float, Pattern]] = [
-            (self.similarity(query_features, p.features), p)
-            for p in self._store.values()
+            (self.similarity(query_features, p.features), p) for p in self._store.values()
         ]
         scored.sort(key=lambda x: x[0], reverse=True)
         return [p for _, p in scored[:top_k]]

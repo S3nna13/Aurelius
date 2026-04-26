@@ -13,31 +13,36 @@ Covers:
   10. run() returns list of length n_iterations
   11. Gradient flows through DPO loss
 """
+
 from __future__ import annotations
 
 import copy
 
 import torch
-import pytest
 
 from src.alignment.iterative_dpo import (
     IterativeDPOConfig,
     IterativeDPOTrainer,
-    IterationResult,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def make_tiny_model(seed: int = 0) -> AureliusTransformer:
     torch.manual_seed(seed)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -80,6 +85,7 @@ def make_trainer(
 # Test 1: IterativeDPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = IterativeDPOConfig()
     assert cfg.beta == 0.1
@@ -93,6 +99,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: sample_responses returns n_samples tensors
 # ---------------------------------------------------------------------------
+
 
 def test_sample_responses_count():
     trainer = make_trainer(seed=1, n_samples=4, max_new_tokens=5)
@@ -108,6 +115,7 @@ def test_sample_responses_count():
 # Test 3: create_preference_pairs returns None when all rewards equal
 # ---------------------------------------------------------------------------
 
+
 def test_create_preference_pairs_no_signal():
     trainer = make_trainer(seed=2)
     prompt = torch.randint(0, 256, (1, 4))
@@ -121,6 +129,7 @@ def test_create_preference_pairs_no_signal():
 # ---------------------------------------------------------------------------
 # Test 4: create_preference_pairs returns chosen/rejected correctly
 # ---------------------------------------------------------------------------
+
 
 def test_create_preference_pairs_correct_selection():
     trainer = make_trainer(seed=3)
@@ -143,6 +152,7 @@ def test_create_preference_pairs_correct_selection():
 # Test 5: compute_dpo_loss returns scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_compute_dpo_loss_scalar():
     trainer = make_trainer(seed=4, max_new_tokens=4)
     prompt = torch.randint(0, 256, (1, 4))
@@ -159,6 +169,7 @@ def test_compute_dpo_loss_scalar():
 # Test 6: Metrics dict has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_dpo_loss_metrics_keys():
     trainer = make_trainer(seed=5, max_new_tokens=4)
     prompt = torch.randint(0, 256, (1, 4))
@@ -174,6 +185,7 @@ def test_compute_dpo_loss_metrics_keys():
 # ---------------------------------------------------------------------------
 # Test 7: reward_margin > 0 when chosen != rejected (distinct responses)
 # ---------------------------------------------------------------------------
+
 
 def test_reward_margin_positive_for_distinct_responses():
     torch.manual_seed(6)
@@ -195,6 +207,7 @@ def test_reward_margin_positive_for_distinct_responses():
 # Test 8: run_iteration returns dict with mean_reward key
 # ---------------------------------------------------------------------------
 
+
 def test_run_iteration_returns_mean_reward():
     trainer = make_trainer(seed=7, n_samples=4, max_new_tokens=4, n_iterations=1)
     prompts = [torch.randint(0, 256, (1, 4)) for _ in range(2)]
@@ -210,6 +223,7 @@ def test_run_iteration_returns_mean_reward():
 # ---------------------------------------------------------------------------
 # Test 9: update_ref_policy copies policy weights to ref
 # ---------------------------------------------------------------------------
+
 
 def test_update_ref_policy_copies_weights():
     policy = make_tiny_model(8)
@@ -237,6 +251,7 @@ def test_update_ref_policy_copies_weights():
 # Test 10: run() returns list of length n_iterations
 # ---------------------------------------------------------------------------
 
+
 def test_run_returns_correct_length():
     n_iters = 3
     trainer = make_trainer(seed=9, n_samples=4, max_new_tokens=4, n_iterations=n_iters)
@@ -250,6 +265,7 @@ def test_run_returns_correct_length():
 # ---------------------------------------------------------------------------
 # Test 11: Gradient flows through DPO loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_dpo_loss():
     policy = make_tiny_model(10)
@@ -273,7 +289,6 @@ def test_gradient_flows_through_dpo_loss():
 
     # At least one parameter should have a non-zero gradient
     has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0.0
-        for p in policy.parameters()
+        p.grad is not None and p.grad.abs().sum().item() > 0.0 for p in policy.parameters()
     )
     assert has_grad, "No gradient flowed through the DPO loss to policy parameters"

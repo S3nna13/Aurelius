@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.early_exit import (
@@ -15,10 +14,10 @@ from src.inference.early_exit import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model() -> AureliusTransformer:
     torch.manual_seed(42)
@@ -58,6 +57,7 @@ def _make_wrapper(
 # 1. EarlyExitConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_early_exit_config_defaults():
     cfg = EarlyExitConfig()
     assert cfg.exit_thresholds == [0.9, 0.85, 0.8]
@@ -70,6 +70,7 @@ def test_early_exit_config_defaults():
 # ---------------------------------------------------------------------------
 # 2–5. compute_confidence
 # ---------------------------------------------------------------------------
+
 
 def test_compute_confidence_max_prob_range():
     torch.manual_seed(0)
@@ -109,6 +110,7 @@ def test_compute_confidence_output_shape():
 # 6. ExitClassifier output shape
 # ---------------------------------------------------------------------------
 
+
 def test_exit_classifier_output_shape():
     B, d_model, vocab_size = 4, 64, 256
     classifier = ExitClassifier(d_model, vocab_size)
@@ -120,6 +122,7 @@ def test_exit_classifier_output_shape():
 # ---------------------------------------------------------------------------
 # 7. EarlyExitWrapper forward output shape
 # ---------------------------------------------------------------------------
+
 
 def test_early_exit_wrapper_forward_output_shape():
     model = _make_model()
@@ -133,6 +136,7 @@ def test_early_exit_wrapper_forward_output_shape():
 # ---------------------------------------------------------------------------
 # 8. EarlyExitWrapper forward_with_exits returns (logits, int)
 # ---------------------------------------------------------------------------
+
 
 def test_early_exit_wrapper_forward_with_exits_return_type():
     model = _make_model()
@@ -149,6 +153,7 @@ def test_early_exit_wrapper_forward_with_exits_return_type():
 # 9. EarlyExitWrapper forward_with_exits exit_layer in valid range
 # ---------------------------------------------------------------------------
 
+
 def test_early_exit_wrapper_exit_layer_valid_range():
     model = _make_model()
     wrapper = _make_wrapper(model)
@@ -161,6 +166,7 @@ def test_early_exit_wrapper_exit_layer_valid_range():
 # ---------------------------------------------------------------------------
 # 10. EarlyExitWrapper compute_exit_stats returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_compute_exit_stats_keys():
     model = _make_model()
@@ -175,6 +181,7 @@ def test_compute_exit_stats_keys():
 # ---------------------------------------------------------------------------
 # 11. threshold=1.0 never exits early (always runs all layers)
 # ---------------------------------------------------------------------------
+
 
 def test_no_early_exit_when_threshold_is_one():
     """With threshold=1.0, confidence can never meet it, so always run all layers."""
@@ -194,6 +201,7 @@ def test_no_early_exit_when_threshold_is_one():
 # 12. train_exit_classifiers returns mean_kl_loss key
 # ---------------------------------------------------------------------------
 
+
 def test_train_exit_classifiers_returns_kl_loss():
     model = _make_model()
     wrapper = _make_wrapper(model)
@@ -207,11 +215,10 @@ def test_train_exit_classifiers_returns_kl_loss():
 # 13. Exit classifiers have trainable parameters (requires_grad=True)
 # ---------------------------------------------------------------------------
 
+
 def test_exit_classifiers_have_trainable_params():
     model = _make_model()
     wrapper = _make_wrapper(model)
     for i, clf in enumerate(wrapper.exit_classifiers):
         for name, param in clf.named_parameters():
-            assert param.requires_grad, (
-                f"Exit classifier {i} param '{name}' does not require grad"
-            )
+            assert param.requires_grad, f"Exit classifier {i} param '{name}' does not require grad"

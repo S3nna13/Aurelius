@@ -1,14 +1,13 @@
 """Tests for Advanced Continual Learning: Online EWC++ and A-GEM."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.training.continual_learning_v2 import (
     AGEMTrainer,
-    EWCPlusPlusTrainer,
     EpisodicMemory,
+    EWCPlusPlusTrainer,
     OnlineFisherEstimate,
 )
 
@@ -42,7 +41,7 @@ def _make_y() -> torch.Tensor:
 
 def _mse_loss_fn(output: torch.Tensor) -> torch.Tensor:
     """Unsupervised proxy: MSE toward zeros."""
-    return (output ** 2).mean()
+    return (output**2).mean()
 
 
 def _supervised_loss_fn(output: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -52,6 +51,7 @@ def _supervised_loss_fn(output: torch.Tensor, target: torch.Tensor) -> torch.Ten
 # ---------------------------------------------------------------------------
 # 1. OnlineFisherEstimate initializes with zero fisher
 # ---------------------------------------------------------------------------
+
 
 def test_online_fisher_init_zero():
     model = _make_model()
@@ -63,6 +63,7 @@ def test_online_fisher_init_zero():
 # ---------------------------------------------------------------------------
 # 2. update() sets params_star to current params
 # ---------------------------------------------------------------------------
+
 
 def test_update_sets_params_star():
     model = _make_model()
@@ -83,6 +84,7 @@ def test_update_sets_params_star():
 # 3. update() fisher is non-zero after gradient computed
 # ---------------------------------------------------------------------------
 
+
 def test_update_fisher_nonzero():
     model = _make_model()
     fe = OnlineFisherEstimate(model, gamma=0.9)
@@ -97,6 +99,7 @@ def test_update_fisher_nonzero():
 # ---------------------------------------------------------------------------
 # 4. ewc_penalty is zero when params unchanged after update
 # ---------------------------------------------------------------------------
+
 
 def test_ewc_penalty_zero_when_params_unchanged():
     model = _make_model()
@@ -115,6 +118,7 @@ def test_ewc_penalty_zero_when_params_unchanged():
 # ---------------------------------------------------------------------------
 # 5. ewc_penalty is positive when params change after update
 # ---------------------------------------------------------------------------
+
 
 def test_ewc_penalty_positive_after_param_change():
     model = _make_model()
@@ -138,6 +142,7 @@ def test_ewc_penalty_positive_after_param_change():
 # 6. EWCPlusPlusTrainer.train_step returns expected keys
 # ---------------------------------------------------------------------------
 
+
 def test_ewcplusplus_train_step_returns_expected_keys():
     model = _make_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
@@ -153,6 +158,7 @@ def test_ewcplusplus_train_step_returns_expected_keys():
 # ---------------------------------------------------------------------------
 # 7. train_step total_loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_ewcplusplus_train_step_total_loss_finite():
     model = _make_model()
@@ -170,6 +176,7 @@ def test_ewcplusplus_train_step_total_loss_finite():
 # 8. train_step ewc_penalty is non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_ewcplusplus_train_step_ewc_penalty_nonnegative():
     model = _make_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
@@ -186,6 +193,7 @@ def test_ewcplusplus_train_step_ewc_penalty_nonnegative():
 # 9. EpisodicMemory.add stores samples
 # ---------------------------------------------------------------------------
 
+
 def test_episodic_memory_add_stores_samples():
     mem = EpisodicMemory(max_size=10, d_input=D_INPUT)
     x = _make_x()
@@ -197,6 +205,7 @@ def test_episodic_memory_add_stores_samples():
 # ---------------------------------------------------------------------------
 # 10. add evicts oldest when over max_size
 # ---------------------------------------------------------------------------
+
 
 def test_episodic_memory_evicts_oldest():
     mem = EpisodicMemory(max_size=3, d_input=D_INPUT)
@@ -216,6 +225,7 @@ def test_episodic_memory_evicts_oldest():
 # 11. sample returns tensor of correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_episodic_memory_sample_correct_shape():
     mem = EpisodicMemory(max_size=20, d_input=D_INPUT)
     for _ in range(10):
@@ -223,14 +233,13 @@ def test_episodic_memory_sample_correct_shape():
 
     samples = mem.sample(5)
     assert samples is not None
-    assert samples.shape == (5, D_INPUT), (
-        f"Expected shape (5, {D_INPUT}), got {samples.shape}"
-    )
+    assert samples.shape == (5, D_INPUT), f"Expected shape (5, {D_INPUT}), got {samples.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 12. sample returns None for empty memory
 # ---------------------------------------------------------------------------
+
 
 def test_episodic_memory_sample_empty_returns_none():
     mem = EpisodicMemory(max_size=10, d_input=D_INPUT)
@@ -241,6 +250,7 @@ def test_episodic_memory_sample_empty_returns_none():
 # ---------------------------------------------------------------------------
 # 13. AGEMTrainer.train_step returns expected keys
 # ---------------------------------------------------------------------------
+
 
 def test_agem_train_step_returns_expected_keys():
     model = _make_model()
@@ -262,6 +272,7 @@ def test_agem_train_step_returns_expected_keys():
 # 14. AGEMTrainer.train_step with empty memory still works (no projection)
 # ---------------------------------------------------------------------------
 
+
 def test_agem_train_step_empty_memory():
     model = _make_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
@@ -273,15 +284,14 @@ def test_agem_train_step_empty_memory():
     result = trainer.train_step(x, y, _supervised_loss_fn)
 
     assert "task_loss" in result
-    assert result["projected"] is False, (
-        "projected should be False when memory is empty"
-    )
+    assert result["projected"] is False, "projected should be False when memory is empty"
     assert torch.isfinite(torch.tensor(result["task_loss"]))
 
 
 # ---------------------------------------------------------------------------
 # 15. _project_gradient: when dot >= 0, returns current unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_project_gradient_no_projection_when_dot_nonnegative():
     model = _make_model()
@@ -296,6 +306,4 @@ def test_project_gradient_no_projection_when_dot_nonnegative():
     result = trainer._project_gradient(g1, g2)
 
     for r, orig in zip(result, g1):
-        assert torch.allclose(r, orig), (
-            "Gradient should be unchanged when dot(g_c, g_r) >= 0"
-        )
+        assert torch.allclose(r, orig), "Gradient should be unchanged when dot(g_c, g_r) >= 0"

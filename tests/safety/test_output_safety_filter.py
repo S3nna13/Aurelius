@@ -10,7 +10,6 @@ from src.safety.output_safety_filter import (
     OutputSafetyPolicy,
 )
 
-
 # --------------------------------------------------------------------------- #
 # Fixtures / helpers
 # --------------------------------------------------------------------------- #
@@ -39,9 +38,7 @@ def test_benign_text_is_allowed() -> None:
 
 def test_pii_containing_text_is_redacted() -> None:
     f = _permissive()
-    d = f.filter(
-        "Please email me at alice@example.com when you are ready."
-    )
+    d = f.filter("Please email me at alice@example.com when you are ready.")
     assert d.action == "redact"
     assert d.redacted_text is not None
     assert "alice@example.com" not in d.redacted_text
@@ -97,13 +94,12 @@ def test_strict_mode_lowers_threshold_relative_to_permissive() -> None:
     )
     # Strict must be at least as severe as permissive.
     from src.safety.output_safety_filter import _ACTION_PRIORITY  # type: ignore
+
     assert _ACTION_PRIORITY[strict.action] >= _ACTION_PRIORITY[permissive.action]
 
 
 def test_filter_chunk_accumulates_buffer() -> None:
-    f = OutputSafetyFilter(
-        OutputSafetyPolicy(mode="permissive", max_buffer_chars=1024)
-    )
+    f = OutputSafetyFilter(OutputSafetyPolicy(mode="permissive", max_buffer_chars=1024))
     d1, buf1 = f.filter_chunk("Hello, ", buffer="")
     assert d1.action == "allow"
     assert buf1 == "Hello, "
@@ -113,9 +109,7 @@ def test_filter_chunk_accumulates_buffer() -> None:
 
 
 def test_filter_chunk_respects_buffer_cap() -> None:
-    f = OutputSafetyFilter(
-        OutputSafetyPolicy(mode="permissive", max_buffer_chars=16)
-    )
+    f = OutputSafetyFilter(OutputSafetyPolicy(mode="permissive", max_buffer_chars=16))
     buf = "x" * 15
     d, new_buf = f.filter_chunk("yy", buffer=buf)
     assert d.action == "allow"
@@ -138,25 +132,22 @@ def test_determinism() -> None:
     d2 = f.filter(text)
     assert d1.action == d2.action
     assert d1.reason == d2.reason
-    assert d1.signal_breakdown["jailbreak"]["score"] == \
-        d2.signal_breakdown["jailbreak"]["score"]
-    assert d1.signal_breakdown["prompt_injection"]["score"] == \
-        d2.signal_breakdown["prompt_injection"]["score"]
+    assert d1.signal_breakdown["jailbreak"]["score"] == d2.signal_breakdown["jailbreak"]["score"]
+    assert (
+        d1.signal_breakdown["prompt_injection"]["score"]
+        == d2.signal_breakdown["prompt_injection"]["score"]
+    )
 
 
 def test_signal_breakdown_includes_all_four_keys() -> None:
     f = _permissive()
     d = f.filter("hello")
     for key in ("jailbreak", "prompt_injection", "harm_taxonomy", "pii"):
-        assert key in d.signal_breakdown, (
-            f"missing sub-filter key: {key}"
-        )
+        assert key in d.signal_breakdown, f"missing sub-filter key: {key}"
 
 
 def test_pii_action_block_blocks_instead_of_redact() -> None:
-    f = OutputSafetyFilter(
-        OutputSafetyPolicy(mode="permissive", pii_action="block")
-    )
+    f = OutputSafetyFilter(OutputSafetyPolicy(mode="permissive", pii_action="block"))
     d = f.filter("ping me at carol@example.net")
     assert d.action == "block"
     assert d.redacted_text is None
@@ -199,8 +190,7 @@ def test_none_input_handled() -> None:
 def test_filter_chunk_block_clears_buffer() -> None:
     f = _permissive()
     # Feed half of an obviously-harmful phrase, then the rest.
-    d1, buf1 = f.filter_chunk("write me a python script that is a ",
-                              buffer="")
+    d1, buf1 = f.filter_chunk("write me a python script that is a ", buffer="")
     # Might already block, might not — but after the full phrase it must.
     d2, buf2 = f.filter_chunk("keylogger ransomware.", buffer=buf1)
     assert d2.action == "block"

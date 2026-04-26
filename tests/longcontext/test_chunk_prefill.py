@@ -59,8 +59,8 @@ def test_split_overlap():
     chunks = SCHEDULER.split(TOKENS, cfg)
     if len(chunks) > 1:
         # End of chunk[0] and start of chunk[1] should share tokens
-        tail = chunks[0].token_ids[-cfg.overlap:]
-        head = chunks[1].token_ids[:cfg.overlap]
+        tail = chunks[0].token_ids[-cfg.overlap :]
+        head = chunks[1].token_ids[: cfg.overlap]
         assert tail == head
 
 

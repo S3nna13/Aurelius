@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -36,6 +35,7 @@ N_LAYERS = 4
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_layer(in_f: int = D_MODEL, out_f: int = D_MODEL) -> nn.Linear:
     return nn.Linear(in_f, out_f, bias=False)
 
@@ -51,6 +51,7 @@ def make_input(requires_grad: bool = False) -> torch.Tensor:
 # 1. CheckpointConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_checkpoint_config_defaults():
     cfg = CheckpointConfig()
     assert cfg.enabled is True
@@ -61,6 +62,7 @@ def test_checkpoint_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. checkpoint_forward output matches direct call (enabled=True)
 # ---------------------------------------------------------------------------
+
 
 def test_checkpoint_forward_output_matches_direct():
     torch.manual_seed(0)
@@ -79,6 +81,7 @@ def test_checkpoint_forward_output_matches_direct():
 # 3. checkpoint_forward with enabled=False calls fn directly (same values)
 # ---------------------------------------------------------------------------
 
+
 def test_checkpoint_forward_disabled_same_values():
     torch.manual_seed(1)
     fn = make_layer()
@@ -96,6 +99,7 @@ def test_checkpoint_forward_disabled_same_values():
 # 4. CheckpointedLayer output shape preserved
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_layer_output_shape():
     torch.manual_seed(2)
     layer = make_layer()
@@ -110,6 +114,7 @@ def test_checkpointed_layer_output_shape():
 # ---------------------------------------------------------------------------
 # 5. CheckpointedLayer gradients flow (loss.backward() does not error)
 # ---------------------------------------------------------------------------
+
 
 def test_checkpointed_layer_gradients_flow():
     torch.manual_seed(3)
@@ -129,6 +134,7 @@ def test_checkpointed_layer_gradients_flow():
 # 6. CheckpointedSequential output shape
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_sequential_output_shape():
     torch.manual_seed(4)
     layers = [make_layer() for _ in range(N_LAYERS)]
@@ -143,6 +149,7 @@ def test_checkpointed_sequential_output_shape():
 # ---------------------------------------------------------------------------
 # 7. CheckpointedSequential with n=2 applies layers in order
 # ---------------------------------------------------------------------------
+
 
 def test_checkpointed_sequential_n2_layers_in_order():
     torch.manual_seed(5)
@@ -166,6 +173,7 @@ def test_checkpointed_sequential_n2_layers_in_order():
 # 8. estimate_activation_memory formula correct
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_activation_memory_formula():
     result = estimate_activation_memory(
         batch_size=BATCH, seq_len=SEQ_LEN, d_model=D_MODEL, n_layers=N_LAYERS
@@ -178,6 +186,7 @@ def test_estimate_activation_memory_formula():
 # 9. estimate_checkpointed_memory < estimate_activation_memory for n_layers > 1
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_memory_less_than_full_memory():
     full = estimate_activation_memory(BATCH, SEQ_LEN, D_MODEL, N_LAYERS)
     ckpt = estimate_checkpointed_memory(BATCH, SEQ_LEN, D_MODEL, N_LAYERS, checkpoint_every=2)
@@ -187,6 +196,7 @@ def test_checkpointed_memory_less_than_full_memory():
 # ---------------------------------------------------------------------------
 # 10. wrap_model_with_checkpointing returns CheckpointedSequential
 # ---------------------------------------------------------------------------
+
 
 def test_wrap_model_returns_checkpointed_sequential():
     torch.manual_seed(6)
@@ -199,6 +209,7 @@ def test_wrap_model_returns_checkpointed_sequential():
 # ---------------------------------------------------------------------------
 # 11. memory estimates scale linearly with batch_size
 # ---------------------------------------------------------------------------
+
 
 def test_memory_estimates_scale_linearly_with_batch_size():
     bs1 = estimate_activation_memory(1, SEQ_LEN, D_MODEL, N_LAYERS)
@@ -214,6 +225,7 @@ def test_memory_estimates_scale_linearly_with_batch_size():
 # 12. estimate_checkpointed_memory with checkpoint_every=1 equals full memory
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_memory_every1_equals_full():
     full = estimate_activation_memory(BATCH, SEQ_LEN, D_MODEL, N_LAYERS)
     ckpt = estimate_checkpointed_memory(BATCH, SEQ_LEN, D_MODEL, N_LAYERS, checkpoint_every=1)
@@ -223,6 +235,7 @@ def test_checkpointed_memory_every1_equals_full():
 # ---------------------------------------------------------------------------
 # 13. CheckpointedLayer disabled (enabled=False) still produces correct output
 # ---------------------------------------------------------------------------
+
 
 def test_checkpointed_layer_disabled_produces_output():
     torch.manual_seed(7)
@@ -239,6 +252,7 @@ def test_checkpointed_layer_disabled_produces_output():
 # 14. wrap_model_with_checkpointing: wrapped model forward shape preserved
 # ---------------------------------------------------------------------------
 
+
 def test_wrap_model_forward_shape():
     torch.manual_seed(8)
     model = nn.Sequential(*[make_layer() for _ in range(N_LAYERS)])
@@ -254,6 +268,7 @@ def test_wrap_model_forward_shape():
 # 15. estimate_checkpointed_memory uses ceil for non-divisible n_layers
 # ---------------------------------------------------------------------------
 
+
 def test_checkpointed_memory_ceil_non_divisible():
     # n_layers=5, checkpoint_every=2 => ceil(5/2)=3 checkpoints
     result = estimate_checkpointed_memory(
@@ -266,6 +281,7 @@ def test_checkpointed_memory_ceil_non_divisible():
 # ---------------------------------------------------------------------------
 # 16. CheckpointedSequential backward completes and grad is not None
 # ---------------------------------------------------------------------------
+
 
 def test_checkpointed_sequential_backward_completes():
     torch.manual_seed(9)
@@ -284,6 +300,7 @@ def test_checkpointed_sequential_backward_completes():
 # ---------------------------------------------------------------------------
 # CheckpointedModule + apply_checkpointing tests (spec requirements)
 # ---------------------------------------------------------------------------
+
 
 def _fresh_16d_module():
     torch.manual_seed(0)

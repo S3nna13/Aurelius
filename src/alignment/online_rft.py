@@ -11,12 +11,10 @@ Reference: RAFT++ and related online rejection-sampling fine-tuning work.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -65,7 +63,7 @@ class RFTSample:
     response_tokens: list[int]
     is_correct: bool
     reward: float = 0.0
-    log_probs: Optional[torch.Tensor] = None
+    log_probs: torch.Tensor | None = None
     """Per-token log probabilities, shape [T]."""
 
 
@@ -81,7 +79,7 @@ class OnlineRFTTrainer:
     trains on them immediately — adapting to the current model's distribution.
     """
 
-    def __init__(self, config: Optional[OnlineRFTConfig] = None) -> None:
+    def __init__(self, config: OnlineRFTConfig | None = None) -> None:
         self.config = config if config is not None else OnlineRFTConfig()
 
     # ------------------------------------------------------------------
@@ -129,9 +127,7 @@ class OnlineRFTTrainer:
     # Loss computation
     # ------------------------------------------------------------------
 
-    def compute_sft_loss(
-        self, logits: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def compute_sft_loss(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         """Compute SFT cross-entropy loss, ignoring pad tokens (label=0).
 
         Args:
@@ -207,9 +203,7 @@ class OnlineRFTTrainer:
     # Statistics
     # ------------------------------------------------------------------
 
-    def statistics(
-        self, candidates: list[RFTSample], kept: list[RFTSample]
-    ) -> dict:
+    def statistics(self, candidates: list[RFTSample], kept: list[RFTSample]) -> dict:
         """Compute summary statistics for a filtering round.
 
         Args:
@@ -228,11 +222,7 @@ class OnlineRFTTrainer:
         n_kept = len(kept)
         keep_rate = n_kept / n_candidates if n_candidates > 0 else 0.0
         n_correct = sum(1 for s in candidates if s.is_correct)
-        mean_reward = (
-            sum(s.reward for s in candidates) / n_candidates
-            if n_candidates > 0
-            else 0.0
-        )
+        mean_reward = sum(s.reward for s in candidates) / n_candidates if n_candidates > 0 else 0.0
         return {
             "n_candidates": n_candidates,
             "n_kept": n_kept,

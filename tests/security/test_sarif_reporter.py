@@ -71,9 +71,7 @@ def test_add_rule_and_result():
 def test_to_json_is_valid_json():
     report = SarifReport()
     report.add_rule(SarifRule(rule_id="AUR-002", short_description="x"))
-    report.add_result(
-        SarifResult(rule_id="AUR-002", message="hi", level=SarifLevel.NOTE)
-    )
+    report.add_result(SarifResult(rule_id="AUR-002", message="hi", level=SarifLevel.NOTE))
     payload = report.to_json()
     parsed = json.loads(payload)
     assert parsed["version"] == SARIF_VERSION
@@ -86,7 +84,7 @@ def test_sarif_version_field():
 
 
 def test_result_level_mapping():
-    report = SarifReport()
+    SarifReport()
     for level, expected in (
         (SarifLevel.NOTE, "note"),
         (SarifLevel.WARNING, "warning"),

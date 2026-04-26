@@ -1,10 +1,10 @@
 """Unit tests for DeepSeek Sparse Attention (DSA) — GLM-5 §3.1."""
+
 from __future__ import annotations
 
 import torch
-import pytest
 
-from src.model.dsa_attention import DSAAttention, DSAConfig, LightningIndexer
+from src.model.dsa_attention import DSAAttention, DSAConfig
 
 # Tiny config used by most tests
 TINY_CFG = DSAConfig(d_model=64, n_heads=4, top_k=8)

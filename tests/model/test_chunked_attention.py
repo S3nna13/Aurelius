@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from src.model.chunked_attention import (
-    ChunkedAttnConfig,
     ChunkedAttentionBenchmark,
+    ChunkedAttnConfig,
     ChunkedMultiHeadAttention,
     chunked_attention,
     compute_memory_ratio,
@@ -230,8 +230,10 @@ def test_chunked_causal_mask_correctness():
     q_pos = torch.arange(T).unsqueeze(1)  # (T, 1)
     k_pos = torch.arange(T).unsqueeze(0)  # (1, T)
     mask = k_pos > q_pos  # True where future
-    scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float('-inf'))
+    scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
     ref = torch.softmax(scores, dim=-1) @ v  # (B, H, T, D)
 
     chunked = chunked_attention(q, k, v, chunk_size=3, causal=True, scale=scale)
-    assert torch.allclose(ref, chunked, atol=1e-4), f"max diff: {(ref - chunked).abs().max().item()}"
+    assert torch.allclose(ref, chunked, atol=1e-4), (
+        f"max diff: {(ref - chunked).abs().max().item()}"
+    )

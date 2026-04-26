@@ -83,9 +83,7 @@ class SlidingWindowAttention(nn.Module):
                 k_ctx = k[:, :, win_start:win_end, :]
                 v_ctx = v[:, :, win_start:win_end, :]
 
-            out_i = F.scaled_dot_product_attention(
-                q_i, k_ctx, v_ctx, is_causal=False
-            )
+            out_i = F.scaled_dot_product_attention(q_i, k_ctx, v_ctx, is_causal=False)
             output[:, :, i : i + 1, :] = out_i
 
         return output

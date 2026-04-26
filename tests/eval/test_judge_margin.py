@@ -39,4 +39,3 @@ def test_decisive_fraction_zero_when_no_large_margins():
 def test_decisive_fraction_one_when_all_large_margins():
     frac = decisive_fraction(torch.tensor([2.0, -1.0]), torch.tensor([0.0, 1.0]), threshold=0.5)
     assert frac.item() == pytest.approx(1.0)
-

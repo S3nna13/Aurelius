@@ -6,23 +6,24 @@ Implements KL-penalized PPO with mini-batch updates:
 - PPOLoss: clipped surrogate + value + KL losses
 - PPOTrainer: full training loop with freeze_ref support
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PPOConfig:
     """Hyperparameters for KL-penalized PPO training."""
+
     clip_ratio: float = 0.2
     kl_coef: float = 0.1
     vf_coef: float = 0.5
@@ -37,15 +38,16 @@ class PPOConfig:
 # Rollout Buffer
 # ---------------------------------------------------------------------------
 
+
 class RolloutBuffer:
     """Stores trajectories and computes GAE advantages/returns."""
 
     def __init__(self) -> None:
-        self._log_probs: List[torch.Tensor] = []
-        self._rewards: List[torch.Tensor] = []
-        self._values: List[torch.Tensor] = []
-        self._ref_log_probs: List[torch.Tensor] = []
-        self._masks: List[torch.Tensor] = []
+        self._log_probs: list[torch.Tensor] = []
+        self._rewards: list[torch.Tensor] = []
+        self._values: list[torch.Tensor] = []
+        self._ref_log_probs: list[torch.Tensor] = []
+        self._masks: list[torch.Tensor] = []
 
     def add(
         self,
@@ -72,7 +74,7 @@ class RolloutBuffer:
 
     def compute_advantages(
         self, gamma: float, gae_lambda: float
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute GAE advantages and returns.
 
         GAE: delta_t = r_t + gamma*V_{t+1} - V_t
@@ -83,9 +85,9 @@ class RolloutBuffer:
             how tensors were stored.
         """
         T = len(self._rewards)
-        rewards = torch.stack(self._rewards)      # (T, ...)
-        values = torch.stack(self._values)        # (T, ...)
-        masks = torch.stack(self._masks)          # (T, ...)
+        rewards = torch.stack(self._rewards)  # (T, ...)
+        values = torch.stack(self._values)  # (T, ...)
+        masks = torch.stack(self._masks)  # (T, ...)
 
         advantages = torch.zeros_like(rewards)
         gae = torch.zeros_like(rewards[0])
@@ -119,6 +121,7 @@ class RolloutBuffer:
 # ---------------------------------------------------------------------------
 # PPO Loss
 # ---------------------------------------------------------------------------
+
 
 class PPOLoss:
     """Computes PPO losses: clipped policy, value function, KL penalty."""
@@ -187,7 +190,7 @@ class PPOLoss:
         values: torch.Tensor,
         returns: torch.Tensor,
         ref_log_probs: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Combined PPO loss.
 
         L = L_CLIP + vf_coef * L_VF + kl_coef * L_KL
@@ -212,6 +215,7 @@ class PPOLoss:
 # ---------------------------------------------------------------------------
 # PPO Trainer
 # ---------------------------------------------------------------------------
+
 
 class PPOTrainer:
     """PPO trainer for RLHF fine-tuning.
@@ -254,7 +258,7 @@ class PPOTrainer:
         values: torch.Tensor,
         returns: torch.Tensor,
         ref_log_probs: torch.Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Single gradient update step.
 
         Args:
@@ -290,7 +294,7 @@ class PPOTrainer:
         self,
         rewards: torch.Tensor,
         values: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute GAE advantages and returns for a single rollout.
 
         Args:

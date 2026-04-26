@@ -3,22 +3,22 @@
 Teacher logits are pre-saved as .npy files with shape (n_tokens, vocab_size).
 Student trains to match these distributions (no teacher in memory required).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
 @dataclass
 class OfflineKDConfig:
-    temperature: float = 4.0    # KD temperature
-    alpha: float = 0.5          # mix: alpha * KD_loss + (1-alpha) * CE_loss
-    top_k_logits: int = 0       # if > 0, only keep top-k teacher logits (sparse KD)
+    temperature: float = 4.0  # KD temperature
+    alpha: float = 0.5  # mix: alpha * KD_loss + (1-alpha) * CE_loss
+    top_k_logits: int = 0  # if > 0, only keep top-k teacher logits (sparse KD)
     # 0 means use all vocab
 
 
@@ -45,9 +45,9 @@ class TeacherLogitDataset(Dataset):
         self.input_ids = np.load(input_ids_path, mmap_mode="r")
         self.teacher_logits = np.load(teacher_logits_path, mmap_mode="r")
 
-        assert self.input_ids.ndim == 1, "input_ids must be 1-D"
-        assert self.teacher_logits.ndim == 2, "teacher_logits must be 2-D (N, vocab)"
-        assert len(self.input_ids) == len(self.teacher_logits), (
+        assert self.input_ids.ndim == 1, "input_ids must be 1-D"  # noqa: S101
+        assert self.teacher_logits.ndim == 2, "teacher_logits must be 2-D (N, vocab)"  # noqa: S101
+        assert len(self.input_ids) == len(self.teacher_logits), (  # noqa: S101
             "input_ids and teacher_logits must have the same first dimension"
         )
 
@@ -60,13 +60,9 @@ class TeacherLogitDataset(Dataset):
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         i = idx
         # input window: [i, i+seq_len)
-        input_ids = torch.from_numpy(
-            self.input_ids[i : i + self.seq_len].astype(np.int64)
-        )
+        input_ids = torch.from_numpy(self.input_ids[i : i + self.seq_len].astype(np.int64))
         # labels: next-token for each position → [i+1, i+seq_len+1)
-        labels = torch.from_numpy(
-            self.input_ids[i + 1 : i + self.seq_len + 1].astype(np.int64)
-        )
+        labels = torch.from_numpy(self.input_ids[i + 1 : i + self.seq_len + 1].astype(np.int64))
         # teacher logits for the input window (cast float16 → float32)
         teacher_logits = torch.from_numpy(
             self.teacher_logits[i : i + self.seq_len].astype(np.float32)
@@ -115,14 +111,14 @@ def offline_kd_loss(
         teacher_logits = sparse
 
     # --- KD loss: KL(student_soft || teacher_soft) * T^2 ---
-    student_log_soft = F.log_softmax(student_logits / T, dim=-1)   # (B, S, V)
-    teacher_soft = F.softmax(teacher_logits / T, dim=-1)            # (B, S, V)
+    student_log_soft = F.log_softmax(student_logits / T, dim=-1)  # (B, S, V)
+    teacher_soft = F.softmax(teacher_logits / T, dim=-1)  # (B, S, V)
 
     kd_loss = F.kl_div(
         student_log_soft.view(-1, V),
         teacher_soft.view(-1, V),
         reduction="batchmean",
-    ) * (T ** 2)
+    ) * (T**2)
 
     total = cfg.alpha * kd_loss + (1.0 - cfg.alpha) * ce_loss
     return total
@@ -143,7 +139,7 @@ class OfflineKDTrainer:
 
     def __init__(
         self,
-        model: "torch.nn.Module",
+        model: torch.nn.Module,
         cfg: OfflineKDConfig | None = None,
         lr: float = 1e-4,
     ) -> None:
@@ -167,8 +163,8 @@ class OfflineKDTrainer:
         self.model.train()
         self.optimizer.zero_grad()
 
-        input_ids = batch["input_ids"]            # (B, S)
-        labels = batch["labels"]                   # (B, S)
+        input_ids = batch["input_ids"]  # (B, S)
+        labels = batch["labels"]  # (B, S)
         teacher_logits = batch["teacher_logits"]  # (B, S, V)
 
         # Forward pass — support both (loss, logits, aux) and plain logits returns
@@ -201,7 +197,7 @@ class OfflineKDTrainer:
             student_log_soft.view(-1, V),
             teacher_soft.view(-1, V),
             reduction="batchmean",
-        ) * (T ** 2)
+        ) * (T**2)
 
         total_loss = self.cfg.alpha * kd_loss + (1.0 - self.cfg.alpha) * ce_loss
 

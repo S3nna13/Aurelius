@@ -1,4 +1,5 @@
 """Reward shaping, normalization, and transformation utilities for RL-based LLM training."""
+
 from __future__ import annotations
 
 import math
@@ -10,12 +11,12 @@ from torch import Tensor
 
 @dataclass
 class RewardShapingConfig:
-    normalize_method: str = "zscore"      # "zscore" | "minmax" | "rank" | "none"
-    clip_range: float = 5.0               # clip rewards to ±clip_range after normalization
-    gamma: float = 1.0                    # discount factor for multi-step returns
-    use_potential_shaping: bool = False   # potential-based shaping
-    ewma_alpha: float = 0.01             # for running stats (EWMARewardNormalizer)
-    penalty_coeff: float = 0.1           # for length/repetition penalties
+    normalize_method: str = "zscore"  # "zscore" | "minmax" | "rank" | "none"
+    clip_range: float = 5.0  # clip rewards to ±clip_range after normalization
+    gamma: float = 1.0  # discount factor for multi-step returns
+    use_potential_shaping: bool = False  # potential-based shaping
+    ewma_alpha: float = 0.01  # for running stats (EWMARewardNormalizer)
+    penalty_coeff: float = 0.1  # for length/repetition penalties
 
 
 def normalize_rewards_zscore(rewards: Tensor, eps: float = 1e-8) -> Tensor:
@@ -91,8 +92,8 @@ def apply_potential_shaping(rewards: Tensor, potentials: Tensor, gamma: float = 
     Returns:
         (B, T) shaped rewards
     """
-    phi_t = potentials[:, :-1]      # (B, T)
-    phi_next = potentials[:, 1:]    # (B, T)
+    phi_t = potentials[:, :-1]  # (B, T)
+    phi_next = potentials[:, 1:]  # (B, T)
     return rewards + gamma * phi_next - phi_t
 
 
@@ -151,12 +152,11 @@ def repetition_penalty(token_ids: Tensor, window: int = 20, coeff: float = 0.1) 
         if len(seq) < 2:
             continue
 
-        total_bigrams = 0
         total_unique_frac = 0.0
         num_windows = 0
 
         for start in range(0, max(1, len(seq) - 1), window):
-            chunk = seq[start: start + window]
+            chunk = seq[start : start + window]
             if len(chunk) < 2:
                 continue
             bigrams = [(chunk[j], chunk[j + 1]) for j in range(len(chunk) - 1)]
@@ -227,7 +227,7 @@ class RewardShaper:
         rewards = rewards.clamp(-cfg.clip_range, cfg.clip_range)
 
         if token_ids is not None:
-            lp = length_penalty(token_ids, coeff=cfg.penalty_coeff)   # (B,)
+            lp = length_penalty(token_ids, coeff=cfg.penalty_coeff)  # (B,)
             rp = repetition_penalty(token_ids, coeff=cfg.penalty_coeff)  # (B,)
             penalties = lp + rp  # (B,)
 

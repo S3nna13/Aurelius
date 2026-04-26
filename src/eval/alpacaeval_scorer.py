@@ -24,9 +24,8 @@ from __future__ import annotations
 
 import re
 import statistics
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, List, Sequence
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -65,8 +64,8 @@ PAIRWISE_SYSTEM_PROMPT = (
     "responses provided by AI assistants to the user instruction displayed "
     "below. Choose the assistant whose answer is more helpful, accurate, and "
     "relevant. Avoid position bias. After a brief explanation, output your "
-    "final verdict by strictly following this format: \"[[A]]\" if assistant "
-    "A is better, \"[[B]]\" if assistant B is better, and \"[[C]]\" for a tie."
+    'final verdict by strictly following this format: "[[A]]" if assistant '
+    'A is better, "[[B]]" if assistant B is better, and "[[C]]" for a tie.'
 )
 
 
@@ -143,9 +142,7 @@ class AlpacaEvalScorer:
         return out
 
     # ---------------------------------------------------------------- compare
-    def compare(
-        self, problem: AlpacaProblem, candidate: str
-    ) -> AlpacaComparison:
+    def compare(self, problem: AlpacaProblem, candidate: str) -> AlpacaComparison:
         cand_len = len(candidate) if isinstance(candidate, str) else 0
         ref_len = len(problem.reference_output)
 
@@ -215,7 +212,7 @@ class AlpacaEvalScorer:
     def score(
         self,
         problems: Sequence[AlpacaProblem],
-        candidates: List[str],
+        candidates: list[str],
     ) -> dict:
         """Aggregate win/tie/reference rates and simplified LC winrate.
 
@@ -232,12 +229,9 @@ class AlpacaEvalScorer:
         """
         if len(problems) != len(candidates):
             raise ValueError(
-                f"problems ({len(problems)}) and candidates "
-                f"({len(candidates)}) length mismatch"
+                f"problems ({len(problems)}) and candidates ({len(candidates)}) length mismatch"
             )
-        comparisons = [
-            self.compare(p, c) for p, c in zip(problems, candidates)
-        ]
+        comparisons = [self.compare(p, c) for p, c in zip(problems, candidates)]
         return self.aggregate(comparisons)
 
     # -------------------------------------------------------------- aggregate
@@ -264,7 +258,7 @@ class AlpacaEvalScorer:
         ref_rate = refs / n_valid
 
         # Simplified length-controlled winrate.
-        ratios_dev: List[float] = []
+        ratios_dev: list[float] = []
         for c in comparisons:
             if c.winner == "invalid":
                 continue

@@ -19,7 +19,6 @@ from src.mcp.tool_schema_registry import (
     validate_tool_call,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixture: isolated registry
 # ---------------------------------------------------------------------------
@@ -99,7 +98,11 @@ def test_end_to_end_schema_version_mismatch_detected(clean_registry):
     schema_v2 = ToolSchema(
         name="search",
         description="Search tool v2 — breaking change.",
-        input_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+        input_schema={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
         output_schema={},
         version="2.0",
     )

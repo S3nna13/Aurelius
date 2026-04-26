@@ -170,7 +170,9 @@ def test_lambda_d_zero_zeros_desirable_contribution():
     p = torch.tensor([1.0, 2.0, 3.0, 4.0], requires_grad=True)
     r = torch.zeros(4)
     d_all = torch.ones(4, dtype=torch.bool)
-    loss = kto_v2_loss_functional(p, r, d_all, beta_d=0.3, beta_u=0.3, z_ref=0.0, lambda_d=0.0, lambda_u=1.0)
+    loss = kto_v2_loss_functional(
+        p, r, d_all, beta_d=0.3, beta_u=0.3, z_ref=0.0, lambda_d=0.0, lambda_u=1.0
+    )
     assert loss.item() == 0.0
 
 
@@ -178,7 +180,9 @@ def test_lambda_u_zero_zeros_undesirable_contribution():
     p = torch.tensor([1.0, 2.0, 3.0, 4.0], requires_grad=True)
     r = torch.zeros(4)
     d_none = torch.zeros(4, dtype=torch.bool)
-    loss = kto_v2_loss_functional(p, r, d_none, beta_d=0.3, beta_u=0.3, z_ref=0.0, lambda_d=1.0, lambda_u=0.0)
+    loss = kto_v2_loss_functional(
+        p, r, d_none, beta_d=0.3, beta_u=0.3, z_ref=0.0, lambda_d=1.0, lambda_u=0.0
+    )
     assert loss.item() == 0.0
 
 

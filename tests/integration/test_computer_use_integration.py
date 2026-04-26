@@ -13,31 +13,26 @@ import pytest
 
 from src.computer_use.action_verifier import ActionVerifier, verify_trajectory
 from src.computer_use.browser_driver import (
-    BROWSER_DRIVER_REGISTRY,
     BrowserDriverError,
     BrowserState,
     StubBrowserDriver,
 )
 from src.computer_use.gui_action import (
-    GUI_ACTION_REGISTRY,
     ActionType,
     GUIAction,
     RuleBasedPredictor,
     get_action_predictor,
 )
 from src.computer_use.screen_parser import (
-    SCREEN_PARSER_REGISTRY,
     AccessibilityNode,
     JSONTreeParser,
     ScreenSnapshot,
     get_screen_parser,
 )
 from src.computer_use.trajectory_replay import (
-    Trajectory,
     TrajectoryRecorder,
     TrajectoryReplayer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixture
@@ -86,6 +81,7 @@ SAMPLE_TREE: dict = {
 # ---------------------------------------------------------------------------
 # Integration tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputerUseEndToEnd:
     """Full pipeline: parse → predict → verify."""
@@ -144,6 +140,7 @@ class TestComputerUseEndToEnd:
 
     def test_registries_accessible_via_package(self):
         import src.computer_use as cu
+
         assert "json_tree" in cu.SCREEN_PARSER_REGISTRY
         assert "rule_based" in cu.GUI_ACTION_REGISTRY
 
@@ -163,9 +160,7 @@ class TestComputerUseEndToEnd:
     def test_denied_action_fails_verification(self):
         parser = JSONTreeParser()
         snap = parser.parse(SAMPLE_TREE)
-        bad_action = GUIAction(
-            action_type=ActionType.CLICK, target_selector="delete everything"
-        )
+        bad_action = GUIAction(action_type=ActionType.CLICK, target_selector="delete everything")
         verifier = ActionVerifier()
         ok, reason = verifier.verify(bad_action, snap)
         assert ok is False
@@ -185,6 +180,7 @@ class TestComputerUseEndToEnd:
 # ---------------------------------------------------------------------------
 # BrowserDriver lifecycle integration
 # ---------------------------------------------------------------------------
+
 
 class TestBrowserDriverIntegration:
     """End-to-end lifecycle test for StubBrowserDriver."""
@@ -224,6 +220,7 @@ class TestBrowserDriverIntegration:
 # ---------------------------------------------------------------------------
 # Trajectory record and replay integration
 # ---------------------------------------------------------------------------
+
 
 class TestTrajectoryIntegration:
     """Record a 2-step trajectory and replay it end-to-end."""
@@ -285,15 +282,16 @@ class TestTrajectoryIntegration:
 # WebArena harness integration
 # ---------------------------------------------------------------------------
 
+
 class TestWebArenaHarnessIntegration:
     """End-to-end integration: register a task, run with StubBrowserDriver."""
 
     def test_webarena_harness_run(self):
         """Register a task, run with a stub agent, verify TaskResult structure."""
         from src.computer_use.webarena_eval import (
+            TaskResult,
             WebArenaHarness,
             WebTask,
-            TaskResult,
         )
 
         harness = WebArenaHarness()

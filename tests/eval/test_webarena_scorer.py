@@ -6,8 +6,6 @@ clean-room implementation.
 
 from __future__ import annotations
 
-import pytest
-
 from src.eval.webarena_scorer import (
     WEBARENA_SCORER_REGISTRY,
     WEBARENA_TASK_REGISTRY,
@@ -16,7 +14,6 @@ from src.eval.webarena_scorer import (
     WebArenaScorer,
     WebArenaTask,
 )
-
 
 # ---------------------------------------------------------------------------
 # Dataclass defaults
@@ -84,7 +81,9 @@ def test_score_result_match_returns_true() -> None:
         start_url="http://shop.example/",
         reference_answers=["added to cart"],
     )
-    result = WebArenaResult(task_id="t1", predicted_answer="Item added to cart successfully.", steps_taken=3)
+    result = WebArenaResult(
+        task_id="t1", predicted_answer="Item added to cart successfully.", steps_taken=3
+    )
     assert scorer.score_result(result, task) is True
 
 
@@ -126,7 +125,9 @@ def test_score_result_case_insensitive() -> None:
         start_url="http://gitlab.example/",
         reference_answers=["Issue Created"],
     )
-    result = WebArenaResult(task_id="t4", predicted_answer="issue created successfully", steps_taken=4)
+    result = WebArenaResult(
+        task_id="t4", predicted_answer="issue created successfully", steps_taken=4
+    )
     assert scorer.score_result(result, task) is True
 
 
@@ -140,7 +141,9 @@ def test_score_result_partial_match_in_reference() -> None:
         start_url="http://shop.example/",
         reference_answers=["ThinkPad X1", "MacBook Pro"],
     )
-    result = WebArenaResult(task_id="t5", predicted_answer="The best laptop is MacBook Pro Carbon.", steps_taken=6)
+    result = WebArenaResult(
+        task_id="t5", predicted_answer="The best laptop is MacBook Pro Carbon.", steps_taken=6
+    )
     assert scorer.score_result(result, task) is True
 
 

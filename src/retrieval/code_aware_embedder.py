@@ -32,8 +32,8 @@ import hashlib
 import keyword
 import math
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Sequence
 
 from .code_aware_tokenizer import CodeAwareTokenizer
 
@@ -60,9 +60,15 @@ _SIGNATURE_RE = re.compile(
 _LINE_COMMENT_RE = re.compile(r"^\s*#.*$", re.MULTILINE)
 _TRIPLE_STRING_RE = re.compile(r"(?:\"\"\"[\s\S]*?\"\"\"|'''[\s\S]*?''')")
 
-_PY_KEYWORDS: frozenset[str] = frozenset(keyword.kwlist) | frozenset({
-    "self", "cls", "True", "False", "None",
-})
+_PY_KEYWORDS: frozenset[str] = frozenset(keyword.kwlist) | frozenset(
+    {
+        "self",
+        "cls",
+        "True",
+        "False",
+        "None",
+    }
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -112,6 +118,7 @@ def split_identifier(name: str) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class CodeFeatures:
     """Structured features extracted from a source-code snippet."""
+
     identifiers: tuple[str, ...]
     imports: tuple[str, ...]
     signatures: tuple[str, ...]
@@ -233,9 +240,7 @@ class CodeAwareEmbedder:
 
         idents_all = [m.group(0) for m in _IDENT_RE.finditer(code)]
         n_tokens = len(idents_all)
-        idents = tuple(
-            _dedup(tok for tok in idents_all if tok not in _PY_KEYWORDS)
-        )
+        idents = tuple(_dedup(tok for tok in idents_all if tok not in _PY_KEYWORDS))
         return CodeFeatures(
             identifiers=idents,
             imports=imports,

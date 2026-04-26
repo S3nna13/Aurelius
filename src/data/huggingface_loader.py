@@ -15,11 +15,11 @@ network connection.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import torch
-from torch import Tensor
 
 
 def _load_dataset(*args: Any, **kwargs: Any) -> Any:
@@ -37,6 +37,7 @@ def _load_dataset(*args: Any, **kwargs: Any) -> Any:
 # ---------------------------------------------------------------------------
 # Config & data-class definitions
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class HFDatasetConfig:
@@ -67,6 +68,7 @@ class InstructionSample:
 # Per-dataset parsers
 # ---------------------------------------------------------------------------
 
+
 def parse_hh_rlhf_sample(raw: dict) -> PreferencePair:
     """Split chosen/rejected at last '\\n\\nAssistant:' to get prompt vs response.
 
@@ -96,7 +98,7 @@ def parse_hh_rlhf_sample(raw: dict) -> PreferencePair:
     # Extract only the response part from the rejected string
     rej_idx = rejected_full.rfind(marker)
     if rej_idx != -1:
-        rejected_response = rejected_full[rej_idx + len(marker):].lstrip(" ")
+        rejected_response = rejected_full[rej_idx + len(marker) :].lstrip(" ")
     else:
         rejected_response = rejected_full
 
@@ -140,8 +142,7 @@ def parse_lima_sample(raw: dict) -> InstructionSample:
     instruction = convs[0] if len(convs) > 0 else ""
     output = convs[1] if len(convs) > 1 else ""
     conversation = [
-        {"role": ("user" if i % 2 == 0 else "assistant"), "text": t}
-        for i, t in enumerate(convs)
+        {"role": ("user" if i % 2 == 0 else "assistant"), "text": t} for i, t in enumerate(convs)
     ]
     return InstructionSample(
         instruction=instruction,
@@ -312,13 +313,12 @@ class HuggingFaceLoader:
 # Mock data generators (matching real HuggingFace field schemas)
 # ---------------------------------------------------------------------------
 
+
 def mock_hh_rlhf_data(n: int = 4) -> list[dict]:
     """Generate *n* synthetic hh-rlhf records with real field names."""
     records: list[dict] = []
     for i in range(n):
-        shared_prefix = (
-            f"\n\nHuman: Question number {i}\n\nAssistant:"
-        )
+        shared_prefix = f"\n\nHuman: Question number {i}\n\nAssistant:"
         records.append(
             {
                 "chosen": shared_prefix + f" This is a helpful answer {i}.",

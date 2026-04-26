@@ -26,18 +26,18 @@ Integration: test_integration_good_mediocre_bad
 
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.reasoning_trace_eval import (
     ReasoningTraceConfig,
     ReasoningTraceEval,
     StepAnalysis,
     TraceEvalResult,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_evaluator(**kwargs) -> ReasoningTraceEval:
     return ReasoningTraceEval(ReasoningTraceConfig(**kwargs))
@@ -46,6 +46,7 @@ def _make_evaluator(**kwargs) -> ReasoningTraceEval:
 # ---------------------------------------------------------------------------
 # 1. Config defaults
 # ---------------------------------------------------------------------------
+
 
 class TestConfigDefaults:
     def test_config_defaults(self):
@@ -60,6 +61,7 @@ class TestConfigDefaults:
 # ---------------------------------------------------------------------------
 # 2–4. parse_steps
 # ---------------------------------------------------------------------------
+
 
 class TestParseSteps:
     def test_parse_steps_count(self):
@@ -95,6 +97,7 @@ class TestParseSteps:
 # ---------------------------------------------------------------------------
 # 5–6. faithfulness_score
 # ---------------------------------------------------------------------------
+
 
 class TestFaithfulnessScore:
     def test_faithfulness_all_reasoning(self):
@@ -138,6 +141,7 @@ class TestFaithfulnessScore:
 # 7–8. length_efficiency
 # ---------------------------------------------------------------------------
 
+
 class TestLengthEfficiency:
     def test_length_efficiency_equal(self):
         """When trace ≈ answer in length, efficiency should be ≈ 1.0."""
@@ -151,7 +155,7 @@ class TestLengthEfficiency:
         """A trace 10× longer than the answer gets a score < 1.0."""
         ev = _make_evaluator(max_length_ratio=5.0)
         answer = "x" * 10
-        trace = "x" * 100   # 10× longer
+        trace = "x" * 100  # 10× longer
         score = ev.length_efficiency(trace, answer)
         # actual_ratio = 10; efficiency = 5/10 = 0.5
         assert score == pytest.approx(0.5)
@@ -160,7 +164,7 @@ class TestLengthEfficiency:
         """Trace exactly max_length_ratio times longer → efficiency == 1.0."""
         ev = _make_evaluator(max_length_ratio=5.0)
         answer = "x" * 10
-        trace = "x" * 50   # 5× longer (at the boundary)
+        trace = "x" * 50  # 5× longer (at the boundary)
         score = ev.length_efficiency(trace, answer)
         assert score == pytest.approx(1.0)
 
@@ -168,6 +172,7 @@ class TestLengthEfficiency:
 # ---------------------------------------------------------------------------
 # 9–10. redundancy_score
 # ---------------------------------------------------------------------------
+
 
 class TestRedundancyScore:
     def test_redundancy_score_unique(self):
@@ -195,6 +200,7 @@ class TestRedundancyScore:
 # ---------------------------------------------------------------------------
 # 11. step_consistency
 # ---------------------------------------------------------------------------
+
 
 class TestStepConsistency:
     def test_step_consistency_overlap(self):
@@ -226,6 +232,7 @@ class TestStepConsistency:
 # ---------------------------------------------------------------------------
 # 12–13. evaluate — result type and range
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluate:
     def test_evaluate_result_type(self):
@@ -264,6 +271,7 @@ class TestEvaluate:
 # 14. aggregate keys
 # ---------------------------------------------------------------------------
 
+
 class TestAggregate:
     def test_aggregate_keys(self):
         """aggregate() must return all required keys."""
@@ -294,6 +302,7 @@ class TestAggregate:
 # 15. BENCHMARK_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 class TestRegistry:
     def test_registry_entry(self):
         """ReasoningTraceEval is registered in BENCHMARK_REGISTRY."""
@@ -304,6 +313,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # Integration test: good > mediocre > bad
 # ---------------------------------------------------------------------------
+
 
 class TestIntegration:
     """

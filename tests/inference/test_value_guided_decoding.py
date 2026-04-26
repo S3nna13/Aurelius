@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.inference.value_guided_decoding import (
     TokenValueFunction,
+    ValueFunctionTrainer,
     ValueGuidedBeam,
     ValueGuidedDecoder,
-    ValueFunctionTrainer,
 )
 
 # ── shared constants ────────────────────────────────────────────────────────
@@ -21,6 +19,7 @@ HIDDEN_SIZE = 32
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def make_value_fn() -> TokenValueFunction:
     return TokenValueFunction(d_model=D_MODEL, hidden_size=HIDDEN_SIZE)
@@ -33,14 +32,15 @@ def make_dummy_model_fn(vocab_size: int = VOCAB_SIZE, d_model: int = D_MODEL):
 
     def model_fn(input_ids: torch.Tensor):
         # input_ids: (1, T)
-        h = embed(input_ids)                      # (1, T, d_model)
-        logits = linear(h)                        # (1, T, vocab_size)
+        h = embed(input_ids)  # (1, T, d_model)
+        logits = linear(h)  # (1, T, vocab_size)
         return h, logits
 
     return model_fn
 
 
 # ── TokenValueFunction ────────────────────────────────────────────────────────
+
 
 def test_token_value_function_output_shape():
     """forward() should return (B, T)."""
@@ -81,6 +81,7 @@ def test_token_value_function_gradients():
 
 # ── ValueGuidedBeam ───────────────────────────────────────────────────────────
 
+
 def test_beam_extend_appends_token():
     """extend() must append next_token to token_ids."""
     beam = ValueGuidedBeam([1, 2, 3], score=0.0, value_score=0.0, lm_score=0.0)
@@ -112,6 +113,7 @@ def test_beam_extend_combined_score():
 
 
 # ── ValueGuidedDecoder ────────────────────────────────────────────────────────
+
 
 def test_generate_output_shape():
     """generate() must return a tensor of shape (max_new_tokens,)."""
@@ -145,6 +147,7 @@ def test_generate_non_negative_token_ids():
 
 
 # ── ValueFunctionTrainer ──────────────────────────────────────────────────────
+
 
 def test_compute_returns_shape():
     """compute_returns() must return (T,)."""
@@ -204,6 +207,4 @@ def test_train_step_loss_is_finite():
     hidden = torch.randn(1, T, D_MODEL)
     rewards = torch.rand(T)
     info = trainer.train_step(hidden, rewards)
-    assert torch.isfinite(torch.tensor(info["loss"])), (
-        f"loss is not finite: {info['loss']}"
-    )
+    assert torch.isfinite(torch.tensor(info["loss"])), f"loss is not finite: {info['loss']}"

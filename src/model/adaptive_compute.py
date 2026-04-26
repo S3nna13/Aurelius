@@ -15,15 +15,16 @@ Components:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
-from typing import Sequence
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ACTConfig:
@@ -48,6 +49,7 @@ class ACTConfig:
 # ---------------------------------------------------------------------------
 # Halting Unit
 # ---------------------------------------------------------------------------
+
 
 class HaltingUnit(nn.Module):
     """Learns per-token halting probability.
@@ -78,12 +80,13 @@ class HaltingUnit(nn.Module):
         Returns:
             (B, T, 1) halting probabilities in (0, 1).
         """
-        return torch.sigmoid(self.linear(hidden))   # (B, T, 1)
+        return torch.sigmoid(self.linear(hidden))  # (B, T, 1)
 
 
 # ---------------------------------------------------------------------------
 # ACT forward loop
 # ---------------------------------------------------------------------------
+
 
 def act_forward(
     hidden_states: torch.Tensor,
@@ -142,12 +145,12 @@ def act_forward(
         if isinstance(layer_out, tuple):
             h = layer_out[0]
         else:
-            h = layer_out   # (B, T, D)
+            h = layer_out  # (B, T, D)
 
         # Compute halting probability for tokens that haven't halted yet
-        p = halting_unit(h)                         # (B, T, 1), in (0, 1)
+        p = halting_unit(h)  # (B, T, 1), in (0, 1)
 
-        is_last_step = (step_idx == n_steps - 1)
+        is_last_step = step_idx == n_steps - 1
 
         if is_last_step:
             # On the final step, use up the full remaining budget
@@ -165,7 +168,7 @@ def act_forward(
             weight = torch.where(halt_mask, remainder, p)
 
         # Accumulate weighted hidden state
-        output = output + weight * h                # (B, T, D)
+        output = output + weight * h  # (B, T, D)
 
         # Accumulate ponder steps (each token gets +1 per step, weighted)
         ponder_steps = ponder_steps + weight
@@ -188,6 +191,7 @@ def act_forward(
 # Ponder loss
 # ---------------------------------------------------------------------------
 
+
 def ponder_loss(ponder_cost: torch.Tensor, target_ponder: float = 1.0) -> torch.Tensor:
     """Regularisation loss penalising deviation from a target ponder cost.
 
@@ -207,6 +211,7 @@ def ponder_loss(ponder_cost: torch.Tensor, target_ponder: float = 1.0) -> torch.
 # ---------------------------------------------------------------------------
 # ACTTransformerLayer
 # ---------------------------------------------------------------------------
+
 
 class ACTTransformerLayer(nn.Module):
     """Wraps a list of sub-layers with Adaptive Computation Time.

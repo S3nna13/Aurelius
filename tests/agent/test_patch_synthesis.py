@@ -5,13 +5,11 @@ from __future__ import annotations
 import pytest
 
 from src.agent.patch_synthesis import (
+    PATCH_REGISTRY,
     Patch,
     PatchError,
-    PatchHunk,
-    PATCH_REGISTRY,
     PatchSynthesizer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -55,6 +53,7 @@ def patch_str(synth, patch_of_diff) -> str:
 # make_patch
 # ---------------------------------------------------------------------------
 
+
 def test_make_patch_identical_zero_hunks(synth):
     patch = synth.make_patch(IDENTICAL, IDENTICAL)
     assert len(patch.hunks) == 0
@@ -92,6 +91,7 @@ def test_make_patch_hunk_has_lines(synth):
 # patch_to_str
 # ---------------------------------------------------------------------------
 
+
 def test_patch_to_str_starts_with_minus_minus_minus(synth, patch_of_diff):
     s = synth.patch_to_str(patch_of_diff)
     assert s.startswith("---")
@@ -117,6 +117,7 @@ def test_patch_to_str_identical_empty(synth):
 # apply_patch  — round-trip
 # ---------------------------------------------------------------------------
 
+
 def test_apply_patch_roundtrip(synth):
     patch = synth.make_patch(ORIGINAL, MODIFIED, filename="greet.py")
     recovered = synth.apply_patch(ORIGINAL, patch)
@@ -141,6 +142,7 @@ def test_apply_patch_wrong_old_lines_raises_patch_error(synth):
 # apply_str_patch
 # ---------------------------------------------------------------------------
 
+
 def test_apply_str_patch_valid_roundtrip(synth):
     patch = synth.make_patch(ORIGINAL, MODIFIED, filename="greet.py")
     patch_str = synth.patch_to_str(patch)
@@ -162,6 +164,7 @@ def test_apply_str_patch_empty_raises_patch_error(synth):
 # PatchError
 # ---------------------------------------------------------------------------
 
+
 def test_patch_error_is_exception_subclass():
     assert issubclass(PatchError, Exception)
 
@@ -174,6 +177,7 @@ def test_patch_error_can_be_raised_and_caught():
 # ---------------------------------------------------------------------------
 # PATCH_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_patch_registry_contains_unified():
     assert "unified" in PATCH_REGISTRY

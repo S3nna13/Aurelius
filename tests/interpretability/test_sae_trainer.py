@@ -12,11 +12,10 @@ All tests use SAEConfig(d_model=64, n_features=256).
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.interpretability.sae_trainer import (
-    SAEConfig,
     JumpReLUSAE,
+    SAEConfig,
     SAETrainer,
 )
 
@@ -45,15 +44,14 @@ def _make_batch(seed: int = 42, batch: int = BATCH) -> torch.Tensor:
 # Test 1 — encode output shape
 # ===========================================================================
 
+
 def test_encode_output_shape():
     """encode() must return (f, z_pre) both of shape (B, n_features)."""
     model = _make_model()
     x = _make_batch()
     f, z_pre = model.encode(x)
 
-    assert f.shape == (BATCH, N_FEATURES), (
-        f"f shape {f.shape} != ({BATCH}, {N_FEATURES})"
-    )
+    assert f.shape == (BATCH, N_FEATURES), f"f shape {f.shape} != ({BATCH}, {N_FEATURES})"
     assert z_pre.shape == (BATCH, N_FEATURES), (
         f"z_pre shape {z_pre.shape} != ({BATCH}, {N_FEATURES})"
     )
@@ -63,6 +61,7 @@ def test_encode_output_shape():
 # Test 2 — decode output shape
 # ===========================================================================
 
+
 def test_decode_output_shape():
     """decode() must return x_hat of shape (B, d_model)."""
     model = _make_model()
@@ -70,14 +69,13 @@ def test_decode_output_shape():
     f = torch.rand(BATCH, N_FEATURES)
     x_hat = model.decode(f)
 
-    assert x_hat.shape == (BATCH, D_MODEL), (
-        f"x_hat shape {x_hat.shape} != ({BATCH}, {D_MODEL})"
-    )
+    assert x_hat.shape == (BATCH, D_MODEL), f"x_hat shape {x_hat.shape} != ({BATCH}, {D_MODEL})"
 
 
 # ===========================================================================
 # Test 3 — JumpReLU produces sparsity (most features zero)
 # ===========================================================================
+
 
 def test_jumprelu_sparsity():
     """JumpReLU gate should produce sparse activations (most features zero).
@@ -102,6 +100,7 @@ def test_jumprelu_sparsity():
 # Test 4 — features are non-zero exactly where z_pre > threshold
 # ===========================================================================
 
+
 def test_active_features_match_threshold():
     """f_i should be non-zero iff z_pre_i > theta_i (JumpReLU definition)."""
     model = _make_model()
@@ -109,7 +108,7 @@ def test_active_features_match_threshold():
     f, z_pre = model.encode(x)
 
     theta = model.threshold  # (n_features,)
-    expected_active = (z_pre > theta).any(dim=0)   # at least one sample active
+    expected_active = (z_pre > theta).any(dim=0)  # at least one sample active
     actual_active = (f > 0).any(dim=0)
 
     # For every feature, activity should agree with the threshold condition
@@ -121,6 +120,7 @@ def test_active_features_match_threshold():
 # ===========================================================================
 # Test 5 — gradient flows through encode (straight-through estimator)
 # ===========================================================================
+
 
 def test_gradient_flows_through_encode():
     """Gradients must flow back to W_enc via the straight-through estimator."""
@@ -141,6 +141,7 @@ def test_gradient_flows_through_encode():
 # ===========================================================================
 # Test 6 — reconstruction loss decreases after training steps
 # ===========================================================================
+
 
 def test_reconstruction_improves_with_training():
     """After several gradient steps the reconstruction loss should decrease."""
@@ -173,6 +174,7 @@ def test_reconstruction_improves_with_training():
 # Test 7 — train_step returns expected keys
 # ===========================================================================
 
+
 def test_train_step_returns_expected_keys():
     """train_step must return a dict with exactly the required metric keys."""
     model = _make_model()
@@ -194,6 +196,7 @@ def test_train_step_returns_expected_keys():
 # Test 8 — l0 is in a reasonable range after training (not 0 or n_features)
 # ===========================================================================
 
+
 def test_l0_reasonable_after_training():
     """After training, mean l0 should be > 0 and < n_features (not degenerate)."""
     torch.manual_seed(0)
@@ -205,13 +208,14 @@ def test_l0_reasonable_after_training():
         metrics = trainer.train_step(x)
 
     l0 = metrics["l0"]
-    assert l0 > 0, f"l0 collapsed to 0 — all features dead"
+    assert l0 > 0, "l0 collapsed to 0 — all features dead"
     assert l0 < N_FEATURES, f"l0 = {l0} equals n_features — all features active (no sparsity)"
 
 
 # ===========================================================================
 # Test 9 — sparsity_stats returns required keys
 # ===========================================================================
+
 
 def test_sparsity_stats_returns_required_keys():
     """sparsity_stats must return 'mean_l0', 'dead_features', 'max_activation'."""
@@ -222,12 +226,8 @@ def test_sparsity_stats_returns_required_keys():
     stats = trainer.sparsity_stats(f)
 
     required = {"mean_l0", "dead_features", "max_activation"}
-    assert required.issubset(stats.keys()), (
-        f"Missing keys: {required - set(stats.keys())}"
-    )
-    assert isinstance(stats["dead_features"], int), (
-        "'dead_features' should be an int"
-    )
+    assert required.issubset(stats.keys()), f"Missing keys: {required - set(stats.keys())}"
+    assert isinstance(stats["dead_features"], int), "'dead_features' should be an int"
     assert stats["mean_l0"] >= 0.0
     assert stats["dead_features"] >= 0
     assert stats["max_activation"] >= 0.0
@@ -236,6 +236,7 @@ def test_sparsity_stats_returns_required_keys():
 # ===========================================================================
 # Test 10 — determinism under torch.manual_seed
 # ===========================================================================
+
 
 def test_determinism_under_manual_seed():
     """Two models initialised with the same seed must produce identical outputs."""
@@ -257,6 +258,7 @@ def test_determinism_under_manual_seed():
 # Test 11 — no NaN or Inf on random activations
 # ===========================================================================
 
+
 def test_no_nan_inf_on_random_input():
     """Forward pass and a training step must not produce NaN or Inf values."""
     torch.manual_seed(123)
@@ -268,9 +270,7 @@ def test_no_nan_inf_on_random_input():
         metrics = trainer.train_step(x)
 
         for k, v in metrics.items():
-            assert torch.isfinite(torch.tensor(v)), (
-                f"metrics['{k}'] = {v} is NaN/Inf at step {i}"
-            )
+            assert torch.isfinite(torch.tensor(v)), f"metrics['{k}'] = {v} is NaN/Inf at step {i}"
 
     # Check model parameters
     for name, param in model.named_parameters():
@@ -280,6 +280,7 @@ def test_no_nan_inf_on_random_input():
 # ===========================================================================
 # Test 12 — decoder weight columns have unit norm
 # ===========================================================================
+
 
 def test_decoder_columns_unit_norm():
     """W_dec rows (each feature's decoder direction) must have unit L2 norm."""
@@ -291,8 +292,7 @@ def test_decoder_columns_unit_norm():
     # After init
     norms_init = model.W_dec.data.norm(dim=-1)
     assert torch.allclose(norms_init, torch.ones_like(norms_init), atol=1e-5), (
-        f"Decoder not unit-norm at init; max deviation = "
-        f"{(norms_init - 1).abs().max().item():.2e}"
+        f"Decoder not unit-norm at init; max deviation = {(norms_init - 1).abs().max().item():.2e}"
     )
 
     # After training steps

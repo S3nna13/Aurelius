@@ -4,12 +4,13 @@ Combines BM25 lexical scoring with LTM importance scores for re-ranking.
 Inspired by memory retrieval in Generative Agents (Park et al. 2303.17580)
 and MemGPT (Packer et al. 2310.08560). License: MIT.
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from math import log
 from collections import defaultdict
+from dataclasses import dataclass
+from math import log
 from typing import Any
 
 _MAX_QUERY_LEN = 2048
@@ -23,7 +24,7 @@ class RetrievalResult:
     bm25_score: float
     importance: float
     combined_score: float
-    snippet: str = ""       # first 200 chars of str(value)
+    snippet: str = ""  # first 200 chars of str(value)
 
 
 class MemoryRetriever:
@@ -33,8 +34,7 @@ class MemoryRetriever:
     Combined score = alpha * bm25_norm + (1 - alpha) * importance.
     """
 
-    def __init__(self, k1: float = 1.5, b: float = 0.75,
-                 alpha: float = 0.7) -> None:
+    def __init__(self, k1: float = 1.5, b: float = 0.75, alpha: float = 0.7) -> None:
         """alpha: weight on BM25 score (1-alpha goes to importance)."""
         if not (0.0 <= alpha <= 1.0):
             raise ValueError("alpha must be in [0, 1]")
@@ -101,8 +101,9 @@ class MemoryRetriever:
             score += idf * (tf * (self.k1 + 1)) / max(denom, 1e-9)
         return score
 
-    def query(self, text: str, top_k: int = 10,
-              importance_floor: float = 0.0) -> list[RetrievalResult]:
+    def query(
+        self, text: str, top_k: int = 10, importance_floor: float = 0.0
+    ) -> list[RetrievalResult]:
         """Query the index. Returns top_k results by combined score."""
         if len(text) > _MAX_QUERY_LEN:
             raise ValueError(f"query exceeds {_MAX_QUERY_LEN} chars")
@@ -124,13 +125,16 @@ class MemoryRetriever:
                 continue
             bm25_norm = bm25 / max(max_bm25, 1e-9)
             combined = self.alpha * bm25_norm + (1 - self.alpha) * imp
-            results.append(RetrievalResult(
-                key=key, value=None,  # caller fills value from LTM
-                bm25_score=bm25,
-                importance=imp,
-                combined_score=combined,
-                snippet="",
-            ))
+            results.append(
+                RetrievalResult(
+                    key=key,
+                    value=None,  # caller fills value from LTM
+                    bm25_score=bm25,
+                    importance=imp,
+                    combined_score=combined,
+                    snippet="",
+                )
+            )
         results.sort(key=lambda r: r.combined_score, reverse=True)
         return results[:top_k]
 

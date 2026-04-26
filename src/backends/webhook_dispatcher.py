@@ -4,12 +4,11 @@ import asyncio
 import hashlib
 import hmac
 import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -27,9 +26,9 @@ class WebhookEndpoint:
 class DispatchResult:
     url: str
     success: bool
-    status_code: Optional[int]
+    status_code: int | None
     attempts: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class CircuitBreaker:
@@ -37,7 +36,7 @@ class CircuitBreaker:
         self._failure_threshold = failure_threshold
         self._recovery_timeout_s = recovery_timeout_s
         self._failures = 0
-        self._opened_at: Optional[float] = None
+        self._opened_at: float | None = None
         self._state = CircuitState.CLOSED
 
     def record_success(self) -> None:
@@ -69,10 +68,10 @@ class CircuitBreaker:
 class WebhookDispatcher:
     """Fire-and-forget HTTP webhook with per-endpoint circuit breakers."""
 
-    def __init__(self, endpoints: Optional[List[WebhookEndpoint]] = None) -> None:
-        self._endpoints: Dict[str, WebhookEndpoint] = {}
-        self._breakers: Dict[str, CircuitBreaker] = {}
-        for ep in (endpoints or []):
+    def __init__(self, endpoints: list[WebhookEndpoint] | None = None) -> None:
+        self._endpoints: dict[str, WebhookEndpoint] = {}
+        self._breakers: dict[str, CircuitBreaker] = {}
+        for ep in endpoints or []:
             self.add_endpoint(ep)
 
     def add_endpoint(self, endpoint: WebhookEndpoint) -> None:
@@ -90,16 +89,22 @@ class WebhookDispatcher:
     async def dispatch(self, url: str, payload: dict) -> DispatchResult:
         endpoint = self._endpoints.get(url)
         if endpoint is None:
-            return DispatchResult(url=url, success=False, status_code=None,
-                                  attempts=0, error="endpoint not registered")
+            return DispatchResult(
+                url=url,
+                success=False,
+                status_code=None,
+                attempts=0,
+                error="endpoint not registered",
+            )
 
         breaker = self._breakers[url]
         if breaker.is_open():
-            return DispatchResult(url=url, success=False, status_code=None,
-                                  attempts=0, error="circuit open")
+            return DispatchResult(
+                url=url, success=False, status_code=None, attempts=0, error="circuit open"
+            )
 
         attempts = 0
-        last_error: Optional[str] = None
+        last_error: str | None = None
         for attempt in range(1, endpoint.max_retries + 1):
             attempts = attempt
             try:
@@ -110,10 +115,11 @@ class WebhookDispatcher:
                 last_error = str(exc)
                 breaker.record_failure()
 
-        return DispatchResult(url=url, success=False, status_code=None,
-                              attempts=attempts, error=last_error)
+        return DispatchResult(
+            url=url, success=False, status_code=None, attempts=attempts, error=last_error
+        )
 
-    async def broadcast(self, payload: dict) -> List[DispatchResult]:
+    async def broadcast(self, payload: dict) -> list[DispatchResult]:
         tasks = [self.dispatch(url, payload) for url in list(self._endpoints)]
         return list(await asyncio.gather(*tasks))
 

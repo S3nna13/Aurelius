@@ -13,15 +13,17 @@ from torch import Tensor
 @dataclass
 class OTConfig:
     """Configuration for optimal transport computations."""
-    epsilon: float = 0.05       # Sinkhorn regularisation strength
-    n_iters: int = 100          # number of Sinkhorn iterations
-    p: int = 2                  # Lp distance exponent for cost matrix
-    normalize: bool = True      # normalise cost matrix before Sinkhorn
+
+    epsilon: float = 0.05  # Sinkhorn regularisation strength
+    n_iters: int = 100  # number of Sinkhorn iterations
+    p: int = 2  # Lp distance exponent for cost matrix
+    normalize: bool = True  # normalise cost matrix before Sinkhorn
 
 
 # ---------------------------------------------------------------------------
 # Core primitives
 # ---------------------------------------------------------------------------
+
 
 def cost_matrix(x: Tensor, y: Tensor, p: int = 2) -> Tensor:
     """
@@ -37,8 +39,8 @@ def cost_matrix(x: Tensor, y: Tensor, p: int = 2) -> Tensor:
     """
     # x: (M, D), y: (N, D)
     # Broadcast: (M, 1, D) - (1, N, D) → (M, N, D)
-    diff = x.unsqueeze(1) - y.unsqueeze(0)          # (M, N, D)
-    C = diff.abs().pow(p).sum(dim=-1)                # (M, N)
+    diff = x.unsqueeze(1) - y.unsqueeze(0)  # (M, N, D)
+    C = diff.abs().pow(p).sum(dim=-1)  # (M, N)
     return C
 
 
@@ -62,8 +64,8 @@ def sinkhorn(
     Returns:
         transport plan T: (M, N), rows sum ≈ a, cols sum ≈ b
     """
-    log_a = a.log()          # (M,)
-    log_b = b.log()          # (N,)
+    log_a = a.log()  # (M,)
+    log_b = b.log()  # (N,)
     M_cost = cost / epsilon  # (M, N)
 
     # Log-domain Sinkhorn
@@ -84,6 +86,7 @@ def sinkhorn(
 # ---------------------------------------------------------------------------
 # Wasserstein distance
 # ---------------------------------------------------------------------------
+
 
 def wasserstein_distance(x: Tensor, y: Tensor, config: OTConfig) -> Tensor:
     """
@@ -118,6 +121,7 @@ def wasserstein_distance(x: Tensor, y: Tensor, config: OTConfig) -> Tensor:
 # ---------------------------------------------------------------------------
 # Sequence OT loss
 # ---------------------------------------------------------------------------
+
 
 def sequence_ot_loss(
     logits_p: Tensor,
@@ -163,6 +167,7 @@ def sequence_ot_loss(
 # ---------------------------------------------------------------------------
 # OTAligner
 # ---------------------------------------------------------------------------
+
 
 class OTAligner:
     """Aligns two sequences using optimal transport."""

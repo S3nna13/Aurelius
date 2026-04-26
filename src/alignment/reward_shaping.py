@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import math
+from dataclasses import dataclass
+
 import torch
-from dataclasses import dataclass, field
 from torch import Tensor
 
 
@@ -12,7 +12,7 @@ from torch import Tensor
 class RewardShapingConfig:
     """Configuration for reward shaping pipeline."""
 
-    reward_clip: float = 5.0            # clip rewards to [-clip, clip]
+    reward_clip: float = 5.0  # clip rewards to [-clip, clip]
     normalize_rewards: bool = True
     kl_penalty_coeff: float = 0.1
     length_penalty_coeff: float = 0.0  # negative = penalize long sequences
@@ -59,7 +59,7 @@ class RunningMeanStd:
         Returns:
             (x - mean) / (std + 1e-8), same shape as x.
         """
-        return (x - self._mean) / (self._var ** 0.5 + 1e-8)
+        return (x - self._mean) / (self._var**0.5 + 1e-8)
 
     @property
     def mean(self) -> float:
@@ -67,7 +67,7 @@ class RunningMeanStd:
 
     @property
     def std(self) -> float:
-        return self._var ** 0.5
+        return self._var**0.5
 
 
 def clip_rewards(rewards: Tensor, clip: float) -> Tensor:
@@ -199,7 +199,7 @@ class CompositeRewardFunction:
             (B,) shaped reward tensor.
         """
         cfg = self.config
-        B = base_rewards.shape[0]
+        base_rewards.shape[0]
 
         # 1. Clip
         rewards = clip_rewards(base_rewards, cfg.reward_clip)

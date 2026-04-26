@@ -1,4 +1,5 @@
 """Tests for src/simulation/rollout_buffer.py."""
+
 from __future__ import annotations
 
 import random

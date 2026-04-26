@@ -23,8 +23,15 @@ RERANKER_REGISTRY: dict[str, type] = {}
 RETRIEVER_REGISTRY["bm25"] = BM25Retriever
 
 from .hybrid_retriever import HybridRetriever  # noqa: E402
+
 RETRIEVER_REGISTRY["hybrid_rrf"] = HybridRetriever
 
+from .cross_encoder_reranker import (  # noqa: E402
+    CrossEncoderConfig as CrossEncoderConfig,
+)
+from .cross_encoder_reranker import (
+    CrossEncoderReranker,
+)
 from .reciprocal_rank_fusion import (  # noqa: E402
     FUSION_REGISTRY,
     borda_count,
@@ -32,11 +39,6 @@ from .reciprocal_rank_fusion import (  # noqa: E402
     comb_sum,
     fuse,
     reciprocal_rank_fusion,
-)
-
-from .cross_encoder_reranker import (  # noqa: E402
-    CrossEncoderConfig,
-    CrossEncoderReranker,
 )
 
 RERANKER_REGISTRY["cross_encoder"] = CrossEncoderReranker
@@ -55,33 +57,33 @@ from .code_aware_tokenizer import (  # noqa: E402
     SUPPORTED_LANGUAGES,
     CodeAwareTokenizer,
 )
-
-from .instruction_prefix_embedder import (  # noqa: E402
-    INSTRUCTION_PREFIXES,
-    InstructionPrefixEmbedder,
-)
-
 from .diversity_reranker import (  # noqa: E402
     JaccardDiversityReranker,
     MMRReranker,
     cosine_similarity,
     jaccard_similarity,
 )
+from .instruction_prefix_embedder import (  # noqa: E402
+    INSTRUCTION_PREFIXES,
+    InstructionPrefixEmbedder,
+)
 
 RERANKER_REGISTRY["mmr"] = MMRReranker
 RERANKER_REGISTRY["jaccard_mmr"] = JaccardDiversityReranker
 
+from .colbert_late_interaction import (  # noqa: E402
+    ColBERTConfig as ColBERTConfig,
+)
+from .colbert_late_interaction import (
+    ColBERTScorer,
+)
 from .corpus_indexer import Chunk, CorpusIndexer  # noqa: E402
-
 from .hard_negative_miner import (  # noqa: E402
     STRATEGIES as HARD_NEGATIVE_STRATEGIES,
+)
+from .hard_negative_miner import (
     HardNegative,
     HardNegativeMiner,
-)
-
-from .colbert_late_interaction import (  # noqa: E402
-    ColBERTConfig,
-    ColBERTScorer,
 )
 
 RERANKER_REGISTRY["colbert"] = ColBERTScorer
@@ -105,6 +107,8 @@ from .citation_tracker import (  # noqa: E402
     CitationReport,
     CitationSpan,
     CitationTracker,
+)
+from .citation_tracker import (
     Source as CitationSource,
 )
 
@@ -114,6 +118,8 @@ CITATION_REGISTRY: dict[str, type] = {
 
 from .neural_reranker import (  # noqa: E402
     CrossEncoderReranker as NeuralCrossEncoderReranker,
+)
+from .neural_reranker import (
     ListwiseReranker,
     RerankScore,
 )
@@ -126,12 +132,11 @@ from .dense_retriever import DenseDocument, DenseRetriever  # noqa: E402
 RETRIEVER_REGISTRY["dense"] = DenseRetriever
 
 from .hybrid_fusion_v2 import (  # noqa: E402
+    HYBRID_FUSION_REGISTRY,
     FusionResult,
     FusionStrategy,
-    HYBRID_FUSION_REGISTRY,
     HybridFusionV2,
 )
-
 from .passage_segmenter import (  # noqa: E402
     PassageSegmenter,
     Segment,

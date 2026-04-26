@@ -31,4 +31,3 @@ def test_conflict_entropy_positive_for_mixed_verdicts():
 
 def test_conflict_rate_handles_empty_input():
     assert conflict_rate([]) == pytest.approx(0.0)
-

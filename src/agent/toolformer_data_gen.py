@@ -22,8 +22,9 @@ crashing tool is silently skipped.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -68,7 +69,7 @@ class ToolformerConfig:
     result_sep: str = " -> "
     utility_threshold: float = 0.1
     max_candidates_per_position: int = 1
-    seed: Optional[int] = None
+    seed: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -211,8 +212,8 @@ class ToolformerDataGenerator:
 
     def __init__(
         self,
-        config: Optional[ToolformerConfig] = None,
-        scoring_model: Optional[Any] = None,
+        config: ToolformerConfig | None = None,
+        scoring_model: Any | None = None,
     ) -> None:
         self.config = config or ToolformerConfig()
         if scoring_model is None:
@@ -233,7 +234,7 @@ class ToolformerDataGenerator:
         self,
         text: str,
         tools: Sequence[Tool],
-    ) -> List[ToolCallAnnotation]:
+    ) -> list[ToolCallAnnotation]:
         """Annotate a single text with candidate tool calls.
 
         For each candidate position (word boundary) and each tool, a tool
@@ -256,7 +257,7 @@ class ToolformerDataGenerator:
         if not text or not tools:
             return []
 
-        annotations: List[ToolCallAnnotation] = []
+        annotations: list[ToolCallAnnotation] = []
         positions = self._candidate_positions(text)
 
         for pos in positions:
@@ -285,7 +286,7 @@ class ToolformerDataGenerator:
         self,
         texts: Sequence[str],
         tools: Sequence[Tool],
-    ) -> List[List[ToolCallAnnotation]]:
+    ) -> list[list[ToolCallAnnotation]]:
         """Annotate multiple texts.
 
         Parameters
@@ -305,8 +306,8 @@ class ToolformerDataGenerator:
     def filter_by_utility(
         self,
         annotations: Sequence[ToolCallAnnotation],
-        threshold: Optional[float] = None,
-    ) -> List[ToolCallAnnotation]:
+        threshold: float | None = None,
+    ) -> list[ToolCallAnnotation]:
         """Keep only annotations that exceed the utility threshold.
 
         Parameters
@@ -357,18 +358,16 @@ class ToolformerDataGenerator:
         result_text = text
         for ann in sorted_anns:
             call_str = self._format_call(ann)
-            result_text = (
-                result_text[: ann.position] + call_str + result_text[ann.position :]
-            )
+            result_text = result_text[: ann.position] + call_str + result_text[ann.position :]
         return result_text
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _candidate_positions(self, text: str) -> List[int]:
+    def _candidate_positions(self, text: str) -> list[int]:
         """Return character positions (end-of-word) for candidate insertions."""
-        positions: List[int] = []
+        positions: list[int] = []
         i = 0
         while i < len(text):
             # Advance past non-space chars to find end-of-word.
@@ -392,7 +391,7 @@ class ToolformerDataGenerator:
         last_word = words[-1] if words else ""
         return {"input": last_word}
 
-    def _execute_tool(self, tool: Tool, args: dict) -> Optional[str]:
+    def _execute_tool(self, tool: Tool, args: dict) -> str | None:
         """Execute *tool* with *args*, returning its string output or *None*.
 
         Catches *all* exceptions so a misbehaving tool cannot crash the

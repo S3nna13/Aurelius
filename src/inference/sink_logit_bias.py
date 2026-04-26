@@ -45,9 +45,7 @@ def apply_sink_token_logit_bias(
     if last_n_positions == 0:
         return logits.clone()
     if last_n_positions > t:
-        raise ValueError(
-            f"last_n_positions ({last_n_positions}) exceeds sequence length ({t})"
-        )
+        raise ValueError(f"last_n_positions ({last_n_positions}) exceeds sequence length ({t})")
     if not sink_token_ids:
         raise ValueError("sink_token_ids must be non-empty")
 

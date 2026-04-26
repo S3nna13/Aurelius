@@ -7,19 +7,19 @@ Verifies end-to-end flow:
   - Resolved gradients have better (less negative) dot product than originals
   - TRAINING_REGISTRY["pcgrad_v2"] is wired to PCGradV2
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
-from src.training.pcgrad_v2 import PCGradV2, PCGradV2Config
 from src.training import TRAINING_REGISTRY
-
+from src.training.pcgrad_v2 import PCGradV2, PCGradV2Config
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_conflicting_grads(n_params: int = 8, seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
     """Return two gradient tensors that are guaranteed to conflict (cos < 0)."""
@@ -31,6 +31,7 @@ def make_conflicting_grads(n_params: int = 8, seed: int = 0) -> tuple[torch.Tens
 # ---------------------------------------------------------------------------
 # Integration: 2-task conflicting gradient resolution on a linear model
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_v2_resolves_conflicting_gradients():
     """PCGradV2 should improve dot product for conflicting gradient pairs."""
@@ -51,8 +52,9 @@ def test_pcgrad_v2_resolves_conflicting_gradients():
     for loss in [loss_a, loss_b]:
         model.zero_grad()
         loss.backward(retain_graph=True)
-        raw_grads.append([p.grad.clone() if p.grad is not None else torch.zeros_like(p)
-                          for p in params])
+        raw_grads.append(
+            [p.grad.clone() if p.grad is not None else torch.zeros_like(p) for p in params]
+        )
 
     # Confirm the raw gradients are conflicting for at least one parameter
     has_conflict = any(

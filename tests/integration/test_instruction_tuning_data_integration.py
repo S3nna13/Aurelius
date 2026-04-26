@@ -20,8 +20,8 @@ def test_generators_exposed_from_src_chat():
 def test_generated_sample_roundtrips_through_chatml():
     from src.chat import (
         ChatMLTemplate,
-        Message,
         MagpieGenerator,
+        Message,
     )
 
     counter = {"n": 0}

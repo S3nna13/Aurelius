@@ -9,14 +9,14 @@ Covers the full lifecycle:
   - Backward pass
   - Registry entry
 """
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
 
 # ---------------------------------------------------------------------------
 # Shared setup
@@ -47,6 +47,7 @@ def model_and_input():
 # ---------------------------------------------------------------------------
 # Integration tests
 # ---------------------------------------------------------------------------
+
 
 class TestFlashMLAIntegration:
     """End-to-end integration tests for FlashMLAAttention."""

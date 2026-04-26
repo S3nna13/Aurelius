@@ -7,21 +7,21 @@ noisy (high ppl).  Optionally applies a reward model as a second gate.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LMFilterConfig:
-    ppl_low: float = 5.0            # below this = too easy, filter out
-    ppl_high: float = 100.0         # above this = too noisy, filter out
+    ppl_low: float = 5.0  # below this = too easy, filter out
+    ppl_high: float = 100.0  # above this = too noisy, filter out
     reward_threshold: float | None = None  # if set, also require reward >= threshold
     batch_size: int = 8
 
@@ -30,11 +30,12 @@ class LMFilterConfig:
 # FilterResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FilterResult:
     kept: list[Tensor]
     rejected: list[Tensor]
-    ppl_scores: list[float]          # ppl for kept samples only
+    ppl_scores: list[float]  # ppl for kept samples only
     rejection_rate: float
     stats: dict[str, Any]
 
@@ -42,6 +43,7 @@ class FilterResult:
 # ---------------------------------------------------------------------------
 # Core helpers
 # ---------------------------------------------------------------------------
+
 
 def compute_perplexity_batch(
     model,
@@ -130,6 +132,7 @@ def filter_by_reward(
 # LMFilter class
 # ---------------------------------------------------------------------------
 
+
 class LMFilter:
     """Combines perplexity-based and optional reward-based filtering."""
 
@@ -148,8 +151,12 @@ class LMFilter:
                 rejected=[],
                 ppl_scores=[],
                 rejection_rate=0.0,
-                stats={"n_kept": 0, "n_rejected": 0, "mean_ppl_kept": float("nan"),
-                       "mean_ppl_rejected": float("nan")},
+                stats={
+                    "n_kept": 0,
+                    "n_rejected": 0,
+                    "mean_ppl_kept": float("nan"),
+                    "mean_ppl_rejected": float("nan"),
+                },
             )
 
         # --- Step 1: perplexity filter ---
@@ -180,8 +187,7 @@ class LMFilter:
             extra_rejected = [s for s in ppl_kept if id(s) not in reward_kept_set]
             final_kept = reward_kept
             final_kept_ppls = [
-                ppl for s, ppl in zip(ppl_kept, ppl_kept_scores)
-                if id(s) in reward_kept_set
+                ppl for s, ppl in zip(ppl_kept, ppl_kept_scores) if id(s) in reward_kept_set
             ]
             final_rejected = ppl_rejected + extra_rejected
         else:
@@ -221,6 +227,7 @@ class LMFilter:
 # ---------------------------------------------------------------------------
 # Gaussian importance weighting
 # ---------------------------------------------------------------------------
+
 
 def learning_zone_weights(
     ppl_scores: list[float],

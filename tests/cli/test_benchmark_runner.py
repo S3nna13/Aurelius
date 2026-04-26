@@ -5,10 +5,9 @@ from __future__ import annotations
 import io
 import json
 import os
-import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 from src.cli import benchmark_runner as BR
@@ -138,12 +137,11 @@ class CLITests(unittest.TestCase):
 
     def test_problems_file_read_as_json_list(self):
         # ifeval problem dicts.
-        raw = [
+        [
             {
                 "prompt": "contains hello",
                 "constraints": [
-                    IFEvalConstraint(type="contains_keyword",
-                                     kwargs={"keyword": "hello"}),
+                    IFEvalConstraint(type="contains_keyword", kwargs={"keyword": "hello"}),
                 ],
             }
         ]
@@ -187,10 +185,14 @@ class CLITests(unittest.TestCase):
             out_path = os.path.join(d, "report.json")
             outbuf = io.StringIO()
             with redirect_stdout(outbuf):
-                rc = BR.main([
-                    "--benchmark", "ifeval",
-                    "--output-file", out_path,
-                ])
+                rc = BR.main(
+                    [
+                        "--benchmark",
+                        "ifeval",
+                        "--output-file",
+                        out_path,
+                    ]
+                )
             self.assertEqual(rc, 0)
             self.assertTrue(os.path.exists(out_path))
             with open(out_path) as fh:
@@ -218,6 +220,7 @@ class CLITests(unittest.TestCase):
     def test_keyboard_interrupt_handled(self):
         def _boom(*a, **kw):
             raise KeyboardInterrupt()
+
         with mock.patch.object(BR, "run_benchmark", side_effect=_boom):
             errbuf = io.StringIO()
             with redirect_stderr(errbuf):

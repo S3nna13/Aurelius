@@ -10,20 +10,20 @@ by large activation magnitudes) should be protected from quantization error. AWQ
 The weight transformation: W_q = round_to_int(W * s) where s is chosen to minimize
 ||W·x - dequant(quant(W * s) / s)·x||
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Union
-
 
 # ---------------------------------------------------------------------------
 # Core statistics helpers
 # ---------------------------------------------------------------------------
 
+
 def absmax_per_channel(
-    activations: Union[torch.Tensor, List[torch.Tensor]],
+    activations: torch.Tensor | list[torch.Tensor],
     dim: int = 0,
 ) -> torch.Tensor:
     """Compute per-channel activation magnitude: (in_features,).
@@ -65,10 +65,11 @@ def absmax_per_channel(
 # AWQ scale computation
 # ---------------------------------------------------------------------------
 
+
 def _quantize_symmetric(w: torch.Tensor, n_bits: int) -> torch.Tensor:
     """Symmetric quantize: scale per row, return integer-valued float tensor."""
     qmax = 2 ** (n_bits - 1) - 1  # e.g. 7 for INT4
-    qmin = -(2 ** (n_bits - 1))   # e.g. -8 for INT4
+    qmin = -(2 ** (n_bits - 1))  # e.g. -8 for INT4
     abs_max = w.abs().amax(dim=-1, keepdim=True).clamp(min=1e-8)
     scale = abs_max / qmax
     w_q = (w / scale).round().clamp(qmin, qmax)
@@ -76,7 +77,7 @@ def _quantize_symmetric(w: torch.Tensor, n_bits: int) -> torch.Tensor:
 
 
 def compute_awq_scale(
-    weight: torch.Tensor,            # (out_features, in_features)
+    weight: torch.Tensor,  # (out_features, in_features)
     activation_stats: torch.Tensor,  # (in_features,) per-channel absmax
     n_bits: int = 4,
     group_size: int = 128,
@@ -118,14 +119,14 @@ def compute_awq_scale(
         col_start = g * group_size
         col_end = col_start + group_size
 
-        w_group = w[:, col_start:col_end]       # (out, gs)
-        act_group = act[col_start:col_end]       # (gs,)
+        w_group = w[:, col_start:col_end]  # (out, gs)
+        act_group = act[col_start:col_end]  # (gs,)
 
         # The "x" proxy: use activation magnitudes as representative input
         x_proxy = act_group  # (gs,)
 
         # Original output contribution: W_group @ x_proxy (scalar approx)
-        orig_out = (w_group * x_proxy.unsqueeze(0)).sum(dim=1)  # (out,)
+        (w_group * x_proxy.unsqueeze(0)).sum(dim=1)  # (out,)
 
         # Search range: scale between s_min and s_max
         # s controls how much we scale down/up; typical range [0.1, 1.0] applied to
@@ -181,12 +182,13 @@ def compute_awq_scale(
 # Quantization and dequantization
 # ---------------------------------------------------------------------------
 
+
 def quantize_weight_awq(
-    weight: torch.Tensor,            # (out_features, in_features)
-    scale: torch.Tensor,             # (n_groups,) or (in_features,)
+    weight: torch.Tensor,  # (out_features, in_features)
+    scale: torch.Tensor,  # (n_groups,) or (in_features,)
     n_bits: int = 4,
     group_size: int = 128,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Apply AWQ quantization to a weight tensor.
 
     Scales important channels up before quantizing so they use more of the
@@ -262,11 +264,11 @@ def quantize_weight_awq(
 
 
 def dequantize_weight_awq(
-    weight_int: torch.Tensor,        # quantized integer weights (out, in)
-    scale: torch.Tensor,             # per-group quantization scale (out, n_groups) or (n_groups,)
-    zero: torch.Tensor,              # per-group zero point (out, n_groups) or (n_groups,)
+    weight_int: torch.Tensor,  # quantized integer weights (out, in)
+    scale: torch.Tensor,  # per-group quantization scale (out, n_groups) or (n_groups,)
+    zero: torch.Tensor,  # per-group zero point (out, n_groups) or (n_groups,)
     group_size: int = 128,
-    original_shape: Optional[Tuple[int, ...]] = None,
+    original_shape: tuple[int, ...] | None = None,
 ) -> torch.Tensor:
     """Dequantize AWQ integer weights back to float.
 
@@ -299,7 +301,11 @@ def dequantize_weight_awq(
     if scale.dim() == 1:
         if scale.numel() == n_groups:
             scale = scale.unsqueeze(0).expand(out_features, -1)
-            zero = zero.unsqueeze(0).expand(out_features, -1) if zero.numel() == n_groups else torch.zeros_like(scale)
+            zero = (
+                zero.unsqueeze(0).expand(out_features, -1)
+                if zero.numel() == n_groups
+                else torch.zeros_like(scale)
+            )
         else:
             scale = scale.unsqueeze(0).expand(out_features, -1)
             zero = zero.unsqueeze(0).expand(out_features, -1)
@@ -308,7 +314,7 @@ def dequantize_weight_awq(
     w = w.reshape(out_features, n_groups, effective_group_size)
 
     scale_exp = scale.float().unsqueeze(2)  # (out, n_groups, 1)
-    zero_exp = zero.float().unsqueeze(2)    # (out, n_groups, 1)
+    zero_exp = zero.float().unsqueeze(2)  # (out, n_groups, 1)
 
     # Dequantize: (w_q - zero) * scale
     w_dequant = (w - zero_exp) * scale_exp  # (out, n_groups, gs)
@@ -325,6 +331,7 @@ def dequantize_weight_awq(
 # ---------------------------------------------------------------------------
 # AWQLinear module
 # ---------------------------------------------------------------------------
+
 
 class AWQLinear(nn.Module):
     """Drop-in replacement for nn.Linear using AWQ INT4 weights.
@@ -344,7 +351,9 @@ class AWQLinear(nn.Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.group_size = group_size if group_size is not None and group_size < in_features else in_features
+        self.group_size = (
+            group_size if group_size is not None and group_size < in_features else in_features
+        )
         self.n_bits = n_bits
 
         n_groups = (in_features + self.group_size - 1) // self.group_size
@@ -381,7 +390,7 @@ class AWQLinear(nn.Module):
         group_size: int = 128,
         n_bits: int = 4,
         scale_search_steps: int = 20,
-    ) -> "AWQLinear":
+    ) -> AWQLinear:
         """Create AWQLinear from a pretrained nn.Linear + calibration stats.
 
         Args:
@@ -419,7 +428,7 @@ class AWQLinear(nn.Module):
 
         # Expand AWQ scale to per-channel for storage
         eff_group_size = layer.group_size
-        n_groups = (in_features + eff_group_size - 1) // eff_group_size
+        (in_features + eff_group_size - 1) // eff_group_size
         awq_scale_per_channel = awq_group_scale.repeat_interleave(eff_group_size)[:in_features]
 
         # Step 2: Quantize weights with AWQ scale
@@ -469,6 +478,7 @@ class AWQLinear(nn.Module):
 # AWQ Calibrator
 # ---------------------------------------------------------------------------
 
+
 class AWQCalibrator:
     """Collect activation statistics from calibration data.
 
@@ -476,7 +486,7 @@ class AWQCalibrator:
     then computes per-channel absmax statistics used to drive AWQ scale search.
     """
 
-    def __init__(self, model: nn.Module, target_modules: Optional[List[str]] = None):
+    def __init__(self, model: nn.Module, target_modules: list[str] | None = None):
         """Initialize calibrator.
 
         Args:
@@ -486,8 +496,8 @@ class AWQCalibrator:
         """
         self.model = model
         self.target_modules = target_modules
-        self._hooks: List = []
-        self._stats: Dict[str, List[torch.Tensor]] = {}
+        self._hooks: list = []
+        self._stats: dict[str, list[torch.Tensor]] = {}
 
     def _should_target(self, name: str, module: nn.Module) -> bool:
         if not isinstance(module, nn.Linear):
@@ -496,7 +506,7 @@ class AWQCalibrator:
             return True
         return any(t in name for t in self.target_modules)
 
-    def collect(self, input_ids: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def collect(self, input_ids: torch.Tensor) -> dict[str, torch.Tensor]:
         """Run forward pass, collect per-module activation stats.
 
         Args:
@@ -518,6 +528,7 @@ class AWQCalibrator:
                         # inp is a tuple; inp[0] is the input activation
                         act = inp[0].detach().float()
                         self._stats[n].append(act)
+
                     return hook
 
                 h = module.register_forward_hook(make_hook(name))
@@ -527,7 +538,7 @@ class AWQCalibrator:
         try:
             with torch.no_grad():
                 self.model(input_ids)
-        except Exception:
+        except Exception:  # noqa: S110
             pass  # Partial forward is OK if model has requirements we don't meet
         finally:
             # Remove all hooks
@@ -536,7 +547,7 @@ class AWQCalibrator:
             self._hooks = []
 
         # Compute absmax per channel for each module
-        result: Dict[str, torch.Tensor] = {}
+        result: dict[str, torch.Tensor] = {}
         for name, acts in self._stats.items():
             if len(acts) == 0:
                 continue
@@ -546,7 +557,7 @@ class AWQCalibrator:
 
     def quantize_model(
         self,
-        activation_stats: Dict[str, torch.Tensor],
+        activation_stats: dict[str, torch.Tensor],
         n_bits: int = 4,
         group_size: int = 128,
     ) -> nn.Module:
@@ -562,6 +573,7 @@ class AWQCalibrator:
         Returns:
             The model with Linear layers replaced by AWQLinear.
         """
+
         # Build a flat map of name -> parent module + child name for replacement
         def _get_parent(model: nn.Module, full_name: str):
             parts = full_name.split(".")

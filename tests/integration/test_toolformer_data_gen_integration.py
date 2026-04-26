@@ -17,8 +17,7 @@ from src.agent.toolformer_data_gen import (
     ToolformerDataGenerator,
 )
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
-
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 # ---------------------------------------------------------------------------
 # Registry / export tests
@@ -92,8 +91,10 @@ def test_toolformer_config_constructed_from_aurelius_config():
 
 def _make_word_count_tool() -> Tool:
     """Tool that returns the word count of its input as a string."""
+
     def word_count(input: str = "") -> str:
         return str(len(input.split()))
+
     return Tool(name="word_count", description="Counts words", fn=word_count)
 
 

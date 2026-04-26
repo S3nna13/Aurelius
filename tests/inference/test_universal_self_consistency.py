@@ -8,19 +8,18 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import Tensor
-
 from aurelius.inference.universal_self_consistency import (
     SelfConsistencyDecoder,
     SelfConsistencyVoter,
     TemperatureSampler,
     UniversalSCScorer,
 )
-
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model_fn(fixed_output: list[int] | None = None):
     """Return a deterministic model_fn that always yields the same token list."""
@@ -51,8 +50,8 @@ PROMPT = torch.tensor([1, 2, 3], dtype=torch.long)
 # SelfConsistencyVoter
 # ===========================================================================
 
-class TestSelfConsistencyVoter:
 
+class TestSelfConsistencyVoter:
     # Test 1 — basic majority vote
     def test_vote_returns_majority_answer(self):
         voter = SelfConsistencyVoter()
@@ -99,7 +98,9 @@ class TestSelfConsistencyVoter:
 
     # Bonus — custom answer_extractor is applied before comparison
     def test_vote_with_custom_extractor(self):
-        extractor = lambda s: s.strip().lower()
+        def extractor(s):
+            return s.strip().lower()
+
         voter = SelfConsistencyVoter(answer_extractor=extractor)
         winner, counts = voter.vote(["  YES ", "Yes", "no"])
         # Both "  YES " and "Yes" normalise to "yes"
@@ -111,8 +112,8 @@ class TestSelfConsistencyVoter:
 # UniversalSCScorer
 # ===========================================================================
 
-class TestUniversalSCScorer:
 
+class TestUniversalSCScorer:
     # Test 6 — score output has correct shape (N,)
     def test_score_output_shape(self):
         scorer = UniversalSCScorer()
@@ -159,8 +160,8 @@ class TestUniversalSCScorer:
 # TemperatureSampler
 # ===========================================================================
 
-class TestTemperatureSampler:
 
+class TestTemperatureSampler:
     def test_sample_n_length(self):
         """sample_n returns exactly n samples."""
         calls = []
@@ -195,8 +196,8 @@ class TestTemperatureSampler:
 # SelfConsistencyDecoder
 # ===========================================================================
 
-class TestSelfConsistencyDecoder:
 
+class TestSelfConsistencyDecoder:
     # Test 10 — generate returns (LongTensor, dict)
     def test_generate_return_types(self):
         decoder = SelfConsistencyDecoder(

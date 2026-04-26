@@ -7,9 +7,9 @@ SLSA supply-chain attestation spec, Apache-2.0.
 from __future__ import annotations
 
 import json
-from enum import Enum
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
+from enum import Enum
 
 
 class HealthStatus(Enum):
@@ -100,18 +100,24 @@ class HealthzHandler:
 
         if path not in ("/healthz", "/readyz"):
             body = json.dumps({"error": "Not Found"}).encode()
-            start_response("404 Not Found", [
-                ("Content-Type", "application/json"),
-                ("Content-Length", str(len(body))),
-            ])
+            start_response(
+                "404 Not Found",
+                [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", str(len(body))),
+                ],
+            )
             return [body]
 
         if method != "GET":
             body = json.dumps({"error": "Method Not Allowed"}).encode()
-            start_response("405 Method Not Allowed", [
-                ("Content-Type", "application/json"),
-                ("Content-Length", str(len(body))),
-            ])
+            start_response(
+                "405 Method Not Allowed",
+                [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", str(len(body))),
+                ],
+            )
             return [body]
 
         result = self.check()
@@ -132,10 +138,13 @@ class HealthzHandler:
             else:
                 status_line = "503 Service Unavailable"
 
-        start_response(status_line, [
-            ("Content-Type", "application/json"),
-            ("Content-Length", str(len(body))),
-        ])
+        start_response(
+            status_line,
+            [
+                ("Content-Type", "application/json"),
+                ("Content-Length", str(len(body))),
+            ],
+        )
         return [body]
 
 

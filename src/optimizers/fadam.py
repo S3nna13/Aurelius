@@ -16,8 +16,6 @@ Variable notation matches the paper:
 
 from __future__ import annotations
 
-import math
-
 import torch
 from torch.optim import Optimizer
 
@@ -140,7 +138,7 @@ class FAdam(Optimizer):
                 state["step"] += 1
                 t: int = state["step"]
 
-                m_t = state["exp_avg"]      # in-place reference (paper: m_t)
+                m_t = state["exp_avg"]  # in-place reference (paper: m_t)
                 F_t = state["fisher_diag"]  # in-place reference (paper: F_t)
 
                 # ------------------------------------------------------------------ #
@@ -160,11 +158,11 @@ class FAdam(Optimizer):
                 #   m̂_t = m_t / (1 - β1^t)                                          #
                 #   F̂_t = F_t / (1 - β2^t)                                          #
                 # ------------------------------------------------------------------ #
-                bias_correction1: float = 1.0 - beta1 ** t   # (1 - β1^t)
-                bias_correction2: float = 1.0 - beta2 ** t   # (1 - β2^t)
+                bias_correction1: float = 1.0 - beta1**t  # (1 - β1^t)
+                bias_correction2: float = 1.0 - beta2**t  # (1 - β2^t)
 
-                m_hat = m_t / bias_correction1   # m̂_t
-                F_hat = F_t / bias_correction2   # F̂_t
+                m_hat = m_t / bias_correction1  # m̂_t
+                F_hat = F_t / bias_correction2  # F̂_t
 
                 # ------------------------------------------------------------------ #
                 # Step 5: natural gradient update                                     #

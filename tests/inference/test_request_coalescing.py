@@ -27,6 +27,7 @@ class TestCoalescingConfig:
 class TestCoalescingSlot:
     def test_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(CoalescingSlot)
 
     def test_fields(self):

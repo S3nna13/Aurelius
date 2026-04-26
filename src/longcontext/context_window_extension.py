@@ -21,7 +21,6 @@ Dependencies: pure PyTorch only.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 
@@ -48,7 +47,7 @@ class ContextWindowExtension:
         dim: int,
         base: float,
         seq_len: int,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute standard RoPE cos/sin cache, shape [seq_len, dim]."""
         half = dim // 2
@@ -147,7 +146,7 @@ class ContextWindowExtension:
         train_len: int,
         target_len: int,
         seq_len: int,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """NTK-aware RoPE scaling.
 
@@ -183,9 +182,7 @@ class ContextWindowExtension:
             scale = target_len / train_len
             new_base = base * (scale ** (dim / (dim - 2)))
 
-        return ContextWindowExtension._standard_cos_sin(
-            dim, new_base, seq_len, device
-        )
+        return ContextWindowExtension._standard_cos_sin(dim, new_base, seq_len, device)
 
     @staticmethod
     def yarn_scale(
@@ -197,7 +194,7 @@ class ContextWindowExtension:
         alpha: float = 1.0,
         beta: float = 32.0,
         mscale: float = 0.1,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """YaRN: non-uniform per-dimension RoPE scaling.
 
@@ -293,7 +290,7 @@ class ContextWindowExtension:
         base: float,
         seq_len: int,
         rescale_factors: torch.Tensor,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """LongRoPE: per-dimension learned rescale factors.
 
@@ -352,6 +349,7 @@ class ContextWindowExtension:
 # DynamicContextScaler
 # ---------------------------------------------------------------------------
 
+
 class DynamicContextScaler:
     """Automatically select a context-extension strategy based on seq_len.
 
@@ -389,7 +387,7 @@ class DynamicContextScaler:
         dim: int,
         base: float,
         train_len: int,
-        rescale_factors: Optional[torch.Tensor] = None,
+        rescale_factors: torch.Tensor | None = None,
         yarn_alpha: float = 1.0,
         yarn_beta: float = 32.0,
         yarn_mscale: float = 0.1,
@@ -422,7 +420,7 @@ class DynamicContextScaler:
     def get_cos_sin(
         self,
         seq_len: int,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute (cos, sin) cache for the given sequence length.
 
@@ -440,9 +438,7 @@ class DynamicContextScaler:
         resolved = self._resolve_strategy(seq_len)
 
         if resolved == "standard":
-            return ContextWindowExtension._standard_cos_sin(
-                self.dim, self.base, seq_len, device
-            )
+            return ContextWindowExtension._standard_cos_sin(self.dim, self.base, seq_len, device)
         elif resolved == "linear":
             # Build standard cache at train positions, then apply linear scale.
             cos_base, sin_base = ContextWindowExtension._standard_cos_sin(
@@ -453,13 +449,15 @@ class DynamicContextScaler:
             )
         elif resolved == "ntk":
             return ContextWindowExtension.ntk_aware_scale(
-                self.dim, self.base, self.train_len,
-                max(seq_len, self.train_len), seq_len, device
+                self.dim, self.base, self.train_len, max(seq_len, self.train_len), seq_len, device
             )
         elif resolved == "yarn":
             return ContextWindowExtension.yarn_scale(
-                self.dim, self.base, self.train_len,
-                max(seq_len, self.train_len), seq_len,
+                self.dim,
+                self.base,
+                self.train_len,
+                max(seq_len, self.train_len),
+                seq_len,
                 alpha=self.yarn_alpha,
                 beta=self.yarn_beta,
                 mscale=self.yarn_mscale,
@@ -469,8 +467,12 @@ class DynamicContextScaler:
             if self.rescale_factors is None:
                 # Fall back to NTK-aware when no factors are provided.
                 return ContextWindowExtension.ntk_aware_scale(
-                    self.dim, self.base, self.train_len,
-                    max(seq_len, self.train_len), seq_len, device
+                    self.dim,
+                    self.base,
+                    self.train_len,
+                    max(seq_len, self.train_len),
+                    seq_len,
+                    device,
                 )
             return ContextWindowExtension.longrope_scale(
                 self.dim, self.base, seq_len, self.rescale_factors, device

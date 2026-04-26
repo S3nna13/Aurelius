@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
-import math
 from unittest.mock import MagicMock
 
 import pytest
 import torch
 
 from src.data.preference_collector import (
+    PreferenceCollector,
     PreferenceConfig,
     PreferencePair,
     ResponsePool,
-    PreferenceCollector,
     score_response_heuristic,
-    generate_response,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_model(vocab_size: int = 256, seq_len_ignored: bool = True):
     """Return a mock model that outputs uniform logits."""
@@ -59,6 +57,7 @@ def _make_collector(score_fn=None, n_responses: int = 2):
 # 1. PreferenceConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_preference_config_defaults():
     cfg = PreferenceConfig()
     assert cfg.n_responses == 4
@@ -71,6 +70,7 @@ def test_preference_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. PreferencePair fields and margin == score_chosen - score_rejected
 # ---------------------------------------------------------------------------
+
 
 def test_preference_pair_fields_and_margin():
     pair = PreferencePair(
@@ -94,6 +94,7 @@ def test_preference_pair_fields_and_margin():
 # 3. ResponsePool.add increases length
 # ---------------------------------------------------------------------------
 
+
 def test_response_pool_add_increases_length():
     pool = ResponsePool()
     assert len(pool) == 0
@@ -106,6 +107,7 @@ def test_response_pool_add_increases_length():
 # ---------------------------------------------------------------------------
 # 4. ResponsePool.get_best_worst returns highest/lowest score texts
 # ---------------------------------------------------------------------------
+
 
 def test_response_pool_get_best_worst():
     pool = ResponsePool()
@@ -122,6 +124,7 @@ def test_response_pool_get_best_worst():
 # 5. ResponsePool.get_best_worst single item returns same for both
 # ---------------------------------------------------------------------------
 
+
 def test_response_pool_get_best_worst_single_item():
     pool = ResponsePool()
     pool.add("only response", 0.7)
@@ -132,6 +135,7 @@ def test_response_pool_get_best_worst_single_item():
 # ---------------------------------------------------------------------------
 # 6. score_response_heuristic — longer response scores higher than very short
 # ---------------------------------------------------------------------------
+
 
 def test_score_heuristic_longer_response_higher():
     prompt = "Tell me about Python."
@@ -150,6 +154,7 @@ def test_score_heuristic_longer_response_higher():
 # 7. score_response_heuristic — prompt-relevant response scores higher
 # ---------------------------------------------------------------------------
 
+
 def test_score_heuristic_relevant_response_higher():
     prompt = "What is Python?"
     relevant = "Python is a popular programming language used in many domains."
@@ -160,6 +165,7 @@ def test_score_heuristic_relevant_response_higher():
 # ---------------------------------------------------------------------------
 # 8. score_response_heuristic — returns value in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_score_heuristic_in_range():
     prompt = "Hello world."
@@ -177,6 +183,7 @@ def test_score_heuristic_in_range():
 # ---------------------------------------------------------------------------
 # 9. PreferenceCollector.collect_for_prompt returns PreferencePair or None
 # ---------------------------------------------------------------------------
+
 
 def test_collector_collect_for_prompt_returns_pair_or_none():
     call_count = [0]
@@ -208,6 +215,7 @@ def test_collector_collect_for_prompt_returns_pair_or_none():
 # 10. PreferenceCollector.collect_dataset returns list
 # ---------------------------------------------------------------------------
 
+
 def test_collector_collect_dataset_returns_list():
     collector = _make_collector()
     prompts = ["What is AI?", "Explain gravity."]
@@ -219,11 +227,12 @@ def test_collector_collect_dataset_returns_list():
 # 11. PreferenceCollector.filter_pairs removes low-margin pairs
 # ---------------------------------------------------------------------------
 
+
 def test_collector_filter_pairs_removes_low_margin():
     pairs = [
-        PreferencePair("p1", "c1", "r1", 0.9, 0.8, 0.1),   # margin exactly 0.1 — kept
+        PreferencePair("p1", "c1", "r1", 0.9, 0.8, 0.1),  # margin exactly 0.1 — kept
         PreferencePair("p2", "c2", "r2", 0.9, 0.85, 0.05),  # margin 0.05 — filtered
-        PreferencePair("p3", "c3", "r3", 0.9, 0.5, 0.4),    # margin 0.4 — kept
+        PreferencePair("p3", "c3", "r3", 0.9, 0.5, 0.4),  # margin 0.4 — kept
     ]
     collector = _make_collector()
     filtered = collector.filter_pairs(pairs, min_margin=0.1)
@@ -234,6 +243,7 @@ def test_collector_filter_pairs_removes_low_margin():
 # ---------------------------------------------------------------------------
 # 12. PreferenceCollector.export_dpo_format has required keys
 # ---------------------------------------------------------------------------
+
 
 def test_collector_export_dpo_format_keys():
     pairs = [
@@ -252,6 +262,7 @@ def test_collector_export_dpo_format_keys():
 # ---------------------------------------------------------------------------
 # 13. ResponsePool.get_diverse_pair — chosen has higher score than rejected
 # ---------------------------------------------------------------------------
+
 
 def test_response_pool_get_diverse_pair_chosen_higher_score():
     pool = ResponsePool()
@@ -279,6 +290,7 @@ def test_response_pool_get_diverse_pair_chosen_higher_score():
 # 14. PreferenceCollector.collect_dataset length <= len(prompts)
 # ---------------------------------------------------------------------------
 
+
 def test_collector_collect_dataset_length_le_prompts():
     collector = _make_collector()
     prompts = ["Q1?", "Q2?", "Q3?"]
@@ -289,6 +301,7 @@ def test_collector_collect_dataset_length_le_prompts():
 # ---------------------------------------------------------------------------
 # 15. export_dpo_format each dict has prompt/chosen/rejected keys
 # ---------------------------------------------------------------------------
+
 
 def test_export_dpo_format_each_dict_has_all_keys():
     collector = _make_collector()

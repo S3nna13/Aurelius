@@ -1,19 +1,17 @@
 """Tests for src/training/sequence_packing.py"""
 
-import pytest
 import torch
-
 from aurelius.training.sequence_packing import (
-    PackedSequence,
-    SequencePacker,
-    PackingStats,
     PackedBatchCollator,
+    PackedSequence,
+    PackingStats,
+    SequencePacker,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_seqs(*lengths, base=1):
     """Create 1-D LongTensors of given lengths with sequential token ids."""
@@ -28,6 +26,7 @@ def _make_seqs(*lengths, base=1):
 # ---------------------------------------------------------------------------
 # PackedSequence dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_packed_sequence_fields():
     ps = PackedSequence(
@@ -45,6 +44,7 @@ def test_packed_sequence_fields():
 # ---------------------------------------------------------------------------
 # SequencePacker.pack
 # ---------------------------------------------------------------------------
+
 
 def test_pack_returns_list_of_packed_sequences():
     packer = SequencePacker(max_length=10)
@@ -65,10 +65,9 @@ def test_pack_chunks_at_most_max_length():
 def test_pack_no_tokens_dropped():
     packer = SequencePacker(max_length=10)
     seqs = _make_seqs(3, 4, 2, 1)
-    total_real = sum(len(s) for s in seqs)
+    sum(len(s) for s in seqs)
     result = packer.pack(seqs)
     # Count non-padding tokens across all bins
-    real_count = 0
     for ps in result:
         for i in range(len(ps.token_ids)):
             if ps.position_ids[i] != 0 or i == 0 or (i in ps.seq_boundaries):
@@ -110,7 +109,8 @@ def test_position_ids_monotone_within_subsequence():
                 # Find end by looking for padding
                 end = start
                 while end < len(ps.position_ids) and not (
-                    end > start and ps.position_ids[end].item() == 0
+                    end > start
+                    and ps.position_ids[end].item() == 0
                     and ps.token_ids[end].item() == packer.pad_token_id
                 ):
                     end += 1
@@ -139,6 +139,7 @@ def test_pack_empty_input_returns_empty():
 # pack_with_labels
 # ---------------------------------------------------------------------------
 
+
 def test_pack_with_labels_alignment():
     packer = SequencePacker(max_length=10)
     seqs = _make_seqs(3, 4)
@@ -163,6 +164,7 @@ def test_pack_with_labels_padding_is_minus100():
 # PackingStats
 # ---------------------------------------------------------------------------
 
+
 def test_packing_stats_efficiency_in_range():
     packer = SequencePacker(max_length=8)
     seqs = _make_seqs(3, 4, 2)
@@ -181,6 +183,7 @@ def test_packing_stats_perfect_efficiency():
 # ---------------------------------------------------------------------------
 # PackedBatchCollator
 # ---------------------------------------------------------------------------
+
 
 def test_collator_output_shapes():
     packer = SequencePacker(max_length=8, pad_token_id=0)
@@ -219,6 +222,7 @@ def test_collator_missing_labels_filled_with_minus100():
 # ---------------------------------------------------------------------------
 # First-fit-decreasing: longer seqs go first
 # ---------------------------------------------------------------------------
+
 
 def test_ffd_longer_seqs_placed_first():
     packer = SequencePacker(max_length=6)

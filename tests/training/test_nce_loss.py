@@ -18,16 +18,17 @@ from src.training.nce_loss import (
 # Shared constants
 # ---------------------------------------------------------------------------
 
-V = 64         # vocab size
-D = 32         # model dimension
-B = 2          # batch size
-T = 4          # sequence length
-K = 5          # noise samples
+V = 64  # vocab size
+D = 32  # model dimension
+B = 2  # batch size
+T = 4  # sequence length
+K = 5  # noise samples
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def token_freqs() -> torch.Tensor:
@@ -70,6 +71,7 @@ def targets() -> torch.Tensor:
 # 1. NCEConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_nce_config_defaults():
     cfg = NCEConfig()
     assert cfg.n_noise_samples == 20
@@ -82,6 +84,7 @@ def test_nce_config_defaults():
 # 2. UnigramSampler probs sum to ~1.0
 # ---------------------------------------------------------------------------
 
+
 def test_unigram_sampler_probs_sum(sampler):
     total = sampler.probs.sum().item()
     assert abs(total - 1.0) < 1e-5, f"probs sum {total} != 1.0"
@@ -90,6 +93,7 @@ def test_unigram_sampler_probs_sum(sampler):
 # ---------------------------------------------------------------------------
 # 3. UnigramSampler sample shape
 # ---------------------------------------------------------------------------
+
 
 def test_unigram_sampler_sample_shape(sampler):
     n = 50
@@ -100,6 +104,7 @@ def test_unigram_sampler_sample_shape(sampler):
 # ---------------------------------------------------------------------------
 # 4. UnigramSampler sample range
 # ---------------------------------------------------------------------------
+
 
 def test_unigram_sampler_sample_range(sampler):
     samples = sampler.sample(200, seed=42)
@@ -112,17 +117,17 @@ def test_unigram_sampler_sample_range(sampler):
 # 5. UnigramSampler log_prob shape
 # ---------------------------------------------------------------------------
 
+
 def test_unigram_sampler_log_prob_shape(sampler):
     ids = torch.randint(0, V, (B, T))
     log_probs = sampler.log_prob(ids)
-    assert log_probs.shape == ids.shape, (
-        f"Expected shape {ids.shape}, got {log_probs.shape}"
-    )
+    assert log_probs.shape == ids.shape, f"Expected shape {ids.shape}, got {log_probs.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 6. nce_loss returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_nce_loss_scalar():
     torch.manual_seed(0)
@@ -139,6 +144,7 @@ def test_nce_loss_scalar():
 # 7. nce_loss non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_nce_loss_nonnegative():
     torch.manual_seed(1)
     N, M = 8, 40
@@ -154,6 +160,7 @@ def test_nce_loss_nonnegative():
 # 8. sampled_softmax_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_sampled_softmax_loss_scalar():
     torch.manual_seed(2)
     logits = torch.randn(B, V)
@@ -168,6 +175,7 @@ def test_sampled_softmax_loss_scalar():
 # 9. NCELanguageModelLoss forward returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_nce_lm_loss_forward_keys(nce_lm, hidden, targets):
     loss, metrics = nce_lm(hidden, targets)
     assert "nce_loss" in metrics, "metrics must contain 'nce_loss'"
@@ -178,6 +186,7 @@ def test_nce_lm_loss_forward_keys(nce_lm, hidden, targets):
 # 10. NCELanguageModelLoss forward loss is positive
 # ---------------------------------------------------------------------------
 
+
 def test_nce_lm_loss_forward_loss_positive(nce_lm, hidden, targets):
     loss, _ = nce_lm(hidden, targets)
     assert loss.item() > 0.0, f"Expected positive loss, got {loss.item()}"
@@ -186,6 +195,7 @@ def test_nce_lm_loss_forward_loss_positive(nce_lm, hidden, targets):
 # ---------------------------------------------------------------------------
 # 11. compare_nce_vs_softmax returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_compare_nce_vs_softmax_keys():
     torch.manual_seed(3)

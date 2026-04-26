@@ -1,8 +1,8 @@
 """Tests for src/backends/async_rate_limiter.py"""
+
 from __future__ import annotations
 
 import asyncio
-import time
 
 import pytest
 
@@ -13,10 +13,10 @@ from src.backends.async_rate_limiter import (
     RateLimitExceeded,
 )
 
-
 # ---------------------------------------------------------------------------
 # RateLimitConfig
 # ---------------------------------------------------------------------------
+
 
 def test_config_burst_limit():
     cfg = RateLimitConfig(requests_per_window=100, window_seconds=60.0, burst_multiplier=2.0)
@@ -32,6 +32,7 @@ def test_config_default_burst_multiplier():
 # ---------------------------------------------------------------------------
 # acquire — happy path
 # ---------------------------------------------------------------------------
+
 
 def test_acquire_returns_true_within_limit():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(5, 60.0))
@@ -79,6 +80,7 @@ def test_acquire_per_key_isolation():
 # try_acquire
 # ---------------------------------------------------------------------------
 
+
 def test_try_acquire_returns_false_instead_of_raising():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(1, 60.0))
 
@@ -99,6 +101,7 @@ def test_try_acquire_returns_true_within_limit():
 # ---------------------------------------------------------------------------
 # reset
 # ---------------------------------------------------------------------------
+
 
 def test_reset_clears_count():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(2, 60.0))
@@ -121,6 +124,7 @@ def test_reset_unknown_key_no_error():
 # ---------------------------------------------------------------------------
 # get_remaining
 # ---------------------------------------------------------------------------
+
 
 def test_get_remaining_full_on_new_key():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(10, 60.0))
@@ -155,6 +159,7 @@ def test_get_remaining_zero_at_limit():
 # get_stats
 # ---------------------------------------------------------------------------
 
+
 def test_get_stats_returns_dict():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(10, 60.0))
 
@@ -187,6 +192,7 @@ def test_get_stats_multiple_keys():
 # Window expiry
 # ---------------------------------------------------------------------------
 
+
 def test_window_resets_after_expiry():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(1, 0.05))
 
@@ -202,6 +208,7 @@ def test_window_resets_after_expiry():
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_singleton_config():
     assert ASYNC_RATE_LIMITER._config.requests_per_window == 100

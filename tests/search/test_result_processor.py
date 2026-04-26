@@ -1,9 +1,8 @@
 """Tests for result processor."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.search.result_processor import SearchResult, ResultDeduplicator, ResultReranker
+from src.search.result_processor import ResultDeduplicator, ResultReranker, SearchResult
 
 
 class TestResultDeduplicator:

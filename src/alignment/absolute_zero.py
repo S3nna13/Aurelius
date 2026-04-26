@@ -15,16 +15,16 @@ Components:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AbsoluteZeroConfig:
@@ -42,9 +42,8 @@ class AbsoluteZeroConfig:
         leakage_penalty: Additional reward (negative) for a trivially easy task
             where the answer is directly readable from the task description.
     """
-    task_types: list[str] = field(
-        default_factory=lambda: ["deduction", "abduction", "induction"]
-    )
+
+    task_types: list[str] = field(default_factory=lambda: ["deduction", "abduction", "induction"])
     temperature_propose: float = 0.9
     temperature_solve: float = 0.7
     n_propose_candidates: int = 4
@@ -58,6 +57,7 @@ class AbsoluteZeroConfig:
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AbsoluteZeroTask:
     """A single self-proposed verifiable task.
@@ -69,6 +69,7 @@ class AbsoluteZeroTask:
         answer_tokens: Ground-truth answer tokens (used for verification).
         proposed_by: Who proposed the task (default "model").
     """
+
     task_id: int
     task_type: str
     task_tokens: list[int]
@@ -87,6 +88,7 @@ class AbsoluteZeroRollout:
         reward: Final scalar reward (after any penalties).
         leakage_detected: True when the answer was found verbatim in the task.
     """
+
     task: AbsoluteZeroTask
     solution_tokens: list[int]
     is_correct: bool
@@ -97,6 +99,7 @@ class AbsoluteZeroRollout:
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class AbsoluteZeroTrainer:
     """Orchestrates the Absolute Zero self-play RL loop.
@@ -111,7 +114,7 @@ class AbsoluteZeroTrainer:
         config: Trainer hyper-parameters (uses defaults if not provided).
     """
 
-    def __init__(self, config: Optional[AbsoluteZeroConfig] = None) -> None:
+    def __init__(self, config: AbsoluteZeroConfig | None = None) -> None:
         self.config = config if config is not None else AbsoluteZeroConfig()
         self._next_task_id: int = 0
 
@@ -122,7 +125,7 @@ class AbsoluteZeroTrainer:
     def propose_tasks(
         self,
         propose_fn: Callable[[str, int], list[list[int]]],
-        n: Optional[int] = None,
+        n: int | None = None,
     ) -> list[AbsoluteZeroTask]:
         """Generate candidate tasks for every configured task type.
 
@@ -193,11 +196,7 @@ class AbsoluteZeroTrainer:
         for task in tasks:
             solution_tokens = solve_fn(task.task_tokens)
             is_correct = solution_tokens == task.answer_tokens
-            reward = (
-                self.config.reward_correct
-                if is_correct
-                else self.config.reward_incorrect
-            )
+            reward = self.config.reward_correct if is_correct else self.config.reward_incorrect
             rollouts.append(
                 AbsoluteZeroRollout(
                     task=task,
@@ -230,9 +229,7 @@ class AbsoluteZeroTrainer:
         if not answer:
             return False
         n = len(answer)
-        return any(
-            task_tok[i: i + n] == answer for i in range(len(task_tok) - n + 1)
-        )
+        return any(task_tok[i : i + n] == answer for i in range(len(task_tok) - n + 1))
 
     def apply_leakage_penalty(
         self, rollouts: list[AbsoluteZeroRollout]
@@ -325,8 +322,7 @@ class AbsoluteZeroTrainer:
                 by_type[tt]["correct"] += 1
 
         by_type_out = {
-            tt: {"accuracy": v["correct"] / v["n"], "n": v["n"]}
-            for tt, v in by_type.items()
+            tt: {"accuracy": v["correct"] / v["n"], "n": v["n"]} for tt, v in by_type.items()
         }
 
         return {

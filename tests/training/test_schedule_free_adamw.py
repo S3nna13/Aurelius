@@ -17,20 +17,19 @@ Covers 15 test cases:
 14. Zero grad + step leaves params unchanged (no gradient)
 15. AdamW weight_decay: params shrink toward zero on zero gradient
 """
-import pytest
+
 import torch
 import torch.nn as nn
-
 from aurelius.training.schedule_free_adamw import (
     ScheduleFreeAdamW,
     ScheduleFreeSGD,
     make_schedule_free,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _param(shape, seed=0, val=None):
     torch.manual_seed(seed)
@@ -40,7 +39,7 @@ def _param(shape, seed=0, val=None):
 
 def _one_step_loss(p, opt, loss_fn=None):
     opt.zero_grad()
-    loss = (p ** 2).sum() if loss_fn is None else loss_fn(p)
+    loss = (p**2).sum() if loss_fn is None else loss_fn(p)
     loss.backward()
     opt.step()
     return loss.item()
@@ -49,6 +48,7 @@ def _one_step_loss(p, opt, loss_fn=None):
 # ---------------------------------------------------------------------------
 # 1. ScheduleFreeSGD initializes without error
 # ---------------------------------------------------------------------------
+
 
 def test_sgd_init():
     p = _param((4,))
@@ -60,6 +60,7 @@ def test_sgd_init():
 # 2. ScheduleFreeSGD single step does not crash
 # ---------------------------------------------------------------------------
 
+
 def test_sgd_single_step():
     p = _param((4,))
     opt = ScheduleFreeSGD([p], lr=0.01)
@@ -69,6 +70,7 @@ def test_sgd_single_step():
 # ---------------------------------------------------------------------------
 # 3. ScheduleFreeSGD loss decreases on simple quadratic
 # ---------------------------------------------------------------------------
+
 
 def test_sgd_loss_decreases_quadratic():
     torch.manual_seed(1)
@@ -84,6 +86,7 @@ def test_sgd_loss_decreases_quadratic():
 # 4. ScheduleFreeSGD parameters updated after step
 # ---------------------------------------------------------------------------
 
+
 def test_sgd_params_updated():
     p = _param((8,), seed=2)
     p_before = p.data.clone()
@@ -95,6 +98,7 @@ def test_sgd_params_updated():
 # ---------------------------------------------------------------------------
 # 5. ScheduleFreeSGD weight_decay reduces param magnitude over time
 # ---------------------------------------------------------------------------
+
 
 def test_sgd_weight_decay_shrinks_params():
     torch.manual_seed(3)
@@ -122,6 +126,7 @@ def test_sgd_weight_decay_shrinks_params():
 # 6. ScheduleFreeAdamW initializes without error
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_init():
     p = _param((4,))
     opt = ScheduleFreeAdamW([p], lr=0.001)
@@ -132,6 +137,7 @@ def test_adamw_init():
 # 7. ScheduleFreeAdamW single step does not crash
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_single_step():
     p = _param((4,))
     opt = ScheduleFreeAdamW([p], lr=0.001)
@@ -141,6 +147,7 @@ def test_adamw_single_step():
 # ---------------------------------------------------------------------------
 # 8. ScheduleFreeAdamW loss decreases on simple regression
 # ---------------------------------------------------------------------------
+
 
 def test_adamw_loss_decreases_regression():
     torch.manual_seed(4)
@@ -163,6 +170,7 @@ def test_adamw_loss_decreases_regression():
 # 9. ScheduleFreeAdamW parameters updated after step
 # ---------------------------------------------------------------------------
 
+
 def test_adamw_params_updated():
     p = _param((8,), seed=5)
     p_before = p.data.clone()
@@ -174,6 +182,7 @@ def test_adamw_params_updated():
 # ---------------------------------------------------------------------------
 # 10. ScheduleFreeAdamW state initialized correctly
 # ---------------------------------------------------------------------------
+
 
 def test_adamw_state_init():
     p = _param((4, 4))
@@ -194,6 +203,7 @@ def test_adamw_state_init():
 # ---------------------------------------------------------------------------
 # 11. ScheduleFreeAdamW warmup_steps: effective lr starts small and grows
 # ---------------------------------------------------------------------------
+
 
 def test_adamw_warmup_lr_grows():
     torch.manual_seed(6)
@@ -217,8 +227,7 @@ def test_adamw_warmup_lr_grows():
     dist_1 = (updates[0] - init).abs().mean().item()
     dist_10 = (updates[2] - init).abs().mean().item()
     assert dist_10 > dist_1, (
-        f"Warmup did not produce smaller early updates: "
-        f"dist_1={dist_1:.6f}, dist_10={dist_10:.6f}"
+        f"Warmup did not produce smaller early updates: dist_1={dist_1:.6f}, dist_10={dist_10:.6f}"
     )
 
 
@@ -226,29 +235,28 @@ def test_adamw_warmup_lr_grows():
 # 12. make_schedule_free returns ScheduleFreeSGD for 'sgd'
 # ---------------------------------------------------------------------------
 
+
 def test_factory_sgd():
     p = _param((4,))
     opt = make_schedule_free("sgd", [p], lr=0.01)
-    assert isinstance(opt, ScheduleFreeSGD), (
-        f"Expected ScheduleFreeSGD, got {type(opt)}"
-    )
+    assert isinstance(opt, ScheduleFreeSGD), f"Expected ScheduleFreeSGD, got {type(opt)}"
 
 
 # ---------------------------------------------------------------------------
 # 13. make_schedule_free returns ScheduleFreeAdamW for 'adamw'
 # ---------------------------------------------------------------------------
 
+
 def test_factory_adamw():
     p = _param((4,))
     opt = make_schedule_free("adamw", [p], lr=0.001)
-    assert isinstance(opt, ScheduleFreeAdamW), (
-        f"Expected ScheduleFreeAdamW, got {type(opt)}"
-    )
+    assert isinstance(opt, ScheduleFreeAdamW), f"Expected ScheduleFreeAdamW, got {type(opt)}"
 
 
 # ---------------------------------------------------------------------------
 # 14. Zero grad + step leaves params unchanged when grad=0
 # ---------------------------------------------------------------------------
+
 
 def test_zero_grad_no_update():
     """When all gradients are zero, parameters should not change."""
@@ -260,14 +268,13 @@ def test_zero_grad_no_update():
     # Do NOT call backward() -- grad stays None, step should skip param
     opt.step()
 
-    assert torch.allclose(p.data, p_before), (
-        "Parameters changed despite zero/missing gradient."
-    )
+    assert torch.allclose(p.data, p_before), "Parameters changed despite zero/missing gradient."
 
 
 # ---------------------------------------------------------------------------
 # 15. AdamW weight_decay: params shrink toward zero on zero gradient
 # ---------------------------------------------------------------------------
+
 
 def test_adamw_weight_decay_shrinks():
     torch.manual_seed(8)

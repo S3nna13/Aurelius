@@ -7,18 +7,15 @@ Pure native PyTorch; no scipy, sklearn, HuggingFace, trl, peft, etc.
 from __future__ import annotations
 
 import math
-from typing import Dict
 
-import pytest
 import torch
-import torch.nn.functional as F
 
 from src.alignment.sppo import SPPOLoss, SPPOTrainer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_batch(
     B: int = 4,
@@ -29,11 +26,11 @@ def _make_batch(
     ref_lp_l: float = -2.0,
     requires_grad: bool = False,
     device: str = "cpu",
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Build a synthetic preference batch."""
+
     def _t(v: float) -> torch.Tensor:
-        return torch.full((B,), v, dtype=torch.float32, device=device,
-                          requires_grad=requires_grad)
+        return torch.full((B,), v, dtype=torch.float32, device=device, requires_grad=requires_grad)
 
     return {
         "log_probs_w": _t(lp_w),
@@ -58,6 +55,7 @@ def _default_inputs(B: int = 4, device: str = "cpu"):
 # Test 1 — Loss is a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_loss_is_scalar():
     criterion = SPPOLoss(T=0.1)
     loss, _ = criterion(*_default_inputs(B=4))
@@ -67,6 +65,7 @@ def test_loss_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 2 — Gradients are finite (backward works)
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_are_finite():
     lp_w = torch.tensor([-1.0, -2.0], requires_grad=True)
@@ -88,6 +87,7 @@ def test_gradients_are_finite():
 # Test 3 — Determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     criterion = SPPOLoss(T=0.1)
     inputs = _default_inputs(B=8)
@@ -100,6 +100,7 @@ def test_determinism():
 # Test 4 — batch_size = 1
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one():
     criterion = SPPOLoss(T=0.1)
     loss, metrics = criterion(*_default_inputs(B=1))
@@ -110,6 +111,7 @@ def test_batch_size_one():
 # ---------------------------------------------------------------------------
 # Test 5 — Large reward margin → low loss
 # ---------------------------------------------------------------------------
+
 
 def test_large_reward_margin_low_loss():
     """When y_w is clearly better (large diff), loss should be near 0."""
@@ -127,6 +129,7 @@ def test_large_reward_margin_low_loss():
 # Test 6 — Tied preferences → loss ≈ log(2)
 # ---------------------------------------------------------------------------
 
+
 def test_tied_preferences_loss_equals_log2():
     """When y_w = y_l (diff = 0), p_hat = 0.5 → loss = log(2)."""
     criterion = SPPOLoss(T=0.1)
@@ -141,6 +144,7 @@ def test_tied_preferences_loss_equals_log2():
 # ---------------------------------------------------------------------------
 # Test 7 — T → 0: loss ≈ 0 for correct rankings
 # ---------------------------------------------------------------------------
+
 
 def test_very_small_T_near_zero_loss():
     """With T → 0 and positive margin, loss → 0 (deterministic preference)."""
@@ -157,6 +161,7 @@ def test_very_small_T_near_zero_loss():
 # ---------------------------------------------------------------------------
 # Test 8 — Higher T → softer preferences (higher loss for same margin)
 # ---------------------------------------------------------------------------
+
 
 def test_higher_T_means_higher_loss():
     """For a fixed positive reward margin, higher T yields higher loss."""
@@ -178,6 +183,7 @@ def test_higher_T_means_higher_loss():
 # Test 9 — Win probability in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_win_prob_in_unit_interval():
     criterion = SPPOLoss(T=0.1)
     for lp_w_val, lp_l_val in [(-1.0, -3.0), (-3.0, -1.0), (0.0, 0.0)]:
@@ -193,10 +199,11 @@ def test_win_prob_in_unit_interval():
 # Test 10 — Win probability > 0.5 when y_w is better
 # ---------------------------------------------------------------------------
 
+
 def test_win_prob_gt_half_when_yw_better():
     criterion = SPPOLoss(T=0.1)
     # diff > 0 → p_hat > 0.5
-    lp_w = torch.zeros(4)          # reward = 0 - 0 = 0
+    lp_w = torch.zeros(4)  # reward = 0 - 0 = 0
     lp_l = torch.full((4,), -2.0)  # reward = -2 - 0 = -2
     ref = torch.zeros(4)
     _, metrics = criterion(lp_w, lp_l, ref, ref)
@@ -208,6 +215,7 @@ def test_win_prob_gt_half_when_yw_better():
 # ---------------------------------------------------------------------------
 # Test 11 — No NaN/Inf on extreme log_probs (±100)
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf_on_extreme_log_probs():
     criterion = SPPOLoss(T=0.1)
@@ -225,6 +233,7 @@ def test_no_nan_inf_on_extreme_log_probs():
 # Test 12 — No NaN/Inf on equal log_probs (all zeros)
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_on_zero_log_probs():
     criterion = SPPOLoss(T=0.1)
     zeros = torch.zeros(4)
@@ -237,6 +246,7 @@ def test_no_nan_inf_on_zero_log_probs():
 # ---------------------------------------------------------------------------
 # Test 13 — SPPOTrainer.compute_loss matches SPPOLoss directly
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_compute_loss_matches_sppoloss():
     T = 0.1
@@ -261,6 +271,7 @@ def test_trainer_compute_loss_matches_sppoloss():
 # Test 14 — metrics_dict contains 'win_prob' and 'reward_margin'
 # ---------------------------------------------------------------------------
 
+
 def test_metrics_dict_keys():
     criterion = SPPOLoss(T=0.1)
     _, metrics = criterion(*_default_inputs(B=4))
@@ -271,6 +282,7 @@ def test_metrics_dict_keys():
 # ---------------------------------------------------------------------------
 # Test 15 — Gradient flows through both log_probs_w and log_probs_l
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_both_inputs():
     lp_w = torch.tensor([-1.0, -2.0, -3.0], requires_grad=True)

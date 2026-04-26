@@ -1,11 +1,11 @@
 import torch
-import pytest
+
 from src.multimodal.vit_encoder import (
-    ViTConfig,
-    ViTPatchEmbedding,
-    ViTBlock,
-    ViTEncoder,
     VIT_REGISTRY,
+    ViTBlock,
+    ViTConfig,
+    ViTEncoder,
+    ViTPatchEmbedding,
 )
 
 
@@ -20,7 +20,7 @@ def make_config(image_size=32, patch_size=8, d_model=64, n_heads=4, n_layers=2):
 
 
 def test_patch_count_math():
-    cfg = make_config(image_size=32, patch_size=8)
+    make_config(image_size=32, patch_size=8)
     expected = (32 // 8) ** 2
     assert expected == 16
 

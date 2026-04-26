@@ -15,17 +15,16 @@ Variable notation follows the paper:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _sym_matrix_power(A: Tensor, p: float, eps: float = 1e-6) -> Tensor:
     """Compute A^p for a symmetric PSD matrix via eigendecomposition.
@@ -44,12 +43,13 @@ def _sym_matrix_power(A: Tensor, p: float, eps: float = 1e-6) -> Tensor:
     # Clamp small/negative eigenvalues
     eigenvalues = eigenvalues.clamp(min=eps)
     # A^p = V diag(λ^p) V^T
-    return eigenvectors @ torch.diag(eigenvalues ** p) @ eigenvectors.T
+    return eigenvectors @ torch.diag(eigenvalues**p) @ eigenvectors.T
 
 
 # ---------------------------------------------------------------------------
 # LeaceEraser  (batch, stateless)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LeaceEraser:
@@ -77,7 +77,7 @@ class LeaceEraser:
         X: Tensor,
         y: Tensor,
         eps: float = 1e-6,
-    ) -> "LeaceEraser":
+    ) -> LeaceEraser:
         """Fit the LEACE eraser.
 
         Args:
@@ -106,8 +106,8 @@ class LeaceEraser:
 
         # Pooled within-class covariance  Σ_W = (Σ_0 + Σ_1) / N
         def _class_scatter(X_c: Tensor, mu_c: Tensor) -> Tensor:
-            diff = X_c - mu_c.unsqueeze(0)        # (N_c, d)
-            return diff.T @ diff                   # (d, d)
+            diff = X_c - mu_c.unsqueeze(0)  # (N_c, d)
+            return diff.T @ diff  # (d, d)
 
         Sigma_W = (_class_scatter(X_0, mu_0) + _class_scatter(X_1, mu_1)) / N
         # Regularise for numerical stability
@@ -151,7 +151,7 @@ class LeaceEraser:
         # (I − P) μ is the residual mean component — constant shift
         I_minus_P = torch.eye(self.d, dtype=X.dtype, device=X.device) - self.P
         mu = self.mu.to(X.device)
-        shift = (I_minus_P @ mu).unsqueeze(0)           # (1, d)
+        shift = (I_minus_P @ mu).unsqueeze(0)  # (1, d)
         X_erased = X @ self.P.T.to(X.device) + shift
 
         if squeeze:
@@ -162,6 +162,7 @@ class LeaceEraser:
 # ---------------------------------------------------------------------------
 # ConceptEraser  (online, incremental — Welford-style)
 # ---------------------------------------------------------------------------
+
 
 class ConceptEraser(nn.Module):
     """Online LEACE eraser with Welford-style incremental updates.
@@ -188,19 +189,19 @@ class ConceptEraser(nn.Module):
 
         # Sufficient statistics — not nn.Parameters (no gradient tracking)
         self.register_buffer("n_total", torch.tensor(0, dtype=torch.long))
-        self.register_buffer("n_0",     torch.tensor(0, dtype=torch.long))
-        self.register_buffer("n_1",     torch.tensor(0, dtype=torch.long))
+        self.register_buffer("n_0", torch.tensor(0, dtype=torch.long))
+        self.register_buffer("n_1", torch.tensor(0, dtype=torch.long))
         # Running sums for means
         self.register_buffer("sum_all", torch.zeros(d_model, dtype=dtype))
-        self.register_buffer("sum_0",   torch.zeros(d_model, dtype=dtype))
-        self.register_buffer("sum_1",   torch.zeros(d_model, dtype=dtype))
+        self.register_buffer("sum_0", torch.zeros(d_model, dtype=dtype))
+        self.register_buffer("sum_1", torch.zeros(d_model, dtype=dtype))
         # Running within-class scatter matrices  M2_c = Σ (x - μ_c)(x - μ_c)^T
         # Stored as flattened (d*d,) for buffer compatibility
         self.register_buffer("M2_0", torch.zeros(d_model, d_model, dtype=dtype))
         self.register_buffer("M2_1", torch.zeros(d_model, d_model, dtype=dtype))
 
         # Cached eraser — invalidated on each update
-        self._eraser: Optional[LeaceEraser] = None
+        self._eraser: LeaceEraser | None = None
 
     # ------------------------------------------------------------------
     # Online update
@@ -244,9 +245,7 @@ class ConceptEraser(nn.Module):
             # Chan parallel update
             combined_n = n_c.float() + n_new
             delta_mean = new_mean - old_mean
-            correction = (
-                n_c.float() * n_new / combined_n
-            ) * torch.outer(delta_mean, delta_mean)
+            correction = (n_c.float() * n_new / combined_n) * torch.outer(delta_mean, delta_mean)
 
             M2_c.add_(scatter_new + correction)
             sum_c.add_(new_sum)
@@ -279,7 +278,7 @@ class ConceptEraser(nn.Module):
 
         mu_0 = self.sum_0 / self.n_0.float().clamp(min=1)
         mu_1 = self.sum_1 / self.n_1.float().clamp(min=1)
-        mu   = self.sum_all / float(n_total)
+        mu = self.sum_all / float(n_total)
 
         # Pooled within-class covariance
         Sigma_W = (self.M2_0 + self.M2_1) / float(n_total)

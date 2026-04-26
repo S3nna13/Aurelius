@@ -6,9 +6,9 @@ Pure PyTorch only — no transformers, trl, einops, scipy, sklearn, PIL, cv2, ti
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn.functional as F
-import pytest
 
 from src.alignment.zero_vision_sft import ZeroVisionSFTConfig, ZeroVisionSFTTrainer
 
@@ -29,7 +29,7 @@ def _make_logits(B: int = BATCH, T: int = SEQ, V: int = VOCAB, seed: int = 0) ->
 def _make_targets(B: int = BATCH, T: int = SEQ, pad_id: int = 0, n_pad: int = 4) -> torch.Tensor:
     """Targets with ``n_pad`` pad tokens at the end of each row."""
     ids = torch.randint(1, VOCAB, (B, T))
-    ids[:, T - n_pad:] = pad_id
+    ids[:, T - n_pad :] = pad_id
     return ids
 
 
@@ -45,6 +45,7 @@ def _make_mask(B: int = BATCH, T: int = SEQ, active_cols: list[int] | None = Non
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = ZeroVisionSFTConfig()
     assert cfg.tool_call_weight == 3.0
@@ -55,6 +56,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. compute_loss — no mask → standard CE
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_no_mask():
     """All-zeros tool_call_mask should produce the same loss as plain CE."""
@@ -68,8 +70,7 @@ def test_compute_loss_no_mask():
     # Reference: manual CE on non-pad tokens with weight=1
     non_pad = (targets != 0).float().view(-1)
     ref = (
-        F.cross_entropy(logits.view(-1, VOCAB), targets.view(-1), reduction="none")
-        * non_pad
+        F.cross_entropy(logits.view(-1, VOCAB), targets.view(-1), reduction="none") * non_pad
     ).sum() / non_pad.sum()
 
     assert torch.allclose(loss, ref, atol=1e-5)
@@ -78,6 +79,7 @@ def test_compute_loss_no_mask():
 # ---------------------------------------------------------------------------
 # 3. compute_loss — with mask → upweighted positions raise total loss
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_with_mask():
     """Upweighted positions should produce higher loss than no-mask version."""
@@ -98,6 +100,7 @@ def test_compute_loss_with_mask():
 # ---------------------------------------------------------------------------
 # 4. compute_loss — pad positions excluded
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_pad_excluded():
     """Pad positions (target == pad_id) should not contribute to the loss."""
@@ -122,6 +125,7 @@ def test_compute_loss_pad_excluded():
 # 5. compute_loss — output is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_compute_loss_scalar():
     trainer = ZeroVisionSFTTrainer()
     logits = _make_logits()
@@ -136,6 +140,7 @@ def test_compute_loss_scalar():
 # ---------------------------------------------------------------------------
 # 6. compute_loss — backward works
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_grad():
     trainer = ZeroVisionSFTTrainer()
@@ -153,6 +158,7 @@ def test_compute_loss_grad():
 # ---------------------------------------------------------------------------
 # 7. make_tool_call_mask — None → all zeros
 # ---------------------------------------------------------------------------
+
 
 def test_make_tool_call_mask_empty():
     """tool_call_token_ids=None should return an all-zeros mask."""
@@ -173,6 +179,7 @@ def test_make_tool_call_mask_empty_list():
 # ---------------------------------------------------------------------------
 # 8. make_tool_call_mask — specific ids get 1
 # ---------------------------------------------------------------------------
+
 
 def test_make_tool_call_mask_specific():
     """Positions with token ids in the list should be 1, others 0."""
@@ -197,6 +204,7 @@ def test_make_tool_call_mask_specific():
 # 9. make_tool_call_mask — output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_make_tool_call_mask_shape():
     trainer = ZeroVisionSFTTrainer(ZeroVisionSFTConfig(tool_call_token_ids=[10, 20]))
     ids = torch.randint(0, VOCAB, (BATCH, SEQ))
@@ -207,6 +215,7 @@ def test_make_tool_call_mask_shape():
 # ---------------------------------------------------------------------------
 # 10. train_step — returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_keys():
     trainer = ZeroVisionSFTTrainer()
@@ -227,6 +236,7 @@ def test_train_step_keys():
 # 11. train_step — n_tokens excludes pad
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_n_tokens():
     trainer = ZeroVisionSFTTrainer()
     n_pad = 4
@@ -245,6 +255,7 @@ def test_train_step_n_tokens():
 # ---------------------------------------------------------------------------
 # 12. train_step — n_tool_call_tokens counts correctly
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_n_tool_call():
     """n_tool_call_tokens counts mask-active positions that are not pad."""
@@ -270,6 +281,7 @@ def test_train_step_n_tool_call():
 # 13. Upweight effect — higher weight → higher loss
 # ---------------------------------------------------------------------------
 
+
 def test_upweight_effect():
     """Increasing tool_call_weight should monotonically increase total loss."""
     torch.manual_seed(42)
@@ -290,6 +302,7 @@ def test_upweight_effect():
 # 14. All-pad targets → loss is 0
 # ---------------------------------------------------------------------------
 
+
 def test_all_pad():
     """When all targets are pad, loss should be 0."""
     trainer = ZeroVisionSFTTrainer()
@@ -304,6 +317,7 @@ def test_all_pad():
 # ---------------------------------------------------------------------------
 # 15. Determinism — same inputs produce same loss
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     """Same inputs must always produce the same loss."""

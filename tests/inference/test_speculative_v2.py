@@ -1,14 +1,15 @@
 """Tests for speculative decoding v2 (full rejection sampling)."""
-import pytest
+
 import torch
+
 from src.inference.speculative_v2 import (
-    SpeculativeConfig,
-    sample_from_logits,
-    rejection_sample,
-    speculative_decode_step,
     AcceptanceTracker,
+    SpeculativeConfig,
     SpeculativeDecoderV2,
     estimate_draft_quality,
+    rejection_sample,
+    sample_from_logits,
+    speculative_decode_step,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -38,6 +39,7 @@ def _make_prompt(length: int = 4) -> torch.Tensor:
 # 1. SpeculativeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_speculative_config_defaults():
     cfg = SpeculativeConfig()
     assert cfg.n_draft_tokens == 4
@@ -51,6 +53,7 @@ def test_speculative_config_defaults():
 # 2. sample_from_logits — valid token
 # ---------------------------------------------------------------------------
 
+
 def test_sample_from_logits_valid_token():
     V = 256
     logits = torch.randn(V)
@@ -63,6 +66,7 @@ def test_sample_from_logits_valid_token():
 # 3. sample_from_logits — probabilities sum to ~1
 # ---------------------------------------------------------------------------
 
+
 def test_sample_from_logits_probabilities_sum():
     V = 256
     logits = torch.randn(V)
@@ -74,6 +78,7 @@ def test_sample_from_logits_probabilities_sum():
 # ---------------------------------------------------------------------------
 # 4. rejection_sample — identical distributions always accept
 # ---------------------------------------------------------------------------
+
 
 def test_rejection_sample_accept_identical():
     V = 256
@@ -98,6 +103,7 @@ def test_rejection_sample_accept_identical():
 # 5. rejection_sample — returns valid token
 # ---------------------------------------------------------------------------
 
+
 def test_rejection_sample_returns_valid_token():
     V = 256
     torch.manual_seed(7)
@@ -116,6 +122,7 @@ def test_rejection_sample_returns_valid_token():
 # ---------------------------------------------------------------------------
 # 6. speculative_decode_step — returns list
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_decode_step_accepted_list():
     target = _make_model()
@@ -136,6 +143,7 @@ def test_speculative_decode_step_accepted_list():
 # ---------------------------------------------------------------------------
 # 7. speculative_decode_step — n_proposed == n_draft
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_decode_step_counts():
     target = _make_model()
@@ -158,6 +166,7 @@ def test_speculative_decode_step_counts():
 # 8. AcceptanceTracker — tracks correctly
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_tracker_rate():
     tracker = AcceptanceTracker()
     tracker.record(3, 4)
@@ -172,6 +181,7 @@ def test_acceptance_tracker_rate():
 # 9. AcceptanceTracker — speedup positive
 # ---------------------------------------------------------------------------
 
+
 def test_acceptance_tracker_speedup_positive():
     tracker = AcceptanceTracker()
     tracker.record(2, 4)
@@ -183,6 +193,7 @@ def test_acceptance_tracker_speedup_positive():
 # ---------------------------------------------------------------------------
 # 10. SpeculativeDecoderV2.generate — returns tokens
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_decoder_v2_generate_returns_tokens():
     target = _make_model()
@@ -201,6 +212,7 @@ def test_speculative_decoder_v2_generate_returns_tokens():
 # ---------------------------------------------------------------------------
 # 11. SpeculativeDecoderV2.generate — stats keys
 # ---------------------------------------------------------------------------
+
 
 def test_speculative_decoder_v2_stats_keys():
     target = _make_model()
@@ -222,6 +234,7 @@ def test_speculative_decoder_v2_stats_keys():
 # ---------------------------------------------------------------------------
 # 12. estimate_draft_quality — keys
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_draft_quality_keys():
     target = _make_model()

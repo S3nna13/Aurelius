@@ -8,13 +8,12 @@ from src.agent.swarm_scaler import (
     SwarmScaler,
     SwarmScalerConfig,
     WorkItem,
-    WorkerStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def identity(x):
     return x
@@ -28,6 +27,7 @@ def double(x):
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SwarmScalerConfig()
     assert cfg.max_workers == 300
@@ -40,6 +40,7 @@ def test_config_defaults():
 # 2. Submit tasks basic
 # ---------------------------------------------------------------------------
 
+
 def test_submit_tasks_basic():
     scaler = SwarmScaler()
     scaler.submit_tasks([10, 20, 30, 40, 50])
@@ -50,6 +51,7 @@ def test_submit_tasks_basic():
 # 3. Submit tasks returns sequential IDs starting at 0
 # ---------------------------------------------------------------------------
 
+
 def test_submit_tasks_returns_ids():
     scaler = SwarmScaler()
     ids = scaler.submit_tasks(["a", "b", "c"])
@@ -59,6 +61,7 @@ def test_submit_tasks_returns_ids():
 # ---------------------------------------------------------------------------
 # 4. Submitting beyond max_total_steps raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_submit_exceeds_max_steps_raises():
     cfg = SwarmScalerConfig(max_total_steps=5)
@@ -71,6 +74,7 @@ def test_submit_exceeds_max_steps_raises():
 # ---------------------------------------------------------------------------
 # 5. Dispatch completes all submitted tasks
 # ---------------------------------------------------------------------------
+
 
 def test_dispatch_completes_all():
     scaler = SwarmScaler()
@@ -85,6 +89,7 @@ def test_dispatch_completes_all():
 # 6. Worker function result is stored correctly (doubles)
 # ---------------------------------------------------------------------------
 
+
 def test_dispatch_result_correct():
     scaler = SwarmScaler()
     scaler.submit_tasks([1, 2, 3, 4])
@@ -97,6 +102,7 @@ def test_dispatch_result_correct():
 # 7. Dispatch respects n_workers parameter
 # ---------------------------------------------------------------------------
 
+
 def test_dispatch_respects_n_workers():
     scaler = SwarmScaler()
     scaler.submit_tasks([10, 20, 30, 40])
@@ -107,6 +113,7 @@ def test_dispatch_respects_n_workers():
 # ---------------------------------------------------------------------------
 # 8. n_workers > max_workers raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_dispatch_max_workers_exceeded_raises():
     cfg = SwarmScalerConfig(max_workers=5)
@@ -119,6 +126,7 @@ def test_dispatch_max_workers_exceeded_raises():
 # ---------------------------------------------------------------------------
 # 9. Priority order: lower priority value processed first
 # ---------------------------------------------------------------------------
+
 
 def test_priority_order():
     scaler = SwarmScaler(config=SwarmScalerConfig(enable_work_stealing=False))
@@ -140,6 +148,7 @@ def test_priority_order():
 # 10. Work-stealing enabled: tasks_stolen > 0
 # ---------------------------------------------------------------------------
 
+
 def test_work_stealing_enabled():
     cfg = SwarmScalerConfig(
         max_workers=300,
@@ -159,6 +168,7 @@ def test_work_stealing_enabled():
 # 11. Work-stealing disabled: tasks_stolen == 0
 # ---------------------------------------------------------------------------
 
+
 def test_work_stealing_disabled():
     cfg = SwarmScalerConfig(enable_work_stealing=False)
     scaler = SwarmScaler(config=cfg)
@@ -173,6 +183,7 @@ def test_work_stealing_disabled():
 # 12. worker_stats returns one entry per active worker
 # ---------------------------------------------------------------------------
 
+
 def test_worker_stats_count():
     scaler = SwarmScaler()
     scaler.submit_tasks(list(range(6)))
@@ -186,6 +197,7 @@ def test_worker_stats_count():
 # ---------------------------------------------------------------------------
 # 13. total_steps_used accumulates across dispatches
 # ---------------------------------------------------------------------------
+
 
 def test_total_steps_used():
     scaler = SwarmScaler()
@@ -202,6 +214,7 @@ def test_total_steps_used():
 # 14. reset clears everything
 # ---------------------------------------------------------------------------
 
+
 def test_reset_clears_all():
     scaler = SwarmScaler()
     scaler.submit_tasks([1, 2, 3])
@@ -217,8 +230,8 @@ def test_reset_clears_all():
 # 15. speedup_vs_serial calculation
 # ---------------------------------------------------------------------------
 
+
 def test_speedup_calculation():
-    import math
     scaler = SwarmScaler()
     # 10 tasks, dispatch with 10 workers → critical_path = ceil(10/10) = 1
     scaler.submit_tasks(list(range(10)))
@@ -231,6 +244,7 @@ def test_speedup_calculation():
 # ---------------------------------------------------------------------------
 # 16. WorkItem fields are populated after dispatch
 # ---------------------------------------------------------------------------
+
 
 def test_work_item_fields_populated():
     scaler = SwarmScaler()

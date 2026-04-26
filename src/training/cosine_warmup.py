@@ -51,9 +51,7 @@ def get_lr_multiplier(step: int, schedule: CosineWarmupSchedule) -> float:
         return schedule.min_lr_ratio
 
     # Cosine decay phase
-    progress = (step - schedule.warmup_steps) / max(
-        1, schedule.total_steps - schedule.warmup_steps
-    )
+    progress = (step - schedule.warmup_steps) / max(1, schedule.total_steps - schedule.warmup_steps)
     cosine_decay = 0.5 * (1.0 + math.cos(math.pi * progress))
     return schedule.min_lr_ratio + (1.0 - schedule.min_lr_ratio) * cosine_decay
 

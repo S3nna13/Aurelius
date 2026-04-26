@@ -1,4 +1,5 @@
 """Tests for src/model/multi_token_pred.py"""
+
 import pytest
 import torch
 import torch.nn as nn
@@ -6,9 +7,9 @@ import torch.nn as nn
 from src.model.multi_token_pred import (
     MTPConfig,
     MTPHead,
-    mtp_loss,
     MTPModel,
     MTPTrainer,
+    mtp_loss,
 )
 
 # ---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ N_FUTURE = 3
 # ---------------------------------------------------------------------------
 # Mock backbone
 # ---------------------------------------------------------------------------
+
 
 class _PassthroughLayer(nn.Module):
     def forward(self, x, freqs_cis, mask=None, past_kv=None):
@@ -73,6 +75,7 @@ def input_ids():
 # MTPConfig
 # ---------------------------------------------------------------------------
 
+
 def test_config_default_loss_weights():
     cfg = MTPConfig(n_future_tokens=4, d_model=D_MODEL, vocab_size=VOCAB)
     assert len(cfg.loss_weights) == 4
@@ -98,6 +101,7 @@ def test_config_n_future_tokens_one():
 # ---------------------------------------------------------------------------
 # MTPHead
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_head_output_count(cfg):
     head = MTPHead(cfg)
@@ -130,6 +134,7 @@ def test_mtp_head_n_modules(cfg):
 # ---------------------------------------------------------------------------
 # mtp_loss
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_loss_is_scalar(cfg, input_ids):
     head = MTPHead(cfg)
@@ -169,6 +174,7 @@ def test_mtp_loss_single_head(input_ids):
 # MTPModel
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_model_forward_primary_shape(mtp_model, input_ids):
     primary, _ = mtp_model(input_ids)
     assert primary.shape == (BATCH, SEQ, VOCAB)
@@ -188,6 +194,7 @@ def test_mtp_model_forward_aux_shapes(mtp_model, input_ids):
 # ---------------------------------------------------------------------------
 # MTPTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_mtp_trainer_step_returns_dict(mtp_model, cfg, input_ids):
     opt = torch.optim.Adam(mtp_model.parameters(), lr=1e-3)

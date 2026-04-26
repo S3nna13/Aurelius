@@ -3,9 +3,10 @@
 Inspired by Tree-of-Thought beam variant (Yao et al. 2305.10601) and
 Self-Consistency (Wang et al. 2203.11171); Aurelius-native. License: MIT.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 _MAX_BEAM_WIDTH = 64
 _MAX_DEPTH = 128
@@ -27,7 +28,7 @@ class BeamHypothesis:
     def depth(self) -> int:
         return len(self.steps)
 
-    def extend(self, new_step: str, step_score: float) -> "BeamHypothesis":
+    def extend(self, new_step: str, step_score: float) -> BeamHypothesis:
         """Return a new hypothesis with new_step appended."""
         if len(new_step) > _MAX_STEP_LEN:
             raise ValueError(f"step exceeds {_MAX_STEP_LEN} chars")
@@ -45,9 +46,13 @@ class BeamHypothesis:
 class BeamSearchReasoner:
     """Beam search over reasoning step sequences."""
 
-    def __init__(self, beam_width: int = 4, max_depth: int = 8,
-                 length_penalty: float = 0.6,
-                 normalize_scores: bool = True) -> None:
+    def __init__(
+        self,
+        beam_width: int = 4,
+        max_depth: int = 8,
+        length_penalty: float = 0.6,
+        normalize_scores: bool = True,
+    ) -> None:
         if beam_width < 1 or beam_width > _MAX_BEAM_WIDTH:
             raise ValueError(f"beam_width must be in [1, {_MAX_BEAM_WIDTH}]")
         if max_depth < 1 or max_depth > _MAX_DEPTH:
@@ -57,13 +62,13 @@ class BeamSearchReasoner:
         self.length_penalty = length_penalty
         self.normalize_scores = normalize_scores
 
-    def initialize(self, initial_step: str, initial_score: float = 0.0
-                   ) -> list[BeamHypothesis]:
+    def initialize(self, initial_step: str, initial_score: float = 0.0) -> list[BeamHypothesis]:
         """Create initial beam with one hypothesis."""
         return [BeamHypothesis(steps=[initial_step], score=initial_score)]
 
-    def expand(self, hypotheses: list[BeamHypothesis],
-               candidates: list[list[tuple[str, float]]]) -> list[BeamHypothesis]:
+    def expand(
+        self, hypotheses: list[BeamHypothesis], candidates: list[list[tuple[str, float]]]
+    ) -> list[BeamHypothesis]:
         """
         Expand each hypothesis with its candidate (step, score) list.
         candidates[i] is the list of (step, score) for hypotheses[i].
@@ -84,7 +89,7 @@ class BeamSearchReasoner:
     def _prune(self, hypotheses: list[BeamHypothesis]) -> list[BeamHypothesis]:
         """Keep top beam_width by score (normalized if enabled)."""
         key = (lambda h: h.normalized_score()) if self.normalize_scores else (lambda h: h.score)
-        return sorted(hypotheses, key=key, reverse=True)[:self.beam_width]
+        return sorted(hypotheses, key=key, reverse=True)[: self.beam_width]
 
     def best(self, hypotheses: list[BeamHypothesis]) -> BeamHypothesis:
         """Return the highest-scoring hypothesis."""

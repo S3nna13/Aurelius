@@ -8,10 +8,10 @@ import pytest
 
 from src.security.privacy_accountant import Mechanism, PrivacyAccountant
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def accountant() -> PrivacyAccountant:
@@ -26,6 +26,7 @@ def gaussian_step() -> Mechanism:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_instantiates_with_default_delta():
     """PrivacyAccountant can be created with default delta."""

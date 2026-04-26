@@ -1,13 +1,13 @@
 """Tests for src/training/warmup_scheduler.py."""
 
-import math
 import pytest
-from src.training.warmup_scheduler import SchedulerType, WarmupScheduler
 
+from src.training.warmup_scheduler import SchedulerType, WarmupScheduler
 
 # ---------------------------------------------------------------------------
 # SchedulerType enum
 # ---------------------------------------------------------------------------
+
 
 class TestSchedulerType:
     def test_linear_warmup_value(self):
@@ -32,6 +32,7 @@ class TestSchedulerType:
 # ---------------------------------------------------------------------------
 # WarmupScheduler — basic construction
 # ---------------------------------------------------------------------------
+
 
 class TestWarmupSchedulerConstruction:
     def test_base_lr_stored(self):
@@ -71,6 +72,7 @@ class TestWarmupSchedulerConstruction:
 # get_lr — warmup phase
 # ---------------------------------------------------------------------------
 
+
 class TestGetLrWarmup:
     def test_lr_at_step_0_is_zero(self):
         s = WarmupScheduler(base_lr=1e-3, warmup_steps=100)
@@ -97,6 +99,7 @@ class TestGetLrWarmup:
 # ---------------------------------------------------------------------------
 # get_lr — cosine decay
 # ---------------------------------------------------------------------------
+
 
 class TestGetLrCosine:
     def test_cosine_decreasing_after_warmup(self):
@@ -138,6 +141,7 @@ class TestGetLrCosine:
 # get_lr — polynomial decay
 # ---------------------------------------------------------------------------
 
+
 class TestGetLrPolynomial:
     def test_polynomial_decreasing_after_warmup(self):
         s = WarmupScheduler(
@@ -165,6 +169,7 @@ class TestGetLrPolynomial:
 # get_lr — cosine with restarts
 # ---------------------------------------------------------------------------
 
+
 class TestGetLrCosineRestarts:
     def test_cosine_restarts_resets_within_cycles(self):
         s = WarmupScheduler(
@@ -183,6 +188,7 @@ class TestGetLrCosineRestarts:
 # get_lr — linear warmup post-warmup (linear decay)
 # ---------------------------------------------------------------------------
 
+
 class TestGetLrLinearWarmupDecay:
     def test_linear_decay_after_warmup(self):
         s = WarmupScheduler(
@@ -200,6 +206,7 @@ class TestGetLrLinearWarmupDecay:
 # ---------------------------------------------------------------------------
 # Clamping
 # ---------------------------------------------------------------------------
+
 
 class TestGetLrClamping:
     def test_lr_never_below_min_lr(self):
@@ -230,6 +237,7 @@ class TestGetLrClamping:
 # warmup_progress
 # ---------------------------------------------------------------------------
 
+
 class TestWarmupProgress:
     def test_warmup_progress_zero_at_step_0(self):
         s = WarmupScheduler(base_lr=1e-3, warmup_steps=100)
@@ -255,6 +263,7 @@ class TestWarmupProgress:
 # ---------------------------------------------------------------------------
 # lr_schedule
 # ---------------------------------------------------------------------------
+
 
 class TestLrSchedule:
     def test_lr_schedule_returns_list(self):

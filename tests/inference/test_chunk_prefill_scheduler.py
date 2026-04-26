@@ -5,17 +5,15 @@ from __future__ import annotations
 import pytest
 
 from src.inference.chunk_prefill_scheduler import (
-    BatchSlot,
     ChunkPrefillConfig,
     ChunkPrefillScheduler,
     Request,
-    RequestState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _req(rid: str, prompt: int = 100, max_out: int = 10, priority: int = 0) -> Request:
     return Request(
@@ -34,6 +32,7 @@ def _scheduler(**kwargs) -> ChunkPrefillScheduler:
 # Test 1 — config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = ChunkPrefillConfig()
     assert cfg.chunk_size == 512
@@ -45,6 +44,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2 — add_request increments pending count
 # ---------------------------------------------------------------------------
+
 
 def test_add_request():
     sched = ChunkPrefillScheduler()
@@ -59,6 +59,7 @@ def test_add_request():
 # Test 3 — duplicate request_id raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_add_duplicate_raises():
     sched = ChunkPrefillScheduler()
     sched.add_request(_req("r1"))
@@ -69,6 +70,7 @@ def test_add_duplicate_raises():
 # ---------------------------------------------------------------------------
 # Test 4 — new request produces a prefill slot
 # ---------------------------------------------------------------------------
+
 
 def test_schedule_prefill_only():
     sched = ChunkPrefillScheduler()
@@ -84,6 +86,7 @@ def test_schedule_prefill_only():
 # Test 5 — prefill_done advances after schedule
 # ---------------------------------------------------------------------------
 
+
 def test_schedule_advances_prefill_done():
     sched = _scheduler(chunk_size=30)
     sched.add_request(_req("r1", prompt=100))
@@ -95,6 +98,7 @@ def test_schedule_advances_prefill_done():
 # ---------------------------------------------------------------------------
 # Test 6 — completing prefill transitions status to decoding
 # ---------------------------------------------------------------------------
+
 
 def test_prefill_completes_transitions_to_decoding():
     sched = _scheduler(chunk_size=512)
@@ -110,6 +114,7 @@ def test_prefill_completes_transitions_to_decoding():
 # Test 7 — decoding request gets a decode slot
 # ---------------------------------------------------------------------------
 
+
 def test_decode_slot_in_batch():
     sched = _scheduler(chunk_size=512)
     sched.add_request(_req("r1", prompt=50, max_out=5))
@@ -124,6 +129,7 @@ def test_decode_slot_in_batch():
 # ---------------------------------------------------------------------------
 # Test 8 — decode slots are scheduled before prefill slots
 # ---------------------------------------------------------------------------
+
 
 def test_decode_priority_over_prefill():
     sched = _scheduler(chunk_size=512)
@@ -145,6 +151,7 @@ def test_decode_priority_over_prefill():
 # ---------------------------------------------------------------------------
 # Test 9 — chunk_size is respected across multiple batches
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_size_respected():
     sched = _scheduler(chunk_size=100, max_prefill_tokens_per_batch=200)
@@ -170,6 +177,7 @@ def test_chunk_size_respected():
 # Test 10 — complete_decode marks request as completed
 # ---------------------------------------------------------------------------
 
+
 def test_complete_decode():
     sched = _scheduler(chunk_size=512)
     sched.add_request(_req("r1", prompt=50, max_out=100))
@@ -184,6 +192,7 @@ def test_complete_decode():
 # Test 11 — pending count decreases after completion
 # ---------------------------------------------------------------------------
 
+
 def test_pending_count_decreases():
     sched = _scheduler(chunk_size=512)
     sched.add_request(_req("r1", prompt=10, max_out=2))
@@ -196,6 +205,7 @@ def test_pending_count_decreases():
 # ---------------------------------------------------------------------------
 # Test 12 — mixed batch: one prefilling + one decoding in same batch
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_batch():
     sched = _scheduler(chunk_size=512)
@@ -213,6 +223,7 @@ def test_mixed_batch():
 # Test 13 — max_prefill_tokens_per_batch limits total prefill tokens
 # ---------------------------------------------------------------------------
 
+
 def test_max_prefill_tokens_per_batch():
     sched = _scheduler(chunk_size=512, max_prefill_tokens_per_batch=100)
     sched.add_request(_req("r1", prompt=200))
@@ -226,6 +237,7 @@ def test_max_prefill_tokens_per_batch():
 # Test 14 — empty schedule with no requests returns empty list
 # ---------------------------------------------------------------------------
 
+
 def test_empty_schedule():
     sched = ChunkPrefillScheduler()
     batch = sched.schedule_batch()
@@ -235,6 +247,7 @@ def test_empty_schedule():
 # ---------------------------------------------------------------------------
 # Test 15 — multiple requests scheduled in priority order
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_requests_priority_order():
     sched = _scheduler(chunk_size=512, max_prefill_tokens_per_batch=2048)
@@ -253,11 +266,12 @@ def test_multiple_requests_priority_order():
 # Test 16 — utilization tracks per-batch statistics
 # ---------------------------------------------------------------------------
 
+
 def test_utilization_tracking():
     sched = _scheduler(chunk_size=50)
     sched.add_request(_req("r1", prompt=50, max_out=3))
     sched.schedule_batch()  # prefill: 50 tokens, 0 decode
     sched.schedule_batch()  # decode: 0 prefill, 1 decode
     stats = sched.utilization()
-    assert stats["prefill_tokens_per_batch"] == 25.0   # mean(50, 0)
-    assert stats["decode_slots_per_batch"] == 0.5       # mean(0, 1)
+    assert stats["prefill_tokens_per_batch"] == 25.0  # mean(50, 0)
+    assert stats["decode_slots_per_batch"] == 0.5  # mean(0, 1)

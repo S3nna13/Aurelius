@@ -2,27 +2,27 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
-from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class DataSource:
     name: str
-    weight: float = 1.0       # initial sampling weight
-    domain: str = "general"   # for diversity grouping
-    difficulty: float = 0.5   # [0, 1] for difficulty-based curriculum
+    weight: float = 1.0  # initial sampling weight
+    domain: str = "general"  # for diversity grouping
+    difficulty: float = 0.5  # [0, 1] for difficulty-based curriculum
 
 
 @dataclass
 class CurriculumConfig:
-    n_sources: int                          # number of data sources
-    update_interval: int = 100              # steps between weight updates
-    loss_ema_alpha: float = 0.1             # EMA smoothing for per-source loss
-    diversity_weight: float = 0.1           # regularization toward uniform domain sampling
-    difficulty_warmup_steps: int = 1000     # ramp from easy to hard over this many steps
-    min_source_weight: float = 0.05         # floor to prevent source starvation
+    n_sources: int  # number of data sources
+    update_interval: int = 100  # steps between weight updates
+    loss_ema_alpha: float = 0.1  # EMA smoothing for per-source loss
+    diversity_weight: float = 0.1  # regularization toward uniform domain sampling
+    difficulty_warmup_steps: int = 1000  # ramp from easy to hard over this many steps
+    min_source_weight: float = 0.05  # floor to prevent source starvation
 
 
 def normalize_weights(weights: torch.Tensor, min_weight: float = 0.05) -> torch.Tensor:
@@ -194,9 +194,7 @@ class AdaptiveCurriculumSampler:
             masked = torch.ones(len(self.sources))
 
         # 5. Diversity regularization
-        regularized = diversity_regularization(
-            masked, self.sources, self.config.diversity_weight
-        )
+        regularized = diversity_regularization(masked, self.sources, self.config.diversity_weight)
 
         # Apply min weight floor only to included (non-zero mask) sources then re-normalize
         # Sources with mask=0 stay at 0 after diversity_regularization may still assign them weight;
@@ -205,7 +203,9 @@ class AdaptiveCurriculumSampler:
         if final.sum() <= 0:
             final = torch.ones(len(self.sources))
 
-        self.weights = normalize_weights(final, self.config.min_source_weight * (mask > 0).float().max().item())
+        self.weights = normalize_weights(
+            final, self.config.min_source_weight * (mask > 0).float().max().item()
+        )
 
     def sample_source(self) -> DataSource:
         """Sample one DataSource proportionally to current weights.

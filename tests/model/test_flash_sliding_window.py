@@ -6,24 +6,24 @@ GlobalLocalAttention, and compute_attention_flops.
 """
 
 import math
-import pytest
+
 import torch
 import torch.nn.functional as F
 
 from src.model.flash_sliding_window import (
+    GlobalLocalAttention,
+    SlidingWindowAttention,
     SlidingWindowConfig,
     build_sliding_window_mask,
+    compute_attention_flops,
     online_softmax,
     tiled_attention,
-    SlidingWindowAttention,
-    GlobalLocalAttention,
-    compute_attention_flops,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. SlidingWindowConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_sliding_window_config_defaults():
     cfg = SlidingWindowConfig()
@@ -37,6 +37,7 @@ def test_sliding_window_config_defaults():
 # 2. build_sliding_window_mask shape
 # ---------------------------------------------------------------------------
 
+
 def test_build_mask_shape():
     T = 16
     mask = build_sliding_window_mask(T, window_size=8, causal=True)
@@ -47,6 +48,7 @@ def test_build_mask_shape():
 # ---------------------------------------------------------------------------
 # 3. build_sliding_window_mask causal: upper triangle is False
 # ---------------------------------------------------------------------------
+
 
 def test_build_mask_causal_upper_triangle_false():
     T = 12
@@ -62,6 +64,7 @@ def test_build_mask_causal_upper_triangle_false():
 # 4. build_sliding_window_mask window_size=T: all causal positions True
 # ---------------------------------------------------------------------------
 
+
 def test_build_mask_full_window_all_causal_true():
     T = 10
     mask = build_sliding_window_mask(T, window_size=T, causal=True)
@@ -75,6 +78,7 @@ def test_build_mask_full_window_all_causal_true():
 # ---------------------------------------------------------------------------
 # 5. build_sliding_window_mask: distant tokens are masked
 # ---------------------------------------------------------------------------
+
 
 def test_build_mask_distant_tokens_masked():
     T = 20
@@ -90,18 +94,21 @@ def test_build_mask_distant_tokens_masked():
 # 6. online_softmax: output sums to 1 along last dim
 # ---------------------------------------------------------------------------
 
+
 def test_online_softmax_sums_to_one():
     torch.manual_seed(0)
     scores = torch.randn(2, 4, 8, 16)  # (B, H, T, S)
     probs = online_softmax(scores)
     row_sums = probs.sum(dim=-1)
-    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), \
+    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), (
         f"Softmax rows do not sum to 1; max deviation: {(row_sums - 1).abs().max()}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 7. online_softmax: masked positions near zero
 # ---------------------------------------------------------------------------
+
 
 def test_online_softmax_masked_positions_near_zero():
     torch.manual_seed(1)
@@ -114,8 +121,9 @@ def test_online_softmax_masked_positions_near_zero():
     probs = online_softmax(scores, mask=mask)
     # Positions 8..15 should have probability ≈ 0
     masked_out_probs = probs[..., 8:]
-    assert (masked_out_probs < 1e-6).all(), \
+    assert (masked_out_probs < 1e-6).all(), (
         f"Masked positions not near zero: {masked_out_probs.max()}"
+    )
     # Remaining positions should sum to 1
     assert torch.allclose(probs[..., :8].sum(dim=-1), torch.ones(1, 1, 1), atol=1e-5)
 
@@ -123,6 +131,7 @@ def test_online_softmax_masked_positions_near_zero():
 # ---------------------------------------------------------------------------
 # 8. tiled_attention output shape
 # ---------------------------------------------------------------------------
+
 
 def test_tiled_attention_output_shape():
     torch.manual_seed(2)
@@ -138,6 +147,7 @@ def test_tiled_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 9. tiled_attention numerically close to standard attention (small sequences)
 # ---------------------------------------------------------------------------
+
 
 def test_tiled_attention_matches_standard():
     torch.manual_seed(3)
@@ -160,13 +170,13 @@ def test_tiled_attention_matches_standard():
     # Tiled attention
     tiled = tiled_attention(q, k, v, mask, block_size=8)
 
-    assert torch.allclose(ref, tiled, atol=1e-4), \
-        f"Max diff: {(ref - tiled).abs().max().item()}"
+    assert torch.allclose(ref, tiled, atol=1e-4), f"Max diff: {(ref - tiled).abs().max().item()}"
 
 
 # ---------------------------------------------------------------------------
 # 10. SlidingWindowAttention output shape
 # ---------------------------------------------------------------------------
+
 
 def test_sliding_window_attention_output_shape():
     torch.manual_seed(4)
@@ -181,6 +191,7 @@ def test_sliding_window_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 11. SlidingWindowAttention causal vs non-causal produce different outputs
 # ---------------------------------------------------------------------------
+
 
 def test_sliding_window_attention_causal_vs_noncausal():
     torch.manual_seed(5)
@@ -201,13 +212,15 @@ def test_sliding_window_attention_causal_vs_noncausal():
         out_causal = attn_causal(x)
         out_noncausal = attn_noncausal(x)
 
-    assert not torch.allclose(out_causal, out_noncausal, atol=1e-4), \
+    assert not torch.allclose(out_causal, out_noncausal, atol=1e-4), (
         "Causal and non-causal outputs should differ"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 12. GlobalLocalAttention output shape
 # ---------------------------------------------------------------------------
+
 
 def test_global_local_attention_output_shape():
     torch.manual_seed(6)
@@ -223,21 +236,21 @@ def test_global_local_attention_output_shape():
 # 13. compute_attention_flops: sliding < full for long sequences
 # ---------------------------------------------------------------------------
 
+
 def test_compute_flops_sliding_less_than_full():
-    result = compute_attention_flops(
-        seq_len=1024, d_model=512, n_heads=8, window_size=64
-    )
-    assert result["sliding_window_flops"] < result["full_attention_flops"], \
+    result = compute_attention_flops(seq_len=1024, d_model=512, n_heads=8, window_size=64)
+    assert result["sliding_window_flops"] < result["full_attention_flops"], (
         "Sliding-window FLOPs should be less than full-attention FLOPs"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 14. compute_attention_flops: speedup_ratio > 1
 # ---------------------------------------------------------------------------
 
+
 def test_compute_flops_speedup_ratio_greater_than_one():
-    result = compute_attention_flops(
-        seq_len=2048, d_model=256, n_heads=4, window_size=128
-    )
-    assert result["speedup_ratio"] > 1.0, \
+    result = compute_attention_flops(seq_len=2048, d_model=256, n_heads=4, window_size=128)
+    assert result["speedup_ratio"] > 1.0, (
         f"Expected speedup_ratio > 1, got {result['speedup_ratio']}"
+    )

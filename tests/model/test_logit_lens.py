@@ -51,6 +51,7 @@ def input_ids():
 # LogitLensConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestLogitLensConfig:
     def test_defaults(self):
         c = LogitLensConfig()
@@ -68,6 +69,7 @@ class TestLogitLensConfig:
 # ---------------------------------------------------------------------------
 # extract_layer_hidden_states tests
 # ---------------------------------------------------------------------------
+
 
 class TestExtractLayerHiddenStates:
     def test_returns_list_per_layer(self, model, input_ids):
@@ -96,6 +98,7 @@ class TestExtractLayerHiddenStates:
 # project_to_vocab tests
 # ---------------------------------------------------------------------------
 
+
 class TestProjectToVocab:
     def test_output_shape(self, model):
         hidden = torch.randn(2, 8, model.config.d_model)
@@ -111,6 +114,7 @@ class TestProjectToVocab:
 # ---------------------------------------------------------------------------
 # get_top_tokens tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetTopTokens:
     def test_shapes(self):
@@ -147,6 +151,7 @@ class TestGetTopTokens:
 # compute_layer_entropy tests
 # ---------------------------------------------------------------------------
 
+
 class TestComputeLayerEntropy:
     def test_output_shape(self):
         logits = torch.randn(2, 8, 256)
@@ -161,6 +166,7 @@ class TestComputeLayerEntropy:
     def test_uniform_has_max_entropy(self):
         """Uniform distribution should have near-maximum entropy = log(V)."""
         import math
+
         V = 64
         logits = torch.zeros(1, 1, V)
         ent = compute_layer_entropy(logits)
@@ -178,6 +184,7 @@ class TestComputeLayerEntropy:
 # ---------------------------------------------------------------------------
 # LogitLens class tests
 # ---------------------------------------------------------------------------
+
 
 class TestLogitLens:
     def test_analyze_keys(self, model, input_ids):

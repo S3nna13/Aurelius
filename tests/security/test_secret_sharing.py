@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.security.secret_sharing import SecretSharing
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def ss3() -> SecretSharing:
@@ -34,6 +34,7 @@ def secret_2d() -> torch.Tensor:
 # 1. Instantiation
 # ---------------------------------------------------------------------------
 
+
 def test_instantiation():
     ss = SecretSharing(n_parties=4)
     assert ss.n_parties == 4
@@ -42,6 +43,7 @@ def test_instantiation():
 # ---------------------------------------------------------------------------
 # 2. share() returns list of n_parties tensors
 # ---------------------------------------------------------------------------
+
 
 def test_share_returns_n_tensors(ss3, secret_1d):
     shares = ss3.share(secret_1d)
@@ -53,6 +55,7 @@ def test_share_returns_n_tensors(ss3, secret_1d):
 # 3. Each share has the same shape as the secret
 # ---------------------------------------------------------------------------
 
+
 def test_share_shapes_match(ss3, secret_1d):
     shares = ss3.share(secret_1d)
     for s in shares:
@@ -63,6 +66,7 @@ def test_share_shapes_match(ss3, secret_1d):
 # 4. Shares sum exactly to the original secret
 # ---------------------------------------------------------------------------
 
+
 def test_shares_sum_to_secret(ss3, secret_1d):
     shares = ss3.share(secret_1d)
     total = sum(shares)
@@ -72,6 +76,7 @@ def test_shares_sum_to_secret(ss3, secret_1d):
 # ---------------------------------------------------------------------------
 # 5. Individual shares do not equal the secret (privacy)
 # ---------------------------------------------------------------------------
+
 
 def test_individual_shares_differ_from_secret(ss3, secret_1d):
     shares = ss3.share(secret_1d)
@@ -84,6 +89,7 @@ def test_individual_shares_differ_from_secret(ss3, secret_1d):
 # 6. reconstruct() returns the correct tensor
 # ---------------------------------------------------------------------------
 
+
 def test_reconstruct_correct(ss3, secret_1d):
     shares = ss3.share(secret_1d)
     recovered = ss3.reconstruct(shares)
@@ -94,6 +100,7 @@ def test_reconstruct_correct(ss3, secret_1d):
 # 7. verify_reconstruction returns True for valid shares
 # ---------------------------------------------------------------------------
 
+
 def test_verify_reconstruction_true(ss3, secret_1d):
     shares = ss3.share(secret_1d)
     assert ss3.verify_reconstruction(secret_1d, shares) is True
@@ -102,6 +109,7 @@ def test_verify_reconstruction_true(ss3, secret_1d):
 # ---------------------------------------------------------------------------
 # 8. verify_reconstruction returns False for corrupted shares
 # ---------------------------------------------------------------------------
+
 
 def test_verify_reconstruction_false_on_corruption(ss3, secret_1d):
     shares = ss3.share(secret_1d)
@@ -114,6 +122,7 @@ def test_verify_reconstruction_false_on_corruption(ss3, secret_1d):
 # 9. Works with float32 tensors
 # ---------------------------------------------------------------------------
 
+
 def test_works_with_float32(ss3):
     t = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float32)
     shares = ss3.share(t)
@@ -125,6 +134,7 @@ def test_works_with_float32(ss3):
 # 10. Works with 2D tensor (matrix)
 # ---------------------------------------------------------------------------
 
+
 def test_works_with_2d_tensor(ss3, secret_2d):
     shares = ss3.share(secret_2d)
     assert all(s.shape == secret_2d.shape for s in shares)
@@ -134,6 +144,7 @@ def test_works_with_2d_tensor(ss3, secret_2d):
 # ---------------------------------------------------------------------------
 # 11. share_gradients returns list of n dicts
 # ---------------------------------------------------------------------------
+
 
 def test_share_gradients_returns_n_dicts(ss3):
     state_dict = {
@@ -152,6 +163,7 @@ def test_share_gradients_returns_n_dicts(ss3):
 # 12. reconstruct_gradients returns correct state dict
 # ---------------------------------------------------------------------------
 
+
 def test_reconstruct_gradients_returns_state_dict(ss3):
     state_dict = {
         "weight": torch.randn(4, 4),
@@ -166,6 +178,7 @@ def test_reconstruct_gradients_returns_state_dict(ss3):
 # ---------------------------------------------------------------------------
 # 13. reconstruct_gradients result matches original state dict values
 # ---------------------------------------------------------------------------
+
 
 def test_reconstruct_gradients_matches_original(ss3):
     torch.manual_seed(42)

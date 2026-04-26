@@ -25,10 +25,7 @@ def tpl() -> Llama3Template:
 
 def test_encode_single_user(tpl: Llama3Template) -> None:
     out = tpl.encode([Message(role="user", content="hello")])
-    assert out == (
-        f"{BEGIN_OF_TEXT}"
-        f"{START_HEADER}user{END_HEADER}\n\nhello{EOT}"
-    )
+    assert out == (f"{BEGIN_OF_TEXT}{START_HEADER}user{END_HEADER}\n\nhello{EOT}")
 
 
 def test_encode_multi_turn(tpl: Llama3Template) -> None:
@@ -46,9 +43,7 @@ def test_encode_multi_turn(tpl: Llama3Template) -> None:
 
 
 def test_encode_with_generation_prompt(tpl: Llama3Template) -> None:
-    out = tpl.encode(
-        [Message(role="user", content="hi")], add_generation_prompt=True
-    )
+    out = tpl.encode([Message(role="user", content="hi")], add_generation_prompt=True)
     # Exactly one open assistant header, and it must be at the very end
     # without a trailing <|eot_id|>.
     assert out.endswith(f"{START_HEADER}assistant{END_HEADER}\n\n")
@@ -63,9 +58,7 @@ def test_encode_empty_messages_no_prompt(tpl: Llama3Template) -> None:
 
 def test_encode_empty_messages_with_prompt(tpl: Llama3Template) -> None:
     out = tpl.encode([], add_generation_prompt=True)
-    assert out == (
-        f"{BEGIN_OF_TEXT}{START_HEADER}assistant{END_HEADER}\n\n"
-    )
+    assert out == (f"{BEGIN_OF_TEXT}{START_HEADER}assistant{END_HEADER}\n\n")
 
 
 def test_encode_tool_and_ipython_roles(tpl: Llama3Template) -> None:
@@ -142,17 +135,13 @@ def test_decode_tolerates_trailing_newline_between_turns(
 
 def test_decode_malformed_missing_end_header(tpl: Llama3Template) -> None:
     # Well-formed header close is missing entirely.
-    bad = (
-        f"{BEGIN_OF_TEXT}{START_HEADER}user\n\nhi{EOT}"
-    )
+    bad = f"{BEGIN_OF_TEXT}{START_HEADER}user\n\nhi{EOT}"
     with pytest.raises(Llama3FormatError):
         tpl.decode(bad)
 
 
 def test_decode_tolerates_open_generation_prompt(tpl: Llama3Template) -> None:
-    wire = tpl.encode(
-        [Message(role="user", content="hi")], add_generation_prompt=True
-    )
+    wire = tpl.encode([Message(role="user", content="hi")], add_generation_prompt=True)
     # Decoder discards the open assistant prompt.
     decoded = tpl.decode(wire)
     assert decoded == [Message(role="user", content="hi")]
@@ -179,9 +168,7 @@ def test_encode_token_ids_rejects_non_int(tpl: Llama3Template) -> None:
         return ["not", "ints"]
 
     with pytest.raises(Llama3FormatError):
-        tpl.encode_token_ids(
-            [Message(role="user", content="x")], bad_tokenizer
-        )
+        tpl.encode_token_ids([Message(role="user", content="x")], bad_tokenizer)
 
 
 def test_encode_trailing_structure(tpl: Llama3Template) -> None:

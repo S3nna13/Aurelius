@@ -12,22 +12,22 @@ Covers:
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.quantization_aware_training import (
     FakeQuantize,
-    PerTensorQuantizer,
     PerChannelQuantizer,
-    QATLinear,
-    QATEmbedding,
-    QATConverter,
-    QuantizationTrainer,
+    PerTensorQuantizer,
     QATConfig,
+    QATConverter,
+    QATEmbedding,
+    QATLinear,
+    QuantizationTrainer,
 )
 
 # ---------------------------------------------------------------------------
 # Tiny model used by several tests
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal embedding + linear LM for testing."""
@@ -38,8 +38,8 @@ class TinyLM(nn.Module):
         self.proj = nn.Linear(d, vocab)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        x = self.embed(input_ids)          # [B, T, d]
-        return self.proj(x)                # [B, T, vocab]
+        x = self.embed(input_ids)  # [B, T, d]
+        return self.proj(x)  # [B, T, vocab]
 
 
 # ===========================================================================
@@ -48,7 +48,7 @@ class TinyLM(nn.Module):
 def test_fake_quantize_forward_values_in_range():
     x = torch.randn(8, 16)
     n_bits = 8
-    q_max = 2 ** n_bits - 1
+    2**n_bits - 1
     scale = torch.full_like(x, 0.01)
     zp = torch.zeros_like(x)
 
@@ -221,8 +221,7 @@ def test_qat_converter_replaces_linear():
 
     # All Linear layers should be replaced
     for module in qat_model.modules():
-        assert not isinstance(module, nn.Linear), \
-            "Found unreplaced nn.Linear after conversion"
+        assert not isinstance(module, nn.Linear), "Found unreplaced nn.Linear after conversion"
     # At least one QATLinear present
     assert any(isinstance(m, QATLinear) for m in qat_model.modules())
 
@@ -262,8 +261,9 @@ def test_export_int_model_returns_int_tensors():
 
     assert len(int_weights) > 0
     for key, tensor in int_weights.items():
-        assert tensor.dtype in (torch.int8, torch.int32, torch.int64), \
+        assert tensor.dtype in (torch.int8, torch.int32, torch.int64), (
             f"Expected integer dtype for {key}, got {tensor.dtype}"
+        )
 
 
 # ===========================================================================

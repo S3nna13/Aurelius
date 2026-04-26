@@ -1,16 +1,15 @@
 """Lossless tensor packing: bit-pack, run-length, delta encoding, and combined."""
+
 from __future__ import annotations
 
 import struct
-from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
-import numpy as np
 import torch
 
 
-class PackingStrategy(str, Enum):
+class PackingStrategy(StrEnum):
     BIT_PACK = "bit_pack"
     RUN_LENGTH = "run_length"
     DELTA_ENCODE = "delta_encode"
@@ -86,9 +85,7 @@ class LosslessPacker:
             packed.append((hi << 4) | lo)
         return header + bytes(packed)
 
-    def _bit_unpack(
-        self, data: bytes, dtype: torch.dtype, shape: tuple[int, ...]
-    ) -> torch.Tensor:
+    def _bit_unpack(self, data: bytes, dtype: torch.dtype, shape: tuple[int, ...]) -> torch.Tensor:
         n = struct.unpack(">I", data[:4])[0]
         raw = data[4:]
         values: list[int] = []
@@ -134,7 +131,7 @@ class LosslessPacker:
         offset = 8
         values: list[float] = []
         for _ in range(n_runs):
-            val, count = struct.unpack(">fI", data[offset: offset + 8])
+            val, count = struct.unpack(">fI", data[offset : offset + 8])
             offset += 8
             values.extend([val] * count)
         values = values[:n_elements]
@@ -166,7 +163,7 @@ class LosslessPacker:
         values = [first]
         offset = 8
         for _ in range(n - 1):
-            (delta,) = struct.unpack(">f", data[offset: offset + 4])
+            (delta,) = struct.unpack(">f", data[offset : offset + 4])
             offset += 4
             values.append(values[-1] + delta)
         return torch.tensor(values, dtype=dtype).reshape(shape)
@@ -189,8 +186,6 @@ class LosslessPacker:
     ) -> torch.Tensor:
         (n_bytes,) = struct.unpack(">I", data[:4])
         rle_data = data[4:]
-        byte_tensor = self._run_length_unpack(
-            rle_data, torch.float32, (n_bytes,)
-        )
+        byte_tensor = self._run_length_unpack(rle_data, torch.float32, (n_bytes,))
         bit_packed_bytes = bytes(byte_tensor.to(torch.uint8).tolist())
         return self._bit_unpack(bit_packed_bytes, dtype, shape)

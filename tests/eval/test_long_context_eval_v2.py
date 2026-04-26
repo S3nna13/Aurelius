@@ -11,11 +11,11 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from src.eval.long_context_eval_v2 import (
-    NeedleInHaystack,
-    PositionBiasAnalyzer,
-    LostInTheMiddleScore,
     ContextUtilizationScore,
     LongContextBenchmark,
+    LostInTheMiddleScore,
+    NeedleInHaystack,
+    PositionBiasAnalyzer,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,8 +40,8 @@ class TinyLM(nn.Module):
 
     def forward(self, input_ids: Tensor):  # noqa: ANN201
         # input_ids: (B, T)
-        x = self.embed(input_ids)          # (B, T, D_MODEL)
-        logits = self.linear(x)            # (B, T, VOCAB)
+        x = self.embed(input_ids)  # (B, T, D_MODEL)
+        logits = self.linear(x)  # (B, T, VOCAB)
         return (None, logits)
 
 
@@ -68,6 +68,7 @@ def needle_ids() -> Tensor:
 # NeedleInHaystack tests
 # ---------------------------------------------------------------------------
 
+
 def test_create_test_context_longer_than_haystack(haystack_ids, needle_ids):
     """context_ids should be longer than haystack_ids after inserting needle."""
     nih = NeedleInHaystack()
@@ -81,7 +82,7 @@ def test_create_test_needle_at_correct_position(haystack_ids, needle_ids):
     nih = NeedleInHaystack()
     depth = 0.5
     context_ids, needle_pos = nih.create_test(haystack_ids, needle_ids, depth)
-    extracted = context_ids[needle_pos: needle_pos + NEEDLE_LEN]
+    extracted = context_ids[needle_pos : needle_pos + NEEDLE_LEN]
     assert torch.equal(extracted, needle_ids)
 
 
@@ -98,7 +99,7 @@ def test_create_test_depth_one_needle_at_end(haystack_ids, needle_ids):
     nih = NeedleInHaystack()
     context_ids, needle_pos = nih.create_test(haystack_ids, needle_ids, 1.0)
     assert needle_pos == len(haystack_ids)
-    assert torch.equal(context_ids[needle_pos: needle_pos + NEEDLE_LEN], needle_ids)
+    assert torch.equal(context_ids[needle_pos : needle_pos + NEEDLE_LEN], needle_ids)
 
 
 def test_score_retrieval_returns_nonpositive_float(tiny_model, haystack_ids, needle_ids):
@@ -131,6 +132,7 @@ def test_score_retrieval_double_needle_accumulates(tiny_model, haystack_ids, nee
 # ---------------------------------------------------------------------------
 # PositionBiasAnalyzer tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_position_attention_shape():
     """Output should have shape (T,)."""
@@ -174,6 +176,7 @@ def test_primacy_bias_nonnegative():
 # LostInTheMiddleScore tests
 # ---------------------------------------------------------------------------
 
+
 def test_lost_in_middle_score_nonnegative():
     """score() should return a non-negative value."""
     litm = LostInTheMiddleScore()
@@ -194,6 +197,7 @@ def test_optimal_insertion_depth_valid_index():
 # ---------------------------------------------------------------------------
 # ContextUtilizationScore tests
 # ---------------------------------------------------------------------------
+
 
 def test_token_influence_shape(tiny_model):
     """token_influence should return tensor of shape (T,)."""
@@ -223,6 +227,7 @@ def test_effective_context_fraction_in_range(tiny_model):
 # ---------------------------------------------------------------------------
 # LongContextBenchmark tests
 # ---------------------------------------------------------------------------
+
 
 def test_run_needle_test_per_depth_length(tiny_model, haystack_ids, needle_ids):
     """per_depth_scores should have exactly 5 entries."""

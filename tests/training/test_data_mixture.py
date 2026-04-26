@@ -3,8 +3,8 @@ Tests for src/training/data_mixture.py
 """
 
 import math
-import sys
 import os
+import sys
 
 import pytest
 
@@ -12,8 +12,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.training.data_mixture import (
-    MixtureConfig,
     DataMixtureSampler,
+    MixtureConfig,
     compute_curriculum_weights,
     compute_mixture_entropy,
     estimate_steps_per_epoch,
@@ -35,6 +35,7 @@ def approx_equal(a: float, b: float, tol: float = EPSILON) -> bool:
 # ---------------------------------------------------------------------------
 # MixtureConfig defaults  (test 1)
 # ---------------------------------------------------------------------------
+
 
 class TestMixtureConfigDefaults:
     def test_default_source_names(self):
@@ -62,6 +63,7 @@ class TestMixtureConfigDefaults:
 # normalize_weights  (tests 2–3)
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeWeights:
     def test_sums_to_one(self):
         result = normalize_weights([1.0, 2.0, 3.0])
@@ -88,6 +90,7 @@ class TestNormalizeWeights:
 # ---------------------------------------------------------------------------
 # temperature_sample_weights  (tests 4–6)
 # ---------------------------------------------------------------------------
+
 
 class TestTemperatureSampleWeights:
     def test_sums_to_one(self):
@@ -123,6 +126,7 @@ class TestTemperatureSampleWeights:
 # ---------------------------------------------------------------------------
 # compute_curriculum_weights  (tests 7–8)
 # ---------------------------------------------------------------------------
+
 
 class TestComputeCurriculumWeights:
     def test_step_zero_is_uniform(self):
@@ -170,6 +174,7 @@ class TestComputeCurriculumWeights:
 # ---------------------------------------------------------------------------
 # DataMixtureSampler  (tests 9–12)
 # ---------------------------------------------------------------------------
+
 
 class TestDataMixtureSampler:
     def _make_sampler(self, **kwargs):
@@ -236,6 +241,7 @@ class TestDataMixtureSampler:
 # compute_mixture_entropy  (tests 13–14)
 # ---------------------------------------------------------------------------
 
+
 class TestComputeMixtureEntropy:
     def test_uniform_entropy_equals_log_n(self):
         n = 4
@@ -265,6 +271,7 @@ class TestComputeMixtureEntropy:
 # ---------------------------------------------------------------------------
 # estimate_steps_per_epoch  (test 15)
 # ---------------------------------------------------------------------------
+
 
 class TestEstimateStepsPerEpoch:
     def test_returns_positive_int(self):

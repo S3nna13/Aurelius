@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 
 from src.security.rate_abuse_detector import (
+    RATE_ABUSE_DETECTOR_REGISTRY,
     AbuseAlert,
     AbusePattern,
-    RATE_ABUSE_DETECTOR_REGISTRY,
     RateAbuseDetector,
     RequestRecord,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_records(client_id: str, n: int, start: float = 0.0, interval: float = 0.05) -> list:
     return [
@@ -39,6 +39,7 @@ def make_detector(**kwargs) -> RateAbuseDetector:
 # RequestRecord
 # ---------------------------------------------------------------------------
 
+
 class TestRequestRecord:
     def test_fields_stored(self):
         r = RequestRecord("alice", 1.0, "/api/v1", bytes_sent=512)
@@ -61,6 +62,7 @@ class TestRequestRecord:
 # AbusePattern enum
 # ---------------------------------------------------------------------------
 
+
 class TestAbusePattern:
     def test_members_exist(self):
         assert AbusePattern.BURST
@@ -76,6 +78,7 @@ class TestAbusePattern:
 # ---------------------------------------------------------------------------
 # AbuseAlert
 # ---------------------------------------------------------------------------
+
 
 class TestAbuseAlert:
     def test_fields(self):
@@ -100,6 +103,7 @@ class TestAbuseAlert:
 # RateAbuseDetector — no records
 # ---------------------------------------------------------------------------
 
+
 class TestNoRecords:
     def test_empty_list_no_alerts(self):
         det = make_detector()
@@ -114,6 +118,7 @@ class TestNoRecords:
 # ---------------------------------------------------------------------------
 # BURST detection
 # ---------------------------------------------------------------------------
+
 
 class TestBurstDetection:
     def test_burst_triggers_alert(self):
@@ -159,6 +164,7 @@ class TestBurstDetection:
 # SUSTAINED detection
 # ---------------------------------------------------------------------------
 
+
 class TestSustainedDetection:
     def test_sustained_triggers_alert(self):
         det = make_detector(sustained_threshold=50, sustained_window_s=60.0)
@@ -186,6 +192,7 @@ class TestSustainedDetection:
 # ---------------------------------------------------------------------------
 # DISTRIBUTED detection
 # ---------------------------------------------------------------------------
+
 
 class TestDistributedDetection:
     def test_distributed_11_clients(self):
@@ -220,26 +227,32 @@ class TestDistributedDetection:
 # Deduplication
 # ---------------------------------------------------------------------------
 
+
 class TestDeduplication:
     def test_one_burst_alert_per_client(self):
         det = make_detector(burst_threshold=10, burst_window_s=5.0)
         # 20 records — there should still be only ONE BURST alert for this client
         records = make_records("dup_client", n=20, start=0.0, interval=0.1)
         alerts = det.analyze(records)
-        burst = [a for a in alerts if a.pattern == AbusePattern.BURST and a.client_id == "dup_client"]
+        burst = [
+            a for a in alerts if a.pattern == AbusePattern.BURST and a.client_id == "dup_client"
+        ]
         assert len(burst) == 1
 
     def test_one_sustained_alert_per_client(self):
         det = make_detector(sustained_threshold=50, sustained_window_s=60.0)
         records = make_records("heavy", n=100, start=0.0, interval=0.5)
         alerts = det.analyze(records)
-        sustained = [a for a in alerts if a.pattern == AbusePattern.SUSTAINED and a.client_id == "heavy"]
+        sustained = [
+            a for a in alerts if a.pattern == AbusePattern.SUSTAINED and a.client_id == "heavy"
+        ]
         assert len(sustained) == 1
 
 
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
+
 
 class TestSummary:
     def test_summary_empty(self):
@@ -274,6 +287,7 @@ class TestSummary:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

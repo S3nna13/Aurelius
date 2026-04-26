@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -21,10 +20,10 @@ class ThinkingSnapshot:
     """A single captured reasoning chain plus its optional compressed form."""
 
     turn_id: int
-    thinking_tokens: list[int]      # token IDs of the thinking chain (possibly truncated)
-    summary_tokens: list[int]       # compressed/summary representation (shorter)
-    timestamp: float                # time.time() at snapshot creation
-    metadata: dict                  # arbitrary key-value tags
+    thinking_tokens: list[int]  # token IDs of the thinking chain (possibly truncated)
+    summary_tokens: list[int]  # compressed/summary representation (shorter)
+    timestamp: float  # time.time() at snapshot creation
+    metadata: dict  # arbitrary key-value tags
 
 
 @dataclass
@@ -45,7 +44,7 @@ class PreserveThinkingBuffer:
     thinking chain or its summary depending on ``config.use_summary``.
     """
 
-    def __init__(self, config: Optional[PreserveThinkingConfig] = None) -> None:
+    def __init__(self, config: PreserveThinkingConfig | None = None) -> None:
         self._config = config if config is not None else PreserveThinkingConfig()
         self._buffer: deque[ThinkingSnapshot] = deque()
         self._eviction_count: int = 0
@@ -58,8 +57,8 @@ class PreserveThinkingBuffer:
         self,
         turn_id: int,
         thinking_tokens: list[int],
-        summary_tokens: Optional[list[int]] = None,
-        metadata: Optional[dict] = None,
+        summary_tokens: list[int] | None = None,
+        metadata: dict | None = None,
     ) -> ThinkingSnapshot:
         """Add a new snapshot to the ring buffer.
 
@@ -85,7 +84,7 @@ class PreserveThinkingBuffer:
         self._buffer.append(snap)
         return snap
 
-    def get_prepend_tokens(self, max_tokens: Optional[int] = None) -> list[int]:
+    def get_prepend_tokens(self, max_tokens: int | None = None) -> list[int]:
         """Return tokens to prepend to the next turn's context.
 
         Uses the most recent snapshot.  If ``config.use_summary`` is True the

@@ -7,9 +7,7 @@ All tests use tiny configs (short strings, small tensors) for speed.
 from __future__ import annotations
 
 import math
-from typing import List
 
-import pytest
 import torch
 from torch import Tensor
 
@@ -25,10 +23,10 @@ from src.eval.metrics import (
     tokenize,
 )
 
-
 # ---------------------------------------------------------------------------
 # tokenize
 # ---------------------------------------------------------------------------
+
 
 class TestTokenize:
     def test_splits_on_whitespace(self):
@@ -54,6 +52,7 @@ class TestTokenize:
 # ---------------------------------------------------------------------------
 # compute_ngrams
 # ---------------------------------------------------------------------------
+
 
 class TestComputeNgrams:
     def test_unigram_counts(self):
@@ -84,6 +83,7 @@ class TestComputeNgrams:
 # ---------------------------------------------------------------------------
 # bleu_score
 # ---------------------------------------------------------------------------
+
 
 class TestBleuScore:
     def test_identical_sentences_returns_one(self):
@@ -117,6 +117,7 @@ class TestBleuScore:
 # rouge_n
 # ---------------------------------------------------------------------------
 
+
 class TestRougeN:
     def test_identical_returns_one(self):
         text = "the cat sat on the mat"
@@ -144,6 +145,7 @@ class TestRougeN:
 # rouge_l
 # ---------------------------------------------------------------------------
 
+
 class TestRougeL:
     def test_identical_returns_one(self):
         text = "the cat sat on the mat"
@@ -169,6 +171,7 @@ class TestRougeL:
 # distinct_n
 # ---------------------------------------------------------------------------
 
+
 class TestDistinctN:
     def test_all_same_low(self):
         texts = ["the the the the", "the the the the"]
@@ -192,6 +195,7 @@ class TestDistinctN:
 # ---------------------------------------------------------------------------
 # compute_perplexity
 # ---------------------------------------------------------------------------
+
 
 class TestComputePerplexity:
     def test_returns_scalar_float(self):
@@ -218,6 +222,7 @@ class TestComputePerplexity:
 # ---------------------------------------------------------------------------
 # EmbeddingSimilarity
 # ---------------------------------------------------------------------------
+
 
 def _fixed_embed(text: str) -> Tensor:
     """Deterministic embedding: use char-code sum to pick a direction."""
@@ -257,6 +262,7 @@ class TestEmbeddingSimilarity:
 # ---------------------------------------------------------------------------
 # MetricsEvaluator
 # ---------------------------------------------------------------------------
+
 
 class TestMetricsEvaluator:
     def test_evaluate_returns_expected_keys_without_embed(self):

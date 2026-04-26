@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import math
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # NeedleInHaystack
 # ---------------------------------------------------------------------------
+
 
 class NeedleInHaystack:
     """Check ability to retrieve a 'needle' (key fact) from a long context."""
@@ -35,9 +34,7 @@ class NeedleInHaystack:
         """
         depth_fraction = max(0.0, min(1.0, float(depth_fraction)))
         insert_at = int(depth_fraction * len(haystack_ids))
-        context_ids = torch.cat(
-            [haystack_ids[:insert_at], needle_ids, haystack_ids[insert_at:]]
-        )
+        context_ids = torch.cat([haystack_ids[:insert_at], needle_ids, haystack_ids[insert_at:]])
         return context_ids, insert_at
 
     def score_retrieval(
@@ -85,6 +82,7 @@ class NeedleInHaystack:
 # ---------------------------------------------------------------------------
 # PositionBiasAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class PositionBiasAnalyzer:
     """Measure how model attention varies with token position."""
@@ -166,6 +164,7 @@ class PositionBiasAnalyzer:
 # LostInTheMiddleScore
 # ---------------------------------------------------------------------------
 
+
 class LostInTheMiddleScore:
     """Measure U-shaped attention (primacy + recency, middle forgotten)."""
 
@@ -184,8 +183,8 @@ class LostInTheMiddleScore:
 
         q = n // 4
         first_quarter = position_scores[:q].float()
-        last_quarter = position_scores[n - q:].float()
-        middle_half = position_scores[q: n - q].float()
+        last_quarter = position_scores[n - q :].float()
+        middle_half = position_scores[q : n - q].float()
 
         first_mean = first_quarter.mean().item()
         last_mean = last_quarter.mean().item()
@@ -217,6 +216,7 @@ class LostInTheMiddleScore:
 # ContextUtilizationScore
 # ---------------------------------------------------------------------------
 
+
 class ContextUtilizationScore:
     """How much of the context influences the output (gradient-based)."""
 
@@ -243,7 +243,7 @@ class ContextUtilizationScore:
 
         model.train(False)
         # Compute embeddings with grad tracking
-        embeds = embed_layer(input_ids)       # (1, T, d_model)
+        embeds = embed_layer(input_ids)  # (1, T, d_model)
         embeds = embeds.detach().requires_grad_(True)
 
         out = _forward_from_embeds(model, embed_layer, embeds)
@@ -279,6 +279,7 @@ class ContextUtilizationScore:
 # ---------------------------------------------------------------------------
 # LongContextBenchmark
 # ---------------------------------------------------------------------------
+
 
 class LongContextBenchmark:
     """Aggregate long-context assessment."""
@@ -351,6 +352,7 @@ class LongContextBenchmark:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _find_embedding(model: nn.Module) -> nn.Embedding:
     """Return the first nn.Embedding found in the model."""

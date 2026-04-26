@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -86,9 +86,7 @@ class StreamingHandler:
     def prune_completed(self, max_age_s: float = 300.0) -> int:
         cutoff = time.time() - max_age_s
         to_remove = [
-            sid
-            for sid, s in self._sessions.items()
-            if s.is_complete and s.created_at < cutoff
+            sid for sid, s in self._sessions.items() if s.is_complete and s.created_at < cutoff
         ]
         for sid in to_remove:
             del self._sessions[sid]

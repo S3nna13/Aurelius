@@ -7,7 +7,7 @@ No heavyweight imports; no side effects beyond registry population.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from .tool_call_parser import (
     JSONToolCallParser,
@@ -139,7 +139,11 @@ __all__ += [
 # --- shell command planner (additive) ---------------------------------------
 from .shell_command_planner import (  # noqa: E402
     ALLOWLIST as SHELL_ALLOWLIST,
+)
+from .shell_command_planner import (
     DENYLIST as SHELL_DENYLIST,
+)
+from .shell_command_planner import (
     ShellCommand,
     ShellCommandPlanner,
     ShellPlan,
@@ -172,6 +176,8 @@ from .code_execution_tool import (  # noqa: E402
     CodeExecutionTool,
     ExecutionLanguage,
     ExecutionRequest,
+)
+from .code_execution_tool import (
     ExecutionResult as CodeExecutionResult,
 )
 
@@ -251,6 +257,8 @@ __all__ += [
 # --- toolformer data generation (additive) ----------------------------------
 from .toolformer_data_gen import (  # noqa: E402
     Tool as ToolformerTool,
+)
+from .toolformer_data_gen import (
     ToolCallAnnotation,
     ToolformerConfig,
     ToolformerDataGenerator,
@@ -272,10 +280,10 @@ __all__ += [
 
 # --- dispatch task (additive) -----------------------------------------------
 from .dispatch_task import (  # noqa: E402
+    Dispatcher,
     DispatchOutcome,
     DispatchReport,
     DispatchTask,
-    Dispatcher,
     classify_error,
 )
 
@@ -309,9 +317,11 @@ __all__ += [
 # --- tool sandbox denylist (additive) ---------------------------------------
 from .tool_sandbox_denylist import (  # noqa: E402
     DEFAULT_DENYLIST as TOOL_SANDBOX_DEFAULT_DENYLIST,
-    DenyVerdict,
+)
+from .tool_sandbox_denylist import (
     DenylistCategory,
     DenylistRule,
+    DenyVerdict,
     ToolSandboxDenylist,
 )
 
@@ -370,6 +380,8 @@ __all__ += [
 # --- web browse tool (additive) ---------------------------------------------
 from .web_browse_tool import (  # noqa: E402
     DEFAULT_TOOL_DESCRIPTOR as WEB_BROWSE_TOOL_DESCRIPTOR,
+)
+from .web_browse_tool import (
     PrivateHostBlocked,
     UrlValidationError,
     WebBrowseTool,
@@ -567,9 +579,9 @@ def __getattr__(name: str):
 
 # --- AST-aware FIM processor (additive) -------------------------------------
 from .ast_fim import (  # noqa: E402
+    AST_FIM_REGISTRY,
     ASTAnalyzer,
     ASTNode,
-    AST_FIM_REGISTRY,
     FIMFormat,
     FIMSpan,
     FIMTokenizer,
@@ -587,10 +599,10 @@ __all__ += [
 
 # --- patch synthesis engine (additive) --------------------------------------
 from .patch_synthesis import (  # noqa: E402
+    PATCH_REGISTRY,
     Patch,
     PatchError,
     PatchHunk,
-    PATCH_REGISTRY,
     PatchSynthesizer,
 )
 
@@ -638,12 +650,14 @@ __all__ += [
 
 # --- skill executor (cycle-204) ---------------------------------------------
 from .skill_executor import (  # noqa: E402
-    SkillExecutionError,
-    SkillContext,
-    ExecutionResult as SkillExecutionResult,
-    SkillExecutor,
     DEFAULT_SKILL_EXECUTOR,
     SKILL_EXECUTOR_REGISTRY,
+    SkillContext,
+    SkillExecutionError,
+    SkillExecutor,
+)
+from .skill_executor import (
+    ExecutionResult as SkillExecutionResult,
 )
 
 __all__ += [
@@ -657,11 +671,11 @@ __all__ += [
 
 # --- plugin loader (cycle-204) -----------------------------------------------
 from .plugin_loader import (  # noqa: E402
-    PluginLoadError,
-    LoadedPlugin,
-    PluginLoader,
     DEFAULT_PLUGIN_LOADER,
     PLUGIN_LOADER_REGISTRY,
+    LoadedPlugin,
+    PluginLoader,
+    PluginLoadError,
 )
 
 __all__ += [
@@ -674,10 +688,10 @@ __all__ += [
 
 # --- plugin dependency resolver (cycle-204) ----------------------------------
 from .plugin_dependency_resolver import (  # noqa: E402
-    DependencyCycleError,
-    DependencyResolver,
     DEFAULT_DEPENDENCY_RESOLVER,
     DEPENDENCY_RESOLVER_REGISTRY,
+    DependencyCycleError,
+    DependencyResolver,
 )
 
 __all__ += [
@@ -689,12 +703,12 @@ __all__ += [
 
 # --- skill composer (cycle-204b) --------------------------------------------
 from .skill_composer import (  # noqa: E402
-    SkillCompositionError,
-    CompositionStep,
-    CompositionResult,
-    SkillComposer,
     DEFAULT_SKILL_COMPOSER,
     SKILL_COMPOSER_REGISTRY,
+    CompositionResult,
+    CompositionStep,
+    SkillComposer,
+    SkillCompositionError,
 )
 
 __all__ += [
@@ -708,12 +722,12 @@ __all__ += [
 
 # --- plugin sandbox (cycle-204b) ---------------------------------------------
 from .plugin_sandbox import (  # noqa: E402
-    SandboxViolationError,
-    SandboxConfig,
-    SandboxResult,
-    PluginSandbox,
     DEFAULT_PLUGIN_SANDBOX,
     PLUGIN_SANDBOX_REGISTRY,
+    PluginSandbox,
+    SandboxConfig,
+    SandboxResult,
+    SandboxViolationError,
 )
 
 __all__ += [
@@ -727,12 +741,12 @@ __all__ += [
 
 # --- skill trigger engine (cycle-204b) ---------------------------------------
 from .skill_trigger_engine import (  # noqa: E402
-    TriggerEngineError,
-    MatchedSkill,
-    TriggerResult,
-    SkillTriggerEngine,
     DEFAULT_TRIGGER_ENGINE,
     TRIGGER_ENGINE_REGISTRY,
+    MatchedSkill,
+    SkillTriggerEngine,
+    TriggerEngineError,
+    TriggerResult,
 )
 
 __all__ += [
@@ -746,11 +760,11 @@ __all__ += [
 
 # --- natural language command parser (cycle-208) -----------------------------
 from .nl_command_parser import (  # noqa: E402
-    NLCommandParseError,
-    ParsedCommand,
-    NLCommandParser,
     DEFAULT_NL_PARSER,
     NL_PARSER_REGISTRY,
+    NLCommandParseError,
+    NLCommandParser,
+    ParsedCommand,
 )
 
 __all__ += [
@@ -763,11 +777,11 @@ __all__ += [
 
 # --- command dispatcher (cycle-208) ------------------------------------------
 from .command_dispatcher import (  # noqa: E402
+    COMMAND_DISPATCHER_REGISTRY,
+    DEFAULT_COMMAND_DISPATCHER,
+    CommandDispatcher,
     CommandDispatchError,
     DispatchResult,
-    CommandDispatcher,
-    DEFAULT_COMMAND_DISPATCHER,
-    COMMAND_DISPATCHER_REGISTRY,
 )
 
 __all__ += [
@@ -780,11 +794,11 @@ __all__ += [
 
 # --- agent mode registry (cycle-209) -----------------------------------------
 from .agent_mode_registry import (  # noqa: E402
-    AgentModeError,
-    AgentMode,
-    AgentModeRegistry,
-    DEFAULT_MODE_REGISTRY,
     AGENT_MODE_REGISTRY,
+    DEFAULT_MODE_REGISTRY,
+    AgentMode,
+    AgentModeError,
+    AgentModeRegistry,
 )
 
 __all__ += [
@@ -797,13 +811,13 @@ __all__ += [
 
 # --- workflow engine (cycle-209) ---------------------------------------------
 from .workflow_engine import (  # noqa: E402
-    WorkflowError,
-    WorkflowCheckpoint,
-    WorkflowNode,
-    WorkflowDAG,
-    WorkflowExecutor,
     DEFAULT_WORKFLOW_EXECUTOR,
     WORKFLOW_EXECUTOR_REGISTRY,
+    WorkflowCheckpoint,
+    WorkflowDAG,
+    WorkflowError,
+    WorkflowExecutor,
+    WorkflowNode,
 )
 
 __all__ += [
@@ -818,10 +832,10 @@ __all__ += [
 
 # --- trace analyzer (cycle-209 subagent) --------------------------------------
 from .trace_analyzer import (  # noqa: E402
+    TRACE_ANALYZER_REGISTRY,
+    ToolSummary,
     TraceAnalysis,
     TraceAnalyzer,
-    ToolSummary,
-    TRACE_ANALYZER_REGISTRY,
 )
 
 __all__ += [
@@ -851,11 +865,11 @@ __all__ += [
 ]
 # --- skill evolver (cycle-211) -----------------------------------------------
 from .skill_evolver import (  # noqa: E402
+    DEFAULT_SKILL_EVOLVER,
+    SKILL_EVOLVER_REGISTRY,
     CrystallizedSkill,
     SkillEvolutionError,
     SkillEvolver,
-    DEFAULT_SKILL_EVOLVER,
-    SKILL_EVOLVER_REGISTRY,
 )
 
 __all__ += [
@@ -868,13 +882,13 @@ __all__ += [
 
 # --- tutorial engine (cycle-211) ---------------------------------------------
 from .tutorial_engine import (  # noqa: E402
+    DEFAULT_TUTORIAL_ENGINE,
+    TUTORIAL_ENGINE_REGISTRY,
     Tutorial,
     TutorialEngine,
     TutorialEngineError,
     TutorialProgress,
     TutorialStep,
-    DEFAULT_TUTORIAL_ENGINE,
-    TUTORIAL_ENGINE_REGISTRY,
 )
 
 __all__ += [

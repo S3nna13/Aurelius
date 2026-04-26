@@ -7,8 +7,6 @@ More stable than Adam for transformer training with large batch sizes.
 
 from __future__ import annotations
 
-import math
-
 import torch
 from torch.optim import Optimizer
 
@@ -86,9 +84,9 @@ class Adan(Optimizer):
                 # Initialize state on first step
                 if len(state) == 0:
                     state["step"] = 0
-                    state["exp_avg"] = torch.zeros_like(p)       # m1
+                    state["exp_avg"] = torch.zeros_like(p)  # m1
                     state["exp_avg_diff"] = torch.zeros_like(p)  # m2
-                    state["exp_avg_sq"] = torch.zeros_like(p)    # m3
+                    state["exp_avg_sq"] = torch.zeros_like(p)  # m3
                     state["prev_grad"] = grad.clone()
 
                 m1 = state["exp_avg"]

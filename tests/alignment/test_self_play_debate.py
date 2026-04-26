@@ -48,4 +48,3 @@ def test_alternate_agents_rejects_bad_round_count():
 def test_summarize_claims_rejects_bad_top_k():
     with pytest.raises(ValueError):
         summarize_claims(make_moves(), top_k=-1)
-

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import copy
 
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,7 +15,6 @@ import torch.nn.functional as F
 from src.alignment.token_dpo import (
     TokenDPOConfig,
     TokenDPOTrainer,
-    compute_per_token_advantages,
 )
 
 # ---------------------------------------------------------------------------
@@ -54,9 +52,9 @@ class _TinyTransformer(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Returns (B, T, vocab_size) logits."""
-        x = self.embed(input_ids)                  # (B, T, D)
-        x = self.transformer(x)                    # (B, T, D)
-        return self.lm_head(x)                     # (B, T, V)
+        x = self.embed(input_ids)  # (B, T, D)
+        x = self.transformer(x)  # (B, T, D)
+        return self.lm_head(x)  # (B, T, V)
 
 
 def _make_model() -> _TinyTransformer:
@@ -99,6 +97,7 @@ def _random_labels(b: int = BATCH, t: int = SEQ_LEN, mask_last: int = 0) -> torc
 # Test 1: TokenDPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = TokenDPOConfig()
     assert cfg.beta == 0.1
@@ -111,6 +110,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: compute_token_log_probs output shape
 # ---------------------------------------------------------------------------
+
 
 def test_compute_token_log_probs_shape():
     trainer = _make_trainer()
@@ -125,6 +125,7 @@ def test_compute_token_log_probs_shape():
 # ---------------------------------------------------------------------------
 # Test 3: Masked positions (-100 labels) don't contribute to log probs
 # ---------------------------------------------------------------------------
+
 
 def test_masked_positions_are_zero():
     trainer = _make_trainer()
@@ -151,6 +152,7 @@ def test_masked_positions_are_zero():
 # Test 4: compute_tdpo_weights sums to 1.0 per sequence
 # ---------------------------------------------------------------------------
 
+
 def test_tdpo_weights_sum_to_one():
     trainer = _make_trainer()
     torch.manual_seed(1)
@@ -168,6 +170,7 @@ def test_tdpo_weights_sum_to_one():
 # Test 5: Higher advantage tokens get higher weights
 # ---------------------------------------------------------------------------
 
+
 def test_higher_advantage_higher_weight():
     trainer = _make_trainer()
     advantages = torch.zeros(1, SEQ_LEN)
@@ -179,13 +182,14 @@ def test_higher_advantage_higher_weight():
     weights = trainer.compute_tdpo_weights(advantages, temperature=1.0)
     assert weights[0, 0] > weights[0, 1], (
         f"Higher advantage position should have higher weight; "
-        f"pos 0: {weights[0,0].item():.4f}, pos 1: {weights[0,1].item():.4f}"
+        f"pos 0: {weights[0, 0].item():.4f}, pos 1: {weights[0, 1].item():.4f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 6: compute_token_dpo_loss returns scalar loss
 # ---------------------------------------------------------------------------
+
 
 def test_compute_token_dpo_loss_scalar():
     trainer = _make_trainer()
@@ -204,6 +208,7 @@ def test_compute_token_dpo_loss_scalar():
 # Test 7: Metrics dict has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_metrics_dict_required_keys():
     trainer = _make_trainer()
     B, T = BATCH, SEQ_LEN
@@ -213,14 +218,13 @@ def test_metrics_dict_required_keys():
     rr = torch.randn(B, T)
     _, metrics = trainer.compute_token_dpo_loss(pc, pr, rc, rr)
     required = {"loss", "chosen_rewards", "rejected_rewards", "accuracy"}
-    assert required.issubset(metrics.keys()), (
-        f"Missing keys: {required - set(metrics.keys())}"
-    )
+    assert required.issubset(metrics.keys()), f"Missing keys: {required - set(metrics.keys())}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: Uniform weights == standard DPO loss (up to normalization)
 # ---------------------------------------------------------------------------
+
 
 def test_uniform_weights_match_standard_dpo():
     """With uniform weights, token-DPO should match sequence-level DPO (scaled by 1/T)."""
@@ -255,6 +259,7 @@ def test_uniform_weights_match_standard_dpo():
 # Test 9: train_step returns all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_required_keys():
     trainer = _make_trainer()
     chosen_ids = _random_ids()
@@ -265,9 +270,7 @@ def test_train_step_returns_required_keys():
     metrics = trainer.train_step(chosen_ids, rejected_ids, chosen_labels, rejected_labels)
 
     required = {"loss", "chosen_rewards", "rejected_rewards", "accuracy"}
-    assert required.issubset(metrics.keys()), (
-        f"Missing keys: {required - set(metrics.keys())}"
-    )
+    assert required.issubset(metrics.keys()), f"Missing keys: {required - set(metrics.keys())}"
     # All float values should be finite
     for key in required:
         assert isinstance(metrics[key], float), f"{key} should be a float"
@@ -277,6 +280,7 @@ def test_train_step_returns_required_keys():
 # ---------------------------------------------------------------------------
 # Test 10: Gradient flows through token DPO loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_loss():
     trainer = _make_trainer()
@@ -297,8 +301,7 @@ def test_gradient_flows_through_loss():
 
     # At least some policy parameters should have gradients now
     has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in trainer.policy.parameters()
+        p.grad is not None and p.grad.abs().sum().item() > 0 for p in trainer.policy.parameters()
     )
     assert has_grad, "No gradients found after backward() — gradient flow broken"
 
@@ -306,6 +309,7 @@ def test_gradient_flows_through_loss():
 # ---------------------------------------------------------------------------
 # Test 11: loss_type='ipo' produces different loss than 'sigmoid'
 # ---------------------------------------------------------------------------
+
 
 def test_ipo_loss_differs_from_sigmoid():
     torch.manual_seed(99)

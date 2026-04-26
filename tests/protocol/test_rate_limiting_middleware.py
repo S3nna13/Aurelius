@@ -1,14 +1,14 @@
 """Tests for src/protocol/rate_limiting_middleware.py"""
 
 import pytest
+
 from src.protocol.rate_limiting_middleware import (
+    RATE_LIMIT_MIDDLEWARE_REGISTRY,
     RateLimitAlgorithm,
     RateLimitConfig,
-    RateLimitResult,
     RateLimitingMiddleware,
-    RATE_LIMIT_MIDDLEWARE_REGISTRY,
+    RateLimitResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,7 +105,7 @@ def test_token_bucket_exactly_burst_calls_allowed():
 
 def test_token_bucket_refill_allows_after_wait():
     mw = _tb_mw(burst=1, rate=2.0)  # 2 tokens/sec
-    mw.check("c", now=0.0)          # consume last token
+    mw.check("c", now=0.0)  # consume last token
     result = mw.check("c", now=1.0)  # 2 tokens refilled → allowed
     assert result.allowed is True
 
@@ -113,7 +113,7 @@ def test_token_bucket_refill_allows_after_wait():
 def test_token_bucket_partial_refill():
     mw = _tb_mw(burst=10, rate=1.0)
     for _ in range(10):
-        mw.check("c", now=0.0)       # exhaust
+        mw.check("c", now=0.0)  # exhaust
     result = mw.check("c", now=5.0)  # 5 tokens refilled
     assert result.allowed is True
     assert result.remaining == 4
@@ -123,7 +123,7 @@ def test_token_bucket_refill_capped_at_burst():
     mw = _tb_mw(burst=3, rate=100.0)
     # Wait a very long time → should not exceed burst
     result = mw.check("c", now=1000.0)
-    assert result.remaining <= 2   # one consumed, cap at burst
+    assert result.remaining <= 2  # one consumed, cap at burst
 
 
 # ---------------------------------------------------------------------------
@@ -198,9 +198,9 @@ def test_sliding_log_removes_old_entries():
 
 def test_sliding_log_partial_eviction():
     mw = _sl_mw(burst=3, window_s=2.0)
-    mw.check("c", now=0.0)   # will be evicted at t=2.5
-    mw.check("c", now=1.0)   # in window at t=2.5
-    mw.check("c", now=1.5)   # in window at t=2.5
+    mw.check("c", now=0.0)  # will be evicted at t=2.5
+    mw.check("c", now=1.0)  # in window at t=2.5
+    mw.check("c", now=1.5)  # in window at t=2.5
     # At t=2.5 the first entry (0.0) is evicted → 2 in log → allow
     result = mw.check("c", now=2.5)
     assert result.allowed is True
@@ -213,7 +213,7 @@ def test_sliding_log_partial_eviction():
 
 def test_reset_clears_token_bucket_state():
     mw = _tb_mw(burst=1, rate=0.0)
-    mw.check("c", now=0.0)   # exhaust
+    mw.check("c", now=0.0)  # exhaust
     mw.reset("c")
     result = mw.check("c", now=0.0)
     assert result.allowed is True
@@ -221,7 +221,7 @@ def test_reset_clears_token_bucket_state():
 
 def test_reset_clears_fixed_window_state():
     mw = _fw_mw(burst=1, window_s=10.0)
-    mw.check("c", now=0.0)   # exhaust
+    mw.check("c", now=0.0)  # exhaust
     mw.reset("c")
     result = mw.check("c", now=0.0)
     assert result.allowed is True
@@ -229,7 +229,7 @@ def test_reset_clears_fixed_window_state():
 
 def test_reset_clears_sliding_log_state():
     mw = _sl_mw(burst=1, window_s=10.0)
-    mw.check("c", now=0.0)   # exhaust
+    mw.check("c", now=0.0)  # exhaust
     mw.reset("c")
     result = mw.check("c", now=0.0)
     assert result.allowed is True
@@ -237,7 +237,7 @@ def test_reset_clears_sliding_log_state():
 
 def test_reset_unknown_client_is_noop():
     mw = _tb_mw()
-    mw.reset("nonexistent")   # must not raise
+    mw.reset("nonexistent")  # must not raise
 
 
 # ---------------------------------------------------------------------------
@@ -299,5 +299,5 @@ def test_registry_default_is_class():
 
 def test_registry_default_is_instantiable():
     cls = RATE_LIMIT_MIDDLEWARE_REGISTRY["default"]
-    mw  = cls()
+    mw = cls()
     assert isinstance(mw, RateLimitingMiddleware)

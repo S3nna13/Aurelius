@@ -208,7 +208,9 @@ class GroupedQueryAttention(nn.Module):
 
         # Scaled dot-product attention (dispatches to Flash Attention when available)
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=mask,
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=is_causal,
@@ -217,5 +219,3 @@ class GroupedQueryAttention(nn.Module):
         # Reshape back: (B, n_heads, S, head_dim) -> (B, S, d_model)
         out = out.transpose(1, 2).contiguous().view(B, S, -1)
         return self.o_proj(out), (k_cache, v_cache)
-
-

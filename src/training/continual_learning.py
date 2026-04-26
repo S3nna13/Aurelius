@@ -9,22 +9,23 @@ from __future__ import annotations
 
 import copy
 import random
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CLConfig:
     """Configuration for continual learning."""
+
     ewc_lambda: float = 5000.0
     replay_buffer_size: int = 1000
     n_replay_per_step: int = 16
@@ -36,12 +37,13 @@ class CLConfig:
 # Fisher Information
 # ---------------------------------------------------------------------------
 
+
 def compute_fisher_information(
     model: nn.Module,
     dataloader: Iterable,
     loss_fn: Callable,
     n_samples: int = 100,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """
     Estimate diagonal Fisher information via accumulated squared gradients.
 
@@ -51,7 +53,7 @@ def compute_fisher_information(
     """
     model.eval()
 
-    fisher: Dict[str, Tensor] = {
+    fisher: dict[str, Tensor] = {
         name: torch.zeros_like(param)
         for name, param in model.named_parameters()
         if param.requires_grad
@@ -93,6 +95,7 @@ def compute_fisher_information(
 # EWC Regularizer
 # ---------------------------------------------------------------------------
 
+
 class EWCRegularizer:
     """
     Elastic Weight Consolidation penalty.
@@ -103,8 +106,8 @@ class EWCRegularizer:
     def __init__(
         self,
         model: nn.Module,
-        fisher: Dict[str, Tensor],
-        ref_params: Dict[str, Tensor],
+        fisher: dict[str, Tensor],
+        ref_params: dict[str, Tensor],
         lam: float = 5000.0,
     ) -> None:
         self.fisher = fisher
@@ -129,13 +132,14 @@ class EWCRegularizer:
 # Experience Replay Buffer
 # ---------------------------------------------------------------------------
 
+
 class ExperienceReplayBuffer:
     """FIFO experience replay buffer storing (x, y) pairs."""
 
     def __init__(self, max_size: int) -> None:
         self.max_size = max_size
-        self._xs: List[Tensor] = []
-        self._ys: List[Tensor] = []
+        self._xs: list[Tensor] = []
+        self._ys: list[Tensor] = []
 
     def add(self, x: Tensor, y: Tensor) -> None:
         """Add samples; evict oldest when buffer is full (FIFO)."""
@@ -147,7 +151,7 @@ class ExperienceReplayBuffer:
             self._xs.append(x[i].detach().cpu())
             self._ys.append(y[i].detach().cpu())
 
-    def sample(self, n: int) -> Tuple[Tensor, Tensor]:
+    def sample(self, n: int) -> tuple[Tensor, Tensor]:
         """Return up to n random (x, y) pairs stacked into tensors."""
         available = len(self._xs)
         k = min(n, available)
@@ -164,6 +168,7 @@ class ExperienceReplayBuffer:
 # Clone Model
 # ---------------------------------------------------------------------------
 
+
 def clone_model(model: nn.Module) -> nn.Module:
     """Return a deep copy of model with the same parameter values."""
     return copy.deepcopy(model)
@@ -172,6 +177,7 @@ def clone_model(model: nn.Module) -> nn.Module:
 # ---------------------------------------------------------------------------
 # Distillation Loss
 # ---------------------------------------------------------------------------
+
 
 def compute_distillation_loss(
     student_logits: Tensor,
@@ -188,12 +194,13 @@ def compute_distillation_loss(
     student_log_probs = F.log_softmax(student_logits / T, dim=-1)
     teacher_probs = F.softmax(teacher_logits / T, dim=-1)
     kl = F.kl_div(student_log_probs, teacher_probs, reduction="batchmean")
-    return kl * (T ** 2)
+    return kl * (T**2)
 
 
 # ---------------------------------------------------------------------------
 # Continual Trainer
 # ---------------------------------------------------------------------------
+
 
 class ContinualTrainer:
     """
@@ -206,17 +213,17 @@ class ContinualTrainer:
         self.model = model
         self.config = config
 
-        self._ref_params: Optional[Dict[str, Tensor]] = None
-        self._fisher: Optional[Dict[str, Tensor]] = None
-        self._ewc: Optional[EWCRegularizer] = None
-        self._teacher: Optional[nn.Module] = None
+        self._ref_params: dict[str, Tensor] | None = None
+        self._fisher: dict[str, Tensor] | None = None
+        self._ewc: EWCRegularizer | None = None
+        self._teacher: nn.Module | None = None
 
         self._replay_buffer = ExperienceReplayBuffer(config.replay_buffer_size)
 
     def register_task(
         self,
         task_id: int,
-        fisher: Optional[Dict[str, Tensor]] = None,
+        fisher: dict[str, Tensor] | None = None,
     ) -> None:
         """
         Snapshot current parameters as the reference for the next task.
@@ -249,7 +256,7 @@ class ContinualTrainer:
         x: Tensor,
         y: Tensor,
         loss_fn: Callable,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Compute task loss + optional regularisation.
 
@@ -276,9 +283,10 @@ class ContinualTrainer:
             with torch.no_grad():
                 teacher_logits = self._teacher(x)
             student_logits = self.model(x)
-            reg_loss = compute_distillation_loss(
-                student_logits, teacher_logits
-            ) * self.config.distill_alpha
+            reg_loss = (
+                compute_distillation_loss(student_logits, teacher_logits)
+                * self.config.distill_alpha
+            )
 
         total_loss = task_loss + reg_loss
 
@@ -293,7 +301,7 @@ class ContinualTrainer:
     def get_forgetting(
         self,
         model: nn.Module,
-        ref_params: Dict[str, Tensor],
+        ref_params: dict[str, Tensor],
     ) -> float:
         """Mean L2 distance between current and reference parameters."""
         total = 0.0

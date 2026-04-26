@@ -1,7 +1,7 @@
-import torch
-import numpy as np
 from dataclasses import dataclass
-from pathlib import Path
+
+import numpy as np
+import torch
 
 
 @dataclass
@@ -27,23 +27,16 @@ class RandomOffsetBatchSampler:
     ) -> "RandomOffsetBatchSampler":
         return RandomOffsetBatchSampler(data=data, config=config or self.config)
 
-    def get_batch(
-        self, data: np.ndarray | None = None
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def get_batch(self, data: np.ndarray | None = None) -> tuple[torch.Tensor, torch.Tensor]:
         d = data if data is not None else self.data
         if d is None:
             raise ValueError("No data provided")
         cfg = self.config
         max_offset = max(1, len(d) - cfg.block_size)
         ix = torch.randint(max_offset, (cfg.batch_size,))
-        x = torch.stack(
-            [torch.from_numpy(d[i : i + cfg.block_size].astype(np.int64)) for i in ix]
-        )
+        x = torch.stack([torch.from_numpy(d[i : i + cfg.block_size].astype(np.int64)) for i in ix])
         y = torch.stack(
-            [
-                torch.from_numpy(d[i + 1 : i + 1 + cfg.block_size].astype(np.int64))
-                for i in ix
-            ]
+            [torch.from_numpy(d[i + 1 : i + 1 + cfg.block_size].astype(np.int64)) for i in ix]
         )
         return x.to(cfg.device), y.to(cfg.device)
 

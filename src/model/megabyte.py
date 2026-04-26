@@ -26,23 +26,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MegaByteConfig:
     """Hyper-parameters for MegaByte (Section 3 / Table 1 notation)."""
 
-    vocab_size: int = 256          # byte vocabulary {0 .. 255}
-    patch_size: int = 4            # P — bytes per patch
-    d_local: int = 128             # d_l — local model hidden dim
-    d_global: int = 256            # d_g — global model hidden dim
-    n_local_layers: int = 2        # depth of local transformer L
-    n_global_layers: int = 4       # depth of global transformer G
-    n_heads_local: int = 4         # attention heads in L
-    n_heads_global: int = 4        # attention heads in G
+    vocab_size: int = 256  # byte vocabulary {0 .. 255}
+    patch_size: int = 4  # P — bytes per patch
+    d_local: int = 128  # d_l — local model hidden dim
+    d_global: int = 256  # d_g — global model hidden dim
+    n_local_layers: int = 2  # depth of local transformer L
+    n_global_layers: int = 4  # depth of global transformer G
+    n_heads_local: int = 4  # attention heads in L
+    n_heads_global: int = 4  # attention heads in G
     dropout: float = 0.0
 
 
@@ -50,15 +50,14 @@ class MegaByteConfig:
 # Shared building block: a single causal Transformer
 # ---------------------------------------------------------------------------
 
+
 class _CausalSelfAttention(nn.Module):
     """Multi-head causal self-attention (no KV-cache; training-only path)."""
 
     def __init__(self, d_model: int, n_heads: int, dropout: float = 0.0) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model={d_model} must be divisible by n_heads={n_heads}"
-            )
+            raise ValueError(f"d_model={d_model} must be divisible by n_heads={n_heads}")
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.scale = math.sqrt(self.head_dim)
@@ -68,8 +67,8 @@ class _CausalSelfAttention(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
-        qkv = self.qkv(x)                               # (B, T, 3*C)
-        q, k, v = qkv.split(C, dim=-1)                  # each (B, T, C)
+        qkv = self.qkv(x)  # (B, T, 3*C)
+        q, k, v = qkv.split(C, dim=-1)  # each (B, T, C)
 
         # Reshape to (B, n_heads, T, head_dim)
         def split_heads(t: torch.Tensor) -> torch.Tensor:
@@ -83,11 +82,11 @@ class _CausalSelfAttention(nn.Module):
         attn_bias = attn_bias.masked_fill(~mask, float("-inf"))
 
         attn_weights = torch.matmul(q, k.transpose(-2, -1)) / self.scale
-        attn_weights = attn_weights + attn_bias            # broadcast over B, heads
+        attn_weights = attn_weights + attn_bias  # broadcast over B, heads
         attn_weights = F.softmax(attn_weights, dim=-1)
         attn_weights = F.dropout(attn_weights, p=self.dropout, training=self.training)
 
-        out = torch.matmul(attn_weights, v)                # (B, n_heads, T, head_dim)
+        out = torch.matmul(attn_weights, v)  # (B, n_heads, T, head_dim)
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         return self.out_proj(out)
 
@@ -139,6 +138,7 @@ class _CausalTransformer(nn.Module):
 # Named sub-modules (exported for testing convenience)
 # ---------------------------------------------------------------------------
 
+
 class GlobalTransformer(_CausalTransformer):
     """Global model G: operates on patch-level representations (Section 3.2)."""
 
@@ -156,6 +156,7 @@ class LocalTransformer(_CausalTransformer):
 # ---------------------------------------------------------------------------
 # MegaByte main model
 # ---------------------------------------------------------------------------
+
 
 class MegaByteModel(nn.Module):
     """MegaByte model (Section 3, Figure 2).
@@ -248,35 +249,33 @@ class MegaByteModel(nn.Module):
         B, T = byte_ids.shape
 
         if T % P != 0:
-            raise ValueError(
-                f"Sequence length T={T} must be divisible by patch_size P={P}."
-            )
+            raise ValueError(f"Sequence length T={T} must be divisible by patch_size P={P}.")
 
         n = T // P  # number of patches
 
         # ---- Step 1: byte embeddings ----
-        e = self.byte_embed(byte_ids)                  # (B, T, d_l)
+        e = self.byte_embed(byte_ids)  # (B, T, d_l)
 
         # ---- Step 2: build global input (one vector per patch) ----
         # Reshape: (B, n, P, d_l) → (B, n, P*d_l)
-        e_patches = e.view(B, n, P, cfg.d_local)       # (B, n, P, d_l)
+        e_patches = e.view(B, n, P, cfg.d_local)  # (B, n, P, d_l)
         e_flat = e_patches.reshape(B, n, P * cfg.d_local)  # (B, n, P*d_l)
-        x_g = self.patch_proj(e_flat)                  # (B, n, d_g)
+        x_g = self.patch_proj(e_flat)  # (B, n, d_g)
 
         # ---- Step 3: global transformer ----
-        h_g = self.global_transformer(x_g)             # (B, n, d_g)
+        h_g = self.global_transformer(x_g)  # (B, n, d_g)
 
         # ---- Step 4: local transformer (vectorised over all patches) ----
         # prefix tokens: project global output for each patch → d_l
-        prefix = self.global_to_local(h_g)             # (B, n, d_l)
-        prefix = prefix.unsqueeze(2)                   # (B, n, 1, d_l)
+        prefix = self.global_to_local(h_g)  # (B, n, d_l)
+        prefix = prefix.unsqueeze(2)  # (B, n, 1, d_l)
 
         # teacher-forced byte inputs: for patch p take bytes [p*P .. (p+1)*P-1)
         # i.e. the first P-1 bytes of each patch (shift left by 1 for local AR)
-        tok_inp = e_patches[:, :, :-1, :]              # (B, n, P-1, d_l)
+        tok_inp = e_patches[:, :, :-1, :]  # (B, n, P-1, d_l)
 
         # local input: [prefix | first P-1 bytes] → length P per patch
-        local_in = torch.cat([prefix, tok_inp], dim=2) # (B, n, P, d_l)
+        local_in = torch.cat([prefix, tok_inp], dim=2)  # (B, n, P, d_l)
 
         # Merge batch and patch dims so LocalTransformer sees (B*n, P, d_l)
         local_in_flat = local_in.reshape(B * n, P, cfg.d_local)
@@ -286,7 +285,7 @@ class MegaByteModel(nn.Module):
         local_out = local_out_flat.view(B, T, cfg.d_local)
 
         # ---- Step 5: output projection ----
-        logits = self.output_proj(local_out)           # (B, T, 256)
+        logits = self.output_proj(local_out)  # (B, T, 256)
 
         if targets is not None:
             loss = F.cross_entropy(

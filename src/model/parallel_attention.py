@@ -58,9 +58,7 @@ class ParallelAttentionBlock(nn.Module):
                 f"must equal d_model ({d_model})"
             )
         if n_heads % n_kv_heads != 0:
-            raise ValueError(
-                f"n_heads ({n_heads}) must be divisible by n_kv_heads ({n_kv_heads})"
-            )
+            raise ValueError(f"n_heads ({n_heads}) must be divisible by n_kv_heads ({n_kv_heads})")
         if not 0.0 <= dropout < 1.0:
             raise ValueError(f"dropout must be in [0.0, 1.0); got {dropout}")
 
@@ -97,7 +95,7 @@ class ParallelAttentionBlock(nn.Module):
         kh = self.n_kv_heads
         hd = self.head_dim
 
-        q = self.q_proj(x).view(B, S, h, hd).transpose(1, 2)   # (B, h,  S, hd)
+        q = self.q_proj(x).view(B, S, h, hd).transpose(1, 2)  # (B, h,  S, hd)
         k = self.k_proj(x).view(B, S, kh, hd).transpose(1, 2)  # (B, kh, S, hd)
         v = self.v_proj(x).view(B, S, kh, hd).transpose(1, 2)  # (B, kh, S, hd)
 
@@ -133,9 +131,7 @@ class ParallelAttentionBlock(nn.Module):
             Tensor of shape ``(B, S, D)`` with the same dtype as ``x``.
         """
         if x.dim() != 3 or x.shape[-1] != self.d_model:
-            raise ValueError(
-                f"Expected input shape (B, S, {self.d_model}); got {tuple(x.shape)}"
-            )
+            raise ValueError(f"Expected input shape (B, S, {self.d_model}); got {tuple(x.shape)}")
 
         normed = self.norm(x)
         attn_out = self._attention(normed)

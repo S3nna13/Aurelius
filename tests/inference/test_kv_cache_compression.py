@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.kv_cache_compression import (
-    CacheCompressionStats,
     CompressedKVCache,
     KVCache,
     KVCacheConfig,
@@ -146,9 +144,7 @@ def test_evict_attention_sink_keeps_sink_at_start():
     T = 20  # > MAX_CACHE
 
     # Make each token position identifiable: token i has value float(i)
-    keys = torch.stack(
-        [torch.full((B, N_HEADS, HEAD_DIM), float(i)) for i in range(T)], dim=2
-    )
+    keys = torch.stack([torch.full((B, N_HEADS, HEAD_DIM), float(i)) for i in range(T)], dim=2)
     values = keys.clone()
 
     out_k, out_v = evict_attention_sink(keys, values, cfg)
@@ -156,9 +152,9 @@ def test_evict_attention_sink_keeps_sink_at_start():
     # First SINK slots must be the original sink tokens (value 0.0 and 1.0)
     for i in range(SINK):
         expected = float(i)
-        assert torch.allclose(
-            out_k[:, :, i, :], torch.full_like(out_k[:, :, i, :], expected)
-        ), f"Sink token {i} not preserved; got {out_k[:, :, i, :].unique()}"
+        assert torch.allclose(out_k[:, :, i, :], torch.full_like(out_k[:, :, i, :], expected)), (
+            f"Sink token {i} not preserved; got {out_k[:, :, i, :].unique()}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -184,9 +180,7 @@ def test_evict_recent_only_keeps_tail():
     cfg = make_config()
     T = 20
     # Token i has value float(i+1)
-    keys = torch.stack(
-        [torch.full((B, N_HEADS, HEAD_DIM), float(i + 1)) for i in range(T)], dim=2
-    )
+    keys = torch.stack([torch.full((B, N_HEADS, HEAD_DIM), float(i + 1)) for i in range(T)], dim=2)
     values = keys.clone()
 
     out_k, out_v = evict_recent_only(keys, values, cfg)
@@ -194,9 +188,7 @@ def test_evict_recent_only_keeps_tail():
     assert out_k.shape[2] == MAX_CACHE
     # Last token in output should match last token of input
     last_input_val = float(T)  # token index T-1 has value float(T-1+1) = float(T)
-    assert torch.allclose(
-        out_k[:, :, -1, :], torch.full_like(out_k[:, :, -1, :], last_input_val)
-    )
+    assert torch.allclose(out_k[:, :, -1, :], torch.full_like(out_k[:, :, -1, :], last_input_val))
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +324,7 @@ def test_evict_attention_sink_preserves_sink_tokens_exactly():
         assert torch.allclose(
             out_k[:, :, i, :],
             torch.full_like(out_k[:, :, i, :], expected_val),
-        ), f"Sink token {i}: expected {expected_val}, got {out_k[:,:,i,:].unique()}"
+        ), f"Sink token {i}: expected {expected_val}, got {out_k[:, :, i, :].unique()}"
 
     # Also check output length
     assert out_k.shape[2] == MAX_CACHE

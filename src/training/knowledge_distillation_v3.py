@@ -13,18 +13,15 @@ Pure native PyTorch only -- stdlib + torch, no external dependencies.
 
 from __future__ import annotations
 
-import math
-from typing import List, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SoftTargetLoss
 # ---------------------------------------------------------------------------
+
 
 class SoftTargetLoss(nn.Module):
     """Classic Hinton (2015) knowledge distillation loss with temperature scaling.
@@ -53,7 +50,7 @@ class SoftTargetLoss(nn.Module):
         student_logits: Tensor,
         teacher_logits: Tensor,
         hard_labels: Tensor,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Compute combined distillation + CE loss.
 
         Args:
@@ -85,7 +82,7 @@ class SoftTargetLoss(nn.Module):
         # KL divergence: KL(teacher || student)
         # F.kl_div expects log-probabilities as input and probabilities as target
         # reduction='batchmean' divides by batch size (N)
-        kd_loss = F.kl_div(student_soft, teacher_soft, reduction="batchmean") * (T ** 2)
+        kd_loss = F.kl_div(student_soft, teacher_soft, reduction="batchmean") * (T**2)
 
         # Hard-label cross-entropy
         ce_loss = F.cross_entropy(s_logits, flat_labels)
@@ -97,6 +94,7 @@ class SoftTargetLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # FeatDistilLoss
 # ---------------------------------------------------------------------------
+
 
 class FeatDistilLoss(nn.Module):
     """Feature-level distillation on hidden states.
@@ -137,9 +135,7 @@ class FeatDistilLoss(nn.Module):
 
         return F.mse_loss(student_normed, teacher_normed)
 
-    def layer_mapping(
-        self, n_student_layers: int, n_teacher_layers: int
-    ) -> List[Tuple[int, int]]:
+    def layer_mapping(self, n_student_layers: int, n_teacher_layers: int) -> list[tuple[int, int]]:
         """Compute uniform spacing layer mapping from student to teacher layers.
 
         Each student layer i maps to teacher layer round(i * n_teacher / n_student).
@@ -164,6 +160,7 @@ class FeatDistilLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # AttentionTransferLoss
 # ---------------------------------------------------------------------------
+
 
 class AttentionTransferLoss(nn.Module):
     """Match attention patterns between teacher and student models.
@@ -214,6 +211,7 @@ class AttentionTransferLoss(nn.Module):
 # PKDLoss
 # ---------------------------------------------------------------------------
 
+
 class PKDLoss(nn.Module):
     """Patient Knowledge Distillation (Sun et al. 2019).
 
@@ -226,7 +224,7 @@ class PKDLoss(nn.Module):
             Must have the same length as student_layers.
     """
 
-    def __init__(self, student_layers: List[int], teacher_layers: List[int]) -> None:
+    def __init__(self, student_layers: list[int], teacher_layers: list[int]) -> None:
         super().__init__()
         if len(student_layers) != len(teacher_layers):
             raise ValueError(
@@ -238,8 +236,8 @@ class PKDLoss(nn.Module):
 
     def forward(
         self,
-        student_hiddens: List[Tensor],
-        teacher_hiddens: List[Tensor],
+        student_hiddens: list[Tensor],
+        teacher_hiddens: list[Tensor],
     ) -> Tensor:
         """Compute PKD loss over paired layer representations.
 
@@ -254,8 +252,8 @@ class PKDLoss(nn.Module):
         total_loss = student_hiddens[0].new_zeros(())
 
         for s_idx, t_idx in zip(self.student_layers, self.teacher_layers):
-            s_h = student_hiddens[s_idx]   # (B, T, D_s)
-            t_h = teacher_hiddens[t_idx]   # (B, T, D_t)
+            s_h = student_hiddens[s_idx]  # (B, T, D_s)
+            t_h = teacher_hiddens[t_idx]  # (B, T, D_t)
 
             # Mean pool over sequence dimension: (B, D)
             s_pooled = s_h.mean(dim=1)
@@ -277,6 +275,7 @@ class PKDLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # DistilTrainer
 # ---------------------------------------------------------------------------
+
 
 class DistilTrainer:
     """Orchestrate multi-objective knowledge distillation training.
@@ -337,9 +336,7 @@ class DistilTrainer:
             t_logits, t_hiddens, t_attns = self.teacher_model(input_ids)
 
         # 1. Soft-target (logit) distillation + CE
-        total_loss, kd_loss_val, ce_loss_val = self.soft_target_loss(
-            s_logits, t_logits, labels
-        )
+        total_loss, kd_loss_val, ce_loss_val = self.soft_target_loss(s_logits, t_logits, labels)
 
         # 2. Feature distillation (first paired layers)
         feat_loss_scalar = torch.zeros(1, device=total_loss.device)
@@ -369,6 +366,7 @@ class DistilTrainer:
 # CompressionBenchmark
 # ---------------------------------------------------------------------------
 
+
 class CompressionBenchmark:
     """Measure student vs. teacher quality metrics for compression analysis."""
 
@@ -391,9 +389,7 @@ class CompressionBenchmark:
             raise ValueError("Teacher model has no parameters.")
         return student_params / teacher_params
 
-    def perplexity_gap(
-        self, student_logprobs: Tensor, teacher_logprobs: Tensor
-    ) -> float:
+    def perplexity_gap(self, student_logprobs: Tensor, teacher_logprobs: Tensor) -> float:
         """Compute the perplexity ratio: exp(mean(teacher_lp - student_lp)).
 
         A value >= 1.0 indicates the student has equal or higher perplexity
@@ -413,8 +409,8 @@ class CompressionBenchmark:
         return gap.item()
 
     def layer_similarity(
-        self, student_hiddens: List[Tensor], teacher_hiddens: List[Tensor]
-    ) -> List[float]:
+        self, student_hiddens: list[Tensor], teacher_hiddens: list[Tensor]
+    ) -> list[float]:
         """Compute cosine similarity between paired student and teacher layers.
 
         Layers are paired by index up to min(len(student_hiddens), len(teacher_hiddens)).

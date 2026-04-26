@@ -6,18 +6,15 @@ targeting 12-15 tests with pure native PyTorch only.
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
 
 from src.optimizers.came import CAME
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_param(*shape, val: float = 1.0, requires_grad: bool = True) -> torch.nn.Parameter:
     return nn.Parameter(torch.full(shape, val))
@@ -33,6 +30,7 @@ def _step_with_grad(param: nn.Parameter, grad_val: float, opt: CAME) -> None:
 # ---------------------------------------------------------------------------
 # 1. Shape / dtype correctness
 # ---------------------------------------------------------------------------
+
 
 def test_shape_dtype_1d():
     """step() preserves shape and dtype for 1D (bias-like) parameters."""
@@ -56,18 +54,19 @@ def test_shape_dtype_2d():
 # 2. Gradient flow / convergence on quadratic
 # ---------------------------------------------------------------------------
 
+
 def test_convergence_quadratic_2d():
     """CAME converges a quadratic loss toward zero for a 2D parameter."""
     torch.manual_seed(0)
     p = nn.Parameter(torch.randn(4, 4))
     opt = CAME([p], lr=1e-2)
-    initial_loss = (p ** 2).sum().item()
+    initial_loss = (p**2).sum().item()
     for _ in range(200):
         opt.zero_grad()
-        loss = (p ** 2).sum()
+        loss = (p**2).sum()
         loss.backward()
         opt.step()
-    final_loss = (p ** 2).sum().item()
+    final_loss = (p**2).sum().item()
     assert final_loss < initial_loss * 0.01, (
         f"Expected loss to drop >99%, got {initial_loss:.4f} -> {final_loss:.4f}"
     )
@@ -78,13 +77,13 @@ def test_convergence_quadratic_1d():
     torch.manual_seed(1)
     p = nn.Parameter(torch.randn(16))
     opt = CAME([p], lr=1e-2)
-    initial_loss = (p ** 2).sum().item()
+    initial_loss = (p**2).sum().item()
     for _ in range(200):
         opt.zero_grad()
-        loss = (p ** 2).sum()
+        loss = (p**2).sum()
         loss.backward()
         opt.step()
-    final_loss = (p ** 2).sum().item()
+    final_loss = (p**2).sum().item()
     assert final_loss < initial_loss * 0.01
 
 
@@ -92,15 +91,17 @@ def test_convergence_quadratic_1d():
 # 3. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     """Two runs with the same seed produce identical parameter trajectories."""
+
     def _run():
         torch.manual_seed(42)
         p = nn.Parameter(torch.randn(3, 4))
         opt = CAME([p], lr=1e-3)
         for _ in range(10):
             opt.zero_grad()
-            loss = (p ** 2).sum()
+            loss = (p**2).sum()
             loss.backward()
             opt.step()
         return p.detach().clone()
@@ -113,6 +114,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # 4. Edge cases
 # ---------------------------------------------------------------------------
+
 
 def test_single_element_parameter():
     """Optimizer handles a scalar (single-element) parameter without error."""
@@ -146,6 +148,7 @@ def test_zero_gradient_is_no_op():
 # 5. Numerical stability: no NaN/Inf after 100 steps on random gradients
 # ---------------------------------------------------------------------------
 
+
 def test_numerical_stability_random_gradients():
     """No NaN or Inf values after 100 steps on random gradients."""
     torch.manual_seed(7)
@@ -163,6 +166,7 @@ def test_numerical_stability_random_gradients():
 # ---------------------------------------------------------------------------
 # 6. Factored vs unfactored state
 # ---------------------------------------------------------------------------
+
 
 def test_factored_state_keys_for_2d():
     """2D parameter uses V_r / V_c factored second moment keys."""
@@ -193,6 +197,7 @@ def test_unfactored_state_keys_for_1d():
 # 7. Weight decay: parameter shrinks
 # ---------------------------------------------------------------------------
 
+
 def test_weight_decay_shrinks_param():
     """With weight_decay > 0 and positive gradient, param magnitude shrinks faster."""
     p_wd = _make_param(4, 4, val=2.0)
@@ -214,6 +219,7 @@ def test_weight_decay_shrinks_param():
 # ---------------------------------------------------------------------------
 # 8. Learning rate is respected
 # ---------------------------------------------------------------------------
+
 
 def test_learning_rate_respected():
     """Higher lr produces a larger update in one step."""
@@ -256,6 +262,7 @@ def test_param_groups_lr():
 # 9. Confidence EMA: C stays positive; ρ_t (confidence scalar) stays in (0,1]
 # ---------------------------------------------------------------------------
 
+
 def test_confidence_values_in_range():
     """C (instability EMA) is strictly positive; ρ_t confidence scalar is in (0, 1].
 
@@ -280,6 +287,7 @@ def test_confidence_values_in_range():
         state = opt.state[p]
         if "V_r" in state:
             from src.optimizers.came import _factored_second_moment, _rms
+
             V = _factored_second_moment(state["V_r"], state["V_c"], eps1).view_as(p)
             G_sq = p.grad.square().add(eps1) if p.grad is not None else None
             if G_sq is not None:
@@ -298,6 +306,7 @@ def test_confidence_values_in_range():
 # ---------------------------------------------------------------------------
 # 10. State initialisation: all expected keys present after first step
 # ---------------------------------------------------------------------------
+
 
 def test_state_keys_after_first_step_2d():
     """State contains all expected keys after the first step (2D parameter)."""
@@ -325,6 +334,7 @@ def test_state_keys_after_first_step_1d():
 # 11. No first moment when beta1 == 0
 # ---------------------------------------------------------------------------
 
+
 def test_no_first_moment_when_beta1_zero():
     """When beta1=0, state should not contain 'm' key."""
     p = _make_param(3, 3)
@@ -337,6 +347,7 @@ def test_no_first_moment_when_beta1_zero():
 # ---------------------------------------------------------------------------
 # 12. State dict round-trip (serialisation)
 # ---------------------------------------------------------------------------
+
 
 def test_state_dict_round_trip():
     """Optimizer state can be saved and reloaded with identical results."""
@@ -360,6 +371,7 @@ def test_state_dict_round_trip():
 # 13. Closure support
 # ---------------------------------------------------------------------------
 
+
 def test_closure_returns_loss():
     """step() with a closure returns the loss value."""
     p = _make_param(2, 2)
@@ -367,7 +379,7 @@ def test_closure_returns_loss():
 
     def closure():
         opt.zero_grad()
-        loss = (p ** 2).sum()
+        loss = (p**2).sum()
         loss.backward()
         return loss
 

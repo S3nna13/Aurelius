@@ -1,30 +1,28 @@
 """Integration tests for SwarmBench wired into BENCHMARK_REGISTRY."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.eval import BENCHMARK_REGISTRY
-from src.eval.swarm_bench import SwarmBench, SwarmBenchResult, SwarmTask
 from src.agent.agent_swarm import CriticalPathAnalyzer, SubAgentResult
-
+from src.eval import BENCHMARK_REGISTRY
+from src.eval.swarm_bench import SwarmBenchResult, SwarmTask
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_tasks(n: int) -> list[SwarmTask]:
     return [SwarmTask(task_id=i, description=f"integration task {i}") for i in range(n)]
 
 
 def _mock_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
-    return SubAgentResult(
-        task_id=task.task_id, result="done", steps_used=5, status="completed"
-    )
+    return SubAgentResult(task_id=task.task_id, result="done", steps_used=5, status="completed")
 
 
 # ---------------------------------------------------------------------------
 # Integration tests
 # ---------------------------------------------------------------------------
+
 
 def test_swarm_bench_in_benchmark_registry():
     """'swarm_bench' key must be present in BENCHMARK_REGISTRY."""

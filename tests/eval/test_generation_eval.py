@@ -1,4 +1,5 @@
 """Tests for generation_eval module."""
+
 import pytest
 import torch
 
@@ -14,10 +15,10 @@ from src.eval.generation_eval import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -50,6 +51,7 @@ def decode_fn(ids: list) -> str:
 # Test GenerationEvalConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = GenerationEvalConfig()
     assert cfg.max_new_tokens == 64
@@ -62,6 +64,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test greedy_generate output shape
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_generate_shape(small_model):
     input_ids = torch.tensor([[1, 2, 3]], dtype=torch.long)
@@ -78,6 +81,7 @@ def test_greedy_generate_with_penalty(small_model):
 # ---------------------------------------------------------------------------
 # Test compute_rouge_l
 # ---------------------------------------------------------------------------
+
 
 def test_rouge_l_identical():
     score = compute_rouge_l("hello world", "hello world")
@@ -103,6 +107,7 @@ def test_rouge_l_empty_hypothesis():
 # Test compute_distinct_n
 # ---------------------------------------------------------------------------
 
+
 def test_distinct_n_all_unique():
     # 4 unique tokens, bigrams: (1,2),(2,3),(3,4) — all unique
     ids = torch.tensor([1, 2, 3, 4])
@@ -121,6 +126,7 @@ def test_distinct_n_all_same():
 # ---------------------------------------------------------------------------
 # Test compute_length_stats
 # ---------------------------------------------------------------------------
+
 
 def test_length_stats_keys_present():
     texts = ["hello world", "foo bar baz qux", "one"]
@@ -143,10 +149,11 @@ def test_length_stats_values():
 # Test apply_repetition_penalty
 # ---------------------------------------------------------------------------
 
+
 def test_apply_repetition_penalty_penalizes_repeated():
     # logits for tokens 0..7, token 3 has positive score, token 5 has negative score
     logits = torch.zeros(1, 8)
-    logits[0, 3] = 2.0   # positive — should be divided
+    logits[0, 3] = 2.0  # positive — should be divided
     logits[0, 5] = -2.0  # negative — should be multiplied (more negative)
 
     generated_ids = torch.tensor([[3, 5]])
@@ -154,7 +161,7 @@ def test_apply_repetition_penalty_penalizes_repeated():
 
     result = apply_repetition_penalty(logits, generated_ids, penalty)
 
-    assert result[0, 3].item() == pytest.approx(1.0)   # 2.0 / 2.0
+    assert result[0, 3].item() == pytest.approx(1.0)  # 2.0 / 2.0
     assert result[0, 5].item() == pytest.approx(-4.0)  # -2.0 * 2.0
     # Unpenalized token unchanged
     assert result[0, 0].item() == pytest.approx(0.0)
@@ -163,6 +170,7 @@ def test_apply_repetition_penalty_penalizes_repeated():
 # ---------------------------------------------------------------------------
 # Test GenerationEvaluator
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_sample_keys(small_model):
     cfg = GenerationEvalConfig(max_new_tokens=4, n_gram_n=2)

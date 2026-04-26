@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -26,9 +25,7 @@ class GPUStats:
 class GPUProfiler:
     def __init__(self, num_devices: int = 1) -> None:
         self.num_devices = num_devices
-        self._history: dict[int, list[GPUStats]] = {
-            i: [] for i in range(num_devices)
-        }
+        self._history: dict[int, list[GPUStats]] = {i: [] for i in range(num_devices)}
 
     def record(self, stats: GPUStats) -> None:
         device_id = stats.device_id
@@ -36,7 +33,7 @@ class GPUProfiler:
             self._history[device_id] = []
         self._history[device_id].append(stats)
 
-    def latest(self, device_id: int = 0) -> Optional[GPUStats]:
+    def latest(self, device_id: int = 0) -> GPUStats | None:
         hist = self._history.get(device_id, [])
         return hist[-1] if hist else None
 

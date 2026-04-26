@@ -110,9 +110,7 @@ def test_self_loop_raises():
 
 
 def test_max_tasks_exceeded_raises():
-    payload = [
-        {"id": f"t{i}", "description": "x", "depends_on": []} for i in range(6)
-    ]
+    payload = [{"id": f"t{i}", "description": "x", "depends_on": []} for i in range(6)]
     dec = TaskDecomposer(_fake(payload), max_tasks=5)
     with pytest.raises(TaskDecompositionError, match="max_tasks"):
         dec.decompose("x")

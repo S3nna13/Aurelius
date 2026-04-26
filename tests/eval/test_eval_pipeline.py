@@ -1,17 +1,16 @@
 """Tests for src/eval/eval_pipeline.py"""
 
-import pytest
 from src.eval.eval_pipeline import (
+    EVAL_PIPELINE_REGISTRY,
+    EvalPipeline,
     EvalStage,
     PipelineResult,
-    EvalPipeline,
-    EVAL_PIPELINE_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # EvalStage enum values
 # ---------------------------------------------------------------------------
+
 
 def test_eval_stage_preprocess():
     assert EvalStage.PREPROCESS == "preprocess"
@@ -37,6 +36,7 @@ def test_eval_stage_count():
 # PipelineResult fields
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_result_fields():
     pr = PipelineResult(stage_results={"s1": {"score": 0.5}}, final_score=0.5)
     assert pr.stage_results == {"s1": {"score": 0.5}}
@@ -58,6 +58,7 @@ def test_pipeline_result_custom_metadata():
 # EvalPipeline construction
 # ---------------------------------------------------------------------------
 
+
 def test_eval_pipeline_default_cache_enabled():
     ep = EvalPipeline()
     assert ep._cache_results is True
@@ -76,6 +77,7 @@ def test_eval_pipeline_starts_with_no_stages():
 # ---------------------------------------------------------------------------
 # add_stage and stages()
 # ---------------------------------------------------------------------------
+
 
 def test_add_stage_then_stages_round_trip():
     ep = EvalPipeline()
@@ -104,6 +106,7 @@ def test_stages_empty_pipeline():
 # ---------------------------------------------------------------------------
 # run()
 # ---------------------------------------------------------------------------
+
 
 def test_run_returns_pipeline_result():
     ep = EvalPipeline()
@@ -149,6 +152,7 @@ def test_run_executes_stages_in_order():
         def fn(x):
             execution_order.append(name)
             return {"score": 0.5}
+
         return fn
 
     ep = EvalPipeline()
@@ -190,6 +194,7 @@ def test_run_handles_stage_exception_gracefully():
 # ---------------------------------------------------------------------------
 # cached_result()
 # ---------------------------------------------------------------------------
+
 
 def test_cached_result_none_before_run():
     ep = EvalPipeline()
@@ -234,6 +239,7 @@ def test_cached_result_different_inputs_not_cached():
 # clear_cache()
 # ---------------------------------------------------------------------------
 
+
 def test_clear_cache_returns_count():
     ep = EvalPipeline()
     ep.add_stage("s", lambda x: {"score": 0.5}, EvalStage.EVALUATE)
@@ -276,6 +282,7 @@ def test_clear_cache_allows_re_run():
 # ---------------------------------------------------------------------------
 # EVAL_PIPELINE_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_eval_pipeline_registry_has_default():
     assert "default" in EVAL_PIPELINE_REGISTRY

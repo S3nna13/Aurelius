@@ -30,10 +30,8 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 from src.eval.humaneval_scorer import pass_at_k
-
 
 __all__ = [
     "LiveCodeProblem",
@@ -54,7 +52,7 @@ class LiveCodeProblem:
     starter_code: str
     test_cases: list[tuple[str, str]] = field(default_factory=list)
     difficulty: str = "medium"
-    release_date: Optional[str] = None
+    release_date: str | None = None
     contest_source: str = "unknown"
 
 
@@ -65,8 +63,8 @@ class LiveCodeResult:
     task_id: str
     passed: bool
     duration_ms: float
-    error: Optional[str]
-    failed_case_idx: Optional[int]
+    error: str | None
+    failed_case_idx: int | None
 
 
 def _parse_iso_date(s: str) -> tuple[int, int, int]:
@@ -86,8 +84,7 @@ def parse_date_filter(spec: str) -> tuple[str, tuple[int, int, int]]:
     parts = spec.strip().split()
     if len(parts) != 2:
         raise ValueError(
-            f"date_filter must be 'after YYYY-MM-DD' or 'before YYYY-MM-DD', "
-            f"got {spec!r}"
+            f"date_filter must be 'after YYYY-MM-DD' or 'before YYYY-MM-DD', got {spec!r}"
         )
     mode, date_str = parts[0].lower(), parts[1]
     if mode not in ("after", "before"):
@@ -96,8 +93,8 @@ def parse_date_filter(spec: str) -> tuple[str, tuple[int, int, int]]:
 
 
 def _passes_date_filter(
-    release_date: Optional[str],
-    filt: Optional[tuple[str, tuple[int, int, int]]],
+    release_date: str | None,
+    filt: tuple[str, tuple[int, int, int]] | None,
 ) -> bool:
     if filt is None:
         return True
@@ -209,7 +206,7 @@ def score_single(
     start = time.perf_counter()
     for idx, (stdin_str, expected) in enumerate(problem.test_cases):
         try:
-            completed = subprocess.run(
+            completed = subprocess.run(  # noqa: S603
                 [sys.executable, "-I", "-c", program],
                 input=stdin_str.encode("utf-8"),
                 capture_output=True,
@@ -279,13 +276,12 @@ def score_problems(
     k_values: list[int] = [1],
     timeout_seconds: float = 10.0,
     max_memory_mb: int = 512,
-    date_filter: Optional[str] = None,
+    date_filter: str | None = None,
 ) -> dict:
     """Score many LiveCodeBench problems with per-category breakdown."""
     if len(problems) != len(completions):
         raise ValueError(
-            f"problems and completions must align: "
-            f"{len(problems)} vs {len(completions)}"
+            f"problems and completions must align: {len(problems)} vs {len(completions)}"
         )
     for k in k_values:
         if not isinstance(k, int) or k <= 0:
@@ -300,10 +296,7 @@ def score_problems(
             filtered_out += 1
             continue
         if not samples:
-            raise ValueError(
-                f"problem {problem.task_id} has zero completions; "
-                f"pass@k is undefined"
-            )
+            raise ValueError(f"problem {problem.task_id} has zero completions; pass@k is undefined")
         kept.append((problem, samples))
 
     result: dict = {
@@ -359,17 +352,9 @@ def score_problems(
     by_diff: dict[str, list[int]] = {}
     by_src: dict[str, list[int]] = {}
     for task in per_task:
-        by_diff.setdefault(task["difficulty"], []).append(
-            1 if task["passed"] else 0
-        )
-        by_src.setdefault(task["contest_source"], []).append(
-            1 if task["passed"] else 0
-        )
-    result["per_difficulty"] = {
-        d: (sum(v) / len(v)) if v else 0.0 for d, v in by_diff.items()
-    }
-    result["per_source"] = {
-        s: (sum(v) / len(v)) if v else 0.0 for s, v in by_src.items()
-    }
+        by_diff.setdefault(task["difficulty"], []).append(1 if task["passed"] else 0)
+        by_src.setdefault(task["contest_source"], []).append(1 if task["passed"] else 0)
+    result["per_difficulty"] = {d: (sum(v) / len(v)) if v else 0.0 for d, v in by_diff.items()}
+    result["per_source"] = {s: (sum(v) / len(v)) if v else 0.0 for s, v in by_src.items()}
 
     return result

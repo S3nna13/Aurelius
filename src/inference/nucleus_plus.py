@@ -4,10 +4,11 @@ src/inference/nucleus_plus.py
 Nucleus++ sampling: top-p with minimum probability floor, repetition penalty,
 and surprise upweighting for more diverse yet coherent generation.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional
 
 import torch
 import torch.nn.functional as F
@@ -17,6 +18,7 @@ from torch import Tensor
 @dataclass
 class NucleusConfig:
     """Configuration for Nucleus++ sampling."""
+
     temperature: float = 1.0
     top_p: float = 0.9
     min_p: float = 0.02
@@ -39,7 +41,7 @@ def apply_temperature(logits: Tensor, temp: float) -> Tensor:
     return logits / temp
 
 
-def apply_repetition_penalty(logits: Tensor, prev_ids: List[int], penalty: float) -> Tensor:
+def apply_repetition_penalty(logits: Tensor, prev_ids: list[int], penalty: float) -> Tensor:
     """Reduce scores of tokens that already appear in prev_ids.
 
     For each token in prev_ids, its logit is divided by penalty (positive logit)
@@ -110,7 +112,7 @@ def apply_surprise_upweight(probs: Tensor, alpha: float) -> Tensor:
     return weights
 
 
-def nucleus_plus_sample(logits: Tensor, prev_ids: List[int], config: NucleusConfig) -> int:
+def nucleus_plus_sample(logits: Tensor, prev_ids: list[int], config: NucleusConfig) -> int:
     """Draw one sample using Nucleus++ sampling.
 
     Applies in order: repetition penalty, temperature, softmax, top-p nucleus
@@ -160,7 +162,7 @@ class NucleusDecoder:
         config: NucleusConfig controlling sampling behaviour.
     """
 
-    def __init__(self, config: Optional[NucleusConfig] = None) -> None:
+    def __init__(self, config: NucleusConfig | None = None) -> None:
         self.config = config or NucleusConfig()
 
     def generate(
@@ -169,7 +171,7 @@ class NucleusDecoder:
         input_ids: Tensor,
         max_new_tokens: int = 128,
         eos_id: int = 2,
-    ) -> List[int]:
+    ) -> list[int]:
         """Generate tokens autoregressively with Nucleus++ sampling.
 
         Args:
@@ -188,7 +190,7 @@ class NucleusDecoder:
         else:
             current_ids = input_ids.clone()
 
-        generated: List[int] = []
+        generated: list[int] = []
 
         for _ in range(max_new_tokens):
             with torch.no_grad():

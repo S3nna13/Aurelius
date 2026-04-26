@@ -17,32 +17,39 @@ Covers:
   14. OnlineDPOTrainer.train_step returns dict with all required keys
   15. OnlineDPOTrainer.train_step loss is finite
 """
+
 from __future__ import annotations
 
 import copy
+
 import torch
-import pytest
 
 from src.alignment.online_dpo import (
     OnlineDPOConfig,
-    sample_response,
+    OnlineDPOTrainer,
     compute_sequence_log_probs,
     dpo_loss,
-    OnlineDPOTrainer,
+    sample_response,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def make_tiny_model(seed: int = 0) -> AureliusTransformer:
     torch.manual_seed(seed)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -63,6 +70,7 @@ def dummy_reward_fn(response_ids: torch.Tensor) -> float:
 # Test 1: OnlineDPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_online_dpo_config_defaults():
     cfg = OnlineDPOConfig()
     assert cfg.beta == 0.1
@@ -75,6 +83,7 @@ def test_online_dpo_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: sample_response returns (Tensor, Tensor) tuple
 # ---------------------------------------------------------------------------
+
 
 def test_sample_response_returns_tuple():
     model = make_tiny_model(1)
@@ -90,6 +99,7 @@ def test_sample_response_returns_tuple():
 # Test 3: sample_response response_ids shape is (B, max_new_tokens)
 # ---------------------------------------------------------------------------
 
+
 def test_sample_response_response_ids_shape():
     model = make_tiny_model(2)
     B, prompt_len, T = 3, 4, 7
@@ -102,6 +112,7 @@ def test_sample_response_response_ids_shape():
 # Test 4: sample_response log_probs shape is (B, max_new_tokens)
 # ---------------------------------------------------------------------------
 
+
 def test_sample_response_log_probs_shape():
     model = make_tiny_model(3)
     B, prompt_len, T = 2, 5, 8
@@ -113,6 +124,7 @@ def test_sample_response_log_probs_shape():
 # ---------------------------------------------------------------------------
 # Test 5: compute_sequence_log_probs returns (B, max_new_tokens) tensor
 # ---------------------------------------------------------------------------
+
 
 def test_compute_sequence_log_probs_shape():
     model = make_tiny_model(4)
@@ -127,6 +139,7 @@ def test_compute_sequence_log_probs_shape():
 # Test 6: compute_sequence_log_probs values are <= 0 (log probs)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_sequence_log_probs_nonpositive():
     model = make_tiny_model(5)
     B, prompt_len, T = 2, 4, 6
@@ -140,10 +153,11 @@ def test_compute_sequence_log_probs_nonpositive():
 # Test 7: dpo_loss returns (Tensor, dict) with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_returns_tensor_and_dict():
     B = 4
-    pi_c  = torch.randn(B)
-    pi_r  = torch.randn(B)
+    pi_c = torch.randn(B)
+    pi_r = torch.randn(B)
     ref_c = torch.randn(B)
     ref_r = torch.randn(B)
 
@@ -162,10 +176,11 @@ def test_dpo_loss_returns_tensor_and_dict():
 # Test 8: dpo_loss loss is scalar and finite
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_scalar_and_finite():
     B = 4
-    pi_c  = torch.randn(B)
-    pi_r  = torch.randn(B)
+    pi_c = torch.randn(B)
+    pi_r = torch.randn(B)
     ref_c = torch.randn(B)
     ref_r = torch.randn(B)
 
@@ -178,10 +193,11 @@ def test_dpo_loss_scalar_and_finite():
 # Test 9: dpo_loss reward_margin = chosen_reward - rejected_reward
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_reward_margin_consistency():
     B = 6
-    pi_c  = torch.randn(B)
-    pi_r  = torch.randn(B)
+    pi_c = torch.randn(B)
+    pi_r = torch.randn(B)
     ref_c = torch.randn(B)
     ref_r = torch.randn(B)
 
@@ -196,10 +212,11 @@ def test_dpo_loss_reward_margin_consistency():
 # Test 10: dpo_loss accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_dpo_loss_accuracy_in_range():
     B = 8
-    pi_c  = torch.randn(B)
-    pi_r  = torch.randn(B)
+    pi_c = torch.randn(B)
+    pi_r = torch.randn(B)
     ref_c = torch.randn(B)
     ref_r = torch.randn(B)
 
@@ -211,6 +228,7 @@ def test_dpo_loss_accuracy_in_range():
 # ---------------------------------------------------------------------------
 # Test 11: dpo_loss with identical chosen/rejected gives reward_margin ~ 0
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_loss_identical_responses_zero_margin():
     B = 4
@@ -225,6 +243,7 @@ def test_dpo_loss_identical_responses_zero_margin():
 # ---------------------------------------------------------------------------
 # Test 12: OnlineDPOTrainer instantiates
 # ---------------------------------------------------------------------------
+
 
 def test_online_dpo_trainer_instantiates():
     policy = make_tiny_model(10)
@@ -242,6 +261,7 @@ def test_online_dpo_trainer_instantiates():
 # ---------------------------------------------------------------------------
 # Test 13: OnlineDPOTrainer.generate_preference_pair returns 4-tuple
 # ---------------------------------------------------------------------------
+
 
 def test_generate_preference_pair_returns_4_tuple():
     policy = make_tiny_model(11)
@@ -268,6 +288,7 @@ def test_generate_preference_pair_returns_4_tuple():
 # Test 14: OnlineDPOTrainer.train_step returns dict with all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_required_keys():
     policy = make_tiny_model(12)
     ref = make_ref_model(policy)
@@ -287,6 +308,7 @@ def test_train_step_returns_required_keys():
 # ---------------------------------------------------------------------------
 # Test 15: OnlineDPOTrainer.train_step loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_loss_is_finite():
     policy = make_tiny_model(13)

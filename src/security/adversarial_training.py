@@ -8,12 +8,11 @@ that mixes clean and adversarial losses.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 @dataclass
@@ -101,7 +100,7 @@ class AdvTrainingStep:
         input_ids: torch.Tensor,
         labels: torch.Tensor,
         embedding_layer: nn.Embedding,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Run one adversarial training step.
 
         Args:

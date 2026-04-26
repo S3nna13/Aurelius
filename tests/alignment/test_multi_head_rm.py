@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.reward_model_training import (
     MultiHeadRewardModel,
@@ -17,15 +14,16 @@ from src.alignment.reward_model_training import (
 # Constants
 # ---------------------------------------------------------------------------
 
-B = 2      # batch size
-T = 8      # sequence length
-H = 16     # text hidden size (small for tests)
+B = 2  # batch size
+T = 8  # sequence length
+H = 16  # text hidden size (small for tests)
 TEXT_HIDDEN = H
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def model():
@@ -48,6 +46,7 @@ def features_vec():
 # ---------------------------------------------------------------------------
 # RewardModelFeatures tests (1-3)
 # ---------------------------------------------------------------------------
+
 
 def test_features_to_tensor_shape():
     """to_tensor() should produce a (7,) float tensor."""
@@ -84,6 +83,7 @@ def test_features_domain_encoding_differs():
 # MultiHeadRewardModel construction (4)
 # ---------------------------------------------------------------------------
 
+
 def test_model_has_expected_layers(model):
     """Model should expose text_proj, tabular_proj, quality_head, risk_head."""
     assert hasattr(model, "text_proj")
@@ -95,6 +95,7 @@ def test_model_has_expected_layers(model):
 # ---------------------------------------------------------------------------
 # Forward pass shape tests (5-6)
 # ---------------------------------------------------------------------------
+
 
 def test_quality_score_shape(model, text_hidden, features_vec):
     """quality_score should have shape (B, 1)."""
@@ -111,6 +112,7 @@ def test_risk_logits_shape(model, text_hidden, features_vec):
 # ---------------------------------------------------------------------------
 # Forward pass value tests (7-8)
 # ---------------------------------------------------------------------------
+
 
 def test_outputs_finite(model, text_hidden, features_vec):
     """Both outputs should be finite."""
@@ -131,6 +133,7 @@ def test_quality_score_unbounded(model, text_hidden, features_vec):
 # ---------------------------------------------------------------------------
 # Gradient flow tests (9-10)
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_quality(model, text_hidden, features_vec):
     """Gradients should reach text_hidden through the quality head."""
@@ -153,6 +156,7 @@ def test_gradient_flows_through_risk(model, text_hidden, features_vec):
 # ---------------------------------------------------------------------------
 # Regression / consistency tests (11-12, use deterministic seed)
 # ---------------------------------------------------------------------------
+
 
 def test_deterministic_output(text_hidden, features_vec):
     """Two models with the same seed should produce identical outputs."""
@@ -191,8 +195,10 @@ def test_batch_independence(model):
 # Registry test (13)
 # ---------------------------------------------------------------------------
 
+
 def test_registry_entry():
     """ALIGNMENT_REGISTRY['multi_head_rm'] should be MultiHeadRewardModel."""
     from src.alignment import ALIGNMENT_REGISTRY  # noqa: F401
+
     assert "multi_head_rm" in ALIGNMENT_REGISTRY
     assert ALIGNMENT_REGISTRY["multi_head_rm"] is MultiHeadRewardModel

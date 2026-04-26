@@ -6,7 +6,6 @@ import gzip
 import io
 import json
 import logging
-import os
 import re
 import shutil
 import time
@@ -33,18 +32,34 @@ _ACADEMIC_TORRENT_BASE = "https://academictorrents.com"
 
 _SUBREDDIT_CATEGORIES = {
     "technical": [
-        "MachineLearning", "learnprogramming", "Python", "javascript",
-        "golang", "rust", "compsci", "algorithms", "datascience", "typescript",
+        "MachineLearning",
+        "learnprogramming",
+        "Python",
+        "javascript",
+        "golang",
+        "rust",
+        "compsci",
+        "algorithms",
+        "datascience",
+        "typescript",
     ],
     "discussion": [
-        "explainlikeimfive", "askscience", "askhistorians", "philosophy",
-        "changemyview", "depthhub",
+        "explainlikeimfive",
+        "askscience",
+        "askhistorians",
+        "philosophy",
+        "changemyview",
+        "depthhub",
     ],
     "creative": [
-        "WritingPrompts", "worldbuilding",
+        "WritingPrompts",
+        "worldbuilding",
     ],
     "exclude": [
-        "gonewild", "nsfw", "politic", "conspiracy",
+        "gonewild",
+        "nsfw",
+        "politic",
+        "conspiracy",
     ],
 }
 
@@ -82,8 +97,13 @@ def _clean_text(text: str) -> str:
 def _is_bot(text: str) -> bool:
     lower = text.lower()
     bot_signals = [
-        "i am a bot", "i'm a bot", "this is a bot", "beep boop",
-        "i am an automated", "automated response", "^(bot",
+        "i am a bot",
+        "i'm a bot",
+        "this is a bot",
+        "beep boop",
+        "i am an automated",
+        "automated response",
+        "^(bot",
     ]
     for signal in bot_signals:
         if signal in lower:
@@ -167,23 +187,25 @@ class RedditPipeline:
         for ftype in file_types:
             url = f"{_PUSHSHIFT_BASE}/{ftype}/"
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})  # noqa: S310
+                with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
                     html = resp.read().decode("utf-8")
                 pattern = re.compile(
                     r'href="([^"]*('
-                    r'RS_\d{4}-\d{2}\.zst|'
-                    r'RC_\d{4}-\d{2}\.zst'
+                    r"RS_\d{4}-\d{2}\.zst|"
+                    r"RC_\d{4}-\d{2}\.zst"
                     r'))"'
                 )
                 for match in pattern.finditer(html):
                     fname = match.group(1)
-                    files.append({
-                        "name": fname,
-                        "url": f"{url}{fname}",
-                        "type": ftype,
-                        "source": "pushshift",
-                    })
+                    files.append(
+                        {
+                            "name": fname,
+                            "url": f"{url}{fname}",
+                            "type": ftype,
+                            "source": "pushshift",
+                        }
+                    )
             except Exception as exc:
                 logger.warning("Failed to list Pushshift files for %s: %s", ftype, exc)
         files.sort(key=lambda f: f["name"])
@@ -218,8 +240,8 @@ class RedditPipeline:
 
             logger.info("Downloading %s ...", fname)
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})
-                with urllib.request.urlopen(req, timeout=300) as resp:
+                req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})  # noqa: S310
+                with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310
                     total = int(resp.headers.get("Content-Length", 0))
                     downloaded = 0
                     chunk_size = 65536
@@ -233,7 +255,7 @@ class RedditPipeline:
                             downloaded += len(chunk)
                             if _tqdm and total:
                                 _tqdm.write(
-                                    f"  {fname}: {downloaded / 1024 ** 2:.1f}/{total / 1024 ** 2:.1f} MB"
+                                    f"  {fname}: {downloaded / 1024**2:.1f}/{total / 1024**2:.1f} MB"
                                 )
                     shutil.move(temp_path, local_path)
                 self._mark_downloaded(target_dir, url, local_path)
@@ -263,7 +285,7 @@ class RedditPipeline:
         elif suffix == ".gz":
             return gzip.open(path, "rt", encoding="utf-8", errors="replace")
         else:
-            return open(path, "r", encoding="utf-8", errors="replace")
+            return open(path, encoding="utf-8", errors="replace")
 
     def process_file(self, filepath: str, output_dir: str) -> dict[str, Any]:
         """Process a single Pushshift NDJSON file, writing raw JSONL lines."""
@@ -305,9 +327,15 @@ class RedditPipeline:
             "parse_errors": errors,
             "output_path": str(raw_path),
         }
-        self._mark_processed(str(out.parent), fname, {
-            "total": total, "kept": kept, "errors": errors,
-        })
+        self._mark_processed(
+            str(out.parent),
+            fname,
+            {
+                "total": total,
+                "kept": kept,
+                "errors": errors,
+            },
+        )
         return stats
 
     def _parse_item(self, item: dict) -> dict | None:
@@ -325,13 +353,13 @@ class RedditPipeline:
             score = item.get("score", 0)
             created = item.get("created_utc", 0)
             item_id = str(item.get("id", ""))
-            permalink = item.get("permalink", "")
+            item.get("permalink", "")
         else:
             text = (item.get("body") or "").strip()
             score = item.get("score", 0)
             created = item.get("created_utc", 0)
             item_id = str(item.get("id", ""))
-            permalink = item.get("permalink", "")
+            item.get("permalink", "")
 
         text = _clean_text(text)
 
@@ -467,12 +495,14 @@ class RedditPipeline:
             if parent_id not in comment_map:
                 chain = _build_chain(comment)
                 if len(chain) >= 2:
-                    conversations.append({
-                        "id": comment.get("id", ""),
-                        "subreddit": comment.get("subreddit", ""),
-                        "conversations": chain,
-                        "score": comment.get("score", 0),
-                    })
+                    conversations.append(
+                        {
+                            "id": comment.get("id", ""),
+                            "subreddit": comment.get("subreddit", ""),
+                            "conversations": chain,
+                            "score": comment.get("score", 0),
+                        }
+                    )
 
         return conversations
 
@@ -547,11 +577,14 @@ class RedditPipeline:
                     if len(text) < self.config.get("min_text_length", 50):
                         continue
 
-                    record = json.dumps({
-                        "text": text,
-                        "source": "reddit",
-                        "subreddit": item.get("subreddit", ""),
-                    }, ensure_ascii=False)
+                    record = json.dumps(
+                        {
+                            "text": text,
+                            "source": "reddit",
+                            "subreddit": item.get("subreddit", ""),
+                        },
+                        ensure_ascii=False,
+                    )
                     shard_lines.append(record)
                     total_written += 1
 
@@ -569,7 +602,11 @@ class RedditPipeline:
                 for sl in shard_lines:
                     sf.write(sl + "\n")
 
-        logger.info("Wrote %d pretrain entries across %d shards", total_written, shard_idx + 1 if shard_lines or shard_idx else 0)
+        logger.info(
+            "Wrote %d pretrain entries across %d shards",
+            total_written,
+            shard_idx + 1 if shard_lines or shard_idx else 0,
+        )
         return total_written
 
     # ------------------------------------------------------------------

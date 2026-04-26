@@ -3,7 +3,12 @@
 import pytest
 import torch
 
-from src.eval.judge_temperature import calibrated_top1, distribution_entropy, scale_logits, tempered_distribution
+from src.eval.judge_temperature import (
+    calibrated_top1,
+    distribution_entropy,
+    scale_logits,
+    tempered_distribution,
+)
 
 
 def test_scale_logits_divides_by_temperature():
@@ -41,4 +46,3 @@ def test_distribution_entropy_scalar_output():
 def test_tempered_distribution_preserves_shape():
     logits = torch.randn(2, 3, 4)
     assert tempered_distribution(logits).shape == logits.shape
-

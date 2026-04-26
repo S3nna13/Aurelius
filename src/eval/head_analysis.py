@@ -1,4 +1,4 @@
-"""Attention head analysis: syntactic/semantic probing, redundancy detection, and head importance."""
+"""Attention head analysis: syntactic/semantic probing, redundancy detection, and head importance."""  # noqa: E501
 
 from __future__ import annotations
 

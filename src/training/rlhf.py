@@ -6,30 +6,33 @@ Pipeline per step:
 3. Compute GAE advantages from rewards and value estimates
 4. Update policy: ppo_loss with clipped surrogate objective
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
 
-from src.alignment.gae import compute_gae, normalize_advantages
+from src.alignment.gae import compute_gae
+from src.model.value_head import ValueHead  # noqa: F401
 
 
 @dataclass
 class RLHFConfig:
-    n_rollouts_per_prompt: int = 4     # candidates generated per prompt
-    max_new_tokens: int = 64           # max response length
-    temperature: float = 1.0           # generation temperature
-    top_p: float = 0.9                 # nucleus sampling
-    ppo_epochs: int = 4                # PPO gradient steps per rollout batch
-    mini_batch_size: int = 8           # sequences per gradient step
+    n_rollouts_per_prompt: int = 4  # candidates generated per prompt
+    max_new_tokens: int = 64  # max response length
+    temperature: float = 1.0  # generation temperature
+    top_p: float = 0.9  # nucleus sampling
+    ppo_epochs: int = 4  # PPO gradient steps per rollout batch
+    mini_batch_size: int = 8  # sequences per gradient step
     lr: float = 1e-5
-    kl_coef: float = 0.1               # KL penalty coefficient
-    gamma: float = 1.0                 # GAE gamma
-    lam: float = 0.95                  # GAE lambda
-    clip_eps: float = 0.2              # PPO clip epsilon
+    kl_coef: float = 0.1  # KL penalty coefficient
+    gamma: float = 1.0  # GAE gamma
+    lam: float = 0.95  # GAE lambda
+    clip_eps: float = 0.2  # PPO clip epsilon
     value_loss_coef: float = 0.5
     entropy_coef: float = 0.01
     max_grad_norm: float = 1.0
@@ -38,13 +41,14 @@ class RLHFConfig:
 @dataclass
 class RLHFBatch:
     """One batch of rollout data."""
-    prompt_ids: list[torch.Tensor]       # each (S_prompt,)
-    response_ids: list[torch.Tensor]     # each (S_resp,)
-    rewards: torch.Tensor                # (N,) scalar per sequence
-    old_log_probs: torch.Tensor          # (N, S_resp) per-token log probs
-    values: torch.Tensor                 # (N, S_resp) per-token value estimates
-    advantages: torch.Tensor             # (N, S_resp) GAE advantages
-    returns: torch.Tensor                # (N, S_resp) GAE returns
+
+    prompt_ids: list[torch.Tensor]  # each (S_prompt,)
+    response_ids: list[torch.Tensor]  # each (S_resp,)
+    rewards: torch.Tensor  # (N,) scalar per sequence
+    old_log_probs: torch.Tensor  # (N, S_resp) per-token log probs
+    values: torch.Tensor  # (N, S_resp) per-token value estimates
+    advantages: torch.Tensor  # (N, S_resp) GAE advantages
+    returns: torch.Tensor  # (N, S_resp) GAE returns
 
 
 class RLHFTrainer:
@@ -58,8 +62,8 @@ class RLHFTrainer:
 
     def __init__(
         self,
-        policy: "ValueHead",        # ValueHead instance
-        reward_model: nn.Module,    # RewardModel instance
+        policy: ValueHead,  # ValueHead instance
+        reward_model: nn.Module,  # RewardModel instance
         cfg: RLHFConfig | None = None,
     ) -> None:
         self.policy = policy
@@ -116,9 +120,9 @@ class RLHFTrainer:
                 # Positions [S_prompt-1 .. S_prompt+S_resp-2] predict response tokens
                 scoring_logits = logits[0, S_prompt - 1 : S_prompt + S_resp - 1, :]  # (S_resp, V)
                 log_probs_all = F.log_softmax(scoring_logits, dim=-1)  # (S_resp, V)
-                token_log_probs = log_probs_all.gather(
-                    1, resp_ids.unsqueeze(1)
-                ).squeeze(1)  # (S_resp,)
+                token_log_probs = log_probs_all.gather(1, resp_ids.unsqueeze(1)).squeeze(
+                    1
+                )  # (S_resp,)
 
                 # Step 4: Compute value estimates from ValueHead
                 _, _, values_full = self.policy(full_ids)  # (1, S_total)
@@ -163,10 +167,10 @@ class RLHFTrainer:
                 out[i, : t.shape[0]] = t
             return out
 
-        old_log_probs = pad_to(all_log_probs, max_resp_len, 0.0)          # (N, S_resp)
-        values_tensor = pad_to(all_values, max_resp_len, 0.0)             # (N, S_resp)
-        advantages_tensor = pad_to(all_advantages, max_resp_len, 0.0)    # (N, S_resp)
-        returns_tensor = pad_to(all_returns_list, max_resp_len, 0.0)     # (N, S_resp)
+        old_log_probs = pad_to(all_log_probs, max_resp_len, 0.0)  # (N, S_resp)
+        values_tensor = pad_to(all_values, max_resp_len, 0.0)  # (N, S_resp)
+        advantages_tensor = pad_to(all_advantages, max_resp_len, 0.0)  # (N, S_resp)
+        returns_tensor = pad_to(all_returns_list, max_resp_len, 0.0)  # (N, S_resp)
 
         return RLHFBatch(
             prompt_ids=all_prompt_ids,
@@ -218,21 +222,25 @@ class RLHFTrainer:
                     S_prompt = prompt_ids.shape[0]
                     S_resp = resp_ids.shape[0]
 
-                    old_lp = batch.old_log_probs[idx, :S_resp].to(device)   # (S_resp,)
+                    old_lp = batch.old_log_probs[idx, :S_resp].to(device)  # (S_resp,)
                     advantages = batch.advantages[idx, :S_resp].to(device)  # (S_resp,)
-                    returns = batch.returns[idx, :S_resp].to(device)        # (S_resp,)
+                    returns = batch.returns[idx, :S_resp].to(device)  # (S_resp,)
 
                     # Forward through ValueHead to get new logits and values
                     full_ids = torch.cat([prompt_ids, resp_ids]).unsqueeze(0)  # (1, S_total)
-                    _, logits, new_values_full = self.policy(full_ids)          # logits (1, S, V), values (1, S)
+                    _, logits, new_values_full = self.policy(
+                        full_ids
+                    )  # logits (1, S, V), values (1, S)
 
-                    scoring_logits = logits[0, S_prompt - 1 : S_prompt + S_resp - 1, :]  # (S_resp, V)
-                    new_values = new_values_full[0, S_prompt - 1 : S_prompt + S_resp - 1]  # (S_resp,)
+                    scoring_logits = logits[
+                        0, S_prompt - 1 : S_prompt + S_resp - 1, :
+                    ]  # (S_resp, V)
+                    new_values = new_values_full[
+                        0, S_prompt - 1 : S_prompt + S_resp - 1
+                    ]  # (S_resp,)
 
                     log_probs_all = F.log_softmax(scoring_logits, dim=-1)  # (S_resp, V)
-                    new_lp = log_probs_all.gather(
-                        1, resp_ids.unsqueeze(1)
-                    ).squeeze(1)  # (S_resp,)
+                    new_lp = log_probs_all.gather(1, resp_ids.unsqueeze(1)).squeeze(1)  # (S_resp,)
 
                     # PPO clipped surrogate objective
                     ratio = (new_lp - old_lp).exp()  # (S_resp,)

@@ -2,38 +2,37 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from src.agent.workflow_graph import (
     AGENT_REGISTRY,
-    NodeStatus,
     WorkflowGraph,
-    WorkflowNode,
     WorkflowResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_fn(return_value):
     def fn(state):
         return return_value
+
     return fn
 
 
 def make_error_fn(msg: str):
     def fn(state):
         raise RuntimeError(msg)
+
     return fn
 
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_workflow_graph():
     assert "workflow_graph" in AGENT_REGISTRY
@@ -43,6 +42,7 @@ def test_registry_contains_workflow_graph():
 # ---------------------------------------------------------------------------
 # add_node
 # ---------------------------------------------------------------------------
+
 
 def test_add_node_basic():
     g = WorkflowGraph()
@@ -67,6 +67,7 @@ def test_add_node_with_deps():
 # ---------------------------------------------------------------------------
 # validate
 # ---------------------------------------------------------------------------
+
 
 def test_validate_no_cycle():
     g = WorkflowGraph()
@@ -97,6 +98,7 @@ def test_validate_undefined_dep():
 # _topological_sort
 # ---------------------------------------------------------------------------
 
+
 def test_topo_sort_respects_order():
     g = WorkflowGraph()
     g.add_node("a", make_fn(1))
@@ -110,6 +112,7 @@ def test_topo_sort_respects_order():
 # ---------------------------------------------------------------------------
 # run_sequential
 # ---------------------------------------------------------------------------
+
 
 def test_run_sequential_basic():
     g = WorkflowGraph()
@@ -154,6 +157,7 @@ def test_run_sequential_duration_recorded():
 # run_parallel
 # ---------------------------------------------------------------------------
 
+
 def test_run_parallel_basic():
     g = WorkflowGraph()
     g.add_node("a", make_fn({"pa": 1}))
@@ -170,6 +174,7 @@ def test_run_parallel_respects_deps():
     def fn(name):
         def inner(state):
             order.append(name)
+
         return inner
 
     g = WorkflowGraph()
@@ -191,6 +196,7 @@ def test_run_parallel_captures_exception():
 # ---------------------------------------------------------------------------
 # node_merge
 # ---------------------------------------------------------------------------
+
 
 def test_node_merge_combines_dicts():
     results = {

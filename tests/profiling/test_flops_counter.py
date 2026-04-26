@@ -1,9 +1,10 @@
 import torch.nn as nn
+
 from src.profiling.flops_counter import (
+    FLOPS_REGISTRY,
     FLOPsConfig,
     FLOPsCounter,
     ModuleFLOPs,
-    FLOPS_REGISTRY,
 )
 
 

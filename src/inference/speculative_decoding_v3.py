@@ -6,20 +6,20 @@ n_draft_tokens in a single autoregressive roll-out; the target model verifies al
 them in one forward pass; accepted tokens are kept and the first rejection triggers a
 corrected resample so the final distribution exactly matches the target model.
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Callable, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpeculativeConfig:
@@ -44,6 +44,7 @@ class SpeculativeConfig:
 # ---------------------------------------------------------------------------
 # Sampling helpers
 # ---------------------------------------------------------------------------
+
 
 def sample_from_logits(
     logits: Tensor,
@@ -94,6 +95,7 @@ def sample_from_logits(
 # Acceptance-probability helpers
 # ---------------------------------------------------------------------------
 
+
 def compute_acceptance_prob(draft_prob: float, target_prob: float) -> float:
     """Scalar speculative-sampling acceptance probability.
 
@@ -117,7 +119,7 @@ def compute_acceptance_prob(draft_prob: float, target_prob: float) -> float:
 def speculative_sample_step(
     draft_probs: Tensor,
     target_probs: Tensor,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Vectorised speculative-sampling acceptance for a sequence of draft tokens.
 
     For each draft position ``i``, accepts token ``t_i`` with probability
@@ -156,7 +158,7 @@ def speculative_sample_step(
     draft_token_ids = draft_probs.argmax(dim=-1)  # (n_draft,)
 
     # Acceptance probabilities for each position
-    draft_chosen = draft_probs[torch.arange(n_draft), draft_token_ids]   # (n_draft,)
+    draft_chosen = draft_probs[torch.arange(n_draft), draft_token_ids]  # (n_draft,)
     target_chosen = target_probs[torch.arange(n_draft), draft_token_ids]  # (n_draft,)
 
     # min(1, q/p), safe against p=0
@@ -189,6 +191,7 @@ def speculative_sample_step(
 # ---------------------------------------------------------------------------
 # SpeculativeDecoder
 # ---------------------------------------------------------------------------
+
 
 class SpeculativeDecoder:
     """Speculative decoding wrapper around arbitrary draft/target model callables.
@@ -243,7 +246,7 @@ class SpeculativeDecoder:
     # Public API
     # ------------------------------------------------------------------
 
-    def draft_tokens(self, input_ids: Tensor) -> Tuple[Tensor, Tensor]:
+    def draft_tokens(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Autoregressively generate ``n_draft_tokens`` using the draft model.
 
         Args:
@@ -262,7 +265,7 @@ class SpeculativeDecoder:
 
         for _ in range(cfg.n_draft_tokens):
             logits = self.draft_model_fn(context)  # (seq_len, vocab_size)
-            next_logits = logits[-1]               # (vocab_size,)
+            next_logits = logits[-1]  # (vocab_size,)
             probs = self._logits_to_probs(next_logits)
             token_id = self._sample_token(probs)
             token_ids_list.append(token_id)
@@ -278,7 +281,7 @@ class SpeculativeDecoder:
         input_ids: Tensor,
         draft_token_ids: Tensor,
         draft_probs: Tensor,
-    ) -> Tuple[Tensor, int]:
+    ) -> tuple[Tensor, int]:
         """Verify draft tokens with the target model and accept greedily.
 
         Runs the target model over ``input_ids + draft_token_ids`` in one forward
@@ -389,6 +392,7 @@ class SpeculativeDecoder:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def compute_speedup_ratio(n_tokens_generated: int, n_target_calls: int) -> float:
     """Theoretical speedup from speculative decoding.

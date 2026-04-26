@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.inference.continuous_batching_v2 import (
-    BatchRequest,
     BatchingConfig,
+    BatchRequest,
     ContinuousBatcherV2,
     RequestPriority,
 )
 
-
 # ---------------------------------------------------------------------------
 # RequestPriority enum
 # ---------------------------------------------------------------------------
+
 
 class TestRequestPriority:
     def test_critical_value(self):
@@ -39,6 +39,7 @@ class TestRequestPriority:
 # ---------------------------------------------------------------------------
 # BatchRequest
 # ---------------------------------------------------------------------------
+
 
 class TestBatchRequest:
     def test_auto_generates_id(self):
@@ -84,6 +85,7 @@ class TestBatchRequest:
 # BatchingConfig
 # ---------------------------------------------------------------------------
 
+
 class TestBatchingConfig:
     def test_max_batch_tokens_default(self):
         cfg = BatchingConfig()
@@ -114,6 +116,7 @@ class TestBatchingConfig:
 # ContinuousBatcherV2 construction
 # ---------------------------------------------------------------------------
 
+
 class TestContinuousBatcherV2Construction:
     def test_default_config_created(self):
         batcher = ContinuousBatcherV2()
@@ -137,6 +140,7 @@ class TestContinuousBatcherV2Construction:
 # enqueue / queue_depth
 # ---------------------------------------------------------------------------
 
+
 class TestEnqueue:
     def test_enqueue_increases_depth(self):
         batcher = ContinuousBatcherV2()
@@ -158,6 +162,7 @@ class TestEnqueue:
 # ---------------------------------------------------------------------------
 # next_batch
 # ---------------------------------------------------------------------------
+
 
 class TestNextBatch:
     def test_returns_list(self):
@@ -190,7 +195,9 @@ class TestNextBatch:
         cfg = BatchingConfig(max_batch_size=1, max_batch_tokens=99999)
         batcher = ContinuousBatcherV2(config=cfg)
         low_req = BatchRequest(prompt_tokens=10, max_new_tokens=10, priority=RequestPriority.LOW)
-        critical_req = BatchRequest(prompt_tokens=10, max_new_tokens=10, priority=RequestPriority.CRITICAL)
+        critical_req = BatchRequest(
+            prompt_tokens=10, max_new_tokens=10, priority=RequestPriority.CRITICAL
+        )
         batcher.enqueue(low_req)
         batcher.enqueue(critical_req)
         batch = batcher.next_batch()
@@ -200,7 +207,9 @@ class TestNextBatch:
     def test_high_before_normal(self):
         cfg = BatchingConfig(max_batch_size=1, max_batch_tokens=99999)
         batcher = ContinuousBatcherV2(config=cfg)
-        normal_req = BatchRequest(prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.NORMAL)
+        normal_req = BatchRequest(
+            prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.NORMAL
+        )
         high_req = BatchRequest(prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.HIGH)
         batcher.enqueue(normal_req)
         batcher.enqueue(high_req)
@@ -223,6 +232,7 @@ class TestNextBatch:
 # ---------------------------------------------------------------------------
 # mark_done
 # ---------------------------------------------------------------------------
+
 
 class TestMarkDone:
     def test_returns_true_for_valid_id(self):
@@ -263,6 +273,7 @@ class TestMarkDone:
 # preempt_lowest
 # ---------------------------------------------------------------------------
 
+
 class TestPreemptLowest:
     def test_preemption_enabled_removes_from_queue(self):
         batcher = ContinuousBatcherV2()
@@ -283,7 +294,9 @@ class TestPreemptLowest:
 
     def test_preempt_lowest_priority_removed(self):
         batcher = ContinuousBatcherV2()
-        critical = BatchRequest(prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.CRITICAL)
+        critical = BatchRequest(
+            prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.CRITICAL
+        )
         low = BatchRequest(prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.LOW)
         batcher.enqueue(critical)
         batcher.enqueue(low)
@@ -293,7 +306,9 @@ class TestPreemptLowest:
     def test_preempt_n_requests(self):
         batcher = ContinuousBatcherV2()
         for _ in range(5):
-            batcher.enqueue(BatchRequest(prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.LOW))
+            batcher.enqueue(
+                BatchRequest(prompt_tokens=5, max_new_tokens=5, priority=RequestPriority.LOW)
+            )
         removed = batcher.preempt_lowest(3)
         assert len(removed) == 3
         assert batcher.queue_depth() == 2
@@ -308,6 +323,7 @@ class TestPreemptLowest:
 # ---------------------------------------------------------------------------
 # token_utilization
 # ---------------------------------------------------------------------------
+
 
 class TestTokenUtilization:
     def test_empty_batch(self):
@@ -348,6 +364,7 @@ class TestTokenUtilization:
 # ---------------------------------------------------------------------------
 # _priority_score
 # ---------------------------------------------------------------------------
+
 
 class TestPriorityScore:
     def test_critical_score_is_zero(self):

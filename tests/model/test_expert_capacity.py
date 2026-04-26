@@ -66,4 +66,3 @@ def test_capacity_overflow_exact_capacity_is_zero_overflow():
 def test_capacity_utilization_at_full_load():
     util = capacity_utilization(torch.tensor([4, 4, 4]), capacity=4)
     assert util.item() == pytest.approx(1.0)
-

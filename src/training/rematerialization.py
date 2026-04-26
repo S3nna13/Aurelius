@@ -1,15 +1,16 @@
-"""Flexible activation rematerialization: selective checkpointing and memory/compute trade-off analysis."""
+"""Flexible activation rematerialization: selective checkpointing and memory/compute trade-off analysis."""  # noqa: E501
 
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 import torch.utils.checkpoint
+from torch import Tensor
 
 
 @dataclass

@@ -1,20 +1,19 @@
 """Tests for speculative tree decoding (tree_decoding.py)."""
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.tree_decoding import (
+    DraftTree,
     TreeConfig,
     TreeNode,
-    DraftTree,
+    TreeSpeculativeDecoder,
     build_draft_tree,
     verify_tree,
-    TreeSpeculativeDecoder,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -53,6 +52,7 @@ def _make_real_model() -> AureliusTransformer:
 # 1. test_tree_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_tree_config_defaults():
     """TreeConfig should have the specified default values."""
     cfg = TreeConfig()
@@ -66,6 +66,7 @@ def test_tree_config_defaults():
 # 2. test_tree_node_path_single
 # ---------------------------------------------------------------------------
 
+
 def test_tree_node_path_single():
     """A single TreeNode with no parent should have path == [token_id]."""
     node = TreeNode(token_id=42, log_prob=-0.5)
@@ -75,6 +76,7 @@ def test_tree_node_path_single():
 # ---------------------------------------------------------------------------
 # 3. test_tree_node_path_chain
 # ---------------------------------------------------------------------------
+
 
 def test_tree_node_path_chain():
     """A 3-node chain should produce a path with 3 elements in root-to-leaf order."""
@@ -87,6 +89,7 @@ def test_tree_node_path_chain():
 # ---------------------------------------------------------------------------
 # 4. test_draft_tree_add_children
 # ---------------------------------------------------------------------------
+
 
 def test_draft_tree_add_children():
     """add_children should increase num_nodes by the number of children added."""
@@ -105,6 +108,7 @@ def test_draft_tree_add_children():
 # ---------------------------------------------------------------------------
 # 5. test_draft_tree_all_paths_count
 # ---------------------------------------------------------------------------
+
 
 def test_draft_tree_all_paths_count():
     """branching_factor=2, depth=2 → 4 root-to-leaf paths."""
@@ -125,6 +129,7 @@ def test_draft_tree_all_paths_count():
 # 6. test_build_draft_tree_leaf_count
 # ---------------------------------------------------------------------------
 
+
 def test_build_draft_tree_leaf_count():
     """build_draft_tree should produce branching_factor^tree_depth leaves."""
     torch.manual_seed(0)
@@ -139,6 +144,7 @@ def test_build_draft_tree_leaf_count():
 # 7. test_build_draft_tree_path_length
 # ---------------------------------------------------------------------------
 
+
 def test_build_draft_tree_path_length():
     """Every root-to-leaf path should have length == tree_depth."""
     torch.manual_seed(0)
@@ -152,6 +158,7 @@ def test_build_draft_tree_path_length():
 # ---------------------------------------------------------------------------
 # 8. test_verify_tree_returns_list
 # ---------------------------------------------------------------------------
+
 
 def test_verify_tree_returns_list():
     """verify_tree should return a list of ints."""
@@ -168,6 +175,7 @@ def test_verify_tree_returns_list():
 # 9. test_verify_tree_nonempty
 # ---------------------------------------------------------------------------
 
+
 def test_verify_tree_nonempty():
     """verify_tree should always return at least 1 token."""
     torch.manual_seed(0)
@@ -181,6 +189,7 @@ def test_verify_tree_nonempty():
 # ---------------------------------------------------------------------------
 # 10. test_tree_speculative_decoder_output_shape
 # ---------------------------------------------------------------------------
+
 
 def test_tree_speculative_decoder_output_shape():
     """TreeSpeculativeDecoder.generate should return (1, prompt_len + max_new_tokens)."""
@@ -204,6 +213,7 @@ def test_tree_speculative_decoder_output_shape():
 # ---------------------------------------------------------------------------
 # 11. test_tree_speculative_decoder_stats_keys
 # ---------------------------------------------------------------------------
+
 
 def test_tree_speculative_decoder_stats_keys():
     """TreeSpeculativeDecoder.stats() should contain the expected keys with correct types."""

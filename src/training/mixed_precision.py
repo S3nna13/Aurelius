@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -16,12 +15,12 @@ class MixedPrecisionConfig:
     """Configuration for mixed precision training."""
 
     enabled: bool = True
-    dtype: str = "float16"          # "float16" | "bfloat16" | "float32"
-    initial_scale: float = 2 ** 16  # starting loss scale
-    growth_factor: float = 2.0      # multiply scale by this after growth_interval clean steps
-    backoff_factor: float = 0.5     # multiply scale by this on overflow
-    growth_interval: int = 2000     # clean steps required before scaling up
-    min_scale: float = 1.0          # floor for the loss scale
+    dtype: str = "float16"  # "float16" | "bfloat16" | "float32"
+    initial_scale: float = 2**16  # starting loss scale
+    growth_factor: float = 2.0  # multiply scale by this after growth_interval clean steps
+    backoff_factor: float = 0.5  # multiply scale by this on overflow
+    growth_interval: int = 2000  # clean steps required before scaling up
+    min_scale: float = 1.0  # floor for the loss scale
 
 
 class DynamicLossScaler:
@@ -73,9 +72,7 @@ class DynamicLossScaler:
             overflow: True if inf/nan was detected in gradients.
         """
         if overflow:
-            self.scale = max(
-                self.scale * self._config.backoff_factor, self._config.min_scale
-            )
+            self.scale = max(self.scale * self._config.backoff_factor, self._config.min_scale)
             self._steps_since_overflow = 0
             self.overflow_count += 1
         else:
@@ -200,6 +197,7 @@ class MixedPrecisionTrainer:
 # ---------------------------------------------------------------------------
 # Standalone helpers
 # ---------------------------------------------------------------------------
+
 
 def autocast_forward(
     model: nn.Module, input_ids: Tensor, dtype: torch.dtype = torch.float16

@@ -7,12 +7,11 @@ and random eviction.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -22,10 +21,10 @@ from torch import Tensor
 @dataclass
 class KVCompressionConfig:
     strategy: str = "heavy_hitter"  # "heavy_hitter" | "streaming" | "scissorhands" | "random"
-    keep_ratio: float = 0.5         # fraction of tokens to keep
-    local_window: int = 8           # always keep last local_window tokens
-    n_init_tokens: int = 4          # always keep first n_init_tokens (attention sink)
-    update_interval: int = 16       # how often to re-evaluate importance
+    keep_ratio: float = 0.5  # fraction of tokens to keep
+    local_window: int = 8  # always keep last local_window tokens
+    n_init_tokens: int = 4  # always keep first n_init_tokens (attention sink)
+    update_interval: int = 16  # how often to re-evaluate importance
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +34,7 @@ class KVCompressionConfig:
 
 def compute_token_importance_from_attn(
     attention_weights: Tensor,  # (B, H, T, T) or (H, T, T)
-    method: str = "sum",        # "sum" | "max"
+    method: str = "sum",  # "sum" | "max"
 ) -> Tensor:
     """Compute per-token importance from attention weights.
 
@@ -50,20 +49,20 @@ def compute_token_importance_from_attn(
         if method == "sum":
             # sum over query dim first, then heads
             scores = attention_weights.sum(dim=2)  # (B, H, T_k)
-            scores = scores.sum(dim=1)             # (B, T_k)
+            scores = scores.sum(dim=1)  # (B, T_k)
         elif method == "max":
             scores = attention_weights.amax(dim=2)  # (B, H, T_k)
-            scores = scores.amax(dim=1)             # (B, T_k)
+            scores = scores.amax(dim=1)  # (B, T_k)
         else:
             raise ValueError(f"Unknown method: {method!r}. Use 'sum' or 'max'.")
     else:
         # (H, T_q, T_k)
         if method == "sum":
             scores = attention_weights.sum(dim=1)  # (H, T_k)
-            scores = scores.sum(dim=0)             # (T_k,)
+            scores = scores.sum(dim=0)  # (T_k,)
         elif method == "max":
             scores = attention_weights.amax(dim=1)  # (H, T_k)
-            scores = scores.amax(dim=0)             # (T_k,)
+            scores = scores.amax(dim=0)  # (T_k,)
         else:
             raise ValueError(f"Unknown method: {method!r}. Use 'sum' or 'max'.")
 
@@ -71,7 +70,7 @@ def compute_token_importance_from_attn(
 
 
 def select_tokens_to_keep(
-    importance: Tensor,   # (T,) or (B, T)
+    importance: Tensor,  # (T,) or (B, T)
     keep_ratio: float,
     local_window: int,
     n_init_tokens: int,
@@ -123,7 +122,7 @@ def select_tokens_to_keep(
 
 def compress_kv_cache(
     kv_cache: list[tuple[Tensor, Tensor]],  # list of (K, V) pairs, each (B, H, T, D)
-    keep_indices: Tensor,                    # (T_keep,) or (B, T_keep)
+    keep_indices: Tensor,  # (T_keep,) or (B, T_keep)
 ) -> list[tuple[Tensor, Tensor]]:
     """Select kept positions from KV cache. Returns compressed KV cache."""
     compressed = []
@@ -135,12 +134,8 @@ def compress_kv_cache(
         else:
             # Per-batch indices: (B, T_keep) — index each batch element
             B = k.shape[0]
-            k_new = torch.stack(
-                [k[b, :, keep_indices[b], :] for b in range(B)], dim=0
-            )
-            v_new = torch.stack(
-                [v[b, :, keep_indices[b], :] for b in range(B)], dim=0
-            )
+            k_new = torch.stack([k[b, :, keep_indices[b], :] for b in range(B)], dim=0)
+            v_new = torch.stack([v[b, :, keep_indices[b], :] for b in range(B)], dim=0)
         compressed.append((k_new, v_new))
     return compressed
 
@@ -169,8 +164,8 @@ def streaming_kv_drop(
 
 
 def scissorhands_score(
-    attention_weights: Tensor,   # (H, T, T) — attention at current step
-    history_weights: Tensor,     # (H, T) — accumulated importance
+    attention_weights: Tensor,  # (H, T, T) — attention at current step
+    history_weights: Tensor,  # (H, T) — accumulated importance
     decay: float = 0.9,
 ) -> Tensor:
     """ScissorHands: EMA update of token importance.
@@ -184,7 +179,7 @@ def scissorhands_score(
 
 
 def estimate_compression_quality(
-    original_logits: Tensor,    # (B, T, V)
+    original_logits: Tensor,  # (B, T, V)
     compressed_logits: Tensor,  # (B, T, V)
 ) -> dict[str, float]:
     """Estimate quality of compression by comparing logit distributions.
@@ -195,20 +190,20 @@ def estimate_compression_quality(
     - perplexity_ratio: exp(mean_ce_compressed) / exp(mean_ce_original)
     """
     # Compute softmax probabilities
-    orig_probs = F.softmax(original_logits, dim=-1)      # (B, T, V)
-    comp_probs = F.softmax(compressed_logits, dim=-1)    # (B, T, V)
+    orig_probs = F.softmax(original_logits, dim=-1)  # (B, T, V)
+    F.softmax(compressed_logits, dim=-1)  # (B, T, V)
 
     # KL divergence: KL(orig || comp) = sum(orig * log(orig / comp))
     # Use log_softmax for numerical stability
-    orig_log = F.log_softmax(original_logits, dim=-1)
+    F.log_softmax(original_logits, dim=-1)
     comp_log = F.log_softmax(compressed_logits, dim=-1)
 
     # kl_div expects input=log_probs, target=probs
     kl = F.kl_div(comp_log, orig_probs, reduction="batchmean").item()
 
     # Top-1 agreement
-    orig_top1 = original_logits.argmax(dim=-1)      # (B, T)
-    comp_top1 = compressed_logits.argmax(dim=-1)    # (B, T)
+    orig_top1 = original_logits.argmax(dim=-1)  # (B, T)
+    comp_top1 = compressed_logits.argmax(dim=-1)  # (B, T)
     top1_agreement = (orig_top1 == comp_top1).float().mean().item()
 
     # Perplexity ratio: use cross-entropy against greedy labels
@@ -219,8 +214,9 @@ def estimate_compression_quality(
 
     ce_orig = F.cross_entropy(orig_flat, labels).item()
     ce_comp = F.cross_entropy(comp_flat, labels).item()
-    perplexity_ratio = (ce_comp - ce_orig)  # log-ratio, exp gives ratio
+    perplexity_ratio = ce_comp - ce_orig  # log-ratio, exp gives ratio
     import math
+
     perplexity_ratio = math.exp(perplexity_ratio)
 
     return {
@@ -341,6 +337,4 @@ class KVCacheCompressor:
         if self._history_weights is None or self._history_weights.shape[-1] != T_k:
             self._history_weights = torch.zeros(H, T_k)
 
-        self._history_weights = scissorhands_score(
-            attn, self._history_weights, decay=0.9
-        )
+        self._history_weights = scissorhands_score(attn, self._history_weights, decay=0.9)

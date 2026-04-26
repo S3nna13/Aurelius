@@ -12,11 +12,11 @@ from src.chat.security_personas import (
     SecurityPersonaRegistry,
 )
 
-
 _ALL_PERSONAS = (RED_TEAM_PERSONA, BLUE_TEAM_PERSONA, PURPLE_TEAM_PERSONA)
 
 
 # ---- field coverage ---------------------------------------------------------
+
 
 @pytest.mark.parametrize("persona", _ALL_PERSONAS)
 def test_persona_has_all_required_fields(persona: SecurityPersona) -> None:
@@ -68,6 +68,7 @@ def test_output_contract_keys_sensible() -> None:
 
 # ---- registry ---------------------------------------------------------------
 
+
 def test_registry_register_and_get() -> None:
     reg = SecurityPersonaRegistry()
     reg.register(RED_TEAM_PERSONA)
@@ -83,6 +84,7 @@ def test_registry_get_missing_raises_key_error() -> None:
 
 def test_registry_all_returns_three_by_default() -> None:
     from src.chat.security_personas import DEFAULT_SECURITY_PERSONA_REGISTRY
+
     personas = DEFAULT_SECURITY_PERSONA_REGISTRY.all()
     assert len(personas) == 3
     ids = {p.id for p in personas}

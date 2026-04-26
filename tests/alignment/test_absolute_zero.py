@@ -1,21 +1,22 @@
 """Unit tests for src/alignment/absolute_zero.py — 15 tests."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
+from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.absolute_zero import (
     AbsoluteZeroConfig,
-    AbsoluteZeroTask,
     AbsoluteZeroRollout,
+    AbsoluteZeroTask,
     AbsoluteZeroTrainer,
 )
-from src.alignment import ALIGNMENT_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_propose_fn(tokens_per_candidate: list[int] | None = None):
     """Return a propose_fn that emits deterministic token sequences.
@@ -28,7 +29,11 @@ def _make_propose_fn(tokens_per_candidate: list[int] | None = None):
     def propose_fn(task_type: str, n: int) -> list[list[int]]:
         seqs = []
         for _ in range(n):
-            length = 6 if tokens_per_candidate is None else tokens_per_candidate[counter[0] % len(tokens_per_candidate)]
+            length = (
+                6
+                if tokens_per_candidate is None
+                else tokens_per_candidate[counter[0] % len(tokens_per_candidate)]
+            )
             seq = list(range(counter[0] * 100, counter[0] * 100 + length))
             counter[0] += 1
             seqs.append(seq)
@@ -55,6 +60,7 @@ def _make_task(
 # Test 1 — config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = AbsoluteZeroConfig()
     assert cfg.task_types == ["deduction", "abduction", "induction"]
@@ -69,6 +75,7 @@ def test_config_defaults():
 # Test 2 — propose_tasks count
 # ---------------------------------------------------------------------------
 
+
 def test_propose_tasks_count():
     cfg = AbsoluteZeroConfig(n_propose_candidates=2)
     trainer = AbsoluteZeroTrainer(cfg)
@@ -81,6 +88,7 @@ def test_propose_tasks_count():
 # Test 3 — propose_tasks sequential IDs
 # ---------------------------------------------------------------------------
 
+
 def test_propose_tasks_ids():
     trainer = AbsoluteZeroTrainer(AbsoluteZeroConfig(n_propose_candidates=2))
     tasks = trainer.propose_tasks(_make_propose_fn())
@@ -91,6 +99,7 @@ def test_propose_tasks_ids():
 # ---------------------------------------------------------------------------
 # Test 4 — each task_type is represented
 # ---------------------------------------------------------------------------
+
 
 def test_propose_tasks_types():
     trainer = AbsoluteZeroTrainer(AbsoluteZeroConfig(n_propose_candidates=1))
@@ -103,10 +112,14 @@ def test_propose_tasks_types():
 # Test 5 — solve_tasks: correct solution
 # ---------------------------------------------------------------------------
 
+
 def test_solve_correct():
     trainer = AbsoluteZeroTrainer()
     task = _make_task(task_tokens=[1, 2, 3], answer_tokens=[7, 8])
-    solve_fn = lambda toks: [7, 8]  # always returns the right answer
+
+    def solve_fn(toks):
+        return [7, 8]  # always returns the right answer
+
     rollouts = trainer.solve_tasks([task], solve_fn)
     assert len(rollouts) == 1
     r = rollouts[0]
@@ -118,10 +131,14 @@ def test_solve_correct():
 # Test 6 — solve_tasks: incorrect solution
 # ---------------------------------------------------------------------------
 
+
 def test_solve_incorrect():
     trainer = AbsoluteZeroTrainer()
     task = _make_task(task_tokens=[1, 2, 3], answer_tokens=[7, 8])
-    solve_fn = lambda toks: [99, 100]  # always wrong
+
+    def solve_fn(toks):
+        return [99, 100]  # always wrong
+
     rollouts = trainer.solve_tasks([task], solve_fn)
     r = rollouts[0]
     assert r.is_correct is False
@@ -131,6 +148,7 @@ def test_solve_incorrect():
 # ---------------------------------------------------------------------------
 # Test 7 — detect_leakage: True when answer is sub-sequence of task_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_detect_leakage_true():
     trainer = AbsoluteZeroTrainer()
@@ -142,6 +160,7 @@ def test_detect_leakage_true():
 # Test 8 — detect_leakage: False when answer is not in task_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_detect_leakage_false():
     trainer = AbsoluteZeroTrainer()
     task = _make_task(task_tokens=[1, 2, 3, 4, 5], answer_tokens=[10, 11])
@@ -151,6 +170,7 @@ def test_detect_leakage_false():
 # ---------------------------------------------------------------------------
 # Test 9 — apply_leakage_penalty
 # ---------------------------------------------------------------------------
+
 
 def test_apply_leakage_penalty():
     cfg = AbsoluteZeroConfig(leakage_penalty=-0.5)
@@ -177,6 +197,7 @@ def test_apply_leakage_penalty():
 # Test 10 — compute_policy_gradient: returns scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_compute_pg_shape():
     trainer = AbsoluteZeroTrainer()
     task = _make_task()
@@ -192,6 +213,7 @@ def test_compute_pg_shape():
 # ---------------------------------------------------------------------------
 # Test 11 — compute_policy_gradient: positive rewards → positive gradient signal
 # ---------------------------------------------------------------------------
+
 
 def test_compute_pg_correct_lower_loss():
     """REINFORCE: loss = -mean(reward * log_prob).
@@ -235,6 +257,7 @@ def test_compute_pg_correct_lower_loss():
 # Test 12 — statistics: expected keys present
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_keys():
     trainer = AbsoluteZeroTrainer()
     task = _make_task()
@@ -252,6 +275,7 @@ def test_statistics_keys():
 # Test 13 — statistics: all correct → accuracy == 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_accuracy():
     trainer = AbsoluteZeroTrainer()
     task = _make_task()
@@ -266,6 +290,7 @@ def test_statistics_accuracy():
 # ---------------------------------------------------------------------------
 # Test 14 — statistics: by_type breakdown
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_by_type():
     trainer = AbsoluteZeroTrainer()
@@ -296,6 +321,7 @@ def test_statistics_by_type():
 # ---------------------------------------------------------------------------
 # Test 15 — registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry():
     assert "absolute_zero" in ALIGNMENT_REGISTRY

@@ -36,21 +36,21 @@ class PyTorchTensorNS:
     ``"float32"``; other dtype inputs are normalized via ``getattr``.
     """
 
-    def zeros(self, shape: Any, dtype: Any = None) -> "torch.Tensor":
+    def zeros(self, shape: Any, dtype: Any = None) -> torch.Tensor:
         resolved = _resolve_dtype(dtype)
         return torch.zeros(shape, dtype=resolved)
 
-    def ones(self, shape: Any, dtype: Any = None) -> "torch.Tensor":
+    def ones(self, shape: Any, dtype: Any = None) -> torch.Tensor:
         resolved = _resolve_dtype(dtype)
         return torch.ones(shape, dtype=resolved)
 
-    def as_array(self, obj: Any) -> "torch.Tensor":
+    def as_array(self, obj: Any) -> torch.Tensor:
         if isinstance(obj, torch.Tensor):
             return obj
         return torch.as_tensor(obj)
 
 
-def _resolve_dtype(dtype: Any) -> "torch.dtype | None":
+def _resolve_dtype(dtype: Any) -> torch.dtype | None:
     """Coerce a user-supplied dtype hint to a ``torch.dtype`` or None."""
     if dtype is None:
         return None
@@ -60,12 +60,8 @@ def _resolve_dtype(dtype: Any) -> "torch.dtype | None":
         candidate = getattr(torch, dtype, None)
         if isinstance(candidate, torch.dtype):
             return candidate
-        raise BackendAdapterError(
-            f"unknown torch dtype string: {dtype!r}"
-        )
-    raise BackendAdapterError(
-        f"dtype must be a torch.dtype or string, got {type(dtype).__name__}"
-    )
+        raise BackendAdapterError(f"unknown torch dtype string: {dtype!r}")
+    raise BackendAdapterError(f"dtype must be a torch.dtype or string, got {type(dtype).__name__}")
 
 
 class PyTorchAdapter(BackendAdapter):
@@ -89,9 +85,7 @@ class PyTorchAdapter(BackendAdapter):
 
     def dtype_of(self, obj: Any) -> str:
         if not isinstance(obj, torch.Tensor):
-            raise BackendAdapterError(
-                f"dtype_of expected a torch.Tensor, got {type(obj).__name__}"
-            )
+            raise BackendAdapterError(f"dtype_of expected a torch.Tensor, got {type(obj).__name__}")
         return str(obj.dtype)
 
     def device_of(self, obj: Any) -> str:

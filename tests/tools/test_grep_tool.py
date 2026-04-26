@@ -1,11 +1,13 @@
 """Tests for src/tools/grep_tool.py — at least 18 tests."""
+
 from __future__ import annotations
 
 import json
 import re
 
 import pytest
-from src.tools.grep_tool import GrepTool, _MAX_CONTENT_LEN, _MAX_PATTERN_LEN, _MAX_RESULTS
+
+from src.tools.grep_tool import _MAX_CONTENT_LEN, _MAX_PATTERN_LEN, _MAX_RESULTS, GrepTool
 
 
 @pytest.fixture
@@ -18,6 +20,7 @@ def _parse(result) -> dict:
 
 
 # ── Basic pattern match ───────────────────────────────────────────────────────
+
 
 def test_basic_match_line_numbers(tool):
     content = "alpha\nbeta\ngamma"
@@ -37,6 +40,7 @@ def test_basic_match_line_content(tool):
 
 
 # ── context_before / context_after ───────────────────────────────────────────
+
 
 def test_context_populated(tool):
     content = "line1\nline2\nTARGET\nline4\nline5"
@@ -69,6 +73,7 @@ def test_context_at_end(tool):
 
 # ── No matches ────────────────────────────────────────────────────────────────
 
+
 def test_no_matches(tool):
     result = tool.search("NOTHERE", "alpha\nbeta\ngamma")
     assert result.success
@@ -78,6 +83,7 @@ def test_no_matches(tool):
 
 
 # ── Invalid regex ─────────────────────────────────────────────────────────────
+
 
 def test_invalid_regex(tool):
     result = tool.search("[invalid", "some content")
@@ -93,6 +99,7 @@ def test_invalid_regex_unbalanced_paren(tool):
 
 # ── Pattern length limit ──────────────────────────────────────────────────────
 
+
 def test_pattern_too_long(tool):
     big_pattern = "a" * (_MAX_PATTERN_LEN + 1)
     result = tool.search(big_pattern, "some content")
@@ -102,6 +109,7 @@ def test_pattern_too_long(tool):
 
 # ── Content length limit ──────────────────────────────────────────────────────
 
+
 def test_content_too_large(tool):
     big_content = "x\n" * (_MAX_CONTENT_LEN // 2 + 1)
     result = tool.search("x", big_content)
@@ -110,6 +118,7 @@ def test_content_too_large(tool):
 
 
 # ── max_results cap ───────────────────────────────────────────────────────────
+
 
 def test_max_results_respected(tool):
     content = "\n".join(["match"] * 200)
@@ -130,6 +139,7 @@ def test_max_results_capped_at_hard_limit(tool):
 
 # ── Case-insensitive flag ─────────────────────────────────────────────────────
 
+
 def test_case_insensitive(tool):
     content = "Hello World\nfoo bar"
     result = tool.search("hello", content, flags=re.IGNORECASE)
@@ -141,6 +151,7 @@ def test_case_insensitive(tool):
 
 # ── Empty content ─────────────────────────────────────────────────────────────
 
+
 def test_empty_content(tool):
     result = tool.search("anything", "")
     assert result.success
@@ -149,6 +160,7 @@ def test_empty_content(tool):
 
 
 # ── Multiline content with many matches ──────────────────────────────────────
+
 
 def test_many_matches(tool):
     content = "\n".join([f"item {i}" for i in range(100)])
@@ -160,15 +172,17 @@ def test_many_matches(tool):
 
 # ── JSON output is valid parseable JSON ──────────────────────────────────────
 
+
 def test_output_is_valid_json(tool):
     result = tool.search("foo", "foo bar\nbaz foo")
     assert result.success
-    data = json.loads(result.output)   # must not raise
+    data = json.loads(result.output)  # must not raise
     assert "matches" in data
     assert "total" in data
 
 
 # ── Adversarial: catastrophic backtracking (small input so it won't hang) ────
+
 
 def test_no_catastrophic_backtracking(tool):
     # This pattern is known for backtracking on certain inputs but with a small
@@ -182,6 +196,7 @@ def test_no_catastrophic_backtracking(tool):
 
 # ── Regex with special chars in pattern ──────────────────────────────────────
 
+
 def test_regex_special_chars(tool):
     content = "price: $9.99\nname: foo"
     result = tool.search(r"\$\d+\.\d+", content)
@@ -192,6 +207,7 @@ def test_regex_special_chars(tool):
 
 
 # ── context_lines=0 ───────────────────────────────────────────────────────────
+
 
 def test_context_lines_zero(tool):
     content = "before\nmatch\nafter"

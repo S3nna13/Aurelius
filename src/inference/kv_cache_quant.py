@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class KVCacheQuantConfig:
     """Configuration for KV cache quantization."""
+
     bits: int = 8
     group_size: int = 64
     symmetric: bool = True
@@ -27,6 +27,7 @@ class KVCacheQuantConfig:
 # ---------------------------------------------------------------------------
 # Symmetric quantization
 # ---------------------------------------------------------------------------
+
 
 def quantize_symmetric(
     tensor: Tensor,
@@ -45,7 +46,7 @@ def quantize_symmetric(
         and *scales* has one entry per group.
     """
     B, n_heads, T, head_dim = tensor.shape
-    assert head_dim % group_size == 0, (
+    assert head_dim % group_size == 0, (  # noqa: S101
         f"head_dim ({head_dim}) must be divisible by group_size ({group_size})"
     )
     n_groups = head_dim // group_size
@@ -57,7 +58,9 @@ def quantize_symmetric(
     scale = absmax / qmax
     scale = scale.clamp(min=1e-10)  # avoid division by zero
 
-    quantized = (grouped / scale).round().clamp(-qmax, qmax).to(torch.int8 if bits == 8 else torch.int8)
+    quantized = (
+        (grouped / scale).round().clamp(-qmax, qmax).to(torch.int8 if bits == 8 else torch.int8)
+    )
     # scales shape: (B, n_heads, T, n_groups, 1)
     return quantized, scale
 
@@ -77,6 +80,7 @@ def dequantize_symmetric(quantized: Tensor, scales: Tensor) -> Tensor:
 # Asymmetric quantization
 # ---------------------------------------------------------------------------
 
+
 def quantize_asymmetric(
     tensor: Tensor,
     bits: int,
@@ -88,9 +92,9 @@ def quantize_asymmetric(
         ``(quantized_int, scales, zero_points)``
     """
     B, n_heads, T, head_dim = tensor.shape
-    assert head_dim % group_size == 0
+    assert head_dim % group_size == 0  # noqa: S101
     n_groups = head_dim // group_size
-    qmax = 2 ** bits - 1  # e.g. 255 for 8-bit
+    qmax = 2**bits - 1  # e.g. 255 for 8-bit
 
     grouped = tensor.reshape(B, n_heads, T, n_groups, group_size)
     gmin = grouped.amin(dim=-1, keepdim=True)
@@ -123,6 +127,7 @@ def dequantize_asymmetric(
 # Outlier detection
 # ---------------------------------------------------------------------------
 
+
 def detect_outliers(tensor: Tensor, threshold: float) -> Tensor:
     """Return boolean mask where ``|tensor| > threshold * tensor.std()``.
 
@@ -135,6 +140,7 @@ def detect_outliers(tensor: Tensor, threshold: float) -> Tensor:
 # ---------------------------------------------------------------------------
 # QuantizedKVCache
 # ---------------------------------------------------------------------------
+
 
 class QuantizedKVCache:
     """Drop-in KV cache that stores keys and values in quantized form."""
@@ -188,8 +194,12 @@ class QuantizedKVCache:
             self._val_scales.append(vs)
             self._val_zp.append(vzp)
             q_bytes = (
-                kq.nelement() * kq.element_size() + ks.nelement() * ks.element_size() + kzp.nelement() * kzp.element_size()
-                + vq.nelement() * vq.element_size() + vs.nelement() * vs.element_size() + vzp.nelement() * vzp.element_size()
+                kq.nelement() * kq.element_size()
+                + ks.nelement() * ks.element_size()
+                + kzp.nelement() * kzp.element_size()
+                + vq.nelement() * vq.element_size()
+                + vs.nelement() * vs.element_size()
+                + vzp.nelement() * vzp.element_size()
             )
 
         self._quantized_bytes += q_bytes
@@ -211,11 +221,17 @@ class QuantizedKVCache:
             )
         else:
             keys = torch.cat(
-                [dequantize_asymmetric(q, s, z) for q, s, z in zip(self._key_quant, self._key_scales, self._key_zp)],
+                [
+                    dequantize_asymmetric(q, s, z)
+                    for q, s, z in zip(self._key_quant, self._key_scales, self._key_zp)
+                ],
                 dim=2,
             )
             values = torch.cat(
-                [dequantize_asymmetric(q, s, z) for q, s, z in zip(self._val_quant, self._val_scales, self._val_zp)],
+                [
+                    dequantize_asymmetric(q, s, z)
+                    for q, s, z in zip(self._val_quant, self._val_scales, self._val_zp)
+                ],
                 dim=2,
             )
         return keys, values
@@ -250,6 +266,7 @@ class QuantizedKVCache:
 # Error metrics
 # ---------------------------------------------------------------------------
 
+
 def compute_quantization_error(
     original: Tensor,
     reconstructed: Tensor,
@@ -260,7 +277,7 @@ def compute_quantization_error(
         ``{"mse": float, "max_error": float, "snr_db": float}``
     """
     diff = original.float() - reconstructed.float()
-    mse = (diff ** 2).mean().item()
+    mse = (diff**2).mean().item()
     max_error = diff.abs().max().item()
 
     signal_power = (original.float() ** 2).mean().item()

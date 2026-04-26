@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.inference.kv_compression import (
-    KVCompressionConfig,
     KVCacheCompressor,
+    KVCompressionConfig,
     compress_kv_cache,
     compute_token_importance_from_attn,
     estimate_compression_quality,
@@ -28,10 +27,7 @@ V = 32  # vocab size for logit tests
 
 def make_kv_cache(layers: int = 2) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Create a dummy KV cache with shape (B, H, T, D)."""
-    return [
-        (torch.randn(B, H, T, D), torch.randn(B, H, T, D))
-        for _ in range(layers)
-    ]
+    return [(torch.randn(B, H, T, D), torch.randn(B, H, T, D)) for _ in range(layers)]
 
 
 def make_attn_weights_batched() -> torch.Tensor:
@@ -100,7 +96,9 @@ def test_compute_importance_nonneg():
 def test_select_tokens_always_keeps_init():
     n_init = 4
     importance = torch.rand(T)
-    indices = select_tokens_to_keep(importance, keep_ratio=0.5, local_window=4, n_init_tokens=n_init)
+    indices = select_tokens_to_keep(
+        importance, keep_ratio=0.5, local_window=4, n_init_tokens=n_init
+    )
     idx_set = set(indices.tolist())
     for i in range(n_init):
         assert i in idx_set, f"Init token {i} not in kept indices"
@@ -114,7 +112,9 @@ def test_select_tokens_always_keeps_init():
 def test_select_tokens_always_keeps_local():
     local_window = 4
     importance = torch.rand(T)
-    indices = select_tokens_to_keep(importance, keep_ratio=0.5, local_window=local_window, n_init_tokens=2)
+    indices = select_tokens_to_keep(
+        importance, keep_ratio=0.5, local_window=local_window, n_init_tokens=2
+    )
     idx_set = set(indices.tolist())
     for i in range(T - local_window, T):
         assert i in idx_set, f"Local token {i} not in kept indices"
@@ -159,7 +159,9 @@ def test_select_tokens_count():
 def test_compress_kv_cache_shape():
     kv = make_kv_cache(layers=2)
     importance = torch.rand(T)
-    keep_indices = select_tokens_to_keep(importance, keep_ratio=0.5, local_window=4, n_init_tokens=4)
+    keep_indices = select_tokens_to_keep(
+        importance, keep_ratio=0.5, local_window=4, n_init_tokens=4
+    )
     T_keep = len(keep_indices)
     compressed = compress_kv_cache(kv, keep_indices)
     for k, v in compressed:
@@ -243,16 +245,16 @@ def test_estimate_compression_quality_keys():
 
 
 def test_kv_compressor_heavy_hitter():
-    cfg = KVCompressionConfig(strategy="heavy_hitter", keep_ratio=0.5, local_window=4, n_init_tokens=4)
+    cfg = KVCompressionConfig(
+        strategy="heavy_hitter", keep_ratio=0.5, local_window=4, n_init_tokens=4
+    )
     compressor = KVCacheCompressor(cfg)
     kv = make_kv_cache(layers=2)
     attn = make_attn_weights_batched()  # (B, H, T, T)
     compressed = compressor.compress(kv, attention_weights=attn)
     original_T = T
     for k, v in compressed:
-        assert k.shape[2] < original_T, (
-            f"Expected compressed T < {original_T}, got {k.shape[2]}"
-        )
+        assert k.shape[2] < original_T, f"Expected compressed T < {original_T}, got {k.shape[2]}"
 
 
 # ---------------------------------------------------------------------------

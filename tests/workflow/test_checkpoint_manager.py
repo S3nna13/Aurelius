@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from src.workflow.checkpoint_manager import (
+    CHECKPOINT_MANAGER_REGISTRY,
     CheckpointData,
     CheckpointManager,
-    CHECKPOINT_MANAGER_REGISTRY,
 )
 
 

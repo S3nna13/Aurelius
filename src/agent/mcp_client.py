@@ -33,8 +33,9 @@ strip it) but ``result`` / ``error`` presence is.
 from __future__ import annotations
 
 import json  # noqa: F401 — imported to satisfy "pure stdlib" contract & for callers
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 
@@ -105,25 +106,19 @@ def _unwrap_result(method: str, response: Any) -> dict:
     """Validate a JSON-RPC envelope and return its ``result`` dict."""
 
     if not isinstance(response, dict):
-        raise MCPProtocolError(
-            f"MCP response for {method!r} is not a dict: {response!r}"
-        )
+        raise MCPProtocolError(f"MCP response for {method!r} is not a dict: {response!r}")
     if "error" in response:
         err = response["error"] or {}
         code = err.get("code", "?") if isinstance(err, dict) else "?"
         msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-        raise MCPProtocolError(
-            f"MCP server returned error for {method!r} (code={code}): {msg}"
-        )
+        raise MCPProtocolError(f"MCP server returned error for {method!r} (code={code}): {msg}")
     if "result" not in response:
         raise MCPProtocolError(
             f"MCP response for {method!r} missing 'result' and 'error': {response!r}"
         )
     result = response["result"]
     if not isinstance(result, dict):
-        raise MCPProtocolError(
-            f"MCP 'result' for {method!r} is not a dict: {result!r}"
-        )
+        raise MCPProtocolError(f"MCP 'result' for {method!r} is not a dict: {result!r}")
     return result
 
 
@@ -163,7 +158,7 @@ class MCPClient:
     # ------------------------------------------------------------------
     # low-level
     # ------------------------------------------------------------------
-    def _call(self, method: str, params: Optional[dict] = None) -> dict:
+    def _call(self, method: str, params: dict | None = None) -> dict:
         rid = self._next_id
         self._next_id += 1
         self.last_request_id = rid
@@ -206,15 +201,11 @@ class MCPClient:
         result = self._call("tools/list", {})
         raw = _require(result, "tools", "tools/list")
         if not isinstance(raw, list):
-            raise MCPProtocolError(
-                f"MCP tools/list 'tools' is not a list: {raw!r}"
-            )
+            raise MCPProtocolError(f"MCP tools/list 'tools' is not a list: {raw!r}")
         out: list[MCPToolSpec] = []
         for entry in raw:
             if not isinstance(entry, dict):
-                raise MCPProtocolError(
-                    f"MCP tools/list entry is not a dict: {entry!r}"
-                )
+                raise MCPProtocolError(f"MCP tools/list entry is not a dict: {entry!r}")
             name = _require(entry, "name", "tools/list")
             schema = _require(entry, "inputSchema", "tools/list")
             description = entry.get("description", "")
@@ -238,13 +229,13 @@ class MCPClient:
         )
         content = _require(result, "content", "tools/call")
         if not isinstance(content, list):
-            raise MCPProtocolError(
-                f"MCP tools/call 'content' is not a list: {content!r}"
-            )
+            raise MCPProtocolError(f"MCP tools/call 'content' is not a list: {content!r}")
         is_error = bool(result.get("isError", False))
         return MCPToolCallResult(
-            content=[dict(b) if isinstance(b, dict) else {"type": "text", "text": str(b)}
-                     for b in content],
+            content=[
+                dict(b) if isinstance(b, dict) else {"type": "text", "text": str(b)}
+                for b in content
+            ],
             is_error=is_error,
             tool_name=name,
         )
@@ -256,21 +247,15 @@ class MCPClient:
         result = self._call("resources/list", {})
         raw = _require(result, "resources", "resources/list")
         if not isinstance(raw, list):
-            raise MCPProtocolError(
-                f"MCP resources/list 'resources' is not a list: {raw!r}"
-            )
+            raise MCPProtocolError(f"MCP resources/list 'resources' is not a list: {raw!r}")
         out: list[MCPResource] = []
         for entry in raw:
             if not isinstance(entry, dict):
-                raise MCPProtocolError(
-                    f"MCP resources/list entry is not a dict: {entry!r}"
-                )
+                raise MCPProtocolError(f"MCP resources/list entry is not a dict: {entry!r}")
             uri = _require(entry, "uri", "resources/list")
             name = entry.get("name", str(uri))
             mime = entry.get("mimeType", "application/octet-stream")
-            out.append(
-                MCPResource(uri=str(uri), name=str(name), mime_type=str(mime))
-            )
+            out.append(MCPResource(uri=str(uri), name=str(name), mime_type=str(mime)))
         return out
 
     def read_resource(self, uri: str) -> str:
@@ -285,9 +270,7 @@ class MCPClient:
         parts: list[str] = []
         for block in contents:
             if not isinstance(block, dict):
-                raise MCPProtocolError(
-                    f"MCP resources/read content block is not a dict: {block!r}"
-                )
+                raise MCPProtocolError(f"MCP resources/read content block is not a dict: {block!r}")
             if "text" in block:
                 parts.append(str(block["text"]))
             elif "blob" in block:
@@ -306,22 +289,16 @@ class MCPClient:
         result = self._call("prompts/list", {})
         raw = _require(result, "prompts", "prompts/list")
         if not isinstance(raw, list):
-            raise MCPProtocolError(
-                f"MCP prompts/list 'prompts' is not a list: {raw!r}"
-            )
+            raise MCPProtocolError(f"MCP prompts/list 'prompts' is not a list: {raw!r}")
         out: list[MCPPrompt] = []
         for entry in raw:
             if not isinstance(entry, dict):
-                raise MCPProtocolError(
-                    f"MCP prompts/list entry is not a dict: {entry!r}"
-                )
+                raise MCPProtocolError(f"MCP prompts/list entry is not a dict: {entry!r}")
             name = _require(entry, "name", "prompts/list")
             description = entry.get("description", "")
             arguments = entry.get("arguments", []) or []
             if not isinstance(arguments, list):
-                raise MCPProtocolError(
-                    f"MCP prompts/list 'arguments' is not a list: {arguments!r}"
-                )
+                raise MCPProtocolError(f"MCP prompts/list 'arguments' is not a list: {arguments!r}")
             out.append(
                 MCPPrompt(
                     name=str(name),
@@ -342,15 +319,11 @@ class MCPClient:
         result = self._call("prompts/get", params)
         messages = _require(result, "messages", "prompts/get")
         if not isinstance(messages, list):
-            raise MCPProtocolError(
-                f"MCP prompts/get 'messages' is not a list: {messages!r}"
-            )
+            raise MCPProtocolError(f"MCP prompts/get 'messages' is not a list: {messages!r}")
         rendered: list[str] = []
         for msg in messages:
             if not isinstance(msg, dict):
-                raise MCPProtocolError(
-                    f"MCP prompts/get message is not a dict: {msg!r}"
-                )
+                raise MCPProtocolError(f"MCP prompts/get message is not a dict: {msg!r}")
             content = msg.get("content")
             role = msg.get("role", "user")
             if isinstance(content, dict) and "text" in content:
@@ -366,9 +339,7 @@ class MCPClient:
             elif isinstance(content, str):
                 rendered.append(f"{role}: {content}")
             else:
-                raise MCPProtocolError(
-                    f"MCP prompts/get message has unsupported content: {msg!r}"
-                )
+                raise MCPProtocolError(f"MCP prompts/get message has unsupported content: {msg!r}")
         return "\n".join(rendered)
 
 

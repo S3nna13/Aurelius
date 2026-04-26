@@ -1,12 +1,13 @@
 """Tests for secure_aggregation_v2 — privacy-preserving model aggregation."""
+
 from __future__ import annotations
 
 import torch
 
 from src.federation.secure_aggregation_v2 import (
     SecureAggregatorV2,
-    aggregate_with_clipping,
     add_clip_noise,
+    aggregate_with_clipping,
 )
 
 

@@ -14,7 +14,6 @@ from src.training.reward_function import (
     RewardSignal,
 )
 
-
 # ---------------------------------------------------------------------------
 # Signal / dataclass basics
 # ---------------------------------------------------------------------------
@@ -197,9 +196,7 @@ def test_format_forbidden_absent():
 
 
 def test_format_forbidden_overrides_required():
-    fn = FormatRewardFn(
-        required_patterns=[r"hello"], forbidden_patterns=[r"badword"]
-    )
+    fn = FormatRewardFn(required_patterns=[r"hello"], forbidden_patterns=[r"badword"])
     r = fn.score("hello and badword")
     assert r.score == pytest.approx(-0.5)
 
@@ -211,9 +208,7 @@ def test_format_empty_both():
 
 
 def test_format_breakdown_counts():
-    fn = FormatRewardFn(
-        required_patterns=[r"a", r"b"], forbidden_patterns=[r"xx"]
-    )
+    fn = FormatRewardFn(required_patterns=[r"a", r"b"], forbidden_patterns=[r"xx"])
     r = fn.score("a b")
     assert r.breakdown["required_hits"] == 2.0
     assert r.breakdown["forbidden_hits"] == 0.0

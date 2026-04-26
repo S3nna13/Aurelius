@@ -1,15 +1,15 @@
 """Tests for src/data/dataset_cartography.py."""
 
 import math
+
 import torch
-import pytest
 
 from src.data.dataset_cartography import (
     CartographyConfig,
-    SampleDynamics,
     CartographyTracker,
-    select_training_subset,
+    SampleDynamics,
     compute_forgetting_events,
+    select_training_subset,
 )
 
 # ---------------------------------------------------------------------------
@@ -37,6 +37,7 @@ def _make_tracker(n_samples: int = 20, n_epochs: int = 3) -> CartographyTracker:
 # 1. SampleDynamics.mean_confidence computes correctly
 # ---------------------------------------------------------------------------
 
+
 def test_sample_dynamics_mean_confidence():
     d = SampleDynamics(sample_idx=0, confidences=[0.2, 0.4, 0.6], correctness=[True, False, True])
     expected = (0.2 + 0.4 + 0.6) / 3
@@ -46,6 +47,7 @@ def test_sample_dynamics_mean_confidence():
 # ---------------------------------------------------------------------------
 # 2. SampleDynamics.variability returns std of confidences
 # ---------------------------------------------------------------------------
+
 
 def test_sample_dynamics_variability():
     confidences = [0.2, 0.4, 0.6]
@@ -59,6 +61,7 @@ def test_sample_dynamics_variability():
 # 3. SampleDynamics.region = "easy-to-learn" for high conf / low var
 # ---------------------------------------------------------------------------
 
+
 def test_sample_dynamics_region_easy_to_learn():
     # high confidence (> 0.7), low variability (<= 0.2)
     d = SampleDynamics(sample_idx=0, confidences=[0.85, 0.88, 0.87], correctness=[True, True, True])
@@ -71,9 +74,12 @@ def test_sample_dynamics_region_easy_to_learn():
 # 4. SampleDynamics.region = "ambiguous" for high variability
 # ---------------------------------------------------------------------------
 
+
 def test_sample_dynamics_region_ambiguous():
     # alternating between very high and very low confidence → high variability
-    d = SampleDynamics(sample_idx=0, confidences=[0.05, 0.95, 0.05, 0.95], correctness=[False, True, False, True])
+    d = SampleDynamics(
+        sample_idx=0, confidences=[0.05, 0.95, 0.05, 0.95], correctness=[False, True, False, True]
+    )
     assert d.variability > 0.2
     assert d.region == "ambiguous"
 
@@ -82,9 +88,12 @@ def test_sample_dynamics_region_ambiguous():
 # 5. SampleDynamics.region = "hard-to-learn" for low conf / low var
 # ---------------------------------------------------------------------------
 
+
 def test_sample_dynamics_region_hard_to_learn():
     # low confidence (<= 0.7), low variability (<= 0.2)
-    d = SampleDynamics(sample_idx=0, confidences=[0.1, 0.12, 0.11], correctness=[False, False, False])
+    d = SampleDynamics(
+        sample_idx=0, confidences=[0.1, 0.12, 0.11], correctness=[False, False, False]
+    )
     assert d.mean_confidence <= 0.7
     assert d.variability <= 0.2
     assert d.region == "hard-to-learn"
@@ -93,6 +102,7 @@ def test_sample_dynamics_region_hard_to_learn():
 # ---------------------------------------------------------------------------
 # 6. CartographyTracker.record_epoch runs without error
 # ---------------------------------------------------------------------------
+
 
 def test_cartography_tracker_record_epoch_no_error():
     torch.manual_seed(0)
@@ -106,6 +116,7 @@ def test_cartography_tracker_record_epoch_no_error():
 # ---------------------------------------------------------------------------
 # 7. After record_epoch, get_dynamics returns SampleDynamics
 # ---------------------------------------------------------------------------
+
 
 def test_cartography_tracker_get_dynamics_returns_sample_dynamics():
     torch.manual_seed(1)
@@ -126,6 +137,7 @@ def test_cartography_tracker_get_dynamics_returns_sample_dynamics():
 # 8. get_all_dynamics returns list of SampleDynamics
 # ---------------------------------------------------------------------------
 
+
 def test_cartography_tracker_get_all_dynamics():
     tracker = _make_tracker(n_samples=10, n_epochs=2)
     all_dyn = tracker.get_all_dynamics()
@@ -137,6 +149,7 @@ def test_cartography_tracker_get_all_dynamics():
 # ---------------------------------------------------------------------------
 # 9. select_by_region returns subset of indices
 # ---------------------------------------------------------------------------
+
 
 def test_cartography_tracker_select_by_region():
     tracker = _make_tracker(n_samples=30, n_epochs=3)
@@ -151,6 +164,7 @@ def test_cartography_tracker_select_by_region():
 # ---------------------------------------------------------------------------
 # 10. cartography_summary returns dict with all 3 regions
 # ---------------------------------------------------------------------------
+
 
 def test_cartography_tracker_cartography_summary_keys():
     tracker = _make_tracker(n_samples=20, n_epochs=3)
@@ -170,6 +184,7 @@ def test_cartography_tracker_cartography_summary_counts():
 # 11. select_training_subset returns list of indices
 # ---------------------------------------------------------------------------
 
+
 def test_select_training_subset_returns_list():
     tracker = _make_tracker(n_samples=30, n_epochs=3)
     result = select_training_subset(tracker, strategy="ambiguous", fraction=0.5)
@@ -181,6 +196,7 @@ def test_select_training_subset_returns_list():
 # ---------------------------------------------------------------------------
 # 12. select_training_subset returns <= fraction * total count
 # ---------------------------------------------------------------------------
+
 
 def test_select_training_subset_respects_fraction():
     tracker = _make_tracker(n_samples=30, n_epochs=3)
@@ -197,17 +213,18 @@ def test_select_training_subset_respects_fraction():
 # 13. compute_forgetting_events returns dict with correct counts
 # ---------------------------------------------------------------------------
 
+
 def test_compute_forgetting_events_counts():
     # Manually craft dynamics with known forgetting events
     d0 = SampleDynamics(
         sample_idx=0,
         confidences=[0.9, 0.1, 0.9],
-        correctness=[True, False, True],   # 1 forgetting event (T→F)
+        correctness=[True, False, True],  # 1 forgetting event (T→F)
     )
     d1 = SampleDynamics(
         sample_idx=1,
         confidences=[0.9, 0.9, 0.9],
-        correctness=[True, True, True],    # 0 forgetting events
+        correctness=[True, True, True],  # 0 forgetting events
     )
     d2 = SampleDynamics(
         sample_idx=2,
@@ -233,11 +250,14 @@ def test_compute_forgetting_events_keys_match_sample_idx():
 # SampleDynamics edge cases
 # ---------------------------------------------------------------------------
 
+
 def test_sample_dynamics_single_epoch_variability_zero():
     d = SampleDynamics(sample_idx=0, confidences=[0.5], correctness=[True])
     assert d.variability == 0.0
 
 
 def test_sample_dynamics_correctness_rate():
-    d = SampleDynamics(sample_idx=0, confidences=[0.5, 0.5, 0.5, 0.5], correctness=[True, True, False, True])
+    d = SampleDynamics(
+        sample_idx=0, confidences=[0.5, 0.5, 0.5, 0.5], correctness=[True, True, False, True]
+    )
     assert abs(d.correctness_rate - 0.75) < 1e-6

@@ -1,19 +1,18 @@
 """Tests for src/alignment/reinforce_trainer.py."""
 
-import pytest
 import torch
 import torch.optim as optim
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.alignment.reinforce_trainer import (
     ReinforceConfig,
+    ReinforceTrainer,
+    compute_kl_penalty,
     compute_reinforce_loss,
     compute_rloo_baseline,
-    compute_kl_penalty,
     sample_rollout,
-    ReinforceTrainer,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny model config
@@ -46,6 +45,7 @@ def _make_prompt():
 # 1. ReinforceConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_reinforce_config_defaults():
     cfg = ReinforceConfig()
     assert cfg.n_samples == 4
@@ -60,6 +60,7 @@ def test_reinforce_config_defaults():
 # 2. compute_reinforce_loss — returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_compute_reinforce_loss_shape():
     B, T = 4, 8
     log_probs = torch.randn(B, T)
@@ -71,6 +72,7 @@ def test_compute_reinforce_loss_shape():
 # ---------------------------------------------------------------------------
 # 3. compute_reinforce_loss — no baseline correctness
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reinforce_loss_no_baseline():
     B, T = 3, 5
@@ -87,6 +89,7 @@ def test_compute_reinforce_loss_no_baseline():
 # 4. compute_reinforce_loss — baseline subtracted from rewards
 # ---------------------------------------------------------------------------
 
+
 def test_compute_reinforce_loss_with_baseline():
     B, T = 4, 6
     log_probs = torch.ones(B, T) * -1.0
@@ -101,6 +104,7 @@ def test_compute_reinforce_loss_with_baseline():
 # ---------------------------------------------------------------------------
 # 5. compute_rloo_baseline — baseline[i] = mean of others
 # ---------------------------------------------------------------------------
+
 
 def test_compute_rloo_baseline_mean():
     rewards = torch.tensor([1.0, 2.0, 3.0, 4.0])
@@ -120,6 +124,7 @@ def test_compute_rloo_baseline_mean():
 # 6. compute_rloo_baseline — G=1 returns zeros
 # ---------------------------------------------------------------------------
 
+
 def test_compute_rloo_baseline_g1():
     rewards = torch.tensor([5.0])
     baseline = compute_rloo_baseline(rewards)
@@ -130,6 +135,7 @@ def test_compute_rloo_baseline_g1():
 # ---------------------------------------------------------------------------
 # 7. compute_kl_penalty — shape (B, T)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_kl_penalty_shape():
     B, T = 3, 10
@@ -143,6 +149,7 @@ def test_compute_kl_penalty_shape():
 # 8. compute_kl_penalty — same log_probs gives zero KL
 # ---------------------------------------------------------------------------
 
+
 def test_compute_kl_penalty_zero_for_same():
     B, T = 4, 8
     log_probs = torch.randn(B, T)
@@ -154,19 +161,25 @@ def test_compute_kl_penalty_zero_for_same():
 # 9. sample_rollout — correct output shapes
 # ---------------------------------------------------------------------------
 
+
 def test_sample_rollout_shapes():
     model = _make_model()
     model.train(False)
     prompt = _make_prompt()
     with torch.no_grad():
         gen_ids, log_probs = sample_rollout(model, prompt, MAX_NEW_TOKENS)
-    assert gen_ids.shape == (1, MAX_NEW_TOKENS), f"Expected (1, {MAX_NEW_TOKENS}), got {gen_ids.shape}"
-    assert log_probs.shape == (1, MAX_NEW_TOKENS), f"Expected (1, {MAX_NEW_TOKENS}), got {log_probs.shape}"
+    assert gen_ids.shape == (1, MAX_NEW_TOKENS), (
+        f"Expected (1, {MAX_NEW_TOKENS}), got {gen_ids.shape}"
+    )
+    assert log_probs.shape == (1, MAX_NEW_TOKENS), (
+        f"Expected (1, {MAX_NEW_TOKENS}), got {log_probs.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. ReinforceTrainer.train_step — returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_reinforce_trainer_train_step_keys():
     policy = _make_model()
@@ -174,7 +187,8 @@ def test_reinforce_trainer_train_step_keys():
     for p in ref.parameters():
         p.requires_grad_(False)
 
-    reward_fn = lambda tokens: 1.0
+    def reward_fn(tokens):
+        return 1.0
 
     cfg = ReinforceConfig(
         n_samples=2,
@@ -196,6 +210,7 @@ def test_reinforce_trainer_train_step_keys():
 # 11. ReinforceTrainer.train_step — loss is nonzero
 # ---------------------------------------------------------------------------
 
+
 def test_reinforce_trainer_train_step_loss_nonzero():
     policy = _make_model()
     ref = _make_model()
@@ -203,8 +218,8 @@ def test_reinforce_trainer_train_step_loss_nonzero():
         p.requires_grad_(False)
 
     # Use a non-constant reward so advantages differ across samples
-    import random
     call_count = [0]
+
     def varying_reward(tokens):
         call_count[0] += 1
         return float(call_count[0])

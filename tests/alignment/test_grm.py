@@ -2,17 +2,18 @@
 
 Covers all 12 required scenarios from the spec plus additional edge cases.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.alignment.grm import DIMENSIONS, GRMConfig, GenerativeRewardModel
-
+from src.alignment.grm import DIMENSIONS, GenerativeRewardModel, GRMConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform_scores(value: float = 0.5) -> dict:
     return {d: value for d in DIMENSIONS}
@@ -25,6 +26,7 @@ def _make_grm(**kw) -> GenerativeRewardModel:
 # ---------------------------------------------------------------------------
 # 1. Output shape [B] for batch inputs
 # ---------------------------------------------------------------------------
+
 
 def test_output_shape_scalar():
     """score() returns a scalar tensor (0-dim)."""
@@ -47,6 +49,7 @@ def test_output_shape_tensor_inputs():
 # 2. Output range [0, 1] on normal inputs
 # ---------------------------------------------------------------------------
 
+
 def test_output_range_normal():
     grm = GenerativeRewardModel()
     result = grm.score(_uniform_scores(0.75))
@@ -63,6 +66,7 @@ def test_output_range_extreme_valid():
 # 3. Weights normalised: custom weights that don't sum to 1 → valid output
 # ---------------------------------------------------------------------------
 
+
 def test_weights_normalised_arbitrary_sum():
     config = GRMConfig(weights={d: 10.0 for d in DIMENSIONS})
     grm = GenerativeRewardModel(config)
@@ -72,12 +76,12 @@ def test_weights_normalised_arbitrary_sum():
 
 
 def test_weights_normalised_asymmetric():
-    config = GRMConfig(weights={"helpfulness": 3.0, "adherence": 1.0,
-                                "relevance": 0.0, "detail": 0.0})
+    config = GRMConfig(
+        weights={"helpfulness": 3.0, "adherence": 1.0, "relevance": 0.0, "detail": 0.0}
+    )
     grm = GenerativeRewardModel(config)
     # normalised: helpfulness=0.75, adherence=0.25
-    scores = {"helpfulness": 1.0, "adherence": 0.0,
-              "relevance": 0.5, "detail": 0.5}
+    scores = {"helpfulness": 1.0, "adherence": 0.0, "relevance": 0.5, "detail": 0.5}
     result = grm.score(scores)
     assert result.item() == pytest.approx(0.75, abs=1e-5)
 
@@ -85,6 +89,7 @@ def test_weights_normalised_asymmetric():
 # ---------------------------------------------------------------------------
 # 4. mode="rule" with rule_reward → returns rule_reward unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_mode_rule_with_reward_float():
     grm = _make_grm(mode="rule")
@@ -103,6 +108,7 @@ def test_mode_rule_with_reward_tensor():
 # 5. mode="rule" without rule_reward → falls through to GRM scoring
 # ---------------------------------------------------------------------------
 
+
 def test_mode_rule_no_rule_reward_fallback():
     grm = _make_grm(mode="rule")
     # No rule_reward → GRM path is used
@@ -113,6 +119,7 @@ def test_mode_rule_no_rule_reward_fallback():
 # ---------------------------------------------------------------------------
 # 6. Adversarial: all dim_scores = zero tensors → output finite
 # ---------------------------------------------------------------------------
+
 
 def test_adversarial_all_zero():
     grm = GenerativeRewardModel()
@@ -125,6 +132,7 @@ def test_adversarial_all_zero():
 # ---------------------------------------------------------------------------
 # 7. Adversarial: dim_scores out of [0, 1] → clamped output
 # ---------------------------------------------------------------------------
+
 
 def test_adversarial_scores_above_one():
     grm = GenerativeRewardModel()
@@ -140,8 +148,7 @@ def test_adversarial_scores_below_zero():
 
 def test_adversarial_mixed_out_of_range():
     grm = GenerativeRewardModel()
-    scores = {"helpfulness": 2.0, "adherence": -1.0,
-              "relevance": 0.5, "detail": 0.5}
+    scores = {"helpfulness": 2.0, "adherence": -1.0, "relevance": 0.5, "detail": 0.5}
     result = grm.score(scores)
     assert 0.0 <= result.item() <= 1.0
 
@@ -149,6 +156,7 @@ def test_adversarial_mixed_out_of_range():
 # ---------------------------------------------------------------------------
 # 8. Identical candidates → same score
 # ---------------------------------------------------------------------------
+
 
 def test_identical_candidates_same_score():
     grm = GenerativeRewardModel()
@@ -162,10 +170,12 @@ def test_identical_candidates_same_score():
 # 9. single_dim: only one dimension provided → weighted correctly
 # ---------------------------------------------------------------------------
 
+
 def test_single_dim_only():
     # Give full weight to helpfulness, zero to others
-    config = GRMConfig(weights={"helpfulness": 1.0, "adherence": 0.0,
-                                "relevance": 0.0, "detail": 0.0})
+    config = GRMConfig(
+        weights={"helpfulness": 1.0, "adherence": 0.0, "relevance": 0.0, "detail": 0.0}
+    )
     grm = GenerativeRewardModel(config)
     result = grm.score({"helpfulness": 0.9})
     assert result.item() == pytest.approx(0.9, abs=1e-5)
@@ -182,6 +192,7 @@ def test_single_dim_equal_weights():
 # 10. missing_dim: dimension in weights but not in dim_scores → 0 contribution
 # ---------------------------------------------------------------------------
 
+
 def test_missing_dim_contributes_zero():
     grm = GenerativeRewardModel()  # weights on all 4 dims
     # Only provide 3 dims; "detail" is missing
@@ -195,6 +206,7 @@ def test_missing_dim_contributes_zero():
 # 11. mode="grm" ignores rule_reward
 # ---------------------------------------------------------------------------
 
+
 def test_mode_grm_ignores_rule_reward():
     grm = _make_grm(mode="grm")
     result_no_rr = grm.score(_uniform_scores(0.5))
@@ -206,9 +218,9 @@ def test_mode_grm_ignores_rule_reward():
 # 12. Determinism: same inputs → same output
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     grm = GenerativeRewardModel()
-    scores = {"helpfulness": 0.7, "adherence": 0.8,
-              "relevance": 0.6, "detail": 0.9}
+    scores = {"helpfulness": 0.7, "adherence": 0.8, "relevance": 0.6, "detail": 0.9}
     results = [grm.score(scores).item() for _ in range(10)]
     assert all(r == pytest.approx(results[0]) for r in results)

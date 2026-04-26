@@ -1,4 +1,5 @@
-"""Multi-head Latent Attention (MLA): compress KV into low-rank latent for efficient KV cache (DeepSeek-V2)."""
+"""Multi-head Latent Attention (MLA): compress KV into low-rank latent for efficient KV cache (DeepSeek-V2)."""  # noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -71,7 +72,7 @@ class MultiHeadLatentAttention(nn.Module):
         self.o_proj = nn.Linear(config.n_heads * config.head_dim, config.d_model, bias=False)
 
         self.attn_dropout = nn.Dropout(config.dropout)
-        self.scale = config.head_dim ** -0.5
+        self.scale = config.head_dim**-0.5
 
     def forward(
         self,
@@ -112,7 +113,9 @@ class MultiHeadLatentAttention(nn.Module):
         is_causal = mask is None and past_kv is None
 
         out = F.scaled_dot_product_attention(
-            Q, K, V,
+            Q,
+            K,
+            V,
             attn_mask=mask,
             dropout_p=self.config.dropout if self.training else 0.0,
             is_causal=is_causal,

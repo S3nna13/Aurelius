@@ -1,8 +1,6 @@
 """Tests for src/model/s4_ssm.py -- S4D Structured State Space Model."""
 
-import pytest
 import torch
-
 from aurelius.model.s4_ssm import S4DBlock, S4DKernel, S4DLayer
 
 # -- default dims for all tests ------------------------------------------------
@@ -92,9 +90,9 @@ def test_layer_causality():
 
     y_perturbed = layer(u_perturbed)
 
-    assert torch.allclose(
-        y_orig[0, check_pos, :], y_perturbed[0, check_pos, :], atol=1e-5
-    ), "Layer is not causal: output at position t changed when future input was perturbed"
+    assert torch.allclose(y_orig[0, check_pos, :], y_perturbed[0, check_pos, :], atol=1e-5), (
+        "Layer is not causal: output at position t changed when future input was perturbed"
+    )
 
 
 def test_layer_gradient_flows():

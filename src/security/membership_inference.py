@@ -8,7 +8,6 @@ for determining whether a sample was part of the training set.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -104,9 +103,9 @@ class ThresholdMIA:
     def predict_batch(
         self,
         model: nn.Module,
-        input_ids_list: List[torch.Tensor],
-        labels_list: List[torch.Tensor],
-    ) -> List[bool]:
+        input_ids_list: list[torch.Tensor],
+        labels_list: list[torch.Tensor],
+    ) -> list[bool]:
         """Predict membership for a list of samples.
 
         Args:
@@ -118,15 +117,14 @@ class ThresholdMIA:
             List of bool predictions, one per sample.
         """
         return [
-            self.predict_member(model, ids, lbls)
-            for ids, lbls in zip(input_ids_list, labels_list)
+            self.predict_member(model, ids, lbls) for ids, lbls in zip(input_ids_list, labels_list)
         ]
 
     def attack_accuracy(
         self,
         model: nn.Module,
-        member_samples: List[Tuple[torch.Tensor, torch.Tensor]],
-        nonmember_samples: List[Tuple[torch.Tensor, torch.Tensor]],
+        member_samples: list[tuple[torch.Tensor, torch.Tensor]],
+        nonmember_samples: list[tuple[torch.Tensor, torch.Tensor]],
     ) -> float:
         """Compute attack accuracy assuming members should be predicted True.
 

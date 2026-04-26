@@ -5,29 +5,31 @@ Improvements over basic GRPO (grpo.py):
 - Clip-higher variant: asymmetric PPO clipping (clip_high > clip_low)
 - Reference-free mode: no KL penalty, no ref model required
 """
+
 from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-from typing import Callable
 
 
 @dataclass
 class GRPOv2Config:
-    group_size: int = 8              # G: completions per question
-    clip_eps_low: float = 0.2        # lower clip bound: ratio >= 1 - clip_eps_low
-    clip_eps_high: float = 0.2       # upper clip bound: ratio <= 1 + clip_eps_high
-    beta: float = 0.04               # KL penalty weight
-    use_dr_grpo: bool = True         # Dr. GRPO: unbiased std (ddof=1)
+    group_size: int = 8  # G: completions per question
+    clip_eps_low: float = 0.2  # lower clip bound: ratio >= 1 - clip_eps_low
+    clip_eps_high: float = 0.2  # upper clip bound: ratio <= 1 + clip_eps_high
+    beta: float = 0.04  # KL penalty weight
+    use_dr_grpo: bool = True  # Dr. GRPO: unbiased std (ddof=1)
     use_reference_free: bool = False  # skip KL penalty entirely
-    min_group_for_std: int = 2       # minimum G for std normalization
-    advantage_eps: float = 1e-8      # numerical stability in denominator
+    min_group_for_std: int = 2  # minimum G for std normalization
+    advantage_eps: float = 1e-8  # numerical stability in denominator
 
 
 def compute_grpo_advantages(
-    rewards: torch.Tensor,   # (G,) rewards for one question's completions
+    rewards: torch.Tensor,  # (G,) rewards for one question's completions
     config: GRPOv2Config,
 ) -> torch.Tensor:
     """Compute normalized advantages for one group.
@@ -62,9 +64,9 @@ def compute_grpo_advantages(
 
 
 def grpo_loss(
-    log_probs: torch.Tensor,             # (G,) policy log probs per completion
+    log_probs: torch.Tensor,  # (G,) policy log probs per completion
     ref_log_probs: torch.Tensor | None,  # (G,) reference log probs (None = reference-free)
-    rewards: torch.Tensor,               # (G,) rewards
+    rewards: torch.Tensor,  # (G,) rewards
     config: GRPOv2Config,
 ) -> tuple[torch.Tensor, dict]:
     """Compute GRPO loss for one group.
@@ -183,7 +185,7 @@ class GRPOv2Trainer:
                     max_new_tokens=max_new,
                     temperature=temperature,
                 )
-                completion_ids = full_ids[0, len(prompt_ids):].tolist()
+                completion_ids = full_ids[0, len(prompt_ids) :].tolist()
                 completions.append(completion_ids)
 
         return completions
@@ -208,7 +210,7 @@ class GRPOv2Trainer:
 
         _, logits, _ = model(input_tensor)
         lp = F.log_softmax(logits[:, :-1, :], dim=-1)  # (1, L-1, V)
-        targets = input_tensor[:, 1:]                    # (1, L-1)
+        targets = input_tensor[:, 1:]  # (1, L-1)
         token_lp = lp.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # (1, L-1)
 
         completion_start = len(prompt_ids) - 1
@@ -228,9 +230,7 @@ class GRPOv2Trainer:
             prompt_ids = self.tokenizer_encode(prompt)
 
             completion_id_lists = self.generate_completions(prompt_ids, n=G)
-            completion_strings = [
-                self.tokenizer_decode(ids) for ids in completion_id_lists
-            ]
+            completion_strings = [self.tokenizer_decode(ids) for ids in completion_id_lists]
 
             rewards_list = self.score_completions(prompt, completion_strings)
             rewards = torch.tensor(rewards_list, dtype=torch.float32)

@@ -8,29 +8,27 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
-import torch.nn as nn
 
 from src.model.token_merging_v2 import (
     BipartiteSoftMatching,
     TokenUnmerger,
     ToMeAttention,
-    ToMeTransformerBlock,
-    ToMeModel,
     ToMeEfficiencyAnalyzer,
+    ToMeModel,
+    ToMeTransformerBlock,
 )
 
 # ---------------------------------------------------------------------------
 # Shared tiny config
 # ---------------------------------------------------------------------------
-B = 2        # batch
-T = 8        # seq_len
-D = 16       # d_model
-H = 2        # n_heads
-R = 2        # r (pairs merged per layer)
-NL = 2       # n_layers
-V = 16       # vocab_size
+B = 2  # batch
+T = 8  # seq_len
+D = 16  # d_model
+H = 2  # n_heads
+R = 2  # r (pairs merged per layer)
+NL = 2  # n_layers
+V = 16  # vocab_size
 
 
 def _rand(B, T, D, requires_grad=False):
@@ -47,9 +45,7 @@ def test_match_indices_shape():
     x = _rand(B, T, D)
     bsm = BipartiteSoftMatching(R)
     merge_indices, unmerge_weights = bsm.match(x)
-    assert merge_indices.shape == (B, R, 2), (
-        f"Expected ({B}, {R}, 2), got {merge_indices.shape}"
-    )
+    assert merge_indices.shape == (B, R, 2), f"Expected ({B}, {R}, 2), got {merge_indices.shape}"
 
 
 # ===========================================================================
@@ -75,9 +71,7 @@ def test_merge_output_shape():
     bsm = BipartiteSoftMatching(R)
     merge_indices, _ = bsm.match(x)
     merged = bsm.merge(x, merge_indices)
-    assert merged.shape == (B, T - R, D), (
-        f"Expected ({B}, {T-R}, {D}), got {merged.shape}"
-    )
+    assert merged.shape == (B, T - R, D), f"Expected ({B}, {T - R}, {D}), got {merged.shape}"
 
 
 # ===========================================================================
@@ -121,9 +115,7 @@ def test_unmerger_output_shape():
 
     unmerger = TokenUnmerger()
     restored = unmerger.unmerge(merged, merge_indices, T, unmerge_weights)
-    assert restored.shape == (B, T, D), (
-        f"Expected ({B}, {T}, {D}), got {restored.shape}"
-    )
+    assert restored.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {restored.shape}"
 
 
 # ===========================================================================
@@ -134,7 +126,7 @@ def test_tome_attention_output_shape_and_compression():
     attn = ToMeAttention(D, H, r=R)
     out, info = attn(x)
     assert out.shape == (B, T, D), f"Expected ({B},{T},{D}), got {out.shape}"
-    assert info['compression_ratio'] < 1.0, (
+    assert info["compression_ratio"] < 1.0, (
         f"compression_ratio should be < 1 when r>0, got {info['compression_ratio']}"
     )
 
@@ -148,8 +140,8 @@ def test_tome_attention_r0_no_merging():
     attn = ToMeAttention(D, H, r=0)
     out, info = attn(x)
     assert out.shape == (B, T, D)
-    assert info['compression_ratio'] == 1.0
-    assert info['original_T'] == info['merged_T'] == T
+    assert info["compression_ratio"] == 1.0
+    assert info["original_T"] == info["merged_T"] == T
 
 
 # ===========================================================================
@@ -196,9 +188,7 @@ def test_set_r_updates_all_blocks():
     new_r = 1
     model.set_r(new_r)
     for i, block in enumerate(model.blocks):
-        assert block.attn.r == new_r, (
-            f"Block {i} has r={block.attn.r}, expected {new_r}"
-        )
+        assert block.attn.r == new_r, f"Block {i} has r={block.attn.r}, expected {new_r}"
     # Verify forward still works after changing r
     ids = torch.randint(0, V, (B, T))
     logits, _ = model(ids)
@@ -227,7 +217,7 @@ def test_compression_per_layer_shape_and_monotone():
     # Non-increasing
     for i in range(1, len(lengths)):
         assert lengths[i] <= lengths[i - 1], (
-            f"lengths[{i}]={lengths[i]} > lengths[{i-1}]={lengths[i-1]}"
+            f"lengths[{i}]={lengths[i]} > lengths[{i - 1}]={lengths[i - 1]}"
         )
     # Final >= T - r*n_layers (could be clamped to 1)
     expected_min = max(1, T0 - r * n)
@@ -242,9 +232,7 @@ def test_compression_per_layer_shape_and_monotone():
 def test_flop_reduction_range():
     analyzer = ToMeEfficiencyAnalyzer()
     reduction = analyzer.flop_reduction(T=32, r=4, d_model=64, n_heads=4)
-    assert 0.0 < reduction < 1.0, (
-        f"flop_reduction should be in (0,1), got {reduction}"
-    )
+    assert 0.0 < reduction < 1.0, f"flop_reduction should be in (0,1), got {reduction}"
 
 
 # ===========================================================================

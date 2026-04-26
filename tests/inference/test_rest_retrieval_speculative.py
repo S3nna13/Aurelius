@@ -3,11 +3,9 @@
 Covers RESTDatastore, RESTDecoder, and RESTAccelerator in accordance with the
 test-rigor floor specified in the implementation spec (15 tests).
 """
+
 from __future__ import annotations
 
-from typing import List
-
-import pytest
 import torch
 from torch import Tensor
 
@@ -17,25 +15,27 @@ from src.inference.rest_retrieval_speculative import (
     RESTDecoder,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_target_probs_fn(vocab_size: int, fixed_next: List[int]):
+
+def make_target_probs_fn(vocab_size: int, fixed_next: list[int]):
     """Return a target_probs_fn that always predicts *fixed_next* greedily.
 
     ``fixed_next[i]`` is the argmax token at position i (0-indexed over the
     full sequence length passed to the callable).  If the sequence is longer
     than fixed_next, we cycle.
     """
-    def _fn(token_ids: List[int]) -> Tensor:
+
+    def _fn(token_ids: list[int]) -> Tensor:
         T = len(token_ids)
         probs = torch.zeros(T, vocab_size)
         for i in range(T):
             tok = fixed_next[i % len(fixed_next)]
             probs[i, tok] = 1.0
         return probs
+
     return _fn
 
 
@@ -43,8 +43,8 @@ def make_target_probs_fn(vocab_size: int, fixed_next: List[int]):
 # RESTDatastore tests
 # ---------------------------------------------------------------------------
 
-class TestRESTDatastore:
 
+class TestRESTDatastore:
     def test_add_and_retrieve_correct_next_token(self):
         """Test 1: add_document + retrieve returns correct next token."""
         ds = RESTDatastore(n=2)
@@ -108,8 +108,8 @@ class TestRESTDatastore:
 # RESTDecoder tests
 # ---------------------------------------------------------------------------
 
-class TestRESTDecoder:
 
+class TestRESTDecoder:
     def _make_decoder_with_docs(self, docs, n=2, gamma=4):
         ds = RESTDatastore(n=n)
         for doc in docs:
@@ -118,9 +118,7 @@ class TestRESTDecoder:
 
     def test_draft_length_at_most_gamma(self):
         """Test 4: draft returns at most γ tokens."""
-        dec = self._make_decoder_with_docs(
-            [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]], gamma=4
-        )
+        dec = self._make_decoder_with_docs([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]], gamma=4)
         result = dec.draft([1, 2])
         assert len(result) <= 4
 
@@ -221,7 +219,7 @@ class TestRESTDecoder:
         target_fn = make_target_probs_fn(vocab, [0, 10, 11, 12, 13, 99])
         accepted, n_accepted = dec.verify(context, draft, target_fn)
         assert n_accepted == gamma
-        assert accepted[-1] == 99   # bonus token present
+        assert accepted[-1] == 99  # bonus token present
         assert len(accepted) == gamma + 1
 
 
@@ -229,8 +227,8 @@ class TestRESTDecoder:
 # RESTAccelerator tests
 # ---------------------------------------------------------------------------
 
-class TestRESTAccelerator:
 
+class TestRESTAccelerator:
     def test_step_returns_non_empty_token_list(self):
         """Test 14: RESTAccelerator.step always returns at least one new token."""
         ds = RESTDatastore(n=2)
@@ -247,7 +245,7 @@ class TestRESTAccelerator:
 
     def test_step_with_empty_datastore_returns_bonus_token(self):
         """Accelerator with empty datastore still produces one bonus token."""
-        ds = RESTDatastore(n=2)   # empty, no documents
+        ds = RESTDatastore(n=2)  # empty, no documents
         accel = RESTAccelerator(datastore=ds, gamma=4, top_k=5)
         vocab = 50
         context = [5, 6]

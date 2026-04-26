@@ -153,9 +153,7 @@ def test_show_known_family_returns_zero():
 
 def test_variants_lists_base_1_395b():
     buf = io.StringIO()
-    rc = fc.handle_family_variants(
-        _parse(["family", "variants", "aurelius"]), buf
-    )
+    rc = fc.handle_family_variants(_parse(["family", "variants", "aurelius"]), buf)
     assert rc == 0
     payload = json.loads(buf.getvalue())
     assert "base-1.395b" in payload["variants"]
@@ -163,17 +161,13 @@ def test_variants_lists_base_1_395b():
 
 def test_variants_unknown_family_nonzero():
     buf = io.StringIO()
-    rc = fc.handle_family_variants(
-        _parse(["family", "variants", "nosuch"]), buf
-    )
+    rc = fc.handle_family_variants(_parse(["family", "variants", "nosuch"]), buf)
     assert rc == 1
 
 
 def test_manifest_outputs_valid_json_roundtrip():
     buf = io.StringIO()
-    rc = fc.handle_family_manifest(
-        _parse(["family", "manifest", "aurelius/base-1.395b"]), buf
-    )
+    rc = fc.handle_family_manifest(_parse(["family", "manifest", "aurelius/base-1.395b"]), buf)
     assert rc == 0
     payload = json.loads(buf.getvalue())
     # JSON round-trip stability
@@ -184,9 +178,7 @@ def test_manifest_outputs_valid_json_roundtrip():
 
 def test_manifest_unknown_variant_nonzero():
     buf = io.StringIO()
-    rc = fc.handle_family_manifest(
-        _parse(["family", "manifest", "aurelius/nope"]), buf
-    )
+    rc = fc.handle_family_manifest(_parse(["family", "manifest", "aurelius/nope"]), buf)
     assert rc == 1
 
 

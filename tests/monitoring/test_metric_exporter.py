@@ -3,11 +3,11 @@ from __future__ import annotations
 from src.monitoring.metric_exporter import (
     METRICS_EXPORTER,
     MetricExporter,
+    _escape_label,
     _fmt_counter,
     _fmt_gauge,
     _fmt_histogram,
     _fmt_labels,
-    _escape_label,
     handle_metrics,
 )
 from src.monitoring.metrics_collector import METRICS_COLLECTOR, MetricType
@@ -71,12 +71,12 @@ class TestFormatHistogram:
 
     def test_has_bucket_lines(self):
         lines = _fmt_histogram("latency_s", [0.1, 0.2], {})
-        buckets = [l for l in lines if "_bucket" in l]
+        buckets = [line for line in lines if "_bucket" in line]
         assert len(buckets) > 0
 
     def test_inf_bucket_present(self):
         lines = _fmt_histogram("x", [100.0], {})
-        inf_line = [l for l in lines if 'le="+Inf"' in l]
+        inf_line = [line for line in lines if 'le="+Inf"' in line]
         assert len(inf_line) == 1
 
     def test_count_and_sum(self):
@@ -140,6 +140,7 @@ class TestMetricExporter:
 
     def test_empty_exporter(self):
         from src.monitoring.metrics_collector import MetricsCollector
+
         empty = MetricExporter(collector=MetricsCollector())
         assert empty.generate() == ""
 

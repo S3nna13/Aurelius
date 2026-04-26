@@ -10,20 +10,19 @@ Verifies that:
 from __future__ import annotations
 
 import torch
-import pytest
 
 import src.serving as serving
+from src.model.config import AureliusConfig
 from src.serving.structured_output_decoder import (
+    STRUCTURED_OUTPUT_REGISTRY,
     GrammarConstrainedDecoder,
     StructuredOutputDecoder,
-    STRUCTURED_OUTPUT_REGISTRY,
 )
-from src.model.config import AureliusConfig
-
 
 # ---------------------------------------------------------------------------
 # Config-driven construction
 # ---------------------------------------------------------------------------
+
 
 def _make_decoder_from_config(
     decoder_type: str = "json_schema",
@@ -55,9 +54,11 @@ def _make_decoder_from_config(
 # 1. Registry / serving package exposure
 # ---------------------------------------------------------------------------
 
+
 def test_structured_output_registry_in_serving_module():
     """STRUCTURED_OUTPUT_REGISTRY is importable from the serving sub-package."""
     from src.serving.structured_output_decoder import STRUCTURED_OUTPUT_REGISTRY as reg
+
     assert "json_schema" in reg
     assert "grammar" in reg
 
@@ -72,6 +73,7 @@ def test_serving_init_exposes_registries():
 # ---------------------------------------------------------------------------
 # 2. Config integration — AureliusConfig has structured-output fields
 # ---------------------------------------------------------------------------
+
 
 def test_aurelius_config_has_structured_output_fields():
     """AureliusConfig must carry enable_structured_output / structured_output_type."""
@@ -94,7 +96,6 @@ def test_config_driven_decoder_construction():
 
     cfg = AureliusConfig()
     # Override to enable.
-    cfg_enable = True
     cfg_type = cfg.structured_output_type  # "json_schema"
 
     cls = STRUCTURED_OUTPUT_REGISTRY[cfg_type]
@@ -108,6 +109,7 @@ def test_config_driven_decoder_construction():
 # ---------------------------------------------------------------------------
 # 3. End-to-end: mock logits → constrained_logits → at least one finite token
 # ---------------------------------------------------------------------------
+
 
 def _build_small_vocab(size: int = 256) -> list[str]:
     vocab = [""]  # index 0 = EOS
@@ -142,7 +144,9 @@ def test_end_to_end_json_schema_string():
     new_partial = partial + tok_str
     # Allow EOS (empty string) if generation is complete.
     if tok_id != 0:
-        assert decoder.is_valid_prefix(schema, new_partial) or decoder.is_complete(schema, new_partial)
+        assert decoder.is_valid_prefix(schema, new_partial) or decoder.is_complete(
+            schema, new_partial
+        )
 
 
 def test_end_to_end_json_schema_boolean():
@@ -202,6 +206,7 @@ def test_end_to_end_anyof_schema():
 # 4. GrammarConstrainedDecoder integration
 # ---------------------------------------------------------------------------
 
+
 def test_grammar_decoder_end_to_end():
     """Grammar decoder masks logits correctly in a serving-like pipeline."""
     vocab = ["", "{", "}", '"', "a", "b", " ", ":"]
@@ -222,7 +227,7 @@ def test_grammar_decoder_end_to_end():
     out = decoder.constrained_logits(logits, vocab, state="start")
 
     # Only "{" (index 1) should survive in "start".
-    assert out[0, 1] == 2.0    # "{" allowed
+    assert out[0, 1] == 2.0  # "{" allowed
     assert out[0, 2] == float("-inf")  # "}" not in start
     assert out[0, 0] == float("-inf")  # EOS not terminal in start
 
@@ -243,9 +248,9 @@ def test_grammar_decoder_transition_and_reset():
     assert decoder.current_state == "end"
 
     mask = decoder.build_token_mask(vocab)
-    assert mask[0].item() is True   # EOS allowed in terminal
+    assert mask[0].item() is True  # EOS allowed in terminal
     assert mask[1].item() is False  # "a" not in end
-    assert mask[2].item() is True   # "b" in end
+    assert mask[2].item() is True  # "b" in end
 
     decoder.reset()
     assert decoder.current_state == "start"
@@ -254,6 +259,7 @@ def test_grammar_decoder_transition_and_reset():
 # ---------------------------------------------------------------------------
 # 5. No forbidden runtime imports
 # ---------------------------------------------------------------------------
+
 
 def test_no_heavy_ml_imports():
     """Verify structured_output_decoder.py itself doesn't import heavy ML deps.
@@ -265,14 +271,29 @@ def test_no_heavy_ml_imports():
     import ast
     import pathlib
 
-    src_path = pathlib.Path(__file__).parent.parent.parent / "src" / "serving" / "structured_output_decoder.py"
+    src_path = (
+        pathlib.Path(__file__).parent.parent.parent
+        / "src"
+        / "serving"
+        / "structured_output_decoder.py"
+    )
     source = src_path.read_text()
     tree = ast.parse(source)
 
     forbidden = {
-        "transformers", "einops", "trl", "xformers", "flash_attn",
-        "bitsandbytes", "peft", "diffusers", "datasets", "accelerate",
-        "deepspeed", "langchain", "llamaindex",
+        "transformers",
+        "einops",
+        "trl",
+        "xformers",
+        "flash_attn",
+        "bitsandbytes",
+        "peft",
+        "diffusers",
+        "datasets",
+        "accelerate",
+        "deepspeed",
+        "langchain",
+        "llamaindex",
     }
 
     for node in ast.walk(tree):

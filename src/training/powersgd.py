@@ -10,19 +10,16 @@ singular subspace to minimise reconstruction error.
 Error feedback (Section 4.3): accumulate compression residuals across steps so
 that the compressor is unbiased in expectation.
 """
+
 from __future__ import annotations
 
-from typing import Optional
-
 import torch
-import torch.nn as nn
 from torch import Tensor
-from torch.optim import SGD
-
 
 # ---------------------------------------------------------------------------
 # Core compressor
 # ---------------------------------------------------------------------------
+
 
 class PowerSGDCompressor:
     """Low-rank gradient compressor via power iteration.
@@ -49,13 +46,13 @@ class PowerSGDCompressor:
         # step().  Keyed by id(grad tensor) — callers should use step() which
         # manages the buffer via a stable key supplied externally, or rely on
         # the per-instance single-gradient state here.
-        self._error_feedback: Optional[Tensor] = None
+        self._error_feedback: Tensor | None = None
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def compress(self, grad: Tensor) -> tuple[Optional[Tensor], Optional[Tensor], Optional[Tensor]]:
+    def compress(self, grad: Tensor) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """Compress a gradient tensor using power iteration.
 
         For 1-D tensors (biases, LayerNorm scales) the gradient is returned
@@ -83,7 +80,7 @@ class PowerSGDCompressor:
 
         # Flatten to 2-D: treat leading dims as m, last dim as n
         original_shape = grad.shape
-        G = grad.reshape(-1, original_shape[-1])      # G ∈ R^{m×n}
+        G = grad.reshape(-1, original_shape[-1])  # G ∈ R^{m×n}
         m, n = G.shape
 
         # Clamp rank gracefully so it never exceeds the smaller dimension
@@ -95,7 +92,7 @@ class PowerSGDCompressor:
 
         # Step 1: Initialise Q ∈ R^{n×r} with orthonormal columns
         Q = torch.randn(n, r, device=G.device, dtype=G.dtype)
-        Q, _ = torch.linalg.qr(Q)          # Gram-Schmidt via QR
+        Q, _ = torch.linalg.qr(Q)  # Gram-Schmidt via QR
 
         # Step 2: Power iteration (K rounds)
         for _ in range(self.n_power_iter):
@@ -105,17 +102,17 @@ class PowerSGDCompressor:
             Q, _ = torch.linalg.qr(G.t() @ M)
 
         # Step 3: Final M = G @ Q
-        M = G @ Q                           # M ∈ R^{m×r}
+        M = G @ Q  # M ∈ R^{m×r}
 
         # Step 4: Reconstruct and compute residual
-        G_approx = M @ Q.t()               # G_approx ∈ R^{m×n}
+        G_approx = M @ Q.t()  # G_approx ∈ R^{m×n}
         residual = (G - G_approx).reshape(original_shape)
 
         # Reshape M back so its leading dims match the original gradient
         # (keep as 2-D internally; callers use decompress which does reshape)
         return M, Q, residual
 
-    def decompress(self, M: Tensor, Q: Tensor, original_shape: Optional[tuple] = None) -> Tensor:
+    def decompress(self, M: Tensor, Q: Tensor, original_shape: tuple | None = None) -> Tensor:
         """Reconstruct gradient from low-rank factors.
 
         Parameters
@@ -188,6 +185,7 @@ class PowerSGDCompressor:
 # Optimizer wrapper
 # ---------------------------------------------------------------------------
 
+
 class PowerSGDOptimizer(torch.optim.Optimizer):
     """SGD optimizer that compresses gradients with PowerSGD before the update.
 
@@ -225,8 +223,13 @@ class PowerSGDOptimizer(torch.optim.Optimizer):
         if lr < 0.0:
             raise ValueError(f"lr must be >= 0, got {lr}")
 
-        defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay,
-                        rank=rank, n_power_iter=n_power_iter)
+        defaults = dict(
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            rank=rank,
+            n_power_iter=n_power_iter,
+        )
         super().__init__(params, defaults)
 
         # Per-parameter error-feedback buffers and SGD momentum buffers

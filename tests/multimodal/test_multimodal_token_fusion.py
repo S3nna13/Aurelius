@@ -4,21 +4,19 @@ from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
-import pytest
 
 from src.multimodal.multimodal_token_fusion import (
-    FusionStrategy,
-    GatedFusion,
     MULTIMODAL_FUSION_REGISTRY,
+    FusionStrategy,
     MultimodalTokenFusion,
     TokenFusionConfig,
     WeightedSumFusion,
 )
 
-
 # ---------------------------------------------------------------------------
 # Config and enum tests
 # ---------------------------------------------------------------------------
+
 
 def test_token_fusion_config_defaults():
     cfg = TokenFusionConfig()
@@ -50,6 +48,7 @@ def test_fusion_strategy_values():
 # from_config construction
 # ---------------------------------------------------------------------------
 
+
 def _tiny_cfg() -> TokenFusionConfig:
     return TokenFusionConfig(d_model=64, n_heads=4, strategy=FusionStrategy.GATED)
 
@@ -69,6 +68,7 @@ def test_from_config_weighted_sum_builds():
 # ---------------------------------------------------------------------------
 # Forward shape tests — GATED
 # ---------------------------------------------------------------------------
+
 
 def _inputs(B: int = 1, T: int = 4, V: int = 6, A: int = 8, d: int = 64):
     torch.manual_seed(42)
@@ -111,6 +111,7 @@ def test_forward_both_optional_none_shape():
 # NaN checks
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_all_modalities():
     torch.manual_seed(42)
     model = MultimodalTokenFusion.from_config(_tiny_cfg())
@@ -147,6 +148,7 @@ def test_no_nan_both_none():
 # Registry tests
 # ---------------------------------------------------------------------------
 
+
 def test_multimodal_fusion_registry_contains_gated():
     assert "gated" in MULTIMODAL_FUSION_REGISTRY
 
@@ -162,6 +164,7 @@ def test_multimodal_fusion_registry_contains_fusion():
 def test_modality_projector_registry_has_multimodal_token_fusion():
     """Import triggers registration; MODALITY_PROJECTOR_REGISTRY must have the entry."""
     from src.multimodal.multimodal_registry import MODALITY_PROJECTOR_REGISTRY
+
     assert "MultimodalTokenFusion" in MODALITY_PROJECTOR_REGISTRY
 
 
@@ -169,12 +172,16 @@ def test_modality_projector_registry_has_multimodal_token_fusion():
 # WeightedSumFusion weights
 # ---------------------------------------------------------------------------
 
+
 def test_weighted_sum_weights_sum_to_one():
     """After softmax, the three learnable weights must sum to 1.0."""
-    import torch.nn.functional as F
     cfg = TokenFusionConfig(
-        d_model=64, n_heads=4, strategy=FusionStrategy.WEIGHTED_SUM,
-        text_weight=0.5, vision_weight=0.3, audio_weight=0.2,
+        d_model=64,
+        n_heads=4,
+        strategy=FusionStrategy.WEIGHTED_SUM,
+        text_weight=0.5,
+        vision_weight=0.3,
+        audio_weight=0.2,
     )
     model = MultimodalTokenFusion.from_config(cfg)
     assert isinstance(model.fusion, WeightedSumFusion)

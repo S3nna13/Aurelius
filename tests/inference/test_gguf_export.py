@@ -1,9 +1,9 @@
 """Tests for GGUF format export."""
+
 from __future__ import annotations
 
 import io
 import struct
-from pathlib import Path
 
 import pytest
 import torch
@@ -11,50 +11,48 @@ import torch.nn as nn
 
 from src.inference.gguf_export import (
     GGUF_MAGIC,
-    GGUF_VERSION,
-    GGUF_TENSOR_F32,
-    GGUF_TENSOR_F16,
     GGUF_TENSOR_BF16,
+    GGUF_TENSOR_F16,
+    GGUF_TENSOR_F32,
     GGUF_TYPE_STRING,
     GGUF_TYPE_UINT32,
-    write_string,
+    GGUF_VERSION,
+    export_to_gguf,
+    tensor_to_gguf_type,
     write_kv_string,
     write_kv_uint32,
-    tensor_to_gguf_type,
-    export_to_gguf,
+    write_string,
 )
-
 
 # ---------------------------------------------------------------------------
 # Small test model fixture
 # ---------------------------------------------------------------------------
 
+
 def make_small_model() -> nn.Module:
     """Minimal transformer-like model with known parameter shapes."""
-    n_layers = 2
     d_model = 64
-    n_heads = 2
-    n_kv_heads = 2
-    head_dim = 32
     d_ff = 128
     vocab_size = 256
-    max_seq_len = 32
 
-    model = nn.ModuleDict({
-        "embed": nn.Embedding(vocab_size, d_model),
-        "layer0_attn": nn.Linear(d_model, d_model, bias=False),
-        "layer0_ffn": nn.Linear(d_model, d_ff, bias=False),
-        "layer1_attn": nn.Linear(d_model, d_model, bias=False),
-        "layer1_ffn": nn.Linear(d_model, d_ff, bias=False),
-        "norm": nn.LayerNorm(d_model),
-        "lm_head": nn.Linear(d_model, vocab_size, bias=False),
-    })
+    model = nn.ModuleDict(
+        {
+            "embed": nn.Embedding(vocab_size, d_model),
+            "layer0_attn": nn.Linear(d_model, d_model, bias=False),
+            "layer0_ffn": nn.Linear(d_model, d_ff, bias=False),
+            "layer1_attn": nn.Linear(d_model, d_model, bias=False),
+            "layer1_ffn": nn.Linear(d_model, d_ff, bias=False),
+            "norm": nn.LayerNorm(d_model),
+            "lm_head": nn.Linear(d_model, vocab_size, bias=False),
+        }
+    )
     return model
 
 
 # ---------------------------------------------------------------------------
 # Unit tests for helper functions
 # ---------------------------------------------------------------------------
+
 
 def test_write_string_format():
     """write_string produces uint64 length prefix followed by UTF-8 bytes."""
@@ -82,7 +80,7 @@ def test_write_kv_string_format():
     # Key: uint64 len + bytes
     key_len = struct.unpack_from("<Q", data, offset)[0]
     offset += 8
-    key_bytes = data[offset:offset + key_len]
+    key_bytes = data[offset : offset + key_len]
     offset += key_len
     assert key_bytes == b"general.name"
 
@@ -94,7 +92,7 @@ def test_write_kv_string_format():
     # Value: uint64 len + bytes
     val_len = struct.unpack_from("<Q", data, offset)[0]
     offset += 8
-    val_bytes = data[offset:offset + val_len]
+    val_bytes = data[offset : offset + val_len]
     assert val_bytes == b"aurelius"
 
 
@@ -109,7 +107,7 @@ def test_write_kv_uint32_format():
     # Key
     key_len = struct.unpack_from("<Q", data, offset)[0]
     offset += 8
-    key_bytes = data[offset:offset + key_len]
+    key_bytes = data[offset : offset + key_len]
     offset += key_len
     assert key_bytes == b"n_layers"
 
@@ -126,6 +124,7 @@ def test_write_kv_uint32_format():
 # ---------------------------------------------------------------------------
 # Unit tests for tensor_to_gguf_type
 # ---------------------------------------------------------------------------
+
 
 def test_tensor_to_gguf_type_f32():
     t = torch.zeros(4, 4, dtype=torch.float32)
@@ -145,6 +144,7 @@ def test_tensor_to_gguf_type_bf16():
 # ---------------------------------------------------------------------------
 # Integration tests for export_to_gguf
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_model():

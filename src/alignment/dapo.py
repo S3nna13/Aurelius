@@ -10,17 +10,16 @@ Techniques:
   3. Token-level Policy Gradient (Section 3.3)
   4. Entropy Bonus (Section 3.4)
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
-
 
 # ---------------------------------------------------------------------------
 # 1. Clip-Higher: Decoupled Clipping Loss (Section 3.1)
 # ---------------------------------------------------------------------------
+
 
 class DAPOLoss(nn.Module):
     """Decoupled clip policy-gradient loss with optional entropy bonus.
@@ -69,8 +68,8 @@ class DAPOLoss(nn.Module):
         log_probs: torch.Tensor,
         old_log_probs: torch.Tensor,
         advantages: torch.Tensor,
-        entropy: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        entropy: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute DAPO loss.
 
         Args:
@@ -121,7 +120,7 @@ class DAPOLoss(nn.Module):
         clip_fraction = clipped_mask.mean().item()
         mean_ratio = r.mean().item()
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "clip_fraction": clip_fraction,
             "mean_ratio": mean_ratio,
             "entropy": entropy_val,
@@ -133,6 +132,7 @@ class DAPOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # 2. Dynamic Sampling / Filter (Section 3.2)
 # ---------------------------------------------------------------------------
+
 
 class DAPOFilter:
     """Dynamic sampling filter for DAPO.
@@ -168,6 +168,7 @@ class DAPOFilter:
 # 3. DAPO Trainer (thin orchestration wrapper)
 # ---------------------------------------------------------------------------
 
+
 class DAPOTrainer:
     """Minimal DAPO training step orchestrator.
 
@@ -192,7 +193,7 @@ class DAPOTrainer:
         )
         self.filter = DAPOFilter()
 
-    def compute_loss(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def compute_loss(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         """Compute DAPO loss for a batch.
 
         Expected batch keys:

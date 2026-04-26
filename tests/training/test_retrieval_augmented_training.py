@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn.functional as F
 
@@ -132,11 +131,9 @@ def test_memory_bank_topk_ordering():
     bank.add(keys, torch.randn(8, D_MEM))
 
     # Build a query that is identical to key #3
-    q = keys[3:4]   # (1, D_MODEL)
+    q = keys[3:4]  # (1, D_MODEL)
     indices, scores = bank.query(q, k=1)
-    assert indices[0, 0].item() == 3, (
-        f"Top-1 should be index 3, got {indices[0, 0].item()}"
-    )
+    assert indices[0, 0].item() == 3, f"Top-1 should be index 3, got {indices[0, 0].item()}"
 
 
 def test_memory_bank_query_scores_descending():
@@ -225,7 +222,7 @@ def test_rat_model_empty_memory_graceful():
     model = tiny_model()
     assert model.memory_bank.size == 0
     ids = input_ids()
-    logits = model(ids)   # should not raise
+    logits = model(ids)  # should not raise
     assert logits.shape == (BATCH, SEQ_LEN, VOCAB)
 
 
@@ -255,7 +252,7 @@ def test_rat_trainer_train_step_scalar():
 def test_rat_trainer_train_step_backward_grads():
     """After train_step, model parameters should have gradients."""
     model = tiny_model()
-    trainer = RATTrainer(model, lr=1e-3, k_retrieved=K)
+    RATTrainer(model, lr=1e-3, k_retrieved=K)
     ids = input_ids()
     labels = ids.clone()
     # Preserve grad state by running step then checking a param grad

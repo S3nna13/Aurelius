@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     WORKFLOW_STARTED = "workflow_started"
     STEP_STARTED = "step_started"
     STEP_COMPLETED = "step_completed"
@@ -23,7 +22,7 @@ class WorkflowEvent:
     event_id: str
     workflow_id: str
     event_type: EventType
-    step_id: Optional[str]
+    step_id: str | None
     payload: dict
     timestamp: float
 
@@ -38,8 +37,8 @@ class WorkflowEventStore:
         self,
         workflow_id: str,
         event_type: EventType,
-        step_id: Optional[str] = None,
-        payload: Optional[dict] = None,
+        step_id: str | None = None,
+        payload: dict | None = None,
     ) -> WorkflowEvent:
         event = WorkflowEvent(
             event_id=str(uuid.uuid4()),

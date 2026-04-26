@@ -15,6 +15,7 @@ from src.model.mingru import MinGRU, MinGRUConfig
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def cfg() -> MinGRUConfig:
     return MinGRUConfig(d_model=64)
@@ -30,6 +31,7 @@ def model(cfg: MinGRUConfig) -> MinGRU:
 # Test 1 — Output shape: (B, T, d) → (B, T, d)
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape(model: MinGRU) -> None:
     B, T, d = 2, 16, 64
     x = torch.randn(B, T, d)
@@ -40,6 +42,7 @@ def test_output_shape(model: MinGRU) -> None:
 # ---------------------------------------------------------------------------
 # Test 2 — Sequential and parallel outputs match (atol=1e-5)
 # ---------------------------------------------------------------------------
+
 
 def test_sequential_parallel_match(model: MinGRU) -> None:
     torch.manual_seed(0)
@@ -58,6 +61,7 @@ def test_sequential_parallel_match(model: MinGRU) -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — Causality: output at t only uses x[0..t]
 # ---------------------------------------------------------------------------
+
 
 def test_causal(model: MinGRU) -> None:
     torch.manual_seed(1)
@@ -87,6 +91,7 @@ def test_causal(model: MinGRU) -> None:
 # Test 4 — h0=None gives same result as h0=zeros
 # ---------------------------------------------------------------------------
 
+
 def test_h0_none_equals_zeros(model: MinGRU) -> None:
     torch.manual_seed(2)
     B, T, d = 2, 8, 64
@@ -105,6 +110,7 @@ def test_h0_none_equals_zeros(model: MinGRU) -> None:
 # ---------------------------------------------------------------------------
 # Test 5 — h_T from sequential matches last hidden state
 # ---------------------------------------------------------------------------
+
 
 def test_hT_matches_last_hidden(model: MinGRU) -> None:
     torch.manual_seed(3)
@@ -133,6 +139,7 @@ def test_hT_matches_last_hidden(model: MinGRU) -> None:
 # Test 6 — Gradient flow in parallel mode
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flow_parallel(model: MinGRU) -> None:
     torch.manual_seed(4)
     B, T, d = 2, 16, 64
@@ -151,6 +158,7 @@ def test_gradient_flow_parallel(model: MinGRU) -> None:
 # Test 7 — Gradient flow in sequential mode
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flow_sequential(model: MinGRU) -> None:
     torch.manual_seed(5)
     B, T, d = 2, 16, 64
@@ -168,6 +176,7 @@ def test_gradient_flow_sequential(model: MinGRU) -> None:
 # ---------------------------------------------------------------------------
 # Test 8 — Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism(cfg: MinGRUConfig) -> None:
     B, T, d = 2, 8, 64
@@ -189,6 +198,7 @@ def test_determinism(cfg: MinGRUConfig) -> None:
 # Test 9 — T=1 works
 # ---------------------------------------------------------------------------
 
+
 def test_single_timestep(model: MinGRU) -> None:
     torch.manual_seed(6)
     B, T, d = 2, 1, 64
@@ -209,6 +219,7 @@ def test_single_timestep(model: MinGRU) -> None:
 # Test 10 — Long sequence (T=128) produces no NaN/Inf
 # ---------------------------------------------------------------------------
 
+
 def test_long_sequence_no_nan_inf(model: MinGRU) -> None:
     torch.manual_seed(7)
     B, T, d = 2, 128, 64
@@ -227,6 +238,7 @@ def test_long_sequence_no_nan_inf(model: MinGRU) -> None:
 # Test 11 — Gates z_t are in (0, 1) via sigmoid
 # ---------------------------------------------------------------------------
 
+
 def test_gates_in_unit_interval(model: MinGRU) -> None:
     torch.manual_seed(8)
     B, T, d = 2, 16, 64
@@ -242,6 +254,7 @@ def test_gates_in_unit_interval(model: MinGRU) -> None:
 # ---------------------------------------------------------------------------
 # Test 12 — Different h0 → different output (h0 matters)
 # ---------------------------------------------------------------------------
+
 
 def test_different_h0_gives_different_output(model: MinGRU) -> None:
     torch.manual_seed(9)

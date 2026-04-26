@@ -5,24 +5,25 @@ Methods:
   - Attention rollout: recursive attention matrix multiplication across layers
   - Integrated gradients: path-integrated attribution from baseline to input
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ImportanceConfig:
-    method: str = "gradient_norm"   # "gradient_norm", "attention_rollout", "integrated_gradients"
+    method: str = "gradient_norm"  # "gradient_norm", "attention_rollout", "integrated_gradients"
     normalize: bool = True
     smooth_window: int = 1
 
@@ -30,6 +31,7 @@ class ImportanceConfig:
 # ---------------------------------------------------------------------------
 # Gradient norm importance
 # ---------------------------------------------------------------------------
+
 
 def gradient_norm_importance(
     model: nn.Module,
@@ -67,8 +69,9 @@ def gradient_norm_importance(
 # Attention rollout
 # ---------------------------------------------------------------------------
 
+
 def attention_rollout(
-    attention_weights: List[Tensor],
+    attention_weights: list[Tensor],
     add_residual: bool = True,
 ) -> Tensor:
     """Compute attention rollout by multiplying attention matrices across layers.
@@ -107,6 +110,7 @@ def attention_rollout(
 # ---------------------------------------------------------------------------
 # Integrated gradients
 # ---------------------------------------------------------------------------
+
 
 def integrated_gradients(
     model: nn.Module,
@@ -152,6 +156,7 @@ def integrated_gradients(
 # Smoothing and normalization
 # ---------------------------------------------------------------------------
 
+
 def smooth_importance(importance: Tensor, window: int) -> Tensor:
     """Apply 1D average smoothing over T dimension.
 
@@ -191,6 +196,7 @@ def normalize_importance(importance: Tensor, eps: float = 1e-8) -> Tensor:
 # ---------------------------------------------------------------------------
 # TokenImportanceScorer
 # ---------------------------------------------------------------------------
+
 
 class TokenImportanceScorer:
     """High-level interface for token importance scoring."""

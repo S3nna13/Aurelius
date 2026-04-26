@@ -7,22 +7,20 @@ parallelism without requiring torch.distributed.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TPConfig:
     """Configuration for tensor-parallel layers."""
+
     n_partitions: int = 4
     d_model: int = 512
     gather_output: bool = True
@@ -32,7 +30,8 @@ class TPConfig:
 # Weight splitting helpers
 # ---------------------------------------------------------------------------
 
-def split_tensor_column(weight: torch.Tensor, n_partitions: int) -> List[torch.Tensor]:
+
+def split_tensor_column(weight: torch.Tensor, n_partitions: int) -> list[torch.Tensor]:
     """Split a (out_features, in_features) weight matrix along the output dim.
 
     Args:
@@ -53,7 +52,7 @@ def split_tensor_column(weight: torch.Tensor, n_partitions: int) -> List[torch.T
     return list(weight.split(chunk_size, dim=0))
 
 
-def split_tensor_row(weight: torch.Tensor, n_partitions: int) -> List[torch.Tensor]:
+def split_tensor_row(weight: torch.Tensor, n_partitions: int) -> list[torch.Tensor]:
     """Split a (out_features, in_features) weight matrix along the input dim.
 
     Args:
@@ -77,6 +76,7 @@ def split_tensor_row(weight: torch.Tensor, n_partitions: int) -> List[torch.Tens
 # ---------------------------------------------------------------------------
 # ColumnParallelLinear
 # ---------------------------------------------------------------------------
+
 
 class ColumnParallelLinear(nn.Module):
     """Linear layer with weights split along the output (column) dimension.
@@ -104,10 +104,7 @@ class ColumnParallelLinear(nn.Module):
         self.partition_out = out_features // n_partitions
 
         self.partitions = nn.ModuleList(
-            [
-                nn.Linear(in_features, self.partition_out, bias=bias)
-                for _ in range(n_partitions)
-            ]
+            [nn.Linear(in_features, self.partition_out, bias=bias) for _ in range(n_partitions)]
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -126,6 +123,7 @@ class ColumnParallelLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # RowParallelLinear
 # ---------------------------------------------------------------------------
+
 
 class RowParallelLinear(nn.Module):
     """Linear layer with weights split along the input (row) dimension.
@@ -181,6 +179,7 @@ class RowParallelLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # HeadParallelAttention
 # ---------------------------------------------------------------------------
+
 
 class HeadParallelAttention(nn.Module):
     """Multi-head attention with heads partitioned across tensor-parallel ranks.
@@ -248,6 +247,7 @@ class HeadParallelAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Equivalence verification
 # ---------------------------------------------------------------------------
+
 
 def verify_partition_equivalence(
     linear: nn.Linear,

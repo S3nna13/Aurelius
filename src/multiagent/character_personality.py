@@ -36,7 +36,9 @@ class CharacterPersonality:
             return self.config.system_prompt
         parts: list[str] = [
             f"You are {self.config.character}, acting as {self.config.role}.",
-            f"Communication style: {self.config.communication_style}." if self.config.communication_style else "",
+            f"Communication style: {self.config.communication_style}."
+            if self.config.communication_style
+            else "",
             f"Expertise: {', '.join(self.config.expertise)}." if self.config.expertise else "",
             f"Key traits: {', '.join(self.config.traits)}." if self.config.traits else "",
         ]

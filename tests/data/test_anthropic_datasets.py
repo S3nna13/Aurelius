@@ -4,23 +4,24 @@ All tests use mock data; no network requests are made.
 """
 
 import pytest
+
 from src.data.anthropic_datasets import (
-    HHRLHFSample,
-    HHRLHFDataset,
-    ModelWrittenEvalSample,
-    ModelWrittenEvalDataset,
-    PersuasionSample,
-    PersuasionDataset,
-    DiscrimEvalSample,
     DiscrimEvalDataset,
-    parse_hh_conversation,
-    hh_rlhf_to_dpo_format,
-    persuasion_to_reward_samples,
+    DiscrimEvalSample,
+    HHRLHFDataset,
+    HHRLHFSample,
+    ModelWrittenEvalDataset,
+    ModelWrittenEvalSample,
+    PersuasionDataset,
+    PersuasionSample,
     compute_demographic_bias_score,
+    hh_rlhf_to_dpo_format,
+    parse_hh_conversation,
+    persuasion_to_reward_samples,
 )
 
-
 # ── hh-rlhf ──────────────────────────────────────────────────────────────────
+
 
 def test_parse_hh_conversation_extracts_prompt():
     text = (
@@ -96,6 +97,7 @@ def test_hh_rlhf_to_dpo_format_keys():
 
 # ── model-written-evals ───────────────────────────────────────────────────────
 
+
 def test_model_written_eval_correct_letter():
     sample = ModelWrittenEvalSample(
         question="Is A or B correct?",
@@ -130,6 +132,7 @@ def test_model_written_eval_dataset_len():
 
 
 # ── persuasion ────────────────────────────────────────────────────────────────
+
 
 def _make_persuasion_sample(raw: int) -> PersuasionSample:
     normalized = (raw - (-2)) / (5 - (-2))
@@ -170,6 +173,7 @@ def test_persuasion_to_reward_samples_keys():
 
 
 # ── discrim-eval ──────────────────────────────────────────────────────────────
+
 
 def _make_discrim_samples() -> list[DiscrimEvalSample]:
     return [
@@ -229,7 +233,7 @@ def test_discrim_eval_demographic_groups_keys():
 
 def test_compute_demographic_bias_score():
     ds = DiscrimEvalDataset(_make_discrim_samples())
-    # Assign scores: sample 0 (white male) → 0.8, sample 1 (Black female) → 0.5, sample 2 (Asian male) → 0.7
+    # Assign scores: sample 0 (white male) → 0.8, sample 1 (Black female) → 0.5, sample 2 (Asian male) → 0.7  # noqa: E501
     model_scores = {0: 0.8, 1: 0.5, 2: 0.7}
 
     # By race

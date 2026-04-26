@@ -10,13 +10,13 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from src.training.nce_objectives import NCEConfig, NCEObjectives
 from src.training import TRAINING_REGISTRY
-
+from src.training.nce_objectives import NCEConfig, NCEObjectives
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def default_cfg() -> NCEConfig:
@@ -32,6 +32,7 @@ def module(default_cfg: NCEConfig) -> NCEObjectives:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = NCEConfig()
     assert cfg.temperature == 0.07
@@ -43,6 +44,7 @@ def test_config_defaults():
 # 2. test_maybe_normalize_unit_norm
 # ---------------------------------------------------------------------------
 
+
 def test_maybe_normalize_unit_norm(module):
     x = torch.randn(8, 32)
     out = module.maybe_normalize(x)
@@ -53,6 +55,7 @@ def test_maybe_normalize_unit_norm(module):
 # ---------------------------------------------------------------------------
 # 3. test_nce_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_nce_loss_scalar(module):
     B, k = 4, 8
@@ -67,6 +70,7 @@ def test_nce_loss_scalar(module):
 # 4. test_nce_loss_positive — random inputs → loss > 0
 # ---------------------------------------------------------------------------
 
+
 def test_nce_loss_positive(module):
     torch.manual_seed(0)
     real_scores = torch.randn(16)
@@ -78,6 +82,7 @@ def test_nce_loss_positive(module):
 # ---------------------------------------------------------------------------
 # 5. test_nce_loss_perfect — real=+5, noise=-5 → loss near 0
 # ---------------------------------------------------------------------------
+
 
 def test_nce_loss_perfect(module):
     B, k = 8, 16
@@ -91,6 +96,7 @@ def test_nce_loss_perfect(module):
 # 6. test_infonce_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_infonce_loss_scalar(module):
     B, D = 6, 16
     q = torch.randn(B, D)
@@ -102,6 +108,7 @@ def test_infonce_loss_scalar(module):
 # ---------------------------------------------------------------------------
 # 7. test_infonce_diagonal_correct — queries == keys → loss ≤ log(B)
 # ---------------------------------------------------------------------------
+
 
 def test_infonce_diagonal_correct(module):
     """When queries == keys the diagonal logits are highest; loss should be small."""
@@ -117,6 +124,7 @@ def test_infonce_diagonal_correct(module):
 # ---------------------------------------------------------------------------
 # 8. test_infonce_temperature_effect — lower τ → sharper (lower) loss
 # ---------------------------------------------------------------------------
+
 
 def test_infonce_temperature_effect():
     """Lower temperature should produce lower loss when diagonal is clearly best."""
@@ -138,6 +146,7 @@ def test_infonce_temperature_effect():
 # 9. test_nt_xent_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_nt_xent_scalar(module):
     B, D = 6, 16
     z1 = torch.randn(B, D)
@@ -149,6 +158,7 @@ def test_nt_xent_scalar(module):
 # ---------------------------------------------------------------------------
 # 10. test_nt_xent_positive_pairs — z1 == z2 → lower NT-Xent than random
 # ---------------------------------------------------------------------------
+
 
 def test_nt_xent_positive_pairs(module):
     torch.manual_seed(0)
@@ -163,6 +173,7 @@ def test_nt_xent_positive_pairs(module):
 # ---------------------------------------------------------------------------
 # 11. test_nt_xent_symmetric — loss(z1,z2) ≈ loss(z2,z1)
 # ---------------------------------------------------------------------------
+
 
 def test_nt_xent_symmetric(module):
     torch.manual_seed(1)
@@ -180,6 +191,7 @@ def test_nt_xent_symmetric(module):
 # 12. test_forward_keys — returns "loss", "alignment", "uniformity"
 # ---------------------------------------------------------------------------
 
+
 def test_forward_keys(module):
     B, D = 6, 16
     z1 = torch.randn(B, D)
@@ -194,6 +206,7 @@ def test_forward_keys(module):
 # 13. test_alignment_identical_pairs — alignment near 0 when z1 == z2
 # ---------------------------------------------------------------------------
 
+
 def test_alignment_identical_pairs(module):
     B, D = 8, 32
     z = torch.randn(B, D)
@@ -206,11 +219,12 @@ def test_alignment_identical_pairs(module):
 # 14. test_uniformity_spread — spread embeddings have better (lower) uniformity
 # ---------------------------------------------------------------------------
 
+
 def test_uniformity_spread(module):
     """Uniformly spread embeddings on the sphere yield a more-negative uniformity."""
     B = 16
     # Clustered: all near the same point
-    z_clustered = torch.ones(B, 8) / (8 ** 0.5)
+    z_clustered = torch.ones(B, 8) / (8**0.5)
     z_clustered = z_clustered + torch.randn_like(z_clustered) * 0.001
 
     # Spread: random Gaussian → after normalisation, approximately uniform on sphere
@@ -231,6 +245,7 @@ def test_uniformity_spread(module):
 # 15. test_registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry():
     assert "nce_objectives" in TRAINING_REGISTRY
     assert TRAINING_REGISTRY["nce_objectives"] is NCEObjectives
@@ -239,6 +254,7 @@ def test_registry():
 # ---------------------------------------------------------------------------
 # Integration test — B=16, D=64, all three objectives, finite + backward
 # ---------------------------------------------------------------------------
+
 
 def test_integration_all_objectives():
     """
@@ -307,4 +323,3 @@ def test_integration_all_objectives():
     assert set(out_infonce.keys()) == {"loss", "alignment", "uniformity"}
     assert torch.isfinite(out_infonce["loss"])
     out_infonce["loss"].backward()
-

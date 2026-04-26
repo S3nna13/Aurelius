@@ -4,12 +4,12 @@ from dataclasses import dataclass
 
 @dataclass
 class SGDRConfig:
-    lr_max: float = 3e-4          # peak learning rate
-    lr_min: float = 1e-5          # minimum LR (trough of cosine)
-    warmup_steps: int = 100       # linear warmup steps
-    T0: int = 1000                # steps in first cosine cycle
-    T_mult: float = 2.0           # multiply cycle length after each restart
-    decay_factor: float = 1.0     # multiply lr_max by this after each restart (< 1 = decay peaks)
+    lr_max: float = 3e-4  # peak learning rate
+    lr_min: float = 1e-5  # minimum LR (trough of cosine)
+    warmup_steps: int = 100  # linear warmup steps
+    T0: int = 1000  # steps in first cosine cycle
+    T_mult: float = 2.0  # multiply cycle length after each restart
+    decay_factor: float = 1.0  # multiply lr_max by this after each restart (< 1 = decay peaks)
 
 
 class SGDRScheduler:

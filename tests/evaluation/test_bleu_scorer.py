@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.evaluation.bleu_scorer import (
+    BLEU_SCORER_REGISTRY,
     BLEUResult,
     BLEUScorer,
-    BLEU_SCORER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -24,6 +25,7 @@ def scorer():
 # ---------------------------------------------------------------------------
 # BLEUResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestBLEUResultFrozen:
     def test_is_frozen(self):
@@ -66,6 +68,7 @@ class TestBLEUResultFrozen:
 # _tokenize
 # ---------------------------------------------------------------------------
 
+
 class TestTokenize:
     def test_lowercases(self, scorer):
         assert scorer._tokenize("Hello World") == ["hello", "world"]
@@ -83,6 +86,7 @@ class TestTokenize:
 # ---------------------------------------------------------------------------
 # _ngrams
 # ---------------------------------------------------------------------------
+
 
 class TestNgrams:
     def test_unigrams(self, scorer):
@@ -109,6 +113,7 @@ class TestNgrams:
 # _clipped_precision
 # ---------------------------------------------------------------------------
 
+
 class TestClippedPrecision:
     def test_identical_unigrams_precision_one(self, scorer):
         hyp = ["the", "cat", "sat"]
@@ -134,6 +139,7 @@ class TestClippedPrecision:
 # ---------------------------------------------------------------------------
 # score — single pair
 # ---------------------------------------------------------------------------
+
 
 class TestScore:
     def test_identical_text_bleu_one(self, scorer):
@@ -202,6 +208,7 @@ class TestScore:
 # corpus_score
 # ---------------------------------------------------------------------------
 
+
 class TestCorpusScore:
     def test_length_mismatch_raises_value_error(self, scorer):
         with pytest.raises(ValueError):
@@ -239,6 +246,7 @@ class TestCorpusScore:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

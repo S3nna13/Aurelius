@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 class LayeredMemoryError(Exception):
@@ -18,7 +18,7 @@ class LayeredMemoryEntry:
     entry_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     content: str = ""
     layer: str = ""
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     access_count: int = 0
     importance_score: float = 0.5
 
@@ -106,7 +106,7 @@ class LayeredMemory:
         self._evict_layer_expired(layer)
         # Then evict by lowest (importance * recency_boost) if still over capacity
         if len(layer.entries) > layer.max_entries:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             def _score(e: LayeredMemoryEntry) -> float:
                 age_seconds = max(0.0, (now - e.timestamp).total_seconds())
@@ -121,12 +121,10 @@ class LayeredMemory:
         """Remove TTL-expired entries from a single layer. Returns count removed."""
         if layer.ttl_seconds is None:
             return 0
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         original = len(layer.entries)
         layer.entries = [
-            e
-            for e in layer.entries
-            if (now - e.timestamp).total_seconds() <= layer.ttl_seconds
+            e for e in layer.entries if (now - e.timestamp).total_seconds() <= layer.ttl_seconds
         ]
         return original - len(layer.entries)
 
@@ -137,14 +135,10 @@ class LayeredMemory:
             total += self._evict_layer_expired(layer)
         return total
 
-    def retrieve(
-        self, query: str, layer_name: str | None = None
-    ) -> list[LayeredMemoryEntry]:
+    def retrieve(self, query: str, layer_name: str | None = None) -> list[LayeredMemoryEntry]:
         """Case-insensitive substring retrieval. Searches all layers if *layer_name* is None."""
         results: list[LayeredMemoryEntry] = []
-        layers = (
-            [self._get_layer(layer_name)] if layer_name else list(self._layers.values())
-        )
+        layers = [self._get_layer(layer_name)] if layer_name else list(self._layers.values())
         lower_q = query.lower()
         for layer in layers:
             for entry in layer.entries:
@@ -185,7 +179,7 @@ class LayeredMemory:
     def search(self, query: str, top_k: int = 5) -> list[LayeredMemoryEntry]:
         """Ranked search across all layers using keyword, importance, recency, and access."""
         lower_q = query.lower()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         scored: list[tuple[float, LayeredMemoryEntry]] = []
         for layer in self._layers.values():
             for entry in layer.entries:

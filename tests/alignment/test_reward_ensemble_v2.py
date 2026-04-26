@@ -17,19 +17,18 @@ Covers:
 14.  aggregation='max' computes max
 15.  trimmed_mean fallback when ratio trims everything
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
-from torch import Tensor
-
 from aurelius.alignment.reward_ensemble_v2 import (
     EnsembleConfig,
     RewardAgreementFilter,
     RewardCalibrator,
     RewardEnsemble,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -45,6 +44,7 @@ torch.manual_seed(0)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class LinearReward(nn.Module):
     """Simple linear reward model: w^T x → scalar per sample."""
@@ -73,6 +73,7 @@ def make_input(b: int = B, d: int = D_MODEL) -> Tensor:
 # 1. forward output shape
 # ---------------------------------------------------------------------------
 
+
 def test_forward_shape():
     """RewardEnsemble.forward must return shape (B,)."""
     ensemble = make_ensemble()
@@ -85,6 +86,7 @@ def test_forward_shape():
 # ---------------------------------------------------------------------------
 # 2. predict returns (mean, std) both shape (B,)
 # ---------------------------------------------------------------------------
+
 
 def test_predict_shapes():
     """predict must return two tensors of shape (B,)."""
@@ -100,6 +102,7 @@ def test_predict_shapes():
 # 3. std is non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_predict_std_nonneg():
     """std returned by predict must be >= 0 everywhere."""
     ensemble = make_ensemble()
@@ -112,6 +115,7 @@ def test_predict_std_nonneg():
 # ---------------------------------------------------------------------------
 # 4. aggregation='median'
 # ---------------------------------------------------------------------------
+
 
 def test_aggregation_median():
     """aggregation='median' must compute the column-wise median."""
@@ -130,6 +134,7 @@ def test_aggregation_median():
 # 5. aggregation='min'
 # ---------------------------------------------------------------------------
 
+
 def test_aggregation_min():
     """aggregation='min' must return column-wise minimum."""
     cfg = EnsembleConfig(n_models=3, aggregation="min")
@@ -146,18 +151,21 @@ def test_aggregation_min():
 # 6. _trimmed_mean trims correctly
 # ---------------------------------------------------------------------------
 
+
 def test_trimmed_mean_correctness():
     """_trimmed_mean with ratio=1/3 should drop 1 from each end of K=5 rows."""
     ensemble = make_ensemble()
 
     # 5 models, 2 samples: sorted columns are [1,2,3,4,5] and [10,20,30,40,50]
-    rewards = torch.tensor([
-        [3.0, 30.0],
-        [1.0, 10.0],
-        [5.0, 50.0],
-        [2.0, 20.0],
-        [4.0, 40.0],
-    ])  # (5, 2)
+    rewards = torch.tensor(
+        [
+            [3.0, 30.0],
+            [1.0, 10.0],
+            [5.0, 50.0],
+            [2.0, 20.0],
+            [4.0, 40.0],
+        ]
+    )  # (5, 2)
 
     # ratio=0.2 → n_trim=int(5*0.2)=1 → keep rows 1..3 → [2,3,4] and [20,30,40]
     result = ensemble._trimmed_mean(rewards, ratio=0.2)
@@ -168,6 +176,7 @@ def test_trimmed_mean_correctness():
 # ---------------------------------------------------------------------------
 # 7. agreement_score in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_agreement_score_range():
     """agreement_score must return values in [0, 1]."""
@@ -184,6 +193,7 @@ def test_agreement_score_range():
 # ---------------------------------------------------------------------------
 # 8. RewardCalibrator fit+calibrate improves RMSE
 # ---------------------------------------------------------------------------
+
 
 def test_calibrator_improves_rmse():
     """Fitting calibrator on training data should reduce RMSE vs raw scores."""
@@ -208,6 +218,7 @@ def test_calibrator_improves_rmse():
 # 9. calibration_error is non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_calibration_error_nonneg():
     """calibration_error must return a non-negative float."""
     cal = RewardCalibrator()
@@ -223,6 +234,7 @@ def test_calibration_error_nonneg():
 # ---------------------------------------------------------------------------
 # 10. calibrate is linear
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_is_linear():
     """calibrate must apply a * raw + b, verifiable via known a,b."""
@@ -245,6 +257,7 @@ def test_calibrate_is_linear():
 # 11. filter_by_agreement shapes
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_agreement_shapes():
     """filter_by_agreement must return (kept_x, kept_mask) with correct shapes."""
     ensemble = make_ensemble()
@@ -266,6 +279,7 @@ def test_filter_by_agreement_shapes():
 # 12. high_confidence_pairs returns valid indices
 # ---------------------------------------------------------------------------
 
+
 def test_high_confidence_pairs_valid_indices():
     """high_confidence_pairs indices must be in [0, B)."""
     ensemble = make_ensemble()
@@ -273,7 +287,7 @@ def test_high_confidence_pairs_valid_indices():
     filt = RewardAgreementFilter(cfg)
 
     torch.manual_seed(10)
-    x_w = torch.randn(B, D_MODEL) + 2.0   # higher reward expected
+    x_w = torch.randn(B, D_MODEL) + 2.0  # higher reward expected
     x_l = torch.randn(B, D_MODEL) - 2.0
 
     indices = filt.high_confidence_pairs(x_w, x_l, ensemble, margin=-1e9)
@@ -286,6 +300,7 @@ def test_high_confidence_pairs_valid_indices():
 # ---------------------------------------------------------------------------
 # 13. Works with n_models=1
 # ---------------------------------------------------------------------------
+
 
 def test_single_model():
     """RewardEnsemble with n_models=1 must not crash and return correct shapes."""
@@ -308,6 +323,7 @@ def test_single_model():
 # 14. aggregation='max'
 # ---------------------------------------------------------------------------
 
+
 def test_aggregation_max():
     """aggregation='max' must return the column-wise maximum."""
     cfg = EnsembleConfig(n_models=3, aggregation="max")
@@ -323,6 +339,7 @@ def test_aggregation_max():
 # ---------------------------------------------------------------------------
 # 15. trimmed_mean fallback when ratio trims everything
 # ---------------------------------------------------------------------------
+
 
 def test_trimmed_mean_fallback():
     """When trimming would remove all values, _trimmed_mean falls back to mean."""

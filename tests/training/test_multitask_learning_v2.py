@@ -2,20 +2,20 @@
 
 Tiny config: D=8, OUT_A=4, OUT_B=8, B=2, T=3
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.multitask_learning_v2 import (
+    GradientBalancer,
     MTLConfig,
-    TaskHead,
-    compute_uncertainty_weights,
-    compute_gradient_cosine_similarity,
     MTLLoss,
     MultiTaskModel,
-    GradientBalancer,
+    TaskHead,
+    compute_gradient_cosine_similarity,
+    compute_uncertainty_weights,
 )
 
 D = 8
@@ -29,6 +29,7 @@ T = 3
 # MTLConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = MTLConfig()
     assert cfg.task_names == ["task_a", "task_b"]
@@ -41,6 +42,7 @@ def test_config_defaults():
 # TaskHead
 # ---------------------------------------------------------------------------
 
+
 def test_task_head_output_shape():
     head = TaskHead(D, OUT_A, "task_a")
     x = torch.randn(B, T, D)
@@ -51,6 +53,7 @@ def test_task_head_output_shape():
 # ---------------------------------------------------------------------------
 # compute_uncertainty_weights
 # ---------------------------------------------------------------------------
+
 
 def test_uncertainty_weights_shape():
     log_vars = torch.zeros(3)
@@ -68,6 +71,7 @@ def test_uncertainty_weights_positive():
 # compute_gradient_cosine_similarity
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_similarity_in_range():
     a = torch.randn(16)
     b = torch.randn(16)
@@ -84,6 +88,7 @@ def test_cosine_similarity_identical():
 # ---------------------------------------------------------------------------
 # MTLLoss
 # ---------------------------------------------------------------------------
+
 
 def test_mtl_loss_compute_scalar():
     cfg = MTLConfig(task_names=["a", "b"])
@@ -117,6 +122,7 @@ def test_mtl_loss_uniform_weights_sum():
 # ---------------------------------------------------------------------------
 # MultiTaskModel
 # ---------------------------------------------------------------------------
+
 
 class _Backbone(nn.Module):
     def __init__(self):
@@ -154,6 +160,7 @@ def test_multitask_model_forward_single_task():
 # ---------------------------------------------------------------------------
 # GradientBalancer
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_balancer_grad_norms_length():
     balancer = GradientBalancer(n_tasks=2)

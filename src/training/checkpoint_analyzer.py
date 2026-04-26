@@ -1,8 +1,8 @@
-"""Checkpoint Analyzer — activation memory profiling and gradient checkpointing strategy recommendation."""
+"""Checkpoint Analyzer — activation memory profiling and gradient checkpointing strategy recommendation."""  # noqa: E501
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -15,23 +15,23 @@ from src.model.transformer import TransformerBlock
 class LayerMemoryStats:
     layer_idx: int
     layer_name: str
-    activation_bytes: int      # peak activation memory for this layer (hidden state only)
-    param_bytes: int           # parameter memory for this layer
-    grad_bytes: int            # gradient memory (= param_bytes for fp32)
-    should_checkpoint: bool    # recommendation
+    activation_bytes: int  # peak activation memory for this layer (hidden state only)
+    param_bytes: int  # parameter memory for this layer
+    grad_bytes: int  # gradient memory (= param_bytes for fp32)
+    should_checkpoint: bool  # recommendation
 
 
 @dataclass
 class CheckpointAnalysis:
     total_activation_bytes: int
     total_param_bytes: int
-    peak_memory_no_checkpoint: int    # activation + param + grad bytes
+    peak_memory_no_checkpoint: int  # activation + param + grad bytes
     peak_memory_with_checkpoint: int  # estimated with recommended strategy
     memory_savings_bytes: int
-    memory_savings_pct: float         # 0.0 to 1.0
+    memory_savings_pct: float  # 0.0 to 1.0
     layers: list[LayerMemoryStats]
-    recommended_layers: list[int]     # layer indices to checkpoint
-    strategy: str                     # "none" | "uniform" | "selective"
+    recommended_layers: list[int]  # layer indices to checkpoint
+    strategy: str  # "none" | "uniform" | "selective"
 
 
 def profile_layer_activations(
@@ -70,6 +70,7 @@ def profile_layer_activations(
                 activation_sizes[module_id] = n_elements * bytes_per_element
             else:
                 activation_sizes[module_id] = 0
+
         return hook
 
     # Register hooks
@@ -92,14 +93,16 @@ def profile_layer_activations(
         param_bytes = sum(p.numel() * p.element_size() for p in module.parameters())
         activation_bytes = activation_sizes.get(id(module), 0)
 
-        result.append(LayerMemoryStats(
-            layer_idx=idx,
-            layer_name=name,
-            activation_bytes=activation_bytes,
-            param_bytes=param_bytes,
-            grad_bytes=param_bytes,   # fp32: grad same size as param
-            should_checkpoint=False,  # filled in by analyze_checkpoint_strategy
-        ))
+        result.append(
+            LayerMemoryStats(
+                layer_idx=idx,
+                layer_name=name,
+                activation_bytes=activation_bytes,
+                param_bytes=param_bytes,
+                grad_bytes=param_bytes,  # fp32: grad same size as param
+                should_checkpoint=False,  # filled in by analyze_checkpoint_strategy
+            )
+        )
 
     # Sort by layer_idx (already in order, but be explicit)
     result.sort(key=lambda s: s.layer_idx)
@@ -159,16 +162,14 @@ def analyze_checkpoint_strategy(
     peak_no_checkpoint = total_activation_bytes + total_param_bytes + total_grad_bytes
 
     # Budget in bytes
-    budget_bytes = int(memory_budget_gb * 1024 ** 3)
+    budget_bytes = int(memory_budget_gb * 1024**3)
 
     # 4. Greedy selection — checkpoint layers with largest activations first
     recommended_layers: list[int] = []
 
     if peak_no_checkpoint > budget_bytes:
         # Sort layers by activation_bytes descending for greedy selection
-        sorted_by_activation = sorted(
-            layer_stats, key=lambda s: s.activation_bytes, reverse=True
-        )
+        sorted_by_activation = sorted(layer_stats, key=lambda s: s.activation_bytes, reverse=True)
 
         current_checkpoint = []
         for stats in sorted_by_activation:

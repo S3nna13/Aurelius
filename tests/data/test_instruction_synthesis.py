@@ -8,19 +8,19 @@ Tiny configs are used throughout to keep tests fast.
 import pytest
 
 from src.data.instruction_synthesis import (
-    SynthConfig,
     InstructionSynthesizer,
-    fill_template,
+    SynthConfig,
+    classify_instruction_type,
     compute_rouge1_similarity,
     deduplicate_instructions,
-    classify_instruction_type,
     estimate_difficulty,
+    fill_template,
 )
-
 
 # ---------------------------------------------------------------------------
 # SynthConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestSynthConfigDefaults:
     def test_default_n_instructions_per_seed(self):
@@ -44,6 +44,7 @@ class TestSynthConfigDefaults:
 # ---------------------------------------------------------------------------
 # fill_template
 # ---------------------------------------------------------------------------
+
 
 class TestFillTemplate:
     def test_fills_known_slots(self):
@@ -72,6 +73,7 @@ class TestFillTemplate:
 # compute_rouge1_similarity
 # ---------------------------------------------------------------------------
 
+
 class TestRouge1Similarity:
     def test_identical_strings_return_one(self):
         assert compute_rouge1_similarity("hello world", "hello world") == pytest.approx(1.0)
@@ -95,11 +97,12 @@ class TestRouge1Similarity:
 # deduplicate_instructions
 # ---------------------------------------------------------------------------
 
+
 class TestDeduplicateInstructions:
     def test_removes_near_duplicates(self):
         instructions = [
             "Explain machine learning",
-            "Explain machine learning concepts",   # highly similar
+            "Explain machine learning concepts",  # highly similar
         ]
         result = deduplicate_instructions(instructions, threshold=0.7)
         # The second is very similar to the first; only one should survive
@@ -129,6 +132,7 @@ class TestDeduplicateInstructions:
 # classify_instruction_type
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyInstructionType:
     VALID_TYPES = {"open_qa", "classification", "generation", "analysis", "other"}
 
@@ -139,13 +143,18 @@ class TestClassifyInstructionType:
         assert classify_instruction_type("How does a neural network work?") == "open_qa"
 
     def test_classification_type(self):
-        assert classify_instruction_type("Classify the following text into categories") == "classification"
+        assert (
+            classify_instruction_type("Classify the following text into categories")
+            == "classification"
+        )
 
     def test_generation_type(self):
         assert classify_instruction_type("Write a short story about dragons") == "generation"
 
     def test_analysis_type(self):
-        assert classify_instruction_type("Compare Python and Java for web development") == "analysis"
+        assert (
+            classify_instruction_type("Compare Python and Java for web development") == "analysis"
+        )
 
     def test_other_type(self):
         result = classify_instruction_type("Recite the alphabet backwards")
@@ -167,6 +176,7 @@ class TestClassifyInstructionType:
 # estimate_difficulty
 # ---------------------------------------------------------------------------
 
+
 class TestEstimateDifficulty:
     def test_returns_value_in_unit_interval(self):
         for text in ["short", "a" * 300, "x" * 600]:
@@ -175,11 +185,11 @@ class TestEstimateDifficulty:
 
     def test_short_instruction_easier_than_long(self):
         short = "Explain AI"
-        long_text = "Explain the historical, philosophical, and technical foundations of artificial intelligence, including symbolic AI, connectionism, and modern deep learning, with examples from computer vision, natural language processing, robotics, and reinforcement learning, and discuss ethical implications."
+        long_text = "Explain the historical, philosophical, and technical foundations of artificial intelligence, including symbolic AI, connectionism, and modern deep learning, with examples from computer vision, natural language processing, robotics, and reinforcement learning, and discuss ethical implications."  # noqa: E501
         assert estimate_difficulty(short) < estimate_difficulty(long_text)
 
     def test_max_length_clips_to_one(self):
-        very_long = "a " * 300   # 600 chars, many commas if we add them
+        very_long = "a " * 300  # 600 chars, many commas if we add them
         d = estimate_difficulty(very_long, max_length=50)
         assert d == pytest.approx(1.0)
 
@@ -190,6 +200,7 @@ class TestEstimateDifficulty:
 # ---------------------------------------------------------------------------
 # InstructionSynthesizer.from_template
 # ---------------------------------------------------------------------------
+
 
 class TestFromTemplate:
     def setup_method(self):
@@ -207,7 +218,9 @@ class TestFromTemplate:
         # min_length=5, "Hi" has length 2 → filtered
         cfg = SynthConfig(min_length=5, max_length=200)
         synth = InstructionSynthesizer(cfg)
-        result = synth.from_template("{x}", [{"x": "Hi"}, {"x": "Hello world, this is long enough"}])
+        result = synth.from_template(
+            "{x}", [{"x": "Hi"}, {"x": "Hello world, this is long enough"}]
+        )
         # "Hi" (2 chars) should be filtered out
         assert all(len(r) >= 5 for r in result)
 
@@ -232,6 +245,7 @@ class TestFromTemplate:
 # ---------------------------------------------------------------------------
 # InstructionSynthesizer.build_dataset
 # ---------------------------------------------------------------------------
+
 
 class TestBuildDataset:
     def setup_method(self):
@@ -266,6 +280,7 @@ class TestBuildDataset:
 # ---------------------------------------------------------------------------
 # InstructionSynthesizer.get_stats
 # ---------------------------------------------------------------------------
+
 
 class TestGetStats:
     def setup_method(self):

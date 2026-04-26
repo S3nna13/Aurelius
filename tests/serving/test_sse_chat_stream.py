@@ -18,7 +18,7 @@ from src.serving.sse_chat_stream import (
 def _payload(frame: str) -> dict:
     assert frame.startswith("data: ")
     assert frame.endswith("\n\n")
-    return json.loads(frame[len("data: "): -2])
+    return json.loads(frame[len("data: ") : -2])
 
 
 def test_role_delta_contains_assistant_role() -> None:

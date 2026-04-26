@@ -12,16 +12,15 @@ References:
     Weymar et al. (2024), "WARM: On the Benefits of Weight Averaged Reward
     Models"
 """
+
 from __future__ import annotations
 
-import copy
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -52,9 +51,9 @@ class WARMConfig:
 
 
 def linear_merge(
-    state_dicts: List[Dict[str, Tensor]],
-    weights: Optional[List[float]] = None,
-) -> Dict[str, Tensor]:
+    state_dicts: list[dict[str, Tensor]],
+    weights: list[float] | None = None,
+) -> dict[str, Tensor]:
     """Weighted average of all state dicts.
 
     Args:
@@ -76,15 +75,13 @@ def linear_merge(
         weights = [1.0 / K] * K
     else:
         if len(weights) != K:
-            raise ValueError(
-                f"len(weights)={len(weights)} must equal len(state_dicts)={K}"
-            )
+            raise ValueError(f"len(weights)={len(weights)} must equal len(state_dicts)={K}")
         total = sum(weights)
         if total <= 0:
             raise ValueError("Sum of weights must be positive")
         weights = [w / total for w in weights]
 
-    merged: Dict[str, Tensor] = {}
+    merged: dict[str, Tensor] = {}
     for key in state_dicts[0]:
         acc = torch.zeros_like(state_dicts[0][key], dtype=torch.float32)
         for sd, w in zip(state_dicts, weights):
@@ -95,10 +92,10 @@ def linear_merge(
 
 
 def dare_merge(
-    state_dicts: List[Dict[str, Tensor]],
+    state_dicts: list[dict[str, Tensor]],
     density: float = 0.7,
     seed: int = 42,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """DARE: randomly drop (1-density) fraction of delta weights before merging.
 
     Algorithm per key:
@@ -131,7 +128,7 @@ def dare_merge(
     rng = torch.Generator()
     rng.manual_seed(seed)
 
-    merged: Dict[str, Tensor] = {}
+    merged: dict[str, Tensor] = {}
     for key in base_sd:
         base = base_sd[key].float()
         acc_delta = torch.zeros_like(base)
@@ -144,9 +141,7 @@ def dare_merge(
             elif density == 1.0:
                 masked_delta = delta
             else:
-                mask = torch.bernoulli(
-                    torch.full(delta.shape, density), generator=rng
-                ).bool()
+                mask = torch.bernoulli(torch.full(delta.shape, density), generator=rng).bool()
                 # Rescale to keep expected magnitude
                 masked_delta = torch.where(mask, delta / density, torch.zeros_like(delta))
             acc_delta += masked_delta
@@ -181,9 +176,9 @@ def compute_reward_margin(
         ``std_margin`` is the std across models.
     """
     # rewards: (n_models, batch)
-    chosen_rewards = rewards[:, chosen_idx]    # (n_models,)
+    chosen_rewards = rewards[:, chosen_idx]  # (n_models,)
     rejected_rewards = rewards[:, rejected_idx]  # (n_models,)
-    margin = chosen_rewards - rejected_rewards   # (n_models,)
+    margin = chosen_rewards - rejected_rewards  # (n_models,)
 
     mean_margin = margin.mean()
     if margin.shape[0] > 1:
@@ -195,7 +190,7 @@ def compute_reward_margin(
 
 
 def warm_reward_score(
-    models: List[nn.Module],
+    models: list[nn.Module],
     input_ids: Tensor,
     aggregate: str = "mean",
 ) -> Tensor:
@@ -220,7 +215,7 @@ def warm_reward_score(
     if not models:
         raise ValueError("models list must be non-empty")
 
-    all_rewards: List[Tensor] = []
+    all_rewards: list[Tensor] = []
     for model in models:
         with torch.no_grad():
             r = model(input_ids)
@@ -277,13 +272,13 @@ class WARMEnsemble:
         self.merge_method = merge_method
 
         # List of (state_dict, weight) tuples
-        self._checkpoints: List[tuple[Dict[str, Tensor], float]] = []
+        self._checkpoints: list[tuple[dict[str, Tensor], float]] = []
 
     # ------------------------------------------------------------------
     # Checkpoint management
     # ------------------------------------------------------------------
 
-    def add_checkpoint(self, state_dict: Dict[str, Tensor], weight: float = 1.0) -> None:
+    def add_checkpoint(self, state_dict: dict[str, Tensor], weight: float = 1.0) -> None:
         """Add a checkpoint state dict to the ensemble.
 
         Args:
@@ -292,11 +287,9 @@ class WARMEnsemble:
                         Values are renormalized at merge time.
         """
         # Store a deep copy so subsequent mutations don't affect stored state
-        self._checkpoints.append(
-            ({k: v.clone() for k, v in state_dict.items()}, float(weight))
-        )
+        self._checkpoints.append(({k: v.clone() for k, v in state_dict.items()}, float(weight)))
 
-    def merge(self) -> Dict[str, Tensor]:
+    def merge(self) -> dict[str, Tensor]:
         """Merge all stored checkpoints into one state dict.
 
         Returns:
@@ -318,6 +311,7 @@ class WARMEnsemble:
             # to linear (pure PyTorch, no HuggingFace dependency).
             try:
                 from src.alignment.warp import merge_policies_slerp  # type: ignore
+
                 return merge_policies_slerp(state_dicts, weights)
             except ImportError:
                 return linear_merge(state_dicts, weights)
@@ -347,7 +341,7 @@ class WARMEnsemble:
     # Disagreement / uncertainty
     # ------------------------------------------------------------------
 
-    def compute_disagreement(self, rewards: List[Tensor]) -> Tensor:
+    def compute_disagreement(self, rewards: list[Tensor]) -> Tensor:
         """Compute per-sample variance across models.
 
         Args:

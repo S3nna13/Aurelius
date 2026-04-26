@@ -1,4 +1,5 @@
 """Log shipping for remote aggregation."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,12 +8,14 @@ from typing import Protocol
 
 class LogDestination(Protocol):
     """Protocol for log shipping destinations."""
+
     def send(self, records: list[dict]) -> None: ...
 
 
 @dataclass
 class LogRecord:
     """A single log record to ship."""
+
     timestamp: str
     level: str
     message: str
@@ -23,6 +26,7 @@ class LogRecord:
 @dataclass
 class LogShipper:
     """Shipper that batches and sends log records."""
+
     destination: LogDestination
     batch_size: int = 100
     _buffer: list[LogRecord] = field(default_factory=list, repr=False)
@@ -37,13 +41,16 @@ class LogShipper:
         """Send all buffered records."""
         if not self._buffer:
             return
-        records = [{
-            "timestamp": r.timestamp,
-            "level": r.level,
-            "message": r.message,
-            "source": r.source,
-            "metadata": r.metadata,
-        } for r in self._buffer]
+        records = [
+            {
+                "timestamp": r.timestamp,
+                "level": r.level,
+                "message": r.message,
+                "source": r.source,
+                "metadata": r.metadata,
+            }
+            for r in self._buffer
+        ]
         self.destination.send(records)
         self._buffer.clear()
 
@@ -51,8 +58,10 @@ class LogShipper:
 @dataclass
 class StdoutLogDestination:
     """Log destination writing to stdout."""
+
     def send(self, records: list[dict]) -> None:
         import json
+
         for r in records:
             print(json.dumps(r))
 

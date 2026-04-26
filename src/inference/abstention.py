@@ -6,8 +6,8 @@ dropout, and semantic clustering of sampled responses.
 """
 
 import math
+
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 
@@ -128,22 +128,22 @@ class MCDropoutEstimator:
 
         self._disable_dropout()
 
-        stacked = torch.stack(all_logits, dim=0)       # (N, B, S, V)
-        mean_logits = stacked.mean(dim=0)              # (B, S, V)
-        variance = stacked.var(dim=0)                  # (B, S, V)
+        stacked = torch.stack(all_logits, dim=0)  # (N, B, S, V)
+        mean_logits = stacked.mean(dim=0)  # (B, S, V)
+        variance = stacked.var(dim=0)  # (B, S, V)
 
-        sample_probs = F.softmax(stacked, dim=-1)      # (N, B, S, V)
+        sample_probs = F.softmax(stacked, dim=-1)  # (N, B, S, V)
         eps = 1e-9
 
         p_clamp = sample_probs.clamp(min=eps)
         per_sample_entropy = -(p_clamp * p_clamp.log()).sum(dim=-1)  # (N, B, S)
-        mean_entropy = per_sample_entropy.mean(dim=0)                # (B, S)
+        mean_entropy = per_sample_entropy.mean(dim=0)  # (B, S)
 
-        mean_probs = sample_probs.mean(dim=0)          # (B, S, V)
+        mean_probs = sample_probs.mean(dim=0)  # (B, S, V)
         mp_clamp = mean_probs.clamp(min=eps)
-        pred_entropy = -(mp_clamp * mp_clamp.log()).sum(dim=-1)      # (B, S)
+        pred_entropy = -(mp_clamp * mp_clamp.log()).sum(dim=-1)  # (B, S)
 
-        mi = (pred_entropy - mean_entropy).clamp(min=0.0)           # (B, S)
+        mi = (pred_entropy - mean_entropy).clamp(min=0.0)  # (B, S)
 
         result = {
             "mean_logits": mean_logits,

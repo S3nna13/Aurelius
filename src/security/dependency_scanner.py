@@ -2,12 +2,12 @@
 
 Trail of Bits: validate external dependencies, separate signal from noise.
 """
+
 from __future__ import annotations
 
 import json
 import subprocess
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -38,19 +38,21 @@ class DependencyScanner:
             cmd = ["pip-audit", "--format", "json"]
             if requirements_path:
                 cmd.extend(["-r", requirements_path])
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)  # noqa: S603
             if result.returncode not in (0, 1):
                 return self.findings
             data = json.loads(result.stdout)
             for vuln in data.get("vulnerabilities", []):
-                self.findings.append(VulnFinding(
-                    package=vuln.get("name", "unknown"),
-                    installed=vuln.get("version", "?"),
-                    cve_id=vuln.get("aliases", ["unknown"])[0],
-                    severity=vuln.get("severity", "UNKNOWN"),
-                    description=vuln.get("description", ""),
-                    fixed_in=vuln.get("fixed_version", ""),
-                ))
+                self.findings.append(
+                    VulnFinding(
+                        package=vuln.get("name", "unknown"),
+                        installed=vuln.get("version", "?"),
+                        cve_id=vuln.get("aliases", ["unknown"])[0],
+                        severity=vuln.get("severity", "UNKNOWN"),
+                        description=vuln.get("description", ""),
+                        fixed_in=vuln.get("fixed_version", ""),
+                    )
+                )
         except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
             pass
         return self.findings

@@ -1,18 +1,19 @@
 """Tests for src/training/batch_sampler.py"""
-import pytest
+
 import numpy as np
+import pytest
 import torch
 
 from src.training.batch_sampler import (
-    RandomOffsetBatchSampler,
-    BatchSamplerConfig,
     BATCH_SAMPLER,
+    BatchSamplerConfig,
+    RandomOffsetBatchSampler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def make_data(n_tokens: int = 5000) -> np.ndarray:
     return np.arange(n_tokens, dtype=np.int64)
@@ -21,6 +22,7 @@ def make_data(n_tokens: int = 5000) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Tests: get_batch() — shape
 # ---------------------------------------------------------------------------
+
 
 def test_get_batch_x_shape():
     cfg = BatchSamplerConfig(block_size=32, batch_size=4)
@@ -90,6 +92,7 @@ def test_get_batch_returns_tensors():
 # Tests: from_array()
 # ---------------------------------------------------------------------------
 
+
 def test_from_array_returns_new_sampler():
     data = make_data()
     cfg = BatchSamplerConfig(block_size=8, batch_size=2)
@@ -111,6 +114,7 @@ def test_from_array_inherits_config():
 # ---------------------------------------------------------------------------
 # Tests: estimate_steps_to_tokens()
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_steps_basic():
     cfg = BatchSamplerConfig(block_size=1024, batch_size=12)
@@ -138,6 +142,7 @@ def test_estimate_steps_returns_int():
 # ---------------------------------------------------------------------------
 # Tests: module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_singleton_is_instance():
     assert isinstance(BATCH_SAMPLER, RandomOffsetBatchSampler)

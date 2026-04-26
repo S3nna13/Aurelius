@@ -1,7 +1,7 @@
 """Tests for src/data/domain_reweighting.py"""
 
 import random
-import pytest
+
 import torch
 
 from src.data.domain_reweighting import (
@@ -41,6 +41,7 @@ def _simple_domain_data(n_seqs: int = 5, seq_len: int = 8) -> dict[str, list[tor
 # 1. DomainConfig initializes correctly
 # ---------------------------------------------------------------------------
 
+
 def test_domain_config_defaults():
     cfg = DomainConfig(domain_names=DOMAINS)
     assert cfg.domain_names == DOMAINS
@@ -56,6 +57,7 @@ def test_domain_config_defaults():
 # 2. normalize_weights clips to min_weight and sums to 1
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_weights_clips_and_sums_to_one():
     w = torch.tensor([0.0, 0.001, 0.5])
     out = normalize_weights(w, min_weight=0.05)
@@ -66,6 +68,7 @@ def test_normalize_weights_clips_and_sums_to_one():
 # ---------------------------------------------------------------------------
 # 3. normalize_weights uniform input stays approximately uniform
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_weights_uniform_stays_uniform():
     n = 4
@@ -79,6 +82,7 @@ def test_normalize_weights_uniform_stays_uniform():
 # ---------------------------------------------------------------------------
 # 4. ema_update increases weight for high-loss domain
 # ---------------------------------------------------------------------------
+
 
 def test_ema_update_upweights_high_loss_domain():
     n = 3
@@ -94,6 +98,7 @@ def test_ema_update_upweights_high_loss_domain():
 # 5. ema_update result sums approximately to 1
 # ---------------------------------------------------------------------------
 
+
 def test_ema_update_sums_to_one():
     w = _uniform_weights(4)
     losses = _losses([1.0, 2.0, 0.5, 3.0])
@@ -104,6 +109,7 @@ def test_ema_update_sums_to_one():
 # ---------------------------------------------------------------------------
 # 6. exp3_update output is a valid probability distribution
 # ---------------------------------------------------------------------------
+
 
 def test_exp3_update_valid_prob_distribution():
     w = _uniform_weights(3)
@@ -116,6 +122,7 @@ def test_exp3_update_valid_prob_distribution():
 # ---------------------------------------------------------------------------
 # 7. exp3_update upweights high-loss domain
 # ---------------------------------------------------------------------------
+
 
 def test_exp3_update_upweights_high_loss():
     w = _uniform_weights(3)
@@ -130,6 +137,7 @@ def test_exp3_update_upweights_high_loss():
 # 8. doro_update result sums approximately to 1
 # ---------------------------------------------------------------------------
 
+
 def test_doro_update_sums_to_one():
     w = _uniform_weights(3)
     losses = _losses([1.0, 3.0, 0.5])
@@ -140,6 +148,7 @@ def test_doro_update_sums_to_one():
 # ---------------------------------------------------------------------------
 # 9. DomainReweighter.get_weights returns dict with all domains
 # ---------------------------------------------------------------------------
+
 
 def test_reweighter_get_weights_has_all_domains():
     cfg = DomainConfig(domain_names=DOMAINS)
@@ -153,6 +162,7 @@ def test_reweighter_get_weights_has_all_domains():
 # 10. DomainReweighter.sample_domain returns a valid domain name
 # ---------------------------------------------------------------------------
 
+
 def test_reweighter_sample_domain_valid():
     cfg = DomainConfig(domain_names=DOMAINS)
     rw = DomainReweighter(cfg)
@@ -165,6 +175,7 @@ def test_reweighter_sample_domain_valid():
 # ---------------------------------------------------------------------------
 # 11. DomainReweighter.update changes weights after high-loss signal
 # ---------------------------------------------------------------------------
+
 
 def test_reweighter_update_changes_weights():
     cfg = DomainConfig(domain_names=DOMAINS, learning_rate=2.0, smoothing_alpha=0.5)
@@ -183,6 +194,7 @@ def test_reweighter_update_changes_weights():
 # 12. build_reweighted_batch returns correct batch size
 # ---------------------------------------------------------------------------
 
+
 def test_build_batch_correct_size():
     cfg = DomainConfig(domain_names=DOMAINS)
     rw = DomainReweighter(cfg)
@@ -197,6 +209,7 @@ def test_build_batch_correct_size():
 # 13. build_reweighted_batch domain_labels contains valid domain names
 # ---------------------------------------------------------------------------
 
+
 def test_build_batch_labels_valid():
     cfg = DomainConfig(domain_names=DOMAINS)
     rw = DomainReweighter(cfg)
@@ -210,6 +223,7 @@ def test_build_batch_labels_valid():
 # ---------------------------------------------------------------------------
 # 14. DomainReweighter with exp3 strategy updates correctly
 # ---------------------------------------------------------------------------
+
 
 def test_reweighter_exp3_strategy():
     cfg = DomainConfig(

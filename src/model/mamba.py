@@ -21,7 +21,7 @@ where A is log-parameterized as A_log = log(|A|), actual A = -exp(A_log) (negati
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -31,24 +31,25 @@ from torch import Tensor
 
 from .rms_norm import RMSNorm
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MambaConfig:
     """Hyperparameters for the Mamba selective SSM layer."""
 
-    d_state: int = 16           # SSM state dimension (N in the paper)
-    d_conv: int = 4             # depthwise conv kernel width
-    expand: int = 2             # inner dim expansion factor (d_inner = expand * d_model)
-    dt_rank: str | int = "auto" # if "auto" → ceil(d_model / 16)
+    d_state: int = 16  # SSM state dimension (N in the paper)
+    d_conv: int = 4  # depthwise conv kernel width
+    expand: int = 2  # inner dim expansion factor (d_inner = expand * d_model)
+    dt_rank: str | int = "auto"  # if "auto" → ceil(d_model / 16)
 
 
 # ---------------------------------------------------------------------------
 # Selective SSM core
 # ---------------------------------------------------------------------------
+
 
 class SelectiveSSM(nn.Module):
     """Selective state-space model core (S6).
@@ -112,9 +113,7 @@ class SelectiveSSM(nn.Module):
 
         # Step 1: compute input-dependent Δ, B_in, C_in from x
         xz = self.x_proj(x)  # (B, L, dt_rank + 2*d_state)
-        delta_raw, B_in, C_in = xz.split(
-            [self.dt_rank, self.d_state, self.d_state], dim=-1
-        )
+        delta_raw, B_in, C_in = xz.split([self.dt_rank, self.d_state, self.d_state], dim=-1)
         # delta_raw: (B, L, dt_rank)
         # B_in, C_in: (B, L, d_state)
 
@@ -161,6 +160,7 @@ class SelectiveSSM(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaBlock — full Mamba block
 # ---------------------------------------------------------------------------
+
 
 class MambaBlock(nn.Module):
     """Full Mamba block: expand → conv → SSM → gate → contract.
@@ -223,22 +223,22 @@ class MambaBlock(nn.Module):
         B, L, _ = x.shape
 
         # Project and split into x branch and z gate
-        xz = self.in_proj(x)         # (B, L, 2*d_inner)
+        xz = self.in_proj(x)  # (B, L, 2*d_inner)
         x_branch, z = xz.chunk(2, dim=-1)  # each (B, L, d_inner)
 
         # Causal depthwise conv1d
         # Conv1d expects (B, C, L); padding=d_conv-1 on left → trim d_conv-1 from right
-        x_conv = x_branch.transpose(1, 2)          # (B, d_inner, L)
-        x_conv = self.conv1d(x_conv)               # (B, d_inner, L + d_conv - 1)
-        x_conv = x_conv[:, :, :L]                  # (B, d_inner, L) — trim right
-        x_conv = x_conv.transpose(1, 2)            # (B, L, d_inner)
+        x_conv = x_branch.transpose(1, 2)  # (B, d_inner, L)
+        x_conv = self.conv1d(x_conv)  # (B, d_inner, L + d_conv - 1)
+        x_conv = x_conv[:, :, :L]  # (B, d_inner, L) — trim right
+        x_conv = x_conv.transpose(1, 2)  # (B, L, d_inner)
         x_conv = F.silu(x_conv)
 
         # Selective SSM
-        y = self.ssm(x_conv)   # (B, L, d_inner)
+        y = self.ssm(x_conv)  # (B, L, d_inner)
 
         # Multiplicative gating
-        y = y * F.silu(z)      # (B, L, d_inner)
+        y = y * F.silu(z)  # (B, L, d_inner)
 
         # Project back to d_model
         return self.out_proj(y)  # (B, L, d_model)
@@ -247,6 +247,7 @@ class MambaBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaLayer — pre-norm residual wrapper
 # ---------------------------------------------------------------------------
+
 
 class MambaLayer(nn.Module):
     """Pre-norm residual wrapper around MambaBlock.

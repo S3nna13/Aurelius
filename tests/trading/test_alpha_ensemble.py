@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from src.trading.alpha_ensemble import (
     ALPHA_ENSEMBLE,
     AlphaEnsemble,
@@ -33,22 +31,32 @@ class TestAlphaEnsemble:
 
     def test_aggregate_buy_consensus(self):
         ensemble = AlphaEnsemble()
-        ensemble.add_signal(AlphaSignal(direction=SignalDirection.BUY, confidence=0.8, source="tech"))
+        ensemble.add_signal(
+            AlphaSignal(direction=SignalDirection.BUY, confidence=0.8, source="tech")
+        )
         ensemble.add_signal(AlphaSignal(direction=SignalDirection.BUY, confidence=0.7, source="ml"))
         result = ensemble.aggregate()
         assert result.direction == SignalDirection.STRONG_BUY
 
     def test_aggregate_mixed(self):
         ensemble = AlphaEnsemble()
-        ensemble.add_signal(AlphaSignal(direction=SignalDirection.BUY, confidence=0.5, source="tech"))
-        ensemble.add_signal(AlphaSignal(direction=SignalDirection.SELL, confidence=0.4, source="ml"))
+        ensemble.add_signal(
+            AlphaSignal(direction=SignalDirection.BUY, confidence=0.5, source="tech")
+        )
+        ensemble.add_signal(
+            AlphaSignal(direction=SignalDirection.SELL, confidence=0.4, source="ml")
+        )
         result = ensemble.aggregate()
         assert result.direction == SignalDirection.HOLD
 
     def test_aggregate_strong_sell(self):
         ensemble = AlphaEnsemble()
-        ensemble.add_signal(AlphaSignal(direction=SignalDirection.SELL, confidence=0.9, source="tech"))
-        ensemble.add_signal(AlphaSignal(direction=SignalDirection.SELL, confidence=0.8, source="ml"))
+        ensemble.add_signal(
+            AlphaSignal(direction=SignalDirection.SELL, confidence=0.9, source="tech")
+        )
+        ensemble.add_signal(
+            AlphaSignal(direction=SignalDirection.SELL, confidence=0.8, source="ml")
+        )
         result = ensemble.aggregate()
         assert result.direction == SignalDirection.STRONG_SELL
 

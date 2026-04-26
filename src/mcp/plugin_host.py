@@ -66,8 +66,7 @@ class PluginHost:
     def _validate_manifest(manifest: PluginManifest) -> None:
         if not isinstance(manifest.plugin_id, str) or not manifest.plugin_id.strip():
             raise PluginHostError(
-                "plugin_id must be a non-empty string, "
-                f"got {manifest.plugin_id!r}"
+                f"plugin_id must be a non-empty string, got {manifest.plugin_id!r}"
             )
         if not _VERSION_RE.match(manifest.version):
             raise PluginHostError(

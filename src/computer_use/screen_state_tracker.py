@@ -11,10 +11,10 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ScreenRegion:
@@ -38,6 +38,7 @@ class ScreenState:
 # ---------------------------------------------------------------------------
 # ScreenStateTracker
 # ---------------------------------------------------------------------------
+
 
 class ScreenStateTracker:
     """Parse raw state dicts into ScreenState objects and track history."""
@@ -97,9 +98,7 @@ class ScreenStateTracker:
                 )
 
         if prev.focused_region != curr.focused_region:
-            changes.append(
-                f"Focus changed: '{prev.focused_region}' → '{curr.focused_region}'"
-            )
+            changes.append(f"Focus changed: '{prev.focused_region}' → '{curr.focused_region}'")
 
         return changes
 
@@ -124,8 +123,9 @@ class ScreenStateTracker:
         for item in raw:
             if not isinstance(item, dict):
                 continue
-            meta = {k: v for k, v in item.items()
-                    if k not in ("x", "y", "width", "height", "label")}
+            meta = {
+                k: v for k, v in item.items() if k not in ("x", "y", "width", "height", "label")
+            }
             regions.append(
                 ScreenRegion(
                     x=int(item.get("x", 0)),

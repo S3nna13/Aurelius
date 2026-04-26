@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import random
 import string
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Data class
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LogicProblem:
@@ -29,6 +29,7 @@ class LogicProblem:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _rand_name(rng: random.Random, length: int = 3) -> str:
     """Return a random lowercase alphabetic string of given length."""
@@ -50,6 +51,7 @@ def _unique_names(rng: random.Random, n: int, length: int = 3) -> list[str]:
 # ---------------------------------------------------------------------------
 # Generators
 # ---------------------------------------------------------------------------
+
 
 def generate_syllogism(rng: random.Random = None) -> LogicProblem:
     """Generate a random syllogism problem.
@@ -148,6 +150,7 @@ def generate_boolean_logic(rng: random.Random = None) -> LogicProblem:
 # Scoring
 # ---------------------------------------------------------------------------
 
+
 def evaluate_answer(predicted: str, gold: str, problem_type: str) -> float:
     """Score a predicted answer against the gold answer.
 
@@ -186,6 +189,7 @@ def evaluate_answer(predicted: str, gold: str, problem_type: str) -> float:
 # Greedy decode helper
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def _greedy_decode(
     model: nn.Module,
@@ -211,6 +215,7 @@ def _greedy_decode(
 # ---------------------------------------------------------------------------
 # SymbolicReasoningBenchmark
 # ---------------------------------------------------------------------------
+
 
 class SymbolicReasoningBenchmark:
     """Benchmark for symbolic reasoning tasks."""
@@ -267,9 +272,7 @@ class SymbolicReasoningBenchmark:
 
         for problem in self.problems:
             prompt = self.generate_prompt(problem)
-            input_ids = torch.tensor(
-                [tokenizer_encode(prompt)], dtype=torch.long, device=device
-            )
+            input_ids = torch.tensor([tokenizer_encode(prompt)], dtype=torch.long, device=device)
             gen_ids = _greedy_decode(model, input_ids, max_new_tokens)
             generated_text = tokenizer_decode(gen_ids[0].tolist())
 

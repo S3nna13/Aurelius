@@ -7,10 +7,10 @@ import torch
 
 from src.alignment.parl import AnnealedLambda, PARLReward
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_batch(B: int = 4, val: float = 0.5) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Return (r_perf, r_parallel, r_finish) tensors of shape (B,)."""
@@ -25,6 +25,7 @@ def _make_batch(B: int = 4, val: float = 0.5) -> tuple[torch.Tensor, torch.Tenso
 # Test 1 — output shape equals input shape [B]
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape():
     B = 8
     reward_fn = PARLReward()
@@ -36,6 +37,7 @@ def test_output_shape():
 # ---------------------------------------------------------------------------
 # Test 2 — serial_collapse: r_parallel=0 → reward < parallel case (step=0)
 # ---------------------------------------------------------------------------
+
 
 def test_serial_collapse():
     B = 4
@@ -57,6 +59,7 @@ def test_serial_collapse():
 # Test 3 — AnnealedLambda: value at step=0 == start; at step=total_steps == 0
 # ---------------------------------------------------------------------------
 
+
 def test_annealed_lambda_bounds():
     total = 5_000
     lam = AnnealedLambda(start=1.0, total_steps=total)
@@ -67,6 +70,7 @@ def test_annealed_lambda_bounds():
 # ---------------------------------------------------------------------------
 # Test 4 — perf_only: lambda1=0, lambda2=0 → output == r_perf exactly
 # ---------------------------------------------------------------------------
+
 
 def test_perf_only():
     B = 6
@@ -80,6 +84,7 @@ def test_perf_only():
 # Test 5 — no NaN / Inf on zero inputs
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_on_zeros():
     B = 4
     reward_fn = PARLReward()
@@ -91,6 +96,7 @@ def test_no_nan_inf_on_zeros():
 # ---------------------------------------------------------------------------
 # Test 6 — determinism: same inputs → same output
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     B = 4
@@ -105,6 +111,7 @@ def test_determinism():
 # Test 7 — batch_size_one: shape (1,)
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one():
     reward_fn = PARLReward()
     r_perf, r_par, r_fin = _make_batch(B=1)
@@ -115,6 +122,7 @@ def test_batch_size_one():
 # ---------------------------------------------------------------------------
 # Test 8 — empty_subagents proxy: r_parallel=0, r_finish=0 → finite output
 # ---------------------------------------------------------------------------
+
 
 def test_empty_subagents_finite():
     B = 4
@@ -130,6 +138,7 @@ def test_empty_subagents_finite():
 # ---------------------------------------------------------------------------
 # Test 9 — step_beyond_total: lambdas clamp to 0 (not negative)
 # ---------------------------------------------------------------------------
+
 
 def test_step_beyond_total_clamped():
     B = 4
@@ -156,6 +165,7 @@ def test_step_beyond_total_clamped():
 # Test 10 — all_ones: known result check
 # ---------------------------------------------------------------------------
 
+
 def test_all_ones_known_result():
     """With r_perf=r_parallel=r_finish=1, step=0, lambda1=lambda2=1:
     result = 1 + 1*1 + 1*1 = 3  for every element.
@@ -173,6 +183,7 @@ def test_all_ones_known_result():
 # ---------------------------------------------------------------------------
 # Bonus — AnnealedLambda mid-point interpolation
 # ---------------------------------------------------------------------------
+
 
 def test_annealed_lambda_midpoint():
     total = 10_000

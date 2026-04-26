@@ -44,15 +44,15 @@ def label_smoothed_loss(
         logits = logits.view(B * S, V)
         targets = targets.view(B * S)
 
-    vocab_size = logits.size(-1)
+    logits.size(-1)
 
     # Build valid mask (positions that are NOT ignore_index)
     mask = targets != ignore_index  # (N,)
     if not mask.any():
         return logits.sum() * 0.0  # keep graph alive, return 0
 
-    logits_valid = logits[mask]           # (M, V)
-    targets_valid = targets[mask]         # (M,)
+    logits_valid = logits[mask]  # (M, V)
+    targets_valid = targets[mask]  # (M,)
 
     # Standard cross-entropy part
     ce = F.cross_entropy(logits_valid, targets_valid, reduction="mean")
@@ -61,8 +61,8 @@ def label_smoothed_loss(
         return ce
 
     # Smoothing part: mean over all classes of -log_softmax averaged over valid tokens
-    log_probs = F.log_softmax(logits_valid, dim=-1)          # (M, V)
-    smooth_loss = -log_probs.mean()                           # scalar
+    log_probs = F.log_softmax(logits_valid, dim=-1)  # (M, V)
+    smooth_loss = -log_probs.mean()  # scalar
 
     return (1.0 - smoothing) * ce + smoothing * smooth_loss
 
@@ -230,7 +230,7 @@ class NoiseAwareTrainer:
 
         # Forward through transformer layers manually (skip embed step)
         B, S, _ = mixed_emb.shape
-        assert S <= self.model.config.max_seq_len
+        assert S <= self.model.config.max_seq_len  # noqa: S101
 
         x = mixed_emb
         freqs_cis = self.model.freqs_cis[:S]
@@ -247,12 +247,14 @@ class NoiseAwareTrainer:
         shift_labels_b = input_ids_b[:, 1:].contiguous()
 
         loss_a = label_smoothed_loss(
-            shift_logits, shift_labels_a,
+            shift_logits,
+            shift_labels_a,
             smoothing=self.config.label_smoothing,
             ignore_index=-100,
         )
         loss_b = label_smoothed_loss(
-            shift_logits, shift_labels_b,
+            shift_logits,
+            shift_labels_b,
             smoothing=self.config.label_smoothing,
             ignore_index=-100,
         )

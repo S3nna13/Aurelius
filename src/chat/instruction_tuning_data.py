@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import logging
 import random
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Sequence
 
 from src.chat.chatml_template import (
     IM_END,
@@ -64,7 +64,7 @@ class InstructionSample:
     response: str
     source: str
     difficulty: float = 0.0
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 def _contains_role_break(text: str) -> bool:
@@ -74,7 +74,7 @@ def _contains_role_break(text: str) -> bool:
     return any(tok in text for tok in _ROLE_BREAK_TOKENS)
 
 
-def _safe_call(generate_fn: Callable[[str], str], prompt: str) -> Optional[str]:
+def _safe_call(generate_fn: Callable[[str], str], prompt: str) -> str | None:
     """Invoke ``generate_fn`` but swallow exceptions.
 
     We log and return ``None`` rather than propagating — a synthetic
@@ -94,6 +94,7 @@ def _safe_call(generate_fn: Callable[[str], str], prompt: str) -> Optional[str]:
 
 
 # --------------------------------------------------------------- Magpie
+
 
 class MagpieGenerator:
     """Magpie-style self-instruct generator.
@@ -135,7 +136,7 @@ class MagpieGenerator:
         msgs = [Message(role="user", content=instruction)]
         return self._tpl.encode(msgs, add_generation_prompt=True)
 
-    def generate(self, n: int = 10, seed: int = 0) -> List[InstructionSample]:
+    def generate(self, n: int = 10, seed: int = 0) -> list[InstructionSample]:
         """Generate up to ``n`` samples. Samples with contaminated
         outputs are dropped; the returned list may therefore be shorter
         than ``n``.
@@ -146,16 +147,14 @@ class MagpieGenerator:
             return []
 
         rng = random.Random(seed)
-        out: List[InstructionSample] = []
+        out: list[InstructionSample] = []
         for i in range(n):
             # The RNG is threaded into the prompt so that fake
             # generate_fns can be deterministic per-sample. A real LM
             # would ignore the nonce.
             nonce = rng.random()
             user_prompt = f"{self._user_prime()}"
-            raw_instr = _safe_call(
-                self.generate_fn, f"{user_prompt}[magpie:user:{i}:{nonce}]"
-            )
+            raw_instr = _safe_call(self.generate_fn, f"{user_prompt}[magpie:user:{i}:{nonce}]")
             if raw_instr is None:
                 continue
             instruction = raw_instr.strip()
@@ -163,9 +162,7 @@ class MagpieGenerator:
                 continue
 
             asst_prompt = self._assistant_prime(instruction)
-            raw_resp = _safe_call(
-                self.generate_fn, f"{asst_prompt}[magpie:assistant:{i}:{nonce}]"
-            )
+            raw_resp = _safe_call(self.generate_fn, f"{asst_prompt}[magpie:assistant:{i}:{nonce}]")
             if raw_resp is None:
                 continue
             response = raw_resp.strip()
@@ -186,6 +183,7 @@ class MagpieGenerator:
 
 # --------------------------------------------------------------- Self-Instruct
 
+
 class SelfInstructGenerator:
     """Seed + bootstrap expansion (Wang 2022).
 
@@ -203,11 +201,9 @@ class SelfInstructGenerator:
         if not callable(generate_fn):
             raise TypeError("generate_fn must be callable: str -> str")
         if not seed_tasks:
-            raise ValueError(
-                "SelfInstructGenerator: seed_tasks must be non-empty"
-            )
+            raise ValueError("SelfInstructGenerator: seed_tasks must be non-empty")
         self.generate_fn = generate_fn
-        self.seed_tasks: List[str] = list(seed_tasks)
+        self.seed_tasks: list[str] = list(seed_tasks)
 
     def _format_instruction_prompt(self, pool: Sequence[str]) -> str:
         examples = "\n".join(f"- {t}" for t in pool[-8:])
@@ -230,7 +226,7 @@ class SelfInstructGenerator:
         self,
         n_iterations: int = 3,
         per_iter: int = 5,
-    ) -> List[InstructionSample]:
+    ) -> list[InstructionSample]:
         if n_iterations < 0:
             raise ValueError(f"n_iterations must be >= 0, got {n_iterations}")
         if per_iter < 0:
@@ -238,8 +234,8 @@ class SelfInstructGenerator:
 
         # Start pool with seeds (emitted as first-class samples so the
         # caller does not have to re-stitch).
-        samples: List[InstructionSample] = []
-        pool: List[str] = list(self.seed_tasks)
+        samples: list[InstructionSample] = []
+        pool: list[str] = list(self.seed_tasks)
         for seed in self.seed_tasks:
             samples.append(
                 InstructionSample(
@@ -284,6 +280,7 @@ class SelfInstructGenerator:
 
 # --------------------------------------------------------------- Evol-Instruct
 
+
 class EvolInstructGenerator:
     """Evol-Instruct complexity evolution (Xu 2023).
 
@@ -293,9 +290,7 @@ class EvolInstructGenerator:
     downstream curricula can sort by ``difficulty``.
     """
 
-    OPERATORS = frozenset(
-        {"deepen", "concretize", "constrain", "reason", "complicate"}
-    )
+    OPERATORS = frozenset({"deepen", "concretize", "constrain", "reason", "complicate"})
 
     _OPERATOR_PROMPTS = {
         "deepen": (
@@ -331,17 +326,14 @@ class EvolInstructGenerator:
         self.generate_fn = generate_fn
 
     def _response_prompt(self, instruction: str) -> str:
-        return (
-            "Answer the following instruction.\n"
-            f"Instruction: {instruction}\nAnswer:"
-        )
+        return f"Answer the following instruction.\nInstruction: {instruction}\nAnswer:"
 
     def evolve(
         self,
         seed: str,
         steps: int = 3,
-        operator_sequence: Optional[List[str]] = None,
-    ) -> List[InstructionSample]:
+        operator_sequence: list[str] | None = None,
+    ) -> list[InstructionSample]:
         if not isinstance(seed, str) or not seed.strip():
             raise ValueError("seed must be a non-empty string")
         if steps < 0:
@@ -368,7 +360,7 @@ class EvolInstructGenerator:
         if operator_sequence is None:
             ops = ops[:steps]
 
-        samples: List[InstructionSample] = []
+        samples: list[InstructionSample] = []
         current = seed.strip()
         total = max(len(ops), 1)
         for idx, op in enumerate(ops):
@@ -382,9 +374,7 @@ class EvolInstructGenerator:
             if not evolved or _contains_role_break(evolved):
                 continue
 
-            raw_resp = _safe_call(
-                self.generate_fn, self._response_prompt(evolved)
-            )
+            raw_resp = _safe_call(self.generate_fn, self._response_prompt(evolved))
             if raw_resp is None:
                 current = evolved
                 continue

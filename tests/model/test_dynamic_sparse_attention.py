@@ -1,8 +1,7 @@
-import pytest
 import torch
+
 from src.model.dynamic_sparse_attention import (
     DSAConfig,
-    LearnedIndexer,
     DynamicSparseAttention,
 )
 
@@ -45,9 +44,7 @@ def test_forward_output_shape():
     model = DynamicSparseAttention(CFG)
     x = _make_input()
     out = model(x)
-    assert out.shape == (B, T, CFG.d_model), (
-        f"Expected ({B}, {T}, {CFG.d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, T, CFG.d_model), f"Expected ({B}, {T}, {CFG.d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------

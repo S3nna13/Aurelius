@@ -3,11 +3,11 @@
 All tests use two tiny nn.Linear(16, 16) models (in_features=16, out_features=16)
 as base and fine-tuned models so the test suite runs instantly.
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.della import (
     DELLAConfig,
@@ -146,10 +146,7 @@ def test_della_merge_differs_from_base():
     config = DELLAConfig(density=0.5, rescale=True, merge_method="mean")
     merged = della_merge(BASE, [FT1], config)
 
-    any_diff = any(
-        not torch.allclose(merged[k].float(), BASE[k].float())
-        for k in BASE
-    )
+    any_diff = any(not torch.allclose(merged[k].float(), BASE[k].float()) for k in BASE)
     assert any_diff, "Merged model must differ from the pretrained base"
 
 
@@ -165,9 +162,7 @@ def test_merger_compute_delta_correct_difference():
 
     for key in BASE:
         expected = FT1[key].float() - BASE[key].float()
-        assert torch.allclose(delta[key], expected, atol=1e-6), (
-            f"Delta mismatch for key '{key}'"
-        )
+        assert torch.allclose(delta[key], expected, atol=1e-6), f"Delta mismatch for key '{key}'"
 
 
 def test_merger_density_1_no_pruning():
@@ -193,9 +188,7 @@ def test_merger_density_0_all_zeros():
     pruned = merger.prune_delta(raw_delta)
 
     for key, tensor in pruned.items():
-        assert (tensor == 0).all(), (
-            f"density=0.0 should give all-zero delta for key '{key}'"
-        )
+        assert (tensor == 0).all(), f"density=0.0 should give all-zero delta for key '{key}'"
 
 
 def test_ties_sign_election_matches_majority():
@@ -209,8 +202,7 @@ def test_ties_sign_election_matches_majority():
 
     # Manually compute what the elected sign should be for each key
     merger_raw = DELLAMerger(DELLAConfig(density=1.0, rescale=False))
-    deltas = [merger_raw.prune_delta(merger_raw.compute_delta(BASE, ft))
-              for ft in [FT1, FT2, FT3]]
+    deltas = [merger_raw.prune_delta(merger_raw.compute_delta(BASE, ft)) for ft in [FT1, FT2, FT3]]
 
     for key in BASE:
         stacked = torch.stack([d[key].float() for d in deltas], dim=0)
@@ -220,7 +212,7 @@ def test_ties_sign_election_matches_majority():
         # Where elected_sign != 0, merged_delta should agree in sign
         nonzero = elected_sign != 0
         if nonzero.any():
-            sign_agree = (torch.sign(merged_delta[nonzero]) == elected_sign[nonzero])
+            sign_agree = torch.sign(merged_delta[nonzero]) == elected_sign[nonzero]
             assert sign_agree.all(), (
                 f"TIES: merged sign does not match elected sign for key '{key}'"
             )

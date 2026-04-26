@@ -7,7 +7,6 @@ instead of storing them, enabling training of larger models on limited hardware.
 from __future__ import annotations
 
 import math
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -34,11 +33,11 @@ class CheckpointedModule(nn.Module):
         # torch.utils.checkpoint does not support kwargs directly with
         # use_reentrant=False in all versions, so we fuse kwargs via closure.
         if kwargs:
+
             def _run(*a):
                 return self.module(*a, **kwargs)
-            return torch.utils.checkpoint.checkpoint(
-                _run, *args, use_reentrant=self.use_reentrant
-            )
+
+            return torch.utils.checkpoint.checkpoint(_run, *args, use_reentrant=self.use_reentrant)
         return torch.utils.checkpoint.checkpoint(
             self.module, *args, use_reentrant=self.use_reentrant
         )
@@ -72,10 +71,12 @@ class SegmentedCheckpointing(nn.Module):
 
     def _make_segment_fn(self, start: int, end: int):
         """Return a callable that runs layers[start:end] sequentially."""
+
         def _segment_fn(x: Tensor) -> Tensor:
             for i in range(start, end):
                 x = self.layers[i](x)
             return x
+
         return _segment_fn
 
     def forward(self, x: Tensor) -> Tensor:
@@ -91,7 +92,7 @@ class SegmentedCheckpointing(nn.Module):
                 x = seg_fn(x)
         return x
 
-    def segment_boundaries(self) -> List[int]:
+    def segment_boundaries(self) -> list[int]:
         """Return layer indices where each segment starts.
 
         Always starts with 0; length equals n_segments.
@@ -138,9 +139,7 @@ class ActivationMemoryEstimator:
         per_layer = self.estimate_transformer_layer(**layer_kwargs)
         return n_layers * per_layer
 
-    def checkpointed_memory(
-        self, n_layers: int, n_segments: int, **layer_kwargs
-    ) -> int:
+    def checkpointed_memory(self, n_layers: int, n_segments: int, **layer_kwargs) -> int:
         """Activation memory with segmented checkpointing.
 
         With checkpointing we only store:
@@ -153,7 +152,9 @@ class ActivationMemoryEstimator:
         """
         per_layer = self.estimate_transformer_layer(**layer_kwargs)
         # Each segment start activation is a single layer input
-        input_bytes = layer_kwargs["batch_size"] * layer_kwargs["seq_len"] * layer_kwargs["d_model"] * 4
+        input_bytes = (
+            layer_kwargs["batch_size"] * layer_kwargs["seq_len"] * layer_kwargs["d_model"] * 4
+        )
         # Store one activation per segment boundary
         boundary_memory = n_segments * input_bytes
         # Max segment size in layers
@@ -237,7 +238,7 @@ class CheckpointingScheduler:
         Starts from 1 segment and increases until memory fits or we reach
         full per-layer checkpointing (n_segments == n_layers).
         """
-        budget_bytes = self.memory_budget_gb * (1024 ** 3)
+        budget_bytes = self.memory_budget_gb * (1024**3)
         layer_kwargs = dict(
             batch_size=batch_size,
             seq_len=seq_len,
@@ -250,9 +251,7 @@ class CheckpointingScheduler:
                 return n_seg
         return n_layers
 
-    def should_checkpoint_layer(
-        self, layer_idx: int, n_layers: int, n_segments: int
-    ) -> bool:
+    def should_checkpoint_layer(self, layer_idx: int, n_layers: int, n_segments: int) -> bool:
         """Return True if layer_idx falls on a segment boundary.
 
         Segment boundaries are computed the same way as SegmentedCheckpointing.

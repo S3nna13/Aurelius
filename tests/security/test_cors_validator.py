@@ -1,9 +1,8 @@
 """Tests for CORS validator."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.security.cors_validator import CORSValidator, CORSPolicy
+from src.security.cors_validator import CORSPolicy, CORSValidator
 
 
 class TestCORSValidator:
@@ -25,9 +24,14 @@ class TestCORSValidator:
 
     def test_to_headers(self):
         cv = CORSValidator()
-        cv.add_policy("/api", CORSPolicy(
-            allowed_origins=["*"], allowed_methods=["GET"], allow_credentials=True,
-        ))
+        cv.add_policy(
+            "/api",
+            CORSPolicy(
+                allowed_origins=["*"],
+                allowed_methods=["GET"],
+                allow_credentials=True,
+            ),
+        )
         headers = cv.to_headers("/api")
         assert "Access-Control-Allow-Origin" in headers
         assert "Access-Control-Allow-Credentials" in headers

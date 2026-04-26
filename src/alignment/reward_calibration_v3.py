@@ -10,13 +10,13 @@ References:
     Guo et al. 2017 (Temperature Scaling) — https://arxiv.org/abs/1706.04599
     Niculescu-Mizil & Caruana 2005 (Calibration methods)
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -158,11 +158,7 @@ class HistogramBinCalibrator:
             val_clipped = max(min_edge, min(max_edge, val))
 
             # Find bin index
-            bin_idx = int(
-                (val_clipped - min_edge)
-                / (max_edge - min_edge)
-                * self.n_bins
-            )
+            bin_idx = int((val_clipped - min_edge) / (max_edge - min_edge) * self.n_bins)
             # Clamp to valid range
             bin_idx = min(bin_idx, self.n_bins - 1)
             out[i] = self.bin_values[bin_idx]
@@ -179,7 +175,7 @@ class ReliabilityDiagram:
     def __init__(self, n_bins: int = 10) -> None:
         self.n_bins = n_bins
 
-    def compute(self, probs: Tensor, labels: Tensor) -> Dict[str, Any]:
+    def compute(self, probs: Tensor, labels: Tensor) -> dict[str, Any]:
         """Compute ECE and per-bin statistics.
 
         Args:
@@ -197,9 +193,9 @@ class ReliabilityDiagram:
         labels = labels.detach().float()
         n = probs.shape[0]
 
-        bin_confidences: List[float] = []
-        bin_accuracies: List[float] = []
-        bin_counts: List[int] = []
+        bin_confidences: list[float] = []
+        bin_accuracies: list[float] = []
+        bin_counts: list[int] = []
 
         bin_edges = torch.linspace(0.0, 1.0, self.n_bins + 1)
         ece = 0.0
@@ -260,9 +256,7 @@ class PreferenceCalibrator:
         calibrated_l = self.temperature_scaler(reward_l)
         return torch.sigmoid(calibrated_w - calibrated_l)
 
-    def preference_calibration_error(
-        self, reward_w: Tensor, reward_l: Tensor
-    ) -> float:
+    def preference_calibration_error(self, reward_w: Tensor, reward_l: Tensor) -> float:
         """ECE of the preference predictor treating every pair as label=1.
 
         The winner is always the "positive" class, so ground-truth labels are

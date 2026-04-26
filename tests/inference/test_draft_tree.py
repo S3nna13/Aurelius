@@ -44,4 +44,3 @@ def test_best_leaf_path_handles_single_root():
 
 def test_parent_indices_depth_zero_returns_root_only():
     assert parent_indices(2, 0) == [None]
-

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def _sanitize(text: str) -> str:
@@ -44,6 +44,8 @@ def chrf_score(references: Sequence[str], hypothesis: str | None, n: int = 6) ->
         if avg_precision + avg_recall == 0:
             continue
         beta = 1.0
-        f_score = (1 + beta**2) * (avg_precision * avg_recall) / (beta**2 * avg_precision + avg_recall)
+        f_score = (
+            (1 + beta**2) * (avg_precision * avg_recall) / (beta**2 * avg_precision + avg_recall)
+        )
         best = max(best, f_score * 100)
     return best

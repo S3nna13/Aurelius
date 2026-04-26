@@ -89,8 +89,9 @@ def test_signer_algorithm_fallback_when_crypto_unavailable():
 
 
 def test_ed25519_sign_and_verify_roundtrip():
-    cryptography = pytest.importorskip("cryptography")
+    pytest.importorskip("cryptography")
     import os
+
     from cryptography.hazmat.primitives.asymmetric import ed25519
 
     private_key_bytes = os.urandom(32)
@@ -109,8 +110,9 @@ def test_ed25519_sign_and_verify_roundtrip():
 
 
 def test_ed25519_rejects_wrong_digest():
-    cryptography = pytest.importorskip("cryptography")
+    pytest.importorskip("cryptography")
     import os
+
     from cryptography.hazmat.primitives.asymmetric import ed25519
 
     private_key_bytes = os.urandom(32)

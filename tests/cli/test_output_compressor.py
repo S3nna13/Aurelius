@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.cli.output_compressor import (
     DEFAULT_COMPRESSOR,
     OUTPUT_COMPRESSOR_REGISTRY,
     CompressionConfig,
-    CompressionResult,
     OutputCompressor,
 )
 
@@ -137,7 +134,7 @@ def test_ls_specialization():
 
 def test_test_output_failures_only():
     comp = _fresh()
-    text = "test_a PASSED\n" "test_b FAILED\n" "test_c PASSED\n"
+    text = "test_a PASSED\ntest_b FAILED\ntest_c PASSED\n"
     result = comp.compress_test_output(text)
     assert "test_b FAILED" in result.output
     assert "test_a PASSED" not in result.output
@@ -152,7 +149,7 @@ def test_test_output_failures_only():
 
 def test_grep_output_specialization():
     comp = _fresh()
-    text = "file1.txt:10:match\n" "file1.txt:20:another\n" "file2.txt:5:match\n"
+    text = "file1.txt:10:match\nfile1.txt:20:another\nfile2.txt:5:match\n"
     result = comp.compress_grep(text)
     assert "file1.txt: 2 matches" in result.output
     assert "file2.txt: 1 match" in result.output

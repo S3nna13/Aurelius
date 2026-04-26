@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import gzip
-import hashlib
 import io
 import json
 import logging
-import os
 import re
 import tarfile
 import time
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,8 +47,16 @@ except ImportError:
 DEFAULT_CONFIG: dict[str, Any] = {
     "arxiv": {
         "categories": [
-            "cs.AI", "cs.LG", "cs.CL", "cs.SE", "cs.PL",
-            "stat.ML", "math.NA", "physics", "q-bio", "q-fin",
+            "cs.AI",
+            "cs.LG",
+            "cs.CL",
+            "cs.SE",
+            "cs.PL",
+            "stat.ML",
+            "math.NA",
+            "physics",
+            "q-bio",
+            "q-fin",
         ],
         "max_papers_per_category": None,
         "include_abstracts": True,
@@ -72,28 +76,26 @@ ARXIV_API_BASE = "http://export.arxiv.org/api/query"
 ARXIV_S3_BASE = "https://arxiv.org/src/"
 
 SECTION_HEADING_RE = re.compile(
-    r'\\(?:section|subsection|subsubsection|paragraph|textbf|textit)\*?\s*\{([^}]+)\}',
+    r"\\(?:section|subsection|subsubsection|paragraph|textbf|textit)\*?\s*\{([^}]+)\}",
     re.IGNORECASE,
 )
-LATEX_COMMAND_RE = re.compile(r'\\(?:[a-zA-Z]+|.)(?:\s*\{[^}]*\})?')
-MATH_INLINE_RE = re.compile(r'\$[^$]+\$')
-MATH_DISPLAY_RE = re.compile(r'\$\$[^$]+\$\$')
-VERBATIM_RE = re.compile(r'\\begin\{verbatim\}(.*?)\\end\{verbatim\}', re.DOTALL)
-LISTINGS_RE = re.compile(r'\\begin\{lstlisting\}(.*?)\\end\{lstlisting\}', re.DOTALL)
-CITE_RE = re.compile(r'\\(?:cite|citet|citep)\s*(?:\[[^\]]*\])*\s*\{[^}]+\}')
-REF_RE = re.compile(r'\\(?:ref|label|pageref)\s*\{[^}]+\}')
-BIB_RE = re.compile(r'\\bibliography\s*\{[^}]+\}')
-INCLUDE_RE = re.compile(r'\\(?:include|input)\s*\{[^}]+\}')
-COMMENT_RE = re.compile(r'(?<!\\)%.*$', re.MULTILINE)
-MULTI_LINE_COMMENT_RE = re.compile(
-    r'\\begin\{comment\}.*?\\end\{comment\}', re.DOTALL
-)
-LATEX_ENV_RE = re.compile(r'\\(?:begin|end)\s*\{[a-zA-Z*]+\}')
-LATEX_ESCAPED_CHARS_RE = re.compile(r'\\([{}_&^~#$])')
+LATEX_COMMAND_RE = re.compile(r"\\(?:[a-zA-Z]+|.)(?:\s*\{[^}]*\})?")
+MATH_INLINE_RE = re.compile(r"\$[^$]+\$")
+MATH_DISPLAY_RE = re.compile(r"\$\$[^$]+\$\$")
+VERBATIM_RE = re.compile(r"\\begin\{verbatim\}(.*?)\\end\{verbatim\}", re.DOTALL)
+LISTINGS_RE = re.compile(r"\\begin\{lstlisting\}(.*?)\\end\{lstlisting\}", re.DOTALL)
+CITE_RE = re.compile(r"\\(?:cite|citet|citep)\s*(?:\[[^\]]*\])*\s*\{[^}]+\}")
+REF_RE = re.compile(r"\\(?:ref|label|pageref)\s*\{[^}]+\}")
+BIB_RE = re.compile(r"\\bibliography\s*\{[^}]+\}")
+INCLUDE_RE = re.compile(r"\\(?:include|input)\s*\{[^}]+\}")
+COMMENT_RE = re.compile(r"(?<!\\)%.*$", re.MULTILINE)
+MULTI_LINE_COMMENT_RE = re.compile(r"\\begin\{comment\}.*?\\end\{comment\}", re.DOTALL)
+LATEX_ENV_RE = re.compile(r"\\(?:begin|end)\s*\{[a-zA-Z*]+\}")
+LATEX_ESCAPED_CHARS_RE = re.compile(r"\\([{}_&^~#$])")
 
 ARXIV_ID_RE = re.compile(
-    r'(\d{4}\.\d{4,5}(?:v\d+)?'
-    r'|[a-z\-]+(?:\.[a-z\-]+)?/\d{7}(?:v\d+)?)'
+    r"(\d{4}\.\d{4,5}(?:v\d+)?"
+    r"|[a-z\-]+(?:\.[a-z\-]+)?/\d{7}(?:v\d+)?)"
 )
 
 
@@ -125,6 +127,7 @@ class ParsedPaper:
 # Text cleaning utilities
 # ---------------------------------------------------------------------------
 
+
 def extract_arxiv_id(text: str) -> str | None:
     m = ARXIV_ID_RE.search(text.strip())
     return m.group(1) if m else None
@@ -142,16 +145,16 @@ def strip_latex_commands(text: str) -> str:
     text = REF_RE.sub(" ", text)
     text = BIB_RE.sub(" ", text)
     text = INCLUDE_RE.sub(" ", text)
-    text = re.sub(r'[ \t]+', ' ', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
 def strip_html_tags(text: str) -> str:
-    text = re.sub(r'<[^>]+>', ' ', text)
-    text = re.sub(r'&[a-zA-Z]+;', ' ', text)
-    text = re.sub(r'[ \t]+', ' ', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"&[a-zA-Z]+;", " ", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
@@ -159,7 +162,7 @@ def detect_language(text: str) -> str:
     if _lang_detect is not None:
         try:
             return _lang_detect(text[:1000])
-        except Exception:
+        except Exception:  # noqa: S110
             pass
     ascii_chars = sum(1 for c in text[:2000] if ord(c) < 128)
     ratio = ascii_chars / max(len(text[:2000]), 1)
@@ -169,7 +172,7 @@ def detect_language(text: str) -> str:
 def compute_math_ratio(text: str) -> float:
     if not text:
         return 0.0
-    math_chars = sum(1 for c in text if c in '$\\{}[]_^=<>∑∫∏∂∇∃∀∈∉⊂⊃∪∩∧∨¬⇒⇔λμπσ')
+    math_chars = sum(1 for c in text if c in "$\\{}[]_^=<>∑∫∏∂∇∃∀∈∉⊂⊃∪∩∧∨¬⇒⇔λμπσ")
     return math_chars / len(text)
 
 
@@ -189,6 +192,7 @@ def compute_quality_score(text: str) -> float:
 # Section splitting
 # ---------------------------------------------------------------------------
 
+
 def split_into_sections(text: str) -> dict[str, str]:
     sections: dict[str, str] = {}
     lines = text.split("\n")
@@ -203,7 +207,7 @@ def split_into_sections(text: str) -> dict[str, str]:
                 if body:
                     sections[current_heading] = body
             current_heading = m.group(1).strip().lower()
-            content_after = line[m.end():].strip()
+            content_after = line[m.end() :].strip()
             current_lines = [content_after] if content_after else []
         else:
             current_lines.append(line)
@@ -219,6 +223,7 @@ def split_into_sections(text: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # ArxivPipeline
 # ---------------------------------------------------------------------------
+
 
 class ArxivPipeline:
     """Production-grade arXiv bulk download & preprocessing pipeline.
@@ -279,7 +284,7 @@ class ArxivPipeline:
         state = self._load_state(base_dir)
         if arxiv_id not in state["processed_ids"]:
             state["processed_ids"].append(arxiv_id)
-        state["last_run"] = datetime.now(timezone.utc).isoformat()
+        state["last_run"] = datetime.now(UTC).isoformat()
         self._save_state(base_dir, state)
 
     def _is_processed(self, base_dir: Path, arxiv_id: str) -> bool:
@@ -299,7 +304,7 @@ class ArxivPipeline:
             except requests.RequestException as exc:
                 logger.warning("Attempt %d/%d failed for %s: %s", attempt + 1, 3, url, exc)
                 if attempt < 2:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
         return None
 
     def _download_s3(self, arxiv_id: str, target_dir: Path) -> Path | None:
@@ -345,35 +350,25 @@ class ArxivPipeline:
     @staticmethod
     def _parse_atom_response(xml_text: str) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
-        for entry in re.finditer(
-            r'<entry>(.*?)</entry>', xml_text, re.DOTALL
-        ):
+        for entry in re.finditer(r"<entry>(.*?)</entry>", xml_text, re.DOTALL):
             entry_xml = entry.group(1)
-            id_m = re.search(
-                r'<id>\s*https?://arxiv\.org/abs/(\S+?)\s*</id>', entry_xml
-            )
-            title_m = re.search(r'<title>(.*?)</title>', entry_xml, re.DOTALL)
-            summary_m = re.search(
-                r'<summary>(.*?)</summary>', entry_xml, re.DOTALL
-            )
-            published_m = re.search(
-                r'<published>(\d{4})', entry_xml
-            )
-            authors = re.findall(
-                r'<name>(.*?)</name>', entry_xml
-            )
-            categories = re.findall(
-                r'<category\s+term="([^"]+)"', entry_xml
-            )
+            id_m = re.search(r"<id>\s*https?://arxiv\.org/abs/(\S+?)\s*</id>", entry_xml)
+            title_m = re.search(r"<title>(.*?)</title>", entry_xml, re.DOTALL)
+            summary_m = re.search(r"<summary>(.*?)</summary>", entry_xml, re.DOTALL)
+            published_m = re.search(r"<published>(\d{4})", entry_xml)
+            authors = re.findall(r"<name>(.*?)</name>", entry_xml)
+            categories = re.findall(r'<category\s+term="([^"]+)"', entry_xml)
 
-            results.append({
-                "id": id_m.group(1).strip() if id_m else "",
-                "title": _clean_atom_text(title_m.group(1) if title_m else ""),
-                "abstract": _clean_atom_text(summary_m.group(1) if summary_m else ""),
-                "year": int(published_m.group(1)) if published_m else 0,
-                "authors": authors,
-                "categories": categories,
-            })
+            results.append(
+                {
+                    "id": id_m.group(1).strip() if id_m else "",
+                    "title": _clean_atom_text(title_m.group(1) if title_m else ""),
+                    "abstract": _clean_atom_text(summary_m.group(1) if summary_m else ""),
+                    "year": int(published_m.group(1)) if published_m else 0,
+                    "authors": authors,
+                    "categories": categories,
+                }
+            )
         return results
 
     # -- LaTeX extraction -----------------------------------------------
@@ -516,7 +511,7 @@ class ArxivPipeline:
 
         # trim
         if len(full_text) > self._max_text_length:
-            full_text = full_text[:self._max_text_length]
+            full_text = full_text[: self._max_text_length]
 
         # language check
         lang = detect_language(full_text)
@@ -548,9 +543,7 @@ class ArxivPipeline:
         self._update_state(out, arxiv_id)
         return paper_dict
 
-    def _extract_metadata_from_text(
-        self, arxiv_id: str, text: str
-    ) -> PaperMetadata:
+    def _extract_metadata_from_text(self, arxiv_id: str, text: str) -> PaperMetadata:
         title = ""
         authors: list[str] = []
         abstract = ""
@@ -559,19 +552,19 @@ class ArxivPipeline:
         lines = text.split("\n")
         for line in lines[:50]:
             if not title:
-                tm = re.match(r'\\title\s*\{([^}]+)\}', line)
+                tm = re.match(r"\\title\s*\{([^}]+)\}", line)
                 if tm:
                     title = tm.group(1)
                     continue
             if not authors:
-                am = re.match(r'\\author\s*\{([^}]+)\}', line)
+                am = re.match(r"\\author\s*\{([^}]+)\}", line)
                 if am:
                     raw = am.group(1)
-                    authors = [a.strip() for a in re.split(r'\\and|,', raw) if a.strip()]
+                    authors = [a.strip() for a in re.split(r"\\and|,", raw) if a.strip()]
                     continue
 
         # Extract year from arxiv ID pattern
-        ym = re.match(r'(\d{4})', arxiv_id)
+        ym = re.match(r"(\d{4})", arxiv_id)
         if ym:
             year = int(ym.group(1))
 
@@ -588,10 +581,10 @@ class ArxivPipeline:
     def _infer_categories(text: str) -> list[str]:
         cats: list[str] = []
         for line in text.split("\n")[:30]:
-            m = re.search(r'\\journal|\\acm|\\pacs|\\subjclass', line, re.IGNORECASE)
+            m = re.search(r"\\journal|\\acm|\\pacs|\\subjclass", line, re.IGNORECASE)
             if m:
-                rest = line[m.end():]
-                found = re.findall(r'[A-Za-z]+\.[A-Za-z]+', rest)
+                rest = line[m.end() :]
+                found = re.findall(r"[A-Za-z]+\.[A-Za-z]+", rest)
                 cats.extend(found)
         return cats or ["unknown"]
 
@@ -653,6 +646,7 @@ class ArxivPipeline:
 
         try:
             from tokenizers import Tokenizer
+
             tok = Tokenizer.from_file(tokenizer_path)
         except ImportError:
             logger.error("tokenizers package not available")
@@ -683,12 +677,14 @@ class ArxivPipeline:
                     current_shard = current_shard[shard_size:]
                     shard_path = out / f"shard_{shard_idx:06d}.npy"
                     import numpy as np
+
                     np.save(str(shard_path), np.array(shard, dtype=np.uint16))
                     shard_idx += 1
 
         if current_shard:
             shard_path = out / f"shard_{shard_idx:06d}.npy"
             import numpy as np
+
             np.save(str(shard_path), np.array(current_shard, dtype=np.uint16))
 
         logger.info("Tokenized %d papers -> %d shards in %s", count, shard_idx + 1, out)
@@ -730,22 +726,26 @@ class ArxivPipeline:
         arxiv_id = paper.get("id", "")
 
         if title and abstract:
-            pairs.append({
-                "instruction": f"Summarize the paper titled '{title}'.",
-                "response": abstract[:2000],
-                "id": arxiv_id,
-                "type": "title_summary",
-            })
+            pairs.append(
+                {
+                    "instruction": f"Summarize the paper titled '{title}'.",
+                    "response": abstract[:2000],
+                    "id": arxiv_id,
+                    "type": "title_summary",
+                }
+            )
 
         for heading, content in sections.items():
             if len(content) > 100:
-                pairs.append({
-                    "instruction": f"Describe the {heading} of the paper titled '{title}'.",
-                    "response": content[:2000],
-                    "id": arxiv_id,
-                    "type": "section",
-                    "section": heading,
-                })
+                pairs.append(
+                    {
+                        "instruction": f"Describe the {heading} of the paper titled '{title}'.",
+                        "response": content[:2000],
+                        "id": arxiv_id,
+                        "type": "section",
+                        "section": heading,
+                    }
+                )
 
         return pairs
 
@@ -765,7 +765,7 @@ class ArxivPipeline:
         processed.mkdir(parents=True, exist_ok=True)
 
         stats: dict[str, Any] = {
-            "start_time": datetime.now(timezone.utc).isoformat(),
+            "start_time": datetime.now(UTC).isoformat(),
             "downloaded": 0,
             "processed": 0,
             "tokenized": 0,
@@ -803,7 +803,7 @@ class ArxivPipeline:
                 logger.error("Instruction generation failed: %s", exc)
                 stats["errors"].append(f"instruction: {exc}")
 
-        stats["end_time"] = datetime.now(timezone.utc).isoformat()
+        stats["end_time"] = datetime.now(UTC).isoformat()
         stats["output_dir"] = str(out)
 
         # save run stats
@@ -818,10 +818,11 @@ class ArxivPipeline:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _clean_atom_text(text: str) -> str:
-    text = re.sub(r'<[^>]+>', '', text)
-    text = text.replace('\n', ' ').replace('\r', ' ')
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"<[^>]+>", "", text)
+    text = text.replace("\n", " ").replace("\r", " ")
+    text = re.sub(r"\s+", " ", text).strip()
     if unidecode is not None:
         text = unidecode.unidecode(text)
     return text

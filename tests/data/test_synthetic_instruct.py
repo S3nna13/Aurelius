@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
 from src.data.synthetic_instruct import (
     InstructConfig,
     InstructionGenerator,
@@ -18,11 +16,11 @@ from src.data.synthetic_instruct import (
     generate_writing_instruction,
 )
 
-
 RNG = random.Random(42)
 
 
 # ---- 1. InstructConfig defaults ----
+
 
 def test_instruct_config_defaults():
     cfg = InstructConfig()
@@ -36,6 +34,7 @@ def test_instruct_config_defaults():
 
 # ---- 2. generate_math_instruction returns InstructionSample with domain="math" ----
 
+
 def test_math_instruction_domain():
     sample = generate_math_instruction(random.Random(42), complexity=1)
     assert isinstance(sample, InstructionSample)
@@ -43,6 +42,7 @@ def test_math_instruction_domain():
 
 
 # ---- 3. generate_math_instruction output contains a number ----
+
 
 def test_math_instruction_output_has_number():
     for c in [1, 2, 3]:
@@ -54,6 +54,7 @@ def test_math_instruction_output_has_number():
 
 # ---- 4. generate_coding_instruction returns InstructionSample with domain="coding" ----
 
+
 def test_coding_instruction_domain():
     sample = generate_coding_instruction(random.Random(42), complexity=1)
     assert isinstance(sample, InstructionSample)
@@ -61,6 +62,7 @@ def test_coding_instruction_domain():
 
 
 # ---- 5. generate_reasoning_instruction returns valid InstructionSample ----
+
 
 def test_reasoning_instruction_valid():
     sample = generate_reasoning_instruction(random.Random(42), complexity=2)
@@ -72,6 +74,7 @@ def test_reasoning_instruction_valid():
 
 # ---- 6. generate_writing_instruction returns valid InstructionSample ----
 
+
 def test_writing_instruction_valid():
     sample = generate_writing_instruction(random.Random(42), complexity=1)
     assert isinstance(sample, InstructionSample)
@@ -82,6 +85,7 @@ def test_writing_instruction_valid():
 
 # ---- 7. generate_factual_instruction returns valid InstructionSample ----
 
+
 def test_factual_instruction_valid():
     sample = generate_factual_instruction(random.Random(42), complexity=1)
     assert isinstance(sample, InstructionSample)
@@ -91,6 +95,7 @@ def test_factual_instruction_valid():
 
 
 # ---- 8. evolve_instruction increases complexity (capped at max) ----
+
 
 def test_evolve_increases_complexity():
     base = generate_math_instruction(random.Random(42), complexity=1)
@@ -106,6 +111,7 @@ def test_evolve_increases_complexity():
 
 # ---- 9. InstructionGenerator.generate returns correct count ----
 
+
 def test_generator_generate_count():
     cfg = InstructConfig(n_instructions=25, seed=42)
     gen = InstructionGenerator(cfg)
@@ -114,6 +120,7 @@ def test_generator_generate_count():
 
 
 # ---- 10. InstructionGenerator.generate covers multiple domains ----
+
 
 def test_generator_covers_domains():
     cfg = InstructConfig(n_instructions=50, seed=42)
@@ -125,6 +132,7 @@ def test_generator_covers_domains():
 
 # ---- 11. generate_batch with domain filter only returns that domain ----
 
+
 def test_generate_batch_domain_filter():
     gen = InstructionGenerator(InstructConfig(seed=42))
     batch = gen.generate_batch(10, domain="math")
@@ -133,6 +141,7 @@ def test_generate_batch_domain_filter():
 
 
 # ---- 12. to_sft_format returns list of dicts with prompt/completion keys ----
+
 
 def test_to_sft_format():
     gen = InstructionGenerator(InstructConfig(seed=42))
@@ -150,6 +159,7 @@ def test_to_sft_format():
 
 # ---- 13. InstructionGenerator reproducible with same seed ----
 
+
 def test_generator_reproducible():
     gen1 = InstructionGenerator(InstructConfig(n_instructions=20, seed=42))
     gen2 = InstructionGenerator(InstructConfig(n_instructions=20, seed=42))
@@ -163,6 +173,7 @@ def test_generator_reproducible():
 
 
 # ---- 14. generate_math_instruction with include_cot=True has step-by-step ----
+
 
 def test_math_instruction_cot():
     for c in [1, 2, 3]:

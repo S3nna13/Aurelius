@@ -26,16 +26,15 @@ DoLaDecoder        — contrast, sample, and decode step
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DoLaConfig:
@@ -71,6 +70,7 @@ class DoLaConfig:
 # Layer output container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DoLaLayerOutput:
     """Logits emitted by a single transformer layer."""
@@ -85,6 +85,7 @@ class DoLaLayerOutput:
 # ---------------------------------------------------------------------------
 # Decoder
 # ---------------------------------------------------------------------------
+
 
 class DoLaDecoder:
     """Contrasts final-layer and early-layer logits for factuality-aware decoding.

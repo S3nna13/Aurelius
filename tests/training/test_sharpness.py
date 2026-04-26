@@ -1,16 +1,17 @@
 """Tests for loss landscape sharpness metrics (SAM + Hutchinson Hessian trace)."""
+
 import torch
-import pytest
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.sharpness import (
     SharpnessConfig,
     SharpnessResult,
-    sam_perturbation,
-    restore_perturbation,
-    sharpness_aware_loss,
     hutchinson_hessian_trace,
     measure_sharpness,
+    restore_perturbation,
+    sam_perturbation,
+    sharpness_aware_loss,
 )
 
 
@@ -41,7 +42,9 @@ def test_sam_perturbation_changes_params():
     input_ids, labels = _make_batch()
 
     # capture original param values
-    original_params = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+    original_params = {
+        n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad
+    }
 
     loss, _, _ = model(input_ids, labels=labels)
     sam_perturbation(model, loss)
@@ -72,7 +75,9 @@ def test_restore_perturbation_recovers_weights():
     model = _make_model()
     input_ids, labels = _make_batch()
 
-    original_params = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+    original_params = {
+        n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad
+    }
 
     loss, _, _ = model(input_ids, labels=labels)
     result = sam_perturbation(model, loss)
@@ -168,9 +173,7 @@ def test_flatness_score_range():
 
     result = measure_sharpness(model, input_ids, labels, cfg, compute_hessian=False)
 
-    assert 0 < result.flatness_score <= 1.0, (
-        f"flatness_score {result.flatness_score} not in (0, 1]"
-    )
+    assert 0 < result.flatness_score <= 1.0, f"flatness_score {result.flatness_score} not in (0, 1]"
 
 
 def test_measure_sharpness_no_hessian():

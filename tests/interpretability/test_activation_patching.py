@@ -5,17 +5,16 @@ Tiny configuration:
     D=16, T=4, B=2, V=8, H=2 (heads for attention similarity tests)
 """
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.interpretability.activation_patching import (
-    PatchConfig,
     ActivationStore,
-    patch_activations,
-    compute_patching_effect,
+    PatchConfig,
     PatchingExperiment,
     attention_pattern_similarity,
+    compute_patching_effect,
+    patch_activations,
 )
 
 # ---------------------------------------------------------------------------
@@ -47,6 +46,7 @@ def _make_input() -> torch.Tensor:
 # 1. PatchConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_patchconfig_defaults():
     cfg = PatchConfig()
     assert cfg.patch_layers == []
@@ -59,13 +59,14 @@ def test_patchconfig_defaults():
 # 2. ActivationStore captures hook correctly
 # ---------------------------------------------------------------------------
 
+
 def test_activation_store_hook_captures():
     store = ActivationStore()
     layer = nn.Linear(D, D, bias=False)
     x = torch.randn(B, T, D)
     hook = layer.register_forward_hook(store.hook_fn("layer0"))
     with torch.no_grad():
-        out = layer(x)
+        layer(x)
     hook.remove()
     assert "layer0" in store.store
     assert store.store["layer0"].shape == (B, T, D)
@@ -74,6 +75,7 @@ def test_activation_store_hook_captures():
 # ---------------------------------------------------------------------------
 # 3. ActivationStore.get returns tensor
 # ---------------------------------------------------------------------------
+
 
 def test_activation_store_get_returns_tensor():
     store = ActivationStore()
@@ -92,6 +94,7 @@ def test_activation_store_get_returns_tensor():
 # 4. ActivationStore.clear empties the store
 # ---------------------------------------------------------------------------
 
+
 def test_activation_store_clear_empties():
     store = ActivationStore()
     layer = nn.Linear(D, D, bias=False)
@@ -109,6 +112,7 @@ def test_activation_store_clear_empties():
 # 5. patch_activations with positions=None replaces all positions
 # ---------------------------------------------------------------------------
 
+
 def test_patch_activations_all_positions_replaces_all():
     target = torch.zeros(B, T, D)
     source = torch.ones(B, T, D)
@@ -119,6 +123,7 @@ def test_patch_activations_all_positions_replaces_all():
 # ---------------------------------------------------------------------------
 # 6. patch_activations with specific positions leaves others unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_patch_activations_specific_positions_leaves_others():
     target = torch.zeros(B, T, D)
@@ -140,10 +145,11 @@ def test_patch_activations_specific_positions_leaves_others():
 # 7. compute_patching_effect shape matches logits
 # ---------------------------------------------------------------------------
 
+
 def test_compute_patching_effect_shape():
     original = torch.randn(B, T, V)
-    patched  = torch.randn(B, T, V)
-    clean    = torch.randn(B, T, V)
+    patched = torch.randn(B, T, V)
+    clean = torch.randn(B, T, V)
     effect = compute_patching_effect(original, patched, clean)
     assert effect.shape == original.shape
 
@@ -152,12 +158,13 @@ def test_compute_patching_effect_shape():
 # 8. compute_patching_effect with identical original and clean ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_patching_effect_identical_original_clean_is_zero():
     """When original == clean, denominator ≈ 1e-8, numerator is arbitrary,
     but more importantly when patched == original the effect should be 0."""
     original = torch.randn(B, T, V)
-    clean    = original.clone()   # same as original
-    patched  = original.clone()   # no change
+    clean = original.clone()  # same as original
+    patched = original.clone()  # no change
     effect = compute_patching_effect(original, patched, clean)
     # numerator = patched - original = 0, so effect = 0 regardless of denom
     assert torch.allclose(effect, torch.zeros_like(effect), atol=1e-6)
@@ -166,6 +173,7 @@ def test_compute_patching_effect_identical_original_clean_is_zero():
 # ---------------------------------------------------------------------------
 # 9. PatchingExperiment.capture_activations returns dict with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_capture_activations_returns_correct_keys():
     model = _make_model()
@@ -182,11 +190,12 @@ def test_capture_activations_returns_correct_keys():
 # 10. PatchingExperiment.compute_layer_importance returns dict
 # ---------------------------------------------------------------------------
 
+
 def test_compute_layer_importance_returns_dict():
     model = _make_model()
     config = PatchConfig()
     exp = PatchingExperiment(model, config)
-    clean_x     = _make_input()
+    clean_x = _make_input()
     corrupted_x = _make_input()
     hook_points = ["0"]
     result = exp.compute_layer_importance(clean_x, corrupted_x, hook_points)
@@ -198,11 +207,12 @@ def test_compute_layer_importance_returns_dict():
 # 11. Importance values are non-negative floats
 # ---------------------------------------------------------------------------
 
+
 def test_compute_layer_importance_values_non_negative():
     model = _make_model()
     config = PatchConfig()
     exp = PatchingExperiment(model, config)
-    clean_x     = _make_input()
+    clean_x = _make_input()
     corrupted_x = _make_input()
     hook_points = ["0", "1"]
     result = exp.compute_layer_importance(clean_x, corrupted_x, hook_points)
@@ -215,6 +225,7 @@ def test_compute_layer_importance_values_non_negative():
 # 12. attention_pattern_similarity shape is (B, H)
 # ---------------------------------------------------------------------------
 
+
 def test_attention_pattern_similarity_shape():
     attn_a = torch.randn(B, H, T, T)
     attn_b = torch.randn(B, H, T, T)
@@ -225,6 +236,7 @@ def test_attention_pattern_similarity_shape():
 # ---------------------------------------------------------------------------
 # 13. similarity of identical patterns = 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_attention_pattern_similarity_identical_is_one():
     attn = torch.randn(B, H, T, T)
@@ -238,6 +250,7 @@ def test_attention_pattern_similarity_identical_is_one():
 # 14. patch_activations returns a new tensor (does not mutate target)
 # ---------------------------------------------------------------------------
 
+
 def test_patch_activations_does_not_mutate_target():
     target = torch.zeros(B, T, D)
     source = torch.ones(B, T, D)
@@ -249,6 +262,7 @@ def test_patch_activations_does_not_mutate_target():
 # ---------------------------------------------------------------------------
 # 15. PatchingExperiment.run_patched_forward returns correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_run_patched_forward_output_shape():
     model = _make_model()
@@ -265,11 +279,12 @@ def test_run_patched_forward_output_shape():
 # 16. compute_patching_effect: full restoration yields effect ≈ 1
 # ---------------------------------------------------------------------------
 
+
 def test_compute_patching_effect_full_restoration():
     """When patched_logits == clean_logits, effect should be ≈ 1."""
     original = torch.zeros(B, T, V)
-    clean    = torch.ones(B, T, V) * 2.0
-    patched  = clean.clone()
+    clean = torch.ones(B, T, V) * 2.0
+    patched = clean.clone()
     effect = compute_patching_effect(original, patched, clean)
     assert torch.allclose(effect, torch.ones_like(effect), atol=1e-5)
 
@@ -277,6 +292,7 @@ def test_compute_patching_effect_full_restoration():
 # ---------------------------------------------------------------------------
 # 17. attention_pattern_similarity values are in [-1, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_attention_pattern_similarity_range():
     attn_a = torch.randn(B, H, T, T)

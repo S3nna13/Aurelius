@@ -1,11 +1,11 @@
 """Curriculum environment: wraps an inner environment and advances difficulty on mastery."""
+
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
-from .environment import Environment, EnvState, EnvAction, EnvStep, GridWorldEnv
+from .environment import EnvAction, Environment, EnvState, EnvStep, GridWorldEnv
 
 
 @dataclass
@@ -106,6 +106,7 @@ class CurriculumEnv:
 # ---------------------------------------------------------------------------
 # Default factory — creates a GridWorldEnv sized by the level config
 # ---------------------------------------------------------------------------
+
 
 def _default_grid_factory(config: dict) -> Environment:
     width = config.get("width", 5)

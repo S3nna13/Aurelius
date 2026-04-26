@@ -5,16 +5,22 @@ Tests for src/computer_use/task_decomposer.py
 import unittest
 
 from src.computer_use.task_decomposer import (
+    TASK_DECOMPOSER_REGISTRY,
     AtomicStep,
     DecomposedTask,
     TaskDecomposer,
-    TASK_DECOMPOSER_REGISTRY,
 )
 
 
 class TestAtomicStep(unittest.TestCase):
     def test_fields(self):
-        step = AtomicStep(step_id=0, description="do something", action_type="CLICK", target="btn", estimated_ms=150)
+        step = AtomicStep(
+            step_id=0,
+            description="do something",
+            action_type="CLICK",
+            target="btn",
+            estimated_ms=150,
+        )
         self.assertEqual(step.step_id, 0)
         self.assertEqual(step.description, "do something")
         self.assertEqual(step.action_type, "CLICK")

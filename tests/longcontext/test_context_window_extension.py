@@ -24,9 +24,6 @@ Tests
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.longcontext.context_window_extension import (
@@ -62,6 +59,7 @@ def _standard_cos_sin(dim: int, base: float, seq_len: int) -> tuple[torch.Tensor
 # 1. linear_scale: output shape
 # ---------------------------------------------------------------------------
 
+
 def test_linear_scale_output_shape() -> None:
     seq_len = 128
     cos_base, sin_base = _standard_cos_sin(DIM, BASE, seq_len)
@@ -75,6 +73,7 @@ def test_linear_scale_output_shape() -> None:
 # ---------------------------------------------------------------------------
 # 2. linear_scale: identity when train_len == target_len
 # ---------------------------------------------------------------------------
+
 
 def test_linear_scale_identity_when_no_extension() -> None:
     seq_len = TRAIN_LEN
@@ -91,6 +90,7 @@ def test_linear_scale_identity_when_no_extension() -> None:
 # 3. ntk_aware_scale: new_base > original when target > train
 # ---------------------------------------------------------------------------
 
+
 def test_ntk_aware_scale_base_increases() -> None:
     """NTK scaling increases effective base when extending context."""
     # We verify indirectly: at position 0 both give 1s; at position 1
@@ -102,9 +102,7 @@ def test_ntk_aware_scale_base_increases() -> None:
     target_len = TRAIN_LEN * 4  # 4x extension
 
     cos_std, _ = ContextWindowExtension._standard_cos_sin(dim, base, 2)
-    cos_ntk, _ = ContextWindowExtension.ntk_aware_scale(
-        dim, base, train_len, target_len, seq_len=2
-    )
+    cos_ntk, _ = ContextWindowExtension.ntk_aware_scale(dim, base, train_len, target_len, seq_len=2)
     # Scaled base => smaller inv_freq => cos(1 * inv_freq) closer to 1
     # For at least one dimension, ntk cos > std cos at position 1.
     assert (cos_ntk[1] >= cos_std[1]).all(), (
@@ -115,6 +113,7 @@ def test_ntk_aware_scale_base_increases() -> None:
 # ---------------------------------------------------------------------------
 # 4. ntk_aware_scale at seq_len=1
 # ---------------------------------------------------------------------------
+
 
 def test_ntk_aware_scale_seq_len_1() -> None:
     cos, sin = ContextWindowExtension.ntk_aware_scale(
@@ -131,6 +130,7 @@ def test_ntk_aware_scale_seq_len_1() -> None:
 # 5. ntk_aware_scale at seq_len=8192 (production train length)
 # ---------------------------------------------------------------------------
 
+
 def test_ntk_aware_scale_at_train_length() -> None:
     train_len = 8192
     cos, sin = ContextWindowExtension.ntk_aware_scale(
@@ -144,6 +144,7 @@ def test_ntk_aware_scale_at_train_length() -> None:
 # ---------------------------------------------------------------------------
 # 6. ntk_aware_scale at seq_len=16384 (2x extension) — no NaN/Inf
 # ---------------------------------------------------------------------------
+
 
 def test_ntk_aware_scale_2x_no_nan() -> None:
     train_len = 8192
@@ -160,6 +161,7 @@ def test_ntk_aware_scale_2x_no_nan() -> None:
 # 7. ntk_aware_scale at seq_len=65536 (8x extension) — no NaN/Inf
 # ---------------------------------------------------------------------------
 
+
 def test_ntk_aware_scale_8x_no_nan() -> None:
     train_len = 8192
     target_len = 65536
@@ -175,11 +177,10 @@ def test_ntk_aware_scale_8x_no_nan() -> None:
 # 8. yarn_scale: output shape correct
 # ---------------------------------------------------------------------------
 
+
 def test_yarn_scale_output_shape() -> None:
     seq_len = 512  # 8x tiny train_len
-    cos, sin = ContextWindowExtension.yarn_scale(
-        DIM, BASE, TRAIN_LEN, seq_len, seq_len
-    )
+    cos, sin = ContextWindowExtension.yarn_scale(DIM, BASE, TRAIN_LEN, seq_len, seq_len)
     assert cos.shape == (seq_len, DIM), f"Expected ({seq_len}, {DIM}), got {cos.shape}"
     assert sin.shape == (seq_len, DIM)
 
@@ -188,11 +189,18 @@ def test_yarn_scale_output_shape() -> None:
 # 9. yarn_scale: at train_len (scale=1), matches standard RoPE
 # ---------------------------------------------------------------------------
 
+
 def test_yarn_scale_identity_at_train_len() -> None:
     seq_len = TRAIN_LEN
     cos_yarn, sin_yarn = ContextWindowExtension.yarn_scale(
-        DIM, BASE, TRAIN_LEN, TRAIN_LEN, seq_len,
-        alpha=1.0, beta=32.0, mscale=0.1,
+        DIM,
+        BASE,
+        TRAIN_LEN,
+        TRAIN_LEN,
+        seq_len,
+        alpha=1.0,
+        beta=32.0,
+        mscale=0.1,
     )
     cos_std, sin_std = _standard_cos_sin(DIM, BASE, seq_len)
     # mscale_val = 0.1*ln(1)+1 = 1.0 when scale=1, so should match exactly.
@@ -206,15 +214,22 @@ def test_yarn_scale_identity_at_train_len() -> None:
 # 10. yarn_scale: low-freq dims scaled more than high-freq dims
 # ---------------------------------------------------------------------------
 
+
 def test_yarn_scale_low_freq_dims_scaled_more() -> None:
     """Low-frequency (last) dimensions should be more scaled than high-frequency (first)."""
     seq_len = TRAIN_LEN * 4  # 4x
     target_len = seq_len
-    scale = target_len / TRAIN_LEN  # 4.0
+    target_len / TRAIN_LEN  # 4.0
 
     cos_yarn, _ = ContextWindowExtension.yarn_scale(
-        DIM, BASE, TRAIN_LEN, target_len, seq_len,
-        alpha=1.0, beta=32.0, mscale=0.1,
+        DIM,
+        BASE,
+        TRAIN_LEN,
+        target_len,
+        seq_len,
+        alpha=1.0,
+        beta=32.0,
+        mscale=0.1,
     )
     cos_std, _ = _standard_cos_sin(DIM, BASE, seq_len)
 
@@ -227,9 +242,9 @@ def test_yarn_scale_low_freq_dims_scaled_more() -> None:
     half = DIM // 2
 
     # High-freq dim (index 0): YaRN should be close to standard.
-    diff_high = abs(cos_yarn[pos, 0].item() - cos_std[pos, 0].item())
+    abs(cos_yarn[pos, 0].item() - cos_std[pos, 0].item())
     # Low-freq dim (index half-1): YaRN applies more compression.
-    diff_low = abs(cos_yarn[pos, half - 1].item() - cos_std[pos, half - 1].item())
+    abs(cos_yarn[pos, half - 1].item() - cos_std[pos, half - 1].item())
 
     # The low-freq difference from the unscaled standard should be larger
     # because those dims *are* interpolated, while high-freq dims are not.
@@ -249,15 +264,14 @@ def test_yarn_scale_low_freq_dims_scaled_more() -> None:
 # 11. longrope_scale: per-dimension rescaling applied correctly
 # ---------------------------------------------------------------------------
 
+
 def test_longrope_scale_per_dim_rescaling() -> None:
     seq_len = 512  # 8x tiny
     half = DIM // 2
 
     # Uniform factor of 4.0 => equivalent to dividing inv_freq by 4.
     factors = torch.full((half,), 4.0)
-    cos_lr, sin_lr = ContextWindowExtension.longrope_scale(
-        DIM, BASE, seq_len, factors
-    )
+    cos_lr, sin_lr = ContextWindowExtension.longrope_scale(DIM, BASE, seq_len, factors)
     assert cos_lr.shape == (seq_len, DIM)
     assert sin_lr.shape == (seq_len, DIM)
     assert torch.isfinite(cos_lr).all()
@@ -265,9 +279,7 @@ def test_longrope_scale_per_dim_rescaling() -> None:
 
     # With factor=1.0, should match standard RoPE.
     factors_identity = torch.ones(half)
-    cos_id, sin_id = ContextWindowExtension.longrope_scale(
-        DIM, BASE, seq_len, factors_identity
-    )
+    cos_id, sin_id = ContextWindowExtension.longrope_scale(DIM, BASE, seq_len, factors_identity)
     cos_std, sin_std = _standard_cos_sin(DIM, BASE, seq_len)
     assert torch.allclose(cos_id, cos_std, atol=1e-5), (
         "longrope with factor=1.0 should match standard RoPE"
@@ -281,6 +293,7 @@ def test_longrope_scale_per_dim_rescaling() -> None:
 # ---------------------------------------------------------------------------
 # 12. DynamicContextScaler: selects standard for seq<=train_len
 # ---------------------------------------------------------------------------
+
 
 def test_dynamic_scaler_standard_within_train() -> None:
     scaler = DynamicContextScaler("auto", DIM, BASE, TRAIN_LEN)
@@ -296,6 +309,7 @@ def test_dynamic_scaler_standard_within_train() -> None:
 # ---------------------------------------------------------------------------
 # 13. DynamicContextScaler: selects YaRN for train < seq <= 4*train
 # ---------------------------------------------------------------------------
+
 
 def test_dynamic_scaler_yarn_in_medium_range() -> None:
     scaler = DynamicContextScaler("auto", DIM, BASE, TRAIN_LEN)
@@ -318,20 +332,17 @@ def test_dynamic_scaler_yarn_in_medium_range() -> None:
 # 14. DynamicContextScaler: all outputs finite at seq_len=16384 (any strategy)
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_scaler_all_finite_at_16384() -> None:
     for strategy in ("auto", "ntk", "yarn"):
-        scaler = DynamicContextScaler(
-            strategy, DIM, BASE, TRAIN_LEN
-        )
+        scaler = DynamicContextScaler(strategy, DIM, BASE, TRAIN_LEN)
         cos, sin = scaler.get_cos_sin(16384)
         assert torch.isfinite(cos).all(), f"NaN/Inf in cos with strategy={strategy}"
         assert torch.isfinite(sin).all(), f"NaN/Inf in sin with strategy={strategy}"
 
     # LongRoPE with explicit factors.
     factors = torch.ones(DIM // 2) * 2.0
-    scaler_lr = DynamicContextScaler(
-        "longrope", DIM, BASE, TRAIN_LEN, rescale_factors=factors
-    )
+    scaler_lr = DynamicContextScaler("longrope", DIM, BASE, TRAIN_LEN, rescale_factors=factors)
     cos, sin = scaler_lr.get_cos_sin(16384)
     assert torch.isfinite(cos).all()
     assert torch.isfinite(sin).all()
@@ -340,6 +351,7 @@ def test_dynamic_scaler_all_finite_at_16384() -> None:
 # ---------------------------------------------------------------------------
 # 15. Determinism across all strategies under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_across_strategies() -> None:
     """All strategies must produce identical output on repeated calls."""
@@ -356,13 +368,9 @@ def test_determinism_across_strategies() -> None:
             ContextWindowExtension.ntk_aware_scale(DIM, BASE, TRAIN_LEN, seq_len, seq_len)
         )
         # yarn
-        results.append(
-            ContextWindowExtension.yarn_scale(DIM, BASE, TRAIN_LEN, seq_len, seq_len)
-        )
+        results.append(ContextWindowExtension.yarn_scale(DIM, BASE, TRAIN_LEN, seq_len, seq_len))
         # longrope
-        results.append(
-            ContextWindowExtension.longrope_scale(DIM, BASE, seq_len, factors)
-        )
+        results.append(ContextWindowExtension.longrope_scale(DIM, BASE, seq_len, factors))
         # DynamicContextScaler
         for strategy in ("ntk", "yarn"):
             sc = DynamicContextScaler(strategy, DIM, BASE, TRAIN_LEN)
@@ -385,6 +393,7 @@ def test_determinism_across_strategies() -> None:
 # Bonus: CONTEXT_EXTENSION_REGISTRY is populated
 # ---------------------------------------------------------------------------
 
+
 def test_registry_keys() -> None:
     assert "linear" in CONTEXT_EXTENSION_REGISTRY
     assert "ntk" in CONTEXT_EXTENSION_REGISTRY
@@ -395,6 +404,7 @@ def test_registry_keys() -> None:
 # ---------------------------------------------------------------------------
 # Bonus: tiny 8x extrapolation produces finite output for all strategies
 # ---------------------------------------------------------------------------
+
 
 def test_8x_tiny_train_len_all_finite() -> None:
     """8x extrapolation (seq=512 for train_len=64) must never produce NaN/Inf."""

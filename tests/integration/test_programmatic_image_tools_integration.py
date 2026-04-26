@@ -43,11 +43,12 @@ def test_full_pipeline_two_blobs():
     # 3.  pixel_distance — distance between the two blob centroids.
     #     Blob A centroid ≈ (6.5, 6.5), Blob B centroid ≈ (22.5, 22.5).
     # ------------------------------------------------------------------
-    centroid_a = (6.5, 6.5)   # (x, y) = (col, row)
+    centroid_a = (6.5, 6.5)  # (x, y) = (col, row)
     centroid_b = (22.5, 22.5)
 
-    dist = pixel_distance(image, (int(centroid_a[0]), int(centroid_a[1])),
-                          (int(centroid_b[0]), int(centroid_b[1])))
+    dist = pixel_distance(
+        image, (int(centroid_a[0]), int(centroid_a[1])), (int(centroid_b[0]), int(centroid_b[1]))
+    )
     assert isinstance(dist, float)
     # Distance between (6,6) and (22,22) = sqrt(16²+16²) ≈ 22.627
     assert dist > 20.0, f"Distance unexpectedly small: {dist}"
@@ -60,11 +61,11 @@ def test_full_pipeline_two_blobs():
 
     # With min_size larger than a single pixel but smaller than a blob:
     n_blobs_filtered = blob_count(image, threshold=0.5, min_size=10)
-    assert n_blobs_filtered == 2, f"Both large blobs should survive min_size=10"
+    assert n_blobs_filtered == 2, "Both large blobs should survive min_size=10"
 
     # With min_size larger than any blob, nothing survives:
     n_blobs_none = blob_count(image, threshold=0.5, min_size=100)
-    assert n_blobs_none == 0, f"No blob should survive min_size=100"
+    assert n_blobs_none == 0, "No blob should survive min_size=100"
 
     # ------------------------------------------------------------------
     # 5.  detect_objects — detailed per-blob stats.

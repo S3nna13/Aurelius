@@ -11,16 +11,15 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SelfConsistencyConfig:
@@ -36,6 +35,7 @@ class SelfConsistencyConfig:
 # AnswerExtractor
 # ---------------------------------------------------------------------------
 
+
 class AnswerExtractor:
     """Extracts the final answer from a generated token sequence.
 
@@ -47,10 +47,10 @@ class AnswerExtractor:
 
     PAD_TOKEN_ID: int = 0
 
-    def __init__(self, extraction_pattern: Optional[str] = None) -> None:
+    def __init__(self, extraction_pattern: str | None = None) -> None:
         self.extraction_pattern = extraction_pattern
 
-    def extract(self, response_ids: torch.Tensor, vocab_size: int = 256) -> Optional[int]:
+    def extract(self, response_ids: torch.Tensor, vocab_size: int = 256) -> int | None:
         """Extract answer from a single response tensor.
 
         Args:
@@ -72,7 +72,9 @@ class AnswerExtractor:
         # Use extraction pattern if provided
         if self.extraction_pattern is not None:
             text = "".join(
-                chr(max(0, min(127, int(t.item())))) for t in response_ids if t.item() != self.PAD_TOKEN_ID
+                chr(max(0, min(127, int(t.item()))))
+                for t in response_ids
+                if t.item() != self.PAD_TOKEN_ID
             )
             match = re.search(self.extraction_pattern, text)
             if match:
@@ -87,7 +89,7 @@ class AnswerExtractor:
         last_idx = int(indices[-1].item())
         return int(response_ids[last_idx].item())
 
-    def extract_from_candidates(self, candidate_ids: torch.Tensor) -> List[Optional[int]]:
+    def extract_from_candidates(self, candidate_ids: torch.Tensor) -> list[int | None]:
         """Extract answers from a batch of candidate responses.
 
         Args:
@@ -103,6 +105,7 @@ class AnswerExtractor:
 # ---------------------------------------------------------------------------
 # MajorityVoter
 # ---------------------------------------------------------------------------
+
 
 class MajorityVoter:
     """Aggregates multiple candidate answers via majority (plurality) or weighted vote.
@@ -123,9 +126,7 @@ class MajorityVoter:
         self.temperature = temperature
         self.aggregation = aggregation
 
-    def vote(
-        self, answers: List[Optional[int]]
-    ) -> Tuple[Optional[int], Dict]:
+    def vote(self, answers: list[int | None]) -> tuple[int | None, dict]:
         """Plurality vote over a list of answers.
 
         None values are excluded from voting but counted in n_valid.
@@ -159,9 +160,7 @@ class MajorityVoter:
             },
         )
 
-    def weighted_vote(
-        self, answers: List[Optional[int]], weights: List[float]
-    ) -> Optional[int]:
+    def weighted_vote(self, answers: list[int | None], weights: list[float]) -> int | None:
         """Weight votes by confidence scores.
 
         Args:
@@ -174,7 +173,7 @@ class MajorityVoter:
         if len(answers) != len(weights):
             raise ValueError("answers and weights must have the same length")
 
-        weighted_counts: Dict[int, float] = {}
+        weighted_counts: dict[int, float] = {}
         for ans, w in zip(answers, weights):
             if ans is None:
                 continue
@@ -189,6 +188,7 @@ class MajorityVoter:
 # ---------------------------------------------------------------------------
 # SelfConsistencyDecoder
 # ---------------------------------------------------------------------------
+
 
 class SelfConsistencyDecoder:
     """Self-consistency decoder: sample → extract → vote.
@@ -236,10 +236,10 @@ class SelfConsistencyDecoder:
         if input_ids.dim() == 1:
             input_ids = input_ids.unsqueeze(0)
 
-        all_samples: List[torch.Tensor] = []
+        all_samples: list[torch.Tensor] = []
 
         for _ in range(n_samples):
-            generated: List[int] = []
+            generated: list[int] = []
             cur_ids = input_ids.clone()
 
             for _ in range(max_new_tokens):
@@ -274,7 +274,7 @@ class SelfConsistencyDecoder:
         self,
         input_ids: torch.Tensor,
         max_new_tokens: int = 32,
-    ) -> Tuple[Optional[int], Dict]:
+    ) -> tuple[int | None, dict]:
         """Full self-consistency pipeline: sample → extract → vote.
 
         Args:
@@ -290,8 +290,7 @@ class SelfConsistencyDecoder:
 
         # Sample responses
         candidate_ids = self.sample_responses(
-            input_ids, n_samples=n_samples,
-            max_new_tokens=max_new_tokens, temperature=temperature
+            input_ids, n_samples=n_samples, max_new_tokens=max_new_tokens, temperature=temperature
         )
 
         # Extract answers
@@ -308,7 +307,7 @@ class SelfConsistencyDecoder:
         stats["n_samples"] = n_samples
         return (winner, stats)
 
-    def get_confidence(self, answers: List[Optional[int]]) -> float:
+    def get_confidence(self, answers: list[int | None]) -> float:
         """Compute fraction of samples agreeing with the plurality winner.
 
         Args:

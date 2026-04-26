@@ -1,22 +1,21 @@
 """Tests for neural program synthesis training module."""
+
 from __future__ import annotations
 
 import math
-import pytest
-import torch
+
 from torch.optim import AdamW
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.program_synthesis import (
     ProgramSpec,
+    ProgramSynthesisTrainer,
     SynthesisConfig,
     execute_program_safe,
-    score_program,
     generate_program,
-    ProgramSynthesisTrainer,
+    score_program,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -40,8 +39,13 @@ SYNTH_CFG = SynthesisConfig(
     execution_timeout=1.0,
 )
 
-TOKENIZER_ENCODE = lambda s: list(s.encode("utf-8", errors="replace"))[:256]
-TOKENIZER_DECODE = lambda ids: bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
+
+def TOKENIZER_ENCODE(s):
+    return list(s.encode("utf-8", errors="replace"))[:256]
+
+
+def TOKENIZER_DECODE(ids):
+    return bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
 
 
 def make_model() -> AureliusTransformer:
@@ -74,6 +78,7 @@ def make_spec(n_cases: int = 1) -> ProgramSpec:
 # 1. ProgramSpec defaults / fields
 # ---------------------------------------------------------------------------
 
+
 def test_program_spec_fields():
     spec = ProgramSpec(
         task_id="t1",
@@ -90,6 +95,7 @@ def test_program_spec_fields():
 # 2. SynthesisConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_synthesis_config_defaults():
     cfg = SynthesisConfig()
     assert cfg.max_new_tokens == 32
@@ -105,6 +111,7 @@ def test_synthesis_config_defaults():
 # 3. execute_program_safe — valid code prints output
 # ---------------------------------------------------------------------------
 
+
 def test_execute_valid_code():
     code = "print('hello')"
     output, success = execute_program_safe(code, "", timeout=2.0)
@@ -115,6 +122,7 @@ def test_execute_valid_code():
 # ---------------------------------------------------------------------------
 # 4. execute_program_safe — syntax error returns ("", False)
 # ---------------------------------------------------------------------------
+
 
 def test_execute_syntax_error():
     code = "def foo(:"  # deliberate syntax error
@@ -127,6 +135,7 @@ def test_execute_syntax_error():
 # 5. execute_program_safe — infinite loop returns ("", False) within time
 # ---------------------------------------------------------------------------
 
+
 def test_execute_infinite_loop_timeout():
     code = "while True: pass"
     output, success = execute_program_safe(code, "", timeout=0.5)
@@ -137,6 +146,7 @@ def test_execute_infinite_loop_timeout():
 # ---------------------------------------------------------------------------
 # 6. score_program — all-correct code returns 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_score_program_all_correct():
     code = "print(int(_test_input) * 2)"
@@ -154,6 +164,7 @@ def test_score_program_all_correct():
 # 7. score_program — all-wrong code returns 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_score_program_all_wrong():
     code = "print('WRONG')"
     spec = ProgramSpec(
@@ -170,6 +181,7 @@ def test_score_program_all_wrong():
 # 8. generate_program — correct shapes (list of ints, float log_prob)
 # ---------------------------------------------------------------------------
 
+
 def test_generate_program_shapes():
     model = make_model()
     prompt_ids = TOKENIZER_ENCODE("def solution(")
@@ -184,6 +196,7 @@ def test_generate_program_shapes():
 # ---------------------------------------------------------------------------
 # 9. build_prompt — contains description and "def solution"
 # ---------------------------------------------------------------------------
+
 
 def test_build_prompt_contains_description():
     trainer = make_trainer()
@@ -201,6 +214,7 @@ def test_build_prompt_contains_description():
 # 10. train_step — returns dict with required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_required_keys():
     trainer = make_trainer()
     spec = make_spec()
@@ -215,6 +229,7 @@ def test_train_step_returns_required_keys():
 # 11. train_step — loss is a float
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_loss_is_float():
     trainer = make_trainer()
     spec = make_spec()
@@ -227,6 +242,7 @@ def test_train_step_loss_is_float():
 # 12. train_step — mean_reward is in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_mean_reward_in_range():
     trainer = make_trainer()
     spec = make_spec()
@@ -238,6 +254,7 @@ def test_train_step_mean_reward_in_range():
 # 13. generate_best — returns a string
 # ---------------------------------------------------------------------------
 
+
 def test_generate_best_returns_string():
     trainer = make_trainer()
     spec = make_spec()
@@ -248,6 +265,7 @@ def test_generate_best_returns_string():
 # ---------------------------------------------------------------------------
 # 14. Multiple test cases scored correctly (partial credit)
 # ---------------------------------------------------------------------------
+
 
 def test_score_program_partial():
     # Code only prints correct answer for input "3" but not "5"
@@ -271,6 +289,7 @@ def test_score_program_partial():
 # 15. REINFORCE loss direction — negative log-prob weighting
 # ---------------------------------------------------------------------------
 
+
 def test_reinforce_loss_is_negative_log_prob_weighted():
     """Verify loss sign: with reward > 0, loss should be negative of weighted log-prob sum."""
     model = make_model()
@@ -293,6 +312,7 @@ def test_reinforce_loss_is_negative_log_prob_weighted():
 # 16. n_samples in result matches config
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_n_samples_matches_config():
     trainer = make_trainer()
     spec = make_spec()
@@ -304,6 +324,7 @@ def test_train_step_n_samples_matches_config():
 # 17. best_reward >= mean_reward
 # ---------------------------------------------------------------------------
 
+
 def test_best_reward_gte_mean_reward():
     trainer = make_trainer()
     spec = make_spec()
@@ -314,6 +335,7 @@ def test_best_reward_gte_mean_reward():
 # ---------------------------------------------------------------------------
 # 18. execute_program_safe captures multi-line output
 # ---------------------------------------------------------------------------
+
 
 def test_execute_multiline_output():
     code = "print('line1')\nprint('line2')"

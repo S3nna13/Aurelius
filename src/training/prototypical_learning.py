@@ -4,11 +4,11 @@ Implements prototypical networks (Snell et al., 2017) over Aurelius model
 embeddings. Unlike MAML, there is no gradient-based inner-loop adaptation —
 classification is done purely by nearest-prototype lookup in embedding space.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -22,20 +22,22 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProtoConfig:
     """Configuration for prototypical-network few-shot learning."""
 
-    n_way: int = 5            # Number of classes per episode
-    n_support: int = 5        # Support examples per class
-    n_query: int = 10         # Query examples per class
-    embedding_dim: int = 64   # Dimension of sentence embeddings (= d_model)
+    n_way: int = 5  # Number of classes per episode
+    n_support: int = 5  # Support examples per class
+    n_query: int = 10  # Query examples per class
+    embedding_dim: int = 64  # Dimension of sentence embeddings (= d_model)
     distance: str = "euclidean"  # "euclidean" | "cosine"
 
 
 # ---------------------------------------------------------------------------
 # Core functional utilities
 # ---------------------------------------------------------------------------
+
 
 def extract_embeddings(model: nn.Module, input_ids: Tensor) -> Tensor:
     """Extract L2-normalised sentence embeddings from the last transformer layer.
@@ -125,9 +127,9 @@ def prototypical_loss(
         logits = -dists
     elif distance == "cosine":
         # Cosine similarity in [-1, 1]; we use it directly as a score
-        q_norm = F.normalize(query_embs, p=2, dim=-1)   # (Q, D)
-        p_norm = F.normalize(prototypes, p=2, dim=-1)   # (C, D)
-        logits = q_norm @ p_norm.t()                    # (Q, C)
+        q_norm = F.normalize(query_embs, p=2, dim=-1)  # (Q, D)
+        p_norm = F.normalize(prototypes, p=2, dim=-1)  # (C, D)
+        logits = q_norm @ p_norm.t()  # (Q, C)
     else:
         raise ValueError(f"Unsupported distance metric: {distance!r}")
 
@@ -144,6 +146,7 @@ def prototypical_loss(
 # PrototypicalClassifier
 # ---------------------------------------------------------------------------
 
+
 class PrototypicalClassifier:
     """Few-shot classifier using stored class prototypes.
 
@@ -157,7 +160,7 @@ class PrototypicalClassifier:
     def __init__(self, model: nn.Module, config: ProtoConfig) -> None:
         self.model = model
         self.config = config
-        self.prototypes: Optional[Tensor] = None
+        self.prototypes: Tensor | None = None
 
     def fit(self, support_ids: list[Tensor], support_labels: list[int]) -> None:
         """Extract support embeddings and compute per-class prototypes.
@@ -201,7 +204,7 @@ class PrototypicalClassifier:
         Returns:
             (B, n_classes) float tensor summing to 1 per row.
         """
-        assert self.prototypes is not None, "Call fit() before predict_proba()"
+        assert self.prototypes is not None, "Call fit() before predict_proba()"  # noqa: S101
         with torch.no_grad():
             query_embs = extract_embeddings(self.model, query_ids)  # (B, D)
 
@@ -222,6 +225,7 @@ class PrototypicalClassifier:
 # ---------------------------------------------------------------------------
 # ProtoNetTrainer
 # ---------------------------------------------------------------------------
+
 
 class ProtoNetTrainer:
     """Trains the embedding model with episodic prototypical-network loss.
@@ -270,9 +274,7 @@ class ProtoNetTrainer:
                 support_emb_list.append(emb)
 
         support_embs = torch.cat(support_emb_list, dim=0)  # (N_support, D)
-        s_labels = torch.tensor(
-            support_labels, dtype=torch.long, device=support_embs.device
-        )
+        s_labels = torch.tensor(support_labels, dtype=torch.long, device=support_embs.device)
         prototypes = compute_prototypes(support_embs, s_labels, self.config.n_way)
 
         # --- Extract query embeddings WITH grad for backprop ---
@@ -286,9 +288,7 @@ class ProtoNetTrainer:
             query_emb_list.append(emb)
 
         query_embs = torch.cat(query_emb_list, dim=0)  # (N_query, D)
-        q_labels = torch.tensor(
-            query_labels, dtype=torch.long, device=query_embs.device
-        )
+        q_labels = torch.tensor(query_labels, dtype=torch.long, device=query_embs.device)
 
         # --- Prototypical loss ---
         loss, accuracy = prototypical_loss(

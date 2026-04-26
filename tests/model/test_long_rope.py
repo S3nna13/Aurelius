@@ -1,14 +1,13 @@
 """Tests for src/model/long_rope.py — LongRoPE position encoding."""
 
 import torch
-import pytest
 
 from src.model.long_rope import (
-    LongRoPEConfig,
-    compute_longrope_freqs,
-    build_longrope_cos_sin,
-    apply_longrope_rotation,
     LongRoPEAttention,
+    LongRoPEConfig,
+    apply_longrope_rotation,
+    build_longrope_cos_sin,
+    compute_longrope_freqs,
     extrapolation_quality,
 )
 
@@ -34,6 +33,7 @@ def make_config(**kwargs) -> LongRoPEConfig:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_longrope_config_defaults():
     cfg = LongRoPEConfig()
     assert cfg.head_dim == 32
@@ -49,6 +49,7 @@ def test_longrope_config_defaults():
 # 2. compute_longrope_freqs shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_longrope_freqs_shape():
     cfg = make_config()
     freqs = compute_longrope_freqs(cfg)
@@ -58,6 +59,7 @@ def test_compute_longrope_freqs_shape():
 # ---------------------------------------------------------------------------
 # 3. compute_longrope_freqs all positive
 # ---------------------------------------------------------------------------
+
 
 def test_compute_longrope_freqs_positive():
     cfg = make_config()
@@ -70,6 +72,7 @@ def test_compute_longrope_freqs_positive():
 #    Because lambda increases with dim index, effective freq = base_freq / lambda
 #    decreases faster than base_freq alone -> freqs are strictly decreasing.
 # ---------------------------------------------------------------------------
+
 
 def test_compute_longrope_freqs_monotone():
     cfg = make_config()
@@ -85,6 +88,7 @@ def test_compute_longrope_freqs_monotone():
 # 5. build_longrope_cos_sin shape
 # ---------------------------------------------------------------------------
 
+
 def test_build_longrope_cos_sin_shape():
     cfg = make_config()
     T = 8
@@ -97,6 +101,7 @@ def test_build_longrope_cos_sin_shape():
 # 6. build_longrope_cos_sin values in [-1, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_build_longrope_cos_sin_range():
     cfg = make_config()
     T = 8
@@ -108,6 +113,7 @@ def test_build_longrope_cos_sin_range():
 # ---------------------------------------------------------------------------
 # 7. apply_longrope_rotation output shape
 # ---------------------------------------------------------------------------
+
 
 def test_apply_longrope_rotation_shape():
     torch.manual_seed(0)
@@ -122,6 +128,7 @@ def test_apply_longrope_rotation_shape():
 # ---------------------------------------------------------------------------
 # 8. apply_longrope_rotation L2 norm preserved (rotation is isometry)
 # ---------------------------------------------------------------------------
+
 
 def test_apply_longrope_rotation_norm_preserved():
     torch.manual_seed(0)
@@ -143,6 +150,7 @@ def test_apply_longrope_rotation_norm_preserved():
 # 9. LongRoPEAttention output shape
 # ---------------------------------------------------------------------------
 
+
 def test_longrope_attention_output_shape():
     torch.manual_seed(0)
     cfg = make_config()
@@ -155,6 +163,7 @@ def test_longrope_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 10. LongRoPEAttention works for T > max_train_len (extrapolation)
 # ---------------------------------------------------------------------------
+
 
 def test_longrope_attention_long_seq():
     torch.manual_seed(0)
@@ -169,6 +178,7 @@ def test_longrope_attention_long_seq():
 # ---------------------------------------------------------------------------
 # 11. extrapolation_quality returns expected keys
 # ---------------------------------------------------------------------------
+
 
 def test_extrapolation_quality_keys():
     cfg = make_config()

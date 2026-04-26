@@ -1,22 +1,22 @@
 """Tests for src/data/preprocessing.py"""
+
 import pytest
 
 from src.data.preprocessing import (
-    PreprocessConfig,
-    normalize_whitespace_fn,
-    remove_html_tags,
-    filter_by_length,
-    is_valid_utf8,
-    compute_text_hash,
     ExactDeduplicator,
     MinHashDeduplicator,
+    PreprocessConfig,
     TextCleaner,
+    compute_text_hash,
+    filter_by_length,
+    normalize_whitespace_fn,
+    remove_html_tags,
 )
-
 
 # ---------------------------------------------------------------------------
 # PreprocessConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = PreprocessConfig()
@@ -31,6 +31,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # normalize_whitespace_fn
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_whitespace_collapses_spaces():
     result = normalize_whitespace_fn("hello    world")
@@ -55,6 +56,7 @@ def test_normalize_whitespace_empty():
 # remove_html_tags
 # ---------------------------------------------------------------------------
 
+
 def test_remove_html_removes_tags():
     result = remove_html_tags("<b>bold</b> text")
     assert "<b>" not in result
@@ -74,6 +76,7 @@ def test_remove_html_no_tags_unchanged():
 # ---------------------------------------------------------------------------
 # filter_by_length
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_length_keeps_correct():
     texts = ["short", "a" * 20, "b" * 100]
@@ -97,6 +100,7 @@ def test_filter_by_length_rejects_long():
 # compute_text_hash
 # ---------------------------------------------------------------------------
 
+
 def test_compute_text_hash_same_input():
     h1 = compute_text_hash("hello")
     h2 = compute_text_hash("hello")
@@ -116,6 +120,7 @@ def test_compute_text_hash_returns_hex_string():
 # ---------------------------------------------------------------------------
 # ExactDeduplicator
 # ---------------------------------------------------------------------------
+
 
 def test_exact_dedup_first_occurrence_true():
     d = ExactDeduplicator()
@@ -147,6 +152,7 @@ def test_exact_dedup_len():
 # MinHashDeduplicator
 # ---------------------------------------------------------------------------
 
+
 def test_minhash_dedup_identical_as_duplicate():
     d = MinHashDeduplicator(n_hashes=64, threshold=0.8)
     texts = ["the quick brown fox", "the quick brown fox"]
@@ -171,6 +177,7 @@ def test_minhash_is_near_duplicate_same():
 # ---------------------------------------------------------------------------
 # TextCleaner
 # ---------------------------------------------------------------------------
+
 
 def test_text_cleaner_clean_returns_string():
     cfg = PreprocessConfig()

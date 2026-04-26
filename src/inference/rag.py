@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import torch
-import torch.nn.functional as F
 from dataclasses import dataclass
 
-from src.inference.embeddings import EmbeddingExtractor, EmbeddingConfig
+import torch
+import torch.nn.functional as F
+
+from src.inference.embeddings import EmbeddingConfig, EmbeddingExtractor
 
 
 @dataclass

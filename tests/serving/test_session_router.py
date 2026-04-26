@@ -1,15 +1,16 @@
-import sys
 import os
+import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 import pytest
-from serving.session_router import SessionConfig, Session, ConsistentHashRouter, SessionManager
+
+from serving.session_router import ConsistentHashRouter, Session, SessionConfig, SessionManager
 
 
 @pytest.fixture
 def config():
-    return SessionConfig(n_workers=4, max_sessions_per_worker=32, eviction_policy='lru')
+    return SessionConfig(n_workers=4, max_sessions_per_worker=32, eviction_policy="lru")
 
 
 @pytest.fixture

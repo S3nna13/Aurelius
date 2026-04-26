@@ -6,18 +6,17 @@ import pytest
 
 from src.eval.code_eval import (
     CodeEvalConfig,
-    CodeProblem,
     CodeEvaluator,
+    execute_code_safely,
     generate_synthetic_problems,
     is_safe_code,
-    execute_code_safely,
     pass_at_k,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. CodeEvalConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_code_eval_config_defaults():
     """CodeEvalConfig has expected default values."""
@@ -32,6 +31,7 @@ def test_code_eval_config_defaults():
 # ---------------------------------------------------------------------------
 # 2 & 3. generate_synthetic_problems
 # ---------------------------------------------------------------------------
+
 
 def test_generate_synthetic_problems_count():
     """generate_synthetic_problems returns exactly n problems."""
@@ -67,6 +67,7 @@ def test_generate_synthetic_problems_fields():
 # ---------------------------------------------------------------------------
 # 4, 5, 6. is_safe_code
 # ---------------------------------------------------------------------------
+
 
 def test_is_safe_code_os_system():
     """is_safe_code returns False for code containing os.system."""
@@ -106,16 +107,14 @@ def test_is_safe_code_import():
 
 def test_is_safe_code_safe():
     """is_safe_code returns True for benign code."""
-    code = (
-        "def add(a, b):\n"
-        "    return a + b\n"
-    )
+    code = "def add(a, b):\n    return a + b\n"
     assert is_safe_code(code) is True
 
 
 # ---------------------------------------------------------------------------
 # 7, 8, 9. execute_code_safely
 # ---------------------------------------------------------------------------
+
 
 def test_execute_code_safely_correct_solution():
     """execute_code_safely passes a correct solution."""
@@ -156,6 +155,7 @@ def test_execute_code_safely_runtime_error():
 # 10, 11, 12. pass_at_k
 # ---------------------------------------------------------------------------
 
+
 def test_pass_at_k_c_zero():
     """pass_at_k returns 0.0 when c=0."""
     assert pass_at_k(n=10, c=0, k=1) == 0.0
@@ -187,6 +187,7 @@ def test_pass_at_k_formula():
     Expected = 1 - C(7, 5) / C(10, 5) = 1 - 21/252 = 1 - 1/12.
     """
     import math
+
     expected = 1.0 - math.comb(7, 5) / math.comb(10, 5)
     assert abs(pass_at_k(n=10, c=3, k=5) - expected) < 1e-9
 
@@ -194,6 +195,7 @@ def test_pass_at_k_formula():
 # ---------------------------------------------------------------------------
 # 13, 14. CodeEvaluator
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def evaluator():

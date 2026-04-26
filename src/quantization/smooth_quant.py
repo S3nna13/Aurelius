@@ -16,12 +16,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SmoothQuantConfig:
@@ -40,6 +39,7 @@ class SmoothQuantConfig:
 # ---------------------------------------------------------------------------
 # Calibrator
 # ---------------------------------------------------------------------------
+
 
 class SmoothQuantCalibrator:
     """Compute and apply SmoothQuant per-channel scales.
@@ -63,9 +63,9 @@ class SmoothQuantCalibrator:
 
     def calibrate(
         self,
-        activation_stats: Dict[str, float],
-        weight_stats: Dict[str, float],
-    ) -> Dict[str, float]:
+        activation_stats: dict[str, float],
+        weight_stats: dict[str, float],
+    ) -> dict[str, float]:
         """Compute per-channel SmoothQuant scales.
 
         Args:
@@ -82,7 +82,7 @@ class SmoothQuantCalibrator:
         """
         alpha = self.config.alpha
         eps = self.config.eps
-        scales: Dict[str, float] = {}
+        scales: dict[str, float] = {}
 
         for channel in activation_stats:
             if channel not in weight_stats:
@@ -102,9 +102,9 @@ class SmoothQuantCalibrator:
 
     def apply_scale(
         self,
-        weights: List[float],
-        scales: List[float],
-    ) -> List[float]:
+        weights: list[float],
+        scales: list[float],
+    ) -> list[float]:
         """Multiply each weight element by the corresponding scale.
 
         ``result[i] = weights[i] * scales[i]``
@@ -121,9 +121,9 @@ class SmoothQuantCalibrator:
 
     def inverse_scale(
         self,
-        activations: List[float],
-        scales: List[float],
-    ) -> List[float]:
+        activations: list[float],
+        scales: list[float],
+    ) -> list[float]:
         """Divide each activation element by the corresponding scale (+ eps).
 
         ``result[i] = activations[i] / (scales[i] + eps)``
@@ -147,6 +147,7 @@ class SmoothQuantCalibrator:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _safe_pow(base: float, exp: float) -> float:
     """Return base**exp, returning 1.0 for the degenerate 0^0 case."""
     if base == 0.0:
@@ -158,4 +159,4 @@ def _safe_pow(base: float, exp: float) -> float:
 # Registry
 # ---------------------------------------------------------------------------
 
-SMOOTH_QUANT_REGISTRY: Dict[str, type] = {"default": SmoothQuantCalibrator}
+SMOOTH_QUANT_REGISTRY: dict[str, type] = {"default": SmoothQuantCalibrator}

@@ -16,7 +16,6 @@ import math
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.mixture_of_recursions import (
     MixtureOfRecursionsLayer,
@@ -43,6 +42,7 @@ T = 6
 # ---------------------------------------------------------------------------
 # Helper factories
 # ---------------------------------------------------------------------------
+
 
 def _router() -> RecursionDepthRouter:
     return RecursionDepthRouter(D_MODEL, MAX_DEPTH)
@@ -80,7 +80,6 @@ def _ids() -> torch.Tensor:
 
 
 class TestRecursionDepthRouter:
-
     def test_depths_shape(self) -> None:
         """forward() depths tensor has shape (B, T)."""
         router = _router()
@@ -96,7 +95,7 @@ class TestRecursionDepthRouter:
     def test_probs_sum_to_one(self) -> None:
         """Probability distribution sums to 1 along the depth dimension."""
         router = _router()
-        router.train(False)           # inference mode; no Gumbel noise
+        router.train(False)  # inference mode; no Gumbel noise
         with torch.no_grad():
             _, probs = router(_x())
         sums = probs.sum(dim=-1)
@@ -142,7 +141,6 @@ class TestRecursionDepthRouter:
 
 
 class TestRecursiveTransformerBlock:
-
     def test_apply_n_times_output_shape(self) -> None:
         """apply_n_times preserves (B, T, d_model) shape."""
         block = _block()
@@ -157,9 +155,7 @@ class TestRecursiveTransformerBlock:
         with torch.no_grad():
             out1 = block.apply_n_times(x, n=1)
             out2 = block.apply_n_times(x, n=2)
-        assert not torch.allclose(out1, out2, atol=1e-6), (
-            "n=1 and n=2 outputs should differ"
-        )
+        assert not torch.allclose(out1, out2, atol=1e-6), "n=1 and n=2 outputs should differ"
 
     def test_apply_n_times_n1_shape(self) -> None:
         """apply_n_times with n=1 returns correct shape."""
@@ -200,7 +196,6 @@ class TestRecursiveTransformerBlock:
 
 
 class TestMixtureOfRecursionsLayer:
-
     def test_forward_output_shape(self) -> None:
         """forward() output has shape (B, T, d_model)."""
         layer = _mor_layer()
@@ -236,8 +231,7 @@ class TestMixtureOfRecursionsLayer:
         loss = out.sum() + layer.depth_regularizer_loss(probs)
         loss.backward()
         has_grad = any(
-            p.grad is not None and p.grad.abs().sum().item() > 0
-            for p in layer.parameters()
+            p.grad is not None and p.grad.abs().sum().item() > 0 for p in layer.parameters()
         )
         assert has_grad, "No non-zero gradients reached layer parameters"
 
@@ -248,7 +242,6 @@ class TestMixtureOfRecursionsLayer:
 
 
 class TestMoRLanguageModel:
-
     def test_forward_logits_shape(self) -> None:
         """forward() logits have shape (B, T, vocab_size)."""
         model = _lm()
@@ -306,14 +299,11 @@ class TestMoRLanguageModel:
 
 
 class TestRecursionAnalyzer:
-
     def test_compute_flop_ratio_in_range(self) -> None:
         """compute_flop_ratio is in (0, 1] for various mean depths."""
         for mean_d in [0.0, 0.5, 1.0, float(MAX_DEPTH - 1)]:
             ratio = RecursionAnalyzer.compute_flop_ratio(mean_d, MAX_DEPTH)
-            assert 0.0 < ratio <= 1.0, (
-                f"Ratio {ratio} out of (0,1] for mean_depth={mean_d}"
-            )
+            assert 0.0 < ratio <= 1.0, f"Ratio {ratio} out of (0,1] for mean_depth={mean_d}"
 
     def test_compute_flop_ratio_max_equals_one(self) -> None:
         """Ratio is ~1.0 when mean_depth = max_depth - 1."""
@@ -362,7 +352,6 @@ class TestRecursionAnalyzer:
 
 
 class TestMoRConfig:
-
     def test_default_d_model(self) -> None:
         assert MoRConfig().d_model == 32
 
@@ -382,8 +371,9 @@ class TestMoRConfig:
         assert abs(MoRConfig().depth_reg_weight - 0.01) < 1e-9
 
     def test_custom_values(self) -> None:
-        cfg = MoRConfig(d_model=64, vocab_size=128, n_layers=4,
-                        n_heads=8, max_depth=6, depth_reg_weight=0.1)
+        cfg = MoRConfig(
+            d_model=64, vocab_size=128, n_layers=4, n_heads=8, max_depth=6, depth_reg_weight=0.1
+        )
         assert cfg.d_model == 64
         assert cfg.vocab_size == 128
         assert cfg.n_layers == 4
@@ -393,8 +383,13 @@ class TestMoRConfig:
 
     def test_config_builds_model(self) -> None:
         """A model built from MoRConfig attributes works end-to-end."""
-        cfg = MoRConfig(d_model=D_MODEL, vocab_size=VOCAB_SIZE,
-                        n_layers=N_LAYERS, n_heads=N_HEADS, max_depth=MAX_DEPTH)
+        cfg = MoRConfig(
+            d_model=D_MODEL,
+            vocab_size=VOCAB_SIZE,
+            n_layers=N_LAYERS,
+            n_heads=N_HEADS,
+            max_depth=MAX_DEPTH,
+        )
         model = MoRLanguageModel(
             d_model=cfg.d_model,
             vocab_size=cfg.vocab_size,

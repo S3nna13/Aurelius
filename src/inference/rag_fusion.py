@@ -16,17 +16,19 @@ character-trigram Jaccard distance, making this fully self-contained.
 from __future__ import annotations
 
 import re
-import torch
 from dataclasses import dataclass
 
+import torch
 
 # ---------------------------------------------------------------------------
 # Configuration & data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RAGFusionConfig:
     """Configuration for the RAG-Fusion pipeline."""
+
     n_queries: int = 4
     top_k_per_query: int = 5
     final_top_k: int = 10
@@ -37,6 +39,7 @@ class RAGFusionConfig:
 @dataclass
 class Document:
     """A retrieved document with metadata."""
+
     doc_id: str
     text: str
     score: float = 0.0
@@ -47,11 +50,12 @@ class Document:
 # Trigram similarity
 # ---------------------------------------------------------------------------
 
+
 def _trigrams(text: str) -> set:
     t = text.lower()
     if len(t) < 3:
         return {t} if t else set()
-    return {t[i:i + 3] for i in range(len(t) - 2)}
+    return {t[i : i + 3] for i in range(len(t) - 2)}
 
 
 def compute_query_doc_similarity(query: str, doc: str) -> float:
@@ -71,6 +75,7 @@ def compute_query_doc_similarity(query: str, doc: str) -> float:
 # Query variation generation
 # ---------------------------------------------------------------------------
 
+
 def generate_query_variations(
     model,
     original_query: str,
@@ -89,10 +94,7 @@ def generate_query_variations(
     Returns:
         List of exactly n_queries strings.
     """
-    prompt = (
-        f"Generate {n_queries} search query variations for: {original_query}\n"
-        f"Queries:\n1."
-    )
+    prompt = f"Generate {n_queries} search query variations for: {original_query}\nQueries:\n1."
 
     input_ids_list = tokenizer_encode(prompt)
     if isinstance(input_ids_list, torch.Tensor):
@@ -109,7 +111,7 @@ def generate_query_variations(
             next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
             generated = torch.cat([generated, next_token], dim=1)
 
-    new_token_ids = generated[0, input_ids.shape[1]:].tolist()
+    new_token_ids = generated[0, input_ids.shape[1] :].tolist()
     generated_text = tokenizer_decode(new_token_ids)
 
     # Prepend "1." because the prompt already started that line
@@ -134,6 +136,7 @@ def generate_query_variations(
 # ---------------------------------------------------------------------------
 # Reciprocal Rank Fusion
 # ---------------------------------------------------------------------------
+
 
 def reciprocal_rank_fusion(ranked_lists: list, k: int = 60) -> list:
     """Fuse multiple ranked Document lists using RRF.
@@ -164,6 +167,7 @@ def reciprocal_rank_fusion(ranked_lists: list, k: int = 60) -> list:
 # MockRetriever
 # ---------------------------------------------------------------------------
 
+
 class MockRetriever:
     """Retriever backed by a static list of Documents using trigram similarity."""
 
@@ -184,10 +188,13 @@ class MockRetriever:
 # RAGFusionPipeline
 # ---------------------------------------------------------------------------
 
+
 class RAGFusionPipeline:
     """End-to-end RAG-Fusion pipeline: multi-query -> retrieve -> RRF -> answer."""
 
-    def __init__(self, model, retriever, config: RAGFusionConfig, tokenizer_encode, tokenizer_decode) -> None:
+    def __init__(
+        self, model, retriever, config: RAGFusionConfig, tokenizer_encode, tokenizer_decode
+    ) -> None:
         self.model = model
         self.retriever = retriever
         self.config = config
@@ -200,12 +207,14 @@ class RAGFusionPipeline:
         Returns up to config.final_top_k Documents sorted by RRF score.
         """
         variations = generate_query_variations(
-            self.model, query, self.config.n_queries,
-            self.tokenizer_encode, self.tokenizer_decode,
+            self.model,
+            query,
+            self.config.n_queries,
+            self.tokenizer_encode,
+            self.tokenizer_decode,
         )
         ranked_lists = [
-            self.retriever.retrieve(q, top_k=self.config.top_k_per_query)
-            for q in variations
+            self.retriever.retrieve(q, top_k=self.config.top_k_per_query) for q in variations
         ]
         fused = reciprocal_rank_fusion(ranked_lists, k=self.config.rrf_k)
         return fused[: self.config.final_top_k]
@@ -233,7 +242,7 @@ class RAGFusionPipeline:
                 next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
                 generated = torch.cat([generated, next_token], dim=1)
 
-        new_ids = generated[0, input_ids.shape[1]:].tolist()
+        new_ids = generated[0, input_ids.shape[1] :].tolist()
         return self.tokenizer_decode(new_ids)
 
     def run(self, query: str) -> dict:
@@ -242,12 +251,14 @@ class RAGFusionPipeline:
         Returns dict with keys: query, answer, docs_retrieved, queries_used.
         """
         variations = generate_query_variations(
-            self.model, query, self.config.n_queries,
-            self.tokenizer_encode, self.tokenizer_decode,
+            self.model,
+            query,
+            self.config.n_queries,
+            self.tokenizer_encode,
+            self.tokenizer_decode,
         )
         ranked_lists = [
-            self.retriever.retrieve(q, top_k=self.config.top_k_per_query)
-            for q in variations
+            self.retriever.retrieve(q, top_k=self.config.top_k_per_query) for q in variations
         ]
         fused = reciprocal_rank_fusion(ranked_lists, k=self.config.rrf_k)
         top_docs = fused[: self.config.final_top_k]

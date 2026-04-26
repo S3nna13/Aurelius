@@ -13,11 +13,11 @@ Also provides:
 - LayerwiseAlignmentTrainer for hook-based multi-layer alignment training
 - centered_kernel_alignment (CKA) metric for comparing representation matrices
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -30,11 +30,12 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ReprAlignmentConfig:
     """Configuration for latent representation alignment."""
 
-    align_type: str = 'linear'
+    align_type: str = "linear"
     normalize: bool = True
     align_weight: float = 0.1
     layer_pairs: list = None  # type: ignore[assignment]
@@ -47,6 +48,7 @@ class ReprAlignmentConfig:
 # ---------------------------------------------------------------------------
 # RepresentationAligner
 # ---------------------------------------------------------------------------
+
 
 class RepresentationAligner(nn.Module):
     """Align student hidden states to teacher hidden states.
@@ -62,15 +64,13 @@ class RepresentationAligner(nn.Module):
         self,
         student_dim: int,
         teacher_dim: int,
-        align_type: str = 'linear',
+        align_type: str = "linear",
         normalize: bool = True,
     ) -> None:
         super().__init__()
 
-        if align_type not in ('linear', 'cosine', 'mse'):
-            raise ValueError(
-                f"align_type must be 'linear', 'cosine', or 'mse'; got {align_type!r}"
-            )
+        if align_type not in ("linear", "cosine", "mse"):
+            raise ValueError(f"align_type must be 'linear', 'cosine', or 'mse'; got {align_type!r}")
 
         self.student_dim = student_dim
         self.teacher_dim = teacher_dim
@@ -79,7 +79,7 @@ class RepresentationAligner(nn.Module):
 
         # Learned projection only for 'linear' mode
         self.projection: nn.Linear | None = None
-        if align_type == 'linear':
+        if align_type == "linear":
             self.projection = nn.Linear(student_dim, teacher_dim, bias=False)
 
     # ------------------------------------------------------------------
@@ -90,7 +90,7 @@ class RepresentationAligner(nn.Module):
         self,
         student_repr: torch.Tensor,
         teacher_repr: torch.Tensor,
-    ) -> Tuple[torch.Tensor, dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Compute alignment loss and diagnostic metrics.
 
         Args:
@@ -125,18 +125,14 @@ class RepresentationAligner(nn.Module):
             mse_val = F.mse_loss(s_flat, t_flat).item()
         else:
             cosine_sim = 0.0
-            mse_val = float('inf')
+            mse_val = float("inf")
 
-        proj_norm = (
-            self.projection.weight.norm().item()
-            if self.projection is not None
-            else 0.0
-        )
+        proj_norm = self.projection.weight.norm().item() if self.projection is not None else 0.0
 
         metrics = {
-            'cosine_sim': cosine_sim,
-            'mse': mse_val,
-            'projection_norm': proj_norm,
+            "cosine_sim": cosine_sim,
+            "mse": mse_val,
+            "projection_norm": proj_norm,
         }
 
         loss = self.align_loss(student_repr, teacher_repr)
@@ -163,7 +159,7 @@ class RepresentationAligner(nn.Module):
         teacher = teacher.detach()
         student_proj = self._project(student)
 
-        if self.align_type in ('linear', 'cosine'):
+        if self.align_type in ("linear", "cosine"):
             if self.normalize:
                 s = F.normalize(student_proj, p=2, dim=-1)
                 t = F.normalize(teacher, p=2, dim=-1)
@@ -195,6 +191,7 @@ class RepresentationAligner(nn.Module):
 # LayerwiseAlignmentTrainer
 # ---------------------------------------------------------------------------
 
+
 class LayerwiseAlignmentTrainer:
     """Train a student model with layerwise representation alignment to a teacher.
 
@@ -212,7 +209,7 @@ class LayerwiseAlignmentTrainer:
         self,
         student_model: nn.Module,
         teacher_model: nn.Module,
-        layer_pairs: List[Tuple[int, int]],
+        layer_pairs: list[tuple[int, int]],
         align_weight: float = 0.1,
     ) -> None:
         self.student_model = student_model
@@ -231,8 +228,10 @@ class LayerwiseAlignmentTrainer:
 
         # One aligner per layer pair
         self.aligners = nn.ModuleList(
-            [RepresentationAligner(s_dim, t_dim, align_type='linear', normalize=True)
-             for _ in layer_pairs]
+            [
+                RepresentationAligner(s_dim, t_dim, align_type="linear", normalize=True)
+                for _ in layer_pairs
+            ]
         )
 
         # Optimizer covers student + aligner projection weights
@@ -249,8 +248,8 @@ class LayerwiseAlignmentTrainer:
         self,
         model: nn.Module,
         input_ids: torch.Tensor,
-        layer_indices: List[int],
-    ) -> List[torch.Tensor]:
+        layer_indices: list[int],
+    ) -> list[torch.Tensor]:
         """Extract hidden states at specified layer indices via forward hooks.
 
         Compatible with AureliusTransformer whose TransformerBlock.forward returns
@@ -264,7 +263,7 @@ class LayerwiseAlignmentTrainer:
         Returns:
             List of (batch, seq, d_model) tensors, one per requested index (in order).
         """
-        captured: List[torch.Tensor | None] = [None] * len(layer_indices)
+        captured: list[torch.Tensor | None] = [None] * len(layer_indices)
         handles = []
 
         def make_hook(pos: int):
@@ -275,6 +274,7 @@ class LayerwiseAlignmentTrainer:
                 else:
                     h = output
                 captured[pos] = h
+
             return hook
 
         for pos, idx in enumerate(layer_indices):
@@ -293,7 +293,7 @@ class LayerwiseAlignmentTrainer:
         self,
         student_ids: torch.Tensor,
         teacher_ids: torch.Tensor,
-    ) -> Tuple[torch.Tensor, dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Compute the total alignment loss across all layer pairs.
 
         Args:
@@ -320,17 +320,17 @@ class LayerwiseAlignmentTrainer:
         )
 
         device = student_ids.device
-        total_loss = torch.zeros(1, device=device, requires_grad=False)
+        torch.zeros(1, device=device, requires_grad=False)
         # We accumulate with a grad-tracked path
         acc_loss: torch.Tensor | None = None
-        layer_losses: List[float] = []
-        cosine_sims: List[float] = []
+        layer_losses: list[float] = []
+        cosine_sims: list[float] = []
 
         for i, (s_repr, t_repr) in enumerate(zip(student_reprs, teacher_reprs)):
             loss_i, metrics_i = self.aligners[i](s_repr, t_repr)
             acc_loss = loss_i if acc_loss is None else acc_loss + loss_i
             layer_losses.append(loss_i.item())
-            cosine_sims.append(metrics_i['cosine_sim'])
+            cosine_sims.append(metrics_i["cosine_sim"])
 
         if acc_loss is None:
             # No layer pairs -- return zero with grad
@@ -342,8 +342,8 @@ class LayerwiseAlignmentTrainer:
         mean_cosine_sim = sum(cosine_sims) / len(cosine_sims) if cosine_sims else 0.0
 
         return acc_loss, {
-            'layer_losses': layer_losses,
-            'mean_cosine_sim': mean_cosine_sim,
+            "layer_losses": layer_losses,
+            "mean_cosine_sim": mean_cosine_sim,
         }
 
     def train_step(
@@ -381,16 +381,17 @@ class LayerwiseAlignmentTrainer:
         self.optimizer.step()
 
         return {
-            'loss': total_loss.item(),
-            'task_loss': task_loss.item(),
-            'alignment_loss': align_loss.item(),
-            'cosine_sim': align_metrics['mean_cosine_sim'],
+            "loss": total_loss.item(),
+            "task_loss": task_loss.item(),
+            "alignment_loss": align_loss.item(),
+            "cosine_sim": align_metrics["mean_cosine_sim"],
         }
 
 
 # ---------------------------------------------------------------------------
 # Centered Kernel Alignment
 # ---------------------------------------------------------------------------
+
 
 def centered_kernel_alignment(X: torch.Tensor, Y: torch.Tensor) -> float:
     """Centered Kernel Alignment (CKA) similarity between two representation matrices.
@@ -447,15 +448,16 @@ def _hsic(K: torch.Tensor, L: torch.Tensor) -> torch.Tensor:
 # Internal utility
 # ---------------------------------------------------------------------------
 
+
 def _get_model_dim(model: nn.Module) -> int:
     """Infer the hidden dimension from a model.
 
     Tries model.config.d_model first (AureliusTransformer), then falls back to
     scanning embedding or linear layers.
     """
-    if hasattr(model, 'config') and hasattr(model.config, 'd_model'):
+    if hasattr(model, "config") and hasattr(model.config, "d_model"):
         return int(model.config.d_model)
-    if hasattr(model, 'embed') and hasattr(model.embed, 'embedding_dim'):
+    if hasattr(model, "embed") and hasattr(model.embed, "embedding_dim"):
         return int(model.embed.embedding_dim)
     for m in model.modules():
         if isinstance(m, nn.Linear):

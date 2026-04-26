@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import traceback
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 _TRUNCATION_LIMIT = 10_000  # characters
@@ -17,7 +17,8 @@ _TRUNCATION_LIMIT = 10_000  # characters
 # Enum
 # ---------------------------------------------------------------------------
 
-class ResultFormat(str, Enum):
+
+class ResultFormat(StrEnum):
     TEXT = "text"
     JSON = "json"
     MARKDOWN = "markdown"
@@ -28,6 +29,7 @@ class ResultFormat(str, Enum):
 # ---------------------------------------------------------------------------
 # ToolResultFormatter
 # ---------------------------------------------------------------------------
+
 
 class ToolResultFormatter:
     """Convert arbitrary tool results to formatted strings."""
@@ -94,7 +96,7 @@ class ToolResultFormatter:
         block = f"```{language}\n{body}\n```"
         if len(block) > _TRUNCATION_LIMIT:
             allowed = _TRUNCATION_LIMIT - len(f"```{language}\n\n```") - 30
-            body = body[:allowed] + f"\n... [truncated]"
+            body = body[:allowed] + "\n... [truncated]"
             block = f"```{language}\n{body}\n```"
         return block
 

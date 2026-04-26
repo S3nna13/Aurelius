@@ -12,17 +12,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AdaptiveSpanConfig:
@@ -30,12 +29,13 @@ class AdaptiveSpanConfig:
     n_heads: int = 4
     max_span: int = 128
     span_loss_coef: float = 0.0002
-    init_span: float = 0.5   # initial span as fraction of max_span
+    init_span: float = 0.5  # initial span as fraction of max_span
 
 
 # ---------------------------------------------------------------------------
 # Differentiable span mask
 # ---------------------------------------------------------------------------
+
 
 def soft_span_mask(span: Tensor, max_span: int, seq_len: int) -> Tensor:
     """Compute a differentiable additive attention mask for adaptive spans.
@@ -99,6 +99,7 @@ def soft_span_mask(span: Tensor, max_span: int, seq_len: int) -> Tensor:
 # AdaptiveSpanAttention module
 # ---------------------------------------------------------------------------
 
+
 class AdaptiveSpanAttention(nn.Module):
     """Multi-head attention where each head learns its own attention span.
 
@@ -114,7 +115,7 @@ class AdaptiveSpanAttention(nn.Module):
 
     def __init__(self, config: AdaptiveSpanConfig) -> None:
         super().__init__()
-        assert config.d_model % config.n_heads == 0, (
+        assert config.d_model % config.n_heads == 0, (  # noqa: S101
             f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
         )
         self.config = config
@@ -129,11 +130,9 @@ class AdaptiveSpanAttention(nn.Module):
         self.out_proj = nn.Linear(config.d_model, config.d_model, bias=False)
 
         # Learnable span fractions in [0, 1]; shape (n_heads,)
-        self.span_params = nn.Parameter(
-            torch.full((config.n_heads,), config.init_span)
-        )
+        self.span_params = nn.Parameter(torch.full((config.n_heads,), config.init_span))
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """
         Args:
             x: (B, T, d_model)
@@ -179,6 +178,7 @@ class AdaptiveSpanAttention(nn.Module):
 # AdaptiveSpanBlock: pre-norm + AdaptiveSpanAttention + residual
 # ---------------------------------------------------------------------------
 
+
 class AdaptiveSpanBlock(nn.Module):
     """Transformer block: pre-LayerNorm + AdaptiveSpanAttention + residual.
 
@@ -190,7 +190,7 @@ class AdaptiveSpanBlock(nn.Module):
         self.norm = nn.LayerNorm(config.d_model)
         self.attn = AdaptiveSpanAttention(config)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """
         Args:
             x: (B, T, d_model)
@@ -206,6 +206,7 @@ class AdaptiveSpanBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def get_effective_spans(model: AdaptiveSpanAttention) -> Tensor:
     """Return the effective integer span (in tokens) for each head.

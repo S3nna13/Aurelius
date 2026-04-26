@@ -9,8 +9,6 @@ Verifies that:
 from __future__ import annotations
 
 import src.serving  # noqa: F401  — triggers registry population
-
-
 from src.serving import API_SHAPE_REGISTRY
 from src.serving.responses_api import (
     RESPONSE_COMPLETED,
@@ -18,14 +16,14 @@ from src.serving.responses_api import (
     RESPONSES_API_REGISTRY,
     InputItem,
     ResponsesAPIHandler,
-    ResponsesAPIValidator,
     ResponsesAPIRequest,
+    ResponsesAPIValidator,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------
+
 
 class TestRegistryIntegration:
     def test_responses_key_in_api_shape_registry(self):
@@ -48,6 +46,7 @@ class TestRegistryIntegration:
 # ---------------------------------------------------------------------------
 # Round-trip integration
 # ---------------------------------------------------------------------------
+
 
 class TestRoundTripIntegration:
     def _make_request(self, **kwargs) -> ResponsesAPIRequest:
@@ -98,6 +97,7 @@ class TestRoundTripIntegration:
 # ---------------------------------------------------------------------------
 # Streaming integration
 # ---------------------------------------------------------------------------
+
 
 class TestStreamingIntegration:
     def _make_request(self) -> ResponsesAPIRequest:

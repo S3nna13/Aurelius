@@ -1,17 +1,15 @@
 """Tests for src/eval/ab_comparison.py"""
 
-import math
-import pytest
 from src.eval.ab_comparison import (
+    ABComparison,
     ComparisonMetric,
     ModelComparison,
-    ABComparison,
 )
-
 
 # ---------------------------------------------------------------------------
 # ComparisonMetric enum values
 # ---------------------------------------------------------------------------
+
 
 def test_metric_accuracy():
     assert ComparisonMetric.ACCURACY == "accuracy"
@@ -41,12 +39,17 @@ def test_metric_enum_count():
 # ModelComparison dataclass fields
 # ---------------------------------------------------------------------------
 
+
 def test_model_comparison_fields():
     mc = ModelComparison(
-        model_a="A", model_b="B",
+        model_a="A",
+        model_b="B",
         metric=ComparisonMetric.ACCURACY,
-        score_a=0.8, score_b=0.6,
-        p_value=0.03, significant=True, winner="A",
+        score_a=0.8,
+        score_b=0.6,
+        p_value=0.03,
+        significant=True,
+        winner="A",
     )
     assert mc.model_a == "A"
     assert mc.model_b == "B"
@@ -67,6 +70,7 @@ def test_model_comparison_winner_none():
 # ABComparison construction
 # ---------------------------------------------------------------------------
 
+
 def test_ab_comparison_default_threshold():
     ab = ABComparison()
     assert ab._threshold == 0.05
@@ -80,6 +84,7 @@ def test_ab_comparison_custom_threshold():
 # ---------------------------------------------------------------------------
 # compare: returns ModelComparison
 # ---------------------------------------------------------------------------
+
 
 def test_compare_returns_model_comparison():
     ab = ABComparison()
@@ -132,16 +137,14 @@ def test_compare_winner_none_when_not_significant():
 def test_compare_winner_model_a_when_a_higher_and_significant():
     # large spread → should be significant, A wins
     ab = ABComparison(significance_threshold=0.99)  # very permissive
-    result = ab.compare("A", [1.0, 1.0, 1.0, 1.0, 1.0],
-                        "B", [0.0, 0.0, 0.0, 0.0, 0.0])
+    result = ab.compare("A", [1.0, 1.0, 1.0, 1.0, 1.0], "B", [0.0, 0.0, 0.0, 0.0, 0.0])
     assert result.significant is True
     assert result.winner == "A"
 
 
 def test_compare_winner_model_b_when_b_higher_and_significant():
     ab = ABComparison(significance_threshold=0.99)
-    result = ab.compare("A", [0.0, 0.0, 0.0, 0.0, 0.0],
-                        "B", [1.0, 1.0, 1.0, 1.0, 1.0])
+    result = ab.compare("A", [0.0, 0.0, 0.0, 0.0, 0.0], "B", [1.0, 1.0, 1.0, 1.0, 1.0])
     assert result.significant is True
     assert result.winner == "B"
 
@@ -161,6 +164,7 @@ def test_compare_significant_flag_false_when_p_above_threshold():
 # ---------------------------------------------------------------------------
 # effect_size_cohens_d
 # ---------------------------------------------------------------------------
+
 
 def test_cohens_d_zero_when_identical():
     ab = ABComparison()
@@ -196,6 +200,7 @@ def test_cohens_d_returns_float():
 # ---------------------------------------------------------------------------
 # win_loss_matrix
 # ---------------------------------------------------------------------------
+
 
 def test_win_loss_matrix_returns_nested_dict():
     ab = ABComparison()

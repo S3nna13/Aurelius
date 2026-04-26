@@ -39,11 +39,11 @@ def online_softmax(scores: Tensor) -> tuple[Tensor, Tensor, Tensor]:
             p: Softmax probabilities, same shape as scores.
     """
     # Stabilise by subtracting the row-wise max
-    m = scores.max(dim=-1, keepdim=True).values          # (..., 1)
-    exp_shifted = torch.exp(scores - m)                   # (..., S)
-    l = exp_shifted.sum(dim=-1, keepdim=True)             # (..., 1)
-    p = exp_shifted / l                                   # (..., S)
-    return m, l, p
+    m = scores.max(dim=-1, keepdim=True).values  # (..., 1)
+    exp_shifted = torch.exp(scores - m)  # (..., S)
+    item = exp_shifted.sum(dim=-1, keepdim=True)  # (..., 1)
+    p = exp_shifted / item  # (..., S)
+    return m, item, p
 
 
 def tiled_attention(
@@ -77,8 +77,8 @@ def tiled_attention(
 
     for q_start in range(0, T, block_size):
         q_end = min(q_start + block_size, T)
-        q_block = Q[:, :, q_start:q_end, :]          # (B, H, Tq, D)
-        Tq = q_end - q_start
+        q_block = Q[:, :, q_start:q_end, :]  # (B, H, Tq, D)
+        q_end - q_start
 
         # Accumulate scores over all K positions for this Q-block
         # scores: (B, H, Tq, T)
@@ -90,13 +90,11 @@ def tiled_attention(
             # k col indices (absolute): shape (1, T)
             k_idx = torch.arange(T, device=device).view(1, -1)
             # mask where key position is strictly after query position
-            future_mask = k_idx > q_idx                  # (Tq, T)
-            scores = scores.masked_fill(
-                future_mask.unsqueeze(0).unsqueeze(0), -1e9
-            )
+            future_mask = k_idx > q_idx  # (Tq, T)
+            scores = scores.masked_fill(future_mask.unsqueeze(0).unsqueeze(0), -1e9)
 
         # Standard softmax + weighted sum — correctness over complexity
-        attn_weights = F.softmax(scores, dim=-1)          # (B, H, Tq, T)
+        attn_weights = F.softmax(scores, dim=-1)  # (B, H, Tq, T)
         output[:, :, q_start:q_end, :] = torch.matmul(attn_weights, V)
 
     return output
@@ -116,7 +114,7 @@ class FlashAttentionSimulator(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, config: FlashConfig) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -146,7 +144,9 @@ class FlashAttentionSimulator(nn.Module):
         v = self.v_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
 
         out = tiled_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             block_size=self.config.block_size,
             causal=self.config.use_causal_mask,
         )
@@ -183,9 +183,7 @@ def compute_memory_footprint(
     standard_attention_bytes = B * H * T * T * bytes_per_elem
     tiled_attention_bytes = B * H * block_size * T * bytes_per_elem
     memory_reduction_factor = (
-        standard_attention_bytes / tiled_attention_bytes
-        if tiled_attention_bytes > 0
-        else 1.0
+        standard_attention_bytes / tiled_attention_bytes if tiled_attention_bytes > 0 else 1.0
     )
 
     return {
@@ -249,7 +247,7 @@ def chunked_attention(
 
     for q_start in range(0, T, block_size):
         q_end = min(q_start + block_size, T)
-        q_block = Q[:, :, q_start:q_end, :]          # (B, H, Tq, d)
+        q_block = Q[:, :, q_start:q_end, :]  # (B, H, Tq, d)
         Tq = q_end - q_start
 
         # Running state for online softmax per query row.
@@ -262,9 +260,9 @@ def chunked_attention(
 
         for k_start in range(0, T, block_size):
             k_end = min(k_start + block_size, T)
-            k_block = K[:, :, k_start:k_end, :]      # (B, H, Tk, d)
-            v_block = V[:, :, k_start:k_end, :]      # (B, H, Tk, d)
-            Tk = k_end - k_start
+            k_block = K[:, :, k_start:k_end, :]  # (B, H, Tk, d)
+            v_block = V[:, :, k_start:k_end, :]  # (B, H, Tk, d)
+            k_end - k_start
 
             # Compute scores for this (Q-block, K-block) pair
             s_ij = scale * torch.matmul(q_block, k_block.transpose(-2, -1))  # (B, H, Tq, Tk)
@@ -272,12 +270,12 @@ def chunked_attention(
             if causal:
                 q_idx = torch.arange(q_start, q_end, device=device).view(1, 1, -1, 1)
                 k_idx = torch.arange(k_start, k_end, device=device).view(1, 1, 1, -1)
-                future_mask = k_idx > q_idx          # True where key is in the future
+                future_mask = k_idx > q_idx  # True where key is in the future
                 s_ij = s_ij.masked_fill(future_mask, -1e9)
 
             # Online softmax update
             m_new = torch.maximum(m_i, s_ij.max(dim=-1, keepdim=True).values)  # (B, H, Tq, 1)
-            exp_ij = torch.exp(s_ij - m_new)                                    # (B, H, Tq, Tk)
+            exp_ij = torch.exp(s_ij - m_new)  # (B, H, Tq, Tk)
             l_new = torch.exp(m_i - m_new) * l_i + exp_ij.sum(dim=-1, keepdim=True)
 
             # Accumulate weighted values; correct previous contribution by rescaling
@@ -310,7 +308,9 @@ def flash_attention_forward(
         Output tensor of shape (B, H, T, d).
     """
     return chunked_attention(
-        Q, K, V,
+        Q,
+        K,
+        V,
         block_size=config.block_size,
         causal=config.causal,
         scale=config.scale,
@@ -331,7 +331,7 @@ class FlashAttentionLayer(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, config: FlashAttentionConfig) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads

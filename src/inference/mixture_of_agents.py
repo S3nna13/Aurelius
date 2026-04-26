@@ -4,18 +4,18 @@ Multiple model instances are run on the same input; their output logits are
 fused via mean, weighted average, or max-probability selection before
 decoding.  This is complementary to the text-level MoA (Wang et al. 2024).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MoAConfig:
@@ -29,16 +29,18 @@ class MoAConfig:
         weights: Per-model weights used when aggregation="weighted".
                  If None and aggregation="weighted", equal weights are used.
     """
+
     aggregation: str = "mean"
     temperature: float = 1.0
-    weights: Optional[List[float]] = None
+    weights: list[float] | None = None
 
 
 # ---------------------------------------------------------------------------
 # Aggregation functions
 # ---------------------------------------------------------------------------
 
-def aggregate_logits_mean(logit_list: List[torch.Tensor]) -> torch.Tensor:
+
+def aggregate_logits_mean(logit_list: list[torch.Tensor]) -> torch.Tensor:
     """Average logits element-wise across models.
 
     Args:
@@ -48,12 +50,12 @@ def aggregate_logits_mean(logit_list: List[torch.Tensor]) -> torch.Tensor:
         (B, T, V) tensor of averaged logits.
     """
     stacked = torch.stack(logit_list, dim=0)  # (N, B, T, V)
-    return stacked.mean(dim=0)               # (B, T, V)
+    return stacked.mean(dim=0)  # (B, T, V)
 
 
 def aggregate_logits_weighted(
-    logit_list: List[torch.Tensor],
-    weights: List[float],
+    logit_list: list[torch.Tensor],
+    weights: list[float],
 ) -> torch.Tensor:
     """Weighted average of logits: sum(w_i * logits_i) / sum(w_i).
 
@@ -64,15 +66,14 @@ def aggregate_logits_weighted(
     Returns:
         (B, T, V) tensor of weighted-average logits.
     """
-    w = torch.tensor(weights, dtype=logit_list[0].dtype,
-                     device=logit_list[0].device)  # (N,)
+    w = torch.tensor(weights, dtype=logit_list[0].dtype, device=logit_list[0].device)  # (N,)
     w_sum = w.sum()
     # Broadcast each weight over (B, T, V)
     result = sum(weights[i] * logit_list[i] for i in range(len(logit_list)))
     return result / w_sum
 
 
-def aggregate_logits_max_prob(logit_list: List[torch.Tensor]) -> torch.Tensor:
+def aggregate_logits_max_prob(logit_list: list[torch.Tensor]) -> torch.Tensor:
     """At each (batch, position) select logits from the model with the
     highest maximum softmax probability.
 
@@ -84,25 +85,26 @@ def aggregate_logits_max_prob(logit_list: List[torch.Tensor]) -> torch.Tensor:
         that had the highest max-probability at that position.
     """
     B, T, V = logit_list[0].shape
-    N = len(logit_list)
+    len(logit_list)
 
-    stacked = torch.stack(logit_list, dim=0)        # (N, B, T, V)
-    probs = F.softmax(stacked, dim=-1)              # (N, B, T, V)
-    max_probs = probs.max(dim=-1).values            # (N, B, T)
+    stacked = torch.stack(logit_list, dim=0)  # (N, B, T, V)
+    probs = F.softmax(stacked, dim=-1)  # (N, B, T, V)
+    max_probs = probs.max(dim=-1).values  # (N, B, T)
 
     # Index of winning model at each (B, T) position
-    best_idx = max_probs.argmax(dim=0)              # (B, T)
+    best_idx = max_probs.argmax(dim=0)  # (B, T)
 
     # Gather winning logits
     # Expand best_idx to (B, T, V) for indexing into the N dimension
     best_idx_exp = best_idx.unsqueeze(0).unsqueeze(-1).expand(1, B, T, V)  # (1, B, T, V)
-    result = stacked.gather(dim=0, index=best_idx_exp).squeeze(0)          # (B, T, V)
+    result = stacked.gather(dim=0, index=best_idx_exp).squeeze(0)  # (B, T, V)
     return result
 
 
 # ---------------------------------------------------------------------------
 # MixtureOfAgents
 # ---------------------------------------------------------------------------
+
 
 class MixtureOfAgents:
     """Logit-level ensemble of multiple models.
@@ -127,7 +129,7 @@ class MixtureOfAgents:
         Returns:
             (B, T, V) aggregated logit tensor.
         """
-        logit_list: List[torch.Tensor] = []
+        logit_list: list[torch.Tensor] = []
         for model in self.models:
             _, logits, _ = model(input_ids)
             logit_list.append(logits)
@@ -155,6 +157,7 @@ class MixtureOfAgents:
 # ---------------------------------------------------------------------------
 # MoADecoder
 # ---------------------------------------------------------------------------
+
 
 class MoADecoder:
     """Greedy decoder built on top of :class:`MixtureOfAgents`.
@@ -184,7 +187,7 @@ class MoADecoder:
         """
         ids = input_ids
         for _ in range(max_new_tokens):
-            fused = self.moa.forward(ids)        # (B, T_cur, V)
+            fused = self.moa.forward(ids)  # (B, T_cur, V)
             next_token = fused[:, -1, :].argmax(dim=-1, keepdim=True)  # (B, 1)
             ids = torch.cat([ids, next_token], dim=1)
         return ids

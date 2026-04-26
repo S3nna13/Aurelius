@@ -1,36 +1,44 @@
 """Tests for commonsense reasoning evaluation module."""
+
 import pytest
 import torch
+
 from src.eval.commonsense_eval import (
+    CommonsenseEvaluator,
     CommonsenseTask,
+    compute_accuracy,
+    generate_arc_tasks,
     generate_hellaswag_tasks,
     generate_winogrande_tasks,
-    generate_arc_tasks,
-    score_task_by_likelihood,
-    compute_accuracy,
     length_normalize_scores,
-    CommonsenseEvaluator,
+    score_task_by_likelihood,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
 
 def byte_encode(text: str) -> list[int]:
-    """Simple byte-level encoder that maps each character to its ASCII/Unicode byte value mod 256."""
+    """Simple byte-level encoder that maps each character to its ASCII/Unicode byte value mod 256."""  # noqa: E501
     return [b % 256 for b in text.encode("utf-8")]
 
 
@@ -42,6 +50,7 @@ def evaluator(small_model):
 # ---------------------------------------------------------------------------
 # CommonsenseTask dataclass tests
 # ---------------------------------------------------------------------------
+
 
 def test_commonsense_task_fields():
     """CommonsenseTask should store all fields correctly."""
@@ -73,6 +82,7 @@ def test_commonsense_task_winogrande_fields():
 # ---------------------------------------------------------------------------
 # generate_hellaswag_tasks
 # ---------------------------------------------------------------------------
+
 
 def test_generate_hellaswag_tasks_count():
     """generate_hellaswag_tasks should return exactly n tasks."""
@@ -112,6 +122,7 @@ def test_generate_hellaswag_tasks_deterministic():
 # generate_winogrande_tasks
 # ---------------------------------------------------------------------------
 
+
 def test_generate_winogrande_tasks_count():
     """generate_winogrande_tasks should return exactly n tasks."""
     tasks = generate_winogrande_tasks(6)
@@ -134,6 +145,7 @@ def test_generate_winogrande_tasks_correct_idx_in_range():
 # ---------------------------------------------------------------------------
 # generate_arc_tasks
 # ---------------------------------------------------------------------------
+
 
 def test_generate_arc_tasks_count():
     """generate_arc_tasks should return exactly n tasks."""
@@ -164,6 +176,7 @@ def test_generate_arc_tasks_four_choices():
 # score_task_by_likelihood
 # ---------------------------------------------------------------------------
 
+
 def test_score_task_by_likelihood_valid_index(small_model):
     """score_task_by_likelihood must return a valid choice index."""
     task = CommonsenseTask(
@@ -181,7 +194,12 @@ def test_score_task_by_likelihood_returns_int(small_model):
     task = CommonsenseTask(
         task_type="arc",
         context="What is the boiling point of water?",
-        choices=["100 degrees Celsius", "0 degrees Celsius", "50 degrees Celsius", "200 degrees Celsius"],
+        choices=[
+            "100 degrees Celsius",
+            "0 degrees Celsius",
+            "50 degrees Celsius",
+            "200 degrees Celsius",
+        ],
         correct_idx=0,
     )
     pred = score_task_by_likelihood(small_model, byte_encode, task)
@@ -191,6 +209,7 @@ def test_score_task_by_likelihood_returns_int(small_model):
 # ---------------------------------------------------------------------------
 # compute_accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_compute_accuracy_perfect():
     """Perfect predictions should yield accuracy 1.0."""
@@ -235,6 +254,7 @@ def test_compute_accuracy_empty():
 # length_normalize_scores
 # ---------------------------------------------------------------------------
 
+
 def test_length_normalize_scores_divides_by_length():
     """length_normalize_scores must divide each score by its choice length."""
     scores = [-10.0, -20.0, -5.0]
@@ -264,6 +284,7 @@ def test_length_normalize_scores_empty_choice():
 # ---------------------------------------------------------------------------
 # CommonsenseEvaluator.evaluate
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_evaluate_returns_keys(evaluator):
     """evaluate() must return a dict with required keys."""
@@ -308,6 +329,7 @@ def test_evaluator_evaluate_by_task_type_key(evaluator):
 # ---------------------------------------------------------------------------
 # CommonsenseEvaluator.evaluate_suite
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_evaluate_suite_returns_all_task_types(evaluator):
     """evaluate_suite() must return results for all 3 task types."""

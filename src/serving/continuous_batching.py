@@ -8,8 +8,8 @@ dramatically improving GPU utilization.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 
@@ -19,13 +19,13 @@ class Request:
     """A single inference request with its state."""
 
     request_id: str
-    input_ids: list[int]          # prompt tokens
+    input_ids: list[int]  # prompt tokens
     max_new_tokens: int = 256
     temperature: float = 1.0
     # internal state:
     generated_ids: list[int] = field(default_factory=list)
     is_finished: bool = False
-    finish_reason: str = ""       # "length" | "eos" | "stop"
+    finish_reason: str = ""  # "length" | "eos" | "stop"
 
 
 class ContinuousBatcher:
@@ -92,7 +92,7 @@ class ContinuousBatcher:
         sequences = []
         for req in self.active_requests:
             seq = req.input_ids + req.generated_ids
-            seq = seq[-self.max_seq_len:]  # truncate if too long
+            seq = seq[-self.max_seq_len :]  # truncate if too long
             sequences.append(seq)
 
         # Pad to the same length (right-pad with 0)
@@ -113,8 +113,8 @@ class ContinuousBatcher:
         newly_completed: list[Request] = []
 
         for i, req in enumerate(self.active_requests):
-            seq_len = len(sequences[i])          # actual (non-padded) length
-            last_pos = seq_len - 1               # index of last real token
+            seq_len = len(sequences[i])  # actual (non-padded) length
+            last_pos = seq_len - 1  # index of last real token
             token_logits = logits[i, last_pos, :]  # (vocab_size,)
 
             # Sample or argmax

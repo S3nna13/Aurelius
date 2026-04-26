@@ -35,8 +35,8 @@ from __future__ import annotations
 import re
 import warnings
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import Any
 
 __all__ = [
     "RuleDomain",
@@ -50,7 +50,7 @@ __all__ = [
 ]
 
 
-class RuleDomain(str, Enum):
+class RuleDomain(StrEnum):
     TOOL_SAFETY = "tool_safety"
     MEMORY_CONTEXT = "memory_context"
     DATA_LEAKAGE = "data_leakage"
@@ -65,7 +65,7 @@ class RuleDomain(str, Enum):
     CASCADING_FAILURES = "cascading_failures"
 
 
-class RuleSeverity(str, Enum):
+class RuleSeverity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -97,14 +97,10 @@ class Rule:
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not _ID_RE.match(self.id):
-            raise ValueError(
-                f"Rule id must be alphanumeric+dash, got {self.id!r}"
-            )
+            raise ValueError(f"Rule id must be alphanumeric+dash, got {self.id!r}")
         for key in ("name", "domain", "severity", "confidence", "standards"):
             if key not in self.info:
-                raise ValueError(
-                    f"Rule {self.id!r} info missing required key {key!r}"
-                )
+                raise ValueError(f"Rule {self.id!r} info missing required key {key!r}")
         try:
             RuleDomain(self.info["domain"])
         except ValueError as exc:
@@ -119,26 +115,19 @@ class Rule:
             ) from exc
         conf = self.info["confidence"]
         if not isinstance(conf, (int, float)) or isinstance(conf, bool):
-            raise ValueError(
-                f"Rule {self.id!r} confidence must be numeric, got {conf!r}"
-            )
+            raise ValueError(f"Rule {self.id!r} confidence must be numeric, got {conf!r}")
         if not (0.0 <= float(conf) <= 1.0):
-            raise ValueError(
-                f"Rule {self.id!r} confidence must be in [0,1], got {conf!r}"
-            )
+            raise ValueError(f"Rule {self.id!r} confidence must be in [0,1], got {conf!r}")
         if not isinstance(self.info["standards"], list):
             raise ValueError(f"Rule {self.id!r} standards must be a list")
 
         for key in ("type", "message"):
             if key not in self.check:
-                raise ValueError(
-                    f"Rule {self.id!r} check missing required key {key!r}"
-                )
+                raise ValueError(f"Rule {self.id!r} check missing required key {key!r}")
         ctype = self.check["type"]
         if ctype not in VALID_CHECK_TYPES:
             raise ValueError(
-                f"Rule {self.id!r} unknown check type {ctype!r}; "
-                f"valid: {sorted(VALID_CHECK_TYPES)}"
+                f"Rule {self.id!r} unknown check type {ctype!r}; valid: {sorted(VALID_CHECK_TYPES)}"
             )
         if ctype in {
             "prompt_contains",
@@ -150,8 +139,7 @@ class Rule:
             pat = self.check.get("pattern")
             if not isinstance(pat, str) or not pat:
                 raise ValueError(
-                    f"Rule {self.id!r} check type {ctype!r} requires a "
-                    f"non-empty string pattern"
+                    f"Rule {self.id!r} check type {ctype!r} requires a non-empty string pattern"
                 )
             try:
                 re.compile(pat)
@@ -208,21 +196,17 @@ class RuleEngine:
         self.rules: tuple = tuple(rules)
 
     @classmethod
-    def from_dicts(cls, rules: list) -> "RuleEngine":
+    def from_dicts(cls, rules: list) -> RuleEngine:
         if not isinstance(rules, list):
             raise TypeError("rules must be a list of dicts")
         built: list = []
         for i, rd in enumerate(rules):
             if not isinstance(rd, dict):
-                raise TypeError(
-                    f"rule #{i} is not a dict: {type(rd).__name__}"
-                )
+                raise TypeError(f"rule #{i} is not a dict: {type(rd).__name__}")
             for key in ("id", "info", "check"):
                 if key not in rd:
                     raise ValueError(f"rule #{i} missing key {key!r}")
-            built.append(
-                Rule(id=rd["id"], info=dict(rd["info"]), check=dict(rd["check"]))
-            )
+            built.append(Rule(id=rd["id"], info=dict(rd["info"]), check=dict(rd["check"])))
         return cls(built)
 
     def by_domain(self, domain) -> list:
@@ -395,174 +379,194 @@ def _mk(d: dict) -> Rule:
 
 
 SEED_RULES: tuple = (
-    _mk({
-        "id": "AS-TOOL-001",
-        "info": {
-            "name": "Shell metacharacters in tool args",
-            "domain": "tool_safety",
-            "severity": "high",
-            "confidence": 0.9,
-            "owasp_agentic": "ASI01",
-            "standards": ["OWASP-ASI", "NIST-AI-RMF"],
-        },
-        "check": {
-            "type": "prompt_contains",
-            "pattern": r"[;&|`$]\s*\w+",
-            "message": "Tool arguments contain shell metacharacters; sandbox required.",
-            "config": None,
-        },
-    }),
-    _mk({
-        "id": "AS-CODE-001",
-        "info": {
-            "name": "Use of eval()",
-            "domain": "code_execution",
-            "severity": "critical",
-            "confidence": 0.95,
-            "owasp_agentic": "ASI05",
-            "standards": ["OWASP-ASI", "CWE-95"],
-        },
-        "check": {
-            "type": "code_matches",
-            "pattern": r"\beval\s*\(",
-            "message": "Dynamic eval() in generated code -- reject.",
-            "config": None,
-        },
-    }),
-    _mk({
-        "id": "AS-CODE-002",
-        "info": {
-            "name": "Use of exec()",
-            "domain": "code_execution",
-            "severity": "critical",
-            "confidence": 0.9,
-            "owasp_agentic": "ASI05",
-            "standards": ["OWASP-ASI", "CWE-95"],
-        },
-        "check": {
-            "type": "code_matches",
-            "pattern": r"\bexec\s*\(",
-            "message": "Dynamic exec() in generated code -- reject.",
-            "config": None,
-        },
-    }),
-    _mk({
-        "id": "AS-LEAK-001",
-        "info": {
-            "name": "PEM private-key header in output",
-            "domain": "data_leakage",
-            "severity": "critical",
-            "confidence": 0.99,
-            "owasp_agentic": "ASI04",
-            "standards": ["OWASP-ASI", "NIST-AI-RMF"],
-        },
-        "check": {
-            "type": "code_matches",
-            "pattern": r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----",
-            "message": "Output contains a PEM private-key header.",
-            "config": None,
-        },
-    }),
-    _mk({
-        "id": "AS-LEAK-002",
-        "info": {
-            "name": "AWS access-key id in prompt",
-            "domain": "data_leakage",
-            "severity": "high",
-            "confidence": 0.9,
-            "owasp_agentic": "ASI04",
-            "standards": ["OWASP-ASI"],
-        },
-        "check": {
-            "type": "prompt_contains",
-            "pattern": r"AKIA[0-9A-Z]{16}",
-            "message": "AWS access-key id detected in prompt.",
-            "config": None,
-        },
-    }),
-    _mk({
-        "id": "AS-SUPPLY-001",
-        "info": {
-            "name": "Unpinned pip install in config",
-            "domain": "supply_chain",
-            "severity": "medium",
-            "confidence": 0.8,
-            "owasp_agentic": "ASI06",
-            "standards": ["OWASP-ASI"],
-        },
-        "check": {
-            "type": "config_matches",
-            "pattern": r"pip install (?!.*==)",
-            "message": "pip install without version pin -- supply-chain risk.",
-            "config": {"key": "setup.install_cmd"},
-        },
-    }),
-    _mk({
-        "id": "AS-OVERSIGHT-001",
-        "info": {
-            "name": "Human approval missing on high-risk action",
-            "domain": "human_oversight",
-            "severity": "high",
-            "confidence": 0.7,
-            "owasp_agentic": "ASI07",
-            "standards": ["NIST-AI-RMF"],
-        },
-        "check": {
-            "type": "prompt_missing",
-            "pattern": r"(?i)\b(human[- ]approved|confirmed by operator)\b",
-            "message": "High-risk action lacks explicit human-approval marker.",
-            "config": None,
-        },
-    }),
-    _mk({
-        "id": "AS-IDENTITY-001",
-        "info": {
-            "name": "Agent running with wildcard role",
-            "domain": "identity_access",
-            "severity": "high",
-            "confidence": 0.85,
-            "owasp_agentic": "ASI09",
-            "standards": ["OWASP-ASI"],
-        },
-        "check": {
-            "type": "agent_property",
-            "pattern": r"^\*$|^admin$|^root$",
-            "message": "Agent role is over-privileged (wildcard / admin / root).",
-            "config": {"key": "role"},
-        },
-    }),
-    _mk({
-        "id": "AS-ROGUE-001",
-        "info": {
-            "name": "Agent marked self-modifying",
-            "domain": "rogue_agent",
-            "severity": "critical",
-            "confidence": 0.95,
-            "owasp_agentic": "ASI10",
-            "standards": ["OWASP-ASI"],
-        },
-        "check": {
-            "type": "agent_property",
-            "pattern": r"(?i)^(true|yes|1)$",
-            "message": "Agent declares self_modifying=true -- reject.",
-            "config": {"key": "self_modifying"},
-        },
-    }),
-    _mk({
-        "id": "AS-RELIABILITY-001",
-        "info": {
-            "name": "Tool-call budget absent",
-            "domain": "reliability_bounds",
-            "severity": "medium",
-            "confidence": 0.6,
-            "owasp_agentic": "ASI08",
-            "standards": ["NIST-AI-RMF"],
-        },
-        "check": {
-            "type": "no_check",
-            "pattern": None,
-            "message": "Reliability-bounds rule (documentation-only).",
-            "config": None,
-        },
-    }),
+    _mk(
+        {
+            "id": "AS-TOOL-001",
+            "info": {
+                "name": "Shell metacharacters in tool args",
+                "domain": "tool_safety",
+                "severity": "high",
+                "confidence": 0.9,
+                "owasp_agentic": "ASI01",
+                "standards": ["OWASP-ASI", "NIST-AI-RMF"],
+            },
+            "check": {
+                "type": "prompt_contains",
+                "pattern": r"[;&|`$]\s*\w+",
+                "message": "Tool arguments contain shell metacharacters; sandbox required.",
+                "config": None,
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-CODE-001",
+            "info": {
+                "name": "Use of eval()",
+                "domain": "code_execution",
+                "severity": "critical",
+                "confidence": 0.95,
+                "owasp_agentic": "ASI05",
+                "standards": ["OWASP-ASI", "CWE-95"],
+            },
+            "check": {
+                "type": "code_matches",
+                "pattern": r"\beval\s*\(",
+                "message": "Dynamic eval() in generated code -- reject.",
+                "config": None,
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-CODE-002",
+            "info": {
+                "name": "Use of exec()",
+                "domain": "code_execution",
+                "severity": "critical",
+                "confidence": 0.9,
+                "owasp_agentic": "ASI05",
+                "standards": ["OWASP-ASI", "CWE-95"],
+            },
+            "check": {
+                "type": "code_matches",
+                "pattern": r"\bexec\s*\(",
+                "message": "Dynamic exec() in generated code -- reject.",
+                "config": None,
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-LEAK-001",
+            "info": {
+                "name": "PEM private-key header in output",
+                "domain": "data_leakage",
+                "severity": "critical",
+                "confidence": 0.99,
+                "owasp_agentic": "ASI04",
+                "standards": ["OWASP-ASI", "NIST-AI-RMF"],
+            },
+            "check": {
+                "type": "code_matches",
+                "pattern": r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----",
+                "message": "Output contains a PEM private-key header.",
+                "config": None,
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-LEAK-002",
+            "info": {
+                "name": "AWS access-key id in prompt",
+                "domain": "data_leakage",
+                "severity": "high",
+                "confidence": 0.9,
+                "owasp_agentic": "ASI04",
+                "standards": ["OWASP-ASI"],
+            },
+            "check": {
+                "type": "prompt_contains",
+                "pattern": r"AKIA[0-9A-Z]{16}",
+                "message": "AWS access-key id detected in prompt.",
+                "config": None,
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-SUPPLY-001",
+            "info": {
+                "name": "Unpinned pip install in config",
+                "domain": "supply_chain",
+                "severity": "medium",
+                "confidence": 0.8,
+                "owasp_agentic": "ASI06",
+                "standards": ["OWASP-ASI"],
+            },
+            "check": {
+                "type": "config_matches",
+                "pattern": r"pip install (?!.*==)",
+                "message": "pip install without version pin -- supply-chain risk.",
+                "config": {"key": "setup.install_cmd"},
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-OVERSIGHT-001",
+            "info": {
+                "name": "Human approval missing on high-risk action",
+                "domain": "human_oversight",
+                "severity": "high",
+                "confidence": 0.7,
+                "owasp_agentic": "ASI07",
+                "standards": ["NIST-AI-RMF"],
+            },
+            "check": {
+                "type": "prompt_missing",
+                "pattern": r"(?i)\b(human[- ]approved|confirmed by operator)\b",
+                "message": "High-risk action lacks explicit human-approval marker.",
+                "config": None,
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-IDENTITY-001",
+            "info": {
+                "name": "Agent running with wildcard role",
+                "domain": "identity_access",
+                "severity": "high",
+                "confidence": 0.85,
+                "owasp_agentic": "ASI09",
+                "standards": ["OWASP-ASI"],
+            },
+            "check": {
+                "type": "agent_property",
+                "pattern": r"^\*$|^admin$|^root$",
+                "message": "Agent role is over-privileged (wildcard / admin / root).",
+                "config": {"key": "role"},
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-ROGUE-001",
+            "info": {
+                "name": "Agent marked self-modifying",
+                "domain": "rogue_agent",
+                "severity": "critical",
+                "confidence": 0.95,
+                "owasp_agentic": "ASI10",
+                "standards": ["OWASP-ASI"],
+            },
+            "check": {
+                "type": "agent_property",
+                "pattern": r"(?i)^(true|yes|1)$",
+                "message": "Agent declares self_modifying=true -- reject.",
+                "config": {"key": "self_modifying"},
+            },
+        }
+    ),
+    _mk(
+        {
+            "id": "AS-RELIABILITY-001",
+            "info": {
+                "name": "Tool-call budget absent",
+                "domain": "reliability_bounds",
+                "severity": "medium",
+                "confidence": 0.6,
+                "owasp_agentic": "ASI08",
+                "standards": ["NIST-AI-RMF"],
+            },
+            "check": {
+                "type": "no_check",
+                "pattern": None,
+                "message": "Reliability-bounds rule (documentation-only).",
+                "config": None,
+            },
+        }
+    ),
 )

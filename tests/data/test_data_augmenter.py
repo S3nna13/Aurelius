@@ -6,18 +6,23 @@ Tests for src/data/data_augmenter.py  (≥28 test methods)
 import unittest
 
 from src.data.data_augmenter import (
+    DATA_AUGMENTER_REGISTRY,
     AugmentationStrategy,
     AugmentedSample,
     DataAugmenter,
-    DATA_AUGMENTER_REGISTRY,
 )
 
 
 class TestAugmentedSampleDataclass(unittest.TestCase):
     """Tests for the AugmentedSample frozen dataclass."""
 
-    def _make(self, original="hello world", augmented="HELLO WORLD",
-              strategy=AugmentationStrategy.UPPERCASE, seed=42):
+    def _make(
+        self,
+        original="hello world",
+        augmented="HELLO WORLD",
+        strategy=AugmentationStrategy.UPPERCASE,
+        seed=42,
+    ):
         return AugmentedSample(
             original=original,
             augmented=augmented,
@@ -123,9 +128,7 @@ class TestSwapWords(unittest.TestCase):
 
     def test_adjacent_pairs_swapped(self):
         # "one two three four" → "two one four three"
-        sample = self.augmenter.augment(
-            "one two three four", AugmentationStrategy.SWAP_WORDS
-        )
+        sample = self.augmenter.augment("one two three four", AugmentationStrategy.SWAP_WORDS)
         self.assertEqual(sample.augmented, "two one four three")
 
     def test_single_word_unchanged(self):
@@ -139,9 +142,7 @@ class TestSwapWords(unittest.TestCase):
     def test_swap_words_preserves_word_count(self):
         text = "one two three four five six"
         sample = self.augmenter.augment(text, AugmentationStrategy.SWAP_WORDS)
-        self.assertEqual(
-            len(sample.augmented.split()), len(text.split())
-        )
+        self.assertEqual(len(sample.augmented.split()), len(text.split()))
 
 
 class TestDeletion(unittest.TestCase):
@@ -229,9 +230,7 @@ class TestSynonymSwap(unittest.TestCase):
         self.assertEqual(words[5], "SYNONYM_six")
 
     def test_non_third_words_unchanged(self):
-        sample = self.augmenter.augment(
-            "one two three", AugmentationStrategy.SYNONYM_SWAP
-        )
+        sample = self.augmenter.augment("one two three", AugmentationStrategy.SYNONYM_SWAP)
         words = sample.augmented.split()
         self.assertEqual(words[0], "one")
         self.assertEqual(words[1], "two")

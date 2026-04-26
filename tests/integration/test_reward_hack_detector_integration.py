@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.safety import (
     SAFETY_FILTER_REGISTRY,
     RewardHackDetector,
@@ -67,13 +67,15 @@ def test_end_to_end_scan_via_registry_when_enabled() -> None:
         },
     ]
     for _ in range(6):
-        trajectory.append({
-            "role": "tool",
-            "tool_name": "pytest",
-            "tool_args": {},
-            "tool_output": "E   Exception: failed",
-            "content": "",
-        })
+        trajectory.append(
+            {
+                "role": "tool",
+                "tool_name": "pytest",
+                "tool_args": {},
+                "tool_output": "E   Exception: failed",
+                "content": "",
+            }
+        )
 
     report = detector.analyze(trajectory)
     assert isinstance(report, RewardHackReport)

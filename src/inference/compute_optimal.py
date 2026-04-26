@@ -9,6 +9,7 @@ Strategies:
 Reference: Snell et al. 2024 "Scaling LLM Test-Time Compute Optimally"
 (arXiv:2408.03314)
 """
+
 from __future__ import annotations
 
 import math
@@ -29,7 +30,7 @@ class SelectionStrategy(Enum):
 
 @dataclass
 class ComputeOptimalConfig:
-    n_samples: int = 8               # number of candidates to generate
+    n_samples: int = 8  # number of candidates to generate
     strategy: SelectionStrategy = SelectionStrategy.BEST_OF_N
     max_new_tokens: int = 256
     temperature: float = 1.0
@@ -40,10 +41,11 @@ class ComputeOptimalConfig:
 @dataclass
 class ComputeOptimalResult:
     """Result of compute-optimal inference."""
-    selected_ids: torch.Tensor      # (S_gen,) — selected response token ids
-    selected_score: float           # verifier score for selected response
-    all_scores: list[float]         # scores for all N candidates
-    n_samples_generated: int        # actual number of candidates tried
+
+    selected_ids: torch.Tensor  # (S_gen,) — selected response token ids
+    selected_score: float  # verifier score for selected response
+    all_scores: list[float]  # scores for all N candidates
+    n_samples_generated: int  # actual number of candidates tried
     strategy: SelectionStrategy
 
     @property
@@ -58,7 +60,7 @@ class ComputeOptimalResult:
 
 def score_with_model(
     model: torch.nn.Module,
-    prompt_ids: torch.Tensor,    # (S_prompt,)
+    prompt_ids: torch.Tensor,  # (S_prompt,)
     response_ids: torch.Tensor,  # (S_resp,)
 ) -> float:
     """Score a response using the model's own log-probability as verifier.
@@ -81,7 +83,7 @@ def score_with_model(
         _, logits, _ = model(full_ids)  # (1, S, vocab)
 
     # Logits at [prompt_len-1 : prompt_len + resp_len - 1] predict response tokens
-    gen_logits = logits[0, prompt_len - 1: prompt_len + resp_len - 1, :]  # (resp_len, vocab)
+    gen_logits = logits[0, prompt_len - 1 : prompt_len + resp_len - 1, :]  # (resp_len, vocab)
 
     log_probs = F.log_softmax(gen_logits, dim=-1)  # (resp_len, vocab)
     token_log_probs = log_probs[torch.arange(resp_len), response_1d]  # (resp_len,)
@@ -90,7 +92,7 @@ def score_with_model(
 
 def generate_n_samples(
     model: torch.nn.Module,
-    prompt_ids: torch.Tensor,   # (1, S_prompt) or (S_prompt,)
+    prompt_ids: torch.Tensor,  # (1, S_prompt) or (S_prompt,)
     cfg: ComputeOptimalConfig,
 ) -> list[torch.Tensor]:
     """Generate n_samples candidate responses.
@@ -136,10 +138,10 @@ def extract_answer(response_ids: torch.Tensor, tokenizer_decode_fn=None) -> str:
 
 def compute_optimal_generate(
     model: torch.nn.Module,
-    prompt_ids: torch.Tensor,     # (1, S) or (S,)
+    prompt_ids: torch.Tensor,  # (1, S) or (S,)
     cfg: ComputeOptimalConfig,
-    verifier=None,                # callable(prompt_ids, response_ids) -> float, or None
-    decode_fn=None,               # callable(token_ids) -> str, for majority vote
+    verifier=None,  # callable(prompt_ids, response_ids) -> float, or None
+    decode_fn=None,  # callable(token_ids) -> str, for majority vote
 ) -> ComputeOptimalResult:
     """Generate multiple candidates and select the best using the strategy.
 

@@ -58,8 +58,7 @@ def build_with_backend(
 
     if not isinstance(manifest, FamilyManifest):
         raise BackendAdapterError(
-            f"build_with_backend expected a FamilyManifest, got "
-            f"{type(manifest).__name__}"
+            f"build_with_backend expected a FamilyManifest, got {type(manifest).__name__}"
         )
 
     adapter = select_backend_for_manifest(manifest)
@@ -67,7 +66,5 @@ def build_with_backend(
     if build_backbone:
         from src.model.factory import build_backbone_from_manifest
 
-        backbone = build_backbone_from_manifest(
-            manifest, aurelius_config=aurelius_config
-        )
+        backbone = build_backbone_from_manifest(manifest, aurelius_config=aurelius_config)
     return BackendBuildResult(adapter=adapter, backbone=backbone)

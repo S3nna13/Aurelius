@@ -1,4 +1,5 @@
 """Simple JSON validator with schema enforcement."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,7 +26,9 @@ class JSONValidator:
         if schema.field_types:
             for f, t in schema.field_types.items():
                 if f in data and not isinstance(data[f], t):
-                    errors.append(f"field '{f}' expected {t.__name__}, got {type(data[f]).__name__}")
+                    errors.append(
+                        f"field '{f}' expected {t.__name__}, got {type(data[f]).__name__}"
+                    )
         return len(errors) == 0, errors
 
 

@@ -5,12 +5,13 @@ model completions from that prefix reach the correct answer.
 
 Used to generate PRM training data without human annotation.
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -25,20 +26,22 @@ class StepLabel(IntEnum):
 @dataclass
 class Step:
     """A single reasoning step."""
-    text: str                  # step text (between delimiters)
-    token_ids: list[int]       # tokenized step
-    position: int              # step index in chain
+
+    text: str  # step text (between delimiters)
+    token_ids: list[int]  # tokenized step
+    position: int  # step index in chain
     label: StepLabel = StepLabel.NEUTRAL
 
 
 @dataclass
 class LabeledChain:
     """A reasoning chain with step-level labels."""
-    prompt_ids: list[int]      # original prompt token IDs
-    steps: list[Step]          # parsed steps with labels
-    final_answer: str          # extracted final answer
-    correct_answer: str        # ground truth answer
-    is_correct: bool           # does final_answer match correct_answer?
+
+    prompt_ids: list[int]  # original prompt token IDs
+    steps: list[Step]  # parsed steps with labels
+    final_answer: str  # extracted final answer
+    correct_answer: str  # ground truth answer
+    is_correct: bool  # does final_answer match correct_answer?
 
     @property
     def step_labels(self) -> list[int]:
@@ -51,9 +54,9 @@ class LabeledChain:
 
 @dataclass
 class StepLabelerConfig:
-    step_delimiter: int = -1        # token ID for step separator (e.g., newline token)
+    step_delimiter: int = -1  # token ID for step separator (e.g., newline token)
     answer_delimiter: str = "####"  # string that precedes final answer
-    n_completions: int = 4          # samples per step for labeling
+    n_completions: int = 4  # samples per step for labeling
     max_completion_tokens: int = 64
     temperature: float = 0.7
     correct_threshold: float = 0.5  # fraction of completions that must be correct
@@ -88,7 +91,7 @@ def extract_answer(text: str, answer_delimiter: str = "####") -> str | None:
     idx = text.find(answer_delimiter)
     if idx == -1:
         return None
-    return text[idx + len(answer_delimiter):].strip()
+    return text[idx + len(answer_delimiter) :].strip()
 
 
 def normalize_answer(text: str) -> str:
@@ -140,7 +143,7 @@ class StepLabeler:
                     max_new_tokens=max_new,
                     temperature=temp,
                 )
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # fall through to manual loop
 
         # Manual greedy/sampled generation loop
@@ -163,7 +166,7 @@ class StepLabeler:
 
     def label_step(
         self,
-        prefix_ids: torch.Tensor,   # (S_prefix,) prompt + steps so far
+        prefix_ids: torch.Tensor,  # (S_prefix,) prompt + steps so far
         correct_answer: str,
         decode_fn: Callable[[list[int]], str] | None = None,
     ) -> tuple[StepLabel, float]:
@@ -206,7 +209,7 @@ class StepLabeler:
     def label_chain(
         self,
         prompt_ids: list[int],
-        chain_ids: list[int],       # full reasoning chain token IDs
+        chain_ids: list[int],  # full reasoning chain token IDs
         correct_answer: str,
         decode_fn: Callable[[list[int]], str] | None = None,
     ) -> LabeledChain:
@@ -237,7 +240,9 @@ class StepLabeler:
         for i, tok_list in enumerate(step_token_lists):
             # Add current step tokens (and delimiter) to running prefix
             # First, create the Step object (label determined next)
-            step_text = decode_fn(tok_list) if decode_fn is not None else " ".join(str(t) for t in tok_list)
+            step_text = (
+                decode_fn(tok_list) if decode_fn is not None else " ".join(str(t) for t in tok_list)
+            )
             step = Step(
                 text=step_text,
                 token_ids=tok_list,

@@ -7,26 +7,27 @@ Pipeline per step:
 4. Score programs (fraction of test cases passed)
 5. Update policy with REINFORCE: loss = -mean(log_prob * reward)
 """
+
 from __future__ import annotations
 
 import io
 import sys
 import threading
-import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProgramSpec:
     """Specification for a program synthesis task."""
+
     task_id: str
     description: str
     test_cases: list[tuple[str, str]]  # (input_str, expected_output_str)
@@ -36,6 +37,7 @@ class ProgramSpec:
 @dataclass
 class SynthesisConfig:
     """Hyperparameters for program synthesis training."""
+
     max_new_tokens: int = 32
     n_samples: int = 4
     temperature: float = 1.0
@@ -124,6 +126,7 @@ def execute_program_safe(
 # Scoring
 # ---------------------------------------------------------------------------
 
+
 def score_program(
     code: str,
     spec: ProgramSpec,
@@ -139,9 +142,7 @@ def score_program(
 
     total = 0.0
     for test_input, expected in spec.test_cases:
-        output, success = execute_program_safe(
-            code, test_input, config.execution_timeout
-        )
+        output, success = execute_program_safe(code, test_input, config.execution_timeout)
         if success and output.strip() == expected.strip():
             total += config.reward_correct
         else:
@@ -153,6 +154,7 @@ def score_program(
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
+
 
 def generate_program(
     model: torch.nn.Module,
@@ -197,6 +199,7 @@ def generate_program(
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class ProgramSynthesisTrainer:
     """REINFORCE-based trainer for neural program synthesis.
@@ -245,9 +248,7 @@ class ProgramSynthesisTrainer:
         self.model.eval()
         with torch.no_grad():
             for _ in range(self.config.n_samples):
-                generated_ids, log_prob = generate_program(
-                    self.model, prompt_ids, self.config
-                )
+                generated_ids, log_prob = generate_program(self.model, prompt_ids, self.config)
                 code = self.tokenizer_decode(generated_ids)
                 reward = score_program(code, spec, self.config)
                 samples.append((generated_ids, log_prob, reward))
@@ -285,9 +286,7 @@ class ProgramSynthesisTrainer:
             log_probs_tensor = F.log_softmax(
                 gen_logits / max(self.config.temperature, 1e-6), dim=-1
             )
-            token_log_probs = log_probs_tensor[
-                torch.arange(min_len), gen_targets
-            ]
+            token_log_probs = log_probs_tensor[torch.arange(min_len), gen_targets]
             seq_log_prob = token_log_probs.sum()
             loss_terms.append(-seq_log_prob * reward)
 
@@ -317,9 +316,7 @@ class ProgramSynthesisTrainer:
         self.model.eval()
         with torch.no_grad():
             for _ in range(self.config.n_samples):
-                generated_ids, _ = generate_program(
-                    self.model, prompt_ids, self.config
-                )
+                generated_ids, _ = generate_program(self.model, prompt_ids, self.config)
                 code = self.tokenizer_decode(generated_ids)
                 reward = score_program(code, spec, self.config)
                 if reward > best_reward:

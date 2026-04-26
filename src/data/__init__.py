@@ -1,11 +1,9 @@
 """Aurelius data pipeline -- processing, filtering, dedup, and FIM transforms."""
 
 from src.data.dataset_config import (
-    AURELIUS_MIX,
     ARXIV,
+    AURELIUS_MIX,
     CODE_LANGUAGES,
-    DataMixConfig,
-    DatasetSource,
     FINEWEB,
     FINEWEB_EDU,
     MAX_SEQ_LENGTH,
@@ -13,6 +11,8 @@ from src.data.dataset_config import (
     THE_STACK_V2,
     TOKENS_PER_SHARD,
     WIKIPEDIA_BOOKS,
+    DataMixConfig,
+    DatasetSource,
     get_mix,
 )
 from src.data.fim_transform import (
@@ -25,19 +25,20 @@ from src.data.fim_transform import (
     fim_transform,
     fim_transform_batch,
 )
+
 try:
     from src.data.pipeline import PipelineConfig, run_full_pipeline
 except ImportError:
     pass  # datatrove not installed; pipeline unavailable
-from src.data.tokenizer_trainer import (
-    BPEConfig,
-    BPETokenizer,
-    BPETrainer,
-)
 from src.data.cwe_synthesis import (
     CWE_CATALOG,
     CWERecipe,
     CWESyntheticGenerator,
+)
+from src.data.tokenizer_trainer import (
+    BPEConfig,
+    BPETokenizer,
+    BPETrainer,
 )
 
 # Registry of optional data loaders/generators. Integration tests discover
@@ -65,7 +66,6 @@ from src.data.tokenizer_contract import (  # noqa: E402
     compute_tokenizer_hash,
     register_identity,
 )
-
 from src.data.vision_token_mixer import (  # noqa: E402
     VisionTokenMixer,
     VisionTokenMixerConfig,
@@ -91,19 +91,18 @@ from src.data.coreset_selector import (  # noqa: E402
     CoresetConfig,
     CoresetSelector,
 )
-# CoresetSelector self-registers into DATA_REGISTRY on import.
-
-from src.data.tokenization_pipeline import (  # noqa: E402
-    TokenizationConfig,
-    TokenizationPipeline,
-    TokenizedOutput,
-)
-
 from src.data.data_versioning import (  # noqa: E402
     DATA_VERSION_REGISTRY,
     DataDiff,
     DatasetVersion,
     DataVersionRegistry,
+)
+
+# CoresetSelector self-registers into DATA_REGISTRY on import.
+from src.data.tokenization_pipeline import (  # noqa: E402
+    TokenizationConfig,
+    TokenizationPipeline,
+    TokenizedOutput,
 )
 
 __all__ = [
@@ -178,20 +177,20 @@ __all__ = [
 ]
 
 # --- Synthetic CoT + SFT builder + dataset analyzer (additive, cycle-147) -----
-from src.data.synthetic_cot_dataset import (  # noqa: E402,F401
-    CoTDatasetConfig,
-    CoTExample,
-    SyntheticCoTDataset,
-    COT_DATASET_REGISTRY,
+from src.data.dataset_analyzer import (  # noqa: E402,F401
+    DATASET_ANALYZER_REGISTRY,
+    DatasetAnalyzer,
+    DatasetStats,
 )
 from src.data.sft_dataset_builder import (  # noqa: E402,F401
+    SFT_BUILDER_REGISTRY,
     SFTDatasetBuilder,
     SFTDatasetConfig,
     SFTExample,
-    SFT_BUILDER_REGISTRY,
 )
-from src.data.dataset_analyzer import (  # noqa: E402,F401
-    DatasetAnalyzer,
-    DatasetStats,
-    DATASET_ANALYZER_REGISTRY,
+from src.data.synthetic_cot_dataset import (  # noqa: E402,F401
+    COT_DATASET_REGISTRY,
+    CoTDatasetConfig,
+    CoTExample,
+    SyntheticCoTDataset,
 )

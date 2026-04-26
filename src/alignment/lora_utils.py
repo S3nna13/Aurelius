@@ -1,4 +1,5 @@
 """LoRA utilities: rank selection, adapter merging, and multi-adapter composition."""
+
 from __future__ import annotations
 
 import math
@@ -9,10 +10,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # 1. Intrinsic rank estimation via SVD
 # ---------------------------------------------------------------------------
+
 
 def estimate_intrinsic_rank(weight: Tensor, threshold: float = 0.99) -> int:
     """Estimate the intrinsic rank of a weight matrix via SVD.
@@ -30,7 +31,7 @@ def estimate_intrinsic_rank(weight: Tensor, threshold: float = 0.99) -> int:
     with torch.no_grad():
         # torch.linalg.svdvals returns singular values in descending order
         sigma = torch.linalg.svdvals(weight.float())
-        variance = sigma ** 2
+        variance = sigma**2
         total_variance = variance.sum()
         cumulative = torch.cumsum(variance, dim=0)
         # Find smallest r where cumulative variance >= threshold * total
@@ -44,6 +45,7 @@ def estimate_intrinsic_rank(weight: Tensor, threshold: float = 0.99) -> int:
 # 2. LoRAAdapterInfo dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LoRAAdapterInfo:
     """Metadata and weight tensors for a single LoRA adapter."""
@@ -51,8 +53,8 @@ class LoRAAdapterInfo:
     name: str
     rank: int
     alpha: float
-    A: Tensor   # shape (rank, in_features)
-    B: Tensor   # shape (out_features, rank)
+    A: Tensor  # shape (rank, in_features)
+    B: Tensor  # shape (out_features, rank)
 
     @property
     def scale(self) -> float:
@@ -68,6 +70,7 @@ class LoRAAdapterInfo:
 # ---------------------------------------------------------------------------
 # 3. Adapter merging
 # ---------------------------------------------------------------------------
+
 
 def merge_lora_adapters(
     adapters: list[LoRAAdapterInfo],
@@ -101,6 +104,7 @@ def merge_lora_adapters(
 # 4. LoRALinear
 # ---------------------------------------------------------------------------
 
+
 class LoRALinear(nn.Module):
     """Linear layer with LoRA adaptation.
 
@@ -130,9 +134,7 @@ class LoRALinear(nn.Module):
         self.scale = alpha / rank
 
         # Frozen base weight
-        self.weight = nn.Parameter(
-            torch.zeros(out_features, in_features), requires_grad=False
-        )
+        self.weight = nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
 
         # Trainable LoRA matrices
         self.lora_A = nn.Parameter(torch.empty(rank, in_features))
@@ -164,6 +166,7 @@ class LoRALinear(nn.Module):
 # ---------------------------------------------------------------------------
 # 5. MultiLoRALinear
 # ---------------------------------------------------------------------------
+
 
 class _LoRASlot(nn.Module):
     """A single (lora_A, lora_B) adapter slot stored as a Module for nn.ModuleList."""
@@ -202,9 +205,7 @@ class MultiLoRALinear(nn.Module):
         self.active_adapter: int = 0
 
         # Frozen base weight
-        self.weight = nn.Parameter(
-            torch.zeros(out_features, in_features), requires_grad=False
-        )
+        self.weight = nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
 
         # n_adapters slots, each with its own (lora_A, lora_B)
         self.adapters = nn.ModuleList(
@@ -220,15 +221,14 @@ class MultiLoRALinear(nn.Module):
     def switch_adapter(self, idx: int) -> None:
         """Switch the active adapter slot to idx."""
         if idx < 0 or idx >= len(self.adapters):
-            raise IndexError(
-                f"adapter index {idx} out of range [0, {len(self.adapters) - 1}]"
-            )
+            raise IndexError(f"adapter index {idx} out of range [0, {len(self.adapters) - 1}]")
         self.active_adapter = idx
 
 
 # ---------------------------------------------------------------------------
 # 6. Rank distribution analysis
 # ---------------------------------------------------------------------------
+
 
 def analyze_lora_rank_distribution(
     model: nn.Module,

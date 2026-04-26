@@ -1,27 +1,27 @@
 """Tests for src/training/gradient_compression.py"""
+
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
-from src.training.gradient_compression import (
-    GradCompressConfig,
-    topk_compress,
-    random_compress,
-    quantize_gradient,
-    compress_gradient,
-    ErrorFeedbackBuffer,
-    CompressedGradOptimizer,
-    GradCompressTrainer,
-)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
+from src.training.gradient_compression import (
+    CompressedGradOptimizer,
+    ErrorFeedbackBuffer,
+    GradCompressConfig,
+    GradCompressTrainer,
+    compress_gradient,
+    quantize_gradient,
+    random_compress,
+    topk_compress,
+)
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tiny_cfg():
@@ -47,6 +47,7 @@ def tiny_model(tiny_cfg):
 # 1. GradCompressConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_grad_compress_config_defaults():
     cfg = GradCompressConfig()
     assert cfg.method == "topk"
@@ -58,6 +59,7 @@ def test_grad_compress_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. topk_compress — output shape matches input
 # ---------------------------------------------------------------------------
+
 
 def test_topk_compress_output_shape():
     grad = torch.randn(4, 8)
@@ -71,6 +73,7 @@ def test_topk_compress_output_shape():
 # 3. topk_compress — exactly k non-zero elements
 # ---------------------------------------------------------------------------
 
+
 def test_topk_compress_exactly_k_nonzero():
     torch.manual_seed(0)
     grad = torch.randn(100)
@@ -83,6 +86,7 @@ def test_topk_compress_exactly_k_nonzero():
 # ---------------------------------------------------------------------------
 # 4. topk_compress — keeps largest magnitude values
 # ---------------------------------------------------------------------------
+
 
 def test_topk_compress_keeps_largest():
     grad = torch.tensor([0.1, -5.0, 0.3, 2.0, -0.05])
@@ -101,6 +105,7 @@ def test_topk_compress_keeps_largest():
 # 5. random_compress — exactly k non-zero elements
 # ---------------------------------------------------------------------------
 
+
 def test_random_compress_exactly_k_nonzero():
     torch.manual_seed(42)
     grad = torch.randn(200)
@@ -114,6 +119,7 @@ def test_random_compress_exactly_k_nonzero():
 # 6. random_compress — mask is boolean
 # ---------------------------------------------------------------------------
 
+
 def test_random_compress_mask_is_bool():
     grad = torch.randn(50)
     k = 10
@@ -125,6 +131,7 @@ def test_random_compress_mask_is_bool():
 # 7. quantize_gradient — output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_gradient_output_shape():
     grad = torch.randn(3, 4, 5)
     quantized = quantize_gradient(grad, bits=8)
@@ -134,6 +141,7 @@ def test_quantize_gradient_output_shape():
 # ---------------------------------------------------------------------------
 # 8. quantize_gradient — output values bounded within original range
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_gradient_values_bounded():
     torch.manual_seed(7)
@@ -146,6 +154,7 @@ def test_quantize_gradient_values_bounded():
 # ---------------------------------------------------------------------------
 # 9. compress_gradient topk method returns correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_compress_gradient_topk_shapes():
     cfg = GradCompressConfig(method="topk", compression_ratio=0.2)
@@ -160,6 +169,7 @@ def test_compress_gradient_topk_shapes():
 # 10. compress_gradient random method returns correct shapes
 # ---------------------------------------------------------------------------
 
+
 def test_compress_gradient_random_shapes():
     cfg = GradCompressConfig(method="random", compression_ratio=0.3)
     grad = torch.randn(40)
@@ -173,6 +183,7 @@ def test_compress_gradient_random_shapes():
 # 11. compress_gradient quantize method returns (grad, None)
 # ---------------------------------------------------------------------------
 
+
 def test_compress_gradient_quantize_no_mask():
     cfg = GradCompressConfig(method="quantize", bits=8)
     grad = torch.randn(20)
@@ -185,6 +196,7 @@ def test_compress_gradient_quantize_no_mask():
 # 12. ErrorFeedbackBuffer starts empty
 # ---------------------------------------------------------------------------
 
+
 def test_error_feedback_buffer_starts_empty():
     buf = ErrorFeedbackBuffer()
     assert len(buf) == 0
@@ -193,6 +205,7 @@ def test_error_feedback_buffer_starts_empty():
 # ---------------------------------------------------------------------------
 # 13. ErrorFeedbackBuffer.update accumulates errors across steps
 # ---------------------------------------------------------------------------
+
 
 def test_error_feedback_buffer_accumulates():
     buf = ErrorFeedbackBuffer()
@@ -218,6 +231,7 @@ def test_error_feedback_buffer_accumulates():
 # 14. CompressedGradOptimizer.step returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_compressed_grad_optimizer_step_keys(tiny_model):
     named_params = [(n, p) for n, p in tiny_model.named_parameters() if p.requires_grad]
     base_opt = torch.optim.SGD([p for _, p in named_params], lr=1e-3)
@@ -238,6 +252,7 @@ def test_compressed_grad_optimizer_step_keys(tiny_model):
 # 15. GradCompressTrainer.train_step returns dict with 'loss'
 # ---------------------------------------------------------------------------
 
+
 def test_grad_compress_trainer_train_step_has_loss(tiny_model):
     cfg = GradCompressConfig(method="topk", compression_ratio=0.1)
     optimizer = torch.optim.Adam(tiny_model.parameters(), lr=1e-4)
@@ -253,6 +268,7 @@ def test_grad_compress_trainer_train_step_has_loss(tiny_model):
 # ---------------------------------------------------------------------------
 # 16. GradCompressTrainer — loss is finite over multiple steps
 # ---------------------------------------------------------------------------
+
 
 def test_grad_compress_trainer_loss_finite_over_steps(tiny_model):
     cfg = GradCompressConfig(method="topk", compression_ratio=0.1, use_error_feedback=True)
@@ -271,6 +287,7 @@ def test_grad_compress_trainer_loss_finite_over_steps(tiny_model):
 # Bonus: random compression with different seeds gives different masks
 # ---------------------------------------------------------------------------
 
+
 def test_random_compress_stochastic():
     grad = torch.randn(100)
     k = 10
@@ -286,6 +303,7 @@ def test_random_compress_stochastic():
 # Bonus: quantize_gradient constant tensor (no division by zero)
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_gradient_constant_tensor():
     grad = torch.ones(20) * 3.14
     quantized = quantize_gradient(grad, bits=8)
@@ -297,6 +315,7 @@ def test_quantize_gradient_constant_tensor():
 # ---------------------------------------------------------------------------
 # Bonus: CompressedGradOptimizer zero_grad delegates to inner optimizer
 # ---------------------------------------------------------------------------
+
 
 def test_compressed_grad_optimizer_zero_grad(tiny_model):
     named_params = [(n, p) for n, p in tiny_model.named_parameters() if p.requires_grad]

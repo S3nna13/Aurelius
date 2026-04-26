@@ -6,14 +6,13 @@ Reference: https://arxiv.org/abs/2312.06681
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -52,17 +51,17 @@ class ActivationCollector:
         A forward hook is registered on each layer during collection.
     """
 
-    def __init__(self, layers: List[nn.Module]) -> None:
+    def __init__(self, layers: list[nn.Module]) -> None:
         self._layers = layers
-        self._activations: List[Optional[Tensor]] = [None] * len(layers)
-        self._handles: List[torch.utils.hooks.RemovableHook] = []
+        self._activations: list[Tensor | None] = [None] * len(layers)
+        self._handles: list[torch.utils.hooks.RemovableHook] = []
 
     # ------------------------------------------------------------------
     # Internal hook factory
     # ------------------------------------------------------------------
 
     def _make_hook(self, idx: int) -> Callable:
-        def _hook(module: nn.Module, inputs: Tuple, output) -> None:
+        def _hook(module: nn.Module, inputs: tuple, output) -> None:
             if isinstance(output, (tuple, list)):
                 hidden = output[0]
             else:
@@ -75,7 +74,7 @@ class ActivationCollector:
     # Context manager
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "ActivationCollector":
+    def __enter__(self) -> ActivationCollector:
         self._install_hooks()
         return self
 
@@ -84,8 +83,7 @@ class ActivationCollector:
 
     def _install_hooks(self) -> None:
         self._handles = [
-            layer.register_forward_hook(self._make_hook(i))
-            for i, layer in enumerate(self._layers)
+            layer.register_forward_hook(self._make_hook(i)) for i, layer in enumerate(self._layers)
         ]
 
     def _remove_hooks(self) -> None:
@@ -101,7 +99,7 @@ class ActivationCollector:
         self,
         model_fn: Callable,
         input_ids: Tensor,
-    ) -> List[Tensor]:
+    ) -> list[Tensor]:
         """Run ``model_fn(input_ids)`` with hooks attached, return activations.
 
         Parameters
@@ -126,7 +124,7 @@ class ActivationCollector:
 
         return list(self._activations)  # type: ignore[return-value]
 
-    def get_activations(self) -> List[Tensor]:
+    def get_activations(self) -> list[Tensor]:
         """Return the activations captured during the last :meth:`collect` call."""
         return list(self._activations)  # type: ignore[return-value]
 
@@ -149,7 +147,7 @@ class CAAExtractor:
         :class:`ActivationCollector` will hook into.
     """
 
-    def __init__(self, config: CAAConfig, layers: List[nn.Module]) -> None:
+    def __init__(self, config: CAAConfig, layers: list[nn.Module]) -> None:
         self.config = config
         self.layers = layers
 
@@ -157,7 +155,7 @@ class CAAExtractor:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _collect(self, model_fn: Callable, input_ids: Tensor) -> List[Tensor]:
+    def _collect(self, model_fn: Callable, input_ids: Tensor) -> list[Tensor]:
         collector = ActivationCollector(self.layers)
         return collector.collect(model_fn, input_ids)
 
@@ -218,7 +216,7 @@ class CAAExtractor:
         model_fn: Callable,
         pos_input_ids: Tensor,
         neg_input_ids: Tensor,
-    ) -> Dict[int, Tensor]:
+    ) -> dict[int, Tensor]:
         """Extract steering vectors for every layer.
 
         Parameters
@@ -236,7 +234,7 @@ class CAAExtractor:
 
         token_pos = self.config.token_position
 
-        result: Dict[int, Tensor] = {}
+        result: dict[int, Tensor] = {}
         for idx in range(len(self.layers)):
             pos_vec = self._pick_token(pos_acts_all[idx], token_pos).mean(dim=0)
             neg_vec = self._pick_token(neg_acts_all[idx], token_pos).mean(dim=0)
@@ -277,13 +275,13 @@ class CAASteeringHook:
         self.steering_vector = steering_vector
         self.alpha = alpha
         self.token_position = token_position
-        self._handle: Optional[torch.utils.hooks.RemovableHook] = None
+        self._handle: torch.utils.hooks.RemovableHook | None = None
 
     # ------------------------------------------------------------------
     # Hook callable
     # ------------------------------------------------------------------
 
-    def __call__(self, module: nn.Module, input: Tuple, output) -> object:
+    def __call__(self, module: nn.Module, input: tuple, output) -> object:
         """Add ``alpha * steering_vector`` to output at ``token_position``."""
         if isinstance(output, (tuple, list)):
             hidden = output[0]
@@ -361,7 +359,7 @@ class CAAEvaluator:
         steered_layer: nn.Module,
         steering_vector: Tensor,
         alpha: float,
-    ) -> Dict[str, List[Tensor]]:
+    ) -> dict[str, list[Tensor]]:
         """Run baseline and steered forward passes, return activations.
 
         Parameters

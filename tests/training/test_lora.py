@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.lora import (
     LoRAConfig,
     LoRALinear,
     apply_lora,
-    get_lora_params,
     get_lora_param_count,
-    save_lora_weights,
+    get_lora_params,
     load_lora_weights,
+    save_lora_weights,
 )
 
 # ---------------------------------------------------------------------------
@@ -99,7 +99,9 @@ def test_lora_linear_lora_params_require_grad(lora_linear: LoRALinear) -> None:
 # ---------------------------------------------------------------------------
 # 5. LoRALinear init: lora_B is zero → first forward = same as frozen linear
 # ---------------------------------------------------------------------------
-def test_lora_linear_zero_init_matches_base(base_linear: nn.Linear, sample_input: torch.Tensor) -> None:
+def test_lora_linear_zero_init_matches_base(
+    base_linear: nn.Linear, sample_input: torch.Tensor
+) -> None:
     # Store base output before wrapping (lora_B = 0 so LoRA contributes nothing)
     base_out = base_linear(sample_input).detach()
 

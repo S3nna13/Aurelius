@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 @dataclass
@@ -17,7 +15,7 @@ class LoRAConfig:
     r: int = 8
     alpha: float = 16.0
     dropout: float = 0.0
-    target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
+    target_modules: list[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
     merge_weights: bool = False
 
 
@@ -95,7 +93,7 @@ def apply_lora(model: nn.Module, config: LoRAConfig) -> int:
     """
     replaced = 0
     # Collect replacements first to avoid mutation during iteration
-    replacements: List[tuple[nn.Module, str, nn.Linear]] = []
+    replacements: list[tuple[nn.Module, str, nn.Linear]] = []
 
     for full_name, module in model.named_modules():
         if not isinstance(module, nn.Linear):
@@ -128,7 +126,7 @@ def _is_lora_param(name: str) -> bool:
     return "lora_A" in name or "lora_B" in name
 
 
-def get_lora_params(model: nn.Module) -> List[nn.Parameter]:
+def get_lora_params(model: nn.Module) -> list[nn.Parameter]:
     """Return only LoRA trainable parameters (lora_A and lora_B).
 
     Args:
@@ -140,7 +138,7 @@ def get_lora_params(model: nn.Module) -> List[nn.Parameter]:
     return [p for name, p in model.named_parameters() if _is_lora_param(name)]
 
 
-def get_lora_param_count(model: nn.Module) -> Dict[str, int]:
+def get_lora_param_count(model: nn.Module) -> dict[str, int]:
     """Return parameter element counts for trainable (LoRA), frozen, and total.
 
     'trainable' counts only lora_A / lora_B elements.
@@ -163,7 +161,7 @@ def get_lora_param_count(model: nn.Module) -> Dict[str, int]:
     return {"trainable": trainable, "frozen": frozen, "total": trainable + frozen}
 
 
-def save_lora_weights(model: nn.Module) -> Dict[str, torch.Tensor]:
+def save_lora_weights(model: nn.Module) -> dict[str, torch.Tensor]:
     """Return a dict of only the LoRA (lora_A / lora_B) parameters.
 
     Args:
@@ -179,7 +177,7 @@ def save_lora_weights(model: nn.Module) -> Dict[str, torch.Tensor]:
     }
 
 
-def load_lora_weights(model: nn.Module, weights: Dict[str, torch.Tensor]) -> None:
+def load_lora_weights(model: nn.Module, weights: dict[str, torch.Tensor]) -> None:
     """Load LoRA weights back into matching model parameters.
 
     Args:

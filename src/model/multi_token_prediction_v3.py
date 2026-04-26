@@ -16,17 +16,15 @@ Architecture:
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # MultiTokenHead
 # ---------------------------------------------------------------------------
+
 
 class MultiTokenHead(nn.Module):
     """Single prediction head for one future token offset.
@@ -68,6 +66,7 @@ class MultiTokenHead(nn.Module):
 # ---------------------------------------------------------------------------
 # MultiTokenPredictionModel
 # ---------------------------------------------------------------------------
+
 
 class MultiTokenPredictionModel(nn.Module):
     """Transformer trunk with K parallel prediction heads.
@@ -112,7 +111,7 @@ class MultiTokenPredictionModel(nn.Module):
             [MultiTokenHead(d_model, vocab_size, offset=i + 1) for i in range(k_predictions)]
         )
 
-    def forward(self, input_ids: Tensor) -> List[Tensor]:
+    def forward(self, input_ids: Tensor) -> list[Tensor]:
         """
         Args:
             input_ids: (B, T) integer token ids.
@@ -120,17 +119,18 @@ class MultiTokenPredictionModel(nn.Module):
         Returns:
             List of K logit tensors, each (B, T, vocab_size).
         """
-        x = self.embedding(input_ids)      # (B, T, d_model)
-        x = self.transformer(x)             # (B, T, d_model)
-        hidden = self.norm(x)               # (B, T, d_model)
+        x = self.embedding(input_ids)  # (B, T, d_model)
+        x = self.transformer(x)  # (B, T, d_model)
+        hidden = self.norm(x)  # (B, T, d_model)
 
-        logits_list: List[Tensor] = [head(hidden) for head in self.heads]
+        logits_list: list[Tensor] = [head(hidden) for head in self.heads]
         return logits_list
 
 
 # ---------------------------------------------------------------------------
 # MultiTokenLoss
 # ---------------------------------------------------------------------------
+
 
 class MultiTokenLoss(nn.Module):
     """Combined cross-entropy loss across all K prediction heads.
@@ -151,7 +151,7 @@ class MultiTokenLoss(nn.Module):
     def __init__(
         self,
         k_predictions: int,
-        weights: Optional[List[float]] = None,
+        weights: list[float] | None = None,
     ) -> None:
         super().__init__()
         if k_predictions < 1:
@@ -160,14 +160,10 @@ class MultiTokenLoss(nn.Module):
         if weights is None:
             weights = [1.0 / k_predictions] * k_predictions
         if len(weights) != k_predictions:
-            raise ValueError(
-                f"len(weights)={len(weights)} != k_predictions={k_predictions}"
-            )
+            raise ValueError(f"len(weights)={len(weights)} != k_predictions={k_predictions}")
         self.register_buffer("weights", torch.tensor(weights, dtype=torch.float32))
 
-    def forward(
-        self, logits_list: List[Tensor], input_ids: Tensor
-    ) -> tuple[Tensor, List[float]]:
+    def forward(self, logits_list: list[Tensor], input_ids: Tensor) -> tuple[Tensor, list[float]]:
         """
         Args:
             logits_list: List of K tensors, each (B, T, V).
@@ -178,20 +174,16 @@ class MultiTokenLoss(nn.Module):
             per_head_losses: list of K float values (detached).
         """
         T = input_ids.shape[1]
-        per_head_losses: List[float] = []
-        total_loss: Tensor = torch.zeros(
-            1, device=input_ids.device, dtype=torch.float32
-        ).squeeze()
+        per_head_losses: list[float] = []
+        total_loss: Tensor = torch.zeros(1, device=input_ids.device, dtype=torch.float32).squeeze()
 
         for j_idx in range(self.k_predictions):
             j = j_idx + 1  # offset (1-indexed)
             if T <= j:
-                raise ValueError(
-                    f"seq_len={T} must be > offset={j} to compute loss"
-                )
+                raise ValueError(f"seq_len={T} must be > offset={j} to compute loss")
             # Align logits and targets
-            logits_j = logits_list[j_idx][:, :-j, :]   # (B, T-j, V)
-            targets_j = input_ids[:, j:]                 # (B, T-j)
+            logits_j = logits_list[j_idx][:, :-j, :]  # (B, T-j, V)
+            targets_j = input_ids[:, j:]  # (B, T-j)
 
             B_Tj = logits_j.shape[0] * logits_j.shape[1]
             V = logits_j.shape[2]
@@ -209,6 +201,7 @@ class MultiTokenLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # MTPTrainer
 # ---------------------------------------------------------------------------
+
 
 class MTPTrainer:
     """Training loop wrapper for MultiTokenPredictionModel.
@@ -249,9 +242,7 @@ class MTPTrainer:
         total_loss.backward()
 
         # Gradient clipping
-        grad_norm_val = torch.nn.utils.clip_grad_norm_(
-            self.model.parameters(), max_norm=1.0
-        )
+        grad_norm_val = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
 
         self.optimizer.step()
 
@@ -266,6 +257,7 @@ class MTPTrainer:
 # SpeculativeDecodingFromMTP
 # ---------------------------------------------------------------------------
 
+
 class SpeculativeDecodingFromMTP:
     """Use MTP heads for speculative draft generation and acceptance checking.
 
@@ -276,9 +268,7 @@ class SpeculativeDecodingFromMTP:
 
     def __init__(self, model: MultiTokenPredictionModel, k: int = 4) -> None:
         if k > model.k_predictions:
-            raise ValueError(
-                f"k={k} > model.k_predictions={model.k_predictions}"
-            )
+            raise ValueError(f"k={k} > model.k_predictions={model.k_predictions}")
         self.model = model
         self.k = k
 
@@ -298,7 +288,7 @@ class SpeculativeDecodingFromMTP:
         self.model.eval()
         logits_list = self.model(input_ids)  # list of K tensors (B, T, V)
 
-        draft_tokens_list: List[Tensor] = []
+        draft_tokens_list: list[Tensor] = []
         for j_idx in range(self.k):
             logits_last = logits_list[j_idx][:, -1, :]  # (B, V)
             draft_tok = torch.argmax(logits_last, dim=-1, keepdim=True)  # (B, 1)
@@ -306,9 +296,7 @@ class SpeculativeDecodingFromMTP:
 
         return torch.cat(draft_tokens_list, dim=1)  # (B, k)
 
-    def verify_and_accept(
-        self, draft_tokens: Tensor, target_logits: Tensor
-    ) -> tuple[Tensor, int]:
+    def verify_and_accept(self, draft_tokens: Tensor, target_logits: Tensor) -> tuple[Tensor, int]:
         """Greedy acceptance check against verifier logits.
 
         Accepts a draft token at position i if the verifier's greedy choice
@@ -323,6 +311,6 @@ class SpeculativeDecodingFromMTP:
             n_accepted: int — mean number of accepted tokens across the batch.
         """
         verifier_greedy = torch.argmax(target_logits, dim=-1)  # (B, k)
-        accepted = verifier_greedy == draft_tokens              # (B, k) bool
+        accepted = verifier_greedy == draft_tokens  # (B, k) bool
         n_accepted = int(accepted.float().sum(dim=1).mean().round().item())
         return accepted, n_accepted

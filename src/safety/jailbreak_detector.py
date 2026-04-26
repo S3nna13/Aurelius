@@ -53,7 +53,6 @@ import re
 import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 # --------------------------------------------------------------------------- #
 # Catalogs
@@ -62,7 +61,7 @@ from typing import List, Optional, Tuple
 # Keyword / phrase catalog. Matched case-insensitively against the NFKC-
 # normalised input. Word-boundary aware where appropriate so we do not flag
 # substrings inside unrelated words ("scandal" should not trigger "dan").
-_KEYWORD_PATTERNS: Tuple[str, ...] = (
+_KEYWORD_PATTERNS: tuple[str, ...] = (
     r"\bdan\b",
     r"\bdo\s+anything\s+now\b",
     r"\bignore\s+(?:all\s+)?(?:the\s+)?previous\s+(?:instructions?|prompts?|rules?)\b",
@@ -88,7 +87,7 @@ _KEYWORD_PATTERNS: Tuple[str, ...] = (
 # Role-confusion probe patterns: literal chat special tokens that a well-formed
 # user turn would never contain. Matched case-sensitively (chat templates are
 # specified lowercase) but after NFKC normalisation.
-_ROLE_CONFUSION_PATTERNS: Tuple[str, ...] = (
+_ROLE_CONFUSION_PATTERNS: tuple[str, ...] = (
     r"<\|im_start\|>",
     r"<\|im_end\|>",
     r"<\|system\|>",
@@ -108,7 +107,7 @@ _ROLE_CONFUSION_PATTERNS: Tuple[str, ...] = (
 # Imperative / override probes. These target the *system persona* rather than
 # just containing a banned word — matched in combination with a persona noun
 # for precision.
-_INJECTION_PATTERNS: Tuple[str, ...] = (
+_INJECTION_PATTERNS: tuple[str, ...] = (
     r"\bdisregard\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above)\b",
     r"\boverride\s+(?:the\s+)?(?:system|instructions?|prompt|guidelines?)\b",
     r"\bignore\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above)\s+(?:instructions?|prompts?|rules?)\b",
@@ -138,9 +137,7 @@ _WS_RE = re.compile(r"\s+", re.UNICODE)
 
 # Control-character stripping regex. Keeps \n \r \t, strips all other C0/C1
 # controls and the Unicode BOM.
-_CTRL_RE = re.compile(
-    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f\ufeff]"
-)
+_CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f\ufeff]")
 
 # Weights for the final weighted sum. Must sum to 1.0.
 _W_KEYWORD = 0.40
@@ -152,8 +149,8 @@ _W_CUSTOM = 0.03
 # Repetition-burst parameters. A 3-gram repeated >= REP_MIN times saturates
 # the repetition sub-score at 1.0; fewer repetitions scale linearly.
 _REP_NGRAM = 3
-_REP_MIN = 8       # at this count, sub-score = 1.0
-_REP_START = 3     # below this count, sub-score = 0.0
+_REP_MIN = 8  # at this count, sub-score = 1.0
+_REP_START = 3  # below this count, sub-score = 0.0
 
 # Hard cap on the input length we consider for regex scanning. Anything beyond
 # this is truncated (after normalisation) so adversarial inputs cannot make
@@ -179,7 +176,7 @@ class JailbreakScore:
     """
 
     score: float
-    triggered_signals: List[str]
+    triggered_signals: list[str]
     is_jailbreak: bool
     details: dict = field(default_factory=dict)
 
@@ -205,7 +202,7 @@ class JailbreakDetector:
     def __init__(
         self,
         threshold: float = 0.5,
-        custom_keywords: Optional[List[str]] = None,
+        custom_keywords: list[str] | None = None,
     ) -> None:
         if not isinstance(threshold, (int, float)):
             raise TypeError("threshold must be a real number")
@@ -216,8 +213,8 @@ class JailbreakDetector:
         # Compile user-supplied keywords defensively. Non-string / empty
         # entries are skipped rather than raising, so a noisy config does
         # not take the safety filter offline.
-        compiled_custom: List[re.Pattern] = []
-        raw_custom: List[str] = []
+        compiled_custom: list[re.Pattern] = []
+        raw_custom: list[str] = []
         if custom_keywords is not None:
             for kw in custom_keywords:
                 if not isinstance(kw, str):
@@ -235,8 +232,8 @@ class JailbreakDetector:
                     pat = pat + r"(?:\b|_)"
                 compiled_custom.append(re.compile(pat, re.IGNORECASE))
                 raw_custom.append(kw_norm)
-        self._custom_re: Tuple[re.Pattern, ...] = tuple(compiled_custom)
-        self._custom_raw: Tuple[str, ...] = tuple(raw_custom)
+        self._custom_re: tuple[re.Pattern, ...] = tuple(compiled_custom)
+        self._custom_raw: tuple[str, ...] = tuple(raw_custom)
 
     # --------------------------------------------------------------------- #
     # Public API
@@ -291,7 +288,7 @@ class JailbreakDetector:
         elif total > 1.0:
             total = 1.0
 
-        signals: List[str] = []
+        signals: list[str] = []
         if kw_sub > 0.0:
             signals.append("keyword")
         if role_sub > 0.0:
@@ -356,7 +353,7 @@ class JailbreakDetector:
                     return ""
         try:
             text = unicodedata.normalize("NFKC", text)
-        except Exception:
+        except Exception:  # noqa: S110
             # Extremely malformed unicode; fall back to what we have.
             pass
         text = _CTRL_RE.sub("", text)
@@ -427,10 +424,7 @@ class JailbreakDetector:
                 top = Counter(tokens).most_common(1)[0][1]
                 return JailbreakDetector._rep_scale(top)
             return 0.0
-        ngrams = [
-            tuple(tokens[i : i + _REP_NGRAM])
-            for i in range(len(tokens) - _REP_NGRAM + 1)
-        ]
+        ngrams = [tuple(tokens[i : i + _REP_NGRAM]) for i in range(len(tokens) - _REP_NGRAM + 1)]
         if not ngrams:
             return 0.0
         top = Counter(ngrams).most_common(1)[0][1]

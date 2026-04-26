@@ -75,9 +75,7 @@ class MotionSpec:
             raise UIError("frames must be a non-empty tuple of str")
         for idx, f in enumerate(self.frames):
             if not isinstance(f, str) or f == "":
-                raise UIError(
-                    f"frames[{idx}] must be a non-empty str, got {f!r}"
-                )
+                raise UIError(f"frames[{idx}] must be a non-empty str, got {f!r}")
 
         if not isinstance(self.loop, bool):
             raise UIError("loop must be a bool")
@@ -190,7 +188,12 @@ _STOIC_CURSOR = MotionSpec(
 _THINKING_DOTS = MotionSpec(
     name="thinking-dots",
     duration_ms=1600,
-    frames=(".   ", "..  ", "... ", " ...",),
+    frames=(
+        ".   ",
+        "..  ",
+        "... ",
+        " ...",
+    ),
     loop=True,
     reduced_motion_frame="\u2026",
 )

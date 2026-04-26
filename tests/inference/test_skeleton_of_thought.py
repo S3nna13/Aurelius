@@ -10,6 +10,7 @@ Covers:
       speedup_estimate (positive, single-point)
   - Integration test: full expand_all pipeline with a stub model_fn
 """
+
 from __future__ import annotations
 
 import pytest
@@ -19,19 +20,18 @@ from torch import Tensor
 from src.inference.skeleton_of_thought import (
     SkeletonOfThoughtDecoder,
     SkeletonParser,
+    SkeletonPoint,
     SoTConfig,
     SoTResult,
-    SkeletonPoint,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-SEP = 10       # arbitrary separator token id
-EOS = 2        # EOS token id
-VOCAB = 50     # small vocab for tests
+SEP = 10  # arbitrary separator token id
+EOS = 2  # EOS token id
+VOCAB = 50  # small vocab for tests
 
 
 def _fixed_logits(token_id: int, vocab: int = VOCAB) -> Tensor:
@@ -43,8 +43,10 @@ def _fixed_logits(token_id: int, vocab: int = VOCAB) -> Tensor:
 
 def _model_fn_always(token_id: int):
     """model_fn that always returns logits favouring *token_id*."""
+
     def fn(context):  # noqa: ARG001
         return _fixed_logits(token_id)
+
     return fn
 
 
@@ -56,6 +58,7 @@ def _make_decoder(**kwargs) -> SkeletonOfThoughtDecoder:
 # ===========================================================================
 # 1. Config defaults
 # ===========================================================================
+
 
 def test_config_defaults():
     cfg = SoTConfig()
@@ -69,6 +72,7 @@ def test_config_defaults():
 # ===========================================================================
 # 2. SkeletonParser — empty input
 # ===========================================================================
+
 
 def test_parse_skeleton_empty():
     """No separators → single point (or empty if no tokens at all)."""
@@ -86,6 +90,7 @@ def test_parse_skeleton_empty():
 # 3. SkeletonParser — two points
 # ===========================================================================
 
+
 def test_parse_skeleton_two_points():
     """One separator → two point start indices."""
     parser = SkeletonParser(sep_token_id=SEP, eos_token_id=EOS)
@@ -100,6 +105,7 @@ def test_parse_skeleton_two_points():
 # 4. SkeletonParser — max_points cap
 # ===========================================================================
 
+
 def test_parse_skeleton_max_points():
     """Excess separators should be capped at max_points by the decoder."""
     decoder = _make_decoder(max_points=3)
@@ -113,17 +119,19 @@ def test_parse_skeleton_max_points():
 # 5. SkeletonParser.count_points
 # ===========================================================================
 
+
 def test_count_points_correct():
     parser = SkeletonParser(sep_token_id=SEP, eos_token_id=EOS)
     assert parser.count_points([]) == 0
-    assert parser.count_points([5, 6, 7]) == 1                  # no sep → 1 point
-    assert parser.count_points([5, SEP, 7]) == 2                # one sep → 2 points
-    assert parser.count_points([1, SEP, 2, SEP, 3]) == 3        # two seps → 3 points
+    assert parser.count_points([5, 6, 7]) == 1  # no sep → 1 point
+    assert parser.count_points([5, SEP, 7]) == 2  # one sep → 2 points
+    assert parser.count_points([1, SEP, 2, SEP, 3]) == 3  # two seps → 3 points
 
 
 # ===========================================================================
 # 6. generate_skeleton — EOS stops generation early
 # ===========================================================================
+
 
 def test_generate_skeleton_eos_stops():
     """When the model always returns EOS the output should be empty."""
@@ -138,6 +146,7 @@ def test_generate_skeleton_eos_stops():
 # ===========================================================================
 # 7. generate_skeleton — honours length limit
 # ===========================================================================
+
 
 def test_generate_skeleton_length_limit():
     """With a non-EOS model_fn output is capped at max_skeleton_tokens."""
@@ -156,12 +165,13 @@ def test_generate_skeleton_length_limit():
 # 8. expand_point — returns list of ints
 # ===========================================================================
 
+
 def test_expand_point_shape():
     decoder = _make_decoder(max_point_tokens=5)
     expansion = decoder.expand_point(
         prompt_tokens=[1, 2],
         point_tokens=[3],
-        model_fn=_model_fn_always(7),   # token 7, not EOS
+        model_fn=_model_fn_always(7),  # token 7, not EOS
     )
     assert isinstance(expansion, list)
     assert len(expansion) > 0
@@ -171,6 +181,7 @@ def test_expand_point_shape():
 # ===========================================================================
 # 9. expand_point — stops at EOS
 # ===========================================================================
+
 
 def test_expand_point_stops_at_eos():
     """EOS as first token means zero-length expansion."""
@@ -187,6 +198,7 @@ def test_expand_point_stops_at_eos():
 # 10. expand_all — returns SoTResult
 # ===========================================================================
 
+
 def test_expand_all_result_type():
     decoder = _make_decoder(max_skeleton_tokens=8, max_point_tokens=4, max_points=2)
     # Two-point skeleton: [5, SEP, 6]
@@ -202,6 +214,7 @@ def test_expand_all_result_type():
 # ===========================================================================
 # 11. expand_all — total_tokens accounting
 # ===========================================================================
+
 
 def test_expand_all_total_tokens():
     """total_tokens == len(skeleton_tokens) + sum of expansion lengths."""
@@ -221,6 +234,7 @@ def test_expand_all_total_tokens():
 # 12. expand_all — points list length matches parse output
 # ===========================================================================
 
+
 def test_expand_all_points_count():
     decoder = _make_decoder(max_points=4)
     # Three points separated by two SEPs
@@ -239,11 +253,14 @@ def test_expand_all_points_count():
 # 13. speedup_estimate — always positive
 # ===========================================================================
 
+
 def test_speedup_estimate_positive():
     decoder = _make_decoder(max_point_tokens=10)
     # Build a dummy result
-    pts = [SkeletonPoint(index=0, text=[1], expanded=[7, 8, 9]),
-           SkeletonPoint(index=1, text=[2], expanded=[7, 7])]
+    pts = [
+        SkeletonPoint(index=0, text=[1], expanded=[7, 8, 9]),
+        SkeletonPoint(index=1, text=[2], expanded=[7, 7]),
+    ]
     result = SoTResult(
         skeleton_tokens=[1, SEP, 2],
         points=pts,
@@ -257,6 +274,7 @@ def test_speedup_estimate_positive():
 # ===========================================================================
 # 14. speedup_estimate — single point gives meaningful value
 # ===========================================================================
+
 
 def test_speedup_single_point():
     """With one point and skeleton=0 tokens the speedup == 1 if total equals max_point_tokens."""
@@ -277,6 +295,7 @@ def test_speedup_single_point():
 # Integration test — full pipeline with stub model_fn
 # ===========================================================================
 
+
 def _integration_model_fn(context):
     """Stub model_fn for integration test.
 
@@ -289,7 +308,7 @@ def _integration_model_fn(context):
     # prompt=[1,2,3] → length 3; each generated token increments by 1
     # So for context lengths 3, 4, 5 emit SEP; afterwards emit 7
     L = len(context)
-    if L <= 5:          # first two generated tokens during skeleton → SEP
+    if L <= 5:  # first two generated tokens during skeleton → SEP
         return _fixed_logits(SEP)
     return _fixed_logits(7)
 
@@ -344,4 +363,5 @@ def test_integration_expand_all():
 
     # Registry entry
     from src.inference import DECODER_REGISTRY
+
     assert "skeleton_of_thought" in DECODER_REGISTRY

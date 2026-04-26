@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.optimizers.adopt import ADOPT
 
-
 # ------------------------------------------------------------------------------- #
 # Helpers                                                                          #
 # ------------------------------------------------------------------------------- #
+
 
 def make_scalar_param(value: float = 2.0) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(value))
@@ -24,12 +23,13 @@ def make_matrix_param(rows: int = 4, cols: int = 4) -> torch.nn.Parameter:
 
 def quadratic_loss(p: torch.Tensor) -> torch.Tensor:
     """L = sum(p^2) — global minimum at p = 0."""
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 # ------------------------------------------------------------------------------- #
 # 1. Shape / dtype: step() updates scalar and matrix parameters correctly          #
 # ------------------------------------------------------------------------------- #
+
 
 def test_shape_and_dtype_scalar():
     p = make_scalar_param(3.0)
@@ -59,6 +59,7 @@ def test_shape_and_dtype_matrix():
 # 2. Gradient flow: converges on quadratic loss                                    #
 # ------------------------------------------------------------------------------- #
 
+
 def test_convergence_quadratic():
     torch.manual_seed(0)
     p = torch.nn.Parameter(torch.tensor(5.0))
@@ -74,6 +75,7 @@ def test_convergence_quadratic():
 # 3. Determinism under torch.manual_seed                                           #
 # ------------------------------------------------------------------------------- #
 
+
 def test_determinism():
     def run():
         torch.manual_seed(42)
@@ -81,7 +83,7 @@ def test_determinism():
         opt = ADOPT([p], lr=1e-3)
         for _ in range(10):
             opt.zero_grad()
-            (p ** 2 + 0.5 * p).backward()
+            (p**2 + 0.5 * p).backward()
             opt.step()
         return p.item()
 
@@ -92,6 +94,7 @@ def test_determinism():
 # 4. First step: with no v_{t-1}, falls back to pure gradient step                 #
 # ------------------------------------------------------------------------------- #
 
+
 def test_first_step_is_gradient_step():
     """At t=1 ADOPT should do θ_1 = θ_0 - α*g, with no second-moment division."""
     lr = 0.1
@@ -100,7 +103,7 @@ def test_first_step_is_gradient_step():
     opt = ADOPT([p], lr=lr, betas=(0.9, 0.9999))
     loss = quadratic_loss(p)
     loss.backward()
-    grad_val = p.grad.item()   # 2 * init_val = 6.0
+    grad_val = p.grad.item()  # 2 * init_val = 6.0
     opt.step()
     expected = init_val - lr * grad_val
     assert math.isclose(p.item(), expected, rel_tol=1e-6), (
@@ -111,6 +114,7 @@ def test_first_step_is_gradient_step():
 # ------------------------------------------------------------------------------- #
 # 5. Edge case: zero gradient leaves params unchanged                              #
 # ------------------------------------------------------------------------------- #
+
 
 def test_zero_gradient_no_change():
     p = torch.nn.Parameter(torch.tensor(5.0))
@@ -125,12 +129,13 @@ def test_zero_gradient_no_change():
 # 6. Numerical stability: no NaN/Inf after 100 steps on random + large gradients  #
 # ------------------------------------------------------------------------------- #
 
+
 def test_numerical_stability_random_gradients():
     torch.manual_seed(7)
     p = torch.nn.Parameter(torch.randn(16, 16))
     opt = ADOPT([p], lr=1e-3)
     for _ in range(100):
-        p.grad = torch.randn_like(p) * 1e3   # large gradients
+        p.grad = torch.randn_like(p) * 1e3  # large gradients
         opt.step()
     assert not torch.isnan(p.data).any(), "NaN detected in parameters"
     assert not torch.isinf(p.data).any(), "Inf detected in parameters"
@@ -151,6 +156,7 @@ def test_numerical_stability_very_large_gradients():
 # 7. Weight decay: params shrink toward zero when weight_decay > 0                 #
 # ------------------------------------------------------------------------------- #
 
+
 def test_weight_decay_shrinks_params():
     """With a zero gradient and high weight_decay, the parameter should shrink."""
     p = torch.nn.Parameter(torch.tensor(1.0))
@@ -169,6 +175,7 @@ def test_weight_decay_shrinks_params():
 # ------------------------------------------------------------------------------- #
 # 8. Decoupled weight decay: decoupled=True vs False produces different updates    #
 # ------------------------------------------------------------------------------- #
+
 
 def test_decoupled_vs_coupled_weight_decay_differ():
     torch.manual_seed(0)
@@ -194,6 +201,7 @@ def test_decoupled_vs_coupled_weight_decay_differ():
 # 9. State keys: 'step', 'exp_avg', 'exp_avg_sq' present after first step         #
 # ------------------------------------------------------------------------------- #
 
+
 def test_state_keys_after_first_step():
     p = make_scalar_param(1.0)
     opt = ADOPT([p], lr=1e-3)
@@ -210,6 +218,7 @@ def test_state_keys_after_first_step():
 # ------------------------------------------------------------------------------- #
 # 10. Gradient normalisation: g̃_t ≠ g_t after step 1                             #
 # ------------------------------------------------------------------------------- #
+
 
 def test_gradient_normalisation_happens():
     """After step 1 (v is initialised), the normalised gradient g̃_t != g_t.
@@ -250,6 +259,7 @@ def test_gradient_normalisation_happens():
 # 11. β2 stability: high β2 (0.9999) doesn't cause divergence                     #
 # ------------------------------------------------------------------------------- #
 
+
 def test_high_beta2_no_divergence():
     torch.manual_seed(3)
     p = torch.nn.Parameter(torch.tensor(1.0))
@@ -266,6 +276,7 @@ def test_high_beta2_no_divergence():
 # ------------------------------------------------------------------------------- #
 # 12. Comparison baseline: ADOPT reaches lower loss than SGD after 200 steps       #
 # ------------------------------------------------------------------------------- #
+
 
 def test_adopt_outperforms_sgd_on_quadratic():
     torch.manual_seed(99)
@@ -298,6 +309,7 @@ def test_adopt_outperforms_sgd_on_quadratic():
 # 13. Closure support: step() respects a closure and returns the loss              #
 # ------------------------------------------------------------------------------- #
 
+
 def test_closure_returns_loss():
     p = torch.nn.Parameter(torch.tensor(2.0))
     opt = ADOPT([p], lr=1e-3)
@@ -316,6 +328,7 @@ def test_closure_returns_loss():
 # ------------------------------------------------------------------------------- #
 # 14. Multiple parameter groups with different hyperparameters                     #
 # ------------------------------------------------------------------------------- #
+
 
 def test_multiple_param_groups():
     p1 = torch.nn.Parameter(torch.tensor(3.0))

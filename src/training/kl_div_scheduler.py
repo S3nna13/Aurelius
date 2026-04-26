@@ -13,13 +13,12 @@ create_kl_scheduler     — factory that builds the right scheduler from a confi
 """
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Union
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Config dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class KLSchedulerConfig:
@@ -53,6 +52,7 @@ class KLSchedulerConfig:
 # ---------------------------------------------------------------------------
 # AdaptiveKLScheduler
 # ---------------------------------------------------------------------------
+
 
 class AdaptiveKLScheduler:
     """Adjusts the KL penalty coefficient (beta) to track a target KL value.
@@ -100,7 +100,7 @@ class AdaptiveKLScheduler:
         self.max_beta = max_beta
 
         self._beta: float = initial_beta
-        self._kl_history: List[float] = []
+        self._kl_history: list[float] = []
         self._step: int = 0
         self._n_updates: int = 0
 
@@ -152,11 +152,7 @@ class AdaptiveKLScheduler:
         dict with keys ``'beta'``, ``'mean_kl'``, ``'target_kl'``,
         ``'n_updates'``.
         """
-        mean_kl = (
-            sum(self._kl_history) / len(self._kl_history)
-            if self._kl_history
-            else 0.0
-        )
+        mean_kl = sum(self._kl_history) / len(self._kl_history) if self._kl_history else 0.0
         return {
             "beta": float(self._beta),
             "mean_kl": float(mean_kl),
@@ -175,6 +171,7 @@ class AdaptiveKLScheduler:
 # ---------------------------------------------------------------------------
 # CyclicKLScheduler
 # ---------------------------------------------------------------------------
+
 
 class CyclicKLScheduler:
     """Cycles the KL penalty coefficient between ``base_beta`` and ``max_beta``.
@@ -202,9 +199,7 @@ class CyclicKLScheduler:
         mode: str = "triangular",
     ) -> None:
         if mode not in self._VALID_MODES:
-            raise ValueError(
-                f"mode must be one of {self._VALID_MODES}, got '{mode}'"
-            )
+            raise ValueError(f"mode must be one of {self._VALID_MODES}, got '{mode}'")
         self.base_beta = base_beta
         self.max_beta = max_beta
         self.cycle_steps = cycle_steps
@@ -218,8 +213,8 @@ class CyclicKLScheduler:
     # ------------------------------------------------------------------
 
     def _compute_beta(self, step: int) -> float:
-        cycle_pos = step % self.cycle_steps          # position within cycle [0, cycle_steps)
-        ratio = cycle_pos / self.cycle_steps         # ∈ [0, 1)
+        cycle_pos = step % self.cycle_steps  # position within cycle [0, cycle_steps)
+        ratio = cycle_pos / self.cycle_steps  # ∈ [0, 1)
         beta_range = self.max_beta - self.base_beta
 
         if self.mode == "triangular":
@@ -260,6 +255,7 @@ class CyclicKLScheduler:
 # WarmupKLScheduler
 # ---------------------------------------------------------------------------
 
+
 class WarmupKLScheduler:
     """Warms beta up from ``start_beta`` to ``end_beta``, then optionally decays.
 
@@ -297,8 +293,7 @@ class WarmupKLScheduler:
     ) -> None:
         if decay_type not in self._VALID_DECAY_TYPES:
             raise ValueError(
-                f"decay_type must be one of {self._VALID_DECAY_TYPES}, "
-                f"got '{decay_type}'"
+                f"decay_type must be one of {self._VALID_DECAY_TYPES}, got '{decay_type}'"
             )
         self.start_beta = start_beta
         self.end_beta = end_beta
@@ -350,7 +345,7 @@ class WarmupKLScheduler:
         """Return the current beta without advancing the step counter."""
         return self._beta
 
-    def get_schedule(self, n_steps: int) -> List[float]:
+    def get_schedule(self, n_steps: int) -> list[float]:
         """Return the full beta schedule for ``n_steps`` steps without
         modifying the scheduler's internal state.
 
@@ -371,9 +366,10 @@ class WarmupKLScheduler:
 # Factory function
 # ---------------------------------------------------------------------------
 
+
 def create_kl_scheduler(
     config: KLSchedulerConfig,
-) -> Union[AdaptiveKLScheduler, CyclicKLScheduler, WarmupKLScheduler]:
+) -> AdaptiveKLScheduler | CyclicKLScheduler | WarmupKLScheduler:
     """Instantiate the appropriate KL scheduler from a :class:`KLSchedulerConfig`.
 
     Parameters

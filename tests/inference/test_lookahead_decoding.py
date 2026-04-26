@@ -3,20 +3,20 @@
 Mock model: nn.Embedding + nn.Linear, forward(ids) -> (None, logits, None)
 vocab=32, d_model=16, seq_len=4, batch=1, max_new_tokens=6
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 import torch.nn as nn
 from torch import Tensor
-from typing import List, Tuple, Optional
 
 from src.inference.lookahead_decoding import (
     LookaheadConfig,
-    NGramPool,
-    verify_candidates,
-    lookahead_decode_step,
     LookaheadDecoder,
+    NGramPool,
+    lookahead_decode_step,
+    verify_candidates,
 )
 
 # ---------------------------------------------------------------------------
@@ -35,6 +35,7 @@ N_GRAM = 3
 # Mock model fixture
 # ---------------------------------------------------------------------------
 
+
 class MockLM(nn.Module):
     """Minimal LM: Embedding -> Linear, returns (None, logits, None)."""
 
@@ -44,8 +45,8 @@ class MockLM(nn.Module):
         self.head = nn.Linear(d_model, vocab, bias=False)
 
     def forward(self, input_ids: Tensor):
-        x = self.embed(input_ids)          # (B, L, d_model)
-        logits = self.head(x)              # (B, L, vocab)
+        x = self.embed(input_ids)  # (B, L, d_model)
+        logits = self.head(x)  # (B, L, vocab)
         return None, logits, None
 
 
@@ -82,6 +83,7 @@ def input_ids():
 # 1. NGramPool starts empty
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_pool_starts_empty():
     p = NGramPool(n=3)
     assert len(p) == 0
@@ -90,6 +92,7 @@ def test_ngram_pool_starts_empty():
 # ---------------------------------------------------------------------------
 # 2. NGramPool update fills it
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_pool_update_fills():
     p = NGramPool(n=3)
@@ -101,6 +104,7 @@ def test_ngram_pool_update_fills():
 # ---------------------------------------------------------------------------
 # 3. NGramPool lookup finds prefix matches
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_pool_lookup_finds_prefix():
     p = NGramPool(n=3)
@@ -115,16 +119,18 @@ def test_ngram_pool_lookup_finds_prefix():
 # 4. NGramPool len correct after updates
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_pool_len_correct():
     p = NGramPool(n=2)
-    p.update([1, 2, 3])    # bigrams: (1,2), (2,3) -> 2
-    p.update([4, 5, 6])    # bigrams: (4,5), (5,6) -> 2 more
+    p.update([1, 2, 3])  # bigrams: (1,2), (2,3) -> 2
+    p.update([4, 5, 6])  # bigrams: (4,5), (5,6) -> 2 more
     assert len(p) == 4
 
 
 # ---------------------------------------------------------------------------
 # 5. lookup returns empty list for unknown prefix
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_pool_lookup_unknown_prefix():
     p = NGramPool(n=3)
@@ -137,15 +143,17 @@ def test_ngram_pool_lookup_unknown_prefix():
 # 6. NGramPool update with short sequence handles gracefully
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_pool_update_short_sequence():
     p = NGramPool(n=5)
-    p.update([1, 2])   # length 2 < n=5, no n-grams extracted
+    p.update([1, 2])  # length 2 < n=5, no n-grams extracted
     assert len(p) == 0
 
 
 # ---------------------------------------------------------------------------
 # 7. verify_candidates returns tuple of (Tensor, int)
 # ---------------------------------------------------------------------------
+
 
 def test_verify_candidates_return_type(model, input_ids):
     cand = torch.randint(0, VOCAB, (3,))
@@ -161,6 +169,7 @@ def test_verify_candidates_return_type(model, input_ids):
 # 8. verify_candidates n_accepted >= 1
 # ---------------------------------------------------------------------------
 
+
 def test_verify_candidates_at_least_one(model, input_ids):
     cand = torch.randint(0, VOCAB, (3,))
     _, n = verify_candidates(model, input_ids, [cand])
@@ -170,6 +179,7 @@ def test_verify_candidates_at_least_one(model, input_ids):
 # ---------------------------------------------------------------------------
 # 9. lookahead_decode_step returns 1-D tensor and positive int
 # ---------------------------------------------------------------------------
+
 
 def test_lookahead_decode_step_return_types(model, input_ids, pool, config):
     result = lookahead_decode_step(model, input_ids, pool, config)
@@ -185,6 +195,7 @@ def test_lookahead_decode_step_return_types(model, input_ids, pool, config):
 # 10. lookahead_decode_step updates pool
 # ---------------------------------------------------------------------------
 
+
 def test_lookahead_decode_step_updates_pool(model, input_ids, config):
     p = NGramPool(n=N_GRAM)
     before = len(p)
@@ -196,6 +207,7 @@ def test_lookahead_decode_step_updates_pool(model, input_ids, config):
 # ---------------------------------------------------------------------------
 # 11. LookaheadDecoder decode output correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_lookahead_decoder_decode_shape(model, config):
     decoder = LookaheadDecoder(model, config)
@@ -209,6 +221,7 @@ def test_lookahead_decoder_decode_shape(model, config):
 # 12. decode generates max_new_tokens tokens
 # ---------------------------------------------------------------------------
 
+
 def test_decode_generates_max_new_tokens(model, config):
     decoder = LookaheadDecoder(model, config)
     ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
@@ -219,6 +232,7 @@ def test_decode_generates_max_new_tokens(model, config):
 # ---------------------------------------------------------------------------
 # 13. decode_with_stats has required keys
 # ---------------------------------------------------------------------------
+
 
 def test_decode_with_stats_required_keys(model, config):
     decoder = LookaheadDecoder(model, config)
@@ -234,6 +248,7 @@ def test_decode_with_stats_required_keys(model, config):
 # 14. mean_tokens_per_step >= 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_decode_with_stats_mean_tokens(model, config):
     decoder = LookaheadDecoder(model, config)
     ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
@@ -244,6 +259,7 @@ def test_decode_with_stats_mean_tokens(model, config):
 # ---------------------------------------------------------------------------
 # 15. total_tokens == max_new_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_decode_with_stats_total_tokens(model, config):
     decoder = LookaheadDecoder(model, config)
@@ -256,6 +272,7 @@ def test_decode_with_stats_total_tokens(model, config):
 # 16. decode output dtype is torch.long
 # ---------------------------------------------------------------------------
 
+
 def test_decode_output_dtype(model, config):
     decoder = LookaheadDecoder(model, config)
     ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
@@ -267,6 +284,7 @@ def test_decode_output_dtype(model, config):
 # Bonus: NGramPool n-grams correctly formed (3-gram from [1,2,3] -> (1,2,3))
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_pool_ngrams_correctly_formed():
     p = NGramPool(n=3)
     p.update([1, 2, 3])
@@ -277,6 +295,7 @@ def test_ngram_pool_ngrams_correctly_formed():
 # ---------------------------------------------------------------------------
 # Bonus: verify_candidates n_accepted <= candidate length
 # ---------------------------------------------------------------------------
+
 
 def test_verify_candidates_n_accepted_le_candidate_len(model, input_ids):
     cand = torch.randint(0, VOCAB, (4,))

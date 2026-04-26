@@ -33,10 +33,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MoonVitPatchPackerConfig:
@@ -68,6 +68,7 @@ class MoonVitPatchPackerConfig:
 # ---------------------------------------------------------------------------
 # Module
 # ---------------------------------------------------------------------------
+
 
 class MoonVitPatchPacker(nn.Module):
     """NaViT spatiotemporal patch packer.
@@ -178,7 +179,7 @@ class MoonVitPatchPacker(nn.Module):
         for b in range(B):
             slot = 0
             for t in range(T):
-                frame = pixel_values[b, t]   # [C, H, W]
+                frame = pixel_values[b, t]  # [C, H, W]
                 frame_patches = self.pack_single(frame)  # [patches_per_frame, patch_dim]
                 fp = frame_patches.shape[0]
 
@@ -187,12 +188,12 @@ class MoonVitPatchPacker(nn.Module):
                 if take <= 0:
                     break
 
-                patches_out[b, slot:slot + take] = frame_patches[:take]
-                mask_out[b, slot:slot + take] = 1.0
+                patches_out[b, slot : slot + take] = frame_patches[:take]
+                mask_out[b, slot : slot + take] = 1.0
 
                 # Build positions for this frame's patches
                 for idx in range(take):
-                    patch_in_frame = idx   # local index within frame
+                    patch_in_frame = idx  # local index within frame
                     row_idx = patch_in_frame // n_cols
                     col_idx = patch_in_frame % n_cols
                     positions_out[b, slot + idx, 0] = t

@@ -3,23 +3,25 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.mcts_reasoning import (
     MCTSConfig,
     MCTSNode,
+    MCTSReasoner,
+    backpropagate,
     evaluate_state,
     expand_node,
-    backpropagate,
-    MCTSReasoner,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -53,6 +55,7 @@ def _decode(ids: list[int]) -> str:
 # MCTSConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_mcts_config_defaults():
     cfg = MCTSConfig()
     assert cfg.n_simulations == 50
@@ -65,6 +68,7 @@ def test_mcts_config_defaults():
 # ---------------------------------------------------------------------------
 # MCTSNode tests
 # ---------------------------------------------------------------------------
+
 
 def test_mcts_node_value_unvisited():
     node = MCTSNode(state=[1, 2, 3], parent=None)
@@ -108,6 +112,7 @@ def test_mcts_node_is_leaf_false_with_children():
 # evaluate_state tests
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_state_returns_float_in_range(small_model):
     state = [1, 2, 3, 4, 5]
     value = evaluate_state(small_model, state)
@@ -124,6 +129,7 @@ def test_evaluate_state_single_token(small_model):
 # ---------------------------------------------------------------------------
 # expand_node tests
 # ---------------------------------------------------------------------------
+
 
 def test_expand_node_creates_children(small_model):
     node = MCTSNode(state=[1, 2, 3], parent=None)
@@ -151,6 +157,7 @@ def test_expand_node_children_priors_are_valid(small_model):
 # backpropagate tests
 # ---------------------------------------------------------------------------
 
+
 def test_backpropagate_updates_visit_count():
     root = MCTSNode(state=[1], parent=None)
     child = MCTSNode(state=[1, 2], parent=root)
@@ -173,6 +180,7 @@ def test_backpropagate_updates_value_sum():
 # ---------------------------------------------------------------------------
 # MCTSReasoner tests
 # ---------------------------------------------------------------------------
+
 
 def test_mcts_reasoner_search_returns_str_float(small_model):
     cfg = MCTSConfig(n_simulations=3, max_depth=4)

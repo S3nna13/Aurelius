@@ -3,30 +3,29 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.rag_pipeline import (
-    RAGConfig,
-    chunk_text,
     BM25Index,
-    reciprocal_rank_fusion,
-    DenseRetriever,
-    RAGPipeline,
     # Dense RAG additions
     DenseRAGConfig,
-    DocumentStore,
-    QueryEncoder,
-    build_augmented_input,
     DenseRAGPipeline,
     DenseRAGTrainer,
+    DenseRetriever,
+    DocumentStore,
+    QueryEncoder,
+    RAGConfig,
+    RAGPipeline,
+    build_augmented_input,
+    chunk_text,
+    reciprocal_rank_fusion,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Shared tiny model fixture
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> AureliusTransformer:
     cfg = AureliusConfig(
@@ -50,6 +49,7 @@ VOCAB_SIZE = 256
 # RAGConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_ragconfig_defaults():
     """RAGConfig should have the specified default values."""
     cfg = RAGConfig()
@@ -64,6 +64,7 @@ def test_ragconfig_defaults():
 # ---------------------------------------------------------------------------
 # chunk_text tests
 # ---------------------------------------------------------------------------
+
 
 def test_chunk_text_basic():
     """chunk_text should split text into multiple word-level chunks."""
@@ -97,6 +98,7 @@ def test_chunk_text_empty_returns_empty_list():
 # ---------------------------------------------------------------------------
 # BM25Index tests
 # ---------------------------------------------------------------------------
+
 
 def test_bm25_search_returns_list_of_tuples():
     """BM25Index.search should return a list of (int, float) tuples."""
@@ -133,6 +135,7 @@ def test_bm25_search_exact_query_term_high_score():
 # reciprocal_rank_fusion tests
 # ---------------------------------------------------------------------------
 
+
 def test_reciprocal_rank_fusion_merges_correctly():
     """RRF should promote docs that appear high in multiple lists."""
     list1 = [0, 1, 2, 3]
@@ -159,6 +162,7 @@ def test_reciprocal_rank_fusion_single_list():
 # DenseRetriever tests
 # ---------------------------------------------------------------------------
 
+
 def test_dense_retriever_encode_output_shape():
     """DenseRetriever.encode should return a (N, embed_dim) tensor."""
     retriever = DenseRetriever(embed_dim=64)
@@ -171,6 +175,7 @@ def test_dense_retriever_encode_output_shape():
 # ---------------------------------------------------------------------------
 # RAGPipeline tests
 # ---------------------------------------------------------------------------
+
 
 def test_rag_pipeline_index_documents_runs_without_error():
     """index_documents should complete without raising an exception."""
@@ -220,6 +225,7 @@ def test_rag_pipeline_format_context_contains_query():
 # 1. DenseRAGConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_dense_ragconfig_defaults():
     """DenseRAGConfig should expose the correct default field values."""
     cfg = DenseRAGConfig()
@@ -234,6 +240,7 @@ def test_dense_ragconfig_defaults():
 # 2. DocumentStore starts empty
 # ---------------------------------------------------------------------------
 
+
 def test_document_store_starts_empty():
     store = DocumentStore(embed_dim=EMBED_DIM)
     assert len(store) == 0
@@ -242,6 +249,7 @@ def test_document_store_starts_empty():
 # ---------------------------------------------------------------------------
 # 3. DocumentStore.add increases length
 # ---------------------------------------------------------------------------
+
 
 def test_document_store_add_increases_length():
     store = DocumentStore(embed_dim=EMBED_DIM)
@@ -257,6 +265,7 @@ def test_document_store_add_increases_length():
 # 4. DocumentStore.add_batch adds multiple docs
 # ---------------------------------------------------------------------------
 
+
 def test_document_store_add_batch():
     store = DocumentStore(embed_dim=EMBED_DIM)
     n = 5
@@ -269,6 +278,7 @@ def test_document_store_add_batch():
 # ---------------------------------------------------------------------------
 # 5. DocumentStore.retrieve returns n_docs results
 # ---------------------------------------------------------------------------
+
 
 def test_document_store_retrieve_returns_n_docs():
     store = DocumentStore(embed_dim=EMBED_DIM)
@@ -283,6 +293,7 @@ def test_document_store_retrieve_returns_n_docs():
 # 6. DocumentStore.retrieve results sorted by score descending
 # ---------------------------------------------------------------------------
 
+
 def test_document_store_retrieve_sorted_descending():
     store = DocumentStore(embed_dim=EMBED_DIM)
     for _ in range(8):
@@ -296,6 +307,7 @@ def test_document_store_retrieve_sorted_descending():
 # ---------------------------------------------------------------------------
 # 7. DocumentStore.retrieve cosine vs dot both work
 # ---------------------------------------------------------------------------
+
 
 def test_document_store_retrieve_cosine_and_dot():
     store = DocumentStore(embed_dim=EMBED_DIM)
@@ -318,6 +330,7 @@ def test_document_store_retrieve_cosine_and_dot():
 # 8. QueryEncoder output shape is (B, embed_dim)
 # ---------------------------------------------------------------------------
 
+
 def test_query_encoder_output_shape():
     enc = QueryEncoder(vocab_size=VOCAB_SIZE, embed_dim=EMBED_DIM)
     input_ids = torch.randint(0, VOCAB_SIZE, (3, 12))  # batch=3, seq=12
@@ -328,6 +341,7 @@ def test_query_encoder_output_shape():
 # ---------------------------------------------------------------------------
 # 9. QueryEncoder is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_query_encoder_is_differentiable():
     enc = QueryEncoder(vocab_size=VOCAB_SIZE, embed_dim=EMBED_DIM)
@@ -342,6 +356,7 @@ def test_query_encoder_is_differentiable():
 # 10. build_augmented_input output shape is (max_total_len,)
 # ---------------------------------------------------------------------------
 
+
 def test_build_augmented_input_output_shape():
     query_ids = torch.randint(0, VOCAB_SIZE, (10,))
     doc1 = torch.randint(0, VOCAB_SIZE, (8,))
@@ -354,10 +369,11 @@ def test_build_augmented_input_output_shape():
 # 11. build_augmented_input truncates correctly when too long
 # ---------------------------------------------------------------------------
 
+
 def test_build_augmented_input_truncates():
     """When concat > max_total_len, only the tail (query end) is kept."""
-    query_ids = torch.arange(10)               # 0..9
-    doc_ids = torch.arange(100, 150)           # long doc: 50 tokens
+    query_ids = torch.arange(10)  # 0..9
+    doc_ids = torch.arange(100, 150)  # long doc: 50 tokens
     max_len = 20
     out = build_augmented_input(query_ids, [doc_ids], max_total_len=max_len)
     assert out.shape == (max_len,)
@@ -371,6 +387,7 @@ def test_build_augmented_input_truncates():
 # ---------------------------------------------------------------------------
 # 12. DenseRAGPipeline.retrieve returns list of (Tensor, float) tuples
 # ---------------------------------------------------------------------------
+
 
 def test_dense_ragpipeline_retrieve_returns_correct_types():
     model = _tiny_model()
@@ -395,6 +412,7 @@ def test_dense_ragpipeline_retrieve_returns_correct_types():
 # 13. DenseRAGPipeline.generate returns (Tensor, list)
 # ---------------------------------------------------------------------------
 
+
 def test_dense_ragpipeline_generate_return_types():
     model = _tiny_model()
     enc = QueryEncoder(vocab_size=VOCAB_SIZE, embed_dim=EMBED_DIM)
@@ -417,6 +435,7 @@ def test_dense_ragpipeline_generate_return_types():
 # 14. DenseRAGPipeline.score_answer returns float
 # ---------------------------------------------------------------------------
 
+
 def test_dense_ragpipeline_score_answer_returns_float():
     model = _tiny_model()
     enc = QueryEncoder(vocab_size=VOCAB_SIZE, embed_dim=EMBED_DIM)
@@ -436,6 +455,7 @@ def test_dense_ragpipeline_score_answer_returns_float():
 # ---------------------------------------------------------------------------
 # 15. DenseRAGTrainer.train_step returns dict with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_dense_ragtrainer_train_step_keys():
     model = _tiny_model()
@@ -463,6 +483,7 @@ def test_dense_ragtrainer_train_step_keys():
 # 16. DenseRAGTrainer.train_step loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_dense_ragtrainer_train_step_loss_finite():
     model = _tiny_model()
     enc = QueryEncoder(vocab_size=VOCAB_SIZE, embed_dim=EMBED_DIM)
@@ -480,4 +501,5 @@ def test_dense_ragtrainer_train_step_loss_finite():
     result = trainer.train_step(query_ids, answer_ids)
 
     import math
+
     assert math.isfinite(result["loss"]), f"Loss is not finite: {result['loss']}"

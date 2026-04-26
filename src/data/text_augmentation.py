@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -15,7 +14,7 @@ class AugmentationConfig:
     p_word_swap: float = 0.1
     p_char_noise: float = 0.05
     max_aug_ratio: float = 0.3
-    seed: Optional[int] = None
+    seed: int | None = None
 
 
 def random_word_deletion(text: str, p: float, rng: random.Random) -> str:
@@ -101,7 +100,7 @@ def random_char_noise(text: str, p: float, rng: random.Random) -> str:
     return "".join(chars)
 
 
-def random_word_insertion(words: List[str], p: float, rng: random.Random) -> List[str]:
+def random_word_insertion(words: list[str], p: float, rng: random.Random) -> list[str]:
     """With probability p per word, insert a random word from the vocabulary at a random position.
 
     The vocabulary is the words list itself.
@@ -128,7 +127,7 @@ def random_word_insertion(words: List[str], p: float, rng: random.Random) -> Lis
     return result
 
 
-def synonym_swap_simple(text: str, swap_map: Dict[str, str]) -> str:
+def synonym_swap_simple(text: str, swap_map: dict[str, str]) -> str:
     """Replace words in text according to swap_map.
 
     Case-insensitive match. Preserves original case if the original word
@@ -146,14 +145,16 @@ def synonym_swap_simple(text: str, swap_map: Dict[str, str]) -> str:
     for word in words:
         # Strip trailing punctuation for lookup
         stripped = word.rstrip(".,!?;:")
-        punct = word[len(stripped):]
+        punct = word[len(stripped) :]
         lookup = stripped.lower()
 
         if lookup in swap_map:
             replacement = swap_map[lookup]
             # Preserve case: if original starts with uppercase, capitalize replacement
             if stripped and stripped[0].isupper():
-                replacement = replacement[0].upper() + replacement[1:] if replacement else replacement
+                replacement = (
+                    replacement[0].upper() + replacement[1:] if replacement else replacement
+                )
             result.append(replacement + punct)
         else:
             result.append(word)
@@ -202,7 +203,7 @@ class TextAugmentor:
         self.config = config
         self._rng = random.Random(config.seed)
 
-    def augment(self, text: str, methods: Optional[List[str]] = None) -> str:
+    def augment(self, text: str, methods: list[str] | None = None) -> str:
         """Apply specified augmentation methods in canonical order.
 
         The canonical order is: ["delete", "swap", "char_noise"].
@@ -234,9 +235,7 @@ class TextAugmentor:
 
         return text
 
-    def augment_batch(
-        self, texts: List[str], n_augments_per_text: int = 1
-    ) -> List[str]:
+    def augment_batch(self, texts: list[str], n_augments_per_text: int = 1) -> list[str]:
         """For each text, generate n_augments_per_text augmented versions.
 
         Returns a flattened list of all augmented texts.
@@ -248,13 +247,13 @@ class TextAugmentor:
         Returns:
             Flat list of augmented strings (length = len(texts) * n_augments_per_text).
         """
-        result: List[str] = []
+        result: list[str] = []
         for text in texts:
             for _ in range(n_augments_per_text):
                 result.append(self.augment(text))
         return result
 
-    def get_augment_stats(self, original: str, augmented: str) -> Dict[str, float]:
+    def get_augment_stats(self, original: str, augmented: str) -> dict[str, float]:
         """Compute statistics comparing original and augmented text.
 
         Returns a dict with keys:
@@ -282,7 +281,7 @@ class TextAugmentor:
 
         # words_changed_ratio: fraction of original words that changed
         # Use multiset difference: words in original but not matched in augmented
-        aug_counter: Dict[str, int] = {}
+        aug_counter: dict[str, int] = {}
         for w in aug_words:
             aug_counter[w] = aug_counter.get(w, 0) + 1
 
@@ -307,7 +306,7 @@ class TextAugmentor:
 # Instruction-augmentation API (required by tests/data/test_text_augmentation.py)
 # ---------------------------------------------------------------------------
 
-SYNONYM_DICT: Dict[str, List[str]] = {
+SYNONYM_DICT: dict[str, list[str]] = {
     "fast": ["quick", "rapid", "swift", "speedy"],
     "slow": ["gradual", "leisurely", "unhurried"],
     "large": ["big", "huge", "massive", "enormous"],
@@ -360,7 +359,7 @@ class TextAugConfig:
 def apply_synonym_substitution(
     text: str,
     p: float,
-    synonym_dict: Dict[str, List[str]],
+    synonym_dict: dict[str, list[str]],
     rng: random.Random,
 ) -> str:
     """Replace each word with a synonym from synonym_dict with probability p.
@@ -373,7 +372,7 @@ def apply_synonym_substitution(
     result = []
     for word in words:
         stripped = word.rstrip(".,!?;:")
-        punct = word[len(stripped):]
+        punct = word[len(stripped) :]
         lookup = stripped.lower()
         if lookup in synonym_dict and rng.random() < p:
             replacement = rng.choice(synonym_dict[lookup])
@@ -391,7 +390,7 @@ def paraphrase_with_template(text: str, rng: random.Random) -> str:
     return template.format(text=text)
 
 
-def generate_instruction_variants(instruction: str, rng: random.Random) -> List[str]:
+def generate_instruction_variants(instruction: str, rng: random.Random) -> list[str]:
     """Return 3 variants of an instruction using different phrasings.
 
     At least 2 variants contain the original instruction text verbatim.
@@ -406,7 +405,7 @@ def generate_instruction_variants(instruction: str, rng: random.Random) -> List[
     return variants[:3]
 
 
-def augment_dataset(texts: List[str], config: TextAugConfig) -> List[str]:
+def augment_dataset(texts: list[str], config: TextAugConfig) -> list[str]:
     """Apply synonym substitution and paraphrase augmentation to each text."""
     rng = random.Random(config.seed)
     result = []
@@ -425,12 +424,12 @@ class InstructionAugmenter:
         self.config = config
         self._rng = random.Random(config.seed)
 
-    def augment(self, instruction: str, response: str) -> List[tuple]:
+    def augment(self, instruction: str, response: str) -> list[tuple]:
         """Return 3 (instruction_variant, response) tuples."""
         variants = generate_instruction_variants(instruction, self._rng)
         return [(v, response) for v in variants]
 
-    def augment_batch(self, pairs: List[tuple]) -> List[tuple]:
+    def augment_batch(self, pairs: list[tuple]) -> list[tuple]:
         """Augment each (instruction, response) pair; each produces 3 variants."""
         result = []
         for instruction, response in pairs:

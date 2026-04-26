@@ -15,11 +15,12 @@ SLERP (Spherical Linear Interpolation):
     Interpolate two weight sets along the great-circle arc on the unit
     hypersphere, preserving angular relationships.
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -41,11 +42,11 @@ class MergeConfig:
 
 
 def compute_task_vector(
-    base_weights: Dict[str, torch.Tensor],
-    finetuned_weights: Dict[str, torch.Tensor],
-) -> Dict[str, torch.Tensor]:
+    base_weights: dict[str, torch.Tensor],
+    finetuned_weights: dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
     """Return {name: finetuned - base} for all matching keys."""
-    tv: Dict[str, torch.Tensor] = {}
+    tv: dict[str, torch.Tensor] = {}
     for name in base_weights:
         if name in finetuned_weights and finetuned_weights[name].shape == base_weights[name].shape:
             tv[name] = finetuned_weights[name].float() - base_weights[name].float()
@@ -58,13 +59,13 @@ def compute_task_vector(
 
 
 def ties_trim(
-    task_vectors: List[Dict[str, torch.Tensor]],
+    task_vectors: list[dict[str, torch.Tensor]],
     density: float,
-) -> List[Dict[str, torch.Tensor]]:
+) -> list[dict[str, torch.Tensor]]:
     """Zero out the smallest (1-density) fraction by magnitude per param."""
     trimmed = []
     for tv in task_vectors:
-        new_tv: Dict[str, torch.Tensor] = {}
+        new_tv: dict[str, torch.Tensor] = {}
         for name, delta in tv.items():
             flat = delta.abs().flatten()
             k = max(1, int(math.ceil(density * flat.numel())))
@@ -79,13 +80,13 @@ def ties_trim(
 
 
 def ties_elect_sign(
-    task_vectors: List[Dict[str, torch.Tensor]],
-) -> Dict[str, torch.Tensor]:
+    task_vectors: list[dict[str, torch.Tensor]],
+) -> dict[str, torch.Tensor]:
     """Majority-vote on sign across task vectors for each position.
 
     Returns a dict of sign tensors (+1 or -1) per parameter name.
     """
-    signs: Dict[str, torch.Tensor] = {}
+    signs: dict[str, torch.Tensor] = {}
     all_keys = task_vectors[0].keys() if task_vectors else []
     for name in all_keys:
         # Sum of signs across task vectors; tie goes to positive
@@ -100,16 +101,16 @@ def ties_elect_sign(
 
 
 def ties_merge(
-    base_weights: Dict[str, torch.Tensor],
-    task_vectors: List[Dict[str, torch.Tensor]],
+    base_weights: dict[str, torch.Tensor],
+    task_vectors: list[dict[str, torch.Tensor]],
     density: float,
     alpha: float,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Full TIES merge: trim, elect sign, average aligned, add to base."""
     trimmed = ties_trim(task_vectors, density)
     elected_signs = ties_elect_sign(trimmed)
 
-    merged: Dict[str, torch.Tensor] = {}
+    merged: dict[str, torch.Tensor] = {}
     for name in base_weights:
         if name not in elected_signs:
             merged[name] = base_weights[name].clone()
@@ -139,12 +140,12 @@ def ties_merge(
 
 
 def dare_mask(
-    task_vector: Dict[str, torch.Tensor],
+    task_vector: dict[str, torch.Tensor],
     density: float,
     seed: int = 42,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Randomly drop (1-density) fraction, rescale remaining by 1/density."""
-    masked: Dict[str, torch.Tensor] = {}
+    masked: dict[str, torch.Tensor] = {}
     for name, delta in task_vector.items():
         gen = torch.Generator()
         gen.manual_seed(seed + hash(name) % (2**31))
@@ -155,16 +156,16 @@ def dare_mask(
 
 
 def dare_merge(
-    base_weights: Dict[str, torch.Tensor],
-    task_vectors: List[Dict[str, torch.Tensor]],
+    base_weights: dict[str, torch.Tensor],
+    task_vectors: list[dict[str, torch.Tensor]],
     density: float,
     alpha: float,
     seed: int = 42,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """DARE merge: mask each task vector, average, add to base."""
     masked_tvs = [dare_mask(tv, density, seed=seed + i) for i, tv in enumerate(task_vectors)]
 
-    merged: Dict[str, torch.Tensor] = {}
+    merged: dict[str, torch.Tensor] = {}
     for name in base_weights:
         deltas = [tv[name] for tv in masked_tvs if name in tv]
         if not deltas:
@@ -183,12 +184,12 @@ def dare_merge(
 
 
 def slerp_merge(
-    weights_a: Dict[str, torch.Tensor],
-    weights_b: Dict[str, torch.Tensor],
+    weights_a: dict[str, torch.Tensor],
+    weights_b: dict[str, torch.Tensor],
     alpha: float,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Spherical linear interpolation per tensor between two state dicts."""
-    merged: Dict[str, torch.Tensor] = {}
+    merged: dict[str, torch.Tensor] = {}
     eps = 1e-8
     for name in weights_a:
         if name not in weights_b:
@@ -203,9 +204,9 @@ def slerp_merge(
 
         if norm_a < eps or norm_b < eps:
             # Fallback to linear interpolation
-            merged[name] = ((1 - alpha) * weights_a[name].float() + alpha * weights_b[name].float()).to(
-                weights_a[name].dtype
-            )
+            merged[name] = (
+                (1 - alpha) * weights_a[name].float() + alpha * weights_b[name].float()
+            ).to(weights_a[name].dtype)
             continue
 
         va_unit = va / norm_a
@@ -242,7 +243,7 @@ class ModelMerger:
         self,
         base_model: nn.Module,
         finetuned_models: Sequence[nn.Module],
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """Merge finetuned models into a single state dict.
 
         Args:

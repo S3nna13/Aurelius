@@ -26,15 +26,12 @@ Coverage (≥ 28 tests):
 
 from __future__ import annotations
 
-import pytest
-
 from src.mcp.capability_catalog import (
     CAPABILITY_CATALOG_REGISTRY,
     Capability,
     CapabilityCatalog,
     CapabilityVersion,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -1,15 +1,14 @@
 """Tests for src/simulation/monte_carlo_simulator.py (>=28 tests)."""
 
-import math
 import statistics
 import unittest
 from dataclasses import FrozenInstanceError
 
 from src.simulation.monte_carlo_simulator import (
-    MCConfig,
-    MCEpisode,
     MONTE_CARLO_REGISTRY,
     REGISTRY,
+    MCConfig,
+    MCEpisode,
     MonteCarloSimulator,
 )
 

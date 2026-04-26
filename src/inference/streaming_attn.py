@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -50,9 +50,7 @@ class SinkTokenCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def update(
-        self, new_keys: Tensor, new_values: Tensor, layer_idx: int
-    ) -> tuple[Tensor, Tensor]:
+    def update(self, new_keys: Tensor, new_values: Tensor, layer_idx: int) -> tuple[Tensor, Tensor]:
         """Append new_keys / new_values to the cache and return the full cached tensors.
 
         Args:
@@ -193,7 +191,9 @@ class SinkAttention(nn.Module):
             q_idx = torch.arange(T, device=x.device)
             k_idx = torch.arange(T_cache, device=x.device)
             causal_mask = k_idx.unsqueeze(0) <= (T_cache - T + q_idx).unsqueeze(1)
-            attn_scores = attn_scores.masked_fill(~causal_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+            attn_scores = attn_scores.masked_fill(
+                ~causal_mask.unsqueeze(0).unsqueeze(0), float("-inf")
+            )
 
         attn_weights = F.softmax(attn_scores, dim=-1)
         attn_out = torch.matmul(attn_weights, cached_v)
@@ -262,7 +262,9 @@ def compute_cache_efficiency(config: StreamingConfig, seq_len: int) -> dict[str,
     cache_size = min(seq_len, config.max_cache_size)
     full_cache_size = seq_len
     compression_ratio = cache_size / full_cache_size if full_cache_size > 0 else 1.0
-    sink_fraction = config.n_sink_tokens / config.max_cache_size if config.max_cache_size > 0 else 0.0
+    sink_fraction = (
+        config.n_sink_tokens / config.max_cache_size if config.max_cache_size > 0 else 0.0
+    )
     return {
         "cache_size": float(cache_size),
         "full_cache_size": float(full_cache_size),

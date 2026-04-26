@@ -24,7 +24,7 @@ def test_exposed_via_src_security():
 
 def test_prior_entries_intact():
     # Pre-existing modules (not re-exported from __init__) must remain importable.
-    from src.security import model_extraction, model_watermark, membership_inference
+    from src.security import membership_inference, model_extraction, model_watermark
 
     assert hasattr(model_extraction, "ModelExtractor")
     assert model_watermark is not None

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -50,8 +49,8 @@ class RobustnessEvaluator:
 
     def clean_accuracy(
         self,
-        input_ids_list: List[torch.Tensor],
-        label_ids: List[int],
+        input_ids_list: list[torch.Tensor],
+        label_ids: list[int],
     ) -> float:
         """Fraction of samples where the model's last-token top-1 matches label_id.
 
@@ -73,9 +72,9 @@ class RobustnessEvaluator:
 
     def attack_success_rate(
         self,
-        input_ids_list: List[torch.Tensor],
-        perturbed_ids_list: List[torch.Tensor],
-        label_ids: List[int],
+        input_ids_list: list[torch.Tensor],
+        perturbed_ids_list: list[torch.Tensor],
+        label_ids: list[int],
     ) -> float:
         """Fraction of samples that were correct on clean but wrong after perturbation.
 
@@ -100,8 +99,8 @@ class RobustnessEvaluator:
 
     def semantic_preservation(
         self,
-        input_ids_list: List[torch.Tensor],
-        perturbed_ids_list: List[torch.Tensor],
+        input_ids_list: list[torch.Tensor],
+        perturbed_ids_list: list[torch.Tensor],
     ) -> float:
         """Mean token overlap rate between original and perturbed sequences.
 
@@ -114,7 +113,7 @@ class RobustnessEvaluator:
         """
         if not input_ids_list:
             return 0.0
-        overlap_rates: List[float] = []
+        overlap_rates: list[float] = []
         for ids, p_ids in zip(input_ids_list, perturbed_ids_list):
             orig = ids.view(-1)
             pert = p_ids.view(-1)
@@ -147,7 +146,7 @@ class RobustnessEvaluator:
             Certified radius lower bound (non-negative float).
         """
         last_layer = self.model.layers[-1]
-        votes: List[int] = []
+        votes: list[int] = []
         normal = torch.distributions.Normal(0.0, 1.0)
 
         for _ in range(n_samples):
@@ -189,9 +188,9 @@ class RobustnessEvaluator:
 
     def evaluate(
         self,
-        input_ids_list: List[torch.Tensor],
-        perturbed_ids_list: List[torch.Tensor],
-        label_ids: List[int],
+        input_ids_list: list[torch.Tensor],
+        perturbed_ids_list: list[torch.Tensor],
+        label_ids: list[int],
     ) -> RobustnessReport:
         """Compute all robustness metrics and return a RobustnessReport.
 

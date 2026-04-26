@@ -17,10 +17,8 @@ For parameters with ndim != 2 the optimizer falls back to AdamW.
 Reference: Vyas et al. 2024, "SOAP: Improving and Stabilizing Shampoo using
 Adam", arXiv:2409.11321.
 """
-from __future__ import annotations
 
-import math
-from typing import Optional
+from __future__ import annotations
 
 import torch
 from torch.optim import Optimizer
@@ -67,9 +65,7 @@ class SOAP(Optimizer):
         if not 0.0 <= weight_decay:
             raise ValueError(f"Invalid weight_decay: {weight_decay}")
         if not isinstance(precondition_frequency, int) or precondition_frequency < 1:
-            raise ValueError(
-                f"Invalid precondition_frequency: {precondition_frequency}"
-            )
+            raise ValueError(f"Invalid precondition_frequency: {precondition_frequency}")
 
         defaults = dict(
             lr=lr,
@@ -108,12 +104,27 @@ class SOAP(Optimizer):
 
                 if p.ndim == 2:
                     self._step_2d(
-                        p, grad, state, lr, beta1, beta2,
-                        shampoo_beta, eps, wd, freq,
+                        p,
+                        grad,
+                        state,
+                        lr,
+                        beta1,
+                        beta2,
+                        shampoo_beta,
+                        eps,
+                        wd,
+                        freq,
                     )
                 else:
                     self._step_adamw(
-                        p, grad, state, lr, beta1, beta2, eps, wd,
+                        p,
+                        grad,
+                        state,
+                        lr,
+                        beta1,
+                        beta2,
+                        eps,
+                        wd,
                     )
 
         return loss
@@ -186,8 +197,8 @@ class SOAP(Optimizer):
         exp_avg.mul_(beta1).add_(grad_rot, alpha=1.0 - beta1)
         exp_avg_sq.mul_(beta2).addcmul_(grad_rot, grad_rot, value=1.0 - beta2)
 
-        bias_correction1 = 1.0 - beta1 ** step
-        bias_correction2 = 1.0 - beta2 ** step
+        bias_correction1 = 1.0 - beta1**step
+        bias_correction2 = 1.0 - beta2**step
 
         denom = (exp_avg_sq / bias_correction2).sqrt().add_(eps)
         update_rot = (exp_avg / bias_correction1) / denom
@@ -224,8 +235,8 @@ class SOAP(Optimizer):
         exp_avg.mul_(beta1).add_(grad, alpha=1.0 - beta1)
         exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
-        bias_correction1 = 1.0 - beta1 ** step
-        bias_correction2 = 1.0 - beta2 ** step
+        bias_correction1 = 1.0 - beta1**step
+        bias_correction2 = 1.0 - beta2**step
 
         denom = (exp_avg_sq / bias_correction2).sqrt().add_(eps)
         update = (exp_avg / bias_correction1) / denom

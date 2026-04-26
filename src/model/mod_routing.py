@@ -1,19 +1,17 @@
-"""Mixture-of-Depths with adaptive token routing: dynamically skip transformer layers for unimportant tokens."""
+"""Mixture-of-Depths with adaptive token routing: dynamically skip transformer layers for unimportant tokens."""  # noqa: E501
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MoDRoutingConfig:
@@ -40,6 +38,7 @@ class MoDRoutingConfig:
 # Token Importance Router
 # ---------------------------------------------------------------------------
 
+
 class TokenImportanceRouter(nn.Module):
     """Scores token importance for layer-skipping decisions."""
 
@@ -55,8 +54,10 @@ class TokenImportanceRouter(nn.Module):
         elif router_type == "random":
             pass  # no parameters
         else:
-            raise ValueError(f"Unknown router_type: {router_type!r}. "
-                             "Choose 'learned', 'attention_based', or 'random'.")
+            raise ValueError(
+                f"Unknown router_type: {router_type!r}. "
+                "Choose 'learned', 'attention_based', or 'random'."
+            )
 
     def forward(self, hidden: Tensor) -> Tensor:
         """Compute per-token importance scores.
@@ -90,6 +91,7 @@ class TokenImportanceRouter(nn.Module):
 # ---------------------------------------------------------------------------
 # Routing helpers
 # ---------------------------------------------------------------------------
+
 
 def route_tokens(
     hidden: Tensor,
@@ -131,7 +133,9 @@ def route_tokens(
 
     if straight_through:
         # Straight-through: forward uses hard selection, backward sees soft weights
-        selected_hidden = selected_hidden + (routing_weights.unsqueeze(-1) - routing_weights.unsqueeze(-1).detach())
+        selected_hidden = selected_hidden + (
+            routing_weights.unsqueeze(-1) - routing_weights.unsqueeze(-1).detach()
+        )
 
     return selected_hidden, topk_indices, routing_weights
 
@@ -176,6 +180,7 @@ def scatter_back(
 # Load balance loss
 # ---------------------------------------------------------------------------
 
+
 def compute_load_balance_loss(scores: Tensor, capacity_factor: float) -> Tensor:
     """Encourage uniform routing across tokens.
 
@@ -205,6 +210,7 @@ def compute_load_balance_loss(scores: Tensor, capacity_factor: float) -> Tensor:
 # ---------------------------------------------------------------------------
 # MoD Layer
 # ---------------------------------------------------------------------------
+
 
 class MoDLayer(nn.Module):
     """A transformer layer with MoD token routing."""
@@ -241,8 +247,7 @@ class MoDLayer(nn.Module):
 
         # 4. Scatter back
         output = scatter_back(
-            processed, selected_indices, routing_weights,
-            hidden, self.config.straight_through
+            processed, selected_indices, routing_weights, hidden, self.config.straight_through
         )
 
         # 5. Load balance loss
@@ -255,12 +260,13 @@ class MoDLayer(nn.Module):
 # MoD Transformer
 # ---------------------------------------------------------------------------
 
+
 class MoDTransformer(nn.Module):
     """Stack of MoD layers."""
 
     def __init__(self, layers: list[nn.Module], config: MoDRoutingConfig) -> None:
         super().__init__()
-        self.mod_layers = nn.ModuleList([MoDLayer(l, config) for l in layers])
+        self.mod_layers = nn.ModuleList([MoDLayer(line, config) for line in layers])
 
     def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
         """Process through all MoD layers, accumulating load balance losses.
@@ -284,6 +290,7 @@ class MoDTransformer(nn.Module):
 # ---------------------------------------------------------------------------
 # Routing pattern analysis
 # ---------------------------------------------------------------------------
+
 
 def analyze_routing_patterns(routing_decisions: list[Tensor]) -> dict[str, float]:
     """Analyze routing decisions across multiple forward steps.

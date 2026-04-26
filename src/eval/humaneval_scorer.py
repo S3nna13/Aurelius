@@ -35,8 +35,6 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
-from typing import Optional
-
 
 __all__ = [
     "HumanEvalProblem",
@@ -72,7 +70,7 @@ class SampleResult:
 
     task_id: str
     passed: bool
-    error: Optional[str]
+    error: str | None
     duration_ms: float
     stdout: str
     stderr: str
@@ -125,13 +123,7 @@ def pass_at_k(n: int, c: int, k: int) -> float:
 def _build_program(problem: HumanEvalProblem, completion: str) -> str:
     """Assemble the program run in the subprocess."""
     return (
-        problem.prompt
-        + completion
-        + "\n"
-        + problem.test
-        + "\ncheck("
-        + problem.entry_point
-        + ")\n"
+        problem.prompt + completion + "\n" + problem.test + "\ncheck(" + problem.entry_point + ")\n"
     )
 
 
@@ -205,7 +197,7 @@ def score_single(
 
     start = time.perf_counter()
     try:
-        completed = subprocess.run(
+        completed = subprocess.run(  # noqa: S603
             [sys.executable, "-I", "-c", program],
             capture_output=True,
             timeout=timeout_seconds,
@@ -314,8 +306,7 @@ def score_problems(
     """
     if len(problems) != len(completions):
         raise ValueError(
-            f"problems and completions must align: "
-            f"{len(problems)} vs {len(completions)}"
+            f"problems and completions must align: {len(problems)} vs {len(completions)}"
         )
     for k in k_values:
         if not isinstance(k, int) or k <= 0:
@@ -336,14 +327,11 @@ def score_problems(
     tasks: list[tuple[int, int, HumanEvalProblem, str]] = []
     for pi, (problem, samples) in enumerate(zip(problems, completions)):
         if not samples:
-            raise ValueError(
-                f"problem {problem.task_id} has zero completions; "
-                f"pass@k is undefined"
-            )
+            raise ValueError(f"problem {problem.task_id} has zero completions; pass@k is undefined")
         for si, comp in enumerate(samples):
             tasks.append((pi, si, problem, comp))
 
-    sample_results: list[list[Optional[SampleResult]]] = [
+    sample_results: list[list[SampleResult | None]] = [
         [None] * len(samples) for samples in completions
     ]
 
@@ -365,9 +353,7 @@ def score_problems(
             pi, si, res = _run(task)
             sample_results[pi][si] = res
     else:
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_workers
-        ) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             for pi, si, res in pool.map(_run, tasks):
                 sample_results[pi][si] = res
 

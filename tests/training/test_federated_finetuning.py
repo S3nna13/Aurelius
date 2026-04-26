@@ -5,15 +5,12 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-from torch import Tensor
-
 from aurelius.training.federated_finetuning import (
     ClientDataShard,
-    FedProxClient,
-    FedLoRAAdapter,
     FedAggregator,
+    FedLoRAAdapter,
+    FedProxClient,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures

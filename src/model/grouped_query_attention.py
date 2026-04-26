@@ -11,13 +11,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -47,8 +45,7 @@ class GQAConfig:
     def __post_init__(self) -> None:
         if self.n_q_heads % self.n_kv_heads != 0:
             raise ValueError(
-                f"n_q_heads ({self.n_q_heads}) must be divisible by "
-                f"n_kv_heads ({self.n_kv_heads})."
+                f"n_q_heads ({self.n_q_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})."
             )
 
     @property
@@ -100,7 +97,7 @@ class GroupedQueryAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        mask: Optional[Tensor] = None,
+        mask: Tensor | None = None,
     ) -> Tensor:
         """Compute grouped-query attention.
 
@@ -118,7 +115,7 @@ class GroupedQueryAttention(nn.Module):
         B, T, _ = x.shape
 
         # Project
-        q = self._split_heads(self.W_q(x), cfg.n_q_heads)   # (B, Hq, T, D)
+        q = self._split_heads(self.W_q(x), cfg.n_q_heads)  # (B, Hq, T, D)
         k = self._split_heads(self.W_k(x), cfg.n_kv_heads)  # (B, Hkv, T, D)
         v = self._split_heads(self.W_v(x), cfg.n_kv_heads)  # (B, Hkv, T, D)
 
@@ -225,7 +222,7 @@ class MultiHeadAttentionBaseline(nn.Module):
     def forward(
         self,
         x: Tensor,
-        mask: Optional[Tensor] = None,
+        mask: Tensor | None = None,
     ) -> Tensor:
         """Compute standard MHA attention.
 

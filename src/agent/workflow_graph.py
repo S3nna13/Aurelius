@@ -8,22 +8,23 @@ colouring.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable
-
+from enum import StrEnum
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Enumerations & data classes
 # ---------------------------------------------------------------------------
 
-class NodeStatus(str, Enum):
-    PENDING   = "PENDING"
-    RUNNING   = "RUNNING"
+
+class NodeStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
-    FAILED    = "FAILED"
-    SKIPPED   = "SKIPPED"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
 
 
 @dataclass
@@ -45,6 +46,7 @@ class WorkflowResult:
 # ---------------------------------------------------------------------------
 # Graph
 # ---------------------------------------------------------------------------
+
 
 class WorkflowGraph:
     """DAG workflow with sequential and parallel execution modes."""
@@ -88,9 +90,7 @@ class WorkflowGraph:
         for node in self._nodes.values():
             for dep in node.deps:
                 if dep not in self._nodes:
-                    errors.append(
-                        f"Node '{node.node_id}' depends on undefined node '{dep}'."
-                    )
+                    errors.append(f"Node '{node.node_id}' depends on undefined node '{dep}'.")
 
         def dfs(nid: str) -> None:
             colour[nid] = GRAY
@@ -98,9 +98,7 @@ class WorkflowGraph:
                 if dep not in self._nodes:
                     continue  # already reported above
                 if colour[dep] == GRAY:
-                    errors.append(
-                        f"Cycle detected: '{dep}' is an ancestor of '{nid}'."
-                    )
+                    errors.append(f"Cycle detected: '{dep}' is an ancestor of '{nid}'.")
                 elif colour[dep] == WHITE:
                     dfs(dep)
             colour[nid] = BLACK
@@ -206,9 +204,7 @@ class WorkflowGraph:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             while True:
                 # Collect completed futures
-                done_ids = [
-                    nid for nid, fut in in_flight.items() if fut.done()
-                ]
+                done_ids = [nid for nid, fut in in_flight.items() if fut.done()]
                 for nid in done_ids:
                     result = in_flight.pop(nid).result()
                     results[nid] = result
@@ -237,10 +233,13 @@ class WorkflowGraph:
                         submitted = True
 
                 # Check termination
-                all_done = all(
-                    n.status in (NodeStatus.COMPLETED, NodeStatus.FAILED, NodeStatus.SKIPPED)
-                    for n in self._nodes.values()
-                ) and not in_flight
+                all_done = (
+                    all(
+                        n.status in (NodeStatus.COMPLETED, NodeStatus.FAILED, NodeStatus.SKIPPED)
+                        for n in self._nodes.values()
+                    )
+                    and not in_flight
+                )
 
                 if all_done:
                     break

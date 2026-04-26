@@ -1,6 +1,7 @@
 """Tests for ContextDistillationTrainer (arXiv:2209.15189)."""
+
 import math
-import pytest
+
 import torch
 import torch.nn as nn
 

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -34,7 +33,7 @@ class GSM8KAnswer:
     """
 
     raw_text: str
-    extracted_number: Optional[float]
+    extracted_number: float | None
     steps: list[str] = field(default_factory=list)
 
 
@@ -60,7 +59,7 @@ class GSM8KScorer:
     # Extraction
     # ---------------------------------------------------------------------------
 
-    def _parse_number(self, text: str) -> Optional[float]:
+    def _parse_number(self, text: str) -> float | None:
         """Return the *last* parseable number in *text*, or ``None``."""
         # Remove commas (e.g. "1,234" → "1234") and $ signs before parsing
         candidates = self._NUMBER_RE.findall(text)

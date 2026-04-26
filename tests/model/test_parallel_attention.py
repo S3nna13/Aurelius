@@ -9,7 +9,6 @@ import torch
 
 from src.model.parallel_attention import ParallelAttentionBlock
 
-
 D_MODEL = 32
 N_HEADS = 4
 HEAD_DIM = 8
@@ -77,9 +76,7 @@ def test_no_nan_or_inf():
 
 
 def test_gqa_broadcast_works():
-    block = ParallelAttentionBlock(
-        d_model=D_MODEL, n_heads=4, head_dim=8, n_kv_heads=1, d_ff=D_FF
-    )
+    block = ParallelAttentionBlock(d_model=D_MODEL, n_heads=4, head_dim=8, n_kv_heads=1, d_ff=D_FF)
     x = torch.randn(B, S, D_MODEL)
     y = block(x)
     assert y.shape == (B, S, D_MODEL)
@@ -100,16 +97,12 @@ def test_residual_preserved_when_branches_zeroed():
 
 def test_invalid_head_dim_raises():
     with pytest.raises(ValueError, match="head_dim"):
-        ParallelAttentionBlock(
-            d_model=32, n_heads=4, head_dim=9, n_kv_heads=2, d_ff=64
-        )
+        ParallelAttentionBlock(d_model=32, n_heads=4, head_dim=9, n_kv_heads=2, d_ff=64)
 
 
 def test_invalid_kv_heads_raises():
     with pytest.raises(ValueError, match="divisible"):
-        ParallelAttentionBlock(
-            d_model=32, n_heads=4, head_dim=8, n_kv_heads=3, d_ff=64
-        )
+        ParallelAttentionBlock(d_model=32, n_heads=4, head_dim=8, n_kv_heads=3, d_ff=64)
 
 
 def test_batch1_seq1_edge_case():

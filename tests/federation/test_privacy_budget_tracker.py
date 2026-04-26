@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.federation.privacy_budget_tracker import (
+    PRIVACY_BUDGET_TRACKER_REGISTRY,
     BudgetRecord,
     PrivacyBudget,
     PrivacyBudgetTracker,
-    PRIVACY_BUDGET_TRACKER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # PrivacyBudget frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPrivacyBudget:
     def test_fields_stored(self):
@@ -42,6 +42,7 @@ class TestPrivacyBudget:
 # BudgetRecord frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestBudgetRecord:
     def test_fields_stored(self):
         rec = BudgetRecord(
@@ -59,16 +60,22 @@ class TestBudgetRecord:
 
     def test_frozen_round_idx(self):
         rec = BudgetRecord(
-            round_idx=1, epsilon_used=0.1, delta_used=1e-6,
-            cumulative_epsilon=0.1, cumulative_delta=1e-6,
+            round_idx=1,
+            epsilon_used=0.1,
+            delta_used=1e-6,
+            cumulative_epsilon=0.1,
+            cumulative_delta=1e-6,
         )
         with pytest.raises((AttributeError, TypeError)):
             rec.round_idx = 99  # type: ignore[misc]
 
     def test_frozen_epsilon_used(self):
         rec = BudgetRecord(
-            round_idx=0, epsilon_used=0.2, delta_used=1e-6,
-            cumulative_epsilon=0.2, cumulative_delta=1e-6,
+            round_idx=0,
+            epsilon_used=0.2,
+            delta_used=1e-6,
+            cumulative_epsilon=0.2,
+            cumulative_delta=1e-6,
         )
         with pytest.raises((AttributeError, TypeError)):
             rec.epsilon_used = 0.9  # type: ignore[misc]
@@ -77,6 +84,7 @@ class TestBudgetRecord:
 # ---------------------------------------------------------------------------
 # PrivacyBudgetTracker — consume
 # ---------------------------------------------------------------------------
+
 
 class TestConsume:
     def test_consume_returns_budget_record(self):
@@ -134,6 +142,7 @@ class TestConsume:
 # remaining
 # ---------------------------------------------------------------------------
 
+
 class TestRemaining:
     def test_remaining_initial_is_total(self):
         budget = PrivacyBudget(1.0, 1e-5)
@@ -160,6 +169,7 @@ class TestRemaining:
 # is_exhausted
 # ---------------------------------------------------------------------------
 
+
 class TestIsExhausted:
     def test_not_exhausted_initially(self):
         tracker = PrivacyBudgetTracker(PrivacyBudget(1.0, 1e-5))
@@ -184,6 +194,7 @@ class TestIsExhausted:
 # ---------------------------------------------------------------------------
 # history
 # ---------------------------------------------------------------------------
+
 
 class TestHistory:
     def test_history_empty_initially(self):
@@ -219,13 +230,19 @@ class TestHistory:
 # summary
 # ---------------------------------------------------------------------------
 
+
 class TestSummary:
     def test_summary_has_all_keys(self):
         tracker = PrivacyBudgetTracker(PrivacyBudget(1.0, 1e-5))
         summary = tracker.summary()
         expected_keys = {
-            "total_epsilon", "used_epsilon", "remaining_epsilon",
-            "total_delta", "used_delta", "remaining_delta", "rounds",
+            "total_epsilon",
+            "used_epsilon",
+            "remaining_epsilon",
+            "total_delta",
+            "used_delta",
+            "remaining_delta",
+            "rounds",
         }
         assert expected_keys.issubset(summary.keys())
 
@@ -263,6 +280,7 @@ class TestSummary:
 # ---------------------------------------------------------------------------
 # PRIVACY_BUDGET_TRACKER_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestPrivacyBudgetTrackerRegistry:
     def test_registry_exists(self):

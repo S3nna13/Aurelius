@@ -8,17 +8,16 @@ Uses a tiny AureliusTransformer so tests run fast on CPU.
 
 from __future__ import annotations
 
-import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.layer_ablation import (
     AblationConfig,
     AblationResult,
     AblationType,
     LayerAblator,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny model config
@@ -38,7 +37,7 @@ TINY_CONFIG = AureliusConfig(
 torch.manual_seed(42)
 
 BATCH = 1
-SEQ   = 8
+SEQ = 8
 
 
 def _make_model() -> AureliusTransformer:
@@ -52,7 +51,7 @@ def _make_input() -> torch.Tensor:
 
 def _metric_fn(logits: torch.Tensor) -> float:
     """Mean log-probability of the last token -- higher is better."""
-    last = logits[:, -1, :]          # (B, vocab)
+    last = logits[:, -1, :]  # (B, vocab)
     log_probs = torch.log_softmax(last, dim=-1)
     return log_probs.mean().item()
 
@@ -60,6 +59,7 @@ def _metric_fn(logits: torch.Tensor) -> float:
 # ---------------------------------------------------------------------------
 # Test 1: AblationConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_ablation_config_defaults():
     cfg = AblationConfig()
@@ -72,16 +72,18 @@ def test_ablation_config_defaults():
 # Test 2: AblationType has all required values
 # ---------------------------------------------------------------------------
 
+
 def test_ablation_type_values():
-    assert AblationType.ZERO   == "zero"
-    assert AblationType.MEAN   == "mean"
-    assert AblationType.NOISE  == "noise"
+    assert AblationType.ZERO == "zero"
+    assert AblationType.MEAN == "mean"
+    assert AblationType.NOISE == "noise"
     assert AblationType.FREEZE == "freeze"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: AblationResult has all required fields
 # ---------------------------------------------------------------------------
+
 
 def test_ablation_result_fields():
     r = AblationResult(
@@ -104,6 +106,7 @@ def test_ablation_result_fields():
 # Test 4: ablate_layer context manager runs without error
 # ---------------------------------------------------------------------------
 
+
 def test_ablate_layer_context_manager_runs():
     model = _make_model()
     ablator = LayerAblator(model, _metric_fn)
@@ -117,6 +120,7 @@ def test_ablate_layer_context_manager_runs():
 # ---------------------------------------------------------------------------
 # Test 5: Zero ablation produces different output than no ablation
 # ---------------------------------------------------------------------------
+
 
 def test_zero_ablation_changes_output():
     model = _make_model()
@@ -137,6 +141,7 @@ def test_zero_ablation_changes_output():
 # Test 6: run_full_ablation returns one AblationResult per layer
 # ---------------------------------------------------------------------------
 
+
 def test_run_full_ablation_result_count():
     model = _make_model()
     ablator = LayerAblator(model, _metric_fn)
@@ -154,6 +159,7 @@ def test_run_full_ablation_result_count():
 # ---------------------------------------------------------------------------
 # Test 7: run_full_ablation results have valid delta values
 # ---------------------------------------------------------------------------
+
 
 def test_run_full_ablation_delta_values():
     model = _make_model()
@@ -174,6 +180,7 @@ def test_run_full_ablation_delta_values():
 # Test 8: compute_layer_importance returns tensor of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_compute_layer_importance_shape():
     model = _make_model()
     ablator = LayerAblator(model, _metric_fn)
@@ -192,6 +199,7 @@ def test_compute_layer_importance_shape():
 # Test 9: All importance values >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_importance_values_non_negative():
     model = _make_model()
     ablator = LayerAblator(model, _metric_fn)
@@ -200,14 +208,13 @@ def test_importance_values_non_negative():
     results = ablator.run_full_ablation(ids, AblationType.ZERO)
     importance = ablator.compute_layer_importance(results)
 
-    assert (importance >= 0).all(), (
-        f"All importance values should be >= 0, got {importance}"
-    )
+    assert (importance >= 0).all(), f"All importance values should be >= 0, got {importance}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: get_redundant_layers with large threshold returns all layers
 # ---------------------------------------------------------------------------
+
 
 def test_get_redundant_layers_threshold_returns_all():
     model = _make_model()
@@ -230,9 +237,10 @@ def test_get_redundant_layers_threshold_returns_all():
 # Test 11: AblationResult.delta == metric_after - metric_before
 # ---------------------------------------------------------------------------
 
+
 def test_ablation_result_delta_formula():
     metric_before = -3.5
-    metric_after  = -4.2
+    metric_after = -4.2
     delta = metric_after - metric_before
 
     r = AblationResult(

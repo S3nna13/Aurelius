@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class CacheEntry:
     """A single cache entry holding query results and metadata."""
+
     query: str
-    results: List[Any]
+    results: list[Any]
     timestamp: float
     hit_count: int = 0
 
@@ -34,7 +35,7 @@ class SearchCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def get(self, query: str) -> Optional[List[Any]]:
+    def get(self, query: str) -> list[Any] | None:
         """Return cached results for *query*, or ``None`` on miss / expiry."""
         entry = self._store.get(query)
         if entry is None:
@@ -51,7 +52,7 @@ class SearchCache:
         entry.hit_count += 1
         return entry.results
 
-    def put(self, query: str, results: List[Any]) -> None:
+    def put(self, query: str, results: list[Any]) -> None:
         """Store *results* for *query*, evicting the LRU entry when full."""
         if query in self._store:
             # Refresh existing entry
@@ -82,7 +83,7 @@ class SearchCache:
         """Remove all entries."""
         self._store.clear()
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Return cache statistics."""
         total_hits = sum(e.hit_count for e in self._store.values())
         return {
@@ -92,4 +93,4 @@ class SearchCache:
         }
 
 
-SEARCH_CACHE_REGISTRY: Dict[str, type] = {"default": SearchCache}
+SEARCH_CACHE_REGISTRY: dict[str, type] = {"default": SearchCache}

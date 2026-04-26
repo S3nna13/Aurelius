@@ -25,11 +25,11 @@ Paper notation used throughout:
     m    — binary mask (1 = keep, 0 = prune)
     p    — pruning rate per round (``LotteryConfig.pruning_rate``)
 """
+
 from __future__ import annotations
 
 import logging
-from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class LotteryConfig:
@@ -53,12 +54,14 @@ class LotteryConfig:
                         parameters jointly (global magnitude pruning).
                         If False, each parameter tensor is pruned independently.
     """
+
     pruning_rate: float = 0.20
     n_rounds: int = 5
     global_pruning: bool = True
 
 
 # ── Core Pruner ───────────────────────────────────────────────────────────────
+
 
 class LotteryTicketPruner:
     """Stateful implementation of the Lottery Ticket IMP algorithm.
@@ -121,9 +124,7 @@ class LotteryTicketPruner:
             pruning_rate = self.config.pruning_rate
 
         weight_params = {
-            name: param
-            for name, param in self.model.named_parameters()
-            if self._is_weight(name)
+            name: param for name, param in self.model.named_parameters() if self._is_weight(name)
         }
 
         if self.config.global_pruning:
@@ -162,9 +163,7 @@ class LotteryTicketPruner:
                    are kept at zero.
         """
         if not self.initial_weights:
-            raise RuntimeError(
-                "Initial weights not saved.  Call save_initial_weights() first."
-            )
+            raise RuntimeError("Initial weights not saved.  Call save_initial_weights() first.")
 
         with torch.no_grad():
             for name, param in self.model.named_parameters():
@@ -268,10 +267,7 @@ class LotteryTicketPruner:
 
         if live_all.numel() == 0:
             # Already fully pruned.
-            return {
-                name: torch.zeros_like(param.data)
-                for name, param in weight_params.items()
-            }
+            return {name: torch.zeros_like(param.data) for name, param in weight_params.items()}
 
         # Compute the magnitude threshold corresponding to pruning_rate.
         k = max(1, int(pruning_rate * live_all.numel()))

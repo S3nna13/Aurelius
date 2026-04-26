@@ -20,14 +20,13 @@ Covers:
 
 import time
 
-import pytest
 import torch
 
 from src.model.linear_attention import (
-    LinearAttnConfig,
     LinearAttention,
     LinearAttentionBlock,
     LinearAttentionLayer,
+    LinearAttnConfig,
     attention_approximation_error,
     compute_linear_attention_complexity,
     elu_feature_map,
@@ -39,12 +38,11 @@ from src.model.linear_attention import (
     relu_feature_map,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared test dimensions
 # ---------------------------------------------------------------------------
 
-B, H, T, D = 2, 2, 8, 16   # head_dim = D = 16
+B, H, T, D = 2, 2, 8, 16  # head_dim = D = 16
 
 # Small config used for module-level tests
 SMALL_CFG = LinearAttnConfig(d_model=32, n_heads=2, head_dim=16, n_features=8)
@@ -53,6 +51,7 @@ SMALL_CFG = LinearAttnConfig(d_model=32, n_heads=2, head_dim=16, n_features=8)
 # ---------------------------------------------------------------------------
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = LinearAttnConfig()
@@ -65,8 +64,9 @@ def test_config_defaults():
 # 2. test_elu_feature_map_positive
 # ---------------------------------------------------------------------------
 
+
 def test_elu_feature_map_positive():
-    x = torch.randn(B, H, T, D) * 5.0   # wide range of values
+    x = torch.randn(B, H, T, D) * 5.0  # wide range of values
     out = elu_feature_map(x)
     assert out.shape == x.shape
     assert (out > 0).all(), "ELU+1 feature map must be strictly positive"
@@ -75,6 +75,7 @@ def test_elu_feature_map_positive():
 # ---------------------------------------------------------------------------
 # 3. test_relu_feature_map_nonneg
 # ---------------------------------------------------------------------------
+
 
 def test_relu_feature_map_nonneg():
     x = torch.randn(B, H, T, D) * 5.0
@@ -86,6 +87,7 @@ def test_relu_feature_map_nonneg():
 # ---------------------------------------------------------------------------
 # 4. test_random_fourier_features_shape
 # ---------------------------------------------------------------------------
+
 
 def test_random_fourier_features_shape():
     n_features = 32
@@ -100,6 +102,7 @@ def test_random_fourier_features_shape():
 # 5. test_linear_attention_causal_shape
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attention_causal_shape():
     q = elu_feature_map(torch.randn(B, H, T, D))
     k = elu_feature_map(torch.randn(B, H, T, D))
@@ -112,6 +115,7 @@ def test_linear_attention_causal_shape():
 # 6. test_linear_attention_noncausal_shape
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attention_noncausal_shape():
     q = elu_feature_map(torch.randn(B, H, T, D))
     k = elu_feature_map(torch.randn(B, H, T, D))
@@ -123,6 +127,7 @@ def test_linear_attention_noncausal_shape():
 # ---------------------------------------------------------------------------
 # 7. test_causal_lower_triangular
 # ---------------------------------------------------------------------------
+
 
 def test_causal_lower_triangular():
     """Zero keys/values after T//2; output for t < T//2 must be identical."""
@@ -155,6 +160,7 @@ def test_causal_lower_triangular():
 # 8. test_noncausal_symmetric
 # ---------------------------------------------------------------------------
 
+
 def test_noncausal_symmetric():
     """Swapping Q and K should generally produce a different output (Q/K are not symmetric)."""
     torch.manual_seed(0)
@@ -163,7 +169,7 @@ def test_noncausal_symmetric():
     v = torch.randn(B, H, T, D)
 
     out_qk = linear_attention_noncausal(q, k, v)
-    out_kq = linear_attention_noncausal(k, q, v)   # swapped
+    out_kq = linear_attention_noncausal(k, q, v)  # swapped
 
     # They should differ (non-trivial test that Q and K play different roles)
     assert not torch.allclose(out_qk, out_kq, atol=1e-3), (
@@ -174,6 +180,7 @@ def test_noncausal_symmetric():
 # ---------------------------------------------------------------------------
 # 9. test_linear_attn_module_shape
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attn_module_shape():
     cfg = SMALL_CFG
@@ -187,6 +194,7 @@ def test_linear_attn_module_shape():
 # 10. test_linear_attn_elu_map
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attn_elu_map():
     cfg = LinearAttnConfig(d_model=32, n_heads=2, head_dim=16, feature_map="elu")
     model = LinearAttention(cfg)
@@ -198,6 +206,7 @@ def test_linear_attn_elu_map():
 # ---------------------------------------------------------------------------
 # 11. test_linear_attn_relu_map
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attn_relu_map():
     cfg = LinearAttnConfig(d_model=32, n_heads=2, head_dim=16, feature_map="relu")
@@ -211,6 +220,7 @@ def test_linear_attn_relu_map():
 # 12. test_linear_attn_rff_map
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attn_rff_map():
     cfg = LinearAttnConfig(d_model=32, n_heads=2, head_dim=16, feature_map="random_fourier")
     model = LinearAttention(cfg)
@@ -223,6 +233,7 @@ def test_linear_attn_rff_map():
 # 13. test_compute_complexity_keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_complexity_keys():
     result = compute_linear_attention_complexity(T=128, D=64, H=8)
     assert "linear_ops" in result
@@ -232,6 +243,7 @@ def test_compute_complexity_keys():
 # ---------------------------------------------------------------------------
 # 14. test_compute_complexity_ordering
 # ---------------------------------------------------------------------------
+
 
 def test_compute_complexity_ordering():
     """For T >> D, linear attention should be cheaper than standard."""
@@ -245,6 +257,7 @@ def test_compute_complexity_ordering():
 # ---------------------------------------------------------------------------
 # 15. test_linear_attention_block_shape
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_block_shape():
     cfg = SMALL_CFG
@@ -276,6 +289,7 @@ _LAYER_CFG = LinearAttnConfig(
 # 16. LinearAttnConfig new defaults
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attn_config_new_defaults():
     cfg = LinearAttnConfig()
     assert cfg.d_model == 64
@@ -289,6 +303,7 @@ def test_linear_attn_config_new_defaults():
 # 17. random_features returns shape (B, H, T, n_features)
 # ---------------------------------------------------------------------------
 
+
 def test_random_features_shape():
     torch.manual_seed(0)
     q = torch.randn(_B, _N_HEADS, _T, _HEAD_DIM)
@@ -301,6 +316,7 @@ def test_random_features_shape():
 # ---------------------------------------------------------------------------
 # 18. random_features orf: features approximately orthogonal (low correlation)
 # ---------------------------------------------------------------------------
+
 
 def test_random_features_orf_approximately_orthogonal():
     """ORF columns should be near-orthogonal: off-diagonal correlations low."""
@@ -328,6 +344,7 @@ def test_random_features_orf_approximately_orthogonal():
 # 19. random_features q_prime non-negative (exp-based FAVOR+ kernel)
 # ---------------------------------------------------------------------------
 
+
 def test_random_features_q_prime_non_negative():
     torch.manual_seed(0)
     q = torch.randn(_B, _N_HEADS, _T, _HEAD_DIM)
@@ -340,6 +357,7 @@ def test_random_features_q_prime_non_negative():
 # ---------------------------------------------------------------------------
 # 20. linear_attention output shape — causal=True
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_wrapper_causal_shape():
     torch.manual_seed(0)
@@ -354,6 +372,7 @@ def test_linear_attention_wrapper_causal_shape():
 # 21. linear_attention output shape — causal=False
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attention_wrapper_noncausal_shape():
     torch.manual_seed(0)
     q_prime = torch.rand(_B, _N_HEADS, _T, _N_FEAT)
@@ -366,6 +385,7 @@ def test_linear_attention_wrapper_noncausal_shape():
 # ---------------------------------------------------------------------------
 # 22. linear_attention causal=True: position i cannot attend to j > i
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_causal_mask():
     """Zeroing keys/values after T//2 must not affect outputs at t < T//2."""
@@ -382,16 +402,17 @@ def test_linear_attention_causal_mask():
     k_masked[:, :, half:, :] = 0.0
     v_masked[:, :, half:, :] = 0.0
 
-    out_masked = linear_attention(q_masked := q_prime, k_masked, v_masked, causal=True)
+    out_masked = linear_attention(_q_masked := q_prime, k_masked, v_masked, causal=True)
 
-    assert torch.allclose(
-        out_full[:, :, :half, :], out_masked[:, :, :half, :], atol=1e-5
-    ), "Causal linear attention: outputs before midpoint must not depend on future keys"
+    assert torch.allclose(out_full[:, :, :half, :], out_masked[:, :, :half, :], atol=1e-5), (
+        "Causal linear attention: outputs before midpoint must not depend on future keys"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 23. LinearAttentionLayer output shape
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_layer_output_shape():
     cfg = _LAYER_CFG
@@ -404,6 +425,7 @@ def test_linear_attention_layer_output_shape():
 # ---------------------------------------------------------------------------
 # 24. LinearAttentionLayer differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_layer_differentiable():
     cfg = _LAYER_CFG
@@ -419,6 +441,7 @@ def test_linear_attention_layer_differentiable():
 # ---------------------------------------------------------------------------
 # 25. LinearAttentionLayer causal=True output differs from causal=False
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_layer_causal_vs_noncausal():
     torch.manual_seed(7)
@@ -448,6 +471,7 @@ def test_linear_attention_layer_causal_vs_noncausal():
 # 26. attention_approximation_error returns float in [0, inf)
 # ---------------------------------------------------------------------------
 
+
 def test_approximation_error_is_nonneg_float():
     torch.manual_seed(0)
     a = torch.randn(4, 8, 8)
@@ -461,6 +485,7 @@ def test_approximation_error_is_nonneg_float():
 # 27. attention_approximation_error same inputs → 0
 # ---------------------------------------------------------------------------
 
+
 def test_approximation_error_same_inputs_zero():
     x = torch.randn(4, 8, 8)
     err = attention_approximation_error(x, x)
@@ -470,6 +495,7 @@ def test_approximation_error_same_inputs_zero():
 # ---------------------------------------------------------------------------
 # 28. n_features=256 gives lower error than n_features=16
 # ---------------------------------------------------------------------------
+
 
 def test_more_features_lower_approximation_error():
     """Higher n_features should produce a lower relative approximation error.
@@ -511,9 +537,9 @@ def test_more_features_lower_approximation_error():
 # 29. Linear attention O(n) scaling: time grows linearly not quadratically
 # ---------------------------------------------------------------------------
 
+
 def test_linear_attention_scaling():
     """Wall-clock time for linear attention should scale sub-quadratically in T."""
-    import time
 
     def time_linear_attn(seq_len: int, n_runs: int = 3) -> float:
         q = torch.rand(1, 1, seq_len, 16)

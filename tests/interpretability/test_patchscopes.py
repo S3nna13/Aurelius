@@ -11,9 +11,9 @@ from __future__ import annotations
 import pytest
 import torch
 
+from src.interpretability.patchscopes import Patchscope, PatchscopeConfig
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.interpretability.patchscopes import Patchscope, PatchscopeConfig
 
 # ---------------------------------------------------------------------------
 # Tiny test configuration
@@ -30,13 +30,14 @@ TINY_CFG = AureliusConfig(
     max_seq_len=64,
 )
 
-B = 2   # batch size
-T = 8   # sequence length
+B = 2  # batch size
+T = 8  # sequence length
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def model() -> AureliusTransformer:
@@ -78,6 +79,7 @@ def _make_scope(
 # Test 1: extract() output shape is (B, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_extract_shape(model, source_ids):
     scope = _make_scope(model)
     hidden = scope.extract(source_ids)
@@ -89,6 +91,7 @@ def test_extract_shape(model, source_ids):
 # ---------------------------------------------------------------------------
 # Test 2: inject_and_decode() output shape is (B, T, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_inject_and_decode_shape(model, source_ids, target_ids):
     scope = _make_scope(model)
@@ -102,6 +105,7 @@ def test_inject_and_decode_shape(model, source_ids, target_ids):
 # ---------------------------------------------------------------------------
 # Test 3: injection changes output versus unmodified forward
 # ---------------------------------------------------------------------------
+
 
 def test_injection_changes_output(model, source_ids, target_ids):
     scope = _make_scope(model)
@@ -124,6 +128,7 @@ def test_injection_changes_output(model, source_ids, target_ids):
 # Test 4: run() matches extract() + inject_and_decode()
 # ---------------------------------------------------------------------------
 
+
 def test_run_matches_extract_then_inject(model, source_ids, target_ids):
     scope = _make_scope(model)
 
@@ -139,6 +144,7 @@ def test_run_matches_extract_then_inject(model, source_ids, target_ids):
 # ---------------------------------------------------------------------------
 # Test 5: determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism(model, source_ids, target_ids):
     scope = _make_scope(model)
@@ -158,6 +164,7 @@ def test_determinism(model, source_ids, target_ids):
 # Test 6: no NaN/Inf in extracted hidden states
 # ---------------------------------------------------------------------------
 
+
 def test_extract_no_nan_inf(model, source_ids):
     scope = _make_scope(model)
     hidden = scope.extract(source_ids)
@@ -168,6 +175,7 @@ def test_extract_no_nan_inf(model, source_ids):
 # Test 7: no NaN/Inf in output logits
 # ---------------------------------------------------------------------------
 
+
 def test_inject_no_nan_inf(model, source_ids, target_ids):
     scope = _make_scope(model)
     logits = scope.run(source_ids, target_ids)
@@ -177,6 +185,7 @@ def test_inject_no_nan_inf(model, source_ids, target_ids):
 # ---------------------------------------------------------------------------
 # Test 8: different source_layer -> different extracted state
 # ---------------------------------------------------------------------------
+
 
 def test_different_source_layers_differ(model, source_ids):
     scope0 = _make_scope(model, source_layer=0)
@@ -194,6 +203,7 @@ def test_different_source_layers_differ(model, source_ids):
 # Test 9: different source_position -> different extracted state
 # ---------------------------------------------------------------------------
 
+
 def test_different_source_positions_differ(model, source_ids):
     scope_pos0 = _make_scope(model, source_position=0)
     scope_pos1 = _make_scope(model, source_position=1)
@@ -209,6 +219,7 @@ def test_different_source_positions_differ(model, source_ids):
 # ---------------------------------------------------------------------------
 # Test 10: batch size > 1 works
 # ---------------------------------------------------------------------------
+
 
 def test_batch_size_gt_1(model):
     torch.manual_seed(7)
@@ -229,6 +240,7 @@ def test_batch_size_gt_1(model):
 # Test 11: source_layer=0 (first layer) works
 # ---------------------------------------------------------------------------
 
+
 def test_source_layer_zero(model, source_ids, target_ids):
     scope = _make_scope(model, source_layer=0)
     hidden = scope.extract(source_ids)
@@ -243,6 +255,7 @@ def test_source_layer_zero(model, source_ids, target_ids):
 # ---------------------------------------------------------------------------
 # Test 12: inject zero vector -> output differs from normal forward
 # ---------------------------------------------------------------------------
+
 
 def test_inject_zero_vector_differs_from_clean(model, target_ids):
     scope = _make_scope(model)

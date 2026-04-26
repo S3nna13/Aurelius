@@ -6,10 +6,10 @@ import torch.nn as nn
 
 from src.model.adaptive_compute import (
     ACTConfig,
+    ACTTransformerLayer,
     HaltingUnit,
     act_forward,
     ponder_loss,
-    ACTTransformerLayer,
 )
 
 # ---------------------------------------------------------------------------
@@ -26,6 +26,7 @@ MAX_STEPS = 3
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def act_cfg():
     return ACTConfig(threshold=0.99, max_steps=MAX_STEPS, epsilon=0.01, ponder_cost=0.01)
@@ -41,10 +42,12 @@ def halting_unit():
 def mock_layers():
     """Two nn.Linear(D, D) modules acting as mock transformer sub-layers."""
     torch.manual_seed(1)
-    return nn.ModuleList([
-        nn.Linear(D, D),
-        nn.Linear(D, D),
-    ])
+    return nn.ModuleList(
+        [
+            nn.Linear(D, D),
+            nn.Linear(D, D),
+        ]
+    )
 
 
 @pytest.fixture
@@ -63,6 +66,7 @@ def act_layer(mock_layers, act_cfg):
 # 1. ACTConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_act_config_defaults():
     cfg = ACTConfig()
     assert cfg.threshold == 0.99
@@ -75,6 +79,7 @@ def test_act_config_defaults():
 # 2. HaltingUnit output shape (B, T, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_halting_unit_output_shape(halting_unit, hidden):
     out = halting_unit(hidden)
     assert out.shape == (B, T, 1), f"Expected ({B}, {T}, 1), got {out.shape}"
@@ -83,6 +88,7 @@ def test_halting_unit_output_shape(halting_unit, hidden):
 # ---------------------------------------------------------------------------
 # 3. HaltingUnit output in (0, 1) — sigmoid guarantee
 # ---------------------------------------------------------------------------
+
 
 def test_halting_unit_range(halting_unit, hidden):
     out = halting_unit(hidden)
@@ -93,6 +99,7 @@ def test_halting_unit_range(halting_unit, hidden):
 # ---------------------------------------------------------------------------
 # 4. HaltingUnit is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_halting_unit_differentiable(halting_unit, hidden):
     h = hidden.requires_grad_(True)
@@ -107,6 +114,7 @@ def test_halting_unit_differentiable(halting_unit, hidden):
 # 5. act_forward output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_act_forward_output_shape(hidden, mock_layers, halting_unit, act_cfg):
     output, _ = act_forward(hidden, mock_layers, halting_unit, act_cfg)
     assert output.shape == hidden.shape, (
@@ -118,6 +126,7 @@ def test_act_forward_output_shape(hidden, mock_layers, halting_unit, act_cfg):
 # 6. act_forward ponder_cost is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_act_forward_ponder_cost_scalar(hidden, mock_layers, halting_unit, act_cfg):
     _, pc = act_forward(hidden, mock_layers, halting_unit, act_cfg)
     assert pc.shape == torch.Size([]), f"ponder_cost should be scalar, got shape {pc.shape}"
@@ -126,6 +135,7 @@ def test_act_forward_ponder_cost_scalar(hidden, mock_layers, halting_unit, act_c
 # ---------------------------------------------------------------------------
 # 7. act_forward ponder_cost >= 1 (at least one step always taken)
 # ---------------------------------------------------------------------------
+
 
 def test_act_forward_ponder_cost_at_least_one(hidden, mock_layers, halting_unit, act_cfg):
     _, pc = act_forward(hidden, mock_layers, halting_unit, act_cfg)
@@ -137,6 +147,7 @@ def test_act_forward_ponder_cost_at_least_one(hidden, mock_layers, halting_unit,
 # ---------------------------------------------------------------------------
 # 8. act_forward with threshold=0.0 → single step (always halts immediately)
 # ---------------------------------------------------------------------------
+
 
 def test_act_forward_threshold_zero_single_step(hidden, mock_layers, halting_unit):
     cfg_zero = ACTConfig(threshold=0.0, max_steps=MAX_STEPS, epsilon=0.01, ponder_cost=0.01)
@@ -152,6 +163,7 @@ def test_act_forward_threshold_zero_single_step(hidden, mock_layers, halting_uni
 # 9. ponder_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_ponder_loss_scalar():
     pc = torch.tensor(2.5)
     loss = ponder_loss(pc, target_ponder=1.0)
@@ -161,6 +173,7 @@ def test_ponder_loss_scalar():
 # ---------------------------------------------------------------------------
 # 10. ponder_loss target == current → near 0
 # ---------------------------------------------------------------------------
+
 
 def test_ponder_loss_zero_when_on_target():
     target = 2.0
@@ -173,6 +186,7 @@ def test_ponder_loss_zero_when_on_target():
 # 11. ACTTransformerLayer output shape correct
 # ---------------------------------------------------------------------------
 
+
 def test_act_layer_output_shape(act_layer, hidden):
     output, _ = act_layer(hidden)
     assert output.shape == hidden.shape, (
@@ -184,6 +198,7 @@ def test_act_layer_output_shape(act_layer, hidden):
 # 12. ACTTransformerLayer ponder_cost is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_act_layer_ponder_cost_scalar(act_layer, hidden):
     _, pc = act_layer(hidden)
     assert pc.shape == torch.Size([]), f"ponder_cost should be scalar, got shape {pc.shape}"
@@ -192,6 +207,7 @@ def test_act_layer_ponder_cost_scalar(act_layer, hidden):
 # ---------------------------------------------------------------------------
 # 13. ACTTransformerLayer differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_act_layer_differentiable(act_layer, hidden):
     h = hidden.requires_grad_(True)
@@ -205,6 +221,7 @@ def test_act_layer_differentiable(act_layer, hidden):
 # ---------------------------------------------------------------------------
 # 14. High threshold → more steps than low threshold (ponder_cost higher)
 # ---------------------------------------------------------------------------
+
 
 def test_act_high_threshold_more_steps_than_low(hidden, mock_layers, halting_unit):
     cfg_low = ACTConfig(threshold=0.01, max_steps=MAX_STEPS, epsilon=0.01, ponder_cost=0.01)

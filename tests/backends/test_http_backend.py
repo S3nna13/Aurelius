@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import unittest
 import urllib.error
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
-from src.backends.http_backend import HTTPBackend, HTTPBackendConfig, HTTP_BACKEND_REGISTRY
+from src.backends.http_backend import HTTP_BACKEND_REGISTRY, HTTPBackend, HTTPBackendConfig
 
 
 def _make_response(data: dict, status: int = 200):

@@ -1,11 +1,10 @@
 """Tests for src/eval/semantic_similarity.py"""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.semantic_similarity import (
     SemanticSimConfig,
     SemanticSimilarityEvaluator,
@@ -17,6 +16,8 @@ from src.eval.semantic_similarity import (
     extract_embeddings,
     ngram_overlap,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -33,8 +34,10 @@ TINY_CFG = AureliusConfig(
     max_seq_len=512,
 )
 
+
 # Byte-level tokenizer: encode a string as UTF-8 bytes, truncated to 256.
-ENCODE_FN = lambda s: list(s.encode("utf-8", errors="replace"))[:256]
+def ENCODE_FN(s):
+    return list(s.encode("utf-8", errors="replace"))[:256]
 
 
 @pytest.fixture(scope="module")
@@ -59,6 +62,7 @@ def evaluator(tiny_model, default_cfg):
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SemanticSimConfig()
     assert cfg.pooling == "mean"
@@ -69,6 +73,7 @@ def test_config_defaults():
 # 2. test_extract_embeddings_shape
 # ---------------------------------------------------------------------------
 
+
 def test_extract_embeddings_shape(tiny_model, default_cfg):
     texts = ["hello world", "foo bar", "the quick brown fox"]
     embs = extract_embeddings(tiny_model, ENCODE_FN, texts, default_cfg)
@@ -78,6 +83,7 @@ def test_extract_embeddings_shape(tiny_model, default_cfg):
 # ---------------------------------------------------------------------------
 # 3. test_extract_embeddings_normalized
 # ---------------------------------------------------------------------------
+
 
 def test_extract_embeddings_normalized(tiny_model):
     cfg = SemanticSimConfig(normalize=True)
@@ -91,6 +97,7 @@ def test_extract_embeddings_normalized(tiny_model):
 # 4. test_cosine_similarity_matrix_shape
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_similarity_matrix_shape():
     M, N, D = 3, 5, 16
     a = torch.randn(M, D)
@@ -102,6 +109,7 @@ def test_cosine_similarity_matrix_shape():
 # ---------------------------------------------------------------------------
 # 5. test_cosine_similarity_matrix_self
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_similarity_matrix_self():
     D = 16
@@ -115,6 +123,7 @@ def test_cosine_similarity_matrix_self():
 # 6. test_bertscore_precision_self
 # ---------------------------------------------------------------------------
 
+
 def test_bertscore_precision_self():
     embs = torch.randn(3, 16)
     embs = torch.nn.functional.normalize(embs, dim=-1)
@@ -125,6 +134,7 @@ def test_bertscore_precision_self():
 # ---------------------------------------------------------------------------
 # 7. test_bertscore_recall_self
 # ---------------------------------------------------------------------------
+
 
 def test_bertscore_recall_self():
     embs = torch.randn(3, 16)
@@ -137,6 +147,7 @@ def test_bertscore_recall_self():
 # 8. test_bertscore_f1_zero
 # ---------------------------------------------------------------------------
 
+
 def test_bertscore_f1_zero():
     assert bertscore_f1(0.0, 0.0) == 0.0
 
@@ -144,6 +155,7 @@ def test_bertscore_f1_zero():
 # ---------------------------------------------------------------------------
 # 9. test_bertscore_f1_range
 # ---------------------------------------------------------------------------
+
 
 def test_bertscore_f1_range():
     for p, r in [(0.5, 0.5), (0.3, 0.7), (1.0, 1.0), (0.0, 0.5)]:
@@ -155,6 +167,7 @@ def test_bertscore_f1_range():
 # 10. test_compute_wmd_approx_identical
 # ---------------------------------------------------------------------------
 
+
 def test_compute_wmd_approx_identical():
     words = ["hello", "world"]
     embs = {w: torch.nn.functional.normalize(torch.randn(16), dim=0) for w in words}
@@ -165,6 +178,7 @@ def test_compute_wmd_approx_identical():
 # ---------------------------------------------------------------------------
 # 11. test_compute_wmd_approx_range
 # ---------------------------------------------------------------------------
+
 
 def test_compute_wmd_approx_range():
     words_a = ["apple", "orange"]
@@ -179,6 +193,7 @@ def test_compute_wmd_approx_range():
 # 12. test_ngram_overlap_identical
 # ---------------------------------------------------------------------------
 
+
 def test_ngram_overlap_identical():
     text = "hello world"
     score = ngram_overlap(text, text, n=2)
@@ -188,6 +203,7 @@ def test_ngram_overlap_identical():
 # ---------------------------------------------------------------------------
 # 13. test_ngram_overlap_disjoint
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_overlap_disjoint():
     # Use texts long enough but with no shared bigrams.
@@ -199,6 +215,7 @@ def test_ngram_overlap_disjoint():
 # 14. test_evaluator_embedding_similarity_range
 # ---------------------------------------------------------------------------
 
+
 def test_evaluator_embedding_similarity_range(evaluator):
     sim = evaluator.compute_embedding_similarity("hello", "world")
     assert -1.0 <= sim <= 1.0
@@ -207,6 +224,7 @@ def test_evaluator_embedding_similarity_range(evaluator):
 # ---------------------------------------------------------------------------
 # 15. test_evaluator_bertscore_keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_bertscore_keys(evaluator):
     result = evaluator.compute_bertscore(
@@ -221,6 +239,7 @@ def test_evaluator_bertscore_keys(evaluator):
 # ---------------------------------------------------------------------------
 # 16. test_evaluator_generation_quality_keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_generation_quality_keys(evaluator):
     result = evaluator.evaluate_generation_quality(

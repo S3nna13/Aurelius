@@ -46,7 +46,7 @@ def test_next_job_returns_highest_priority(sched):
 def test_next_job_fifo_within_same_priority(sched):
     j1 = sched.submit(Priority.NORMAL, 1e9)
     time.sleep(0.001)
-    j2 = sched.submit(Priority.NORMAL, 1e9)
+    sched.submit(Priority.NORMAL, 1e9)
     assert sched.next_job().job_id == j1.job_id
 
 
@@ -83,7 +83,7 @@ def test_cancel_marks_cancelled(sched):
 
 def test_running_jobs_list(sched):
     j1 = sched.submit(Priority.NORMAL, 1e9)
-    j2 = sched.submit(Priority.NORMAL, 1e9)
+    sched.submit(Priority.NORMAL, 1e9)
     sched.start(j1.job_id)
     running = sched.running_jobs()
     assert len(running) == 1
@@ -112,7 +112,7 @@ def test_stats_counts_all_states(sched):
     j1 = sched.submit(Priority.CRITICAL, 1e10)
     j2 = sched.submit(Priority.HIGH, 2e10)
     j3 = sched.submit(Priority.NORMAL, 3e10)
-    j4 = sched.submit(Priority.LOW, 4e10)
+    sched.submit(Priority.LOW, 4e10)
     sched.start(j1.job_id)
     sched.complete(j1.job_id)
     sched.start(j2.job_id)

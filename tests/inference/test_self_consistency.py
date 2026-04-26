@@ -6,21 +6,21 @@ import pytest
 import torch
 
 from src.inference.self_consistency import (
+    ChainOfThoughtSampler,
+    ConsistencyResult,
     SelfConsistencyConfig,
     SelfConsistencyDecoder,
-    ConsistencyResult,
-    ChainOfThoughtSampler,
+    answer_consistency_score,
     majority_vote,
     weighted_vote,
-    answer_consistency_score,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg():
@@ -70,6 +70,7 @@ def decoder(small_model, sc_config):
 # majority_vote tests
 # ---------------------------------------------------------------------------
 
+
 def test_majority_vote_basic():
     winner, counts = majority_vote(["cat", "cat", "dog"])
     assert winner == "cat"
@@ -100,6 +101,7 @@ def test_majority_vote_case_insensitive_normalization():
 # weighted_vote tests
 # ---------------------------------------------------------------------------
 
+
 def test_weighted_vote_basic():
     # a=1.0, b=2.0+1.0=3.0 => b wins
     winner, wc = weighted_vote(["a", "b", "b"], [1.0, 2.0, 1.0])
@@ -116,6 +118,7 @@ def test_weighted_vote_empty():
 # ---------------------------------------------------------------------------
 # answer_consistency_score tests
 # ---------------------------------------------------------------------------
+
 
 def test_answer_consistency_score_perfect():
     score = answer_consistency_score(["42", "42", "42"])
@@ -138,6 +141,7 @@ def test_answer_consistency_score_partial():
 # ---------------------------------------------------------------------------
 # SelfConsistencyDecoder tests
 # ---------------------------------------------------------------------------
+
 
 def test_self_consistency_decoder_decode_returns_result(decoder):
     result = decoder.decode("What is 2+2?")
@@ -179,14 +183,13 @@ def test_self_consistency_decode_batch(decoder):
 # ChainOfThoughtSampler tests
 # ---------------------------------------------------------------------------
 
+
 def test_cot_sampler_aggregate_keys(small_model, sc_config):
-    sampler = ChainOfThoughtSampler(
-        small_model, simple_encode, simple_decode, config=sc_config
-    )
+    sampler = ChainOfThoughtSampler(small_model, simple_encode, simple_decode, config=sc_config)
     samples = [
         {"reasoning": "step 1", "answer": "42", "full_text": "step 1 ... 42"},
         {"reasoning": "step 2", "answer": "42", "full_text": "step 2 ... 42"},
-        {"reasoning": "step 3", "answer": "7",  "full_text": "step 3 ... 7"},
+        {"reasoning": "step 3", "answer": "7", "full_text": "step 3 ... 7"},
     ]
     agg = sampler.aggregate(samples)
     assert "final_answer" in agg
@@ -196,13 +199,11 @@ def test_cot_sampler_aggregate_keys(small_model, sc_config):
 
 
 def test_cot_sampler_aggregate_correct_winner(small_model, sc_config):
-    sampler = ChainOfThoughtSampler(
-        small_model, simple_encode, simple_decode, config=sc_config
-    )
+    sampler = ChainOfThoughtSampler(small_model, simple_encode, simple_decode, config=sc_config)
     samples = [
         {"reasoning": "r", "answer": "42", "full_text": ""},
         {"reasoning": "r", "answer": "42", "full_text": ""},
-        {"reasoning": "r", "answer": "7",  "full_text": ""},
+        {"reasoning": "r", "answer": "7", "full_text": ""},
     ]
     agg = sampler.aggregate(samples)
     assert agg["final_answer"] == "42"
@@ -210,9 +211,7 @@ def test_cot_sampler_aggregate_correct_winner(small_model, sc_config):
 
 
 def test_cot_sampler_sample_with_cot_returns_dicts(small_model, sc_config):
-    sampler = ChainOfThoughtSampler(
-        small_model, simple_encode, simple_decode, config=sc_config
-    )
+    sampler = ChainOfThoughtSampler(small_model, simple_encode, simple_decode, config=sc_config)
     samples = sampler.sample_with_cot("What is 2+2?", n_samples=2, temperature=0.8)
     assert len(samples) == 2
     for s in samples:
@@ -224,6 +223,7 @@ def test_cot_sampler_sample_with_cot_returns_dicts(small_model, sc_config):
 # ---------------------------------------------------------------------------
 # _extract_answer tests
 # ---------------------------------------------------------------------------
+
 
 def test_extract_answer_basic(decoder):
     text = "The answer is 42"

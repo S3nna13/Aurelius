@@ -7,6 +7,7 @@ Tiny policy: d_model=16, vocab_size=16, B=2, T=6.
 """
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -40,8 +41,8 @@ class TinyPolicy(nn.Module):
         self.head = nn.Linear(d_model, vocab_size)
 
     def forward(self, input_ids: torch.Tensor):
-        hidden = self.embedding(input_ids)        # [B, T, d_model]
-        logits = self.head(hidden)                # [B, T, V]
+        hidden = self.embedding(input_ids)  # [B, T, d_model]
+        logits = self.head(hidden)  # [B, T, V]
         return {"logits": logits, "hidden_states": hidden}
 
 
@@ -295,9 +296,7 @@ def test_credit_model_sums_to_one():
     reward = sample_rewards()
     credits = model(input_ids, reward)
     sums = credits.sum(dim=-1)  # [B]
-    assert torch.allclose(sums, torch.ones(B), atol=1e-5), (
-        f"Credits do not sum to 1: {sums}"
-    )
+    assert torch.allclose(sums, torch.ones(B), atol=1e-5), f"Credits do not sum to 1: {sums}"
 
 
 def test_credit_model_nonneg():

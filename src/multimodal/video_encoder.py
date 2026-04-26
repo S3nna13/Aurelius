@@ -6,17 +6,16 @@ doc grounding (Tech Report 2025), Apache-2.0, clean-room reimplementation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import ClassVar
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VideoEncoderConfig:
@@ -44,6 +43,7 @@ class VideoEncoderConfig:
 # ---------------------------------------------------------------------------
 # 3D Patch Embedding
 # ---------------------------------------------------------------------------
+
 
 class Temporal3DPatchEmbed(nn.Module):
     """3D convolutional patch embedding for video inputs.
@@ -87,6 +87,7 @@ class Temporal3DPatchEmbed(nn.Module):
 # ---------------------------------------------------------------------------
 # Temporal Position Encoding
 # ---------------------------------------------------------------------------
+
 
 class TemporalPositionEncoding(nn.Module):
     """Learnable 1-D positional embeddings over the flattened patch sequence.
@@ -135,6 +136,7 @@ class TemporalPositionEncoding(nn.Module):
 # Video Encoder
 # ---------------------------------------------------------------------------
 
+
 class VideoEncoder(nn.Module):
     """Temporal video encoder using 3D patch embedding and transformer layers.
 
@@ -151,16 +153,18 @@ class VideoEncoder(nn.Module):
         self.patch_embed = Temporal3DPatchEmbed(config)
         self.pos_encode = TemporalPositionEncoding(config)
 
-        self.layers = nn.ModuleList([
-            nn.TransformerEncoderLayer(
-                d_model=config.d_model,
-                nhead=config.n_heads,
-                dim_feedforward=config.d_model * 4,
-                dropout=config.dropout,
-                batch_first=True,
-            )
-            for _ in range(config.n_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                nn.TransformerEncoderLayer(
+                    d_model=config.d_model,
+                    nhead=config.n_heads,
+                    dim_feedforward=config.d_model * 4,
+                    dropout=config.dropout,
+                    batch_first=True,
+                )
+                for _ in range(config.n_layers)
+            ]
+        )
 
         self.norm = nn.LayerNorm(config.d_model)
 
@@ -173,8 +177,8 @@ class VideoEncoder(nn.Module):
         Returns:
             (B, N, d_model) where N = (T//ts) * (H//ps) * (W//ps).
         """
-        x = self.patch_embed(x)     # (B, N, d_model)
-        x = self.pos_encode(x)      # (B, N, d_model)
+        x = self.patch_embed(x)  # (B, N, d_model)
+        x = self.pos_encode(x)  # (B, N, d_model)
 
         for layer in self.layers:
             x = layer(x)
@@ -183,7 +187,7 @@ class VideoEncoder(nn.Module):
         return x
 
     @classmethod
-    def from_config(cls, cfg: VideoEncoderConfig) -> "VideoEncoder":
+    def from_config(cls, cfg: VideoEncoderConfig) -> VideoEncoder:
         """Construct a VideoEncoder from a :class:`VideoEncoderConfig`.
 
         Args:
@@ -211,8 +215,9 @@ VIDEO_ENCODER_REGISTRY: dict[str, type[VideoEncoder]] = {
 
 try:
     from src.multimodal.multimodal_registry import register_vision_encoder as _reg_ve
+
     _reg_ve("VideoEncoder", VideoEncoder)
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover  # noqa: S110
     pass
 
 

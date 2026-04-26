@@ -7,12 +7,11 @@ diffing.  Pure stdlib with optional Pillow dependency for image I/O.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import IO
-
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
+
 
 class ScreenshotDiffError(Exception):
     """Raised when screenshot diffing fails or receives invalid input."""
@@ -21,6 +20,7 @@ class ScreenshotDiffError(Exception):
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ChangedRegion:
@@ -55,6 +55,7 @@ class DiffResult:
 # ---------------------------------------------------------------------------
 # Main diffing interface
 # ---------------------------------------------------------------------------
+
 
 class ScreenshotDiff:
     """Compares two screenshots and identifies changed regions.
@@ -121,22 +122,16 @@ class ScreenshotDiff:
             )
         for y in range(height):
             if len(before[y]) != width:
-                raise ScreenshotDiffError(
-                    f"before row {y} has inconsistent width"
-                )
+                raise ScreenshotDiffError(f"before row {y} has inconsistent width")
             if len(after[y]) != width:
-                raise ScreenshotDiffError(
-                    f"after row {y} has inconsistent width"
-                )
+                raise ScreenshotDiffError(f"after row {y} has inconsistent width")
 
         if mask is not None:
             if len(mask) != height:
                 raise ScreenshotDiffError("mask height must match image height")
             for y in range(height):
                 if len(mask[y]) != width:
-                    raise ScreenshotDiffError(
-                        f"mask row {y} has inconsistent width"
-                    )
+                    raise ScreenshotDiffError(f"mask row {y} has inconsistent width")
 
         changed_map = self._compute_diff(before, after, width, height, mask)
         total_pixels = width * height
@@ -198,20 +193,27 @@ class ScreenshotDiff:
                 if not changed[y][x] or visited[y][x]:
                     continue
                 pixels, min_x, min_y, max_x, max_y = self._flood_fill(
-                    changed, visited, x, y, width, height,
+                    changed,
+                    visited,
+                    x,
+                    y,
+                    width,
+                    height,
                 )
                 rw = max_x - min_x + 1
                 rh = max_y - min_y + 1
                 total_region = rw * rh
-                regions.append(ChangedRegion(
-                    x=min_x,
-                    y=min_y,
-                    width=rw,
-                    height=rh,
-                    pixel_count=pixels,
-                    total_pixels=total_region,
-                    ratio=pixels / total_region if total_region > 0 else 0.0,
-                ))
+                regions.append(
+                    ChangedRegion(
+                        x=min_x,
+                        y=min_y,
+                        width=rw,
+                        height=rh,
+                        pixel_count=pixels,
+                        total_pixels=total_region,
+                        ratio=pixels / total_region if total_region > 0 else 0.0,
+                    )
+                )
 
         return regions
 
@@ -260,6 +262,7 @@ class ScreenshotDiff:
 # Image I/O helpers (PIL preferred, PPM fallback)
 # ---------------------------------------------------------------------------
 
+
 def load_grayscale_pixels(path: str) -> list[list[int]]:
     """Load an image as a 2-D grayscale pixel array.
 
@@ -295,9 +298,7 @@ def load_rgb_pixels(path: str) -> list[list[int]]:
             rows.append(row)
         return rows
     except ImportError:
-        raise ScreenshotDiffError(
-            "color image loading requires Pillow (PIL)"
-        )
+        raise ScreenshotDiffError("color image loading requires Pillow (PIL)")
 
 
 def _load_ppm_grayscale(path: str) -> list[list[int]]:
@@ -306,8 +307,7 @@ def _load_ppm_grayscale(path: str) -> list[list[int]]:
         magic = f.readline().strip()
         if magic not in (b"P5", b"P6"):
             raise ScreenshotDiffError(
-                f"Unsupported PPM format {magic!r}; "
-                f"expected P5 (grayscale) or P6 (colour)"
+                f"Unsupported PPM format {magic!r}; expected P5 (grayscale) or P6 (colour)"
             )
         # skip comments
         line = f.readline()
@@ -315,18 +315,13 @@ def _load_ppm_grayscale(path: str) -> list[list[int]]:
             line = f.readline()
         dims = line.strip().split()
         w, h = int(dims[0]), int(dims[1])
-        max_val = int(f.readline().strip())
+        int(f.readline().strip())
         expected = w * h * (3 if magic == b"P6" else 1)
         data = f.read(expected)
         if len(data) < expected:
-            raise ScreenshotDiffError(
-                "Unexpected end-of-file in PPM image"
-            )
+            raise ScreenshotDiffError("Unexpected end-of-file in PPM image")
         if magic == b"P6":
-            pixels = [
-                (data[i] + data[i + 1] + data[i + 2]) // 3
-                for i in range(0, expected, 3)
-            ]
+            pixels = [(data[i] + data[i + 1] + data[i + 2]) // 3 for i in range(0, expected, 3)]
         else:
             pixels = list(data)
         return [pixels[i * w : (i + 1) * w] for i in range(h)]

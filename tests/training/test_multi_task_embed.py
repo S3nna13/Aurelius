@@ -1,11 +1,11 @@
 """Tests for Multi-Task Learning with Task Embeddings (multi_task_embed.py)."""
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.model.config import AureliusConfig
@@ -18,16 +18,22 @@ from src.training.multi_task_embed import (
     UncertaintyWeighting,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -37,8 +43,9 @@ def model(small_cfg):
     return AureliusTransformer(small_cfg)
 
 
-def make_loader(vocab_size: int = 256, seq_len: int = 8, n_samples: int = 4,
-                batch_size: int = 2) -> DataLoader:
+def make_loader(
+    vocab_size: int = 256, seq_len: int = 8, n_samples: int = 4, batch_size: int = 2
+) -> DataLoader:
     """Return a DataLoader that yields random integer input_ids."""
     torch.manual_seed(42)
     data = torch.randint(0, vocab_size, (n_samples, seq_len))
@@ -50,6 +57,7 @@ def make_loader(vocab_size: int = 256, seq_len: int = 8, n_samples: int = 4,
 # 1. MultiTaskConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = MultiTaskConfig()
     assert cfg.n_tasks == 4
@@ -59,8 +67,7 @@ def test_config_defaults():
 
 
 def test_config_custom():
-    cfg = MultiTaskConfig(n_tasks=2, task_embed_dim=32,
-                          loss_weighting="uncertainty", lr=3e-4)
+    cfg = MultiTaskConfig(n_tasks=2, task_embed_dim=32, loss_weighting="uncertainty", lr=3e-4)
     assert cfg.n_tasks == 2
     assert cfg.task_embed_dim == 32
     assert cfg.loss_weighting == "uncertainty"
@@ -70,6 +77,7 @@ def test_config_custom():
 # ---------------------------------------------------------------------------
 # 2. TaskEmbedding — forward shape
 # ---------------------------------------------------------------------------
+
 
 def test_task_embedding_shape_int():
     te = TaskEmbedding(n_tasks=4, embed_dim=16)
@@ -87,14 +95,14 @@ def test_task_embedding_shape_varies_with_embed_dim():
 # 3. TaskEmbedding — different tasks → different embeddings
 # ---------------------------------------------------------------------------
 
+
 def test_task_embedding_different_tasks_differ():
     torch.manual_seed(7)
     te = TaskEmbedding(n_tasks=4, embed_dim=16)
     emb0 = te(0)
     emb1 = te(1)
     # Embeddings for distinct tasks should not be identical
-    assert not torch.allclose(emb0, emb1), \
-        "Embeddings for task 0 and task 1 should differ"
+    assert not torch.allclose(emb0, emb1), "Embeddings for task 0 and task 1 should differ"
 
 
 def test_task_embedding_same_task_consistent():
@@ -107,6 +115,7 @@ def test_task_embedding_same_task_consistent():
 # ---------------------------------------------------------------------------
 # 4. TaskEmbedding — tensor task_id
 # ---------------------------------------------------------------------------
+
 
 def test_task_embedding_tensor_task_id_scalar():
     te = TaskEmbedding(n_tasks=4, embed_dim=16)
@@ -135,6 +144,7 @@ def test_task_embedding_int_vs_tensor_match():
 # 5. UncertaintyWeighting — output is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_weighting_scalar():
     uw = UncertaintyWeighting(n_tasks=3)
     losses = [torch.tensor(1.0), torch.tensor(0.5), torch.tensor(2.0)]
@@ -153,10 +163,10 @@ def test_uncertainty_weighting_scalar_single_task():
 # 6. UncertaintyWeighting — gradients flow through sigma params
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_weighting_grad_flows():
     uw = UncertaintyWeighting(n_tasks=2)
-    losses = [torch.tensor(1.0, requires_grad=True),
-              torch.tensor(2.0, requires_grad=True)]
+    losses = [torch.tensor(1.0, requires_grad=True), torch.tensor(2.0, requires_grad=True)]
     total = uw(losses)
     total.backward()
     # log_sigma must have a gradient after backward
@@ -173,6 +183,7 @@ def test_uncertainty_weighting_log_sigma_learnable():
 # ---------------------------------------------------------------------------
 # 7. GradNormWeighting — update returns positive weights
 # ---------------------------------------------------------------------------
+
 
 def test_gradnorm_update_positive():
     gn = GradNormWeighting(n_tasks=3, alpha=1.5)
@@ -194,14 +205,14 @@ def test_gradnorm_update_shape():
 # 8. GradNormWeighting — weights sum approximately to n_tasks
 # ---------------------------------------------------------------------------
 
+
 def test_gradnorm_weights_sum_to_n_tasks():
     n = 4
     gn = GradNormWeighting(n_tasks=n, alpha=1.5)
     current = [torch.tensor(float(i + 1)) for i in range(n)]
     initial = [torch.tensor(2.0) for _ in range(n)]
     w = gn.update(current, initial)
-    assert abs(w.sum().item() - n) < 1.0, \
-        f"Weights should sum ≈ {n}, got {w.sum().item():.4f}"
+    assert abs(w.sum().item() - n) < 1.0, f"Weights should sum ≈ {n}, got {w.sum().item():.4f}"
 
 
 def test_gradnorm_uniform_losses_roughly_uniform():
@@ -213,13 +224,13 @@ def test_gradnorm_uniform_losses_roughly_uniform():
     w = gn.update(current, initial)
     # Each weight should be ≈ 1.0 (n/n)
     for wi in w:
-        assert abs(wi.item() - 1.0) < 0.5, \
-            f"Expected ≈1.0 for uniform losses, got {wi.item():.4f}"
+        assert abs(wi.item() - 1.0) < 0.5, f"Expected ≈1.0 for uniform losses, got {wi.item():.4f}"
 
 
 # ---------------------------------------------------------------------------
 # 9. MultiTaskTrainer.train_step returns per_task_losses dict
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_per_task_losses(model):
     cfg = MultiTaskConfig(n_tasks=2, loss_weighting="uniform", lr=1e-4)
@@ -246,6 +257,7 @@ def test_trainer_per_task_losses_are_floats(model):
 # ---------------------------------------------------------------------------
 # 10. MultiTaskTrainer — total_loss is scalar
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_total_loss_is_scalar(model):
     cfg = MultiTaskConfig(n_tasks=2, loss_weighting="uniform", lr=1e-4)

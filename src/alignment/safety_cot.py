@@ -10,19 +10,20 @@ Protocol:
 4. Prompt for verdict: "Based on the above analysis, verdict: "
 5. Parse SAFE/UNSAFE/UNCERTAIN from generated text
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Enums and configuration dataclasses
 # ---------------------------------------------------------------------------
+
 
 class SafetyVerdict(IntEnum):
     SAFE = 0
@@ -31,42 +32,44 @@ class SafetyVerdict(IntEnum):
 
 
 class ReasoningEffort(IntEnum):
-    LOW = 1      # 1 reasoning step
-    MEDIUM = 3   # 3 reasoning steps
-    HIGH = 5     # full CoT chain
+    LOW = 1  # 1 reasoning step
+    MEDIUM = 3  # 3 reasoning steps
+    HIGH = 5  # full CoT chain
 
 
 @dataclass
 class SafetyCoTConfig:
     effort: ReasoningEffort = ReasoningEffort.MEDIUM
-    max_reasoning_tokens: int = 128   # tokens per reasoning step
-    max_verdict_tokens: int = 10      # tokens for final verdict
+    max_reasoning_tokens: int = 128  # tokens per reasoning step
+    max_verdict_tokens: int = 10  # tokens for final verdict
     verdict_token_safe: str = "SAFE"
     verdict_token_unsafe: str = "UNSAFE"
     verdict_token_uncertain: str = "UNCERTAIN"
-    temperature: float = 0.0          # greedy for safety decisions
-    safety_threshold: float = 0.5     # probability threshold for UNSAFE verdict
+    temperature: float = 0.0  # greedy for safety decisions
+    safety_threshold: float = 0.5  # probability threshold for UNSAFE verdict
 
 
 @dataclass
 class SafetyCoTResult:
     verdict: SafetyVerdict
-    reasoning_steps: list[str]        # list of generated reasoning strings
-    unsafe_probability: float         # model's confidence in UNSAFE
+    reasoning_steps: list[str]  # list of generated reasoning strings
+    unsafe_probability: float  # model's confidence in UNSAFE
     safe_probability: float
-    n_reasoning_tokens: int           # total tokens used for reasoning
+    n_reasoning_tokens: int  # total tokens used for reasoning
 
 
 @dataclass
 class SafetyPolicyConfig:
     """Bring-your-own-policy configuration."""
-    policy_text: str                   # written safety policy to follow
-    examples: list[tuple[str, SafetyVerdict]] = None   # few-shot examples
+
+    policy_text: str  # written safety policy to follow
+    examples: list[tuple[str, SafetyVerdict]] = None  # few-shot examples
 
 
 # ---------------------------------------------------------------------------
 # Core generation helper
 # ---------------------------------------------------------------------------
+
 
 def _generate(
     model: torch.nn.Module,
@@ -154,6 +157,7 @@ def _get_verdict_token_probs(
 # SafetyCoTReasoner
 # ---------------------------------------------------------------------------
 
+
 class SafetyCoTReasoner:
     """Generates chain-of-thought safety reasoning then gives a verdict.
 
@@ -178,9 +182,7 @@ class SafetyCoTReasoner:
         self.cfg = cfg
         self._vocab_size = model.config.vocab_size
 
-    def build_reasoning_prompt(
-        self, content: str, step: int, prior_steps: list[str]
-    ) -> str:
+    def build_reasoning_prompt(self, content: str, step: int, prior_steps: list[str]) -> str:
         """Build the prompt for reasoning step `step` given prior reasoning."""
         lines = ["[SAFETY_ANALYSIS]", f"Content: {content}"]
         for i, prev in enumerate(prior_steps, start=1):
@@ -188,9 +190,7 @@ class SafetyCoTReasoner:
         lines.append(f"Step {step}: ")
         return "\n".join(lines)
 
-    def build_verdict_prompt(
-        self, content: str, reasoning_steps: list[str]
-    ) -> str:
+    def build_verdict_prompt(self, content: str, reasoning_steps: list[str]) -> str:
         """Build the prompt asking for SAFE/UNSAFE/UNCERTAIN verdict."""
         lines = ["[SAFETY_ANALYSIS]", f"Content: {content}"]
         for i, step_text in enumerate(reasoning_steps, start=1):
@@ -198,9 +198,7 @@ class SafetyCoTReasoner:
         lines.append("Based on the above analysis, verdict: ")
         return "\n".join(lines)
 
-    def extract_verdict(
-        self, generated_text: str
-    ) -> tuple[SafetyVerdict, float, float]:
+    def extract_verdict(self, generated_text: str) -> tuple[SafetyVerdict, float, float]:
         """Parse verdict and probabilities from generated text.
 
         Returns (verdict, unsafe_prob, safe_prob).
@@ -312,6 +310,7 @@ class SafetyCoTReasoner:
 # PolicyGuidedReasoner
 # ---------------------------------------------------------------------------
 
+
 class PolicyGuidedReasoner(SafetyCoTReasoner):
     """Extends SafetyCoTReasoner with explicit policy context."""
 
@@ -326,9 +325,7 @@ class PolicyGuidedReasoner(SafetyCoTReasoner):
         super().__init__(model, tokenizer_encode, tokenizer_decode, cot_cfg)
         self.policy_cfg = policy_cfg
 
-    def build_reasoning_prompt(
-        self, content: str, step: int, prior_steps: list[str]
-    ) -> str:
+    def build_reasoning_prompt(self, content: str, step: int, prior_steps: list[str]) -> str:
         """Prepend policy_text to the reasoning prompt."""
         base_prompt = super().build_reasoning_prompt(content, step, prior_steps)
         # Prepend policy section
@@ -347,6 +344,7 @@ class PolicyGuidedReasoner(SafetyCoTReasoner):
 # ---------------------------------------------------------------------------
 # Threshold calibration
 # ---------------------------------------------------------------------------
+
 
 def calibrate_safety_threshold(
     reasoner: SafetyCoTReasoner,

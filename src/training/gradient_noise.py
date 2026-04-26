@@ -12,7 +12,6 @@ during neural network training.
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
 
 import torch
 from torch import Tensor
@@ -44,9 +43,9 @@ class GradientNoiseSchedule:
 
     def noise_tensor(
         self,
-        shape: Tuple[int, ...],
+        shape: tuple[int, ...],
         step: int,
-        generator: Optional[torch.Generator] = None,
+        generator: torch.Generator | None = None,
     ) -> Tensor:
         """Sample a Gaussian noise tensor scaled to σ_t.
 
@@ -146,7 +145,7 @@ class GradientNoiseCallback:
     """
 
     def __init__(self) -> None:
-        self.noise_std_history: List[float] = []
+        self.noise_std_history: list[float] = []
 
     def record(self, schedule: GradientNoiseSchedule, step: int) -> float:
         """Append the current noise std to history and return it.
@@ -162,9 +161,7 @@ class GradientNoiseCallback:
         self.noise_std_history.append(std)
         return std
 
-    def plot_schedule(
-        self, n_steps: int, schedule: GradientNoiseSchedule
-    ) -> List[float]:
+    def plot_schedule(self, n_steps: int, schedule: GradientNoiseSchedule) -> list[float]:
         """Return the noise std for each step in ``[0, n_steps)``.
 
         Note: This method returns a plain list and does NOT produce any

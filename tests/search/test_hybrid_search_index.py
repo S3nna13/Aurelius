@@ -1,15 +1,16 @@
 """Tests for HybridSearchIndex — at least 20 tests covering all specified requirements."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.search.hybrid_search_index import HybridSearchIndex
 from src.search.bm25_index import _MAX_DOC_ID_LEN, _MAX_TEXT_LEN, _MAX_TOP_K
-
+from src.search.hybrid_search_index import HybridSearchIndex
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh(**kwargs) -> HybridSearchIndex:
     return HybridSearchIndex(**kwargs)
@@ -28,6 +29,7 @@ def _populate(idx: HybridSearchIndex, n: int = 5) -> list[str]:
 # 1. Basic add + query returns results
 # ---------------------------------------------------------------------------
 
+
 def test_basic_add_and_query_returns_results():
     idx = fresh()
     idx.add("a", "python machine learning framework")
@@ -40,6 +42,7 @@ def test_basic_add_and_query_returns_results():
 # ---------------------------------------------------------------------------
 # 2. Doc appearing in both BM25 and semantic gets RRF boost
 # ---------------------------------------------------------------------------
+
 
 def test_rrf_boost_for_doc_in_both_lists():
     """
@@ -63,6 +66,7 @@ def test_rrf_boost_for_doc_in_both_lists():
 # 3. query_bm25 works independently
 # ---------------------------------------------------------------------------
 
+
 def test_query_bm25_independent():
     idx = fresh()
     _populate(idx, 5)
@@ -75,6 +79,7 @@ def test_query_bm25_independent():
 # ---------------------------------------------------------------------------
 # 4. query_semantic works independently
 # ---------------------------------------------------------------------------
+
 
 def test_query_semantic_independent():
     idx = fresh()
@@ -89,6 +94,7 @@ def test_query_semantic_independent():
 # 5. Weights not summing to 1.0 raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_weights_not_summing_to_one_raises():
     with pytest.raises(ValueError, match="must equal 1.0"):
         HybridSearchIndex(bm25_weight=0.3, semantic_weight=0.3)
@@ -97,6 +103,7 @@ def test_weights_not_summing_to_one_raises():
 # ---------------------------------------------------------------------------
 # 6. Remove removes from both sub-indexes
 # ---------------------------------------------------------------------------
+
 
 def test_remove_from_both_subindexes():
     idx = fresh()
@@ -111,6 +118,7 @@ def test_remove_from_both_subindexes():
 # 7. Empty index returns []
 # ---------------------------------------------------------------------------
 
+
 def test_empty_index_returns_empty():
     idx = fresh()
     assert idx.query("anything") == []
@@ -119,6 +127,7 @@ def test_empty_index_returns_empty():
 # ---------------------------------------------------------------------------
 # 8. Whitespace-only query returns []
 # ---------------------------------------------------------------------------
+
 
 def test_whitespace_only_query_returns_empty():
     idx = fresh()
@@ -131,6 +140,7 @@ def test_whitespace_only_query_returns_empty():
 # 9. top_k=0 raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_top_k_zero_raises():
     idx = fresh()
     idx.add("d", "hello world")
@@ -141,6 +151,7 @@ def test_top_k_zero_raises():
 # ---------------------------------------------------------------------------
 # 10. Round-trip: add 20 docs, each appears in top-5 for its own text
 # ---------------------------------------------------------------------------
+
 
 def test_round_trip_20_docs_self_query():
     idx = fresh()
@@ -160,6 +171,7 @@ def test_round_trip_20_docs_self_query():
 # ---------------------------------------------------------------------------
 # 11. RRF formula: doc at rank 1 in BOTH lists scores higher than rank 1 in one
 # ---------------------------------------------------------------------------
+
 
 def test_rrf_rank1_both_beats_rank1_one():
     """
@@ -181,6 +193,7 @@ def test_rrf_rank1_both_beats_rank1_one():
 # 12. rrf_k parameter affects score magnitude
 # ---------------------------------------------------------------------------
 
+
 def test_rrf_k_affects_score_magnitude():
     idx_small_k = HybridSearchIndex(rrf_k=1)
     idx_large_k = HybridSearchIndex(rrf_k=600)
@@ -196,6 +209,7 @@ def test_rrf_k_affects_score_magnitude():
 # 13. Metadata preserved (accessible via underlying BM25)
 # ---------------------------------------------------------------------------
 
+
 def test_metadata_preserved_in_bm25():
     idx = fresh()
     meta = {"source": "arxiv", "year": 2009}
@@ -206,6 +220,7 @@ def test_metadata_preserved_in_bm25():
 # ---------------------------------------------------------------------------
 # 14. Large doc_id raises ValueError (> 512)
 # ---------------------------------------------------------------------------
+
 
 def test_large_doc_id_raises():
     idx = fresh()
@@ -218,6 +233,7 @@ def test_large_doc_id_raises():
 # 15. Long text raises ValueError (> 1_000_000)
 # ---------------------------------------------------------------------------
 
+
 def test_long_text_raises():
     idx = fresh()
     long_text = "a " * (_MAX_TEXT_LEN // 2 + 1)
@@ -228,6 +244,7 @@ def test_long_text_raises():
 # ---------------------------------------------------------------------------
 # 16. len() reflects document count
 # ---------------------------------------------------------------------------
+
 
 def test_len_reflects_count():
     idx = fresh()
@@ -244,6 +261,7 @@ def test_len_reflects_count():
 # 17. top_k limits returned results
 # ---------------------------------------------------------------------------
 
+
 def test_top_k_limits_results():
     idx = fresh()
     _populate(idx, 10)
@@ -254,6 +272,7 @@ def test_top_k_limits_results():
 # ---------------------------------------------------------------------------
 # 18. top_k > 1000 raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_exceeds_max_raises():
     idx = fresh()
@@ -266,6 +285,7 @@ def test_top_k_exceeds_max_raises():
 # 19. query_bm25 top_k=0 raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_query_bm25_top_k_zero_raises():
     idx = fresh()
     idx.add("d", "hello world")
@@ -277,6 +297,7 @@ def test_query_bm25_top_k_zero_raises():
 # 20. query_semantic top_k=0 raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_query_semantic_top_k_zero_raises():
     idx = fresh()
     idx.add("d", "hello world")
@@ -287,6 +308,7 @@ def test_query_semantic_top_k_zero_raises():
 # ---------------------------------------------------------------------------
 # 21. Fused results include docs from both sub-index result sets
 # ---------------------------------------------------------------------------
+
 
 def test_fused_results_merge_both_subindex_results():
     idx = fresh()
@@ -300,6 +322,7 @@ def test_fused_results_merge_both_subindex_results():
 # ---------------------------------------------------------------------------
 # 22. Weights=1.0/0.0 still satisfies constraint check (valid edge case)
 # ---------------------------------------------------------------------------
+
 
 def test_weights_edge_case_one_zero():
     idx_b = HybridSearchIndex(bm25_weight=1.0, semantic_weight=0.0)

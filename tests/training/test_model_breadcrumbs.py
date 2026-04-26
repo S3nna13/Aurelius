@@ -1,4 +1,5 @@
 """Tests for model_breadcrumbs.py -- Panda et al. 2023 selective unlearning."""
+
 from __future__ import annotations
 
 import copy
@@ -19,10 +20,10 @@ from src.training.model_breadcrumbs import (
     select_weight_mask,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> AureliusTransformer:
     """Tiny AureliusTransformer: 2 layers, d_model=64, vocab=256, seq=32."""
@@ -54,6 +55,7 @@ def _default_config(sparsity: float = 0.9) -> BreadcrumbConfig:
 # ---------------------------------------------------------------------------
 # Tests: select_weight_mask
 # ---------------------------------------------------------------------------
+
 
 class TestSelectWeightMask:
     """Tests 1-3: mask shape, fraction, and methods."""
@@ -124,6 +126,7 @@ class TestSelectWeightMask:
 # Tests: apply_breadcrumb_perturbation
 # ---------------------------------------------------------------------------
 
+
 class TestApplyBreadcrumbPerturbation:
     """Tests 4-6: return type, weights changed, weights unchanged."""
 
@@ -155,7 +158,7 @@ class TestApplyBreadcrumbPerturbation:
             orig = orig_params[name].detach()
             new = new_params[name].detach()
             if mask.any():
-                changed_vals = (orig[mask] != new[mask])
+                changed_vals = orig[mask] != new[mask]
                 if changed_vals.any():
                     any_changed = True
                     break
@@ -198,6 +201,7 @@ class TestApplyBreadcrumbPerturbation:
 # Tests: compute_weight_masks
 # ---------------------------------------------------------------------------
 
+
 class TestComputeWeightMasks:
     """Tests 7-8: correct param names, all masks are bool tensors."""
 
@@ -239,6 +243,7 @@ class TestComputeWeightMasks:
 # ---------------------------------------------------------------------------
 # Tests: BreadcrumbUnlearner
 # ---------------------------------------------------------------------------
+
 
 class TestBreadcrumbUnlearner:
     """Tests 9-10: run returns correct types and fraction_changed is accurate."""
@@ -321,6 +326,7 @@ class TestBreadcrumbUnlearner:
 # ---------------------------------------------------------------------------
 # Tests: measure_weight_change
 # ---------------------------------------------------------------------------
+
 
 class TestMeasureWeightChange:
     """Tests 11-12: returns dict with 'total_change' > 0 after perturbation."""

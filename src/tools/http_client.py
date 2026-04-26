@@ -1,4 +1,5 @@
 """Simple HTTP client wrapper for agent tool calls."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,10 +20,11 @@ class SimpleHTTPClient:
     timeout_seconds: float = 30.0
 
     def get(self, url: str) -> HTTPResponse:
-        from urllib.request import urlopen, Request
-        req = Request(url, method="GET")
+        from urllib.request import Request, urlopen
+
+        req = Request(url, method="GET")  # noqa: S310
         try:
-            resp = urlopen(req, timeout=self.timeout_seconds)
+            resp = urlopen(req, timeout=self.timeout_seconds)  # noqa: S310
             body = resp.read().decode("utf-8", errors="replace")
             return HTTPResponse(status=resp.status, body=body)
         except Exception as e:
@@ -30,12 +32,13 @@ class SimpleHTTPClient:
 
     def post(self, url: str, data: dict[str, Any]) -> HTTPResponse:
         import json
-        from urllib.request import urlopen, Request
+        from urllib.request import Request, urlopen
+
         payload = json.dumps(data).encode("utf-8")
-        req = Request(url, data=payload, method="POST")
+        req = Request(url, data=payload, method="POST")  # noqa: S310
         req.add_header("Content-Type", "application/json")
         try:
-            resp = urlopen(req, timeout=self.timeout_seconds)
+            resp = urlopen(req, timeout=self.timeout_seconds)  # noqa: S310
             body = resp.read().decode("utf-8", errors="replace")
             return HTTPResponse(status=resp.status, body=body)
         except Exception as e:

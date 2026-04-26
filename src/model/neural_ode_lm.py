@@ -8,18 +8,16 @@ Pure PyTorch only — no external neural-network libraries.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ODEFunc — learned dynamics  dz/dt = f(t, z)
 # ---------------------------------------------------------------------------
+
 
 class ODEFunc(nn.Module):
     """Time-conditioned MLP dynamics: dz/dt = MLP(concat(z, t_embed)).
@@ -61,6 +59,7 @@ class ODEFunc(nn.Module):
 # Solvers
 # ---------------------------------------------------------------------------
 
+
 class EulerSolver:
     """Simple first-order Euler ODE integrator."""
 
@@ -68,7 +67,7 @@ class EulerSolver:
         self,
         func: ODEFunc,
         z0: Tensor,
-        t_span: Tuple[float, float],
+        t_span: tuple[float, float],
         n_steps: int,
     ) -> Tensor:
         """Integrate ODE from t_span[0] to t_span[1] using Euler steps.
@@ -100,7 +99,7 @@ class RK4Solver:
         self,
         func: ODEFunc,
         z0: Tensor,
-        t_span: Tuple[float, float],
+        t_span: tuple[float, float],
         n_steps: int,
     ) -> Tensor:
         """Integrate ODE from t_span[0] to t_span[1] using RK4 steps.
@@ -119,10 +118,10 @@ class RK4Solver:
         z = z0
         t = t0
         for _ in range(n_steps):
-            k1 = func(t,           z)
-            k2 = func(t + h / 2,   z + (h / 2) * k1)
-            k3 = func(t + h / 2,   z + (h / 2) * k2)
-            k4 = func(t + h,       z + h * k3)
+            k1 = func(t, z)
+            k2 = func(t + h / 2, z + (h / 2) * k1)
+            k3 = func(t + h / 2, z + (h / 2) * k2)
+            k4 = func(t + h, z + h * k3)
             z = z + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
             t = t + h
         return z
@@ -131,6 +130,7 @@ class RK4Solver:
 # ---------------------------------------------------------------------------
 # AdjointMethod — custom autograd Function
 # ---------------------------------------------------------------------------
+
 
 class AdjointMethod(torch.autograd.Function):
     """Neural ODE adjoint sensitivity method.
@@ -142,9 +142,15 @@ class AdjointMethod(torch.autograd.Function):
     """
 
     @staticmethod
-    def forward(ctx, z0: Tensor, func_params, func: ODEFunc,
-                t_span: Tuple[float, float], n_steps: int,
-                solver_fn) -> Tensor:
+    def forward(
+        ctx,
+        z0: Tensor,
+        func_params,
+        func: ODEFunc,
+        t_span: tuple[float, float],
+        n_steps: int,
+        solver_fn,
+    ) -> Tensor:
         """Solve ODE forward and save trajectory for backward.
 
         Args:
@@ -206,7 +212,8 @@ class AdjointMethod(torch.autograd.Function):
         grad = dL_dzT
         for z_in, z_out in reversed(intermediates):
             grads = torch.autograd.grad(
-                z_out, (z_in,) + tuple(func.parameters()),
+                z_out,
+                (z_in,) + tuple(func.parameters()),
                 grad_outputs=grad,
                 allow_unused=True,
                 retain_graph=False,
@@ -221,6 +228,7 @@ class AdjointMethod(torch.autograd.Function):
 # ---------------------------------------------------------------------------
 # NeuralODEBlock — drop-in layer replacement
 # ---------------------------------------------------------------------------
+
 
 class NeuralODEBlock(nn.Module):
     """Single Neural ODE block: maps [B, T, d_model] → [B, T, d_model].
@@ -237,7 +245,7 @@ class NeuralODEBlock(nn.Module):
         d_model: int,
         solver: str = "rk4",
         n_steps: int = 6,
-        t_span: Tuple[float, float] = (0.0, 1.0),
+        t_span: tuple[float, float] = (0.0, 1.0),
     ) -> None:
         super().__init__()
         self.odefunc = ODEFunc(d_model)
@@ -271,6 +279,7 @@ class NeuralODEBlock(nn.Module):
 # NeuralODELanguageModel
 # ---------------------------------------------------------------------------
 
+
 class NeuralODELanguageModel(nn.Module):
     """Language model using stacked Neural ODE blocks instead of transformer layers.
 
@@ -298,8 +307,10 @@ class NeuralODELanguageModel(nn.Module):
         self.embedding = nn.Embedding(vocab_size, d_model)
         t_span = (t_start, t_end)
         self.ode_blocks = nn.ModuleList(
-            [NeuralODEBlock(d_model, solver=solver, n_steps=n_steps, t_span=t_span)
-             for _ in range(n_ode_blocks)]
+            [
+                NeuralODEBlock(d_model, solver=solver, n_steps=n_steps, t_span=t_span)
+                for _ in range(n_ode_blocks)
+            ]
         )
         self.lm_head = nn.Linear(d_model, vocab_size)
 
@@ -315,7 +326,7 @@ class NeuralODELanguageModel(nn.Module):
         x = self.embedding(input_ids)  # [B, T, d_model]
         for block in self.ode_blocks:
             x = block(x)
-        logits = self.lm_head(x)       # [B, T, vocab_size]
+        logits = self.lm_head(x)  # [B, T, vocab_size]
         return logits
 
     def compute_loss(self, input_ids: Tensor) -> Tensor:
@@ -327,10 +338,10 @@ class NeuralODELanguageModel(nn.Module):
         Returns:
             Scalar loss tensor.
         """
-        logits = self.forward(input_ids)        # [B, T, V]
+        logits = self.forward(input_ids)  # [B, T, V]
         # Shift: predict token t+1 from position t
-        shift_logits = logits[:, :-1, :].contiguous()   # [B, T-1, V]
-        shift_labels = input_ids[:, 1:].contiguous()    # [B, T-1]
+        shift_logits = logits[:, :-1, :].contiguous()  # [B, T-1, V]
+        shift_labels = input_ids[:, 1:].contiguous()  # [B, T-1]
         B, Tm1, V = shift_logits.shape
         loss = nn.functional.cross_entropy(
             shift_logits.view(B * Tm1, V),
@@ -342,6 +353,7 @@ class NeuralODELanguageModel(nn.Module):
 # ---------------------------------------------------------------------------
 # NeuralODEConfig — dataclass for model hyper-parameters
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NeuralODEConfig:

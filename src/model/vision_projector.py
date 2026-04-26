@@ -16,29 +16,29 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class VisionProjectorConfig:
     """Configuration for the VisionProjector module."""
 
-    vit_hidden: int = 1024      # ViT output feature dimension
-    llm_hidden: int = 2048      # LLM input / d_model dimension
+    vit_hidden: int = 1024  # ViT output feature dimension
+    llm_hidden: int = 2048  # LLM input / d_model dimension
     temporal_pool: bool = True  # whether to apply temporal (sequence-length) compression
-    pool_factor: int = 4        # average-pool every pool_factor tokens along sequence dim
+    pool_factor: int = 4  # average-pool every pool_factor tokens along sequence dim
 
 
 # ---------------------------------------------------------------------------
 # VisionProjector
 # ---------------------------------------------------------------------------
+
 
 class VisionProjector(nn.Module):
     """Linear projector from ViT hidden space to LLM hidden space.

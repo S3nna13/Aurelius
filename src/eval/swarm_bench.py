@@ -2,10 +2,12 @@
 Measures completion_rate, critical_steps, speedup, parallelism_ratio.
 Based on Kimi K2.5 §3.2 results: single-agent 60.6% → swarm 78.4%.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
 
@@ -14,8 +16,8 @@ from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResu
 class SwarmTask:
     task_id: int
     description: str
-    n_subtasks: int = 3        # expected parallel subagents
-    expected_steps: int = 10   # per-subagent step budget
+    n_subtasks: int = 3  # expected parallel subagents
+    expected_steps: int = 10  # per-subagent step budget
 
 
 @dataclass

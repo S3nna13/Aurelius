@@ -7,7 +7,7 @@ selection strategies. All logic is stdlib-only; no foreign dependencies.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 __all__ = [

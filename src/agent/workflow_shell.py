@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Iterable, Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 from src.model.interface_framework import (
-    BackgroundJob,
-    Checkpoint,
     InterfaceFrameworkError,
     MessageEnvelope,
     TaskThread,
-    TaskThreadSpec,
 )
 
 from .interface_runtime import AureliusInterfaceRuntime
@@ -40,7 +37,7 @@ _ALLOW_DECISIONS = {"allow", "allow_once", "allow_for_thread", "allow_for_scope"
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_non_empty(value: str, field_name: str) -> str:
@@ -57,9 +54,7 @@ def _coerce_string_tuple(value: Any, field_name: str) -> tuple[str, ...]:
     if value is None:
         return tuple()
     if isinstance(value, str):
-        raise InterfaceFrameworkError(
-            f"{field_name} must be a sequence of strings, not a string"
-        )
+        raise InterfaceFrameworkError(f"{field_name} must be a sequence of strings, not a string")
     try:
         items = tuple(value)
     except TypeError as exc:  # pragma: no cover - defensive
@@ -139,7 +134,15 @@ class WorkflowRun:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for field_name in ("run_id", "workflow_id", "title", "session_id", "workstream_id", "thread_id", "status"):
+        for field_name in (
+            "run_id",
+            "workflow_id",
+            "title",
+            "session_id",
+            "workstream_id",
+            "thread_id",
+            "status",
+        ):
             _require_non_empty(getattr(self, field_name), field_name)
         if not isinstance(self.steps, tuple):
             raise InterfaceFrameworkError("steps must be a tuple")
@@ -156,9 +159,7 @@ class WorkflowRun:
             if not isinstance(value, tuple):
                 raise InterfaceFrameworkError(f"{tuple_name} must be a tuple")
             if not all(isinstance(item, str) and item for item in value):
-                raise InterfaceFrameworkError(
-                    f"{tuple_name} entries must be non-empty strings"
-                )
+                raise InterfaceFrameworkError(f"{tuple_name} entries must be non-empty strings")
         if self.halted_step_index is not None and (
             not isinstance(self.halted_step_index, int) or self.halted_step_index < 0
         ):
@@ -197,7 +198,9 @@ class WorkflowShell:
             raise InterfaceFrameworkError(
                 f"workflow must be a mapping, got {type(workflow).__name__}"
             )
-        workflow_id = str(workflow.get("workflow_id") or workflow.get("id") or f"workflow-{uuid.uuid4()}")
+        workflow_id = str(
+            workflow.get("workflow_id") or workflow.get("id") or f"workflow-{uuid.uuid4()}"
+        )
         title = str(workflow.get("title") or workflow_id)
         if "macros" in workflow and not isinstance(workflow.get("macros"), Mapping):
             raise InterfaceFrameworkError("workflow.macros must be a mapping")
@@ -272,7 +275,9 @@ class WorkflowShell:
             current_thread = self._refresh_thread(current_thread)
             if step.kind == "approval" and result["status"] in {"pending", "denied"}:
                 status = "pending_approval" if result["status"] == "pending" else "blocked"
-                halted_reason = "approval pending" if result["status"] == "pending" else "approval denied"
+                halted_reason = (
+                    "approval pending" if result["status"] == "pending" else "approval denied"
+                )
                 halted_step_index = index
                 final_artifact = result
                 break
@@ -471,7 +476,9 @@ class WorkflowShell:
             return base
 
         if step.kind == "approval":
-            affected_resources = _coerce_string_tuple(payload.get("affected_resources"), "affected_resources")
+            affected_resources = _coerce_string_tuple(
+                payload.get("affected_resources"), "affected_resources"
+            )
             approval = self.runtime.request_approval(
                 thread,
                 category=str(payload.get("category") or "shell command"),
@@ -484,7 +491,9 @@ class WorkflowShell:
             )
             decision = payload.get("decision")
             if decision is None and approval_decisions is not None:
-                decision = approval_decisions.get(step.step_id) or approval_decisions.get(step.summary)
+                decision = approval_decisions.get(step.step_id) or approval_decisions.get(
+                    step.summary
+                )
             normalized = _normalize_decision(decision or approval.decision)
             approval = replace(
                 approval,
@@ -520,7 +529,9 @@ class WorkflowShell:
         if step.kind == "checkpoint":
             checkpoint = self.runtime.checkpoint_thread(
                 thread,
-                memory_summary=str(payload.get("memory_summary") or thread.memory_summary or step.summary),
+                memory_summary=str(
+                    payload.get("memory_summary") or thread.memory_summary or step.summary
+                ),
                 last_model_response=payload.get("last_model_response"),
                 last_tool_result=payload.get("last_tool_result"),
             )
@@ -563,12 +574,14 @@ class WorkflowShell:
                     _coerce_string_tuple(payload["attached_skills"], "attached_skills"),
                 )
             base["subthread_id"] = child.thread_id
-            base["subthread"] = _json_safe({
-                "thread_id": child.thread_id,
-                "title": child.title,
-                "mode": child.mode,
-                "status": child.status,
-            })
+            base["subthread"] = _json_safe(
+                {
+                    "thread_id": child.thread_id,
+                    "title": child.title,
+                    "mode": child.mode,
+                    "status": child.status,
+                }
+            )
             return base
 
         raise InterfaceFrameworkError(f"unsupported workflow step kind: {step.kind!r}")

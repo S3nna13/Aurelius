@@ -11,16 +11,16 @@ refined_output) triplets that can be used as supervised training data
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SelfRefineConfig:
@@ -37,23 +37,25 @@ class SelfRefineConfig:
 # Data class for a single refinement step
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SelfRefineStep:
     """Stores the artefacts produced during one self-refine iteration."""
 
-    initial_ids: torch.Tensor    # token ids of the initial (pre-refinement) output
-    critique_ids: torch.Tensor   # token ids of the critique
-    refined_ids: torch.Tensor    # token ids of the refined output
+    initial_ids: torch.Tensor  # token ids of the initial (pre-refinement) output
+    critique_ids: torch.Tensor  # token ids of the critique
+    refined_ids: torch.Tensor  # token ids of the refined output
     reward_before: float
     reward_after: float
-    improvement: float           # reward_after - reward_before
+    improvement: float  # reward_after - reward_before
 
 
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
 
-def compute_refinement_gain(steps: List[SelfRefineStep]) -> dict:
+
+def compute_refinement_gain(steps: list[SelfRefineStep]) -> dict:
     """Compute aggregate statistics over a list of refinement steps.
 
     Args:
@@ -83,6 +85,7 @@ def compute_refinement_gain(steps: List[SelfRefineStep]) -> dict:
 # ---------------------------------------------------------------------------
 # SelfRefineTrainer
 # ---------------------------------------------------------------------------
+
 
 class SelfRefineTrainer:
     """Iterative self-refinement wrapper around a pure-PyTorch language model.
@@ -144,7 +147,7 @@ class SelfRefineTrainer:
             1-D LongTensor of generated token ids (not including input_ids).
         """
         self.model.eval()
-        generated: List[int] = []
+        generated: list[int] = []
         current_ids = input_ids.unsqueeze(0)  # (1, seq_len)
 
         with torch.no_grad():
@@ -227,9 +230,7 @@ class SelfRefineTrainer:
         Returns:
             1-D LongTensor of refined response token ids.
         """
-        context = torch.cat(
-            [prompt_ids, response_ids, critique_ids, refine_prompt_ids], dim=0
-        )
+        context = torch.cat([prompt_ids, response_ids, critique_ids, refine_prompt_ids], dim=0)
         return self.generate_with_ids(
             context,
             max_new=max(16, self.n_refine_steps * 8),
@@ -246,7 +247,7 @@ class SelfRefineTrainer:
         initial_response_ids: torch.Tensor,
         critique_prompt_ids: torch.Tensor,
         refine_prompt_ids: torch.Tensor,
-    ) -> List[SelfRefineStep]:
+    ) -> list[SelfRefineStep]:
         """Run the full Self-Refine loop for up to n_refine_steps iterations.
 
         Each iteration:
@@ -267,7 +268,7 @@ class SelfRefineTrainer:
             List of SelfRefineStep, one per iteration executed (length <=
             n_refine_steps).
         """
-        steps: List[SelfRefineStep] = []
+        steps: list[SelfRefineStep] = []
         current_response_ids = initial_response_ids
 
         for _ in range(self.n_refine_steps):
@@ -307,8 +308,8 @@ class SelfRefineTrainer:
 
     def create_training_pairs(
         self,
-        steps: List[SelfRefineStep],
-    ) -> List[dict]:
+        steps: list[SelfRefineStep],
+    ) -> list[dict]:
         """Extract (bad_response, critique, good_response) training pairs.
 
         Only steps where improvement > 0 are included, making these suitable
@@ -324,7 +325,7 @@ class SelfRefineTrainer:
                 refined_ids  -- 1-D LongTensor (the improved response).
                 improvement  -- float scalar (reward_after - reward_before).
         """
-        pairs: List[dict] = []
+        pairs: list[dict] = []
         for step in steps:
             if step.improvement > 0:
                 pairs.append(

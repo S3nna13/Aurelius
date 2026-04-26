@@ -9,16 +9,14 @@ Import path: aurelius.training.lr_scheduling
 from __future__ import annotations
 
 import math
-import pytest
-import torch
+
 import torch.nn as nn
 import torch.optim as optim
-
 from aurelius.training.lr_scheduling import (
-    WSDScheduler,
     CosineWithRestartsScheduler,
     InverseSqrtScheduler,
     LRSchedulerComparison,
+    WSDScheduler,
 )
 
 # ---------------------------------------------------------------------------
@@ -50,8 +48,8 @@ def _step_n(scheduler, n: int):
 # WSDScheduler tests
 # ---------------------------------------------------------------------------
 
-class TestWSDScheduler:
 
+class TestWSDScheduler:
     def _make(self, **kw):
         opt = _make_optimizer()
         defaults = dict(
@@ -76,23 +74,19 @@ class TestWSDScheduler:
     def test_stable_phase_lr_constant(self):
         """LR should be constant at base_lr during the stable phase."""
         sched = self._make()
-        _step_n(sched, WARMUP)   # exhaust warmup
+        _step_n(sched, WARMUP)  # exhaust warmup
         stable_lrs = _step_n(sched, STABLE)
         for i, lr in enumerate(stable_lrs):
-            assert abs(lr - BASE_LR) < 1e-9, (
-                f"LR {lr} != base_lr {BASE_LR} at stable step {i}"
-            )
+            assert abs(lr - BASE_LR) < 1e-9, f"LR {lr} != base_lr {BASE_LR} at stable step {i}"
 
     def test_decay_phase_lr_decreases(self):
         """LR should decrease during the decay phase."""
         sched = self._make()
-        _step_n(sched, WARMUP + STABLE)   # exhaust warmup + stable
+        _step_n(sched, WARMUP + STABLE)  # exhaust warmup + stable
         decay_lrs = _step_n(sched, DECAY)
         assert decay_lrs[0] > decay_lrs[-1], "LR should decrease during decay"
         for i in range(1, len(decay_lrs)):
-            assert decay_lrs[i - 1] >= decay_lrs[i], (
-                f"LR increased at decay step {i}"
-            )
+            assert decay_lrs[i - 1] >= decay_lrs[i], f"LR increased at decay step {i}"
 
     def test_post_decay_lr_equals_min(self):
         """After the decay phase LR should equal min_lr_ratio * base_lr."""
@@ -123,13 +117,11 @@ class TestWSDScheduler:
 # CosineWithRestartsScheduler tests
 # ---------------------------------------------------------------------------
 
-class TestCosineWithRestartsScheduler:
 
+class TestCosineWithRestartsScheduler:
     def _make(self, T_0=10, T_mult=1, min_lr_ratio=0.0):
         opt = _make_optimizer()
-        return CosineWithRestartsScheduler(
-            opt, T_0=T_0, T_mult=T_mult, min_lr_ratio=min_lr_ratio
-        )
+        return CosineWithRestartsScheduler(opt, T_0=T_0, T_mult=T_mult, min_lr_ratio=min_lr_ratio)
 
     def test_lr_at_cycle_start_equals_base_lr(self):
         """LR at the very first step (pos=0 in cycle) should be base_lr."""
@@ -150,9 +142,7 @@ class TestCosineWithRestartsScheduler:
         _step_n(sched, T_0)
         # At step=T_0, pos=0 → cosine = 1 → lr = base_lr
         lr = sched.optimizer.param_groups[0]["lr"]
-        assert abs(lr - BASE_LR) < 1e-9, (
-            f"Expected base_lr at restart, got {lr}"
-        )
+        assert abs(lr - BASE_LR) < 1e-9, f"Expected base_lr at restart, got {lr}"
 
     def test_lr_decreases_within_cycle(self):
         """LR should decrease monotonically within a cycle."""
@@ -161,7 +151,7 @@ class TestCosineWithRestartsScheduler:
         lrs = _step_n(sched, T_0 - 1)
         for i in range(1, len(lrs)):
             assert lrs[i - 1] >= lrs[i], (
-                f"LR increased within cycle at step {i}: {lrs[i-1]} → {lrs[i]}"
+                f"LR increased within cycle at step {i}: {lrs[i - 1]} → {lrs[i]}"
             )
 
     def test_T_mult_extends_cycle(self):
@@ -171,7 +161,7 @@ class TestCosineWithRestartsScheduler:
         # After first cycle (T_0=10 steps) the second cycle has length 20.
         # At step T_0 + 10 (halfway through second cycle) lr should still be
         # above minimum, i.e. cycle not yet finished.
-        _step_n(sched, T_0)          # end of first cycle
+        _step_n(sched, T_0)  # end of first cycle
         mid_lrs = _step_n(sched, 10)  # halfway into second cycle (len=20)
         # lr halfway into cosine is cos(π*0.5) = 0 → lr ≈ 0 only if T_0==10
         # But with T_mult=2, halfway of a 20-step cycle is progress=0.5 → cos=0
@@ -183,8 +173,8 @@ class TestCosineWithRestartsScheduler:
 # InverseSqrtScheduler tests
 # ---------------------------------------------------------------------------
 
-class TestInverseSqrtScheduler:
 
+class TestInverseSqrtScheduler:
     def _make(self, warmup_steps=WARMUP):
         opt = _make_optimizer()
         return InverseSqrtScheduler(opt, warmup_steps=warmup_steps)
@@ -194,9 +184,7 @@ class TestInverseSqrtScheduler:
         sched = self._make()
         lrs = _step_n(sched, WARMUP)
         for i in range(1, len(lrs)):
-            assert lrs[i - 1] <= lrs[i], (
-                f"LR decreased at warmup step {i}: {lrs[i-1]} → {lrs[i]}"
-            )
+            assert lrs[i - 1] <= lrs[i], f"LR decreased at warmup step {i}: {lrs[i - 1]} → {lrs[i]}"
 
     def test_post_warmup_inverse_sqrt(self):
         """After warmup, lr should equal base_lr * sqrt(warmup / step)."""
@@ -215,9 +203,7 @@ class TestInverseSqrtScheduler:
         sched = self._make()
         lrs = _step_n(sched, WARMUP + DECAY + 50)
         for i, lr in enumerate(lrs):
-            assert lr <= BASE_LR + 1e-9, (
-                f"LR {lr} exceeded base_lr {BASE_LR} at step {i}"
-            )
+            assert lr <= BASE_LR + 1e-9, f"LR {lr} exceeded base_lr {BASE_LR} at step {i}"
 
     def test_post_warmup_lr_decreases(self):
         """After warmup the inverse-sqrt schedule should decrease."""
@@ -225,17 +211,15 @@ class TestInverseSqrtScheduler:
         _step_n(sched, WARMUP)
         post_lrs = _step_n(sched, 20)
         for i in range(1, len(post_lrs)):
-            assert post_lrs[i - 1] >= post_lrs[i], (
-                f"Post-warmup lr increased at step {i}"
-            )
+            assert post_lrs[i - 1] >= post_lrs[i], f"Post-warmup lr increased at step {i}"
 
 
 # ---------------------------------------------------------------------------
 # LRSchedulerComparison tests
 # ---------------------------------------------------------------------------
 
-class TestLRSchedulerComparison:
 
+class TestLRSchedulerComparison:
     def _make_comparison(self):
         opt_wsd = _make_optimizer()
         opt_inv = _make_optimizer()
@@ -256,9 +240,7 @@ class TestLRSchedulerComparison:
         comp = self._make_comparison()
         results = comp.simulate(n)
         for name, lrs in results.items():
-            assert len(lrs) == n, (
-                f"Scheduler '{name}' returned {len(lrs)} lrs, expected {n}"
-            )
+            assert len(lrs) == n, f"Scheduler '{name}' returned {len(lrs)} lrs, expected {n}"
 
     def test_simulate_records_all_schedulers(self):
         """simulate should return an entry for every scheduler passed in."""

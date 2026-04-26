@@ -1,18 +1,18 @@
 """Tests for CLIP-style contrastive image-text alignment loss and utilities."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.clip_loss import (
     CLIPConfig,
-    LearnableTemperature,
+    CLIPModel,
     CLIPProjection,
+    CLIPTrainer,
+    LearnableTemperature,
     clip_contrastive_loss,
     compute_retrieval_metrics,
-    CLIPModel,
-    CLIPTrainer,
 )
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ def _make_config() -> CLIPConfig:
 def _make_clip_model() -> CLIPModel:
     torch.manual_seed(0)
     vision_encoder = nn.Linear(D_VISION, D_VISION)
-    text_encoder = nn.Identity()   # not directly used; encode_text mean-pools token_embeddings
+    text_encoder = nn.Identity()  # not directly used; encode_text mean-pools token_embeddings
     cfg = _make_config()
     return CLIPModel(vision_encoder=vision_encoder, text_encoder=text_encoder, config=cfg)
 
@@ -51,6 +51,7 @@ def _rand_normalized(b: int, d: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # 1. test_clip_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_clip_config_defaults():
     """CLIPConfig should have the correct default field values."""
@@ -66,6 +67,7 @@ def test_clip_config_defaults():
 # 2. test_learnable_temperature_positive
 # ---------------------------------------------------------------------------
 
+
 def test_learnable_temperature_positive():
     """LearnableTemperature forward() must always return a positive value."""
     lt = LearnableTemperature(init_temp=0.07)
@@ -76,6 +78,7 @@ def test_learnable_temperature_positive():
 # ---------------------------------------------------------------------------
 # 3. test_learnable_temperature_gradient
 # ---------------------------------------------------------------------------
+
 
 def test_learnable_temperature_gradient():
     """Gradient must flow through LearnableTemperature."""
@@ -91,6 +94,7 @@ def test_learnable_temperature_gradient():
 # 4. test_clip_projection_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_clip_projection_output_shape():
     """CLIPProjection must map (B, in_dim) -> (B, embed_dim)."""
     torch.manual_seed(0)
@@ -103,6 +107,7 @@ def test_clip_projection_output_shape():
 # ---------------------------------------------------------------------------
 # 5. test_clip_contrastive_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_clip_contrastive_loss_scalar():
     """clip_contrastive_loss must return a finite scalar tensor."""
@@ -117,6 +122,7 @@ def test_clip_contrastive_loss_scalar():
 # ---------------------------------------------------------------------------
 # 6. test_clip_contrastive_loss_identity
 # ---------------------------------------------------------------------------
+
 
 def test_clip_contrastive_loss_identity():
     """When image_embeds == text_embeds (diagonal sim matrix), loss should be low."""
@@ -140,6 +146,7 @@ def test_clip_contrastive_loss_identity():
 # 7. test_clip_contrastive_loss_symmetry
 # ---------------------------------------------------------------------------
 
+
 def test_clip_contrastive_loss_symmetry():
     """Swapping image and text embeddings should yield the same loss."""
     torch.manual_seed(0)
@@ -158,6 +165,7 @@ def test_clip_contrastive_loss_symmetry():
 # 8. test_retrieval_metrics_perfect
 # ---------------------------------------------------------------------------
 
+
 def test_retrieval_metrics_perfect():
     """Identical embeddings should yield R@1 = 1.0 for both directions."""
     torch.manual_seed(0)
@@ -172,6 +180,7 @@ def test_retrieval_metrics_perfect():
 # ---------------------------------------------------------------------------
 # 9. test_retrieval_metrics_keys
 # ---------------------------------------------------------------------------
+
 
 def test_retrieval_metrics_keys():
     """compute_retrieval_metrics must return the expected set of keys."""
@@ -194,6 +203,7 @@ def test_retrieval_metrics_keys():
 # 10. test_clip_model_encode_image_shape
 # ---------------------------------------------------------------------------
 
+
 def test_clip_model_encode_image_shape():
     """encode_image must return (B, embed_dim)."""
     torch.manual_seed(0)
@@ -206,6 +216,7 @@ def test_clip_model_encode_image_shape():
 # ---------------------------------------------------------------------------
 # 11. test_clip_model_encode_text_shape
 # ---------------------------------------------------------------------------
+
 
 def test_clip_model_encode_text_shape():
     """encode_text must return (B, embed_dim) from (B, T, D) token embeddings."""
@@ -220,6 +231,7 @@ def test_clip_model_encode_text_shape():
 # ---------------------------------------------------------------------------
 # 12. test_clip_trainer_step_keys
 # ---------------------------------------------------------------------------
+
 
 def test_clip_trainer_step_keys():
     """CLIPTrainer.train_step must return dict containing 'loss' and 'temperature'."""

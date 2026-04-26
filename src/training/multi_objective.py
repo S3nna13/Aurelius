@@ -1,10 +1,11 @@
 """Multi-objective optimization: Pareto fronts, hypervolume, and MOO-based loss weighting."""
+
 from __future__ import annotations
 
 import logging
 import random
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MOOConfig:
@@ -30,6 +32,7 @@ class MOOConfig:
 # ---------------------------------------------------------------------------
 # Pareto dominance
 # ---------------------------------------------------------------------------
+
 
 def is_pareto_dominant(a: list[float], b: list[float]) -> bool:
     """Return True if solution *a* dominates solution *b* (minimization).
@@ -74,6 +77,7 @@ def compute_pareto_front(solutions: list[list[float]]) -> list[int]:
 # ---------------------------------------------------------------------------
 # Hypervolume indicator
 # ---------------------------------------------------------------------------
+
 
 def compute_hypervolume(pareto_front: list[list[float]], reference_point: list[float]) -> float:
     """Compute the hypervolume indicator for a Pareto front (minimization).
@@ -137,6 +141,7 @@ def compute_hypervolume(pareto_front: list[list[float]], reference_point: list[f
 # Scalarization functions
 # ---------------------------------------------------------------------------
 
+
 def linear_scalarization(objectives: Tensor, weights: Tensor) -> Tensor:
     """Weighted sum of objectives.
 
@@ -191,13 +196,14 @@ def eps_constrained_loss(
     penalty = torch.zeros_like(primary_loss)
     for closs, tol in zip(constraint_losses, tolerances):
         violation = torch.clamp(closs - tol, min=0.0)
-        penalty = penalty + violation ** 2
+        penalty = penalty + violation**2
     return primary_loss + penalty
 
 
 # ---------------------------------------------------------------------------
 # MOO Trainer
 # ---------------------------------------------------------------------------
+
 
 class MOOTrainer:
     """Trainer that scalarizes multiple objectives using Pareto-based methods.
@@ -260,7 +266,9 @@ class MOOTrainer:
             total = linear_scalarization(objectives_t, self._weights.to(objectives_t.device))
         elif method == "chebyshev":
             ref = self._ref.to(objectives_t.device)
-            total = chebyshev_scalarization(objectives_t, self._weights.to(objectives_t.device), ref)
+            total = chebyshev_scalarization(
+                objectives_t, self._weights.to(objectives_t.device), ref
+            )
         elif method == "eps_constrained":
             primary = obj_tensors[0]
             constraints = obj_tensors[1:]
@@ -310,10 +318,7 @@ class MOOTrainer:
         n_obj = len(pareto_points[0])
 
         # Mean value per objective across the Pareto front
-        means = [
-            sum(p[k] for p in pareto_points) / len(pareto_points)
-            for k in range(n_obj)
-        ]
+        means = [sum(p[k] for p in pareto_points) / len(pareto_points) for k in range(n_obj)]
 
         # Inverse-proportional weights; guard against zero means
         inv = [1.0 / (m + 1e-8) for m in means]

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.longcontext.context_window_manager import (
     ContextWindowManager,
     WindowPolicy,
@@ -50,8 +48,8 @@ def test_truncate_right():
 # ---------------------------------------------------------------------------
 def test_summarize_middle_structure():
     result = MGR.apply_policy(TOKENS, WindowPolicy.SUMMARIZE_MIDDLE, summary_size=20)
-    head_size = 100 // 4   # 25
-    tail_size = 100 // 4   # 25
+    head_size = 100 // 4  # 25
+    tail_size = 100 // 4  # 25
     # head comes first
     assert result[:head_size] == TOKENS[:head_size]
     # placeholder of -1 follows

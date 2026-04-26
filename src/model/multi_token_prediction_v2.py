@@ -22,14 +22,12 @@ All classes use pure PyTorch — no flash-attn, no external deps.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -140,13 +138,11 @@ class MultiTokenPredictor(nn.Module):
         )
 
         if config.share_trunk:
-            self.trunk: Optional[MTPTrunk] = MTPTrunk(
-                config.d_model, config.trunk_expansion
-            )
+            self.trunk: MTPTrunk | None = MTPTrunk(config.d_model, config.trunk_expansion)
         else:
             self.trunk = None
 
-    def forward(self, hidden: Tensor) -> List[Tensor]:
+    def forward(self, hidden: Tensor) -> list[Tensor]:
         """Run trunk (if present) then each head.
 
         Args:
@@ -189,10 +185,10 @@ class MTPLoss(nn.Module):
 
     def forward(
         self,
-        head_logits: List[Tensor],  # list of K (B, T, V)
-        labels: Tensor,             # (B, T) LongTensor
-    ) -> Tuple[Tensor, Dict[str, Tensor]]:
-        metrics: Dict[str, Tensor] = {}
+        head_logits: list[Tensor],  # list of K (B, T, V)
+        labels: Tensor,  # (B, T) LongTensor
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        metrics: dict[str, Tensor] = {}
         total = torch.zeros((), dtype=head_logits[0].dtype, device=head_logits[0].device)
 
         for k, logits in enumerate(head_logits):

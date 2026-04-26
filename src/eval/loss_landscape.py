@@ -3,18 +3,19 @@
 Implements random-direction perturbation, filter normalization, and 1D/2D
 landscape sampling to visualize the loss surface of a neural network.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LandscapeConfig:
@@ -28,6 +29,7 @@ class LandscapeConfig:
                           "filter" has the same norm as the corresponding model
                           parameter filter (Li et al., 2018, §3).
     """
+
     n_points: int = 11
     alpha_range: float = 1.0
     filter_normalize: bool = True
@@ -37,19 +39,18 @@ class LandscapeConfig:
 # Direction generation
 # ---------------------------------------------------------------------------
 
+
 class DirectionGenerator:
     """Generate perturbation directions for loss landscape analysis."""
 
     def __init__(self, model: nn.Module) -> None:
         self.model = model
 
-    def random_direction(self) -> List[torch.Tensor]:
+    def random_direction(self) -> list[torch.Tensor]:
         """Return a random Gaussian direction with the same shapes as model params."""
         return [torch.randn_like(p.data) for p in self.model.parameters()]
 
-    def filter_normalize_direction(
-        self, direction: List[torch.Tensor]
-    ) -> List[torch.Tensor]:
+    def filter_normalize_direction(self, direction: list[torch.Tensor]) -> list[torch.Tensor]:
         """Scale each direction vector filter-wise to match model parameter norms.
 
         For a parameter tensor of shape (out, ...) each "filter" is one row
@@ -58,7 +59,7 @@ class DirectionGenerator:
 
         After normalization: ‖d[i]_filter‖ = ‖theta[i]_filter‖  ∀ filter i.
         """
-        normalized: List[torch.Tensor] = []
+        normalized: list[torch.Tensor] = []
         for d, p in zip(direction, self.model.parameters()):
             theta = p.data
             if theta.dim() <= 1:
@@ -72,18 +73,18 @@ class DirectionGenerator:
                 # Flatten all dims beyond the first
                 d_2d = d.view(d.shape[0], -1)
                 theta_2d = theta.view(theta.shape[0], -1)
-                d_row_norms = d_2d.norm(dim=1, keepdim=True)       # (out, 1)
+                d_row_norms = d_2d.norm(dim=1, keepdim=True)  # (out, 1)
                 theta_row_norms = theta_2d.norm(dim=1, keepdim=True)  # (out, 1)
-                scale = theta_row_norms / (d_row_norms + 1e-10)    # (out, 1)
+                scale = theta_row_norms / (d_row_norms + 1e-10)  # (out, 1)
                 d_scaled = (d_2d * scale).view_as(d)
                 normalized.append(d_scaled)
         return normalized
 
     def pca_direction(
         self,
-        trajectory: List[List[torch.Tensor]],
+        trajectory: list[list[torch.Tensor]],
         component: int = 0,
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         """Compute a PCA direction from a sequence of parameter snapshots.
 
         Args:
@@ -99,7 +100,7 @@ class DirectionGenerator:
             raise ValueError("trajectory must contain at least 2 snapshots")
 
         # Flatten each snapshot to a 1-D vector
-        flat_snapshots: List[torch.Tensor] = []
+        flat_snapshots: list[torch.Tensor] = []
         for snap in trajectory:
             flat_snapshots.append(torch.cat([t.reshape(-1) for t in snap]))
 
@@ -117,7 +118,7 @@ class DirectionGenerator:
 
         # Reshape back to param shapes
         param_shapes = [p.shape for p in self.model.parameters()]
-        direction: List[torch.Tensor] = []
+        direction: list[torch.Tensor] = []
         offset = 0
         for shape in param_shapes:
             numel = 1
@@ -132,6 +133,7 @@ class DirectionGenerator:
 # ---------------------------------------------------------------------------
 # Landscape evaluation
 # ---------------------------------------------------------------------------
+
 
 class LandscapeEvaluator:
     """Evaluate model loss along 1D and 2D directions in parameter space."""
@@ -150,21 +152,21 @@ class LandscapeEvaluator:
     # Parameter helpers
     # ------------------------------------------------------------------
 
-    def _get_params(self) -> List[torch.Tensor]:
+    def _get_params(self) -> list[torch.Tensor]:
         """Return cloned copies of current model parameter data."""
         return [p.data.clone() for p in self.model.parameters()]
 
-    def _set_params(self, params: List[torch.Tensor]) -> None:
+    def _set_params(self, params: list[torch.Tensor]) -> None:
         """Set model parameters to the provided values (in-place)."""
         for p, v in zip(self.model.parameters(), params):
             p.data.copy_(v)
 
     def _perturb(
         self,
-        base: List[torch.Tensor],
-        direction: List[torch.Tensor],
+        base: list[torch.Tensor],
+        direction: list[torch.Tensor],
         alpha: float,
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         """Return base + alpha * direction element-wise."""
         return [b + alpha * d for b, d in zip(base, direction)]
 
@@ -174,9 +176,9 @@ class LandscapeEvaluator:
 
     def scan_1d(
         self,
-        direction: List[torch.Tensor],
+        direction: list[torch.Tensor],
         loss_inputs,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """Scan the loss along a single direction.
 
         Args:
@@ -193,7 +195,7 @@ class LandscapeEvaluator:
         alphas = torch.linspace(-cfg.alpha_range, cfg.alpha_range, cfg.n_points)
 
         base = self._get_params()
-        losses: List[float] = []
+        losses: list[float] = []
 
         for alpha in alphas.tolist():
             perturbed = self._perturb(base, direction, alpha)
@@ -218,10 +220,10 @@ class LandscapeEvaluator:
 
     def scan_2d(
         self,
-        dir1: List[torch.Tensor],
-        dir2: List[torch.Tensor],
+        dir1: list[torch.Tensor],
+        dir2: list[torch.Tensor],
         loss_inputs,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """Scan the loss over a 2-D grid spanned by dir1 and dir2.
 
         Args:
@@ -246,10 +248,7 @@ class LandscapeEvaluator:
         for i, alpha in enumerate(alphas.tolist()):
             for j, beta in enumerate(betas.tolist()):
                 # base + alpha*dir1 + beta*dir2
-                perturbed = [
-                    b + alpha * d1 + beta * d2
-                    for b, d1, d2 in zip(base, dir1, dir2)
-                ]
+                perturbed = [b + alpha * d1 + beta * d2 for b, d1, d2 in zip(base, dir1, dir2)]
                 self._set_params(perturbed)
                 with torch.no_grad():
                     loss_val = self.loss_fn(self.model, *loss_inputs)
@@ -271,6 +270,7 @@ class LandscapeEvaluator:
 # Landscape statistics
 # ---------------------------------------------------------------------------
 
+
 class LandscapeStats:
     """Compute scalar statistics from 1-D or 2-D landscape scan results."""
 
@@ -289,9 +289,7 @@ class LandscapeStats:
         """
         return float((losses.max() - losses.min()).item())
 
-    def curvature_at_center(
-        self, losses: torch.Tensor, alphas: torch.Tensor
-    ) -> float:
+    def curvature_at_center(self, losses: torch.Tensor, alphas: torch.Tensor) -> float:
         """Finite-difference second derivative of the loss at the centre.
 
         Uses the standard three-point stencil:

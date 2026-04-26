@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.eval.calibration import (
     CalibrationConfig,
-    compute_confidence,
+    ModelCalibrator,
+    TemperatureScaling,
     compute_accuracy,
+    compute_brier_score,
+    compute_confidence,
     compute_ece,
     compute_mce,
     reliability_diagram_data,
-    TemperatureScaling,
-    compute_brier_score,
-    ModelCalibrator,
 )
 
 # Tiny constants used throughout

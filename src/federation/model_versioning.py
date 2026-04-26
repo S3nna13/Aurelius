@@ -1,11 +1,11 @@
 """Model versioning registry for federated learning rounds."""
+
 from __future__ import annotations
 
 import hashlib
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 
@@ -33,7 +33,7 @@ class ModelVersionRegistry:
 
     def __init__(self) -> None:
         self._versions: dict[str, ModelVersion] = {}  # version_id -> ModelVersion
-        self._round_index: dict[int, str] = {}         # round_number -> version_id
+        self._round_index: dict[int, str] = {}  # round_number -> version_id
 
     # ------------------------------------------------------------------
     # Registration
@@ -43,7 +43,7 @@ class ModelVersionRegistry:
         self,
         round_number: int,
         params: dict[str, torch.Tensor],
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> ModelVersion:
         """Register a new model version for *round_number*."""
         version = ModelVersion(
@@ -60,11 +60,11 @@ class ModelVersionRegistry:
     # Retrieval
     # ------------------------------------------------------------------
 
-    def get(self, version_id: str) -> Optional[ModelVersion]:
+    def get(self, version_id: str) -> ModelVersion | None:
         """Return the version with *version_id*, or None."""
         return self._versions.get(version_id)
 
-    def get_by_round(self, round_number: int) -> Optional[ModelVersion]:
+    def get_by_round(self, round_number: int) -> ModelVersion | None:
         """Return the version registered for *round_number*, or None."""
         vid = self._round_index.get(round_number)
         return self._versions.get(vid) if vid else None
@@ -106,8 +106,9 @@ try:
     from src.federation.federated_learning import (  # type: ignore[import]
         FEDERATION_REGISTRY as _REG,
     )
+
     _REG["model_versioning"] = _MODEL_VERSION_REGISTRY
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 FEDERATION_REGISTRY: dict[str, object] = {"model_versioning": _MODEL_VERSION_REGISTRY}

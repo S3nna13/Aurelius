@@ -14,13 +14,12 @@ Sections:
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # -- 1. GSM8K-inspired: Math Answer Verifier ----------------------------------
 
@@ -34,7 +33,7 @@ def extract_final_answer(text: str, delimiter: str = "####") -> str | None:
     idx = text.rfind(delimiter)
     if idx == -1:
         return None
-    raw = text[idx + len(delimiter):]
+    raw = text[idx + len(delimiter) :]
     cleaned = raw.strip().replace(",", "").replace("$", "")
     return cleaned
 
@@ -49,6 +48,7 @@ def verify_numeric_answer(
     Comma-separated numbers (e.g. "1,234") are accepted by stripping
     commas before parsing.  Returns False if either value cannot be parsed.
     """
+
     def _parse(s: str):
         try:
             return float(s.replace(",", "").strip())
@@ -481,7 +481,7 @@ def evaluate_graph_reasoning(
             input_ids = torch.tensor([ids], dtype=torch.long)
 
             output_ids = model.generate(input_ids, max_new_tokens=max_new_tokens)
-            new_ids = output_ids[0, len(ids):]
+            new_ids = output_ids[0, len(ids) :]
             generated_text = tokenizer_decode(new_ids)
 
             predicted = extract_graph_answer_nodes(generated_text)

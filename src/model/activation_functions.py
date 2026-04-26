@@ -10,17 +10,16 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ActivationConfig:
@@ -42,6 +41,7 @@ class ActivationConfig:
 # GLU-family FFN modules
 # ---------------------------------------------------------------------------
 
+
 class SwiGLUFFN(nn.Module):
     """SwiGLU feed-forward network.
 
@@ -55,7 +55,7 @@ class SwiGLUFFN(nn.Module):
     def __init__(self, d_model: int, d_ff: int) -> None:
         super().__init__()
         self.W_gate = nn.Linear(d_model, d_ff, bias=False)
-        self.W_up   = nn.Linear(d_model, d_ff, bias=False)
+        self.W_up = nn.Linear(d_model, d_ff, bias=False)
         self.W_down = nn.Linear(d_ff, d_model, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -73,7 +73,7 @@ class GeGLUFFN(nn.Module):
     def __init__(self, d_model: int, d_ff: int) -> None:
         super().__init__()
         self.W_gate = nn.Linear(d_model, d_ff, bias=False)
-        self.W_up   = nn.Linear(d_model, d_ff, bias=False)
+        self.W_up = nn.Linear(d_model, d_ff, bias=False)
         self.W_down = nn.Linear(d_ff, d_model, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -91,7 +91,7 @@ class ReGLUFFN(nn.Module):
     def __init__(self, d_model: int, d_ff: int) -> None:
         super().__init__()
         self.W_gate = nn.Linear(d_model, d_ff, bias=False)
-        self.W_up   = nn.Linear(d_model, d_ff, bias=False)
+        self.W_up = nn.Linear(d_model, d_ff, bias=False)
         self.W_down = nn.Linear(d_ff, d_model, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -101,6 +101,7 @@ class ReGLUFFN(nn.Module):
 # ---------------------------------------------------------------------------
 # Squared-ReLU FFN
 # ---------------------------------------------------------------------------
+
 
 class SquaredReLUFFN(nn.Module):
     """Squared ReLU feed-forward network (from Primer).
@@ -124,6 +125,7 @@ class SquaredReLUFFN(nn.Module):
 # ---------------------------------------------------------------------------
 # Standard 2-layer MLPs (GELU / SiLU)
 # ---------------------------------------------------------------------------
+
 
 class _StandardFFN(nn.Module):
     """Standard 2-layer MLP with a configurable pointwise activation."""
@@ -183,8 +185,7 @@ class FFNFactory:
         elif act in _STANDARD_VARIANTS:
             return _StandardFFN(config.d_model, config.d_ff, act)
         raise ValueError(
-            f"Unknown activation '{config.activation}'. "
-            f"Choose from: {sorted(_ALL_VARIANTS)}"
+            f"Unknown activation '{config.activation}'. Choose from: {sorted(_ALL_VARIANTS)}"
         )
 
     # ------------------------------------------------------------------
@@ -200,7 +201,7 @@ class FFNFactory:
         config: ActivationConfig,
         batch_size: int,
         seq_len: int,
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """Estimate FLOPs for a single forward (and approximate backward) pass.
 
         Counting convention: one multiply-add = 2 FLOPs.
@@ -246,6 +247,7 @@ class FFNFactory:
 # Benchmark
 # ---------------------------------------------------------------------------
 
+
 class ActivationBenchmark:
     """Compare activation variants on the same input and measure sparsity.
 
@@ -254,23 +256,23 @@ class ActivationBenchmark:
                  benchmark.
     """
 
-    def __init__(self, configs: List[ActivationConfig]) -> None:
+    def __init__(self, configs: list[ActivationConfig]) -> None:
         self._configs = configs
         self._factory = FFNFactory()
-        self._ffns: Dict[str, nn.Module] = {}
+        self._ffns: dict[str, nn.Module] = {}
         for cfg in configs:
             key = cfg.activation
             if key in self._ffns:
                 key = f"{cfg.activation}_{cfg.d_ff}"
             ffn = self._factory.create(cfg)
-            ffn.train(False)   # inference mode — no eval() call
+            ffn.train(False)  # inference mode — no eval() call
             self._ffns[key] = ffn
 
     # ------------------------------------------------------------------
     # Comparison
     # ------------------------------------------------------------------
 
-    def compare_outputs(self, x: Tensor) -> Dict[str, Tensor]:
+    def compare_outputs(self, x: Tensor) -> dict[str, Tensor]:
         """Run each registered FFN on *x* and return a dict of outputs.
 
         Args:
@@ -279,7 +281,7 @@ class ActivationBenchmark:
         Returns:
             Dict mapping activation name to output tensor.
         """
-        results: Dict[str, Tensor] = {}
+        results: dict[str, Tensor] = {}
         with torch.no_grad():
             for name, ffn in self._ffns.items():
                 results[name] = ffn(x)

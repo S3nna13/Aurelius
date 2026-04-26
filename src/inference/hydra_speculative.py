@@ -12,10 +12,10 @@ Key properties:
 
 Reference: https://arxiv.org/abs/2402.05244
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -38,7 +38,7 @@ class HydraConfig:
     d_model: int = 2048
     vocab_size: int = 128000
     n_draft_heads: int = 4
-    head_hidden_dim: Optional[int] = None
+    head_hidden_dim: int | None = None
     temperature: float = 1.0
 
 
@@ -90,9 +90,7 @@ class HydraSpeculative(nn.Module):
         self.config = config
 
         hidden_dim: int = (
-            config.head_hidden_dim
-            if config.head_hidden_dim is not None
-            else config.d_model
+            config.head_hidden_dim if config.head_hidden_dim is not None else config.d_model
         )
 
         self.heads = nn.ModuleList(
@@ -148,7 +146,7 @@ class HydraSpeculative(nn.Module):
         self,
         draft_tokens: torch.Tensor,
         target_logits: torch.Tensor,
-    ) -> Tuple[torch.Tensor, int]:
+    ) -> tuple[torch.Tensor, int]:
         """Accept or reject each draft token via the speculative sampling rule.
 
         A draft token at position i (in batch element b) is accepted when::

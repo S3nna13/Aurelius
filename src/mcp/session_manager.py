@@ -9,15 +9,15 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Enums & data classes
 # ---------------------------------------------------------------------------
 
-class SessionState(str, Enum):
+
+class SessionState(StrEnum):
     INITIALIZING = "initializing"
     ACTIVE = "active"
     IDLE = "idle"
@@ -37,6 +37,7 @@ class MCPSession:
 # ---------------------------------------------------------------------------
 # MCPSessionManager
 # ---------------------------------------------------------------------------
+
 
 class MCPSessionManager:
     """Create and manage the lifecycle of MCPSession objects."""
@@ -98,7 +99,8 @@ class MCPSessionManager:
     def list_active(self) -> list[MCPSession]:
         """Return all sessions in ACTIVE or IDLE state."""
         return [
-            s for s in self._sessions.values()
+            s
+            for s in self._sessions.values()
             if s.state in (SessionState.ACTIVE, SessionState.IDLE)
         ]
 

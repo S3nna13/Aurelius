@@ -1,19 +1,18 @@
 """Tests for offline knowledge distillation from pre-saved teacher logits."""
+
 from __future__ import annotations
 
 import math
-import tempfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.offline_kd import (
     OfflineKDConfig,
-    TeacherLogitDataset,
     OfflineKDTrainer,
+    TeacherLogitDataset,
     offline_kd_loss,
 )
 
@@ -24,6 +23,7 @@ N_TOKENS = 100  # total corpus tokens
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_npy_files(tmp_path: Path, n_tokens: int = N_TOKENS):
     """Write tiny input_ids.npy and teacher_logits.npy to tmp_path."""
@@ -65,6 +65,7 @@ def _make_model():
 
 # ── Config tests ──────────────────────────────────────────────────────────────
 
+
 def test_offline_kd_config_defaults():
     cfg = OfflineKDConfig()
     assert cfg.temperature == 4.0
@@ -73,6 +74,7 @@ def test_offline_kd_config_defaults():
 
 
 # ── Dataset tests ─────────────────────────────────────────────────────────────
+
 
 def test_teacher_logit_dataset_len(tmp_path):
     ids_path, logits_path = _make_npy_files(tmp_path)
@@ -105,6 +107,7 @@ def test_teacher_logit_dataset_labels_shifted(tmp_path):
 
 # ── Loss function tests ───────────────────────────────────────────────────────
 
+
 def test_offline_kd_loss_shape():
     cfg = OfflineKDConfig()
     batch = _make_batch()
@@ -133,6 +136,7 @@ def test_offline_kd_loss_alpha_0_equals_ce():
     total = offline_kd_loss(student_logits, teacher_logits, labels, cfg)
 
     import torch.nn.functional as F
+
     expected_ce = F.cross_entropy(student_logits.view(-1, V), labels.view(-1))
     assert abs(total.item() - expected_ce.item()) < 1e-4, (
         f"alpha=0 loss {total.item():.6f} != CE {expected_ce.item():.6f}"
@@ -151,12 +155,16 @@ def test_offline_kd_loss_alpha_1_no_ce():
     total = offline_kd_loss(student_logits, teacher_logits, labels, cfg)
 
     import torch.nn.functional as F
+
     T = cfg.temperature
-    kd = F.kl_div(
-        F.log_softmax(student_logits / T, dim=-1).view(-1, V),
-        F.softmax(teacher_logits / T, dim=-1).view(-1, V),
-        reduction="batchmean",
-    ) * T ** 2
+    kd = (
+        F.kl_div(
+            F.log_softmax(student_logits / T, dim=-1).view(-1, V),
+            F.softmax(teacher_logits / T, dim=-1).view(-1, V),
+            reduction="batchmean",
+        )
+        * T**2
+    )
 
     assert abs(total.item() - kd.item()) < 1e-4, (
         f"alpha=1 loss {total.item():.6f} != KD loss {kd.item():.6f}"
@@ -173,6 +181,7 @@ def test_offline_kd_loss_top_k_sparse():
 
 
 # ── Trainer tests ─────────────────────────────────────────────────────────────
+
 
 def test_offline_kd_trainer_step():
     """train_step must return finite loss, kd_loss, and ce_loss."""

@@ -1,16 +1,18 @@
 """Tests for src/training/world_model.py — model-based RL world model."""
+
 import math
+
 import pytest
 import torch
 import torch.optim as optim
 
 from src.training.world_model import (
-    WorldModelConfig,
-    TransitionModel,
     RewardModel,
+    TransitionModel,
+    WorldModelConfig,
+    WorldModelTrainer,
     imagine_trajectory,
     world_model_loss,
-    WorldModelTrainer,
 )
 
 # ---------------------------------------------------------------------------
@@ -20,6 +22,7 @@ B = 2
 STATE_DIM = 16
 ACTION_DIM = 8
 HORIZON = 3
+
 
 @pytest.fixture()
 def cfg():
@@ -31,33 +34,41 @@ def cfg():
         imagination_steps=2,
     )
 
+
 @pytest.fixture()
 def transition(cfg):
     return TransitionModel(cfg)
+
 
 @pytest.fixture()
 def reward(cfg):
     return RewardModel(cfg)
 
+
 @pytest.fixture()
 def states():
     return torch.randn(B, STATE_DIM)
+
 
 @pytest.fixture()
 def actions():
     return torch.randn(B, ACTION_DIM)
 
+
 @pytest.fixture()
 def actions_seq():
     return torch.randn(B, HORIZON, ACTION_DIM)
+
 
 @pytest.fixture()
 def next_states():
     return torch.randn(B, STATE_DIM)
 
+
 @pytest.fixture()
 def rewards_gt():
     return torch.randn(B, 1)
+
 
 @pytest.fixture()
 def trainer(transition, reward, cfg):
@@ -84,6 +95,7 @@ def test_world_model_config_defaults():
 def test_transition_model_next_state_shape(transition, states, actions):
     next_state, log_var = transition(states, actions)
     assert next_state.shape == (B, STATE_DIM)
+
 
 def test_transition_model_log_var_shape(transition, states, actions):
     next_state, log_var = transition(states, actions)
@@ -129,9 +141,11 @@ def test_imagine_trajectory_returns_dict(transition, reward, states, actions_seq
     assert "rewards" in result
     assert "total_reward" in result
 
+
 def test_imagine_trajectory_states_shape(transition, reward, states, actions_seq):
     result = imagine_trajectory(transition, reward, states, actions_seq)
     assert result["states"].shape == (B, HORIZON + 1, STATE_DIM)
+
 
 def test_imagine_trajectory_rewards_shape(transition, reward, states, actions_seq):
     result = imagine_trajectory(transition, reward, states, actions_seq)
@@ -147,7 +161,10 @@ def test_world_model_loss_keys(transition, reward, states, actions, next_states,
     assert "reward_loss" in losses
     assert "total_loss" in losses
 
-def test_world_model_loss_total_is_scalar(transition, reward, states, actions, next_states, rewards_gt):
+
+def test_world_model_loss_total_is_scalar(
+    transition, reward, states, actions, next_states, rewards_gt
+):
     losses = world_model_loss(transition, reward, states, actions, next_states, rewards_gt)
     total = losses["total_loss"]
     assert isinstance(total, torch.Tensor)
@@ -162,6 +179,7 @@ def test_train_step_returns_required_keys(trainer, states, actions, next_states,
     assert "state_loss" in result
     assert "reward_loss" in result
     assert "total_loss" in result
+
 
 def test_train_step_loss_is_finite(trainer, states, actions, next_states, rewards_gt):
     result = trainer.train_step(states, actions, next_states, rewards_gt)

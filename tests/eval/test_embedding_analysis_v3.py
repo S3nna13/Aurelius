@@ -20,13 +20,13 @@ Covers (16+ tests):
 17.  Corrected embeddings have higher isotropy than raw anisotropic embeddings
 18.  EmbeddingAnalysisConfig                  — default values
 """
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-
 from aurelius.eval.embedding_analysis_v3 import (
     AnisotropyCorrector,
     EmbeddingAnalysisConfig,
@@ -45,21 +45,24 @@ N = 32
 D = 16
 N_CLUSTERS = 4
 
-_FULL_REPORT_KEYS = frozenset({
-    "isotropy_score",
-    "avg_cosine_similarity",
-    "partition_score",
-    "twonn_id",
-    "pca_dims",
-    "participation_ratio",
-    "silhouette_score",
-    "intra_cluster_variance",
-})
+_FULL_REPORT_KEYS = frozenset(
+    {
+        "isotropy_score",
+        "avg_cosine_similarity",
+        "partition_score",
+        "twonn_id",
+        "pca_dims",
+        "participation_ratio",
+        "silhouette_score",
+        "intra_cluster_variance",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def rand_emb() -> torch.Tensor:
@@ -90,22 +93,21 @@ def aniso_emb() -> torch.Tensor:
 def clustered_emb() -> torch.Tensor:
     """Four tight, well-separated clusters in D-dimensional space."""
     torch.manual_seed(3)
-    centres = torch.tensor([
-        [6.0, 0.0], [-6.0, 0.0], [0.0, 6.0], [0.0, -6.0]
-    ])
+    centres = torch.tensor([[6.0, 0.0], [-6.0, 0.0], [0.0, 6.0], [0.0, -6.0]])
     parts = []
     per_cluster = N // N_CLUSTERS
     for c in centres:
         noise = torch.randn(per_cluster, 2) * 0.15
         parts.append(c.unsqueeze(0) + noise)
-    data2d = torch.cat(parts, dim=0)                            # (N, 2)
+    data2d = torch.cat(parts, dim=0)  # (N, 2)
     pad = torch.randn(data2d.shape[0], D - 2) * 0.01
-    return torch.cat([data2d, pad], dim=1)                      # (N, D)
+    return torch.cat([data2d, pad], dim=1)  # (N, D)
 
 
 # ===========================================================================
 # 1. IsotropyMetrics — isotropy in [0, 1]
 # ===========================================================================
+
 
 def test_isotropy_in_unit_interval(rand_emb):
     m = IsotropyMetrics()
@@ -117,6 +119,7 @@ def test_isotropy_in_unit_interval(rand_emb):
 # ===========================================================================
 # 2. IsotropyMetrics — large Gaussian → isotropy near 1
 # ===========================================================================
+
 
 def test_isotropy_gaussian_near_one():
     torch.manual_seed(7)
@@ -130,17 +133,17 @@ def test_isotropy_gaussian_near_one():
 # 3. IsotropyMetrics — average cosine sim near 0 for random unit vectors
 # ===========================================================================
 
+
 def test_avg_cosine_sim_near_zero_for_unit_vecs(unit_emb):
     m = IsotropyMetrics()
     sim = m.compute_average_cosine_similarity(unit_emb)
-    assert abs(sim) < 0.3, (
-        f"Expected avg cos sim ≈ 0 for random unit vectors, got {sim}"
-    )
+    assert abs(sim) < 0.3, f"Expected avg cos sim ≈ 0 for random unit vectors, got {sim}"
 
 
 # ===========================================================================
 # 4. IsotropyMetrics — partition_score in [0, 1]
 # ===========================================================================
+
 
 def test_partition_score_in_unit_interval(rand_emb):
     m = IsotropyMetrics()
@@ -153,6 +156,7 @@ def test_partition_score_in_unit_interval(rand_emb):
 # 5. IntrinsicDimensionality — twonn_estimate positive float
 # ===========================================================================
 
+
 def test_twonn_returns_positive_float(rand_emb):
     dim = IntrinsicDimensionality()
     est = dim.twonn_estimate(rand_emb)
@@ -164,6 +168,7 @@ def test_twonn_returns_positive_float(rand_emb):
 # 6. IntrinsicDimensionality — pca_explained_variance ≤ d
 # ===========================================================================
 
+
 def test_pca_explained_variance_le_d(rand_emb):
     dim = IntrinsicDimensionality()
     k = dim.pca_explained_variance(rand_emb, threshold=0.95)
@@ -174,6 +179,7 @@ def test_pca_explained_variance_le_d(rand_emb):
 # ===========================================================================
 # 7. IntrinsicDimensionality — participation_ratio in [1, d]
 # ===========================================================================
+
 
 def test_participation_ratio_in_valid_range(rand_emb):
     dim = IntrinsicDimensionality()
@@ -188,6 +194,7 @@ def test_participation_ratio_in_valid_range(rand_emb):
 # 8. AnisotropyCorrector — fit_transform produces zero-mean output
 # ===========================================================================
 
+
 def test_fit_transform_zero_mean(rand_emb):
     corr = AnisotropyCorrector()
     out = corr.fit_transform(rand_emb)
@@ -201,6 +208,7 @@ def test_fit_transform_zero_mean(rand_emb):
 # 9. AnisotropyCorrector — inverse_transform round-trips
 # ===========================================================================
 
+
 def test_corrector_inverse_transform_roundtrip(rand_emb):
     corr = AnisotropyCorrector()
     transformed = corr.fit_transform(rand_emb)
@@ -212,6 +220,7 @@ def test_corrector_inverse_transform_roundtrip(rand_emb):
 # ===========================================================================
 # 10. AnisotropyCorrector — transform output shape unchanged
 # ===========================================================================
+
 
 def test_corrector_shape_preserved(rand_emb):
     corr = AnisotropyCorrector()
@@ -225,6 +234,7 @@ def test_corrector_shape_preserved(rand_emb):
 # 11. EmbeddingClusterAnalysis — kmeans_fit labels shape [N]
 # ===========================================================================
 
+
 def test_kmeans_labels_shape(rand_emb):
     clust = EmbeddingClusterAnalysis(n_clusters=N_CLUSTERS)
     labels = clust.kmeans_fit(rand_emb)
@@ -234,6 +244,7 @@ def test_kmeans_labels_shape(rand_emb):
 # ===========================================================================
 # 12. EmbeddingClusterAnalysis — labels all in [0, n_clusters)
 # ===========================================================================
+
 
 def test_kmeans_labels_in_valid_range(rand_emb):
     clust = EmbeddingClusterAnalysis(n_clusters=N_CLUSTERS)
@@ -248,6 +259,7 @@ def test_kmeans_labels_in_valid_range(rand_emb):
 # 13. EmbeddingClusterAnalysis — intra_cluster_variance non-negative
 # ===========================================================================
 
+
 def test_intra_cluster_variance_non_negative(rand_emb):
     clust = EmbeddingClusterAnalysis(n_clusters=N_CLUSTERS)
     labels = clust.kmeans_fit(rand_emb)
@@ -259,6 +271,7 @@ def test_intra_cluster_variance_non_negative(rand_emb):
 # ===========================================================================
 # 14. EmbeddingClusterAnalysis — silhouette_score in [-1, 1]
 # ===========================================================================
+
 
 def test_silhouette_score_in_range(rand_emb):
     clust = EmbeddingClusterAnalysis(n_clusters=N_CLUSTERS)
@@ -272,6 +285,7 @@ def test_silhouette_score_in_range(rand_emb):
 # 15. EmbeddingAnalysisSuite — full_report returns dict with all required keys
 # ===========================================================================
 
+
 def test_full_report_has_all_keys(rand_emb):
     cfg = EmbeddingAnalysisConfig(n_dirs=20, n_clusters=N_CLUSTERS, n_iters=10)
     suite = EmbeddingAnalysisSuite(cfg)
@@ -283,6 +297,7 @@ def test_full_report_has_all_keys(rand_emb):
 # ===========================================================================
 # 16. EmbeddingAnalysisSuite — all values are finite floats
 # ===========================================================================
+
 
 def test_full_report_values_finite(rand_emb):
     cfg = EmbeddingAnalysisConfig(n_dirs=20, n_clusters=N_CLUSTERS, n_iters=10)
@@ -297,6 +312,7 @@ def test_full_report_values_finite(rand_emb):
 # 17. Corrected embeddings have higher isotropy than raw anisotropic embeddings
 # ===========================================================================
 
+
 def test_corrected_embeddings_higher_isotropy(aniso_emb):
     m = IsotropyMetrics()
     corr = AnisotropyCorrector()
@@ -306,14 +322,14 @@ def test_corrected_embeddings_higher_isotropy(aniso_emb):
     iso_after = m.compute_isotropy(corrected, n_dirs=100)
 
     assert iso_after > iso_before, (
-        f"Isotropy should improve after correction: "
-        f"before={iso_before:.4f}, after={iso_after:.4f}"
+        f"Isotropy should improve after correction: before={iso_before:.4f}, after={iso_after:.4f}"
     )
 
 
 # ===========================================================================
 # 18. EmbeddingAnalysisConfig — default values
 # ===========================================================================
+
 
 def test_config_defaults():
     cfg = EmbeddingAnalysisConfig()
@@ -327,6 +343,7 @@ def test_config_defaults():
 # Bonus: well-separated clusters yield positive silhouette score
 # ===========================================================================
 
+
 def test_silhouette_positive_for_well_separated_clusters(clustered_emb):
     clust = EmbeddingClusterAnalysis(n_clusters=N_CLUSTERS)
     labels = clust.kmeans_fit(clustered_emb, n_iters=50, seed=0)
@@ -339,6 +356,7 @@ def test_silhouette_positive_for_well_separated_clusters(clustered_emb):
 # Bonus: transform raises before fit
 # ===========================================================================
 
+
 def test_transform_raises_before_fit(rand_emb):
     corr = AnisotropyCorrector()
     with pytest.raises(RuntimeError):
@@ -348,6 +366,7 @@ def test_transform_raises_before_fit(rand_emb):
 # ===========================================================================
 # Bonus: inverse_transform raises before fit
 # ===========================================================================
+
 
 def test_inverse_transform_raises_before_fit(rand_emb):
     corr = AnisotropyCorrector()

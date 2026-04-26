@@ -23,10 +23,8 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 from src.eval.humaneval_scorer import pass_at_k
-
 
 __all__ = [
     "MBPPProblem",
@@ -50,9 +48,9 @@ class MBPPProblem:
 class MBPPSampleResult:
     task_id: int
     passed: bool
-    error: Optional[str]
+    error: str | None
     duration_ms: float
-    failed_test: Optional[str]
+    failed_test: str | None
 
 
 _TEST_MARKER_PREFIX = "__MBPP_TEST_START__:"
@@ -65,9 +63,7 @@ def _build_program(problem: MBPPProblem, completion: str) -> str:
     parts.append("import sys as _mbpp_sys\n")
     for idx, test in enumerate(problem.test_list):
         marker = f"{_TEST_MARKER_PREFIX}{idx}\n"
-        parts.append(
-            f"_mbpp_sys.stderr.write({marker!r}); _mbpp_sys.stderr.flush()\n"
-        )
+        parts.append(f"_mbpp_sys.stderr.write({marker!r}); _mbpp_sys.stderr.flush()\n")
         parts.append(test.rstrip() + "\n")
     return "".join(parts)
 
@@ -106,10 +102,7 @@ def _make_preexec(max_memory_mb: int, timeout_seconds: float):
 
 
 def _summarize_error(stderr: str, returncode: int) -> str:
-    lines = [
-        ln for ln in stderr.splitlines()
-        if not ln.startswith(_TEST_MARKER_PREFIX)
-    ]
+    lines = [ln for ln in stderr.splitlines() if not ln.startswith(_TEST_MARKER_PREFIX)]
     if not any(ln.strip() for ln in lines):
         return f"exit code {returncode}"
     for line in reversed(lines):
@@ -124,10 +117,8 @@ def _summarize_error(stderr: str, returncode: int) -> str:
     return f"exit code {returncode}: {last[-1].strip()[:200]}"
 
 
-def _extract_failed_test_index(stderr: str) -> Optional[int]:
-    matches = re.findall(
-        re.escape(_TEST_MARKER_PREFIX) + r"(\d+)", stderr
-    )
+def _extract_failed_test_index(stderr: str) -> int | None:
+    matches = re.findall(re.escape(_TEST_MARKER_PREFIX) + r"(\d+)", stderr)
     if not matches:
         return None
     try:
@@ -143,13 +134,9 @@ def score_single(
     max_memory_mb: int = 512,
 ) -> MBPPSampleResult:
     if timeout_seconds <= 0:
-        raise ValueError(
-            f"timeout_seconds must be positive, got {timeout_seconds}"
-        )
+        raise ValueError(f"timeout_seconds must be positive, got {timeout_seconds}")
     if max_memory_mb <= 0:
-        raise ValueError(
-            f"max_memory_mb must be positive, got {max_memory_mb}"
-        )
+        raise ValueError(f"max_memory_mb must be positive, got {max_memory_mb}")
     if not problem.test_list:
         raise ValueError(
             f"MBPP problem {problem.task_id} has empty test_list; "
@@ -169,7 +156,7 @@ def score_single(
 
     start = time.perf_counter()
     try:
-        completed = subprocess.run(
+        completed = subprocess.run(  # noqa: S603
             [sys.executable, "-I", "-c", program],
             capture_output=True,
             timeout=timeout_seconds,
@@ -217,9 +204,7 @@ def score_single(
 
     idx = _extract_failed_test_index(stderr)
     failed_test = (
-        problem.test_list[idx]
-        if idx is not None and 0 <= idx < len(problem.test_list)
-        else None
+        problem.test_list[idx] if idx is not None and 0 <= idx < len(problem.test_list) else None
     )
     error_tag = _summarize_error(stderr, completed.returncode)
     return MBPPSampleResult(
@@ -241,8 +226,7 @@ def score_problems(
 ) -> dict:
     if len(problems) != len(completions):
         raise ValueError(
-            f"problems and completions must align: "
-            f"{len(problems)} vs {len(completions)}"
+            f"problems and completions must align: {len(problems)} vs {len(completions)}"
         )
     for k in k_values:
         if not isinstance(k, int) or k <= 0:
@@ -263,14 +247,11 @@ def score_problems(
     tasks: list[tuple[int, int, MBPPProblem, str]] = []
     for pi, (problem, samples) in enumerate(zip(problems, completions)):
         if not samples:
-            raise ValueError(
-                f"problem {problem.task_id} has zero completions; "
-                f"pass@k is undefined"
-            )
+            raise ValueError(f"problem {problem.task_id} has zero completions; pass@k is undefined")
         for si, comp in enumerate(samples):
             tasks.append((pi, si, problem, comp))
 
-    sample_results: list[list[Optional[MBPPSampleResult]]] = [
+    sample_results: list[list[MBPPSampleResult | None]] = [
         [None] * len(samples) for samples in completions
     ]
 
@@ -292,9 +273,7 @@ def score_problems(
             pi, si, res = _run(task)
             sample_results[pi][si] = res
     else:
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_workers
-        ) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             for pi, si, res in pool.map(_run, tasks):
                 sample_results[pi][si] = res
 

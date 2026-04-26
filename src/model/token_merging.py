@@ -9,16 +9,16 @@ Reference: "Token Merging: Your ViT but Faster" (Bolya et al. 2022)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ToMeConfig:
@@ -40,6 +40,7 @@ class ToMeConfig:
 # ---------------------------------------------------------------------------
 # Similarity computation
 # ---------------------------------------------------------------------------
+
 
 def compute_token_similarity(x: torch.Tensor, metric: str = "cosine") -> torch.Tensor:
     """Compute pairwise similarity matrix between tokens.
@@ -65,7 +66,7 @@ def compute_token_similarity(x: torch.Tensor, metric: str = "cosine") -> torch.T
         # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 a·b
         # Negate so that higher value = more similar (closer).
         sq_norm = (x * x).sum(dim=-1, keepdim=True)  # (B, T, 1)
-        dot = torch.bmm(x, x.transpose(1, 2))         # (B, T, T)
+        dot = torch.bmm(x, x.transpose(1, 2))  # (B, T, T)
         sq_dist = sq_norm + sq_norm.transpose(1, 2) - 2.0 * dot
         return -sq_dist  # (B, T, T)
 
@@ -75,6 +76,7 @@ def compute_token_similarity(x: torch.Tensor, metric: str = "cosine") -> torch.T
 # ---------------------------------------------------------------------------
 # Pair selection (adjacent only — preserves locality)
 # ---------------------------------------------------------------------------
+
 
 def find_merge_pairs(
     similarity: torch.Tensor,
@@ -134,6 +136,7 @@ def find_merge_pairs(
 # Merge / unmerge
 # ---------------------------------------------------------------------------
 
+
 def merge_tokens(
     x: torch.Tensor,
     pairs: list[tuple[int, int]],
@@ -179,7 +182,7 @@ def merge_tokens(
         x[:, i, :] = merged
 
         # Remove position j from the sequence
-        x = torch.cat([x[:, :j, :], x[:, j + 1:, :]], dim=1)
+        x = torch.cat([x[:, :j, :], x[:, j + 1 :, :]], dim=1)
 
     return x
 
@@ -226,6 +229,7 @@ def unmerge_tokens(
 # ---------------------------------------------------------------------------
 # ToMeLayer — wraps any TransformerBlock with merge/unmerge
 # ---------------------------------------------------------------------------
+
 
 class ToMeLayer(nn.Module):
     """Wraps a TransformerBlock with token merging around the forward call.
@@ -277,9 +281,7 @@ class ToMeLayer(nn.Module):
             Same type as base_layer output (tensor or tuple).
         """
         skip_merge = (
-            self.layer_idx < self.config.layer_start
-            or self.config.r <= 0
-            or x.shape[1] < 2
+            self.layer_idx < self.config.layer_start or self.config.r <= 0 or x.shape[1] < 2
         )
 
         if skip_merge:
@@ -321,6 +323,7 @@ class ToMeLayer(nn.Module):
 # apply_tome — wrap model layers in-place
 # ---------------------------------------------------------------------------
 
+
 def apply_tome(model: nn.Module, config: ToMeConfig) -> nn.Module:
     """Wrap each layer in model.layers with ToMeLayer in-place.
 
@@ -339,6 +342,7 @@ def apply_tome(model: nn.Module, config: ToMeConfig) -> nn.Module:
 # ---------------------------------------------------------------------------
 # Speedup estimation
 # ---------------------------------------------------------------------------
+
 
 def estimate_speedup(
     original_seq_len: int,

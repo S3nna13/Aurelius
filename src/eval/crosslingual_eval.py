@@ -3,21 +3,22 @@
 Measures how well a model transfers knowledge across languages using
 parallel text pairs and synthetic multilingual data.
 """
+
 from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config & data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CrosslingualConfig:
@@ -41,8 +42,8 @@ class TransferResult:
     target_lang: str
     source_score: float
     target_score: float
-    transfer_gap: float        # target_score - source_score (positive = better in target)
-    relative_transfer: float   # target_score / source_score
+    transfer_gap: float  # target_score - source_score (positive = better in target)
+    relative_transfer: float  # target_score / source_score
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +63,7 @@ LANG_TEMPLATES = {
 # Data generation
 # ---------------------------------------------------------------------------
 
+
 def generate_synthetic_parallel_data(
     n_samples: int,
     languages: list[str],
@@ -77,10 +79,7 @@ def generate_synthetic_parallel_data(
 
     # Build all language combinations (src != tgt)
     lang_combos: list[tuple[str, str]] = [
-        (src, tgt)
-        for src in languages
-        for tgt in languages
-        if src != tgt
+        (src, tgt) for src in languages for tgt in languages if src != tgt
     ]
     if not lang_combos:
         return pairs
@@ -97,12 +96,14 @@ def generate_synthetic_parallel_data(
         src_text = src_tmpl.format(n=n_val, result=result_val)
         tgt_text = tgt_tmpl.format(n=n_val, result=result_val)
 
-        pairs.append(LanguagePair(
-            source_lang=src_lang,
-            target_lang=tgt_lang,
-            source_text=src_text,
-            target_text=tgt_text,
-        ))
+        pairs.append(
+            LanguagePair(
+                source_lang=src_lang,
+                target_lang=tgt_lang,
+                source_text=src_text,
+                target_text=tgt_text,
+            )
+        )
 
     return pairs
 
@@ -110,6 +111,7 @@ def generate_synthetic_parallel_data(
 # ---------------------------------------------------------------------------
 # Scoring functions
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def compute_perplexity(
@@ -139,8 +141,8 @@ def compute_perplexity(
         _, logits, _ = model(input_ids)
 
         # Shift: predict position i+1 from position i
-        shifted_logits = logits[:, :-1, :]           # (1, T-1, V)
-        shifted_labels = input_ids[:, 1:]             # (1, T-1)
+        shifted_logits = logits[:, :-1, :]  # (1, T-1, V)
+        shifted_labels = input_ids[:, 1:]  # (1, T-1)
         V = shifted_logits.size(-1)
 
         loss = F.cross_entropy(
@@ -178,8 +180,8 @@ def compute_token_accuracy(
 
         _, logits, _ = model(input_ids)
 
-        shifted_logits = logits[:, :-1, :]   # (1, T-1, V)
-        shifted_labels = input_ids[:, 1:]     # (1, T-1)
+        shifted_logits = logits[:, :-1, :]  # (1, T-1, V)
+        shifted_labels = input_ids[:, 1:]  # (1, T-1)
 
         preds = shifted_logits.argmax(dim=-1)  # (1, T-1)
         correct += (preds == shifted_labels).sum().item()
@@ -193,6 +195,7 @@ def compute_token_accuracy(
 # ---------------------------------------------------------------------------
 # Language similarity heuristic
 # ---------------------------------------------------------------------------
+
 
 def compute_language_similarity(lang_a: str, lang_b: str) -> float:
     """Heuristic language similarity score in [0, 1].
@@ -233,6 +236,7 @@ def compute_language_similarity(lang_a: str, lang_b: str) -> float:
 # ---------------------------------------------------------------------------
 # Transfer evaluation
 # ---------------------------------------------------------------------------
+
 
 def evaluate_transfer(
     model: nn.Module,
@@ -276,14 +280,16 @@ def evaluate_transfer(
         transfer_gap = tgt_score - src_score
         relative_transfer = tgt_score / src_score if src_score != 0.0 else float("inf")
 
-        results.append(TransferResult(
-            source_lang=src_lang,
-            target_lang=tgt_lang,
-            source_score=src_score,
-            target_score=tgt_score,
-            transfer_gap=transfer_gap,
-            relative_transfer=relative_transfer,
-        ))
+        results.append(
+            TransferResult(
+                source_lang=src_lang,
+                target_lang=tgt_lang,
+                source_score=src_score,
+                target_score=tgt_score,
+                transfer_gap=transfer_gap,
+                relative_transfer=relative_transfer,
+            )
+        )
 
     return results
 
@@ -302,6 +308,7 @@ def compute_transfer_matrix(
 # ---------------------------------------------------------------------------
 # Evaluator class
 # ---------------------------------------------------------------------------
+
 
 class CrosslingualEvaluator:
     """Full cross-lingual evaluation pipeline."""

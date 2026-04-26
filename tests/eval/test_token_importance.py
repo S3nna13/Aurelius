@@ -2,18 +2,18 @@
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.eval.token_importance import (
     TokenImportanceConfig,
+    TokenImportanceScorer,
     aggregate_embeddings,
-    normalize_scores,
+    attention_importance,
     gradient_saliency,
     integrated_gradients,
-    attention_importance,
-    TokenImportanceScorer,
+    normalize_scores,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -53,6 +53,7 @@ def input_ids():
 # Test 1: config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = TokenImportanceConfig()
     assert cfg.method == "gradient"
@@ -66,6 +67,7 @@ def test_config_defaults():
 # Test 2: aggregate_l2 shape
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_l2_shape():
     emb = torch.randn(B, T, D)
     out = aggregate_embeddings(emb, "l2")
@@ -75,6 +77,7 @@ def test_aggregate_l2_shape():
 # ---------------------------------------------------------------------------
 # Test 3: aggregate_l2 non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_l2_nonneg():
     emb = torch.randn(B, T, D)
@@ -86,6 +89,7 @@ def test_aggregate_l2_nonneg():
 # Test 4: aggregate_mean shape
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_mean_shape():
     emb = torch.randn(B, T, D)
     out = aggregate_embeddings(emb, "mean")
@@ -95,6 +99,7 @@ def test_aggregate_mean_shape():
 # ---------------------------------------------------------------------------
 # Test 5: normalize sums to 1
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_scores_sums_to_one():
     scores = torch.rand(B, T)
@@ -107,6 +112,7 @@ def test_normalize_scores_sums_to_one():
 # ---------------------------------------------------------------------------
 # Test 6: normalize zero row → uniform
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_scores_zero_row():
     scores = torch.zeros(1, T)
@@ -121,6 +127,7 @@ def test_normalize_scores_zero_row():
 # Test 7: gradient_saliency shape
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_saliency_shape(tiny_model, input_ids):
     grad = gradient_saliency(tiny_model, input_ids, target_position=2, target_token=5)
     assert grad.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {grad.shape}"
@@ -129,6 +136,7 @@ def test_gradient_saliency_shape(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 8: gradient_saliency nonzero
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_saliency_nonzero(tiny_model, input_ids):
     grad = gradient_saliency(tiny_model, input_ids, target_position=2, target_token=5)
@@ -139,6 +147,7 @@ def test_gradient_saliency_nonzero(tiny_model, input_ids):
 # Test 9: integrated_gradients shape
 # ---------------------------------------------------------------------------
 
+
 def test_integrated_gradients_shape(tiny_model, input_ids):
     ig = integrated_gradients(tiny_model, input_ids, target_position=2, target_token=5, n_steps=5)
     assert ig.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {ig.shape}"
@@ -147,6 +156,7 @@ def test_integrated_gradients_shape(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 10: attention_importance shape
 # ---------------------------------------------------------------------------
+
 
 def test_attention_importance_shape(tiny_model, input_ids):
     attn = attention_importance(tiny_model, input_ids, target_position=2)
@@ -157,6 +167,7 @@ def test_attention_importance_shape(tiny_model, input_ids):
 # Test 11: attention_importance non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_attention_importance_nonneg(tiny_model, input_ids):
     attn = attention_importance(tiny_model, input_ids, target_position=2)
     assert (attn >= 0).all(), "Attention importance values must be non-negative"
@@ -165,6 +176,7 @@ def test_attention_importance_nonneg(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 12: scorer gradient method shape
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_gradient_method_shape(tiny_model, input_ids):
     cfg = TokenImportanceConfig(method="gradient", normalize=False)
@@ -176,6 +188,7 @@ def test_scorer_gradient_method_shape(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 13: scorer top_k indices
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_top_k_indices(tiny_model, input_ids):
     k = 3
@@ -191,6 +204,7 @@ def test_scorer_top_k_indices(tiny_model, input_ids):
 # Test 14: scorer normalized sums to ~1
 # ---------------------------------------------------------------------------
 
+
 def test_scorer_normalized_sums(tiny_model, input_ids):
     cfg = TokenImportanceConfig(method="gradient", normalize=True)
     scorer = TokenImportanceScorer(tiny_model, cfg)
@@ -203,6 +217,7 @@ def test_scorer_normalized_sums(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 15: scorer score_sequence shape
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_score_sequence_shape(tiny_model, input_ids):
     cfg = TokenImportanceConfig(method="gradient", normalize=True)

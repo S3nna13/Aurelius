@@ -1,4 +1,5 @@
 """Integration: tokenizer_contract wired into src.data package."""
+
 from __future__ import annotations
 
 import src.data as data_pkg

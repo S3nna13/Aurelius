@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from src.computer_use.screen_parser import (
@@ -14,14 +12,12 @@ from src.computer_use.screen_parser import (
 from src.computer_use.visual_grounding import (
     VISUAL_GROUNDING_REGISTRY,
     CompoundVisualGrounding,
-    GroundedElement,
     GroundingResult,
     VisualGrounding,
     VisualGroundingError,
     get_visual_grounding,
     register_visual_grounding,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -99,6 +95,7 @@ def sparse_snapshot() -> ScreenSnapshot:
 # ---------------------------------------------------------------------------
 # VisualGrounding
 # ---------------------------------------------------------------------------
+
 
 class TestVisualGroundingConstruction:
     def test_default_construction(self):
@@ -245,7 +242,9 @@ class TestVisualGroundingEdgeCases:
     def test_single_element_whole_screen(self):
         vg = VisualGrounding()
         node = AccessibilityNode(
-            role="canvas", name="Full", bbox=(0, 0, 1920, 1080),
+            role="canvas",
+            name="Full",
+            bbox=(0, 0, 1920, 1080),
         )
         snap = ScreenSnapshot(width=1920, height=1080, root_node=node)
         result = vg.ground(960, 540, snap)

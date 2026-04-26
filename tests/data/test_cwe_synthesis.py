@@ -3,9 +3,9 @@
 These tests NEVER execute generated templates. They only verify string-level
 shape/content properties.
 """
+
 from __future__ import annotations
 
-import re
 import pytest
 
 from src.data.cwe_synthesis import (
@@ -14,10 +14,15 @@ from src.data.cwe_synthesis import (
     CWESyntheticGenerator,
 )
 
-
 REQUIRED_CWES = {
-    "CWE-78", "CWE-89", "CWE-79", "CWE-22", "CWE-798",
-    "CWE-327", "CWE-502", "CWE-94",
+    "CWE-78",
+    "CWE-89",
+    "CWE-79",
+    "CWE-22",
+    "CWE-798",
+    "CWE-327",
+    "CWE-502",
+    "CWE-94",
 }
 
 
@@ -77,8 +82,14 @@ def test_determinism_under_seed():
 def test_generate_pair_shape():
     gen = CWESyntheticGenerator(rng_seed=3)
     pair = gen.generate_pair()
-    for key in ("cwe_id", "vulnerable_code", "secure_code", "rationale",
-                "persona_hint", "chosen_placeholders"):
+    for key in (
+        "cwe_id",
+        "vulnerable_code",
+        "secure_code",
+        "rationale",
+        "persona_hint",
+        "chosen_placeholders",
+    ):
         assert key in pair
     assert pair["cwe_id"].startswith("CWE-")
     assert pair["vulnerable_code"] != pair["secure_code"]
@@ -156,9 +167,19 @@ def test_rendering_does_not_execute_templates():
 def test_no_foreign_imports_in_generated_code():
     """Generated templates must not import any banned ML frameworks."""
     banned = (
-        "transformers", "einops", "trl", "xformers", "flash_attn",
-        "bitsandbytes", "peft", "diffusers", "datasets", "accelerate",
-        "deepspeed", "langchain", "llamaindex",
+        "transformers",
+        "einops",
+        "trl",
+        "xformers",
+        "flash_attn",
+        "bitsandbytes",
+        "peft",
+        "diffusers",
+        "datasets",
+        "accelerate",
+        "deepspeed",
+        "langchain",
+        "llamaindex",
     )
     gen = CWESyntheticGenerator(rng_seed=9)
     batch = gen.generate_batch(40)
@@ -172,9 +193,13 @@ def test_no_foreign_imports_in_generated_code():
 def test_render_override_wins():
     gen = CWESyntheticGenerator(rng_seed=0)
     recipe = next(r for r in CWE_CATALOG if r.cwe_id == "CWE-89")
-    v, s = gen.render(recipe, placeholders_override={
-        "func": "FIXED_FUNC", "arg": "FIXED_ARG",
-    })
+    v, s = gen.render(
+        recipe,
+        placeholders_override={
+            "func": "FIXED_FUNC",
+            "arg": "FIXED_ARG",
+        },
+    )
     assert "FIXED_FUNC" in v and "FIXED_ARG" in v
     assert "FIXED_FUNC" in s and "FIXED_ARG" in s
 

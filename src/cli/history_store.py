@@ -1,4 +1,5 @@
 """History store for CLI session persistence."""
+
 from __future__ import annotations
 
 import time
@@ -25,7 +26,7 @@ class HistoryStore:
     def append(self, entry: HistoryEntry) -> None:
         self._entries.append(entry)
         if len(self._entries) > self.max_entries:
-            self._entries = self._entries[-self.max_entries:]
+            self._entries = self._entries[-self.max_entries :]
 
     def recent(self, n: int = 10) -> list[HistoryEntry]:
         return self._entries[-n:]

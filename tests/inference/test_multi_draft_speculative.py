@@ -1,23 +1,22 @@
 """Tests for multi-draft speculative decoding."""
+
 import torch
-import pytest
 
 from src.inference.multi_draft_speculative import (
     MultiDraftConfig,
     MultiDraftDecoder,
-    DraftCandidate,
-    typical_acceptance,
     batch_verify_drafts,
     compute_draft_diversity,
     levenshtein_distance,
+    typical_acceptance,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model() -> AureliusTransformer:
     torch.manual_seed(0)
@@ -37,6 +36,7 @@ def _make_model() -> AureliusTransformer:
 # ---------------------------------------------------------------------------
 # typical_acceptance tests
 # ---------------------------------------------------------------------------
+
 
 def test_typical_acceptance_returns_valid_index():
     """typical_acceptance must return a value in [-1, n_drafts-1]."""
@@ -73,6 +73,7 @@ def test_typical_acceptance_high_ratio_accepts():
 # levenshtein_distance tests
 # ---------------------------------------------------------------------------
 
+
 def test_levenshtein_distance_identity():
     """Levenshtein distance between identical sequences must be 0."""
     assert levenshtein_distance([1, 2, 3], [1, 2, 3]) == 0
@@ -86,6 +87,7 @@ def test_levenshtein_distance_single_edit():
 # ---------------------------------------------------------------------------
 # compute_draft_diversity tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_draft_diversity_unique_tokens():
     """Three candidates with the same first token → unique_first_tokens == 1."""
@@ -113,6 +115,7 @@ def test_compute_draft_diversity_entropy_range():
 # batch_verify_drafts tests
 # ---------------------------------------------------------------------------
 
+
 def test_batch_verify_returns_tensor():
     """batch_verify_drafts must return a (Tensor, list) tuple."""
     model = _make_model()
@@ -138,6 +141,7 @@ def test_batch_verify_returns_tensor():
 # ---------------------------------------------------------------------------
 # MultiDraftDecoder tests
 # ---------------------------------------------------------------------------
+
 
 def test_multi_draft_decoder_generate_returns_tokens():
     """MultiDraftDecoder.generate must return a non-empty list of token IDs."""
@@ -186,6 +190,7 @@ def test_multi_draft_decoder_stats_keys():
 # ---------------------------------------------------------------------------
 # Additional diversity test
 # ---------------------------------------------------------------------------
+
 
 def test_draft_diversity_all_different():
     """Four candidates with completely different first tokens → unique_first_tokens == 4."""

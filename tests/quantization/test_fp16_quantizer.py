@@ -1,7 +1,7 @@
 """Tests for FP16 quantizer."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.quantization.fp16_quantizer import FP16Quantizer

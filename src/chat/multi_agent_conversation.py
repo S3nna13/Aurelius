@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class AgentRole(str, Enum):
+class AgentRole(StrEnum):
     ORCHESTRATOR = "orchestrator"
     WORKER = "worker"
     CRITIC = "critic"
@@ -31,9 +31,7 @@ class ConversationMessage:
     content: str
     thread_id: str = "main"
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class MultiAgentConversation:
@@ -70,9 +68,7 @@ class MultiAgentConversation:
         if thread_id is not None:
             result = [m for m in result if m.thread_id == thread_id]
         if agent_id is not None:
-            result = [
-                m for m in result if m.from_agent == agent_id or m.to_agent == agent_id
-            ]
+            result = [m for m in result if m.from_agent == agent_id or m.to_agent == agent_id]
         return result
 
     def agents(self) -> list[AgentProfile]:

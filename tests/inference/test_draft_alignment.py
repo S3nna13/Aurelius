@@ -36,4 +36,3 @@ def test_token_alignment_rejects_bad_rank():
 
 def test_first_misalignment_handles_shorter_target():
     assert first_misalignment(torch.tensor([1, 2, 3]), torch.tensor([1, 2])) is None
-

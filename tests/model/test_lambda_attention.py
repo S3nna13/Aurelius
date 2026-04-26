@@ -9,7 +9,6 @@ import torch
 
 from src.model.lambda_attention import LambdaAttention
 
-
 D_MODEL = 32
 N_HEADS = 4
 DK = 4
@@ -59,7 +58,8 @@ def test_determinism():
     torch.manual_seed(42)
     m2 = _make()
     x = torch.randn(B, S, D_MODEL)
-    m1.eval(); m2.eval()
+    m1.eval()
+    m2.eval()
     y1 = m1(x)
     y2 = m2(x)
     assert torch.allclose(y1, y2)
@@ -89,14 +89,11 @@ def test_s_gt_n_positions_raises():
 
 def test_invalid_config_raises():
     with pytest.raises(ValueError):
-        LambdaAttention(d_model=33, n_heads=4, head_dim_key=4,
-                        head_dim_value=8, n_positions=16)
+        LambdaAttention(d_model=33, n_heads=4, head_dim_key=4, head_dim_value=8, n_positions=16)
     with pytest.raises(ValueError):
-        LambdaAttention(d_model=32, n_heads=0, head_dim_key=4,
-                        head_dim_value=8, n_positions=16)
+        LambdaAttention(d_model=32, n_heads=0, head_dim_key=4, head_dim_value=8, n_positions=16)
     with pytest.raises(ValueError):
-        LambdaAttention(d_model=32, n_heads=4, head_dim_key=4,
-                        head_dim_value=8, n_positions=0)
+        LambdaAttention(d_model=32, n_heads=4, head_dim_key=4, head_dim_value=8, n_positions=0)
 
 
 def test_edge_batch1_s1():
@@ -110,7 +107,10 @@ def test_edge_batch1_s1():
 def test_long_sequence_runs_fast():
     n = 1024
     mod = LambdaAttention(
-        d_model=D_MODEL, n_heads=N_HEADS, head_dim_key=DK, head_dim_value=DV,
+        d_model=D_MODEL,
+        n_heads=N_HEADS,
+        head_dim_key=DK,
+        head_dim_value=DV,
         n_positions=n,
     ).eval()
     x = torch.randn(1, n, D_MODEL)
@@ -124,13 +124,17 @@ def test_long_sequence_runs_fast():
 
 def test_sub_quadratic_scaling():
     mod_small = LambdaAttention(
-        d_model=D_MODEL, n_heads=N_HEADS, head_dim_key=DK, head_dim_value=DV,
+        d_model=D_MODEL,
+        n_heads=N_HEADS,
+        head_dim_key=DK,
+        head_dim_value=DV,
         n_positions=512,
     ).eval()
     x128 = torch.randn(1, 128, D_MODEL)
     x512 = torch.randn(1, 512, D_MODEL)
     with torch.no_grad():
-        mod_small(x128); mod_small(x512)
+        mod_small(x128)
+        mod_small(x512)
         iters = 5
         t0 = time.perf_counter()
         for _ in range(iters):
@@ -141,9 +145,7 @@ def test_sub_quadratic_scaling():
             mod_small(x512)
         t_large = (time.perf_counter() - t0) / iters
     ratio = t_large / max(t_small, 1e-6)
-    assert ratio < 12.0, (
-        f"S=512 / S=128 ratio was {ratio:.2f}; expected sub-quadratic."
-    )
+    assert ratio < 12.0, f"S=512 / S=128 ratio was {ratio:.2f}; expected sub-quadratic."
 
 
 def test_train_vs_eval_differs_due_to_bn():

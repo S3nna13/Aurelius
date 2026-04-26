@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import inspect
-import os
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -27,6 +26,7 @@ except ImportError:
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class JITCacheConfig:
     cache_dir: str = ".aurelius_jit_cache"
@@ -36,6 +36,7 @@ class JITCacheConfig:
 # ---------------------------------------------------------------------------
 # Cache implementation
 # ---------------------------------------------------------------------------
+
 
 class JITCache:
     """LRU cache for JIT-compiled nn.Module instances.
@@ -121,10 +122,9 @@ class JITCache:
         except (OSError, TypeError):
             src = str(module)
 
-        shapes = str([
-            tuple(t.shape) if isinstance(t, torch.Tensor) else repr(t)
-            for t in example_inputs
-        ])
+        shapes = str(
+            [tuple(t.shape) if isinstance(t, torch.Tensor) else repr(t) for t in example_inputs]
+        )
         raw = (src + shapes).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
@@ -134,11 +134,11 @@ class JITCache:
         if hasattr(torch, "compile"):
             try:
                 return torch.compile(module)  # type: ignore[return-value]
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         try:
             return torch.jit.script(module)
-        except Exception:
+        except Exception:  # noqa: S110
             pass
         # Last resort: return module uncompiled
         return module

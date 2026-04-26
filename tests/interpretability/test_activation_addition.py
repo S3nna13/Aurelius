@@ -11,15 +11,14 @@ Tiny model configuration used throughout:
 from __future__ import annotations
 
 import torch
-import pytest
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.activation_addition import (
     ActivationAddition,
     SteeringVector,
     SteeringVectorBank,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -54,6 +53,7 @@ def _make_ids(batch: int = 2, seq: int = 8) -> torch.Tensor:
 # Test 1 — ActivationAddition instantiates without error
 # ---------------------------------------------------------------------------
 
+
 def test_instantiation():
     model = _make_model()
     aa = ActivationAddition(model)
@@ -68,6 +68,7 @@ def test_instantiation():
 # ---------------------------------------------------------------------------
 # Test 2 — get_activations returns correct shape (batch, seq, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_get_activations_shape():
     model = _make_model()
@@ -87,6 +88,7 @@ def test_get_activations_shape():
 # Test 3 — extract_steering_vector returns SteeringVector with correct d_model
 # ---------------------------------------------------------------------------
 
+
 def test_extract_steering_vector_shape():
     model = _make_model()
     aa = ActivationAddition(model)
@@ -96,9 +98,7 @@ def test_extract_steering_vector_shape():
     sv = aa.extract_steering_vector(pos_ids, neg_ids, layer_idx=0, label="test")
 
     assert isinstance(sv, SteeringVector)
-    assert sv.direction.shape == (D_MODEL,), (
-        f"Expected ({D_MODEL},), got {sv.direction.shape}"
-    )
+    assert sv.direction.shape == (D_MODEL,), f"Expected ({D_MODEL},), got {sv.direction.shape}"
     assert sv.layer_idx == 0
     aa.remove_hooks()
 
@@ -106,6 +106,7 @@ def test_extract_steering_vector_shape():
 # ---------------------------------------------------------------------------
 # Test 4 — Steering vector is normalised (unit norm)
 # ---------------------------------------------------------------------------
+
 
 def test_steering_vector_unit_norm():
     model = _make_model()
@@ -124,6 +125,7 @@ def test_steering_vector_unit_norm():
 # Test 5 — apply_steering context manager modifies activations
 # ---------------------------------------------------------------------------
 
+
 def test_apply_steering_modifies_activations():
     model = _make_model()
     aa = ActivationAddition(model)
@@ -134,7 +136,7 @@ def test_apply_steering_modifies_activations():
     baseline = aa.get_activations(input_ids, layer_idx=0).clone()
 
     # Build a steering vector with a large coefficient so the effect is visible
-    direction = torch.ones(D_MODEL) / (D_MODEL ** 0.5)
+    direction = torch.ones(D_MODEL) / (D_MODEL**0.5)
     sv = SteeringVector(direction=direction, layer_idx=0, coefficient=100.0)
 
     # Activations with steering applied
@@ -151,6 +153,7 @@ def test_apply_steering_modifies_activations():
 # Test 6 — After context manager exits, activations return to normal
 # ---------------------------------------------------------------------------
 
+
 def test_apply_steering_reverts_after_context():
     model = _make_model()
     aa = ActivationAddition(model)
@@ -159,7 +162,7 @@ def test_apply_steering_reverts_after_context():
 
     baseline = aa.get_activations(input_ids, layer_idx=0).clone()
 
-    direction = torch.ones(D_MODEL) / (D_MODEL ** 0.5)
+    direction = torch.ones(D_MODEL) / (D_MODEL**0.5)
     sv = SteeringVector(direction=direction, layer_idx=0, coefficient=100.0)
 
     with aa.apply_steering(sv):
@@ -176,6 +179,7 @@ def test_apply_steering_reverts_after_context():
 # ---------------------------------------------------------------------------
 # Test 7 — generate_steered returns a longer sequence than the input
 # ---------------------------------------------------------------------------
+
 
 def test_generate_steered_returns_longer_sequence():
     model = _make_model()
@@ -201,6 +205,7 @@ def test_generate_steered_returns_longer_sequence():
 # Test 8 — SteeringVectorBank.add and get work correctly
 # ---------------------------------------------------------------------------
 
+
 def test_steering_vector_bank_add_get():
     bank = SteeringVectorBank()
     direction = torch.randn(D_MODEL)
@@ -219,6 +224,7 @@ def test_steering_vector_bank_add_get():
 # ---------------------------------------------------------------------------
 # Test 9 — compose returns a vector of the same shape as inputs
 # ---------------------------------------------------------------------------
+
 
 def test_steering_vector_bank_compose_shape():
     bank = SteeringVectorBank()
@@ -239,6 +245,7 @@ def test_steering_vector_bank_compose_shape():
 # Test 10 — remove_hooks cleans up; subsequent forward passes raise no error
 # ---------------------------------------------------------------------------
 
+
 def test_remove_hooks_no_error_on_forward():
     model = _make_model()
     aa = ActivationAddition(model)
@@ -254,6 +261,7 @@ def test_remove_hooks_no_error_on_forward():
 # ---------------------------------------------------------------------------
 # Test 11 — Different layer indices give different steering vectors
 # ---------------------------------------------------------------------------
+
 
 def test_different_layers_give_different_vectors():
     model = _make_model()

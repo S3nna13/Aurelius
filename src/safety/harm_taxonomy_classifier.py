@@ -70,7 +70,6 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Taxonomy definition
@@ -89,14 +88,28 @@ from typing import Dict, List, Optional, Tuple
 # where saturation is 3.0 for normal categories and 1.0 for ``child_abuse``
 # (so a single hit is already saturating — matches the zero-tolerance
 # threshold).
-HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
+HARM_CATEGORIES: dict[str, dict[str, object]] = {
     "violence_and_hate": {
         "threshold": 0.5,
         "keywords": [
-            "kill", "murder", "lynch", "behead", "massacre", "genocide",
-            "ethnic cleansing", "torture", "assault", "stab", "strangle",
-            "shoot them", "shoot him", "shoot her", "bomb them",
-            "hate group", "white power", "racial slur",
+            "kill",
+            "murder",
+            "lynch",
+            "behead",
+            "massacre",
+            "genocide",
+            "ethnic cleansing",
+            "torture",
+            "assault",
+            "stab",
+            "strangle",
+            "shoot them",
+            "shoot him",
+            "shoot her",
+            "bomb them",
+            "hate group",
+            "white power",
+            "racial slur",
         ],
         "patterns": [
             r"\bi\s+(?:want|am\s+going)\s+to\s+(?:kill|murder|hurt)\s+\w+",
@@ -107,9 +120,16 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "sexual_content": {
         "threshold": 0.5,
         "keywords": [
-            "explicit sex", "pornographic", "porn scene", "erotic story",
-            "sexual fantasy", "nsfw story", "xxx scene",
-            "hardcore porn", "sex scene", "nude photo",
+            "explicit sex",
+            "pornographic",
+            "porn scene",
+            "erotic story",
+            "sexual fantasy",
+            "nsfw story",
+            "xxx scene",
+            "hardcore porn",
+            "sex scene",
+            "nude photo",
         ],
         "patterns": [
             r"\bwrite\s+(?:me\s+)?(?:a\s+)?(?:an?\s+)?(?:explicit|erotic|pornographic)\s+\w+",
@@ -119,11 +139,20 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "criminal_planning": {
         "threshold": 0.5,
         "keywords": [
-            "launder money", "money laundering", "tax evasion",
-            "forge passport", "fake passport", "counterfeit cash",
-            "counterfeit currency", "rob a bank", "bank heist",
-            "kidnap", "human trafficking", "smuggling route",
-            "extort", "blackmail",
+            "launder money",
+            "money laundering",
+            "tax evasion",
+            "forge passport",
+            "fake passport",
+            "counterfeit cash",
+            "counterfeit currency",
+            "rob a bank",
+            "bank heist",
+            "kidnap",
+            "human trafficking",
+            "smuggling route",
+            "extort",
+            "blackmail",
         ],
         "patterns": [
             r"\bhow\s+to\s+(?:rob|steal\s+from|break\s+into|burgle)\s+\w+",
@@ -134,12 +163,23 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "guns_and_illegal_weapons": {
         "threshold": 0.5,
         "keywords": [
-            "ghost gun", "untraceable firearm", "3d printed gun",
-            "3d-printed gun", "auto sear", "full auto conversion",
-            "pipe bomb", "pressure cooker bomb", "ied",
-            "improvised explosive", "nerve agent", "sarin",
-            "chemical weapon", "bioweapon", "dirty bomb",
-            "silencer blueprint", "suppressor blueprint",
+            "ghost gun",
+            "untraceable firearm",
+            "3d printed gun",
+            "3d-printed gun",
+            "auto sear",
+            "full auto conversion",
+            "pipe bomb",
+            "pressure cooker bomb",
+            "ied",
+            "improvised explosive",
+            "nerve agent",
+            "sarin",
+            "chemical weapon",
+            "bioweapon",
+            "dirty bomb",
+            "silencer blueprint",
+            "suppressor blueprint",
         ],
         "patterns": [
             r"\bhow\s+to\s+(?:build|make|manufacture|3d\s*print)\s+(?:a\s+)?(?:gun|rifle|pistol|bomb|explosive|ied)\b",
@@ -149,9 +189,15 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "regulated_substances": {
         "threshold": 0.5,
         "keywords": [
-            "synthesize meth", "meth synthesis", "cook meth",
-            "manufacture cocaine", "cocaine synthesis", "heroin synthesis",
-            "fentanyl synthesis", "mdma synthesis", "lsd synthesis",
+            "synthesize meth",
+            "meth synthesis",
+            "cook meth",
+            "manufacture cocaine",
+            "cocaine synthesis",
+            "heroin synthesis",
+            "fentanyl synthesis",
+            "mdma synthesis",
+            "lsd synthesis",
             "grow psilocybin",
         ],
         "patterns": [
@@ -162,10 +208,17 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "self_harm": {
         "threshold": 0.4,
         "keywords": [
-            "kill myself", "suicide method", "suicide methods",
-            "end my life", "commit suicide", "hang myself",
-            "cut myself", "self-harm", "self harm",
-            "overdose to die", "painless suicide",
+            "kill myself",
+            "suicide method",
+            "suicide methods",
+            "end my life",
+            "commit suicide",
+            "hang myself",
+            "cut myself",
+            "self-harm",
+            "self harm",
+            "overdose to die",
+            "painless suicide",
         ],
         "patterns": [
             r"\bhow\s+(?:do\s+i|can\s+i|to)\s+(?:kill\s+myself|commit\s+suicide|end\s+my\s+life)\b",
@@ -177,9 +230,16 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "child_abuse": {
         "threshold": 0.0,
         "keywords": [
-            "csam", "child porn", "child pornography", "cp material",
-            "underage porn", "underage nude", "lolicon", "shotacon",
-            "pedophile how to", "minor nude",
+            "csam",
+            "child porn",
+            "child pornography",
+            "cp material",
+            "underage porn",
+            "underage nude",
+            "lolicon",
+            "shotacon",
+            "pedophile how to",
+            "minor nude",
         ],
         "patterns": [
             r"\bsexual(?:ly)?\s+(?:abuse|assault|exploit)\s+(?:a\s+)?(?:child|minor|kid)\b",
@@ -190,9 +250,13 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "privacy_pii": {
         "threshold": 0.5,
         "keywords": [
-            "social security number", "credit card number",
-            "home address of", "phone number of",
-            "dox", "doxx", "doxxing",
+            "social security number",
+            "credit card number",
+            "home address of",
+            "phone number of",
+            "dox",
+            "doxx",
+            "doxxing",
         ],
         "patterns": [
             # US SSN: NNN-NN-NNNN (rejects all-zero groups via alternation).
@@ -208,18 +272,43 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
     "malicious_code": {
         "threshold": 0.4,
         "keywords": [
-            "keylogger", "ransomware", "rootkit", "reverse shell",
-            "bind shell", "c2 server", "c&c server", "command and control server",
-            "dump lsass", "lsass dump", "mimikatz", "hashdump",
-            "/etc/shadow", "pass-the-hash", "golden ticket attack",
-            "sqli payload", "sql injection payload", "xss payload",
-            "xxe payload", "rce payload", "stealer", "infostealer",
-            "credential stealer", "password stealer",
-            "remote access trojan", "rat malware",
-            "ddos tool", "ddos script", "botnet builder", "botnet c2",
-            "exploit kit", "malware dropper", "cryptor stub",
-            "process hollowing", "dll injection payload",
-            "uac bypass", "privilege escalation exploit",
+            "keylogger",
+            "ransomware",
+            "rootkit",
+            "reverse shell",
+            "bind shell",
+            "c2 server",
+            "c&c server",
+            "command and control server",
+            "dump lsass",
+            "lsass dump",
+            "mimikatz",
+            "hashdump",
+            "/etc/shadow",
+            "pass-the-hash",
+            "golden ticket attack",
+            "sqli payload",
+            "sql injection payload",
+            "xss payload",
+            "xxe payload",
+            "rce payload",
+            "stealer",
+            "infostealer",
+            "credential stealer",
+            "password stealer",
+            "remote access trojan",
+            "rat malware",
+            "ddos tool",
+            "ddos script",
+            "botnet builder",
+            "botnet c2",
+            "exploit kit",
+            "malware dropper",
+            "cryptor stub",
+            "process hollowing",
+            "dll injection payload",
+            "uac bypass",
+            "privilege escalation exploit",
             "buffer overflow exploit",
         ],
         "patterns": [
@@ -237,7 +326,7 @@ HARM_CATEGORIES: Dict[str, Dict[str, object]] = {
 
 # Per-category saturation denominators. child_abuse saturates at 1 to
 # guarantee any hit produces a score >= threshold (threshold=0.0).
-_SATURATION: Dict[str, float] = {
+_SATURATION: dict[str, float] = {
     "violence_and_hate": 3.0,
     "sexual_content": 3.0,
     "criminal_planning": 3.0,
@@ -279,11 +368,11 @@ class HarmClassification:
     """
 
     text: str
-    categories: List[Tuple[str, float]]
-    top_category: Optional[str]
+    categories: list[tuple[str, float]]
+    top_category: str | None
     max_score: float
     flagged: bool
-    triggered: List[str] = field(default_factory=list)
+    triggered: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -343,23 +432,20 @@ class HarmTaxonomyClassifier:
 
     def __init__(
         self,
-        thresholds: Optional[Dict[str, float]] = None,
-        custom_patterns: Optional[Dict[str, List[str]]] = None,
+        thresholds: dict[str, float] | None = None,
+        custom_patterns: dict[str, list[str]] | None = None,
     ) -> None:
         # Resolve thresholds.
-        self._thresholds: Dict[str, float] = {
-            cat: float(spec["threshold"]) for cat, spec in HARM_CATEGORIES.items()  # type: ignore[arg-type]
+        self._thresholds: dict[str, float] = {
+            cat: float(spec["threshold"])
+            for cat, spec in HARM_CATEGORIES.items()  # type: ignore[arg-type]
         }
         if thresholds:
             for cat, val in thresholds.items():
                 if cat not in self._thresholds:
-                    raise KeyError(
-                        f"Unknown harm category for threshold override: {cat!r}"
-                    )
+                    raise KeyError(f"Unknown harm category for threshold override: {cat!r}")
                 if not (0.0 <= float(val) <= 1.0):
-                    raise ValueError(
-                        f"Threshold for {cat!r} must be in [0, 1], got {val!r}"
-                    )
+                    raise ValueError(f"Threshold for {cat!r} must be in [0, 1], got {val!r}")
                 self._thresholds[cat] = float(val)
 
         # Compile keyword and pattern catalogs per category. We keep the
@@ -369,11 +455,11 @@ class HarmTaxonomyClassifier:
         # one for patterns. ``findall`` over the combined regex is O(n) in
         # the input length and ~20x faster than N separate searches for
         # the default catalog of ~60 expressions.
-        self._kw: Dict[str, List[re.Pattern[str]]] = {}
-        self._pat: Dict[str, List[re.Pattern[str]]] = {}
-        self._kw_combined: Dict[str, Optional[re.Pattern[str]]] = {}
-        self._pat_combined: Dict[str, Optional[re.Pattern[str]]] = {}
-        _pat_sources: Dict[str, List[str]] = {}
+        self._kw: dict[str, list[re.Pattern[str]]] = {}
+        self._pat: dict[str, list[re.Pattern[str]]] = {}
+        self._kw_combined: dict[str, re.Pattern[str] | None] = {}
+        self._pat_combined: dict[str, re.Pattern[str] | None] = {}
+        _pat_sources: dict[str, list[str]] = {}
         for cat, spec in HARM_CATEGORIES.items():
             kws = list(spec["keywords"])  # type: ignore[arg-type]
             pats = list(spec["patterns"])  # type: ignore[arg-type]
@@ -385,9 +471,7 @@ class HarmTaxonomyClassifier:
         if custom_patterns:
             for cat, pats in custom_patterns.items():
                 if cat not in self._pat:
-                    raise KeyError(
-                        f"Unknown harm category for custom_patterns: {cat!r}"
-                    )
+                    raise KeyError(f"Unknown harm category for custom_patterns: {cat!r}")
                 for src in pats:
                     self._pat[cat].append(re.compile(src, re.IGNORECASE))
                     _pat_sources[cat].append(src)
@@ -421,9 +505,9 @@ class HarmTaxonomyClassifier:
             text = ""
         normalised = _normalise(text)
 
-        scores: List[Tuple[str, float]] = []
-        triggered: List[str] = []
-        top_cat: Optional[str] = None
+        scores: list[tuple[str, float]] = []
+        triggered: list[str] = []
+        top_cat: str | None = None
         top_score: float = 0.0
 
         for cat in HARM_CATEGORIES:
@@ -437,16 +521,10 @@ class HarmTaxonomyClassifier:
                 pat_hits = 0
                 kwc = self._kw_combined[cat]
                 if kwc is not None and kwc.search(normalised) is not None:
-                    kw_hits = sum(
-                        1 for rx in self._kw[cat]
-                        if rx.search(normalised) is not None
-                    )
+                    kw_hits = sum(1 for rx in self._kw[cat] if rx.search(normalised) is not None)
                 patc = self._pat_combined[cat]
                 if patc is not None and patc.search(normalised) is not None:
-                    pat_hits = sum(
-                        1 for rx in self._pat[cat]
-                        if rx.search(normalised) is not None
-                    )
+                    pat_hits = sum(1 for rx in self._pat[cat] if rx.search(normalised) is not None)
                 raw = float(kw_hits) + 2.0 * float(pat_hits)
                 sat = _SATURATION[cat]
                 score = min(1.0, raw / sat) if raw > 0 else 0.0

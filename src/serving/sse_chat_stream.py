@@ -15,7 +15,7 @@ A streaming chat response typically looks like::
     data: [DONE]\n\n
 
 Pure stdlib: ``dataclasses``, ``json``, ``time``, ``typing``.
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
@@ -23,7 +23,6 @@ import json
 import time
 from dataclasses import dataclass, field
 from typing import Any
-
 
 _DONE_SENTINEL = "[DONE]"
 _FRAME_PREFIX = "data: "
@@ -129,9 +128,7 @@ class SSEChatStream:
         """Append a content token / substring to the assistant message."""
         if not isinstance(content, str):
             raise TypeError("content must be str")
-        choice = ChoiceDelta(
-            index=0, delta={"content": content}, finish_reason=None
-        )
+        choice = ChoiceDelta(index=0, delta={"content": content}, finish_reason=None)
         return self._frame(self._chunk([choice]))
 
     def emit_tool_call_delta(
@@ -199,10 +196,7 @@ class SSEChatStream:
         # Enforce the frame-size cap on the encoded byte length — text length
         # alone would undercount multi-byte unicode characters.
         if len(frame.encode("utf-8")) > self._max_chunk_bytes:
-            raise ValueError(
-                f"SSE chat frame exceeds max_chunk_bytes="
-                f"{self._max_chunk_bytes}"
-            )
+            raise ValueError(f"SSE chat frame exceeds max_chunk_bytes={self._max_chunk_bytes}")
         return frame
 
 
@@ -228,7 +222,7 @@ def parse_sse_event(line: str) -> dict | None:
     # Strict framing: each frame is terminated by exactly "\n\n". We accept
     # either a single trailing "\n\n" or its absence only if the payload is
     # the [DONE] sentinel written without framing (defensive).
-    body = line[len(_FRAME_PREFIX):]
+    body = line[len(_FRAME_PREFIX) :]
     if body.endswith(_FRAME_TERMINATOR):
         body = body[: -len(_FRAME_TERMINATOR)]
     elif body.endswith("\n"):

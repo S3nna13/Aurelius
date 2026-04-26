@@ -52,9 +52,7 @@ class CheckpointSigner:
         except Exception as exc:
             raise CheckpointIntegrityError(str(exc)) from exc
         if not ok:
-            raise CheckpointIntegrityError(
-                "signature does not match checkpoint digest"
-            )
+            raise CheckpointIntegrityError("signature does not match checkpoint digest")
         return True
 
     def sign_file(self, file_path: str) -> str:
@@ -76,9 +74,7 @@ class CheckpointSigner:
         try:
             from cryptography.hazmat.primitives.asymmetric import ed25519
         except ImportError:
-            logger.warning(
-                "cryptography library unavailable; falling back to HMAC-SHA256"
-            )
+            logger.warning("cryptography library unavailable; falling back to HMAC-SHA256")
             self.algorithm = "hmac-sha256"
             return
         self.algorithm = "ed25519"
@@ -86,9 +82,7 @@ class CheckpointSigner:
 
     def _ed25519_sign(self, raw: bytes) -> str:
         if not self.private_key_bytes:
-            raise CheckpointIntegrityError(
-                "Ed25519 private key not configured"
-            )
+            raise CheckpointIntegrityError("Ed25519 private key not configured")
         private_key = self._ed25519_curve.Ed25519PrivateKey.from_private_bytes(
             self.private_key_bytes
         )
@@ -96,12 +90,8 @@ class CheckpointSigner:
 
     def _ed25519_verify(self, raw: bytes, sig: bytes) -> bool:
         if not self.public_key_bytes:
-            raise CheckpointIntegrityError(
-                "Ed25519 public key not configured"
-            )
-        public_key = self._ed25519_curve.Ed25519PublicKey.from_public_bytes(
-            self.public_key_bytes
-        )
+            raise CheckpointIntegrityError("Ed25519 public key not configured")
+        public_key = self._ed25519_curve.Ed25519PublicKey.from_public_bytes(self.public_key_bytes)
         try:
             public_key.verify(sig, raw)
             return True
@@ -121,7 +111,5 @@ class CheckpointSigner:
 
 
 CHECKPOINT_SIGNER_REGISTRY: dict[str, CheckpointSigner] = {}
-DEFAULT_CHECKPOINT_SIGNER = CheckpointSigner(
-    hmac_key=b"default-dev-key-change-me"
-)
+DEFAULT_CHECKPOINT_SIGNER = CheckpointSigner(hmac_key=b"default-dev-key-change-me")
 CHECKPOINT_SIGNER_REGISTRY["default"] = DEFAULT_CHECKPOINT_SIGNER

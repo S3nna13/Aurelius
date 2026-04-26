@@ -1,11 +1,12 @@
 """Task router: capability-based routing, load balancing, priority queuing."""
+
 from __future__ import annotations
 
-from enum import Enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class RoutingStrategy(str, Enum):
+class RoutingStrategy(StrEnum):
     CAPABILITY = "capability"
     ROUND_ROBIN = "round_robin"
     LEAST_LOADED = "least_loaded"

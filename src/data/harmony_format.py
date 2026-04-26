@@ -5,19 +5,20 @@ Supports roles, tool calls, and structured outputs for training and inference.
 
 Pure Python + PyTorch — no external APIs.
 """
+
 from __future__ import annotations
 
 import json
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable
-
+from enum import StrEnum
 
 # ── Data model ────────────────────────────────────────────────────────────────
 
-class MessageRole(str, Enum):
+
+class MessageRole(StrEnum):
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -27,6 +28,7 @@ class MessageRole(str, Enum):
 @dataclass
 class ToolCall:
     """A single tool/function call requested by the model."""
+
     id: str
     type: str = "function"
     function_name: str = ""
@@ -40,16 +42,18 @@ class ToolCall:
 @dataclass
 class Message:
     """A single message in a harmony conversation."""
+
     role: MessageRole
-    content: str | None = None        # None when tool_calls is populated
+    content: str | None = None  # None when tool_calls is populated
     tool_calls: list[ToolCall] = field(default_factory=list)
-    tool_call_id: str | None = None   # for TOOL role responses
-    name: str | None = None           # for TOOL role: function name
+    tool_call_id: str | None = None  # for TOOL role responses
+    name: str | None = None  # for TOOL role: function name
 
 
 @dataclass
 class Conversation:
     """A complete harmony conversation with optional tool schemas."""
+
     messages: list[Message]
     tools: list[dict] = field(default_factory=list)  # tool schemas (JSON)
 
@@ -77,6 +81,7 @@ class Conversation:
 
 
 # ── Serialization ─────────────────────────────────────────────────────────────
+
 
 def serialize_message(msg: Message) -> dict:
     """Convert a Message to a JSON-serializable dict."""
@@ -224,6 +229,7 @@ def format_conversation_for_training(
 
 # ── SFT label building ────────────────────────────────────────────────────────
 
+
 def build_sft_labels_harmony(
     formatted_text: str,
     tokenizer_encode: Callable[[str], list[int]],
@@ -298,6 +304,7 @@ def build_sft_labels_harmony(
 
 # ── Validation ────────────────────────────────────────────────────────────────
 
+
 def validate_conversation(conv: Conversation) -> list[str]:
     """Validate a Conversation and return a list of error strings.
 
@@ -322,9 +329,7 @@ def validate_conversation(conv: Conversation) -> list[str]:
 
     # The very first message must be SYSTEM or USER
     if msgs[0].role not in (MessageRole.SYSTEM, MessageRole.USER):
-        errors.append(
-            f"First message must be SYSTEM or USER, got {msgs[0].role.value!r}."
-        )
+        errors.append(f"First message must be SYSTEM or USER, got {msgs[0].role.value!r}.")
 
     if not non_system:
         # Only system messages — arguably fine but warn
@@ -332,9 +337,7 @@ def validate_conversation(conv: Conversation) -> list[str]:
         return errors
 
     if non_system[0].role != MessageRole.USER:
-        errors.append(
-            f"First non-system message must be USER, got {non_system[0].role.value!r}."
-        )
+        errors.append(f"First non-system message must be USER, got {non_system[0].role.value!r}.")
 
     # Check alternation among non-TOOL messages (TOOL messages interleave
     # after ASSISTANT tool-call turns and are allowed there).
@@ -441,7 +444,7 @@ def parse_harmony_response(text: str) -> dict:
         if text.startswith(token):
             role = role_name
             # Strip role token (and optional leading newline)
-            remainder = text[len(token):]
+            remainder = text[len(token) :]
             if remainder.startswith("\n"):
                 remainder = remainder[1:]
             # Strip trailing end_of_turn

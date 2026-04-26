@@ -10,6 +10,7 @@ because the cached KV from turn 1 (on rank 0) is not available when turn 2 route
 Solution: Consistent hashing maps session_id → fixed DP rank.
 All turns from the same session always go to the same rank → KV cache hits guaranteed.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -80,7 +81,4 @@ class DPAwareMoERouter:
         Returns:
             List of (rank, expert_ids) tuples, one per input pair.
         """
-        return [
-            self.route(sid, eids)
-            for sid, eids in zip(session_ids, expert_ids_batch)
-        ]
+        return [self.route(sid, eids) for sid, eids in zip(session_ids, expert_ids_batch)]

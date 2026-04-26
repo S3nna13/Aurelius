@@ -1,28 +1,28 @@
 """Tests for src/data/harmony_format.py — harmony response format parser/formatter."""
+
 from __future__ import annotations
 
 import json
-import pytest
 
 from src.data.harmony_format import (
+    HARMONY_TOKENS,
+    Conversation,
+    Message,
     MessageRole,
     ToolCall,
-    Message,
-    Conversation,
-    serialize_message,
-    deserialize_message,
-    serialize_conversation,
-    deserialize_conversation,
-    HARMONY_TOKENS,
-    format_conversation_for_training,
     build_sft_labels_harmony,
-    validate_conversation,
+    deserialize_conversation,
+    deserialize_message,
     extract_tool_calls_from_text,
+    format_conversation_for_training,
     parse_harmony_response,
+    serialize_conversation,
+    serialize_message,
+    validate_conversation,
 )
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _simple_tokenize(s: str) -> list[int]:
     """Deterministic char-level tokenizer: each char → ord(c) % 256."""
@@ -40,21 +40,25 @@ def _make_simple_conv() -> Conversation:
 
 
 def _make_tool_conv() -> Conversation:
-    tc = ToolCall(id="call_abc123", function_name="get_weather",
-                  function_args='{"location": "NYC"}')
+    tc = ToolCall(
+        id="call_abc123", function_name="get_weather", function_args='{"location": "NYC"}'
+    )
     return Conversation(
         messages=[
             Message(role=MessageRole.USER, content="What's the weather?"),
             Message(role=MessageRole.ASSISTANT, content=None, tool_calls=[tc]),
-            Message(role=MessageRole.TOOL,
-                    content='{"temp": 72, "condition": "sunny"}',
-                    tool_call_id="call_abc123",
-                    name="get_weather"),
+            Message(
+                role=MessageRole.TOOL,
+                content='{"temp": 72, "condition": "sunny"}',
+                tool_call_id="call_abc123",
+                name="get_weather",
+            ),
         ]
     )
 
 
 # ── 1. MessageRole values ─────────────────────────────────────────────────────
+
 
 def test_message_role_values():
     assert MessageRole.SYSTEM == "system"
@@ -64,6 +68,7 @@ def test_message_role_values():
 
 
 # ── 2. Serialize/deserialize message round-trip ───────────────────────────────
+
 
 def test_serialize_deserialize_message_roundtrip():
     msg = Message(role=MessageRole.USER, content="What is 2+2?")
@@ -78,6 +83,7 @@ def test_serialize_deserialize_message_roundtrip():
 
 # ── 3. Serialize message that has tool_calls ──────────────────────────────────
 
+
 def test_serialize_message_with_tool_calls():
     tc = ToolCall(id="call_1", function_name="calculator", function_args='{"expr": "1+1"}')
     msg = Message(role=MessageRole.ASSISTANT, content=None, tool_calls=[tc])
@@ -89,6 +95,7 @@ def test_serialize_message_with_tool_calls():
 
 
 # ── 4. Deserialize tool-call message ─────────────────────────────────────────
+
 
 def test_deserialize_tool_call_message():
     raw = {
@@ -114,6 +121,7 @@ def test_deserialize_tool_call_message():
 
 # ── 5. Conversation.system_message ───────────────────────────────────────────
 
+
 def test_conversation_system_message():
     conv = _make_simple_conv()
     sys_msg = conv.system_message()
@@ -127,6 +135,7 @@ def test_conversation_system_message_none_when_absent():
 
 # ── 6. Conversation.user_messages count ──────────────────────────────────────
 
+
 def test_conversation_user_messages_count():
     conv = _make_simple_conv()
     user_msgs = conv.user_messages()
@@ -135,6 +144,7 @@ def test_conversation_user_messages_count():
 
 
 # ── 7. Conversation.last_assistant_message ───────────────────────────────────
+
 
 def test_conversation_last_assistant():
     conv = _make_simple_conv()
@@ -150,6 +160,7 @@ def test_conversation_last_assistant_none_when_absent():
 
 
 # ── 8. Serialize/deserialize conversation round-trip ─────────────────────────
+
 
 def test_serialize_deserialize_conversation_roundtrip():
     conv = _make_tool_conv()
@@ -167,6 +178,7 @@ def test_serialize_deserialize_conversation_roundtrip():
 
 # ── 9. format_conversation_for_training contains role tokens ─────────────────
 
+
 def test_format_conversation_contains_role_tokens():
     conv = _make_simple_conv()
     text = format_conversation_for_training(conv)
@@ -180,6 +192,7 @@ def test_format_conversation_contains_role_tokens():
 
 # ── 10. format_conversation_for_training has end_of_turn tokens ──────────────
 
+
 def test_format_conversation_end_of_turn():
     conv = _make_simple_conv()
     text = format_conversation_for_training(conv)
@@ -190,10 +203,13 @@ def test_format_conversation_end_of_turn():
 
 # ── 11. format_conversation add_generation_prompt ────────────────────────────
 
+
 def test_format_conversation_add_generation_prompt():
-    conv = Conversation(messages=[
-        Message(role=MessageRole.USER, content="Say hi"),
-    ])
+    conv = Conversation(
+        messages=[
+            Message(role=MessageRole.USER, content="Say hi"),
+        ]
+    )
     text_no_prompt = format_conversation_for_training(conv, add_generation_prompt=False)
     text_with_prompt = format_conversation_for_training(conv, add_generation_prompt=True)
     assert not text_no_prompt.endswith(HARMONY_TOKENS["assistant_start"] + "\n")
@@ -201,6 +217,7 @@ def test_format_conversation_add_generation_prompt():
 
 
 # ── 12. build_sft_labels_harmony shape ───────────────────────────────────────
+
 
 def test_build_sft_labels_shape():
     conv = _make_simple_conv()
@@ -212,6 +229,7 @@ def test_build_sft_labels_shape():
 
 # ── 13. build_sft_labels_harmony: system tokens are -100 ─────────────────────
 
+
 def test_build_sft_labels_minus100_for_system():
     conv = _make_simple_conv()
     text = format_conversation_for_training(conv)
@@ -219,10 +237,11 @@ def test_build_sft_labels_minus100_for_system():
     # At least some labels should be -100 (system and user turns masked)
     assert -100 in labels
     # Not ALL should be -100 — assistant turn should be unmasked
-    assert any(l != -100 for l in labels)
+    assert any(line != -100 for line in labels)
 
 
 # ── 14. validate_conversation: valid conv → empty errors ─────────────────────
+
 
 def test_validate_conversation_valid():
     conv = _make_simple_conv()
@@ -233,13 +252,16 @@ def test_validate_conversation_valid():
 
 # ── 15. validate_conversation: bad ordering → non-empty errors ───────────────
 
+
 def test_validate_conversation_invalid():
     # Two user messages in a row — bad alternation
-    conv = Conversation(messages=[
-        Message(role=MessageRole.USER, content="First"),
-        Message(role=MessageRole.USER, content="Second"),
-        Message(role=MessageRole.ASSISTANT, content="Reply"),
-    ])
+    conv = Conversation(
+        messages=[
+            Message(role=MessageRole.USER, content="First"),
+            Message(role=MessageRole.USER, content="Second"),
+            Message(role=MessageRole.ASSISTANT, content="Reply"),
+        ]
+    )
     errors = validate_conversation(conv)
     assert isinstance(errors, list)
     assert len(errors) > 0
@@ -247,12 +269,15 @@ def test_validate_conversation_invalid():
 
 # ── 16. extract_tool_calls_from_text ─────────────────────────────────────────
 
+
 def test_extract_tool_calls_from_text():
-    tool_json = json.dumps({
-        "id": "call_test1",
-        "type": "function",
-        "function": {"name": "multiply", "arguments": '{"a": 3, "b": 4}'},
-    })
+    tool_json = json.dumps(
+        {
+            "id": "call_test1",
+            "type": "function",
+            "function": {"name": "multiply", "arguments": '{"a": 3, "b": 4}'},
+        }
+    )
     text = f"<|tool_call|>{tool_json}<|end_of_turn|>"
     calls = extract_tool_calls_from_text(text)
     assert len(calls) == 1
@@ -262,6 +287,7 @@ def test_extract_tool_calls_from_text():
 
 
 # ── 17. parse_harmony_response: role is extracted ────────────────────────────
+
 
 def test_parse_harmony_response_role():
     text = "<|assistant|>\nThis is my response.<|end_of_turn|>"

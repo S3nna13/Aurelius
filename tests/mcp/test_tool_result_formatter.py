@@ -22,6 +22,7 @@ def fmt() -> ToolResultFormatter:
 # TEXT format
 # ---------------------------------------------------------------------------
 
+
 class TestTextFormat:
     def test_plain_string(self, fmt):
         result = fmt.format("hello", ResultFormat.TEXT)
@@ -50,6 +51,7 @@ class TestTextFormat:
 # JSON format
 # ---------------------------------------------------------------------------
 
+
 class TestJsonFormat:
     def test_dict_is_valid_json(self, fmt):
         data = {"a": 1, "b": [2, 3]}
@@ -65,6 +67,7 @@ class TestJsonFormat:
     def test_non_serialisable_falls_back(self, fmt):
         class Unserializable:
             pass
+
         result = fmt.format(Unserializable(), ResultFormat.JSON)
         # Should not raise; output must be valid JSON of some kind
         parsed = json.loads(result)
@@ -78,6 +81,7 @@ class TestJsonFormat:
 # ---------------------------------------------------------------------------
 # MARKDOWN format
 # ---------------------------------------------------------------------------
+
 
 class TestMarkdownFormat:
     def test_dict_wrapped_in_code_block(self, fmt):
@@ -102,6 +106,7 @@ class TestMarkdownFormat:
 # CODE format
 # ---------------------------------------------------------------------------
 
+
 class TestCodeFormat:
     def test_wrapped_in_triple_backticks(self, fmt):
         result = fmt.format("print('hi')", ResultFormat.CODE)
@@ -116,6 +121,7 @@ class TestCodeFormat:
 # ---------------------------------------------------------------------------
 # ERROR format
 # ---------------------------------------------------------------------------
+
 
 class TestErrorFormat:
     def test_exception_formatted(self, fmt):
@@ -142,6 +148,7 @@ class TestErrorFormat:
 # format_batch()
 # ---------------------------------------------------------------------------
 
+
 class TestFormatBatch:
     def test_returns_list_of_same_length(self, fmt):
         results = fmt.format_batch([1, 2, 3], ResultFormat.TEXT)
@@ -158,6 +165,7 @@ class TestFormatBatch:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_formatter(self):

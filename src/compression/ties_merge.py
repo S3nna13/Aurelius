@@ -1,4 +1,5 @@
 """TIES model merging: Trim, Elect Sign, Merge (arXiv 2306.01708)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,9 +30,7 @@ class TIESMerger:
     ) -> list[dict[str, torch.Tensor]]:
         return [{k: m[k] - base[k] for k in base} for m in models]
 
-    def trim(
-        self, task_vectors: list[dict[str, torch.Tensor]]
-    ) -> list[dict[str, torch.Tensor]]:
+    def trim(self, task_vectors: list[dict[str, torch.Tensor]]) -> list[dict[str, torch.Tensor]]:
         trimmed: list[dict[str, torch.Tensor]] = []
         for tv in task_vectors:
             new_tv: dict[str, torch.Tensor] = {}
@@ -47,9 +46,7 @@ class TIESMerger:
             trimmed.append(new_tv)
         return trimmed
 
-    def elect_sign(
-        self, trimmed_vectors: list[dict[str, torch.Tensor]]
-    ) -> dict[str, torch.Tensor]:
+    def elect_sign(self, trimmed_vectors: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
         elected: dict[str, torch.Tensor] = {}
         for k in trimmed_vectors[0]:
             stacked = torch.stack([tv[k] for tv in trimmed_vectors], dim=0)
@@ -100,9 +97,7 @@ class TIESMerger:
         elected = self.elect_sign(trimmed)
         delta = self.disjoint_merge(trimmed, elected)
 
-        merged_state: dict[str, torch.Tensor] = {
-            k: base[k] + delta[k] for k in base
-        }
+        merged_state: dict[str, torch.Tensor] = {k: base[k] + delta[k] for k in base}
         n_params = sum(t.numel() for t in merged_state.values())
         return MergeResult(
             merged_state_dict=merged_state,

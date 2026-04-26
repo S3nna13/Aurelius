@@ -1,8 +1,9 @@
 """Gradient noise injection for improved generalization."""
+
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -15,7 +16,7 @@ class GradientNoiseInjector:
 
     def inject(self, params: list[list[float]], lr: float = 1.0) -> list[list[float]]:
         self._step += 1
-        noise_scale = self.initial_noise * (self.decay_rate ** self._step) * lr
+        noise_scale = self.initial_noise * (self.decay_rate**self._step) * lr
         noisy = []
         for row in params:
             noisy.append([v + random.gauss(0, noise_scale) for v in row])

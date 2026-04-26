@@ -13,10 +13,10 @@ import pytest
 
 from src.data.vision_token_mixer import VisionTokenMixer, VisionTokenMixerConfig
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mixer() -> VisionTokenMixer:
@@ -29,16 +29,16 @@ def three_samples() -> list[dict]:
     """Three samples with varying text and vision token lengths."""
     return [
         {
-            "text_ids": list(range(500, 590)),   # 90 text tokens
-            "vision_ids": list(range(2, 17)),    # 15 vision tokens — some will be truncated
+            "text_ids": list(range(500, 590)),  # 90 text tokens
+            "vision_ids": list(range(2, 17)),  # 15 vision tokens — some will be truncated
         },
         {
-            "text_ids": list(range(600, 660)),   # 60 text tokens
-            "vision_ids": list(range(20, 28)),   # 8 vision tokens
+            "text_ids": list(range(600, 660)),  # 60 text tokens
+            "vision_ids": list(range(20, 28)),  # 8 vision tokens
         },
         {
-            "text_ids": list(range(700, 820)),   # 120 text tokens
-            "vision_ids": [],                    # no vision tokens
+            "text_ids": list(range(700, 820)),  # 120 text tokens
+            "vision_ids": [],  # no vision tokens
         },
     ]
 
@@ -46,6 +46,7 @@ def three_samples() -> list[dict]:
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_mix_batch_integration(mixer, three_samples):
     """Full mix_batch pipeline: shapes, ratio, and mask-sum consistency."""

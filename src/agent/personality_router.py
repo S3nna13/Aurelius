@@ -13,12 +13,11 @@ secondary. Collaboration is required when two or more secondaries trigger.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class PersonalityType(str, Enum):
+class PersonalityType(StrEnum):
     """Enumerated personalities the router can dispatch to."""
 
     ARCHITECT = "architect"
@@ -33,32 +32,80 @@ class TaskAnalysis:
     """Immutable analysis result produced by ``PersonalityRouter.analyze``."""
 
     primary: PersonalityType
-    secondary: List[PersonalityType]
+    secondary: list[PersonalityType]
     confidence: float
     requires_collaboration: bool
 
 
-PERSONALITY_KEYWORDS: Dict[PersonalityType, List[str]] = {
+PERSONALITY_KEYWORDS: dict[PersonalityType, list[str]] = {
     PersonalityType.ARCHITECT: [
-        "design", "build", "implement", "create", "develop", "refactor",
-        "architecture", "structure", "pattern", "scaffold", "compose", "plan",
+        "design",
+        "build",
+        "implement",
+        "create",
+        "develop",
+        "refactor",
+        "architecture",
+        "structure",
+        "pattern",
+        "scaffold",
+        "compose",
+        "plan",
     ],
     PersonalityType.DETECTIVE: [
-        "debug", "fix", "investigate", "trace", "diagnose", "bug",
-        "error", "issue", "broken", "crash", "reproduce", "locate",
+        "debug",
+        "fix",
+        "investigate",
+        "trace",
+        "diagnose",
+        "bug",
+        "error",
+        "issue",
+        "broken",
+        "crash",
+        "reproduce",
+        "locate",
     ],
     PersonalityType.GUARDIAN: [
-        "security", "audit", "maintain", "vulnerability", "compliance",
-        "harden", "monitor", "backup", "recovery", "upgrade", "dependency",
+        "security",
+        "audit",
+        "maintain",
+        "vulnerability",
+        "compliance",
+        "harden",
+        "monitor",
+        "backup",
+        "recovery",
+        "upgrade",
+        "dependency",
         "permissions",
     ],
     PersonalityType.ANALYST: [
-        "analyze", "evaluate", "measure", "benchmark", "profile", "compare",
-        "metric", "statistics", "report", "assess", "quantify", "inspect",
+        "analyze",
+        "evaluate",
+        "measure",
+        "benchmark",
+        "profile",
+        "compare",
+        "metric",
+        "statistics",
+        "report",
+        "assess",
+        "quantify",
+        "inspect",
     ],
     PersonalityType.TEACHER: [
-        "explain", "document", "guide", "teach", "tutorial", "describe",
-        "walkthrough", "comment", "clarify", "onboard", "introduction",
+        "explain",
+        "document",
+        "guide",
+        "teach",
+        "tutorial",
+        "describe",
+        "walkthrough",
+        "comment",
+        "clarify",
+        "onboard",
+        "introduction",
         "example",
     ],
 }
@@ -67,15 +114,15 @@ PERSONALITY_KEYWORDS: Dict[PersonalityType, List[str]] = {
 class PersonalityRouter:
     """Route free-form tasks to one or more ``PersonalityType`` handlers."""
 
-    def __init__(self, keywords: Dict[PersonalityType, List[str]] | None = None) -> None:
-        self.keywords: Dict[PersonalityType, List[str]] = dict(
+    def __init__(self, keywords: dict[PersonalityType, list[str]] | None = None) -> None:
+        self.keywords: dict[PersonalityType, list[str]] = dict(
             keywords if keywords is not None else PERSONALITY_KEYWORDS
         )
 
     # ------------------------------------------------------------------ core
-    def _score(self, task: str) -> Dict[PersonalityType, int]:
+    def _score(self, task: str) -> dict[PersonalityType, int]:
         task_lower = task.lower()
-        scores: Dict[PersonalityType, int] = {}
+        scores: dict[PersonalityType, int] = {}
         for personality, words in self.keywords.items():
             scores[personality] = sum(1 for w in words if w in task_lower)
         return scores
@@ -103,7 +150,7 @@ class PersonalityRouter:
             requires_collaboration=requires_collaboration,
         )
 
-    def route(self, task: str) -> List[PersonalityType]:
+    def route(self, task: str) -> list[PersonalityType]:
         analysis = self.analyze(task)
         return [analysis.primary] + list(analysis.secondary)
 
@@ -115,15 +162,15 @@ class PersonalityRouter:
             f"Primary: {analysis.primary.value} (score={scores[analysis.primary]})",
         ]
         if analysis.secondary:
-            secondary_parts = ", ".join(
-                f"{p.value}({scores[p]})" for p in analysis.secondary
-            )
+            secondary_parts = ", ".join(f"{p.value}({scores[p]})" for p in analysis.secondary)
             lines.append(f"Secondary: {secondary_parts}")
         else:
             lines.append("Secondary: none")
         lines.append(f"Confidence: {analysis.confidence:.2f}")
         lines.append(
-            "Collaboration: required" if analysis.requires_collaboration else "Collaboration: not required"
+            "Collaboration: required"
+            if analysis.requires_collaboration
+            else "Collaboration: not required"
         )
         return "\n".join(lines)
 

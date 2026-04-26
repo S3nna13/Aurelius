@@ -13,10 +13,10 @@ import torch.nn as nn
 
 from src.optimizers.muonclip import MuonClip, _orthogonalize
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model():
     """Two-layer MLP; MuonClip converges reliably on non-linear models."""
@@ -48,6 +48,7 @@ def _run_steps(model, optimizer, x, target, n: int = 1):
 # 1. Loss decreases over 10 steps
 # ---------------------------------------------------------------------------
 
+
 def test_loss_decreases():
     model = _make_model()
     x, target = _make_data()
@@ -71,6 +72,7 @@ def test_loss_decreases():
 # 2. Determinism — same seed yields identical parameters after 5 steps
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     def run():
         torch.manual_seed(42)
@@ -91,6 +93,7 @@ def test_determinism():
 # 3. All parameters remain finite after a backward + step
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_finite():
     model = _make_model()
     x, target = _make_data()
@@ -106,6 +109,7 @@ def test_gradient_finite():
 # ---------------------------------------------------------------------------
 # 4. Max-norm clipping handles a very large gradient without producing NaN
 # ---------------------------------------------------------------------------
+
 
 def test_max_norm_clipping():
     model = _make_model()
@@ -123,6 +127,7 @@ def test_max_norm_clipping():
 # ---------------------------------------------------------------------------
 # 5. Orthogonalization produces near-orthogonal rows
 # ---------------------------------------------------------------------------
+
 
 def test_orthogonalization():
     """Newton-Schulz is an iterative approximation; a single step makes progress
@@ -161,6 +166,7 @@ def test_orthogonalization():
 # 6. lr=0 leaves parameters unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_lr_zero():
     model = _make_model()
     x, target = _make_data()
@@ -174,6 +180,7 @@ def test_lr_zero():
 # ---------------------------------------------------------------------------
 # 7. Momentum buffer accumulates after first step
 # ---------------------------------------------------------------------------
+
 
 def test_momentum_accumulates():
     model = _make_model()
@@ -189,6 +196,7 @@ def test_momentum_accumulates():
 # ---------------------------------------------------------------------------
 # 8. Two param groups with different lr both update
 # ---------------------------------------------------------------------------
+
 
 def test_param_groups():
     torch.manual_seed(0)
@@ -223,6 +231,7 @@ def test_param_groups():
 # 9. 1-D parameter (bias) does not crash
 # ---------------------------------------------------------------------------
 
+
 def test_1d_param():
     p = nn.Parameter(torch.randn(8))
     opt = MuonClip([p], lr=1e-3)
@@ -234,6 +243,7 @@ def test_1d_param():
 # ---------------------------------------------------------------------------
 # 10. Closure is called exactly once per step
 # ---------------------------------------------------------------------------
+
 
 def test_closure_called():
     model = _make_model()
@@ -252,6 +262,7 @@ def test_closure_called():
 # 11. 10 consecutive steps run without error
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_steps():
     model = _make_model()
     x, target = _make_data()
@@ -263,6 +274,7 @@ def test_multiple_steps():
 # ---------------------------------------------------------------------------
 # 12. Parameter with no grad is left unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_no_grad_skipped():
     model = _make_model()

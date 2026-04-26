@@ -12,27 +12,28 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LengthRewardConfig:
     """Configuration for length-conditional reward."""
 
-    token_budget: int = 4096              # target thinking token budget
-    length_penalty_weight: float = 0.1   # penalty per normalized token above budget
-    length_bonus_weight: float = 0.05    # bonus per normalized token below budget
-    correct_base_reward: float = 1.0     # base reward for correct answers
-    incorrect_base_reward: float = 0.0   # base reward for incorrect answers
-    min_length_ratio: float = 0.1        # don't bonus below 10% of budget (prevents trivial shortcuts)
-    max_length_ratio: float = 3.0        # cap length consideration at 3× budget
+    token_budget: int = 4096  # target thinking token budget
+    length_penalty_weight: float = 0.1  # penalty per normalized token above budget
+    length_bonus_weight: float = 0.05  # bonus per normalized token below budget
+    correct_base_reward: float = 1.0  # base reward for correct answers
+    incorrect_base_reward: float = 0.0  # base reward for incorrect answers
+    min_length_ratio: float = 0.1  # don't bonus below 10% of budget (prevents trivial shortcuts)
+    max_length_ratio: float = 3.0  # cap length consideration at 3× budget
 
 
 # ---------------------------------------------------------------------------
 # LengthReward
 # ---------------------------------------------------------------------------
+
 
 class LengthReward:
     """Length-conditional reward function for RL training of reasoning models.
@@ -82,9 +83,7 @@ class LengthReward:
             penalty = cfg.length_penalty_weight * length_factor
             return cfg.correct_base_reward - penalty
 
-    def compute_batch(
-        self, correctness: list[bool], token_counts: list[int]
-    ) -> list[float]:
+    def compute_batch(self, correctness: list[bool], token_counts: list[int]) -> list[float]:
         """Compute rewards for a batch of rollouts.
 
         Args:
@@ -99,9 +98,7 @@ class LengthReward:
             for is_correct, n_tokens in zip(correctness, token_counts)
         ]
 
-    def compute_tensor(
-        self, correctness: Tensor, token_counts: Tensor
-    ) -> Tensor:
+    def compute_tensor(self, correctness: Tensor, token_counts: Tensor) -> Tensor:
         """Compute rewards as a tensor for a batch of rollouts.
 
         Args:
@@ -163,9 +160,7 @@ class LengthReward:
 
         return rewards
 
-    def statistics(
-        self, correctness: list[bool], token_counts: list[int]
-    ) -> dict:
+    def statistics(self, correctness: list[bool], token_counts: list[int]) -> dict:
         """Compute summary statistics over a batch of rollouts.
 
         Args:
@@ -185,16 +180,12 @@ class LengthReward:
 
         n_correct = sum(1 for c in correctness if c)
         n_penalized = sum(
-            1
-            for c, t in zip(correctness, token_counts)
-            if c and t > cfg.token_budget
+            1 for c, t in zip(correctness, token_counts) if c and t > cfg.token_budget
         )
         n_bonus = sum(
             1
             for c, t in zip(correctness, token_counts)
-            if c
-            and t <= cfg.token_budget
-            and t >= cfg.token_budget * cfg.min_length_ratio
+            if c and t <= cfg.token_budget and t >= cfg.token_budget * cfg.min_length_ratio
         )
 
         return {

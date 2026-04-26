@@ -4,6 +4,7 @@ Inspired by repo-map in Aider (Aider-AI/aider, Apache-2.0) and
 symbol indexing in SWE-agent (SWE-agent/SWE-agent, MIT);
 Aurelius-native clean-room implementation. License: MIT.
 """
+
 from __future__ import annotations
 
 import ast
@@ -19,8 +20,9 @@ _MAX_QUERY_LEN = 1024
 @dataclass
 class CodeSymbol:
     """A named symbol extracted from an AST."""
+
     name: str
-    kind: str          # "function", "class", "variable", "import"
+    kind: str  # "function", "class", "variable", "import"
     filename: str
     lineno: int
     col_offset: int = 0
@@ -30,6 +32,7 @@ class CodeSymbol:
 @dataclass
 class CodeFile:
     """Indexed Python source file."""
+
     filename: str
     source: str
     symbols: list[CodeSymbol] = field(default_factory=list)
@@ -45,42 +48,64 @@ def extract_symbols(filename: str, source: str) -> list[CodeSymbol]:
     try:
         tree = ast.parse(source, filename=filename)
     except SyntaxError:
-        return symbols   # non-fatal: return empty for unparseable files
+        return symbols  # non-fatal: return empty for unparseable files
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             doc = ast.get_docstring(node) or ""
-            symbols.append(CodeSymbol(
-                name=node.name, kind="function", filename=filename,
-                lineno=node.lineno, col_offset=node.col_offset,
-                docstring=doc[:256],
-            ))
+            symbols.append(
+                CodeSymbol(
+                    name=node.name,
+                    kind="function",
+                    filename=filename,
+                    lineno=node.lineno,
+                    col_offset=node.col_offset,
+                    docstring=doc[:256],
+                )
+            )
         elif isinstance(node, ast.ClassDef):
             doc = ast.get_docstring(node) or ""
-            symbols.append(CodeSymbol(
-                name=node.name, kind="class", filename=filename,
-                lineno=node.lineno, col_offset=node.col_offset,
-                docstring=doc[:256],
-            ))
+            symbols.append(
+                CodeSymbol(
+                    name=node.name,
+                    kind="class",
+                    filename=filename,
+                    lineno=node.lineno,
+                    col_offset=node.col_offset,
+                    docstring=doc[:256],
+                )
+            )
         elif isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name):
-                    symbols.append(CodeSymbol(
-                        name=target.id, kind="variable", filename=filename,
-                        lineno=node.lineno,
-                    ))
+                    symbols.append(
+                        CodeSymbol(
+                            name=target.id,
+                            kind="variable",
+                            filename=filename,
+                            lineno=node.lineno,
+                        )
+                    )
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                symbols.append(CodeSymbol(
-                    name=alias.asname or alias.name, kind="import",
-                    filename=filename, lineno=node.lineno,
-                ))
+                symbols.append(
+                    CodeSymbol(
+                        name=alias.asname or alias.name,
+                        kind="import",
+                        filename=filename,
+                        lineno=node.lineno,
+                    )
+                )
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
-                symbols.append(CodeSymbol(
-                    name=alias.asname or alias.name, kind="import",
-                    filename=filename, lineno=node.lineno,
-                ))
+                symbols.append(
+                    CodeSymbol(
+                        name=alias.asname or alias.name,
+                        kind="import",
+                        filename=filename,
+                        lineno=node.lineno,
+                    )
+                )
     return symbols
 
 
@@ -88,7 +113,7 @@ class CodeSearchIndex:
     """Indexes Python source files for symbol and text search."""
 
     def __init__(self) -> None:
-        self._files: dict[str, CodeFile] = {}    # filename -> CodeFile
+        self._files: dict[str, CodeFile] = {}  # filename -> CodeFile
         self._symbol_map: dict[str, list[CodeSymbol]] = {}  # name -> symbols
 
     def add_file(self, filename: str, source: str) -> int:
@@ -100,8 +125,7 @@ class CodeSearchIndex:
         if len(source) > _MAX_SOURCE_LEN:
             raise ValueError(f"source exceeds {_MAX_SOURCE_LEN} chars")
         symbols = extract_symbols(filename, source)
-        self._files[filename] = CodeFile(filename=filename, source=source,
-                                          symbols=symbols)
+        self._files[filename] = CodeFile(filename=filename, source=source, symbols=symbols)
         for sym in symbols:
             self._symbol_map.setdefault(sym.name, []).append(sym)
         return len(symbols)
@@ -120,8 +144,9 @@ class CodeSearchIndex:
                     del self._symbol_map[sym.name]
         del self._files[filename]
 
-    def search_symbols(self, query: str, kind: str | None = None,
-                       top_k: int = 20) -> list[CodeSymbol]:
+    def search_symbols(
+        self, query: str, kind: str | None = None, top_k: int = 20
+    ) -> list[CodeSymbol]:
         """Search symbols by name prefix or substring.
         kind: filter by "function", "class", "variable", "import", or None for all.
         """
@@ -138,6 +163,7 @@ class CodeSearchIndex:
                 for sym in syms:
                     if kind is None or sym.kind == kind:
                         results.append(sym)
+
         # Sort: exact matches first, then prefix, then contains; then by lineno
         def sort_key(s: CodeSymbol) -> tuple[int, int]:
             n = s.name.lower()
@@ -147,6 +173,7 @@ class CodeSearchIndex:
             if n.startswith(q):
                 return (1, s.lineno)
             return (2, s.lineno)
+
         results.sort(key=sort_key)
         return results[:top_k]
 

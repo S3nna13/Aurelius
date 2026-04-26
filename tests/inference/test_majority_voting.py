@@ -11,16 +11,16 @@ import torch
 import torch.nn as nn
 
 from src.inference.majority_voting import (
-    SelfConsistencyConfig,
     AnswerExtractor,
     MajorityVoter,
+    SelfConsistencyConfig,
     SelfConsistencyDecoder,
 )
-
 
 # ---------------------------------------------------------------------------
 # MockModel
 # ---------------------------------------------------------------------------
+
 
 class MockModel(nn.Module):
     """Minimal model that returns deterministic logits for testing.
@@ -47,6 +47,7 @@ class MockModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def vocab_size() -> int:
@@ -83,6 +84,7 @@ def input_ids(vocab_size):
 # Test 1: SelfConsistencyConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """SelfConsistencyConfig should have correct default values."""
     cfg = SelfConsistencyConfig()
@@ -95,6 +97,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: MajorityVoter.vote returns (winner, stats_dict)
 # ---------------------------------------------------------------------------
+
 
 def test_vote_returns_tuple_with_stats(voter):
     """vote() should return a 2-tuple: (winner, stats_dict)."""
@@ -110,6 +113,7 @@ def test_vote_returns_tuple_with_stats(voter):
 # Test 3: Plurality vote picks most common answer
 # ---------------------------------------------------------------------------
 
+
 def test_plurality_vote_picks_most_common(voter):
     """Most frequent answer should win."""
     answers = [7, 7, 3, 7, 3, 1]
@@ -122,6 +126,7 @@ def test_plurality_vote_picks_most_common(voter):
 # Test 4: vote with all same answers -> confidence=1.0
 # ---------------------------------------------------------------------------
 
+
 def test_vote_all_same_answers_confidence_one(voter):
     """When all answers are identical confidence must be 1.0."""
     answers = [42, 42, 42, 42]
@@ -133,6 +138,7 @@ def test_vote_all_same_answers_confidence_one(voter):
 # ---------------------------------------------------------------------------
 # Test 5: vote with all different answers -> confidence=1/n
 # ---------------------------------------------------------------------------
+
 
 def test_vote_all_different_confidence_one_over_n(voter):
     """When all answers differ confidence equals 1/n_valid."""
@@ -147,6 +153,7 @@ def test_vote_all_different_confidence_one_over_n(voter):
 # Test 6: weighted_vote returns winner with unequal weights
 # ---------------------------------------------------------------------------
 
+
 def test_weighted_vote_unequal_weights(voter):
     """Heavy weight on answer=99 should make it win despite fewer votes."""
     answers = [1, 1, 1, 99]
@@ -158,6 +165,7 @@ def test_weighted_vote_unequal_weights(voter):
 # ---------------------------------------------------------------------------
 # Test 7: AnswerExtractor.extract returns int or None
 # ---------------------------------------------------------------------------
+
 
 def test_extractor_extract_returns_int_or_none(extractor):
     """extract() should return an int for valid tensors, None for all-padding."""
@@ -176,6 +184,7 @@ def test_extractor_extract_returns_int_or_none(extractor):
 # Test 8: extract_from_candidates returns list of length n_samples
 # ---------------------------------------------------------------------------
 
+
 def test_extract_from_candidates_length(extractor):
     """extract_from_candidates should return a list matching n_samples."""
     n_samples = 6
@@ -189,6 +198,7 @@ def test_extract_from_candidates_length(extractor):
 # ---------------------------------------------------------------------------
 # Test 9: SelfConsistencyDecoder.sample_responses returns correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_sample_responses_correct_shape(decoder, input_ids):
     """sample_responses should return tensor of shape (n_samples, max_new_tokens)."""
@@ -204,6 +214,7 @@ def test_sample_responses_correct_shape(decoder, input_ids):
 # Test 10: get_confidence returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_get_confidence_in_range(decoder):
     """get_confidence should return a float in [0.0, 1.0]."""
     answers = [5, 5, 3, 5, None, 2]
@@ -215,6 +226,7 @@ def test_get_confidence_in_range(decoder):
 # ---------------------------------------------------------------------------
 # Test 11: decode returns tuple with (answer, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_decode_returns_answer_and_dict(decoder, input_ids):
     """decode() should return a 2-tuple of (Optional[int], dict)."""
@@ -229,6 +241,7 @@ def test_decode_returns_answer_and_dict(decoder, input_ids):
 # ---------------------------------------------------------------------------
 # Test 12: vote stats have 'n_valid' key
 # ---------------------------------------------------------------------------
+
 
 def test_vote_stats_have_n_valid_key(voter):
     """Stats dict returned by vote() must include 'n_valid'."""

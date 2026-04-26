@@ -13,7 +13,6 @@ sampling.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
 
 import torch
 
@@ -55,7 +54,7 @@ class JSONDecoderState:
         Whether a complete top-level JSON value has been produced.
     """
 
-    stack: List[str] = field(default_factory=list)
+    stack: list[str] = field(default_factory=list)
     in_string: bool = False
     escape: bool = False
     expecting_value: bool = True
@@ -65,7 +64,7 @@ class JSONDecoderState:
     in_number: bool = False
     done: bool = False
 
-    def clone(self) -> "JSONDecoderState":
+    def clone(self) -> JSONDecoderState:
         return JSONDecoderState(
             stack=list(self.stack),
             in_string=self.in_string,
@@ -89,7 +88,7 @@ class JSONMaskBuilder:
     invalid JSON prefix.
     """
 
-    def __init__(self, vocab: List[str], allow_whitespace: bool = True) -> None:
+    def __init__(self, vocab: list[str], allow_whitespace: bool = True) -> None:
         if not isinstance(vocab, list):
             raise TypeError("vocab must be a list[str]")
         for tok in vocab:
@@ -281,23 +280,19 @@ class JSONMaskBuilder:
         return True
 
     def get_mask(
-        self, state: JSONDecoderState, vocab_strings: List[str] | None = None
+        self, state: JSONDecoderState, vocab_strings: list[str] | None = None
     ) -> torch.Tensor:
         """Return a boolean mask over the vocab of admissible tokens."""
         vocab = vocab_strings if vocab_strings is not None else self.vocab
         admissible = [self._try_token(state, tok) for tok in vocab]
         return torch.tensor(admissible, dtype=torch.bool)
 
-    def mask_logits(
-        self, logits: torch.Tensor, state: JSONDecoderState
-    ) -> torch.Tensor:
+    def mask_logits(self, logits: torch.Tensor, state: JSONDecoderState) -> torch.Tensor:
         """Return a copy of ``logits`` with forbidden entries set to -inf."""
         if logits.dim() != 1:
             raise ValueError("mask_logits expects a 1-D logits tensor [V]")
         if logits.shape[0] != len(self.vocab):
-            raise ValueError(
-                f"logits size {logits.shape[0]} != vocab size {len(self.vocab)}"
-            )
+            raise ValueError(f"logits size {logits.shape[0]} != vocab size {len(self.vocab)}")
         mask = self.get_mask(state)
         out = logits.clone()
         out[~mask] = float("-inf")

@@ -2,20 +2,21 @@
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.eval.integrated_gradients import (
-    interpolate_inputs,
-    compute_integrated_gradients,
     IGConfig,
     IntegratedGradientsExplainer,
+    compute_integrated_gradients,
+    interpolate_inputs,
     smooth_grad,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_model():
@@ -44,6 +45,7 @@ def input_ids():
 # ---------------------------------------------------------------------------
 # interpolate_inputs tests
 # ---------------------------------------------------------------------------
+
 
 def test_interpolate_inputs_zero_alpha():
     """alpha=0 should return the baseline exactly."""
@@ -76,6 +78,7 @@ def test_interpolate_inputs_shape():
 # compute_integrated_gradients tests
 # ---------------------------------------------------------------------------
 
+
 def test_integrated_gradients_shape(tiny_model, input_ids):
     """compute_integrated_gradients should return a (T,) tensor."""
     T = input_ids.shape[1]
@@ -105,6 +108,7 @@ def test_integrated_gradients_nonnegative(tiny_model, input_ids):
 # IGConfig tests
 # ---------------------------------------------------------------------------
 
+
 def test_ig_config_defaults():
     """IGConfig() should have the specified default values."""
     cfg = IGConfig()
@@ -116,6 +120,7 @@ def test_ig_config_defaults():
 # ---------------------------------------------------------------------------
 # IntegratedGradientsExplainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_explainer_explain_shape(tiny_model, input_ids):
     """explain() should return a (T,) tensor."""
@@ -149,7 +154,7 @@ def test_explainer_top_k_tokens(tiny_model, input_ids):
     # Verify descending order: each element should have attribution >= next
     for i in range(len(top_k) - 1):
         assert attrs[top_k[i]] >= attrs[top_k[i + 1]], (
-            f"Indices not sorted by attribution: {attrs[top_k[i]]} < {attrs[top_k[i+1]]}"
+            f"Indices not sorted by attribution: {attrs[top_k[i]]} < {attrs[top_k[i + 1]]}"
         )
     # All indices must be in valid range
     for idx in top_k:
@@ -159,6 +164,7 @@ def test_explainer_top_k_tokens(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # smooth_grad tests
 # ---------------------------------------------------------------------------
+
 
 def test_smooth_grad_shape(tiny_model, input_ids):
     """smooth_grad should return a (T,) tensor."""

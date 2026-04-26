@@ -2,13 +2,12 @@
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class CircuitNode:
     layer: int
-    head: Optional[int]
+    head: int | None
     component_type: str
     importance: float = 0.0
     node_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
@@ -81,10 +80,7 @@ class CircuitAnalyzer:
     def subgraph(self, circuit: Circuit, min_importance: float = 0.5) -> Circuit:
         kept_nodes = [n for n in circuit.nodes if n.importance >= min_importance]
         kept_ids = {n.node_id for n in kept_nodes}
-        kept_edges = [
-            e for e in circuit.edges
-            if e.from_node in kept_ids and e.to_node in kept_ids
-        ]
+        kept_edges = [e for e in circuit.edges if e.from_node in kept_ids and e.to_node in kept_ids]
         return Circuit(
             name=circuit.name,
             nodes=kept_nodes,

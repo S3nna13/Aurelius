@@ -37,7 +37,7 @@ def test_config_flag_defaults_off():
 
 
 def test_end_to_end_dispatch_three_inputs():
-    from src.agent import DispatchTask, Dispatcher
+    from src.agent import Dispatcher, DispatchTask
 
     class UpperTask(DispatchTask):
         name = "upper"

@@ -9,11 +9,9 @@ from __future__ import annotations
 import math
 
 import torch
-import pytest
 
-from src.model.vision_projector import VisionProjector, VisionProjectorConfig
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.vision_projector import VisionProjector, VisionProjectorConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,6 +32,7 @@ def tiny_cfg(**kwargs) -> VisionProjectorConfig:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """Default VisionProjectorConfig should have canonical production values."""
     cfg = VisionProjectorConfig()
@@ -46,6 +45,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_output_shape_no_pool
 # ---------------------------------------------------------------------------
+
 
 def test_output_shape_no_pool():
     """temporal_pool=False: output sequence length equals input sequence length."""
@@ -60,6 +60,7 @@ def test_output_shape_no_pool():
 # 3. test_output_shape_with_pool
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape_with_pool():
     """temporal_pool=True, pool_factor=4, N=16 -> N_out=4."""
     cfg = tiny_cfg(temporal_pool=True, pool_factor=4)
@@ -73,6 +74,7 @@ def test_output_shape_with_pool():
 # 4. test_output_shape_odd_N
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape_odd_N():
     """N=17, pool_factor=4 -> ceil(17/4)=5 patches out."""
     N = 17
@@ -82,15 +84,14 @@ def test_output_shape_odd_N():
     model = VisionProjector(cfg)
     x = torch.randn(1, N, TINY_VIT)
     out = model(x)
-    assert out.shape[1] == expected_N_out, (
-        f"Expected N_out={expected_N_out}, got {out.shape[1]}"
-    )
+    assert out.shape[1] == expected_N_out, f"Expected N_out={expected_N_out}, got {out.shape[1]}"
     assert out.shape == (1, expected_N_out, TINY_LLM)
 
 
 # ---------------------------------------------------------------------------
 # 5. test_projection_dim
 # ---------------------------------------------------------------------------
+
 
 def test_projection_dim():
     """Output last dimension always equals llm_hidden regardless of pooling setting."""
@@ -108,6 +109,7 @@ def test_projection_dim():
 # 6. test_no_pool_preserves_N
 # ---------------------------------------------------------------------------
 
+
 def test_no_pool_preserves_N():
     """When temporal_pool=False, N_out == N_in for any sequence length."""
     cfg = tiny_cfg(temporal_pool=False)
@@ -115,14 +117,13 @@ def test_no_pool_preserves_N():
     for N in (1, 7, 16, 100):
         x = torch.randn(1, N, TINY_VIT)
         out = model(x)
-        assert out.shape[1] == N, (
-            f"N={N}: expected N_out={N}, got {out.shape[1]}"
-        )
+        assert out.shape[1] == N, f"N={N}: expected N_out={N}, got {out.shape[1]}"
 
 
 # ---------------------------------------------------------------------------
 # 7. test_gradients_flow
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_flow():
     """Backward pass should propagate gradients to proj.weight."""
@@ -140,6 +141,7 @@ def test_gradients_flow():
 # 8. test_pool_factor_1
 # ---------------------------------------------------------------------------
 
+
 def test_pool_factor_1():
     """pool_factor=1 is identity pooling: N_out == N_in."""
     cfg = tiny_cfg(temporal_pool=True, pool_factor=1)
@@ -153,6 +155,7 @@ def test_pool_factor_1():
 # ---------------------------------------------------------------------------
 # 9. test_pool_factor_equals_N
 # ---------------------------------------------------------------------------
+
 
 def test_pool_factor_equals_N():
     """pool_factor == N pools the entire sequence down to 1 token."""
@@ -169,6 +172,7 @@ def test_pool_factor_equals_N():
 # 10. test_batch_size_independence
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_independence():
     """B=1 and B=3 produce consistent output shapes."""
     cfg = tiny_cfg(temporal_pool=True, pool_factor=4)
@@ -178,14 +182,13 @@ def test_batch_size_independence():
         x = torch.randn(B, N, TINY_VIT)
         out = model(x)
         expected = (B, N // 4, TINY_LLM)
-        assert out.shape == expected, (
-            f"B={B}: expected {expected}, got {out.shape}"
-        )
+        assert out.shape == expected, f"B={B}: expected {expected}, got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 11. test_weight_init
 # ---------------------------------------------------------------------------
+
 
 def test_weight_init():
     """proj.weight should be a float tensor with shape [llm_hidden, vit_hidden]."""
@@ -201,6 +204,7 @@ def test_weight_init():
 # ---------------------------------------------------------------------------
 # 12. test_determinism
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     """Same input tensor produces identical output on repeated forward passes."""
@@ -218,6 +222,7 @@ def test_determinism():
 # 13. test_zero_input
 # ---------------------------------------------------------------------------
 
+
 def test_zero_input():
     """Zero tensor input -> zero output (no bias in proj)."""
     cfg = tiny_cfg(temporal_pool=True, pool_factor=4)
@@ -232,6 +237,7 @@ def test_zero_input():
 # 14. test_registry_entry
 # ---------------------------------------------------------------------------
 
+
 def test_registry_entry():
     """MODEL_COMPONENT_REGISTRY['vision_projector'] must be VisionProjector."""
     assert "vision_projector" in MODEL_COMPONENT_REGISTRY, (
@@ -245,6 +251,7 @@ def test_registry_entry():
 # ---------------------------------------------------------------------------
 # 15. test_tiny_config
 # ---------------------------------------------------------------------------
+
 
 def test_tiny_config():
     """vit_hidden=8, llm_hidden=16, pool_factor=2, input [1, 4, 8] -> [1, 2, 16]."""

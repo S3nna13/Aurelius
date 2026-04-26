@@ -7,19 +7,20 @@ References:
     https://arxiv.org/abs/1805.06370 (Progress & Compress / EWC++)
     https://arxiv.org/abs/1812.00420 (A-GEM)
 """
+
 from __future__ import annotations
 
 import random
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Online Fisher Estimate (EWC++)
 # ---------------------------------------------------------------------------
+
 
 class OnlineFisherEstimate:
     """Maintains a running EMA of per-parameter squared gradients as Fisher estimate.
@@ -32,12 +33,12 @@ class OnlineFisherEstimate:
     def __init__(self, model: nn.Module, gamma: float = 0.9) -> None:
         self.model = model
         self.gamma = gamma
-        self.fisher: Dict[str, Tensor] = {
+        self.fisher: dict[str, Tensor] = {
             name: torch.zeros_like(param.data)
             for name, param in model.named_parameters()
             if param.requires_grad
         }
-        self.params_star: Dict[str, Tensor] = {
+        self.params_star: dict[str, Tensor] = {
             name: param.data.clone()
             for name, param in model.named_parameters()
             if param.requires_grad
@@ -80,13 +81,14 @@ class OnlineFisherEstimate:
             if name not in self.fisher:
                 continue
             diff = param - self.params_star[name]
-            penalty = penalty + (self.fisher[name] * diff ** 2).sum()
+            penalty = penalty + (self.fisher[name] * diff**2).sum()
         return 0.5 * penalty
 
 
 # ---------------------------------------------------------------------------
 # EWC++ Trainer
 # ---------------------------------------------------------------------------
+
 
 class EWCPlusPlusTrainer:
     """Trainer that applies Online EWC++ regularization.
@@ -110,9 +112,7 @@ class EWCPlusPlusTrainer:
         self.ewc_lambda = ewc_lambda
         self.fisher_estimate = OnlineFisherEstimate(model, gamma)
 
-    def train_step(
-        self, x: Tensor, loss_fn: Callable[[Tensor], Tensor]
-    ) -> Dict[str, float]:
+    def train_step(self, x: Tensor, loss_fn: Callable[[Tensor], Tensor]) -> dict[str, float]:
         """Execute one training step with EWC++ regularization.
 
         Args:
@@ -156,6 +156,7 @@ class EWCPlusPlusTrainer:
 # Episodic Memory for A-GEM
 # ---------------------------------------------------------------------------
 
+
 class EpisodicMemory:
     """Stores past task examples for A-GEM gradient projection.
 
@@ -167,7 +168,7 @@ class EpisodicMemory:
     def __init__(self, max_size: int = 100, d_input: int = 8) -> None:
         self.max_size = max_size
         self.d_input = d_input
-        self.memory: List[Tensor] = []
+        self.memory: list[Tensor] = []
 
     def add(self, x: Tensor) -> None:
         """Add a sample to memory, evicting the oldest if over capacity.
@@ -179,7 +180,7 @@ class EpisodicMemory:
         if len(self.memory) > self.max_size:
             self.memory.pop(0)
 
-    def sample(self, n: int) -> Optional[Tensor]:
+    def sample(self, n: int) -> Tensor | None:
         """Return n randomly sampled memory tensors stacked.
 
         Args:
@@ -199,6 +200,7 @@ class EpisodicMemory:
 # ---------------------------------------------------------------------------
 # A-GEM Trainer
 # ---------------------------------------------------------------------------
+
 
 class AGEMTrainer:
     """Trainer that uses Averaged Gradient Episodic Memory (A-GEM) projection.
@@ -220,8 +222,8 @@ class AGEMTrainer:
         self.memory = memory
 
     def _project_gradient(
-        self, current_grads: List[Tensor], ref_grads: List[Tensor]
-    ) -> List[Tensor]:
+        self, current_grads: list[Tensor], ref_grads: list[Tensor]
+    ) -> list[Tensor]:
         """Project current gradients to not increase reference (memory) loss.
 
         If dot(g_current, g_ref) >= 0, returns g_current unchanged.
@@ -250,7 +252,7 @@ class AGEMTrainer:
 
         scale = dot_cg_rg / dot_rg_rg
 
-        projected: List[Tensor] = []
+        projected: list[Tensor] = []
         for g_ci, g_ri in zip(current_grads, ref_grads):
             projected.append(g_ci - scale * g_ri)
 
@@ -262,7 +264,7 @@ class AGEMTrainer:
         y: Tensor,
         loss_fn: Callable[[Tensor, Tensor], Tensor],
         n_memory_samples: int = 10,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Execute one A-GEM training step with optional gradient projection.
 
         Args:
@@ -283,8 +285,8 @@ class AGEMTrainer:
         task_loss.backward()
 
         # Collect current gradients
-        current_grads: List[Tensor] = []
-        params_with_grad: List[nn.Parameter] = []
+        current_grads: list[Tensor] = []
+        params_with_grad: list[nn.Parameter] = []
         for param in self.model.parameters():
             if param.requires_grad and param.grad is not None:
                 current_grads.append(param.grad.clone())
@@ -303,10 +305,10 @@ class AGEMTrainer:
             # Use proper reconstruction: just use a self-supervised proxy
             # A-GEM paper uses labels stored with memory; here we use output variance
             # as a proxy signal that creates non-trivial gradients
-            mem_loss = (mem_output ** 2).mean()
+            mem_loss = (mem_output**2).mean()
             mem_loss.backward()
 
-            ref_grads: List[Tensor] = []
+            ref_grads: list[Tensor] = []
             for param in params_with_grad:
                 if param.grad is not None:
                     ref_grads.append(param.grad.clone())

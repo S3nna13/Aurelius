@@ -18,27 +18,27 @@ State equations (ZOH discretization):
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SSMConfig:
     """Hyperparameters for the Selective State Space Model."""
 
     d_model: int = 128
-    d_state: int = 16           # SSM state dimension (N in the paper)
-    d_conv: int = 4             # local depthwise convolution width
-    expand: int = 2             # inner dim expansion factor (d_inner = expand * d_model)
-    dt_rank: str | int = 8      # rank of Δt projection ("auto" → ceil(d_model / 16))
+    d_state: int = 16  # SSM state dimension (N in the paper)
+    d_conv: int = 4  # local depthwise convolution width
+    expand: int = 2  # inner dim expansion factor (d_inner = expand * d_model)
+    dt_rank: str | int = 8  # rank of Δt projection ("auto" → ceil(d_model / 16))
     dropout: float = 0.0
     dt_min: float = 0.001
     dt_max: float = 0.1
@@ -55,13 +55,14 @@ class SSMConfig:
 # Naive (reference) selective scan — no CUDA optimisation
 # ---------------------------------------------------------------------------
 
+
 def selective_scan_naive(
-    u: Tensor,      # (B, L, d_inner)   — input sequence
+    u: Tensor,  # (B, L, d_inner)   — input sequence
     delta: Tensor,  # (B, L, d_inner) or (B, L, dt_rank) — Δ (softplus applied internally)
-    A: Tensor,      # (d_inner, d_state) — log of negative A (A_log)
-    B: Tensor,      # (B, L, d_state)   — input-dependent B
-    C: Tensor,      # (B, L, d_state)   — input-dependent C
-    D: Tensor,      # (d_inner,)        — skip connection weight
+    A: Tensor,  # (d_inner, d_state) — log of negative A (A_log)
+    B: Tensor,  # (B, L, d_state)   — input-dependent B
+    C: Tensor,  # (B, L, d_state)   — input-dependent C
+    D: Tensor,  # (d_inner,)        — skip connection weight
 ) -> Tensor:
     """Naive sequential selective scan.
 
@@ -84,7 +85,7 @@ def selective_scan_naive(
         (B, L, d_inner)
     """
     B_batch, L, d_inner = u.shape
-    assert A.dim() == 2, f"A must be 2D (d_inner, d_state), got {A.shape}"
+    assert A.dim() == 2, f"A must be 2D (d_inner, d_state), got {A.shape}"  # noqa: S101
     d_state = A.shape[1]
 
     # Expand delta from (B, L, dt_rank) → (B, L, d_inner) if needed by tiling
@@ -106,17 +107,15 @@ def selective_scan_naive(
     ys = []
 
     for t in range(L):
-        u_t = u[:, t, :]          # (B, d_inner)
-        dt_t = dt[:, t, :]        # (B, d_inner)
-        B_t = B[:, t, :]          # (B, d_state)
-        C_t = C[:, t, :]          # (B, d_state)
+        u_t = u[:, t, :]  # (B, d_inner)
+        dt_t = dt[:, t, :]  # (B, d_inner)
+        B_t = B[:, t, :]  # (B, d_state)
+        C_t = C[:, t, :]  # (B, d_state)
 
         # A_bar: (B, d_inner, d_state)
         # dt_t: (B, d_inner) → (B, d_inner, 1)
         # neg_A: (d_inner, d_state) → (1, d_inner, d_state)
-        A_bar = torch.exp(
-            -dt_t.unsqueeze(-1) * neg_A.unsqueeze(0)
-        )  # (B, d_inner, d_state)
+        A_bar = torch.exp(-dt_t.unsqueeze(-1) * neg_A.unsqueeze(0))  # (B, d_inner, d_state)
 
         # B_bar: (B, d_inner, d_state) = dt_t[:, :, None] * B_t[:, None, :]
         B_bar = dt_t.unsqueeze(-1) * B_t.unsqueeze(1)  # (B, d_inner, d_state)
@@ -136,6 +135,7 @@ def selective_scan_naive(
 # ---------------------------------------------------------------------------
 # SelectiveSSM (S6 core)
 # ---------------------------------------------------------------------------
+
 
 class SelectiveSSM(nn.Module):
     """S6: Selective State Space Model core.
@@ -191,8 +191,7 @@ class SelectiveSSM(nn.Module):
         """Initialise dt_proj.bias so that softplus(bias) ≈ dt_init."""
         dt_min, dt_max = self.cfg.dt_min, self.cfg.dt_max
         dt = torch.exp(
-            torch.rand(self.d_inner) * (math.log(dt_max) - math.log(dt_min))
-            + math.log(dt_min)
+            torch.rand(self.d_inner) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)
         ).clamp(min=self.cfg.dt_init_floor)
         # inverse softplus: x = log(exp(dt) - 1)
         inv_dt = dt + torch.log(-torch.expm1(-dt))
@@ -225,7 +224,7 @@ class SelectiveSSM(nn.Module):
         # A_log stores log(-A_original), so -exp(A_log) = A_original < 0 → stable
         # We pass A_log directly; selective_scan_naive will compute exp(A_log)
         A = self.A_log  # (d_inner, d_state)
-        D = self.D       # (d_inner,)
+        D = self.D  # (d_inner,)
 
         return selective_scan_naive(x, delta, A, B_ssm, C_ssm, D)
 
@@ -233,6 +232,7 @@ class SelectiveSSM(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaBlock — full block with in_proj, conv1d, SSM, out_proj
 # ---------------------------------------------------------------------------
+
 
 class MambaBlock(nn.Module):
     """Full Mamba block: input projection + conv1d + SSM + output projection.
@@ -289,22 +289,22 @@ class MambaBlock(nn.Module):
         B, L, _ = x.shape
 
         # Project and split into x' (ssm branch) and z (gate)
-        xz = self.in_proj(x)          # (B, L, 2*d_inner)
+        xz = self.in_proj(x)  # (B, L, 2*d_inner)
         x_ssm, z = xz.chunk(2, dim=-1)  # each (B, L, d_inner)
 
         # Causal depthwise conv1d on x_ssm
         # Conv1d expects (B, C, L); we use left-padding=d_conv-1 then trim right
-        x_conv = x_ssm.transpose(1, 2)                  # (B, d_inner, L)
-        x_conv = self.conv1d(x_conv)                     # (B, d_inner, L + d_conv - 1)
-        x_conv = x_conv[:, :, :L]                        # (B, d_inner, L) — trim right
-        x_conv = x_conv.transpose(1, 2)                  # (B, L, d_inner)
+        x_conv = x_ssm.transpose(1, 2)  # (B, d_inner, L)
+        x_conv = self.conv1d(x_conv)  # (B, d_inner, L + d_conv - 1)
+        x_conv = x_conv[:, :, :L]  # (B, d_inner, L) — trim right
+        x_conv = x_conv.transpose(1, 2)  # (B, L, d_inner)
         x_conv = F.silu(x_conv)
 
         # Selective SSM
-        y = self.ssm(x_conv)    # (B, L, d_inner)
+        y = self.ssm(x_conv)  # (B, L, d_inner)
 
         # Gate with z branch
-        y = y * F.silu(z)       # (B, L, d_inner)
+        y = y * F.silu(z)  # (B, L, d_inner)
 
         # Project back to d_model
         return self.out_proj(y)  # (B, L, d_model)
@@ -314,13 +314,14 @@ class MambaBlock(nn.Module):
 # selective_scan — public alias matching the spec API
 # ---------------------------------------------------------------------------
 
+
 def selective_scan(
-    u: Tensor,      # (B, L, d_inner)
-    dt: Tensor,     # (B, L, d_inner) — time step (softplus applied internally)
-    A: Tensor,      # (d_inner, d_state) — log scale, negative
-    B: Tensor,      # (B, L, d_state)
-    C: Tensor,      # (B, L, d_state)
-    D: Tensor,      # (d_inner,)
+    u: Tensor,  # (B, L, d_inner)
+    dt: Tensor,  # (B, L, d_inner) — time step (softplus applied internally)
+    A: Tensor,  # (d_inner, d_state) — log scale, negative
+    B: Tensor,  # (B, L, d_state)
+    C: Tensor,  # (B, L, d_state)
+    D: Tensor,  # (d_inner,)
 ) -> Tensor:
     """Discretized SSM scan matching the spec API.
 
@@ -333,6 +334,7 @@ def selective_scan(
 # ---------------------------------------------------------------------------
 # MambaLayer — MambaBlock with residual connection + RMSNorm
 # ---------------------------------------------------------------------------
+
 
 class MambaLayer(nn.Module):
     """MambaBlock wrapped with pre-norm (RMSNorm) and residual connection."""
@@ -410,6 +412,7 @@ class _MambaBlockFromSSMConfig(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaLM — stack of MambaLayers for language modelling
 # ---------------------------------------------------------------------------
+
 
 class MambaLM(nn.Module):
     """Stack of Mamba layers for language modeling.

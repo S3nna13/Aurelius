@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import time
 import pytest
 
 from src.evaluation.leaderboard_tracker import (
+    LEADERBOARD_TRACKER_REGISTRY,
     Leaderboard,
     LeaderboardEntry,
-    LEADERBOARD_TRACKER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def lb_higher():
@@ -32,11 +31,10 @@ def lb_lower():
 # LeaderboardEntry frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestLeaderboardEntryFrozen:
     def test_is_frozen(self):
-        entry = LeaderboardEntry(
-            model_id="m1", metric_name="acc", score=0.9, timestamp=1.0
-        )
+        entry = LeaderboardEntry(model_id="m1", metric_name="acc", score=0.9, timestamp=1.0)
         with pytest.raises((AttributeError, TypeError)):
             entry.score = 0.5  # type: ignore[misc]
 
@@ -62,6 +60,7 @@ class TestLeaderboardEntryFrozen:
 # ---------------------------------------------------------------------------
 # submit
 # ---------------------------------------------------------------------------
+
 
 class TestSubmit:
     def test_submit_returns_leaderboard_entry(self, lb_higher):
@@ -97,6 +96,7 @@ class TestSubmit:
 # rankings — higher_is_better
 # ---------------------------------------------------------------------------
 
+
 class TestRankingsHigherIsBetter:
     def test_rankings_sorted_descending(self, lb_higher):
         lb_higher.submit("m1", 0.7)
@@ -115,8 +115,8 @@ class TestRankingsHigherIsBetter:
 
     def test_rankings_tie_break_by_timestamp_asc(self, lb_higher):
         # Submit two models with equal scores; the one submitted first should rank higher
-        e1 = lb_higher.submit("early", 0.8)
-        e2 = lb_higher.submit("late", 0.8)
+        lb_higher.submit("early", 0.8)
+        lb_higher.submit("late", 0.8)
         # Guarantee e1 timestamp <= e2 timestamp
         ranked = lb_higher.rankings()
         assert ranked[0].model_id == "early"
@@ -126,6 +126,7 @@ class TestRankingsHigherIsBetter:
 # ---------------------------------------------------------------------------
 # rankings — lower_is_better
 # ---------------------------------------------------------------------------
+
 
 class TestRankingsLowerIsBetter:
     def test_rankings_sorted_ascending(self, lb_lower):
@@ -146,6 +147,7 @@ class TestRankingsLowerIsBetter:
 # best
 # ---------------------------------------------------------------------------
 
+
 class TestBest:
     def test_best_returns_none_when_empty(self, lb_higher):
         assert lb_higher.best() is None
@@ -164,6 +166,7 @@ class TestBest:
 # ---------------------------------------------------------------------------
 # rank_of
 # ---------------------------------------------------------------------------
+
 
 class TestRankOf:
     def test_rank_of_top_model_is_one(self, lb_higher):
@@ -187,6 +190,7 @@ class TestRankOf:
 # ---------------------------------------------------------------------------
 # history_of
 # ---------------------------------------------------------------------------
+
 
 class TestHistoryOf:
     def test_history_of_single_submission(self, lb_higher):
@@ -222,6 +226,7 @@ class TestHistoryOf:
 # __len__
 # ---------------------------------------------------------------------------
 
+
 class TestLen:
     def test_len_zero_when_empty(self, lb_higher):
         assert len(lb_higher) == 0
@@ -240,6 +245,7 @@ class TestLen:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

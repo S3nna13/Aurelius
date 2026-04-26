@@ -1,21 +1,22 @@
 """Tests for MXFP4 microscaling quantization."""
+
 import torch
 import torch.nn as nn
-import pytest
+
 from src.inference.mxfp4_quant import (
+    MXFP4Linear,
     MXFPConfig,
-    mxfp4_quantize,
+    estimate_quantization_impact,
     mxfp4_dequantize,
     mxfp4_quantization_error,
-    MXFP4Linear,
+    mxfp4_quantize,
     quantize_model,
-    estimate_quantization_impact,
 )
-
 
 # ---------------------------------------------------------------------------
 # Core quantize / dequantize
 # ---------------------------------------------------------------------------
+
 
 def test_mxfp4_quantize_output_shapes():
     """Quantized tensor and block_scales must have correct shapes."""
@@ -99,6 +100,7 @@ def test_quantization_error_metrics():
 # MXFP4Linear
 # ---------------------------------------------------------------------------
 
+
 def test_mxfp4_linear_forward_shape():
     """MXFP4Linear forward must produce (B, out_features) output."""
     torch.manual_seed(7)
@@ -142,6 +144,7 @@ def test_mxfp4_linear_effective_bits():
 # quantize_model
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_model_replaces_linear():
     """quantize_model must replace all nn.Linear with MXFP4Linear."""
     model = nn.Sequential(
@@ -153,8 +156,7 @@ def test_quantize_model_replaces_linear():
     quantize_model(model, cfg)
     for module in model.modules():
         if not isinstance(module, (nn.Sequential, nn.ReLU, MXFP4Linear)):
-            assert not isinstance(module, nn.Linear), \
-                f"nn.Linear not replaced: {type(module)}"
+            assert not isinstance(module, nn.Linear), f"nn.Linear not replaced: {type(module)}"
 
 
 def test_quantize_model_skip_layers():
@@ -183,6 +185,7 @@ def test_quantize_model_skip_layers():
 # estimate_quantization_impact
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_quantization_impact_keys():
     """estimate_quantization_impact must return dict with required keys."""
     model = nn.Sequential(
@@ -193,6 +196,11 @@ def test_estimate_quantization_impact_keys():
     cfg = MXFPConfig(block_size=32)
     x = torch.randn(2, 64)
     result = estimate_quantization_impact(model, x, cfg)
-    for key in ("mean_snr_db", "min_snr_db", "compression_ratio",
-                "total_params", "quantized_params"):
+    for key in (
+        "mean_snr_db",
+        "min_snr_db",
+        "compression_ratio",
+        "total_params",
+        "quantized_params",
+    ):
         assert key in result, f"Missing key: {key}"

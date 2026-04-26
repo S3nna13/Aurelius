@@ -8,7 +8,6 @@ upweight difficult training examples and focus learning on hard samples.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 import torch
 from torch import Tensor
@@ -40,6 +39,7 @@ class MiningConfig:
 # ---------------------------------------------------------------------------
 # Core mining functions
 # ---------------------------------------------------------------------------
+
 
 def ohem_loss(per_sample_losses: Tensor, ratio: float = 0.5) -> Tensor:
     """Online Hard Example Mining: select top-ratio fraction with highest loss.
@@ -75,8 +75,8 @@ def focal_weight(per_sample_losses: Tensor, gamma: float = 2.0) -> Tensor:
     """
     # p_t proxy: exp(-loss) approximates model confidence for classification.
     # For regression-style losses we use the same formula.
-    p = torch.exp(-per_sample_losses)           # (N,) in (0, 1]
-    w = (1.0 - p) ** gamma                      # (N,) focal modulation
+    p = torch.exp(-per_sample_losses)  # (N,) in (0, 1]
+    w = (1.0 - p) ** gamma  # (N,) focal modulation
     total = w.sum()
     if total < 1e-12:
         # Degenerate case: uniform weights
@@ -86,9 +86,9 @@ def focal_weight(per_sample_losses: Tensor, gamma: float = 2.0) -> Tensor:
 
 def compute_difficulty_scores(
     per_sample_losses: Tensor,
-    ema_losses: Optional[Tensor] = None,
+    ema_losses: Tensor | None = None,
     ema_decay: float = 0.99,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Update EMA of per-sample losses and return current and updated EMA.
 
     If ``ema_losses`` is None, the EMA is initialized to the current losses.
@@ -111,7 +111,7 @@ def compute_difficulty_scores(
 def rank_by_difficulty(
     losses: Tensor,
     percentile: float = 0.8,
-) -> Dict[str, Tensor]:
+) -> dict[str, Tensor]:
     """Partition sample indices into hard, medium, and easy by loss percentile.
 
     Split points:
@@ -128,7 +128,7 @@ def rank_by_difficulty(
         LongTensor of indices (sorted by descending loss within each group).
     """
     N = losses.shape[0]
-    sorted_indices = torch.argsort(losses, descending=True)   # highest loss first
+    sorted_indices = torch.argsort(losses, descending=True)  # highest loss first
 
     n_hard = max(1, int(N * (1.0 - percentile)))
     n_easy = max(1, int(N * (percentile / 2.0)))
@@ -138,8 +138,8 @@ def rank_by_difficulty(
     n_medium = N - n_hard - n_easy
 
     hard_indices = sorted_indices[:n_hard]
-    medium_indices = sorted_indices[n_hard: n_hard + n_medium]
-    easy_indices = sorted_indices[n_hard + n_medium:]
+    medium_indices = sorted_indices[n_hard : n_hard + n_medium]
+    easy_indices = sorted_indices[n_hard + n_medium :]
 
     return {
         "hard": hard_indices,
@@ -151,6 +151,7 @@ def rank_by_difficulty(
 # ---------------------------------------------------------------------------
 # HardExampleSampler
 # ---------------------------------------------------------------------------
+
 
 class HardExampleSampler:
     """Maintains per-sample EMA losses and provides sampling strategies.
@@ -174,9 +175,9 @@ class HardExampleSampler:
             losses: (M,) corresponding current loss values.
         """
         alpha = self.config.ema_decay
-        self.ema_losses[indices] = (
-            alpha * self.ema_losses[indices] + (1.0 - alpha) * losses.detach().to(self.ema_losses.device)
-        )
+        self.ema_losses[indices] = alpha * self.ema_losses[indices] + (
+            1.0 - alpha
+        ) * losses.detach().to(self.ema_losses.device)
 
     def sample_hard_indices(self, n: int) -> Tensor:
         """Return the n sample indices with the highest EMA loss.
@@ -231,6 +232,7 @@ class HardExampleSampler:
 # ---------------------------------------------------------------------------
 # Unified loss with mining
 # ---------------------------------------------------------------------------
+
 
 def loss_with_mining(per_sample_losses: Tensor, config: MiningConfig) -> Tensor:
     """Compute a scalar loss using the mining strategy specified in config.

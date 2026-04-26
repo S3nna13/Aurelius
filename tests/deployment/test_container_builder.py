@@ -9,16 +9,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from src.deployment.container_builder import (
     ARTIFACT_BUILDER_REGISTRY,
-    BuildResult,
     ContainerSpec,
     DockerfileBuilder,
     SBOMGenerator,
 )
-
 
 # ---------------------------------------------------------------------------
 # DockerfileBuilder tests

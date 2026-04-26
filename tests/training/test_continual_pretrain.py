@@ -1,9 +1,7 @@
 """Tests for src/training/continual_pretrain.py."""
+
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.model.config import AureliusConfig
@@ -16,7 +14,6 @@ from src.training.continual_pretrain import (
     ReplayConfig,
     compute_domain_mixing_weights,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

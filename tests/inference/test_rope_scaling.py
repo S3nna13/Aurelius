@@ -8,8 +8,14 @@ import torch
 from src.inference.rope_scaling import RoPEConfig, RotaryEmbedding
 
 
-def make_emb(scaling_type="none", scaling_factor=1.0, dim=64, base=10000.0,
-             max_position=4096, original_max_position=4096):
+def make_emb(
+    scaling_type="none",
+    scaling_factor=1.0,
+    dim=64,
+    base=10000.0,
+    max_position=4096,
+    original_max_position=4096,
+):
     cfg = RoPEConfig(
         dim=dim,
         base=base,
@@ -43,7 +49,6 @@ class TestRotaryEmbeddingNone:
 
     def test_inv_freq_values(self):
         emb = make_emb(dim=64, base=10000.0)
-        half = 32
         expected_0 = 1.0 / (10000.0 ** (0.0 / 64))
         assert math.isclose(emb.inv_freq[0].item(), expected_0, rel_tol=1e-5)
         expected_last = 1.0 / (10000.0 ** (62.0 / 64))
@@ -101,22 +106,32 @@ class TestNTKScaling:
         adjusted_base = base * (factor ** (dim / (dim - 2)))
         half = dim // 2
         exponents = torch.arange(0, half, dtype=torch.float32) * 2.0 / dim
-        expected = 1.0 / (adjusted_base ** exponents)
+        expected = 1.0 / (adjusted_base**exponents)
         emb = make_emb(scaling_type="ntk", scaling_factor=factor, dim=dim, base=base)
         assert torch.allclose(emb.inv_freq, expected, atol=1e-5)
 
 
 class TestYaRNScaling:
     def test_yarn_forward_returns_correct_shape(self):
-        emb = make_emb(scaling_type="yarn", scaling_factor=4.0, dim=64,
-                       max_position=16384, original_max_position=4096)
+        emb = make_emb(
+            scaling_type="yarn",
+            scaling_factor=4.0,
+            dim=64,
+            max_position=16384,
+            original_max_position=4096,
+        )
         cos, sin = emb.forward(128)
         assert cos.shape == (128, 32)
 
     def test_yarn_changes_inv_freq_vs_none(self):
         emb_none = make_emb(scaling_type="none", dim=64, scaling_factor=1.0)
-        emb_yarn = make_emb(scaling_type="yarn", scaling_factor=4.0, dim=64,
-                            max_position=16384, original_max_position=4096)
+        emb_yarn = make_emb(
+            scaling_type="yarn",
+            scaling_factor=4.0,
+            dim=64,
+            max_position=16384,
+            original_max_position=4096,
+        )
         assert not torch.allclose(emb_none.inv_freq, emb_yarn.inv_freq)
 
     def test_yarn_invalid_type_raises(self):

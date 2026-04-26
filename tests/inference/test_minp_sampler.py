@@ -25,15 +25,14 @@ from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
-import pytest
 
-from src.inference.minp_sampler import MinPConfig, MinPSampler
 from src.inference import DECODER_REGISTRY
-
+from src.inference.minp_sampler import MinPConfig, MinPSampler
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform_logits(vocab: int) -> torch.Tensor:
     """Return perfectly flat logits of shape (vocab,)."""
@@ -50,6 +49,7 @@ def _peaked_logits(vocab: int, peak_idx: int = 0, peak_val: float = 10.0) -> tor
 # ---------------------------------------------------------------------------
 # Unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestConfigDefaults:
     """Test 1: MinPConfig has correct default values."""
@@ -89,7 +89,7 @@ class TestTopK:
         k = 3
         vocab = 10
         sampler = MinPSampler(MinPConfig(top_k=k))
-        logits = torch.arange(float(vocab))        # 0..9, ascending
+        logits = torch.arange(float(vocab))  # 0..9, ascending
         out = sampler.apply_top_k(logits)
 
         finite_mask = out > float("-inf")
@@ -218,9 +218,7 @@ class TestSampleWithProbs:
         assert filtered_probs.shape == (B, V)
 
         row_sums = filtered_probs.sum(dim=-1)
-        assert torch.allclose(row_sums, torch.ones(B), atol=1e-5), (
-            f"Row sums: {row_sums.tolist()}"
-        )
+        assert torch.allclose(row_sums, torch.ones(B), atol=1e-5), f"Row sums: {row_sums.tolist()}"
 
 
 class TestEffectiveVocabSize:
@@ -263,11 +261,7 @@ class TestCombinedFilters:
 
         # After full pipeline the surviving set should be ≤ k.
         full_filtered = sampler.apply_top_p(
-            sampler.apply_min_p(
-                sampler.apply_top_k(
-                    sampler.apply_temperature(logits)
-                )
-            )
+            sampler.apply_min_p(sampler.apply_top_k(sampler.apply_temperature(logits)))
         )
         survivors = (full_filtered > float("-inf")).sum().item()
         assert 1 <= survivors <= k
@@ -276,6 +270,7 @@ class TestCombinedFilters:
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 class TestIntegration:
     """Test 15: Integration — vocab=1024, B=4."""
@@ -317,9 +312,7 @@ class TestIntegration:
 
         # Row sums ≈ 1.
         row_sums = filtered_probs.sum(dim=-1)
-        assert torch.allclose(row_sums, torch.ones(B), atol=1e-4), (
-            f"Row sums: {row_sums.tolist()}"
-        )
+        assert torch.allclose(row_sums, torch.ones(B), atol=1e-4), f"Row sums: {row_sums.tolist()}"
 
         # Registry check.
         assert DECODER_REGISTRY["minp_sampler"] is MinPSampler, (

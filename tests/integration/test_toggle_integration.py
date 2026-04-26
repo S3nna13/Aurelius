@@ -1,6 +1,7 @@
 """Integration tests for Toggle token-efficient RL registry wiring."""
+
 import torch
-import pytest
+
 from src.alignment import ALIGNMENT_REGISTRY
 
 
@@ -23,9 +24,7 @@ def test_toggle_construct_and_call_from_registry():
     assert result.shape == mean_reward.shape, (
         f"Shape mismatch: expected {mean_reward.shape}, got {result.shape}"
     )
-    assert torch.allclose(result, mean_reward), (
-        f"Expected mean_reward passthrough, got {result}"
-    )
+    assert torch.allclose(result, mean_reward), f"Expected mean_reward passthrough, got {result}"
 
     # Phase 1 always passes
     result_p1 = reward_fn(mean_reward, accuracy=0.0, tokens_used=99999, phase=1)

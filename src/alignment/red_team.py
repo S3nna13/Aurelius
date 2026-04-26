@@ -23,7 +23,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -78,9 +78,7 @@ class RedTeamConfig:
     results_dir: Path = Path("results/red_team")
     """Directory to save evaluation results."""
 
-    categories: list[str] = field(
-        default_factory=lambda: list(ATTACK_CATEGORIES.keys())
-    )
+    categories: list[str] = field(default_factory=lambda: list(ATTACK_CATEGORIES.keys()))
     """Which attack categories to run."""
 
     max_attempts_per_probe: int = 50
@@ -163,10 +161,10 @@ class RedTeamReport:
     def summary(self) -> str:
         """Human-readable summary."""
         lines = [
-            f"{'='*60}",
+            f"{'=' * 60}",
             f"RED TEAM EVALUATION REPORT - {self.model_name}",
             f"Timestamp: {self.timestamp}",
-            f"{'='*60}",
+            f"{'=' * 60}",
             "",
         ]
 
@@ -179,15 +177,17 @@ class RedTeamReport:
                 f"[{result.duration_seconds:.1f}s]"
             )
 
-        lines.extend([
-            "",
-            f"{'─'*60}",
-            f"  Overall: {'PASS' if self.overall_passed else 'FAIL'} "
-            f"(aggregate success rate: {self.overall_success_rate:.1f}%)",
-            f"  Threshold: <{SUCCESS_RATE_THRESHOLD}% per category",
-            f"  Total duration: {self.total_duration_seconds:.1f}s",
-            f"{'='*60}",
-        ])
+        lines.extend(
+            [
+                "",
+                f"{'─' * 60}",
+                f"  Overall: {'PASS' if self.overall_passed else 'FAIL'} "
+                f"(aggregate success rate: {self.overall_success_rate:.1f}%)",
+                f"  Threshold: <{SUCCESS_RATE_THRESHOLD}% per category",
+                f"  Total duration: {self.total_duration_seconds:.1f}s",
+                f"{'=' * 60}",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -195,6 +195,7 @@ class RedTeamReport:
 # ---------------------------------------------------------------------------
 # Garak runner
 # ---------------------------------------------------------------------------
+
 
 def _check_garak_installed() -> bool:
     """Check if garak is available."""
@@ -215,17 +216,23 @@ def _run_garak_probe(
         Dictionary with attempt counts and success/failure data.
     """
     cmd = [
-        sys.executable, "-m", "garak",
-        "--model_type", "rest",
-        "--model_name", config.model_name,
-        "--probes", probe,
-        "--report_prefix", str(config.results_dir / "garak"),
+        sys.executable,
+        "-m",
+        "garak",
+        "--model_type",
+        "rest",
+        "--model_name",
+        config.model_name,
+        "--probes",
+        probe,
+        "--report_prefix",
+        str(config.results_dir / "garak"),
     ]
 
     logger.info("Running probe: %s", probe)
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
@@ -344,13 +351,11 @@ def run_red_team(config: RedTeamConfig | None = None) -> RedTeamReport:
         config = RedTeamConfig()
 
     if not _check_garak_installed():
-        raise RuntimeError(
-            "garak is not installed. Install with: pip install garak"
-        )
+        raise RuntimeError("garak is not installed. Install with: pip install garak")
 
     config.results_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now(tz=timezone.utc).isoformat()
+    timestamp = datetime.now(tz=UTC).isoformat()
     start = time.monotonic()
 
     logger.info("Starting red-team evaluation for model: %s", config.model_name)
@@ -393,7 +398,7 @@ def _save_report(report: RedTeamReport, results_dir: Path) -> None:
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # Timestamped filename
-    ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
 
     json_path = results_dir / f"red_team_{ts}.json"
     json_path.write_text(
@@ -422,9 +427,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
 
-    parser = argparse.ArgumentParser(
-        description="Run red-team evaluation against Aurelius"
-    )
+    parser = argparse.ArgumentParser(description="Run red-team evaluation against Aurelius")
     parser.add_argument(
         "--model-name",
         default="aurelius",

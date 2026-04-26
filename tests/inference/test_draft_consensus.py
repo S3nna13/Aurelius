@@ -35,4 +35,3 @@ def test_consensus_token_rejects_empty_input():
 
 def test_consensus_rate_handles_empty_dimensions():
     assert consensus_rate(torch.empty(0, 0, dtype=torch.long)).item() == pytest.approx(0.0)
-

@@ -3,6 +3,7 @@
 All external I/O (subprocess, shutil.which, file writes) is mocked so that
 no real Garak installation or Ollama server is required.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,11 +14,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.alignment.red_team import (
-    ATTACK_CATEGORIES,
     CategoryResult,
     RedTeamConfig,
     RedTeamReport,
-    _check_garak_installed,
     _parse_garak_output,
     _run_garak_probe,
     _save_report,
@@ -25,10 +24,10 @@ from src.alignment.red_team import (
     run_red_team,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_category_result(
     successful_attacks: int = 0,
@@ -50,6 +49,7 @@ def _make_category_result(
 # 1. CategoryResult.success_rate — zero attempts
 # ---------------------------------------------------------------------------
 
+
 def test_category_result_success_rate_zero_attempts():
     cr = CategoryResult(category="jailbreaks", probes_run=[], total_attempts=0)
     assert cr.success_rate == 0.0
@@ -59,6 +59,7 @@ def test_category_result_success_rate_zero_attempts():
 # 2. CategoryResult.success_rate — normal computation
 # ---------------------------------------------------------------------------
 
+
 def test_category_result_success_rate_computation():
     cr = _make_category_result(successful_attacks=10, total_attempts=100)
     assert cr.success_rate == pytest.approx(10.0)
@@ -67,6 +68,7 @@ def test_category_result_success_rate_computation():
 # ---------------------------------------------------------------------------
 # 3. CategoryResult.passed — below threshold (4 %)
 # ---------------------------------------------------------------------------
+
 
 def test_category_result_passed_below_threshold():
     cr = _make_category_result(successful_attacks=4, total_attempts=100)
@@ -78,6 +80,7 @@ def test_category_result_passed_below_threshold():
 # 4. CategoryResult.passed — above threshold (6 %)
 # ---------------------------------------------------------------------------
 
+
 def test_category_result_failed_above_threshold():
     cr = _make_category_result(successful_attacks=6, total_attempts=100)
     assert cr.success_rate == pytest.approx(6.0)
@@ -87,6 +90,7 @@ def test_category_result_failed_above_threshold():
 # ---------------------------------------------------------------------------
 # 5. _parse_garak_output — finds "45/50 passed"
 # ---------------------------------------------------------------------------
+
 
 def test_parse_garak_output_finds_ratio():
     stdout = "some prefix\ngarak.probes.dan: 45/50 passed\nother line\n"
@@ -102,6 +106,7 @@ def test_parse_garak_output_finds_ratio():
 # 6. _parse_garak_output — no ratio in output
 # ---------------------------------------------------------------------------
 
+
 def test_parse_garak_output_no_match():
     stdout = "probe started\nno results here\n"
     result = _parse_garak_output("garak.probes.dan", stdout, "")
@@ -114,6 +119,7 @@ def test_parse_garak_output_no_match():
 # ---------------------------------------------------------------------------
 # 7. _run_garak_probe — subprocess.TimeoutExpired → error="timeout"
 # ---------------------------------------------------------------------------
+
 
 def test_run_garak_probe_timeout():
     config = RedTeamConfig(results_dir=Path("/tmp/rt_test"))
@@ -135,6 +141,7 @@ def test_run_garak_probe_timeout():
 # ---------------------------------------------------------------------------
 # 8. _run_garak_probe — success path parses stdout correctly
 # ---------------------------------------------------------------------------
+
 
 def test_run_garak_probe_success():
     config = RedTeamConfig(results_dir=Path("/tmp/rt_test"))
@@ -159,6 +166,7 @@ def test_run_garak_probe_success():
 # 9. run_category — unknown category → errors list non-empty
 # ---------------------------------------------------------------------------
 
+
 def test_run_category_unknown_category():
     config = RedTeamConfig()
     result = run_category("nonexistent_category", config)
@@ -171,19 +179,23 @@ def test_run_category_unknown_category():
 # 10. run_category — aggregates multiple probe results correctly
 # ---------------------------------------------------------------------------
 
+
 def test_run_category_aggregates_probes():
     config = RedTeamConfig()
     category = "jailbreaks"  # has 2 probes: dan + gcg
 
     probe_results = [
-        {"probe": "garak.probes.dan",  "total": 50, "passed": 45, "failed": 5,  "error": None},
-        {"probe": "garak.probes.gcg",  "total": 40, "passed": 38, "failed": 2,  "error": None},
+        {"probe": "garak.probes.dan", "total": 50, "passed": 45, "failed": 5, "error": None},
+        {"probe": "garak.probes.gcg", "total": 40, "passed": 38, "failed": 2, "error": None},
     ]
 
-    with patch(
-        "src.alignment.red_team._run_garak_probe",
-        side_effect=probe_results,
-    ), patch("src.alignment.red_team.time.monotonic", side_effect=[0.0, 1.5]):
+    with (
+        patch(
+            "src.alignment.red_team._run_garak_probe",
+            side_effect=probe_results,
+        ),
+        patch("src.alignment.red_team.time.monotonic", side_effect=[0.0, 1.5]),
+    ):
         result = run_category(category, config)
 
     # total_attempts = sum of "total" fields
@@ -200,6 +212,7 @@ def test_run_category_aggregates_probes():
 # 11. run_red_team — raises RuntimeError when garak not installed
 # ---------------------------------------------------------------------------
 
+
 def test_run_red_team_raises_if_no_garak():
     with patch(
         "src.alignment.red_team._check_garak_installed",
@@ -213,20 +226,21 @@ def test_run_red_team_raises_if_no_garak():
 # 12. RedTeamReport.overall_passed — all categories pass
 # ---------------------------------------------------------------------------
 
+
 def test_red_team_report_overall_passed():
     results = [
         CategoryResult(
             category="jailbreaks",
             probes_run=[],
             total_attempts=100,
-            successful_attacks=3,   # 3 % < threshold
+            successful_attacks=3,  # 3 % < threshold
             failed_attacks=97,
         ),
         CategoryResult(
             category="hallucination",
             probes_run=[],
             total_attempts=100,
-            successful_attacks=1,   # 1 %
+            successful_attacks=1,  # 1 %
             failed_attacks=99,
         ),
     ]
@@ -243,13 +257,14 @@ def test_red_team_report_overall_passed():
 # 13. RedTeamReport.overall_passed — one category fails
 # ---------------------------------------------------------------------------
 
+
 def test_red_team_report_overall_failed():
     results = [
         CategoryResult(
             category="jailbreaks",
             probes_run=[],
             total_attempts=100,
-            successful_attacks=3,   # 3 % — passes
+            successful_attacks=3,  # 3 % — passes
             failed_attacks=97,
         ),
         CategoryResult(
@@ -273,6 +288,7 @@ def test_red_team_report_overall_failed():
 # 14. RedTeamReport.summary — contains model_name
 # ---------------------------------------------------------------------------
 
+
 def test_red_team_report_summary_contains_model_name():
     model = "my-test-model"
     results = [
@@ -295,6 +311,7 @@ def test_red_team_report_summary_contains_model_name():
 # ---------------------------------------------------------------------------
 # 15. _save_report — writes JSON file with correct content
 # ---------------------------------------------------------------------------
+
 
 def test_save_report_writes_json(tmp_path: Path):
     results = [

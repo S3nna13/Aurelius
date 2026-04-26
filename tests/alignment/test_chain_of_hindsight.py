@@ -13,10 +13,10 @@ from src.alignment.chain_of_hindsight import (
     rank_responses,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures and helpers
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal language model stub for testing.
@@ -31,8 +31,8 @@ class TinyLM(nn.Module):
         self.vocab_size = vocab_size
 
     def forward(self, input_ids: torch.Tensor):
-        x = self.embed(input_ids)        # (B, seq_len, d_model)
-        logits = self.proj(x)            # (B, seq_len, vocab_size)
+        x = self.embed(input_ids)  # (B, seq_len, d_model)
+        logits = self.proj(x)  # (B, seq_len, vocab_size)
         return None, logits, None
 
 
@@ -56,6 +56,7 @@ def trainer(model):
 # Test 1: CoHConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_cohconfig_defaults():
     """CoHConfig should have the specified default values."""
     cfg = CoHConfig()
@@ -69,6 +70,7 @@ def test_cohconfig_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: build_coh_sequence correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_build_coh_sequence_shape(trainer):
     """build_coh_sequence should concatenate all parts into one sequence."""
@@ -105,12 +107,13 @@ def test_build_coh_sequence_with_feedback(trainer):
 # Test 3: Labels mask only allows loss on good_response portion
 # ---------------------------------------------------------------------------
 
+
 def test_labels_mask_good_response_only(trainer):
     """Labels should be -100 everywhere except the good_response region."""
-    prompt_ids = _ids(4, start=1)   # positions 0-3
-    bad_ids = _ids(3, start=10)     # positions 4-6
+    prompt_ids = _ids(4, start=1)  # positions 0-3
+    bad_ids = _ids(3, start=10)  # positions 4-6
     # With default separator: position 7
-    good_ids = _ids(5, start=20)    # positions 8-12
+    good_ids = _ids(5, start=20)  # positions 8-12
 
     input_ids, labels = trainer.build_coh_sequence(prompt_ids, bad_ids, good_ids)
 
@@ -129,6 +132,7 @@ def test_labels_mask_good_response_only(trainer):
 # ---------------------------------------------------------------------------
 # Test 4: compute_coh_loss returns scalar tensor
 # ---------------------------------------------------------------------------
+
 
 def test_compute_coh_loss_scalar(trainer):
     """compute_coh_loss should return a 0-dimensional tensor."""
@@ -149,6 +153,7 @@ def test_compute_coh_loss_scalar(trainer):
 # Test 5: build_hindsight_feedback high score → "good" message
 # ---------------------------------------------------------------------------
 
+
 def test_build_hindsight_feedback_high(trainer):
     """Scores >= threshold should return the 'good' feedback string."""
     fb = trainer.build_hindsight_feedback(reward_score=0.8, threshold=0.5)
@@ -159,6 +164,7 @@ def test_build_hindsight_feedback_high(trainer):
 # ---------------------------------------------------------------------------
 # Test 6: build_hindsight_feedback low score → "improved" message
 # ---------------------------------------------------------------------------
+
 
 def test_build_hindsight_feedback_low(trainer):
     """Scores < threshold should return the 'improved' feedback string."""
@@ -173,6 +179,7 @@ def test_build_hindsight_feedback_low(trainer):
 # ---------------------------------------------------------------------------
 # Test 7: rank_responses orders by reward ascending
 # ---------------------------------------------------------------------------
+
 
 def test_rank_responses_ascending():
     """rank_responses should return pairs sorted by reward ascending."""
@@ -191,6 +198,7 @@ def test_rank_responses_ascending():
 # ---------------------------------------------------------------------------
 # Test 8: train_step returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_keys(trainer):
     """train_step should return a dict containing loss, n_tokens, mean_reward_gap."""
@@ -220,6 +228,7 @@ def test_train_step_reward_gap(trainer):
 # Test 9: create_hindsight_dataset filters pairs below min_reward_gap
 # ---------------------------------------------------------------------------
 
+
 def test_create_hindsight_dataset_filters_small_gap():
     """Examples with reward_gap < min_reward_gap should be excluded."""
     config = CoHConfig(min_reward_gap=0.5)
@@ -230,20 +239,19 @@ def test_create_hindsight_dataset_filters_small_gap():
         ["bad B", "good B"],  # gap = 0.3 — filter out
     ]
     rewards_list = [
-        [0.1, 0.9],   # gap = 0.8
-        [0.6, 0.9],   # gap = 0.3
+        [0.1, 0.9],  # gap = 0.8
+        [0.6, 0.9],  # gap = 0.3
     ]
 
     examples = create_hindsight_dataset(prompts, responses_list, rewards_list, config)
-    assert len(examples) == 1, (
-        f"Expected 1 example after filtering, got {len(examples)}"
-    )
+    assert len(examples) == 1, f"Expected 1 example after filtering, got {len(examples)}"
     assert examples[0]["reward_gap"] == pytest.approx(0.8)
 
 
 # ---------------------------------------------------------------------------
 # Test 10: create_hindsight_dataset returns correct number of examples
 # ---------------------------------------------------------------------------
+
 
 def test_create_hindsight_dataset_count():
     """All examples above min_reward_gap should be returned."""
@@ -256,15 +264,13 @@ def test_create_hindsight_dataset_count():
         ["r3_bad", "r3_good"],
     ]
     rewards_list = [
-        [0.0, 0.5],   # gap = 0.5 — keep
-        [0.2, 0.8],   # gap = 0.6 — keep
+        [0.0, 0.5],  # gap = 0.5 — keep
+        [0.2, 0.8],  # gap = 0.6 — keep
         [0.3, 0.35],  # gap = 0.05 — filter (< 0.1)
     ]
 
     examples = create_hindsight_dataset(prompts, responses_list, rewards_list, config)
-    assert len(examples) == 2, (
-        f"Expected 2 examples, got {len(examples)}"
-    )
+    assert len(examples) == 2, f"Expected 2 examples, got {len(examples)}"
     # Verify returned keys
     for ex in examples:
         assert "input_ids" in ex
@@ -275,6 +281,7 @@ def test_create_hindsight_dataset_count():
 # ---------------------------------------------------------------------------
 # Test 11: Gradient flows through coh_loss (backward works)
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_coh_loss(trainer):
     """Calling .backward() on coh_loss should not error and produce gradients."""
@@ -295,15 +302,14 @@ def test_gradient_flows_through_coh_loss(trainer):
 # Test 12: No training example when all rewards identical (gap = 0)
 # ---------------------------------------------------------------------------
 
+
 def test_no_example_when_gap_zero():
     """When all rewards are identical (gap = 0), no training example should be created."""
     config = CoHConfig(min_reward_gap=0.1)
 
     prompts = ["Identical prompt"]
     responses_list = [["response A", "response B", "response C"]]
-    rewards_list = [[0.5, 0.5, 0.5]]   # gap = 0.0
+    rewards_list = [[0.5, 0.5, 0.5]]  # gap = 0.0
 
     examples = create_hindsight_dataset(prompts, responses_list, rewards_list, config)
-    assert len(examples) == 0, (
-        "No examples should be created when reward gap is 0"
-    )
+    assert len(examples) == 0, "No examples should be created when reward gap is 0"

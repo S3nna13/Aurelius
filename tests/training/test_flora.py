@@ -18,14 +18,13 @@ Coverage targets (14 tests):
 """
 
 import torch
-import pytest
 
-from src.training.flora import FLoRAProjector, FLoRAOptimizer
-
+from src.training.flora import FLoRAOptimizer, FLoRAProjector
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_param(m: int, n: int, requires_grad: bool = True) -> torch.Tensor:
     """Create a 2-D parameter with grad."""
@@ -42,6 +41,7 @@ def _quadratic_loss(param: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
 # Test 1: project() output shape is (rank, rank)
 # ---------------------------------------------------------------------------
 
+
 def test_project_output_shape():
     m, n, r = 16, 12, 4
     proj = FLoRAProjector(m, n, r)
@@ -53,6 +53,7 @@ def test_project_output_shape():
 # ---------------------------------------------------------------------------
 # Test 2: unproject(project(G)) has same shape as G
 # ---------------------------------------------------------------------------
+
 
 def test_unproject_restores_shape():
     m, n, r = 8, 6, 3
@@ -66,6 +67,7 @@ def test_unproject_restores_shape():
 # ---------------------------------------------------------------------------
 # Test 3: project() produces different outputs at different steps
 # ---------------------------------------------------------------------------
+
 
 def test_project_fresh_randomness_per_step():
     m, n, r = 10, 8, 4
@@ -83,11 +85,12 @@ def test_project_fresh_randomness_per_step():
 # Test 4: FLoRAOptimizer — params move after one step
 # ---------------------------------------------------------------------------
 
+
 def test_optimizer_params_move():
     p = _make_param(8, 6)
     p_initial = p.data.clone()
     opt = FLoRAOptimizer([p], lr=0.01, rank=4)
-    loss = (p ** 2).sum()
+    loss = (p**2).sum()
     loss.backward()
     opt.step()
     assert not torch.allclose(p.data, p_initial), "Parameter should have moved after step"
@@ -97,10 +100,11 @@ def test_optimizer_params_move():
 # Test 5: Param movement is finite (no NaN/Inf)
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_after_step():
     p = _make_param(12, 10)
     opt = FLoRAOptimizer([p], lr=0.01, rank=4)
-    loss = (p ** 2).sum()
+    loss = (p**2).sum()
     loss.backward()
     opt.step()
     assert torch.isfinite(p.data).all(), "Parameter contains NaN or Inf after step"
@@ -110,12 +114,13 @@ def test_no_nan_inf_after_step():
 # Test 6: 1-D params use standard Adam (no FLoRA path)
 # ---------------------------------------------------------------------------
 
+
 def test_1d_param_uses_standard_adam():
     """1-D parameter should update via Adam without crashing (no projector created)."""
     p_1d = torch.nn.Parameter(torch.randn(16))
     opt = FLoRAOptimizer([p_1d], lr=0.01, rank=4)
     p_initial = p_1d.data.clone()
-    loss = (p_1d ** 2).sum()
+    loss = (p_1d**2).sum()
     loss.backward()
     opt.step()
     # Should have moved and have no NaN
@@ -129,6 +134,7 @@ def test_1d_param_uses_standard_adam():
 # ---------------------------------------------------------------------------
 # Test 7: Convergence on simple quadratic over 20 steps
 # ---------------------------------------------------------------------------
+
 
 def test_convergence_quadratic():
     torch.manual_seed(0)
@@ -153,6 +159,7 @@ def test_convergence_quadratic():
 # Test 8: Determinism — same seed_offset + step → same projection
 # ---------------------------------------------------------------------------
 
+
 def test_determinism_same_seed():
     m, n, r = 8, 6, 3
     seed = 42
@@ -163,14 +170,13 @@ def test_determinism_same_seed():
     for step in [0, 5, 99]:
         a = proj_a.project(G, step=step)
         b = proj_b.project(G, step=step)
-        assert torch.allclose(a, b), (
-            f"Projections with same seed should match at step={step}"
-        )
+        assert torch.allclose(a, b), f"Projections with same seed should match at step={step}"
 
 
 # ---------------------------------------------------------------------------
 # Test 9: rank=1 works without crash
 # ---------------------------------------------------------------------------
+
 
 def test_rank_1_no_crash():
     m, n = 6, 5
@@ -184,14 +190,15 @@ def test_rank_1_no_crash():
     # Also test through optimizer
     p = _make_param(m, n)
     opt = FLoRAOptimizer([p], lr=0.01, rank=1)
-    loss = (p ** 2).sum()
+    loss = (p**2).sum()
     loss.backward()
-    opt.step()   # must not crash
+    opt.step()  # must not crash
 
 
 # ---------------------------------------------------------------------------
 # Test 10: Large gradient stability (1000× scale → no NaN/Inf)
 # ---------------------------------------------------------------------------
+
 
 def test_large_gradient_stability():
     p = _make_param(8, 6)
@@ -205,6 +212,7 @@ def test_large_gradient_stability():
 # ---------------------------------------------------------------------------
 # Test 11: R and C drawn fresh each step (different matrices step 0 vs step 1)
 # ---------------------------------------------------------------------------
+
 
 def test_fresh_R_C_each_step():
     """Verify that the projector internally uses different R_t, C_t per step."""
@@ -225,27 +233,25 @@ def test_fresh_R_C_each_step():
 # Test 12: Adam moments stored in (rank, rank) shape
 # ---------------------------------------------------------------------------
 
+
 def test_adam_moments_in_compressed_space():
     m, n, r = 12, 10, 4
     p = _make_param(m, n)
     opt = FLoRAOptimizer([p], lr=0.01, rank=r)
-    loss = (p ** 2).sum()
+    loss = (p**2).sum()
     loss.backward()
     opt.step()
 
     state = opt.state[p]
     assert "m1" in state and "m2" in state, "State should contain m1, m2"
-    assert state["m1"].shape == (r, r), (
-        f"m1 should be ({r}, {r}), got {state['m1'].shape}"
-    )
-    assert state["m2"].shape == (r, r), (
-        f"m2 should be ({r}, {r}), got {state['m2'].shape}"
-    )
+    assert state["m1"].shape == (r, r), f"m1 should be ({r}, {r}), got {state['m1'].shape}"
+    assert state["m2"].shape == (r, r), f"m2 should be ({r}, {r}), got {state['m2'].shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 13: weight_decay modifies the update when non-zero
 # ---------------------------------------------------------------------------
+
 
 def test_weight_decay_effect():
     """Parameters with weight_decay>0 should shrink more than without."""
@@ -253,13 +259,13 @@ def test_weight_decay_effect():
     base = torch.randn(6, 5)
 
     p_no_wd = torch.nn.Parameter(base.clone())
-    p_wd    = torch.nn.Parameter(base.clone())
+    p_wd = torch.nn.Parameter(base.clone())
 
     opt_no_wd = FLoRAOptimizer([p_no_wd], lr=0.01, rank=3, weight_decay=0.0, seed_offset=0)
-    opt_wd    = FLoRAOptimizer([p_wd],    lr=0.01, rank=3, weight_decay=1.0, seed_offset=0)
+    opt_wd = FLoRAOptimizer([p_wd], lr=0.01, rank=3, weight_decay=1.0, seed_offset=0)
 
     for opt, param in [(opt_no_wd, p_no_wd), (opt_wd, p_wd)]:
-        loss = (param ** 2).sum()
+        loss = (param**2).sum()
         loss.backward()
         opt.step()
 
@@ -273,6 +279,7 @@ def test_weight_decay_effect():
 # Test 14: Gradient accumulation — multiple backward passes before step
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_accumulation():
     """Accumulating gradients over several backward passes before calling step()
     should work without NaN/Inf, and params should move."""
@@ -283,8 +290,8 @@ def test_gradient_accumulation():
     opt.zero_grad()
     # Simulate gradient accumulation: three micro-batches
     for _ in range(3):
-        loss = (p ** 2).sum() / 3.0
-        loss.backward()   # gradients accumulate in p.grad
+        loss = (p**2).sum() / 3.0
+        loss.backward()  # gradients accumulate in p.grad
 
     opt.step()
 

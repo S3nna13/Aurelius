@@ -6,33 +6,34 @@ Adds:
 - RewardCalibrator: linear least-squares calibration to human scores
 - RewardAgreementFilter: uncertainty-aware sample and pair filtering
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # EnsembleConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EnsembleConfig:
     """Configuration for the reward ensemble (v2)."""
 
     n_models: int = 5
-    aggregation: str = "mean"          # "mean" | "median" | "min" | "max" | "trimmed_mean"
-    trimmed_mean_ratio: float = 0.1    # fraction to trim from each end
+    aggregation: str = "mean"  # "mean" | "median" | "min" | "max" | "trimmed_mean"
+    trimmed_mean_ratio: float = 0.1  # fraction to trim from each end
     uncertainty_threshold: float = 0.5
 
 
 # ---------------------------------------------------------------------------
 # RewardEnsemble
 # ---------------------------------------------------------------------------
+
 
 class RewardEnsemble(nn.Module):
     """Ensemble of independent reward models.
@@ -45,7 +46,7 @@ class RewardEnsemble(nn.Module):
         config: :class:`EnsembleConfig` hyperparameters.
     """
 
-    def __init__(self, models: List[nn.Module], config: EnsembleConfig) -> None:
+    def __init__(self, models: list[nn.Module], config: EnsembleConfig) -> None:
         super().__init__()
         self.models = nn.ModuleList(models)
         self.config = config
@@ -65,7 +66,7 @@ class RewardEnsemble(nn.Module):
         """
         outputs = []
         for model in self.models:
-            out = model(x)           # (B,) or (B, 1)
+            out = model(x)  # (B,) or (B, 1)
             if out.dim() == 2:
                 out = out.squeeze(-1)
             outputs.append(out)
@@ -93,7 +94,7 @@ class RewardEnsemble(nn.Module):
             # Nothing left after trimming — fall back to full mean
             return sorted_rewards.mean(dim=0)
 
-        trimmed = sorted_rewards[n_trim: K - n_trim, :]  # (K - 2*n_trim, B)
+        trimmed = sorted_rewards[n_trim : K - n_trim, :]  # (K - 2*n_trim, B)
         return trimmed.mean(dim=0)
 
     def _aggregate(self, rewards: Tensor) -> Tensor:
@@ -128,10 +129,10 @@ class RewardEnsemble(nn.Module):
         Returns:
             ``(B,)`` aggregated scalar reward.
         """
-        rewards = self._stack_outputs(x)   # (K, B)
-        return self._aggregate(rewards)    # (B,)
+        rewards = self._stack_outputs(x)  # (K, B)
+        return self._aggregate(rewards)  # (B,)
 
-    def predict(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def predict(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Predict mean and standard deviation of reward across models.
 
         Args:
@@ -140,7 +141,7 @@ class RewardEnsemble(nn.Module):
         Returns:
             Tuple ``(mean_reward, std_reward)`` both shape ``(B,)``.
         """
-        rewards = self._stack_outputs(x)   # (K, B)
+        rewards = self._stack_outputs(x)  # (K, B)
         mean_reward = rewards.mean(dim=0)  # (B,)
         if rewards.shape[0] > 1:
             std_reward = rewards.std(dim=0, correction=0)
@@ -176,8 +177,8 @@ class RewardEnsemble(nn.Module):
         # Then agreement_score[i] = mean over j != i of agreement(i, j)
 
         # Build pairwise sign matrix: (K, B, B)
-        r_i = rewards.unsqueeze(2)   # (K, B, 1)
-        r_j = rewards.unsqueeze(1)   # (K, 1, B)
+        r_i = rewards.unsqueeze(2)  # (K, B, 1)
+        r_j = rewards.unsqueeze(1)  # (K, 1, B)
         signs = torch.sign(r_i - r_j)  # (K, B, B)  -- values in {-1, 0, 1}
 
         if K == 1:
@@ -215,6 +216,7 @@ class RewardEnsemble(nn.Module):
 # RewardCalibrator
 # ---------------------------------------------------------------------------
 
+
 class RewardCalibrator:
     """Linearly calibrate raw reward scores to align with human scores.
 
@@ -243,7 +245,7 @@ class RewardCalibrator:
         A = torch.stack([raw, ones], dim=1)  # (N, 2)
 
         # Least-squares: (A^T A)^{-1} A^T human
-        AtA = A.t().mm(A)   # (2, 2)
+        AtA = A.t().mm(A)  # (2, 2)
         Ath = A.t().mv(human)  # (2,)
 
         # Solve via pseudo-inverse for numerical stability
@@ -282,6 +284,7 @@ class RewardCalibrator:
 # RewardAgreementFilter
 # ---------------------------------------------------------------------------
 
+
 class RewardAgreementFilter:
     """Filter samples and pairs based on ensemble agreement / uncertainty.
 
@@ -296,7 +299,7 @@ class RewardAgreementFilter:
         self,
         x: Tensor,
         ensemble: RewardEnsemble,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Keep samples whose cross-model std is below the uncertainty threshold.
 
         Args:
@@ -342,9 +345,9 @@ class RewardAgreementFilter:
             mean_l, std_l = ensemble.predict(x_l)  # (B,)
 
         threshold = self.config.uncertainty_threshold
-        margin_ok = (mean_w - mean_l) > margin       # (B,) bool
-        low_unc_w = std_w <= threshold               # (B,) bool
-        low_unc_l = std_l <= threshold               # (B,) bool
+        margin_ok = (mean_w - mean_l) > margin  # (B,) bool
+        low_unc_w = std_w <= threshold  # (B,) bool
+        low_unc_l = std_l <= threshold  # (B,) bool
         accepted = margin_ok & low_unc_w & low_unc_l
 
         return accepted.nonzero(as_tuple=False).squeeze(1).long()

@@ -5,14 +5,12 @@ from __future__ import annotations
 import pytest
 
 from src.agent.ast_fim import (
-    ASTAnalyzer,
-    ASTNode,
     AST_FIM_REGISTRY,
+    ASTAnalyzer,
     FIMFormat,
     FIMSpan,
     FIMTokenizer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -50,6 +48,7 @@ def simple_span() -> FIMSpan:
 # ---------------------------------------------------------------------------
 # ASTAnalyzer.parse_python
 # ---------------------------------------------------------------------------
+
 
 def test_parse_python_valid_nonempty(analyzer):
     nodes = analyzer.parse_python(SIMPLE_SOURCE)
@@ -97,6 +96,7 @@ def test_parse_python_empty_string(analyzer):
 # ASTAnalyzer.find_enclosing_scope
 # ---------------------------------------------------------------------------
 
+
 def test_find_enclosing_scope_finds_function(analyzer):
     # Line 4 is inside `hello`
     node = analyzer.find_enclosing_scope(SIMPLE_SOURCE, line=4)
@@ -119,6 +119,7 @@ def test_find_enclosing_scope_syntax_error_returns_none(analyzer):
 # ---------------------------------------------------------------------------
 # ASTAnalyzer.extract_context
 # ---------------------------------------------------------------------------
+
 
 def test_extract_context_splits_at_cursor(analyzer):
     source = "line1\nline2\nline3\nline4\nline5\n"
@@ -146,6 +147,7 @@ def test_extract_context_returns_tuple(analyzer):
 # ---------------------------------------------------------------------------
 # FIMTokenizer
 # ---------------------------------------------------------------------------
+
 
 def test_format_psm_starts_with_prefix_token(tokenizer, simple_span):
     result = tokenizer.format_psm(simple_span)
@@ -213,6 +215,7 @@ def test_parse_completion_full_psm_prompt(tokenizer, simple_span):
 # ---------------------------------------------------------------------------
 # AST_FIM_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_ast_fim_registry_contains_psm():
     assert "psm" in AST_FIM_REGISTRY

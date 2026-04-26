@@ -1,19 +1,18 @@
 """Tests for tool_registry: ToolSpec, ToolResult, ToolRegistry, TOOL_REGISTRY."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.tools.tool_registry import (
-    ToolSpec,
-    ToolResult,
-    ToolRegistry,
     TOOL_REGISTRY,
+    ToolRegistry,
+    ToolResult,
+    ToolSpec,
 )
-
 
 # ---------------------------------------------------------------------------
 # ToolSpec tests
 # ---------------------------------------------------------------------------
+
 
 class TestToolSpec:
     def test_toolspec_has_name_field(self):
@@ -39,6 +38,7 @@ class TestToolSpec:
 
     def test_toolspec_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(ToolSpec)
 
     def test_toolspec_required_lists_are_independent(self):
@@ -51,6 +51,7 @@ class TestToolSpec:
 # ---------------------------------------------------------------------------
 # ToolResult tests
 # ---------------------------------------------------------------------------
+
 
 class TestToolResult:
     def test_toolresult_has_tool_name(self):
@@ -75,6 +76,7 @@ class TestToolResult:
 
     def test_toolresult_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(ToolResult)
 
     def test_toolresult_success_false(self):
@@ -86,12 +88,15 @@ class TestToolResult:
 # ToolRegistry tests
 # ---------------------------------------------------------------------------
 
+
 class TestToolRegistry:
     def _make_registry(self):
         return ToolRegistry()
 
     def _make_spec(self, name="mytool"):
-        return ToolSpec(name=name, description="A test tool", parameters={"type": "object", "properties": {}})
+        return ToolSpec(
+            name=name, description="A test tool", parameters={"type": "object", "properties": {}}
+        )
 
     def test_register_and_get_spec_round_trip(self):
         reg = self._make_registry()
@@ -212,7 +217,9 @@ class TestToolRegistry:
     def test_invoke_passes_kwargs_to_handler(self):
         reg = self._make_registry()
         spec = ToolSpec(name="adder", description="add", parameters={}, required=["x", "y"])
-        reg.register(spec, lambda x, y: ToolResult(tool_name="adder", success=True, output=str(x + y)))
+        reg.register(
+            spec, lambda x, y: ToolResult(tool_name="adder", success=True, output=str(x + y))
+        )
         result = reg.invoke("adder", x=3, y=4)
         assert result.output == "7"
 
@@ -237,6 +244,7 @@ class TestToolRegistry:
 # TOOL_REGISTRY module-level instance
 # ---------------------------------------------------------------------------
 
+
 class TestToolRegistryInstance:
     def test_tool_registry_exists(self):
         assert TOOL_REGISTRY is not None
@@ -247,8 +255,10 @@ class TestToolRegistryInstance:
     def test_tool_registry_has_shell_registered(self):
         # shell_tool registers into TOOL_REGISTRY on import
         from src.tools import SHELL_TOOL  # noqa: F401
+
         assert "shell" in TOOL_REGISTRY.list_tools()
 
     def test_tool_registry_has_file_registered(self):
         from src.tools import FILE_TOOL  # noqa: F401
+
         assert "file" in TOOL_REGISTRY.list_tools()

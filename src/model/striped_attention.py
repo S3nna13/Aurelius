@@ -18,13 +18,12 @@ Transformers", 2023 (https://arxiv.org/abs/2311.09431).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -91,9 +90,7 @@ class StripedAttention(nn.Module):
         self.scale = math.sqrt(cfg.head_dim)
 
         # Pre-compute which heads are global
-        self._global_mask: list[bool] = [
-            self._is_global_head(i) for i in range(cfg.n_heads)
-        ]
+        self._global_mask: list[bool] = [self._is_global_head(i) for i in range(cfg.n_heads)]
 
     # ------------------------------------------------------------------
     # Head-type helpers
@@ -116,7 +113,7 @@ class StripedAttention(nn.Module):
             return head_idx % 2 == 0
         if pattern.startswith("ratio:"):
             # e.g. "ratio:1/4"  → every 4 heads, 1 is global (head 0, 4, 8, …)
-            ratio_part = pattern[len("ratio:"):]
+            ratio_part = pattern[len("ratio:") :]
             n_str, m_str = ratio_part.split("/")
             n, m = int(n_str), int(m_str)
             return (head_idx % m) < n

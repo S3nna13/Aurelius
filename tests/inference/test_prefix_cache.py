@@ -4,26 +4,27 @@ from __future__ import annotations
 
 import time
 
-import pytest
 import torch
 
 from src.inference.prefix_cache import (
-    PrefixCacheConfig,
     CacheEntry,
     PrefixCache,
+    PrefixCacheConfig,
     compute_prefix_hash,
     find_longest_prefix_match,
-    truncate_kv_cache,
     merge_kv_caches,
     simulate_prefix_caching,
+    truncate_kv_cache,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_kv(n_layers: int = 2, n_heads: int = 2, seq_len: int = 4, head_dim: int = 16) -> list[tuple[torch.Tensor, torch.Tensor]]:
+
+def _make_kv(
+    n_layers: int = 2, n_heads: int = 2, seq_len: int = 4, head_dim: int = 16
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Create a fake KV cache with known shape (1, n_heads, seq_len, head_dim)."""
     return [
         (
@@ -49,6 +50,7 @@ def _make_entry(prefix_ids: list[int], hit_count: int = 0, ts: float | None = No
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = PrefixCacheConfig()
     assert cfg.max_entries == 64
@@ -61,6 +63,7 @@ def test_config_defaults():
 # 2. test_compute_prefix_hash_deterministic
 # ---------------------------------------------------------------------------
 
+
 def test_compute_prefix_hash_deterministic():
     ids = [1, 2, 3, 4, 5]
     assert compute_prefix_hash(ids) == compute_prefix_hash(ids)
@@ -69,6 +72,7 @@ def test_compute_prefix_hash_deterministic():
 # ---------------------------------------------------------------------------
 # 3. test_compute_prefix_hash_different
 # ---------------------------------------------------------------------------
+
 
 def test_compute_prefix_hash_different():
     assert compute_prefix_hash([1, 2, 3]) != compute_prefix_hash([1, 2, 4])
@@ -79,6 +83,7 @@ def test_compute_prefix_hash_different():
 # 4. test_find_longest_prefix_empty_cache
 # ---------------------------------------------------------------------------
 
+
 def test_find_longest_prefix_empty_cache():
     key, length = find_longest_prefix_match([1, 2, 3], {})
     assert key is None
@@ -88,6 +93,7 @@ def test_find_longest_prefix_empty_cache():
 # ---------------------------------------------------------------------------
 # 5. test_find_longest_prefix_exact
 # ---------------------------------------------------------------------------
+
 
 def test_find_longest_prefix_exact():
     prefix = [10, 20, 30]
@@ -102,6 +108,7 @@ def test_find_longest_prefix_exact():
 # ---------------------------------------------------------------------------
 # 6. test_find_longest_prefix_partial
 # ---------------------------------------------------------------------------
+
 
 def test_find_longest_prefix_partial():
     short_prefix = [1, 2]
@@ -129,6 +136,7 @@ def test_find_longest_prefix_partial():
 # 7. test_truncate_kv_cache_shape
 # ---------------------------------------------------------------------------
 
+
 def test_truncate_kv_cache_shape():
     n_layers, n_heads, seq_len, head_dim = 2, 2, 8, 16
     kv = _make_kv(n_layers=n_layers, n_heads=n_heads, seq_len=seq_len, head_dim=head_dim)
@@ -142,6 +150,7 @@ def test_truncate_kv_cache_shape():
 # ---------------------------------------------------------------------------
 # 8. test_merge_kv_caches_shape
 # ---------------------------------------------------------------------------
+
 
 def test_merge_kv_caches_shape():
     n_layers, n_heads, head_dim = 2, 2, 16
@@ -157,6 +166,7 @@ def test_merge_kv_caches_shape():
 # ---------------------------------------------------------------------------
 # 9. test_prefix_cache_put_and_get
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_cache_put_and_get():
     cfg = PrefixCacheConfig(min_prefix_len=2)
@@ -174,6 +184,7 @@ def test_prefix_cache_put_and_get():
 # ---------------------------------------------------------------------------
 # 10. test_prefix_cache_min_length
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_cache_min_length():
     cfg = PrefixCacheConfig(min_prefix_len=8)
@@ -193,6 +204,7 @@ def test_prefix_cache_min_length():
 # ---------------------------------------------------------------------------
 # 11. test_prefix_cache_max_entries_lru_eviction
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_cache_max_entries_lru_eviction():
     cfg = PrefixCacheConfig(max_entries=2, min_prefix_len=1, eviction_policy="lru")
@@ -227,6 +239,7 @@ def test_prefix_cache_max_entries_lru_eviction():
 # 12. test_prefix_cache_lfu_eviction
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_cache_lfu_eviction():
     cfg = PrefixCacheConfig(max_entries=2, min_prefix_len=1, eviction_policy="lfu")
     cache = PrefixCache(cfg)
@@ -260,6 +273,7 @@ def test_prefix_cache_lfu_eviction():
 # 13. test_prefix_cache_stats_keys
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_cache_stats_keys():
     cfg = PrefixCacheConfig(min_prefix_len=1)
     cache = PrefixCache(cfg)
@@ -274,6 +288,7 @@ def test_prefix_cache_stats_keys():
 # ---------------------------------------------------------------------------
 # 14. test_prefix_cache_hit_rate
 # ---------------------------------------------------------------------------
+
 
 def test_prefix_cache_hit_rate():
     cfg = PrefixCacheConfig(min_prefix_len=1)
@@ -299,6 +314,7 @@ def test_prefix_cache_hit_rate():
 # 15. test_simulate_prefix_caching_keys
 # ---------------------------------------------------------------------------
 
+
 def test_simulate_prefix_caching_keys():
     cfg = PrefixCacheConfig(min_prefix_len=1)
     cache = PrefixCache(cfg)
@@ -314,6 +330,7 @@ def test_simulate_prefix_caching_keys():
 # 16. test_simulate_prefix_caching_reuse
 # ---------------------------------------------------------------------------
 
+
 def test_simulate_prefix_caching_reuse():
     cfg = PrefixCacheConfig(min_prefix_len=1)
     cache = PrefixCache(cfg)
@@ -324,9 +341,7 @@ def test_simulate_prefix_caching_reuse():
 
     # First request: no cache hit (cache is empty)
     # Second request: should hit on req1 (which is a prefix of req2)
-    result = simulate_prefix_caching(
-        [req1, req2], cache, n_layers=2, n_heads=2, head_dim=16
-    )
+    result = simulate_prefix_caching([req1, req2], cache, n_layers=2, n_heads=2, head_dim=16)
 
     assert result["reuse_fraction"] > 0.0
     assert result["reused_tokens"] > 0

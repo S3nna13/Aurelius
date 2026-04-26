@@ -1,14 +1,13 @@
-"""Tensor parallelism: column/row linear splitting, attention head sharding, and all-reduce simulation."""
+"""Tensor parallelism: column/row linear splitting, attention head sharding, and all-reduce simulation."""  # noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # New-spec dataclass and functional API
@@ -51,7 +50,7 @@ def split_weight_row(weight: Tensor, world_size: int) -> list[Tensor]:
 
 
 def column_parallel_linear(
-    x: Tensor, weight_shard: Tensor, bias_shard: Optional[Tensor] = None
+    x: Tensor, weight_shard: Tensor, bias_shard: Tensor | None = None
 ) -> Tensor:
     """Linear forward with column-sharded weight.
 
@@ -67,7 +66,7 @@ def column_parallel_linear(
 
 
 def row_parallel_linear(
-    x_shard: Tensor, weight_shard: Tensor, bias: Optional[Tensor] = None
+    x_shard: Tensor, weight_shard: Tensor, bias: Tensor | None = None
 ) -> Tensor:
     """Linear forward with row-sharded weight and sharded input.
 
@@ -197,10 +196,7 @@ class ColumnParallelLinear(nn.Module):
         self.config = config
         self.shard_size = out_features // config.tp_degree
         self.shards = nn.ModuleList(
-            [
-                nn.Linear(in_features, self.shard_size, bias=bias)
-                for _ in range(config.tp_degree)
-            ]
+            [nn.Linear(in_features, self.shard_size, bias=bias) for _ in range(config.tp_degree)]
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -213,13 +209,9 @@ class ColumnParallelLinear(nn.Module):
         has_bias = self.shards[0].bias is not None
         merged = nn.Linear(self.in_features, self.out_features, bias=has_bias)
         with torch.no_grad():
-            merged.weight.copy_(
-                torch.cat([shard.weight for shard in self.shards], dim=0)
-            )
+            merged.weight.copy_(torch.cat([shard.weight for shard in self.shards], dim=0))
             if has_bias:
-                merged.bias.copy_(
-                    torch.cat([shard.bias for shard in self.shards], dim=0)
-                )
+                merged.bias.copy_(torch.cat([shard.bias for shard in self.shards], dim=0))
         return merged
 
 
@@ -257,9 +249,7 @@ class RowParallelLinear(nn.Module):
         has_bias = self.shards[0].bias is not None
         merged = nn.Linear(self.in_features, self.out_features, bias=has_bias)
         with torch.no_grad():
-            merged.weight.copy_(
-                torch.cat([shard.weight for shard in self.shards], dim=1)
-            )
+            merged.weight.copy_(torch.cat([shard.weight for shard in self.shards], dim=1))
             if has_bias:
                 merged.bias.copy_(self.shards[0].bias)
         return merged
@@ -320,9 +310,7 @@ class SequenceParallelNorm(nn.Module):
     def __init__(self, d_model: int, config: TPConfig) -> None:
         super().__init__()
         self.config = config
-        self.norms = nn.ModuleList(
-            [nn.LayerNorm(d_model) for _ in range(config.tp_degree)]
-        )
+        self.norms = nn.ModuleList([nn.LayerNorm(d_model) for _ in range(config.tp_degree)])
 
     def forward(self, x: Tensor) -> Tensor:
         """Split x along seq dim, apply each norm to its shard, concatenate."""

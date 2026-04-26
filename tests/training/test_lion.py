@@ -1,10 +1,12 @@
 """Tests for Lion optimizer."""
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-from src.training.lion import Lion, LionW, Lion8bit, compare_lion_adam_memory
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.lion import Lion, Lion8bit, LionW, compare_lion_adam_memory
 
 
 @pytest.fixture
@@ -49,8 +51,7 @@ def test_lion_step_updates_params(small_model, small_cfg):
     opt.step()
 
     changed = any(
-        not torch.allclose(p.data, before[name])
-        for name, p in small_model.named_parameters()
+        not torch.allclose(p.data, before[name]) for name, p in small_model.named_parameters()
     )
     assert changed, "No parameters were updated after Lion step"
 
@@ -103,7 +104,9 @@ def test_lion_step_is_bounded():
 
     delta = (linear.weight.data - before).abs()
     # Each element update should be exactly lr (sign * lr)
-    assert (delta <= lr + 1e-8).all(), f"Update magnitude exceeded lr={lr}, max was {delta.max().item()}"
+    assert (delta <= lr + 1e-8).all(), (
+        f"Update magnitude exceeded lr={lr}, max was {delta.max().item()}"
+    )
 
 
 def test_lion_weight_decay():
@@ -131,7 +134,7 @@ def test_lion_weight_decay():
 
     # Large param should have a bigger fractional decrease due to wd * p term
     assert large_ratio > small_ratio, (
-        f"Expected larger param to shrink more: large_ratio={large_ratio:.4f}, small_ratio={small_ratio:.4f}"
+        f"Expected larger param to shrink more: large_ratio={large_ratio:.4f}, small_ratio={small_ratio:.4f}"  # noqa: E501
     )
 
 
@@ -158,7 +161,7 @@ def test_lion_multiple_steps_converge():
     losses = []
     for _ in range(10):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         losses.append(loss.item())
         loss.backward()
         opt.step()
@@ -210,9 +213,7 @@ def test_lion_param_group_support(small_model, small_cfg):
     first_grp_changed = not torch.allclose(params[0].data, before_first)
     last_grp_changed = not torch.allclose(params[-1].data, before_last)
 
-    assert first_grp_changed or last_grp_changed, (
-        "Neither param group produced any updates"
-    )
+    assert first_grp_changed or last_grp_changed, "Neither param group produced any updates"
     # Verify both param groups are tracked
     assert len(opt.param_groups) == 2
     assert opt.param_groups[0]["lr"] == 1e-4
@@ -223,6 +224,7 @@ def test_lion_param_group_support(small_model, small_cfg):
 # New required tests (task specification)
 # ---------------------------------------------------------------------------
 
+
 def test_lion_step_reduces_loss():
     """Optimize simple quadratic f(x)=||x||^2; loss must decrease over 10 steps."""
     x = nn.Parameter(torch.randn(64) * 2.0)
@@ -231,13 +233,13 @@ def test_lion_step_reduces_loss():
     first_loss = None
     for _ in range(10):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         if first_loss is None:
             first_loss = loss.item()
         loss.backward()
         opt.step()
 
-    last_loss = (x ** 2).sum().item()
+    last_loss = (x**2).sum().item()
     assert last_loss < first_loss, (
         f"Loss did not decrease: first={first_loss:.4f}, last={last_loss:.4f}"
     )
@@ -283,7 +285,7 @@ def test_lion_update_is_sign():
     assert delta.max().item() > 0
 
 
-def test_lion_weight_decay():
+def test_lion_weight_decay_zero_grad():
     """With wd>0 and zero gradient, params should shrink toward 0."""
     p = nn.Parameter(torch.ones(8, 8) * 2.0)
     opt = Lion([p], lr=1e-3, betas=(0.9, 0.99), weight_decay=0.1)
@@ -331,13 +333,13 @@ def test_lion8bit_step_works():
     first_loss = None
     for _ in range(10):
         opt.zero_grad()
-        loss = (x ** 2).sum()
+        loss = (x**2).sum()
         if first_loss is None:
             first_loss = loss.item()
         loss.backward()
         opt.step()
 
-    last_loss = (x ** 2).sum().item()
+    last_loss = (x**2).sum().item()
     assert last_loss < first_loss, (
         f"Lion8bit loss did not decrease: first={first_loss:.4f}, last={last_loss:.4f}"
     )
@@ -352,9 +354,7 @@ def test_lion8bit_momentum_stored_as_int8():
 
     state = opt.state[x]
     assert "exp_avg_q" in state, "Lion8bit state must contain 'exp_avg_q'"
-    assert state["exp_avg_q"].dtype == torch.int8, (
-        f"Expected int8, got {state['exp_avg_q'].dtype}"
-    )
+    assert state["exp_avg_q"].dtype == torch.int8, f"Expected int8, got {state['exp_avg_q'].dtype}"
     assert "exp_avg_scale" in state, "Lion8bit state must contain 'exp_avg_scale'"
 
 
@@ -367,9 +367,7 @@ def test_memory_comparison_keys():
         "lion8bit_buffers_mb",
         "lion_vs_adam_ratio",
     }
-    assert required_keys.issubset(result.keys()), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    assert required_keys.issubset(result.keys()), f"Missing keys: {required_keys - result.keys()}"
     # All values should be positive floats
     for k in required_keys:
         assert isinstance(result[k], float), f"Key '{k}' value is not float: {result[k]}"
@@ -380,6 +378,4 @@ def test_lion_vs_adam_memory_ratio():
     """lion_vs_adam_ratio must be approximately 0.5 (Lion uses half Adam's memory)."""
     result = compare_lion_adam_memory(10_000_000)
     ratio = result["lion_vs_adam_ratio"]
-    assert abs(ratio - 0.5) < 1e-6, (
-        f"Expected lion_vs_adam_ratio ~= 0.5, got {ratio}"
-    )
+    assert abs(ratio - 0.5) < 1e-6, f"Expected lion_vs_adam_ratio ~= 0.5, got {ratio}"

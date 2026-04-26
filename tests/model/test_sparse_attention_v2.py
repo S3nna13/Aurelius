@@ -6,16 +6,16 @@ Every test runs at least one forward (and where applicable backward) pass.
 """
 
 import math
+
 import torch
-import pytest
 
 from src.model.sparse_attention_v2 import (
     AttentionMaskBuilder,
-    SlidingWindowAttention,
-    StridedAttention,
     BigBirdAttention,
     LearnedSparseAttention,
+    SlidingWindowAttention,
     SparseAttentionBlock,
+    StridedAttention,
 )
 
 # ---------------------------------------------------------------------------
@@ -24,10 +24,10 @@ from src.model.sparse_attention_v2 import (
 D = 16
 H = 2
 T = 8
-W = 3      # window_size
-STR = 2    # stride
-K = 4      # top-k
-B = 2      # batch
+W = 3  # window_size
+STR = 2  # stride
+K = 4  # top-k
+B = 2  # batch
 
 
 def _rand(requires_grad: bool = False) -> torch.Tensor:
@@ -51,9 +51,7 @@ def test_causal_mask_shape_and_lower_triangular():
     for i in range(T):
         for j in range(T):
             expected = j <= i
-            assert mask[i, j].item() == expected, (
-                f"causal_mask[{i},{j}] should be {expected}"
-            )
+            assert mask[i, j].item() == expected, f"causal_mask[{i},{j}] should be {expected}"
 
     # Run a tiny forward through SlidingWindowAttention to ensure mask is used
     model = SlidingWindowAttention(D, H, window_size=T)
@@ -83,9 +81,7 @@ def test_sliding_window_mask_causal_and_window():
                 )
             # Within window AND causal → must be allowed
             if j <= i and j >= i - W + 1:
-                assert allowed, (
-                    f"Position j={j} within window of i={i} should be allowed"
-                )
+                assert allowed, f"Position j={j} within window of i={i} should be allowed"
 
     # Forward pass
     model = SlidingWindowAttention(D, H, window_size=W)
@@ -128,17 +124,13 @@ def test_global_tokens_mask():
 
     # Global rows attend to all causal positions
     for g in range(N_GLOBAL):
-        for j in range(g + 1):   # causal positions for row g
-            assert mask[g, j].item(), (
-                f"Global row {g} should attend to causal pos {j}"
-            )
+        for j in range(g + 1):  # causal positions for row g
+            assert mask[g, j].item(), f"Global row {g} should attend to causal pos {j}"
 
     # All tokens attend to global columns (causal)
     for i in range(T):
         for g in range(min(N_GLOBAL, i + 1)):
-            assert mask[i, g].item(), (
-                f"Row {i} should attend to global col {g}"
-            )
+            assert mask[i, g].item(), f"Row {i} should attend to global col {g}"
 
     # No future tokens
     future = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
@@ -171,12 +163,10 @@ def test_sliding_window_attention_shape_and_grad():
 # ===========================================================================
 def test_sliding_window_full_equals_causal():
     builder = AttentionMaskBuilder(T)
-    sw_mask = builder.sliding_window(T)       # window covers everything
+    sw_mask = builder.sliding_window(T)  # window covers everything
     causal_mask = builder.causal_mask()
 
-    assert torch.equal(sw_mask, causal_mask), (
-        "sliding_window(T) must equal causal_mask()"
-    )
+    assert torch.equal(sw_mask, causal_mask), "sliding_window(T) must equal causal_mask()"
 
     # Also verify forward runs fine
     model = SlidingWindowAttention(D, H, window_size=T)
@@ -243,7 +233,8 @@ def test_learned_sparse_shape_and_k_constraint():
         qkv = model.qkv(inp)
         q, k_t, v = qkv.chunk(3, dim=-1)
 
-        from src.model.sparse_attention_v2 import _split_heads, _merge_heads
+        from src.model.sparse_attention_v2 import _split_heads
+
         q = _split_heads(q, model.n_heads)
         k_t = _split_heads(k_t, model.n_heads)
         v = _split_heads(v, model.n_heads)
@@ -269,6 +260,7 @@ def test_learned_sparse_shape_and_k_constraint():
         qkv = model.qkv(x)
         q, kk, vv = qkv.chunk(3, dim=-1)
         from src.model.sparse_attention_v2 import _split_heads
+
         q = _split_heads(q, H)
         kk = _split_heads(kk, H)
         scale = math.sqrt(D // H)
@@ -296,7 +288,7 @@ def test_learned_sparse_shape_and_k_constraint():
 def test_learned_sparse_causal_constraint():
     model = LearnedSparseAttention(D, H, k=K)
     x = _rand()
-    out = model(x)   # just ensure it runs
+    out = model(x)  # just ensure it runs
     assert out.shape == (B, T, D)
 
     # Inspect internal attention weights by re-running the attention logic
@@ -304,10 +296,11 @@ def test_learned_sparse_causal_constraint():
         qkv = model.qkv(x)
         q, kk, vv = qkv.chunk(3, dim=-1)
         from src.model.sparse_attention_v2 import _split_heads
+
         q = _split_heads(q, H)
         kk = _split_heads(kk, H)
         scale = math.sqrt(D // H)
-        scores = torch.matmul(q, kk.transpose(-2, -1)) / scale   # (B,H,T,T)
+        scores = torch.matmul(q, kk.transpose(-2, -1)) / scale  # (B,H,T,T)
 
         # After causal masking, upper triangle is -inf → softmax gives 0
         causal = torch.tril(torch.ones(T, T, dtype=torch.bool))
@@ -317,9 +310,7 @@ def test_learned_sparse_causal_constraint():
         attn = torch.softmax(scores_masked, dim=-1)
         attn = torch.nan_to_num(attn, nan=0.0)
         upper = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
-        assert (attn[:, :, upper] == 0).all(), (
-            "Attention to future tokens must be zero"
-        )
+        assert (attn[:, :, upper] == 0).all(), "Attention to future tokens must be zero"
 
 
 # ===========================================================================
@@ -373,9 +364,7 @@ def test_all_patterns_finite_outputs():
     for pattern, kwargs in patterns_and_kwargs:
         block = SparseAttentionBlock(D, H, pattern=pattern, **kwargs)
         out = block(x)
-        assert torch.isfinite(out).all(), (
-            f"Pattern '{pattern}' produced non-finite output"
-        )
+        assert torch.isfinite(out).all(), f"Pattern '{pattern}' produced non-finite output"
 
 
 # ===========================================================================
@@ -408,6 +397,7 @@ def test_learned_sparse_k1_attends_exactly_one():
         qkv = model.qkv(x)
         q, kk, vv = qkv.chunk(3, dim=-1)
         from src.model.sparse_attention_v2 import _split_heads
+
         q = _split_heads(q, H)
         kk = _split_heads(kk, H)
         scale = math.sqrt(D // H)
@@ -424,7 +414,7 @@ def test_learned_sparse_k1_attends_exactly_one():
             n_valid = i + 1
             row = scores_2d[:, i, :n_valid]
             # k=1: keep only the maximum
-            max_idx = row.argmax(dim=-1, keepdim=True)   # (BH, 1)
+            max_idx = row.argmax(dim=-1, keepdim=True)  # (BH, 1)
             topk_mask[:, i, :n_valid].scatter_(1, max_idx, True)
 
         topk_mask = topk_mask.view(B, H, T, T)

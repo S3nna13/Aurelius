@@ -11,25 +11,26 @@ All firing logic is pure Python; no PyTorch, no threading, no external libs.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TriggerSpec:
     """Specification for a single proactive trigger."""
 
     name: str
-    trigger_fn: Callable[[float], bool]   # (current_time) -> should_fire
-    action: str                           # label / task name to submit when fired
-    cooldown_s: float = 60.0             # minimum seconds between firings
-    max_fires: int = -1                  # -1 = unlimited
+    trigger_fn: Callable[[float], bool]  # (current_time) -> should_fire
+    action: str  # label / task name to submit when fired
+    cooldown_s: float = 60.0  # minimum seconds between firings
+    max_fires: int = -1  # -1 = unlimited
     enabled: bool = True
-    last_fired_at: Optional[float] = None
+    last_fired_at: float | None = None
     fire_count: int = 0
     metadata: dict = field(default_factory=dict)
 
@@ -46,6 +47,7 @@ class ProactiveTriggerConfig:
 # Registry
 # ---------------------------------------------------------------------------
 
+
 class ProactiveTriggerRegistry:
     """Registry that evaluates proactive triggers against a virtual clock.
 
@@ -58,7 +60,7 @@ class ProactiveTriggerRegistry:
         fired_actions = reg.check_all(current_time=100.0)
     """
 
-    def __init__(self, config: Optional[ProactiveTriggerConfig] = None) -> None:
+    def __init__(self, config: ProactiveTriggerConfig | None = None) -> None:
         self._config = config or ProactiveTriggerConfig()
         # Ordered dict preserves insertion order (Python 3.7+).
         self._triggers: dict[str, TriggerSpec] = {}
@@ -80,9 +82,7 @@ class ProactiveTriggerRegistry:
                 "Unregister it first or use a different name."
             )
         if len(self._triggers) >= self._config.max_triggers:
-            raise ValueError(
-                f"Registry is at capacity ({self._config.max_triggers} triggers)."
-            )
+            raise ValueError(f"Registry is at capacity ({self._config.max_triggers} triggers).")
         self._triggers[spec.name] = spec
 
     def unregister(self, name: str) -> bool:
@@ -171,7 +171,7 @@ class ProactiveTriggerRegistry:
     # Accessors
     # ------------------------------------------------------------------
 
-    def get_trigger(self, name: str) -> Optional[TriggerSpec]:
+    def get_trigger(self, name: str) -> TriggerSpec | None:
         """Return the TriggerSpec for *name*, or None if not registered."""
         return self._triggers.get(name)
 
@@ -196,6 +196,7 @@ class ProactiveTriggerRegistry:
 # Factory helpers
 # ---------------------------------------------------------------------------
 
+
 def interval_trigger(
     name: str,
     interval_s: float,
@@ -210,6 +211,7 @@ def interval_trigger(
 
     All extra keyword arguments are forwarded to :class:`TriggerSpec`.
     """
+
     def _trigger_fn(current_time: float) -> bool:  # noqa: ANN001
         # Always returns True; the cooldown mechanism in check_all enforces
         # the interval.  On the very first call (last_fired_at is None) the
@@ -238,6 +240,7 @@ def condition_trigger(
     Subject to the normal ``cooldown_s`` / ``max_fires`` rules.
     All extra keyword arguments are forwarded to :class:`TriggerSpec`.
     """
+
     def _trigger_fn(current_time: float) -> bool:  # noqa: ANN001
         return condition_fn()
 

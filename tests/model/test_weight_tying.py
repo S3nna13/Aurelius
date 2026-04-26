@@ -3,21 +3,21 @@
 All tests use tiny tensors / models so they run quickly on CPU.
 Constants: VOCAB=32, D_MODEL=8, B=2, T=4.
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.weight_tying import (
-    tie_embedding_weights,
+    LanguageModelWithTying,
+    SharedLinear,
     TiedEmbedding,
     copy_shared_weights,
-    cross_layer_weight_sharing,
-    SharedLinear,
-    LanguageModelWithTying,
-    count_unique_parameters,
     count_parameter_bytes,
+    count_unique_parameters,
+    cross_layer_weight_sharing,
+    tie_embedding_weights,
 )
 
 VOCAB = 32
@@ -30,6 +30,7 @@ T = 4
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_token_ids() -> torch.Tensor:
     return torch.randint(0, VOCAB, (B, T))
 
@@ -41,6 +42,7 @@ def make_tied_embedding() -> TiedEmbedding:
 # ---------------------------------------------------------------------------
 # 1. tie_embedding_weights — shared storage
 # ---------------------------------------------------------------------------
+
 
 def test_tie_embedding_weights_same_data_ptr():
     """After tying, linear.weight and embedding.weight share the same storage."""
@@ -75,6 +77,7 @@ def test_tie_embedding_weights_is_same_object():
 # ---------------------------------------------------------------------------
 # 2. TiedEmbedding — shapes
 # ---------------------------------------------------------------------------
+
 
 def test_tied_embedding_embed_shape():
     """embed() should return (B, T, D_MODEL)."""
@@ -112,6 +115,7 @@ def test_tied_embedding_weight_property_returns_parameter():
 # 3. count_unique_parameters / count_parameter_bytes
 # ---------------------------------------------------------------------------
 
+
 def test_count_unique_parameters_less_than_total_when_tied():
     """After tying, unique param count should be less than total tensors."""
     emb = nn.Embedding(VOCAB, D_MODEL)
@@ -122,7 +126,7 @@ def test_count_unique_parameters_less_than_total_when_tied():
     # total tensors (with duplicates) = 2, unique should be 1
     unique = count_unique_parameters(container)
     # manually count all (including duplicates)
-    total_tensors = sum(1 for _ in container.parameters())  # PyTorch deduplicates
+    sum(1 for _ in container.parameters())  # PyTorch deduplicates
     # The key check: unique count is an int and <= total params (dedup by PyTorch)
     assert isinstance(unique, int)
     assert unique >= 1
@@ -147,7 +151,7 @@ def test_count_parameter_bytes_dedup_smaller_when_tied():
     linear = nn.Linear(D_MODEL, VOCAB, bias=False)
     tie_embedding_weights(emb, linear)
 
-    container = nn.ModuleList([emb, linear])
+    nn.ModuleList([emb, linear])
     # PyTorch's .parameters() already deduplicates, so we test on TiedEmbedding
     # where we know there is exactly one tensor.
     te = TiedEmbedding(VOCAB, D_MODEL)
@@ -168,6 +172,7 @@ def test_count_parameter_bytes_positive():
 # ---------------------------------------------------------------------------
 # 4. copy_shared_weights — values equal, storage distinct
 # ---------------------------------------------------------------------------
+
 
 def test_copy_shared_weights_values_equal():
     """After copying, source and target parameters should have equal values."""
@@ -194,6 +199,7 @@ def test_copy_shared_weights_different_storage():
 # 5. SharedLinear — shape
 # ---------------------------------------------------------------------------
 
+
 def test_shared_linear_output_shape():
     """SharedLinear forward should return the correct output shape."""
     weight = nn.Parameter(torch.randn(VOCAB, D_MODEL))
@@ -213,6 +219,7 @@ def test_shared_linear_no_bias_default():
 # ---------------------------------------------------------------------------
 # 6. LanguageModelWithTying — shape and gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_language_model_with_tying_output_shape():
     """LanguageModelWithTying forward should return (B, T, VOCAB)."""
@@ -243,6 +250,7 @@ def test_language_model_single_parameter():
 # ---------------------------------------------------------------------------
 # 7. cross_layer_weight_sharing — values copy correctly
 # ---------------------------------------------------------------------------
+
 
 def test_cross_layer_weight_sharing_copies_values():
     """After sharing, layer[n] should have same weights as layer[n % share_every_n]."""

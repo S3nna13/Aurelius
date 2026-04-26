@@ -1,18 +1,18 @@
 """Distributed tracing collector: spans, traces, Jaeger-compatible export."""
+
 from __future__ import annotations
 
 import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 # Import the monitoring registry lazily to avoid circular imports.
 # The registry is populated at module level below.
 
 
-class SpanKind(str, Enum):
+class SpanKind(StrEnum):
     INTERNAL = "INTERNAL"
     SERVER = "SERVER"
     CLIENT = "CLIENT"
@@ -27,7 +27,7 @@ class Span:
     name: str = ""
     kind: SpanKind = SpanKind.INTERNAL
     start_time: float = field(default_factory=time.monotonic)
-    end_time: Optional[float] = None
+    end_time: float | None = None
     attributes: dict = field(default_factory=dict)
     events: list = field(default_factory=list)
 
@@ -42,7 +42,7 @@ class TracingCollector:
     def start_span(
         self,
         name: str,
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
         kind: SpanKind = SpanKind.INTERNAL,
     ) -> Span:
         """Create and return a new in-flight span."""
@@ -64,7 +64,7 @@ class TracingCollector:
         self,
         span: Span,
         name: str,
-        attributes: Optional[dict] = None,
+        attributes: dict | None = None,
     ) -> None:
         """Attach a timestamped event to a span."""
         event: dict = {"name": name, "timestamp": time.monotonic()}
@@ -93,10 +93,7 @@ class TracingCollector:
                     "operationName": span.name,
                     "startTime": int(span.start_time * 1_000_000),
                     "duration": duration_us,
-                    "tags": [
-                        {"key": k, "value": v}
-                        for k, v in span.attributes.items()
-                    ],
+                    "tags": [{"key": k, "value": v} for k, v in span.attributes.items()],
                     "logs": span.events,
                     "spanKind": span.kind.value,
                 }
@@ -111,8 +108,9 @@ _TRACING_COLLECTOR = TracingCollector()
 # each sub-module can register itself without importing the others.
 try:
     from src.monitoring import MONITORING_REGISTRY as _REG  # type: ignore[import]
+
     _REG["tracing"] = _TRACING_COLLECTOR
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 MONITORING_REGISTRY: dict[str, object] = {"tracing": _TRACING_COLLECTOR}

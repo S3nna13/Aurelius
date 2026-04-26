@@ -1,6 +1,6 @@
 """Tests for Expert Choice MoE routing."""
+
 import torch
-import pytest
 
 from src.model.expert_choice import (
     ExpertChoiceConfig,
@@ -29,6 +29,7 @@ def make_cfg(**kwargs) -> ExpertChoiceConfig:
 # 1. Config defaults
 # -----------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = ExpertChoiceConfig()
     assert cfg.n_experts == 4
@@ -43,6 +44,7 @@ def test_config_defaults():
 # 2. compute_expert_capacity — basic
 # -----------------------------------------------------------------------
 
+
 def test_compute_capacity_basic():
     # ceil(1.0 * 8 / 4) = 2
     assert compute_expert_capacity(8, 4, 1.0) == 2
@@ -51,6 +53,7 @@ def test_compute_capacity_basic():
 # -----------------------------------------------------------------------
 # 3. compute_expert_capacity — minimum 1
 # -----------------------------------------------------------------------
+
 
 def test_compute_capacity_minimum():
     # Very small capacity_factor or large n_experts — must be at least 1
@@ -61,6 +64,7 @@ def test_compute_capacity_minimum():
 # -----------------------------------------------------------------------
 # 4. expert_choice_routing — shapes
 # -----------------------------------------------------------------------
+
 
 def test_expert_choice_routing_shapes():
     torch.manual_seed(0)
@@ -76,6 +80,7 @@ def test_expert_choice_routing_shapes():
 # 5. expert_choice_routing — capacity respected
 # -----------------------------------------------------------------------
 
+
 def test_expert_choice_routing_capacity_respected():
     torch.manual_seed(42)
     n_tokens, n_experts, capacity = 16, N_EXPERTS, 3
@@ -86,12 +91,15 @@ def test_expert_choice_routing_capacity_respected():
     # expert_mask column sums should equal capacity for each expert
     col_sums = expert_mask.sum(dim=0)  # (n_experts,)
     for e in range(n_experts):
-        assert col_sums[e].item() == capacity, f"Expert {e} has {col_sums[e]} tokens, expected {capacity}"
+        assert col_sums[e].item() == capacity, (
+            f"Expert {e} has {col_sums[e]} tokens, expected {capacity}"
+        )
 
 
 # -----------------------------------------------------------------------
 # 6. expert_choice_routing — weights positive
 # -----------------------------------------------------------------------
+
 
 def test_expert_choice_routing_weights_positive():
     torch.manual_seed(7)
@@ -104,6 +112,7 @@ def test_expert_choice_routing_weights_positive():
 # 7. expert_choice_routing — uniform logits gives same tokens per expert
 # -----------------------------------------------------------------------
 
+
 def test_expert_choice_routing_perfect_balance():
     # Uniform logits => all tokens have equal scores => topk is deterministic
     # (might be any consistent ordering). The important thing: each expert gets capacity tokens.
@@ -113,12 +122,15 @@ def test_expert_choice_routing_perfect_balance():
     assert token_indices.shape == (N_EXPERTS, capacity)
     # With uniform logits, weights should all be equal (1/T after softmax over tokens)
     expected_weight = 1.0 / T
-    assert torch.allclose(expert_weights, torch.full_like(expert_weights, expected_weight), atol=1e-5)
+    assert torch.allclose(
+        expert_weights, torch.full_like(expert_weights, expected_weight), atol=1e-5
+    )
 
 
 # -----------------------------------------------------------------------
 # 8. compute_ec_router_loss — returns scalar
 # -----------------------------------------------------------------------
+
 
 def test_compute_ec_router_loss_scalar():
     torch.manual_seed(0)
@@ -132,6 +144,7 @@ def test_compute_ec_router_loss_scalar():
 # -----------------------------------------------------------------------
 # 9. compute_ec_router_loss — non-negative
 # -----------------------------------------------------------------------
+
 
 def test_compute_ec_router_loss_nonneg():
     torch.manual_seed(0)
@@ -147,6 +160,7 @@ def test_compute_ec_router_loss_nonneg():
 # 10. ExpertChoiceFFN — shape (N, D) -> (N, D)
 # -----------------------------------------------------------------------
 
+
 def test_expert_ffn_shape():
     torch.manual_seed(0)
     ffn = ExpertChoiceFFN(d_model=D, d_expert=128)
@@ -158,6 +172,7 @@ def test_expert_ffn_shape():
 # -----------------------------------------------------------------------
 # 11. ExpertChoiceLayer — output shape (B, T, D)
 # -----------------------------------------------------------------------
+
 
 def test_expert_choice_layer_output_shape():
     torch.manual_seed(0)
@@ -172,6 +187,7 @@ def test_expert_choice_layer_output_shape():
 # 12. ExpertChoiceLayer — aux dict has "aux_loss" key
 # -----------------------------------------------------------------------
 
+
 def test_expert_choice_layer_aux_keys():
     torch.manual_seed(0)
     cfg = make_cfg()
@@ -184,6 +200,7 @@ def test_expert_choice_layer_aux_keys():
 # -----------------------------------------------------------------------
 # 13. ExpertChoiceLayer — all tokens get output (EC guarantee)
 # -----------------------------------------------------------------------
+
 
 def test_expert_choice_layer_no_dropped_tokens():
     """With capacity_factor >= 1.0 and enough experts, no token is fully zero.
@@ -206,6 +223,7 @@ def test_expert_choice_layer_no_dropped_tokens():
 # 14. ExpertChoiceTransformerBlock — output shape
 # -----------------------------------------------------------------------
 
+
 def test_transformer_block_shape():
     torch.manual_seed(0)
     cfg = make_cfg()
@@ -218,6 +236,7 @@ def test_transformer_block_shape():
 # -----------------------------------------------------------------------
 # 15. ExpertChoiceTransformerBlock — returns aux dict
 # -----------------------------------------------------------------------
+
 
 def test_transformer_block_aux_info():
     torch.manual_seed(0)

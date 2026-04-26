@@ -1,19 +1,19 @@
 """Tests for src/inference/int4_quant.py — INT4 weight quantization."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.int4_quant import (
     INT4Config,
-    quantize_to_int4,
-    pack_int4,
-    unpack_int4,
-    dequantize_int4,
     INT4Linear,
     convert_model_to_int4,
+    dequantize_int4,
     estimate_int4_memory_savings,
+    pack_int4,
+    quantize_to_int4,
+    unpack_int4,
 )
 
 # ---------------------------------------------------------------------------
@@ -35,6 +35,7 @@ def make_weight() -> torch.Tensor:
 # 1. INT4Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_int4_config_defaults():
     cfg = INT4Config()
     assert cfg.group_size == 128
@@ -46,6 +47,7 @@ def test_int4_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. quantize_to_int4 — shapes
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_to_int4_shapes():
     w = make_weight()
@@ -64,6 +66,7 @@ def test_quantize_to_int4_shapes():
 # ---------------------------------------------------------------------------
 # 3. quantize_to_int4 — value range
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_to_int4_range():
     w = make_weight()
@@ -86,6 +89,7 @@ def test_quantize_to_int4_range():
 # 4. pack_int4 — shape
 # ---------------------------------------------------------------------------
 
+
 def test_pack_int4_shape():
     w = make_weight()
     # Use asymmetric so values are already [0, 15]
@@ -100,6 +104,7 @@ def test_pack_int4_shape():
 # ---------------------------------------------------------------------------
 # 5. unpack_int4 roundtrip
 # ---------------------------------------------------------------------------
+
 
 def test_unpack_int4_roundtrip():
     w = make_weight()
@@ -117,6 +122,7 @@ def test_unpack_int4_roundtrip():
 # 6. dequantize_identity — quantize then dequantize ≈ original
 # ---------------------------------------------------------------------------
 
+
 def test_dequantize_identity():
     w = make_weight()
     w_int4, scales, zero_points = quantize_to_int4(w, group_size=GROUP_SIZE, symmetric=True)
@@ -131,6 +137,7 @@ def test_dequantize_identity():
 # ---------------------------------------------------------------------------
 # 7. INT4Linear.from_linear — forward output same shape
 # ---------------------------------------------------------------------------
+
 
 def test_int4_linear_from_linear_shape():
     torch.manual_seed(SEED)
@@ -147,6 +154,7 @@ def test_int4_linear_from_linear_shape():
 # 8. INT4Linear forward dtype
 # ---------------------------------------------------------------------------
 
+
 def test_int4_linear_forward_dtype():
     torch.manual_seed(SEED)
     linear = nn.Linear(IN_FEATURES, OUT_FEATURES, bias=False)
@@ -161,6 +169,7 @@ def test_int4_linear_forward_dtype():
 # ---------------------------------------------------------------------------
 # 9. INT4Linear forward ≈ original (atol=0.5)
 # ---------------------------------------------------------------------------
+
 
 def test_int4_linear_close_to_original():
     torch.manual_seed(SEED)
@@ -182,6 +191,7 @@ def test_int4_linear_close_to_original():
 # ---------------------------------------------------------------------------
 # 10. convert_model_to_int4 replaces linear layers
 # ---------------------------------------------------------------------------
+
 
 def test_convert_model_to_int4_replaces_linears():
     torch.manual_seed(SEED)
@@ -207,6 +217,7 @@ def test_convert_model_to_int4_replaces_linears():
 # 11. estimate_memory_savings — correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_memory_savings_keys():
     torch.manual_seed(SEED)
     model = nn.Linear(IN_FEATURES, OUT_FEATURES, bias=False)
@@ -220,6 +231,7 @@ def test_estimate_memory_savings_keys():
 # ---------------------------------------------------------------------------
 # 12. estimate_memory_savings — reduction_factor > 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_memory_savings_reduction():
     torch.manual_seed(SEED)

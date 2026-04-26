@@ -7,16 +7,15 @@ Pure PyTorch only — no HuggingFace, no scipy, no sklearn.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SchedulerConfig:
@@ -29,6 +28,7 @@ class SchedulerConfig:
 # ---------------------------------------------------------------------------
 # Functional schedule helpers
 # ---------------------------------------------------------------------------
+
 
 def cosine_schedule_with_warmup(step: int, config: SchedulerConfig) -> float:
     """Linear warmup then cosine decay to min_lr_ratio.
@@ -111,7 +111,7 @@ def wsd_schedule(
     """
     stable_start = warmup_steps
     decay_start = warmup_steps + stable_steps
-    decay_end = decay_start + decay_steps
+    decay_start + decay_steps
 
     if step < stable_start:
         # Warmup
@@ -131,6 +131,7 @@ def wsd_schedule(
 # ---------------------------------------------------------------------------
 # Scheduler classes
 # ---------------------------------------------------------------------------
+
 
 class WarmupCosineScheduler(LambdaLR):
     """LambdaLR wrapper that applies cosine_schedule_with_warmup."""
@@ -195,6 +196,7 @@ class CyclicCosineScheduler:
 # Factory
 # ---------------------------------------------------------------------------
 
+
 def get_scheduler(
     name: str,
     optimizer: optim.Optimizer,
@@ -210,12 +212,14 @@ def get_scheduler(
         return WarmupCosineScheduler(optimizer, config)
 
     elif name == "linear":
+
         def _linear_lambda(step: int) -> float:
             return linear_schedule_with_warmup(step, config)
 
         return LambdaLR(optimizer, lr_lambda=_linear_lambda)
 
     elif name == "polynomial":
+
         def _poly_lambda(step: int) -> float:
             return polynomial_schedule(step, config)
 
@@ -223,6 +227,5 @@ def get_scheduler(
 
     else:
         raise ValueError(
-            f"Unknown scheduler name '{name}'. "
-            "Choose from: 'cosine', 'linear', 'polynomial'."
+            f"Unknown scheduler name '{name}'. Choose from: 'cosine', 'linear', 'polynomial'."
         )

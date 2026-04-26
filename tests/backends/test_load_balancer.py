@@ -1,13 +1,19 @@
 """Tests for src.backends.load_balancer."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.backends.load_balancer import BackendInstance, LBAlgorithm, LoadBalancer, LOAD_BALANCER_REGISTRY
+from src.backends.load_balancer import (
+    LOAD_BALANCER_REGISTRY,
+    BackendInstance,
+    LBAlgorithm,
+    LoadBalancer,
+)
 
 
 def _inst(id: str, weight: float = 1.0, active: int = 0) -> BackendInstance:
-    return BackendInstance(instance_id=id, host="localhost", port=8000, weight=weight, active_requests=active)
+    return BackendInstance(
+        instance_id=id, host="localhost", port=8000, weight=weight, active_requests=active
+    )
 
 
 def test_registry_has_default():

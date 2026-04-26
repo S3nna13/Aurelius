@@ -1,17 +1,18 @@
-"""Mixture of Depths v2: learned top-k token routing with capacity constraints and auxiliary losses."""
+"""Mixture of Depths v2: learned top-k token routing with capacity constraints and auxiliary losses."""  # noqa: E501
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MoDv2Config:
@@ -35,6 +36,7 @@ class MoDv2Config:
 # ---------------------------------------------------------------------------
 # Token Router
 # ---------------------------------------------------------------------------
+
 
 class TokenRouter(nn.Module):
     """Learned scalar router producing per-token routing scores.
@@ -75,9 +77,8 @@ class TokenRouter(nn.Module):
 # Top-k Token Selection
 # ---------------------------------------------------------------------------
 
-def select_top_k_tokens(
-    routing_weights: Tensor, k: int, capacity: int
-) -> tuple[Tensor, Tensor]:
+
+def select_top_k_tokens(routing_weights: Tensor, k: int, capacity: int) -> tuple[Tensor, Tensor]:
     """Select top-k tokens by routing weight, capped at capacity.
 
     Args:
@@ -110,6 +111,7 @@ def select_top_k_tokens(
 # Router Z-loss
 # ---------------------------------------------------------------------------
 
+
 def compute_router_z_loss(routing_logits: Tensor) -> Tensor:
     """Compute z-loss to penalize large routing logits.
 
@@ -124,13 +126,14 @@ def compute_router_z_loss(routing_logits: Tensor) -> Tensor:
     # routing_logits: (B, T, 1) -> squeeze to (B, T)
     logits_2d = routing_logits.squeeze(-1)  # (B, T)
     log_sum_exp = torch.logsumexp(logits_2d, dim=-1)  # (B,)
-    z_loss = (log_sum_exp ** 2).mean()  # scalar
+    z_loss = (log_sum_exp**2).mean()  # scalar
     return z_loss
 
 
 # ---------------------------------------------------------------------------
 # Capacity Utilization
 # ---------------------------------------------------------------------------
+
 
 def compute_capacity_utilization(selected_indices: Tensor, T: int) -> float:
     """Compute fraction of tokens actually processed.
@@ -151,6 +154,7 @@ def compute_capacity_utilization(selected_indices: Tensor, T: int) -> float:
 # ---------------------------------------------------------------------------
 # MoDLayerV2
 # ---------------------------------------------------------------------------
+
 
 class MoDLayerV2(nn.Module):
     """Wraps a layer with Mixture-of-Depths v2 top-k token routing.
@@ -229,6 +233,7 @@ class MoDLayerV2(nn.Module):
 # ---------------------------------------------------------------------------
 # Build MoD v2 Model
 # ---------------------------------------------------------------------------
+
 
 def build_mod_v2_model(
     base_layers: nn.ModuleList,

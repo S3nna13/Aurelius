@@ -1,9 +1,10 @@
 """Tests for src.backends.retry_policy."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.backends.retry_policy import RetryConfig, RetryPolicy, RetryResult, RETRY_POLICY_REGISTRY
+from src.backends.retry_policy import RETRY_POLICY_REGISTRY, RetryConfig, RetryPolicy, RetryResult
 
 
 def _no_sleep(s: float) -> None:

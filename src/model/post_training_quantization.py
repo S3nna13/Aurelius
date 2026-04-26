@@ -9,15 +9,13 @@ for Generative Pre-trained Transformers".
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Hessian Estimation
 # ---------------------------------------------------------------------------
+
 
 class HessianEstimator:
     """Estimate the Hessian of the layer output w.r.t. weights.
@@ -40,15 +38,15 @@ class HessianEstimator:
         """
         # Flatten batch and sequence dims → (n, d_in)
         B, T, d_in = activations.shape
-        X = activations.reshape(-1, d_in).float()   # (n, d_in)
+        X = activations.reshape(-1, d_in).float()  # (n, d_in)
 
-        XtX = X.t().mm(X)                            # (d_in, d_in)
+        XtX = X.t().mm(X)  # (d_in, d_in)
 
         if self.H is None:
             self.H = torch.zeros_like(XtX)
 
         self.H = self.H + XtX
-        self.n_collected += X.shape[0]               # count individual vectors
+        self.n_collected += X.shape[0]  # count individual vectors
 
     def get_hessian(self) -> torch.Tensor:
         """Return the normalized symmetric PSD Hessian matrix.
@@ -82,6 +80,7 @@ class HessianEstimator:
 # GPTQ Quantizer
 # ---------------------------------------------------------------------------
 
+
 class GPTQQuantizer:
     """Column-wise GPTQ quantizer using Round-To-Nearest (RTN) per group.
 
@@ -93,11 +92,11 @@ class GPTQQuantizer:
             raise ValueError(f"n_bits must be in [1, 16], got {n_bits}")
         self.n_bits = n_bits
         self.group_size = group_size
-        self.q_max = (1 << n_bits) - 1   # 2^n_bits - 1
+        self.q_max = (1 << n_bits) - 1  # 2^n_bits - 1
 
     def quantize_weight(
         self, W: torch.Tensor, H: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Quantize weight matrix using per-group RTN.
 
         Args:
@@ -116,24 +115,24 @@ class GPTQQuantizer:
         n_groups = (d_in + gs - 1) // gs
 
         W_q = torch.empty_like(W)
-        scale_list: List[torch.Tensor] = []
-        zero_list: List[torch.Tensor] = []
+        scale_list: list[torch.Tensor] = []
+        zero_list: list[torch.Tensor] = []
 
         W_f = W.float()
 
         for g in range(n_groups):
             col_start = g * gs
             col_end = min(col_start + gs, d_in)
-            W_g = W_f[:, col_start:col_end]           # (d_out, actual_gs)
+            W_g = W_f[:, col_start:col_end]  # (d_out, actual_gs)
 
-            w_min = W_g.min(dim=1, keepdim=True).values   # (d_out, 1)
-            w_max = W_g.max(dim=1, keepdim=True).values   # (d_out, 1)
+            w_min = W_g.min(dim=1, keepdim=True).values  # (d_out, 1)
+            w_max = W_g.max(dim=1, keepdim=True).values  # (d_out, 1)
 
-            scale_g = (w_max - w_min) / self.q_max        # (d_out, 1)
+            scale_g = (w_max - w_min) / self.q_max  # (d_out, 1)
             # Avoid division by zero for constant groups
             scale_g = scale_g.clamp(min=1e-8)
 
-            zero_g = torch.round(-w_min / scale_g)        # (d_out, 1)
+            zero_g = torch.round(-w_min / scale_g)  # (d_out, 1)
             zero_g = zero_g.clamp(0, self.q_max)
 
             W_q_g = torch.round(W_g / scale_g + zero_g)
@@ -145,8 +144,8 @@ class GPTQQuantizer:
             scale_list.append(scale_g.squeeze(1))
             zero_list.append(zero_g.squeeze(1))
 
-        scale = torch.stack(scale_list, dim=1)   # (d_out, n_groups)
-        zero = torch.stack(zero_list, dim=1)     # (d_out, n_groups)
+        scale = torch.stack(scale_list, dim=1)  # (d_out, n_groups)
+        zero = torch.stack(zero_list, dim=1)  # (d_out, n_groups)
 
         return W_q, scale, zero
 
@@ -173,12 +172,10 @@ class GPTQQuantizer:
             col_start = g * gs
             col_end = min(col_start + gs, d_in)
 
-            s = scale[:, g].unsqueeze(1)   # (d_out, 1)
-            z = zero[:, g].unsqueeze(1)    # (d_out, 1)
+            s = scale[:, g].unsqueeze(1)  # (d_out, 1)
+            z = zero[:, g].unsqueeze(1)  # (d_out, 1)
 
-            W_deq[:, col_start:col_end] = (
-                W_q[:, col_start:col_end].float() - z
-            ) * s
+            W_deq[:, col_start:col_end] = (W_q[:, col_start:col_end].float() - z) * s
 
         return W_deq
 
@@ -186,6 +183,7 @@ class GPTQQuantizer:
 # ---------------------------------------------------------------------------
 # Layer Quantizer
 # ---------------------------------------------------------------------------
+
 
 class LayerQuantizer:
     """Quantize a single nn.Linear layer using GPTQ / RTN."""
@@ -196,7 +194,7 @@ class LayerQuantizer:
 
     def quantize(
         self, calibration_activations: torch.Tensor
-    ) -> Tuple[float, torch.Tensor, torch.Tensor]:
+    ) -> tuple[float, torch.Tensor, torch.Tensor]:
         """Quantize layer.weight using calibration activations.
 
         Args:
@@ -223,9 +221,7 @@ class LayerQuantizer:
         if norm_orig < 1e-12:
             quant_error = 0.0
         else:
-            quant_error = (
-                (W_original.float() - W_deq.float()).norm(p="fro") / norm_orig
-            ).item()
+            quant_error = ((W_original.float() - W_deq.float()).norm(p="fro") / norm_orig).item()
 
         self.layer.weight.data = W_deq
         return quant_error, scale, zero
@@ -239,6 +235,7 @@ class LayerQuantizer:
 # Model Quantizer
 # ---------------------------------------------------------------------------
 
+
 class ModelQuantizer:
     """Quantize all nn.Linear layers in a model."""
 
@@ -247,15 +244,15 @@ class ModelQuantizer:
         self.n_bits = n_bits
         self.group_size = group_size
 
-    def find_linear_layers(self) -> Dict[str, nn.Linear]:
+    def find_linear_layers(self) -> dict[str, nn.Linear]:
         """Return dict of {fully_qualified_name: nn.Linear} for all linear layers."""
-        layers: Dict[str, nn.Linear] = {}
+        layers: dict[str, nn.Linear] = {}
         for name, module in self.model.named_modules():
             if isinstance(module, nn.Linear):
                 layers[name] = module
         return layers
 
-    def quantize_model(self, calibration_data: torch.Tensor) -> Dict[str, float]:
+    def quantize_model(self, calibration_data: torch.Tensor) -> dict[str, float]:
         """Quantize all linear layers and return per-layer quantization errors.
 
         For each linear layer, collect activations via a forward hook on that
@@ -268,16 +265,16 @@ class ModelQuantizer:
             errors: {layer_name: quant_error}
         """
         linear_layers = self.find_linear_layers()
-        errors: Dict[str, float] = {}
+        errors: dict[str, float] = {}
 
         for name, layer in linear_layers.items():
-            collected: List[torch.Tensor] = []
+            collected: list[torch.Tensor] = []
 
             def _hook(module: nn.Module, inp: tuple, out: torch.Tensor) -> None:
                 # inp[0] can be 2-D or 3-D
                 x = inp[0].detach()
                 if x.dim() == 2:
-                    x = x.unsqueeze(0)   # (1, N, d_in)
+                    x = x.unsqueeze(0)  # (1, N, d_in)
                 collected.append(x)
 
             handle = layer.register_forward_hook(_hook)
@@ -290,7 +287,7 @@ class ModelQuantizer:
                 errors[name] = 0.0
                 continue
 
-            activations = torch.cat(collected, dim=0)   # (total_B, T, d_in)
+            activations = torch.cat(collected, dim=0)  # (total_B, T, d_in)
 
             quantizer = GPTQQuantizer(n_bits=self.n_bits, group_size=self.group_size)
             layer_q = LayerQuantizer(layer, quantizer)
@@ -299,7 +296,7 @@ class ModelQuantizer:
 
         return errors
 
-    def quantization_summary(self, errors: Dict[str, float]) -> Dict:
+    def quantization_summary(self, errors: dict[str, float]) -> dict:
         """Compute summary statistics for quantization quality.
 
         Args:
@@ -325,9 +322,7 @@ class ModelQuantizer:
             layer.bias.numel() for layer in linear_layers.values() if layer.bias is not None
         )
         if total_params > 0:
-            effective_bits = (
-                weight_params * self.n_bits + bias_params * 32
-            ) / total_params
+            effective_bits = (weight_params * self.n_bits + bias_params * 32) / total_params
         else:
             effective_bits = float(self.n_bits)
 
@@ -343,15 +338,14 @@ class ModelQuantizer:
 # Quantization Benchmark
 # ---------------------------------------------------------------------------
 
+
 class QuantizationBenchmark:
     """Measure quantization quality via various error metrics."""
 
     def __init__(self) -> None:
         pass
 
-    def weight_error(
-        self, original_W: torch.Tensor, quantized_W: torch.Tensor
-    ) -> float:
+    def weight_error(self, original_W: torch.Tensor, quantized_W: torch.Tensor) -> float:
         """Relative Frobenius norm error between original and quantized weights.
 
         Returns:
@@ -360,13 +354,9 @@ class QuantizationBenchmark:
         norm = original_W.float().norm(p="fro")
         if norm < 1e-12:
             return 0.0
-        return (
-            (original_W.float() - quantized_W.float()).norm(p="fro") / norm
-        ).item()
+        return ((original_W.float() - quantized_W.float()).norm(p="fro") / norm).item()
 
-    def output_error(
-        self, original_out: torch.Tensor, quantized_out: torch.Tensor
-    ) -> float:
+    def output_error(self, original_out: torch.Tensor, quantized_out: torch.Tensor) -> float:
         """Relative L2 error between original and quantized model outputs.
 
         Returns:
@@ -375,9 +365,7 @@ class QuantizationBenchmark:
         norm = original_out.float().norm()
         if norm < 1e-12:
             return 0.0
-        return (
-            (original_out.float() - quantized_out.float()).norm() / norm
-        ).item()
+        return ((original_out.float() - quantized_out.float()).norm() / norm).item()
 
     def perplexity_increase(
         self, original_logprobs: torch.Tensor, quantized_logprobs: torch.Tensor

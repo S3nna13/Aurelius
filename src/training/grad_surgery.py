@@ -8,23 +8,25 @@ PCGrad: Project conflicting gradients onto each other's normal plane.
 CAGrad: Find the gradient closest to average that improves all tasks.
   Liu et al., 2021 - arXiv:2110.14048
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
 
 
 @dataclass
 class GradSurgeryConfig:
-    method: str = "pcgrad"    # "pcgrad" or "cagrad"
-    cagrad_c: float = 0.5     # CAGrad: fraction of gradient space to constrain
-    normalize: bool = True    # normalize task gradients by their norms
+    method: str = "pcgrad"  # "pcgrad" or "cagrad"
+    cagrad_c: float = 0.5  # CAGrad: fraction of gradient space to constrain
+    normalize: bool = True  # normalize task gradients by their norms
 
 
 def project_gradient(
-    g_i: torch.Tensor,   # (D,) gradient to project
-    g_j: torch.Tensor,   # (D,) gradient to project against
+    g_i: torch.Tensor,  # (D,) gradient to project
+    g_j: torch.Tensor,  # (D,) gradient to project against
 ) -> torch.Tensor:
     """Project g_i to remove component conflicting with g_j.
 
@@ -48,7 +50,7 @@ def project_gradient(
 
 
 def pcgrad(
-    task_gradients: list[torch.Tensor],   # list of (D,) flattened gradients, one per task
+    task_gradients: list[torch.Tensor],  # list of (D,) flattened gradients, one per task
 ) -> torch.Tensor:
     """PCGrad: project conflicting gradients.
 
@@ -79,7 +81,7 @@ def pcgrad(
 
 
 def cagrad(
-    task_gradients: list[torch.Tensor],   # list of (D,) flattened gradients
+    task_gradients: list[torch.Tensor],  # list of (D,) flattened gradients
     c: float = 0.5,
 ) -> torch.Tensor:
     """CAGrad: find gradient minimizing task loss while improving all tasks.
@@ -175,14 +177,14 @@ class MultiTaskGradManager:
             if p.requires_grad:
                 n = p.numel()
                 if p.grad is None:
-                    p.grad = flat_grad[offset:offset + n].view_as(p).clone()
+                    p.grad = flat_grad[offset : offset + n].view_as(p).clone()
                 else:
-                    p.grad.copy_(flat_grad[offset:offset + n].view_as(p))
+                    p.grad.copy_(flat_grad[offset : offset + n].view_as(p))
                 offset += n
 
     def compute_merged_gradient(
         self,
-        task_losses: list[torch.Tensor],   # list of scalar losses, one per task
+        task_losses: list[torch.Tensor],  # list of scalar losses, one per task
     ) -> torch.Tensor:
         """Compute merged gradient from multiple task losses.
 

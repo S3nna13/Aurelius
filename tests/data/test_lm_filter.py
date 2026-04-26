@@ -1,24 +1,23 @@
 """Tests for LMFilter — perplexity-based learning zone filtering."""
-import math
+
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.data.lm_filter import (
-    LMFilterConfig,
     FilterResult,
     LMFilter,
+    LMFilterConfig,
     compute_perplexity_batch,
     filter_by_perplexity,
-    filter_by_reward,
     learning_zone_weights,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -48,6 +47,7 @@ def sample_dataset():
 # 1. test_filter_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_filter_config_defaults():
     cfg = LMFilterConfig()
     assert cfg.ppl_low == 5.0
@@ -60,6 +60,7 @@ def test_filter_config_defaults():
 # 2. test_compute_perplexity_batch_shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_perplexity_batch_shape(small_model, sample_dataset):
     ppls = compute_perplexity_batch(small_model, sample_dataset)
     assert isinstance(ppls, list)
@@ -71,6 +72,7 @@ def test_compute_perplexity_batch_shape(small_model, sample_dataset):
 # 3. test_compute_perplexity_batch_positive
 # ---------------------------------------------------------------------------
 
+
 def test_compute_perplexity_batch_positive(small_model, sample_dataset):
     ppls = compute_perplexity_batch(small_model, sample_dataset)
     assert all(p >= 1.0 for p in ppls), f"Some ppl < 1.0: {ppls}"
@@ -79,6 +81,7 @@ def test_compute_perplexity_batch_positive(small_model, sample_dataset):
 # ---------------------------------------------------------------------------
 # 4. test_filter_by_perplexity_keeps_zone
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_perplexity_keeps_zone(small_model, sample_dataset):
     # Wide range — expect all kept
@@ -91,6 +94,7 @@ def test_filter_by_perplexity_keeps_zone(small_model, sample_dataset):
 # ---------------------------------------------------------------------------
 # 5. test_filter_by_perplexity_removes_easy
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_perplexity_removes_easy(small_model):
     # ppl_low very high -> everything removed (too easy relative to threshold)
@@ -105,6 +109,7 @@ def test_filter_by_perplexity_removes_easy(small_model):
 # 6. test_filter_by_perplexity_removes_noisy
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_perplexity_removes_noisy(small_model):
     # ppl_high very low -> everything is "noisy", gets removed
     cfg = LMFilterConfig(ppl_low=0.0, ppl_high=0.5)
@@ -117,6 +122,7 @@ def test_filter_by_perplexity_removes_noisy(small_model):
 # ---------------------------------------------------------------------------
 # 7. test_lm_filter_returns_filter_result
 # ---------------------------------------------------------------------------
+
 
 def test_lm_filter_returns_filter_result(small_model, sample_dataset):
     cfg = LMFilterConfig(ppl_low=1.0, ppl_high=1e9)
@@ -132,6 +138,7 @@ def test_lm_filter_returns_filter_result(small_model, sample_dataset):
 # 8. test_lm_filter_rejection_rate_range
 # ---------------------------------------------------------------------------
 
+
 def test_lm_filter_rejection_rate_range(small_model, sample_dataset):
     cfg = LMFilterConfig(ppl_low=1.0, ppl_high=1e9)
     lmf = LMFilter(small_model, cfg)
@@ -142,6 +149,7 @@ def test_lm_filter_rejection_rate_range(small_model, sample_dataset):
 # ---------------------------------------------------------------------------
 # 9. test_lm_filter_stats_dict
 # ---------------------------------------------------------------------------
+
 
 def test_lm_filter_stats_dict(small_model, sample_dataset):
     cfg = LMFilterConfig(ppl_low=1.0, ppl_high=1e9)
@@ -157,6 +165,7 @@ def test_lm_filter_stats_dict(small_model, sample_dataset):
 # 10. test_learning_zone_weights_sum_to_one
 # ---------------------------------------------------------------------------
 
+
 def test_learning_zone_weights_sum_to_one():
     ppls = [5.0, 10.0, 20.0, 40.0, 80.0]
     weights = learning_zone_weights(ppls, target_ppl=20.0)
@@ -166,6 +175,7 @@ def test_learning_zone_weights_sum_to_one():
 # ---------------------------------------------------------------------------
 # 11. test_learning_zone_weights_peak_at_target
 # ---------------------------------------------------------------------------
+
 
 def test_learning_zone_weights_peak_at_target():
     target = 20.0
@@ -178,6 +188,7 @@ def test_learning_zone_weights_peak_at_target():
 # ---------------------------------------------------------------------------
 # 12. test_filter_empty_dataset
 # ---------------------------------------------------------------------------
+
 
 def test_filter_empty_dataset(small_model):
     cfg = LMFilterConfig()

@@ -28,9 +28,7 @@ class PipelineParallel(nn.Module):
     def __init__(self, stages: list[nn.Module], config: PipelineConfig | None = None) -> None:
         super().__init__()
         self.config = config or PipelineConfig()
-        self.stages = nn.ModuleList(
-            [PipelineStage(s, i) for i, s in enumerate(stages)]
-        )
+        self.stages = nn.ModuleList([PipelineStage(s, i) for i, s in enumerate(stages)])
 
     def forward(self, x: Tensor) -> Tensor:
         microbatches = x.chunk(self.config.n_microbatches, dim=0)

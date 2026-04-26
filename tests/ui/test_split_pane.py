@@ -8,11 +8,9 @@ from rich.console import Console
 from src.ui.split_pane import (
     SPLIT_PANE_REGISTRY,
     PaneConfig,
-    SplitDirection,
     SplitPane,
     SplitPaneError,
 )
-
 
 # ---------------------------------------------------------------------------
 # add_pane

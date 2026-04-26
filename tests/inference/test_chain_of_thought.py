@@ -1,27 +1,28 @@
 """Tests for src/inference/chain_of_thought.py — 15 tests."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.chain_of_thought import (
+    ChainOfThoughtGenerator,
     CoTConfig,
+    CoTEvaluator,
     CoTOutput,
     ReasoningStep,
-    ChainOfThoughtGenerator,
     SelfConsistencyDecoder,
-    CoTEvaluator,
-    parse_reasoning_steps,
     extract_final_answer,
     greedy_decode_n_tokens,
+    parse_reasoning_steps,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_model():
@@ -74,6 +75,7 @@ def generator(tiny_model, cot_config):
 # 1. CoTConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_cotconfig_defaults():
     cfg = CoTConfig()
     assert cfg.max_reasoning_tokens == 128
@@ -88,6 +90,7 @@ def test_cotconfig_defaults():
 # 2. parse_reasoning_steps splits on newline
 # ---------------------------------------------------------------------------
 
+
 def test_parse_reasoning_steps_splits():
     text = "Step one\nStep two\nStep three"
     steps = parse_reasoning_steps(text)
@@ -97,6 +100,7 @@ def test_parse_reasoning_steps_splits():
 # ---------------------------------------------------------------------------
 # 3. parse_reasoning_steps filters empty strings
 # ---------------------------------------------------------------------------
+
 
 def test_parse_reasoning_steps_filters_empty():
     text = "Step one\n\n\nStep two\n"
@@ -109,6 +113,7 @@ def test_parse_reasoning_steps_filters_empty():
 # 4. extract_final_answer finds text after trigger
 # ---------------------------------------------------------------------------
 
+
 def test_extract_final_answer_found():
     trigger = "Therefore, the answer is:"
     text = f"Some reasoning here. {trigger} 42"
@@ -120,6 +125,7 @@ def test_extract_final_answer_found():
 # 5. extract_final_answer returns empty string if trigger absent
 # ---------------------------------------------------------------------------
 
+
 def test_extract_final_answer_missing_trigger():
     result = extract_final_answer("No trigger in this text.", "Therefore, the answer is:")
     assert result == ""
@@ -128,6 +134,7 @@ def test_extract_final_answer_missing_trigger():
 # ---------------------------------------------------------------------------
 # 6. greedy_decode_n_tokens returns (list, list) of length n_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_decode_n_tokens_length(tiny_model):
     prompt_ids = _encode("Hello")
@@ -145,6 +152,7 @@ def test_greedy_decode_n_tokens_length(tiny_model):
 # 7. greedy_decode_n_tokens log_probs are <= 0
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decode_log_probs_nonpositive(tiny_model):
     prompt_ids = _encode("Test")
     input_ids = torch.tensor(prompt_ids, dtype=torch.long).unsqueeze(0)
@@ -155,6 +163,7 @@ def test_greedy_decode_log_probs_nonpositive(tiny_model):
 # ---------------------------------------------------------------------------
 # 8. ChainOfThoughtGenerator instantiates
 # ---------------------------------------------------------------------------
+
 
 def test_generator_instantiates(tiny_model, cot_config):
     gen = ChainOfThoughtGenerator(
@@ -171,6 +180,7 @@ def test_generator_instantiates(tiny_model, cot_config):
 # 9. ChainOfThoughtGenerator.generate returns CoTOutput
 # ---------------------------------------------------------------------------
 
+
 def test_generator_generate_returns_cot_output(generator):
     prompt_ids = _encode("What is 2+2?")
     output = generator.generate(prompt_ids)
@@ -180,6 +190,7 @@ def test_generator_generate_returns_cot_output(generator):
 # ---------------------------------------------------------------------------
 # 10. CoTOutput has all required fields
 # ---------------------------------------------------------------------------
+
 
 def test_cot_output_has_required_fields(generator):
     prompt_ids = _encode("Solve: 3*4")
@@ -194,6 +205,7 @@ def test_cot_output_has_required_fields(generator):
 # 11. CoTOutput.n_reasoning_tokens >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_cot_output_n_reasoning_tokens_nonnegative(generator):
     prompt_ids = _encode("Test prompt")
     output = generator.generate(prompt_ids)
@@ -203,6 +215,7 @@ def test_cot_output_n_reasoning_tokens_nonnegative(generator):
 # ---------------------------------------------------------------------------
 # 12. SelfConsistencyDecoder.decode returns (str, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_self_consistency_decode_returns_str_dict(generator):
     decoder = SelfConsistencyDecoder(generator)
@@ -219,6 +232,7 @@ def test_self_consistency_decode_returns_str_dict(generator):
 # 13. SelfConsistencyDecoder.decode stats has correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_self_consistency_stats_keys(generator):
     decoder = SelfConsistencyDecoder(generator)
     prompt_ids = _encode("Compute 5-3.")
@@ -232,6 +246,7 @@ def test_self_consistency_stats_keys(generator):
 # ---------------------------------------------------------------------------
 # 14. CoTEvaluator.evaluate_answer_presence True/False
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_answer_presence(generator):
     evaluator = CoTEvaluator(generator)
@@ -258,6 +273,7 @@ def test_evaluator_answer_presence(generator):
 # ---------------------------------------------------------------------------
 # 15. CoTEvaluator.batch_evaluate returns dict with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_batch_evaluate_keys(generator):
     evaluator = CoTEvaluator(generator)

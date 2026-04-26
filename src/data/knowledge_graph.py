@@ -5,34 +5,35 @@ Provides:
 - TransEEmbedder: TransE knowledge graph embedding (h + r ≈ t)
 - KGRetriever: retrieves relevant triples for a text query via entity string matching
 """
+
 from __future__ import annotations
 
 import random
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class KGConfig:
     embed_dim: int = 64
     n_relations: int = 8
-    margin: float = 1.0       # TransE margin loss margin
-    norm: int = 2             # L-norm for distance
-    negative_k: int = 4      # negative samples per positive
+    margin: float = 1.0  # TransE margin loss margin
+    norm: int = 2  # L-norm for distance
+    negative_k: int = 4  # negative samples per positive
 
 
 # ---------------------------------------------------------------------------
 # Triple
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Triple:
@@ -44,6 +45,7 @@ class Triple:
 # ---------------------------------------------------------------------------
 # KnowledgeGraph
 # ---------------------------------------------------------------------------
+
 
 class KnowledgeGraph:
     """Store and index (head, relation, tail) triples."""
@@ -93,6 +95,7 @@ class KnowledgeGraph:
 # Index builders
 # ---------------------------------------------------------------------------
 
+
 def build_entity_index(kg: KnowledgeGraph) -> dict[str, int]:
     """Map entity strings to integer indices (sorted for determinism)."""
     return {entity: idx for idx, entity in enumerate(kg.get_entities())}
@@ -107,6 +110,7 @@ def build_relation_index(kg: KnowledgeGraph) -> dict[str, int]:
 # TransE Embedder
 # ---------------------------------------------------------------------------
 
+
 class TransEEmbedder(nn.Module):
     """TransE knowledge graph embedding: h + r ≈ t."""
 
@@ -115,15 +119,17 @@ class TransEEmbedder(nn.Module):
         self.entity_embeddings = nn.Embedding(n_entities, embed_dim)
         self.relation_embeddings = nn.Embedding(n_relations, embed_dim)
         # Normalize entity embeddings at init
-        nn.init.uniform_(self.entity_embeddings.weight, -6 / (embed_dim ** 0.5), 6 / (embed_dim ** 0.5))
-        nn.init.uniform_(self.relation_embeddings.weight, -6 / (embed_dim ** 0.5), 6 / (embed_dim ** 0.5))
+        nn.init.uniform_(self.entity_embeddings.weight, -6 / (embed_dim**0.5), 6 / (embed_dim**0.5))
+        nn.init.uniform_(
+            self.relation_embeddings.weight, -6 / (embed_dim**0.5), 6 / (embed_dim**0.5)
+        )
 
     def score(self, h: Tensor, r: Tensor, t: Tensor) -> Tensor:
         """TransE score: -||h_emb + r_emb - t_emb||_2. Shape (B,) -> (B,)."""
-        h_emb = self.entity_embeddings(h)   # (B, D)
-        r_emb = self.relation_embeddings(r) # (B, D)
-        t_emb = self.entity_embeddings(t)   # (B, D)
-        diff = h_emb + r_emb - t_emb       # (B, D)
+        h_emb = self.entity_embeddings(h)  # (B, D)
+        r_emb = self.relation_embeddings(r)  # (B, D)
+        t_emb = self.entity_embeddings(t)  # (B, D)
+        diff = h_emb + r_emb - t_emb  # (B, D)
         return -torch.norm(diff, p=2, dim=-1)  # (B,)
 
     def forward(self, h: Tensor, r: Tensor, t: Tensor) -> Tensor:
@@ -134,6 +140,7 @@ class TransEEmbedder(nn.Module):
 # ---------------------------------------------------------------------------
 # Loss
 # ---------------------------------------------------------------------------
+
 
 def transe_margin_loss(
     pos_scores: Tensor,
@@ -148,6 +155,7 @@ def transe_margin_loss(
 # ---------------------------------------------------------------------------
 # Retrieval
 # ---------------------------------------------------------------------------
+
 
 def retrieve_by_entity(
     kg: KnowledgeGraph,
@@ -188,6 +196,7 @@ def format_triples_as_text(triples: list[Triple]) -> str:
 # KGRetriever
 # ---------------------------------------------------------------------------
 
+
 class KGRetriever:
     """Retrieve relevant triples for a text query using entity string matching."""
 
@@ -200,8 +209,7 @@ class KGRetriever:
         then retrieve_by_entity for each, deduplicate, return up to top_k triples."""
         query_lower = query.lower()
         matched_entities = [
-            entity for entity in self.kg.get_entities()
-            if entity.lower() in query_lower
+            entity for entity in self.kg.get_entities() if entity.lower() in query_lower
         ]
 
         seen: set[tuple[str, str, str]] = set()

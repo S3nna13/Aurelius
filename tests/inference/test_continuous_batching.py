@@ -9,8 +9,12 @@ from src.inference.continuous_batching import (
 )
 
 
-def make_request(request_id: str, prompt_tokens: int = 4, max_new_tokens: int = 3) -> GenerationRequest:
-    return GenerationRequest(request_id=request_id, prompt_tokens=prompt_tokens, max_new_tokens=max_new_tokens)
+def make_request(
+    request_id: str, prompt_tokens: int = 4, max_new_tokens: int = 3
+) -> GenerationRequest:
+    return GenerationRequest(
+        request_id=request_id, prompt_tokens=prompt_tokens, max_new_tokens=max_new_tokens
+    )
 
 
 def test_schedule_prefill_respects_batch_size():

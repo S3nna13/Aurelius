@@ -67,13 +67,9 @@ class HeadSpec:
         if self.kind is HeadKind.VALUE and self.output_dim != 1:
             raise HeadFactoryError("VALUE head requires output_dim == 1")
         if self.kind is HeadKind.CLASSIFIER and self.output_dim <= 0:
-            raise HeadFactoryError(
-                "CLASSIFIER head requires output_dim > 0 (number of classes)"
-            )
+            raise HeadFactoryError("CLASSIFIER head requires output_dim > 0 (number of classes)")
         if self.kind is not HeadKind.LM and self.tied_to_embedding:
-            raise HeadFactoryError(
-                "tied_to_embedding is only valid for LM heads"
-            )
+            raise HeadFactoryError("tied_to_embedding is only valid for LM heads")
         if self.output_dim <= 0:
             raise HeadFactoryError("output_dim must be > 0")
         if self.kind is HeadKind.LM and self.tied_to_embedding:
@@ -82,9 +78,7 @@ class HeadSpec:
         if self.kind is HeadKind.MULTI_HEAD:
             sub = self.metadata.get("subhead_names")
             if not isinstance(sub, (list, tuple)) or len(sub) == 0:
-                raise HeadFactoryError(
-                    "MULTI_HEAD requires metadata['subhead_names'] (non-empty)"
-                )
+                raise HeadFactoryError("MULTI_HEAD requires metadata['subhead_names'] (non-empty)")
             for name in sub:
                 if not isinstance(name, str) or not name:
                     raise HeadFactoryError(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 import torch
@@ -73,14 +73,10 @@ class ModelEnsemble(nn.Module):
         if cfg.mode == EnsembleMode.LOGIT_MEAN:
             combined = sum(w * lg for lg, w in all_logits)
         elif cfg.mode == EnsembleMode.PROB_MEAN:
-            probs_sum = sum(
-                w * F.softmax(lg / cfg.temperature, dim=-1) for lg, w in all_logits
-            )
+            probs_sum = sum(w * F.softmax(lg / cfg.temperature, dim=-1) for lg, w in all_logits)
             combined = probs_sum.log()  # convert back to logit-like for consistency
         elif cfg.mode == EnsembleMode.LOG_PROB_MEAN:
-            log_probs_sum = sum(
-                w * F.log_softmax(lg, dim=-1) for lg, w in all_logits
-            )
+            log_probs_sum = sum(w * F.log_softmax(lg, dim=-1) for lg, w in all_logits)
             combined = log_probs_sum
         else:
             raise ValueError(f"Unknown ensemble mode: {cfg.mode}")

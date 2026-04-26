@@ -7,10 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.session_manager import SessionManager, SessionRecord, WorkItem
+from src.agent.session_manager import SessionManager, SessionRecord
 from src.model import (
     AureliusInterfaceFramework,
-    Checkpoint,
     InterfaceFrameworkError,
     MessageEnvelope,
     TaskThread,
@@ -126,7 +125,9 @@ def test_session_manager_persists_threads_workstreams_jobs_and_audit_state(tmp_p
     )
     canceled_item = manager.cancel_work_item(session.session_id, queued_default.item_id)
 
-    blocked_workstream = manager.set_workstream_status(session.session_id, workstream.workstream_id, "blocked")
+    blocked_workstream = manager.set_workstream_status(
+        session.session_id, workstream.workstream_id, "blocked"
+    )
     active_workstream = manager.set_workstream_status(session.session_id, workstream.name, "active")
     manager.set_session_status(session.session_id, "paused")
     resumed = manager.resume_session(session.session_id)
@@ -177,9 +178,15 @@ def test_session_manager_persists_threads_workstreams_jobs_and_audit_state(tmp_p
     assert updated_item.result == {"done": True}
     assert canceled_item.status == "canceled"
     assert queued_default.title == "review"
-    assert manager.list_tool_calls(session.session_id, thread.thread_id)[0]["tool_name"] == "search_repo"
+    assert (
+        manager.list_tool_calls(session.session_id, thread.thread_id)[0]["tool_name"]
+        == "search_repo"
+    )
     assert listed_messages[0].envelope_id == envelope.envelope_id
-    assert manager.list_background_jobs(session.session_id, workstream.workstream_id)[0].job_id == job.job_id
+    assert (
+        manager.list_background_jobs(session.session_id, workstream.workstream_id)[0].job_id
+        == job.job_id
+    )
     assert reloaded_session is not None
     assert reloaded_session.session_id == session.session_id
     assert reloaded_session.messages[envelope.envelope_id].kind == "routing"
@@ -192,7 +199,10 @@ def test_session_manager_persists_threads_workstreams_jobs_and_audit_state(tmp_p
     assert reloaded_journal.describe()["entries"] == journal.describe()["entries"]
     assert reloaded_journal.describe()["latest_entry_kind"] == "session.status.changed"
     assert thread.thread_id in reloaded_session.workstreams[workstream.workstream_id].thread_ids
-    assert reloaded.get_workstream(session.session_id, workstream.name).workstream_id == workstream.workstream_id
+    assert (
+        reloaded.get_workstream(session.session_id, workstream.name).workstream_id
+        == workstream.workstream_id
+    )
 
 
 def test_session_manager_rejects_unknown_background_job(tmp_path):

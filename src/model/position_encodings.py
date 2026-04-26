@@ -14,10 +14,10 @@ import math
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # ALiBi
 # ---------------------------------------------------------------------------
+
 
 class ALiBiPositionBias(nn.Module):
     """ALiBi (Attention with Linear Biases, Press et al. 2022).
@@ -73,6 +73,7 @@ class ALiBiPositionBias(nn.Module):
 # xPos
 # ---------------------------------------------------------------------------
 
+
 class xPosEmbedding(nn.Module):
     """xPos (Sun et al. 2022): Extrapolatable RoPE via position-dependent scaling.
 
@@ -121,6 +122,7 @@ class xPosEmbedding(nn.Module):
 # NoPE
 # ---------------------------------------------------------------------------
 
+
 class NoPE(nn.Module):
     """NoPE (No Positional Encoding, Kazemnejad et al. 2023).
 
@@ -142,6 +144,7 @@ class NoPE(nn.Module):
 # ---------------------------------------------------------------------------
 # T5 Relative Position Bias
 # ---------------------------------------------------------------------------
+
 
 class T5RelativePositionBias(nn.Module):
     """T5-style learned relative position bias (Raffel et al. 2020).
@@ -231,6 +234,7 @@ class T5RelativePositionBias(nn.Module):
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
 
 def get_position_encoding(
     pe_type: str,

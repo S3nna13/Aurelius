@@ -1,4 +1,5 @@
 """Service discovery registry for microservice coordination."""
+
 from __future__ import annotations
 
 import time
@@ -33,9 +34,7 @@ class ServiceRegistry:
 
     def unregister(self, name: str, host: str, port: int) -> None:
         instances = self.services.get(name, [])
-        self.services[name] = [
-            i for i in instances if not (i.host == host and i.port == port)
-        ]
+        self.services[name] = [i for i in instances if not (i.host == host and i.port == port)]
 
     def discover(self, name: str) -> list[ServiceInstance]:
         return self.services.get(name, [])

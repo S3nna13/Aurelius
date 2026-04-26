@@ -3,20 +3,20 @@
 Covers the 14 cases specified in the implementation brief.
 Pure PyTorch only; no scipy/sklearn/external ML libs.
 """
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.shampoo import ShampooOptimizer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_2d_param(m: int = 4, n: int = 3, seed: int = 0) -> torch.nn.Parameter:
     torch.manual_seed(seed)
@@ -31,7 +31,7 @@ def _make_1d_param(size: int = 5, seed: int = 1) -> torch.nn.Parameter:
 def _single_step(param, lr=0.01, **kwargs):
     """One forward-backward-step cycle; returns (opt, loss_val)."""
     opt = ShampooOptimizer([param], lr=lr, **kwargs)
-    loss = (param ** 2).sum()
+    loss = (param**2).sum()
     loss.backward()
     opt.step()
     return opt, loss.item()
@@ -40,6 +40,7 @@ def _single_step(param, lr=0.01, **kwargs):
 # ---------------------------------------------------------------------------
 # Test 1: Parameters move after one step
 # ---------------------------------------------------------------------------
+
 
 def test_params_move_after_one_step():
     p = _make_2d_param()
@@ -52,6 +53,7 @@ def test_params_move_after_one_step():
 # Test 2: Movement is finite — no NaN or Inf
 # ---------------------------------------------------------------------------
 
+
 def test_movement_finite():
     p = _make_2d_param()
     _single_step(p)
@@ -61,6 +63,7 @@ def test_movement_finite():
 # ---------------------------------------------------------------------------
 # Test 3: Determinism under fixed seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     def run():
@@ -78,10 +81,11 @@ def test_determinism():
 # Test 4: L_t and R_t statistics accumulate (non-zero) after first step
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_accumulate():
     p = _make_2d_param()
     opt = ShampooOptimizer([p], lr=0.01, update_freq=100)
-    loss = (p ** 2).sum()
+    loss = (p**2).sum()
     loss.backward()
     opt.step()
     state = opt.state[p]
@@ -93,11 +97,12 @@ def test_statistics_accumulate():
 # Test 5: L_t has shape (m, m) for param shape (m, n)
 # ---------------------------------------------------------------------------
 
+
 def test_L_shape():
     m, n = 6, 4
     p = _make_2d_param(m, n)
     opt = ShampooOptimizer([p], lr=0.01)
-    (p ** 2).sum().backward()
+    (p**2).sum().backward()
     opt.step()
     assert opt.state[p]["L_t"].shape == (m, m), f"Expected L_t shape ({m},{m})."
 
@@ -106,11 +111,12 @@ def test_L_shape():
 # Test 6: R_t has shape (n, n) for param shape (m, n)
 # ---------------------------------------------------------------------------
 
+
 def test_R_shape():
     m, n = 6, 4
     p = _make_2d_param(m, n)
     opt = ShampooOptimizer([p], lr=0.01)
-    (p ** 2).sum().backward()
+    (p**2).sum().backward()
     opt.step()
     assert opt.state[p]["R_t"].shape == (n, n), f"Expected R_t shape ({n},{n})."
 
@@ -118,6 +124,7 @@ def test_R_shape():
 # ---------------------------------------------------------------------------
 # Test 7: Preconditioners recomputed at update_freq=5, not every step
 # ---------------------------------------------------------------------------
+
 
 def test_preconditioner_recomputed_at_update_freq():
     """L_inv4 stays at its initial value (eye) for steps 1..update_freq-1,
@@ -130,15 +137,13 @@ def test_preconditioner_recomputed_at_update_freq():
     for _ in range(update_freq + 1):
         if p.grad is not None:
             p.grad.zero_()
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         opt.step()
         snapshots.append(opt.state[p]["L_inv4"].clone())
 
     # snapshots indices: 0=after step1, 1=after step2, ..., 4=after step5, 5=after step6
     # steps 1..4 (indices 0..3) should all share the initial identity preconditioner
-    unchanged = all(
-        torch.allclose(snapshots[i], snapshots[0]) for i in range(1, update_freq - 1)
-    )
+    unchanged = all(torch.allclose(snapshots[i], snapshots[0]) for i in range(1, update_freq - 1))
     # step 5 (index 4) triggers recomputation; should differ from step 4 (index 3)
     changed_at_freq = not torch.allclose(snapshots[update_freq - 2], snapshots[update_freq - 1])
 
@@ -150,10 +155,11 @@ def test_preconditioner_recomputed_at_update_freq():
 # Test 8: 1-D parameters use standard SGD (no Kronecker factors in state)
 # ---------------------------------------------------------------------------
 
+
 def test_1d_param_uses_sgd_not_kronecker():
     p = _make_1d_param()
     opt = ShampooOptimizer([p], lr=0.1)
-    (p ** 2).sum().backward()
+    (p**2).sum().backward()
     opt.step()
     state = opt.state[p]
     assert "L_t" not in state, "1-D param should have no L_t."
@@ -166,6 +172,7 @@ def test_1d_param_uses_sgd_not_kronecker():
 # Test 9: Converges on quadratic loss over 20 steps
 # ---------------------------------------------------------------------------
 
+
 def test_converges_quadratic():
     torch.manual_seed(7)
     p = nn.Parameter(torch.randn(4, 4) * 2.0)
@@ -174,7 +181,7 @@ def test_converges_quadratic():
     for _ in range(20):
         if p.grad is not None:
             p.grad.zero_()
-        loss = (p ** 2).sum()
+        loss = (p**2).sum()
         losses.append(loss.item())
         loss.backward()
         opt.step()
@@ -185,25 +192,25 @@ def test_converges_quadratic():
 # Test 10: Non-zero weight_decay modifies the update vs zero weight_decay
 # ---------------------------------------------------------------------------
 
+
 def test_weight_decay_modifies_update():
     def run_with_wd(wd):
         torch.manual_seed(0)
         p = _make_2d_param(seed=0)
         opt = ShampooOptimizer([p], lr=0.01, weight_decay=wd)
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         opt.step()
         return p.data.clone()
 
     p_no_wd = run_with_wd(0.0)
-    p_wd    = run_with_wd(1e-2)
-    assert not torch.allclose(p_no_wd, p_wd), (
-        "weight_decay != 0 should produce a different update."
-    )
+    p_wd = run_with_wd(1e-2)
+    assert not torch.allclose(p_no_wd, p_wd), "weight_decay != 0 should produce a different update."
 
 
 # ---------------------------------------------------------------------------
 # Test 11: ε regularisation keeps L + εI invertible for near-singular L
 # ---------------------------------------------------------------------------
+
 
 def test_epsilon_regularisation_near_singular():
     """Force a near-singular gradient (rank-1) and ensure no NaN/Inf."""
@@ -224,6 +231,7 @@ def test_epsilon_regularisation_near_singular():
 # Test 12: No NaN/Inf on large gradients (scale 100×)
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_large_gradients():
     torch.manual_seed(5)
     p = nn.Parameter(torch.randn(4, 4))
@@ -238,6 +246,7 @@ def test_no_nan_inf_large_gradients():
 # Test 13: Preconditioned update has smaller or comparable norm than raw grad
 # ---------------------------------------------------------------------------
 
+
 def test_preconditioned_update_norm_reasonable():
     """After preconditioners are warmed up, the update norm should be finite
     and not astronomically larger than the raw gradient norm.  Shampoo is a
@@ -251,22 +260,25 @@ def test_preconditioned_update_norm_reasonable():
     for _ in range(5):
         if p.grad is not None:
             p.grad.zero_()
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         opt.step()
 
     # Now measure
     p_before = p.data.clone()
     if p.grad is not None:
         p.grad.zero_()
-    (p ** 2).sum().backward()
+    (p**2).sum().backward()
     G_norm = p.grad.norm().item()
 
     p_copy = nn.Parameter(p.data.clone())
     opt2 = ShampooOptimizer([p_copy], lr=1.0, update_freq=1)
     # Copy over accumulated statistics so it's apples-to-apples
     for key in ("L_t", "R_t", "L_inv4", "R_inv4", "step"):
-        opt2.state[p_copy][key] = opt.state[p][key].clone() if isinstance(
-            opt.state[p][key], torch.Tensor) else opt.state[p][key]
+        opt2.state[p_copy][key] = (
+            opt.state[p][key].clone()
+            if isinstance(opt.state[p][key], torch.Tensor)
+            else opt.state[p][key]
+        )
     p_copy.grad = p.grad.clone()
     opt2.step()
 
@@ -283,6 +295,7 @@ def test_preconditioned_update_norm_reasonable():
 # Test 14: update_freq=1 — preconditioners updated every step
 # ---------------------------------------------------------------------------
 
+
 def test_update_freq_1_updates_every_step():
     """With update_freq=1, L_inv4 should differ after every step (as L_t grows)."""
     torch.manual_seed(11)
@@ -293,7 +306,7 @@ def test_update_freq_1_updates_every_step():
     for _ in range(3):
         if p.grad is not None:
             p.grad.zero_()
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         opt.step()
         snapshots.append(opt.state[p]["L_inv4"].clone())
 

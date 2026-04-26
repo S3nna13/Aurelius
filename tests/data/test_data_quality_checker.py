@@ -9,10 +9,10 @@ from src.data.data_quality_checker import (
     QualityReport,
 )
 
-
 # ---------------------------------------------------------------------------
 # QualityConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = QualityConfig()
@@ -34,6 +34,7 @@ def test_config_custom():
 # QualityReport structure
 # ---------------------------------------------------------------------------
 
+
 def test_quality_report_passed_when_no_issues():
     report = QualityReport(text="hello", issues=[], passed=True, stats={})
     assert report.passed is True
@@ -54,6 +55,7 @@ def test_quality_report_failed_when_issues_present():
 # ---------------------------------------------------------------------------
 # _char_entropy
 # ---------------------------------------------------------------------------
+
 
 def test_entropy_empty_string():
     checker = DataQualityChecker()
@@ -82,6 +84,7 @@ def test_entropy_high_for_diverse_text():
 # _repetition_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_repetition_ratio_zero_for_unique_ngrams():
     checker = DataQualityChecker()
     text = "the quick brown fox jumps over lazy dogs here now"
@@ -105,6 +108,7 @@ def test_repetition_ratio_short_text_returns_zero():
 # ---------------------------------------------------------------------------
 # check: individual issues
 # ---------------------------------------------------------------------------
+
 
 def test_check_too_short():
     checker = DataQualityChecker(QualityConfig(min_chars=20))
@@ -134,9 +138,7 @@ def test_check_high_repetition():
 
 
 def test_check_low_entropy():
-    checker = DataQualityChecker(
-        QualityConfig(min_chars=1, entropy_threshold=3.0)
-    )
+    checker = DataQualityChecker(QualityConfig(min_chars=1, entropy_threshold=3.0))
     report = checker.check("aaaaaaaaaa")
     assert QualityIssue.LOW_ENTROPY in report.issues
 
@@ -187,6 +189,7 @@ def test_check_stats_values_correct():
 # filter
 # ---------------------------------------------------------------------------
 
+
 def test_filter_returns_only_passing_texts():
     checker = DataQualityChecker(QualityConfig(min_chars=20, entropy_threshold=0.0))
     texts = [
@@ -214,6 +217,7 @@ def test_filter_all_pass():
 # batch_check
 # ---------------------------------------------------------------------------
 
+
 def test_batch_check_returns_list_of_reports():
     checker = DataQualityChecker()
     texts = ["hello world foo bar baz test", "hi"]
@@ -230,6 +234,7 @@ def test_batch_check_empty():
 # ---------------------------------------------------------------------------
 # summary
 # ---------------------------------------------------------------------------
+
 
 def test_summary_counts():
     checker = DataQualityChecker(QualityConfig(min_chars=20, entropy_threshold=0.0))

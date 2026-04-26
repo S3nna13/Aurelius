@@ -1,4 +1,5 @@
 """Heartbeat protocol for service-to-service health checks."""
+
 from __future__ import annotations
 
 import time

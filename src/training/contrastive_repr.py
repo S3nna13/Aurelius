@@ -1,4 +1,4 @@
-"""Contrastive representation learning: NT-Xent loss, MoCo momentum encoder, and supervised contrastive."""
+"""Contrastive representation learning: NT-Xent loss, MoCo momentum encoder, and supervised contrastive."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -91,10 +91,12 @@ def nt_xent_loss(z1: Tensor, z2: Tensor, temperature: float = 0.07) -> Tensor:
     sim = sim.masked_fill(mask_self, float("-inf"))
 
     # Positive labels: for i in [0, B), positive is i+B; for i in [B, 2B), positive is i-B
-    labels = torch.cat([
-        torch.arange(B, 2 * B, device=device),
-        torch.arange(0, B, device=device),
-    ])
+    labels = torch.cat(
+        [
+            torch.arange(B, 2 * B, device=device),
+            torch.arange(0, B, device=device),
+        ]
+    )
 
     return F.cross_entropy(sim, labels)
 
@@ -181,9 +183,7 @@ class MomentumEncoder(nn.Module):
             param.requires_grad = False
 
         # Negative queue: (queue_size, projection_dim), L2-normalized random init
-        queue_init = F.normalize(
-            torch.randn(config.queue_size, config.projection_dim), dim=-1
-        )
+        queue_init = F.normalize(torch.randn(config.queue_size, config.projection_dim), dim=-1)
         self.register_buffer("queue", queue_init)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
@@ -194,9 +194,7 @@ class MomentumEncoder(nn.Module):
         momentum_param = momentum * momentum_param + (1 - momentum) * online_param
         """
         m = self.config.momentum
-        for param, param_m in zip(
-            self.encoder.parameters(), self.momentum_encoder.parameters()
-        ):
+        for param, param_m in zip(self.encoder.parameters(), self.momentum_encoder.parameters()):
             param_m.data = m * param_m.data + (1.0 - m) * param.data
 
     @torch.no_grad()
@@ -221,9 +219,7 @@ class MomentumEncoder(nn.Module):
         ptr = (ptr + B) % self.config.queue_size
         self.queue_ptr[0] = ptr
 
-    def forward(
-        self, query_features: Tensor, key_features: Tensor
-    ) -> tuple[Tensor, Tensor]:
+    def forward(self, query_features: Tensor, key_features: Tensor) -> tuple[Tensor, Tensor]:
         """Compute query and key representations.
 
         Query goes through online encoder; key goes through momentum encoder.
@@ -246,9 +242,7 @@ class MomentumEncoder(nn.Module):
         return query_out, key_out
 
 
-def moco_loss(
-    query: Tensor, key: Tensor, queue: Tensor, temperature: float = 0.07
-) -> Tensor:
+def moco_loss(query: Tensor, key: Tensor, queue: Tensor, temperature: float = 0.07) -> Tensor:
     """MoCo contrastive loss.
 
     Positive: each (query[i], key[i]) pair.
@@ -331,9 +325,7 @@ class ContrastiveTrainer:
         vocab_proj = self._get_vocab_proj(pooled.shape[-1])
         return vocab_proj(pooled)  # (B, d_model)
 
-    def train_step_simclr(
-        self, input_ids: Tensor, augmented_ids: Tensor
-    ) -> dict[str, float]:
+    def train_step_simclr(self, input_ids: Tensor, augmented_ids: Tensor) -> dict[str, float]:
         """One SimCLR training step using NT-Xent loss.
 
         Args:
@@ -363,9 +355,7 @@ class ContrastiveTrainer:
 
         return {"loss": loss.item(), "temperature": self.config.temperature}
 
-    def train_step_supcon(
-        self, input_ids: Tensor, labels: Tensor
-    ) -> dict[str, float]:
+    def train_step_supcon(self, input_ids: Tensor, labels: Tensor) -> dict[str, float]:
         """One Supervised Contrastive training step.
 
         Args:

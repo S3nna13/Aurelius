@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   aurelius:
     build:
@@ -6,9 +7,49 @@ services:
       dockerfile: deployment/Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      - AURELIUS_VERSION=${AURELIUS_VERSION:-0.1.0}
+      - AURELIUS_LOG_LEVEL=${AURELIUS_LOG_LEVEL:-info}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
-      interval: 30s
-      timeout: 10s
-      start_period: 5s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
       retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+        reservations:
+          cpus: '2'
+          memory: 8G
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/frontend.Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8080}
+    depends_on:
+      - aurelius
+    restart: unless-stopped
+
+volumes:
+  redis-data:

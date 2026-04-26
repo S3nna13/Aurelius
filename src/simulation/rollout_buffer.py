@@ -1,4 +1,5 @@
 """Rollout / replay buffer for RL experience tuples."""
+
 from __future__ import annotations
 
 import random
@@ -31,9 +32,7 @@ class RolloutBuffer:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
         if len(self._buffer) < batch_size:
-            raise ValueError(
-                f"Cannot sample {batch_size} from buffer of size {len(self._buffer)}"
-            )
+            raise ValueError(f"Cannot sample {batch_size} from buffer of size {len(self._buffer)}")
         return random.sample(list(self._buffer), batch_size)
 
     def can_sample(self, batch_size: int) -> bool:

@@ -1,9 +1,8 @@
 """Tests for HTTP client."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.tools.http_client import SimpleHTTPClient, HTTPResponse
+from src.tools.http_client import HTTPResponse, SimpleHTTPClient
 
 
 class TestHTTPResponse:

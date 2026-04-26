@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.alignment.preference_aggregation import (
     AggregationConfig,
     PreferenceAggregator,
@@ -15,10 +13,10 @@ from src.alignment.preference_aggregation import (
     ranking_to_pairwise,
 )
 
-
 # ---------------------------------------------------------------------------
 # parse_ranking
 # ---------------------------------------------------------------------------
+
 
 def test_parse_ranking_simple():
     result = parse_ranking("B>A>C=D")
@@ -38,6 +36,7 @@ def test_parse_ranking_empty():
 # ---------------------------------------------------------------------------
 # ranking_to_pairwise
 # ---------------------------------------------------------------------------
+
 
 def test_ranking_to_pairwise_count():
     # "B>A>C" → 3 pairs: (B,A), (B,C), (A,C)
@@ -65,6 +64,7 @@ def test_ranking_to_pairwise_no_ties():
 # ---------------------------------------------------------------------------
 # borda_scores
 # ---------------------------------------------------------------------------
+
 
 def test_borda_scores_ordering():
     # B is always ranked first → should have highest Borda score
@@ -103,6 +103,7 @@ def test_borda_scores_tied_average():
 # bradley_terry_scores
 # ---------------------------------------------------------------------------
 
+
 def test_bradley_terry_ordering():
     # A beats B and C convincingly
     pairwise_wins = {
@@ -131,6 +132,7 @@ def test_bradley_terry_sums_to_one():
 # majority_vote_scores
 # ---------------------------------------------------------------------------
 
+
 def test_majority_vote_clear_winner():
     # All annotators rank A first → A's win rate against others should be 1.0
     rankings = [
@@ -146,6 +148,7 @@ def test_majority_vote_clear_winner():
 # ---------------------------------------------------------------------------
 # PreferenceAggregator
 # ---------------------------------------------------------------------------
+
 
 def test_preference_aggregator_borda():
     cfg = AggregationConfig(min_annotators=2, tie_threshold=0.05)
@@ -197,6 +200,7 @@ def test_to_dpo_pairs_returns_list():
 # ---------------------------------------------------------------------------
 # annotator_agreement
 # ---------------------------------------------------------------------------
+
 
 def test_annotator_agreement_perfect():
     # All annotators give the same ranking → W should be close to 1.0

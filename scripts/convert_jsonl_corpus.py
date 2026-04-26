@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """Convert Aurelius_Training_Data.jsonl (chat format) to flat text corpus for LM training."""
+
 import json
-import sys
 from pathlib import Path
+
 
 def main():
     jsonl_path = Path("/Users/christienantonio/Desktop/Aurelius_Training_Data.jsonl")
-    out_path = Path("/Users/christienantonio/Desktop/Aurelius/data/reference_corpus/jsonl_corpus.txt")
+    out_path = Path(
+        "/Users/christienantonio/Desktop/Aurelius/data/reference_corpus/jsonl_corpus.txt"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     total_lines = 0
     total_chars = 0
 
-    with open(jsonl_path, "r", encoding="utf-8") as fin, \
-         open(out_path, "w", encoding="utf-8") as fout:
+    with open(jsonl_path, encoding="utf-8") as fin, open(out_path, "w", encoding="utf-8") as fout:
         for line in fin:
             line = line.strip()
             if not line:
@@ -37,7 +39,8 @@ def main():
                 total_chars += len(text)
 
     print(f"Converted {total_lines:,} conversations -> {out_path}")
-    print(f"Total text: {total_chars:,} chars ({total_chars/1e6:.1f}MB)")
+    print(f"Total text: {total_chars:,} chars ({total_chars / 1e6:.1f}MB)")
+
 
 if __name__ == "__main__":
     main()

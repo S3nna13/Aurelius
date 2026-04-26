@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -15,11 +15,11 @@ from torch import Tensor
 class PromptTuningConfig:
     """Configuration for soft prompt tuning and Gist compression."""
 
-    n_soft_tokens: int = 20        # number of learnable soft prompt tokens
+    n_soft_tokens: int = 20  # number of learnable soft prompt tokens
     init_strategy: str = "random"  # "random" | "vocab_sample" | "task_description"
-    lr_multiplier: float = 100.0   # soft prompt LR vs base LR
+    lr_multiplier: float = 100.0  # soft prompt LR vs base LR
     freeze_backbone: bool = True
-    compress_ratio: int = 4        # Gist: compress this many tokens into 1
+    compress_ratio: int = 4  # Gist: compress this many tokens into 1
 
 
 class SoftPrompt(nn.Module):
@@ -104,13 +104,15 @@ class SoftPromptModel(nn.Module):
 
     def _make_embedding_hook(self, soft_embeds: Tensor, n_soft: int):
         """Return a hook that replaces the first n_soft token embeddings with soft_embeds."""
+
         def hook(module: nn.Module, input: tuple, output: Tensor) -> Tensor:
             # output shape: (B, T + n_soft, d_model)
             # Replace the first n_soft positions with learned embeddings
-            B = output.shape[0]
+            output.shape[0]
             # soft_embeds is (B, n_soft, d_model) — already on correct device after expand
             soft = soft_embeds.to(output.device)
             return torch.cat([soft, output[:, n_soft:, :]], dim=1)
+
         return hook
 
     def forward(self, input_ids: Tensor) -> tuple[Tensor, Tensor, Any]:
@@ -222,12 +224,13 @@ class GistCompressor(nn.Module):
 # Gradient-based Soft Prompt Optimization (Prompt Tuning / P-Tuning)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PromptConfig:
     """Configuration for gradient-based soft prompt optimization."""
 
     n_prompt_tokens: int = 10
-    init_method: str = "random"        # "random" | "vocab"
+    init_method: str = "random"  # "random" | "vocab"
     init_vocab_ids: list[int] | None = None
 
 
@@ -253,7 +256,9 @@ class SoftPromptV2(nn.Module):
     exposes a no-argument forward() returning shape (1, n_prompt_tokens, d_model).
     """
 
-    def __init__(self, config: PromptConfig, d_model: int, embed_layer: nn.Embedding | None = None) -> None:
+    def __init__(
+        self, config: PromptConfig, d_model: int, embed_layer: nn.Embedding | None = None
+    ) -> None:
         super().__init__()
         n = config.n_prompt_tokens
 
@@ -334,10 +339,9 @@ class PromptTuner:
         Returns:
             logits of shape (B, n_prompt_tokens + T, vocab_size).
         """
-        assert self.soft_prompt is not None, "Call setup() before forward_with_prompt()"
+        assert self.soft_prompt is not None, "Call setup() before forward_with_prompt()"  # noqa: S101
 
         B, T = input_ids.shape
-        device = input_ids.device
 
         # Token embeddings: (B, T, d_model)
         token_embeds = self.model.embed(input_ids)
@@ -375,7 +379,7 @@ class PromptTuner:
         Returns:
             dict with keys "loss" (float) and "n_prompt_tokens" (int).
         """
-        assert self.soft_prompt is not None, "Call setup() before train_step()"
+        assert self.soft_prompt is not None, "Call setup() before train_step()"  # noqa: S101
 
         logits = self.forward_with_prompt(input_ids)  # (B, n_prompt + T, V)
 
@@ -386,8 +390,8 @@ class PromptTuner:
         # We want to predict token t from the representation at position (n_prompt + t - 1).
         # Logits for non-prompt positions: indices n_prompt .. n_prompt+T-1.
         # Shift: predict token[1..T] from logit[n_prompt..n_prompt+T-2].
-        shift_logits = logits[:, n_prompt:-1, :].contiguous()   # (B, T-1, V)
-        shift_labels = input_ids[:, 1:].contiguous()             # (B, T-1)
+        shift_logits = logits[:, n_prompt:-1, :].contiguous()  # (B, T-1, V)
+        shift_labels = input_ids[:, 1:].contiguous()  # (B, T-1)
 
         loss = F.cross_entropy(
             shift_logits.view(-1, V),
@@ -406,5 +410,5 @@ class PromptTuner:
         Returns:
             Tensor of shape (n_prompt_tokens, d_model).
         """
-        assert self.soft_prompt is not None, "Call setup() first"
+        assert self.soft_prompt is not None, "Call setup() first"  # noqa: S101
         return self.soft_prompt.embeddings.detach()

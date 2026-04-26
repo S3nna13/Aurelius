@@ -1,4 +1,5 @@
 """Float compression via lossy quantization for storage efficiency."""
+
 from __future__ import annotations
 
 import struct
@@ -8,7 +9,7 @@ from dataclasses import dataclass
 @dataclass
 class FloatCompressor:
     """Compress float values to reduced precision for storage.
-    
+
     Downsamples 32-bit floats to user-specified bit widths.
     """
 
@@ -29,7 +30,7 @@ class FloatCompressor:
         values = []
         for i in range(count):
             start = (i * 4) % len(data)
-            q = struct.unpack(">i", data[start:start + 4])[0]
+            q = struct.unpack(">i", data[start : start + 4])[0]
             values.append(q / max_int * scale)
         return values
 

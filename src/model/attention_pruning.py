@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -33,6 +32,7 @@ class PruningConfig:
 # Per-head importance computation
 # ---------------------------------------------------------------------------
 
+
 def compute_head_importance_magnitude(
     weight: Tensor,
     n_heads: int,
@@ -50,8 +50,8 @@ def compute_head_importance_magnitude(
     """
     # Reshape to (n_heads, d_head, d_model) then take Frobenius norm per head
     d_model = weight.shape[1]
-    w = weight.view(n_heads, d_head, d_model)   # (n_heads, d_head, d_model)
-    return w.norm(dim=(1, 2))                    # (n_heads,)
+    w = weight.view(n_heads, d_head, d_model)  # (n_heads, d_head, d_model)
+    return w.norm(dim=(1, 2))  # (n_heads,)
 
 
 def compute_head_importance_random(n_heads: int, seed: int = 42) -> Tensor:
@@ -72,7 +72,8 @@ def compute_head_importance_random(n_heads: int, seed: int = 42) -> Tensor:
 # Pruning index / mask helpers
 # ---------------------------------------------------------------------------
 
-def get_heads_to_prune(importance: Tensor, prune_ratio: float) -> List[int]:
+
+def get_heads_to_prune(importance: Tensor, prune_ratio: float) -> list[int]:
     """Return the indices of heads to prune (least important first).
 
     Args:
@@ -87,12 +88,12 @@ def get_heads_to_prune(importance: Tensor, prune_ratio: float) -> List[int]:
     if n_prune == 0:
         return []
     # argsort ascending — take the bottom n_prune
-    sorted_indices = importance.argsort()          # ascending by importance
+    sorted_indices = importance.argsort()  # ascending by importance
     pruned = sorted_indices[:n_prune].tolist()
     return sorted(int(i) for i in pruned)
 
 
-def create_head_mask(n_heads: int, heads_to_prune: List[int]) -> Tensor:
+def create_head_mask(n_heads: int, heads_to_prune: list[int]) -> Tensor:
     """Create a boolean keep-mask for attention heads.
 
     Args:
@@ -127,6 +128,7 @@ def apply_head_mask(attn_output: Tensor, head_mask: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # HeadPruner class
 # ---------------------------------------------------------------------------
+
 
 class HeadPruner:
     """High-level helper that encapsulates importance analysis and mask creation."""
@@ -187,6 +189,7 @@ class HeadPruner:
 # Sparsity utility
 # ---------------------------------------------------------------------------
 
+
 def compute_sparsity_ratio(mask: Tensor) -> float:
     """Return the fraction of heads that are pruned (masked out).
 
@@ -205,6 +208,7 @@ def compute_sparsity_ratio(mask: Tensor) -> float:
 # PrunedMultiHeadAttention nn.Module
 # ---------------------------------------------------------------------------
 
+
 class PrunedMultiHeadAttention(nn.Module):
     """Multi-head self-attention with optional static head pruning via a mask.
 
@@ -221,10 +225,10 @@ class PrunedMultiHeadAttention(nn.Module):
         self,
         d_model: int,
         n_heads: int,
-        head_mask: Optional[Tensor] = None,
+        head_mask: Tensor | None = None,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -245,7 +249,7 @@ class PrunedMultiHeadAttention(nn.Module):
         Args:
             mask: Bool tensor of shape (n_heads,). True = keep, False = prune.
         """
-        assert mask.shape == (self.n_heads,), (
+        assert mask.shape == (self.n_heads,), (  # noqa: S101
             f"Expected mask of shape ({self.n_heads},), got {mask.shape}"
         )
         self.head_mask = mask.to(dtype=torch.bool, device=self.head_mask.device)
@@ -271,7 +275,7 @@ class PrunedMultiHeadAttention(nn.Module):
         # Scaled dot-product attention
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) / scale  # (B, H, T, T)
         attn_weights = F.softmax(attn_scores, dim=-1)
-        attn_out = torch.matmul(attn_weights, v)                    # (B, H, T, Dh)
+        attn_out = torch.matmul(attn_weights, v)  # (B, H, T, Dh)
 
         # Apply head mask — zero pruned heads
         attn_out = apply_head_mask(attn_out, self.head_mask)

@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.evaluation.rouge_scorer import (
-    RougeScores,
-    RougeScorer,
     ROUGE_SCORER_REGISTRY,
+    RougeScorer,
+    RougeScores,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer():
@@ -24,6 +25,7 @@ def scorer():
 # ---------------------------------------------------------------------------
 # RougeScores dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestRougeScoresFrozen:
     def test_is_frozen(self):
@@ -41,6 +43,7 @@ class TestRougeScoresFrozen:
 # ---------------------------------------------------------------------------
 # _tokenize
 # ---------------------------------------------------------------------------
+
 
 class TestTokenize:
     def test_lowercases(self, scorer):
@@ -66,6 +69,7 @@ class TestTokenize:
 # ---------------------------------------------------------------------------
 # _ngrams
 # ---------------------------------------------------------------------------
+
 
 class TestNgrams:
     def test_unigrams(self, scorer):
@@ -94,6 +98,7 @@ class TestNgrams:
 # ---------------------------------------------------------------------------
 # rouge_n
 # ---------------------------------------------------------------------------
+
 
 class TestRougeN:
     def test_identical_text_rouge1_is_one(self, scorer):
@@ -125,6 +130,7 @@ class TestRougeN:
 # rouge_l
 # ---------------------------------------------------------------------------
 
+
 class TestRougeL:
     def test_identical_text_rouge_l_is_one(self, scorer):
         assert math.isclose(scorer.rouge_l("hello world", "hello world"), 1.0)
@@ -153,6 +159,7 @@ class TestRougeL:
 # score (combined)
 # ---------------------------------------------------------------------------
 
+
 class TestScore:
     def test_score_returns_rouge_scores(self, scorer):
         result = scorer.score("hello world", "hello world")
@@ -174,6 +181,7 @@ class TestScore:
 # ---------------------------------------------------------------------------
 # corpus_score
 # ---------------------------------------------------------------------------
+
 
 class TestCorpusScore:
     def test_corpus_score_mean_of_pairs(self, scorer):
@@ -209,6 +217,7 @@ class TestCorpusScore:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

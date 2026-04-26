@@ -3,16 +3,16 @@
 import pytest
 
 from src.evaluation.benchmark_runner import (
+    BENCHMARK_RUNNER_REGISTRY,
     BenchmarkResult,
     BenchmarkRunner,
     BenchmarkSuite,
-    BENCHMARK_RUNNER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _always_correct_predict(prompt: str) -> str:
     """Returns prompt unchanged — correct when reference == prompt."""
@@ -34,6 +34,7 @@ def _make_suite(name="suite1", prompts_refs=None, metric="accuracy"):
 # BenchmarkSuite
 # ---------------------------------------------------------------------------
 
+
 class TestBenchmarkSuite:
     def test_suite_creation(self):
         suite = BenchmarkSuite(name="s1", tasks=[])
@@ -53,12 +54,13 @@ class TestBenchmarkSuite:
 # BenchmarkResult
 # ---------------------------------------------------------------------------
 
+
 class TestBenchmarkResult:
     def test_result_frozen(self):
         import dataclasses
+
         result = BenchmarkResult(
-            suite_name="s1", metric="accuracy", score=1.0,
-            num_tasks=1, details=[]
+            suite_name="s1", metric="accuracy", score=1.0, num_tasks=1, details=[]
         )
         with pytest.raises((dataclasses.FrozenInstanceError, AttributeError)):
             result.score = 0.0  # type: ignore[misc]
@@ -67,6 +69,7 @@ class TestBenchmarkResult:
 # ---------------------------------------------------------------------------
 # BenchmarkRunner.run_suite
 # ---------------------------------------------------------------------------
+
 
 class TestRunSuite:
     def test_run_suite_empty(self):
@@ -160,6 +163,7 @@ class TestRunSuite:
 # BenchmarkRunner.run_all
 # ---------------------------------------------------------------------------
 
+
 class TestRunAll:
     def test_run_all_returns_all_results(self):
         suites = [_make_suite(f"suite{i}") for i in range(3)]
@@ -185,6 +189,7 @@ class TestRunAll:
 # BenchmarkRunner.leaderboard
 # ---------------------------------------------------------------------------
 
+
 class TestLeaderboard:
     def test_leaderboard_sorted_descending(self):
         results = [
@@ -207,7 +212,9 @@ class TestLeaderboard:
 
     def test_leaderboard_ranks_sequential(self):
         results = [
-            BenchmarkResult(suite_name=f"S{i}", metric="accuracy", score=float(i) / 10, num_tasks=1, details=[])
+            BenchmarkResult(
+                suite_name=f"S{i}", metric="accuracy", score=float(i) / 10, num_tasks=1, details=[]
+            )
             for i in range(5)
         ]
         runner = BenchmarkRunner([])
@@ -216,7 +223,9 @@ class TestLeaderboard:
 
     def test_leaderboard_entry_has_suite(self):
         results = [
-            BenchmarkResult(suite_name="MySuite", metric="accuracy", score=0.8, num_tasks=2, details=[]),
+            BenchmarkResult(
+                suite_name="MySuite", metric="accuracy", score=0.8, num_tasks=2, details=[]
+            ),
         ]
         runner = BenchmarkRunner([])
         board = runner.leaderboard(results)
@@ -237,8 +246,12 @@ class TestLeaderboard:
 
     def test_leaderboard_first_is_best(self):
         results = [
-            BenchmarkResult(suite_name="Low", metric="accuracy", score=0.1, num_tasks=1, details=[]),
-            BenchmarkResult(suite_name="High", metric="accuracy", score=0.99, num_tasks=1, details=[]),
+            BenchmarkResult(
+                suite_name="Low", metric="accuracy", score=0.1, num_tasks=1, details=[]
+            ),
+            BenchmarkResult(
+                suite_name="High", metric="accuracy", score=0.99, num_tasks=1, details=[]
+            ),
         ]
         runner = BenchmarkRunner([])
         board = runner.leaderboard(results)
@@ -248,6 +261,7 @@ class TestLeaderboard:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

@@ -1,7 +1,7 @@
 """Tests for PCGrad: Gradient Surgery for Multi-Task Learning."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -13,10 +13,10 @@ from src.training.pcgrad import (
     project_gradient,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_linear_model(in_features: int = 8, out_features: int = 4) -> nn.Linear:
     torch.manual_seed(0)
@@ -32,6 +32,7 @@ def make_simple_model() -> nn.Sequential:
 # Test 1: PCGradConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_pcgrad_config_defaults():
     cfg = PCGradConfig()
     assert cfg.n_tasks == 2
@@ -41,6 +42,7 @@ def test_pcgrad_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: project_gradient no-op when gradients agree
 # ---------------------------------------------------------------------------
+
 
 def test_project_gradient_no_op_when_agree():
     # Parallel gradients -> dot product > 0, no projection
@@ -54,6 +56,7 @@ def test_project_gradient_no_op_when_agree():
 # Test 3: project_gradient projects when gradients conflict
 # ---------------------------------------------------------------------------
 
+
 def test_project_gradient_projects_when_conflict():
     # Opposite directions -> dot < 0, should project
     g_i = torch.tensor([1.0, 0.0])
@@ -61,7 +64,9 @@ def test_project_gradient_projects_when_conflict():
     result = project_gradient(g_i.clone(), g_j)
     # After projection, dot(result, g_j) should be >= 0
     dot_after = torch.dot(result, g_j)
-    assert dot_after >= -1e-6, f"Dot product after projection should be non-negative, got {dot_after}"
+    assert dot_after >= -1e-6, (
+        f"Dot product after projection should be non-negative, got {dot_after}"
+    )
     # Result should differ from original
     assert not torch.allclose(result, g_i), "Should be modified when gradients conflict"
 
@@ -69,6 +74,7 @@ def test_project_gradient_projects_when_conflict():
 # ---------------------------------------------------------------------------
 # Test 4: project_gradient output shape matches input
 # ---------------------------------------------------------------------------
+
 
 def test_project_gradient_output_shape():
     g_i = torch.randn(32)
@@ -80,6 +86,7 @@ def test_project_gradient_output_shape():
 # ---------------------------------------------------------------------------
 # Test 5: project_gradient with zero grad_j doesn't crash
 # ---------------------------------------------------------------------------
+
 
 def test_project_gradient_zero_grad_j():
     g_i = torch.tensor([1.0, 2.0, 3.0])
@@ -93,13 +100,14 @@ def test_project_gradient_zero_grad_j():
 # Test 6: pcgrad_step returns scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_pcgrad_step_returns_scalar():
     model = make_linear_model()
     params = list(model.parameters())
     x = torch.randn(4, 8)
     out = model(x)
     loss1 = out.mean()
-    loss2 = (out ** 2).mean()
+    loss2 = (out**2).mean()
     result = pcgrad_step([loss1, loss2], params)
     assert isinstance(result, torch.Tensor)
     assert result.dim() == 0, "Should return a scalar tensor"
@@ -108,6 +116,7 @@ def test_pcgrad_step_returns_scalar():
 # ---------------------------------------------------------------------------
 # Test 7: pcgrad_step with 2 conflicting tasks
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_step_two_conflicting_tasks():
     torch.manual_seed(42)
@@ -126,6 +135,7 @@ def test_pcgrad_step_two_conflicting_tasks():
 # Test 8: pcgrad_step with 3 tasks
 # ---------------------------------------------------------------------------
 
+
 def test_pcgrad_step_three_tasks():
     torch.manual_seed(7)
     model = make_linear_model()
@@ -142,6 +152,7 @@ def test_pcgrad_step_three_tasks():
 # ---------------------------------------------------------------------------
 # Test 9: pcgrad_step gradients are set on params after call
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_step_sets_param_grads():
     model = make_linear_model()
@@ -163,6 +174,7 @@ def test_pcgrad_step_sets_param_grads():
 # Test 10: PCGradOptimizer instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_pcgrad_optimizer_instantiates():
     model = make_simple_model()
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -176,6 +188,7 @@ def test_pcgrad_optimizer_instantiates():
 # Test 11: PCGradOptimizer.step returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_pcgrad_optimizer_step_returns_correct_keys():
     model = make_simple_model()
     opt = torch.optim.SGD(model.parameters(), lr=0.01)
@@ -184,7 +197,7 @@ def test_pcgrad_optimizer_step_returns_correct_keys():
 
     x = torch.randn(4, 8)
     out = model(x)
-    losses = [out.mean(), (out ** 2).mean()]
+    losses = [out.mean(), (out**2).mean()]
 
     result = pcgrad_opt.step(losses)
     assert "mean_loss" in result
@@ -195,6 +208,7 @@ def test_pcgrad_optimizer_step_returns_correct_keys():
 # ---------------------------------------------------------------------------
 # Test 12: PCGradOptimizer.step n_conflicts is non-negative int
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_optimizer_step_n_conflicts_non_negative():
     model = make_simple_model()
@@ -214,6 +228,7 @@ def test_pcgrad_optimizer_step_n_conflicts_non_negative():
 # ---------------------------------------------------------------------------
 # Test 13: MultiTaskPCGradTrainer.train_step returns dict with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_multitask_trainer_train_step_keys():
     model = make_simple_model()
@@ -240,6 +255,7 @@ def test_multitask_trainer_train_step_keys():
 # Test 14: MultiTaskPCGradTrainer loss is finite over multiple steps
 # ---------------------------------------------------------------------------
 
+
 def test_multitask_trainer_loss_finite_multiple_steps():
     torch.manual_seed(123)
     model = make_simple_model()
@@ -262,12 +278,13 @@ def test_multitask_trainer_loss_finite_multiple_steps():
         result = trainer.train_step()
         losses.append(result["loss"])
 
-    assert all(torch.isfinite(torch.tensor(l)) for l in losses), "All losses should be finite"
+    assert all(torch.isfinite(torch.tensor(line)) for line in losses), "All losses should be finite"
 
 
 # ---------------------------------------------------------------------------
 # Test 15: MultiTaskPCGradTrainer works with 3 tasks
 # ---------------------------------------------------------------------------
+
 
 def test_multitask_trainer_three_tasks():
     torch.manual_seed(77)

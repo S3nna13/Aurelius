@@ -313,10 +313,10 @@ class AureliusConfig:
         return FEATURE_FLAG_REGISTRY.is_enabled("model.merging")
 
     def __post_init__(self) -> None:
-        assert self.d_model == self.n_heads * self.head_dim, (
+        assert self.d_model == self.n_heads * self.head_dim, (  # noqa: S101
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "
             f"* head_dim ({self.head_dim})"
         )
-        assert self.n_heads % self.n_kv_heads == 0, (
+        assert self.n_heads % self.n_kv_heads == 0, (  # noqa: S101
             f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})"
         )

@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
-import torch.nn as nn
 
 from src.optimizers.adan import Adan
-
 
 # ------------------------------------------------------------------------------- #
 # Helpers                                                                          #
 # ------------------------------------------------------------------------------- #
+
 
 def make_param(value: float = 3.0) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(value))
@@ -19,7 +17,7 @@ def make_param(value: float = 3.0) -> torch.nn.Parameter:
 
 def quadratic_loss(p: torch.Tensor) -> torch.Tensor:
     """L = p^2, minimum at 0."""
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 def run_steps(p, opt, n=20):
@@ -34,6 +32,7 @@ def run_steps(p, opt, n=20):
 # ------------------------------------------------------------------------------- #
 # Tests                                                                            #
 # ------------------------------------------------------------------------------- #
+
 
 def test_step_reduces_loss_on_quadratic():
     """Optimizer should reduce loss on a simple quadratic."""

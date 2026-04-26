@@ -59,8 +59,8 @@ def test_backend_registry_contains_pytorch() -> None:
 
 def test_select_backend_for_manifest_reexported_from_src_model() -> None:
     # The re-export must be usable without touching src.backends directly.
-    from src.model import select_backend_for_manifest as select_from_model
     from src.model import AURELIUS_REFERENCE_MANIFEST
+    from src.model import select_backend_for_manifest as select_from_model
 
     adapter = select_from_model(AURELIUS_REFERENCE_MANIFEST)
     assert adapter.contract.backend_name == "pytorch"

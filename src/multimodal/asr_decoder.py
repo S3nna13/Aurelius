@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
@@ -47,9 +46,7 @@ class ASRAttentionBlock(nn.Module):
     def __init__(self, config: ASRDecoderConfig):
         super().__init__()
         self.norm1 = nn.LayerNorm(config.hidden_dim)
-        self.attn = nn.MultiheadAttention(
-            config.hidden_dim, config.n_heads, batch_first=True
-        )
+        self.attn = nn.MultiheadAttention(config.hidden_dim, config.n_heads, batch_first=True)
         self.norm2 = nn.LayerNorm(config.hidden_dim)
         self.ffn = nn.Sequential(
             nn.Linear(config.hidden_dim, config.hidden_dim * 4),
@@ -95,10 +92,12 @@ class ASRDecoder(nn.Module):
             T = log_probs.shape[1]
             confidence = log_probs[i].max(dim=-1).values.mean().exp().item()
             text = " ".join(str(t) for t in token_ids)
-            results.append(ASRResult(
-                token_ids=token_ids,
-                text=text,
-                confidence=confidence,
-                n_frames=T,
-            ))
+            results.append(
+                ASRResult(
+                    token_ids=token_ids,
+                    text=text,
+                    confidence=confidence,
+                    n_frames=T,
+                )
+            )
         return results

@@ -7,10 +7,9 @@ import time
 import pytest
 
 from src.agent.dispatch_task import (
-    DispatchOutcome,
-    DispatchReport,
-    DispatchTask,
     Dispatcher,
+    DispatchOutcome,
+    DispatchTask,
     classify_error,
 )
 
@@ -44,6 +43,7 @@ def test_concrete_subclass_runs_five_inputs():
 
 def test_parallel_execution_actually_parallel():
     """With max_workers=5, five 100ms sleeps should finish in < 2x 100ms."""
+
     class SleepTask(_CountTask):
         name = "sleep_task"
 
@@ -234,6 +234,7 @@ def test_outcome_to_dict_round_trip():
 def test_get_schema_default_none():
     class Plain(_CountTask):
         pass
+
     assert Plain().get_schema() is None
 
     seen = []

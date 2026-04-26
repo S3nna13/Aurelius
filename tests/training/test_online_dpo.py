@@ -39,6 +39,7 @@ MAX_NEW = 4
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class TinyLM(nn.Module):
     """Minimal Embedding + Linear language model for testing."""
 
@@ -59,8 +60,10 @@ def make_models() -> tuple[TinyLM, TinyLM]:
 
 def make_reward_fn(vocab: int = VOCAB) -> object:
     """Return a simple reward function that scores by mean token id."""
+
     def reward_fn(generated_ids: torch.Tensor) -> float:
         return generated_ids.float().mean().item()
+
     return reward_fn
 
 
@@ -118,6 +121,7 @@ def make_online_trainer(
 # OnlinePairGenerator tests
 # ---------------------------------------------------------------------------
 
+
 def test_pair_generator_returns_tensors() -> None:
     """generate_pair must return (chosen, rejected) as Tensors."""
     policy, _ = make_models()
@@ -165,6 +169,7 @@ def test_pair_generator_n_candidates_one() -> None:
 # ---------------------------------------------------------------------------
 # IPOLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_ipo_loss_scalar_finite() -> None:
     """IPO loss must be a finite scalar."""
@@ -231,6 +236,7 @@ def test_ipo_loss_symmetry() -> None:
 # SLiCLoss tests
 # ---------------------------------------------------------------------------
 
+
 def test_slic_rank_loss_nonnegative() -> None:
     """rank_loss (hinge) must always be >= 0."""
     slic = SLiCLoss(delta=1.0, lm_weight=0.1)
@@ -260,6 +266,7 @@ def test_slic_margin_satisfied_rank_loss_zero() -> None:
 # ---------------------------------------------------------------------------
 # DPOVariantTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_dpo_trainer_accuracy_in_range() -> None:
     """DPO trainer accuracy must be in [0, 1]."""
@@ -296,10 +303,7 @@ def test_slic_trainer_loss_finite_grad_flows() -> None:
     result = trainer.train_step(chosen_ids, chosen_labels, rejected_ids, rejected_labels)
     assert torch.isfinite(result["loss"]), "SLiC loss must be finite"
     # Check at least one parameter received a gradient
-    has_grad = any(
-        p.grad is not None and torch.isfinite(p.grad).all()
-        for p in policy.parameters()
-    )
+    has_grad = any(p.grad is not None and torch.isfinite(p.grad).all() for p in policy.parameters())
     assert has_grad, "No finite gradient reached policy parameters in SLiC step"
 
 
@@ -327,6 +331,7 @@ def test_variant_trainer_ref_params_unchanged() -> None:
 # OnlineDPOTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_online_step_keys_present() -> None:
     """online_step must return dict with loss, n_valid_pairs, mean_reward_gap."""
     trainer, _, _ = make_online_trainer()
@@ -350,9 +355,7 @@ def test_online_ref_update_changes_ref_params() -> None:
     trainer.ref_update_step(alpha=0.1)
     ref_after = [p.data.clone() for p in ref.parameters()]
 
-    changed = any(
-        not torch.equal(b, a) for b, a in zip(ref_before, ref_after)
-    )
+    changed = any(not torch.equal(b, a) for b, a in zip(ref_before, ref_after))
     assert changed, "ref params should change after ref_update_step with alpha=0.1"
 
 

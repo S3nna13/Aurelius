@@ -4,6 +4,7 @@
 check_all firing logic, cooldown, max_fires, fire_count, reset, and both
 factory helpers.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -16,10 +17,10 @@ from src.agent.proactive_trigger import (
     interval_trigger,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _always_true(t: float) -> bool:
     return True
@@ -55,6 +56,7 @@ def _spec(
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = ProactiveTriggerConfig()
     assert cfg.default_cooldown_s == 60.0
@@ -64,6 +66,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_register_basic
 # ---------------------------------------------------------------------------
+
 
 def test_register_basic():
     reg = _fresh()
@@ -75,6 +78,7 @@ def test_register_basic():
 # 3. test_register_duplicate_raises
 # ---------------------------------------------------------------------------
 
+
 def test_register_duplicate_raises():
     reg = _fresh()
     reg.register(_spec("alpha"))
@@ -85,6 +89,7 @@ def test_register_duplicate_raises():
 # ---------------------------------------------------------------------------
 # 4. test_unregister
 # ---------------------------------------------------------------------------
+
 
 def test_unregister():
     reg = _fresh()
@@ -98,6 +103,7 @@ def test_unregister():
 # 5. test_unregister_nonexistent
 # ---------------------------------------------------------------------------
 
+
 def test_unregister_nonexistent():
     reg = _fresh()
     assert reg.unregister("ghost") is False
@@ -106,6 +112,7 @@ def test_unregister_nonexistent():
 # ---------------------------------------------------------------------------
 # 6. test_enable_disable
 # ---------------------------------------------------------------------------
+
 
 def test_enable_disable():
     reg = _fresh()
@@ -126,6 +133,7 @@ def test_enable_disable():
 # 7. test_check_all_fires
 # ---------------------------------------------------------------------------
 
+
 def test_check_all_fires():
     reg = _fresh()
     reg.register(_spec("alpha", cooldown_s=0.0))
@@ -136,6 +144,7 @@ def test_check_all_fires():
 # ---------------------------------------------------------------------------
 # 8. test_check_all_cooldown
 # ---------------------------------------------------------------------------
+
 
 def test_check_all_cooldown():
     reg = _fresh()
@@ -151,10 +160,11 @@ def test_check_all_cooldown():
 # 9. test_check_all_cooldown_elapsed
 # ---------------------------------------------------------------------------
 
+
 def test_check_all_cooldown_elapsed():
     reg = _fresh()
     reg.register(_spec("alpha", cooldown_s=60.0))
-    reg.check_all(current_time=0.0)   # fires; last_fired_at=0
+    reg.check_all(current_time=0.0)  # fires; last_fired_at=0
     reg.check_all(current_time=30.0)  # not yet
     fired = reg.check_all(current_time=65.0)  # elapsed ≥ 60 → fires again
     assert fired == ["do_thing"]
@@ -164,12 +174,13 @@ def test_check_all_cooldown_elapsed():
 # 10. test_max_fires_limit
 # ---------------------------------------------------------------------------
 
+
 def test_max_fires_limit():
     reg = _fresh()
     reg.register(_spec("alpha", cooldown_s=0.0, max_fires=2))
 
-    reg.check_all(current_time=0.0)   # fire 1
-    reg.check_all(current_time=1.0)   # fire 2
+    reg.check_all(current_time=0.0)  # fire 1
+    reg.check_all(current_time=1.0)  # fire 2
     fired = reg.check_all(current_time=2.0)  # should NOT fire
     assert fired == []
     assert reg.get_trigger("alpha").fire_count == 2
@@ -178,6 +189,7 @@ def test_max_fires_limit():
 # ---------------------------------------------------------------------------
 # 11. test_max_fires_unlimited
 # ---------------------------------------------------------------------------
+
 
 def test_max_fires_unlimited():
     reg = _fresh()
@@ -194,6 +206,7 @@ def test_max_fires_unlimited():
 # 12. test_disabled_does_not_fire
 # ---------------------------------------------------------------------------
 
+
 def test_disabled_does_not_fire():
     reg = _fresh()
     reg.register(_spec("alpha", cooldown_s=0.0, enabled=False))
@@ -204,6 +217,7 @@ def test_disabled_does_not_fire():
 # ---------------------------------------------------------------------------
 # 13. test_fire_count_increments
 # ---------------------------------------------------------------------------
+
 
 def test_fire_count_increments():
     reg = _fresh()
@@ -217,6 +231,7 @@ def test_fire_count_increments():
 # ---------------------------------------------------------------------------
 # 14. test_reset
 # ---------------------------------------------------------------------------
+
 
 def test_reset():
     reg = _fresh()
@@ -236,6 +251,7 @@ def test_reset():
 # ---------------------------------------------------------------------------
 # 15. test_interval_trigger_factory
 # ---------------------------------------------------------------------------
+
 
 def test_interval_trigger_factory():
     reg = _fresh()
@@ -258,6 +274,7 @@ def test_interval_trigger_factory():
 # ---------------------------------------------------------------------------
 # 16. test_condition_trigger_factory
 # ---------------------------------------------------------------------------
+
 
 def test_condition_trigger_factory():
     flag = [False]

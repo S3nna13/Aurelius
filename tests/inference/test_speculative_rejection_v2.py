@@ -4,18 +4,18 @@ Tiny config: vocab=16, d_model=8, branching_factor=2, depth=3,
              max_new_tokens=5, B=1.
 Models: nn.Embedding(16, 8) + nn.Linear(8, 16).
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.speculative_rejection_v2 import (
+    AcceptanceRateTracker,
     DraftTree,
-    TokenTreeVerifier,
     RejectionSamplingCorrector,
     SpeculativeRejectionDecoder,
-    AcceptanceRateTracker,
+    TokenTreeVerifier,
 )
 
 # ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ from src.inference.speculative_rejection_v2 import (
 # ---------------------------------------------------------------------------
 VOCAB = 16
 D_MODEL = 8
-BF = 2       # branching_factor
+BF = 2  # branching_factor
 DEPTH = 3
 MAX_NEW = 5
 B = 1
@@ -33,6 +33,7 @@ SEQ_LEN = 4  # context length
 # ---------------------------------------------------------------------------
 # Tiny model: Embedding + Linear, returns (None, logits, None) tuple
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal autoregressive LM returning (None, logits, None)."""
@@ -44,8 +45,8 @@ class TinyLM(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> tuple:
         # input_ids: (B, T)
-        x = self.embed(input_ids)         # (B, T, d)
-        logits = self.proj(x)             # (B, T, vocab)
+        x = self.embed(input_ids)  # (B, T, d)
+        logits = self.proj(x)  # (B, T, vocab)
         return (None, logits, None)
 
 
@@ -62,6 +63,7 @@ def make_prompt(seq_len: int = SEQ_LEN, batch: int = B) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # Helper: build a DraftTree with a real model
 # ---------------------------------------------------------------------------
+
 
 def _build_tree(bf: int = BF, depth: int = DEPTH) -> tuple[DraftTree, list[torch.Tensor]]:
     model = make_model()
@@ -87,27 +89,30 @@ def _build_tree(bf: int = BF, depth: int = DEPTH) -> tuple[DraftTree, list[torch
 # 1. DraftTree.build: tokens shape (depth, branching_factor)
 # ---------------------------------------------------------------------------
 
+
 def test_draft_tree_tokens_shape():
     tree, _ = _build_tree()
     assert tree.tokens is not None
-    assert tree.tokens.shape == (DEPTH, BF), \
-        f"Expected ({DEPTH}, {BF}), got {tree.tokens.shape}"
+    assert tree.tokens.shape == (DEPTH, BF), f"Expected ({DEPTH}, {BF}), got {tree.tokens.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 2. DraftTree.build: log_probs shape correct
 # ---------------------------------------------------------------------------
 
+
 def test_draft_tree_log_probs_shape():
     tree, _ = _build_tree()
     assert tree.log_probs is not None
-    assert tree.log_probs.shape == (DEPTH, BF), \
+    assert tree.log_probs.shape == (DEPTH, BF), (
         f"Expected ({DEPTH}, {BF}), got {tree.log_probs.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 3. DraftTree.linear_paths: returns list of sequences each of length depth
 # ---------------------------------------------------------------------------
+
 
 def test_draft_tree_linear_paths_length():
     tree, _ = _build_tree()
@@ -122,6 +127,7 @@ def test_draft_tree_linear_paths_length():
 # 4. DraftTree.n_candidates: equals branching_factor
 # ---------------------------------------------------------------------------
 
+
 def test_draft_tree_n_candidates():
     tree, _ = _build_tree()
     assert tree.n_candidates() == BF
@@ -131,20 +137,23 @@ def test_draft_tree_n_candidates():
 # 5. TokenTreeVerifier.verify: target_logits shape (B, K, V)
 # ---------------------------------------------------------------------------
 
+
 def test_verifier_target_logits_shape():
     model = make_model()
     verifier = TokenTreeVerifier(model)
-    prompt = make_prompt()                           # (1, SEQ_LEN)
+    prompt = make_prompt()  # (1, SEQ_LEN)
     draft_tokens = torch.randint(0, VOCAB, (B, BF))  # (1, 2)
 
     target_logits, accept_mask = verifier.verify(prompt, draft_tokens)
-    assert target_logits.shape == (B, BF, VOCAB), \
+    assert target_logits.shape == (B, BF, VOCAB), (
         f"Expected ({B}, {BF}, {VOCAB}), got {target_logits.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 6. TokenTreeVerifier.verify: accept_mask shape (B, K) bool
 # ---------------------------------------------------------------------------
+
 
 def test_verifier_accept_mask_shape_and_dtype():
     model = make_model()
@@ -153,14 +162,14 @@ def test_verifier_accept_mask_shape_and_dtype():
     draft_tokens = torch.randint(0, VOCAB, (B, BF))
 
     _, accept_mask = verifier.verify(prompt, draft_tokens)
-    assert accept_mask.shape == (B, BF), \
-        f"Expected ({B}, {BF}), got {accept_mask.shape}"
+    assert accept_mask.shape == (B, BF), f"Expected ({B}, {BF}), got {accept_mask.shape}"
     assert accept_mask.dtype == torch.bool
 
 
 # ---------------------------------------------------------------------------
 # 7. TokenTreeVerifier: same model → high acceptance (greedy tokens match)
 # ---------------------------------------------------------------------------
+
 
 def test_verifier_same_model_high_acceptance():
     """When draft==target (same model), greedy draft tokens should always match."""
@@ -183,12 +192,13 @@ def test_verifier_same_model_high_acceptance():
     _, accept_mask = verifier.verify(prompt, draft_tokens)
 
     # Both should be accepted (greedy tokens match target argmax by definition)
-    assert accept_mask[0, 0].item() is True or accept_mask[0, 0].item() == True
+    assert accept_mask[0, 0].item() is True or accept_mask[0, 0].item()
 
 
 # ---------------------------------------------------------------------------
 # 8. RejectionSamplingCorrector.correct: valid token id in [0, vocab)
 # ---------------------------------------------------------------------------
+
 
 def test_corrector_correct_valid_range():
     corrector = RejectionSamplingCorrector()
@@ -209,12 +219,13 @@ def test_corrector_correct_valid_range():
 # 9. RejectionSamplingCorrector.batch_correct: output shape (B, K), valid ids
 # ---------------------------------------------------------------------------
 
+
 def test_corrector_batch_correct_shape_and_values():
     corrector = RejectionSamplingCorrector()
     torch.manual_seed(2)
     K = BF
     draft_tokens = torch.randint(0, VOCAB, (B, K))
-    accept_mask = torch.zeros(B, K, dtype=torch.bool)   # all rejected
+    accept_mask = torch.zeros(B, K, dtype=torch.bool)  # all rejected
     draft_logps = torch.full((B, K), -2.0)
     target_logits = torch.randn(B, K, VOCAB)
 
@@ -228,6 +239,7 @@ def test_corrector_batch_correct_shape_and_values():
 # 10. RejectionSamplingCorrector: correction_dist sums to ~1.0
 # ---------------------------------------------------------------------------
 
+
 def test_corrector_correction_dist_normalized():
     """Verify internal normalisation: relu(p_target - p_draft) / Z sums to 1."""
     import torch.nn.functional as F
@@ -239,19 +251,21 @@ def test_corrector_correction_dist_normalized():
     # Construct a draft_probs that is lower than target in some places
     draft_token = int(target_probs.argmax().item())
     draft_probs = torch.zeros(VOCAB)
-    draft_probs[draft_token] = 0.5   # intentionally mismatch
+    draft_probs[draft_token] = 0.5  # intentionally mismatch
 
     correction = F.relu(target_probs - draft_probs)
     Z = correction.sum() + 1e-9
     correction_dist = correction / Z
 
-    assert abs(correction_dist.sum().item() - 1.0) < 1e-5, \
+    assert abs(correction_dist.sum().item() - 1.0) < 1e-5, (
         f"correction_dist sum = {correction_dist.sum().item()}, expected ~1.0"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 11. SpeculativeRejectionDecoder.generate: output shape (B, T + max_new_tokens)
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_generate_output_shape():
     draft = make_model(seed=0)
@@ -262,17 +276,17 @@ def test_decoder_generate_output_shape():
         branching_factor=1,
         depth=DEPTH,
     )
-    prompt = make_prompt()   # (1, SEQ_LEN)
+    prompt = make_prompt()  # (1, SEQ_LEN)
     out = decoder.generate(prompt, max_new_tokens=MAX_NEW)
 
     expected_len = SEQ_LEN + MAX_NEW
-    assert out.shape == (B, expected_len), \
-        f"Expected ({B}, {expected_len}), got {out.shape}"
+    assert out.shape == (B, expected_len), f"Expected ({B}, {expected_len}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 12. SpeculativeRejectionDecoder: all output token ids are valid
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_generate_valid_token_ids():
     draft = make_model(seed=0)
@@ -293,6 +307,7 @@ def test_decoder_generate_valid_token_ids():
 # 13. AcceptanceRateTracker: mean_acceptance_rate in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_tracker_acceptance_rate_range():
     tracker = AcceptanceRateTracker()
     tracker.record(2, 4)
@@ -304,6 +319,7 @@ def test_tracker_acceptance_rate_range():
 # ---------------------------------------------------------------------------
 # 14. AcceptanceRateTracker.speedup_estimate: >= 1.0 always
 # ---------------------------------------------------------------------------
+
 
 def test_tracker_speedup_at_least_one():
     tracker = AcceptanceRateTracker()
@@ -321,6 +337,7 @@ def test_tracker_speedup_at_least_one():
 # 15. AcceptanceRateTracker.reset: mean_acceptance_rate returns 0.0 after reset
 # ---------------------------------------------------------------------------
 
+
 def test_tracker_reset():
     tracker = AcceptanceRateTracker()
     tracker.record(3, 4)
@@ -333,6 +350,7 @@ def test_tracker_reset():
 # ---------------------------------------------------------------------------
 # 16. Multiple decode steps without error (loop stability)
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_loop_stability():
     """Run many steps to confirm no index errors or NaN."""
@@ -353,6 +371,7 @@ def test_decoder_loop_stability():
 # ---------------------------------------------------------------------------
 # 17. accept_mask all-True: all tokens accepted, no correction path needed
 # ---------------------------------------------------------------------------
+
 
 def test_verifier_all_accepted_case():
     """Force accept_mask all True by using same model greedy draft."""
@@ -376,13 +395,13 @@ def test_verifier_all_accepted_case():
     _, accept_mask = verifier.verify(prompt, draft_tokens)
 
     # All positions should be accepted since we used the model's own greedy tokens
-    assert accept_mask.all().item(), \
-        f"Expected all True, got {accept_mask}"
+    assert accept_mask.all().item(), f"Expected all True, got {accept_mask}"
 
 
 # ---------------------------------------------------------------------------
 # 18. SpeculativeRejectionDecoder: same draft and target → tracker records data
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_same_model_tracker():
     """When draft == target, acceptance tracker should record non-zero drafts."""

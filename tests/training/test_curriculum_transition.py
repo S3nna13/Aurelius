@@ -40,4 +40,3 @@ def test_linear_transition_rejects_bad_range():
 def test_stage_from_transition_rejects_unsorted_boundaries():
     with pytest.raises(ValueError):
         stage_from_transition(5, [10, 5])
-

@@ -55,39 +55,31 @@ class BackendContract:
     def __post_init__(self) -> None:
         if not isinstance(self.backend_name, str) or not self.backend_name:
             raise BackendAdapterError(
-                f"backend_name must be a non-empty string, got "
-                f"{self.backend_name!r}"
+                f"backend_name must be a non-empty string, got {self.backend_name!r}"
             )
         if not _BACKEND_NAME_RE.match(self.backend_name):
             raise BackendAdapterError(
-                f"backend_name must match [a-z0-9_-]+, got "
-                f"{self.backend_name!r}"
+                f"backend_name must match [a-z0-9_-]+, got {self.backend_name!r}"
             )
 
         for vfield in ("engine_contract", "adapter_contract"):
             v = getattr(self, vfield)
             if not isinstance(v, str) or not _SEMVER_RE.match(v):
-                raise BackendAdapterError(
-                    f"{vfield} must match semver X.Y.Z, got {v!r}"
-                )
+                raise BackendAdapterError(f"{vfield} must match semver X.Y.Z, got {v!r}")
 
         for bfield in ("supports_training", "supports_inference"):
             v = getattr(self, bfield)
             if not isinstance(v, bool):
-                raise BackendAdapterError(
-                    f"{bfield} must be a bool, got {type(v).__name__}"
-                )
+                raise BackendAdapterError(f"{bfield} must be a bool, got {type(v).__name__}")
 
         if not isinstance(self.capability_tags, tuple):
             raise BackendAdapterError(
-                f"capability_tags must be a tuple, got "
-                f"{type(self.capability_tags).__name__}"
+                f"capability_tags must be a tuple, got {type(self.capability_tags).__name__}"
             )
         for tag in self.capability_tags:
             if not isinstance(tag, str):
                 raise BackendAdapterError(
-                    f"capability_tags entries must be str, got "
-                    f"{type(tag).__name__}"
+                    f"capability_tags entries must be str, got {type(tag).__name__}"
                 )
 
 

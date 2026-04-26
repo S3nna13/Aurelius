@@ -1,20 +1,18 @@
 """Tests for ALBERT-style weight reduction: factorized embeddings + cross-layer sharing."""
+
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.model.weight_sharing import (
     FactorizedEmbedding,
     WeightSharingConfig,
-    apply_factorized_embedding,
     apply_cross_layer_sharing,
+    apply_factorized_embedding,
     count_unique_parameters,
 )
-
 
 # Small config for fast CPU tests
 SMALL_CONFIG = AureliusConfig(
@@ -39,6 +37,7 @@ def make_model() -> AureliusTransformer:
 # ---------------------------------------------------------------------------
 # FactorizedEmbedding tests
 # ---------------------------------------------------------------------------
+
 
 def test_factorized_embedding_forward_shape():
     """Output shape should be (B, S, d_model)."""
@@ -74,6 +73,7 @@ def test_factorized_embedding_parameter_savings_positive():
 # apply_factorized_embedding tests
 # ---------------------------------------------------------------------------
 
+
 def test_apply_factorized_embedding_changes_embed():
     """model.embed should become a FactorizedEmbedding after apply."""
     model = make_model()
@@ -100,6 +100,7 @@ def test_apply_factorized_embedding_forward_works():
 # apply_cross_layer_sharing tests
 # ---------------------------------------------------------------------------
 
+
 def test_apply_cross_layer_sharing_all_same():
     """With n_groups=1, all layers[i] should be the same Python object."""
     model = make_model()
@@ -123,6 +124,7 @@ def test_apply_cross_layer_sharing_two_groups():
 # count_unique_parameters tests
 # ---------------------------------------------------------------------------
 
+
 def test_count_unique_parameters_shared():
     """With all layers sharing, unique_params should be much less than total_params."""
     model = make_model()
@@ -145,6 +147,7 @@ def test_count_unique_parameters_ratio():
 # ---------------------------------------------------------------------------
 # Forward pass after cross-layer sharing
 # ---------------------------------------------------------------------------
+
 
 def test_cross_layer_sharing_forward_works():
     """Forward pass should work correctly after cross-layer sharing."""

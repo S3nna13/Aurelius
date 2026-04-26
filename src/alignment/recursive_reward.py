@@ -3,22 +3,24 @@
 Based on Leike et al. (2018) and Irving et al.: decompose hard-to-evaluate tasks into subtasks
 that are easier for humans to evaluate, then compose reward signals bottom-up through a tree.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RecursiveRMConfig:
     """Configuration for recursive reward modeling."""
+
     max_depth: int = 3
     n_subtasks: int = 3
     aggregation: str = "mean"
@@ -28,6 +30,7 @@ class RecursiveRMConfig:
 # ---------------------------------------------------------------------------
 # RewardNode
 # ---------------------------------------------------------------------------
+
 
 class RewardNode:
     """A single node in the recursive reward tree.
@@ -40,11 +43,11 @@ class RewardNode:
         self,
         reward_model: nn.Module,
         depth: int = 0,
-        children: Optional[List["RewardNode"]] = None,
+        children: list[RewardNode] | None = None,
     ) -> None:
         self.reward_model = reward_model
         self.depth = depth
-        self.children: List["RewardNode"] = children if children is not None else []
+        self.children: list[RewardNode] = children if children is not None else []
 
     def evaluate(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Evaluate this node's reward model on input_ids.
@@ -71,6 +74,7 @@ class RewardNode:
 # RecursiveRewardTree
 # ---------------------------------------------------------------------------
 
+
 class RecursiveRewardTree:
     """A tree of RewardNodes evaluated bottom-up with configurable aggregation.
 
@@ -85,16 +89,16 @@ class RecursiveRewardTree:
         self.max_depth = max_depth
         self.aggregation = aggregation
 
-        self._nodes: Dict[int, RewardNode] = {}
-        self._parent: Dict[int, Optional[int]] = {}
-        self._children: Dict[int, List[int]] = {}
+        self._nodes: dict[int, RewardNode] = {}
+        self._parent: dict[int, int | None] = {}
+        self._children: dict[int, list[int]] = {}
         self._next_id: int = 0
 
     # ------------------------------------------------------------------
     # Tree construction
     # ------------------------------------------------------------------
 
-    def add_node(self, node: RewardNode, parent_id: Optional[int] = None) -> int:
+    def add_node(self, node: RewardNode, parent_id: int | None = None) -> int:
         """Add a node to the tree and return its assigned node_id.
 
         Args:
@@ -122,7 +126,7 @@ class RecursiveRewardTree:
     # Leaf detection
     # ------------------------------------------------------------------
 
-    def _leaf_ids(self) -> List[int]:
+    def _leaf_ids(self) -> list[int]:
         return [nid for nid, children in self._children.items() if not children]
 
     # ------------------------------------------------------------------
@@ -141,7 +145,7 @@ class RecursiveRewardTree:
         if not self._nodes:
             raise RuntimeError("Tree is empty — add at least one node before evaluating")
 
-        cache: Dict[int, torch.Tensor] = {}
+        cache: dict[int, torch.Tensor] = {}
 
         def _score(nid: int) -> torch.Tensor:
             if nid in cache:
@@ -168,7 +172,7 @@ class RecursiveRewardTree:
     # Aggregation
     # ------------------------------------------------------------------
 
-    def aggregate(self, rewards: List[torch.Tensor], method: str) -> torch.Tensor:
+    def aggregate(self, rewards: list[torch.Tensor], method: str) -> torch.Tensor:
         """Aggregate a list of (batch,) reward tensors into a single (batch,) tensor.
 
         Args:
@@ -205,6 +209,7 @@ class RecursiveRewardTree:
 # TaskDecomposer
 # ---------------------------------------------------------------------------
 
+
 class TaskDecomposer:
     """Decomposes an input sequence into subtasks and composes their rewards.
 
@@ -216,9 +221,7 @@ class TaskDecomposer:
         self.decompose_fn = decompose_fn
         self.n_subtasks = n_subtasks
 
-    def decompose(
-        self, input_ids: torch.Tensor, max_subtask_len: int = 64
-    ) -> List[torch.Tensor]:
+    def decompose(self, input_ids: torch.Tensor, max_subtask_len: int = 64) -> list[torch.Tensor]:
         """Split input_ids into n_subtasks chunks along the sequence dimension.
 
         Args:
@@ -234,13 +237,15 @@ class TaskDecomposer:
         chunk_size = max(1, (seq_len + self.n_subtasks - 1) // self.n_subtasks)
         chunk_size = min(chunk_size, max_subtask_len)
 
-        chunks: List[torch.Tensor] = []
+        chunks: list[torch.Tensor] = []
         for i in range(self.n_subtasks):
             start = i * chunk_size
             end = min(start + chunk_size, seq_len)
             if start >= seq_len:
                 # Pad with zeros if the sequence is shorter than expected
-                chunk = torch.zeros(batch, chunk_size, dtype=input_ids.dtype, device=input_ids.device)
+                chunk = torch.zeros(
+                    batch, chunk_size, dtype=input_ids.dtype, device=input_ids.device
+                )
             else:
                 chunk = input_ids[:, start:end]
                 # Pad to uniform chunk_size if needed
@@ -258,8 +263,8 @@ class TaskDecomposer:
 
     def compose_rewards(
         self,
-        subtask_rewards: List[torch.Tensor],
-        weights: Optional[torch.Tensor] = None,
+        subtask_rewards: list[torch.Tensor],
+        weights: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute a weighted average of subtask rewards.
 
@@ -287,6 +292,7 @@ class TaskDecomposer:
 # Factory helpers
 # ---------------------------------------------------------------------------
 
+
 def build_recursive_rm(
     reward_model_factory: Callable[[], nn.Module],
     depth: int,
@@ -306,7 +312,7 @@ def build_recursive_rm(
     """
     tree = RecursiveRewardTree(max_depth=depth)
 
-    def _build(parent_id: Optional[int], current_depth: int) -> None:
+    def _build(parent_id: int | None, current_depth: int) -> None:
         node = RewardNode(reward_model=reward_model_factory(), depth=current_depth)
         nid = tree.add_node(node, parent_id=parent_id)
         if current_depth < depth:
@@ -321,7 +327,7 @@ def evaluate_with_uncertainty(
     tree: RecursiveRewardTree,
     input_ids: torch.Tensor,
     n_samples: int = 10,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Estimate reward uncertainty via MC-Dropout.
 
     Puts all reward models into training mode (enabling dropout), runs
@@ -339,7 +345,7 @@ def evaluate_with_uncertainty(
     for node in tree._nodes.values():
         node.reward_model.train()
 
-    samples: List[torch.Tensor] = []
+    samples: list[torch.Tensor] = []
     for _ in range(n_samples):
         reward = _forward_train_mode(tree, input_ids)
         samples.append(reward)
@@ -354,14 +360,12 @@ def evaluate_with_uncertainty(
     return mean_reward, std_reward
 
 
-def _forward_train_mode(
-    tree: RecursiveRewardTree, input_ids: torch.Tensor
-) -> torch.Tensor:
+def _forward_train_mode(tree: RecursiveRewardTree, input_ids: torch.Tensor) -> torch.Tensor:
     """Like RecursiveRewardTree.evaluate but keeps models in their current mode."""
     if not tree._nodes:
         raise RuntimeError("Tree is empty")
 
-    cache: Dict[int, torch.Tensor] = {}
+    cache: dict[int, torch.Tensor] = {}
 
     def _score(nid: int) -> torch.Tensor:
         if nid in cache:

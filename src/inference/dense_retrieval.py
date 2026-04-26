@@ -3,24 +3,25 @@ approximate nearest neighbor search. Pure PyTorch — no external FAISS dependen
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
-from dataclasses import dataclass, field
 from torch import Tensor
 
 
 @dataclass
 class DenseRetrievalConfig:
     embed_dim: int = 64
-    n_subspaces: int = 4        # PQ subspaces (embed_dim must be divisible)
-    n_centroids: int = 16       # centroids per subspace (codebook size)
-    n_probe: int = 4            # IVF: number of clusters to probe
-    n_clusters: int = 8         # IVF: number of top-level clusters
-    metric: str = "cosine"      # "cosine" | "l2"
+    n_subspaces: int = 4  # PQ subspaces (embed_dim must be divisible)
+    n_centroids: int = 16  # centroids per subspace (codebook size)
+    n_probe: int = 4  # IVF: number of clusters to probe
+    n_clusters: int = 8  # IVF: number of top-level clusters
+    metric: str = "cosine"  # "cosine" | "l2"
 
 
 def compute_similarity(
-    query: Tensor,      # (D,) or (Q, D)
-    corpus: Tensor,     # (N, D)
+    query: Tensor,  # (D,) or (Q, D)
+    corpus: Tensor,  # (N, D)
     metric: str = "cosine",
 ) -> Tensor:
     """Compute similarity between query and all corpus vectors.
@@ -33,15 +34,15 @@ def compute_similarity(
         query = query.unsqueeze(0)  # (1, D)
 
     if metric == "cosine":
-        q_norm = torch.nn.functional.normalize(query, dim=-1)    # (Q, D)
-        c_norm = torch.nn.functional.normalize(corpus, dim=-1)   # (N, D)
-        sim = q_norm @ c_norm.T                                   # (Q, N)
+        q_norm = torch.nn.functional.normalize(query, dim=-1)  # (Q, D)
+        c_norm = torch.nn.functional.normalize(corpus, dim=-1)  # (N, D)
+        sim = q_norm @ c_norm.T  # (Q, N)
     elif metric == "l2":
         # negative squared L2 distance: -(||q - c||^2)
         # ||q - c||^2 = ||q||^2 + ||c||^2 - 2*q·c
-        q_sq = (query ** 2).sum(dim=-1, keepdim=True)   # (Q, 1)
-        c_sq = (corpus ** 2).sum(dim=-1).unsqueeze(0)   # (1, N)
-        dot = query @ corpus.T                           # (Q, N)
+        q_sq = (query**2).sum(dim=-1, keepdim=True)  # (Q, 1)
+        c_sq = (corpus**2).sum(dim=-1).unsqueeze(0)  # (1, N)
+        dot = query @ corpus.T  # (Q, N)
         sim = -(q_sq + c_sq - 2 * dot)
     else:
         raise ValueError(f"Unknown metric: {metric!r}. Use 'cosine' or 'l2'.")
@@ -52,7 +53,7 @@ def compute_similarity(
 
 
 def kmeans_cluster(
-    vectors: Tensor,    # (N, D)
+    vectors: Tensor,  # (N, D)
     k: int,
     n_iter: int = 10,
     seed: int = 42,
@@ -79,7 +80,7 @@ def kmeans_cluster(
         # Assign each vector to nearest centroid
         # distances: (N, k) — use negative L2 as similarity
         dists = torch.cdist(vectors_f, centroids)  # (N, k)
-        assignments = dists.argmin(dim=1)           # (N,)
+        assignments = dists.argmin(dim=1)  # (N,)
 
         # Update centroids
         new_centroids = torch.zeros_like(centroids)
@@ -109,8 +110,9 @@ class ProductQuantizer:
 
     def __init__(self, cfg: DenseRetrievalConfig) -> None:
         self.cfg = cfg
-        assert cfg.embed_dim % cfg.n_subspaces == 0, \
+        assert cfg.embed_dim % cfg.n_subspaces == 0, (  # noqa: S101
             f"embed_dim ({cfg.embed_dim}) must be divisible by n_subspaces ({cfg.n_subspaces})"
+        )
         self.sub_dim = cfg.embed_dim // cfg.n_subspaces
         # codebooks: list of n_subspaces tensors, each (n_centroids, sub_dim) after fit
         self.codebooks: list[Tensor] = []
@@ -132,29 +134,29 @@ class ProductQuantizer:
 
     def encode(self, vectors: Tensor) -> Tensor:
         """Encode vectors to (N, n_subspaces) integer codes."""
-        assert len(self.codebooks) > 0, "Call fit() before encode()."
+        assert len(self.codebooks) > 0, "Call fit() before encode()."  # noqa: S101
         vectors_f = vectors.float()
         n = vectors_f.shape[0]
         codes = torch.zeros(n, self.cfg.n_subspaces, dtype=torch.long)
         for s in range(self.cfg.n_subspaces):
             start = s * self.sub_dim
             end = start + self.sub_dim
-            sub = vectors_f[:, start:end]                      # (N, sub_dim)
-            cb = self.codebooks[s]                              # (n_centroids, sub_dim)
-            dists = torch.cdist(sub, cb)                       # (N, n_centroids)
+            sub = vectors_f[:, start:end]  # (N, sub_dim)
+            cb = self.codebooks[s]  # (n_centroids, sub_dim)
+            dists = torch.cdist(sub, cb)  # (N, n_centroids)
             codes[:, s] = dists.argmin(dim=1)
         return codes
 
     def decode(self, codes: Tensor) -> Tensor:
         """Decode (N, n_subspaces) codes back to (N, embed_dim) approximate vectors."""
-        assert len(self.codebooks) > 0, "Call fit() before decode()."
+        assert len(self.codebooks) > 0, "Call fit() before decode()."  # noqa: S101
         n = codes.shape[0]
         result = torch.zeros(n, self.cfg.embed_dim)
         for s in range(self.cfg.n_subspaces):
             start = s * self.sub_dim
             end = start + self.sub_dim
-            cb = self.codebooks[s]          # (n_centroids, sub_dim)
-            idx = codes[:, s]               # (N,)
+            cb = self.codebooks[s]  # (n_centroids, sub_dim)
+            idx = codes[:, s]  # (N,)
             result[:, start:end] = cb[idx]
         return result
 
@@ -164,19 +166,19 @@ class ProductQuantizer:
         For each subspace s: distance[n] += ||query_sub_s - codebook_s[codes[n,s]]||^2
         Returns (N,) distances (lower = more similar).
         """
-        assert len(self.codebooks) > 0, "Call fit() before asymmetric_distance()."
+        assert len(self.codebooks) > 0, "Call fit() before asymmetric_distance()."  # noqa: S101
         query_f = query.float()
         n = codes.shape[0]
         distances = torch.zeros(n)
         for s in range(self.cfg.n_subspaces):
             start = s * self.sub_dim
             end = start + self.sub_dim
-            q_sub = query_f[start:end]      # (sub_dim,)
-            cb = self.codebooks[s]           # (n_centroids, sub_dim)
-            idx = codes[:, s]               # (N,)
-            centroid_vecs = cb[idx]          # (N, sub_dim)
+            q_sub = query_f[start:end]  # (sub_dim,)
+            cb = self.codebooks[s]  # (n_centroids, sub_dim)
+            idx = codes[:, s]  # (N,)
+            centroid_vecs = cb[idx]  # (N, sub_dim)
             diff = q_sub.unsqueeze(0) - centroid_vecs  # (N, sub_dim)
-            distances += (diff ** 2).sum(dim=1)
+            distances += (diff**2).sum(dim=1)
         return distances
 
 
@@ -215,7 +217,7 @@ class IVFIndex:
         2. Within those clusters, compute exact distances to all candidates
         3. Return top-k (scores, ids)
         """
-        assert self.coarse_centroids is not None, "Call build() before search()."
+        assert self.coarse_centroids is not None, "Call build() before search()."  # noqa: S101
 
         query_f = query.float()
         if query_f.dim() > 1:
@@ -223,9 +225,7 @@ class IVFIndex:
 
         # Stage 1: find n_probe nearest coarse centroids
         n_probe = min(self.cfg.n_probe, self.coarse_centroids.shape[0])
-        coarse_dists = torch.cdist(
-            query_f.unsqueeze(0), self.coarse_centroids
-        ).squeeze(0)  # (k,)
+        coarse_dists = torch.cdist(query_f.unsqueeze(0), self.coarse_centroids).squeeze(0)  # (k,)
         probe_indices = coarse_dists.argsort()[:n_probe].tolist()
 
         # Stage 2: gather candidates from probed clusters
@@ -284,7 +284,7 @@ class DenseRetriever:
 
         Returns list of {"score": float, "id": int, "text": str | None}
         """
-        assert self._ivf is not None, "Call index() before search()."
+        assert self._ivf is not None, "Call index() before search()."  # noqa: S101
         scores, ids = self._ivf.search(query, top_k=top_k)
 
         results = []
@@ -297,7 +297,7 @@ class DenseRetriever:
 
     def exact_search(self, query: Tensor, top_k: int = 5) -> list[dict]:
         """Brute-force exact search (for comparison/small corpora)."""
-        assert self._corpus_vectors is not None, "Call index() before exact_search()."
+        assert self._corpus_vectors is not None, "Call index() before exact_search()."  # noqa: S101
 
         q = query.float()
         if q.dim() > 1:
@@ -312,21 +312,23 @@ class DenseRetriever:
             text = None
             if self._corpus_texts is not None and 0 <= idx < len(self._corpus_texts):
                 text = self._corpus_texts[idx]
-            results.append({
-                "score": float(scores[idx].item()),
-                "id": int(idx),
-                "text": text,
-            })
+            results.append(
+                {
+                    "score": float(scores[idx].item()),
+                    "id": int(idx),
+                    "text": text,
+                }
+            )
         return results
 
     def evaluate_recall(
         self,
-        query_vectors: Tensor,      # (Q, D)
+        query_vectors: Tensor,  # (Q, D)
         ground_truth_ids: list[int],  # correct id for each query
         top_k: int = 10,
     ) -> float:
         """Recall@k: fraction of queries where correct id is in top-k results."""
-        assert self._ivf is not None, "Call index() before evaluate_recall()."
+        assert self._ivf is not None, "Call index() before evaluate_recall()."  # noqa: S101
         n_queries = query_vectors.shape[0]
         hits = 0
         for q_idx in range(n_queries):

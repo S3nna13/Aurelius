@@ -9,13 +9,13 @@ import pytest
 import torch
 
 from src.interpretability.neuron_analysis import (
-    NeuronConfig,
     NeuronAnalyzer,
+    NeuronConfig,
     compute_activation_statistics,
-    find_dead_neurons,
     compute_neuron_correlation,
-    top_activating_examples,
+    find_dead_neurons,
     polysemanticity_score,
+    top_activating_examples,
 )
 
 # ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ from src.interpretability.neuron_analysis import (
 D = 8
 B = 2
 T = 4
-N = B * T   # 8
+N = B * T  # 8
 K = 3
 
 torch.manual_seed(42)
@@ -44,6 +44,7 @@ def _make_flat() -> torch.Tensor:
 # 1. NeuronConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_neuron_config_defaults():
     cfg = NeuronConfig()
     assert cfg.n_top_examples == 10
@@ -54,6 +55,7 @@ def test_neuron_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. compute_activation_statistics returns all 5 keys
 # ---------------------------------------------------------------------------
+
 
 def test_compute_activation_statistics_keys():
     acts = _make_acts()
@@ -66,6 +68,7 @@ def test_compute_activation_statistics_keys():
 # 3. Each stat has shape (D,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_activation_statistics_shapes():
     acts = _make_acts()
     stats = compute_activation_statistics(acts)
@@ -76,6 +79,7 @@ def test_compute_activation_statistics_shapes():
 # ---------------------------------------------------------------------------
 # 4. Sparsity values are in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_activation_statistics_sparsity_range():
     acts = _make_acts()
@@ -89,6 +93,7 @@ def test_compute_activation_statistics_sparsity_range():
 # 5. find_dead_neurons returns shape (D,) bool tensor
 # ---------------------------------------------------------------------------
 
+
 def test_find_dead_neurons_shape_and_dtype():
     acts = _make_acts()
     dead = find_dead_neurons(acts)
@@ -99,6 +104,7 @@ def test_find_dead_neurons_shape_and_dtype():
 # ---------------------------------------------------------------------------
 # 6. find_dead_neurons correctly identifies an all-zero neuron
 # ---------------------------------------------------------------------------
+
 
 def test_find_dead_neurons_finds_zero_neuron():
     acts = torch.randn(B, T, D)
@@ -116,6 +122,7 @@ def test_find_dead_neurons_finds_zero_neuron():
 # 7. compute_neuron_correlation returns shape (D,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_neuron_correlation_shape():
     flat_a = _make_flat()
     flat_b = _make_flat()
@@ -126,6 +133,7 @@ def test_compute_neuron_correlation_shape():
 # ---------------------------------------------------------------------------
 # 8. Correlation of identical activations is 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_neuron_correlation_identical_is_one():
     flat = _make_flat()
@@ -141,6 +149,7 @@ def test_compute_neuron_correlation_identical_is_one():
 # 9. top_activating_examples returns shape (D, K)
 # ---------------------------------------------------------------------------
 
+
 def test_top_activating_examples_shape():
     flat = _make_flat()
     top = top_activating_examples(flat, K)
@@ -150,6 +159,7 @@ def test_top_activating_examples_shape():
 # ---------------------------------------------------------------------------
 # 10. top_activating_examples indices are valid (in [0, N))
 # ---------------------------------------------------------------------------
+
 
 def test_top_activating_examples_valid_indices():
     flat = _make_flat()
@@ -163,6 +173,7 @@ def test_top_activating_examples_valid_indices():
 # 11. polysemanticity_score returns shape (D,)
 # ---------------------------------------------------------------------------
 
+
 def test_polysemanticity_score_shape():
     flat = _make_flat()
     score = polysemanticity_score(flat, k=K)
@@ -172,6 +183,7 @@ def test_polysemanticity_score_shape():
 # ---------------------------------------------------------------------------
 # 12. polysemanticity_score values are in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_polysemanticity_score_range():
     flat = _make_flat()
@@ -185,6 +197,7 @@ def test_polysemanticity_score_range():
 # 13. NeuronAnalyzer.analyze returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_neuron_analyzer_analyze_keys():
     cfg = NeuronConfig(n_top_examples=K)
     analyzer = NeuronAnalyzer(cfg)
@@ -197,6 +210,7 @@ def test_neuron_analyzer_analyze_keys():
 # ---------------------------------------------------------------------------
 # 14. NeuronAnalyzer.analyze stats have correct sub-keys and shapes
 # ---------------------------------------------------------------------------
+
 
 def test_neuron_analyzer_analyze_stats_shapes():
     cfg = NeuronConfig(n_top_examples=K)
@@ -213,6 +227,7 @@ def test_neuron_analyzer_analyze_stats_shapes():
 # 15. NeuronAnalyzer.compare_layers returns "correlation" key
 # ---------------------------------------------------------------------------
 
+
 def test_compare_layers_returns_correlation():
     cfg = NeuronConfig()
     analyzer = NeuronAnalyzer(cfg)
@@ -225,6 +240,7 @@ def test_compare_layers_returns_correlation():
 # ---------------------------------------------------------------------------
 # 16. compare_layers correlation has shape (D,)
 # ---------------------------------------------------------------------------
+
 
 def test_compare_layers_correlation_shape():
     cfg = NeuronConfig()
@@ -241,6 +257,7 @@ def test_compare_layers_correlation_shape():
 # 17. compare_layers returns mean_diff and std_diff with correct shapes
 # ---------------------------------------------------------------------------
 
+
 def test_compare_layers_mean_std_diff_shapes():
     cfg = NeuronConfig()
     analyzer = NeuronAnalyzer(cfg)
@@ -249,14 +266,13 @@ def test_compare_layers_mean_std_diff_shapes():
     result = analyzer.compare_layers(layer_a, layer_b)
     for key in ("mean_diff", "std_diff"):
         assert key in result, f"Missing key: {key}"
-        assert result[key].shape == (D,), (
-            f"{key} shape {result[key].shape}, expected ({D},)"
-        )
+        assert result[key].shape == (D,), f"{key} shape {result[key].shape}, expected ({D},)"
 
 
 # ---------------------------------------------------------------------------
 # 18. dead_mask from analyze has correct shape and dtype
 # ---------------------------------------------------------------------------
+
 
 def test_neuron_analyzer_dead_mask_shape_dtype():
     cfg = NeuronConfig(n_top_examples=K)
@@ -272,6 +288,7 @@ def test_neuron_analyzer_dead_mask_shape_dtype():
 # 19. top_examples from analyze has correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_neuron_analyzer_top_examples_shape():
     cfg = NeuronConfig(n_top_examples=K)
     analyzer = NeuronAnalyzer(cfg)
@@ -284,6 +301,7 @@ def test_neuron_analyzer_top_examples_shape():
 # ---------------------------------------------------------------------------
 # 20. compute_neuron_correlation: zero-variance neuron → 0 correlation
 # ---------------------------------------------------------------------------
+
 
 def test_compute_neuron_correlation_zero_variance():
     flat_a = _make_flat()

@@ -37,14 +37,10 @@ def test_reference_manifest_routes_under_each_policy() -> None:
     # shipped policy routes it correctly.
     assert AURELIUS_REFERENCE_MANIFEST.release_track == "research"
 
-    prod = ReleaseTrackRouter(PRODUCTION_POLICY).route(
-        AURELIUS_REFERENCE_MANIFEST
-    )
+    prod = ReleaseTrackRouter(PRODUCTION_POLICY).route(AURELIUS_REFERENCE_MANIFEST)
     assert prod.allowed is False
 
-    internal_blocked = ReleaseTrackRouter(INTERNAL_POLICY).route(
-        AURELIUS_REFERENCE_MANIFEST
-    )
+    internal_blocked = ReleaseTrackRouter(INTERNAL_POLICY).route(AURELIUS_REFERENCE_MANIFEST)
     assert internal_blocked.allowed is False
     internal_ok = ReleaseTrackRouter(INTERNAL_POLICY).route(
         AURELIUS_REFERENCE_MANIFEST, override_flags={"allow_research"}
@@ -57,8 +53,6 @@ def test_reference_manifest_routes_under_each_policy() -> None:
 
 def test_resolve_by_variant_id_through_package_registry() -> None:
     router = ReleaseTrackRouter(DEV_POLICY)
-    dec = router.resolve_by_variant_id(
-        AURELIUS_REFERENCE_MANIFEST.registry_key
-    )
+    dec = router.resolve_by_variant_id(AURELIUS_REFERENCE_MANIFEST.registry_key)
     assert dec.allowed is True
     assert dec.variant_id == AURELIUS_REFERENCE_MANIFEST.registry_key

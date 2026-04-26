@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from src.serving.streaming_handler import StreamChunk, StreamSession, StreamingHandler
+from src.serving.streaming_handler import StreamChunk, StreamingHandler, StreamSession
 
 
 def make_handler(**kwargs) -> StreamingHandler:
@@ -168,7 +168,7 @@ def test_total_tokens_accumulates():
 def test_active_sessions_decreases_after_prune():
     h = make_handler()
     s1 = h.create_session("r1")
-    s2 = h.create_session("r2")
+    h.create_session("r2")
     h.finalize(s1.session_id)
     h.get_session(s1.session_id).created_at = time.time() - 400
     h.prune_completed(max_age_s=300.0)

@@ -7,11 +7,12 @@ Trajectory Balance (TB) objective:
     Z * P_F(tau) = R(x) * P_B(tau)
     => loss = (log Z + log P_F - log P_B - log R)^2
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -22,22 +23,22 @@ import torch.nn.functional as F
 class GFlowNetConfig:
     """Configuration for GFlowNet training."""
 
-    n_trajectories: int = 8       # number of trajectories to sample per step
-    max_seq_len: int = 16         # max sequence length for generation
-    temperature: float = 1.0      # sampling temperature
-    lambda_tb: float = 1.0        # trajectory balance loss weight
-    epsilon: float = 0.05         # exploration noise (epsilon-greedy)
+    n_trajectories: int = 8  # number of trajectories to sample per step
+    max_seq_len: int = 16  # max sequence length for generation
+    temperature: float = 1.0  # sampling temperature
+    lambda_tb: float = 1.0  # trajectory balance loss weight
+    epsilon: float = 0.05  # exploration noise (epsilon-greedy)
 
 
 @dataclass
 class Trajectory:
     """A single GFlowNet trajectory."""
 
-    states: list[list[int]]       # sequence of token sequences (including initial)
-    actions: list[int]            # tokens added at each step
-    log_pf: float = 0.0           # log forward probability
-    log_pb: float = 0.0           # log backward probability
-    reward: float = 0.0           # scalar reward for the final state
+    states: list[list[int]]  # sequence of token sequences (including initial)
+    actions: list[int]  # tokens added at each step
+    log_pf: float = 0.0  # log forward probability
+    log_pb: float = 0.0  # log backward probability
+    reward: float = 0.0  # scalar reward for the final state
 
 
 def compute_trajectory_balance_loss(
@@ -60,7 +61,7 @@ def compute_trajectory_balance_loss(
         Mean TB loss over all trajectories.
     """
     residual = log_z + log_pf - log_pb - log_reward
-    return (residual ** 2).mean()
+    return (residual**2).mean()
 
 
 def sample_trajectory(

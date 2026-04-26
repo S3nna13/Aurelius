@@ -46,6 +46,7 @@ def test_import_has_no_side_effects_on_existing_modules():
     # therefore mutating) sibling modules like model / training / etc.
     pre_mods = set(sys.modules.keys())
     import src.longcontext  # noqa: F401
+
     post_mods = set(sys.modules.keys())
 
     newly_loaded = post_mods - pre_mods

@@ -6,9 +6,9 @@ pre-check so that dangerous patterns never reach the OS.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
-import os
 from dataclasses import dataclass, field
 
 
@@ -73,8 +73,8 @@ class SandboxedEvaluator:
 
             timed_out = False
             try:
-                proc = subprocess.run(  # nosec B603
-                    ["python3", tmp_path],
+                proc = subprocess.run(  # nosec B603  # noqa: S603
+                    ["python3", tmp_path],  # noqa: S607
                     capture_output=True,
                     timeout=self._config.timeout_s,
                     shell=False,

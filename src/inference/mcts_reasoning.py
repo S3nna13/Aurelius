@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
@@ -25,13 +25,13 @@ class MCTSConfig:
 class MCTSNode:
     """A node in the MCTS search tree."""
 
-    state: list[int]                          # token ids
-    parent: "MCTSNode | None"
-    children: list["MCTSNode"] = field(default_factory=list)
+    state: list[int]  # token ids
+    parent: MCTSNode | None
+    children: list[MCTSNode] = field(default_factory=list)
     visit_count: int = 0
     value_sum: float = 0.0
     prior: float = 1.0
-    action: int | None = None                  # token that led here
+    action: int | None = None  # token that led here
 
     def value(self) -> float:
         """Average value over visits."""
@@ -39,9 +39,8 @@ class MCTSNode:
 
     def ucb_score(self, parent_visits: int, c_puct: float) -> float:
         """UCB1 score balancing exploitation and exploration."""
-        return (
-            self.value()
-            + c_puct * self.prior * math.sqrt(parent_visits) / (1 + self.visit_count)
+        return self.value() + c_puct * self.prior * math.sqrt(parent_visits) / (
+            1 + self.visit_count
         )
 
     def is_leaf(self) -> bool:
@@ -80,9 +79,7 @@ def evaluate_state(model: torch.nn.Module, state: list[int]) -> float:
     return math.tanh(proxy)
 
 
-def expand_node(
-    model: torch.nn.Module, node: MCTSNode, top_k: int = 5
-) -> None:
+def expand_node(model: torch.nn.Module, node: MCTSNode, top_k: int = 5) -> None:
     """Expand a leaf node by creating children for the top-k next tokens.
 
     Priors are set to the softmax probability of each token.
@@ -111,9 +108,7 @@ def expand_node(
         node.children.append(child)
 
 
-def backpropagate(
-    node: MCTSNode, value: float, discount: float
-) -> None:
+def backpropagate(node: MCTSNode, value: float, discount: float) -> None:
     """Walk up the tree updating visit_count and value_sum with discounting."""
     current = node
     current_value = value
@@ -167,7 +162,7 @@ class MCTSReasoner:
             backpropagate(leaf, value, self.config.value_discount)
 
         best_path = self.get_best_path(root)
-        continuation_ids = best_path[len(prompt_ids):]
+        continuation_ids = best_path[len(prompt_ids) :]
         continuation_text = self.tokenizer_decode(continuation_ids)
         best_value = root.value()
 

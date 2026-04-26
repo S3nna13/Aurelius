@@ -1,18 +1,18 @@
 """GPTQ: Accurate Post-Training Quantization (Frantar et al., 2022)."""
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GPTQConfig:
@@ -38,7 +38,10 @@ class GPTQConfig:
 # Core quantization helpers
 # ---------------------------------------------------------------------------
 
-def quantize_to_bits(x: torch.Tensor, bits: int, scale: torch.Tensor, zero: torch.Tensor) -> torch.Tensor:
+
+def quantize_to_bits(
+    x: torch.Tensor, bits: int, scale: torch.Tensor, zero: torch.Tensor
+) -> torch.Tensor:
     """Quantize x using scale/zero, then dequantize back to float.
 
     Args:
@@ -50,7 +53,7 @@ def quantize_to_bits(x: torch.Tensor, bits: int, scale: torch.Tensor, zero: torc
     Returns:
         Dequantized tensor with same shape as x.
     """
-    qmax = 2 ** bits - 1
+    qmax = 2**bits - 1
     # Quantize
     q = torch.round(x / scale + zero).clamp(0, qmax)
     # Dequantize
@@ -78,8 +81,8 @@ def _group_params(W: torch.Tensor, group_size: int) -> tuple[torch.Tensor, torch
         W_padded = W
 
     W_grouped = W_padded.reshape(out_features, n_groups, group_size)
-    w_min = W_grouped.min(dim=2).values   # (out, n_groups)
-    w_max = W_grouped.max(dim=2).values   # (out, n_groups)
+    w_min = W_grouped.min(dim=2).values  # (out, n_groups)
+    w_max = W_grouped.max(dim=2).values  # (out, n_groups)
     scales = (w_max - w_min).clamp(min=1e-8)
     zeros = -w_min / scales
     return scales, zeros  # (out, n_groups)
@@ -88,6 +91,7 @@ def _group_params(W: torch.Tensor, group_size: int) -> tuple[torch.Tensor, torch
 # ---------------------------------------------------------------------------
 # GPTQ weight quantization
 # ---------------------------------------------------------------------------
+
 
 def quantize_weight_gptq(
     W: torch.Tensor,
@@ -159,12 +163,10 @@ def quantize_weight_gptq(
                 zr = -w_group.min(dim=1).values / sc
 
             # Clamp before quantization for numerical safety
-            w_col = W_q[:, i].clamp(
-                -1e4 * sc.abs().max().item(), 1e4 * sc.abs().max().item()
-            )
+            w_col = W_q[:, i].clamp(-1e4 * sc.abs().max().item(), 1e4 * sc.abs().max().item())
 
             # Quantize column
-            qmax = 2 ** config.bits - 1
+            qmax = 2**config.bits - 1
             q_col = torch.round(w_col / sc + zr).clamp(0, qmax)
             w_quant_col = (q_col - zr) * sc
             W_q[:, i] = w_quant_col
@@ -173,9 +175,9 @@ def quantize_weight_gptq(
             h_ii = Hinv[i, i].item()
             if abs(h_ii) < 1e-8:
                 continue
-            err = (w_col - w_quant_col) / h_ii   # (out_features,)
+            err = (w_col - w_quant_col) / h_ii  # (out_features,)
             if i + 1 < in_features:
-                W_q[:, i + 1:] -= err.unsqueeze(1) * Hinv[i, i + 1:].unsqueeze(0)
+                W_q[:, i + 1 :] -= err.unsqueeze(1) * Hinv[i, i + 1 :].unsqueeze(0)
 
     # --- Undo activation order permutation if applied --------------------
     if inv_perm is not None:
@@ -191,6 +193,7 @@ def quantize_weight_gptq(
 # Hessian estimation
 # ---------------------------------------------------------------------------
 
+
 def compute_hessian(layer: nn.Linear, calibration_data: list[torch.Tensor]) -> torch.Tensor:
     """Estimate the GPTQ Hessian H ≈ 2 * X^T X / N from layer inputs.
 
@@ -202,7 +205,9 @@ def compute_hessian(layer: nn.Linear, calibration_data: list[torch.Tensor]) -> t
         H: (in_features, in_features) symmetric positive semi-definite matrix.
     """
     in_features = layer.in_features
-    H = torch.zeros(in_features, in_features, dtype=torch.float64, device=next(layer.parameters()).device)
+    H = torch.zeros(
+        in_features, in_features, dtype=torch.float64, device=next(layer.parameters()).device
+    )
     n_samples = 0
 
     inputs_collected: list[torch.Tensor] = []
@@ -233,6 +238,7 @@ def compute_hessian(layer: nn.Linear, calibration_data: list[torch.Tensor]) -> t
 # Quantized linear layer
 # ---------------------------------------------------------------------------
 
+
 class GPTQLinear(nn.Module):
     """Quantized linear layer produced by GPTQ.
 
@@ -256,17 +262,11 @@ class GPTQLinear(nn.Module):
         n_groups = math.ceil(in_features / group_size) if group_size > 0 and group_size != -1 else 1
 
         # Quantized weights stored as float (dequantized)
-        self.weight_q = nn.Parameter(
-            torch.zeros(out_features, in_features), requires_grad=False
-        )
-        self.scales = nn.Parameter(
-            torch.ones(out_features, n_groups), requires_grad=False
-        )
-        self.zeros = nn.Parameter(
-            torch.zeros(out_features, n_groups), requires_grad=False
-        )
+        self.weight_q = nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
+        self.scales = nn.Parameter(torch.ones(out_features, n_groups), requires_grad=False)
+        self.zeros = nn.Parameter(torch.zeros(out_features, n_groups), requires_grad=False)
         if bias:
-            self.bias: Optional[nn.Parameter] = nn.Parameter(torch.zeros(out_features))
+            self.bias: nn.Parameter | None = nn.Parameter(torch.zeros(out_features))
         else:
             self.bias = None
 
@@ -282,7 +282,7 @@ class GPTQLinear(nn.Module):
         linear: nn.Linear,
         config: GPTQConfig,
         calibration_data: list[torch.Tensor],
-    ) -> "GPTQLinear":
+    ) -> GPTQLinear:
         """Create a GPTQLinear from an existing nn.Linear layer.
 
         Args:
@@ -320,6 +320,7 @@ class GPTQLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # Model-level quantization
 # ---------------------------------------------------------------------------
+
 
 def apply_gptq_to_model(
     model: nn.Module,

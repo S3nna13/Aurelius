@@ -12,13 +12,12 @@ difflib, or editdistance packages are used.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VisionGroundingEvalConfig:
@@ -28,12 +27,14 @@ class VisionGroundingEvalConfig:
         iou_threshold: Minimum IoU for a predicted box to count as a true
             positive against a ground-truth box (default 0.5).
     """
+
     iou_threshold: float = 0.5
 
 
 # ---------------------------------------------------------------------------
 # Main evaluator
 # ---------------------------------------------------------------------------
+
 
 class VisionGroundingEval:
     """Evaluator for vision grounding tasks.
@@ -44,14 +45,14 @@ class VisionGroundingEval:
       - Counting accuracy via Absolute Difference score
     """
 
-    def __init__(self, config: Optional[VisionGroundingEvalConfig] = None) -> None:
+    def __init__(self, config: VisionGroundingEvalConfig | None = None) -> None:
         self.config = config if config is not None else VisionGroundingEvalConfig()
 
     # ------------------------------------------------------------------
     # Box IoU
     # ------------------------------------------------------------------
 
-    def box_iou(self, box1: Tuple, box2: Tuple) -> float:
+    def box_iou(self, box1: tuple, box2: tuple) -> float:
         """Compute Intersection-over-Union between two boxes.
 
         Args:
@@ -92,9 +93,9 @@ class VisionGroundingEval:
 
     def soft_iou_f1(
         self,
-        pred_boxes: List[Tuple],
-        gt_boxes: List[Tuple],
-    ) -> Dict[str, float]:
+        pred_boxes: list[tuple],
+        gt_boxes: list[tuple],
+    ) -> dict[str, float]:
         """Compute Soft-IoU F1 for a single sample.
 
         For each predicted box, find the best-matching ground-truth box by IoU.
@@ -214,9 +215,9 @@ class VisionGroundingEval:
 
     def evaluate(
         self,
-        predictions: List[Dict],
-        ground_truths: List[Dict],
-    ) -> Dict[str, float]:
+        predictions: list[dict],
+        ground_truths: list[dict],
+    ) -> dict[str, float]:
         """Evaluate a list of prediction / ground-truth pairs.
 
         Each element in *predictions* and *ground_truths* may contain any
@@ -236,9 +237,9 @@ class VisionGroundingEval:
             dict with keys "f1", "ned", "count_acc" — each the mean over
             all samples that contributed to the metric (or 0.0 if none did).
         """
-        f1_scores: List[float] = []
-        ned_scores: List[float] = []
-        count_scores: List[float] = []
+        f1_scores: list[float] = []
+        ned_scores: list[float] = []
+        count_scores: list[float] = []
 
         for pred, gt in zip(predictions, ground_truths):
             # --- boxes ---
@@ -256,7 +257,7 @@ class VisionGroundingEval:
                 acc = self.count_accuracy(pred["count"], gt["count"])
                 count_scores.append(acc)
 
-        def _mean(lst: List[float]) -> float:
+        def _mean(lst: list[float]) -> float:
             return sum(lst) / len(lst) if lst else 0.0
 
         return {

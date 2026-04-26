@@ -8,12 +8,10 @@ Pure native PyTorch — no external dependencies beyond the standard library.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -82,10 +80,10 @@ class H2OKVCache:
                           of the full attention matrix for this step).
         """
         # Validate shapes.
-        assert new_keys.shape == new_values.shape, (
+        assert new_keys.shape == new_values.shape, (  # noqa: S101
             f"key/value shape mismatch: {new_keys.shape} vs {new_values.shape}"
         )
-        assert new_keys.shape[0] == self.n_heads, (
+        assert new_keys.shape[0] == self.n_heads, (  # noqa: S101
             f"Expected {self.n_heads} heads, got {new_keys.shape[0]}"
         )
 
@@ -121,16 +119,14 @@ class H2OKVCache:
         _, top_indices = torch.topk(scores_avg, k=n_hh, largest=True, sorted=True)
         top_indices, _ = torch.sort(top_indices)  # restore temporal order
 
-        recent_indices = torch.arange(
-            S - n_recent, S, device=self.keys.device, dtype=torch.long
-        )
+        recent_indices = torch.arange(S - n_recent, S, device=self.keys.device, dtype=torch.long)
         keep = torch.cat([top_indices, recent_indices])  # (n_hh + n_recent,)
 
         self.keys = self.keys[:, keep, :]
         self.values = self.values[:, keep, :]
         self.attn_scores = self.attn_scores[:, keep]
 
-    def get(self) -> Tuple[Tensor, Tensor]:
+    def get(self) -> tuple[Tensor, Tensor]:
         """Return ``(keys, values)`` tensors of shape ``(n_heads, S, head_dim)``."""
         return self.keys, self.values
 
@@ -175,10 +171,10 @@ class SlidingWindowKVCache:
         self._values = torch.cat([self._values, new_values], dim=1)
 
         if self._keys.shape[1] > self.window_size:
-            self._keys = self._keys[:, -self.window_size:, :]
-            self._values = self._values[:, -self.window_size:, :]
+            self._keys = self._keys[:, -self.window_size :, :]
+            self._values = self._values[:, -self.window_size :, :]
 
-    def get(self) -> Tuple[Tensor, Tensor]:
+    def get(self) -> tuple[Tensor, Tensor]:
         """Return ``(keys, values)`` of shape ``(n_heads, S, head_dim)``."""
         return self._keys, self._values
 

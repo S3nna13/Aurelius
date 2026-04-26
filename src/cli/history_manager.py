@@ -5,7 +5,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 class HistoryError(ValueError):
@@ -15,11 +15,13 @@ class HistoryError(ValueError):
 @dataclass
 class HistoryEntry:
     command: str
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class HistoryManager:
-    def __init__(self, history_file: str = "~/.aurelius_history.jsonl", max_entries: int = 1000) -> None:
+    def __init__(
+        self, history_file: str = "~/.aurelius_history.jsonl", max_entries: int = 1000
+    ) -> None:
         resolved = os.path.expanduser(history_file)
         abs_path = os.path.abspath(resolved)
         cwd = os.path.abspath(os.getcwd())
@@ -43,9 +45,9 @@ class HistoryManager:
                     data = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                self._entries.append(HistoryEntry(
-                    command=data["command"], timestamp=data.get("timestamp", "")
-                ))
+                self._entries.append(
+                    HistoryEntry(command=data["command"], timestamp=data.get("timestamp", ""))
+                )
 
     def _save(self) -> None:
         with open(self.history_file, "w") as f:
@@ -62,7 +64,7 @@ class HistoryManager:
                 return
             self._entries.append(HistoryEntry(command=command))
             if len(self._entries) > self.max_entries:
-                self._entries = self._entries[-self.max_entries:]
+                self._entries = self._entries[-self.max_entries :]
             self._save()
 
     def get_recent(self, n: int) -> list[HistoryEntry]:

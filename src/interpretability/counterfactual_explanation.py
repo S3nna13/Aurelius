@@ -10,45 +10,44 @@ Two search strategies are provided:
   - beam_search_counterfactual: maintain a beam of candidate sequences, expanding
     each by considering random candidate token swaps.
 """
+
 from __future__ import annotations
 
-import copy
-import math
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config / Result dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CounterfactualConfig:
-    max_substitutions: int = 3     # max tokens to change
-    n_candidates: int = 8          # candidates per position
-    beam_width: int = 4            # beam search width
-    target_class: int = 0          # target output class/token to flip toward
-    temperature: float = 1.0       # sampling temperature for candidates
+    max_substitutions: int = 3  # max tokens to change
+    n_candidates: int = 8  # candidates per position
+    beam_width: int = 4  # beam search width
+    target_class: int = 0  # target output class/token to flip toward
+    temperature: float = 1.0  # sampling temperature for candidates
 
 
 @dataclass
 class CounterfactualResult:
-    original_ids: Tensor           # (T,) original token sequence
-    counterfactual_ids: Tensor     # (T,) modified token sequence
-    changed_positions: List[int]   # which positions were changed
-    original_logits: Tensor        # (T, vocab) logits before change
-    new_logits: Tensor             # (T, vocab) logits after change
-    n_substitutions: int           # number of token substitutions made
-    success: bool                  # did we flip the prediction at last position?
+    original_ids: Tensor  # (T,) original token sequence
+    counterfactual_ids: Tensor  # (T,) modified token sequence
+    changed_positions: list[int]  # which positions were changed
+    original_logits: Tensor  # (T, vocab) logits before change
+    new_logits: Tensor  # (T, vocab) logits after change
+    n_substitutions: int  # number of token substitutions made
+    success: bool  # did we flip the prediction at last position?
 
 
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def token_edit_distance(ids_a: Tensor, ids_b: Tensor) -> int:
     """Count number of positions where ids_a and ids_b differ.
@@ -72,8 +71,8 @@ def _get_logits(model: nn.Module, input_ids: Tensor) -> Tensor:
     with torch.no_grad():
         output = model(input_ids.unsqueeze(0))  # batch of 1
     # output is (loss, logits, kv)
-    logits = output[1]          # (1, T, vocab)
-    return logits[0]            # (T, vocab)
+    logits = output[1]  # (1, T, vocab)
+    return logits[0]  # (T, vocab)
 
 
 def _score(logits_T_V: Tensor, target_token: int) -> float:
@@ -81,9 +80,11 @@ def _score(logits_T_V: Tensor, target_token: int) -> float:
     return logits_T_V[-1, target_token].item()
 
 
-def _sample_candidates(vocab_size: int, n_candidates: int, exclude: int, seed_offset: int = 0) -> List[int]:
+def _sample_candidates(
+    vocab_size: int, n_candidates: int, exclude: int, seed_offset: int = 0
+) -> list[int]:
     """Return a list of n_candidates token ids sampled uniformly, excluding `exclude`."""
-    candidates: List[int] = []
+    candidates: list[int] = []
     seen = {exclude}
     # Deterministic iteration using a fixed permutation
     g = torch.Generator()
@@ -101,10 +102,11 @@ def _sample_candidates(vocab_size: int, n_candidates: int, exclude: int, seed_of
 # Greedy counterfactual
 # ---------------------------------------------------------------------------
 
+
 def greedy_counterfactual(
     model: nn.Module,
-    input_ids: Tensor,          # (T,) token sequence
-    target_token: int,          # target token id at last position
+    input_ids: Tensor,  # (T,) token sequence
+    target_token: int,  # target token id at last position
     config: CounterfactualConfig,
 ) -> CounterfactualResult:
     """Greedy search: iteratively replace the single token substitution
@@ -124,11 +126,11 @@ def greedy_counterfactual(
     vocab_size = None  # discovered on first forward pass
 
     # Original logits
-    original_logits = _get_logits(model, input_ids)   # (T, vocab)
+    original_logits = _get_logits(model, input_ids)  # (T, vocab)
     vocab_size = original_logits.shape[-1]
 
     current_ids = input_ids.clone()
-    changed_positions: List[int] = []
+    changed_positions: list[int] = []
 
     for step in range(config.max_substitutions):
         # Check success: is target_token already top-1 at last pos?
@@ -195,17 +197,18 @@ def greedy_counterfactual(
 # Beam search counterfactual
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _BeamState:
     ids: Tensor
-    changed: List[int]
+    changed: list[int]
     score: float
 
 
 def beam_search_counterfactual(
     model: nn.Module,
-    input_ids: Tensor,          # (T,) token sequence
-    target_token: int,          # target token id at last position
+    input_ids: Tensor,  # (T,) token sequence
+    target_token: int,  # target token id at last position
     config: CounterfactualConfig,
 ) -> CounterfactualResult:
     """Beam search over token substitutions.
@@ -224,14 +227,12 @@ def beam_search_counterfactual(
     T = input_ids.shape[0]
 
     # Original logits
-    original_logits = _get_logits(model, input_ids)   # (T, vocab)
+    original_logits = _get_logits(model, input_ids)  # (T, vocab)
     vocab_size = original_logits.shape[-1]
     init_score = _score(original_logits, target_token)
 
     # Initialize beam with unmodified sequence
-    beam: List[_BeamState] = [
-        _BeamState(ids=input_ids.clone(), changed=[], score=init_score)
-    ]
+    beam: list[_BeamState] = [_BeamState(ids=input_ids.clone(), changed=[], score=init_score)]
 
     for step in range(config.max_substitutions):
         # Check if any beam state already achieves success
@@ -249,7 +250,7 @@ def beam_search_counterfactual(
                 )
 
         # Expand each beam state
-        candidates: List[_BeamState] = []
+        candidates: list[_BeamState] = []
         for beam_idx, state in enumerate(beam):
             already_changed = set(state.changed)
             for pos in range(T):
@@ -296,8 +297,9 @@ def beam_search_counterfactual(
 # Feature importance from counterfactual
 # ---------------------------------------------------------------------------
 
+
 def counterfactual_feature_importance(
-    original_ids: Tensor,        # (T,)
+    original_ids: Tensor,  # (T,)
     counterfactual_ids: Tensor,  # (T,)
 ) -> Tensor:
     """Binary mask: 1 at positions that were changed, 0 elsewhere.

@@ -3,23 +3,21 @@
 from __future__ import annotations
 
 import torch
-import pytest
-
 from aurelius.model.tome import (
     BipartiteSoftMatching,
-    ToMeMerger,
     ToMeAttention,
     ToMeBlock,
+    ToMeMerger,
 )
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / constants
 # ---------------------------------------------------------------------------
 
-B   = 2   # batch size
-T   = 16  # sequence length
-D   = 32  # embedding dim
-R   = 4   # tokens to merge
+B = 2  # batch size
+T = 16  # sequence length
+D = 32  # embedding dim
+R = 4  # tokens to merge
 
 
 def _rand(B: int, T: int, D: int) -> torch.Tensor:
@@ -81,9 +79,7 @@ def test_merge_output_shape():
 
     x = _rand(B, T, D)
     x_merged, sz = ToMeMerger.merge(x, src, dst)
-    assert x_merged.shape == (B, T - R, D), (
-        f"merged shape {x_merged.shape} != ({B}, {T - R}, {D})"
-    )
+    assert x_merged.shape == (B, T - R, D), f"merged shape {x_merged.shape} != ({B}, {T - R}, {D})"
 
 
 def test_merge_output_finite():
@@ -102,9 +98,7 @@ def test_unmerge_restores_shape():
     x = _rand(B, T, D)
     x_merged, _ = ToMeMerger.merge(x, src, dst)
     x_restored = ToMeMerger.unmerge(x_merged, src, dst, T_orig=T)
-    assert x_restored.shape == (B, T, D), (
-        f"restored shape {x_restored.shape} != ({B}, {T}, {D})"
-    )
+    assert x_restored.shape == (B, T, D), f"restored shape {x_restored.shape} != ({B}, {T}, {D})"
 
 
 def test_unmerge_after_merge_identity_when_r0():

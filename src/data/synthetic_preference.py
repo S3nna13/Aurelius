@@ -1,14 +1,14 @@
-"""Synthetic preference data generation: instruction-following pairs, critique augmentation, and DPO formatting."""
+"""Synthetic preference data generation: instruction-following pairs, critique augmentation, and DPO formatting."""  # noqa: E501
 
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PreferenceDataConfig:
@@ -18,14 +18,13 @@ class PreferenceDataConfig:
     seed: int = 42
     augment_with_critique: bool = True
     quality_threshold: float = 0.5
-    domains: list[str] = field(
-        default_factory=lambda: ["math", "coding", "reasoning"]
-    )
+    domains: list[str] = field(default_factory=lambda: ["math", "coding", "reasoning"])
 
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PreferencePair:
@@ -43,6 +42,7 @@ class PreferencePair:
 # ---------------------------------------------------------------------------
 # Domain pair generators
 # ---------------------------------------------------------------------------
+
 
 def generate_math_pair(rng: random.Random) -> PreferencePair:
     """Generate a math question with a correct and an incorrect answer.
@@ -84,7 +84,7 @@ def generate_coding_pair(rng: random.Random) -> PreferencePair:
         (
             "Write a Python function that returns the sum of a list.",
             "def sum_list(nums):\n    return sum(nums)",
-            "def sum_list(nums):\n    return sum(num)",   # wrong variable name
+            "def sum_list(nums):\n    return sum(num)",  # wrong variable name
         ),
         (
             "Write a Python function that returns the length of a string.",
@@ -94,17 +94,17 @@ def generate_coding_pair(rng: random.Random) -> PreferencePair:
         (
             "Write a Python function that reverses a list.",
             "def reverse_list(lst):\n    return lst[::-1]",
-            "def reverse_list(lst):\n    return lst[::1]",   # wrong step
+            "def reverse_list(lst):\n    return lst[::1]",  # wrong step
         ),
         (
             "Write a Python function that returns the maximum value in a list.",
             "def max_value(nums):\n    return max(nums)",
-            "def max_value(nums):\n    return min(nums)",   # wrong function
+            "def max_value(nums):\n    return min(nums)",  # wrong function
         ),
         (
             "Write a Python function that checks if a number is even.",
             "def is_even(n):\n    return n % 2 == 0",
-            "def is_even(n):\n    return n % 2 == 1",   # off-by-one in modulo check
+            "def is_even(n):\n    return n % 2 == 1",  # off-by-one in modulo check
         ),
     ]
 
@@ -136,10 +136,7 @@ def generate_reasoning_pair(rng: random.Random) -> PreferencePair:
         n1, n2 = rng.sample(names, 2)
         age1 = rng.randint(20, 50)
         diff = rng.randint(1, 15)
-        prompt = (
-            f"{n1} is {age1} years old. {n2} is {diff} years older than {n1}. "
-            f"How old is {n2}?"
-        )
+        prompt = f"{n1} is {age1} years old. {n2} is {diff} years older than {n1}. How old is {n2}?"
         correct_age = age1 + diff
         wrong_age = age1 - diff  # subtracted instead of added
         chosen = (
@@ -172,15 +169,9 @@ def generate_reasoning_pair(rng: random.Random) -> PreferencePair:
         total = rng.randint(10, 100)
         used = rng.randint(1, total - 1)
         remaining = total - used
-        prompt = (
-            f"There are {total} apples. {used} are eaten. How many remain?"
-        )
-        chosen = (
-            f"{total} - {used} = {remaining}. The answer is {remaining}."
-        )
-        rejected = (
-            f"{total} + {used} = {total + used}. The answer is {total + used}."
-        )
+        prompt = f"There are {total} apples. {used} are eaten. How many remain?"
+        chosen = f"{total} - {used} = {remaining}. The answer is {remaining}."
+        rejected = f"{total} + {used} = {total + used}. The answer is {total + used}."
 
     return PreferencePair(
         prompt=prompt,
@@ -221,8 +212,7 @@ def augment_with_critique(pair: PreferencePair, rng: random.Random) -> Preferenc
     reason = rng.choice(_CHOSEN_REASONS)
     problem = rng.choice(_REJECTED_PROBLEMS)
     critique = (
-        f"The chosen response is better because it {reason}. "
-        f"The rejected response {problem}."
+        f"The chosen response is better because it {reason}. The rejected response {problem}."
     )
     return PreferencePair(
         prompt=pair.prompt,
@@ -239,9 +229,8 @@ def augment_with_critique(pair: PreferencePair, rng: random.Random) -> Preferenc
 # Filtering and formatting
 # ---------------------------------------------------------------------------
 
-def filter_by_quality(
-    pairs: list[PreferencePair], threshold: float
-) -> list[PreferencePair]:
+
+def filter_by_quality(pairs: list[PreferencePair], threshold: float) -> list[PreferencePair]:
     """Keep only pairs where score_chosen - score_rejected >= threshold."""
     return [p for p in pairs if p.score_chosen - p.score_rejected >= threshold]
 

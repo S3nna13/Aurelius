@@ -2,10 +2,10 @@
 
 Reference: Bai et al. 2022 "Constitutional AI: Harmlessness from AI Feedback"
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 _FLAGGED_WORDS: frozenset[str] = frozenset(
     ["harm", "illegal", "dangerous", "kill", "attack", "exploit"]
@@ -80,9 +80,7 @@ class ConstitutionalAIv2Pipeline:
         lower = response.lower()
         hits = sum(1 for w in _FLAGGED_WORDS if w in lower)
         score = min(1.0, hits / 10.0)
-        critique_text = (
-            f"Response may violate '{principle.text}' with score {score:.2f}"
-        )
+        critique_text = f"Response may violate '{principle.text}' with score {score:.2f}"
         return CritiqueResult(
             principle_id=principle.principle_id,
             critique=critique_text,
@@ -109,8 +107,7 @@ class ConstitutionalAIv2Pipeline:
             overall = 0.0
         else:
             weighted_harmlessness = sum(
-                (1.0 - c.violation_score) * p.weight
-                for c, p in zip(critiques, self._principles)
+                (1.0 - c.violation_score) * p.weight for c, p in zip(critiques, self._principles)
             )
             overall = weighted_harmlessness / total_weight
 

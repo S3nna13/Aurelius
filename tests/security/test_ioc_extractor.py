@@ -1,8 +1,6 @@
 """Unit tests for IOCExtractor."""
 
-import pytest
-
-from src.security.ioc_extractor import IOC, IOCExtractor, IOCReport, validate_bitcoin_address, refang
+from src.security.ioc_extractor import IOCExtractor, refang, validate_bitcoin_address
 
 
 def test_ipv4_extracted():

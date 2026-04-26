@@ -1,13 +1,14 @@
 """Anomaly detector: statistical anomaly detection on time-series metrics."""
+
 from __future__ import annotations
 
 import math
 import statistics
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class AnomalyMethod(str, Enum):
+class AnomalyMethod(StrEnum):
     ZSCORE = "zscore"
     IQR = "iqr"
     ROLLING_STDDEV = "rolling_stddev"

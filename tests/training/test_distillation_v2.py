@@ -3,6 +3,7 @@
 All models use tiny configs (small D, V, B, T) for speed.
 Pure PyTorch — no HuggingFace, scipy, or sklearn.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -10,15 +11,14 @@ import torch
 import torch.nn as nn
 
 from src.training.distillation_v2 import (
+    DistillationTrainer,
     DistillConfig,
     FeatureProjector,
-    DistillationTrainer,
+    compute_combined_distillation_loss,
+    cosine_embedding_loss,
     kl_divergence_loss,
     mse_logit_loss,
-    cosine_embedding_loss,
-    compute_combined_distillation_loss,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny helpers
@@ -48,6 +48,7 @@ class TinyLM(nn.Module):
 # 1. DistillConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_distill_config_defaults():
     cfg = DistillConfig()
     assert cfg.temperature == 4.0
@@ -74,6 +75,7 @@ def test_distill_config_invalid_temperature():
 # ---------------------------------------------------------------------------
 # 2. kl_divergence_loss
 # ---------------------------------------------------------------------------
+
 
 def test_kl_divergence_loss_returns_scalar_finite_nonneg():
     s = rand_logits(B, T, V)
@@ -129,6 +131,7 @@ def test_kl_divergence_loss_2d_input():
 # 3. mse_logit_loss
 # ---------------------------------------------------------------------------
 
+
 def test_mse_logit_loss_returns_scalar_finite_nonneg():
     s = rand_logits(B, T, V)
     t = rand_logits(B, T, V)
@@ -148,6 +151,7 @@ def test_mse_logit_loss_identical_logits_zero():
 # 4. cosine_embedding_loss
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_embedding_loss_returns_scalar_in_range():
     s = rand_logits(B, T, D)
     t = rand_logits(B, T, D)
@@ -161,7 +165,9 @@ def test_cosine_embedding_loss_returns_scalar_in_range():
 def test_cosine_embedding_loss_identical_features_near_zero():
     feats = rand_logits(B, T, D)
     loss = cosine_embedding_loss(feats, feats.clone())
-    assert loss.item() < 1e-5, f"Cosine loss with identical features should be ~0, got {loss.item()}"
+    assert loss.item() < 1e-5, (
+        f"Cosine loss with identical features should be ~0, got {loss.item()}"
+    )
 
 
 def test_cosine_embedding_loss_2d_input():
@@ -175,6 +181,7 @@ def test_cosine_embedding_loss_2d_input():
 # ---------------------------------------------------------------------------
 # 5. compute_combined_distillation_loss
 # ---------------------------------------------------------------------------
+
 
 def test_combined_loss_returns_scalar_and_dict():
     cfg = DistillConfig()
@@ -259,6 +266,7 @@ def test_combined_loss_ignore_index():
 # 6. FeatureProjector
 # ---------------------------------------------------------------------------
 
+
 def test_feature_projector_output_shape():
     student_dim, teacher_dim = 8, 16
     proj = FeatureProjector(student_dim, teacher_dim)
@@ -282,6 +290,7 @@ def test_feature_projector_2d_input():
 # ---------------------------------------------------------------------------
 # 7. DistillationTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_distillation_trainer_freeze_teacher():
     """freeze_teacher() must set all teacher params to requires_grad=False."""

@@ -23,107 +23,15 @@ _cached_hall_of_shame_probe = sys.modules.get("src.safety.hall_of_shame_probe")
 if _cached_hall_of_shame_probe is not None:
     sys.modules["safety.hall_of_shame_probe"] = _cached_hall_of_shame_probe
 
-from src.safety.jailbreak_detector import JailbreakDetector, JailbreakScore
-from src.safety.prompt_injection_scanner import (
-    InjectionScore,
-    PromptInjectionScanner,
-)
-from src.safety.harm_taxonomy_classifier import (
-    HARM_CATEGORIES,
-    HarmClassification,
-    HarmTaxonomyClassifier,
-)
-from src.safety.pii_detector import (
-    PIIDetector,
-    PIIMatch,
-    PIIResult,
-)
-from src.safety.output_safety_filter import (
-    FilterDecision,
-    OutputSafetyFilter,
-    OutputSafetyPolicy,
-)
-from src.safety.prompt_integrity_checker import (
-    IntegrityReport,
-    PromptIntegrityChecker,
-)
-from src.safety.refusal_classifier import (
-    REFUSAL_PHRASES,
-    RefusalClassifier,
-    RefusalScore,
+from src.safety.canary_token_guard import (
+    CanaryDetection,
+    CanaryTokenGuard,
 )
 from src.safety.constitutional_principles_scorer import (
     DEFAULT_PRINCIPLES,
     ConstitutionalPrinciplesScorer,
     ConstitutionalReport,
     PrincipleScore,
-)
-from src.safety.malicious_code_detector import (
-    CATEGORIES as MALICIOUS_CODE_CATEGORIES,
-    CodeThreat,
-    CodeThreatReport,
-    MaliciousCodeDetector,
-)
-from src.safety.policy_engine import (
-    PolicyDecision,
-    PolicyEngine,
-    PolicyRule,
-)
-from src.safety.hallucination_guard import (
-    Claim as HallucinationClaim,
-    Evidence as HallucinationEvidence,
-    HallucinationGuard,
-    ValidationResult as HallucinationValidationResult,
-)
-from src.safety.canary_token_guard import (
-    CanaryDetection,
-    CanaryTokenGuard,
-)
-from src.safety.skill_scanner import (
-    Finding as SkillFinding,
-    SkillScanReport,
-    SkillScanner,
-)
-from src.safety.reward_hack_detector import (
-    PATTERN_DETECTORS as REWARD_HACK_PATTERN_DETECTORS,
-    RewardHackDetector,
-    RewardHackReport,
-    RewardHackSignal,
-)
-from src.safety.rule_engine import (
-    Rule,
-    RuleDomain,
-    RuleEngine,
-    RuleEvaluationReport,
-    RuleSeverity,
-    RuleViolation,
-    SEED_RULES as RULE_ENGINE_SEED_RULES,
-)
-from src.safety.lexical_entropy_anomaly import (
-    LexicalEntropyAnomalyDetector,
-    LexicalEntropyReport,
-)
-from src.safety.knn_known_bad_guard import (
-    KnnKnownBadGuard,
-    KnnVerdict,
-    KnownBadEntry,
-    SEED_KNOWN_BAD,
-)
-from src.safety.jailbreak_v2 import (
-    JailbreakSignal,
-    JailbreakDetection,
-    JailbreakClassifierV2,
-)
-from src.safety.output_sanitizer import (
-    SanitizationRule,
-    SanitizationResult,
-    OutputSanitizer,
-)
-from src.safety.policy_audit import (
-    PolicyDecision as AuditPolicyDecision,
-    AuditEntry,
-    PolicyAuditLog,
-    POLICY_AUDIT_LOG,
 )
 from src.safety.hall_of_shame_probe import (
     ADVERSARIAL_PROBE_REGISTRY,
@@ -137,6 +45,114 @@ from src.safety.hall_of_shame_probe import (
     list_probes,
     score_corpus,
     score_probe,
+)
+from src.safety.hallucination_guard import (
+    Claim as HallucinationClaim,
+)
+from src.safety.hallucination_guard import (
+    Evidence as HallucinationEvidence,
+)
+from src.safety.hallucination_guard import (
+    HallucinationGuard,
+)
+from src.safety.hallucination_guard import (
+    ValidationResult as HallucinationValidationResult,
+)
+from src.safety.harm_taxonomy_classifier import (
+    HARM_CATEGORIES,
+    HarmClassification,
+    HarmTaxonomyClassifier,
+)
+from src.safety.jailbreak_detector import JailbreakDetector, JailbreakScore
+from src.safety.jailbreak_v2 import (
+    JailbreakClassifierV2,
+    JailbreakDetection,
+    JailbreakSignal,
+)
+from src.safety.knn_known_bad_guard import (
+    SEED_KNOWN_BAD,
+    KnnKnownBadGuard,
+    KnnVerdict,
+    KnownBadEntry,
+)
+from src.safety.lexical_entropy_anomaly import (
+    LexicalEntropyAnomalyDetector,
+    LexicalEntropyReport,
+)
+from src.safety.malicious_code_detector import (
+    CATEGORIES as MALICIOUS_CODE_CATEGORIES,
+)
+from src.safety.malicious_code_detector import (
+    CodeThreat,
+    CodeThreatReport,
+    MaliciousCodeDetector,
+)
+from src.safety.output_safety_filter import (
+    FilterDecision,
+    OutputSafetyFilter,
+    OutputSafetyPolicy,
+)
+from src.safety.output_sanitizer import (
+    OutputSanitizer,
+    SanitizationResult,
+    SanitizationRule,
+)
+from src.safety.pii_detector import (
+    PIIDetector,
+    PIIMatch,
+    PIIResult,
+)
+from src.safety.policy_audit import (
+    POLICY_AUDIT_LOG,
+    AuditEntry,
+    PolicyAuditLog,
+)
+from src.safety.policy_audit import (
+    PolicyDecision as AuditPolicyDecision,
+)
+from src.safety.policy_engine import (
+    PolicyDecision,
+    PolicyEngine,
+    PolicyRule,
+)
+from src.safety.prompt_injection_scanner import (
+    InjectionScore,
+    PromptInjectionScanner,
+)
+from src.safety.prompt_integrity_checker import (
+    IntegrityReport,
+    PromptIntegrityChecker,
+)
+from src.safety.refusal_classifier import (
+    REFUSAL_PHRASES,
+    RefusalClassifier,
+    RefusalScore,
+)
+from src.safety.reward_hack_detector import (
+    PATTERN_DETECTORS as REWARD_HACK_PATTERN_DETECTORS,
+)
+from src.safety.reward_hack_detector import (
+    RewardHackDetector,
+    RewardHackReport,
+    RewardHackSignal,
+)
+from src.safety.rule_engine import (
+    SEED_RULES as RULE_ENGINE_SEED_RULES,
+)
+from src.safety.rule_engine import (
+    Rule,
+    RuleDomain,
+    RuleEngine,
+    RuleEvaluationReport,
+    RuleSeverity,
+    RuleViolation,
+)
+from src.safety.skill_scanner import (
+    Finding as SkillFinding,
+)
+from src.safety.skill_scanner import (
+    SkillScanner,
+    SkillScanReport,
 )
 
 SAFETY_FILTER_REGISTRY: dict = {}

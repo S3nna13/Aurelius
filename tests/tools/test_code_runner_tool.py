@@ -1,5 +1,4 @@
-import pytest
-from src.tools.code_runner_tool import CodeRunnerTool, CodeRunnerConfig, CodeRunnerResult, CODE_RUNNER_REGISTRY
+from src.tools.code_runner_tool import CODE_RUNNER_REGISTRY, CodeRunnerConfig, CodeRunnerTool
 
 
 def test_run_simple_math():

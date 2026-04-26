@@ -9,26 +9,25 @@ from __future__ import annotations
 import socket
 import struct
 from dataclasses import dataclass
-from typing import List, Optional
-
 
 # ---------------------------------------------------------------------------
 # CIDRBlock
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class CIDRBlock:
     """Represents a single IPv4 CIDR block."""
 
-    network: str      # dotted-decimal network address, e.g. "192.168.1.0"
-    prefix_len: int   # 0-32
+    network: str  # dotted-decimal network address, e.g. "192.168.1.0"
+    prefix_len: int  # 0-32
 
     # ------------------------------------------------------------------
     # Construction
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_string(cls, cidr: str) -> "CIDRBlock":
+    def from_string(cls, cidr: str) -> CIDRBlock:
         """Parse a CIDR string such as ``"192.168.1.0/24"``."""
         if "/" not in cidr:
             raise ValueError(f"Invalid CIDR string (missing '/'): {cidr!r}")
@@ -70,6 +69,7 @@ class CIDRBlock:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_mask(prefix_len: int) -> int:
     """Return a 32-bit mask for the given prefix length."""
     if prefix_len == 0:
@@ -80,6 +80,7 @@ def _make_mask(prefix_len: int) -> int:
 # ---------------------------------------------------------------------------
 # IPAllowlist
 # ---------------------------------------------------------------------------
+
 
 class IPAllowlist:
     """Manage an IPv4 allowlist and denylist with CIDR range support.
@@ -92,8 +93,8 @@ class IPAllowlist:
     """
 
     def __init__(self) -> None:
-        self._allow: List[CIDRBlock] = []
-        self._deny: List[CIDRBlock] = []
+        self._allow: list[CIDRBlock] = []
+        self._deny: list[CIDRBlock] = []
 
     # ------------------------------------------------------------------
     # Configuration
@@ -128,13 +129,13 @@ class IPAllowlist:
 
     def check(self, ip: str) -> dict:
         """Return a detailed verdict dict for *ip*."""
-        matched_deny: Optional[str] = None
+        matched_deny: str | None = None
         for block in self._deny:
             if block.contains(ip):
                 matched_deny = f"{block.network}/{block.prefix_len}"
                 break
 
-        matched_allow: Optional[str] = None
+        matched_allow: str | None = None
         for block in self._allow:
             if block.contains(ip):
                 matched_allow = f"{block.network}/{block.prefix_len}"

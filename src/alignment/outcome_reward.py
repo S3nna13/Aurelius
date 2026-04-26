@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
 
 
 @dataclass
@@ -13,11 +14,11 @@ class ORMConfig:
     """Configuration for the OutcomeRewardModel."""
 
     d_model: int = 512
-    n_layers_head: int = 2       # reward head MLP layers
+    n_layers_head: int = 2  # reward head MLP layers
     dropout: float = 0.1
-    reward_scale: float = 1.0    # scale output reward
-    use_mean_pooling: bool = True # pool over sequence or use last token
-    n_ensemble: int = 1          # number of ensemble heads
+    reward_scale: float = 1.0  # scale output reward
+    use_mean_pooling: bool = True  # pool over sequence or use last token
+    n_ensemble: int = 1  # number of ensemble heads
 
 
 class RewardHead(nn.Module):
@@ -73,8 +74,10 @@ class OutcomeRewardModel(nn.Module):
 
         # Ensemble of reward heads
         self.heads = nn.ModuleList(
-            [RewardHead(d_model, config.n_layers_head, config.dropout)
-             for _ in range(config.n_ensemble)]
+            [
+                RewardHead(d_model, config.n_layers_head, config.dropout)
+                for _ in range(config.n_ensemble)
+            ]
         )
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -93,17 +96,17 @@ class OutcomeRewardModel(nn.Module):
 
         # Pool over sequence dimension
         if self.config.use_mean_pooling:
-            pooled = logits.mean(dim=1)   # (B, vocab_size)
+            pooled = logits.mean(dim=1)  # (B, vocab_size)
         else:
-            pooled = logits[:, -1, :]     # (B, vocab_size)  — last token
+            pooled = logits[:, -1, :]  # (B, vocab_size)  — last token
 
         # Project vocab_size → d_model
-        features = self.proj(pooled)      # (B, d_model)
+        features = self.proj(pooled)  # (B, d_model)
 
         # Run each head, stack → (B, n_ensemble), mean → (B, 1)
         head_outputs = [head(features) for head in self.heads]  # each (B, 1)
         stacked = torch.stack(head_outputs, dim=1).squeeze(-1)  # (B, n_ensemble)
-        reward = stacked.mean(dim=1, keepdim=True)              # (B, 1)
+        reward = stacked.mean(dim=1, keepdim=True)  # (B, 1)
 
         return reward * self.config.reward_scale
 
@@ -167,7 +170,7 @@ def ensemble_uncertainty(rewards: torch.Tensor) -> dict[str, torch.Tensor]:
             "std":         (B,) standard deviation across ensemble
             "disagreement": scalar — mean of per-sample std across batch
     """
-    mean = rewards.mean(dim=1)        # (B,)
+    mean = rewards.mean(dim=1)  # (B,)
     std = rewards.std(dim=1, unbiased=False)  # (B,)
-    disagreement = std.mean()         # scalar
+    disagreement = std.mean()  # scalar
     return {"mean": mean, "std": std, "disagreement": disagreement}

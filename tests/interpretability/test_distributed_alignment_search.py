@@ -23,9 +23,7 @@ Pure PyTorch — no scipy, sklearn, HuggingFace, einops.
 
 from __future__ import annotations
 
-import pytest
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from src.interpretability.distributed_alignment_search import (
@@ -67,6 +65,7 @@ def _simple_metric(intervened_h: torch.Tensor, labels: torch.Tensor) -> torch.Te
 # 1. Shape: rotate preserves shape
 # ---------------------------------------------------------------------------
 
+
 def test_rotate_preserves_shape():
     das = _make_das()
     h = _rand((BATCH, D_MODEL))
@@ -78,18 +77,21 @@ def test_rotate_preserves_shape():
 # 2. Orthogonality: R^T R ≈ I after construction
 # ---------------------------------------------------------------------------
 
+
 def test_rotation_matrix_is_orthogonal():
     das = _make_das()
     R = das._get_R()
     I_approx = R.T @ R
     I_exact = torch.eye(D_MODEL)
-    assert torch.allclose(I_approx, I_exact, atol=1e-5), \
+    assert torch.allclose(I_approx, I_exact, atol=1e-5), (
         f"R^T R not close to I; max deviation = {(I_approx - I_exact).abs().max():.2e}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 3. Rotation preserves L2 norms
 # ---------------------------------------------------------------------------
+
 
 def test_rotate_preserves_norms():
     das = _make_das()
@@ -97,52 +99,58 @@ def test_rotate_preserves_norms():
     out = das.rotate(h)
     norms_in = h.norm(dim=-1)
     norms_out = out.norm(dim=-1)
-    assert torch.allclose(norms_in, norms_out, atol=1e-5), \
+    assert torch.allclose(norms_in, norms_out, atol=1e-5), (
         "rotate() should be an isometry (norm-preserving)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 4. Interchange intervention shape
 # ---------------------------------------------------------------------------
 
+
 def test_interchange_intervention_shape():
     das = _make_das()
     base = _rand((BATCH, D_MODEL), seed=1)
     source = _rand((BATCH, D_MODEL), seed=2)
     out = das.interchange_intervention(base, source)
-    assert out.shape == (BATCH, D_MODEL), \
-        f"Expected ({BATCH}, {D_MODEL}), got {out.shape}"
+    assert out.shape == (BATCH, D_MODEL), f"Expected ({BATCH}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 5. Interchange changes output when source != base
 # ---------------------------------------------------------------------------
 
+
 def test_interchange_changes_output_for_different_source():
     das = _make_das(n_directions=4)
     base = _rand((BATCH, D_MODEL), seed=10)
-    source = _rand((BATCH, D_MODEL), seed=20)   # deliberately different
+    source = _rand((BATCH, D_MODEL), seed=20)  # deliberately different
     out = das.interchange_intervention(base, source)
     # At least some elements should differ from base.
-    assert not torch.allclose(out, base, atol=1e-6), \
+    assert not torch.allclose(out, base, atol=1e-6), (
         "interchange_intervention should change base when source != base"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 6. Self-intervention is identity
 # ---------------------------------------------------------------------------
 
+
 def test_interchange_self_is_identity():
     das = _make_das(n_directions=D_MODEL)
     h = _rand((BATCH, D_MODEL))
     out = das.interchange_intervention(h, h)
-    assert torch.allclose(out, h, atol=1e-5), \
+    assert torch.allclose(out, h, atol=1e-5), (
         "interchange(base, base) should equal base (self-intervention = identity)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 7. fit() returns list of floats
 # ---------------------------------------------------------------------------
+
 
 def test_fit_returns_list_of_floats():
     torch.manual_seed(SEED)
@@ -153,13 +161,13 @@ def test_fit_returns_list_of_floats():
     history = das.fit(base, source, labels, _simple_metric)
     assert isinstance(history, list), "fit() should return a list"
     assert len(history) == 5, f"Expected 5 loss values, got {len(history)}"
-    assert all(isinstance(v, float) for v in history), \
-        "All loss history entries should be float"
+    assert all(isinstance(v, float) for v in history), "All loss history entries should be float"
 
 
 # ---------------------------------------------------------------------------
 # 8. fit() reduces loss over iterations
 # ---------------------------------------------------------------------------
+
 
 def test_fit_reduces_loss():
     torch.manual_seed(SEED)
@@ -172,13 +180,13 @@ def test_fit_reduces_loss():
     q = max(1, len(history) // 4)
     early = sum(history[:q]) / q
     late = sum(history[-q:]) / q
-    assert late <= early + 0.05, \
-        f"Loss did not decrease: early={early:.4f}, late={late:.4f}"
+    assert late <= early + 0.05, f"Loss did not decrease: early={early:.4f}, late={late:.4f}"
 
 
 # ---------------------------------------------------------------------------
 # 9. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_under_seed():
     def _run(seed):
@@ -198,19 +206,22 @@ def test_determinism_under_seed():
 # 10. make_orthogonal: output is orthogonal
 # ---------------------------------------------------------------------------
 
+
 def test_make_orthogonal_output_is_orthogonal():
     torch.manual_seed(SEED)
     M = torch.randn(D_MODEL, D_MODEL)
     Q = make_orthogonal(M)
     I_approx = Q.T @ Q
     I_exact = torch.eye(D_MODEL)
-    assert torch.allclose(I_approx, I_exact, atol=1e-5), \
+    assert torch.allclose(I_approx, I_exact, atol=1e-5), (
         f"Q^T Q not close to I; max deviation = {(I_approx - I_exact).abs().max():.2e}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 11. Gradient flow: rotation is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_rotation():
     das = _make_das()
@@ -226,6 +237,7 @@ def test_gradient_flows_through_rotation():
 # 12. Edge case: d_model == n_directions (full rotation)
 # ---------------------------------------------------------------------------
 
+
 def test_full_rotation_case():
     """When n_directions == d_model, the entire hidden state is the subspace."""
     d = 16
@@ -239,13 +251,15 @@ def test_full_rotation_case():
 
     # When d_model == n_directions, the full source is copied, so result
     # should equal source (because we swap *all* directions).
-    assert torch.allclose(out, source, atol=1e-5), \
+    assert torch.allclose(out, source, atol=1e-5), (
         "Full-rotation interchange should reproduce source entirely"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 13. No NaN/Inf after fitting on random data
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_or_inf_after_fitting():
     torch.manual_seed(SEED)
@@ -255,7 +269,7 @@ def test_no_nan_or_inf_after_fitting():
     labels = torch.randint(0, 2, (BATCH,))
     history = das.fit(base, source, labels, _simple_metric)
 
-    assert all(not (v != v) for v in history), "NaN detected in loss history"   # NaN != NaN
+    assert all(not (v != v) for v in history), "NaN detected in loss history"  # NaN != NaN
     assert all(v < float("inf") for v in history), "Inf detected in loss history"
 
     R = das._get_R()

@@ -1,8 +1,9 @@
 """Tests for src/serving/tool_chain.py."""
 
 import pytest
+
+from src.serving.tool_chain import ToolChain
 from src.serving.tool_executor import ToolExecutor
-from src.serving.tool_chain import ChainStep, ToolChain
 
 TWO_TOOL_TEXT = (
     'First <tool_call>{"name": "echo", "args": {"message": "hello"}}</tool_call> '

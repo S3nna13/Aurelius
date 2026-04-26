@@ -7,20 +7,19 @@ import time
 import pytest
 import torch
 
+from src.inference.tool_augmented import (
+    ToolAugmentedGenerator,
+    ToolCache,
+    ToolCall,
+    ToolConfig,
+    ToolResult,
+    ToolSpec,
+    create_calculator_tool,
+    format_tool_results,
+    parse_tool_calls_json,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.tool_augmented import (
-    ToolConfig,
-    ToolSpec,
-    ToolCall,
-    ToolResult,
-    ToolCache,
-    ToolAugmentedGenerator,
-    parse_tool_calls_json,
-    format_tool_results,
-    create_calculator_tool,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -202,8 +201,8 @@ def test_tool_cache_miss_returns_none():
 def test_tool_cache_stats_keys():
     cache = ToolCache()
     cache.put("t", {}, "v")
-    cache.get("t", {})          # hit
-    cache.get("t", {"x": 1})   # miss
+    cache.get("t", {})  # hit
+    cache.get("t", {"x": 1})  # miss
     stats = cache.stats()
     assert "size" in stats
     assert "hits" in stats

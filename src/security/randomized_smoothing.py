@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,7 +15,7 @@ class SmoothedClassifier:
         model: nn.Module,
         sigma: float,
         n_samples: int,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         self.model = model
         self.sigma = sigma
@@ -44,7 +42,7 @@ class SmoothedClassifier:
         noise = torch.randn_like(repeated) * self.sigma
         return repeated + noise
 
-    def _majority_vote(self, logits: torch.Tensor) -> Tuple[int, int, int]:
+    def _majority_vote(self, logits: torch.Tensor) -> tuple[int, int, int]:
         """Compute plurality-class vote from per-sample logits.
 
         Args:
@@ -70,7 +68,7 @@ class SmoothedClassifier:
     # Public API
     # ------------------------------------------------------------------
 
-    def predict(self, x: torch.Tensor, n_samples_override: Optional[int] = None) -> int:
+    def predict(self, x: torch.Tensor, n_samples_override: int | None = None) -> int:
         """Return the smoothed classifier's predicted class via majority vote.
 
         Args:
@@ -90,9 +88,7 @@ class SmoothedClassifier:
         top_class, _, _ = self._majority_vote(logits)
         return top_class
 
-    def certify(
-        self, x: torch.Tensor, alpha: float = 0.001
-    ) -> Tuple[int, float, bool]:
+    def certify(self, x: torch.Tensor, alpha: float = 0.001) -> tuple[int, float, bool]:
         """Certify the l2 robustness radius around input x.
 
         Draws n_samples noisy versions, counts votes, computes a lower-confidence
@@ -146,6 +142,7 @@ class SmoothedClassifier:
             return 0.0
         try:
             from scipy.stats import beta as beta_dist
+
             # Lower bound: alpha-th quantile of Beta(k, n-k+1)
             if k == 0:
                 return 0.0

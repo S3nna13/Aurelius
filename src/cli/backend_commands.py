@@ -18,9 +18,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Callable, TextIO
+from typing import Any, TextIO
 
 from src.agent.surface_catalog import describe_backend_surface, describe_engine_surface
 from src.backends.base import BackendAdapterError
@@ -60,9 +61,7 @@ def _load_checkpoint_meta(args: argparse.Namespace) -> tuple[dict[str, Any], str
     checkpoint_file = getattr(args, "checkpoint_file", None)
 
     if checkpoint_json is None and checkpoint_file is None:
-        raise ValueError(
-            "backend check requires --checkpoint-json or --checkpoint-file"
-        )
+        raise ValueError("backend check requires --checkpoint-json or --checkpoint-file")
 
     if checkpoint_json is not None:
         payload = json.loads(checkpoint_json)
@@ -220,9 +219,7 @@ def handle_backend_check(
     return 0 if verdict.compatible else 1
 
 
-BACKEND_COMMAND_HANDLERS: dict[
-    str, Callable[[argparse.Namespace, TextIO], int]
-] = {
+BACKEND_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace, TextIO], int]] = {
     "list": handle_backend_list,
     "show": handle_backend_show,
     "engine_list": handle_backend_engine_list,
@@ -251,16 +248,16 @@ def build_backend_parser(
     show_p.add_argument("backend_name", help="backend name, e.g. 'pytorch'")
 
     engine_p = backend_sub.add_parser("engine", help="inspect inference engine adapters")
-    engine_sub = engine_p.add_subparsers(dest="backend_engine_command", metavar="backend_engine_command")
+    engine_sub = engine_p.add_subparsers(
+        dest="backend_engine_command", metavar="backend_engine_command"
+    )
     engine_list_p = engine_sub.add_parser("list", help="list known engine adapters")
     engine_list_p.set_defaults(backend_command="engine_list")
     engine_show_p = engine_sub.add_parser("show", help="show one known engine adapter")
     engine_show_p.add_argument("engine_name", help="engine adapter name, e.g. 'vllm'")
     engine_show_p.set_defaults(backend_command="engine_show")
 
-    check_p = backend_sub.add_parser(
-        "check", help="validate checkpoint metadata against a variant"
-    )
+    check_p = backend_sub.add_parser("check", help="validate checkpoint metadata against a variant")
     check_p.add_argument(
         "variant_id",
         help="variant id in the form 'family/variant'",

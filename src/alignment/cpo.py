@@ -28,10 +28,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CPOConfig:
@@ -55,6 +55,7 @@ class CPOConfig:
 # ---------------------------------------------------------------------------
 # Core CPO loss function
 # ---------------------------------------------------------------------------
+
 
 def cpo_loss(
     policy_chosen_logps: torch.Tensor,
@@ -85,10 +86,7 @@ def cpo_loss(
     # ---- Contrastive term: -log σ(margin) ----
     if config.label_smoothing > 0.0:
         ls = config.label_smoothing
-        contrastive_loss = (
-            -F.logsigmoid(margin) * (1.0 - ls)
-            - F.logsigmoid(-margin) * ls
-        ).mean()
+        contrastive_loss = (-F.logsigmoid(margin) * (1.0 - ls) - F.logsigmoid(-margin) * ls).mean()
     else:
         contrastive_loss = -F.logsigmoid(margin).mean()
 
@@ -106,6 +104,7 @@ def cpo_loss(
 # ---------------------------------------------------------------------------
 # CPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class CPOTrainer:
     """Trainer for Contrastive Preference Optimization (CPO).
@@ -207,9 +206,7 @@ class CPOTrainer:
         )
 
         # Compute mean log-probs for chosen and rejected
-        policy_chosen_logps = self.compute_logps(
-            self.model, chosen_ids, chosen_mask, chosen_labels
-        )
+        policy_chosen_logps = self.compute_logps(self.model, chosen_ids, chosen_mask, chosen_labels)
         policy_rejected_logps = self.compute_logps(
             self.model, rejected_ids, rejected_mask, rejected_labels
         )

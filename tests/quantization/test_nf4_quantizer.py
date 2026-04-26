@@ -1,9 +1,10 @@
 """Tests for nf4_quantizer — 4-bit NormalFloat quantization."""
+
 from __future__ import annotations
 
 import torch
 
-from src.quantization.nf4_quantizer import NF4Quantizer, nf4_quantize, nf4_dequantize
+from src.quantization.nf4_quantizer import NF4Quantizer, nf4_dequantize, nf4_quantize
 
 
 class TestNF4Quantizer:
@@ -28,6 +29,7 @@ class TestNF4Quantizer:
 
     def test_dequantize_wrong_shape_raises(self):
         import pytest
+
         q = torch.zeros(10, dtype=torch.uint8)
         with pytest.raises(ValueError, match="shape"):
             nf4_dequantize(q, 1.0, torch.Size((5, 5)))

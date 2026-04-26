@@ -13,7 +13,7 @@ import enum
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from rich.console import Console
@@ -138,13 +138,11 @@ class TranscriptViewer:
                 role_style = _ROLE_STYLES.get(entry.role, "")
                 label = _ROLE_LABELS.get(entry.role, entry.role.value.upper())
                 if show_timestamps:
-                    ts = datetime.fromtimestamp(entry.timestamp, tz=timezone.utc)
+                    ts = datetime.fromtimestamp(entry.timestamp, tz=UTC)
                     body.append(f"[{ts.strftime('%H:%M:%S')}] ", style="dim")
                 body.append(f"{label}: ", style=role_style)
                 body.append(entry.content)
-        console.print(
-            Panel(body, title="[bold]Aurelius Transcript[/bold]", border_style="dim")
-        )
+        console.print(Panel(body, title="[bold]Aurelius Transcript[/bold]", border_style="dim"))
 
     def export_text(self) -> str:
         """Return a plain-text dump of all entries in ``role: content`` format."""

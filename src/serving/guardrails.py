@@ -1,13 +1,12 @@
 """Runtime safety guardrails for Aurelius."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 
 @dataclass
 class GuardrailPolicy:
     max_length: int = 4096
-    block_patterns: List[str] = field(default_factory=list)
+    block_patterns: list[str] = field(default_factory=list)
     harm_threshold: float = 0.5
     allow_adult: bool = False
 
@@ -16,7 +15,7 @@ class GuardrailPolicy:
 class GuardrailResult:
     allowed: bool
     reason: str
-    modified_input: Optional[str] = None
+    modified_input: str | None = None
     harm_score: float = 0.0
 
 
@@ -27,7 +26,7 @@ class ContentGuardrails:
     def __init__(self, policy: GuardrailPolicy | None = None):
         self.policy = policy if policy is not None else GuardrailPolicy()
 
-    def _pattern_check(self, text: str) -> Tuple[bool, str]:
+    def _pattern_check(self, text: str) -> tuple[bool, str]:
         for pattern in self.policy.block_patterns:
             if pattern in text:
                 return True, pattern

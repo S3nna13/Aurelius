@@ -5,6 +5,7 @@ DataSelectionFilter, and CurriculumTrainer.
 
 Model fixture: tiny 1-layer causal transformer (vocab=16, seq=8, d_model=16).
 """
+
 from __future__ import annotations
 
 import math
@@ -34,10 +35,13 @@ D_MODEL = 16
 # Tiny causal transformer helper
 # ---------------------------------------------------------------------------
 
+
 class _TinyTransformer(nn.Module):
     """1-layer causal transformer for tests."""
 
-    def __init__(self, vocab: int = VOCAB_SIZE, d_model: int = D_MODEL, seq_len: int = SEQ_LEN) -> None:
+    def __init__(
+        self, vocab: int = VOCAB_SIZE, d_model: int = D_MODEL, seq_len: int = SEQ_LEN
+    ) -> None:
         super().__init__()
         self.embed = nn.Embedding(vocab, d_model)
         self.pos = nn.Embedding(seq_len, d_model)
@@ -77,6 +81,7 @@ def _make_scores(n: int = N) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # DifficultyScorer tests
 # ---------------------------------------------------------------------------
+
 
 def test_perplexity_score_shape():
     """perplexity_score returns shape [B]."""
@@ -141,6 +146,7 @@ def test_combined_score_shape():
 # PacingFunction tests
 # ---------------------------------------------------------------------------
 
+
 def test_linear_pacing_at_step_0():
     """linear_pacing at step=0 equals start_frac."""
     start = 0.1
@@ -172,7 +178,7 @@ def test_competence_pacing_starts_at_c0():
     """competence_pacing at step=0 equals c0."""
     c0 = 0.01
     result = PacingFunction.competence_pacing(0, 100, c0=c0)
-    expected = math.sqrt(c0 ** 2)
+    expected = math.sqrt(c0**2)
     assert abs(result - expected) < 1e-9, f"Expected {expected}, got {result}"
 
 
@@ -194,22 +200,26 @@ def test_step_pacing_milestones():
     milestones = [0, 25, 50, 75]
     fracs = [0.25, 0.5, 0.75, 1.0]
 
-    assert abs(PacingFunction.step_pacing(0,  milestones, fracs) - 0.25) < 1e-9
-    assert abs(PacingFunction.step_pacing(25, milestones, fracs) - 0.5)  < 1e-9
+    assert abs(PacingFunction.step_pacing(0, milestones, fracs) - 0.25) < 1e-9
+    assert abs(PacingFunction.step_pacing(25, milestones, fracs) - 0.5) < 1e-9
     assert abs(PacingFunction.step_pacing(50, milestones, fracs) - 0.75) < 1e-9
-    assert abs(PacingFunction.step_pacing(75, milestones, fracs) - 1.0)  < 1e-9
+    assert abs(PacingFunction.step_pacing(75, milestones, fracs) - 1.0) < 1e-9
     # Between milestones: last passed
-    assert abs(PacingFunction.step_pacing(30, milestones, fracs) - 0.5)  < 1e-9
+    assert abs(PacingFunction.step_pacing(30, milestones, fracs) - 0.5) < 1e-9
 
 
 # ---------------------------------------------------------------------------
 # CurriculumDataset tests
 # ---------------------------------------------------------------------------
 
+
 def _make_curriculum_dataset() -> CurriculumDataset:
     ids = _make_data(N)
     scores = _make_scores(N)
-    pacing_fn = lambda step: PacingFunction.linear_pacing(step, 100, 0.1)
+
+    def pacing_fn(step):
+        return PacingFunction.linear_pacing(step, 100, 0.1)
+
     return CurriculumDataset(ids, scores, pacing_fn)
 
 
@@ -234,7 +244,10 @@ def test_curriculum_early_steps_easy_examples():
     """At step=0 with start_frac=0.1, only easiest 10% are sampled."""
     ids = _make_data(N)
     scores = torch.arange(N, dtype=torch.float32)  # 0..31, deterministic ordering
-    pacing_fn = lambda step: PacingFunction.linear_pacing(step, 1000, 0.1)
+
+    def pacing_fn(step):
+        return PacingFunction.linear_pacing(step, 1000, 0.1)
+
     ds = CurriculumDataset(ids, scores, pacing_fn)
 
     sorted_indices = torch.argsort(scores).tolist()
@@ -268,7 +281,10 @@ def test_anti_curriculum_harder_than_curriculum():
     """Anti-curriculum batch has higher mean score than normal batch when many steps in."""
     ids = _make_data(N)
     scores = torch.arange(N, dtype=torch.float32)  # deterministic
-    pacing_fn = lambda step: 1.0  # always full dataset
+
+    def pacing_fn(step):
+        return 1.0  # always full dataset
+
     ds = CurriculumDataset(ids, scores, pacing_fn)
 
     # With full dataset, easy batch should come from sorted[:B] and hard from sorted[-B:]
@@ -284,6 +300,7 @@ def test_anti_curriculum_harder_than_curriculum():
 # ---------------------------------------------------------------------------
 # DataSelectionFilter tests
 # ---------------------------------------------------------------------------
+
 
 def test_filter_by_score_reduces_dataset():
     """filter_by_score keeps only examples with score <= threshold."""
@@ -360,12 +377,16 @@ def test_deduplication_filter_removes_duplicates():
 # CurriculumTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_curriculum_trainer_train_step_finite_loss():
     """train_step returns a finite float loss."""
     model = _make_model()
     ids = _make_data(N)
     scores = _make_scores(N)
-    pacing_fn = lambda step: PacingFunction.competence_pacing(step, 100)
+
+    def pacing_fn(step):
+        return PacingFunction.competence_pacing(step, 100)
+
     ds = CurriculumDataset(ids, scores, pacing_fn)
     ds.batch_size = BATCH
 
@@ -382,7 +403,10 @@ def test_curriculum_trainer_step_increments():
     model = _make_model()
     ids = _make_data(N)
     scores = _make_scores(N)
-    pacing_fn = lambda step: 1.0
+
+    def pacing_fn(step):
+        return 1.0
+
     ds = CurriculumDataset(ids, scores, pacing_fn)
     ds.batch_size = BATCH
 
@@ -397,7 +421,10 @@ def test_curriculum_trainer_get_stats():
     model = _make_model()
     ids = _make_data(N)
     scores = _make_scores(N)
-    pacing_fn = lambda step: PacingFunction.linear_pacing(step, 100, 0.1)
+
+    def pacing_fn(step):
+        return PacingFunction.linear_pacing(step, 100, 0.1)
+
     ds = CurriculumDataset(ids, scores, pacing_fn)
     ds.batch_size = BATCH
 

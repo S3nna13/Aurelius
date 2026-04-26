@@ -5,17 +5,19 @@ from __future__ import annotations
 import pytest
 
 from src.quantization.calibration_dataset import (
-    CalibrationSample,
-    CalibrationDataset,
     CALIBRATION_DATASET_REGISTRY,
+    CalibrationDataset,
+    CalibrationSample,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / factories
 # ---------------------------------------------------------------------------
 
-def make_sample(text: str = "hello", tokens: list[int] | None = None, source: str = "") -> CalibrationSample:
+
+def make_sample(
+    text: str = "hello", tokens: list[int] | None = None, source: str = ""
+) -> CalibrationSample:
     if tokens is None:
         tokens = [1, 2, 3]
     return CalibrationSample(text=text, tokens=tokens, source=source)
@@ -31,6 +33,7 @@ def populated_ds(n: int = 5, max_samples: int = 64) -> CalibrationDataset:
 # ---------------------------------------------------------------------------
 # CalibrationSample
 # ---------------------------------------------------------------------------
+
 
 class TestCalibrationSample:
     def test_fields_stored(self):
@@ -67,6 +70,7 @@ class TestCalibrationSample:
 # ---------------------------------------------------------------------------
 # CalibrationDataset — basics
 # ---------------------------------------------------------------------------
+
 
 class TestCalibrationDatasetBasics:
     def test_empty_len(self):
@@ -122,6 +126,7 @@ class TestCalibrationDatasetBasics:
 # CalibrationDataset — token_counts
 # ---------------------------------------------------------------------------
 
+
 class TestTokenCounts:
     def test_token_counts_empty(self):
         ds = CalibrationDataset()
@@ -143,6 +148,7 @@ class TestTokenCounts:
 # ---------------------------------------------------------------------------
 # CalibrationDataset — stats
 # ---------------------------------------------------------------------------
+
 
 class TestStats:
     def test_stats_empty_raises(self):
@@ -181,6 +187,7 @@ class TestStats:
 # ---------------------------------------------------------------------------
 # CalibrationDataset — subsample
 # ---------------------------------------------------------------------------
+
 
 class TestSubsample:
     def test_subsample_size(self):
@@ -227,6 +234,7 @@ class TestSubsample:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):

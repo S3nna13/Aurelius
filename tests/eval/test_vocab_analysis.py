@@ -1,7 +1,6 @@
 """Tests for src/eval/vocab_analysis.py"""
-from __future__ import annotations
 
-import math
+from __future__ import annotations
 
 import pytest
 
@@ -23,6 +22,7 @@ from src.eval.vocab_analysis import (
 # Simple byte-level tokenizer: each UTF-8 byte becomes one token id.
 _byte_tokenizer = lambda text: list(text.encode("utf-8"))  # noqa: E731
 
+
 # A "perfect" word tokenizer: assigns one integer id per word.
 def _word_tokenizer(text: str) -> list[int]:
     words = text.split()
@@ -42,6 +42,7 @@ def _double_tokenizer(text: str) -> list[int]:
 # 1. VocabStats defaults
 # ---------------------------------------------------------------------------
 
+
 def test_vocab_stats_defaults():
     """VocabStats fields should have correct default values."""
     vs = VocabStats(vocab_size=1000)
@@ -57,6 +58,7 @@ def test_vocab_stats_defaults():
 # 2. compute_fertility — single word, perfect tokenizer → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_fertility_single_word():
     """A word-level tokenizer on single-word texts should give fertility=1.0."""
     texts = ["hello", "world", "foo"]
@@ -67,6 +69,7 @@ def test_compute_fertility_single_word():
 # ---------------------------------------------------------------------------
 # 3. compute_fertility — word split into 2 tokens → 2.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_fertility_fragmented():
     """_double_tokenizer emits 2 tokens per byte; for ASCII 1-char words → 2.0."""
@@ -80,6 +83,7 @@ def test_compute_fertility_fragmented():
 # 4. compute_coverage — all words known → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_coverage_all_known():
     """When every word in the texts is in vocab, coverage should be 1.0."""
     texts = ["the quick brown fox", "jumps over the lazy dog"]
@@ -92,6 +96,7 @@ def test_compute_coverage_all_known():
 # 5. compute_coverage — no words known → 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_coverage_none_known():
     """When vocab is empty, coverage should be 0.0."""
     texts = ["the quick brown fox"]
@@ -103,6 +108,7 @@ def test_compute_coverage_none_known():
 # 6. compute_compression_ratio — must be positive for non-empty texts
 # ---------------------------------------------------------------------------
 
+
 def test_compute_compression_ratio_positive():
     """Compression ratio must be strictly positive for non-empty input."""
     texts = ["hello world", "this is a test"]
@@ -113,6 +119,7 @@ def test_compute_compression_ratio_positive():
 # ---------------------------------------------------------------------------
 # 7. analyze_token_frequency — keys present
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_token_frequency_keys():
     """Result dict must contain entropy, top10_coverage, hapax_ratio."""
@@ -127,6 +134,7 @@ def test_analyze_token_frequency_keys():
 # 8. analyze_token_frequency — entropy is positive for diverse input
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_token_frequency_entropy_positive():
     """Entropy should be > 0 when there is more than one distinct token."""
     token_ids = [0, 1, 2, 3, 4] * 20
@@ -137,6 +145,7 @@ def test_analyze_token_frequency_entropy_positive():
 # ---------------------------------------------------------------------------
 # 9. compute_zipf_exponent — natural-like distribution → exponent ~ 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_zipf_exponent_natural():
     """A Zipf-distributed frequency list should yield exponent close to 1.0."""
@@ -152,6 +161,7 @@ def test_compute_zipf_exponent_natural():
 # 10. TokenizerAnalyzer.analyze_corpus — returns VocabStats
 # ---------------------------------------------------------------------------
 
+
 def test_tokenizer_analyzer_corpus_type():
     """analyze_corpus should return a VocabStats instance."""
     analyzer = TokenizerAnalyzer(_byte_tokenizer, vocab_size=256)
@@ -163,6 +173,7 @@ def test_tokenizer_analyzer_corpus_type():
 # ---------------------------------------------------------------------------
 # 11. TokenizerAnalyzer.sequence_length_stats — keys present
 # ---------------------------------------------------------------------------
+
 
 def test_tokenizer_analyzer_sequence_stats_keys():
     """sequence_length_stats must return dict with mean, std, p50, p95."""
@@ -178,6 +189,7 @@ def test_tokenizer_analyzer_sequence_stats_keys():
 # ---------------------------------------------------------------------------
 # 12. compare_tokenizers — result dict contains winner key
 # ---------------------------------------------------------------------------
+
 
 def test_compare_tokenizers_winner_key():
     """compare_tokenizers result must contain a 'winner' key with value 'a' or 'b'."""

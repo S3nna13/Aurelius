@@ -1,4 +1,5 @@
 """Tests for circuit breaker."""
+
 from __future__ import annotations
 
 import pytest
@@ -33,10 +34,13 @@ class TestCircuitBreaker:
         with pytest.raises(ValueError):
             cb.call(lambda: (_ for _ in ()).throw(ValueError("x")))
         import time
+
         time.sleep(0.01)
+
         # half-open after cooldown
         class HalfOpenHack:
             pass
+
         cb._state = CircuitState.HALF_OPEN  # force for test
         result = cb.call(lambda: 99)
         assert result == 99

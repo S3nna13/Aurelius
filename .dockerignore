@@ -43,3 +43,28 @@ wandb/
 
 # Docs (keep README, SECURITY, etc.)
 docs/plans/
+
+# Frontend (separate build)
+frontend/
+
+# Rust (build separately)
+crates/
+tools/
+
+# Alembic
+alembic/
+
+# Data
+data/
+training_data/
+results/
+
+# Configs
+configs/
+
+# GitHub
+.github/
+
+# Training scripts
+train_*.py
+generate_jsonl.py

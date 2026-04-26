@@ -15,16 +15,15 @@ single threshold comparison works uniformly: score < threshold → OOD.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Abstract base
 # ---------------------------------------------------------------------------
+
 
 class OODScorer(ABC):
     """Abstract base class for OOD scorers.
@@ -35,7 +34,7 @@ class OODScorer(ABC):
     still accept ``(features, labels)`` for a uniform API.
     """
 
-    def fit(self, features: Tensor, labels: Optional[Tensor] = None) -> "OODScorer":
+    def fit(self, features: Tensor, labels: Tensor | None = None) -> OODScorer:
         """Fit scorer to in-distribution data (no-op for non-parametric scorers)."""
         return self
 
@@ -47,6 +46,7 @@ class OODScorer(ABC):
 # ---------------------------------------------------------------------------
 # 1. MaxSoftmax (MSP)
 # ---------------------------------------------------------------------------
+
 
 class MaxSoftmaxScorer(OODScorer):
     """Maximum softmax probability scorer (Hendrycks & Gimpel, 2017).
@@ -78,6 +78,7 @@ class MaxSoftmaxScorer(OODScorer):
 # ---------------------------------------------------------------------------
 # 2. Energy Score
 # ---------------------------------------------------------------------------
+
 
 class EnergyScorer(OODScorer):
     """Energy-based OOD scorer (Liu et al., 2020).
@@ -118,6 +119,7 @@ class EnergyScorer(OODScorer):
 # 3. Mahalanobis Distance
 # ---------------------------------------------------------------------------
 
+
 class MahalanobisScorer(OODScorer):
     """Mahalanobis distance OOD scorer (Lee et al., 2018).
 
@@ -134,10 +136,10 @@ class MahalanobisScorer(OODScorer):
         if reg < 0:
             raise ValueError(f"reg must be >= 0, got {reg}")
         self.reg = reg
-        self._means: Optional[Tensor] = None          # (C, D)
-        self._precision: Optional[Tensor] = None      # (D, D)
+        self._means: Tensor | None = None  # (C, D)
+        self._precision: Tensor | None = None  # (D, D)
 
-    def fit(self, features: Tensor, labels: Optional[Tensor] = None) -> "MahalanobisScorer":
+    def fit(self, features: Tensor, labels: Tensor | None = None) -> MahalanobisScorer:
         """Fit per-class means and shared precision matrix.
 
         Args:
@@ -202,9 +204,9 @@ class MahalanobisScorer(OODScorer):
         diff = features.unsqueeze(1) - self._means.unsqueeze(0)
         # Mahalanobis: (B, C)
         # m[b,c] = diff[b,c] @ precision @ diff[b,c]
-        Pd = diff @ self._precision        # (B, C, D)
+        Pd = diff @ self._precision  # (B, C, D)
         dist_sq = (Pd * diff).sum(dim=-1)  # (B, C)
-        dist_sq = dist_sq.clamp(min=0.0)   # numerical safety
+        dist_sq = dist_sq.clamp(min=0.0)  # numerical safety
         min_dist = dist_sq.min(dim=-1).values  # (B,)
         return -min_dist
 
@@ -212,6 +214,7 @@ class MahalanobisScorer(OODScorer):
 # ---------------------------------------------------------------------------
 # 4. KNN Distance
 # ---------------------------------------------------------------------------
+
 
 class KNNScorer(OODScorer):
     """k-Nearest-Neighbour OOD scorer (Sun et al., 2022).
@@ -232,9 +235,9 @@ class KNNScorer(OODScorer):
             raise ValueError(f"metric must be 'cosine' or 'l2', got '{metric}'")
         self.k = k
         self.metric = metric
-        self._train_features: Optional[Tensor] = None
+        self._train_features: Tensor | None = None
 
-    def fit(self, features: Tensor, labels: Optional[Tensor] = None) -> "KNNScorer":
+    def fit(self, features: Tensor, labels: Tensor | None = None) -> KNNScorer:
         """Store in-distribution features.
 
         Args:
@@ -245,9 +248,7 @@ class KNNScorer(OODScorer):
             self
         """
         if features.dim() != 2:
-            raise ValueError(
-                f"KNNScorer.fit expects (N, D) features; got {tuple(features.shape)}"
-            )
+            raise ValueError(f"KNNScorer.fit expects (N, D) features; got {tuple(features.shape)}")
         self._train_features = features.float().clone()
         return self
 
@@ -275,16 +276,16 @@ class KNNScorer(OODScorer):
         if self.metric == "cosine":
             # Normalise both sets
             q = F.normalize(features, p=2, dim=-1)  # (B, D)
-            r = F.normalize(train,    p=2, dim=-1)  # (N, D)
+            r = F.normalize(train, p=2, dim=-1)  # (N, D)
             # cosine similarity: (B, N)
             sim = q @ r.T
             # distance = 1 - similarity
             dist = 1.0 - sim  # (B, N)
         else:  # l2
             # ||q - r||^2 = ||q||^2 + ||r||^2 - 2 q·r
-            q_sq = (features ** 2).sum(dim=-1, keepdim=True)    # (B, 1)
-            r_sq = (train ** 2).sum(dim=-1, keepdim=True).T      # (1, N)
-            cross = features @ train.T                            # (B, N)
+            q_sq = (features**2).sum(dim=-1, keepdim=True)  # (B, 1)
+            r_sq = (train**2).sum(dim=-1, keepdim=True).T  # (1, N)
+            cross = features @ train.T  # (B, N)
             dist = (q_sq + r_sq - 2 * cross).clamp(min=0.0).sqrt()
 
         k_eff = min(self.k, dist.size(1))
@@ -297,6 +298,7 @@ class KNNScorer(OODScorer):
 # ---------------------------------------------------------------------------
 # OODDetector — wrapper that applies a scorer + threshold
 # ---------------------------------------------------------------------------
+
 
 class OODDetector:
     """High-level OOD detector combining a scorer with a threshold.
@@ -313,8 +315,8 @@ class OODDetector:
     def fit(
         self,
         in_dist_features: Tensor,
-        labels: Optional[Tensor] = None,
-    ) -> "OODDetector":
+        labels: Tensor | None = None,
+    ) -> OODDetector:
         """Delegate to the underlying scorer's ``fit`` method.
 
         Args:

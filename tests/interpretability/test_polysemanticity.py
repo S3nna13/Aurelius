@@ -25,11 +25,9 @@ Tests verify:
 
 import math
 
-import pytest
 import torch
 
 from src.interpretability.polysemanticity import PolysemanticitAnalyzer
-
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -44,6 +42,7 @@ ANALYZER = PolysemanticitAnalyzer(threshold=0.1)
 # ---------------------------------------------------------------------------
 # Helper factories
 # ---------------------------------------------------------------------------
+
 
 def _random_W(d_in: int = D_IN, d_out: int = D_OUT, seed: int = 0) -> torch.Tensor:
     g = torch.Generator()
@@ -61,6 +60,7 @@ def _random_acts(n: int = N_SAMPLES, d: int = D_OUT, seed: int = 0) -> torch.Ten
 # 1. Shape: polysemanticity_index returns (d_out,)
 # ---------------------------------------------------------------------------
 
+
 def test_pi_output_shape():
     W = _random_W()
     pi = ANALYZER.polysemanticity_index(W)
@@ -70,6 +70,7 @@ def test_pi_output_shape():
 # ---------------------------------------------------------------------------
 # 2. Monosemantic case: one-hot weight columns → PI close to 0
 # ---------------------------------------------------------------------------
+
 
 def test_pi_monosemantic_near_zero():
     """One-hot column = all weight on one feature → minimum entropy → PI ≈ 0."""
@@ -88,6 +89,7 @@ def test_pi_monosemantic_near_zero():
 # 3. Polysemantic case: uniform weight column → PI close to 1
 # ---------------------------------------------------------------------------
 
+
 def test_pi_polysemantic_near_one():
     """Uniform weights = maximum entropy → PI ≈ 1."""
     W = torch.ones(D_IN, D_OUT)  # every entry = 1 → uniform distribution
@@ -102,6 +104,7 @@ def test_pi_polysemantic_near_one():
 # 4a. Participation ratio: identity activations → PR ≈ d
 # ---------------------------------------------------------------------------
 
+
 def test_pr_identity_activations():
     """
     Identity-like activations (rows = standard basis vectors cycling) are
@@ -113,18 +116,17 @@ def test_pr_identity_activations():
     repeats = N_SAMPLES // d
     acts = torch.zeros(repeats * d, d)
     for i in range(d):
-        acts[i * repeats:(i + 1) * repeats, i] = 1.0
+        acts[i * repeats : (i + 1) * repeats, i] = 1.0
 
     pr = ANALYZER.participation_ratio(acts)
     # PR should be close to d (within 10%)
-    assert abs(pr - d) < 0.5, (
-        f"Identity activations should give PR ≈ {d}, got {pr:.4f}"
-    )
+    assert abs(pr - d) < 0.5, f"Identity activations should give PR ≈ {d}, got {pr:.4f}"
 
 
 # ---------------------------------------------------------------------------
 # 4b. Participation ratio: rank-1 activations → PR ≈ 1
 # ---------------------------------------------------------------------------
+
 
 def test_pr_rank1_activations():
     """All activations along one direction → covariance has rank 1 → PR ≈ 1."""
@@ -132,41 +134,38 @@ def test_pr_rank1_activations():
     acts[:, 0] = torch.arange(1, N_SAMPLES + 1, dtype=torch.float32)
 
     pr = ANALYZER.participation_ratio(acts)
-    assert abs(pr - 1.0) < 0.05, (
-        f"Rank-1 activations should give PR ≈ 1, got {pr:.4f}"
-    )
+    assert abs(pr - 1.0) < 0.05, f"Rank-1 activations should give PR ≈ 1, got {pr:.4f}"
 
 
 # ---------------------------------------------------------------------------
 # 5a. Superposition score: orthogonal features → SS ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_ss_orthogonal_near_zero():
     """Standard basis columns are orthogonal → SS = 0."""
     d = D_OUT
     W = torch.eye(d)  # square, columns are orthonormal basis
     ss = ANALYZER.superposition_score(W)
-    assert ss < 1e-5, (
-        f"Orthogonal columns should give SS ≈ 0, got {ss:.6f}"
-    )
+    assert ss < 1e-5, f"Orthogonal columns should give SS ≈ 0, got {ss:.6f}"
 
 
 # ---------------------------------------------------------------------------
 # 5b. Superposition score: identical features → SS ≈ 1
 # ---------------------------------------------------------------------------
 
+
 def test_ss_identical_near_one():
     """All columns the same unit vector → cosine sim = 1 → SS = 1."""
     W = torch.ones(D_IN, D_OUT)  # all columns identical
     ss = ANALYZER.superposition_score(W)
-    assert abs(ss - 1.0) < 1e-5, (
-        f"Identical columns should give SS ≈ 1, got {ss:.6f}"
-    )
+    assert abs(ss - 1.0) < 1e-5, f"Identical columns should give SS ≈ 1, got {ss:.6f}"
 
 
 # ---------------------------------------------------------------------------
 # 6a. Activation sparsity: all zeros → sparsity = 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_sparsity_all_zeros():
     acts = torch.zeros(N_SAMPLES, D_OUT)
@@ -180,6 +179,7 @@ def test_sparsity_all_zeros():
 # 6b. Activation sparsity: all large values → sparsity = 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_sparsity_all_nonzero():
     # Values well above threshold=0.1
     acts = torch.full((N_SAMPLES, D_OUT), 10.0)
@@ -192,6 +192,7 @@ def test_sparsity_all_nonzero():
 # ---------------------------------------------------------------------------
 # 7. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     torch.manual_seed(42)
@@ -218,6 +219,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # 8. analyze() returns expected dict keys (without activations)
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_keys_without_activations():
     W = _random_W()
@@ -257,6 +259,7 @@ def test_analyze_keys_with_activations():
 # 9. Edge case: square weight matrix (d_in == d_out)
 # ---------------------------------------------------------------------------
 
+
 def test_edge_case_square_weight():
     d = D_OUT
     W = _random_W(d_in=d, d_out=d)
@@ -270,6 +273,7 @@ def test_edge_case_square_weight():
 # 10. Edge case: single neuron (d_out == 1)
 # ---------------------------------------------------------------------------
 
+
 def test_edge_case_single_neuron():
     W = _random_W(d_in=D_IN, d_out=1)
     pi = ANALYZER.polysemanticity_index(W)
@@ -282,6 +286,7 @@ def test_edge_case_single_neuron():
 # ---------------------------------------------------------------------------
 # 11. PI range: all PI values in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_pi_range():
     torch.manual_seed(7)
@@ -297,6 +302,7 @@ def test_pi_range():
 # 12. SS range: superposition_score in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_ss_range():
     torch.manual_seed(7)
     for _ in range(5):
@@ -308,6 +314,7 @@ def test_ss_range():
 # ---------------------------------------------------------------------------
 # 13. Gradient flow: PI, PR, SS differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow_pi():
     W = torch.randn(D_IN, D_OUT, requires_grad=True)
@@ -323,8 +330,8 @@ def test_gradient_flow_pr():
     cov = acts.T @ acts / N_SAMPLES
     eigenvalues = torch.linalg.eigvalsh(cov).clamp(min=0.0)
     sum_lam = eigenvalues.sum()
-    sum_lam2 = (eigenvalues ** 2).sum()
-    pr = (sum_lam ** 2) / sum_lam2
+    sum_lam2 = (eigenvalues**2).sum()
+    pr = (sum_lam**2) / sum_lam2
     pr.backward()
     assert acts.grad is not None, "PR should be differentiable w.r.t. activations"
 
@@ -345,6 +352,7 @@ def test_gradient_flow_ss():
 # ---------------------------------------------------------------------------
 # 14. Numerical stability: no NaN/Inf on random weight matrices
 # ---------------------------------------------------------------------------
+
 
 def test_numerical_stability():
     torch.manual_seed(99)

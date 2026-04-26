@@ -3,30 +3,35 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.draft_tree_v2 import (
     DraftTreeConfig,
-    TreeNode,
-    build_draft_tree,
-    score_path,
-    extract_all_paths,
-    best_path,
-    verify_path,
     DraftTreeDecoder,
+    TreeNode,
+    best_path,
+    build_draft_tree,
+    extract_all_paths,
+    score_path,
+    verify_path,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_tiny_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg).eval()
 
@@ -38,6 +43,7 @@ def make_input_ids(length: int = 8, vocab_size: int = 256) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # 1. DraftTreeConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = DraftTreeConfig()
@@ -51,6 +57,7 @@ def test_config_defaults():
 # 2. DraftTreeConfig custom values
 # ---------------------------------------------------------------------------
 
+
 def test_config_custom():
     cfg = DraftTreeConfig(branch_factor=5, depth=2, acceptance_threshold=0.5, vocab_size=1024)
     assert cfg.branch_factor == 5
@@ -62,6 +69,7 @@ def test_config_custom():
 # ---------------------------------------------------------------------------
 # 3. TreeNode defaults
 # ---------------------------------------------------------------------------
+
 
 def test_tree_node_defaults():
     n = TreeNode(token_id=42, log_prob=-0.5)
@@ -76,6 +84,7 @@ def test_tree_node_defaults():
 # 4. TreeNode with children
 # ---------------------------------------------------------------------------
 
+
 def test_tree_node_with_children():
     child = TreeNode(token_id=10, log_prob=-1.0, depth=1)
     parent = TreeNode(token_id=5, log_prob=0.0, children=[child])
@@ -86,6 +95,7 @@ def test_tree_node_with_children():
 # ---------------------------------------------------------------------------
 # 5. score_path sums log probs
 # ---------------------------------------------------------------------------
+
 
 def test_score_path():
     path = [
@@ -100,6 +110,7 @@ def test_score_path():
 # 6. score_path empty
 # ---------------------------------------------------------------------------
 
+
 def test_score_path_empty():
     assert score_path([]) == 0.0
 
@@ -107,6 +118,7 @@ def test_score_path_empty():
 # ---------------------------------------------------------------------------
 # 7. extract_all_paths single node (leaf root)
 # ---------------------------------------------------------------------------
+
 
 def test_extract_all_paths_single():
     root = TreeNode(token_id=0, log_prob=0.0)
@@ -118,6 +130,7 @@ def test_extract_all_paths_single():
 # ---------------------------------------------------------------------------
 # 8. extract_all_paths with branches
 # ---------------------------------------------------------------------------
+
 
 def test_extract_all_paths_branches():
     c1 = TreeNode(token_id=1, log_prob=-0.5, depth=1)
@@ -134,6 +147,7 @@ def test_extract_all_paths_branches():
 # 9. extract_all_paths deeper tree
 # ---------------------------------------------------------------------------
 
+
 def test_extract_all_paths_deeper():
     gc1 = TreeNode(token_id=10, log_prob=-0.2, depth=2)
     gc2 = TreeNode(token_id=11, log_prob=-0.3, depth=2)
@@ -148,6 +162,7 @@ def test_extract_all_paths_deeper():
 # 10. best_path picks highest score
 # ---------------------------------------------------------------------------
 
+
 def test_best_path_picks_highest():
     c1 = TreeNode(token_id=1, log_prob=-0.1, depth=1)
     c2 = TreeNode(token_id=2, log_prob=-5.0, depth=1)
@@ -160,6 +175,7 @@ def test_best_path_picks_highest():
 # 11. best_path single node
 # ---------------------------------------------------------------------------
 
+
 def test_best_path_single_node():
     root = TreeNode(token_id=7, log_prob=0.0)
     assert best_path(root) == [7]
@@ -168,6 +184,7 @@ def test_best_path_single_node():
 # ---------------------------------------------------------------------------
 # 12. build_draft_tree returns TreeNode
 # ---------------------------------------------------------------------------
+
 
 def test_build_draft_tree_returns_tree_node():
     torch.manual_seed(0)
@@ -183,6 +200,7 @@ def test_build_draft_tree_returns_tree_node():
 # 13. build_draft_tree respects branch_factor
 # ---------------------------------------------------------------------------
 
+
 def test_build_draft_tree_branch_factor():
     torch.manual_seed(1)
     model = make_tiny_model()
@@ -195,6 +213,7 @@ def test_build_draft_tree_branch_factor():
 # ---------------------------------------------------------------------------
 # 14. build_draft_tree respects depth
 # ---------------------------------------------------------------------------
+
 
 def test_build_draft_tree_depth():
     torch.manual_seed(2)
@@ -211,6 +230,7 @@ def test_build_draft_tree_depth():
 # ---------------------------------------------------------------------------
 # 15. verify_path accepts tokens above threshold
 # ---------------------------------------------------------------------------
+
 
 def test_verify_path_accepts():
     torch.manual_seed(3)
@@ -230,6 +250,7 @@ def test_verify_path_accepts():
 # 16. verify_path rejects with high threshold
 # ---------------------------------------------------------------------------
 
+
 def test_verify_path_rejects_high_threshold():
     torch.manual_seed(4)
     model = make_tiny_model()
@@ -243,6 +264,7 @@ def test_verify_path_rejects_high_threshold():
 # ---------------------------------------------------------------------------
 # 17. DraftTreeDecoder produces correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_generate_shape():
     torch.manual_seed(5)
@@ -259,6 +281,7 @@ def test_decoder_generate_shape():
 # 18. DraftTreeDecoder preserves prompt prefix
 # ---------------------------------------------------------------------------
 
+
 def test_decoder_preserves_prefix():
     torch.manual_seed(6)
     model = make_tiny_model()
@@ -273,6 +296,7 @@ def test_decoder_preserves_prefix():
 # 19. DraftTreeDecoder default config
 # ---------------------------------------------------------------------------
 
+
 def test_decoder_default_config():
     decoder = DraftTreeDecoder()
     assert decoder.config.branch_factor == 3
@@ -282,6 +306,7 @@ def test_decoder_default_config():
 # ---------------------------------------------------------------------------
 # 20. verify_path empty path
 # ---------------------------------------------------------------------------
+
 
 def test_verify_path_empty():
     model = make_tiny_model()

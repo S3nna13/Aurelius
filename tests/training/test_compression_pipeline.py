@@ -1,26 +1,26 @@
 """Tests for the end-to-end compression pipeline."""
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.compression_pipeline import (
     CompressionConfig,
+    CompressionPipeline,
+    DistillStage,
+    PruneStage,
+    QuantizeStage,
     compute_model_sparsity,
-    magnitude_prune,
     distillation_loss,
     fake_quantize_weights,
-    PruneStage,
-    DistillStage,
-    QuantizeStage,
-    CompressionPipeline,
+    magnitude_prune,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model(seed: int = 0) -> AureliusTransformer:
     torch.manual_seed(seed)
@@ -46,6 +46,7 @@ def _make_data(B: int = 2, S: int = 16, seed: int = 42) -> torch.Tensor:
 # 1. CompressionConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_compression_config_defaults():
     cfg = CompressionConfig()
     assert cfg.prune_fraction == 0.3
@@ -60,6 +61,7 @@ def test_compression_config_defaults():
 # 2. compute_model_sparsity on fresh model — near 0 sparsity
 # ---------------------------------------------------------------------------
 
+
 def test_sparsity_fresh_model_near_zero():
     model = _make_model()
     info = compute_model_sparsity(model)
@@ -72,6 +74,7 @@ def test_sparsity_fresh_model_near_zero():
 # ---------------------------------------------------------------------------
 # 3. compute_model_sparsity after zeroing weights shows sparsity
 # ---------------------------------------------------------------------------
+
 
 def test_sparsity_after_zeroing():
     model = _make_model()
@@ -91,6 +94,7 @@ def test_sparsity_after_zeroing():
 # 4. magnitude_prune increases sparsity
 # ---------------------------------------------------------------------------
 
+
 def test_magnitude_prune_increases_sparsity():
     model = _make_model()
     before = compute_model_sparsity(model)
@@ -102,6 +106,7 @@ def test_magnitude_prune_increases_sparsity():
 # ---------------------------------------------------------------------------
 # 5. magnitude_prune prunes correct fraction
 # ---------------------------------------------------------------------------
+
 
 def test_magnitude_prune_correct_fraction():
     model = _make_model()
@@ -116,6 +121,7 @@ def test_magnitude_prune_correct_fraction():
 # 6. distillation_loss returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_distillation_loss_returns_scalar():
     B, S, V = 2, 8, 256
     student = torch.randn(B, S, V)
@@ -129,6 +135,7 @@ def test_distillation_loss_returns_scalar():
 # ---------------------------------------------------------------------------
 # 7. distillation_loss alpha=1.0 ignores task loss
 # ---------------------------------------------------------------------------
+
 
 def test_distillation_loss_alpha_one_ignores_task():
     B, S, V = 2, 8, 256
@@ -146,7 +153,7 @@ def test_distillation_loss_alpha_one_ignores_task():
     T = 4.0
     s_log = torch.nn.functional.log_softmax(s_flat / T, dim=-1)
     t_soft = torch.nn.functional.softmax(t_flat / T, dim=-1)
-    expected_kd = torch.nn.functional.kl_div(s_log, t_soft, reduction="batchmean") * (T ** 2)
+    expected_kd = torch.nn.functional.kl_div(s_log, t_soft, reduction="batchmean") * (T**2)
 
     assert abs(loss_alpha1.item() - expected_kd.item()) < 1e-4
 
@@ -154,6 +161,7 @@ def test_distillation_loss_alpha_one_ignores_task():
 # ---------------------------------------------------------------------------
 # 8. distillation_loss alpha=0.0 ignores KD loss
 # ---------------------------------------------------------------------------
+
 
 def test_distillation_loss_alpha_zero_ignores_kd():
     B, S, V = 2, 8, 256
@@ -172,6 +180,7 @@ def test_distillation_loss_alpha_zero_ignores_kd():
 # ---------------------------------------------------------------------------
 # 9. fake_quantize_weights — low quantization error
 # ---------------------------------------------------------------------------
+
 
 def test_fake_quantize_low_error():
     model = _make_model()
@@ -197,6 +206,7 @@ def test_fake_quantize_low_error():
 # 10. PruneStage.apply returns sparsity metric
 # ---------------------------------------------------------------------------
 
+
 def test_prune_stage_returns_sparsity():
     model = _make_model()
     data = _make_data()
@@ -213,6 +223,7 @@ def test_prune_stage_returns_sparsity():
 # ---------------------------------------------------------------------------
 # 11. DistillStage.apply returns distill_loss metric
 # ---------------------------------------------------------------------------
+
 
 def test_distill_stage_returns_distill_loss():
     student = _make_model(seed=0)
@@ -234,6 +245,7 @@ def test_distill_stage_returns_distill_loss():
 # 12. QuantizeStage.apply returns quant_error metric
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_stage_returns_quant_error():
     model = _make_model()
     data = _make_data()
@@ -250,6 +262,7 @@ def test_quantize_stage_returns_quant_error():
 # ---------------------------------------------------------------------------
 # 13. CompressionPipeline.run returns metrics for each stage
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_run_returns_all_stage_metrics():
     student = _make_model(seed=0)
@@ -275,6 +288,7 @@ def test_pipeline_run_returns_all_stage_metrics():
 # ---------------------------------------------------------------------------
 # 14. CompressionPipeline.get_compressed_model returns nn.Module
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_get_compressed_model():
     student = _make_model(seed=0)

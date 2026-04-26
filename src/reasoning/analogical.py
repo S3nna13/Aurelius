@@ -1,8 +1,8 @@
 """Analogical reasoning module — retrieve and adapt similar solved problems."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass

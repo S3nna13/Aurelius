@@ -3,25 +3,27 @@
 Covers MoEBalancedConfig, ExpertLayer, RouterWithLoadBalancing,
 MoEBalancedLayer, MoEBalancedTransformer, and compute_expert_utilization.
 """
+
 from __future__ import annotations
 
 import math
-import torch
+
 import pytest
+import torch
 
 from src.model.moe_balanced import (
-    MoEBalancedConfig,
     ExpertLayer,
-    RouterWithLoadBalancing,
+    MoEBalancedConfig,
     MoEBalancedLayer,
     MoEBalancedTransformer,
+    RouterWithLoadBalancing,
     compute_expert_utilization,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def cfg() -> MoEBalancedConfig:
@@ -51,6 +53,7 @@ def x_flat(cfg) -> torch.Tensor:
 # 1. MoEBalancedConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = MoEBalancedConfig()
     assert cfg.n_experts == 8
@@ -73,6 +76,7 @@ def test_config_custom():
 # 2. ExpertLayer
 # ---------------------------------------------------------------------------
 
+
 def test_expert_layer_output_shape(cfg):
     expert = ExpertLayer(cfg.d_model, cfg.d_ff)
     x = torch.randn(10, cfg.d_model)
@@ -90,6 +94,7 @@ def test_expert_layer_batch_shape(cfg):
 # ---------------------------------------------------------------------------
 # 3. RouterWithLoadBalancing
 # ---------------------------------------------------------------------------
+
 
 def test_router_output_shapes(cfg, x_flat):
     router = RouterWithLoadBalancing(
@@ -158,12 +163,11 @@ def test_router_loss_is_scalar_tensor(cfg, x_flat):
 # 4. MoEBalancedLayer
 # ---------------------------------------------------------------------------
 
+
 def test_moe_layer_output_shape(cfg, x):
     layer = MoEBalancedLayer(cfg)
     output, aux_loss = layer(x)
-    assert output.shape == x.shape, (
-        f"Output shape {output.shape} != input shape {x.shape}"
-    )
+    assert output.shape == x.shape, f"Output shape {output.shape} != input shape {x.shape}"
 
 
 def test_moe_layer_aux_loss_nonneg(cfg, x):
@@ -194,6 +198,7 @@ def test_moe_layer_gradient_flows(cfg, x):
 # 5. MoEBalancedTransformer
 # ---------------------------------------------------------------------------
 
+
 def test_transformer_output_shape(cfg, x):
     model = MoEBalancedTransformer(cfg, n_layers=2)
     output, total_aux = model(x)
@@ -210,6 +215,7 @@ def test_transformer_total_aux_loss_nonneg(cfg, x):
 # ---------------------------------------------------------------------------
 # 6. compute_expert_utilization
 # ---------------------------------------------------------------------------
+
 
 def test_utilization_per_expert_load_sums_to_one(cfg):
     torch.manual_seed(42)

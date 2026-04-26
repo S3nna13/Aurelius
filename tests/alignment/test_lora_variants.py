@@ -1,22 +1,21 @@
 """Tests for LoRA variant adapters: VeRALayer, FloRALayer, TiedLoRALayer."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.lora_variants import (
-    LoRAVariantConfig,
-    VeRALayer,
     FloRALayer,
+    LoRAVariantConfig,
+    LoRAVariantTrainer,
     TiedLoRALayer,
+    VeRALayer,
     apply_vera,
     merge_lora_weights,
-    LoRAVariantTrainer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,7 +43,9 @@ def small_model() -> AureliusTransformer:
     return AureliusTransformer(cfg)
 
 
-def make_vera_layer(in_f: int = IN_FEATURES, out_f: int = OUT_FEATURES, rank: int = RANK) -> VeRALayer:
+def make_vera_layer(
+    in_f: int = IN_FEATURES, out_f: int = OUT_FEATURES, rank: int = RANK
+) -> VeRALayer:
     shared_A = torch.randn(rank, in_f)
     shared_B = torch.randn(out_f, rank)
     return VeRALayer(in_f, out_f, rank, shared_A, shared_B, alpha=32.0)
@@ -53,6 +54,7 @@ def make_vera_layer(in_f: int = IN_FEATURES, out_f: int = OUT_FEATURES, rank: in
 # ---------------------------------------------------------------------------
 # 1. LoRAVariantConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_lora_variant_config_defaults():
     cfg = LoRAVariantConfig()
@@ -66,6 +68,7 @@ def test_lora_variant_config_defaults():
 # 2. VeRALayer output shape (B, T, out_features)
 # ---------------------------------------------------------------------------
 
+
 def test_vera_layer_output_shape():
     layer = make_vera_layer()
     x = torch.randn(BATCH, SEQ, IN_FEATURES)
@@ -78,6 +81,7 @@ def test_vera_layer_output_shape():
 # ---------------------------------------------------------------------------
 # 3. VeRALayer only d_A, d_B trainable (A, B frozen)
 # ---------------------------------------------------------------------------
+
 
 def test_vera_layer_only_d_vectors_trainable():
     layer = make_vera_layer()
@@ -105,6 +109,7 @@ def test_vera_layer_only_d_vectors_trainable():
 # 4. FloRALayer output shape
 # ---------------------------------------------------------------------------
 
+
 def test_flora_layer_output_shape():
     layer = FloRALayer(IN_FEATURES, OUT_FEATURES, RANK, bits=4, alpha=32.0)
     x = torch.randn(BATCH, SEQ, IN_FEATURES)
@@ -118,6 +123,7 @@ def test_flora_layer_output_shape():
 # 5. FloRALayer quantized weights differ from originals (rounding applied)
 # ---------------------------------------------------------------------------
 
+
 def test_flora_layer_quantization_applied():
     layer = FloRALayer(IN_FEATURES, OUT_FEATURES, RANK, bits=4, alpha=32.0)
 
@@ -125,7 +131,7 @@ def test_flora_layer_quantization_applied():
     with torch.no_grad():
         layer.A.fill_(0.123456789)
 
-    quant_levels = 2 ** 4 - 1  # 15
+    quant_levels = 2**4 - 1  # 15
     A_q = torch.round(layer.A * quant_levels) / quant_levels
 
     # Quantized should differ from original (0.123456... rounds to nearest 1/15)
@@ -138,6 +144,7 @@ def test_flora_layer_quantization_applied():
 # ---------------------------------------------------------------------------
 # 6. TiedLoRALayer output shape
 # ---------------------------------------------------------------------------
+
 
 def test_tied_lora_layer_output_shape():
     shared_A = nn.Parameter(torch.randn(RANK, IN_FEATURES))
@@ -152,6 +159,7 @@ def test_tied_lora_layer_output_shape():
 # ---------------------------------------------------------------------------
 # 7. TiedLoRALayer shares A parameter (same object)
 # ---------------------------------------------------------------------------
+
 
 def test_tied_lora_layer_shares_A_parameter():
     shared_A = nn.Parameter(torch.randn(RANK, IN_FEATURES))
@@ -168,6 +176,7 @@ def test_tied_lora_layer_shares_A_parameter():
 # 8. merge_lora_weights output shape matches base_weight
 # ---------------------------------------------------------------------------
 
+
 def test_merge_lora_weights_output_shape():
     out_f, in_f = 64, 32
     rank = 4
@@ -175,14 +184,13 @@ def test_merge_lora_weights_output_shape():
     A = torch.randn(rank, in_f)
     B = torch.randn(out_f, rank)
     merged = merge_lora_weights(base, A, B, alpha=16.0, rank=rank)
-    assert merged.shape == base.shape, (
-        f"Expected shape {base.shape}, got {merged.shape}"
-    )
+    assert merged.shape == base.shape, f"Expected shape {base.shape}, got {merged.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 9. merge_lora_weights result = base + scaled BA
 # ---------------------------------------------------------------------------
+
 
 def test_merge_lora_weights_correct_formula():
     out_f, in_f = 16, 8
@@ -205,6 +213,7 @@ def test_merge_lora_weights_correct_formula():
 # 10. apply_vera returns dict
 # ---------------------------------------------------------------------------
 
+
 def test_apply_vera_returns_dict():
     model = small_model()
     cfg = LoRAVariantConfig(rank=4, alpha=8.0, variant="vera")
@@ -215,6 +224,7 @@ def test_apply_vera_returns_dict():
 # ---------------------------------------------------------------------------
 # 11. apply_vera creates VeRALayer instances
 # ---------------------------------------------------------------------------
+
 
 def test_apply_vera_creates_vera_layers():
     model = small_model()
@@ -231,6 +241,7 @@ def test_apply_vera_creates_vera_layers():
 # 12. LoRAVariantTrainer.setup runs without error
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_setup_runs_without_error():
     model = small_model()
     cfg = LoRAVariantConfig(rank=4, alpha=8.0, variant="vera")
@@ -242,6 +253,7 @@ def test_trainer_setup_runs_without_error():
 # ---------------------------------------------------------------------------
 # 13. LoRAVariantTrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_returns_required_keys():
     model = small_model()
@@ -265,6 +277,7 @@ def test_trainer_train_step_returns_required_keys():
 # 14. LoRAVariantTrainer.get_trainable_params > 0 after setup
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_get_trainable_params_positive_after_setup():
     model = small_model()
     cfg = LoRAVariantConfig(rank=4, alpha=8.0, variant="vera")
@@ -273,14 +286,13 @@ def test_trainer_get_trainable_params_positive_after_setup():
     trainer.setup()
 
     n_params = trainer.get_trainable_params()
-    assert n_params > 0, (
-        f"Expected > 0 trainable params after setup, got {n_params}"
-    )
+    assert n_params > 0, f"Expected > 0 trainable params after setup, got {n_params}"
 
 
 # ---------------------------------------------------------------------------
 # 15. VeRALayer d_B and d_A have correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_vera_layer_d_vectors_correct_shapes():
     in_f, out_f, rank = 32, 64, 8
@@ -288,9 +300,5 @@ def test_vera_layer_d_vectors_correct_shapes():
     shared_B = torch.randn(out_f, rank)
     layer = VeRALayer(in_f, out_f, rank, shared_A, shared_B, alpha=16.0)
 
-    assert layer.d_A.shape == (rank,), (
-        f"d_A must have shape ({rank},), got {layer.d_A.shape}"
-    )
-    assert layer.d_B.shape == (out_f,), (
-        f"d_B must have shape ({out_f},), got {layer.d_B.shape}"
-    )
+    assert layer.d_A.shape == (rank,), f"d_A must have shape ({rank},), got {layer.d_A.shape}"
+    assert layer.d_B.shape == (out_f,), f"d_B must have shape ({out_f},), got {layer.d_B.shape}"

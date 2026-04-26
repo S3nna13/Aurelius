@@ -1,21 +1,23 @@
 """Coreset / subset selection methods for data pruning."""
 
+from dataclasses import dataclass
+
 import torch
 from torch import Tensor
-from dataclasses import dataclass
 
 
 @dataclass
 class CoresetConfig:
     n_select: int = 100
-    method: str = "greedy"       # "greedy" | "kcenter" | "random"
-    distance: str = "cosine"     # "cosine" | "l2"
+    method: str = "greedy"  # "greedy" | "kcenter" | "random"
+    distance: str = "cosine"  # "cosine" | "l2"
     seed: int = 42
 
 
 # ---------------------------------------------------------------------------
 # Pairwise distance helpers
 # ---------------------------------------------------------------------------
+
 
 def pairwise_cosine_sim(a: Tensor, b: Tensor) -> Tensor:
     """Compute pairwise cosine similarities.
@@ -29,7 +31,7 @@ def pairwise_cosine_sim(a: Tensor, b: Tensor) -> Tensor:
     """
     a_norm = torch.nn.functional.normalize(a, p=2, dim=-1)  # (M, D)
     b_norm = torch.nn.functional.normalize(b, p=2, dim=-1)  # (N, D)
-    return a_norm @ b_norm.T                                 # (M, N)
+    return a_norm @ b_norm.T  # (M, N)
 
 
 def pairwise_l2(a: Tensor, b: Tensor) -> Tensor:
@@ -43,17 +45,18 @@ def pairwise_l2(a: Tensor, b: Tensor) -> Tensor:
         (M, N) L2 distance matrix
     """
     # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 a·b
-    a_sq = (a * a).sum(dim=-1, keepdim=True)   # (M, 1)
-    b_sq = (b * b).sum(dim=-1, keepdim=True)   # (N, 1)
-    dot = a @ b.T                              # (M, N)
+    a_sq = (a * a).sum(dim=-1, keepdim=True)  # (M, 1)
+    b_sq = (b * b).sum(dim=-1, keepdim=True)  # (N, 1)
+    dot = a @ b.T  # (M, N)
     dist_sq = a_sq + b_sq.T - 2.0 * dot
     # Clamp to avoid negative values from floating-point error
-    return dist_sq.clamp(min=0.0).sqrt()       # (M, N)
+    return dist_sq.clamp(min=0.0).sqrt()  # (M, N)
 
 
 # ---------------------------------------------------------------------------
 # Core algorithms
 # ---------------------------------------------------------------------------
+
 
 def greedy_coreset(
     embeddings: Tensor,
@@ -79,8 +82,7 @@ def greedy_coreset(
     selected = [0]
 
     # min-distance of each point to the current set; init to +inf
-    min_dist = torch.full((n,), float("inf"), dtype=embeddings.dtype,
-                          device=embeddings.device)
+    min_dist = torch.full((n,), float("inf"), dtype=embeddings.dtype, device=embeddings.device)
 
     for _ in range(n_select - 1):
         # Distances from the last added point to all points
@@ -90,7 +92,7 @@ def greedy_coreset(
             sim = pairwise_cosine_sim(last, embeddings).squeeze(0)  # (N,)
             d = 1.0 - sim
         else:
-            d = pairwise_l2(last, embeddings).squeeze(0)            # (N,)
+            d = pairwise_l2(last, embeddings).squeeze(0)  # (N,)
 
         # Update running min-distance to selected set
         min_dist = torch.minimum(min_dist, d)
@@ -130,8 +132,7 @@ def kcenter_coreset(
     start = int(torch.randint(n, (1,), generator=rng).item())
 
     selected = [start]
-    min_dist = torch.full((n,), float("inf"), dtype=embeddings.dtype,
-                          device=embeddings.device)
+    min_dist = torch.full((n,), float("inf"), dtype=embeddings.dtype, device=embeddings.device)
 
     for _ in range(n_select - 1):
         last = embeddings[selected[-1]].unsqueeze(0)  # (1, D)
@@ -171,6 +172,7 @@ def random_coreset(
 # Unified interface
 # ---------------------------------------------------------------------------
 
+
 class CoresetSelector:
     """Unified interface for coreset / subset selection.
 
@@ -203,8 +205,7 @@ class CoresetSelector:
             return random_coreset(embeddings, cfg.n_select, cfg.seed)
         else:
             raise ValueError(
-                f"Unknown coreset method '{cfg.method}'. "
-                "Choose from 'greedy', 'kcenter', 'random'."
+                f"Unknown coreset method '{cfg.method}'. Choose from 'greedy', 'kcenter', 'random'."
             )
 
     def get_subset(self, data: list, embeddings: Tensor) -> list:

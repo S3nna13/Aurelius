@@ -13,17 +13,17 @@ Key classes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MultiTokenRMConfig:
@@ -44,6 +44,7 @@ class MultiTokenRMConfig:
 # ---------------------------------------------------------------------------
 # TokenRewardHead
 # ---------------------------------------------------------------------------
+
 
 class TokenRewardHead(nn.Module):
     """Linear projection from hidden states to per-token scalar rewards.
@@ -69,14 +70,15 @@ class TokenRewardHead(nn.Module):
         Returns:
             (batch, seq) per-token reward tensor.
         """
-        x = self.dropout(hidden_states)          # (B, T, d_model)
-        rewards = self.linear(x).squeeze(-1)     # (B, T)
+        x = self.dropout(hidden_states)  # (B, T, d_model)
+        rewards = self.linear(x).squeeze(-1)  # (B, T)
         return rewards
 
 
 # ---------------------------------------------------------------------------
 # MultiTokenRewardModel
 # ---------------------------------------------------------------------------
+
 
 class MultiTokenRewardModel(nn.Module):
     """Full multi-token reward model: backbone + TokenRewardHead.
@@ -124,9 +126,7 @@ class MultiTokenRewardModel(nn.Module):
         """
         captured: list[torch.Tensor] = []
 
-        hook = self.backbone.norm.register_forward_hook(
-            lambda m, i, o: captured.append(o)
-        )
+        hook = self.backbone.norm.register_forward_hook(lambda m, i, o: captured.append(o))
         try:
             self.backbone(input_ids)
         finally:
@@ -138,7 +138,7 @@ class MultiTokenRewardModel(nn.Module):
         self,
         token_rewards: torch.Tensor,
         hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.Tensor],
+        attention_mask: torch.Tensor | None,
     ) -> torch.Tensor:
         """Aggregate (B, T) token rewards to (B,) sequence reward.
 
@@ -169,18 +169,17 @@ class MultiTokenRewardModel(nn.Module):
 
         elif method == "weighted_sum":
             # Softmax over valid positions, then weighted sum.
-            assert self.token_weight_linear is not None
+            assert self.token_weight_linear is not None  # noqa: S101
             raw_w = self.token_weight_linear(hidden_states).squeeze(-1)  # (B, T)
             if attention_mask is not None:
                 mask_bool = attention_mask.bool()
                 raw_w = raw_w.masked_fill(~mask_bool, float("-inf"))
-            weights = torch.softmax(raw_w, dim=-1)           # (B, T)
-            return (weights * token_rewards).sum(dim=1)      # (B,)
+            weights = torch.softmax(raw_w, dim=-1)  # (B, T)
+            return (weights * token_rewards).sum(dim=1)  # (B,)
 
         else:
             raise ValueError(
-                f"Unknown aggregate method: {method!r}. "
-                "Choose 'mean', 'last', or 'weighted_sum'."
+                f"Unknown aggregate method: {method!r}. Choose 'mean', 'last', or 'weighted_sum'."
             )
 
     # ------------------------------------------------------------------
@@ -190,8 +189,8 @@ class MultiTokenRewardModel(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        attention_mask: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute per-token and sequence-level rewards.
 
         Args:
@@ -202,7 +201,7 @@ class MultiTokenRewardModel(nn.Module):
             token_rewards:    (batch, seq)
             sequence_reward:  (batch,)
         """
-        hidden_states = self._get_hidden_states(input_ids)   # (B, T, d_model)
+        hidden_states = self._get_hidden_states(input_ids)  # (B, T, d_model)
 
         # Zero out masked positions in hidden states before scoring so that
         # masked tokens do not receive meaningful rewards.
@@ -210,23 +209,21 @@ class MultiTokenRewardModel(nn.Module):
             mask_expanded = attention_mask.float().unsqueeze(-1)  # (B, T, 1)
             hidden_states = hidden_states * mask_expanded
 
-        token_rewards = self.reward_head(hidden_states)       # (B, T)
+        token_rewards = self.reward_head(hidden_states)  # (B, T)
 
         # Zero masked token rewards explicitly (mask was applied to hidden
         # states, but ensure output zeros too).
         if attention_mask is not None:
             token_rewards = token_rewards * attention_mask.float()
 
-        sequence_reward = self._aggregate(
-            token_rewards, hidden_states, attention_mask
-        )  # (B,)
+        sequence_reward = self._aggregate(token_rewards, hidden_states, attention_mask)  # (B,)
 
         return token_rewards, sequence_reward
 
     def get_process_rewards(
         self,
         input_ids: torch.Tensor,
-        step_boundaries: List[int],
+        step_boundaries: list[int],
     ) -> torch.Tensor:
         """Aggregate token rewards between step boundaries.
 
@@ -303,6 +300,7 @@ class MultiTokenRewardModel(nn.Module):
 # MultiTokenRMLoss
 # ---------------------------------------------------------------------------
 
+
 class MultiTokenRMLoss:
     """Joint token-level + sequence-level MSE loss for reward model training.
 
@@ -323,9 +321,9 @@ class MultiTokenRMLoss:
         self,
         token_rewards: torch.Tensor,
         seq_rewards: torch.Tensor,
-        token_labels: Optional[torch.Tensor],
-        seq_labels: Optional[torch.Tensor],
-    ) -> Tuple[torch.Tensor, dict]:
+        token_labels: torch.Tensor | None,
+        seq_labels: torch.Tensor | None,
+    ) -> tuple[torch.Tensor, dict]:
         """Compute the combined reward-model loss.
 
         Args:
@@ -340,9 +338,7 @@ class MultiTokenRMLoss:
                         "token_loss" and "seq_loss".
         """
         if token_labels is None and seq_labels is None:
-            raise ValueError(
-                "At least one of token_labels or seq_labels must be provided."
-            )
+            raise ValueError("At least one of token_labels or seq_labels must be provided.")
 
         metrics: dict = {}
         total_loss = torch.zeros(

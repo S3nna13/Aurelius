@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.inference.kv_cache_manager import (
@@ -16,7 +15,6 @@ from src.inference.kv_cache_manager import (
     compute_cache_memory_mb,
     compute_max_seq_from_budget,
 )
-
 
 # ---------------------------------------------------------------------------
 # KVCacheConfig
@@ -41,7 +39,7 @@ def test_kvcacheconfig_defaults():
 
 def test_compute_cache_memory_mb_formula():
     n_layers, n_heads, head_dim, seq_len, dtype_bytes = 2, 4, 32, 128, 2
-    expected = 2 * n_layers * n_heads * seq_len * head_dim * dtype_bytes / (1024 ** 2)
+    expected = 2 * n_layers * n_heads * seq_len * head_dim * dtype_bytes / (1024**2)
     result = compute_cache_memory_mb(n_layers, n_heads, head_dim, seq_len, dtype_bytes)
     assert math.isclose(result, expected, rel_tol=1e-9)
 
@@ -89,7 +87,7 @@ def test_lru_evicts_lru_when_full():
     cache = LRUCache(capacity=2)
     cache.insert(10)
     cache.insert(20)
-    evicted = cache.insert(30)   # should evict 10 (LRU)
+    evicted = cache.insert(30)  # should evict 10 (LRU)
     assert evicted == 10
     assert 10 not in cache
     assert 20 in cache
@@ -132,7 +130,7 @@ def test_lru_len():
 def test_score_based_evicts_lowest_score():
     cache = ScoreBasedCache(capacity=3)
     cache.insert(1, score=0.9)
-    cache.insert(2, score=0.1)   # lowest
+    cache.insert(2, score=0.1)  # lowest
     cache.insert(3, score=0.5)
     evicted = cache.evict_lowest()
     assert evicted == 2
@@ -142,8 +140,8 @@ def test_score_based_evicts_lowest_score():
 def test_score_based_insert_returns_evicted_when_full():
     cache = ScoreBasedCache(capacity=2)
     cache.insert(10, score=1.0)
-    cache.insert(20, score=0.2)   # lower score
-    evicted = cache.insert(30, score=0.8)   # evicts 20
+    cache.insert(20, score=0.2)  # lower score
+    evicted = cache.insert(30, score=0.8)  # evicts 20
     assert evicted == 20
     assert 20 not in cache._scores
     assert 10 in cache._scores
@@ -156,7 +154,7 @@ def test_score_based_update_score():
     cache.update_score(1, 0.99)
     cache.insert(2, score=0.1)
     evicted = cache.evict_lowest()
-    assert evicted == 2   # key 1 now has score 0.99 > 0.1
+    assert evicted == 2  # key 1 now has score 0.99 > 0.1
 
 
 # ---------------------------------------------------------------------------
@@ -199,9 +197,7 @@ def test_chunked_prefill_concatenates_to_original():
 
 
 def test_kvcachemanager_allocate_and_memory_used():
-    cfg = KVCacheConfig(
-        n_layers=2, n_heads=4, head_dim=32, memory_budget_mb=1024.0
-    )
+    cfg = KVCacheConfig(n_layers=2, n_heads=4, head_dim=32, memory_budget_mb=1024.0)
     mgr = KVCacheManager(cfg)
     assert mgr.memory_used_mb() == 0.0
 
@@ -230,8 +226,10 @@ def test_kvcachemanager_stats_keys_present():
 def test_kvcachemanager_rejects_over_budget():
     # Use a tiny budget that cannot fit a large sequence
     cfg = KVCacheConfig(
-        n_layers=24, n_heads=8, head_dim=64,
-        memory_budget_mb=0.001,   # essentially 0
+        n_layers=24,
+        n_heads=8,
+        head_dim=64,
+        memory_budget_mb=0.001,  # essentially 0
     )
     mgr = KVCacheManager(cfg)
     result = mgr.allocate(seq_id=0, seq_len=2048)
@@ -242,7 +240,7 @@ def test_kvcachemanager_free_releases_memory():
     cfg = KVCacheConfig(n_layers=2, n_heads=4, head_dim=32, memory_budget_mb=512.0)
     mgr = KVCacheManager(cfg)
     mgr.allocate(seq_id=5, seq_len=256)
-    used_before = mgr.memory_used_mb()
+    mgr.memory_used_mb()
     mgr.free(seq_id=5)
     assert mgr.memory_used_mb() == 0.0
     assert mgr.stats()["n_sequences"] == 0

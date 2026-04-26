@@ -4,6 +4,7 @@ Automatically finds the max batch size that fits in memory by running
 forward+backward passes with increasing sizes. Computes gradient
 accumulation steps to match target global batch tokens.
 """
+
 from __future__ import annotations
 
 import math
@@ -15,22 +16,23 @@ import torch.nn as nn
 
 @dataclass
 class DynamicBatchConfig:
-    target_global_batch_tokens: int = 524_288   # 512K tokens (standard LLM pretraining)
+    target_global_batch_tokens: int = 524_288  # 512K tokens (standard LLM pretraining)
     seq_len: int = 2048
     min_batch_size: int = 1
     max_batch_size: int = 128
-    safety_factor: float = 0.9     # use only 90% of max to avoid OOM during training
+    safety_factor: float = 0.9  # use only 90% of max to avoid OOM during training
     device: str = "cpu"
 
 
 @dataclass
 class BatchScaleResult:
     """Result of dynamic batch size search."""
-    max_batch_size: int           # largest batch that fit
-    safe_batch_size: int          # max * safety_factor (rounded down)
-    grad_accum_steps: int         # steps to reach target_global_batch_tokens
+
+    max_batch_size: int  # largest batch that fit
+    safe_batch_size: int  # max * safety_factor (rounded down)
+    grad_accum_steps: int  # steps to reach target_global_batch_tokens
     actual_global_batch_tokens: int  # safe_batch_size * seq_len * grad_accum_steps
-    utilization: float            # actual / target (1.0 = perfect)
+    utilization: float  # actual / target (1.0 = perfect)
 
 
 def try_batch_size(
@@ -78,9 +80,7 @@ def find_max_batch_size(
 
     # If even the minimum doesn't fit, raise immediately
     if not try_batch_size(model, lo, cfg.seq_len, cfg.device):
-        raise RuntimeError(
-            f"Minimum batch size {lo} does not fit in memory."
-        )
+        raise RuntimeError(f"Minimum batch size {lo} does not fit in memory.")
 
     best = lo
     while lo <= hi:

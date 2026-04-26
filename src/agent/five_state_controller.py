@@ -20,12 +20,12 @@ import queue
 import re
 import threading
 import time
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, Iterator, Optional
+from enum import StrEnum
 
 
-class AgentState(str, Enum):
+class AgentState(StrEnum):
     """Lifecycle states for :class:`FiveStateController`."""
 
     IDLE = "IDLE"
@@ -52,7 +52,7 @@ class ControlContext:
     indefinitely while paused; use :meth:`wait_while_paused` to yield.
     """
 
-    def __init__(self, controller: "FiveStateController") -> None:
+    def __init__(self, controller: FiveStateController) -> None:
         self._c = controller
 
     def is_paused(self) -> bool:
@@ -61,7 +61,7 @@ class ControlContext:
     def should_stop(self) -> bool:
         return self._c._stop_event.is_set()
 
-    def pending_instruction(self) -> Optional[str]:
+    def pending_instruction(self) -> str | None:
         """Pop one pending injected instruction (FIFO), or None."""
         try:
             return self._c._instr_queue.get_nowait()
@@ -94,7 +94,7 @@ class FiveStateController:
     def __init__(
         self,
         backend_fn: Callable[[list[dict], ControlContext], Iterator[str]],
-        terminal_matchers: Optional[list[re.Pattern]] = None,
+        terminal_matchers: list[re.Pattern] | None = None,
         time_fn: Callable[[], float] = time.monotonic,
     ) -> None:
         self._backend_fn = backend_fn
@@ -106,14 +106,14 @@ class FiveStateController:
 
         self._pause_event = threading.Event()
         self._stop_event = threading.Event()
-        self._instr_queue: "queue.Queue[str]" = queue.Queue()
+        self._instr_queue: queue.Queue[str] = queue.Queue()
 
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._started_once = False
 
         self._chunks: list[str] = []
         self._output_lock = threading.Lock()
-        self._exc: Optional[BaseException] = None
+        self._exc: BaseException | None = None
 
         self.events: list[ControllerEvent] = []
 
@@ -131,7 +131,7 @@ class FiveStateController:
             self._state = new
         self._record("state_transition", {"from": old.value, "to": new.value, **payload})
 
-    def _record(self, event_type: str, payload: Optional[dict] = None) -> None:
+    def _record(self, event_type: str, payload: dict | None = None) -> None:
         self.events.append(
             ControllerEvent(
                 event_type=event_type,
@@ -149,9 +149,7 @@ class FiveStateController:
             if self._started_once:
                 raise RuntimeError("FiveStateController.start() called twice")
             if self._state is not AgentState.IDLE:
-                raise RuntimeError(
-                    f"start() requires IDLE state, got {self._state.value}"
-                )
+                raise RuntimeError(f"start() requires IDLE state, got {self._state.value}")
             self._started_once = True
             self._state = AgentState.RUNNING
         self._record(
@@ -159,17 +157,13 @@ class FiveStateController:
         )
         self._record("start", {"n_messages": len(initial_messages)})
 
-        self._thread = threading.Thread(
-            target=self._run, args=(initial_messages,), daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, args=(initial_messages,), daemon=True)
         self._thread.start()
 
     def pause(self) -> None:
         with self._state_lock:
             if self._state is not AgentState.RUNNING:
-                raise RuntimeError(
-                    f"pause() requires RUNNING state, got {self._state.value}"
-                )
+                raise RuntimeError(f"pause() requires RUNNING state, got {self._state.value}")
             self._state = AgentState.PAUSED
         self._pause_event.set()
         self._record(
@@ -180,9 +174,7 @@ class FiveStateController:
     def resume(self) -> None:
         with self._state_lock:
             if self._state is not AgentState.PAUSED:
-                raise RuntimeError(
-                    f"resume() requires PAUSED state, got {self._state.value}"
-                )
+                raise RuntimeError(f"resume() requires PAUSED state, got {self._state.value}")
             self._state = AgentState.RUNNING
         self._pause_event.clear()
         self._record(
@@ -250,7 +242,7 @@ class FiveStateController:
     # ------------------------------------------------------------------
     # Completion
     # ------------------------------------------------------------------
-    def run_to_completion(self, timeout: Optional[float] = None) -> str:
+    def run_to_completion(self, timeout: float | None = None) -> str:
         """Block until COMPLETED or ERROR; return concatenated output."""
         if self._thread is None:
             raise RuntimeError("run_to_completion() called before start()")

@@ -7,26 +7,23 @@ Only pure PyTorch is required.
 
 from __future__ import annotations
 
-import math
-from typing import List
-
 import pytest
 import torch
 import torch.nn as nn
 
 from src.training.layer_wise_lr import (
-    LLRDConfig,
     LayerWiseLRScheduler,
+    LLRDConfig,
     assign_layer_params,
     build_llrd_param_groups,
     compute_layer_lrs,
     compute_lr_ratio_stats,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tiny helper model
 # ---------------------------------------------------------------------------
+
 
 class TinyTransformer(nn.Module):
     """Minimal model with embedding + 3 layers + head for testing."""
@@ -54,13 +51,14 @@ def _tiny_config(n_layers: int = 4, decay: float = 0.8) -> LLRDConfig:
     )
 
 
-def _layer_patterns(n_layers: int) -> List[str]:
+def _layer_patterns(n_layers: int) -> list[str]:
     return [f"layers.{i}" for i in range(n_layers)]
 
 
 # ===========================================================================
 # 1. LLRDConfig defaults
 # ===========================================================================
+
 
 def test_llrd_config_defaults() -> None:
     cfg = LLRDConfig()
@@ -75,6 +73,7 @@ def test_llrd_config_defaults() -> None:
 # 2. compute_layer_lrs — length equals n_layers
 # ===========================================================================
 
+
 def test_compute_layer_lrs_length() -> None:
     for n in (1, 4, 8, 12):
         cfg = LLRDConfig(n_layers=n)
@@ -86,6 +85,7 @@ def test_compute_layer_lrs_length() -> None:
 # 3. compute_layer_lrs — layer 0 equals base_lr
 # ===========================================================================
 
+
 def test_compute_layer_lrs_layer0_equals_base_lr() -> None:
     cfg = _tiny_config()
     lrs = compute_layer_lrs(cfg)
@@ -96,18 +96,18 @@ def test_compute_layer_lrs_layer0_equals_base_lr() -> None:
 # 4. compute_layer_lrs — strictly non-increasing (each lr <= previous)
 # ===========================================================================
 
+
 def test_compute_layer_lrs_non_increasing() -> None:
     cfg = _tiny_config(n_layers=6, decay=0.7)
     lrs = compute_layer_lrs(cfg)
     for i in range(1, len(lrs)):
-        assert lrs[i] <= lrs[i - 1] + 1e-12, (
-            f"lrs[{i}]={lrs[i]} > lrs[{i-1}]={lrs[i-1]}"
-        )
+        assert lrs[i] <= lrs[i - 1] + 1e-12, f"lrs[{i}]={lrs[i]} > lrs[{i - 1}]={lrs[i - 1]}"
 
 
 # ===========================================================================
 # 5. compute_layer_lrs — all >= min_lr_ratio * base_lr
 # ===========================================================================
+
 
 def test_compute_layer_lrs_min_lr_floor() -> None:
     # Use very small decay to force clamping for deep layers.
@@ -122,6 +122,7 @@ def test_compute_layer_lrs_min_lr_floor() -> None:
 # 6. assign_layer_params — groups length = n_layers + 1
 # ===========================================================================
 
+
 def test_assign_layer_params_groups_length() -> None:
     model = TinyTransformer(n_layers=3)
     named_params = list(model.named_parameters())
@@ -133,6 +134,7 @@ def test_assign_layer_params_groups_length() -> None:
 # ===========================================================================
 # 7. assign_layer_params — params assigned to correct layer by pattern
 # ===========================================================================
+
 
 def test_assign_layer_params_correct_assignment() -> None:
     model = TinyTransformer(n_layers=3)
@@ -154,6 +156,7 @@ def test_assign_layer_params_correct_assignment() -> None:
 # 8. assign_layer_params — unmatched params go to last group
 # ===========================================================================
 
+
 def test_assign_layer_params_unmatched_go_to_last_group() -> None:
     model = TinyTransformer(n_layers=3)
     named_params = list(model.named_parameters())
@@ -170,6 +173,7 @@ def test_assign_layer_params_unmatched_go_to_last_group() -> None:
 # 9. build_llrd_param_groups — correct number of groups
 # ===========================================================================
 
+
 def test_build_llrd_param_groups_num_groups() -> None:
     n_layers = 3
     model = TinyTransformer(n_layers=n_layers)
@@ -184,6 +188,7 @@ def test_build_llrd_param_groups_num_groups() -> None:
 # 10. build_llrd_param_groups — all lrs are positive
 # ===========================================================================
 
+
 def test_build_llrd_param_groups_lrs_positive() -> None:
     n_layers = 3
     model = TinyTransformer(n_layers=n_layers)
@@ -197,6 +202,7 @@ def test_build_llrd_param_groups_lrs_positive() -> None:
 # ===========================================================================
 # 11. LayerWiseLRScheduler.get_lrs — length matches optimizer param groups
 # ===========================================================================
+
 
 def test_scheduler_get_lrs_length() -> None:
     n_layers = 3
@@ -216,6 +222,7 @@ def test_scheduler_get_lrs_length() -> None:
 # 12. LayerWiseLRScheduler.step — updates lrs (not all the same after step)
 # ===========================================================================
 
+
 def test_scheduler_step_updates_lrs() -> None:
     n_layers = 4
     model = TinyTransformer(n_layers=n_layers)
@@ -233,16 +240,14 @@ def test_scheduler_step_updates_lrs() -> None:
     lrs_after = scheduler.get_lrs()
 
     # At least some lrs should have changed from the initial values
-    changed = any(
-        abs(before - after) > 1e-15
-        for before, after in zip(lrs_before, lrs_after)
-    )
+    changed = any(abs(before - after) > 1e-15 for before, after in zip(lrs_before, lrs_after))
     assert changed, "No lr changed after scheduler.step()"
 
 
 # ===========================================================================
 # 13. compute_lr_ratio_stats — has all required keys
 # ===========================================================================
+
 
 def test_compute_lr_ratio_stats_keys() -> None:
     cfg = _tiny_config()
@@ -257,6 +262,7 @@ def test_compute_lr_ratio_stats_keys() -> None:
 # 14. compute_lr_ratio_stats — values are numerically correct
 # ===========================================================================
 
+
 def test_compute_lr_ratio_stats_values() -> None:
     base_lr = 1.0
     layer_lrs = [1.0, 0.8, 0.64]
@@ -269,6 +275,7 @@ def test_compute_lr_ratio_stats_values() -> None:
 # ===========================================================================
 # 15. LayerWiseLRScheduler — warmup phase scales lrs linearly
 # ===========================================================================
+
 
 def test_scheduler_warmup_linear_scale() -> None:
     n_layers = 3
@@ -303,6 +310,7 @@ def test_scheduler_warmup_linear_scale() -> None:
 # 16. compute_layer_lrs — exact decay values before floor kicks in
 # ===========================================================================
 
+
 def test_compute_layer_lrs_exact_values() -> None:
     cfg = LLRDConfig(base_lr=1.0, decay_factor=0.5, n_layers=3, min_lr_ratio=0.0)
     lrs = compute_layer_lrs(cfg)
@@ -314,6 +322,7 @@ def test_compute_layer_lrs_exact_values() -> None:
 # ===========================================================================
 # 17. build_llrd_param_groups — embedding group uses embedding_lr_ratio
 # ===========================================================================
+
 
 def test_build_llrd_param_groups_embedding_lr() -> None:
     n_layers = 3

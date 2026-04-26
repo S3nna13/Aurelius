@@ -7,10 +7,11 @@ inserted after self-attention.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 from torch import Tensor
 
 
@@ -19,7 +20,7 @@ class CrossAttentionConfig:
     d_model: int = 2048
     n_heads: int = 16
     head_dim: int = 128
-    context_dim: int = 768      # external feature dimension (e.g. CLIP = 768, Wav2Vec = 1024)
+    context_dim: int = 768  # external feature dimension (e.g. CLIP = 768, Wav2Vec = 1024)
     dropout: float = 0.0
     use_layer_norm: bool = True  # pre-norm before cross-attn
 
@@ -57,10 +58,10 @@ class CrossAttentionLayer(nn.Module):
 
     def forward(
         self,
-        x: Tensor,                        # (B, S, d_model) — text hidden states (queries)
-        context: Tensor,                  # (B, C, context_dim) — external embeddings (keys/values)
+        x: Tensor,  # (B, S, d_model) — text hidden states (queries)
+        context: Tensor,  # (B, C, context_dim) — external embeddings (keys/values)
         context_mask: Tensor | None = None,  # (B, C) bool mask, True = valid
-    ) -> Tensor:                          # (B, S, d_model) — updated text hidden states
+    ) -> Tensor:  # (B, S, d_model) — updated text hidden states
         B, S, _ = x.shape
         C = context.shape[1]
 
@@ -71,7 +72,7 @@ class CrossAttentionLayer(nn.Module):
             x = self.norm(x)
 
         # 2. Project queries, keys, values
-        q = self.q_proj(x)        # (B, S, n_heads * head_dim)
+        q = self.q_proj(x)  # (B, S, n_heads * head_dim)
         k = self.k_proj(context)  # (B, C, n_heads * head_dim)
         v = self.v_proj(context)  # (B, C, n_heads * head_dim)
 
@@ -91,7 +92,9 @@ class CrossAttentionLayer(nn.Module):
             attn_mask = float_mask
 
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=attn_mask,
             dropout_p=self.dropout if self.training else 0.0,
             is_causal=False,
@@ -156,9 +159,9 @@ class MultiModalTransformerBlock(nn.Module):
 
 
 def scaled_dot_product_cross_attention(
-    q: torch.Tensor,    # (B, H, T_q, D)
-    k: torch.Tensor,    # (B, H, T_kv, D)
-    v: torch.Tensor,    # (B, H, T_kv, D)
+    q: torch.Tensor,  # (B, H, T_q, D)
+    k: torch.Tensor,  # (B, H, T_kv, D)
+    v: torch.Tensor,  # (B, H, T_kv, D)
     mask: torch.Tensor | None = None,  # (B, 1, 1, T_kv) or (B, H, T_q, T_kv)
 ) -> torch.Tensor:
     """Scaled dot-product cross-attention (no causal mask).
@@ -214,8 +217,8 @@ class CrossAttention(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,                        # (B, T_q, d_model) — queries
-        context: torch.Tensor,                  # (B, T_kv, d_context) — keys and values
+        x: torch.Tensor,  # (B, T_q, d_model) — queries
+        context: torch.Tensor,  # (B, T_kv, d_context) — keys and values
         context_mask: torch.Tensor | None = None,  # (B, T_kv) bool mask, True=valid
         **kwargs,
     ) -> torch.Tensor:
@@ -314,8 +317,8 @@ class RAGAttentionLayer(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,                # (B, T, d_model)
-        doc_embeddings: torch.Tensor,   # (B, n_docs, doc_embed_dim)
+        x: torch.Tensor,  # (B, T, d_model)
+        doc_embeddings: torch.Tensor,  # (B, n_docs, doc_embed_dim)
         doc_mask: torch.Tensor | None = None,  # (B, n_docs) bool
     ) -> torch.Tensor:
         """Attend to documents, add to x via residual."""
@@ -325,9 +328,9 @@ class RAGAttentionLayer(nn.Module):
 
 
 def add_cross_attention_to_model(
-    model,                                    # AureliusTransformer
+    model,  # AureliusTransformer
     context_dim: int,
-    layer_indices: list[int] | None = None,   # None = all layers
+    layer_indices: list[int] | None = None,  # None = all layers
 ) -> nn.ModuleList:
     """Create CrossAttentionLayer instances for specified transformer layers.
 
@@ -356,8 +359,6 @@ def add_cross_attention_to_model(
         use_layer_norm=True,
     )
 
-    cross_attn_layers = nn.ModuleList([
-        CrossAttentionLayer(cross_attn_cfg) for _ in layer_indices
-    ])
+    cross_attn_layers = nn.ModuleList([CrossAttentionLayer(cross_attn_cfg) for _ in layer_indices])
 
     return cross_attn_layers

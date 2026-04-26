@@ -1,4 +1,5 @@
 """Tests for TIES model merging (arXiv 2306.01708)."""
+
 from __future__ import annotations
 
 import pytest
@@ -20,6 +21,7 @@ def _sd(val: float = 0.0, seed: int | None = None) -> dict[str, torch.Tensor]:
 
 # --- TIESConfig ---
 
+
 def test_config_defaults():
     cfg = TIESConfig()
     assert cfg.trim_ratio == 0.2
@@ -37,6 +39,7 @@ def test_invalid_elect_sign_raises():
 
 
 # --- compute_task_vectors ---
+
 
 def test_task_vectors_zero_for_identical():
     base = _sd(seed=0)
@@ -57,6 +60,7 @@ def test_task_vectors_count_matches_models():
 
 # --- trim ---
 
+
 def test_trim_zeros_small_values():
     base = {"w1": torch.zeros(4, 4)}
     ft = {"w1": torch.tensor([[1.0, 2.0, 3.0, 4.0]] * 4)}
@@ -76,6 +80,7 @@ def test_trim_ratio_zero_keeps_all():
 
 
 # --- elect_sign ---
+
 
 def test_elect_sign_majority_positive():
     tv_pos = {"w1": torch.ones(4, 4)}
@@ -103,6 +108,7 @@ def test_elect_sign_values_are_pm1():
 
 # --- disjoint_merge ---
 
+
 def test_disjoint_merge_agrees_with_elected():
     tv1 = {"w1": torch.ones(4, 4)}
     tv2 = {"w1": torch.ones(4, 4)}
@@ -113,6 +119,7 @@ def test_disjoint_merge_agrees_with_elected():
 
 
 # --- merge (full pipeline) ---
+
 
 def test_merge_returns_merge_result():
     base = _sd(seed=0)

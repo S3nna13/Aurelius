@@ -9,15 +9,15 @@ Every test runs a real forward (and where relevant backward) pass.
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytest
 
 from src.eval.uncertainty_estimation import (
-    MCDropoutEstimator,
     DeepEnsemble,
     EntropyThresholder,
+    MCDropoutEstimator,
     TemperatureCalibration,
     UncertaintyBenchmark,
 )
@@ -35,6 +35,7 @@ N_MODELS = 3
 # Model factory
 # -------------------------------------------------------------------------
 
+
 def make_model() -> nn.Module:
     """Small model: Embedding -> Dropout -> Linear, output (B, T, V)."""
 
@@ -47,9 +48,9 @@ def make_model() -> nn.Module:
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             # x: (B, T) int
-            h = self.embed(x)        # (B, T, D)
-            h = self.drop(h)         # (B, T, D)
-            return self.proj(h)      # (B, T, V)
+            h = self.embed(x)  # (B, T, D)
+            h = self.drop(h)  # (B, T, D)
+            return self.proj(h)  # (B, T, V)
 
     return TinyModel()
 
@@ -65,6 +66,7 @@ def make_labels() -> torch.Tensor:
 # -------------------------------------------------------------------------
 # Fixtures
 # -------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def model():
@@ -88,17 +90,19 @@ def ensemble():
 # 1. MCDropoutEstimator.predict: shapes correct
 # -------------------------------------------------------------------------
 
+
 def test_mc_predict_shapes(mc):
     x = make_input()
     mean_logits, var_logits, entropy = mc.predict(x)
     assert mean_logits.shape == (B, T, V), f"mean_logits shape {mean_logits.shape}"
-    assert var_logits.shape == (B, T, V),  f"var_logits shape {var_logits.shape}"
-    assert entropy.shape == (B, T),         f"entropy shape {entropy.shape}"
+    assert var_logits.shape == (B, T, V), f"var_logits shape {var_logits.shape}"
+    assert entropy.shape == (B, T), f"entropy shape {entropy.shape}"
 
 
 # -------------------------------------------------------------------------
 # 2. MCDropoutEstimator: variance > 0 (dropout causes different passes)
 # -------------------------------------------------------------------------
+
 
 def test_mc_variance_positive(mc):
     x = make_input()
@@ -109,6 +113,7 @@ def test_mc_variance_positive(mc):
 # -------------------------------------------------------------------------
 # 3. MCDropoutEstimator.predictive_entropy: shape (B, T) and >= 0
 # -------------------------------------------------------------------------
+
 
 def test_mc_predictive_entropy_shape_nonneg(mc):
     x = make_input()
@@ -127,6 +132,7 @@ def test_mc_predictive_entropy_shape_nonneg(mc):
 # -------------------------------------------------------------------------
 # 4. MCDropoutEstimator.mutual_information: shape (B,T) and <= predictive_entropy
 # -------------------------------------------------------------------------
+
 
 def test_mc_mutual_information(mc):
     x = make_input()
@@ -149,16 +155,18 @@ def test_mc_mutual_information(mc):
 # 5. DeepEnsemble.forward: mean_logits (B,T,V), uncertainty (B,T)
 # -------------------------------------------------------------------------
 
+
 def test_ensemble_forward_shapes(ensemble):
     x = make_input()
     mean_logits, uncertainty = ensemble.forward(x)
     assert mean_logits.shape == (B, T, V), f"mean_logits shape {mean_logits.shape}"
-    assert uncertainty.shape == (B, T),     f"uncertainty shape {uncertainty.shape}"
+    assert uncertainty.shape == (B, T), f"uncertainty shape {uncertainty.shape}"
 
 
 # -------------------------------------------------------------------------
 # 6. DeepEnsemble: uncertainty > 0 when ensemble members differ
 # -------------------------------------------------------------------------
+
 
 def test_ensemble_uncertainty_positive(ensemble):
     x = make_input()
@@ -173,6 +181,7 @@ def test_ensemble_uncertainty_positive(ensemble):
 # 7. DeepEnsemble.calibrated_uncertainty: ECE in [0,1], MCE in [0,1]
 # -------------------------------------------------------------------------
 
+
 def test_ensemble_calibrated_uncertainty(ensemble):
     x = make_input()
     labels = make_labels()
@@ -185,6 +194,7 @@ def test_ensemble_calibrated_uncertainty(ensemble):
 # -------------------------------------------------------------------------
 # 8. EntropyThresholder.is_uncertain: bool mask, correct threshold comparison
 # -------------------------------------------------------------------------
+
 
 def test_entropy_thresholder_is_uncertain():
     thresh = 1.0
@@ -199,6 +209,7 @@ def test_entropy_thresholder_is_uncertain():
 # -------------------------------------------------------------------------
 # 9. EntropyThresholder.filter_predictions: 4 keys, coverage in [0,1]
 # -------------------------------------------------------------------------
+
 
 def test_entropy_thresholder_filter_predictions(model):
     model.eval()
@@ -224,6 +235,7 @@ def test_entropy_thresholder_filter_predictions(model):
 # 10. TemperatureCalibration.fit: returns float in [0.1, 10.0]
 # -------------------------------------------------------------------------
 
+
 def test_temperature_calibration_fit(model):
     model.eval()
     x = make_input()
@@ -240,6 +252,7 @@ def test_temperature_calibration_fit(model):
 # -------------------------------------------------------------------------
 # 11. TemperatureCalibration.calibrate: same shape as input
 # -------------------------------------------------------------------------
+
 
 def test_temperature_calibration_calibrate(model):
     model.eval()
@@ -258,6 +271,7 @@ def test_temperature_calibration_calibrate(model):
 # 12. TemperatureCalibration.expected_calibration_error: in [0, 1]
 # -------------------------------------------------------------------------
 
+
 def test_temperature_calibration_ece(model):
     model.eval()
     x = make_input()
@@ -275,6 +289,7 @@ def test_temperature_calibration_ece(model):
 # 13. UncertaintyBenchmark.auroc_uncertainty: in [0,1], 1.0 for perfect
 # -------------------------------------------------------------------------
 
+
 def test_auroc_uncertainty_range_and_perfect():
     bench = UncertaintyBenchmark()
 
@@ -285,7 +300,6 @@ def test_auroc_uncertainty_range_and_perfect():
     assert 0.0 <= auroc <= 1.0, f"AUROC={auroc}"
 
     # Perfect: wrong examples have strictly higher uncertainty
-    n = 10
     is_wrong_perfect = torch.tensor([True] * 5 + [False] * 5)
     scores_perfect = torch.tensor([1.0] * 5 + [0.0] * 5)
     auroc_perfect = bench.auroc_uncertainty(scores_perfect, is_wrong_perfect)
@@ -295,6 +309,7 @@ def test_auroc_uncertainty_range_and_perfect():
 # -------------------------------------------------------------------------
 # 14. UncertaintyBenchmark.brier_score: in [0,1], 0 for perfect predictions
 # -------------------------------------------------------------------------
+
 
 def test_brier_score_range_and_perfect():
     bench = UncertaintyBenchmark()
@@ -316,6 +331,7 @@ def test_brier_score_range_and_perfect():
 # -------------------------------------------------------------------------
 # 15. eval() mode gives lower variance than MCDropout (train) mode
 # -------------------------------------------------------------------------
+
 
 def test_eval_mode_gives_lower_variance(model):
     """model.eval() disables dropout => near-zero variance across passes."""

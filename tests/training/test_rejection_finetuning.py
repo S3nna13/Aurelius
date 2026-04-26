@@ -8,18 +8,16 @@ Every test performs at least a forward (and where required, backward) pass.
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.training.rejection_finetuning import (
     EnsembleVerifier,
     ExactMatchVerifier,
-    RFTDataset,
-    RFTTrainer,
     RejectionFilter,
     RewardVerifier,
+    RFTDataset,
+    RFTTrainer,
     SolutionSampler,
 )
 
@@ -58,12 +56,15 @@ def make_prompt(length: int = 4) -> torch.Tensor:
 
 
 def make_sampler(model: nn.Module) -> SolutionSampler:
-    return SolutionSampler(model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS)
+    return SolutionSampler(
+        model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 1: ExactMatchVerifier — True for matching tail
 # ---------------------------------------------------------------------------
+
 
 def test_exact_match_verifier_true():
     verifier = ExactMatchVerifier()
@@ -80,6 +81,7 @@ def test_exact_match_verifier_true():
 # Test 2: ExactMatchVerifier — False for non-matching
 # ---------------------------------------------------------------------------
 
+
 def test_exact_match_verifier_false():
     verifier = ExactMatchVerifier()
     gt = torch.tensor([3, 7, 2])
@@ -94,8 +96,10 @@ def test_exact_match_verifier_false():
 # Test 3: RewardVerifier — True when reward > threshold
 # ---------------------------------------------------------------------------
 
+
 def test_reward_verifier_true():
     model = make_model()
+
     # reward_fn: sum of logits at first token position (always > 0.5 for non-trivial input)
     def reward_fn(solution_ids: torch.Tensor) -> float:
         with torch.no_grad():
@@ -114,6 +118,7 @@ def test_reward_verifier_true():
 # Test 4: RewardVerifier — False when reward <= threshold
 # ---------------------------------------------------------------------------
 
+
 def test_reward_verifier_false():
     # reward_fn always returns 0.0; threshold=0.5 → False
     def reward_fn(solution_ids: torch.Tensor) -> float:
@@ -131,6 +136,7 @@ def test_reward_verifier_false():
 # Test 5: EnsembleVerifier require_all=True — True only when all agree
 # ---------------------------------------------------------------------------
 
+
 def test_ensemble_verifier_require_all_true_case():
     # Both verifiers return True
     gt = torch.tensor([1, 2])
@@ -146,6 +152,7 @@ def test_ensemble_verifier_require_all_true_case():
 # ---------------------------------------------------------------------------
 # Test 6: EnsembleVerifier require_all=True — False when one disagrees
 # ---------------------------------------------------------------------------
+
 
 def test_ensemble_verifier_require_all_false_case():
     # v1 returns True, v2 returns False → overall False
@@ -163,6 +170,7 @@ def test_ensemble_verifier_require_all_false_case():
 # Test 7: EnsembleVerifier require_all=False — True when any is True
 # ---------------------------------------------------------------------------
 
+
 def test_ensemble_verifier_any_true():
     gt = torch.tensor([9, 9])
     solution = torch.tensor([1, 2, 3])  # tail does NOT match gt (would be False for exact)
@@ -177,6 +185,7 @@ def test_ensemble_verifier_any_true():
 # ---------------------------------------------------------------------------
 # Test 8: SolutionSampler.sample — returns n_samples solutions, valid vocab ids
 # ---------------------------------------------------------------------------
+
 
 def test_solution_sampler_sample_count_and_vocab():
     model = make_model()
@@ -198,6 +207,7 @@ def test_solution_sampler_sample_count_and_vocab():
 # Test 9: SolutionSampler.sample — log_probs are negative floats (or 0)
 # ---------------------------------------------------------------------------
 
+
 def test_solution_sampler_log_probs_negative():
     model = make_model()
     sampler = make_sampler(model)
@@ -215,6 +225,7 @@ def test_solution_sampler_log_probs_negative():
 # Test 10: SolutionSampler.diverse_sample — returns n_samples solutions
 # ---------------------------------------------------------------------------
 
+
 def test_solution_sampler_diverse_sample_count():
     model = make_model()
     sampler = make_sampler(model)
@@ -231,6 +242,7 @@ def test_solution_sampler_diverse_sample_count():
 # ---------------------------------------------------------------------------
 # Test 11: RejectionFilter.filter — n_kept <= len(solutions), rate in [0,1]
 # ---------------------------------------------------------------------------
+
 
 def test_rejection_filter_bounds():
     # verifier always returns True
@@ -251,6 +263,7 @@ def test_rejection_filter_bounds():
 # Test 12: RejectionFilter.best_of_k — returns single tensor with best log_prob
 # ---------------------------------------------------------------------------
 
+
 def test_rejection_filter_best_of_k():
     verifier = ExactMatchVerifier()
     filt = RejectionFilter(verifier)
@@ -269,6 +282,7 @@ def test_rejection_filter_best_of_k():
 # Test 13: RFTDataset.add + len — grows correctly
 # ---------------------------------------------------------------------------
 
+
 def test_rft_dataset_add_len():
     ds = RFTDataset()
     assert len(ds) == 0
@@ -284,6 +298,7 @@ def test_rft_dataset_add_len():
 # Test 14: RFTDataset.collate_fn — output shapes padded to max length
 # ---------------------------------------------------------------------------
 
+
 def test_rft_dataset_collate_fn():
     ds = RFTDataset()
     # Add pairs with different lengths
@@ -293,7 +308,7 @@ def test_rft_dataset_collate_fn():
     batch = [ds[0], ds[1]]
     padded_prompts, padded_solutions = RFTDataset.collate_fn(batch)
 
-    assert padded_prompts.shape == (2, 4)   # max prompt len = 4
+    assert padded_prompts.shape == (2, 4)  # max prompt len = 4
     assert padded_solutions.shape == (2, 3)  # max solution len = 3
     assert padded_prompts.dtype == torch.long
     assert padded_solutions.dtype == torch.long
@@ -302,6 +317,7 @@ def test_rft_dataset_collate_fn():
 # ---------------------------------------------------------------------------
 # Test 15a: RFTDataset.stats — all keys present, n_examples correct
 # ---------------------------------------------------------------------------
+
 
 def test_rft_dataset_stats():
     ds = RFTDataset()
@@ -320,11 +336,14 @@ def test_rft_dataset_stats():
 # Test 16: RFTTrainer.iteration — all keys present, n_correct in [0, n*n_samples]
 # ---------------------------------------------------------------------------
 
+
 def test_rft_trainer_iteration_keys_and_range():
     torch.manual_seed(42)
     model = make_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-2)
-    sampler = SolutionSampler(model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS)
+    sampler = SolutionSampler(
+        model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS
+    )
     verifier = RewardVerifier(reward_fn=lambda s: 1.0, threshold=0.5)  # always correct
 
     trainer = RFTTrainer(model, optimizer, sampler, verifier, n_iterations=2)
@@ -344,11 +363,14 @@ def test_rft_trainer_iteration_keys_and_range():
 # Test 17: RFTTrainer — loss is finite when there are correct solutions
 # ---------------------------------------------------------------------------
 
+
 def test_rft_trainer_loss_finite():
     torch.manual_seed(7)
     model = make_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-2)
-    sampler = SolutionSampler(model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS)
+    sampler = SolutionSampler(
+        model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS
+    )
     # Always accept → always have correct solutions → loss must be computed
     verifier = RewardVerifier(reward_fn=lambda s: 1.0, threshold=0.5)
 
@@ -365,11 +387,14 @@ def test_rft_trainer_loss_finite():
 # Test 18: self_improvement_loop — returns n_iterations dicts
 # ---------------------------------------------------------------------------
 
+
 def test_self_improvement_loop_length():
     torch.manual_seed(99)
     model = make_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-2)
-    sampler = SolutionSampler(model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS)
+    sampler = SolutionSampler(
+        model, n_samples=N_SAMPLES, temperature=0.8, max_new_tokens=MAX_NEW_TOKENS
+    )
     verifier = RewardVerifier(reward_fn=lambda s: 1.0, threshold=0.5)
 
     n_iters = 3

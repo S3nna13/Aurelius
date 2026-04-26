@@ -65,9 +65,7 @@ class DPAggregator:
         clipped = [self.clip_gradient(g, max_norm) for g in client_grads]
 
         dim = len(clipped[0])
-        averaged = [
-            sum(c[i] for c in clipped) / n for i in range(dim)
-        ]
+        averaged = [sum(c[i] for c in clipped) / n for i in range(dim)]
 
         std = self.config.noise_multiplier * max_norm / n
         noise = [random.gauss(0.0, std) for _ in range(dim)]
@@ -76,9 +74,7 @@ class DPAggregator:
         noise_mult = self.config.noise_multiplier
         if noise_mult > 0.0:
             epsilon_used = (
-                max_norm
-                * math.sqrt(2.0 * math.log(1.25 / self.config.delta))
-                / (noise_mult * n)
+                max_norm * math.sqrt(2.0 * math.log(1.25 / self.config.delta)) / (noise_mult * n)
             )
         else:
             epsilon_used = float("inf")
@@ -90,9 +86,7 @@ class DPAggregator:
             num_clients=n,
         )
 
-    def privacy_budget_remaining(
-        self, steps_taken: int, total_steps: int
-    ) -> float:
+    def privacy_budget_remaining(self, steps_taken: int, total_steps: int) -> float:
         if total_steps <= 0:
             return self.config.target_epsilon
         frac = max(0.0, 1.0 - steps_taken / total_steps)

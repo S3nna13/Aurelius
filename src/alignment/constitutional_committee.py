@@ -7,16 +7,16 @@ design reduces blind spots inherent in single-principle evaluation.
 
 No LLM inference is required; scoring is entirely heuristic (keyword matching + length norms).
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import List, Tuple
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CommitteeMember:
@@ -33,7 +33,7 @@ class CommitteeVote:
     """The outcome of a single member's evaluation of a response."""
 
     member_name: str
-    score: float          # in [0, 1]
+    score: float  # in [0, 1]
     critique: str
     revision_needed: bool
 
@@ -99,6 +99,7 @@ def _normalise_length_bonus(text: str, ideal_min: int = 20, ideal_max: int = 800
 # Main committee class
 # ---------------------------------------------------------------------------
 
+
 class ConstitutionalCommittee:
     """Evaluate responses against a panel of ethically distinct committee members.
 
@@ -109,7 +110,7 @@ class ConstitutionalCommittee:
 
     _VALID_AGGREGATIONS = {"weighted_mean", "min", "max", "majority_vote"}
 
-    def __init__(self, members: List[CommitteeMember], aggregation: str = "weighted_mean") -> None:
+    def __init__(self, members: list[CommitteeMember], aggregation: str = "weighted_mean") -> None:
         if not members:
             raise ValueError(
                 "ConstitutionalCommittee requires at least one CommitteeMember; "
@@ -127,7 +128,7 @@ class ConstitutionalCommittee:
     # Per-member scoring
     # ------------------------------------------------------------------
 
-    def _score_harm_avoidance(self, response: str, context: str) -> Tuple[float, str]:
+    def _score_harm_avoidance(self, response: str, context: str) -> tuple[float, str]:
         """Penalise responses containing harmful language."""
         hits = _count_matches(response, _HARM_PATTERNS)
         score = max(0.0, 1.0 - hits * 0.25)
@@ -140,7 +141,7 @@ class ConstitutionalCommittee:
             critique = "No harmful content detected."
         return round(score, 4), critique
 
-    def _score_helpfulness(self, response: str, context: str) -> Tuple[float, str]:
+    def _score_helpfulness(self, response: str, context: str) -> tuple[float, str]:
         """Reward responses that are substantive and use helpful language markers."""
         helpful_hits = _count_matches(response, _HELPFUL_MARKERS)
         length_bonus = _normalise_length_bonus(response)
@@ -156,15 +157,18 @@ class ConstitutionalCommittee:
             critique = "Response demonstrates adequate helpfulness."
         return round(score, 4), critique
 
-    def _score_honesty(self, response: str, context: str) -> Tuple[float, str]:
+    def _score_honesty(self, response: str, context: str) -> tuple[float, str]:
         """Penalise deceptive language; reward hedging / epistemic humility."""
         deception_hits = _count_matches(response, _DECEPTION_PATTERNS)
         score = max(0.0, 1.0 - deception_hits * 0.3)
         # Small reward for epistemic hedging
-        hedge_hits = len(re.findall(
-            r"\b(I think|I believe|likely|probably|uncertain|not sure|may|might|could be)\b",
-            response, re.IGNORECASE
-        ))
+        hedge_hits = len(
+            re.findall(
+                r"\b(I think|I believe|likely|probably|uncertain|not sure|may|might|could be)\b",
+                response,
+                re.IGNORECASE,
+            )
+        )
         score = min(1.0, score + hedge_hits * 0.02)
         if deception_hits > 0:
             critique = (
@@ -175,7 +179,7 @@ class ConstitutionalCommittee:
             critique = "No deceptive language detected."
         return round(score, 4), critique
 
-    def _score_fairness(self, response: str, context: str) -> Tuple[float, str]:
+    def _score_fairness(self, response: str, context: str) -> tuple[float, str]:
         """Penalise biased or discriminatory language."""
         bias_hits = _count_matches(response, _BIAS_PATTERNS)
         score = max(0.0, 1.0 - bias_hits * 0.35)
@@ -196,7 +200,9 @@ class ConstitutionalCommittee:
         "fairness": _score_fairness,
     }
 
-    def _score_generic(self, member: CommitteeMember, response: str, context: str) -> Tuple[float, str]:
+    def _score_generic(
+        self, member: CommitteeMember, response: str, context: str
+    ) -> tuple[float, str]:
         """Fallback generic scorer for custom committee members."""
         # Simple heuristic: penalise very short responses, reward moderate length
         n_words = len(response.split())
@@ -214,13 +220,13 @@ class ConstitutionalCommittee:
     # Public API
     # ------------------------------------------------------------------
 
-    def evaluate(self, response: str, context: str = "") -> List[CommitteeVote]:
+    def evaluate(self, response: str, context: str = "") -> list[CommitteeVote]:
         """Evaluate *response* against every member's principle.
 
         Returns a :class:`CommitteeVote` for each member in ``self.members``.
         Scoring is fully heuristic — no LLM inference.
         """
-        votes: List[CommitteeVote] = []
+        votes: list[CommitteeVote] = []
         for member in self.members:
             scorer = self._SCORER_MAP.get(member.name)
             if scorer is not None:
@@ -242,7 +248,7 @@ class ConstitutionalCommittee:
             )
         return votes
 
-    def aggregate_votes(self, votes: List[CommitteeVote]) -> Tuple[float, bool]:
+    def aggregate_votes(self, votes: list[CommitteeVote]) -> tuple[float, bool]:
         """Aggregate individual member votes into a final (score, needs_revision) tuple.
 
         Aggregation strategies:
@@ -268,9 +274,9 @@ class ConstitutionalCommittee:
             if total_weight == 0:
                 final_score = 0.0
             else:
-                final_score = sum(
-                    v.score * weight_map.get(v.member_name, 1.0) for v in votes
-                ) / total_weight
+                final_score = (
+                    sum(v.score * weight_map.get(v.member_name, 1.0) for v in votes) / total_weight
+                )
             needs_revision = final_score < 0.5
 
         elif self.aggregation == "min":
@@ -297,7 +303,7 @@ class ConstitutionalCommittee:
 
         return round(final_score, 4), needs_revision
 
-    def get_revision_instructions(self, votes: List[CommitteeVote]) -> str:
+    def get_revision_instructions(self, votes: list[CommitteeVote]) -> str:
         """Combine critiques from members who flagged revision_needed into a single string.
 
         Returns an empty string if no member requested a revision.
@@ -310,15 +316,15 @@ class ConstitutionalCommittee:
 
     def filter_dataset(
         self,
-        examples: List[dict],
+        examples: list[dict],
         threshold: float = 0.7,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """Filter a dataset, retaining only examples with committee_score >= *threshold*.
 
         Each dict must contain a ``'response'`` key and optionally a ``'context'`` key.
         Filtered examples are returned with a ``'committee_score'`` key added.
         """
-        filtered: List[dict] = []
+        filtered: list[dict] = []
         for ex in examples:
             response = ex.get("response", "")
             context = ex.get("context", "")
@@ -332,6 +338,7 @@ class ConstitutionalCommittee:
 # ---------------------------------------------------------------------------
 # Factory helpers
 # ---------------------------------------------------------------------------
+
 
 def create_default_committee() -> ConstitutionalCommittee:
     """Return a :class:`ConstitutionalCommittee` with four canonical members.
@@ -383,7 +390,7 @@ def create_default_committee() -> ConstitutionalCommittee:
             name="fairness",
             principle=(
                 "Responses must treat all people equitably regardless of race, gender, religion, "
-                "nationality, sexual orientation, or other protected characteristics. Stereotyping, "
+                "nationality, sexual orientation, or other protected characteristics. Stereotyping, "  # noqa: E501
                 "disparagement, and discriminatory language are prohibited."
             ),
             weight=1.0,

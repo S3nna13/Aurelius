@@ -3,16 +3,16 @@
 import pytest
 
 from src.cli.debug_commands import (
-    LogLevel,
-    DebugSnapshot,
-    DebugCommands,
     DEBUG_COMMANDS,
+    DebugCommands,
+    DebugSnapshot,
+    LogLevel,
 )
-
 
 # ---------------------------------------------------------------------------
 # LogLevel enum
 # ---------------------------------------------------------------------------
+
 
 class TestLogLevel:
     def test_debug_value(self):
@@ -41,6 +41,7 @@ class TestLogLevel:
 # DebugSnapshot dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestDebugSnapshot:
     def test_fields_present(self):
         s = DebugSnapshot(
@@ -58,6 +59,7 @@ class TestDebugSnapshot:
 # ---------------------------------------------------------------------------
 # DebugCommands — fresh instance per test
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def dc():
@@ -209,6 +211,7 @@ class TestReset:
 # ---------------------------------------------------------------------------
 # DEBUG_COMMANDS singleton
 # ---------------------------------------------------------------------------
+
 
 class TestDebugCommandsSingleton:
     def test_exists(self):

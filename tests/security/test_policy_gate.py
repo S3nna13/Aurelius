@@ -130,9 +130,7 @@ def test_denial_logged_at_warning(caplog):
     with caplog.at_level(logging.WARNING, logger="aurelius.security.policy_gate"):
         with pytest.raises(PolicyViolation):
             gate.check("example.com", "scan")
-    assert any(
-        "policy_gate_denied" in rec.getMessage() for rec in caplog.records
-    )
+    assert any("policy_gate_denied" in rec.getMessage() for rec in caplog.records)
 
 
 def test_list_policies_returns_copy():

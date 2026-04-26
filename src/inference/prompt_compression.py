@@ -16,17 +16,16 @@ References:
     - Selective Context (Li et al., 2023): context compression via self-information.
     - LLMLingua (Jiang et al., 2023): coarse-to-fine prompt compression.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _collect_attention_weights(
     model: nn.Module,
@@ -71,6 +70,7 @@ def _collect_attention_weights(
 # ---------------------------------------------------------------------------
 # AttentionBasedCompressor
 # ---------------------------------------------------------------------------
+
 
 class AttentionBasedCompressor:
     """Compress a prompt by keeping only the top-k% most attended-to tokens.
@@ -184,7 +184,7 @@ class AttentionBasedCompressor:
     def compress(
         self,
         input_ids: torch.Tensor,
-        n_keep: Optional[int] = None,
+        n_keep: int | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Keep the most important tokens.
 
@@ -227,6 +227,7 @@ class AttentionBasedCompressor:
 # ---------------------------------------------------------------------------
 # SelectiveContextCompressor
 # ---------------------------------------------------------------------------
+
 
 class SelectiveContextCompressor:
     """Chunk-level prompt compression: keep sentence-length blocks.

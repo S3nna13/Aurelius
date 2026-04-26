@@ -46,7 +46,7 @@ class SimPOLoss(nn.Module):
 
     def forward(
         self,
-        policy_chosen_logps: torch.Tensor,    # shape: (batch,)
+        policy_chosen_logps: torch.Tensor,  # shape: (batch,)
         policy_rejected_logps: torch.Tensor,  # shape: (batch,)
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute SimPO loss.
@@ -58,7 +58,7 @@ class SimPOLoss(nn.Module):
         Returns:
             Tuple of (loss, chosen_rewards, rejected_rewards), where loss is a scalar
             and rewards have shape (batch,).
-        """
+        """  # noqa: E501
         chosen_rewards = self.beta * policy_chosen_logps
         rejected_rewards = self.beta * policy_rejected_logps
 
@@ -70,10 +70,7 @@ class SimPOLoss(nn.Module):
         if self.label_smoothing > 0.0:
             # Smoothed loss blends in the "wrong" direction
             smooth_loss = -F.logsigmoid(-reward_margin)
-            loss = (
-                (1.0 - self.label_smoothing) * nll_loss
-                + self.label_smoothing * smooth_loss
-            )
+            loss = (1.0 - self.label_smoothing) * nll_loss + self.label_smoothing * smooth_loss
         else:
             loss = nll_loss
 

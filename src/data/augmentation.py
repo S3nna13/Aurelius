@@ -10,9 +10,9 @@ span_masking) plus TokenAugmenter and AugmentedDataset helpers.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
-from dataclasses import dataclass, field
-from typing import Callable
 from torch import Tensor
 
 
@@ -49,10 +49,8 @@ class RandomTokenMask:
         if self.mask_id is not None:
             output[mask] = self.mask_id
         else:
-            assert self.vocab_size is not None
-            output[mask] = torch.randint(
-                0, self.vocab_size, (mask.sum().item(),), generator=gen
-            )
+            assert self.vocab_size is not None  # noqa: S101
+            output[mask] = torch.randint(0, self.vocab_size, (mask.sum().item(),), generator=gen)
 
         return output
 
@@ -111,9 +109,7 @@ class SpanCorruption:
             start = torch.randint(0, S, ()).item()
             length = max(
                 1,
-                int(
-                    torch.poisson(torch.tensor(float(self.mean_span_length))).item()
-                ),
+                int(torch.poisson(torch.tensor(float(self.mean_span_length))).item()),
             )
             end = min(S, start + length)
             corrupt_mask[start:end] = True
@@ -196,8 +192,9 @@ def token_replacement(
     mask = torch.rand(input_ids.shape, generator=generator) < replace_prob
     n = int(mask.sum().item())
     if n > 0:
-        output[mask] = torch.randint(0, vocab_size, (n,), generator=generator,
-                                     dtype=input_ids.dtype)
+        output[mask] = torch.randint(
+            0, vocab_size, (n,), generator=generator, dtype=input_ids.dtype
+        )
     return output
 
 
@@ -287,9 +284,10 @@ def span_masking(
         for _ in range(n_spans):
             start = int(torch.randint(0, T, (1,), generator=generator).item())
             # sample span length from Poisson
-            span_len = max(1, int(
-                torch.poisson(torch.tensor(float(mean_span_len)), generator=generator).item()
-            ))
+            span_len = max(
+                1,
+                int(torch.poisson(torch.tensor(float(mean_span_len)), generator=generator).item()),
+            )
             end = min(T, start + span_len)
             mask[b, start:end] = True
 
@@ -311,8 +309,7 @@ class TokenAugmenter:
 
         # masking
         if cfg.mask_prob > 0:
-            ids, _ = token_masking(ids, cfg.mask_prob, cfg.mask_token_id,
-                                   cfg.vocab_size, self._gen)
+            ids, _ = token_masking(ids, cfg.mask_prob, cfg.mask_token_id, cfg.vocab_size, self._gen)
         # replacement
         if cfg.replace_prob > 0:
             ids = token_replacement(ids, cfg.replace_prob, cfg.vocab_size, self._gen)
@@ -338,8 +335,9 @@ class TokenAugmenter:
             if ids.dim() == 2 and ids.shape[0] == 1:
                 ids = token_insertion(ids, cfg.insert_prob, cfg.vocab_size, self._gen)
             elif ids.dim() == 1:
-                ids = token_insertion(ids.unsqueeze(0), cfg.insert_prob,
-                                      cfg.vocab_size, self._gen).squeeze(0)
+                ids = token_insertion(
+                    ids.unsqueeze(0), cfg.insert_prob, cfg.vocab_size, self._gen
+                ).squeeze(0)
 
         return ids
 

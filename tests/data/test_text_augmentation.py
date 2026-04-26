@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
 from src.data.text_augmentation import (
     SYNONYM_DICT,
     InstructionAugmenter,
@@ -16,10 +14,10 @@ from src.data.text_augmentation import (
     paraphrase_with_template,
 )
 
-
 # ---------------------------------------------------------------------------
 # TextAugConfig
 # ---------------------------------------------------------------------------
+
 
 def test_textaugconfig_defaults():
     config = TextAugConfig()
@@ -34,6 +32,7 @@ def test_textaugconfig_defaults():
 # SYNONYM_DICT
 # ---------------------------------------------------------------------------
 
+
 def test_synonym_dict_has_20_plus_entries():
     assert len(SYNONYM_DICT) >= 20
 
@@ -47,6 +46,7 @@ def test_synonym_dict_values_are_lists():
 # ---------------------------------------------------------------------------
 # apply_synonym_substitution
 # ---------------------------------------------------------------------------
+
 
 def test_apply_synonym_substitution_p1_changes_words():
     """With p=1.0 every word that has a synonym should be replaced."""
@@ -88,6 +88,7 @@ def test_apply_synonym_substitution_preserves_first_word_capitalization():
 # paraphrase_with_template
 # ---------------------------------------------------------------------------
 
+
 def test_paraphrase_with_template_contains_original_text():
     rng = random.Random(0)
     text = "the sky is blue"
@@ -111,6 +112,7 @@ def test_paraphrase_with_template_is_string():
 # ---------------------------------------------------------------------------
 # generate_instruction_variants
 # ---------------------------------------------------------------------------
+
 
 def test_generate_instruction_variants_returns_3_items():
     rng = random.Random(0)
@@ -138,6 +140,7 @@ def test_generate_instruction_variants_contain_instruction():
 # augment_dataset
 # ---------------------------------------------------------------------------
 
+
 def test_augment_dataset_same_length_as_input():
     texts = ["Hello world.", "This is a test.", "Fast and large."]
     config = TextAugConfig()
@@ -164,6 +167,7 @@ def test_augment_dataset_returns_list_of_strings():
 # ---------------------------------------------------------------------------
 # InstructionAugmenter
 # ---------------------------------------------------------------------------
+
 
 def test_instruction_augmenter_augment_returns_list_of_tuples():
     config = TextAugConfig()

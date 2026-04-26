@@ -9,12 +9,11 @@ from http.client import HTTPConnection
 
 import pytest
 
-from src.agent.command_dispatcher import CommandDispatcher, DispatchResult
-from src.agent.nl_command_parser import NLCommandParser, ParsedCommand
+from src.agent.command_dispatcher import CommandDispatcher
+from src.agent.nl_command_parser import NLCommandParser
 from src.serving.mission_control import (
     ActivityEntry,
     ActivityLog,
-    MissionControlServer,
     create_mission_control_server,
 )
 
@@ -137,9 +136,7 @@ class TestPOSTCommand:
         assert data["action"] == "chat"
 
     def test_command_run_skill(self, running_server) -> None:
-        resp = _request(
-            running_server, "POST", "/api/command", {"command": "list skills"}
-        )
+        resp = _request(running_server, "POST", "/api/command", {"command": "list skills"})
         assert resp.status == 200
         data = json.loads(resp.read())
         assert data["action"] == "list_skills"

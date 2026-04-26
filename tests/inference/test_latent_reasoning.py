@@ -1,18 +1,17 @@
 """Tests for latent reasoning module (Quiet-STaR / Thinking Tokens)."""
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.inference.latent_reasoning import (
     LatentReasoningConfig,
-    ThoughtTokenEmbedding,
-    prepend_thought_tokens,
-    extract_answer_from_thoughts,
-    LatentReasoningLayer,
-    compute_thought_supervision_loss,
     LatentReasoningDecoder,
+    LatentReasoningLayer,
+    ThoughtTokenEmbedding,
+    compute_thought_supervision_loss,
+    extract_answer_from_thoughts,
     measure_thought_benefit,
+    prepend_thought_tokens,
 )
 
 # ---------------------------------------------------------------------------
@@ -31,6 +30,7 @@ torch.manual_seed(0)
 # ---------------------------------------------------------------------------
 # Tiny helpers for decoder tests
 # ---------------------------------------------------------------------------
+
 
 class _TinyLM(nn.Module):
     """Minimal language model: embed + linear to vocab."""
@@ -56,6 +56,7 @@ def _tok_decode(ids: list[int]) -> str:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_latent_reasoning_config_defaults():
     cfg = LatentReasoningConfig()
     assert cfg.n_thought_tokens == 8
@@ -71,6 +72,7 @@ def test_latent_reasoning_config_defaults():
 # 2. ThoughtTokenEmbedding shape
 # ---------------------------------------------------------------------------
 
+
 def test_thought_token_embedding_shape():
     torch.manual_seed(0)
     emb = ThoughtTokenEmbedding(D_MODEL, N_THOUGHT_TOKENS)
@@ -82,6 +84,7 @@ def test_thought_token_embedding_shape():
 # ---------------------------------------------------------------------------
 # 3. Gradient flow through ThoughtTokenEmbedding
 # ---------------------------------------------------------------------------
+
 
 def test_thought_token_embedding_gradient_flow():
     torch.manual_seed(0)
@@ -98,6 +101,7 @@ def test_thought_token_embedding_gradient_flow():
 # 4. prepend_thought_tokens shape
 # ---------------------------------------------------------------------------
 
+
 def test_prepend_thought_tokens_shape():
     torch.manual_seed(0)
     hidden = torch.randn(B, T, D_MODEL)
@@ -110,6 +114,7 @@ def test_prepend_thought_tokens_shape():
 # 5. extract_answer_removes_thoughts shape
 # ---------------------------------------------------------------------------
 
+
 def test_extract_answer_removes_thoughts():
     torch.manual_seed(0)
     full = torch.randn(B, N_THOUGHT_TOKENS + T, D_MODEL)
@@ -120,6 +125,7 @@ def test_extract_answer_removes_thoughts():
 # ---------------------------------------------------------------------------
 # 6. LatentReasoningLayer output shape
 # ---------------------------------------------------------------------------
+
 
 def test_latent_reasoning_layer_output_shape():
     torch.manual_seed(0)
@@ -133,6 +139,7 @@ def test_latent_reasoning_layer_output_shape():
 # ---------------------------------------------------------------------------
 # 7. LatentReasoningLayer gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_latent_reasoning_layer_gradient_flow():
     torch.manual_seed(0)
@@ -149,6 +156,7 @@ def test_latent_reasoning_layer_gradient_flow():
 # 8. compute_thought_supervision_loss is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_compute_thought_supervision_loss_scalar():
     torch.manual_seed(0)
     logits = torch.randn(B, N_THOUGHT_TOKENS, VOCAB_SIZE)
@@ -162,6 +170,7 @@ def test_compute_thought_supervision_loss_scalar():
 # 9. All-ignore targets → loss == 0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_thought_supervision_all_ignore():
     torch.manual_seed(0)
     logits = torch.randn(B, N_THOUGHT_TOKENS, VOCAB_SIZE)
@@ -173,6 +182,7 @@ def test_compute_thought_supervision_all_ignore():
 # ---------------------------------------------------------------------------
 # 10. LatentReasoningDecoder.generate_with_thoughts returns string
 # ---------------------------------------------------------------------------
+
 
 def test_latent_decoder_generate_returns_string():
     torch.manual_seed(0)
@@ -187,6 +197,7 @@ def test_latent_decoder_generate_returns_string():
 # 11. thought_ids not empty
 # ---------------------------------------------------------------------------
 
+
 def test_latent_decoder_thought_ids_not_empty():
     torch.manual_seed(0)
     cfg = LatentReasoningConfig(n_thought_tokens=N_THOUGHT_TOKENS, max_answer_tokens=4)
@@ -199,6 +210,7 @@ def test_latent_decoder_thought_ids_not_empty():
 # ---------------------------------------------------------------------------
 # 12. measure_thought_benefit returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_measure_thought_benefit_keys():
     torch.manual_seed(0)

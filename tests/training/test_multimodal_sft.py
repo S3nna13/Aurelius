@@ -1,19 +1,20 @@
 """Tests for multimodal supervised fine-tuning module."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.multimodal_sft import (
-    MultimodalSFTConfig,
     MultimodalExample,
-    expand_image_tokens,
-    build_multimodal_labels,
-    inject_image_features,
     MultimodalSFTCollator,
+    MultimodalSFTConfig,
     MultimodalSFTTrainer,
+    build_multimodal_labels,
+    expand_image_tokens,
+    inject_image_features,
 )
 
 # ---------------------------------------------------------------------------
@@ -54,14 +55,16 @@ def small_model(small_model_cfg):
     return AureliusTransformer(small_model_cfg)
 
 
-def _make_image_features(n_images: int, n_image_tokens: int = N_IMAGE_TOKENS, d_model: int = D_MODEL):
+def _make_image_features(
+    n_images: int, n_image_tokens: int = N_IMAGE_TOKENS, d_model: int = D_MODEL
+):
     return [torch.randn(n_image_tokens, d_model) for _ in range(n_images)]
 
 
 def _make_example(n_images: int = 1) -> tuple[list[int], list[int]]:
     """Return (text_ids, labels) with n_images image placeholders."""
     text_ids = [2, IMAGE_TOKEN_ID, 3, 4]  # 1 image placeholder by default
-    labels   = [-100, -100,          3, 4]
+    labels = [-100, -100, 3, 4]
     if n_images == 0:
         text_ids = [2, 3, 4]
         labels = [-100, 3, 4]
@@ -71,6 +74,7 @@ def _make_example(n_images: int = 1) -> tuple[list[int], list[int]]:
 # ---------------------------------------------------------------------------
 # 1. test_multimodal_sft_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_multimodal_sft_config_defaults():
     cfg = MultimodalSFTConfig()
@@ -85,6 +89,7 @@ def test_multimodal_sft_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_multimodal_example_fields
 # ---------------------------------------------------------------------------
+
 
 def test_multimodal_example_fields():
     text_ids = [2, IMAGE_TOKEN_ID, 3]
@@ -106,12 +111,11 @@ def test_multimodal_example_fields():
 # 3. test_expand_image_tokens_positions
 # ---------------------------------------------------------------------------
 
+
 def test_expand_image_tokens_positions():
     text_ids = [2, IMAGE_TOKEN_ID, 3, IMAGE_TOKEN_ID, 5]
     feats = _make_image_features(2)
-    _, image_positions = expand_image_tokens(
-        text_ids, feats, IMAGE_TOKEN_ID, N_IMAGE_TOKENS
-    )
+    _, image_positions = expand_image_tokens(text_ids, feats, IMAGE_TOKEN_ID, N_IMAGE_TOKENS)
     assert len(image_positions) == 2 * N_IMAGE_TOKENS
 
 
@@ -119,13 +123,12 @@ def test_expand_image_tokens_positions():
 # 4. test_expand_image_tokens_length
 # ---------------------------------------------------------------------------
 
+
 def test_expand_image_tokens_length():
     n_images = 2
     text_ids = [2, IMAGE_TOKEN_ID, 3, IMAGE_TOKEN_ID, 5]  # 5 tokens, 2 images
     feats = _make_image_features(n_images)
-    expanded_ids, _ = expand_image_tokens(
-        text_ids, feats, IMAGE_TOKEN_ID, N_IMAGE_TOKENS
-    )
+    expanded_ids, _ = expand_image_tokens(text_ids, feats, IMAGE_TOKEN_ID, N_IMAGE_TOKENS)
     expected_len = len(text_ids) + (N_IMAGE_TOKENS - 1) * n_images
     assert expanded_ids.shape[0] == expected_len
 
@@ -133,6 +136,7 @@ def test_expand_image_tokens_length():
 # ---------------------------------------------------------------------------
 # 5. test_build_multimodal_labels_masked
 # ---------------------------------------------------------------------------
+
 
 def test_build_multimodal_labels_masked():
     text_ids = [2, IMAGE_TOKEN_ID, 3]
@@ -149,6 +153,7 @@ def test_build_multimodal_labels_masked():
 # 6. test_build_multimodal_labels_with_loss
 # ---------------------------------------------------------------------------
 
+
 def test_build_multimodal_labels_with_loss():
     text_ids = [2, IMAGE_TOKEN_ID, 3]
     labels = [-100, 5, 3]  # image placeholder has real label 5
@@ -164,6 +169,7 @@ def test_build_multimodal_labels_with_loss():
 # 7. test_inject_image_features_shape
 # ---------------------------------------------------------------------------
 
+
 def test_inject_image_features_shape():
     B, T, D = 2, 10, D_MODEL
     embeddings = torch.zeros(B, T, D)
@@ -177,6 +183,7 @@ def test_inject_image_features_shape():
 # ---------------------------------------------------------------------------
 # 8. test_inject_image_features_no_inplace
 # ---------------------------------------------------------------------------
+
 
 def test_inject_image_features_no_inplace():
     B, T, D = 1, 8, D_MODEL
@@ -193,6 +200,7 @@ def test_inject_image_features_no_inplace():
 # ---------------------------------------------------------------------------
 # 9. test_collator_batch_shapes
 # ---------------------------------------------------------------------------
+
 
 def test_collator_batch_shapes(sft_config):
     collator = MultimodalSFTCollator(sft_config, pad_id=0)
@@ -219,6 +227,7 @@ def test_collator_batch_shapes(sft_config):
 # 10. test_collator_padding
 # ---------------------------------------------------------------------------
 
+
 def test_collator_padding(sft_config):
     collator = MultimodalSFTCollator(sft_config, pad_id=0)
     short_text = [2, 3]  # No images, 2 tokens
@@ -239,6 +248,7 @@ def test_collator_padding(sft_config):
 # ---------------------------------------------------------------------------
 # 11. test_trainer_train_step_keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_keys(small_model, sft_config):
     optimizer = torch.optim.SGD(small_model.parameters(), lr=1e-3)
@@ -267,6 +277,7 @@ def test_trainer_train_step_keys(small_model, sft_config):
 # ---------------------------------------------------------------------------
 # 12. test_trainer_evaluate_step_no_grad
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_evaluate_step_no_grad(small_model, sft_config):
     optimizer = torch.optim.SGD(small_model.parameters(), lr=1e-3)

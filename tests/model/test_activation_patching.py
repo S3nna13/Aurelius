@@ -3,7 +3,6 @@
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
 from src.model.activation_patching import (
     ActivationPatcher,
     PatchConfig,
@@ -12,6 +11,7 @@ from src.model.activation_patching import (
     create_patch_hook,
     run_with_patch,
 )
+from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------

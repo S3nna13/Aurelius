@@ -16,7 +16,6 @@ Registries protected:
 
 from __future__ import annotations
 
-import copy
 import importlib
 from typing import Any
 
@@ -38,6 +37,7 @@ def _restore(obj: Any, snapshot: dict) -> None:
 # API_SHAPE_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _isolate_api_shape_registry():
     """Snapshot/restore API_SHAPE_REGISTRY around every test."""
@@ -56,6 +56,7 @@ def _isolate_api_shape_registry():
 # ---------------------------------------------------------------------------
 # TOOL_REGISTRY  (ToolRegistry._specs and ._handlers are internal dicts)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _isolate_tool_registry():
@@ -78,6 +79,7 @@ def _isolate_tool_registry():
 # MCP_SERVER_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _isolate_mcp_server_registry():
     """Snapshot/restore MCP_SERVER_REGISTRY around every test."""
@@ -96,6 +98,7 @@ def _isolate_mcp_server_registry():
 # ---------------------------------------------------------------------------
 # MCP_TOOL_SCHEMA_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _isolate_mcp_tool_schema_registry():
@@ -116,6 +119,7 @@ def _isolate_mcp_tool_schema_registry():
 # SSE_SERVER_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _isolate_sse_server_registry():
     """Snapshot/restore SSE_SERVER_REGISTRY around every test."""
@@ -134,6 +138,7 @@ def _isolate_sse_server_registry():
 # ---------------------------------------------------------------------------
 # SAFE_EXTRACTOR_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _isolate_safe_extractor_registry():

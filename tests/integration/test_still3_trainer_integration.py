@@ -6,9 +6,9 @@ Verifies:
 - total_loss is computed on kept groups and supports .backward().
 - Metrics dict is well-formed.
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.training import TRAINING_REGISTRY
@@ -32,23 +32,23 @@ def test_full_pipeline_filter_and_backward():
 
     # Build 4 groups: 2 uniform (will be filtered), 2 varied (will be kept).
     # Each group has a "logits" field so we can compute total_loss later.
-    B, T, V = 2, 6, 20  # batch=2 (one per kept group), seq_len=6, vocab=20
+    _B, T, V = 2, 6, 20  # batch=2 (one per kept group), seq_len=6, vocab=20
 
     groups = [
         {
-            "rewards": [0.9, 0.9, 0.9, 0.9],   # uniform → filtered
+            "rewards": [0.9, 0.9, 0.9, 0.9],  # uniform → filtered
             "tag": "uniform_easy",
         },
         {
-            "rewards": [0.0, 1.0, 0.2, 0.8],   # varied → kept
+            "rewards": [0.0, 1.0, 0.2, 0.8],  # varied → kept
             "tag": "varied_a",
         },
         {
-            "rewards": [0.1, 0.1, 0.1, 0.1],   # uniform → filtered
+            "rewards": [0.1, 0.1, 0.1, 0.1],  # uniform → filtered
             "tag": "uniform_hard",
         },
         {
-            "rewards": [0.3, 0.9, 0.6, 0.4],   # varied → kept
+            "rewards": [0.3, 0.9, 0.6, 0.4],  # varied → kept
             "tag": "varied_b",
         },
     ]
@@ -63,17 +63,13 @@ def test_full_pipeline_filter_and_backward():
     # After normalisation each group's rewards should have mean ≈ 0
     for g in kept:
         mean = sum(g["rewards"]) / len(g["rewards"])
-        assert abs(mean) < 1e-5, (
-            f"Group '{g['tag']}' rewards not normalised; mean={mean}"
-        )
+        assert abs(mean) < 1e-5, f"Group '{g['tag']}' rewards not normalised; mean={mean}"
 
     # --- Step 2: compute total_loss on kept groups ---
     # Simulate: one scalar log_prob and one reward per kept group.
     torch.manual_seed(42)
     logits = torch.randn(len(kept), T, V, requires_grad=True)
-    log_probs = torch.tensor(
-        [-1.2, -0.8], dtype=torch.float32, requires_grad=True
-    )
+    log_probs = torch.tensor([-1.2, -0.8], dtype=torch.float32, requires_grad=True)
     # Use mean normalised reward per group as the advantage signal
     rewards = torch.tensor(
         [sum(g["rewards"]) / len(g["rewards"]) for g in kept],
@@ -107,8 +103,8 @@ def test_registry_instantiation_with_custom_config():
 
     # Quick smoke test: filtering
     groups = [
-        [0.0, 0.0, 0.0],   # uniform → filtered
-        [0.0, 0.5, 1.0],   # varied → kept
+        [0.0, 0.0, 0.0],  # uniform → filtered
+        [0.0, 0.5, 1.0],  # varied → kept
     ]
     result = trainer.filter_by_std(groups)
     assert len(result) == 1

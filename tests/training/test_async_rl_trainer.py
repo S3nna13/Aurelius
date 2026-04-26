@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.optim as optim
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -67,6 +67,7 @@ def make_trajectory(
 # Test 1: AsyncRLConfig dataclass instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_async_rl_config_instantiates():
     cfg = AsyncRLConfig()
     assert cfg.eps_low == 0.2
@@ -81,6 +82,7 @@ def test_async_rl_config_instantiates():
 # Test 2: Trajectory dataclass instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_trajectory_instantiates():
     traj = make_trajectory()
     assert isinstance(traj.token_ids, torch.Tensor)
@@ -94,6 +96,7 @@ def test_trajectory_instantiates():
 # Test 3: AsyncRLTrainer instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_async_rl_trainer_instantiates():
     trainer = make_trainer()
     assert trainer._version == 0
@@ -103,6 +106,7 @@ def test_async_rl_trainer_instantiates():
 # ---------------------------------------------------------------------------
 # Test 4: DoubleSidedIS.importance_ratio returns correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_importance_ratio_shape():
     is_fn = DoubleSidedIS(eps_low=0.2, eps_high=0.2)
@@ -117,19 +121,19 @@ def test_importance_ratio_shape():
 # Test 5: IS ratio is 1.0 when log probs are identical
 # ---------------------------------------------------------------------------
 
+
 def test_importance_ratio_identical_log_probs():
     is_fn = DoubleSidedIS(eps_low=0.2, eps_high=0.2)
     T = 8
     log_probs = torch.randn(T)
     ratio = is_fn.importance_ratio(log_probs, log_probs)
-    assert torch.allclose(ratio, torch.ones(T), atol=1e-6), (
-        f"Expected all 1.0, got {ratio}"
-    )
+    assert torch.allclose(ratio, torch.ones(T), atol=1e-6), f"Expected all 1.0, got {ratio}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: DoubleSidedIS.clip_ratio clamps values outside the range
 # ---------------------------------------------------------------------------
+
 
 def test_clip_ratio_clamps_correctly():
     is_fn = DoubleSidedIS(eps_low=0.2, eps_high=0.2)
@@ -147,6 +151,7 @@ def test_clip_ratio_clamps_correctly():
 # Test 7: _is_stale returns True when staleness exceeded
 # ---------------------------------------------------------------------------
 
+
 def test_is_stale_returns_true_when_exceeded():
     trainer = make_trainer()
     # Set current version so that staleness = max_staleness + 1
@@ -161,12 +166,13 @@ def test_is_stale_returns_true_when_exceeded():
 # Test 8: _filter_trajectories removes stale trajectories
 # ---------------------------------------------------------------------------
 
+
 def test_filter_removes_stale_trajectories():
     trainer = make_trainer()
     trainer._version = 10  # high current version
 
-    fresh_traj = make_trajectory(rollout_version=9)   # staleness = 1 (ok)
-    stale_traj = make_trajectory(rollout_version=0)   # staleness = 10 > max_staleness=2
+    fresh_traj = make_trajectory(rollout_version=9)  # staleness = 1 (ok)
+    stale_traj = make_trajectory(rollout_version=0)  # staleness = 10 > max_staleness=2
 
     filtered = trainer._filter_trajectories([fresh_traj, stale_traj])
     assert len(filtered) == 1
@@ -177,14 +183,15 @@ def test_filter_removes_stale_trajectories():
 # Test 9: _group_reward_baseline returns zero-mean advantages per group
 # ---------------------------------------------------------------------------
 
+
 def test_group_reward_baseline_zero_mean():
     trainer = make_trainer()
     # Build 2 trajectories (1 group of size 2 per RL_CFG.group_size=2)
     t1 = make_trajectory()
     t2 = make_trajectory()
     # Fix rewards to known values
-    t1.rewards = torch.tensor([1.0, 3.0])   # mean = 2.0
-    t2.rewards = torch.tensor([5.0, 7.0])   # mean = 6.0
+    t1.rewards = torch.tensor([1.0, 3.0])  # mean = 2.0
+    t2.rewards = torch.tensor([5.0, 7.0])  # mean = 6.0
 
     advantages = trainer._group_reward_baseline([t1, t2])
     adv_sum = advantages[0] + advantages[1]
@@ -197,20 +204,20 @@ def test_group_reward_baseline_zero_mean():
 # Test 10: compute_log_probs returns Tensor of shape (T-1,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_log_probs_shape():
     trainer = make_trainer()
     T = 8
     token_ids = torch.randint(0, MODEL_CFG.vocab_size, (T,))
     with torch.no_grad():
         log_probs = trainer.compute_log_probs(token_ids)
-    assert log_probs.shape == (T - 1,), (
-        f"Expected shape ({T - 1},), got {log_probs.shape}"
-    )
+    assert log_probs.shape == (T - 1,), f"Expected shape ({T - 1},), got {log_probs.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 11: train_step returns dict with 'loss' key
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_loss_key():
     trainer = make_trainer()
@@ -226,12 +233,11 @@ def test_train_step_returns_loss_key():
 # Test 12: Loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_loss_is_finite():
     torch.manual_seed(42)
     trainer = make_trainer()
     optimizer = optim.SGD(trainer.model.parameters(), lr=1e-3)
     trajectories = [make_trajectory(rollout_version=0) for _ in range(4)]
     result = trainer.train_step(trajectories, optimizer)
-    assert torch.isfinite(torch.tensor(result["loss"])), (
-        f"Loss is not finite: {result['loss']}"
-    )
+    assert torch.isfinite(torch.tensor(result["loss"])), f"Loss is not finite: {result['loss']}"

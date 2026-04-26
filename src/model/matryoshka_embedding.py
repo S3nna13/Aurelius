@@ -18,15 +18,13 @@ References
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
 import sys
-from typing import Optional
+from dataclasses import dataclass, field
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -48,7 +46,7 @@ class MatryoshkaConfig:
 
     full_dim: int = 512
     nested_dims: list[int] = field(default_factory=lambda: [64, 128, 256, 512])
-    scale_weights: Optional[list[float]] = None
+    scale_weights: list[float] | None = None
     temperature: float = 0.07
 
     def __post_init__(self) -> None:
@@ -72,9 +70,7 @@ class MatryoshkaConfig:
                 raise ValueError(f"All nested_dims must be positive, got {d}.")
         if self.scale_weights is not None:
             if len(self.scale_weights) != len(self.nested_dims):
-                raise ValueError(
-                    "scale_weights must have the same length as nested_dims."
-                )
+                raise ValueError("scale_weights must have the same length as nested_dims.")
             for w in self.scale_weights:
                 if not isinstance(w, (int, float)) or isinstance(w, bool):
                     raise ValueError(
@@ -148,7 +144,9 @@ class MatryoshkaEmbedding(nn.Module):
         if not isinstance(x, Tensor):
             raise TypeError(f"forward expects a Tensor, got {type(x).__name__}")
         if x.ndim != 2:
-            raise ValueError(f"forward expects a 2D [B, in_features] tensor, got shape {tuple(x.shape)}")
+            raise ValueError(
+                f"forward expects a 2D [B, in_features] tensor, got shape {tuple(x.shape)}"
+            )
         if x.shape[-1] != self.in_features:
             raise ValueError(
                 f"forward expects last dimension {self.in_features}, got {x.shape[-1]}"
@@ -176,9 +174,7 @@ class MatryoshkaEmbedding(nn.Module):
             ``[B, dim]`` unit-norm tensor.
         """
         if not isinstance(embeddings, Tensor):
-            raise TypeError(
-                f"get_nested expects a Tensor, got {type(embeddings).__name__}"
-            )
+            raise TypeError(f"get_nested expects a Tensor, got {type(embeddings).__name__}")
         if embeddings.ndim != 2:
             raise ValueError(
                 f"get_nested expects a 2D [B, full_dim] tensor, got shape {tuple(embeddings.shape)}"
@@ -188,9 +184,7 @@ class MatryoshkaEmbedding(nn.Module):
         if dim <= 0:
             raise ValueError("dim must be positive")
         if dim > embeddings.shape[-1]:
-            raise ValueError(
-                f"dim={dim} exceeds embedding width {embeddings.shape[-1]}"
-            )
+            raise ValueError(f"dim={dim} exceeds embedding width {embeddings.shape[-1]}")
         sliced = embeddings[..., :dim]  # [B, dim]
         return F.normalize(sliced, p=2, dim=-1)
 
@@ -257,7 +251,7 @@ class MatryoshkaEmbedding(nn.Module):
             raise TypeError("matryoshka_loss expects Tensor inputs")
         if embeddings_a.shape != embeddings_b.shape:
             raise ValueError(
-                f"matryoshka_loss expects matching shapes, got {tuple(embeddings_a.shape)} and {tuple(embeddings_b.shape)}"
+                f"matryoshka_loss expects matching shapes, got {tuple(embeddings_a.shape)} and {tuple(embeddings_b.shape)}"  # noqa: E501
             )
         losses: dict[str, Tensor] = {}
         total = torch.zeros((), device=embeddings_a.device, dtype=embeddings_a.dtype)
@@ -294,9 +288,7 @@ class MatryoshkaEmbedding(nn.Module):
             Scalar in [-1, 1].
         """
         if not isinstance(embeddings, Tensor):
-            raise TypeError(
-                f"anisotropy expects a Tensor, got {type(embeddings).__name__}"
-            )
+            raise TypeError(f"anisotropy expects a Tensor, got {type(embeddings).__name__}")
         if embeddings.ndim != 2:
             raise ValueError(
                 f"anisotropy expects a 2D [B, d] tensor, got shape {tuple(embeddings.shape)}"

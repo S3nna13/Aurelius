@@ -1,4 +1,5 @@
 """Tests for reward_ensemble — uncertainty-aware ensemble reward model."""
+
 import math
 
 import pytest
@@ -6,15 +7,14 @@ import torch
 
 from src.alignment.reward_ensemble import (
     EnsembleConfig,
-    RewardHead,
-    RewardEnsemble,
     MCDropoutReward,
-    conservative_reward,
+    RewardEnsemble,
     RewardEnsembleTrainer,
+    RewardHead,
+    conservative_reward,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Constants and shared fixtures
@@ -69,6 +69,7 @@ def input_ids():
 # 1. test_ensemble_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ensemble_config_defaults():
     """EnsembleConfig must expose correct default field values."""
     cfg = EnsembleConfig()
@@ -83,6 +84,7 @@ def test_ensemble_config_defaults():
 # 2. test_reward_head_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_reward_head_output_shape():
     """RewardHead.forward must return shape (B,) for a (B, T, D) input."""
     torch.manual_seed(42)
@@ -96,6 +98,7 @@ def test_reward_head_output_shape():
 # 3. test_reward_head_output_is_finite
 # ---------------------------------------------------------------------------
 
+
 def test_reward_head_output_is_finite():
     """RewardHead output must contain only finite values."""
     torch.manual_seed(42)
@@ -108,6 +111,7 @@ def test_reward_head_output_is_finite():
 # ---------------------------------------------------------------------------
 # 4. test_reward_ensemble_forward_returns_tuple
 # ---------------------------------------------------------------------------
+
 
 def test_reward_ensemble_forward_returns_tuple(ensemble_model, input_ids):
     """RewardEnsemble.forward must return a 2-tuple."""
@@ -123,6 +127,7 @@ def test_reward_ensemble_forward_returns_tuple(ensemble_model, input_ids):
 # 5. test_reward_ensemble_mean_reward_shape
 # ---------------------------------------------------------------------------
 
+
 def test_reward_ensemble_mean_reward_shape(ensemble_model, input_ids):
     """mean_reward from RewardEnsemble.forward must have shape (B,)."""
     ensemble_model.eval()
@@ -134,6 +139,7 @@ def test_reward_ensemble_mean_reward_shape(ensemble_model, input_ids):
 # ---------------------------------------------------------------------------
 # 6. test_reward_ensemble_std_reward_nonneg
 # ---------------------------------------------------------------------------
+
 
 def test_reward_ensemble_std_reward_nonneg(ensemble_model, input_ids):
     """std_reward from RewardEnsemble.forward must be >= 0."""
@@ -147,6 +153,7 @@ def test_reward_ensemble_std_reward_nonneg(ensemble_model, input_ids):
 # ---------------------------------------------------------------------------
 # 7. test_aggregate_mean
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_mean(ensemble_model):
     """aggregate with 'mean' must return the arithmetic mean across models."""
@@ -162,6 +169,7 @@ def test_aggregate_mean(ensemble_model):
 # ---------------------------------------------------------------------------
 # 8. test_aggregate_min_lte_mean
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_min_lte_mean(ensemble_model):
     """aggregate 'min' result must be <= 'mean' result element-wise."""
@@ -184,15 +192,14 @@ def test_aggregate_min_lte_mean(ensemble_model):
 # 9. test_uncertainty_keys
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_keys(ensemble_model, input_ids):
     """RewardEnsemble.uncertainty must return dict with required keys."""
     ensemble_model.eval()
     with torch.no_grad():
         result = ensemble_model.uncertainty(input_ids)
     required = {"mean", "std", "epistemic", "lower_bound"}
-    assert required.issubset(result.keys()), (
-        f"Missing keys: {required - result.keys()}"
-    )
+    assert required.issubset(result.keys()), f"Missing keys: {required - result.keys()}"
     for k in required:
         assert result[k].shape == (B,), f"Key '{k}' has wrong shape: {result[k].shape}"
 
@@ -200,6 +207,7 @@ def test_uncertainty_keys(ensemble_model, input_ids):
 # ---------------------------------------------------------------------------
 # 10. test_mc_dropout_predict_shapes
 # ---------------------------------------------------------------------------
+
 
 def test_mc_dropout_predict_shapes():
     """MCDropoutReward.predict must return (mean, std) with shape (B,)."""
@@ -216,6 +224,7 @@ def test_mc_dropout_predict_shapes():
 # 11. test_conservative_reward
 # ---------------------------------------------------------------------------
 
+
 def test_conservative_reward():
     """conservative_reward must equal mean - beta*std."""
     mean = torch.tensor([2.0, 3.0, 1.0])
@@ -231,6 +240,7 @@ def test_conservative_reward():
 # ---------------------------------------------------------------------------
 # 12. test_train_step_returns_required_keys
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_required_keys(ensemble_model, input_ids):
     """RewardEnsembleTrainer.train_step must return dict with required keys."""
@@ -249,6 +259,7 @@ def test_train_step_returns_required_keys(ensemble_model, input_ids):
 # 13. test_train_step_loss_is_finite
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_loss_is_finite(ensemble_model, input_ids):
     """RewardEnsembleTrainer.train_step loss must be finite."""
     cfg = EnsembleConfig(n_models=N_MODELS)
@@ -264,6 +275,7 @@ def test_train_step_loss_is_finite(ensemble_model, input_ids):
 # ---------------------------------------------------------------------------
 # 14. test_evaluate_returns_required_keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_returns_required_keys(ensemble_model, input_ids):
     """RewardEnsembleTrainer.evaluate must return dict with required keys."""
@@ -281,6 +293,7 @@ def test_evaluate_returns_required_keys(ensemble_model, input_ids):
 # ---------------------------------------------------------------------------
 # 15. test_aggregate_ucb_ge_mean
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_ucb_ge_mean(ensemble_model):
     """aggregate 'ucb' result must be >= 'mean' result element-wise."""

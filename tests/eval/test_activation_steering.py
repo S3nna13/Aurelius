@@ -1,25 +1,26 @@
 """Tests for src/eval/activation_steering.py."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 import torch.nn.functional as F
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.activation_steering import (
     SteeringConfig,
-    compute_mean_activation,
-    compute_steering_vector,
     SteeringHook,
     apply_steering,
+    compute_mean_activation,
+    compute_steering_vector,
     measure_steering_effect,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_cfg() -> AureliusConfig:
@@ -65,6 +66,7 @@ def steering_vec(d_model: int) -> torch.Tensor:
 # 1. SteeringConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_steering_config_defaults():
     cfg = SteeringConfig()
     assert cfg.layer_idx == 12
@@ -77,6 +79,7 @@ def test_steering_config_defaults():
 # 2. compute_mean_activation - output shape (d_model,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_mean_activation_shape(tiny_model, d_model):
     input_ids_list = [torch.randint(0, 256, (1, 6)) for _ in range(3)]
     act = compute_mean_activation(tiny_model, input_ids_list, layer_idx=0)
@@ -86,6 +89,7 @@ def test_compute_mean_activation_shape(tiny_model, d_model):
 # ---------------------------------------------------------------------------
 # 3. compute_mean_activation - same input twice gives same result
 # ---------------------------------------------------------------------------
+
 
 def test_compute_mean_activation_deterministic(tiny_model, d_model):
     input_ids_list = [torch.randint(0, 256, (1, 6))]
@@ -98,6 +102,7 @@ def test_compute_mean_activation_deterministic(tiny_model, d_model):
 # 4. compute_steering_vector - output shape (d_model,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_steering_vector_shape(d_model):
     pos = torch.randn(4, d_model)
     neg = torch.randn(4, d_model)
@@ -108,6 +113,7 @@ def test_compute_steering_vector_shape(d_model):
 # ---------------------------------------------------------------------------
 # 5. compute_steering_vector - is L2-normalized (norm approx 1)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_steering_vector_normalized(d_model):
     torch.manual_seed(1)
@@ -121,6 +127,7 @@ def test_compute_steering_vector_normalized(d_model):
 # ---------------------------------------------------------------------------
 # 6. compute_steering_vector - opposite inputs give opposite directions
 # ---------------------------------------------------------------------------
+
 
 def test_compute_steering_vector_opposite(d_model):
     torch.manual_seed(2)
@@ -137,6 +144,7 @@ def test_compute_steering_vector_opposite(d_model):
 # 7. SteeringHook - as context manager (enter/exit without error)
 # ---------------------------------------------------------------------------
 
+
 def test_steering_hook_context_manager(tiny_model, steering_vec):
     cfg = SteeringConfig(layer_idx=0, coeff=1.0, mode="add")
     hook = SteeringHook(steering_vec, cfg)
@@ -149,6 +157,7 @@ def test_steering_hook_context_manager(tiny_model, steering_vec):
 # 8. apply_steering - returns shape (B, T, V)
 # ---------------------------------------------------------------------------
 
+
 def test_apply_steering_output_shape(tiny_model, steering_vec, tiny_cfg):
     cfg = SteeringConfig(layer_idx=0, coeff=5.0, mode="add")
     ids = torch.randint(0, 256, (2, 6))
@@ -160,6 +169,7 @@ def test_apply_steering_output_shape(tiny_model, steering_vec, tiny_cfg):
 # ---------------------------------------------------------------------------
 # 9. apply_steering with coeff=0 gives same logits as baseline (within tolerance)
 # ---------------------------------------------------------------------------
+
 
 def test_apply_steering_zero_coeff_matches_baseline(tiny_model, steering_vec):
     cfg = SteeringConfig(layer_idx=0, coeff=0.0, mode="add", normalize=True)
@@ -176,6 +186,7 @@ def test_apply_steering_zero_coeff_matches_baseline(tiny_model, steering_vec):
 # 10. apply_steering mode="add" changes logits (coeff=10)
 # ---------------------------------------------------------------------------
 
+
 def test_apply_steering_add_changes_logits(tiny_model, steering_vec):
     cfg = SteeringConfig(layer_idx=0, coeff=10.0, mode="add")
     ids = torch.randint(0, 256, (1, 5))
@@ -190,6 +201,7 @@ def test_apply_steering_add_changes_logits(tiny_model, steering_vec):
 # ---------------------------------------------------------------------------
 # 11. apply_steering mode="subtract" changes logits differently than "add"
 # ---------------------------------------------------------------------------
+
 
 def test_apply_steering_subtract_differs_from_add(tiny_model, steering_vec):
     ids = torch.randint(0, 256, (1, 5))
@@ -206,6 +218,7 @@ def test_apply_steering_subtract_differs_from_add(tiny_model, steering_vec):
 # 12. measure_steering_effect - returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_measure_steering_effect_keys(tiny_model, steering_vec):
     cfg = SteeringConfig(layer_idx=0, coeff=5.0, mode="add")
     ids = torch.randint(0, 256, (1, 4))
@@ -218,6 +231,7 @@ def test_measure_steering_effect_keys(tiny_model, steering_vec):
 # ---------------------------------------------------------------------------
 # 13. measure_steering_effect - logit_mse > 0 when coeff is non-zero
 # ---------------------------------------------------------------------------
+
 
 def test_measure_steering_effect_mse_nonzero(tiny_model, steering_vec):
     cfg = SteeringConfig(layer_idx=0, coeff=10.0, mode="add")

@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 VALID_SEVERITIES = frozenset({"critical", "high", "medium", "low", "info"})
 
 SEVERITY_CVSS_MINIMUMS: dict[str, float] = {
@@ -22,10 +21,20 @@ SEVERITY_CVSS_MINIMUMS: dict[str, float] = {
     "info": 0.0,
 }
 
-_GENERIC_TITLE_BLOCKLIST = frozenset({
-    "finding", "vulnerability", "issue", "bug",
-    "test", "todo", "fixme", "untitled", "n/a", "none",
-})
+_GENERIC_TITLE_BLOCKLIST = frozenset(
+    {
+        "finding",
+        "vulnerability",
+        "issue",
+        "bug",
+        "test",
+        "todo",
+        "fixme",
+        "untitled",
+        "n/a",
+        "none",
+    }
+)
 
 _INJECTION_PATTERNS = [
     re.compile(r"Confidence\s*\(\s*\d+\s*-\s*\d+\s*\)\s*:\s*\d+", re.IGNORECASE),
@@ -92,9 +101,7 @@ class FindingVerifier:
             passed.append(self.CHECK_DESCRIPTION)
         else:
             failed.append(self.CHECK_DESCRIPTION)
-            reasons.append(
-                f"description_too_short: {len(desc_clean)} < {_MIN_DESCRIPTION_LEN}"
-            )
+            reasons.append(f"description_too_short: {len(desc_clean)} < {_MIN_DESCRIPTION_LEN}")
 
         total_checks = 3
         if cvss_score is not None:

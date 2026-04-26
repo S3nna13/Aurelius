@@ -1,7 +1,6 @@
 """Tests for INT4 quantizer."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.quantization.int4_quantizer import INT4Quantizer
 

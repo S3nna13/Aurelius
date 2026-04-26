@@ -21,8 +21,6 @@ import re
 import secrets
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque
-
 
 _DEFAULT_HISTORY = 128
 _CONTEXT_RADIUS = 40
@@ -40,9 +38,7 @@ class CanaryDetection:
 
 def _require_str(value: object, name: str) -> str:
     if not isinstance(value, str):
-        raise TypeError(
-            f"{name} must be str, got {type(value).__name__}"
-        )
+        raise TypeError(f"{name} must be str, got {type(value).__name__}")
     return value
 
 
@@ -80,7 +76,7 @@ class CanaryTokenGuard:
         if not isinstance(history_size, int) or history_size <= 0:
             raise ValueError("history_size must be a positive int")
         self.rotate_on_leak: bool = rotate_on_leak
-        self._history: Deque[CanaryDetection] = deque(maxlen=history_size)
+        self._history: deque[CanaryDetection] = deque(maxlen=history_size)
 
     # ------------------------------------------------------------------ gen
     def generate(
@@ -98,9 +94,7 @@ class CanaryTokenGuard:
         if not prefix:
             raise ValueError("prefix must be non-empty")
         if not re.fullmatch(r"[A-Za-z0-9_]+", prefix):
-            raise ValueError(
-                "prefix must contain only [A-Za-z0-9_] characters"
-            )
+            raise ValueError("prefix must contain only [A-Za-z0-9_] characters")
         if not isinstance(entropy_bytes, int):
             raise TypeError("entropy_bytes must be int")
         if entropy_bytes < 8:
@@ -140,9 +134,7 @@ class CanaryTokenGuard:
         if not token:
             raise ValueError("token must be non-empty")
         return (
-            f"{self.WRAP_OPEN.format(token=token)}\n"
-            f"{output}\n"
-            f"{self.WRAP_CLOSE.format(token=token)}"
+            f"{self.WRAP_OPEN.format(token=token)}\n{output}\n{self.WRAP_CLOSE.format(token=token)}"
         )
 
     # ----------------------------------------------------------------- scan
@@ -193,9 +185,7 @@ class CanaryTokenGuard:
         # side for forensic inspection.
         # ``leaked`` is sorted, but the token at ``first_offset`` need not be
         # ``leaked[0]``; recover it by searching.
-        lead_token = next(
-            t for t in leaked if model_output.find(t) == first_offset
-        )
+        lead_token = next(t for t in leaked if model_output.find(t) == first_offset)
         start = max(0, first_offset - _CONTEXT_RADIUS)
         end = min(
             len(model_output),

@@ -1,11 +1,12 @@
 """Tests for timeout wrapper."""
+
 from __future__ import annotations
 
 import time
 
 import pytest
 
-from src.tools.timeout_wrapper import TimeoutWrapper, TimeoutError
+from src.tools.timeout_wrapper import TimeoutError, TimeoutWrapper
 
 
 class TestTimeoutWrapper:

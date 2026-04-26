@@ -8,7 +8,6 @@ All tests run forward/backward passes with tiny models:
 """
 
 import copy
-import math
 
 import pytest
 import torch
@@ -16,7 +15,6 @@ import torch.nn as nn
 
 from src.training.task_arithmetic import (
     NegationOperator,
-    TaskArithmeticEvaluator,
     TaskComposer,
     TaskInterferenceAnalyzer,
     TaskVector,
@@ -25,6 +23,7 @@ from src.training.task_arithmetic import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mlp(seed: int = 0) -> nn.Sequential:
     """Tiny 2-layer MLP: 16 → 16 → 16 (no bias for simplicity)."""
@@ -56,6 +55,7 @@ def simple_eval_fn(model: nn.Module) -> float:
 # Test 1 – TaskVector.__init__ from models: keys match state_dict
 # ---------------------------------------------------------------------------
 
+
 def test_task_vector_keys_match_state_dict():
     base = make_mlp(0)
     ft = make_mlp(1)
@@ -73,20 +73,21 @@ def test_task_vector_keys_match_state_dict():
 # Test 2 – base − base = zero vector
 # ---------------------------------------------------------------------------
 
+
 def test_task_vector_self_minus_self_is_zero():
     base = make_mlp(0)
     forward_backward(base)
 
     tv = TaskVector(base_model=base, finetuned_model=base)
     for name, val in tv.vector.items():
-        assert torch.allclose(val, torch.zeros_like(val)), \
-            f"Parameter {name} is not zero"
+        assert torch.allclose(val, torch.zeros_like(val)), f"Parameter {name} is not zero"
     assert tv.norm() == pytest.approx(0.0, abs=1e-6)
 
 
 # ---------------------------------------------------------------------------
 # Test 3 – TaskVector.__add__: component-wise sum
 # ---------------------------------------------------------------------------
+
 
 def test_task_vector_add_componentwise():
     base = make_mlp(0)
@@ -100,13 +101,13 @@ def test_task_vector_add_componentwise():
 
     for k in tv1.vector:
         expected = tv1.vector[k] + tv2.vector[k]
-        assert torch.allclose(tv_sum.vector[k], expected), \
-            f"Mismatch for parameter {k}"
+        assert torch.allclose(tv_sum.vector[k], expected), f"Mismatch for parameter {k}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4 – TaskVector.__mul__: scales all components
 # ---------------------------------------------------------------------------
+
 
 def test_task_vector_mul_scales_components():
     base = make_mlp(0)
@@ -119,13 +120,13 @@ def test_task_vector_mul_scales_components():
 
     for k in tv.vector:
         expected = tv.vector[k] * scalar
-        assert torch.allclose(tv_scaled.vector[k], expected), \
-            f"Scaling mismatch for {k}"
+        assert torch.allclose(tv_scaled.vector[k], expected), f"Scaling mismatch for {k}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5 – TaskVector.__neg__: negates all components
 # ---------------------------------------------------------------------------
+
 
 def test_task_vector_neg_negates_components():
     base = make_mlp(0)
@@ -136,13 +137,13 @@ def test_task_vector_neg_negates_components():
     neg_tv = -tv
 
     for k in tv.vector:
-        assert torch.allclose(neg_tv.vector[k], -tv.vector[k]), \
-            f"Negation mismatch for {k}"
+        assert torch.allclose(neg_tv.vector[k], -tv.vector[k]), f"Negation mismatch for {k}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6 – TaskVector.norm: ≥ 0, and 0 for zero vector
 # ---------------------------------------------------------------------------
+
 
 def test_task_vector_norm_non_negative_and_zero():
     base = make_mlp(0)
@@ -160,6 +161,7 @@ def test_task_vector_norm_non_negative_and_zero():
 # Test 7 – TaskVector.apply: params change by exactly vector values
 # ---------------------------------------------------------------------------
 
+
 def test_task_vector_apply_changes_params_exactly():
     base = make_mlp(0)
     ft = make_mlp(1)
@@ -175,13 +177,13 @@ def test_task_vector_apply_changes_params_exactly():
 
     for name, param in base.named_parameters():
         expected = base_snapshot[name] + tv.vector[name] * scale
-        assert torch.allclose(param, expected, atol=1e-6), \
-            f"Apply mismatch for {name}"
+        assert torch.allclose(param, expected, atol=1e-6), f"Apply mismatch for {name}"
 
 
 # ---------------------------------------------------------------------------
 # Test 8 – TaskComposer.sum: triangle inequality
 # ---------------------------------------------------------------------------
+
 
 def test_task_composer_sum_triangle_inequality():
     base = make_mlp(0)
@@ -203,6 +205,7 @@ def test_task_composer_sum_triangle_inequality():
 # Test 9 – TaskComposer.consensus: fewer non-zero params than inputs
 # ---------------------------------------------------------------------------
 
+
 def test_task_composer_consensus_zeros_conflicts():
     # Construct vectors that partially conflict by design
     base = make_mlp(0)
@@ -213,9 +216,9 @@ def test_task_composer_consensus_zeros_conflicts():
     ft2 = copy.deepcopy(base)
     with torch.no_grad():
         for p in ft1.parameters():
-            p.add_(torch.ones_like(p))   # all deltas +1
+            p.add_(torch.ones_like(p))  # all deltas +1
         for p in ft2.parameters():
-            p.sub_(torch.ones_like(p))   # all deltas -1 → conflict everywhere
+            p.sub_(torch.ones_like(p))  # all deltas -1 → conflict everywhere
 
     tv1 = TaskVector(base_model=base, finetuned_model=ft1)
     tv2 = TaskVector(base_model=base, finetuned_model=ft2)
@@ -224,18 +227,15 @@ def test_task_composer_consensus_zeros_conflicts():
     tv_consensus = composer.consensus([tv1, tv2])
 
     # All parameters should be zero because signs always conflict
-    total_nonzero = sum(
-        (val.abs() > 1e-8).sum().item()
-        for val in tv_consensus.vector.values()
-    )
+    total_nonzero = sum((val.abs() > 1e-8).sum().item() for val in tv_consensus.vector.values())
     total_params = sum(v.numel() for v in tv1.vector.values())
-    assert total_nonzero < total_params, \
-        "Consensus should zero out conflicting parameters"
+    assert total_nonzero < total_params, "Consensus should zero out conflicting parameters"
 
 
 # ---------------------------------------------------------------------------
 # Test 10 – NegationOperator.negate: result is negated vector
 # ---------------------------------------------------------------------------
+
 
 def test_negation_operator_negate():
     base = make_mlp(0)
@@ -247,13 +247,13 @@ def test_negation_operator_negate():
     neg_tv = neg_op.negate(tv)
 
     for k in tv.vector:
-        assert torch.allclose(neg_tv.vector[k], -tv.vector[k]), \
-            f"NegationOperator mismatch for {k}"
+        assert torch.allclose(neg_tv.vector[k], -tv.vector[k]), f"NegationOperator mismatch for {k}"
 
 
 # ---------------------------------------------------------------------------
 # Test 11 – NegationOperator.apply_negation: params shift negative
 # ---------------------------------------------------------------------------
+
 
 def test_negation_operator_apply_negation_shifts_negative():
     base = make_mlp(0)
@@ -275,13 +275,13 @@ def test_negation_operator_apply_negation_shifts_negative():
     for name, param in base.named_parameters():
         delta = param - snapshot[name]
         # Each delta should be ≤ 0 since we subtracted positive values
-        assert (delta <= 1e-7).all(), \
-            f"apply_negation should decrease params for {name}"
+        assert (delta <= 1e-7).all(), f"apply_negation should decrease params for {name}"
 
 
 # ---------------------------------------------------------------------------
 # Test 12 – TaskInterferenceAnalyzer.cosine_similarity: in [-1,1], 1.0 for identical
 # ---------------------------------------------------------------------------
+
 
 def test_interference_analyzer_cosine_similarity():
     base = make_mlp(0)
@@ -303,6 +303,7 @@ def test_interference_analyzer_cosine_similarity():
 # ---------------------------------------------------------------------------
 # Test 13 – TaskInterferenceAnalyzer.interference_matrix: symmetric, diagonal=1, shape (N,N)
 # ---------------------------------------------------------------------------
+
 
 def test_interference_analyzer_interference_matrix():
     base = make_mlp(0)
@@ -335,6 +336,7 @@ def test_interference_analyzer_interference_matrix():
 # Test 14 – TaskInterferenceAnalyzer.dominant_parameters: length k, sorted descending
 # ---------------------------------------------------------------------------
 
+
 def test_interference_analyzer_dominant_parameters():
     base = make_mlp(0)
     ft = make_mlp(1)
@@ -358,6 +360,7 @@ def test_interference_analyzer_dominant_parameters():
 # Test 15 – TaskComposer.orthogonalize: lower pairwise cosine similarity
 # ---------------------------------------------------------------------------
 
+
 def test_task_composer_orthogonalize_reduces_similarity():
     base = make_mlp(0)
     ft1 = make_mlp(1)
@@ -378,7 +381,9 @@ def test_task_composer_orthogonalize_reduces_similarity():
     ortho_sim = abs(analyzer.cosine_similarity(ortho_tvs[0], ortho_tvs[1]))
 
     # After orthogonalization the pairwise similarity should be near 0
-    assert ortho_sim < original_sim + 1e-4, \
+    assert ortho_sim < original_sim + 1e-4, (
         f"Orthogonalized sim {ortho_sim:.4f} should be ≤ original sim {original_sim:.4f}"
-    assert ortho_sim < 1e-3, \
+    )
+    assert ortho_sim < 1e-3, (
         f"Orthogonalized vectors should be nearly orthogonal, got cosine={ortho_sim:.6f}"
+    )

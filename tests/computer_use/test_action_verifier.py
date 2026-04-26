@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.computer_use.action_verifier import (
     VERIFIER_DENY_LIST,
     ActionVerifier,
@@ -12,10 +10,10 @@ from src.computer_use.action_verifier import (
 from src.computer_use.gui_action import ActionType, GUIAction
 from src.computer_use.screen_parser import JSONTreeParser, ScreenSnapshot
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_snapshot(node_names: list[str] | None = None) -> ScreenSnapshot:
     raw = {
@@ -25,8 +23,7 @@ def _make_snapshot(node_names: list[str] | None = None) -> ScreenSnapshot:
             "role": "window",
             "name": "Root",
             "children": [
-                {"role": "button", "name": n, "bbox": [10, 10, 80, 30]}
-                for n in (node_names or [])
+                {"role": "button", "name": n, "bbox": [10, 10, 80, 30]} for n in (node_names or [])
             ],
         },
     }
@@ -36,6 +33,7 @@ def _make_snapshot(node_names: list[str] | None = None) -> ScreenSnapshot:
 # ---------------------------------------------------------------------------
 # ActionVerifier.verify tests
 # ---------------------------------------------------------------------------
+
 
 class TestActionVerifierClick:
     def test_valid_click_returns_true(self):
@@ -77,25 +75,19 @@ class TestActionVerifierType:
     def test_type_with_value_returns_true(self):
         snap = _make_snapshot()
         verifier = ActionVerifier()
-        ok, _ = verifier.verify(
-            GUIAction(action_type=ActionType.TYPE, value="hello"), snap
-        )
+        ok, _ = verifier.verify(GUIAction(action_type=ActionType.TYPE, value="hello"), snap)
         assert ok is True
 
     def test_type_with_none_value_returns_false(self):
         snap = _make_snapshot()
         verifier = ActionVerifier()
-        ok, reason = verifier.verify(
-            GUIAction(action_type=ActionType.TYPE, value=None), snap
-        )
+        ok, reason = verifier.verify(GUIAction(action_type=ActionType.TYPE, value=None), snap)
         assert ok is False
 
     def test_type_with_empty_string_returns_false(self):
         snap = _make_snapshot()
         verifier = ActionVerifier()
-        ok, reason = verifier.verify(
-            GUIAction(action_type=ActionType.TYPE, value=""), snap
-        )
+        ok, reason = verifier.verify(GUIAction(action_type=ActionType.TYPE, value=""), snap)
         assert ok is False
 
 
@@ -103,17 +95,13 @@ class TestActionVerifierDrag:
     def test_drag_with_coords_returns_true(self):
         snap = _make_snapshot()
         verifier = ActionVerifier()
-        ok, _ = verifier.verify(
-            GUIAction(action_type=ActionType.DRAG, coords=(100, 200)), snap
-        )
+        ok, _ = verifier.verify(GUIAction(action_type=ActionType.DRAG, coords=(100, 200)), snap)
         assert ok is True
 
     def test_drag_without_coords_returns_false(self):
         snap = _make_snapshot()
         verifier = ActionVerifier()
-        ok, reason = verifier.verify(
-            GUIAction(action_type=ActionType.DRAG, coords=None), snap
-        )
+        ok, reason = verifier.verify(GUIAction(action_type=ActionType.DRAG, coords=None), snap)
         assert ok is False
         assert "coords" in reason.lower()
 
@@ -135,9 +123,7 @@ class TestActionVerifierDenyList:
         snap = _make_snapshot(["delete all files"])
         verifier = ActionVerifier()
         ok, reason = verifier.verify(
-            GUIAction(
-                action_type=ActionType.CLICK, target_selector="delete all files"
-            ),
+            GUIAction(action_type=ActionType.CLICK, target_selector="delete all files"),
             snap,
         )
         assert ok is False

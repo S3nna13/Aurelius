@@ -8,18 +8,18 @@ from __future__ import annotations
 
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.multi_agent_debate_eval import (
     AgentTurn,
     DebateConfig,
     DebateEvalResult,
     DebateEvaluator,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_turn(
     agent_id: int,
@@ -39,6 +39,7 @@ def make_turn(
 # Test 1 — DebateConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = DebateConfig()
     assert cfg.n_agents == 3
@@ -51,14 +52,18 @@ def test_config_defaults():
 # Test 2 — Jaccard: identical texts → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_jaccard_identical():
     ev = DebateEvaluator()
-    assert ev.jaccard_similarity("the cat sat on the mat", "the cat sat on the mat") == pytest.approx(1.0)
+    assert ev.jaccard_similarity(
+        "the cat sat on the mat", "the cat sat on the mat"
+    ) == pytest.approx(1.0)
 
 
 # ---------------------------------------------------------------------------
 # Test 3 — Jaccard: disjoint texts → 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_jaccard_disjoint():
     ev = DebateEvaluator()
@@ -68,6 +73,7 @@ def test_jaccard_disjoint():
 # ---------------------------------------------------------------------------
 # Test 4 — Jaccard: partial overlap → correct fraction
 # ---------------------------------------------------------------------------
+
 
 def test_jaccard_partial():
     ev = DebateEvaluator()
@@ -79,6 +85,7 @@ def test_jaccard_partial():
 # ---------------------------------------------------------------------------
 # Test 5 — position_drift: no change → drift ≈ 0
 # ---------------------------------------------------------------------------
+
 
 def test_position_drift_no_change():
     ev = DebateEvaluator()
@@ -94,6 +101,7 @@ def test_position_drift_no_change():
 # ---------------------------------------------------------------------------
 # Test 6 — position_drift: full change → high drift
 # ---------------------------------------------------------------------------
+
 
 def test_position_drift_full_change():
     ev = DebateEvaluator()
@@ -112,6 +120,7 @@ def test_position_drift_full_change():
 # Test 7 — consensus: all same → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_consensus_all_same():
     ev = DebateEvaluator()
     turns = [
@@ -125,6 +134,7 @@ def test_consensus_all_same():
 # ---------------------------------------------------------------------------
 # Test 8 — consensus: all different → low score
 # ---------------------------------------------------------------------------
+
 
 def test_consensus_all_different():
     ev = DebateEvaluator()
@@ -140,6 +150,7 @@ def test_consensus_all_different():
 # ---------------------------------------------------------------------------
 # Test 9 — argument_diversity: identical arguments → ≈ 0
 # ---------------------------------------------------------------------------
+
 
 def test_argument_diversity_identical():
     ev = DebateEvaluator()
@@ -158,6 +169,7 @@ def test_argument_diversity_identical():
 # Test 10 — argument_diversity: different arguments → > 0
 # ---------------------------------------------------------------------------
 
+
 def test_argument_diversity_different():
     ev = DebateEvaluator()
     turns = [
@@ -172,11 +184,12 @@ def test_argument_diversity_different():
 # Test 11 — evaluate: returns DebateEvalResult
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_result_type():
     ev = DebateEvaluator()
     turns = [
         make_turn(0, 0, "yes", ["because a"]),
-        make_turn(1, 0, "no",  ["because b"]),
+        make_turn(1, 0, "no", ["because b"]),
         make_turn(0, 1, "yes", ["still a"]),
         make_turn(1, 1, "yes", ["agree with a"]),
     ]
@@ -188,13 +201,14 @@ def test_evaluate_result_type():
 # Test 12 — evaluate: overall in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_overall_range():
     ev = DebateEvaluator()
     turns = [
         make_turn(0, 0, "position one", ["arg one"]),
         make_turn(1, 0, "position two", ["arg two"]),
         make_turn(0, 1, "position three", ["arg three"]),
-        make_turn(1, 1, "position one",  ["arg one"]),
+        make_turn(1, 1, "position one", ["arg one"]),
     ]
     result = ev.evaluate(turns)
     assert 0.0 <= result.overall <= 1.0
@@ -203,6 +217,7 @@ def test_evaluate_overall_range():
 # ---------------------------------------------------------------------------
 # Test 13 — evaluate: round_convergence has correct length
 # ---------------------------------------------------------------------------
+
 
 def test_round_convergence_length():
     ev = DebateEvaluator()
@@ -224,6 +239,7 @@ def test_round_convergence_length():
 # Test 14 — aggregate: correct keys returned
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_keys():
     ev = DebateEvaluator()
     turns = [make_turn(0, 0, "pos", ["arg"])]
@@ -238,6 +254,7 @@ def test_aggregate_keys():
 # Test 15 — registry: DebateEvaluator registered under "multi_agent_debate"
 # ---------------------------------------------------------------------------
 
+
 def test_benchmark_registry():
     assert "multi_agent_debate" in BENCHMARK_REGISTRY
     assert BENCHMARK_REGISTRY["multi_agent_debate"] is DebateEvaluator
@@ -246,6 +263,7 @@ def test_benchmark_registry():
 # ---------------------------------------------------------------------------
 # Test 16 — evaluate_batch: returns list of same length
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_batch_length():
     ev = DebateEvaluator()
@@ -261,6 +279,7 @@ def test_evaluate_batch_length():
 # Integration test — 3 agents × 3 rounds with converging + drifting positions
 # ---------------------------------------------------------------------------
 
+
 def test_integration_3x3_debate():
     """
     3 agents, 3 rounds.
@@ -275,19 +294,17 @@ def test_integration_3x3_debate():
 
     turns = [
         # Round 0 — differing positions
-        make_turn(0, 0, "the sky is blue",   ["light scatters at short wavelengths"]),
-        make_turn(1, 0, "the ground is red",  ["iron oxide in soil"]),
-        make_turn(2, 0, "the ocean is vast",  ["covers seventy percent of earth"]),
-
+        make_turn(0, 0, "the sky is blue", ["light scatters at short wavelengths"]),
+        make_turn(1, 0, "the ground is red", ["iron oxide in soil"]),
+        make_turn(2, 0, "the ocean is vast", ["covers seventy percent of earth"]),
         # Round 1 — partial convergence
-        make_turn(0, 1, "the sky is blue",    ["light scatters at short wavelengths"]),
-        make_turn(1, 1, "the sky is blue",    ["i agree with agent zero"]),
-        make_turn(2, 1, "the ocean is blue",  ["both sky and ocean appear blue"]),
-
+        make_turn(0, 1, "the sky is blue", ["light scatters at short wavelengths"]),
+        make_turn(1, 1, "the sky is blue", ["i agree with agent zero"]),
+        make_turn(2, 1, "the ocean is blue", ["both sky and ocean appear blue"]),
         # Round 2 — full convergence
-        make_turn(0, 2, "the sky is blue",   ["rayleigh scattering explains this"]),
-        make_turn(1, 2, "the sky is blue",   ["confirmed by physics"]),
-        make_turn(2, 2, "the sky is blue",   ["the ocean reflects sky color"]),
+        make_turn(0, 2, "the sky is blue", ["rayleigh scattering explains this"]),
+        make_turn(1, 2, "the sky is blue", ["confirmed by physics"]),
+        make_turn(2, 2, "the sky is blue", ["the ocean reflects sky color"]),
     ]
 
     result = ev.evaluate(turns)

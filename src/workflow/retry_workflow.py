@@ -6,8 +6,8 @@ Stdlib-only. Exports RETRY_WORKFLOW_REGISTRY.
 from __future__ import annotations
 
 import enum
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Tuple
 
 
 class RetryStrategy(enum.Enum):
@@ -39,7 +39,9 @@ class RetryWorkflow:
         self.strategy = strategy
         self.base_delay_s = base_delay_s
         # Default is a no-op lambda so tests run instantly.
-        self.sleep_fn: Callable[[float], None] = sleep_fn if sleep_fn is not None else lambda x: None
+        self.sleep_fn: Callable[[float], None] = (
+            sleep_fn if sleep_fn is not None else lambda x: None
+        )
 
     def delay_for_attempt(self, attempt: int) -> float:
         """Return the delay in seconds before retrying after *attempt* failures."""
@@ -48,7 +50,7 @@ class RetryWorkflow:
         if self.strategy is RetryStrategy.FIXED_DELAY:
             return self.base_delay_s
         # EXPONENTIAL_BACKOFF
-        return self.base_delay_s * (2 ** attempt)
+        return self.base_delay_s * (2**attempt)
 
     def run_step(self, name: str, fn: Callable[[], object]) -> StepResult:
         """
@@ -86,14 +88,12 @@ class RetryWorkflow:
             error=last_error,
         )
 
-    def run_pipeline(
-        self, steps: List[Tuple[str, Callable[[], object]]]
-    ) -> List[StepResult]:
+    def run_pipeline(self, steps: list[tuple[str, Callable[[], object]]]) -> list[StepResult]:
         """
         Run steps sequentially. Stop on the first failure.
         Returns the list of StepResults executed so far.
         """
-        results: List[StepResult] = []
+        results: list[StepResult] = []
         for name, fn in steps:
             step_result = self.run_step(name, fn)
             results.append(step_result)

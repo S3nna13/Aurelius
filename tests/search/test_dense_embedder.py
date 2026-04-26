@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import math
-
 import numpy
-import pytest
 
 from src.search.dense_embedder import (
+    DENSE_EMBEDDER,
     DenseEmbedder,
     EmbedderConfig,
-    DENSE_EMBEDDER,
 )
 
 

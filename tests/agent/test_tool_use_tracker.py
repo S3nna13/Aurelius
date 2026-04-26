@@ -11,10 +11,10 @@ from src.agent.tool_use_tracker import (
     ToolUseTracker,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_tracker(**kwargs) -> ToolUseTracker:
     return ToolUseTracker(**kwargs)
@@ -43,6 +43,7 @@ def record_call(
 # ToolCall – frozen / auto-id
 # ---------------------------------------------------------------------------
 
+
 class TestToolCall:
     def test_create_returns_tool_call(self):
         tc = ToolCall.create(tool_name="foo", input_size=5, output_size=10, duration_ms=1.0)
@@ -54,7 +55,10 @@ class TestToolCall:
 
     def test_explicit_call_id_preserved(self):
         tc = ToolCall.create(
-            tool_name="foo", input_size=5, output_size=10, duration_ms=1.0,
+            tool_name="foo",
+            input_size=5,
+            output_size=10,
+            duration_ms=1.0,
             call_id="abcd1234",
         )
         assert tc.call_id == "abcd1234"
@@ -77,6 +81,7 @@ class TestToolCall:
 # ToolBudget – frozen
 # ---------------------------------------------------------------------------
 
+
 class TestToolBudget:
     def test_defaults(self):
         b = ToolBudget()
@@ -97,6 +102,7 @@ class TestToolBudget:
 # ---------------------------------------------------------------------------
 # ToolUseTracker – record
 # ---------------------------------------------------------------------------
+
 
 class TestToolUseTrackerRecord:
     def test_record_returns_tool_call(self):
@@ -142,6 +148,7 @@ class TestToolUseTrackerRecord:
 # ToolUseTracker – queries
 # ---------------------------------------------------------------------------
 
+
 class TestToolUseTrackerQueries:
     def test_calls_for_returns_only_matching_tool(self):
         t = make_tracker()
@@ -181,6 +188,7 @@ class TestToolUseTrackerQueries:
 # ---------------------------------------------------------------------------
 # ToolUseTracker – budget_status
 # ---------------------------------------------------------------------------
+
 
 class TestBudgetStatus:
     def test_no_budget_all_ok(self):
@@ -229,6 +237,7 @@ class TestBudgetStatus:
 # ToolUseTracker – most_used & success_rate
 # ---------------------------------------------------------------------------
 
+
 class TestMostUsedAndSuccessRate:
     def test_most_used_sorted_desc(self):
         t = make_tracker()
@@ -268,9 +277,9 @@ class TestMostUsedAndSuccessRate:
         t = make_tracker()
         record_call(t, tool_name="search", success=True)
         record_call(t, tool_name="search", success=False)
-        record_call(t, tool_name="fetch",  success=False)
+        record_call(t, tool_name="fetch", success=False)
         assert t.success_rate("search") == pytest.approx(0.5)
-        assert t.success_rate("fetch")  == pytest.approx(0.0)
+        assert t.success_rate("fetch") == pytest.approx(0.0)
 
     def test_success_rate_zero_if_no_calls(self):
         t = make_tracker()
@@ -284,6 +293,7 @@ class TestMostUsedAndSuccessRate:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_contains_default(self):

@@ -37,8 +37,7 @@ class ABTestRouter:
         if total <= 0:
             raise ValueError("Sum of variant weights must be greater than 0.")
         self._variants: list[Variant] = [
-            Variant(name=v.name, weight=v.weight, metadata=dict(v.metadata))
-            for v in variants
+            Variant(name=v.name, weight=v.weight, metadata=dict(v.metadata)) for v in variants
         ]
         self._normalize()
 

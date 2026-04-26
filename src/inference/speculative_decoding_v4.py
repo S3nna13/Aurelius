@@ -5,14 +5,12 @@ model.  The draft model generates K tokens speculatively; the target verifies
 them in a single forward pass using rejection sampling that exactly preserves
 the target distribution.
 """
-from __future__ import annotations
 
-from typing import Tuple
+from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # SpeculativeVerifier
@@ -41,7 +39,7 @@ class SpeculativeVerifier:
         draft_token: int,
         draft_prob: float,
         target_probs: Tensor,
-    ) -> Tuple[bool, int]:
+    ) -> tuple[bool, int]:
         """Verify a single draft token against the target distribution.
 
         Args:
@@ -57,9 +55,7 @@ class SpeculativeVerifier:
             residual distribution (when rejected).
         """
         if target_probs.dim() != 1:
-            raise ValueError(
-                f"target_probs must be 1-D, got shape {tuple(target_probs.shape)}"
-            )
+            raise ValueError(f"target_probs must be 1-D, got shape {tuple(target_probs.shape)}")
 
         p_target = float(target_probs[draft_token].item())
 
@@ -89,7 +85,7 @@ class SpeculativeVerifier:
         draft_tokens: Tensor,
         draft_probs: Tensor,
         target_logits: Tensor,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Verify a sequence of K draft tokens left-to-right.
 
         Verifies tokens in order, stopping at the first rejection.  If all K
@@ -112,13 +108,9 @@ class SpeculativeVerifier:
         """
         K = draft_tokens.shape[0]
         if draft_probs.shape != (K,):
-            raise ValueError(
-                f"draft_probs shape {tuple(draft_probs.shape)} must be ({K},)"
-            )
+            raise ValueError(f"draft_probs shape {tuple(draft_probs.shape)} must be ({K},)")
         if target_logits.shape[0] != K:
-            raise ValueError(
-                f"target_logits first dim {target_logits.shape[0]} must equal K={K}"
-            )
+            raise ValueError(f"target_logits first dim {target_logits.shape[0]} must equal K={K}")
 
         # Convert logits to probabilities for each position
         target_probs_all = F.softmax(target_logits.float(), dim=-1)  # (K, V)
@@ -155,7 +147,7 @@ class DraftModel:
         self.model = model
         self.temperature = max(temperature, 1e-8)
 
-    def draft(self, input_ids: Tensor, n_tokens: int) -> Tuple[Tensor, Tensor]:
+    def draft(self, input_ids: Tensor, n_tokens: int) -> tuple[Tensor, Tensor]:
         """Autoregressively generate ``n_tokens`` tokens with the draft model.
 
         Args:
@@ -170,9 +162,7 @@ class DraftModel:
               probability assigned to each drafted token.
         """
         if input_ids.dim() != 1:
-            raise ValueError(
-                f"input_ids must be 1-D, got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be 1-D, got shape {tuple(input_ids.shape)}")
 
         token_list: list[int] = []
         prob_list: list[float] = []
@@ -188,17 +178,13 @@ class DraftModel:
                 elif logits.dim() == 2:
                     next_logits = logits[-1, :]
                 else:
-                    raise ValueError(
-                        f"Unexpected logits shape {tuple(logits.shape)}"
-                    )
+                    raise ValueError(f"Unexpected logits shape {tuple(logits.shape)}")
 
                 probs = F.softmax(next_logits.float() / self.temperature, dim=-1)
                 token_id = int(torch.multinomial(probs, num_samples=1).item())
                 token_list.append(token_id)
                 prob_list.append(float(probs[token_id].item()))
-                context = torch.cat(
-                    [context, torch.tensor([token_id], dtype=torch.long)]
-                )
+                context = torch.cat([context, torch.tensor([token_id], dtype=torch.long)])
 
         draft_tokens = torch.tensor(token_list, dtype=torch.long)
         draft_probs = torch.tensor(prob_list, dtype=torch.float32)
@@ -238,13 +224,9 @@ class TargetModel:
             position.
         """
         if input_ids.dim() != 1:
-            raise ValueError(
-                f"input_ids must be 1-D, got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be 1-D, got shape {tuple(input_ids.shape)}")
         if draft_tokens.dim() != 1:
-            raise ValueError(
-                f"draft_tokens must be 1-D, got shape {tuple(draft_tokens.shape)}"
-            )
+            raise ValueError(f"draft_tokens must be 1-D, got shape {tuple(draft_tokens.shape)}")
 
         K = draft_tokens.shape[0]
         combined = torch.cat([input_ids, draft_tokens])  # (T + K,)
@@ -308,7 +290,7 @@ class SpeculativeDecoder:
         self,
         input_ids: Tensor,
         max_new_tokens: int = 20,
-    ) -> Tuple[Tensor, dict]:
+    ) -> tuple[Tensor, dict]:
         """Generate tokens using speculative decoding.
 
         Each iteration:
@@ -335,20 +317,14 @@ class SpeculativeDecoder:
               ``'acceptance_rate'``.
         """
         # Normalise to 1-D context for internal use
-        squeeze = False
         if input_ids.dim() == 2:
             if input_ids.shape[0] != 1:
-                raise ValueError(
-                    f"Only batch size 1 is supported, got {input_ids.shape[0]}"
-                )
+                raise ValueError(f"Only batch size 1 is supported, got {input_ids.shape[0]}")
             context = input_ids[0].clone()
         elif input_ids.dim() == 1:
             context = input_ids.clone()
-            squeeze = True
         else:
-            raise ValueError(
-                f"input_ids must be 1-D or 2-D, got shape {tuple(input_ids.shape)}"
-            )
+            raise ValueError(f"input_ids must be 1-D or 2-D, got shape {tuple(input_ids.shape)}")
 
         n_steps = 0
         total_accepted = 0
@@ -372,9 +348,7 @@ class SpeculativeDecoder:
 
             # 4. Append: accepted draft tokens + final_token
             accepted_ids = draft_tokens[:n_accepted]
-            tokens_to_add = torch.cat(
-                [accepted_ids, torch.tensor([final_token], dtype=torch.long)]
-            )
+            tokens_to_add = torch.cat([accepted_ids, torch.tensor([final_token], dtype=torch.long)])
 
             # Clip to remaining budget
             budget = max_new_tokens - n_generated
@@ -396,9 +370,7 @@ class SpeculativeDecoder:
 
         output_ids = context.unsqueeze(0)  # (1, T + max_new_tokens)
 
-        acceptance_rate = (
-            total_accepted / total_drafted if total_drafted > 0 else 0.0
-        )
+        acceptance_rate = total_accepted / total_drafted if total_drafted > 0 else 0.0
 
         stats = {
             "n_steps": n_steps,

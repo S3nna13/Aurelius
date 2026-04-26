@@ -1,18 +1,16 @@
 """Unit tests for PCGrad v2 — Cosine-Adaptive Conflicting Gradient Projection."""
+
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.pcgrad_v2 import GradientBank, PCGradV2, PCGradV2Config
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_pcgrad(n_tasks: int = 2, adaptive_weight: bool = True, alpha: float = 1.0) -> PCGradV2:
     cfg = PCGradV2Config(n_tasks=n_tasks, adaptive_weight=adaptive_weight, alpha=alpha)
@@ -27,6 +25,7 @@ def vec(*values: float) -> torch.Tensor:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = PCGradV2Config()
     assert cfg.n_tasks == 2
@@ -40,6 +39,7 @@ def test_config_defaults():
 # 2. test_conflict_score_aligned
 # ---------------------------------------------------------------------------
 
+
 def test_conflict_score_aligned():
     pcg = make_pcgrad()
     g = vec(1.0, 2.0, 3.0)
@@ -51,6 +51,7 @@ def test_conflict_score_aligned():
 # 3. test_conflict_score_opposed
 # ---------------------------------------------------------------------------
 
+
 def test_conflict_score_opposed():
     pcg = make_pcgrad()
     g = vec(1.0, 2.0, 3.0)
@@ -61,6 +62,7 @@ def test_conflict_score_opposed():
 # ---------------------------------------------------------------------------
 # 4. test_conflict_score_orthogonal
 # ---------------------------------------------------------------------------
+
 
 def test_conflict_score_orthogonal():
     pcg = make_pcgrad()
@@ -74,6 +76,7 @@ def test_conflict_score_orthogonal():
 # 5. test_project_no_conflict — aligned grads leave g1 unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_project_no_conflict():
     pcg = make_pcgrad()
     g1 = vec(1.0, 2.0, 3.0)
@@ -85,6 +88,7 @@ def test_project_no_conflict():
 # ---------------------------------------------------------------------------
 # 6. test_project_with_conflict — opposed grads: dot product improves
 # ---------------------------------------------------------------------------
+
 
 def test_project_with_conflict():
     pcg = make_pcgrad()
@@ -101,6 +105,7 @@ def test_project_with_conflict():
 # 7. test_project_reduces_conflict
 # ---------------------------------------------------------------------------
 
+
 def test_project_reduces_conflict():
     pcg = make_pcgrad()
     g1 = vec(1.0, 0.5)
@@ -115,6 +120,7 @@ def test_project_reduces_conflict():
 # ---------------------------------------------------------------------------
 # 8. test_resolve_shape
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_shape():
     pcg = make_pcgrad()
@@ -133,6 +139,7 @@ def test_resolve_shape():
 # 9. test_resolve_2_tasks
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_2_tasks():
     pcg = make_pcgrad()
     g_a = [vec(1.0, 0.0)]
@@ -146,6 +153,7 @@ def test_resolve_2_tasks():
 # ---------------------------------------------------------------------------
 # 10. test_gradient_bank_fills
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_bank_fills():
     bank = GradientBank(n_tasks=2, bank_size=2)
@@ -166,6 +174,7 @@ def test_gradient_bank_fills():
 # 11. test_gradient_bank_clear
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_bank_clear():
     bank = GradientBank(n_tasks=2, bank_size=1)
     grads = [torch.randn(4)]
@@ -180,6 +189,7 @@ def test_gradient_bank_clear():
 # ---------------------------------------------------------------------------
 # 12. test_per_layer_conflict_length
 # ---------------------------------------------------------------------------
+
 
 def test_per_layer_conflict_length():
     pcg = make_pcgrad()
@@ -197,6 +207,7 @@ def test_per_layer_conflict_length():
 # ---------------------------------------------------------------------------
 # 13. test_apply_to_optimizer — runs without error, returns dict with keys
 # ---------------------------------------------------------------------------
+
 
 def test_apply_to_optimizer():
     torch.manual_seed(42)
@@ -216,6 +227,7 @@ def test_apply_to_optimizer():
 # 14. test_apply_dict_keys
 # ---------------------------------------------------------------------------
 
+
 def test_apply_dict_keys():
     torch.manual_seed(0)
     model = nn.Linear(4, 2)
@@ -223,9 +235,7 @@ def test_apply_dict_keys():
     pcg = make_pcgrad(n_tasks=2)
 
     x = torch.randn(3, 4)
-    result = pcg.apply_to_optimizer(
-        optimizer, [model(x).sum(), (-model(x)).sum()]
-    )
+    result = pcg.apply_to_optimizer(optimizer, [model(x).sum(), (-model(x)).sum()])
     assert "n_conflicts" in result
     assert "mean_conflict_score" in result
     assert isinstance(result["n_conflicts"], int)
@@ -236,7 +246,9 @@ def test_apply_dict_keys():
 # 15. test_registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry():
     from src.training import TRAINING_REGISTRY
+
     assert "pcgrad_v2" in TRAINING_REGISTRY
     assert TRAINING_REGISTRY["pcgrad_v2"] is PCGradV2

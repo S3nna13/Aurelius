@@ -7,7 +7,6 @@ import pytest
 from src.eval.hellaswag_scorer import (
     HELLASWAG_REGISTRY,
     HellaSwagExample,
-    HellaSwagResult,
     HellaSwagScorer,
 )
 

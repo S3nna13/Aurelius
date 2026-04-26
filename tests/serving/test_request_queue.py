@@ -1,10 +1,10 @@
 import time
-import pytest
+
 from src.serving.request_queue import (
+    REQUEST_QUEUE_REGISTRY,
     QueuedRequest,
     QueuePriority,
     RequestQueue,
-    REQUEST_QUEUE_REGISTRY,
 )
 
 

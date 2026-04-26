@@ -14,16 +14,15 @@ from __future__ import annotations
 import copy
 import math
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Core fake-quantize autograd function (STE)
 # ---------------------------------------------------------------------------
+
 
 class FakeQuantize(torch.autograd.Function):
     """Fake-quantize with Straight-Through Estimator in the backward pass."""
@@ -37,7 +36,7 @@ class FakeQuantize(torch.autograd.Function):
         n_bits: int,
     ) -> torch.Tensor:
         q_min = 0
-        q_max = 2 ** n_bits - 1
+        q_max = 2**n_bits - 1
         # Quantize
         x_q = torch.clamp(torch.round(x / scale) + zero_point, q_min, q_max)
         # Dequantize (stays in float)
@@ -53,6 +52,7 @@ class FakeQuantize(torch.autograd.Function):
 # ---------------------------------------------------------------------------
 # Per-tensor quantizer
 # ---------------------------------------------------------------------------
+
 
 class PerTensorQuantizer(nn.Module):
     """
@@ -82,10 +82,10 @@ class PerTensorQuantizer(nn.Module):
         self,
         x_min: torch.Tensor,
         x_max: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute scale and zero_point from observed [x_min, x_max]."""
         q_min = 0
-        q_max = 2 ** self.n_bits - 1
+        q_max = 2**self.n_bits - 1
 
         if self.symmetric:
             abs_max = torch.maximum(x_min.abs(), x_max.abs())
@@ -128,6 +128,7 @@ class PerTensorQuantizer(nn.Module):
 # ---------------------------------------------------------------------------
 # Per-channel quantizer
 # ---------------------------------------------------------------------------
+
 
 class PerChannelQuantizer(PerTensorQuantizer):
     """
@@ -190,6 +191,7 @@ class PerChannelQuantizer(PerTensorQuantizer):
 # QAT-aware Linear layer
 # ---------------------------------------------------------------------------
 
+
 class QATLinear(nn.Module):
     """
     Drop-in replacement for nn.Linear that applies fake quantization to
@@ -220,9 +222,7 @@ class QATLinear(nn.Module):
         self.weight_quantizer = PerChannelQuantizer(
             n_bits=n_bits_weight, symmetric=symmetric, num_channels=out_features
         )
-        self.act_quantizer = PerTensorQuantizer(
-            n_bits=n_bits_act, symmetric=symmetric
-        )
+        self.act_quantizer = PerTensorQuantizer(n_bits=n_bits_act, symmetric=symmetric)
 
     @classmethod
     def from_linear(
@@ -231,7 +231,7 @@ class QATLinear(nn.Module):
         n_bits_weight: int = 8,
         n_bits_act: int = 8,
         symmetric: bool = True,
-    ) -> "QATLinear":
+    ) -> QATLinear:
         has_bias = linear.bias is not None
         qat_linear = cls(
             linear.in_features,
@@ -255,6 +255,7 @@ class QATLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # QAT-aware Embedding layer
 # ---------------------------------------------------------------------------
+
 
 class QATEmbedding(nn.Module):
     """
@@ -287,7 +288,7 @@ class QATEmbedding(nn.Module):
         emb: nn.Embedding,
         n_bits: int = 8,
         symmetric: bool = True,
-    ) -> "QATEmbedding":
+    ) -> QATEmbedding:
         qat_emb = cls(
             emb.num_embeddings,
             emb.embedding_dim,
@@ -305,6 +306,7 @@ class QATEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # QATConverter: replace standard modules with QAT versions
 # ---------------------------------------------------------------------------
+
 
 class QATConverter:
     """
@@ -368,13 +370,13 @@ class QATConverter:
         with torch.no_grad():
             model(calibration_data)
 
-    def export_int_model(self, model: nn.Module) -> Dict[str, torch.Tensor]:
+    def export_int_model(self, model: nn.Module) -> dict[str, torch.Tensor]:
         """
         Export quantized integer weights.
 
         Returns {param_name: int_tensor} for each QATLinear / QATEmbedding weight.
         """
-        result: Dict[str, torch.Tensor] = {}
+        result: dict[str, torch.Tensor] = {}
         for name, module in model.named_modules():
             if isinstance(module, QATLinear):
                 prefix = f"{name}.weight" if name else "weight"
@@ -388,7 +390,7 @@ class QATConverter:
                 w_int = torch.clamp(
                     torch.round(module.weight.detach() / scale_t) + zp_t,
                     0,
-                    2 ** module.weight_quantizer.n_bits - 1,
+                    2**module.weight_quantizer.n_bits - 1,
                 ).to(torch.int8)
                 result[prefix] = w_int
 
@@ -402,7 +404,7 @@ class QATConverter:
                 w_int = torch.clamp(
                     torch.round(module.weight.detach() / scale_t) + zp_t,
                     0,
-                    2 ** module.weight_quantizer.n_bits - 1,
+                    2**module.weight_quantizer.n_bits - 1,
                 ).to(torch.int8)
                 result[prefix] = w_int
 
@@ -412,6 +414,7 @@ class QATConverter:
 # ---------------------------------------------------------------------------
 # QuantizationTrainer
 # ---------------------------------------------------------------------------
+
 
 class QuantizationTrainer:
     """
@@ -477,6 +480,7 @@ class QuantizationTrainer:
 # ---------------------------------------------------------------------------
 # QATConfig dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class QATConfig:

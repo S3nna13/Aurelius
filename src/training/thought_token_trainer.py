@@ -11,13 +11,12 @@ References:
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -60,7 +59,7 @@ class ThoughtTokenInserter:
     def __init__(self, config: ThoughtTokenConfig) -> None:
         self.config = config
 
-    def insert_thoughts(self, input_ids: Tensor) -> Tuple[Tensor, Tensor]:
+    def insert_thoughts(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Append thought tokens to the end of each prompt in the batch.
 
         Args:
@@ -210,7 +209,7 @@ class ThoughtTokenTrainer:
         self.config = config
         self.inserter = inserter
 
-    def train_step(self, input_ids: Tensor, response_ids: Tensor) -> Dict[str, float]:
+    def train_step(self, input_ids: Tensor, response_ids: Tensor) -> dict[str, float]:
         """Perform one gradient update step.
 
         Args:
@@ -237,8 +236,8 @@ class ThoughtTokenTrainer:
         B, S, V = logits.shape
 
         # Shift for next-token prediction: logit[t] predicts token[t+1]
-        shift_logits = logits[:, :-1, :].contiguous()   # (B, S-1, V)
-        shift_labels = labels[:, 1:].contiguous()         # (B, S-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, S-1, V)
+        shift_labels = labels[:, 1:].contiguous()  # (B, S-1)
 
         total_loss = F.cross_entropy(
             shift_logits.view(-1, V),
@@ -250,9 +249,11 @@ class ThoughtTokenTrainer:
         TK = augmented_ids.shape[1]
         # Response positions in shifted labels start at TK-1 (since shift removes one)
         response_shift_labels = labels[:, TK:].contiguous()  # (B, T_r)
-        response_shift_logits = logits[:, TK - 1 : TK - 1 + response_shift_labels.shape[1], :].contiguous()
+        response_shift_logits = logits[
+            :, TK - 1 : TK - 1 + response_shift_labels.shape[1], :
+        ].contiguous()
 
-        response_mask = (response_shift_labels != -100)
+        response_mask = response_shift_labels != -100
         if response_mask.any():
             response_loss = F.cross_entropy(
                 response_shift_logits.reshape(-1, V),
@@ -291,7 +292,7 @@ class ThoughtTokenTrainer:
 
         with torch.no_grad():
             for _ in range(max_new_tokens):
-                logits = self.model_fn(context)   # (B, S, V)
+                logits = self.model_fn(context)  # (B, S, V)
                 next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (B, 1)
                 generated.append(next_token)
                 context = torch.cat([context, next_token], dim=1)

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -25,7 +24,7 @@ TINY_CFG = AureliusConfig(
     max_seq_len=64,
 )
 
-N_TOKENS = 4   # short sequences keep tests fast
+N_TOKENS = 4  # short sequences keep tests fast
 SEED = 42
 
 
@@ -33,7 +32,7 @@ SEED = 42
 def model():
     torch.manual_seed(SEED)
     m = AureliusTransformer(TINY_CFG)
-    m.train(False)   # inference mode
+    m.train(False)  # inference mode
     return m
 
 
@@ -62,6 +61,7 @@ def target_grads(model, inverter, input_ids, labels):
 # 1. compute_gradients returns a flat 1-D tensor of correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradients_shape(target_grads, model):
     total_params = sum(p.numel() for p in model.parameters())
     assert target_grads.ndim == 1
@@ -72,6 +72,7 @@ def test_compute_gradients_shape(target_grads, model):
 # 2. Gradient vector is non-zero
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradients_nonzero(target_grads):
     assert target_grads.norm().item() > 0.0
 
@@ -79,6 +80,7 @@ def test_compute_gradients_nonzero(target_grads):
 # ---------------------------------------------------------------------------
 # 3. invert runs without error and returns tensor of shape (1, T, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_invert_output_shape(inverter, target_grads):
     result = inverter.invert(target_grads, n_tokens=N_TOKENS, n_steps=5, lr=0.01)
@@ -88,6 +90,7 @@ def test_invert_output_shape(inverter, target_grads):
 # ---------------------------------------------------------------------------
 # 4. reconstruction_error returns a non-negative float
 # ---------------------------------------------------------------------------
+
 
 def test_reconstruction_error_nonnegative(inverter, target_grads):
     torch.manual_seed(0)
@@ -102,6 +105,7 @@ def test_reconstruction_error_nonnegative(inverter, target_grads):
 # 5. reconstruction_error is 0.0 for identical inputs
 # ---------------------------------------------------------------------------
 
+
 def test_reconstruction_error_zero_for_identical():
     x = torch.randn(1, N_TOKENS, TINY_CFG.d_model)
     err = GradientInverter.reconstruction_error(x, x)
@@ -111,6 +115,7 @@ def test_reconstruction_error_zero_for_identical():
 # ---------------------------------------------------------------------------
 # 6. More optimisation steps reduce the gradient-matching loss
 # ---------------------------------------------------------------------------
+
 
 def test_more_steps_reduces_loss(inverter, target_grads):
     """Verify that increasing n_steps makes the attack converge further.
@@ -128,14 +133,14 @@ def test_more_steps_reduces_loss(inverter, target_grads):
     )
     # Loss at step 0 should be >= loss at the final step
     assert loss_history[-1] <= loss_history[0], (
-        f"Expected loss to decrease: first={loss_history[0]:.6f}, "
-        f"last={loss_history[-1]:.6f}"
+        f"Expected loss to decrease: first={loss_history[0]:.6f}, last={loss_history[-1]:.6f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # 7. Gradients from different inputs are different
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_differ_for_different_inputs(inverter, model):
     torch.manual_seed(10)
@@ -153,6 +158,7 @@ def test_gradients_differ_for_different_inputs(inverter, model):
 # 8. No NaN or Inf in reconstructed embeddings
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_in_reconstruction(inverter, target_grads):
     result = inverter.invert(target_grads, n_tokens=N_TOKENS, n_steps=10, lr=0.01)
     assert torch.isfinite(result).all(), "Reconstructed embeddings contain NaN or Inf"
@@ -161,6 +167,7 @@ def test_no_nan_inf_in_reconstruction(inverter, target_grads):
 # ---------------------------------------------------------------------------
 # 9. Attack works with batch size 1
 # ---------------------------------------------------------------------------
+
 
 def test_batch_size_one(model, inverter):
     torch.manual_seed(7)
@@ -174,6 +181,7 @@ def test_batch_size_one(model, inverter):
 # 10. Reconstructed embedding dtype is float32
 # ---------------------------------------------------------------------------
 
+
 def test_dtype_float32(inverter, target_grads):
     result = inverter.invert(target_grads, n_tokens=N_TOKENS, n_steps=5, lr=0.01)
     assert result.dtype == torch.float32
@@ -182,6 +190,7 @@ def test_dtype_float32(inverter, target_grads):
 # ---------------------------------------------------------------------------
 # 11. Deterministic with the same seed
 # ---------------------------------------------------------------------------
+
 
 def test_deterministic_with_same_seed(inverter, target_grads):
     torch.manual_seed(99)
@@ -195,6 +204,7 @@ def test_deterministic_with_same_seed(inverter, target_grads):
 # 12. GradientInverter can be instantiated
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_inverter_instantiation(model):
     inverter = GradientInverter(model)
     assert isinstance(inverter, GradientInverter)
@@ -206,6 +216,7 @@ def test_gradient_inverter_instantiation(model):
 # 13. compute_gradients clears model gradients after returning
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradients_clears_model_grads(model, inverter, input_ids, labels):
     inverter.compute_gradients(model, input_ids, labels)
     for p in model.parameters():
@@ -215,6 +226,7 @@ def test_compute_gradients_clears_model_grads(model, inverter, input_ids, labels
 # ---------------------------------------------------------------------------
 # 14. reconstruction_error handles zero-norm true embedding
 # ---------------------------------------------------------------------------
+
 
 def test_reconstruction_error_zero_norm_true_embed():
     x_true = torch.zeros(1, N_TOKENS, TINY_CFG.d_model)

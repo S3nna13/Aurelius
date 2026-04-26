@@ -69,6 +69,7 @@ def _v1_manifest(**overrides) -> FamilyManifest:
 # Schema version + basic invariants.
 # ---------------------------------------------------------------------------
 
+
 def test_manifest_schema_version_is_2_0_0():
     assert MANIFEST_SCHEMA_VERSION == "2.0.0"
 
@@ -90,22 +91,46 @@ def test_reference_manifest_has_backend_name_pytorch():
 # backend_name validation.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("name", [
-    "pytorch", "jax", "vllm", "llamacpp", "onnx", "sglang",
-    "transformers", "pytorch-2", "custom_backend", "a", "a-b_c-d",
-])
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "pytorch",
+        "jax",
+        "vllm",
+        "llamacpp",
+        "onnx",
+        "sglang",
+        "transformers",
+        "pytorch-2",
+        "custom_backend",
+        "a",
+        "a-b_c-d",
+    ],
+)
 def test_backend_name_accepts_valid(name):
     m = _v1_manifest(variant_name=f"bn-{name}")
-    upgraded = dataclasses.replace(m, backend_name=name,
-                                   engine_contract="1.0.0",
-                                   adapter_contract="1.0.0")
+    upgraded = dataclasses.replace(
+        m, backend_name=name, engine_contract="1.0.0", adapter_contract="1.0.0"
+    )
     assert upgraded.backend_name == name
 
 
-@pytest.mark.parametrize("bad", [
-    "", "PyTorch", "Py Torch", "py torch", "pytorch!", "pytorch.dev",
-    "py/torch", "pyTorch", "PYTORCH", "back end",
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "",
+        "PyTorch",
+        "Py Torch",
+        "py torch",
+        "pytorch!",
+        "pytorch.dev",
+        "py/torch",
+        "pyTorch",
+        "PYTORCH",
+        "back end",
+    ],
+)
 def test_backend_name_rejects_invalid(bad):
     m = _v1_manifest(variant_name="bn-bad")
     with pytest.raises(ManifestValidationError):
@@ -120,6 +145,7 @@ def test_backend_name_none_is_allowed():
 # ---------------------------------------------------------------------------
 # engine_contract / adapter_contract validation.
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("v", ["1.0.0", "0.0.1", "10.20.30", "2.3.4"])
 def test_engine_contract_accepts_valid_semver(v):
@@ -153,6 +179,7 @@ def test_adapter_contract_rejects_invalid(bad):
 # is_v2_manifest.
 # ---------------------------------------------------------------------------
 
+
 def test_is_v2_true_for_reference():
     assert is_v2_manifest(AURELIUS_REFERENCE_MANIFEST) is True
 
@@ -162,14 +189,17 @@ def test_is_v2_false_for_bare_v1():
     assert is_v2_manifest(m) is False
 
 
-@pytest.mark.parametrize("field_name", [
-    "backend_name", "engine_contract", "adapter_contract",
-])
+@pytest.mark.parametrize(
+    "field_name",
+    [
+        "backend_name",
+        "engine_contract",
+        "adapter_contract",
+    ],
+)
 def test_is_v2_false_when_any_single_field_missing(field_name):
     m = _v1_manifest(variant_name=f"partial-{field_name}")
-    kwargs = {"backend_name": "pytorch",
-              "engine_contract": "1.0.0",
-              "adapter_contract": "1.0.0"}
+    kwargs = {"backend_name": "pytorch", "engine_contract": "1.0.0", "adapter_contract": "1.0.0"}
     kwargs[field_name] = None
     partial = dataclasses.replace(m, **kwargs)
     assert is_v2_manifest(partial) is False
@@ -184,6 +214,7 @@ def test_is_v2_rejects_non_manifest():
 # upgrade_to_v2.
 # ---------------------------------------------------------------------------
 
+
 def test_upgrade_to_v2_returns_new_object_not_mutate():
     m = _v1_manifest(variant_name="upg-new")
     upgraded = upgrade_to_v2(m, backend_name="jax")
@@ -196,11 +227,10 @@ def test_upgrade_to_v2_returns_new_object_not_mutate():
 
 
 def test_upgrade_to_v2_preserves_other_fields():
-    m = _v1_manifest(variant_name="upg-preserve",
-                     capability_tags=("chat", "code"))
-    upgraded = upgrade_to_v2(m, backend_name="vllm",
-                             engine_contract="2.1.0",
-                             adapter_contract="1.3.0")
+    m = _v1_manifest(variant_name="upg-preserve", capability_tags=("chat", "code"))
+    upgraded = upgrade_to_v2(
+        m, backend_name="vllm", engine_contract="2.1.0", adapter_contract="1.3.0"
+    )
     assert upgraded.family_name == m.family_name
     assert upgraded.variant_name == m.variant_name
     assert upgraded.backbone_class == m.backbone_class
@@ -237,18 +267,30 @@ def test_upgrade_to_v2_rejects_non_manifest():
 # v2_to_v1_dict.
 # ---------------------------------------------------------------------------
 
+
 def test_v2_to_v1_dict_drops_exactly_three_keys():
     d = v2_to_v1_dict(AURELIUS_REFERENCE_MANIFEST)
     assert "backend_name" not in d
     assert "engine_contract" not in d
     assert "adapter_contract" not in d
     # v1-required keys still present.
-    for expected in ("family_name", "variant_name", "backbone_class",
-                     "tokenizer_name", "tokenizer_hash", "vocab_size",
-                     "max_seq_len", "context_policy", "rope_config",
-                     "capability_tags", "checkpoint_format_version",
-                     "config_version", "compatibility_version",
-                     "release_track", "migration_notes"):
+    for expected in (
+        "family_name",
+        "variant_name",
+        "backbone_class",
+        "tokenizer_name",
+        "tokenizer_hash",
+        "vocab_size",
+        "max_seq_len",
+        "context_policy",
+        "rope_config",
+        "capability_tags",
+        "checkpoint_format_version",
+        "config_version",
+        "compatibility_version",
+        "release_track",
+        "migration_notes",
+    ):
         assert expected in d
 
 
@@ -272,6 +314,7 @@ def test_v2_to_v1_dict_rejects_non_manifest():
 # compare_backend_contracts.
 # ---------------------------------------------------------------------------
 
+
 def test_compare_both_none_is_exact():
     a = _v1_manifest(variant_name="cmp-none-a")
     b = _v1_manifest(variant_name="cmp-none-b")
@@ -280,65 +323,78 @@ def test_compare_both_none_is_exact():
 
 def test_compare_one_none_is_minor():
     a = _v1_manifest(variant_name="cmp-one-a")
-    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-one-b"),
-                      backend_name="pytorch")
+    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-one-b"), backend_name="pytorch")
     assert compare_backend_contracts(a, b) == "minor_mismatch"
     assert compare_backend_contracts(b, a) == "minor_mismatch"
 
 
 def test_compare_different_backends_is_major():
-    a = upgrade_to_v2(_v1_manifest(variant_name="cmp-diff-a"),
-                      backend_name="pytorch")
-    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-diff-b"),
-                      backend_name="jax")
+    a = upgrade_to_v2(_v1_manifest(variant_name="cmp-diff-a"), backend_name="pytorch")
+    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-diff-b"), backend_name="jax")
     assert compare_backend_contracts(a, b) == "major_break"
 
 
 def test_compare_same_backend_same_semver_is_exact():
-    a = upgrade_to_v2(_v1_manifest(variant_name="cmp-same-a"),
-                      backend_name="pytorch",
-                      engine_contract="1.0.0",
-                      adapter_contract="1.0.0")
-    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-same-b"),
-                      backend_name="pytorch",
-                      engine_contract="1.0.0",
-                      adapter_contract="1.0.0")
+    a = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-same-a"),
+        backend_name="pytorch",
+        engine_contract="1.0.0",
+        adapter_contract="1.0.0",
+    )
+    b = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-same-b"),
+        backend_name="pytorch",
+        engine_contract="1.0.0",
+        adapter_contract="1.0.0",
+    )
     assert compare_backend_contracts(a, b) == "exact"
 
 
 def test_compare_same_backend_minor_diff_semver_is_minor():
-    a = upgrade_to_v2(_v1_manifest(variant_name="cmp-minor-a"),
-                      backend_name="pytorch",
-                      engine_contract="1.0.0",
-                      adapter_contract="1.0.0")
-    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-minor-b"),
-                      backend_name="pytorch",
-                      engine_contract="1.2.0",
-                      adapter_contract="1.0.0")
+    a = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-minor-a"),
+        backend_name="pytorch",
+        engine_contract="1.0.0",
+        adapter_contract="1.0.0",
+    )
+    b = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-minor-b"),
+        backend_name="pytorch",
+        engine_contract="1.2.0",
+        adapter_contract="1.0.0",
+    )
     assert compare_backend_contracts(a, b) == "minor_mismatch"
 
 
 def test_compare_same_backend_major_diff_semver_is_major():
-    a = upgrade_to_v2(_v1_manifest(variant_name="cmp-major-a"),
-                      backend_name="pytorch",
-                      engine_contract="1.0.0",
-                      adapter_contract="1.0.0")
-    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-major-b"),
-                      backend_name="pytorch",
-                      engine_contract="2.0.0",
-                      adapter_contract="1.0.0")
+    a = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-major-a"),
+        backend_name="pytorch",
+        engine_contract="1.0.0",
+        adapter_contract="1.0.0",
+    )
+    b = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-major-b"),
+        backend_name="pytorch",
+        engine_contract="2.0.0",
+        adapter_contract="1.0.0",
+    )
     assert compare_backend_contracts(a, b) == "major_break"
 
 
 def test_compare_same_backend_major_diff_adapter_is_major():
-    a = upgrade_to_v2(_v1_manifest(variant_name="cmp-adap-major-a"),
-                      backend_name="pytorch",
-                      engine_contract="1.0.0",
-                      adapter_contract="1.0.0")
-    b = upgrade_to_v2(_v1_manifest(variant_name="cmp-adap-major-b"),
-                      backend_name="pytorch",
-                      engine_contract="1.0.0",
-                      adapter_contract="3.0.0")
+    a = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-adap-major-a"),
+        backend_name="pytorch",
+        engine_contract="1.0.0",
+        adapter_contract="1.0.0",
+    )
+    b = upgrade_to_v2(
+        _v1_manifest(variant_name="cmp-adap-major-b"),
+        backend_name="pytorch",
+        engine_contract="1.0.0",
+        adapter_contract="3.0.0",
+    )
     assert compare_backend_contracts(a, b) == "major_break"
 
 
@@ -350,6 +406,7 @@ def test_compare_rejects_non_manifest():
 # ---------------------------------------------------------------------------
 # list_v2_manifests reads lazily from the single registry.
 # ---------------------------------------------------------------------------
+
 
 def test_list_v2_manifests_contains_reference():
     manifests = list_v2_manifests()
@@ -368,6 +425,7 @@ def test_list_v2_manifests_no_duplicate_registry():
 # ---------------------------------------------------------------------------
 # load_manifest / dump_manifest behavior with v2 fields.
 # ---------------------------------------------------------------------------
+
 
 def test_load_manifest_accepts_payload_without_new_keys():
     payload = _v1_payload(variant_name="load-without")

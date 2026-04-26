@@ -21,13 +21,12 @@ Test inventory (15 tests):
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.eval.platt_scaling import (
-    TemperatureScaler,
-    PlattScaler,
-    IsotonicCalibrator,
     CalibrationMetrics,
+    IsotonicCalibrator,
+    PlattScaler,
+    TemperatureScaler,
 )
 
 # ---------------------------------------------------------------------------
@@ -248,8 +247,8 @@ def test_ece_zero_for_perfectly_calibrated():
 def test_ece_high_for_miscalibrated():
     """Predicting 1.0 confidence when always wrong → high ECE."""
     n = 100
-    probs = torch.ones(n)           # model says 100 % confident
-    labels = torch.zeros(n)         # but is always wrong
+    probs = torch.ones(n)  # model says 100 % confident
+    labels = torch.zeros(n)  # but is always wrong
     ece = CalibrationMetrics.ece(probs, labels)
     assert ece > 0.5, f"Expected high ECE for miscalibrated model, got {ece}"
 

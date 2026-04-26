@@ -2,10 +2,11 @@
 
 Reference: Yu et al., "Gradient Surgery for Multi-Task Learning", NeurIPS 2020.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -15,7 +16,7 @@ from torch import Tensor
 @dataclass
 class PCGradConfig:
     n_tasks: int = 2
-    reduction: str = "mean"   # "mean" | "sum" — how to combine task losses
+    reduction: str = "mean"  # "mean" | "sum" — how to combine task losses
 
 
 def project_gradient(grad_i: Tensor, grad_j: Tensor) -> Tensor:
@@ -102,7 +103,7 @@ def pcgrad_step(
         param.grad = combined.view_as(param).clone()
 
     # Step 4: return mean loss
-    stacked = torch.stack([l.detach() for l in losses])
+    stacked = torch.stack([line.detach() for line in losses])
     return stacked.mean()
 
 
@@ -126,10 +127,7 @@ class PCGradOptimizer:
         """
         # Gather all parameters from optimizer param groups
         params = [
-            p
-            for group in self.optimizer.param_groups
-            for p in group["params"]
-            if p.requires_grad
+            p for group in self.optimizer.param_groups for p in group["params"] if p.requires_grad
         ]
 
         n_tasks = len(task_losses)
@@ -180,9 +178,9 @@ class PCGradOptimizer:
         self.optimizer.step()
 
         return {
-            "mean_loss": float(torch.stack([l.detach() for l in task_losses]).mean()),
+            "mean_loss": float(torch.stack([line.detach() for line in task_losses]).mean()),
             "n_conflicts": n_conflicts,
-            "task_losses": [float(l.detach()) for l in task_losses],
+            "task_losses": [float(line.detach()) for line in task_losses],
         }
 
 

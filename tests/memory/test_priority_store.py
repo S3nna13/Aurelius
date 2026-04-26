@@ -1,9 +1,8 @@
 """Tests for priority memory store."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.memory.priority_store import PriorityMemoryStore, MemoryItem, Priority
+from src.memory.priority_store import MemoryItem, Priority, PriorityMemoryStore
 
 
 class TestPriorityMemoryStore:

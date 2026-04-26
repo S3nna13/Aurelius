@@ -10,23 +10,23 @@ Implements:
 
 Pure PyTorch only — no third-party packages beyond torch / stdlib.
 """
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EmbeddingAnalysisConfig:
     """Hyper-parameters shared across all analysis routines."""
+
     n_dirs: int = 50
     threshold: float = 0.95
     n_clusters: int = 4
@@ -36,6 +36,7 @@ class EmbeddingAnalysisConfig:
 # ---------------------------------------------------------------------------
 # Isotropy Metrics
 # ---------------------------------------------------------------------------
+
 
 class IsotropyMetrics:
     """Three complementary measures of embedding-space isotropy.
@@ -83,8 +84,8 @@ class IsotropyMetrics:
         scores = c @ x.T
 
         # Numerically stable log-sum-exp per direction
-        s_max = scores.max(dim=1, keepdim=True).values          # (n_dirs, 1)
-        z = (scores - s_max).exp().sum(dim=1)                   # (n_dirs,)
+        s_max = scores.max(dim=1, keepdim=True).values  # (n_dirs, 1)
+        z = (scores - s_max).exp().sum(dim=1)  # (n_dirs,)
 
         z_min = z.min().item()
         z_max = z.max().item()
@@ -118,7 +119,7 @@ class IsotropyMetrics:
 
         # Full pairwise for small N; otherwise sample pairs
         if n * (n - 1) <= n_pairs * 2:
-            sim = x_n @ x_n.T                                   # (n, n)
+            sim = x_n @ x_n.T  # (n, n)
             mask = ~torch.eye(n, dtype=torch.bool, device=x.device)
             return float(sim[mask].mean().item())
 
@@ -155,8 +156,8 @@ class IsotropyMetrics:
         c = torch.randn(n_dirs, d, generator=gen, device=x.device)
         c = c / c.norm(dim=1, keepdim=True).clamp(min=1e-12)
 
-        proj = c @ x.T                                          # (n_dirs, n)
-        frac_pos = (proj > 0).float().mean(dim=1)               # (n_dirs,)
+        proj = c @ x.T  # (n_dirs, n)
+        frac_pos = (proj > 0).float().mean(dim=1)  # (n_dirs,)
         deviation = (frac_pos - 0.5).abs().mean().item()
         return float(1.0 - 2.0 * deviation)
 
@@ -164,6 +165,7 @@ class IsotropyMetrics:
 # ---------------------------------------------------------------------------
 # Intrinsic Dimensionality
 # ---------------------------------------------------------------------------
+
 
 class IntrinsicDimensionality:
     """Three estimators of the intrinsic dimensionality of an embedding space.
@@ -191,10 +193,8 @@ class IntrinsicDimensionality:
         n, d = x.shape
 
         # Pairwise squared Euclidean distances
-        sq = (x * x).sum(dim=1)                                 # (n,)
-        dist2 = (
-            sq.unsqueeze(1) + sq.unsqueeze(0) - 2.0 * (x @ x.T)
-        ).clamp(min=0.0)                                        # (n, n)
+        sq = (x * x).sum(dim=1)  # (n,)
+        dist2 = (sq.unsqueeze(1) + sq.unsqueeze(0) - 2.0 * (x @ x.T)).clamp(min=0.0)  # (n, n)
 
         # Exclude self-distances
         dist2.fill_diagonal_(float("inf"))
@@ -229,8 +229,8 @@ class IntrinsicDimensionality:
         x = embeddings.float()
         x = x - x.mean(dim=0, keepdim=True)
 
-        _, s, _ = torch.linalg.svd(x, full_matrices=False)     # s: (min(n,d),)
-        var = s ** 2
+        _, s, _ = torch.linalg.svd(x, full_matrices=False)  # s: (min(n,d),)
+        var = s**2
         total = var.sum()
         if total == 0.0:
             return 1
@@ -239,7 +239,7 @@ class IntrinsicDimensionality:
         hits = (cumvar >= threshold).nonzero(as_tuple=False)
         if hits.numel() == 0:
             return int(cumvar.shape[0])
-        return int(hits[0, 0].item()) + 1                       # 1-indexed count
+        return int(hits[0, 0].item()) + 1  # 1-indexed count
 
     # ------------------------------------------------------------------
     # participation_ratio
@@ -254,19 +254,20 @@ class IntrinsicDimensionality:
         x = x - x.mean(dim=0, keepdim=True)
         n = x.shape[0]
 
-        cov = (x.T @ x) / max(n - 1, 1)                        # (d, d)
-        lam = torch.linalg.eigh(cov).eigenvalues.clamp(min=0.0) # (d,)
+        cov = (x.T @ x) / max(n - 1, 1)  # (d, d)
+        lam = torch.linalg.eigh(cov).eigenvalues.clamp(min=0.0)  # (d,)
 
         sum_lam = lam.sum().item()
-        sum_lam2 = (lam ** 2).sum().item()
+        sum_lam2 = (lam**2).sum().item()
         if sum_lam2 == 0.0:
             return 1.0
-        return float((sum_lam ** 2) / sum_lam2)
+        return float((sum_lam**2) / sum_lam2)
 
 
 # ---------------------------------------------------------------------------
 # Anisotropy Corrector
 # ---------------------------------------------------------------------------
+
 
 class AnisotropyCorrector:
     """ZCA-whitening corrector for anisotropic embeddings.
@@ -279,15 +280,15 @@ class AnisotropyCorrector:
     """
 
     def __init__(self) -> None:
-        self._mean: Optional[Tensor] = None
-        self._W: Optional[Tensor] = None      # whitening matrix  (d, d)
-        self._W_inv: Optional[Tensor] = None  # de-whitening matrix (d, d)
+        self._mean: Tensor | None = None
+        self._W: Tensor | None = None  # whitening matrix  (d, d)
+        self._W_inv: Tensor | None = None  # de-whitening matrix (d, d)
 
     # ------------------------------------------------------------------
     # fit
     # ------------------------------------------------------------------
 
-    def fit(self, embeddings: Tensor) -> "AnisotropyCorrector":
+    def fit(self, embeddings: Tensor) -> AnisotropyCorrector:
         """Estimate mean and ZCA-whitening transform from *embeddings*.
 
         Stores:
@@ -297,25 +298,25 @@ class AnisotropyCorrector:
         """
         x = embeddings.float()
         n, d = x.shape
-        self._mean = x.mean(dim=0)                              # (d,)
+        self._mean = x.mean(dim=0)  # (d,)
 
-        x_c = x - self._mean.unsqueeze(0)                       # centred
+        x_c = x - self._mean.unsqueeze(0)  # centred
 
         # Economy SVD of the centred data: X_c = U S Vt
         _U, s, Vt = torch.linalg.svd(x_c, full_matrices=False)
-        V = Vt.T                                                 # (d, k)
+        V = Vt.T  # (d, k)
 
         # Covariance eigenvalues: λ = s² / (n-1)
-        lam = (s ** 2) / max(n - 1, 1)                         # (k,)
+        lam = (s**2) / max(n - 1, 1)  # (k,)
         eps = 1e-8
 
-        inv_std = 1.0 / (lam.sqrt() + eps)                     # (k,)
-        std = lam.sqrt() + eps                                  # (k,)
+        inv_std = 1.0 / (lam.sqrt() + eps)  # (k,)
+        std = lam.sqrt() + eps  # (k,)
 
         # ZCA: W = V diag(1/√λ) Vᵀ
-        self._W = V @ torch.diag(inv_std) @ V.T                 # (d, d)
+        self._W = V @ torch.diag(inv_std) @ V.T  # (d, d)
         # Inverse: W⁻¹ = V diag(√λ) Vᵀ
-        self._W_inv = V @ torch.diag(std) @ V.T                 # (d, d)
+        self._W_inv = V @ torch.diag(std) @ V.T  # (d, d)
         return self
 
     # ------------------------------------------------------------------
@@ -325,9 +326,7 @@ class AnisotropyCorrector:
     def transform(self, embeddings: Tensor) -> Tensor:
         """Apply mean-centering + whitening. Shape is preserved."""
         if self._mean is None or self._W is None:
-            raise RuntimeError(
-                "AnisotropyCorrector.fit() must be called before transform()."
-            )
+            raise RuntimeError("AnisotropyCorrector.fit() must be called before transform().")
         x = embeddings.float()
         x_c = x - self._mean.to(x.device).unsqueeze(0)
         return x_c @ self._W.to(x.device).T
@@ -359,6 +358,7 @@ class AnisotropyCorrector:
 # Embedding Cluster Analysis
 # ---------------------------------------------------------------------------
 
+
 class EmbeddingClusterAnalysis:
     """K-means clustering and quality metrics for embedding tensors.
 
@@ -372,7 +372,7 @@ class EmbeddingClusterAnalysis:
         if n_clusters < 1:
             raise ValueError("n_clusters must be >= 1")
         self.n_clusters = n_clusters
-        self._centroids: Optional[Tensor] = None
+        self._centroids: Tensor | None = None
 
     # ------------------------------------------------------------------
     # kmeans_fit
@@ -399,28 +399,27 @@ class EmbeddingClusterAnalysis:
 
         # Initialise centroids by picking k random distinct points
         perm = torch.randperm(n, generator=gen, device=x.device)[:k]
-        centroids = x[perm].clone()                             # (k, d)
+        centroids = x[perm].clone()  # (k, d)
 
         labels = torch.zeros(n, dtype=torch.long, device=x.device)
 
         for _ in range(n_iters):
             # --- Assignment step (squared Euclidean distance) ---
             # ||x_i - c_j||² = ||x_i||² + ||c_j||² - 2 x_i·c_j
-            sq_x = (x * x).sum(dim=1, keepdim=True)            # (n, 1)
-            sq_c = (centroids * centroids).sum(dim=1)           # (k,)
-            cross = x @ centroids.T                             # (n, k)
+            sq_x = (x * x).sum(dim=1, keepdim=True)  # (n, 1)
+            sq_c = (centroids * centroids).sum(dim=1)  # (k,)
+            cross = x @ centroids.T  # (n, k)
             dist2 = (sq_x + sq_c.unsqueeze(0) - 2.0 * cross).clamp(min=0.0)
-            labels = dist2.argmin(dim=1)                        # (n,)
+            labels = dist2.argmin(dim=1)  # (n,)
 
             # --- Update step ---
             new_c = torch.zeros_like(centroids)
             counts = torch.zeros(k, dtype=x.dtype, device=x.device)
             new_c.scatter_add_(0, labels.unsqueeze(1).expand(-1, d), x)
-            counts.scatter_add_(0, labels,
-                                torch.ones(n, dtype=x.dtype, device=x.device))
+            counts.scatter_add_(0, labels, torch.ones(n, dtype=x.dtype, device=x.device))
             non_empty = counts > 0
             new_c[non_empty] = new_c[non_empty] / counts[non_empty].unsqueeze(1)
-            new_c[~non_empty] = centroids[~non_empty]           # keep stale centroid
+            new_c[~non_empty] = centroids[~non_empty]  # keep stale centroid
             centroids = new_c
 
         self._centroids = centroids
@@ -488,9 +487,7 @@ class EmbeddingClusterAnalysis:
     # intra_cluster_variance
     # ------------------------------------------------------------------
 
-    def intra_cluster_variance(
-        self, embeddings: Tensor, labels: Tensor
-    ) -> float:
+    def intra_cluster_variance(self, embeddings: Tensor, labels: Tensor) -> float:
         """Mean within-cluster variance (mean squared distance to centroid).
 
         Returns a non-negative float.
@@ -517,6 +514,7 @@ class EmbeddingClusterAnalysis:
 # Embedding Analysis Suite
 # ---------------------------------------------------------------------------
 
+
 class EmbeddingAnalysisSuite:
     """Unified wrapper that runs all embedding analyses in one call.
 
@@ -529,20 +527,18 @@ class EmbeddingAnalysisSuite:
     config        : EmbeddingAnalysisConfig
     """
 
-    def __init__(self, config: Optional[EmbeddingAnalysisConfig] = None) -> None:
+    def __init__(self, config: EmbeddingAnalysisConfig | None = None) -> None:
         self.config = config or EmbeddingAnalysisConfig()
         self.isotropy = IsotropyMetrics()
         self.dimensionality = IntrinsicDimensionality()
         self.corrector = AnisotropyCorrector()
-        self.clustering = EmbeddingClusterAnalysis(
-            n_clusters=self.config.n_clusters
-        )
+        self.clustering = EmbeddingClusterAnalysis(n_clusters=self.config.n_clusters)
 
     # ------------------------------------------------------------------
     # full_report
     # ------------------------------------------------------------------
 
-    def full_report(self, embeddings: Tensor) -> Dict[str, float]:
+    def full_report(self, embeddings: Tensor) -> dict[str, float]:
         """Compute every metric and return a flat dict of floats.
 
         Keys
@@ -555,15 +551,11 @@ class EmbeddingAnalysisSuite:
 
         iso = self.isotropy.compute_isotropy(embeddings, n_dirs=cfg.n_dirs)
         avg_cos = self.isotropy.compute_average_cosine_similarity(embeddings)
-        part = self.isotropy.compute_partition_score(
-            embeddings, n_dirs=cfg.n_dirs
-        )
+        part = self.isotropy.compute_partition_score(embeddings, n_dirs=cfg.n_dirs)
 
         twonn = self.dimensionality.twonn_estimate(embeddings)
         pca_k = float(
-            self.dimensionality.pca_explained_variance(
-                embeddings, threshold=cfg.threshold
-            )
+            self.dimensionality.pca_explained_variance(embeddings, threshold=cfg.threshold)
         )
         pr = self.dimensionality.participation_ratio(embeddings)
 

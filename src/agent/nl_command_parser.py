@@ -105,9 +105,7 @@ class NLCommandParser:
             if match:
                 groups = match.groupdict()
                 target = groups.get("target")
-                args = {
-                    k: v for k, v in groups.items() if k != "target" and v is not None
-                }
+                args = {k: v for k, v in groups.items() if k != "target" and v is not None}
                 return ParsedCommand(
                     action=action,
                     target=target,

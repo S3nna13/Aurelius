@@ -13,8 +13,9 @@ This module keeps the multimodal surface explicit and stdlib-only:
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, fields
-from typing import Any, Mapping
+from typing import Any
 
 __all__ = [
     "ModalityContract",
@@ -42,9 +43,7 @@ class ModalityContractError(Exception):
 
 def _coerce_kind_tuple(value: Any, field_name: str) -> tuple[str, ...]:
     if isinstance(value, str):
-        raise ModalityContractError(
-            f"{field_name} must be a sequence of strings, got bare str"
-        )
+        raise ModalityContractError(f"{field_name} must be a sequence of strings, got bare str")
     try:
         items = tuple(value)
     except TypeError as exc:
@@ -78,9 +77,7 @@ class ModalityContract:
             raise ModalityContractError("name must be a non-empty string")
         name = self.name.strip()
         if not _NAME_RE.match(name):
-            raise ModalityContractError(
-                f"name must match [a-z][a-z0-9_-]*, got {self.name!r}"
-            )
+            raise ModalityContractError(f"name must match [a-z][a-z0-9_-]*, got {self.name!r}")
         object.__setattr__(self, "name", name)
 
         if not isinstance(self.description, str) or not self.description.strip():
@@ -98,9 +95,7 @@ class ModalityContract:
             _coerce_kind_tuple(self.output_kinds, "output_kinds"),
         )
 
-        if not isinstance(self.schema_version, str) or not _SEMVER_RE.match(
-            self.schema_version
-        ):
+        if not isinstance(self.schema_version, str) or not _SEMVER_RE.match(self.schema_version):
             raise ModalityContractError(
                 f"schema_version must match semver X.Y.Z, got {self.schema_version!r}"
             )
@@ -111,8 +106,7 @@ class ModalityContract:
         payload["input_count"] = len(self.input_kinds)
         payload["output_count"] = len(self.output_kinds)
         payload["kind_summary"] = (
-            f"{self.name}: "
-            f"{', '.join(self.input_kinds)} -> {', '.join(self.output_kinds)}"
+            f"{self.name}: {', '.join(self.input_kinds)} -> {', '.join(self.output_kinds)}"
         )
         return payload
 
@@ -133,20 +127,12 @@ def load_modality_contract(data: Mapping[str, Any]) -> ModalityContract:
         if field_name not in data and field_name not in _OPTIONAL_MODALITY_FIELDS
     ]
     if missing:
-        raise ModalityContractError(
-            f"modality contract missing fields: {missing}"
-        )
+        raise ModalityContractError(f"modality contract missing fields: {missing}")
     extra = [key for key in data.keys() if key not in _MODALITY_FIELDS]
     if extra:
-        raise ModalityContractError(
-            f"modality contract has unknown fields: {extra}"
-        )
+        raise ModalityContractError(f"modality contract has unknown fields: {extra}")
 
-    kwargs = {
-        field_name: data[field_name]
-        for field_name in _MODALITY_FIELDS
-        if field_name in data
-    }
+    kwargs = {field_name: data[field_name] for field_name in _MODALITY_FIELDS if field_name in data}
     return ModalityContract(**kwargs)
 
 
@@ -154,8 +140,7 @@ def dump_modality_contract(contract: ModalityContract) -> dict[str, Any]:
     """Serialize a contract to a JSON-safe dict."""
     if not isinstance(contract, ModalityContract):
         raise ModalityContractError(
-            f"dump_modality_contract expected ModalityContract, got "
-            f"{type(contract).__name__}"
+            f"dump_modality_contract expected ModalityContract, got {type(contract).__name__}"
         )
     return {
         "name": contract.name,
@@ -173,13 +158,10 @@ def register_modality_contract(contract: ModalityContract) -> ModalityContract:
     """Insert ``contract`` into the module-level registry."""
     if not isinstance(contract, ModalityContract):
         raise ModalityContractError(
-            f"register_modality_contract expected ModalityContract, got "
-            f"{type(contract).__name__}"
+            f"register_modality_contract expected ModalityContract, got {type(contract).__name__}"
         )
     if contract.name in MODALITY_CONTRACT_REGISTRY:
-        raise ModalityContractError(
-            f"modality contract {contract.name!r} already registered"
-        )
+        raise ModalityContractError(f"modality contract {contract.name!r} already registered")
     MODALITY_CONTRACT_REGISTRY[contract.name] = contract
     return contract
 
@@ -207,10 +189,7 @@ def describe_modality_registry() -> dict[str, Any]:
     return {
         "count": len(MODALITY_CONTRACT_REGISTRY),
         "names": list(MODALITY_CONTRACT_REGISTRY.keys()),
-        "contracts": [
-            contract.summary()
-            for contract in MODALITY_CONTRACT_REGISTRY.values()
-        ],
+        "contracts": [contract.summary() for contract in MODALITY_CONTRACT_REGISTRY.values()],
     }
 
 

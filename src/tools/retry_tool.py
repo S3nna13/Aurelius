@@ -1,10 +1,12 @@
 """Retry-with-backoff tool wrapper for resilient tool execution."""
+
 from __future__ import annotations
 
-import time
 import random
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
@@ -25,11 +27,11 @@ class RetryTool:
                 result = fn()
                 self._attempts.append(time.monotonic())
                 return result
-            except Exception as e:
+            except Exception:
                 self._attempts.append(time.monotonic())
                 if attempt == self.max_retries:
                     raise
-                delay = min(self.base_delay * (self.backoff_factor ** attempt), self.max_delay)
+                delay = min(self.base_delay * (self.backoff_factor**attempt), self.max_delay)
                 if self.jitter:
                     delay *= 0.5 + random.random() * 0.5
                 time.sleep(delay)

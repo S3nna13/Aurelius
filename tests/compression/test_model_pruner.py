@@ -1,4 +1,5 @@
 """Tests for model_pruner."""
+
 from __future__ import annotations
 
 import pytest
@@ -11,14 +12,16 @@ from src.compression.model_pruner import (
     PruningStrategy,
 )
 
-
 # --- enum ---
+
 
 def test_strategy_magnitude():
     assert PruningStrategy.MAGNITUDE == "magnitude"
 
+
 def test_strategy_structured():
     assert PruningStrategy.STRUCTURED == "structured"
+
 
 def test_strategy_random():
     assert PruningStrategy.RANDOM == "random"
@@ -26,11 +29,13 @@ def test_strategy_random():
 
 # --- config ---
 
+
 def test_config_defaults():
     cfg = PruningConfig()
     assert cfg.strategy == PruningStrategy.MAGNITUDE
     assert cfg.sparsity == 0.5
     assert cfg.target_modules == []
+
 
 def test_config_custom():
     cfg = PruningConfig(sparsity=0.8, target_modules=["a", "b"])
@@ -40,15 +45,19 @@ def test_config_custom():
 
 # --- stats ---
 
+
 def test_stats_fields():
     s = PruningStats(
-        module_name="m", original_params=10, remaining_params=5,
+        module_name="m",
+        original_params=10,
+        remaining_params=5,
         sparsity_achieved=0.5,
     )
     assert s.module_name == "m"
     assert s.original_params == 10
     assert s.remaining_params == 5
     assert s.sparsity_achieved == 0.5
+
 
 def test_stats_frozen():
     s = PruningStats("m", 10, 5, 0.5)
@@ -58,10 +67,12 @@ def test_stats_frozen():
 
 # --- compute_mask MAGNITUDE ---
 
+
 def test_magnitude_mask_length():
     p = ModelPruner()
     mask = p.compute_mask([1.0, 2.0, 3.0, 4.0], 0.5)
     assert len(mask) == 4
+
 
 def test_magnitude_keeps_largest():
     p = ModelPruner()
@@ -73,6 +84,7 @@ def test_magnitude_keeps_largest():
     assert mask[0] is False
     assert mask[1] is False
 
+
 def test_magnitude_sparsity_fraction():
     p = ModelPruner()
     weights = [float(i + 1) for i in range(10)]
@@ -80,14 +92,17 @@ def test_magnitude_sparsity_fraction():
     kept = sum(1 for m in mask if m)
     assert kept == 3
 
+
 def test_magnitude_empty_weights():
     p = ModelPruner()
     assert p.compute_mask([], 0.5) == []
+
 
 def test_magnitude_zero_sparsity_keeps_all():
     p = ModelPruner()
     mask = p.compute_mask([1.0, 2.0, 3.0], 0.0)
     assert all(mask)
+
 
 def test_magnitude_full_sparsity_keeps_none():
     p = ModelPruner()
@@ -97,10 +112,12 @@ def test_magnitude_full_sparsity_keeps_none():
 
 # --- RANDOM ---
 
+
 def test_random_mask_correct_count():
     p = ModelPruner(seed=1)
     mask = p.compute_mask([1.0] * 10, 0.5, PruningStrategy.RANDOM)
     assert sum(1 for m in mask if m) == 5
+
 
 def test_random_mask_reproducible():
     p1 = ModelPruner(seed=99)
@@ -112,11 +129,13 @@ def test_random_mask_reproducible():
 
 # --- STRUCTURED ---
 
+
 def test_structured_keeps_prefix():
     p = ModelPruner()
     mask = p.compute_mask([1.0] * 10, 0.5, PruningStrategy.STRUCTURED)
     assert mask[:5] == [True] * 5
     assert mask[5:] == [False] * 5
+
 
 def test_structured_full_prune():
     p = ModelPruner()
@@ -126,15 +145,18 @@ def test_structured_full_prune():
 
 # --- apply_mask ---
 
+
 def test_apply_mask_zeroes():
     p = ModelPruner()
     out = p.apply_mask([1.0, 2.0, 3.0], [True, False, True])
     assert out == [1.0, 0.0, 3.0]
 
+
 def test_apply_mask_length_mismatch():
     p = ModelPruner()
     with pytest.raises(ValueError):
         p.apply_mask([1.0, 2.0], [True])
+
 
 def test_apply_mask_all_false():
     p = ModelPruner()
@@ -142,6 +164,7 @@ def test_apply_mask_all_false():
 
 
 # --- prune ---
+
 
 def test_prune_returns_stats():
     p = ModelPruner(PruningConfig(sparsity=0.5))
@@ -151,10 +174,12 @@ def test_prune_returns_stats():
     assert stats.original_params == 4
     assert stats.remaining_params == 2
 
+
 def test_prune_sparsity_achieved():
     p = ModelPruner(PruningConfig(sparsity=0.75))
     _, stats = p.prune("m", [1.0, 2.0, 3.0, 4.0])
     assert stats.sparsity_achieved == pytest.approx(0.75)
+
 
 def test_prune_zeros_match_mask():
     p = ModelPruner(PruningConfig(sparsity=0.5))
@@ -167,17 +192,21 @@ def test_prune_zeros_match_mask():
 
 # --- achieved_sparsity ---
 
+
 def test_achieved_sparsity_all_zero():
     p = ModelPruner()
     assert p.achieved_sparsity([0.0, 0.0, 0.0]) == 1.0
+
 
 def test_achieved_sparsity_none_zero():
     p = ModelPruner()
     assert p.achieved_sparsity([1.0, 2.0, 3.0]) == 0.0
 
+
 def test_achieved_sparsity_half():
     p = ModelPruner()
     assert p.achieved_sparsity([0.0, 1.0, 0.0, 2.0]) == 0.5
+
 
 def test_achieved_sparsity_empty():
     p = ModelPruner()
@@ -186,13 +215,16 @@ def test_achieved_sparsity_empty():
 
 # --- can_prune_further ---
 
+
 def test_can_prune_further_true():
     p = ModelPruner()
     assert p.can_prune_further(0.3, 0.5) is True
 
+
 def test_can_prune_further_false():
     p = ModelPruner()
     assert p.can_prune_further(0.5, 0.5) is False
+
 
 def test_can_prune_further_tolerance():
     p = ModelPruner()
@@ -201,8 +233,10 @@ def test_can_prune_further_tolerance():
 
 # --- registry ---
 
+
 def test_registry_has_default():
     assert "default" in MODEL_PRUNER_REGISTRY
+
 
 def test_registry_constructs():
     cls = MODEL_PRUNER_REGISTRY["default"]

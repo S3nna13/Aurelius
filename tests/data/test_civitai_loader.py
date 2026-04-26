@@ -1,12 +1,11 @@
 """Tests for civitai_loader.py — no network calls, mock data only."""
+
 from __future__ import annotations
 
 import pytest
-
 from aurelius.data.civitai_loader import (
     CivitaiImage,
     CivitaiImageMeta,
-    CivitaiModel,
     extract_prompts,
     filter_sfw_images,
     image_to_instruction_sample,
@@ -16,10 +15,10 @@ from aurelius.data.civitai_loader import (
     parse_civitai_model,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def raw_models():
@@ -45,6 +44,7 @@ def parsed_images(raw_images):
 # Test 1 – mock_civitai_models has correct top-level fields
 # ---------------------------------------------------------------------------
 
+
 def test_mock_models_correct_fields(raw_models):
     required_keys = {"id", "name", "type", "nsfw", "tags", "stats", "modelVersions"}
     for model in raw_models:
@@ -57,6 +57,7 @@ def test_mock_models_correct_fields(raw_models):
 # Test 2 – parse_civitai_model extracts name correctly
 # ---------------------------------------------------------------------------
 
+
 def test_parse_model_name(raw_models, parsed_models):
     for raw, model in zip(raw_models, parsed_models):
         assert model.name == raw["name"]
@@ -65,6 +66,7 @@ def test_parse_model_name(raw_models, parsed_models):
 # ---------------------------------------------------------------------------
 # Test 3 – parse_civitai_model extracts trained_words from modelVersions
 # ---------------------------------------------------------------------------
+
 
 def test_parse_model_trained_words(raw_models, parsed_models):
     for raw, model in zip(raw_models, parsed_models):
@@ -78,6 +80,7 @@ def test_parse_model_trained_words(raw_models, parsed_models):
 # Test 4 – parse_civitai_model reads rating from stats
 # ---------------------------------------------------------------------------
 
+
 def test_parse_model_rating(raw_models, parsed_models):
     for raw, model in zip(raw_models, parsed_models):
         assert model.rating == pytest.approx(raw["stats"]["rating"])
@@ -86,6 +89,7 @@ def test_parse_model_rating(raw_models, parsed_models):
 # ---------------------------------------------------------------------------
 # Test 5 – mock_civitai_images has correct top-level fields
 # ---------------------------------------------------------------------------
+
 
 def test_mock_images_correct_fields(raw_images):
     required_keys = {"id", "url", "meta", "stats"}
@@ -99,6 +103,7 @@ def test_mock_images_correct_fields(raw_images):
 # Test 6 – parse_civitai_image extracts prompt from meta
 # ---------------------------------------------------------------------------
 
+
 def test_parse_image_prompt(raw_images, parsed_images):
     for raw, image in zip(raw_images, parsed_images):
         assert image.meta.prompt == raw["meta"]["prompt"]
@@ -107,6 +112,7 @@ def test_parse_image_prompt(raw_images, parsed_images):
 # ---------------------------------------------------------------------------
 # Test 7 – parse_civitai_image handles missing / None meta gracefully
 # ---------------------------------------------------------------------------
+
 
 def test_parse_image_none_meta():
     raw = {
@@ -146,6 +152,7 @@ def test_parse_image_missing_meta():
 # Test 8 – extract_prompts returns list of non-empty strings
 # ---------------------------------------------------------------------------
 
+
 def test_extract_prompts_non_empty(parsed_images):
     prompts = extract_prompts(parsed_images)
     assert isinstance(prompts, list)
@@ -156,13 +163,23 @@ def test_extract_prompts_skips_empty():
     """Images with empty prompt should be excluded."""
     images = [
         CivitaiImage(
-            id=1, url="", width=512, height=512,
-            nsfw=False, nsfw_level=0, like_count=0,
+            id=1,
+            url="",
+            width=512,
+            height=512,
+            nsfw=False,
+            nsfw_level=0,
+            like_count=0,
             meta=CivitaiImageMeta(prompt="hello"),
         ),
         CivitaiImage(
-            id=2, url="", width=512, height=512,
-            nsfw=False, nsfw_level=0, like_count=0,
+            id=2,
+            url="",
+            width=512,
+            height=512,
+            nsfw=False,
+            nsfw_level=0,
+            like_count=0,
             meta=CivitaiImageMeta(prompt=""),
         ),
     ]
@@ -174,6 +191,7 @@ def test_extract_prompts_skips_empty():
 # ---------------------------------------------------------------------------
 # Test 9 – image_to_instruction_sample returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_image_to_instruction_sample_keys(parsed_images):
     sample = image_to_instruction_sample(parsed_images[0])
@@ -196,6 +214,7 @@ def test_image_to_instruction_sample_values(parsed_images):
 # Test 10 – filter_sfw_images removes nsfw=True images
 # ---------------------------------------------------------------------------
 
+
 def test_filter_sfw_removes_nsfw(parsed_images):
     sfw = filter_sfw_images(parsed_images)
     for img in sfw:
@@ -206,15 +225,26 @@ def test_filter_sfw_removes_nsfw(parsed_images):
 # Test 11 – filter_sfw_images keeps nsfw=False images with low nsfw_level
 # ---------------------------------------------------------------------------
 
+
 def test_filter_sfw_keeps_sfw():
     sfw_image = CivitaiImage(
-        id=1, url="", width=512, height=512,
-        nsfw=False, nsfw_level=1, like_count=0,
+        id=1,
+        url="",
+        width=512,
+        height=512,
+        nsfw=False,
+        nsfw_level=1,
+        like_count=0,
         meta=CivitaiImageMeta(prompt="safe"),
     )
     nsfw_image = CivitaiImage(
-        id=2, url="", width=512, height=512,
-        nsfw=True, nsfw_level=3, like_count=0,
+        id=2,
+        url="",
+        width=512,
+        height=512,
+        nsfw=True,
+        nsfw_level=3,
+        like_count=0,
         meta=CivitaiImageMeta(prompt="unsafe"),
     )
     result = filter_sfw_images([sfw_image, nsfw_image])
@@ -226,17 +256,17 @@ def test_filter_sfw_keeps_sfw():
 # Test 12 – mock includes varied nsfw levels for filtering test
 # ---------------------------------------------------------------------------
 
+
 def test_mock_images_varied_nsfw_levels(raw_images):
     nsfw_levels = {img["nsfwLevel"] for img in raw_images}
     # Expect at least 2 distinct nsfw levels across 4 mock images
-    assert len(nsfw_levels) >= 2, (
-        f"Expected varied nsfwLevel values, got {nsfw_levels}"
-    )
+    assert len(nsfw_levels) >= 2, f"Expected varied nsfwLevel values, got {nsfw_levels}"
 
 
 # ---------------------------------------------------------------------------
 # Test 13 – model type field parsed correctly
 # ---------------------------------------------------------------------------
+
 
 def test_parse_model_type(raw_models, parsed_models):
     for raw, model in zip(raw_models, parsed_models):
@@ -246,6 +276,7 @@ def test_parse_model_type(raw_models, parsed_models):
 # ---------------------------------------------------------------------------
 # Test 14 – trained_words list correctly flattened from all versions
 # ---------------------------------------------------------------------------
+
 
 def test_trained_words_flattened_multi_version():
     raw = {

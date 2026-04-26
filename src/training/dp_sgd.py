@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List
 
 import torch
 
@@ -30,7 +29,7 @@ class DPSGDOptimizer:
         self.optimizer = optimizer
         self.config = config
 
-    def _clip_grad(self, params: List[torch.Tensor]) -> float:
+    def _clip_grad(self, params: list[torch.Tensor]) -> float:
         total_norm = 0.0
         for p in params:
             if p.grad is not None:
@@ -42,24 +41,18 @@ class DPSGDOptimizer:
                 p.grad.detach().mul_(clip_coef)
         return grad_norm
 
-    def _add_noise(self, params: List[torch.Tensor]) -> None:
+    def _add_noise(self, params: list[torch.Tensor]) -> None:
         # sigma divided by batch_size because gradients are averaged over the batch
-        sigma = (
-            self.config.noise_multiplier
-            * self.config.max_grad_norm
-            / self.config.batch_size
-        )
+        sigma = self.config.noise_multiplier * self.config.max_grad_norm / self.config.batch_size
         for p in params:
             if p.grad is not None:
                 noise = torch.randn_like(p.grad) * sigma
                 p.grad.detach().add_(noise)
 
-    def step(self, params: List[torch.Tensor]) -> Dict[str, float]:
+    def step(self, params: list[torch.Tensor]) -> dict[str, float]:
         mean_grad_norm = self._clip_grad(params)
         noise_std = (
-            self.config.noise_multiplier
-            * self.config.max_grad_norm
-            / self.config.batch_size
+            self.config.noise_multiplier * self.config.max_grad_norm / self.config.batch_size
         )
         self._add_noise(params)
         self.optimizer.step()
@@ -68,11 +61,11 @@ class DPSGDOptimizer:
     def zero_grad(self) -> None:
         self.optimizer.zero_grad()
 
-    def get_privacy_spent(self, steps: int) -> Dict[str, float]:
+    def get_privacy_spent(self, steps: int) -> dict[str, float]:
         # Simplified upper bound — not tight; real accounting uses RDP moments.
         # epsilon ≈ noise_multiplier^-2 * 2 * ln(1.25/delta) * steps / batch_size
         epsilon = (
-            (self.config.noise_multiplier ** -2)
+            (self.config.noise_multiplier**-2)
             * 2.0
             * math.log(1.25 / self.config.delta)
             * steps

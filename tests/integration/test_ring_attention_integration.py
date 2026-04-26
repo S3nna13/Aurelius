@@ -28,8 +28,8 @@ def test_registry_has_ring_attention_entry():
 
 def test_registry_retains_prior_entries():
     # Additive-only registration: prior strategies must still be reachable.
-    from src.longcontext.kv_compression import KVInt8Compressor
     from src.longcontext.attention_sinks import AttentionSinkCache
+    from src.longcontext.kv_compression import KVInt8Compressor
 
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] is KVInt8Compressor
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["attention_sinks"] is AttentionSinkCache

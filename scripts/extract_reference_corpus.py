@@ -5,8 +5,8 @@ into a single flat corpus file suitable for tokenizer training and LM pretrainin
 Skips binaries, images, model weights, and known non-text formats.
 """
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 REF_DIR = Path("/Users/christienantonio/Desktop/Reference Models")
 OUTPUT_DIR = Path("data/reference_corpus")
@@ -14,34 +14,149 @@ CORPUS_FILE = OUTPUT_DIR / "corpus.txt"
 MANIFEST_FILE = OUTPUT_DIR / "manifest.jsonl"
 
 TEXT_EXTENSIONS = {
-    ".txt", ".md", ".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml",
-    ".rst", ".csv", ".html", ".htm", ".xml", ".sql", ".sh", ".bash", ".zsh",
-    ".c", ".cpp", ".h", ".hpp", ".rs", ".go", ".java", ".kt", ".scala",
-    ".rb", ".php", ".swift", ".m", ".mm", ".cs", ".fs", ".fsx",
-    ".r", ".jl", ".lua", ".pl", ".pm", ".t", ".awk", ".sed",
-    ".dockerfile", ".makefile", ".cmake", ".gradle", ".sbt",
-    ".ini", ".cfg", ".conf", ".properties", ".env", ".toml",
+    ".txt",
+    ".md",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".rst",
+    ".csv",
+    ".html",
+    ".htm",
+    ".xml",
+    ".sql",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".rs",
+    ".go",
+    ".java",
+    ".kt",
+    ".scala",
+    ".rb",
+    ".php",
+    ".swift",
+    ".m",
+    ".mm",
+    ".cs",
+    ".fs",
+    ".fsx",
+    ".r",
+    ".jl",
+    ".lua",
+    ".pl",
+    ".pm",
+    ".t",
+    ".awk",
+    ".sed",
+    ".dockerfile",
+    ".makefile",
+    ".cmake",
+    ".gradle",
+    ".sbt",
+    ".ini",
+    ".cfg",
+    ".conf",
+    ".properties",
+    ".env",
+    ".toml",
     ".ipynb",  # JSON inside
 }
 
 SKIP_EXTENSIONS = {
-    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg",
-    ".mp3", ".mp4", ".wav", ".avi", ".mov", ".mkv", ".flv",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".rar", ".7z",
-    ".exe", ".dll", ".so", ".dylib", ".bin", ".dat", ".db",
-    ".pkl", ".pickle", ".npy", ".npz", ".h5", ".hdf5", ".onnx",
-    ".pt", ".pth", ".ckpt", ".safetensors", ".gguf", ".ggml",
-    ".o", ".a", ".lib", ".class", ".jar", ".war", ".ear",
-    ".ttf", ".otf", ".woff", ".woff2", ".eot",
-    ".ico", ".icns",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".webp",
+    ".svg",
+    ".mp3",
+    ".mp4",
+    ".wav",
+    ".avi",
+    ".mov",
+    ".mkv",
+    ".flv",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".rar",
+    ".7z",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".bin",
+    ".dat",
+    ".db",
+    ".pkl",
+    ".pickle",
+    ".npy",
+    ".npz",
+    ".h5",
+    ".hdf5",
+    ".onnx",
+    ".pt",
+    ".pth",
+    ".ckpt",
+    ".safetensors",
+    ".gguf",
+    ".ggml",
+    ".o",
+    ".a",
+    ".lib",
+    ".class",
+    ".jar",
+    ".war",
+    ".ear",
+    ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
+    ".eot",
+    ".ico",
+    ".icns",
     ".DS_Store",
 }
 
 SKIP_DIRS = {
-    ".git", ".svn", ".hg", "__pycache__", "node_modules", ".venv", "venv",
-    "build", "dist", "target", ".pytest_cache", ".ruff_cache", ".mypy_cache",
-    ".terraform", ".idea", ".vscode", "*.egg-info",
+    ".git",
+    ".svn",
+    ".hg",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "target",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".terraform",
+    ".idea",
+    ".vscode",
+    "*.egg-info",
 }
 
 
@@ -68,9 +183,10 @@ def main():
     total_files = 0
     skipped = 0
 
-    with open(CORPUS_FILE, "w", encoding="utf-8") as out_f, \
-         open(MANIFEST_FILE, "w", encoding="utf-8") as man_f:
-
+    with (
+        open(CORPUS_FILE, "w", encoding="utf-8") as out_f,
+        open(MANIFEST_FILE, "w", encoding="utf-8") as man_f,
+    ):
         for path in REF_DIR.rglob("*"):
             if not path.is_file():
                 continue
@@ -87,17 +203,22 @@ def main():
                     continue
                 # Add file path as header for context
                 relative = path.relative_to(REF_DIR)
-                out_f.write(f"\n{'='*60}\nFILE: {relative}\n{'='*60}\n\n")
+                out_f.write(f"\n{'=' * 60}\nFILE: {relative}\n{'=' * 60}\n\n")
                 out_f.write(text)
                 out_f.write("\n")
 
                 total_chars += len(text)
                 total_files += 1
 
-                man_f.write(json.dumps({
-                    "path": str(relative),
-                    "chars": len(text),
-                }) + "\n")
+                man_f.write(
+                    json.dumps(
+                        {
+                            "path": str(relative),
+                            "chars": len(text),
+                        }
+                    )
+                    + "\n"
+                )
 
                 if total_files % 1000 == 0:
                     print(f"Processed {total_files} files, {total_chars / 1e6:.1f} MB chars...")
@@ -105,7 +226,7 @@ def main():
                 skipped += 1
                 continue
 
-    print(f"\nDone!")
+    print("\nDone!")
     print(f"Files extracted: {total_files}")
     print(f"Skipped:         {skipped}")
     print(f"Total chars:     {total_chars:,} ({total_chars / 1e6:.1f} MB)")

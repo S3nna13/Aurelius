@@ -1,22 +1,20 @@
 """Tests for black-box prompt optimization via evolutionary search."""
+
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
-import pytest
 
 from src.alignment.prompt_optimizer import (
-    PromptOptimizerConfig,
-    score_prompt,
-    initialize_population,
-    select_elite,
-    mutate_population,
     BlackBoxPromptOptimizer,
+    PromptOptimizerConfig,
     PromptOptimizerTrainer,
+    initialize_population,
+    mutate_population,
+    score_prompt,
+    select_elite,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Tiny test model (fast enough for unit tests)
@@ -56,6 +54,7 @@ def make_config(**kwargs) -> PromptOptimizerConfig:
 # 1. PromptOptimizerConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_optimizer_config_defaults():
     cfg = PromptOptimizerConfig()
     assert cfg.prompt_len == 8
@@ -71,6 +70,7 @@ def test_prompt_optimizer_config_defaults():
 # 2. score_prompt returns float
 # ---------------------------------------------------------------------------
 
+
 def test_score_prompt_returns_float():
     model = make_model()
     prompt_ids = torch.randint(0, 256, (4,))
@@ -82,6 +82,7 @@ def test_score_prompt_returns_float():
 # ---------------------------------------------------------------------------
 # 3. score_prompt: exact target prefix scores >= random prompt (on average)
 # ---------------------------------------------------------------------------
+
 
 def test_score_prompt_known_good_vs_random():
     """A prompt identical to the target prefix should typically score higher
@@ -105,6 +106,7 @@ def test_score_prompt_known_good_vs_random():
 # 4. initialize_population shape is (pop_size, prompt_len)
 # ---------------------------------------------------------------------------
 
+
 def test_initialize_population_shape():
     pop = initialize_population(population_size=8, prompt_len=5, vocab_size=256)
     assert pop.shape == (8, 5), f"Expected (8, 5), got {pop.shape}"
@@ -113,6 +115,7 @@ def test_initialize_population_shape():
 # ---------------------------------------------------------------------------
 # 5. initialize_population token ids in [0, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_initialize_population_token_range():
     vocab_size = 256
@@ -125,6 +128,7 @@ def test_initialize_population_token_range():
 # 6. select_elite returns n_elite candidates
 # ---------------------------------------------------------------------------
 
+
 def test_select_elite_count():
     population = torch.randint(0, 256, (10, 4))
     scores = torch.randn(10)
@@ -136,6 +140,7 @@ def test_select_elite_count():
 # ---------------------------------------------------------------------------
 # 7. select_elite returns highest-scoring candidates
 # ---------------------------------------------------------------------------
+
 
 def test_select_elite_highest_scores():
     population = torch.randint(0, 256, (10, 4))
@@ -152,6 +157,7 @@ def test_select_elite_highest_scores():
 # 8. select_elite scores are sorted descending
 # ---------------------------------------------------------------------------
 
+
 def test_select_elite_sorted_descending():
     population = torch.randint(0, 256, (10, 4))
     scores = torch.rand(10)
@@ -166,6 +172,7 @@ def test_select_elite_sorted_descending():
 # 9. mutate_population returns (pop_size, prompt_len) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_mutate_population_shape():
     elite = torch.randint(0, 256, (3, 4))
     result = mutate_population(elite, population_size=10, vocab_size=256, mutation_rate=0.1)
@@ -176,6 +183,7 @@ def test_mutate_population_shape():
 # 10. mutate_population elite members are preserved (at least some unchanged rows)
 # ---------------------------------------------------------------------------
 
+
 def test_mutate_population_elite_preserved():
     # With mutation_rate=0.0, no token should change, so elite rows must appear
     elite = torch.randint(0, 256, (2, 6))
@@ -183,12 +191,15 @@ def test_mutate_population_elite_preserved():
     # Every row should exactly match one of the elite rows
     for i in range(result.shape[0]):
         matches = any(torch.equal(result[i], elite[j]) for j in range(elite.shape[0]))
-        assert matches, f"Row {i} of mutated population does not match any elite member (mutation_rate=0)"
+        assert matches, (
+            f"Row {i} of mutated population does not match any elite member (mutation_rate=0)"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 11. BlackBoxPromptOptimizer instantiates
 # ---------------------------------------------------------------------------
+
 
 def test_black_box_optimizer_instantiates():
     model = make_model()
@@ -200,6 +211,7 @@ def test_black_box_optimizer_instantiates():
 # ---------------------------------------------------------------------------
 # 12. BlackBoxPromptOptimizer.optimize returns (Tensor, float)
 # ---------------------------------------------------------------------------
+
 
 def test_black_box_optimizer_optimize_return_types():
     model = make_model()
@@ -217,6 +229,7 @@ def test_black_box_optimizer_optimize_return_types():
 # 13. BlackBoxPromptOptimizer.optimize prompt shape is (prompt_len,)
 # ---------------------------------------------------------------------------
 
+
 def test_black_box_optimizer_prompt_shape():
     model = make_model()
     cfg = make_config(prompt_len=5)
@@ -229,6 +242,7 @@ def test_black_box_optimizer_prompt_shape():
 # ---------------------------------------------------------------------------
 # 14. BlackBoxPromptOptimizer.get_history length == n_generations
 # ---------------------------------------------------------------------------
+
 
 def test_black_box_optimizer_history_length():
     model = make_model()
@@ -243,6 +257,7 @@ def test_black_box_optimizer_history_length():
 # ---------------------------------------------------------------------------
 # 15. PromptOptimizerTrainer.optimize_batch returns list of correct length
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_optimize_batch_length():
     model = make_model()
@@ -260,6 +275,7 @@ def test_trainer_optimize_batch_length():
 # ---------------------------------------------------------------------------
 # 16. PromptOptimizerTrainer.best_universal_prompt returns (Tensor, float)
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_best_universal_prompt_return_types():
     model = make_model()

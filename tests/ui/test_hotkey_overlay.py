@@ -13,7 +13,6 @@ from src.ui.hotkey_overlay import (
     HotkeyOverlayError,
 )
 
-
 # ---------------------------------------------------------------------------
 # DEFAULT_HOTKEY_OVERLAY pre-population
 # ---------------------------------------------------------------------------

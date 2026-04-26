@@ -309,8 +309,8 @@ class EAGLE2Decoder(nn.Module):
         outputs = self.forward(H=H, input_ids=input_ids, attention_mask=attention_mask)
         q = outputs["q"]
         beta = outputs["beta"]
-        assert isinstance(q, torch.Tensor)
-        assert isinstance(beta, torch.Tensor)
+        assert isinstance(q, torch.Tensor)  # noqa: S101
+        assert isinstance(beta, torch.Tensor)  # noqa: S101
 
         B, T, _, _ = q.shape
         if attention_mask is None:

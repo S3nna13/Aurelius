@@ -1,13 +1,13 @@
 """Tests for LeastToMost."""
+
 from __future__ import annotations
 
-import pytest
 from src.reasoning.least_to_most import (
-    LeastToMost,
+    L2M_REGISTRY,
     L2MConfig,
     L2MResult,
+    LeastToMost,
     SubProblem,
-    L2M_REGISTRY,
 )
 
 

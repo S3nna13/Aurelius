@@ -10,15 +10,13 @@ Verifies:
 
 from __future__ import annotations
 
-import pytest
-
-from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingEvalConfig
 from src.eval import BENCHMARK_REGISTRY
-
+from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingEvalConfig
 
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_vision_grounding_eval_end_to_end() -> None:
     """Full pipeline: construct evaluator, run evaluate(), check output."""
@@ -55,7 +53,11 @@ def test_vision_grounding_eval_end_to_end() -> None:
             "count": 2,  # off by one
         },
         {
-            "boxes": [(5, 5, 25, 25), (40, 40, 80, 80), (200, 200, 250, 250)],  # two match, one miss
+            "boxes": [
+                (5, 5, 25, 25),
+                (40, 40, 80, 80),
+                (200, 200, 250, 250),
+            ],  # two match, one miss
             "text": "three objects detected",
             "count": 3,
         },

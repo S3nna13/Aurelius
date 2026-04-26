@@ -1,11 +1,12 @@
 """Program-of-Thought: Chen et al. 2022 'Program of Thoughts Prompting'."""
+
 from __future__ import annotations
 
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 @dataclass
@@ -28,10 +29,10 @@ class ProgramOfThought:
         self.config = config or PoTConfig()
 
     def extract_code(self, text: str) -> str:
-        m = re.search(r'```python\s*\n(.*?)```', text, re.DOTALL)
+        m = re.search(r"```python\s*\n(.*?)```", text, re.DOTALL)
         if m:
             return m.group(1).strip()
-        m = re.search(r'```\s*\n(.*?)```', text, re.DOTALL)
+        m = re.search(r"```\s*\n(.*?)```", text, re.DOTALL)
         if m:
             return m.group(1).strip()
         first = text.strip().splitlines()[0] if text.strip() else ""
@@ -41,7 +42,7 @@ class ProgramOfThought:
 
     def execute_code(self, code: str) -> tuple[str, bool]:
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603
                 [sys.executable, "-c", code],
                 capture_output=True,
                 timeout=self.config.timeout_s,
@@ -61,7 +62,7 @@ class ProgramOfThought:
                     candidate = parts[1].strip()
                     if candidate:
                         return candidate
-        nums = re.findall(r'[-+]?[0-9]*\.?[0-9]+', output)
+        nums = re.findall(r"[-+]?[0-9]*\.?[0-9]+", output)
         if nums:
             return nums[-1]
         return output.strip()

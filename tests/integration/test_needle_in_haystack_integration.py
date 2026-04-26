@@ -26,8 +26,11 @@ def test_registry_entries_present_and_preexisting_benchmarks_untouched():
     # Preexisting package-level symbols from benchmark_config remain intact.
     assert hasattr(eval_pkg, "BENCHMARK_BY_NAME")
     assert hasattr(eval_pkg, "ALL_BENCHMARKS")
-    assert "mmlu" in eval_pkg.BENCHMARK_BY_NAME or "MMLU" in eval_pkg.BENCHMARK_BY_NAME \
+    assert (
+        "mmlu" in eval_pkg.BENCHMARK_BY_NAME
+        or "MMLU" in eval_pkg.BENCHMARK_BY_NAME
         or len(eval_pkg.BENCHMARK_BY_NAME) > 0
+    )
     # ALL_BENCHMARKS should still be non-empty.
     assert len(eval_pkg.ALL_BENCHMARKS) > 0
 
@@ -36,6 +39,7 @@ def test_niah_idempotent_registration():
     # Re-importing should not mutate or duplicate the registry entry.
     before = eval_pkg.BENCHMARK_REGISTRY["niah"]
     import importlib
+
     importlib.reload(eval_pkg)
     after = eval_pkg.BENCHMARK_REGISTRY["niah"]
     assert before is after or before.__name__ == after.__name__

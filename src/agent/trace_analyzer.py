@@ -97,9 +97,7 @@ class TraceAnalyzer:
         return msg[:200]
 
     def _summarize_tools(self, events: list[ExecutionEvent]) -> list[ToolSummary]:
-        tool_events = [
-            e for e in events if e.event_type == ExecutionEventType.TOOL_CALL
-        ]
+        tool_events = [e for e in events if e.event_type == ExecutionEventType.TOOL_CALL]
         tool_results = {
             e.content.get("tool_call_id", e.event_id): e
             for e in events
@@ -109,9 +107,7 @@ class TraceAnalyzer:
         by_name: dict[str, dict[str, Any]] = {}
         for evt in tool_events:
             name = evt.content.get("tool_name", "unknown")
-            bucket = by_name.setdefault(
-                name, {"calls": 0, "errors": 0, "duration_ms": 0.0}
-            )
+            bucket = by_name.setdefault(name, {"calls": 0, "errors": 0, "duration_ms": 0.0})
             bucket["calls"] += 1
             dur = evt.duration_ms or 0.0
             bucket["duration_ms"] += dur
@@ -135,9 +131,7 @@ class TraceAnalyzer:
             )
         return summaries
 
-    def _find_slowest(
-        self, events: list[ExecutionEvent]
-    ) -> dict[str, Any] | None:
+    def _find_slowest(self, events: list[ExecutionEvent]) -> dict[str, Any] | None:
         with_dur = [e for e in events if e.duration_ms is not None]
         if not with_dur:
             return None
@@ -154,16 +148,12 @@ class TraceAnalyzer:
 
         # Pattern: rapid retry loop (same tool called ≥3 times in ≤5 steps)
         tool_calls = [
-            (i, e)
-            for i, e in enumerate(events)
-            if e.event_type == ExecutionEventType.TOOL_CALL
+            (i, e) for i, e in enumerate(events) if e.event_type == ExecutionEventType.TOOL_CALL
         ]
         for idx, (pos, evt) in enumerate(tool_calls):
             name = evt.content.get("tool_name", "unknown")
             window = tool_calls[idx : idx + 3]
-            if len(window) >= 3 and all(
-                w[1].content.get("tool_name") == name for w in window
-            ):
+            if len(window) >= 3 and all(w[1].content.get("tool_name") == name for w in window):
                 if window[-1][0] - window[0][0] <= 5:
                     patterns.append(
                         f"rapid_retry_loop: tool '{name}' called {len(window)}x in "
@@ -185,9 +175,7 @@ class TraceAnalyzer:
         think_count = sum(1 for e in events if e.event_type == ExecutionEventType.THINK)
         act_count = sum(1 for e in events if e.event_type == ExecutionEventType.ACT)
         if think_count > act_count * 3 and think_count > 5:
-            patterns.append(
-                f"think_heavy: {think_count} think events vs {act_count} act events"
-            )
+            patterns.append(f"think_heavy: {think_count} think events vs {act_count} act events")
 
         return patterns
 
@@ -222,13 +210,9 @@ class TraceAnalyzer:
 
         for pat in failure_patterns:
             if pat.startswith("rapid_retry_loop"):
-                recs.append(
-                    "Retry loop detected — add exponential backoff or circuit-breaker."
-                )
+                recs.append("Retry loop detected — add exponential backoff or circuit-breaker.")
             elif pat.startswith("tool_error_chain"):
-                recs.append(
-                    "Tool calls consistently erroring — review tool description clarity."
-                )
+                recs.append("Tool calls consistently erroring — review tool description clarity.")
             elif pat.startswith("think_heavy"):
                 recs.append(
                     "Excessive thinking steps — tighten system prompt or add max-think limit."

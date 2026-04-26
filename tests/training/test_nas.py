@@ -1,21 +1,21 @@
 """Tests for src/training/nas.py — DARTS/ENAS-style NAS primitives."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.nas import (
-    NASConfig,
     ArchitectureStats,
-    gumbel_softmax,
-    compute_arch_entropy,
-    compute_arch_dominance,
-    MixedOp,
     DARTSCell,
     DARTSSearcher,
+    MixedOp,
+    NASConfig,
+    compute_arch_dominance,
+    compute_arch_entropy,
+    gumbel_softmax,
     random_architecture_search,
 )
 
@@ -46,6 +46,7 @@ def make_cells(n_cells: int = 3, cfg: NASConfig | None = None) -> list[DARTSCell
 # 1. NASConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_nas_config_defaults():
     """NASConfig() should have n_candidates=4 and temperature=1.0."""
     cfg = NASConfig()
@@ -56,6 +57,7 @@ def test_nas_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. gumbel_softmax — shape
 # ---------------------------------------------------------------------------
+
 
 def test_gumbel_softmax_shape():
     """Output shape must match input shape."""
@@ -68,6 +70,7 @@ def test_gumbel_softmax_shape():
 # 3. gumbel_softmax — sums to one
 # ---------------------------------------------------------------------------
 
+
 def test_gumbel_softmax_sums_to_one():
     """Soft Gumbel-Softmax output must sum to ~1."""
     logits = torch.randn(4)
@@ -78,6 +81,7 @@ def test_gumbel_softmax_sums_to_one():
 # ---------------------------------------------------------------------------
 # 4. gumbel_softmax — hard mode gives exactly one 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_gumbel_softmax_hard_one_hot():
     """Hard Gumbel-Softmax must produce a one-hot vector (straight-through)."""
@@ -93,6 +97,7 @@ def test_gumbel_softmax_hard_one_hot():
 # 5. compute_arch_entropy — uniform weights → max entropy
 # ---------------------------------------------------------------------------
 
+
 def test_compute_arch_entropy_uniform():
     """Uniform weights should give maximum entropy = log(n_candidates)."""
     n = 4
@@ -105,6 +110,7 @@ def test_compute_arch_entropy_uniform():
 # ---------------------------------------------------------------------------
 # 6. compute_arch_entropy — one-hot weights → ~0 entropy
 # ---------------------------------------------------------------------------
+
 
 def test_compute_arch_entropy_peaked():
     """One-hot weights should give ~0 entropy."""
@@ -119,6 +125,7 @@ def test_compute_arch_entropy_peaked():
 # 7. compute_arch_dominance — uniform → low dominance (~0)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_arch_dominance_uniform():
     """Uniform weights: max == mean, dominance should be ~0."""
     n = 4
@@ -130,6 +137,7 @@ def test_compute_arch_dominance_uniform():
 # ---------------------------------------------------------------------------
 # 8. compute_arch_dominance — peaked → high dominance
 # ---------------------------------------------------------------------------
+
 
 def test_compute_arch_dominance_peaked():
     """One-hot weights: max = 1, mean = 1/n → dominance = (n-1)/n."""
@@ -145,6 +153,7 @@ def test_compute_arch_dominance_peaked():
 # 9. MixedOp — output shape preserved
 # ---------------------------------------------------------------------------
 
+
 def test_mixed_op_output_shape():
     """MixedOp forward must preserve input shape."""
     d = 64
@@ -159,6 +168,7 @@ def test_mixed_op_output_shape():
 # ---------------------------------------------------------------------------
 # 10. MixedOp — one-hot weights selects the single op
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_op_weighted_sum():
     """With one-hot weights, MixedOp output equals the selected op's output."""
@@ -182,6 +192,7 @@ def test_mixed_op_weighted_sum():
 # 11. DARTSCell — forward shape equals input shape
 # ---------------------------------------------------------------------------
 
+
 def test_darts_cell_forward_shape():
     """DARTSCell forward must return same shape as input."""
     cfg = NASConfig(n_candidates=4, d_model=64)
@@ -195,6 +206,7 @@ def test_darts_cell_forward_shape():
 # 12. DARTSCell — get_weights sums to ~1
 # ---------------------------------------------------------------------------
 
+
 def test_darts_cell_get_weights_sums_to_one():
     """DARTSCell.get_weights() must return a vector summing to ~1."""
     cfg = NASConfig(n_candidates=4, d_model=64)
@@ -206,6 +218,7 @@ def test_darts_cell_get_weights_sums_to_one():
 # ---------------------------------------------------------------------------
 # 13. DARTSSearcher — arch_parameters returns one param per cell
 # ---------------------------------------------------------------------------
+
 
 def test_darts_searcher_arch_params():
     """arch_parameters() must return a list of length == n_cells."""
@@ -224,6 +237,7 @@ def test_darts_searcher_arch_params():
 # 14. DARTSSearcher — discretize returns list of ints, len == n_cells
 # ---------------------------------------------------------------------------
 
+
 def test_darts_searcher_discretize():
     """discretize() must return a list of ints with length == n_cells."""
     model = AureliusTransformer(TINY_CFG)
@@ -241,6 +255,7 @@ def test_darts_searcher_discretize():
 # ---------------------------------------------------------------------------
 # 15. DARTSSearcher — get_architecture_stats has required attributes
 # ---------------------------------------------------------------------------
+
 
 def test_darts_searcher_stats_keys():
     """get_architecture_stats() must return ArchitectureStats with correct fields."""
@@ -262,6 +277,7 @@ def test_darts_searcher_stats_keys():
 # ---------------------------------------------------------------------------
 # 16. random_architecture_search — returns (list[int], float)
 # ---------------------------------------------------------------------------
+
 
 def test_random_arch_search_returns_best():
     """random_architecture_search must return (list[int], float)."""

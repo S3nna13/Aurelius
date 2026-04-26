@@ -1,17 +1,21 @@
 """Tests for src/simulation/multi_agent_env.py — 10+ tests."""
-import pytest
-from src.simulation.multi_agent_env import (
-    AgentAction,
-    MultiAgentStep,
-    MultiAgentEnv,
-    SimpleCooperativeEnv,
-    _UP, _DOWN, _LEFT, _RIGHT, _STAY,
-)
 
+import pytest
+
+from src.simulation.multi_agent_env import (
+    _DOWN,
+    _STAY,
+    _UP,
+    AgentAction,
+    MultiAgentEnv,
+    MultiAgentStep,
+    SimpleCooperativeEnv,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def env():
@@ -26,6 +30,7 @@ def small_env():
 # ---------------------------------------------------------------------------
 # 1. Reset
 # ---------------------------------------------------------------------------
+
 
 def test_reset_returns_dict_with_agent_ids(env):
     obs = env.reset()
@@ -47,6 +52,7 @@ def test_reset_goal_in_obs(env):
 # ---------------------------------------------------------------------------
 # 2. Step — basic movement
 # ---------------------------------------------------------------------------
+
 
 def test_step_returns_multi_agent_step(env):
     env.reset()
@@ -116,6 +122,7 @@ def test_wall_clamp_prevents_going_out_of_bounds(small_env):
 # 3. Cooperative goal
 # ---------------------------------------------------------------------------
 
+
 def test_shared_reward_when_both_at_goal(small_env):
     """Drive both agents to (2,2) and confirm shared +1 reward and done."""
     small_env.reset()
@@ -149,6 +156,7 @@ def test_no_shared_reward_if_only_one_at_goal(small_env):
 # 4. Render
 # ---------------------------------------------------------------------------
 
+
 def test_render_returns_string(env):
     env.reset()
     s = env.render()
@@ -160,6 +168,7 @@ def test_render_returns_string(env):
 # 5. AgentAction dataclass
 # ---------------------------------------------------------------------------
 
+
 def test_agent_action_defaults():
     a = AgentAction(agent_id="x", action=0)
     assert a.metadata == {}
@@ -168,6 +177,7 @@ def test_agent_action_defaults():
 # ---------------------------------------------------------------------------
 # 6. MultiAgentEnv base raises NotImplementedError
 # ---------------------------------------------------------------------------
+
 
 def test_base_env_reset_raises():
     env = MultiAgentEnv()

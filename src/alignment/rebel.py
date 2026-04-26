@@ -16,7 +16,6 @@ Variable names follow the paper notation throughout (Section 3, Eq. 5).
 from __future__ import annotations
 
 import logging
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -29,6 +28,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Core loss
 # ---------------------------------------------------------------------------
+
 
 class REBELLoss(nn.Module):
     """REBEL loss (Eq. 5, Gao et al. 2024).
@@ -71,7 +71,7 @@ class REBELLoss(nn.Module):
         ref_log_probs_l: torch.Tensor,
         reward_w: torch.Tensor,
         reward_l: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute the REBEL loss.
 
         All tensor arguments must be 1-D (batch,) or scalar.
@@ -90,8 +90,7 @@ class REBELLoss(nn.Module):
             'reward_margin'.
         """
         # ---- shape guard -----------------------------------------------
-        tensors = (log_probs_w, log_probs_l, ref_log_probs_w, ref_log_probs_l,
-                   reward_w, reward_l)
+        tensors = (log_probs_w, log_probs_l, ref_log_probs_w, ref_log_probs_l, reward_w, reward_l)
         shapes = {t.shape for t in tensors}
         if len(shapes) > 1:
             raise ValueError(
@@ -101,8 +100,8 @@ class REBELLoss(nn.Module):
 
         # ---- REBEL core (Eq. 5) ----------------------------------------
         # Δ_w, Δ_l  (per-sample log-ratio deviations)
-        Delta_w: torch.Tensor = log_probs_w - ref_log_probs_w   # Δ_w
-        Delta_l: torch.Tensor = log_probs_l - ref_log_probs_l   # Δ_l
+        Delta_w: torch.Tensor = log_probs_w - ref_log_probs_w  # Δ_w
+        Delta_l: torch.Tensor = log_probs_l - ref_log_probs_l  # Δ_l
 
         # Δ = Δ_w - Δ_l   (pairwise log-ratio difference)
         Delta: torch.Tensor = Delta_w - Delta_l
@@ -115,14 +114,14 @@ class REBELLoss(nn.Module):
         regression_error: torch.Tensor = Delta - target
 
         # MSE regression loss (mean over batch)
-        loss: torch.Tensor = (regression_error ** 2).mean()
+        loss: torch.Tensor = (regression_error**2).mean()
 
         # ---- optional KL regularisation --------------------------------
         if self.lambda_reg != 0.0:
-            reg = self.lambda_reg * (Delta_w ** 2 + Delta_l ** 2).mean()
+            reg = self.lambda_reg * (Delta_w**2 + Delta_l**2).mean()
             loss = loss + reg
 
-        metrics: Dict[str, torch.Tensor] = {
+        metrics: dict[str, torch.Tensor] = {
             "delta": Delta.detach(),
             "target": target.detach(),
             "regression_error": regression_error.detach(),
@@ -137,6 +136,7 @@ class REBELLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class REBELTrainer:
     """Minimal REBEL trainer that wraps :class:`REBELLoss`.
@@ -162,7 +162,7 @@ class REBELTrainer:
     def __init__(self, beta: float = 0.1, lambda_reg: float = 0.0) -> None:
         self.loss_fn = REBELLoss(beta=beta, lambda_reg=lambda_reg)
 
-    def compute_loss(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def compute_loss(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         """Compute REBEL loss from a batch dict.
 
         Args:

@@ -3,19 +3,19 @@
 Used to decompose transformer residual stream activations into interpretable
 sparse features (Bricken et al. 2023 style).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SAEConfig:
@@ -28,6 +28,7 @@ class SAEConfig:
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
+
 
 class SparseAutoencoder(nn.Module):
     """Sparse autoencoder that learns an overcomplete dictionary of features.
@@ -46,7 +47,7 @@ class SparseAutoencoder(nn.Module):
         self.encoder = nn.Linear(config.input_dim, config.hidden_dim)
         self.decoder = nn.Linear(config.hidden_dim, config.input_dim)
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Encode and decode input activations.
 
         Args:

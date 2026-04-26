@@ -6,9 +6,10 @@ accepts a greedy prefix of the candidates produced by the heads.
 
 Reference: https://arxiv.org/abs/2401.10774
 """
+
 from __future__ import annotations
 
-from typing import Callable, List, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -84,11 +85,9 @@ class MedusaHeads(nn.Module):
         super().__init__()
         self.n_heads = n_heads
         self.vocab_size = vocab_size
-        self.heads = nn.ModuleList(
-            [MedusaHead(d_model, vocab_size) for _ in range(n_heads)]
-        )
+        self.heads = nn.ModuleList([MedusaHead(d_model, vocab_size) for _ in range(n_heads)])
 
-    def forward(self, hidden_state: torch.Tensor) -> List[torch.Tensor]:
+    def forward(self, hidden_state: torch.Tensor) -> list[torch.Tensor]:
         """Run all K heads on the given hidden state.
 
         Args:
@@ -143,7 +142,7 @@ class MedusaVerifier:
         self,
         base_tokens: torch.Tensor,
         head_predictions: torch.Tensor,
-    ) -> Tuple[torch.Tensor, int]:
+    ) -> tuple[torch.Tensor, int]:
         """Greedy prefix acceptance.
 
         Compare head_predictions[i] against base_tokens[i] for i = 0..K-1.
@@ -174,9 +173,7 @@ class MedusaVerifier:
         if head_predictions.dim() == 2:
             # head_predictions[i, i] is head i's prediction for position i
             n = min(gamma, head_predictions.shape[0], head_predictions.shape[1])
-            flat_preds = torch.stack(
-                [head_predictions[i, i] for i in range(n)]
-            )
+            flat_preds = torch.stack([head_predictions[i, i] for i in range(n)])
         else:
             # Already 1-D: (K,)
             n = min(gamma, head_predictions.shape[0])
@@ -212,9 +209,7 @@ class MedusaDecoder:
 
     def __init__(
         self,
-        base_model_fn: Callable[
-            [torch.LongTensor], Tuple[torch.Tensor, torch.Tensor]
-        ],
+        base_model_fn: Callable[[torch.LongTensor], tuple[torch.Tensor, torch.Tensor]],
         heads: MedusaHeads,
         n_steps: int = 4,
     ) -> None:
@@ -270,17 +265,13 @@ class MedusaDecoder:
             base_tokens = torch.tensor(base_tokens_list, dtype=torch.long)
 
             # --- Step 4: Greedy prefix acceptance ---
-            accepted_tokens, n_accepted = self.verifier.verify(
-                base_tokens, candidates
-            )
+            accepted_tokens, n_accepted = self.verifier.verify(base_tokens, candidates)
 
             if n_accepted == 0:
                 # Accept at least the base model's first token
                 tok = base_tokens_list[0]
                 generated.append(tok)
-                context = torch.cat(
-                    [context, torch.tensor([[tok]], dtype=torch.long)], dim=1
-                )
+                context = torch.cat([context, torch.tensor([[tok]], dtype=torch.long)], dim=1)
             else:
                 for tok in accepted_tokens.tolist():
                     if len(generated) < max_new_tokens:
@@ -288,9 +279,7 @@ class MedusaDecoder:
                 context = torch.cat(
                     [
                         context,
-                        torch.tensor(
-                            [accepted_tokens.tolist()[:remaining]], dtype=torch.long
-                        ),
+                        torch.tensor([accepted_tokens.tolist()[:remaining]], dtype=torch.long),
                     ],
                     dim=1,
                 )

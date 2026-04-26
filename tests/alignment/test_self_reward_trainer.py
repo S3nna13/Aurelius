@@ -21,15 +21,13 @@ Covers:
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.alignment.self_reward_trainer import (
-    SelfRewardConfig,
     ScoredCandidate,
     SelfRewardBatch,
+    SelfRewardConfig,
     SelfRewardTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -74,8 +72,7 @@ def _make_batch(
     all_refs: list[torch.Tensor] = []
     for p_idx, scores in enumerate(scores_per_prompt):
         cands = [
-            _make_candidate(s, T=T, seed=seed + p_idx * 10 + c_idx,
-                            requires_grad=requires_grad)
+            _make_candidate(s, T=T, seed=seed + p_idx * 10 + c_idx, requires_grad=requires_grad)
             for c_idx, s in enumerate(scores)
         ]
         all_candidates.append(cands)
@@ -258,9 +255,7 @@ def test_compute_loss_keys():
     batch = _make_batch([[5.0, 2.0, 0.0, 4.0], [3.0, 1.0, 5.0, 0.0]])
     out = trainer.compute_loss(batch)
     required = {"loss", "n_pairs", "mean_score_gap", "reward_accuracy"}
-    assert required <= set(out.keys()), (
-        f"Missing keys: {required - set(out.keys())}"
-    )
+    assert required <= set(out.keys()), f"Missing keys: {required - set(out.keys())}"
 
 
 # ---------------------------------------------------------------------------
@@ -321,9 +316,7 @@ def test_score_statistics_keys():
         "min_score_observed",
         "pairs_created",
     }
-    assert required <= set(stats.keys()), (
-        f"Missing keys: {required - set(stats.keys())}"
-    )
+    assert required <= set(stats.keys()), f"Missing keys: {required - set(stats.keys())}"
     assert 0.0 <= stats["min_score_observed"] <= stats["max_score_observed"]
     assert stats["std_score"] >= 0.0
     assert stats["pairs_created"] >= 0.0
@@ -369,8 +362,8 @@ def test_integration_forward_backward():
     trainer = SelfRewardTrainer(config)
 
     # Build two prompts with deliberate score distributions
-    scores_p0 = [5.0, 4.0, 1.5, 0.0]   # several valid pairs
-    scores_p1 = [4.5, 2.0, 3.5, 0.5]   # several valid pairs
+    scores_p0 = [5.0, 4.0, 1.5, 0.0]  # several valid pairs
+    scores_p1 = [4.5, 2.0, 3.5, 0.5]  # several valid pairs
 
     batch = _make_batch([scores_p0, scores_p1], requires_grad=True, seed=77)
 

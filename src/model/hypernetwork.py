@@ -5,21 +5,20 @@ enabling dynamic weight generation conditioned on task/context embeddings.
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # WeightGenerator
 # ---------------------------------------------------------------------------
 
+
 class WeightGenerator(nn.Module):
     """MLP that maps a context vector to a flat weight tensor, reshaped to target_shape."""
 
-    def __init__(self, d_context: int, target_shape: Tuple[int, ...], hidden: int = 64):
+    def __init__(self, d_context: int, target_shape: tuple[int, ...], hidden: int = 64):
         super().__init__()
         self.target_shape = target_shape
         n_params = 1
@@ -39,13 +38,14 @@ class WeightGenerator(nn.Module):
         Returns:
             weights: [B, *target_shape]
         """
-        out = self.mlp(context)                     # [B, prod(target_shape)]
+        out = self.mlp(context)  # [B, prod(target_shape)]
         return out.view(out.shape[0], *self.target_shape)
 
 
 # ---------------------------------------------------------------------------
 # HyperLinear
 # ---------------------------------------------------------------------------
+
 
 class HyperLinear(nn.Module):
     """
@@ -59,7 +59,7 @@ class HyperLinear(nn.Module):
         self.out_features = out_features
 
         self.weight_gen = WeightGenerator(d_context, (out_features, in_features), hidden=hidden)
-        self.bias_gen   = WeightGenerator(d_context, (out_features,),              hidden=hidden)
+        self.bias_gen = WeightGenerator(d_context, (out_features,), hidden=hidden)
 
     def forward(self, x: torch.Tensor, context: torch.Tensor) -> torch.Tensor:
         """
@@ -69,8 +69,8 @@ class HyperLinear(nn.Module):
         Returns:
             out: [B, out_features]
         """
-        W = self.weight_gen(context)          # [B, out_features, in_features]
-        b = self.bias_gen(context)             # [B, out_features]
+        W = self.weight_gen(context)  # [B, out_features, in_features]
+        b = self.bias_gen(context)  # [B, out_features]
         # bmm: [B, out_features, in_features] x [B, in_features, 1] -> [B, out_features, 1]
         out = torch.bmm(W, x.unsqueeze(-1)).squeeze(-1)  # [B, out_features]
         return out + b
@@ -80,6 +80,7 @@ class HyperLinear(nn.Module):
 # HyperAttention
 # ---------------------------------------------------------------------------
 
+
 class HyperAttention(nn.Module):
     """
     Multi-head self-attention where the Q, K, V, O projection matrices are
@@ -88,11 +89,11 @@ class HyperAttention(nn.Module):
 
     def __init__(self, d_model: int, d_context: int, n_heads: int, hidden: int = 64):
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
-        self.d_model  = d_model
-        self.n_heads  = n_heads
-        self.d_head   = d_model // n_heads
-        self.scale    = math.sqrt(self.d_head)
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.d_head = d_model // n_heads
+        self.scale = math.sqrt(self.d_head)
 
         # Each generator produces a full [d_model, d_model] projection matrix.
         self.W_q_gen = WeightGenerator(d_context, (d_model, d_model), hidden=hidden)
@@ -109,32 +110,32 @@ class HyperAttention(nn.Module):
             out: [B, T, d_model]
         """
         B, T, D = x.shape
-        H       = self.n_heads
-        Dh      = self.d_head
+        H = self.n_heads
+        Dh = self.d_head
 
-        W_q = self.W_q_gen(context)   # [B, D, D]
-        W_k = self.W_k_gen(context)   # [B, D, D]
-        W_v = self.W_v_gen(context)   # [B, D, D]
-        W_o = self.W_o_gen(context)   # [B, D, D]
+        W_q = self.W_q_gen(context)  # [B, D, D]
+        W_k = self.W_k_gen(context)  # [B, D, D]
+        W_v = self.W_v_gen(context)  # [B, D, D]
+        W_o = self.W_o_gen(context)  # [B, D, D]
 
         # Project: [B, T, D] @ [B, D, D]^T  ->  [B, T, D]
         # Use bmm after transposing: x is [B,T,D], W is [B,D,D]
         # We want x @ W^T  =>  bmm(x, W.transpose(-1,-2))
-        Q = torch.bmm(x, W_q.transpose(-1, -2))   # [B, T, D]
-        K = torch.bmm(x, W_k.transpose(-1, -2))   # [B, T, D]
-        V = torch.bmm(x, W_v.transpose(-1, -2))   # [B, T, D]
+        Q = torch.bmm(x, W_q.transpose(-1, -2))  # [B, T, D]
+        K = torch.bmm(x, W_k.transpose(-1, -2))  # [B, T, D]
+        V = torch.bmm(x, W_v.transpose(-1, -2))  # [B, T, D]
 
         # Reshape for multi-head: [B, H, T, Dh]
-        Q = Q.view(B, T, H, Dh).transpose(1, 2)   # [B, H, T, Dh]
+        Q = Q.view(B, T, H, Dh).transpose(1, 2)  # [B, H, T, Dh]
         K = K.view(B, T, H, Dh).transpose(1, 2)
         V = V.view(B, T, H, Dh).transpose(1, 2)
 
         # Attention scores
-        attn = torch.matmul(Q, K.transpose(-1, -2)) / self.scale   # [B, H, T, T]
+        attn = torch.matmul(Q, K.transpose(-1, -2)) / self.scale  # [B, H, T, T]
         attn = F.softmax(attn, dim=-1)
 
         # Weighted sum
-        y = torch.matmul(attn, V)                  # [B, H, T, Dh]
+        y = torch.matmul(attn, V)  # [B, H, T, Dh]
         y = y.transpose(1, 2).contiguous().view(B, T, D)  # [B, T, D]
 
         # Output projection
@@ -145,6 +146,7 @@ class HyperAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # HyperTransformerBlock
 # ---------------------------------------------------------------------------
+
 
 class HyperTransformerBlock(nn.Module):
     """
@@ -185,6 +187,7 @@ class HyperTransformerBlock(nn.Module):
 # TaskConditionedLM
 # ---------------------------------------------------------------------------
 
+
 class TaskConditionedLM(nn.Module):
     """
     Language model whose transformer blocks are conditioned on a task embedding
@@ -203,12 +206,14 @@ class TaskConditionedLM(nn.Module):
     ):
         super().__init__()
         self.task_embeddings = nn.Embedding(n_tasks, d_context)
-        self.embedding       = nn.Embedding(vocab_size, d_model)
+        self.embedding = nn.Embedding(vocab_size, d_model)
 
-        self.blocks = nn.ModuleList([
-            HyperTransformerBlock(d_model, d_context, n_heads, hidden=hidden)
-            for _ in range(n_layers)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                HyperTransformerBlock(d_model, d_context, n_heads, hidden=hidden)
+                for _ in range(n_layers)
+            ]
+        )
 
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
@@ -220,13 +225,13 @@ class TaskConditionedLM(nn.Module):
         Returns:
             logits: [B, T, vocab_size]
         """
-        context = self.task_embeddings(task_ids)   # [B, d_context]
-        x = self.embedding(input_ids)              # [B, T, d_model]
+        context = self.task_embeddings(task_ids)  # [B, d_context]
+        x = self.embedding(input_ids)  # [B, T, d_model]
 
         for block in self.blocks:
             x = block(x, context)
 
-        logits = self.lm_head(x)                   # [B, T, vocab_size]
+        logits = self.lm_head(x)  # [B, T, vocab_size]
         return logits
 
     def compute_loss(self, input_ids: torch.Tensor, task_ids: torch.Tensor) -> torch.Tensor:
@@ -239,10 +244,10 @@ class TaskConditionedLM(nn.Module):
         Returns:
             loss: scalar tensor
         """
-        logits = self.forward(input_ids, task_ids)   # [B, T, vocab_size]
+        logits = self.forward(input_ids, task_ids)  # [B, T, vocab_size]
         # shift: predict token t+1 from token t
-        shift_logits = logits[:, :-1, :].contiguous()          # [B, T-1, vocab_size]
-        shift_labels = input_ids[:, 1:].contiguous()           # [B, T-1]
+        shift_logits = logits[:, :-1, :].contiguous()  # [B, T-1, vocab_size]
+        shift_labels = input_ids[:, 1:].contiguous()  # [B, T-1]
         loss = F.cross_entropy(
             shift_logits.view(-1, shift_logits.size(-1)),
             shift_labels.view(-1),
@@ -254,12 +259,13 @@ class TaskConditionedLM(nn.Module):
 # HyperNetConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HyperNetConfig:
-    d_model:    int = 32
+    d_model: int = 32
     vocab_size: int = 64
-    n_layers:   int = 2
-    n_heads:    int = 4
-    d_context:  int = 16
-    n_tasks:    int = 4
-    hidden:     int = 32
+    n_layers: int = 2
+    n_heads: int = 4
+    d_context: int = 16
+    n_tasks: int = 4
+    hidden: int = 32

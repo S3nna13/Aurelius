@@ -2,14 +2,13 @@
 
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.math_benchmark import (
-    MathCategory,
-    MathProblem,
     MathAnswer,
     MathBenchmark,
+    MathCategory,
+    MathProblem,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # MathCategory enum

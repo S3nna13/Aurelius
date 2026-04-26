@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import copy
 
-import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.alignment.stepwise_dpo import (
     ReasoningStep,
@@ -55,9 +53,9 @@ class _TinyTransformer(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Returns (B, T, vocab_size) logits."""
-        x = self.embed(input_ids)       # (B, T, D)
-        x = self.transformer(x)         # (B, T, D)
-        return self.lm_head(x)          # (B, T, V)
+        x = self.embed(input_ids)  # (B, T, D)
+        x = self.transformer(x)  # (B, T, D)
+        return self.lm_head(x)  # (B, T, V)
 
 
 def _make_model() -> _TinyTransformer:
@@ -92,6 +90,7 @@ def _make_steps(n: int, step_len: int = 4, vocab_size: int = VOCAB_SIZE) -> list
 # Test 1: StepwiseDPOConfig defaults correct
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = StepwiseDPOConfig()
     assert cfg.beta == 0.1
@@ -105,6 +104,7 @@ def test_config_defaults():
 # Test 2: compute_step_weights returns correct shape (n_steps,)
 # ---------------------------------------------------------------------------
 
+
 def test_step_weights_shape():
     trainer = _make_trainer()
     for n in (1, 3, 5, 10):
@@ -115,6 +115,7 @@ def test_step_weights_shape():
 # ---------------------------------------------------------------------------
 # Test 3: compute_step_weights sums to 1.0 when normalize=True
 # ---------------------------------------------------------------------------
+
 
 def test_step_weights_sum_to_one():
     trainer = _make_trainer()
@@ -128,6 +129,7 @@ def test_step_weights_sum_to_one():
 # ---------------------------------------------------------------------------
 # Test 4: Earlier steps have lower weight (decay^(n-i) pattern)
 # ---------------------------------------------------------------------------
+
 
 def test_step_weights_decay_pattern():
     """With decay=0.9, the spec formula is decay^(n_steps - step_idx).
@@ -148,13 +150,14 @@ def test_step_weights_decay_pattern():
     # Strictly increasing (later steps weighted more)
     for i in range(n - 1):
         assert w[i].item() < w[i + 1].item(), (
-            f"Expected w[{i}] < w[{i+1}], got {w[i].item():.4f} vs {w[i+1].item():.4f}"
+            f"Expected w[{i}] < w[{i + 1}], got {w[i].item():.4f} vs {w[i + 1].item():.4f}"
         )
 
 
 # ---------------------------------------------------------------------------
 # Test 5: parse_reasoning_steps splits at separator correctly
 # ---------------------------------------------------------------------------
+
 
 def test_parse_reasoning_steps_splits():
     # [1, 2, 0, 3, 4, 0, 5]  separator=0  -> [[1,2], [3,4], [5]]
@@ -170,6 +173,7 @@ def test_parse_reasoning_steps_splits():
 # Test 6: parse_reasoning_steps handles no separator (returns single step)
 # ---------------------------------------------------------------------------
 
+
 def test_parse_reasoning_steps_no_separator():
     ids = torch.tensor([1, 2, 3, 4, 5])
     steps = parse_reasoning_steps(ids, separator_id=0)
@@ -181,16 +185,17 @@ def test_parse_reasoning_steps_no_separator():
 # Test 7: label_steps_by_prefix_match returns correct bool list
 # ---------------------------------------------------------------------------
 
+
 def test_label_steps_by_prefix_match():
     steps = [
         torch.tensor([10, 20, 30]),  # first token 10
-        torch.tensor([99, 1, 2]),    # first token 99
-        torch.tensor([5, 6, 7]),     # first token 5
+        torch.tensor([99, 1, 2]),  # first token 99
+        torch.tensor([5, 6, 7]),  # first token 5
     ]
     correct = [
-        torch.tensor([10, 99]),      # first token 10 - matches
-        torch.tensor([50, 1]),       # first token 50 - no match
-        torch.tensor([5]),           # first token 5 - matches
+        torch.tensor([10, 99]),  # first token 10 - matches
+        torch.tensor([50, 1]),  # first token 50 - no match
+        torch.tensor([5]),  # first token 5 - matches
     ]
     labels = label_steps_by_prefix_match(steps, correct)
     assert labels == [True, False, True]
@@ -208,6 +213,7 @@ def test_label_steps_extra_steps_are_false():
 # Test 8: compute_stepwise_dpo_loss returns scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_compute_stepwise_dpo_loss_scalar():
     trainer = _make_trainer()
     n = 3
@@ -217,17 +223,28 @@ def test_compute_stepwise_dpo_loss_scalar():
     rejected_steps = _make_steps(n, step_len)
     context_ids = torch.randint(1, VOCAB_SIZE, (8,))
 
-    chosen_logps = trainer.compute_step_log_probs(trainer.policy, [s.step_ids for s in chosen_steps], context_ids)
-    rejected_logps = trainer.compute_step_log_probs(trainer.policy, [s.step_ids for s in rejected_steps], context_ids)
+    chosen_logps = trainer.compute_step_log_probs(
+        trainer.policy, [s.step_ids for s in chosen_steps], context_ids
+    )
+    rejected_logps = trainer.compute_step_log_probs(
+        trainer.policy, [s.step_ids for s in rejected_steps], context_ids
+    )
 
     with torch.no_grad():
-        ref_chosen_logps = trainer.compute_step_log_probs(trainer.ref_policy, [s.step_ids for s in chosen_steps], context_ids)
-        ref_rejected_logps = trainer.compute_step_log_probs(trainer.ref_policy, [s.step_ids for s in rejected_steps], context_ids)
+        ref_chosen_logps = trainer.compute_step_log_probs(
+            trainer.ref_policy, [s.step_ids for s in chosen_steps], context_ids
+        )
+        ref_rejected_logps = trainer.compute_step_log_probs(
+            trainer.ref_policy, [s.step_ids for s in rejected_steps], context_ids
+        )
 
     loss, metrics = trainer.compute_stepwise_dpo_loss(
-        chosen_steps, rejected_steps,
-        chosen_logps, rejected_logps,
-        ref_chosen_logps, ref_rejected_logps,
+        chosen_steps,
+        rejected_steps,
+        chosen_logps,
+        rejected_logps,
+        ref_chosen_logps,
+        ref_rejected_logps,
     )
 
     assert isinstance(loss, torch.Tensor)
@@ -238,6 +255,7 @@ def test_compute_stepwise_dpo_loss_scalar():
 # Test 9: Metrics dict has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_metrics_keys():
     trainer = _make_trainer()
     n = 3
@@ -247,20 +265,38 @@ def test_metrics_keys():
     rejected_steps = _make_steps(n, step_len)
     context_ids = torch.randint(1, VOCAB_SIZE, (8,))
 
-    chosen_logps = trainer.compute_step_log_probs(trainer.policy, [s.step_ids for s in chosen_steps], context_ids)
-    rejected_logps = trainer.compute_step_log_probs(trainer.policy, [s.step_ids for s in rejected_steps], context_ids)
-
-    with torch.no_grad():
-        ref_chosen_logps = trainer.compute_step_log_probs(trainer.ref_policy, [s.step_ids for s in chosen_steps], context_ids)
-        ref_rejected_logps = trainer.compute_step_log_probs(trainer.ref_policy, [s.step_ids for s in rejected_steps], context_ids)
-
-    _, metrics = trainer.compute_stepwise_dpo_loss(
-        chosen_steps, rejected_steps,
-        chosen_logps, rejected_logps,
-        ref_chosen_logps, ref_rejected_logps,
+    chosen_logps = trainer.compute_step_log_probs(
+        trainer.policy, [s.step_ids for s in chosen_steps], context_ids
+    )
+    rejected_logps = trainer.compute_step_log_probs(
+        trainer.policy, [s.step_ids for s in rejected_steps], context_ids
     )
 
-    required_keys = {"loss", "mean_chosen_reward", "mean_rejected_reward", "reward_accuracy", "n_steps", "step_weights"}
+    with torch.no_grad():
+        ref_chosen_logps = trainer.compute_step_log_probs(
+            trainer.ref_policy, [s.step_ids for s in chosen_steps], context_ids
+        )
+        ref_rejected_logps = trainer.compute_step_log_probs(
+            trainer.ref_policy, [s.step_ids for s in rejected_steps], context_ids
+        )
+
+    _, metrics = trainer.compute_stepwise_dpo_loss(
+        chosen_steps,
+        rejected_steps,
+        chosen_logps,
+        rejected_logps,
+        ref_chosen_logps,
+        ref_rejected_logps,
+    )
+
+    required_keys = {
+        "loss",
+        "mean_chosen_reward",
+        "mean_rejected_reward",
+        "reward_accuracy",
+        "n_steps",
+        "step_weights",
+    }
     assert required_keys.issubset(set(metrics.keys())), (
         f"Missing keys: {required_keys - set(metrics.keys())}"
     )
@@ -269,6 +305,7 @@ def test_metrics_keys():
 # ---------------------------------------------------------------------------
 # Test 10: train_step returns dict with loss key
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_returns_loss():
     trainer = _make_trainer()
@@ -287,6 +324,7 @@ def test_train_step_returns_loss():
 # ---------------------------------------------------------------------------
 # Test 11: Gradient flows through stepwise DPO loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows():
     trainer = _make_trainer()

@@ -12,15 +12,14 @@ Pure stdlib only.  Thread-safe via threading.Lock.
 from __future__ import annotations
 
 import hashlib
-import time
 import threading
+import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CachePolicy(str, Enum):
+class CachePolicy(StrEnum):
     LRU = "lru"
     LFU = "lfu"
     TTL_ONLY = "ttl_only"
@@ -35,7 +34,7 @@ class CachedResponse:
     ttl: float
     hits: int = 0
 
-    def is_expired(self, now: Optional[float] = None) -> bool:
+    def is_expired(self, now: float | None = None) -> bool:
         t = now if now is not None else time.time()
         return (t - self.created_at) >= self.ttl
 
@@ -61,7 +60,7 @@ class ResponseCache:
         raw = (prompt_text + model_name).encode()
         return hashlib.sha256(raw, usedforsecurity=False).hexdigest()
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         """Return cached response string, or ``None`` if missing / expired."""
         with self._lock:
             entry = self._store.get(key)

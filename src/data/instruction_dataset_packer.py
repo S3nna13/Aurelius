@@ -15,8 +15,8 @@ Pure PyTorch. No foreign imports.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Iterable, Iterator, List
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 
 import torch
 
@@ -29,8 +29,8 @@ class InstructionSample:
     response_token_ids: tokens for the assistant response (loss ON).
     """
 
-    prompt_token_ids: List[int]
-    response_token_ids: List[int]
+    prompt_token_ids: list[int]
+    response_token_ids: list[int]
 
     def __len__(self) -> int:
         return len(self.prompt_token_ids) + len(self.response_token_ids)
@@ -40,10 +40,10 @@ class InstructionSample:
 class PackedBatch:
     """A single packed training sequence (batch dim = 1)."""
 
-    input_ids: torch.Tensor      # [1, L] long
-    attention_mask: torch.Tensor # [1, L, L] bool
-    loss_mask: torch.Tensor      # [1, L] bool
-    segment_ids: torch.Tensor    # [1, L] long
+    input_ids: torch.Tensor  # [1, L] long
+    attention_mask: torch.Tensor  # [1, L, L] bool
+    loss_mask: torch.Tensor  # [1, L] bool
+    segment_ids: torch.Tensor  # [1, L] long
 
 
 class InstructionDatasetPacker:
@@ -65,36 +65,28 @@ class InstructionDatasetPacker:
         respect_sample_boundaries: bool = True,
     ) -> None:
         if not isinstance(max_seq_len, int) or max_seq_len <= 0:
-            raise ValueError(
-                f"max_seq_len must be a positive int, got {max_seq_len!r}"
-            )
+            raise ValueError(f"max_seq_len must be a positive int, got {max_seq_len!r}")
         if not isinstance(pad_token_id, int):
-            raise TypeError(
-                f"pad_token_id must be int, got {type(pad_token_id).__name__}"
-            )
+            raise TypeError(f"pad_token_id must be int, got {type(pad_token_id).__name__}")
         self.max_seq_len = max_seq_len
         self.pad_token_id = pad_token_id
         self.respect_sample_boundaries = bool(respect_sample_boundaries)
 
     # ----------------------------------------------------------------- bin packing
 
-    def _ffd(self, samples: List[InstructionSample]) -> List[List[InstructionSample]]:
+    def _ffd(self, samples: list[InstructionSample]) -> list[list[InstructionSample]]:
         """First-fit decreasing. Raises ValueError on oversized samples."""
         for i, s in enumerate(samples):
             n = len(s)
             if n == 0:
                 raise ValueError(f"sample {i} is empty (0 tokens)")
             if n > self.max_seq_len:
-                raise ValueError(
-                    f"sample {i} has length {n} > max_seq_len {self.max_seq_len}"
-                )
+                raise ValueError(f"sample {i} has length {n} > max_seq_len {self.max_seq_len}")
 
         # Stable sort by length descending; ties preserve input order.
-        order = sorted(
-            range(len(samples)), key=lambda i: (-len(samples[i]), i)
-        )
-        bins: List[List[InstructionSample]] = []
-        bin_lens: List[int] = []
+        order = sorted(range(len(samples)), key=lambda i: (-len(samples[i]), i))
+        bins: list[list[InstructionSample]] = []
+        bin_lens: list[int] = []
         for idx in order:
             s = samples[idx]
             n = len(s)
@@ -112,7 +104,7 @@ class InstructionDatasetPacker:
 
     # ----------------------------------------------------------------- materialization
 
-    def _materialize(self, bin_samples: List[InstructionSample]) -> PackedBatch:
+    def _materialize(self, bin_samples: list[InstructionSample]) -> PackedBatch:
         L = self.max_seq_len
         input_ids = torch.full((L,), self.pad_token_id, dtype=torch.long)
         loss_mask = torch.zeros(L, dtype=torch.bool)
@@ -160,7 +152,7 @@ class InstructionDatasetPacker:
 
     # ----------------------------------------------------------------- public api
 
-    def pack(self, samples: List[InstructionSample]) -> List[PackedBatch]:
+    def pack(self, samples: list[InstructionSample]) -> list[PackedBatch]:
         if not samples:
             return []
         bins = self._ffd(list(samples))
@@ -170,10 +162,8 @@ class InstructionDatasetPacker:
         self, iterable: Iterable[InstructionSample], batch_size: int
     ) -> Iterator[PackedBatch]:
         if not isinstance(batch_size, int) or batch_size <= 0:
-            raise ValueError(
-                f"batch_size must be a positive int, got {batch_size!r}"
-            )
-        buf: List[InstructionSample] = []
+            raise ValueError(f"batch_size must be a positive int, got {batch_size!r}")
+        buf: list[InstructionSample] = []
         for s in iterable:
             buf.append(s)
             if len(buf) >= batch_size:

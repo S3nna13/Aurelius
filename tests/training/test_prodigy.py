@@ -1,9 +1,9 @@
 """Tests for src/training/prodigy.py — Prodigy self-tuning optimizer."""
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -124,9 +124,7 @@ def test_current_lr_increases_from_d0():
         _quadratic_loss(x).backward()
         opt.step()
 
-    assert opt.current_lr > d0, (
-        f"current_lr {opt.current_lr} should exceed d0={d0} after steps"
-    )
+    assert opt.current_lr > d0, f"current_lr {opt.current_lr} should exceed d0={d0} after steps"
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +190,7 @@ def test_d_coef_doubles_lr():
 
     # lr2 should be exactly 2x lr1 since d_coef is just a multiplier on d
     assert abs(lr2 / lr1 - 2.0) < 1e-6, (
-        f"d_coef=2.0 should double lr: lr1={lr1}, lr2={lr2}, ratio={lr2/lr1}"
+        f"d_coef=2.0 should double lr: lr1={lr1}, lr2={lr2}, ratio={lr2 / lr1}"
     )
 
 
@@ -284,9 +282,7 @@ def test_safeguard_warmup_holds_d():
         _quadratic_loss(x).backward()
         opt.step()
         d_now = opt.param_groups[0]["d"]
-        assert d_now == d0, (
-            f"d should not grow during warmup at step {i+1}: d={d_now}"
-        )
+        assert d_now == d0, f"d should not grow during warmup at step {i + 1}: d={d_now}"
 
     # After warmup, d should be allowed to grow
     opt.zero_grad()

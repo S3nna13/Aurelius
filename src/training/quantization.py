@@ -1,4 +1,5 @@
 """Post-training quantization: INT8 and INT4 weight quantization."""
+
 from __future__ import annotations
 
 import random
@@ -12,9 +13,9 @@ from torch import Tensor
 
 @dataclass
 class QuantizationConfig:
-    bits: int = 8                    # 4 or 8
-    symmetric: bool = True           # symmetric (zero_point=0) or asymmetric
-    per_channel: bool = True         # per-channel or per-tensor quantization
+    bits: int = 8  # 4 or 8
+    symmetric: bool = True  # symmetric (zero_point=0) or asymmetric
+    per_channel: bool = True  # per-channel or per-tensor quantization
     calibration_batches: int = 10
 
 
@@ -52,9 +53,9 @@ def quantize_tensor(
             scale_bc = scale.view(-1, *([1] * (w.dim() - 1)))
             q_w = (w / scale_bc).clamp(-q_max, q_max).round()
         else:
-            q_max = 2 ** bits - 1
-            w_min = w_flat.min(dim=1).values   # (out_features,)
-            w_max = w_flat.max(dim=1).values   # (out_features,)
+            q_max = 2**bits - 1
+            w_min = w_flat.min(dim=1).values  # (out_features,)
+            w_max = w_flat.max(dim=1).values  # (out_features,)
             scale = (w_max - w_min) / q_max
             scale = scale.clamp(min=1e-8)
             zero_point = (-w_min / scale).round()
@@ -72,7 +73,7 @@ def quantize_tensor(
             zero_point = torch.zeros_like(scale)
             q_w = (w / scale).clamp(-q_max, q_max).round()
         else:
-            q_max = 2 ** bits - 1
+            q_max = 2**bits - 1
             w_min = w.min()
             w_max = w.max()
             scale = (w_max - w_min) / q_max

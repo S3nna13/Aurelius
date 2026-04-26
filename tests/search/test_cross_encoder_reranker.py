@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.search.cross_encoder_reranker import (
+    CROSS_ENCODER_RERANKER,
     CrossEncoderConfig,
     CrossEncoderModel,
     CrossEncoderReranker,
     RankedResult,
-    CROSS_ENCODER_RERANKER,
 )
 
 
@@ -112,6 +111,7 @@ class TestScore:
 
     def test_score_finite(self):
         import math
+
         r = CrossEncoderReranker()
         s = r.score("neural networks", "deep learning transformers")
         assert math.isfinite(s)

@@ -21,10 +21,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Kernel feature map
 # ---------------------------------------------------------------------------
+
 
 def _elu_kernel(x: Tensor) -> Tensor:
     """ELU+1 activation for non-negative linear attention kernel. φ(x) = ELU(x)+1."""
@@ -34,6 +34,7 @@ def _elu_kernel(x: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # 1. LightningLinearAttn — single-head tiled linear attention
 # ---------------------------------------------------------------------------
+
 
 class LightningLinearAttn(nn.Module):
     """Single-head Lightning Attention-2 with tiled linear attention.
@@ -93,20 +94,18 @@ class LightningLinearAttn(nn.Module):
         V_c = v_padded.view(B_batch, n_chunks, chunk_size, d)
 
         # Lower-triangular causal mask: (chunk_size, chunk_size)
-        causal_mask = torch.tril(
-            torch.ones(chunk_size, chunk_size, dtype=q.dtype, device=q.device)
-        )
+        causal_mask = torch.tril(torch.ones(chunk_size, chunk_size, dtype=q.dtype, device=q.device))
 
         for i in range(n_chunks):
-            q_i = Q_c[:, i]   # (B_batch, chunk_size, d_head)
+            q_i = Q_c[:, i]  # (B_batch, chunk_size, d_head)
             k_i = K_c[:, i]
             v_i = V_c[:, i]
 
             # ---- Intra-chunk causal part ----
             # S_intra: (B_batch, chunk_size, chunk_size)
             # S[b, t, s] = q_i[b,t] · k_i[b,s]  (only s <= t via mask)
-            S_intra = torch.bmm(q_i, k_i.transpose(1, 2))   # (B, cs, cs)
-            S_intra = S_intra * causal_mask.unsqueeze(0)     # apply causal mask
+            S_intra = torch.bmm(q_i, k_i.transpose(1, 2))  # (B, cs, cs)
+            S_intra = S_intra * causal_mask.unsqueeze(0)  # apply causal mask
 
             # O_intra: (B_batch, chunk_size, d_head)
             O_intra = torch.bmm(S_intra, v_i)
@@ -114,7 +113,7 @@ class LightningLinearAttn(nn.Module):
             # ---- Inter-chunk part: use accumulated KV state ----
             # state: (B_batch, d_head, d_head) — represents sum_{past} k^T v
             # O_inter[b, t] = q_i[b, t] @ state[b]  → (B_batch, chunk_size, d_head)
-            O_inter = torch.bmm(q_i, state)   # (B_batch, chunk_size, d_head)
+            O_inter = torch.bmm(q_i, state)  # (B_batch, chunk_size, d_head)
 
             # Combined output for this chunk
             out_i = O_intra + O_inter
@@ -135,6 +134,7 @@ class LightningLinearAttn(nn.Module):
 # ---------------------------------------------------------------------------
 # 2. LightningAttentionLayer — multi-head with QKV + output projections
 # ---------------------------------------------------------------------------
+
 
 class LightningAttentionLayer(nn.Module):
     """Multi-head Lightning Attention-2 layer.
@@ -190,8 +190,7 @@ class LightningAttentionLayer(nn.Module):
 
         # Per-head attention
         head_outputs = [
-            self.heads[h](q_heads[h], k_heads[h], v_heads[h])
-            for h in range(self.n_heads)
+            self.heads[h](q_heads[h], k_heads[h], v_heads[h]) for h in range(self.n_heads)
         ]
 
         # Concatenate heads: (B, T, d_model)
@@ -202,6 +201,7 @@ class LightningAttentionLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # 3. LightningAttentionBlock — full block with pre-norm + FFN
 # ---------------------------------------------------------------------------
+
 
 class LightningAttentionBlock(nn.Module):
     """Full transformer block: pre-RMSNorm + LightningAttentionLayer + pre-RMSNorm + FFN.
@@ -248,6 +248,7 @@ class LightningAttentionBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Internal helpers: RMSNorm and FFN (not exported)
 # ---------------------------------------------------------------------------
+
 
 class _RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (internal helper)."""

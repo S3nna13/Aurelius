@@ -6,20 +6,17 @@ import warnings
 
 import pytest
 
+# VALID_POLARITIES is a module-level constant; import via module to be safe.
+from src.eval import behavioral_audit_taxonomy as bat
 from src.eval.behavioral_audit_taxonomy import (
     BEHAVIORAL_AUDIT_TAXONOMY,
     AuditResult,
     BehavioralAuditRegistry,
     BehaviorCategory,
     BehaviorDimension,
-    DimensionScore,
-    VALID_POLARITIES,
     by_category,
     by_id,
 )
-# VALID_POLARITIES is a module-level constant; import via module to be safe.
-from src.eval import behavioral_audit_taxonomy as bat
-
 
 EXPECTED_COUNTS = {
     BehaviorCategory.HARMFUL: 12,
@@ -32,9 +29,9 @@ EXPECTED_COUNTS = {
 
 
 def test_all_40_dimensions_loaded():
-    assert len(BEHAVIORAL_AUDIT_TAXONOMY) == 41 or len(
-        BEHAVIORAL_AUDIT_TAXONOMY
-    ) == sum(EXPECTED_COUNTS.values())
+    assert len(BEHAVIORAL_AUDIT_TAXONOMY) == 41 or len(BEHAVIORAL_AUDIT_TAXONOMY) == sum(
+        EXPECTED_COUNTS.values()
+    )
     # spec says 30+ named dims plus 7 positive character traits; our count is
     # 12+3+8+6+4+8 = 41. Validate exact count.
     assert len(BEHAVIORAL_AUDIT_TAXONOMY) == 41
@@ -124,9 +121,7 @@ def test_grader_exception_recorded_as_zero_with_warning():
     fraud = next(s for s in res.scores if s.dimension_id == "harmful.fraud")
     assert fraud.score == 0.0
     assert "RuntimeError" in fraud.rationale
-    assert any(
-        issubclass(rec.category, RuntimeWarning) for rec in w
-    ), "expected a RuntimeWarning"
+    assert any(issubclass(rec.category, RuntimeWarning) for rec in w), "expected a RuntimeWarning"
 
 
 def test_category_summaries_average_correctly():

@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import torch
 import torch.nn as nn
@@ -30,14 +30,15 @@ logger = logging.getLogger(__name__)
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class STILLConfig:
     """Hyper-parameters for the STILL training loop."""
 
     n_iterations: int = 3
-    n_samples_per_prompt: int = 8   # how many responses to generate per prompt
-    keep_top_k: int = 2             # keep k best per prompt
-    min_score: float = 0.5          # minimum verifier score to keep
+    n_samples_per_prompt: int = 8  # how many responses to generate per prompt
+    keep_top_k: int = 2  # keep k best per prompt
+    min_score: float = 0.5  # minimum verifier score to keep
     temperature: float = 0.8
     max_new_tokens: int = 256
 
@@ -45,6 +46,7 @@ class STILLConfig:
 # ---------------------------------------------------------------------------
 # Verifier protocol + built-in implementations
 # ---------------------------------------------------------------------------
+
 
 @runtime_checkable
 class Verifier(Protocol):
@@ -54,7 +56,7 @@ class Verifier(Protocol):
         self,
         prompt: str,
         response: str,
-        reference: Optional[str] = None,
+        reference: str | None = None,
     ) -> float:
         """Return a score in [0, 1]."""
         ...
@@ -71,7 +73,7 @@ class ExactMatchVerifier:
         self,
         prompt: str,
         response: str,
-        reference: Optional[str] = None,
+        reference: str | None = None,
     ) -> float:
         if reference is None:
             return 0.0
@@ -100,7 +102,7 @@ class RubricVerifier:
         self,
         prompt: str,
         response: str,
-        reference: Optional[str] = None,
+        reference: str | None = None,
     ) -> float:
         if not self.rubric:
             return 0.0
@@ -121,6 +123,7 @@ class RubricVerifier:
 # Sample dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class STILLSample:
     """A single verified candidate held in the replay buffer."""
@@ -134,6 +137,7 @@ class STILLSample:
 # ---------------------------------------------------------------------------
 # STILLTrainer
 # ---------------------------------------------------------------------------
+
 
 class STILLTrainer:
     """Implements the STILL generate -> verify -> filter -> fine-tune loop.
@@ -232,16 +236,14 @@ class STILLTrainer:
         for prompt_str, input_ids in zip(prompts, input_ids_list):
             candidates: list[STILLSample] = []
             for _ in range(self.config.n_samples_per_prompt):
-                gen_ids = self._generate_tokens(
-                    input_ids, self.config.temperature
-                )  # (1, n_gen)
+                gen_ids = self._generate_tokens(input_ids, self.config.temperature)  # (1, n_gen)
                 # Decode to a simple space-separated token id string
                 response_str = " ".join(str(t) for t in gen_ids[0].tolist())
                 candidates.append(
                     STILLSample(
                         prompt=prompt_str,
                         response=response_str,
-                        score=0.0,   # populated by filter_samples
+                        score=0.0,  # populated by filter_samples
                         iteration=iteration,
                     )
                 )
@@ -252,7 +254,7 @@ class STILLTrainer:
     def filter_samples(
         self,
         candidates: list[list[STILLSample]],
-        references: Optional[list[str]] = None,
+        references: list[str] | None = None,
     ) -> list[STILLSample]:
         """Score and filter candidates, keeping top-k above min_score.
 
@@ -272,17 +274,11 @@ class STILLTrainer:
         kept: list[STILLSample] = []
 
         for i, group in enumerate(candidates):
-            ref = (
-                references[i]
-                if references is not None and i < len(references)
-                else None
-            )
+            ref = references[i] if references is not None and i < len(references) else None
 
             # Score every sample in the group
             for sample in group:
-                sample.score = self.verifier.score(
-                    sample.prompt, sample.response, ref
-                )
+                sample.score = self.verifier.score(sample.prompt, sample.response, ref)
 
             # Filter by minimum score
             passing = [s for s in group if s.score >= self.config.min_score]
@@ -355,7 +351,7 @@ class STILLTrainer:
         self,
         prompts: list[str],
         input_ids_list: list[torch.Tensor],
-        references: Optional[list[str]] = None,
+        references: list[str] | None = None,
         iteration: int = 0,
     ) -> dict:
         """Full generate -> filter -> train iteration.
@@ -370,9 +366,7 @@ class STILLTrainer:
             Stats dict with keys: ``'n_generated'``, ``'n_kept'``, ``'loss'``,
             ``'n_samples'``, ``'iteration'``.
         """
-        candidates = self.generate_candidates(
-            prompts, input_ids_list, iteration=iteration
-        )
+        candidates = self.generate_candidates(prompts, input_ids_list, iteration=iteration)
         n_generated = sum(len(g) for g in candidates)
 
         filtered = self.filter_samples(candidates, references=references)
@@ -394,7 +388,7 @@ class STILLTrainer:
         self,
         prompts: list[str],
         input_ids_list: list[torch.Tensor],
-        references: Optional[list[str]] = None,
+        references: list[str] | None = None,
     ) -> list[dict]:
         """Run ``config.n_iterations`` STILL iterations.
 
@@ -408,9 +402,7 @@ class STILLTrainer:
         """
         history: list[dict] = []
         for i in range(self.config.n_iterations):
-            stats = self.run_iteration(
-                prompts, input_ids_list, references=references, iteration=i
-            )
+            stats = self.run_iteration(prompts, input_ids_list, references=references, iteration=i)
             logger.info(
                 "STILL iter %d/%d — kept %d/%d samples, loss=%.4f",
                 i + 1,

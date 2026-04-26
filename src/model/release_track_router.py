@@ -29,12 +29,11 @@ flags. Additive within its own file only.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 from .family import MODEL_VARIANT_REGISTRY
 from .manifest import FamilyManifest, ReleaseTrack
-
 
 __all__ = [
     "RouterPolicy",
@@ -93,9 +92,7 @@ class ReleaseTrackRouter:
 
     def __init__(self, policy: RouterPolicy) -> None:
         if not isinstance(policy, RouterPolicy):
-            raise TypeError(
-                f"policy must be RouterPolicy, got {type(policy).__name__}"
-            )
+            raise TypeError(f"policy must be RouterPolicy, got {type(policy).__name__}")
         self.policy = policy
 
     # ------------------------------------------------------------------
@@ -108,10 +105,7 @@ class ReleaseTrackRouter:
     ) -> RouteDecision:
         """Return a :class:`RouteDecision` for ``manifest`` under policy."""
         if not isinstance(manifest, FamilyManifest):
-            raise TypeError(
-                f"manifest must be FamilyManifest, got "
-                f"{type(manifest).__name__}"
-            )
+            raise TypeError(f"manifest must be FamilyManifest, got {type(manifest).__name__}")
         flags = self._normalize_flags(override_flags)
         try:
             track = ReleaseTrack(manifest.release_track)
@@ -121,19 +115,14 @@ class ReleaseTrackRouter:
                 f"a valid ReleaseTrack value"
             ) from exc
 
-        variant_id = (
-            f"{manifest.family_name}/{manifest.variant_name}"
-        )
+        variant_id = f"{manifest.family_name}/{manifest.variant_name}"
         policy = self.policy
         warnings: list[str] = []
 
         if track in policy.deny_tracks:
             return RouteDecision(
                 allowed=False,
-                reason=(
-                    f"policy {policy.name!r} denies release_track "
-                    f"{track.value!r}"
-                ),
+                reason=(f"policy {policy.name!r} denies release_track {track.value!r}"),
                 variant_id=variant_id,
                 track=track,
                 warnings=tuple(warnings),
@@ -152,10 +141,7 @@ class ReleaseTrackRouter:
                     track=track,
                     warnings=tuple(warnings),
                 )
-            warnings.append(
-                f"override {required!r} granted for release_track "
-                f"{track.value!r}"
-            )
+            warnings.append(f"override {required!r} granted for release_track {track.value!r}")
             return RouteDecision(
                 allowed=True,
                 reason=(
@@ -169,14 +155,12 @@ class ReleaseTrackRouter:
 
         if track in policy.warn_tracks:
             warnings.append(
-                f"release_track {track.value!r} is advisory under policy "
-                f"{policy.name!r}"
+                f"release_track {track.value!r} is advisory under policy {policy.name!r}"
             )
             return RouteDecision(
                 allowed=True,
                 reason=(
-                    f"policy {policy.name!r} allows release_track "
-                    f"{track.value!r} with warning"
+                    f"policy {policy.name!r} allows release_track {track.value!r} with warning"
                 ),
                 variant_id=variant_id,
                 track=track,
@@ -186,10 +170,7 @@ class ReleaseTrackRouter:
         if track in policy.allowed_tracks:
             return RouteDecision(
                 allowed=True,
-                reason=(
-                    f"policy {policy.name!r} allows release_track "
-                    f"{track.value!r}"
-                ),
+                reason=(f"policy {policy.name!r} allows release_track {track.value!r}"),
                 variant_id=variant_id,
                 track=track,
                 warnings=tuple(warnings),
@@ -199,8 +180,7 @@ class ReleaseTrackRouter:
         return RouteDecision(
             allowed=False,
             reason=(
-                f"policy {policy.name!r} has no rule for release_track "
-                f"{track.value!r}; denying"
+                f"policy {policy.name!r} has no rule for release_track {track.value!r}; denying"
             ),
             variant_id=variant_id,
             track=track,
@@ -234,16 +214,11 @@ class ReleaseTrackRouter:
         if override_flags is None:
             return frozenset()
         if isinstance(override_flags, str):
-            raise TypeError(
-                "override_flags must be a set of strings, got bare str"
-            )
+            raise TypeError("override_flags must be a set of strings, got bare str")
         flags = frozenset(override_flags)
         for f in flags:
             if not isinstance(f, str):
-                raise TypeError(
-                    f"override_flags entries must be str, got "
-                    f"{type(f).__name__}"
-                )
+                raise TypeError(f"override_flags entries must be str, got {type(f).__name__}")
         return flags
 
 

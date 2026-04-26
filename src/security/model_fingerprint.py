@@ -8,7 +8,6 @@ pattern, distinguishing the owner's model from copies.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -33,7 +32,7 @@ class ModelFingerprint:
         self.config = config
         self.key_ids, self.target_ids = self.generate_keys()
 
-    def generate_keys(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def generate_keys(self) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate deterministic key sequences and target class ids from seed.
 
         Returns:
@@ -59,9 +58,7 @@ class ModelFingerprint:
         )
         return key_ids, target_ids
 
-    def embed_fingerprint(
-        self, optimizer: torch.optim.Optimizer, n_steps: int = 50
-    ) -> List[float]:
+    def embed_fingerprint(self, optimizer: torch.optim.Optimizer, n_steps: int = 50) -> list[float]:
         """Fine-tune the model to memorize key-to-target mappings.
 
         For each step, runs a forward pass on key_ids, computes cross-entropy
@@ -75,7 +72,7 @@ class ModelFingerprint:
             List of per-step scalar loss values.
         """
         self.model.train()
-        losses: List[float] = []
+        losses: list[float] = []
 
         device = self._device()
         key_ids = self.key_ids.to(device)
@@ -94,7 +91,7 @@ class ModelFingerprint:
 
         return losses
 
-    def verify(self, threshold: float = 0.5) -> Tuple[bool, float]:
+    def verify(self, threshold: float = 0.5) -> tuple[bool, float]:
         """Verify the fingerprint by checking key-to-target prediction accuracy.
 
         Args:
@@ -127,9 +124,7 @@ class ModelFingerprint:
         Returns:
             A 2-element tensor [mean, std] of the selected weight matrix.
         """
-        linear_layers = [
-            m for m in self.model.modules() if isinstance(m, nn.Linear)
-        ]
+        linear_layers = [m for m in self.model.modules() if isinstance(m, nn.Linear)]
         layer = linear_layers[layer_idx]
         w = layer.weight.detach().float()
         mean_val = torch.mean(w)

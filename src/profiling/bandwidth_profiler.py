@@ -83,6 +83,4 @@ class BandwidthProfiler:
         self._samples.clear()
 
 
-BANDWIDTH_PROFILER_REGISTRY: dict[str, type[BandwidthProfiler]] = {
-    "default": BandwidthProfiler
-}
+BANDWIDTH_PROFILER_REGISTRY: dict[str, type[BandwidthProfiler]] = {"default": BandwidthProfiler}

@@ -8,10 +8,9 @@ Tiny config: 2-layer MLP (16->16->16), rho=0.05, batch=2.
 All tests run actual forward/backward passes.
 """
 
-import math
 import copy
+import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -23,12 +22,11 @@ from src.training.sam_optimizer import (
     SharpnessAnalyzer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-D = 16   # input/hidden/output dimension
+D = 16  # input/hidden/output dimension
 BATCH = 2
 RHO = 0.05
 
@@ -75,6 +73,7 @@ def compute_loss_and_grad(model, x, y):
 # 1. SAMOptimizer.first_step: params change from original
 # ===========================================================================
 
+
 def test_sam_first_step_params_change():
     torch.manual_seed(1)
     model = make_mlp()
@@ -94,6 +93,7 @@ def test_sam_first_step_params_change():
 # ===========================================================================
 # 2. SAMOptimizer.second_step: params restored to original + optimizer step
 # ===========================================================================
+
 
 def test_sam_second_step_restores_then_updates():
     torch.manual_seed(2)
@@ -123,6 +123,7 @@ def test_sam_second_step_restores_then_updates():
 # ===========================================================================
 # 3. SAMOptimizer: perturbation direction proportional to gradient
 # ===========================================================================
+
 
 def test_sam_perturbation_proportional_to_gradient():
     torch.manual_seed(3)
@@ -158,11 +159,12 @@ def test_sam_perturbation_proportional_to_gradient():
 # 4. SAMOptimizer adaptive=True: perturbation scales with |w|
 # ===========================================================================
 
+
 def test_sam_adaptive_perturbation_scales_with_weight():
     torch.manual_seed(4)
     model = make_mlp()
     sam_nonadapt = make_sam(model, adaptive=False)
-    sam_adapt = make_sam(copy.deepcopy(model), adaptive=True)
+    make_sam(copy.deepcopy(model), adaptive=True)
 
     x, y = make_data()
 
@@ -187,8 +189,7 @@ def test_sam_adaptive_perturbation_scales_with_weight():
 
     # The two perturbations should NOT be identical (because adaptive scales by |w|)
     any_differ = any(
-        not torch.allclose(a, b, atol=1e-6)
-        for a, b in zip(delta_nonadapt, delta_adapt)
+        not torch.allclose(a, b, atol=1e-6) for a, b in zip(delta_nonadapt, delta_adapt)
     )
     assert any_differ, "Adaptive and non-adaptive perturbations should differ"
 
@@ -196,6 +197,7 @@ def test_sam_adaptive_perturbation_scales_with_weight():
 # ===========================================================================
 # 5. SAMOptimizer: perturbation norm ≈ rho (within 1% for unit-norm gradient)
 # ===========================================================================
+
 
 def test_sam_perturbation_norm_approx_rho():
     torch.manual_seed(5)
@@ -209,9 +211,7 @@ def test_sam_perturbation_norm_approx_rho():
     sam.first_step(zero_grad=False)
     after = snapshot_params(model)
 
-    pert_norm_sq = sum(
-        (a - b).norm().item() ** 2 for a, b in zip(after, before)
-    )
+    pert_norm_sq = sum((a - b).norm().item() ** 2 for a, b in zip(after, before))
     pert_norm = math.sqrt(pert_norm_sq)
 
     # Perturbation norm should equal rho (because delta = rho/||g|| * g, so ||delta|| = rho)
@@ -224,6 +224,7 @@ def test_sam_perturbation_norm_approx_rho():
 # 6. ASAM.first_step: adaptive perturbation differs from non-adaptive
 # ===========================================================================
 
+
 def test_asam_first_step_differs_from_sam():
     torch.manual_seed(6)
     base_model = make_mlp()
@@ -232,11 +233,13 @@ def test_asam_first_step_differs_from_sam():
 
     sam = SAMOptimizer(
         torch.optim.SGD(model_sam.parameters(), lr=0.01),
-        rho=RHO, adaptive=False,
+        rho=RHO,
+        adaptive=False,
     )
     asam = ASAM(
         torch.optim.SGD(model_asam.parameters(), lr=0.01),
-        rho=RHO, eta=0.01,
+        rho=RHO,
+        eta=0.01,
     )
 
     x, y = make_data()
@@ -251,16 +254,14 @@ def test_asam_first_step_differs_from_sam():
     asam.first_step(zero_grad=False)
     delta_asam = [p.data - b for p, b in zip(model_asam.parameters(), before_asam)]
 
-    any_differ = any(
-        not torch.allclose(a, b, atol=1e-6)
-        for a, b in zip(delta_sam, delta_asam)
-    )
+    any_differ = any(not torch.allclose(a, b, atol=1e-6) for a, b in zip(delta_sam, delta_asam))
     assert any_differ, "ASAM perturbation should differ from standard SAM"
 
 
 # ===========================================================================
 # 7. ASAM: shape of perturbation matches model params
 # ===========================================================================
+
 
 def test_asam_perturbation_shape_matches_params():
     torch.manual_seed(7)
@@ -286,6 +287,7 @@ def test_asam_perturbation_shape_matches_params():
 # 8. LookSAM: slow weights initialized equal to fast weights
 # ===========================================================================
 
+
 def test_looksam_slow_weights_init_equal_fast():
     torch.manual_seed(8)
     model = make_mlp()
@@ -305,6 +307,7 @@ def test_looksam_slow_weights_init_equal_fast():
 # ===========================================================================
 # 9. LookSAM.sync_slow_weights: fast weights match slow weights after sync
 # ===========================================================================
+
 
 def test_looksam_sync_slow_weights():
     torch.manual_seed(9)
@@ -341,6 +344,7 @@ def test_looksam_sync_slow_weights():
 # 10. SharpnessAnalyzer.flatness_ratio: >= 1.0 on average
 # ===========================================================================
 
+
 def test_sharpness_analyzer_flatness_ratio_ge_1():
     torch.manual_seed(10)
     model = make_mlp()
@@ -363,6 +367,7 @@ def test_sharpness_analyzer_flatness_ratio_ge_1():
 # 11. SharpnessAnalyzer.gradient_diversity: >= 0, finite
 # ===========================================================================
 
+
 def test_sharpness_analyzer_gradient_diversity_valid():
     torch.manual_seed(11)
     model = make_mlp()
@@ -380,6 +385,7 @@ def test_sharpness_analyzer_gradient_diversity_valid():
 # ===========================================================================
 # 12. SAMTrainingLoop.train_step: loss finite, params updated
 # ===========================================================================
+
 
 def test_sam_training_loop_updates_params():
     torch.manual_seed(12)
@@ -402,6 +408,7 @@ def test_sam_training_loop_updates_params():
 # 13. SAMTrainingLoop: perturbation_norm ≈ rho
 # ===========================================================================
 
+
 def test_sam_training_loop_perturbation_norm():
     torch.manual_seed(13)
     model = make_mlp()
@@ -423,6 +430,7 @@ def test_sam_training_loop_perturbation_norm():
 # 14. SAMTrainingLoop: loss decreases over 5 steps
 # ===========================================================================
 
+
 def test_sam_training_loop_loss_decreases():
     torch.manual_seed(14)
     model = make_mlp()
@@ -438,14 +446,13 @@ def test_sam_training_loop_loss_decreases():
         losses.append(info["loss"])
 
     # Loss at step 5 should be lower than at step 1 (general convergence trend)
-    assert losses[-1] < losses[0], (
-        f"Loss should decrease over 5 steps. Got losses: {losses}"
-    )
+    assert losses[-1] < losses[0], f"Loss should decrease over 5 steps. Got losses: {losses}"
 
 
 # ===========================================================================
 # 15. Two SAM steps with same data: second loss may differ from first
 # ===========================================================================
+
 
 def test_sam_two_steps_explore_landscape():
     torch.manual_seed(15)
@@ -495,10 +502,5 @@ def test_sam_two_steps_explore_landscape():
     assert math.isfinite(loss_perturbed2), "Perturbed loss (step 2) must be finite"
 
     # At least one pair of losses must differ (SAM explores different points)
-    some_differ = (
-        abs(loss_perturbed - loss_perturbed2) > 1e-8
-        or abs(loss1_val - loss2_val) > 1e-8
-    )
-    assert some_differ, (
-        "Two SAM steps should produce different loss values (landscape exploration)"
-    )
+    some_differ = abs(loss_perturbed - loss_perturbed2) > 1e-8 or abs(loss1_val - loss2_val) > 1e-8
+    assert some_differ, "Two SAM steps should produce different loss values (landscape exploration)"

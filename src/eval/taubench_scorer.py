@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-
+from dataclasses import dataclass
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -30,11 +29,11 @@ class TauBenchTask:
     """Specification for a single τ-bench task."""
 
     task_id: str
-    instruction: str          # user instruction given to agent
-    tools: List[Dict[str, Any]]    # tool schemas available to agent
-    expected_actions: List[str]   # sequence of tool calls expected
-    success_criteria: Dict[str, Any]  # what counts as success
-    domain: str = "coding"    # e.g. "retail", "airline", "coding"
+    instruction: str  # user instruction given to agent
+    tools: list[dict[str, Any]]  # tool schemas available to agent
+    expected_actions: list[str]  # sequence of tool calls expected
+    success_criteria: dict[str, Any]  # what counts as success
+    domain: str = "coding"  # e.g. "retail", "airline", "coding"
     max_turns: int = 30
 
     def __post_init__(self) -> None:
@@ -49,8 +48,8 @@ class TauBenchTrajectory:
     """Recorded execution of an agent on a τ-bench task."""
 
     task_id: str
-    turns: List[Dict[str, Any]]  # list of {role, content, tool_calls, tool_results}
-    final_state: Dict[str, Any]   # final environment state
+    turns: list[dict[str, Any]]  # list of {role, content, tool_calls, tool_results}
+    final_state: dict[str, Any]  # final environment state
     success: bool
     num_turns: int
 
@@ -75,7 +74,7 @@ def _safe_str(v: Any) -> str:
         return ""
 
 
-def _extract_tool_calls_from_turns(turns: List[Dict[str, Any]]) -> List[str]:
+def _extract_tool_calls_from_turns(turns: list[dict[str, Any]]) -> list[str]:
     """Extract ordered list of tool names called across all turns.
 
     Each turn may have a 'tool_calls' key whose value is either:
@@ -84,7 +83,7 @@ def _extract_tool_calls_from_turns(turns: List[Dict[str, Any]]) -> List[str]:
     - A single str.
     Missing or malformed entries are silently skipped.
     """
-    names: List[str] = []
+    names: list[str] = []
     if not turns:
         return names
     for turn in turns:
@@ -103,15 +102,13 @@ def _extract_tool_calls_from_turns(turns: List[Dict[str, Any]]) -> List[str]:
             elif isinstance(item, dict):
                 # OpenAI-style: {name: ..., arguments: ...} or
                 # {function: {name: ...}}
-                name = item.get("name") or (
-                    item.get("function", {}) or {}
-                ).get("name")
+                name = item.get("name") or (item.get("function", {}) or {}).get("name")
                 if name:
                     names.append(_safe_str(name))
     return names
 
 
-def _state_matches(criteria_state: Dict[str, Any], final_state: Dict[str, Any]) -> bool:
+def _state_matches(criteria_state: dict[str, Any], final_state: dict[str, Any]) -> bool:
     """Check if final_state satisfies all required_state key/value pairs."""
     if not isinstance(criteria_state, dict) or not isinstance(final_state, dict):
         return False
@@ -143,7 +140,7 @@ class TauBenchScorer:
         self,
         task: TauBenchTask,
         trajectory: TauBenchTrajectory,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Score a single trajectory against a task.
 
         Returns
@@ -160,7 +157,9 @@ class TauBenchScorer:
             success = False
 
         try:
-            actual_tools = _extract_tool_calls_from_turns(trajectory.turns if trajectory.turns else [])
+            actual_tools = _extract_tool_calls_from_turns(
+                trajectory.turns if trajectory.turns else []
+            )
             ta = self.compute_tool_accuracy(task.expected_actions, actual_tools)
         except Exception:
             ta = 0.0
@@ -181,9 +180,9 @@ class TauBenchScorer:
 
     def score_batch(
         self,
-        tasks: List[TauBenchTask],
-        trajectories: List[TauBenchTrajectory],
-    ) -> Dict[str, Any]:
+        tasks: list[TauBenchTask],
+        trajectories: list[TauBenchTrajectory],
+    ) -> dict[str, Any]:
         """Aggregate metrics over a batch of (task, trajectory) pairs.
 
         Returns
@@ -210,8 +209,8 @@ class TauBenchScorer:
 
         n = min(len(tasks), len(trajectories))
         per_task = []
-        domain_successes: Dict[str, List[bool]] = defaultdict(list)
-        domain_turns: Dict[str, List[int]] = defaultdict(list)
+        domain_successes: dict[str, list[bool]] = defaultdict(list)
+        domain_turns: dict[str, list[int]] = defaultdict(list)
 
         for i in range(n):
             try:
@@ -243,7 +242,7 @@ class TauBenchScorer:
         else:
             efficiency_score = 0.0
 
-        domain_breakdown: Dict[str, Dict[str, Any]] = {}
+        domain_breakdown: dict[str, dict[str, Any]] = {}
         for dom in domain_successes:
             d_succ = domain_successes[dom]
             d_turns = domain_turns[dom]
@@ -292,7 +291,7 @@ class TauBenchScorer:
         actual_set = set(actual_tools)
         final_state = trajectory.final_state if isinstance(trajectory.final_state, dict) else {}
 
-        checks: List[bool] = []
+        checks: list[bool] = []
 
         # 1. required_tool_calls — all tools in set must appear at least once
         required_calls = criteria.get("required_tool_calls")
@@ -318,8 +317,8 @@ class TauBenchScorer:
 
     def compute_tool_accuracy(
         self,
-        expected: List[str],
-        actual: List[str],
+        expected: list[str],
+        actual: list[str],
     ) -> float:
         """F1-style tool call accuracy (multiset precision / recall / F1).
 
@@ -345,8 +344,8 @@ class TauBenchScorer:
             return 0.0
 
         # Multiset intersection counts
-        exp_counts: Dict[str, int] = defaultdict(int)
-        act_counts: Dict[str, int] = defaultdict(int)
+        exp_counts: dict[str, int] = defaultdict(int)
+        act_counts: dict[str, int] = defaultdict(int)
         for t in expected:
             exp_counts[t] += 1
         for t in actual:
@@ -402,7 +401,7 @@ class TauBenchScorer:
 
 _CODING_TASKS_TEMPLATE = [
     {
-        "instruction": "Search for the function `parse_config` in the codebase and report which files define it.",
+        "instruction": "Search for the function `parse_config` in the codebase and report which files define it.",  # noqa: E501
         "tools": [
             {"name": "search_code", "description": "Search codebase for a pattern"},
             {"name": "read_file", "description": "Read a file by path"},
@@ -548,7 +547,7 @@ class TauBenchDataset:
     """
 
     @staticmethod
-    def get_sample_tasks(domain: str = "coding", n: int = 10) -> List[TauBenchTask]:
+    def get_sample_tasks(domain: str = "coding", n: int = 10) -> list[TauBenchTask]:
         """Return up to *n* synthetic TauBenchTask objects for *domain*.
 
         If *domain* is unknown, returns coding tasks. Repeats templates
@@ -558,7 +557,7 @@ class TauBenchDataset:
         if not templates:
             templates = _CODING_TASKS_TEMPLATE
 
-        tasks: List[TauBenchTask] = []
+        tasks: list[TauBenchTask] = []
         for i in range(max(0, n)):
             tmpl = templates[i % len(templates)]
             tasks.append(
@@ -588,7 +587,7 @@ class TauBenchDataset:
                 }
             )
         # Build final_state from required_state if present
-        final_state: Dict[str, Any] = {}
+        final_state: dict[str, Any] = {}
         if "required_state" in task.success_criteria:
             final_state.update(task.success_criteria["required_state"])
 

@@ -1,4 +1,5 @@
 """Tests for retry tool."""
+
 from __future__ import annotations
 
 import pytest

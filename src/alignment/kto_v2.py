@@ -21,8 +21,8 @@ Pure PyTorch; no foreign dependencies.
 from __future__ import annotations
 
 import torch
-from torch import Tensor, nn
 import torch.nn.functional as F
+from torch import Tensor, nn
 
 
 def _validate_shapes(
@@ -45,9 +45,7 @@ def _validate_shapes(
             f"{tuple(is_desirable.shape)} vs {tuple(policy_logprobs.shape)}"
         )
     if is_desirable.dtype != torch.bool:
-        raise ValueError(
-            f"is_desirable must be a bool tensor, got dtype {is_desirable.dtype}"
-        )
+        raise ValueError(f"is_desirable must be a bool tensor, got dtype {is_desirable.dtype}")
 
 
 def kto_v2_loss_functional(
@@ -78,9 +76,7 @@ def kto_v2_loss_functional(
     if isinstance(z_ref, Tensor):
         z = z_ref.detach().to(policy_logprobs.dtype).to(policy_logprobs.device)
     else:
-        z = torch.tensor(
-            float(z_ref), dtype=policy_logprobs.dtype, device=policy_logprobs.device
-        )
+        z = torch.tensor(float(z_ref), dtype=policy_logprobs.dtype, device=policy_logprobs.device)
 
     log_ratio = policy_logprobs - ref_logprobs  # [B]
 
@@ -132,9 +128,7 @@ class KTOv2Loss(nn.Module):
         # Running reference point. Scalar buffer.
         self.register_buffer("z_ref", torch.zeros((), dtype=torch.float32))
         # Tracks whether the buffer has ever been updated (for cold-start init).
-        self.register_buffer(
-            "_z_ref_initialized", torch.zeros((), dtype=torch.bool)
-        )
+        self.register_buffer("_z_ref_initialized", torch.zeros((), dtype=torch.bool))
 
     def reset_z_ref(self) -> None:
         """Reset the running reference point to zero (uninitialized)."""

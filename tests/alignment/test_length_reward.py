@@ -8,10 +8,10 @@ import torch
 
 from src.alignment.length_reward import LengthReward, LengthRewardConfig
 
-
 # ---------------------------------------------------------------------------
 # Test 1: Config defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = LengthRewardConfig()
@@ -28,6 +28,7 @@ def test_config_defaults():
 # Test 2: Correct within budget → reward > correct_base (bonus applied)
 # ---------------------------------------------------------------------------
 
+
 def test_correct_within_budget():
     lr = LengthReward()
     # 2048 tokens, budget 4096 — clearly within budget and above min ratio
@@ -40,6 +41,7 @@ def test_correct_within_budget():
 # ---------------------------------------------------------------------------
 # Test 3: Correct over budget → reward < correct_base (penalty applied)
 # ---------------------------------------------------------------------------
+
 
 def test_correct_over_budget():
     lr = LengthReward()
@@ -54,6 +56,7 @@ def test_correct_over_budget():
 # Test 4: Correct at exact budget → reward == correct_base
 # ---------------------------------------------------------------------------
 
+
 def test_correct_exact_budget():
     lr = LengthReward()
     reward = lr.compute(is_correct=True, n_tokens=lr.config.token_budget)
@@ -65,6 +68,7 @@ def test_correct_exact_budget():
 # ---------------------------------------------------------------------------
 # Test 5: Incorrect rollout → incorrect_base_reward regardless of length
 # ---------------------------------------------------------------------------
+
 
 def test_incorrect():
     lr = LengthReward()
@@ -80,6 +84,7 @@ def test_incorrect():
 # Test 6: Too short (below min_length_ratio * budget) → treated as incorrect
 # ---------------------------------------------------------------------------
 
+
 def test_too_short_penalized():
     lr = LengthReward()
     # min_length_ratio=0.1, budget=4096 → threshold=409.6
@@ -94,19 +99,19 @@ def test_too_short_penalized():
 # Test 7: Length penalty scales with excess tokens
 # ---------------------------------------------------------------------------
 
+
 def test_length_penalty_scales():
     lr = LengthReward()
     # 2× budget vs 1.1× budget — more excess should mean more penalty
     r_2x = lr.compute(is_correct=True, n_tokens=lr.config.token_budget * 2)
     r_1_1x = lr.compute(is_correct=True, n_tokens=int(lr.config.token_budget * 1.1))
-    assert r_2x < r_1_1x, (
-        f"2× over budget ({r_2x}) should be penalized more than 1.1× ({r_1_1x})"
-    )
+    assert r_2x < r_1_1x, f"2× over budget ({r_2x}) should be penalized more than 1.1× ({r_1_1x})"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: Length bonus scales — 50% of budget gets more bonus than 90%
 # ---------------------------------------------------------------------------
+
 
 def test_length_bonus_scales():
     lr = LengthReward()
@@ -120,6 +125,7 @@ def test_length_bonus_scales():
 # ---------------------------------------------------------------------------
 # Test 9: Max length cap — very long sequence capped at max_length_ratio
 # ---------------------------------------------------------------------------
+
 
 def test_max_length_cap():
     lr = LengthReward()
@@ -137,6 +143,7 @@ def test_max_length_cap():
 # Test 10: compute_batch returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_compute_batch_length():
     lr = LengthReward()
     correctness = [True, False, True]
@@ -150,6 +157,7 @@ def test_compute_batch_length():
 # ---------------------------------------------------------------------------
 # Test 11: compute_tensor shape — [B] input → [B] output
 # ---------------------------------------------------------------------------
+
 
 def test_compute_tensor_shape():
     lr = LengthReward()
@@ -165,20 +173,20 @@ def test_compute_tensor_shape():
 # Test 12: statistics returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_keys():
     lr = LengthReward()
     correctness = [True, False, True]
     token_counts = [2000, 5000, 4096]
     stats = lr.statistics(correctness, token_counts)
     required_keys = {"mean_reward", "mean_tokens", "n_correct", "n_penalized", "n_bonus"}
-    assert required_keys == set(stats.keys()), (
-        f"Missing/extra keys. Got: {set(stats.keys())}"
-    )
+    assert required_keys == set(stats.keys()), f"Missing/extra keys. Got: {set(stats.keys())}"
 
 
 # ---------------------------------------------------------------------------
 # Test 13: statistics n_correct counts correctly
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_n_correct():
     lr = LengthReward()
@@ -192,6 +200,7 @@ def test_statistics_n_correct():
 # Test 14: statistics n_penalized counts over-budget correct rollouts
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_penalized():
     lr = LengthReward()
     budget = lr.config.token_budget
@@ -199,14 +208,13 @@ def test_statistics_penalized():
     correctness = [True, True, True, False]
     token_counts = [budget + 1000, budget + 2000, budget - 500, budget + 500]
     stats = lr.statistics(correctness, token_counts)
-    assert stats["n_penalized"] == 2, (
-        f"Expected n_penalized=2, got {stats['n_penalized']}"
-    )
+    assert stats["n_penalized"] == 2, f"Expected n_penalized=2, got {stats['n_penalized']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 15: statistics n_bonus counts within-budget correct (not too short)
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_bonus():
     lr = LengthReward()
@@ -215,12 +223,10 @@ def test_statistics_bonus():
     # 2 correct within budget above min, 1 correct too short, 1 correct over budget
     correctness = [True, True, True, True]
     token_counts = [
-        min_tokens + 100,   # bonus
-        budget - 100,       # bonus
-        min_tokens - 10,    # too short, no bonus
-        budget + 100,       # penalized, no bonus
+        min_tokens + 100,  # bonus
+        budget - 100,  # bonus
+        min_tokens - 10,  # too short, no bonus
+        budget + 100,  # penalized, no bonus
     ]
     stats = lr.statistics(correctness, token_counts)
-    assert stats["n_bonus"] == 2, (
-        f"Expected n_bonus=2, got {stats['n_bonus']}"
-    )
+    assert stats["n_bonus"] == 2, f"Expected n_bonus=2, got {stats['n_bonus']}"

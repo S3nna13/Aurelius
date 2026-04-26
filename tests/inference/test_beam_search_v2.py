@@ -1,14 +1,14 @@
 """Tests for src/inference/beam_search_v2.py"""
+
 import pytest
 import torch
 
 from src.inference.beam_search_v2 import (
-    BeamSearchConfig,
-    BeamHypothesis,
-    normalize_score,
-    get_ngram_blocked_tokens,
-    top_p_filter,
     BeamSearch,
+    BeamSearchConfig,
+    get_ngram_blocked_tokens,
+    normalize_score,
+    top_p_filter,
 )
 
 VOCAB_SIZE = 32
@@ -29,6 +29,7 @@ def _prompt() -> torch.Tensor:
 # BeamSearchConfig
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = BeamSearchConfig()
     assert cfg.beam_width == 4
@@ -42,6 +43,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # normalize_score
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_score_lp_one():
     assert normalize_score(4.0, 4, 1.0) == pytest.approx(1.0)
@@ -58,6 +60,7 @@ def test_normalize_score_length_zero():
 # ---------------------------------------------------------------------------
 # get_ngram_blocked_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_ngram_blocked_empty_when_size_zero():
     ids = torch.tensor([1, 2, 3, 1, 2])
@@ -80,6 +83,7 @@ def test_ngram_blocked_no_repeat():
 # ---------------------------------------------------------------------------
 # top_p_filter
 # ---------------------------------------------------------------------------
+
 
 def test_top_p_filter_shape():
     logits = torch.randn(VOCAB_SIZE)
@@ -105,6 +109,7 @@ def test_top_p_filter_p0_mostly_masked():
 # BeamSearch.initialize_beams
 # ---------------------------------------------------------------------------
 
+
 def test_initialize_beams_count():
     cfg = BeamSearchConfig(beam_width=BEAM)
     bs = BeamSearch(_mock_model, cfg)
@@ -124,6 +129,7 @@ def test_initialize_beams_all_score_zero():
 # BeamSearch.expand_beams
 # ---------------------------------------------------------------------------
 
+
 def test_expand_beams_returns_list():
     cfg = BeamSearchConfig(beam_width=BEAM, max_new_tokens=3)
     bs = BeamSearch(_mock_model, cfg)
@@ -136,6 +142,7 @@ def test_expand_beams_returns_list():
 # ---------------------------------------------------------------------------
 # BeamSearch.search
 # ---------------------------------------------------------------------------
+
 
 def test_search_output_is_1d():
     cfg = BeamSearchConfig(beam_width=BEAM, max_new_tokens=3)
@@ -171,6 +178,7 @@ def test_search_with_scores_all_have_scores():
 def test_eos_token_stops_beam():
     # Model that always outputs the same token (EOS)
     EOS = 5
+
     def eos_model(ids):
         logits = torch.full((ids.shape[0], ids.shape[1], VOCAB_SIZE), -1e9)
         logits[:, :, EOS] = 10.0

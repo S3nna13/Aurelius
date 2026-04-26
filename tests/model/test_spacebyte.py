@@ -20,14 +20,13 @@ Coverage targets (14 tests):
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.spacebyte import SpaceByteConfig, SpaceByteModel
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model(seed: int = 0, **kwargs) -> SpaceByteModel:
     torch.manual_seed(seed)
@@ -50,6 +49,7 @@ def _bytes_tensor(text: str, batch: int = 1) -> torch.LongTensor:
 # Test 1: Logits shape (B=1)
 # ---------------------------------------------------------------------------
 
+
 def test_logits_shape_b1():
     model = _make_model()
     x = _bytes_tensor("hello world foo")  # T=15, spaces at 5 and 11
@@ -64,6 +64,7 @@ def test_logits_shape_b1():
 # ---------------------------------------------------------------------------
 # Test 2: Gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flow():
     model = _make_model()
@@ -81,6 +82,7 @@ def test_gradient_flow():
 # Test 3: Determinism under same seed
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     model_a = _make_model(seed=42)
     model_b = _make_model(seed=42)
@@ -95,6 +97,7 @@ def test_determinism():
 # Test 4: T=1 (single byte, single patch)
 # ---------------------------------------------------------------------------
 
+
 def test_single_byte():
     model = _make_model()
     # A non-space byte -> single patch of length 1
@@ -107,6 +110,7 @@ def test_single_byte():
 # ---------------------------------------------------------------------------
 # Test 5: No spaces -> single patch covering all bytes
 # ---------------------------------------------------------------------------
+
 
 def test_no_spaces_single_patch():
     model = _make_model()
@@ -122,6 +126,7 @@ def test_no_spaces_single_patch():
 # ---------------------------------------------------------------------------
 # Test 6: All spaces -> each byte is its own patch
 # ---------------------------------------------------------------------------
+
 
 def test_all_spaces_each_is_patch():
     model = _make_model()
@@ -140,12 +145,13 @@ def test_all_spaces_each_is_patch():
 # Test 7: find_patch_boundaries correct indices for "hello world foo"
 # ---------------------------------------------------------------------------
 
+
 def test_find_patch_boundaries_hello_world_foo():
     model = _make_model()
     text = "hello world foo"
     x = torch.tensor([b for b in text.encode("ascii")], dtype=torch.long)
     boundaries = model.find_patch_boundaries(x)
-    space_positions = [i for i, c in enumerate(text) if c == ' ']
+    space_positions = [i for i, c in enumerate(text) if c == " "]
     expected = [0] + space_positions
     assert boundaries == expected, f"Expected {expected}, got {boundaries}"
 
@@ -153,6 +159,7 @@ def test_find_patch_boundaries_hello_world_foo():
 # ---------------------------------------------------------------------------
 # Test 8: No NaN/Inf on zeros input
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf_zeros():
     model = _make_model()
@@ -166,6 +173,7 @@ def test_no_nan_inf_zeros():
 # Test 9: No NaN/Inf on alternating bytes
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf_alternating():
     model = _make_model()
     ids = [0x00 if i % 2 == 0 else 0xFF for i in range(10)]
@@ -178,6 +186,7 @@ def test_no_nan_inf_alternating():
 # ---------------------------------------------------------------------------
 # Test 10: Global model processes exactly n_patches vectors
 # ---------------------------------------------------------------------------
+
 
 def test_global_processes_n_patches():
     """Verify the global transformer hidden state has exactly n_patches positions."""
@@ -208,6 +217,7 @@ def test_global_processes_n_patches():
 # Test 11: Variable patch lengths handled (patches of size 7, 4, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_variable_patch_lengths():
     """Build a sequence whose patches have lengths 7, 4, 1.
 
@@ -223,7 +233,7 @@ def test_variable_patch_lengths():
     T = len(ids)
     boundaries = model.find_patch_boundaries(x[0])
     assert 0 in boundaries
-    assert 7 in boundaries   # first space
+    assert 7 in boundaries  # first space
     assert 11 in boundaries  # second space
     with torch.no_grad():
         logits = model(x)
@@ -233,6 +243,7 @@ def test_variable_patch_lengths():
 # ---------------------------------------------------------------------------
 # Test 12: Loss scalar returned when targets provided
 # ---------------------------------------------------------------------------
+
 
 def test_loss_scalar_with_targets():
     model = _make_model()
@@ -252,21 +263,21 @@ def test_loss_scalar_with_targets():
 # Test 13: Byte vocab size = 256
 # ---------------------------------------------------------------------------
 
+
 def test_vocab_size_256():
     model = _make_model()
     assert model.byte_embed.num_embeddings == 256, (
-        f"Expected embedding table with 256 rows, "
-        f"got {model.byte_embed.num_embeddings}"
+        f"Expected embedding table with 256 rows, got {model.byte_embed.num_embeddings}"
     )
     assert model.output_proj.out_features == 256, (
-        f"Expected output projection with 256 outputs, "
-        f"got {model.output_proj.out_features}"
+        f"Expected output projection with 256 outputs, got {model.output_proj.out_features}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 14: Works with text-like bytes (ASCII words)
 # ---------------------------------------------------------------------------
+
 
 def test_text_like_bytes_ascii():
     model = _make_model()

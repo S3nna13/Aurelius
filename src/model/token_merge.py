@@ -8,15 +8,16 @@ Reference: "Token Merging: Your ViT but Faster" (https://arxiv.org/abs/2210.0946
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Callable
 
 
 def bipartite_soft_matching(
     metric: torch.Tensor,  # (B, N, C) — tokens to compare (e.g., keys)
-    r: int,                # number of token pairs to merge
+    r: int,  # number of token pairs to merge
 ) -> tuple[Callable, Callable]:
     """Find r token pairs to merge using bipartite graph matching.
 
@@ -48,6 +49,7 @@ def bipartite_soft_matching(
     r = min(r, half)
 
     if r <= 0:
+
         def merge_fn(x: torch.Tensor) -> torch.Tensor:
             return x
 
@@ -57,8 +59,8 @@ def bipartite_soft_matching(
         return merge_fn, unmerge_fn
 
     # Split into two sets by even/odd indices
-    a_idx = torch.arange(0, N, 2, device=metric.device)   # even indices: |A| = ceil(N/2)
-    b_idx = torch.arange(1, N, 2, device=metric.device)   # odd indices:  |B| = floor(N/2)
+    a_idx = torch.arange(0, N, 2, device=metric.device)  # even indices: |A| = ceil(N/2)
+    b_idx = torch.arange(1, N, 2, device=metric.device)  # odd indices:  |B| = floor(N/2)
 
     a = metric[:, a_idx, :]  # (B, |A|, C)
     b = metric[:, b_idx, :]  # (B, |B|, C)
@@ -88,8 +90,8 @@ def bipartite_soft_matching(
     sel_b_list = []
 
     for batch_i in range(B):
-        scores_i = best_scores[batch_i]   # (|A|,)
-        match_b_i = best_b[batch_i]       # (|A|,)
+        scores_i = best_scores[batch_i]  # (|A|,)
+        match_b_i = best_b[batch_i]  # (|A|,)
 
         # Sort A by descending score
         sorted_order = torch.argsort(scores_i, descending=True)
@@ -128,8 +130,8 @@ def bipartite_soft_matching(
     # Shape: (B, N). True = position is kept.
     # Removing global_b positions (one unique B per row guaranteed by construction).
     remove_mask = torch.zeros(B, N, dtype=torch.bool, device=metric.device)
-    remove_mask.scatter_(1, global_b, True)   # mark removed positions
-    keep_mask = ~remove_mask                  # (B, N)
+    remove_mask.scatter_(1, global_b, True)  # mark removed positions
+    keep_mask = ~remove_mask  # (B, N)
 
     def merge_fn(x: torch.Tensor) -> torch.Tensor:
         """Merge top-r token pairs; return (B, N-r, C)."""
@@ -240,10 +242,12 @@ class TokenMergeAttention(nn.Module):
         freqs_merged = freqs_cis[:N_merged]
 
         if self.trace_source:
-            self._merge_history.append({
-                "before": N,
-                "after": N_merged,
-            })
+            self._merge_history.append(
+                {
+                    "before": N,
+                    "after": N_merged,
+                }
+            )
 
         # Run attention on merged sequence
         out_merged, kv_cache = self.attention(x_merged, freqs_merged, mask, past_kv)

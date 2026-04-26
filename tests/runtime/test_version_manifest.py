@@ -1,7 +1,6 @@
 """Tests for version manifest."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.runtime.version_manifest import VersionManifest
 

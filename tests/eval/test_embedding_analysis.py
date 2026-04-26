@@ -1,11 +1,9 @@
 """Tests for src/eval/embedding_analysis.py"""
-from __future__ import annotations
 
-import math
+from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.eval.embedding_analysis import (
     EmbeddingAnalysisConfig,
     EmbeddingClustering,
@@ -47,6 +45,7 @@ def collapsed_embeddings() -> torch.Tensor:
 # EmbeddingAnalysisConfig
 # ===========================================================================
 
+
 def test_config_defaults() -> None:
     cfg = EmbeddingAnalysisConfig()
     assert cfg.n_components == 50
@@ -58,31 +57,26 @@ def test_config_defaults() -> None:
 # IsotropyAnalyzer
 # ===========================================================================
 
+
 class TestIsotropyAnalyzer:
     def test_compute_isotropy_in_unit_interval(self, random_embeddings: torch.Tensor) -> None:
         analyzer = IsotropyAnalyzer()
         value = analyzer.compute_isotropy(random_embeddings)
         assert 0.0 <= value <= 1.0, f"isotropy {value} not in [0, 1]"
 
-    def test_isotropic_embeddings_high_isotropy(
-        self, isotropic_embeddings: torch.Tensor
-    ) -> None:
+    def test_isotropic_embeddings_high_isotropy(self, isotropic_embeddings: torch.Tensor) -> None:
         analyzer = IsotropyAnalyzer()
         value = analyzer.compute_isotropy(isotropic_embeddings)
         # Random Gaussian should produce reasonable spread; typically > 0.01
         assert value > 0.0, "Expected non-zero isotropy for random Gaussian embeddings"
 
-    def test_collapsed_embeddings_low_isotropy(
-        self, collapsed_embeddings: torch.Tensor
-    ) -> None:
+    def test_collapsed_embeddings_low_isotropy(self, collapsed_embeddings: torch.Tensor) -> None:
         analyzer = IsotropyAnalyzer()
         value = analyzer.compute_isotropy(collapsed_embeddings)
         # Rank-1 matrix: only one non-zero eigenvalue → ratio close to 0
         assert value < 0.05, f"Expected near-zero isotropy for rank-1 embeddings, got {value}"
 
-    def test_average_cosine_similarity_in_range(
-        self, random_embeddings: torch.Tensor
-    ) -> None:
+    def test_average_cosine_similarity_in_range(self, random_embeddings: torch.Tensor) -> None:
         analyzer = IsotropyAnalyzer()
         value = analyzer.average_cosine_similarity(random_embeddings)
         assert -1.0 <= value <= 1.0, f"cosine similarity {value} out of [-1, 1]"
@@ -94,9 +88,7 @@ class TestIsotropyAnalyzer:
         value = analyzer.average_cosine_similarity(large)
         assert -1.0 <= value <= 1.0
 
-    def test_spectral_entropy_non_negative(
-        self, random_embeddings: torch.Tensor
-    ) -> None:
+    def test_spectral_entropy_non_negative(self, random_embeddings: torch.Tensor) -> None:
         analyzer = IsotropyAnalyzer()
         value = analyzer.spectral_entropy(random_embeddings)
         assert value >= 0.0, f"spectral entropy {value} is negative"
@@ -116,15 +108,14 @@ class TestIsotropyAnalyzer:
 # IntrinsicDimensionEstimator
 # ===========================================================================
 
+
 class TestIntrinsicDimensionEstimator:
     def test_twonn_estimate_positive(self, random_embeddings: torch.Tensor) -> None:
         estimator = IntrinsicDimensionEstimator(n_neighbors=2)
         id_est = estimator.twonn_estimate(random_embeddings)
         assert id_est > 0.0, f"TwoNN estimate should be positive, got {id_est}"
 
-    def test_pca_explained_variance_ratio_monotone(
-        self, random_embeddings: torch.Tensor
-    ) -> None:
+    def test_pca_explained_variance_ratio_monotone(self, random_embeddings: torch.Tensor) -> None:
         estimator = IntrinsicDimensionEstimator()
         cumvar = estimator.pca_explained_variance_ratio(random_embeddings)
         diffs = cumvar[1:] - cumvar[:-1]
@@ -144,10 +135,9 @@ class TestIntrinsicDimensionEstimator:
 # EmbeddingClustering
 # ===========================================================================
 
+
 class TestEmbeddingClustering:
-    def test_kmeans_returns_correct_shapes(
-        self, random_embeddings: torch.Tensor
-    ) -> None:
+    def test_kmeans_returns_correct_shapes(self, random_embeddings: torch.Tensor) -> None:
         k = 4
         clustering = EmbeddingClustering(n_clusters=k)
         cluster_ids, centroids = clustering.kmeans(random_embeddings)
@@ -171,6 +161,7 @@ class TestEmbeddingClustering:
 # ===========================================================================
 # NearestNeighborRetriever
 # ===========================================================================
+
 
 class TestNearestNeighborRetriever:
     @pytest.fixture()

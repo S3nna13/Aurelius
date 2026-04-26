@@ -2,25 +2,24 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 import torch
 
 from src.training.curriculum_learning import (
     CurriculumConfig,
-    DifficultyScore,
-    linear_curriculum_weight,
-    exponential_curriculum_weight,
-    step_curriculum_weight,
-    DifficultyRanker,
     CurriculumSampler,
+    DifficultyRanker,
+    DifficultyScore,
     compute_sample_difficulty,
+    exponential_curriculum_weight,
+    linear_curriculum_weight,
+    step_curriculum_weight,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_scores(n: int = 10) -> list[DifficultyScore]:
     """Create n DifficultyScore objects with scores 0.0, 1.0, ..., n-1."""
@@ -35,6 +34,7 @@ def _make_ranker(n: int = 10) -> DifficultyRanker:
 # CurriculumConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_curriculum_config_defaults():
     cfg = CurriculumConfig()
     assert cfg.strategy == "linear"
@@ -45,7 +45,9 @@ def test_curriculum_config_defaults():
 
 
 def test_curriculum_config_custom():
-    cfg = CurriculumConfig(strategy="step", n_stages=3, total_steps=500, difficulty_metric="perplexity")
+    cfg = CurriculumConfig(
+        strategy="step", n_stages=3, total_steps=500, difficulty_metric="perplexity"
+    )
     assert cfg.strategy == "step"
     assert cfg.n_stages == 3
     assert cfg.total_steps == 500
@@ -62,6 +64,7 @@ def test_difficulty_score_defaults():
 # ---------------------------------------------------------------------------
 # linear_curriculum_weight
 # ---------------------------------------------------------------------------
+
 
 def test_linear_weight_at_zero():
     assert linear_curriculum_weight(0, 100) == pytest.approx(0.0)
@@ -82,6 +85,7 @@ def test_linear_weight_clamped_above():
 # ---------------------------------------------------------------------------
 # exponential_curriculum_weight
 # ---------------------------------------------------------------------------
+
 
 def test_exponential_weight_at_zero():
     assert exponential_curriculum_weight(0, 100) == pytest.approx(0.0, abs=1e-9)
@@ -105,6 +109,7 @@ def test_exponential_weight_clamped():
 # ---------------------------------------------------------------------------
 # step_curriculum_weight
 # ---------------------------------------------------------------------------
+
 
 def test_step_weight_staircase():
     """Values should be staircase-shaped (non-decreasing with discrete jumps)."""
@@ -135,6 +140,7 @@ def test_step_weight_discrete_values():
 # DifficultyRanker.rank
 # ---------------------------------------------------------------------------
 
+
 def test_rank_ascending():
     ranker = _make_ranker(10)
     ranked = ranker.rank(ascending=True)
@@ -152,6 +158,7 @@ def test_rank_descending():
 # ---------------------------------------------------------------------------
 # DifficultyRanker.get_percentile
 # ---------------------------------------------------------------------------
+
 
 def test_get_percentile_at_0():
     ranker = _make_ranker(10)
@@ -172,6 +179,7 @@ def test_get_percentile_at_50():
 # ---------------------------------------------------------------------------
 # DifficultyRanker.get_easy_samples / get_hard_samples
 # ---------------------------------------------------------------------------
+
 
 def test_get_easy_samples_fraction():
     ranker = _make_ranker(20)
@@ -208,6 +216,7 @@ def test_get_hard_returns_highest():
 # ---------------------------------------------------------------------------
 # CurriculumSampler
 # ---------------------------------------------------------------------------
+
 
 def _make_sampler(strategy: str = "linear", n: int = 10) -> CurriculumSampler:
     cfg = CurriculumConfig(strategy=strategy, total_steps=100, n_stages=5)
@@ -266,6 +275,7 @@ def test_update_scores_new_sample():
 # ---------------------------------------------------------------------------
 # compute_sample_difficulty
 # ---------------------------------------------------------------------------
+
 
 def test_compute_sample_difficulty_length():
     losses = torch.tensor([0.1, 0.5, 1.2, 0.3])

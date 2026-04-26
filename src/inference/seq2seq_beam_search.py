@@ -14,16 +14,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
     """Upper-triangular mask: positions j > i are masked (value = -inf)."""
@@ -37,7 +36,7 @@ class _MultiHeadAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -64,9 +63,9 @@ class _MultiHeadAttention(nn.Module):
         query: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
-        attn_mask: Optional[torch.Tensor] = None,
-        kv_cache: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        attn_mask: torch.Tensor | None = None,
+        kv_cache: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         q = self._split_heads(self.q_proj(query))
         k = self._split_heads(self.k_proj(key))
         v = self._split_heads(self.v_proj(value))
@@ -92,7 +91,7 @@ class _MultiHeadAttention(nn.Module):
 
 
 class _FFN(nn.Module):
-    def __init__(self, d_model: int, d_ff: Optional[int] = None) -> None:
+    def __init__(self, d_model: int, d_ff: int | None = None) -> None:
         super().__init__()
         d_ff = d_ff or 4 * d_model
         self.fc1 = nn.Linear(d_model, d_ff)
@@ -135,16 +134,18 @@ class _DecoderBlock(nn.Module):
         self,
         x: torch.Tensor,
         enc_out: torch.Tensor,
-        self_attn_mask: Optional[torch.Tensor] = None,
-        self_kv_cache: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-        cross_kv_cache: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    ) -> Tuple[
+        self_attn_mask: torch.Tensor | None = None,
+        self_kv_cache: tuple[torch.Tensor, torch.Tensor] | None = None,
+        cross_kv_cache: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> tuple[
         torch.Tensor,
-        Tuple[torch.Tensor, torch.Tensor],
-        Tuple[torch.Tensor, torch.Tensor],
+        tuple[torch.Tensor, torch.Tensor],
+        tuple[torch.Tensor, torch.Tensor],
     ]:
         sa_out, new_self_kv = self.self_attn(
-            x, x, x,
+            x,
+            x,
+            x,
             attn_mask=self_attn_mask,
             kv_cache=self_kv_cache,
         )
@@ -152,7 +153,9 @@ class _DecoderBlock(nn.Module):
 
         if cross_kv_cache is not None:
             ca_out, new_cross_kv = self.cross_attn(
-                x, enc_out, enc_out,
+                x,
+                enc_out,
+                enc_out,
                 kv_cache=cross_kv_cache,
             )
         else:
@@ -167,14 +170,14 @@ class _DecoderBlock(nn.Module):
 # Positional Encoding
 # ---------------------------------------------------------------------------
 
+
 class _SinusoidalPE(nn.Module):
     def __init__(self, d_model: int, max_len: int = 512) -> None:
         super().__init__()
         pe = torch.zeros(max_len, d_model)
         pos = torch.arange(max_len, dtype=torch.float).unsqueeze(1)
         div = torch.exp(
-            torch.arange(0, d_model, 2, dtype=torch.float)
-            * (-math.log(10000.0) / d_model)
+            torch.arange(0, d_model, 2, dtype=torch.float) * (-math.log(10000.0) / d_model)
         )
         pe[:, 0::2] = torch.sin(pos * div)
         pe[:, 1::2] = torch.cos(pos * div)
@@ -187,6 +190,7 @@ class _SinusoidalPE(nn.Module):
 # ---------------------------------------------------------------------------
 # Encoder
 # ---------------------------------------------------------------------------
+
 
 class Seq2SeqEncoder(nn.Module):
     """
@@ -203,9 +207,7 @@ class Seq2SeqEncoder(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.pe = _SinusoidalPE(d_model)
-        self.layers = nn.ModuleList(
-            [_EncoderBlock(d_model, n_heads) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([_EncoderBlock(d_model, n_heads) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
 
     def forward(self, src_ids: torch.Tensor) -> torch.Tensor:
@@ -225,6 +227,7 @@ class Seq2SeqEncoder(nn.Module):
 # Decoder
 # ---------------------------------------------------------------------------
 
+
 class Seq2SeqDecoder(nn.Module):
     """
     Transformer decoder with causal self-attention + cross-attention.
@@ -242,9 +245,7 @@ class Seq2SeqDecoder(nn.Module):
         self.vocab_size = vocab_size
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.pe = _SinusoidalPE(d_model)
-        self.layers = nn.ModuleList(
-            [_DecoderBlock(d_model, n_heads) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([_DecoderBlock(d_model, n_heads) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
@@ -274,8 +275,8 @@ class Seq2SeqDecoder(nn.Module):
         self,
         tgt_ids: torch.Tensor,
         enc_out: torch.Tensor,
-        cache: Optional[List[Dict]] = None,
-    ) -> Tuple[torch.Tensor, List[Dict]]:
+        cache: list[dict] | None = None,
+    ) -> tuple[torch.Tensor, list[dict]]:
         """
         Single-step decode with KV cache.
 
@@ -298,9 +299,9 @@ class Seq2SeqDecoder(nn.Module):
         pe_buf: torch.Tensor = self.pe.pe  # type: ignore[attr-defined]
         x = x + pe_buf[:, offset : offset + 1, :]
 
-        new_cache: List[Dict] = []
+        new_cache: list[dict] = []
         for i, layer in enumerate(self.layers):
-            layer_cache: Dict = cache[i] if cache is not None else {}
+            layer_cache: dict = cache[i] if cache is not None else {}
             self_kv = layer_cache.get("self_kv", None)
             cross_kv = layer_cache.get("cross_kv", None)
 
@@ -321,6 +322,7 @@ class Seq2SeqDecoder(nn.Module):
 # ---------------------------------------------------------------------------
 # Seq2SeqModel
 # ---------------------------------------------------------------------------
+
 
 class Seq2SeqModel(nn.Module):
     """Combined encoder-decoder seq2seq model."""
@@ -380,6 +382,7 @@ class Seq2SeqModel(nn.Module):
 # BeamSearchDecoder
 # ---------------------------------------------------------------------------
 
+
 class BeamSearchDecoder:
     """
     Standard beam search decoder.
@@ -401,7 +404,7 @@ class BeamSearchDecoder:
         self.eos_id = eos_id
         self.length_penalty = length_penalty
 
-    def decode(self, src_ids: torch.Tensor) -> List[List[int]]:
+    def decode(self, src_ids: torch.Tensor) -> list[list[int]]:
         """
         Beam-search decode a batch of source sequences.
 
@@ -412,25 +415,25 @@ class BeamSearchDecoder:
         """
         self.model.eval()
         with torch.no_grad():
-            results: List[List[int]] = []
+            results: list[list[int]] = []
             B = src_ids.size(0)
             for b in range(B):
                 best = self._decode_single(src_ids[b : b + 1])
                 results.append(best)
         return results
 
-    def _decode_single(self, src_ids: torch.Tensor) -> List[int]:
+    def _decode_single(self, src_ids: torch.Tensor) -> list[int]:
         """Decode one example using beam search."""
         device = src_ids.device
         K = self.beam_size
 
-        enc_out = self.model.encoder(src_ids)          # [1, T_src, d_model]
-        enc_out_k = enc_out.expand(K, -1, -1)           # [K, T_src, d_model]
+        enc_out = self.model.encoder(src_ids)  # [1, T_src, d_model]
+        enc_out_k = enc_out.expand(K, -1, -1)  # [K, T_src, d_model]
 
-        beam_tokens: List[List[int]] = [[] for _ in range(K)]
-        beam_scores: List[float] = [0.0] * K
-        beam_caches: List[Optional[List[Dict]]] = [None] * K
-        completed: List[Tuple[float, List[int]]] = []
+        beam_tokens: list[list[int]] = [[] for _ in range(K)]
+        beam_scores: list[float] = [0.0] * K
+        beam_caches: list[list[dict] | None] = [None] * K
+        completed: list[tuple[float, list[int]]] = []
 
         # --- BOS step ---
         bos_tensor = torch.full((K, 1), self.bos_id, dtype=torch.long, device=device)
@@ -475,7 +478,7 @@ class BeamSearchDecoder:
             )
             log_probs = F.log_softmax(logits[:, 0, :], dim=-1)  # [K_active, vocab]
 
-            candidates: List[Tuple[float, int, int, List[Dict]]] = []
+            candidates: list[tuple[float, int, int, list[dict]]] = []
             for bi in range(K_active):
                 tk_scores, tk_ids = log_probs[bi].topk(K)
                 for tk_score, tk_id in zip(tk_scores.tolist(), tk_ids.tolist()):
@@ -498,9 +501,9 @@ class BeamSearchDecoder:
             candidates.sort(key=lambda c: c[0], reverse=True)
             candidates = candidates[:K]
 
-            new_beam_tokens: List[List[int]] = []
-            new_beam_scores: List[float] = []
-            new_beam_caches: List[Optional[List[Dict]]] = []
+            new_beam_tokens: list[list[int]] = []
+            new_beam_scores: list[float] = []
+            new_beam_caches: list[list[dict] | None] = []
 
             for score, bi, tok_id, new_bc in candidates:
                 seq = beam_tokens[bi] + [tok_id]
@@ -533,29 +536,29 @@ class BeamSearchDecoder:
 
     def _score_hypotheses(
         self,
-        hypotheses: List[List[int]],
-        scores: List[float],
+        hypotheses: list[list[int]],
+        scores: list[float],
         length_penalty: float,
-    ) -> List[Tuple[float, List[int]]]:
+    ) -> list[tuple[float, list[int]]]:
         """
         Normalise scores by length and return sorted list (best first).
         normalised = score / (len(hyp) ^ length_penalty)
         """
-        normalised: List[Tuple[float, List[int]]] = []
+        normalised: list[tuple[float, list[int]]] = []
         for hyp, sc in zip(hypotheses, scores):
             length = max(len(hyp), 1)
-            normalised.append((sc / (length ** length_penalty), hyp))
+            normalised.append((sc / (length**length_penalty), hyp))
         normalised.sort(key=lambda x: x[0], reverse=True)
         return normalised
 
     @staticmethod
     def _batch_caches(
-        caches: List[Optional[List[Dict]]],
+        caches: list[list[dict] | None],
         device: torch.device,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Stack per-beam caches into a single batched cache."""
         n_layers = len(caches[0])  # type: ignore[arg-type]
-        batched: List[Dict] = []
+        batched: list[dict] = []
         for li in range(n_layers):
             self_k = torch.cat([c[li]["self_kv"][0] for c in caches], dim=0)  # type: ignore
             self_v = torch.cat([c[li]["self_kv"][1] for c in caches], dim=0)
@@ -573,6 +576,7 @@ class BeamSearchDecoder:
 # ---------------------------------------------------------------------------
 # DiverseBeamSearch
 # ---------------------------------------------------------------------------
+
 
 class DiverseBeamSearch(BeamSearchDecoder):
     """
@@ -597,7 +601,7 @@ class DiverseBeamSearch(BeamSearchDecoder):
         self.n_groups = n_groups
         self.diversity_penalty = diversity_penalty
 
-    def decode(self, src_ids: torch.Tensor) -> List[List[List[int]]]:  # type: ignore[override]
+    def decode(self, src_ids: torch.Tensor) -> list[list[list[int]]]:  # type: ignore[override]
         """
         Args:
             src_ids: [B, T_src]
@@ -606,40 +610,36 @@ class DiverseBeamSearch(BeamSearchDecoder):
         """
         self.model.eval()
         with torch.no_grad():
-            results: List[List[List[int]]] = []
+            results: list[list[list[int]]] = []
             B = src_ids.size(0)
             for b in range(B):
                 group_results = self._decode_single_diverse(src_ids[b : b + 1])
                 results.append(group_results)
         return results
 
-    def _decode_single_diverse(self, src_ids: torch.Tensor) -> List[List[int]]:
+    def _decode_single_diverse(self, src_ids: torch.Tensor) -> list[list[int]]:
         """Decode one example using grouped beam search with diversity penalty."""
         device = src_ids.device
         beams_per_group = max(1, self.beam_size // self.n_groups)
 
         enc_out = self.model.encoder(src_ids)  # [1, T_src, d_model]
 
-        group_results: List[List[int]] = []
+        group_results: list[list[int]] = []
         # Track tokens selected by previous groups at each step
-        step_tokens_by_group: Dict[int, List[int]] = {}
+        step_tokens_by_group: dict[int, list[int]] = {}
 
         for g in range(self.n_groups):
             K = beams_per_group
             enc_out_k = enc_out.expand(K, -1, -1)
 
-            beam_tokens: List[List[int]] = [[] for _ in range(K)]
-            beam_scores: List[float] = [0.0] * K
-            beam_caches: List[Optional[List[Dict]]] = [None] * K
-            completed: List[Tuple[float, List[int]]] = []
+            beam_tokens: list[list[int]] = [[] for _ in range(K)]
+            beam_scores: list[float] = [0.0] * K
+            beam_caches: list[list[dict] | None] = [None] * K
+            completed: list[tuple[float, list[int]]] = []
 
             # BOS step
-            bos_tensor = torch.full(
-                (K, 1), self.bos_id, dtype=torch.long, device=device
-            )
-            logits, new_cache_batch = self.model.decoder.forward_step(
-                bos_tensor, enc_out_k
-            )
+            bos_tensor = torch.full((K, 1), self.bos_id, dtype=torch.long, device=device)
+            logits, new_cache_batch = self.model.decoder.forward_step(bos_tensor, enc_out_k)
             log_probs = F.log_softmax(logits[:, 0, :], dim=-1)  # [K, vocab]
 
             # Apply diversity penalty at step 0 for tokens from earlier groups
@@ -700,7 +700,7 @@ class DiverseBeamSearch(BeamSearchDecoder):
                         penalty[tok] += self.diversity_penalty
                     log_probs = log_probs - penalty.unsqueeze(0)
 
-                candidates: List[Tuple[float, int, int, List[Dict]]] = []
+                candidates: list[tuple[float, int, int, list[dict]]] = []
                 for bi in range(K_active):
                     tk_scores, tk_ids = log_probs[bi].topk(K)
                     for tk_score, tk_id in zip(tk_scores.tolist(), tk_ids.tolist()):
@@ -728,9 +728,9 @@ class DiverseBeamSearch(BeamSearchDecoder):
                 existing_step = step_tokens_by_group.get(step, [])
                 step_tokens_by_group[step] = existing_step + step_chosen
 
-                new_beam_tokens: List[List[int]] = []
-                new_beam_scores: List[float] = []
-                new_beam_caches: List[Optional[List[Dict]]] = []
+                new_beam_tokens: list[list[int]] = []
+                new_beam_scores: list[float] = []
+                new_beam_caches: list[list[dict] | None] = []
 
                 for score, bi, tok_id, new_bc in candidates:
                     seq = beam_tokens[bi] + [tok_id]
@@ -768,6 +768,7 @@ class DiverseBeamSearch(BeamSearchDecoder):
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Seq2SeqConfig:

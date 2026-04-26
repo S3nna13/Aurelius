@@ -17,17 +17,14 @@ Covers the 14 test cases specified in the implementation spec:
 14. Head-blocked update: different blocks can have different v values
 """
 
-import math
-
-import pytest
 import torch
 
 from src.training.adam_mini import AdamMini
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_param(shape, requires_grad=True, seed=42):
     torch.manual_seed(seed)
@@ -49,6 +46,7 @@ def _one_step(param, opt, loss_fn=None):
 # Test 1: Params move after one step
 # ---------------------------------------------------------------------------
 
+
 def test_params_move_after_one_step():
     p = _make_param((8, 8))
     p_init = p.data.clone()
@@ -61,6 +59,7 @@ def test_params_move_after_one_step():
 # Test 2: Param movement is finite (no NaN/Inf)
 # ---------------------------------------------------------------------------
 
+
 def test_param_finite_after_step():
     p = _make_param((16, 16))
     opt = AdamMini([p], lr=1e-3)
@@ -71,6 +70,7 @@ def test_param_finite_after_step():
 # ---------------------------------------------------------------------------
 # Test 3: Determinism under seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_under_seed():
     def run():
@@ -88,6 +88,7 @@ def test_determinism_under_seed():
 # ---------------------------------------------------------------------------
 # Test 4: v state has fewer elements than param (n_heads > 1)
 # ---------------------------------------------------------------------------
+
 
 def test_v_has_fewer_elements_than_param_head_blocked():
     n_heads, head_dim = 4, 16
@@ -107,6 +108,7 @@ def test_v_has_fewer_elements_than_param_head_blocked():
 # Test 5: v_block is scalar per block — check state storage shape
 # ---------------------------------------------------------------------------
 
+
 def test_v_shape_is_per_block_not_per_element():
     n_heads, head_dim = 4, 16
     d_model = n_heads * head_dim
@@ -115,14 +117,13 @@ def test_v_shape_is_per_block_not_per_element():
     _one_step(p, opt)
     state = opt.state[p]
     # v should be (n_heads,) — one scalar per head, not per element
-    assert state["v"].shape == (n_heads,), (
-        f"Expected v shape ({n_heads},), got {state['v'].shape}"
-    )
+    assert state["v"].shape == (n_heads,), f"Expected v shape ({n_heads},), got {state['v'].shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: Single-block mode — v is a scalar tensor ()
 # ---------------------------------------------------------------------------
+
 
 def test_single_block_v_is_scalar():
     p = _make_param((8, 8))
@@ -137,6 +138,7 @@ def test_single_block_v_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 7: Converges on quadratic loss over 20 steps
 # ---------------------------------------------------------------------------
+
 
 def test_converges_on_quadratic():
     torch.manual_seed(7)
@@ -164,6 +166,7 @@ def test_converges_on_quadratic():
 # Test 8: weight_decay non-zero modifies update
 # ---------------------------------------------------------------------------
 
+
 def test_weight_decay_modifies_update():
     torch.manual_seed(8)
     shape = (8,)
@@ -186,12 +189,13 @@ def test_weight_decay_modifies_update():
 # Test 9: beta1=0 → m equals g_t (no momentum)
 # ---------------------------------------------------------------------------
 
+
 def test_beta1_zero_m_equals_gradient():
     p = _make_param((4, 4), seed=9)
     opt = AdamMini([p], lr=1e-3, betas=(0.0, 0.999))
 
     # Manually compute expected gradient
-    p_copy = p.data.clone()
+    p.data.clone()
     loss = p.sum()
     loss.backward()
     grad = p.grad.clone()
@@ -200,14 +204,13 @@ def test_beta1_zero_m_equals_gradient():
 
     state = opt.state[p]
     # With β₁=0: m_t = 0*m_{t-1} + 1*g_t = g_t
-    assert torch.allclose(state["m"], grad), (
-        "With beta1=0, m should equal the raw gradient g_t."
-    )
+    assert torch.allclose(state["m"], grad), "With beta1=0, m should equal the raw gradient g_t."
 
 
 # ---------------------------------------------------------------------------
 # Test 10: Large gradient stability — no NaN/Inf
 # ---------------------------------------------------------------------------
+
 
 def test_large_gradient_stability():
     torch.manual_seed(10)
@@ -223,6 +226,7 @@ def test_large_gradient_stability():
 # ---------------------------------------------------------------------------
 # Test 11: 1D params (biases) — single-block scalar v
 # ---------------------------------------------------------------------------
+
 
 def test_1d_param_single_block_scalar():
     p = _make_param((64,))  # 1D bias
@@ -240,6 +244,7 @@ def test_1d_param_single_block_scalar():
 # Test 12: 2D param without head config — single-block scalar v
 # ---------------------------------------------------------------------------
 
+
 def test_2d_param_no_head_config_single_block():
     p = _make_param((64, 64))
     opt = AdamMini([p], lr=1e-3)  # no head config
@@ -255,6 +260,7 @@ def test_2d_param_no_head_config_single_block():
 # Test 13: 2D param with head config — 4 v scalars
 # ---------------------------------------------------------------------------
 
+
 def test_2d_param_with_head_config_four_v_scalars():
     n_heads, head_dim = 4, 16
     d_model = n_heads * head_dim  # 64
@@ -262,18 +268,15 @@ def test_2d_param_with_head_config_four_v_scalars():
     opt = AdamMini([p], lr=1e-3, n_heads=n_heads, head_dim=head_dim)
     _one_step(p, opt)
     state = opt.state[p]
-    assert state["n_blocks"] == n_heads, (
-        f"Expected n_blocks={n_heads}, got {state['n_blocks']}"
-    )
-    assert state["v"].shape == (n_heads,), (
-        f"Expected v shape ({n_heads},), got {state['v'].shape}"
-    )
+    assert state["n_blocks"] == n_heads, f"Expected n_blocks={n_heads}, got {state['n_blocks']}"
+    assert state["v"].shape == (n_heads,), f"Expected v shape ({n_heads},), got {state['v'].shape}"
     assert state["v"].numel() == n_heads  # 4 scalars
 
 
 # ---------------------------------------------------------------------------
 # Test 14: Head-blocked update — different blocks can have different v values
 # ---------------------------------------------------------------------------
+
 
 def test_head_blocked_different_v_per_block():
     """Construct a gradient with unequal magnitude per head so v diverges."""
@@ -287,7 +290,7 @@ def test_head_blocked_different_v_per_block():
     # Craft a gradient where each head block has a different magnitude
     g = torch.zeros(d_model, d_in)
     for h in range(n_heads):
-        g[h * head_dim:(h + 1) * head_dim, :] = float(h + 1)  # magnitudes 1,2,3,4
+        g[h * head_dim : (h + 1) * head_dim, :] = float(h + 1)  # magnitudes 1,2,3,4
     p.grad = g.clone()
     opt.step()
 
@@ -302,5 +305,5 @@ def test_head_blocked_different_v_per_block():
     # Sanity: values should be increasing with head index
     for i in range(n_heads - 1):
         assert v[i].item() < v[i + 1].item(), (
-            f"v[{i}]={v[i].item():.6f} should be < v[{i+1}]={v[i+1].item():.6f}"
+            f"v[{i}]={v[i].item():.6f} should be < v[{i + 1}]={v[i + 1].item():.6f}"
         )

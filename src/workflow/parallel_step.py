@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List
 
 
 @dataclass
@@ -61,7 +61,7 @@ class ParallelStepExecutor:
                 duration_ms=duration_ms,
             )
 
-    def run(self, tasks: List[StepTask]) -> List[ParallelResult]:
+    def run(self, tasks: list[StepTask]) -> list[ParallelResult]:
         """
         Run all tasks in parallel (up to max_workers at a time).
         Returns results in the same order as the input tasks list.
@@ -71,7 +71,7 @@ class ParallelStepExecutor:
             return []
 
         results: list = [None] * len(tasks)
-        threads: List[threading.Thread] = []
+        threads: list[threading.Thread] = []
 
         # Semaphore to bound concurrency to max_workers
         sem = threading.Semaphore(self.max_workers)
@@ -90,7 +90,7 @@ class ParallelStepExecutor:
 
         return results  # type: ignore[return-value]
 
-    def run_with_timeout(self, tasks: List[StepTask]) -> List[ParallelResult]:
+    def run_with_timeout(self, tasks: list[StepTask]) -> list[ParallelResult]:
         """
         Same as run() but respects each task's timeout_s.
         If a task's thread is still alive after timeout_s seconds,
@@ -101,14 +101,12 @@ class ParallelStepExecutor:
             return []
 
         results: list = [None] * len(tasks)
-        threads: List[threading.Thread] = []
+        threads: list[threading.Thread] = []
 
         # Start all threads immediately (no semaphore — timeout semantics
         # are per-task; blocking in a semaphore would eat into the timeout).
         for i, task in enumerate(tasks):
-            t = threading.Thread(
-                target=self._run_task, args=(task, results, i), daemon=True
-            )
+            t = threading.Thread(target=self._run_task, args=(task, results, i), daemon=True)
             threads.append(t)
             t.start()
 

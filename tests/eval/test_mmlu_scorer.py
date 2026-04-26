@@ -151,9 +151,7 @@ def test_format_prompt_five_shot_includes_five_exemplars():
     prob = _mk()
     out = format_prompt(prob, few_shot_examples=CANONICAL_EXEMPLARS[:5], cot=False)
     # Each exemplar contributes one "Answer: X" line (X in A..D)
-    answer_lines = [
-        line for line in out.splitlines() if line.startswith("Answer: ")
-    ]
+    answer_lines = [line for line in out.splitlines() if line.startswith("Answer: ")]
     assert len(answer_lines) == 5
     # All exemplar questions appear
     for ex in CANONICAL_EXEMPLARS[:5]:
@@ -172,7 +170,7 @@ def test_cot_flag_adds_step_by_step_instruction():
 def test_scorer_format_prompt_uses_n_shots():
     scorer = MMLUScorer(n_shots=3)
     out = scorer.format_prompt(_mk())
-    answer_lines = [l for l in out.splitlines() if l.startswith("Answer: ")]
+    answer_lines = [line for line in out.splitlines() if line.startswith("Answer: ")]
     assert len(answer_lines) == 3
 
 
@@ -212,7 +210,7 @@ def test_run_few_shot_pool_shorter_than_n_shots_uses_all_available():
     scorer.run([_mk()], few_shot_pool=pool)
     # Should use 2 exemplars (all available), not error.
     prompt = captured[0]
-    answer_lines = [l for l in prompt.splitlines() if l.startswith("Answer: ")]
+    answer_lines = [line for line in prompt.splitlines() if line.startswith("Answer: ")]
     assert len(answer_lines) == 2
 
 

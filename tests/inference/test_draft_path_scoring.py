@@ -3,7 +3,11 @@
 import pytest
 import torch
 
-from src.inference.draft_path_scoring import best_path_index, cumulative_path_score, normalized_path_score
+from src.inference.draft_path_scoring import (
+    best_path_index,
+    cumulative_path_score,
+    normalized_path_score,
+)
 
 
 def test_cumulative_path_score_sums_nodes():
@@ -35,4 +39,3 @@ def test_best_path_index_rejects_empty_scores():
 def test_best_path_index_rejects_bad_rank():
     with pytest.raises(ValueError):
         best_path_index(torch.tensor([[1.0, 2.0]]))
-

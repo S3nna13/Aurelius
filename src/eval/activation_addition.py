@@ -10,14 +10,14 @@ References:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # SteeringVector
@@ -57,12 +57,12 @@ class ActivationAddition:
             layers that can be steered (e.g. ``list(model.layers)``).
     """
 
-    def __init__(self, layers: List[nn.Module]) -> None:
-        self._layers: List[nn.Module] = layers
+    def __init__(self, layers: list[nn.Module]) -> None:
+        self._layers: list[nn.Module] = layers
         # Maps layer_idx -> (SteeringVector, alpha)
-        self._vectors: Dict[int, tuple[SteeringVector, float]] = {}
+        self._vectors: dict[int, tuple[SteeringVector, float]] = {}
         # Maps layer_idx -> hook handle (populated inside the context manager)
-        self._handles: Dict[int, Any] = {}
+        self._handles: dict[int, Any] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -93,7 +93,7 @@ class ActivationAddition:
     # Context-manager protocol
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "ActivationAddition":
+    def __enter__(self) -> ActivationAddition:
         for layer_idx, (sv, alpha) in self._vectors.items():
             layer = self._layers[layer_idx]
             direction = sv.direction  # captured in closure
@@ -107,6 +107,7 @@ class ActivationAddition:
                     if is_tuple:
                         return (hidden,) + tuple(output[1:])
                     return hidden
+
                 return _hook
 
             handle = layer.register_forward_hook(_make_hook(direction, alpha))
@@ -138,7 +139,7 @@ class SteeringVectorExtractor:
 
     def extract(
         self,
-        model_fn: Callable[[Tensor], List[Tensor]],
+        model_fn: Callable[[Tensor], list[Tensor]],
         pos_inputs: Tensor,
         neg_inputs: Tensor,
         layer_idx: int,
@@ -157,8 +158,8 @@ class SteeringVectorExtractor:
             :class:`SteeringVector` with an L2-normalised direction.
         """
         with torch.no_grad():
-            pos_hiddens: List[Tensor] = model_fn(pos_inputs)
-            neg_hiddens: List[Tensor] = model_fn(neg_inputs)
+            pos_hiddens: list[Tensor] = model_fn(pos_inputs)
+            neg_hiddens: list[Tensor] = model_fn(neg_inputs)
 
         # Each hidden: (B, T, d_model) — mean over B and T
         pos_mean: Tensor = pos_hiddens[layer_idx].mean(dim=(0, 1))  # (d_model,)
@@ -187,7 +188,7 @@ class RepresentationDatabase:
         db.remove("honesty")
     """
 
-    _store: Dict[str, SteeringVector] = field(default_factory=dict, init=False, repr=False)
+    _store: dict[str, SteeringVector] = field(default_factory=dict, init=False, repr=False)
 
     def add(self, name: str, sv: SteeringVector) -> None:
         """Store a steering vector under *name*.
@@ -212,7 +213,7 @@ class RepresentationDatabase:
         """
         return self._store[name]
 
-    def list_names(self) -> List[str]:
+    def list_names(self) -> list[str]:
         """Return the names of all stored steering vectors."""
         return list(self._store.keys())
 

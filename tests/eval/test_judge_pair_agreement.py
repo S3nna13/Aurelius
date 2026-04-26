@@ -33,4 +33,3 @@ def test_majority_pair_label_rejects_empty():
 
 def test_pair_label_diversity_handles_empty():
     assert pair_label_diversity([]) == pytest.approx(0.0)
-

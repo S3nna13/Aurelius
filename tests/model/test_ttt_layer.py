@@ -8,13 +8,10 @@ determinism, batch isolation, edge-case sizes, numerical stability,
 lr=0 behaviour, and layer-norm application.
 """
 
-import math
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.ttt_layer import TTTConfig, TTTLinearLayer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixture — tiny config used across all tests unless overridden
@@ -44,9 +41,7 @@ def test_output_shape(layer, cfg):
     B, T = 2, 16
     x = torch.randn(B, T, cfg.d_model)
     out = layer(x)
-    assert out.shape == (B, T, cfg.d_model), (
-        f"Expected {(B, T, cfg.d_model)}, got {out.shape}"
-    )
+    assert out.shape == (B, T, cfg.d_model), f"Expected {(B, T, cfg.d_model)}, got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -88,8 +83,8 @@ def test_W_updates_over_sequence(cfg):
     x = torch.eye(d).unsqueeze(0)  # (1, d, d) — d tokens of dimension d
 
     with torch.no_grad():
-        K = layer.theta_K(x[0])   # (d, d)
-        Q = layer.theta_Q(x[0])   # (d, d)
+        K = layer.theta_K(x[0])  # (d, d)
+        Q = layer.theta_Q(x[0])  # (d, d)
 
         W = layer.W_0.clone()
         outputs = []
@@ -138,9 +133,7 @@ def test_determinism(cfg):
     layer_b = TTTLinearLayer(cfg)
     out_b = layer_b(x)
 
-    assert torch.allclose(out_a, out_b, atol=1e-7), (
-        "Same seed produced different outputs."
-    )
+    assert torch.allclose(out_a, out_b, atol=1e-7), "Same seed produced different outputs."
 
     torch.manual_seed(99)
     layer_c = TTTLinearLayer(cfg)
@@ -250,8 +243,8 @@ def test_lr_zero_static_W(cfg):
 
     # With lr=0 each output is W_0 @ Q_t  (W never moves)
     with torch.no_grad():
-        Q = layer.theta_Q(x[0])   # (T, d)
-        expected = (layer.W_0 @ Q.T).T   # (T, d)
+        Q = layer.theta_Q(x[0])  # (T, d)
+        expected = (layer.W_0 @ Q.T).T  # (T, d)
 
     assert torch.allclose(out[0], expected, atol=1e-5), (
         "With lr=0, outputs should equal W_0 @ theta_Q(x_t) for every t."
@@ -269,14 +262,16 @@ def test_use_ln_applies_layer_norm(cfg):
     x = torch.randn(2, 8, cfg.d_model)
 
     # Layer with LN
-    cfg_ln = TTTConfig(d_model=cfg.d_model, mini_batch_size=cfg.mini_batch_size,
-                       lr=cfg.lr, use_ln=True)
+    cfg_ln = TTTConfig(
+        d_model=cfg.d_model, mini_batch_size=cfg.mini_batch_size, lr=cfg.lr, use_ln=True
+    )
     torch.manual_seed(11)
     layer_ln = TTTLinearLayer(cfg_ln)
 
     # Layer without LN — same params except the norm
-    cfg_no_ln = TTTConfig(d_model=cfg.d_model, mini_batch_size=cfg.mini_batch_size,
-                          lr=cfg.lr, use_ln=False)
+    cfg_no_ln = TTTConfig(
+        d_model=cfg.d_model, mini_batch_size=cfg.mini_batch_size, lr=cfg.lr, use_ln=False
+    )
     torch.manual_seed(11)
     layer_no_ln = TTTLinearLayer(cfg_no_ln)
 

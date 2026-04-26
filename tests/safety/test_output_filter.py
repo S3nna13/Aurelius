@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 
 from src.safety.output_filter import (
+    OUTPUT_FILTER_REGISTRY,
     FilterAction,
     FilterResult,
     FilterRule,
     OutputFilter,
-    OUTPUT_FILTER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def filt() -> OutputFilter:
@@ -25,6 +25,7 @@ def filt() -> OutputFilter:
 # ---------------------------------------------------------------------------
 # Default rule: email redaction
 # ---------------------------------------------------------------------------
+
 
 def test_email_is_redacted(filt: OutputFilter) -> None:
     result = filt.filter("Contact us at user@example.com for help.")
@@ -52,6 +53,7 @@ def test_email_action_is_redact(filt: OutputFilter) -> None:
 # Default rule: phone redaction
 # ---------------------------------------------------------------------------
 
+
 def test_phone_is_redacted(filt: OutputFilter) -> None:
     result = filt.filter("Call us at 555-123-4567 anytime.")
     assert "[PHONE]" in result.filtered
@@ -78,6 +80,7 @@ def test_phone_rule_name_in_triggered(filt: OutputFilter) -> None:
 # Default rule: SSN redaction
 # ---------------------------------------------------------------------------
 
+
 def test_ssn_is_redacted(filt: OutputFilter) -> None:
     result = filt.filter("SSN: 123-45-6789")
     assert "[SSN]" in result.filtered
@@ -99,6 +102,7 @@ def test_ssn_rule_name_in_triggered(filt: OutputFilter) -> None:
 # Clean text — no rules triggered
 # ---------------------------------------------------------------------------
 
+
 def test_clean_text_action_is_allow(filt: OutputFilter) -> None:
     result = filt.filter("The weather is nice today.")
     assert result.action == FilterAction.ALLOW
@@ -114,6 +118,7 @@ def test_empty_text_no_rules_triggered(filt: OutputFilter) -> None:
 # ---------------------------------------------------------------------------
 # BLOCK action
 # ---------------------------------------------------------------------------
+
 
 def test_block_returns_blocked_text() -> None:
     block_rule = FilterRule(
@@ -135,7 +140,7 @@ def test_block_terminates_immediately() -> None:
     )
     redact_rule = FilterRule(
         name="redact_email",
-        pattern=r'\b[\w.-]+@[\w.-]+\.\w{2,}\b',
+        pattern=r"\b[\w.-]+@[\w.-]+\.\w{2,}\b",
         action=FilterAction.REDACT,
         replacement="[EMAIL]",
     )
@@ -157,6 +162,7 @@ def test_block_original_still_preserved() -> None:
 # ---------------------------------------------------------------------------
 # WARN action
 # ---------------------------------------------------------------------------
+
 
 def test_warn_preserves_text() -> None:
     warn_rule = FilterRule(name="warn_me", pattern=r"risky", action=FilterAction.WARN)
@@ -185,6 +191,7 @@ def test_warn_does_not_alter_text() -> None:
 # add_rule
 # ---------------------------------------------------------------------------
 
+
 def test_add_rule_appended(filt: OutputFilter) -> None:
     new_rule = FilterRule(name="custom", pattern=r"secret", action=FilterAction.REDACT)
     filt.add_rule(new_rule)
@@ -195,7 +202,7 @@ def test_add_rule_appended(filt: OutputFilter) -> None:
 def test_add_rule_redacts_new_pattern(filt: OutputFilter) -> None:
     rule = FilterRule(
         name="credit_card",
-        pattern=r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b',
+        pattern=r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b",
         action=FilterAction.REDACT,
         replacement="[CARD]",
     )
@@ -207,6 +214,7 @@ def test_add_rule_redacts_new_pattern(filt: OutputFilter) -> None:
 # ---------------------------------------------------------------------------
 # remove_rule
 # ---------------------------------------------------------------------------
+
 
 def test_remove_rule_returns_true_when_found(filt: OutputFilter) -> None:
     assert filt.remove_rule("pii_email") is True
@@ -225,6 +233,7 @@ def test_remove_rule_disables_matching(filt: OutputFilter) -> None:
 # ---------------------------------------------------------------------------
 # FilterResult fields
 # ---------------------------------------------------------------------------
+
 
 def test_filter_result_triggered_rules_populated(filt: OutputFilter) -> None:
     result = filt.filter("Contact: dev@foo.bar and SSN: 000-00-0001")
@@ -247,6 +256,7 @@ def test_filter_result_is_not_frozen_instance() -> None:
 # Multiple rules applied in order
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_redact_rules_both_applied(filt: OutputFilter) -> None:
     result = filt.filter("Call 555-123-4567 or email test@example.com")
     assert "[PHONE]" in result.filtered
@@ -268,6 +278,7 @@ def test_rules_applied_in_order_redact_then_warn() -> None:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_default() -> None:
     assert "default" in OUTPUT_FILTER_REGISTRY

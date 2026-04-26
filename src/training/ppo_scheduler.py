@@ -9,20 +9,20 @@ PPOWarmupScheduler  — linear LR warmup then cosine decay for PPO
 """
 
 import math
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # KL controllers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AdaptiveKLConfig:
-    target_kl: float = 0.01         # desired KL divergence per step
-    initial_kl_coef: float = 0.2    # starting β
-    kl_coef_min: float = 0.0        # floor for β
-    kl_coef_max: float = 1.0        # ceiling for β
-    adaptation_horizon: int = 10    # steps between β updates
+    target_kl: float = 0.01  # desired KL divergence per step
+    initial_kl_coef: float = 0.2  # starting β
+    kl_coef_min: float = 0.0  # floor for β
+    kl_coef_max: float = 1.0  # ceiling for β
+    adaptation_horizon: int = 10  # steps between β updates
     # Multiplier logic (InstructGPT style):
     # if mean_kl > 2 * target_kl:   kl_coef *= 1.5
     # if mean_kl < 0.5 * target_kl: kl_coef *= 0.5
@@ -82,9 +82,7 @@ class AdaptiveKLController:
             else:
                 new_coef = self._kl_coef
 
-            self._kl_coef = float(
-                max(self.cfg.kl_coef_min, min(self.cfg.kl_coef_max, new_coef))
-            )
+            self._kl_coef = float(max(self.cfg.kl_coef_min, min(self.cfg.kl_coef_max, new_coef)))
             self._n_updates += 1
 
         return self._kl_coef
@@ -98,11 +96,7 @@ class AdaptiveKLController:
         ``mean_kl`` is the mean of the current (incomplete) window, or 0.0
         if the window is empty.
         """
-        mean_kl = (
-            sum(self._kl_history) / len(self._kl_history)
-            if self._kl_history
-            else 0.0
-        )
+        mean_kl = sum(self._kl_history) / len(self._kl_history) if self._kl_history else 0.0
         return {
             "kl_coef": float(self._kl_coef),
             "mean_kl": float(mean_kl),
@@ -145,6 +139,7 @@ class FixedKLController:
 # ---------------------------------------------------------------------------
 # PPO LR scheduler
 # ---------------------------------------------------------------------------
+
 
 class PPOWarmupScheduler:
     """Linear LR warmup then cosine decay, specialised for PPO's update cadence.
@@ -189,9 +184,7 @@ class PPOWarmupScheduler:
         self.min_lr_ratio = min_lr_ratio
 
         # Record the base LR from each param group at construction time
-        self._base_lrs: list[float] = [
-            float(pg["lr"]) for pg in optimizer.param_groups
-        ]
+        self._base_lrs: list[float] = [float(pg["lr"]) for pg in optimizer.param_groups]
         self._step: int = 0
 
     def _compute_lr(self, step: int, base_lr: float) -> float:

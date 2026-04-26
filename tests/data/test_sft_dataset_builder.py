@@ -1,17 +1,18 @@
 """Tests for src/data/sft_dataset_builder.py"""
+
 import json
 
-import pytest
-
 from src.data.sft_dataset_builder import (
-    SFTExample,
-    SFTDatasetConfig,
-    SFTDatasetBuilder,
     SFT_BUILDER_REGISTRY,
+    SFTDatasetBuilder,
+    SFTDatasetConfig,
+    SFTExample,
 )
 
 
-def make_example(prompt: str = "What is AI?", response: str = "AI is artificial intelligence.") -> SFTExample:
+def make_example(
+    prompt: str = "What is AI?", response: str = "AI is artificial intelligence."
+) -> SFTExample:
     return SFTExample(prompt=prompt, response=response)
 
 

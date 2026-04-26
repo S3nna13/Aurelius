@@ -1,4 +1,5 @@
 """CLIP-style contrastive image-text alignment loss and training utilities."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,34 +9,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CLIPConfig:
     """Configuration for CLIP-style image-text contrastive learning."""
 
-    temperature: float = 0.07   # learnable temperature (log scale internally)
-    embed_dim: int = 128        # joint embedding space dimension
-    d_vision: int = 256         # vision encoder output dim
-    d_text: int = 64            # text encoder output dim
-    normalize: bool = True      # L2 normalize embeddings
+    temperature: float = 0.07  # learnable temperature (log scale internally)
+    embed_dim: int = 128  # joint embedding space dimension
+    d_vision: int = 256  # vision encoder output dim
+    d_text: int = 64  # text encoder output dim
+    normalize: bool = True  # L2 normalize embeddings
 
 
 # ---------------------------------------------------------------------------
 # LearnableTemperature
 # ---------------------------------------------------------------------------
 
+
 class LearnableTemperature(nn.Module):
     """Learnable temperature parameter stored in log-space for numerical stability."""
 
     def __init__(self, init_temp: float = 0.07) -> None:
         super().__init__()
-        self.log_temp: nn.Parameter = nn.Parameter(
-            torch.log(torch.tensor(init_temp))
-        )
+        self.log_temp: nn.Parameter = nn.Parameter(torch.log(torch.tensor(init_temp)))
 
     def forward(self) -> Tensor:
         """Return temperature as exp(log_temp) — always positive."""
@@ -54,6 +54,7 @@ class LearnableTemperature(nn.Module):
 # CLIPProjection
 # ---------------------------------------------------------------------------
 
+
 class CLIPProjection(nn.Module):
     """Project encoder outputs into a shared joint embedding space."""
 
@@ -71,14 +72,15 @@ class CLIPProjection(nn.Module):
         Returns:
             (B, embed_dim) projected features.
         """
-        x = self.proj(x)      # (B, embed_dim)
-        x = self.norm(x)      # (B, embed_dim)
+        x = self.proj(x)  # (B, embed_dim)
+        x = self.norm(x)  # (B, embed_dim)
         return x
 
 
 # ---------------------------------------------------------------------------
 # Functional: clip_contrastive_loss
 # ---------------------------------------------------------------------------
+
 
 def clip_contrastive_loss(
     image_embeds: Tensor,
@@ -98,7 +100,7 @@ def clip_contrastive_loss(
     B = image_embeds.shape[0]
     labels = torch.arange(B, device=image_embeds.device)
 
-    sim = image_embeds @ text_embeds.T / temperature   # (B, B)
+    sim = image_embeds @ text_embeds.T / temperature  # (B, B)
 
     loss_i2t = F.cross_entropy(sim, labels)
     loss_t2i = F.cross_entropy(sim.T, labels)
@@ -108,6 +110,7 @@ def clip_contrastive_loss(
 # ---------------------------------------------------------------------------
 # Functional: compute_retrieval_metrics
 # ---------------------------------------------------------------------------
+
 
 def compute_retrieval_metrics(
     image_embeds: Tensor,
@@ -124,12 +127,12 @@ def compute_retrieval_metrics(
     """
     with torch.no_grad():
         B = image_embeds.shape[0]
-        sim = image_embeds @ text_embeds.T   # (B, B)
+        sim = image_embeds @ text_embeds.T  # (B, B)
         labels = torch.arange(B, device=image_embeds.device)
 
         def recall_at_k(similarity: Tensor, k: int) -> float:
             # For each row, check if the correct index appears in top-k
-            topk_indices = similarity.topk(min(k, B), dim=1).indices   # (B, k)
+            topk_indices = similarity.topk(min(k, B), dim=1).indices  # (B, k)
             correct = (topk_indices == labels.unsqueeze(1)).any(dim=1)
             return correct.float().mean().item()
 
@@ -151,6 +154,7 @@ def compute_retrieval_metrics(
 # ---------------------------------------------------------------------------
 # CLIPModel
 # ---------------------------------------------------------------------------
+
 
 class CLIPModel(nn.Module):
     """CLIP-style model with vision and text encoders and learnable temperature."""
@@ -179,8 +183,8 @@ class CLIPModel(nn.Module):
         Returns:
             (B, embed_dim) image embeddings, L2-normalized if config.normalize.
         """
-        feats = self.vision_encoder(images)   # (B, d_vision)
-        embeds = self.vision_proj(feats)      # (B, embed_dim)
+        feats = self.vision_encoder(images)  # (B, d_vision)
+        embeds = self.vision_proj(feats)  # (B, embed_dim)
         if self.config.normalize:
             embeds = F.normalize(embeds, dim=-1)
         return embeds
@@ -195,8 +199,8 @@ class CLIPModel(nn.Module):
             (B, embed_dim) text embeddings, L2-normalized if config.normalize.
         """
         # Mean pool over sequence dimension
-        pooled = token_embeddings.mean(dim=1)   # (B, D)
-        embeds = self.text_proj(pooled)          # (B, embed_dim)
+        pooled = token_embeddings.mean(dim=1)  # (B, D)
+        embeds = self.text_proj(pooled)  # (B, embed_dim)
         if self.config.normalize:
             embeds = F.normalize(embeds, dim=-1)
         return embeds
@@ -242,6 +246,7 @@ class CLIPModel(nn.Module):
 # ---------------------------------------------------------------------------
 # CLIPTrainer
 # ---------------------------------------------------------------------------
+
 
 class CLIPTrainer:
     """Training wrapper for CLIPModel with one-step train interface."""

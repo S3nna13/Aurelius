@@ -8,7 +8,6 @@ import torch
 
 from src.alignment.double_sided_is import DDISConfig, DoubleSidedISLoss
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -31,6 +30,7 @@ def random_advantages(n: int = N) -> torch.Tensor:
 # 1. DDISConfig instantiates with defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ddisconfig_defaults():
     cfg = DDISConfig()
     assert cfg.eps_low == pytest.approx(0.2)
@@ -42,6 +42,7 @@ def test_ddisconfig_defaults():
 # 2. DoubleSidedISLoss instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_double_sided_is_loss_instantiates():
     loss_fn = make_loss()
     assert isinstance(loss_fn, DoubleSidedISLoss)
@@ -50,6 +51,7 @@ def test_double_sided_is_loss_instantiates():
 # ---------------------------------------------------------------------------
 # 3. Forward returns scalar tensor
 # ---------------------------------------------------------------------------
+
 
 def test_forward_returns_scalar():
     loss_fn = make_loss()
@@ -64,6 +66,7 @@ def test_forward_returns_scalar():
 # 4. Loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_forward_loss_is_finite():
     loss_fn = make_loss()
     log_theta = random_log_probs()
@@ -76,6 +79,7 @@ def test_forward_loss_is_finite():
 # ---------------------------------------------------------------------------
 # 5. Identical log probs -> ratio = 1.0 (via ratio_stats mean_ratio ~ 1.0)
 # ---------------------------------------------------------------------------
+
 
 def test_identical_log_probs_ratio_is_one():
     loss_fn = make_loss()
@@ -90,6 +94,7 @@ def test_identical_log_probs_ratio_is_one():
 # 6. ratio_stats returns dict with all 3 keys
 # ---------------------------------------------------------------------------
 
+
 def test_ratio_stats_returns_all_keys():
     loss_fn = make_loss()
     stats = loss_fn.ratio_stats(random_log_probs(), random_log_probs())
@@ -102,6 +107,7 @@ def test_ratio_stats_returns_all_keys():
 # 7. frac_clipped_low in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_frac_clipped_low_in_range():
     loss_fn = make_loss()
     stats = loss_fn.ratio_stats(random_log_probs(), random_log_probs())
@@ -112,6 +118,7 @@ def test_frac_clipped_low_in_range():
 # 8. frac_clipped_high in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_frac_clipped_high_in_range():
     loss_fn = make_loss()
     stats = loss_fn.ratio_stats(random_log_probs(), random_log_probs())
@@ -121,6 +128,7 @@ def test_frac_clipped_high_in_range():
 # ---------------------------------------------------------------------------
 # 9. Gradient flows through loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_through_loss():
     loss_fn = make_loss()
@@ -136,6 +144,7 @@ def test_gradient_flows_through_loss():
 # ---------------------------------------------------------------------------
 # 10. Loss changes when advantages change
 # ---------------------------------------------------------------------------
+
 
 def test_loss_changes_with_different_advantages():
     loss_fn = make_loss()

@@ -178,7 +178,7 @@ def test_to_dict_empty_hierarchy(hierarchy):
 
 def test_to_dict_structure(hierarchy):
     root = hierarchy.add_goal("root", priority=1)
-    child = hierarchy.add_goal("child", parent_id=root.goal_id, priority=2)
+    hierarchy.add_goal("child", parent_id=root.goal_id, priority=2)
     d = hierarchy.to_dict()
     assert d["count"] == 2
     assert len(d["roots"]) == 1

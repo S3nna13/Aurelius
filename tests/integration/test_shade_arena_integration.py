@@ -1,4 +1,5 @@
 """Integration test for SHADE-Arena harness registry + config wiring."""
+
 from __future__ import annotations
 
 from src.eval import (

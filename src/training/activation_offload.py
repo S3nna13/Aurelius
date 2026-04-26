@@ -1,4 +1,5 @@
-"""Activation offloading and memory-efficient training: CPU offload, selective checkpointing, and peak memory tracking."""
+"""Activation offloading and memory-efficient training: CPU offload, selective checkpointing, and peak memory tracking."""  # noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,10 +8,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OffloadConfig:
@@ -39,6 +40,7 @@ class OffloadConfig:
 # dtype helper
 # ---------------------------------------------------------------------------
 
+
 def get_dtype(dtype_str: str) -> torch.dtype:
     """Map a dtype string to a torch.dtype.
 
@@ -57,15 +59,14 @@ def get_dtype(dtype_str: str) -> torch.dtype:
         "bfloat16": torch.bfloat16,
     }
     if dtype_str not in _map:
-        raise ValueError(
-            f"Unknown dtype '{dtype_str}'. Choose from {list(_map.keys())}."
-        )
+        raise ValueError(f"Unknown dtype '{dtype_str}'. Choose from {list(_map.keys())}.")
     return _map[dtype_str]
 
 
 # ---------------------------------------------------------------------------
 # CPU offload wrapper
 # ---------------------------------------------------------------------------
+
 
 class CPUOffloadTensor:
     """Wraps a tensor, stores it on CPU, and restores it to the original device on demand.
@@ -80,7 +81,7 @@ class CPUOffloadTensor:
         if pin_memory and cpu_tensor.is_floating_point():
             try:
                 cpu_tensor = cpu_tensor.pin_memory()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # silently fall back if pinning not supported
         self._cpu_tensor = cpu_tensor
         self._device = tensor.device
@@ -101,6 +102,7 @@ class CPUOffloadTensor:
 # ---------------------------------------------------------------------------
 # Selective checkpointing helpers
 # ---------------------------------------------------------------------------
+
 
 def selective_checkpoint_layers(n_layers: int, config: OffloadConfig) -> list[int]:
     """Determine which layer indices to checkpoint.
@@ -125,6 +127,7 @@ def selective_checkpoint_layers(n_layers: int, config: OffloadConfig) -> list[in
 # ---------------------------------------------------------------------------
 # Memory tracker
 # ---------------------------------------------------------------------------
+
 
 class MemoryTracker:
     """Track peak GPU memory usage across training steps."""
@@ -173,6 +176,7 @@ class MemoryTracker:
 # Gradient checkpoint wrapper
 # ---------------------------------------------------------------------------
 
+
 class GradientCheckpointWrapper(nn.Module):
     """Wraps a module to apply gradient checkpointing during training.
 
@@ -197,6 +201,7 @@ class GradientCheckpointWrapper(nn.Module):
 # ---------------------------------------------------------------------------
 # Apply selective checkpointing to a ModuleList
 # ---------------------------------------------------------------------------
+
 
 def apply_selective_checkpointing(
     model_layers: nn.ModuleList, config: OffloadConfig
@@ -226,6 +231,7 @@ def apply_selective_checkpointing(
 # ---------------------------------------------------------------------------
 # Memory-efficient trainer
 # ---------------------------------------------------------------------------
+
 
 class MemoryEfficientTrainer:
     """Trainer with memory optimisations (offloading, checkpointing, tracking).

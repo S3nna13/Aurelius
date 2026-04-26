@@ -2,6 +2,7 @@
 
 Trail of Bits: enforce trust boundaries at the protocol layer.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

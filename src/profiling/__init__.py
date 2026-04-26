@@ -1,35 +1,35 @@
-from .flops_counter import (
-    FLOPsConfig,
-    ModuleFLOPs,
-    FLOPsCounter,
-    FLOPS_REGISTRY,
-)
-from .op_profiler import (
-    OpRecord,
-    OpProfiler,
-    OP_PROFILER_REGISTRY,
-)
 from .activation_mapper import (
-    ActivationStats,
-    ActivationMapper,
     ACTIVATION_MAPPER_REGISTRY,
+    ActivationMapper,
+    ActivationStats,
+)
+from .flops_counter import (
+    FLOPS_REGISTRY,
+    FLOPsConfig,
+    FLOPsCounter,
+    ModuleFLOPs,
+)
+from .memory_monitor import (
+    MEMORY_MONITOR_REGISTRY,
+    MemoryMonitor,
+    MemorySnapshot,
+    WatermarkConfig,
 )
 from .model_benchmarker import (
+    MODEL_BENCHMARKER_REGISTRY,
     BenchmarkConfig,
     BenchmarkStats,
     ModelBenchmarker,
-    MODEL_BENCHMARKER_REGISTRY,
 )
-from .memory_monitor import (
-    MemorySnapshot,
-    WatermarkConfig,
-    MemoryMonitor,
-    MEMORY_MONITOR_REGISTRY,
+from .op_profiler import (
+    OP_PROFILER_REGISTRY,
+    OpProfiler,
+    OpRecord,
 )
 from .trace_collector import (
-    TraceEvent,
-    TraceCollector,
     TRACE_COLLECTOR_REGISTRY,
+    TraceCollector,
+    TraceEvent,
 )
 
 __all__ = [

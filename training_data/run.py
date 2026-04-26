@@ -1,12 +1,11 @@
 """python -m training_data.run [--mode all|download|tokenize|synthetic|mix|status]
-                               [--output ./data/aurelius-1.3b] [--samples N]
-                               [--sources src1,src2] [--dry-run] [--config path]
+[--output ./data/aurelius-1.3b] [--samples N]
+[--sources src1,src2] [--dry-run] [--config path]
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -30,7 +29,12 @@ def cmd_download(dm, output_dir: str, max_samples: int | None, sources: list[str
             src_output = str(Path(output_dir) / "raw" / src)
             dm.run_source(src, src_output, max_samples=max_samples)
     else:
-        dm.run_all(output_dir, max_samples={s: max_samples for s in dm.load_config().get("sources", {})} if max_samples else None)
+        dm.run_all(
+            output_dir,
+            max_samples={s: max_samples for s in dm.load_config().get("sources", {})}
+            if max_samples
+            else None,
+        )
 
 
 def cmd_synthetic(output_dir: str, max_samples: int | None) -> None:
@@ -40,6 +44,7 @@ def cmd_synthetic(output_dir: str, max_samples: int | None) -> None:
 
     try:
         from training_data.math_generator import MathDataGenerator
+
         gen = MathDataGenerator(config)
         gen.run(max_samples or 1000, str(gen_dir))
         logger.info("Math data generated")
@@ -48,6 +53,7 @@ def cmd_synthetic(output_dir: str, max_samples: int | None) -> None:
 
     try:
         from training_data.code_generator import CodeDataGenerator
+
         gen = CodeDataGenerator(config)
         gen.run(max_samples or 1000, str(gen_dir))
         logger.info("Code data generated")
@@ -56,6 +62,7 @@ def cmd_synthetic(output_dir: str, max_samples: int | None) -> None:
 
     try:
         from training_data.sft_generator import SFTDataGenerator
+
         gen = SFTDataGenerator(config)
         gen.run(max_samples or 1000, str(gen_dir))
         logger.info("SFT instruction data generated")
@@ -106,12 +113,16 @@ def cmd_tokenize(output_dir: str, max_samples: int | None, config: dict) -> None
         for i, sp in enumerate(train_paths):
             dest = train_shard_dir / f"shard_{i:06d}.npy"
             import shutil
+
             shutil.copy2(sp, dest)
         for i, sp in enumerate(val_paths):
             dest = val_shard_dir / f"shard_{i:06d}.npy"
             import shutil
+
             shutil.copy2(sp, dest)
-        pipeline.create_shard_manifest(str(train_shard_dir), str(shard_root / "train_manifest.json"))
+        pipeline.create_shard_manifest(
+            str(train_shard_dir), str(shard_root / "train_manifest.json")
+        )
         pipeline.create_shard_manifest(str(val_shard_dir), str(shard_root / "val_manifest.json"))
         logger.info("Train shards: %d, Val shards: %d", len(train_paths), len(val_paths))
 
@@ -140,7 +151,11 @@ def cmd_mix(output_dir: str, config: dict) -> None:
 
     if shard_dirs:
         total_tokens = pipeline.interleave_datasets(shard_dirs, str(mixed_output), weights)
-        logger.info("Mixed dataset: %d shards, %d tokens", len(list(mixed_output.glob("shard_*.npy"))), total_tokens)
+        logger.info(
+            "Mixed dataset: %d shards, %d tokens",
+            len(list(mixed_output.glob("shard_*.npy"))),
+            total_tokens,
+        )
     else:
         logger.warning("No sharded datasets found to mix")
 
@@ -172,6 +187,7 @@ def cmd_status(dm, output_dir: str) -> None:
         if shards:
             total_tokens = 0
             import numpy as np
+
             for s in shards:
                 arr = np.load(str(s))
                 total_tokens += arr.size
@@ -180,19 +196,26 @@ def cmd_status(dm, output_dir: str) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Aurelius training data pipeline")
-    parser.add_argument("--mode", type=str, default="status",
-                        choices=["all", "download", "tokenize", "synthetic", "mix", "status"],
-                        help="Pipeline mode")
-    parser.add_argument("--output", type=str, default="./data/aurelius-1.3b",
-                        help="Output directory")
-    parser.add_argument("--samples", type=int, default=None,
-                        help="Max samples per source (for testing)")
-    parser.add_argument("--sources", type=str, default=None,
-                        help="Comma-separated subset of sources")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done")
-    parser.add_argument("--config", type=str, default="training_data/config.yaml",
-                        help="Path to config file")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="status",
+        choices=["all", "download", "tokenize", "synthetic", "mix", "status"],
+        help="Pipeline mode",
+    )
+    parser.add_argument(
+        "--output", type=str, default="./data/aurelius-1.3b", help="Output directory"
+    )
+    parser.add_argument(
+        "--samples", type=int, default=None, help="Max samples per source (for testing)"
+    )
+    parser.add_argument(
+        "--sources", type=str, default=None, help="Comma-separated subset of sources"
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
+    parser.add_argument(
+        "--config", type=str, default="training_data/config.yaml", help="Path to config file"
+    )
     return parser.parse_args(argv)
 
 
@@ -201,7 +224,9 @@ def main(argv: list[str] | None = None) -> int:
     output_dir = _resolve_output(args.output)
 
     if args.dry_run:
-        print(f"Dry-run: mode={args.mode}, output={output_dir}, samples={args.samples}, sources={args.sources}")
+        print(
+            f"Dry-run: mode={args.mode}, output={output_dir}, samples={args.samples}, sources={args.sources}"
+        )
         return 0
 
     config: dict = {}
@@ -209,12 +234,14 @@ def main(argv: list[str] | None = None) -> int:
     if config_path.exists():
         try:
             import yaml
+
             raw = config_path.read_text(encoding="utf-8")
             config = yaml.safe_load(raw) or {}
         except Exception as e:
             logger.warning("Could not load config %s: %s", args.config, e)
 
     from training_data.download_manager import DownloadManager
+
     dm = DownloadManager(args.config)
 
     source_list = args.sources.split(",") if args.sources else None

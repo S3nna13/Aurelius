@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
-from src.model.aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_layer(
     in_features: int = 16,
@@ -36,6 +35,7 @@ def make_layer(
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = AQLMConfig(in_features=64, out_features=32)
     assert cfg.n_codebooks == 2
@@ -47,6 +47,7 @@ def test_config_defaults():
 # 2. Codebook weight shape
 # ---------------------------------------------------------------------------
 
+
 def test_codebook_weight_shape():
     cb = AQLMCodebook(codebook_size=16, group_size=4)
     assert cb.weight.shape == (16, 4)
@@ -55,6 +56,7 @@ def test_codebook_weight_shape():
 # ---------------------------------------------------------------------------
 # 3. Dequantize shape
 # ---------------------------------------------------------------------------
+
 
 def test_dequantize_shape():
     layer = make_layer(in_features=16, out_features=8)
@@ -65,6 +67,7 @@ def test_dequantize_shape():
 # ---------------------------------------------------------------------------
 # 4. Forward shape — 2-D input
 # ---------------------------------------------------------------------------
+
 
 def test_forward_shape_2d():
     layer = make_layer(in_features=16, out_features=8)
@@ -77,6 +80,7 @@ def test_forward_shape_2d():
 # 5. Forward shape — 3-D input [B, T, in_features]
 # ---------------------------------------------------------------------------
 
+
 def test_forward_shape_3d():
     layer = make_layer(in_features=16, out_features=8)
     x = torch.randn(2, 5, 16)
@@ -87,6 +91,7 @@ def test_forward_shape_3d():
 # ---------------------------------------------------------------------------
 # 6. Codes shape after quantize
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_codes_shape():
     layer = make_layer(in_features=16, out_features=8, group_size=4)
@@ -99,6 +104,7 @@ def test_quantize_codes_shape():
 # ---------------------------------------------------------------------------
 # 7. Codes range after quantize
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_codes_range():
     layer = make_layer(in_features=16, out_features=8, codebook_size=16, group_size=4)
@@ -113,18 +119,17 @@ def test_quantize_codes_range():
 # 8. Dequantize approximates original weight after quantize
 # ---------------------------------------------------------------------------
 
+
 def test_dequant_after_quantize_close():
     """Reconstruction stays in a sane range relative to the original weight."""
     torch.manual_seed(42)
-    layer = make_layer(
-        in_features=8, out_features=4, n_codebooks=1, codebook_size=32, group_size=4
-    )
+    layer = make_layer(in_features=8, out_features=4, n_codebooks=1, codebook_size=32, group_size=4)
     weight = torch.randn(4, 8)
 
     # Pre-seed codebook with exact sub-vectors from the weight so quantize
     # can pick near-perfect matches.
-    w_grouped = weight.reshape(4, 2, 4)   # [out, n_groups, group_size]
-    flat = w_grouped.reshape(-1, 4)       # [8, 4]
+    w_grouped = weight.reshape(4, 2, 4)  # [out, n_groups, group_size]
+    flat = w_grouped.reshape(-1, 4)  # [8, 4]
     cb_data = flat.repeat(4, 1)[:32]
     layer.codebooks[0]._weight.data.copy_(cb_data.detach())
 
@@ -140,6 +145,7 @@ def test_dequant_after_quantize_close():
 # 9. Compression ratio is > 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compression_ratio_gt_1():
     layer = make_layer()
     assert layer.compression_ratio() > 1.0
@@ -149,19 +155,19 @@ def test_compression_ratio_gt_1():
 # 10. More codebooks → lower ratio (more bits used)
 # ---------------------------------------------------------------------------
 
+
 def test_compression_n_codebooks_effect():
     """Doubling n_codebooks halves the compression ratio."""
     layer1 = make_layer(n_codebooks=1, codebook_size=16, group_size=4)
     layer2 = make_layer(n_codebooks=2, codebook_size=16, group_size=4)
     assert layer2.compression_ratio() < layer1.compression_ratio()
-    assert math.isclose(
-        layer1.compression_ratio() / layer2.compression_ratio(), 2.0, rel_tol=1e-6
-    )
+    assert math.isclose(layer1.compression_ratio() / layer2.compression_ratio(), 2.0, rel_tol=1e-6)
 
 
 # ---------------------------------------------------------------------------
 # 11. Gradients flow to codebook weights
 # ---------------------------------------------------------------------------
+
 
 def test_gradients_codebook():
     layer = make_layer()
@@ -177,6 +183,7 @@ def test_gradients_codebook():
 # ---------------------------------------------------------------------------
 # 12. Batch independence — B=1 vs B=2 consistency
 # ---------------------------------------------------------------------------
+
 
 def test_batch_independence():
     torch.manual_seed(0)
@@ -200,6 +207,7 @@ def test_batch_independence():
 # 13. Determinism — same input -> same output
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     layer = make_layer()
     x = torch.randn(3, 16)
@@ -213,6 +221,7 @@ def test_determinism():
 # 14. Quantize and dequant on a small 4x8 weight
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_small_weight():
     layer = make_layer(in_features=8, out_features=4, group_size=4, codebook_size=8)
     weight = torch.randn(4, 8)
@@ -225,6 +234,7 @@ def test_quantize_small_weight():
 # ---------------------------------------------------------------------------
 # 15. Registry entry
 # ---------------------------------------------------------------------------
+
 
 def test_registry():
     assert "aqlm_linear" in MODEL_COMPONENT_REGISTRY

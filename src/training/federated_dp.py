@@ -8,17 +8,16 @@ injection for federated LLM training. Pure PyTorch only.
 import copy
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # FederatedClient
 # ---------------------------------------------------------------------------
+
 
 class FederatedClient:
     """Single federated client that holds a local copy of the global model
@@ -32,7 +31,7 @@ class FederatedClient:
         n_local_steps: int = 5,
     ) -> None:
         self.client_id = client_id
-        self._global_model = model          # reference to the shared global model
+        self._global_model = model  # reference to the shared global model
         self.lr = lr
         self.n_local_steps = n_local_steps
         # Deep copy so each client owns independent weights
@@ -45,14 +44,12 @@ class FederatedClient:
     def _sync_from_global(self) -> None:
         """Reset local model weights to current global weights."""
         with torch.no_grad():
-            for lp, gp in zip(
-                self.local_model.parameters(), self._global_model.parameters()
-            ):
+            for lp, gp in zip(self.local_model.parameters(), self._global_model.parameters()):
                 lp.copy_(gp)
 
-    def _compute_delta(self, global_params: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def _compute_delta(self, global_params: dict[str, Tensor]) -> dict[str, Tensor]:
         """Return delta_w = local_w - global_w for every named parameter."""
-        delta: Dict[str, Tensor] = {}
+        delta: dict[str, Tensor] = {}
         local_sd = self.local_model.state_dict()
         for name, gp in global_params.items():
             delta[name] = local_sd[name].float() - gp.float()
@@ -64,14 +61,13 @@ class FederatedClient:
 
     def local_update(
         self,
-        data: List[Tensor],
-        labels: List[Tensor],
-    ) -> Dict[str, Tensor]:
+        data: list[Tensor],
+        labels: list[Tensor],
+    ) -> dict[str, Tensor]:
         """Run n_local_steps SGD on local data, return delta_w."""
         self._sync_from_global()
-        global_params: Dict[str, Tensor] = {
-            n: p.detach().clone()
-            for n, p in self._global_model.named_parameters()
+        global_params: dict[str, Tensor] = {
+            n: p.detach().clone() for n, p in self._global_model.named_parameters()
         }
 
         optimizer = torch.optim.SGD(self.local_model.parameters(), lr=self.lr)
@@ -101,11 +97,11 @@ class FederatedClient:
 
     def fedprox_update(
         self,
-        data: List[Tensor],
-        labels: List[Tensor],
-        global_params: Dict[str, Tensor],
+        data: list[Tensor],
+        labels: list[Tensor],
+        global_params: dict[str, Tensor],
         mu: float = 0.01,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Local update with proximal term μ/2 * ||w - w_global||^2."""
         self._sync_from_global()
         stored_global = {n: p.detach().clone() for n, p in global_params.items()}
@@ -145,6 +141,7 @@ class FederatedClient:
 # DifferentiallyPrivateAggregator
 # ---------------------------------------------------------------------------
 
+
 class DifferentiallyPrivateAggregator:
     """Clips and noises client updates using the Gaussian mechanism."""
 
@@ -158,20 +155,18 @@ class DifferentiallyPrivateAggregator:
         self.max_norm = max_norm
         self.delta = delta
 
-    def clip_update(self, delta_w: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def clip_update(self, delta_w: dict[str, Tensor]) -> dict[str, Tensor]:
         """Clip the global L2 norm of a client update to max_norm."""
         # Compute total L2 norm across all parameters
-        total_norm_sq = sum(
-            v.float().pow(2).sum().item() for v in delta_w.values()
-        )
+        total_norm_sq = sum(v.float().pow(2).sum().item() for v in delta_w.values())
         total_norm = math.sqrt(total_norm_sq)
         scale = min(1.0, self.max_norm / (total_norm + 1e-12))
         return {k: v.float() * scale for k, v in delta_w.items()}
 
-    def add_noise(self, delta_w: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def add_noise(self, delta_w: dict[str, Tensor]) -> dict[str, Tensor]:
         """Add calibrated Gaussian noise: σ = noise_multiplier * max_norm."""
         sigma = self.noise_multiplier * self.max_norm
-        noised: Dict[str, Tensor] = {}
+        noised: dict[str, Tensor] = {}
         for k, v in delta_w.items():
             noise = torch.randn_like(v.float()) * sigma
             noised[k] = v.float() + noise
@@ -179,23 +174,23 @@ class DifferentiallyPrivateAggregator:
 
     def aggregate(
         self,
-        client_updates: List[Dict[str, Tensor]],
+        client_updates: list[dict[str, Tensor]],
         n_clients_total: int,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Clip + noise each update, then average across selected clients."""
         if not client_updates:
             raise ValueError("client_updates must be non-empty")
 
-        processed: List[Dict[str, Tensor]] = []
+        processed: list[dict[str, Tensor]] = []
         for upd in client_updates:
             clipped = self.clip_update(upd)
             noised = self.add_noise(clipped)
             processed.append(noised)
 
         # Average
-        n = len(processed)
+        len(processed)
         keys = list(processed[0].keys())
-        averaged: Dict[str, Tensor] = {}
+        averaged: dict[str, Tensor] = {}
         for k in keys:
             stacked = torch.stack([p[k] for p in processed], dim=0)
             averaged[k] = stacked.mean(dim=0)
@@ -205,6 +200,7 @@ class DifferentiallyPrivateAggregator:
 # ---------------------------------------------------------------------------
 # FedAvgServer
 # ---------------------------------------------------------------------------
+
 
 class FedAvgServer:
     """Central server that coordinates FedAvg rounds."""
@@ -219,12 +215,11 @@ class FedAvgServer:
         self.n_clients = n_clients
         self.client_fraction = client_fraction
         # Maintain a plain-dict copy for broadcasting
-        self.global_params: Dict[str, Tensor] = {
-            n: p.detach().clone()
-            for n, p in global_model.named_parameters()
+        self.global_params: dict[str, Tensor] = {
+            n: p.detach().clone() for n, p in global_model.named_parameters()
         }
 
-    def select_clients(self, round_id: int) -> List[int]:
+    def select_clients(self, round_id: int) -> list[int]:
         """Select client_fraction * n_clients client IDs (deterministic seed)."""
         k = max(1, round(self.client_fraction * self.n_clients))
         rng = random.Random(round_id)
@@ -233,24 +228,23 @@ class FedAvgServer:
 
     def aggregate_updates(
         self,
-        updates: List[Dict[str, Tensor]],
-        weights: List[float],
-    ) -> Dict[str, Tensor]:
+        updates: list[dict[str, Tensor]],
+        weights: list[float],
+    ) -> dict[str, Tensor]:
         """Weighted average of client deltas (weights = n_samples per client)."""
         if not updates:
             raise ValueError("updates must be non-empty")
         total_weight = sum(weights)
         keys = list(updates[0].keys())
-        agg: Dict[str, Tensor] = {}
+        agg: dict[str, Tensor] = {}
         for k in keys:
             weighted_sum = sum(
-                upd[k].float() * (w / total_weight)
-                for upd, w in zip(updates, weights)
+                upd[k].float() * (w / total_weight) for upd, w in zip(updates, weights)
             )
             agg[k] = weighted_sum
         return agg
 
-    def update_global(self, aggregated_update: Dict[str, Tensor]) -> None:
+    def update_global(self, aggregated_update: dict[str, Tensor]) -> None:
         """Apply aggregated delta to global model parameters in-place."""
         with torch.no_grad():
             for name, param in self.global_model.named_parameters():
@@ -258,11 +252,10 @@ class FedAvgServer:
                     param.add_(aggregated_update[name].to(param.device))
             # Refresh the plain-dict cache
             self.global_params = {
-                n: p.detach().clone()
-                for n, p in self.global_model.named_parameters()
+                n: p.detach().clone() for n, p in self.global_model.named_parameters()
             }
 
-    def broadcast(self) -> Dict[str, Tensor]:
+    def broadcast(self) -> dict[str, Tensor]:
         """Return current global parameters."""
         return {k: v.clone() for k, v in self.global_params.items()}
 
@@ -270,6 +263,7 @@ class FedAvgServer:
 # ---------------------------------------------------------------------------
 # FedProxServer
 # ---------------------------------------------------------------------------
+
 
 class FedProxServer(FedAvgServer):
     """FedAvg server variant that signals clients to use the proximal term."""
@@ -286,9 +280,9 @@ class FedProxServer(FedAvgServer):
 
     def aggregate_updates(
         self,
-        updates: List[Dict[str, Tensor]],
-        weights: List[float],
-    ) -> Dict[str, Tensor]:
+        updates: list[dict[str, Tensor]],
+        weights: list[float],
+    ) -> dict[str, Tensor]:
         """Identical weighted average — proximal term is handled by clients."""
         return super().aggregate_updates(updates, weights)
 
@@ -297,6 +291,7 @@ class FedProxServer(FedAvgServer):
 # SecureAggregationSimulator
 # ---------------------------------------------------------------------------
 
+
 class SecureAggregationSimulator:
     """Simulates pairwise-canceling secret shares for secure aggregation."""
 
@@ -304,9 +299,7 @@ class SecureAggregationSimulator:
         self.n_clients = n_clients
         self.key_bits = key_bits
 
-    def generate_masks(
-        self, client_ids: List[int]
-    ) -> Dict[int, Dict[str, Tensor]]:
+    def generate_masks(self, client_ids: list[int]) -> dict[int, dict[str, Tensor]]:
         """
         Return per-client additive masks such that for every pair (i, j):
             mask[i][k] += r_ij,  mask[j][k] += -r_ij
@@ -322,10 +315,10 @@ class SecureAggregationSimulator:
         # masks that the caller populates per-key via mask_update.
         # To keep the interface self-contained we store pair seeds and
         # reconstruct tensors on demand inside mask_update.
-        masks: Dict[int, Dict[str, Tensor]] = {cid: {} for cid in client_ids}
+        masks: dict[int, dict[str, Tensor]] = {cid: {} for cid in client_ids}
         # Record the sorted client list for deterministic pairing
         self._client_ids = sorted(client_ids)
-        self._pair_seeds: Dict[Tuple[int, int], int] = {}
+        self._pair_seeds: dict[tuple[int, int], int] = {}
         for i, ci in enumerate(self._client_ids):
             for cj in self._client_ids[i + 1 :]:
                 seed = random.getrandbits(self.key_bits) & 0xFFFF_FFFF
@@ -335,26 +328,22 @@ class SecureAggregationSimulator:
     def mask_update(
         self,
         client_id: int,
-        delta_w: Dict[str, Tensor],
-        masks: Dict[int, Dict[str, Tensor]],
-    ) -> Dict[str, Tensor]:
+        delta_w: dict[str, Tensor],
+        masks: dict[int, dict[str, Tensor]],
+    ) -> dict[str, Tensor]:
         """
         Add the client's aggregate mask (sum of pairwise r_ij or -r_ij)
         to its update, populating masks[client_id] in-place.
         """
-        masked: Dict[str, Tensor] = {}
-        aggregate_mask: Dict[str, Tensor] = {
+        masked: dict[str, Tensor] = {}
+        aggregate_mask: dict[str, Tensor] = {
             k: torch.zeros_like(v.float()) for k, v in delta_w.items()
         }
         for k, v in delta_w.items():
             for other_id in self._client_ids:
                 if other_id == client_id:
                     continue
-                ci, cj = (
-                    (client_id, other_id)
-                    if client_id < other_id
-                    else (other_id, client_id)
-                )
+                ci, cj = (client_id, other_id) if client_id < other_id else (other_id, client_id)
                 seed = self._pair_seeds[(ci, cj)]
                 g = torch.Generator()
                 g.manual_seed(seed)
@@ -369,9 +358,7 @@ class SecureAggregationSimulator:
             masked[k] = v.float() + aggregate_mask[k]
         return masked
 
-    def verify_cancellation(
-        self, masked_updates: List[Dict[str, Tensor]]
-    ) -> bool:
+    def verify_cancellation(self, masked_updates: list[dict[str, Tensor]]) -> bool:
         """
         Verify that the sum of the masked updates differs from the sum of
         the plain updates by a near-zero mask aggregate (masks cancel).
@@ -384,7 +371,7 @@ class SecureAggregationSimulator:
             return False
         # Re-derive all masks for the stored client list and check cancellation
         keys = list(masked_updates[0].keys())
-        n = len(self._client_ids)
+        len(self._client_ids)
         for k in keys:
             total = torch.zeros_like(masked_updates[0][k].float())
             for ci in self._client_ids:
@@ -394,9 +381,7 @@ class SecureAggregationSimulator:
                     seed = self._pair_seeds[(ci, cj)]
                     g = torch.Generator()
                     g.manual_seed(seed)
-                    r = torch.randn(
-                        masked_updates[0][k].shape, generator=g
-                    )
+                    r = torch.randn(masked_updates[0][k].shape, generator=g)
                     # mask for ci adds +r, mask for cj adds -r → net 0
                     total = total + r - r
             # total should be exactly 0 (it is, by construction)
@@ -408,6 +393,7 @@ class SecureAggregationSimulator:
 # ---------------------------------------------------------------------------
 # FederatedDPTrainer
 # ---------------------------------------------------------------------------
+
 
 class FederatedDPTrainer:
     """Orchestrates federated rounds with differential privacy."""
@@ -425,9 +411,9 @@ class FederatedDPTrainer:
 
     def train_round(
         self,
-        clients: List[FederatedClient],
+        clients: list[FederatedClient],
         round_id: int,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Execute one federated round.
 
@@ -442,8 +428,8 @@ class FederatedDPTrainer:
             selected_clients = clients[:1]
 
         global_params = self.server.broadcast()
-        updates: List[Dict[str, Tensor]] = []
-        losses: List[float] = []
+        updates: list[dict[str, Tensor]] = []
+        losses: list[float] = []
 
         for client in selected_clients:
             # Sync client's global model reference
@@ -463,17 +449,13 @@ class FederatedDPTrainer:
                 labels = [torch.randint(0, 8, (2, 4))]
 
             if isinstance(server := self.server, FedProxServer):
-                delta_w = client.fedprox_update(
-                    data, labels, global_params, mu=server.mu
-                )
+                delta_w = client.fedprox_update(data, labels, global_params, mu=server.mu)
             else:
                 delta_w = client.local_update(data, labels)
 
             updates.append(delta_w)
             # Approximate loss via norm of delta (proxy metric)
-            norm = math.sqrt(
-                sum(v.float().pow(2).sum().item() for v in delta_w.values())
-            )
+            norm = math.sqrt(sum(v.float().pow(2).sum().item() for v in delta_w.values()))
             losses.append(norm)
 
         # DP aggregation
@@ -518,6 +500,7 @@ class FederatedDPTrainer:
 # ---------------------------------------------------------------------------
 # FedDPConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FedDPConfig:

@@ -18,19 +18,21 @@ Usage:
     # Convert to actual quantized model for inference
     quantized_model = convert_qat(qat_model)
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class QATConfig:
-    bits: int = 8                  # 8 or 4
-    per_channel: bool = True       # per output-channel quantization
-    group_size: int = 128          # for 4-bit grouped quantization
+    bits: int = 8  # 8 or 4
+    per_channel: bool = True  # per output-channel quantization
+    group_size: int = 128  # for 4-bit grouped quantization
     skip_modules: tuple[str, ...] = ("lm_head", "embed")
 
 
@@ -40,6 +42,7 @@ class _StraightThroughRound(torch.autograd.Function):
     Forward: y = round(x)
     Backward: dy/dx = 1 (identity, straight-through)
     """
+
     @staticmethod
     def forward(ctx, x):
         return x.round()
@@ -212,7 +215,7 @@ def convert_qat(model: nn.Module) -> nn.Module:
     Returns:
         Model with QuantizedLinear layers (real quantization).
     """
-    from src.inference.quantize import QuantizedLinear, QuantConfig
+    from src.inference.quantize import QuantConfig, QuantizedLinear
 
     for name, module in list(model.named_modules()):
         if not isinstance(module, QATLinear):

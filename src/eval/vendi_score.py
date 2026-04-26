@@ -18,16 +18,15 @@ Pure PyTorch only -- uses torch.linalg.eigvalsh for eigendecomposition.
 from __future__ import annotations
 
 import math
-from typing import List
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Core: Vendi Score from a kernel matrix
 # ---------------------------------------------------------------------------
+
 
 def vendi_score(K: Tensor, eps: float = 1e-10) -> float:
     """Vendi Score from kernel matrix K (n×n, PSD).
@@ -52,7 +51,7 @@ def vendi_score(K: Tensor, eps: float = 1e-10) -> float:
 
     # Eigenvalues of a symmetric matrix (ascending order).
     # eigvalsh is numerically stable for symmetric/Hermitian inputs.
-    eigenvalues = torch.linalg.eigvalsh(K_norm)          # shape (n,)
+    eigenvalues = torch.linalg.eigvalsh(K_norm)  # shape (n,)
 
     # Clamp negatives that arise from floating-point noise
     eigenvalues = eigenvalues.clamp(min=0.0)
@@ -72,6 +71,7 @@ def vendi_score(K: Tensor, eps: float = 1e-10) -> float:
 # Kernel builders
 # ---------------------------------------------------------------------------
 
+
 def _cosine_kernel(embeddings: Tensor) -> Tensor:
     """Cosine similarity kernel: K_{ij} = (e_i · e_j) / (||e_i|| ||e_j||).
 
@@ -81,8 +81,8 @@ def _cosine_kernel(embeddings: Tensor) -> Tensor:
     Returns:
         (n, n) kernel matrix with values in [-1, 1].
     """
-    normed = F.normalize(embeddings, p=2, dim=-1)   # (n, d)
-    return normed @ normed.T                         # (n, n)
+    normed = F.normalize(embeddings, p=2, dim=-1)  # (n, d)
+    return normed @ normed.T  # (n, n)
 
 
 def _linear_kernel(embeddings: Tensor) -> Tensor:
@@ -94,7 +94,7 @@ def _linear_kernel(embeddings: Tensor) -> Tensor:
     Returns:
         (n, n) kernel matrix.
     """
-    return embeddings @ embeddings.T                 # (n, n)
+    return embeddings @ embeddings.T  # (n, n)
 
 
 def _rbf_kernel(embeddings: Tensor, sigma: float = 1.0) -> Tensor:
@@ -109,11 +109,11 @@ def _rbf_kernel(embeddings: Tensor, sigma: float = 1.0) -> Tensor:
     """
     # Squared Euclidean distances via broadcasting
     diff = embeddings.unsqueeze(0) - embeddings.unsqueeze(1)  # (n, n, d)
-    sq_dist = (diff ** 2).sum(dim=-1)                         # (n, n)
-    return torch.exp(-sq_dist / (2.0 * sigma ** 2))
+    sq_dist = (diff**2).sum(dim=-1)  # (n, n)
+    return torch.exp(-sq_dist / (2.0 * sigma**2))
 
 
-def _exact_match_kernel(sequences: List[List[int]]) -> Tensor:
+def _exact_match_kernel(sequences: list[list[int]]) -> Tensor:
     """Exact-match kernel: K_{ij} = 1 if s_i == s_j else 0.
 
     Args:
@@ -135,6 +135,7 @@ def _exact_match_kernel(sequences: List[List[int]]) -> Tensor:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def embedding_vendi_score(
     embeddings: Tensor,
@@ -168,7 +169,7 @@ def embedding_vendi_score(
     return vendi_score(K)
 
 
-def token_vendi_score(sequences: List[List[int]]) -> float:
+def token_vendi_score(sequences: list[list[int]]) -> float:
     """Vendi Score using the exact-match kernel on token-id sequences.
 
     K_{ij} = 1 if sequences i and j are identical, else 0.
@@ -189,6 +190,7 @@ def token_vendi_score(sequences: List[List[int]]) -> float:
 # ---------------------------------------------------------------------------
 # VendiScorer class
 # ---------------------------------------------------------------------------
+
 
 class VendiScorer:
     """Stateful Vendi Score evaluator.
@@ -219,7 +221,7 @@ class VendiScorer:
             rbf_sigma=self.rbf_sigma,
         )
 
-    def score_batch(self, embeddings_list: List[Tensor]) -> List[float]:
+    def score_batch(self, embeddings_list: list[Tensor]) -> list[float]:
         """Score multiple groups of embeddings independently.
 
         Args:

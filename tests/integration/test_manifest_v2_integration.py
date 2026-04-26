@@ -29,7 +29,6 @@ from src.model import (
     AURELIUS_REFERENCE_MANIFEST,
     MANIFEST_SCHEMA_VERSION,
     MODEL_MANIFEST_REGISTRY,
-    FamilyManifest,
     ManifestValidationError,
     check_checkpoint_compatibility,
     check_manifest_compatibility,
@@ -71,6 +70,7 @@ def _v1_payload(**overrides):
 # 1. Public surface exposes v2 symbols and the reference manifest is v2.
 # ---------------------------------------------------------------------------
 
+
 def test_reference_importable_from_src_model_and_is_v2():
     assert hasattr(model_pkg, "AURELIUS_REFERENCE_MANIFEST")
     assert hasattr(model_pkg, "is_v2_manifest")
@@ -83,6 +83,7 @@ def test_reference_importable_from_src_model_and_is_v2():
 # ---------------------------------------------------------------------------
 # 2. Registry invariant: no partial-v2 manifests.
 # ---------------------------------------------------------------------------
+
 
 def test_registry_has_no_partial_v2_manifests():
     for key, m in MODEL_MANIFEST_REGISTRY.items():
@@ -101,15 +102,18 @@ def test_registry_has_no_partial_v2_manifests():
 # 3. compare_backend_contracts on the reference manifest.
 # ---------------------------------------------------------------------------
 
+
 def test_compare_reference_against_itself_is_exact():
-    assert compare_backend_contracts(
-        AURELIUS_REFERENCE_MANIFEST, AURELIUS_REFERENCE_MANIFEST
-    ) == "exact"
+    assert (
+        compare_backend_contracts(AURELIUS_REFERENCE_MANIFEST, AURELIUS_REFERENCE_MANIFEST)
+        == "exact"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 4. Registering + retrieving a v2 manifest preserves the three fields.
 # ---------------------------------------------------------------------------
+
 
 def test_register_and_get_manifest_preserves_v2_fields():
     payload = _v1_payload(
@@ -139,11 +143,10 @@ def test_register_and_get_manifest_preserves_v2_fields():
 # 5. check_manifest_compatibility still works on v2 manifests.
 # ---------------------------------------------------------------------------
 
+
 def test_compatibility_check_still_works_on_v2_manifests():
     # Self-comparison -> exact.
-    verdict = check_manifest_compatibility(
-        AURELIUS_REFERENCE_MANIFEST, AURELIUS_REFERENCE_MANIFEST
-    )
+    verdict = check_manifest_compatibility(AURELIUS_REFERENCE_MANIFEST, AURELIUS_REFERENCE_MANIFEST)
     assert verdict.compatible is True
     assert verdict.severity == "exact"
 
@@ -196,6 +199,7 @@ def test_checkpoint_compatibility_tracks_backend_identity():
 # 6. JSON round-trip preserves the three v2 fields.
 # ---------------------------------------------------------------------------
 
+
 def test_dump_reference_roundtrips_through_json_with_v2_fields():
     encoded = json.dumps(dump_manifest(AURELIUS_REFERENCE_MANIFEST))
     decoded = json.loads(encoded)
@@ -211,6 +215,7 @@ def test_dump_reference_roundtrips_through_json_with_v2_fields():
 # Extra integration coverage (still stdlib-only).
 # ---------------------------------------------------------------------------
 
+
 def test_v2_to_v1_dict_reloads_as_valid_v1_manifest():
     legacy = v2_to_v1_dict(AURELIUS_REFERENCE_MANIFEST)
     restored = load_manifest(legacy)
@@ -219,12 +224,14 @@ def test_v2_to_v1_dict_reloads_as_valid_v1_manifest():
 
 
 def test_upgrade_to_v2_then_register_is_retrievable():
-    base = load_manifest(_v1_payload(
-        variant_name="int-upgrade-then-register",
-    ))
-    upgraded = upgrade_to_v2(base, backend_name="llamacpp",
-                             engine_contract="0.9.0",
-                             adapter_contract="0.9.0")
+    base = load_manifest(
+        _v1_payload(
+            variant_name="int-upgrade-then-register",
+        )
+    )
+    upgraded = upgrade_to_v2(
+        base, backend_name="llamacpp", engine_contract="0.9.0", adapter_contract="0.9.0"
+    )
     register_manifest(upgraded)
     try:
         got = get_manifest("aurelius", "int-upgrade-then-register")

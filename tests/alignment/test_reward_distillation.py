@@ -1,17 +1,18 @@
 """Tests for reward_distillation module."""
+
 import pytest
 import torch
-import torch.nn as nn
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.alignment.reward_distillation import (
+    RewardDistillationTrainer,
     RewardDistillConfig,
     RewardHead,
     distillation_loss,
-    preference_loss,
     generate_synthetic_pairs,
-    RewardDistillationTrainer,
+    preference_loss,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 D_MODEL = 64
 VOCAB_SIZE = 256
@@ -23,8 +24,14 @@ N_PAIRS = 2
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=D_MODEL, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=VOCAB_SIZE, max_seq_len=512,
+        n_layers=2,
+        d_model=D_MODEL,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=VOCAB_SIZE,
+        max_seq_len=512,
     )
 
 
@@ -48,6 +55,7 @@ def input_ids():
 
 # --- RewardDistillConfig ---
 
+
 def test_reward_distill_config_defaults():
     cfg = RewardDistillConfig()
     assert cfg.temperature == 2.0
@@ -57,6 +65,7 @@ def test_reward_distill_config_defaults():
 
 
 # --- RewardHead ---
+
 
 def test_reward_head_output_shape():
     head = RewardHead(D_MODEL)
@@ -75,6 +84,7 @@ def test_reward_head_differentiable():
 
 
 # --- distillation_loss ---
+
 
 def test_distillation_loss_returns_scalar():
     s = torch.randn(BATCH)
@@ -99,6 +109,7 @@ def test_distillation_loss_different_inputs_positive():
 
 # --- preference_loss ---
 
+
 def test_preference_loss_returns_scalar():
     chosen = torch.tensor([1.0, 2.0])
     rejected = torch.tensor([0.0, 0.5])
@@ -122,6 +133,7 @@ def test_preference_loss_chosen_much_worse_high_loss():
 
 
 # --- generate_synthetic_pairs ---
+
 
 def test_generate_synthetic_pairs_returns_n_pairs(student_model):
     prompt = torch.randint(0, VOCAB_SIZE, (1, 4))
@@ -148,6 +160,7 @@ def test_generate_synthetic_pairs_same_length(student_model):
 
 
 # --- RewardDistillationTrainer ---
+
 
 def test_trainer_train_step_returns_required_keys(student_model, teacher_model, input_ids):
     config = RewardDistillConfig()

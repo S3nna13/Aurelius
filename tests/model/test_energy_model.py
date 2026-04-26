@@ -2,32 +2,38 @@
 
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.energy_model import (
     EBMConfig,
-    EnergyHead,
     EBMTrainer,
+    EnergyHead,
+    _get_hidden_states,
     compute_sequence_energy,
     contrastive_divergence_loss,
     langevin_step,
-    _get_hidden_states,
 )
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 TINY_CFG = AureliusConfig(
-    n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-    head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+    n_layers=2,
+    d_model=64,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
 )
-EBM_CFG = EBMConfig(d_model=64, energy_hidden=128, noise_scale=0.1,
-                     n_mcmc_steps=10, step_size=0.01, temperature=1.0)
+EBM_CFG = EBMConfig(
+    d_model=64, energy_hidden=128, noise_scale=0.1, n_mcmc_steps=10, step_size=0.01, temperature=1.0
+)
 BATCH = 2
 SEQ = 8
 
@@ -76,8 +82,14 @@ def test_ebm_config_defaults():
 
 def test_ebm_config_custom():
     """EBMConfig accepts custom values."""
-    cfg = EBMConfig(d_model=128, energy_hidden=256, noise_scale=0.2,
-                    n_mcmc_steps=20, step_size=0.05, temperature=2.0)
+    cfg = EBMConfig(
+        d_model=128,
+        energy_hidden=256,
+        noise_scale=0.2,
+        n_mcmc_steps=20,
+        step_size=0.05,
+        temperature=2.0,
+    )
     assert cfg.d_model == 128
     assert cfg.energy_hidden == 256
     assert cfg.noise_scale == 0.2
@@ -257,9 +269,7 @@ def test_trainer_updates_energy_head(model, input_ids, neg_ids):
     params_before = [p.clone() for p in trainer.energy_head.parameters()]
     trainer.train_step(input_ids, neg_ids)
     params_after = list(trainer.energy_head.parameters())
-    changed = any(
-        not torch.allclose(b, a) for b, a in zip(params_before, params_after)
-    )
+    changed = any(not torch.allclose(b, a) for b, a in zip(params_before, params_after))
     assert changed, "Energy head parameters should change after a training step"
 
 

@@ -5,24 +5,24 @@ Using Lookahead Decoding". Proposes multiple candidate n-gram continuations
 in parallel ("windows"), verifies them against the model's distribution,
 and accepts as many tokens as possible per step.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LookaheadConfig:
-    window_size: int = 5     # W — tokens per lookahead branch
-    n_gram_size: int = 3     # N — n-gram size for the n-gram pool
+    window_size: int = 5  # W — tokens per lookahead branch
+    n_gram_size: int = 3  # N — n-gram size for the n-gram pool
     guess_set_size: int = 5  # G — max candidate guesses per step
     max_new_tokens: int = 50
 
@@ -30,6 +30,7 @@ class LookaheadConfig:
 # ---------------------------------------------------------------------------
 # NGramPool
 # ---------------------------------------------------------------------------
+
 
 class NGramPool:
     """Stores and retrieves n-grams built from accepted token sequences.
@@ -40,24 +41,24 @@ class NGramPool:
     def __init__(self, n: int) -> None:
         self.n = n
         # Maps prefix tuple (length n-1) to list of full n-gram tuples (length n)
-        self._pool: Dict[Tuple[int, ...], List[Tuple[int, ...]]] = {}
+        self._pool: dict[tuple[int, ...], list[tuple[int, ...]]] = {}
         self._total: int = 0
 
-    def update(self, tokens: List[int]) -> None:
+    def update(self, tokens: list[int]) -> None:
         """Extract all n-grams from tokens and add to pool."""
         n = self.n
         if len(tokens) < n:
             return
         for i in range(len(tokens) - n + 1):
-            ngram: Tuple[int, ...] = tuple(tokens[i : i + n])
-            prefix: Tuple[int, ...] = ngram[: n - 1]
+            ngram: tuple[int, ...] = tuple(tokens[i : i + n])
+            prefix: tuple[int, ...] = ngram[: n - 1]
             if prefix not in self._pool:
                 self._pool[prefix] = []
             if ngram not in self._pool[prefix]:
                 self._pool[prefix].append(ngram)
                 self._total += 1
 
-    def lookup(self, prefix: Tuple[int, ...]) -> List[Tuple[int, ...]]:
+    def lookup(self, prefix: tuple[int, ...]) -> list[tuple[int, ...]]:
         """Find n-grams whose first (n-1) tokens match prefix.
 
         prefix length should be n-1. Returns [] if not found.
@@ -72,11 +73,12 @@ class NGramPool:
 # verify_candidates
 # ---------------------------------------------------------------------------
 
+
 def verify_candidates(
     model: nn.Module,
     input_ids: Tensor,
-    candidates: List[Tensor],
-) -> Tuple[Tensor, int]:
+    candidates: list[Tensor],
+) -> tuple[Tensor, int]:
     """Run model on extended context; verify each candidate greedily.
 
     Extends input_ids with the longest candidate for a single forward pass,
@@ -108,12 +110,12 @@ def verify_candidates(
     input_len = input_ids.shape[1]
 
     best_n = 0
-    best_tokens: Optional[Tensor] = None
+    best_tokens: Tensor | None = None
 
     for candidate in candidates:
         candidate = candidate.to(device)
         cand_len = candidate.shape[0]
-        accepted: List[Tensor] = []
+        accepted: list[Tensor] = []
         for i in range(cand_len):
             predicted = logits[0, input_len - 1 + i, :].argmax(dim=-1)
             if predicted.item() == candidate[i].item():
@@ -137,12 +139,13 @@ def verify_candidates(
 # lookahead_decode_step
 # ---------------------------------------------------------------------------
 
+
 def lookahead_decode_step(
     model: nn.Module,
     input_ids: Tensor,
     pool: NGramPool,
     config: LookaheadConfig,
-) -> Tuple[Tensor, int]:
+) -> tuple[Tensor, int]:
     """One lookahead decoding step.
 
     1. Use the last (n-1) tokens as prefix to look up candidates from the pool.
@@ -160,7 +163,7 @@ def lookahead_decode_step(
     seq = input_ids[0]  # shape (L,)
     prefix_len = n - 1
     if seq.shape[0] >= prefix_len and prefix_len > 0:
-        prefix: Tuple[int, ...] = tuple(seq[-prefix_len:].tolist())
+        prefix: tuple[int, ...] = tuple(seq[-prefix_len:].tolist())
     else:
         prefix = tuple(seq.tolist())
 
@@ -173,19 +176,17 @@ def lookahead_decode_step(
         next_token = logits[0, -1, :].argmax(dim=-1)
         accepted = next_token.unsqueeze(0)
         # Update pool with the accepted sequence (context + new token)
-        all_tokens: List[int] = seq.tolist() + [int(next_token.item())]
+        all_tokens: list[int] = seq.tolist() + [int(next_token.item())]
         pool.update(all_tokens)
         return accepted, 1
 
     # Convert top-G candidate tuples to tensors (the suffix/continuation part)
     top_g = candidates_tuples[: config.guess_set_size]
-    candidate_tensors: List[Tensor] = []
+    candidate_tensors: list[Tensor] = []
     for ngram_tuple in top_g:
         continuation = list(ngram_tuple[prefix_len:])
         if continuation:
-            candidate_tensors.append(
-                torch.tensor(continuation, dtype=torch.long, device=device)
-            )
+            candidate_tensors.append(torch.tensor(continuation, dtype=torch.long, device=device))
 
     accepted_tokens, n_accepted = verify_candidates(model, input_ids, candidate_tensors)
 
@@ -199,6 +200,7 @@ def lookahead_decode_step(
 # ---------------------------------------------------------------------------
 # LookaheadDecoder
 # ---------------------------------------------------------------------------
+
 
 class LookaheadDecoder:
     """Full lookahead decoder using an n-gram pool for speculation."""
@@ -215,7 +217,7 @@ class LookaheadDecoder:
         """
         self.model.train(False)
         context = input_ids.clone()
-        generated: List[Tensor] = []
+        generated: list[Tensor] = []
         total = 0
 
         with torch.no_grad():
@@ -229,16 +231,14 @@ class LookaheadDecoder:
                     n_accepted = remaining
 
                 generated.append(accepted)
-                context = torch.cat(
-                    [context, accepted.unsqueeze(0)], dim=1
-                )
+                context = torch.cat([context, accepted.unsqueeze(0)], dim=1)
                 total += n_accepted
 
         if not generated:
             return torch.empty(0, dtype=torch.long, device=input_ids.device)
         return torch.cat(generated, dim=0)
 
-    def decode_with_stats(self, input_ids: Tensor, max_new_tokens: int) -> Dict:
+    def decode_with_stats(self, input_ids: Tensor, max_new_tokens: int) -> dict:
         """Decode and return statistics.
 
         Returns:
@@ -251,7 +251,7 @@ class LookaheadDecoder:
         """
         self.model.train(False)
         context = input_ids.clone()
-        generated: List[Tensor] = []
+        generated: list[Tensor] = []
         total_tokens = 0
         total_steps = 0
 
@@ -266,9 +266,7 @@ class LookaheadDecoder:
                     n_accepted = remaining
 
                 generated.append(accepted)
-                context = torch.cat(
-                    [context, accepted.unsqueeze(0)], dim=1
-                )
+                context = torch.cat([context, accepted.unsqueeze(0)], dim=1)
                 total_tokens += n_accepted
                 total_steps += 1
 

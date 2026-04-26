@@ -99,9 +99,9 @@ class DenseEncoder(nn.Module):
         if self._hidden is None:
             raise RuntimeError("Hook did not capture hidden states.")
 
-        pooled = self._pool(self._hidden)        # (B, d_model)
-        projected = self.proj(pooled)             # (B, embedding_dim)
-        return F.normalize(projected, dim=-1)     # L2-normalize
+        pooled = self._pool(self._hidden)  # (B, d_model)
+        projected = self.proj(pooled)  # (B, embedding_dim)
+        return F.normalize(projected, dim=-1)  # L2-normalize
 
     def forward(self, input_ids: Tensor) -> Tensor:
         """Same as encode."""
@@ -165,7 +165,7 @@ class DPRTrainer:
         self.passage_encoder.train()
         self.optimizer.zero_grad()
 
-        q_embs = self.query_encoder(query_ids)      # (B, D)
+        q_embs = self.query_encoder(query_ids)  # (B, D)
         p_embs = self.passage_encoder(passage_ids)  # (B, D)
 
         loss = in_batch_negatives_loss(q_embs, p_embs, self.config.temperature)

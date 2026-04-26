@@ -1,10 +1,7 @@
 """Tests for few_shot_prompting module."""
 
 import pytest
-import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.data.few_shot_prompting import (
     FewShotConfig,
     FewShotExample,
@@ -18,6 +15,8 @@ from src.data.few_shot_prompting import (
     select_examples_random,
     truncate_prompt_to_fit,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Tiny model config
@@ -63,6 +62,7 @@ def sample_examples():
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = FewShotConfig()
     assert cfg.n_shots == 5
@@ -72,6 +72,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_format_example_template
 # ---------------------------------------------------------------------------
+
 
 def test_format_example_template():
     ex = FewShotExample(input_text="hello", output_text="world")
@@ -83,6 +84,7 @@ def test_format_example_template():
 # ---------------------------------------------------------------------------
 # 3. test_format_few_shot_prompt_contains_examples
 # ---------------------------------------------------------------------------
+
 
 def test_format_few_shot_prompt_contains_examples(sample_examples):
     cfg = FewShotConfig(n_shots=2, instruction="")
@@ -97,6 +99,7 @@ def test_format_few_shot_prompt_contains_examples(sample_examples):
 # 4. test_format_few_shot_prompt_with_instruction
 # ---------------------------------------------------------------------------
 
+
 def test_format_few_shot_prompt_with_instruction(sample_examples):
     cfg = FewShotConfig(n_shots=1, instruction="Be helpful.")
     selected = sample_examples[:1]
@@ -107,6 +110,7 @@ def test_format_few_shot_prompt_with_instruction(sample_examples):
 # ---------------------------------------------------------------------------
 # 5. test_compute_similarity_identical
 # ---------------------------------------------------------------------------
+
 
 def test_compute_similarity_identical():
     text = "hello world"
@@ -119,6 +123,7 @@ def test_compute_similarity_identical():
 # 6. test_compute_similarity_disjoint
 # ---------------------------------------------------------------------------
 
+
 def test_compute_similarity_disjoint():
     ex = FewShotExample(input_text="aaaa", output_text="")
     # query uses only 'b', example uses only 'a' — no shared chars
@@ -130,6 +135,7 @@ def test_compute_similarity_disjoint():
 # 7. test_select_random_count
 # ---------------------------------------------------------------------------
 
+
 def test_select_random_count(sample_examples):
     selected = select_examples_random(sample_examples, n=3, seed=0)
     assert len(selected) == 3
@@ -138,6 +144,7 @@ def test_select_random_count(sample_examples):
 # ---------------------------------------------------------------------------
 # 8. test_select_random_reproducible
 # ---------------------------------------------------------------------------
+
 
 def test_select_random_reproducible(sample_examples):
     s1 = select_examples_random(sample_examples, n=3, seed=42)
@@ -149,6 +156,7 @@ def test_select_random_reproducible(sample_examples):
 # 9. test_select_by_similarity_count
 # ---------------------------------------------------------------------------
 
+
 def test_select_by_similarity_count(sample_examples):
     selected = select_examples_by_similarity(sample_examples, query="What is the capital?", n=3)
     assert len(selected) == 3
@@ -157,6 +165,7 @@ def test_select_by_similarity_count(sample_examples):
 # ---------------------------------------------------------------------------
 # 10. test_select_by_similarity_top
 # ---------------------------------------------------------------------------
+
 
 def test_select_by_similarity_top(sample_examples):
     # "What is the capital of France?" is identical to sample_examples[0].input_text
@@ -170,6 +179,7 @@ def test_select_by_similarity_top(sample_examples):
 # 11. test_select_diverse_count
 # ---------------------------------------------------------------------------
 
+
 def test_select_diverse_count(sample_examples):
     selected = select_examples_diverse(sample_examples, query="What is Paris?", n=3)
     assert len(selected) == 3
@@ -178,6 +188,7 @@ def test_select_diverse_count(sample_examples):
 # ---------------------------------------------------------------------------
 # 12. test_estimate_prompt_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_prompt_tokens():
     prompt = "This is a sample prompt with several words."
@@ -188,6 +199,7 @@ def test_estimate_prompt_tokens():
 # ---------------------------------------------------------------------------
 # 13. test_truncate_from_start
 # ---------------------------------------------------------------------------
+
 
 def test_truncate_from_start():
     prompt = "one two three four five six seven eight nine ten"
@@ -200,6 +212,7 @@ def test_truncate_from_start():
 # 14. test_truncate_from_end
 # ---------------------------------------------------------------------------
 
+
 def test_truncate_from_end():
     prompt = "one two three four five six seven eight nine ten"
     truncated = truncate_prompt_to_fit(prompt, max_tokens=5, truncate_from="end")
@@ -210,6 +223,7 @@ def test_truncate_from_end():
 # ---------------------------------------------------------------------------
 # 15. test_prompt_builder_build
 # ---------------------------------------------------------------------------
+
 
 def test_prompt_builder_build(sample_examples):
     cfg = FewShotConfig(n_shots=2, selection_strategy="random")
@@ -223,6 +237,7 @@ def test_prompt_builder_build(sample_examples):
 # ---------------------------------------------------------------------------
 # 16. test_prompt_builder_evaluate_quality_keys
 # ---------------------------------------------------------------------------
+
 
 def test_prompt_builder_evaluate_quality_keys(tiny_model, sample_examples):
     cfg = FewShotConfig(n_shots=2, selection_strategy="random")

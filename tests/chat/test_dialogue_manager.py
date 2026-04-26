@@ -1,6 +1,4 @@
-import pytest
-
-from src.chat.dialogue_manager import DialogueManager, DialogueState, Turn
+from src.chat.dialogue_manager import DialogueManager, DialogueState
 
 
 def make_dm(slots=None):

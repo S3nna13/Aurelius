@@ -4,16 +4,13 @@ import logging
 import os
 import time
 
-import pytest
-
 from src.security.canary_pipeline import (
+    CANARY_PIPELINE_REGISTRY,
+    DEFAULT_CANARY_PIPELINE,
     CanaryConfig,
     CanaryPipeline,
     CanaryToken,
-    CANARY_PIPELINE_REGISTRY,
-    DEFAULT_CANARY_PIPELINE,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -103,7 +100,7 @@ def test_inject_preserves_original_text():
 def test_scan_finds_injected_token():
     pipeline = make_pipeline()
     token = pipeline.generate("scan-find")
-    injected = pipeline.inject("some output", token)
+    pipeline.inject("some output", token)
     # Token was consumed by inject but not yet revoked; re-register for scan
     # Actually inject does NOT revoke — only scan does.
     # Regenerate a fresh pipeline to test the full flow.

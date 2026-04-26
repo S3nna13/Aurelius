@@ -11,16 +11,17 @@ Generative Models for Open Domain Question Answering".
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-from typing import List
 
 
 @dataclass
 class FiDConfig:
     """Configuration for Fusion-in-Decoder RAG."""
+
     n_passages: int = 5
     max_passage_len: int = 128
     fusion_method: str = "concat"  # "concat" | "cross_attention" | "average"
@@ -29,8 +30,8 @@ class FiDConfig:
 
 def encode_passages(
     model: nn.Module,
-    passage_ids_list: List[torch.Tensor],
-) -> List[torch.Tensor]:
+    passage_ids_list: list[torch.Tensor],
+) -> list[torch.Tensor]:
     """Encode each passage independently through the backbone.
 
     Uses a forward hook on the last transformer block to capture hidden
@@ -43,7 +44,7 @@ def encode_passages(
     Returns:
         List of hidden-state tensors, each (B, T, d_model).
     """
-    encoded: List[torch.Tensor] = []
+    encoded: list[torch.Tensor] = []
 
     def _hook(module, inp, out):
         h = out[0] if isinstance(out, tuple) else out
@@ -66,7 +67,7 @@ def encode_passages(
     return encoded
 
 
-def concat_fusion(encoded_passages: List[torch.Tensor]) -> torch.Tensor:
+def concat_fusion(encoded_passages: list[torch.Tensor]) -> torch.Tensor:
     """Concatenate encoded passages along the sequence dimension.
 
     Args:
@@ -78,7 +79,7 @@ def concat_fusion(encoded_passages: List[torch.Tensor]) -> torch.Tensor:
     return torch.cat(encoded_passages, dim=1)
 
 
-def average_fusion(encoded_passages: List[torch.Tensor]) -> torch.Tensor:
+def average_fusion(encoded_passages: list[torch.Tensor]) -> torch.Tensor:
     """Mean-pool each passage to (B, d), then stack and mean to (B, 1, d).
 
     Args:
@@ -105,7 +106,7 @@ class FusionCrossAttention(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
 
         self.q_proj = nn.Linear(d_model, d_model, bias=False)
         self.k_proj = nn.Linear(d_model, d_model, bias=False)
@@ -132,7 +133,7 @@ class FusionCrossAttention(nn.Module):
         k = self.k_proj(kv_source).view(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(kv_source).view(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
 
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         attn = torch.matmul(q, k.transpose(-2, -1)) * scale
         attn = F.softmax(attn, dim=-1)
         out = torch.matmul(attn, v)  # (B, H, T_q, head_dim)
@@ -169,7 +170,7 @@ class FiDModel(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        passage_ids_list: List[torch.Tensor],
+        passage_ids_list: list[torch.Tensor],
     ) -> torch.Tensor:
         """
         Args:
@@ -245,7 +246,7 @@ class FiDGenerator:
     def generate(
         self,
         input_ids: torch.Tensor,
-        passages: List[torch.Tensor],
+        passages: list[torch.Tensor],
         max_tokens: int = 16,
         temperature: float = 1.0,
     ) -> torch.Tensor:

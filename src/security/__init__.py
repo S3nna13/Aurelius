@@ -3,51 +3,98 @@
 Re-exports defensive components for convenience.
 """
 
-from src.security.model_stealing_defense import (
-    ModelStealingDefense,
-    QueryAuditEntry,
-    StealingThreatReport,
+from src.security.audit_logger import (
+    AUDIT_LOGGER,
+    AuditCategory,
+    AuditEvent,
+    AuditLevel,
+    AuditLogger,
 )
-
-from src.security.threat_intel_correlator import (
-    CorrelatedIOC,
-    CorrelationReport,
-    ThreatIntelCorrelator,
-    ThreatIntelSource,
+from src.security.audit_trail import (
+    AUDIT_TRAIL_REGISTRY,
+    AuditTrail,
 )
-
-from src.security.mitre_attack_taxonomy import (
-    ATTACK_TECHNIQUES,
-    MitreAttackClassifier,
-    TACTIC_ORDER,
-    TechniqueMatch,
+from src.security.audit_trail import (
+    AuditEvent as TrailAuditEvent,
 )
-
+from src.security.canary_pipeline import (
+    CANARY_PIPELINE_REGISTRY,
+    DEFAULT_CANARY_PIPELINE,
+    CanaryConfig,
+    CanaryPipeline,
+    CanaryToken,
+)
 from src.security.ioc_extractor import (
     IOC,
     IOCExtractor,
     IOCReport,
 )
-
-from src.security.yara_rule_engine import (
-    YaraMatch,
-    YaraRule,
-    YaraRuleEngine,
-    YaraRuleParser,
+from src.security.ip_allowlist import (
+    IP_ALLOWLIST_REGISTRY,
+    CIDRBlock,
+    IPAllowlist,
 )
-
+from src.security.log_anomaly_detector import (
+    LogAnomaly,
+    LogAnomalyDetector,
+)
+from src.security.mitre_attack_taxonomy import (
+    ATTACK_TECHNIQUES,
+    TACTIC_ORDER,
+    MitreAttackClassifier,
+    TechniqueMatch,
+)
+from src.security.model_stealing_defense import (
+    ModelStealingDefense,
+    QueryAuditEntry,
+    StealingThreatReport,
+)
 from src.security.pe_file_analyzer import (
     PEInfo,
     PESection,
     analyze_pe,
     analyze_pe_file,
 )
-
-from src.security.log_anomaly_detector import (
-    LogAnomaly,
-    LogAnomalyDetector,
+from src.security.policy_gate import (
+    DEFAULT_POLICY_GATE,
+    POLICY_GATE_REGISTRY,
+    PolicyGate,
+    PolicyScope,
+    PolicyViolation,
 )
-
+from src.security.posture_scorer import (
+    POSTURE_SCORER_REGISTRY,
+    PostureScore,
+    SecurityPostureScorer,
+)
+from src.security.rate_abuse_detector import (
+    RATE_ABUSE_DETECTOR_REGISTRY,
+    AbuseAlert,
+    AbusePattern,
+    RateAbuseDetector,
+    RequestRecord,
+)
+from src.security.safe_archive import (
+    SAFE_EXTRACTOR_REGISTRY,
+    ArchiveError,
+    SafeTarExtractor,
+    SafeZipExtractor,
+    safe_extract,
+)
+from src.security.sandbox_executor import (
+    SANDBOX_EXECUTOR,
+    SandboxConfig,
+    SandboxExecutor,
+    SandboxResult,
+    SandboxViolation,
+)
+from src.security.sarif_reporter import (
+    SARIF_REPORTER_REGISTRY,
+    SarifLevel,
+    SarifReport,
+    SarifResult,
+    SarifRule,
+)
 from src.security.soc_pipeline import (
     DEFAULT_SOC_PIPELINE,
     DecideStage,
@@ -58,84 +105,22 @@ from src.security.soc_pipeline import (
     PipelineStage,
     RouteStage,
     Rule,
-    SOCPipeline,
     SecurityEvent,
+    SOCPipeline,
     TriageDecision,
     evidence_first_gate,
 )
-
-from src.security.canary_pipeline import (
-    CanaryConfig,
-    CanaryPipeline,
-    CanaryToken,
-    CANARY_PIPELINE_REGISTRY,
-    DEFAULT_CANARY_PIPELINE,
+from src.security.threat_intel_correlator import (
+    CorrelatedIOC,
+    CorrelationReport,
+    ThreatIntelCorrelator,
+    ThreatIntelSource,
 )
-
-from src.security.safe_archive import (
-    ArchiveError,
-    SAFE_EXTRACTOR_REGISTRY,
-    SafeTarExtractor,
-    SafeZipExtractor,
-    safe_extract,
-)
-
-from src.security.policy_gate import (
-    DEFAULT_POLICY_GATE,
-    POLICY_GATE_REGISTRY,
-    PolicyGate,
-    PolicyScope,
-    PolicyViolation,
-)
-
-from src.security.sarif_reporter import (
-    SARIF_REPORTER_REGISTRY,
-    SarifLevel,
-    SarifReport,
-    SarifResult,
-    SarifRule,
-)
-
-from src.security.audit_logger import (
-    AUDIT_LOGGER,
-    AuditCategory,
-    AuditEvent,
-    AuditLevel,
-    AuditLogger,
-)
-
-from src.security.sandbox_executor import (
-    SANDBOX_EXECUTOR,
-    SandboxConfig,
-    SandboxExecutor,
-    SandboxResult,
-    SandboxViolation,
-)
-
-from src.security.rate_abuse_detector import (
-    AbuseAlert,
-    AbusePattern,
-    RATE_ABUSE_DETECTOR_REGISTRY,
-    RateAbuseDetector,
-    RequestRecord,
-)
-
-from src.security.ip_allowlist import (
-    CIDRBlock,
-    IP_ALLOWLIST_REGISTRY,
-    IPAllowlist,
-)
-
-from src.security.audit_trail import (
-    AuditEvent as TrailAuditEvent,
-    AUDIT_TRAIL_REGISTRY,
-    AuditTrail,
-)
-
-from src.security.posture_scorer import (
-    PostureScore,
-    SecurityPostureScorer,
-    POSTURE_SCORER_REGISTRY,
+from src.security.yara_rule_engine import (
+    YaraMatch,
+    YaraRule,
+    YaraRuleEngine,
+    YaraRuleParser,
 )
 
 # Additive registry keyed by name; test suites and integrators can register
@@ -144,20 +129,19 @@ DEFENSIVE_PIPELINE_REGISTRY: dict = {
     "default": DEFAULT_SOC_PIPELINE,
 }
 
-from src.security.provenance_attestation import (
-    PROVENANCE_ATTESTATION_REGISTRY,
-    ProvenanceAttestation,
-    ProvenanceAttestationBuilder,
-    ProvenanceError,
-    AttestationVerificationError,
-    Material,
-    build_file_attestation,
-)
-
 from src.security.checkpoint_signer import (
     CHECKPOINT_SIGNER_REGISTRY,
     CheckpointIntegrityError,
     CheckpointSigner,
+)
+from src.security.provenance_attestation import (
+    PROVENANCE_ATTESTATION_REGISTRY,
+    AttestationVerificationError,
+    Material,
+    ProvenanceAttestation,
+    ProvenanceAttestationBuilder,
+    ProvenanceError,
+    build_file_attestation,
 )
 
 SECURITY_REGISTRY: dict = {
@@ -170,13 +154,13 @@ SECURITY_REGISTRY: dict = {
 
 # --- Message content filter (cycle-197) --------------------------------------
 from .message_content_filter import (  # noqa: F401
+    DEFAULT_MESSAGE_FILTER,
+    MESSAGE_FILTER_REGISTRY,
     FilterConfig,
     FilterMatch,
     FilterResult,
     FilterVerdict,
     MessageContentFilter,
-    MESSAGE_FILTER_REGISTRY,
-    DEFAULT_MESSAGE_FILTER,
 )
 
 SECURITY_REGISTRY["message_filter"] = MESSAGE_FILTER_REGISTRY

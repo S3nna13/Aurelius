@@ -4,20 +4,18 @@ Tiny config: n_layers=2, d_model=64, n_heads=4, n_kv_heads=2,
              head_dim=16, d_ff=128, vocab_size=256, max_seq_len=64
 """
 
-import pytest
 import torch
 
+from src.interpretability.mechanistic_interp import (
+    analyze_weight_matrix,
+    compute_attention_pattern_similarity,
+    compute_residual_stream_contributions,
+    detect_superposition,
+    identify_attention_heads_by_type,
+    logit_lens_analysis,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.interpretability.mechanistic_interp import (
-    MechInterpConfig,
-    analyze_weight_matrix,
-    detect_superposition,
-    compute_attention_pattern_similarity,
-    logit_lens_analysis,
-    identify_attention_heads_by_type,
-    compute_residual_stream_contributions,
-)
 
 # ---------------------------------------------------------------------------
 # Shared tiny fixtures
@@ -53,6 +51,7 @@ def _make_input() -> torch.Tensor:
 # 1. analyze_weight_matrix — returns dict with all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_weight_matrix_keys():
     torch.manual_seed(7)
     W = torch.randn(32, 16)
@@ -70,6 +69,7 @@ def test_analyze_weight_matrix_keys():
 # ---------------------------------------------------------------------------
 # 2. singular_values shape is (min(m,n),)
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_weight_matrix_singular_values_shape():
     torch.manual_seed(7)
@@ -91,6 +91,7 @@ def test_analyze_weight_matrix_singular_values_shape_tall():
 # 3. effective_rank is a positive float <= min(m,n)
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_weight_matrix_effective_rank():
     torch.manual_seed(9)
     W = torch.randn(32, 16)
@@ -104,6 +105,7 @@ def test_analyze_weight_matrix_effective_rank():
 # ---------------------------------------------------------------------------
 # 4. detect_superposition — returns dict with all required keys
 # ---------------------------------------------------------------------------
+
 
 def test_detect_superposition_keys():
     torch.manual_seed(10)
@@ -122,6 +124,7 @@ def test_detect_superposition_keys():
 # 5. detect_superposition on fat random matrix — just check it runs
 # ---------------------------------------------------------------------------
 
+
 def test_detect_superposition_runs():
     torch.manual_seed(11)
     W = torch.randn(64, 128)
@@ -133,6 +136,7 @@ def test_detect_superposition_runs():
 # 6. detect_superposition compression_ratio > 0
 # ---------------------------------------------------------------------------
 
+
 def test_detect_superposition_compression_ratio_positive():
     torch.manual_seed(12)
     W = torch.randn(32, 64)
@@ -143,6 +147,7 @@ def test_detect_superposition_compression_ratio_positive():
 # ---------------------------------------------------------------------------
 # 7. compute_attention_pattern_similarity returns (n_heads, T, T)
 # ---------------------------------------------------------------------------
+
 
 def test_attention_pattern_similarity_shape():
     model = _make_model()
@@ -157,6 +162,7 @@ def test_attention_pattern_similarity_shape():
 # 8. attention patterns sum to ~1 along last dim (softmax rows)
 # ---------------------------------------------------------------------------
 
+
 def test_attention_pattern_row_sum():
     model = _make_model()
     input_ids = _make_input()
@@ -168,6 +174,7 @@ def test_attention_pattern_row_sum():
 # ---------------------------------------------------------------------------
 # 9. logit_lens_analysis returns (n_layers,) tensor
 # ---------------------------------------------------------------------------
+
 
 def test_logit_lens_shape():
     torch.manual_seed(42)
@@ -181,6 +188,7 @@ def test_logit_lens_shape():
 # 10. logit_lens values are finite
 # ---------------------------------------------------------------------------
 
+
 def test_logit_lens_finite():
     torch.manual_seed(42)
     model = _make_model()
@@ -192,6 +200,7 @@ def test_logit_lens_finite():
 # ---------------------------------------------------------------------------
 # 11. identify_attention_heads_by_type returns dict with correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_identify_heads_by_type_keys():
     model = _make_model()
@@ -213,6 +222,7 @@ def test_identify_heads_by_type_values_are_lists():
 # ---------------------------------------------------------------------------
 # 12. compute_residual_stream_contributions returns dict with layer keys
 # ---------------------------------------------------------------------------
+
 
 def test_residual_stream_contributions_keys():
     model = _make_model()

@@ -5,13 +5,10 @@ Covers DraftHead and SpeculativeStreamingDecoder (14 tests).
 Test config: vocab_size=256, d_model=64, gamma=4.
 All tests use pure PyTorch — no transformers/HuggingFace dependencies.
 """
+
 from __future__ import annotations
 
-from typing import List, Tuple, Union
-
-import pytest
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.inference.speculative_streaming import (
@@ -26,8 +23,8 @@ from src.inference.speculative_streaming import (
 VOCAB_SIZE = 256
 D_MODEL = 64
 GAMMA = 4
-B = 1   # batch size (decoder only supports B=1)
-T = 6   # context length
+B = 1  # batch size (decoder only supports B=1)
+T = 6  # context length
 
 # ---------------------------------------------------------------------------
 # Mock model helpers
@@ -43,7 +40,7 @@ def _make_fixed_logits(V: int, uniform: bool = False) -> Tensor:
     if uniform:
         return torch.zeros(V)
     logits = torch.zeros(V)
-    logits[0] = 10.0   # token 0 is the dominant token
+    logits[0] = 10.0  # token 0 is the dominant token
     return logits
 
 
@@ -79,7 +76,7 @@ class MockModel:
         self,
         input_ids: Tensor,
         return_hidden: bool = False,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    ) -> Tensor | tuple[Tensor, Tensor]:
         B, T_ = input_ids.shape
         V = self.vocab_size
         D = self.d_model
@@ -117,18 +114,18 @@ def _input_ids(t: int = T) -> Tensor:
 # 1. DraftHead output shape (B, T, vocab_size)
 # ===========================================================================
 
+
 def test_draft_head_output_shape():
     dh = DraftHead(D_MODEL, VOCAB_SIZE)
     h = torch.randn(B, T, D_MODEL)
     out = dh(h)
-    assert out.shape == (B, T, VOCAB_SIZE), (
-        f"Expected ({B}, {T}, {VOCAB_SIZE}), got {out.shape}"
-    )
+    assert out.shape == (B, T, VOCAB_SIZE), f"Expected ({B}, {T}, {VOCAB_SIZE}), got {out.shape}"
 
 
 # ===========================================================================
 # 2. DraftHead gradient flow
 # ===========================================================================
+
 
 def test_draft_head_gradient_flow():
     dh = DraftHead(D_MODEL, VOCAB_SIZE)
@@ -144,6 +141,7 @@ def test_draft_head_gradient_flow():
 # 3. generate_step: accepted_tokens is non-empty list of token IDs
 # ===========================================================================
 
+
 def test_generate_step_returns_nonempty_list():
     decoder = _make_decoder()
     ids = _input_ids()
@@ -157,6 +155,7 @@ def test_generate_step_returns_nonempty_list():
 # 4. generate_step: n_accepted ≤ gamma + 1
 # ===========================================================================
 
+
 def test_generate_step_n_accepted_upper_bound():
     decoder = _make_decoder(gamma=GAMMA)
     ids = _input_ids()
@@ -167,6 +166,7 @@ def test_generate_step_n_accepted_upper_bound():
 # ===========================================================================
 # 5. generate_step: n_accepted ≥ 1
 # ===========================================================================
+
 
 def test_generate_step_n_accepted_lower_bound():
     decoder = _make_decoder(gamma=GAMMA)
@@ -179,6 +179,7 @@ def test_generate_step_n_accepted_lower_bound():
 # 6. temperature=0 → greedy; if draft argmax == target argmax → always accept
 # ===========================================================================
 
+
 def test_temperature_zero_accepts_matching_argmax():
     """With temperature=0 both draft and target are greedy.
 
@@ -186,6 +187,7 @@ def test_temperature_zero_accepts_matching_argmax():
     then every draft token is 0 and the target also prefers 0, so all γ tokens
     should be accepted (plus the bonus), giving n_accepted == γ + 1.
     """
+
     # Target model: logits dominated by token 0 at all positions
     def logits_fn(b, t, v):
         lg = torch.zeros(b, t, v)
@@ -199,7 +201,7 @@ def test_temperature_zero_accepts_matching_argmax():
         dh.fc1.bias.zero_()
         dh.fc2.weight.zero_()
         dh.fc2.bias.zero_()
-        dh.fc2.bias[0] = 10.0   # token 0 dominates draft
+        dh.fc2.bias[0] = 10.0  # token 0 dominates draft
 
     model = MockModel(logits_fn=logits_fn)
     decoder = SpeculativeStreamingDecoder(model, dh, gamma=GAMMA, temperature=0.0)
@@ -214,6 +216,7 @@ def test_temperature_zero_accepts_matching_argmax():
 # ===========================================================================
 # 7. Draft tokens accepted: p_draft == p_target everywhere → always accept γ
 # ===========================================================================
+
 
 def test_always_accept_when_draft_equals_target():
     """When draft distribution == target distribution the acceptance ratio is
@@ -245,6 +248,7 @@ def test_always_accept_when_draft_equals_target():
 # 8. Draft tokens rejected: p_draft puts all mass on wrong token → reject step 1
 # ===========================================================================
 
+
 def test_always_reject_when_draft_wrong():
     """Draft head assigns all mass to token V-1; target assigns all mass to
     token 0.  Ratio p_target(V-1) / p_draft(V-1) = 0 → reject at k=1."""
@@ -271,14 +275,13 @@ def test_always_reject_when_draft_wrong():
     ids = _input_ids()
     accepted, n = decoder.generate_step(ids)
     # Should reject at step 1 and resample → exactly 1 token emitted
-    assert n == 1, (
-        f"Expected rejection at step 1 → n_accepted=1, got {n}. Tokens: {accepted}"
-    )
+    assert n == 1, f"Expected rejection at step 1 → n_accepted=1, got {n}. Tokens: {accepted}"
 
 
 # ===========================================================================
 # 9. Determinism under torch.manual_seed
 # ===========================================================================
+
 
 def test_determinism_under_manual_seed():
     def run():
@@ -290,14 +293,13 @@ def test_determinism_under_manual_seed():
 
     a1, n1 = run()
     a2, n2 = run()
-    assert a1 == a2 and n1 == n2, (
-        f"Non-deterministic under same seed: {a1} vs {a2}"
-    )
+    assert a1 == a2 and n1 == n2, f"Non-deterministic under same seed: {a1} vs {a2}"
 
 
 # ===========================================================================
 # 10. No NaN/Inf in generated tokens
 # ===========================================================================
+
 
 def test_no_nan_inf_in_generated_tokens():
     # Use random logits to stress-test numerical stability
@@ -310,13 +312,14 @@ def test_no_nan_inf_in_generated_tokens():
     ids = _input_ids()
     accepted, _ = decoder.generate_step(ids)
     for tok in accepted:
-        assert not (tok != tok), f"NaN token id: {tok}"   # nan check
+        assert not (tok != tok), f"NaN token id: {tok}"  # nan check
         assert tok < VOCAB_SIZE and tok >= 0, f"Token out of range: {tok}"
 
 
 # ===========================================================================
 # 11. acceptance_rate is in [0, 1]
 # ===========================================================================
+
 
 def test_acceptance_rate_in_bounds():
     decoder = _make_decoder()
@@ -330,6 +333,7 @@ def test_acceptance_rate_in_bounds():
 # ===========================================================================
 # 12. acceptance_rate == 1.0 when draft always matches target (all accepted)
 # ===========================================================================
+
 
 def test_acceptance_rate_one_when_always_accepted():
     """When all γ draft tokens are accepted every step, acceptance rate = 1."""
@@ -354,6 +358,7 @@ def test_acceptance_rate_one_when_always_accepted():
 # ===========================================================================
 # 13. Adjusted distribution: after rejection, resample from (p_t - p_d)+
 # ===========================================================================
+
 
 def test_adjusted_distribution_after_rejection():
     """After rejection the resampled token must come from the support of
@@ -382,7 +387,7 @@ def test_adjusted_distribution_after_rejection():
     model = MockModel(logits_fn=logits_fn)
     decoder = SpeculativeStreamingDecoder(model, dh, gamma=GAMMA, temperature=1.0)
 
-    rejected_samples: List[int] = []
+    rejected_samples: list[int] = []
     for seed in range(30):
         torch.manual_seed(seed)
         ids = _input_ids()
@@ -393,21 +398,20 @@ def test_adjusted_distribution_after_rejection():
     assert len(rejected_samples) > 0, "Expected at least some rejections"
     for tok in rejected_samples:
         assert tok in {0, 1, 2, V - 1}, (
-            f"Resampled token {tok} is outside expected support {{0,1,2,{V-1}}}. "
+            f"Resampled token {tok} is outside expected support {{0,1,2,{V - 1}}}. "
             "Note: V-1 can appear if draft samples token V-1 and passes; "
             "pure rejection re-samples should be in {0,1,2}."
         )
     # Specifically, purely resampled tokens should be in {0,1,2}
     purely_resampled = [t for t in rejected_samples if t != V - 1]
     for tok in purely_resampled:
-        assert tok in {0, 1, 2}, (
-            f"Re-sampled token {tok} outside support {{0,1,2}} of (p_t - p_d)+"
-        )
+        assert tok in {0, 1, 2}, f"Re-sampled token {tok} outside support {{0,1,2}} of (p_t - p_d)+"
 
 
 # ===========================================================================
 # 14. gamma=1: degenerates to standard autoregressive (1 or 2 tokens per step)
 # ===========================================================================
+
 
 def test_gamma_1_degenerates_to_autoregressive():
     """With gamma=1, each step emits either 1 token (rejection) or 2 tokens

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -218,8 +218,8 @@ class FewShotPromptBuilder:
 
         # Compute CE loss manually on expected_output portion
         # logits: (1, T, V) — shift by 1
-        logits_shifted = logits[0, :-1, :]   # (T-1, V)
-        targets = input_ids[0, 1:]            # (T-1,)
+        logits_shifted = logits[0, :-1, :]  # (T-1, V)
+        targets = input_ids[0, 1:]  # (T-1,)
         ce_loss = F.cross_entropy(logits_shifted, targets)
         perplexity = math.exp(ce_loss.item())
 
@@ -228,7 +228,7 @@ class FewShotPromptBuilder:
         # more precisely, we track _last_selected and need the query — use prompt text itself.
         if self._last_selected:
             # Use a dummy query object with the prompt as input_text
-            dummy_example = FewShotExample(input_text=prompt, output_text="")
+            FewShotExample(input_text=prompt, output_text="")
             sims = [compute_example_similarity(prompt, ex) for ex in self._last_selected]
             avg_sim = sum(sims) / len(sims)
         else:

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from html.parser import HTMLParser
 from io import StringIO
 from pathlib import Path
-from xml.etree import ElementTree as ET  # nosec B405 — stdlib only; input is local files / agent text, not untrusted network XML
+from xml.etree import (
+    ElementTree as ET,  # nosec B405 — stdlib only; input is local files / agent text, not untrusted network XML
+)
 
 
 class DocumentConversionError(Exception):
@@ -253,7 +255,7 @@ class DocumentConverter:
         return f"```json\n{pretty}\n```"
 
     def _convert_xml(self, text: str) -> str:
-        root = ET.fromstring(text)  # nosec B314 — stdlib only; input is local files / agent text
+        root = ET.fromstring(text)  # nosec B314 — stdlib only; input is local files / agent text  # noqa: S314
         chunks = [chunk.strip() for chunk in root.itertext() if chunk.strip()]
         return "\n\n".join(chunks)
 

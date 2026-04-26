@@ -12,17 +12,17 @@ n_layers = 2
 """
 
 import math
+
 import torch
-import pytest
 
 from src.alignment.cot_verifier import (
-    StepEncoder,
     ChainEncoder,
-    VerifierHead,
     CoTVerifierModel,
-    VerifierTrainer,
     ProcessRewardModel,
+    StepEncoder,
     VerifierConfig,
+    VerifierHead,
+    VerifierTrainer,
 )
 
 # ---------------------------------------------------------------------------
@@ -49,6 +49,7 @@ def make_step_ids_list(s=S, b=B, t=T, v=V):
 # StepEncoder tests
 # ---------------------------------------------------------------------------
 
+
 class TestStepEncoder:
     def setup_method(self):
         self.enc = StepEncoder(d_model=D, vocab_size=V, n_layers=L)
@@ -65,8 +66,9 @@ class TestStepEncoder:
         out_a = self.enc(ids_a)
         out_b = self.enc(ids_b)
         # The two inputs differ → output representations must differ
-        assert not torch.allclose(out_a, out_b), \
+        assert not torch.allclose(out_a, out_b), (
             "Different token inputs should produce different encodings"
+        )
 
     def test_output_is_float(self):
         ids = make_step_ids()
@@ -88,6 +90,7 @@ class TestStepEncoder:
 # ChainEncoder tests
 # ---------------------------------------------------------------------------
 
+
 class TestChainEncoder:
     def setup_method(self):
         self.enc = ChainEncoder(d_model=D, n_layers=L)
@@ -101,8 +104,9 @@ class TestChainEncoder:
         x = torch.randn(B, S, D)
         out = self.enc(x)
         # Transformer with positional embeddings should alter the representations
-        assert not torch.allclose(out, x), \
+        assert not torch.allclose(out, x), (
             "ChainEncoder output should differ from its input after transformation"
+        )
 
     def test_no_nan_in_output(self):
         x = torch.randn(B, S, D)
@@ -120,6 +124,7 @@ class TestChainEncoder:
 # VerifierHead tests
 # ---------------------------------------------------------------------------
 
+
 class TestVerifierHead:
     def setup_method(self):
         self.head = VerifierHead(d_model=D)
@@ -129,23 +134,25 @@ class TestVerifierHead:
 
     def test_step_scores_shape(self):
         step_scores, _ = self.head(self._make_chain_enc())
-        assert step_scores.shape == (B, S), \
+        assert step_scores.shape == (B, S), (
             f"step_scores: expected ({B}, {S}), got {step_scores.shape}"
+        )
 
     def test_chain_score_shape(self):
         _, chain_score = self.head(self._make_chain_enc())
-        assert chain_score.shape == (B,), \
-            f"chain_score: expected ({B},), got {chain_score.shape}"
+        assert chain_score.shape == (B,), f"chain_score: expected ({B},), got {chain_score.shape}"
 
     def test_step_scores_in_unit_interval(self):
         step_scores, _ = self.head(self._make_chain_enc())
-        assert (step_scores >= 0.0).all() and (step_scores <= 1.0).all(), \
+        assert (step_scores >= 0.0).all() and (step_scores <= 1.0).all(), (
             "step_scores should be in [0, 1]"
+        )
 
     def test_chain_score_in_unit_interval(self):
         _, chain_score = self.head(self._make_chain_enc())
-        assert (chain_score >= 0.0).all() and (chain_score <= 1.0).all(), \
+        assert (chain_score >= 0.0).all() and (chain_score <= 1.0).all(), (
             "chain_score should be in [0, 1]"
+        )
 
     def test_no_nan(self):
         step_scores, chain_score = self.head(self._make_chain_enc())
@@ -157,6 +164,7 @@ class TestVerifierHead:
 # CoTVerifierModel tests
 # ---------------------------------------------------------------------------
 
+
 class TestCoTVerifierModel:
     def setup_method(self):
         self.model = CoTVerifierModel(d_model=D, vocab_size=V, n_layers=L)
@@ -164,10 +172,10 @@ class TestCoTVerifierModel:
     def test_forward_output_shapes(self):
         ids_list = make_step_ids_list()
         step_scores, chain_score = self.model(ids_list)
-        assert step_scores.shape == (B, S), \
+        assert step_scores.shape == (B, S), (
             f"step_scores: expected ({B}, {S}), got {step_scores.shape}"
-        assert chain_score.shape == (B,), \
-            f"chain_score: expected ({B},), got {chain_score.shape}"
+        )
+        assert chain_score.shape == (B,), f"chain_score: expected ({B},), got {chain_score.shape}"
 
     def test_step_scores_in_unit_interval(self):
         ids_list = make_step_ids_list()
@@ -186,8 +194,7 @@ class TestCoTVerifierModel:
         loss.backward()
         # At least one parameter should have a non-None, non-zero gradient
         has_grad = any(
-            p.grad is not None and p.grad.abs().sum().item() > 0.0
-            for p in self.model.parameters()
+            p.grad is not None and p.grad.abs().sum().item() > 0.0 for p in self.model.parameters()
         )
         assert has_grad, "No gradients flowed through CoTVerifierModel"
 
@@ -201,6 +208,7 @@ class TestCoTVerifierModel:
 # ---------------------------------------------------------------------------
 # VerifierTrainer tests
 # ---------------------------------------------------------------------------
+
 
 class TestVerifierTrainer:
     def setup_method(self):
@@ -235,8 +243,9 @@ class TestVerifierTrainer:
             step_scores, chain_score, step_labels, chain_labels, alpha
         ).item()
         expected = alpha * sl + (1.0 - alpha) * cl
-        assert math.isclose(combined, expected, rel_tol=1e-5), \
+        assert math.isclose(combined, expected, rel_tol=1e-5), (
             f"combined_loss {combined} != {expected}"
+        )
 
     def test_train_step_returns_finite_loss(self):
         ids_list = make_step_ids_list()
@@ -273,6 +282,7 @@ class TestVerifierTrainer:
 # ProcessRewardModel tests
 # ---------------------------------------------------------------------------
 
+
 class TestProcessRewardModel:
     def setup_method(self):
         self.prm = ProcessRewardModel(d_model=D, vocab_size=V, n_layers=L)
@@ -285,8 +295,9 @@ class TestProcessRewardModel:
     def test_forward_output_in_unit_interval(self):
         ids = make_step_ids()
         out = self.prm(ids)
-        assert (out >= 0.0).all() and (out <= 1.0).all(), \
+        assert (out >= 0.0).all() and (out <= 1.0).all(), (
             "ProcessRewardModel output should be in [0, 1]"
+        )
 
     def test_outcome_from_steps_shape(self):
         step_scores = torch.rand(B, S)
@@ -296,18 +307,19 @@ class TestProcessRewardModel:
     def test_outcome_from_steps_in_unit_interval(self):
         step_scores = torch.rand(B, S)
         out = self.prm.outcome_from_steps(step_scores)
-        assert (out >= 0.0).all() and (out <= 1.0).all(), \
-            "outcome_from_steps should be in [0, 1]"
+        assert (out >= 0.0).all() and (out <= 1.0).all(), "outcome_from_steps should be in [0, 1]"
 
     def test_outcome_from_steps_product_correctness(self):
         step_scores = torch.tensor([[0.5, 0.4, 0.8], [1.0, 1.0, 1.0]])
         out = self.prm.outcome_from_steps(step_scores)
         expected_0 = 0.5 * 0.4 * 0.8
         expected_1 = 1.0
-        assert math.isclose(out[0].item(), expected_0, rel_tol=1e-5), \
+        assert math.isclose(out[0].item(), expected_0, rel_tol=1e-5), (
             f"outcome[0]: {out[0].item()} != {expected_0}"
-        assert math.isclose(out[1].item(), expected_1, rel_tol=1e-5), \
+        )
+        assert math.isclose(out[1].item(), expected_1, rel_tol=1e-5), (
             f"outcome[1]: {out[1].item()} != {expected_1}"
+        )
 
     def test_no_nan_in_forward(self):
         ids = make_step_ids()
@@ -318,6 +330,7 @@ class TestProcessRewardModel:
 # ---------------------------------------------------------------------------
 # VerifierConfig tests
 # ---------------------------------------------------------------------------
+
 
 class TestVerifierConfig:
     def test_defaults(self):
@@ -338,4 +351,5 @@ class TestVerifierConfig:
 
     def test_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(VerifierConfig)

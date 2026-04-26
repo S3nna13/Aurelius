@@ -38,7 +38,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
@@ -159,9 +158,7 @@ class XMLToolCallParser:
         if not isinstance(text, str):
             raise ToolCallParseError("input must be str", -1, "")
         if len(text) > _MAX_INPUT_BYTES:
-            raise ToolCallParseError(
-                "input exceeds max size", _MAX_INPUT_BYTES, ""
-            )
+            raise ToolCallParseError("input exceeds max size", _MAX_INPUT_BYTES, "")
 
         result = ParseResult()
         pos = 0
@@ -177,11 +174,11 @@ class XMLToolCallParser:
             close_idx = self._find_close(text, body_start)
             if close_idx == -1:
                 # Unterminated: surface as streaming buffer and stop.
-                result.remaining_buffer = text[open_match.start():]
+                result.remaining_buffer = text[open_match.start() :]
                 return result
 
             body = text[body_start:close_idx]
-            block = text[open_match.start(): close_idx + len(_XML_CLOSE_TOKEN)]
+            block = text[open_match.start() : close_idx + len(_XML_CLOSE_TOKEN)]
 
             attrs = self._parse_attrs(attrs_raw)
             name = attrs.get("name")
@@ -223,7 +220,7 @@ class XMLToolCallParser:
         n = len(text)
         in_string = False
         escape = False
-        close_len = len(_XML_CLOSE_TOKEN)
+        len(_XML_CLOSE_TOKEN)
         while i < n:
             ch = text[i]
             if in_string:
@@ -338,7 +335,7 @@ class XMLToolCallParser:
                 raise ToolCallParseError(
                     f"invalid JSON in <input>: {exc.msg}",
                     pos,
-                    candidate[max(0, exc.pos - 32): exc.pos + 32],
+                    candidate[max(0, exc.pos - 32) : exc.pos + 32],
                 ) from exc_first
 
         if not isinstance(parsed, dict):
@@ -378,9 +375,7 @@ class JSONToolCallParser:
         if not isinstance(text, str):
             raise ToolCallParseError("input must be str", -1, "")
         if len(text) > _MAX_INPUT_BYTES:
-            raise ToolCallParseError(
-                "input exceeds max size", _MAX_INPUT_BYTES, ""
-            )
+            raise ToolCallParseError("input exceeds max size", _MAX_INPUT_BYTES, "")
 
         stripped = text.strip()
         if not stripped:
@@ -394,15 +389,11 @@ class JSONToolCallParser:
         try:
             envelope = json.loads(stripped)
         except json.JSONDecodeError as exc:
-            snippet = stripped[max(0, exc.pos - 32): exc.pos + 32]
-            raise ToolCallParseError(
-                f"invalid JSON envelope: {exc.msg}", exc.pos, snippet
-            ) from exc
+            snippet = stripped[max(0, exc.pos - 32) : exc.pos + 32]
+            raise ToolCallParseError(f"invalid JSON envelope: {exc.msg}", exc.pos, snippet) from exc
 
         if not isinstance(envelope, dict):
-            raise ToolCallParseError(
-                "JSON envelope must be an object", 0, stripped[:64]
-            )
+            raise ToolCallParseError("JSON envelope must be an object", 0, stripped[:64])
 
         calls_raw = envelope.get("tool_calls")
         if calls_raw is None:
@@ -410,14 +401,10 @@ class JSONToolCallParser:
             if "name" in envelope:
                 calls_raw = [envelope]
             else:
-                raise ToolCallParseError(
-                    "envelope missing 'tool_calls'", 0, stripped[:64]
-                )
+                raise ToolCallParseError("envelope missing 'tool_calls'", 0, stripped[:64])
 
         if not isinstance(calls_raw, list):
-            raise ToolCallParseError(
-                "'tool_calls' must be a list", 0, stripped[:64]
-            )
+            raise ToolCallParseError("'tool_calls' must be a list", 0, stripped[:64])
 
         out: list[ParsedToolCall] = []
         for i, entry in enumerate(calls_raw):
@@ -457,18 +444,12 @@ class JSONToolCallParser:
                 depth_square += 1
             elif ch == "]":
                 depth_square -= 1
-        return (
-            not in_string
-            and depth_curly == 0
-            and depth_square == 0
-        )
+        return not in_string and depth_curly == 0 and depth_square == 0
 
     @staticmethod
     def _normalise(entry: Any, index: int, full: str) -> ParsedToolCall:
         if not isinstance(entry, dict):
-            raise ToolCallParseError(
-                f"tool_calls[{index}] must be an object", -1, str(entry)[:64]
-            )
+            raise ToolCallParseError(f"tool_calls[{index}] must be an object", -1, str(entry)[:64])
 
         call_id = entry.get("id")
         if call_id is not None and not isinstance(call_id, str):
@@ -500,7 +481,7 @@ class JSONToolCallParser:
                 raise ToolCallParseError(
                     f"tool_calls[{index}].arguments is not valid JSON: {exc.msg}",
                     exc.pos,
-                    raw_args[max(0, exc.pos - 32): exc.pos + 32],
+                    raw_args[max(0, exc.pos - 32) : exc.pos + 32],
                 ) from exc
         elif isinstance(raw_args, dict):
             arguments = raw_args
@@ -554,9 +535,7 @@ def detect_format(text: str) -> Literal["xml", "json", "none"]:
     # prose so we check it regardless of leading whitespace.
     if stripped.startswith("{"):
         # Only commit to JSON if the envelope plausibly names a tool call.
-        if '"tool_calls"' in stripped or (
-            '"name"' in stripped and '"arguments"' in stripped
-        ):
+        if '"tool_calls"' in stripped or ('"name"' in stripped and '"arguments"' in stripped):
             return "json"
     if _XML_SIGNAL_RE.search(text):
         return "xml"
@@ -603,11 +582,7 @@ def format_xml(call: ParsedToolCall) -> str:
     (never to the JSON body — that would corrupt string values).
     """
     name_attr = html.escape(call.name, quote=True)
-    id_attr = (
-        f' id="{html.escape(call.call_id, quote=True)}"'
-        if call.call_id is not None
-        else ""
-    )
+    id_attr = f' id="{html.escape(call.call_id, quote=True)}"' if call.call_id is not None else ""
     body = json.dumps(call.arguments, sort_keys=True, separators=(",", ":"))
     return f'<tool_use name="{name_attr}"{id_attr}><input>{body}</input></tool_use>'
 

@@ -14,26 +14,24 @@ Covers:
 from __future__ import annotations
 
 import time
-from typing import List
 
 import pytest
 import torch
 
 from src.inference.prefix_cache_v2 import (
     CacheConfig,
-    CacheEntry,
     CacheKey,
     PrefixCache,
     compute_prefix_savings,
     find_common_prefix,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_kv_states(n_layers: int = 2, d_model: int = 8, seq_len: int = 4) -> List[torch.Tensor]:
+
+def _make_kv_states(n_layers: int = 2, d_model: int = 8, seq_len: int = 4) -> list[torch.Tensor]:
     """Return a list of random tensors, one per layer, shape (seq_len, d_model)."""
     return [torch.randn(seq_len, d_model) for _ in range(n_layers)]
 
@@ -49,6 +47,7 @@ def _small_config(**kwargs) -> CacheConfig:
 # 1. CacheConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_cache_config_defaults():
     cfg = CacheConfig()
     assert cfg.max_entries == 128
@@ -62,6 +61,7 @@ def test_cache_config_defaults():
 # 2. CacheConfig rejects invalid eviction_policy
 # ---------------------------------------------------------------------------
 
+
 def test_cache_config_invalid_policy():
     with pytest.raises(ValueError, match="eviction_policy"):
         CacheConfig(eviction_policy="random")
@@ -70,6 +70,7 @@ def test_cache_config_invalid_policy():
 # ---------------------------------------------------------------------------
 # 3. CacheKey hash and equality — same token ids
 # ---------------------------------------------------------------------------
+
 
 def test_cache_key_equality_same():
     k1 = CacheKey((1, 2, 3))
@@ -82,6 +83,7 @@ def test_cache_key_equality_same():
 # 4. CacheKey inequality — different token ids
 # ---------------------------------------------------------------------------
 
+
 def test_cache_key_inequality_different():
     k1 = CacheKey((1, 2, 3))
     k2 = CacheKey((1, 2, 4))
@@ -91,6 +93,7 @@ def test_cache_key_inequality_different():
 # ---------------------------------------------------------------------------
 # 5. CacheKey usable as dict key
 # ---------------------------------------------------------------------------
+
 
 def test_cache_key_as_dict_key():
     d = {}
@@ -103,6 +106,7 @@ def test_cache_key_as_dict_key():
 # 6. PrefixCache is initially empty
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_cache_initially_empty():
     cache = PrefixCache(_small_config())
     assert cache.size() == 0
@@ -112,6 +116,7 @@ def test_prefix_cache_initially_empty():
 # ---------------------------------------------------------------------------
 # 7. lookup returns None on empty cache
 # ---------------------------------------------------------------------------
+
 
 def test_lookup_returns_none_on_empty():
     cache = PrefixCache(_small_config())
@@ -123,6 +128,7 @@ def test_lookup_returns_none_on_empty():
 # 8. store adds an entry
 # ---------------------------------------------------------------------------
 
+
 def test_store_adds_entry():
     cache = PrefixCache(_small_config())
     cache.store([1, 2, 3], _make_kv_states())
@@ -132,6 +138,7 @@ def test_store_adds_entry():
 # ---------------------------------------------------------------------------
 # 9. lookup finds exact match
 # ---------------------------------------------------------------------------
+
 
 def test_lookup_exact_match():
     cache = PrefixCache(_small_config())
@@ -150,12 +157,13 @@ def test_lookup_exact_match():
 # 10. lookup finds longest prefix (not full match)
 # ---------------------------------------------------------------------------
 
+
 def test_lookup_longest_prefix():
     cache = PrefixCache(_small_config())
     short = [1, 2, 3]
     long_ = [1, 2, 3, 4, 5]
     cache.store(short, _make_kv_states(seq_len=3))
-    cache.store(long_,  _make_kv_states(seq_len=5))
+    cache.store(long_, _make_kv_states(seq_len=5))
 
     # Query extends beyond both cached prefixes — should match the longer one.
     result = cache.lookup([1, 2, 3, 4, 5, 6, 7])
@@ -173,6 +181,7 @@ def test_lookup_longest_prefix():
 # 11. store respects max_entries (evicts when full)
 # ---------------------------------------------------------------------------
 
+
 def test_store_respects_max_entries():
     cfg = _small_config(max_entries=3)
     cache = PrefixCache(cfg)
@@ -187,6 +196,7 @@ def test_store_respects_max_entries():
 # 12. store ignores sequences longer than max_prefix_len
 # ---------------------------------------------------------------------------
 
+
 def test_store_ignores_too_long_sequences():
     cfg = _small_config(max_prefix_len=4)
     cache = PrefixCache(cfg)
@@ -198,6 +208,7 @@ def test_store_ignores_too_long_sequences():
 # 13. hit_rate is 0 initially, increases after hits
 # ---------------------------------------------------------------------------
 
+
 def test_hit_rate_increases_after_hit():
     cache = PrefixCache(_small_config())
     ids = [10, 20, 30]
@@ -205,8 +216,8 @@ def test_hit_rate_increases_after_hit():
 
     assert cache.hit_rate() == 0.0  # no lookups yet
 
-    cache.lookup(ids)   # hit
-    cache.lookup(ids)   # hit
+    cache.lookup(ids)  # hit
+    cache.lookup(ids)  # hit
     cache.lookup([99])  # miss
 
     # 2 hits out of 3 lookups
@@ -216,6 +227,7 @@ def test_hit_rate_increases_after_hit():
 # ---------------------------------------------------------------------------
 # 14. evict removes exactly one entry
 # ---------------------------------------------------------------------------
+
 
 def test_evict_removes_one_entry():
     cache = PrefixCache(_small_config())
@@ -231,6 +243,7 @@ def test_evict_removes_one_entry():
 # 15. evict on empty cache is a no-op
 # ---------------------------------------------------------------------------
 
+
 def test_evict_on_empty_is_noop():
     cache = PrefixCache(_small_config())
     cache.evict()  # must not raise
@@ -240,6 +253,7 @@ def test_evict_on_empty_is_noop():
 # ---------------------------------------------------------------------------
 # 16. clear empties the cache
 # ---------------------------------------------------------------------------
+
 
 def test_clear_empties_cache():
     cache = PrefixCache(_small_config())
@@ -256,6 +270,7 @@ def test_clear_empties_cache():
 # ---------------------------------------------------------------------------
 # 17. LRU eviction policy
 # ---------------------------------------------------------------------------
+
 
 def test_lru_eviction_policy():
     cfg = _small_config(max_entries=2, eviction_policy="lru")
@@ -275,7 +290,7 @@ def test_lru_eviction_policy():
     # Adding ids_c must evict ids_b (LRU)
     cache.store(ids_c, _make_kv_states())
     assert cache.size() == 2
-    assert cache.lookup(ids_b) is None   # evicted
+    assert cache.lookup(ids_b) is None  # evicted
     assert cache.lookup(ids_a) is not None
     assert cache.lookup(ids_c) is not None
 
@@ -283,6 +298,7 @@ def test_lru_eviction_policy():
 # ---------------------------------------------------------------------------
 # 18. LFU eviction policy
 # ---------------------------------------------------------------------------
+
 
 def test_lfu_eviction_policy():
     cfg = _small_config(max_entries=2, eviction_policy="lfu")
@@ -301,7 +317,7 @@ def test_lfu_eviction_policy():
 
     cache.store(ids_c, _make_kv_states())
     assert cache.size() == 2
-    assert cache.lookup(ids_a) is None   # evicted (LFU)
+    assert cache.lookup(ids_a) is None  # evicted (LFU)
     assert cache.lookup(ids_b) is not None
     assert cache.lookup(ids_c) is not None
 
@@ -309,6 +325,7 @@ def test_lfu_eviction_policy():
 # ---------------------------------------------------------------------------
 # 19. FIFO eviction policy
 # ---------------------------------------------------------------------------
+
 
 def test_fifo_eviction_policy():
     cfg = _small_config(max_entries=2, eviction_policy="fifo")
@@ -327,7 +344,7 @@ def test_fifo_eviction_policy():
 
     cache.store(ids_c, _make_kv_states())
     assert cache.size() == 2
-    assert cache.lookup(ids_a) is None   # evicted (FIFO, inserted first)
+    assert cache.lookup(ids_a) is None  # evicted (FIFO, inserted first)
     assert cache.lookup(ids_b) is not None
     assert cache.lookup(ids_c) is not None
 
@@ -335,6 +352,7 @@ def test_fifo_eviction_policy():
 # ---------------------------------------------------------------------------
 # 20. compute_prefix_savings in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_prefix_savings_range():
     savings = compute_prefix_savings(original_len=100, cached_prefix_len=40, n_layers=6)
@@ -346,6 +364,7 @@ def test_compute_prefix_savings_range():
 # 21. compute_prefix_savings = 0 when no prefix cached
 # ---------------------------------------------------------------------------
 
+
 def test_compute_prefix_savings_no_prefix():
     savings = compute_prefix_savings(original_len=50, cached_prefix_len=0, n_layers=6)
     assert savings == 0.0
@@ -354,6 +373,7 @@ def test_compute_prefix_savings_no_prefix():
 # ---------------------------------------------------------------------------
 # 22. compute_prefix_savings = 0 for zero original_len
 # ---------------------------------------------------------------------------
+
 
 def test_compute_prefix_savings_zero_original():
     savings = compute_prefix_savings(original_len=0, cached_prefix_len=0, n_layers=6)
@@ -364,6 +384,7 @@ def test_compute_prefix_savings_zero_original():
 # 23. compute_prefix_savings = 1.0 for full prefix
 # ---------------------------------------------------------------------------
 
+
 def test_compute_prefix_savings_full():
     savings = compute_prefix_savings(original_len=50, cached_prefix_len=50, n_layers=6)
     assert abs(savings - 1.0) < 1e-9
@@ -372,6 +393,7 @@ def test_compute_prefix_savings_full():
 # ---------------------------------------------------------------------------
 # 24. find_common_prefix — identical sequences
 # ---------------------------------------------------------------------------
+
 
 def test_find_common_prefix_identical():
     seqs = [[1, 2, 3, 4], [1, 2, 3, 4]]
@@ -382,6 +404,7 @@ def test_find_common_prefix_identical():
 # 25. find_common_prefix — partial overlap
 # ---------------------------------------------------------------------------
 
+
 def test_find_common_prefix_partial():
     seqs = [[1, 2, 3, 99], [1, 2, 3, 100], [1, 2, 3, 200]]
     assert find_common_prefix(seqs) == [1, 2, 3]
@@ -390,6 +413,7 @@ def test_find_common_prefix_partial():
 # ---------------------------------------------------------------------------
 # 26. find_common_prefix — empty for no common prefix
 # ---------------------------------------------------------------------------
+
 
 def test_find_common_prefix_no_common():
     seqs = [[1, 2, 3], [4, 5, 6]]
@@ -400,6 +424,7 @@ def test_find_common_prefix_no_common():
 # 27. find_common_prefix — empty input
 # ---------------------------------------------------------------------------
 
+
 def test_find_common_prefix_empty_input():
     assert find_common_prefix([]) == []
 
@@ -407,6 +432,7 @@ def test_find_common_prefix_empty_input():
 # ---------------------------------------------------------------------------
 # 28. find_common_prefix — single sequence
 # ---------------------------------------------------------------------------
+
 
 def test_find_common_prefix_single_sequence():
     seqs = [[7, 8, 9]]
@@ -416,6 +442,7 @@ def test_find_common_prefix_single_sequence():
 # ---------------------------------------------------------------------------
 # 29. lookup increments hit_count on entry
 # ---------------------------------------------------------------------------
+
 
 def test_lookup_increments_hit_count():
     cache = PrefixCache(_small_config())
@@ -437,10 +464,11 @@ def test_lookup_increments_hit_count():
 # 30. store with sequence exactly equal to max_prefix_len is accepted
 # ---------------------------------------------------------------------------
 
+
 def test_store_at_max_prefix_len_boundary():
     cfg = _small_config(max_prefix_len=5)
     cache = PrefixCache(cfg)
-    cache.store([1, 2, 3, 4, 5], _make_kv_states())   # exactly 5 — allowed
+    cache.store([1, 2, 3, 4, 5], _make_kv_states())  # exactly 5 — allowed
     assert cache.size() == 1
 
     cache.store([1, 2, 3, 4, 5, 6], _make_kv_states())  # 6 > 5 — rejected

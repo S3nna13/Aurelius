@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.mixture_density import (
     MDNConfig,
@@ -16,14 +16,13 @@ from src.model.mixture_density import (
     mdn_variance,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
 BATCH = 4
-K = 5   # n_components
-D = 1   # output_dim
+K = 5  # n_components
+D = 1  # output_dim
 H_IN = 64
 
 
@@ -64,6 +63,7 @@ def target():
 # 1. MDNConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_mdn_config_default_n_components(default_config):
     assert default_config.n_components == 5
 
@@ -84,6 +84,7 @@ def test_mdn_config_default_hidden_dim(default_config):
 # 2. MDNHead output shapes
 # ---------------------------------------------------------------------------
 
+
 def test_mdn_head_pi_shape(mdn_params):
     pi, mu, sigma = mdn_params
     assert pi.shape == (BATCH, K), f"pi shape {pi.shape}"
@@ -103,6 +104,7 @@ def test_mdn_head_sigma_shape(mdn_params):
 # 3. pi sums to 1
 # ---------------------------------------------------------------------------
 
+
 def test_pi_sums_to_one(mdn_params):
     pi, _, _ = mdn_params
     sums = pi.sum(dim=-1)  # (B,)
@@ -113,6 +115,7 @@ def test_pi_sums_to_one(mdn_params):
 # 4. sigma is strictly positive
 # ---------------------------------------------------------------------------
 
+
 def test_sigma_positive(mdn_params):
     _, _, sigma = mdn_params
     assert (sigma > 0).all(), "sigma must be strictly positive"
@@ -121,6 +124,7 @@ def test_sigma_positive(mdn_params):
 # ---------------------------------------------------------------------------
 # 5. mdn_loss returns positive scalar
 # ---------------------------------------------------------------------------
+
 
 def test_mdn_loss_scalar(mdn_params, target):
     pi, mu, sigma = mdn_params
@@ -138,6 +142,7 @@ def test_mdn_loss_positive(mdn_params, target):
 # 6. mdn_loss lower for better-fit parameters
 # ---------------------------------------------------------------------------
 
+
 def test_mdn_loss_lower_for_good_fit():
     """A mixture centred on the target should have lower NLL."""
     torch.manual_seed(42)
@@ -145,27 +150,27 @@ def test_mdn_loss_lower_for_good_fit():
     target = torch.zeros(B, D2)
 
     # Good fit: all components centred on zero, tiny sigma
-    pi_good    = torch.full((B, K2), 1.0 / K2)
-    mu_good    = torch.zeros(B, K2, D2)
+    pi_good = torch.full((B, K2), 1.0 / K2)
+    mu_good = torch.zeros(B, K2, D2)
     sigma_good = torch.full((B, K2, D2), 0.1)
 
     # Bad fit: all components far from zero, large sigma
-    pi_bad    = torch.full((B, K2), 1.0 / K2)
-    mu_bad    = torch.full((B, K2, D2), 10.0)
+    pi_bad = torch.full((B, K2), 1.0 / K2)
+    mu_bad = torch.full((B, K2, D2), 10.0)
     sigma_bad = torch.full((B, K2, D2), 2.0)
 
     loss_good = mdn_loss(pi_good, mu_good, sigma_good, target)
-    loss_bad  = mdn_loss(pi_bad,  mu_bad,  sigma_bad,  target)
+    loss_bad = mdn_loss(pi_bad, mu_bad, sigma_bad, target)
 
     assert loss_good.item() < loss_bad.item(), (
-        f"Good-fit loss ({loss_good.item():.4f}) should be < "
-        f"bad-fit loss ({loss_bad.item():.4f})"
+        f"Good-fit loss ({loss_good.item():.4f}) should be < bad-fit loss ({loss_bad.item():.4f})"
     )
 
 
 # ---------------------------------------------------------------------------
 # 7. mdn_sample output shape
 # ---------------------------------------------------------------------------
+
 
 def test_mdn_sample_shape(mdn_params):
     pi, mu, sigma = mdn_params
@@ -183,6 +188,7 @@ def test_mdn_sample_is_finite(mdn_params):
 # 8. mdn_mean output shape
 # ---------------------------------------------------------------------------
 
+
 def test_mdn_mean_shape(mdn_params):
     pi, mu, sigma = mdn_params
     mean = mdn_mean(pi, mu)
@@ -196,7 +202,7 @@ def test_mdn_mean_equals_weighted_sum():
     pi = torch.softmax(torch.randn(B, K2), dim=-1)
     mu = torch.randn(B, K2, D2)
 
-    result   = mdn_mean(pi, mu)
+    result = mdn_mean(pi, mu)
     expected = (pi.unsqueeze(-1) * mu).sum(dim=1)
 
     assert torch.allclose(result, expected, atol=1e-6)
@@ -205,6 +211,7 @@ def test_mdn_mean_equals_weighted_sum():
 # ---------------------------------------------------------------------------
 # 9. mdn_variance positive values
 # ---------------------------------------------------------------------------
+
 
 def test_mdn_variance_shape(mdn_params):
     pi, mu, sigma = mdn_params
@@ -222,11 +229,12 @@ def test_mdn_variance_positive(mdn_params):
 # 10. MDNModel forward returns 3-tuple
 # ---------------------------------------------------------------------------
 
+
 def test_mdn_model_returns_tuple(small_config):
     encoder = nn.Linear(H_IN, H_IN)
-    model   = MDNModel(encoder, small_config)
-    x       = torch.randn(BATCH, H_IN)
-    out     = model(x)
+    model = MDNModel(encoder, small_config)
+    x = torch.randn(BATCH, H_IN)
+    out = model(x)
     assert isinstance(out, tuple) and len(out) == 3, (
         f"MDNModel.forward should return a 3-tuple, got {type(out)} len={len(out)}"
     )
@@ -234,11 +242,11 @@ def test_mdn_model_returns_tuple(small_config):
 
 def test_mdn_model_output_shapes(small_config):
     encoder = nn.Linear(H_IN, H_IN)
-    model   = MDNModel(encoder, small_config)
-    x       = torch.randn(BATCH, H_IN)
+    model = MDNModel(encoder, small_config)
+    x = torch.randn(BATCH, H_IN)
     pi, mu, sigma = model(x)
-    assert pi.shape    == (BATCH, K),    f"pi {pi.shape}"
-    assert mu.shape    == (BATCH, K, D), f"mu {mu.shape}"
+    assert pi.shape == (BATCH, K), f"pi {pi.shape}"
+    assert mu.shape == (BATCH, K, D), f"mu {mu.shape}"
     assert sigma.shape == (BATCH, K, D), f"sigma {sigma.shape}"
 
 
@@ -246,10 +254,11 @@ def test_mdn_model_output_shapes(small_config):
 # 11. Gradient flows through mdn_loss
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows_through_loss(small_config):
     """mdn_loss should be differentiable w.r.t. MDNHead parameters."""
-    head   = MDNHead(small_config)
-    h      = torch.randn(BATCH, H_IN)
+    head = MDNHead(small_config)
+    h = torch.randn(BATCH, H_IN)
     target = torch.randn(BATCH, D)
 
     pi, mu, sigma = head(h)
@@ -264,9 +273,9 @@ def test_gradient_flows_through_loss(small_config):
 def test_gradient_flows_through_mdn_model(small_config):
     """End-to-end gradient: encoder + MDNHead."""
     encoder = nn.Linear(H_IN, H_IN)
-    model   = MDNModel(encoder, small_config)
-    x       = torch.randn(BATCH, H_IN, requires_grad=True)
-    target  = torch.randn(BATCH, D)
+    model = MDNModel(encoder, small_config)
+    x = torch.randn(BATCH, H_IN, requires_grad=True)
+    target = torch.randn(BATCH, D)
 
     pi, mu, sigma = model(x)
     loss = mdn_loss(pi, mu, sigma, target)
@@ -280,14 +289,15 @@ def test_gradient_flows_through_mdn_model(small_config):
 # 12. Multi-dimensional output (D > 1)
 # ---------------------------------------------------------------------------
 
+
 def test_multi_dim_output():
     """Ensure MDNHead works correctly when output_dim > 1."""
-    cfg  = MDNConfig(n_components=3, input_dim=32, output_dim=4, hidden_dim=64)
+    cfg = MDNConfig(n_components=3, input_dim=32, output_dim=4, hidden_dim=64)
     head = MDNHead(cfg)
-    h    = torch.randn(BATCH, 32)
+    h = torch.randn(BATCH, 32)
     pi, mu, sigma = head(h)
-    assert pi.shape    == (BATCH, 3)
-    assert mu.shape    == (BATCH, 3, 4)
+    assert pi.shape == (BATCH, 3)
+    assert mu.shape == (BATCH, 3, 4)
     assert sigma.shape == (BATCH, 3, 4)
 
     target = torch.randn(BATCH, 4)

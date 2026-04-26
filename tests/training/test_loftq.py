@@ -1,21 +1,19 @@
 """Tests for LoftQ: Low-Rank Fine-Tuning with Quantization."""
+
 import torch
 import torch.nn as nn
-import pytest
 
-from src.training.loftq import (
-    LoftQConfig,
-    quantize_nf4,
-    dequantize_nf4,
-    quantize_int8,
-    dequantize_int8,
-    loftq_init,
-    LoftQLinear,
-    apply_loftq,
-)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
+from src.training.loftq import (
+    LoftQConfig,
+    LoftQLinear,
+    apply_loftq,
+    dequantize_nf4,
+    loftq_init,
+    quantize_int8,
+    quantize_nf4,
+)
 
 # ---------------------------------------------------------------------------
 # Config used across tests
@@ -66,9 +64,7 @@ def test_dequantize_roundtrip_error():
     err_norm = (w_deq - w).norm(p="fro").item()
     ref_norm = w.norm(p="fro").item()
     rel_err = err_norm / ref_norm
-    assert rel_err < 0.2, (
-        f"Frobenius relative error {rel_err:.4f} exceeds 0.2 threshold"
-    )
+    assert rel_err < 0.2, f"Frobenius relative error {rel_err:.4f} exceeds 0.2 threshold"
 
 
 # ---------------------------------------------------------------------------
@@ -95,9 +91,15 @@ def test_loftq_init_shapes():
     w = torch.randn(OUT_FEATURES, IN_FEATURES)
     A, B, W_q = loftq_init(w, rank=rank, n_bits=4, n_iter=3)
 
-    assert A.shape == (OUT_FEATURES, rank), f"Expected A shape ({OUT_FEATURES}, {rank}), got {A.shape}"
-    assert B.shape == (rank, IN_FEATURES), f"Expected B shape ({rank}, {IN_FEATURES}), got {B.shape}"
-    assert W_q.shape == (OUT_FEATURES, IN_FEATURES), f"Expected W_q shape ({OUT_FEATURES}, {IN_FEATURES}), got {W_q.shape}"
+    assert A.shape == (OUT_FEATURES, rank), (
+        f"Expected A shape ({OUT_FEATURES}, {rank}), got {A.shape}"
+    )
+    assert B.shape == (rank, IN_FEATURES), (
+        f"Expected B shape ({rank}, {IN_FEATURES}), got {B.shape}"
+    )
+    assert W_q.shape == (OUT_FEATURES, IN_FEATURES), (
+        f"Expected W_q shape ({OUT_FEATURES}, {IN_FEATURES}), got {W_q.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------

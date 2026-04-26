@@ -4,19 +4,18 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Callable
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HypothesisTestConfig:
-    alpha: float = 0.05              # significance level
-    n_bootstrap: int = 1000          # bootstrap samples
-    alternative: str = "two-sided"   # "two-sided" | "greater" | "less"
+    alpha: float = 0.05  # significance level
+    n_bootstrap: int = 1000  # bootstrap samples
+    alternative: str = "two-sided"  # "two-sided" | "greater" | "less"
     seed: int = 42
 
 
@@ -24,7 +23,7 @@ class HypothesisTestConfig:
 class TestResult:
     statistic: float
     p_value: float
-    reject_null: bool                 # True if p < alpha
+    reject_null: bool  # True if p < alpha
     effect_size: float = 0.0
     confidence_interval: tuple[float, float] = (0.0, 0.0)
     test_name: str = ""
@@ -43,6 +42,7 @@ TestResult.__test__ = False
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _normal_cdf(z: float) -> float:
     """Standard normal CDF via math.erf."""
@@ -78,6 +78,7 @@ def _normal_ppf(p: float) -> float:
 # ---------------------------------------------------------------------------
 # Core statistical functions
 # ---------------------------------------------------------------------------
+
 
 def cohens_d(scores_a: list[float], scores_b: list[float]) -> float:
     """Cohen's d effect size: (mean_a - mean_b) / pooled_std."""
@@ -297,8 +298,8 @@ def mcnemar_test(
     effect_size = (b - c) / n
     """
     n = len(correct_a)
-    b = sum(1 for a, bb in zip(correct_a, correct_b) if a and not bb)   # A correct, B wrong
-    c = sum(1 for a, bb in zip(correct_a, correct_b) if not a and bb)   # A wrong, B correct
+    b = sum(1 for a, bb in zip(correct_a, correct_b) if a and not bb)  # A correct, B wrong
+    c = sum(1 for a, bb in zip(correct_a, correct_b) if not a and bb)  # A wrong, B correct
 
     total = b + c
     if total == 0:
@@ -330,6 +331,7 @@ def mcnemar_test(
 # ---------------------------------------------------------------------------
 # Bootstrap significance test (legacy, kept for backward compat)
 # ---------------------------------------------------------------------------
+
 
 def bootstrap_test(
     scores_a: list[float],
@@ -368,6 +370,7 @@ def bootstrap_test(
 # Permutation test (legacy, kept for backward compat)
 # ---------------------------------------------------------------------------
 
+
 def permutation_test(
     scores_a: list[float],
     scores_b: list[float],
@@ -405,6 +408,7 @@ def permutation_test(
 # Model comparison suite
 # ---------------------------------------------------------------------------
 
+
 class ModelComparisonSuite:
     """Run multiple hypothesis tests and aggregate results."""
 
@@ -431,9 +435,7 @@ class ModelComparisonSuite:
         results["t_test"] = paired_t_test(
             scores_a, scores_b, alpha=self.cfg.alpha, alternative=self.cfg.alternative
         )
-        results["wilcoxon"] = wilcoxon_signed_rank(
-            scores_a, scores_b, alpha=self.cfg.alpha
-        )
+        results["wilcoxon"] = wilcoxon_signed_rank(scores_a, scores_b, alpha=self.cfg.alpha)
         # Legacy support: include bootstrap and permutation when old-style call
         if correct_a is not None and correct_b is not None:
             results["mcnemar"] = mcnemar_test(correct_a, correct_b, alpha=self.cfg.alpha)

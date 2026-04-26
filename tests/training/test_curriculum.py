@@ -3,32 +3,32 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 from torch.optim import SGD
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.curriculum import (
-    # Original TokenWeighter components
-    TokenCurriculumConfig,
-    WeightMode,
-    TokenWeighter,
     # Epoch-based curriculum components
     CurriculumConfig,
-    difficulty_score,
-    linear_curriculum,
-    root_curriculum,
-    filter_by_difficulty,
     CurriculumSampler,
     CurriculumTrainer,
+    # Original TokenWeighter components
+    TokenCurriculumConfig,
+    TokenWeighter,
+    WeightMode,
+    difficulty_score,
+    filter_by_difficulty,
+    linear_curriculum,
+    root_curriculum,
 )
-
-from src.model.transformer import AureliusTransformer
-from src.model.config import AureliusConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_cfg() -> AureliusConfig:
     return AureliusConfig(
@@ -55,6 +55,7 @@ def _token_tensor(length: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # Original TokenWeighter tests (preserved)
 # ---------------------------------------------------------------------------
+
 
 def test_uniform_mode_equals_mean():
     weighter = TokenWeighter(TokenCurriculumConfig(mode=WeightMode.UNIFORM))
@@ -109,6 +110,7 @@ def test_returns_scalar():
 # CurriculumConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_curriculum_config_defaults():
     cfg = CurriculumConfig()
     assert cfg.strategy == "linear"
@@ -120,8 +122,14 @@ def test_curriculum_config_defaults():
 
 
 def test_curriculum_config_custom():
-    cfg = CurriculumConfig(strategy="root", n_epochs=20, start_difficulty=0.1,
-                           end_difficulty=0.8, warmup_epochs=5, competence_threshold=0.95)
+    cfg = CurriculumConfig(
+        strategy="root",
+        n_epochs=20,
+        start_difficulty=0.1,
+        end_difficulty=0.8,
+        warmup_epochs=5,
+        competence_threshold=0.95,
+    )
     assert cfg.strategy == "root"
     assert cfg.n_epochs == 20
     assert cfg.start_difficulty == pytest.approx(0.1)
@@ -133,6 +141,7 @@ def test_curriculum_config_custom():
 # ---------------------------------------------------------------------------
 # difficulty_score
 # ---------------------------------------------------------------------------
+
 
 def test_difficulty_score_short_sequence():
     tokens = _token_tensor(64)  # 64 / 512 = 0.125
@@ -169,35 +178,41 @@ def test_difficulty_score_2d_tensor():
 # linear_curriculum
 # ---------------------------------------------------------------------------
 
+
 def test_linear_curriculum_at_epoch_0():
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     assert linear_curriculum(0, cfg) == pytest.approx(0.0)
 
 
 def test_linear_curriculum_at_half_epochs():
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     val = linear_curriculum(5, cfg)
     assert val == pytest.approx(0.5)
 
 
 def test_linear_curriculum_at_n_epochs():
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     assert linear_curriculum(10, cfg) == pytest.approx(1.0)
 
 
 def test_linear_curriculum_warmup_holds_start():
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.2,
-                           end_difficulty=1.0, warmup_epochs=3)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.2, end_difficulty=1.0, warmup_epochs=3
+    )
     for e in range(0, 4):
         assert linear_curriculum(e, cfg) == pytest.approx(0.2)
 
 
 def test_linear_curriculum_monotone():
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     vals = [linear_curriculum(e, cfg) for e in range(11)]
     for a, b in zip(vals, vals[1:]):
         assert b >= a
@@ -206,6 +221,7 @@ def test_linear_curriculum_monotone():
 # ---------------------------------------------------------------------------
 # root_curriculum
 # ---------------------------------------------------------------------------
+
 
 def test_root_curriculum_at_epoch_0():
     cfg = CurriculumConfig(strategy="root", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0)
@@ -226,8 +242,9 @@ def test_root_curriculum_midpoint():
 
 def test_root_curriculum_faster_than_linear():
     """Root schedule should be ahead of linear at intermediate epochs."""
-    cfg = CurriculumConfig(strategy="root", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="root", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     for e in range(1, 10):
         root_val = root_curriculum(e, cfg)
         lin_val = linear_curriculum(e, cfg)
@@ -245,8 +262,9 @@ def test_root_curriculum_monotone():
 # filter_by_difficulty
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_difficulty_selects_easy():
-    dataset = [_token_tensor(l) for l in [64, 128, 256, 512]]
+    dataset = [_token_tensor(line) for line in [64, 128, 256, 512]]
     result = filter_by_difficulty(dataset, threshold=0.2, score_fn=lambda t: difficulty_score(t))
     # 64 -> 0.125 <= 0.2 qualifies; 128 -> 0.25 > 0.2 excluded
     assert len(result) == 1
@@ -254,7 +272,7 @@ def test_filter_by_difficulty_selects_easy():
 
 
 def test_filter_by_difficulty_threshold_one_returns_all():
-    dataset = [_token_tensor(l) for l in [64, 128, 256, 512]]
+    dataset = [_token_tensor(line) for line in [64, 128, 256, 512]]
     result = filter_by_difficulty(dataset, threshold=1.0, score_fn=lambda t: difficulty_score(t))
     assert len(result) == 4
 
@@ -271,10 +289,12 @@ def test_filter_by_difficulty_threshold_zero_boundary():
 # CurriculumSampler
 # ---------------------------------------------------------------------------
 
+
 def test_curriculum_sampler_yields_increasing_data_with_epochs():
-    dataset = [_token_tensor(l) for l in [64, 128, 256, 384, 512]]
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    dataset = [_token_tensor(line) for line in [64, 128, 256, 384, 512]]
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     sampler = CurriculumSampler(dataset, lambda t: difficulty_score(t), cfg)
 
     sampler.set_epoch(0)
@@ -288,8 +308,9 @@ def test_curriculum_sampler_yields_increasing_data_with_epochs():
 
 def test_curriculum_sampler_iter_yields_samples():
     dataset = [_token_tensor(64), _token_tensor(128)]
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     sampler = CurriculumSampler(dataset, lambda t: difficulty_score(t), cfg)
     sampler.set_epoch(10)
     items = list(sampler)
@@ -300,9 +321,10 @@ def test_curriculum_sampler_epoch_0_restricted():
     # At epoch 0 with warmup=0, threshold=start_difficulty=0.1
     # 64-token -> 0.125 > 0.1, 512-token -> 1.0 > 0.1
     # Only a very short sequence qualifies
-    dataset = [_token_tensor(l) for l in [1, 64, 512]]
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.1,
-                           end_difficulty=1.0, warmup_epochs=0)
+    dataset = [_token_tensor(line) for line in [1, 64, 512]]
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.1, end_difficulty=1.0, warmup_epochs=0
+    )
     sampler = CurriculumSampler(dataset, lambda t: difficulty_score(t), cfg)
     sampler.set_epoch(0)
     # 1-token score = 1/512 ≈ 0.002 <= 0.1, qualifies; 64-token = 0.125 > 0.1
@@ -320,6 +342,7 @@ def test_curriculum_sampler_len():
 # ---------------------------------------------------------------------------
 # CurriculumTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_trainer_train_step_returns_expected_keys():
     model = _tiny_model()
@@ -345,8 +368,9 @@ def test_curriculum_trainer_loss_is_scalar_float():
 def test_curriculum_trainer_advance_epoch_increases_difficulty():
     model = _tiny_model()
     optimizer = SGD(model.parameters(), lr=1e-3)
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     trainer = CurriculumTrainer(model, optimizer, cfg)
     d0 = trainer.current_difficulty
     trainer.advance_epoch()
@@ -371,8 +395,9 @@ def test_curriculum_trainer_advance_epoch_increments_counter():
 def test_curriculum_trainer_difficulty_in_result():
     model = _tiny_model()
     optimizer = SGD(model.parameters(), lr=1e-3)
-    cfg = CurriculumConfig(strategy="linear", n_epochs=10, start_difficulty=0.0,
-                           end_difficulty=1.0, warmup_epochs=0)
+    cfg = CurriculumConfig(
+        strategy="linear", n_epochs=10, start_difficulty=0.0, end_difficulty=1.0, warmup_epochs=0
+    )
     trainer = CurriculumTrainer(model, optimizer, cfg)
     input_ids = torch.randint(0, 256, (1, 16))
     r0 = trainer.train_step(input_ids)
@@ -396,6 +421,7 @@ def test_curriculum_trainer_root_strategy():
 # competence_threshold interaction
 # ---------------------------------------------------------------------------
 
+
 def test_competence_threshold_default():
     cfg = CurriculumConfig()
     assert cfg.competence_threshold == pytest.approx(0.9)
@@ -408,9 +434,11 @@ def test_competence_threshold_custom():
 
 def test_competence_threshold_filters_hard_samples():
     """With competence_threshold=0.5, samples with difficulty > 0.5 should be excluded."""
-    dataset = [_token_tensor(l) for l in [64, 256, 512]]
+    dataset = [_token_tensor(line) for line in [64, 256, 512]]
     # Competence threshold used as filter threshold
     threshold = 0.5
-    result = filter_by_difficulty(dataset, threshold=threshold, score_fn=lambda t: difficulty_score(t))
+    result = filter_by_difficulty(
+        dataset, threshold=threshold, score_fn=lambda t: difficulty_score(t)
+    )
     # 64 -> 0.125 ok, 256 -> 0.5 ok, 512 -> 1.0 excluded
     assert len(result) == 2

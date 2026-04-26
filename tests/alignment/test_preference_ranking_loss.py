@@ -11,10 +11,10 @@ import torch.nn.functional as F
 
 from src.alignment.preference_ranking_loss import (
     bradley_terry_loss,
-    margin_ranking_loss,
-    listnet_loss,
-    ordinal_ranking_loss,
     dpo_pair_loss,
+    listnet_loss,
+    margin_ranking_loss,
+    ordinal_ranking_loss,
 )
 
 
@@ -182,9 +182,9 @@ def test_all_losses_scalar_and_finite():
     l3 = listnet_loss(pred, true)
     l4 = ordinal_ranking_loss(pred, ranks)
     l5 = dpo_pair_loss(torch.randn(8), torch.randn(8), torch.randn(8), torch.randn(8), beta=0.1)
-    for l in (l1, l2, l3, l4, l5):
-        assert l.dim() == 0
-        assert torch.isfinite(l)
+    for l in (l1, l2, l3, l4, l5):  # noqa: E741
+        assert l.dim() == 0  # noqa: E741
+        assert torch.isfinite(l)  # noqa: E741
 
 
 def test_large_batch_runtime_under_one_second():
@@ -195,7 +195,10 @@ def test_large_batch_runtime_under_one_second():
     pred = torch.randn(B, 16)
     true = torch.randn(B, 16)
     ranks = torch.stack([torch.randperm(16) for _ in range(B)])
-    pc = torch.randn(B); pr = torch.randn(B); rc = torch.randn(B); rr = torch.randn(B)
+    pc = torch.randn(B)
+    pr = torch.randn(B)
+    rc = torch.randn(B)
+    rr = torch.randn(B)
     t0 = time.perf_counter()
     bradley_terry_loss(c, r)
     margin_ranking_loss(c, r)

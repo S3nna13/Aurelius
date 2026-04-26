@@ -2,26 +2,24 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 import torch
-import torch.nn as nn
 from torch.optim import SGD
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.swa_training import (
-    SWAConfig,
     CyclicalLRScheduler,
+    SWAConfig,
     SWAModel,
     SWATrainer,
     update_bn,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def make_config(**kwargs) -> SWAConfig:
     defaults = dict(
@@ -63,6 +61,7 @@ def make_input():
 # 1. SWAConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_swa_config_defaults():
     cfg = SWAConfig()
     assert cfg.swa_start == 100
@@ -78,6 +77,7 @@ def test_swa_config_defaults():
 # 2. CyclicalLRScheduler.get_lr at step 0 ≈ max_lr
 # ---------------------------------------------------------------------------
 
+
 def test_cyclical_lr_step0_is_max_lr():
     cfg = make_config(min_lr=1e-6, max_lr=1e-3, cycle_length=20)
     model = make_small_model()
@@ -90,6 +90,7 @@ def test_cyclical_lr_step0_is_max_lr():
 # ---------------------------------------------------------------------------
 # 3. CyclicalLRScheduler.get_lr at mid-cycle ≈ (max+min)/2
 # ---------------------------------------------------------------------------
+
 
 def test_cyclical_lr_mid_cycle():
     cfg = make_config(min_lr=0.0, max_lr=1.0, cycle_length=20)
@@ -107,6 +108,7 @@ def test_cyclical_lr_mid_cycle():
 # 4. CyclicalLRScheduler.step returns float
 # ---------------------------------------------------------------------------
 
+
 def test_cyclical_lr_step_returns_float():
     cfg = make_config()
     model = make_small_model()
@@ -119,6 +121,7 @@ def test_cyclical_lr_step_returns_float():
 # ---------------------------------------------------------------------------
 # 5. CyclicalLRScheduler LR changes over steps
 # ---------------------------------------------------------------------------
+
 
 def test_cyclical_lr_changes_over_steps():
     cfg = make_config(min_lr=1e-6, max_lr=1e-3, cycle_length=20)
@@ -134,6 +137,7 @@ def test_cyclical_lr_changes_over_steps():
 # 6. SWAModel.update increments n_averaged
 # ---------------------------------------------------------------------------
 
+
 def test_swa_model_update_increments_n_averaged():
     model = make_small_model()
     swa = SWAModel(model)
@@ -147,6 +151,7 @@ def test_swa_model_update_increments_n_averaged():
 # ---------------------------------------------------------------------------
 # 7. SWAModel.update averaged params change after update
 # ---------------------------------------------------------------------------
+
 
 def test_swa_model_update_params_change():
     model = make_small_model()
@@ -172,6 +177,7 @@ def test_swa_model_update_params_change():
 # 8. SWAModel.get_averaged_model copies params to model
 # ---------------------------------------------------------------------------
 
+
 def test_swa_model_get_averaged_model():
     model = make_small_model()
     swa = SWAModel(model)
@@ -193,6 +199,7 @@ def test_swa_model_get_averaged_model():
 # 9. SWAModel.reset zeros n_averaged
 # ---------------------------------------------------------------------------
 
+
 def test_swa_model_reset():
     model = make_small_model()
     swa = SWAModel(model)
@@ -209,6 +216,7 @@ def test_swa_model_reset():
 # 10. update_bn runs without error on model without BN
 # ---------------------------------------------------------------------------
 
+
 def test_update_bn_no_bn_layers():
     model = make_small_model()
     data = [make_input() for _ in range(3)]
@@ -219,6 +227,7 @@ def test_update_bn_no_bn_layers():
 # ---------------------------------------------------------------------------
 # 11. SWATrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_swa_trainer_step_returns_required_keys():
     model = make_small_model()
@@ -233,6 +242,7 @@ def test_swa_trainer_step_returns_required_keys():
 # ---------------------------------------------------------------------------
 # 12. SWATrainer swa_n_averaged is 0 before swa_start
 # ---------------------------------------------------------------------------
+
 
 def test_swa_trainer_no_averaging_before_start():
     model = make_small_model()
@@ -250,6 +260,7 @@ def test_swa_trainer_no_averaging_before_start():
 # 13. SWATrainer swa_n_averaged > 0 after swa_start
 # ---------------------------------------------------------------------------
 
+
 def test_swa_trainer_averaging_after_start():
     model = make_small_model()
     opt = make_optimizer(model)
@@ -266,6 +277,7 @@ def test_swa_trainer_averaging_after_start():
 # 14. SWATrainer.finalize applies averaged weights
 # ---------------------------------------------------------------------------
 
+
 def test_swa_trainer_finalize_applies_weights():
     model = make_small_model()
     opt = make_optimizer(model)
@@ -277,7 +289,7 @@ def test_swa_trainer_finalize_applies_weights():
         trainer.train_step(make_input())
 
     # Capture param values before finalize
-    before = {n: p.detach().clone() for n, p in model.named_parameters()}
+    {n: p.detach().clone() for n, p in model.named_parameters()}
 
     # Corrupt params
     with torch.no_grad():
@@ -299,6 +311,7 @@ def test_swa_trainer_finalize_applies_weights():
 # ---------------------------------------------------------------------------
 # 15. CyclicalLRScheduler cycle resets at cycle_length
 # ---------------------------------------------------------------------------
+
 
 def test_cyclical_lr_cycle_resets():
     cycle_length = 10

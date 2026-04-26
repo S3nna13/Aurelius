@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
-
 from aurelius.eval.probing_classifiers import (
     LinearProbe,
     MLPProbe,
@@ -15,6 +13,7 @@ from aurelius.eval.probing_classifiers import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _separable_data(n: int = 200, d: int = 32, n_classes: int = 2):
     """Generate linearly separable features and labels."""
@@ -41,6 +40,7 @@ def _random_labels(n: int = 200, d: int = 32, n_classes: int = 2):
 # ---------------------------------------------------------------------------
 # LinearProbe tests
 # ---------------------------------------------------------------------------
+
 
 def test_linear_probe_output_shape_2d():
     """LinearProbe on (B, d) input returns (B, n_classes)."""
@@ -106,6 +106,7 @@ def test_linear_probe_random_labels_chance():
 # MLPProbe tests
 # ---------------------------------------------------------------------------
 
+
 def test_mlp_probe_output_shape():
     """MLPProbe on (B, d) input returns (B, n_classes)."""
     probe = MLPProbe(d_model=32, hidden_dim=64, n_classes=3)
@@ -138,6 +139,7 @@ def test_mlp_probe_with_dropout():
 # ---------------------------------------------------------------------------
 # ProbingEvaluator tests
 # ---------------------------------------------------------------------------
+
 
 def test_probing_evaluator_returns_correct_keys():
     """evaluate_layer returns dict with 'train_acc', 'val_acc', 'n_params'."""
@@ -177,6 +179,7 @@ def test_probing_evaluator_all_layers_length():
 # ---------------------------------------------------------------------------
 # ProbingResult tests
 # ---------------------------------------------------------------------------
+
 
 def test_probing_result_is_significant_threshold_logic():
     """is_significant uses val_acc > chance_level + threshold."""

@@ -5,14 +5,13 @@ from __future__ import annotations
 import math
 
 import torch
-import pytest
 
 from src.alignment.debate_framework import (
     DebateConfig,
     DebateEvaluator,
     DebateResult,
-    DebateRound,
     DebaterModel,
+    DebateRound,
     JudgeModel,
     SelfPlayDebateTrainer,
 )
@@ -103,9 +102,7 @@ def test_judge_forward_output_shape() -> None:
     judge = _make_judge()
     ids = _make_question_ids()
     logits = judge(ids)
-    assert logits.shape == (BATCH, 2), (
-        f"Expected {(BATCH, 2)}, got {logits.shape}"
-    )
+    assert logits.shape == (BATCH, 2), f"Expected {(BATCH, 2)}, got {logits.shape}"
 
 
 def test_judge_forward_finite_values() -> None:
@@ -122,9 +119,7 @@ def test_judge_score_argument_range() -> None:
     ids = _make_question_ids()
     scores = judge.score_argument(ids)
     assert scores.shape == (BATCH,)
-    assert (scores > 0).all() and (scores < 1).all(), (
-        f"Scores out of (0,1): {scores}"
-    )
+    assert (scores > 0).all() and (scores < 1).all(), f"Scores out of (0,1): {scores}"
 
 
 def test_judge_scores_sum_to_one() -> None:
@@ -134,9 +129,7 @@ def test_judge_scores_sum_to_one() -> None:
     support_scores = judge.score_argument(ids)
     oppose_scores = 1.0 - support_scores
     sums = support_scores + oppose_scores
-    assert torch.allclose(sums, torch.ones(BATCH), atol=1e-6), (
-        f"Scores do not sum to 1: {sums}"
-    )
+    assert torch.allclose(sums, torch.ones(BATCH), atol=1e-6), f"Scores do not sum to 1: {sums}"
 
 
 # ---------------------------------------------------------------------------
@@ -189,9 +182,7 @@ def test_debate_result_winner_valid_value() -> None:
     debate = DebateRound(debater_a, debater_b, judge)
     question_ids = _make_question_ids()
     result = debate.run_round(question_ids, n_turns=N_TURNS, max_new=MAX_NEW)
-    assert result.winner in {"a", "b", "tie"}, (
-        f"Unexpected winner value: {result.winner!r}"
-    )
+    assert result.winner in {"a", "b", "tie"}, f"Unexpected winner value: {result.winner!r}"
 
 
 def test_debate_result_a_score_in_range() -> None:
@@ -215,9 +206,7 @@ def test_trainer_judge_step_returns_finite_scalar() -> None:
     debater_a = _make_debater()
     debater_b = _make_debater()
     judge = _make_judge()
-    trainer = SelfPlayDebateTrainer(
-        debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3
-    )
+    trainer = SelfPlayDebateTrainer(debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3)
     ids = _make_question_ids()
     labels = torch.ones(BATCH, dtype=torch.float32)
     loss = trainer.judge_step(ids, labels)
@@ -230,9 +219,7 @@ def test_trainer_debater_step_returns_finite_losses() -> None:
     debater_a = _make_debater()
     debater_b = _make_debater()
     judge = _make_judge()
-    trainer = SelfPlayDebateTrainer(
-        debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3
-    )
+    trainer = SelfPlayDebateTrainer(debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3)
     question_ids = _make_question_ids()
     reward_signal = torch.rand(BATCH)
     loss_a, loss_b = trainer.debater_step(question_ids, reward_signal, max_new=MAX_NEW)
@@ -247,9 +234,7 @@ def test_trainer_self_play_step_returns_expected_keys() -> None:
     debater_a = _make_debater()
     debater_b = _make_debater()
     judge = _make_judge()
-    trainer = SelfPlayDebateTrainer(
-        debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3
-    )
+    trainer = SelfPlayDebateTrainer(debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3)
     question_ids = _make_question_ids()
     result = trainer.self_play_step(question_ids, n_turns=N_TURNS, max_new=MAX_NEW)
     for key in ("judge_loss", "loss_a", "loss_b", "winner"):
@@ -261,9 +246,7 @@ def test_trainer_self_play_step_losses_finite() -> None:
     debater_a = _make_debater()
     debater_b = _make_debater()
     judge = _make_judge()
-    trainer = SelfPlayDebateTrainer(
-        debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3
-    )
+    trainer = SelfPlayDebateTrainer(debater_a, debater_b, judge, lr_debaters=1e-4, lr_judge=1e-3)
     question_ids = _make_question_ids()
     result = trainer.self_play_step(question_ids, n_turns=N_TURNS, max_new=MAX_NEW)
     for key in ("judge_loss", "loss_a", "loss_b"):

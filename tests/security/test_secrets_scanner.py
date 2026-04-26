@@ -1,7 +1,7 @@
 """Tests for secrets scanner."""
+
 from __future__ import annotations
 
-import pytest
 import tempfile
 
 from src.security.secrets_scanner import SecretsScanner
@@ -25,6 +25,7 @@ class TestSecretsScanner:
 
     def test_mask_short_value(self):
         from src.security.secrets_scanner import SecretMatch
+
         m = SecretMatch(value="12345678", match_type="test", line=1, column=1)
         masked = m.masked()
         assert "***" in masked

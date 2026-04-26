@@ -17,6 +17,7 @@ EAGLEConfig       — configuration dataclass
 EAGLEDraftHead    — lightweight 1-layer autoregressive draft module
 EAGLEDecoder      — wraps target model + draft head for speculative generation
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,10 +27,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EAGLEConfig:
@@ -37,7 +38,7 @@ class EAGLEConfig:
 
     d_model: int = 512
     vocab_size: int = 32000
-    n_draft_steps: int = 4       # how many tokens to draft per round
+    n_draft_steps: int = 4  # how many tokens to draft per round
     draft_hidden_dim: int = 256  # hidden size of the draft head (small!)
     temperature: float = 1.0
 
@@ -45,6 +46,7 @@ class EAGLEConfig:
 # ---------------------------------------------------------------------------
 # Draft head
 # ---------------------------------------------------------------------------
+
 
 class EAGLEDraftHead(nn.Module):
     """Lightweight 1-layer autoregressive draft predictor.
@@ -89,15 +91,16 @@ class EAGLEDraftHead(nn.Module):
         """
         x = torch.cat([hidden, token_embed], dim=-1)  # (B, T, 2*d_model)
         x = self.norm(x)
-        x = self.fc1(x)        # (B, T, draft_hidden_dim)
+        x = self.fc1(x)  # (B, T, draft_hidden_dim)
         x = self.act(x)
-        logits = self.fc2(x)   # (B, T, vocab_size)
+        logits = self.fc2(x)  # (B, T, vocab_size)
         return logits
 
 
 # ---------------------------------------------------------------------------
 # EAGLE Decoder
 # ---------------------------------------------------------------------------
+
 
 class EAGLEDecoder:
     """Wraps a target model and a draft head for EAGLE speculative generation.
@@ -167,10 +170,10 @@ class EAGLEDecoder:
         draft_ids: (B, n_draft_steps)  — greedy draft token ids.
         """
         cfg = self.config
-        B = input_ids.shape[0]
+        input_ids.shape[0]
 
-        current_ids = input_ids          # (B, T)
-        current_hidden = features        # (B, T, d_model)
+        current_ids = input_ids  # (B, T)
+        current_hidden = features  # (B, T, d_model)
         all_draft: list[Tensor] = []
 
         with torch.no_grad():
@@ -182,20 +185,18 @@ class EAGLEDecoder:
                 T_h = current_hidden.shape[1]
                 T_e = token_embed.shape[1]
                 T_min = min(T_h, T_e)
-                h = current_hidden[:, -T_min:, :]      # (B, T_min, d_model)
-                e = token_embed[:, -T_min:, :]          # (B, T_min, d_model)
+                h = current_hidden[:, -T_min:, :]  # (B, T_min, d_model)
+                e = token_embed[:, -T_min:, :]  # (B, T_min, d_model)
 
-                draft_logits = self.draft_head(h, e)    # (B, T_min, vocab_size)
-                next_logits = draft_logits[:, -1, :]    # (B, vocab_size) — last position
+                draft_logits = self.draft_head(h, e)  # (B, T_min, vocab_size)
+                next_logits = draft_logits[:, -1, :]  # (B, vocab_size) — last position
 
                 # Greedy decode
                 next_token = next_logits.argmax(dim=-1)  # (B,)
                 all_draft.append(next_token)
 
                 # Extend context: append the new draft token
-                current_ids = torch.cat(
-                    [current_ids, next_token.unsqueeze(1)], dim=1
-                )  # (B, T+1)
+                current_ids = torch.cat([current_ids, next_token.unsqueeze(1)], dim=1)  # (B, T+1)
 
                 # Approximate the new hidden state by repeating the last hidden
                 # vector (the draft head has no target-model forward pass here).
@@ -246,17 +247,17 @@ class EAGLEDecoder:
         for i in range(n_draft):
             # Target logit at position (prompt_len - 1 + i) predicts draft_ids[:, i]
             target_pos = prompt_len - 1 + i
-            t_logits_i = target_logits[:, target_pos, :]      # (B, V)
-            t_probs = F.softmax(t_logits_i / temp, dim=-1)    # (B, V)
+            t_logits_i = target_logits[:, target_pos, :]  # (B, V)
+            t_probs = F.softmax(t_logits_i / temp, dim=-1)  # (B, V)
 
-            d_logits_i = draft_logits[:, i, :]                # (B, V)
-            d_probs = F.softmax(d_logits_i / temp, dim=-1)    # (B, V)
+            d_logits_i = draft_logits[:, i, :]  # (B, V)
+            d_probs = F.softmax(d_logits_i / temp, dim=-1)  # (B, V)
 
-            draft_tok = draft_ids[:, i]                        # (B,)
+            draft_tok = draft_ids[:, i]  # (B,)
             batch_idx = torch.arange(B, device=device)
 
-            p_target = t_probs[batch_idx, draft_tok]           # (B,)
-            p_draft = d_probs[batch_idx, draft_tok]            # (B,)
+            p_target = t_probs[batch_idx, draft_tok]  # (B,)
+            p_draft = d_probs[batch_idx, draft_tok]  # (B,)
 
             accept_prob = torch.clamp(p_target / (p_draft + 1e-10), max=1.0)  # (B,)
             u = torch.rand(B, device=device)
@@ -314,10 +315,9 @@ class EAGLEDecoder:
             # Step 1: target model forward on prompt → get features
             target_out = self.target_model(input_ids)
             if isinstance(target_out, (tuple, list)):
-                target_logits_prompt, hidden_states = target_out[0], target_out[1]
+                _target_logits_prompt, hidden_states = target_out[0], target_out[1]
             else:
                 # Fallback: if model only returns logits, create dummy hidden states
-                target_logits_prompt = target_out
                 hidden_states = torch.zeros(B, T, cfg.d_model, device=device)
 
         # Step 2: draft K tokens using the draft head
@@ -332,7 +332,7 @@ class EAGLEDecoder:
             T_min = min(T_h, T_e)
             h = hidden_states[:, -T_min:, :]
             e = token_embed[:, -T_min:, :]
-            draft_logits_all = self.draft_head(h, e)  # (B, T_min, vocab_size)
+            self.draft_head(h, e)  # (B, T_min, vocab_size)
 
             # We only need the last T_min positions; draft steps extend from last
             # position, so we replicate last draft logit for each step position.
@@ -349,11 +349,11 @@ class EAGLEDecoder:
                 T_m = min(T_h2, T_e2)
                 h2 = current_hidden[:, -T_m:, :]
                 e2 = te_step[:, -T_m:, :]
-                step_logits = self.draft_head(h2, e2)   # (B, T_m, vocab_size)
+                step_logits = self.draft_head(h2, e2)  # (B, T_m, vocab_size)
                 draft_logit_steps.append(step_logits[:, -1, :])  # (B, vocab_size)
 
                 # Extend with next draft token
-                next_tok = draft_logit_steps[-1].argmax(dim=-1)   # (B,)
+                next_tok = draft_logit_steps[-1].argmax(dim=-1)  # (B,)
                 current_ids = torch.cat([current_ids, next_tok.unsqueeze(1)], dim=1)
                 new_h = current_hidden[:, -1:, :]
                 current_hidden = torch.cat([current_hidden, new_h], dim=1)

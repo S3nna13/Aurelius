@@ -15,14 +15,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SWAConfig:
     """Configuration for Sliding Window Attention."""
+
     d_model: int = 512
     n_heads: int = 8
     window_size: int = 256
@@ -33,6 +34,7 @@ class SWAConfig:
 # ---------------------------------------------------------------------------
 # Mask builder
 # ---------------------------------------------------------------------------
+
 
 def build_sliding_window_mask(
     seq_len: int,
@@ -51,15 +53,15 @@ def build_sliding_window_mask(
         Float tensor of shape (T, T) with values 0.0 (attend) or -inf (block).
     """
     half = window_size // 2
-    i_idx = torch.arange(seq_len).unsqueeze(1)   # (T, 1)
-    j_idx = torch.arange(seq_len).unsqueeze(0)   # (1, T)
+    i_idx = torch.arange(seq_len).unsqueeze(1)  # (T, 1)
+    j_idx = torch.arange(seq_len).unsqueeze(0)  # (1, T)
 
     # Within-window condition: |i - j| <= half
-    in_window = (i_idx - j_idx).abs() <= half    # (T, T) bool
+    in_window = (i_idx - j_idx).abs() <= half  # (T, T) bool
 
     if causal:
         # Also require j <= i (no attending to future tokens)
-        not_future = j_idx <= i_idx              # (T, T) bool
+        not_future = j_idx <= i_idx  # (T, T) bool
         attend = in_window & not_future
     else:
         attend = in_window
@@ -73,6 +75,7 @@ def build_sliding_window_mask(
 # ---------------------------------------------------------------------------
 # Functional sliding-window attention
 # ---------------------------------------------------------------------------
+
 
 def sliding_window_attention(
     q: Tensor,
@@ -97,15 +100,15 @@ def sliding_window_attention(
     scale = math.sqrt(d_head)
 
     # Compute raw attention scores: (B, T, T)
-    scores = torch.bmm(q, k.transpose(1, 2)) / scale   # (B, T, T)
+    scores = torch.bmm(q, k.transpose(1, 2)) / scale  # (B, T, T)
 
     # Build and apply the sliding-window mask
     mask = build_sliding_window_mask(T, window_size, causal=causal)
     mask = mask.to(dtype=scores.dtype, device=scores.device)
-    scores = scores + mask.unsqueeze(0)   # broadcast over batch
+    scores = scores + mask.unsqueeze(0)  # broadcast over batch
 
     # Softmax — rows that are entirely -inf (e.g. T=0 edge cases) stay -inf
-    attn_weights = torch.softmax(scores, dim=-1)   # (B, T, T)
+    attn_weights = torch.softmax(scores, dim=-1)  # (B, T, T)
 
     # Replace any NaN produced by softmax of all-inf rows with 0
     attn_weights = torch.nan_to_num(attn_weights, nan=0.0)
@@ -113,13 +116,14 @@ def sliding_window_attention(
     if dropout_p > 0.0 and torch.is_grad_enabled():
         attn_weights = F.dropout(attn_weights, p=dropout_p)
 
-    out = torch.bmm(attn_weights, v)   # (B, T, d_head)
+    out = torch.bmm(attn_weights, v)  # (B, T, d_head)
     return out
 
 
 # ---------------------------------------------------------------------------
 # Module: SlidingWindowAttention
 # ---------------------------------------------------------------------------
+
 
 class SlidingWindowAttention(nn.Module):
     """Multi-head sliding-window self-attention.
@@ -130,7 +134,7 @@ class SlidingWindowAttention(nn.Module):
 
     def __init__(self, config: SWAConfig) -> None:
         super().__init__()
-        assert config.d_model % config.n_heads == 0, (
+        assert config.d_model % config.n_heads == 0, (  # noqa: S101
             f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
         )
         self.config = config
@@ -168,11 +172,13 @@ class SlidingWindowAttention(nn.Module):
         v_flat = v.reshape(B * H, T, d_head)
 
         out_flat = sliding_window_attention(
-            q_flat, k_flat, v_flat,
+            q_flat,
+            k_flat,
+            v_flat,
             window_size=self.config.window_size,
             causal=self.config.causal,
             dropout_p=self.dropout_p if self.training else 0.0,
-        )   # (B*H, T, d_head)
+        )  # (B*H, T, d_head)
 
         # Merge heads back
         out = out_flat.view(B, H, T, d_head).transpose(1, 2).reshape(B, T, D)
@@ -182,6 +188,7 @@ class SlidingWindowAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Module: SWABlock
 # ---------------------------------------------------------------------------
+
 
 class SWABlock(nn.Module):
     """Transformer block using sliding-window attention.
@@ -232,6 +239,7 @@ class SWABlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Utility: count attended positions
 # ---------------------------------------------------------------------------
+
 
 def count_attended_positions(seq_len: int, window_size: int, causal: bool) -> int:
     """Count total (i, j) pairs where token j is attended by token i.

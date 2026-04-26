@@ -8,8 +8,7 @@ Tiny test config: B=2, T=16, d_model=32, d_state=8, n_heads=4,
 
 import pytest
 import torch
-
-from aurelius.model.mamba2_v2 import Mamba2Config, Mamba2Block, Mamba2Model, SSMKernel
+from aurelius.model.mamba2_v2 import Mamba2Block, Mamba2Config, Mamba2Model, SSMKernel
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -73,6 +72,7 @@ def make_ssm_inputs(cfg, batch=B, seq=T):
 # SSMKernel tests
 # ---------------------------------------------------------------------------
 
+
 def test_ssm_output_shape(cfg):
     kernel = make_ssm_kernel(cfg)
     x, A, B_mat, C_mat = make_ssm_inputs(cfg)
@@ -99,6 +99,7 @@ def test_ssm_different_inputs_different_outputs(cfg):
 # ---------------------------------------------------------------------------
 # Mamba2Block tests
 # ---------------------------------------------------------------------------
+
 
 def test_block_output_shape(block):
     x = torch.randn(B, T, D_MODEL)
@@ -132,6 +133,7 @@ def test_block_different_inputs(block):
 # ---------------------------------------------------------------------------
 # Mamba2Model tests
 # ---------------------------------------------------------------------------
+
 
 def test_model_output_shape(model):
     ids = torch.randint(0, VOCAB_SIZE, (B, T))

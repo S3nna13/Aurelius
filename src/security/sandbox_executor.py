@@ -33,25 +33,55 @@ import concurrent.futures
 import contextlib
 import io
 from dataclasses import dataclass, field
-from typing import Any, Dict, FrozenSet, Optional
+from typing import Any
 
-
-DEFAULT_ALLOWED_BUILTINS: FrozenSet[str] = frozenset({
-    "abs", "bool", "bytes", "chr", "dict", "divmod", "enumerate", "filter",
-    "float", "format", "frozenset", "int", "isinstance",
-    "issubclass", "iter", "len", "list", "map", "max", "min", "next", "object",
-    "ord", "pow", "print", "range", "repr", "reversed", "round", "set",
-    "slice", "sorted", "str", "sum", "tuple", "zip",
-})
+DEFAULT_ALLOWED_BUILTINS: frozenset[str] = frozenset(
+    {
+        "abs",
+        "bool",
+        "bytes",
+        "chr",
+        "dict",
+        "divmod",
+        "enumerate",
+        "filter",
+        "float",
+        "format",
+        "frozenset",
+        "int",
+        "isinstance",
+        "issubclass",
+        "iter",
+        "len",
+        "list",
+        "map",
+        "max",
+        "min",
+        "next",
+        "object",
+        "ord",
+        "pow",
+        "print",
+        "range",
+        "repr",
+        "reversed",
+        "round",
+        "set",
+        "slice",
+        "sorted",
+        "str",
+        "sum",
+        "tuple",
+        "zip",
+    }
+)
 
 
 @dataclass
 class SandboxConfig:
     timeout_seconds: float = 5.0
     max_output_bytes: int = 1_048_576
-    allowed_builtins: FrozenSet[str] = field(
-        default_factory=lambda: DEFAULT_ALLOWED_BUILTINS
-    )
+    allowed_builtins: frozenset[str] = field(default_factory=lambda: DEFAULT_ALLOWED_BUILTINS)
     max_code_len: int = 100_000
 
 
@@ -70,7 +100,7 @@ class SandboxViolation(Exception):
 class SandboxResult:
     stdout: str = ""
     stderr: str = ""
-    exception: Optional[str] = None
+    exception: str | None = None
     timed_out: bool = False
 
 
@@ -81,14 +111,14 @@ def _truncate(text: str, max_bytes: int) -> str:
     return encoded[:max_bytes].decode("utf-8", errors="replace")
 
 
-def _run_exec(code: str, globs: Dict[str, Any], max_bytes: int) -> SandboxResult:
+def _run_exec(code: str, globs: dict[str, Any], max_bytes: int) -> SandboxResult:
     out = io.StringIO()
     err = io.StringIO()
     result = SandboxResult()
     try:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             compiled = _py_builtins.compile(code, "<sandbox>", "exec")
-            _py_builtins.exec(compiled, globs, globs)
+            _py_builtins.exec(compiled, globs, globs)  # noqa: S102
     except BaseException as caught:
         result.exception = f"{type(caught).__name__}: {caught}"
     result.stdout = _truncate(out.getvalue(), max_bytes)
@@ -99,17 +129,27 @@ def _run_exec(code: str, globs: Dict[str, Any], max_bytes: int) -> SandboxResult
 class SandboxExecutor:
     """In-process sandboxed dynamic execution with timeout + restricted builtins."""
 
-    def _build_globals(self, config: SandboxConfig) -> Dict[str, Any]:
-        safe_builtins: Dict[str, Any] = {}
+    def _build_globals(self, config: SandboxConfig) -> dict[str, Any]:
+        safe_builtins: dict[str, Any] = {}
         for name in config.allowed_builtins:
             if hasattr(_py_builtins, name):
                 safe_builtins[name] = getattr(_py_builtins, name)
         # Explicitly ensure dangerous names are absent even if someone extended
         # ``allowed_builtins`` with them by accident.
         for blocked in (
-            "eval", "exec", "compile", "open", "__import__",
-            "input", "breakpoint", "exit", "quit",
-            "getattr", "setattr", "type", "hasattr",
+            "eval",
+            "exec",
+            "compile",
+            "open",
+            "__import__",
+            "input",
+            "breakpoint",
+            "exit",
+            "quit",
+            "getattr",
+            "setattr",
+            "type",
+            "hasattr",
         ):
             safe_builtins.pop(blocked, None)
         return {"__builtins__": safe_builtins}
@@ -117,7 +157,7 @@ class SandboxExecutor:
     def execute(
         self,
         code: str,
-        config: Optional[SandboxConfig] = None,
+        config: SandboxConfig | None = None,
     ) -> SandboxResult:
         cfg = config or SandboxConfig()
         if not isinstance(code, str):
@@ -145,7 +185,7 @@ class SandboxExecutor:
             # the caller is not blocked on a runaway sandbox thread.
             try:
                 future.cancel()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
             try:
                 pool.shutdown(wait=False, cancel_futures=True)

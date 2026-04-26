@@ -1,9 +1,8 @@
 """Tests for misconfig scanner."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.security.misconfig_scanner import MisconfigScanner, MisconfigCheck
+from src.security.misconfig_scanner import MisconfigCheck, MisconfigScanner
 
 
 class TestMisconfigScanner:
@@ -21,8 +20,10 @@ class TestMisconfigScanner:
 
     def test_check_exception(self):
         ms = MisconfigScanner()
+
         def broken():
             raise RuntimeError("boom")
+
         ms.add_check(MisconfigCheck("broken", broken))
         results = ms.run_all()
         assert results[0]["passed"] is False

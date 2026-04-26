@@ -104,9 +104,7 @@ class EvidenceStore:
     def list_findings(self, min_severity: Severity = "info") -> list:
         """Return all findings at or above *min_severity*, ordered by creation time."""
         min_order = _SEV_ORDER[min_severity]
-        rows = self._conn.execute(
-            "SELECT * FROM findings ORDER BY created_at"
-        ).fetchall()
+        rows = self._conn.execute("SELECT * FROM findings ORDER BY created_at").fetchall()
         result = []
         for r in rows:
             if _SEV_ORDER.get(r[2], 0) >= min_order:
@@ -143,13 +141,7 @@ class EvidenceStore:
                     "level": _SEV_MAP.get(f.severity, "note"),
                     "message": {"text": f.title},
                     "locations": [
-                        {
-                            "physicalLocation": {
-                                "artifactLocation": {
-                                    "uri": f.url or "unknown"
-                                }
-                            }
-                        }
+                        {"physicalLocation": {"artifactLocation": {"uri": f.url or "unknown"}}}
                     ],
                 }
             )

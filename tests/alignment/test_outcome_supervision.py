@@ -8,19 +8,20 @@ import torch.nn as nn
 
 from src.alignment.outcome_supervision import (
     ORMConfig,
-    OutcomeVerifier,
-    OutcomeRewardModel,
     ORMTrainer,
+    OutcomeRewardModel,
+    OutcomeVerifier,
     pass_at_k,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def _exact_match_verifier() -> OutcomeVerifier:
     """Verifier that checks whether the last token equals the ground truth int."""
+
     def verify_fn(response_ids: torch.Tensor, ground_truth) -> bool:
         return int(response_ids.reshape(-1)[-1].item()) == int(ground_truth)
 
@@ -63,6 +64,7 @@ def tiny_trainer(tiny_verifier):
 # Test 1: ORMConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ormconfig_defaults():
     cfg = ORMConfig()
     assert cfg.correct_reward == 1.0
@@ -75,6 +77,7 @@ def test_ormconfig_defaults():
 # Test 2: pass_at_k(10, 5, 1) ≈ 0.5
 # ---------------------------------------------------------------------------
 
+
 def test_pass_at_k_half():
     result = pass_at_k(10, 5, 1)
     assert abs(result - 0.5) < 1e-9, f"Expected 0.5, got {result}"
@@ -83,6 +86,7 @@ def test_pass_at_k_half():
 # ---------------------------------------------------------------------------
 # Test 3: pass_at_k(10, 10, 1) = 1.0 (all correct)
 # ---------------------------------------------------------------------------
+
 
 def test_pass_at_k_all_correct():
     result = pass_at_k(10, 10, 1)
@@ -93,6 +97,7 @@ def test_pass_at_k_all_correct():
 # Test 4: pass_at_k(10, 0, 1) = 0.0 (none correct)
 # ---------------------------------------------------------------------------
 
+
 def test_pass_at_k_none_correct():
     result = pass_at_k(10, 0, 1)
     assert result == 0.0, f"Expected 0.0, got {result}"
@@ -102,14 +107,13 @@ def test_pass_at_k_none_correct():
 # Test 5: pass_at_k increases (non-strictly) monotonically with k
 # ---------------------------------------------------------------------------
 
+
 def test_pass_at_k_monotone():
     n, c = 20, 8
     prev = pass_at_k(n, c, 1)
     for k in range(2, n + 1):
         curr = pass_at_k(n, c, k)
-        assert curr >= prev - 1e-12, (
-            f"pass@{k}={curr:.6f} < pass@{k-1}={prev:.6f} — not monotone"
-        )
+        assert curr >= prev - 1e-12, f"pass@{k}={curr:.6f} < pass@{k - 1}={prev:.6f} — not monotone"
         prev = curr
     # Final value must be 1.0 when k == n and c > 0
     assert abs(pass_at_k(n, c, n) - 1.0) < 1e-9
@@ -118,6 +122,7 @@ def test_pass_at_k_monotone():
 # ---------------------------------------------------------------------------
 # Test 6: OutcomeVerifier.verify returns bool
 # ---------------------------------------------------------------------------
+
 
 def test_verifier_verify_returns_bool(tiny_verifier):
     response = torch.tensor([1, 2, 3, 7])  # last token = 7
@@ -134,6 +139,7 @@ def test_verifier_verify_returns_bool(tiny_verifier):
 # Test 7: batch_verify returns correct shape tensor
 # ---------------------------------------------------------------------------
 
+
 def test_batch_verify_shape(tiny_verifier):
     responses = [torch.tensor([1, 2, i]) for i in range(5)]
     ground_truths = list(range(5))  # each last token matches its gt
@@ -148,6 +154,7 @@ def test_batch_verify_shape(tiny_verifier):
 # ---------------------------------------------------------------------------
 # Test 8: OutcomeRewardModel.compute_reward returns correct_reward for correct
 # ---------------------------------------------------------------------------
+
 
 def test_compute_reward_correct(tiny_orm):
     response = torch.tensor([5, 3, 42])  # last token = 42
@@ -165,6 +172,7 @@ def test_compute_reward_wrong(tiny_orm):
 # Test 9: estimate_pass_at_k returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_pass_at_k_range(tiny_orm):
     # 4 responses: last tokens 0,1,2,3
     responses = [torch.tensor([i]) for i in range(4)]
@@ -177,6 +185,7 @@ def test_estimate_pass_at_k_range(tiny_orm):
 # ---------------------------------------------------------------------------
 # Test 10: ORMTrainer.train_step returns dict with 'loss' key
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_has_loss(tiny_trainer):
     torch.manual_seed(1)
@@ -195,6 +204,7 @@ def test_trainer_train_step_has_loss(tiny_trainer):
 # Test 11: Accuracy in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_accuracy_range(tiny_trainer):
     torch.manual_seed(2)
     responses = [torch.tensor([i % 5]) for i in range(8)]
@@ -210,6 +220,7 @@ def test_trainer_accuracy_range(tiny_trainer):
 # ---------------------------------------------------------------------------
 # Test 12: Gradient flows through ORM loss
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows():
     """Parameters must receive gradients after a train_step call."""
@@ -231,7 +242,7 @@ def test_gradient_flows():
     optimizer.zero_grad()
 
     # Run one forward+backward (train_step already calls backward)
-    result = trainer.train_step(response_ids, labels)
+    trainer.train_step(response_ids, labels)
 
     # After train_step, parameters should have non-None gradients
     # (they may have been zeroed by optimizer.step but the step happened)
@@ -241,12 +252,6 @@ def test_gradient_flows():
     loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, labels)
     loss.backward()
 
-    grad_norms = [
-        p.grad.norm().item()
-        for p in net.parameters()
-        if p.grad is not None
-    ]
+    grad_norms = [p.grad.norm().item() for p in net.parameters() if p.grad is not None]
     assert len(grad_norms) > 0, "No gradients found — backward did not propagate"
-    assert any(g > 0 for g in grad_norms), (
-        f"All gradient norms are zero: {grad_norms}"
-    )
+    assert any(g > 0 for g in grad_norms), f"All gradient norms are zero: {grad_norms}"

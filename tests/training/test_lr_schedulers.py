@@ -4,27 +4,25 @@ Tests for src/training/lr_schedulers.py
 Pure PyTorch only. Tiny configs are used throughout.
 """
 
-import math
 import pytest
-import torch
 import torch.nn as nn
 import torch.optim as optim
 
 from src.training.lr_schedulers import (
+    CyclicCosineScheduler,
     SchedulerConfig,
+    WarmupCosineScheduler,
     cosine_schedule_with_warmup,
+    get_scheduler,
     linear_schedule_with_warmup,
     polynomial_schedule,
     wsd_schedule,
-    WarmupCosineScheduler,
-    CyclicCosineScheduler,
-    get_scheduler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def tiny_model_and_optimizer(lr: float = 1.0):
     """Return a tiny nn.Linear and SGD optimizer."""
@@ -41,6 +39,7 @@ def tiny_config():
 # 1. SchedulerConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_scheduler_config_defaults():
     cfg = SchedulerConfig()
     assert cfg.warmup_steps == 1000
@@ -53,6 +52,7 @@ def test_scheduler_config_defaults():
 # 2. cosine_schedule_with_warmup — step 0 ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_step0_near_zero():
     cfg = tiny_config()
     val = cosine_schedule_with_warmup(0, cfg)
@@ -62,6 +62,7 @@ def test_cosine_step0_near_zero():
 # ---------------------------------------------------------------------------
 # 3. cosine_schedule_with_warmup — at warmup_steps = 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_at_warmup_equals_one():
     cfg = tiny_config()
@@ -73,6 +74,7 @@ def test_cosine_at_warmup_equals_one():
 # 4. cosine_schedule_with_warmup — at total_steps = min_lr_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_at_total_steps_equals_min_lr():
     cfg = tiny_config()
     val = cosine_schedule_with_warmup(cfg.total_steps, cfg)
@@ -82,6 +84,7 @@ def test_cosine_at_total_steps_equals_min_lr():
 # ---------------------------------------------------------------------------
 # 5. linear_schedule — step 0 ≈ 0
 # ---------------------------------------------------------------------------
+
 
 def test_linear_step0_near_zero():
     cfg = tiny_config()
@@ -93,6 +96,7 @@ def test_linear_step0_near_zero():
 # 6. linear_schedule — at warmup_steps = 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_linear_at_warmup_equals_one():
     cfg = tiny_config()
     val = linear_schedule_with_warmup(cfg.warmup_steps, cfg)
@@ -102,6 +106,7 @@ def test_linear_at_warmup_equals_one():
 # ---------------------------------------------------------------------------
 # 7. polynomial_schedule power=1 is linear in (remaining / decay_steps)
 # ---------------------------------------------------------------------------
+
 
 def test_polynomial_power1_matches_linear_decay():
     cfg = tiny_config()
@@ -119,6 +124,7 @@ def test_polynomial_power1_matches_linear_decay():
 # 8. wsd_schedule — warmup region grows
 # ---------------------------------------------------------------------------
 
+
 def test_wsd_warmup_region_monotone():
     steps_before = 5
     steps_after = 8
@@ -131,6 +137,7 @@ def test_wsd_warmup_region_monotone():
 # 9. wsd_schedule — stable region = 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_wsd_stable_region_is_one():
     # stable region: steps in [10, 20)
     for step in [10, 15, 19]:
@@ -142,6 +149,7 @@ def test_wsd_stable_region_is_one():
 # 10. wsd_schedule — decay region decreases
 # ---------------------------------------------------------------------------
 
+
 def test_wsd_decay_region_decreases():
     # decay region: steps in [20, 30)
     v1 = wsd_schedule(21, warmup_steps=10, stable_steps=10, decay_steps=10, min_lr_ratio=0.1)
@@ -152,6 +160,7 @@ def test_wsd_decay_region_decreases():
 # ---------------------------------------------------------------------------
 # 11. WarmupCosineScheduler.step() actually changes optimizer lr
 # ---------------------------------------------------------------------------
+
 
 def test_warmup_cosine_scheduler_step_changes_lr():
     cfg = tiny_config()
@@ -172,6 +181,7 @@ def test_warmup_cosine_scheduler_step_changes_lr():
 # 12. Scheduler lr stays in [min_lr_ratio, 1.0] after warmup completes
 # ---------------------------------------------------------------------------
 
+
 def test_scheduler_lr_bounded():
     cfg = tiny_config()
     # After warmup, multiplier must remain in [min_lr_ratio, 1.0].
@@ -181,14 +191,13 @@ def test_scheduler_lr_bounded():
         assert multiplier >= cfg.min_lr_ratio - 1e-9, (
             f"multiplier={multiplier} below min_lr_ratio at step {step}"
         )
-        assert multiplier <= 1.0 + 1e-9, (
-            f"multiplier={multiplier} above 1.0 at step {step}"
-        )
+        assert multiplier <= 1.0 + 1e-9, f"multiplier={multiplier} above 1.0 at step {step}"
 
 
 # ---------------------------------------------------------------------------
 # 13. CyclicCosineScheduler.get_lr returns float
 # ---------------------------------------------------------------------------
+
 
 def test_cyclic_cosine_returns_float():
     cfg = tiny_config()
@@ -203,8 +212,10 @@ def test_cyclic_cosine_returns_float():
 # 14. get_scheduler "cosine" returns a scheduler
 # ---------------------------------------------------------------------------
 
+
 def test_get_scheduler_cosine_returns_scheduler():
     from torch.optim.lr_scheduler import LambdaLR
+
     cfg = tiny_config()
     _, optimizer = tiny_model_and_optimizer()
     sched = get_scheduler("cosine", optimizer, cfg)
@@ -215,27 +226,27 @@ def test_get_scheduler_cosine_returns_scheduler():
 # 15. Schedule is monotonically increasing during warmup
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_monotone_increase_during_warmup():
     cfg = tiny_config()
     vals = [cosine_schedule_with_warmup(s, cfg) for s in range(cfg.warmup_steps + 1)]
     for i in range(1, len(vals)):
-        assert vals[i] >= vals[i - 1], f"Not monotone at step {i}: {vals[i-1]} -> {vals[i]}"
+        assert vals[i] >= vals[i - 1], f"Not monotone at step {i}: {vals[i - 1]} -> {vals[i]}"
 
 
 # ---------------------------------------------------------------------------
 # 16. Cosine schedule is monotonically decreasing after warmup
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_monotone_decrease_after_warmup():
     cfg = tiny_config()
     vals = [
-        cosine_schedule_with_warmup(s, cfg)
-        for s in range(cfg.warmup_steps, cfg.total_steps + 1)
+        cosine_schedule_with_warmup(s, cfg) for s in range(cfg.warmup_steps, cfg.total_steps + 1)
     ]
     for i in range(1, len(vals)):
         assert vals[i] <= vals[i - 1] + 1e-9, (
-            f"Not monotone decreasing at step {cfg.warmup_steps + i}: "
-            f"{vals[i-1]} -> {vals[i]}"
+            f"Not monotone decreasing at step {cfg.warmup_steps + i}: {vals[i - 1]} -> {vals[i]}"
         )
 
 
@@ -243,8 +254,10 @@ def test_cosine_monotone_decrease_after_warmup():
 # 17. get_scheduler "linear" and "polynomial" work
 # ---------------------------------------------------------------------------
 
+
 def test_get_scheduler_linear_and_polynomial():
     from torch.optim.lr_scheduler import LambdaLR
+
     cfg = tiny_config()
     for name in ("linear", "polynomial"):
         _, optimizer = tiny_model_and_optimizer()
@@ -260,6 +273,7 @@ def test_get_scheduler_linear_and_polynomial():
 # 18. get_scheduler raises ValueError on unknown name
 # ---------------------------------------------------------------------------
 
+
 def test_get_scheduler_unknown_raises():
     cfg = tiny_config()
     _, optimizer = tiny_model_and_optimizer()
@@ -270,6 +284,7 @@ def test_get_scheduler_unknown_raises():
 # ---------------------------------------------------------------------------
 # 19. polynomial_schedule power=2 gives quadratic decay (< linear at midpoint)
 # ---------------------------------------------------------------------------
+
 
 def test_polynomial_power2_less_than_linear():
     cfg = tiny_config()
@@ -284,6 +299,7 @@ def test_polynomial_power2_less_than_linear():
 # ---------------------------------------------------------------------------
 # 20. linear_schedule at total_steps = min_lr_ratio
 # ---------------------------------------------------------------------------
+
 
 def test_linear_at_total_steps_equals_min_lr():
     cfg = tiny_config()

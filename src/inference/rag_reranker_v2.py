@@ -10,32 +10,31 @@ References:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Document
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Document:
     """A retrieved document with its dense embedding and optional token ids."""
 
     doc_id: int
-    embedding: Tensor                       # (d_model,)
-    text_tokens: Optional[Tensor] = None    # (T,) token ids, may be None
-    score: float = 0.0                      # retrieval score
+    embedding: Tensor  # (d_model,)
+    text_tokens: Tensor | None = None  # (T,) token ids, may be None
+    score: float = 0.0  # retrieval score
 
 
 # ---------------------------------------------------------------------------
 # CrossEncoderScorer
 # ---------------------------------------------------------------------------
+
 
 class CrossEncoderScorer(nn.Module):
     """Scores (query, document) pairs jointly via a small MLP.
@@ -65,14 +64,15 @@ class CrossEncoderScorer(nn.Module):
         """
         # Expand query to (N, d_model) and concatenate with docs -> (N, 2*d_model)
         n = doc_embs.shape[0]
-        q_expanded = query_emb.unsqueeze(0).expand(n, -1)   # (N, d_model)
-        pairs = torch.cat([q_expanded, doc_embs], dim=-1)   # (N, 2*d_model)
-        return self.mlp(pairs).squeeze(-1)                   # (N,)
+        q_expanded = query_emb.unsqueeze(0).expand(n, -1)  # (N, d_model)
+        pairs = torch.cat([q_expanded, doc_embs], dim=-1)  # (N, 2*d_model)
+        return self.mlp(pairs).squeeze(-1)  # (N,)
 
 
 # ---------------------------------------------------------------------------
 # BiEncoderRetriever
 # ---------------------------------------------------------------------------
+
 
 class BiEncoderRetriever:
     """Fast retrieval via dot-product similarity over a dense corpus.
@@ -82,11 +82,11 @@ class BiEncoderRetriever:
         doc_ids:        list of length N_docs, integer id for each document.
     """
 
-    def __init__(self, doc_embeddings: Tensor, doc_ids: List[int]) -> None:
-        self.doc_embeddings = doc_embeddings.float()   # (N_docs, d_model)
+    def __init__(self, doc_embeddings: Tensor, doc_ids: list[int]) -> None:
+        self.doc_embeddings = doc_embeddings.float()  # (N_docs, d_model)
         self.doc_ids = doc_ids
 
-    def retrieve(self, query_emb: Tensor, top_k: int = 10) -> List[Document]:
+    def retrieve(self, query_emb: Tensor, top_k: int = 10) -> list[Document]:
         """Return top_k Documents sorted by dot-product score descending.
 
         Args:
@@ -96,13 +96,13 @@ class BiEncoderRetriever:
         Returns:
             List of up to top_k Documents with .score set.
         """
-        q = query_emb.float()                            # (d_model,)
-        scores = self.doc_embeddings @ q                 # (N_docs,)
+        q = query_emb.float()  # (d_model,)
+        scores = self.doc_embeddings @ q  # (N_docs,)
 
         actual_k = min(top_k, scores.shape[0])
         top_scores, top_indices = torch.topk(scores, actual_k)
 
-        results: List[Document] = []
+        results: list[Document] = []
         for i in range(actual_k):
             idx = int(top_indices[i].item())
             doc = Document(
@@ -119,6 +119,7 @@ class BiEncoderRetriever:
 # RecipRankFusion
 # ---------------------------------------------------------------------------
 
+
 class RecipRankFusion:
     """Combines multiple ranked lists via Reciprocal Rank Fusion (RRF).
 
@@ -133,7 +134,7 @@ class RecipRankFusion:
     def __init__(self, k: int = 60) -> None:
         self.k = k
 
-    def _compute_rrf_scores(self, ranked_lists: List[List[int]]) -> dict[int, float]:
+    def _compute_rrf_scores(self, ranked_lists: list[list[int]]) -> dict[int, float]:
         rrf_scores: dict[int, float] = {}
         for ranking in ranked_lists:
             for rank_idx, doc_id in enumerate(ranking):
@@ -141,7 +142,7 @@ class RecipRankFusion:
                 rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (self.k + rank)
         return rrf_scores
 
-    def fuse(self, ranked_lists: List[List[int]]) -> List[int]:
+    def fuse(self, ranked_lists: list[list[int]]) -> list[int]:
         """Fuse ranked lists and return doc ids sorted by RRF score descending.
 
         Args:
@@ -153,9 +154,7 @@ class RecipRankFusion:
         rrf_scores = self._compute_rrf_scores(ranked_lists)
         return sorted(rrf_scores.keys(), key=lambda d: rrf_scores[d], reverse=True)
 
-    def fuse_with_scores(
-        self, ranked_lists: List[List[int]]
-    ) -> List[Tuple[int, float]]:
+    def fuse_with_scores(self, ranked_lists: list[list[int]]) -> list[tuple[int, float]]:
         """Fuse ranked lists and return (doc_id, rrf_score) tuples.
 
         Returns:
@@ -168,6 +167,7 @@ class RecipRankFusion:
 # ---------------------------------------------------------------------------
 # RAGReranker
 # ---------------------------------------------------------------------------
+
 
 class RAGReranker:
     """Full two-stage RAG pipeline: bi-encoder retrieval + cross-encoder reranking.
@@ -191,7 +191,7 @@ class RAGReranker:
         self.top_k_retrieve = top_k_retrieve
         self.top_k_rerank = top_k_rerank
 
-    def retrieve_and_rerank(self, query_emb: Tensor) -> List[Document]:
+    def retrieve_and_rerank(self, query_emb: Tensor) -> list[Document]:
         """Two-stage retrieval: bi-encoder then cross-encoder reranking.
 
         Step 1: Retrieve top_k_retrieve documents via bi-encoder dot product.
@@ -205,9 +205,7 @@ class RAGReranker:
             Up to top_k_rerank Documents sorted by cross-encoder score descending.
         """
         # Stage 1 — fast bi-encoder retrieval
-        candidates: List[Document] = self.retriever.retrieve(
-            query_emb, top_k=self.top_k_retrieve
-        )
+        candidates: list[Document] = self.retriever.retrieve(query_emb, top_k=self.top_k_retrieve)
         if not candidates:
             return []
 
@@ -227,7 +225,7 @@ class RAGReranker:
 
         return reranked
 
-    def score_documents(self, query_emb: Tensor, documents: List[Document]) -> Tensor:
+    def score_documents(self, query_emb: Tensor, documents: list[Document]) -> Tensor:
         """Score a list of documents against a query.
 
         Args:
@@ -242,5 +240,5 @@ class RAGReranker:
 
         doc_embs = torch.stack([doc.embedding.float() for doc in documents])  # (N, d_model)
         with torch.no_grad():
-            scores = self.scorer.score(query_emb.float(), doc_embs)            # (N,)
+            scores = self.scorer.score(query_emb.float(), doc_embs)  # (N,)
         return scores

@@ -8,6 +8,7 @@ optionally stripped from final output.
 """
 
 import re
+
 import torch
 import torch.nn.functional as F
 
@@ -38,7 +39,7 @@ class ThinkingFormat:
         m = pattern.match(text)
         if m:
             thought = m.group(1)
-            response = text[m.end():]
+            response = text[m.end() :]
             return thought, response
         return "", text
 
@@ -108,9 +109,7 @@ class ThinkingSFTDataset:
 
         Returns: {'input_ids': tensor, 'labels': tensor, 'weights': tensor}
         """
-        completion_ids = (
-            [THINK_START_TOKEN_ID] + thought_ids + [THINK_END_TOKEN_ID] + response_ids
-        )
+        completion_ids = [THINK_START_TOKEN_ID] + thought_ids + [THINK_END_TOKEN_ID] + response_ids
         input_ids = prompt_ids + completion_ids
 
         # Labels: mask prompt with -100, keep completion token ids
@@ -152,7 +151,9 @@ class ThinkingSFTDataset:
         flat_weights = shift_weights.view(-1)
 
         # Per-token cross-entropy (reduction='none'), -100 positions give 0 loss
-        per_token_loss = F.cross_entropy(flat_logits, flat_labels, ignore_index=-100, reduction="none")
+        per_token_loss = F.cross_entropy(
+            flat_logits, flat_labels, ignore_index=-100, reduction="none"
+        )
 
         # Zero out ignored positions in weights too
         mask = (flat_labels != -100).float()

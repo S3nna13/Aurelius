@@ -4,12 +4,9 @@
 and ConformalLMDecoder.
 """
 
-import math
-
 import pytest
 import torch
 import torch.nn.functional as F
-
 from aurelius.inference.conformal_lm import (
     CalibrationSet,
     ConformalLMDecoder,

@@ -1,25 +1,24 @@
 """Tests for ROME rank-1 factual editing (src/eval/rome.py)."""
+
 from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.rome import (
     ROMEConfig,
     ROMEEdit,
     apply_rome_edit,
-    compute_target_vector,
     get_subject_hidden_state,
     rome_edit,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_small_model() -> AureliusTransformer:
     """4-layer, d_model=64 model for fast CPU tests."""
@@ -51,6 +50,7 @@ LAYER_IDX = 1  # use layer 1 for small 4-layer model
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_rome_config_defaults():
     cfg = ROMEConfig()
@@ -137,7 +137,7 @@ def test_rome_edit_runs_without_crash():
     model = make_small_model()
     cfg = ROMEConfig(
         layer_idx=LAYER_IDX,
-        n_gradient_steps=3,   # fast
+        n_gradient_steps=3,  # fast
         v_lr=0.1,
     )
     edit = ROMEEdit(

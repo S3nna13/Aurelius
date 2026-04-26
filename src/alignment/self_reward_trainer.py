@@ -19,11 +19,10 @@ objective — live LLM calls are handled outside this file.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -68,7 +67,7 @@ class ScoredCandidate:
 
     token_ids: list[int]
     log_probs: torch.Tensor  # [T]
-    mask: torch.Tensor       # [T]
+    mask: torch.Tensor  # [T]
     score: float
 
 
@@ -277,10 +276,10 @@ class SelfRewardTrainer:
             }
 
         # Stack into [n_pairs] tensors
-        c_lp_t = torch.stack(chosen_policy_lps)        # [P]
-        c_ref_t = torch.stack(chosen_ref_lps)          # [P]
-        r_lp_t = torch.stack(rejected_policy_lps)      # [P]
-        r_ref_t = torch.stack(rejected_ref_lps)        # [P]
+        c_lp_t = torch.stack(chosen_policy_lps)  # [P]
+        c_ref_t = torch.stack(chosen_ref_lps)  # [P]
+        r_lp_t = torch.stack(rejected_policy_lps)  # [P]
+        r_ref_t = torch.stack(rejected_ref_lps)  # [P]
 
         loss = self.dpo_loss(c_lp_t, c_ref_t, r_lp_t, r_ref_t)
 
@@ -341,8 +340,7 @@ class SelfRewardTrainer:
         min_s = scores_t.min().item()
 
         total_pairs = sum(
-            len(self.create_preference_pairs(cands))
-            for cands in candidates_per_prompt
+            len(self.create_preference_pairs(cands)) for cands in candidates_per_prompt
         )
 
         return {
@@ -352,5 +350,3 @@ class SelfRewardTrainer:
             "min_score_observed": min_s,
             "pairs_created": float(total_pairs),
         }
-
-

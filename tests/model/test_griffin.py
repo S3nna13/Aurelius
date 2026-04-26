@@ -16,15 +16,14 @@ import torch.nn as nn
 from src.model.griffin import (
     GriffinConfig,
     GriffinModel,
-    GriffinBlock,
     LocalSlidingWindowAttention,
     RGLRULayer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture -- tiny config for fast tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg() -> GriffinConfig:
@@ -62,19 +61,19 @@ def model(cfg: GriffinConfig) -> GriffinModel:
 # Test 1 -- RGLRULayer output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_rglru_output_shape(rglru: RGLRULayer, cfg: GriffinConfig):
     """RGLRULayer must return output of shape (B, T, d_model)."""
     B, T = 2, 16
     x = torch.randn(B, T, cfg.d_model)
     out, _ = rglru(x)
-    assert out.shape == (B, T, cfg.d_model), (
-        f"Expected ({B}, {T}, {cfg.d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, T, cfg.d_model), f"Expected ({B}, {T}, {cfg.d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2 -- RGLRULayer returns new_state of shape (B, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_rglru_state_shape(rglru: RGLRULayer, cfg: GriffinConfig):
     """RGLRULayer must return new_state of shape (B, d_model)."""
@@ -90,6 +89,7 @@ def test_rglru_state_shape(rglru: RGLRULayer, cfg: GriffinConfig):
 # Test 3 -- RGLRULayer alpha values are in (0, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_rglru_alpha_bounded(rglru: RGLRULayer):
     """All alpha values (per-channel decay) must be strictly in (0, 1)."""
     alpha = rglru.alpha
@@ -101,6 +101,7 @@ def test_rglru_alpha_bounded(rglru: RGLRULayer):
 # ---------------------------------------------------------------------------
 # Test 4 -- Sequential step-by-step matches batch forward (recurrent consistency)
 # ---------------------------------------------------------------------------
+
 
 def test_rglru_recurrent_consistency(rglru: RGLRULayer, cfg: GriffinConfig):
     """Processing one token at a time must produce the same output as processing
@@ -134,19 +135,19 @@ def test_rglru_recurrent_consistency(rglru: RGLRULayer, cfg: GriffinConfig):
 # Test 5 -- LocalSlidingWindowAttention output shape correct
 # ---------------------------------------------------------------------------
 
+
 def test_lswa_output_shape(lswa: LocalSlidingWindowAttention, cfg: GriffinConfig):
     """LocalSlidingWindowAttention must return output of shape (B, T, d_model)."""
     B, T = 2, 20
     x = torch.randn(B, T, cfg.d_model)
     out, _ = lswa(x)
-    assert out.shape == (B, T, cfg.d_model), (
-        f"Expected ({B}, {T}, {cfg.d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, T, cfg.d_model), f"Expected ({B}, {T}, {cfg.d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 6 -- Tokens beyond window don't affect position 0 output
 # ---------------------------------------------------------------------------
+
 
 def test_lswa_window_isolation(lswa: LocalSlidingWindowAttention, cfg: GriffinConfig):
     """Changing tokens beyond the window size must not alter position-0 output.
@@ -164,7 +165,7 @@ def test_lswa_window_isolation(lswa: LocalSlidingWindowAttention, cfg: GriffinCo
 
     # Perturb tokens beyond the window (positions >= window)
     x2 = x.clone()
-    x2[:, cfg.local_window:, :] = torch.randn_like(x2[:, cfg.local_window:, :]) * 10.0
+    x2[:, cfg.local_window :, :] = torch.randn_like(x2[:, cfg.local_window :, :]) * 10.0
 
     with torch.no_grad():
         out2, _ = lswa(x2)
@@ -180,6 +181,7 @@ def test_lswa_window_isolation(lswa: LocalSlidingWindowAttention, cfg: GriffinCo
 # Test 7 -- GriffinModel output logits shape (B, T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_model_logits_shape(model: GriffinModel, cfg: GriffinConfig):
     """GriffinModel must return logits of shape (B, T, vocab_size)."""
     B, T = 2, 12
@@ -193,6 +195,7 @@ def test_model_logits_shape(model: GriffinModel, cfg: GriffinConfig):
 # ---------------------------------------------------------------------------
 # Test 8 -- GriffinModel returns list of states
 # ---------------------------------------------------------------------------
+
 
 def test_model_returns_states(model: GriffinModel, cfg: GriffinConfig):
     """GriffinModel must return a list of states (one per block).
@@ -209,9 +212,7 @@ def test_model_returns_states(model: GriffinModel, cfg: GriffinConfig):
 
     assert isinstance(states, list), "states must be a list"
     # states has one entry per block
-    assert len(states) == n_blocks, (
-        f"Expected {n_blocks} states (one per block), got {len(states)}"
-    )
+    assert len(states) == n_blocks, f"Expected {n_blocks} states (one per block), got {len(states)}"
     # LRU states must be tensors of shape (B, d_model)
     lru_states = [s for s, t in zip(states, model.block_types) if t == "lru"]
     assert len(lru_states) == n_lru, f"Expected {n_lru} LRU states"
@@ -225,6 +226,7 @@ def test_model_returns_states(model: GriffinModel, cfg: GriffinConfig):
 # ---------------------------------------------------------------------------
 # Test 9 -- No NaN/Inf in forward pass
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf(model: GriffinModel, cfg: GriffinConfig):
     """Forward pass must produce finite (no NaN/Inf) logits and LRU states."""
@@ -248,12 +250,13 @@ def test_no_nan_inf(model: GriffinModel, cfg: GriffinConfig):
 # Test 10 -- loss.backward() succeeds
 # ---------------------------------------------------------------------------
 
+
 def test_backward_pass(model: GriffinModel, cfg: GriffinConfig):
     """loss.backward() must complete without error and produce non-None grads."""
     torch.manual_seed(5)
     B, T = 2, 8
     input_ids = torch.randint(0, cfg.vocab_size, (B, T))
-    labels    = torch.randint(0, cfg.vocab_size, (B, T))
+    labels = torch.randint(0, cfg.vocab_size, (B, T))
 
     logits, _ = model(input_ids)
     loss = nn.CrossEntropyLoss()(logits.view(-1, cfg.vocab_size), labels.view(-1))
@@ -266,6 +269,7 @@ def test_backward_pass(model: GriffinModel, cfg: GriffinConfig):
 # ---------------------------------------------------------------------------
 # Test 11 -- Different input sequences give different outputs
 # ---------------------------------------------------------------------------
+
 
 def test_different_inputs_different_outputs(model: GriffinModel, cfg: GriffinConfig):
     """Two different input sequences must produce different logits."""
@@ -291,6 +295,7 @@ def test_different_inputs_different_outputs(model: GriffinModel, cfg: GriffinCon
 # Test 12 -- Stateful generation: token-by-token matches batch forward
 # ---------------------------------------------------------------------------
 
+
 def test_stateful_generation_matches_batch(model: GriffinModel, cfg: GriffinConfig):
     """Feeding one token at a time with carried states must yield the same logits
     as a single batch forward over the whole sequence."""
@@ -308,8 +313,8 @@ def test_stateful_generation_matches_batch(model: GriffinModel, cfg: GriffinConf
     step_logits = []
     with torch.no_grad():
         for t in range(T):
-            tok = input_ids[:, t : t + 1]          # (B, 1)
-            logits_t, states = model(tok, states)   # (B, 1, vocab_size)
+            tok = input_ids[:, t : t + 1]  # (B, 1)
+            logits_t, states = model(tok, states)  # (B, 1, vocab_size)
             step_logits.append(logits_t)
 
     step_logits_cat = torch.cat(step_logits, dim=1)  # (B, T, vocab_size)

@@ -3,23 +3,23 @@
 Implements isotropy measurement, intrinsic dimensionality estimation,
 anisotropy correction, and clustering — pure PyTorch only.
 """
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EmbeddingAnalysisConfig:
     """Configuration for embedding analysis routines."""
+
     n_dirs: int = 50
     threshold: float = 0.95
     n_clusters: int = 4
@@ -29,6 +29,7 @@ class EmbeddingAnalysisConfig:
 # ---------------------------------------------------------------------------
 # Isotropy Metrics
 # ---------------------------------------------------------------------------
+
 
 class IsotropyMetrics:
     """Measures how uniformly spread embeddings are in vector space.
@@ -154,6 +155,7 @@ class IsotropyMetrics:
 # Intrinsic Dimensionality
 # ---------------------------------------------------------------------------
 
+
 class IntrinsicDimensionality:
     """Estimates the intrinsic dimensionality of an embedding space."""
 
@@ -175,11 +177,7 @@ class IntrinsicDimensionality:
         # Pairwise squared Euclidean distances via the identity
         # ||a-b||^2 = ||a||^2 + ||b||^2 - 2 a·b
         sq_norms = (x * x).sum(dim=1)
-        dist2 = (
-            sq_norms.unsqueeze(1)
-            + sq_norms.unsqueeze(0)
-            - 2.0 * (x @ x.T)
-        ).clamp(min=0.0)
+        dist2 = (sq_norms.unsqueeze(1) + sq_norms.unsqueeze(0) - 2.0 * (x @ x.T)).clamp(min=0.0)
 
         # Exclude self: set diagonal to inf
         dist2.fill_diagonal_(float("inf"))
@@ -216,7 +214,7 @@ class IntrinsicDimensionality:
         x = x - x.mean(dim=0, keepdim=True)
 
         _, s, _ = torch.linalg.svd(x, full_matrices=False)
-        var = s ** 2
+        var = s**2
         total = var.sum()
         if total == 0.0:
             return 1
@@ -247,15 +245,16 @@ class IntrinsicDimensionality:
         eigenvalues = torch.linalg.eigh(cov).eigenvalues.clamp(min=0.0)
 
         sum_lam = eigenvalues.sum().item()
-        sum_lam2 = (eigenvalues ** 2).sum().item()
+        sum_lam2 = (eigenvalues**2).sum().item()
         if sum_lam2 == 0.0:
             return 1.0
-        return float((sum_lam ** 2) / sum_lam2)
+        return float((sum_lam**2) / sum_lam2)
 
 
 # ---------------------------------------------------------------------------
 # Anisotropy Corrector
 # ---------------------------------------------------------------------------
+
 
 class AnisotropyCorrector:
     """Corrects anisotropy via mean-centering and ZCA-whitening.
@@ -265,15 +264,15 @@ class AnisotropyCorrector:
     """
 
     def __init__(self) -> None:
-        self._mean: Optional[Tensor] = None
-        self._W: Optional[Tensor] = None      # whitening matrix (d, d)
-        self._W_inv: Optional[Tensor] = None  # inverse whitening matrix
+        self._mean: Tensor | None = None
+        self._W: Tensor | None = None  # whitening matrix (d, d)
+        self._W_inv: Tensor | None = None  # inverse whitening matrix
 
     # ------------------------------------------------------------------
     # fit
     # ------------------------------------------------------------------
 
-    def fit(self, embeddings: Tensor) -> "AnisotropyCorrector":
+    def fit(self, embeddings: Tensor) -> AnisotropyCorrector:
         """Compute mean and whitening transform from *embeddings*.
 
         Uses ZCA whitening: W = U diag(1/sqrt(s+eps)) U^T
@@ -290,13 +289,13 @@ class AnisotropyCorrector:
         # For whitening we need sqrt of eigenvalues of cov
         # cov eigenvalues: lam = s^2 / n
         # We whiten so each dimension has unit variance
-        lam = (s ** 2) / max(n - 1, 1)
+        lam = (s**2) / max(n - 1, 1)
         inv_std = 1.0 / (lam.sqrt() + 1e-8)
 
         # ZCA whitening: W = V diag(1/sqrt(lam)) V^T
         # Vt rows are eigenvectors; Vt.T columns are eigenvectors
         V = Vt.T  # (d, k)
-        self._W = V @ torch.diag(inv_std) @ V.T        # (d, d)
+        self._W = V @ torch.diag(inv_std) @ V.T  # (d, d)
         self._W_inv = V @ torch.diag(lam.sqrt() + 1e-8) @ V.T  # (d, d)
         return self
 
@@ -343,6 +342,7 @@ class AnisotropyCorrector:
 # Embedding Cluster Analysis
 # ---------------------------------------------------------------------------
 
+
 class EmbeddingClusterAnalysis:
     """K-means clustering and cluster quality metrics for embeddings."""
 
@@ -350,7 +350,7 @@ class EmbeddingClusterAnalysis:
         if n_clusters < 1:
             raise ValueError("n_clusters must be >= 1")
         self.n_clusters = n_clusters
-        self._centroids: Optional[Tensor] = None
+        self._centroids: Tensor | None = None
 
     # ------------------------------------------------------------------
     # kmeans_fit
@@ -383,21 +383,17 @@ class EmbeddingClusterAnalysis:
 
         for _ in range(n_iters):
             # Assignment: nearest centroid by squared Euclidean distance
-            sq_x = (x * x).sum(dim=1, keepdim=True)       # (n, 1)
-            sq_c = (centroids * centroids).sum(dim=1)       # (k,)
-            cross = x @ centroids.T                         # (n, k)
+            sq_x = (x * x).sum(dim=1, keepdim=True)  # (n, 1)
+            sq_c = (centroids * centroids).sum(dim=1)  # (k,)
+            cross = x @ centroids.T  # (n, k)
             dist2 = (sq_x + sq_c.unsqueeze(0) - 2.0 * cross).clamp(min=0.0)
-            labels = dist2.argmin(dim=1)                    # (n,)
+            labels = dist2.argmin(dim=1)  # (n,)
 
             # Update: recompute centroids
             new_centroids = torch.zeros_like(centroids)
             counts = torch.zeros(k, dtype=x.dtype, device=x.device)
-            new_centroids.scatter_add_(
-                0, labels.unsqueeze(1).expand(-1, d), x
-            )
-            counts.scatter_add_(
-                0, labels, torch.ones(n, dtype=x.dtype, device=x.device)
-            )
+            new_centroids.scatter_add_(0, labels.unsqueeze(1).expand(-1, d), x)
+            counts.scatter_add_(0, labels, torch.ones(n, dtype=x.dtype, device=x.device))
             mask = counts > 0
             new_centroids[mask] = new_centroids[mask] / counts[mask].unsqueeze(1)
             new_centroids[~mask] = centroids[~mask]
@@ -464,16 +460,14 @@ class EmbeddingClusterAnalysis:
     # intra_cluster_variance
     # ------------------------------------------------------------------
 
-    def intra_cluster_variance(
-        self, embeddings: Tensor, labels: Tensor
-    ) -> float:
+    def intra_cluster_variance(self, embeddings: Tensor, labels: Tensor) -> float:
         """Mean within-cluster variance (squared distance from centroid).
 
         Returns a non-negative float.
         """
         x = embeddings.float()
         ids = labels.long()
-        n = x.shape[0]
+        x.shape[0]
         unique_clusters = ids.unique()
 
         total_var = 0.0
@@ -494,6 +488,7 @@ class EmbeddingClusterAnalysis:
 # Embedding Analysis Suite
 # ---------------------------------------------------------------------------
 
+
 class EmbeddingAnalysisSuite:
     """Orchestrates all embedding analysis routines in one object.
 
@@ -505,20 +500,18 @@ class EmbeddingAnalysisSuite:
     clustering    : EmbeddingClusterAnalysis
     """
 
-    def __init__(self, config: Optional[EmbeddingAnalysisConfig] = None) -> None:
+    def __init__(self, config: EmbeddingAnalysisConfig | None = None) -> None:
         self.config = config or EmbeddingAnalysisConfig()
         self.isotropy = IsotropyMetrics()
         self.dimensionality = IntrinsicDimensionality()
         self.corrector = AnisotropyCorrector()
-        self.clustering = EmbeddingClusterAnalysis(
-            n_clusters=self.config.n_clusters
-        )
+        self.clustering = EmbeddingClusterAnalysis(n_clusters=self.config.n_clusters)
 
     # ------------------------------------------------------------------
     # full_report
     # ------------------------------------------------------------------
 
-    def full_report(self, embeddings: Tensor) -> Dict[str, float]:
+    def full_report(self, embeddings: Tensor) -> dict[str, float]:
         """Compute all metrics and return as a flat dict.
 
         Keys returned
@@ -529,25 +522,17 @@ class EmbeddingAnalysisSuite:
         """
         cfg = self.config
 
-        iso = self.isotropy.compute_isotropy(
-            embeddings, n_dirs=cfg.n_dirs
-        )
+        iso = self.isotropy.compute_isotropy(embeddings, n_dirs=cfg.n_dirs)
         avg_cos = self.isotropy.compute_average_cosine_similarity(embeddings)
-        partition = self.isotropy.compute_partition_score(
-            embeddings, n_dirs=cfg.n_dirs
-        )
+        partition = self.isotropy.compute_partition_score(embeddings, n_dirs=cfg.n_dirs)
 
         twonn = self.dimensionality.twonn_estimate(embeddings)
         pca_dims = float(
-            self.dimensionality.pca_explained_variance(
-                embeddings, threshold=cfg.threshold
-            )
+            self.dimensionality.pca_explained_variance(embeddings, threshold=cfg.threshold)
         )
         pr = self.dimensionality.participation_ratio(embeddings)
 
-        labels = self.clustering.kmeans_fit(
-            embeddings, n_iters=cfg.n_iters
-        )
+        labels = self.clustering.kmeans_fit(embeddings, n_iters=cfg.n_iters)
         sil = self.clustering.silhouette_score(embeddings, labels)
         icv = self.clustering.intra_cluster_variance(embeddings, labels)
 

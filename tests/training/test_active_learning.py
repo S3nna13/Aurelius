@@ -1,8 +1,9 @@
 import math
+
 import pytest
 import torch
 
-from src.training.active_learning import ALConfig, ActiveLearner
+from src.training.active_learning import ActiveLearner, ALConfig
 
 N = 20
 C = 10

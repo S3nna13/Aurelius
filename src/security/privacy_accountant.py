@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Dict
+from dataclasses import dataclass
 
 import torch  # noqa: F401 — imported for codebase consistency
 
@@ -27,7 +26,7 @@ class PrivacyAccountant:
 
     def __init__(self, delta: float = 1e-5) -> None:
         self.delta = delta
-        self._steps: List[Mechanism] = []
+        self._steps: list[Mechanism] = []
 
     # ------------------------------------------------------------------
     # Core accounting methods
@@ -39,13 +38,11 @@ class PrivacyAccountant:
 
     def _rdp_gaussian(self, alpha: float, sigma: float, sensitivity: float) -> float:
         """Rényi divergence of order alpha for the Gaussian mechanism."""
-        return alpha * sensitivity ** 2 / (2.0 * sigma ** 2)
+        return alpha * sensitivity**2 / (2.0 * sigma**2)
 
     def compute_rdp(self, alpha: float) -> float:
         """Total RDP budget at order alpha over all recorded steps."""
-        return sum(
-            self._rdp_gaussian(alpha, m.sigma, m.sensitivity) for m in self._steps
-        )
+        return sum(self._rdp_gaussian(alpha, m.sigma, m.sensitivity) for m in self._steps)
 
     def rdp_to_dp(self, rdp_epsilon: float, alpha: float) -> float:
         """Convert RDP (alpha, rdp_epsilon) to (epsilon, delta)-DP epsilon.
@@ -74,6 +71,6 @@ class PrivacyAccountant:
         """Number of recorded mechanism applications."""
         return len(self._steps)
 
-    def privacy_spent(self, alphas: List[float]) -> Dict[float, float]:
+    def privacy_spent(self, alphas: list[float]) -> dict[float, float]:
         """Compute get_epsilon for each alpha, returning alpha -> epsilon mapping."""
         return {alpha: self.get_epsilon(alpha) for alpha in alphas}

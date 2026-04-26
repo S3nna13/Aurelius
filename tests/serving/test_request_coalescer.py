@@ -53,6 +53,7 @@ def test_different_keys_compute_independently():
             with lock:
                 calls.add(key)
             return f"result-{key}"
+
         return compute
 
     assert rc.coalesce("a", make_compute("a")) == "result-a"

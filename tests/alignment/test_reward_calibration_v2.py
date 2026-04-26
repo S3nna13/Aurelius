@@ -15,22 +15,22 @@ Covers:
 12. calibrate_reward_scores with method="temperature" returns calibrated scores
 13. calibrate_reward_scores returns tuple of (Tensor, dict)
 """
+
 import torch
-import pytest
 
 from src.alignment.reward_calibration_v2 import (
     CalibrationConfig,
-    expected_calibration_error,
-    TemperatureScaler,
-    PlattScaler,
     IsotonicCalibrator,
+    PlattScaler,
+    TemperatureScaler,
     calibrate_reward_scores,
+    expected_calibration_error,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_perfectly_calibrated(n: int = 100, seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
     """Return (scores, labels) where scores ARE the true probabilities.
@@ -66,6 +66,7 @@ def _make_logits_and_labels(n: int = 100, seed: int = 7) -> tuple[torch.Tensor, 
 # Test 1: expected_calibration_error - perfect calibration → ECE ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_ece_perfect_calibration():
     """Perfectly calibrated scores should yield ECE close to 0."""
     torch.manual_seed(0)
@@ -87,6 +88,7 @@ def test_ece_perfect_calibration():
 # Test 2: expected_calibration_error - worst case → ECE > 0
 # ---------------------------------------------------------------------------
 
+
 def test_ece_worst_case_nonzero():
     """Badly miscalibrated scores should yield ECE > 0."""
     scores, labels = _make_miscalibrated(n=200, seed=42)
@@ -97,6 +99,7 @@ def test_ece_worst_case_nonzero():
 # ---------------------------------------------------------------------------
 # Test 3: expected_calibration_error - returns value in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_ece_range():
     """ECE must always be in [0, 1]."""
@@ -112,6 +115,7 @@ def test_ece_range():
 # ---------------------------------------------------------------------------
 # Test 4: TemperatureScaler forward changes scores when T ≠ 1
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_scaler_forward_changes_scores():
     """With T = 2.0, forward should halve each score."""
@@ -129,6 +133,7 @@ def test_temperature_scaler_forward_changes_scores():
 # Test 5: TemperatureScaler temperature stays positive after fit
 # ---------------------------------------------------------------------------
 
+
 def test_temperature_scaler_temperature_positive_after_fit():
     """Temperature parameter must remain positive after fitting."""
     torch.manual_seed(10)
@@ -144,6 +149,7 @@ def test_temperature_scaler_temperature_positive_after_fit():
 # ---------------------------------------------------------------------------
 # Test 6: TemperatureScaler.fit returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_temperature_scaler_fit_returns_required_keys():
     """fit() must return dict with 'temperature', 'ece_before', 'ece_after'."""
@@ -162,6 +168,7 @@ def test_temperature_scaler_fit_returns_required_keys():
 # Test 7: TemperatureScaler.fit ECE improves
 # ---------------------------------------------------------------------------
 
+
 def test_temperature_scaler_fit_ece_improves():
     """After fitting, ece_after should be <= ece_before + 0.1."""
     torch.manual_seed(30)
@@ -176,14 +183,14 @@ def test_temperature_scaler_fit_ece_improves():
     result = scaler.fit(logits, labels, config)
 
     assert result["ece_after"] <= result["ece_before"] + 0.1, (
-        f"ECE did not improve: before={result['ece_before']:.4f}, "
-        f"after={result['ece_after']:.4f}"
+        f"ECE did not improve: before={result['ece_before']:.4f}, after={result['ece_after']:.4f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 8: PlattScaler forward returns values in (0, 1)
 # ---------------------------------------------------------------------------
+
 
 def test_platt_scaler_forward_sigmoid_range():
     """PlattScaler forward applies sigmoid → output must be in (0, 1)."""
@@ -199,6 +206,7 @@ def test_platt_scaler_forward_sigmoid_range():
 # ---------------------------------------------------------------------------
 # Test 9: PlattScaler.fit returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_platt_scaler_fit_returns_required_keys():
     """fit() must return dict with at least 'ece_before' and 'ece_after'."""
@@ -217,6 +225,7 @@ def test_platt_scaler_fit_returns_required_keys():
 # Test 10: IsotonicCalibrator fit then predict doesn't error
 # ---------------------------------------------------------------------------
 
+
 def test_isotonic_calibrator_fit_predict_no_error():
     """IsotonicCalibrator.fit() then predict() should not raise."""
     torch.manual_seed(60)
@@ -234,6 +243,7 @@ def test_isotonic_calibrator_fit_predict_no_error():
 # ---------------------------------------------------------------------------
 # Test 11: IsotonicCalibrator predictions are monotone
 # ---------------------------------------------------------------------------
+
 
 def test_isotonic_calibrator_predictions_monotone():
     """Sorted inputs should produce non-decreasing outputs."""
@@ -254,13 +264,14 @@ def test_isotonic_calibrator_predictions_monotone():
     # Check non-decreasing (allow for tiny numerical noise from nearest lookup)
     for i in range(len(preds) - 1):
         assert preds[i] <= preds[i + 1] + 1e-6, (
-            f"Predictions not monotone at index {i}: {preds[i].item():.4f} > {preds[i+1].item():.4f}"
+            f"Predictions not monotone at index {i}: {preds[i].item():.4f} > {preds[i + 1].item():.4f}"  # noqa: E501
         )
 
 
 # ---------------------------------------------------------------------------
 # Test 12: calibrate_reward_scores with method="temperature" returns calibrated scores
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_reward_scores_temperature_returns_tensor():
     """calibrate_reward_scores with temperature method should return a Tensor."""
@@ -276,6 +287,7 @@ def test_calibrate_reward_scores_temperature_returns_tensor():
 # ---------------------------------------------------------------------------
 # Test 13: calibrate_reward_scores returns tuple of (Tensor, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_calibrate_reward_scores_returns_tuple_tensor_dict():
     """calibrate_reward_scores must return (Tensor, dict) with required metrics keys."""

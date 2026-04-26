@@ -1,10 +1,10 @@
 """Tests for src/protocol/streaming_protocol.py (~45 tests)."""
-import pytest
+
 from src.protocol.streaming_protocol import (
+    STREAMING_PROTOCOL,
     StreamEvent,
     StreamEventType,
     StreamingProtocol,
-    STREAMING_PROTOCOL,
 )
 
 

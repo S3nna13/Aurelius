@@ -12,18 +12,16 @@ Implements:
 """
 
 import math
-import warnings
 from dataclasses import dataclass
-from typing import Set, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Helper: small MLP builder
 # ---------------------------------------------------------------------------
+
 
 def _mlp(in_dim: int, hidden_dim: int, out_dim: int, n_hidden: int = 1) -> nn.Sequential:
     """Build a simple MLP with ReLU activations."""
@@ -37,6 +35,7 @@ def _mlp(in_dim: int, hidden_dim: int, out_dim: int, n_hidden: int = 1) -> nn.Se
 # ---------------------------------------------------------------------------
 # RandomNetworkDistillation
 # ---------------------------------------------------------------------------
+
 
 class RandomNetworkDistillation:
     """
@@ -73,7 +72,7 @@ class RandomNetworkDistillation:
         predictor_enc = self.predictor_net(obs)
         # Detach target so gradient only flows through predictor
         error = predictor_enc - target_enc.detach()
-        reward = (error ** 2).sum(dim=-1)          # [B]
+        reward = (error**2).sum(dim=-1)  # [B]
         return reward
 
     def update_predictor(self, obs: torch.Tensor) -> torch.Tensor:
@@ -100,6 +99,7 @@ class RandomNetworkDistillation:
 # InverseDynamicsModel
 # ---------------------------------------------------------------------------
 
+
 class InverseDynamicsModel(nn.Module):
     """
     Inverse Dynamics Model: given (obs, next_obs) predict the action taken.
@@ -121,13 +121,14 @@ class InverseDynamicsModel(nn.Module):
         Returns:
             action_logits: [B, n_actions]
         """
-        x = torch.cat([obs, next_obs], dim=-1)   # [B, 2*d_obs]
+        x = torch.cat([obs, next_obs], dim=-1)  # [B, 2*d_obs]
         return self.net(x)
 
 
 # ---------------------------------------------------------------------------
 # ForwardDynamicsModel
 # ---------------------------------------------------------------------------
+
 
 class ForwardDynamicsModel(nn.Module):
     """
@@ -151,14 +152,15 @@ class ForwardDynamicsModel(nn.Module):
         Returns:
             next_obs_pred: [B, d_obs]
         """
-        a_emb = self.action_embed(action)            # [B, d_action_embed]
-        x = torch.cat([obs, a_emb], dim=-1)          # [B, d_obs + d_action_embed]
+        a_emb = self.action_embed(action)  # [B, d_action_embed]
+        x = torch.cat([obs, a_emb], dim=-1)  # [B, d_obs + d_action_embed]
         return self.net(x)
 
 
 # ---------------------------------------------------------------------------
 # ICMModule
 # ---------------------------------------------------------------------------
+
 
 class ICMModule(nn.Module):
     """
@@ -217,7 +219,7 @@ class ICMModule(nn.Module):
         phi_next = self._encode(next_obs)
         phi_next_pred = self.forward_model(phi_obs, action)
         error = phi_next_pred - phi_next.detach()
-        reward = (error ** 2).sum(dim=-1)             # [B]
+        reward = (error**2).sum(dim=-1)  # [B]
         return reward
 
     def total_loss(
@@ -251,17 +253,14 @@ class ICMModule(nn.Module):
         phi_next_pred = self.forward_model(phi_obs, action)
         forward_loss = F.mse_loss(phi_next_pred, phi_next.detach())
 
-        total = (
-            (1.0 - self.beta) * policy_loss
-            + self.beta * inverse_loss
-            + self.eta * forward_loss
-        )
+        total = (1.0 - self.beta) * policy_loss + self.beta * inverse_loss + self.eta * forward_loss
         return total
 
 
 # ---------------------------------------------------------------------------
 # RewardShaper
 # ---------------------------------------------------------------------------
+
 
 class RewardShaper:
     """
@@ -297,10 +296,7 @@ class RewardShaper:
         Returns:
             shaped_rewards: [B]
         """
-        return (
-            self.extrinsic_weight * extrinsic_rewards
-            + self.intrinsic_weight * intrinsic_rewards
-        )
+        return self.extrinsic_weight * extrinsic_rewards + self.intrinsic_weight * intrinsic_rewards
 
     def normalize_rewards(
         self,
@@ -329,22 +325,21 @@ class RewardShaper:
             self._running_var = max(batch_var, 1e-8)
             self._count = batch_size
         else:
-            alpha = 1.0 - gamma          # decay weight for old statistics
+            alpha = 1.0 - gamma  # decay weight for old statistics
             self._running_mean = (1.0 - alpha) * self._running_mean + alpha * batch_mean
             self._running_var = (1.0 - alpha) * self._running_var + alpha * batch_var
             self._running_var = max(self._running_var, 1e-8)
             self._count += batch_size
 
         mean = torch.tensor(self._running_mean, dtype=rewards.dtype, device=rewards.device)
-        std = torch.tensor(
-            math.sqrt(self._running_var), dtype=rewards.dtype, device=rewards.device
-        )
+        std = torch.tensor(math.sqrt(self._running_var), dtype=rewards.dtype, device=rewards.device)
         return (rewards - mean) / (std + 1e-8)
 
 
 # ---------------------------------------------------------------------------
 # TokenLevelCuriosity
 # ---------------------------------------------------------------------------
+
 
 class TokenLevelCuriosity:
     """
@@ -358,7 +353,7 @@ class TokenLevelCuriosity:
     def __init__(self, vocab_size: int, d_model: int) -> None:
         self.vocab_size = vocab_size
         self.d_model = d_model
-        self._ngram_history: Set[Tuple[int, ...]] = set()
+        self._ngram_history: set[tuple[int, ...]] = set()
 
     def token_surprise(
         self,
@@ -376,17 +371,18 @@ class TokenLevelCuriosity:
             surprise: [B, T]
         """
         B, T, V = logits.shape
-        log_probs = F.log_softmax(logits, dim=-1)          # [B, T, V]
+        log_probs = F.log_softmax(logits, dim=-1)  # [B, T, V]
         # Gather log-prob for actual token at each position
         token_log_probs = log_probs.gather(
-            -1, input_ids.unsqueeze(-1)                    # [B, T, 1]
-        ).squeeze(-1)                                      # [B, T]
-        return -token_log_probs                            # negative log-prob = surprise
+            -1,
+            input_ids.unsqueeze(-1),  # [B, T, 1]
+        ).squeeze(-1)  # [B, T]
+        return -token_log_probs  # negative log-prob = surprise
 
     def sequence_novelty(
         self,
         input_ids: torch.Tensor,
-        history: Set[Tuple[int, ...]],
+        history: set[tuple[int, ...]],
     ) -> torch.Tensor:
         """
         Fraction of trigrams (n=3) not seen in history.
@@ -408,7 +404,7 @@ class TokenLevelCuriosity:
                 # Fewer than 3 tokens — no trigrams possible; treat as fully novel
                 novelty_scores.append(1.0)
                 continue
-            trigrams = [tuple(seq[i: i + 3]) for i in range(T - 2)]
+            trigrams = [tuple(seq[i : i + 3]) for i in range(T - 2)]
             n_new = sum(1 for tg in trigrams if tg not in history)
             novelty_scores.append(n_new / len(trigrams))
 
@@ -426,16 +422,18 @@ class TokenLevelCuriosity:
         for b in range(B):
             seq = ids_list[b]
             for i in range(T - 2):
-                self._ngram_history.add(tuple(seq[i: i + 3]))
+                self._ngram_history.add(tuple(seq[i : i + 3]))
 
 
 # ---------------------------------------------------------------------------
 # CuriosityConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CuriosityConfig:
     """Default hyper-parameters for the curiosity-RL module."""
+
     d_obs: int = 32
     d_encoding: int = 16
     n_actions: int = 16

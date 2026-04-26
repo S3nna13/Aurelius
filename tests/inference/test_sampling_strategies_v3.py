@@ -5,8 +5,6 @@ Covers all six classes with ≥ 14 test functions.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
@@ -18,7 +16,6 @@ from src.inference.sampling_strategies_v3 import (
     SamplingConfig,
     TypicalSampling,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -69,7 +66,7 @@ class TestMinPSampling:
         """Tokens far below p_max * min_p should be set to -inf."""
         logits = _peaked_logits(peak_idx=0, peak_val=10.0)
         filtered = self.sampler.filter(logits, min_p=0.5)
-        probs_before = torch.softmax(logits, dim=-1)
+        torch.softmax(logits, dim=-1)
         # All tokens except 0 have near-zero prob; they must be -inf after filtering
         assert filtered[0] != float("-inf"), "Top token should not be removed"
         # At least one non-peak token must be -inf
@@ -287,7 +284,7 @@ class TestSampler:
     def test_beam_step_broadcast_1d_logits(self):
         """beam_step should handle 1-D logits broadcast across beams."""
         beam = 3
-        logits = torch.randn(VOCAB)          # 1-D, will be broadcast
+        logits = torch.randn(VOCAB)  # 1-D, will be broadcast
         beam_scores = torch.zeros(beam)
         new_scores, new_ids = self.sampler.beam_step(logits, beam_scores, beam_size=beam)
         assert new_scores.shape == (beam,)

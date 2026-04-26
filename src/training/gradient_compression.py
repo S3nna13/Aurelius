@@ -1,8 +1,8 @@
 """Gradient compression: sparsification, quantization, and error feedback."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -11,9 +11,9 @@ from torch import Tensor
 
 @dataclass
 class GradCompressConfig:
-    method: str = "topk"            # "topk" | "random" | "quantize"
+    method: str = "topk"  # "topk" | "random" | "quantize"
     compression_ratio: float = 0.1  # fraction of gradients to keep/quantize
-    bits: int = 8                   # for quantize method
+    bits: int = 8  # for quantize method
     use_error_feedback: bool = True  # momentum error correction
 
 
@@ -73,9 +73,9 @@ def quantize_gradient(grad: Tensor, bits: int) -> Tensor:
         return grad.clone()
 
     # Normalize to [0, 1] then to [0, levels-1], round, invert
-    levels = 2 ** bits
-    normalized = (grad - g_min) / g_range          # [0, 1]
-    quantized_int = torch.round(normalized * (levels - 1))   # [0, levels-1]
+    levels = 2**bits
+    normalized = (grad - g_min) / g_range  # [0, 1]
+    quantized_int = torch.round(normalized * (levels - 1))  # [0, levels-1]
     quantized = quantized_int / (levels - 1) * g_range + g_min
 
     return quantized
@@ -202,7 +202,9 @@ class CompressedGradOptimizer:
 
         self.optimizer.step()
 
-        mean_ratio = float(sum(compression_ratios) / len(compression_ratios)) if compression_ratios else 0.0
+        mean_ratio = (
+            float(sum(compression_ratios) / len(compression_ratios)) if compression_ratios else 0.0
+        )
 
         return {
             "n_params_compressed": n_compressed,

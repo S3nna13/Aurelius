@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class NodeRole(str, Enum):
+class NodeRole(StrEnum):
     SERVER = "SERVER"
     CLIENT = "CLIENT"
     AGGREGATOR = "AGGREGATOR"
@@ -55,11 +55,7 @@ class TopologyManager:
     def available_clients(self) -> list[FedNode]:
         """Return available CLIENT nodes, sorted by node_id."""
         return sorted(
-            (
-                n
-                for n in self._nodes.values()
-                if n.role == NodeRole.CLIENT and n.available
-            ),
+            (n for n in self._nodes.values() if n.role == NodeRole.CLIENT and n.available),
             key=lambda n: n.node_id,
         )
 

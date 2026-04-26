@@ -12,18 +12,18 @@ Eviction order:
 Within the same priority level, the largest segment is evicted first.
 CRITICAL segments are NEVER evicted (evictable=False).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Optional
 
 
 class SegmentPriority(IntEnum):
-    CRITICAL = 0    # system prompt, current user turn — never evicted
-    HIGH = 1        # recent conversation turns, tool results
-    MEDIUM = 2      # older turns, tool definitions
-    LOW = 3         # thinking chains, background context
+    CRITICAL = 0  # system prompt, current user turn — never evicted
+    HIGH = 1  # recent conversation turns, tool results
+    MEDIUM = 2  # older turns, tool definitions
+    LOW = 3  # thinking chains, background context
     BACKGROUND = 4  # auxiliary context, retrieved docs
 
 
@@ -56,7 +56,7 @@ class ContextBudgetConfig:
         trigger_ratio: Fraction of usable tokens at which eviction starts.
     """
 
-    max_tokens: int = 262144          # 256K
+    max_tokens: int = 262144  # 256K
     reserve_tokens: int = 4096
     trigger_ratio: float = 0.85
 
@@ -73,7 +73,7 @@ class ContextBudgetController:
         evicted = ctrl.evict()
     """
 
-    def __init__(self, config: Optional[ContextBudgetConfig] = None) -> None:
+    def __init__(self, config: ContextBudgetConfig | None = None) -> None:
         self._config = config or ContextBudgetConfig()
         # Ordered dict preserves insertion order; key = segment name
         self._segments: dict[str, ContextSegment] = {}
@@ -90,8 +90,7 @@ class ContextBudgetController:
         """
         if segment.name in self._segments:
             raise ValueError(
-                f"Segment '{segment.name}' already exists. "
-                "Remove it first or use a unique name."
+                f"Segment '{segment.name}' already exists. Remove it first or use a unique name."
             )
         self._segments[segment.name] = segment
 
@@ -127,9 +126,8 @@ class ContextBudgetController:
 
         Trigger: ``total > trigger_ratio * (max_tokens - reserve_tokens)``
         """
-        threshold = (
-            self._config.trigger_ratio
-            * (self._config.max_tokens - self._config.reserve_tokens)
+        threshold = self._config.trigger_ratio * (
+            self._config.max_tokens - self._config.reserve_tokens
         )
         return self.total_tokens() > threshold
 
@@ -154,9 +152,7 @@ class ContextBudgetController:
 
         while self.needs_eviction():
             # Collect candidates: evictable segments only
-            candidates = [
-                seg for seg in self._segments.values() if seg.evictable
-            ]
+            candidates = [seg for seg in self._segments.values() if seg.evictable]
             if not candidates:
                 # Nothing left to evict — cannot reduce further
                 break

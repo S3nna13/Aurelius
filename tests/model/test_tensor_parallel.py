@@ -5,20 +5,19 @@ All tests use small dimensions (tiny D) and pure PyTorch only.
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.tensor_parallel import (
-    TPConfig,
     ColumnParallelLinear,
-    RowParallelLinear,
     HeadParallelAttention,
+    RowParallelLinear,
+    TPConfig,
     split_tensor_column,
     split_tensor_row,
     verify_partition_equivalence,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -65,6 +64,7 @@ def x_3d():
 # TPConfig
 # ---------------------------------------------------------------------------
 
+
 def test_tpconfig_defaults():
     cfg = TPConfig()
     assert cfg.n_partitions == 4
@@ -82,6 +82,7 @@ def test_tpconfig_custom():
 # ---------------------------------------------------------------------------
 # split_tensor_column
 # ---------------------------------------------------------------------------
+
 
 def test_split_column_count(weight_col):
     parts = split_tensor_column(weight_col, N_PARTS)
@@ -105,6 +106,7 @@ def test_split_column_reconstruction(weight_col):
 # split_tensor_row
 # ---------------------------------------------------------------------------
 
+
 def test_split_row_count(weight_row):
     parts = split_tensor_row(weight_row, N_PARTS)
     assert len(parts) == N_PARTS
@@ -126,6 +128,7 @@ def test_split_row_reconstruction(weight_row):
 # ---------------------------------------------------------------------------
 # ColumnParallelLinear
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def col_linear():
@@ -162,6 +165,7 @@ def test_col_parallel_no_bias(x_2d):
 # ---------------------------------------------------------------------------
 # RowParallelLinear
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def row_linear():
@@ -211,6 +215,7 @@ def test_row_parallel_allreduce_equivalence(x_2d):
 # HeadParallelAttention
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def head_attn():
     torch.manual_seed(50)
@@ -237,6 +242,7 @@ def test_head_parallel_invalid_heads():
 # ---------------------------------------------------------------------------
 # verify_partition_equivalence
 # ---------------------------------------------------------------------------
+
 
 def test_verify_equivalence_returns_true(x_2d):
     torch.manual_seed(99)

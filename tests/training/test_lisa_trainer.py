@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.lisa_trainer import (
     LayerActivationSchedule,
     LISALayerManager,
@@ -28,13 +25,10 @@ D_MODEL = 16
 # ---------------------------------------------------------------------------
 
 
-def _make_layer_params(n_layers: int, d: int = D_MODEL) -> Dict[int, List[nn.Parameter]]:
+def _make_layer_params(n_layers: int, d: int = D_MODEL) -> dict[int, list[nn.Parameter]]:
     """Create a dict of {layer_idx: [weight, bias]} using small nn.Linear layers."""
     torch.manual_seed(0)
-    return {
-        i: list(nn.Linear(d, d).parameters())
-        for i in range(n_layers)
-    }
+    return {i: list(nn.Linear(d, d).parameters()) for i in range(n_layers)}
 
 
 @pytest.fixture()
@@ -43,7 +37,7 @@ def schedule() -> LayerActivationSchedule:
 
 
 @pytest.fixture()
-def layer_params() -> Dict[int, List[nn.Parameter]]:
+def layer_params() -> dict[int, list[nn.Parameter]]:
     return _make_layer_params(N_LAYERS)
 
 
@@ -59,7 +53,7 @@ def tiny_model_and_manager():
     layers = nn.ModuleList([nn.Linear(D_MODEL, D_MODEL) for _ in range(N_LAYERS)])
     model = nn.Sequential(*layers)
 
-    named_layer_params: Dict[int, List[nn.Parameter]] = {
+    named_layer_params: dict[int, list[nn.Parameter]] = {
         i: list(layers[i].parameters()) for i in range(N_LAYERS)
     }
     sched = LayerActivationSchedule(N_LAYERS, ACTIVATE_LAYERS, seed=SEED)
@@ -128,9 +122,7 @@ def test_activate_step_freezes_non_active(manager):
     inactive = set(range(N_LAYERS)) - active
     for idx in inactive:
         for p in manager._layer_params[idx]:
-            assert not p.requires_grad, (
-                f"Layer {idx} should be frozen but requires_grad=True"
-            )
+            assert not p.requires_grad, f"Layer {idx} should be frozen but requires_grad=True"
 
 
 def test_activate_step_unfreezes_active(manager):
@@ -138,9 +130,7 @@ def test_activate_step_unfreezes_active(manager):
     active = manager.activate_step(step=0)
     for idx in active:
         for p in manager._layer_params[idx]:
-            assert p.requires_grad, (
-                f"Layer {idx} should be unfrozen but requires_grad=False"
-            )
+            assert p.requires_grad, f"Layer {idx} should be unfrozen but requires_grad=False"
 
 
 def test_unfreeze_all_restores_grad(manager):
@@ -187,7 +177,7 @@ def test_train_step_only_active_params_have_grad(tiny_model_and_manager):
     model, mgr, optimizer, layers = tiny_model_and_manager
     x = torch.randn(2, D_MODEL)
 
-    trainer = LISATrainer(model, optimizer, mgr)
+    LISATrainer(model, optimizer, mgr)
 
     # We need to inspect grads *after* backward but the trainer does optimizer.step()
     # which doesn't clear grads. Re-run a step but intercept.
@@ -227,9 +217,7 @@ def test_train_step_twice_updates_params(tiny_model_and_manager):
     assert isinstance(r2["loss"], float)
 
     # At least some parameter should have changed.
-    changed = any(
-        not torch.equal(pb, pa) for pb, pa in zip(params_before, params_after)
-    )
+    changed = any(not torch.equal(pb, pa) for pb, pa in zip(params_before, params_after))
     assert changed, "No parameter was updated after two train_step calls."
 
 

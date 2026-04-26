@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass
@@ -17,7 +16,7 @@ class HellaSwagExample:
     example_id: str
     context: str
     activity_label: str
-    endings: List[str]
+    endings: list[str]
     correct_idx: int
 
 
@@ -78,9 +77,7 @@ class HellaSwagScorer:
             is_correct=(example.correct_idx == 0),
         )
 
-    def score_logprobs(
-        self, example: HellaSwagExample, logprobs: List[float]
-    ) -> HellaSwagResult:
+    def score_logprobs(self, example: HellaSwagExample, logprobs: list[float]) -> HellaSwagResult:
         predicted_idx = max(range(len(logprobs)), key=lambda i: logprobs[i])
         return HellaSwagResult(
             example_id=example.example_id,
@@ -90,20 +87,20 @@ class HellaSwagScorer:
 
     def score_batch(
         self,
-        examples: List[HellaSwagExample],
-        answers: List[str],
-    ) -> Dict[str, object]:
+        examples: list[HellaSwagExample],
+        answers: list[str],
+    ) -> dict[str, object]:
         results = [self.score_answer(ex, a) for ex, a in zip(examples, answers)]
         n_total = len(results)
         n_correct = sum(1 for r in results if r.is_correct)
         accuracy = n_correct / n_total if n_total else 0.0
         return {"accuracy": accuracy, "n_correct": n_correct, "n_total": n_total}
 
-    def load_sample_examples(self) -> List[HellaSwagExample]:
+    def load_sample_examples(self) -> list[HellaSwagExample]:
         return [
             HellaSwagExample(
                 example_id="hswag_0",
-                context="A woman is outside with a bucket and a dog. The dog is running around trying to avoid a bath.",
+                context="A woman is outside with a bucket and a dog. The dog is running around trying to avoid a bath.",  # noqa: E501
                 activity_label="Bathing dog",
                 endings=[
                     "She rinses the bucket out and then the dog runs away.",
@@ -164,7 +161,7 @@ class HellaSwagScorer:
         ]
 
 
-HELLASWAG_REGISTRY: Dict[str, type] = {"default": HellaSwagScorer}
+HELLASWAG_REGISTRY: dict[str, type] = {"default": HellaSwagScorer}
 
 __all__ = [
     "HellaSwagExample",

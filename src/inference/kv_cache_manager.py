@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-import math
-import random
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
-import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -22,7 +17,7 @@ class KVCacheConfig:
     """Configuration for adaptive KV cache management."""
 
     max_seq_len: int = 2048
-    eviction_policy: str = "lru"          # "lru" | "score" | "random"
+    eviction_policy: str = "lru"  # "lru" | "score" | "random"
     memory_budget_mb: float = 512.0
     prefill_chunk_size: int = 512
     n_layers: int = 24
@@ -47,7 +42,7 @@ def compute_cache_memory_mb(
     Formula: 2 (K+V) * n_layers * n_heads * seq_len * head_dim * dtype_bytes / 1024^2
     """
     bytes_total = 2 * n_layers * n_heads * seq_len * head_dim * dtype_bytes
-    return bytes_total / (1024 ** 2)
+    return bytes_total / (1024**2)
 
 
 def compute_max_seq_from_budget(
@@ -62,7 +57,7 @@ def compute_max_seq_from_budget(
     Inverts compute_cache_memory_mb:
         seq_len = budget_mb * 1024^2 / (2 * n_layers * n_heads * head_dim * dtype_bytes)
     """
-    numerator = budget_mb * (1024 ** 2)
+    numerator = budget_mb * (1024**2)
     denominator = 2 * n_layers * n_heads * head_dim * dtype_bytes
     return int(numerator / denominator)
 
@@ -92,7 +87,7 @@ class LRUCache:
             raise KeyError(f"key {key} not in cache")
         self._store.move_to_end(key)
 
-    def insert(self, key: int) -> Optional[int]:
+    def insert(self, key: int) -> int | None:
         """Insert *key*; evict the LRU entry if at capacity.
 
         Returns the evicted key, or ``None`` if no eviction was needed.
@@ -101,7 +96,7 @@ class LRUCache:
             self._store.move_to_end(key)
             return None
 
-        evicted: Optional[int] = None
+        evicted: int | None = None
         if len(self._store) >= self.capacity:
             evicted = self.evict_lru()
 
@@ -145,7 +140,7 @@ class ScoreBasedCache:
         """Update the score for *key* (key must already be present)."""
         self._scores[key] = score
 
-    def insert(self, key: int, score: float = 0.0) -> Optional[int]:
+    def insert(self, key: int, score: float = 0.0) -> int | None:
         """Insert *key* with *score*; evict the lowest-score entry if full.
 
         Returns the evicted key, or ``None`` if no eviction was needed.
@@ -154,7 +149,7 @@ class ScoreBasedCache:
             self._scores[key] = score
             return None
 
-        evicted: Optional[int] = None
+        evicted: int | None = None
         if len(self._scores) >= self.capacity:
             evicted = self.evict_lowest()
 

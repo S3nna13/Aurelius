@@ -1,7 +1,6 @@
 """Tests for request throttler."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.request_throttler import RequestThrottler
 

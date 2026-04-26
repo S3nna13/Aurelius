@@ -4,13 +4,12 @@ Implements a deny-by-default pattern: unless a host, URL, or tool is
 explicitly allowed by the ScopeManifest, all access is denied.
 """
 
+import functools
+import ipaddress
 import os
 import re
-import ipaddress
-import functools
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Literal
+from enum import StrEnum
 
 try:
     from src.security import SECURITY_REGISTRY
@@ -18,7 +17,7 @@ except ImportError:
     SECURITY_REGISTRY: dict = {}
 
 
-class ScanMode(str, Enum):
+class ScanMode(StrEnum):
     PASSIVE_SAFE = "passive_safe"
     ACTIVE_APPROVED = "active_approved"
 
@@ -33,10 +32,10 @@ class RateLimits:
 class ScopeManifest:
     name: str
     domains: list  # allowed domain suffixes e.g. ["example.com"]
-    hosts: list    # exact host allowlist
-    cidrs: list    # CIDR ranges e.g. ["192.168.0.0/24"]
-    out_of_scope_patterns: list   # regex patterns that disallow
-    allow_tools: list             # explicit tool allowlist
+    hosts: list  # exact host allowlist
+    cidrs: list  # CIDR ranges e.g. ["192.168.0.0/24"]
+    out_of_scope_patterns: list  # regex patterns that disallow
+    allow_tools: list  # explicit tool allowlist
     kill_switch_file: str = ".kill_switch"
     scan_mode: ScanMode = ScanMode.PASSIVE_SAFE
     rate_limits: RateLimits = field(default_factory=RateLimits)

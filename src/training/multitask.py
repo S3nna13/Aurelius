@@ -1,10 +1,10 @@
-"""Multi-task learning: task-specific heads, dynamic loss balancing, and gradient conflict resolution."""
+"""Multi-task learning: task-specific heads, dynamic loss balancing, and gradient conflict resolution."""  # noqa: E501
+
 from __future__ import annotations
 
-import copy
 import logging
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -17,9 +17,11 @@ logger = logging.getLogger(__name__)
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TaskHead:
     """A task-specific head with its own loss function."""
+
     name: str
     head: nn.Module
     loss_fn: Callable
@@ -29,15 +31,17 @@ class TaskHead:
 @dataclass
 class MultitaskConfig:
     """Configuration for multi-task training."""
-    balancing_strategy: str = "static"          # "static" | "uncertainty" | "dynamic_temperature"
-    gradient_surgery: bool = False              # PCGrad-style conflict resolution
-    temperature_lr: float = 0.01               # learning rate for dynamic temperature params
+
+    balancing_strategy: str = "static"  # "static" | "uncertainty" | "dynamic_temperature"
+    gradient_surgery: bool = False  # PCGrad-style conflict resolution
+    temperature_lr: float = 0.01  # learning rate for dynamic temperature params
     max_grad_norm: float = 1.0
 
 
 # ---------------------------------------------------------------------------
 # Gradient surgery
 # ---------------------------------------------------------------------------
+
 
 def project_conflicting_gradients(grads: list[Tensor]) -> list[Tensor]:
     """PCGrad: project out conflicting gradient components.
@@ -64,6 +68,7 @@ def project_conflicting_gradients(grads: list[Tensor]) -> list[Tensor]:
 # ---------------------------------------------------------------------------
 # Loss balancing strategies
 # ---------------------------------------------------------------------------
+
 
 class UncertaintyWeighting(nn.Module):
     """Kendall et al. multi-task uncertainty weighting.
@@ -104,6 +109,7 @@ class DynamicTemperatureBalancing(nn.Module):
 # ---------------------------------------------------------------------------
 # Multi-task model
 # ---------------------------------------------------------------------------
+
 
 class MultitaskModel(nn.Module):
     """Shared backbone with multiple task-specific heads."""
@@ -154,6 +160,7 @@ class MultitaskModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Multi-task trainer
 # ---------------------------------------------------------------------------
+
 
 class MultitaskTrainer:
     """Orchestrates multi-task training with loss balancing and optional gradient surgery."""
@@ -217,9 +224,7 @@ class MultitaskTrainer:
                 total = total + th.weight * losses[name]
         return total
 
-    def train_step(
-        self, input_ids: Tensor, targets: dict[str, Tensor]
-    ) -> dict[str, float]:
+    def train_step(self, input_ids: Tensor, targets: dict[str, Tensor]) -> dict[str, float]:
         """One training step: forward all tasks, balance, optional gradient surgery, backward, step.
 
         Returns dict with 'total_loss' and per-task losses as floats.
@@ -236,10 +241,13 @@ class MultitaskTrainer:
                 self.optimizer.zero_grad()
                 loss.backward(retain_graph=True)
                 # Flatten all backbone param grads into one vector
-                grad_vec = torch.cat([
-                    p.grad.flatten() for p in self.model.backbone.parameters()
-                    if p.grad is not None
-                ])
+                grad_vec = torch.cat(
+                    [
+                        p.grad.flatten()
+                        for p in self.model.backbone.parameters()
+                        if p.grad is not None
+                    ]
+                )
                 task_grads.append(grad_vec)
 
             # Project conflicting gradients
@@ -253,7 +261,7 @@ class MultitaskTrainer:
                 if p.grad is None:
                     p.grad = torch.zeros_like(p)
                 numel = p.numel()
-                p.grad = avg_grad[offset:offset + numel].reshape(p.shape).clone()
+                p.grad = avg_grad[offset : offset + numel].reshape(p.shape).clone()
                 offset += numel
 
             # Also backward the balanced loss for task head grads
@@ -268,17 +276,12 @@ class MultitaskTrainer:
             total.backward()
 
         # Clip gradients
-        torch.nn.utils.clip_grad_norm_(
-            self.model.parameters(), self.config.max_grad_norm
-        )
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
 
         self.optimizer.step()
 
         # Build result dict
-        total_val = sum(
-            self.model._task_heads_meta[n].weight * losses[n].item()
-            for n in losses
-        )
+        total_val = sum(self.model._task_heads_meta[n].weight * losses[n].item() for n in losses)
         result: dict[str, float] = {"total_loss": total_val}
         for name, loss in losses.items():
             result[f"{name}_loss"] = loss.item()

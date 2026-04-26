@@ -2,12 +2,10 @@
 
 import math
 
-import pytest
 import torch
 
-from src.model.retnet import SimpleRetention, MultiScaleRetention, RetNetBlock
 from src.model.config import AureliusConfig
-
+from src.model.retnet import MultiScaleRetention, RetNetBlock, SimpleRetention
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -55,9 +53,7 @@ def test_decay_mask_causal():
     assert D.shape == (L, L)
     for i in range(L):
         for j in range(i + 1, L):
-            assert D[i, j].item() == 0.0, (
-                f"D[{i},{j}] = {D[i,j].item()} should be 0 (causal)"
-            )
+            assert D[i, j].item() == 0.0, f"D[{i},{j}] = {D[i, j].item()} should be 0 (causal)"
 
 
 def test_decay_mask_diagonal():
@@ -66,9 +62,7 @@ def test_decay_mask_diagonal():
     L = 6
     D = sr._decay_mask(L, device=torch.device("cpu"))
     for i in range(L):
-        assert abs(D[i, i].item() - 1.0) < 1e-5, (
-            f"D[{i},{i}] = {D[i,i].item()} should be 1.0"
-        )
+        assert abs(D[i, i].item() - 1.0) < 1e-5, f"D[{i},{i}] = {D[i, i].item()} should be 1.0"
 
 
 # ---------------------------------------------------------------------------
@@ -83,14 +77,17 @@ def test_recurrent_matches_parallel():
     sr = SimpleRetention(d_model=16, head_dim=head_dim, gamma=0.9)
     sr.eval()
 
-    x = torch.randn(2, 1, 16)   # (B=2, L=1, d_model=16)
+    x = torch.randn(2, 1, 16)  # (B=2, L=1, d_model=16)
 
     with torch.no_grad():
         out_par = sr.forward_parallel(x)
         out_rec, _ = sr.forward_recurrent(x, state=None)
 
     torch.testing.assert_close(
-        out_par, out_rec, atol=1e-5, rtol=1e-5,
+        out_par,
+        out_rec,
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
@@ -118,9 +115,7 @@ def test_different_gammas():
     )
     for i, h in enumerate(msr.heads):
         expected = 1 - 2 ** (-5 - math.floor(8 * i / n_heads))
-        assert abs(h.gamma - expected) < 1e-9, (
-            f"Head {i}: expected gamma {expected}, got {h.gamma}"
-        )
+        assert abs(h.gamma - expected) < 1e-9, f"Head {i}: expected gamma {expected}, got {h.gamma}"
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +138,4 @@ def test_retnet_recurrent_mode():
     block = RetNetBlock(config)
     x = torch.randn(2, 8, 64)
     out = block(x, recurrent=True)
-    assert out.shape == (2, 8, 64), (
-        f"Expected (2, 8, 64) in recurrent mode, got {out.shape}"
-    )
+    assert out.shape == (2, 8, 64), f"Expected (2, 8, 64) in recurrent mode, got {out.shape}"

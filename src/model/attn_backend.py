@@ -10,10 +10,10 @@ import torch.nn.functional as F
 
 
 class AttentionBackend(Enum):
-    FLASH = "flash"         # Flash Attention 2 (CUDA only)
-    EFFICIENT = "efficient" # xFormers memory-efficient (CUDA)
-    MATH = "math"           # Standard math fallback (CPU/CUDA)
-    AUTO = "auto"           # Let PyTorch choose
+    FLASH = "flash"  # Flash Attention 2 (CUDA only)
+    EFFICIENT = "efficient"  # xFormers memory-efficient (CUDA)
+    MATH = "math"  # Standard math fallback (CPU/CUDA)
+    AUTO = "auto"  # Let PyTorch choose
 
 
 @dataclass
@@ -109,7 +109,7 @@ class AttentionBenchmarkResult:
     backend: str
     time_ms: float
     output_shape: tuple
-    max_diff_from_math: float   # max absolute difference vs math backend
+    max_diff_from_math: float  # max absolute difference vs math backend
 
 
 def benchmark_attention(

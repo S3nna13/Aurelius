@@ -3,18 +3,20 @@
 Supports CodeSearchNet, The Stack, and GitHub Issues formats.
 Pure Python, no network or torch dependencies.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CodeFunction:
     """Normalized code function from CodeSearchNet."""
+
     repo: str
     func_name: str
     code: str
@@ -27,6 +29,7 @@ class CodeFunction:
 @dataclass
 class CodeFile:
     """Normalized file from The Stack."""
+
     content: str
     language: str
     repo: str
@@ -42,7 +45,7 @@ class GitHubIssue:
     number: int
     title: str
     body: str
-    state: str       # "open" or "closed"
+    state: str  # "open" or "closed"
     labels: list[str]
     comments: int
     created_at: str
@@ -52,6 +55,7 @@ class GitHubIssue:
 # ---------------------------------------------------------------------------
 # Parsers
 # ---------------------------------------------------------------------------
+
 
 def parse_codesearchnet_sample(raw: dict) -> CodeFunction:
     """Parse a raw CodeSearchNet record into a CodeFunction."""
@@ -109,6 +113,7 @@ def parse_github_issue(raw: dict) -> GitHubIssue:
 # Instruction converters
 # ---------------------------------------------------------------------------
 
+
 def code_to_instruction(fn: CodeFunction) -> dict:
     """Convert a CodeFunction to an instruction-tuning sample.
 
@@ -134,8 +139,7 @@ def issue_to_instruction(issue: GitHubIssue) -> dict:
         "instruction": "Analyze this GitHub issue and provide a solution",
         "input": f"Title: {issue.title}\n{issue.body}",
         "output": (
-            f"This issue ({issue.state}) has {issue.comments} comments "
-            f"and labels: {issue.labels}"
+            f"This issue ({issue.state}) has {issue.comments} comments and labels: {issue.labels}"
         ),
     }
 
@@ -143,6 +147,7 @@ def issue_to_instruction(issue: GitHubIssue) -> dict:
 # ---------------------------------------------------------------------------
 # Filters & deduplication
 # ---------------------------------------------------------------------------
+
 
 def filter_by_language(files: list[CodeFile], language: str) -> list[CodeFile]:
     """Return only files whose language matches (case-insensitive)."""
@@ -156,10 +161,7 @@ def filter_by_quality(
     min_alphanum: float = 0.5,
 ) -> list[CodeFile]:
     """Keep only high-quality files (sufficient stars and alphanumeric content)."""
-    return [
-        f for f in files
-        if f.stars >= min_stars and f.alphanum_fraction >= min_alphanum
-    ]
+    return [f for f in files if f.stars >= min_stars and f.alphanum_fraction >= min_alphanum]
 
 
 def deduplicate_by_content(functions: list[CodeFunction]) -> list[CodeFunction]:
@@ -177,25 +179,28 @@ def deduplicate_by_content(functions: list[CodeFunction]) -> list[CodeFunction]:
 # Mock data generators
 # ---------------------------------------------------------------------------
 
+
 def mock_codesearchnet_data(n: int = 4) -> list[dict]:
     """Generate n synthetic CodeSearchNet-format records."""
     samples = []
     languages = ["python", "javascript", "java", "go"]
     for i in range(n):
         lang = languages[i % len(languages)]
-        samples.append({
-            "repository_name": f"owner{i}/repo{i}",
-            "func_path_in_repository": f"src/module{i}.py",
-            "func_name": f"function_{i}",
-            "whole_func_string": f"def function_{i}():\n    return {i}",
-            "language": lang,
-            "func_documentation_string": f"Return the value {i}.",
-            "func_code_string": f"def function_{i}():\n    return {i}",
-            "func_code_tokens": ["def", f"function_{i}", "(", ")", ":", "return", str(i)],
-            "func_documentation_tokens": ["Return", "the", "value", str(i)],
-            "split_name": "train",
-            "func_code_url": f"https://github.com/owner{i}/repo{i}/blob/main/src/module{i}.py",
-        })
+        samples.append(
+            {
+                "repository_name": f"owner{i}/repo{i}",
+                "func_path_in_repository": f"src/module{i}.py",
+                "func_name": f"function_{i}",
+                "whole_func_string": f"def function_{i}():\n    return {i}",
+                "language": lang,
+                "func_documentation_string": f"Return the value {i}.",
+                "func_code_string": f"def function_{i}():\n    return {i}",
+                "func_code_tokens": ["def", f"function_{i}", "(", ")", ":", "return", str(i)],
+                "func_documentation_tokens": ["Return", "the", "value", str(i)],
+                "split_name": "train",
+                "func_code_url": f"https://github.com/owner{i}/repo{i}/blob/main/src/module{i}.py",
+            }
+        )
     return samples
 
 
@@ -206,18 +211,20 @@ def mock_the_stack_data(n: int = 4) -> list[dict]:
     for i in range(n):
         lang = languages[i % len(languages)]
         content = f"# File {i}\ndef hello_{i}():\n    pass\n"
-        samples.append({
-            "content": content,
-            "size": len(content),
-            "lang": lang,
-            "max_stars_repo_name": f"owner{i}/repo{i}",
-            "max_stars_repo_path": f"src/file_{i}.py",
-            "max_stars_count": (i + 1) * 25,
-            "max_stars_repo_head_hexsha": f"abc{i:03d}",
-            "avg_line_length": 20.0 + i,
-            "max_line_length": 80,
-            "alphanum_fraction": 0.6 + (i * 0.05),
-        })
+        samples.append(
+            {
+                "content": content,
+                "size": len(content),
+                "lang": lang,
+                "max_stars_repo_name": f"owner{i}/repo{i}",
+                "max_stars_repo_path": f"src/file_{i}.py",
+                "max_stars_count": (i + 1) * 25,
+                "max_stars_repo_head_hexsha": f"abc{i:03d}",
+                "avg_line_length": 20.0 + i,
+                "max_line_length": 80,
+                "alphanum_fraction": 0.6 + (i * 0.05),
+            }
+        )
     return samples
 
 
@@ -226,16 +233,18 @@ def mock_github_issues(n: int = 4) -> list[dict]:
     samples = []
     states = ["open", "closed"]
     for i in range(n):
-        samples.append({
-            "id": 10000 + i,
-            "number": i + 1,
-            "title": f"Issue {i}: Something went wrong",
-            "body": f"Description of issue {i}. Steps to reproduce...",
-            "state": states[i % len(states)],
-            "labels": [{"name": "bug"}, {"name": f"priority-{i}"}],
-            "comments": i * 2,
-            "created_at": f"2024-01-{i + 1:02d}T00:00:00Z",
-            "closed_at": f"2024-01-{i + 2:02d}T00:00:00Z" if i % 2 == 1 else None,
-            "user": {"login": f"user{i}"},
-        })
+        samples.append(
+            {
+                "id": 10000 + i,
+                "number": i + 1,
+                "title": f"Issue {i}: Something went wrong",
+                "body": f"Description of issue {i}. Steps to reproduce...",
+                "state": states[i % len(states)],
+                "labels": [{"name": "bug"}, {"name": f"priority-{i}"}],
+                "comments": i * 2,
+                "created_at": f"2024-01-{i + 1:02d}T00:00:00Z",
+                "closed_at": f"2024-01-{i + 2:02d}T00:00:00Z" if i % 2 == 1 else None,
+                "user": {"login": f"user{i}"},
+            }
+        )
     return samples

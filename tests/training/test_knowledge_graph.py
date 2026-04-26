@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.training.knowledge_graph import (
-    KGConfig,
     EntityEmbeddings,
+    KGConfig,
+    KGTrainer,
     RelationEmbeddings,
-    transe_score,
-    rotate_score,
     distmult_score,
     margin_ranking_loss,
+    rotate_score,
     sample_negatives,
-    KGTrainer,
+    transe_score,
 )
 
 # ── Shared small config ────────────────────────────────────────────────────────
@@ -47,6 +47,7 @@ def random_triples(B: int = B) -> torch.Tensor:
 
 # ── Test 1: KGConfig defaults ──────────────────────────────────────────────────
 
+
 def test_kgconfig_defaults():
     cfg = KGConfig()
     assert cfg.n_entities == 100
@@ -61,6 +62,7 @@ def test_kgconfig_defaults():
 
 # ── Test 2: EntityEmbeddings output is L2-normalized ──────────────────────────
 
+
 def test_entity_embeddings_normalized():
     emb = EntityEmbeddings(N_ENTITIES, DIM)
     ids = torch.arange(N_ENTITIES)
@@ -73,6 +75,7 @@ def test_entity_embeddings_normalized():
 
 # ── Test 3: RelationEmbeddings output shape ────────────────────────────────────
 
+
 def test_relation_embeddings_shape():
     emb = RelationEmbeddings(N_RELATIONS, DIM)
     ids = torch.arange(N_RELATIONS)
@@ -81,6 +84,7 @@ def test_relation_embeddings_shape():
 
 
 # ── Test 4: transe_score output shape (B,) ────────────────────────────────────
+
 
 def test_transe_score_shape():
     h = torch.randn(B, DIM)
@@ -92,14 +96,15 @@ def test_transe_score_shape():
 
 # ── Test 5: transe_score correct triple > incorrect ───────────────────────────
 
+
 def test_transe_score_correct_higher():
     # Construct a case where h + r ≈ t (correct), so score is near 0 (highest possible)
     # vs random t (incorrect), score is much lower
     torch.manual_seed(0)
     h = torch.randn(1, DIM)
     r = torch.randn(1, DIM)
-    t_correct = h + r                        # h + r - t = 0, score = 0
-    t_wrong = torch.randn(1, DIM) * 5.0     # far away
+    t_correct = h + r  # h + r - t = 0, score = 0
+    t_wrong = torch.randn(1, DIM) * 5.0  # far away
 
     score_correct = transe_score(h, r, t_correct)
     score_wrong = transe_score(h, r, t_wrong)
@@ -111,6 +116,7 @@ def test_transe_score_correct_higher():
 
 # ── Test 6: rotate_score output shape (B,) ────────────────────────────────────
 
+
 def test_rotate_score_shape():
     h = torch.randn(B, DIM)
     r = torch.randn(B, DIM)
@@ -120,6 +126,7 @@ def test_rotate_score_shape():
 
 
 # ── Test 7: distmult_score output shape (B,) ──────────────────────────────────
+
 
 def test_distmult_score_shape():
     h = torch.randn(B, DIM)
@@ -131,17 +138,17 @@ def test_distmult_score_shape():
 
 # ── Test 8: margin_ranking_loss is zero when pos >> neg ───────────────────────
 
+
 def test_margin_ranking_loss_zero():
     # When pos_scores >> neg_scores + margin, loss = 0
     pos = torch.tensor([10.0, 10.0, 10.0])
     neg = torch.tensor([-10.0, -10.0, -10.0])
     loss = margin_ranking_loss(pos, neg, margin=1.0)
-    assert loss.item() == pytest.approx(0.0, abs=1e-6), (
-        f"Expected 0 loss, got {loss.item()}"
-    )
+    assert loss.item() == pytest.approx(0.0, abs=1e-6), f"Expected 0 loss, got {loss.item()}"
 
 
 # ── Test 9: margin_ranking_loss > 0 when neg > pos ───────────────────────────
+
 
 def test_margin_ranking_loss_positive():
     pos = torch.tensor([-1.0, -1.0])
@@ -152,16 +159,16 @@ def test_margin_ranking_loss_positive():
 
 # ── Test 10: sample_negatives returns correct count ───────────────────────────
 
+
 def test_sample_negatives_count():
     n_neg = 5
     batch = random_triples(B)
     negs = sample_negatives(batch, N_ENTITIES, n_neg)
-    assert negs.shape == (B * n_neg, 3), (
-        f"Expected ({B * n_neg}, 3), got {negs.shape}"
-    )
+    assert negs.shape == (B * n_neg, 3), f"Expected ({B * n_neg}, 3), got {negs.shape}"
 
 
 # ── Test 11: sample_negatives produces different triples from positives ────────
+
 
 def test_sample_negatives_different():
     torch.manual_seed(42)
@@ -178,8 +185,8 @@ def test_sample_negatives_different():
 
     # Check that at least some head or tail differs from the original
     pos_repeated = batch.repeat_interleave(n_neg, dim=0)
-    head_same = (negs[:, 0] == pos_repeated[:, 0])
-    tail_same = (negs[:, 2] == pos_repeated[:, 2])
+    head_same = negs[:, 0] == pos_repeated[:, 0]
+    tail_same = negs[:, 2] == pos_repeated[:, 2]
     # At least some negatives must differ in head or tail
     # (with 10 negatives and 20 entities this is essentially guaranteed)
     assert not torch.all(head_same & tail_same), (
@@ -188,6 +195,7 @@ def test_sample_negatives_different():
 
 
 # ── Test 12: KGTrainer.train_step returns correct keys ───────────────────────
+
 
 def test_trainer_train_step_keys():
     cfg = small_config("transe")
@@ -203,6 +211,7 @@ def test_trainer_train_step_keys():
 
 
 # ── Test 13: KGTrainer.predict_tail returns top_k entity ids ─────────────────
+
 
 def test_trainer_predict_tail():
     cfg = small_config("transe")
@@ -220,12 +229,11 @@ def test_trainer_predict_tail():
 
 # ── Test 14: KGTrainer.score_triples returns (B,) tensor ─────────────────────
 
+
 def test_trainer_score_triples_shape():
     for fn in ["transe", "rotate", "distmult"]:
         cfg = small_config(fn)
         trainer = KGTrainer(cfg)
         triples = random_triples(B)
         scores = trainer.score_triples(triples)
-        assert scores.shape == (B,), (
-            f"[{fn}] Expected ({B},), got {scores.shape}"
-        )
+        assert scores.shape == (B,), f"[{fn}] Expected ({B},), got {scores.shape}"

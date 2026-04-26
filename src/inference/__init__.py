@@ -12,18 +12,18 @@ from src.inference.continuous_batching_scheduler import (
 )
 
 try:  # pragma: no cover - only triggered if a decoder registry exists elsewhere
-    DECODER_REGISTRY  # type: ignore[name-defined]
+    DECODER_REGISTRY  # type: ignore[used-before-def]
 except NameError:
     pass
 else:  # pragma: no cover
-    DECODER_REGISTRY["continuous_batching"] = ContinuousBatchingScheduler  # type: ignore[name-defined]
+    DECODER_REGISTRY["continuous_batching"] = ContinuousBatchingScheduler  # type: ignore[used-before-def]  # noqa: F821
 
 try:
-    SCHEDULER_REGISTRY  # type: ignore[name-defined]
+    SCHEDULER_REGISTRY  # type: ignore[used-before-def]
 except NameError:
-    SCHEDULER_REGISTRY = {}
+    SCHEDULER_REGISTRY = {}  # type: ignore[used-before-def]
 
-SCHEDULER_REGISTRY["continuous_batching"] = ContinuousBatchingScheduler
+SCHEDULER_REGISTRY["continuous_batching"] = ContinuousBatchingScheduler  # type: ignore[used-before-def]
 
 from src.inference.json_mode_decoder import (
     JSONDecoderState,
@@ -240,7 +240,11 @@ from src.inference.chunk_prefill_scheduler import (  # noqa: E402
     BatchSlot,
     ChunkPrefillConfig,
     ChunkPrefillScheduler,
+)
+from src.inference.chunk_prefill_scheduler import (
     Request as ChunkPrefillRequest,
+)
+from src.inference.chunk_prefill_scheduler import (
     RequestState as ChunkPrefillRequestState,
 )
 
@@ -399,8 +403,8 @@ __all__ += [
 # Continuous Batching V2 — priority queues, preemption, memory budgeting
 # ---------------------------------------------------------------------------
 from src.inference.continuous_batching_v2 import (  # noqa: E402
-    BatchRequest,
     BatchingConfig,
+    BatchRequest,
     ContinuousBatcherV2,
     RequestPriority,
 )

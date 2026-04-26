@@ -7,14 +7,12 @@ and pure Python stdlib for text processing.
 
 from __future__ import annotations
 
-import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -35,10 +33,8 @@ class LanguageConfig:
             higher values flatten the distribution.
     """
 
-    language_codes: List[str] = field(
-        default_factory=lambda: ["en", "fr", "de", "es", "zh"]
-    )
-    sampling_weights: Optional[Dict[str, float]] = None
+    language_codes: list[str] = field(default_factory=lambda: ["en", "fr", "de", "es", "zh"])
+    sampling_weights: dict[str, float] | None = None
     temperature: float = 0.3
 
 
@@ -58,7 +54,7 @@ class MultilingualBatch:
     token_ids: Tensor
     language_ids: Tensor
     attention_mask: Tensor
-    language_labels: List[str]
+    language_labels: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -66,9 +62,7 @@ class MultilingualBatch:
 # ---------------------------------------------------------------------------
 
 
-def smooth_language_weights(
-    counts: Dict[str, int], temperature: float
-) -> Dict[str, float]:
+def smooth_language_weights(counts: dict[str, int], temperature: float) -> dict[str, float]:
     """Apply temperature smoothing to language corpus counts.
 
     Computes p_i ∝ count_i^(1/temperature) and normalises so weights sum to 1.
@@ -86,10 +80,10 @@ def smooth_language_weights(
         raise ValueError(f"temperature must be > 0, got {temperature}")
 
     exponent = 1.0 / temperature
-    smoothed: Dict[str, float] = {}
+    smoothed: dict[str, float] = {}
     for lang, cnt in counts.items():
         effective = max(cnt, 1)
-        smoothed[lang] = effective ** exponent
+        smoothed[lang] = effective**exponent
 
     total = sum(smoothed.values())
     if total == 0:
@@ -156,7 +150,7 @@ class LanguageSampler:
 
     def __init__(
         self,
-        language_data: Dict[str, List[str]],
+        language_data: dict[str, list[str]],
         config: LanguageConfig,
     ) -> None:
         self._data = language_data
@@ -166,7 +160,7 @@ class LanguageSampler:
     # Public API
     # ------------------------------------------------------------------
 
-    def get_weights(self) -> Dict[str, float]:
+    def get_weights(self) -> dict[str, float]:
         """Return normalised sampling weights for each language.
 
         If explicit weights are set in the config, they are normalised and
@@ -184,16 +178,14 @@ class LanguageSampler:
                 return {lang: 1.0 / n for lang in weights}
             return {lang: w / total for lang, w in weights.items()}
 
-        counts: Dict[str, int] = {
-            lang: len(texts) for lang, texts in self._data.items()
-        }
+        counts: dict[str, int] = {lang: len(texts) for lang, texts in self._data.items()}
         return smooth_language_weights(counts, self._config.temperature)
 
     def sample_batch(
         self,
         batch_size: int,
-        rng: Optional[random.Random] = None,
-    ) -> List[Tuple[str, str]]:
+        rng: random.Random | None = None,
+    ) -> list[tuple[str, str]]:
         """Sample a batch of (language_code, text) pairs.
 
         Languages are selected according to smoothed weights, then a random
@@ -211,9 +203,9 @@ class LanguageSampler:
 
         weights = self.get_weights()
         langs = list(weights.keys())
-        wts = [weights[l] for l in langs]
+        wts = [weights[line] for line in langs]
 
-        samples: List[Tuple[str, str]] = []
+        samples: list[tuple[str, str]] = []
         for _ in range(batch_size):
             lang = rng.choices(langs, weights=wts, k=1)[0]
             texts = self._data.get(lang, [])
@@ -224,14 +216,14 @@ class LanguageSampler:
             samples.append((lang, text))
         return samples
 
-    def get_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_stats(self) -> dict[str, dict[str, float]]:
         """Return per-language statistics.
 
         Returns:
             Dict mapping language code -> {"n_samples": float, "weight": float}.
         """
         weights = self.get_weights()
-        stats: Dict[str, Dict[str, float]] = {}
+        stats: dict[str, dict[str, float]] = {}
         for lang, texts in self._data.items():
             stats[lang] = {
                 "n_samples": float(len(texts)),
@@ -246,9 +238,9 @@ class LanguageSampler:
 
 
 def build_multilingual_batch(
-    samples: List[Tuple[str, str]],
-    language_to_id: Dict[str, int],
-    tokenize_fn: Callable[[str], List[int]],
+    samples: list[tuple[str, str]],
+    language_to_id: dict[str, int],
+    tokenize_fn: Callable[[str], list[int]],
     max_len: int,
     pad_id: int = 0,
 ) -> MultilingualBatch:
@@ -272,8 +264,8 @@ def build_multilingual_batch(
     batch_size = len(samples)
     token_ids = torch.full((batch_size, max_len), pad_id, dtype=torch.long)
     attention_mask = torch.zeros(batch_size, max_len, dtype=torch.long)
-    lang_id_list: List[int] = []
-    lang_labels: List[str] = []
+    lang_id_list: list[int] = []
+    lang_labels: list[str] = []
 
     for i, (lang, text) in enumerate(samples):
         tokens = tokenize_fn(text)[:max_len]
@@ -349,7 +341,7 @@ class CrossLingualAligner:
             Scalar tensor — mean within-language pairwise L2 distance.
         """
         unique_langs = language_ids.unique()
-        lang_losses: List[Tensor] = []
+        lang_losses: list[Tensor] = []
 
         for lang_id in unique_langs:
             mask = language_ids == lang_id
@@ -369,9 +361,7 @@ class CrossLingualAligner:
 
         return torch.stack(lang_losses).mean()
 
-    def language_adversarial_loss(
-        self, embeddings: Tensor, language_ids: Tensor
-    ) -> Tensor:
+    def language_adversarial_loss(self, embeddings: Tensor, language_ids: Tensor) -> Tensor:
         """Compute language-invariance penalty as variance of per-language means.
 
         The per-language mean embedding is computed for each language present in
@@ -386,7 +376,7 @@ class CrossLingualAligner:
             Scalar tensor — mean variance of per-language centroid matrix.
         """
         unique_langs = language_ids.unique()
-        centroids: List[Tensor] = []
+        centroids: list[Tensor] = []
 
         for lang_id in unique_langs:
             mask = language_ids == lang_id

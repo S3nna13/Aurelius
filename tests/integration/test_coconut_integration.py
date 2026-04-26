@@ -4,18 +4,18 @@ Builds CoCoNut from a config dict (d_model=64, n_continuous_steps=4),
 passes [2, 8, 64] hidden states through it, verifies output shape,
 trace length, backward pass, and registry wiring.
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 
-from src.inference.coconut import CoCoNut, CoCoNutConfig
 from src.inference import DECODER_REGISTRY
-
+from src.inference.coconut import CoCoNut, CoCoNutConfig
 
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_coconut_integration():
     # -----------------------------------------------------------------------
@@ -24,7 +24,7 @@ def test_coconut_integration():
     config = CoCoNutConfig(
         d_model=64,
         n_continuous_steps=4,
-        continuous_step_hidden=None,   # defaults to d_model
+        continuous_step_hidden=None,  # defaults to d_model
         dropout=0.0,
         use_layer_norm=True,
     )
@@ -52,9 +52,7 @@ def test_coconut_integration():
         f"Expected trace length {config.n_continuous_steps}, got {len(trace)}"
     )
     for i, t in enumerate(trace):
-        assert t.shape == (B, T, D), (
-            f"Trace[{i}] has shape {t.shape}, expected ({B}, {T}, {D})"
-        )
+        assert t.shape == (B, T, D), f"Trace[{i}] has shape {t.shape}, expected ({B}, {T}, {D})"
 
     # Last trace tensor must equal final_h
     assert torch.allclose(trace[-1], final_h), (
@@ -71,10 +69,7 @@ def test_coconut_integration():
     loss.backward()
 
     assert h_grad.grad is not None, "Input tensor did not receive a gradient"
-    param_grads = [
-        p.grad for step in model.steps for p in step.parameters()
-        if p.grad is not None
-    ]
+    param_grads = [p.grad for step in model.steps for p in step.parameters() if p.grad is not None]
     assert len(param_grads) > 0, "No step parameter received a gradient"
 
     # -----------------------------------------------------------------------

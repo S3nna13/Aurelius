@@ -1,4 +1,5 @@
 """Request/response envelope wrapper with JSON + base64 serialization."""
+
 from __future__ import annotations
 
 import base64
@@ -7,10 +8,10 @@ import json
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class EnvelopeVersion(str, Enum):
+class EnvelopeVersion(StrEnum):
     V1 = "v1"
     V2 = "v2"
 

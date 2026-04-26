@@ -12,7 +12,9 @@ def acceptance_brier_score(predicted: torch.Tensor, accepted: torch.Tensor) -> t
     return ((predicted - accepted.float()) ** 2).mean()
 
 
-def acceptance_ece(predicted: torch.Tensor, accepted: torch.Tensor, n_bins: int = 10) -> torch.Tensor:
+def acceptance_ece(
+    predicted: torch.Tensor, accepted: torch.Tensor, n_bins: int = 10
+) -> torch.Tensor:
     """Expected calibration error for acceptance probabilities."""
     if predicted.shape != accepted.shape:
         raise ValueError("predicted and accepted must match")
@@ -32,7 +34,9 @@ def acceptance_ece(predicted: torch.Tensor, accepted: torch.Tensor, n_bins: int 
     return ece
 
 
-def calibrated_acceptance_report(predicted: torch.Tensor, accepted: torch.Tensor, n_bins: int = 10) -> dict[str, torch.Tensor]:
+def calibrated_acceptance_report(
+    predicted: torch.Tensor, accepted: torch.Tensor, n_bins: int = 10
+) -> dict[str, torch.Tensor]:
     """Bundle common acceptance calibration metrics."""
     return {
         "brier": acceptance_brier_score(predicted, accepted),

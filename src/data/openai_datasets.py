@@ -17,13 +17,11 @@ no HuggingFace model wrappers are imported.
 from __future__ import annotations
 
 import importlib
-import json
 import re
-from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from collections import Counter
+from dataclasses import dataclass
 from typing import Any
 
-import torch
 from torch.utils.data import Dataset
 
 
@@ -53,7 +51,7 @@ def parse_gsm8k_answer(answer_str: str) -> tuple[str, str]:
     if _FINAL_ANSWER_MARKER in answer_str:
         idx = answer_str.index(_FINAL_ANSWER_MARKER)
         raw_steps = answer_str[:idx]
-        final = answer_str[idx + len(_FINAL_ANSWER_MARKER):].strip()
+        final = answer_str[idx + len(_FINAL_ANSWER_MARKER) :].strip()
     else:
         raw_steps = answer_str
         final = ""
@@ -71,7 +69,7 @@ def parse_gsm8k_final_number(answer_str: str) -> float | None:
     if _FINAL_ANSWER_MARKER not in answer_str:
         return None
     idx = answer_str.index(_FINAL_ANSWER_MARKER)
-    tail = answer_str[idx + len(_FINAL_ANSWER_MARKER):].strip()
+    tail = answer_str[idx + len(_FINAL_ANSWER_MARKER) :].strip()
     # Remove commas used as thousands separators
     tail_clean = tail.replace(",", "")
     try:
@@ -85,10 +83,10 @@ class GSM8KSample:
     """One problem from openai/gsm8k."""
 
     question: str
-    answer_raw: str         # full answer string including steps
-    reasoning: str          # steps before ####, calculator annotations removed
-    final_answer: str       # text after #### (e.g., "72")
-    final_number: float | None   # parsed numeric value
+    answer_raw: str  # full answer string including steps
+    reasoning: str  # steps before ####, calculator annotations removed
+    final_answer: str  # text after #### (e.g., "72")
+    final_number: float | None  # parsed numeric value
 
 
 class GSM8KDataset(Dataset):
@@ -123,23 +121,22 @@ def load_gsm8k(
     """Load openai/gsm8k from HuggingFace and return a GSM8KDataset."""
     hf_datasets = _datasets_module()
 
-    raw = hf_datasets.load_dataset(
-        "openai/gsm8k", config, split=split, cache_dir=cache_dir
-    )
+    raw = hf_datasets.load_dataset("openai/gsm8k", config, split=split, cache_dir=cache_dir)
     return GSM8KDataset(list(raw))
 
 
 # ── MMMLU ─────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class MMLUSample:
     """One question from openai/MMMLU."""
 
     question: str
-    choices: dict[str, str]   # {"A": "...", "B": "...", "C": "...", "D": "..."}
-    correct_answer: str        # "A", "B", "C", or "D"
+    choices: dict[str, str]  # {"A": "...", "B": "...", "C": "...", "D": "..."}
+    correct_answer: str  # "A", "B", "C", or "D"
     subject: str
-    language: str              # config name e.g. "default", "FR_FR"
+    language: str  # config name e.g. "default", "FR_FR"
 
 
 class MMMLUDataset(Dataset):
@@ -179,13 +176,12 @@ def load_mmmlu(
     """Load openai/MMMLU from HuggingFace and return an MMMLUDataset."""
     hf_datasets = _datasets_module()
 
-    raw = hf_datasets.load_dataset(
-        "openai/MMMLU", config, split=split, cache_dir=cache_dir
-    )
+    raw = hf_datasets.load_dataset("openai/MMMLU", config, split=split, cache_dir=cache_dir)
     return MMMLUDataset(list(raw), language=config)
 
 
 # ── MRCR ──────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class MRCRSample:
@@ -193,9 +189,9 @@ class MRCRSample:
 
     prompt: str
     answer: str
-    prepend_hash: str       # random_string_to_prepend field
+    prepend_hash: str  # random_string_to_prepend field
     n_needles: int
-    desired_index: int      # desired_msg_index field
+    desired_index: int  # desired_msg_index field
     total_messages: int
     n_chars: int
 
@@ -238,6 +234,7 @@ def load_mrcr(
 
 # ── GraphWalks ────────────────────────────────────────────────────────────────
 
+
 def graphwalks_f1_score(predicted: list[str], gold: list[str]) -> float:
     """Compute F1 score between predicted and gold node sets.
 
@@ -269,7 +266,7 @@ class GraphWalkSample:
 
     prompt: str
     answer_nodes: list[str]
-    problem_type: str    # "bfs" or "parents"
+    problem_type: str  # "bfs" or "parents"
 
 
 class GraphWalksDataset(Dataset):
@@ -300,13 +297,12 @@ def load_graphwalks(
     """Load openai/graphwalks from HuggingFace and return a GraphWalksDataset."""
     hf_datasets = _datasets_module()
 
-    raw = hf_datasets.load_dataset(
-        "openai/graphwalks", split=split, cache_dir=cache_dir
-    )
+    raw = hf_datasets.load_dataset("openai/graphwalks", split=split, cache_dir=cache_dir)
     return GraphWalksDataset(list(raw))
 
 
 # ── FrontierScience ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class FrontierScienceSample:
@@ -314,8 +310,8 @@ class FrontierScienceSample:
 
     problem: str
     answer: str
-    subject: str         # "Physics", "Chemistry", or "Biology"
-    task_group_id: str   # UUID string
+    subject: str  # "Physics", "Chemistry", or "Biology"
+    task_group_id: str  # UUID string
 
 
 class FrontierScienceDataset(Dataset):
@@ -347,9 +343,7 @@ def load_frontierscience(
     """Load openai/frontierscience from HuggingFace and return a FrontierScienceDataset."""
     hf_datasets = _datasets_module()
 
-    raw = hf_datasets.load_dataset(
-        "openai/frontierscience", split=split, cache_dir=cache_dir
-    )
+    raw = hf_datasets.load_dataset("openai/frontierscience", split=split, cache_dir=cache_dir)
     return FrontierScienceDataset(list(raw))
 
 
@@ -445,8 +439,7 @@ def coval_to_dpo_format(comparisons: list[dict]) -> list[dict]:
         # Serialise prompt messages to a plain string
         prompt_messages = comp.get("prompt", [])
         prompt_str = "\n".join(
-            f"{m.get('role', 'user')}: {m.get('content', '')}"
-            for m in prompt_messages
+            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in prompt_messages
         )
 
         result.append(
@@ -464,8 +457,8 @@ def coval_to_dpo_format(comparisons: list[dict]) -> list[dict]:
 class CoValSample:
     """One comparison entry from openai/coval."""
 
-    prompt_messages: list[dict]       # [{"role": str, "content": str}]
-    responses: dict[str, str]         # {"A": text, "B": text, "C": text, "D": text}
+    prompt_messages: list[dict]  # [{"role": str, "content": str}]
+    responses: dict[str, str]  # {"A": text, "B": text, "C": text, "D": text}
     assessments: list[dict]
     prompt_id: str
 
@@ -505,6 +498,7 @@ def load_coval(cache_dir: str | None = None) -> CoValDataset:
 
 
 # ── GDPval ────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class GDPvalSample:
@@ -553,14 +547,15 @@ def load_gdpval(
 
 # ── HealthBench ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class HealthBenchSample:
     """One entry from openai/healthbench."""
 
-    prompt_messages: list[dict]    # [{"role": str, "content": str}]
+    prompt_messages: list[dict]  # [{"role": str, "content": str}]
     completion: str
     category: str
-    rubrics: list[dict]            # [{criterion, points, tags}, ...]
+    rubrics: list[dict]  # [{criterion, points, tags}, ...]
     example_tags: list[str]
     prompt_id: str
 
@@ -596,7 +591,5 @@ def load_healthbench(
     """Load openai/healthbench from HuggingFace and return a HealthBenchDataset."""
     hf_datasets = _datasets_module()
 
-    raw = hf_datasets.load_dataset(
-        "openai/healthbench", split=split, cache_dir=cache_dir
-    )
+    raw = hf_datasets.load_dataset("openai/healthbench", split=split, cache_dir=cache_dir)
     return HealthBenchDataset(list(raw))

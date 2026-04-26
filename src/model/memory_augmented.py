@@ -1,9 +1,9 @@
-"""Memory-augmented transformer: external memory banks for extended context (Memorizing Transformers)."""
+"""Memory-augmented transformer: external memory banks for extended context (Memorizing Transformers)."""  # noqa: E501
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -61,14 +61,18 @@ class ExternalMemoryBank(nn.Module):
         topk_scores, topk_indices = torch.topk(scores, top_k, dim=-1)  # (B, n_q, top_k)
         topk_weights = F.softmax(topk_scores, dim=-1)  # (B, n_q, top_k)
 
-        # Scatter back into full (B, n_q, memory_size) weight tensor (non-inplace to preserve grad graph)
-        full_weights = torch.zeros(B, n_q, self.config.memory_size, device=queries.device, dtype=queries.dtype)
+        # Scatter back into full (B, n_q, memory_size) weight tensor (non-inplace to preserve grad graph)  # noqa: E501
+        full_weights = torch.zeros(
+            B, n_q, self.config.memory_size, device=queries.device, dtype=queries.dtype
+        )
         full_weights = full_weights.scatter(dim=-1, index=topk_indices, src=topk_weights)
 
         # Update access counts (for LRU) — use most recent batch's queries (no grad)
         with torch.no_grad():
             flat_indices = topk_indices.reshape(-1)
-            self._access_count.index_add_(0, flat_indices, torch.ones_like(flat_indices, dtype=torch.float))
+            self._access_count.index_add_(
+                0, flat_indices, torch.ones_like(flat_indices, dtype=torch.float)
+            )
 
         # Retrieve values: (B, n_q, memory_size) @ (memory_size, value_dim) → (B, n_q, value_dim)
         # Clone+detach to get an independent snapshot; write() will mutate self.values in-place
@@ -272,7 +276,6 @@ class MemoryUtilizationTracker:
 
         # Stack: (steps, memory_size)
         history = torch.stack(self._history, dim=0)
-        M = self.memory.config.memory_size
 
         # Mean number of slots accessed per step
         slots_per_step = (history > 0).float().sum(dim=-1)  # (steps,)

@@ -13,22 +13,21 @@ Implements:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # RegConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RegConfig:
     """Hyperparameter configuration for regularized training."""
+
     lambda_orth: float = 1e-3
     lambda_gp: float = 10.0
     lambda_nuc: float = 1e-4
@@ -41,6 +40,7 @@ class RegConfig:
 # ---------------------------------------------------------------------------
 # SpectralNorm
 # ---------------------------------------------------------------------------
+
 
 class SpectralNorm:
     """
@@ -62,7 +62,7 @@ class SpectralNorm:
         u: torch.Tensor,
         v: torch.Tensor,
         n_iters: int,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Power iteration to estimate the spectral norm (largest singular value).
 
@@ -111,9 +111,7 @@ class SpectralNorm:
             W_raw = module.weight
             u_buf = module._sn_u
             v_buf = module._sn_v
-            sigma, u_new, v_new = sn.compute_sigma(
-                W_raw, u_buf, v_buf, module._sn_n_iters
-            )
+            sigma, u_new, v_new = sn.compute_sigma(W_raw, u_buf, v_buf, module._sn_n_iters)
             # Update buffers in-place (no grad)
             module._sn_u.data.copy_(u_new.data)
             module._sn_v.data.copy_(v_new.data)
@@ -139,6 +137,7 @@ class SpectralNorm:
 # OrthogonalRegularizer
 # ---------------------------------------------------------------------------
 
+
 class OrthogonalRegularizer:
     """
     Penalise deviation from orthogonality: ||W W^T - I||_F^2.
@@ -162,11 +161,11 @@ class OrthogonalRegularizer:
         # Use the smaller dimension to keep cost O(min(m,n)^2 * max(m,n))
         if m <= n:
             gram = W.mm(W.t())  # (m, m)
-            I = torch.eye(m, device=W.device, dtype=W.dtype)
+            _I = torch.eye(m, device=W.device, dtype=W.dtype)
         else:
             gram = W.t().mm(W)  # (n, n)
-            I = torch.eye(n, device=W.device, dtype=W.dtype)
-        diff = gram - I
+            _I = torch.eye(n, device=W.device, dtype=W.dtype)
+        diff = gram - _I
         return (diff * diff).sum()
 
     # ------------------------------------------------------------------
@@ -176,15 +175,19 @@ class OrthogonalRegularizer:
         first = True
         for module in model.modules():
             if isinstance(module, nn.Linear):
-                l = self.loss(module.weight)
+                lo = self.loss(module.weight)
                 if first:
-                    total = l * self.lambda_orth
+                    total = lo * self.lambda_orth
                     first = False
                 else:
-                    total = total + l * self.lambda_orth
+                    total = total + lo * self.lambda_orth
         if first:
             # No linear layers found – return zero on appropriate device
-            device = next(model.parameters()).device if len(list(model.parameters())) > 0 else torch.device("cpu")
+            device = (
+                next(model.parameters()).device
+                if len(list(model.parameters())) > 0
+                else torch.device("cpu")
+            )
             total = torch.zeros(1, device=device).squeeze()
         return total
 
@@ -199,13 +202,14 @@ class OrthogonalRegularizer:
         rows, cols = weight.shape[0], weight.numel() // weight.shape[0]
         flat = weight.new_empty(max(rows, cols), min(rows, cols)).normal_(0, 1)
         Q, _ = torch.linalg.qr(flat)
-        Q = Q[: rows, : cols]  # slice to match original shape
+        Q = Q[:rows, :cols]  # slice to match original shape
         return Q.view_as(weight)
 
 
 # ---------------------------------------------------------------------------
 # GradientPenalty
 # ---------------------------------------------------------------------------
+
 
 class GradientPenalty:
     """
@@ -316,6 +320,7 @@ class GradientPenalty:
 # WeightConstraints
 # ---------------------------------------------------------------------------
 
+
 class WeightConstraints:
     """
     Various weight constraint and regularization utilities.
@@ -335,7 +340,7 @@ class WeightConstraints:
     def weight_decay_selective(
         model: nn.Module,
         wd: float,
-        exclude: List[str],
+        exclude: list[str],
     ) -> torch.Tensor:
         """
         L2 weight decay, skipping parameters whose names contain any string in
@@ -380,6 +385,7 @@ class WeightConstraints:
 # LipschitzConstraint
 # ---------------------------------------------------------------------------
 
+
 class LipschitzConstraint:
     """
     Enforce a Lipschitz constant k on nn.Linear layers via SVD clipping.
@@ -415,6 +421,7 @@ class LipschitzConstraint:
 # RegularizedTrainer
 # ---------------------------------------------------------------------------
 
+
 class RegularizedTrainer:
     """
     A training wrapper that adds orthogonal and weight-constraint regularization
@@ -438,7 +445,7 @@ class RegularizedTrainer:
         self,
         input_ids: torch.Tensor,
         labels: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward + backward pass with regularization.
 
@@ -474,9 +481,7 @@ class RegularizedTrainer:
     # ------------------------------------------------------------------
     def apply_constraints(self) -> None:
         """Apply post-step weight constraints (clipping)."""
-        self.weight_constraints.clip_weights(
-            self.model, max_norm=self.config.max_weight_norm
-        )
+        self.weight_constraints.clip_weights(self.model, max_norm=self.config.max_weight_norm)
         lc = LipschitzConstraint(k=self.config.k_lipschitz)
         for module in self.model.modules():
             if isinstance(module, nn.Linear):

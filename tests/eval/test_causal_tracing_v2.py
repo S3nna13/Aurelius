@@ -1,15 +1,15 @@
 """Tests for causal tracing v2 — knowledge localization (src/eval/causal_tracing_v2.py)."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.eval.causal_tracing_v2 import (
     ActivationStore,
-    HookManager,
-    CorruptionModel,
     CausalTracer,
+    CorruptionModel,
+    HookManager,
     TracingAnalyzer,
 )
 
@@ -27,6 +27,7 @@ BATCH_SIZE = 1
 # ---------------------------------------------------------------------------
 # Tiny test model
 # ---------------------------------------------------------------------------
+
 
 class _LinearBlock(nn.Module):
     """A simple (B, T, d_model) -> (B, T, d_model) block."""
@@ -50,17 +51,15 @@ class _TinyModel(nn.Module):
     ) -> None:
         super().__init__()
         self.embed = nn.Embedding(vocab_size, d_model)
-        self.layers = nn.ModuleList(
-            [_LinearBlock(d_model) for _ in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([_LinearBlock(d_model) for _ in range(n_layers)])
         self.head = nn.Linear(d_model, vocab_size, bias=False)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # input_ids: (B, T)
-        x = self.embed(input_ids)          # (B, T, d_model)
+        x = self.embed(input_ids)  # (B, T, d_model)
         for layer in self.layers:
             x = layer(x)
-        return self.head(x)               # (B, T, V)
+        return self.head(x)  # (B, T, V)
 
 
 @pytest.fixture(scope="module")
@@ -90,6 +89,7 @@ def target_token_id() -> int:
 # ---------------------------------------------------------------------------
 # 1-3: ActivationStore
 # ---------------------------------------------------------------------------
+
 
 def test_activation_store_store_and_get():
     """store then get returns the same tensor."""
@@ -122,6 +122,7 @@ def test_activation_store_clear():
 # 4: HookManager
 # ---------------------------------------------------------------------------
 
+
 def test_hook_manager_register_and_remove():
     """Capture hook records an activation; remove_all_hooks cleans up."""
     linear = nn.Linear(8, 8, bias=False)
@@ -150,6 +151,7 @@ def test_hook_manager_register_and_remove():
 # 5-7: CorruptionModel
 # ---------------------------------------------------------------------------
 
+
 def test_corruption_model_corrupt_changes_values():
     """Corrupted embeddings must differ from originals."""
     cm = CorruptionModel(noise_scale=1.0, seed=0)
@@ -177,18 +179,15 @@ def test_corruption_model_corrupt_positions_only_changes_specified():
         row_orig = emb[0, pos, :]
         row_result = result[0, pos, :]
         if pos in corrupt_pos:
-            assert not torch.equal(row_result, row_orig), (
-                f"Position {pos} should be corrupted"
-            )
+            assert not torch.equal(row_result, row_orig), f"Position {pos} should be corrupted"
         else:
-            assert torch.equal(row_result, row_orig), (
-                f"Position {pos} should be unchanged"
-            )
+            assert torch.equal(row_result, row_orig), f"Position {pos} should be unchanged"
 
 
 # ---------------------------------------------------------------------------
 # 8: CausalTracer initialization
 # ---------------------------------------------------------------------------
+
 
 def test_causal_tracer_init(model, layer_names):
     """CausalTracer stores model and layer_names correctly."""
@@ -203,6 +202,7 @@ def test_causal_tracer_init(model, layer_names):
 # ---------------------------------------------------------------------------
 # 9: run_clean
 # ---------------------------------------------------------------------------
+
 
 def test_run_clean_shape(model, layer_names, input_ids):
     """run_clean returns (B, T, V) logits and populates clean_store."""
@@ -220,6 +220,7 @@ def test_run_clean_shape(model, layer_names, input_ids):
 # 10: run_corrupted
 # ---------------------------------------------------------------------------
 
+
 def test_run_corrupted_differs_from_clean(model, layer_names, input_ids):
     """run_corrupted should return different values than run_clean."""
     tracer = CausalTracer(model, layer_names)
@@ -234,12 +235,14 @@ def test_run_corrupted_differs_from_clean(model, layer_names, input_ids):
 # 11: patch_and_score
 # ---------------------------------------------------------------------------
 
+
 def test_patch_and_score_returns_valid_float(model, layer_names, input_ids, target_token_id):
     """patch_and_score returns a float in [0, 1]."""
     tracer = CausalTracer(model, layer_names)
     tracer.run_clean(input_ids)
-    score = tracer.patch_and_score(input_ids, layer_names[0], position=0,
-                                   target_token_id=target_token_id)
+    score = tracer.patch_and_score(
+        input_ids, layer_names[0], position=0, target_token_id=target_token_id
+    )
     assert isinstance(score, float)
     assert 0.0 <= score <= 1.0, f"Score {score} not in [0, 1]"
 
@@ -247,6 +250,7 @@ def test_patch_and_score_returns_valid_float(model, layer_names, input_ids, targ
 # ---------------------------------------------------------------------------
 # 12: trace_all_layers - dict keys
 # ---------------------------------------------------------------------------
+
 
 def test_trace_all_layers_returns_all_layer_names(model, layer_names, input_ids, target_token_id):
     """trace_all_layers result must contain every layer_name as a key."""
@@ -261,19 +265,19 @@ def test_trace_all_layers_returns_all_layer_names(model, layer_names, input_ids,
 # 13: trace_all_layers - score list length
 # ---------------------------------------------------------------------------
 
+
 def test_trace_all_layers_scores_length(model, layer_names, input_ids, target_token_id):
     """Each layer's score list must have length == T (number of token positions)."""
     tracer = CausalTracer(model, layer_names)
     results = tracer.trace_all_layers(input_ids, target_token_id)
     for name, scores in results.items():
-        assert len(scores) == T, (
-            f"Layer '{name}': expected {T} scores, got {len(scores)}"
-        )
+        assert len(scores) == T, f"Layer '{name}': expected {T} scores, got {len(scores)}"
 
 
 # ---------------------------------------------------------------------------
 # 14: TracingAnalyzer.peak_effect_layer
 # ---------------------------------------------------------------------------
+
 
 def test_peak_effect_layer_returns_valid_key():
     """peak_effect_layer returns a key that exists in tracing_results."""
@@ -292,6 +296,7 @@ def test_peak_effect_layer_returns_valid_key():
 # ---------------------------------------------------------------------------
 # 15: TracingAnalyzer.effect_matrix shape
 # ---------------------------------------------------------------------------
+
 
 def test_effect_matrix_shape():
     """effect_matrix returns tensor of shape (n_layers, T)."""

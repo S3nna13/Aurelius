@@ -1,4 +1,5 @@
 """Tests for lottery_ticket — Lottery Ticket Hypothesis pruning."""
+
 from __future__ import annotations
 
 import torch

@@ -14,10 +14,10 @@ The TITO Gateway sits at this boundary and canonicalizes token IDs so both engin
 speak the same token "language."  It validates all IDs are within [0, vocab_size) and
 raises loudly if not (no silent fallbacks).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.retrieval.passage_segmenter import (
+    RETRIEVAL_REGISTRY,
     PassageSegmenter,
     Segment,
     SegmentStrategy,
-    RETRIEVAL_REGISTRY,
 )
 
 SEGMENTER = PassageSegmenter()

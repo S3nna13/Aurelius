@@ -1,16 +1,17 @@
 """Tests for activation steering / representation engineering."""
+
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.activation_steering import (
-    SteeringConfig,
-    compute_steering_vector,
-    SteeringHook,
     ActivationSteerer,
+    SteeringConfig,
+    SteeringHook,
+    compute_steering_vector,
     contrastive_activation_addition,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared small-model config (fast: 2 layers, d_model=64)
@@ -68,6 +69,7 @@ def neg_ids():
 # 1. SteeringConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_steering_config_defaults():
     cfg = SteeringConfig()
     assert cfg.layer_idx == 0
@@ -79,6 +81,7 @@ def test_steering_config_defaults():
 # 2. compute_steering_vector returns shape (d_model,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_steering_vector_shape(small_model, pos_ids, neg_ids):
     vec = compute_steering_vector(small_model, pos_ids, neg_ids, layer_idx=0)
     assert vec.shape == (D_MODEL,)
@@ -87,6 +90,7 @@ def test_compute_steering_vector_shape(small_model, pos_ids, neg_ids):
 # ---------------------------------------------------------------------------
 # 3. compute_steering_vector same positive/negative near-zero vector
 # ---------------------------------------------------------------------------
+
 
 def test_compute_steering_vector_same_inputs_near_zero(small_model, pos_ids):
     vec = compute_steering_vector(small_model, pos_ids, pos_ids, layer_idx=0)
@@ -97,6 +101,7 @@ def test_compute_steering_vector_same_inputs_near_zero(small_model, pos_ids):
 # 4. compute_steering_vector different inputs nonzero
 # ---------------------------------------------------------------------------
 
+
 def test_compute_steering_vector_different_inputs_nonzero(small_model, pos_ids, neg_ids):
     vec = compute_steering_vector(small_model, pos_ids, neg_ids, layer_idx=0)
     assert vec.norm().item() > 1e-6
@@ -105,6 +110,7 @@ def test_compute_steering_vector_different_inputs_nonzero(small_model, pos_ids, 
 # ---------------------------------------------------------------------------
 # 5. SteeringHook modifies output (different from unsteered)
 # ---------------------------------------------------------------------------
+
 
 def test_steering_hook_modifies_output(small_model, input_ids):
     with torch.no_grad():
@@ -127,6 +133,7 @@ def test_steering_hook_modifies_output(small_model, input_ids):
 # 6. SteeringHook with coeff=0 same as unsteered
 # ---------------------------------------------------------------------------
 
+
 def test_steering_hook_coeff_zero_no_change(small_model, input_ids):
     with torch.no_grad():
         _, baseline_logits, _ = small_model(input_ids)
@@ -147,6 +154,7 @@ def test_steering_hook_coeff_zero_no_change(small_model, input_ids):
 # ---------------------------------------------------------------------------
 # 7. SteeringHook handles tuple output correctly
 # ---------------------------------------------------------------------------
+
 
 def test_steering_hook_handles_tuple_output(small_model):
     """Ensure hook does not crash and layer output remains a tuple."""
@@ -181,6 +189,7 @@ def test_steering_hook_handles_tuple_output(small_model):
 # 8. ActivationSteerer.generate returns shape (1, max_new_tokens)
 # ---------------------------------------------------------------------------
 
+
 def test_activation_steerer_generate_shape(small_model, input_ids):
     vec = torch.randn(D_MODEL)
     cfg = SteeringConfig(layer_idx=0, coeff=1.0, normalize=True)
@@ -193,6 +202,7 @@ def test_activation_steerer_generate_shape(small_model, input_ids):
 # ---------------------------------------------------------------------------
 # 9. ActivationSteerer.generate token ids in [0, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_activation_steerer_generate_valid_tokens(small_model, input_ids):
     vec = torch.randn(D_MODEL)
@@ -208,6 +218,7 @@ def test_activation_steerer_generate_valid_tokens(small_model, input_ids):
 # 10. ActivationSteerer.remove_steering removes hooks
 # ---------------------------------------------------------------------------
 
+
 def test_activation_steerer_remove_steering_clears_hooks(small_model, input_ids):
     vec = torch.randn(D_MODEL)
     cfg = SteeringConfig(layer_idx=0, coeff=1.0, normalize=True)
@@ -221,6 +232,7 @@ def test_activation_steerer_remove_steering_clears_hooks(small_model, input_ids)
 # ---------------------------------------------------------------------------
 # 11. Steering at different layers gives different outputs
 # ---------------------------------------------------------------------------
+
 
 def test_steering_different_layers_different_outputs(small_model, input_ids):
     vec = torch.randn(D_MODEL)
@@ -246,6 +258,7 @@ def test_steering_different_layers_different_outputs(small_model, input_ids):
 # 12. contrastive_activation_addition returns shape (1, T, V)
 # ---------------------------------------------------------------------------
 
+
 def test_contrastive_activation_addition_shape(small_model, input_ids, pos_ids, neg_ids):
     logits = contrastive_activation_addition(
         small_model, input_ids, pos_ids, neg_ids, layer_idx=0, coeff=1.0
@@ -256,6 +269,7 @@ def test_contrastive_activation_addition_shape(small_model, input_ids, pos_ids, 
 # ---------------------------------------------------------------------------
 # 13. Normalized vector has unit norm
 # ---------------------------------------------------------------------------
+
 
 def test_normalized_vector_unit_norm(small_model, pos_ids, neg_ids):
     vec = compute_steering_vector(small_model, pos_ids, neg_ids, layer_idx=0)
@@ -270,6 +284,7 @@ def test_normalized_vector_unit_norm(small_model, pos_ids, neg_ids):
 # ---------------------------------------------------------------------------
 # 14. High coeff changes output more than low coeff
 # ---------------------------------------------------------------------------
+
 
 def test_high_coeff_changes_output_more(small_model, input_ids):
     with torch.no_grad():

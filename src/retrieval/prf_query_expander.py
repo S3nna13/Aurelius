@@ -13,7 +13,6 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+", re.ASCII)
 
 

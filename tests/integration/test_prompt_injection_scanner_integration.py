@@ -50,12 +50,10 @@ def test_adversarial_retrieved_doc_flagged_by_both() -> None:
 
     # Both surfaces must flag this payload.
     assert jb_result.is_jailbreak is True, (
-        f"jailbreak signals={jb_result.triggered_signals} "
-        f"score={jb_result.score:.3f}"
+        f"jailbreak signals={jb_result.triggered_signals} score={jb_result.score:.3f}"
     )
     assert pi_result.is_injection is True, (
-        f"injection signals={pi_result.signals} "
-        f"score={pi_result.score:.3f}"
+        f"injection signals={pi_result.signals} score={pi_result.score:.3f}"
     )
 
     # The prompt-injection scanner should light up on the indirect vectors

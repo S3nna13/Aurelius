@@ -9,7 +9,6 @@ import torch
 
 from src.retrieval.colbert_late_interaction import ColBERTConfig, ColBERTScorer
 
-
 D = 8
 
 

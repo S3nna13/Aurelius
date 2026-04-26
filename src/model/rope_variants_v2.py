@@ -10,8 +10,7 @@ Covers alternative RoPE formulas for long-context extension:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -64,9 +63,7 @@ def compute_standard_freqs(d_head: int, base: float = 10000.0) -> Tensor:
     return freqs
 
 
-def compute_linear_scaled_freqs(
-    d_head: int, base: float, scale_factor: float
-) -> Tensor:
+def compute_linear_scaled_freqs(d_head: int, base: float, scale_factor: float) -> Tensor:
     """Compute linearly scaled RoPE frequencies for context extension.
 
     Divides standard frequencies by scale_factor, effectively compressing the
@@ -85,9 +82,7 @@ def compute_linear_scaled_freqs(
     return freqs / scale_factor
 
 
-def compute_ntk_freqs(
-    d_head: int, base: float, scale_factor: float, max_seq_len: int
-) -> Tensor:
+def compute_ntk_freqs(d_head: int, base: float, scale_factor: float, max_seq_len: int) -> Tensor:
     """Compute NTK-aware scaled RoPE frequencies.
 
     Rescales the base: new_base = base * scale_factor^(d_head / (d_head - 2)),
@@ -135,9 +130,9 @@ def compute_yarn_freqs(
     Returns:
         Tensor of shape (d_head//2,).
     """
-    half = d_head // 2
+    d_head // 2
 
-    freqs_std = compute_standard_freqs(d_head, base)          # (d_head//2,)
+    freqs_std = compute_standard_freqs(d_head, base)  # (d_head//2,)
     freqs_lin = compute_linear_scaled_freqs(d_head, base, scale_factor)
     freqs_ntk = compute_ntk_freqs(d_head, base, scale_factor, 0)
 
@@ -145,8 +140,8 @@ def compute_yarn_freqs(
     wavelengths = 2.0 * math.pi / freqs_std  # (d_head//2,)
 
     # Threshold wavelengths
-    lambda_fast = 2.0 * math.pi / beta_fast   # below this -> NTK
-    lambda_slow = 2.0 * math.pi / beta_slow   # above this -> linear
+    lambda_fast = 2.0 * math.pi / beta_fast  # below this -> NTK
+    lambda_slow = 2.0 * math.pi / beta_slow  # above this -> linear
 
     # Blend factor alpha in [0, 1]: 0 = NTK, 1 = linear
     alpha = (wavelengths - lambda_fast) / (lambda_slow - lambda_fast + 1e-8)
@@ -161,7 +156,7 @@ def compute_yarn_freqs(
 # ---------------------------------------------------------------------------
 
 
-def build_rotation_matrix(freqs: Tensor, seq_len: int) -> Tuple[Tensor, Tensor]:
+def build_rotation_matrix(freqs: Tensor, seq_len: int) -> tuple[Tensor, Tensor]:
     """Build cosine and sine rotation tables from frequency tensor.
 
     Computes outer product of positions [0, seq_len) with freqs to get angles,
@@ -196,8 +191,8 @@ def apply_rope(x: Tensor, cos: Tensor, sin: Tensor) -> Tensor:
     B, T, d = x.shape
     half = d // 2
 
-    x1 = x[..., :half]   # (B, T, d//2)
-    x2 = x[..., half:]   # (B, T, d//2)
+    x1 = x[..., :half]  # (B, T, d//2)
+    x2 = x[..., half:]  # (B, T, d//2)
 
     # cos/sin: (T, d//2) -> broadcast over batch
     rotated_x1 = x1 * cos - x2 * sin
@@ -225,7 +220,9 @@ def get_rope_freqs(config: RoPEConfig) -> Tensor:
     elif config.rope_type == "linear_scaled":
         return compute_linear_scaled_freqs(config.d_head, config.base, config.scale_factor)
     elif config.rope_type == "dynamic_ntk":
-        return compute_ntk_freqs(config.d_head, config.base, config.scale_factor, config.max_seq_len)
+        return compute_ntk_freqs(
+            config.d_head, config.base, config.scale_factor, config.max_seq_len
+        )
     elif config.rope_type == "yarn":
         return compute_yarn_freqs(
             config.d_head,

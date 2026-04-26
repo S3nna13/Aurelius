@@ -166,9 +166,7 @@ def test_missing_required_key_rejected():
 
 
 def test_unicode_event_handled():
-    ev = DEFAULT_SOC_PIPELINE.run_one(
-        _raw(event_id="E-α", source="测试")
-    )
+    ev = DEFAULT_SOC_PIPELINE.run_one(_raw(event_id="E-α", source="测试"))
     assert ev.event_id == "E-α"
 
 

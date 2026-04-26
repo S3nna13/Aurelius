@@ -3,21 +3,20 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 
 import pytest
 
 from src.security.audit_trail import (
-    AuditEvent,
     AUDIT_TRAIL_REGISTRY,
+    AuditEvent,
     AuditTrail,
 )
-
 
 # ---------------------------------------------------------------------------
 # AuditEvent
 # ---------------------------------------------------------------------------
+
 
 class TestAuditEvent:
     def test_event_has_auto_event_id(self):
@@ -58,6 +57,7 @@ class TestAuditEvent:
 # ---------------------------------------------------------------------------
 # AuditTrail — log
 # ---------------------------------------------------------------------------
+
 
 class TestAuditTrailLog:
     def test_log_creates_event(self):
@@ -105,6 +105,7 @@ class TestAuditTrailLog:
 # AuditTrail — max_events enforcement
 # ---------------------------------------------------------------------------
 
+
 class TestMaxEvents:
     def test_max_events_enforced(self):
         trail = AuditTrail(max_events=5)
@@ -126,6 +127,7 @@ class TestMaxEvents:
 # ---------------------------------------------------------------------------
 # AuditTrail — query
 # ---------------------------------------------------------------------------
+
 
 class TestAuditTrailQuery:
     def setup_method(self):
@@ -172,6 +174,7 @@ class TestAuditTrailQuery:
 # AuditTrail — since
 # ---------------------------------------------------------------------------
 
+
 class TestAuditTrailSince:
     def test_since_returns_events_at_or_after(self):
         trail = AuditTrail()
@@ -190,6 +193,7 @@ class TestAuditTrailSince:
     def test_since_filters_old_events(self):
         # Inject events with known timestamps directly to avoid timing flakiness
         from src.security.audit_trail import AuditEvent
+
         trail = AuditTrail()
         old_ev = AuditEvent("a", "b", "c", "success", 1000.0, {})
         new_ev = AuditEvent("a", "b", "c", "success", 2000.0, {})
@@ -202,6 +206,7 @@ class TestAuditTrailSince:
 # ---------------------------------------------------------------------------
 # AuditTrail — export_jsonl
 # ---------------------------------------------------------------------------
+
 
 class TestExportJsonl:
     def test_export_returns_count(self, tmp_path):
@@ -244,6 +249,7 @@ class TestExportJsonl:
 # AuditTrail — integrity_hash
 # ---------------------------------------------------------------------------
 
+
 class TestIntegrityHash:
     def test_hash_is_hex_string(self):
         trail = AuditTrail()
@@ -271,6 +277,7 @@ class TestIntegrityHash:
         trail2 = AuditTrail()
         # Inject events with fixed event_ids to guarantee determinism
         from src.security.audit_trail import AuditEvent
+
         ev = AuditEvent("alice", "login", "portal", "success", 1000.0, {}, event_id="aabbccddeeff")
         trail1._events.append(ev)
         trail2._events.append(ev)
@@ -285,6 +292,7 @@ class TestIntegrityHash:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

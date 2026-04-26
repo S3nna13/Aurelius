@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List
+from dataclasses import dataclass
+from enum import StrEnum
 
 
 class ProviderAuthError(Exception):
     pass
 
 
-class CredentialStatus(str, Enum):
+class CredentialStatus(StrEnum):
     VALID = "valid"
     EXPIRED = "expired"
     REFRESHING = "refreshing"
@@ -30,7 +29,7 @@ class CredentialManager:
     """Manages per-provider credentials with auto-refresh on expiry."""
 
     def __init__(self) -> None:
-        self._store: Dict[str, Credential] = {}
+        self._store: dict[str, Credential] = {}
 
     def register(self, cred: Credential) -> None:
         self._store[cred.provider] = cred
@@ -58,7 +57,7 @@ class CredentialManager:
             return self.refresh(provider)
         return self.get(provider)
 
-    def list_providers(self) -> List[str]:
+    def list_providers(self) -> list[str]:
         return list(self._store.keys())
 
     def revoke(self, provider: str) -> None:

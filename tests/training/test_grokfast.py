@@ -2,18 +2,18 @@
 
 All imports use the stable ``aurelius.*`` namespace which aliases to ``src.*``.
 """
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-
-from aurelius.training.grokfast import GrokFastEMA, GrokFastSMA, GrokFastOptimizer
-
+from aurelius.training.grokfast import GrokFastEMA, GrokFastOptimizer, GrokFastSMA
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> nn.Linear:
     """A tiny single-layer model for fast tests."""
@@ -32,12 +32,13 @@ def _grad_norm(model: nn.Module) -> float:
     for param in model.parameters():
         if param.grad is not None:
             total += param.grad.data.norm().item() ** 2
-    return total ** 0.5
+    return total**0.5
 
 
 # ---------------------------------------------------------------------------
 # 1. GrokFastEMA initialises with zero / empty EMA state
 # ---------------------------------------------------------------------------
+
 
 def test_ema_init_state_is_empty():
     model = _tiny_model()
@@ -48,6 +49,7 @@ def test_ema_init_state_is_empty():
 # ---------------------------------------------------------------------------
 # 2. After update(), EMA is non-zero when grad is non-zero
 # ---------------------------------------------------------------------------
+
 
 def test_ema_update_populates_nonzero():
     model = _tiny_model()
@@ -63,6 +65,7 @@ def test_ema_update_populates_nonzero():
 # ---------------------------------------------------------------------------
 # 3. amplify() increases gradient magnitude (lamb=2 → |grad| larger)
 # ---------------------------------------------------------------------------
+
 
 def test_amplify_increases_grad_magnitude():
     model = _tiny_model()
@@ -82,6 +85,7 @@ def test_amplify_increases_grad_magnitude():
 # ---------------------------------------------------------------------------
 # 4. step() == update() + amplify() in sequence
 # ---------------------------------------------------------------------------
+
 
 def test_step_equals_update_then_amplify():
     """step() on model_a should produce identical grads to manual update+amplify on model_b."""
@@ -109,6 +113,7 @@ def test_step_equals_update_then_amplify():
 # 5. state_dict round-trip preserves EMA values
 # ---------------------------------------------------------------------------
 
+
 def test_state_dict_roundtrip():
     model = _tiny_model()
     _set_grad(model, 0.5)
@@ -128,16 +133,14 @@ def test_state_dict_roundtrip():
     # Check all EMA tensors are equal
     for pid_orig, ema_orig in gf._ema.items():
         # Find matching entry by comparing values
-        matched = any(
-            torch.allclose(ema_orig, ema_new)
-            for ema_new in gf2._ema.values()
-        )
+        matched = any(torch.allclose(ema_orig, ema_new) for ema_new in gf2._ema.values())
         assert matched, "EMA tensor mismatch after load_state_dict"
 
 
 # ---------------------------------------------------------------------------
 # 6. GrokFastSMA with window=1 behaves like a single-step EMA
 # ---------------------------------------------------------------------------
+
 
 def test_sma_window1_single_grad():
     model = _tiny_model()
@@ -154,6 +157,7 @@ def test_sma_window1_single_grad():
 # ---------------------------------------------------------------------------
 # 7. SMA with window=3 averages last 3 gradients
 # ---------------------------------------------------------------------------
+
 
 def test_sma_window3_averages_three_grads():
     model = nn.Linear(2, 2, bias=False)
@@ -178,6 +182,7 @@ def test_sma_window3_averages_three_grads():
 # 8. GrokFastOptimizer.step() updates model parameters
 # ---------------------------------------------------------------------------
 
+
 def test_grokfast_optimizer_step_updates_params():
     model = _tiny_model()
     inner_opt = torch.optim.SGD(model.parameters(), lr=0.1)
@@ -188,16 +193,14 @@ def test_grokfast_optimizer_step_updates_params():
     gf_opt.step()
     params_after = [p.data.clone() for p in model.parameters()]
 
-    changed = any(
-        not torch.allclose(pb, pa)
-        for pb, pa in zip(params_before, params_after)
-    )
+    changed = any(not torch.allclose(pb, pa) for pb, pa in zip(params_before, params_after))
     assert changed, "GrokFastOptimizer.step() must update model parameters"
 
 
 # ---------------------------------------------------------------------------
 # 9. GrokFastOptimizer.zero_grad() zeros all parameter gradients
 # ---------------------------------------------------------------------------
+
 
 def test_grokfast_optimizer_zero_grad():
     model = _tiny_model()
@@ -216,6 +219,7 @@ def test_grokfast_optimizer_zero_grad():
 # 10. param_groups is accessible via GrokFastOptimizer
 # ---------------------------------------------------------------------------
 
+
 def test_grokfast_optimizer_param_groups():
     model = _tiny_model()
     inner_opt = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -230,10 +234,14 @@ def test_grokfast_optimizer_param_groups():
 # 11. Works with SGD and Adam inner optimizers
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("optim_cls,kwargs", [
-    (torch.optim.SGD, {"lr": 0.01}),
-    (torch.optim.Adam, {"lr": 1e-3}),
-])
+
+@pytest.mark.parametrize(
+    "optim_cls,kwargs",
+    [
+        (torch.optim.SGD, {"lr": 0.01}),
+        (torch.optim.Adam, {"lr": 1e-3}),
+    ],
+)
 def test_grokfast_optimizer_sgd_and_adam(optim_cls, kwargs):
     model = _tiny_model()
     inner_opt = optim_cls(model.parameters(), **kwargs)
@@ -247,6 +255,7 @@ def test_grokfast_optimizer_sgd_and_adam(optim_cls, kwargs):
 # ---------------------------------------------------------------------------
 # 12. EMA decays toward zero after many zero-gradient steps
 # ---------------------------------------------------------------------------
+
 
 def test_ema_decays_toward_zero():
     """After initialising EMA with a non-zero gradient and then feeding zero
@@ -277,6 +286,7 @@ def test_ema_decays_toward_zero():
 # 13. SMA window respects maxlen — old grads are evicted
 # ---------------------------------------------------------------------------
 
+
 def test_sma_window_evicts_old_entries():
     model = nn.Linear(2, 2, bias=False)
     gf = GrokFastSMA(model, window=2, lamb=0.0)
@@ -289,15 +299,15 @@ def test_sma_window_evicts_old_entries():
         assert len(buf) == 2, f"Buffer should have exactly window=2 entries, got {len(buf)}"
         # Should contain grads from steps 3.0 and 4.0
         vals = torch.stack(list(buf))
-        assert torch.allclose(vals, torch.full_like(vals, 3.0)) or \
-               torch.allclose(vals.mean(0), torch.full_like(vals.mean(0), 3.5)), (
-            "Buffer should contain the last 2 gradient values"
-        )
+        assert torch.allclose(vals, torch.full_like(vals, 3.0)) or torch.allclose(
+            vals.mean(0), torch.full_like(vals.mean(0), 3.5)
+        ), "Buffer should contain the last 2 gradient values"
 
 
 # ---------------------------------------------------------------------------
 # 14. GrokFastEMA params with no grad are not added to EMA map
 # ---------------------------------------------------------------------------
+
 
 def test_ema_skips_params_without_grad():
     model = _tiny_model()

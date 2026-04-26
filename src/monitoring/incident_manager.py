@@ -7,9 +7,8 @@ import os
 import re
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 
 class IncidentError(ValueError):
@@ -23,7 +22,7 @@ class Incident:
     severity: str
     service: str
     status: str = "open"
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     acknowledged_at: str | None = None
     resolved_at: str | None = None
     runbook_url: str | None = None
@@ -116,7 +115,7 @@ class IncidentManager:
             if inc.status != "open":
                 raise IncidentError(f"cannot acknowledge incident in status {inc.status}")
             inc.status = "acknowledged"
-            inc.acknowledged_at = datetime.now(timezone.utc).isoformat()
+            inc.acknowledged_at = datetime.now(UTC).isoformat()
             if notes:
                 inc.notes.append(str(notes))
             self._persist()
@@ -131,7 +130,7 @@ class IncidentManager:
             if inc.status != "acknowledged":
                 raise IncidentError(f"cannot resolve incident in status {inc.status}")
             inc.status = "resolved"
-            inc.resolved_at = datetime.now(timezone.utc).isoformat()
+            inc.resolved_at = datetime.now(UTC).isoformat()
             if notes:
                 inc.notes.append(str(notes))
             self._persist()

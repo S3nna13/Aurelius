@@ -31,15 +31,15 @@ from __future__ import annotations
 import concurrent.futures
 import inspect
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 from .tool_call_parser import (
     ParsedToolCall,
     ToolCallParseError,
     UnifiedToolCallParser,
 )
-
 
 # ---------------------------------------------------------------------------
 # Data
@@ -56,10 +56,10 @@ class AgentStep:
 
     role: str
     content: str
-    tool_name: Optional[str] = None
-    tool_input: Optional[dict] = None
-    tool_output: Optional[str] = None
-    error: Optional[str] = None
+    tool_name: str | None = None
+    tool_input: dict | None = None
+    tool_output: str | None = None
+    error: str | None = None
 
 
 @dataclass
@@ -67,7 +67,7 @@ class AgentTrace:
     """Full transcript of a :meth:`ReActLoop.run` invocation."""
 
     steps: list[AgentStep] = field(default_factory=list)
-    final_answer: Optional[str] = None
+    final_answer: str | None = None
     status: str = "no_answer"  # one of {success, budget, error, no_answer}
     steps_used: int = 0
 
@@ -87,7 +87,7 @@ _FINAL_PREFIX_RE = re.compile(
 )
 
 
-def _extract_final_answer(text: str) -> Optional[str]:
+def _extract_final_answer(text: str) -> str | None:
     """Return the final-answer body if present, else ``None``.
 
     Two forms are recognised:
@@ -199,9 +199,7 @@ class ReActLoop:
                         error=f"generate_fn raised: {type(exc).__name__}: {exc}",
                     )
                 )
-                trace.steps_used = len(
-                    [s for s in trace.steps if s.role == "assistant"]
-                )
+                trace.steps_used = len([s for s in trace.steps if s.role == "assistant"])
                 trace.status = "error"
                 return trace
 
@@ -213,9 +211,7 @@ class ReActLoop:
                         error=f"generate_fn returned non-str: {type(raw).__name__}",
                     )
                 )
-                trace.steps_used = len(
-                    [s for s in trace.steps if s.role == "assistant"]
-                )
+                trace.steps_used = len([s for s in trace.steps if s.role == "assistant"])
                 trace.status = "error"
                 return trace
 
@@ -225,9 +221,7 @@ class ReActLoop:
                 trace.steps.append(AgentStep(role="assistant", content=raw))
                 trace.final_answer = final
                 trace.status = "success"
-                trace.steps_used = len(
-                    [s for s in trace.steps if s.role == "assistant"]
-                )
+                trace.steps_used = len([s for s in trace.steps if s.role == "assistant"])
                 return trace
 
             # Parse any tool calls in the assistant output.
@@ -238,9 +232,7 @@ class ReActLoop:
             except ToolCallParseError as exc:
                 assistant_step.error = f"tool_call_parse_error: {exc}"
             except Exception as exc:  # noqa: BLE001
-                assistant_step.error = (
-                    f"tool_call_parse_error: {type(exc).__name__}: {exc}"
-                )
+                assistant_step.error = f"tool_call_parse_error: {type(exc).__name__}: {exc}"
 
             if not tool_calls:
                 # The model reasoned but neither finalised nor called a
@@ -262,9 +254,7 @@ class ReActLoop:
                 trace.steps.append(obs)
 
         # Budget exhausted without final answer.
-        trace.steps_used = len(
-            [s for s in trace.steps if s.role == "assistant"]
-        )
+        trace.steps_used = len([s for s in trace.steps if s.role == "assistant"])
         trace.status = "budget"
         return trace
 
@@ -293,9 +283,7 @@ class ReActLoop:
                 messages.append({"role": "assistant", "content": step.content})
             elif step.role == "tool":
                 # Surface the observation in a form the model can read.
-                body = step.tool_output if step.tool_output is not None else (
-                    step.error or ""
-                )
+                body = step.tool_output if step.tool_output is not None else (step.error or "")
                 prefix = f"[{step.tool_name}] " if step.tool_name else ""
                 messages.append({"role": "tool", "content": f"{prefix}{body}"})
             else:
@@ -334,9 +322,7 @@ class ReActLoop:
         kwargs = dict(call.arguments)
         if sig is not None:
             params = sig.parameters
-            accepts_var_kw = any(
-                p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
-            )
+            accepts_var_kw = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
             if not accepts_var_kw:
                 allowed = {
                     name
@@ -366,9 +352,7 @@ class ReActLoop:
                     # moves on; the daemon-ish cleanup at executor exit
                     # lets the thread finish in the background.
                     future.cancel()
-                    step.error = (
-                        f"tool_error: timeout after {self._tool_timeout:.3f}s"
-                    )
+                    step.error = f"tool_error: timeout after {self._tool_timeout:.3f}s"
                     return step
         except Exception as exc:  # noqa: BLE001 - tool code is untrusted
             step.error = f"tool_error: {type(exc).__name__}: {exc}"

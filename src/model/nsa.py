@@ -17,11 +17,11 @@ Variable naming mirrors the paper wherever possible:
 """
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from typing import Optional
 
 
 class NativeSparseAttention(nn.Module):
@@ -51,16 +51,14 @@ class NativeSparseAttention(nn.Module):
         super().__init__()
 
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
-            )
+            raise ValueError(f"d_model ({d_model}) must be divisible by n_heads ({n_heads})")
 
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
-        self.G = block_size       # paper: G
-        self.r = r_blocks         # paper: r
-        self.w = window_size      # paper: w
+        self.G = block_size  # paper: G
+        self.r = r_blocks  # paper: r
+        self.w = window_size  # paper: w
         self.causal = causal
         self.scale = math.sqrt(self.head_dim)
 
@@ -115,10 +113,10 @@ class NativeSparseAttention(nn.Module):
 
     def _compressed_branch(
         self,
-        q: Tensor,   # (B, H, T, D)
-        k: Tensor,   # (B, H, T, D)
-        v: Tensor,   # (B, H, T, D)
-        causal_mask: Optional[Tensor],
+        q: Tensor,  # (B, H, T, D)
+        k: Tensor,  # (B, H, T, D)
+        v: Tensor,  # (B, H, T, D)
+        causal_mask: Tensor | None,
     ) -> tuple[Tensor, Tensor]:
         """
         Compress K/V into n_blocks block tokens via learned linear projection,
@@ -132,7 +130,10 @@ class NativeSparseAttention(nn.Module):
         B, H, T, D = q.shape
         G = self.G
 
-        k_pad, v_pad, T_orig = self._pad_to_block_multiple(k, v, )
+        k_pad, v_pad, T_orig = self._pad_to_block_multiple(
+            k,
+            v,
+        )
         T_pad = k_pad.size(2)
         n_blocks = T_pad // G  # paper: n_blocks
 
@@ -145,8 +146,8 @@ class NativeSparseAttention(nn.Module):
         v_flat = v_blocks.reshape(B * H, n_blocks, G * D)
 
         # Apply learned compression: (B*H, n_blocks, D)
-        k_c = self.compress_k(k_flat).view(B, H, n_blocks, D)   # paper: k_c
-        v_c = self.compress_v(v_flat).view(B, H, n_blocks, D)   # paper: v_c
+        k_c = self.compress_k(k_flat).view(B, H, n_blocks, D)  # paper: k_c
+        v_c = self.compress_v(v_flat).view(B, H, n_blocks, D)  # paper: v_c
 
         # Compressed attention: q (B,H,T,D) × k_c (B,H,n_blocks,D)
         # Build causal mask over block tokens if needed
@@ -155,18 +156,22 @@ class NativeSparseAttention(nn.Module):
             # only if ALL tokens in block b come strictly before i.
             # Block b covers positions [b*G .. (b+1)*G - 1].
             # Condition: (b+1)*G <= i  ↔  i >= (b+1)*G
-            pos_i = torch.arange(T, device=q.device).unsqueeze(1)       # (T, 1)
-            block_end_excl = (torch.arange(n_blocks, device=q.device).unsqueeze(0) + 1) * G  # (1, n_blocks)
+            pos_i = torch.arange(T, device=q.device).unsqueeze(1)  # (T, 1)
+            block_end_excl = (
+                torch.arange(n_blocks, device=q.device).unsqueeze(0) + 1
+            ) * G  # (1, n_blocks)
             # True = allowed to attend
-            c_mask = (pos_i >= block_end_excl)  # (T, n_blocks)
+            c_mask = pos_i >= block_end_excl  # (T, n_blocks)
             attn_mask_c = torch.zeros(T, n_blocks, device=q.device)
-            attn_mask_c = attn_mask_c.masked_fill(~c_mask, float('-inf'))
+            attn_mask_c = attn_mask_c.masked_fill(~c_mask, float("-inf"))
             attn_mask_c = attn_mask_c.unsqueeze(0).unsqueeze(0)  # (1,1,T,n_blocks)
         else:
             attn_mask_c = None
 
         out_c = F.scaled_dot_product_attention(
-            q, k_c, v_c,
+            q,
+            k_c,
+            v_c,
             attn_mask=attn_mask_c,
             dropout_p=0.0,
         )  # (B, H, T, D)
@@ -183,10 +188,10 @@ class NativeSparseAttention(nn.Module):
 
     def _selected_branch(
         self,
-        q: Tensor,   # (B, H, T, D)
-        k: Tensor,   # (B, H, T, D)
-        v: Tensor,   # (B, H, T, D)
-        k_c: Tensor, # (B, H, n_blocks, D)  from compressed branch
+        q: Tensor,  # (B, H, T, D)
+        k: Tensor,  # (B, H, T, D)
+        v: Tensor,  # (B, H, T, D)
+        k_c: Tensor,  # (B, H, n_blocks, D)  from compressed branch
     ) -> Tensor:
         """
         For each query position, score blocks using compressed keys, select
@@ -205,17 +210,16 @@ class NativeSparseAttention(nn.Module):
 
         # Block-level importance: s_b[i, b] = q[i] · k_c[b]  (mean over head_dim scaled)
         # Shape: (B, H, T, n_blocks)
-        s_b = torch.matmul(q, k_c.transpose(-1, -2)) / self.scale   # paper: s_b
+        s_b = torch.matmul(q, k_c.transpose(-1, -2)) / self.scale  # paper: s_b
 
         if self.causal:
             # Same strict condition as compressed branch: block b fully before i
-            pos_i = torch.arange(T, device=q.device).unsqueeze(1)           # (T, 1)
-            block_end_excl = (torch.arange(n_blocks, device=q.device).unsqueeze(0) + 1) * G  # (1, n_blocks)
-            causal_ok = (pos_i >= block_end_excl)  # (T, n_blocks): True = allowed
-            s_b = s_b.masked_fill(
-                ~causal_ok.unsqueeze(0).unsqueeze(0),
-                float('-inf')
-            )
+            pos_i = torch.arange(T, device=q.device).unsqueeze(1)  # (T, 1)
+            block_end_excl = (
+                torch.arange(n_blocks, device=q.device).unsqueeze(0) + 1
+            ) * G  # (1, n_blocks)
+            causal_ok = pos_i >= block_end_excl  # (T, n_blocks): True = allowed
+            s_b = s_b.masked_fill(~causal_ok.unsqueeze(0).unsqueeze(0), float("-inf"))
 
         # Top-r block indices per query: (B, H, T, r)
         top_r_scores, top_r_idx = torch.topk(s_b, r, dim=-1)
@@ -224,9 +228,9 @@ class NativeSparseAttention(nn.Module):
         # For each selected block index b, positions are [b*G .. (b+1)*G - 1]
         # Build position offset: (r, G) → (T, r*G) via block indices
         # top_r_idx: (B, H, T, r) — expand to token positions
-        offsets = torch.arange(G, device=q.device).view(1, 1, 1, 1, G)       # (1,1,1,1,G)
+        offsets = torch.arange(G, device=q.device).view(1, 1, 1, 1, G)  # (1,1,1,1,G)
         top_r_idx_exp = top_r_idx.unsqueeze(-1) * G  # (B, H, T, r, 1)
-        token_positions = (top_r_idx_exp + offsets).view(B, H, T, r * G)       # (B,H,T,r*G)
+        token_positions = (top_r_idx_exp + offsets).view(B, H, T, r * G)  # (B,H,T,r*G)
         token_positions = token_positions.clamp(0, T_pad - 1)
 
         # Gather k_s, v_s: (B, H, T, r*G, D)
@@ -249,7 +253,7 @@ class NativeSparseAttention(nn.Module):
         if self.causal:
             # token_positions: (B, H, T, r*G) — absolute positions of gathered tokens
             # For each query position i, mask out gathered tokens with position > i
-            pos_i_flat = torch.arange(T, device=q.device).unsqueeze(1)  # (T, 1)
+            torch.arange(T, device=q.device).unsqueeze(1)  # (T, 1)
             # Reshape token_positions to (B*H*T, r*G) for broadcasting
             tp_flat = token_positions.reshape(BHT, r * G)  # (B*H*T, r*G)
             # Query position index for each entry in BHT dimension
@@ -260,12 +264,14 @@ class NativeSparseAttention(nn.Module):
             # Causal mask: allow only gathered tokens with position <= query position
             causal_sel = tp_flat > t_idx_exp  # (B*H*T, r*G): True = future, mask out
             attn_mask_s = torch.zeros(BHT, 1, r * G, device=q.device)
-            attn_mask_s = attn_mask_s.masked_fill(causal_sel.unsqueeze(1), float('-inf'))
+            attn_mask_s = attn_mask_s.masked_fill(causal_sel.unsqueeze(1), float("-inf"))
         else:
             attn_mask_s = None
 
         out_s_flat = F.scaled_dot_product_attention(
-            q_flat, k_s_flat, v_s_flat,
+            q_flat,
+            k_s_flat,
+            v_s_flat,
             attn_mask=attn_mask_s,
             dropout_p=0.0,
         )  # (B*H*T, 1, D)
@@ -283,9 +289,9 @@ class NativeSparseAttention(nn.Module):
 
     def _sliding_window_branch(
         self,
-        q: Tensor,   # (B, H, T, D)
-        k: Tensor,   # (B, H, T, D)
-        v: Tensor,   # (B, H, T, D)
+        q: Tensor,  # (B, H, T, D)
+        k: Tensor,  # (B, H, T, D)
+        v: Tensor,  # (B, H, T, D)
     ) -> Tensor:
         """
         Standard local sliding-window attention of half-width w//2.
@@ -305,11 +311,13 @@ class NativeSparseAttention(nn.Module):
             window_mask = window_mask & causal_m
 
         attn_mask_l = torch.zeros(T, T, device=q.device)
-        attn_mask_l = attn_mask_l.masked_fill(~window_mask, float('-inf'))
+        attn_mask_l = attn_mask_l.masked_fill(~window_mask, float("-inf"))
         attn_mask_l = attn_mask_l.unsqueeze(0).unsqueeze(0)  # (1,1,T,T)
 
         out_l = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=attn_mask_l,
             dropout_p=0.0,
         )  # (B, H, T, D)
@@ -334,9 +342,9 @@ class NativeSparseAttention(nn.Module):
         g = self.gate_mlp(q_mean)
         g = F.softmax(g, dim=-1)  # (B, T, 3)
 
-        alpha = g[..., 0:1]   # (B, T, 1)  compressed branch weight
-        beta  = g[..., 1:2]   # (B, T, 1)  selected branch weight
-        gamma = g[..., 2:3]   # (B, T, 1)  sliding window branch weight
+        alpha = g[..., 0:1]  # (B, T, 1)  compressed branch weight
+        beta = g[..., 1:2]  # (B, T, 1)  selected branch weight
+        gamma = g[..., 2:3]  # (B, T, 1)  sliding window branch weight
         return alpha, beta, gamma
 
     # ------------------------------------------------------------------
@@ -346,7 +354,7 @@ class NativeSparseAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        attention_mask: Optional[Tensor] = None,
+        attention_mask: Tensor | None = None,
     ) -> Tensor:
         """
         Parameters
@@ -386,11 +394,11 @@ class NativeSparseAttention(nn.Module):
         # alpha, beta, gamma: (B, T, 1); outputs after merge: (B, T, d_model)
         alpha, beta, gamma = self._compute_gates(q)
 
-        out_c_m = self._merge_heads(out_c)   # (B, T, d_model)
+        out_c_m = self._merge_heads(out_c)  # (B, T, d_model)
         out_s_m = self._merge_heads(out_s)
         out_l_m = self._merge_heads(out_l)
 
         # Weighted sum: α·out_c + β·out_s + γ·out_l
-        out = alpha * out_c_m + beta * out_s_m + gamma * out_l_m   # (B, T, d_model)
+        out = alpha * out_c_m + beta * out_s_m + gamma * out_l_m  # (B, T, d_model)
 
         return self.W_o(out)

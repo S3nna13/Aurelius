@@ -1,4 +1,5 @@
 """Tests for DashboardExporter."""
+
 from __future__ import annotations
 
 import json
@@ -6,16 +7,16 @@ import json
 import pytest
 
 from src.monitoring.dashboard_exporter import (
+    DASHBOARD_EXPORTER_REGISTRY,
     DashboardExporter,
     ExportFormat,
     MetricPoint,
-    DASHBOARD_EXPORTER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Enum
 # ---------------------------------------------------------------------------
+
 
 class TestExportFormat:
     def test_json(self):
@@ -38,6 +39,7 @@ class TestExportFormat:
 # MetricPoint
 # ---------------------------------------------------------------------------
 
+
 class TestMetricPoint:
     def test_fields(self):
         p = MetricPoint("m", 1.0, {"env": "prod"}, 100.0)
@@ -55,6 +57,7 @@ class TestMetricPoint:
 # ---------------------------------------------------------------------------
 # to_json / from_json
 # ---------------------------------------------------------------------------
+
 
 class TestJson:
     def setup_method(self):
@@ -94,6 +97,7 @@ class TestJson:
 # ---------------------------------------------------------------------------
 # Prometheus
 # ---------------------------------------------------------------------------
+
 
 class TestPrometheus:
     def setup_method(self):
@@ -137,6 +141,7 @@ class TestPrometheus:
 # InfluxDB
 # ---------------------------------------------------------------------------
 
+
 class TestInflux:
     def setup_method(self):
         self.e = DashboardExporter()
@@ -170,6 +175,7 @@ class TestInflux:
 # ---------------------------------------------------------------------------
 # CSV
 # ---------------------------------------------------------------------------
+
 
 class TestCSV:
     def setup_method(self):
@@ -209,6 +215,7 @@ class TestCSV:
 # export dispatcher
 # ---------------------------------------------------------------------------
 
+
 class TestExport:
     def setup_method(self):
         self.e = DashboardExporter()
@@ -234,6 +241,7 @@ class TestExport:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_default(self):

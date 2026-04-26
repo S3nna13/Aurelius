@@ -25,7 +25,12 @@ def test_prefix_match_mask_marks_prefix_only():
 
 
 def test_longest_common_prefix_handles_empty_tensor():
-    assert longest_common_prefix(torch.tensor([], dtype=torch.long), torch.tensor([], dtype=torch.long)) == 0
+    assert (
+        longest_common_prefix(
+            torch.tensor([], dtype=torch.long), torch.tensor([], dtype=torch.long)
+        )
+        == 0
+    )
 
 
 def test_longest_common_prefix_rejects_bad_rank():
@@ -37,4 +42,3 @@ def test_prefix_match_mask_shape_matches_candidate():
     candidate = torch.tensor([1, 2, 3])
     mask = prefix_match_mask(candidate, torch.tensor([1, 2, 4]))
     assert mask.shape == candidate.shape
-

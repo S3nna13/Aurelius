@@ -9,7 +9,6 @@ import torch
 
 from src.longcontext.infini_attention import InfiniAttention, _elu_plus_one
 
-
 # Tiny config shared across tests.
 B, H, S, D = 2, 2, 8, 8
 D_MODEL = H * D

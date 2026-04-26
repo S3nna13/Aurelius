@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -55,16 +55,26 @@ class ConditionalBranch:
     def __init__(self) -> None:
         self._rules: list[_BranchRule] = []
 
-    def add_condition(self, condition: BranchCondition, true_action: str, false_action: str, name: str = "") -> None:
-        self._rules.append(_BranchRule(condition=condition, true_action=true_action, false_action=false_action, name=name))
+    def add_condition(
+        self, condition: BranchCondition, true_action: str, false_action: str, name: str = ""
+    ) -> None:
+        self._rules.append(
+            _BranchRule(
+                condition=condition, true_action=true_action, false_action=false_action, name=name
+            )
+        )
 
     def evaluate(self, context: dict[str, Any]) -> BranchResult:
         result = BranchResult(action=None)
         for rule in self._rules:
             if rule.condition.evaluate(context):
-                result = BranchResult(action=rule.true_action, triggered=True, condition_name=rule.name)
+                result = BranchResult(
+                    action=rule.true_action, triggered=True, condition_name=rule.name
+                )
             else:
-                result = BranchResult(action=rule.false_action, triggered=False, condition_name=rule.name)
+                result = BranchResult(
+                    action=rule.false_action, triggered=False, condition_name=rule.name
+                )
         return result
 
     def condition_count(self) -> int:

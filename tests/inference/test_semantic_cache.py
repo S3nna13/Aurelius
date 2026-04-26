@@ -10,12 +10,11 @@ import time
 
 import pytest
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from src.inference.semantic_cache import (
-    CacheEntry,
     CachedInferenceEngine,
+    CacheEntry,
     SemanticCache,
     SemanticCacheConfig,
     TextEmbedder,
@@ -23,7 +22,6 @@ from src.inference.semantic_cache import (
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture (fast, no GPU required)
@@ -64,6 +62,7 @@ def _tokenizer_decode(ids) -> str:
 # Test 1: SemanticCacheConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_semantic_cache_config_defaults():
     cfg = SemanticCacheConfig()
     assert cfg.max_size == 1000
@@ -76,6 +75,7 @@ def test_semantic_cache_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: CacheEntry fields
 # ---------------------------------------------------------------------------
+
 
 def test_cache_entry_fields():
     emb = torch.ones(64)
@@ -95,6 +95,7 @@ def test_cache_entry_fields():
 # Test 3: compute_cosine_similarity -- identical vectors -> 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_similarity_identical():
     v = torch.tensor([1.0, 2.0, 3.0, 4.0])
     sim = compute_cosine_similarity(v, v)
@@ -104,6 +105,7 @@ def test_cosine_similarity_identical():
 # ---------------------------------------------------------------------------
 # Test 4: compute_cosine_similarity -- orthogonal vectors -> 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_similarity_orthogonal():
     a = torch.tensor([1.0, 0.0])
@@ -116,6 +118,7 @@ def test_cosine_similarity_orthogonal():
 # Test 5: SemanticCache.lookup returns None when empty
 # ---------------------------------------------------------------------------
 
+
 def test_lookup_returns_none_when_empty():
     cache = SemanticCache(SemanticCacheConfig())
     query = F.normalize(torch.ones(64), dim=0)
@@ -126,6 +129,7 @@ def test_lookup_returns_none_when_empty():
 # ---------------------------------------------------------------------------
 # Test 6: SemanticCache.insert increases size
 # ---------------------------------------------------------------------------
+
 
 def test_insert_increases_size():
     cache = SemanticCache(SemanticCacheConfig())
@@ -138,6 +142,7 @@ def test_insert_increases_size():
 # ---------------------------------------------------------------------------
 # Test 7: SemanticCache.lookup finds inserted entry (same embedding)
 # ---------------------------------------------------------------------------
+
 
 def test_lookup_finds_inserted_entry():
     cfg = SemanticCacheConfig(similarity_threshold=0.85)
@@ -156,6 +161,7 @@ def test_lookup_finds_inserted_entry():
 # Test 8: SemanticCache.lookup returns None for dissimilar query
 # ---------------------------------------------------------------------------
 
+
 def test_lookup_returns_none_for_dissimilar():
     cfg = SemanticCacheConfig(similarity_threshold=0.99)
     cache = SemanticCache(cfg)
@@ -173,6 +179,7 @@ def test_lookup_returns_none_for_dissimilar():
 # ---------------------------------------------------------------------------
 # Test 9: SemanticCache.insert respects max_size (LRU eviction)
 # ---------------------------------------------------------------------------
+
 
 def test_insert_respects_max_size_lru():
     cfg = SemanticCacheConfig(max_size=3, eviction_policy="lru")
@@ -200,6 +207,7 @@ def test_insert_respects_max_size_lru():
 # Test 10: SemanticCache.invalidate removes entry
 # ---------------------------------------------------------------------------
 
+
 def test_invalidate_removes_entry():
     cache = SemanticCache(SemanticCacheConfig())
     emb = F.normalize(torch.ones(64), dim=0)
@@ -215,6 +223,7 @@ def test_invalidate_removes_entry():
 # Test 11: SemanticCache.invalidate returns False for missing key
 # ---------------------------------------------------------------------------
 
+
 def test_invalidate_returns_false_for_missing():
     cache = SemanticCache(SemanticCacheConfig())
     result = cache.invalidate("nonexistent_key")
@@ -224,6 +233,7 @@ def test_invalidate_returns_false_for_missing():
 # ---------------------------------------------------------------------------
 # Test 12: SemanticCache.stats returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_stats_returns_required_keys():
     cache = SemanticCache(SemanticCacheConfig())
@@ -241,6 +251,7 @@ def test_stats_returns_required_keys():
 # ---------------------------------------------------------------------------
 # Test 13: CachedInferenceEngine.generate returns (str, bool)
 # ---------------------------------------------------------------------------
+
 
 def test_cached_inference_engine_generate_returns_str_bool(tiny_model):
     embedder = TextEmbedder(tiny_model, d_model=TINY_CFG.d_model)
@@ -263,6 +274,7 @@ def test_cached_inference_engine_generate_returns_str_bool(tiny_model):
 # Test 14: CachedInferenceEngine.generate cache hit on repeated query
 # ---------------------------------------------------------------------------
 
+
 def test_cached_inference_engine_cache_hit_on_repeat(tiny_model):
     embedder = TextEmbedder(tiny_model, d_model=TINY_CFG.d_model)
     cfg = SemanticCacheConfig(similarity_threshold=0.85, embedding_dim=TINY_CFG.d_model)
@@ -278,14 +290,15 @@ def test_cached_inference_engine_cache_hit_on_repeat(tiny_model):
     result1, hit1 = engine.generate(prompt, max_new_tokens=4)
     result2, hit2 = engine.generate(prompt, max_new_tokens=4)
 
-    assert hit1 is False        # first call: miss
-    assert hit2 is True         # second call: hit
-    assert result1 == result2   # same result
+    assert hit1 is False  # first call: miss
+    assert hit2 is True  # second call: hit
+    assert result1 == result2  # same result
 
 
 # ---------------------------------------------------------------------------
 # Test 15: SemanticCache.stats hit_rate in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_stats_hit_rate_in_range():
     cfg = SemanticCacheConfig(similarity_threshold=0.85)

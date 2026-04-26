@@ -1,9 +1,9 @@
 """Knowledge distillation training support (pure Python)."""
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-
 
 _EPS = 1e-10
 
@@ -30,9 +30,7 @@ class DistillationTrainer:
     def __init__(self, config: DistillConfig | None = None) -> None:
         self.config = config or DistillConfig()
 
-    def soft_targets(
-        self, logits: list[float], temperature: float
-    ) -> list[float]:
+    def soft_targets(self, logits: list[float], temperature: float) -> list[float]:
         """Temperature-scaled softmax."""
         if not logits:
             return []
@@ -60,9 +58,7 @@ class DistillationTrainer:
     def _softmax(self, logits: list[float]) -> list[float]:
         return self.soft_targets(logits, 1.0)
 
-    def _cross_entropy(
-        self, logits: list[float], label: int
-    ) -> float:
+    def _cross_entropy(self, logits: list[float], label: int) -> float:
         probs = self._softmax(logits)
         if label < 0 or label >= len(probs):
             raise ValueError("label out of range")
@@ -82,9 +78,7 @@ class DistillationTrainer:
         soft_loss = (T * T) * self.kl_divergence(teacher_soft, student_soft)
 
         if hard_labels:
-            hard_losses = [
-                self._cross_entropy(student_logits, lbl) for lbl in hard_labels
-            ]
+            hard_losses = [self._cross_entropy(student_logits, lbl) for lbl in hard_labels]
             hard_loss = sum(hard_losses) / len(hard_losses)
         else:
             hard_loss = 0.0

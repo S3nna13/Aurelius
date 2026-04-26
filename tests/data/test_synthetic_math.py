@@ -5,9 +5,8 @@ correctness, difficulty distribution, verify correctness, numeric matching,
 wrong-answer rejection, answer_numeric typing, easy-problem magnitude,
 determinism, difficulty_stats shape, and difficulty_stats counts.
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.synthetic_math import (
     MathProblem,
@@ -61,7 +60,7 @@ def test_generate_arithmetic():
 # 5. test_generate_algebra
 # ---------------------------------------------------------------------------
 def test_generate_algebra():
-    gen = SyntheticMathGenerator()
+    SyntheticMathGenerator()
     # Easy algebra: ax = b, answer should be a positive integer
     cfg = SyntheticMathConfig(seed=42)
     gen2 = SyntheticMathGenerator(cfg)
@@ -116,7 +115,9 @@ def test_verify_correct():
     gen = SyntheticMathGenerator()
     problems = gen.generate(20)
     for p in problems:
-        assert gen.verify(p, p.answer), f"verify() returned False for correct answer on {p.problem_id}"
+        assert gen.verify(p, p.answer), (
+            f"verify() returned False for correct answer on {p.problem_id}"
+        )
 
 
 # ---------------------------------------------------------------------------

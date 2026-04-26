@@ -6,7 +6,7 @@ replaced by stdlib dataclasses so this module stays dependency-free.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 
 

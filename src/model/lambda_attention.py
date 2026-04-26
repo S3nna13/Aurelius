@@ -54,8 +54,13 @@ class LambdaAttention(nn.Module):
         n_positions: int,
     ) -> None:
         super().__init__()
-        if d_model <= 0 or n_heads <= 0 or head_dim_key <= 0 \
-                or head_dim_value <= 0 or n_positions <= 0:
+        if (
+            d_model <= 0
+            or n_heads <= 0
+            or head_dim_key <= 0
+            or head_dim_value <= 0
+            or n_positions <= 0
+        ):
             raise ValueError(
                 "d_model, n_heads, head_dim_key, head_dim_value, n_positions "
                 "must all be positive integers."
@@ -85,9 +90,7 @@ class LambdaAttention(nn.Module):
         # Used as E @ V to form the positional lambda per query position.
         # Zero-init so that at init positional lambda contributes nothing;
         # the layer then starts as pure content lambda.
-        self.pos_embed = nn.Parameter(
-            torch.zeros(n_positions, n_positions, head_dim_key)
-        )
+        self.pos_embed = nn.Parameter(torch.zeros(n_positions, n_positions, head_dim_key))
 
         # Final projection back to d_model. Zero-init weight so that, at
         # initialisation, the lambda layer outputs zeros — which makes it a
@@ -106,14 +109,11 @@ class LambdaAttention(nn.Module):
         """
         if x.dim() != 3:
             raise ValueError(
-                f"LambdaAttention expects a 3-D [B, S, D] tensor, got shape "
-                f"{tuple(x.shape)}."
+                f"LambdaAttention expects a 3-D [B, S, D] tensor, got shape {tuple(x.shape)}."
             )
         B, S, D = x.shape
         if D != self.d_model:
-            raise ValueError(
-                f"Expected channel dim {self.d_model}, got {D}."
-            )
+            raise ValueError(f"Expected channel dim {self.d_model}, got {D}.")
         if S > self.n_positions:
             raise ValueError(
                 f"Sequence length {S} exceeds n_positions={self.n_positions}. "
@@ -124,9 +124,9 @@ class LambdaAttention(nn.Module):
         in_dtype = x.dtype
 
         # Project Q, K, V.
-        q = self.to_q(x)                           # [B, S, H*Dk]
-        k = self.to_k(x)                           # [B, S, Dk]
-        v = self.to_v(x)                           # [B, S, Dv]
+        q = self.to_q(x)  # [B, S, H*Dk]
+        k = self.to_k(x)  # [B, S, Dk]
+        v = self.to_v(x)  # [B, S, Dv]
 
         # BatchNorm expects [B, C, S] layout.
         q = self.norm_q(q.transpose(1, 2)).transpose(1, 2)
@@ -136,7 +136,7 @@ class LambdaAttention(nn.Module):
         q = q.view(B, S, H, Dk)
 
         # Softmax K over the sequence dim so columns of K_soft sum to 1.
-        k_soft = F.softmax(k, dim=1)               # [B, S, Dk]
+        k_soft = F.softmax(k, dim=1)  # [B, S, Dk]
 
         # Content lambda: [B, Dk, Dv] = K_soft^T @ V
         content_lambda = torch.matmul(k_soft.transpose(1, 2), v)
@@ -147,12 +147,12 @@ class LambdaAttention(nn.Module):
         #   E : [S, S, Dk]  (rows = query pos n, cols = context pos m)
         #   V : [B, S, Dv]
         # out[b, n, k, v] = sum_m E[n, m, k] * V[b, m, v]
-        E = self.pos_embed[:S, :S, :]              # [S, S, Dk]
+        E = self.pos_embed[:S, :S, :]  # [S, S, Dk]
         # Fold (n, k) -> [S*Dk, S] to leverage matmul.
-        E_mat = E.permute(0, 2, 1).reshape(S * Dk, S)   # [S*Dk, S]
+        E_mat = E.permute(0, 2, 1).reshape(S * Dk, S)  # [S*Dk, S]
         # V: [B, S, Dv] -> content-lambda-like product
-        pos = torch.matmul(E_mat, v)                     # [B, S*Dk, Dv]
-        position_lambda = pos.view(B, S, Dk, Dv)         # [B, S, Dk, Dv]
+        pos = torch.matmul(E_mat, v)  # [B, S*Dk, Dv]
+        position_lambda = pos.view(B, S, Dk, Dv)  # [B, S, Dk, Dv]
 
         # Apply lambdas to Q.
         # content term: y_c[b, n, h, v] = sum_k Q[b, n, h, k] * C[b, k, v]
@@ -163,11 +163,11 @@ class LambdaAttention(nn.Module):
         # position term: y_p[b, n, h, v] = sum_k Q[b, n, h, k] * P[b, n, k, v]
         # Broadcast position_lambda over H: [B, S, 1, Dk, Dv], Q -> [B,S,H,1,Dk]
         position_out = torch.matmul(
-            q.unsqueeze(-2),                       # [B, S, H, 1, Dk]
-            position_lambda.unsqueeze(2),          # [B, S, 1, Dk, Dv]
-        ).squeeze(-2)                              # [B, S, H, Dv]
+            q.unsqueeze(-2),  # [B, S, H, 1, Dk]
+            position_lambda.unsqueeze(2),  # [B, S, 1, Dk, Dv]
+        ).squeeze(-2)  # [B, S, H, Dv]
 
-        y = content_out + position_out             # [B, S, H, Dv]
+        y = content_out + position_out  # [B, S, H, Dv]
         y = y.reshape(B, S, H * Dv)
         y = self.to_out(y)
         return y.to(in_dtype)

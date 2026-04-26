@@ -10,16 +10,16 @@ from __future__ import annotations
 
 import copy
 import math
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # TaskVector
 # ---------------------------------------------------------------------------
+
 
 class TaskVector:
     """Represents the delta between a fine-tuned and a base model.
@@ -46,28 +46,18 @@ class TaskVector:
                 if name in ft_sd
             }
         else:
-            raise ValueError(
-                "Provide either (base_model, finetuned_model) or vector."
-            )
+            raise ValueError("Provide either (base_model, finetuned_model) or vector.")
 
     # ------------------------------------------------------------------
     # Arithmetic operators
     # ------------------------------------------------------------------
 
     def __add__(self, other: TaskVector) -> TaskVector:
-        result = {
-            k: self.vector[k] + other.vector[k]
-            for k in self.vector
-            if k in other.vector
-        }
+        result = {k: self.vector[k] + other.vector[k] for k in self.vector if k in other.vector}
         return TaskVector(vector=result)
 
     def __sub__(self, other: TaskVector) -> TaskVector:
-        result = {
-            k: self.vector[k] - other.vector[k]
-            for k in self.vector
-            if k in other.vector
-        }
+        result = {k: self.vector[k] - other.vector[k] for k in self.vector if k in other.vector}
         return TaskVector(vector=result)
 
     def __mul__(self, scalar: float) -> TaskVector:
@@ -100,6 +90,7 @@ class TaskVector:
 # ---------------------------------------------------------------------------
 # TaskComposer
 # ---------------------------------------------------------------------------
+
 
 class TaskComposer:
     """Combine multiple TaskVectors via different composition strategies."""
@@ -169,7 +160,9 @@ class TaskComposer:
         for i, tv in enumerate(task_vectors):
             if i >= ortho.shape[0]:
                 # More vectors than dimensions — append zero vector
-                result_tvs.append(TaskVector(vector={k: torch.zeros_like(v) for k, v in tv.vector.items()}))
+                result_tvs.append(
+                    TaskVector(vector={k: torch.zeros_like(v) for k, v in tv.vector.items()})
+                )
                 continue
 
             row = ortho[i]
@@ -183,7 +176,7 @@ class TaskComposer:
             offset = 0
             for k in keys:
                 numel = tv.vector[k].numel()
-                new_vector[k] = row[offset: offset + numel].reshape(tv.vector[k].shape).clone()
+                new_vector[k] = row[offset : offset + numel].reshape(tv.vector[k].shape).clone()
                 offset += numel
             result_tvs.append(TaskVector(vector=new_vector))
 
@@ -225,6 +218,7 @@ class TaskComposer:
 # NegationOperator
 # ---------------------------------------------------------------------------
 
+
 class NegationOperator:
     """Negate / suppress a task vector to remove a fine-tuned capability."""
 
@@ -251,6 +245,7 @@ class NegationOperator:
 # ---------------------------------------------------------------------------
 # TaskInterferenceAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class TaskInterferenceAnalyzer:
     """Measure interference and structure between task vectors."""
@@ -282,9 +277,7 @@ class TaskInterferenceAnalyzer:
                 mat[i, j] = self.cosine_similarity(task_vectors[i], task_vectors[j])
         return mat
 
-    def dominant_parameters(
-        self, tv: TaskVector, k: int = 10
-    ) -> list[tuple[str, float]]:
+    def dominant_parameters(self, tv: TaskVector, k: int = 10) -> list[tuple[str, float]]:
         """Top-k parameters by L2 magnitude (descending)."""
         magnitudes: list[tuple[str, float]] = []
         for name, val in tv.vector.items():
@@ -296,6 +289,7 @@ class TaskInterferenceAnalyzer:
 # ---------------------------------------------------------------------------
 # TaskArithmeticEvaluator
 # ---------------------------------------------------------------------------
+
 
 class TaskArithmeticEvaluator:
     """Evaluate task arithmetic compositions against a scoring function."""

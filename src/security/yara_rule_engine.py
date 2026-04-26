@@ -19,8 +19,8 @@ dependency, no imports/globals/modules from the full YARA grammar.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 
 class YaraParseError(ValueError):
@@ -71,9 +71,7 @@ class YaraRuleParser:
                 # Trailing whitespace/comments are fine; anything else is not.
                 tail = text[i:].strip()
                 if tail:
-                    raise YaraParseError(
-                        f"unexpected trailing content: {tail[:40]!r}"
-                    )
+                    raise YaraParseError(f"unexpected trailing content: {tail[:40]!r}")
                 break
             name = match.group(1)
             body_start = match.end()
@@ -193,9 +191,7 @@ class YaraRuleParser:
             # advance past colon
             colon = body.find(":", content_start)
             content_start = colon + 1
-            content_end = (
-                positions[idx + 1][0] if idx + 1 < len(positions) else len(body)
-            )
+            content_end = positions[idx + 1][0] if idx + 1 < len(positions) else len(body)
             sections[kw] = body[content_start:content_end]
         return sections
 
@@ -205,9 +201,7 @@ class YaraRuleParser:
         if not meta_text.strip():
             return meta
         # key = value pairs; value may be quoted string, int, or bool.
-        pattern = re.compile(
-            r'([A-Za-z_][A-Za-z0-9_]*)\s*=\s*("(?:[^"\\]|\\.)*"|true|false|-?\d+)'
-        )
+        pattern = re.compile(r'([A-Za-z_][A-Za-z0-9_]*)\s*=\s*("(?:[^"\\]|\\.)*"|true|false|-?\d+)')
         for m in pattern.finditer(meta_text):
             key = m.group(1)
             raw = m.group(2)
@@ -243,9 +237,7 @@ class YaraRuleParser:
             while j < len(text) and text[j] in " \t\r\n":
                 j += 1
             if j >= len(text) or text[j] != "=":
-                raise YaraParseError(
-                    f"expected '=' after ${ident}"
-                )
+                raise YaraParseError(f"expected '=' after ${ident}")
             j += 1
             while j < len(text) and text[j] in " \t\r\n":
                 j += 1
@@ -271,9 +263,7 @@ class YaraRuleParser:
                 out[ident] = ("regex", pattern)
                 i = end + 1
             else:
-                raise YaraParseError(
-                    f"unknown string type for ${ident}: {ch!r}"
-                )
+                raise YaraParseError(f"unknown string type for ${ident}: {ch!r}")
         return out
 
     @staticmethod
@@ -326,16 +316,12 @@ def _hex_to_regex(hex_body: str) -> re.Pattern[bytes]:
             # High-nibble wildcard: match any byte whose low nibble matches.
             low = tok[1].upper()
             parts.append(
-                b"[" + b"".join(
-                    b"\\x%02X" % ((hi << 4) | int(low, 16)) for hi in range(16)
-                ) + b"]"
+                b"[" + b"".join(b"\\x%02X" % ((hi << 4) | int(low, 16)) for hi in range(16)) + b"]"
             )
         elif tok[1] == "?" and tok[0] != "?":
             hi = tok[0].upper()
             parts.append(
-                b"[" + b"".join(
-                    b"\\x%02X" % ((int(hi, 16) << 4) | lo) for lo in range(16)
-                ) + b"]"
+                b"[" + b"".join(b"\\x%02X" % ((int(hi, 16) << 4) | lo) for lo in range(16)) + b"]"
             )
         else:
             try:
@@ -346,9 +332,7 @@ def _hex_to_regex(hex_body: str) -> re.Pattern[bytes]:
     return re.compile(b"".join(parts), re.DOTALL)
 
 
-def _find_all(
-    kind: str, value: bytes | str, data: bytes
-) -> list[tuple[int, bytes | str]]:
+def _find_all(kind: str, value: bytes | str, data: bytes) -> list[tuple[int, bytes | str]]:
     """Return all (offset, matched_bytes) hits for a single string."""
     hits: list[tuple[int, bytes | str]] = []
     if kind == "text":
@@ -399,9 +383,7 @@ def _tokenize_condition(condition: str) -> list[tuple[str, str]]:
     while i < len(condition):
         m = _TOKEN_RE.match(condition, i)
         if m is None:
-            raise YaraEvalError(
-                f"unexpected token at position {i}: {condition[i:i+16]!r}"
-            )
+            raise YaraEvalError(f"unexpected token at position {i}: {condition[i : i + 16]!r}")
         if m.group("size") is not None:
             tokens.append(("SIZE", m.group("size")))
         elif m.group("ident") is not None:
@@ -418,7 +400,7 @@ def _tokenize_condition(condition: str) -> list[tuple[str, str]]:
 
 
 def _parse_size(literal: str) -> int:
-    multipliers = {"KB": 1024, "MB": 1024 * 1024, "GB": 1024 ** 3, "B": 1}
+    multipliers = {"KB": 1024, "MB": 1024 * 1024, "GB": 1024**3, "B": 1}
     for suffix, mult in multipliers.items():
         if literal.endswith(suffix):
             return int(literal[: -len(suffix)]) * mult
@@ -442,9 +424,7 @@ class _ConditionEvaluator:
     def parse(self) -> bool:
         result = self._parse_or()
         if self.pos != len(self.tokens):
-            raise YaraEvalError(
-                f"unexpected token at end: {self.tokens[self.pos]!r}"
-            )
+            raise YaraEvalError(f"unexpected token at end: {self.tokens[self.pos]!r}")
         return bool(result)
 
     # or > and > not > primary
@@ -508,13 +488,18 @@ class _ConditionEvaluator:
 
     def _parse_comparison(self, left_value: int) -> bool:
         tok = self._peek()
-        if tok is None or tok[0] != "OP" or tok[1] not in (
-            "<",
-            "<=",
-            ">",
-            ">=",
-            "==",
-            "!=",
+        if (
+            tok is None
+            or tok[0] != "OP"
+            or tok[1]
+            not in (
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "==",
+                "!=",
+            )
         ):
             # Bare reference (non-numeric). For filesize we *require* comparator.
             raise YaraEvalError("expected comparison operator")
@@ -551,13 +536,18 @@ class _ConditionEvaluator:
 
     def _peek_is_comparator(self) -> bool:
         tok = self._peek()
-        return tok is not None and tok[0] == "OP" and tok[1] in (
-            "<",
-            "<=",
-            ">",
-            ">=",
-            "==",
-            "!=",
+        return (
+            tok is not None
+            and tok[0] == "OP"
+            and tok[1]
+            in (
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "==",
+                "!=",
+            )
         )
 
 

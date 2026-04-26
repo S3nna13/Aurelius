@@ -8,12 +8,10 @@ import pytest
 import torch
 
 from src.longcontext.kv_cache_quantization import (
-    CompressedKIVI,
     KIVIQuantizer,
     pack_int4,
     unpack_int4,
 )
-
 
 # Tiny canonical config for these tests.
 N_HEADS = 2

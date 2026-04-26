@@ -3,10 +3,11 @@
 Computes perplexity = exp(mean negative log-likelihood per token) on
 arbitrary token sequences. Works directly with the model, no external deps.
 """
+
 from __future__ import annotations
 
-import math
 import logging
+import math
 from dataclasses import dataclass
 
 import torch
@@ -103,8 +104,10 @@ def compute_perplexity(
 
                 if window_len - 1 > target_start:
                     nll = F.cross_entropy(
-                        logits[:, target_start:window_len-1].contiguous().view(-1, logits.shape[-1]),
-                        window[:, target_start+1:window_len].contiguous().view(-1),
+                        logits[:, target_start : window_len - 1]
+                        .contiguous()
+                        .view(-1, logits.shape[-1]),
+                        window[:, target_start + 1 : window_len].contiguous().view(-1),
                         reduction="sum",
                     )
                     total_nll += nll.item()
@@ -122,7 +125,10 @@ def compute_perplexity(
 
     logger.info(
         "Perplexity: %.2f (nll=%.4f, tokens=%d, sequences=%d)",
-        ppl, avg_nll, total_tokens, n_sequences,
+        ppl,
+        avg_nll,
+        total_tokens,
+        n_sequences,
     )
 
     return PerplexityResult(

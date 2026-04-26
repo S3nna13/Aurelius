@@ -7,9 +7,6 @@ LAMB: Layer-wise Adaptive Moments for Batch training (You et al. 2019)
 
 from __future__ import annotations
 
-import math
-from typing import Dict, List, Optional, Tuple
-
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -80,7 +77,7 @@ class LARS(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure=None) -> Optional[float]:
+    def step(self, closure=None) -> float | None:
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -115,9 +112,7 @@ class LARS(Optimizer):
                 # Compute effective learning rate
                 if use_trust and p.ndim > 1:
                     # Only apply trust ratio to weight tensors (not bias/BN)
-                    trust_ratio = compute_trust_ratio(
-                        p, grad, weight_decay=weight_decay, eps=eps
-                    )
+                    trust_ratio = compute_trust_ratio(p, grad, weight_decay=weight_decay, eps=eps)
                     effective_lr = lr * trust_coefficient * trust_ratio
                 else:
                     effective_lr = lr
@@ -162,7 +157,7 @@ class LAMB(Optimizer):
         self,
         params,
         lr: float = 1e-3,
-        betas: Tuple[float, float] = (0.9, 0.999),
+        betas: tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-6,
         weight_decay: float = 0.01,
         trust_coefficient: float = 1.0,
@@ -196,7 +191,7 @@ class LAMB(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure=None) -> Optional[float]:
+    def step(self, closure=None) -> float | None:
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -239,8 +234,8 @@ class LAMB(Optimizer):
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
                 # Step 2: Bias correction
-                bias_correction1 = 1.0 - beta1 ** step
-                bias_correction2 = 1.0 - beta2 ** step
+                bias_correction1 = 1.0 - beta1**step
+                bias_correction2 = 1.0 - beta2**step
                 m_hat = exp_avg / bias_correction1
                 v_hat = exp_avg_sq / bias_correction2
 
@@ -295,8 +290,8 @@ class LAMB(Optimizer):
 def get_param_groups_for_lars(
     model: nn.Module,
     weight_decay: float = 1e-4,
-    skip_list: Optional[List[str]] = None,
-) -> List[Dict]:
+    skip_list: list[str] | None = None,
+) -> list[dict]:
     """
     Create param groups separating:
     - Regular params (apply weight_decay + trust_ratio)

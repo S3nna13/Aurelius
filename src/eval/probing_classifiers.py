@@ -7,7 +7,6 @@ layer-wise representation analysis of transformer models.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Type
 
 import torch
 import torch.nn as nn
@@ -46,7 +45,7 @@ class LinearProbe(nn.Module):
         labels: torch.Tensor,
         n_epochs: int = 100,
         lr: float = 0.01,
-    ) -> "LinearProbe":
+    ) -> LinearProbe:
         """Train the probe using Adam optimizer with cross-entropy loss.
 
         Args:
@@ -135,7 +134,7 @@ class MLPProbe(nn.Module):
         labels: torch.Tensor,
         n_epochs: int = 100,
         lr: float = 0.01,
-    ) -> "MLPProbe":
+    ) -> MLPProbe:
         """Train the probe using Adam optimizer with cross-entropy loss.
 
         Args:
@@ -188,7 +187,7 @@ class ProbingEvaluator:
 
     def __init__(
         self,
-        probe_cls: Type[nn.Module] = LinearProbe,
+        probe_cls: type[nn.Module] = LinearProbe,
         n_classes: int = 2,
     ) -> None:
         self.probe_cls = probe_cls
@@ -199,7 +198,7 @@ class ProbingEvaluator:
         features: torch.Tensor,
         labels: torch.Tensor,
         n_epochs: int = 100,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Evaluate a probe on a single layer's features with 80/20 split.
 
         Args:
@@ -244,9 +243,9 @@ class ProbingEvaluator:
 
     def evaluate_all_layers(
         self,
-        layer_features: List[torch.Tensor],
+        layer_features: list[torch.Tensor],
         labels: torch.Tensor,
-    ) -> List[Dict[str, float]]:
+    ) -> list[dict[str, float]]:
         """Evaluate probes across all layers.
 
         Args:
@@ -257,10 +256,7 @@ class ProbingEvaluator:
             List of result dicts (one per layer), each with keys
             'train_acc', 'val_acc', 'n_params'.
         """
-        return [
-            self.evaluate_layer(features, labels)
-            for features in layer_features
-        ]
+        return [self.evaluate_layer(features, labels) for features in layer_features]
 
 
 @dataclass

@@ -4,25 +4,25 @@ Implements bilevel optimization over a DAG-structured search space where each
 edge is a MixedOperation — a weighted sum of candidate ops whose weights are
 the architecture parameters optimized on a separate validation set.
 """
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DARTSConfig:
     """Hyperparameters for the DARTS search space and bilevel training."""
+
     n_cells: int = 4
     n_nodes: int = 4
     d_model: int = 32
@@ -35,6 +35,7 @@ class DARTSConfig:
 # ---------------------------------------------------------------------------
 # Candidate operations
 # ---------------------------------------------------------------------------
+
 
 class _ZeroOp(nn.Module):
     """Output is all zeros — allows an edge to be 'dropped'."""
@@ -74,13 +75,13 @@ class _Conv1dK3Op(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         # x: (B, T, D) -> (B, D, T) -> conv -> (B, D, T+2) -> trim -> (B, T, D)
-        bt = x.transpose(1, 2)          # (B, D, T)
-        out = self.conv(bt)             # (B, D, T+2)  due to padding=2
-        out = out[:, :, :bt.size(2)]    # causal trim back to (B, D, T)
-        return out.transpose(1, 2)      # (B, T, D)
+        bt = x.transpose(1, 2)  # (B, D, T)
+        out = self.conv(bt)  # (B, D, T+2)  due to padding=2
+        out = out[:, :, : bt.size(2)]  # causal trim back to (B, D, T)
+        return out.transpose(1, 2)  # (B, T, D)
 
 
-def _build_ops(d_model: int) -> Dict[str, nn.Module]:
+def _build_ops(d_model: int) -> dict[str, nn.Module]:
     """Return the fixed set of candidate operations for every edge."""
     return {
         "linear": _LinearOp(d_model),
@@ -93,6 +94,7 @@ def _build_ops(d_model: int) -> Dict[str, nn.Module]:
 # ---------------------------------------------------------------------------
 # MixedOperation
 # ---------------------------------------------------------------------------
+
 
 class MixedOperation(nn.Module):
     """A single edge in the DARTS DAG — a learned mixture of candidate ops.
@@ -107,8 +109,8 @@ class MixedOperation(nn.Module):
         self.temperature = temperature
         ops_dict = _build_ops(d_model)
         # Preserve insertion order (Python 3.7+) so index ↔ name mapping is stable.
-        self._op_names: List[str] = list(ops_dict.keys())
-        self.operations: Dict[str, nn.Module] = {}
+        self._op_names: list[str] = list(ops_dict.keys())
+        self.operations: dict[str, nn.Module] = {}
         # Register each sub-module properly so parameters are tracked.
         for name, op in ops_dict.items():
             self.operations[name] = op
@@ -149,17 +151,18 @@ class MixedOperation(nn.Module):
         else:
             weights = self.get_probs()
 
-        out: Optional[Tensor] = None
+        out: Tensor | None = None
         for i, name in enumerate(self._op_names):
             op_out = self.operations[name](x) * weights[i]
             out = op_out if out is None else out + op_out
-        assert out is not None
+        assert out is not None  # noqa: S101
         return out
 
 
 # ---------------------------------------------------------------------------
 # Cell
 # ---------------------------------------------------------------------------
+
 
 class Cell(nn.Module):
     """A single DARTS cell: a small DAG with *n_nodes* intermediate nodes.
@@ -190,8 +193,8 @@ class Cell(nn.Module):
         self.n_inputs = n_inputs
 
         # Build one MixedOperation per (src, dst) pair.
-        edge_list: List[MixedOperation] = []
-        self._edge_map: List[tuple[int, int]] = []  # (src, dst) index pairs
+        edge_list: list[MixedOperation] = []
+        self._edge_map: list[tuple[int, int]] = []  # (src, dst) index pairs
         for dst in range(n_nodes):
             n_predecessors = n_inputs + dst
             for src in range(n_predecessors):
@@ -204,7 +207,7 @@ class Cell(nn.Module):
         # Project concatenated intermediate outputs back to d_model.
         self.proj = nn.Linear(n_nodes * d_model, d_model, bias=False)
 
-    def forward(self, inputs: List[Tensor]) -> Tensor:
+    def forward(self, inputs: list[Tensor]) -> Tensor:
         """Compute cell output.
 
         Args:
@@ -214,33 +217,34 @@ class Cell(nn.Module):
         Returns:
             (B, T, d_model) tensor.
         """
-        assert len(inputs) == self.n_inputs, (
+        assert len(inputs) == self.n_inputs, (  # noqa: S101
             f"Cell expects {self.n_inputs} input(s), got {len(inputs)}"
         )
         # All nodes: inputs first, then intermediate outputs.
-        nodes: List[Tensor] = list(inputs)
+        nodes: list[Tensor] = list(inputs)
 
         edge_idx = 0
         for dst in range(self.n_nodes):
             n_predecessors = self.n_inputs + dst
             # Sum contributions from all predecessors.
-            h: Optional[Tensor] = None
+            h: Tensor | None = None
             for src in range(n_predecessors):
                 contrib = self.edges[edge_idx](nodes[src])
                 h = contrib if h is None else h + contrib
                 edge_idx += 1
-            assert h is not None
+            assert h is not None  # noqa: S101
             nodes.append(h)  # intermediate node output
 
         # Concatenate intermediate node outputs along feature dim.
-        intermediate = nodes[self.n_inputs:]          # n_nodes tensors
-        cat = torch.cat(intermediate, dim=-1)         # (B, T, n_nodes*d_model)
-        return self.proj(cat)                          # (B, T, d_model)
+        intermediate = nodes[self.n_inputs :]  # n_nodes tensors
+        cat = torch.cat(intermediate, dim=-1)  # (B, T, n_nodes*d_model)
+        return self.proj(cat)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # DARTSSearchSpace
 # ---------------------------------------------------------------------------
+
 
 class DARTSSearchSpace(nn.Module):
     """Full DARTS search network: embedding → cells → language-model head.
@@ -259,10 +263,12 @@ class DARTSSearchSpace(nn.Module):
         self.stem = nn.Embedding(config.vocab_size, d)
 
         # Stack of searchable cells.
-        self.cells = nn.ModuleList([
-            Cell(config.n_nodes, d, n_inputs=1, temperature=config.temperature)
-            for _ in range(config.n_cells)
-        ])
+        self.cells = nn.ModuleList(
+            [
+                Cell(config.n_nodes, d, n_inputs=1, temperature=config.temperature)
+                for _ in range(config.n_cells)
+            ]
+        )
 
         # LM head.
         self.head = nn.Linear(d, config.vocab_size, bias=False)
@@ -278,22 +284,22 @@ class DARTSSearchSpace(nn.Module):
         Returns:
             logits, shape (B, T, vocab_size).
         """
-        h = self.stem(x)                     # (B, T, d_model)
+        h = self.stem(x)  # (B, T, d_model)
         for cell in self.cells:
-            h = cell([h])                    # each cell takes one input
-        return self.head(h)                  # (B, T, vocab_size)
+            h = cell([h])  # each cell takes one input
+        return self.head(h)  # (B, T, vocab_size)
 
     # ------------------------------------------------------------------
 
-    def arch_parameters(self) -> List[nn.Parameter]:
+    def arch_parameters(self) -> list[nn.Parameter]:
         """All architecture weight parameters (one per edge per cell)."""
-        params: List[nn.Parameter] = []
+        params: list[nn.Parameter] = []
         for cell in self.cells:
             for edge in cell.edges:
                 params.append(edge.arch_weights)
         return params
 
-    def model_parameters(self) -> List[nn.Parameter]:
+    def model_parameters(self) -> list[nn.Parameter]:
         """All non-architecture parameters (embeddings, projections, op weights)."""
         arch_ids = {id(p) for p in self.arch_parameters()}
         return [p for p in self.parameters() if id(p) not in arch_ids]
@@ -302,6 +308,7 @@ class DARTSSearchSpace(nn.Module):
 # ---------------------------------------------------------------------------
 # DARTSTrainer
 # ---------------------------------------------------------------------------
+
 
 class DARTSTrainer:
     """Bilevel DARTS trainer.
@@ -383,14 +390,14 @@ class DARTSTrainer:
 
     # ------------------------------------------------------------------
 
-    def derive_architecture(self) -> Dict[str, str]:
+    def derive_architecture(self) -> dict[str, str]:
         """Return the best operation for every edge across all cells.
 
         Returns:
             Dict mapping ``"cell{c}_edge{e}"`` to the operation name chosen
             by argmax of that edge's architecture weights.
         """
-        result: Dict[str, str] = {}
+        result: dict[str, str] = {}
         for c, cell in enumerate(self.model.cells):
             for e, edge in enumerate(cell.edges):
                 key = f"cell{c}_edge{e}"
@@ -402,6 +409,7 @@ class DARTSTrainer:
 # DiscretizedCell
 # ---------------------------------------------------------------------------
 
+
 class DiscretizedCell(nn.Module):
     """A fixed (non-mixed) cell derived from a searched :class:`Cell`.
 
@@ -409,7 +417,7 @@ class DiscretizedCell(nn.Module):
     cheaper and the architecture human-readable.
     """
 
-    def __init__(self, source_cell: Cell, derived_ops: Dict[str, str]) -> None:
+    def __init__(self, source_cell: Cell, derived_ops: dict[str, str]) -> None:
         """
         Args:
             source_cell:  the :class:`Cell` that was searched.
@@ -424,36 +432,38 @@ class DiscretizedCell(nn.Module):
         self._edge_map = source_cell._edge_map
 
         # Build fixed ops: one nn.Module per edge.
-        fixed_ops: List[nn.Module] = []
+        fixed_ops: list[nn.Module] = []
         for e, mixed_edge in enumerate(source_cell.edges):
             op_name = derived_ops.get(f"edge{e}", mixed_edge.get_best_op())
             # Retrieve the selected op's state dict and clone it.
             op_module = mixed_edge.operations[op_name]
             import copy
+
             fixed_ops.append(copy.deepcopy(op_module))
 
         self.fixed_edges = nn.ModuleList(fixed_ops)
 
         # Reuse the projection layer.
         import copy
+
         self.proj = copy.deepcopy(source_cell.proj)
 
-    def forward(self, inputs: List[Tensor]) -> Tensor:
+    def forward(self, inputs: list[Tensor]) -> Tensor:
         """Identical DAG traversal as :class:`Cell` but using fixed ops."""
-        assert len(inputs) == self.n_inputs
-        nodes: List[Tensor] = list(inputs)
+        assert len(inputs) == self.n_inputs  # noqa: S101
+        nodes: list[Tensor] = list(inputs)
 
         edge_idx = 0
         for dst in range(self.n_nodes):
             n_predecessors = self.n_inputs + dst
-            h: Optional[Tensor] = None
+            h: Tensor | None = None
             for src in range(n_predecessors):
                 contrib = self.fixed_edges[edge_idx](nodes[src])
                 h = contrib if h is None else h + contrib
                 edge_idx += 1
-            assert h is not None
+            assert h is not None  # noqa: S101
             nodes.append(h)
 
-        intermediate = nodes[self.n_inputs:]
+        intermediate = nodes[self.n_inputs :]
         cat = torch.cat(intermediate, dim=-1)
         return self.proj(cat)

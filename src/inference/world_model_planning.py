@@ -5,18 +5,16 @@ Implements a latent state model that predicts future states and rewards
 for model-based planning. All components use pure native PyTorch.
 """
 
-import math
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Sub-modules
 # ---------------------------------------------------------------------------
+
 
 class LatentEncoder(nn.Module):
     """Encodes a token sequence into a fixed-size latent vector.
@@ -51,10 +49,10 @@ class LatentEncoder(nn.Module):
         Returns:
             z: [B, d_latent]
         """
-        x = self.embedding(input_ids)          # [B, T, d_model]
-        x = self.transformer(x)                # [B, T, d_model]
-        x = x.mean(dim=1)                      # [B, d_model]
-        z = self.proj(x)                       # [B, d_latent]
+        x = self.embedding(input_ids)  # [B, T, d_model]
+        x = self.transformer(x)  # [B, T, d_model]
+        x = x.mean(dim=1)  # [B, d_model]
+        z = self.proj(x)  # [B, d_latent]
         return z
 
 
@@ -84,9 +82,9 @@ class LatentTransitionModel(nn.Module):
         Returns:
             z_next: [B, d_latent]
         """
-        a_emb = self.action_embed(action)      # [B, n_actions]
-        x = torch.cat([z, a_emb], dim=-1)     # [B, d_latent + n_actions]
-        z_next = self.mlp(x)                   # [B, d_latent]
+        a_emb = self.action_embed(action)  # [B, n_actions]
+        x = torch.cat([z, a_emb], dim=-1)  # [B, d_latent + n_actions]
+        z_next = self.mlp(x)  # [B, d_latent]
         return z_next
 
 
@@ -104,7 +102,7 @@ class RewardPredictor(nn.Module):
         Returns:
             reward: [B]
         """
-        return self.linear(z).squeeze(-1)      # [B]
+        return self.linear(z).squeeze(-1)  # [B]
 
 
 class LatentDecoder(nn.Module):
@@ -139,7 +137,7 @@ class LatentDecoder(nn.Module):
             logits: [B, seq_len, vocab_size]
         """
         B = z.shape[0]
-        out = self.mlp(z)                      # [B, vocab_size * seq_len]
+        out = self.mlp(z)  # [B, vocab_size * seq_len]
         logits = out.view(B, self.seq_len, self.vocab_size)
         return logits
 
@@ -147,6 +145,7 @@ class LatentDecoder(nn.Module):
 # ---------------------------------------------------------------------------
 # World Model
 # ---------------------------------------------------------------------------
+
 
 class WorldModel(nn.Module):
     """Combines encoder, transition model, reward predictor and decoder."""
@@ -173,7 +172,7 @@ class WorldModel(nn.Module):
         self,
         z: torch.Tensor,
         action: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             z:      [B, d_latent]
@@ -194,7 +193,7 @@ class WorldModel(nn.Module):
         self,
         z0: torch.Tensor,
         actions: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """H-step imagination rollout.
 
         Args:
@@ -206,24 +205,25 @@ class WorldModel(nn.Module):
         """
         B, H = actions.shape
         z_traj = [z0]
-        rewards_list: List[torch.Tensor] = []
+        rewards_list: list[torch.Tensor] = []
 
         z = z0
         for h in range(H):
-            a = actions[:, h]                  # [B]
+            a = actions[:, h]  # [B]
             z_next, r = self.predict_next(z, a)
             z_traj.append(z_next)
             rewards_list.append(r.unsqueeze(1))  # [B, 1]
             z = z_next
 
-        z_traj_tensor = torch.stack(z_traj, dim=1)          # [B, H+1, d_latent]
-        rewards_tensor = torch.cat(rewards_list, dim=1)     # [B, H]
+        z_traj_tensor = torch.stack(z_traj, dim=1)  # [B, H+1, d_latent]
+        rewards_tensor = torch.cat(rewards_list, dim=1)  # [B, H]
         return z_traj_tensor, rewards_tensor
 
 
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class WorldModelTrainer:
     """Training utilities for the WorldModel."""
@@ -240,8 +240,8 @@ class WorldModelTrainer:
         Returns:
             loss: scalar
         """
-        z = self.model.encode(input_ids)       # [B, d_latent]
-        logits = self.model.decode(z)          # [B, seq_len, vocab_size]
+        z = self.model.encode(input_ids)  # [B, d_latent]
+        logits = self.model.decode(z)  # [B, seq_len, vocab_size]
 
         # Align T and seq_len by truncating / padding the target
         T = input_ids.shape[1]
@@ -332,6 +332,7 @@ class WorldModelTrainer:
 # Planning Agent
 # ---------------------------------------------------------------------------
 
+
 class PlanningAgent:
     """Model-based planning agent using the WorldModel for look-ahead."""
 
@@ -396,38 +397,41 @@ class PlanningAgent:
         B, _ = z0.shape
         device = z0.device
         z = z0
-        chosen_actions: List[torch.Tensor] = []
+        chosen_actions: list[torch.Tensor] = []
 
         for _ in range(self.horizon):
             # Evaluate all actions for every batch element
             # Expand z: [B * n_actions, d_latent]
-            z_exp = z.unsqueeze(1).expand(B, self.n_actions, -1).reshape(
-                B * self.n_actions, -1
+            z_exp = z.unsqueeze(1).expand(B, self.n_actions, -1).reshape(B * self.n_actions, -1)
+            a_exp = (
+                torch.arange(self.n_actions, device=device)
+                .unsqueeze(0)
+                .expand(B, self.n_actions)
+                .reshape(B * self.n_actions)
             )
-            a_exp = torch.arange(self.n_actions, device=device).unsqueeze(0).expand(
-                B, self.n_actions
-            ).reshape(B * self.n_actions)
 
             z_next_exp, reward_exp = self.world_model.predict_next(z_exp, a_exp)
             # reward_exp: [B * n_actions]
             reward_matrix = reward_exp.view(B, self.n_actions)  # [B, n_actions]
-            best_a = reward_matrix.argmax(dim=1)                # [B]
+            best_a = reward_matrix.argmax(dim=1)  # [B]
 
-            chosen_actions.append(best_a.unsqueeze(1))         # [B, 1]
+            chosen_actions.append(best_a.unsqueeze(1))  # [B, 1]
 
             # Advance z using chosen action
             z, _ = self.world_model.predict_next(z, best_a)
 
-        return torch.cat(chosen_actions, dim=1)                 # [B, horizon]
+        return torch.cat(chosen_actions, dim=1)  # [B, horizon]
 
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class WorldModelConfig:
     """Default hyperparameters for the world model pipeline."""
+
     d_model: int = 32
     d_latent: int = 16
     vocab_size: int = 64

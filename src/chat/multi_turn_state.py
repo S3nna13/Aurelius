@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
-
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 _VALID_ROLES = frozenset({"user", "assistant", "system", "tool"})
 _VALID_KINDS = frozenset({"message", "tool_call", "tool_result", "system"})
@@ -33,23 +33,19 @@ class ConversationTurn:
     role: str
     content: str
     kind: str = "message"
-    tool_name: Optional[str] = None
-    tool_call_id: Optional[str] = None
+    tool_name: str | None = None
+    tool_call_id: str | None = None
     timestamp: float = 0.0
 
     def __post_init__(self) -> None:
         if not isinstance(self.turn_id, int):
             raise TypeError("turn_id must be int")
         if not isinstance(self.role, str) or self.role not in _VALID_ROLES:
-            raise ValueError(
-                f"role must be one of {sorted(_VALID_ROLES)}, got {self.role!r}"
-            )
+            raise ValueError(f"role must be one of {sorted(_VALID_ROLES)}, got {self.role!r}")
         if not isinstance(self.content, str):
             raise TypeError("content must be str")
         if self.kind not in _VALID_KINDS:
-            raise ValueError(
-                f"kind must be one of {sorted(_VALID_KINDS)}, got {self.kind!r}"
-            )
+            raise ValueError(f"kind must be one of {sorted(_VALID_KINDS)}, got {self.kind!r}")
         if self.tool_name is not None and not isinstance(self.tool_name, str):
             raise TypeError("tool_name must be str or None")
         if self.tool_call_id is not None and not isinstance(self.tool_call_id, str):
@@ -141,8 +137,8 @@ class ConversationState:
         role: str,
         content: str,
         kind: str,
-        tool_name: Optional[str] = None,
-        tool_call_id: Optional[str] = None,
+        tool_name: str | None = None,
+        tool_call_id: str | None = None,
     ) -> ConversationTurn:
         turn = ConversationTurn(
             turn_id=self._next_id,
@@ -165,18 +161,14 @@ class ConversationState:
         role: str,
         content: str,
         kind: str = "message",
-        tool_name: Optional[str] = None,
-        tool_call_id: Optional[str] = None,
+        tool_name: str | None = None,
+        tool_call_id: str | None = None,
     ) -> ConversationTurn:
         """Append a message turn. Invalid role/kind raises."""
         if role not in _VALID_ROLES:
-            raise ValueError(
-                f"role must be one of {sorted(_VALID_ROLES)}, got {role!r}"
-            )
+            raise ValueError(f"role must be one of {sorted(_VALID_ROLES)}, got {role!r}")
         if kind not in _VALID_KINDS:
-            raise ValueError(
-                f"kind must be one of {sorted(_VALID_KINDS)}, got {kind!r}"
-            )
+            raise ValueError(f"kind must be one of {sorted(_VALID_KINDS)}, got {kind!r}")
         if not isinstance(content, str):
             raise TypeError("content must be str")
         return self._append_turn(
@@ -187,9 +179,7 @@ class ConversationState:
             tool_call_id=tool_call_id,
         )
 
-    def append_tool_call(
-        self, name: str, arguments: dict, call_id: str
-    ) -> ConversationTurn:
+    def append_tool_call(self, name: str, arguments: dict, call_id: str) -> ConversationTurn:
         """Record an assistant-issued tool call."""
         if not isinstance(name, str) or not name:
             raise ValueError("tool name must be a non-empty str")
@@ -217,7 +207,7 @@ class ConversationState:
             raise ValueError("call_id must be a non-empty str")
         if not isinstance(result, str):
             raise TypeError("result must be str")
-        match: Optional[ConversationTurn] = None
+        match: ConversationTurn | None = None
         for t in self._turns:
             if t.kind == "tool_call" and t.tool_call_id == call_id:
                 match = t
@@ -311,8 +301,7 @@ class ConversationState:
                     "compactor supplied but context_compaction module not importable"
                 ) from e
             comp_turns = [
-                _CompTurn(role=t.role, content=t.content, kind=t.kind)
-                for t in self._turns
+                _CompTurn(role=t.role, content=t.content, kind=t.kind) for t in self._turns
             ]
             new_turns = self.compactor.compact(comp_turns)
             # Re-seed internal turn list preserving role/kind/content; assign

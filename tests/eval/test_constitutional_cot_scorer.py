@@ -1,16 +1,17 @@
 """Tests for src/eval/constitutional_cot_scorer.py"""
+
 import pytest
 import torch
 import torch.nn as nn
 
 from src.eval.constitutional_cot_scorer import (
-    ConstitutionalPrinciple,
-    PrincipleScore,
     ConstitutionalCotResult,
-    HeuristicViolationDetector,
     ConstitutionalCoTScorer,
-    make_default_principles,
+    ConstitutionalPrinciple,
+    HeuristicViolationDetector,
+    PrincipleScore,
     aggregate_constitutional_scores,
+    make_default_principles,
 )
 
 VOCAB_SIZE = 128
@@ -67,6 +68,7 @@ def scorer(model, principles):
 # ConstitutionalPrinciple
 # ---------------------------------------------------------------------------
 
+
 def test_principle_creates_correctly():
     p = ConstitutionalPrinciple(
         name="test",
@@ -84,6 +86,7 @@ def test_principle_creates_correctly():
 # make_default_principles
 # ---------------------------------------------------------------------------
 
+
 def test_make_default_principles_returns_five():
     ps = make_default_principles()
     assert len(ps) == 5
@@ -99,6 +102,7 @@ def test_default_principles_have_names():
 # ---------------------------------------------------------------------------
 # HeuristicViolationDetector
 # ---------------------------------------------------------------------------
+
 
 def test_detect_returns_dict_with_all_principle_names(heuristic, principles):
     result = heuristic.detect("A clean, safe response.")
@@ -127,6 +131,7 @@ def test_any_violation_flagged(heuristic):
 # ---------------------------------------------------------------------------
 # ConstitutionalCoTScorer
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_instantiates(scorer):
     assert scorer is not None
@@ -190,6 +195,7 @@ def test_batch_score_each_is_result(scorer):
 # ---------------------------------------------------------------------------
 # aggregate_constitutional_scores
 # ---------------------------------------------------------------------------
+
 
 def _make_result(safe: bool, safety_score: float, principles_list):
     ps_list = [

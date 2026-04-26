@@ -1,11 +1,10 @@
 """RLVR Trainer: DeepSeek-R1 / OpenAI o1-style RL from Verifiable Rewards."""
+
 from __future__ import annotations
 
-import copy
-import math
 import re
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -16,16 +15,17 @@ from torch import Tensor
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RLVRConfig:
     lr: float = 1e-5
     kl_coef: float = 0.04
-    n_rollouts: int = 4           # samples per prompt
+    n_rollouts: int = 4  # samples per prompt
     max_new_tokens: int = 16
     temperature: float = 1.0
-    clip_eps: float = 0.2         # PPO clip epsilon
-    n_ppo_steps: int = 2          # gradient steps per batch
-    format_reward: float = 0.1    # reward for correct format
+    clip_eps: float = 0.2  # PPO clip epsilon
+    n_ppo_steps: int = 2  # gradient steps per batch
+    format_reward: float = 0.1  # reward for correct format
     correctness_reward: float = 1.0
     max_seq_len: int = 64
 
@@ -34,12 +34,14 @@ class RLVRConfig:
 # Verifiable Problem
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class VerifiableProblem:
     """A problem with a verifiable answer."""
-    prompt_ids: Tensor           # (T_p,) tokenized prompt
-    ground_truth: str            # expected answer string (for verification)
-    problem_type: str = "math"   # "math", "code", "format"
+
+    prompt_ids: Tensor  # (T_p,) tokenized prompt
+    ground_truth: str  # expected answer string (for verification)
+    problem_type: str = "math"  # "math", "code", "format"
 
 
 # ---------------------------------------------------------------------------
@@ -54,12 +56,13 @@ VerifierFn = Callable[[str, str], float]
 # Verifier functions
 # ---------------------------------------------------------------------------
 
+
 def math_verifier(generated: str, ground_truth: str) -> float:
     """Extract last number from generated, compare to ground_truth.
 
     Returns 1.0 if match, 0.0 if not. Handles int/float comparison.
     """
-    numbers = re.findall(r'-?\d+\.?\d*', generated)
+    numbers = re.findall(r"-?\d+\.?\d*", generated)
     if not numbers:
         return 0.0
     try:
@@ -99,6 +102,7 @@ def format_verifier(generated: str, ground_truth: str) -> float:
 # ---------------------------------------------------------------------------
 # Generation helpers
 # ---------------------------------------------------------------------------
+
 
 def _generate_single(
     model: nn.Module,
@@ -145,6 +149,7 @@ def _generate_single(
 # generate_rollouts
 # ---------------------------------------------------------------------------
 
+
 def generate_rollouts(
     model: nn.Module,
     problems: list[VerifiableProblem],
@@ -169,18 +174,21 @@ def generate_rollouts(
             )
             decoded = tokenizer_decode(response_ids)
             reward = verifier(decoded, problem.ground_truth)
-            rollouts.append({
-                "prompt_ids": problem.prompt_ids,
-                "response_ids": response_ids,
-                "reward": float(reward),
-                "decoded_response": decoded,
-            })
+            rollouts.append(
+                {
+                    "prompt_ids": problem.prompt_ids,
+                    "response_ids": response_ids,
+                    "reward": float(reward),
+                    "decoded_response": decoded,
+                }
+            )
     return rollouts
 
 
 # ---------------------------------------------------------------------------
 # Log-prob recomputation
 # ---------------------------------------------------------------------------
+
 
 def _recompute_log_probs(
     model: nn.Module,
@@ -208,7 +216,7 @@ def _recompute_log_probs(
     T_p = p.shape[1]
     T_r = len(response_ids)
     # response positions start at T_p - 1 in the shifted logits
-    comp_lp = log_probs_all[:, T_p - 1: T_p - 1 + T_r, :]  # (1, T_r, V)
+    comp_lp = log_probs_all[:, T_p - 1 : T_p - 1 + T_r, :]  # (1, T_r, V)
     token_lp = comp_lp.squeeze(0).gather(1, resp_tensor.unsqueeze(1)).squeeze(1)  # (T_r,)
     return token_lp
 
@@ -216,6 +224,7 @@ def _recompute_log_probs(
 # ---------------------------------------------------------------------------
 # RLVR loss
 # ---------------------------------------------------------------------------
+
 
 def rlvr_loss(
     model: nn.Module,
@@ -294,6 +303,7 @@ def rlvr_loss(
 # RLVRTrainer
 # ---------------------------------------------------------------------------
 
+
 class RLVRTrainer:
     """Training orchestrator for RLVR (DeepSeek-R1 / o1 style)."""
 
@@ -311,9 +321,9 @@ class RLVRTrainer:
         self.verifier = verifier
 
         if tokenizer_decode is None:
-            self.tokenizer_decode: Callable[[list[int]], str] = (
-                lambda ids: bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
-            )
+            self.tokenizer_decode: Callable[[list[int]], str] = lambda ids: bytes(
+                [i % 256 for i in ids]
+            ).decode("utf-8", errors="replace")
         else:
             self.tokenizer_decode = tokenizer_decode
 

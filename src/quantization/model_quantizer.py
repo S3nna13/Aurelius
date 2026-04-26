@@ -1,4 +1,5 @@
 """Model quantization utilities for Aurelius."""
+
 from __future__ import annotations
 
 import torch

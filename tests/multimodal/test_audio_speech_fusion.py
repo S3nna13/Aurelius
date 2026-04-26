@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.multimodal.audio_speech_fusion import (
-    SpeechFusionConfig,
-    AudioTextAligner,
-    SpeechFusionEncoder,
     SPEECH_FUSION_REGISTRY,
+    AudioTextAligner,
+    SpeechFusionConfig,
+    SpeechFusionEncoder,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny test config (audio_d=32, text_d=64, fused=64, n_heads=4, n_fusion_layers=2)
@@ -30,6 +28,7 @@ TINY_CFG = SpeechFusionConfig(
 # ---------------------------------------------------------------------------
 # SpeechFusionConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults_audio_d_model():
     cfg = SpeechFusionConfig()
@@ -65,6 +64,7 @@ def test_config_defaults_dropout():
 # SpeechFusionEncoder.from_config
 # ---------------------------------------------------------------------------
 
+
 def test_speech_fusion_encoder_from_config_builds():
     model = SpeechFusionEncoder.from_config(TINY_CFG)
     assert isinstance(model, SpeechFusionEncoder)
@@ -89,6 +89,7 @@ def test_speech_fusion_encoder_output_proj_shape():
 # ---------------------------------------------------------------------------
 # SpeechFusionEncoder forward shape and correctness
 # ---------------------------------------------------------------------------
+
 
 def test_speech_fusion_encoder_forward_output_shape():
     torch.manual_seed(42)
@@ -147,6 +148,7 @@ def test_speech_fusion_encoder_forward_no_nan_batch_2():
 # Edge case: T_a=1, T_t=1
 # ---------------------------------------------------------------------------
 
+
 def test_speech_fusion_encoder_edge_case_len_1():
     """Edge case: T_a=1, T_t=1 — must not crash."""
     torch.manual_seed(42)
@@ -193,6 +195,7 @@ def test_audio_text_aligner_no_nan():
 # Registry checks
 # ---------------------------------------------------------------------------
 
+
 def test_speech_fusion_registry_contains_audio_text_aligner():
     assert "audio_text_aligner" in SPEECH_FUSION_REGISTRY
 
@@ -202,11 +205,13 @@ def test_speech_fusion_registry_maps_to_encoder_class():
 
 
 def test_modality_projector_registry_contains_speech_fusion_encoder():
-    """After importing audio_speech_fusion, MODALITY_PROJECTOR_REGISTRY must have 'SpeechFusionEncoder'."""
+    """After importing audio_speech_fusion, MODALITY_PROJECTOR_REGISTRY must have 'SpeechFusionEncoder'."""  # noqa: E501
     from src.multimodal.multimodal_registry import MODALITY_PROJECTOR_REGISTRY
+
     assert "SpeechFusionEncoder" in MODALITY_PROJECTOR_REGISTRY
 
 
 def test_modality_projector_registry_speech_fusion_is_class():
     from src.multimodal.multimodal_registry import MODALITY_PROJECTOR_REGISTRY
+
     assert MODALITY_PROJECTOR_REGISTRY["SpeechFusionEncoder"] is SpeechFusionEncoder

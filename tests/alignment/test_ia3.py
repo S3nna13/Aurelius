@@ -1,9 +1,10 @@
 """Tests for IA³ (Infused Adapter by Inhibiting and Amplifying Inner Activations)."""
+
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.ia3 import (
     IA3Config,
@@ -19,7 +20,6 @@ from src.alignment.ia3 import (
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared tiny model fixture
@@ -55,6 +55,7 @@ def injected(tiny_model):
 # 1. IA3Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ia3_config_defaults():
     cfg = IA3Config()
     assert cfg.target_modules == ["k_proj", "v_proj", "down_proj"]
@@ -66,6 +67,7 @@ def test_ia3_config_defaults():
 # 2. IA3Layer initialised to ones
 # ---------------------------------------------------------------------------
 
+
 def test_ia3_layer_init_ones():
     layer = IA3Layer(64)
     assert layer.scale.shape == (64,)
@@ -75,6 +77,7 @@ def test_ia3_layer_init_ones():
 # ---------------------------------------------------------------------------
 # 3. IA3Layer forward preserves shape
 # ---------------------------------------------------------------------------
+
 
 def test_ia3_layer_forward_shape():
     layer = IA3Layer(64)
@@ -86,6 +89,7 @@ def test_ia3_layer_forward_shape():
 # ---------------------------------------------------------------------------
 # 4. IA3Layer forward — known scale vector scales output correctly
 # ---------------------------------------------------------------------------
+
 
 def test_ia3_layer_forward_scales():
     d = 8
@@ -104,6 +108,7 @@ def test_ia3_layer_forward_scales():
 # 5. IA3ScaledLinear forward preserves shape
 # ---------------------------------------------------------------------------
 
+
 def test_ia3_scaled_linear_shape():
     linear = nn.Linear(128, 64, bias=False)
     ia3_layer = IA3Layer(64)
@@ -118,6 +123,7 @@ def test_ia3_scaled_linear_shape():
 # 6. inject_ia3_layers returns dict with n_layers entries
 # ---------------------------------------------------------------------------
 
+
 def test_inject_ia3_layers_count(tiny_model):
     cfg = IA3Config()
     ia3_layers = inject_ia3_layers(tiny_model, cfg)
@@ -127,6 +133,7 @@ def test_inject_ia3_layers_count(tiny_model):
 # ---------------------------------------------------------------------------
 # 7. inject_ia3_layers freezes base model params
 # ---------------------------------------------------------------------------
+
 
 def test_inject_ia3_layers_freezes_base(tiny_model):
     cfg = IA3Config()
@@ -144,6 +151,7 @@ def test_inject_ia3_layers_freezes_base(tiny_model):
 # 8. inject replaces down_proj with IA3ScaledLinear
 # ---------------------------------------------------------------------------
 
+
 def test_inject_ia3_layers_replaces_down_proj(tiny_model):
     cfg = IA3Config()
     inject_ia3_layers(tiny_model, cfg)
@@ -154,6 +162,7 @@ def test_inject_ia3_layers_replaces_down_proj(tiny_model):
 # ---------------------------------------------------------------------------
 # 9. count_trainable_vs_total
 # ---------------------------------------------------------------------------
+
 
 def test_count_trainable_vs_total(tiny_model):
     cfg = IA3Config()
@@ -167,6 +176,7 @@ def test_count_trainable_vs_total(tiny_model):
 # 10. get_ia3_parameters length
 # ---------------------------------------------------------------------------
 
+
 def test_get_ia3_parameters_length(injected):
     _, ia3_layers = injected
     params = get_ia3_parameters(ia3_layers)
@@ -176,6 +186,7 @@ def test_get_ia3_parameters_length(injected):
 # ---------------------------------------------------------------------------
 # 11. IA3Trainer.train_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_ia3_trainer_train_step_keys(injected):
     model, ia3_layers = injected
@@ -194,6 +205,7 @@ def test_ia3_trainer_train_step_keys(injected):
 # 12. IA3Trainer loss is positive
 # ---------------------------------------------------------------------------
 
+
 def test_ia3_trainer_loss_positive(injected):
     model, ia3_layers = injected
     optimizer = torch.optim.Adam(get_ia3_parameters(ia3_layers), lr=1e-3)
@@ -209,6 +221,7 @@ def test_ia3_trainer_loss_positive(injected):
 # ---------------------------------------------------------------------------
 # 13. save and load ia3 weights
 # ---------------------------------------------------------------------------
+
 
 def test_save_load_ia3_weights(injected, tmp_path):
     _, ia3_layers = injected
@@ -238,6 +251,7 @@ def test_save_load_ia3_weights(injected, tmp_path):
 # 14. merge_into_model doesn't crash
 # ---------------------------------------------------------------------------
 
+
 def test_merge_into_model_runs(injected):
     model, ia3_layers = injected
     optimizer = torch.optim.Adam(get_ia3_parameters(ia3_layers), lr=1e-3)
@@ -248,6 +262,7 @@ def test_merge_into_model_runs(injected):
 # ---------------------------------------------------------------------------
 # 15. IA3 parameter efficiency
 # ---------------------------------------------------------------------------
+
 
 def test_ia3_parameter_efficiency(injected):
     model, ia3_layers = injected

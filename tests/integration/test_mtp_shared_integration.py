@@ -6,18 +6,19 @@ Verifies:
   3. Shared weight verified on registry-constructed instance.
   4. Existing registry entries / public symbols are untouched (regression guard).
 """
+
 from __future__ import annotations
 
 import torch
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # 1. Registry membership
 # ---------------------------------------------------------------------------
 
+
 def test_mtp_shared_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
+
     assert "mtp_shared" in MODEL_COMPONENT_REGISTRY, (
         "'mtp_shared' not found in MODEL_COMPONENT_REGISTRY"
     )
@@ -26,6 +27,7 @@ def test_mtp_shared_in_registry():
 # ---------------------------------------------------------------------------
 # 2. Construct from registry + forward pass
 # ---------------------------------------------------------------------------
+
 
 def test_registry_forward_shape():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -40,14 +42,13 @@ def test_registry_forward_shape():
     assert isinstance(out, list), "forward() should return a list"
     assert len(out) == 3, f"Expected 3 tensors, got {len(out)}"
     for i, logits in enumerate(out):
-        assert logits.shape == (2, 8, 256), (
-            f"Head {i}: expected (2, 8, 256), got {logits.shape}"
-        )
+        assert logits.shape == (2, 8, 256), f"Head {i}: expected (2, 8, 256), got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 3. Shared weight via registry-constructed instance
 # ---------------------------------------------------------------------------
+
 
 def test_registry_shared_weight():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -62,9 +63,7 @@ def test_registry_shared_weight():
 
     # Per-head input projections must NOT share storage with each other.
     input_ptrs = [p.weight.data_ptr() for p in model.input_projs]
-    assert len(set(input_ptrs)) == 3, (
-        "input_projs should each have a distinct weight tensor"
-    )
+    assert len(set(input_ptrs)) == 3, "input_projs should each have a distinct weight tensor"
 
     # shared_proj weight pointer is stable (not recreated per call)
     _ = model(torch.randn(1, 4, 64))
@@ -74,6 +73,7 @@ def test_registry_shared_weight():
 # ---------------------------------------------------------------------------
 # 4. Existing registry entries / public symbols (regression guard)
 # ---------------------------------------------------------------------------
+
 
 def test_existing_public_symbols_intact():
     import src.model as m

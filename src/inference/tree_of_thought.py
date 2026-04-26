@@ -21,16 +21,16 @@ Search modes
 Both modes return the full :class:`ToTTree` and the best (highest-value)
 leaf node found.
 """
+
 from __future__ import annotations
 
-from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ToTConfig:
@@ -69,6 +69,7 @@ class ToTConfig:
 # Tree data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ThoughtNode:
     """A single node in the Tree-of-Thought search tree.
@@ -94,9 +95,9 @@ class ThoughtNode:
     state: str
     depth: int
     value: float
-    parent_id: Optional[int]
+    parent_id: int | None
     node_id: int
-    children_ids: List[int] = field(default_factory=list)
+    children_ids: list[int] = field(default_factory=list)
     is_terminal: bool = False
 
 
@@ -108,7 +109,7 @@ class ToTTree:
     """
 
     def __init__(self) -> None:
-        self._nodes: Dict[int, ThoughtNode] = {}
+        self._nodes: dict[int, ThoughtNode] = {}
         self._next_id: int = 0
 
     # ------------------------------------------------------------------
@@ -120,7 +121,7 @@ class ToTTree:
         state: str,
         depth: int,
         value: float,
-        parent_id: Optional[int],
+        parent_id: int | None,
     ) -> int:
         """Insert a new node and return its ``node_id``.
 
@@ -171,7 +172,7 @@ class ToTTree:
         """
         return self._nodes[node_id]
 
-    def children(self, node_id: int) -> List[ThoughtNode]:
+    def children(self, node_id: int) -> list[ThoughtNode]:
         """Return all direct children of *node_id*.
 
         Parameters
@@ -187,7 +188,7 @@ class ToTTree:
         parent = self._nodes[node_id]
         return [self._nodes[cid] for cid in parent.children_ids]
 
-    def path_to_root(self, node_id: int) -> List[ThoughtNode]:
+    def path_to_root(self, node_id: int) -> list[ThoughtNode]:
         """Return the path from the root down to *node_id* (inclusive).
 
         Parameters
@@ -200,8 +201,8 @@ class ToTTree:
         list of ThoughtNode
             Nodes ordered from root (index 0) to *node_id* (last index).
         """
-        path: List[ThoughtNode] = []
-        current_id: Optional[int] = node_id
+        path: list[ThoughtNode] = []
+        current_id: int | None = node_id
         while current_id is not None:
             node = self._nodes[current_id]
             path.append(node)
@@ -242,6 +243,7 @@ class ToTTree:
 # Decoder
 # ---------------------------------------------------------------------------
 
+
 class TreeOfThoughtDecoder:
     """BFS / DFS search over a tree of intermediate reasoning steps.
 
@@ -265,8 +267,8 @@ class TreeOfThoughtDecoder:
     def generate_thoughts(
         self,
         state: str,
-        propose_fn: Callable[[str], List[str]],
-    ) -> List[str]:
+        propose_fn: Callable[[str], list[str]],
+    ) -> list[str]:
         """Generate up to *n_candidates* candidate next thoughts.
 
         Parameters
@@ -314,7 +316,7 @@ class TreeOfThoughtDecoder:
     def bfs(
         self,
         initial_state: str,
-        propose_fn: Callable[[str], List[str]],
+        propose_fn: Callable[[str], list[str]],
         value_fn: Callable[[str], float],
         terminal_fn: Callable[[str], bool],
     ) -> ToTTree:
@@ -361,13 +363,13 @@ class TreeOfThoughtDecoder:
         if root.is_terminal:
             return tree
 
-        frontier: List[int] = [root_id]
+        frontier: list[int] = [root_id]
 
         for _depth in range(self.config.max_depth):
             if not frontier:
                 break
 
-            next_candidates: List[Tuple[int, float]] = []  # (node_id, value)
+            next_candidates: list[tuple[int, float]] = []  # (node_id, value)
 
             for parent_id in frontier:
                 parent_node = tree.get_node(parent_id)
@@ -404,11 +406,11 @@ class TreeOfThoughtDecoder:
     def dfs(
         self,
         initial_state: str,
-        propose_fn: Callable[[str], List[str]],
+        propose_fn: Callable[[str], list[str]],
         value_fn: Callable[[str], float],
         terminal_fn: Callable[[str], bool],
-        path: Optional[List[int]] = None,
-        tree: Optional[ToTTree] = None,
+        path: list[int] | None = None,
+        tree: ToTTree | None = None,
     ) -> ToTTree:
         """Depth-first search with value-threshold pruning.
 
@@ -455,7 +457,7 @@ class TreeOfThoughtDecoder:
             if root.is_terminal:
                 return tree
 
-        assert path is not None  # always set after first call
+        assert path is not None  # always set after first call  # noqa: S101
 
         current_id = path[-1]
         current_node = tree.get_node(current_id)
@@ -466,7 +468,7 @@ class TreeOfThoughtDecoder:
         thoughts = self.generate_thoughts(current_node.state, propose_fn)
 
         # Build children and sort by value descending
-        child_entries: List[Tuple[int, float]] = []
+        child_entries: list[tuple[int, float]] = []
         for thought in thoughts:
             new_state = current_node.state + " " + thought
             val = self.evaluate_state(new_state, value_fn)
@@ -508,10 +510,10 @@ class TreeOfThoughtDecoder:
     def search(
         self,
         initial_state: str,
-        propose_fn: Callable[[str], List[str]],
+        propose_fn: Callable[[str], list[str]],
         value_fn: Callable[[str], float],
-        terminal_fn: Optional[Callable[[str], bool]] = None,
-    ) -> Tuple["ToTTree", "ThoughtNode"]:
+        terminal_fn: Callable[[str], bool] | None = None,
+    ) -> tuple[ToTTree, ThoughtNode]:
         """Run ToT search and return the tree plus the best node found.
 
         Dispatches to :meth:`bfs` or :meth:`dfs` according to
@@ -549,8 +551,7 @@ class TreeOfThoughtDecoder:
             tree = self.dfs(initial_state, propose_fn, value_fn, terminal_fn)
         else:
             raise ValueError(
-                f"Unknown search_mode {self.config.search_mode!r}; "
-                "expected 'bfs' or 'dfs'."
+                f"Unknown search_mode {self.config.search_mode!r}; expected 'bfs' or 'dfs'."
             )
 
         best = tree.best_leaf()

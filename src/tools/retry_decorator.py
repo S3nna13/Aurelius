@@ -1,9 +1,11 @@
 """Simple retry decorator with configurable backoff strategy."""
+
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -34,10 +36,12 @@ def retry(config: RetryConfig | None = None) -> Callable[[F], F]:
                     elif cfg.backoff == "linear":
                         delay = cfg.base_delay * (attempt + 1)
                     else:
-                        delay = min(cfg.base_delay * (2 ** attempt), cfg.max_delay)
+                        delay = min(cfg.base_delay * (2**attempt), cfg.max_delay)
                     time.sleep(delay)
             raise RuntimeError("unreachable") from last_exc
+
         return wrapper  # type: ignore
+
     return decorator
 
 

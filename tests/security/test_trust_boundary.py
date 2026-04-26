@@ -1,7 +1,6 @@
 """Tests for trust boundary validator."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.security.trust_boundary import TrustBoundary, TrustBoundaryValidator
 
@@ -9,9 +8,9 @@ from src.security.trust_boundary import TrustBoundary, TrustBoundaryValidator
 class TestTrustBoundaryValidator:
     def test_allows_authorized_caller(self):
         tbv = TrustBoundaryValidator()
-        tbv.register(TrustBoundary(
-            name="mcp", allowed_caller_prefixes=["tool:"], allowed_methods=["call"]
-        ))
+        tbv.register(
+            TrustBoundary(name="mcp", allowed_caller_prefixes=["tool:"], allowed_methods=["call"])
+        )
         ok, _ = tbv.check("mcp", "tool:retriever", "call")
         assert ok is True
 
@@ -23,17 +22,17 @@ class TestTrustBoundaryValidator:
 
     def test_rejects_unauthorized_caller(self):
         tbv = TrustBoundaryValidator()
-        tbv.register(TrustBoundary(
-            name="mcp", allowed_caller_prefixes=["tool:"], allowed_methods=["call"]
-        ))
+        tbv.register(
+            TrustBoundary(name="mcp", allowed_caller_prefixes=["tool:"], allowed_methods=["call"])
+        )
         ok, _ = tbv.check("mcp", "agent:bad", "call")
         assert ok is False
 
     def test_rejects_unauthorized_method(self):
         tbv = TrustBoundaryValidator()
-        tbv.register(TrustBoundary(
-            name="mcp", allowed_caller_prefixes=["tool:"], allowed_methods=["call"]
-        ))
+        tbv.register(
+            TrustBoundary(name="mcp", allowed_caller_prefixes=["tool:"], allowed_methods=["call"])
+        )
         ok, _ = tbv.check("mcp", "tool:retriever", "exec")
         assert ok is False
 

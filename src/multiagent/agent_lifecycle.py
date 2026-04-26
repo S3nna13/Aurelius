@@ -1,13 +1,14 @@
 """Manages agent lifecycle: spawn, pause, terminate."""
+
 from __future__ import annotations
 
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     INITIALIZING = "initializing"
     RUNNING = "running"
     PAUSED = "paused"
@@ -31,7 +32,8 @@ class AgentLifecycleManager:
 
     def spawn(self, name: str, metadata: dict | None = None) -> AgentRecord:
         active = [
-            r for r in self._agents.values()
+            r
+            for r in self._agents.values()
             if r.status not in (AgentStatus.TERMINATED, AgentStatus.CRASHED)
         ]
         if len(active) >= self.max_agents:
@@ -102,7 +104,8 @@ class AgentLifecycleManager:
 
     def active_count(self) -> int:
         return sum(
-            1 for r in self._agents.values()
+            1
+            for r in self._agents.values()
             if r.status in (AgentStatus.RUNNING, AgentStatus.PAUSED)
         )
 

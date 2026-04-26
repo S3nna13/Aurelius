@@ -15,10 +15,12 @@ class TestReportGenerator:
 
     def test_add_findings_bulk(self):
         rg = ReportGenerator()
-        rg.add_findings([
-            FindingEntry(title="XSS", severity="MEDIUM"),
-            FindingEntry(title="CSRF", severity="LOW"),
-        ])
+        rg.add_findings(
+            [
+                FindingEntry(title="XSS", severity="MEDIUM"),
+                FindingEntry(title="CSRF", severity="LOW"),
+            ]
+        )
         assert rg.summary_stats()["MEDIUM"] == 1
         assert rg.summary_stats()["LOW"] == 1
 

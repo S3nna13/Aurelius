@@ -7,16 +7,17 @@ pairs based on safety, honesty, helpfulness, and coherence criteria.
 Distinct from constitutional.py (self-critique / revision loop) and
 constitutional_scoring.py (rule-based scoring utilities).
 """
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ConstitutionalPrinciple:
@@ -34,8 +35,8 @@ class FilterScore:
     """Scoring result for one principle applied to one sample."""
 
     principle_name: str
-    score: float          # in [0, 1]
-    passed: bool          # score >= threshold (default 0.5)
+    score: float  # in [0, 1]
+    passed: bool  # score >= threshold (default 0.5)
     critique: str = ""
 
 
@@ -59,7 +60,7 @@ SAFETY_PRINCIPLES: list[ConstitutionalPrinciple] = [
     ),
     ConstitutionalPrinciple(
         name="honesty",
-        description="The response must not be deceptive or present falsehoods with unwarranted certainty.",
+        description="The response must not be deceptive or present falsehoods with unwarranted certainty.",  # noqa: E501
         critique_prompt=(
             "Is the following response honest? Does it avoid deception and acknowledge "
             "uncertainty where appropriate?"
@@ -104,16 +105,39 @@ SAFETY_PRINCIPLES: list[ConstitutionalPrinciple] = [
 # ---------------------------------------------------------------------------
 
 # Keywords that suggest harmful content
-_HARM_KEYWORDS: frozenset[str] = frozenset([
-    "harm", "danger", "dangerous", "illegal", "kill", "weapon", "murder",
-    "suicide", "bomb", "explosive", "poison", "attack", "terrorist",
-])
+_HARM_KEYWORDS: frozenset[str] = frozenset(
+    [
+        "harm",
+        "danger",
+        "dangerous",
+        "illegal",
+        "kill",
+        "weapon",
+        "murder",
+        "suicide",
+        "bomb",
+        "explosive",
+        "poison",
+        "attack",
+        "terrorist",
+    ]
+)
 
 # Epistemic uncertainty markers (honest hedging)
-_UNCERTAINTY_MARKERS: frozenset[str] = frozenset([
-    "i think", "probably", "maybe", "i'm not sure", "i am not sure",
-    "i believe", "it seems", "might be", "could be", "not certain",
-])
+_UNCERTAINTY_MARKERS: frozenset[str] = frozenset(
+    [
+        "i think",
+        "probably",
+        "maybe",
+        "i'm not sure",
+        "i am not sure",
+        "i believe",
+        "it seems",
+        "might be",
+        "could be",
+        "not certain",
+    ]
+)
 
 
 def score_text_heuristic(
@@ -132,9 +156,7 @@ def score_text_heuristic(
         hits = sum(1 for kw in _HARM_KEYWORDS if kw in lower)
         # Each hit reduces score by 0.2, floor at 0.0
         score = max(0.0, 1.0 - hits * 0.2)
-        critique = (
-            f"Found {hits} harmful keyword(s) in text." if hits else ""
-        )
+        critique = f"Found {hits} harmful keyword(s) in text." if hits else ""
 
     elif name == "honesty":
         # Penalise strong, unqualified assertions on uncertain claims.
@@ -172,10 +194,7 @@ def score_text_heuristic(
     elif name == "coherence":
         # Check for repeated consecutive sentences
         sentences = [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
-        repeated = any(
-            sentences[i] == sentences[i + 1]
-            for i in range(len(sentences) - 1)
-        )
+        repeated = any(sentences[i] == sentences[i + 1] for i in range(len(sentences) - 1))
         # Check reasonable punctuation (ends with . ! ? or is very short)
         has_punctuation = bool(re.search(r"[.!?]", text))
         if repeated:
@@ -204,6 +223,7 @@ def score_text_heuristic(
 # ---------------------------------------------------------------------------
 # Model-based scorer
 # ---------------------------------------------------------------------------
+
 
 class ModelBasedScorer:
     """Use an Aurelius model to evaluate and revise responses.
@@ -250,9 +270,7 @@ class ModelBasedScorer:
         import torch
 
         eval_text = (
-            f"{principle.critique_prompt}\n"
-            f"Response: {response}\n"
-            f"Is this good? Answer yes or no:"
+            f"{principle.critique_prompt}\nResponse: {response}\nIs this good? Answer yes or no:"
         )
         token_ids = self.encode(eval_text)
         input_ids = torch.tensor([token_ids], dtype=torch.long)
@@ -268,6 +286,7 @@ class ModelBasedScorer:
 
         # Softmax over just the two tokens
         import math
+
         yes_exp = math.exp(float(yes_logit))
         no_exp = math.exp(float(no_logit))
         p_yes = yes_exp / (yes_exp + no_exp)
@@ -309,7 +328,7 @@ class ModelBasedScorer:
                 if next_token_id in (0, 1, 2):
                     break
 
-        new_token_ids = generated_ids[len(token_ids):]
+        new_token_ids = generated_ids[len(token_ids) :]
         revised = self.decode(new_token_ids)
         # Fallback: if decoding yields empty string, return the prompt echo
         return revised if revised.strip() else self.decode(generated_ids)
@@ -318,6 +337,7 @@ class ModelBasedScorer:
 # ---------------------------------------------------------------------------
 # Constitutional filter
 # ---------------------------------------------------------------------------
+
 
 class ConstitutionalFilter:
     """Filter a dataset of (prompt, response) pairs using constitutional principles.
@@ -359,18 +379,14 @@ class ConstitutionalFilter:
             One FilterScore per principle.
         """
         scores: list[FilterScore] = [
-            score_text_heuristic(response, principle)
-            for principle in self.principles
+            score_text_heuristic(response, principle) for principle in self.principles
         ]
 
         total_weight = sum(p.weight for p in self.principles)
         if total_weight == 0:
             weighted_mean = 0.0
         else:
-            weighted_sum = sum(
-                s.score * p.weight
-                for s, p in zip(scores, self.principles)
-            )
+            weighted_sum = sum(s.score * p.weight for s, p in zip(scores, self.principles))
             weighted_mean = weighted_sum / total_weight
 
         passed_all = weighted_mean >= self.threshold
@@ -400,17 +416,14 @@ class ConstitutionalFilter:
                 accepted.append((prompt, response))
             for score in scores:
                 if score.passed:
-                    pass_counts[score.principle_name] = (
-                        pass_counts.get(score.principle_name, 0) + 1
-                    )
+                    pass_counts[score.principle_name] = pass_counts.get(score.principle_name, 0) + 1
 
         total = len(samples)
         accepted_count = len(accepted)
         rejection_rate = 1.0 - (accepted_count / total) if total > 0 else 0.0
 
         per_principle_pass_rate: dict[str, float] = {
-            name: (count / total if total > 0 else 0.0)
-            for name, count in pass_counts.items()
+            name: (count / total if total > 0 else 0.0) for name, count in pass_counts.items()
         }
 
         stats = {

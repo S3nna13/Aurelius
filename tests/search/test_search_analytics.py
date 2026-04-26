@@ -5,15 +5,15 @@ from __future__ import annotations
 import pytest
 
 from src.search.search_analytics import (
+    SEARCH_ANALYTICS_REGISTRY,
     QueryLog,
     SearchAnalytics,
-    SEARCH_ANALYTICS_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):
@@ -30,6 +30,7 @@ class TestRegistry:
 # QueryLog frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestQueryLogFrozen:
     def test_query_log_is_frozen(self):
         log = QueryLog(query="q", result_count=1, duration_ms=10.0, timestamp=0.0)
@@ -37,7 +38,9 @@ class TestQueryLogFrozen:
             log.query = "changed"  # type: ignore[misc]
 
     def test_query_log_fields(self):
-        log = QueryLog(query="hello", result_count=5, duration_ms=42.0, timestamp=99.0, clicked_result="doc1")
+        log = QueryLog(
+            query="hello", result_count=5, duration_ms=42.0, timestamp=99.0, clicked_result="doc1"
+        )
         assert log.query == "hello"
         assert log.result_count == 5
         assert log.duration_ms == 42.0
@@ -52,6 +55,7 @@ class TestQueryLogFrozen:
 # ---------------------------------------------------------------------------
 # log_query
 # ---------------------------------------------------------------------------
+
 
 class TestLogQuery:
     def test_log_query_returns_query_log(self):
@@ -88,6 +92,7 @@ class TestLogQuery:
 # top_queries
 # ---------------------------------------------------------------------------
 
+
 class TestTopQueries:
     def test_top_queries_sorted_desc_by_count(self):
         sa = SearchAnalytics()
@@ -120,6 +125,7 @@ class TestTopQueries:
 # zero_result_queries
 # ---------------------------------------------------------------------------
 
+
 class TestZeroResultQueries:
     def test_zero_result_queries_returns_unique_sorted(self):
         sa = SearchAnalytics()
@@ -147,6 +153,7 @@ class TestZeroResultQueries:
 # mean_duration_ms
 # ---------------------------------------------------------------------------
 
+
 class TestMeanDuration:
     def test_mean_duration_empty_returns_zero(self):
         sa = SearchAnalytics()
@@ -168,6 +175,7 @@ class TestMeanDuration:
 # ---------------------------------------------------------------------------
 # click_through_rate
 # ---------------------------------------------------------------------------
+
 
 class TestClickThroughRate:
     def test_ctr_empty_returns_zero(self):
@@ -196,6 +204,7 @@ class TestClickThroughRate:
 # ---------------------------------------------------------------------------
 # stats
 # ---------------------------------------------------------------------------
+
 
 class TestStats:
     def test_stats_returns_dict(self):
@@ -247,6 +256,7 @@ class TestStats:
 # max_log eviction
 # ---------------------------------------------------------------------------
 
+
 class TestMaxLogEviction:
     def test_max_log_evicts_oldest(self):
         sa = SearchAnalytics(max_log=3)
@@ -271,6 +281,7 @@ class TestMaxLogEviction:
 # ---------------------------------------------------------------------------
 # query_volume_by_hour
 # ---------------------------------------------------------------------------
+
 
 class TestQueryVolumeByHour:
     def test_query_volume_returns_dict(self):

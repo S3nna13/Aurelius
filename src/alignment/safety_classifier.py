@@ -4,9 +4,11 @@ Architecture: mean-pool hidden states from model.norm -> Linear(d_model, 1) -> s
 Trained with BCE loss on (text, safe/unsafe) labeled pairs.
 At inference: classify a generated response before returning it to the user.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,8 +18,8 @@ from torch.utils.data import DataLoader
 @dataclass
 class SafetyConfig:
     d_model: int = 2048
-    threshold: float = 0.5      # probability threshold for "unsafe" classification
-    freeze_backbone: bool = True # if True, only train the safety head (not backbone)
+    threshold: float = 0.5  # probability threshold for "unsafe" classification
+    freeze_backbone: bool = True  # if True, only train the safety head (not backbone)
     n_epochs: int = 5
     lr: float = 1e-3
 
@@ -49,7 +51,7 @@ class SafetyClassifier(nn.Module):
 
     def forward(
         self,
-        input_ids: torch.Tensor,          # (B, S)
+        input_ids: torch.Tensor,  # (B, S)
         attention_mask: torch.Tensor | None = None,  # (B, S), 1=valid, 0=pad
     ) -> torch.Tensor:
         """Returns safety logits of shape (B,).
@@ -81,7 +83,7 @@ class SafetyClassifier(nn.Module):
 
     def predict(
         self,
-        input_ids: torch.Tensor,          # (B, S)
+        input_ids: torch.Tensor,  # (B, S)
         attention_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Returns (is_unsafe: BoolTensor (B,), probability: FloatTensor (B,))."""
@@ -92,8 +94,8 @@ class SafetyClassifier(nn.Module):
 
     def safety_loss(
         self,
-        logits: torch.Tensor,   # (B,)
-        labels: torch.Tensor,   # (B,) - 1=unsafe, 0=safe
+        logits: torch.Tensor,  # (B,)
+        labels: torch.Tensor,  # (B,) - 1=unsafe, 0=safe
     ) -> torch.Tensor:
         """Binary cross-entropy loss."""
         return F.binary_cross_entropy_with_logits(logits, labels.float())
@@ -162,7 +164,7 @@ class SafetyTrainer:
 
         mean_loss = total_loss / max(n_batches, 1)
 
-        preds_cat = torch.cat(all_preds)    # (N,)
+        preds_cat = torch.cat(all_preds)  # (N,)
         labels_cat = torch.cat(all_labels)  # (N,)
 
         accuracy = (preds_cat == labels_cat).float().mean().item()
@@ -185,7 +187,7 @@ class SafetyTrainer:
 
 def safety_filter(
     classifier: SafetyClassifier,
-    input_ids: torch.Tensor,      # (B, S)
+    input_ids: torch.Tensor,  # (B, S)
     generated_ids: torch.Tensor,  # (B, S_gen)
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Filter generated responses through safety classifier.

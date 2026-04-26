@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.model.mixture_of_depths_v2 import (
+    MoDLayerV2,
     MoDv2Config,
     TokenRouter,
-    MoDLayerV2,
-    select_top_k_tokens,
-    compute_router_z_loss,
-    compute_capacity_utilization,
     build_mod_v2_model,
+    compute_capacity_utilization,
+    compute_router_z_loss,
+    select_top_k_tokens,
 )
 
 # Common test dimensions
@@ -106,9 +105,7 @@ def test_mod_layer_v2_output_shape():
     mod_layer = MoDLayerV2(layer=layer, d_model=D, config=config)
     x = torch.randn(B, T, D)
     x_out, info = mod_layer(x)
-    assert x_out.shape == (B, T, D), (
-        f"Expected output shape ({B}, {T}, {D}), got {x_out.shape}"
-    )
+    assert x_out.shape == (B, T, D), f"Expected output shape ({B}, {T}, {D}), got {x_out.shape}"
 
 
 def test_mod_layer_v2_returns_routing_dict():

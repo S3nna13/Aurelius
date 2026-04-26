@@ -7,8 +7,6 @@ dependency-free.  Only pure PyTorch is required.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
@@ -20,7 +18,6 @@ from src.training.mup import (
     coord_check,
     get_mup_param_groups,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny model helpers
@@ -198,10 +195,7 @@ def test_coord_check_stable_across_widths() -> None:
 
     values = list(results.values())
     ratio = max(values) / (min(values) + 1e-12)
-    assert ratio < 3.0, (
-        f"Coord check failed: max/min ratio = {ratio:.2f} >= 3. "
-        f"Results: {results}"
-    )
+    assert ratio < 3.0, f"Coord check failed: max/min ratio = {ratio:.2f} >= 3. Results: {results}"
 
 
 # ===========================================================================
@@ -220,10 +214,7 @@ def test_gradient_flows_after_mup_init() -> None:
     loss.backward()
 
     # At least one parameter must have a non-None, non-zero gradient.
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum().item() > 0 for p in model.parameters())
     assert has_grad, "No gradients flowed through the model after muP init."
 
 

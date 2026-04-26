@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn.functional as F
 
 from src.inference.sampling_strategies import (
     SamplingConfig,
+    SamplingDecoder,
     apply_min_p,
     apply_repetition_penalty,
     apply_temperature,
@@ -17,7 +15,6 @@ from src.inference.sampling_strategies import (
     apply_top_p,
     apply_typical_p,
     sample_token,
-    SamplingDecoder,
 )
 
 # ---------------------------------------------------------------------------
@@ -49,6 +46,7 @@ def tiny_model_fn(input_ids: torch.Tensor) -> torch.Tensor:
 # 1. SamplingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_sampling_config_defaults():
     cfg = SamplingConfig()
     assert cfg.temperature == 1.0
@@ -63,6 +61,7 @@ def test_sampling_config_defaults():
 # 2. apply_temperature divides logits
 # ---------------------------------------------------------------------------
 
+
 def test_apply_temperature_divides_logits():
     logits = make_logits()
     t = 2.0
@@ -73,6 +72,7 @@ def test_apply_temperature_divides_logits():
 # ---------------------------------------------------------------------------
 # 3. High temperature flattens distribution
 # ---------------------------------------------------------------------------
+
 
 def test_apply_temperature_high_flattens_distribution():
     """At very high temperature the softmax distribution should be nearly uniform."""
@@ -86,6 +86,7 @@ def test_apply_temperature_high_flattens_distribution():
 # ---------------------------------------------------------------------------
 # 4. temperature=0 returns argmax (one-hot-like)
 # ---------------------------------------------------------------------------
+
 
 def test_apply_temperature_zero_argmax():
     logits = make_logits()
@@ -102,6 +103,7 @@ def test_apply_temperature_zero_argmax():
 # 5. apply_top_k keeps exactly k tokens (rest are -inf)
 # ---------------------------------------------------------------------------
 
+
 def test_apply_top_k_keeps_k_tokens():
     logits = make_logits()
     k = 10
@@ -114,6 +116,7 @@ def test_apply_top_k_keeps_k_tokens():
 # 6. top_k=0 leaves logits unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_apply_top_k_zero_unchanged():
     logits = make_logits()
     result = apply_top_k(logits, k=0)
@@ -123,6 +126,7 @@ def test_apply_top_k_zero_unchanged():
 # ---------------------------------------------------------------------------
 # 7. apply_top_p preserves enough probability mass
 # ---------------------------------------------------------------------------
+
 
 def test_apply_top_p_preserves_mass():
     logits = make_logits()
@@ -138,6 +142,7 @@ def test_apply_top_p_preserves_mass():
 # 8. top_p=1.0 leaves logits unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_apply_top_p_one_unchanged():
     logits = make_logits()
     result = apply_top_p(logits, p=1.0)
@@ -147,6 +152,7 @@ def test_apply_top_p_one_unchanged():
 # ---------------------------------------------------------------------------
 # 9. apply_min_p filters low-probability tokens
 # ---------------------------------------------------------------------------
+
 
 def test_apply_min_p_filters_low_prob():
     """With a large min_p only the highest-probability tokens survive."""
@@ -168,6 +174,7 @@ def test_apply_min_p_filters_low_prob():
 # ---------------------------------------------------------------------------
 # 10. apply_repetition_penalty reduces repeated token logits
 # ---------------------------------------------------------------------------
+
 
 def test_apply_repetition_penalty_reduces_logits():
     logits = torch.zeros(VOCAB_SIZE)
@@ -191,6 +198,7 @@ def test_apply_repetition_penalty_reduces_logits():
 # 11. repetition_penalty=1.0 leaves logits unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_apply_repetition_penalty_one_unchanged():
     logits = make_logits()
     input_ids = torch.arange(VOCAB_SIZE // 2)
@@ -201,6 +209,7 @@ def test_apply_repetition_penalty_one_unchanged():
 # ---------------------------------------------------------------------------
 # 12. sample_token returns scalar in vocab range
 # ---------------------------------------------------------------------------
+
 
 def test_sample_token_returns_scalar_in_vocab_range():
     logits = make_logits()
@@ -214,6 +223,7 @@ def test_sample_token_returns_scalar_in_vocab_range():
 # 13. decode output length equals prompt + max_new_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_decode_output_length():
     prompt = torch.tensor([1, 2, 3], dtype=torch.long)
     max_new = 5
@@ -226,6 +236,7 @@ def test_decode_output_length():
 # ---------------------------------------------------------------------------
 # 14. decode_batch output shape is (n_sequences, T)
 # ---------------------------------------------------------------------------
+
 
 def test_decode_batch_output_shape():
     prompt = torch.tensor([0, 1], dtype=torch.long)
@@ -241,6 +252,7 @@ def test_decode_batch_output_shape():
 # ---------------------------------------------------------------------------
 # 15. Applying all filters together still yields a valid distribution
 # ---------------------------------------------------------------------------
+
 
 def test_all_filters_produce_valid_distribution():
     """Combining temperature + top_k + top_p + min_p should not produce all-inf."""
@@ -263,6 +275,7 @@ def test_all_filters_produce_valid_distribution():
 # 16. apply_top_p with very small p keeps at least one token
 # ---------------------------------------------------------------------------
 
+
 def test_apply_top_p_very_small_p_keeps_at_least_one():
     logits = make_logits()
     result = apply_top_p(logits, p=0.01)
@@ -273,6 +286,7 @@ def test_apply_top_p_very_small_p_keeps_at_least_one():
 # 17. apply_typical_p with mass=1.0 is a no-op
 # ---------------------------------------------------------------------------
 
+
 def test_apply_typical_p_one_unchanged():
     logits = make_logits()
     result = apply_typical_p(logits, mass=1.0)
@@ -282,6 +296,7 @@ def test_apply_typical_p_one_unchanged():
 # ---------------------------------------------------------------------------
 # 18. apply_typical_p with small mass keeps fewer tokens
 # ---------------------------------------------------------------------------
+
 
 def test_apply_typical_p_small_mass_reduces_tokens():
     logits = make_logits()

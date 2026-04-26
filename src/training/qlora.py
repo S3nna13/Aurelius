@@ -19,15 +19,14 @@ Paper variable notation is used throughout:
   A, B    — LoRA adapter matrices (A: in→r, B: r→out)
   B_size  — quantization block size (paper uses 64)
 """
+
 from __future__ import annotations
 
 import math
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # NF4 quantization levels (Section 2.1)
@@ -38,6 +37,7 @@ import torch.nn.functional as F
 # Φ^{-1}(p) = sqrt(2) * erfinv(2p - 1)
 #
 # We precompute them once as a module-level constant.
+
 
 def _compute_nf4_levels() -> torch.Tensor:
     """Compute the 16 NF4 quantization levels from N(0,1) quantiles.
@@ -64,6 +64,7 @@ NF4_LEVELS: torch.Tensor = _compute_nf4_levels()
 # NF4Quantizer
 # ---------------------------------------------------------------------------
 
+
 class NF4Quantizer:
     """Block-wise NF4 (NormalFloat4) quantizer.
 
@@ -81,7 +82,7 @@ class NF4Quantizer:
     def quantize(
         w: torch.Tensor,
         block_size: int = 64,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Quantize weight tensor w using block-wise NF4.
 
         Algorithm per Section 2.1:
@@ -139,7 +140,7 @@ class NF4Quantizer:
     def dequantize(
         codes: torch.Tensor,
         scales: torch.Tensor,
-        original_shape: torch.Size | Tuple[int, ...],
+        original_shape: torch.Size | tuple[int, ...],
         block_size: int = 64,
     ) -> torch.Tensor:
         """Dequantize NF4 codes back to float.
@@ -181,6 +182,7 @@ class NF4Quantizer:
 # ---------------------------------------------------------------------------
 # QLoRALinear
 # ---------------------------------------------------------------------------
+
 
 class QLoRALinear(nn.Module):
     """Linear layer with QLoRA fine-tuning (Dettmers et al. 2023, Section 2.3).
@@ -286,7 +288,7 @@ class QLoRALinear(nn.Module):
         r: int,
         lora_alpha: float = 1.0,
         block_size: int = 64,
-    ) -> "QLoRALinear":
+    ) -> QLoRALinear:
         """Construct a QLoRALinear from an existing nn.Linear.
 
         The linear layer's weight W is quantized to NF4 and stored frozen.

@@ -10,10 +10,10 @@ from src.interpretability.activation_patcher import (
     PatchSpec,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> nn.Sequential:
     return nn.Sequential(
@@ -35,6 +35,7 @@ def _layer_name(model: nn.Module, idx: int) -> str:
 # ---------------------------------------------------------------------------
 # PatchSpec
 # ---------------------------------------------------------------------------
+
 
 class TestPatchSpec:
     def test_default_source_value_is_none(self) -> None:
@@ -58,6 +59,7 @@ class TestPatchSpec:
 # ---------------------------------------------------------------------------
 # PatchResult
 # ---------------------------------------------------------------------------
+
 
 class TestPatchResult:
     def test_effect_score_is_float(self) -> None:
@@ -96,6 +98,7 @@ class TestPatchResult:
 # ---------------------------------------------------------------------------
 # ActivationPatcher.patch
 # ---------------------------------------------------------------------------
+
 
 class TestPatch:
     def test_returns_patch_result(self) -> None:
@@ -161,6 +164,7 @@ class TestPatch:
 # ActivationPatcher.patch_batch
 # ---------------------------------------------------------------------------
 
+
 class TestPatchBatch:
     def test_returns_list(self) -> None:
         model = _tiny_model()
@@ -199,6 +203,7 @@ class TestPatchBatch:
 # ---------------------------------------------------------------------------
 # ActivationPatcher.zero_ablate
 # ---------------------------------------------------------------------------
+
 
 class TestZeroAblate:
     def test_returns_patch_result(self) -> None:

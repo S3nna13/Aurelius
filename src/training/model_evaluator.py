@@ -57,13 +57,9 @@ class ModelEvaluator:
         accuracy_delta_pct = 0.0
 
         if old.perplexity > 0:
-            perplexity_delta_pct = (
-                (new.perplexity - old.perplexity) / old.perplexity * 100.0
-            )
+            perplexity_delta_pct = (new.perplexity - old.perplexity) / old.perplexity * 100.0
         if old.accuracy > 0:
-            accuracy_delta_pct = (
-                (new.accuracy - old.accuracy) / old.accuracy * 100.0
-            )
+            accuracy_delta_pct = (new.accuracy - old.accuracy) / old.accuracy * 100.0
 
         regressed = False
         rejection_reason = ""
@@ -76,9 +72,7 @@ class ModelEvaluator:
             )
         elif self.min_accuracy > 0 and new.accuracy < self.min_accuracy:
             regressed = True
-            rejection_reason = (
-                f"Accuracy {new.accuracy:.3f} below floor {self.min_accuracy:.3f}"
-            )
+            rejection_reason = f"Accuracy {new.accuracy:.3f} below floor {self.min_accuracy:.3f}"
 
         return ComparisonResult(
             old=old,
@@ -104,16 +98,13 @@ class ModelEvaluator:
         errors: list[str] = []
         if len(predictions) != len(references):
             errors.append(
-                f"length mismatch: predictions={len(predictions)} "
-                f"references={len(references)}"
+                f"length mismatch: predictions={len(predictions)} references={len(references)}"
             )
             return EvalResult(adapter_path=adapter_path, errors=errors)
 
         n = len(predictions)
         if n == 0:
-            return EvalResult(
-                adapter_path=adapter_path, perplexity=1.0, accuracy=0.0, n_samples=0
-            )
+            return EvalResult(adapter_path=adapter_path, perplexity=1.0, accuracy=0.0, n_samples=0)
 
         correct = 0
         total_tokens = 0
@@ -131,9 +122,7 @@ class ModelEvaluator:
             n_samples=n,
         )
 
-    def is_deployment_safe(
-        self, result: EvalResult, baseline: EvalResult | None = None
-    ) -> bool:
+    def is_deployment_safe(self, result: EvalResult, baseline: EvalResult | None = None) -> bool:
         """Return True if *result* has no errors and doesn't regress vs baseline."""
         if result.errors:
             return False

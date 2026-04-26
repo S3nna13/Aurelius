@@ -15,19 +15,18 @@ Covers:
 """
 
 import math
+
 import pytest
 import torch
-import torch.nn as nn
 
+from src.alignment.multi_token_reward import (
+    MultiTokenRewardModel,
+    MultiTokenRMConfig,
+    MultiTokenRMLoss,
+    TokenRewardHead,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.alignment.multi_token_reward import (
-    MultiTokenRMConfig,
-    TokenRewardHead,
-    MultiTokenRewardModel,
-    MultiTokenRMLoss,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -59,14 +58,17 @@ def rm_config():
 @pytest.fixture(scope="module")
 def reward_model(aurelius_cfg, rm_config):
     torch.manual_seed(0)
+
     def backbone_fn():
         return AureliusTransformer(aurelius_cfg)
+
     return MultiTokenRewardModel(backbone_fn, rm_config)
 
 
 # ---------------------------------------------------------------------------
 # Test 1: MultiTokenRMConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = MultiTokenRMConfig()
@@ -82,6 +84,7 @@ def test_config_defaults():
 # Test 2: TokenRewardHead output shape is (batch, seq)
 # ---------------------------------------------------------------------------
 
+
 def test_token_reward_head_shape():
     B, T, D = 3, 10, D_MODEL
     head = TokenRewardHead(D)
@@ -94,6 +97,7 @@ def test_token_reward_head_shape():
 # Test 3: MultiTokenRewardModel.forward returns (batch,seq) and (batch,)
 # ---------------------------------------------------------------------------
 
+
 def test_forward_shapes(reward_model):
     B, T = 2, 8
     input_ids = torch.randint(0, VOCAB_SIZE, (B, T))
@@ -101,14 +105,13 @@ def test_forward_shapes(reward_model):
     assert token_rewards.shape == (B, T), (
         f"token_rewards shape: expected ({B}, {T}), got {token_rewards.shape}"
     )
-    assert seq_reward.shape == (B,), (
-        f"seq_reward shape: expected ({B},), got {seq_reward.shape}"
-    )
+    assert seq_reward.shape == (B,), f"seq_reward shape: expected ({B},), got {seq_reward.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: sequence_reward is scalar per batch item
 # ---------------------------------------------------------------------------
+
 
 def test_seq_reward_scalar_per_item(reward_model):
     B, T = 4, 12
@@ -122,6 +125,7 @@ def test_seq_reward_scalar_per_item(reward_model):
 # ---------------------------------------------------------------------------
 # Test 5: get_process_rewards returns correct number of steps
 # ---------------------------------------------------------------------------
+
 
 def test_get_process_rewards_step_count(reward_model):
     T = 12
@@ -139,6 +143,7 @@ def test_get_process_rewards_step_count(reward_model):
 # Test 6: compute_advantage — last token has highest advantage (equal +rewards)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_advantage_last_token_highest(reward_model):
     # All-ones rewards: undiscounted, the last token should have the highest
     # advantage because it bears no future discount penalty.
@@ -149,18 +154,19 @@ def test_compute_advantage_last_token_highest(reward_model):
     last_adv = advantages[0, -1].item()
     for t in range(T - 1):
         assert advantages[0, t].item() >= last_adv - 1e-6, (
-            f"Advantage at position {t} ({advantages[0,t].item():.6f}) "
+            f"Advantage at position {t} ({advantages[0, t].item():.6f}) "
             f"should be >= last ({last_adv:.6f})"
         )
     # Specifically confirm the last position equals the reward (no future)
     assert math.isclose(last_adv, token_rewards[0, -1].item(), rel_tol=1e-5), (
-        f"Last advantage {last_adv} should equal reward {token_rewards[0,-1].item()}"
+        f"Last advantage {last_adv} should equal reward {token_rewards[0, -1].item()}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 7: MultiTokenRMLoss with only seq_labels returns finite loss
 # ---------------------------------------------------------------------------
+
 
 def test_loss_seq_labels_only():
     B, T = 2, 8
@@ -179,6 +185,7 @@ def test_loss_seq_labels_only():
 # Test 8: MultiTokenRMLoss with both labels combines losses correctly
 # ---------------------------------------------------------------------------
 
+
 def test_loss_both_labels_combined():
     B, T = 2, 8
     torch.manual_seed(42)
@@ -193,10 +200,7 @@ def test_loss_both_labels_combined():
 
     loss, metrics = loss_fn.forward(token_rewards, seq_rewards, token_labels, seq_labels)
 
-    expected = (
-        token_weight * metrics["token_loss"]
-        + seq_weight * metrics["seq_loss"]
-    )
+    expected = token_weight * metrics["token_loss"] + seq_weight * metrics["seq_loss"]
     assert math.isclose(loss.item(), expected, rel_tol=1e-5), (
         f"total_loss {loss.item():.6f} != expected {expected:.6f}"
     )
@@ -206,6 +210,7 @@ def test_loss_both_labels_combined():
 # ---------------------------------------------------------------------------
 # Test 9: Metrics dict has 'total_loss' key
 # ---------------------------------------------------------------------------
+
 
 def test_metrics_has_total_loss_key():
     B, T = 2, 6
@@ -222,6 +227,7 @@ def test_metrics_has_total_loss_key():
 # ---------------------------------------------------------------------------
 # Test 10: Gradient flows through token reward model (backward works)
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows(aurelius_cfg, rm_config):
     torch.manual_seed(1)
@@ -242,8 +248,7 @@ def test_gradient_flows(aurelius_cfg, rm_config):
 
     # At least one parameter in the reward head should have a non-None gradient
     grad_exists = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in model.reward_head.parameters()
+        p.grad is not None and p.grad.abs().sum().item() > 0 for p in model.reward_head.parameters()
     )
     assert grad_exists, "No gradient flowed through the reward head parameters."
 
@@ -251,6 +256,7 @@ def test_gradient_flows(aurelius_cfg, rm_config):
 # ---------------------------------------------------------------------------
 # Test 11: attention_mask zeros out masked positions
 # ---------------------------------------------------------------------------
+
 
 def test_attention_mask_zeros_masked_positions(reward_model):
     B, T = 2, 8
@@ -267,6 +273,4 @@ def test_attention_mask_zeros_masked_positions(reward_model):
     for b in range(B):
         for t in [T - 2, T - 1]:
             val = token_rewards_masked[b, t].item()
-            assert val == 0.0, (
-                f"Expected token_rewards[{b},{t}] == 0 (masked), got {val}"
-            )
+            assert val == 0.0, f"Expected token_rewards[{b},{t}] == 0 (masked), got {val}"

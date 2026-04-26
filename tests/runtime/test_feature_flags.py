@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import textwrap
 
-import pytest
-
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag, FeatureFlagRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_yaml(tmp_path, content: str) -> str:
     p = tmp_path / "flags.yaml"
@@ -23,6 +20,7 @@ def _make_yaml(tmp_path, content: str) -> str:
 # 1. Fail-closed: unknown flag returns False
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_flag_returns_false():
     reg = FeatureFlagRegistry()
     assert reg.is_enabled("nonexistent_flag") is False
@@ -31,6 +29,7 @@ def test_unknown_flag_returns_false():
 # ---------------------------------------------------------------------------
 # 2. register + is_enabled basic
 # ---------------------------------------------------------------------------
+
 
 def test_register_enabled_flag():
     reg = FeatureFlagRegistry()
@@ -47,6 +46,7 @@ def test_register_disabled_flag():
 # ---------------------------------------------------------------------------
 # 3. list_flags
 # ---------------------------------------------------------------------------
+
 
 def test_list_flags_empty():
     reg = FeatureFlagRegistry()
@@ -65,25 +65,32 @@ def test_list_flags_after_register():
 # 4. YAML load
 # ---------------------------------------------------------------------------
 
+
 def test_yaml_load_enabled(tmp_path):
-    path = _make_yaml(tmp_path, """
+    path = _make_yaml(
+        tmp_path,
+        """
         fast_inference:
           enabled: true
         slow_mode:
           enabled: false
-    """)
+    """,
+    )
     reg = FeatureFlagRegistry(config_path=path)
     assert reg.is_enabled("fast_inference") is True
     assert reg.is_enabled("slow_mode") is False
 
 
 def test_yaml_load_metadata(tmp_path):
-    path = _make_yaml(tmp_path, """
+    path = _make_yaml(
+        tmp_path,
+        """
         experimental:
           enabled: true
           rollout_pct: 100
           owner: ml-team
-    """)
+    """,
+    )
     reg = FeatureFlagRegistry(config_path=path)
     flag = next(f for f in reg.list_flags() if f.name == "experimental")
     assert flag.metadata.get("owner") == "ml-team"
@@ -93,21 +100,28 @@ def test_yaml_load_metadata(tmp_path):
 # 5. env override
 # ---------------------------------------------------------------------------
 
+
 def test_env_override_enables_disabled_flag(monkeypatch, tmp_path):
-    path = _make_yaml(tmp_path, """
+    path = _make_yaml(
+        tmp_path,
+        """
         gated:
           enabled: false
-    """)
+    """,
+    )
     monkeypatch.setenv("AURELIUS_FF_GATED", "1")
     reg = FeatureFlagRegistry(config_path=path)
     assert reg.is_enabled("gated") is True
 
 
 def test_env_override_disables_enabled_flag(monkeypatch, tmp_path):
-    path = _make_yaml(tmp_path, """
+    path = _make_yaml(
+        tmp_path,
+        """
         always_on:
           enabled: true
-    """)
+    """,
+    )
     monkeypatch.setenv("AURELIUS_FF_ALWAYS_ON", "0")
     reg = FeatureFlagRegistry(config_path=path)
     assert reg.is_enabled("always_on") is False
@@ -128,6 +142,7 @@ def test_env_override_case_insensitive_name(monkeypatch):
 # ---------------------------------------------------------------------------
 # 6. rollout_pct partial rollout
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_pct_zero_blocks_all():
     reg = FeatureFlagRegistry()
@@ -156,11 +171,15 @@ def test_rollout_pct_partial_deterministic():
 # 7. reload
 # ---------------------------------------------------------------------------
 
+
 def test_reload_picks_up_changes(tmp_path):
-    path = _make_yaml(tmp_path, """
+    path = _make_yaml(
+        tmp_path,
+        """
         reloadable:
           enabled: false
-    """)
+    """,
+    )
     reg = FeatureFlagRegistry(config_path=path)
     assert reg.is_enabled("reloadable") is False
 
@@ -172,6 +191,7 @@ def test_reload_picks_up_changes(tmp_path):
 # ---------------------------------------------------------------------------
 # 8. module-level registry is a FeatureFlagRegistry instance
 # ---------------------------------------------------------------------------
+
 
 def test_module_level_registry_type():
     assert isinstance(FEATURE_FLAG_REGISTRY, FeatureFlagRegistry)

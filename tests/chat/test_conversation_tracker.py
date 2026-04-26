@@ -1,7 +1,6 @@
 """Tests for conversation tracker."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.chat.conversation_tracker import ConversationTracker, Turn
 

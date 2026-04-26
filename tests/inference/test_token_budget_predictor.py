@@ -1,9 +1,8 @@
 """Tests for Token Budget Predictor."""
+
 from __future__ import annotations
 
 import torch
-import pytest
-
 from aurelius.inference.token_budget_predictor import (
     AdaptiveStopCriteria,
     BudgetCalibrator,
@@ -35,6 +34,7 @@ def _make_hidden(batch: int = B) -> torch.Tensor:
 # BudgetCategory tests
 # ---------------------------------------------------------------------------
 
+
 class TestBudgetCategory:
     def test_from_length_short(self):
         """length=10 → SHORT."""
@@ -52,6 +52,7 @@ class TestBudgetCategory:
 # ---------------------------------------------------------------------------
 # TokenBudgetPredictor tests
 # ---------------------------------------------------------------------------
+
 
 class TestTokenBudgetPredictor:
     def test_predict_budget_shape(self):
@@ -89,14 +90,13 @@ class TestTokenBudgetPredictor:
         predictor = _make_predictor()
         hidden = _make_hidden()
         out = predictor.predict_category(hidden)
-        assert set(out.tolist()).issubset({0, 1, 2}), (
-            f"Unexpected category values: {out.tolist()}"
-        )
+        assert set(out.tolist()).issubset({0, 1, 2}), f"Unexpected category values: {out.tolist()}"
 
 
 # ---------------------------------------------------------------------------
 # BudgetLoss tests
 # ---------------------------------------------------------------------------
+
 
 class TestBudgetLoss:
     def _make_inputs(self):
@@ -138,6 +138,7 @@ class TestBudgetLoss:
 # AdaptiveStopCriteria tests
 # ---------------------------------------------------------------------------
 
+
 class TestAdaptiveStopCriteria:
     def test_should_stop_false_at_zero(self):
         """should_stop returns False when n_generated=0."""
@@ -160,12 +161,13 @@ class TestAdaptiveStopCriteria:
 # BudgetCalibrator tests
 # ---------------------------------------------------------------------------
 
+
 class TestBudgetCalibrator:
     def test_fit_and_calibrate_reduces_error(self):
         """After fitting, calibrated predictions have lower error than raw ones."""
         torch.manual_seed(7)
         # Simulate raw predictions with a systematic bias: true = 2*pred + 10
-        predicted = torch.rand(50) * 100 + 50      # values in [50, 150]
+        predicted = torch.rand(50) * 100 + 50  # values in [50, 150]
         actual = 2.0 * predicted + 10.0 + torch.randn(50) * 2  # true relationship
 
         cal = BudgetCalibrator()

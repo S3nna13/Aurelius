@@ -9,7 +9,6 @@ from src.model.xpos_attention import (
     XPosAttention,
     XPosConfig,
     _build_xpos_scale,
-    apply_xpos_rope,
 )
 
 # ---------------------------------------------------------------------------
@@ -19,7 +18,7 @@ from src.model.xpos_attention import (
 D_MODEL = 64
 N_HEADS = 4
 N_KV_HEADS = 2
-HEAD_DIM = 16   # D_MODEL // N_HEADS
+HEAD_DIM = 16  # D_MODEL // N_HEADS
 SCALE_BASE = 512
 THETA = 10000.0
 
@@ -171,7 +170,7 @@ def test_head_dim_correctness():
     """XPosConfig raises if d_model != n_heads * head_dim."""
     with pytest.raises((AssertionError, Exception)):
         # 63 != 4 * 16 = 64
-        bad_cfg = XPosConfig(d_model=63, n_heads=4, head_dim=16)
+        XPosConfig(d_model=63, n_heads=4, head_dim=16)
 
 
 # ---------------------------------------------------------------------------

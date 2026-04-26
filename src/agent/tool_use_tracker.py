@@ -7,36 +7,37 @@ from __future__ import annotations
 
 import uuid
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ToolCall:
     """Immutable record of a single tool invocation."""
-    call_id:     str
-    tool_name:   str
-    input_size:  int
+
+    call_id: str
+    tool_name: str
+    input_size: int
     output_size: int
     duration_ms: float
-    success:     bool
-    error:       str = ""
+    success: bool
+    error: str = ""
 
     @classmethod
     def create(
         cls,
-        tool_name:   str,
-        input_size:  int,
+        tool_name: str,
+        input_size: int,
         output_size: int,
         duration_ms: float,
-        success:     bool = True,
-        error:       str  = "",
-        call_id:     str | None = None,
-    ) -> "ToolCall":
+        success: bool = True,
+        error: str = "",
+        call_id: str | None = None,
+    ) -> ToolCall:
         """Factory that auto-generates call_id when not provided."""
         cid = call_id if call_id is not None else uuid.uuid4().hex[:8]
         return cls(
@@ -53,7 +54,8 @@ class ToolCall:
 @dataclass(frozen=True)
 class ToolBudget:
     """Hard limits for tool usage within a session."""
-    max_calls:           int   = 100
+
+    max_calls: int = 100
     max_total_duration_ms: float = 30_000.0
 
 
@@ -61,12 +63,13 @@ class ToolBudget:
 # Tracker
 # ---------------------------------------------------------------------------
 
+
 class ToolUseTracker:
     """Record tool calls and enforce an optional budget."""
 
     def __init__(self, budget: ToolBudget | None = None) -> None:
         self._budget: ToolBudget | None = budget
-        self._calls:  list[ToolCall]    = []
+        self._calls: list[ToolCall] = []
 
     # ------------------------------------------------------------------
     # Recording
@@ -74,12 +77,12 @@ class ToolUseTracker:
 
     def record(
         self,
-        tool_name:   str,
-        input_size:  int,
+        tool_name: str,
+        input_size: int,
         output_size: int,
         duration_ms: float,
-        success:     bool = True,
-        error:       str  = "",
+        success: bool = True,
+        error: str = "",
     ) -> ToolCall:
         """Create and store a ToolCall record."""
         tc = ToolCall.create(
@@ -111,21 +114,21 @@ class ToolUseTracker:
 
     def budget_status(self) -> dict[str, Any]:
         """Return current budget consumption and pass/fail flags."""
-        used_calls    = self.total_calls()
+        used_calls = self.total_calls()
         used_duration = self.total_duration_ms()
 
         if self._budget is None:
-            calls_ok    = True
+            calls_ok = True
             duration_ok = True
         else:
-            calls_ok    = used_calls    <= self._budget.max_calls
+            calls_ok = used_calls <= self._budget.max_calls
             duration_ok = used_duration <= self._budget.max_total_duration_ms
 
         return {
-            "calls_ok":        calls_ok,
-            "duration_ok":     duration_ok,
-            "all_ok":          calls_ok and duration_ok,
-            "calls_used":      used_calls,
+            "calls_ok": calls_ok,
+            "duration_ok": duration_ok,
+            "all_ok": calls_ok and duration_ok,
+            "calls_used": used_calls,
             "duration_used_ms": used_duration,
         }
 

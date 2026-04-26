@@ -8,11 +8,9 @@ import pytest
 
 from src.agent.plugin_hook import PluginHookRegistry
 from src.agent.plugin_sandbox import (
-    DEFAULT_PLUGIN_SANDBOX,
     PLUGIN_SANDBOX_REGISTRY,
     PluginSandbox,
     SandboxConfig,
-    SandboxResult,
     SandboxViolationError,
 )
 
@@ -29,7 +27,7 @@ def _make_uses_os():
     """Return a function whose __globals__ contains 'os'."""
     mod = types.ModuleType("tmp_os_mod")
     mod.__dict__["os"] = __import__("os")
-    exec(
+    exec(  # noqa: S102
         "def fn():\n    return os.getcwd()\n",
         mod.__dict__,
     )
@@ -40,7 +38,7 @@ def _make_uses_json():
     """Return a function whose __globals__ contains 'json'."""
     mod = types.ModuleType("tmp_json_mod")
     mod.__dict__["json"] = __import__("json")
-    exec(
+    exec(  # noqa: S102
         "def fn():\n    return json.dumps({})\n",
         mod.__dict__,
     )

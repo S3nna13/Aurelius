@@ -14,11 +14,11 @@ Covers:
 
 All tests use pure PyTorch — no external ML libraries.
 """
+
 from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.alignment.dr_grpo import (
@@ -27,10 +27,10 @@ from src.alignment.dr_grpo import (
     DrGRPOTrainer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_batch(
     G: int = 4,
@@ -75,8 +75,8 @@ def _make_trainer(
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
-class TestDrGRPOConfig:
 
+class TestDrGRPOConfig:
     def test_config_defaults(self):
         """Config default values match the paper's recommended settings."""
         cfg = DrGRPOConfig()
@@ -98,8 +98,8 @@ class TestDrGRPOConfig:
 # 2. test_advantages_no_std_norm
 # ---------------------------------------------------------------------------
 
-class TestAdvantages:
 
+class TestAdvantages:
     def test_advantages_no_std_norm(self):
         """Scaling rewards does NOT change advantage magnitudes (no std division).
 
@@ -124,9 +124,7 @@ class TestAdvantages:
         torch.manual_seed(42)
         rewards = torch.randn(8)
         adv = trainer.compute_advantages(rewards)
-        assert adv.mean().abs().item() < 1e-6, (
-            f"Advantages not zero-mean: mean={adv.mean().item()}"
-        )
+        assert adv.mean().abs().item() < 1e-6, f"Advantages not zero-mean: mean={adv.mean().item()}"
 
     # 4. test_advantages_uniform
     def test_advantages_uniform(self):
@@ -157,8 +155,8 @@ class TestAdvantages:
 # 5. test_sequence_loss_shape
 # ---------------------------------------------------------------------------
 
-class TestSequenceLoss:
 
+class TestSequenceLoss:
     def test_sequence_loss_shape(self):
         """compute_sequence_loss returns a scalar tensor."""
         trainer = _make_trainer()
@@ -257,9 +255,7 @@ class TestSequenceLoss:
 
         batch = DrGRPOBatch(log_probs, ref_log_probs, rewards, mask)
         stats = trainer.statistics(batch)
-        assert stats["clip_fraction"] > 0.0, (
-            "Expected clip_fraction > 0 when ratio >> 1+ε"
-        )
+        assert stats["clip_fraction"] > 0.0, "Expected clip_fraction > 0 when ratio >> 1+ε"
 
     def test_loss_is_finite(self):
         """Sequence loss is finite for typical inputs."""
@@ -273,8 +269,8 @@ class TestSequenceLoss:
 # 9. test_kl_loss_zero
 # ---------------------------------------------------------------------------
 
-class TestKLLoss:
 
+class TestKLLoss:
     def test_kl_loss_zero(self):
         """KL loss is 0 when log_probs == ref_log_probs."""
         trainer = _make_trainer()
@@ -294,16 +290,16 @@ class TestKLLoss:
         """KL loss > 0 when log_probs differ from ref_log_probs."""
         trainer = _make_trainer()
         G, T = 4, 8
-        lp = torch.zeros(G, T)         # log π_θ = 0
-        ref = torch.full((G, T), -1.0)  # log π_ref = -1
+        torch.zeros(G, T)  # log π_θ = 0
+        torch.full((G, T), -1.0)  # log π_ref = -1
         # KL(ref||θ) = mean(ref - lp) = mean(-1 - 0) = -1 ... but that's negative.
         # The implementation uses mean(ref - lp) which can be negative when
         # ref < lp.  The contract is KL > 0 when policies genuinely differ AND
         # ref_log_probs > log_probs (ref is more conservative).
         # Here ref=-1 < lp=0 → kl = mean(-1) = -1 (negative).
         # Swap so ref > lp for positive KL.
-        lp2 = torch.full((G, T), -1.0)   # log π_θ = -1
-        ref2 = torch.zeros(G, T)          # log π_ref = 0
+        lp2 = torch.full((G, T), -1.0)  # log π_θ = -1
+        ref2 = torch.zeros(G, T)  # log π_ref = 0
         batch = DrGRPOBatch(
             log_probs=lp2,
             ref_log_probs=ref2,
@@ -320,14 +316,15 @@ class TestKLLoss:
         lp = -torch.rand(G, T)
         ref = -torch.rand(G, T)
 
-        mask_full = torch.ones(G, T)
+        torch.ones(G, T)
         lp_padded = lp.clone()
-        lp_padded[:, T // 2:] = -1000.0
+        lp_padded[:, T // 2 :] = -1000.0
         mask_half = torch.zeros(G, T)
-        mask_half[:, :T // 2] = 1.0
+        mask_half[:, : T // 2] = 1.0
 
-        batch_full = DrGRPOBatch(lp[:, :T // 2].repeat(1, 2), ref[:, :T // 2].repeat(1, 2),
-                                  torch.randn(G), mask_half)
+        DrGRPOBatch(
+            lp[:, : T // 2].repeat(1, 2), ref[:, : T // 2].repeat(1, 2), torch.randn(G), mask_half
+        )
         batch_padded = DrGRPOBatch(lp_padded, ref, torch.randn(G), mask_half)
 
         kl = trainer.compute_kl_loss(batch_padded)
@@ -338,8 +335,8 @@ class TestKLLoss:
 # 11. test_total_loss_keys
 # ---------------------------------------------------------------------------
 
-class TestTotalLoss:
 
+class TestTotalLoss:
     def test_total_loss_keys(self):
         """total_loss() returns all required keys."""
         trainer = _make_trainer()
@@ -379,8 +376,8 @@ class TestTotalLoss:
 # 13. test_statistics_clip_fraction
 # ---------------------------------------------------------------------------
 
-class TestStatistics:
 
+class TestStatistics:
     def test_statistics_clip_fraction_in_range(self):
         """clip_fraction is always in [0, 1]."""
         trainer = _make_trainer()
@@ -437,8 +434,8 @@ class TestStatistics:
 # 14. test_gradient_flows
 # ---------------------------------------------------------------------------
 
-class TestGradients:
 
+class TestGradients:
     def test_gradient_flows(self):
         """backward() propagates finite gradients through log_probs."""
         trainer = _make_trainer()
@@ -482,8 +479,8 @@ class TestGradients:
 # Integration test
 # ---------------------------------------------------------------------------
 
-class TestIntegration:
 
+class TestIntegration:
     def test_full_forward_backward(self):
         """Integration: G=4, T=16 — full total_loss + backward with finite grads."""
         G, T = 4, 16
@@ -495,8 +492,8 @@ class TestIntegration:
         # Realistic mask: each sequence has between 8 and 16 real tokens.
         mask = torch.zeros(G, T)
         lengths = torch.randint(8, T + 1, (G,))
-        for i, l in enumerate(lengths):
-            mask[i, :l] = 1.0
+        for i, lvl in enumerate(lengths):
+            mask[i, :lvl] = 1.0
 
         cfg = DrGRPOConfig(group_size=G, clip_eps=0.2, kl_coeff=0.01)
         trainer = DrGRPOTrainer(cfg)
@@ -522,5 +519,6 @@ class TestIntegration:
     def test_registry_entry(self):
         """DrGRPOTrainer is registered in ALIGNMENT_REGISTRY under 'dr_grpo'."""
         from src.alignment import ALIGNMENT_REGISTRY
+
         assert "dr_grpo" in ALIGNMENT_REGISTRY, "'dr_grpo' not found in ALIGNMENT_REGISTRY"
         assert ALIGNMENT_REGISTRY["dr_grpo"] is DrGRPOTrainer

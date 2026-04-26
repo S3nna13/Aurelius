@@ -1,15 +1,14 @@
 """Tests for src/model/flow_matching.py"""
 
-import torch
 import pytest
-
+import torch
 from aurelius.model.flow_matching import (
     FlowMatchingConfig,
     FlowMatchingSchedule,
+    FlowMatchingTrainer,
+    ODESolver,
     VelocityNetwork,
     flow_matching_loss,
-    ODESolver,
-    FlowMatchingTrainer,
 )
 
 # Use small config for all tests
@@ -31,6 +30,7 @@ def velocity_net():
 # ---------------------------------------------------------------------------
 # Schedule tests
 # ---------------------------------------------------------------------------
+
 
 def test_interpolate_at_t0_is_noise(schedule):
     """t=0 => x_t should equal x_0 (up to sigma_min scaling)."""
@@ -86,6 +86,7 @@ def test_sample_timesteps_cosine_range(schedule):
 # VelocityNetwork tests
 # ---------------------------------------------------------------------------
 
+
 def test_velocity_network_output_shape_2d(velocity_net):
     """(B, D) input -> (B, D) output."""
     x = torch.randn(B, D)
@@ -107,6 +108,7 @@ def test_velocity_network_output_shape_3d(velocity_net):
 # Loss test
 # ---------------------------------------------------------------------------
 
+
 def test_flow_matching_loss_positive(velocity_net, schedule):
     """CFM loss should be > 0 for random data."""
     x_1 = torch.randn(B, D)
@@ -118,6 +120,7 @@ def test_flow_matching_loss_positive(velocity_net, schedule):
 # ---------------------------------------------------------------------------
 # ODE Solver tests
 # ---------------------------------------------------------------------------
+
 
 def test_ode_solver_euler_output_shape(velocity_net):
     """Euler solver: sample((B, D)) -> (B, D)."""
@@ -136,6 +139,7 @@ def test_ode_solver_midpoint_output_shape(velocity_net):
 # ---------------------------------------------------------------------------
 # Trainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_flow_matching_trainer_step():
     """train_step returns a dict with 'loss' key."""

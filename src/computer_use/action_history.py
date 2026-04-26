@@ -5,11 +5,11 @@ Records and replays computer use actions.
 
 from __future__ import annotations
 
-import uuid
 import time
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
 
 
 class ActionType(Enum):

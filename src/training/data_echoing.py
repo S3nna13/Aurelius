@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import copy
-from dataclasses import dataclass, field
-from typing import Iterator
+from collections.abc import Iterator
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -46,7 +45,9 @@ def echo_probabilities(
         return torch.empty(0)
     losses = torch.tensor([example.loss for example in examples], dtype=torch.float32)
     difficulty = torch.tensor([example.difficulty for example in examples], dtype=torch.float32)
-    age = torch.tensor([current_step - example.last_seen_step for example in examples], dtype=torch.float32)
+    age = torch.tensor(
+        [current_step - example.last_seen_step for example in examples], dtype=torch.float32
+    )
     scores = echo_score(losses, difficulty, age)
     return torch.softmax(scores / temperature, dim=0)
 
@@ -119,7 +120,7 @@ class DataEchoBuffer:
         self._current_batch: tuple[torch.Tensor, torch.Tensor] | None = None
         self._echo_count: int = 0
 
-    def __iter__(self) -> "DataEchoBuffer":
+    def __iter__(self) -> DataEchoBuffer:
         return self
 
     def __next__(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -308,7 +309,6 @@ class EchoTrainer:
         # Count unique batches: each echo_factor steps = 1 unique batch,
         # but buffer may not be perfectly aligned.  We rely on buffer state.
         # Recompute from the buffer's internal echo counter.
-        unique = buffer._echo_count  # echoes used from the last batch
         # full batches consumed = steps_done // echo_factor (integer div)
         full_batches = steps_done // self.echo_config.echo_factor
         partial = 1 if (steps_done % self.echo_config.echo_factor) > 0 else 0
@@ -357,7 +357,7 @@ def compare_echo_vs_no_echo(
     echo_model = model_factory()
     echo_optimizer = torch.optim.SGD(echo_model.parameters(), lr=lr)
     echo_cfg = EchoConfig(echo_factor=echo_factor, shuffle_echoes=False)
-    echo_trainer = EchoTrainer(echo_model, echo_optimizer, echo_cfg)
+    EchoTrainer(echo_model, echo_optimizer, echo_cfg)
 
     echo_metrics: list[dict] = []
     echo_buffer = DataEchoBuffer(data_iter_factory(), echo_cfg)

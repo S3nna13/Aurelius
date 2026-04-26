@@ -1,16 +1,17 @@
 """Agent pool: spawn/retire agents, health monitoring, pool scaling."""
+
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
 def _short_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-class PoolAgentStatus(str, Enum):
+class PoolAgentStatus(StrEnum):
     IDLE = "idle"
     BUSY = "busy"
     DRAINING = "draining"
@@ -49,7 +50,8 @@ class AgentPool:
 
     def active_agents(self) -> list[PoolAgent]:
         return [
-            a for a in self._agents.values()
+            a
+            for a in self._agents.values()
             if a.status in (PoolAgentStatus.IDLE, PoolAgentStatus.BUSY)
         ]
 

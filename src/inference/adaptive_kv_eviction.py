@@ -12,17 +12,15 @@ Pure PyTorch — no external ML libraries required.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AdaptiveKVConfig:
@@ -32,30 +30,32 @@ class AdaptiveKVConfig:
     n_heads: int = 16
     head_dim: int = 128
     max_seq_len: int = 8192
-    budget_ratio: float = 0.3       # keep top ``budget_ratio`` fraction
-    min_budget: int = 64            # lower bound on kept tokens
-    recent_window: int = 32         # always keep last N tokens (never evict)
-    accumulate_steps: int = 1       # steps between eviction passes (reserved)
+    budget_ratio: float = 0.3  # keep top ``budget_ratio`` fraction
+    min_budget: int = 64  # lower bound on kept tokens
+    recent_window: int = 32  # always keep last N tokens (never evict)
+    accumulate_steps: int = 1  # steps between eviction passes (reserved)
 
 
 # ---------------------------------------------------------------------------
 # Cache state
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class KVCacheState:
     """Per-layer KV cache with accumulated attention statistics."""
 
-    keys: Tensor                    # [n_heads, T, head_dim]
-    values: Tensor                  # [n_heads, T, head_dim]
-    attn_scores_acc: Tensor         # [n_heads, T]  accumulated attention
-    kept_positions: List[int]       # original positions of kept tokens
+    keys: Tensor  # [n_heads, T, head_dim]
+    values: Tensor  # [n_heads, T, head_dim]
+    attn_scores_acc: Tensor  # [n_heads, T]  accumulated attention
+    kept_positions: list[int]  # original positions of kept tokens
     eviction_count: int = 0
 
 
 # ---------------------------------------------------------------------------
 # Manager
 # ---------------------------------------------------------------------------
+
 
 class AdaptiveKVEvictionManager:
     """Manages per-layer adaptive KV cache eviction.
@@ -140,13 +140,13 @@ class AdaptiveKVEvictionManager:
             return state
 
         # Split into "older" and "recent" halves.
-        n_recent = min(cfg.recent_window, k)   # can't protect more than budget
-        n_old    = T - n_recent                 # number of older positions
-        n_keep_old = k - n_recent               # older positions we may keep
+        n_recent = min(cfg.recent_window, k)  # can't protect more than budget
+        n_old = T - n_recent  # number of older positions
+        n_keep_old = k - n_recent  # older positions we may keep
 
         # Indices into the *current* cache tensors (0 … T-1).
-        old_indices    = list(range(n_old))          # older tokens
-        recent_indices = list(range(n_old, T))        # always kept
+        list(range(n_old))  # older tokens
+        recent_indices = list(range(n_old, T))  # always kept
 
         if n_keep_old <= 0 or n_old == 0:
             # Budget is tight — keep only recent tokens.
@@ -161,12 +161,11 @@ class AdaptiveKVEvictionManager:
             keep_indices = selected_old + recent_indices
 
         # Rebuild tensors.
-        idx_t = torch.tensor(keep_indices, dtype=torch.long,
-                             device=state.keys.device)
-        new_keys   = state.keys[:, idx_t, :]           # [n_heads, k', head_dim]
+        idx_t = torch.tensor(keep_indices, dtype=torch.long, device=state.keys.device)
+        new_keys = state.keys[:, idx_t, :]  # [n_heads, k', head_dim]
         new_values = state.values[:, idx_t, :]
-        new_acc    = state.attn_scores_acc[:, idx_t]   # [n_heads, k']
-        new_kept   = [state.kept_positions[i] for i in keep_indices]
+        new_acc = state.attn_scores_acc[:, idx_t]  # [n_heads, k']
+        new_kept = [state.kept_positions[i] for i in keep_indices]
 
         return KVCacheState(
             keys=new_keys,

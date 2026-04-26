@@ -1,4 +1,5 @@
 """Environment abstraction: state, action, step interface, GridWorld implementation."""
+
 from __future__ import annotations
 
 import uuid

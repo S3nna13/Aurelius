@@ -19,9 +19,9 @@ import inspect
 import json
 import sys
 import time
-from dataclasses import dataclass, field, asdict
-from typing import Any, Callable, Dict, List, Optional, Sequence
-
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data
@@ -32,9 +32,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 class BenchmarkRun:
     benchmark: str
     n_problems: int
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
     duration_s: float = 0.0
-    per_problem: List[Dict[str, Any]] = field(default_factory=list)
+    per_problem: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +48,7 @@ def _load_registries():
     Kept lazy so tests can stub the module via sys.modules if needed.
     """
     from src import eval as _eval  # noqa: WPS433  (internal, not foreign)
+
     metric = getattr(_eval, "METRIC_REGISTRY", {}) or {}
     bench = getattr(_eval, "BENCHMARK_REGISTRY", {}) or {}
     return metric, bench
@@ -75,7 +76,7 @@ def _construct_problem(problem_cls: Any, raw: Any) -> Any:
     return raw
 
 
-def _construct_problems(problem_cls: Any, raw_problems: Sequence[Any]) -> List[Any]:
+def _construct_problems(problem_cls: Any, raw_problems: Sequence[Any]) -> list[Any]:
     return [_construct_problem(problem_cls, p) for p in raw_problems]
 
 
@@ -88,8 +89,9 @@ def _is_class(obj: Any) -> bool:
     return inspect.isclass(obj)
 
 
-def _call_scorer(scorer: Any, problems: List[Any],
-                 generate_fn: Callable[[Any], str]) -> Dict[str, Any]:
+def _call_scorer(
+    scorer: Any, problems: list[Any], generate_fn: Callable[[Any], str]
+) -> dict[str, Any]:
     """Run `scorer` over problems using `generate_fn`. Returns a metrics dict.
 
     Handles three shapes:
@@ -117,10 +119,7 @@ def _call_scorer(scorer: Any, problems: List[Any],
             try:
                 sig = inspect.signature(score_fn)
                 params = list(sig.parameters.values())
-                needs_responses = any(
-                    p.name in ("responses", "outputs", "answers")
-                    for p in params
-                )
+                needs_responses = any(p.name in ("responses", "outputs", "answers") for p in params)
             except (TypeError, ValueError):
                 needs_responses = True
 
@@ -154,7 +153,7 @@ def _call_scorer(scorer: Any, problems: List[Any],
     return _coerce_metrics(result, n=len(problems))
 
 
-def _coerce_metrics(result: Any, n: int) -> Dict[str, Any]:
+def _coerce_metrics(result: Any, n: int) -> dict[str, Any]:
     if isinstance(result, dict):
         return dict(result)
     # Numeric scalar → wrap under "score".
@@ -186,7 +185,7 @@ def _coerce_metrics(result: Any, n: int) -> Dict[str, Any]:
 
 def run_benchmark(
     benchmark_name: str,
-    problems: List[Any],
+    problems: list[Any],
     generate_fn: Callable[[Any], str],
     **kwargs: Any,
 ) -> BenchmarkRun:
@@ -202,9 +201,7 @@ def run_benchmark(
     metric_reg, bench_reg = _load_registries()
     if benchmark_name not in metric_reg and benchmark_name not in bench_reg:
         known = sorted(set(list(metric_reg.keys()) + list(bench_reg.keys())))
-        raise KeyError(
-            f"Unknown benchmark {benchmark_name!r}. Known: {known}"
-        )
+        raise KeyError(f"Unknown benchmark {benchmark_name!r}. Known: {known}")
 
     problem_cls = bench_reg.get(benchmark_name)
     scorer = metric_reg.get(benchmark_name)
@@ -213,8 +210,8 @@ def run_benchmark(
 
     start = time.perf_counter()
     if not constructed:
-        metrics: Dict[str, Any] = {"n_problems": 0}
-        per_problem: List[Dict[str, Any]] = []
+        metrics: dict[str, Any] = {"n_problems": 0}
+        per_problem: list[dict[str, Any]] = []
     else:
         if scorer is None:
             # No scorer registered; just run generate_fn and report count.
@@ -223,7 +220,7 @@ def run_benchmark(
             per_problem = [{"response": r} for r in responses]
         else:
             # Track per-problem outputs when verbose is requested.
-            collected: List[Dict[str, Any]] = []
+            collected: list[dict[str, Any]] = []
 
             def _tracking_gen(p: Any) -> str:
                 out = generate_fn(p)
@@ -247,7 +244,7 @@ def run_benchmark(
 
 def format_report(run: BenchmarkRun, verbose: bool = False) -> str:
     """Render a human-readable report for a BenchmarkRun."""
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(f"Benchmark: {run.benchmark}")
     lines.append(f"Problems:  {run.n_problems}")
     lines.append(f"Duration:  {run.duration_s:.4f}s")
@@ -306,44 +303,49 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Run an Aurelius evaluation benchmark and print a report.",
     )
     p.add_argument(
-        "--benchmark", "-b", required=True,
+        "--benchmark",
+        "-b",
+        required=True,
         help="Benchmark name registered in src.eval.BENCHMARK_REGISTRY.",
     )
     p.add_argument(
-        "--problems-file", "-p", default=None,
+        "--problems-file",
+        "-p",
+        default=None,
         help="Path to a JSON file containing a list of problem dicts.",
     )
     p.add_argument(
-        "--output-file", "-o", default=None,
+        "--output-file",
+        "-o",
+        default=None,
         help="If set, write the BenchmarkRun (JSON) to this path.",
     )
     p.add_argument(
-        "--verbose", "-v", action="store_true",
+        "--verbose",
+        "-v",
+        action="store_true",
         help="Include per-problem results in the report.",
     )
     return p
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     # Load problems.
     if args.problems_file:
         try:
-            with open(args.problems_file, "r", encoding="utf-8") as fh:
+            with open(args.problems_file, encoding="utf-8") as fh:
                 problems = json.load(fh)
         except FileNotFoundError:
-            print(f"error: problems file not found: {args.problems_file}",
-                  file=sys.stderr)
+            print(f"error: problems file not found: {args.problems_file}", file=sys.stderr)
             return 2
         except json.JSONDecodeError as e:
-            print(f"error: invalid JSON in {args.problems_file}: {e}",
-                  file=sys.stderr)
+            print(f"error: invalid JSON in {args.problems_file}: {e}", file=sys.stderr)
             return 2
         if not isinstance(problems, list):
-            print("error: problems file must contain a JSON list",
-                  file=sys.stderr)
+            print("error: problems file must contain a JSON list", file=sys.stderr)
             return 2
     else:
         problems = []

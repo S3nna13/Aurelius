@@ -24,17 +24,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FlashAttnConfig:
@@ -50,19 +48,20 @@ class FlashAttnConfig:
     block_size: int = 64
     causal: bool = True
     dropout_p: float = 0.0
-    scale: Optional[float] = None
+    scale: float | None = None
 
 
 # ---------------------------------------------------------------------------
 # Reference implementation (O(N²))
 # ---------------------------------------------------------------------------
 
+
 def standard_attention(
     Q: Tensor,
     K: Tensor,
     V: Tensor,
-    mask: Optional[Tensor] = None,
-    scale: Optional[float] = None,
+    mask: Tensor | None = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Standard scaled dot-product attention (O(N²) memory).
 
@@ -90,7 +89,7 @@ def standard_attention(
         scores = scores.masked_fill(mask, float("-inf"))
 
     weights = torch.softmax(scores, dim=-1)  # (..., T_q, T_k)
-    out = torch.matmul(weights, V.float())   # (..., T_q, d)
+    out = torch.matmul(weights, V.float())  # (..., T_q, d)
     return out.to(Q.dtype)
 
 
@@ -98,13 +97,14 @@ def standard_attention(
 # Tiled implementation (Flash Attention online-softmax pattern)
 # ---------------------------------------------------------------------------
 
+
 def tiled_attention(
     Q: Tensor,
     K: Tensor,
     V: Tensor,
     causal: bool = True,
     block_size: int = 64,
-    scale: Optional[float] = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Tiled block computation simulating Flash Attention's online softmax.
 
@@ -137,7 +137,7 @@ def tiled_attention(
     Vf = V.float()
 
     # Final output accumulator
-    O = torch.zeros(B, H, T, d, dtype=torch.float32, device=device)
+    O = torch.zeros(B, H, T, d, dtype=torch.float32, device=device)  # noqa: E741
 
     for q_start in range(0, T, block_size):
         q_end = min(q_start + block_size, T)
@@ -147,7 +147,7 @@ def tiled_attention(
 
         # Running accumulators for this Q-tile
         m = torch.full((B, H, Tq, 1), float("-inf"), dtype=torch.float32, device=device)
-        l = torch.zeros((B, H, Tq, 1), dtype=torch.float32, device=device)
+        item = torch.zeros((B, H, Tq, 1), dtype=torch.float32, device=device)
         acc = torch.zeros((B, H, Tq, d), dtype=torch.float32, device=device)
 
         q_pos = torch.arange(q_start, q_end, device=device)  # (Tq,)
@@ -169,9 +169,7 @@ def tiled_attention(
                 kv_pos = torch.arange(kv_start, kv_end, device=device)  # (Tkv,)
                 # future_mask[i, j] = True when kv_pos[j] > q_pos[i]
                 future_mask = kv_pos.unsqueeze(0) > q_pos.unsqueeze(1)  # (Tq, Tkv)
-                scores = scores.masked_fill(
-                    future_mask.unsqueeze(0).unsqueeze(0), float("-inf")
-                )
+                scores = scores.masked_fill(future_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
             # ---- online softmax update --------------------------------
             # chunk max
@@ -179,26 +177,27 @@ def tiled_attention(
             m_new = torch.maximum(m, m_new_chunk)
 
             # stabilised exp for this chunk
-            exp_s = torch.exp(scores - m_new)                       # (B, H, Tq, Tkv)
-            chunk_sum = exp_s.sum(dim=-1, keepdim=True)             # (B, H, Tq, 1)
+            exp_s = torch.exp(scores - m_new)  # (B, H, Tq, Tkv)
+            chunk_sum = exp_s.sum(dim=-1, keepdim=True)  # (B, H, Tq, 1)
 
             # correction factor for previous accumulator
-            corr = torch.exp(m - m_new)                             # (B, H, Tq, 1)
+            corr = torch.exp(m - m_new)  # (B, H, Tq, 1)
 
-            l = corr * l + chunk_sum
+            item = corr * item + chunk_sum
             acc = corr * acc + torch.matmul(exp_s, Vb)
             m = m_new
             # -----------------------------------------------------------
 
         # Normalise; clamp prevents divide-by-zero on all-masked rows
-        O[:, :, q_start:q_end, :] = acc / l.clamp(min=1e-12)
+        O[:, :, q_start:q_end, :] = acc / item.clamp(min=1e-12)
 
-    return O.to(Q.dtype)
+    return O.to(Q.dtype)  # noqa: E741
 
 
 # ---------------------------------------------------------------------------
 # nn.Module: FlashAttentionSim
 # ---------------------------------------------------------------------------
+
 
 class FlashAttentionSim(nn.Module):
     """Multi-head attention using the tiled Flash Attention simulation.
@@ -216,9 +215,7 @@ class FlashAttentionSim(nn.Module):
     def __init__(self, d_model: int, n_heads: int, config: FlashAttnConfig) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
-            )
+            raise ValueError(f"d_model ({d_model}) must be divisible by n_heads ({n_heads})")
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -247,7 +244,9 @@ class FlashAttentionSim(nn.Module):
         V = self.v_proj(x).view(B, T, H, Dh).transpose(1, 2)
 
         out = tiled_attention(
-            Q, K, V,
+            Q,
+            K,
+            V,
             causal=self.config.causal,
             block_size=self.config.block_size,
             scale=self.config.scale,
@@ -261,6 +260,7 @@ class FlashAttentionSim(nn.Module):
 # ---------------------------------------------------------------------------
 # nn.Module: MultiHeadFlashAttn
 # ---------------------------------------------------------------------------
+
 
 class MultiHeadFlashAttn(nn.Module):
     """``FlashAttentionSim`` wrapped with a residual connection and LayerNorm.
@@ -296,6 +296,7 @@ class MultiHeadFlashAttn(nn.Module):
 # Utility: numerical comparison
 # ---------------------------------------------------------------------------
 
+
 def compare_attention_outputs(
     Q: Tensor,
     K: Tensor,
@@ -320,11 +321,11 @@ def compare_attention_outputs(
         Maximum absolute element-wise difference between the two outputs
         (a Python float).
     """
-    d = Q.size(-1)
+    Q.size(-1)
     T = Q.size(-2)
 
     # Build causal mask for standard_attention if requested
-    mask: Optional[Tensor] = None
+    mask: Tensor | None = None
     if causal:
         # mask[i, j] = True when j > i  (future positions)
         idx = torch.arange(T, device=Q.device)

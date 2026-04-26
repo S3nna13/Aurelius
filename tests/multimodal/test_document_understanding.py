@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import torch
 
 from src.multimodal.document_understanding import (
@@ -29,8 +27,17 @@ VALID_DOC = {
             "width": 612.0,
             "height": 792.0,
             "regions": [
-                {"region_type": "text", "text": "Hello world", "bbox": [10, 20, 200, 40], "confidence": 0.99},
-                {"region_type": "table", "text": "Row1 Col1\tRow1 Col2", "bbox": [10, 50, 400, 200]},
+                {
+                    "region_type": "text",
+                    "text": "Hello world",
+                    "bbox": [10, 20, 200, 40],
+                    "confidence": 0.99,
+                },
+                {
+                    "region_type": "table",
+                    "text": "Row1 Col1\tRow1 Col2",
+                    "bbox": [10, 50, 400, 200],
+                },
             ],
         },
         {
@@ -181,9 +188,16 @@ def test_json_parser_none_pages_returns_empty_list():
 
 
 def test_json_parser_bad_region_type_defaults_to_text():
-    doc = {"pages": [{"page_number": 1, "width": 100, "height": 200, "regions": [
-        {"region_type": "unknown_type", "text": "hi"}
-    ]}]}
+    doc = {
+        "pages": [
+            {
+                "page_number": 1,
+                "width": 100,
+                "height": 200,
+                "regions": [{"region_type": "unknown_type", "text": "hi"}],
+            }
+        ]
+    }
     parser = JSONLayoutParser()
     pages = parser.parse(doc)
     assert pages[0].regions[0].region_type == DocumentRegionType.TEXT

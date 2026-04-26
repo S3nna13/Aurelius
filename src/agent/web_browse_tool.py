@@ -50,9 +50,7 @@ class PrivateHostBlocked(UrlValidationError):
 # ---------------------------------------------------------------------------
 
 
-_ALLOWED_METHODS: frozenset[str] = frozenset(
-    {"GET", "HEAD", "POST", "PUT", "DELETE"}
-)
+_ALLOWED_METHODS: frozenset[str] = frozenset({"GET", "HEAD", "POST", "PUT", "DELETE"})
 
 _ALLOWED_SCHEMES: frozenset[str] = frozenset({"http", "https"})
 
@@ -298,9 +296,7 @@ class WebBrowseTool:
             "user_agent": overrides.pop("user_agent", self.default_user_agent),
         }
         if overrides:
-            raise UrlValidationError(
-                f"unknown overrides: {sorted(overrides)!r}"
-            )
+            raise UrlValidationError(f"unknown overrides: {sorted(overrides)!r}")
         return WebRequestSpec(**spec_kwargs)
 
     def validate_request(self, spec: WebRequestSpec) -> None:

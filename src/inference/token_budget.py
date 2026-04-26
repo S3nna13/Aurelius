@@ -4,23 +4,25 @@ Provides budget-aware token generation with entropy-based complexity estimation.
 Adjusts generation length based on input complexity: simple inputs get shorter
 budgets, complex inputs get longer ones.
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BudgetConfig:
     """Configuration for token budget and adaptive generation."""
+
     max_tokens: int = 512
     target_efficiency: float = 0.8
     adaptive: bool = True
@@ -31,6 +33,7 @@ class BudgetConfig:
 # ---------------------------------------------------------------------------
 # Token Budget tracker
 # ---------------------------------------------------------------------------
+
 
 class TokenBudget:
     """Tracks token consumption against a fixed budget.
@@ -82,6 +85,7 @@ class TokenBudget:
 # Complexity estimation
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def estimate_sequence_complexity(
     model: torch.nn.Module,
@@ -117,6 +121,7 @@ def estimate_sequence_complexity(
 # ---------------------------------------------------------------------------
 # Adaptive budget calculation
 # ---------------------------------------------------------------------------
+
 
 def adaptive_max_tokens(
     base_budget: int,
@@ -163,6 +168,7 @@ def adaptive_max_tokens(
 # Budget-aware generation
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def budget_aware_generate(
     model: torch.nn.Module,
@@ -206,6 +212,7 @@ def budget_aware_generate(
 # ---------------------------------------------------------------------------
 # BudgetedGenerator
 # ---------------------------------------------------------------------------
+
 
 class BudgetedGenerator:
     """High-level generator that ties together budget config, complexity

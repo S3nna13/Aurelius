@@ -18,15 +18,13 @@ Usage::
 
 from __future__ import annotations
 
-import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -37,11 +35,11 @@ from torch import Tensor
 class InfluenceConfig:
     """Hyperparameters for influence function computation."""
 
-    n_recursion_depth: int = 10      # LiSSA recursion depth
-    recursion_scale: float = 0.1     # LiSSA damping / scale factor
-    damping: float = 0.01            # Hessian damping λI added to H
-    n_samples: int = 16              # samples used for stochastic HVP
-    top_k: int = 5                   # top-k influential examples to return
+    n_recursion_depth: int = 10  # LiSSA recursion depth
+    recursion_scale: float = 0.1  # LiSSA damping / scale factor
+    damping: float = 0.01  # Hessian damping λI added to H
+    n_samples: int = 16  # samples used for stochastic HVP
+    top_k: int = 5  # top-k influential examples to return
 
 
 # ---------------------------------------------------------------------------
@@ -54,8 +52,8 @@ def compute_grad(
     loss_fn: Callable,
     inputs: Tensor,
     targets: Tensor,
-    params: Optional[List[nn.Parameter]] = None,
-) -> List[Tensor]:
+    params: list[nn.Parameter] | None = None,
+) -> list[Tensor]:
     """Compute gradient of loss w.r.t. params.
 
     Args:
@@ -87,7 +85,7 @@ def compute_grad(
         allow_unused=True,
     )
 
-    result: List[Tensor] = []
+    result: list[Tensor] = []
     for g, p in zip(grads, params):
         if g is None:
             result.append(torch.zeros_like(p))
@@ -106,9 +104,9 @@ def hvp(
     loss_fn: Callable,
     inputs: Tensor,
     targets: Tensor,
-    vector: List[Tensor],
+    vector: list[Tensor],
     damping: float = 0.01,
-) -> List[Tensor]:
+) -> list[Tensor]:
     """Hessian-vector product: (H + λI) @ v using double backprop.
 
     Computes H @ v via a second-order automatic differentiation trick:
@@ -139,7 +137,7 @@ def hvp(
     )
 
     # Replace None grads with zeros (allow_unused may yield None)
-    first_grads_clean: List[Tensor] = []
+    first_grads_clean: list[Tensor] = []
     for g, p in zip(first_grads, params):
         if g is None:
             first_grads_clean.append(torch.zeros_like(p))
@@ -147,10 +145,7 @@ def hvp(
             first_grads_clean.append(g)
 
     # Dot product: grad · v  (scalar)
-    grad_dot_v = sum(
-        (g * v).sum()
-        for g, v in zip(first_grads_clean, vector)
-    )
+    grad_dot_v = sum((g * v).sum() for g, v in zip(first_grads_clean, vector))
 
     # Second-order gradients
     second_grads = torch.autograd.grad(
@@ -159,7 +154,7 @@ def hvp(
         allow_unused=True,
     )
 
-    result: List[Tensor] = []
+    result: list[Tensor] = []
     for sg, v in zip(second_grads, vector):
         hv_i = torch.zeros_like(v) if sg is None else sg.detach()
         result.append(hv_i + damping * v)
@@ -175,11 +170,11 @@ def hvp(
 def lissa_inverse_hvp(
     model: nn.Module,
     loss_fn: Callable,
-    train_inputs: List[Tensor],
-    train_targets: List[Tensor],
-    vector: List[Tensor],
+    train_inputs: list[Tensor],
+    train_targets: list[Tensor],
+    vector: list[Tensor],
     config: InfluenceConfig,
-) -> List[Tensor]:
+) -> list[Tensor]:
     """LiSSA approximation of H^{-1} @ vector via recursive sampling.
 
     Implements the recursion:
@@ -204,7 +199,7 @@ def lissa_inverse_hvp(
         return [v.clone() for v in vector]
 
     # Initialise h = v (copy)
-    h: List[Tensor] = [v.clone() for v in vector]
+    h: list[Tensor] = [v.clone() for v in vector]
 
     for _ in range(config.n_recursion_depth):
         # Pick a random batch
@@ -239,7 +234,7 @@ def lissa_inverse_hvp(
 def compute_influence_scores(
     model: nn.Module,
     loss_fn: Callable,
-    train_dataset: List[Tuple[Tensor, Tensor]],
+    train_dataset: list[tuple[Tensor, Tensor]],
     test_inputs: Tensor,
     test_targets: Tensor,
     config: InfluenceConfig,
@@ -298,10 +293,7 @@ def compute_influence_scores(
     for i, (tr_in, tr_tgt) in enumerate(train_dataset):
         tr_grad = compute_grad(model, loss_fn, tr_in, tr_tgt, params)
         # dot product: -grad_test^T H^{-1} grad_train_i
-        dot = sum(
-            (ihvp_j * tg_j).sum()
-            for ihvp_j, tg_j in zip(inv_hvp, tr_grad)
-        )
+        dot = sum((ihvp_j * tg_j).sum() for ihvp_j, tg_j in zip(inv_hvp, tr_grad))
         scores[i] = -dot.item()
 
     return scores
@@ -316,7 +308,7 @@ def top_influential_examples(
     influence_scores: Tensor,
     k: int,
     mode: str = "harmful",
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Return (indices, scores) of top-k most harmful or helpful examples.
 
     Args:

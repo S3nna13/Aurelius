@@ -1,30 +1,31 @@
 """PPO trainer for RLHF: clip-ratio policy gradient with value function baseline."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PPOConfig:
     """Hyperparameters for PPO training."""
 
-    clip_ratio: float = 0.2         # epsilon for clipping ratio
-    vf_coeff: float = 0.5           # value function loss coefficient
-    entropy_coeff: float = 0.01     # entropy bonus coefficient
-    n_epochs: int = 4               # PPO epochs per rollout
-    n_rollout_steps: int = 8        # tokens to sample per prompt
-    gamma: float = 1.0              # discount factor
-    gae_lambda: float = 0.95        # GAE lambda
+    clip_ratio: float = 0.2  # epsilon for clipping ratio
+    vf_coeff: float = 0.5  # value function loss coefficient
+    entropy_coeff: float = 0.01  # entropy bonus coefficient
+    n_epochs: int = 4  # PPO epochs per rollout
+    n_rollout_steps: int = 8  # tokens to sample per prompt
+    gamma: float = 1.0  # discount factor
+    gae_lambda: float = 0.95  # GAE lambda
     temperature: float = 1.0
     max_grad_norm: float = 1.0
 
@@ -32,6 +33,7 @@ class PPOConfig:
 # ---------------------------------------------------------------------------
 # Value head
 # ---------------------------------------------------------------------------
+
 
 class ValueHead(nn.Module):
     """Scalar value function head on top of backbone hidden states."""
@@ -49,9 +51,10 @@ class ValueHead(nn.Module):
 # GAE advantages
 # ---------------------------------------------------------------------------
 
+
 def compute_gae(
-    rewards: Tensor,    # (T,)
-    values: Tensor,     # (T,)
+    rewards: Tensor,  # (T,)
+    values: Tensor,  # (T,)
     gamma: float,
     gae_lambda: float,
 ) -> tuple[Tensor, Tensor]:
@@ -81,10 +84,11 @@ def compute_gae(
 # PPO losses
 # ---------------------------------------------------------------------------
 
+
 def ppo_policy_loss(
-    log_probs: Tensor,       # (B, T) — current policy log probs
-    old_log_probs: Tensor,   # (B, T) — old policy log probs (from rollout)
-    advantages: Tensor,      # (B, T)
+    log_probs: Tensor,  # (B, T) — current policy log probs
+    old_log_probs: Tensor,  # (B, T) — old policy log probs (from rollout)
+    advantages: Tensor,  # (B, T)
     clip_ratio: float,
 ) -> tuple[Tensor, dict]:
     """Clipped PPO policy loss.
@@ -134,6 +138,7 @@ def entropy_bonus(log_probs: Tensor) -> Tensor:
 # PPOTrainer
 # ---------------------------------------------------------------------------
 
+
 class PPOTrainer:
     """RLHF PPO trainer."""
 
@@ -175,11 +180,12 @@ class PPOTrainer:
         if norm_module is None:
             # Fallback: look for any RMSNorm or LayerNorm
             for name, module in self.policy.named_modules():
-                if "norm" in name.lower() and not "." in name:
+                if "norm" in name.lower() and "." not in name:
                     norm_module = module
                     break
 
         if norm_module is not None:
+
             def hook_fn(module, input, output):
                 self._hidden_states.append(output.detach())
 
@@ -219,9 +225,9 @@ class PPOTrainer:
         self.policy.eval()
         self.value_head.eval()
 
-        all_tokens = []      # list of (B, 1) tensors
-        all_log_probs = []   # list of (B,) tensors
-        all_values = []      # list of (B,) tensors
+        all_tokens = []  # list of (B, 1) tensors
+        all_log_probs = []  # list of (B,) tensors
+        all_values = []  # list of (B,) tensors
 
         with torch.no_grad():
             cur_ids = prompt_ids
@@ -232,8 +238,8 @@ class PPOTrainer:
                     cur_ids, past_key_values
                 )
                 # logits: (B, seq_len, vocab_size) — use last token's logits
-                last_logits = logits[:, -1, :]           # (B, vocab_size)
-                last_hidden = hidden[:, -1:, :]          # (B, 1, d_model)
+                last_logits = logits[:, -1, :]  # (B, vocab_size)
+                last_hidden = hidden[:, -1:, :]  # (B, 1, d_model)
 
                 # Scale by temperature
                 scaled_logits = last_logits / cfg.temperature
@@ -241,7 +247,7 @@ class PPOTrainer:
 
                 # Sample next token
                 probs = log_probs_all.exp()
-                next_token = torch.multinomial(probs, num_samples=1)   # (B, 1)
+                next_token = torch.multinomial(probs, num_samples=1)  # (B, 1)
                 token_log_prob = log_probs_all.gather(1, next_token).squeeze(1)  # (B,)
 
                 # Value estimate from last hidden state
@@ -255,9 +261,9 @@ class PPOTrainer:
                 cur_ids = next_token  # next step input is just the new token
 
         # Stack: (B, T)
-        tokens = torch.cat(all_tokens, dim=1)         # (B, T)
+        tokens = torch.cat(all_tokens, dim=1)  # (B, T)
         log_probs = torch.stack(all_log_probs, dim=1)  # (B, T)
-        values = torch.stack(all_values, dim=1)        # (B, T)
+        values = torch.stack(all_values, dim=1)  # (B, T)
 
         # Compute rewards for each sequence
         rewards_list = []
@@ -279,10 +285,10 @@ class PPOTrainer:
         Returns dict with: 'policy_loss', 'value_loss', 'entropy', 'total_loss'
         """
         cfg = self.config
-        tokens = rollout["tokens"]          # (B, T)
+        tokens = rollout["tokens"]  # (B, T)
         old_log_probs = rollout["log_probs"].detach()  # (B, T)
-        old_values = rollout["values"].detach()         # (B, T)
-        rewards = rollout["rewards"]                    # (B,)
+        old_values = rollout["values"].detach()  # (B, T)
+        rewards = rollout["rewards"]  # (B,)
 
         B, T = tokens.shape
 
@@ -299,7 +305,7 @@ class PPOTrainer:
             all_returns.append(ret)
 
         advantages = torch.stack(all_advantages, dim=0)  # (B, T)
-        returns = torch.stack(all_returns, dim=0)         # (B, T)
+        returns = torch.stack(all_returns, dim=0)  # (B, T)
 
         # Normalize advantages
         adv_mean = advantages.mean()
@@ -325,9 +331,7 @@ class PPOTrainer:
             log_probs_all = F.log_softmax(logits, dim=-1)  # (B, T, vocab_size)
 
             # Gather log probs for the sampled tokens
-            curr_log_probs = log_probs_all.gather(
-                2, tokens.unsqueeze(-1)
-            ).squeeze(-1)  # (B, T)
+            curr_log_probs = log_probs_all.gather(2, tokens.unsqueeze(-1)).squeeze(-1)  # (B, T)
 
             # Value head over all hidden states
             curr_values = self.value_head(hidden)  # (B, T)

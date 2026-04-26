@@ -11,16 +11,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ALiBiConfig:
@@ -35,6 +34,7 @@ class ALiBiConfig:
 # ---------------------------------------------------------------------------
 # Helper: slopes
 # ---------------------------------------------------------------------------
+
 
 def get_alibi_slopes(n_heads: int) -> torch.Tensor:
     """Compute per-head ALiBi slopes.
@@ -86,6 +86,7 @@ def get_alibi_slopes(n_heads: int) -> torch.Tensor:
 # Helper: bias matrix
 # ---------------------------------------------------------------------------
 
+
 def get_relative_positions(seq_len: int) -> torch.Tensor:
     """Return (T, T) matrix of |i - j| distances.
 
@@ -103,7 +104,7 @@ def get_relative_positions(seq_len: int) -> torch.Tensor:
 def build_alibi_bias(
     n_heads: int,
     seq_len: int,
-    slopes: Optional[torch.Tensor] = None,
+    slopes: torch.Tensor | None = None,
     causal: bool = True,
 ) -> torch.Tensor:
     """Build the (n_heads, T, T) ALiBi additive bias matrix.
@@ -145,6 +146,7 @@ def build_alibi_bias(
 # Modules
 # ---------------------------------------------------------------------------
 
+
 class ALiBiAttention(nn.Module):
     """Multi-head self-attention with ALiBi positional bias.
 
@@ -165,7 +167,7 @@ class ALiBiAttention(nn.Module):
         self.config = config
         self.n_heads = config.n_heads
         self.head_dim = config.d_model // config.n_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
 
         # Projections — no bias, following common LLM practice
         self.q_proj = nn.Linear(config.d_model, config.d_model, bias=False)

@@ -23,15 +23,15 @@ __all__ = [
     "MemoryRetriever",
     "MEMORY_RETRIEVER",
 ]
-from .episodic_memory import MemoryEntry, EpisodicMemory
-from .working_memory import WorkingMemory, WORKING_MEMORY
-from .memory_index import MemoryIndex, MEMORY_INDEX
-from .semantic_memory import RelationType, Concept, Relation, SemanticMemory
+from .episodic_memory import EpisodicMemory, MemoryEntry
 from .memory_consolidation import (
     ConsolidationPolicy,
     ConsolidationResult,
     MemoryConsolidator,
 )
+from .memory_index import MEMORY_INDEX, MemoryIndex
+from .semantic_memory import Concept, Relation, RelationType, SemanticMemory
+from .working_memory import WORKING_MEMORY, WorkingMemory
 
 MEMORY_REGISTRY: dict[str, object] = {
     "episodic": EpisodicMemory(),
@@ -42,23 +42,23 @@ MEMORY_REGISTRY: dict[str, object] = {
 }
 
 # --- Cycle-146 long-term memory deepening (Park et al. 2303.17580) -----------
-from .long_term_memory import LTMEntry, LongTermMemory, LONG_TERM_MEMORY  # noqa: F401
+from .long_term_memory import LONG_TERM_MEMORY, LongTermMemory, LTMEntry  # noqa: F401
 from .memory_retriever import (
-    RetrievalResult,
-    MemoryRetriever,
     MEMORY_RETRIEVER,
+    MemoryRetriever,
+    RetrievalResult,
 )  # noqa: F401
 
 MEMORY_REGISTRY.update({"ltm": LONG_TERM_MEMORY, "retriever": MEMORY_RETRIEVER})
 
 # --- Cycle-210 layered memory (GenericAgent-inspired) ------------------------
 from .layered_memory import (  # noqa: F401
-    LayeredMemory,
-    LayeredMemoryEntry,
-    MemoryLayer,
-    LayeredMemoryError,
     DEFAULT_LAYERED_MEMORY,
     LAYERED_MEMORY_REGISTRY,
+    LayeredMemory,
+    LayeredMemoryEntry,
+    LayeredMemoryError,
+    MemoryLayer,
 )
 
 # Register layered memory in the combined registry.
@@ -66,12 +66,12 @@ MEMORY_REGISTRY["layered"] = DEFAULT_LAYERED_MEMORY
 
 # --- Cycle-210 progressive search (claude-mem-inspired) ----------------------
 from .progressive_search import (  # noqa: F401
-    ProgressiveSearcher,
-    IndexEntry,
-    SearchResult,
-    ProgressiveSearchError,
     DEFAULT_PROGRESSIVE_SEARCHER,
     PROGRESSIVE_SEARCH_REGISTRY,
+    IndexEntry,
+    ProgressiveSearcher,
+    ProgressiveSearchError,
+    SearchResult,
 )
 
 MEMORY_REGISTRY["progressive_search"] = DEFAULT_PROGRESSIVE_SEARCHER

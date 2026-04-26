@@ -14,7 +14,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -61,7 +60,7 @@ def compute_router_z_loss(router_logits: Tensor) -> Tensor:
     """
     # log-sum-exp over experts for each token, then square and average.
     log_z = torch.logsumexp(router_logits, dim=-1)  # (N,)
-    z_loss = (log_z ** 2).mean()
+    z_loss = (log_z**2).mean()
     return z_loss
 
 
@@ -189,8 +188,7 @@ def top_k_routing(
     top_k_probs = top_k_probs / top_k_probs.sum(dim=-1, keepdim=True).clamp(min=1e-9)
 
     # 5. Build sparse expert_mask: (N, n_experts)
-    expert_mask = torch.zeros(N, n_experts, device=router_logits.device,
-                              dtype=router_logits.dtype)
+    expert_mask = torch.zeros(N, n_experts, device=router_logits.device, dtype=router_logits.dtype)
     expert_mask.scatter_(1, top_k_indices, 1.0)
 
     # 6. Capacity constraint: each expert can handle at most `capacity` tokens
@@ -199,7 +197,7 @@ def top_k_routing(
     # Process experts in order; for each expert, keep only the first `capacity`
     # tokens (by token index) that were assigned to it.
     for e in range(n_experts):
-        col = expert_mask[:, e]          # (N,)
+        col = expert_mask[:, e]  # (N,)
         assigned = col.nonzero(as_tuple=False).squeeze(1)  # token indices
         if assigned.numel() > capacity:
             # Zero out tokens beyond capacity
@@ -309,14 +307,16 @@ class LoadBalancedMoELayer(nn.Module):
         self.router = nn.Linear(d_model, n_experts, bias=False)
 
         # Experts: each is a 2-layer MLP with ReLU
-        self.experts = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(d_model, d_expert),
-                nn.ReLU(),
-                nn.Linear(d_expert, d_model),
-            )
-            for _ in range(n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(d_model, d_expert),
+                    nn.ReLU(),
+                    nn.Linear(d_expert, d_model),
+                )
+                for _ in range(n_experts)
+            ]
+        )
 
     def forward(self, x: Tensor) -> tuple[Tensor, dict[str, Tensor]]:
         """Forward pass.
@@ -383,10 +383,7 @@ class LoadBalancedMoELayer(nn.Module):
 
         output = output_flat.view(B, T, D)
 
-        total_aux = (
-            self.cfg.aux_loss_coeff * aux_loss
-            + self.cfg.z_loss_coeff * z_loss
-        )
+        total_aux = self.cfg.aux_loss_coeff * aux_loss + self.cfg.z_loss_coeff * z_loss
 
         aux_losses: dict[str, Tensor] = {
             "aux_loss": aux_loss,

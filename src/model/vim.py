@@ -24,7 +24,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # PatchEmbed
 # ---------------------------------------------------------------------------
@@ -196,15 +195,15 @@ class BidirectionalSSM(nn.Module):
             (B, T, d_model)
         """
         # Forward scan
-        x_fwd = self.in_proj_fwd(x)            # (B, T, d_inner)
-        y_fwd = self.ssm_fwd(x_fwd)            # (B, T, d_inner)
+        x_fwd = self.in_proj_fwd(x)  # (B, T, d_inner)
+        y_fwd = self.ssm_fwd(x_fwd)  # (B, T, d_inner)
 
         # Backward scan: flip, scan, flip back
-        x_bwd = self.in_proj_bwd(x.flip(1))    # (B, T, d_inner)  reversed
-        y_bwd = self.ssm_bwd(x_bwd).flip(1)    # (B, T, d_inner)  unflipped
+        x_bwd = self.in_proj_bwd(x.flip(1))  # (B, T, d_inner)  reversed
+        y_bwd = self.ssm_bwd(x_bwd).flip(1)  # (B, T, d_inner)  unflipped
 
         # Merge by summation, then project
-        return self.out_proj(y_fwd + y_bwd)    # (B, T, d_model)
+        return self.out_proj(y_fwd + y_bwd)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
@@ -286,9 +285,7 @@ class VisionMamba(nn.Module):
         # Learnable position embeddings: CLS + N patches
         self.pos_embed = nn.Parameter(torch.zeros(1, n_patches + 1, d_model))
 
-        self.blocks = nn.ModuleList(
-            [VimBlock(d_model, d_state=d_state) for _ in range(n_layers)]
-        )
+        self.blocks = nn.ModuleList([VimBlock(d_model, d_state=d_state) for _ in range(n_layers)])
 
         self.norm = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, n_classes)
@@ -325,5 +322,5 @@ class VisionMamba(nn.Module):
         x = self.norm(x)
 
         # Classify using CLS token
-        cls_out = x[:, 0]            # (B, d_model)
-        return self.head(cls_out)    # (B, n_classes)
+        cls_out = x[:, 0]  # (B, d_model)
+        return self.head(cls_out)  # (B, n_classes)

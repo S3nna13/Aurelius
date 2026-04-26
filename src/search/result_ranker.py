@@ -19,9 +19,7 @@ class ResultRanker:
     def __init__(self, rrf_k: int = 60) -> None:
         self.rrf_k = rrf_k
 
-    def reciprocal_rank_fusion(
-        self, rankings: list[list[str]]
-    ) -> list[tuple[str, float]]:
+    def reciprocal_rank_fusion(self, rankings: list[list[str]]) -> list[tuple[str, float]]:
         """Fuse multiple ranked lists using RRF. Returns sorted (doc_id, score) desc."""
         if not rankings:
             return []
@@ -43,9 +41,7 @@ class ResultRanker:
 
         if max_score == min_score:
             return [
-                RankedResult(
-                    result_id=r.result_id, score=1.0, rank=r.rank, source=r.source
-                )
+                RankedResult(result_id=r.result_id, score=1.0, rank=r.rank, source=r.source)
                 for r in results
             ]
 

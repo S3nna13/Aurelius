@@ -10,7 +10,6 @@ import pytest
 from src.retrieval.bm25_retriever import BM25Retriever
 from src.retrieval.hybrid_retriever import HybridRetriever, _CosineDenseRetriever
 
-
 # --------------------------------------------------------------------------- #
 # Deterministic embed fns used throughout the tests.                          #
 # --------------------------------------------------------------------------- #
@@ -48,11 +47,11 @@ def corpus():
     # Crafted: doc 2 ("a a a b") shares character-profile with query "aaab"
     # but has zero lexical overlap in BM25 sense with the query "apples".
     return [
-        "apples oranges bananas",       # 0
-        "the quick brown fox",          # 1
-        "a a a b",                      # 2  (char-profile matches "aaab")
-        "completely unrelated stuff",   # 3
-        "banana apple apple",           # 4
+        "apples oranges bananas",  # 0
+        "the quick brown fox",  # 1
+        "a a a b",  # 2  (char-profile matches "aaab")
+        "completely unrelated stuff",  # 3
+        "banana apple apple",  # 4
     ]
 
 
@@ -66,9 +65,7 @@ def test_hybrid_beats_sparse_on_crafted_corpus(corpus):
     # tokenizer (doc 2 tokens: ["a","a","a","b"]; query tokens: ["aaab"]).
     # But char_count_embed makes doc 2 the nearest neighbor.
     sparse = BM25Retriever()
-    hybrid = HybridRetriever(
-        sparse_retriever=sparse, embed_fn=char_count_embed, fusion="rrf"
-    )
+    hybrid = HybridRetriever(sparse_retriever=sparse, embed_fn=char_count_embed, fusion="rrf")
     hybrid.add_documents(corpus)
     sparse_only = BM25Retriever()
     sparse_only.add_documents(corpus)
@@ -98,7 +95,7 @@ def test_rrf_formula_hand_computed():
     #   C: 1/63 + 0
     #   D: 0    + 1/62
     sparse_hits = [(10, 0.9), (20, 0.8), (30, 0.7)]  # A=10 B=20 C=30
-    dense_hits = [(20, 0.9), (40, 0.5), (10, 0.4)]   # D=40
+    dense_hits = [(20, 0.9), (40, 0.5), (10, 0.4)]  # D=40
     fused = HybridRetriever._rrf(sparse_hits, dense_hits, k_rrf=60)
 
     assert math.isclose(fused[10], 1 / 61 + 1 / 63, abs_tol=1e-6)
@@ -119,7 +116,7 @@ def test_weighted_fusion_formula():
     #   10: 0.5*1.0
     #   20: 0.5*0.0 + 0.5*1.0
     #   30: 0.5*0.0
-    sparse = BM25Retriever()
+    BM25Retriever()
 
     class _Dense:
         def add_documents(self, docs):
@@ -294,9 +291,7 @@ def test_both_dense_and_embed_fn_rejected():
     sparse = BM25Retriever()
     dense = _CosineDenseRetriever(char_count_embed)
     with pytest.raises(ValueError):
-        HybridRetriever(
-            sparse, dense_retriever=dense, embed_fn=char_count_embed
-        )
+        HybridRetriever(sparse, dense_retriever=dense, embed_fn=char_count_embed)
 
 
 def test_double_add_documents_raises(corpus):
@@ -314,16 +309,12 @@ def test_query_before_indexing_raises():
 
 def test_negative_weights_rejected():
     with pytest.raises(ValueError):
-        HybridRetriever(
-            BM25Retriever(), embed_fn=char_count_embed, weights=(-1.0, 1.0)
-        )
+        HybridRetriever(BM25Retriever(), embed_fn=char_count_embed, weights=(-1.0, 1.0))
 
 
 def test_bad_k_rrf_rejected():
     with pytest.raises(ValueError):
-        HybridRetriever(
-            BM25Retriever(), embed_fn=char_count_embed, k_rrf=0
-        )
+        HybridRetriever(BM25Retriever(), embed_fn=char_count_embed, k_rrf=0)
 
 
 def test_passed_in_dense_backend(corpus):

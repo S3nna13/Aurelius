@@ -3,32 +3,32 @@
 Provides isotropy measurement, intrinsic dimensionality estimation,
 k-means clustering, and nearest-neighbor retrieval — pure PyTorch only.
 """
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EmbeddingAnalysisConfig:
     """Configuration for embedding analysis routines."""
 
-    n_components: int = 50      # PCA / dimensionality components
-    n_neighbors: int = 10       # neighbours for ID estimation / retrieval
-    normalize: bool = True      # L2-normalise before analysis when True
+    n_components: int = 50  # PCA / dimensionality components
+    n_neighbors: int = 10  # neighbours for ID estimation / retrieval
+    normalize: bool = True  # L2-normalise before analysis when True
 
 
 # ---------------------------------------------------------------------------
 # Isotropy
 # ---------------------------------------------------------------------------
+
 
 class IsotropyAnalyzer:
     """Measures how uniformly spread embeddings are in vector space."""
@@ -117,6 +117,7 @@ class IsotropyAnalyzer:
 # Intrinsic Dimensionality
 # ---------------------------------------------------------------------------
 
+
 class IntrinsicDimensionEstimator:
     """Estimates the intrinsic dimensionality of an embedding space."""
 
@@ -132,7 +133,7 @@ class IntrinsicDimensionEstimator:
             ID = 1 / (mean(log(mu)) + eps)
         """
         x = embeddings.float()
-        n = x.shape[0]
+        x.shape[0]
 
         # Pairwise squared Euclidean distances
         # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 a·b
@@ -165,7 +166,7 @@ class IntrinsicDimensionEstimator:
         x = x - x.mean(dim=0, keepdim=True)
         # Economy SVD
         _, s, _ = torch.linalg.svd(x, full_matrices=False)
-        var = s ** 2
+        var = s**2
         total_var = var.sum()
         if total_var == 0.0:
             return torch.zeros(var.shape[0])
@@ -177,6 +178,7 @@ class IntrinsicDimensionEstimator:
 # ---------------------------------------------------------------------------
 # Clustering
 # ---------------------------------------------------------------------------
+
 
 class EmbeddingClustering:
     """Simple Lloyd's k-means clustering for embedding tensors."""
@@ -190,7 +192,7 @@ class EmbeddingClustering:
         self,
         embeddings: Tensor,
         n_iter: int = 10,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Lloyd's k-means.
 
         Returns
@@ -211,11 +213,11 @@ class EmbeddingClustering:
         for _ in range(n_iter):
             # Assignment step: nearest centroid (Euclidean)
             # dist(x_i, c_j)^2 = ||x_i||^2 + ||c_j||^2 - 2 x_i·c_j
-            sq_x = (x * x).sum(dim=1, keepdim=True)          # (N,1)
-            sq_c = (centroids * centroids).sum(dim=1)          # (k,)
-            cross = x @ centroids.T                            # (N,k)
+            sq_x = (x * x).sum(dim=1, keepdim=True)  # (N,1)
+            sq_c = (centroids * centroids).sum(dim=1)  # (k,)
+            cross = x @ centroids.T  # (N,k)
             dists2 = sq_x + sq_c.unsqueeze(0) - 2.0 * cross  # (N,k)
-            cluster_ids = dists2.argmin(dim=1)                 # (N,)
+            cluster_ids = dists2.argmin(dim=1)  # (N,)
 
             # Update step: recompute centroids
             new_centroids = torch.zeros_like(centroids)
@@ -299,6 +301,7 @@ class EmbeddingClustering:
 # Nearest-Neighbour Retrieval
 # ---------------------------------------------------------------------------
 
+
 class NearestNeighborRetriever:
     """Cosine-similarity based nearest-neighbour retrieval."""
 
@@ -311,14 +314,14 @@ class NearestNeighborRetriever:
         """
         idx = index.float()
         norms = idx.norm(dim=1, keepdim=True).clamp(min=1e-12)
-        self._index_norm = idx / norms          # (M, d)
+        self._index_norm = idx / norms  # (M, d)
         self._index_raw = idx
 
     def search(
         self,
         queries: Tensor,
         k: int = 5,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Return top-k indices and cosine similarity scores.
 
         Returns
@@ -352,6 +355,6 @@ class NearestNeighborRetriever:
         Returns float in [0, 1].
         """
         indices, _ = self.search(queries, k=k)  # (Q, k)
-        gt = ground_truth.long().unsqueeze(1)    # (Q, 1)
-        hits = (indices == gt).any(dim=1)        # (Q,)
+        gt = ground_truth.long().unsqueeze(1)  # (Q, 1)
+        hits = (indices == gt).any(dim=1)  # (Q,)
         return float(hits.float().mean().item())

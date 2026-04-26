@@ -15,10 +15,10 @@ from src.training.grad_norm_monitor import (
     compute_grad_norms,
 )
 
-
 # ------------------------------------------------------------------------------- #
 # Helpers                                                                          #
 # ------------------------------------------------------------------------------- #
+
 
 def make_model_with_grads(scale: float = 1.0) -> nn.Module:
     """Return a tiny Linear model with gradients populated."""
@@ -38,6 +38,7 @@ def make_model_no_grads() -> nn.Module:
 # ------------------------------------------------------------------------------- #
 # Tests                                                                            #
 # ------------------------------------------------------------------------------- #
+
 
 def test_compute_grad_norms_returns_stats():
     """compute_grad_norms should return a GradNormStats instance."""

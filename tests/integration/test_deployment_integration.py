@@ -11,9 +11,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-import src.deployment as deployment_module
 from src.deployment import ARTIFACT_BUILDER_REGISTRY, DEPLOY_TARGET_REGISTRY
 from src.deployment.container_builder import (
     ContainerSpec,
@@ -22,7 +19,6 @@ from src.deployment.container_builder import (
 )
 from src.deployment.helm_chart import HelmChart, HelmChartGenerator, HelmChartValues
 from src.deployment.otel_instrumentation import Tracer
-
 
 # ---------------------------------------------------------------------------
 # Registry smoke tests

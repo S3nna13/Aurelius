@@ -12,39 +12,41 @@ References:
     Cai et al. 2024 — "Medusa: Simple LLM Inference Acceleration Framework
         with Multiple Decoding Heads."
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration & data containers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MultiDraftConfig:
-    n_drafts: int = 4        # number of draft candidates per step
-    draft_steps: int = 4     # lookahead steps per draft
-    temperature: float = 1.0 # target model sampling temperature
+    n_drafts: int = 4  # number of draft candidates per step
+    draft_steps: int = 4  # lookahead steps per draft
+    temperature: float = 1.0  # target model sampling temperature
 
 
 @dataclass
 class DraftCandidate:
-    tokens: list[int]      # candidate token sequence (draft_steps tokens)
-    log_probs: list[float] # draft model log-probs for each token
+    tokens: list[int]  # candidate token sequence (draft_steps tokens)
+    log_probs: list[float]  # draft model log-probs for each token
 
 
 # ---------------------------------------------------------------------------
 # Core acceptance criterion
 # ---------------------------------------------------------------------------
 
+
 def typical_acceptance(
-    draft_probs: torch.Tensor,   # (n_drafts,) draft probabilities for each candidate
+    draft_probs: torch.Tensor,  # (n_drafts,) draft probabilities for each candidate
     target_probs: torch.Tensor,  # (n_drafts,) target model probabilities for each candidate
 ) -> int:
     """Acceptance criterion for multi-draft speculative decoding.
@@ -95,6 +97,7 @@ def typical_acceptance(
 # Batch verification
 # ---------------------------------------------------------------------------
 
+
 def batch_verify_drafts(
     target_model: nn.Module,
     prefix_ids: list[int],
@@ -135,7 +138,7 @@ def batch_verify_drafts(
 
     # Truncate prefix if necessary to leave room for draft tokens
     if prefix_len + draft_len > max_seq_len:
-        prefix_tensor = prefix_tensor[-(max_seq_len - draft_len):]
+        prefix_tensor = prefix_tensor[-(max_seq_len - draft_len) :]
         prefix_len = prefix_tensor.shape[0]
 
     total_len = prefix_len + draft_len
@@ -161,16 +164,14 @@ def batch_verify_drafts(
         pred_pos = 0
 
     logits_at_pred = logits[:, pred_pos, :]  # (n_drafts, vocab_size)
-    probs_at_pred = F.softmax(logits_at_pred, dim=-1)   # (n_drafts, vocab_size)
+    probs_at_pred = F.softmax(logits_at_pred, dim=-1)  # (n_drafts, vocab_size)
 
     # Gather target probability for each draft's first token
     first_tokens = torch.tensor(
         [c[0] if len(c) > 0 else 0 for c in draft_candidates],
         dtype=torch.long,
     )  # (n_drafts,)
-    target_probs_per_candidate = probs_at_pred[
-        torch.arange(n_drafts), first_tokens
-    ]  # (n_drafts,)
+    target_probs_per_candidate = probs_at_pred[torch.arange(n_drafts), first_tokens]  # (n_drafts,)
 
     # Build uniform draft probabilities (we don't have the draft model here,
     # so we use 1/n_drafts as the draft probability — callers may override this)
@@ -193,6 +194,7 @@ def batch_verify_drafts(
 # Multi-draft decoder
 # ---------------------------------------------------------------------------
 
+
 class MultiDraftDecoder:
     """Multi-draft speculative decoder.
 
@@ -212,7 +214,7 @@ class MultiDraftDecoder:
         self,
         target_model: nn.Module,
         draft_model: nn.Module,
-        tokenizer_encode: "callable | None" = None,
+        tokenizer_encode: callable | None = None,
         config: MultiDraftConfig | None = None,
         eos_token_id: int = 2,
     ) -> None:
@@ -252,7 +254,7 @@ class MultiDraftDecoder:
             max_seq_len = 512
 
         for _ in range(n_drafts):
-            context = prefix_ids[-(max_seq_len - draft_steps):]
+            context = prefix_ids[-(max_seq_len - draft_steps) :]
             current_ids = list(context)
             sequence: list[int] = []
 
@@ -334,7 +336,7 @@ class MultiDraftDecoder:
                 n_rejected += 1
                 # Safety valve: do a single greedy target sample
                 prefix_tensor = torch.tensor(
-                    generated[-(max_seq_len - 1):], dtype=torch.long
+                    generated[-(max_seq_len - 1) :], dtype=torch.long
                 ).unsqueeze(0)
                 _, logits, _ = self.target_model(prefix_tensor)
                 last_logits = logits[0, -1, :]
@@ -358,12 +360,13 @@ class MultiDraftDecoder:
             "acceptance_rate": acceptance_rate,
             "tokens_per_step": tokens_per_step,
         }
-        return generated[len(prompt_ids):], stats
+        return generated[len(prompt_ids) :], stats
 
 
 # ---------------------------------------------------------------------------
 # Draft diversity metrics
 # ---------------------------------------------------------------------------
+
 
 def levenshtein_distance(a: list[int], b: list[int]) -> int:
     """Standard O(m*n) dynamic programming Levenshtein edit distance.

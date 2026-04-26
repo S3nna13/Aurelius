@@ -7,13 +7,11 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.training.seq_kd import (
-    TeacherSequenceSampler,
-    SequenceLevelKDLoss,
-    MiniLLMLoss,
     GKDLoss,
+    MiniLLMLoss,
+    SequenceLevelKDLoss,
+    TeacherSequenceSampler,
     sequence_log_probs,
 )
 
@@ -32,6 +30,7 @@ BEAM_WIDTH = 4
 # Tiny model helper
 # ---------------------------------------------------------------------------
 
+
 class _TinyModel(nn.Module):
     """Tiny transformer-like model returning (hidden, logits)."""
 
@@ -41,8 +40,8 @@ class _TinyModel(nn.Module):
         self.proj = nn.Linear(d, vocab)
 
     def forward(self, input_ids: torch.Tensor):
-        h = self.embed(input_ids).float()    # (1, T, d)
-        logits = self.proj(h)                # (1, T, vocab)
+        h = self.embed(input_ids).float()  # (1, T, d)
+        logits = self.proj(h)  # (1, T, vocab)
         return h, logits
 
 
@@ -64,6 +63,7 @@ def _make_sequences(n: int = 3, length: int = MAX_LEN) -> list:
 # ---------------------------------------------------------------------------
 # TeacherSequenceSampler tests
 # ---------------------------------------------------------------------------
+
 
 def test_sample_sequence_shape():
     """sample_sequence returns (max_length,) tensor."""
@@ -128,6 +128,7 @@ def test_sample_sequence_high_temperature_valid_tokens():
 # SequenceLevelKDLoss tests
 # ---------------------------------------------------------------------------
 
+
 def test_seq_kd_loss_returns_scalar():
     """SequenceLevelKDLoss.forward returns a scalar tensor."""
     student_fn = _make_model_fn()
@@ -162,6 +163,7 @@ def test_seq_kd_loss_non_negative():
 # MiniLLMLoss tests
 # ---------------------------------------------------------------------------
 
+
 def test_minillm_loss_returns_scalar():
     """MiniLLMLoss.forward returns a scalar tensor."""
     student_fn = _make_model_fn(seed=1)
@@ -176,6 +178,7 @@ def test_minillm_loss_returns_scalar():
 # ---------------------------------------------------------------------------
 # GKDLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_gkd_loss_returns_scalar():
     """GKDLoss.forward returns a scalar tensor."""
@@ -222,6 +225,7 @@ def test_gkd_loss_finite():
 # ---------------------------------------------------------------------------
 # sequence_log_probs tests
 # ---------------------------------------------------------------------------
+
 
 def test_sequence_log_probs_returns_scalar():
     """sequence_log_probs returns a scalar tensor."""

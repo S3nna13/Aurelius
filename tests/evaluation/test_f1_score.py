@@ -1,7 +1,6 @@
 """Tests for F1 score evaluator."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.evaluation.f1_score import F1Score
 

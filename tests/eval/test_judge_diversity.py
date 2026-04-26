@@ -2,7 +2,11 @@
 
 import pytest
 
-from src.eval.judge_diversity import lexical_diversity, pairwise_verdict_disagreement, unique_verdict_fraction
+from src.eval.judge_diversity import (
+    lexical_diversity,
+    pairwise_verdict_disagreement,
+    unique_verdict_fraction,
+)
 
 
 def test_unique_verdict_fraction_counts_distinct_labels():

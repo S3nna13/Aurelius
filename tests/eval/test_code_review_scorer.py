@@ -3,13 +3,12 @@
 import pytest
 
 from src.eval.code_review_scorer import (
-    ReviewDimension,
-    DimensionScore,
+    CODE_REVIEW_SCORER_REGISTRY,
     CodeReviewRubric,
     CodeReviewScorer,
-    CODE_REVIEW_SCORER_REGISTRY,
+    DimensionScore,
+    ReviewDimension,
 )
-
 
 # ---------------------------------------------------------------------------
 # ReviewDimension enum

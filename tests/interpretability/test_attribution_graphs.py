@@ -1,4 +1,5 @@
 """Tests for attribution_graphs."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,8 +7,6 @@ import torch
 import torch.nn as nn
 
 from src.interpretability.attribution_graphs import (
-    AttributionNode,
-    AttributionEdge,
     AttributionGraph,
     AttributionGraphBuilder,
 )
@@ -50,9 +49,7 @@ def test_method_input_x_grad_vs_integrated_gradients_differ():
     torch.manual_seed(3)
     m = nn.Sequential(nn.Linear(4, 6), nn.ReLU(), nn.Linear(6, 5))
     x = _rand_input()
-    a1 = AttributionGraphBuilder(m, method="input_x_grad").input_x_grad(
-        x, torch.tensor(0)
-    )
+    a1 = AttributionGraphBuilder(m, method="input_x_grad").input_x_grad(x, torch.tensor(0))
     a2 = AttributionGraphBuilder(m, method="integrated_gradients").integrated_gradients(
         x, torch.tensor(0), n_steps=4
     )
@@ -68,9 +65,7 @@ def test_ig_converges_to_input_x_grad_for_linear_model():
     x = torch.randn(1, 3)
     b_ig = AttributionGraphBuilder(m, method="integrated_gradients")
     b_ig_large = b_ig.integrated_gradients(x, torch.tensor(0), n_steps=128)
-    b_ixg = AttributionGraphBuilder(m, method="input_x_grad").input_x_grad(
-        x, torch.tensor(0)
-    )
+    b_ixg = AttributionGraphBuilder(m, method="input_x_grad").input_x_grad(x, torch.tensor(0))
     assert torch.allclose(b_ig_large, b_ixg, atol=1e-4)
 
 

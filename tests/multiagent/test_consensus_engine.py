@@ -1,11 +1,13 @@
 """Tests for src/multiagent/consensus_engine.py"""
+
 import pytest
+
 from src.multiagent.consensus_engine import (
+    CONSENSUS_REGISTRY,
     ConsensusConfig,
     ConsensusEngine,
     ConsensusMethod,
     ConsensusResult,
-    CONSENSUS_REGISTRY,
 )
 
 

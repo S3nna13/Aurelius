@@ -2,7 +2,11 @@
 
 import pytest
 
-from src.eval.evidence_coverage_curve import area_under_coverage_curve, cumulative_recall, first_full_coverage_index
+from src.eval.evidence_coverage_curve import (
+    area_under_coverage_curve,
+    cumulative_recall,
+    first_full_coverage_index,
+)
 
 
 def test_cumulative_recall_builds_curve():
@@ -32,4 +36,3 @@ def test_area_under_coverage_curve_zero_for_empty_input():
 
 def test_first_full_coverage_index_none_for_empty_input():
     assert first_full_coverage_index([]) is None
-

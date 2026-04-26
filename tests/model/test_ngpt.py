@@ -8,21 +8,17 @@ Tiny config used throughout:
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.model.ngpt import (
-    NGPTConfig,
-    NGPTModel,
     NGPTAttention,
     NGPTBlock,
+    NGPTConfig,
+    NGPTModel,
     NormalizedEmbedding,
     normalize_weights,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -40,7 +36,7 @@ TINY_CFG = NGPTConfig(
     alpha_mlp=0.05,
 )
 
-B, T = 2, 8   # batch size, sequence length
+B, T = 2, 8  # batch size, sequence length
 
 
 @pytest.fixture
@@ -64,6 +60,7 @@ def input_ids() -> torch.Tensor:
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _row_norms(weight: torch.Tensor) -> torch.Tensor:
     """Return per-row (output-neuron) L2 norms of a 2-D weight matrix."""
     return weight.norm(dim=1)
@@ -73,19 +70,19 @@ def _row_norms(weight: torch.Tensor) -> torch.Tensor:
 # Test 1 — Hidden states after each block have L2 norm ~= 1.0 (+/-0.01)
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_state_norms_unit(cfg: NGPTConfig, input_ids: torch.Tensor) -> None:
     """All hidden states emitted by every nGPTBlock must lie on the unit sphere."""
     torch.manual_seed(0)
     model = NGPTModel(cfg).eval()
 
     with torch.no_grad():
-        x = model.embedding(input_ids)        # (B, T, d_model)
+        x = model.embedding(input_ids)  # (B, T, d_model)
         for block in model.blocks:
             x = block(x)
-            norms = x.norm(dim=-1)            # (B, T)
+            norms = x.norm(dim=-1)  # (B, T)
             assert norms.allclose(torch.ones_like(norms), atol=0.01), (
-                f"Hidden-state norms not ~= 1.0: min={norms.min():.4f}, "
-                f"max={norms.max():.4f}"
+                f"Hidden-state norms not ~= 1.0: min={norms.min():.4f}, max={norms.max():.4f}"
             )
 
 
@@ -93,11 +90,12 @@ def test_hidden_state_norms_unit(cfg: NGPTConfig, input_ids: torch.Tensor) -> No
 # Test 2 — Output logits are NOT normalized (norms should vary)
 # ---------------------------------------------------------------------------
 
+
 def test_output_logits_not_normalized(model: NGPTModel, input_ids: torch.Tensor) -> None:
     """The lm_head output must NOT be unit-normalized; norms should be non-constant."""
     with torch.no_grad():
-        logits = model(input_ids)              # (B, T, vocab_size)
-    norms = logits.norm(dim=-1)               # (B, T)
+        logits = model(input_ids)  # (B, T, vocab_size)
+    norms = logits.norm(dim=-1)  # (B, T)
     # norms should not all equal 1.0 -- check that variance is non-trivial
     assert norms.std() > 1e-3 or not norms.allclose(torch.ones_like(norms), atol=0.01), (
         "Logit row norms appear to be unit-normalized -- expected raw logits"
@@ -107,6 +105,7 @@ def test_output_logits_not_normalized(model: NGPTModel, input_ids: torch.Tensor)
 # ---------------------------------------------------------------------------
 # Test 3 — Forward pass output shape is (B, T, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_output_shape(model: NGPTModel, cfg: NGPTConfig, input_ids: torch.Tensor) -> None:
     with torch.no_grad():
@@ -120,6 +119,7 @@ def test_output_shape(model: NGPTModel, cfg: NGPTConfig, input_ids: torch.Tensor
 # Test 4 — No NaN or Inf in forward pass
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_inf(model: NGPTModel, input_ids: torch.Tensor) -> None:
     with torch.no_grad():
         logits = model(input_ids)
@@ -130,11 +130,12 @@ def test_no_nan_inf(model: NGPTModel, input_ids: torch.Tensor) -> None:
 # Test 5 — loss.backward() succeeds
 # ---------------------------------------------------------------------------
 
+
 def test_backward_succeeds(cfg: NGPTConfig, input_ids: torch.Tensor) -> None:
     torch.manual_seed(0)
     model = NGPTModel(cfg).train()
-    logits = model(input_ids)                  # (B, T, vocab_size)
-    targets = input_ids                        # teacher-force on itself
+    logits = model(input_ids)  # (B, T, vocab_size)
+    targets = input_ids  # teacher-force on itself
     loss = torch.nn.functional.cross_entropy(
         logits.view(-1, cfg.vocab_size),
         targets.view(-1),
@@ -150,6 +151,7 @@ def test_backward_succeeds(cfg: NGPTConfig, input_ids: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # Test 6 — normalize_weights makes weight row norms ~= 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_weights(cfg: NGPTConfig) -> None:
     torch.manual_seed(42)
@@ -176,22 +178,23 @@ def test_normalize_weights(cfg: NGPTConfig) -> None:
 # Test 7 — NormalizedEmbedding returns unit vectors
 # ---------------------------------------------------------------------------
 
+
 def test_normalized_embedding_unit_norms(cfg: NGPTConfig) -> None:
     torch.manual_seed(0)
     emb = NormalizedEmbedding(cfg.vocab_size, cfg.d_model)
     ids = torch.randint(0, cfg.vocab_size, (B, T))
     with torch.no_grad():
-        out = emb(ids)                         # (B, T, d_model)
-    norms = out.norm(dim=-1)                   # (B, T)
+        out = emb(ids)  # (B, T, d_model)
+    norms = out.norm(dim=-1)  # (B, T)
     assert norms.allclose(torch.ones_like(norms), atol=1e-5), (
-        f"NormalizedEmbedding norms not ~= 1.0: min={norms.min():.6f}, "
-        f"max={norms.max():.6f}"
+        f"NormalizedEmbedding norms not ~= 1.0: min={norms.min():.6f}, max={norms.max():.6f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 8 — NGPTAttention output shape is correct
 # ---------------------------------------------------------------------------
+
 
 def test_attention_output_shape(cfg: NGPTConfig) -> None:
     torch.manual_seed(0)
@@ -209,6 +212,7 @@ def test_attention_output_shape(cfg: NGPTConfig) -> None:
 # Test 9 — NGPTBlock preserves hidden dim
 # ---------------------------------------------------------------------------
 
+
 def test_block_preserves_hidden_dim(cfg: NGPTConfig) -> None:
     torch.manual_seed(0)
     block = NGPTBlock(cfg).eval()
@@ -224,6 +228,7 @@ def test_block_preserves_hidden_dim(cfg: NGPTConfig) -> None:
 # ---------------------------------------------------------------------------
 # Test 10 — Deterministic output with same seed
 # ---------------------------------------------------------------------------
+
 
 def test_deterministic_with_seed(cfg: NGPTConfig, input_ids: torch.Tensor) -> None:
     torch.manual_seed(7)
@@ -245,6 +250,7 @@ def test_deterministic_with_seed(cfg: NGPTConfig, input_ids: torch.Tensor) -> No
 # Test 11 — Different inputs give different outputs
 # ---------------------------------------------------------------------------
 
+
 def test_different_inputs_different_outputs(cfg: NGPTConfig) -> None:
     torch.manual_seed(0)
     model = NGPTModel(cfg).eval()
@@ -265,6 +271,7 @@ def test_different_inputs_different_outputs(cfg: NGPTConfig) -> None:
 # Test 12 — Gradient flows to embedding weights
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows_to_embedding(cfg: NGPTConfig, input_ids: torch.Tensor) -> None:
     torch.manual_seed(0)
     model = NGPTModel(cfg).train()
@@ -279,6 +286,4 @@ def test_gradient_flows_to_embedding(cfg: NGPTConfig, input_ids: torch.Tensor) -
     assert torch.isfinite(model.embedding.weight.grad).all(), (
         "Embedding weight gradient contains NaN/Inf"
     )
-    assert model.embedding.weight.grad.abs().sum() > 0, (
-        "Embedding weight gradient is all zeros"
-    )
+    assert model.embedding.weight.grad.abs().sum() > 0, "Embedding weight gradient is all zeros"

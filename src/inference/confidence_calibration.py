@@ -12,18 +12,20 @@ Components:
 - TemperatureScaler: grid-search temperature fitting + transform
 - CalibrationEvaluator: evaluate a model's calibration on a data iterator
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, Any
+from typing import Any
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CalibrationConfig:
@@ -36,6 +38,7 @@ class CalibrationConfig:
 # ---------------------------------------------------------------------------
 # Core tensor utilities
 # ---------------------------------------------------------------------------
+
 
 def temperature_scale(logits: torch.Tensor, temperature: float) -> torch.Tensor:
     """Divide logits by temperature.
@@ -59,14 +62,15 @@ def compute_token_confidence(logits: torch.Tensor) -> torch.Tensor:
     Returns:
         (B, T) tensor of max softmax probability in [0, 1]
     """
-    probs = F.softmax(logits, dim=-1)          # (B, T, V)
-    confidence, _ = probs.max(dim=-1)          # (B, T)
+    probs = F.softmax(logits, dim=-1)  # (B, T, V)
+    confidence, _ = probs.max(dim=-1)  # (B, T)
     return confidence
 
 
 # ---------------------------------------------------------------------------
 # ECE and reliability diagram
 # ---------------------------------------------------------------------------
+
 
 def compute_ece(
     confidences: torch.Tensor,
@@ -165,6 +169,7 @@ def compute_reliability_diagram(
 # TemperatureScaler
 # ---------------------------------------------------------------------------
 
+
 class TemperatureScaler:
     """Grid-search temperature scaler.
 
@@ -244,6 +249,7 @@ class TemperatureScaler:
 # CalibrationEvaluator
 # ---------------------------------------------------------------------------
 
+
 class CalibrationEvaluator:
     """Evaluate a model's token-level calibration on a data iterator.
 
@@ -288,15 +294,15 @@ class CalibrationEvaluator:
                 if batch.shape[1] < 2:
                     continue
 
-                input_ids = batch[:, :-1]   # (B, T-1)
-                targets = batch[:, 1:]       # (B, T-1)
+                input_ids = batch[:, :-1]  # (B, T-1)
+                targets = batch[:, 1:]  # (B, T-1)
 
                 _loss, logits, _pkv = model(input_ids)
                 # logits: (B, T-1, V)
 
                 confidence = compute_token_confidence(logits)  # (B, T-1)
-                preds = logits.argmax(dim=-1)                  # (B, T-1)
-                correct = (preds == targets).float()           # (B, T-1)
+                preds = logits.argmax(dim=-1)  # (B, T-1)
+                correct = (preds == targets).float()  # (B, T-1)
 
                 all_confidences.append(confidence.reshape(-1))
                 all_correct.append(correct.reshape(-1))

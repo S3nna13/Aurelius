@@ -7,6 +7,7 @@ Implements complementary distillation techniques to distillation.py and feature_
 - Patient KD (normalized MSE across all layer pairs)
 - LayerDistillTrainer with full training step and alignment evaluation
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,10 +17,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LayerDistillConfig:
@@ -27,12 +28,14 @@ class LayerDistillConfig:
 
     teacher_layers: list[int] = field(default_factory=list)
     student_layers: list[int] = field(default_factory=list)
-    loss_weights: dict[str, float] = field(default_factory=lambda: {
-        "task": 1.0,
-        "hidden": 0.1,
-        "relation": 0.1,
-        "attention": 0.1,
-    })
+    loss_weights: dict[str, float] = field(
+        default_factory=lambda: {
+            "task": 1.0,
+            "hidden": 0.1,
+            "relation": 0.1,
+            "attention": 0.1,
+        }
+    )
     temperature: float = 4.0
     hidden_dim_teacher: int = 64
     hidden_dim_student: int = 64
@@ -41,6 +44,7 @@ class LayerDistillConfig:
 # ---------------------------------------------------------------------------
 # Hook-based hidden state extraction
 # ---------------------------------------------------------------------------
+
 
 def extract_layer_hidden_states(
     model: nn.Module,
@@ -69,6 +73,7 @@ def extract_layer_hidden_states(
                 captured[position] = output[0].detach().clone()
             else:
                 captured[position] = output.detach().clone()
+
         return hook
 
     for pos, idx in enumerate(layer_indices):
@@ -87,6 +92,7 @@ def extract_layer_hidden_states(
 # ---------------------------------------------------------------------------
 # Loss functions
 # ---------------------------------------------------------------------------
+
 
 def relation_based_loss(
     teacher_hidden: Tensor,
@@ -164,7 +170,7 @@ def soft_label_loss(
     student_log_soft = F.log_softmax(student_logits / T, dim=-1)
     teacher_soft = F.softmax(teacher_logits.detach() / T, dim=-1)
     kl = F.kl_div(student_log_soft, teacher_soft, reduction="batchmean")
-    return kl * (T ** 2)
+    return kl * (T**2)
 
 
 def patient_kd_loss(
@@ -203,6 +209,7 @@ def patient_kd_loss(
 # Projector module
 # ---------------------------------------------------------------------------
 
+
 class HiddenStateProjector(nn.Module):
     """Project student hidden dim to teacher hidden dim.
 
@@ -233,6 +240,7 @@ class HiddenStateProjector(nn.Module):
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class LayerDistillTrainer:
     """Training wrapper for layer-wise knowledge distillation.
@@ -350,7 +358,9 @@ class LayerDistillTrainer:
             "total_loss": total_loss.item(),
             "task_loss": task_loss.item(),
             "hidden_loss": hidden_loss.item() if isinstance(hidden_loss, Tensor) else hidden_loss,
-            "relation_loss": relation_loss.item() if isinstance(relation_loss, Tensor) else relation_loss,
+            "relation_loss": relation_loss.item()
+            if isinstance(relation_loss, Tensor)
+            else relation_loss,
         }
 
     def evaluate_layer_alignment(
@@ -404,6 +414,8 @@ class LayerDistillTrainer:
             results[key] = cos_sim
             similarities.append(cos_sim)
 
-        results["mean_alignment"] = float(sum(similarities) / len(similarities)) if similarities else 0.0
+        results["mean_alignment"] = (
+            float(sum(similarities) / len(similarities)) if similarities else 0.0
+        )
 
         return results

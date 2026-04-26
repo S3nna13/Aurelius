@@ -1,13 +1,14 @@
 """Per-agent memory store with episodic, semantic, procedural, and working layers."""
+
 from __future__ import annotations
 
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class MemoryType(str, Enum):
+class MemoryType(StrEnum):
     EPISODIC = "episodic"
     SEMANTIC = "semantic"
     PROCEDURAL = "procedural"
@@ -82,8 +83,7 @@ class AgentMemory:
         now = current_time if current_time is not None else time.monotonic()
         before = len(self._entries)
         self._entries = [
-            e for e in self._entries
-            if e.ttl_s is None or e.timestamp_s + e.ttl_s >= now
+            e for e in self._entries if e.ttl_s is None or e.timestamp_s + e.ttl_s >= now
         ]
         return before - len(self._entries)
 

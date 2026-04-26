@@ -1,4 +1,5 @@
 """Tests for input sanitizer (Trail of Bits style)."""
+
 from __future__ import annotations
 
 import pytest
@@ -34,6 +35,7 @@ class TestInputSanitizer:
 
     def test_sanitizer_rules(self):
         from src.security.input_sanitizer import SanitizerRule
+
         rule = SanitizerRule(field="name", pattern=r"^[a-zA-Z]+$", max_length=10)
         assert rule.validate("Hello") is None
         assert rule.validate("Hello123") is not None

@@ -1,8 +1,15 @@
 """Tests for native SFT implementation."""
-import pytest
-import torch
+
 from unittest.mock import MagicMock
-from src.alignment.sft import format_chatml, tokenize_for_sft, _resolve_target_modules, _cosine_warmup, NativeSFTRunner, SFTConfig
+
+import torch
+
+from src.alignment.sft import (
+    _cosine_warmup,
+    _resolve_target_modules,
+    format_chatml,
+    tokenize_for_sft,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -51,7 +58,16 @@ def test_tokenize_sft_truncation():
 
 def test_resolve_target_modules():
     """_resolve_target_modules must return full dotted paths for matching submodules."""
-    cfg = AureliusConfig(n_layers=2, d_model=64, n_heads=2, n_kv_heads=2, head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64)
+    cfg = AureliusConfig(
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
+    )
     model = AureliusTransformer(cfg)
 
     paths = _resolve_target_modules(model, ("q_proj", "v_proj"))
@@ -66,6 +82,7 @@ def test_resolve_target_modules():
 def test_cosine_warmup_values():
     """_cosine_warmup must return 0 at step 0 and base_lr at warmup end."""
     import torch.optim as optim
+
     param = torch.nn.Parameter(torch.zeros(2))
     optimizer = optim.AdamW([param], lr=1e-3)
 

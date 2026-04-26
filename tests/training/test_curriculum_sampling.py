@@ -36,7 +36,9 @@ def test_sample_bucket_order_returns_most_likely_first():
 
 
 def test_allocate_curriculum_budget_respects_total():
-    allocation = allocate_curriculum_budget(make_buckets(), step=5, total_steps=10, total_examples=100)
+    allocation = allocate_curriculum_budget(
+        make_buckets(), step=5, total_steps=10, total_examples=100
+    )
     assert sum(allocation.values()) == 100
 
 

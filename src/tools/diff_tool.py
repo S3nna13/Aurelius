@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import difflib
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 
-class DiffFormat(str, Enum):
+class DiffFormat(StrEnum):
     UNIFIED = "unified"
     CONTEXT = "context"
     HTML = "html"
@@ -37,32 +37,48 @@ class DiffTool:
         b_lines = b.splitlines(keepends=True)
 
         if fmt == DiffFormat.UNIFIED:
-            diff_lines = list(difflib.unified_diff(
-                a_lines, b_lines, fromfile=fromfile, tofile=tofile, n=self.context_lines,
-            ))
+            diff_lines = list(
+                difflib.unified_diff(
+                    a_lines,
+                    b_lines,
+                    fromfile=fromfile,
+                    tofile=tofile,
+                    n=self.context_lines,
+                )
+            )
             diff_text = "".join(diff_lines)
-            lines_added = sum(1 for l in diff_lines if l.startswith("+") and not l.startswith("+++"))
-            lines_removed = sum(1 for l in diff_lines if l.startswith("-") and not l.startswith("---"))
-            hunks = sum(1 for l in diff_lines if l.startswith("@@"))
+            lines_added = sum(
+                1 for line in diff_lines if line.startswith("+") and not line.startswith("+++")
+            )
+            lines_removed = sum(
+                1 for line in diff_lines if line.startswith("-") and not line.startswith("---")
+            )
+            hunks = sum(1 for line in diff_lines if line.startswith("@@"))
         elif fmt == DiffFormat.CONTEXT:
-            diff_lines = list(difflib.context_diff(
-                a_lines, b_lines, fromfile=fromfile, tofile=tofile, n=self.context_lines,
-            ))
+            diff_lines = list(
+                difflib.context_diff(
+                    a_lines,
+                    b_lines,
+                    fromfile=fromfile,
+                    tofile=tofile,
+                    n=self.context_lines,
+                )
+            )
             diff_text = "".join(diff_lines)
-            lines_added = sum(1 for l in diff_lines if l.startswith("+ "))
-            lines_removed = sum(1 for l in diff_lines if l.startswith("- "))
-            hunks = sum(1 for l in diff_lines if l.startswith("***************"))
+            lines_added = sum(1 for line in diff_lines if line.startswith("+ "))
+            lines_removed = sum(1 for line in diff_lines if line.startswith("- "))
+            hunks = sum(1 for line in diff_lines if line.startswith("***************"))
         elif fmt == DiffFormat.HTML:
             diff_text = difflib.HtmlDiff().make_file(a_lines, b_lines, fromfile, tofile)
             diff_lines = diff_text.splitlines()
-            lines_added = sum(1 for l in diff_lines if 'class="diff_add"' in l)
-            lines_removed = sum(1 for l in diff_lines if 'class="diff_sub"' in l)
+            lines_added = sum(1 for line in diff_lines if 'class="diff_add"' in line)
+            lines_removed = sum(1 for line in diff_lines if 'class="diff_sub"' in line)
             hunks = 0
         else:
             diff_lines = list(difflib.ndiff(a_lines, b_lines))
             diff_text = "".join(diff_lines)
-            lines_added = sum(1 for l in diff_lines if l.startswith("+ "))
-            lines_removed = sum(1 for l in diff_lines if l.startswith("- "))
+            lines_added = sum(1 for line in diff_lines if line.startswith("+ "))
+            lines_removed = sum(1 for line in diff_lines if line.startswith("- "))
             hunks = 0
 
         return DiffResult(

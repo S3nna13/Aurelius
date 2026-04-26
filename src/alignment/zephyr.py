@@ -14,16 +14,14 @@ Reference:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # AIFeedbackScorer
 # ---------------------------------------------------------------------------
+
 
 class AIFeedbackScorer:
     """Score completions using mean log-probability (lower perplexity = higher score).
@@ -42,7 +40,7 @@ class AIFeedbackScorer:
             raise ValueError(f"temperature must be > 0, got {temperature}")
         self.temperature = temperature
 
-    def score_batch(self, log_probs_list: List[torch.Tensor]) -> torch.Tensor:
+    def score_batch(self, log_probs_list: list[torch.Tensor]) -> torch.Tensor:
         """Score a batch of completions by their mean token log-probability.
 
         Args:
@@ -68,6 +66,7 @@ class AIFeedbackScorer:
 # PreferenceDataBuilder
 # ---------------------------------------------------------------------------
 
+
 class PreferenceDataBuilder:
     """Build (chosen, rejected) preference pairs from multiple completions.
 
@@ -87,8 +86,8 @@ class PreferenceDataBuilder:
         self.margin = margin
 
     def build_pairs(
-        self, completions_log_probs: List[torch.Tensor]
-    ) -> Tuple[Optional[int], Optional[int]]:
+        self, completions_log_probs: list[torch.Tensor]
+    ) -> tuple[int | None, int | None]:
         """Return (chosen_idx, rejected_idx) for a set of completions.
 
         Args:
@@ -115,8 +114,8 @@ class PreferenceDataBuilder:
         return (chosen_idx, rejected_idx)
 
     def build_batch_pairs(
-        self, batch: List[List[torch.Tensor]]
-    ) -> List[Tuple[Optional[int], Optional[int]]]:
+        self, batch: list[list[torch.Tensor]]
+    ) -> list[tuple[int | None, int | None]]:
         """Process a list of per-prompt completion sets.
 
         Args:
@@ -132,6 +131,7 @@ class PreferenceDataBuilder:
 # ---------------------------------------------------------------------------
 # dDPO Loss
 # ---------------------------------------------------------------------------
+
 
 class dDPOLoss:
     """DPO loss for distilled training (dDPO).
@@ -159,7 +159,7 @@ class dDPOLoss:
         pi_lp_rejected: torch.Tensor,
         ref_lp_chosen: torch.Tensor,
         ref_lp_rejected: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute dDPO loss and metrics.
 
         Args:
@@ -182,7 +182,7 @@ class dDPOLoss:
 
         accuracy = (reward_chosen > reward_rejected).float().mean()
 
-        metrics: Dict[str, torch.Tensor] = {
+        metrics: dict[str, torch.Tensor] = {
             "reward_chosen": reward_chosen.mean(),
             "reward_rejected": reward_rejected.mean(),
             "accuracy": accuracy,
@@ -193,6 +193,7 @@ class dDPOLoss:
 # ---------------------------------------------------------------------------
 # ZephyrTrainer
 # ---------------------------------------------------------------------------
+
 
 class ZephyrTrainer:
     """Two-stage Zephyr trainer (dSFT + dDPO).
@@ -244,8 +245,8 @@ class ZephyrTrainer:
             Scalar NLL loss tensor (after backward + optimizer step).
         """
         # Shift: predict token i+1 from position i.
-        shift_logits = logits[:, :-1, :].contiguous()      # (B, T-1, V)
-        shift_labels = token_ids[:, 1:].contiguous()        # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
+        shift_labels = token_ids[:, 1:].contiguous()  # (B, T-1)
 
         loss = F.cross_entropy(
             shift_logits.view(-1, shift_logits.size(-1)),
@@ -268,7 +269,7 @@ class ZephyrTrainer:
         pi_lp_l: torch.Tensor,
         ref_lp_w: torch.Tensor,
         ref_lp_l: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute dDPO loss, update model, and return metrics.
 
         Args:

@@ -1,9 +1,8 @@
 """Tests for JSON validator."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.tools.json_validator import JSONValidator, JSONSchema
+from src.tools.json_validator import JSONSchema, JSONValidator
 
 
 class TestJSONValidator:

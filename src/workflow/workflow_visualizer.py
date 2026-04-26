@@ -8,7 +8,6 @@ from __future__ import annotations
 import enum
 from collections import deque
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 
 class NodeStyle(enum.Enum):
@@ -19,7 +18,7 @@ class NodeStyle(enum.Enum):
 
 
 # Map NodeStyle -> DOT fillcolor
-_FILLCOLOR: Dict[NodeStyle, str] = {
+_FILLCOLOR: dict[NodeStyle, str] = {
     NodeStyle.DEFAULT: "white",
     NodeStyle.HIGHLIGHTED: "yellow",
     NodeStyle.FAILED: "red",
@@ -36,7 +35,7 @@ class VisualizerConfig:
 class WorkflowVisualizer:
     """Generates text/DOT/Mermaid visualizations of workflow DAGs."""
 
-    def __init__(self, config: Optional[VisualizerConfig] = None) -> None:
+    def __init__(self, config: VisualizerConfig | None = None) -> None:
         self.config: VisualizerConfig = config if config is not None else VisualizerConfig()
 
     # ------------------------------------------------------------------
@@ -45,9 +44,9 @@ class WorkflowVisualizer:
 
     def to_dot(
         self,
-        nodes: List[str],
-        edges: List[Tuple[str, str]],
-        node_styles: Optional[Dict[str, NodeStyle]] = None,
+        nodes: list[str],
+        edges: list[tuple[str, str]],
+        node_styles: dict[str, NodeStyle] | None = None,
     ) -> str:
         """
         Generate a DOT language digraph string.
@@ -58,14 +57,12 @@ class WorkflowVisualizer:
         if node_styles is None:
             node_styles = {}
 
-        lines: List[str] = ["digraph {"]
+        lines: list[str] = ["digraph {"]
 
         for node in nodes:
             style = node_styles.get(node, NodeStyle.DEFAULT)
             color = _FILLCOLOR[style]
-            lines.append(
-                f'    "{node}" [label="{node}", style=filled, fillcolor={color}];'
-            )
+            lines.append(f'    "{node}" [label="{node}", style=filled, fillcolor={color}];')
 
         for src, dst in edges:
             lines.append(f'    "{src}" -> "{dst}";')
@@ -79,8 +76,8 @@ class WorkflowVisualizer:
 
     def to_ascii(
         self,
-        nodes: List[str],
-        edges: List[Tuple[str, str]],
+        nodes: list[str],
+        edges: list[tuple[str, str]],
     ) -> str:
         """
         Simple text tree. Roots (nodes with no incoming edges) are printed
@@ -91,8 +88,8 @@ class WorkflowVisualizer:
             return ""
 
         # Build adjacency and in-degree structures
-        children: Dict[str, List[str]] = {n: [] for n in nodes}
-        in_degree: Dict[str, int] = {n: 0 for n in nodes}
+        children: dict[str, list[str]] = {n: [] for n in nodes}
+        in_degree: dict[str, int] = {n: 0 for n in nodes}
 
         for src, dst in edges:
             if dst in in_degree:
@@ -103,7 +100,7 @@ class WorkflowVisualizer:
         # Roots = nodes with no incoming edges
         roots = [n for n in nodes if in_degree[n] == 0]
 
-        lines: List[str] = []
+        lines: list[str] = []
         indent_str = " " * self.config.indent
 
         # BFS from roots, tracking depth
@@ -134,8 +131,8 @@ class WorkflowVisualizer:
 
     def to_mermaid(
         self,
-        nodes: List[str],
-        edges: List[Tuple[str, str]],
+        nodes: list[str],
+        edges: list[tuple[str, str]],
     ) -> str:
         """
         Generate a Mermaid flowchart LR diagram.
@@ -143,7 +140,7 @@ class WorkflowVisualizer:
         Each node: id[id]
         Each edge: src --> dst
         """
-        lines: List[str] = ["flowchart LR"]
+        lines: list[str] = ["flowchart LR"]
 
         for node in nodes:
             lines.append(f"    {node}[{node}]")

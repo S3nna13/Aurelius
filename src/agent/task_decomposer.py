@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import json
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 class TaskDecompositionError(ValueError):
@@ -76,28 +76,20 @@ class TaskDecomposer:
 
         raw = self.generate_fn(task)
         if not isinstance(raw, str):
-            raise TaskDecompositionError(
-                "generate_fn must return a string (JSON array)"
-            )
+            raise TaskDecompositionError("generate_fn must return a string (JSON array)")
 
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise TaskDecompositionError(
-                f"generate_fn returned malformed JSON: {exc}"
-            ) from exc
+            raise TaskDecompositionError(f"generate_fn returned malformed JSON: {exc}") from exc
 
         if not isinstance(parsed, list):
-            raise TaskDecompositionError(
-                "generate_fn must return a JSON array at the top level"
-            )
+            raise TaskDecompositionError("generate_fn must return a JSON array at the top level")
 
         tasks: list[SubTask] = []
         for i, entry in enumerate(parsed):
             if not isinstance(entry, dict):
-                raise TaskDecompositionError(
-                    f"sub-task #{i} is not a JSON object"
-                )
+                raise TaskDecompositionError(f"sub-task #{i} is not a JSON object")
             tasks.append(self._coerce_subtask(entry, i))
 
         dag = self._build_dag(tasks)
@@ -109,9 +101,7 @@ class TaskDecomposer:
     def _coerce_subtask(self, entry: dict, index: int) -> SubTask:
         missing = [k for k in ("id", "description", "depends_on") if k not in entry]
         if missing:
-            raise TaskDecompositionError(
-                f"sub-task #{index} missing required keys: {missing}"
-            )
+            raise TaskDecompositionError(f"sub-task #{index} missing required keys: {missing}")
         tid = entry["id"]
         desc = entry["description"]
         deps = entry["depends_on"]
@@ -119,25 +109,17 @@ class TaskDecomposer:
         hints = entry.get("tool_hints", [])
 
         if not isinstance(tid, str) or not tid:
-            raise TaskDecompositionError(
-                f"sub-task #{index} has non-string/empty id"
-            )
+            raise TaskDecompositionError(f"sub-task #{index} has non-string/empty id")
         if not isinstance(desc, str) or not desc:
-            raise TaskDecompositionError(
-                f"sub-task {tid!r} has non-string/empty description"
-            )
+            raise TaskDecompositionError(f"sub-task {tid!r} has non-string/empty description")
         if not isinstance(deps, list) or not all(isinstance(d, str) for d in deps):
-            raise TaskDecompositionError(
-                f"sub-task {tid!r} has non-list-of-strings depends_on"
-            )
+            raise TaskDecompositionError(f"sub-task {tid!r} has non-list-of-strings depends_on")
         if complexity not in _VALID_COMPLEXITY:
             raise TaskDecompositionError(
                 f"sub-task {tid!r} has invalid estimated_complexity {complexity!r}"
             )
         if not isinstance(hints, list) or not all(isinstance(h, str) for h in hints):
-            raise TaskDecompositionError(
-                f"sub-task {tid!r} has non-list-of-strings tool_hints"
-            )
+            raise TaskDecompositionError(f"sub-task {tid!r} has non-list-of-strings tool_hints")
 
         return SubTask(
             id=tid,
@@ -180,21 +162,15 @@ class TaskDecomposer:
         for t in tasks:
             for d in t.depends_on:
                 if d == t.id:
-                    raise TaskDecompositionError(
-                        f"self-loop detected on sub-task {t.id!r}"
-                    )
+                    raise TaskDecompositionError(f"self-loop detected on sub-task {t.id!r}")
                 if d not in id_set:
-                    raise TaskDecompositionError(
-                        f"sub-task {t.id!r} depends on unknown id {d!r}"
-                    )
+                    raise TaskDecompositionError(f"sub-task {t.id!r} depends on unknown id {d!r}")
 
         # Cycle detection via topological sort (also enforces max_depth).
         order = self._topo_sort_raw(tasks)
         depth = self._max_depth(tasks, order)
         if depth > self.max_depth:
-            raise TaskDecompositionError(
-                f"DAG depth {depth} exceeds max_depth={self.max_depth}"
-            )
+            raise TaskDecompositionError(f"DAG depth {depth} exceeds max_depth={self.max_depth}")
 
     # --------------------------------------------------------- traversal API
 
@@ -241,15 +217,11 @@ class TaskDecomposer:
         for t in tasks:
             for d in t.depends_on:
                 if d not in indegree:
-                    raise TaskDecompositionError(
-                        f"sub-task {t.id!r} depends on unknown id {d!r}"
-                    )
+                    raise TaskDecompositionError(f"sub-task {t.id!r} depends on unknown id {d!r}")
                 dependents[d].append(t.id)
 
         order: list[str] = []
-        queue: deque[str] = deque(
-            t.id for t in tasks if indegree[t.id] == 0
-        )
+        queue: deque[str] = deque(t.id for t in tasks if indegree[t.id] == 0)
         while queue:
             tid = queue.popleft()
             order.append(tid)

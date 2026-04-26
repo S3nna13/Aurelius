@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 from urllib.parse import urlparse
 
 _ALLOWED_SCHEMES = frozenset(["http", "https"])
@@ -22,11 +21,10 @@ def _validate_ollama_url(url: str) -> None:
     except Exception as exc:  # pragma: no cover
         raise ValueError(f"malformed ollama URL: {url!r}") from exc
     if parsed.scheme not in _ALLOWED_SCHEMES:
-        raise ValueError(
-            f"ollama URL scheme {parsed.scheme!r} not allowed; must be http or https"
-        )
+        raise ValueError(f"ollama URL scheme {parsed.scheme!r} not allowed; must be http or https")
     if not parsed.hostname:
         raise ValueError(f"ollama URL missing host: {url!r}")
+
 
 __all__ = [
     "OllamaConfig",
@@ -49,22 +47,24 @@ class OllamaAdapter:
 
     def generate(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7) -> str:
         cfg = self._config
-        body = json.dumps({
-            "model": cfg.model,
-            "prompt": prompt,
-            "options": {"num_predict": max_tokens, "temperature": temperature},
-            "stream": False,
-        }).encode()
+        body = json.dumps(
+            {
+                "model": cfg.model,
+                "prompt": prompt,
+                "options": {"num_predict": max_tokens, "temperature": temperature},
+                "stream": False,
+            }
+        ).encode()
         generate_url = f"{cfg.host}/api/generate"
         _validate_ollama_url(generate_url)
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310
             generate_url,
             data=body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url
+            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url  # noqa: S310
                 data = json.loads(resp.read())
             return data["response"]
         except Exception as exc:
@@ -74,9 +74,9 @@ class OllamaAdapter:
         cfg = self._config
         tags_url = f"{cfg.host}/api/tags"
         _validate_ollama_url(tags_url)
-        req = urllib.request.Request(tags_url, method="GET")
+        req = urllib.request.Request(tags_url, method="GET")  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url
+            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url  # noqa: S310
                 data = json.loads(resp.read())
             return [m["name"] for m in data.get("models", [])]
         except Exception as exc:
@@ -89,9 +89,9 @@ class OllamaAdapter:
             _validate_ollama_url(tags_url)
         except ValueError:
             return False
-        req = urllib.request.Request(tags_url, method="GET")
+        req = urllib.request.Request(tags_url, method="GET")  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url
+            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url  # noqa: S310
                 return resp.status == 200
         except Exception:
             return False

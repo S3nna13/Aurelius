@@ -2,24 +2,22 @@
 
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.streaming_llm import (
     KVCache,
     SinkAttentionWrapper,
     StreamingConfig,
     StreamingGenerator,
-    wrap_model_with_sink_cache,
 )
-
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg() -> AureliusConfig:
@@ -60,6 +58,7 @@ def _make_token(n_heads: int = 2, head_dim: int = 16) -> torch.Tensor:
 # 1. test_kv_cache_appends_below_capacity
 # ---------------------------------------------------------------------------
 
+
 def test_kv_cache_appends_below_capacity():
     """Add 3 tokens to a capacity-5 cache; cache_size should be 3."""
     cfg = StreamingConfig(sink_size=2, window_size=3)  # max = 5
@@ -75,6 +74,7 @@ def test_kv_cache_appends_below_capacity():
 # ---------------------------------------------------------------------------
 # 2. test_kv_cache_evicts_oldest_recent
 # ---------------------------------------------------------------------------
+
 
 def test_kv_cache_evicts_oldest_recent(small_cache):
     """At capacity=6 (sink=2, window=4), adding a 7th token keeps 6 total."""
@@ -94,6 +94,7 @@ def test_kv_cache_evicts_oldest_recent(small_cache):
 # ---------------------------------------------------------------------------
 # 3. test_kv_cache_sink_tokens_preserved
 # ---------------------------------------------------------------------------
+
 
 def test_kv_cache_sink_tokens_preserved():
     """After overflow, the first sink_size tokens must remain unchanged."""
@@ -121,6 +122,7 @@ def test_kv_cache_sink_tokens_preserved():
 # 4. test_kv_cache_clear_single_layer
 # ---------------------------------------------------------------------------
 
+
 def test_kv_cache_clear_single_layer(small_cache):
     """clear(layer_idx=0) empties layer 0 but leaves layer 1 intact."""
     # Populate both layers.
@@ -142,6 +144,7 @@ def test_kv_cache_clear_single_layer(small_cache):
 # 5. test_kv_cache_clear_all
 # ---------------------------------------------------------------------------
 
+
 def test_kv_cache_clear_all(small_cache):
     """clear() with no argument empties all layers."""
     small_cache.update(0, _make_token(), _make_token())
@@ -158,6 +161,7 @@ def test_kv_cache_clear_all(small_cache):
 # ---------------------------------------------------------------------------
 # 6. test_kv_cache_get_returns_none_when_empty
 # ---------------------------------------------------------------------------
+
 
 def test_kv_cache_get_returns_none_when_empty():
     """get() before any update must return (None, None)."""
@@ -176,6 +180,7 @@ def test_kv_cache_get_returns_none_when_empty():
 # ---------------------------------------------------------------------------
 # 7. test_sink_attention_wrapper_no_cache_passthrough
 # ---------------------------------------------------------------------------
+
 
 def test_sink_attention_wrapper_no_cache_passthrough(small_cfg):
     """With cache=None, SinkAttentionWrapper calls the underlying attention."""
@@ -196,6 +201,7 @@ def test_sink_attention_wrapper_no_cache_passthrough(small_cfg):
 # ---------------------------------------------------------------------------
 # 8. test_streaming_generator_stream_returns_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_streaming_generator_stream_returns_tokens(small_cfg):
     """stream() should return a list of the requested number of token ids."""
@@ -221,6 +227,7 @@ def test_streaming_generator_stream_returns_tokens(small_cfg):
 # 9. test_streaming_config_max_cache_size
 # ---------------------------------------------------------------------------
 
+
 def test_streaming_config_max_cache_size():
     """max_cache_size should equal sink_size + window_size."""
     cfg = StreamingConfig(sink_size=4, window_size=512)
@@ -233,6 +240,7 @@ def test_streaming_config_max_cache_size():
 # ---------------------------------------------------------------------------
 # 10. test_kv_cache_layer_independence
 # ---------------------------------------------------------------------------
+
 
 def test_kv_cache_layer_independence():
     """Updating layer 0 and layer 1 independently should not interfere."""

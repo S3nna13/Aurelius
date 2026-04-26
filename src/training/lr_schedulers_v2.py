@@ -6,12 +6,12 @@ bitsandbytes, peft, diffusers, datasets, accelerate, or deepspeed.
 """
 
 import math
-from typing import Dict, Any
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # WarmupScheduler — linear warmup from 0 → base_lr
 # ---------------------------------------------------------------------------
+
 
 class WarmupScheduler:
     """Linear warmup scheduler: lr = base_lr * (step / warmup_steps)."""
@@ -42,7 +42,7 @@ class WarmupScheduler:
     def get_lr(self) -> float:
         return self._current_lr
 
-    def state_dict(self) -> Dict[str, Any]:
+    def state_dict(self) -> dict[str, Any]:
         return {
             "warmup_steps": self.warmup_steps,
             "base_lr": self.base_lr,
@@ -50,7 +50,7 @@ class WarmupScheduler:
             "_current_lr": self._current_lr,
         }
 
-    def load_state_dict(self, state: Dict[str, Any]) -> None:
+    def load_state_dict(self, state: dict[str, Any]) -> None:
         self.warmup_steps = state["warmup_steps"]
         self.base_lr = state["base_lr"]
         self._step = state["_step"]
@@ -61,6 +61,7 @@ class WarmupScheduler:
 # ---------------------------------------------------------------------------
 # CosineWithWarmup — cosine annealing with linear warmup + optional restarts
 # ---------------------------------------------------------------------------
+
 
 class CosineWithWarmup:
     """Cosine annealing with linear warmup.  Supports warm restarts (SGDR)."""
@@ -114,7 +115,7 @@ class CosineWithWarmup:
             # cycle starts back at peak_lr (warm restart / SGDR behaviour).
             decay_steps = self.total_steps - self.warmup_steps
             cycle_steps = decay_steps / self.n_cycles
-            pos = s - self.warmup_steps          # 1-based position in decay phase
+            pos = s - self.warmup_steps  # 1-based position in decay phase
             # 0-indexed position within the current cycle
             cycle_idx = int((pos - 1) / cycle_steps)
             cycle_pos = (pos - 1) - cycle_idx * cycle_steps
@@ -135,6 +136,7 @@ class CosineWithWarmup:
 # ---------------------------------------------------------------------------
 # WSDScheduler — Warmup-Stable-Decay  (MiniCPM / OLMo style)
 # ---------------------------------------------------------------------------
+
 
 class WSDScheduler:
     """Warmup → Stable → Decay (cosine) scheduler."""
@@ -202,6 +204,7 @@ class WSDScheduler:
 # InverseSquareRootScheduler — Vaswani 2017 original transformer schedule
 # ---------------------------------------------------------------------------
 
+
 class InverseSquareRootScheduler:
     """lr = d_model^(-0.5) * min(step^(-0.5), step * warmup_steps^(-1.5))."""
 
@@ -224,9 +227,9 @@ class InverseSquareRootScheduler:
     def step(self) -> None:
         self._step += 1
         s = self._step
-        scale = (self.d_model ** -0.5) * min(
-            s ** -0.5,
-            s * (self.warmup_steps ** -1.5),
+        scale = (self.d_model**-0.5) * min(
+            s**-0.5,
+            s * (self.warmup_steps**-1.5),
         )
         self._current_lr = scale
         self._set_lr(self._current_lr)
@@ -238,6 +241,7 @@ class InverseSquareRootScheduler:
 # ---------------------------------------------------------------------------
 # CyclicLRScheduler — triangular / triangular2 / exp_range  (Smith 2017)
 # ---------------------------------------------------------------------------
+
 
 class CyclicLRScheduler:
     """Triangular cyclic LR.
@@ -312,6 +316,7 @@ class CyclicLRScheduler:
 # LRSchedulerFactory
 # ---------------------------------------------------------------------------
 
+
 class LRSchedulerFactory:
     """Create schedulers by name and produce LR traces for inspection."""
 
@@ -329,10 +334,7 @@ class LRSchedulerFactory:
     def create(self, name: str, optimizer, **kwargs):
         """Return a scheduler instance for *name*."""
         if name not in self._REGISTRY:
-            raise ValueError(
-                f"Unknown scheduler '{name}'. "
-                f"Available: {sorted(self._REGISTRY)}"
-            )
+            raise ValueError(f"Unknown scheduler '{name}'. Available: {sorted(self._REGISTRY)}")
         return self._REGISTRY[name](optimizer, **kwargs)
 
     def plot_schedule(self, scheduler, n_steps: int) -> list:

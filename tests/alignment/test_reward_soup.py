@@ -1,23 +1,22 @@
 """Tests for reward_soup.py — Reward Model Soup (Rame et al. 2024)."""
+
 from __future__ import annotations
 
 import copy
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.alignment.reward_model import RewardModel, RewardModelConfig
 from src.alignment.reward_soup import (
-    RewardSoupConfig,
     RewardSoup,
-    weight_average_models,
+    RewardSoupConfig,
     aggregate_rewards,
     evaluate_reward_diversity,
+    weight_average_models,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / helpers
@@ -75,6 +74,7 @@ def make_token_ids(seed: int = 42) -> torch.Tensor:
 # 1. weight_average_models — single model yields identical weights
 # ---------------------------------------------------------------------------
 
+
 def test_weight_average_single_model_identical():
     torch.manual_seed(0)
     model = make_simple_model()
@@ -89,6 +89,7 @@ def test_weight_average_single_model_identical():
 # ---------------------------------------------------------------------------
 # 2. weight_average_models — two identical models → same weights
 # ---------------------------------------------------------------------------
+
 
 def test_weight_average_two_identical_models():
     torch.manual_seed(1)
@@ -106,6 +107,7 @@ def test_weight_average_two_identical_models():
 # ---------------------------------------------------------------------------
 # 3. weight_average_models — different models → weights are average
 # ---------------------------------------------------------------------------
+
 
 def test_weight_average_different_models():
     torch.manual_seed(2)
@@ -130,6 +132,7 @@ def test_weight_average_different_models():
 # 4. aggregate_rewards mode="mean" computes correct mean
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_rewards_mean():
     torch.manual_seed(3)
     r1 = torch.tensor([1.0, 2.0, 3.0])
@@ -146,6 +149,7 @@ def test_aggregate_rewards_mean():
 # 5. aggregate_rewards mode="min" returns minimum
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_rewards_min():
     r1 = torch.tensor([1.0, 5.0, 3.0])
     r2 = torch.tensor([4.0, 2.0, 6.0])
@@ -161,6 +165,7 @@ def test_aggregate_rewards_min():
 # 6. aggregate_rewards mode="max" returns maximum
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_rewards_max():
     r1 = torch.tensor([1.0, 5.0, 3.0])
     r2 = torch.tensor([4.0, 2.0, 6.0])
@@ -175,6 +180,7 @@ def test_aggregate_rewards_max():
 # ---------------------------------------------------------------------------
 # 7. aggregate_rewards mode="median" returns median
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_rewards_median():
     r1 = torch.tensor([1.0, 2.0, 3.0])
@@ -192,6 +198,7 @@ def test_aggregate_rewards_median():
 # 8. RewardSoup constructs with list of models
 # ---------------------------------------------------------------------------
 
+
 def test_reward_soup_constructs():
     torch.manual_seed(8)
     m1 = make_reward_model(seed=0)
@@ -204,6 +211,7 @@ def test_reward_soup_constructs():
 # ---------------------------------------------------------------------------
 # 9. RewardSoup.score returns (N,) tensor
 # ---------------------------------------------------------------------------
+
 
 def test_reward_soup_score_shape():
     torch.manual_seed(9)
@@ -220,6 +228,7 @@ def test_reward_soup_score_shape():
 # 10. RewardSoup.score returns finite values
 # ---------------------------------------------------------------------------
 
+
 def test_reward_soup_score_finite():
     torch.manual_seed(10)
     m1 = make_reward_model(seed=2)
@@ -235,6 +244,7 @@ def test_reward_soup_score_finite():
 # 11. RewardSoup.calibrate_weights returns weights summing to 1
 # ---------------------------------------------------------------------------
 
+
 def test_reward_soup_calibrate_weights_sum_to_one():
     torch.manual_seed(11)
     m1 = make_reward_model(seed=4)
@@ -246,9 +256,7 @@ def test_reward_soup_calibrate_weights_sum_to_one():
     weights = soup.calibrate_weights(ids, labels)
 
     assert len(weights) == 2, f"Expected 2 weights, got {len(weights)}"
-    assert abs(sum(weights) - 1.0) < 1e-5, (
-        f"Weights must sum to 1.0, got sum={sum(weights)}"
-    )
+    assert abs(sum(weights) - 1.0) < 1e-5, f"Weights must sum to 1.0, got sum={sum(weights)}"
     for w in weights:
         assert 0.0 <= w <= 1.0, f"Each weight must be in [0, 1], got {w}"
 
@@ -256,6 +264,7 @@ def test_reward_soup_calibrate_weights_sum_to_one():
 # ---------------------------------------------------------------------------
 # 12. RewardSoup.distill_to_single returns nn.Module
 # ---------------------------------------------------------------------------
+
 
 def test_reward_soup_distill_to_single_returns_module():
     torch.manual_seed(12)
@@ -272,6 +281,7 @@ def test_reward_soup_distill_to_single_returns_module():
 # ---------------------------------------------------------------------------
 # 13. evaluate_reward_diversity returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_reward_diversity_keys():
     torch.manual_seed(13)

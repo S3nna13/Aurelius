@@ -4,6 +4,7 @@ and specialization in Mixture-of-Experts models.
 Works on any model; simulates expert assignment for dense models via k-means-style
 token clustering using a fixed random projection.
 """
+
 from __future__ import annotations
 
 import math
@@ -13,14 +14,15 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MoEAnalysisConfig:
     """Configuration for MoE analysis."""
+
     n_experts: int = 8
     top_k: int = 2
     n_samples: int = 50
@@ -31,18 +33,21 @@ class MoEAnalysisConfig:
 # Stats dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ExpertStats:
     """Per-expert statistics for one layer."""
+
     expert_id: int
-    utilization: float           # fraction of tokens assigned to this expert
-    mean_activation: float       # mean activation magnitude at this expert
+    utilization: float  # fraction of tokens assigned to this expert
+    mean_activation: float  # mean activation magnitude at this expert
     specialization_score: float  # how concentrated assignments are to certain token types
 
 
 # ---------------------------------------------------------------------------
 # Core analysis functions
 # ---------------------------------------------------------------------------
+
 
 def simulate_expert_routing(
     hidden_states: torch.Tensor,
@@ -69,8 +74,9 @@ def simulate_expert_routing(
     # Deterministic fixed projection
     gen = torch.Generator()
     gen.manual_seed(42)
-    W = torch.randn(D, n_experts, generator=gen, dtype=hidden_states.dtype,
-                    device=hidden_states.device)
+    W = torch.randn(
+        D, n_experts, generator=gen, dtype=hidden_states.dtype, device=hidden_states.device
+    )
 
     # (B, T, D) @ (D, n_experts) -> (B, T, n_experts)
     logits = hidden_states @ W
@@ -159,7 +165,7 @@ def compute_expert_specialization(
     for expert_id in range(n_experts):
         # Find all (batch, token, slot) where this expert was selected
         # expert_indices: (B, T, top_k)
-        mask = (expert_indices == expert_id)  # (B, T, top_k)
+        mask = expert_indices == expert_id  # (B, T, top_k)
 
         # Sum over batch and top_k to get per-position count
         # mask shape (B, T, top_k) -> sum over dim 0 and 2 -> (T,)
@@ -183,6 +189,7 @@ def compute_expert_specialization(
 # ---------------------------------------------------------------------------
 # MoEAnalyzer class
 # ---------------------------------------------------------------------------
+
 
 class MoEAnalyzer:
     """Analyze MoE routing patterns by hooking into transformer layers.
@@ -213,7 +220,9 @@ class MoEAnalyzer:
         handles = []
 
         n_layers = len(self.model.layers)
-        layers_to_track = self.config.track_layers if self.config.track_layers else list(range(n_layers))
+        layers_to_track = (
+            self.config.track_layers if self.config.track_layers else list(range(n_layers))
+        )
 
         for layer_idx in layers_to_track:
             self._layer_hidden_states[layer_idx] = []
@@ -223,6 +232,7 @@ class MoEAnalyzer:
                     # Output may be (hidden, kv) tuple
                     hidden = output[0] if isinstance(output, tuple) else output
                     self._layer_hidden_states[idx].append(hidden.detach())
+
                 return hook
 
             handle = self.model.layers[layer_idx].register_forward_hook(make_hook(layer_idx))
@@ -343,14 +353,11 @@ class MoEAnalyzer:
 
         # Aggregate per-layer
         per_layer_balance: dict[int, float] = {
-            layer_idx: sum(vals) / len(vals)
-            for layer_idx, vals in per_layer_balances.items()
+            layer_idx: sum(vals) / len(vals) for layer_idx, vals in per_layer_balances.items()
         }
 
         mean_load_balance = (
-            sum(per_layer_balance.values()) / len(per_layer_balance)
-            if per_layer_balance
-            else 0.0
+            sum(per_layer_balance.values()) / len(per_layer_balance) if per_layer_balance else 0.0
         )
 
         # Global utilization stats

@@ -3,6 +3,7 @@
 Tiny config: d_model=64, vocab_size=256, n_draft_steps=3,
              draft_hidden_dim=32, batch=1, seq_len=8
 """
+
 from __future__ import annotations
 
 import pytest
@@ -11,14 +12,14 @@ import torch.nn as nn
 
 from src.inference.eagle_speculative import (
     EAGLEConfig,
-    EAGLEDraftHead,
     EAGLEDecoder,
+    EAGLEDraftHead,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock target model (no imports from src/model/transformer.py)
 # ---------------------------------------------------------------------------
+
 
 class MockTargetModel(nn.Module):
     """Minimal mock that returns (logits, hidden_state) from forward().
@@ -75,7 +76,9 @@ def mock_target(cfg: EAGLEConfig) -> MockTargetModel:
 
 
 @pytest.fixture
-def decoder(mock_target: MockTargetModel, draft_head: EAGLEDraftHead, cfg: EAGLEConfig) -> EAGLEDecoder:
+def decoder(
+    mock_target: MockTargetModel, draft_head: EAGLEDraftHead, cfg: EAGLEConfig
+) -> EAGLEDecoder:
     return EAGLEDecoder(mock_target, draft_head, cfg)
 
 
@@ -89,6 +92,7 @@ def input_ids() -> torch.Tensor:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_draft_head_output_shape(draft_head: EAGLEDraftHead, cfg: EAGLEConfig) -> None:
     """EAGLEDraftHead must output (B, T, vocab_size)."""
     B, T = BATCH, SEQ_LEN
@@ -100,7 +104,9 @@ def test_draft_head_output_shape(draft_head: EAGLEDraftHead, cfg: EAGLEConfig) -
     )
 
 
-def test_draft_returns_correct_shape(decoder: EAGLEDecoder, input_ids: torch.Tensor, cfg: EAGLEConfig) -> None:
+def test_draft_returns_correct_shape(
+    decoder: EAGLEDecoder, input_ids: torch.Tensor, cfg: EAGLEConfig
+) -> None:
     """draft() must return (B, n_draft_steps) integer tensor."""
     features = torch.randn(BATCH, SEQ_LEN, cfg.d_model)
     draft_ids = decoder.draft(input_ids, features)
@@ -140,9 +146,7 @@ def test_n_accepted_in_valid_range(
     assert 0 <= n_accepted <= n_draft, f"n_accepted={n_accepted} out of range [0, {n_draft}]"
 
 
-def test_generate_step_returns_new_tokens(
-    decoder: EAGLEDecoder, input_ids: torch.Tensor
-) -> None:
+def test_generate_step_returns_new_tokens(decoder: EAGLEDecoder, input_ids: torch.Tensor) -> None:
     """generate_step must return a non-empty tensor of new token ids."""
     new_ids, stats = decoder.generate_step(input_ids)
     assert isinstance(new_ids, torch.Tensor)
@@ -182,7 +186,7 @@ def test_acceptance_rate_one_when_draft_equals_target(cfg: EAGLEConfig) -> None:
 
     for i in range(n_draft):
         tok = fixed_tokens[i].item()
-        target_logits[0, SEQ_LEN - 1 + i, tok] = 1e9   # position predicts draft tok i
+        target_logits[0, SEQ_LEN - 1 + i, tok] = 1e9  # position predicts draft tok i
         draft_logits[0, i, tok] = 1e9
 
     draft_ids = fixed_tokens.unsqueeze(0)  # (1, n_draft)
@@ -200,9 +204,7 @@ def test_acceptance_rate_one_when_draft_equals_target(cfg: EAGLEConfig) -> None:
     dec = EAGLEDecoder(mock, head, zero_temp_cfg)
 
     _, n_accepted = dec.verify_and_accept(input_ids, draft_ids, target_logits, draft_logits)
-    assert n_accepted == n_draft, (
-        f"Expected all {n_draft} tokens accepted, got {n_accepted}"
-    )
+    assert n_accepted == n_draft, f"Expected all {n_draft} tokens accepted, got {n_accepted}"
 
 
 def test_backward_through_draft_head(draft_head: EAGLEDraftHead, cfg: EAGLEConfig) -> None:
@@ -216,11 +218,9 @@ def test_backward_through_draft_head(draft_head: EAGLEDraftHead, cfg: EAGLEConfi
     hidden = torch.randn(B, T, cfg.d_model, requires_grad=False)
     token_embed = torch.randn(B, T, cfg.d_model, requires_grad=False)
 
-    logits = draft_head(hidden, token_embed)           # (B, T, vocab_size)
+    logits = draft_head(hidden, token_embed)  # (B, T, vocab_size)
     targets = torch.randint(0, cfg.vocab_size, (B * T,))
-    loss = torch.nn.functional.cross_entropy(
-        logits.view(-1, cfg.vocab_size), targets
-    )
+    loss = torch.nn.functional.cross_entropy(logits.view(-1, cfg.vocab_size), targets)
     loss.backward()
     optimizer.step()
 
@@ -229,9 +229,7 @@ def test_backward_through_draft_head(draft_head: EAGLEDraftHead, cfg: EAGLEConfi
     assert changed, "Draft head weights did not change after backward pass"
 
 
-def test_different_seeds_give_different_drafts(
-    decoder: EAGLEDecoder, cfg: EAGLEConfig
-) -> None:
+def test_different_seeds_give_different_drafts(decoder: EAGLEDecoder, cfg: EAGLEConfig) -> None:
     """Different random seeds must produce different draft token sequences."""
     results = []
     for seed in (0, 1, 2):

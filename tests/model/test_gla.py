@@ -1,11 +1,9 @@
 """Tests for GLA — Gated Linear Attention (Yang et al. 2024)."""
 
-import pytest
 import torch
 
-from src.model.gla import GatedLinearAttention, GLABlock
 from src.model.config import AureliusConfig
-
+from src.model.gla import GatedLinearAttention, GLABlock
 
 # ---------------------------------------------------------------------------
 # Shared helpers

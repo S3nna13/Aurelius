@@ -14,7 +14,6 @@ where α (noise_alpha) is typically in [1, 15], default 5.0.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -70,7 +69,7 @@ class NEFTuneWrapper:
         self.model = model
         self.embedding_attr = embedding_attr
         self.noise_alpha = noise_alpha
-        self._original_embedding: Optional[nn.Embedding] = None
+        self._original_embedding: nn.Embedding | None = None
 
     # ------------------------------------------------------------------
     # Internal helpers for dot-path attribute access
@@ -96,7 +95,7 @@ class NEFTuneWrapper:
     # Public API
     # ------------------------------------------------------------------
 
-    def apply(self) -> "NEFTuneWrapper":
+    def apply(self) -> NEFTuneWrapper:
         """Replace the embedding layer with a :class:`NoisyEmbedding`.
 
         The original embedding weight is copied (shared) into the new layer.
@@ -127,7 +126,7 @@ class NEFTuneWrapper:
         self._set_embedding(noisy)
         return self
 
-    def remove(self) -> "NEFTuneWrapper":
+    def remove(self) -> NEFTuneWrapper:
         """Restore the original ``nn.Embedding`` layer.
 
         Returns:

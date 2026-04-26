@@ -27,7 +27,7 @@ class XPosConfig:
     use_xpos: bool = True
 
     def __post_init__(self) -> None:
-        assert self.d_model == self.n_heads * self.head_dim, (
+        assert self.d_model == self.n_heads * self.head_dim, (  # noqa: S101
             f"d_model ({self.d_model}) must equal n_heads * head_dim "
             f"({self.n_heads} * {self.head_dim})"
         )
@@ -79,9 +79,7 @@ def _build_rope_cos_sin(
         cos, sin each of shape (seq_len, head_dim).
     """
     half = head_dim // 2
-    inv_freq = 1.0 / (
-        theta ** (torch.arange(0, half, device=device, dtype=torch.float32) / half)
-    )
+    inv_freq = 1.0 / (theta ** (torch.arange(0, half, device=device, dtype=torch.float32) / half))
     positions = torch.arange(seq_len, device=device, dtype=torch.float32)
     # (seq_len, half)
     freqs = torch.outer(positions, inv_freq)
@@ -152,7 +150,7 @@ class XPosAttention(nn.Module):
         self.scale_base = config.scale_base
         self.use_xpos = config.use_xpos
 
-        assert self.n_heads % self.n_kv_heads == 0, (
+        assert self.n_heads % self.n_kv_heads == 0, (  # noqa: S101
             f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})"
         )
         self.kv_groups = self.n_heads // self.n_kv_heads

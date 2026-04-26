@@ -16,13 +16,13 @@ from torch import Tensor
 
 @dataclass
 class BigBirdConfig:
-    window_size: int = 3       # local attention window (one-sided)
-    n_global_tokens: int = 2   # first n tokens attend/are attended globally
-    n_random_keys: int = 1     # random keys per query
+    window_size: int = 3  # local attention window (one-sided)
+    n_global_tokens: int = 2  # first n tokens attend/are attended globally
+    n_random_keys: int = 1  # random keys per query
     d_model: int = 64
     n_heads: int = 2
     head_dim: int = 32
-    causal: bool = False       # BigBird is typically non-causal (encoder)
+    causal: bool = False  # BigBird is typically non-causal (encoder)
 
 
 def create_bigbird_mask(
@@ -50,11 +50,11 @@ def create_bigbird_mask(
     local = (cols - rows).abs() <= window_size
     mask |= local
 
-    # 2. Global tokens: rows 0..n_global_tokens-1 attend all; columns 0..n_global_tokens-1 attended by all
+    # 2. Global tokens: rows 0..n_global_tokens-1 attend all; columns 0..n_global_tokens-1 attended by all  # noqa: E501
     g = min(n_global_tokens, T)
     if g > 0:
-        mask[:g, :] = True   # global tokens attend everything
-        mask[:, :g] = True   # everything attends to global tokens
+        mask[:g, :] = True  # global tokens attend everything
+        mask[:, :g] = True  # everything attends to global tokens
 
     # 3. Random keys: each non-global token attends to n_random_keys extra random positions
     if n_random_keys > 0:
@@ -73,10 +73,10 @@ def create_bigbird_mask(
 
 
 def sparse_attention_with_mask(
-    q: Tensor,        # (B, H, T, D)
+    q: Tensor,  # (B, H, T, D)
     k: Tensor,
     v: Tensor,
-    mask: Tensor,     # (T, T) bool: True = attend
+    mask: Tensor,  # (T, T) bool: True = attend
     scale: float | None = None,
 ) -> Tensor:
     """Compute attention using a sparse boolean mask.
@@ -86,7 +86,7 @@ def sparse_attention_with_mask(
     """
     D = q.shape[-1]
     if scale is None:
-        scale = D ** -0.5
+        scale = D**-0.5
 
     # scores: (B, H, T, T)
     scores = torch.matmul(q, k.transpose(-2, -1)) * scale
@@ -152,7 +152,7 @@ class BigBirdAttention(nn.Module):
         V = project_and_split(self.v_proj)
 
         # Sparse attention: (B, H, T, head_dim)
-        attn_out = sparse_attention_with_mask(Q, K, V, mask, scale=cfg.head_dim ** -0.5)
+        attn_out = sparse_attention_with_mask(Q, K, V, mask, scale=cfg.head_dim**-0.5)
 
         # Merge heads and project: (B, T, D)
         attn_out = attn_out.transpose(1, 2).contiguous().view(B, T, D)

@@ -7,33 +7,33 @@ and repetition penalty.  A SamplerPipeline class wires them together.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SamplingConfig:
     """Configuration for all token-sampling filters."""
 
     temperature: float = 1.0
-    top_k: int = 0          # 0 = disabled
-    top_p: float = 1.0      # 1.0 = disabled
-    min_p: float = 0.0      # 0.0 = disabled
+    top_k: int = 0  # 0 = disabled
+    top_p: float = 1.0  # 1.0 = disabled
+    min_p: float = 0.0  # 0.0 = disabled
     typical_p: float = 1.0  # 1.0 = disabled
     repetition_penalty: float = 1.0  # 1.0 = disabled
-    do_sample: bool = True   # False → greedy (argmax)
+    do_sample: bool = True  # False → greedy (argmax)
 
 
 # ---------------------------------------------------------------------------
 # Individual filter functions
 # ---------------------------------------------------------------------------
+
 
 def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
     """Divide logits by *temperature*.
@@ -42,9 +42,7 @@ def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
         ValueError: if temperature <= 0.
     """
     if temperature <= 0:
-        raise ValueError(
-            f"temperature must be > 0, got {temperature!r}"
-        )
+        raise ValueError(f"temperature must be > 0, got {temperature!r}")
     return logits / temperature
 
 
@@ -185,10 +183,11 @@ def apply_repetition_penalty_sampling(
 # Unified sampling entry point
 # ---------------------------------------------------------------------------
 
+
 def sample_token(
     logits: torch.Tensor,
     config: SamplingConfig,
-    past_ids: Optional[torch.Tensor] = None,
+    past_ids: torch.Tensor | None = None,
 ) -> int:
     """Apply all enabled filters then sample one token.
 
@@ -243,6 +242,7 @@ def sample_token(
 # SamplerPipeline
 # ---------------------------------------------------------------------------
 
+
 class SamplerPipeline:
     """A stateless pipeline that applies all enabled sampling filters."""
 
@@ -252,7 +252,7 @@ class SamplerPipeline:
     def apply_filters(
         self,
         logits: torch.Tensor,
-        past_ids: Optional[torch.Tensor] = None,
+        past_ids: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply all enabled filters and return the filtered logit tensor.
 
@@ -297,7 +297,7 @@ class SamplerPipeline:
     def sample(
         self,
         logits: torch.Tensor,
-        past_ids: Optional[torch.Tensor] = None,
+        past_ids: torch.Tensor | None = None,
     ) -> int:
         """Apply filters then sample (or argmax) one token.
 
@@ -319,7 +319,7 @@ class SamplerPipeline:
     def batch_sample(
         self,
         logits: torch.Tensor,
-        past_ids: Optional[torch.Tensor] = None,
+        past_ids: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Sample one token per row of a batched logit tensor.
 
@@ -330,7 +330,7 @@ class SamplerPipeline:
         Returns:
             (B,) int64 tensor of sampled token ids.
         """
-        assert logits.dim() == 2, "logits must be (B, vocab_size)"
+        assert logits.dim() == 2, "logits must be (B, vocab_size)"  # noqa: S101
         B = logits.size(0)
         tokens = []
         for b in range(B):

@@ -5,8 +5,8 @@ import torch
 
 from src.inference.paged_kv_cache import (
     PAGE_SIZE,
-    PagePool,
     PagedKVCacheManager,
+    PagePool,
     SequenceKVCache,
 )
 
@@ -73,7 +73,7 @@ def test_page_pool_exhaustion():
 def test_page_pool_free_recycles():
     pool = make_pool(n_pages=2)
     pid0 = pool.allocate_page()
-    pid1 = pool.allocate_page()
+    pool.allocate_page()
     assert pool.available_pages() == 0
 
     pool.free_page(pid0)

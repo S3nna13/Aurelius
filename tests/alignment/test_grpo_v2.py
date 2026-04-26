@@ -1,28 +1,36 @@
 """Tests for GRPOv2: Enhanced GRPO with Dr. GRPO corrections and clip-higher."""
+
 import math
-import torch
+
 import pytest
+import torch
 
 from src.alignment.grpo_v2 import (
     GRPOv2Config,
+    GRPOv2Trainer,
+    clip_higher_ratio,
     compute_grpo_advantages,
     grpo_loss,
-    clip_higher_ratio,
-    GRPOv2Trainer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=4, n_kv_heads=2,
-        head_dim=16, d_ff=128, vocab_size=256, max_seq_len=64,
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
     )
 
 
@@ -40,6 +48,7 @@ def default_config():
 # ---------------------------------------------------------------------------
 # compute_grpo_advantages tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_advantages_basic():
     """G=4, non-uniform rewards → advantages have mean ≈ 0."""
@@ -71,6 +80,7 @@ def test_compute_advantages_all_equal_rewards():
 # grpo_loss tests
 # ---------------------------------------------------------------------------
 
+
 def test_grpo_loss_returns_tensor(default_config):
     """grpo_loss returns a differentiable scalar tensor."""
     log_probs = torch.tensor([-1.0, -2.0, -1.5, -0.5], requires_grad=True)
@@ -95,9 +105,7 @@ def test_grpo_loss_metrics_keys(default_config):
     _, metrics = grpo_loss(log_probs, ref_log_probs, rewards, default_config)
 
     required_keys = {"policy_loss", "kl_loss", "mean_reward", "mean_advantage", "reward_std"}
-    assert required_keys.issubset(metrics.keys()), (
-        f"Missing keys: {required_keys - metrics.keys()}"
-    )
+    assert required_keys.issubset(metrics.keys()), f"Missing keys: {required_keys - metrics.keys()}"
 
 
 def test_grpo_loss_reference_free():
@@ -129,6 +137,7 @@ def test_grpo_loss_kl_positive():
 # clip_higher_ratio tests
 # ---------------------------------------------------------------------------
 
+
 def test_clip_higher_ratio_shape():
     """clip_higher_ratio output has the same shape as inputs."""
     ratio = torch.tensor([0.8, 1.0, 1.2, 1.5])
@@ -140,6 +149,7 @@ def test_clip_higher_ratio_shape():
 # ---------------------------------------------------------------------------
 # GRPOv2Trainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_grpo_trainer_train_step_keys(small_model):
     """train_step returns dict with 'loss', 'mean_reward', 'reward_std'."""
@@ -185,6 +195,7 @@ def test_grpo_trainer_train_step_keys(small_model):
 # ---------------------------------------------------------------------------
 # Dr. GRPO unbiased std test
 # ---------------------------------------------------------------------------
+
 
 def test_dr_grpo_unbiased_std():
     """Dr. GRPO uses ddof=1 (Bessel correction). Verify with G=2."""

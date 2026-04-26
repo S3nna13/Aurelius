@@ -1,5 +1,4 @@
 """Tests for the learned optimizer (L2L) module."""
-import math
 
 import pytest
 import torch
@@ -7,11 +6,10 @@ import torch.nn as nn
 
 from src.training.learned_optimizer import (
     GradientPreprocessor,
-    LSTMOptimizer,
     LearnedOptimizerWrapper,
+    LSTMOptimizer,
     MetaTrainingLoop,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -43,9 +41,7 @@ def test_gradient_preprocessor_shape():
     """preprocess(rand_grad) should return shape (numel, 2)."""
     grad = torch.randn(4, 8)  # 32 elements
     out = GradientPreprocessor.preprocess(grad)
-    assert out.shape == (grad.numel(), 2), (
-        f"Expected shape ({grad.numel()}, 2), got {out.shape}"
-    )
+    assert out.shape == (grad.numel(), 2), f"Expected shape ({grad.numel()}, 2), got {out.shape}"
 
 
 def test_gradient_preprocessor_range():
@@ -53,12 +49,8 @@ def test_gradient_preprocessor_range():
     grad = torch.randn(16, 16)
     out = GradientPreprocessor.preprocess(grad)
     log_mag = out[:, 0]
-    assert log_mag.min().item() >= -1.0 - 1e-6, (
-        f"log_mag below -1: min={log_mag.min().item()}"
-    )
-    assert log_mag.max().item() <= 1.0 + 1e-6, (
-        f"log_mag above 1: max={log_mag.max().item()}"
-    )
+    assert log_mag.min().item() >= -1.0 - 1e-6, f"log_mag below -1: min={log_mag.min().item()}"
+    assert log_mag.max().item() <= 1.0 + 1e-6, f"log_mag above 1: max={log_mag.max().item()}"
 
 
 def test_gradient_preprocessor_sign():
@@ -83,9 +75,7 @@ def test_lstm_optimizer_output_shape(lstm_optimizer):
     numel = 32
     grad_features = torch.randn(numel, 1, 2)
     updates, state = lstm_optimizer(grad_features, state=None)
-    assert updates.shape == (numel,), (
-        f"Expected updates shape ({numel},), got {updates.shape}"
-    )
+    assert updates.shape == (numel,), f"Expected updates shape ({numel},), got {updates.shape}"
 
 
 def test_lstm_optimizer_state_maintained(lstm_optimizer):
@@ -126,8 +116,7 @@ def test_learned_optimizer_updates_params(lstm_optimizer, simple_model):
     wrapper.step(loss)
 
     changed = any(
-        not torch.allclose(p.data, before[name])
-        for name, p in simple_model.named_parameters()
+        not torch.allclose(p.data, before[name]) for name, p in simple_model.named_parameters()
     )
     assert changed, "No parameters were updated after LearnedOptimizerWrapper.step()"
 
@@ -182,7 +171,7 @@ def test_lstm_optimizer_gradients(lstm_optimizer):
     params_after = [p.data for p in lstm_optimizer.parameters()]
 
     # At least one parameter in the lstm should have been updated by the meta step
-    any_changed = any(
-        not torch.allclose(b, a) for b, a in zip(params_before, params_after)
+    any_changed = any(not torch.allclose(b, a) for b, a in zip(params_before, params_after))
+    assert any_changed, (
+        "No LSTM optimizer parameters changed after meta_step — gradients may not have been computed"  # noqa: E501
     )
-    assert any_changed, "No LSTM optimizer parameters changed after meta_step — gradients may not have been computed"

@@ -6,9 +6,9 @@ selection, diversity_score computation, and registry wiring.
 
 Tiny vocab_size=256 is used throughout for speed.
 """
+
 from __future__ import annotations
 
-import math
 import pytest
 import torch
 
@@ -18,10 +18,10 @@ from src.inference.reward_guided_search import (
     SearchConfig,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_cfg(**kwargs) -> SearchConfig:
     defaults = dict(beam_width=4, max_steps=8, vocab_size=256)
@@ -31,23 +31,28 @@ def make_cfg(**kwargs) -> SearchConfig:
 
 def constant_value_fn(v: float):
     """Return a value_fn that always returns the same constant."""
+
     def fn(tokens):
         return v
+
     return fn
 
 
 def random_logits_model_fn(vocab_size: int = 256, seed: int = 0):
     """Return a model_fn that produces deterministic random logits."""
+
     def fn(tokens):
         g = torch.Generator()
         g.manual_seed(seed + len(tokens))
         return torch.randn(vocab_size, generator=g)
+
     return fn
 
 
 # ---------------------------------------------------------------------------
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = SearchConfig()
@@ -64,13 +69,14 @@ def test_config_defaults():
 # 2. test_score_candidate_combined — λ=0.5: score = 0.5*lp + 0.5*v / len^α
 # ---------------------------------------------------------------------------
 
+
 def test_score_candidate_combined():
     cfg = make_cfg(reward_weight=0.5, length_penalty=0.6)
     searcher = RewardGuidedSearch(cfg)
     lp, v, length = -2.0, 1.0, 4
     sc = searcher.score_candidate(lp, v, length)
     combined = 0.5 * lp + 0.5 * v
-    expected = combined / (length ** 0.6)
+    expected = combined / (length**0.6)
     assert sc == pytest.approx(expected, rel=1e-5)
 
 
@@ -78,12 +84,13 @@ def test_score_candidate_combined():
 # 3. test_score_candidate_pure_logprob — λ=0: score based on log_prob only
 # ---------------------------------------------------------------------------
 
+
 def test_score_candidate_pure_logprob():
     cfg = make_cfg(reward_weight=0.0, length_penalty=0.6)
     searcher = RewardGuidedSearch(cfg)
     lp, v, length = -3.0, 5.0, 2
     sc = searcher.score_candidate(lp, v, length)
-    expected = lp / (length ** 0.6)
+    expected = lp / (length**0.6)
     assert sc == pytest.approx(expected, rel=1e-5)
 
 
@@ -91,12 +98,13 @@ def test_score_candidate_pure_logprob():
 # 4. test_score_candidate_pure_value — λ=1: score based on value only
 # ---------------------------------------------------------------------------
 
+
 def test_score_candidate_pure_value():
     cfg = make_cfg(reward_weight=1.0, length_penalty=0.6)
     searcher = RewardGuidedSearch(cfg)
     lp, v, length = -10.0, 3.0, 3
     sc = searcher.score_candidate(lp, v, length)
-    expected = v / (length ** 0.6)
+    expected = v / (length**0.6)
     assert sc == pytest.approx(expected, rel=1e-5)
 
 
@@ -104,20 +112,20 @@ def test_score_candidate_pure_value():
 # 5. test_score_candidate_length_penalty — longer seq → lower score
 # ---------------------------------------------------------------------------
 
+
 def test_score_candidate_length_penalty():
     cfg = make_cfg(reward_weight=0.5, length_penalty=0.6)
     searcher = RewardGuidedSearch(cfg)
     lp, v = 0.0, 1.0  # combined = 0.5 > 0, so longer len → lower score
     sc_short = searcher.score_candidate(lp, v, 2)
     sc_long = searcher.score_candidate(lp, v, 10)
-    assert sc_short > sc_long, (
-        f"Shorter sequence should score higher: {sc_short} vs {sc_long}"
-    )
+    assert sc_short > sc_long, f"Shorter sequence should score higher: {sc_short} vs {sc_long}"
 
 
 # ---------------------------------------------------------------------------
 # 6. test_expand_beams_count — beam_width=2 → returns exactly 2 beams
 # ---------------------------------------------------------------------------
+
 
 def test_expand_beams_count():
     cfg = make_cfg(beam_width=2, vocab_size=256)
@@ -135,6 +143,7 @@ def test_expand_beams_count():
 # 7. test_expand_beams_best_first — returned beams sorted by score desc
 # ---------------------------------------------------------------------------
 
+
 def test_expand_beams_best_first():
     cfg = make_cfg(beam_width=4, vocab_size=256)
     searcher = RewardGuidedSearch(cfg)
@@ -142,14 +151,13 @@ def test_expand_beams_best_first():
     logits = torch.randn(1, 256)
     new_beams = searcher.expand_beams(beams, logits, constant_value_fn(0.3))
     scores = [b.score for b in new_beams]
-    assert scores == sorted(scores, reverse=True), (
-        f"Beams not sorted by score desc: {scores}"
-    )
+    assert scores == sorted(scores, reverse=True), f"Beams not sorted by score desc: {scores}"
 
 
 # ---------------------------------------------------------------------------
 # 8. test_expand_marks_eos — token==eos_token_id → beam.is_finished=True
 # ---------------------------------------------------------------------------
+
 
 def test_expand_marks_eos():
     cfg = make_cfg(beam_width=4, vocab_size=256, eos_token_id=2)
@@ -158,7 +166,7 @@ def test_expand_marks_eos():
     # Build logits that put huge mass on EOS token (id=2) so it is always
     # selected as the top-1 expansion of this beam.
     logits = torch.full((1, 256), -1e9)
-    logits[0, 2] = 1e9   # token 2 = EOS
+    logits[0, 2] = 1e9  # token 2 = EOS
 
     beams = [SearchBeam(token_ids=[10, 11], log_prob_sum=0.0, value_sum=0.0)]
     new_beams = searcher.expand_beams(beams, logits, constant_value_fn(0.0))
@@ -173,6 +181,7 @@ def test_expand_marks_eos():
 # ---------------------------------------------------------------------------
 # 9. test_search_returns_beams — search returns a list of SearchBeam
 # ---------------------------------------------------------------------------
+
 
 def test_search_returns_beams():
     cfg = make_cfg(beam_width=2, max_steps=3, vocab_size=256)
@@ -191,6 +200,7 @@ def test_search_returns_beams():
 # ---------------------------------------------------------------------------
 # 10. test_search_max_steps — stops after at most max_steps expansions
 # ---------------------------------------------------------------------------
+
 
 def test_search_max_steps():
     max_steps = 5
@@ -218,14 +228,22 @@ def test_search_max_steps():
 # 11. test_best_sequence_finished — returns highest-scored finished beam
 # ---------------------------------------------------------------------------
 
+
 def test_best_sequence_finished():
     beams = [
-        SearchBeam(token_ids=[1, 2, 3], log_prob_sum=-1.0, value_sum=1.0,
-                   score=0.8, is_finished=True),
-        SearchBeam(token_ids=[1, 4, 5], log_prob_sum=-0.5, value_sum=0.5,
-                   score=0.9, is_finished=True),
-        SearchBeam(token_ids=[1, 6, 7, 8, 9], log_prob_sum=-0.1, value_sum=0.1,
-                   score=1.5, is_finished=False),  # best score but NOT finished
+        SearchBeam(
+            token_ids=[1, 2, 3], log_prob_sum=-1.0, value_sum=1.0, score=0.8, is_finished=True
+        ),
+        SearchBeam(
+            token_ids=[1, 4, 5], log_prob_sum=-0.5, value_sum=0.5, score=0.9, is_finished=True
+        ),
+        SearchBeam(
+            token_ids=[1, 6, 7, 8, 9],
+            log_prob_sum=-0.1,
+            value_sum=0.1,
+            score=1.5,
+            is_finished=False,
+        ),  # best score but NOT finished
     ]
     cfg = SearchConfig()
     searcher = RewardGuidedSearch(cfg)
@@ -238,14 +256,22 @@ def test_best_sequence_finished():
 # 12. test_best_sequence_no_finished — returns longest active beam
 # ---------------------------------------------------------------------------
 
+
 def test_best_sequence_no_finished():
     beams = [
-        SearchBeam(token_ids=[1, 2], log_prob_sum=-1.0, value_sum=0.5,
-                   score=0.9, is_finished=False),
-        SearchBeam(token_ids=[1, 2, 3, 4, 5], log_prob_sum=-0.5, value_sum=0.3,
-                   score=0.3, is_finished=False),  # longest
-        SearchBeam(token_ids=[1, 2, 3], log_prob_sum=-0.8, value_sum=0.4,
-                   score=0.5, is_finished=False),
+        SearchBeam(
+            token_ids=[1, 2], log_prob_sum=-1.0, value_sum=0.5, score=0.9, is_finished=False
+        ),
+        SearchBeam(
+            token_ids=[1, 2, 3, 4, 5],
+            log_prob_sum=-0.5,
+            value_sum=0.3,
+            score=0.3,
+            is_finished=False,
+        ),  # longest
+        SearchBeam(
+            token_ids=[1, 2, 3], log_prob_sum=-0.8, value_sum=0.4, score=0.5, is_finished=False
+        ),
     ]
     cfg = SearchConfig()
     searcher = RewardGuidedSearch(cfg)
@@ -256,6 +282,7 @@ def test_best_sequence_no_finished():
 # ---------------------------------------------------------------------------
 # 13. test_diversity_score_identical — same sequence → 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_diversity_score_identical():
     beams = [
@@ -272,6 +299,7 @@ def test_diversity_score_identical():
 # ---------------------------------------------------------------------------
 # 14. test_diversity_score_different — distinct sequences → > 0.0
 # ---------------------------------------------------------------------------
+
 
 def test_diversity_score_different():
     beams = [
@@ -290,8 +318,10 @@ def test_diversity_score_different():
 # 15. test_registry — DECODER_REGISTRY["reward_guided_search"] is RewardGuidedSearch
 # ---------------------------------------------------------------------------
 
+
 def test_registry():
     from src.inference import DECODER_REGISTRY
+
     assert "reward_guided_search" in DECODER_REGISTRY, (
         "'reward_guided_search' key missing from DECODER_REGISTRY"
     )

@@ -29,7 +29,7 @@ def _read_memory_mb() -> tuple[float, float, float]:
             reserved = torch.cuda.memory_reserved() / (1024.0 * 1024.0)
             peak = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             return allocated, reserved, peak
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     try:

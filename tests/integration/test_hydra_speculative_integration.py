@@ -11,14 +11,13 @@ Checks:
   5. acceptance_rate() in [0, 1].
   6. Gradient flow through draft().
 """
+
 from __future__ import annotations
 
 import torch
-import torch.nn.functional as F
 
-from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
 from src.inference import DECODER_REGISTRY
-
+from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / constants
@@ -44,6 +43,7 @@ def build_model() -> HydraSpeculative:
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_hydra_speculative_end_to_end():
     """Full pipeline: draft → sample → (mock) verify → acceptance_rate → grad."""
@@ -96,6 +96,4 @@ def test_hydra_speculative_end_to_end():
     loss = draft_logits.sum()
     loss.backward()
     assert hidden.grad is not None, "Gradient did not flow back through draft()"
-    assert hidden.grad.shape == hidden.shape, (
-        f"hidden.grad shape mismatch: {hidden.grad.shape}"
-    )
+    assert hidden.grad.shape == hidden.shape, f"hidden.grad shape mismatch: {hidden.grad.shape}"

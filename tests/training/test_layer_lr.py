@@ -1,4 +1,5 @@
 """Tests for layer-wise learning rate decay and warmup scheduling."""
+
 from __future__ import annotations
 
 import pytest
@@ -16,10 +17,10 @@ from src.training.layer_lr import (
     warmup_lr_schedule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tiny model fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tiny_cfg() -> AureliusConfig:
@@ -44,6 +45,7 @@ def tiny_model(tiny_cfg: AureliusConfig) -> AureliusTransformer:
 # 1. LayerLRConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_layer_lr_config_defaults():
     cfg = LayerLRConfig()
     assert cfg.base_lr == 1e-4
@@ -58,6 +60,7 @@ def test_layer_lr_config_defaults():
 # 2. layer_learning_rates output length == n_layers
 # ---------------------------------------------------------------------------
 
+
 def test_layer_learning_rates_length():
     lrs = layer_learning_rates(n_layers=6, base_lr=1e-3, decay_factor=0.8)
     assert len(lrs) == 6
@@ -66,6 +69,7 @@ def test_layer_learning_rates_length():
 # ---------------------------------------------------------------------------
 # 3. layer_learning_rates top layer has base_lr
 # ---------------------------------------------------------------------------
+
 
 def test_layer_learning_rates_top_is_base_lr():
     base_lr = 1e-3
@@ -77,6 +81,7 @@ def test_layer_learning_rates_top_is_base_lr():
 # 4. layer_learning_rates bottom layer has lowest lr
 # ---------------------------------------------------------------------------
 
+
 def test_layer_learning_rates_bottom_is_lowest():
     lrs = layer_learning_rates(n_layers=5, base_lr=1e-3, decay_factor=0.85, min_lr=1e-9)
     assert lrs[0] == min(lrs), "Bottom layer should have the smallest lr"
@@ -86,17 +91,17 @@ def test_layer_learning_rates_bottom_is_lowest():
 # 5. layer_learning_rates monotonically increasing (bottom to top)
 # ---------------------------------------------------------------------------
 
+
 def test_layer_learning_rates_monotone():
     lrs = layer_learning_rates(n_layers=8, base_lr=1e-3, decay_factor=0.9, min_lr=1e-9)
     for i in range(len(lrs) - 1):
-        assert lrs[i] <= lrs[i + 1], (
-            f"lr[{i}]={lrs[i]} > lr[{i+1}]={lrs[i+1]}: not monotone"
-        )
+        assert lrs[i] <= lrs[i + 1], f"lr[{i}]={lrs[i]} > lr[{i + 1}]={lrs[i + 1]}: not monotone"
 
 
 # ---------------------------------------------------------------------------
 # 6. layer_learning_rates all >= min_lr
 # ---------------------------------------------------------------------------
+
 
 def test_layer_learning_rates_above_min_lr():
     min_lr = 1e-6
@@ -109,6 +114,7 @@ def test_layer_learning_rates_above_min_lr():
 # 7. warmup_lr_schedule at step=0: returns 0 (or near 0)
 # ---------------------------------------------------------------------------
 
+
 def test_warmup_at_step_zero():
     lr = warmup_lr_schedule(step=0, warmup_steps=100, base_lr=1e-3)
     assert lr == pytest.approx(0.0, abs=1e-12)
@@ -117,6 +123,7 @@ def test_warmup_at_step_zero():
 # ---------------------------------------------------------------------------
 # 8. warmup_lr_schedule at step=warmup_steps: returns base_lr
 # ---------------------------------------------------------------------------
+
 
 def test_warmup_at_warmup_steps():
     base_lr = 3e-4
@@ -127,6 +134,7 @@ def test_warmup_at_warmup_steps():
 # ---------------------------------------------------------------------------
 # 9. cosine_decay_schedule before warmup: increases
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_decay_increases_during_warmup():
     lrs = [
@@ -150,6 +158,7 @@ def test_cosine_decay_increases_during_warmup():
 # 10. cosine_decay_schedule after decay_steps: returns min_lr
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_decay_after_decay_steps_returns_min_lr():
     min_lr = 1e-6
     lr = cosine_decay_schedule(
@@ -166,6 +175,7 @@ def test_cosine_decay_after_decay_steps_returns_min_lr():
 # 11. build_layer_param_groups returns list of dicts
 # ---------------------------------------------------------------------------
 
+
 def test_build_layer_param_groups_returns_list_of_dicts(tiny_model):
     config = LayerLRConfig()
     groups = build_layer_param_groups(tiny_model, config)
@@ -180,18 +190,18 @@ def test_build_layer_param_groups_returns_list_of_dicts(tiny_model):
 # 12. build_layer_param_groups number of groups = n_layers + 2 (embed + head)
 # ---------------------------------------------------------------------------
 
+
 def test_build_layer_param_groups_count(tiny_model, tiny_cfg):
     config = LayerLRConfig()
     groups = build_layer_param_groups(tiny_model, config)
     expected = tiny_cfg.n_layers + 2  # embed + n_layers + head
-    assert len(groups) == expected, (
-        f"Expected {expected} param groups, got {len(groups)}"
-    )
+    assert len(groups) == expected, f"Expected {expected} param groups, got {len(groups)}"
 
 
 # ---------------------------------------------------------------------------
 # 13. LayerLROptimizer instantiates
 # ---------------------------------------------------------------------------
+
 
 def test_layer_lr_optimizer_instantiates(tiny_model):
     config = LayerLRConfig(warmup_steps=5, decay_steps=20)
@@ -203,6 +213,7 @@ def test_layer_lr_optimizer_instantiates(tiny_model):
 # ---------------------------------------------------------------------------
 # 14. LayerLROptimizer.get_lrs returns list of floats
 # ---------------------------------------------------------------------------
+
 
 def test_layer_lr_optimizer_get_lrs(tiny_model, tiny_cfg):
     config = LayerLRConfig(warmup_steps=5, decay_steps=20)
@@ -217,6 +228,7 @@ def test_layer_lr_optimizer_get_lrs(tiny_model, tiny_cfg):
 # ---------------------------------------------------------------------------
 # 15. LayerLRTrainer.train_step returns dict with 'loss'
 # ---------------------------------------------------------------------------
+
 
 def test_layer_lr_trainer_train_step_returns_loss(tiny_model):
     config = LayerLRConfig(warmup_steps=5, decay_steps=20)
@@ -234,11 +246,12 @@ def test_layer_lr_trainer_train_step_returns_loss(tiny_model):
 # 16. LayerLRTrainer: different layers have different LRs
 # ---------------------------------------------------------------------------
 
+
 def test_layer_lr_trainer_different_layers_have_different_lrs(tiny_model, tiny_cfg):
     """With decay_factor < 1 and enough layers, param groups must have distinct LRs."""
     config = LayerLRConfig(
         base_lr=1e-3,
-        decay_factor=0.5,   # aggressive decay → clearly different LRs
+        decay_factor=0.5,  # aggressive decay → clearly different LRs
         warmup_steps=5,
         decay_steps=20,
     )

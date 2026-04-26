@@ -9,12 +9,8 @@ curriculum learning order, and identifying domain-specific tokens.
 
 from __future__ import annotations
 
-import math
-from typing import Dict, Tuple
-
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # TokenFrequencyCounter
@@ -39,7 +35,7 @@ class TokenFrequencyCounter:
         """Return per-token relative frequency as a (vocab_size,) float tensor."""
         return self.counts.float() / self.total_tokens
 
-    def top_k_tokens(self, k: int) -> Tuple[Tensor, Tensor]:
+    def top_k_tokens(self, k: int) -> tuple[Tensor, Tensor]:
         """Return (token_ids, counts) for the k most frequent tokens, descending."""
         topk = torch.topk(self.counts, k=min(k, self.vocab_size))
         return topk.indices, topk.values
@@ -60,7 +56,7 @@ class ZipfAnalyzer:
     def __init__(self) -> None:
         pass  # stateless
 
-    def fit_zipf(self, counts: Tensor) -> Dict[str, float]:
+    def fit_zipf(self, counts: Tensor) -> dict[str, float]:
         """Fit log-log linear regression to rank-frequency data.
 
         Returns {'slope': float, 'intercept': float, 'r_squared': float}.
@@ -124,9 +120,7 @@ class DistributionShiftDetector:
         kl = torch.sum(a * torch.log(a / b)).item()
         return float(kl)
 
-    def top_k_shift(
-        self, freq_a: Tensor, freq_b: Tensor, k: int = 20
-    ) -> Dict[str, Tensor]:
+    def top_k_shift(self, freq_a: Tensor, freq_b: Tensor, k: int = 20) -> dict[str, Tensor]:
         """Return tokens that entered ('gained') or left ('lost') the top-k between A and B."""
         _, top_a_ids = torch.topk(freq_a, k=min(k, freq_a.numel()))
         _, top_b_ids = torch.topk(freq_b, k=min(k, freq_b.numel()))
@@ -138,9 +132,7 @@ class DistributionShiftDetector:
         lost = torch.tensor(sorted(set_a - set_b), dtype=torch.long)
         return {"gained": gained, "lost": lost}
 
-    def coverage(
-        self, freq_a: Tensor, freq_b: Tensor, threshold: float = 1e-6
-    ) -> float:
+    def coverage(self, freq_a: Tensor, freq_b: Tensor, threshold: float = 1e-6) -> float:
         """Fraction of B-vocabulary tokens (freq_b > threshold) that also appear in A."""
         in_b = freq_b > threshold
         in_a = freq_a > threshold
@@ -162,7 +154,7 @@ class VocabularyStats:
     def __init__(self) -> None:
         pass  # stateless
 
-    def compute(self, counter: TokenFrequencyCounter) -> Dict[str, float]:
+    def compute(self, counter: TokenFrequencyCounter) -> dict[str, float]:
         """Compute summary stats from a TokenFrequencyCounter.
 
         Returns keys: vocab_coverage, hapax_legomena, mean_freq,

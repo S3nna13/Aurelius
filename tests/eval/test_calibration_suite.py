@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.eval.calibration_suite import (
-    CalibrationBins,
-    ReliabilityDiagram,
     BrierScore,
+    CalibrationBins,
     CalibrationEvaluator,
+    ReliabilityDiagram,
 )
 
 N = 100
@@ -44,7 +43,7 @@ def test_bin_counts_sum_to_n():
 def test_perfect_calibration_ece_zero():
     """Test 3: Perfect calibration — conf == acc per bin → ECE ≈ 0."""
     n_bins = 5
-    cb = CalibrationBins(n_bins=n_bins)
+    CalibrationBins(n_bins=n_bins)
     # Put 20 samples exactly at the centre of each bin [0, 0.2, 0.4, 0.6, 0.8]
     # bin 0: [0, 0.2) → conf = 0.1, acc = 0.1  (2/20 correct)
     # bin 1: [0.2, 0.4) → conf = 0.3, acc = 0.3 (6/20 correct)

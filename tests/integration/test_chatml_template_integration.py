@@ -27,9 +27,7 @@ def test_importing_src_chat_does_not_import_torch_or_model():
     if not torch_before:
         assert "torch" not in sys.modules, "src.chat must not import torch"
     if not model_before:
-        assert "src.model" not in sys.modules, (
-            "src.chat must not import src.model"
-        )
+        assert "src.model" not in sys.modules, "src.chat must not import src.model"
 
 
 def test_registry_exposes_chatml_template():
@@ -61,7 +59,5 @@ def test_registry_generation_prompt_path():
     from src.chat import CHAT_TEMPLATE_REGISTRY, Message
 
     tpl = CHAT_TEMPLATE_REGISTRY["chatml"]
-    wire = tpl.encode(
-        [Message("user", "hello")], add_generation_prompt=True
-    )
+    wire = tpl.encode([Message("user", "hello")], add_generation_prompt=True)
     assert wire.endswith("<|im_start|>assistant\n")

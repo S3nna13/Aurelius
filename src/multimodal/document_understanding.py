@@ -6,7 +6,6 @@ doc grounding (Tech Report 2025), Apache-2.0, clean-room reimplementation.
 
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -16,10 +15,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Region type enum
 # ---------------------------------------------------------------------------
+
 
 class DocumentRegionType(Enum):
     """Semantic category of a document region."""
@@ -37,6 +36,7 @@ class DocumentRegionType(Enum):
 # Document data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocumentRegion:
     """A single semantic region extracted from a document page.
@@ -53,7 +53,7 @@ class DocumentRegion:
     text: str
     bbox: tuple[float, float, float, float] | None = None
     confidence: float = 1.0
-    children: list["DocumentRegion"] = field(default_factory=list)
+    children: list[DocumentRegion] = field(default_factory=list)
 
 
 @dataclass
@@ -77,6 +77,7 @@ class DocumentPage:
 # Abstract parser
 # ---------------------------------------------------------------------------
 
+
 class DocumentParser(ABC):
     """Abstract base class for document parsers.
 
@@ -99,9 +100,7 @@ class DocumentParser(ABC):
 # JSON layout parser
 # ---------------------------------------------------------------------------
 
-_REGION_TYPE_MAP: dict[str, DocumentRegionType] = {
-    rt.name.lower(): rt for rt in DocumentRegionType
-}
+_REGION_TYPE_MAP: dict[str, DocumentRegionType] = {rt.name.lower(): rt for rt in DocumentRegionType}
 # Also accept the raw enum names in mixed/upper case.
 _REGION_TYPE_MAP.update({rt.name: rt for rt in DocumentRegionType})
 
@@ -242,6 +241,7 @@ class JSONLayoutParser(DocumentParser):
 # Document embedder config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocumentEmbedderConfig:
     """Configuration for :class:`DocumentEmbedder`.
@@ -262,6 +262,7 @@ class DocumentEmbedderConfig:
 # ---------------------------------------------------------------------------
 # Document embedder
 # ---------------------------------------------------------------------------
+
 
 class DocumentEmbedder(nn.Module):
     """Embed a :class:`DocumentPage` into a dense token matrix.
@@ -326,12 +327,12 @@ class DocumentEmbedder(nn.Module):
 
         region_embeds: list[Tensor] = []
         for region in regions:
-            ids = self._tokenise_text(region.text)          # (L,)
-            emb = self.embed(ids)                           # (L, d_model)
-            pooled = emb.mean(dim=0)                        # (d_model,)
+            ids = self._tokenise_text(region.text)  # (L,)
+            emb = self.embed(ids)  # (L, d_model)
+            pooled = emb.mean(dim=0)  # (d_model,)
             region_embeds.append(pooled)
 
-        return torch.stack(region_embeds, dim=0)            # (N, d_model)
+        return torch.stack(region_embeds, dim=0)  # (N, d_model)
 
 
 # ---------------------------------------------------------------------------

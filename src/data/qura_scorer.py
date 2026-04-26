@@ -21,13 +21,12 @@ import math
 from dataclasses import dataclass
 from typing import NamedTuple
 
-import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class QuRatingConfig:
@@ -36,6 +35,7 @@ class QuRatingConfig:
     Weights must be positive; they are normalised internally so they need
     not sum to 1.0.
     """
+
     writing_weight: float = 0.35
     educational_weight: float = 0.30
     facts_weight: float = 0.20
@@ -53,21 +53,24 @@ class QuRatingConfig:
 # Score container
 # ---------------------------------------------------------------------------
 
+
 class QuRatingScores(NamedTuple):
     """Per-document scores along each QuRating quality dimension.
 
     All individual scores are in [0, 1]; composite is their weighted average.
     """
-    writing_quality: float    # 0-1; higher = better writing (lower perplexity)
+
+    writing_quality: float  # 0-1; higher = better writing (lower perplexity)
     educational_value: float  # 0-1; higher = more educational
-    facts_score: float        # 0-1; higher = more factual / numeric content
-    expertise_score: float    # 0-1; higher = more specialised vocabulary
-    composite: float          # weighted average of the four dimensions
+    facts_score: float  # 0-1; higher = more factual / numeric content
+    expertise_score: float  # 0-1; higher = more specialised vocabulary
+    composite: float  # weighted average of the four dimensions
 
 
 # ---------------------------------------------------------------------------
 # Core scorer
 # ---------------------------------------------------------------------------
+
 
 class QuRaScorer:
     """QuRating-style scorer operating on tokenised documents.
@@ -93,8 +96,8 @@ class QuRaScorer:
 
     def score_tokens(
         self,
-        token_ids: Tensor,   # (T,) int token ids
-        log_probs: Tensor,   # (T,) per-token log-probabilities from a ref LM
+        token_ids: Tensor,  # (T,) int token ids
+        log_probs: Tensor,  # (T,) per-token log-probabilities from a ref LM
         vocab_size: int = 128000,
     ) -> QuRatingScores:
         """Score a single tokenised document from its LM log-probs and token ids.
@@ -115,17 +118,12 @@ class QuRaScorer:
         QuRatingScores
         """
         if token_ids.dim() != 1:
-            raise ValueError(
-                f"token_ids must be 1-D, got shape {tuple(token_ids.shape)}"
-            )
+            raise ValueError(f"token_ids must be 1-D, got shape {tuple(token_ids.shape)}")
         if log_probs.dim() != 1:
-            raise ValueError(
-                f"log_probs must be 1-D, got shape {tuple(log_probs.shape)}"
-            )
+            raise ValueError(f"log_probs must be 1-D, got shape {tuple(log_probs.shape)}")
         if token_ids.shape[0] != log_probs.shape[0]:
             raise ValueError(
-                f"token_ids length {token_ids.shape[0]} != "
-                f"log_probs length {log_probs.shape[0]}"
+                f"token_ids length {token_ids.shape[0]} != log_probs length {log_probs.shape[0]}"
             )
 
         cfg = self.config
@@ -190,8 +188,8 @@ class QuRaScorer:
 
     def score_batch(
         self,
-        token_ids: Tensor,       # (B, T)
-        log_probs: Tensor,       # (B, T)
+        token_ids: Tensor,  # (B, T)
+        log_probs: Tensor,  # (B, T)
         attention_mask: Tensor,  # (B, T) — 1 for valid tokens, 0 for padding
     ) -> list[QuRatingScores]:
         """Score a batch of (possibly padded) documents.
@@ -211,9 +209,7 @@ class QuRaScorer:
             Length-B list, one :class:`QuRatingScores` per document.
         """
         if token_ids.dim() != 2:
-            raise ValueError(
-                f"token_ids must be 2-D (B, T), got shape {tuple(token_ids.shape)}"
-            )
+            raise ValueError(f"token_ids must be 2-D (B, T), got shape {tuple(token_ids.shape)}")
         B = token_ids.shape[0]
         results: list[QuRatingScores] = []
 
@@ -256,10 +252,7 @@ class QuRaScorer:
             "expertise": 3,
         }
         if criterion not in _field_map:
-            raise ValueError(
-                f"Unknown criterion {criterion!r}. "
-                f"Choose from {list(_field_map)!r}."
-            )
+            raise ValueError(f"Unknown criterion {criterion!r}. Choose from {list(_field_map)!r}.")
         field_idx = _field_map[criterion]
         indexed = [(s[field_idx], i) for i, s in enumerate(scores)]
         indexed.sort(key=lambda x: x[0], reverse=True)
@@ -279,10 +272,7 @@ class QuRaScorer:
         """Weighted average of the four QuRating dimension scores."""
         cfg = self.config
         total_weight = (
-            cfg.writing_weight
-            + cfg.educational_weight
-            + cfg.facts_weight
-            + cfg.expertise_weight
+            cfg.writing_weight + cfg.educational_weight + cfg.facts_weight + cfg.expertise_weight
         )
         if total_weight == 0.0:
             return 0.0

@@ -6,10 +6,11 @@ and a high-level SemanticSimilarityModel class.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
 
 
 @dataclass
@@ -22,7 +23,7 @@ class SimilarityConfig:
         similarity_metric: Distance/similarity metric — "cosine" | "dot" | "euclidean".
     """
 
-    pooling: str = "mean"           # "mean" | "last" | "cls"
+    pooling: str = "mean"  # "mean" | "last" | "cls"
     normalize: bool = True
     similarity_metric: str = "cosine"  # "cosine" | "dot" | "euclidean"
 
@@ -30,6 +31,7 @@ class SimilarityConfig:
 # ---------------------------------------------------------------------------
 # Pooling
 # ---------------------------------------------------------------------------
+
 
 def pool_hidden_states(
     hidden: torch.Tensor,
@@ -53,16 +55,16 @@ def pool_hidden_states(
         attention_mask = torch.ones(B, T, dtype=torch.bool, device=hidden.device)
 
     if pooling == "mean":
-        mask = attention_mask.unsqueeze(-1).float()          # (B, T, 1)
+        mask = attention_mask.unsqueeze(-1).float()  # (B, T, 1)
         emb = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
     elif pooling == "last":
         # Index of the last valid token per sequence
-        lengths = attention_mask.long().sum(dim=1) - 1       # (B,)
+        lengths = attention_mask.long().sum(dim=1) - 1  # (B,)
         lengths = lengths.clamp(min=0)
         emb = hidden[torch.arange(B, device=hidden.device), lengths]  # (B, d)
     elif pooling == "cls":
         # Use the first token (position 0) as the [CLS]-style representation
-        emb = hidden[:, 0, :]                                # (B, d)
+        emb = hidden[:, 0, :]  # (B, d)
     else:
         raise ValueError(f"Unknown pooling strategy: {pooling!r}. Choose 'mean', 'last', or 'cls'.")
 
@@ -72,6 +74,7 @@ def pool_hidden_states(
 # ---------------------------------------------------------------------------
 # Embedding extraction
 # ---------------------------------------------------------------------------
+
 
 def get_embeddings(
     model: nn.Module,
@@ -120,6 +123,7 @@ def get_embeddings(
 # ---------------------------------------------------------------------------
 # Similarity functions
 # ---------------------------------------------------------------------------
+
 
 def cosine_similarity(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Pairwise cosine similarity between corresponding rows of a and b.
@@ -184,12 +188,15 @@ def compute_similarity(
     elif metric == "euclidean":
         return euclidean_distance(a, b)
     else:
-        raise ValueError(f"Unknown similarity metric: {metric!r}. Choose 'cosine', 'dot', or 'euclidean'.")
+        raise ValueError(
+            f"Unknown similarity metric: {metric!r}. Choose 'cosine', 'dot', or 'euclidean'."
+        )
 
 
 # ---------------------------------------------------------------------------
 # High-level class
 # ---------------------------------------------------------------------------
+
 
 class SemanticSimilarityModel:
     """High-level semantic similarity interface built on AureliusTransformer.

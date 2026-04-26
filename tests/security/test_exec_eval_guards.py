@@ -14,10 +14,14 @@ import pytest
 
 from src.eval.code_eval import (
     _MAX_EXEC_LEN as EVAL_MAX,
+)
+from src.eval.code_eval import (
     execute_code_safely,
 )
 from src.inference.code_execution import (
     _MAX_EXEC_LEN as EXEC_MAX,
+)
+from src.inference.code_execution import (
     CodeInterpreterSession,
     ExecutionConfig,
     execute_python,
@@ -27,7 +31,6 @@ from src.serving.tool_executor import (
     _safe_eval,
     parse_literal,
 )
-
 
 # ---------------------------------------------------------------------------
 # AUR-SEC-2026-0021 -- size guard on sandboxed run sites

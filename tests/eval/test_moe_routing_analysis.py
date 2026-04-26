@@ -3,19 +3,19 @@
 Covers RoutingStats, RoutingEntropyAnalyzer, ExpertSpecializationAnalyzer,
 and RoutingDiagnostics.  Uses n_experts=4, N=20 throughout.
 """
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-import torch.nn.functional as F
 
 from src.eval.moe_routing_analysis import (
-    RoutingStats,
-    RoutingEntropyAnalyzer,
     ExpertSpecializationAnalyzer,
     RoutingDiagnostics,
+    RoutingEntropyAnalyzer,
+    RoutingStats,
 )
 
 N_EXPERTS = 4
@@ -25,6 +25,7 @@ N = 20
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform_weights(n: int = N, n_experts: int = N_EXPERTS) -> torch.Tensor:
     """Uniform routing — every expert gets equal probability."""
@@ -44,13 +45,14 @@ def _balanced_weights(n: int = N, n_experts: int = N_EXPERTS) -> torch.Tensor:
     w = torch.zeros(n, n_experts)
     per_expert = n // n_experts
     for e in range(n_experts):
-        w[e * per_expert:(e + 1) * per_expert, e] = 1.0
+        w[e * per_expert : (e + 1) * per_expert, e] = 1.0
     return w
 
 
 # ---------------------------------------------------------------------------
 # RoutingStats tests (1–7)
 # ---------------------------------------------------------------------------
+
 
 def test_routing_stats_total_tokens_increments():
     """update() increments total_tokens by the batch size."""
@@ -109,6 +111,7 @@ def test_expert_utilization_sums_to_one():
 # RoutingEntropyAnalyzer tests (8–11)
 # ---------------------------------------------------------------------------
 
+
 def test_token_entropy_shape():
     """token_entropy() returns a (N,) tensor."""
     analyzer = RoutingEntropyAnalyzer()
@@ -146,15 +149,18 @@ def test_entropy_efficiency_one_for_uniform():
 # ExpertSpecializationAnalyzer tests (12–13)
 # ---------------------------------------------------------------------------
 
+
 def test_specialization_update_accumulates_co_occurrence():
     """update() accumulates non-zero entries in co_occurrence."""
     analyzer = ExpertSpecializationAnalyzer(n_experts=N_EXPERTS, n_token_types=2)
     w = _balanced_weights()
     # Alternate token types: first half = type 0, second half = type 1.
-    token_types = torch.cat([
-        torch.zeros(N // 2, dtype=torch.long),
-        torch.ones(N // 2, dtype=torch.long),
-    ])
+    token_types = torch.cat(
+        [
+            torch.zeros(N // 2, dtype=torch.long),
+            torch.ones(N // 2, dtype=torch.long),
+        ]
+    )
     analyzer.update(w, token_types)
     # Some counts must be non-zero.
     assert analyzer.co_occurrence.sum().item() > 0
@@ -175,6 +181,7 @@ def test_specialization_score_in_range():
 # ---------------------------------------------------------------------------
 # RoutingDiagnostics tests (14–15)
 # ---------------------------------------------------------------------------
+
 
 def test_routing_diagnostics_returns_expected_keys():
     """analyze() returns a dict with all required keys."""

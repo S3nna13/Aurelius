@@ -10,18 +10,16 @@ References:
     Kornblith et al. 2019 (CKA) — https://arxiv.org/abs/1905.00414
     Kriegeskorte et al. 2008 (RSA)
 """
-from __future__ import annotations
 
-import math
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # CKA (Centered Kernel Alignment)
 # ---------------------------------------------------------------------------
+
 
 class CKAAnalyzer:
     """Centered Kernel Alignment similarity between representation matrices.
@@ -82,7 +80,7 @@ class CKAAnalyzer:
         # Clamp to [0, 1] to handle floating point noise.
         return float(cka.clamp(0.0, 1.0).item())
 
-    def layer_cka_matrix(self, layer_reprs: List[Tensor]) -> Tensor:
+    def layer_cka_matrix(self, layer_reprs: list[Tensor]) -> Tensor:
         """Compute pairwise CKA matrix across layers.
 
         Args:
@@ -105,6 +103,7 @@ class CKAAnalyzer:
 # ---------------------------------------------------------------------------
 # RSA (Representational Similarity Analysis)
 # ---------------------------------------------------------------------------
+
 
 class RSAAnalyzer:
     """Representational Similarity Analysis via RDMs.
@@ -206,13 +205,14 @@ class RSAAnalyzer:
 # Procrustes Analysis
 # ---------------------------------------------------------------------------
 
+
 class ProcrustesAnalyzer:
     """Orthogonal Procrustes alignment between two representation spaces."""
 
     def __init__(self) -> None:
         pass  # stateless
 
-    def procrustes(self, X: Tensor, Y: Tensor) -> Dict[str, float]:
+    def procrustes(self, X: Tensor, Y: Tensor) -> dict[str, float]:
         """Find the optimal orthogonal rotation Q minimising ``||X Q - Y||_F``.
 
         Algorithm:
@@ -243,6 +243,7 @@ class ProcrustesAnalyzer:
 # Layer Similarity Report
 # ---------------------------------------------------------------------------
 
+
 class LayerSimilarityReport:
     """Aggregate representation similarity statistics across model layers."""
 
@@ -250,7 +251,7 @@ class LayerSimilarityReport:
         self.n_layers = n_layers
         self._cka = CKAAnalyzer()
 
-    def compute_cka_profile(self, layer_reprs: List[Tensor]) -> Tensor:
+    def compute_cka_profile(self, layer_reprs: list[Tensor]) -> Tensor:
         """CKA between each pair of consecutive layers.
 
         Args:
@@ -267,9 +268,9 @@ class LayerSimilarityReport:
 
     def find_similar_layers(
         self,
-        layer_reprs: List[Tensor],
+        layer_reprs: list[Tensor],
         threshold: float = 0.9,
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """Return pairs (i, j) with i < j where CKA(layer_i, layer_j) > threshold.
 
         Args:
@@ -281,14 +282,14 @@ class LayerSimilarityReport:
         """
         mat = self._cka.layer_cka_matrix(layer_reprs)
         n = mat.shape[0]
-        pairs: List[Tuple[int, int]] = []
+        pairs: list[tuple[int, int]] = []
         for i in range(n):
             for j in range(i + 1, n):
                 if mat[i, j].item() > threshold:
                     pairs.append((i, j))
         return pairs
 
-    def layer_change_rate(self, layer_reprs: List[Tensor]) -> List[float]:
+    def layer_change_rate(self, layer_reprs: list[Tensor]) -> list[float]:
         """``1 - CKA`` for each pair of consecutive layers.
 
         Higher values indicate more representational change at that transition.
@@ -307,12 +308,13 @@ class LayerSimilarityReport:
 # Private utilities
 # ---------------------------------------------------------------------------
 
+
 def _pearson(a: Tensor, b: Tensor) -> Tensor:
     """Pearson correlation coefficient between two 1-D tensors."""
     a_c = a - a.mean()
     b_c = b - b.mean()
     num = (a_c * b_c).sum()
-    denom = torch.sqrt((a_c ** 2).sum() * (b_c ** 2).sum()).clamp(min=1e-10)
+    denom = torch.sqrt((a_c**2).sum() * (b_c**2).sum()).clamp(min=1e-10)
     return num / denom
 
 

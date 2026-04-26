@@ -21,25 +21,22 @@ import os
 import subprocess
 import sys
 import textwrap
-from typing import Optional
+from pathlib import Path
 
 __version__ = "0.1.0"
 
 # ── rich imports (graceful fallback if not installed) ─────────────────────────
 
 try:
+    import rich.box as box
     from rich.console import Console
+    from rich.live import Live
     from rich.markdown import Markdown
     from rich.panel import Panel
+    from rich.spinner import Spinner
+    from rich.table import Table
     from rich.text import Text
     from rich.theme import Theme
-    from rich.live import Live
-    from rich.spinner import Spinner
-    from rich.rule import Rule
-    from rich.syntax import Syntax
-    from rich.columns import Columns
-    from rich.table import Table
-    import rich.box as box
 
     _RICH = True
 except ImportError:
@@ -65,7 +62,7 @@ if _RICH:
         }
     )
 
-_console: "Console | None" = Console(theme=_THEME, highlight=False) if _RICH else None
+_console: Console | None = Console(theme=_THEME, highlight=False) if _RICH else None
 
 
 def _print(msg: str = "", **kwargs) -> None:
@@ -93,14 +90,36 @@ def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m"
 
 
-BOLD = lambda t: _c("1", t)
-DIM = lambda t: _c("2", t)
-GREEN = lambda t: _c("32", t)
-CYAN = lambda t: _c("36", t)
-YELLOW = lambda t: _c("33", t)
-BLUE = lambda t: _c("34", t)
-RED = lambda t: _c("31", t)
-MAGENTA = lambda t: _c("35", t)
+def BOLD(t):
+    return _c("1", t)
+
+
+def DIM(t):
+    return _c("2", t)
+
+
+def GREEN(t):
+    return _c("32", t)
+
+
+def CYAN(t):
+    return _c("36", t)
+
+
+def YELLOW(t):
+    return _c("33", t)
+
+
+def BLUE(t):
+    return _c("34", t)
+
+
+def RED(t):
+    return _c("31", t)
+
+
+def MAGENTA(t):
+    return _c("35", t)
 
 
 # ── Dragon ASCII art mascot ───────────────────────────────────────────────────
@@ -260,9 +279,7 @@ def _load_generate_fn(model_path: str, max_tokens: int, temperature: float):
         state = torch.load(str(p), map_location="cpu", weights_only=True)
         model.load_state_dict(state.get("model", state), strict=False)
     elif (p / "pytorch_model.bin").exists():
-        state = torch.load(
-            str(p / "pytorch_model.bin"), map_location="cpu", weights_only=True
-        )
+        state = torch.load(str(p / "pytorch_model.bin"), map_location="cpu", weights_only=True)
         model.load_state_dict(state, strict=False)
 
     model.eval()
@@ -277,9 +294,10 @@ def _load_generate_fn(model_path: str, max_tokens: int, temperature: float):
         if tok_dir is not None and (tok_dir / "tokenizer.json").exists():
             try:
                 from src.data.tokenizer import AureliusTokenizer
+
                 _tokenizer = AureliusTokenizer.load(str(tok_dir))
                 break
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
     def _generate(prompt: str) -> str:
@@ -389,14 +407,14 @@ def _thinking_spinner(generate_fn, prompt: str) -> str:
 
 def _run_chat(
     system_prompt: str = DEFAULT_SYSTEM,
-    model_path: Optional[str] = None,
+    model_path: str | None = None,
     max_tokens: int = 1024,
     temperature: float = 0.7,
 ) -> None:
     try:
         from src.serving.conversation_store import ConversationStore
 
-        store: Optional[ConversationStore] = ConversationStore()
+        store: ConversationStore | None = ConversationStore()
     except Exception:
         store = None
 
@@ -420,13 +438,13 @@ def _run_chat(
         except Exception as exc:
             if _RICH and _console:
                 _console.print(
-                    f"  [aurelius.warn]Warning:[/aurelius.warn] [dim]could not load model ({exc}). Running in mock mode.[/dim]\n"
+                    f"  [aurelius.warn]Warning:[/aurelius.warn] [dim]could not load model ({exc}). Running in mock mode.[/dim]\n"  # noqa: E501
                 )
             else:
                 print(YELLOW(f"  Warning: could not load model ({exc}). Running in mock mode.\n"))
 
     history: list[dict] = []
-    current_conv_id: Optional[str] = None
+    current_conv_id: str | None = None
 
     def _build_prompt() -> str:
         parts = [f"<|system|>\n{system_prompt}<|end|>\n"]
@@ -440,7 +458,7 @@ def _run_chat(
 
     if _RICH and _console:
         _console.print(
-            f"  [aurelius.system]System:[/aurelius.system] [dim]{textwrap.shorten(system_prompt, 80)}[/dim]\n"
+            f"  [aurelius.system]System:[/aurelius.system] [dim]{textwrap.shorten(system_prompt, 80)}[/dim]\n"  # noqa: E501
         )
     else:
         print(f"  System: {DIM(textwrap.shorten(system_prompt, 80))}\n")
@@ -481,9 +499,9 @@ def _run_chat(
 
             elif cmd == "/clear":
                 if os.name == "nt":
-                    subprocess.run(["cmd", "/c", "cls"], check=False)
+                    subprocess.run(["cmd", "/c", "cls"], check=False)  # noqa: S607
                 else:
-                    subprocess.run(["clear"], check=False)
+                    subprocess.run(["clear"], check=False)  # noqa: S607
                 _print_banner()
 
             elif cmd == "/reset":
@@ -552,7 +570,9 @@ def _run_chat(
                         print(DIM(f"  Saved as '{cid}'.\n"))
                 else:
                     if _RICH and _console:
-                        _console.print("[aurelius.warn]  Conversation store unavailable.[/aurelius.warn]\n")
+                        _console.print(
+                            "[aurelius.warn]  Conversation store unavailable.[/aurelius.warn]\n"
+                        )
                     else:
                         print(YELLOW("  Conversation store unavailable.\n"))
 
@@ -564,18 +584,22 @@ def _run_chat(
                         current_conv_id = arg
                         if _RICH and _console:
                             _console.print(
-                                f"  [dim]Loaded '[bold]{arg}[/bold]' ({len(msgs)} messages).[/dim]\n"
+                                f"  [dim]Loaded '[bold]{arg}[/bold]' ({len(msgs)} messages).[/dim]\n"  # noqa: E501
                             )
                         else:
                             print(DIM(f"  Loaded '{arg}' ({len(msgs)} messages).\n"))
                     else:
                         if _RICH and _console:
-                            _console.print(f"  [aurelius.warn]No conversation found: '{arg}'[/aurelius.warn]\n")
+                            _console.print(
+                                f"  [aurelius.warn]No conversation found: '{arg}'[/aurelius.warn]\n"
+                            )
                         else:
                             print(YELLOW(f"  No conversation found: '{arg}'\n"))
                 else:
                     if _RICH and _console:
-                        _console.print("[aurelius.warn]  Usage: /load <conversation-id>[/aurelius.warn]\n")
+                        _console.print(
+                            "[aurelius.warn]  Usage: /load <conversation-id>[/aurelius.warn]\n"
+                        )
                     else:
                         print(YELLOW("  Usage: /load <conversation-id>\n"))
 
@@ -586,7 +610,11 @@ def _run_chat(
                         if _RICH and _console:
                             _console.print()
                             for cid in sorted(ids):
-                                mark = " [bold bright_red]●[/bold bright_red]" if cid == current_conv_id else ""
+                                mark = (
+                                    " [bold bright_red]●[/bold bright_red]"
+                                    if cid == current_conv_id
+                                    else ""
+                                )
                                 _console.print(f"  [bright_cyan]{cid}[/bright_cyan]{mark}")
                             _console.print()
                         else:
@@ -602,7 +630,9 @@ def _run_chat(
                             print(DIM("  No saved conversations.\n"))
                 else:
                     if _RICH and _console:
-                        _console.print("[aurelius.warn]  Conversation store unavailable.[/aurelius.warn]\n")
+                        _console.print(
+                            "[aurelius.warn]  Conversation store unavailable.[/aurelius.warn]\n"
+                        )
                     else:
                         print(YELLOW("  Conversation store unavailable.\n"))
 
@@ -674,7 +704,7 @@ def _run_serve(
     host: str = "127.0.0.1",
     port: int = 8080,
     ui_port: int = 7860,
-    model_path: Optional[str] = None,
+    model_path: str | None = None,
 ) -> None:
     import threading
     import time
@@ -711,7 +741,8 @@ def _run_serve(
             print(RED(f"  FAIL  API server: {exc}"))
 
     try:
-        from src.serving.web_ui import create_ui_server, make_mock_generate_fn as mk_ui
+        from src.serving.web_ui import create_ui_server
+        from src.serving.web_ui import make_mock_generate_fn as mk_ui
 
         ui_server = create_ui_server(
             host,
@@ -761,7 +792,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Aurelius -- 1.395B AI assistant",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
-        """\
+            """\
         examples:
           aurelius                         start interactive chat
           aurelius chat -s coding          use the 'coding' persona
@@ -775,9 +806,7 @@ def _build_parser() -> argparse.ArgumentParser:
         """
         ),
     )
-    parser.add_argument(
-        "--version", "-V", action="version", version=f"aurelius {__version__}"
-    )
+    parser.add_argument("--version", "-V", action="version", version=f"aurelius {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     # chat
@@ -810,9 +839,9 @@ def _build_parser() -> argparse.ArgumentParser:
     eval_p.add_argument("checkpoint", nargs="?")
     eval_p.add_argument("--results-dir", default="results")
 
+    from src.cli.backend_commands import build_backend_parser
     from src.cli.family_commands import build_family_parser
     from src.cli.interface_commands import build_interface_parser
-    from src.cli.backend_commands import build_backend_parser
     from src.cli.session_commands import build_session_parser
 
     build_family_parser(sub)
@@ -826,7 +855,7 @@ def _build_parser() -> argparse.ArgumentParser:
 # ── entry point ───────────────────────────────────────────────────────────────
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
@@ -839,7 +868,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             lib = SystemPromptLibrary()
             if system in lib.list_personas():
                 system = lib.get(system)
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
         _run_chat(
@@ -876,7 +905,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         else:
             print(CYAN(BOLD("\n  Aurelius Training\n")))
             print(DIM(f"  {' '.join(cmd)}\n"))
-        return subprocess.call(cmd)
+        return subprocess.call(cmd)  # noqa: S603
 
     elif args.command == "eval":
         import subprocess
@@ -910,7 +939,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         else:
             print(CYAN(BOLD("\n  Aurelius Evaluation\n")))
             print(DIM(f"  {' '.join(cmd)}\n"))
-        return subprocess.call(cmd)
+        return subprocess.call(cmd)  # noqa: S603
 
     elif args.command == "family":
         try:

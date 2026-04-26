@@ -88,9 +88,7 @@ class AttentionVisualizer:
             row = attn_map[i]  # (seq_len,)
             # torch.topk returns (values, indices)
             values, indices = torch.topk(row, k=top_k)
-            result[i] = [
-                (int(indices[j]), float(values[j])) for j in range(top_k)
-            ]
+            result[i] = [(int(indices[j]), float(values[j])) for j in range(top_k)]
         return result
 
     # ------------------------------------------------------------------
@@ -175,9 +173,7 @@ class AttentionVisualizer:
             raise TypeError(f"{name} must be a floating-point dtype, got {tensor.dtype}")
         seq_len = tensor.shape[1]
         if seq_len > self.max_seq_len:
-            raise ValueError(
-                f"{name} seq_len ({seq_len}) exceeds max_seq_len ({self.max_seq_len})"
-            )
+            raise ValueError(f"{name} seq_len ({seq_len}) exceeds max_seq_len ({self.max_seq_len})")
 
     def _validate_2d_square(self, tensor: Tensor, name: str) -> None:
         if not isinstance(tensor, Tensor):
@@ -185,16 +181,12 @@ class AttentionVisualizer:
         if tensor.dim() != 2:
             raise ValueError(f"{name} must be 2-D, got {tensor.dim()}-D")
         if tensor.shape[0] != tensor.shape[1]:
-            raise ValueError(
-                f"{name} must be square, got shape {tuple(tensor.shape)}"
-            )
+            raise ValueError(f"{name} must be square, got shape {tuple(tensor.shape)}")
         if not tensor.dtype.is_floating_point:
             raise TypeError(f"{name} must be a floating-point dtype, got {tensor.dtype}")
         seq_len = tensor.shape[0]
         if seq_len > self.max_seq_len:
-            raise ValueError(
-                f"{name} seq_len ({seq_len}) exceeds max_seq_len ({self.max_seq_len})"
-            )
+            raise ValueError(f"{name} seq_len ({seq_len}) exceeds max_seq_len ({self.max_seq_len})")
 
 
 # ---------------------------------------------------------------------------

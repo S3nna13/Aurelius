@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 from src.evaluation.code_eval import (
+    CODE_EVALUATOR_REGISTRY,
     CodeEvalConfig,
     CodeEvalResult,
     CodeEvaluator,
-    CODE_EVALUATOR_REGISTRY,
 )
 
 # ---------------------------------------------------------------------------
@@ -26,6 +26,7 @@ NO_SOLUTION_CODE = "result = 42\n"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def evaluator():
     return CodeEvaluator()
@@ -34,6 +35,7 @@ def evaluator():
 # ---------------------------------------------------------------------------
 # CodeEvalResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCodeEvalResultFrozen:
     def test_is_frozen(self, evaluator):
@@ -53,6 +55,7 @@ class TestCodeEvalResultFrozen:
 # ---------------------------------------------------------------------------
 # Correct solution
 # ---------------------------------------------------------------------------
+
 
 class TestCorrectSolution:
     def test_simple_correct_passes(self, evaluator):
@@ -76,6 +79,7 @@ class TestCorrectSolution:
 # Wrong answer
 # ---------------------------------------------------------------------------
 
+
 class TestWrongAnswer:
     def test_wrong_answer_fails(self, evaluator):
         # solution returns x+1, expected x*2 → wrong for x=5
@@ -98,6 +102,7 @@ class TestWrongAnswer:
 # Syntax error
 # ---------------------------------------------------------------------------
 
+
 class TestSyntaxError:
     def test_syntax_error_fails(self, evaluator):
         result = evaluator.evaluate(SYNTAX_ERROR_CODE, [], [])
@@ -116,6 +121,7 @@ class TestSyntaxError:
 # No solution function / empty test_inputs
 # ---------------------------------------------------------------------------
 
+
 class TestNoSolutionFunction:
     def test_empty_inputs_no_solution_fn_passes(self, evaluator):
         # No solution() defined, no test cases — should pass (code ran fine)
@@ -131,6 +137,7 @@ class TestNoSolutionFunction:
 # execution_time_ms
 # ---------------------------------------------------------------------------
 
+
 class TestExecutionTime:
     def test_execution_time_ms_positive(self, evaluator):
         result = evaluator.evaluate(SIMPLE_SOLUTION, [1], [2])
@@ -145,6 +152,7 @@ class TestExecutionTime:
 # Output capture
 # ---------------------------------------------------------------------------
 
+
 class TestOutputCapture:
     def test_print_output_captured(self, evaluator):
         result = evaluator.evaluate(PRINT_CODE, [7], [7])
@@ -158,6 +166,7 @@ class TestOutputCapture:
 # ---------------------------------------------------------------------------
 # batch_evaluate
 # ---------------------------------------------------------------------------
+
 
 class TestBatchEvaluate:
     def test_batch_returns_correct_length(self, evaluator):
@@ -193,6 +202,7 @@ class TestBatchEvaluate:
 # Allowed builtins restriction
 # ---------------------------------------------------------------------------
 
+
 class TestAllowedBuiltins:
     def test_disallowed_builtin_raises_and_fails(self, evaluator):
         # open() is not in the allowed list — should fail
@@ -210,6 +220,7 @@ class TestAllowedBuiltins:
 # ---------------------------------------------------------------------------
 # CodeEvalConfig
 # ---------------------------------------------------------------------------
+
 
 class TestCodeEvalConfig:
     def test_default_timeout(self):
@@ -229,6 +240,7 @@ class TestCodeEvalConfig:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

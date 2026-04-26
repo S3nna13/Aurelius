@@ -13,7 +13,6 @@ from src.alignment.online_rft import (
     RFTSample,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tiny mock model for logit generation
 # ---------------------------------------------------------------------------
@@ -32,15 +31,15 @@ class _TinyModel(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Return logits [B, T, V]."""
-        x = self.embed(input_ids)   # [B, T, 16]
-        return self.head(x)          # [B, T, V]
+        x = self.embed(input_ids)  # [B, T, 16]
+        return self.head(x)  # [B, T, V]
 
     def log_probs(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Return per-token log probs [B, T]."""
-        logits = self.forward(input_ids)           # [B, T, V]
-        lp = F.log_softmax(logits, dim=-1)         # [B, T, V]
+        logits = self.forward(input_ids)  # [B, T, V]
+        lp = F.log_softmax(logits, dim=-1)  # [B, T, V]
         # Use the argmax token as the "chosen" token for a simple test
-        chosen = logits.argmax(dim=-1)             # [B, T]
+        chosen = logits.argmax(dim=-1)  # [B, T]
         return lp.gather(-1, chosen.unsqueeze(-1)).squeeze(-1)  # [B, T]
 
 
@@ -95,16 +94,16 @@ def test_online_rft_full_pipeline():
 
     torch.manual_seed(0)
     input_ids = torch.randint(1, V, (B, T))
-    labels = torch.randint(1, V, (B, T))   # non-pad labels
+    labels = torch.randint(1, V, (B, T))  # non-pad labels
 
     # Forward through model
-    logits = model(input_ids)              # [B, T, V]
+    logits = model(input_ids)  # [B, T, V]
     policy_lp = model.log_probs(input_ids)  # [B, T]
 
     # Simulate reference model with slightly different weights
     ref_model = _TinyModel(seq_len=5)
     with torch.no_grad():
-        ref_lp = ref_model.log_probs(input_ids)   # [B, T]
+        ref_lp = ref_model.log_probs(input_ids)  # [B, T]
 
     # ---- 6. Compute total loss and backward ----------------------------
     total, metrics = trainer.total_loss(logits, labels, policy_lp, ref_lp)

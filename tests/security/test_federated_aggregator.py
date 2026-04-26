@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import copy
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.security.federated_aggregator import ClientUpdate, FederatedAggregator
 
@@ -29,7 +30,10 @@ def _make_updates(model: nn.Module, n_clients: int = 3, perturb: bool = False):
         if perturb:
             with torch.no_grad():
                 for key in state:
-                    state[key] = state[key] + torch.randn_like(state[key].float()).to(state[key].dtype) * (i + 1) * 0.1
+                    state[key] = (
+                        state[key]
+                        + torch.randn_like(state[key].float()).to(state[key].dtype) * (i + 1) * 0.1
+                    )
         updates.append(ClientUpdate(client_id=i, state_dict=state, n_samples=10 * (i + 1)))
     return updates
 
@@ -55,8 +59,9 @@ def test_weighted_average_identical_updates(aggregator, model):
     result = aggregator._weighted_average(updates)
     expected = model.state_dict()
     for key in expected:
-        assert torch.allclose(result[key].float(), expected[key].float(), atol=1e-5), \
+        assert torch.allclose(result[key].float(), expected[key].float(), atol=1e-5), (
             f"Mismatch on key {key}"
+        )
 
 
 # 4. aggregate returns a state dict (dict with tensor values)
@@ -73,8 +78,9 @@ def test_aggregate_correct_shapes(aggregator, model):
     result = aggregator.aggregate(updates)
     expected_state = model.state_dict()
     for key in expected_state:
-        assert result[key].shape == expected_state[key].shape, \
+        assert result[key].shape == expected_state[key].shape, (
             f"Shape mismatch on key {key}: {result[key].shape} vs {expected_state[key].shape}"
+        )
 
 
 # 6. Aggregated update differs from any single client when updates differ
@@ -98,8 +104,9 @@ def test_apply_changes_model(aggregator, model):
     aggregator.apply(new_state)
     updated_params = model.state_dict()
     for key in original_params:
-        assert not torch.allclose(updated_params[key].float(), original_params[key].float()), \
+        assert not torch.allclose(updated_params[key].float(), original_params[key].float()), (
             f"Parameter {key} was not updated"
+        )
 
 
 # 8. compute_update_norm returns float >= 0
@@ -146,8 +153,9 @@ def test_add_noise_sigma_zero_unchanged(aggregator, model):
     state = copy.deepcopy(model.state_dict())
     result = aggregator._add_aggregation_noise(state, sigma=0.0)
     for key in state:
-        assert torch.allclose(result[key].float(), state[key].float(), atol=1e-7), \
+        assert torch.allclose(result[key].float(), state[key].float(), atol=1e-7), (
             f"Values changed for key {key} with sigma=0"
+        )
 
 
 # 13. _add_aggregation_noise with sigma > 0 changes values
@@ -155,8 +163,5 @@ def test_add_noise_sigma_positive_changes_values(aggregator, model):
     torch.manual_seed(42)
     state = copy.deepcopy(model.state_dict())
     result = aggregator._add_aggregation_noise(state, sigma=1.0)
-    any_changed = any(
-        not torch.allclose(result[k].float(), state[k].float())
-        for k in state
-    )
+    any_changed = any(not torch.allclose(result[k].float(), state[k].float()) for k in state)
     assert any_changed, "Noise with sigma=1.0 should change at least some tensor values"

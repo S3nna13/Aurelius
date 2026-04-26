@@ -51,17 +51,12 @@ class SystemPromptPriorityEncoder:
     @staticmethod
     def _format(fragment: SystemPromptFragment) -> str:
         return (
-            f"[SOURCE:{fragment.source_id} "
-            f"PRIORITY:{fragment.priority.name}]\n{fragment.content}"
+            f"[SOURCE:{fragment.source_id} PRIORITY:{fragment.priority.name}]\n{fragment.content}"
         )
 
-    def _sorted(
-        self, fragments: list[SystemPromptFragment]
-    ) -> list[SystemPromptFragment]:
+    def _sorted(self, fragments: list[SystemPromptFragment]) -> list[SystemPromptFragment]:
         # Filter empty-content gracefully, retain insertion order within priority.
-        indexed = [
-            (i, f) for i, f in enumerate(fragments) if f.content.strip() != ""
-        ]
+        indexed = [(i, f) for i, f in enumerate(fragments) if f.content.strip() != ""]
         indexed.sort(key=lambda pair: (int(pair[1].priority), pair[0]))
         return [f for _, f in indexed]
 
@@ -71,9 +66,7 @@ class SystemPromptPriorityEncoder:
             return ""
 
         pieces = [self._format(f) for f in ordered]
-        total = sum(len(p) for p in pieces) + len(self.separator) * (
-            len(pieces) - 1
-        )
+        total = sum(len(p) for p in pieces) + len(self.separator) * (len(pieces) - 1)
 
         if total <= self.max_total_chars:
             return self.separator.join(pieces)
@@ -98,9 +91,7 @@ class SystemPromptPriorityEncoder:
 
         if total > self.max_total_chars:
             # All remaining are immutable and still overflow.
-            raise PrincipalHierarchyConflict(
-                "immutable fragments exceed max_total_chars"
-            )
+            raise PrincipalHierarchyConflict("immutable fragments exceed max_total_chars")
 
         kept_pieces = [pieces[i] for i in range(len(ordered)) if keep[i]]
         return self.separator.join(kept_pieces)
@@ -108,9 +99,7 @@ class SystemPromptPriorityEncoder:
     def detect_conflicts(
         self, fragments: list[SystemPromptFragment]
     ) -> list[tuple[SystemPromptFragment, SystemPromptFragment, str]]:
-        conflicts: list[
-            tuple[SystemPromptFragment, SystemPromptFragment, str]
-        ] = []
+        conflicts: list[tuple[SystemPromptFragment, SystemPromptFragment, str]] = []
         parsed: list[tuple[SystemPromptFragment, set[str], set[str]]] = []
         for frag in fragments:
             if not frag.content.strip():

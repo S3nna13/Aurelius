@@ -4,8 +4,6 @@ import json
 import logging
 import os
 import shutil
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -32,8 +30,14 @@ _CONFIG_DEFAULTS = {
         "verify_integrity": True,
     },
     "sources": {
-        "arxiv": {"enabled": True, "url": "https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T/resolve/main/arxiv/arxiv_0.jsonl"},
-        "reddit": {"enabled": True, "url": "https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T/resolve/main/reddit/reddit_0.jsonl"},
+        "arxiv": {
+            "enabled": True,
+            "url": "https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T/resolve/main/arxiv/arxiv_0.jsonl",
+        },
+        "reddit": {
+            "enabled": True,
+            "url": "https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T/resolve/main/reddit/reddit_0.jsonl",
+        },
     },
 }
 
@@ -92,7 +96,9 @@ class DownloadManager:
                 self._status[source_name] = "completed"
             except Exception as exc:
                 logger.error("Source %s failed: %s", source_name, exc)
-                agg_stats["sources"].append({"source": source_name, "status": "failed", "error": str(exc)})
+                agg_stats["sources"].append(
+                    {"source": source_name, "status": "failed", "error": str(exc)}
+                )
                 self._status[source_name] = "failed"
 
         agg_stats["end_time"] = datetime.utcnow().isoformat()
@@ -120,18 +126,21 @@ class DownloadManager:
 
         if source == "synthetic_code":
             from training_data.code_generator import CodeDataGenerator
+
             gen = CodeDataGenerator(config)
             gen.run(max_samples or 1000, str(output_path.parent))
             result["status"] = "completed"
             result["samples"] = max_samples or 1000
         elif source == "synthetic_math":
             from training_data.math_generator import MathDataGenerator
+
             gen = MathDataGenerator(config)
             gen.run(max_samples or 1000, str(output_path.parent))
             result["status"] = "completed"
             result["samples"] = max_samples or 1000
         elif source == "synthetic_instructions":
             from training_data.sft_generator import SFTDataGenerator
+
             gen = SFTDataGenerator(config)
             gen.run(max_samples or 1000, str(output_path.parent))
             result["status"] = "completed"
@@ -157,9 +166,9 @@ class DownloadManager:
         try:
             if url.startswith("http"):
                 logger.info("Downloading %s to %s", url, output_file)
-                urllib.request.urlretrieve(url, str(temp_file))
+                urllib.request.urlretrieve(url, str(temp_file))  # noqa: S310
                 os.rename(str(temp_file), str(output_file))
-                with open(output_file, "r", encoding="utf-8") as f:
+                with open(output_file, encoding="utf-8") as f:
                     for line in f:
                         if line.strip():
                             count += 1
@@ -167,7 +176,10 @@ class DownloadManager:
                 logger.info("No URL for %s, generating placeholder", output_dir)
                 with open(output_file, "w", encoding="utf-8") as f:
                     for i in range(max_samples or 100):
-                        f.write(json.dumps({"text": f"Sample document {i} from {output_dir.name}"}) + "\n")
+                        f.write(
+                            json.dumps({"text": f"Sample document {i} from {output_dir.name}"})
+                            + "\n"
+                        )
                         count += 1
         except Exception:
             if temp_file.exists():

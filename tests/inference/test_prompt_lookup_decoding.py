@@ -7,11 +7,11 @@
   - get_stats
   - generate (output length, config defaults, high acceptance on repetitive input)
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.prompt_lookup_decoding import (
     PromptLookupConfig,
@@ -19,10 +19,10 @@ from src.inference.prompt_lookup_decoding import (
     find_ngram_matches,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared mock model
 # ---------------------------------------------------------------------------
+
 
 class MockModel(nn.Module):
     """Tiny deterministic model that produces logits from input_ids."""
@@ -35,8 +35,8 @@ class MockModel(nn.Module):
 
     def forward(self, input_ids, **kwargs):
         # input_ids: (1, T)
-        x = self.embed(input_ids).mean(dim=1)   # (1, 32)
-        logits = self.proj(x)                   # (1, V)
+        x = self.embed(input_ids).mean(dim=1)  # (1, 32)
+        logits = self.proj(x)  # (1, V)
         return (None, logits.unsqueeze(1), None)
 
 
@@ -51,14 +51,15 @@ class FullSeqMockModel(nn.Module):
 
     def forward(self, input_ids, **kwargs):
         # input_ids: (1, T)
-        x = self.embed(input_ids)          # (1, T, 32)
-        logits = self.proj(x)              # (1, T, V)
+        x = self.embed(input_ids)  # (1, T, 32)
+        logits = self.proj(x)  # (1, T, V)
         return (None, logits, None)
 
 
 # ---------------------------------------------------------------------------
 # Test 1: find_candidate_tokens returns None when no match in short context
 # ---------------------------------------------------------------------------
+
 
 def test_find_candidate_tokens_no_match_short_context():
     """With only 2 tokens and ngram_size=3, there's not enough context to match."""
@@ -74,6 +75,7 @@ def test_find_candidate_tokens_no_match_short_context():
 # ---------------------------------------------------------------------------
 # Test 2: find_candidate_tokens finds exact ngram match
 # ---------------------------------------------------------------------------
+
 
 def test_find_candidate_tokens_exact_match():
     """Sequence has a repeated phrase; expect tokens after first occurrence."""
@@ -94,6 +96,7 @@ def test_find_candidate_tokens_exact_match():
 # Test 3: Matching works with ngram_size=1 (single token match)
 # ---------------------------------------------------------------------------
 
+
 def test_find_candidate_tokens_ngram_size_1():
     """Any repeated single token should produce a match."""
     model = MockModel()
@@ -111,10 +114,11 @@ def test_find_candidate_tokens_ngram_size_1():
 # Test 4: find_ngram_matches returns multiple match positions
 # ---------------------------------------------------------------------------
 
+
 def test_find_ngram_matches_multiple_positions():
     """A query that appears several times should return several positions."""
     context = torch.tensor([1, 2, 3, 1, 2, 3, 1, 2, 3, 5], dtype=torch.long)
-    query   = torch.tensor([1, 2], dtype=torch.long)
+    query = torch.tensor([1, 2], dtype=torch.long)
 
     positions = find_ngram_matches(context, query, max_candidates=10)
     # [1,2] appears at positions 0, 3, 6 → follow positions 2, 5, 8
@@ -126,6 +130,7 @@ def test_find_ngram_matches_multiple_positions():
 # ---------------------------------------------------------------------------
 # Test 5: verify_candidates accepts all when model agrees
 # ---------------------------------------------------------------------------
+
 
 def test_verify_candidates_all_accepted():
     """If the model's greedy tokens exactly match candidates, all are accepted."""
@@ -140,7 +145,7 @@ def test_verify_candidates_all_accepted():
     # candidate_ids = [2, 5, 3, 1]; set each row's max to those positions
     candidate_ids = torch.tensor([2, 5, 3, 1], dtype=torch.long)
     for i, tok in enumerate(candidate_ids):
-        logits[i, tok.item()] = 10.0   # argmax == tok
+        logits[i, tok.item()] = 10.0  # argmax == tok
 
     # Bonus position (index n)
     logits[n, 0] = 10.0  # some bonus token
@@ -148,7 +153,7 @@ def test_verify_candidates_all_accepted():
     accepted, n_accepted = pld.verify_candidates(logits, candidate_ids)
     assert n_accepted == n, f"Expected {n} accepted, got {n_accepted}"
     # accepted should include the 4 candidate tokens + 1 bonus = 5 tokens
-    assert accepted.shape[0] == n + 1, f"Expected {n+1} tokens, got {accepted.shape[0]}"
+    assert accepted.shape[0] == n + 1, f"Expected {n + 1} tokens, got {accepted.shape[0]}"
     # First n tokens should match candidate_ids
     for i in range(n):
         assert accepted[i].item() == candidate_ids[i].item()
@@ -157,6 +162,7 @@ def test_verify_candidates_all_accepted():
 # ---------------------------------------------------------------------------
 # Test 6: verify_candidates stops at first mismatch
 # ---------------------------------------------------------------------------
+
 
 def test_verify_candidates_stops_at_first_mismatch():
     """Mismatch at position 1 → only 1 accepted draft token + correction."""
@@ -189,6 +195,7 @@ def test_verify_candidates_stops_at_first_mismatch():
 # Test 7: get_stats returns dict with acceptance_rate in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_get_stats_acceptance_rate_in_range():
     """After some generation, acceptance_rate must be in [0, 1]."""
     model = FullSeqMockModel(vocab_size=64)
@@ -207,6 +214,7 @@ def test_get_stats_acceptance_rate_in_range():
 # ---------------------------------------------------------------------------
 # Test 8: generate() returns tensor longer than input
 # ---------------------------------------------------------------------------
+
 
 def test_generate_output_longer_than_input():
     """generate() must produce at least one new token."""
@@ -227,6 +235,7 @@ def test_generate_output_longer_than_input():
 # Test 9: PromptLookupConfig defaults are correct
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_lookup_config_defaults():
     """PromptLookupConfig dataclass defaults must match the spec."""
     cfg = PromptLookupConfig()
@@ -236,14 +245,13 @@ def test_prompt_lookup_config_defaults():
     assert cfg.num_speculative_tokens == 10, (
         f"Expected num_speculative_tokens=10, got {cfg.num_speculative_tokens}"
     )
-    assert cfg.min_ngram_size == 1, (
-        f"Expected min_ngram_size=1, got {cfg.min_ngram_size}"
-    )
+    assert cfg.min_ngram_size == 1, f"Expected min_ngram_size=1, got {cfg.min_ngram_size}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: Repetitive input gets high acceptance rate
 # ---------------------------------------------------------------------------
+
 
 def test_repetitive_input_high_acceptance_rate():
     """A sequence that repeats the same phrase should frequently find ngram matches."""

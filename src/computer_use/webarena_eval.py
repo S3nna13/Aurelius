@@ -10,8 +10,9 @@ All browser interactions route through the abstract BrowserDriver interface.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.computer_use.browser_driver import BrowserDriver, BrowserState
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class WebArenaError(Exception):
     """Raised when a WebArena harness operation is invalid."""
 
@@ -29,6 +31,7 @@ class WebArenaError(Exception):
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class WebTask:
@@ -94,6 +97,7 @@ class TaskResult:
 # Success evaluator
 # ---------------------------------------------------------------------------
 
+
 class SuccessEvaluator:
     """Evaluates whether a :class:`TaskResult` satisfies a :class:`WebTask`.
 
@@ -149,9 +153,7 @@ class SuccessEvaluator:
         """
         if result.final_state_html is None:
             return False
-        return any(
-            criterion in result.final_state_html for criterion in task.success_criteria
-        )
+        return any(criterion in result.final_state_html for criterion in task.success_criteria)
 
     # ------------------------------------------------------------------
     # Combined evaluator
@@ -184,6 +186,7 @@ class SuccessEvaluator:
 # ---------------------------------------------------------------------------
 # Harness
 # ---------------------------------------------------------------------------
+
 
 class WebArenaHarness:
     """Registry and runner for WebArena-style evaluation tasks.
@@ -231,8 +234,8 @@ class WebArenaHarness:
     def run_task(
         self,
         task_id: str,
-        driver: "BrowserDriver",
-        agent_fn: "Callable[[BrowserState, WebTask], GUIAction | None]",
+        driver: BrowserDriver,
+        agent_fn: Callable[[BrowserState, WebTask], GUIAction | None],
     ) -> TaskResult:
         """Run a registered task end-to-end and return a :class:`TaskResult`.
 
@@ -406,10 +409,7 @@ class WebArenaHarness:
                 if result.success:
                     tag_success[tag] += 1
 
-        by_tag: dict[str, float] = {
-            tag: tag_success[tag] / tag_total[tag]
-            for tag in tag_total
-        }
+        by_tag: dict[str, float] = {tag: tag_success[tag] / tag_total[tag] for tag in tag_total}
 
         return {
             "n_tasks": n_tasks,
@@ -426,9 +426,7 @@ class WebArenaHarness:
 WEBARENA_DEFAULT_TASKS: list[WebTask] = [
     WebTask(
         task_id="navigate_to_url",
-        description=(
-            "Navigate the browser to a specific target URL and confirm the page loads."
-        ),
+        description=("Navigate the browser to a specific target URL and confirm the page loads."),
         start_url="https://example.com",
         success_criteria=["example.com/target"],
         max_steps=5,
@@ -436,9 +434,7 @@ WEBARENA_DEFAULT_TASKS: list[WebTask] = [
     ),
     WebTask(
         task_id="find_element",
-        description=(
-            "Locate a specific DOM element on the current page by its label or role."
-        ),
+        description=("Locate a specific DOM element on the current page by its label or role."),
         start_url="https://example.com/search",
         success_criteria=["search", "results"],
         max_steps=10,
@@ -446,9 +442,7 @@ WEBARENA_DEFAULT_TASKS: list[WebTask] = [
     ),
     WebTask(
         task_id="fill_form",
-        description=(
-            "Fill out an HTML form with the provided field values and submit it."
-        ),
+        description=("Fill out an HTML form with the provided field values and submit it."),
         start_url="https://example.com/form",
         success_criteria=["success", "thank-you", "submitted"],
         max_steps=15,

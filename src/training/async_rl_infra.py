@@ -14,17 +14,19 @@ Design
 * Stale in-flight tasks (heartbeat expired) are re-queued automatically via
   ``requeue_stale()``, providing fault tolerance without external coordinators.
 """
+
 from __future__ import annotations
 
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data-classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RolloutTask:
@@ -69,6 +71,7 @@ class RolloutResult:
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
+
 
 class RolloutOrchestrator:
     """Decouples rollout generation from gradient updates (GLM-5 §4.1).

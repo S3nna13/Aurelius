@@ -1,9 +1,10 @@
 """Speculative decoding compressor: draft-verify token stream compression."""
+
 from __future__ import annotations
 
 import math
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import NamedTuple
 
 import torch
@@ -115,9 +116,7 @@ class SpeculativeDecodingCompressor:
         if target_logprobs.dim() == 2:
             # gather log-prob of the draft token at each position
             t_ids = torch.tensor(draft_token_ids, dtype=torch.long)
-            per_token_lp = target_logprobs[
-                torch.arange(n_draft), t_ids
-            ]
+            per_token_lp = target_logprobs[torch.arange(n_draft), t_ids]
         else:
             per_token_lp = target_logprobs[:n_draft]
 

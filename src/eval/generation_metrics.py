@@ -10,6 +10,7 @@ Implements diversity, faithfulness, and statistical metrics for generated text:
 - Vocabulary coverage
 - Average token entropy
 """
+
 from __future__ import annotations
 
 import math
@@ -18,10 +19,10 @@ from dataclasses import dataclass
 
 from src.eval.text_metrics import bleu as text_metrics_bleu
 
-
 # ---------------------------------------------------------------------------
 # Tokenization helper
 # ---------------------------------------------------------------------------
+
 
 def _tokenize(text: str) -> list[str]:
     """Whitespace-split tokenizer."""
@@ -37,16 +38,18 @@ def _tokenize_lower(text: str) -> list[str]:
 # N-gram helper
 # ---------------------------------------------------------------------------
 
+
 def _ngrams(tokens: list[str], n: int) -> list[tuple[str, ...]]:
     """Return list of n-gram tuples from token list."""
     if n <= 0 or len(tokens) < n:
         return []
-    return [tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)]
+    return [tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
 
 # ---------------------------------------------------------------------------
 # Distinct-n
 # ---------------------------------------------------------------------------
+
 
 def distinct_n(texts: list[str], n: int = 2) -> float:
     """Distinct-n (Li et al. 2016): measures lexical diversity.
@@ -76,6 +79,7 @@ def distinct_n(texts: list[str], n: int = 2) -> float:
 # Repetition rate
 # ---------------------------------------------------------------------------
 
+
 def repetition_rate(text: str, n: int = 4) -> float:
     """Fraction of n-grams that appear more than once.
 
@@ -89,6 +93,7 @@ def repetition_rate(text: str, n: int = 4) -> float:
 # ---------------------------------------------------------------------------
 # Self-BLEU
 # ---------------------------------------------------------------------------
+
 
 def _ngram_precision(hypothesis: list[str], reference_tokens: list[str], n: int) -> float:
     """Compute clipped n-gram precision of hypothesis against reference."""
@@ -165,6 +170,7 @@ def self_bleu(texts: list[str], n_gram: int = 4) -> float:
 # Coverage
 # ---------------------------------------------------------------------------
 
+
 def coverage(source: str, summary: str) -> float:
     """Coverage (Grusky et al. 2018): fraction of summary tokens in source.
 
@@ -185,6 +191,7 @@ def coverage(source: str, summary: str) -> float:
 # ---------------------------------------------------------------------------
 # Density
 # ---------------------------------------------------------------------------
+
 
 def density(source: str, summary: str) -> float:
     """Density: average length of extractive fragments.
@@ -231,12 +238,13 @@ def density(source: str, summary: str) -> float:
         else:
             i += 1
 
-    return sum(fl ** 2 for fl in fragment_lengths) / len(summary_tokens)
+    return sum(fl**2 for fl in fragment_lengths) / len(summary_tokens)
 
 
 # ---------------------------------------------------------------------------
 # Compression ratio
 # ---------------------------------------------------------------------------
+
 
 def compression_ratio(source: str, summary: str) -> float:
     """len(source_tokens) / len(summary_tokens). Returns inf if summary empty."""
@@ -250,6 +258,7 @@ def compression_ratio(source: str, summary: str) -> float:
 # ---------------------------------------------------------------------------
 # Generation statistics
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GenerationStats:
@@ -283,7 +292,7 @@ def generation_statistics(texts: list[str]) -> GenerationStats:
     lengths = [len(_tokenize(t)) for t in texts]
     n = len(lengths)
     mean_len = sum(lengths) / n
-    variance = sum((l - mean_len) ** 2 for l in lengths) / n
+    variance = sum((line - mean_len) ** 2 for line in lengths) / n
     std_len = math.sqrt(variance)
 
     d1 = distinct_n(texts, n=1)
@@ -306,6 +315,7 @@ def generation_statistics(texts: list[str]) -> GenerationStats:
 # ---------------------------------------------------------------------------
 # Vocabulary coverage
 # ---------------------------------------------------------------------------
+
 
 def vocabulary_coverage(
     generated_texts: list[str],
@@ -348,6 +358,7 @@ def vocabulary_coverage(
 # Average token entropy
 # ---------------------------------------------------------------------------
 
+
 def average_token_entropy(texts: list[str]) -> float:
     """Compute average unigram entropy over all generated texts.
 
@@ -373,6 +384,7 @@ def average_token_entropy(texts: list[str]) -> float:
 # ---------------------------------------------------------------------------
 # GenerationEvaluator
 # ---------------------------------------------------------------------------
+
 
 class GenerationEvaluator:
     """Comprehensive evaluator that computes all metrics at once."""
@@ -413,16 +425,10 @@ class GenerationEvaluator:
 
         # Reference-based metrics
         if references is not None and len(references) == len(generated):
-            bleu_scores = [
-                text_metrics_bleu(gen, [ref])
-                for gen, ref in zip(generated, references)
-            ]
+            bleu_scores = [text_metrics_bleu(gen, [ref]) for gen, ref in zip(generated, references)]
             result["bleu_4"] = sum(bleu_scores) / len(bleu_scores) if bleu_scores else 0.0
 
-            cov_scores = [
-                coverage(ref, gen)
-                for gen, ref in zip(generated, references)
-            ]
+            cov_scores = [coverage(ref, gen) for gen, ref in zip(generated, references)]
             result["coverage_vs_references"] = (
                 sum(cov_scores) / len(cov_scores) if cov_scores else 0.0
             )
@@ -431,15 +437,13 @@ class GenerationEvaluator:
         if sources is not None and len(sources) == len(generated):
             cov_scores = [coverage(src, gen) for gen, src in zip(generated, sources)]
             den_scores = [density(src, gen) for gen, src in zip(generated, sources)]
-            comp_scores = [
-                compression_ratio(src, gen)
-                for gen, src in zip(generated, sources)
-            ]
+            comp_scores = [compression_ratio(src, gen) for gen, src in zip(generated, sources)]
             result["coverage"] = sum(cov_scores) / len(cov_scores) if cov_scores else 0.0
             result["density"] = sum(den_scores) / len(den_scores) if den_scores else 0.0
             result["compression_ratio"] = (
                 sum(c for c in comp_scores if not math.isinf(c)) / len(comp_scores)
-                if comp_scores else 0.0
+                if comp_scores
+                else 0.0
             )
 
         return result

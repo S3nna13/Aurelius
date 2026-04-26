@@ -1,11 +1,9 @@
 """Tests for src/alignment/scheduled_sampling.py"""
 
-import math
-
 import pytest
 import torch
 
-from src.alignment.scheduled_sampling import ScheduledSampler, ScheduleType
+from src.alignment.scheduled_sampling import ScheduledSampler
 
 
 def test_scheduled_sampler_instantiates():

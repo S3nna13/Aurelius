@@ -13,6 +13,7 @@ running average x is advanced.  The model's .data tensors always hold z during
 training.  For inference, call optimizer.switch_to_eval() to swap param.data
 to x, then optimizer.train() to swap back.
 """
+
 from __future__ import annotations
 
 import math
@@ -160,7 +161,7 @@ class ScheduleFreeSGD(Optimizer):
                 else:
                     if "cum_weight" not in state:
                         state["cum_weight"] = 0.0
-                    w_t = t ** r
+                    w_t = t**r
                     state["cum_weight"] += w_t
                     x.add_(z - x, alpha=w_t / state["cum_weight"])
 
@@ -309,8 +310,8 @@ class ScheduleFreeAdamW(Optimizer):
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
                 # Bias-corrected step size
-                bc1 = 1.0 - beta1 ** t
-                bc2 = 1.0 - beta2 ** t
+                bc1 = 1.0 - beta1**t
+                bc2 = 1.0 - beta2**t
                 step_size = effective_lr * math.sqrt(bc2) / bc1
 
                 # ----- Update z via Adam -----
@@ -323,7 +324,7 @@ class ScheduleFreeAdamW(Optimizer):
                 else:
                     if "cum_weight" not in state:
                         state["cum_weight"] = 0.0
-                    w_t = t ** r
+                    w_t = t**r
                     state["cum_weight"] += w_t
                     x.add_(z - x, alpha=w_t / state["cum_weight"])
 
@@ -357,7 +358,4 @@ def make_schedule_free(
         return ScheduleFreeSGD(params, **kwargs)
     if key == "adamw":
         return ScheduleFreeAdamW(params, **kwargs)
-    raise ValueError(
-        f"Unknown optimizer_class '{optimizer_class}'. "
-        "Expected 'sgd' or 'adamw'."
-    )
+    raise ValueError(f"Unknown optimizer_class '{optimizer_class}'. Expected 'sgd' or 'adamw'.")

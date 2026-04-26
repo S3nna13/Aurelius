@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.computer_use.screen_analyzer import (
     SCREEN_ANALYZER_REGISTRY,
     ScreenAnalyzer,
@@ -65,8 +63,8 @@ class TestFindTextRegions:
             [white, white, white, white],  # 0 changes
             [white, white, black, black],  # 1 change
             [white, white, white, white],  # 0 changes
-            [gray, white, gray, white],    # 3 changes
-            [gray, white, gray, white],    # 3 changes
+            [gray, white, gray, white],  # 3 changes
+            [gray, white, gray, white],  # 3 changes
             [white, white, white, white],  # 0 changes
         ]
         regions = analyzer.find_text_regions(pixel_data)

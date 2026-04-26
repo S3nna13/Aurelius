@@ -40,10 +40,9 @@ from __future__ import annotations
 import math
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
-from typing import Callable
-
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -67,7 +66,7 @@ class LedgerError(Exception):
 # ---------------------------------------------------------------------------
 
 
-class BudgetSeverity(str, Enum):
+class BudgetSeverity(StrEnum):
     """Severity of a resource's spend relative to its configured thresholds."""
 
     OK = "ok"
@@ -93,8 +92,7 @@ class ResourceLimit:
             raise LedgerError("ResourceLimit.soft_fraction must be finite")
         if self.soft_fraction <= 0.0 or self.soft_fraction > 1.0:
             raise LedgerError(
-                "ResourceLimit.soft_fraction must be in the half-open "
-                "interval (0, 1]"
+                "ResourceLimit.soft_fraction must be in the half-open interval (0, 1]"
             )
         if isinstance(self.hard_limit, bool):
             raise LedgerError("ResourceLimit.hard_limit must be a real number")
@@ -159,9 +157,7 @@ class BudgetLedger:
             raise LedgerError("limits must be non-empty")
         for entry in limits:
             if not isinstance(entry, ResourceLimit):
-                raise LedgerError(
-                    "limits entries must be ResourceLimit instances"
-                )
+                raise LedgerError("limits entries must be ResourceLimit instances")
 
         names = [lim.name for lim in limits]
         if len(set(names)) != len(names):
@@ -184,9 +180,7 @@ class BudgetLedger:
                 )
             )
 
-        self._limits: dict[str, ResourceLimit] = {
-            lim.name: lim for lim in lim_list
-        }
+        self._limits: dict[str, ResourceLimit] = {lim.name: lim for lim in lim_list}
         self._spent: dict[str, float] = {name: 0.0 for name in self._limits}
         self._step_count: int = 0
         self._started_ns: int = int(self._clock_ns())
@@ -272,9 +266,7 @@ class BudgetLedger:
         if math.isnan(amt):
             raise LedgerError("charge amount must not be NaN")
         if amt < 0.0:
-            raise LedgerError(
-                f"charge amount must be non-negative (got {amt!r})"
-            )
+            raise LedgerError(f"charge amount must be non-negative (got {amt!r})")
 
         limit = self._limits[resource]
         prospective = self._spent[resource] + amt
@@ -339,7 +331,7 @@ class BudgetLedger:
     # Context manager
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "BudgetLedger":
+    def __enter__(self) -> BudgetLedger:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:  # noqa: D401
@@ -401,8 +393,7 @@ def _validate_registry_name(name: str) -> None:
         raise LedgerError("ledger name must be non-empty")
     if not _VALID_NAME_RE.match(name):
         raise LedgerError(
-            f"ledger name {name!r} contains invalid characters "
-            "(allowed: A-Z a-z 0-9 _ -)"
+            f"ledger name {name!r} contains invalid characters (allowed: A-Z a-z 0-9 _ -)"
         )
 
 

@@ -1,12 +1,13 @@
 """Capacity planner: forecast metric trends and time-to-limit."""
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class TrendDirection(str, Enum):
+class TrendDirection(StrEnum):
     INCREASING = "increasing"
     DECREASING = "decreasing"
     STABLE = "stable"
@@ -141,11 +142,7 @@ class CapacityPlanner:
         lines.append("")
         lines.append("All metrics:")
         for f in forecasts:
-            d2l = (
-                f"{f.days_to_limit:.1f}d"
-                if f.days_to_limit is not None
-                else "n/a"
-            )
+            d2l = f"{f.days_to_limit:.1f}d" if f.days_to_limit is not None else "n/a"
             lines.append(
                 f"  - {f.metric_name}: trend={f.trend.value} slope={f.slope:.4f} "
                 f"headroom={f.headroom_percent:.1f}% days_to_limit={d2l}"

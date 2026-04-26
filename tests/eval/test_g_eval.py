@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
-from typing import List
 
 from src.eval.g_eval import (
     GEvalCriteria,
@@ -34,12 +34,12 @@ class MockModel(nn.Module):
 
     def forward(self, input_ids: torch.Tensor):
         # input_ids: (B, T)
-        x = self.embed(input_ids)   # (B, T, d_model)
-        logits = self.proj(x)       # (B, T, vocab_size)
+        x = self.embed(input_ids)  # (B, T, d_model)
+        logits = self.proj(x)  # (B, T, vocab_size)
         return (None, logits, None)
 
 
-def _encode(text: str) -> List[int]:
+def _encode(text: str) -> list[int]:
     """Map each char to ord(c) % VOCAB_SIZE."""
     return [ord(c) % VOCAB_SIZE for c in text]
 
@@ -189,9 +189,9 @@ def test_evaluate_composite_is_weighted_mean():
     result = judge.evaluate(document=DOC, hypothesis=HYP)
 
     total_weight = sum(c.weight for c in criteria)
-    expected_composite = sum(
-        result.criteria_scores[c.name] * c.weight for c in criteria
-    ) / total_weight
+    expected_composite = (
+        sum(result.criteria_scores[c.name] * c.weight for c in criteria) / total_weight
+    )
 
     assert result.composite_score == pytest.approx(expected_composite, abs=1e-5)
 
@@ -241,12 +241,18 @@ def test_custom_weights_affect_composite_score():
     model = MockModel()
 
     judge_equal = GEvalJudge(
-        model=model, tokenizer_encode=_encode, tokenizer_decode=_decode,
-        criteria=criteria_equal, device="cpu",
+        model=model,
+        tokenizer_encode=_encode,
+        tokenizer_decode=_decode,
+        criteria=criteria_equal,
+        device="cpu",
     )
     judge_heavy = GEvalJudge(
-        model=model, tokenizer_encode=_encode, tokenizer_decode=_decode,
-        criteria=criteria_heavy_b, device="cpu",
+        model=model,
+        tokenizer_encode=_encode,
+        tokenizer_decode=_decode,
+        criteria=criteria_heavy_b,
+        device="cpu",
     )
 
     result_equal = judge_equal.evaluate(document=DOC, hypothesis=HYP)
@@ -265,7 +271,6 @@ def test_custom_weights_affect_composite_score():
     # Verify heavy-B composite matches manual calculation
     total_w = 1.0 + 9.0
     expected_heavy = (
-        result_heavy.criteria_scores["A"] * 1.0
-        + result_heavy.criteria_scores["B"] * 9.0
+        result_heavy.criteria_scores["A"] * 1.0 + result_heavy.criteria_scores["B"] * 9.0
     ) / total_w
     assert result_heavy.composite_score == pytest.approx(expected_heavy, abs=1e-5)

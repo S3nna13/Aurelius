@@ -14,33 +14,34 @@ Algorithm:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OnlineDPOConfig:
     """Configuration for Online DPO training."""
 
-    beta: float = 0.1           # KL penalty coefficient
-    n_samples: int = 2          # responses sampled per prompt
-    temperature: float = 1.0    # sampling temperature
-    max_new_tokens: int = 16    # maximum new tokens to generate per response
+    beta: float = 0.1  # KL penalty coefficient
+    n_samples: int = 2  # responses sampled per prompt
+    temperature: float = 1.0  # sampling temperature
+    max_new_tokens: int = 16  # maximum new tokens to generate per response
     label_smoothing: float = 0.0  # label smoothing for DPO loss
 
 
 # ---------------------------------------------------------------------------
 # Sampling
 # ---------------------------------------------------------------------------
+
 
 def sample_response(
     model: nn.Module,
@@ -62,7 +63,6 @@ def sample_response(
           - response_ids: (B, max_new_tokens) -- sampled response token ids.
           - log_probs:    (B, max_new_tokens) -- per-token log probs under policy.
     """
-    device = prompt_ids.device
     generated_ids: list[Tensor] = []
     generated_lps: list[Tensor] = []
 
@@ -70,28 +70,26 @@ def sample_response(
 
     with torch.no_grad():
         for _ in range(max_new_tokens):
-            _, logits, _ = model(current)       # (B, seq, vocab)
-            next_logits = logits[:, -1, :]      # (B, vocab)
+            _, logits, _ = model(current)  # (B, seq, vocab)
+            next_logits = logits[:, -1, :]  # (B, vocab)
 
             if temperature == 0.0:
                 next_token = next_logits.argmax(dim=-1, keepdim=True)  # (B, 1)
-                token_lp = F.log_softmax(next_logits, dim=-1).gather(
-                    1, next_token
-                )  # (B, 1)
+                token_lp = F.log_softmax(next_logits, dim=-1).gather(1, next_token)  # (B, 1)
             else:
                 scaled = next_logits / temperature
-                log_p = F.log_softmax(scaled, dim=-1)   # (B, vocab)
+                log_p = F.log_softmax(scaled, dim=-1)  # (B, vocab)
                 probs = log_p.exp()
                 next_token = torch.multinomial(probs, num_samples=1)  # (B, 1)
                 token_lp = log_p.gather(1, next_token)  # (B, 1)
 
-            generated_ids.append(next_token)    # each (B, 1)
-            generated_lps.append(token_lp)      # each (B, 1)
+            generated_ids.append(next_token)  # each (B, 1)
+            generated_lps.append(token_lp)  # each (B, 1)
 
             current = torch.cat([current, next_token], dim=1)  # (B, seq+1)
 
     response_ids = torch.cat(generated_ids, dim=1)  # (B, max_new_tokens)
-    log_probs = torch.cat(generated_lps, dim=1)     # (B, max_new_tokens)
+    log_probs = torch.cat(generated_lps, dim=1)  # (B, max_new_tokens)
 
     return response_ids, log_probs
 
@@ -99,6 +97,7 @@ def sample_response(
 # ---------------------------------------------------------------------------
 # Log-prob computation
 # ---------------------------------------------------------------------------
+
 
 def compute_sequence_log_probs(
     model: nn.Module,
@@ -132,12 +131,10 @@ def compute_sequence_log_probs(
     # full_ids[:, prompt_len], i.e. response_ids[:, 0].
     resp_start = prompt_len - 1
     T = response_ids.shape[1]
-    log_probs_resp = log_probs_all[:, resp_start: resp_start + T, :]  # (B, T, vocab)
+    log_probs_resp = log_probs_all[:, resp_start : resp_start + T, :]  # (B, T, vocab)
 
     # Gather actual token log probs
-    token_lp = log_probs_resp.gather(
-        2, response_ids.unsqueeze(-1)
-    ).squeeze(-1)  # (B, T)
+    token_lp = log_probs_resp.gather(2, response_ids.unsqueeze(-1)).squeeze(-1)  # (B, T)
 
     return token_lp
 
@@ -145,6 +142,7 @@ def compute_sequence_log_probs(
 # ---------------------------------------------------------------------------
 # DPO Loss
 # ---------------------------------------------------------------------------
+
 
 def dpo_loss(
     policy_chosen_log_probs: Tensor,
@@ -208,6 +206,7 @@ def dpo_loss(
 # OnlineDPOTrainer
 # ---------------------------------------------------------------------------
 
+
 class OnlineDPOTrainer:
     """Online DPO: generate pairs on-the-fly, rank with reward_fn, apply DPO loss.
 
@@ -237,9 +236,7 @@ class OnlineDPOTrainer:
         for p in self.ref_model.parameters():
             p.requires_grad_(False)
 
-    def generate_preference_pair(
-        self, prompt_ids: Tensor
-    ) -> tuple[Tensor, Tensor, float, float]:
+    def generate_preference_pair(self, prompt_ids: Tensor) -> tuple[Tensor, Tensor, float, float]:
         """Sample n_samples responses, rank by reward_fn, return best/worst pair.
 
         Args:
@@ -299,33 +296,33 @@ class OnlineDPOTrainer:
         self.ref_model.eval()
 
         # 1. Generate preference pair
-        chosen_resp, rejected_resp, chosen_reward, rejected_reward = (
-            self.generate_preference_pair(prompt_ids)
+        chosen_resp, rejected_resp, chosen_reward, rejected_reward = self.generate_preference_pair(
+            prompt_ids
         )
 
         # chosen_resp / rejected_resp: (max_new_tokens,) -- unsqueeze for batch dim
-        chosen_resp_b = chosen_resp.unsqueeze(0)      # (1, T)
+        chosen_resp_b = chosen_resp.unsqueeze(0)  # (1, T)
         rejected_resp_b = rejected_resp.unsqueeze(0)  # (1, T)
 
         # 2. Policy log probs (with gradient)
         self.policy.train()
-        pi_chosen_lp = compute_sequence_log_probs(
-            self.policy, prompt_ids, chosen_resp_b
-        ).sum(dim=-1)   # (1,)
+        pi_chosen_lp = compute_sequence_log_probs(self.policy, prompt_ids, chosen_resp_b).sum(
+            dim=-1
+        )  # (1,)
 
-        pi_rejected_lp = compute_sequence_log_probs(
-            self.policy, prompt_ids, rejected_resp_b
-        ).sum(dim=-1)   # (1,)
+        pi_rejected_lp = compute_sequence_log_probs(self.policy, prompt_ids, rejected_resp_b).sum(
+            dim=-1
+        )  # (1,)
 
         # 3. Reference log probs (no gradient)
         with torch.no_grad():
             ref_chosen_lp = compute_sequence_log_probs(
                 self.ref_model, prompt_ids, chosen_resp_b
-            ).sum(dim=-1)   # (1,)
+            ).sum(dim=-1)  # (1,)
 
             ref_rejected_lp = compute_sequence_log_probs(
                 self.ref_model, prompt_ids, rejected_resp_b
-            ).sum(dim=-1)   # (1,)
+            ).sum(dim=-1)  # (1,)
 
         # 4. DPO loss
         loss, metrics = dpo_loss(

@@ -12,18 +12,16 @@ ProcessRewardModel  : Process-supervision reward model over individual steps.
 VerifierConfig      : Dataclass of default hyper-parameters.
 """
 
-import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_transformer_encoder(d_model: int, n_layers: int) -> nn.TransformerEncoder:
     layer = nn.TransformerEncoderLayer(
@@ -39,6 +37,7 @@ def _make_transformer_encoder(d_model: int, n_layers: int) -> nn.TransformerEnco
 # ---------------------------------------------------------------------------
 # StepEncoder
 # ---------------------------------------------------------------------------
+
 
 class StepEncoder(nn.Module):
     """Encodes a single reasoning step (token sequence) into a fixed-size vector.
@@ -74,20 +73,21 @@ class StepEncoder(nn.Module):
         Tensor of shape [B, d_model] — CLS pooled representation.
         """
         B, T = step_ids.shape
-        tok_emb = self.embedding(step_ids)                          # [B, T, d]
+        tok_emb = self.embedding(step_ids)  # [B, T, d]
         positions = torch.arange(T, device=step_ids.device)
         tok_emb = tok_emb + self.pos_embedding(positions).unsqueeze(0)
 
-        cls = self.cls_token.expand(B, -1, -1)                     # [B, 1, d]
-        x = torch.cat([cls, tok_emb], dim=1)                       # [B, T+1, d]
+        cls = self.cls_token.expand(B, -1, -1)  # [B, 1, d]
+        x = torch.cat([cls, tok_emb], dim=1)  # [B, T+1, d]
 
-        out = self.encoder(x)                                       # [B, T+1, d]
-        return out[:, 0, :]                                         # [B, d]
+        out = self.encoder(x)  # [B, T+1, d]
+        return out[:, 0, :]  # [B, d]
 
 
 # ---------------------------------------------------------------------------
 # ChainEncoder
 # ---------------------------------------------------------------------------
+
 
 class ChainEncoder(nn.Module):
     """Models dependencies across a sequence of step encodings.
@@ -121,12 +121,13 @@ class ChainEncoder(nn.Module):
         B, S, D = step_encodings.shape
         positions = torch.arange(S, device=step_encodings.device)
         x = step_encodings + self.pos_embedding(positions).unsqueeze(0)
-        return self.encoder(x)                                      # [B, S, d]
+        return self.encoder(x)  # [B, S, d]
 
 
 # ---------------------------------------------------------------------------
 # VerifierHead
 # ---------------------------------------------------------------------------
+
 
 class VerifierHead(nn.Module):
     """Produces per-step validity scores and a single chain-level score.
@@ -157,8 +158,8 @@ class VerifierHead(nn.Module):
         step_scores = torch.sigmoid(self.step_scorer(chain_enc)).squeeze(-1)  # [B, S]
 
         # Chain score from mean-pooled representation
-        pooled = chain_enc.mean(dim=1)                              # [B, d]
-        chain_score = torch.sigmoid(self.chain_scorer(pooled)).squeeze(-1)    # [B]
+        pooled = chain_enc.mean(dim=1)  # [B, d]
+        chain_score = torch.sigmoid(self.chain_scorer(pooled)).squeeze(-1)  # [B]
 
         return step_scores, chain_score
 
@@ -166,6 +167,7 @@ class VerifierHead(nn.Module):
 # ---------------------------------------------------------------------------
 # CoTVerifierModel
 # ---------------------------------------------------------------------------
+
 
 class CoTVerifierModel(nn.Module):
     """Full Chain-of-Thought Verifier.
@@ -186,7 +188,7 @@ class CoTVerifierModel(nn.Module):
         self.chain_encoder = ChainEncoder(d_model, n_layers)
         self.head = VerifierHead(d_model)
 
-    def forward(self, step_ids_list: List[torch.Tensor]):
+    def forward(self, step_ids_list: list[torch.Tensor]):
         """Verify a chain of reasoning steps.
 
         Parameters
@@ -206,7 +208,7 @@ class CoTVerifierModel(nn.Module):
         step_encodings = torch.stack(step_vecs, dim=1)
 
         # Contextualise across chain
-        chain_enc = self.chain_encoder(step_encodings)              # [B, n_steps, d]
+        chain_enc = self.chain_encoder(step_encodings)  # [B, n_steps, d]
 
         # Score
         return self.head(chain_enc)
@@ -215,6 +217,7 @@ class CoTVerifierModel(nn.Module):
 # ---------------------------------------------------------------------------
 # VerifierTrainer
 # ---------------------------------------------------------------------------
+
 
 class VerifierTrainer:
     """Training utilities for CoTVerifierModel.
@@ -297,7 +300,7 @@ class VerifierTrainer:
 
     def train_step(
         self,
-        step_ids_list: List[torch.Tensor],
+        step_ids_list: list[torch.Tensor],
         step_labels: torch.Tensor,
         chain_labels: torch.Tensor,
         alpha: float = 0.5,
@@ -331,6 +334,7 @@ class VerifierTrainer:
 # ProcessRewardModel
 # ---------------------------------------------------------------------------
 
+
 class ProcessRewardModel(nn.Module):
     """Process-supervision reward model that scores individual steps.
 
@@ -359,8 +363,8 @@ class ProcessRewardModel(nn.Module):
         -------
         FloatTensor [B] — reward score in [0, 1].
         """
-        enc = self.step_encoder(step_ids)                           # [B, d]
-        return torch.sigmoid(self.reward_head(enc)).squeeze(-1)     # [B]
+        enc = self.step_encoder(step_ids)  # [B, d]
+        return torch.sigmoid(self.reward_head(enc)).squeeze(-1)  # [B]
 
     def outcome_from_steps(self, step_scores: torch.Tensor) -> torch.Tensor:
         """Estimate overall chain correctness as the product of per-step scores.
@@ -375,12 +379,13 @@ class ProcessRewardModel(nn.Module):
         -------
         FloatTensor [B] — joint probability in [0, 1].
         """
-        return step_scores.prod(dim=-1)                             # [B]
+        return step_scores.prod(dim=-1)  # [B]
 
 
 # ---------------------------------------------------------------------------
 # VerifierConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VerifierConfig:

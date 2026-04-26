@@ -15,11 +15,11 @@ from dataclasses import dataclass
 class ScalingConfig:
     """Chinchilla scaling law parameters (Hoffmann et al. 2022 fitted constants)."""
 
-    E: float = 1.61      # irreducible entropy
-    A: float = 406.4     # parameter scaling coefficient
-    B: float = 410.7     # data scaling coefficient
+    E: float = 1.61  # irreducible entropy
+    A: float = 406.4  # parameter scaling coefficient
+    B: float = 410.7  # data scaling coefficient
     alpha: float = 0.34  # parameter scaling exponent
-    beta: float = 0.28   # data scaling exponent
+    beta: float = 0.28  # data scaling exponent
 
 
 class ChinchillaPredictor:
@@ -71,9 +71,11 @@ class ChinchillaPredictor:
 
         a_ratio = (cfg.A * cfg.alpha) / (cfg.B * cfg.beta)
         exp_n = cfg.beta / (cfg.alpha + cfg.beta)
-        exp_d = cfg.alpha / (cfg.alpha + cfg.beta)
+        cfg.alpha / (cfg.alpha + cfg.beta)
 
-        n_star = math.pow(flop_budget / 6.0, exp_n) * math.pow(a_ratio, -cfg.beta / (cfg.alpha + cfg.beta))
+        n_star = math.pow(flop_budget / 6.0, exp_n) * math.pow(
+            a_ratio, -cfg.beta / (cfg.alpha + cfg.beta)
+        )
         d_star = (flop_budget / 6.0) / n_star
 
         predicted = self.loss(n_star, d_star)
@@ -106,13 +108,15 @@ class ChinchillaPredictor:
             t = i / (n_points - 1) if n_points > 1 else 0.0
             n = math.exp(log_min + t * (log_max - log_min))
             d = flop_budget / (6.0 * n)
-            l = self.loss(n, d)
-            points.append({
-                "n_params": n,
-                "n_tokens": d,
-                "loss": l,
-                "flops": flop_budget,
-            })
+            lo = self.loss(n, d)
+            points.append(
+                {
+                    "n_params": n,
+                    "n_tokens": d,
+                    "loss": lo,
+                    "flops": flop_budget,
+                }
+            )
         return points
 
     def extrapolate_loss(
@@ -140,9 +144,7 @@ class ChinchillaPredictor:
             - cfg.B / math.pow(observed_d, cfg.beta)
         )
         return (
-            fitted_e
-            + cfg.A / math.pow(target_n, cfg.alpha)
-            + cfg.B / math.pow(target_d, cfg.beta)
+            fitted_e + cfg.A / math.pow(target_n, cfg.alpha) + cfg.B / math.pow(target_d, cfg.beta)
         )
 
 

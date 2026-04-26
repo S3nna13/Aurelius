@@ -11,17 +11,14 @@ IPO (Azar et al. 2024) — Identity Preference Optimization:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # ORPO Loss
 # ---------------------------------------------------------------------------
+
 
 class ORPOLoss(nn.Module):
     """ORPO: Odds Ratio Preference Optimization.
@@ -62,9 +59,9 @@ class ORPOLoss(nn.Module):
 
     def forward(
         self,
-        chosen_logps: torch.Tensor,    # (B,) mean log probs for chosen
+        chosen_logps: torch.Tensor,  # (B,) mean log probs for chosen
         rejected_logps: torch.Tensor,  # (B,) mean log probs for rejected
-        sft_loss: torch.Tensor,        # scalar SFT loss on chosen
+        sft_loss: torch.Tensor,  # scalar SFT loss on chosen
     ) -> tuple[torch.Tensor, dict]:
         """Compute ORPO loss.
 
@@ -93,6 +90,7 @@ class ORPOLoss(nn.Module):
 # IPO Loss
 # ---------------------------------------------------------------------------
 
+
 class IPOLoss(nn.Module):
     """IPO: Identity Preference Optimization.
 
@@ -119,10 +117,10 @@ class IPOLoss(nn.Module):
 
     def forward(
         self,
-        policy_chosen_logps: torch.Tensor,    # (B,)
+        policy_chosen_logps: torch.Tensor,  # (B,)
         policy_rejected_logps: torch.Tensor,  # (B,)
-        ref_chosen_logps: torch.Tensor,       # (B,)
-        ref_rejected_logps: torch.Tensor,     # (B,)
+        ref_chosen_logps: torch.Tensor,  # (B,)
+        ref_rejected_logps: torch.Tensor,  # (B,)
     ) -> tuple[torch.Tensor, dict]:
         """Compute IPO loss.
 
@@ -141,7 +139,7 @@ class IPOLoss(nn.Module):
 
         target = 1.0 / (2.0 * self.tau)
         ipo_target = h_chosen - h_rejected - target
-        loss = (ipo_target ** 2).mean()
+        loss = (ipo_target**2).mean()
 
         metrics = {
             "h_chosen": h_chosen.detach().mean(),
@@ -155,6 +153,7 @@ class IPOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # ORPO Trainer
 # ---------------------------------------------------------------------------
+
 
 class ORPOTrainer:
     """Train a model with ORPO loss (no reference model needed)."""
@@ -196,8 +195,8 @@ class ORPOTrainer:
 
         # Only care about response tokens (positions prompt_len onward in next-token preds)
         # Position i in token_lp predicts full_ids[i+1]
-        # Response starts at index prompt_len → token_lp starts at prompt_len-1 (predicts prompt_len)
-        response_lp = token_lp[0, prompt_len - 1:]  # cover all response token predictions
+        # Response starts at index prompt_len → token_lp starts at prompt_len-1 (predicts prompt_len)  # noqa: E501
+        response_lp = token_lp[0, prompt_len - 1 :]  # cover all response token predictions
 
         return response_lp.mean()
 
@@ -225,7 +224,7 @@ class ORPOTrainer:
         token_lp = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # (1, T-1)
 
         # SFT loss only on response tokens
-        response_lp = token_lp[0, prompt_len - 1:]
+        response_lp = token_lp[0, prompt_len - 1 :]
         return -response_lp.mean()
 
     def train_step(

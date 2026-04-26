@@ -1,16 +1,16 @@
 """Tests for DARTS-style NAS search module."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.nas_search import (
-    NASConfig,
-    MixedOp,
-    gumbel_softmax_weights,
     DARTSCell,
     DARTSSearcher,
+    MixedOp,
+    NASConfig,
+    gumbel_softmax_weights,
 )
 
 torch.manual_seed(42)
@@ -24,6 +24,7 @@ N_CELLS = 2
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _sample_input() -> torch.Tensor:
     torch.manual_seed(0)
@@ -52,6 +53,7 @@ def _make_cells(n: int = N_CELLS) -> nn.ModuleList:
 # 1. NASConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_nas_config_defaults():
     cfg = NASConfig()
     assert cfg.n_ops == 4
@@ -63,6 +65,7 @@ def test_nas_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. MixedOp output shape matches input
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_op_output_shape():
     cfg = _make_config()
@@ -76,6 +79,7 @@ def test_mixed_op_output_shape():
 # ---------------------------------------------------------------------------
 # 3. MixedOp differentiable through arch_weights
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_op_differentiable():
     cfg = _make_config(hard=False)
@@ -93,6 +97,7 @@ def test_mixed_op_differentiable():
 # 4. gumbel_softmax_weights output sums to 1
 # ---------------------------------------------------------------------------
 
+
 def test_gumbel_softmax_sums_to_one():
     logits = torch.randn(N_OPS)
     weights = gumbel_softmax_weights(logits, temperature=1.0, hard=False)
@@ -102,6 +107,7 @@ def test_gumbel_softmax_sums_to_one():
 # ---------------------------------------------------------------------------
 # 5. gumbel_softmax_weights hard=True returns one-hot-like (max ≈ 1)
 # ---------------------------------------------------------------------------
+
 
 def test_gumbel_softmax_hard_one_hot():
     logits = torch.randn(N_OPS)
@@ -113,6 +119,7 @@ def test_gumbel_softmax_hard_one_hot():
 # 6. gumbel_softmax_weights shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_gumbel_softmax_shape():
     logits = torch.randn(N_OPS)
     weights = gumbel_softmax_weights(logits, temperature=1.0)
@@ -122,6 +129,7 @@ def test_gumbel_softmax_shape():
 # ---------------------------------------------------------------------------
 # 7. DARTSCell output shape correct
 # ---------------------------------------------------------------------------
+
 
 def test_darts_cell_output_shape():
     cfg = _make_config()
@@ -135,6 +143,7 @@ def test_darts_cell_output_shape():
 # 8. DARTSCell get_arch_params returns non-empty list
 # ---------------------------------------------------------------------------
 
+
 def test_darts_cell_arch_params_nonempty():
     cfg = _make_config()
     cell = DARTSCell(D, N_OPS, cfg)
@@ -146,6 +155,7 @@ def test_darts_cell_arch_params_nonempty():
 # 9. DARTSCell arch params have requires_grad=True
 # ---------------------------------------------------------------------------
 
+
 def test_darts_cell_arch_params_requires_grad():
     cfg = _make_config()
     cell = DARTSCell(D, N_OPS, cfg)
@@ -156,6 +166,7 @@ def test_darts_cell_arch_params_requires_grad():
 # ---------------------------------------------------------------------------
 # 10. DARTSSearcher.arch_params returns parameters
 # ---------------------------------------------------------------------------
+
 
 def test_darts_searcher_arch_params():
     cells = _make_cells()
@@ -171,6 +182,7 @@ def test_darts_searcher_arch_params():
 # 11. DARTSSearcher.model_params returns parameters
 # ---------------------------------------------------------------------------
 
+
 def test_darts_searcher_model_params():
     cells = _make_cells()
     cfg = _make_config()
@@ -184,6 +196,7 @@ def test_darts_searcher_model_params():
 # ---------------------------------------------------------------------------
 # 12. DARTSSearcher.discretize returns list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_darts_searcher_discretize_returns_ints():
     cells = _make_cells()
@@ -199,6 +212,7 @@ def test_darts_searcher_discretize_returns_ints():
 # 13. DARTSSearcher.discretize length equals n_cells
 # ---------------------------------------------------------------------------
 
+
 def test_darts_searcher_discretize_length():
     cells = _make_cells(N_CELLS)
     cfg = _make_config()
@@ -210,6 +224,7 @@ def test_darts_searcher_discretize_length():
 # ---------------------------------------------------------------------------
 # 14. Separate arch and model optimizers work independently
 # ---------------------------------------------------------------------------
+
 
 def test_separate_optimizers_independent():
     cells = _make_cells()

@@ -10,7 +10,6 @@ import math
 
 import pytest
 import torch
-import torch.nn.functional as F
 
 from src.training.expert_routing import (
     ExpertLoadTracker,
@@ -37,7 +36,7 @@ def _uniform_top1_mask() -> torch.Tensor:
     """(B, T, E) mask where each token is assigned to exactly one expert in a
     round-robin fashion so that every expert gets exactly B*T/E tokens."""
     mask = torch.zeros(B, T, E)
-    n_tokens = B * T                    # 8
+    n_tokens = B * T  # 8
     for tok_idx in range(n_tokens):
         b = tok_idx // T
         t = tok_idx % T
@@ -55,6 +54,7 @@ def _single_expert_mask(expert_idx: int = 0) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # 1. ExpertRoutingConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestExpertRoutingConfig:
     def test_defaults(self):
@@ -76,6 +76,7 @@ class TestExpertRoutingConfig:
 # ---------------------------------------------------------------------------
 # 2 & 3. compute_load_balance_loss
 # ---------------------------------------------------------------------------
+
 
 class TestComputeLoadBalanceLoss:
     def test_returns_scalar(self):
@@ -101,7 +102,7 @@ class TestComputeLoadBalanceLoss:
         probs = _uniform_probs()
         mask = _uniform_top1_mask()
         loss = compute_load_balance_loss(probs, mask)
-        expected = E * E * (1.0 / E) ** 2   # = 1.0
+        expected = E * E * (1.0 / E) ** 2  # = 1.0
         assert loss.item() == pytest.approx(expected, abs=1e-5)
 
     def test_skewed_routing_increases_loss(self):
@@ -136,6 +137,7 @@ class TestComputeLoadBalanceLoss:
 # 4 & 5. compute_router_entropy
 # ---------------------------------------------------------------------------
 
+
 class TestComputeRouterEntropy:
     def test_returns_scalar(self):
         probs = _uniform_probs()
@@ -167,6 +169,7 @@ class TestComputeRouterEntropy:
 # ---------------------------------------------------------------------------
 # 6, 7 & 8. compute_expert_utilization
 # ---------------------------------------------------------------------------
+
 
 class TestComputeExpertUtilization:
     def test_returns_correct_keys(self):
@@ -204,6 +207,7 @@ class TestComputeExpertUtilization:
 # 9, 10 & 11. ExpertLoadTracker
 # ---------------------------------------------------------------------------
 
+
 class TestExpertLoadTracker:
     def _make_tracker(self, **kwargs) -> ExpertLoadTracker:
         cfg = ExpertRoutingConfig(n_experts=E, **kwargs)
@@ -228,7 +232,7 @@ class TestExpertLoadTracker:
     def test_dead_experts_detection(self):
         """Expert 1, 2, 3 never selected — should appear as dead (< 1 % of tokens)."""
         tracker = self._make_tracker()
-        mask = _single_expert_mask(0)   # only expert 0 gets tokens
+        mask = _single_expert_mask(0)  # only expert 0 gets tokens
         for _ in range(5):
             tracker.update(mask)
         stats = tracker.get_stats()
@@ -256,6 +260,7 @@ class TestExpertLoadTracker:
 # ---------------------------------------------------------------------------
 # 12 & 13. RoutingAwareLoss
 # ---------------------------------------------------------------------------
+
 
 class TestRoutingAwareLoss:
     def _make_routing_loss(self) -> RoutingAwareLoss:
@@ -293,9 +298,7 @@ class TestRoutingAwareLoss:
         # The sum of load_balance_loss and entropy_loss might be slightly negative
         # if entropy > load_balance, but their absolute effect is bounded.
         # More robustly: total == task_loss + lb + entropy strictly.
-        reconstructed = (
-            info["task_loss"] + info["load_balance_loss"] + info["entropy_loss"]
-        )
+        reconstructed = info["task_loss"] + info["load_balance_loss"] + info["entropy_loss"]
         assert total.item() == pytest.approx(reconstructed.item(), abs=1e-6)
 
     def test_task_loss_in_info_matches_input(self):

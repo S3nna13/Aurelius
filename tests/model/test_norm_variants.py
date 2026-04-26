@@ -1,6 +1,5 @@
 """Tests for src/model/norm_variants.py"""
 
-import math
 import pytest
 import torch
 import torch.nn as nn
@@ -13,7 +12,6 @@ from src.model.norm_variants import (
     replace_norms,
 )
 from src.model.rms_norm import RMSNorm
-
 
 # ---------------------------------------------------------------------------
 # GroupNorm1D

@@ -13,8 +13,8 @@ Provides:
 from __future__ import annotations
 
 import torch
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
 
 
 def _check_same_shape(a: Tensor, b: Tensor, name_a: str, name_b: str) -> None:
@@ -109,16 +109,22 @@ def dpo_pair_loss(
     ))
     """
     _check_same_shape(
-        policy_chosen_logprobs, policy_rejected_logprobs,
-        "policy_chosen_logprobs", "policy_rejected_logprobs",
+        policy_chosen_logprobs,
+        policy_rejected_logprobs,
+        "policy_chosen_logprobs",
+        "policy_rejected_logprobs",
     )
     _check_same_shape(
-        ref_chosen_logprobs, ref_rejected_logprobs,
-        "ref_chosen_logprobs", "ref_rejected_logprobs",
+        ref_chosen_logprobs,
+        ref_rejected_logprobs,
+        "ref_chosen_logprobs",
+        "ref_rejected_logprobs",
     )
     _check_same_shape(
-        policy_chosen_logprobs, ref_chosen_logprobs,
-        "policy_chosen_logprobs", "ref_chosen_logprobs",
+        policy_chosen_logprobs,
+        ref_chosen_logprobs,
+        "policy_chosen_logprobs",
+        "ref_chosen_logprobs",
     )
     chosen_logratio = policy_chosen_logprobs - ref_chosen_logprobs
     rejected_logratio = policy_rejected_logprobs - ref_rejected_logprobs

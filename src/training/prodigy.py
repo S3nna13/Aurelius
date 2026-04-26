@@ -5,10 +5,10 @@ distance from initialization. No learning rate schedule required.
 
 Reference: Mishchenko & Defazio 2023, arXiv:2306.06101
 """
+
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
 
 import torch
 from torch.optim import Optimizer
@@ -44,8 +44,8 @@ class Prodigy(Optimizer):
         self,
         params,
         lr: float = 1.0,
-        betas: Tuple[float, float] = (0.9, 0.999),
-        beta3: Optional[float] = None,
+        betas: tuple[float, float] = (0.9, 0.999),
+        beta3: float | None = None,
         eps: float = 1e-8,
         weight_decay: float = 0.0,
         d0: float = 1e-6,
@@ -97,7 +97,7 @@ class Prodigy(Optimizer):
         return group["d"] * group["d_coef"]
 
     @torch.no_grad()
-    def step(self, closure=None) -> Optional[float]:
+    def step(self, closure=None) -> float | None:
         """Perform a single Prodigy optimisation step.
 
         Args:
@@ -145,8 +145,8 @@ class Prodigy(Optimizer):
             # current_lr scales linearly with d_coef.
             effective_lr = d  # do NOT multiply by d_coef here
 
-            bc1 = 1.0 - beta1 ** step_count if use_bc else 1.0
-            bc2 = 1.0 - beta2 ** step_count if use_bc else 1.0
+            bc1 = 1.0 - beta1**step_count if use_bc else 1.0
+            bc2 = 1.0 - beta2**step_count if use_bc else 1.0
 
             for p in group["params"]:
                 if p.grad is None:
@@ -214,13 +214,13 @@ class Prodigy(Optimizer):
             s_new = beta3 * s + (1.0 - beta3) * max(dlr_num, 0.0) / (dlr_den + 1e-30)
 
             # Bias-correct the s accumulator
-            bc3 = 1.0 - beta3 ** step_count
+            bc3 = 1.0 - beta3**step_count
             s_corrected = s_new / (bc3 + 1e-30)
 
             d_new = math.sqrt(max(s_corrected, 0.0)) if s_corrected > 0 else d
 
             # Apply growth rate cap
-            d_max = d * (growth_rate ** 1)
+            d_max = d * (growth_rate**1)
             d_new = min(d_new, d_max)
 
             # D only grows (never shrinks)

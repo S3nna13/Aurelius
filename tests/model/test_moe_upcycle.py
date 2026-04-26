@@ -1,8 +1,9 @@
 """Tests for dense-to-MoE upcycling (src/model/moe_upcycle.py)."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.ffn import SwiGLUFFN
@@ -44,6 +45,7 @@ def dense_model(small_cfg):
 # upcycle_ffn tests
 # ---------------------------------------------------------------------------
 
+
 def test_upcycle_ffn_creates_n_experts(small_cfg, dense_ffn):
     """upcycle_ffn with n_experts=4 produces a SparseMoEFFN with 4 experts."""
     moe_cfg = MoEConfig(n_experts=4, top_k=2)
@@ -84,6 +86,7 @@ def test_upcycle_ffn_router_is_small(small_cfg, dense_ffn):
 # ---------------------------------------------------------------------------
 # upcycle_model tests
 # ---------------------------------------------------------------------------
+
 
 def test_upcycle_model_replaces_ffn_layers(small_cfg, dense_model):
     """After upcycling, every layer's ffn is a SparseMoEFFN."""
@@ -147,6 +150,7 @@ def test_upcycle_model_forward_still_works(small_cfg):
 # ---------------------------------------------------------------------------
 # count_parameters tests
 # ---------------------------------------------------------------------------
+
 
 def test_count_parameters_returns_dict(small_cfg, dense_model):
     """count_parameters returns dict with total, trainable, frozen keys."""

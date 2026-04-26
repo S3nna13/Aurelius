@@ -3,13 +3,13 @@
 Covers quantize/dequantize accuracy, dtype checks, KV cache round-trip,
 and memory savings estimation.
 """
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.inference.kv_quant import KVQuantizer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -37,8 +37,8 @@ def kv_pair() -> tuple[torch.Tensor, torch.Tensor]:
 # Quantize / dequantize core tests
 # ---------------------------------------------------------------------------
 
-class TestKVQuantizerCore:
 
+class TestKVQuantizerCore:
     def test_quantize_shape(self, sample_tensor):
         """Quantized tensor has the same shape as input (last dim padded to group multiple)."""
         quantizer = KVQuantizer(bits=8, group_size=64, symmetric=True)
@@ -92,8 +92,8 @@ class TestKVQuantizerCore:
 # KV cache API
 # ---------------------------------------------------------------------------
 
-class TestKVCacheAPI:
 
+class TestKVCacheAPI:
     def test_quantize_kv_cache_keys(self, kv_pair):
         """quantize_kv_cache returns a dict with required keys."""
         k, v = kv_pair
@@ -122,8 +122,8 @@ class TestKVCacheAPI:
 # Memory analysis
 # ---------------------------------------------------------------------------
 
-class TestMemorySavings:
 
+class TestMemorySavings:
     def test_memory_saved_mb_savings(self):
         """INT8 quantization yields savings_factor > 1 versus FP16."""
         quantizer = KVQuantizer(bits=8, group_size=128, symmetric=True)

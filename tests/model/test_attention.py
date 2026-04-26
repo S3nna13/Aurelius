@@ -1,15 +1,23 @@
 """Tests for Grouped Query Attention and RoPE."""
-import torch
+
 import pytest
+import torch
+
+from src.model.attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from src.model.config import AureliusConfig
-from src.model.attention import GroupedQueryAttention, precompute_rope_frequencies, apply_rope
 
 
 @pytest.fixture
 def small_cfg():
     return AureliusConfig(
-        n_layers=2, d_model=256, n_heads=4, n_kv_heads=2,
-        head_dim=64, d_ff=512, vocab_size=1000, max_seq_len=128,
+        n_layers=2,
+        d_model=256,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=64,
+        d_ff=512,
+        vocab_size=1000,
+        max_seq_len=128,
     )
 
 
@@ -110,8 +118,9 @@ def test_kv_cache_incremental_matches_full(attn, small_cfg):
     out_decode, _ = attn(seq[:, 7:8, :], freqs_decode, past_kv=kv)
 
     # The decode output for position 7 must match full forward at position 7
-    assert torch.allclose(out_full[:, 7:8, :], out_decode, atol=1e-4), \
+    assert torch.allclose(out_full[:, 7:8, :], out_decode, atol=1e-4), (
         f"Max diff: {(out_full[:, 7:8, :] - out_decode).abs().max()}"
+    )
 
 
 def test_kv_cache_shape(attn, small_cfg):
@@ -156,13 +165,15 @@ def test_kv_cache_batch_decode(attn, small_cfg):
     out_decode, _ = attn(seq[:, 5:6, :], freqs_decode, past_kv=kv)
 
     assert out_decode.shape == (B, 1, small_cfg.d_model)
-    assert torch.allclose(out_full[:, 5:6, :], out_decode, atol=1e-4), \
+    assert torch.allclose(out_full[:, 5:6, :], out_decode, atol=1e-4), (
         f"Max diff: {(out_full[:, 5:6, :] - out_decode).abs().max()}"
+    )
 
 
 def test_yarn_frequencies_shape():
     """yarn_rope_frequencies must return (max_seq_len, head_dim//2) complex tensor."""
     from src.model.attention import yarn_rope_frequencies
+
     freqs = yarn_rope_frequencies(head_dim=64, max_seq_len=32768, theta=500_000.0, scale=4.0)
     assert freqs.shape == (32768, 32)
     assert freqs.is_complex()
@@ -171,12 +182,16 @@ def test_yarn_frequencies_shape():
 def test_yarn_scale_1_matches_standard():
     """With scale=1.0 and appropriate beta, YaRN should approximate standard RoPE."""
     from src.model.attention import precompute_rope_frequencies, yarn_rope_frequencies
+
     # With scale=1, scaled_freqs = base_freqs * (1 - γ * 0) = base_freqs regardless of γ
     # So yarn with scale=1.0 should exactly equal standard RoPE
     standard = precompute_rope_frequencies(head_dim=64, max_seq_len=128, theta=10000.0)
     yarn = yarn_rope_frequencies(
-        head_dim=64, max_seq_len=128, theta=10000.0,
-        scale=1.0, original_max_seq_len=128,
+        head_dim=64,
+        max_seq_len=128,
+        theta=10000.0,
+        scale=1.0,
+        original_max_seq_len=128,
     )
     # With scale=1, the formula gives scaled_freqs = base_freqs * 1.0 = base_freqs
     assert torch.allclose(yarn.abs(), standard.abs(), atol=1e-5)
@@ -189,9 +204,14 @@ def test_yarn_extends_context():
     from src.model.transformer import AureliusTransformer
 
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256,
-        max_seq_len=128,         # extended context
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=128,  # extended context
         rope_scaling_type="yarn",
         rope_scaling_factor=4.0,
         rope_original_max_seq_len=32,  # original was 32

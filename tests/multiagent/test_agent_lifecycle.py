@@ -1,19 +1,20 @@
 """Tests for src/multiagent/agent_lifecycle.py."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.multiagent.agent_lifecycle import (
+    AGENT_LIFECYCLE_REGISTRY,
     AgentLifecycleManager,
     AgentRecord,
     AgentStatus,
-    AGENT_LIFECYCLE_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # AgentStatus enum
 # ---------------------------------------------------------------------------
+
 
 def test_agent_status_values():
     assert AgentStatus.INITIALIZING == "initializing"
@@ -34,6 +35,7 @@ def test_agent_status_is_str():
 # ---------------------------------------------------------------------------
 # AgentLifecycleManager.spawn
 # ---------------------------------------------------------------------------
+
 
 def test_spawn_returns_agent_record():
     mgr = AgentLifecycleManager()
@@ -104,6 +106,7 @@ def test_spawn_max_agents_counts_non_terminal_only():
 # AgentLifecycleManager.start
 # ---------------------------------------------------------------------------
 
+
 def test_start_initializing_to_running():
     mgr = AgentLifecycleManager()
     record = mgr.spawn("a")
@@ -127,6 +130,7 @@ def test_start_returns_false_for_missing_agent():
 # AgentLifecycleManager.pause
 # ---------------------------------------------------------------------------
 
+
 def test_pause_running_to_paused():
     mgr = AgentLifecycleManager()
     record = mgr.spawn("a")
@@ -149,6 +153,7 @@ def test_pause_returns_false_for_missing_agent():
 # ---------------------------------------------------------------------------
 # AgentLifecycleManager.resume
 # ---------------------------------------------------------------------------
+
 
 def test_resume_paused_to_running():
     mgr = AgentLifecycleManager()
@@ -175,6 +180,7 @@ def test_resume_returns_false_for_missing_agent():
 # AgentLifecycleManager.terminate
 # ---------------------------------------------------------------------------
 
+
 def test_terminate_any_state_to_terminated():
     mgr = AgentLifecycleManager()
     record = mgr.spawn("a")
@@ -198,6 +204,7 @@ def test_terminate_returns_false_for_missing():
 # ---------------------------------------------------------------------------
 # AgentLifecycleManager.crash
 # ---------------------------------------------------------------------------
+
 
 def test_crash_sets_status_crashed():
     mgr = AgentLifecycleManager()
@@ -231,6 +238,7 @@ def test_crash_returns_false_for_missing():
 # AgentLifecycleManager.get
 # ---------------------------------------------------------------------------
 
+
 def test_get_existing_returns_record():
     mgr = AgentLifecycleManager()
     record = mgr.spawn("a")
@@ -245,6 +253,7 @@ def test_get_missing_returns_none():
 # ---------------------------------------------------------------------------
 # AgentLifecycleManager.list_by_status
 # ---------------------------------------------------------------------------
+
 
 def test_list_by_status_returns_matching():
     mgr = AgentLifecycleManager()
@@ -276,11 +285,12 @@ def test_list_by_status_empty_when_none_match():
 # AgentLifecycleManager.active_count
 # ---------------------------------------------------------------------------
 
+
 def test_active_count_running_and_paused():
     mgr = AgentLifecycleManager()
     r1 = mgr.spawn("a")
     r2 = mgr.spawn("b")
-    r3 = mgr.spawn("c")
+    mgr.spawn("c")
     mgr.start(r1.agent_id)
     mgr.start(r2.agent_id)
     mgr.pause(r2.agent_id)
@@ -311,6 +321,7 @@ def test_active_count_zero_for_empty_manager():
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_default():
     assert "default" in AGENT_LIFECYCLE_REGISTRY

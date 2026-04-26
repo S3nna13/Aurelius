@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import math
-import pytest
 
 from src.federation.differential_privacy import (
-    DPMechanism,
-    DifferentialPrivacy,
     DP_MECHANISM,
+    DifferentialPrivacy,
+    DPMechanism,
     PrivacyBudget,
 )
-
 
 # ---------------------------------------------------------------------------
 # DPMechanism enum
 # ---------------------------------------------------------------------------
+
 
 class TestDPMechanism:
     def test_enum_count(self):
@@ -37,6 +36,7 @@ class TestDPMechanism:
 # ---------------------------------------------------------------------------
 # PrivacyBudget dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPrivacyBudget:
     def test_epsilon_stored(self):
@@ -69,6 +69,7 @@ class TestPrivacyBudget:
 # DifferentialPrivacy – clip_gradient
 # ---------------------------------------------------------------------------
 
+
 class TestClipGradient:
     def test_clip_within_norm_unchanged(self):
         dp = DifferentialPrivacy(epsilon=1.0)
@@ -81,14 +82,14 @@ class TestClipGradient:
         dp = DifferentialPrivacy()
         g = [3.0, 4.0]  # norm = 5.0
         result = dp.clip_gradient(g, max_norm=1.0)
-        norm_result = math.sqrt(sum(x ** 2 for x in result))
+        norm_result = math.sqrt(sum(x**2 for x in result))
         assert abs(norm_result - 1.0) < 1e-9
 
     def test_clip_result_norm_le_max(self):
         dp = DifferentialPrivacy()
         g = [10.0, 10.0, 10.0]
         result = dp.clip_gradient(g, max_norm=2.0)
-        norm_result = math.sqrt(sum(x ** 2 for x in result))
+        norm_result = math.sqrt(sum(x**2 for x in result))
         assert norm_result <= 2.0 + 1e-9
 
     def test_clip_zero_vector(self):
@@ -125,6 +126,7 @@ class TestClipGradient:
 # ---------------------------------------------------------------------------
 # DifferentialPrivacy – add_gaussian_noise
 # ---------------------------------------------------------------------------
+
 
 class TestGaussianNoise:
     def test_output_length_same(self):
@@ -175,6 +177,7 @@ class TestGaussianNoise:
 # DifferentialPrivacy – add_laplace_noise
 # ---------------------------------------------------------------------------
 
+
 class TestLaplaceNoise:
     def test_output_length_same(self):
         dp = DifferentialPrivacy(seed=0)
@@ -208,6 +211,7 @@ class TestLaplaceNoise:
 # DifferentialPrivacy – privacy_budget
 # ---------------------------------------------------------------------------
 
+
 class TestPrivacyBudgetMethod:
     def test_returns_privacy_budget(self):
         dp = DifferentialPrivacy(epsilon=1.0, delta=1e-5)
@@ -233,6 +237,7 @@ class TestPrivacyBudgetMethod:
 # ---------------------------------------------------------------------------
 # DifferentialPrivacy – consume
 # ---------------------------------------------------------------------------
+
 
 class TestConsume:
     def test_within_budget_returns_true(self):
@@ -269,6 +274,7 @@ class TestConsume:
 # ---------------------------------------------------------------------------
 # DP_MECHANISM singleton
 # ---------------------------------------------------------------------------
+
 
 class TestDPMechanismSingleton:
     def test_exists(self):

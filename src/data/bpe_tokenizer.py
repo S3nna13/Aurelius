@@ -11,8 +11,6 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
-
 
 # ---------------------------------------------------------------------------
 # Config
@@ -25,9 +23,7 @@ class BPEConfig:
 
     vocab_size: int = 1000
     min_frequency: int = 2
-    special_tokens: list[str] = field(
-        default_factory=lambda: ["<pad>", "<unk>", "<s>", "</s>"]
-    )
+    special_tokens: list[str] = field(default_factory=lambda: ["<pad>", "<unk>", "<s>", "</s>"])
 
 
 # ---------------------------------------------------------------------------
@@ -313,9 +309,7 @@ class BPETokenizer:
 
         def flush_bytes() -> None:
             if byte_values:
-                result_parts.append(
-                    bytes(byte_values).decode("utf-8", errors="replace")
-                )
+                result_parts.append(bytes(byte_values).decode("utf-8", errors="replace"))
                 byte_values.clear()
 
         for tid in ids:
@@ -371,7 +365,7 @@ class BPETokenizer:
         Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
     @classmethod
-    def load(cls, path: str) -> "BPETokenizer":
+    def load(cls, path: str) -> BPETokenizer:
         """Load a tokenizer from a JSON file previously saved with :meth:`save`.
 
         Parameters
@@ -401,8 +395,6 @@ class BPETokenizer:
 
         # Restore merges
         tok._merges = [(left, right) for left, right in raw["merges"]]
-        tok._merge_map = {
-            (left, right): left + right for left, right in tok._merges
-        }
+        tok._merge_map = {(left, right): left + right for left, right in tok._merges}
 
         return tok

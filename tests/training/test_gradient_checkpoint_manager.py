@@ -1,16 +1,15 @@
 """Tests for src/training/gradient_checkpoint_manager.py."""
 
-import pytest
 from src.training.gradient_checkpoint_manager import (
     CheckpointConfig,
     CheckpointPolicy,
     GradientCheckpointManager,
 )
 
-
 # ---------------------------------------------------------------------------
 # CheckpointPolicy enum
 # ---------------------------------------------------------------------------
+
 
 class TestCheckpointPolicy:
     def test_none_value(self):
@@ -35,6 +34,7 @@ class TestCheckpointPolicy:
 # ---------------------------------------------------------------------------
 # CheckpointConfig dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCheckpointConfig:
     def test_default_policy(self):
@@ -65,6 +65,7 @@ class TestCheckpointConfig:
 # ---------------------------------------------------------------------------
 # GradientCheckpointManager
 # ---------------------------------------------------------------------------
+
 
 class TestNonePolicy:
     def test_none_policy_returns_empty(self):

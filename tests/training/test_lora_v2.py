@@ -3,6 +3,7 @@
 Tiny config: IN=8, OUT=16, R=2, B=2, T=4.
 Pure PyTorch only.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -12,11 +13,11 @@ import torch.nn as nn
 from src.training.lora_v2 import (
     LoRAConfig,
     LoRALinear,
-    count_trainable_parameters,
-    count_total_parameters,
-    freeze_non_lora_params,
-    apply_lora,
     LoRAModel,
+    apply_lora,
+    count_total_parameters,
+    count_trainable_parameters,
+    freeze_non_lora_params,
 )
 
 IN = 8
@@ -30,6 +31,7 @@ T = 4
 # LoRAConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = LoRAConfig()
     assert cfg.r == 8
@@ -42,6 +44,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # LoRALinear
 # ---------------------------------------------------------------------------
+
 
 def test_lora_linear_output_shape():
     layer = LoRALinear(IN, OUT, r=R, lora_alpha=4.0)
@@ -105,6 +108,7 @@ def test_lora_linear_unmerge_restores_weight():
 # count_trainable_parameters / count_total_parameters
 # ---------------------------------------------------------------------------
 
+
 def test_trainable_less_than_total():
     layer = LoRALinear(IN, OUT, r=R, lora_alpha=4.0)
     model = nn.ModuleList([layer])
@@ -123,6 +127,7 @@ def test_count_total_parameters():
 # apply_lora
 # ---------------------------------------------------------------------------
 
+
 def test_apply_lora_copies_weight():
     linear = nn.Linear(IN, OUT, bias=True)
     lora_layer = apply_lora(linear, r=R, lora_alpha=4.0)
@@ -140,6 +145,7 @@ def test_apply_lora_copies_bias():
 # freeze_non_lora_params
 # ---------------------------------------------------------------------------
 
+
 def test_freeze_non_lora_params():
     layer = LoRALinear(IN, OUT, r=R, lora_alpha=4.0)
     model = nn.ModuleList([layer])
@@ -151,6 +157,7 @@ def test_freeze_non_lora_params():
 # ---------------------------------------------------------------------------
 # LoRAModel
 # ---------------------------------------------------------------------------
+
 
 class _TinyModel(nn.Module):
     def __init__(self):
@@ -166,6 +173,7 @@ def test_lora_model_replaces_linears():
     base = _TinyModel()
     model = LoRAModel(base, LoRAConfig(r=R, lora_alpha=4.0))
     from src.training.lora_v2 import LoRALinear
+
     assert isinstance(model.base_model.fc1, LoRALinear)
     assert isinstance(model.base_model.fc2, LoRALinear)
 

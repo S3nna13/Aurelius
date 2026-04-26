@@ -1,8 +1,9 @@
 """Tests for TokenizedShardDataset."""
+
 import numpy as np
-import torch
 import pytest
-from pathlib import Path
+import torch
+
 from src.data.tokenized_loader import TokenizedShardDataset
 
 
@@ -53,8 +54,8 @@ def test_custom_stride(tmp_shards):
 def test_cross_shard_access(tmp_shards):
     ds = TokenizedShardDataset(tmp_shards, seq_len=10)
     # Windows from shard 0 come first, then shard 1
-    _, _ = ds[0]   # shard 0
-    _, _ = ds[9]   # should be shard 1 (first window of shard 1)
+    _, _ = ds[0]  # shard 0
+    _, _ = ds[9]  # should be shard 1 (first window of shard 1)
 
 
 def test_returns_tensors(tmp_shards):

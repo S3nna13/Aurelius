@@ -15,10 +15,10 @@ from src.data.raft_pipeline import (
     mock_qa_pairs,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def default_config() -> RAFTConfig:
@@ -80,6 +80,7 @@ def sample_always_oracle(oracle_doc, distractor_docs, default_config) -> RAFTSam
 # 1. RAFTDocument: is_oracle distinguishes oracle from distractors
 # ---------------------------------------------------------------------------
 
+
 def test_raft_document_is_oracle_true(oracle_doc):
     assert oracle_doc.is_oracle is True
 
@@ -92,6 +93,7 @@ def test_raft_document_is_oracle_false(distractor_docs):
 # ---------------------------------------------------------------------------
 # 2. RAFTSample.format_context has 'Document N:' formatting
 # ---------------------------------------------------------------------------
+
 
 def test_format_context_document_labels(sample_always_oracle):
     context = sample_always_oracle.format_context()
@@ -109,6 +111,7 @@ def test_format_context_sequential_numbering(sample_always_oracle):
 # ---------------------------------------------------------------------------
 # 3. RAFTSample.format_input contains both context and question
 # ---------------------------------------------------------------------------
+
 
 def test_format_input_contains_context(sample_always_oracle):
     fmt = sample_always_oracle.format_input()
@@ -131,6 +134,7 @@ def test_format_input_question_after_context(sample_always_oracle):
 # 4. RAFTSample.format_output contains answer_prefix
 # ---------------------------------------------------------------------------
 
+
 def test_format_output_contains_answer_prefix(sample_always_oracle):
     output = sample_always_oracle.format_output()
     assert "##ANSWER:" in output
@@ -150,6 +154,7 @@ def test_format_output_contains_cot_prefix(sample_always_oracle):
 # 5. RAFTSample.to_sft_example has instruction/input/output keys
 # ---------------------------------------------------------------------------
 
+
 def test_to_sft_example_keys(sample_always_oracle):
     ex = sample_always_oracle.to_sft_example()
     assert "instruction" in ex
@@ -168,6 +173,7 @@ def test_to_sft_example_values_are_strings(sample_always_oracle):
 # 6. RAFTPipeline.build_sample returns RAFTSample
 # ---------------------------------------------------------------------------
 
+
 def test_build_sample_returns_raft_sample(pipeline, oracle_doc, distractor_docs):
     sample = pipeline.build_sample(
         question="Q?",
@@ -181,6 +187,7 @@ def test_build_sample_returns_raft_sample(pipeline, oracle_doc, distractor_docs)
 # ---------------------------------------------------------------------------
 # 7. Oracle doc included in sample when oracle_prob=1.0
 # ---------------------------------------------------------------------------
+
 
 def test_oracle_included_when_prob_one(oracle_doc, distractor_docs):
     cfg = RAFTConfig(n_distractor_docs=3, oracle_prob=1.0)
@@ -211,6 +218,7 @@ def test_oracle_doc_id_set_when_included(oracle_doc, distractor_docs):
 # 8. No oracle doc included when oracle_prob=0.0
 # ---------------------------------------------------------------------------
 
+
 def test_oracle_excluded_when_prob_zero(oracle_doc, distractor_docs):
     cfg = RAFTConfig(n_distractor_docs=3, oracle_prob=0.0)
     pipe = RAFTPipeline(config=cfg, seed=42)
@@ -239,6 +247,7 @@ def test_oracle_doc_id_empty_when_excluded(oracle_doc, distractor_docs):
 # ---------------------------------------------------------------------------
 # 9. Total docs = n_oracle_docs + n_distractor_docs when oracle is included
 # ---------------------------------------------------------------------------
+
 
 def test_total_docs_count_with_oracle(oracle_doc, distractor_docs):
     cfg = RAFTConfig(n_distractor_docs=3, n_oracle_docs=1, oracle_prob=1.0)
@@ -270,6 +279,7 @@ def test_total_docs_count_without_oracle(oracle_doc, distractor_docs):
 # 10. create_dataset returns list of RAFTSample
 # ---------------------------------------------------------------------------
 
+
 def test_create_dataset_returns_list_of_raft_samples(pipeline):
     docs = mock_documents(8)
     qa = mock_qa_pairs(4)
@@ -297,6 +307,7 @@ def test_create_dataset_uses_cot_generator(pipeline):
 # ---------------------------------------------------------------------------
 # 11. filter_high_quality removes samples with short documents
 # ---------------------------------------------------------------------------
+
 
 def test_filter_removes_short_docs(pipeline):
     short_doc = RAFTDocument(doc_id="short", content="Hi", is_oracle=False)
@@ -330,10 +341,14 @@ def test_filter_require_cot(pipeline, oracle_doc, distractor_docs):
     cfg_always = RAFTConfig(n_distractor_docs=3, oracle_prob=1.0)
     pipe = RAFTPipeline(config=cfg_always, seed=0)
 
-    with_cot = pipe.build_sample("Q?", "A", oracle_doc, distractor_docs, chain_of_thought="Here is my reasoning.")
+    with_cot = pipe.build_sample(
+        "Q?", "A", oracle_doc, distractor_docs, chain_of_thought="Here is my reasoning."
+    )
     without_cot = pipe.build_sample("Q?", "A", oracle_doc, distractor_docs, chain_of_thought="")
 
-    filtered = pipeline.filter_high_quality([with_cot, without_cot], min_doc_length=10, require_cot=True)
+    filtered = pipeline.filter_high_quality(
+        [with_cot, without_cot], min_doc_length=10, require_cot=True
+    )
     assert with_cot in filtered
     assert without_cot not in filtered
 
@@ -341,6 +356,7 @@ def test_filter_require_cot(pipeline, oracle_doc, distractor_docs):
 # ---------------------------------------------------------------------------
 # 12. extract_answer_from_output correctly extracts answer
 # ---------------------------------------------------------------------------
+
 
 def test_extract_answer_basic():
     output = "Let me think step by step.\nSome reasoning.\n##ANSWER: Paris"
@@ -366,6 +382,7 @@ def test_extract_answer_custom_prefix():
 # 13. compute_oracle_recall returns dict with answer_present, oracle_cited
 # ---------------------------------------------------------------------------
 
+
 def test_compute_oracle_recall_keys(sample_always_oracle):
     result = compute_oracle_recall(sample_always_oracle, "##ANSWER: Paris oracle_0")
     assert "answer_present" in result
@@ -383,7 +400,7 @@ def test_compute_oracle_recall_answer_absent(sample_always_oracle):
 
 
 def test_compute_oracle_recall_oracle_cited(sample_always_oracle):
-    result = compute_oracle_recall(sample_always_oracle, f"See oracle_0. ##ANSWER: Paris")
+    result = compute_oracle_recall(sample_always_oracle, "See oracle_0. ##ANSWER: Paris")
     assert result["oracle_cited"] == 1.0
 
 
@@ -395,6 +412,7 @@ def test_compute_oracle_recall_oracle_not_cited(sample_always_oracle):
 # ---------------------------------------------------------------------------
 # 14. mock_documents generates a mix of oracle and non-oracle docs
 # ---------------------------------------------------------------------------
+
 
 def test_mock_documents_count():
     docs = mock_documents(8)

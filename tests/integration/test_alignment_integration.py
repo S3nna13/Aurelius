@@ -4,6 +4,7 @@ Verifies that SPINTrainer and KTOTrainer are correctly registered in the
 ALIGNMENT_REGISTRY and can complete a full forward + gradient step on a tiny
 model without producing NaN values.
 """
+
 from __future__ import annotations
 
 import torch
@@ -11,17 +12,16 @@ import torch.nn as nn
 import torch.optim as optim
 
 from src.alignment import ALIGNMENT_REGISTRY
-from src.alignment.spin_trainer import (
-    SPINBatch,
-    SPINConfig,
-    SPINTrainer,
-)
 from src.alignment.kto_trainer import (
     KTOBatch,
     KTOConfig,
     KTOTrainer,
 )
-
+from src.alignment.spin_trainer import (
+    SPINBatch,
+    SPINConfig,
+    SPINTrainer,
+)
 
 # ---------------------------------------------------------------------------
 # Tiny causal LM
@@ -110,6 +110,7 @@ def test_spin_trainer_full_step_no_nan():
     assert "logr_real" in result
     assert "logr_gen" in result
     import math
+
     assert math.isfinite(result["loss"]), f"SPIN loss is not finite: {result['loss']}"
     assert math.isfinite(result["logr_real"])
     assert math.isfinite(result["logr_gen"])
@@ -136,6 +137,7 @@ def test_spin_trainer_iteration_no_nan():
 
     result = trainer.iteration(batches)
     import math
+
     assert math.isfinite(result["loss"])
     assert math.isfinite(result["logr_real"])
     assert math.isfinite(result["logr_gen"])
@@ -166,6 +168,7 @@ def test_kto_trainer_full_step_no_nan():
     result = trainer.train_step(batch)
 
     import math
+
     assert "loss" in result
     assert "kto_desirable" in result
     assert "kto_undesirable" in result
@@ -192,8 +195,10 @@ def test_kto_trainer_all_desirable_no_nan():
     result = trainer.train_step(batch)
 
     import math
+
     assert math.isfinite(result["loss"])
     import pytest
+
     assert result["kto_undesirable"] == pytest.approx(0.0)
 
 
@@ -215,6 +220,8 @@ def test_kto_trainer_all_undesirable_no_nan():
     result = trainer.train_step(batch)
 
     import math
+
     assert math.isfinite(result["loss"])
     import pytest
+
     assert result["kto_desirable"] == pytest.approx(0.0)

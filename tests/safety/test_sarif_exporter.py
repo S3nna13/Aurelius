@@ -123,9 +123,7 @@ def test_build_result_message_contains_title():
 
 
 def test_build_result_locations_when_file():
-    r = SARIFExporter().build_result(
-        VulnFinding(affected_file="x.py", affected_line=10)
-    )
+    r = SARIFExporter().build_result(VulnFinding(affected_file="x.py", affected_line=10))
     loc = r["locations"][0]["physicalLocation"]
     assert loc["artifactLocation"]["uri"] == "x.py"
     assert loc["region"]["startLine"] == 10

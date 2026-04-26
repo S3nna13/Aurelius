@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-class RouterType(str, Enum):
+class RouterType(StrEnum):
     TOP_K = "top_k"
     EXPERT_CHOICE = "expert_choice"
     HASH = "hash"
@@ -52,9 +52,7 @@ class MoERouter(nn.Module):
         top_probs, top_indices = torch.topk(probs, self.config.top_k, dim=-1)
 
         n_tokens = hidden.shape[0]
-        expert_counts = torch.zeros(
-            self.config.n_experts, device=hidden.device, dtype=hidden.dtype
-        )
+        expert_counts = torch.zeros(self.config.n_experts, device=hidden.device, dtype=hidden.dtype)
         for k in range(self.config.top_k):
             expert_counts.scatter_add_(
                 0,
@@ -90,9 +88,7 @@ class MoERouter(nn.Module):
             dtype=torch.long,
             device=hidden.device,
         )
-        router_probs = torch.zeros(
-            n_tokens, self.config.top_k, device=hidden.device
-        )
+        router_probs = torch.zeros(n_tokens, self.config.top_k, device=hidden.device)
 
         assignment_count = torch.zeros(n_tokens, dtype=torch.long, device=hidden.device)
         for e in range(self.config.n_experts):
@@ -111,9 +107,7 @@ class MoERouter(nn.Module):
             torch.zeros_like(expert_indices),
         )
 
-        expert_counts = torch.zeros(
-            self.config.n_experts, device=hidden.device, dtype=hidden.dtype
-        )
+        expert_counts = torch.zeros(self.config.n_experts, device=hidden.device, dtype=hidden.dtype)
         for e in range(self.config.n_experts):
             expert_counts[e] = (chosen_indices[e] >= 0).sum().float()
         load = expert_counts / max(n_tokens * self.config.top_k, 1)
@@ -136,13 +130,11 @@ class MoERouter(nn.Module):
         assigned = token_ids % self.config.n_experts
 
         expert_indices = assigned.unsqueeze(-1).expand(-1, self.config.top_k).clone()
-        router_probs = torch.ones(
-            n_tokens, self.config.top_k, device=hidden.device
-        ) / self.config.top_k
-
-        expert_counts = torch.zeros(
-            self.config.n_experts, device=hidden.device, dtype=hidden.dtype
+        router_probs = (
+            torch.ones(n_tokens, self.config.top_k, device=hidden.device) / self.config.top_k
         )
+
+        expert_counts = torch.zeros(self.config.n_experts, device=hidden.device, dtype=hidden.dtype)
         expert_counts.scatter_add(
             0, assigned, torch.ones(n_tokens, device=hidden.device, dtype=hidden.dtype)
         )

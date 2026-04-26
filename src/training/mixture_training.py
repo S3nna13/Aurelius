@@ -15,16 +15,15 @@ Typical usage during training:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MixtureConfig:
@@ -51,6 +50,7 @@ class MixtureConfig:
 # Core EM functions
 # ---------------------------------------------------------------------------
 
+
 def compute_soft_assignments(
     embeddings: Tensor,
     centroids: Tensor,
@@ -68,10 +68,10 @@ def compute_soft_assignments(
     """
     # (N, K) squared Euclidean distances
     # ||e - c||^2 = ||e||^2 + ||c||^2 - 2 e·c
-    emb_sq = (embeddings ** 2).sum(dim=-1, keepdim=True)          # (N, 1)
-    cen_sq = (centroids ** 2).sum(dim=-1, keepdim=True).t()        # (1, K)
-    dot = embeddings @ centroids.t()                                # (N, K)
-    distances = emb_sq + cen_sq - 2.0 * dot                        # (N, K)
+    emb_sq = (embeddings**2).sum(dim=-1, keepdim=True)  # (N, 1)
+    cen_sq = (centroids**2).sum(dim=-1, keepdim=True).t()  # (1, K)
+    dot = embeddings @ centroids.t()  # (N, K)
+    distances = emb_sq + cen_sq - 2.0 * dot  # (N, K)
 
     logits = -distances / temperature
     return torch.softmax(logits, dim=-1)
@@ -90,8 +90,8 @@ def update_centroids(embeddings: Tensor, assignments: Tensor) -> Tensor:
         (K, d) updated centroid tensor.
     """
     # assignments: (N, K) -> (K, N) for matmul
-    weights = assignments.t()                           # (K, N)
-    weight_sums = weights.sum(dim=-1, keepdim=True)    # (K, 1)
+    weights = assignments.t()  # (K, N)
+    weight_sums = weights.sum(dim=-1, keepdim=True)  # (K, 1)
     # Avoid division by zero
     weight_sums = weight_sums.clamp(min=1e-8)
     new_centroids = (weights @ embeddings) / weight_sums  # (K, d)
@@ -102,7 +102,7 @@ def em_step(
     embeddings: Tensor,
     centroids: Tensor,
     temperature: float,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Run one EM step: E-step (soft assignments) + M-step (centroid update).
 
     Args:
@@ -122,6 +122,7 @@ def em_step(
 # Loss functions
 # ---------------------------------------------------------------------------
 
+
 def compute_component_loss(
     per_sample_loss: Tensor,
     assignments: Tensor,
@@ -137,18 +138,18 @@ def compute_component_loss(
     Returns:
         (K,) tensor of per-component weighted losses.
     """
-    weights = assignments.t()                           # (K, N)
-    weight_sums = weights.sum(dim=-1)                   # (K,)
+    weights = assignments.t()  # (K, N)
+    weight_sums = weights.sum(dim=-1)  # (K,)
     weight_sums = weight_sums.clamp(min=1e-8)
     # (K, N) @ (N,) -> (K,)
-    weighted_losses = weights @ per_sample_loss         # (K,)
+    weighted_losses = weights @ per_sample_loss  # (K,)
     return weighted_losses / weight_sums
 
 
 def mixture_weighted_loss(
     per_sample_loss: Tensor,
     assignments: Tensor,
-    weights: Optional[Tensor] = None,
+    weights: Tensor | None = None,
 ) -> Tensor:
     """Compute total mixture-weighted loss as Σ_k weight_k * loss_k.
 
@@ -170,6 +171,7 @@ def mixture_weighted_loss(
 # ---------------------------------------------------------------------------
 # Gating network
 # ---------------------------------------------------------------------------
+
 
 class GatingNetwork(nn.Module):
     """Learned gating network that produces soft component assignments.
@@ -197,13 +199,14 @@ class GatingNetwork(nn.Module):
         Returns:
             (B, T, n_components) soft assignments summing to 1 per position.
         """
-        logits = self.linear(x)                        # (B, T, n_components)
+        logits = self.linear(x)  # (B, T, n_components)
         return torch.softmax(logits / self.temperature, dim=-1)
 
 
 # ---------------------------------------------------------------------------
 # Mixture trainer
 # ---------------------------------------------------------------------------
+
 
 class MixtureTrainer:
     """Manages mixture model training with EM-based centroid tracking.
@@ -216,7 +219,7 @@ class MixtureTrainer:
     def __init__(self, model: nn.Module, config: MixtureConfig) -> None:
         self.model = model
         self.config = config
-        self._centroids: Optional[Tensor] = None
+        self._centroids: Tensor | None = None
 
     def init_centroids(self, embeddings: Tensor) -> Tensor:
         """Initialise centroids as a random subset of embeddings.
@@ -233,7 +236,7 @@ class MixtureTrainer:
         self._centroids = embeddings[indices].detach().clone()
         return self._centroids
 
-    def run_em(self, embeddings: Tensor, n_iter: int) -> Tuple[Tensor, Tensor]:
+    def run_em(self, embeddings: Tensor, n_iter: int) -> tuple[Tensor, Tensor]:
         """Run n_iter EM steps starting from current centroids.
 
         Centroids are initialised automatically if not yet set.
@@ -249,19 +252,13 @@ class MixtureTrainer:
             self.init_centroids(embeddings)
 
         centroids = self._centroids
-        assignments = compute_soft_assignments(
-            embeddings, centroids, self.config.temperature
-        )
+        assignments = compute_soft_assignments(embeddings, centroids, self.config.temperature)
         for _ in range(n_iter):
-            assignments, centroids = em_step(
-                embeddings, centroids, self.config.temperature
-            )
+            assignments, centroids = em_step(embeddings, centroids, self.config.temperature)
         self._centroids = centroids
         return assignments, centroids
 
-    def compute_loss(
-        self, per_sample_losses: Tensor, embeddings: Tensor
-    ) -> Tensor:
+    def compute_loss(self, per_sample_losses: Tensor, embeddings: Tensor) -> Tensor:
         """Run one EM step and compute the mixture-weighted loss.
 
         Args:
@@ -274,7 +271,5 @@ class MixtureTrainer:
         if self._centroids is None:
             self.init_centroids(embeddings)
 
-        assignments, self._centroids = em_step(
-            embeddings, self._centroids, self.config.temperature
-        )
+        assignments, self._centroids = em_step(embeddings, self._centroids, self.config.temperature)
         return mixture_weighted_loss(per_sample_losses, assignments)

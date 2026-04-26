@@ -20,7 +20,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # DeltaNetCell — single-step recurrence
 # ---------------------------------------------------------------------------
@@ -42,11 +41,11 @@ class DeltaNetCell(nn.Module):
 
     def step(
         self,
-        q: torch.Tensor,      # (..., d_head)
-        k: torch.Tensor,      # (..., d_head)  — already L2-normalised
-        v: torch.Tensor,      # (..., d_head)
-        beta: torch.Tensor,   # (...,)          — scalar per sample
-        W_prev: torch.Tensor, # (..., d_head, d_head)  W[i,j] = state[value_i, key_j]
+        q: torch.Tensor,  # (..., d_head)
+        k: torch.Tensor,  # (..., d_head)  — already L2-normalised
+        v: torch.Tensor,  # (..., d_head)
+        beta: torch.Tensor,  # (...,)          — scalar per sample
+        W_prev: torch.Tensor,  # (..., d_head, d_head)  W[i,j] = state[value_i, key_j]
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply one step of the delta rule.
 
@@ -120,11 +119,11 @@ class DeltaNetLayer(nn.Module):
         self.d_head = d_head if d_head is not None else d_model // n_heads
         inner = n_heads * self.d_head
 
-        self.q_proj    = nn.Linear(d_model, inner, bias=False)
-        self.k_proj    = nn.Linear(d_model, inner, bias=False)
-        self.v_proj    = nn.Linear(d_model, inner, bias=False)
+        self.q_proj = nn.Linear(d_model, inner, bias=False)
+        self.k_proj = nn.Linear(d_model, inner, bias=False)
+        self.v_proj = nn.Linear(d_model, inner, bias=False)
         self.beta_proj = nn.Linear(d_model, n_heads, bias=True)
-        self.out_proj  = nn.Linear(inner, d_model, bias=False)
+        self.out_proj = nn.Linear(inner, d_model, bias=False)
 
         self.cell = DeltaNetCell(self.d_head)
 
@@ -141,24 +140,24 @@ class DeltaNetLayer(nn.Module):
         H, D = self.n_heads, self.d_head
 
         # Project all time steps at once
-        Q = self.q_proj(x).view(B, T, H, D)        # (B, T, H, D)
-        K = self.k_proj(x).view(B, T, H, D)        # (B, T, H, D)
-        V = self.v_proj(x).view(B, T, H, D)        # (B, T, H, D)
+        Q = self.q_proj(x).view(B, T, H, D)  # (B, T, H, D)
+        K = self.k_proj(x).view(B, T, H, D)  # (B, T, H, D)
+        V = self.v_proj(x).view(B, T, H, D)  # (B, T, H, D)
         # beta: (B, T, H) — per head, per timestep learning rate in (0, 1)
-        beta = torch.sigmoid(self.beta_proj(x))     # (B, T, H)
+        beta = torch.sigmoid(self.beta_proj(x))  # (B, T, H)
 
         # Normalise keys to prevent state explosion
-        K = F.normalize(K, p=2, dim=-1)             # unit-norm along d_head
+        K = F.normalize(K, p=2, dim=-1)  # unit-norm along d_head
 
         # Initialise per-head state to zeros: (B, H, D, D)
         W = x.new_zeros(B, H, D, D)
 
         outputs = []
         for t in range(T):
-            q_t    = Q[:, t, :, :]    # (B, H, D)
-            k_t    = K[:, t, :, :]    # (B, H, D)
-            v_t    = V[:, t, :, :]    # (B, H, D)
-            beta_t = beta[:, t, :]    # (B, H)
+            q_t = Q[:, t, :, :]  # (B, H, D)
+            k_t = K[:, t, :, :]  # (B, H, D)
+            v_t = V[:, t, :, :]  # (B, H, D)
+            beta_t = beta[:, t, :]  # (B, H)
 
             o_t, W = self.cell.step(q_t, k_t, v_t, beta_t, W)  # (B, H, D), (B, H, D, D)
             outputs.append(o_t.unsqueeze(1))  # (B, 1, H, D)
@@ -201,7 +200,7 @@ class DeltaNetBlock(nn.Module):
 
         # Inline SwiGLU FFN to avoid config dependency
         self.gate_proj = nn.Linear(d_model, d_ff, bias=False)
-        self.up_proj   = nn.Linear(d_model, d_ff, bias=False)
+        self.up_proj = nn.Linear(d_model, d_ff, bias=False)
         self.down_proj = nn.Linear(d_ff, d_model, bias=False)
 
     def _ffn(self, x: torch.Tensor) -> torch.Tensor:

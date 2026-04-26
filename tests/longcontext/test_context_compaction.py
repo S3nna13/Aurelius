@@ -128,8 +128,7 @@ def test_policy_oldest_first_summarizes_oldest():
 def test_policy_tool_output_aggregated():
     msgs = make_turns(6, words=8, kind="message")
     tools = [
-        Turn(role="tool", content=f"result_{i} port 80{i}0", kind="tool_result")
-        for i in range(5)
+        Turn(role="tool", content=f"result_{i} port 80{i}0", kind="tool_result") for i in range(5)
     ]
     turns = msgs + tools + make_turns(2, words=5, kind="message")
     c = ContextCompactor(
@@ -168,9 +167,7 @@ def test_extract_facts_numbers_and_entities():
 def test_hash_cache_prevents_resummarization():
     turns = make_turns(20, words=10)
     s = CountingSummarizer()
-    c = ContextCompactor(
-        summarize_fn=s, token_counter=word_tokens, target_tokens=30, keep_last_n=2
-    )
+    c = ContextCompactor(summarize_fn=s, token_counter=word_tokens, target_tokens=30, keep_last_n=2)
     out1 = c.compact(turns)
     calls_after_first = s.calls
     out2 = c.compact(turns)

@@ -1,11 +1,11 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any
 
+from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ModelScopeDatasetSample:
@@ -55,6 +55,7 @@ class DagsHubDataFile:
 # ---------------------------------------------------------------------------
 # Parsers
 # ---------------------------------------------------------------------------
+
 
 def parse_modelscope_sample(raw: dict) -> ModelScopeDatasetSample:
     return ModelScopeDatasetSample(
@@ -113,6 +114,7 @@ def parse_dagshub_datafile(raw: dict) -> DagsHubDataFile:
 # Filters
 # ---------------------------------------------------------------------------
 
+
 def filter_by_quality(
     samples: list[ModelScopeDatasetSample], min_score: float = 0.8
 ) -> list[ModelScopeDatasetSample]:
@@ -129,8 +131,9 @@ def filter_by_language(
 # Converters
 # ---------------------------------------------------------------------------
 
+
 def modelscope_to_sft_format(sample: ModelScopeDatasetSample) -> dict:
-    """Convert to {'messages': [{'role': 'user', 'content': ...}, {'role': 'assistant', 'content': ...}]}"""
+    """Convert to {'messages': [{'role': 'user', 'content': ...}, {'role': 'assistant', 'content': ...}]}"""  # noqa: E501
     user_content = sample.instruction
     if sample.input:
         user_content = f"{sample.instruction}\n{sample.input}"
@@ -143,7 +146,7 @@ def modelscope_to_sft_format(sample: ModelScopeDatasetSample) -> dict:
 
 
 def mlrun_to_summary(run: DagsHubMLRun) -> dict:
-    """Return {'run_id', 'status', 'duration_min': float, 'best_metric': str (key of highest metric value)}"""
+    """Return {'run_id', 'status', 'duration_min': float, 'best_metric': str (key of highest metric value)}"""  # noqa: E501
     duration_min = run.duration_seconds / 60.0
     best_metric = max(run.metrics, key=lambda k: run.metrics[k]) if run.metrics else ""
     return {
@@ -158,22 +161,27 @@ def mlrun_to_summary(run: DagsHubMLRun) -> dict:
 # Mock data generators
 # ---------------------------------------------------------------------------
 
+
 def mock_modelscope_samples(n: int = 4) -> list[dict]:
     samples = []
     languages = ["zh", "en", "fr", "de"]
     for i in range(n):
-        samples.append({
-            "id": f"sample_{i:03d}",
-            "instruction": f"Translate this sentence to English",
-            "input": f"Example input text {i}",
-            "output": f"Example output text {i}",
-            "history": [["previous user message", "previous assistant reply"]] if i % 2 == 0 else [],
-            "source": "translation",
-            "language": languages[i % len(languages)],
-            "domain": "general",
-            "quality_score": round(0.7 + (i % 4) * 0.08, 2),
-            "token_count": 30 + i * 5,
-        })
+        samples.append(
+            {
+                "id": f"sample_{i:03d}",
+                "instruction": "Translate this sentence to English",
+                "input": f"Example input text {i}",
+                "output": f"Example output text {i}",
+                "history": [["previous user message", "previous assistant reply"]]
+                if i % 2 == 0
+                else [],
+                "source": "translation",
+                "language": languages[i % len(languages)],
+                "domain": "general",
+                "quality_score": round(0.7 + (i % 4) * 0.08, 2),
+                "token_count": 30 + i * 5,
+            }
+        )
     return samples
 
 
@@ -181,17 +189,19 @@ def mock_modelscope_model_cards(n: int = 4) -> list[dict]:
     cards = []
     tasks = ["text-classification", "token-classification", "question-answering", "text-generation"]
     for i in range(n):
-        cards.append({
-            "model_id": f"damo/nlp_bert_base_{i}",
-            "model_type": "bert",
-            "task": tasks[i % len(tasks)],
-            "language": ["zh", "en"],
-            "license": "apache-2.0",
-            "downloads": 1000 + i * 500,
-            "tags": ["nlp", "bert", tasks[i % len(tasks)]],
-            "created_at": f"2024-0{(i % 9) + 1}-01",
-            "metrics": {"accuracy": round(0.88 + i * 0.01, 2), "f1": round(0.87 + i * 0.01, 2)},
-        })
+        cards.append(
+            {
+                "model_id": f"damo/nlp_bert_base_{i}",
+                "model_type": "bert",
+                "task": tasks[i % len(tasks)],
+                "language": ["zh", "en"],
+                "license": "apache-2.0",
+                "downloads": 1000 + i * 500,
+                "tags": ["nlp", "bert", tasks[i % len(tasks)]],
+                "created_at": f"2024-0{(i % 9) + 1}-01",
+                "metrics": {"accuracy": round(0.88 + i * 0.01, 2), "f1": round(0.87 + i * 0.01, 2)},
+            }
+        )
     return cards
 
 
@@ -202,43 +212,47 @@ def mock_dagshub_mlruns(n: int = 4) -> list[dict]:
     for i in range(n):
         start = base_start + i * 7200
         end = start + 3600 + i * 600
-        runs.append({
-            "run_id": f"run_{i:03x}abc",
-            "experiment_id": str(i),
-            "run_name": f"experiment_v{i + 1}",
-            "status": statuses[i % len(statuses)],
-            "start_time": start,
-            "end_time": end,
-            "metrics": {
-                "train_loss": round(0.3 - i * 0.02, 3),
-                "val_loss": round(0.35 - i * 0.02, 3),
-                "accuracy": round(0.80 + i * 0.02, 3),
-            },
-            "params": {
-                "learning_rate": str(0.001 / (i + 1)),
-                "batch_size": "32",
-                "epochs": str(10 + i * 5),
-            },
-            "tags": {
-                "mlflow.source.name": "train.py",
-                "model_type": "transformer",
-            },
-            "artifact_uri": f"s3://bucket/mlruns/{i}/run_{i:03x}abc/artifacts",
-        })
+        runs.append(
+            {
+                "run_id": f"run_{i:03x}abc",
+                "experiment_id": str(i),
+                "run_name": f"experiment_v{i + 1}",
+                "status": statuses[i % len(statuses)],
+                "start_time": start,
+                "end_time": end,
+                "metrics": {
+                    "train_loss": round(0.3 - i * 0.02, 3),
+                    "val_loss": round(0.35 - i * 0.02, 3),
+                    "accuracy": round(0.80 + i * 0.02, 3),
+                },
+                "params": {
+                    "learning_rate": str(0.001 / (i + 1)),
+                    "batch_size": "32",
+                    "epochs": str(10 + i * 5),
+                },
+                "tags": {
+                    "mlflow.source.name": "train.py",
+                    "model_type": "transformer",
+                },
+                "artifact_uri": f"s3://bucket/mlruns/{i}/run_{i:03x}abc/artifacts",
+            }
+        )
     return runs
 
 
 def mock_dagshub_datafiles(n: int = 4) -> list[dict]:
     files = []
     for i in range(n):
-        files.append({
-            "path": f"data/split_{i}.csv",
-            "md5": f"abc{i:03d}def{i:03d}",
-            "size": 1048576 * (i + 1),
-            "nfiles": None,
-            "isdir": False,
-            "cache": True,
-            "metric": False,
-            "persist": False,
-        })
+        files.append(
+            {
+                "path": f"data/split_{i}.csv",
+                "md5": f"abc{i:03d}def{i:03d}",
+                "size": 1048576 * (i + 1),
+                "nfiles": None,
+                "isdir": False,
+                "cache": True,
+                "metric": False,
+                "persist": False,
+            }
+        )
     return files

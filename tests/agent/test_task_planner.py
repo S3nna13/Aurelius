@@ -3,17 +3,16 @@ Tests for src/agent/task_planner.py  (≥28 tests)
 """
 
 import pytest
-from src.agent.task_planner import (
-    SubTask,
-    TaskPlan,
-    TaskPlanner,
-    TASK_PLANNER_REGISTRY,
-)
 
+from src.agent.task_planner import (
+    TASK_PLANNER_REGISTRY,
+    TaskPlanner,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def planner():
@@ -23,6 +22,7 @@ def planner():
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_registry_key_exists():
     assert "default" in TASK_PLANNER_REGISTRY
@@ -35,6 +35,7 @@ def test_registry_value_is_task_planner():
 # ---------------------------------------------------------------------------
 # Constructor
 # ---------------------------------------------------------------------------
+
 
 def test_max_depth_stored():
     tp = TaskPlanner(max_depth=3)
@@ -59,6 +60,7 @@ def test_default_max_subtasks():
 # ---------------------------------------------------------------------------
 # plan() — keyword routing
 # ---------------------------------------------------------------------------
+
 
 def test_plan_research_has_3_subtasks(planner):
     plan = planner.plan("research climate change")
@@ -119,6 +121,7 @@ def test_plan_created_at_is_float(planner):
 # plan() — sequential dependencies
 # ---------------------------------------------------------------------------
 
+
 def test_first_subtask_no_deps(planner):
     plan = planner.plan("write report")
     assert plan.subtasks[0].depends_on == []
@@ -144,6 +147,7 @@ def test_task_ids_sequential(planner):
 # mark_complete()
 # ---------------------------------------------------------------------------
 
+
 def test_mark_complete_changes_status(planner):
     plan = planner.plan("research X")
     planner.mark_complete(plan, "t1")
@@ -165,6 +169,7 @@ def test_mark_complete_only_targets_given_id(planner):
 # ---------------------------------------------------------------------------
 # next_ready()
 # ---------------------------------------------------------------------------
+
 
 def test_next_ready_first_task_no_deps(planner):
     plan = planner.plan("write report")
@@ -192,6 +197,7 @@ def test_next_ready_no_tasks_when_all_blocked(planner):
 # is_done()
 # ---------------------------------------------------------------------------
 
+
 def test_is_done_all_completed(planner):
     plan = planner.plan("research X")
     for st in plan.subtasks:
@@ -208,6 +214,7 @@ def test_is_done_partial_false(planner):
 # ---------------------------------------------------------------------------
 # progress()
 # ---------------------------------------------------------------------------
+
 
 def test_progress_initial(planner):
     plan = planner.plan("research X")

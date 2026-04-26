@@ -1,4 +1,5 @@
 """Integration tests: registry wiring + config flag for vibe code reviewer."""
+
 from __future__ import annotations
 
 import src.eval as eval_mod
@@ -8,14 +9,8 @@ from src.model.config import AureliusConfig
 def test_registered_in_metric_and_benchmark_registry():
     assert "vibe_code_reviewer" in eval_mod.METRIC_REGISTRY
     assert "vibe_code_reviewer" in eval_mod.BENCHMARK_REGISTRY
-    assert (
-        eval_mod.METRIC_REGISTRY["vibe_code_reviewer"]
-        is eval_mod.VibeCodeReviewer
-    )
-    assert (
-        eval_mod.BENCHMARK_REGISTRY["vibe_code_reviewer"]
-        is eval_mod.VibeCodeReviewer
-    )
+    assert eval_mod.METRIC_REGISTRY["vibe_code_reviewer"] is eval_mod.VibeCodeReviewer
+    assert eval_mod.BENCHMARK_REGISTRY["vibe_code_reviewer"] is eval_mod.VibeCodeReviewer
 
 
 def test_config_flag_default_off():

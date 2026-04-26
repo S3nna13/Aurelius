@@ -26,4 +26,3 @@ def pair_label_diversity(labels: list[str]) -> float:
     if not labels:
         return 0.0
     return len(set(labels)) / len(labels)
-

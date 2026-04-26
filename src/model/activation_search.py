@@ -10,16 +10,14 @@ Provides:
 
 from __future__ import annotations
 
-import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ── Activation metadata ───────────────────────────────────────────────
 
@@ -27,8 +25,8 @@ from torch import Tensor
 @dataclass
 class ActivationInfo:
     name: str
-    is_gated: bool          # gated = uses two projections (like SwiGLU)
-    is_smooth: bool         # smooth = differentiable everywhere
+    is_gated: bool  # gated = uses two projections (like SwiGLU)
+    is_smooth: bool  # smooth = differentiable everywhere
     approx_monotonic: bool  # approximately monotonic
     description: str
 
@@ -49,9 +47,7 @@ ACTIVATION_REGISTRY: dict[str, ActivationInfo] = {
         is_gated=False,
         is_smooth=False,
         approx_monotonic=True,
-        description=(
-            "Rectified Linear Unit. f(x) = max(0, x). Simple, fast, non-smooth at 0."
-        ),
+        description=("Rectified Linear Unit. f(x) = max(0, x). Simple, fast, non-smooth at 0."),
     ),
     "silu": ActivationInfo(
         name="silu",

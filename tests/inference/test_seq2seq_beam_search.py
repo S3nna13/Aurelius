@@ -5,31 +5,31 @@ beam_size=2, seq_len=8, batch=2.
 """
 
 import math
+
 import torch
-import pytest
 
 from src.inference.seq2seq_beam_search import (
-    Seq2SeqEncoder,
-    Seq2SeqDecoder,
-    Seq2SeqModel,
     BeamSearchDecoder,
     DiverseBeamSearch,
     Seq2SeqConfig,
+    Seq2SeqDecoder,
+    Seq2SeqEncoder,
+    Seq2SeqModel,
 )
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-D_MODEL    = 16
-VOCAB      = 16
-N_LAYERS   = 2
-N_HEADS    = 2
-BEAM_SIZE  = 2
-SEQ_LEN    = 8
-BATCH      = 2
-BOS_ID     = 1
-EOS_ID     = 2
+D_MODEL = 16
+VOCAB = 16
+N_LAYERS = 2
+N_HEADS = 2
+BEAM_SIZE = 2
+SEQ_LEN = 8
+BATCH = 2
+BOS_ID = 1
+EOS_ID = 2
 
 
 def make_encoder():
@@ -53,6 +53,7 @@ def rand_ids(batch=BATCH, seq=SEQ_LEN, vocab=VOCAB):
 # 1. Seq2SeqEncoder forward output shape
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_output_shape():
     enc = make_encoder()
     src = rand_ids()
@@ -65,6 +66,7 @@ def test_encoder_output_shape():
 # ---------------------------------------------------------------------------
 # 2. Seq2SeqDecoder forward output shape
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_forward_shape():
     enc = make_encoder()
@@ -82,6 +84,7 @@ def test_decoder_forward_shape():
 # 3. Seq2SeqDecoder forward_step output shape
 # ---------------------------------------------------------------------------
 
+
 def test_decoder_forward_step_shape():
     enc = make_encoder()
     dec = make_decoder()
@@ -89,14 +92,13 @@ def test_decoder_forward_step_shape():
     enc_out = enc(src)
     tgt_single = rand_ids(seq=1)  # [B, 1]
     logits, _cache = dec.forward_step(tgt_single, enc_out)
-    assert logits.shape == (BATCH, 1, VOCAB), (
-        f"Expected ({BATCH}, 1, {VOCAB}), got {logits.shape}"
-    )
+    assert logits.shape == (BATCH, 1, VOCAB), f"Expected ({BATCH}, 1, {VOCAB}), got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 4. Seq2SeqDecoder cache is not None after forward_step
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_forward_step_cache_not_none():
     enc = make_encoder()
@@ -106,9 +108,7 @@ def test_decoder_forward_step_cache_not_none():
     tgt_single = rand_ids(seq=1)
     _logits, cache = dec.forward_step(tgt_single, enc_out)
     assert cache is not None, "Cache should not be None after forward_step"
-    assert len(cache) == N_LAYERS, (
-        f"Cache should have {N_LAYERS} layers, got {len(cache)}"
-    )
+    assert len(cache) == N_LAYERS, f"Cache should have {N_LAYERS} layers, got {len(cache)}"
     for layer_cache in cache:
         assert "self_kv" in layer_cache
         assert "cross_kv" in layer_cache
@@ -117,6 +117,7 @@ def test_decoder_forward_step_cache_not_none():
 # ---------------------------------------------------------------------------
 # 5. Seq2SeqModel forward output shape
 # ---------------------------------------------------------------------------
+
 
 def test_model_forward_shape():
     model = make_model()
@@ -131,6 +132,7 @@ def test_model_forward_shape():
 # ---------------------------------------------------------------------------
 # 6. Seq2SeqModel compute_loss is finite positive scalar
 # ---------------------------------------------------------------------------
+
 
 def test_model_compute_loss_finite():
     model = make_model()
@@ -147,6 +149,7 @@ def test_model_compute_loss_finite():
 # 7. Seq2SeqModel compute_loss backward (gradients flow)
 # ---------------------------------------------------------------------------
 
+
 def test_model_loss_backward():
     model = make_model()
     src = rand_ids()
@@ -155,16 +158,14 @@ def test_model_loss_backward():
     loss = model.compute_loss(src, tgt, labels)
     loss.backward()
     # Check at least one parameter has a gradient
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum().item() > 0 for p in model.parameters())
     assert has_grad, "At least one parameter should have a non-zero gradient"
 
 
 # ---------------------------------------------------------------------------
 # 8. BeamSearchDecoder decode returns list of length B
 # ---------------------------------------------------------------------------
+
 
 def test_beam_decode_returns_list_of_length_b():
     model = make_model()
@@ -178,6 +179,7 @@ def test_beam_decode_returns_list_of_length_b():
 # ---------------------------------------------------------------------------
 # 9. BeamSearchDecoder decode output is list of token ids
 # ---------------------------------------------------------------------------
+
 
 def test_beam_decode_output_is_list_of_ints():
     model = make_model()
@@ -194,14 +196,16 @@ def test_beam_decode_output_is_list_of_ints():
 # 10. BeamSearchDecoder length penalty > 1 favors longer sequences
 # ---------------------------------------------------------------------------
 
+
 def test_beam_length_penalty_favors_longer():
     """
     With a high length penalty, the scorer should rank longer sequences higher
     when their raw scores are equal (equal-score sequences: longer wins).
     """
     model = make_model()
-    bsd = BeamSearchDecoder(model, BEAM_SIZE, max_len=12, bos_id=BOS_ID, eos_id=EOS_ID,
-                             length_penalty=2.0)
+    bsd = BeamSearchDecoder(
+        model, BEAM_SIZE, max_len=12, bos_id=BOS_ID, eos_id=EOS_ID, length_penalty=2.0
+    )
 
     # Construct two hypotheses with equal raw score; longer should rank better
     hyps = [[3, 4, 5], [3, 4, 5, 6, 7, 8]]  # short, long
@@ -221,6 +225,7 @@ def test_beam_length_penalty_favors_longer():
 # 11. BeamSearchDecoder produces valid token ids in [0, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_beam_valid_token_ids():
     model = make_model()
     bsd = BeamSearchDecoder(model, BEAM_SIZE, max_len=6, bos_id=BOS_ID, eos_id=EOS_ID)
@@ -235,12 +240,12 @@ def test_beam_valid_token_ids():
 # 12. BeamSearchDecoder terminates at eos token
 # ---------------------------------------------------------------------------
 
+
 def test_beam_terminates_at_eos():
     """
     When the model strongly prefers EOS, the decoder should stop early.
     We monkey-patch the decoder to always return EOS with high probability.
     """
-    import torch.nn.functional as F_local
 
     model = make_model()
 
@@ -267,21 +272,23 @@ def test_beam_terminates_at_eos():
 # 13. DiverseBeamSearch decode returns B x n_groups groups
 # ---------------------------------------------------------------------------
 
+
 def test_diverse_beam_decode_shape():
     model = make_model()
     n_groups = 2
     dbs = DiverseBeamSearch(
-        model, beam_size=4, max_len=6,
-        bos_id=BOS_ID, eos_id=EOS_ID,
+        model,
+        beam_size=4,
+        max_len=6,
+        bos_id=BOS_ID,
+        eos_id=EOS_ID,
         n_groups=n_groups,
     )
     src = rand_ids()
     results = dbs.decode(src)
     assert len(results) == BATCH, f"Expected {BATCH} batch results"
     for batch_result in results:
-        assert len(batch_result) == n_groups, (
-            f"Expected {n_groups} groups, got {len(batch_result)}"
-        )
+        assert len(batch_result) == n_groups, f"Expected {n_groups} groups, got {len(batch_result)}"
         for group_seq in batch_result:
             assert isinstance(group_seq, list), "Each group result should be a list"
 
@@ -289,6 +296,7 @@ def test_diverse_beam_decode_shape():
 # ---------------------------------------------------------------------------
 # 14. DiverseBeamSearch groups differ from each other
 # ---------------------------------------------------------------------------
+
 
 def test_diverse_beam_groups_differ():
     """
@@ -298,9 +306,13 @@ def test_diverse_beam_groups_differ():
     torch.manual_seed(42)
     model = make_model()
     dbs = DiverseBeamSearch(
-        model, beam_size=4, max_len=8,
-        bos_id=BOS_ID, eos_id=EOS_ID,
-        n_groups=2, diversity_penalty=10.0,
+        model,
+        beam_size=4,
+        max_len=8,
+        bos_id=BOS_ID,
+        eos_id=EOS_ID,
+        n_groups=2,
+        diversity_penalty=10.0,
     )
     src = rand_ids(batch=1)
     results = dbs.decode(src)
@@ -324,6 +336,7 @@ def test_diverse_beam_groups_differ():
 # 15. Seq2SeqConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_seq2seq_config_defaults():
     cfg = Seq2SeqConfig()
     assert cfg.d_model == 32
@@ -340,6 +353,7 @@ def test_seq2seq_config_defaults():
 # ---------------------------------------------------------------------------
 # 16. forward_step with cached vs uncached first step agree
 # ---------------------------------------------------------------------------
+
 
 def test_forward_step_cached_vs_uncached_first_step():
     """
@@ -379,6 +393,7 @@ def test_forward_step_cached_vs_uncached_first_step():
 # 17. Encoder is non-causal (output at position 0 depends on all positions)
 # ---------------------------------------------------------------------------
 
+
 def test_encoder_noncausal():
     """
     In a non-causal encoder, changing a token at position T should affect
@@ -406,6 +421,7 @@ def test_encoder_noncausal():
 # ---------------------------------------------------------------------------
 # 18. Decoder forward_step cache grows monotonically
 # ---------------------------------------------------------------------------
+
 
 def test_decoder_cache_grows():
     """
@@ -436,6 +452,7 @@ def test_decoder_cache_grows():
 # ---------------------------------------------------------------------------
 # 19. Seq2SeqModel compute_loss with ignore_index=-100
 # ---------------------------------------------------------------------------
+
 
 def test_model_compute_loss_ignore_index():
     """

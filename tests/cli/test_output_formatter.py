@@ -2,14 +2,12 @@
 
 import json
 
-import pytest
-
 from src.cli.output_formatter import FormatterConfig, OutputFormat, OutputFormatter
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_config(fmt: OutputFormat, **kwargs) -> FormatterConfig:
     return FormatterConfig(format=fmt, **kwargs)
@@ -18,6 +16,7 @@ def make_config(fmt: OutputFormat, **kwargs) -> FormatterConfig:
 # ---------------------------------------------------------------------------
 # Enum smoke tests
 # ---------------------------------------------------------------------------
+
 
 def test_output_format_values():
     assert OutputFormat.PLAIN == "plain"
@@ -28,6 +27,7 @@ def test_output_format_values():
 # ---------------------------------------------------------------------------
 # PLAIN
 # ---------------------------------------------------------------------------
+
 
 def test_plain_returns_text_as_is():
     formatter = OutputFormatter()
@@ -47,6 +47,7 @@ def test_plain_preserves_whitespace():
 # STREAM
 # ---------------------------------------------------------------------------
 
+
 def test_stream_returns_text_unchanged():
     formatter = OutputFormatter()
     cfg = make_config(OutputFormat.STREAM)
@@ -57,6 +58,7 @@ def test_stream_returns_text_unchanged():
 # ---------------------------------------------------------------------------
 # JSON
 # ---------------------------------------------------------------------------
+
 
 def test_json_format_without_tokens():
     formatter = OutputFormatter()
@@ -85,6 +87,7 @@ def test_json_format_is_valid_json():
 # COMPACT
 # ---------------------------------------------------------------------------
 
+
 def test_compact_strips_blank_lines():
     formatter = OutputFormatter()
     cfg = make_config(OutputFormat.COMPACT)
@@ -108,6 +111,7 @@ def test_compact_wraps_long_lines():
 # RICH_MARKDOWN
 # ---------------------------------------------------------------------------
 
+
 def test_rich_markdown_does_not_double_wrap_fenced_blocks():
     formatter = OutputFormatter()
     cfg = make_config(OutputFormat.RICH_MARKDOWN)
@@ -128,6 +132,7 @@ def test_rich_markdown_passes_through_plain_text():
 # ---------------------------------------------------------------------------
 # format_error
 # ---------------------------------------------------------------------------
+
 
 def test_format_error_plain():
     formatter = OutputFormatter()
@@ -150,6 +155,7 @@ def test_format_error_json():
 # ---------------------------------------------------------------------------
 # format_tokens_used
 # ---------------------------------------------------------------------------
+
 
 def test_format_tokens_used():
     formatter = OutputFormatter()

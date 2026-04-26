@@ -19,7 +19,6 @@ import pytest
 
 from src.model.fim_lm import FIMConfig, FIMDocument, FIMLossFilter, FIMTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -151,9 +150,7 @@ def test_to_psm_starts_with_prefix_token(
 # ---------------------------------------------------------------------------
 
 
-def test_to_spm_contains_all_parts(
-    transformer: FIMTransformer, default_config: FIMConfig
-) -> None:
+def test_to_spm_contains_all_parts(transformer: FIMTransformer, default_config: FIMConfig) -> None:
     """SPM output contains all original tokens plus the three special tokens + EOT."""
     prefix = [10, 11]
     middle = [20, 21, 22]
@@ -179,9 +176,7 @@ def test_to_spm_contains_all_parts(
 # ---------------------------------------------------------------------------
 
 
-def test_to_psm_contains_all_parts(
-    transformer: FIMTransformer, default_config: FIMConfig
-) -> None:
+def test_to_psm_contains_all_parts(transformer: FIMTransformer, default_config: FIMConfig) -> None:
     """PSM output contains all original tokens plus the three special tokens + EOT."""
     prefix = [10, 11]
     middle = [20, 21, 22]
@@ -205,9 +200,7 @@ def test_to_psm_contains_all_parts(
 # ---------------------------------------------------------------------------
 
 
-def test_to_spm_ends_with_eot(
-    transformer: FIMTransformer, default_config: FIMConfig
-) -> None:
+def test_to_spm_ends_with_eot(transformer: FIMTransformer, default_config: FIMConfig) -> None:
     """SPM output must end with the EOT token."""
     doc = FIMDocument(
         prefix_ids=[1, 2],
@@ -309,9 +302,7 @@ def test_truncate_to_max(default_config: FIMConfig) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_loss_mask_after_fim_mid(
-    loss_filter: FIMLossFilter, default_config: FIMConfig
-) -> None:
+def test_loss_mask_after_fim_mid(loss_filter: FIMLossFilter, default_config: FIMConfig) -> None:
     """Tokens after FIM_MID receive True; tokens before (and FIM_MID itself) get False."""
     mid = default_config.fim_middle_token_id
     eot = default_config.eot_token_id
@@ -424,13 +415,9 @@ def test_integration_transform_batch_fim_tokens() -> None:
 
     for idx, seq in enumerate(outputs):
         # Each FIM-formatted sequence must contain FIM_MID (fim_rate=1.0)
-        assert cfg.fim_middle_token_id in seq, (
-            f"Document {idx} missing FIM_MID token"
-        )
+        assert cfg.fim_middle_token_id in seq, f"Document {idx} missing FIM_MID token"
         # EOT must appear as the last token
-        assert seq[-1] == cfg.eot_token_id, (
-            f"Document {idx} does not end with EOT"
-        )
+        assert seq[-1] == cfg.eot_token_id, f"Document {idx} does not end with EOT"
         # Loss mask must be valid
         mask = loss_filter.make_loss_mask(seq)
         assert len(mask) == len(seq)

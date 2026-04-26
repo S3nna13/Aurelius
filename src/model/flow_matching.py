@@ -20,22 +20,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FlowMatchingConfig:
-    n_timesteps: int = 100      # ODE solver steps at inference
-    sigma_min: float = 1e-4     # minimum noise floor
-    solver: str = "euler"       # "euler" | "midpoint" | "rk4"
-    embed_dim: int = 64         # embedding dimension to flow over
+    n_timesteps: int = 100  # ODE solver steps at inference
+    sigma_min: float = 1e-4  # minimum noise floor
+    solver: str = "euler"  # "euler" | "midpoint" | "rk4"
+    embed_dim: int = 64  # embedding dimension to flow over
 
 
 # ---------------------------------------------------------------------------
 # Schedule
 # ---------------------------------------------------------------------------
+
 
 class FlowMatchingSchedule:
     """Linear interpolation schedule for conditional flow matching.
@@ -91,6 +92,7 @@ class FlowMatchingSchedule:
 # ---------------------------------------------------------------------------
 # Velocity Network
 # ---------------------------------------------------------------------------
+
 
 class VelocityNetwork(nn.Module):
     """MLP that predicts the velocity field v_theta(x_t, t).
@@ -153,6 +155,7 @@ class VelocityNetwork(nn.Module):
 # Loss
 # ---------------------------------------------------------------------------
 
+
 def flow_matching_loss(
     velocity_network: VelocityNetwork,
     x_1: torch.Tensor,
@@ -183,6 +186,7 @@ def flow_matching_loss(
 # ---------------------------------------------------------------------------
 # ODE Solver
 # ---------------------------------------------------------------------------
+
 
 class ODESolver:
     """Integrate dx/dt = v_theta(x_t, t) from t=0 (noise) to t=1 (data).
@@ -243,6 +247,7 @@ class ODESolver:
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class FlowMatchingTrainer:
     """Trainer for flow matching over token embeddings."""

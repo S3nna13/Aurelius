@@ -3,9 +3,8 @@
 All models use D=8 (tiny) to keep tests fast.
 Pure PyTorch only — no HuggingFace, scipy, or sklearn.
 """
-from __future__ import annotations
 
-import copy
+from __future__ import annotations
 
 import pytest
 import torch
@@ -44,6 +43,7 @@ def default_config(**kwargs) -> OnlineConfig:
 # 1. OnlineConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_online_config_defaults():
     cfg = OnlineConfig()
     assert cfg.buffer_size == 1000
@@ -59,6 +59,7 @@ def test_online_config_defaults():
 # 2. StreamingBuffer — add and len
 # ---------------------------------------------------------------------------
 
+
 def test_streaming_buffer_add_and_len():
     buf = StreamingBuffer(capacity=5)
     assert len(buf) == 0
@@ -70,6 +71,7 @@ def test_streaming_buffer_add_and_len():
 # ---------------------------------------------------------------------------
 # 3. StreamingBuffer — evicts oldest when full
 # ---------------------------------------------------------------------------
+
 
 def test_streaming_buffer_evicts_oldest():
     buf = StreamingBuffer(capacity=3)
@@ -87,6 +89,7 @@ def test_streaming_buffer_evicts_oldest():
 # 4. StreamingBuffer — sample length <= n
 # ---------------------------------------------------------------------------
 
+
 def test_streaming_buffer_sample_length():
     buf = StreamingBuffer(capacity=10)
     for i in range(6):
@@ -103,6 +106,7 @@ def test_streaming_buffer_sample_length():
 # 5. StreamingBuffer — is_full correct
 # ---------------------------------------------------------------------------
 
+
 def test_streaming_buffer_is_full():
     buf = StreamingBuffer(capacity=3)
     assert not buf.is_full()
@@ -117,6 +121,7 @@ def test_streaming_buffer_is_full():
 # 6. compute_parameter_distance = 0 for identical params
 # ---------------------------------------------------------------------------
 
+
 def test_param_distance_identical():
     model = tiny_model()
     params = [p.detach().clone() for p in model.parameters()]
@@ -127,6 +132,7 @@ def test_param_distance_identical():
 # ---------------------------------------------------------------------------
 # 7. compute_parameter_distance > 0 for different params
 # ---------------------------------------------------------------------------
+
 
 def test_param_distance_different():
     model1 = tiny_model()
@@ -144,6 +150,7 @@ def test_param_distance_different():
 # ---------------------------------------------------------------------------
 # 8. compute_online_ewc_loss returns scalar, non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_ewc_loss_scalar_non_negative():
     model = tiny_model()
@@ -163,6 +170,7 @@ def test_ewc_loss_scalar_non_negative():
 # 9. compute_online_ewc_loss = 0 when at anchors
 # ---------------------------------------------------------------------------
 
+
 def test_ewc_loss_zero_at_anchors():
     model = tiny_model()
     params = list(model.parameters())
@@ -176,6 +184,7 @@ def test_ewc_loss_zero_at_anchors():
 # ---------------------------------------------------------------------------
 # 10. OnlineLearner.observe returns float loss
 # ---------------------------------------------------------------------------
+
 
 def test_online_learner_observe_returns_float():
     model = tiny_model()
@@ -192,6 +201,7 @@ def test_online_learner_observe_returns_float():
 # 11. OnlineLearner.observe updates parameters
 # ---------------------------------------------------------------------------
 
+
 def test_online_learner_observe_updates_params():
     model = tiny_model()
     cfg = OnlineConfig(lr=1e-2)
@@ -201,16 +211,14 @@ def test_online_learner_observe_updates_params():
     y = torch.randn(4, D)
     learner.observe(x, y)
     params_after = [p.detach().clone() for p in model.parameters()]
-    changed = any(
-        not torch.allclose(pb, pa)
-        for pb, pa in zip(params_before, params_after)
-    )
+    changed = any(not torch.allclose(pb, pa) for pb, pa in zip(params_before, params_after))
     assert changed, "Parameters should change after an observe step"
 
 
 # ---------------------------------------------------------------------------
 # 12. OnlineLearner.get_parameter_drift >= 0 after update
 # ---------------------------------------------------------------------------
+
 
 def test_online_learner_drift_non_negative():
     model = tiny_model()
@@ -228,6 +236,7 @@ def test_online_learner_drift_non_negative():
 # ---------------------------------------------------------------------------
 # 13. OnlineLearner.save/reset_to_checkpoint round-trip
 # ---------------------------------------------------------------------------
+
 
 def test_online_learner_checkpoint_roundtrip():
     model = tiny_model()
@@ -266,6 +275,7 @@ def test_online_learner_checkpoint_roundtrip():
 # 14. compute_forgetting_metric sign is correct
 # ---------------------------------------------------------------------------
 
+
 def test_forgetting_metric_sign():
     # Positive = forgetting (losses went up)
     before = [1.0, 1.0, 1.0]
@@ -284,6 +294,7 @@ def test_forgetting_metric_sign():
 # 15. observe_batch returns correct number of losses
 # ---------------------------------------------------------------------------
 
+
 def test_observe_batch_returns_list():
     model = tiny_model()
     cfg = OnlineConfig(lr=1e-3)
@@ -293,12 +304,13 @@ def test_observe_batch_returns_list():
     losses = learner.observe_batch(xs, ys)
     assert isinstance(losses, list)
     assert len(losses) == 5
-    assert all(isinstance(l, float) for l in losses)
+    assert all(isinstance(line, float) for line in losses)
 
 
 # ---------------------------------------------------------------------------
 # 16. min_loss_threshold skips update
 # ---------------------------------------------------------------------------
+
 
 def test_min_loss_threshold_skips_update():
     """When initial loss is below threshold, parameters should NOT change."""
@@ -311,8 +323,5 @@ def test_min_loss_threshold_skips_update():
     y = torch.randn(4, D)
     learner.observe(x, y)
     params_after = [p.detach().clone() for p in model.parameters()]
-    unchanged = all(
-        torch.allclose(pb, pa)
-        for pb, pa in zip(params_before, params_after)
-    )
+    unchanged = all(torch.allclose(pb, pa) for pb, pa in zip(params_before, params_after))
     assert unchanged, "Parameters should NOT change when loss < min_loss_threshold"

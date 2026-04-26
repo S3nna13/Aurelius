@@ -9,19 +9,19 @@ merge_tokens                  — collapse src into dst, return shorter sequence
 unmerge_tokens                — scatter merged tokens back to original length
 TokenMerger                   — convenience class wrapping the full pipeline
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MergeConfig:
@@ -35,15 +35,17 @@ class MergeConfig:
                            One of "mean", "weighted".
         n_keep_start:      always keep the first n tokens (e.g. CLS / BOS).
     """
+
     merge_ratio: float = 0.5
     similarity_metric: str = "cosine"  # "cosine" | "dot" | "l2"
-    merge_mode: str = "mean"           # "mean" | "weighted"
+    merge_mode: str = "mean"  # "mean" | "weighted"
     n_keep_start: int = 1
 
 
 # ---------------------------------------------------------------------------
 # compute_token_similarity
 # ---------------------------------------------------------------------------
+
 
 def compute_token_similarity(tokens: Tensor, metric: str = "cosine") -> Tensor:
     """Compute pairwise token similarity.
@@ -59,30 +61,29 @@ def compute_token_similarity(tokens: Tensor, metric: str = "cosine") -> Tensor:
              l2     — negative squared Euclidean distance; diagonal ≈ 0.
     """
     if metric == "cosine":
-        normed = F.normalize(tokens, p=2, dim=-1)   # (T, d)
-        return normed @ normed.T                    # (T, T)
+        normed = F.normalize(tokens, p=2, dim=-1)  # (T, d)
+        return normed @ normed.T  # (T, T)
     elif metric == "dot":
-        return tokens @ tokens.T                   # (T, T)
+        return tokens @ tokens.T  # (T, T)
     elif metric == "l2":
         # -||a - b||^2 = 2 a·b - ||a||^2 - ||b||^2
-        dots = tokens @ tokens.T                   # (T, T)
-        sq_norms = (tokens * tokens).sum(dim=-1)   # (T,)
+        dots = tokens @ tokens.T  # (T, T)
+        sq_norms = (tokens * tokens).sum(dim=-1)  # (T,)
         return 2 * dots - sq_norms.unsqueeze(1) - sq_norms.unsqueeze(0)
     else:
-        raise ValueError(
-            f"Unknown similarity_metric {metric!r}. Choose 'cosine', 'dot', or 'l2'."
-        )
+        raise ValueError(f"Unknown similarity_metric {metric!r}. Choose 'cosine', 'dot', or 'l2'.")
 
 
 # ---------------------------------------------------------------------------
 # select_tokens_to_merge
 # ---------------------------------------------------------------------------
 
+
 def select_tokens_to_merge(
     similarity: Tensor,
     merge_ratio: float,
     n_keep_start: int = 1,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Select token pairs to merge based on pairwise similarity.
 
     Strategy:
@@ -152,6 +153,7 @@ def select_tokens_to_merge(
 # merge_tokens
 # ---------------------------------------------------------------------------
 
+
 def merge_tokens(
     tokens: Tensor,
     src_indices: Tensor,
@@ -201,6 +203,7 @@ def merge_tokens(
 # unmerge_tokens
 # ---------------------------------------------------------------------------
 
+
 def unmerge_tokens(
     merged: Tensor,
     src_indices: Tensor,
@@ -249,6 +252,7 @@ def unmerge_tokens(
 # TokenMerger
 # ---------------------------------------------------------------------------
 
+
 class TokenMerger:
     """Full merge/unmerge pipeline driven by a MergeConfig.
 
@@ -264,7 +268,7 @@ class TokenMerger:
         self.config = config
 
     # ------------------------------------------------------------------
-    def merge(self, tokens: Tensor) -> Tuple[Tensor, dict]:
+    def merge(self, tokens: Tensor) -> tuple[Tensor, dict]:
         """Merge similar tokens to produce a shorter sequence.
 
         Args:

@@ -11,7 +11,7 @@ References:
 from __future__ import annotations
 
 import math
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
@@ -44,7 +44,7 @@ class MaskNoiseSchedule:
         self,
         token_ids: Tensor,
         t: int,
-        generator: Optional[torch.Generator] = None,
+        generator: torch.Generator | None = None,
     ) -> Tensor:
         """Mask each token independently with probability mask_rate(t).
 
@@ -110,9 +110,9 @@ class MDLMSampler:
         # Sample from the predicted distribution at each position
         B, T, V = logits.shape
         flat_logits = logits.reshape(B * T, V)
-        flat_samples = torch.multinomial(
-            F.softmax(flat_logits, dim=-1), num_samples=1
-        ).squeeze(-1)  # (B*T,)
+        flat_samples = torch.multinomial(F.softmax(flat_logits, dim=-1), num_samples=1).squeeze(
+            -1
+        )  # (B*T,)
         sampled = flat_samples.reshape(B, T)
 
         # Only replace MASKED positions; keep unmasked tokens intact
@@ -214,9 +214,7 @@ class ContinuousTimeDiffusionSampler:
 
         B, T, V = logits.shape
         flat_logits = logits.reshape(B * T, V)
-        flat_samples = torch.multinomial(
-            F.softmax(flat_logits, dim=-1), num_samples=1
-        ).squeeze(-1)
+        flat_samples = torch.multinomial(F.softmax(flat_logits, dim=-1), num_samples=1).squeeze(-1)
         sampled = flat_samples.reshape(B, T)
 
         # Unmask probability for each currently masked position

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import collections
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 
 
-class ReplMode(str, Enum):
+class ReplMode(StrEnum):
     INTERACTIVE = "interactive"
     SCRIPTED = "scripted"
     PIPE = "pipe"
@@ -28,9 +27,7 @@ class ReplSession:
 
     def __init__(self, config: ReplConfig) -> None:
         self.config = config
-        self._history: collections.deque[str] = collections.deque(
-            maxlen=config.max_history
-        )
+        self._history: collections.deque[str] = collections.deque(maxlen=config.max_history)
 
     # ------------------------------------------------------------------
     # History management
@@ -68,7 +65,7 @@ class ReplSession:
     # Prompt formatting
     # ------------------------------------------------------------------
 
-    def format_prompt(self, context: Optional[dict] = None) -> str:
+    def format_prompt(self, context: dict | None = None) -> str:
         """Return the prompt string with placeholders interpolated from *context*.
 
         Example: prompt="({model_name})> ", context={"model_name": "aurelius-1.4B"}

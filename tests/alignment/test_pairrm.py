@@ -24,10 +24,12 @@ def test_pairrm_accuracy_counts_correct_pairs():
 
 
 def test_pairrm_margin_stats_summarizes_preferences():
-    stats = pairrm_margin_stats([
-        PairwisePreference(2.0, 1.0),
-        PairwisePreference(3.0, 0.0),
-    ])
+    stats = pairrm_margin_stats(
+        [
+            PairwisePreference(2.0, 1.0),
+            PairwisePreference(3.0, 0.0),
+        ]
+    )
     assert stats["mean_margin"] == pytest.approx(2.0)
 
 

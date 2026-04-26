@@ -2,6 +2,7 @@
 
 Uses tiny configs: D_MODEL=16, CAPACITY=0.5, B=2, SEQ=8.
 """
+
 from __future__ import annotations
 
 import math
@@ -59,7 +60,9 @@ class TestTokenRouterShapes:
         x = torch.randn(B, SEQ, D_MODEL)
         k = math.ceil(CAPACITY * SEQ)
         selected, indices, weights = token_router(x, router, CAPACITY)
-        assert selected.shape == (B, k, D_MODEL), f"Expected ({B},{k},{D_MODEL}), got {selected.shape}"
+        assert selected.shape == (B, k, D_MODEL), (
+            f"Expected ({B},{k},{D_MODEL}), got {selected.shape}"
+        )
 
     def test_token_indices_shape(self):
         router = nn.Linear(D_MODEL, 1, bias=False)
@@ -82,13 +85,16 @@ class TestTokenRouterShapes:
 
 
 class TestTokenRouterK:
-    @pytest.mark.parametrize("capacity,T", [
-        (0.5, 8),
-        (0.25, 8),
-        (0.3, 7),
-        (1.0, 6),
-        (0.125, 16),
-    ])
+    @pytest.mark.parametrize(
+        "capacity,T",
+        [
+            (0.5, 8),
+            (0.25, 8),
+            (0.3, 7),
+            (1.0, 6),
+            (0.125, 16),
+        ],
+    )
     def test_k_equals_ceil_capacity_times_T(self, capacity, T):
         router = nn.Linear(D_MODEL, 1, bias=False)
         x = torch.randn(1, T, D_MODEL)
@@ -128,7 +134,9 @@ class TestScatterBackShape:
         weights = torch.softmax(torch.randn(B, k), dim=-1)
         x = torch.randn(B, SEQ, D_MODEL)
         result = scatter_back(output, indices, weights, x)
-        assert result.shape == (B, SEQ, D_MODEL), f"Expected ({B},{SEQ},{D_MODEL}), got {result.shape}"
+        assert result.shape == (B, SEQ, D_MODEL), (
+            f"Expected ({B},{SEQ},{D_MODEL}), got {result.shape}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +202,9 @@ class TestMoDLayerOutputShape:
         layer = MoDLayer(nn.Identity(), config)
         x = torch.randn(B, SEQ, D_MODEL)
         output, aux_loss = layer(x)
-        assert output.shape == (B, SEQ, D_MODEL), f"Expected ({B},{SEQ},{D_MODEL}), got {output.shape}"
+        assert output.shape == (B, SEQ, D_MODEL), (
+            f"Expected ({B},{SEQ},{D_MODEL}), got {output.shape}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -234,9 +244,7 @@ class TestMoDLayerGradients:
         loss.backward()
 
         assert x.grad is not None, "No gradient flowed to input x"
-        has_param_grad = any(
-            p.grad is not None for p in layer.parameters() if p.requires_grad
-        )
+        has_param_grad = any(p.grad is not None for p in layer.parameters() if p.requires_grad)
         assert has_param_grad, "No gradient flowed to MoDLayer parameters"
 
 
@@ -252,7 +260,9 @@ class TestMoDTransformerOutputShape:
         transformer = MoDTransformer(layers, config)
         x = torch.randn(B, SEQ, D_MODEL)
         output, total_aux_loss = transformer(x)
-        assert output.shape == (B, SEQ, D_MODEL), f"Expected ({B},{SEQ},{D_MODEL}), got {output.shape}"
+        assert output.shape == (B, SEQ, D_MODEL), (
+            f"Expected ({B},{SEQ},{D_MODEL}), got {output.shape}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +286,7 @@ class TestMoDTransformerAuxLossSum:
         # Run each layer independently from x to get their individual losses
         # Note: we test that total = layer1_loss + layer2_loss
         # We do this by running the transformer with a single layer each
-        cfg1 = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
         layer1 = transformer.mod_layers[0]
         layer2 = transformer.mod_layers[1]
 
@@ -306,7 +316,7 @@ class TestMoDTransformerAuxLossSum:
 class TestCapacityOne:
     def test_capacity_one_routes_all_tokens(self):
         """When capacity=1.0, all tokens are selected (k == T)."""
-        config = MoDConfig(d_model=D_MODEL, capacity=1.0, aux_loss_coef=0.01)
+        MoDConfig(d_model=D_MODEL, capacity=1.0, aux_loss_coef=0.01)
         router = nn.Linear(D_MODEL, 1, bias=False)
         x = torch.randn(B, SEQ, D_MODEL)
         selected, indices, weights = token_router(x, router, capacity=1.0)

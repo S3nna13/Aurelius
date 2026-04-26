@@ -10,17 +10,15 @@ Supported methods:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MergeConfig:
@@ -29,7 +27,7 @@ class MergeConfig:
     method: str = "linear"
     """One of: 'linear', 'slerp', 'ties', 'dare'."""
 
-    weights: Optional[List[float]] = None
+    weights: list[float] | None = None
     """Per-model weights that must sum to 1. None => uniform."""
 
     density: float = 1.0
@@ -43,10 +41,11 @@ class MergeConfig:
 # Core merge functions
 # ---------------------------------------------------------------------------
 
+
 def linear_merge(
-    state_dicts: List[Dict[str, torch.Tensor]],
-    weights: List[float],
-) -> Dict[str, torch.Tensor]:
+    state_dicts: list[dict[str, torch.Tensor]],
+    weights: list[float],
+) -> dict[str, torch.Tensor]:
     """Weighted average of all parameters across *state_dicts*.
 
     Args:
@@ -66,7 +65,7 @@ def linear_merge(
         raise ValueError(f"Weights must sum to 1, got {weight_sum:.6f}.")
 
     keys = list(state_dicts[0].keys())
-    merged: Dict[str, torch.Tensor] = {}
+    merged: dict[str, torch.Tensor] = {}
     for k in keys:
         acc = weights[0] * state_dicts[0][k].float()
         for sd, w in zip(state_dicts[1:], weights[1:]):
@@ -76,10 +75,10 @@ def linear_merge(
 
 
 def slerp_merge(
-    sd1: Dict[str, torch.Tensor],
-    sd2: Dict[str, torch.Tensor],
+    sd1: dict[str, torch.Tensor],
+    sd2: dict[str, torch.Tensor],
     t: float,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Spherical linear interpolation between two state dicts.
 
     For each parameter tensor the function computes SLERP(p1, p2, t).
@@ -95,7 +94,7 @@ def slerp_merge(
     Returns:
         Merged state dict.
     """
-    merged: Dict[str, torch.Tensor] = {}
+    merged: dict[str, torch.Tensor] = {}
     for k in sd1:
         p1 = sd1[k].float()
         p2 = sd2[k].float()
@@ -147,10 +146,11 @@ def slerp_merge(
 # Task-vector helpers
 # ---------------------------------------------------------------------------
 
+
 def compute_task_vector(
-    base_sd: Dict[str, torch.Tensor],
-    finetuned_sd: Dict[str, torch.Tensor],
-) -> Dict[str, torch.Tensor]:
+    base_sd: dict[str, torch.Tensor],
+    finetuned_sd: dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
     """Element-wise difference: finetuned − base.
 
     Args:
@@ -160,17 +160,14 @@ def compute_task_vector(
     Returns:
         Task-vector dict with the same keys.
     """
-    return {
-        k: (finetuned_sd[k].float() - base_sd[k].float()).to(base_sd[k].dtype)
-        for k in base_sd
-    }
+    return {k: (finetuned_sd[k].float() - base_sd[k].float()).to(base_sd[k].dtype) for k in base_sd}
 
 
 def apply_task_vector(
-    base_sd: Dict[str, torch.Tensor],
-    task_vector: Dict[str, torch.Tensor],
+    base_sd: dict[str, torch.Tensor],
+    task_vector: dict[str, torch.Tensor],
     scale: float = 1.0,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Apply a task vector to the base model: base + scale * task_vector.
 
     Args:
@@ -191,11 +188,12 @@ def apply_task_vector(
 # TIES merging
 # ---------------------------------------------------------------------------
 
+
 def ties_merge(
-    base_sd: Dict[str, torch.Tensor],
-    task_vectors: List[Dict[str, torch.Tensor]],
+    base_sd: dict[str, torch.Tensor],
+    task_vectors: list[dict[str, torch.Tensor]],
     lambda_coeff: float = 1.0,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """TIES merging (Trim, Elect Sign, Disjoint Merge).
 
     Algorithm per parameter tensor:
@@ -214,8 +212,8 @@ def ties_merge(
     Returns:
         Merged state dict.
     """
-    n = len(task_vectors)
-    merged: Dict[str, torch.Tensor] = {}
+    len(task_vectors)
+    merged: dict[str, torch.Tensor] = {}
 
     for k in base_sd:
         base_param = base_sd[k].float()
@@ -224,9 +222,9 @@ def ties_merge(
         stacked = torch.stack([tv[k].float() for tv in task_vectors], dim=0)
 
         # Step 1 & 2: majority sign election
-        signs = torch.sign(stacked)               # (n, *param_shape)
-        sign_sum = signs.sum(dim=0)               # (*param_shape)
-        majority_sign = torch.sign(sign_sum)      # (*param_shape)
+        signs = torch.sign(stacked)  # (n, *param_shape)
+        sign_sum = signs.sum(dim=0)  # (*param_shape)
+        majority_sign = torch.sign(sign_sum)  # (*param_shape)
         # Break ties (sign_sum == 0) → positive
         majority_sign = torch.where(
             majority_sign == 0,
@@ -252,11 +250,12 @@ def ties_merge(
 # DARE masking
 # ---------------------------------------------------------------------------
 
+
 def dare_mask(
-    task_vector: Dict[str, torch.Tensor],
+    task_vector: dict[str, torch.Tensor],
     density: float,
     seed: int = 42,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Randomly drop (1 − density) of each task-vector parameter, then rescale.
 
     Dropped entries are set to zero; surviving entries are divided by
@@ -276,7 +275,7 @@ def dare_mask(
     rng = torch.Generator()
     rng.manual_seed(seed)
 
-    masked: Dict[str, torch.Tensor] = {}
+    masked: dict[str, torch.Tensor] = {}
     for k, v in task_vector.items():
         v_f = v.float()
         mask = torch.bernoulli(
@@ -293,6 +292,7 @@ def dare_mask(
 # ---------------------------------------------------------------------------
 # ModelMerger class
 # ---------------------------------------------------------------------------
+
 
 class ModelMerger:
     """High-level interface for merging multiple :class:`nn.Module` instances.
@@ -312,7 +312,7 @@ class ModelMerger:
     # Public API
     # ------------------------------------------------------------------
 
-    def merge(self, models: List[nn.Module]) -> Dict[str, torch.Tensor]:
+    def merge(self, models: list[nn.Module]) -> dict[str, torch.Tensor]:
         """Merge a list of models and return the merged state dict.
 
         Args:
@@ -346,21 +346,18 @@ class ModelMerger:
 
         elif method == "ties":
             base_sd = state_dicts[0]
-            task_vectors = [
-                compute_task_vector(base_sd, sd) for sd in state_dicts[1:]
-            ]
+            task_vectors = [compute_task_vector(base_sd, sd) for sd in state_dicts[1:]]
             return ties_merge(base_sd, task_vectors, lambda_coeff=cfg.lambda_coeff)
 
         elif method == "dare":
             base_sd = state_dicts[0]
             task_vectors = [
-                dare_mask(compute_task_vector(base_sd, sd), cfg.density)
-                for sd in state_dicts[1:]
+                dare_mask(compute_task_vector(base_sd, sd), cfg.density) for sd in state_dicts[1:]
             ]
             # After DARE masking, apply linear merge of the task vectors
             n_tv = len(task_vectors)
             tv_weight = 1.0 / n_tv
-            averaged_tv: Dict[str, torch.Tensor] = {}
+            averaged_tv: dict[str, torch.Tensor] = {}
             for k in base_sd:
                 acc = task_vectors[0][k].float()
                 for tv in task_vectors[1:]:
@@ -377,7 +374,7 @@ class ModelMerger:
     def load_merged(
         self,
         model: nn.Module,
-        merged_sd: Dict[str, torch.Tensor],
+        merged_sd: dict[str, torch.Tensor],
     ) -> nn.Module:
         """Load a merged state dict into *model* (in-place) and return it.
 

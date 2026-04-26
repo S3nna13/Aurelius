@@ -12,38 +12,38 @@ References:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration & result types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PackingConfig:
     max_seq_len: int = 8192
     pad_token_id: int = 0
     eos_token_id: int = 2
-    loss_on_eos: bool = True          # include EOS positions in loss
+    loss_on_eos: bool = True  # include EOS positions in loss
     cross_doc_loss_mask: bool = True  # mask first token of each new doc
 
 
 @dataclass
 class PackedBatch:
-    input_ids: Tensor       # (n_chunks, max_seq_len)
-    labels: Tensor          # (n_chunks, max_seq_len) — -100 for masked
+    input_ids: Tensor  # (n_chunks, max_seq_len)
+    labels: Tensor  # (n_chunks, max_seq_len) — -100 for masked
     attention_mask: Tensor  # (n_chunks, max_seq_len) — 0 for padding, 1 real
-    doc_ids: Tensor         # (n_chunks, max_seq_len) — document index per token
-    n_docs_packed: int      # total documents packed across all chunks
+    doc_ids: Tensor  # (n_chunks, max_seq_len) — document index per token
+    n_docs_packed: int  # total documents packed across all chunks
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_chunk_tensors(
     chunk_tokens: list[int],
@@ -95,6 +95,7 @@ def _build_chunk_tensors(
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def greedy_pack(
     sequences: list[Tensor],
     cfg: PackingConfig,
@@ -117,7 +118,7 @@ def greedy_pack(
 
     chunk_tokens: list[int] = []
     chunk_doc_ids: list[int] = []
-    doc_counter_in_chunk = 0   # local doc index within current chunk
+    doc_counter_in_chunk = 0  # local doc index within current chunk
 
     def _flush_chunk() -> None:
         """Pad and append the current chunk to the output lists."""
@@ -223,7 +224,11 @@ def create_block_diagonal_attention_mask(doc_ids: Tensor) -> Tensor:
     attend = same_doc & causal.unsqueeze(0)  # (n_chunks, seq_len, seq_len)
 
     # Convert to additive float mask
-    mask = torch.where(attend, torch.zeros(1, device=doc_ids.device), torch.full((1,), NEG_INF, device=doc_ids.device))
+    mask = torch.where(
+        attend,
+        torch.zeros(1, device=doc_ids.device),
+        torch.full((1,), NEG_INF, device=doc_ids.device),
+    )
     return mask
 
 

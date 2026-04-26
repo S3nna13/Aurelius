@@ -10,16 +10,15 @@ most decayed rate.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LLRDConfig:
@@ -45,7 +44,8 @@ class LLRDConfig:
 # Core helpers
 # ---------------------------------------------------------------------------
 
-def compute_layer_lrs(config: LLRDConfig) -> List[float]:
+
+def compute_layer_lrs(config: LLRDConfig) -> list[float]:
     """Return per-layer learning rates from layer 0 (top) to layer n-1 (bottom).
 
     Layer 0 (closest to output) receives ``config.base_lr``.
@@ -59,18 +59,18 @@ def compute_layer_lrs(config: LLRDConfig) -> List[float]:
         List of length ``n_layers`` with learning rates in order [layer0, ..., layer_{n-1}].
     """
     min_lr = config.base_lr * config.min_lr_ratio
-    lrs: List[float] = []
+    lrs: list[float] = []
     for i in range(config.n_layers):
-        lr = config.base_lr * (config.decay_factor ** i)
+        lr = config.base_lr * (config.decay_factor**i)
         lr = max(lr, min_lr)
         lrs.append(lr)
     return lrs
 
 
 def assign_layer_params(
-    named_params: List[Tuple[str, nn.Parameter]],
-    layer_patterns: List[str],
-) -> List[List[Tuple[str, nn.Parameter]]]:
+    named_params: list[tuple[str, nn.Parameter]],
+    layer_patterns: list[str],
+) -> list[list[tuple[str, nn.Parameter]]]:
     """Group named parameters by layer using substring pattern matching.
 
     Args:
@@ -85,7 +85,7 @@ def assign_layer_params(
         layers; group ``n_layers`` is the "other/unmatched" group.
     """
     n = len(layer_patterns)
-    groups: List[List[Tuple[str, nn.Parameter]]] = [[] for _ in range(n + 1)]
+    groups: list[list[tuple[str, nn.Parameter]]] = [[] for _ in range(n + 1)]
 
     for name, param in named_params:
         matched = False
@@ -103,8 +103,8 @@ def assign_layer_params(
 def build_llrd_param_groups(
     model: nn.Module,
     config: LLRDConfig,
-    layer_patterns: List[str],
-) -> List[dict]:
+    layer_patterns: list[str],
+) -> list[dict]:
     """Build optimizer param groups with LLRD learning rates.
 
     - Groups 0..n_layers-1 use per-layer decayed learning rates.
@@ -124,7 +124,7 @@ def build_llrd_param_groups(
     named_params = list(model.named_parameters())
     groups_by_layer = assign_layer_params(named_params, layer_patterns)
 
-    param_groups: List[dict] = []
+    param_groups: list[dict] = []
 
     for layer_idx, group in enumerate(groups_by_layer[:-1]):
         params = [p for _, p in group]
@@ -141,6 +141,7 @@ def build_llrd_param_groups(
 # ---------------------------------------------------------------------------
 # Scheduler
 # ---------------------------------------------------------------------------
+
 
 class LayerWiseLRScheduler:
     """Applies cosine decay with linear warmup to each layer's learning rate.
@@ -161,7 +162,7 @@ class LayerWiseLRScheduler:
         self,
         optimizer: torch.optim.Optimizer,
         config: LLRDConfig,
-        layer_lrs: List[float],
+        layer_lrs: list[float],
     ) -> None:
         self.optimizer = optimizer
         self.config = config
@@ -194,7 +195,7 @@ class LayerWiseLRScheduler:
             else:
                 group["lr"] = group["lr"] * scale
 
-    def get_lrs(self) -> List[float]:
+    def get_lrs(self) -> list[float]:
         """Return the current learning rate for each param group.
 
         Returns:
@@ -214,9 +215,7 @@ class LayerWiseLRScheduler:
         if warmup_steps > 0 and global_step < warmup_steps:
             return float(global_step) / float(max(1, warmup_steps))
         # cosine decay
-        progress = float(global_step - warmup_steps) / float(
-            max(1, total_steps - warmup_steps)
-        )
+        progress = float(global_step - warmup_steps) / float(max(1, total_steps - warmup_steps))
         progress = min(progress, 1.0)
         return 0.5 * (1.0 + math.cos(math.pi * progress))
 
@@ -225,7 +224,8 @@ class LayerWiseLRScheduler:
 # Statistics utility
 # ---------------------------------------------------------------------------
 
-def compute_lr_ratio_stats(layer_lrs: List[float], base_lr: float) -> Dict[str, float]:
+
+def compute_lr_ratio_stats(layer_lrs: list[float], base_lr: float) -> dict[str, float]:
     """Compute summary statistics of per-layer lr ratios relative to ``base_lr``.
 
     Args:

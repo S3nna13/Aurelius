@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.model.adaptive_span_attn import (
@@ -45,6 +42,7 @@ def make_x() -> torch.Tensor:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = AdaptiveSpanConfig()
     assert cfg.d_model == 64
@@ -58,6 +56,7 @@ def test_config_defaults():
 # 2. soft_span_mask shape
 # ---------------------------------------------------------------------------
 
+
 def test_soft_span_mask_shape():
     span = torch.tensor([0.5, 0.75])
     mask = soft_span_mask(span, MAX_SPAN, SEQ)
@@ -69,6 +68,7 @@ def test_soft_span_mask_shape():
 # ---------------------------------------------------------------------------
 # 3. soft_span_mask causal: j > i must be -inf
 # ---------------------------------------------------------------------------
+
 
 def test_soft_span_mask_causal():
     span = torch.tensor([0.5, 1.0])
@@ -86,18 +86,20 @@ def test_soft_span_mask_causal():
 # 4. span_params initialised to init_span
 # ---------------------------------------------------------------------------
 
+
 def test_span_params_initialized():
     cfg = tiny_config()
     model = AdaptiveSpanAttention(cfg)
     expected = cfg.init_span
-    assert torch.allclose(
-        model.span_params, torch.full((N_HEADS,), expected)
-    ), f"span_params not initialised to {expected}: {model.span_params}"
+    assert torch.allclose(model.span_params, torch.full((N_HEADS,), expected)), (
+        f"span_params not initialised to {expected}: {model.span_params}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 5. AdaptiveSpanAttention output shape
 # ---------------------------------------------------------------------------
+
 
 def test_attention_output_shape():
     cfg = tiny_config()
@@ -113,6 +115,7 @@ def test_attention_output_shape():
 # 6. span_loss is a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_span_loss_is_scalar():
     cfg = tiny_config()
     model = AdaptiveSpanAttention(cfg)
@@ -125,6 +128,7 @@ def test_span_loss_is_scalar():
 # 7. span_loss >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_span_loss_nonnegative():
     cfg = tiny_config()
     model = AdaptiveSpanAttention(cfg)
@@ -136,6 +140,7 @@ def test_span_loss_nonnegative():
 # ---------------------------------------------------------------------------
 # 8. Gradient flows through output
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_through_output():
     cfg = tiny_config()
@@ -152,6 +157,7 @@ def test_gradient_through_output():
 # 9. Gradient flows through span_loss → span_params
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_through_span_loss():
     cfg = tiny_config()
     model = AdaptiveSpanAttention(cfg)
@@ -159,14 +165,13 @@ def test_gradient_through_span_loss():
     _, span_loss = model(x)
     span_loss.backward()
     assert model.span_params.grad is not None, "No gradient for span_params"
-    assert model.span_params.grad.abs().sum().item() > 0, (
-        "Gradient for span_params is all zeros"
-    )
+    assert model.span_params.grad.abs().sum().item() > 0, "Gradient for span_params is all zeros"
 
 
 # ---------------------------------------------------------------------------
 # 10. AdaptiveSpanBlock output shape
 # ---------------------------------------------------------------------------
+
 
 def test_block_output_shape():
     cfg = tiny_config()
@@ -181,6 +186,7 @@ def test_block_output_shape():
 # ---------------------------------------------------------------------------
 # 11. AdaptiveSpanBlock residual connection
 # ---------------------------------------------------------------------------
+
 
 def test_block_residual():
     """With zeroed attention weights the block should approximate identity."""
@@ -201,18 +207,18 @@ def test_block_residual():
 # 12. get_effective_spans shape
 # ---------------------------------------------------------------------------
 
+
 def test_get_effective_spans_shape():
     cfg = tiny_config()
     model = AdaptiveSpanAttention(cfg)
     spans = get_effective_spans(model)
-    assert spans.shape == (N_HEADS,), (
-        f"Expected ({N_HEADS},), got {spans.shape}"
-    )
+    assert spans.shape == (N_HEADS,), f"Expected ({N_HEADS},), got {spans.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 13. get_effective_spans values bounded by max_span
 # ---------------------------------------------------------------------------
+
 
 def test_get_effective_spans_bounded():
     cfg = tiny_config()
@@ -221,15 +227,14 @@ def test_get_effective_spans_bounded():
     with torch.no_grad():
         model.span_params.fill_(2.0)
     spans = get_effective_spans(model)
-    assert spans.max().item() <= MAX_SPAN, (
-        f"Effective spans exceed max_span={MAX_SPAN}: {spans}"
-    )
+    assert spans.max().item() <= MAX_SPAN, f"Effective spans exceed max_span={MAX_SPAN}: {spans}"
     assert spans.min().item() >= 0, f"Negative span: {spans}"
 
 
 # ---------------------------------------------------------------------------
 # 14. Single-token sequence (edge case)
 # ---------------------------------------------------------------------------
+
 
 def test_single_token_sequence():
     cfg = tiny_config()
@@ -244,9 +249,8 @@ def test_single_token_sequence():
 # 15. span_params are trainable (requires_grad)
 # ---------------------------------------------------------------------------
 
+
 def test_span_params_requires_grad():
     cfg = tiny_config()
     model = AdaptiveSpanAttention(cfg)
-    assert model.span_params.requires_grad, (
-        "span_params should have requires_grad=True"
-    )
+    assert model.span_params.requires_grad, "span_params should have requires_grad=True"

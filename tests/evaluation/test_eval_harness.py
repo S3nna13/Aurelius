@@ -1,19 +1,20 @@
 """Tests for src/evaluation/eval_harness.py — ≥28 test cases."""
 
 import dataclasses
+
 import pytest
 
 from src.evaluation.eval_harness import (
+    EVAL_HARNESS_REGISTRY,
     EvalHarness,
     EvalResult,
     EvalTask,
-    EVAL_HARNESS_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_task(task_id="t1", prompt="hello", reference="world", category="general"):
     return EvalTask(task_id=task_id, prompt=prompt, reference=reference, category=category)
@@ -30,14 +31,17 @@ def _always_wrong(prompt: str) -> str:
 
 def _always_right_predict(reference: str):
     """Returns a predict function that always returns `reference`."""
+
     def predict(prompt: str) -> str:
         return reference
+
     return predict
 
 
 # ---------------------------------------------------------------------------
 # EvalTask dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestEvalTask:
     def test_task_creation(self):
@@ -77,26 +81,24 @@ class TestEvalTask:
 # EvalResult dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestEvalResult:
     def test_result_frozen(self):
         result = EvalResult(
-            task_id="t1", predicted="a", reference="a",
-            correct=True, score=1.0, latency_ms=5.0
+            task_id="t1", predicted="a", reference="a", correct=True, score=1.0, latency_ms=5.0
         )
         with pytest.raises((dataclasses.FrozenInstanceError, AttributeError)):
             result.score = 0.0  # type: ignore[misc]
 
     def test_result_default_latency(self):
-        result = EvalResult(
-            task_id="t1", predicted="a", reference="a",
-            correct=True, score=1.0
-        )
+        result = EvalResult(task_id="t1", predicted="a", reference="a", correct=True, score=1.0)
         assert result.latency_ms == 0.0
 
 
 # ---------------------------------------------------------------------------
 # EvalHarness.run — exact match (score_fn=None)
 # ---------------------------------------------------------------------------
+
 
 class TestEvalHarnessRunExactMatch:
     def test_run_exact_match_correct(self):
@@ -180,6 +182,7 @@ class TestEvalHarnessRunExactMatch:
 # EvalHarness.run — custom score_fn
 # ---------------------------------------------------------------------------
 
+
 class TestEvalHarnessCustomScoreFn:
     def test_custom_score_fn_used(self):
         task = EvalTask(task_id="t1", prompt="p", reference="r")
@@ -190,9 +193,11 @@ class TestEvalHarnessCustomScoreFn:
     def test_custom_score_fn_partial_credit(self):
         task = EvalTask(task_id="t1", prompt="p", reference="ref")
         harness = EvalHarness([task])
+
         # Score based on character overlap fraction
         def overlap(pred, ref):
             return len(set(pred) & set(ref)) / max(len(set(ref)), 1)
+
         results = harness.run(lambda p: "r", score_fn=overlap)
         assert 0.0 <= results[0].score <= 1.0
 
@@ -200,6 +205,7 @@ class TestEvalHarnessCustomScoreFn:
 # ---------------------------------------------------------------------------
 # EvalHarness.summary
 # ---------------------------------------------------------------------------
+
 
 class TestEvalHarnessSummary:
     def test_summary_total(self):
@@ -257,6 +263,7 @@ class TestEvalHarnessSummary:
 # EvalHarness.run — empty tasks
 # ---------------------------------------------------------------------------
 
+
 class TestEvalHarnessEmpty:
     def test_empty_tasks_run(self):
         harness = EvalHarness([])
@@ -275,6 +282,7 @@ class TestEvalHarnessEmpty:
 # ---------------------------------------------------------------------------
 # EvalHarness.filter_by_category
 # ---------------------------------------------------------------------------
+
 
 class TestEvalHarnessFilterByCategory:
     def test_filter_by_category_returns_subset(self):
@@ -310,6 +318,7 @@ class TestEvalHarnessFilterByCategory:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

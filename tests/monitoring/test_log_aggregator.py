@@ -1,14 +1,13 @@
 """Tests for src/monitoring/log_aggregator.py"""
+
 import time
 
-import pytest
-
-from src.monitoring.log_aggregator import LogAggregator, LogEntry, LogLevel
-
+from src.monitoring.log_aggregator import LogAggregator, LogLevel
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh() -> LogAggregator:
     return LogAggregator(max_entries=100)
@@ -17,6 +16,7 @@ def fresh() -> LogAggregator:
 # ---------------------------------------------------------------------------
 # LogLevel enum
 # ---------------------------------------------------------------------------
+
 
 def test_log_level_values():
     assert LogLevel.DEBUG == "DEBUG"
@@ -29,6 +29,7 @@ def test_log_level_values():
 # ---------------------------------------------------------------------------
 # Basic logging
 # ---------------------------------------------------------------------------
+
 
 def test_log_appends_entry():
     la = fresh()
@@ -58,6 +59,7 @@ def test_log_context_defaults_empty():
 # Ring buffer
 # ---------------------------------------------------------------------------
 
+
 def test_ring_buffer_overflow():
     la = LogAggregator(max_entries=5)
     for i in range(10):
@@ -72,6 +74,7 @@ def test_ring_buffer_overflow():
 # ---------------------------------------------------------------------------
 # query filters
 # ---------------------------------------------------------------------------
+
 
 def test_query_by_level():
     la = fresh()
@@ -115,6 +118,7 @@ def test_query_since_filter():
 # count_by_level
 # ---------------------------------------------------------------------------
 
+
 def test_count_by_level_all_levels():
     la = fresh()
     la.log(LogLevel.DEBUG, "a", "d")
@@ -138,6 +142,7 @@ def test_count_by_level_empty():
 # ---------------------------------------------------------------------------
 # get_error_rate
 # ---------------------------------------------------------------------------
+
 
 def test_get_error_rate_non_negative():
     la = fresh()

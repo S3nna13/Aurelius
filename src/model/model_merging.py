@@ -14,9 +14,9 @@ All routines are deterministic under ``torch.manual_seed`` and raise
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List, Optional, Sequence, Tuple
+from enum import StrEnum
 
 import torch
 
@@ -25,7 +25,7 @@ class MergeError(Exception):
     """Raised when a merge cannot proceed (key/shape mismatch, bad args)."""
 
 
-class MergeStrategy(str, Enum):
+class MergeStrategy(StrEnum):
     """Available weight-space merge strategies."""
 
     LINEAR = "linear"
@@ -38,10 +38,10 @@ class MergeStrategy(str, Enum):
 class MergeResult:
     """Outcome of a merge operation."""
 
-    state_dict: Dict[str, torch.Tensor]
+    state_dict: dict[str, torch.Tensor]
     strategy: MergeStrategy
-    contributors: Tuple[str, ...]
-    metadata: Dict[str, object] = field(default_factory=dict)
+    contributors: tuple[str, ...]
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ class MergeResult:
 # ---------------------------------------------------------------------------
 
 
-def _check_same_keys(states: Sequence[Dict[str, torch.Tensor]]) -> None:
+def _check_same_keys(states: Sequence[dict[str, torch.Tensor]]) -> None:
     if not states:
         raise MergeError("at least one state dict is required")
     ref = set(states[0].keys())
@@ -58,13 +58,10 @@ def _check_same_keys(states: Sequence[Dict[str, torch.Tensor]]) -> None:
         if cur != ref:
             missing = sorted(ref - cur)
             extra = sorted(cur - ref)
-            raise MergeError(
-                f"key-set mismatch at state[{i}]: "
-                f"missing={missing!r} extra={extra!r}"
-            )
+            raise MergeError(f"key-set mismatch at state[{i}]: missing={missing!r} extra={extra!r}")
 
 
-def _check_same_shapes(states: Sequence[Dict[str, torch.Tensor]]) -> None:
+def _check_same_shapes(states: Sequence[dict[str, torch.Tensor]]) -> None:
     ref = states[0]
     for i, sd in enumerate(states[1:], start=1):
         for k, t in sd.items():
@@ -78,7 +75,7 @@ def _check_same_shapes(states: Sequence[Dict[str, torch.Tensor]]) -> None:
                 raise MergeError(f"complex tensors not supported at key {k!r}")
 
 
-def _validate(states: Sequence[Dict[str, torch.Tensor]]) -> None:
+def _validate(states: Sequence[dict[str, torch.Tensor]]) -> None:
     _check_same_keys(states)
     _check_same_shapes(states)
 
@@ -89,9 +86,9 @@ def _validate(states: Sequence[Dict[str, torch.Tensor]]) -> None:
 
 
 def linear_merge(
-    state_dicts: List[Dict[str, torch.Tensor]],
-    weights: Optional[List[float]] = None,
-) -> Dict[str, torch.Tensor]:
+    state_dicts: list[dict[str, torch.Tensor]],
+    weights: list[float] | None = None,
+) -> dict[str, torch.Tensor]:
     """Weighted mean of ``state_dicts``.
 
     If ``weights`` is ``None`` the uniform average is used. Weights are
@@ -106,15 +103,13 @@ def linear_merge(
         w = [1.0 / n] * n
     else:
         if len(weights) != n:
-            raise MergeError(
-                f"weights length {len(weights)} != state_dicts length {n}"
-            )
+            raise MergeError(f"weights length {len(weights)} != state_dicts length {n}")
         s = float(sum(weights))
         if s == 0.0:
             raise MergeError("weights must not sum to zero")
         w = [float(x) / s for x in weights]
 
-    out: Dict[str, torch.Tensor] = {}
+    out: dict[str, torch.Tensor] = {}
     for k in state_dicts[0]:
         ref = state_dicts[0][k]
         acc = torch.zeros_like(ref, dtype=torch.float32)
@@ -142,7 +137,7 @@ def _slerp_tensor(a: torch.Tensor, b: torch.Tensor, t: float, eps: float = 1e-6)
     sin_omega = torch.sin(omega)
     # near-parallel → fall back to linear
     if float(sin_omega) < eps:
-        return ((1.0 - t) * a.to(torch.float32) + t * b.to(torch.float32))
+        return (1.0 - t) * a.to(torch.float32) + t * b.to(torch.float32)
     c_a = torch.sin((1.0 - t) * omega) / sin_omega
     c_b = torch.sin(t * omega) / sin_omega
     merged = c_a * a.to(torch.float32) + c_b * b.to(torch.float32)
@@ -150,10 +145,10 @@ def _slerp_tensor(a: torch.Tensor, b: torch.Tensor, t: float, eps: float = 1e-6)
 
 
 def slerp_merge(
-    a: Dict[str, torch.Tensor],
-    b: Dict[str, torch.Tensor],
+    a: dict[str, torch.Tensor],
+    b: dict[str, torch.Tensor],
     t: float,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Per-tensor spherical linear interpolation between ``a`` and ``b``.
 
     ``t=0`` returns ``a``; ``t=1`` returns ``b``. When the two flattened
@@ -163,7 +158,7 @@ def slerp_merge(
         raise MergeError(f"slerp t must lie in [0, 1], got {t}")
     _validate([a, b])
 
-    out: Dict[str, torch.Tensor] = {}
+    out: dict[str, torch.Tensor] = {}
     for k in a:
         ta = a[k]
         tb = b[k]
@@ -184,10 +179,10 @@ def slerp_merge(
 
 
 def ties_merge(
-    base: Dict[str, torch.Tensor],
-    task_deltas: List[Dict[str, torch.Tensor]],
+    base: dict[str, torch.Tensor],
+    task_deltas: list[dict[str, torch.Tensor]],
     trim_ratio: float = 0.2,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """TIES-Merging: trim + elect sign + disjoint mean.
 
     Parameters
@@ -206,9 +201,9 @@ def ties_merge(
     _validate([base, *task_deltas])
 
     # 1. Trim: zero out bottom trim_ratio by |value| per delta.
-    trimmed: List[Dict[str, torch.Tensor]] = []
+    trimmed: list[dict[str, torch.Tensor]] = []
     for d in task_deltas:
-        td: Dict[str, torch.Tensor] = {}
+        td: dict[str, torch.Tensor] = {}
         for k, v in d.items():
             vf = v.to(torch.float32)
             if trim_ratio <= 0.0 or vf.numel() == 0:
@@ -225,7 +220,7 @@ def ties_merge(
             td[k] = vf * mask.to(vf.dtype)
         trimmed.append(td)
 
-    out: Dict[str, torch.Tensor] = {}
+    out: dict[str, torch.Tensor] = {}
     for k, bv in base.items():
         ref_dtype = bv.dtype
         stacks = torch.stack([td[k] for td in trimmed], dim=0)  # [T, *shape]
@@ -254,11 +249,11 @@ def ties_merge(
 
 
 def dare_merge(
-    base: Dict[str, torch.Tensor],
-    task_delta: Dict[str, torch.Tensor],
+    base: dict[str, torch.Tensor],
+    task_delta: dict[str, torch.Tensor],
     drop_rate: float = 0.5,
     scale_mode: str = "rescale",
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """DARE: drop ``drop_rate`` of entries in ``task_delta``, rescale, add.
 
     ``scale_mode`` = ``"rescale"`` (default) multiplies survivors by
@@ -271,7 +266,7 @@ def dare_merge(
         raise MergeError(f"unknown scale_mode {scale_mode!r}")
     _validate([base, task_delta])
 
-    out: Dict[str, torch.Tensor] = {}
+    out: dict[str, torch.Tensor] = {}
     for k, bv in base.items():
         d = task_delta[k].to(torch.float32)
         if drop_rate >= 1.0:
@@ -282,9 +277,7 @@ def dare_merge(
             out[k] = (bv.to(torch.float32) + d).to(bv.dtype)
             continue
         # Bernoulli keep mask.
-        keep = torch.bernoulli(
-            torch.full_like(d, 1.0 - drop_rate)
-        )
+        keep = torch.bernoulli(torch.full_like(d, 1.0 - drop_rate))
         if scale_mode == "rescale":
             scale = 1.0 / (1.0 - drop_rate)
         else:
@@ -313,25 +306,23 @@ class ModelMerger:
 
     # -- helpers -----------------------------------------------------------
     @staticmethod
-    def _default_names(n: int) -> Tuple[str, ...]:
+    def _default_names(n: int) -> tuple[str, ...]:
         return tuple(f"model_{i}" for i in range(n))
 
     # -- dispatch ----------------------------------------------------------
     def merge(
         self,
-        state_dicts: List[Dict[str, torch.Tensor]],
-        names: Optional[Sequence[str]] = None,
+        state_dicts: list[dict[str, torch.Tensor]],
+        names: Sequence[str] | None = None,
     ) -> MergeResult:
         if not state_dicts:
             raise MergeError("merge() requires at least one state dict")
-        contributors = (
-            tuple(names) if names is not None else self._default_names(len(state_dicts))
-        )
+        contributors = tuple(names) if names is not None else self._default_names(len(state_dicts))
         if len(contributors) != len(state_dicts):
             raise MergeError(
                 f"names length {len(contributors)} != state_dicts length {len(state_dicts)}"
             )
-        meta: Dict[str, object] = {"n_inputs": len(state_dicts)}
+        meta: dict[str, object] = {"n_inputs": len(state_dicts)}
 
         if self.strategy is MergeStrategy.LINEAR:
             weights = self.params.get("weights")
@@ -375,7 +366,7 @@ class ModelMerger:
         )
 
 
-MERGING_REGISTRY: Dict[str, object] = {
+MERGING_REGISTRY: dict[str, object] = {
     "linear": linear_merge,
     "slerp": slerp_merge,
     "ties": ties_merge,

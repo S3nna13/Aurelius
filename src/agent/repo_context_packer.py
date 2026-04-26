@@ -22,8 +22,8 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
 
 from src.retrieval.bm25_retriever import BM25Retriever
 
@@ -43,6 +43,7 @@ def _code_tokenizer(text: str) -> list[str]:
     for m in _CODE_TOKEN_RE.finditer(text):
         out.append(m.group(0).lower())
     return out
+
 
 __all__ = ["FileSnippet", "RepoContext", "RepoContextPacker"]
 
@@ -347,9 +348,7 @@ class RepoContextPacker:
                 )
             )
             used += cost
-            imports_summary[rel] = self.extract_imports(
-                content, language=self._language_for(path)
-            )
+            imports_summary[rel] = self.extract_imports(content, language=self._language_for(path))
             if used >= remaining:
                 break
 
@@ -382,7 +381,7 @@ class RepoContextPacker:
                 sample = f.read(4096)
             if _is_probably_binary(sample):
                 return None
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return f.read()
         except (OSError, UnicodeDecodeError):
             return None

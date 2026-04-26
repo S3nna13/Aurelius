@@ -1,9 +1,9 @@
 """Self-reflection and self-correction: model reflects on outputs and iteratively refines them."""
+
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -17,7 +17,7 @@ class ReflectionConfig:
     max_reflection_rounds: int = 3
     reflection_temperature: float = 0.7
     improvement_threshold: float = 0.01  # stop if score improves by less than this
-    use_critic: bool = True             # whether to use a critic model
+    use_critic: bool = True  # whether to use a critic model
     critique_prompt_template: str = "Review this response: {response}\n\nIdentify issues:"
     revision_prompt_template: str = "Original: {response}\nCritique: {critique}\n\nRevised:"
 
@@ -72,7 +72,7 @@ class ResponseScorer:
         else:
             # Compute NLL manually from logits
             shift_logits = logits[:, :-1, :].contiguous()  # (1, S-1, V)
-            shift_labels = input_ids[:, 1:].contiguous()   # (1, S-1)
+            shift_labels = input_ids[:, 1:].contiguous()  # (1, S-1)
             nll = F.cross_entropy(
                 shift_logits.view(-1, shift_logits.size(-1)),
                 shift_labels.view(-1),
@@ -117,11 +117,11 @@ class SelfCritiqueGenerator:
 
         for _ in range(max_tokens):
             _, logits, past_key_values = self.model(cur_ids, past_key_values=past_key_values)
-            next_logit = logits[:, -1, :]          # (1, vocab)
+            next_logit = logits[:, -1, :]  # (1, vocab)
             next_token = next_logit.argmax(dim=-1)  # (1,)
             token_id = next_token.item()
             generated.append(token_id)
-            cur_ids = next_token.unsqueeze(1)       # (1, 1)
+            cur_ids = next_token.unsqueeze(1)  # (1, 1)
 
         return self.tokenizer_decode(generated)
 
@@ -132,9 +132,7 @@ class SelfCritiqueGenerator:
 
     def generate_revision(self, response: str, critique: str, max_tokens: int = 128) -> str:
         """Generate a revised response given the original response and its critique."""
-        prompt = self.config.revision_prompt_template.format(
-            response=response, critique=critique
-        )
+        prompt = self.config.revision_prompt_template.format(response=response, critique=critique)
         return self._greedy_decode(prompt, max_tokens)
 
 
@@ -176,7 +174,9 @@ class SelfReflectionLoop:
 
         for round_idx in range(1, self.config.max_reflection_rounds + 1):
             critique = self.critic.generate_critique(current_response, max_tokens=max_new_tokens)
-            revision = self.critic.generate_revision(current_response, critique, max_tokens=max_new_tokens)
+            revision = self.critic.generate_revision(
+                current_response, critique, max_tokens=max_new_tokens
+            )
             new_score = self.scorer.score_response("", revision)
 
             improvement = new_score - current_score

@@ -3,22 +3,20 @@
 All tests use tiny tensors / small vocabs so they run fast without a GPU.
 No HuggingFace, scipy, or sklearn dependencies.
 """
+
 from __future__ import annotations
 
-import math
-import pytest
 import torch
 import torch.nn.functional as F
 
 from src.inference.speculative_decoding_v3 import (
     SpeculativeConfig,
-    sample_from_logits,
-    compute_acceptance_prob,
-    speculative_sample_step,
     SpeculativeDecoder,
+    compute_acceptance_prob,
     compute_speedup_ratio,
+    sample_from_logits,
+    speculative_sample_step,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny model helpers
@@ -35,11 +33,13 @@ def _uniform_model_fn(input_ids: torch.Tensor) -> torch.Tensor:
 
 def _peaked_model_fn(peak_token: int = 0):
     """Returns logits strongly peaked at ``peak_token``."""
+
     def fn(input_ids: torch.Tensor) -> torch.Tensor:
         seq_len = input_ids.shape[0]
         logits = torch.full((seq_len, VOCAB), -1e6)
         logits[:, peak_token] = 0.0
         return logits
+
     return fn
 
 
@@ -67,6 +67,7 @@ def _make_decoder(
 # 1. SpeculativeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestSpeculativeConfigDefaults:
     def test_default_n_draft_tokens(self):
         cfg = SpeculativeConfig()
@@ -92,6 +93,7 @@ class TestSpeculativeConfigDefaults:
 # ---------------------------------------------------------------------------
 # 2. sample_from_logits — valid token id
 # ---------------------------------------------------------------------------
+
 
 class TestSampleFromLogits:
     def test_returns_int(self):
@@ -141,6 +143,7 @@ class TestSampleFromLogits:
 # 3. compute_acceptance_prob
 # ---------------------------------------------------------------------------
 
+
 class TestComputeAcceptanceProb:
     def test_returns_one_when_target_ge_draft(self):
         assert compute_acceptance_prob(0.3, 0.5) == 1.0
@@ -172,6 +175,7 @@ class TestComputeAcceptanceProb:
 # ---------------------------------------------------------------------------
 # 4. speculative_sample_step shapes
 # ---------------------------------------------------------------------------
+
 
 class TestSpeculativeSampleStep:
     def _uniform_probs(self, n, vocab=VOCAB):
@@ -223,13 +227,13 @@ class TestSpeculativeSampleStep:
         vocab = VOCAB
         # Draft: slightly peaked at token 0 so argmax=0 for every row
         draft_raw = torch.full((n_draft, vocab), 1.0)
-        draft_raw[:, 0] = 2.0          # argmax is token 0 in every row
+        draft_raw[:, 0] = 2.0  # argmax is token 0 in every row
         draft_probs = F.normalize(draft_raw, p=1, dim=-1)
 
         # Target: even more peaked at token 0 → target_prob[i,0] > draft_prob[i,0]
         # so acceptance ratio min(1, q/p) = 1 for every row
         target_raw = torch.full((n_draft, vocab), 1.0)
-        target_raw[:, 0] = 100.0       # dominant mass at token 0
+        target_raw[:, 0] = 100.0  # dominant mass at token 0
         target_probs = F.normalize(target_raw, p=1, dim=-1)
 
         # With ratio >= 1 at the argmax token, every row must be accepted
@@ -241,6 +245,7 @@ class TestSpeculativeSampleStep:
 # ---------------------------------------------------------------------------
 # 5. SpeculativeDecoder
 # ---------------------------------------------------------------------------
+
 
 class TestSpeculativeDecoderDraftTokens:
     def test_draft_token_ids_shape(self):
@@ -323,6 +328,7 @@ class TestSpeculativeDecoderVerifyAndAccept:
 # 6. decode end-to-end
 # ---------------------------------------------------------------------------
 
+
 class TestDecodeEndToEnd:
     def test_output_longer_than_prompt(self):
         decoder = _make_decoder(max_new_tokens=8)
@@ -340,9 +346,7 @@ class TestDecodeEndToEnd:
         """EOS model always produces token 2 — decode should stop immediately."""
         eos_id = 2
         model_fn = _peaked_model_fn(peak_token=eos_id)
-        cfg = SpeculativeConfig(
-            n_draft_tokens=4, max_new_tokens=50, eos_token_id=eos_id
-        )
+        cfg = SpeculativeConfig(n_draft_tokens=4, max_new_tokens=50, eos_token_id=eos_id)
         decoder = SpeculativeDecoder(model_fn, model_fn, cfg)
         prompt = torch.tensor([1], dtype=torch.long)
         output = decoder.decode(prompt)
@@ -361,6 +365,7 @@ class TestDecodeEndToEnd:
 # ---------------------------------------------------------------------------
 # 7. compute_speedup_ratio
 # ---------------------------------------------------------------------------
+
 
 class TestComputeSpeedupRatio:
     def test_correct_value(self):

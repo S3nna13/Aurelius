@@ -1,16 +1,15 @@
 """Metrics collector: counters, gauges, histograms with sliding windows."""
+
 from __future__ import annotations
 
 import math
-import statistics
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Deque
+from enum import StrEnum
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"
@@ -28,7 +27,7 @@ class MetricSample:
 class MetricsCollector:
     def __init__(self, window_size: int = 1000) -> None:
         self._window_size = window_size
-        self._buffers: dict[str, Deque[MetricSample]] = {}
+        self._buffers: dict[str, deque[MetricSample]] = {}
 
     def record(
         self,
@@ -61,8 +60,16 @@ class MetricsCollector:
 
     def summary(self, name: str) -> dict:
         samples = self.get_samples(name)
-        zero = {"count": 0, "sum": 0.0, "mean": 0.0, "min": 0.0, "max": 0.0,
-                "p50": 0.0, "p95": 0.0, "p99": 0.0}
+        zero = {
+            "count": 0,
+            "sum": 0.0,
+            "mean": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+        }
         if not samples:
             return zero
         values = [s.value for s in samples]

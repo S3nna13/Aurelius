@@ -19,7 +19,6 @@ import math
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Single-head retention
 # ---------------------------------------------------------------------------
@@ -54,7 +53,7 @@ class SimpleRetention(nn.Module):
         Shape: (seq_len, seq_len).
         """
         idx = torch.arange(seq_len, device=device)
-        diff = idx.unsqueeze(1) - idx.unsqueeze(0)   # (L, L) diff[i,j] = i - j
+        diff = idx.unsqueeze(1) - idx.unsqueeze(0)  # (L, L) diff[i,j] = i - j
         mask = torch.where(
             diff >= 0,
             torch.pow(torch.full_like(diff, self.gamma, dtype=torch.float32), diff.float()),
@@ -71,9 +70,9 @@ class SimpleRetention(nn.Module):
         Returns:
             Tensor of shape (B, L, head_dim).
         """
-        Q = self.W_Q(x)   # (B, L, head_dim)
-        K = self.W_K(x)   # (B, L, head_dim)
-        V = self.W_V(x)   # (B, L, head_dim)
+        Q = self.W_Q(x)  # (B, L, head_dim)
+        K = self.W_K(x)  # (B, L, head_dim)
+        V = self.W_V(x)  # (B, L, head_dim)
 
         L = x.size(1)
         D = self._decay_mask(L, x.device)  # (L, L)
@@ -103,9 +102,9 @@ class SimpleRetention(nn.Module):
             output: (B, 1, head_dim)
             new_state: (B, head_dim, head_dim)
         """
-        Q_t = self.W_Q(x_t)   # (B, 1, head_dim)
-        K_t = self.W_K(x_t)   # (B, 1, head_dim)
-        V_t = self.W_V(x_t)   # (B, 1, head_dim)
+        Q_t = self.W_Q(x_t)  # (B, 1, head_dim)
+        K_t = self.W_K(x_t)  # (B, 1, head_dim)
+        V_t = self.W_V(x_t)  # (B, 1, head_dim)
 
         # K_t^T @ V_t: outer product per batch  (B, head_dim, head_dim)
         kv = K_t.transpose(-2, -1) @ V_t
@@ -143,13 +142,8 @@ class MultiScaleRetention(nn.Module):
         self.d_model = d_model
         head_dim = d_model // n_heads
 
-        gammas = [
-            1 - 2 ** (-5 - math.floor(8 * i / n_heads))
-            for i in range(n_heads)
-        ]
-        self.heads = nn.ModuleList([
-            SimpleRetention(d_model, head_dim, gamma=g) for g in gammas
-        ])
+        gammas = [1 - 2 ** (-5 - math.floor(8 * i / n_heads)) for i in range(n_heads)]
+        self.heads = nn.ModuleList([SimpleRetention(d_model, head_dim, gamma=g) for g in gammas])
         # GroupNorm over all head outputs (C = d_model, groups = n_heads)
         self.group_norm = nn.GroupNorm(n_heads, d_model)
         self.out_proj = nn.Linear(d_model, d_model, bias=False)
@@ -178,10 +172,10 @@ class MultiScaleRetention(nn.Module):
                     head_outs_list[i].append(y_t)
             head_outs = [torch.cat(steps, dim=1) for steps in head_outs_list]
 
-        combined = torch.cat(head_outs, dim=-1)          # (B, L, d_model)
-        combined = combined.transpose(1, 2)              # (B, d_model, L)
-        combined = self.group_norm(combined)             # (B, d_model, L)
-        combined = combined.transpose(1, 2)              # (B, L, d_model)
+        combined = torch.cat(head_outs, dim=-1)  # (B, L, d_model)
+        combined = combined.transpose(1, 2)  # (B, d_model, L)
+        combined = self.group_norm(combined)  # (B, d_model, L)
+        combined = combined.transpose(1, 2)  # (B, L, d_model)
         return self.out_proj(combined)
 
 

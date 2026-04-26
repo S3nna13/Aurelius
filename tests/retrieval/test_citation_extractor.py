@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.retrieval.citation_extractor import (
-    Citation,
+    RETRIEVAL_REGISTRY,
     CitationExtractor,
     CitationType,
-    RETRIEVAL_REGISTRY,
 )
 
 EX = CitationExtractor()
@@ -105,7 +102,7 @@ def test_start_end_match():
     text = "Reference [1] is here."
     cits = EX.extract(text)
     for c in cits:
-        assert text[c.start:c.end] == c.text
+        assert text[c.start : c.end] == c.text
 
 
 # ---------------------------------------------------------------------------

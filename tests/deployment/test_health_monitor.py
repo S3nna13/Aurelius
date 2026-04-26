@@ -1,7 +1,6 @@
 """Tests for deployment health monitor."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.deployment.health_monitor import DeploymentHealthMonitor, HealthMetric
 

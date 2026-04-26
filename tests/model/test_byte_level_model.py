@@ -11,9 +11,6 @@ Test parameters:
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.model.byte_level_model import (
@@ -51,6 +48,7 @@ def make_lm() -> ByteLevelLM:
 # ---------------------------------------------------------------------------
 # ByteEncoder tests
 # ---------------------------------------------------------------------------
+
 
 def test_byte_encoder_output_shape():
     """Forward should return [B, T//patch_size, d_model]."""
@@ -101,6 +99,7 @@ def test_byte_encoder_output_finite():
 # ByteDecoder tests
 # ---------------------------------------------------------------------------
 
+
 def test_byte_decoder_output_shape():
     """Forward should return [B, T_patches*patch_size, 256]."""
     dec = ByteDecoder(d_model=D_MODEL, patch_size=PATCH_SIZE)
@@ -123,11 +122,15 @@ def test_byte_decoder_output_finite():
 # CrossPatchAttention tests
 # ---------------------------------------------------------------------------
 
+
 def test_cross_patch_attention_output_shape():
     """CrossPatchAttention should return [B, T_patches, d_model]."""
     cpa = CrossPatchAttention(
-        d_model=D_MODEL, n_heads=N_HEADS, patch_size=PATCH_SIZE,
-        n_local_layers=1, n_global_layers=1,
+        d_model=D_MODEL,
+        n_heads=N_HEADS,
+        patch_size=PATCH_SIZE,
+        n_local_layers=1,
+        n_global_layers=1,
     )
     byte_ids = make_byte_ids()
     out = cpa(byte_ids)
@@ -139,8 +142,11 @@ def test_cross_patch_attention_output_shape():
 def test_cross_patch_attention_output_finite():
     """CrossPatchAttention output should be finite."""
     cpa = CrossPatchAttention(
-        d_model=D_MODEL, n_heads=N_HEADS, patch_size=PATCH_SIZE,
-        n_local_layers=1, n_global_layers=1,
+        d_model=D_MODEL,
+        n_heads=N_HEADS,
+        patch_size=PATCH_SIZE,
+        n_local_layers=1,
+        n_global_layers=1,
     )
     out = cpa(make_byte_ids())
     assert torch.isfinite(out).all()
@@ -150,15 +156,14 @@ def test_cross_patch_attention_output_finite():
 # ByteLevelLM tests
 # ---------------------------------------------------------------------------
 
+
 def test_byte_lm_forward_output_shape():
     """ByteLevelLM.forward should return [B, T_bytes_trunc, 256]."""
     model = make_lm()
     byte_ids = make_byte_ids()
     logits = model(byte_ids)
     # T_bytes is already divisible by patch_size here
-    assert logits.shape == (B, T_BYTES, 256), (
-        f"Expected {(B, T_BYTES, 256)}, got {logits.shape}"
-    )
+    assert logits.shape == (B, T_BYTES, 256), f"Expected {(B, T_BYTES, 256)}, got {logits.shape}"
 
 
 def test_byte_lm_compute_loss_finite_positive():
@@ -192,9 +197,7 @@ def test_byte_lm_generate_bytes_length():
     prefix = torch.randint(0, 256, (T_BYTES,))
     max_new = 8
     out = model.generate_bytes(prefix, max_new)
-    assert out.shape[0] == T_BYTES + max_new, (
-        f"Expected {T_BYTES + max_new}, got {out.shape[0]}"
-    )
+    assert out.shape[0] == T_BYTES + max_new, f"Expected {T_BYTES + max_new}, got {out.shape[0]}"
 
 
 def test_byte_lm_generated_bytes_in_valid_range():
@@ -209,6 +212,7 @@ def test_byte_lm_generated_bytes_in_valid_range():
 # ---------------------------------------------------------------------------
 # ByteMetrics tests
 # ---------------------------------------------------------------------------
+
 
 def test_byte_metrics_bits_per_byte_positive():
     """bits_per_byte should return a positive float."""
@@ -227,9 +231,7 @@ def test_byte_metrics_bits_per_byte_random_approx_8():
     byte_ids = torch.randint(0, 256, (8, 32))
     bpb = ByteMetrics.bits_per_byte(model, byte_ids)
     # For uniform random distribution BPB = log2(256) = 8; allow wide tolerance
-    assert 2.0 < bpb < 20.0, (
-        f"Random model BPB expected near 8, got {bpb:.3f}"
-    )
+    assert 2.0 < bpb < 20.0, f"Random model BPB expected near 8, got {bpb:.3f}"
 
 
 def test_byte_metrics_byte_accuracy_in_range():
@@ -246,14 +248,13 @@ def test_byte_metrics_top_k_accuracy_ge_accuracy():
     targets = make_byte_ids()
     acc1 = ByteMetrics.byte_accuracy(logits, targets)
     acc5 = ByteMetrics.top_k_byte_accuracy(logits, targets, k=5)
-    assert acc5 >= acc1 - 1e-6, (
-        f"top-5 accuracy {acc5:.4f} < top-1 accuracy {acc1:.4f}"
-    )
+    assert acc5 >= acc1 - 1e-6, f"top-5 accuracy {acc5:.4f} < top-1 accuracy {acc1:.4f}"
 
 
 # ---------------------------------------------------------------------------
 # ByteModelConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_byte_model_config_defaults():
     """ByteModelConfig should have the specified default values."""

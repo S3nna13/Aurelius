@@ -57,9 +57,7 @@ def test_end_to_end_harm_sample() -> None:
 
 
 def test_end_to_end_chunked_stream() -> None:
-    f = OutputSafetyFilter(
-        OutputSafetyPolicy(mode="permissive", max_buffer_chars=512)
-    )
+    f = OutputSafetyFilter(OutputSafetyPolicy(mode="permissive", max_buffer_chars=512))
     buffer = ""
     chunks = ["Sure, ", "here ", "is ", "a ", "greeting!"]
     last_decision = None

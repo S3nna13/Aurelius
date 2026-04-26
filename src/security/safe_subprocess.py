@@ -65,18 +65,12 @@ def _validate_argv(
     if not isinstance(exe, str) or not exe:
         raise UnsafeSubprocessError("argv[0] must be a non-empty string")
     if not os.path.isabs(exe):
-        raise UnsafeSubprocessError(
-            f"argv[0] must be an absolute path; got {exe!r}"
-        )
+        raise UnsafeSubprocessError(f"argv[0] must be an absolute path; got {exe!r}")
     allowed_set = set(allowed)
     if not allowed_set:
-        raise UnsafeSubprocessError(
-            "allowed_executables is empty; refusing to exec anything"
-        )
+        raise UnsafeSubprocessError("allowed_executables is empty; refusing to exec anything")
     if exe not in allowed_set:
-        raise UnsafeSubprocessError(
-            f"argv[0] {exe!r} is not in allowed_executables"
-        )
+        raise UnsafeSubprocessError(f"argv[0] {exe!r} is not in allowed_executables")
 
 
 def _build_env(

@@ -3,18 +3,17 @@
 References:
     - TransE: Bordes et al. 2013, "Translating Embeddings for Modeling Multi-relational Data"
     - RotatE: Sun et al. 2019, "RotatE: Knowledge Graph Embedding by Relational Rotation in Complex Space"
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -28,9 +27,9 @@ class KGEConfig:
     n_entities: int
     n_relations: int
     embed_dim: int = 256
-    margin: float = 1.0          # margin for ranking loss
-    norm: int = 1                # L1 or L2 norm for TransE
-    epsilon: float = 1e-12       # RotatE numerical stability
+    margin: float = 1.0  # margin for ranking loss
+    norm: int = 1  # L1 or L2 norm for TransE
+    epsilon: float = 1e-12  # RotatE numerical stability
     regularization: float = 0.0  # L2 weight regularization
 
 
@@ -55,11 +54,21 @@ class TransE(nn.Module):
         self._init_weights()
 
     def _init_weights(self) -> None:
-        nn.init.uniform_(self.entity_embed.weight, -6 / math.sqrt(self.cfg.embed_dim), 6 / math.sqrt(self.cfg.embed_dim))
-        nn.init.uniform_(self.relation_embed.weight, -6 / math.sqrt(self.cfg.embed_dim), 6 / math.sqrt(self.cfg.embed_dim))
+        nn.init.uniform_(
+            self.entity_embed.weight,
+            -6 / math.sqrt(self.cfg.embed_dim),
+            6 / math.sqrt(self.cfg.embed_dim),
+        )
+        nn.init.uniform_(
+            self.relation_embed.weight,
+            -6 / math.sqrt(self.cfg.embed_dim),
+            6 / math.sqrt(self.cfg.embed_dim),
+        )
         # Normalize entity embeddings to unit sphere at init
         with torch.no_grad():
-            self.entity_embed.weight.div_(self.entity_embed.weight.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-12))
+            self.entity_embed.weight.div_(
+                self.entity_embed.weight.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-12)
+            )
 
     def score(self, h: Tensor, r: Tensor, t: Tensor) -> Tensor:
         """Compute TransE scores for a batch of triples.
@@ -72,15 +81,15 @@ class TransE(nn.Module):
         Returns:
             (B,) scores — negative L_p distance (higher = more plausible)
         """
-        h_emb = self.entity_embed(h)     # (B, D)
-        r_emb = self.relation_embed(r)   # (B, D)
-        t_emb = self.entity_embed(t)     # (B, D)
+        h_emb = self.entity_embed(h)  # (B, D)
+        r_emb = self.relation_embed(r)  # (B, D)
+        t_emb = self.entity_embed(t)  # (B, D)
 
         # Normalize entity embeddings during forward (TransE convention)
         h_emb = F.normalize(h_emb, p=2, dim=-1)
         t_emb = F.normalize(t_emb, p=2, dim=-1)
 
-        diff = h_emb + r_emb - t_emb    # (B, D)
+        diff = h_emb + r_emb - t_emb  # (B, D)
         dist = diff.norm(p=self.cfg.norm, dim=-1)  # (B,)
         return -dist
 
@@ -96,8 +105,8 @@ class TransE(nn.Module):
         Returns:
             Scalar loss tensor.
         """
-        pos_score = self.score(h, r, t)        # (B,) — should be high (close to 0)
-        neg_score = self.score(h, r, t_neg)    # (B,) — should be low (very negative)
+        pos_score = self.score(h, r, t)  # (B,) — should be high (close to 0)
+        neg_score = self.score(h, r, t_neg)  # (B,) — should be low (very negative)
 
         # margin + neg_score - pos_score: penalise when neg is not worse than pos by margin
         margin_loss = F.relu(self.cfg.margin + neg_score - pos_score)
@@ -108,10 +117,12 @@ class TransE(nn.Module):
             r_emb = self.relation_embed(r)
             t_emb = self.entity_embed(t)
             t_neg_emb = self.entity_embed(t_neg)
-            reg = (h_emb.norm(p=2, dim=-1) ** 2
-                   + r_emb.norm(p=2, dim=-1) ** 2
-                   + t_emb.norm(p=2, dim=-1) ** 2
-                   + t_neg_emb.norm(p=2, dim=-1) ** 2).mean()
+            reg = (
+                h_emb.norm(p=2, dim=-1) ** 2
+                + r_emb.norm(p=2, dim=-1) ** 2
+                + t_emb.norm(p=2, dim=-1) ** 2
+                + t_neg_emb.norm(p=2, dim=-1) ** 2
+            ).mean()
             loss = loss + self.cfg.regularization * reg
 
         return loss
@@ -170,8 +181,8 @@ class RotatE(nn.Module):
         Returns:
             (B,) scores (negative L2 distance in complex space, higher = better)
         """
-        h_emb = self.entity_embed(h)      # (B, D)
-        t_emb = self.entity_embed(t)      # (B, D)
+        h_emb = self.entity_embed(h)  # (B, D)
+        t_emb = self.entity_embed(t)  # (B, D)
         phases = self.relation_phases(r)  # (B, D/2) — angles
 
         # Build unit complex rotation: r = cos(phase) + i*sin(phase)
@@ -189,7 +200,7 @@ class RotatE(nn.Module):
         # Distance: ||h ∘ r - t||
         diff_re = hr_re - t_re
         diff_im = hr_im - t_im
-        dist = (diff_re ** 2 + diff_im ** 2 + self.cfg.epsilon).sqrt().sum(dim=-1)  # (B,)
+        dist = (diff_re**2 + diff_im**2 + self.cfg.epsilon).sqrt().sum(dim=-1)  # (B,)
         return -dist
 
     def loss(self, h: Tensor, r: Tensor, t: Tensor, t_neg: Tensor) -> Tensor:
@@ -206,7 +217,7 @@ class RotatE(nn.Module):
         Returns:
             Scalar loss tensor.
         """
-        pos_score = self.score(h, r, t)      # (B,)
+        pos_score = self.score(h, r, t)  # (B,)
         neg_score = self.score(h, r, t_neg)  # (B,)
 
         pos_loss = -F.logsigmoid(pos_score - self.cfg.margin)
@@ -217,9 +228,11 @@ class RotatE(nn.Module):
             h_emb = self.entity_embed(h)
             t_emb = self.entity_embed(t)
             t_neg_emb = self.entity_embed(t_neg)
-            reg = (h_emb.norm(p=2, dim=-1) ** 2
-                   + t_emb.norm(p=2, dim=-1) ** 2
-                   + t_neg_emb.norm(p=2, dim=-1) ** 2).mean()
+            reg = (
+                h_emb.norm(p=2, dim=-1) ** 2
+                + t_emb.norm(p=2, dim=-1) ** 2
+                + t_neg_emb.norm(p=2, dim=-1) ** 2
+            ).mean()
             loss = loss + self.cfg.regularization * reg
 
         return loss

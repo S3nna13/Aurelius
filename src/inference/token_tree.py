@@ -10,7 +10,7 @@ import torch.nn.functional as F
 class TreeNode:
     token_id: int
     prob: float
-    children: list["TreeNode"] = field(default_factory=list)
+    children: list[TreeNode] = field(default_factory=list)
     depth: int = 0
     path: list[int] = field(default_factory=list)
 
@@ -32,9 +32,7 @@ class TokenTree:
         self._expand(root, steps, depth=0)
         return root
 
-    def _expand(
-        self, node: TreeNode, logits_per_step: list[torch.Tensor], depth: int
-    ) -> None:
+    def _expand(self, node: TreeNode, logits_per_step: list[torch.Tensor], depth: int) -> None:
         if depth >= len(logits_per_step):
             return
         logits = logits_per_step[depth]
@@ -89,9 +87,7 @@ class TokenTree:
 
     def prune(self, root: TreeNode, threshold: float = 0.01) -> TreeNode:
         root.children = [
-            self.prune(child, threshold)
-            for child in root.children
-            if child.prob >= threshold
+            self.prune(child, threshold) for child in root.children if child.prob >= threshold
         ]
         return root
 

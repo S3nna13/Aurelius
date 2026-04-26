@@ -138,9 +138,7 @@ class UniversalTransformer(nn.Module):
     # ------------------------------------------------------------------
 
     def _register_rope(self, config: AureliusConfig) -> None:
-        freqs = precompute_rope_frequencies(
-            config.head_dim, config.max_seq_len, config.rope_theta
-        )
+        freqs = precompute_rope_frequencies(config.head_dim, config.max_seq_len, config.rope_theta)
         self.register_buffer("freqs_cis", freqs, persistent=False)
 
     def _init_weights(self) -> None:
@@ -173,19 +171,19 @@ class UniversalTransformer(nn.Module):
                 - Third element is always ``None`` (no KV cache support).
         """
         B, S = input_ids.shape
-        assert S <= self.config.max_seq_len, (
+        assert S <= self.config.max_seq_len, (  # noqa: S101
             f"Sequence length {S} exceeds max_seq_len {self.config.max_seq_len}"
         )
 
-        x = self.embed(input_ids)                    # (B, S, d_model)
-        freqs_cis = self.freqs_cis[:S]              # (S, head_dim // 2)
+        x = self.embed(input_ids)  # (B, S, d_model)
+        freqs_cis = self.freqs_cis[:S]  # (S, head_dim // 2)
 
         # Apply shared block n_steps times, each time with a unique step index.
         for step in range(self.n_steps):
             x = self.shared_block(x, freqs_cis, step=step)
 
-        x = self.norm(x)                             # (B, S, d_model)
-        logits = self.lm_head(x)                     # (B, S, vocab_size)
+        x = self.norm(x)  # (B, S, d_model)
+        logits = self.lm_head(x)  # (B, S, vocab_size)
 
         loss: torch.Tensor | None = None
         if labels is not None:

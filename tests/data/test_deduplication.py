@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import sys
 
-import pytest
-
 from src.data.deduplication import (
     LSHIndex,
     StreamingDeduplicator,
@@ -15,10 +13,10 @@ from src.data.deduplication import (
     shingle,
 )
 
-
 # ---------------------------------------------------------------------------
 # shingle tests
 # ---------------------------------------------------------------------------
+
 
 def test_shingle_basic():
     """Shingles of length k are extracted correctly."""
@@ -46,6 +44,7 @@ def test_shingle_exact_length():
 # ---------------------------------------------------------------------------
 # minhash_signature tests
 # ---------------------------------------------------------------------------
+
 
 def test_minhash_signature_length():
     """Signature length equals n_hashes."""
@@ -79,6 +78,7 @@ def test_minhash_signature_deterministic_with_seed():
 # estimate_jaccard tests
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_jaccard_identical_sigs():
     """Identical signatures yield Jaccard == 1.0."""
     sig = [1, 2, 3, 4, 5]
@@ -103,6 +103,7 @@ def test_estimate_jaccard_partial():
 # is_duplicate tests
 # ---------------------------------------------------------------------------
 
+
 def test_is_duplicate_identical():
     """Identical signatures are duplicates."""
     sig = [10, 20, 30, 40]
@@ -119,6 +120,7 @@ def test_is_duplicate_completely_different():
 # ---------------------------------------------------------------------------
 # LSHIndex tests
 # ---------------------------------------------------------------------------
+
 
 def test_lsh_index_add_exact_duplicate_detected():
     """Adding an exact duplicate signature returns the original doc as a candidate."""
@@ -155,6 +157,7 @@ def test_lsh_index_no_false_duplicate_for_unrelated():
 # ---------------------------------------------------------------------------
 # StreamingDeduplicator tests
 # ---------------------------------------------------------------------------
+
 
 def test_streaming_deduplicator_keeps_first_drops_duplicate():
     """First document is kept; an exact duplicate is dropped."""

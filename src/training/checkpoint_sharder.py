@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -36,7 +36,7 @@ class CheckpointSharder:
 
     def split_plan(self, state_dict: dict[str, torch.Tensor]) -> list[list[str]]:
         """Return list of key groups per shard (dry run, no file I/O)."""
-        max_bytes = int(self.config.max_shard_size_gb * 1024 ** 3)
+        max_bytes = int(self.config.max_shard_size_gb * 1024**3)
         sorted_keys = sorted(state_dict.keys())
 
         shards: list[list[str]] = [[]]

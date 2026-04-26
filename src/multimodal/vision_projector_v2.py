@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -52,9 +51,7 @@ class VisionProjectorV2(nn.Module):
             B, N, C = vision_features.shape
             pad = (scale - N % scale) % scale
             if pad:
-                vision_features = torch.cat(
-                    [vision_features, vision_features[:, -pad:, :]], dim=1
-                )
+                vision_features = torch.cat([vision_features, vision_features[:, -pad:, :]], dim=1)
             N2 = vision_features.shape[1]
             chunks = N2 // scale
             x = vision_features.reshape(B, chunks, scale * C)
@@ -64,9 +61,7 @@ class VisionProjectorV2(nn.Module):
             B, N, C = vision_features.shape
             pad = (scale - N % scale) % scale
             if pad:
-                vision_features = torch.cat(
-                    [vision_features, vision_features[:, -pad:, :]], dim=1
-                )
+                vision_features = torch.cat([vision_features, vision_features[:, -pad:, :]], dim=1)
             N2 = vision_features.shape[1]
             chunks = N2 // scale
             x = vision_features.reshape(B, chunks, scale, C).mean(dim=2)

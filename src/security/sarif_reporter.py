@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import enum
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 __all__ = [
     "SarifLevel",
@@ -27,14 +28,13 @@ __all__ = [
 
 
 SARIF_SCHEMA_URI = (
-    "https://raw.githubusercontent.com/oasis-tcs/"
-    "sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
+    "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 )
 SARIF_VERSION = "2.1.0"
 AURELIUS_TOOL_NAME = "Aurelius"
 
 
-class SarifLevel(str, enum.Enum):
+class SarifLevel(enum.StrEnum):
     """SARIF result severity levels (subset used by Aurelius)."""
 
     NOTE = "note"
@@ -58,15 +58,15 @@ class SarifRule:
         if not isinstance(self.short_description, str):
             raise TypeError("SarifRule.short_description must be a string")
         # Normalize tags to a concrete list of strings.
-        normalized: List[str] = []
+        normalized: list[str] = []
         for tag in self.tags:
             if not isinstance(tag, str) or not tag:
                 raise ValueError("SarifRule.tags entries must be non-empty strings")
             normalized.append(tag)
         self.tags = normalized
 
-    def to_dict(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "id": self.rule_id,
             "shortDescription": {"text": self.short_description},
         }
@@ -86,9 +86,9 @@ class SarifResult:
     rule_id: str
     message: str
     level: SarifLevel = SarifLevel.WARNING
-    uri: Optional[str] = None
-    start_line: Optional[int] = None
-    end_line: Optional[int] = None
+    uri: str | None = None
+    start_line: int | None = None
+    end_line: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.rule_id, str) or not self.rule_id:
@@ -107,17 +107,17 @@ class SarifResult:
             if value is not None and (not isinstance(value, int) or value < 1):
                 raise ValueError(f"SarifResult.{name} must be a positive int or None")
 
-    def to_dict(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "ruleId": self.rule_id,
             "level": self.level.value,
             "message": {"text": self.message},
         }
         if self.uri is not None:
-            physical: Dict[str, Any] = {
+            physical: dict[str, Any] = {
                 "artifactLocation": {"uri": self.uri},
             }
-            region: Dict[str, Any] = {}
+            region: dict[str, Any] = {}
             if self.start_line is not None:
                 region["startLine"] = self.start_line
             if self.end_line is not None:
@@ -135,9 +135,9 @@ class SarifReport:
         if not isinstance(tool_name, str) or not tool_name:
             raise ValueError("tool_name must be a non-empty string")
         self._tool_name = tool_name
-        self._rules: List[SarifRule] = []
+        self._rules: list[SarifRule] = []
         self._rule_ids: set[str] = set()
-        self._results: List[SarifResult] = []
+        self._results: list[SarifResult] = []
 
     # --- mutation ---------------------------------------------------------
 
@@ -157,16 +157,16 @@ class SarifReport:
     # --- accessors --------------------------------------------------------
 
     @property
-    def rules(self) -> List[SarifRule]:
+    def rules(self) -> list[SarifRule]:
         return list(self._rules)
 
     @property
-    def results(self) -> List[SarifResult]:
+    def results(self) -> list[SarifResult]:
         return list(self._results)
 
     # --- serialization ----------------------------------------------------
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "$schema": SARIF_SCHEMA_URI,
             "version": SARIF_VERSION,
@@ -188,5 +188,5 @@ class SarifReport:
 
 
 # Registry for named reports (e.g. "default", "nightly", "cycle-150").
-SARIF_REPORTER_REGISTRY: Dict[str, SarifReport] = {}
+SARIF_REPORTER_REGISTRY: dict[str, SarifReport] = {}
 SARIF_REPORTER_REGISTRY["default"] = SarifReport()

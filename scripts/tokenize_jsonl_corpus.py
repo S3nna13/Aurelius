@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Train BPE tokenizer on jsonl_corpus.txt and shard into train/val .npy files."""
-import os
+
 import random
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
 CORPUS = Path("/Users/christienantonio/Desktop/Aurelius/data/reference_corpus/jsonl_corpus.txt")
@@ -15,7 +16,7 @@ random.seed(42)
 
 # ── 1. Train tokenizer ──────────────────────────────────────────────────────
 print("Training tokenizer...")
-tokenizer = Tokenizer(models.BPE(unk_token="<unk>"))
+tokenizer = Tokenizer(models.BPE(unk_token="<unk>"))  # noqa: S106
 tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
 trainer = trainers.BpeTrainer(
     vocab_size=VOCAB_SIZE,
@@ -28,7 +29,7 @@ print(f"Tokenizer saved -> {OUT_DIR / 'tokenizer.json'}  (vocab={VOCAB_SIZE})")
 
 # ── 2. Encode full corpus ───────────────────────────────────────────────────
 print("Encoding corpus...")
-with open(CORPUS, "r", encoding="utf-8") as f:
+with open(CORPUS, encoding="utf-8") as f:
     text = f.read()
 encoding = tokenizer.encode(text)
 all_ids = np.array(encoding.ids, dtype=np.uint16)
@@ -41,7 +42,7 @@ np.random.shuffle(all_ids)  # shuffle token-level for maximum randomness
 # Actually, better to shuffle at conversation level. Let's re-read and encode per-conversation.
 print("Re-encoding per-conversation for proper train/val split...")
 conversations = []
-with open(CORPUS, "r", encoding="utf-8") as f:
+with open(CORPUS, encoding="utf-8") as f:
     current = []
     for line in f:
         if line.strip() == "---":
@@ -58,12 +59,14 @@ split = int(0.9 * len(conversations))
 train_convs = conversations[:split]
 val_convs = conversations[split:]
 
+
 def encode_conversations(convs):
     all_ids = []
     for conv in convs:
         ids = tokenizer.encode(conv).ids
         all_ids.extend(ids)
     return np.array(all_ids, dtype=np.uint16)
+
 
 train_ids = encode_conversations(train_convs)
 val_ids = encode_conversations(val_convs)

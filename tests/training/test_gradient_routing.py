@@ -3,32 +3,38 @@
 Covers GradientRoutingConfig, RoutingRule, ModuleGradientMask, GradientRouter,
 and the compute_gradient_conflict utility.
 """
+
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.gradient_routing import (
-    GradientRoutingConfig,
     GradientRouter,
+    GradientRoutingConfig,
     ModuleGradientMask,
     RoutingRule,
     compute_gradient_conflict,
-    create_safety_routing,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_model():
     torch.manual_seed(42)
     cfg = AureliusConfig(
-        n_layers=4, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=4,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 
@@ -38,7 +44,7 @@ def tiny_linear():
     """Two-layer linear model for simple gradient tests."""
     torch.manual_seed(0)
     model = nn.Sequential(
-        nn.Linear(8, 4),   # weight: fc0.weight / bias: fc0.bias  (named 0.weight etc.)
+        nn.Linear(8, 4),  # weight: fc0.weight / bias: fc0.bias  (named 0.weight etc.)
         nn.Linear(4, 2),
     )
     return model
@@ -47,6 +53,7 @@ def tiny_linear():
 # ---------------------------------------------------------------------------
 # Test 1: GradientRoutingConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_routing_config_defaults():
     cfg = GradientRoutingConfig()
@@ -58,6 +65,7 @@ def test_gradient_routing_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: RoutingRule has all required fields
 # ---------------------------------------------------------------------------
+
 
 def test_routing_rule_fields():
     rule = RoutingRule()
@@ -75,6 +83,7 @@ def test_routing_rule_fields():
 # Test 3: ModuleGradientMask.apply zeroes out blocked params' gradients
 # ---------------------------------------------------------------------------
 
+
 def test_module_gradient_mask_zeroes_blocked(tiny_linear):
     model = tiny_linear
     # Zero-out first layer's weight gradient
@@ -86,18 +95,18 @@ def test_module_gradient_mask_zeroes_blocked(tiny_linear):
     mgm.apply(loss)
 
     assert model[0].weight.grad is not None
-    assert model[0].weight.grad.abs().max().item() == 0.0, \
+    assert model[0].weight.grad.abs().max().item() == 0.0, (
         "Blocked parameter should have zero gradient"
-    assert model[0].bias.grad.abs().max().item() == 0.0, \
-        "Blocked bias should have zero gradient"
+    )
+    assert model[0].bias.grad.abs().max().item() == 0.0, "Blocked bias should have zero gradient"
     # Second layer should still have gradients
-    assert model[1].weight.grad.abs().max().item() > 0.0, \
-        "Unmasked layer should retain gradients"
+    assert model[1].weight.grad.abs().max().item() > 0.0, "Unmasked layer should retain gradients"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: ModuleGradientMask.apply scales allowed params correctly
 # ---------------------------------------------------------------------------
+
 
 def test_module_gradient_mask_scales_allowed(tiny_linear):
     model = tiny_linear
@@ -118,26 +127,30 @@ def test_module_gradient_mask_scales_allowed(tiny_linear):
     mgm.apply(loss2)
 
     scaled_grad = model[1].weight.grad
-    assert torch.allclose(scaled_grad, ref_grad * scale, atol=1e-6), \
+    assert torch.allclose(scaled_grad, ref_grad * scale, atol=1e-6), (
         "Scaled gradient should be exactly scale * original gradient"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 5: get_masked_params returns correct list
 # ---------------------------------------------------------------------------
 
+
 def test_get_masked_params(tiny_linear):
     mask = {"0.weight": 0.0, "0.bias": 0.5, "1.weight": 1.0, "1.bias": 0.0}
     mgm = ModuleGradientMask(tiny_linear, mask)
     masked = mgm.get_masked_params()
-    assert set(masked) == {"0.weight", "0.bias", "1.bias"}, \
+    assert set(masked) == {"0.weight", "0.bias", "1.bias"}, (
         "Only params with scale < 1.0 should be returned"
+    )
     assert "1.weight" not in masked
 
 
 # ---------------------------------------------------------------------------
 # Test 6: GradientRouter instantiates with rules
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_router_instantiation(tiny_linear):
     rules = [
@@ -152,6 +165,7 @@ def test_gradient_router_instantiation(tiny_linear):
 # ---------------------------------------------------------------------------
 # Test 7: get_routing_summary returns dict with n_rules key
 # ---------------------------------------------------------------------------
+
 
 def test_get_routing_summary(tiny_linear):
     rules = [
@@ -171,6 +185,7 @@ def test_get_routing_summary(tiny_linear):
 # Test 8: apply_routing with unmatched tag doesn't block gradients
 # ---------------------------------------------------------------------------
 
+
 def test_apply_routing_unmatched_tag(tiny_linear):
     model = tiny_linear
     # Rule only applies to 'harmful' tag
@@ -184,13 +199,15 @@ def test_apply_routing_unmatched_tag(tiny_linear):
 
     # All gradients should be non-zero (or at least present and unmodified)
     assert model[0].weight.grad is not None
-    assert model[0].weight.grad.abs().max().item() > 0.0, \
+    assert model[0].weight.grad.abs().max().item() > 0.0, (
         "Unmatched tag should not block any gradients"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 9: apply_routing with matching tag applies the rule
 # ---------------------------------------------------------------------------
+
 
 def test_apply_routing_matching_tag(tiny_linear):
     model = tiny_linear
@@ -204,18 +221,20 @@ def test_apply_routing_matching_tag(tiny_linear):
     router.apply_routing(loss, data_tag="harmful")
 
     # First layer gradients should be zeroed
-    assert model[0].weight.grad.abs().max().item() == 0.0, \
+    assert model[0].weight.grad.abs().max().item() == 0.0, (
         "Blocked layer gradient should be zero for matching tag"
-    assert model[0].bias.grad.abs().max().item() == 0.0, \
+    )
+    assert model[0].bias.grad.abs().max().item() == 0.0, (
         "Blocked layer bias gradient should be zero for matching tag"
+    )
     # Second layer should be unaffected
-    assert model[1].weight.grad.abs().max().item() > 0.0, \
-        "Unblocked layer should retain gradients"
+    assert model[1].weight.grad.abs().max().item() > 0.0, "Unblocked layer should retain gradients"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: remove_hooks clears all hooks
 # ---------------------------------------------------------------------------
+
 
 def test_remove_hooks(tiny_linear):
     rules = [RoutingRule(data_tags=["harmful"], blocked_modules=["0.*"])]
@@ -231,6 +250,7 @@ def test_remove_hooks(tiny_linear):
 # Test 11: compute_gradient_conflict returns value in [-1, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradient_conflict_range():
     torch.manual_seed(99)
     grads1 = [torch.randn(4, 4), torch.randn(4)]
@@ -243,11 +263,13 @@ def test_compute_gradient_conflict_range():
 # Test 12: Identical gradient lists have cosine similarity = 1 (conflict ~ -1)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gradient_conflict_identical():
     """Identical gradients => cosine similarity = 1.0 (no conflict)."""
     torch.manual_seed(0)
     grads = [torch.randn(3, 3), torch.randn(3)]
     # Identical gradient lists should have cosine similarity = 1.0
     result = compute_gradient_conflict(grads, grads)
-    assert abs(result - 1.0) < 1e-5, \
+    assert abs(result - 1.0) < 1e-5, (
         f"Identical gradients should have cosine similarity ~1.0, got {result}"
+    )

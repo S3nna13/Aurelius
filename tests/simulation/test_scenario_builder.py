@@ -1,9 +1,8 @@
 """Tests for scenario builder."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.simulation.scenario_builder import ScenarioBuilder, SCENARIO_BUILDER_REGISTRY
+from src.simulation.scenario_builder import SCENARIO_BUILDER_REGISTRY, ScenarioBuilder
 
 
 class TestScenarioBuilder:

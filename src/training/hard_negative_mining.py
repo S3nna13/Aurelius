@@ -36,6 +36,7 @@ class HardNegativeConfig:
 # Distance utilities
 # ---------------------------------------------------------------------------
 
+
 def pairwise_cosine_similarity(x: Tensor, y: Tensor) -> Tensor:
     """Compute pairwise cosine similarity between two sets of vectors.
 
@@ -48,7 +49,7 @@ def pairwise_cosine_similarity(x: Tensor, y: Tensor) -> Tensor:
     """
     x_norm = F.normalize(x, p=2, dim=-1)  # (M, d)
     y_norm = F.normalize(y, p=2, dim=-1)  # (N, d)
-    return x_norm @ y_norm.T              # (M, N)
+    return x_norm @ y_norm.T  # (M, N)
 
 
 def pairwise_euclidean_distance(x: Tensor, y: Tensor) -> Tensor:
@@ -63,16 +64,17 @@ def pairwise_euclidean_distance(x: Tensor, y: Tensor) -> Tensor:
     Returns:
         (M, N) squared Euclidean distance matrix.
     """
-    x_sq = (x * x).sum(dim=-1, keepdim=True)   # (M, 1)
-    y_sq = (y * y).sum(dim=-1, keepdim=True)   # (N, 1)
-    dot = x @ y.T                               # (M, N)
-    sq_dist = x_sq + y_sq.T - 2.0 * dot        # (M, N)
+    x_sq = (x * x).sum(dim=-1, keepdim=True)  # (M, 1)
+    y_sq = (y * y).sum(dim=-1, keepdim=True)  # (N, 1)
+    dot = x @ y.T  # (M, N)
+    sq_dist = x_sq + y_sq.T - 2.0 * dot  # (M, N)
     return sq_dist.clamp(min=0.0)
 
 
 # ---------------------------------------------------------------------------
 # Mining
 # ---------------------------------------------------------------------------
+
 
 def _get_distance_matrix(embeddings: Tensor, distance_metric: str) -> Tensor:
     """Return (B, B) pairwise distance matrix."""
@@ -125,9 +127,9 @@ def mine_hard_negatives(
         label_i = labels[i]
 
         # Masks for positives and negatives
-        pos_mask = (labels == label_i)
+        pos_mask = labels == label_i
         pos_mask[i] = False  # exclude self
-        neg_mask = (labels != label_i)
+        neg_mask = labels != label_i
 
         if not pos_mask.any() or not neg_mask.any():
             continue  # no valid triplet for this anchor
@@ -222,6 +224,7 @@ def _select_negative(
 # Loss functions
 # ---------------------------------------------------------------------------
 
+
 def triplet_loss(
     anchors: Tensor,
     positives: Tensor,
@@ -289,11 +292,11 @@ def infonce_loss(
         Scalar loss tensor.
     """
     B, d = query.shape
-    K = negatives.shape[1]
+    negatives.shape[1]
 
-    q_norm = F.normalize(query, p=2, dim=-1)       # (B, d)
-    p_norm = F.normalize(positives, p=2, dim=-1)   # (B, d)
-    n_norm = F.normalize(negatives, p=2, dim=-1)   # (B, K, d)
+    q_norm = F.normalize(query, p=2, dim=-1)  # (B, d)
+    p_norm = F.normalize(positives, p=2, dim=-1)  # (B, d)
+    n_norm = F.normalize(negatives, p=2, dim=-1)  # (B, K, d)
 
     # Similarity between query and positive: (B,)
     sim_pos = (q_norm * p_norm).sum(dim=-1) / temperature
@@ -308,7 +311,7 @@ def infonce_loss(
 
     # Log probability of positive (index 0 in all_logits)
     log_denom = torch.logsumexp(all_logits, dim=1)  # (B,)
-    log_numerator = sim_pos                          # (B,)
+    log_numerator = sim_pos  # (B,)
 
     loss = -(log_numerator - log_denom).mean()
     return loss
@@ -317,6 +320,7 @@ def infonce_loss(
 # ---------------------------------------------------------------------------
 # HardNegativeMiner wrapper
 # ---------------------------------------------------------------------------
+
 
 class HardNegativeMiner:
     """Wraps hard negative mining and triplet loss computation.
@@ -328,9 +332,7 @@ class HardNegativeMiner:
     def __init__(self, config: HardNegativeConfig) -> None:
         self.config = config
 
-    def mine_and_compute_loss(
-        self, embeddings: Tensor, labels: Tensor
-    ) -> tuple[Tensor, dict]:
+    def mine_and_compute_loss(self, embeddings: Tensor, labels: Tensor) -> tuple[Tensor, dict]:
         """Mine hard negative triplets and compute triplet loss.
 
         Args:
@@ -343,9 +345,7 @@ class HardNegativeMiner:
             - info: dict with keys "n_triplets" (int), "mean_pos_dist" (float),
               "mean_neg_dist" (float).
         """
-        anchors, positives, negatives = mine_hard_negatives(
-            embeddings, labels, self.config
-        )
+        anchors, positives, negatives = mine_hard_negatives(embeddings, labels, self.config)
 
         n_triplets = anchors.shape[0]
 

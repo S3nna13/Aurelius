@@ -1,4 +1,5 @@
 """End-to-end model compression pipeline: prune + distill + quantize in sequence."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -8,18 +9,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CompressionConfig:
     """Configuration for the end-to-end compression pipeline."""
-    prune_fraction: float = 0.3         # fraction of weights to prune
-    distill_temperature: float = 4.0   # KD softening temperature
-    distill_alpha: float = 0.7         # blend: alpha * kd_loss + (1-alpha) * task_loss
-    quantize_bits: int = 8             # fake quantization bit-width
+
+    prune_fraction: float = 0.3  # fraction of weights to prune
+    distill_temperature: float = 4.0  # KD softening temperature
+    distill_alpha: float = 0.7  # blend: alpha * kd_loss + (1-alpha) * task_loss
+    quantize_bits: int = 8  # fake quantization bit-width
     stages: list[str] = field(default_factory=lambda: ["prune", "distill", "quantize"])
     stage_epochs: dict[str, int] = field(
         default_factory=lambda: {"prune": 1, "distill": 2, "quantize": 1}
@@ -29,6 +31,7 @@ class CompressionConfig:
 # ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
+
 
 def compute_model_sparsity(model: nn.Module) -> dict[str, float]:
     """Count zero parameters per layer and overall.
@@ -77,11 +80,7 @@ def magnitude_prune(model: nn.Module, fraction: float) -> nn.Module:
         return model
 
     # Collect all weight tensors
-    weight_params = [
-        (name, param)
-        for name, param in model.named_parameters()
-        if "weight" in name
-    ]
+    weight_params = [(name, param) for name, param in model.named_parameters() if "weight" in name]
 
     if not weight_params:
         return model
@@ -140,7 +139,7 @@ def distillation_loss(
     # KD loss: KL divergence between softened distributions
     s_log_soft = F.log_softmax(s_flat / temperature, dim=-1)
     t_soft = F.softmax(t_flat.detach() / temperature, dim=-1)
-    kd_loss = F.kl_div(s_log_soft, t_soft, reduction="batchmean") * (temperature ** 2)
+    kd_loss = F.kl_div(s_log_soft, t_soft, reduction="batchmean") * (temperature**2)
 
     return alpha * kd_loss + (1.0 - alpha) * task_loss
 
@@ -181,6 +180,7 @@ def fake_quantize_weights(model: nn.Module, bits: int) -> nn.Module:
 # Abstract Stage
 # ---------------------------------------------------------------------------
 
+
 class CompressionStage:
     """Base class for a single compression stage."""
 
@@ -211,6 +211,7 @@ class CompressionStage:
 # ---------------------------------------------------------------------------
 # Concrete Stages
 # ---------------------------------------------------------------------------
+
 
 class PruneStage(CompressionStage):
     """Magnitude-based global weight pruning stage."""
@@ -250,9 +251,7 @@ class DistillStage(CompressionStage):
         model.train()
         teacher.eval()
 
-        optimizer = torch.optim.Adam(
-            [p for p in model.parameters() if p.requires_grad], lr=1e-4
-        )
+        optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=1e-4)
         optimizer.zero_grad()
 
         input_ids = data
@@ -280,7 +279,7 @@ class DistillStage(CompressionStage):
 
         s_log_soft = F.log_softmax(student_flat / T, dim=-1)
         t_soft = F.softmax(teacher_flat.detach() / T, dim=-1)
-        kd_loss = F.kl_div(s_log_soft, t_soft, reduction="batchmean") * (T ** 2)
+        kd_loss = F.kl_div(s_log_soft, t_soft, reduction="batchmean") * (T**2)
 
         total_loss = alpha * kd_loss + (1.0 - alpha) * task_loss
 
@@ -320,9 +319,7 @@ class QuantizeStage(CompressionStage):
             out_after = model(data)
             logits_after = out_after[1] if isinstance(out_after, tuple) else out_after
 
-        quant_error = float(
-            F.mse_loss(logits_after, logits_before).item()
-        )
+        quant_error = float(F.mse_loss(logits_after, logits_before).item())
 
         return model, {"quant_error": quant_error}
 
@@ -375,9 +372,7 @@ class CompressionPipeline:
                 raise ValueError(f"Unknown compression stage: {stage_name!r}")
 
             stage = stage_cls()
-            self.student, metrics = stage.apply(
-                self.student, data, self.config, self.teacher
-            )
+            self.student, metrics = stage.apply(self.student, data, self.config, self.teacher)
             results[stage_name] = metrics
 
         self._results = results

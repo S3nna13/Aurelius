@@ -16,10 +16,10 @@ from src.agent.five_state_controller import (
     FiveStateController,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper backends
 # ---------------------------------------------------------------------------
+
 
 def _echo_backend(chunks):
     def backend(messages, control: ControlContext):
@@ -69,6 +69,7 @@ def _fake_clock():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_initial_state_is_idle():
     ctrl = FiveStateController(_echo_backend(["x"]))

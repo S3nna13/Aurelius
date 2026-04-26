@@ -13,16 +13,15 @@ DPO-style preference loss to the policy model.  The full pipeline:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RLAIFConfig:
@@ -35,6 +34,7 @@ class RLAIFConfig:
         max_response_tokens: Maximum tokens per generated response.
         reward_scale: Multiplicative scale applied to judge scores.
     """
+
     n_samples: int = 4
     beta: float = 0.1
     ai_judge_temperature: float = 0.7
@@ -45,6 +45,7 @@ class RLAIFConfig:
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def generate_response(
@@ -87,6 +88,7 @@ def generate_response(
 # AI Judge scoring
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def ai_judge_score(
     judge_model: nn.Module,
@@ -119,7 +121,9 @@ def ai_judge_score(
         return 0.0
 
     # Logits that predict response tokens: positions [prompt_len-1 .. total-2]
-    pred_logits = logits[:, prompt_len - 1: prompt_len + response_len - 1, :]  # (1, response_len, vocab)
+    pred_logits = logits[
+        :, prompt_len - 1 : prompt_len + response_len - 1, :
+    ]  # (1, response_len, vocab)
     log_probs = F.log_softmax(pred_logits, dim=-1)  # (1, response_len, vocab)
 
     # Gather log-probs of actual response tokens
@@ -134,11 +138,12 @@ def ai_judge_score(
 # Ranking
 # ---------------------------------------------------------------------------
 
+
 def rank_responses(
     judge_model: nn.Module,
     prompt_ids: torch.Tensor,
-    responses: List[torch.Tensor],
-) -> List[Tuple[torch.Tensor, float]]:
+    responses: list[torch.Tensor],
+) -> list[tuple[torch.Tensor, float]]:
     """Score all responses with the judge and return sorted (descending) list.
 
     Args:
@@ -161,9 +166,10 @@ def rank_responses(
 # Preference pair extraction
 # ---------------------------------------------------------------------------
 
+
 def preference_pair_from_rankings(
-    rankings: List[Tuple[torch.Tensor, float]],
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    rankings: list[tuple[torch.Tensor, float]],
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Extract the best and worst response from ranked list.
 
     Args:
@@ -180,6 +186,7 @@ def preference_pair_from_rankings(
 # ---------------------------------------------------------------------------
 # Log-prob computation for policy gradient
 # ---------------------------------------------------------------------------
+
 
 def _sequence_log_probs(
     model: nn.Module,
@@ -202,7 +209,7 @@ def _sequence_log_probs(
     prompt_len = prompt_ids.shape[1]
     response_len = response_ids.shape[1]
 
-    pred_logits = logits[:, prompt_len - 1: prompt_len + response_len - 1, :]
+    pred_logits = logits[:, prompt_len - 1 : prompt_len + response_len - 1, :]
     log_probs = F.log_softmax(pred_logits, dim=-1)
 
     target_ids = response_ids.unsqueeze(-1)
@@ -214,6 +221,7 @@ def _sequence_log_probs(
 # ---------------------------------------------------------------------------
 # RLAIFTrainer
 # ---------------------------------------------------------------------------
+
 
 class RLAIFTrainer:
     """RLAIF trainer: generate, judge, preference-pair, DPO-style update.

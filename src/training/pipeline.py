@@ -12,11 +12,11 @@ This is the "autonomous" core of the Aurelius project — the model can
 continuously improve itself without human intervention beyond setting up
 the initial data and reward function.
 """
+
 from __future__ import annotations
 
 import logging
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -62,6 +62,7 @@ class PipelineConfig:
 @dataclass
 class PipelineResult:
     """Result of one pipeline iteration."""
+
     iteration: int
     sft_loss: float | None = None
     eval_ppl: float | None = None
@@ -111,8 +112,9 @@ class TrainingPipeline:
             return None
 
         from torch.utils.data import DataLoader
-        from src.alignment.sft import _resolve_target_modules, _cosine_warmup
-        from src.alignment.dora import apply_dora_to_model, DoRALinear
+
+        from src.alignment.dora import DoRALinear, apply_dora_to_model
+        from src.alignment.sft import _cosine_warmup, _resolve_target_modules
 
         # Apply DoRA to model for efficient fine-tuning, but only to nn.Linear layers
         # (skip any that have already been replaced with DoRALinear)
@@ -212,7 +214,7 @@ class TrainingPipeline:
         if not self.cfg.run_grpo or self.reward_fn is None:
             return None
 
-        from src.alignment.grpo import GRPOTrainer, GRPOConfig
+        from src.alignment.grpo import GRPOConfig, GRPOTrainer
 
         grpo_cfg = GRPOConfig(
             num_rollouts=self.cfg.grpo_num_rollouts,
@@ -226,7 +228,7 @@ class TrainingPipeline:
             prompts = [torch.randint(1, self.model.config.vocab_size, (1, 8))]
 
         last_metrics = None
-        for i, prompt in enumerate(prompts[:self.cfg.grpo_steps]):
+        for i, prompt in enumerate(prompts[: self.cfg.grpo_steps]):
             last_metrics = trainer.step(prompt, "", self.tokenizer)
 
         mean_reward = last_metrics["mean_reward"] if last_metrics else None

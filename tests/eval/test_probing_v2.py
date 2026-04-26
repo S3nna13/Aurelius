@@ -1,7 +1,5 @@
 """Tests for structural probes and MDL probing (probing_v2)."""
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
@@ -83,14 +81,17 @@ def train_test_split(repr_and_labels):
     repr_, labels = repr_and_labels
     n_train = int(0.8 * N)
     return (
-        repr_[:n_train], labels[:n_train],
-        repr_[n_train:], labels[n_train:],
+        repr_[:n_train],
+        labels[:n_train],
+        repr_[n_train:],
+        labels[n_train:],
     )
 
 
 # -------------------------------------------------------------------
 # StructuralProbe tests
 # -------------------------------------------------------------------
+
 
 def test_distance_output_shape(probe, hidden_pair):
     """distance() should return (B,) shaped tensor."""
@@ -138,6 +139,7 @@ def test_loss_gradients_flow(probe, hidden_seq, target_distances):
 # MDLProbeDataset tests
 # -------------------------------------------------------------------
 
+
 def test_split_fractions_length(mdl_dataset):
     """split_fractions() should return a list of length n_splits."""
     fracs = mdl_dataset.split_fractions()
@@ -147,7 +149,7 @@ def test_split_fractions_length(mdl_dataset):
 def test_split_fractions_values(mdl_dataset):
     """Fractions should be [1/2, 1/4, 1/8, 1/16] for n_splits=4."""
     fracs = mdl_dataset.split_fractions()
-    expected = [1.0 / (2 ** k) for k in range(1, mdl_dataset.n_splits + 1)]
+    expected = [1.0 / (2**k) for k in range(1, mdl_dataset.n_splits + 1)]
     for f, e in zip(fracs, expected):
         assert abs(f - e) < 1e-9
 
@@ -167,6 +169,7 @@ def test_get_split_shapes(mdl_dataset):
 # -------------------------------------------------------------------
 # MDLProbeTrainer tests
 # -------------------------------------------------------------------
+
 
 def test_train_on_split_returns_module(mdl_trainer, repr_and_labels):
     """train_on_split() should return an nn.Module."""
@@ -203,6 +206,7 @@ def test_compression_range(mdl_trainer, mdl_dataset):
 # -------------------------------------------------------------------
 # ProbingBenchmark tests
 # -------------------------------------------------------------------
+
 
 def test_run_linear_probe_keys(benchmark, train_test_split):
     """run_linear_probe() should return dict with expected keys."""

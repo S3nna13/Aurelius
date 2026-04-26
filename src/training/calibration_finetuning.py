@@ -16,24 +16,22 @@ Classes:
 
 from __future__ import annotations
 
-import math
-import random
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # CalibrationConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CalibrationConfig:
     """Default hyper-parameters for calibration fine-tuning."""
+
     smoothing: float = 0.1
     gamma: float = 2.0
     alpha: float = 0.2
@@ -45,6 +43,7 @@ class CalibrationConfig:
 # ---------------------------------------------------------------------------
 # LabelSmoothingLoss
 # ---------------------------------------------------------------------------
+
 
 class LabelSmoothingLoss(nn.Module):
     """Label-smoothed cross-entropy loss.
@@ -79,17 +78,17 @@ class LabelSmoothingLoss(nn.Module):
         B, T, V = logits.shape
         eps = self.smoothing
 
-        log_probs = F.log_softmax(logits, dim=-1)           # [B, T, V]
+        log_probs = F.log_softmax(logits, dim=-1)  # [B, T, V]
 
         # Build smooth target distribution
         with torch.no_grad():
             smooth_targets = torch.full_like(log_probs, eps / V)
-            mask = targets != self.ignore_index             # [B, T]
+            mask = targets != self.ignore_index  # [B, T]
             valid_targets = targets.clone()
-            valid_targets[~mask] = 0                        # avoid index error
+            valid_targets[~mask] = 0  # avoid index error
             smooth_targets.scatter_(
                 2,
-                valid_targets.unsqueeze(-1),                # [B, T, 1]
+                valid_targets.unsqueeze(-1),  # [B, T, 1]
                 (1.0 - eps) + eps / V,
             )
 
@@ -108,6 +107,7 @@ class LabelSmoothingLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # TemperatureScalingTrainer
 # ---------------------------------------------------------------------------
+
 
 class TemperatureScalingTrainer:
     """Post-hoc temperature scaling for multi-class classifiers.
@@ -139,9 +139,7 @@ class TemperatureScalingTrainer:
             Final positive temperature (float).
         """
         self.temperature = nn.Parameter(torch.ones(1, dtype=logits.dtype))
-        optimizer = torch.optim.LBFGS(
-            [self.temperature], lr=self.lr, max_iter=n_steps
-        )
+        optimizer = torch.optim.LBFGS([self.temperature], lr=self.lr, max_iter=n_steps)
 
         logits_detached = logits.detach()
         labels_detached = labels.detach()
@@ -182,8 +180,8 @@ class TemperatureScalingTrainer:
         Returns:
             ECE in [0, 1].
         """
-        confidences, predictions = probs.max(dim=1)    # [N]
-        accuracies = predictions.eq(labels).float()    # [N]
+        confidences, predictions = probs.max(dim=1)  # [N]
+        accuracies = predictions.eq(labels).float()  # [N]
         N = float(labels.size(0))
 
         bin_boundaries = torch.linspace(0.0, 1.0, n_bins + 1)
@@ -206,6 +204,7 @@ class TemperatureScalingTrainer:
 # ---------------------------------------------------------------------------
 # VectorScalingTrainer
 # ---------------------------------------------------------------------------
+
 
 class VectorScalingTrainer:
     """Per-class temperature (W) and bias (b) calibration.
@@ -259,6 +258,7 @@ class VectorScalingTrainer:
 # FocalLoss
 # ---------------------------------------------------------------------------
 
+
 class FocalLoss(nn.Module):
     """Focal loss for sequence modelling.
 
@@ -271,12 +271,12 @@ class FocalLoss(nn.Module):
     def __init__(
         self,
         gamma: float = 2.0,
-        alpha: Optional[Tensor] = None,
+        alpha: Tensor | None = None,
         ignore_index: int = -100,
     ) -> None:
         super().__init__()
         self.gamma = gamma
-        self.register_buffer("alpha", alpha)   # [C] or None
+        self.register_buffer("alpha", alpha)  # [C] or None
         self.ignore_index = ignore_index
 
     # ------------------------------------------------------------------
@@ -302,12 +302,12 @@ class FocalLoss(nn.Module):
         if valid_targets.numel() == 0:
             return logits.sum() * 0.0
 
-        log_probs = F.log_softmax(valid_logits, dim=-1)     # [N, V]
-        probs = log_probs.exp()                             # [N, V]
+        log_probs = F.log_softmax(valid_logits, dim=-1)  # [N, V]
+        probs = log_probs.exp()  # [N, V]
 
         # Gather probability of the correct class
         log_pt = log_probs.gather(1, valid_targets.unsqueeze(1)).squeeze(1)  # [N]
-        pt = probs.gather(1, valid_targets.unsqueeze(1)).squeeze(1)          # [N]
+        pt = probs.gather(1, valid_targets.unsqueeze(1)).squeeze(1)  # [N]
 
         focal_weight = (1.0 - pt) ** self.gamma
 
@@ -322,6 +322,7 @@ class FocalLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # MixupTrainer
 # ---------------------------------------------------------------------------
+
 
 class MixupTrainer:
     """Mixup data augmentation for calibration.
@@ -346,7 +347,7 @@ class MixupTrainer:
         self,
         input_ids_a: Tensor,
         input_ids_b: Tensor,
-    ) -> Tuple[Tensor, float]:
+    ) -> tuple[Tensor, float]:
         """Mix two batches in embedding space.
 
         Args:
@@ -358,17 +359,15 @@ class MixupTrainer:
             lam:         mixing coefficient in [0, 1]
         """
         if self.alpha > 0:
-            dist = torch.distributions.Beta(
-                torch.tensor(self.alpha), torch.tensor(self.alpha)
-            )
+            dist = torch.distributions.Beta(torch.tensor(self.alpha), torch.tensor(self.alpha))
             lam = float(dist.sample().item())
         else:
             lam = 1.0
 
-        embed = self.model.get_input_embeddings()   # nn.Embedding
+        embed = self.model.get_input_embeddings()  # nn.Embedding
 
-        emb_a = embed(input_ids_a).detach()         # [B, T, d]
-        emb_b = embed(input_ids_b).detach()         # [B, T, d]
+        emb_a = embed(input_ids_a).detach()  # [B, T, d]
+        emb_b = embed(input_ids_b).detach()  # [B, T, d]
         mixed_embed = lam * emb_a + (1.0 - lam) * emb_b
         return mixed_embed, lam
 
@@ -400,7 +399,7 @@ class MixupTrainer:
         mixed_embed, lam = self.mixup_batch(input_ids_a, input_ids_b)
 
         # Forward pass using mixed embeddings (inputs_embeds path)
-        logits = model(inputs_embeds=mixed_embed)   # [B, T, V]
+        logits = model(inputs_embeds=mixed_embed)  # [B, T, V]
 
         B, T, V = logits.shape
         flat_logits = logits.reshape(-1, V)
@@ -420,6 +419,7 @@ class MixupTrainer:
 # CalibrationBenchmark
 # ---------------------------------------------------------------------------
 
+
 class CalibrationBenchmark:
     """Diagnostic metrics for classifier calibration."""
 
@@ -429,16 +429,16 @@ class CalibrationBenchmark:
         probs: Tensor,
         labels: Tensor,
         n_bins: int,
-    ) -> Tuple[List[float], List[float], List[int]]:
+    ) -> tuple[list[float], list[float], list[int]]:
         """Shared helper that computes per-bin accuracy / confidence / count."""
         confidences, predictions = probs.max(dim=1)
         accuracies = predictions.eq(labels).float()
-        N = labels.size(0)
+        labels.size(0)
 
         bin_boundaries = torch.linspace(0.0, 1.0, n_bins + 1)
-        bin_accs: List[float] = []
-        bin_confs: List[float] = []
-        bin_counts: List[int] = []
+        bin_accs: list[float] = []
+        bin_confs: list[float] = []
+        bin_counts: list[int] = []
 
         for i in range(n_bins):
             lo = bin_boundaries[i].item()
@@ -464,7 +464,7 @@ class CalibrationBenchmark:
         probs: Tensor,
         labels: Tensor,
         n_bins: int = 10,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Compute data needed to draw a reliability diagram.
 
         Args:

@@ -1,31 +1,34 @@
-"""Open-ended generation evaluation: ROUGE-L, BERTScore proxy, n-gram diversity, and length stats."""
+"""Open-ended generation evaluation: ROUGE-L, BERTScore proxy, n-gram diversity, and length stats."""  # noqa: E501
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GenerationEvalConfig:
     """Configuration for open-ended generation evaluation."""
+
     max_new_tokens: int = 64
     temperature: float = 1.0
-    do_sample: bool = False      # False = greedy
+    do_sample: bool = False  # False = greedy
     repetition_penalty: float = 1.0  # 1.0 = disabled
-    n_gram_n: int = 4            # for n-gram diversity
+    n_gram_n: int = 4  # for n-gram diversity
 
 
 # ---------------------------------------------------------------------------
 # Repetition penalty
 # ---------------------------------------------------------------------------
+
 
 def apply_repetition_penalty(
     logits: Tensor,
@@ -70,6 +73,7 @@ def apply_repetition_penalty(
 # Generation
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def greedy_generate(
     model,
@@ -112,6 +116,7 @@ def greedy_generate(
 # ---------------------------------------------------------------------------
 # ROUGE-L
 # ---------------------------------------------------------------------------
+
 
 def compute_rouge_l(hypothesis: str, reference: str) -> float:
     """Compute ROUGE-L F1 score between hypothesis and reference.
@@ -161,6 +166,7 @@ def compute_rouge_l(hypothesis: str, reference: str) -> float:
 # Distinct-N
 # ---------------------------------------------------------------------------
 
+
 def compute_distinct_n(token_ids: Tensor, n: int) -> float:
     """Compute Distinct-N: ratio of unique n-grams to total n-grams.
 
@@ -176,7 +182,7 @@ def compute_distinct_n(token_ids: Tensor, n: int) -> float:
     if len(ids) < n:
         return 1.0
 
-    ngrams = [tuple(ids[i:i + n]) for i in range(len(ids) - n + 1)]
+    ngrams = [tuple(ids[i : i + n]) for i in range(len(ids) - n + 1)]
     total = len(ngrams)
     unique = len(set(ngrams))
 
@@ -189,6 +195,7 @@ def compute_distinct_n(token_ids: Tensor, n: int) -> float:
 # ---------------------------------------------------------------------------
 # Length stats
 # ---------------------------------------------------------------------------
+
 
 def compute_length_stats(generated_texts: list[str]) -> dict:
     """Compute word-count length statistics over a list of generated texts.
@@ -220,6 +227,7 @@ def compute_length_stats(generated_texts: list[str]) -> dict:
 # Evaluator
 # ---------------------------------------------------------------------------
 
+
 class GenerationEvaluator:
     """Evaluate open-ended text generation quality.
 
@@ -249,9 +257,7 @@ class GenerationEvaluator:
             Dict with keys: rouge_l (float), distinct_n (float), length (int).
         """
         device = next(self.model.parameters()).device
-        input_ids = torch.tensor(
-            [self.encode_fn(prompt)], dtype=torch.long, device=device
-        )
+        input_ids = torch.tensor([self.encode_fn(prompt)], dtype=torch.long, device=device)
 
         generated_ids = greedy_generate(
             self.model,
@@ -278,10 +284,7 @@ class GenerationEvaluator:
         Returns:
             Dict with keys: mean_rouge_l, mean_distinct_n, mean_len, min_len, max_len, std_len.
         """
-        results = [
-            self.evaluate_sample(p, r)
-            for p, r in zip(prompts, references)
-        ]
+        results = [self.evaluate_sample(p, r) for p, r in zip(prompts, references)]
 
         n = len(results)
         if n == 0:

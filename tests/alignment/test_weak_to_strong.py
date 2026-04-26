@@ -1,6 +1,7 @@
 """Tests for Weak-to-Strong Generalization (Burns et al. 2023)."""
+
 import math
-import pytest
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,7 +12,6 @@ from src.alignment.weak_to_strong import (
     WeakToStrongLoss,
     WeakToStrongTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,6 +40,7 @@ def _make_supervisor(num_classes: int = NUM_CLASSES) -> WeakSupervisor:
 # ---------------------------------------------------------------------------
 # WeakSupervisor tests
 # ---------------------------------------------------------------------------
+
 
 def test_supervisor_freezes_all_params():
     """WeakSupervisor must freeze every parameter in the wrapped model."""
@@ -82,6 +83,7 @@ def test_supervisor_get_soft_labels_no_grad():
 # WeakToStrongDataset tests
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_len():
     """Dataset length must equal the number of input samples."""
     inputs = _make_inputs(n=12)
@@ -96,9 +98,7 @@ def test_dataset_getitem_returns_pair():
     supervisor = _make_supervisor()
     ds = WeakToStrongDataset(inputs, supervisor)
     item = ds[0]
-    assert isinstance(item, tuple) and len(item) == 2, (
-        "Expected a 2-tuple (input, soft_label)"
-    )
+    assert isinstance(item, tuple) and len(item) == 2, "Expected a 2-tuple (input, soft_label)"
 
 
 def test_dataset_soft_labels_shape():
@@ -114,6 +114,7 @@ def test_dataset_soft_labels_shape():
 # ---------------------------------------------------------------------------
 # WeakToStrongLoss tests
 # ---------------------------------------------------------------------------
+
 
 def _make_random_logits_and_labels(b: int = BATCH_SIZE, c: int = NUM_CLASSES):
     torch.manual_seed(42)
@@ -187,6 +188,7 @@ def test_loss_confidence_threshold_filters_samples():
 # WeakToStrongTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def _make_trainer(confidence_weighting: bool = False, threshold: float = 0.0):
     torch.manual_seed(10)
     strong_model = _make_linear_model()
@@ -199,7 +201,7 @@ def _make_trainer(confidence_weighting: bool = False, threshold: float = 0.0):
 
 
 def test_trainer_train_step_returns_correct_keys():
-    """train_step must return a dict with exactly 'loss', 'mean_confidence', 'frac_above_threshold'."""
+    """train_step must return a dict with exactly 'loss', 'mean_confidence', 'frac_above_threshold'."""  # noqa: E501
     trainer = _make_trainer()
     x = _make_inputs()
     supervisor = _make_supervisor()

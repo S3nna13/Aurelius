@@ -167,9 +167,7 @@ class CitationTracker:
 
     # ------------------------------------------------------------------ core
 
-    def _exact_spans_for_source(
-        self, output_text: str, src: Source
-    ) -> list[CitationSpan]:
+    def _exact_spans_for_source(self, output_text: str, src: Source) -> list[CitationSpan]:
         if not src.text or not output_text:
             return []
         # Greedy longest-match-first: enumerate candidate substrings of the
@@ -219,9 +217,7 @@ class CitationTracker:
             i = j
         return spans
 
-    def _fuzzy_spans_for_source(
-        self, output_text: str, src: Source
-    ) -> list[CitationSpan]:
+    def _fuzzy_spans_for_source(self, output_text: str, src: Source) -> list[CitationSpan]:
         if self.similarity_fn is None or not src.text or not output_text:
             return []
         best: tuple[float, int, int] | None = None
@@ -233,9 +229,7 @@ class CitationTracker:
                 score = float(self.similarity_fn(chunk, src.text))  # type: ignore[misc]
             except Exception:
                 score = 0.0
-            if score >= self.fuzzy_threshold and (
-                best is None or score > best[0]
-            ):
+            if score >= self.fuzzy_threshold and (best is None or score > best[0]):
                 best = (score, s, e)
         if best is None:
             return []
@@ -252,9 +246,7 @@ class CitationTracker:
             )
         ]
 
-    def track(
-        self, output_text: str, sources: list[Source]
-    ) -> CitationReport:
+    def track(self, output_text: str, sources: list[Source]) -> CitationReport:
         spans: list[CitationSpan] = []
         for src in sources:
             src_spans = self._exact_spans_for_source(output_text, src)
@@ -281,11 +273,7 @@ class CitationTracker:
         # match (exact wins by confidence). Partial-overlap declared spans
         # are kept as-is.
         exact_intervals = _merge_intervals(
-            [
-                (s.output_start, s.output_end)
-                for s in evidence
-                if s.method == "exact_match"
-            ]
+            [(s.output_start, s.output_end) for s in evidence if s.method == "exact_match"]
         )
         src_by_id = {s.id: s for s in sources}
         merged: list[CitationSpan] = list(evidence)
@@ -301,9 +289,7 @@ class CitationTracker:
             o_end = min(len(output_text), o_end)
             if o_end <= o_start:
                 continue
-            if _interval_fully_contained(
-                (o_start, o_end), exact_intervals
-            ):
+            if _interval_fully_contained((o_start, o_end), exact_intervals):
                 # Exact match already covers this region with higher
                 # confidence; skip.
                 continue
@@ -364,9 +350,7 @@ class CitationTracker:
         )
 
 
-def _interval_fully_contained(
-    iv: tuple[int, int], covered: list[tuple[int, int]]
-) -> bool:
+def _interval_fully_contained(iv: tuple[int, int], covered: list[tuple[int, int]]) -> bool:
     s, e = iv
     for cs, ce in covered:
         if cs <= s and ce >= e:

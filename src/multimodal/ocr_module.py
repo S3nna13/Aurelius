@@ -32,9 +32,7 @@ class TextRegionEncoder(nn.Module):
 class LayoutAttention(nn.Module):
     def __init__(self, config: OCRConfig, n_heads: int = 4):
         super().__init__()
-        self.attn = nn.MultiheadAttention(
-            config.d_model, n_heads, batch_first=True
-        )
+        self.attn = nn.MultiheadAttention(config.d_model, n_heads, batch_first=True)
         self.norm = nn.LayerNorm(config.d_model)
 
     def forward(self, queries: Tensor, keys: Tensor) -> Tensor:
@@ -50,9 +48,7 @@ class OCRModule(nn.Module):
         self.config = config
         self.encoder = TextRegionEncoder(config)
         self.layout_attn = LayoutAttention(config)
-        self.text_queries = nn.Parameter(
-            torch.zeros(1, config.max_text_regions, config.d_model)
-        )
+        self.text_queries = nn.Parameter(torch.zeros(1, config.max_text_regions, config.d_model))
         nn.init.trunc_normal_(self.text_queries, std=0.02)
 
     def forward(self, image: Tensor) -> Tensor:

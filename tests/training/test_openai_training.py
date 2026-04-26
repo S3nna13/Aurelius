@@ -2,33 +2,29 @@
 
 All tests use synthetic data only; no network requests, no external APIs.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.training.openai_training import (
-    # GSM8K-inspired
-    extract_final_answer,
-    verify_numeric_answer,
-    answer_verification_reward,
-    split_scratchpad_answer_mask,
-    weighted_lm_loss,
     # MMMLU-inspired
-    MultipleChoiceResult,
-    evaluate_multiple_choice,
-    format_multiple_choice_prompt,
-    # CoVal-inspired
-    parse_ranking_string,
-    borda_count,
-    majority_vote_preference,
     aggregate_to_dpo_pairs,
+    answer_verification_reward,
+    borda_count,
+    extract_final_answer,
+    extract_graph_answer_nodes,
+    format_multiple_choice_prompt,
     # GraphWalks-inspired
     graphwalks_f1,
-    evaluate_graph_reasoning,
-    extract_graph_answer_nodes,
+    majority_vote_preference,
+    # CoVal-inspired
+    parse_ranking_string,
+    split_scratchpad_answer_mask,
+    verify_numeric_answer,
+    weighted_lm_loss,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +72,7 @@ def _dummy_decode(ids) -> str:
 
 # ── 1. GSM8K: extract_final_answer ───────────────────────────────────────────
 
+
 def test_extract_final_answer_basic():
     result = extract_final_answer("Let me think... #### 72")
     assert result == "72"
@@ -87,6 +84,7 @@ def test_extract_final_answer_none():
 
 
 # ── 2. GSM8K: verify_numeric_answer ──────────────────────────────────────────
+
 
 def test_verify_numeric_answer_correct():
     assert verify_numeric_answer("72", "72") is True
@@ -102,6 +100,7 @@ def test_verify_numeric_answer_tolerance():
 
 # ── 3. GSM8K: answer_verification_reward ─────────────────────────────────────
 
+
 def test_answer_verification_reward_correct():
     reward = answer_verification_reward("Step 1... #### 42", "42", answer_reward=1.0)
     assert reward == 1.0
@@ -115,6 +114,7 @@ def test_answer_verification_reward_format_only():
 
 
 # ── 4. GSM8K: split_scratchpad_answer_mask ───────────────────────────────────
+
 
 def test_split_scratchpad_answer_mask_shape():
     B, T = 3, 20
@@ -139,6 +139,7 @@ def test_split_scratchpad_answer_mask_weights():
 
 # ── 5. GSM8K: weighted_lm_loss ───────────────────────────────────────────────
 
+
 def test_weighted_lm_loss_shape():
     B, T, V = 2, 8, 64
     logits = torch.randn(B, T, V)
@@ -161,6 +162,7 @@ def test_weighted_lm_loss_ignores_minus100():
 
 # ── 6. MMMLU: format_multiple_choice_prompt ──────────────────────────────────
 
+
 def test_format_multiple_choice_prompt_contains_choices():
     prompt = format_multiple_choice_prompt(
         question="What is 2+2?",
@@ -173,12 +175,14 @@ def test_format_multiple_choice_prompt_contains_choices():
 
 # ── 7. CoVal: parse_ranking_string ───────────────────────────────────────────
 
+
 def test_parse_ranking_string_simple():
     result = parse_ranking_string("B>A>C=D")
     assert result == [["B"], ["A"], ["C", "D"]]
 
 
 # ── 8. CoVal: borda_count ────────────────────────────────────────────────────
+
 
 def test_borda_count_clear_winner():
     # A is always ranked first
@@ -192,6 +196,7 @@ def test_borda_count_clear_winner():
 
 
 # ── 9. CoVal: majority_vote_preference ───────────────────────────────────────
+
 
 def test_majority_vote_preference_clear():
     # All annotators prefer A over B
@@ -207,6 +212,7 @@ def test_majority_vote_preference_clear():
 
 # ── 10. CoVal: aggregate_to_dpo_pairs ────────────────────────────────────────
 
+
 def test_aggregate_to_dpo_pairs_returns_list():
     responses = {"A": "great answer", "B": "bad answer", "C": "ok answer", "D": "meh"}
     rankings = [
@@ -221,6 +227,7 @@ def test_aggregate_to_dpo_pairs_returns_list():
 
 # ── 11. GraphWalks: graphwalks_f1 ────────────────────────────────────────────
 
+
 def test_graphwalks_f1_perfect():
     assert graphwalks_f1(["a", "b", "c"], ["a", "b", "c"]) == pytest.approx(1.0)
 
@@ -230,6 +237,7 @@ def test_graphwalks_f1_empty_both():
 
 
 # ── 12. GraphWalks: extract_graph_answer_nodes ───────────────────────────────
+
 
 def test_extract_graph_answer_nodes_valid():
     text = "Some reasoning... Final Answer: [node1, node2]"

@@ -1,4 +1,5 @@
 """Expert Choice routing for MoE (Zhou et al., 2022) — experts select top-k tokens."""
+
 from __future__ import annotations
 
 import math
@@ -13,9 +14,9 @@ from torch import Tensor
 @dataclass
 class ExpertChoiceConfig:
     n_experts: int = 4
-    capacity_factor: float = 1.0    # tokens per expert = capacity_factor * T / n_experts
+    capacity_factor: float = 1.0  # tokens per expert = capacity_factor * T / n_experts
     d_model: int = 64
-    d_expert: int = 128             # expert hidden dim (typically 2-4x d_model)
+    d_expert: int = 128  # expert hidden dim (typically 2-4x d_model)
     use_aux_loss: bool = True
     aux_loss_coeff: float = 0.01
 
@@ -30,7 +31,7 @@ def compute_expert_capacity(
 
 
 def expert_choice_routing(
-    router_logits: Tensor,      # (T, n_experts) — token scores per expert
+    router_logits: Tensor,  # (T, n_experts) — token scores per expert
     capacity: int,
 ) -> tuple[Tensor, Tensor, Tensor]:
     """Expert-choice routing: each expert picks top-capacity tokens.
@@ -51,7 +52,9 @@ def expert_choice_routing(
     scores = router_probs.T  # (n_experts, T)
 
     # Each expert selects top-capacity tokens
-    expert_weights, token_indices = torch.topk(scores, capacity, dim=-1)  # both (n_experts, capacity)
+    expert_weights, token_indices = torch.topk(
+        scores, capacity, dim=-1
+    )  # both (n_experts, capacity)
 
     # Build binary expert_mask (T, n_experts)
     expert_mask = torch.zeros(T, n_experts, dtype=router_logits.dtype, device=router_logits.device)
@@ -62,8 +65,8 @@ def expert_choice_routing(
 
 
 def compute_ec_router_loss(
-    router_probs: Tensor,       # (T, n_experts)
-    expert_mask: Tensor,        # (T, n_experts)
+    router_probs: Tensor,  # (T, n_experts)
+    expert_mask: Tensor,  # (T, n_experts)
 ) -> Tensor:
     """Auxiliary loss to encourage diverse routing.
     loss = mean(fraction_chosen_per_expert^2) — should be ~1/n_experts^2 when balanced.
@@ -72,7 +75,7 @@ def compute_ec_router_loss(
     T = router_probs.shape[0]
     # fraction of tokens chosen per expert: (n_experts,)
     fraction_chosen = expert_mask.sum(dim=0) / T  # (n_experts,)
-    loss = (fraction_chosen ** 2).mean()
+    loss = (fraction_chosen**2).mean()
     return loss
 
 
@@ -96,10 +99,9 @@ class ExpertChoiceLayer(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.router = nn.Linear(cfg.d_model, cfg.n_experts, bias=False)
-        self.experts = nn.ModuleList([
-            ExpertChoiceFFN(cfg.d_model, cfg.d_expert)
-            for _ in range(cfg.n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [ExpertChoiceFFN(cfg.d_model, cfg.d_expert) for _ in range(cfg.n_experts)]
+        )
 
     def forward(self, x: Tensor) -> tuple[Tensor, dict[str, Tensor]]:
         """x: (B, T, D).
@@ -135,10 +137,10 @@ class ExpertChoiceLayer(nn.Module):
         output_buffer = torch.zeros(N, D, device=x.device, dtype=x.dtype)
 
         for e, expert in enumerate(self.experts):
-            idx = token_indices[e]           # (capacity,)
-            w = expert_weights[e]            # (capacity,)
-            tokens = x_flat[idx]             # (capacity, D)
-            expert_out = expert(tokens)      # (capacity, D)
+            idx = token_indices[e]  # (capacity,)
+            w = expert_weights[e]  # (capacity,)
+            tokens = x_flat[idx]  # (capacity, D)
+            expert_out = expert(tokens)  # (capacity, D)
             # Weighted accumulate
             output_buffer.index_add_(0, idx, w.unsqueeze(-1) * expert_out)
 

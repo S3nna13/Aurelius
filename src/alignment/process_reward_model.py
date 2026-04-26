@@ -8,7 +8,6 @@ scoring individual steps rather than only the final answer.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -22,7 +21,7 @@ class StepReward:
 
     step_idx: int
     reward: float
-    is_correct: Optional[bool] = None
+    is_correct: bool | None = None
 
 
 class PRMHead(nn.Module):
@@ -146,7 +145,7 @@ class PRMTrainer:
         hidden_states: Tensor,
         step_labels: Tensor,
         step_mask: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Execute a single training step.
 
         Args:
@@ -185,7 +184,7 @@ class PRMTrainer:
         self,
         hidden_states: Tensor,
         step_mask: Tensor,
-    ) -> List[StepReward]:
+    ) -> list[StepReward]:
         """Evaluate a reasoning chain and return per-step rewards.
 
         Operates on the first batch item only.
@@ -202,7 +201,7 @@ class PRMTrainer:
             all_rewards = self.model(hidden_states)  # (B, T)
 
         positions = step_mask[0].nonzero(as_tuple=False).squeeze(1)  # (n_steps,)
-        result: List[StepReward] = []
+        result: list[StepReward] = []
         for idx, pos in enumerate(positions.tolist()):
             reward_val = all_rewards[0, pos].item()
             result.append(StepReward(step_idx=idx, reward=reward_val))

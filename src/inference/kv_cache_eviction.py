@@ -27,16 +27,15 @@ Correctness contract
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, Dict, List, Optional, Tuple
-import heapq
 import time
-
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
+
 
 class EvictionError(Exception):
     """Raised when eviction-policy invariants are violated."""
@@ -46,7 +45,8 @@ class EvictionError(Exception):
 # Types
 # ---------------------------------------------------------------------------
 
-class EvictionPolicy(str, Enum):
+
+class EvictionPolicy(StrEnum):
     """Eviction strategies supported by :class:`EvictionEngine`."""
 
     LRU = "lru"
@@ -76,7 +76,7 @@ class CacheEntry:
 class EvictionDecision:
     """Outcome of a single :meth:`EvictionEngine.admit` call."""
 
-    evicted: Tuple[str, ...]
+    evicted: tuple[str, ...]
     freed_bytes: int
     policy: EvictionPolicy
     reason: str
@@ -86,7 +86,8 @@ class EvictionDecision:
 # Pure victim-selection
 # ---------------------------------------------------------------------------
 
-def _ordinal(key: str, order: Tuple[str, ...]) -> int:
+
+def _ordinal(key: str, order: tuple[str, ...]) -> int:
     """Insertion rank of ``key`` (stable tiebreak)."""
 
     try:
@@ -97,13 +98,13 @@ def _ordinal(key: str, order: Tuple[str, ...]) -> int:
 
 def select_victims(
     policy: EvictionPolicy,
-    entries: Tuple[CacheEntry, ...],
-    uses: Dict[str, int],
-    last_touch_ns: Dict[str, int],
-    order: Tuple[str, ...],
+    entries: tuple[CacheEntry, ...],
+    uses: dict[str, int],
+    last_touch_ns: dict[str, int],
+    order: tuple[str, ...],
     sink_count: int,
     bytes_needed: int,
-) -> Tuple[str, ...]:
+) -> tuple[str, ...]:
     """Return the keys the engine should evict, in eviction order.
 
     Pure function — no I/O, no global state. Reusable by callers that
@@ -143,7 +144,7 @@ def select_victims(
     if bytes_needed <= 0:
         return ()
 
-    by_key: Dict[str, CacheEntry] = {e.key: e for e in entries}
+    by_key: dict[str, CacheEntry] = {e.key: e for e in entries}
 
     # Determine which keys are eligible for eviction.
     if policy is EvictionPolicy.SINK_PRESERVING:
@@ -178,7 +179,7 @@ def select_victims(
         # Lowest weight-per-byte first. A zero-byte entry has effectively
         # infinite density; keep it last. Tie-break by insertion order
         # so behavior is reproducible.
-        def _density(k: str) -> Tuple[float, int]:
+        def _density(k: str) -> tuple[float, int]:
             entry = by_key[k]
             if entry.size_bytes <= 0:
                 return (float("inf"), _ordinal(k, order))
@@ -189,7 +190,7 @@ def select_victims(
         raise EvictionError(f"unsupported_policy: {policy!r}")
 
     freed = 0
-    chosen: List[str] = []
+    chosen: list[str] = []
     for k in ordering:
         if freed >= bytes_needed:
             break
@@ -209,6 +210,7 @@ def select_victims(
 # Engine
 # ---------------------------------------------------------------------------
 
+
 class EvictionEngine:
     """Bookkeeping-only cache governed by an :class:`EvictionPolicy`.
 
@@ -224,7 +226,7 @@ class EvictionEngine:
         *,
         capacity_bytes: int,
         sink_count: int = 0,
-        clock_ns: Optional[Callable[[], int]] = None,
+        clock_ns: Callable[[], int] | None = None,
     ) -> None:
         if not isinstance(policy, EvictionPolicy):
             raise EvictionError(f"invalid_policy: {policy!r}")
@@ -233,19 +235,17 @@ class EvictionEngine:
                 f"invalid_capacity: capacity_bytes must be > 0, got {capacity_bytes}"
             )
         if sink_count < 0:
-            raise EvictionError(
-                f"invalid_sink_count: sink_count must be >= 0, got {sink_count}"
-            )
+            raise EvictionError(f"invalid_sink_count: sink_count must be >= 0, got {sink_count}")
 
         self._policy: EvictionPolicy = policy
         self._capacity: int = int(capacity_bytes)
         self._sink_count: int = int(sink_count)
         self._clock_ns: Callable[[], int] = clock_ns or time.monotonic_ns
 
-        self._entries: Dict[str, CacheEntry] = {}
-        self._order: List[str] = []
-        self._uses: Dict[str, int] = {}
-        self._last_touch_ns: Dict[str, int] = {}
+        self._entries: dict[str, CacheEntry] = {}
+        self._order: list[str] = []
+        self._uses: dict[str, int] = {}
+        self._last_touch_ns: dict[str, int] = {}
         self._total_bytes: int = 0
         # Monotone counter guarantees strict ordering even if the
         # injected clock returns duplicate values.
@@ -291,9 +291,7 @@ class EvictionEngine:
         if not entry.key:
             raise EvictionError("invalid_entry: key must be non-empty")
         if entry.size_bytes < 0:
-            raise EvictionError(
-                f"invalid_entry: size_bytes must be >= 0, got {entry.size_bytes}"
-            )
+            raise EvictionError(f"invalid_entry: size_bytes must be >= 0, got {entry.size_bytes}")
 
         # Refresh path: replace metadata in place, preserving insertion
         # rank and usage history. Capacity is re-checked using the delta.
@@ -306,9 +304,7 @@ class EvictionEngine:
                 # excludes the key being refreshed so we never evict
                 # the entry we're updating.
                 needed = projected - self._capacity
-                other_entries = tuple(
-                    e for e in self._entries.values() if e.key != entry.key
-                )
+                other_entries = tuple(e for e in self._entries.values() if e.key != entry.key)
                 other_order = tuple(k for k in self._order if k != entry.key)
                 victims = select_victims(
                     self._policy,
@@ -316,7 +312,8 @@ class EvictionEngine:
                     {k: self._uses[k] for k in other_order},
                     {k: self._last_touch_ns[k] for k in other_order},
                     other_order,
-                    self._sink_count if entry.key not in self._order[: self._sink_count]
+                    self._sink_count
+                    if entry.key not in self._order[: self._sink_count]
                     else max(0, self._sink_count - 1),
                     needed,
                 )
@@ -345,12 +342,11 @@ class EvictionEngine:
         # up-front so we don't churn the selector for an impossible ask.
         if entry.size_bytes > self._capacity:
             raise EvictionError(
-                f"insufficient_capacity: need {entry.size_bytes}, max evictable "
-                f"{self._capacity}"
+                f"insufficient_capacity: need {entry.size_bytes}, max evictable {self._capacity}"
             )
 
         projected = self._total_bytes + entry.size_bytes
-        victims: Tuple[str, ...] = ()
+        victims = ()
         freed = 0
         if projected > self._capacity:
             needed = projected - self._capacity
@@ -417,12 +413,12 @@ class EvictionEngine:
     def __len__(self) -> int:
         return len(self._entries)
 
-    def keys(self) -> Tuple[str, ...]:
+    def keys(self) -> tuple[str, ...]:
         """Return currently-resident keys in deterministic (sorted) order."""
 
         return tuple(sorted(self._entries.keys()))
 
-    def snapshot(self) -> Dict[str, object]:
+    def snapshot(self) -> dict[str, object]:
         """Return a JSON-serializable view of engine state."""
 
         entries = []
@@ -449,7 +445,7 @@ class EvictionEngine:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-    def _apply_evictions(self, victims: Tuple[str, ...]) -> int:
+    def _apply_evictions(self, victims: tuple[str, ...]) -> int:
         freed = 0
         for key in victims:
             entry = self._entries.pop(key)
@@ -466,7 +462,7 @@ class EvictionEngine:
 # Registry
 # ---------------------------------------------------------------------------
 
-EVICTION_POLICY_REGISTRY: Dict[str, type] = {p.value: EvictionEngine for p in EvictionPolicy}
+EVICTION_POLICY_REGISTRY: dict[str, type] = {p.value: EvictionEngine for p in EvictionPolicy}
 
 
 __all__ = [

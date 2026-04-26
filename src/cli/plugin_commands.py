@@ -31,9 +31,7 @@ class PluginCommands:
 
     def enable(self, name: str) -> PluginCommandResult:
         if name not in self._plugins:
-            return PluginCommandResult(
-                success=False, message=f"Plugin '{name}' is not registered."
-            )
+            return PluginCommandResult(success=False, message=f"Plugin '{name}' is not registered.")
         self._plugins[name]["enabled"] = True
         return PluginCommandResult(
             success=True,
@@ -43,9 +41,7 @@ class PluginCommands:
 
     def disable(self, name: str) -> PluginCommandResult:
         if name not in self._plugins:
-            return PluginCommandResult(
-                success=False, message=f"Plugin '{name}' is not registered."
-            )
+            return PluginCommandResult(success=False, message=f"Plugin '{name}' is not registered.")
         self._plugins[name]["enabled"] = False
         return PluginCommandResult(
             success=True,
@@ -61,9 +57,7 @@ class PluginCommands:
 
     def info(self, name: str) -> PluginCommandResult:
         if name not in self._plugins:
-            return PluginCommandResult(
-                success=False, message=f"Plugin '{name}' not found."
-            )
+            return PluginCommandResult(success=False, message=f"Plugin '{name}' not found.")
         return PluginCommandResult(
             success=True,
             message=f"Plugin '{name}' info.",
@@ -72,13 +66,9 @@ class PluginCommands:
 
     def unregister(self, name: str) -> PluginCommandResult:
         if name not in self._plugins:
-            return PluginCommandResult(
-                success=False, message=f"Plugin '{name}' not found."
-            )
+            return PluginCommandResult(success=False, message=f"Plugin '{name}' not found.")
         self._plugins.pop(name)
-        return PluginCommandResult(
-            success=True, message=f"Plugin '{name}' unregistered."
-        )
+        return PluginCommandResult(success=True, message=f"Plugin '{name}' unregistered.")
 
 
 PLUGIN_COMMANDS = PluginCommands()
@@ -88,7 +78,5 @@ for _plugin in [
     {"name": "mcp-core", "version": "1.0.0", "description": "Core MCP server"},
     {"name": "eval-runner", "version": "0.3.0", "description": "Eval harness runner"},
 ]:
-    PLUGIN_COMMANDS.register_plugin(
-        _plugin["name"], _plugin["version"], _plugin["description"]
-    )
+    PLUGIN_COMMANDS.register_plugin(_plugin["name"], _plugin["version"], _plugin["description"])
     PLUGIN_COMMANDS.enable(_plugin["name"])

@@ -13,6 +13,8 @@ from datetime import UTC
 
 import pytest
 
+pytest.importorskip("aurelius_usage_store")
+
 from src.data.usage_pipeline import UsagePipeline, get_pipeline
 
 

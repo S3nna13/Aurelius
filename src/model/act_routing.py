@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -200,7 +199,9 @@ class ACTWrapper(nn.Module):
             n_steps_per_token = n_steps_per_token + (~halted).long()
 
             # Record halt step for newly halted tokens
-            halted_at_step = torch.where(newly_halted & ~halted, torch.full_like(halted_at_step, step), halted_at_step)
+            halted_at_step = torch.where(
+                newly_halted & ~halted, torch.full_like(halted_at_step, step), halted_at_step
+            )
 
             # Update halted mask
             halted = halted | newly_halted

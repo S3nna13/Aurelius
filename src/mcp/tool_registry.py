@@ -9,8 +9,7 @@ Apache-2.0, clean-room reimplementation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -139,11 +138,7 @@ class ToolRegistry:
         tool = self._tools.get(name)
         if tool is None:
             return ["tool_not_found"]
-        return [
-            p.name
-            for p in tool.parameters
-            if p.required and p.name not in kwargs
-        ]
+        return [p.name for p in tool.parameters if p.required and p.name not in kwargs]
 
     # ------------------------------------------------------------------
     # Schema export
@@ -174,12 +169,9 @@ class ToolRegistry:
         for name in sorted(self._tools):
             tool = self._tools[name]
             properties: dict[str, dict] = {
-                p.name: {"type": p.type, "description": p.description}
-                for p in tool.parameters
+                p.name: {"type": p.type, "description": p.description} for p in tool.parameters
             }
-            required_names: list[str] = [
-                p.name for p in tool.parameters if p.required
-            ]
+            required_names: list[str] = [p.name for p in tool.parameters if p.required]
             schemas.append(
                 {
                     "name": tool.name,

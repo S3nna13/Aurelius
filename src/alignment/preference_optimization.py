@@ -8,25 +8,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PreferenceOptConfig:
     """Configuration for ORPO, KTO, and RRHF preference optimization."""
 
-    method: str = "orpo"               # "orpo" | "kto" | "rrhf"
+    method: str = "orpo"  # "orpo" | "kto" | "rrhf"
     beta: float = 0.1
-    lambda_: float = 1.0               # ORPO SFT loss weight
-    desirable_weight: float = 1.0      # KTO weight for chosen responses
-    undesirable_weight: float = 1.0    # KTO weight for rejected responses
+    lambda_: float = 1.0  # ORPO SFT loss weight
+    desirable_weight: float = 1.0  # KTO weight for chosen responses
+    undesirable_weight: float = 1.0  # KTO weight for rejected responses
 
 
 # ---------------------------------------------------------------------------
 # Shared utility: compute per-sequence log-probabilities
 # ---------------------------------------------------------------------------
+
 
 def compute_sequence_log_probs(
     model: nn.Module,
@@ -67,6 +68,7 @@ def compute_sequence_log_probs(
 # ORPO loss
 # ---------------------------------------------------------------------------
 
+
 def orpo_loss(
     policy_chosen_logps: torch.Tensor,
     policy_rejected_logps: torch.Tensor,
@@ -99,12 +101,8 @@ def orpo_loss(
     # Odds ratio penalty (log odds ratio between chosen and rejected)
     # odds = p / (1 - p) = exp(logp) / (1 - exp(logp))
     # Using log: log_odds = logp - log(1 - exp(logp) + eps)
-    odds_chosen = policy_chosen_logps - torch.log(
-        1.0 - policy_chosen_logps.exp() + 1e-8
-    )
-    odds_rejected = policy_rejected_logps - torch.log(
-        1.0 - policy_rejected_logps.exp() + 1e-8
-    )
+    odds_chosen = policy_chosen_logps - torch.log(1.0 - policy_chosen_logps.exp() + 1e-8)
+    odds_rejected = policy_rejected_logps - torch.log(1.0 - policy_rejected_logps.exp() + 1e-8)
 
     # Log odds ratio: log(odds_chosen / odds_rejected)
     ratio = torch.log(torch.exp(odds_chosen) / (torch.exp(odds_rejected) + 1e-8) + 1e-8)
@@ -120,6 +118,7 @@ def orpo_loss(
 # ---------------------------------------------------------------------------
 # KTO loss
 # ---------------------------------------------------------------------------
+
 
 def kto_loss(
     policy_chosen_logps: torch.Tensor,
@@ -171,6 +170,7 @@ def kto_loss(
 # RRHF loss
 # ---------------------------------------------------------------------------
 
+
 def rrhf_loss(
     ranked_logps: list[torch.Tensor],
     margin: float = 0.0,
@@ -216,6 +216,7 @@ def rrhf_loss(
 # ---------------------------------------------------------------------------
 # PreferenceOptTrainer
 # ---------------------------------------------------------------------------
+
 
 class PreferenceOptTrainer:
     """Trainer for ORPO, KTO, and RRHF preference optimization.
@@ -323,9 +324,7 @@ class PreferenceOptTrainer:
             loss, metrics = rrhf_loss([policy_chosen_logps, policy_rejected_logps])
 
         else:
-            raise ValueError(
-                f"Unknown method: {cfg.method!r}. Choose 'orpo', 'kto', or 'rrhf'."
-            )
+            raise ValueError(f"Unknown method: {cfg.method!r}. Choose 'orpo', 'kto', or 'rrhf'.")
 
         self.optimizer.zero_grad()
         loss.backward()

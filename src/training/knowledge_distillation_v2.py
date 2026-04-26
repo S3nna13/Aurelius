@@ -10,17 +10,16 @@ All computation uses pure native PyTorch -- no external libraries beyond torch.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DistillationConfig:
@@ -43,6 +42,7 @@ class DistillationConfig:
 # ---------------------------------------------------------------------------
 # Soft-target losses
 # ---------------------------------------------------------------------------
+
 
 class SoftTargetLoss(nn.Module):
     """Distillation losses computed on temperature-softened distributions.
@@ -138,6 +138,7 @@ class SoftTargetLoss(nn.Module):
 # Combined task + distillation loss
 # ---------------------------------------------------------------------------
 
+
 class DistillationLoss(nn.Module):
     """Combined task loss + distillation loss.
 
@@ -203,7 +204,7 @@ class DistillationLoss(nn.Module):
         student_logits: Tensor,
         teacher_logits: Tensor,
         labels: torch.LongTensor,
-    ) -> Tuple[Tensor, Dict[str, Tensor]]:
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         """Compute total weighted loss and return a metrics dictionary.
 
         Args:
@@ -219,7 +220,7 @@ class DistillationLoss(nn.Module):
         t_loss = self.task_loss(student_logits, labels)
         d_loss = self.distill_loss(student_logits, teacher_logits)
         total = alpha * t_loss + (1.0 - alpha) * d_loss
-        metrics: Dict[str, Tensor] = {
+        metrics: dict[str, Tensor] = {
             "task_loss": t_loss,
             "distill_loss": d_loss,
             "total_loss": total,
@@ -230,6 +231,7 @@ class DistillationLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class DistillationTrainer:
     """Minimal training wrapper for one student-teacher distillation step.
@@ -273,7 +275,7 @@ class DistillationTrainer:
         self,
         input_ids: torch.LongTensor,
         labels: torch.LongTensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Run one forward-backward-update step.
 
         Args:

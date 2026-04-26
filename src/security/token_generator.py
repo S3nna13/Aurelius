@@ -1,4 +1,5 @@
 """Secure random token generator for API keys and session tokens."""
+
 from __future__ import annotations
 
 import secrets

@@ -7,6 +7,7 @@ Reference:
     Gu & Dao 2023, "Mamba: Linear-Time Sequence Modeling with Selective State Spaces"
     https://arxiv.org/abs/2312.00752
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,22 +16,22 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SSMConfig:
     """Configuration for the Selective SSM block."""
 
     d_model: int = 64
-    d_state: int = 16      # N — SSM state dimension
-    d_conv: int = 4        # causal depthwise conv kernel size
-    expand: int = 2        # inner_dim = d_model * expand
-    dt_rank: int = 8       # rank of delta (Δ) projection
+    d_state: int = 16  # N — SSM state dimension
+    d_conv: int = 4  # causal depthwise conv kernel size
+    expand: int = 2  # inner_dim = d_model * expand
+    dt_rank: int = 8  # rank of delta (Δ) projection
     dt_min: float = 0.001  # minimum Δ after softplus
-    dt_max: float = 0.1    # maximum Δ clamp
+    dt_max: float = 0.1  # maximum Δ clamp
 
     @property
     def d_inner(self) -> int:
@@ -40,6 +41,7 @@ class SSMConfig:
 # ---------------------------------------------------------------------------
 # Sequential SSM scan (pure PyTorch)
 # ---------------------------------------------------------------------------
+
 
 def selective_scan(
     u: torch.Tensor,
@@ -70,12 +72,8 @@ def selective_scan(
     # Discretize:
     # A_bar_t = exp(delta_t * A)  → (B, L, D, N)
     # B_bar_t = delta_t * B_t     → (B, L, D, N)  (outer product over D and N)
-    delta_A = torch.exp(
-        delta.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0)
-    )  # (B, L, D, N)
-    delta_B_u = (
-        delta.unsqueeze(-1) * B.unsqueeze(2)
-    )  # (B, L, D, N)  — broadcast D over N
+    delta_A = torch.exp(delta.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0))  # (B, L, D, N)
+    delta_B_u = delta.unsqueeze(-1) * B.unsqueeze(2)  # (B, L, D, N)  — broadcast D over N
     # Multiply by u to get the input contribution
     delta_B_u = delta_B_u * u.unsqueeze(-1)  # (B, L, D, N)
 
@@ -94,6 +92,7 @@ def selective_scan(
 # ---------------------------------------------------------------------------
 # SelectiveSSM — inner SSM module (no gating)
 # ---------------------------------------------------------------------------
+
 
 class SelectiveSSM(nn.Module):
     """Input-dependent SSM: projects input to Δ, B, C parameters."""
@@ -129,15 +128,15 @@ class SelectiveSSM(nn.Module):
         dt_rank = self.config.dt_rank
         N = self.config.d_state
 
-        delta_raw = projected[..., :dt_rank]             # (B, L, dt_rank)
-        B = projected[..., dt_rank:dt_rank + N]          # (B, L, N)
-        C = projected[..., dt_rank + N:]                 # (B, L, N)
+        delta_raw = projected[..., :dt_rank]  # (B, L, dt_rank)
+        B = projected[..., dt_rank : dt_rank + N]  # (B, L, N)
+        C = projected[..., dt_rank + N :]  # (B, L, N)
 
         # Δ: project and activate
-        delta = F.softplus(self.dt_proj(delta_raw))      # (B, L, D_inner)
+        delta = F.softplus(self.dt_proj(delta_raw))  # (B, L, D_inner)
 
         # A: -exp(A_log) keeps A negative (stable decay)
-        A = -torch.exp(self.A_log.float())               # (D_inner, N)
+        A = -torch.exp(self.A_log.float())  # (D_inner, N)
 
         y = selective_scan(x.float(), delta.float(), A, B.float(), C.float())
         y = y.to(x.dtype)
@@ -151,6 +150,7 @@ class SelectiveSSM(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaBlock — full Mamba block with gating
 # ---------------------------------------------------------------------------
+
 
 class MambaBlock(nn.Module):
     """Full Mamba block: conv1d + SelectiveSSM + SiLU gating."""
@@ -189,8 +189,8 @@ class MambaBlock(nn.Module):
         B, L, D = hidden.shape
 
         # Project and split
-        xz = self.in_proj(hidden)               # (B, L, 2*D_inner)
-        x, z = xz.chunk(2, dim=-1)              # each (B, L, D_inner)
+        xz = self.in_proj(hidden)  # (B, L, 2*D_inner)
+        x, z = xz.chunk(2, dim=-1)  # each (B, L, D_inner)
 
         # Causal conv (conv over time, channel-last → channel-first)
         x_conv = self.conv1d(x.transpose(1, 2))  # (B, D_inner, L + pad)
@@ -199,17 +199,18 @@ class MambaBlock(nn.Module):
         x_conv = F.silu(x_conv)
 
         # SSM
-        y = self.ssm(x_conv)                     # (B, L, D_inner)
+        y = self.ssm(x_conv)  # (B, L, D_inner)
 
         # SiLU gate
         y = y * F.silu(z)
 
-        return self.out_proj(y)                  # (B, L, d_model)
+        return self.out_proj(y)  # (B, L, d_model)
 
 
 # ---------------------------------------------------------------------------
 # RMSNorm
 # ---------------------------------------------------------------------------
+
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization."""
@@ -227,6 +228,7 @@ class RMSNorm(nn.Module):
 # ---------------------------------------------------------------------------
 # MambaLayer — block + residual + pre-norm
 # ---------------------------------------------------------------------------
+
 
 class MambaLayer(nn.Module):
     """MambaBlock with RMSNorm pre-norm and residual connection."""

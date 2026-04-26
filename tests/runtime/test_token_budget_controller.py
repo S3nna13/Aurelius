@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.runtime.token_budget_controller import BudgetConfig, BudgetState, TokenBudgetController
+from src.runtime.token_budget_controller import BudgetConfig, TokenBudgetController
 
 
 @pytest.fixture()

@@ -1,6 +1,7 @@
 """Tests for src/training/kl_div_scheduler.py"""
 
 import pytest
+
 from src.training.kl_div_scheduler import (
     AdaptiveKLScheduler,
     CyclicKLScheduler,
@@ -9,10 +10,10 @@ from src.training.kl_div_scheduler import (
     create_kl_scheduler,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test 1: KLSchedulerConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_kl_scheduler_config_defaults():
     cfg = KLSchedulerConfig()
@@ -28,6 +29,7 @@ def test_kl_scheduler_config_defaults():
 # Test 2: AdaptiveKLScheduler returns initial_beta before any updates
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_initial_beta():
     sched = AdaptiveKLScheduler(initial_beta=0.3)
     assert sched.get_beta() == pytest.approx(0.3)
@@ -36,6 +38,7 @@ def test_adaptive_initial_beta():
 # ---------------------------------------------------------------------------
 # Test 3: Beta increases when KL consistently above target
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_beta_increases_on_high_kl():
     """Feed KL values well above target * 1.5 for a full horizon; beta must rise."""
@@ -63,6 +66,7 @@ def test_adaptive_beta_increases_on_high_kl():
 # Test 4: Beta decreases when KL consistently below target
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_beta_decreases_on_low_kl():
     """Feed KL values well below target / 1.5 for a full horizon; beta must fall."""
     target = 0.02
@@ -89,6 +93,7 @@ def test_adaptive_beta_decreases_on_low_kl():
 # Test 5: Beta clips to [min_beta, max_beta]
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_beta_clips_to_bounds():
     # Test upper clip
     sched_high = AdaptiveKLScheduler(
@@ -98,7 +103,7 @@ def test_adaptive_beta_clips_to_bounds():
         adjustment_factor=10.0,
         max_beta=10.0,
     )
-    beta_high = sched_high.update(1.0)   # very high KL → would exceed max
+    beta_high = sched_high.update(1.0)  # very high KL → would exceed max
     assert beta_high <= 10.0
 
     # Test lower clip
@@ -109,13 +114,14 @@ def test_adaptive_beta_clips_to_bounds():
         adjustment_factor=10.0,
         min_beta=0.001,
     )
-    beta_low = sched_low.update(0.0)   # very low KL → would go below min
+    beta_low = sched_low.update(0.0)  # very low KL → would go below min
     assert beta_low >= 0.001
 
 
 # ---------------------------------------------------------------------------
 # Test 6: reset() restores initial state
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_reset_restores_state():
     sched = AdaptiveKLScheduler(
@@ -141,6 +147,7 @@ def test_adaptive_reset_restores_state():
 # Test 7: get_stats returns dict with all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_get_stats_keys():
     sched = AdaptiveKLScheduler()
     stats = sched.get_stats()
@@ -157,20 +164,20 @@ def test_adaptive_get_stats_keys():
 # Test 8: CyclicKLScheduler stays within [base_beta, max_beta]
 # ---------------------------------------------------------------------------
 
+
 def test_cyclic_stays_in_range():
     base, maximum = 0.1, 1.0
     for mode in ("triangular", "cosine", "step"):
         sched = CyclicKLScheduler(base_beta=base, max_beta=maximum, cycle_steps=50, mode=mode)
         for _ in range(200):
             beta = sched.step()
-            assert base <= beta <= maximum, (
-                f"mode={mode}: beta={beta} out of [{base}, {maximum}]"
-            )
+            assert base <= beta <= maximum, f"mode={mode}: beta={beta} out of [{base}, {maximum}]"
 
 
 # ---------------------------------------------------------------------------
 # Test 9: CyclicKLScheduler completes a full cycle in cycle_steps
 # ---------------------------------------------------------------------------
+
 
 def test_cyclic_full_cycle():
     """After cycle_steps the triangular scheduler should return the same beta
@@ -187,14 +194,13 @@ def test_cyclic_full_cycle():
     betas2 = [sched.step() for _ in range(100)]
 
     for i, (b1, b2) in enumerate(zip(betas, betas2)):
-        assert b1 == pytest.approx(b2, abs=1e-9), (
-            f"Cycle mismatch at position {i}: {b1} vs {b2}"
-        )
+        assert b1 == pytest.approx(b2, abs=1e-9), f"Cycle mismatch at position {i}: {b1} vs {b2}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: WarmupKLScheduler starts at start_beta
 # ---------------------------------------------------------------------------
+
 
 def test_warmup_starts_at_start_beta():
     sched = WarmupKLScheduler(start_beta=0.0, end_beta=0.1, warmup_steps=100)
@@ -205,6 +211,7 @@ def test_warmup_starts_at_start_beta():
 # ---------------------------------------------------------------------------
 # Test 11: WarmupKLScheduler reaches end_beta after warmup_steps
 # ---------------------------------------------------------------------------
+
 
 def test_warmup_reaches_end_beta():
     end = 0.1
@@ -221,6 +228,7 @@ def test_warmup_reaches_end_beta():
 # Test 12: get_schedule returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_warmup_get_schedule_length():
     sched = WarmupKLScheduler(start_beta=0.0, end_beta=0.1, warmup_steps=20)
     n = 150
@@ -236,6 +244,7 @@ def test_warmup_get_schedule_length():
 # ---------------------------------------------------------------------------
 # Test 13: create_kl_scheduler returns correct type based on config
 # ---------------------------------------------------------------------------
+
 
 def test_create_kl_scheduler_types():
     for stype, expected_cls in [

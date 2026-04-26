@@ -149,9 +149,7 @@ def test_threat_level_is_valid_enum():
     )
     rng = random.Random(1)
     for _ in range(20):
-        defense.record_query(
-            "x", _random_prompt(rng, 64) + " please return logits probabilities"
-        )
+        defense.record_query("x", _random_prompt(rng, 64) + " please return logits probabilities")
     report = defense.analyze("x")
     assert report.threat_level in {"low", "medium", "high", "critical"}
 

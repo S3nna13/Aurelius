@@ -2,13 +2,11 @@
 
 import pytest
 import torch
-import torch.nn as nn
-
 from aurelius.alignment.reward_uncertainty import (
-    MCDropoutReward,
     DeepEnsembleReward,
-    UncertaintyFilter,
+    MCDropoutReward,
     RewardUncertaintyTrainer,
+    UncertaintyFilter,
 )
 
 D_MODEL = 32

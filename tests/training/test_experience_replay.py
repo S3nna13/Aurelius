@@ -1,4 +1,5 @@
 """Tests for src/training/experience_replay.py."""
+
 from __future__ import annotations
 
 import math
@@ -13,10 +14,10 @@ from src.training.experience_replay import (
     RewardNormalizer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_exp(reward: float = 1.0, step: int = 0) -> Experience:
     return Experience(
@@ -31,6 +32,7 @@ def make_exp(reward: float = 1.0, step: int = 0) -> Experience:
 # ---------------------------------------------------------------------------
 # ReplayBuffer tests
 # ---------------------------------------------------------------------------
+
 
 def test_replay_buffer_add_and_len():
     buf = ReplayBuffer(capacity=100, prioritized=False)
@@ -108,6 +110,7 @@ def test_replay_buffer_stats():
 # OnlinePPOBuffer tests
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_buffer_add_and_compute_advantages():
     buf = OnlinePPOBuffer(gamma=1.0, lam=0.95)
     for i in range(3):
@@ -128,9 +131,7 @@ def test_ppo_buffer_advantage_reduces_with_value():
     adv_low = buf_low.compute_advantages()[0]
     adv_high = buf_high.compute_advantages()[0]
 
-    assert adv_low > adv_high, (
-        f"Expected adv_low ({adv_low:.4f}) > adv_high ({adv_high:.4f})"
-    )
+    assert adv_low > adv_high, f"Expected adv_low ({adv_low:.4f}) > adv_high ({adv_high:.4f})"
 
 
 def test_ppo_buffer_clear_empties():
@@ -145,6 +146,7 @@ def test_ppo_buffer_clear_empties():
 # ---------------------------------------------------------------------------
 # RewardNormalizer tests
 # ---------------------------------------------------------------------------
+
 
 def test_reward_normalizer_welford():
     """After 100 standard-normal rewards, normalized samples should have approx mean≈0, std≈1."""

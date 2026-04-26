@@ -30,7 +30,6 @@ from __future__ import annotations
 import random
 import re
 from dataclasses import dataclass
-from typing import List, Optional
 
 FIM_PREFIX = "<fim_prefix>"
 FIM_SUFFIX = "<fim_suffix>"
@@ -70,9 +69,7 @@ def _reject_control_tokens(name: str, value: str) -> None:
         raise FIMFormatError(f"{name} must be str, got {type(value).__name__}")
     for tok in _CONTROL_TOKENS:
         if tok in value:
-            raise FIMFormatError(
-                f"{name} contains reserved FIM control token {tok!r}"
-            )
+            raise FIMFormatError(f"{name} contains reserved FIM control token {tok!r}")
 
 
 class FIMFormatter:
@@ -99,7 +96,7 @@ class FIMFormatter:
         mode: str = "psm",
         include_middle: bool = True,
         random_mode: bool = False,
-        rng: Optional[random.Random] = None,
+        rng: random.Random | None = None,
     ) -> None:
         if mode not in _VALID_MODES:
             raise FIMFormatError(
@@ -111,7 +108,9 @@ class FIMFormatter:
         self._rng = rng if rng is not None else random.Random()
 
     # ------------------------------------------------------------------ format
-    def _render(self, prefix: str, middle: str, suffix: str, mode: str, include_middle: bool) -> str:
+    def _render(
+        self, prefix: str, middle: str, suffix: str, mode: str, include_middle: bool
+    ) -> str:
         _reject_control_tokens("prefix", prefix)
         _reject_control_tokens("suffix", suffix)
         if include_middle:
@@ -126,9 +125,7 @@ class FIMFormatter:
 
     def format(self, example: FIMExample) -> str:
         if not isinstance(example, FIMExample):
-            raise FIMFormatError(
-                f"format() requires FIMExample, got {type(example).__name__}"
-            )
+            raise FIMFormatError(f"format() requires FIMExample, got {type(example).__name__}")
         mode = self._rng.choice(("psm", "spm")) if self.random_mode else self.mode
         return self._render(
             example.prefix,
@@ -153,9 +150,7 @@ class FIMFormatter:
         elif text.startswith(FIM_SUFFIX):
             match = _SPM_RE.match(text)
         else:
-            raise FIMFormatError(
-                "FIM text must begin with <fim_prefix> or <fim_suffix>"
-            )
+            raise FIMFormatError("FIM text must begin with <fim_prefix> or <fim_suffix>")
         if match is None:
             raise FIMFormatError("malformed FIM text: missing sentinels")
         prefix = match.group("prefix")
@@ -166,14 +161,12 @@ class FIMFormatter:
         for name, span in (("prefix", prefix), ("suffix", suffix), ("middle", middle)):
             for tok in _CONTROL_TOKENS:
                 if tok in span:
-                    raise FIMFormatError(
-                        f"malformed FIM text: {name} contains nested {tok!r}"
-                    )
+                    raise FIMFormatError(f"malformed FIM text: {name} contains nested {tok!r}")
         return FIMExample(prefix=prefix, middle=middle, suffix=suffix)
 
     # --------------------------------------------------------------- loss mask
     @staticmethod
-    def make_loss_mask(tokens: List[int], middle_token_id: int) -> List[bool]:
+    def make_loss_mask(tokens: list[int], middle_token_id: int) -> list[bool]:
         """Return a per-token boolean mask.
 
         True at position ``i`` means token ``i`` should contribute to the
@@ -182,9 +175,7 @@ class FIMFormatter:
         sentinel). If the sentinel is absent, the entire mask is False.
         """
         if not isinstance(tokens, list):
-            raise FIMFormatError(
-                f"tokens must be list[int], got {type(tokens).__name__}"
-            )
+            raise FIMFormatError(f"tokens must be list[int], got {type(tokens).__name__}")
         mask = [False] * len(tokens)
         found = False
         for i, tok in enumerate(tokens):

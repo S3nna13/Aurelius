@@ -1,4 +1,5 @@
 """Tests for dynamic_sparse: RigL-style dynamic sparse training."""
+
 from __future__ import annotations
 
 import pytest
@@ -9,19 +10,19 @@ from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.dynamic_sparse import (
     DynamicSparseConfig,
+    DynamicSparseTrainer,
+    apply_mask,
+    compute_gradient_scores,
+    compute_magnitude_mask,
     compute_sparsity,
     create_random_mask,
-    apply_mask,
-    compute_magnitude_mask,
-    compute_gradient_scores,
     rigl_update,
-    DynamicSparseTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_model():
@@ -50,6 +51,7 @@ def tiny_input():
 # 1. DynamicSparseConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestDynamicSparseConfig:
     def test_default_sparsity(self):
         cfg = DynamicSparseConfig()
@@ -68,8 +70,9 @@ class TestDynamicSparseConfig:
         assert cfg.grow_method == "gradient"
 
     def test_custom_values(self):
-        cfg = DynamicSparseConfig(sparsity=0.5, update_interval=50,
-                                  init_method="magnitude", grow_method="random")
+        cfg = DynamicSparseConfig(
+            sparsity=0.5, update_interval=50, init_method="magnitude", grow_method="random"
+        )
         assert cfg.sparsity == 0.5
         assert cfg.update_interval == 50
         assert cfg.init_method == "magnitude"
@@ -79,6 +82,7 @@ class TestDynamicSparseConfig:
 # ---------------------------------------------------------------------------
 # 2. compute_sparsity
 # ---------------------------------------------------------------------------
+
 
 class TestComputeSparsity:
     def test_all_zeros(self):
@@ -108,6 +112,7 @@ class TestComputeSparsity:
 # 3. create_random_mask
 # ---------------------------------------------------------------------------
 
+
 class TestCreateRandomMask:
     def test_shape(self):
         mask = create_random_mask((10, 20), sparsity=0.8)
@@ -133,6 +138,7 @@ class TestCreateRandomMask:
 # ---------------------------------------------------------------------------
 # 4. apply_mask
 # ---------------------------------------------------------------------------
+
 
 class TestApplyMask:
     def test_zeroes_pruned_weights(self):
@@ -168,6 +174,7 @@ class TestApplyMask:
 # ---------------------------------------------------------------------------
 # 5. compute_magnitude_mask
 # ---------------------------------------------------------------------------
+
 
 class TestComputeMagnitudeMask:
     def test_keeps_largest_values(self):
@@ -205,6 +212,7 @@ class TestComputeMagnitudeMask:
 # 6. compute_gradient_scores
 # ---------------------------------------------------------------------------
 
+
 class TestComputeGradientScores:
     def test_shape_matches_param(self):
         param = nn.Parameter(torch.randn(8, 16))
@@ -236,6 +244,7 @@ class TestComputeGradientScores:
 # ---------------------------------------------------------------------------
 # 7. rigl_update — returns dict with same keys
 # ---------------------------------------------------------------------------
+
 
 class TestRigLUpdate:
     @pytest.fixture
@@ -280,6 +289,7 @@ class TestRigLUpdate:
 # ---------------------------------------------------------------------------
 # 8. DynamicSparseTrainer — train_step
 # ---------------------------------------------------------------------------
+
 
 class TestDynamicSparseTrainer:
     @pytest.fixture

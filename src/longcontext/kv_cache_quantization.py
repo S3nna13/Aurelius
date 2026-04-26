@@ -25,11 +25,9 @@ live side-by-side so callers can A/B memory vs. reconstruction error.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # INT4 pack / unpack helpers
@@ -51,13 +49,9 @@ def pack_int4(x: Tensor) -> Tensor:
     xmin = int(x.min().item())
     xmax = int(x.max().item())
     if xmin < 0 or xmax > 15:
-        raise ValueError(
-            f"pack_int4 input out of range [0,15]: min={xmin} max={xmax}"
-        )
+        raise ValueError(f"pack_int4 input out of range [0,15]: min={xmin} max={xmax}")
     if x.shape[-1] % 2 != 0:
-        raise ValueError(
-            f"pack_int4 requires even last dim, got shape {tuple(x.shape)}"
-        )
+        raise ValueError(f"pack_int4 requires even last dim, got shape {tuple(x.shape)}")
     x_u8 = x.to(torch.uint8)
     low = x_u8[..., 0::2]
     high = x_u8[..., 1::2]
@@ -86,7 +80,7 @@ def unpack_int4(x_uint8: Tensor) -> Tensor:
 
 def _quantize_asymmetric_int4(
     x: Tensor, group_dim: int, group_size: int
-) -> Tuple[Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor]:
     """Quantize ``x`` to INT4 with asymmetric min/max scaling along ``group_dim``.
 
     Returns ``(q_int8, scale, zero)`` where ``q_int8`` has the same shape
@@ -101,7 +95,7 @@ def _quantize_asymmetric_int4(
         )
 
     x_fp = x.to(torch.float32)
-    ndim = x_fp.dim()
+    x_fp.dim()
     # Reshape so the group axis becomes two axes: (num_groups, group_size).
     new_shape = list(x_fp.shape)
     n_groups = new_shape[group_dim] // group_size
@@ -176,7 +170,7 @@ class CompressedKIVI:
     v_q: Tensor
     v_scale: Tensor
     v_zero: Tensor
-    shape: Tuple[int, int, int, int]
+    shape: tuple[int, int, int, int]
 
 
 # ---------------------------------------------------------------------------
@@ -208,9 +202,7 @@ class KIVIQuantizer:
         if group_size <= 0:
             raise ValueError(f"group_size must be positive, got {group_size}")
         if head_dim % group_size != 0:
-            raise ValueError(
-                f"group_size ({group_size}) must divide head_dim ({head_dim})"
-            )
+            raise ValueError(f"group_size ({group_size}) must divide head_dim ({head_dim})")
         if group_size % 2 != 0:
             raise ValueError(
                 f"group_size must be even so INT4 pairs pack cleanly, got {group_size}"
@@ -223,11 +215,9 @@ class KIVIQuantizer:
     # Validation
     # ------------------------------------------------------------------
 
-    def _check_kv(self, k: Tensor, v: Tensor) -> Tuple[int, int, int, int]:
+    def _check_kv(self, k: Tensor, v: Tensor) -> tuple[int, int, int, int]:
         if k.shape != v.shape:
-            raise ValueError(
-                f"k and v shape mismatch: {tuple(k.shape)} vs {tuple(v.shape)}"
-            )
+            raise ValueError(f"k and v shape mismatch: {tuple(k.shape)} vs {tuple(v.shape)}")
         if k.dim() != 4:
             raise ValueError(f"expected 4-D [B,H,S,D] tensor, got {tuple(k.shape)}")
         B, H, S, D = k.shape
@@ -272,14 +262,14 @@ class KIVIQuantizer:
             shape=(B, H, S, D),
         )
 
-    def decompress(self, c: CompressedKIVI) -> Tuple[Tensor, Tensor]:
+    def decompress(self, c: CompressedKIVI) -> tuple[Tensor, Tensor]:
         """Dequantize a :class:`CompressedKIVI` back to ``(k, v)`` fp32."""
         B, H, S, D = c.shape
         k_int8 = unpack_int4(c.k_q)
         v_int8 = unpack_int4(c.v_q)
         if k_int8.shape != (B, H, S, D):
             raise ValueError(
-                f"decompressed k shape {tuple(k_int8.shape)} != expected {(B,H,S,D)}"
+                f"decompressed k shape {tuple(k_int8.shape)} != expected {(B, H, S, D)}"
             )
         k = _dequantize_asymmetric_int4(
             k_int8, c.k_scale, c.k_zero, group_dim=3, group_size=self.group_size
@@ -303,7 +293,7 @@ class KIVIQuantizer:
         B, H, S, D = c.shape
         if (Bn, Hn, Dn) != (B, H, D):
             raise ValueError(
-                f"append shape mismatch: existing {(B,H,S,D)} vs new {tuple(new_k.shape)}"
+                f"append shape mismatch: existing {(B, H, S, D)} vs new {tuple(new_k.shape)}"
             )
         # Validate divisibility on the combined length up front so the
         # user gets a clear error before we do work.

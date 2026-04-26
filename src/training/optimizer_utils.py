@@ -24,11 +24,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -52,9 +50,7 @@ class OptimizerConfig:
     def __post_init__(self) -> None:
         valid = {"cosine", "linear", "constant"}
         if self.schedule not in valid:
-            raise ValueError(
-                f"schedule must be one of {valid}, got {self.schedule!r}"
-            )
+            raise ValueError(f"schedule must be one of {valid}, got {self.schedule!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +58,7 @@ class OptimizerConfig:
 # ---------------------------------------------------------------------------
 
 
-def get_param_groups(model: nn.Module, weight_decay: float) -> List[dict]:
+def get_param_groups(model: nn.Module, weight_decay: float) -> list[dict]:
     """Split model parameters into two groups for differential weight decay.
 
     Parameters with ndim >= 2 (weights) receive ``weight_decay``; parameters
@@ -79,8 +75,8 @@ def get_param_groups(model: nn.Module, weight_decay: float) -> List[dict]:
     -------
     List of two dicts suitable for passing to an optimizer constructor.
     """
-    wd_params: List[torch.Tensor] = []
-    no_wd_params: List[torch.Tensor] = []
+    wd_params: list[torch.Tensor] = []
+    no_wd_params: list[torch.Tensor] = []
 
     for p in model.parameters():
         if not p.requires_grad:

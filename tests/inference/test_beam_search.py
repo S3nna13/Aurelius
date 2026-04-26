@@ -7,8 +7,6 @@ import math
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.beam_search import (
     Beam,
     BeamSearchConfig,
@@ -17,11 +15,13 @@ from src.inference.beam_search import (
     apply_repetition_penalty,
     beam_search_step,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -50,6 +50,7 @@ def default_config():
 # 1. BeamSearchConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_beam_search_config_defaults():
     cfg = BeamSearchConfig()
     assert cfg.beam_width == 4
@@ -71,6 +72,7 @@ def test_beam_search_config_custom():
 # 2. Beam score computation with length penalty
 # ---------------------------------------------------------------------------
 
+
 def test_beam_score_default_length_penalty():
     """With length_penalty=1.0 score = log_prob / len."""
     beam = Beam(token_ids=[1, 2, 3], log_prob=-3.0, _length_penalty=1.0)
@@ -86,7 +88,7 @@ def test_beam_score_zero_length_penalty():
 def test_beam_score_large_length_penalty():
     """With length_penalty=2.0 score = log_prob / len^2."""
     beam = Beam(token_ids=[1, 2, 3], log_prob=-9.0, _length_penalty=2.0)
-    expected = -9.0 / (3 ** 2)
+    expected = -9.0 / (3**2)
     assert math.isclose(beam.score, expected, rel_tol=1e-6)
 
 
@@ -107,6 +109,7 @@ def test_beam_score_length_penalty_ordering():
 # ---------------------------------------------------------------------------
 # 3. apply_repetition_penalty
 # ---------------------------------------------------------------------------
+
 
 def test_repetition_penalty_no_op_when_one():
     logits = torch.tensor([1.0, 2.0, 3.0])
@@ -147,6 +150,7 @@ def test_repetition_penalty_does_not_mutate_input():
 # 4. apply_no_repeat_ngram
 # ---------------------------------------------------------------------------
 
+
 def test_no_repeat_ngram_zero_is_noop():
     logits = torch.zeros(10)
     out = apply_no_repeat_ngram(logits, [1, 2, 3], n=0)
@@ -181,6 +185,7 @@ def test_no_repeat_ngram_does_not_mutate_input():
 # 5. beam_search_step
 # ---------------------------------------------------------------------------
 
+
 def test_beam_search_step_returns_beam_width(small_model):
     cfg = BeamSearchConfig(beam_width=3, max_new_tokens=5)
     beams = [Beam(token_ids=[0, 1, 2], log_prob=0.0, _length_penalty=1.0)]
@@ -210,6 +215,7 @@ def test_beam_search_step_eos_marks_done(small_model):
 # ---------------------------------------------------------------------------
 # 6. BeamSearchDecoder.generate
 # ---------------------------------------------------------------------------
+
 
 def test_generate_returns_tensor(small_model):
     decoder = BeamSearchDecoder(BeamSearchConfig(beam_width=2, max_new_tokens=5))
@@ -250,6 +256,7 @@ def test_generate_max_new_tokens_respected(small_model):
 # 7. length_penalty=0 vs length_penalty=1.0 differences
 # ---------------------------------------------------------------------------
 
+
 def test_length_penalty_zero_vs_one_different_scores():
     """Beams with different lengths should rank differently under LP=0 vs LP=1."""
     short = Beam(token_ids=[1, 2], log_prob=-2.0, _length_penalty=1.0)
@@ -266,6 +273,7 @@ def test_length_penalty_zero_vs_one_different_scores():
 # ---------------------------------------------------------------------------
 # 8. Early stopping when all beams hit EOS
 # ---------------------------------------------------------------------------
+
 
 def test_early_stopping_all_eos(small_model):
     """With early_stopping=True and an EOS that every beam hits quickly,
@@ -299,6 +307,7 @@ def test_early_stopping_all_eos(small_model):
 # ---------------------------------------------------------------------------
 # 9. Single beam (beam_width=1) is greedy search
 # ---------------------------------------------------------------------------
+
 
 def test_single_beam_is_greedy(small_model):
     """beam_width=1 should always pick the argmax at each step."""

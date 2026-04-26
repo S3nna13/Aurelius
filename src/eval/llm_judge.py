@@ -6,10 +6,10 @@ Parses numeric scores from generated text — no external dependencies.
 
 from __future__ import annotations
 
-import re
 import logging
+import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
 
@@ -87,12 +87,10 @@ class LLMJudge:
         with torch.no_grad():
             # Try generate() first, fall back to a single forward pass
             if hasattr(self.model, "generate"):
-                output_ids = self.model.generate(
-                    input_tensor, max_new_tokens=self.max_score_tokens
-                )
+                output_ids = self.model.generate(input_tensor, max_new_tokens=self.max_score_tokens)
                 # output_ids may include the prompt; take only new tokens
                 if output_ids.shape[-1] > len(input_ids):
-                    new_ids = output_ids[0, len(input_ids):].tolist()
+                    new_ids = output_ids[0, len(input_ids) :].tolist()
                 else:
                     new_ids = output_ids[0].tolist()
             else:
@@ -189,9 +187,7 @@ class LLMJudge:
         examples: list of {'question': str, 'response': str}
         Returns: list of score dicts
         """
-        return [
-            self.judge_single(ex["question"], ex["response"]) for ex in examples
-        ]
+        return [self.judge_single(ex["question"], ex["response"]) for ex in examples]
 
 
 class PointwiseJudge(LLMJudge):

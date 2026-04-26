@@ -10,17 +10,16 @@ Pure PyTorch only -- no transformers, einops, trl, etc.
 from __future__ import annotations
 
 import itertools
-from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # MedusaHead
 # ---------------------------------------------------------------------------
+
 
 class MedusaHead(nn.Module):
     """Single prediction head for one future token offset.
@@ -46,7 +45,7 @@ class MedusaHead(nn.Module):
         self.d_model = d_model
         self.vocab_size = vocab_size
 
-        hidden_layers: List[nn.Module] = []
+        hidden_layers: list[nn.Module] = []
         for _ in range(n_layers):
             hidden_layers.append(nn.Linear(d_model, d_model))
             hidden_layers.append(nn.SiLU())
@@ -69,6 +68,7 @@ class MedusaHead(nn.Module):
 # ---------------------------------------------------------------------------
 # MedusaModel
 # ---------------------------------------------------------------------------
+
 
 class MedusaModel(nn.Module):
     """Base model wrapped with K Medusa speculation heads.
@@ -97,7 +97,7 @@ class MedusaModel(nn.Module):
             [MedusaHead(d_model, vocab_size, head_idx=i + 1) for i in range(n_heads)]
         )
 
-    def forward(self, input_ids: Tensor) -> Tuple[Tensor, List[Tensor]]:
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, list[Tensor]]:
         """Run base model and all Medusa heads.
 
         Args:
@@ -116,6 +116,7 @@ class MedusaModel(nn.Module):
 # MedusaLoss
 # ---------------------------------------------------------------------------
 
+
 class MedusaLoss(nn.Module):
     """Training loss for Medusa heads.
 
@@ -128,24 +129,22 @@ class MedusaLoss(nn.Module):
     def __init__(
         self,
         n_heads: int,
-        head_weights: Optional[List[float]] = None,
+        head_weights: list[float] | None = None,
     ) -> None:
         super().__init__()
         self.n_heads = n_heads
         if head_weights is None:
-            head_weights = [0.8 ** i for i in range(n_heads)]
+            head_weights = [0.8**i for i in range(n_heads)]
         if len(head_weights) != n_heads:
-            raise ValueError(
-                f"head_weights length {len(head_weights)} != n_heads {n_heads}"
-            )
+            raise ValueError(f"head_weights length {len(head_weights)} != n_heads {n_heads}")
         self.head_weights = head_weights
 
     def forward(
         self,
         base_logits: Tensor,
-        medusa_logits_list: List[Tensor],
+        medusa_logits_list: list[Tensor],
         input_ids: Tensor,
-    ) -> Tuple[Tensor, List[float]]:
+    ) -> tuple[Tensor, list[float]]:
         """Compute total Medusa training loss.
 
         Args:
@@ -164,13 +163,11 @@ class MedusaLoss(nn.Module):
         )
 
         total_loss = base_loss
-        head_losses: List[float] = []
+        head_losses: list[float] = []
 
-        for k, (head_logits, weight) in enumerate(
-            zip(medusa_logits_list, self.head_weights)
-        ):
+        for k, (head_logits, weight) in enumerate(zip(medusa_logits_list, self.head_weights)):
             # Per spec: targets = input_ids[:, k+1:], logits = medusa_logits[k][:, :-k-1, :]
-            targets = input_ids[:, k + 1:]          # (B, T - k - 1)
+            targets = input_ids[:, k + 1 :]  # (B, T - k - 1)
             logits = head_logits[:, : -(k + 1), :]  # (B, T - k - 1, V)
 
             if targets.numel() == 0 or logits.size(1) == 0:
@@ -190,6 +187,7 @@ class MedusaLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # MedusaTreeDecoder
 # ---------------------------------------------------------------------------
+
 
 class MedusaTreeDecoder:
     """Tree-based decoding using Medusa heads.
@@ -217,9 +215,9 @@ class MedusaTreeDecoder:
             candidates: (top_k^K, K) integer tensor of candidate token ids.
         """
         _, medusa_logits = self.medusa_model(input_ids)
-        n_heads = len(medusa_logits)
+        len(medusa_logits)
 
-        per_head_top_k: List[Tensor] = []
+        per_head_top_k: list[Tensor] = []
         for head_logits in medusa_logits:
             # head_logits: (B, T, V) -- take last position of first batch item
             last_logits = head_logits[0, -1, :]  # (V,)
@@ -232,9 +230,7 @@ class MedusaTreeDecoder:
         return candidates
 
     @torch.no_grad()
-    def verify(
-        self, input_ids: Tensor, candidates: Tensor
-    ) -> Tuple[Tensor, int]:
+    def verify(self, input_ids: Tensor, candidates: Tensor) -> tuple[Tensor, int]:
         """Verify candidate tokens using the base model.
 
         Uses the greedy (top-1) candidate and runs the base model on the
@@ -256,15 +252,13 @@ class MedusaTreeDecoder:
         best_candidate = candidates[0]  # (K,)
 
         # Extend input with candidate tokens (use batch item 0)
-        extended = torch.cat(
-            [input_ids[0:1, :], best_candidate.unsqueeze(0)], dim=1
-        )  # (1, T+K)
+        extended = torch.cat([input_ids[0:1, :], best_candidate.unsqueeze(0)], dim=1)  # (1, T+K)
 
         base_logits, _ = self.medusa_model.base_model(extended)
         # base_logits: (1, T+K, V)
 
         T = input_ids.size(1)
-        accepted_tokens: List[int] = []
+        accepted_tokens: list[int] = []
         for i in range(K):
             pred_token = base_logits[0, T - 1 + i, :].argmax(dim=-1).item()
             candidate_token = best_candidate[i].item()
@@ -277,15 +271,11 @@ class MedusaTreeDecoder:
         if n_accepted == 0:
             return torch.empty(0, dtype=torch.long, device=input_ids.device), 0
 
-        accepted_tensor = torch.tensor(
-            accepted_tokens, dtype=torch.long, device=input_ids.device
-        )
+        accepted_tensor = torch.tensor(accepted_tokens, dtype=torch.long, device=input_ids.device)
         return accepted_tensor, n_accepted
 
     @torch.no_grad()
-    def generate(
-        self, input_ids: Tensor, max_new_tokens: int = 10
-    ) -> Tensor:
+    def generate(self, input_ids: Tensor, max_new_tokens: int = 10) -> Tensor:
         """Autoregressive generation with Medusa speculation.
 
         Args:
@@ -305,9 +295,7 @@ class MedusaTreeDecoder:
 
             if n_accepted > 0:
                 tokens_to_add = min(n_accepted, max_new_tokens - generated)
-                current = torch.cat(
-                    [current, accepted_tokens[:tokens_to_add].unsqueeze(0)], dim=1
-                )
+                current = torch.cat([current, accepted_tokens[:tokens_to_add].unsqueeze(0)], dim=1)
                 generated += tokens_to_add
             else:
                 # Fall back: greedy decode one token from base model
@@ -325,6 +313,7 @@ class MedusaTreeDecoder:
 # ---------------------------------------------------------------------------
 # MedusaTrainer
 # ---------------------------------------------------------------------------
+
 
 class MedusaTrainer:
     """Fine-tune Medusa heads with base model optionally frozen.
@@ -377,7 +366,7 @@ class MedusaTrainer:
         for p in medusa_params:
             if p.grad is not None:
                 grad_norm += p.grad.detach().norm(2).item() ** 2
-        grad_norm = grad_norm ** 0.5
+        grad_norm = grad_norm**0.5
 
         self.optimizer.step()
 
@@ -406,7 +395,7 @@ class MedusaTrainer:
         head1_logits = medusa_logits[0]  # (B, T, V)
         # Head 1 predicts the token at offset +1 from each position
         predicted = head1_logits[:, :-1, :].argmax(dim=-1)  # (B, T-1)
-        targets = input_ids[:, 1:]                          # (B, T-1)
+        targets = input_ids[:, 1:]  # (B, T-1)
 
         if targets.numel() == 0:
             return 0.0

@@ -10,6 +10,7 @@ DoRA (weight-decomposed) and AdaLoRA (adaptive rank allocation):
 - TiedLoRALayer: Shared rank decomposition — A matrix shared across layers, B
   private per layer.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -68,7 +69,7 @@ class VeRALayer(nn.Module):
         self.B.requires_grad_(False)
 
         # Trainable per-dimension scaling vectors
-        self.d_A = nn.Parameter(torch.ones(rank))         # (rank,)
+        self.d_A = nn.Parameter(torch.ones(rank))  # (rank,)
         self.d_B = nn.Parameter(torch.ones(out_features))  # (out_features,)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -121,7 +122,7 @@ class FloRALayer(nn.Module):
         self.bits = bits
         self.alpha = alpha
         self.scale = alpha / rank
-        self._quant_levels = 2 ** bits - 1
+        self._quant_levels = 2**bits - 1
 
         # LoRA matrices stored as float (not quantized storage, but rounded in fwd)
         self.A = nn.Parameter(torch.randn(rank, in_features) * 0.01)
@@ -273,7 +274,7 @@ def apply_vera(
             shared_B_up = torch.randn(out_f, rank)
 
         shared_B = shared_B_gate if leaf_name == "gate_proj" else shared_B_up
-        assert shared_B is not None
+        assert shared_B is not None  # noqa: S101
 
         vera_layer = VeRALayer(
             in_features=in_f,
@@ -458,6 +459,4 @@ class LoRAVariantTrainer:
         Returns:
             Total number of trainable parameters.
         """
-        return sum(
-            p.numel() for p in self.model.parameters() if p.requires_grad
-        )
+        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)

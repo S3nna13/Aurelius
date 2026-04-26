@@ -30,7 +30,9 @@ class TokenBudgetAllocator:
         role_weights: dict[str, float] | None = None,
         role_floors: dict[str, int] | None = None,
     ) -> None:
-        self._weights = dict(role_weights or {"system": 3.0, "user": 1.5, "assistant": 1.0, "tool": 1.0})
+        self._weights = dict(
+            role_weights or {"system": 3.0, "user": 1.5, "assistant": 1.0, "tool": 1.0}
+        )
         self._floors = dict(role_floors or {"system": 32})
 
     def allocate(

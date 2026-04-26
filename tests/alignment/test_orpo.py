@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.orpo import IPOLoss, ORPOLoss, ORPOTrainer
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> AureliusTransformer:
     torch.manual_seed(0)
@@ -34,7 +32,7 @@ def _make_orpo_inputs(batch_size: int = 4) -> tuple[torch.Tensor, torch.Tensor, 
     """Return (chosen_logps, rejected_logps, sft_loss) for testing."""
     torch.manual_seed(42)
     # Mean log probs are in (-inf, 0). Use values in (-2, -0.1) for stability.
-    chosen_logps = -torch.rand(batch_size) * 0.5 - 0.1   # roughly (-0.6, -0.1)
+    chosen_logps = -torch.rand(batch_size) * 0.5 - 0.1  # roughly (-0.6, -0.1)
     rejected_logps = -torch.rand(batch_size) * 0.5 - 0.5  # roughly (-1.0, -0.5)
     sft_loss = torch.tensor(1.5)
     return chosen_logps, rejected_logps, sft_loss
@@ -54,6 +52,7 @@ def _make_ipo_inputs(
 # ---------------------------------------------------------------------------
 # ORPOLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_orpo_loss_scalar():
     """forward() must return (loss, dict) where loss is a scalar tensor."""
@@ -83,9 +82,7 @@ def test_orpo_metrics_keys():
     _, metrics = loss_fn(chosen, rejected, sft)
 
     required = {"sft_loss", "or_loss", "log_odds_ratio", "or_reward_margin"}
-    assert required.issubset(metrics.keys()), (
-        f"Missing keys: {required - metrics.keys()}"
-    )
+    assert required.issubset(metrics.keys()), f"Missing keys: {required - metrics.keys()}"
 
 
 def test_log_odds_range():
@@ -112,6 +109,7 @@ def test_orpo_lambda_effect():
 # ---------------------------------------------------------------------------
 # IPOLoss tests
 # ---------------------------------------------------------------------------
+
 
 def test_ipo_loss_scalar():
     """IPOLoss.forward() must return (loss, dict) where loss is a scalar."""
@@ -141,9 +139,7 @@ def test_ipo_metrics_keys():
     _, metrics = loss_fn(pc, pr, rc, rr)
 
     required = {"h_chosen", "h_rejected", "ipo_margin", "loss"}
-    assert required.issubset(metrics.keys()), (
-        f"Missing keys: {required - metrics.keys()}"
-    )
+    assert required.issubset(metrics.keys()), f"Missing keys: {required - metrics.keys()}"
 
 
 def test_ipo_tau_effect():
@@ -158,7 +154,7 @@ def test_ipo_tau_effect():
     rr = torch.zeros(batch_size)
     # h_chosen - h_rejected = -0.3 - (-0.8) = 0.5
 
-    loss_low_tau, _ = IPOLoss(tau=0.1)(pc, pr, rc, rr)   # target = 5.0  → big error
+    loss_low_tau, _ = IPOLoss(tau=0.1)(pc, pr, rc, rr)  # target = 5.0  → big error
     loss_high_tau, _ = IPOLoss(tau=1.0)(pc, pr, rc, rr)  # target = 0.5  → near zero
 
     assert loss_high_tau.item() < loss_low_tau.item(), (
@@ -182,14 +178,13 @@ def test_ipo_unique_minimizer():
     loss_fn = IPOLoss(tau=tau)
     loss, _ = loss_fn(pc, pr, rc, rr)
 
-    assert loss.item() < 1e-6, (
-        f"IPO loss should be ~0 at the unique minimizer, got {loss.item()}"
-    )
+    assert loss.item() < 1e-6, f"IPO loss should be ~0 at the unique minimizer, got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
 # ORPOTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_orpo_trainer_step_keys():
     """train_step must return a dict that includes a 'loss' key."""

@@ -8,7 +8,7 @@ Reference: Mudgal et al. 2024 — https://arxiv.org/abs/2310.01542
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -58,7 +58,7 @@ class ValueGuidedBeam:
 
     def __init__(
         self,
-        token_ids: List[int],
+        token_ids: list[int],
         score: float,
         value_score: float,
         lm_score: float,
@@ -74,7 +74,7 @@ class ValueGuidedBeam:
         next_lm_logprob: float,
         next_value: float,
         alpha: float,
-    ) -> "ValueGuidedBeam":
+    ) -> ValueGuidedBeam:
         """Create new beam with token appended and updated scores.
 
         Args:
@@ -132,12 +132,10 @@ class ValueGuidedDecoder:
             (max_new_tokens,) best generated token sequence
         """
         prompt_list = prompt_ids[0].tolist()
-        beams: List[ValueGuidedBeam] = [
-            ValueGuidedBeam(prompt_list, 0.0, 0.0, 0.0)
-        ]
+        beams: list[ValueGuidedBeam] = [ValueGuidedBeam(prompt_list, 0.0, 0.0, 0.0)]
 
         for _ in range(max_new_tokens):
-            all_candidates: List[ValueGuidedBeam] = []
+            all_candidates: list[ValueGuidedBeam] = []
 
             for beam in beams:
                 input_ids = torch.tensor(
@@ -166,7 +164,7 @@ class ValueGuidedDecoder:
             beams = all_candidates[: self.beam_width]
 
         best_beam = beams[0]
-        new_tokens = best_beam.token_ids[len(prompt_list):]
+        new_tokens = best_beam.token_ids[len(prompt_list) :]
         # Ensure exactly max_new_tokens (trim or pad with 0)
         new_tokens = new_tokens[:max_new_tokens]
         while len(new_tokens) < max_new_tokens:
@@ -205,9 +203,7 @@ class ValueFunctionTrainer:
             returns[t] = running
         return returns
 
-    def train_step(
-        self, hidden_states: Tensor, rewards: Tensor
-    ) -> Dict[str, float]:
+    def train_step(self, hidden_states: Tensor, rewards: Tensor) -> dict[str, float]:
         """Perform one training step on the value function.
 
         Args:

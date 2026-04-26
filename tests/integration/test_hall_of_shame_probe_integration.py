@@ -26,9 +26,11 @@ from src.safety import (
     JailbreakDetector,
     ProbeCategory,
     PromptInjectionScanner,
-    corpus_hash as corpus_hash_reexport,
     get_probe,
     score_corpus,
+)
+from src.safety import (
+    corpus_hash as corpus_hash_reexport,
 )
 from src.safety.hall_of_shame_probe import corpus_hash as corpus_hash_module
 

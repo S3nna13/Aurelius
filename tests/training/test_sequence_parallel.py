@@ -1,21 +1,21 @@
 """Tests for sequence parallelism simulation."""
+
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
-from src.training.sequence_parallel import (
-    SeqParallelConfig,
-    partition_sequence,
-    gather_sequence,
-    compute_chunk_attention,
-    RingAttentionSimulator,
-    compute_communication_cost,
-    SequenceParallelTrainer,
-)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.sequence_parallel import (
+    RingAttentionSimulator,
+    SeqParallelConfig,
+    SequenceParallelTrainer,
+    compute_chunk_attention,
+    compute_communication_cost,
+    gather_sequence,
+    partition_sequence,
+)
 
 # Shared constants
 B = 2
@@ -124,8 +124,8 @@ def test_chunk_attention_output_shape(qkv):
     Q, K, V = qkv
     chunk_len = T // WORLD_SIZE
     q_chunk = Q[:, :chunk_len]
-    k_chunks = [K[:, i * chunk_len:(i + 1) * chunk_len] for i in range(WORLD_SIZE)]
-    v_chunks = [V[:, i * chunk_len:(i + 1) * chunk_len] for i in range(WORLD_SIZE)]
+    k_chunks = [K[:, i * chunk_len : (i + 1) * chunk_len] for i in range(WORLD_SIZE)]
+    v_chunks = [V[:, i * chunk_len : (i + 1) * chunk_len] for i in range(WORLD_SIZE)]
     out = compute_chunk_attention(q_chunk, k_chunks, v_chunks)
     assert out.shape == (B, chunk_len, D)
 
@@ -139,6 +139,7 @@ def test_chunk_attention_single_chunk_matches_standard(qkv):
     Q, K, V = qkv
     # Full standard attention
     import math
+
     scale = math.sqrt(D)
     scores = torch.matmul(Q, K.transpose(-2, -1)) / scale
     weights = torch.softmax(scores, dim=-1)

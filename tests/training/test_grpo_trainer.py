@@ -3,41 +3,39 @@
 15 tests covering GroupRewardNormalizer, GRPOLoss, GroupSampler, GRPOTrainer,
 LengthReward, and UniqueTokenReward. Uses a tiny model to keep runtime short.
 """
+
 from __future__ import annotations
 
 import math
-import importlib
-import sys
 import os
+import sys
 
 import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 # Make sure the src package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.training.grpo_trainer import (
     GroupRewardNormalizer,
-    GRPOLoss,
     GroupSampler,
+    GRPOLoss,
     GRPOTrainer,
     LengthReward,
     UniqueTokenReward,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
 # Vocab=16, d_model=8 -- deliberate micro-size for speed.
 # ---------------------------------------------------------------------------
 
-VOCAB  = 16
+VOCAB = 16
 D_MODEL = 8
 SEQ_LEN = 4
-BATCH   = 2
-GROUP   = 2
+BATCH = 2
+GROUP = 2
 MAX_NEW = 4
 
 
@@ -47,7 +45,7 @@ class TinyLM(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.embed = nn.Embedding(VOCAB, D_MODEL)
-        self.proj  = nn.Linear(D_MODEL, VOCAB)
+        self.proj = nn.Linear(D_MODEL, VOCAB)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """(B, T) -> (B, T, V) logits."""
@@ -81,6 +79,7 @@ def grpo_loss() -> GRPOLoss:
 # GroupRewardNormalizer tests
 # ===========================================================================
 
+
 def test_normalizer_mean_approx_zero(normalizer: GroupRewardNormalizer) -> None:
     """Normalized advantages should have mean ~0."""
     rewards = torch.tensor([0.1, 0.5, 0.8, 1.0])
@@ -110,25 +109,26 @@ def test_normalizer_clip_within_range(normalizer: GroupRewardNormalizer) -> None
     adv = torch.tensor([-50.0, -5.0, 0.0, 5.0, 50.0])
     clipped = normalizer.clip_advantages(adv, clip_range=10.0)
     assert clipped.min().item() >= -10.0
-    assert clipped.max().item() <=  10.0
+    assert clipped.max().item() <= 10.0
 
 
 # ===========================================================================
 # GRPOLoss tests
 # ===========================================================================
 
+
 def test_grpoloss_output_types(grpo_loss: GRPOLoss) -> None:
     """Loss and kl_penalty are scalars; clip_fraction in [0, 1]."""
     B, G = 2, 3
-    policy_logps  = torch.randn(B, G, requires_grad=True)
-    ref_logps     = torch.randn(B, G)
-    advantages    = torch.randn(B, G)
+    policy_logps = torch.randn(B, G, requires_grad=True)
+    ref_logps = torch.randn(B, G)
+    advantages = torch.randn(B, G)
 
     loss, kl, cf = grpo_loss(policy_logps, ref_logps, advantages)
 
-    assert loss.shape    == torch.Size([])
-    assert kl.shape      == torch.Size([])
-    assert cf.shape      == torch.Size([])
+    assert loss.shape == torch.Size([])
+    assert kl.shape == torch.Size([])
+    assert cf.shape == torch.Size([])
     assert 0.0 <= cf.item() <= 1.0
 
 
@@ -136,9 +136,9 @@ def test_grpoloss_clip_fraction_nonzero_when_ratio_far(grpo_loss: GRPOLoss) -> N
     """When policy deviates strongly from ref, clip_fraction should be > 0."""
     B, G = 2, 4
     # Large positive difference -> large ratio -> clipping fires
-    policy_logps = torch.full((B, G),  5.0, requires_grad=True)
-    ref_logps    = torch.full((B, G), -5.0)
-    advantages   = torch.ones(B, G)
+    policy_logps = torch.full((B, G), 5.0, requires_grad=True)
+    ref_logps = torch.full((B, G), -5.0)
+    advantages = torch.ones(B, G)
 
     _, _, cf = grpo_loss(policy_logps, ref_logps, advantages)
     assert cf.item() > 0.0, f"clip_fraction should be > 0, got {cf.item()}"
@@ -148,8 +148,8 @@ def test_grpoloss_grad_flows_to_policy_logps(grpo_loss: GRPOLoss) -> None:
     """Backward pass must propagate gradient to policy_logps."""
     B, G = 2, 2
     policy_logps = torch.randn(B, G, requires_grad=True)
-    ref_logps    = torch.randn(B, G)
-    advantages   = torch.randn(B, G)
+    ref_logps = torch.randn(B, G)
+    advantages = torch.randn(B, G)
 
     loss, _, _ = grpo_loss(policy_logps, ref_logps, advantages)
     loss.backward()
@@ -162,10 +162,11 @@ def test_grpoloss_grad_flows_to_policy_logps(grpo_loss: GRPOLoss) -> None:
 # GroupSampler tests
 # ===========================================================================
 
+
 def test_groupsampler_returns_g_responses(tiny_lm: TinyLM) -> None:
     """sample_group should return exactly GROUP responses."""
     sampler = GroupSampler(tiny_lm, group_size=GROUP, temperature=1.0)
-    prompt  = torch.randint(0, VOCAB, (1, SEQ_LEN))
+    prompt = torch.randint(0, VOCAB, (1, SEQ_LEN))
     responses, log_probs = sampler.sample_group(prompt, max_new_tokens=MAX_NEW)
 
     assert len(responses) == GROUP
@@ -174,7 +175,7 @@ def test_groupsampler_returns_g_responses(tiny_lm: TinyLM) -> None:
 def test_groupsampler_logprobs_shape(tiny_lm: TinyLM) -> None:
     """log_probs should have shape (G,)."""
     sampler = GroupSampler(tiny_lm, group_size=GROUP, temperature=1.0)
-    prompt  = torch.randint(0, VOCAB, (1, SEQ_LEN))
+    prompt = torch.randint(0, VOCAB, (1, SEQ_LEN))
     _, log_probs = sampler.sample_group(prompt, max_new_tokens=MAX_NEW)
 
     assert log_probs.shape == (GROUP,), f"expected ({GROUP},), got {log_probs.shape}"
@@ -189,8 +190,8 @@ def test_groupsampler_temperature_effect(tiny_lm: TinyLM) -> None:
 
     def collect_token_counts(temp: float, n_trials: int = 20) -> torch.Tensor:
         sampler = GroupSampler(tiny_lm, group_size=4, temperature=temp)
-        prompt  = torch.randint(0, VOCAB, (1, SEQ_LEN))
-        counts  = torch.zeros(VOCAB)
+        prompt = torch.randint(0, VOCAB, (1, SEQ_LEN))
+        counts = torch.zeros(VOCAB)
         for _ in range(n_trials):
             responses, _ = sampler.sample_group(prompt, max_new_tokens=MAX_NEW)
             for r in responses:
@@ -198,7 +199,7 @@ def test_groupsampler_temperature_effect(tiny_lm: TinyLM) -> None:
                     counts[tok] += 1
         return counts
 
-    low_counts  = collect_token_counts(0.1)
+    low_counts = collect_token_counts(0.1)
     high_counts = collect_token_counts(2.0)
 
     def entropy(counts: torch.Tensor) -> float:
@@ -215,15 +216,16 @@ def test_groupsampler_temperature_effect(tiny_lm: TinyLM) -> None:
 # GRPOTrainer tests
 # ===========================================================================
 
+
 @pytest.fixture()
 def trainer_fixture(tiny_lm: TinyLM, ref_lm: TinyLM):
     optimizer = torch.optim.Adam(tiny_lm.parameters(), lr=1e-3)
-    trainer   = GRPOTrainer(
-        policy_model   = tiny_lm,
-        ref_model      = ref_lm,
-        optimizer      = optimizer,
-        group_size     = GROUP,
-        max_new_tokens = MAX_NEW,
+    trainer = GRPOTrainer(
+        policy_model=tiny_lm,
+        ref_model=ref_lm,
+        optimizer=optimizer,
+        group_size=GROUP,
+        max_new_tokens=MAX_NEW,
     )
     prompt = torch.randint(0, VOCAB, (1, SEQ_LEN))
     reward_fn = LengthReward(target_length=MAX_NEW)
@@ -257,14 +259,13 @@ def test_trainer_ref_model_params_frozen(trainer_fixture) -> None:
     """All parameters of ref_model must have requires_grad=False."""
     trainer, _, _ = trainer_fixture
     for name, param in trainer.ref_model.named_parameters():
-        assert not param.requires_grad, (
-            f"ref_model param {name} should be frozen"
-        )
+        assert not param.requires_grad, f"ref_model param {name} should be frozen"
 
 
 # ===========================================================================
 # LengthReward tests
 # ===========================================================================
+
 
 def test_length_reward_exact_target() -> None:
     """reward = 1.0 when response length == target_length."""
@@ -276,7 +277,7 @@ def test_length_reward_exact_target() -> None:
 def test_length_reward_double_target_is_zero() -> None:
     """reward = 0.0 when length is 2x target (|deviation| == target)."""
     rw = LengthReward(target_length=5)
-    ids = torch.arange(10)   # length = 10 = 2 * target
+    ids = torch.arange(10)  # length = 10 = 2 * target
     assert rw(ids) == 0.0
 
 
@@ -284,16 +285,17 @@ def test_length_reward_double_target_is_zero() -> None:
 # UniqueTokenReward tests
 # ===========================================================================
 
+
 def test_unique_token_reward_all_unique() -> None:
     """reward = 1.0 when every token is distinct."""
-    rw  = UniqueTokenReward()
+    rw = UniqueTokenReward()
     ids = torch.arange(8)  # all unique
     assert rw(ids) == 1.0
 
 
 def test_unique_token_reward_in_range() -> None:
     """reward in [0, 1] for a typical (partially-repeated) sequence."""
-    rw  = UniqueTokenReward()
+    rw = UniqueTokenReward()
     ids = torch.tensor([1, 2, 3, 1, 2, 3, 1, 2])  # some repetitions
     val = rw(ids)
     assert 0.0 <= val <= 1.0
@@ -303,22 +305,21 @@ def test_unique_token_reward_in_range() -> None:
 # Full training loop test
 # ===========================================================================
 
+
 def test_full_training_loop_finite_loss(tiny_lm: TinyLM, ref_lm: TinyLM) -> None:
     """Three-step training loop must complete without error; loss stays finite."""
     torch.manual_seed(99)
     optimizer = torch.optim.Adam(tiny_lm.parameters(), lr=1e-3)
-    trainer   = GRPOTrainer(
-        policy_model   = tiny_lm,
-        ref_model      = ref_lm,
-        optimizer      = optimizer,
-        group_size     = GROUP,
-        max_new_tokens = MAX_NEW,
+    trainer = GRPOTrainer(
+        policy_model=tiny_lm,
+        ref_model=ref_lm,
+        optimizer=optimizer,
+        group_size=GROUP,
+        max_new_tokens=MAX_NEW,
     )
     reward_fn = UniqueTokenReward()
-    prompt    = torch.randint(0, VOCAB, (1, SEQ_LEN))
+    prompt = torch.randint(0, VOCAB, (1, SEQ_LEN))
 
     for step in range(3):
         result = trainer.train_step(prompt, reward_fn)
-        assert math.isfinite(result["loss"]), (
-            f"Step {step}: loss is not finite: {result['loss']}"
-        )
+        assert math.isfinite(result["loss"]), f"Step {step}: loss is not finite: {result['loss']}"

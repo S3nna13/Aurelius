@@ -17,9 +17,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.training.adversarial_training_v2 import (
-    AdvTrainingConfig,
     AdversarialDataAugmentation,
     AdversarialSuffixGenerator,
+    AdvTrainingConfig,
     EmbeddingPGD,
     FreeAdversarialTraining,
     VirtualAdversarialTraining,
@@ -48,8 +48,9 @@ class TinyLM(nn.Module):
         self.vocab_size = vocab_size
         self.d_model = d_model
 
-    def forward(self, input_ids: torch.Tensor | None = None,
-                inputs_embeds: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(
+        self, input_ids: torch.Tensor | None = None, inputs_embeds: torch.Tensor | None = None
+    ) -> torch.Tensor:
         if inputs_embeds is not None:
             x = inputs_embeds
         else:
@@ -73,6 +74,7 @@ def make_batch() -> tuple[torch.Tensor, torch.Tensor]:
 # ===========================================================================
 # EmbeddingPGD
 # ===========================================================================
+
 
 def test_pgd_attack_output_shape() -> None:
     model = make_model()
@@ -102,15 +104,11 @@ def test_pgd_attack_increases_loss() -> None:
     clean_emb = model.embedding(ids).detach()
     B_, T_, V_ = B, T, VOCAB
     clean_logits = model.proj(clean_emb)
-    clean_loss = F.cross_entropy(
-        clean_logits.reshape(B_ * T_, V_), labels.reshape(B_ * T_)
-    ).item()
+    clean_loss = F.cross_entropy(clean_logits.reshape(B_ * T_, V_), labels.reshape(B_ * T_)).item()
 
     adv = pgd.attack(model, ids, labels)
     adv_logits = model.proj(adv)
-    adv_loss = F.cross_entropy(
-        adv_logits.reshape(B_ * T_, V_), labels.reshape(B_ * T_)
-    ).item()
+    adv_loss = F.cross_entropy(adv_logits.reshape(B_ * T_, V_), labels.reshape(B_ * T_)).item()
 
     assert adv_loss >= clean_loss - 1e-4, (
         f"Adversarial loss {adv_loss:.4f} < clean loss {clean_loss:.4f}"
@@ -157,6 +155,7 @@ def test_pgd_fgsm_perturbation_bounded() -> None:
 # AdversarialSuffixGenerator
 # ===========================================================================
 
+
 def test_suffix_optimize_returns_correct_shape() -> None:
     model = make_model()
     suffix_len = 4
@@ -164,9 +163,7 @@ def test_suffix_optimize_returns_correct_shape() -> None:
     ids, _ = make_batch()
     target_ids = torch.randint(0, VOCAB, (B, suffix_len))
     result = gen.optimize(ids, target_ids, lr=0.1)
-    assert result.shape == (suffix_len, D), (
-        f"Expected ({suffix_len},{D}), got {result.shape}"
-    )
+    assert result.shape == (suffix_len, D), f"Expected ({suffix_len},{D}), got {result.shape}"
 
 
 def test_suffix_optimize_updates_embeddings() -> None:
@@ -191,9 +188,7 @@ def test_suffix_greedy_decode_shape() -> None:
     target_ids = torch.randint(0, VOCAB, (B, suffix_len))
     gen.optimize(ids, target_ids, lr=0.05)
     token_ids = gen.greedy_decode_suffix()
-    assert token_ids.shape == (suffix_len,), (
-        f"Expected ({suffix_len},), got {token_ids.shape}"
-    )
+    assert token_ids.shape == (suffix_len,), f"Expected ({suffix_len},), got {token_ids.shape}"
 
 
 def test_suffix_greedy_decode_valid_vocab() -> None:
@@ -213,6 +208,7 @@ def test_suffix_greedy_decode_valid_vocab() -> None:
 # ===========================================================================
 # FreeAdversarialTraining
 # ===========================================================================
+
 
 def test_free_step_returns_finite_loss() -> None:
     model = make_model()
@@ -262,14 +258,13 @@ def test_free_step_loss_is_positive() -> None:
 # VirtualAdversarialTraining
 # ===========================================================================
 
+
 def test_vat_direction_output_shape() -> None:
     model = make_model()
     vat = VirtualAdversarialTraining(model, epsilon=0.1, n_power_iters=1)
     ids, _ = make_batch()
     direction = vat.virtual_adversarial_direction(ids)
-    assert direction.shape == (B, T, D), (
-        f"Expected ({B},{T},{D}), got {direction.shape}"
-    )
+    assert direction.shape == (B, T, D), f"Expected ({B},{T},{D}), got {direction.shape}"
 
 
 def test_vat_direction_unit_normalized() -> None:
@@ -286,9 +281,7 @@ def test_vat_direction_unit_normalized() -> None:
     for b in range(B):
         unscaled = direction[b].reshape(-1)
         norm = unscaled.norm().item() / epsilon
-        assert abs(norm - 1.0) < 0.1, (
-            f"Sample {b}: unscaled norm={norm:.4f}, expected ≈1.0"
-        )
+        assert abs(norm - 1.0) < 0.1, f"Sample {b}: unscaled norm={norm:.4f}, expected ≈1.0"
 
 
 def test_vat_loss_nonneg() -> None:
@@ -311,15 +304,14 @@ def test_vat_loss_is_scalar() -> None:
 # AdversarialDataAugmentation
 # ===========================================================================
 
+
 def test_augment_batch_output_shape() -> None:
     model = make_model()
     pgd = EmbeddingPGD(epsilon=0.1, alpha=0.01, n_steps=2)
     aug = AdversarialDataAugmentation(pgd, augment_frac=0.5)
     ids, labels = make_batch()
     aug_ids, aug_labels = aug.augment_batch(model, ids, labels)
-    assert aug_ids.shape == ids.shape, (
-        f"aug_ids shape {aug_ids.shape} != {ids.shape}"
-    )
+    assert aug_ids.shape == ids.shape, f"aug_ids shape {aug_ids.shape} != {ids.shape}"
     assert aug_labels.shape == labels.shape, (
         f"aug_labels shape {aug_labels.shape} != {labels.shape}"
     )
@@ -343,9 +335,7 @@ def test_mixup_adversarial_output_shape() -> None:
     clean_emb = model.embedding(ids).detach()
     adv_emb = pgd.attack(model, ids, labels)
     mixed = AdversarialDataAugmentation.mixup_adversarial(clean_emb, adv_emb, lam=0.5)
-    assert mixed.shape == (B, T, D), (
-        f"Expected ({B},{T},{D}), got {mixed.shape}"
-    )
+    assert mixed.shape == (B, T, D), f"Expected ({B},{T},{D}), got {mixed.shape}"
 
 
 def test_mixup_adversarial_lam_zero_equals_adv() -> None:
@@ -373,6 +363,7 @@ def test_mixup_adversarial_lam_one_equals_clean() -> None:
 # ===========================================================================
 # AdvTrainingConfig
 # ===========================================================================
+
 
 def test_adv_training_config_defaults() -> None:
     cfg = AdvTrainingConfig()

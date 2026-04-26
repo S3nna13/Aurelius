@@ -7,9 +7,10 @@ optimization.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass, field
 
 
 @dataclass
@@ -70,7 +71,7 @@ class GCGAttack:
         """
         cfg = self.config
         vocab_size = self._vocab_size()
-        device = self._device()
+        self._device()
 
         # Identify suffix slice within input_ids
         seq_len = input_ids.shape[1]
@@ -99,7 +100,7 @@ class GCGAttack:
         # Append target tokens (no grad)
         with torch.no_grad():
             target_embeds = embed_weight[target_ids[0]]  # (target_len, d_model)
-        full_embeds = torch.cat([all_embeds, target_embeds.unsqueeze(0)], dim=1)
+        torch.cat([all_embeds, target_embeds.unsqueeze(0)], dim=1)
         # (1, seq_len + target_len, d_model)
 
         # Forward pass manually through the model using embeddings
@@ -119,7 +120,9 @@ class GCGAttack:
         # Reconstruct full input via embedding index lookups + one-hot for suffix.
         with torch.no_grad():
             pre_suffix = embed_weight[full_ids[0, :suffix_start]]  # (prefix_len, d_model)
-            post_suffix = embed_weight[full_ids[0, suffix_start + cfg.suffix_len:]]  # (target_len, d_model)
+            post_suffix = embed_weight[
+                full_ids[0, suffix_start + cfg.suffix_len :]
+            ]  # (target_len, d_model)
 
         suffix_embeds_for_full = one_hot @ embed_weight  # (suffix_len, d_model)
         combined = torch.cat(
@@ -141,7 +144,9 @@ class GCGAttack:
         # Loss: predict target tokens from the positions just before them
         # Positions [seq_len-1 : seq_len-1+target_len] in logits predict
         # positions [seq_len : seq_len+target_len] = target tokens.
-        pred_logits = logits[0, seq_len - 1 : seq_len - 1 + target_len, :]  # (target_len, vocab_size)
+        pred_logits = logits[
+            0, seq_len - 1 : seq_len - 1 + target_len, :
+        ]  # (target_len, vocab_size)
         loss = F.cross_entropy(pred_logits, target_ids[0])
 
         loss.backward()
@@ -249,9 +254,7 @@ class GCGAttack:
         vocab_size = self._vocab_size()
 
         # Initialise suffix with random tokens
-        current_suffix = torch.randint(
-            0, vocab_size, (cfg.suffix_len,), device=device
-        )
+        current_suffix = torch.randint(0, vocab_size, (cfg.suffix_len,), device=device)
 
         best_suffix = current_suffix.clone()
         best_loss = float("inf")

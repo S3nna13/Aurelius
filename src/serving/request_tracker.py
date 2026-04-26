@@ -1,4 +1,5 @@
 """In-flight request tracker for serving observability."""
+
 from __future__ import annotations
 
 import time
@@ -31,8 +32,7 @@ class RequestTracker:
 
     def start(self, method: str = "GET", path: str = "/") -> str:
         req_id = uuid4().hex[:12]
-        info = RequestInfo(id=req_id, method=method, path=path,
-                          start_time=time.monotonic())
+        info = RequestInfo(id=req_id, method=method, path=path, start_time=time.monotonic())
         self._active[req_id] = info
         return req_id
 
@@ -45,7 +45,7 @@ class RequestTracker:
         info.metadata.update(meta)
         self._completed.append(info)
         if len(self._completed) > self.max_completed:
-            self._completed = self._completed[-self.max_completed:]
+            self._completed = self._completed[-self.max_completed :]
 
     def active_count(self) -> int:
         return len(self._active)

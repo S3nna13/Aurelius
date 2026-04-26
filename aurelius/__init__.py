@@ -6,8 +6,8 @@ existing internal `src.*` package layout used throughout the repository.
 
 from __future__ import annotations
 
-from importlib import import_module
 import sys
+from importlib import import_module
 
 __all__ = [
     "alignment",
@@ -32,4 +32,3 @@ for _package_name in __all__:
 
 
 del _package_name
-

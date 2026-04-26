@@ -11,11 +11,12 @@ SAM seeks flat minima by perturbing parameters toward worst-case neighbours:
 The Hutchinson estimator approximates tr(H) using Rademacher random vectors:
     tr(H) approx (1/n) * sum_i  v_i^T H v_i   where v_i ~ {-1, +1}^dim
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -28,9 +29,9 @@ logger = logging.getLogger(__name__)
 class SharpnessConfig:
     """Configuration for sharpness measurement."""
 
-    rho: float = 0.05              # SAM perturbation radius
+    rho: float = 0.05  # SAM perturbation radius
     n_hutchinson_samples: int = 10  # random vectors for Hessian trace
-    eps: float = 1e-12             # numerical stability
+    eps: float = 1e-12  # numerical stability
 
 
 @dataclass
@@ -39,9 +40,9 @@ class SharpnessResult:
 
     original_loss: float
     perturbed_loss: float
-    sharpness: float           # = perturbed_loss - original_loss
+    sharpness: float  # = perturbed_loss - original_loss
     hessian_trace: float | None  # None if not computed
-    flatness_score: float      # = 1 / (1 + sharpness) in (0, 1], 1 = flat
+    flatness_score: float  # = 1 / (1 + sharpness) in (0, 1], 1 = flat
 
 
 def sam_perturbation(
@@ -76,9 +77,7 @@ def sam_perturbation(
         if param.requires_grad and param.grad is not None:
             grads[name] = param.grad.detach().clone()
 
-    grad_norm = torch.sqrt(
-        sum(g.norm() ** 2 for g in grads.values())
-    ).item()
+    grad_norm = torch.sqrt(sum(g.norm() ** 2 for g in grads.values())).item()
 
     # Compute and apply perturbation: epsilon_hat = rho * g / (||g|| + eps)
     perturbation: dict[str, Tensor] = {}
@@ -185,10 +184,7 @@ def hutchinson_hessian_trace(
     trace_estimates = []
     for _ in range(n_samples):
         # Draw Rademacher vector v ~ {-1, +1}
-        vs = [
-            torch.randint(0, 2, p.shape, dtype=p.dtype, device=p.device) * 2 - 1
-            for p in params
-        ]
+        vs = [torch.randint(0, 2, p.shape, dtype=p.dtype, device=p.device) * 2 - 1 for p in params]
 
         # First-order gradients with graph retained for second-order pass.
         # Force math SDPA backend (fresh context each iteration) so that
@@ -196,10 +192,12 @@ def hutchinson_hessian_trace(
         # support second-order derivatives.
         model.zero_grad()
         try:
-            from torch.nn.attention import sdpa_kernel, SDPBackend
+            from torch.nn.attention import SDPBackend, sdpa_kernel
+
             _ctx = sdpa_kernel(SDPBackend.MATH)
         except Exception:
             import contextlib
+
             _ctx = contextlib.nullcontext()
 
         with _ctx:
@@ -240,9 +238,7 @@ def measure_sharpness(
     Returns:
         SharpnessResult with all metrics populated.
     """
-    original_loss_t, perturbed_loss_t = sharpness_aware_loss(
-        model, input_ids, labels, rho=cfg.rho
-    )
+    original_loss_t, perturbed_loss_t = sharpness_aware_loss(model, input_ids, labels, rho=cfg.rho)
 
     original_loss = original_loss_t.item()
     perturbed_loss = perturbed_loss_t.item()
@@ -251,12 +247,14 @@ def measure_sharpness(
 
     hessian_trace: float | None = None
     if compute_hessian:
+
         def loss_fn() -> Tensor:
             loss, _, _ = model(input_ids, labels=labels)
             return loss
 
         hessian_trace = hutchinson_hessian_trace(
-            model, loss_fn,
+            model,
+            loss_fn,
             n_samples=cfg.n_hutchinson_samples,
             eps=cfg.eps,
         )

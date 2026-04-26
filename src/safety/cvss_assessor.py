@@ -3,13 +3,14 @@
 Adapted from BUGBOUNTY_AGENT/reporting/cvss.py. Stdlib-only: does not require
 the `cvss` library; uses a static severity -> score table and vector parsing.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CVSSVersion(str, Enum):
+class CVSSVersion(StrEnum):
     """Supported CVSS specification versions."""
 
     V31 = "3.1"

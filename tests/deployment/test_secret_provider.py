@@ -6,8 +6,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from src.deployment.secret_provider import (
     SECRET_PROVIDER_REGISTRY,
     SecretBackend,
@@ -15,10 +13,10 @@ from src.deployment.secret_provider import (
     SecretValue,
 )
 
-
 # ---------------------------------------------------------------------------
 # SecretBackend enum
 # ---------------------------------------------------------------------------
+
 
 class TestSecretBackend:
     def test_env_value(self):
@@ -40,6 +38,7 @@ class TestSecretBackend:
 # ---------------------------------------------------------------------------
 # SecretValue dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestSecretValue:
     def test_str_redacted(self):
@@ -66,6 +65,7 @@ class TestSecretValue:
 # ---------------------------------------------------------------------------
 # MEMORY backend
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryBackend:
     def setup_method(self):
@@ -133,6 +133,7 @@ class TestMemoryBackend:
 # ---------------------------------------------------------------------------
 # ENV backend
 # ---------------------------------------------------------------------------
+
 
 class TestEnvBackend:
     def setup_method(self):
@@ -204,6 +205,7 @@ class TestEnvBackend:
 # FILE backend
 # ---------------------------------------------------------------------------
 
+
 class TestFileBackend:
     def setup_method(self):
         self._tmpdir = tempfile.mkdtemp()
@@ -239,6 +241,7 @@ class TestFileBackend:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestSecretProviderRegistry:
     def test_has_memory_key(self):

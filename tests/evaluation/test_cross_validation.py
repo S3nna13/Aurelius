@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import math
 import statistics
+
 import pytest
 
 from src.evaluation.cross_validation import (
+    CROSS_VALIDATOR_REGISTRY,
     CrossValidator,
     CVResult,
     FoldResult,
-    CROSS_VALIDATOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cv5():
@@ -31,6 +32,7 @@ def cv5_noshuffle():
 # ---------------------------------------------------------------------------
 # FoldResult frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestFoldResultFrozen:
     def test_is_frozen(self):
@@ -50,6 +52,7 @@ class TestFoldResultFrozen:
 # CVResult frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestCVResultFrozen:
     def test_is_frozen(self):
         cvr = CVResult(k=5, fold_results=[], mean_score=0.8, std_score=0.05)
@@ -68,6 +71,7 @@ class TestCVResultFrozen:
 # ---------------------------------------------------------------------------
 # split
 # ---------------------------------------------------------------------------
+
 
 class TestSplit:
     def test_split_returns_k_folds(self, cv5):
@@ -104,9 +108,7 @@ class TestSplit:
         folds_a = cv_a.split(50)
         folds_b = cv_b.split(50)
         # At least one fold's val indices should differ
-        any_diff = any(
-            set(folds_a[i][1]) != set(folds_b[i][1]) for i in range(5)
-        )
+        any_diff = any(set(folds_a[i][1]) != set(folds_b[i][1]) for i in range(5))
         assert any_diff
 
     def test_split_k2_returns_two_folds(self):
@@ -124,6 +126,7 @@ class TestSplit:
 # ---------------------------------------------------------------------------
 # evaluate
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluate:
     def test_evaluate_calls_score_fn_k_times(self, cv5):
@@ -187,6 +190,7 @@ class TestEvaluate:
 # stratified_split
 # ---------------------------------------------------------------------------
 
+
 class TestStratifiedSplit:
     def test_stratified_split_returns_k_folds(self, cv5):
         labels = [0] * 50 + [1] * 50
@@ -196,7 +200,6 @@ class TestStratifiedSplit:
     def test_stratified_split_class_distribution_preserved(self, cv5):
         # 60 class-0, 40 class-1 → each fold val should have ~8 class-0, ~8 class-1...
         # More concretely: class ratio in each val fold should be close to overall ratio.
-        n = 100
         labels = [0] * 60 + [1] * 40
         folds = cv5.stratified_split(labels)
         for train_idx, val_idx in folds:
@@ -236,6 +239,7 @@ class TestStratifiedSplit:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

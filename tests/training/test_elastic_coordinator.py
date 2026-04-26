@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import pytest
-
 from src.training.elastic_coordinator import (
+    ELASTIC_REGISTRY,
     ElasticConfig,
     ElasticCoordinator,
     WorkerInfo,
     WorkerState,
-    ELASTIC_REGISTRY,
 )
 
 

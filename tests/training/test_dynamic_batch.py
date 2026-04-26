@@ -1,23 +1,23 @@
 """Tests for dynamic_batch.py — dynamic batch size finder with gradient accumulation."""
-import pytest
+
 import torch
 import torch.nn as nn
 
 from src.training.dynamic_batch import (
-    DynamicBatchConfig,
     BatchScaleResult,
-    try_batch_size,
-    find_max_batch_size,
+    DynamicBatchConfig,
     compute_grad_accum_steps,
+    find_max_batch_size,
     scale_batch,
+    try_batch_size,
 )
-
 
 # ---------------------------------------------------------------------------
 # Small test model — mirrors the spec: n_layers=2, d_model=64, etc.
 # We use a plain nn.Embedding + nn.Linear to stay fast on CPU and avoid
 # pulling in the full AureliusTransformer (which requires head_dim consistency).
 # ---------------------------------------------------------------------------
+
 
 class _SmallModel(nn.Module):
     """Tiny language-model stub: embedding → linear → logits."""
@@ -52,6 +52,7 @@ def _small_cfg(**kwargs) -> DynamicBatchConfig:
 # 1. try_batch_size — small succeeds
 # ---------------------------------------------------------------------------
 
+
 def test_try_batch_size_small_succeeds():
     model = _make_model()
     result = try_batch_size(model, batch_size=1, seq_len=8, device="cpu")
@@ -62,6 +63,7 @@ def test_try_batch_size_small_succeeds():
 # 2. try_batch_size — huge fails (OOM even on CPU)
 # ---------------------------------------------------------------------------
 
+
 def test_try_batch_size_huge_fails(monkeypatch):
     """Verify that try_batch_size returns False on RuntimeError (OOM simulation).
 
@@ -69,7 +71,6 @@ def test_try_batch_size_huge_fails(monkeypatch):
     which is exactly what PyTorch raises on CPU OOM. This avoids relying on
     the host machine having insufficient memory for batch_size=99999.
     """
-    import src.training.dynamic_batch as dyn
 
     _orig_randint = torch.randint
 
@@ -78,7 +79,9 @@ def test_try_batch_size_huge_fails(monkeypatch):
     def _failing_randint(*args, **kwargs):
         call_count[0] += 1
         if call_count[0] > 0:
-            raise RuntimeError("DefaultCPUAllocator: can't allocate memory: you tried to allocate 99999 bytes")
+            raise RuntimeError(
+                "DefaultCPUAllocator: can't allocate memory: you tried to allocate 99999 bytes"
+            )
         return _orig_randint(*args, **kwargs)
 
     monkeypatch.setattr(torch, "randint", _failing_randint)
@@ -92,6 +95,7 @@ def test_try_batch_size_huge_fails(monkeypatch):
 # 3. compute_grad_accum_steps — basic calculation
 # ---------------------------------------------------------------------------
 
+
 def test_compute_grad_accum_basic():
     # target=1024, batch=4, seq=16 → tokens_per_step=64 → ceil(1024/64)=16
     steps = compute_grad_accum_steps(safe_batch_size=4, seq_len=16, target_global_batch_tokens=1024)
@@ -101,6 +105,7 @@ def test_compute_grad_accum_basic():
 # ---------------------------------------------------------------------------
 # 4. compute_grad_accum_steps — minimum is 1 even when batch > target
 # ---------------------------------------------------------------------------
+
 
 def test_compute_grad_accum_minimum_one():
     # batch*seq already exceeds target
@@ -116,6 +121,7 @@ def test_compute_grad_accum_minimum_one():
 # 5. find_max_batch_size — returns positive integer
 # ---------------------------------------------------------------------------
 
+
 def test_find_max_batch_size_returns_positive():
     model = _make_model()
     cfg = _small_cfg()
@@ -126,6 +132,7 @@ def test_find_max_batch_size_returns_positive():
 # ---------------------------------------------------------------------------
 # 6. find_max_batch_size — result within configured range
 # ---------------------------------------------------------------------------
+
 
 def test_find_max_batch_size_within_range():
     model = _make_model()
@@ -138,6 +145,7 @@ def test_find_max_batch_size_within_range():
 # 7. scale_batch — returns a BatchScaleResult
 # ---------------------------------------------------------------------------
 
+
 def test_scale_batch_returns_result():
     model = _make_model()
     cfg = _small_cfg()
@@ -148,6 +156,7 @@ def test_scale_batch_returns_result():
 # ---------------------------------------------------------------------------
 # 8. scale_batch — safe_batch_size <= max_batch_size
 # ---------------------------------------------------------------------------
+
 
 def test_scale_batch_safe_less_than_max():
     model = _make_model()
@@ -160,6 +169,7 @@ def test_scale_batch_safe_less_than_max():
 # 9. scale_batch — utilization in (0, 2.0]
 # ---------------------------------------------------------------------------
 
+
 def test_scale_batch_utilization_range():
     model = _make_model()
     cfg = _small_cfg()
@@ -170,6 +180,7 @@ def test_scale_batch_utilization_range():
 # ---------------------------------------------------------------------------
 # 10. BatchScaleResult — grad_accum_steps >= 1
 # ---------------------------------------------------------------------------
+
 
 def test_batch_scale_result_accum_positive():
     model = _make_model()

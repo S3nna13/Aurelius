@@ -1,20 +1,20 @@
 """Tests for soft prompt tuning and Gist-style prompt compression."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.prompt_tuning import (
+    GistCompressor,
+    # New gradient-based soft prompt API
+    PromptConfig,
+    PromptTuner,
     PromptTuningConfig,
     SoftPrompt,
     SoftPromptModel,
-    GistCompressor,
-    get_prompt_tuning_optimizer,
-    # New gradient-based soft prompt API
-    PromptConfig,
     SoftPromptV2,
-    PromptTuner,
+    get_prompt_tuning_optimizer,
     initialize_from_vocab,
 )
 from src.model.config import AureliusConfig
@@ -65,6 +65,7 @@ def make_soft_prompt_model(freeze: bool = True) -> SoftPromptModel:
 # 1. PromptTuningConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_tuning_config_defaults():
     cfg = PromptTuningConfig()
     assert cfg.n_soft_tokens == 20
@@ -77,6 +78,7 @@ def test_prompt_tuning_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. SoftPrompt forward output shape (B, n_tokens, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_soft_prompt_forward_shape():
     B, n_tokens, d_model = 3, N_SOFT, MODEL_CFG.d_model
@@ -91,6 +93,7 @@ def test_soft_prompt_forward_shape():
 # 3. SoftPrompt embeddings require grad
 # ---------------------------------------------------------------------------
 
+
 def test_soft_prompt_embeddings_require_grad():
     sp = SoftPrompt(N_SOFT, MODEL_CFG.d_model, init_strategy="random")
     assert sp.embeddings.requires_grad, "SoftPrompt.embeddings should require grad"
@@ -100,9 +103,12 @@ def test_soft_prompt_embeddings_require_grad():
 # 4. SoftPrompt vocab_sample init shape matches
 # ---------------------------------------------------------------------------
 
+
 def test_soft_prompt_vocab_sample_init_shape():
     vocab_emb = nn.Embedding(MODEL_CFG.vocab_size, MODEL_CFG.d_model)
-    sp = SoftPrompt(N_SOFT, MODEL_CFG.d_model, init_strategy="vocab_sample", vocab_embeddings=vocab_emb)
+    sp = SoftPrompt(
+        N_SOFT, MODEL_CFG.d_model, init_strategy="vocab_sample", vocab_embeddings=vocab_emb
+    )
     assert sp.embeddings.shape == (N_SOFT, MODEL_CFG.d_model), (
         f"Expected ({N_SOFT}, {MODEL_CFG.d_model}), got {sp.embeddings.shape}"
     )
@@ -111,6 +117,7 @@ def test_soft_prompt_vocab_sample_init_shape():
 # ---------------------------------------------------------------------------
 # 5. SoftPromptModel forward output is valid (logits not None)
 # ---------------------------------------------------------------------------
+
 
 def test_soft_prompt_model_forward_valid():
     model = make_soft_prompt_model()
@@ -128,6 +135,7 @@ def test_soft_prompt_model_forward_valid():
 # 6. SoftPromptModel freeze_backbone freezes backbone params
 # ---------------------------------------------------------------------------
 
+
 def test_soft_prompt_model_freeze_backbone():
     model = make_soft_prompt_model(freeze=True)
     for name, param in model.backbone.named_parameters():
@@ -139,6 +147,7 @@ def test_soft_prompt_model_freeze_backbone():
 # ---------------------------------------------------------------------------
 # 7. SoftPromptModel get_trainable_params returns only soft prompt params
 # ---------------------------------------------------------------------------
+
 
 def test_soft_prompt_model_get_trainable_params():
     model = make_soft_prompt_model(freeze=True)
@@ -155,6 +164,7 @@ def test_soft_prompt_model_get_trainable_params():
 # 8. GistCompressor.compress output shape (B, T//compress_ratio, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_gist_compressor_output_shape():
     B, T, d_model = 2, 16, MODEL_CFG.d_model
     compressor = GistCompressor(d_model, compress_ratio=COMPRESS_RATIO)
@@ -168,19 +178,19 @@ def test_gist_compressor_output_shape():
 # 9. GistCompressor.compress with T=8, ratio=4 gives T//4=2 output tokens
 # ---------------------------------------------------------------------------
 
+
 def test_gist_compressor_t8_ratio4():
     B, T, d_model = 3, 8, MODEL_CFG.d_model
     compressor = GistCompressor(d_model, compress_ratio=4)
     hidden = torch.randn(B, T, d_model)
     out = compressor.compress(hidden)
-    assert out.shape == (B, 2, d_model), (
-        f"Expected (B=3, 2, d_model={d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, 2, d_model), f"Expected (B=3, 2, d_model={d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 10. GistCompressor.compress handles T not divisible by ratio (truncate)
 # ---------------------------------------------------------------------------
+
 
 def test_gist_compressor_truncate():
     B, d_model = 2, MODEL_CFG.d_model
@@ -198,6 +208,7 @@ def test_gist_compressor_truncate():
 # 11. get_prompt_tuning_optimizer creates optimizer
 # ---------------------------------------------------------------------------
 
+
 def test_get_prompt_tuning_optimizer_creates():
     model = make_soft_prompt_model()
     cfg = make_config()
@@ -210,6 +221,7 @@ def test_get_prompt_tuning_optimizer_creates():
 # ---------------------------------------------------------------------------
 # 12. get_prompt_tuning_optimizer has correct param count (soft prompt only)
 # ---------------------------------------------------------------------------
+
 
 def test_get_prompt_tuning_optimizer_param_count():
     model = make_soft_prompt_model()
@@ -227,6 +239,7 @@ def test_get_prompt_tuning_optimizer_param_count():
 # ---------------------------------------------------------------------------
 # 13. SoftPrompt random init has non-zero variance
 # ---------------------------------------------------------------------------
+
 
 def test_soft_prompt_random_init_variance():
     sp = SoftPrompt(N_SOFT, MODEL_CFG.d_model, init_strategy="random")
@@ -267,6 +280,7 @@ def make_tuner(freeze: bool = True) -> tuple[PromptTuner, AureliusTransformer]:
 # PT-1. PromptConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_config_defaults():
     cfg = PromptConfig()
     assert cfg.n_prompt_tokens == 10
@@ -277,6 +291,7 @@ def test_prompt_config_defaults():
 # ---------------------------------------------------------------------------
 # PT-2. SoftPromptV2 forward output shape (1, n_prompt_tokens, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_softpromptv2_forward_shape():
     cfg = make_prompt_config(n_prompt_tokens=N_PROMPT)
@@ -291,6 +306,7 @@ def test_softpromptv2_forward_shape():
 # PT-3. SoftPromptV2 embeddings require grad
 # ---------------------------------------------------------------------------
 
+
 def test_softpromptv2_embeddings_require_grad():
     cfg = make_prompt_config()
     sp = SoftPromptV2(cfg, MODEL_CFG.d_model)
@@ -300,6 +316,7 @@ def test_softpromptv2_embeddings_require_grad():
 # ---------------------------------------------------------------------------
 # PT-4. SoftPromptV2 init_method='vocab' initializes from vocab embeddings
 # ---------------------------------------------------------------------------
+
 
 def test_softpromptv2_vocab_init():
     model = make_pt_model()
@@ -319,6 +336,7 @@ def test_softpromptv2_vocab_init():
 # PT-5. initialize_from_vocab returns correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_initialize_from_vocab_shape():
     model = make_pt_model()
     vocab_ids = [0, 5, 10, 15]
@@ -332,6 +350,7 @@ def test_initialize_from_vocab_shape():
 # PT-6. PromptTuner.setup freezes model params
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_tuner_setup_freezes_model():
     tuner, model = make_tuner(freeze=True)
     for name, param in model.named_parameters():
@@ -343,6 +362,7 @@ def test_prompt_tuner_setup_freezes_model():
 # ---------------------------------------------------------------------------
 # PT-7. PromptTuner.setup makes prompt params trainable
 # ---------------------------------------------------------------------------
+
 
 def test_prompt_tuner_setup_prompt_trainable():
     tuner, _ = make_tuner(freeze=True)
@@ -356,19 +376,19 @@ def test_prompt_tuner_setup_prompt_trainable():
 # PT-8. forward_with_prompt output shape (B, n_prompt_tokens + T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_forward_with_prompt_shape():
     tuner, _ = make_tuner()
     input_ids = torch.randint(0, MODEL_CFG.vocab_size, (BATCH, SEQ_LEN))
     logits = tuner.forward_with_prompt(input_ids)
     expected = (BATCH, N_PROMPT + SEQ_LEN, MODEL_CFG.vocab_size)
-    assert logits.shape == expected, (
-        f"Expected {expected}, got {logits.shape}"
-    )
+    assert logits.shape == expected, f"Expected {expected}, got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
 # PT-9. forward_with_prompt is differentiable through prompt
 # ---------------------------------------------------------------------------
+
 
 def test_forward_with_prompt_differentiable():
     tuner, _ = make_tuner()
@@ -386,6 +406,7 @@ def test_forward_with_prompt_differentiable():
 # PT-10. train_step returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_required_keys():
     tuner, _ = make_tuner()
     input_ids = torch.randint(0, MODEL_CFG.vocab_size, (BATCH, SEQ_LEN))
@@ -397,6 +418,7 @@ def test_train_step_returns_required_keys():
 # ---------------------------------------------------------------------------
 # PT-11. train_step loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_loss_finite():
     tuner, _ = make_tuner()
@@ -411,6 +433,7 @@ def test_train_step_loss_finite():
 # PT-12. train_step n_prompt_tokens matches config
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_n_prompt_tokens_matches_config():
     tuner, _ = make_tuner()
     input_ids = torch.randint(0, MODEL_CFG.vocab_size, (BATCH, SEQ_LEN))
@@ -423,6 +446,7 @@ def test_train_step_n_prompt_tokens_matches_config():
 # ---------------------------------------------------------------------------
 # PT-13. Gradient flows to prompt but NOT to frozen model params
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_to_prompt_not_model():
     tuner, model = make_tuner()
@@ -447,15 +471,13 @@ def test_gradient_flows_to_prompt_not_model():
 # PT-14. train_step updates prompt embeddings but not model weights
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_updates_prompt_not_model():
     tuner, model = make_tuner()
 
     # Snapshot initial values
     prompt_before = tuner.soft_prompt.embeddings.data.clone()
-    model_weights_before = {
-        name: param.data.clone()
-        for name, param in model.named_parameters()
-    }
+    model_weights_before = {name: param.data.clone() for name, param in model.named_parameters()}
 
     input_ids = torch.randint(0, MODEL_CFG.vocab_size, (BATCH, SEQ_LEN))
     tuner.train_step(input_ids)

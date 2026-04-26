@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import pytest
 
 from src.ui.color_theme import (
+    _AURELIUS_DARK,
+    _AURELIUS_MONO,
     COLOR_THEME_REGISTRY,
     DEFAULT_THEME,
     ColorDepth,
@@ -14,15 +15,12 @@ from src.ui.color_theme import (
     ThemeRenderer,
     get_theme,
     register_theme,
-    _AURELIUS_DARK,
-    _AURELIUS_LIGHT,
-    _AURELIUS_MONO,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_spec(r: int = 100, g: int = 150, b: int = 200, a256: int = 74, a16: int = 4) -> ColorSpec:
     return ColorSpec((r, g, b), a256, a16, "test")
@@ -32,14 +30,22 @@ def _make_theme(name: str = "test-theme") -> ColorTheme:
     s = _make_spec()
     return ColorTheme(
         name=name,
-        primary=s, secondary=s, accent=s, success=s,
-        warning=s, error=s, muted=s, background=s, foreground=s,
+        primary=s,
+        secondary=s,
+        accent=s,
+        success=s,
+        warning=s,
+        error=s,
+        muted=s,
+        background=s,
+        foreground=s,
     )
 
 
 # ---------------------------------------------------------------------------
 # ColorSpec validation
 # ---------------------------------------------------------------------------
+
 
 def test_colorspec_valid_construction():
     spec = ColorSpec((10, 20, 30), 42, 6, "mycolor")
@@ -95,6 +101,7 @@ def test_colorspec_boundary_values_valid():
 # ColorTheme.get
 # ---------------------------------------------------------------------------
 
+
 def test_theme_get_known_role_returns_correct_spec():
     theme = _make_theme()
     spec = _make_spec()
@@ -118,14 +125,24 @@ def test_theme_role_names_returns_all_9():
     theme = _make_theme()
     roles = theme.role_names()
     assert len(roles) == 9
-    expected = {"primary", "secondary", "accent", "success", "warning",
-                "error", "muted", "background", "foreground"}
+    expected = {
+        "primary",
+        "secondary",
+        "accent",
+        "success",
+        "warning",
+        "error",
+        "muted",
+        "background",
+        "foreground",
+    }
     assert set(roles) == expected
 
 
 # ---------------------------------------------------------------------------
 # ThemeRenderer._detect_depth
 # ---------------------------------------------------------------------------
+
 
 def test_detect_depth_no_color_env_returns_none(monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
@@ -174,6 +191,7 @@ def test_detect_depth_term_program_iterm(monkeypatch):
 # ThemeRenderer.fg
 # ---------------------------------------------------------------------------
 
+
 def test_fg_truecolor_escape_sequence():
     theme = _make_theme()
     renderer = ThemeRenderer(theme, depth=ColorDepth.TRUECOLOR)
@@ -202,8 +220,16 @@ def test_fg_ansi16_high_color_bright():
     spec = ColorSpec((100, 180, 255), 75, 12, "bright")
     s = _make_spec()
     theme = ColorTheme(
-        name="t", primary=spec, secondary=s, accent=s, success=s,
-        warning=s, error=s, muted=s, background=s, foreground=s,
+        name="t",
+        primary=spec,
+        secondary=s,
+        accent=s,
+        success=s,
+        warning=s,
+        error=s,
+        muted=s,
+        background=s,
+        foreground=s,
     )
     renderer = ThemeRenderer(theme, depth=ColorDepth.ANSI16)
     result = renderer.fg("primary")
@@ -220,6 +246,7 @@ def test_fg_none_depth_returns_empty_string():
 # ---------------------------------------------------------------------------
 # ThemeRenderer.reset
 # ---------------------------------------------------------------------------
+
 
 def test_reset_none_depth_returns_empty_string():
     theme = _make_theme()
@@ -248,6 +275,7 @@ def test_reset_ansi16_returns_reset_escape():
 # ---------------------------------------------------------------------------
 # ThemeRenderer.colorize
 # ---------------------------------------------------------------------------
+
 
 def test_colorize_truecolor_wraps_text():
     theme = _make_theme()
@@ -284,6 +312,7 @@ def test_colorize_empty_string_none_depth():
 # ThemeRenderer.strip_ansi
 # ---------------------------------------------------------------------------
 
+
 def test_strip_ansi_removes_escape_sequences():
     theme = _make_theme()
     renderer = ThemeRenderer(theme, depth=ColorDepth.TRUECOLOR)
@@ -302,6 +331,7 @@ def test_strip_ansi_noop_on_plain_text():
 # ---------------------------------------------------------------------------
 # Registry and built-in themes
 # ---------------------------------------------------------------------------
+
 
 def test_color_theme_registry_has_all_3_builtin_themes():
     for name in ("aurelius-dark", "aurelius-light", "aurelius-mono"):
@@ -344,6 +374,7 @@ def test_default_theme_is_aurelius_dark():
 # ---------------------------------------------------------------------------
 # Accessibility / reduced color
 # ---------------------------------------------------------------------------
+
 
 def test_aurelius_mono_has_reduced_color_true():
     assert _AURELIUS_MONO.reduced_color is True

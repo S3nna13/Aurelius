@@ -4,22 +4,21 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 
 import pytest
 import torch
 import torch.nn as nn
 
 from src.runtime.torch_profiler_wrapper import (
+    RUNTIME_REGISTRY,
     AureliusProfiler,
     ProfilerConfig,
-    RUNTIME_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def default_cfg(tmp_path) -> ProfilerConfig:
@@ -45,6 +44,7 @@ def simple_model() -> nn.Module:
 # ProfilerConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestProfilerConfig:
     def test_defaults(self):
         cfg = ProfilerConfig()
@@ -65,6 +65,7 @@ class TestProfilerConfig:
 # ---------------------------------------------------------------------------
 # AureliusProfiler tests
 # ---------------------------------------------------------------------------
+
 
 class TestAureliusProfiler:
     def test_context_manager_runs(self, default_cfg, simple_model):

@@ -1,15 +1,14 @@
 """Tests for src/model/adaptive_computation.py."""
 
 import torch
-import pytest
 
 from src.model.adaptive_computation import (
     ACTConfig,
-    HaltingUnit,
     ACTLayer,
-    act_ponder_cost,
     ACTTransformer,
+    HaltingUnit,
     act_efficiency_stats,
+    act_ponder_cost,
 )
 
 # ---------------------------------------------------------------------------

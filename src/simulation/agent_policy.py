@@ -1,4 +1,5 @@
 """Epsilon-greedy policy with discounted returns and TD error helpers."""
+
 from __future__ import annotations
 
 import random
@@ -36,9 +37,7 @@ class EpsilonGreedyPolicy:
 
     def select_action(self, q_values: list[float]) -> int:
         if len(q_values) != self.n_actions:
-            raise ValueError(
-                f"q_values length {len(q_values)} != n_actions {self.n_actions}"
-            )
+            raise ValueError(f"q_values length {len(q_values)} != n_actions {self.n_actions}")
         if random.uniform(0.0, 1.0) < self.epsilon:
             return random.randint(0, self.n_actions - 1)
         # argmax
@@ -51,14 +50,10 @@ class EpsilonGreedyPolicy:
         return best_idx
 
     def decay_epsilon(self) -> float:
-        self.epsilon = max(
-            self.config.epsilon_end, self.epsilon * self.config.epsilon_decay
-        )
+        self.epsilon = max(self.config.epsilon_end, self.epsilon * self.config.epsilon_decay)
         return self.epsilon
 
-    def compute_returns(
-        self, rewards: list[float], gamma: float | None = None
-    ) -> list[float]:
+    def compute_returns(self, rewards: list[float], gamma: float | None = None) -> list[float]:
         g = self.config.gamma if gamma is None else gamma
         returns: list[float] = [0.0] * len(rewards)
         running = 0.0
@@ -67,14 +62,10 @@ class EpsilonGreedyPolicy:
             returns[t] = running
         return returns
 
-    def td_error(
-        self, reward: float, next_q: float, current_q: float, done: bool
-    ) -> float:
+    def td_error(self, reward: float, next_q: float, current_q: float, done: bool) -> float:
         return reward + self.config.gamma * next_q * (0.0 if done else 1.0) - current_q
 
-    def update_stats(
-        self, episode: int, total_reward: float, steps: int
-    ) -> PolicyStats:
+    def update_stats(self, episode: int, total_reward: float, steps: int) -> PolicyStats:
         return PolicyStats(
             episode=episode,
             total_reward=total_reward,

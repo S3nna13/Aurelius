@@ -1,7 +1,6 @@
 import tempfile
-from pathlib import Path
-import pytest
-from src.tools.linter_tool import LinterTool, LintIssue, LintResult, LINTER_REGISTRY
+
+from src.tools.linter_tool import LINTER_REGISTRY, LinterTool
 
 
 def test_clean_code_passes():

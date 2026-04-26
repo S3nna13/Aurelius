@@ -28,7 +28,9 @@ def _runtime(tmp_path: Path) -> AureliusInterfaceRuntime:
 def test_main_session_journal_commands_run_end_to_end(tmp_path, capsys):
     runtime = _runtime(tmp_path)
     session = runtime.create_session(workspace=tmp_path / "workspace")
-    workstream = runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
+    workstream = runtime.create_workstream(
+        session.session_id, "integration", workspace=tmp_path / "workspace"
+    )
     thread = runtime.create_thread(
         {
             "title": "Integration journal thread",

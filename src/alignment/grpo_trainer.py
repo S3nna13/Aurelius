@@ -8,11 +8,12 @@ tensor-based), and grpo_v2.py (Dr. GRPO + clip-higher variants).
 Key difference: uses GroupSample dataclass for structured rollout storage and
 supports both policy + KL + entropy terms in the loss, plus an evaluate() method.
 """
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -24,6 +25,7 @@ Tensor = torch.Tensor
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GRPOConfig:
@@ -40,6 +42,7 @@ class GRPOConfig:
 # GroupSample dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GroupSample:
     prompt_ids: list
@@ -52,6 +55,7 @@ class GroupSample:
 # ---------------------------------------------------------------------------
 # sample_group
 # ---------------------------------------------------------------------------
+
 
 def sample_group(
     model: nn.Module,
@@ -79,9 +83,7 @@ def sample_group(
                 probs = F.softmax(next_logits, dim=-1)
                 next_token = torch.multinomial(probs, num_samples=1)
                 token_id = int(next_token.item())
-                log_prob_t = float(
-                    F.log_softmax(next_logits, dim=-1)[0, token_id].item()
-                )
+                log_prob_t = float(F.log_softmax(next_logits, dim=-1)[0, token_id].item())
                 response_tokens.append(token_id)
                 total_log_prob += log_prob_t
                 cur_ids = torch.cat([cur_ids, next_token], dim=1)
@@ -102,6 +104,7 @@ def sample_group(
 # ---------------------------------------------------------------------------
 # compute_group_advantages
 # ---------------------------------------------------------------------------
+
 
 def compute_group_advantages(samples: list, normalize: bool = True) -> list:
     """Compute group-relative advantages.
@@ -154,6 +157,7 @@ def compute_group_advantages(samples: list, normalize: bool = True) -> list:
 # Helper: compute sequence log-prob
 # ---------------------------------------------------------------------------
 
+
 def _compute_response_log_prob(model: nn.Module, sample: GroupSample) -> Tensor:
     """Compute sum of log-probs over response tokens under model."""
     all_ids = sample.prompt_ids + sample.response_ids
@@ -165,13 +169,14 @@ def _compute_response_log_prob(model: nn.Module, sample: GroupSample) -> Tensor:
     targets = input_ids[:, 1:]
     token_lp = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)
 
-    response_lp = token_lp[:, prompt_len - 1:].sum(dim=-1)
+    response_lp = token_lp[:, prompt_len - 1 :].sum(dim=-1)
     return response_lp.squeeze(0)
 
 
 # ---------------------------------------------------------------------------
 # compute_grpo_loss
 # ---------------------------------------------------------------------------
+
 
 def compute_grpo_loss(
     model: nn.Module,
@@ -238,6 +243,7 @@ def compute_grpo_loss(
 # GRPOTrainer
 # ---------------------------------------------------------------------------
 
+
 class GRPOTrainer:
     """Train a model with GRPO using GroupSample-based rollout tracking.
 
@@ -280,22 +286,22 @@ class GRPOTrainer:
         # 2. Score with reward_fn
         scored = []
         for s in samples:
-            scored.append(GroupSample(
-                prompt_ids=s.prompt_ids,
-                response_ids=s.response_ids,
-                log_prob=s.log_prob,
-                reward=float(self.reward_fn(s.response_ids)),
-                advantage=s.advantage,
-            ))
+            scored.append(
+                GroupSample(
+                    prompt_ids=s.prompt_ids,
+                    response_ids=s.response_ids,
+                    log_prob=s.log_prob,
+                    reward=float(self.reward_fn(s.response_ids)),
+                    advantage=s.advantage,
+                )
+            )
         samples = scored
 
         # 3. Compute advantages
         samples = compute_group_advantages(samples, normalize=cfg.normalize_rewards)
 
         # 4. Compute GRPO loss
-        loss, loss_metrics = compute_grpo_loss(
-            self.model, self.ref_model, samples, cfg
-        )
+        loss, loss_metrics = compute_grpo_loss(self.model, self.ref_model, samples, cfg)
 
         # 5. Backward + step
         self.optimizer.zero_grad()

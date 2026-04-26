@@ -18,6 +18,7 @@ from src.model.transformer import AureliusTransformer
 @dataclass
 class MagpieConfig:
     """Configuration for Magpie synthesis."""
+
     max_instruction_tokens: int = 128
     max_response_tokens: int = 512
     temperature: float = 0.8
@@ -31,6 +32,7 @@ class MagpieConfig:
 @dataclass
 class MagpieSample:
     """A single generated instruction-response pair."""
+
     instruction: str
     response: str
     instruction_ids: list[int] = field(default_factory=list)
@@ -65,7 +67,7 @@ class MagpieSynthesizer:
 
         Returns:
             MagpieSample with instruction and response text + token ids.
-        """
+        """  # noqa: E501
         cfg = self.config
 
         # Step 1: Generate instruction from pre-query prefix only
@@ -82,7 +84,7 @@ class MagpieSynthesizer:
             )
 
         # Extract only the generated instruction tokens (after the prefix)
-        instruction_ids = instruction_full[0, len(prefix_ids):].tolist()
+        instruction_ids = instruction_full[0, len(prefix_ids) :].tolist()
         # Strip trailing eos if present
         if instruction_ids and instruction_ids[-1] == cfg.eos_token_id:
             instruction_ids = instruction_ids[:-1]
@@ -90,11 +92,7 @@ class MagpieSynthesizer:
 
         # Step 2: Build full prompt and generate response
         # Format: <|user|>{instruction}<|end|>\n<|assistant|>
-        full_prompt = (
-            cfg.pre_query_prefix
-            + instruction_text
-            + "<|end|>\n<|assistant|>"
-        )
+        full_prompt = cfg.pre_query_prefix + instruction_text + "<|end|>\n<|assistant|>"
         prompt_ids = self.tokenizer.encode(full_prompt)
         prompt_tensor = torch.tensor([prompt_ids], dtype=torch.long)
 
@@ -108,7 +106,7 @@ class MagpieSynthesizer:
             )
 
         # Extract only the response tokens
-        response_ids = response_full[0, len(prompt_ids):].tolist()
+        response_ids = response_full[0, len(prompt_ids) :].tolist()
         if response_ids and response_ids[-1] == cfg.eos_token_id:
             response_ids = response_ids[:-1]
         response_text = self.tokenizer.decode(response_ids)

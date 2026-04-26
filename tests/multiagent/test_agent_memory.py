@@ -1,4 +1,5 @@
 """Tests for src/multiagent/agent_memory.py."""
+
 from __future__ import annotations
 
 import time

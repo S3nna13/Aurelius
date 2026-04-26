@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -15,7 +13,7 @@ from torch import Tensor
 class FourierPEConfig:
     d_model: int
     max_seq_len: int = 4096
-    n_freqs: Optional[int] = None
+    n_freqs: int | None = None
     learnable: bool = True
 
     def __post_init__(self) -> None:
@@ -57,8 +55,8 @@ class FourierPositionEncoding(nn.Module):
 
     def _compute_encodings(self, T: int, device: torch.device) -> Tensor:
         positions = torch.arange(T, dtype=torch.float32, device=device)  # (T,)
-        freqs = self.frequencies.to(device)   # (n_freqs,)
-        phases = self.phases.to(device)        # (n_freqs,)
+        freqs = self.frequencies.to(device)  # (n_freqs,)
+        phases = self.phases.to(device)  # (n_freqs,)
 
         # (T, n_freqs)
         angles = positions.unsqueeze(1) * freqs.unsqueeze(0) + phases.unsqueeze(0)

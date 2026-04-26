@@ -10,6 +10,7 @@ then advances the running average x.
 
 Reference: Defazio et al. 2024, arXiv:2405.15682
 """
+
 from __future__ import annotations
 
 import math
@@ -170,8 +171,8 @@ class ScheduleFreeAdamW(Optimizer):
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
                 # Bias correction
-                bc1 = 1.0 - beta1 ** t
-                bc2 = 1.0 - beta2 ** t
+                bc1 = 1.0 - beta1**t
+                bc2 = 1.0 - beta2**t
                 step_size = effective_lr * math.sqrt(bc2) / bc1
 
                 # ----- Update z -----
@@ -186,7 +187,7 @@ class ScheduleFreeAdamW(Optimizer):
                     # Recent-biased weighted average
                     if "cum_weight" not in state:
                         state["cum_weight"] = 0.0
-                    w_t = t ** r
+                    w_t = t**r
                     state["cum_weight"] += w_t
                     x.add_(z - x, alpha=w_t / state["cum_weight"])
 
@@ -333,7 +334,7 @@ class ScheduleFreeSGD(Optimizer):
                 else:
                     if "cum_weight" not in state:
                         state["cum_weight"] = 0.0
-                    w_t = t ** r
+                    w_t = t**r
                     state["cum_weight"] += w_t
                     x.add_(z - x, alpha=w_t / state["cum_weight"])
 

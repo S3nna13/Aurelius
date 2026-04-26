@@ -25,16 +25,15 @@ Algorithm 1 (paper notation preserved in code):
 
 from __future__ import annotations
 
-import math
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch.optim import Optimizer
 
-
 # ---------------------------------------------------------------------------
 # GaLoreProjector
 # ---------------------------------------------------------------------------
+
 
 class GaLoreProjector:
     """Maintains the low-rank projection matrix P_t for one weight parameter.
@@ -85,7 +84,6 @@ class GaLoreProjector:
             raise ValueError("GaLoreProjector only supports 2D+ gradient tensors.")
 
         # Reshape to (m, n) if higher-dimensional
-        original_shape = G_t.shape
         if G_t.ndim > 2:
             G_t = G_t.view(G_t.shape[0], -1)
 
@@ -136,6 +134,7 @@ class GaLoreProjector:
 # SVD helper
 # ---------------------------------------------------------------------------
 
+
 def _compute_P(G_t: torch.Tensor, rank: int) -> torch.Tensor:
     """Compute left singular vectors P_t of G_t up to rank r.
 
@@ -167,6 +166,7 @@ def _compute_P(G_t: torch.Tensor, rank: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # GaLoreAdamW optimizer
 # ---------------------------------------------------------------------------
+
 
 class GaLoreAdamW(Optimizer):
     """AdamW optimizer with GaLore gradient projection for 2D weight matrices.
@@ -271,9 +271,18 @@ class GaLoreAdamW(Optimizer):
 
                 # ---- 2D+ params: GaLore projected AdamW ----
                 self._galore_step(
-                    p, grad, state,
-                    lr, beta1, beta2, eps, weight_decay,
-                    rank, update_proj_gap, scale, proj_type,
+                    p,
+                    grad,
+                    state,
+                    lr,
+                    beta1,
+                    beta2,
+                    eps,
+                    weight_decay,
+                    rank,
+                    update_proj_gap,
+                    scale,
+                    proj_type,
                 )
 
         return loss
@@ -296,8 +305,8 @@ class GaLoreAdamW(Optimizer):
         """Standard AdamW update for 1-D parameters (biases, norms)."""
         if len(state) == 0:
             state["step"] = 0
-            state["m1"] = torch.zeros_like(p)   # first moment
-            state["m2"] = torch.zeros_like(p)   # second moment (uncentered)
+            state["m1"] = torch.zeros_like(p)  # first moment
+            state["m2"] = torch.zeros_like(p)  # second moment (uncentered)
 
         state["step"] += 1
         t = state["step"]
@@ -313,8 +322,8 @@ class GaLoreAdamW(Optimizer):
         m2.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
         # Bias correction
-        bc1 = 1.0 - beta1 ** t
-        bc2 = 1.0 - beta2 ** t
+        bc1 = 1.0 - beta1**t
+        bc2 = 1.0 - beta2**t
         m1_hat = m1 / bc1
         m2_hat = m2 / bc2
 
@@ -346,7 +355,7 @@ class GaLoreAdamW(Optimizer):
         """
         # Flatten to 2D: (m, n)
         original_shape = p.shape
-        p_2d = p.view(p.shape[0], -1)   # (m, n)
+        p_2d = p.view(p.shape[0], -1)  # (m, n)
         grad_2d = grad.view(grad.shape[0], -1)  # (m, n)
 
         m = p_2d.shape[0]
@@ -395,8 +404,8 @@ class GaLoreAdamW(Optimizer):
         m2.mul_(beta2).addcmul_(G_tilde, G_tilde, value=1.0 - beta2)
 
         # Bias correction
-        bc1 = 1.0 - beta1 ** t
-        bc2 = 1.0 - beta2 ** t
+        bc1 = 1.0 - beta1**t
+        bc2 = 1.0 - beta2**t
         m1_hat = m1 / bc1
         m2_hat = m2 / bc2
 
@@ -404,7 +413,7 @@ class GaLoreAdamW(Optimizer):
         V_tilde = m1_hat / (m2_hat.sqrt().add_(eps))  # (r_eff, n)
 
         # ---- Unproject: ΔW_t = P_t Ṽ_t ∈ R^{m×n} ----
-        delta_W = projector.unproject(V_tilde)   # (m, n), already scaled
+        delta_W = projector.unproject(V_tilde)  # (m, n), already scaled
 
         # ---- W_{t+1} = W_t - lr * ΔW_t ----
         p_2d.add_(delta_W, alpha=-lr)

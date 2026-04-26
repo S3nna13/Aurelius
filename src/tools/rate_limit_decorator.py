@@ -1,9 +1,11 @@
 """Simple rate limiter decorator for function call throttling."""
+
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -31,7 +33,9 @@ def ratelimit(config: RateLimitConfig | None = None) -> Callable[[F], F]:
                     time.sleep(sleep)
             cfg._window.append(time.monotonic())
             return func(*args, **kwargs)
+
         return wrapper  # type: ignore
+
     return decorator
 
 

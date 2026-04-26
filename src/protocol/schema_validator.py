@@ -8,12 +8,12 @@ Supported type names: "str", "int", "float", "bool", "list", "dict".
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
 
 
-class SchemaType(str, Enum):
+class SchemaType(StrEnum):
     JSON_SCHEMA = "json_schema"
     PYDANTIC_LIKE = "pydantic_like"
     PROTOBUF_LITE = "protobuf_lite"
@@ -37,7 +37,7 @@ class SchemaField:
 @dataclass
 class MessageSchema:
     name: str
-    fields: List[SchemaField]
+    fields: list[SchemaField]
     version: str = "1.0"
 
 
@@ -45,7 +45,7 @@ class MessageSchema:
 # Type-check mapping
 # ---------------------------------------------------------------------------
 
-_TYPE_MAP: Dict[str, type] = {
+_TYPE_MAP: dict[str, type] = {
     "str": str,
     "int": int,
     "bool": bool,
@@ -71,7 +71,7 @@ class SchemaValidator:
     """Register schemas and validate plain dicts against them."""
 
     def __init__(self) -> None:
-        self._schemas: Dict[str, MessageSchema] = {}
+        self._schemas: dict[str, MessageSchema] = {}
 
     def define_schema(self, schema: MessageSchema) -> None:
         """Register *schema* by its ``name`` attribute."""
@@ -81,14 +81,14 @@ class SchemaValidator:
         self,
         data: dict,
         schema_name: str,
-    ) -> List[ValidationError]:
+    ) -> list[ValidationError]:
         """Validate *data* against the named schema.
 
         Returns a (possibly empty) list of :class:`ValidationError`.
         Raises ``KeyError`` if *schema_name* is not registered.
         """
         schema = self._schemas[schema_name]
-        errors: List[ValidationError] = []
+        errors: list[ValidationError] = []
 
         for f in schema.fields:
             if f.name not in data:

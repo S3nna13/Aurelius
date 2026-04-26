@@ -6,22 +6,24 @@ Supports:
 3. Temperature-scaled soft target distillation via KL divergence.
 4. Contrastive distillation -- cosine embedding loss on reward differences.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 
 @dataclass
 class DistillConfig:
     """Configuration for reward distillation training."""
-    temperature: float = 2.0          # temperature for soft targets
-    alpha: float = 0.5                # weight: alpha * distill + (1-alpha) * hard label
-    ranking_margin: float = 0.1       # margin for ranking hinge loss
-    contrastive_margin: float = 1.0   # margin for contrastive loss
+
+    temperature: float = 2.0  # temperature for soft targets
+    alpha: float = 0.5  # weight: alpha * distill + (1-alpha) * hard label
+    ranking_margin: float = 0.1  # margin for ranking hinge loss
+    contrastive_margin: float = 1.0  # margin for contrastive loss
     use_regression: bool = True
     use_ranking: bool = True
     use_contrastive: bool = False
@@ -83,6 +85,7 @@ def knowledge_distillation_reward(
     Returns:
         Scalar loss tensor.
     """
+
     def _to_logits(rewards: torch.Tensor) -> torch.Tensor:
         # Build (B, 2) logits: [rejected_score, chosen_score] = [-r, r]
         return torch.stack([-rewards, rewards], dim=1)
@@ -116,7 +119,7 @@ class RewardDistillTrainer:
         self,
         teacher: nn.Module,
         student: nn.Module,
-        config: Optional[DistillConfig] = None,
+        config: DistillConfig | None = None,
         lr: float = 1e-4,
         device: str = "cpu",
     ) -> None:
@@ -146,9 +149,9 @@ class RewardDistillTrainer:
 
     def ranking_loss(
         self,
-        student_chosen: torch.Tensor,    # (B,)
+        student_chosen: torch.Tensor,  # (B,)
         student_rejected: torch.Tensor,  # (B,)
-        teacher_chosen: torch.Tensor,    # (B,)
+        teacher_chosen: torch.Tensor,  # (B,)
         teacher_rejected: torch.Tensor,  # (B,)
     ) -> torch.Tensor:
         """Hinge loss weighted by teacher confidence.
@@ -200,9 +203,7 @@ class RewardDistillTrainer:
 
         s_vec = s_diff.unsqueeze(1)
         t_vec = t_diff.unsqueeze(1)
-        return F.cosine_embedding_loss(
-            s_vec, t_vec, target, margin=self.config.contrastive_margin
-        )
+        return F.cosine_embedding_loss(s_vec, t_vec, target, margin=self.config.contrastive_margin)
 
     # ------------------------------------------------------------------
     # Combined loss
@@ -212,8 +213,8 @@ class RewardDistillTrainer:
         self,
         hidden_chosen: torch.Tensor,
         hidden_rejected: torch.Tensor,
-        hard_labels: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        hard_labels: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Compute combined distillation loss.
 
         Runs teacher (no_grad) and student on both chosen and rejected hidden
@@ -233,7 +234,7 @@ class RewardDistillTrainer:
         s_rejected = self.student(hidden_rejected).squeeze(-1)
 
         total = torch.tensor(0.0, device=self.device)
-        metrics: Dict[str, float] = {}
+        metrics: dict[str, float] = {}
 
         if self.config.use_regression:
             r_loss = self.regression_loss(
@@ -280,8 +281,8 @@ class RewardDistillTrainer:
         self,
         hidden_chosen: torch.Tensor,
         hidden_rejected: torch.Tensor,
-        hard_labels: Optional[torch.Tensor] = None,
-    ) -> Dict[str, float]:
+        hard_labels: torch.Tensor | None = None,
+    ) -> dict[str, float]:
         """Zero grad, compute loss, backward, optimizer step.
 
         Returns:
@@ -305,7 +306,7 @@ class RewardDistillTrainer:
         self,
         hidden_states: torch.Tensor,
         teacher_rewards: torch.Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compute agreement metrics between student and teacher rankings.
 
         Metrics:

@@ -64,9 +64,7 @@ class TestVideoFrameSampler:
         np.save(video_path, np.stack(frames))
 
         sampler = VideoFrameSampler()
-        result = sampler.sample(
-            str(video_path), max_frames=8, strategy="scene_change"
-        )
+        result = sampler.sample(str(video_path), max_frames=8, strategy="scene_change")
         assert len(result) <= 8
         # First frame is always included; with alternating extremes nearly
         # every boundary exceeds the default threshold.
@@ -78,9 +76,7 @@ class TestVideoFrameSampler:
         video_path = tmp_path / "video.npy"
         np.save(video_path, frames)
 
-        result = VideoFrameSampler().sample(
-            str(video_path), max_frames=5, strategy="scene_change"
-        )
+        result = VideoFrameSampler().sample(str(video_path), max_frames=5, strategy="scene_change")
         assert len(result) == 5
 
     # ------------------------------------------------------------------

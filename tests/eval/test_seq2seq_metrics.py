@@ -1,24 +1,25 @@
 """Tests for src/eval/seq2seq_metrics.py — 12 tests."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.eval.seq2seq_metrics import (
-    rouge_n,
-    rouge_l,
-    rouge_w,
-    meteor_score,
-    chrf_score,
-    ter_score,
     Seq2SeqMetrics,
-    evaluate_seq2seq,
+    chrf_score,
     corpus_seq2seq_metrics,
+    evaluate_seq2seq,
+    meteor_score,
+    rouge_l,
+    rouge_n,
+    rouge_w,
+    ter_score,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. ROUGE-N identical
 # ---------------------------------------------------------------------------
+
 
 def test_rouge_n_identical():
     text = "the quick brown fox"
@@ -32,6 +33,7 @@ def test_rouge_n_identical():
 # 2. ROUGE-N no overlap
 # ---------------------------------------------------------------------------
 
+
 def test_rouge_n_no_overlap():
     result = rouge_n("cat sat mat", "dog ran far", n=1)
     assert result["rouge_n_precision"] == pytest.approx(0.0)
@@ -42,6 +44,7 @@ def test_rouge_n_no_overlap():
 # ---------------------------------------------------------------------------
 # 3. ROUGE-N partial overlap
 # ---------------------------------------------------------------------------
+
 
 def test_rouge_n_partial():
     # "the cat" vs "the dog" — 1 unigram overlap ("the") out of 2
@@ -55,6 +58,7 @@ def test_rouge_n_partial():
 # 4. ROUGE-L identical
 # ---------------------------------------------------------------------------
 
+
 def test_rouge_l_identical():
     text = "hello world"
     result = rouge_l(text, text)
@@ -66,6 +70,7 @@ def test_rouge_l_identical():
 # ---------------------------------------------------------------------------
 # 5. ROUGE-W returns float
 # ---------------------------------------------------------------------------
+
 
 def test_rouge_w_returns_float():
     score = rouge_w("the quick brown fox", "the quick brown fox")
@@ -81,6 +86,7 @@ def test_rouge_w_returns_float():
 # 6. METEOR identical
 # ---------------------------------------------------------------------------
 
+
 def test_meteor_identical():
     score = meteor_score("the quick brown fox", "the quick brown fox")
     # Identical: all tokens matched, 1 contiguous chunk => fragmentation = 1/4
@@ -92,6 +98,7 @@ def test_meteor_identical():
 # 7. METEOR no overlap
 # ---------------------------------------------------------------------------
 
+
 def test_meteor_no_overlap():
     score = meteor_score("cat sat mat", "dog ran far")
     assert score == pytest.approx(0.0)
@@ -101,6 +108,7 @@ def test_meteor_no_overlap():
 # 8. chrF identical
 # ---------------------------------------------------------------------------
 
+
 def test_chrf_identical():
     score = chrf_score("hello world", "hello world")
     assert score == pytest.approx(1.0)
@@ -109,6 +117,7 @@ def test_chrf_identical():
 # ---------------------------------------------------------------------------
 # 9. chrF in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_chrf_range():
     pairs = [
@@ -126,6 +135,7 @@ def test_chrf_range():
 # 10. TER identical
 # ---------------------------------------------------------------------------
 
+
 def test_ter_identical():
     score = ter_score("the cat sat on the mat", "the cat sat on the mat")
     assert score == pytest.approx(0.0)
@@ -134,6 +144,7 @@ def test_ter_identical():
 # ---------------------------------------------------------------------------
 # 11. evaluate_seq2seq — all fields present and in valid range
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_seq2seq_all_metrics():
     hyp = "the quick brown fox jumps over the lazy dog"
@@ -165,6 +176,7 @@ def test_evaluate_seq2seq_all_metrics():
 # ---------------------------------------------------------------------------
 # 12. corpus_seq2seq_metrics — dict has all 6 keys
 # ---------------------------------------------------------------------------
+
 
 def test_corpus_metrics_keys():
     hypotheses = [

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.serving.hermes_notifier import (
     DEFAULT_HERMES_NOTIFIER,
     HERMES_NOTIFIER_REGISTRY,

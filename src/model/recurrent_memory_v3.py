@@ -6,10 +6,10 @@ across segments, enabling unbounded context via recurrence.
 v3 because recurrent_memory.py and recurrent_memory_v2.py already exist with
 different APIs.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -68,9 +68,9 @@ class SegmentProcessor(nn.Module):
             memory_out: (B, n_memory, D) -- updated memory for the next segment.
         """
         combined = torch.cat([memory_in, segment], dim=1)  # (B, n_mem+T_seg, D)
-        processed = self.transformer_block(combined)       # (B, n_mem+T_seg, D)
-        memory_out = processed[:, : self.n_memory, :]     # (B, n_mem, D)
-        output = processed[:, self.n_memory :, :]         # (B, T_seg, D)
+        processed = self.transformer_block(combined)  # (B, n_mem+T_seg, D)
+        memory_out = processed[:, : self.n_memory, :]  # (B, n_mem, D)
+        output = processed[:, self.n_memory :, :]  # (B, T_seg, D)
         return output, memory_out
 
 
@@ -120,7 +120,7 @@ class RecurrentMemoryTransformer(nn.Module):
     def forward(
         self,
         input_ids: Tensor,
-        initial_memory: Optional[Tensor] = None,
+        initial_memory: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         """Process input_ids in segments, threading memory through each.
 
@@ -162,8 +162,8 @@ class RecurrentMemoryTransformer(nn.Module):
             all_outputs.append(x)
 
         hidden = torch.cat(all_outputs, dim=1)  # (B, T, D)
-        logits = self.lm_head(hidden)            # (B, T, vocab_size)
-        final_memory = memory_per_layer[-1]      # already detached
+        logits = self.lm_head(hidden)  # (B, T, vocab_size)
+        final_memory = memory_per_layer[-1]  # already detached
 
         return logits, final_memory
 
@@ -192,7 +192,7 @@ class MemoryUpdateGate(nn.Module):
             updated:    (B, n_memory, D)
         """
         combined = torch.cat([old_memory, new_memory], dim=-1)  # (B, n_mem, 2D)
-        g = torch.sigmoid(self.gate_proj(combined))              # (B, n_mem, 1)
+        g = torch.sigmoid(self.gate_proj(combined))  # (B, n_mem, 1)
         return g * new_memory + (1.0 - g) * old_memory
 
 
@@ -221,9 +221,7 @@ class RMTEvaluator:
         norm0 = memory_states[0].norm(p="fro").item()
         return mean_diff / (norm0 + 1e-8)
 
-    def segment_dependency(
-        self, model: RecurrentMemoryTransformer, input_ids: Tensor
-    ) -> float:
+    def segment_dependency(self, model: RecurrentMemoryTransformer, input_ids: Tensor) -> float:
         """Test whether memory actually influences the model output.
 
         Returns mean cosine similarity of logits(learned_memory) vs
@@ -233,9 +231,7 @@ class RMTEvaluator:
         B = input_ids.shape[0]
         with torch.no_grad():
             logits_default, _ = model(input_ids, initial_memory=None)
-            zeros = torch.zeros(
-                B, model.n_memory, model.d_model, device=input_ids.device
-            )
+            zeros = torch.zeros(B, model.n_memory, model.d_model, device=input_ids.device)
             logits_zeros, _ = model(input_ids, initial_memory=zeros)
 
         a = logits_default.reshape(-1, logits_default.shape[-1])

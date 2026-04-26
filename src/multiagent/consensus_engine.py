@@ -1,12 +1,13 @@
 """Consensus aggregation engine for multiagent outputs."""
+
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class ConsensusMethod(str, Enum):
+class ConsensusMethod(StrEnum):
     MAJORITY_VOTE = "majority_vote"
     CONFIDENCE_WEIGHTED = "confidence_weighted"
     BORDA_COUNT = "borda_count"

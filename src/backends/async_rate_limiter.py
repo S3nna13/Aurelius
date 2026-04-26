@@ -1,10 +1,10 @@
 """asyncio-native fixed-window rate limiter (Redis Lua fallback without Redis)."""
+
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 __all__ = [
     "RateLimitConfig",

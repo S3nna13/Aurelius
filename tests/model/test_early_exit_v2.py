@@ -4,18 +4,18 @@ import pytest
 import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.early_exit_v2 import (
     PatienceConfig,
-    TokenExitDecision,
     PatienceTracker,
+    TokenExitDecision,
     TokenLevelEarlyExit,
 )
-
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg():
@@ -63,6 +63,7 @@ def input_ids(cfg):
 # Test 1 — PatienceConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_patience_config_defaults():
     pc = PatienceConfig()
     assert pc.patience == 3
@@ -76,6 +77,7 @@ def test_patience_config_defaults():
 # Test 2 — TokenExitDecision fields
 # ---------------------------------------------------------------------------
 
+
 def test_token_exit_decision_fields():
     d = TokenExitDecision(token_pos=3, exit_layer=1, exit_reason="confidence", confidence=0.95)
     assert d.token_pos == 3
@@ -88,6 +90,7 @@ def test_token_exit_decision_fields():
 # Test 3 — PatienceTracker.update returns boolean tensor
 # ---------------------------------------------------------------------------
 
+
 def test_patience_tracker_update_returns_bool():
     tracker = PatienceTracker(patience=2, seq_len=4)
     logits = torch.zeros(1, 4, 16)
@@ -98,6 +101,7 @@ def test_patience_tracker_update_returns_bool():
 # ---------------------------------------------------------------------------
 # Test 4 — PatienceTracker.update shape is (T,)
 # ---------------------------------------------------------------------------
+
 
 def test_patience_tracker_update_shape():
     T = 5
@@ -110,6 +114,7 @@ def test_patience_tracker_update_shape():
 # ---------------------------------------------------------------------------
 # Test 5 — PatienceTracker.update increments counter for repeated argmax
 # ---------------------------------------------------------------------------
+
 
 def test_patience_tracker_increments_for_repeated_argmax():
     tracker = PatienceTracker(patience=3, seq_len=2)
@@ -125,6 +130,7 @@ def test_patience_tracker_increments_for_repeated_argmax():
 # ---------------------------------------------------------------------------
 # Test 6 — PatienceTracker.update resets counter when argmax changes
 # ---------------------------------------------------------------------------
+
 
 def test_patience_tracker_resets_on_argmax_change():
     tracker = PatienceTracker(patience=3, seq_len=2)
@@ -143,6 +149,7 @@ def test_patience_tracker_resets_on_argmax_change():
 # Test 7 — PatienceTracker.reset zeros all counters
 # ---------------------------------------------------------------------------
 
+
 def test_patience_tracker_reset():
     tracker = PatienceTracker(patience=3, seq_len=4)
     logits = torch.zeros(1, 4, 8)
@@ -158,6 +165,7 @@ def test_patience_tracker_reset():
 # Test 8 — TokenLevelEarlyExit.forward returns 3-tuple
 # ---------------------------------------------------------------------------
 
+
 def test_forward_returns_3_tuple(model, input_ids):
     with torch.no_grad():
         out = model(input_ids)
@@ -168,6 +176,7 @@ def test_forward_returns_3_tuple(model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 9 — logits shape is (B, T, V)
 # ---------------------------------------------------------------------------
+
 
 def test_forward_logits_shape(model, input_ids, cfg):
     B, T = input_ids.shape
@@ -180,6 +189,7 @@ def test_forward_logits_shape(model, input_ids, cfg):
 # Test 10 — decisions is a list
 # ---------------------------------------------------------------------------
 
+
 def test_forward_decisions_is_list(model, input_ids):
     with torch.no_grad():
         _, _, decisions = model(input_ids)
@@ -189,6 +199,7 @@ def test_forward_decisions_is_list(model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 11 — decisions length equals T (one decision per token position)
 # ---------------------------------------------------------------------------
+
 
 def test_forward_decisions_length(model, input_ids):
     _, T = input_ids.shape
@@ -201,6 +212,7 @@ def test_forward_decisions_length(model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 12 — get_exit_stats returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_get_exit_stats_keys(model, input_ids):
     with torch.no_grad():
@@ -215,6 +227,7 @@ def test_get_exit_stats_keys(model, input_ids):
 # Test 13 — get_exit_stats efficiency is in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_get_exit_stats_efficiency_range(model, input_ids):
     with torch.no_grad():
         _, _, decisions = model(input_ids)
@@ -225,6 +238,7 @@ def test_get_exit_stats_efficiency_range(model, input_ids):
 # ---------------------------------------------------------------------------
 # Test 14 — patience=1 exits after first repeated token
 # ---------------------------------------------------------------------------
+
 
 def test_patience_one_exits_after_first_repeat():
     tracker = PatienceTracker(patience=1, seq_len=3)
@@ -242,6 +256,7 @@ def test_patience_one_exits_after_first_repeat():
 # ---------------------------------------------------------------------------
 # Test 15 — exit_classifiers length equals n_layers
 # ---------------------------------------------------------------------------
+
 
 def test_exit_classifiers_length(model, cfg):
     assert len(model.exit_classifiers) == cfg.n_layers

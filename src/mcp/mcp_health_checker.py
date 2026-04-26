@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
+
 
 class HealthStatus(Enum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
+
 
 @dataclass
 class McpHealthChecker:
@@ -30,7 +33,13 @@ class McpHealthChecker:
         return HealthStatus.HEALTHY
 
     def get_stats(self) -> dict:
-        return {"total_pings": self._total_pings, "failures": self._failures, "last_latency_ms": self._last_latency}
+        return {
+            "total_pings": self._total_pings,
+            "failures": self._failures,
+            "last_latency_ms": self._last_latency,
+        }
 
     def reset(self) -> None:
-        self._last_latency = 0.0; self._total_pings = 0; self._failures = 0
+        self._last_latency = 0.0
+        self._total_pings = 0
+        self._failures = 0

@@ -30,7 +30,6 @@ Design notes
 from __future__ import annotations
 
 import re
-from typing import Iterable
 
 __all__ = ["CodeAwareTokenizer", "KEYWORDS", "SUPPORTED_LANGUAGES"]
 
@@ -44,44 +43,195 @@ __all__ = ["CodeAwareTokenizer", "KEYWORDS", "SUPPORTED_LANGUAGES"]
 # for filtering keyword tokens out of the output.
 
 KEYWORDS: dict[str, frozenset[str]] = {
-    "python": frozenset({
-        "def", "class", "import", "from", "return", "if", "elif", "else",
-        "for", "while", "try", "except", "finally", "with", "as", "pass",
-        "lambda", "yield", "raise", "global", "nonlocal", "async", "await",
-        "self", "none", "true", "false", "and", "or", "not", "in", "is",
-    }),
-    "javascript": frozenset({
-        "function", "var", "let", "const", "return", "if", "else", "for",
-        "while", "do", "switch", "case", "break", "continue", "new", "this",
-        "class", "extends", "import", "export", "default", "async", "await",
-        "try", "catch", "finally", "throw", "typeof", "instanceof", "null",
-        "undefined", "true", "false",
-    }),
-    "go": frozenset({
-        "func", "package", "import", "var", "const", "type", "struct",
-        "interface", "return", "if", "else", "for", "range", "switch",
-        "case", "default", "break", "continue", "go", "defer", "chan",
-        "map", "select", "goroutine", "nil", "true", "false",
-    }),
-    "rust": frozenset({
-        "fn", "let", "mut", "pub", "use", "mod", "struct", "enum", "impl",
-        "trait", "match", "if", "else", "for", "while", "loop", "return",
-        "break", "continue", "async", "await", "move", "ref", "self",
-        "super", "crate", "as", "in", "where", "dyn", "unsafe", "true",
-        "false",
-    }),
-    "java": frozenset({
-        "public", "private", "protected", "class", "interface", "extends",
-        "implements", "static", "final", "abstract", "void", "return",
-        "if", "else", "for", "while", "do", "switch", "case", "break",
-        "continue", "new", "this", "super", "try", "catch", "finally",
-        "throw", "throws", "package", "import", "null", "true", "false",
-        "instanceof",
-    }),
+    "python": frozenset(
+        {
+            "def",
+            "class",
+            "import",
+            "from",
+            "return",
+            "if",
+            "elif",
+            "else",
+            "for",
+            "while",
+            "try",
+            "except",
+            "finally",
+            "with",
+            "as",
+            "pass",
+            "lambda",
+            "yield",
+            "raise",
+            "global",
+            "nonlocal",
+            "async",
+            "await",
+            "self",
+            "none",
+            "true",
+            "false",
+            "and",
+            "or",
+            "not",
+            "in",
+            "is",
+        }
+    ),
+    "javascript": frozenset(
+        {
+            "function",
+            "var",
+            "let",
+            "const",
+            "return",
+            "if",
+            "else",
+            "for",
+            "while",
+            "do",
+            "switch",
+            "case",
+            "break",
+            "continue",
+            "new",
+            "this",
+            "class",
+            "extends",
+            "import",
+            "export",
+            "default",
+            "async",
+            "await",
+            "try",
+            "catch",
+            "finally",
+            "throw",
+            "typeof",
+            "instanceof",
+            "null",
+            "undefined",
+            "true",
+            "false",
+        }
+    ),
+    "go": frozenset(
+        {
+            "func",
+            "package",
+            "import",
+            "var",
+            "const",
+            "type",
+            "struct",
+            "interface",
+            "return",
+            "if",
+            "else",
+            "for",
+            "range",
+            "switch",
+            "case",
+            "default",
+            "break",
+            "continue",
+            "go",
+            "defer",
+            "chan",
+            "map",
+            "select",
+            "goroutine",
+            "nil",
+            "true",
+            "false",
+        }
+    ),
+    "rust": frozenset(
+        {
+            "fn",
+            "let",
+            "mut",
+            "pub",
+            "use",
+            "mod",
+            "struct",
+            "enum",
+            "impl",
+            "trait",
+            "match",
+            "if",
+            "else",
+            "for",
+            "while",
+            "loop",
+            "return",
+            "break",
+            "continue",
+            "async",
+            "await",
+            "move",
+            "ref",
+            "self",
+            "super",
+            "crate",
+            "as",
+            "in",
+            "where",
+            "dyn",
+            "unsafe",
+            "true",
+            "false",
+        }
+    ),
+    "java": frozenset(
+        {
+            "public",
+            "private",
+            "protected",
+            "class",
+            "interface",
+            "extends",
+            "implements",
+            "static",
+            "final",
+            "abstract",
+            "void",
+            "return",
+            "if",
+            "else",
+            "for",
+            "while",
+            "do",
+            "switch",
+            "case",
+            "break",
+            "continue",
+            "new",
+            "this",
+            "super",
+            "try",
+            "catch",
+            "finally",
+            "throw",
+            "throws",
+            "package",
+            "import",
+            "null",
+            "true",
+            "false",
+            "instanceof",
+        }
+    ),
 }
 
 SUPPORTED_LANGUAGES: tuple[str, ...] = (
-    "python", "javascript", "go", "rust", "java", "unknown",
+    "python",
+    "javascript",
+    "go",
+    "rust",
+    "java",
+    "unknown",
 )
 
 # --------------------------------------------------------------------------- #
@@ -99,32 +249,32 @@ _RAW_TOKEN_RE = re.compile(r"[\w]+(?:\.[\w]+)+|[\w]+", re.UNICODE)
 #   - parseXMLDoc     -> parse, XML, Doc
 #   - User2Name       -> User, 2, Name (digits kept as their own run)
 _CAMEL_SPLIT_RE = re.compile(
-    r"[A-Z]+(?=[A-Z][a-z])"    # run of caps followed by Cap+lower (acronym boundary)
-    r"|[A-Z]?[a-z]+"           # optional cap + lowers
-    r"|[A-Z]+"                 # trailing acronym
-    r"|\d+",                   # digit run
+    r"[A-Z]+(?=[A-Z][a-z])"  # run of caps followed by Cap+lower (acronym boundary)
+    r"|[A-Z]?[a-z]+"  # optional cap + lowers
+    r"|[A-Z]+"  # trailing acronym
+    r"|\d+",  # digit run
 )
 
 # Language-detection sigils: features that are hard evidence of a language
 # independent of keyword overlap. Each entry contributes a fixed score.
 _LANG_SIGILS: tuple[tuple[str, re.Pattern[str], int], ...] = (
-    ("python",     re.compile(r"^\s*def\s+\w+\s*\("),                         3),
-    ("python",     re.compile(r"^\s*class\s+\w+\s*[\(:]"),                    2),
-    ("python",     re.compile(r":\s*$", re.MULTILINE),                        1),
-    ("python",     re.compile(r"^\s*from\s+[\w.]+\s+import\b", re.MULTILINE), 3),
-    ("javascript", re.compile(r"\bfunction\s+\w+\s*\("),                      3),
-    ("javascript", re.compile(r"=>\s*[{(\w]"),                                2),
-    ("javascript", re.compile(r"\b(?:const|let|var)\s+\w+\s*="),              2),
-    ("go",         re.compile(r"\bfunc\s+(?:\(\w+\s+\*?\w+\)\s*)?\w+\s*\("),  3),
-    ("go",         re.compile(r"^\s*package\s+\w+\s*$", re.MULTILINE),        3),
-    ("go",         re.compile(r":=\s"),                                       1),
-    ("rust",       re.compile(r"\bfn\s+\w+\s*[<(]"),                          3),
-    ("rust",       re.compile(r"\blet\s+mut\b"),                              2),
-    ("rust",       re.compile(r"\bimpl\b"),                                   2),
-    ("rust",       re.compile(r"::\w"),                                       1),
-    ("java",       re.compile(r"\bpublic\s+(?:static\s+)?(?:\w+\s+)+\w+\s*\("), 3),
-    ("java",       re.compile(r"\bSystem\.out\.print"),                       3),
-    ("java",       re.compile(r"\bpackage\s+[\w.]+\s*;"),                     3),
+    ("python", re.compile(r"^\s*def\s+\w+\s*\("), 3),
+    ("python", re.compile(r"^\s*class\s+\w+\s*[\(:]"), 2),
+    ("python", re.compile(r":\s*$", re.MULTILINE), 1),
+    ("python", re.compile(r"^\s*from\s+[\w.]+\s+import\b", re.MULTILINE), 3),
+    ("javascript", re.compile(r"\bfunction\s+\w+\s*\("), 3),
+    ("javascript", re.compile(r"=>\s*[{(\w]"), 2),
+    ("javascript", re.compile(r"\b(?:const|let|var)\s+\w+\s*="), 2),
+    ("go", re.compile(r"\bfunc\s+(?:\(\w+\s+\*?\w+\)\s*)?\w+\s*\("), 3),
+    ("go", re.compile(r"^\s*package\s+\w+\s*$", re.MULTILINE), 3),
+    ("go", re.compile(r":=\s"), 1),
+    ("rust", re.compile(r"\bfn\s+\w+\s*[<(]"), 3),
+    ("rust", re.compile(r"\blet\s+mut\b"), 2),
+    ("rust", re.compile(r"\bimpl\b"), 2),
+    ("rust", re.compile(r"::\w"), 1),
+    ("java", re.compile(r"\bpublic\s+(?:static\s+)?(?:\w+\s+)+\w+\s*\("), 3),
+    ("java", re.compile(r"\bSystem\.out\.print"), 3),
+    ("java", re.compile(r"\bpackage\s+[\w.]+\s*;"), 3),
 )
 
 
@@ -167,8 +317,7 @@ class CodeAwareTokenizer:
             raise TypeError(f"language must be str, got {type(language).__name__}")
         if language != "auto" and language not in SUPPORTED_LANGUAGES:
             raise ValueError(
-                f"language must be 'auto' or one of {SUPPORTED_LANGUAGES}, "
-                f"got {language!r}"
+                f"language must be 'auto' or one of {SUPPORTED_LANGUAGES}, got {language!r}"
             )
         if not isinstance(keep_keywords, bool):
             raise TypeError("keep_keywords must be bool")

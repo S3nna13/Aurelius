@@ -1,9 +1,9 @@
 """Tests for the CAI training loop (critique -> revision -> SFT)."""
+
 import math
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.cai_trainer import (
     CAIConfig,
@@ -15,7 +15,6 @@ from src.alignment.cai_trainer import (
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -57,8 +56,10 @@ def cai_config():
 @pytest.fixture(scope="module")
 def tokenizer_encode():
     """Simple byte-level encode that stays within vocab_size=256."""
+
     def encode(text: str) -> list[int]:
         return [b % VOCAB_SIZE for b in text.encode("utf-8")][:32]
+
     return encode
 
 
@@ -66,6 +67,7 @@ def tokenizer_encode():
 def tokenizer_decode():
     def decode(ids: list[int]) -> str:
         return bytes(ids).decode("utf-8", errors="replace")
+
     return decode
 
 
@@ -83,6 +85,7 @@ def prompt_ids():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 # 1. CAIConfig defaults
 def test_cai_config_defaults():

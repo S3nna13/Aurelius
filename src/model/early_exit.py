@@ -11,20 +11,21 @@ References:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class EarlyExitConfig:
     """Configuration for early exit behaviour."""
 
-    n_exit_layers: int = 4       # how many intermediate exits to place
+    n_exit_layers: int = 4  # how many intermediate exits to place
     exit_threshold: float = 0.9  # confidence threshold for early exit
-    loss_weight: float = 0.3     # weight for intermediate exit losses during training
-    placement: str = "uniform"   # "uniform" | "late" (last half only)
+    loss_weight: float = 0.3  # weight for intermediate exit losses during training
+    placement: str = "uniform"  # "uniform" | "late" (last half only)
 
 
 @dataclass
@@ -32,8 +33,8 @@ class ExitStats:
     """Statistics collected from an early-exit forward pass."""
 
     layer_exit_counts: list[int]  # how many tokens exited at each exit point
-    mean_layers_used: float       # average computational depth
-    flop_savings: float           # 1 - mean_layers_used / n_layers
+    mean_layers_used: float  # average computational depth
+    flop_savings: float  # 1 - mean_layers_used / n_layers
 
 
 class EarlyExitClassifier(nn.Module):
@@ -81,9 +82,9 @@ class EarlyExitTransformer(nn.Module):
     def __init__(self, config, exit_config: EarlyExitConfig | None = None) -> None:
         super().__init__()
 
-        from src.model.transformer import TransformerBlock
         from src.model.attention import precompute_rope_frequencies, yarn_rope_frequencies
         from src.model.rms_norm import RMSNorm
+        from src.model.transformer import TransformerBlock
 
         self.config = config
         self.exit_config = exit_config or EarlyExitConfig()
@@ -91,9 +92,7 @@ class EarlyExitTransformer(nn.Module):
         # ---- core components (mirrors AureliusTransformer, built from parts) ----
         self.embed = nn.Embedding(config.vocab_size, config.d_model)
 
-        self.layers = nn.ModuleList(
-            [TransformerBlock(config) for _ in range(config.n_layers)]
-        )
+        self.layers = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
 
         self.norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
@@ -121,10 +120,7 @@ class EarlyExitTransformer(nn.Module):
         # ---- exit classifiers ----
         self.exit_positions: list[int] = self._get_exit_positions(config.n_layers)
         self.exit_classifiers = nn.ModuleList(
-            [
-                EarlyExitClassifier(config.d_model, config.vocab_size)
-                for _ in self.exit_positions
-            ]
+            [EarlyExitClassifier(config.d_model, config.vocab_size) for _ in self.exit_positions]
         )
 
         self._init_weights()
@@ -176,7 +172,7 @@ class EarlyExitTransformer(nn.Module):
 
     def forward(
         self,
-        input_ids: torch.Tensor,            # (B, T)
+        input_ids: torch.Tensor,  # (B, T)
         labels: torch.Tensor | None = None,  # (B, T)
         use_early_exit: bool = False,
     ) -> tuple:
@@ -248,9 +244,7 @@ class EarlyExitTransformer(nn.Module):
             layer_exit_counts = [0] * n_exit_slots
 
             # Track the depth (number of layers used) for each token
-            token_depth = torch.full(
-                (B, T), float(self.config.n_layers), device=input_ids.device
-            )
+            token_depth = torch.full((B, T), float(self.config.n_layers), device=input_ids.device)
 
             for layer_idx, layer in enumerate(self.layers):
                 if exited.all():
@@ -310,6 +304,7 @@ class EarlyExitTransformer(nn.Module):
 # ---------------------------------------------------------------------------
 # Profiling utility
 # ---------------------------------------------------------------------------
+
 
 def profile_exit_distribution(
     model: EarlyExitTransformer,

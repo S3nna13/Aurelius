@@ -1,4 +1,5 @@
 """Tests for FineWeb-Edu score filtering in the pipeline config."""
+
 import pytest
 
 
@@ -9,7 +10,7 @@ def test_edu_score_filter_default():
     except ImportError:
         pytest.skip("datatrove not installed")
     cfg = PipelineConfig()
-    assert hasattr(cfg, 'edu_score_min'), "PipelineConfig missing edu_score_min field"
+    assert hasattr(cfg, "edu_score_min"), "PipelineConfig missing edu_score_min field"
     assert cfg.edu_score_min == 3.0
 
 

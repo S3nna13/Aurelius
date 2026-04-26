@@ -18,7 +18,12 @@ class TestResourceLimit:
         assert lim.max_queue_depth == 1000
 
     def test_custom(self):
-        lim = ResourceLimit(max_memory_mb=1000.0, max_cpu_percent=50.0, max_concurrent_requests=10, max_queue_depth=50)
+        lim = ResourceLimit(
+            max_memory_mb=1000.0,
+            max_cpu_percent=50.0,
+            max_concurrent_requests=10,
+            max_queue_depth=50,
+        )
         assert lim.max_memory_mb == 1000.0
         assert lim.max_cpu_percent == 50.0
         assert lim.max_concurrent_requests == 10
@@ -27,7 +32,9 @@ class TestResourceLimit:
 
 class TestResourceSnapshot:
     def test_fields(self):
-        s = ResourceSnapshot(timestamp_s=1.0, memory_mb=100.0, cpu_percent=50.0, active_requests=3, queue_depth=5)
+        s = ResourceSnapshot(
+            timestamp_s=1.0, memory_mb=100.0, cpu_percent=50.0, active_requests=3, queue_depth=5
+        )
         assert s.timestamp_s == 1.0
         assert s.memory_mb == 100.0
         assert s.cpu_percent == 50.0

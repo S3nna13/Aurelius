@@ -25,6 +25,7 @@ class BenchmarkRunner:
     def __init__(self, benchmark_registry=None):
         if benchmark_registry is None:
             from src.eval import BENCHMARK_REGISTRY
+
             benchmark_registry = BENCHMARK_REGISTRY
         self._registry = benchmark_registry
 
@@ -64,7 +65,7 @@ class BenchmarkRunner:
         lines = []
         for r in results:
             lines.append(
-                f"  {r.benchmark_name}: {r.score:.3f} ({r.n_samples} samples, {r.elapsed_seconds:.2f}s)"
+                f"  {r.benchmark_name}: {r.score:.3f} ({r.n_samples} samples, {r.elapsed_seconds:.2f}s)"  # noqa: E501
             )
         return "\n".join(lines)
 

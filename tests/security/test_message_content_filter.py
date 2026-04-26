@@ -2,19 +2,16 @@
 
 Security surface: STRIDE Information Disclosure / Denial of Service.
 """
+
 from __future__ import annotations
 
-import pytest
-
 from src.security.message_content_filter import (
+    DEFAULT_MESSAGE_FILTER,
+    MESSAGE_FILTER_REGISTRY,
     FilterConfig,
-    FilterResult,
     FilterVerdict,
     MessageContentFilter,
-    MESSAGE_FILTER_REGISTRY,
-    DEFAULT_MESSAGE_FILTER,
 )
-
 
 # ---------------------------------------------------------------------------
 # Allow benign text
@@ -87,9 +84,7 @@ def test_toxicity_beats_pii():
 
 
 def test_custom_blocklist_blocks():
-    f = MessageContentFilter(
-        FilterConfig(custom_blocklist=["proprietary", "secret sauce"])
-    )
+    f = MessageContentFilter(FilterConfig(custom_blocklist=["proprietary", "secret sauce"]))
     result = f.scan("The secret sauce is in the repo.")
     assert result.verdict == FilterVerdict.BLOCK
     assert any(m.matched_text == "secret sauce" for m in result.matches)
@@ -108,9 +103,7 @@ def test_oversized_blocked_by_default():
 
 
 def test_oversized_allowed_when_configured():
-    f = MessageContentFilter(
-        FilterConfig(max_payload_length=10, block_on_oversized=False)
-    )
+    f = MessageContentFilter(FilterConfig(max_payload_length=10, block_on_oversized=False))
     result = f.scan("x" * 100)
     # Should pass through to other rules; no PII/toxicity so ALLOW
     assert result.verdict == FilterVerdict.ALLOW

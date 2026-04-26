@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.act import ACTLayer, ACTTransformer, HaltingUnit
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -131,9 +129,7 @@ def test_act_layer_gradients_flow():
     assert x.grad is not None, "No gradient flowed back to input x"
     # At least some block parameter should have a gradient.
     block_params = list(layer.block.parameters())
-    assert any(p.grad is not None for p in block_params), (
-        "No gradient reached block parameters"
-    )
+    assert any(p.grad is not None for p in block_params), "No gradient reached block parameters"
 
 
 # ---------------------------------------------------------------------------

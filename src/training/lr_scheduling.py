@@ -13,16 +13,15 @@ Pure native PyTorch only — no HuggingFace, no scipy, no sklearn.
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List
+from typing import Any
 
-import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LRScheduler
-
 
 # ---------------------------------------------------------------------------
 # WSDScheduler
 # ---------------------------------------------------------------------------
+
 
 class WSDScheduler(LRScheduler):
     """Warmup-Stable-Decay learning rate scheduler.
@@ -63,7 +62,7 @@ class WSDScheduler(LRScheduler):
         # LRScheduler.__init__ calls step() once, setting last_epoch to 0
         super().__init__(optimizer, last_epoch=last_step)
 
-    def get_lr(self) -> List[float]:  # type: ignore[override]
+    def get_lr(self) -> list[float]:  # type: ignore[override]
         step = self.last_epoch  # 0-indexed current step
 
         warmup_end = self.warmup_steps
@@ -92,6 +91,7 @@ class WSDScheduler(LRScheduler):
 # ---------------------------------------------------------------------------
 # CosineWithRestartsScheduler
 # ---------------------------------------------------------------------------
+
 
 class CosineWithRestartsScheduler(LRScheduler):
     """SGDR cosine annealing with warm restarts.
@@ -147,7 +147,7 @@ class CosineWithRestartsScheduler(LRScheduler):
             pos = step - t_start
         return pos, cycle_len
 
-    def get_lr(self) -> List[float]:  # type: ignore[override]
+    def get_lr(self) -> list[float]:  # type: ignore[override]
         step = self.last_epoch
         pos, cycle_len = self._cycle_info(step)
         progress = pos / max(1, cycle_len)
@@ -162,6 +162,7 @@ class CosineWithRestartsScheduler(LRScheduler):
 # ---------------------------------------------------------------------------
 # InverseSqrtScheduler
 # ---------------------------------------------------------------------------
+
 
 class InverseSqrtScheduler(LRScheduler):
     """Inverse-square-root learning rate scheduler with linear warmup.
@@ -187,7 +188,7 @@ class InverseSqrtScheduler(LRScheduler):
         self.warmup_steps = warmup_steps
         super().__init__(optimizer, last_epoch=last_step)
 
-    def get_lr(self) -> List[float]:  # type: ignore[override]
+    def get_lr(self) -> list[float]:  # type: ignore[override]
         step = self.last_epoch
         lrs = []
         for base_lr in self.base_lrs:
@@ -203,6 +204,7 @@ class InverseSqrtScheduler(LRScheduler):
 # LRSchedulerComparison
 # ---------------------------------------------------------------------------
 
+
 class LRSchedulerComparison:
     """Utility to compare scheduler lr trajectories without training.
 
@@ -213,10 +215,10 @@ class LRSchedulerComparison:
                  `optimizer.param_groups[*]['lr']`.
     """
 
-    def __init__(self, schedulers: Dict[str, Any]) -> None:
+    def __init__(self, schedulers: dict[str, Any]) -> None:
         self.schedulers = schedulers
 
-    def simulate(self, n_steps: int) -> Dict[str, List[float]]:
+    def simulate(self, n_steps: int) -> dict[str, list[float]]:
         """Step each scheduler n_steps times and record lr at each step.
 
         Returns
@@ -225,7 +227,7 @@ class LRSchedulerComparison:
         The lr recorded at index t is the lr *after* calling step() for the
         (t+1)-th time, i.e. the lr that would be used at training step t.
         """
-        results: Dict[str, List[float]] = {name: [] for name in self.schedulers}
+        results: dict[str, list[float]] = {name: [] for name in self.schedulers}
         for _ in range(n_steps):
             for name, sched in self.schedulers.items():
                 optimizer = getattr(sched, "optimizer", None)
@@ -237,7 +239,7 @@ class LRSchedulerComparison:
         return results
 
     @staticmethod
-    def find_crossover(lrs_a: List[float], lrs_b: List[float]) -> int:
+    def find_crossover(lrs_a: list[float], lrs_b: list[float]) -> int:
         """Return the first step index where lrs_a[step] > lrs_b[step].
 
         Returns -1 if lrs_a never exceeds lrs_b.

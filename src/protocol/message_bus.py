@@ -1,9 +1,10 @@
 """Agent message bus: pub/sub, routing, envelope stamping."""
+
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _hex8() -> str:
@@ -11,7 +12,7 @@ def _hex8() -> str:
 
 
 def _utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @dataclass

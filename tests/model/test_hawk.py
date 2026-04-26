@@ -8,15 +8,10 @@ Tiny config throughout: d_model=64, n_layers=2.
 
 from __future__ import annotations
 
-import math
-from typing import List
-
 import pytest
 import torch
-import torch.nn as nn
 
-from src.model.hawk import RGLRU, HawkBlock, HawkModel
-
+from src.model.hawk import RGLRU, HawkModel
 
 # ---------------------------------------------------------------------------
 # Constants / helpers
@@ -44,6 +39,7 @@ def rglru_layer() -> RGLRU:
 # 1. Output shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_output_shape(model: HawkModel) -> None:
     x = torch.randn(BATCH, T, D_MODEL)
     out, _ = model(x)
@@ -56,12 +52,11 @@ def test_output_shape(model: HawkModel) -> None:
 # 2. Hidden state shape: list of (B, d_model), one per layer
 # ---------------------------------------------------------------------------
 
+
 def test_hidden_state_shape(model: HawkModel) -> None:
     x = torch.randn(BATCH, T, D_MODEL)
     _, new_hs = model(x)
-    assert len(new_hs) == N_LAYERS, (
-        f"Expected {N_LAYERS} hidden states, got {len(new_hs)}"
-    )
+    assert len(new_hs) == N_LAYERS, f"Expected {N_LAYERS} hidden states, got {len(new_hs)}"
     for i, h in enumerate(new_hs):
         assert h.shape == (BATCH, D_MODEL), (
             f"Hidden state {i}: expected shape {(BATCH, D_MODEL)}, got {h.shape}"
@@ -72,6 +67,7 @@ def test_hidden_state_shape(model: HawkModel) -> None:
 # 3. Gradient flow: all parameters including Λ receive finite gradients
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flow(model: HawkModel) -> None:
     x = torch.randn(BATCH, T, D_MODEL, requires_grad=True)
     out, _ = model(x)
@@ -80,9 +76,7 @@ def test_gradient_flow(model: HawkModel) -> None:
 
     for name, param in model.named_parameters():
         assert param.grad is not None, f"No gradient for parameter '{name}'"
-        assert torch.isfinite(param.grad).all(), (
-            f"Non-finite gradient for parameter '{name}'"
-        )
+        assert torch.isfinite(param.grad).all(), f"Non-finite gradient for parameter '{name}'"
 
     assert x.grad is not None
     assert torch.isfinite(x.grad).all()
@@ -91,6 +85,7 @@ def test_gradient_flow(model: HawkModel) -> None:
 # ---------------------------------------------------------------------------
 # 4. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_determinism() -> None:
     x = torch.randn(BATCH, T, D_MODEL)
@@ -110,6 +105,7 @@ def test_determinism() -> None:
 # 5. batch=1, T=1 edge case
 # ---------------------------------------------------------------------------
 
+
 def test_single_token() -> None:
     torch.manual_seed(7)
     m = HawkModel(d_model=D_MODEL, n_layers=N_LAYERS)
@@ -123,6 +119,7 @@ def test_single_token() -> None:
 # ---------------------------------------------------------------------------
 # 6. hidden_states=None → zero initialisation (matches explicit zeros)
 # ---------------------------------------------------------------------------
+
 
 def test_none_hidden_state_is_zero_init(model: HawkModel) -> None:
     torch.manual_seed(5)
@@ -141,6 +138,7 @@ def test_none_hidden_state_is_zero_init(model: HawkModel) -> None:
 # ---------------------------------------------------------------------------
 # 7. Passed hidden_state affects output (state is used)
 # ---------------------------------------------------------------------------
+
 
 def test_hidden_state_affects_output(model: HawkModel) -> None:
     torch.manual_seed(9)
@@ -161,6 +159,7 @@ def test_hidden_state_affects_output(model: HawkModel) -> None:
 # 8. a_t ∈ (0, 1): state transitions are always contractions
 # ---------------------------------------------------------------------------
 
+
 def test_state_transition_contraction(rglru_layer: RGLRU) -> None:
     """Verify a_t = exp(-8 * softplus(Λ) * r_t) lies strictly in (0, 1)."""
     x = torch.randn(BATCH, T, D_MODEL)
@@ -169,6 +168,7 @@ def test_state_transition_contraction(rglru_layer: RGLRU) -> None:
         x_t = x[:, t, :]
         r_t = torch.sigmoid(rglru_layer.W_r(x_t))
         import torch.nn.functional as F
+
         decay = 8.0 * F.softplus(rglru_layer.Lambda)
         a_t = torch.exp(-decay * r_t)
         assert (a_t > 0).all(), f"a_t has non-positive values at t={t}"
@@ -178,6 +178,7 @@ def test_state_transition_contraction(rglru_layer: RGLRU) -> None:
 # ---------------------------------------------------------------------------
 # 9. State carries context: T=8 with warm hidden differs from cold start
 # ---------------------------------------------------------------------------
+
 
 def test_state_carries_context() -> None:
     torch.manual_seed(11)
@@ -201,6 +202,7 @@ def test_state_carries_context() -> None:
 # 10. No NaN/Inf on zeros input
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_zeros() -> None:
     torch.manual_seed(13)
     m = HawkModel(d_model=D_MODEL, n_layers=N_LAYERS)
@@ -215,6 +217,7 @@ def test_no_nan_on_zeros() -> None:
 # 11. No NaN/Inf on large inputs
 # ---------------------------------------------------------------------------
 
+
 def test_no_nan_on_large_input() -> None:
     torch.manual_seed(15)
     m = HawkModel(d_model=D_MODEL, n_layers=N_LAYERS)
@@ -228,6 +231,7 @@ def test_no_nan_on_large_input() -> None:
 # ---------------------------------------------------------------------------
 # 12. Variance preservation: output variance ≈ input variance (unit-var input)
 # ---------------------------------------------------------------------------
+
 
 def test_variance_preservation() -> None:
     """For unit-variance input over many steps the RG-LRU preserves variance."""
@@ -253,6 +257,7 @@ def test_variance_preservation() -> None:
 # 13. Λ initialised to log-spaced values (not all identical)
 # ---------------------------------------------------------------------------
 
+
 def test_lambda_log_spaced_init() -> None:
     torch.manual_seed(0)
     layer = RGLRU(d_model=D_MODEL)
@@ -270,6 +275,7 @@ def test_lambda_log_spaced_init() -> None:
 # 14. n_layers=1 edge case works correctly
 # ---------------------------------------------------------------------------
 
+
 def test_single_layer() -> None:
     torch.manual_seed(19)
     m = HawkModel(d_model=D_MODEL, n_layers=1)
@@ -284,6 +290,7 @@ def test_single_layer() -> None:
 # 15. Wrong hidden_states length raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_wrong_hidden_state_length_raises(model: HawkModel) -> None:
     x = torch.randn(BATCH, T, D_MODEL)
     bad_hs = [torch.zeros(BATCH, D_MODEL)]  # only 1 state for 2-layer model
@@ -294,6 +301,7 @@ def test_wrong_hidden_state_length_raises(model: HawkModel) -> None:
 # ---------------------------------------------------------------------------
 # 16. d_state != d_model raises ValueError
 # ---------------------------------------------------------------------------
+
 
 def test_d_state_mismatch_raises() -> None:
     with pytest.raises(ValueError, match="d_state"):

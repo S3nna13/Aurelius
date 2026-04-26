@@ -6,12 +6,13 @@ final prompt position.
 
 No external dependencies beyond PyTorch.
 """
+
 from __future__ import annotations
 
 import logging
 import string
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -22,9 +23,11 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FewShotConfig:
     """Configuration for few-shot prompt formatting and evaluation."""
+
     n_shots: int = 5
     max_seq_len: int = 2048
     answer_prefix: str = "Answer:"
@@ -36,6 +39,7 @@ class FewShotConfig:
 # Prompt formatting helpers
 # ---------------------------------------------------------------------------
 
+
 def _choice_label(idx: int) -> str:
     """Return alphabetic label for a choice index (0 → 'A', 1 → 'B', …)."""
     return string.ascii_uppercase[idx]
@@ -43,9 +47,9 @@ def _choice_label(idx: int) -> str:
 
 def format_example(
     question: str,
-    choices: List[str],
-    answer_idx: Optional[int] = None,
-    config: Optional[FewShotConfig] = None,
+    choices: list[str],
+    answer_idx: int | None = None,
+    config: FewShotConfig | None = None,
 ) -> str:
     """Format a single question-choices block.
 
@@ -66,7 +70,7 @@ def format_example(
     if config is None:
         config = FewShotConfig()
 
-    lines: List[str] = [f"Question: {question}", "Choices:"]
+    lines: list[str] = [f"Question: {question}", "Choices:"]
     for i, choice in enumerate(choices):
         lines.append(f"{_choice_label(i)}. {choice}")
 
@@ -79,8 +83,8 @@ def format_example(
 
 
 def build_few_shot_prompt(
-    examples: List[Dict],
-    test_example: Dict,
+    examples: list[dict],
+    test_example: dict,
     config: FewShotConfig,
 ) -> str:
     """Build a complete few-shot prompt.
@@ -98,7 +102,7 @@ def build_few_shot_prompt(
         Full prompt string.
     """
     shots = examples[: config.n_shots]
-    parts: List[str] = []
+    parts: list[str] = []
     for ex in shots:
         parts.append(
             format_example(
@@ -126,7 +130,8 @@ def build_few_shot_prompt(
 # Scoring utilities
 # ---------------------------------------------------------------------------
 
-def score_multiple_choice(logprobs: torch.Tensor, choice_indices: List[int]) -> int:
+
+def score_multiple_choice(logprobs: torch.Tensor, choice_indices: list[int]) -> int:
     """Choose the answer option whose first token has the highest log-prob.
 
     Args:
@@ -143,7 +148,7 @@ def score_multiple_choice(logprobs: torch.Tensor, choice_indices: List[int]) -> 
     return int(scores.argmax().item())
 
 
-def compute_accuracy(predictions: List[int], targets: List[int]) -> float:
+def compute_accuracy(predictions: list[int], targets: list[int]) -> float:
     """Fraction of predictions that match their target.
 
     Args:
@@ -160,10 +165,10 @@ def compute_accuracy(predictions: List[int], targets: List[int]) -> float:
 
 
 def compute_per_class_accuracy(
-    predictions: List[int],
-    targets: List[int],
+    predictions: list[int],
+    targets: list[int],
     n_classes: int,
-) -> List[float]:
+) -> list[float]:
     """Per-class accuracy.
 
     Args:
@@ -184,14 +189,14 @@ def compute_per_class_accuracy(
             class_correct[t] += 1
 
     return [
-        class_correct[c] / class_total[c] if class_total[c] > 0 else 0.0
-        for c in range(n_classes)
+        class_correct[c] / class_total[c] if class_total[c] > 0 else 0.0 for c in range(n_classes)
     ]
 
 
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
 
 class FewShotEvaluator:
     """Evaluates a language model on multiple-choice tasks using few-shot prompts.
@@ -207,7 +212,7 @@ class FewShotEvaluator:
     def __init__(
         self,
         model_fn: Callable[[torch.Tensor], torch.Tensor],
-        tokenizer_fn: Callable[[str], List[int]],
+        tokenizer_fn: Callable[[str], list[int]],
         config: FewShotConfig,
     ) -> None:
         self.model_fn = model_fn
@@ -216,7 +221,7 @@ class FewShotEvaluator:
 
     # ------------------------------------------------------------------
 
-    def evaluate_example(self, prompt: str, choices: List[str]) -> int:
+    def evaluate_example(self, prompt: str, choices: list[str]) -> int:
         """Predict the answer choice for a single formatted prompt.
 
         Tokenizes *prompt*, truncates to *max_seq_len*, runs the model, takes
@@ -241,7 +246,7 @@ class FewShotEvaluator:
         logprobs = F.log_softmax(logits[-1], dim=-1)  # (vocab,)
 
         # Obtain the first token id of each choice string
-        choice_indices: List[int] = []
+        choice_indices: list[int] = []
         for choice in choices:
             tokens = self.tokenizer_fn(choice)
             choice_indices.append(tokens[0] if tokens else 0)
@@ -252,9 +257,9 @@ class FewShotEvaluator:
 
     def evaluate_dataset(
         self,
-        examples: List[Dict],
-        few_shot_pool: List[Dict],
-    ) -> Dict:
+        examples: list[dict],
+        few_shot_pool: list[dict],
+    ) -> dict:
         """Evaluate every example in *examples* using *few_shot_pool* for context.
 
         Each item in *examples* must have "question", "choices", and "answer_idx".
@@ -271,8 +276,8 @@ class FewShotEvaluator:
               - "n_total"   (int)
               - "per_class" (List[float])
         """
-        predictions: List[int] = []
-        targets: List[int] = []
+        predictions: list[int] = []
+        targets: list[int] = []
 
         n_classes = 0
 

@@ -16,21 +16,19 @@ Covers:
   13. RetNetModel output shape is (B, T, vocab_size)
   14. RetNetModel forward is differentiable (loss.backward() works)
 """
+
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn as nn
 
 from src.model.retention import (
-    RetNetConfig,
     MultiScaleRetention,
     RetNetBlock,
+    RetNetConfig,
     RetNetModel,
-    build_decay_gammas,
     build_causal_decay_mask,
+    build_decay_gammas,
 )
 
 # ---------------------------------------------------------------------------
@@ -113,7 +111,7 @@ def test_build_causal_decay_mask_upper_triangle_zero():
     for i in range(T):
         for j in range(i + 1, T):
             assert mask[i, j].item() == 0.0, (
-                f"mask[{i},{j}] = {mask[i,j].item()} (should be 0 -- upper triangle)"
+                f"mask[{i},{j}] = {mask[i, j].item()} (should be 0 -- upper triangle)"
             )
 
 
@@ -128,7 +126,7 @@ def test_build_causal_decay_mask_diagonal_is_one():
     mask = build_causal_decay_mask(T, gamma=0.9)
     for i in range(T):
         assert abs(mask[i, i].item() - 1.0) < 1e-5, (
-            f"mask[{i},{i}] = {mask[i,i].item()} (expected 1.0)"
+            f"mask[{i},{i}] = {mask[i, i].item()} (expected 1.0)"
         )
 
 
@@ -160,9 +158,7 @@ def test_msr_recurrent_output_shape():
     x = torch.randn(BATCH, D_MODEL)
     s = torch.zeros(BATCH, N_HEADS, HEAD_DIM, HEAD_DIM)
     out, _ = msr.forward_recurrent(x, s, n=0)
-    assert out.shape == (BATCH, D_MODEL), (
-        f"Expected ({BATCH}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (BATCH, D_MODEL), f"Expected ({BATCH}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -178,9 +174,7 @@ def test_msr_recurrent_state_shape():
     s = torch.zeros(BATCH, N_HEADS, HEAD_DIM, HEAD_DIM)
     _, new_s = msr.forward_recurrent(x, s, n=0)
     expected = (BATCH, N_HEADS, HEAD_DIM, HEAD_DIM)
-    assert new_s.shape == expected, (
-        f"Expected state shape {expected}, got {new_s.shape}"
-    )
+    assert new_s.shape == expected, f"Expected state shape {expected}, got {new_s.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +304,4 @@ def test_build_causal_decay_mask_values():
         for j in range(i):
             expected = gamma ** (i - j)
             actual = mask[i, j].item()
-            assert abs(actual - expected) < 1e-5, (
-                f"mask[{i},{j}] = {actual}, expected {expected}"
-            )
+            assert abs(actual - expected) < 1e-5, f"mask[{i},{j}] = {actual}, expected {expected}"

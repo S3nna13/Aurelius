@@ -6,23 +6,22 @@ Tiny model: nn.Linear(8, 8), SGD lr=0.1.
 Every test performs at least one forward/backward pass.
 """
 
-import math
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.lr_schedulers_v2 import (
-    WarmupScheduler,
     CosineWithWarmup,
-    WSDScheduler,
-    InverseSquareRootScheduler,
     CyclicLRScheduler,
+    InverseSquareRootScheduler,
     LRSchedulerFactory,
+    WarmupScheduler,
+    WSDScheduler,
 )
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model_and_opt(lr: float = 0.1):
     """Return (model, optimizer) with a tiny nn.Linear(8, 8)."""
@@ -42,6 +41,7 @@ def _fwd_bwd(model, opt):
 # ---------------------------------------------------------------------------
 # WarmupScheduler tests
 # ---------------------------------------------------------------------------
+
 
 def test_warmup_lr_zero_at_step_zero():
     """LR should start at 0 (before any step)."""
@@ -107,6 +107,7 @@ def test_warmup_state_dict_round_trip():
 # CosineWithWarmup tests
 # ---------------------------------------------------------------------------
 
+
 def test_cosine_warmup_lr_increases_during_warmup():
     """LR must strictly increase across warmup phase."""
     model, opt = _make_model_and_opt(lr=0.1)
@@ -147,9 +148,7 @@ def test_cosine_warmup_lr_at_end_approx_min_lr():
     warmup = 4
     total = 16
     min_ratio = 0.1
-    sched = CosineWithWarmup(
-        opt, warmup_steps=warmup, total_steps=total, min_lr_ratio=min_ratio
-    )
+    sched = CosineWithWarmup(opt, warmup_steps=warmup, total_steps=total, min_lr_ratio=min_ratio)
     for _ in range(total):
         _fwd_bwd(model, opt)
         sched.step()
@@ -168,7 +167,7 @@ def test_cosine_warmup_n_cycles_resets_midway():
         opt, warmup_steps=warmup, total_steps=total, min_lr_ratio=0.1, n_cycles=2
     )
     decay_steps = total - warmup  # 10
-    half = decay_steps // 2        # 5 — end of first cycle
+    half = decay_steps // 2  # 5 — end of first cycle
 
     # run warmup
     for _ in range(warmup):
@@ -186,7 +185,7 @@ def test_cosine_warmup_n_cycles_resets_midway():
     # first cycle (index `half - 1`)
     assert lrs[half] > lrs[half - 1], (
         f"Expected LR reset at cycle boundary; "
-        f"lrs[{half-1}]={lrs[half-1]:.6f}, lrs[{half}]={lrs[half]:.6f}"
+        f"lrs[{half - 1}]={lrs[half - 1]:.6f}, lrs[{half}]={lrs[half]:.6f}"
     )
 
 
@@ -194,12 +193,12 @@ def test_cosine_warmup_n_cycles_resets_midway():
 # WSDScheduler tests
 # ---------------------------------------------------------------------------
 
+
 def test_wsd_current_phase_correct():
     """current_phase() must return the right string at every step boundary."""
     model, opt = _make_model_and_opt()
     sched = WSDScheduler(
-        opt, warmup_steps=3, stable_steps=4, decay_steps=3,
-        peak_lr=0.05, min_lr=0.0
+        opt, warmup_steps=3, stable_steps=4, decay_steps=3, peak_lr=0.05, min_lr=0.0
     )
     # step 0 — before any step — still warmup
     assert sched.current_phase() == "warmup"
@@ -228,8 +227,7 @@ def test_wsd_stable_phase_constant_lr():
     model, opt = _make_model_and_opt()
     peak = 0.05
     sched = WSDScheduler(
-        opt, warmup_steps=3, stable_steps=5, decay_steps=3,
-        peak_lr=peak, min_lr=0.0
+        opt, warmup_steps=3, stable_steps=5, decay_steps=3, peak_lr=peak, min_lr=0.0
     )
     # skip warmup
     for _ in range(3):
@@ -250,21 +248,24 @@ def test_wsd_lr_at_end_of_decay_approx_min_lr():
     min_lr = 1e-4
     warmup, stable, decay = 3, 4, 5
     sched = WSDScheduler(
-        opt, warmup_steps=warmup, stable_steps=stable, decay_steps=decay,
-        peak_lr=0.05, min_lr=min_lr
+        opt,
+        warmup_steps=warmup,
+        stable_steps=stable,
+        decay_steps=decay,
+        peak_lr=0.05,
+        min_lr=min_lr,
     )
     total = warmup + stable + decay
     for _ in range(total):
         _fwd_bwd(model, opt)
         sched.step()
-    assert abs(sched._current_lr - min_lr) < 1e-6, (
-        f"Expected ~{min_lr}, got {sched._current_lr}"
-    )
+    assert abs(sched._current_lr - min_lr) < 1e-6, f"Expected ~{min_lr}, got {sched._current_lr}"
 
 
 # ---------------------------------------------------------------------------
 # InverseSquareRootScheduler tests
 # ---------------------------------------------------------------------------
+
 
 def test_inv_sqrt_lr_peaks_around_warmup_steps():
     """LR should peak at or very near warmup_steps."""
@@ -305,6 +306,7 @@ def test_inv_sqrt_lr_decreases_after_warmup():
 # CyclicLRScheduler tests
 # ---------------------------------------------------------------------------
 
+
 def test_cyclic_lr_oscillates_between_base_and_max():
     """LR must stay in [base_lr, max_lr] and reach max_lr within one cycle."""
     model, opt = _make_model_and_opt()
@@ -328,8 +330,7 @@ def test_cyclic_lr_triangular2_halves_amplitude():
     base, maximum = 0.01, 0.1
     step_size = 4
     sched = CyclicLRScheduler(
-        opt, base_lr=base, max_lr=maximum,
-        step_size=step_size, mode="triangular2"
+        opt, base_lr=base, max_lr=maximum, step_size=step_size, mode="triangular2"
     )
     # collect peak of cycle 1 and cycle 2
     cycle_len = step_size * 2
@@ -354,6 +355,7 @@ def test_cyclic_lr_triangular2_halves_amplitude():
 # LRSchedulerFactory tests
 # ---------------------------------------------------------------------------
 
+
 def test_factory_creates_correct_types():
     """create() must return the right scheduler class for every registered name."""
     factory = LRSchedulerFactory()
@@ -368,9 +370,7 @@ def test_factory_creates_correct_types():
 
     model, opt = _make_model_and_opt(lr=0.05)
     s = factory.create(
-        "wsd", opt,
-        warmup_steps=3, stable_steps=4, decay_steps=3,
-        peak_lr=0.05, min_lr=0.0
+        "wsd", opt, warmup_steps=3, stable_steps=4, decay_steps=3, peak_lr=0.05, min_lr=0.0
     )
     assert isinstance(s, WSDScheduler)
 

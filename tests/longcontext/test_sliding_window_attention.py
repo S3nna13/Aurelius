@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.longcontext.sliding_window_attention import (

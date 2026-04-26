@@ -25,7 +25,11 @@ class PortfolioOptimizer:
             return torch.ones(prices.shape[1]) / prices.shape[1]
 
     def sharpe(self, portfolio_returns: torch.Tensor) -> float:
-        return (portfolio_returns.mean() / portfolio_returns.std()).item() if portfolio_returns.std() > 0 else 0.0
+        return (
+            (portfolio_returns.mean() / portfolio_returns.std()).item()
+            if portfolio_returns.std() > 0
+            else 0.0
+        )
 
 
 PORTFOLIO_OPTIMIZER = PortfolioOptimizer()

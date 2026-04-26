@@ -13,14 +13,13 @@ from src.model.mod_v2 import (
     CapacityTracker,
     MoDv2Config,
     MoDv2Layer,
-    MoDv2Transformer,
     RouterV2,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg() -> AureliusConfig:
@@ -61,6 +60,7 @@ def mod_layer(simple_sublayer, mod_cfg) -> MoDv2Layer:
 # 1. test_router_output_shapes
 # ---------------------------------------------------------------------------
 
+
 def test_router_output_shapes(router):
     B, T, D = 2, 16, 64
     x = torch.randn(B, T, D)
@@ -81,6 +81,7 @@ def test_router_output_shapes(router):
 # 2. test_router_capacity_fraction
 # ---------------------------------------------------------------------------
 
+
 def test_router_capacity_fraction(mod_cfg):
     T = 20
     capacity_factor = 0.5
@@ -100,18 +101,18 @@ def test_router_capacity_fraction(mod_cfg):
 # 3. test_mod_layer_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_mod_layer_output_shape(mod_layer):
     B, T, D = 2, 12, 64
     x = torch.randn(B, T, D)
     output, aux_loss = mod_layer(x)
-    assert output.shape == (B, T, D), (
-        f"Expected output shape ({B}, {T}, {D}), got {output.shape}"
-    )
+    assert output.shape == (B, T, D), f"Expected output shape ({B}, {T}, {D}), got {output.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 4. test_mod_layer_returns_aux_loss
 # ---------------------------------------------------------------------------
+
 
 def test_mod_layer_returns_aux_loss(mod_layer):
     x = torch.randn(2, 10, 64, requires_grad=True)
@@ -129,12 +130,12 @@ def test_mod_layer_returns_aux_loss(mod_layer):
 # 5. test_mod_layer_unrouted_tokens_unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_mod_layer_unrouted_tokens_unchanged():
     """Tokens not selected by the router must equal the input (pure residual)."""
     B, T, D = 1, 8, 64
     capacity_factor = 0.25  # only 2 of 8 tokens routed
-    mod_cfg = MoDv2Config(capacity_factor=capacity_factor, routing_type="top_k",
-                          use_aux_loss=False)
+    mod_cfg = MoDv2Config(capacity_factor=capacity_factor, routing_type="top_k", use_aux_loss=False)
     sublayer = nn.Linear(D, D, bias=False)
     # Zero out sublayer weights so routed tokens map to 0 -- unrouted = x
     nn.init.zeros_(sublayer.weight)
@@ -164,17 +165,17 @@ def test_mod_layer_unrouted_tokens_unchanged():
 # 6. test_router_aux_loss_positive
 # ---------------------------------------------------------------------------
 
+
 def test_router_aux_loss_positive(router):
     x = torch.randn(2, 16, 64)
     _, _, aux_loss = router(x)
-    assert aux_loss.item() > 0, (
-        f"Expected aux_loss > 0, got {aux_loss.item()}"
-    )
+    assert aux_loss.item() > 0, f"Expected aux_loss > 0, got {aux_loss.item()}"
 
 
 # ---------------------------------------------------------------------------
 # 7. test_capacity_tracker_record_and_summary
 # ---------------------------------------------------------------------------
+
 
 def test_capacity_tracker_record_and_summary():
     n_layers = 3
@@ -201,6 +202,7 @@ def test_capacity_tracker_record_and_summary():
 # 8. test_capacity_tracker_overall_mean
 # ---------------------------------------------------------------------------
 
+
 def test_capacity_tracker_overall_mean():
     tracker = CapacityTracker(n_layers=2)
 
@@ -222,6 +224,7 @@ def test_capacity_tracker_overall_mean():
 # ---------------------------------------------------------------------------
 # 9. test_router_z_loss_present
 # ---------------------------------------------------------------------------
+
 
 def test_router_z_loss_present():
     """aux_loss should change when z_loss_coeff changes (z-loss is active)."""
@@ -258,6 +261,7 @@ def test_router_z_loss_present():
 # ---------------------------------------------------------------------------
 # 10. test_router_top_p_routing
 # ---------------------------------------------------------------------------
+
 
 def test_router_top_p_routing():
     """top_p routing should not crash and return correct shapes."""

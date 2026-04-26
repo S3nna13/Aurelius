@@ -5,15 +5,14 @@ from __future__ import annotations
 import math
 import random
 
-import pytest
 import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.multilingual import (
+    LanguageTaggedDataset,
     MultilingualConfig,
     MultilingualTrainer,
-    LanguageTaggedDataset,
     compute_language_sampling_probs,
     cross_lingual_alignment_loss,
 )
@@ -24,6 +23,7 @@ from src.training.multilingual import (
 VOCAB = 256
 SEQ = 8
 BATCH = 2
+
 
 def make_model():
     cfg = AureliusConfig(
@@ -51,6 +51,7 @@ def make_trainer(model=None):
 # MultilingualConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_multilingual_config_defaults():
     cfg = MultilingualConfig()
     assert cfg.languages == ["en", "fr", "de"]
@@ -62,6 +63,7 @@ def test_multilingual_config_defaults():
 # ---------------------------------------------------------------------------
 # compute_language_sampling_probs
 # ---------------------------------------------------------------------------
+
 
 def test_sampling_probs_sum_to_one():
     counts = {"en": 10000, "fr": 2000, "de": 500}
@@ -94,6 +96,7 @@ def test_sampling_probs_temperature_one_proportional():
 # ---------------------------------------------------------------------------
 # cross_lingual_alignment_loss
 # ---------------------------------------------------------------------------
+
 
 def test_alignment_loss_returns_scalar():
     src = torch.randn(BATCH, 64)
@@ -151,6 +154,7 @@ def test_sample_batch_respects_language_probabilities():
 # MultilingualTrainer.train_step
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_required_keys():
     trainer = make_trainer()
     batch_ids = [torch.randint(0, VOCAB, (SEQ,)) for _ in range(BATCH)]
@@ -169,6 +173,7 @@ def test_train_step_loss_is_finite():
 # ---------------------------------------------------------------------------
 # MultilingualTrainer.alignment_step
 # ---------------------------------------------------------------------------
+
 
 def test_alignment_step_returns_alignment_loss_key():
     trainer = make_trainer()

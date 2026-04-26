@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +100,7 @@ class HubPublisher:
             return {
                 "status": "dry_run",
                 "repo_id": self._config.repo_id,
-                "committed_at": datetime.now(timezone.utc).isoformat(),
+                "committed_at": datetime.now(UTC).isoformat(),
                 "card_preview": card[:200],
             }
 
@@ -122,14 +122,14 @@ class HubPublisher:
             return {
                 "status": "success",
                 "repo_id": self._config.repo_id,
-                "committed_at": datetime.now(timezone.utc).isoformat(),
+                "committed_at": datetime.now(UTC).isoformat(),
             }
         except Exception as exc:  # noqa: BLE001
             logger.error("Hub publish failed: %s", exc)
             return {
                 "status": "error",
                 "repo_id": self._config.repo_id,
-                "committed_at": datetime.now(timezone.utc).isoformat(),
+                "committed_at": datetime.now(UTC).isoformat(),
                 "error": str(exc),
             }
 

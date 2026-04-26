@@ -1,20 +1,21 @@
-"""Synthetic reasoning benchmarks: arithmetic word problems, logical deduction, and pattern completion."""
+"""Synthetic reasoning benchmarks: arithmetic word problems, logical deduction, and pattern completion."""  # noqa: E501
 
 from __future__ import annotations
 
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from fractions import Fraction
-from typing import Any, Callable
+from typing import Any
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BenchmarkConfig:
@@ -43,6 +44,7 @@ class Problem:
 # ---------------------------------------------------------------------------
 # Arithmetic problem generators
 # ---------------------------------------------------------------------------
+
 
 def generate_arithmetic_problem(difficulty: str, rng: random.Random) -> Problem:
     """Generate an arithmetic word problem.
@@ -83,9 +85,7 @@ def generate_arithmetic_problem(difficulty: str, rng: random.Random) -> Problem:
         d = rng.randint(1, 10)
         frac_result = Fraction(a, b) * c - d
         result = int(frac_result) if frac_result.denominator == 1 else float(frac_result)
-        prompt = (
-            f"Calculate: ({a}/{b}) * {c} - {d}. Answer with the number only."
-        )
+        prompt = f"Calculate: ({a}/{b}) * {c} - {d}. Answer with the number only."
         answer = str(result)
         metadata = {"a": a, "b": b, "c": c, "d": d, "op": "frac_mul_sub"}
 
@@ -144,8 +144,7 @@ def generate_logic_problem(difficulty: str, rng: random.Random) -> Problem:
         a_str = "true" if a_val else "false"
         b_str = "true" if b_val else "false"
         prompt = (
-            f"If A is {a_str} and B is {b_str}, is A {op} B true or false? "
-            f"Answer True or False."
+            f"If A is {a_str} and B is {b_str}, is A {op} B true or false? Answer True or False."
         )
         answer = "True" if result else "False"
         metadata = {"a": a_val, "b": b_val, "op": op}
@@ -213,10 +212,7 @@ def generate_analogy_problem(difficulty: str, rng: random.Random) -> Problem:
     rng.shuffle(shuffled)
 
     choices_str = ", ".join(shuffled)
-    prompt = (
-        f"{a} is to {b} as {c} is to ? "
-        f"Choose one: {choices_str}."
-    )
+    prompt = f"{a} is to {b} as {c} is to ? Choose one: {choices_str}."
 
     return Problem(
         type="analogy",
@@ -236,6 +232,7 @@ def generate_analogy_problem(difficulty: str, rng: random.Random) -> Problem:
 # ---------------------------------------------------------------------------
 # Sequence problem generators
 # ---------------------------------------------------------------------------
+
 
 def generate_sequence_problem(difficulty: str, rng: random.Random) -> Problem:
     """Generate a number sequence completion problem.
@@ -259,8 +256,8 @@ def generate_sequence_problem(difficulty: str, rng: random.Random) -> Problem:
         start = rng.randint(1, 4)
         ratio = rng.choice([2, 3])
         length = 4
-        seq = [start * (ratio ** i) for i in range(length)]
-        next_val = start * (ratio ** length)
+        seq = [start * (ratio**i) for i in range(length)]
+        next_val = start * (ratio**length)
         seq_str = ", ".join(str(x) for x in seq)
         prompt = f"What comes next in the sequence: {seq_str}, ? Answer with the number only."
         answer = str(next_val)
@@ -294,6 +291,7 @@ def generate_sequence_problem(difficulty: str, rng: random.Random) -> Problem:
 # Helper utilities
 # ---------------------------------------------------------------------------
 
+
 def _normalize(text: str) -> str:
     """Lowercase, strip punctuation, collapse whitespace."""
     text = text.lower().strip()
@@ -317,6 +315,7 @@ def _extract_final_answer(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Greedy decode helper
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def _greedy_decode(
@@ -434,10 +433,7 @@ class ReasoningBenchmark:
 
     def format_few_shot(self, problem: Problem, n_shots: int = 3) -> str:
         """Format a problem with n_shots example problems prepended."""
-        candidates = [
-            p for p in self.problems
-            if p is not problem and p.type == problem.type
-        ]
+        candidates = [p for p in self.problems if p is not problem and p.type == problem.type]
         if len(candidates) < n_shots:
             candidates = [p for p in self.problems if p is not problem]
 
@@ -456,6 +452,7 @@ class ReasoningBenchmark:
 # ---------------------------------------------------------------------------
 # Chain-of-thought evaluation
 # ---------------------------------------------------------------------------
+
 
 def evaluate_chain_of_thought(
     model: nn.Module,
@@ -496,9 +493,7 @@ def evaluate_chain_of_thought(
 
         # CoT
         cot_prompt = "Think step by step. " + problem.prompt
-        cot_ids = torch.tensor(
-            [tokenizer_encode(cot_prompt)], dtype=torch.long, device=device
-        )
+        cot_ids = torch.tensor([tokenizer_encode(cot_prompt)], dtype=torch.long, device=device)
         cot_gen = _greedy_decode(model, cot_ids, max_new_tokens)
         cot_text = tokenizer_decode(cot_gen[0].tolist())
         cot_pred = _normalize(_extract_final_answer(cot_text))

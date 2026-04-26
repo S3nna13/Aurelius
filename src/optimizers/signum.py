@@ -35,7 +35,7 @@ momentum update:  g̃_t = g_t + λ·θ_{t-1}.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 from torch.optim import Optimizer
@@ -96,7 +96,7 @@ class Signum(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable[[], torch.Tensor]] = None) -> Optional[torch.Tensor]:
+    def step(self, closure: Callable[[], torch.Tensor] | None = None) -> torch.Tensor | None:
         """Perform a single Signum optimisation step.
 
         Args:

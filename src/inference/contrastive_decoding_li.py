@@ -14,7 +14,7 @@ Reference:
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
@@ -58,15 +58,15 @@ class CDScorer:
             ``log_softmax(expert)[v] - log_softmax(amateur)[v]``.
         """
         # Compute probabilities for plausibility check
-        expert_probs = F.softmax(expert_logits, dim=-1)         # (V,)
+        expert_probs = F.softmax(expert_logits, dim=-1)  # (V,)
         max_prob = expert_probs.max()
-        plausible = expert_probs >= self.alpha * max_prob        # (V,) bool
+        plausible = expert_probs >= self.alpha * max_prob  # (V,) bool
 
         # Compute log probabilities for the CD score
         expert_log_probs = F.log_softmax(expert_logits, dim=-1)  # (V,)
         amateur_log_probs = F.log_softmax(amateur_logits, dim=-1)  # (V,)
 
-        cd_scores = expert_log_probs - amateur_log_probs         # (V,)
+        cd_scores = expert_log_probs - amateur_log_probs  # (V,)
         cd_scores = cd_scores.masked_fill(~plausible, float("-inf"))
 
         return cd_scores
@@ -100,15 +100,15 @@ class CDSearcher:
         B, V = expert_logits.shape
 
         # Compute probabilities for plausibility check (batched)
-        expert_probs = F.softmax(expert_logits, dim=-1)          # (B, V)
+        expert_probs = F.softmax(expert_logits, dim=-1)  # (B, V)
         max_prob = expert_probs.max(dim=-1, keepdim=True).values  # (B, 1)
-        plausible = expert_probs >= self.alpha * max_prob         # (B, V)
+        plausible = expert_probs >= self.alpha * max_prob  # (B, V)
 
         # CD log-prob difference
         expert_log_probs = F.log_softmax(expert_logits, dim=-1)  # (B, V)
         amateur_log_probs = F.log_softmax(amateur_logits, dim=-1)  # (B, V)
 
-        cd_scores = expert_log_probs - amateur_log_probs          # (B, V)
+        cd_scores = expert_log_probs - amateur_log_probs  # (B, V)
         cd_scores = cd_scores.masked_fill(~plausible, float("-inf"))
 
         return cd_scores.argmax(dim=-1)  # (B,)
@@ -159,7 +159,7 @@ class ContrastiveDecoder:
         new_tokens: list[torch.Tensor] = []
 
         for _ in range(max_new_tokens):
-            expert_logits_seq = self.expert_fn(seq)    # (1, T, V)
+            expert_logits_seq = self.expert_fn(seq)  # (1, T, V)
             amateur_logits_seq = self.amateur_fn(seq)  # (1, T, V)
 
             # Last-position logits: (1, V)

@@ -6,8 +6,7 @@ adversarial training examples.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch
 
@@ -143,7 +142,7 @@ class AdversarialAugmenter:
     def augment(
         self,
         ids: torch.Tensor,
-        operations: Tuple[str, ...] = ("swap", "delete", "insert", "replace"),
+        operations: tuple[str, ...] = ("swap", "delete", "insert", "replace"),
     ) -> torch.Tensor:
         """Apply specified operations in order.
 

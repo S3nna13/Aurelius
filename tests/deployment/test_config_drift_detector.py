@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+
 import pytest
 
 from src.deployment.config_drift_detector import (
@@ -12,10 +13,10 @@ from src.deployment.config_drift_detector import (
     DriftReport,
 )
 
-
 # ---------------------------------------------------------------------------
 # ConfigField frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestConfigField:
     def test_fields_stored(self):
@@ -44,6 +45,7 @@ class TestConfigField:
 # DriftReport frozen dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestDriftReport:
     def test_fields_stored(self):
         report = DriftReport(total_fields=5, drifted_count=2, drifted_fields=[], drift_pct=40.0)
@@ -60,6 +62,7 @@ class TestDriftReport:
 # ---------------------------------------------------------------------------
 # ConfigDriftDetector.compare — identical configs
 # ---------------------------------------------------------------------------
+
 
 class TestCompareIdentical:
     def setup_method(self):
@@ -90,6 +93,7 @@ class TestCompareIdentical:
 # ConfigDriftDetector.compare — single field drifted
 # ---------------------------------------------------------------------------
 
+
 class TestCompareSingleDrift:
     def setup_method(self):
         self.detector = ConfigDriftDetector()
@@ -118,6 +122,7 @@ class TestCompareSingleDrift:
 # ---------------------------------------------------------------------------
 # ConfigDriftDetector.compare — nested dict drift
 # ---------------------------------------------------------------------------
+
 
 class TestCompareNested:
     def setup_method(self):
@@ -177,6 +182,7 @@ class TestCompareNested:
 # Drift percentage calculation
 # ---------------------------------------------------------------------------
 
+
 class TestDriftPct:
     def setup_method(self):
         self.detector = ConfigDriftDetector()
@@ -207,6 +213,7 @@ class TestDriftPct:
 # is_clean
 # ---------------------------------------------------------------------------
 
+
 class TestIsClean:
     def setup_method(self):
         self.detector = ConfigDriftDetector()
@@ -223,6 +230,7 @@ class TestIsClean:
 # ---------------------------------------------------------------------------
 # summary
 # ---------------------------------------------------------------------------
+
 
 class TestSummary:
     def setup_method(self):
@@ -251,6 +259,7 @@ class TestSummary:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):

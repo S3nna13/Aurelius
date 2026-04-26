@@ -3,11 +3,11 @@
 Supports majority, unanimous, and weighted voting.
 Fail closed: ties default to rejection unless configured otherwise.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 class Vote(Enum):

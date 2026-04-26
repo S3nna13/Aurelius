@@ -45,8 +45,13 @@ def test_end_to_end_decompose():
 
     payload = [
         {"id": "plan", "description": "plan it", "depends_on": []},
-        {"id": "code", "description": "write code", "depends_on": ["plan"],
-         "estimated_complexity": "high", "tool_hints": ["editor"]},
+        {
+            "id": "code",
+            "description": "write code",
+            "depends_on": ["plan"],
+            "estimated_complexity": "high",
+            "tool_hints": ["editor"],
+        },
         {"id": "test", "description": "run tests", "depends_on": ["plan"]},
         {"id": "review", "description": "review", "depends_on": ["code", "test"]},
     ]

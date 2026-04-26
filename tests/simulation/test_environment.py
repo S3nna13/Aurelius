@@ -1,4 +1,5 @@
 """Tests for src/simulation/environment.py — ~50 tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,16 +7,16 @@ import pytest
 from src.simulation.environment import (
     ENV_REGISTRY,
     EnvAction,
+    Environment,
     EnvState,
     EnvStep,
-    Environment,
     GridWorldEnv,
 )
-
 
 # ---------------------------------------------------------------------------
 # EnvState
 # ---------------------------------------------------------------------------
+
 
 class TestEnvState:
     def test_auto_generates_state_id(self):
@@ -68,6 +69,7 @@ class TestEnvState:
 # EnvAction
 # ---------------------------------------------------------------------------
 
+
 class TestEnvAction:
     def test_action_id_stored(self):
         a = EnvAction(action_id="up")
@@ -91,6 +93,7 @@ class TestEnvAction:
 # ---------------------------------------------------------------------------
 # EnvStep
 # ---------------------------------------------------------------------------
+
 
 class TestEnvStep:
     def _make_step(self, step_number=1):
@@ -119,6 +122,7 @@ class TestEnvStep:
 # ---------------------------------------------------------------------------
 # GridWorldEnv
 # ---------------------------------------------------------------------------
+
 
 class TestGridWorldEnvReset:
     def test_reset_returns_env_state(self):
@@ -245,6 +249,7 @@ class TestGridWorldEnvValidActions:
 # ENV_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 class TestEnvRegistry:
     def test_has_gridworld_key(self):
         assert "gridworld" in ENV_REGISTRY
@@ -259,6 +264,7 @@ class TestEnvRegistry:
 # ---------------------------------------------------------------------------
 # Environment base class
 # ---------------------------------------------------------------------------
+
 
 class TestEnvironmentBase:
     def test_step_raises_not_implemented(self):

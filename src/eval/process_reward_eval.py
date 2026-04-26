@@ -11,23 +11,21 @@ answers.  This module provides:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Config & data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PRMEvalConfig:
     """Configuration for ProcessRewardEval."""
 
-    correct_threshold: float = 0.5   # step reward > this → predicted correct
-    iou_threshold: float = 0.5       # for step boundary matching (reserved)
+    correct_threshold: float = 0.5  # step reward > this → predicted correct
+    iou_threshold: float = 0.5  # for step boundary matching (reserved)
 
 
 @dataclass
@@ -35,9 +33,9 @@ class StepPrediction:
     """Prediction and ground-truth label for a single reasoning step."""
 
     step_idx: int
-    predicted_reward: float          # PRM score for this step
-    is_correct_pred: bool            # predicted_reward > threshold
-    is_correct_gt: bool              # ground-truth correctness for this step
+    predicted_reward: float  # PRM score for this step
+    is_correct_pred: bool  # predicted_reward > threshold
+    is_correct_gt: bool  # ground-truth correctness for this step
     step_text: str = ""
 
 
@@ -48,17 +46,18 @@ class SolutionEval:
     problem_id: str
     steps: list[StepPrediction]
     final_answer_correct: bool
-    prm_final_score: float           # aggregate PRM score (e.g. min or product)
+    prm_final_score: float  # aggregate PRM score (e.g. min or product)
 
 
 # ---------------------------------------------------------------------------
 # Main evaluator
 # ---------------------------------------------------------------------------
 
+
 class ProcessRewardEval:
     """Evaluate a Process Reward Model at the step level."""
 
-    def __init__(self, config: Optional[PRMEvalConfig] = None) -> None:
+    def __init__(self, config: PRMEvalConfig | None = None) -> None:
         self.config = config if config is not None else PRMEvalConfig()
 
     # ------------------------------------------------------------------
@@ -115,9 +114,7 @@ class ProcessRewardEval:
         if not solutions:
             return 0.0
 
-        scores = torch.tensor(
-            [s.prm_final_score for s in solutions], dtype=torch.float64
-        )
+        scores = torch.tensor([s.prm_final_score for s in solutions], dtype=torch.float64)
         labels = torch.tensor(
             [float(s.final_answer_correct) for s in solutions], dtype=torch.float64
         )
@@ -129,7 +126,7 @@ class ProcessRewardEval:
         l_diff = labels - labels_mean
 
         numerator = (s_diff * l_diff).sum()
-        denominator = torch.sqrt((s_diff ** 2).sum() * (l_diff ** 2).sum())
+        denominator = torch.sqrt((s_diff**2).sum() * (l_diff**2).sum())
 
         if denominator.item() == 0.0:
             return 0.0
@@ -157,7 +154,7 @@ class ProcessRewardEval:
 
         for sol in solutions:
             # find first step with is_correct_gt=False
-            first_error: Optional[StepPrediction] = None
+            first_error: StepPrediction | None = None
             for step in sol.steps:
                 if not step.is_correct_gt:
                     first_error = step

@@ -1,4 +1,4 @@
-"""RoPE variants: ALiBi, T5-relative position bias, dynamic NTK scaling, and position interpolation."""
+"""RoPE variants: ALiBi, T5-relative position bias, dynamic NTK scaling, and position interpolation."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from torch import Tensor
 class PositionConfig:
     max_seq_len: int = 4096
     n_heads: int = 8
-    alibi_bias_max: float = 8.0       # ALiBi max slope
-    t5_num_buckets: int = 32          # T5 relative attention buckets
+    alibi_bias_max: float = 8.0  # ALiBi max slope
+    t5_num_buckets: int = 32  # T5 relative attention buckets
     t5_max_distance: int = 128
     rope_base: float = 10000.0
     dynamic_scale_factor: float = 1.0
@@ -61,7 +61,9 @@ def compute_alibi_bias(seq_len: int, n_heads: int, alibi_slopes: Tensor) -> Tens
     bias = -dist.unsqueeze(0) * alibi_slopes.view(n_heads, 1, 1)  # (H, T, T)
 
     # Causal mask: mask future positions (j > i) to -inf
-    causal_mask = torch.triu(torch.ones(seq_len, seq_len, device=alibi_slopes.device, dtype=torch.bool), diagonal=1)
+    causal_mask = torch.triu(
+        torch.ones(seq_len, seq_len, device=alibi_slopes.device, dtype=torch.bool), diagonal=1
+    )
     bias = bias.masked_fill(causal_mask.unsqueeze(0), float("-inf"))
 
     return bias.unsqueeze(0)  # (1, H, T, T)
@@ -72,7 +74,7 @@ class ALiBiAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int, config: PositionConfig) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -193,7 +195,7 @@ class T5RelativeAttentionBias(nn.Module):
         device = self.bias_table.weight.device
 
         query_pos = torch.arange(query_len, device=device)  # (Q,)
-        key_pos = torch.arange(key_len, device=device)       # (K,)
+        key_pos = torch.arange(key_len, device=device)  # (K,)
 
         # Relative positions: (Q, K), value = i - j
         relative_position = query_pos.unsqueeze(1) - key_pos.unsqueeze(0)  # (Q, K)
@@ -270,7 +272,8 @@ def interpolate_rope_positions(positions: Tensor, scale: float) -> Tensor:
 @dataclass
 class RoPEVariantConfig:
     """Configuration for position encoding variants."""
-    variant: str = "alibi"       # "alibi" | "fire" | "cope"
+
+    variant: str = "alibi"  # "alibi" | "fire" | "cope"
     n_heads: int = 2
     max_seq_len: int = 512
     d_model: int = 64
@@ -316,8 +319,8 @@ class FirePositionEncoding(nn.Module):
             Tensor of shape (T, d_model).
         """
         pos = positions.float().unsqueeze(-1)  # (T, 1)
-        freqs = self.log_freqs.exp()            # (d_model//2,)
-        angles = pos * freqs.unsqueeze(0)       # (T, d_model//2)
+        freqs = self.log_freqs.exp()  # (d_model//2,)
+        angles = pos * freqs.unsqueeze(0)  # (T, d_model//2)
         features = torch.cat([angles.sin(), angles.cos()], dim=-1)  # (T, d_model)
         return self.proj(features)
 

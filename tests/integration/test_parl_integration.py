@@ -4,22 +4,21 @@ from __future__ import annotations
 
 import torch
 
-
 # ---------------------------------------------------------------------------
 # Test 1 — "parl" key is in ALIGNMENT_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_parl_in_registry():
     from src.alignment import ALIGNMENT_REGISTRY
 
-    assert "parl" in ALIGNMENT_REGISTRY, (
-        '"parl" must be registered in ALIGNMENT_REGISTRY'
-    )
+    assert "parl" in ALIGNMENT_REGISTRY, '"parl" must be registered in ALIGNMENT_REGISTRY'
 
 
 # ---------------------------------------------------------------------------
 # Test 2 — construct from registry, call with tensors, correct shape
 # ---------------------------------------------------------------------------
+
 
 def test_construct_from_registry_and_call():
     from src.alignment import ALIGNMENT_REGISTRY
@@ -42,6 +41,7 @@ def test_construct_from_registry_and_call():
 # Test 3 — regression guard: existing registry keys are still present
 # ---------------------------------------------------------------------------
 
+
 def test_existing_registry_keys_intact():
     """Ensure adding 'parl' did not remove any pre-existing registry entries."""
     from src.alignment import ALIGNMENT_REGISTRY
@@ -49,6 +49,4 @@ def test_existing_registry_keys_intact():
     # Keys that must survive across all cycles
     required_keys = {"prm", "adversarial_code_battle", "constitution_dimensions"}
     missing = required_keys - set(ALIGNMENT_REGISTRY.keys())
-    assert not missing, (
-        f"Registry regression: the following keys disappeared: {missing}"
-    )
+    assert not missing, f"Registry regression: the following keys disappeared: {missing}"

@@ -1,9 +1,10 @@
 """Tests for src/training/model_editing.py."""
+
 import pytest
 import torch
 
-from src.model.transformer import AureliusTransformer
 from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.model_editing import (
     EditConfig,
     FactEdit,
@@ -12,10 +13,10 @@ from src.training.model_editing import (
     rank_one_update,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg():
@@ -69,6 +70,7 @@ def editor(model, edit_cfg):
 # 1. EditConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_edit_config_defaults():
     cfg = EditConfig()
     assert cfg.n_edits == 1
@@ -82,6 +84,7 @@ def test_edit_config_defaults():
 # 2. FactEdit fields accessible
 # ---------------------------------------------------------------------------
 
+
 def test_fact_edit_fields(subject_ids, target_ids):
     fe = FactEdit(subject_ids=subject_ids, target_ids=target_ids, relation="rel")
     assert torch.equal(fe.subject_ids, subject_ids)
@@ -93,6 +96,7 @@ def test_fact_edit_fields(subject_ids, target_ids):
 # 3. compute_key_vector returns shape (d_model,)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_key_vector_shape(model, subject_ids):
     key = compute_key_vector(model, subject_ids, layer_idx=-1)
     assert key.shape == (64,)
@@ -101,6 +105,7 @@ def test_compute_key_vector_shape(model, subject_ids):
 # ---------------------------------------------------------------------------
 # 4. compute_key_vector different inputs -> different vectors
 # ---------------------------------------------------------------------------
+
 
 def test_compute_key_vector_different_inputs(model):
     torch.manual_seed(42)
@@ -118,6 +123,7 @@ def test_compute_key_vector_different_inputs(model):
 # 5. rank_one_update returns same shape
 # ---------------------------------------------------------------------------
 
+
 def test_rank_one_update_shape():
     W = torch.randn(64, 128)
     k = torch.randn(128)
@@ -129,6 +135,7 @@ def test_rank_one_update_shape():
 # ---------------------------------------------------------------------------
 # 6. rank_one_update: W @ k after update approximates v (key recall)
 # ---------------------------------------------------------------------------
+
 
 def test_rank_one_update_key_recall():
     torch.manual_seed(7)
@@ -145,6 +152,7 @@ def test_rank_one_update_key_recall():
 # 7. ModelEditor.apply_edit returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_apply_edit_returns_required_keys(editor, fact_edit):
     result = editor.apply_edit(fact_edit)
     assert "layer" in result
@@ -154,6 +162,7 @@ def test_apply_edit_returns_required_keys(editor, fact_edit):
 # ---------------------------------------------------------------------------
 # 8. apply_edit changes FFN weights
 # ---------------------------------------------------------------------------
+
 
 def test_apply_edit_changes_weights(model, edit_cfg, fact_edit):
     editor = ModelEditor(model, edit_cfg)
@@ -167,6 +176,7 @@ def test_apply_edit_changes_weights(model, edit_cfg, fact_edit):
 # ---------------------------------------------------------------------------
 # 9. revert_edit restores original weights
 # ---------------------------------------------------------------------------
+
 
 def test_revert_edit_restores_weights(model, edit_cfg, fact_edit):
     editor = ModelEditor(model, edit_cfg)
@@ -182,6 +192,7 @@ def test_revert_edit_restores_weights(model, edit_cfg, fact_edit):
 # 10. evaluate_edit returns success and score keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_edit_returns_keys(editor, fact_edit):
     result = editor.evaluate_edit(fact_edit)
     assert "success" in result
@@ -192,6 +203,7 @@ def test_evaluate_edit_returns_keys(editor, fact_edit):
 # 11. evaluate_edit score in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_edit_score_range(editor, fact_edit):
     result = editor.evaluate_edit(fact_edit)
     assert 0.0 <= result["score"] <= 1.0
@@ -200,6 +212,7 @@ def test_evaluate_edit_score_range(editor, fact_edit):
 # ---------------------------------------------------------------------------
 # 12. batch_edit returns list of same length as edits
 # ---------------------------------------------------------------------------
+
 
 def test_batch_edit_length(model, edit_cfg, subject_ids, target_ids):
     editor = ModelEditor(model, edit_cfg)
@@ -215,6 +228,7 @@ def test_batch_edit_length(model, edit_cfg, subject_ids, target_ids):
 # ---------------------------------------------------------------------------
 # 13. apply_edit at different layers works
 # ---------------------------------------------------------------------------
+
 
 def test_apply_edit_different_layers(model, fact_edit):
     # Edit layer 0 explicitly
@@ -233,6 +247,7 @@ def test_apply_edit_different_layers(model, fact_edit):
 # ---------------------------------------------------------------------------
 # 14. edit_norm > 0 after non-trivial edit
 # ---------------------------------------------------------------------------
+
 
 def test_edit_norm_positive(model, edit_cfg):
     editor = ModelEditor(model, edit_cfg)

@@ -1,19 +1,29 @@
 """Tests for knowledge distillation."""
+
 import math
+
 import torch
-import pytest
-from src.training.distillation import (
-    distillation_loss, DistillationTrainer, DistillationConfig,
-)
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.distillation import (
+    DistillationConfig,
+    DistillationTrainer,
+    distillation_loss,
+)
 
 
 def _make_model(n_layers=2):
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=n_layers, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=n_layers,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 
@@ -86,9 +96,7 @@ def test_trainer_step_updates_student():
 
     assert math.isfinite(metrics["total_loss"])
     changed = any(
-        not torch.equal(before[n], p)
-        for n, p in student.named_parameters()
-        if p.requires_grad
+        not torch.equal(before[n], p) for n, p in student.named_parameters() if p.requires_grad
     )
     assert changed, "Student weights did not update"
 

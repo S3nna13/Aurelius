@@ -3,11 +3,9 @@ Tests for src/model/sliding_window_attention_v2.py — 10 tests.
 Pure PyTorch, tiny tensors, no external deps.
 """
 
-import pytest
 import torch
 
-from src.model.sliding_window_attention_v2 import SWAConfig, SlidingWindowAttention
-
+from src.model.sliding_window_attention_v2 import SlidingWindowAttention, SWAConfig
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -31,6 +29,7 @@ def make_model(**kwargs) -> SlidingWindowAttention:
 # 1. SWAConfig instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_swa_config_instantiates():
     cfg = SWAConfig(d_model=64, n_heads=4, head_dim=16)
     assert cfg.d_model == 64
@@ -43,6 +42,7 @@ def test_swa_config_instantiates():
 # ---------------------------------------------------------------------------
 # 2. SlidingWindowAttention instantiates
 # ---------------------------------------------------------------------------
+
 
 def test_sliding_window_attention_instantiates():
     model = make_model()
@@ -57,6 +57,7 @@ def test_sliding_window_attention_instantiates():
 # 3. Forward returns shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_forward_output_shape():
     model = make_model()
     x = torch.randn(B, T, D)
@@ -67,6 +68,7 @@ def test_forward_output_shape():
 # ---------------------------------------------------------------------------
 # 4. Output is finite
 # ---------------------------------------------------------------------------
+
 
 def test_forward_output_is_finite():
     model = make_model()
@@ -79,6 +81,7 @@ def test_forward_output_is_finite():
 # 5. _build_window_mask returns BoolTensor of shape (T, T)
 # ---------------------------------------------------------------------------
 
+
 def test_build_window_mask_shape_and_dtype():
     model = make_model(window_size=4)
     mask = model._build_window_mask(T, 4, torch.device("cpu"))
@@ -90,6 +93,7 @@ def test_build_window_mask_shape_and_dtype():
 # 6. Diagonal is True (token attends to itself)
 # ---------------------------------------------------------------------------
 
+
 def test_build_window_mask_diagonal_true():
     model = make_model(window_size=4)
     mask = model._build_window_mask(T, 4, torch.device("cpu"))
@@ -100,6 +104,7 @@ def test_build_window_mask_diagonal_true():
 # ---------------------------------------------------------------------------
 # 7. Position (5, 0) is False when window_size=2
 # ---------------------------------------------------------------------------
+
 
 def test_build_window_mask_far_position_false():
     model = make_model(window_size=2)
@@ -114,6 +119,7 @@ def test_build_window_mask_far_position_false():
 # 8. Position (2, 0) is True when window_size=4
 # ---------------------------------------------------------------------------
 
+
 def test_build_window_mask_within_window_true():
     model = make_model(window_size=4)
     mask = model._build_window_mask(10, 4, torch.device("cpu"))
@@ -125,6 +131,7 @@ def test_build_window_mask_within_window_true():
 # ---------------------------------------------------------------------------
 # 9. Gradient flows to Q projection weight
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_flows_to_q_proj():
     model = make_model()
@@ -138,6 +145,7 @@ def test_gradient_flows_to_q_proj():
 # ---------------------------------------------------------------------------
 # 10. Works with T=1
 # ---------------------------------------------------------------------------
+
 
 def test_forward_single_token():
     model = make_model()

@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.mcp.extension_manifest import (
     EXTENSION_MANIFEST_REGISTRY,
     ExtensionManifest,
-    ExtensionManifestError,
     ExtensionManifestValidator,
     ManifestValidationResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

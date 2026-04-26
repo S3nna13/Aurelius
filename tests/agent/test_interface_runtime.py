@@ -61,7 +61,9 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     activated = runtime.activate_skill(installed.skill_id)
 
     session = runtime.create_session(workspace=str(tmp_path), metadata={"source": "runtime"})
-    workstream = runtime.create_workstream(session.session_id, "runtime-workstream", workspace=str(tmp_path))
+    workstream = runtime.create_workstream(
+        session.session_id, "runtime-workstream", workspace=str(tmp_path)
+    )
     thread = runtime.create_thread(
         TaskThreadSpec(
             title="Runtime thread",
@@ -179,7 +181,10 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     assert summary["surface_catalog"]["ui"]["ui_surfaces"]["count"] >= 1
     assert thread_status["thread"]["thread_id"] == thread.thread_id
     assert thread_status["tool_calls"][0]["tool_name"] == "search_repo"
-    assert reloaded_runtime.get_thread(session.session_id, thread.thread_id).thread_id == thread.thread_id
+    assert (
+        reloaded_runtime.get_thread(session.session_id, thread.thread_id).thread_id
+        == thread.thread_id
+    )
     assert session_status["counts"]["threads"] >= 2
     assert session_status["counts"]["jobs"] == 1
     assert session_status["journal"]["entries"] >= 1

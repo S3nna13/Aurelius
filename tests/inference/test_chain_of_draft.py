@@ -2,21 +2,22 @@
 
 Paper: Chain of Draft: Thinking Faster by Writing Less (arXiv:2502.18600).
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
+from src.inference.chain_of_draft import ChainOfDraftConfig, ChainOfDraftDecoder
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.inference.chain_of_draft import ChainOfDraftConfig, ChainOfDraftDecoder
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures — tiny model matching the spec:
 #   n_layers=2, d_model=64, n_heads=4, n_kv_heads=2, head_dim=16,
 #   d_ff=128, vocab_size=256, max_seq_len=64
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_cfg() -> AureliusConfig:
@@ -65,6 +66,7 @@ def _make_input(seq_len: int = 4, batch: int = 1, vocab: int = 256) -> torch.Ten
 # Test 1: generate_draft_step returns (B, k) tokens where k <= max_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_generate_draft_step_shape(decoder: ChainOfDraftDecoder) -> None:
     input_ids = _make_input(seq_len=4)
     max_tokens = 5
@@ -81,6 +83,7 @@ def test_generate_draft_step_shape(decoder: ChainOfDraftDecoder) -> None:
 # ---------------------------------------------------------------------------
 # Test 2: generate_draft_step stops at stop_id before budget is exhausted
 # ---------------------------------------------------------------------------
+
 
 def test_generate_draft_step_stops_at_stop_id(
     tiny_model: AureliusTransformer,
@@ -111,6 +114,7 @@ def test_generate_draft_step_stops_at_stop_id(
 # Test 3: decode returns an output_ids Tensor
 # ---------------------------------------------------------------------------
 
+
 def test_decode_returns_tensor(decoder: ChainOfDraftDecoder) -> None:
     input_ids = _make_input(seq_len=4)
     output_ids, _meta = decoder.decode(input_ids, max_answer_tokens=5)
@@ -120,6 +124,7 @@ def test_decode_returns_tensor(decoder: ChainOfDraftDecoder) -> None:
 # ---------------------------------------------------------------------------
 # Test 4: metadata dict has required keys
 # ---------------------------------------------------------------------------
+
 
 def test_decode_metadata_keys(decoder: ChainOfDraftDecoder) -> None:
     input_ids = _make_input(seq_len=4)
@@ -132,6 +137,7 @@ def test_decode_metadata_keys(decoder: ChainOfDraftDecoder) -> None:
 # ---------------------------------------------------------------------------
 # Test 5: draft_token_count <= max_draft_steps * draft_budget
 # ---------------------------------------------------------------------------
+
 
 def test_draft_token_count_bounded(decoder: ChainOfDraftDecoder) -> None:
     cfg = decoder.config
@@ -147,6 +153,7 @@ def test_draft_token_count_bounded(decoder: ChainOfDraftDecoder) -> None:
 # Test 6: n_draft_steps <= max_draft_steps
 # ---------------------------------------------------------------------------
 
+
 def test_n_draft_steps_bounded(decoder: ChainOfDraftDecoder) -> None:
     input_ids = _make_input(seq_len=4)
     _output_ids, meta = decoder.decode(input_ids, max_answer_tokens=5)
@@ -157,17 +164,17 @@ def test_n_draft_steps_bounded(decoder: ChainOfDraftDecoder) -> None:
 # Test 7: output_ids is longer than input_ids (generation happened)
 # ---------------------------------------------------------------------------
 
+
 def test_output_longer_than_input(decoder: ChainOfDraftDecoder) -> None:
     input_ids = _make_input(seq_len=4)
     output_ids, _meta = decoder.decode(input_ids, max_answer_tokens=5)
-    assert output_ids.size(1) > input_ids.size(1), (
-        "output must be longer than the input prompt"
-    )
+    assert output_ids.size(1) > input_ids.size(1), "output must be longer than the input prompt"
 
 
 # ---------------------------------------------------------------------------
 # Test 8: compute_draft_efficiency < 1.0 when draft < cot
 # ---------------------------------------------------------------------------
+
 
 def test_draft_efficiency_less_than_one() -> None:
     ratio = ChainOfDraftDecoder.compute_draft_efficiency(
@@ -181,6 +188,7 @@ def test_draft_efficiency_less_than_one() -> None:
 # Test 9: compute_draft_efficiency == 1.0 when equal
 # ---------------------------------------------------------------------------
 
+
 def test_draft_efficiency_equal_to_one() -> None:
     ratio = ChainOfDraftDecoder.compute_draft_efficiency(
         draft_token_count=20,
@@ -192,6 +200,7 @@ def test_draft_efficiency_equal_to_one() -> None:
 # ---------------------------------------------------------------------------
 # Test 10: No NaN or Inf in generated logits
 # ---------------------------------------------------------------------------
+
 
 def test_no_nan_inf_in_logits(tiny_model: AureliusTransformer) -> None:
     decoder_local = ChainOfDraftDecoder(
@@ -207,6 +216,7 @@ def test_no_nan_inf_in_logits(tiny_model: AureliusTransformer) -> None:
 # ---------------------------------------------------------------------------
 # Test 11: Determinism under torch.manual_seed (greedy decode)
 # ---------------------------------------------------------------------------
+
 
 def test_determinism_under_seed(tiny_model: AureliusTransformer) -> None:
     decoder_local = ChainOfDraftDecoder(
@@ -228,6 +238,7 @@ def test_determinism_under_seed(tiny_model: AureliusTransformer) -> None:
 # ---------------------------------------------------------------------------
 # Test 12: T=1 input (single token prompt) works
 # ---------------------------------------------------------------------------
+
 
 def test_single_token_input(decoder: ChainOfDraftDecoder) -> None:
     input_ids = _make_input(seq_len=1)

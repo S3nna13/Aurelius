@@ -10,22 +10,21 @@ import random
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.eval.semantic_entropy import (
+    GenerationSampler,
     SemanticClusterer,
     SemanticEntropy,
-    GenerationSampler,
+    SemanticEntropyConfig,
     SetBasedUncertainty,
     UncertaintyCalibrator,
-    SemanticEntropyConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tiny LM for GenerationSampler tests
 # vocab_size=16, d_model=16, N=8 tokens max context
 # ---------------------------------------------------------------------------
+
 
 class TinyLM(nn.Module):
     """Minimal language model: embedding -> linear -> logits."""
@@ -38,8 +37,8 @@ class TinyLM(nn.Module):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # input_ids: [B, T]  -> returns [B, T, V]
-        x = self.embed(input_ids)   # [B, T, d]
-        return self.proj(x)          # [B, T, V]
+        x = self.embed(input_ids)  # [B, T, d]
+        return self.proj(x)  # [B, T, V]
 
 
 def make_tiny_lm() -> TinyLM:
@@ -50,6 +49,7 @@ def make_tiny_lm() -> TinyLM:
 # ---------------------------------------------------------------------------
 # SemanticClusterer tests
 # ---------------------------------------------------------------------------
+
 
 def test_jaccard_identical():
     """Identical sequences should have Jaccard similarity 1.0."""
@@ -122,6 +122,7 @@ def test_cluster_by_embedding_identical_same_cluster():
 # SemanticEntropy tests
 # ---------------------------------------------------------------------------
 
+
 def test_semantic_entropy_compute_positive():
     """compute() returns a positive float for diverse sequences."""
     se = SemanticEntropy()
@@ -174,6 +175,7 @@ def test_predictive_entropy_uniform():
 # GenerationSampler tests
 # ---------------------------------------------------------------------------
 
+
 def test_nucleus_filter_sum_le_one():
     """nucleus_filter output should sum to <= 1 (up to float precision)."""
     torch.manual_seed(1)
@@ -219,6 +221,7 @@ def test_generation_sampler_sample_n_length():
 # SetBasedUncertainty tests
 # ---------------------------------------------------------------------------
 
+
 def test_answer_set_size_at_least_one():
     """answer_set_size >= 1 for any non-empty sequence list."""
     sbu = SetBasedUncertainty()
@@ -250,6 +253,7 @@ def test_p_true_estimate_weighted():
 # ---------------------------------------------------------------------------
 # UncertaintyCalibrator tests
 # ---------------------------------------------------------------------------
+
 
 def test_ece_in_range():
     """ECE should be in [0, 1]."""
@@ -283,6 +287,7 @@ def test_calibrator_fit_then_calibrate_unfitted():
 # ---------------------------------------------------------------------------
 # SemanticEntropyConfig tests
 # ---------------------------------------------------------------------------
+
 
 def test_semantic_entropy_config_defaults():
     """SemanticEntropyConfig should have correct default values."""

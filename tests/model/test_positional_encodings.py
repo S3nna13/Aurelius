@@ -1,16 +1,15 @@
 """Tests for src/model/positional_encodings.py."""
 
 import torch
-import pytest
 
 from src.model.positional_encodings import (
-    get_alibi_slopes,
-    compute_alibi_bias,
     ALiBiAttention,
-    sinusoidal_encoding,
     LearnedPositionalEncoding,
-    t5_relative_position_bias,
     SandwichPositionalEncoding,
+    compute_alibi_bias,
+    get_alibi_slopes,
+    sinusoidal_encoding,
+    t5_relative_position_bias,
 )
 
 # Common test dimensions
@@ -23,6 +22,7 @@ T = 8
 # ---------------------------------------------------------------------------
 # get_alibi_slopes
 # ---------------------------------------------------------------------------
+
 
 def test_get_alibi_slopes_shape():
     """Slopes tensor must have shape (n_heads,)."""
@@ -42,7 +42,7 @@ def test_get_alibi_slopes_monotonically_decreasing():
     slopes = get_alibi_slopes(N_HEADS)
     for i in range(len(slopes) - 1):
         assert slopes[i] > slopes[i + 1], (
-            f"slopes[{i}]={slopes[i].item():.6f} should be > slopes[{i+1}]={slopes[i+1].item():.6f}"
+            f"slopes[{i}]={slopes[i].item():.6f} should be > slopes[{i + 1}]={slopes[i + 1].item():.6f}"  # noqa: E501
         )
 
 
@@ -58,6 +58,7 @@ def test_get_alibi_slopes_non_power_of_2():
 # ---------------------------------------------------------------------------
 # compute_alibi_bias
 # ---------------------------------------------------------------------------
+
 
 def test_compute_alibi_bias_shape():
     """Bias tensor must have shape (n_heads, T, T)."""
@@ -94,6 +95,7 @@ def test_compute_alibi_bias_diagonal_is_zero():
 # ALiBiAttention
 # ---------------------------------------------------------------------------
 
+
 def test_alibi_attention_forward_output_shape():
     """ALiBiAttention forward must return (B, T, d_model)."""
     model = ALiBiAttention(d_model=D_MODEL, n_heads=N_HEADS)
@@ -105,6 +107,7 @@ def test_alibi_attention_forward_output_shape():
 # ---------------------------------------------------------------------------
 # sinusoidal_encoding
 # ---------------------------------------------------------------------------
+
 
 def test_sinusoidal_encoding_output_shape():
     """sinusoidal_encoding must return (seq_len, d_model)."""
@@ -123,6 +126,7 @@ def test_sinusoidal_encoding_values_in_range():
 # LearnedPositionalEncoding
 # ---------------------------------------------------------------------------
 
+
 def test_learned_positional_encoding_output_shape():
     """LearnedPositionalEncoding forward must return (seq_len, d_model)."""
     lpe = LearnedPositionalEncoding(max_seq_len=128, d_model=D_MODEL)
@@ -134,6 +138,7 @@ def test_learned_positional_encoding_output_shape():
 # t5_relative_position_bias
 # ---------------------------------------------------------------------------
 
+
 def test_t5_relative_position_bias_shape():
     """t5_relative_position_bias must return (n_heads, T, T)."""
     bias = t5_relative_position_bias(N_HEADS, T)
@@ -143,6 +148,7 @@ def test_t5_relative_position_bias_shape():
 # ---------------------------------------------------------------------------
 # SandwichPositionalEncoding
 # ---------------------------------------------------------------------------
+
 
 def test_sandwich_positional_encoding_output_shape():
     """SandwichPositionalEncoding must return (seq_len, d_model)."""

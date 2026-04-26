@@ -1,4 +1,5 @@
 """Configuration validator for Aurelius YAML configs."""
+
 from __future__ import annotations
 
 import os
@@ -78,38 +79,24 @@ class ConfigValidator:
         d_model = model.get("d_model")
         if d_model is not None:
             if not isinstance(d_model, int) or d_model <= 0 or d_model % 64 != 0:
-                errors.append(
-                    f"d_model must be a positive multiple of 64, got {d_model}"
-                )
+                errors.append(f"d_model must be a positive multiple of 64, got {d_model}")
 
         # n_layers: [1, 128]
         n_layers = model.get("n_layers")
         if n_layers is not None:
             if not isinstance(n_layers, int) or not (1 <= n_layers <= 128):
-                errors.append(
-                    f"n_layers must be an integer in [1, 128], got {n_layers}"
-                )
+                errors.append(f"n_layers must be an integer in [1, 128], got {n_layers}")
 
         # vocab_size: [256, 512_000]
         vocab_size = model.get("vocab_size")
         if vocab_size is not None:
-            if (
-                not isinstance(vocab_size, int)
-                or not (256 <= vocab_size <= 512_000)
-            ):
-                errors.append(
-                    f"vocab_size must be an integer in [256, 512000], got {vocab_size}"
-                )
+            if not isinstance(vocab_size, int) or not (256 <= vocab_size <= 512_000):
+                errors.append(f"vocab_size must be an integer in [256, 512000], got {vocab_size}")
 
         # max_seq_len: [64, 1_000_000]
         max_seq_len = model.get("max_seq_len")
         if max_seq_len is not None:
-            if (
-                not isinstance(max_seq_len, int)
-                or not (64 <= max_seq_len <= 1_000_000)
-            ):
-                errors.append(
-                    f"max_seq_len must be an integer in [64, 1000000], got {max_seq_len}"
-                )
+            if not isinstance(max_seq_len, int) or not (64 <= max_seq_len <= 1_000_000):
+                errors.append(f"max_seq_len must be an integer in [64, 1000000], got {max_seq_len}")
 
         return errors

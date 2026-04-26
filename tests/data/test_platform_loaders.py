@@ -1,7 +1,6 @@
 """Tests for src/data/platform_loaders.py — no network calls, pure Python."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.platform_loaders import (
     DagsHubRun,
@@ -16,7 +15,6 @@ from src.data.platform_loaders import (
     mock_kaggle_sentiment_data,
     mock_modelscope_data,
     mock_replicate_predictions,
-    modelscope_to_instruction,
     parse_dagshub_run,
     parse_kaggle_readability,
     parse_kaggle_sentiment,
@@ -42,8 +40,14 @@ def test_mock_kaggle_sentiment_has_target_and_text():
 # Test 2: parse_kaggle_sentiment target=0 → label=0
 # ---------------------------------------------------------------------------
 def test_parse_kaggle_sentiment_label_zero():
-    row = {"target": 0, "id": "1", "date": "2024-01-01", "flag": "NO_QUERY",
-           "user": "alice", "text": "Terrible product."}
+    row = {
+        "target": 0,
+        "id": "1",
+        "date": "2024-01-01",
+        "flag": "NO_QUERY",
+        "user": "alice",
+        "text": "Terrible product.",
+    }
     sample = parse_kaggle_sentiment(row)
     assert isinstance(sample, KaggleSentimentSample)
     assert sample.label == 0
@@ -54,8 +58,14 @@ def test_parse_kaggle_sentiment_label_zero():
 # Test 3: parse_kaggle_sentiment target=4 → label=4
 # ---------------------------------------------------------------------------
 def test_parse_kaggle_sentiment_label_four():
-    row = {"target": 4, "id": "2", "date": "2024-01-02", "flag": "NO_QUERY",
-           "user": "bob", "text": "Love it!"}
+    row = {
+        "target": 4,
+        "id": "2",
+        "date": "2024-01-02",
+        "flag": "NO_QUERY",
+        "user": "bob",
+        "text": "Love it!",
+    }
     sample = parse_kaggle_sentiment(row)
     assert isinstance(sample, KaggleSentimentSample)
     assert sample.label == 4
@@ -81,8 +91,14 @@ def test_mock_kaggle_readability_has_required_fields():
 # Test 5: parse_kaggle_readability returns float target
 # ---------------------------------------------------------------------------
 def test_parse_kaggle_readability_float_target():
-    row = {"id": "r1", "url_legal": "", "license": "CC",
-           "excerpt": "Some text here.", "target": -1.5, "standard_error": 0.45}
+    row = {
+        "id": "r1",
+        "url_legal": "",
+        "license": "CC",
+        "excerpt": "Some text here.",
+        "target": -1.5,
+        "standard_error": 0.45,
+    }
     sample = parse_kaggle_readability(row)
     assert isinstance(sample, KaggleReadabilitySample)
     assert isinstance(sample.target, float)
@@ -108,7 +124,12 @@ def test_mock_modelscope_has_required_fields():
 # Test 7: parse_modelscope_instruct handles empty history
 # ---------------------------------------------------------------------------
 def test_parse_modelscope_instruct_empty_history():
-    raw = {"instruction": "Summarize this.", "input": "Some text.", "output": "Summary.", "history": []}
+    raw = {
+        "instruction": "Summarize this.",
+        "input": "Some text.",
+        "output": "Summary.",
+        "history": [],
+    }
     sample = parse_modelscope_instruct(raw)
     assert isinstance(sample, ModelScopeInstructSample)
     assert sample.history == []
@@ -248,7 +269,7 @@ def test_readability_to_regression_sample_weight_formula():
     std_err = 0.5
     sample = KaggleReadabilitySample(excerpt="x", target=0.0, standard_error=std_err)
     result = readability_to_regression_sample(sample)
-    expected_weight = 1.0 / (std_err ** 2 + 1e-8)
+    expected_weight = 1.0 / (std_err**2 + 1e-8)
     assert abs(result["weight"] - expected_weight) < 1e-6
 
 

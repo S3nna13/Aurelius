@@ -1,4 +1,5 @@
 """Tree-of-Thought planner: beam search over thought branches (Yao et al. 2305.10601)."""
+
 from __future__ import annotations
 
 import uuid
@@ -11,7 +12,7 @@ class ThoughtNode:
     thought: str
     score: float = 0.0
     depth: int = 0
-    children: list["ThoughtNode"] = field(default_factory=list)
+    children: list[ThoughtNode] = field(default_factory=list)
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
 
     def __post_init__(self) -> None:
@@ -45,9 +46,7 @@ class ToTPlanner:
             new_nodes.append(node)
         return new_nodes
 
-    def beam_select(
-        self, nodes: list[ThoughtNode], k: int | None = None
-    ) -> list[ThoughtNode]:
+    def beam_select(self, nodes: list[ThoughtNode], k: int | None = None) -> list[ThoughtNode]:
         if k is None:
             k = self.beam_width
         return sorted(nodes, key=lambda n: n.score, reverse=True)[:k]

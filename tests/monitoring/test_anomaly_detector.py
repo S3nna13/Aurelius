@@ -1,20 +1,21 @@
 """Tests for AnomalyDetector."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.monitoring.anomaly_detector import (
+    ANOMALY_DETECTOR_REGISTRY,
     Anomaly,
     AnomalyDetector,
     AnomalyDetectorConfig,
     AnomalyMethod,
-    ANOMALY_DETECTOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Enum
 # ---------------------------------------------------------------------------
+
 
 class TestAnomalyMethodEnum:
     def test_zscore(self):
@@ -36,6 +37,7 @@ class TestAnomalyMethodEnum:
 # ---------------------------------------------------------------------------
 # Dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestAnomalyDataclass:
     def test_fields(self):
@@ -81,6 +83,7 @@ class TestConfig:
 # zscore
 # ---------------------------------------------------------------------------
 
+
 class TestZscore:
     def setup_method(self):
         self.d = AnomalyDetector()
@@ -121,6 +124,7 @@ class TestZscore:
 # IQR
 # ---------------------------------------------------------------------------
 
+
 class TestIQR:
     def setup_method(self):
         self.d = AnomalyDetector()
@@ -150,6 +154,7 @@ class TestIQR:
 # ---------------------------------------------------------------------------
 # Rolling
 # ---------------------------------------------------------------------------
+
 
 class TestRolling:
     def setup_method(self):
@@ -181,6 +186,7 @@ class TestRolling:
 # Threshold
 # ---------------------------------------------------------------------------
 
+
 class TestThreshold:
     def setup_method(self):
         self.d = AnomalyDetector()
@@ -209,6 +215,7 @@ class TestThreshold:
 # Dispatcher
 # ---------------------------------------------------------------------------
 
+
 class TestDetect:
     def setup_method(self):
         self.d = AnomalyDetector()
@@ -226,15 +233,11 @@ class TestDetect:
         assert all(r.method == AnomalyMethod.ROLLING_STDDEV for r in res)
 
     def test_threshold_kwargs(self):
-        res = self.d.detect(
-            "m", [5.0, 20.0], method=AnomalyMethod.THRESHOLD, low=0.0, high=10.0
-        )
+        res = self.d.detect("m", [5.0, 20.0], method=AnomalyMethod.THRESHOLD, low=0.0, high=10.0)
         assert res[1].is_anomaly is True
 
     def test_threshold_from_config(self):
-        d = AnomalyDetector(
-            AnomalyDetectorConfig(static_threshold={"m": (0.0, 10.0)})
-        )
+        d = AnomalyDetector(AnomalyDetectorConfig(static_threshold={"m": (0.0, 10.0)}))
         res = d.detect("m", [5.0, 20.0], method=AnomalyMethod.THRESHOLD)
         assert res[1].is_anomaly is True
 
@@ -242,6 +245,7 @@ class TestDetect:
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
+
 
 class TestSummary:
     def setup_method(self):
@@ -280,6 +284,7 @@ class TestSummary:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_default(self):

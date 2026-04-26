@@ -13,10 +13,10 @@ from src.workflow.retry_workflow import (
     StepResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def always_succeed():
     return "ok"
@@ -43,8 +43,8 @@ def succeed_after(n: int):
 # delay_for_attempt tests
 # ---------------------------------------------------------------------------
 
-class TestDelayForAttempt(unittest.TestCase):
 
+class TestDelayForAttempt(unittest.TestCase):
     def test_immediate_always_zero(self):
         rw = RetryWorkflow(strategy=RetryStrategy.IMMEDIATE, base_delay_s=5.0)
         for attempt in range(5):
@@ -85,8 +85,8 @@ class TestDelayForAttempt(unittest.TestCase):
 # run_step tests
 # ---------------------------------------------------------------------------
 
-class TestRunStep(unittest.TestCase):
 
+class TestRunStep(unittest.TestCase):
     def _noop_rw(self, max_retries=3):
         return RetryWorkflow(max_retries=max_retries, sleep_fn=lambda x: None)
 
@@ -180,8 +180,8 @@ class TestRunStep(unittest.TestCase):
 # StepResult frozen dataclass tests
 # ---------------------------------------------------------------------------
 
-class TestStepResultFrozen(unittest.TestCase):
 
+class TestStepResultFrozen(unittest.TestCase):
     def test_step_result_is_frozen(self):
         sr = StepResult(step_name="x", success=True, attempts=1, output=None)
         with self.assertRaises((dataclasses.FrozenInstanceError, AttributeError)):
@@ -204,8 +204,8 @@ class TestStepResultFrozen(unittest.TestCase):
 # run_pipeline tests
 # ---------------------------------------------------------------------------
 
-class TestRunPipeline(unittest.TestCase):
 
+class TestRunPipeline(unittest.TestCase):
     def _noop_rw(self):
         return RetryWorkflow(max_retries=0, sleep_fn=lambda x: None)
 
@@ -254,8 +254,8 @@ class TestRunPipeline(unittest.TestCase):
 # Registry tests
 # ---------------------------------------------------------------------------
 
-class TestRegistry(unittest.TestCase):
 
+class TestRegistry(unittest.TestCase):
     def test_registry_has_default_key(self):
         self.assertIn("default", RETRY_WORKFLOW_REGISTRY)
 

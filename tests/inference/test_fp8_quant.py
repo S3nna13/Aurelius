@@ -1,25 +1,25 @@
 """Tests for DeepSeek-V3-style FP8 block quantization (src/inference/fp8_quant.py)."""
+
 from __future__ import annotations
 
 import math
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.fp8_quant import (
     BLOCK_SIZE,
-    FP8_MAX,
-    fp8_block_quantize,
-    fp8_block_dequantize,
     FP8Linear,
-    quantize_model_fp8,
     compute_fp8_memory_savings,
+    fp8_block_dequantize,
+    fp8_block_quantize,
+    quantize_model_fp8,
 )
-
 
 # ---------------------------------------------------------------------------
 # Core quantize / dequantize tests
 # ---------------------------------------------------------------------------
+
 
 class TestFP8BlockQuantize:
     def test_fp8_quantize_shape(self):
@@ -88,6 +88,7 @@ class TestFP8BlockQuantize:
 # FP8Linear tests
 # ---------------------------------------------------------------------------
 
+
 class TestFP8Linear:
     def test_fp8_linear_forward_shape(self):
         """FP8Linear(64, 128): (4, 64) input → (4, 128) output."""
@@ -112,8 +113,7 @@ class TestFP8Linear:
         max_range = expected.abs().max().item()
         max_diff = (expected - actual).abs().max().item()
         assert max_diff < 0.10 * max_range, (
-            f"FP8Linear output differs too much: max_diff={max_diff:.6f}, "
-            f"max_range={max_range:.6f}"
+            f"FP8Linear output differs too much: max_diff={max_diff:.6f}, max_range={max_range:.6f}"
         )
 
     def test_fp8_linear_no_bias(self):
@@ -146,6 +146,7 @@ class TestFP8Linear:
 # ---------------------------------------------------------------------------
 # Model quantization tests
 # ---------------------------------------------------------------------------
+
 
 class _SmallModel(nn.Module):
     """Tiny model for testing model-level quantization."""
@@ -182,9 +183,7 @@ class TestQuantizeModelFP8:
         assert isinstance(model.fc1, FP8Linear), "fc1 should be FP8Linear"
         assert isinstance(model.fc2, FP8Linear), "fc2 should be FP8Linear"
         assert isinstance(model.lm_head, nn.Linear), "lm_head should remain nn.Linear"
-        assert not isinstance(model.lm_head, FP8Linear), (
-            "lm_head should NOT be FP8Linear"
-        )
+        assert not isinstance(model.lm_head, FP8Linear), "lm_head should NOT be FP8Linear"
 
     def test_quantize_model_forward_works(self):
         """Model forward pass works after quantization."""
@@ -198,6 +197,7 @@ class TestQuantizeModelFP8:
 # ---------------------------------------------------------------------------
 # Memory savings tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeFP8MemorySavings:
     def test_memory_savings_factor(self):
@@ -214,7 +214,13 @@ class TestComputeFP8MemorySavings:
         model = _SmallModel()
         quantize_model_fp8(model)
         stats = compute_fp8_memory_savings(model)
-        for key in ("fp8_params", "total_params", "fp8_memory_mb", "bf16_memory_mb", "savings_factor"):
+        for key in (
+            "fp8_params",
+            "total_params",
+            "fp8_memory_mb",
+            "bf16_memory_mb",
+            "savings_factor",
+        ):
             assert key in stats, f"Missing key: {key}"
 
     def test_memory_savings_fp8_params_count(self):

@@ -1,11 +1,11 @@
 """Tests for src/reasoning/scratchpad.py"""
+
 from __future__ import annotations
 
-import pytest
-from src.reasoning.scratchpad import ScratchEntry, Scratchpad, SCRATCHPAD
-
+from src.reasoning.scratchpad import SCRATCHPAD, ScratchEntry, Scratchpad
 
 # ---------- ScratchEntry ----------
+
 
 class TestScratchEntry:
     def test_auto_id_generated(self):
@@ -44,6 +44,7 @@ class TestScratchEntry:
 
 # ---------- Scratchpad.write ----------
 
+
 class TestScratchpadWrite:
     def setup_method(self):
         self.sp = Scratchpad()
@@ -77,6 +78,7 @@ class TestScratchpadWrite:
 
 # ---------- Scratchpad.read ----------
 
+
 class TestScratchpadRead:
     def setup_method(self):
         self.sp = Scratchpad()
@@ -104,6 +106,7 @@ class TestScratchpadRead:
 
 
 # ---------- Scratchpad.erase ----------
+
 
 class TestScratchpadErase:
     def setup_method(self):
@@ -138,6 +141,7 @@ class TestScratchpadErase:
 
 
 # ---------- Scratchpad.clear_unpinned ----------
+
 
 class TestClearUnpinned:
     def setup_method(self):
@@ -174,6 +178,7 @@ class TestClearUnpinned:
 
 # ---------- Scratchpad.tags ----------
 
+
 class TestTags:
     def setup_method(self):
         self.sp = Scratchpad()
@@ -197,6 +202,7 @@ class TestTags:
 
 
 # ---------- Scratchpad.render ----------
+
 
 class TestRender:
     def setup_method(self):
@@ -228,6 +234,7 @@ class TestRender:
 
 # ---------- max_entries eviction ----------
 
+
 class TestMaxEntries:
     def test_eviction_on_write(self):
         sp = Scratchpad(max_entries=3)
@@ -238,8 +245,8 @@ class TestMaxEntries:
     def test_eviction_removes_oldest_unpinned(self):
         sp = Scratchpad(max_entries=3)
         e1 = sp.write("tag", "first")
-        e2 = sp.write("tag", "second")
-        e3 = sp.write("tag", "third")
+        sp.write("tag", "second")
+        sp.write("tag", "third")
         # 4th write should evict first
         sp.write("tag", "fourth")
         ids = [e.id for e in sp.read_all()]
@@ -256,6 +263,7 @@ class TestMaxEntries:
 
 
 # ---------- SCRATCHPAD singleton ----------
+
 
 class TestScratchpadSingleton:
     def test_exists(self):

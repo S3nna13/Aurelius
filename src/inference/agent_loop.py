@@ -1,14 +1,13 @@
-"""Agentic loop: ReAct-style reasoning-action-observation cycle with tool use and self-reflection."""
+"""Agentic loop: ReAct-style reasoning-action-observation cycle with tool use and self-reflection."""  # noqa: E501
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -83,9 +82,7 @@ class AgentMemory:
 # ---------------------------------------------------------------------------
 
 
-def parse_react_output(
-    text: str, config: AgentConfig
-) -> tuple[str, str | None]:
+def parse_react_output(text: str, config: AgentConfig) -> tuple[str, str | None]:
     """Parse model output into (thought, action_or_none).
 
     Extracts thought after thought_prefix and action after action_prefix.
@@ -95,7 +92,9 @@ def parse_react_output(
     action: str | None = None
 
     # Extract thought
-    thought_pattern = re.escape(config.thought_prefix) + r"\s*(.*?)(?=" + re.escape(config.action_prefix) + r"|$)"
+    thought_pattern = (
+        re.escape(config.thought_prefix) + r"\s*(.*?)(?=" + re.escape(config.action_prefix) + r"|$)"
+    )
     thought_match = re.search(thought_pattern, text, re.DOTALL)
     if thought_match:
         thought = thought_match.group(1).strip()
@@ -223,7 +222,7 @@ class ReActAgent:
         with torch.no_grad():
             for _ in range(self.config.max_tokens_per_step):
                 output = self.model(current_ids)
-                logits = output[1]           # (1, S, V)
+                logits = output[1]  # (1, S, V)
                 next_logits = logits[0, -1, :]  # (V,)
 
                 if self.config.temperature > 0.0:
@@ -269,7 +268,7 @@ class ReActAgent:
                 is_final = True
                 if action is not None and action.startswith("Final Answer"):
                     # Extract the answer after "Final Answer:"
-                    final_answer = action[len("Final Answer"):].lstrip(":").strip()
+                    final_answer = action[len("Final Answer") :].lstrip(":").strip()
                 else:
                     final_answer = thought
             else:

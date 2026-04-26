@@ -38,4 +38,3 @@ def mean_reciprocal_rank(items: list[EvidenceItem]) -> float:
         if item.relevant:
             return 1.0 / rank
     return 0.0
-

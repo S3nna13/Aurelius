@@ -8,27 +8,27 @@ Supported conflict-resolution strategies:
   - ties: TIES — zero out parameters where sign is not majority-consistent
   - dare: DARE — randomly drop values then rescale to preserve expected magnitude
 """
+
 from __future__ import annotations
 
 import copy
-import random
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
 # Type alias: parameter name → delta tensor
-TaskVector = Dict[str, torch.Tensor]
+TaskVector = dict[str, torch.Tensor]
 
 
 # ---------------------------------------------------------------------------
 # Core functional operations
 # ---------------------------------------------------------------------------
 
+
 def extract_task_vector(
-    pretrained_state: Dict[str, torch.Tensor],
-    finetuned_state: Dict[str, torch.Tensor],
+    pretrained_state: dict[str, torch.Tensor],
+    finetuned_state: dict[str, torch.Tensor],
 ) -> TaskVector:
     """Compute τ = θ_ft - θ_pre for all shared parameters.
 
@@ -40,17 +40,14 @@ def extract_task_vector(
         Dict mapping param name → delta tensor.
     """
     shared_keys = set(pretrained_state.keys()) & set(finetuned_state.keys())
-    return {
-        k: finetuned_state[k].clone() - pretrained_state[k].clone()
-        for k in shared_keys
-    }
+    return {k: finetuned_state[k].clone() - pretrained_state[k].clone() for k in shared_keys}
 
 
 def apply_task_vector(
-    pretrained_state: Dict[str, torch.Tensor],
+    pretrained_state: dict[str, torch.Tensor],
     task_vector: TaskVector,
     scaling: float = 1.0,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Apply θ_merged = θ_pre + scaling * τ.
 
     Args:
@@ -61,7 +58,7 @@ def apply_task_vector(
     Returns:
         New state_dict with merged weights (pretrained_state is not mutated).
     """
-    merged: Dict[str, torch.Tensor] = {}
+    merged: dict[str, torch.Tensor] = {}
     for k, v in pretrained_state.items():
         if k in task_vector:
             merged[k] = v.clone() + scaling * task_vector[k].to(v.dtype)
@@ -71,8 +68,8 @@ def apply_task_vector(
 
 
 def add_task_vectors(
-    task_vectors: List[TaskVector],
-    weights: Optional[List[float]] = None,
+    task_vectors: list[TaskVector],
+    weights: list[float] | None = None,
 ) -> TaskVector:
     """Weighted sum of task vectors: sum_i w_i * τ_i.
 
@@ -91,9 +88,7 @@ def add_task_vectors(
         weights = [1.0 / n] * n
     else:
         if len(weights) != n:
-            raise ValueError(
-                f"len(weights)={len(weights)} != len(task_vectors)={n}"
-            )
+            raise ValueError(f"len(weights)={len(weights)} != len(task_vectors)={n}")
 
     all_keys: set = set()
     for tv in task_vectors:
@@ -101,7 +96,7 @@ def add_task_vectors(
 
     result: TaskVector = {}
     for k in all_keys:
-        acc: Optional[torch.Tensor] = None
+        acc: torch.Tensor | None = None
         for w, tv in zip(weights, task_vectors):
             if k not in tv:
                 continue
@@ -138,7 +133,7 @@ def scale_task_vector(task_vector: TaskVector, scale: float) -> TaskVector:
 
 
 def resolve_conflicts(
-    task_vectors: List[TaskVector],
+    task_vectors: list[TaskVector],
     method: str = "mean",
 ) -> TaskVector:
     """Resolve sign conflicts between multiple task vectors.
@@ -162,7 +157,7 @@ def resolve_conflicts(
         return add_task_vectors(task_vectors, weights=None)
 
     if method == "ties":
-        n = len(task_vectors)
+        len(task_vectors)
         all_keys: set = set()
         for tv in task_vectors:
             all_keys |= set(tv.keys())
@@ -180,7 +175,7 @@ def resolve_conflicts(
             # A vector "agrees" if sign(delta) == sum_sign (both non-zero)
             # Zero out entries where no majority agreement
             # TIES: keep param only when majority of vectors have the same sign
-            signs = torch.sign(stacked)            # (n_p, ...)
+            signs = torch.sign(stacked)  # (n_p, ...)
             # majority threshold: more than half
             agreement = (signs == sum_sign.unsqueeze(0)).float().sum(dim=0)
             majority_mask = (agreement > (len(deltas) / 2)).float()
@@ -203,8 +198,9 @@ def resolve_conflicts(
             result[k] = v * mask / (1.0 - p)
         return result
 
-    raise ValueError(f"Unknown conflict resolution method: {method!r}. "
-                     f"Choose from 'mean', 'ties', 'dare'.")
+    raise ValueError(
+        f"Unknown conflict resolution method: {method!r}. Choose from 'mean', 'ties', 'dare'."
+    )
 
 
 def task_vector_similarity(tv1: TaskVector, tv2: TaskVector) -> float:
@@ -237,6 +233,7 @@ def task_vector_similarity(tv1: TaskVector, tv2: TaskVector) -> float:
 # Configuration dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MergeConfig:
     """Configuration for TaskArithmeticMerger."""
@@ -244,7 +241,7 @@ class MergeConfig:
     scaling: float = 1.0
     """λ applied to the merged (combined) task vector."""
 
-    weights: Optional[List[float]] = None
+    weights: list[float] | None = None
     """Per-task weights; uniform if None."""
 
     conflict_resolution: str = "mean"
@@ -257,6 +254,7 @@ class MergeConfig:
 # ---------------------------------------------------------------------------
 # High-level merger class
 # ---------------------------------------------------------------------------
+
 
 class TaskArithmeticMerger:
     """Merge multiple fine-tuned models into one via task arithmetic.
@@ -272,15 +270,15 @@ class TaskArithmeticMerger:
     def __init__(
         self,
         pretrained_model: nn.Module,
-        config: Optional[MergeConfig] = None,
+        config: MergeConfig | None = None,
     ) -> None:
         self._pretrained = pretrained_model
-        self._pretrained_state: Dict[str, torch.Tensor] = {
+        self._pretrained_state: dict[str, torch.Tensor] = {
             k: v.clone() for k, v in pretrained_model.state_dict().items()
         }
         self._config = config if config is not None else MergeConfig()
-        self._task_vectors: List[TaskVector] = []
-        self._task_weights: List[float] = []
+        self._task_vectors: list[TaskVector] = []
+        self._task_weights: list[float] = []
 
     # ------------------------------------------------------------------
     # Registration
@@ -317,9 +315,7 @@ class TaskArithmeticMerger:
 
         # Build effective per-task weights
         if cfg.weights is not None and len(cfg.weights) == len(self._task_vectors):
-            eff_weights = [
-                w * tw for w, tw in zip(cfg.weights, self._task_weights)
-            ]
+            eff_weights = [w * tw for w, tw in zip(cfg.weights, self._task_weights)]
         else:
             eff_weights = self._task_weights
 
@@ -332,14 +328,11 @@ class TaskArithmeticMerger:
 
         # Apply scaled individual vectors before resolution
         scaled_tvs = [
-            scale_task_vector(tv, w * total)
-            for tv, w in zip(self._task_vectors, norm_weights)
+            scale_task_vector(tv, w * total) for tv, w in zip(self._task_vectors, norm_weights)
         ]
 
         merged_tv = resolve_conflicts(scaled_tvs, method=cfg.conflict_resolution)
-        merged_state = apply_task_vector(
-            self._pretrained_state, merged_tv, scaling=cfg.scaling
-        )
+        merged_state = apply_task_vector(self._pretrained_state, merged_tv, scaling=cfg.scaling)
 
         new_model = copy.deepcopy(self._pretrained)
         new_model.load_state_dict(merged_state)
@@ -360,9 +353,7 @@ class TaskArithmeticMerger:
         ft_state = finetuned_model.state_dict()
         tv = extract_task_vector(self._pretrained_state, ft_state)
         neg_tv = negate_task_vector(tv)
-        forgotten_state = apply_task_vector(
-            self._pretrained_state, neg_tv, scaling=scaling
-        )
+        forgotten_state = apply_task_vector(self._pretrained_state, neg_tv, scaling=scaling)
         new_model = copy.deepcopy(self._pretrained)
         new_model.load_state_dict(forgotten_state)
         return new_model

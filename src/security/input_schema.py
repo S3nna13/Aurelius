@@ -1,8 +1,9 @@
 """Input schema validator for agent tool call parameters."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, get_type_hints
+from typing import Any
 
 
 @dataclass
@@ -19,7 +20,10 @@ class ParamSpec:
                 return False, f"required parameter '{self.name}' is missing"
             return True, "ok"
         if not isinstance(value, self.param_type):
-            return False, f"parameter '{self.name}' expected {self.param_type.__name__}, got {type(value).__name__}"
+            return (
+                False,
+                f"parameter '{self.name}' expected {self.param_type.__name__}, got {type(value).__name__}",  # noqa: E501
+            )
         return True, "ok"
 
 

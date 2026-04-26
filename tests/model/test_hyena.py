@@ -1,15 +1,14 @@
 """Tests for the Hyena operator (Poli et al. 2023)."""
 
-import pytest
 import torch
 
-from src.model.hyena import HyenaFilter, HyenaOperator, HyenaBlock
 from src.model.config import AureliusConfig
-
+from src.model.hyena import HyenaBlock, HyenaFilter, HyenaOperator
 
 # ---------------------------------------------------------------------------
 # Shared tiny config for HyenaBlock tests
 # ---------------------------------------------------------------------------
+
 
 def make_config():
     return AureliusConfig(
@@ -27,6 +26,7 @@ def make_config():
 # ---------------------------------------------------------------------------
 # HyenaFilter tests
 # ---------------------------------------------------------------------------
+
 
 def test_hyena_filter_output_shape():
     """HyenaFilter(64, order=2, kernel_len=32).forward(16) → (2, 64, 16)."""
@@ -47,6 +47,7 @@ def test_hyena_filter_different_lengths():
 # ---------------------------------------------------------------------------
 # fft_conv tests
 # ---------------------------------------------------------------------------
+
 
 def test_fft_conv_output_shape():
     """fft_conv on (2, 64, 32) input → (2, 64, 32) output."""
@@ -76,7 +77,7 @@ def test_fft_conv_causality():
 
     # Zero out future positions (t+1 onward)
     u_causal = u.clone()
-    u_causal[..., t + 1:] = 0.0
+    u_causal[..., t + 1 :] = 0.0
     out_causal = op.fft_conv(u_causal, k)
 
     # Output at position t should be identical
@@ -90,6 +91,7 @@ def test_fft_conv_causality():
 # ---------------------------------------------------------------------------
 # HyenaOperator tests
 # ---------------------------------------------------------------------------
+
 
 def test_hyena_operator_output_shape():
     """HyenaOperator: (2, 32, 64) → (2, 32, 64)."""
@@ -113,6 +115,7 @@ def test_hyena_operator_gradient_flow():
 # HyenaBlock tests
 # ---------------------------------------------------------------------------
 
+
 def test_hyena_block_output_shape():
     """HyenaBlock: (2, 16, 64) → (2, 16, 64)."""
     config = make_config()
@@ -128,12 +131,15 @@ def test_hyena_block_residual():
     block = HyenaBlock(config)
     x = torch.randn(2, 16, 64)
     out = block(x)
-    assert not torch.allclose(out, x), "HyenaBlock output is identical to input — residual did nothing"
+    assert not torch.allclose(out, x), (
+        "HyenaBlock output is identical to input — residual did nothing"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Sub-quadratic parameter count test
 # ---------------------------------------------------------------------------
+
 
 def test_hyena_subquadratic_params():
     """HyenaOperator param count should be O(d_model * d_filter), not O(L²).

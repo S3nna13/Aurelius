@@ -10,7 +10,6 @@ import pytest
 
 import src.security as sec
 
-
 SAMPLE_THREAT_REPORT = """
 Observed adversary at 203.0.113.77 used PowerShell to execute a script
 dropping c:\\windows\\system32\\evil.exe. The binary contacted
@@ -25,12 +24,22 @@ info evil-handler@bad-xyz.example for further analysis.
 def test_all_symbols_exposed():
     # Cycle-116 classes / functions
     for name in (
-        "MitreAttackClassifier", "TechniqueMatch", "ATTACK_TECHNIQUES",
-        "IOCExtractor", "IOC", "IOCReport",
-        "YaraRuleEngine", "YaraRule", "YaraRuleParser",
-        "PEInfo", "PESection", "analyze_pe",
-        "LogAnomalyDetector", "LogAnomaly",
-        "ThreatIntelCorrelator", "CorrelatedIOC",
+        "MitreAttackClassifier",
+        "TechniqueMatch",
+        "ATTACK_TECHNIQUES",
+        "IOCExtractor",
+        "IOC",
+        "IOCReport",
+        "YaraRuleEngine",
+        "YaraRule",
+        "YaraRuleParser",
+        "PEInfo",
+        "PESection",
+        "analyze_pe",
+        "LogAnomalyDetector",
+        "LogAnomaly",
+        "ThreatIntelCorrelator",
+        "CorrelatedIOC",
     ):
         assert hasattr(sec, name), f"missing export: {name}"
 
@@ -54,7 +63,9 @@ def test_mitre_classifier_tags_powershell_sample():
     matches = clf.classify(SAMPLE_THREAT_REPORT, top_k=10)
     ids = [m.technique_id for m in matches]
     # PowerShell execution or registry persistence should be in top-K
-    assert any(tid.startswith("T1059") or tid.startswith("T1547") or tid.startswith("T1053") for tid in ids)
+    assert any(
+        tid.startswith("T1059") or tid.startswith("T1547") or tid.startswith("T1053") for tid in ids
+    )
 
 
 def test_yara_engine_detects_beacon_pattern():
@@ -93,7 +104,9 @@ def test_threat_intel_correlation_from_ioc_extraction():
     ex = sec.IOCExtractor()
     rep = ex.extract(SAMPLE_THREAT_REPORT)
     # Build two synthetic intel sources sharing IOCs
-    iocs_dicts = [{"type": i.type, "value": i.value, "confidence": i.confidence} for i in rep.iocs[:3]]
+    iocs_dicts = [
+        {"type": i.type, "value": i.value, "confidence": i.confidence} for i in rep.iocs[:3]
+    ]
     source_a = sec.ThreatIntelSource(name="feed_a", iocs=iocs_dicts)
     source_b = sec.ThreatIntelSource(name="feed_b", iocs=iocs_dicts)
     corr = sec.ThreatIntelCorrelator(min_source_count=2)

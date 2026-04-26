@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import copy
-
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +11,6 @@ from src.training.optimizer_state_sharding import (
     OptimizerStateSharding,
     OptimizerStateShardingConfig,
 )
-
 
 TINY_CFG = AureliusConfig(
     n_layers=2,
@@ -181,7 +177,7 @@ def test_batch_one_seq_len_one_edge_case_is_finite():
     optimizer = OptimizerStateSharding(model.parameters(), OptimizerStateShardingConfig(N_d=2))
     input_ids = torch.tensor([[7]])
     attention_mask = torch.ones(1, 1)
-    labels = torch.tensor([[-100]])
+    torch.tensor([[-100]])
     logits = model(input_ids, attention_mask=attention_mask)
     loss = logits.square().mean()
     loss.backward()

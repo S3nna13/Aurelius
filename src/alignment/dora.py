@@ -5,6 +5,7 @@ The magnitude vector m is learned separately from the directional LoRA update.
 
 Critical: .detach() on the norm denominator to prevent gradient explosion (Section 4.3).
 """
+
 from __future__ import annotations
 
 import torch
@@ -49,14 +50,14 @@ class DoRALinear(nn.Module):
         V_prime = self.W + self.scale * (self.B @ self.A)
 
         # CRITICAL: .detach() prevents gradients from flowing through the norm denominator.
-        # Without this, the learning signal for m mixes with the direction gradient — see paper Section 4.3.
+        # Without this, the learning signal for m mixes with the direction gradient — see paper Section 4.3.  # noqa: E501
         V_prime_norm = V_prime.norm(p=2, dim=1, keepdim=True).detach()
 
         # Magnitude rescaling factor: (out_features, 1)
         norm_scale = self.m / V_prime_norm
 
         # Compute base and LoRA contributions separately
-        base_out = F.linear(x, self.W)                          # (*, out_features)
+        base_out = F.linear(x, self.W)  # (*, out_features)
         lora_out = F.linear(x, self.scale * (self.B @ self.A))  # (*, out_features)
 
         # DoRA formula: output = (m / ||V'||) * V' @ x^T

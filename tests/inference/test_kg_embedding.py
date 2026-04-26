@@ -7,9 +7,9 @@ import torch
 
 from src.inference.kg_embedding import (
     KGEConfig,
-    TransE,
-    RotatE,
     KGRetriever,
+    RotatE,
+    TransE,
     negative_sample,
 )
 

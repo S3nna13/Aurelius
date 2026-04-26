@@ -40,8 +40,8 @@ class _ProxyModel(nn.Module):
             Tuple of (loss, logits).  loss is None when labels is None.
         """
         # Mean-pool over the sequence dimension then project to vocab
-        h = F.gelu(self.fc1(x_embed))   # (B, T, hidden)
-        logits = self.fc2(h)             # (B, T, vocab_size)
+        h = F.gelu(self.fc1(x_embed))  # (B, T, hidden)
+        logits = self.fc2(h)  # (B, T, vocab_size)
 
         loss = None
         if labels is not None:
@@ -116,9 +116,7 @@ class GradientInverter:
             loss = output
 
         if loss is None:
-            raise ValueError(
-                "model.forward() returned None loss; pass labels to compute loss."
-            )
+            raise ValueError("model.forward() returned None loss; pass labels to compute loss.")
 
         loss.backward()
 
@@ -169,9 +167,7 @@ class GradientInverter:
         proxy.train()
 
         # Initialise dummy embedding with small random values
-        x_dummy = nn.Parameter(
-            torch.randn(1, n_tokens, self.d_model) * 0.01
-        )
+        x_dummy = nn.Parameter(torch.randn(1, n_tokens, self.d_model) * 0.01)
         optimizer = torch.optim.Adam([x_dummy], lr=lr)
 
         # Pre-build dummy labels (shifted cross-entropy requires T >= 2)
@@ -195,16 +191,16 @@ class GradientInverter:
                 allow_unused=True,
             )
 
-            dummy_flat = torch.cat([
-                g.view(-1) if g is not None else torch.zeros(p.numel())
-                for g, p in zip(dummy_grads, proxy.parameters())
-            ])
+            dummy_flat = torch.cat(
+                [
+                    g.view(-1) if g is not None else torch.zeros(p.numel())
+                    for g, p in zip(dummy_grads, proxy.parameters())
+                ]
+            )
 
             # Align sizes by padding/truncating to the shorter of the two
             min_len = min(dummy_flat.numel(), grads_target.numel())
-            attack_loss = (
-                (dummy_flat[:min_len] - grads_target[:min_len].detach()) ** 2
-            ).sum()
+            attack_loss = ((dummy_flat[:min_len] - grads_target[:min_len].detach()) ** 2).sum()
 
             loss_history.append(attack_loss.item())
 

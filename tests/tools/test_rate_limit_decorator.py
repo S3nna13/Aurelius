@@ -1,11 +1,10 @@
 """Tests for rate limit decorator."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
-
-from src.tools.rate_limit_decorator import ratelimit, RateLimitConfig
+from src.tools.rate_limit_decorator import RateLimitConfig, ratelimit
 
 
 class TestRateLimitDecorator:

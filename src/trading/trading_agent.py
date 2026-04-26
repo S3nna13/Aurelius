@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import math
-import statistics
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable
 
 from src.trading.portfolio import OrderSide, OrderStatus, Portfolio
 
@@ -48,7 +46,7 @@ class Order:
     order_id: str = ""
     filled_quantity: float = 0.0
     avg_fill_price: float = 0.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     filled_at: datetime | None = None
 
     @property
@@ -100,7 +98,7 @@ class TradingAgent:
         rsi = indicators.get("rsi", 50)
         sma_short = indicators.get("sma_short")
         sma_long = indicators.get("sma_long")
-        volatility = indicators.get("volatility", 0)
+        indicators.get("volatility", 0)
 
         if self._in_cooldown(symbol):
             return TradingSignal.HOLD
@@ -129,7 +127,11 @@ class TradingAgent:
         if not self._can_trade(symbol, price):
             return None
 
-        side = OrderSide.BUY if signal in (TradingSignal.BUY, TradingSignal.STRONG_BUY) else OrderSide.SELL
+        side = (
+            OrderSide.BUY
+            if signal in (TradingSignal.BUY, TradingSignal.STRONG_BUY)
+            else OrderSide.SELL
+        )
         qty = self._calculate_position_size(symbol, price, side)
         if qty <= 0:
             return None
@@ -152,7 +154,7 @@ class TradingAgent:
         order.status = OrderStatus.FILLED
         order.filled_quantity = qty
         order.avg_fill_price = price
-        order.filled_at = datetime.now(timezone.utc)
+        order.filled_at = datetime.now(UTC)
         return order
 
     def _in_cooldown(self, symbol: str) -> bool:
@@ -162,8 +164,13 @@ class TradingAgent:
     def _can_trade(self, symbol: str, price: float) -> bool:
         if not self._active:
             return False
-        current_positions = len([p for p in self.portfolio.positions.values() if abs(p.quantity) > 0])
-        if current_positions >= self.config.max_positions and symbol not in self.portfolio.positions:
+        current_positions = len(
+            [p for p in self.portfolio.positions.values() if abs(p.quantity) > 0]
+        )
+        if (
+            current_positions >= self.config.max_positions
+            and symbol not in self.portfolio.positions
+        ):
             return False
         return True
 

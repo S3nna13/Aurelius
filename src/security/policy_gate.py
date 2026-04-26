@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List
 
 __all__ = [
     "PolicyScope",
@@ -55,7 +54,7 @@ class PolicyScope:
     """
 
     target_domain: str
-    allowed_actions: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_actions: frozenset[str] = field(default_factory=frozenset)
     owner: str = "unknown"
 
     def __post_init__(self) -> None:
@@ -63,14 +62,10 @@ class PolicyScope:
             raise ValueError("PolicyScope.target_domain must be a non-empty string")
         if not isinstance(self.allowed_actions, frozenset):
             # Coerce so callers can pass a regular set/list at construction
-            object.__setattr__(
-                self, "allowed_actions", frozenset(self.allowed_actions)
-            )
+            object.__setattr__(self, "allowed_actions", frozenset(self.allowed_actions))
         for action in self.allowed_actions:
             if not isinstance(action, str) or not action:
-                raise ValueError(
-                    "PolicyScope.allowed_actions entries must be non-empty strings"
-                )
+                raise ValueError("PolicyScope.allowed_actions entries must be non-empty strings")
         if not isinstance(self.owner, str) or not self.owner:
             raise ValueError("PolicyScope.owner must be a non-empty string")
 
@@ -113,7 +108,7 @@ class PolicyGate:
     """
 
     def __init__(self) -> None:
-        self._policies: List[PolicyScope] = []
+        self._policies: list[PolicyScope] = []
 
     # --- mutation ---------------------------------------------------------
 
@@ -122,7 +117,7 @@ class PolicyGate:
             raise TypeError("add_policy requires a PolicyScope instance")
         self._policies.append(scope)
 
-    def list_policies(self) -> List[PolicyScope]:
+    def list_policies(self) -> list[PolicyScope]:
         # Defensive copy so callers cannot mutate internal state.
         return list(self._policies)
 
@@ -153,9 +148,7 @@ class PolicyGate:
                 nearest = scope
                 break
 
-        reason = (
-            "no matching policy" if nearest is None else "action not in allowed_actions"
-        )
+        reason = "no matching policy" if nearest is None else "action not in allowed_actions"
         _LOGGER.warning(
             "policy_gate_denied target=%r action=%r reason=%s",
             target,
@@ -178,7 +171,7 @@ class PolicyGate:
 # ---------------------------------------------------------------------------
 
 
-POLICY_GATE_REGISTRY: Dict[str, PolicyGate] = {}
+POLICY_GATE_REGISTRY: dict[str, PolicyGate] = {}
 
 DEFAULT_POLICY_GATE: PolicyGate = PolicyGate()
 POLICY_GATE_REGISTRY["default"] = DEFAULT_POLICY_GATE

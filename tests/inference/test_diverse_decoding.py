@@ -2,21 +2,22 @@
 
 import pytest
 import torch
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+
 from src.inference.diverse_decoding import (
-    DiverseBeamConfig,
     BeamHypothesis,
     BeamSearchDecoder,
+    DiverseBeamConfig,
     DiverseBeamSearchDecoder,
-    stochastic_beam_search,
     length_penalty_rerank,
+    stochastic_beam_search,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tiny_model():
@@ -54,6 +55,7 @@ def input_ids():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_diverse_beam_config_defaults():
     """DiverseBeamConfig should have correct default values."""

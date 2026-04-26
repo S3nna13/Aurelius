@@ -3,31 +3,33 @@
 Import path: from aurelius.training.ppo_trainer import ...
 ≥14 tests covering PPOConfig, RolloutBuffer, PPOLoss, and PPOTrainer.
 """
+
 from __future__ import annotations
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.ppo_trainer import (
     PPOConfig,
-    RolloutBuffer,
     PPOLoss,
     PPOTrainer,
+    RolloutBuffer,
 )
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-B = 4   # batch size
-T = 6   # sequence / timestep length
+B = 4  # batch size
+T = 6  # sequence / timestep length
 
 
 # ---------------------------------------------------------------------------
 # Helpers: tiny trainable models
 # ---------------------------------------------------------------------------
+
 
 class TinyModel(nn.Module):
     """Minimal linear model that accepts a (B,) tensor and returns (B,)."""
@@ -43,6 +45,7 @@ class TinyModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg() -> PPOConfig:
@@ -91,6 +94,7 @@ def trainer(policy, value_model, ref_model, optimizer, cfg, loss_fn) -> PPOTrain
 # Test 1: PPOConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ppoconfig_defaults():
     cfg = PPOConfig()
     assert cfg.clip_ratio == 0.2
@@ -106,6 +110,7 @@ def test_ppoconfig_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: RolloutBuffer.add increases size
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_buffer_add_increases_size():
     buf = RolloutBuffer()
@@ -124,6 +129,7 @@ def test_rollout_buffer_add_increases_size():
 # ---------------------------------------------------------------------------
 # Test 3: RolloutBuffer.clear sets size to 0
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_buffer_clear():
     buf = RolloutBuffer()
@@ -144,6 +150,7 @@ def test_rollout_buffer_clear():
 # Test 4: RolloutBuffer.compute_advantages returns correct shapes
 # ---------------------------------------------------------------------------
 
+
 def test_rollout_buffer_compute_advantages_shapes():
     buf = RolloutBuffer()
     for _ in range(T):
@@ -163,6 +170,7 @@ def test_rollout_buffer_compute_advantages_shapes():
 # Test 5: PPOLoss.policy_loss is scalar and finite
 # ---------------------------------------------------------------------------
 
+
 def test_policy_loss_scalar_finite(loss_fn):
     log_probs = torch.randn(B, requires_grad=True)
     old_log_probs = torch.randn(B).detach()
@@ -175,6 +183,7 @@ def test_policy_loss_scalar_finite(loss_fn):
 # ---------------------------------------------------------------------------
 # Test 6: Large positive advantage + in-policy → negative (improving) loss
 # ---------------------------------------------------------------------------
+
 
 def test_policy_loss_in_policy_large_positive_advantage_negative(loss_fn):
     """ratio=1 (in-policy) with large positive advantages → loss = -mean(A) < 0."""
@@ -191,6 +200,7 @@ def test_policy_loss_in_policy_large_positive_advantage_negative(loss_fn):
 # Test 7: PPOLoss.value_loss is MSE (scalar, non-negative)
 # ---------------------------------------------------------------------------
 
+
 def test_value_loss_mse_scalar(loss_fn):
     values = torch.randn(B, requires_grad=True)
     returns = torch.randn(B)
@@ -206,6 +216,7 @@ def test_value_loss_mse_scalar(loss_fn):
 # Test 8: PPOLoss.kl_loss is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_kl_loss_scalar(loss_fn):
     log_probs = torch.randn(B)
     ref_log_probs = torch.randn(B)
@@ -216,6 +227,7 @@ def test_kl_loss_scalar(loss_fn):
 # ---------------------------------------------------------------------------
 # Test 9: PPOLoss.total_loss returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_total_loss_correct_keys(loss_fn):
     log_probs = torch.randn(B, requires_grad=True)
@@ -237,6 +249,7 @@ def test_total_loss_correct_keys(loss_fn):
 # Test 10: Gradient flows through policy_loss
 # ---------------------------------------------------------------------------
 
+
 def test_policy_loss_gradient_flows(loss_fn):
     log_probs = torch.randn(B, requires_grad=True)
     old_log_probs = torch.randn(B).detach()
@@ -253,6 +266,7 @@ def test_policy_loss_gradient_flows(loss_fn):
 # Test 11: PPOTrainer.freeze_ref freezes all ref params
 # ---------------------------------------------------------------------------
 
+
 def test_freeze_ref(trainer):
     # First ensure they are trainable
     for p in trainer.ref_model.parameters():
@@ -267,6 +281,7 @@ def test_freeze_ref(trainer):
 # ---------------------------------------------------------------------------
 # Test 12: PPOTrainer.ppo_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_step_returns_correct_keys(trainer):
     x = torch.randn(B, 1)
@@ -297,6 +312,7 @@ def test_ppo_step_returns_correct_keys(trainer):
 # Test 13: PPOTrainer.ppo_step loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_step_loss_finite(trainer):
     x = torch.randn(B, 1)
     log_probs_grad = trainer.policy_model(x)
@@ -323,9 +339,10 @@ def test_ppo_step_loss_finite(trainer):
 # Test 14: PPOTrainer.compute_returns shapes correct
 # ---------------------------------------------------------------------------
 
+
 def test_compute_returns_shapes(trainer):
     rewards = torch.randn(T)
-    values = torch.randn(T + 1)   # T+1 to include bootstrap value
+    values = torch.randn(T + 1)  # T+1 to include bootstrap value
     advantages, returns = trainer.compute_returns(rewards, values)
     assert advantages.shape == (T,), f"advantages shape {advantages.shape} != ({T},)"
     assert returns.shape == (T,), f"returns shape {returns.shape} != ({T},)"
@@ -334,6 +351,7 @@ def test_compute_returns_shapes(trainer):
 # ---------------------------------------------------------------------------
 # Test 15: compute_returns: returns = advantages + values[:T]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_returns_consistency(trainer):
     rewards = torch.randn(T)
@@ -346,6 +364,7 @@ def test_compute_returns_consistency(trainer):
 # ---------------------------------------------------------------------------
 # Test 16: RolloutBuffer.compute_advantages returns finite tensors
 # ---------------------------------------------------------------------------
+
 
 def test_rollout_buffer_advantages_finite():
     buf = RolloutBuffer()

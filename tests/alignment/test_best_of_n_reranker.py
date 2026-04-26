@@ -9,7 +9,6 @@ import pytest
 
 from src.alignment.best_of_n_reranker import BestOfNReranker, BoNCandidate
 
-
 # ---------------------------------------------------------------- fixtures
 
 
@@ -101,9 +100,7 @@ def test_n_zero_raises():
 
 def test_unknown_aggregation_raises():
     with pytest.raises(ValueError, match="aggregation"):
-        BestOfNReranker(
-            lambda p: "x", lambda p, r: 0.0, n=2, aggregation="bogus"
-        )
+        BestOfNReranker(lambda p: "x", lambda p, r: 0.0, n=2, aggregation="bogus")
 
 
 def test_generate_fn_exception_skips_candidate(caplog):

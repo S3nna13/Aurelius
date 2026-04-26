@@ -5,18 +5,17 @@ Tests for clipboard_manager.py  (>=28 tests)
 
 import time
 
-import pytest
 from src.computer_use.clipboard_manager import (
-    ClipboardEntry,
-    ClipboardManager,
     CLIPBOARD_MANAGER_REGISTRY,
     REGISTRY,
+    ClipboardEntry,
+    ClipboardManager,
 )
-
 
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_default():
     assert "default" in CLIPBOARD_MANAGER_REGISTRY
@@ -33,6 +32,7 @@ def test_registry_default_is_class():
 # ---------------------------------------------------------------------------
 # ClipboardEntry — timestamp auto-set
 # ---------------------------------------------------------------------------
+
 
 def test_entry_auto_timestamp():
     before = time.monotonic()
@@ -55,6 +55,7 @@ def test_entry_defaults():
 # ---------------------------------------------------------------------------
 # copy
 # ---------------------------------------------------------------------------
+
 
 def test_copy_adds_entry():
     cm = ClipboardManager()
@@ -88,6 +89,7 @@ def test_copy_increments_total():
 # paste
 # ---------------------------------------------------------------------------
 
+
 def test_paste_returns_latest():
     cm = ClipboardManager()
     cm.copy("old")
@@ -110,6 +112,7 @@ def test_paste_does_not_remove_entry():
 # ---------------------------------------------------------------------------
 # paste_nth
 # ---------------------------------------------------------------------------
+
 
 def test_paste_nth_zero_is_latest():
     cm = ClipboardManager()
@@ -145,6 +148,7 @@ def test_paste_nth_empty_none():
 # ---------------------------------------------------------------------------
 # search
 # ---------------------------------------------------------------------------
+
 
 def test_search_finds_substring():
     cm = ClipboardManager()
@@ -189,6 +193,7 @@ def test_search_empty_query_matches_all():
 # clear_history
 # ---------------------------------------------------------------------------
 
+
 def test_clear_history_returns_count():
     cm = ClipboardManager()
     cm.copy("a")
@@ -222,6 +227,7 @@ def test_clear_history_does_not_reset_total_copies():
 # __len__
 # ---------------------------------------------------------------------------
 
+
 def test_len_empty():
     cm = ClipboardManager()
     assert len(cm) == 0
@@ -237,6 +243,7 @@ def test_len_after_copies():
 # ---------------------------------------------------------------------------
 # stats
 # ---------------------------------------------------------------------------
+
 
 def test_stats_by_type():
     cm = ClipboardManager()
@@ -275,6 +282,7 @@ def test_stats_empty():
 # ---------------------------------------------------------------------------
 # max_history eviction
 # ---------------------------------------------------------------------------
+
 
 def test_max_history_eviction():
     cm = ClipboardManager(max_history=3)

@@ -1,9 +1,8 @@
 """Tests for result cache."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.tools.result_cache import ResultCache
 

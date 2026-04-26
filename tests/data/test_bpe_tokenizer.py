@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import json
-import tempfile
 import os
+import tempfile
 
 import pytest
 
 from src.data.bpe_tokenizer import BPEConfig, BPETokenizer, get_byte_pairs, merge_vocab
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -31,6 +29,7 @@ def trained_tok() -> BPETokenizer:
 # 1. BPEConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_bpe_config_defaults():
     cfg = BPEConfig()
     assert cfg.vocab_size == 1000
@@ -41,6 +40,7 @@ def test_bpe_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. get_byte_pairs returns dict with correct counts
 # ---------------------------------------------------------------------------
+
 
 def test_get_byte_pairs_correct_counts():
     word_tokens = [("a", "b", "c"), ("a", "b", "a")]
@@ -58,6 +58,7 @@ def test_get_byte_pairs_correct_counts():
 # 3. get_byte_pairs empty input -> empty dict
 # ---------------------------------------------------------------------------
 
+
 def test_get_byte_pairs_empty():
     assert get_byte_pairs([]) == {}
 
@@ -65,6 +66,7 @@ def test_get_byte_pairs_empty():
 # ---------------------------------------------------------------------------
 # 4. merge_vocab merges target pair
 # ---------------------------------------------------------------------------
+
 
 def test_merge_vocab_merges_pair():
     vocab = {("a", "b", "c"): 3, ("a", "b", "d"): 2}
@@ -86,6 +88,7 @@ def test_merge_vocab_merged_symbol_present():
 # 5. merge_vocab leaves other pairs unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_merge_vocab_leaves_others_unchanged():
     vocab = {("a", "b"): 3, ("c", "d"): 7}
     new_vocab = merge_vocab(vocab, ("a", "b"))
@@ -98,6 +101,7 @@ def test_merge_vocab_leaves_others_unchanged():
 # 6. BPETokenizer.train increases vocab beyond 256
 # ---------------------------------------------------------------------------
 
+
 def test_train_increases_vocab(trained_tok: BPETokenizer):
     assert trained_tok.vocab_size > 256
 
@@ -105,6 +109,7 @@ def test_train_increases_vocab(trained_tok: BPETokenizer):
 # ---------------------------------------------------------------------------
 # 7. BPETokenizer.encode returns list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_encode_returns_list_of_ints(trained_tok: BPETokenizer):
     ids = trained_tok.encode("abc")
@@ -117,6 +122,7 @@ def test_encode_returns_list_of_ints(trained_tok: BPETokenizer):
 # 8. encode then decode roundtrips ASCII text
 # ---------------------------------------------------------------------------
 
+
 def test_encode_decode_roundtrip(trained_tok: BPETokenizer):
     text = "aababc"
     decoded = trained_tok.decode(trained_tok.encode(text))
@@ -126,6 +132,7 @@ def test_encode_decode_roundtrip(trained_tok: BPETokenizer):
 # ---------------------------------------------------------------------------
 # 9. BPETokenizer.vocab_size matches trained size
 # ---------------------------------------------------------------------------
+
 
 def test_vocab_size_property(trained_tok: BPETokenizer):
     vs = trained_tok.vocab_size
@@ -139,6 +146,7 @@ def test_vocab_size_property(trained_tok: BPETokenizer):
 # 10. encode output IDs all within [0, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_encode_ids_within_range(trained_tok: BPETokenizer):
     ids = trained_tok.encode("bcbcbc")
     vs = trained_tok.vocab_size
@@ -148,6 +156,7 @@ def test_encode_ids_within_range(trained_tok: BPETokenizer):
 # ---------------------------------------------------------------------------
 # 11. train with small vocab_size respects limit
 # ---------------------------------------------------------------------------
+
 
 def test_small_vocab_size_respected():
     cfg = BPEConfig(vocab_size=270, min_frequency=1)
@@ -162,6 +171,7 @@ def test_small_vocab_size_respected():
 # 12. special tokens in vocab
 # ---------------------------------------------------------------------------
 
+
 def test_special_tokens_in_vocab(trained_tok: BPETokenizer):
     for sp in trained_tok.config.special_tokens:
         assert sp in trained_tok._token_to_id
@@ -170,6 +180,7 @@ def test_special_tokens_in_vocab(trained_tok: BPETokenizer):
 # ---------------------------------------------------------------------------
 # 13. save then load preserves encode behavior
 # ---------------------------------------------------------------------------
+
 
 def test_save_load_preserves_encode(trained_tok: BPETokenizer):
     text = "aababc"
@@ -190,6 +201,7 @@ def test_save_load_preserves_encode(trained_tok: BPETokenizer):
 # ---------------------------------------------------------------------------
 # 14. BPETokenizer on repeated text learns useful merges (common pair merged)
 # ---------------------------------------------------------------------------
+
 
 def test_repeated_text_learns_merges():
     """The pair ('a','b') must appear as a merge when 'ab' is very frequent."""

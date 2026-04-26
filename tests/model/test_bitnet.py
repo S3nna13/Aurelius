@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -36,6 +35,7 @@ BATCH = 2
 # Helper factories
 # ---------------------------------------------------------------------------
 
+
 def make_x(requires_grad: bool = False) -> torch.Tensor:
     x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
     if requires_grad:
@@ -55,6 +55,7 @@ def make_model() -> BitNetModel:
 # ---------------------------------------------------------------------------
 # TernaryQuantizer tests
 # ---------------------------------------------------------------------------
+
 
 def test_ternary_quantize_values_in_set():
     """Quantized output values must belong to {-1, 0, 1}."""
@@ -115,6 +116,7 @@ def test_ternary_bit_width_all_zeros_gives_zero():
 # AbsMaxQuantizer tests
 # ---------------------------------------------------------------------------
 
+
 def test_absmax_quantize_output_shape_unchanged():
     """Dequantized output must have the same shape as input."""
     aq = AbsMaxQuantizer(n_bits=8)
@@ -151,6 +153,7 @@ def test_absmax_quantization_error_decreases_with_more_bits():
 # BitLinear tests
 # ---------------------------------------------------------------------------
 
+
 def test_bitlinear_output_shape():
     """BitLinear output shape must be (B, T, out_features)."""
     layer = BitLinear(D_MODEL, D_MODEL)
@@ -182,17 +185,18 @@ def test_bitlinear_bias_grad_after_backward():
 def test_bitlinear_weight_remains_float32():
     """The stored weight parameter must remain float32 (quantization is transient)."""
     layer = BitLinear(D_MODEL, D_MODEL)
-    assert layer.weight.dtype == torch.float32, \
+    assert layer.weight.dtype == torch.float32, (
         f"Weight dtype should be float32, got {layer.weight.dtype}"
+    )
     # After a forward pass, weight must still be float32
     _ = layer(make_x())
-    assert layer.weight.dtype == torch.float32, \
-        "Weight dtype changed after forward pass"
+    assert layer.weight.dtype == torch.float32, "Weight dtype changed after forward pass"
 
 
 # ---------------------------------------------------------------------------
 # BitNetBlock test
 # ---------------------------------------------------------------------------
+
 
 def test_bitnetblock_output_shape_and_grad():
     """Block output shape must be (B, T, D) and gradient must flow."""
@@ -210,13 +214,13 @@ def test_bitnetblock_output_shape_and_grad():
 # BitNetModel tests
 # ---------------------------------------------------------------------------
 
+
 def test_bitnetmodel_logits_shape():
     """Model logits must have shape (B, T, vocab_size)."""
     model = make_model()
     input_ids = torch.randint(0, VOCAB_SIZE, (BATCH, SEQ_LEN))
     logits = model(input_ids)
-    assert logits.shape == (BATCH, SEQ_LEN, VOCAB_SIZE), \
-        f"Logits shape mismatch: {logits.shape}"
+    assert logits.shape == (BATCH, SEQ_LEN, VOCAB_SIZE), f"Logits shape mismatch: {logits.shape}"
 
 
 def test_bitnetmodel_full_backward():
@@ -239,6 +243,7 @@ def test_bitnetmodel_full_backward():
 # BitNetAnalyzer tests
 # ---------------------------------------------------------------------------
 
+
 def test_analyzer_model_sparsity_in_range():
     """model_sparsity must be in [0, 1]."""
     model = make_model()
@@ -252,8 +257,7 @@ def test_analyzer_effective_bits_in_range():
     model = make_model()
     analyzer = BitNetAnalyzer()
     eff = analyzer.effective_bits(model)
-    assert 0.0 <= eff <= math.log2(3) + 1e-6, \
-        f"effective_bits out of range: {eff}"
+    assert 0.0 <= eff <= math.log2(3) + 1e-6, f"effective_bits out of range: {eff}"
 
 
 def test_analyzer_count_bitlinear_layers():
@@ -264,5 +268,4 @@ def test_analyzer_count_bitlinear_layers():
     analyzer = BitNetAnalyzer()
     count = analyzer.count_bitlinear_layers(model)
     expected = N_LAYERS * 6  # 4 attn projections + ffn_up + ffn_down
-    assert count == expected, \
-        f"Expected {expected} BitLinear layers, got {count}"
+    assert count == expected, f"Expected {expected} BitLinear layers, got {count}"

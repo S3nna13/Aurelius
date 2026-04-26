@@ -13,6 +13,7 @@ Components:
 - ddpm_sample: DDPM reverse-diffusion sampler.
 - DiffusionLMTrainer: wraps embedding + score network for training / generation.
 """
+
 from __future__ import annotations
 
 import math
@@ -23,10 +24,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DiffusionConfig:
@@ -52,6 +53,7 @@ class DiffusionConfig:
 # Noise schedule
 # ---------------------------------------------------------------------------
 
+
 def get_noise_schedule(config: DiffusionConfig) -> tuple[Tensor, Tensor]:
     """Compute betas and alphas_cumprod for T timesteps.
 
@@ -70,9 +72,7 @@ def get_noise_schedule(config: DiffusionConfig) -> tuple[Tensor, Tensor]:
         # Nichol & Dhariwal cosine schedule
         steps = torch.arange(T + 1, dtype=torch.float64)
         s = 0.008
-        alphas_cos = torch.cos(
-            ((steps / T) + s) / (1.0 + s) * math.pi * 0.5
-        ) ** 2
+        alphas_cos = torch.cos(((steps / T) + s) / (1.0 + s) * math.pi * 0.5) ** 2
         alphas_cos = alphas_cos / alphas_cos[0]
         betas_64 = 1.0 - (alphas_cos[1:] / alphas_cos[:-1])
         betas = betas_64.clamp(0.0, 0.999).float()
@@ -88,6 +88,7 @@ def get_noise_schedule(config: DiffusionConfig) -> tuple[Tensor, Tensor]:
 # ---------------------------------------------------------------------------
 # Forward (noising) process
 # ---------------------------------------------------------------------------
+
 
 def q_sample(
     x0: Tensor,
@@ -111,8 +112,8 @@ def q_sample(
     if noise is None:
         noise = torch.randn_like(x0)
 
-    alpha_t = alphas_cumprod[t]                         # (B,)
-    sqrt_alpha = alpha_t.sqrt().view(-1, 1, 1)          # (B, 1, 1)
+    alpha_t = alphas_cumprod[t]  # (B,)
+    sqrt_alpha = alpha_t.sqrt().view(-1, 1, 1)  # (B, 1, 1)
     sqrt_one_minus_alpha = (1.0 - alpha_t).sqrt().view(-1, 1, 1)
 
     return sqrt_alpha * x0 + sqrt_one_minus_alpha * noise
@@ -122,9 +123,10 @@ def q_sample(
 # Score network (noise predictor)
 # ---------------------------------------------------------------------------
 
+
 def _sinusoidal_embedding(t: Tensor, dim: int) -> Tensor:
     """Sinusoidal timestep embedding, shape (B, dim)."""
-    assert dim % 2 == 0, "dim must be even for sinusoidal embedding"
+    assert dim % 2 == 0, "dim must be even for sinusoidal embedding"  # noqa: S101
     half = dim // 2
     freqs = torch.exp(
         -math.log(10000.0) * torch.arange(half, dtype=torch.float32, device=t.device) / half
@@ -185,7 +187,7 @@ class ScoreNetwork(nn.Module):
 
         # Sinusoidal timestep -> learned projection -> (B, hidden_dim)
         t_emb = _sinusoidal_embedding(t, self.hidden_dim)  # (B, hidden_dim)
-        t_emb = self.t_embed(t_emb)                        # (B, hidden_dim)
+        t_emb = self.t_embed(t_emb)  # (B, hidden_dim)
 
         # Project x_t: (B, T_seq, D) -> (B, T_seq, hidden_dim)
         h = self.input_proj(x_t)
@@ -200,6 +202,7 @@ class ScoreNetwork(nn.Module):
 # ---------------------------------------------------------------------------
 # Diffusion loss
 # ---------------------------------------------------------------------------
+
 
 def diffusion_loss(
     score_net: ScoreNetwork,
@@ -227,6 +230,7 @@ def diffusion_loss(
 # ---------------------------------------------------------------------------
 # DDPM reverse-diffusion sampler
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def ddpm_sample(
@@ -299,6 +303,7 @@ def ddpm_sample(
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class DiffusionLMTrainer:
     """Trains a ScoreNetwork over embedded token sequences.

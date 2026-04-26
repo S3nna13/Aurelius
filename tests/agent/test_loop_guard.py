@@ -12,10 +12,10 @@ from src.agent.loop_guard import (
     StallReason,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def default_guard() -> AgentLoopGuard:
@@ -39,6 +39,7 @@ def tight_guard() -> AgentLoopGuard:
 # Registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry_contains_loop_guard():
     assert "loop_guard" in AGENT_REGISTRY
     assert AGENT_REGISTRY["loop_guard"] is AgentLoopGuard
@@ -47,6 +48,7 @@ def test_registry_contains_loop_guard():
 # ---------------------------------------------------------------------------
 # Normal (non-terminating) operation
 # ---------------------------------------------------------------------------
+
 
 def test_ok_result_for_fresh_step(default_guard):
     result = default_guard.update({"type": "search"}, {}, progress_signal=0.5)
@@ -64,6 +66,7 @@ def test_steps_taken_increments(default_guard):
 # ---------------------------------------------------------------------------
 # MAX_STEPS
 # ---------------------------------------------------------------------------
+
 
 def test_max_steps_triggers(tight_guard):
     """Hitting max_steps (5) should terminate with MAX_STEPS."""
@@ -83,6 +86,7 @@ def test_max_steps_message_contains_limit(tight_guard):
 # ---------------------------------------------------------------------------
 # NO_PROGRESS
 # ---------------------------------------------------------------------------
+
 
 def test_no_progress_triggers(tight_guard):
     """3 consecutive zero-progress steps → NO_PROGRESS."""
@@ -107,12 +111,12 @@ def test_progress_above_threshold_resets_window(tight_guard):
 # REPEATED_ACTION
 # ---------------------------------------------------------------------------
 
+
 def test_repeated_action_triggers(tight_guard):
     """Same action appearing max_action_repeats (2) times → REPEATED_ACTION."""
     action = {"type": "search"}
-    result = None
     # First occurrence: appended to deque (count=0 before append → OK)
-    r1 = tight_guard.update(action, {}, progress_signal=1.0)
+    tight_guard.update(action, {}, progress_signal=1.0)
     # Second occurrence: count=1 before append → CYCLE_DETECTED (count >= 1 but < 2)
     r2 = tight_guard.update(action, {}, progress_signal=1.0)
     assert r2.reason in (StallReason.CYCLE_DETECTED, StallReason.REPEATED_ACTION)
@@ -126,20 +130,17 @@ def test_repeated_action_exact_count(tight_guard):
         results.append(tight_guard.update(action, {}, progress_signal=1.0))
     reasons = [r.reason for r in results if r.should_terminate]
     # At least one termination should occur
-    assert any(
-        r in (StallReason.REPEATED_ACTION, StallReason.CYCLE_DETECTED) for r in reasons
-    )
+    assert any(r in (StallReason.REPEATED_ACTION, StallReason.CYCLE_DETECTED) for r in reasons)
 
 
 # ---------------------------------------------------------------------------
 # CYCLE_DETECTED
 # ---------------------------------------------------------------------------
 
+
 def test_cycle_detected_on_second_occurrence():
     """Second occurrence of same hash (within window, below repeat threshold) → CYCLE."""
-    guard = AgentLoopGuard(
-        LoopGuardConfig(max_action_repeats=3, history_window=10, max_steps=50)
-    )
+    guard = AgentLoopGuard(LoopGuardConfig(max_action_repeats=3, history_window=10, max_steps=50))
     action = {"type": "cycle_action"}
     r1 = guard.update(action, {}, progress_signal=1.0)
     assert r1.should_terminate is False  # first time is fine
@@ -151,6 +152,7 @@ def test_cycle_detected_on_second_occurrence():
 # ---------------------------------------------------------------------------
 # reset()
 # ---------------------------------------------------------------------------
+
 
 def test_reset_clears_steps(tight_guard):
     for i in range(3):
@@ -173,6 +175,7 @@ def test_reset_clears_history(tight_guard):
 # action_hash
 # ---------------------------------------------------------------------------
 
+
 def test_action_hash_deterministic(default_guard):
     action = {"type": "search", "query": "hello"}
     h1 = default_guard._action_hash(action)
@@ -194,6 +197,7 @@ def test_action_hash_length(default_guard):
 # ---------------------------------------------------------------------------
 # LoopGuardResult shape
 # ---------------------------------------------------------------------------
+
 
 def test_result_is_dataclass(default_guard):
     result = default_guard.update({"type": "x"}, {})

@@ -1,26 +1,24 @@
 """Tests for src/data/augmentation.py — covers both the original class-based
 transforms and the new functional API."""
 
-import pytest
 import torch
 
 from src.data.augmentation import (
-    # Original transforms
-    RandomTokenMask,
-    TokenDropout,
-    SpanCorruption,
     # New functional API
     AugmentationConfig,
-    token_masking,
-    token_replacement,
-    token_deletion,
-    token_insertion,
+    AugmentedDataset,
+    # Original transforms
+    RandomTokenMask,
+    SpanCorruption,
+    TokenAugmenter,
+    TokenDropout,
     adjacent_swap,
     span_masking,
-    TokenAugmenter,
-    AugmentedDataset,
+    token_deletion,
+    token_insertion,
+    token_masking,
+    token_replacement,
 )
-
 
 # ---------------------------------------------------------------------------
 # Original class-based transform tests (9 tests)
@@ -197,8 +195,7 @@ def test_adjacent_swap_same_multiset():
 # 12. span_masking output shape matches input
 def test_span_masking_shape():
     x = torch.randint(2, 256, (2, 40))
-    masked, mask = span_masking(x, span_mask_prob=0.15, mean_span_len=3,
-                                 mask_token_id=1)
+    masked, mask = span_masking(x, span_mask_prob=0.15, mean_span_len=3, mask_token_id=1)
     assert masked.shape == x.shape
     assert mask.shape == x.shape
 
@@ -206,16 +203,21 @@ def test_span_masking_shape():
 # 13. span_masking masked positions contain mask_token_id
 def test_span_masking_mask_token_id():
     x = torch.randint(2, 256, (1, 60))
-    masked, mask = span_masking(x, span_mask_prob=0.3, mean_span_len=3,
-                                 mask_token_id=99)
+    masked, mask = span_masking(x, span_mask_prob=0.3, mean_span_len=3, mask_token_id=99)
     assert (masked[mask] == 99).all()
 
 
 # 14. TokenAugmenter.augment returns Tensor
 def test_token_augmenter_augment_returns_tensor():
-    cfg = AugmentationConfig(mask_prob=0.15, replace_prob=0.1,
-                              delete_prob=0.0, insert_prob=0.0,
-                              swap_prob=0.1, vocab_size=256, seed=42)
+    cfg = AugmentationConfig(
+        mask_prob=0.15,
+        replace_prob=0.1,
+        delete_prob=0.0,
+        insert_prob=0.0,
+        swap_prob=0.1,
+        vocab_size=256,
+        seed=42,
+    )
     aug = TokenAugmenter(cfg)
     x = torch.randint(2, 256, (1, 32))
     out = aug.augment(x)
@@ -224,9 +226,15 @@ def test_token_augmenter_augment_returns_tensor():
 
 # 15. TokenAugmenter.augment_with_labels returns (Tensor, Tensor)
 def test_token_augmenter_augment_with_labels():
-    cfg = AugmentationConfig(mask_prob=0.15, replace_prob=0.0,
-                              delete_prob=0.0, insert_prob=0.0,
-                              swap_prob=0.0, vocab_size=256, seed=7)
+    cfg = AugmentationConfig(
+        mask_prob=0.15,
+        replace_prob=0.0,
+        delete_prob=0.0,
+        insert_prob=0.0,
+        swap_prob=0.0,
+        vocab_size=256,
+        seed=7,
+    )
     aug = TokenAugmenter(cfg)
     x = torch.randint(2, 256, (1, 20))
     augmented, original = aug.augment_with_labels(x)
@@ -238,8 +246,9 @@ def test_token_augmenter_augment_with_labels():
 # 16. AugmentedDataset len matches input list
 def test_augmented_dataset_len():
     seqs = [torch.randint(2, 256, (20,)) for _ in range(10)]
-    cfg = AugmentationConfig(mask_prob=0.15, replace_prob=0.0,
-                              delete_prob=0.0, insert_prob=0.0, swap_prob=0.0)
+    cfg = AugmentationConfig(
+        mask_prob=0.15, replace_prob=0.0, delete_prob=0.0, insert_prob=0.0, swap_prob=0.0
+    )
     aug = TokenAugmenter(cfg)
     ds = AugmentedDataset(seqs, aug)
     assert len(ds) == 10
@@ -252,8 +261,9 @@ def test_augmented_dataset_get_batch_padding():
         torch.randint(2, 256, (20,)),
         torch.randint(2, 256, (15,)),
     ]
-    cfg = AugmentationConfig(mask_prob=0.0, replace_prob=0.0,
-                              delete_prob=0.0, insert_prob=0.0, swap_prob=0.0)
+    cfg = AugmentationConfig(
+        mask_prob=0.0, replace_prob=0.0, delete_prob=0.0, insert_prob=0.0, swap_prob=0.0
+    )
     aug = TokenAugmenter(cfg)
     ds = AugmentedDataset(seqs, aug)
     aug_batch, ori_batch = ds.get_batch([0, 1, 2])

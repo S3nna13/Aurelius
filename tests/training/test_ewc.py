@@ -1,8 +1,9 @@
 """Tests for Elastic Weight Consolidation (EWC)."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -55,6 +56,7 @@ def _make_trainer(model):
 # 1. EWCConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ewcconfig_default_lambda():
     cfg = EWCConfig()
     assert cfg.ewc_lambda == 1000.0
@@ -68,6 +70,7 @@ def test_ewcconfig_default_n_fisher_samples():
 # ---------------------------------------------------------------------------
 # 2-5. compute_fisher_diagonal
 # ---------------------------------------------------------------------------
+
 
 def test_compute_fisher_returns_dict():
     model = _make_model()
@@ -104,6 +107,7 @@ def test_compute_fisher_shapes_match_params():
 # ---------------------------------------------------------------------------
 # 6-9. ewc_penalty
 # ---------------------------------------------------------------------------
+
 
 def test_ewc_penalty_returns_scalar():
     model = _make_model()
@@ -157,6 +161,7 @@ def test_ewc_penalty_scales_with_lambda():
 # 10-14. EWCTrainer
 # ---------------------------------------------------------------------------
 
+
 def test_ewctrainer_starts_not_consolidated():
     model = _make_model()
     trainer = _make_trainer(model)
@@ -208,6 +213,7 @@ def test_ewctrainer_total_loss_equals_sum():
 # ---------------------------------------------------------------------------
 # 15-16. TaskSequence
 # ---------------------------------------------------------------------------
+
 
 def test_task_sequence_starts_empty():
     ts = TaskSequence()

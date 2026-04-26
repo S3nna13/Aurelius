@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.dense_retrieval import (
@@ -42,6 +41,7 @@ def small_cfg(**kwargs) -> DenseRetrievalConfig:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = DenseRetrievalConfig()
     assert cfg.embed_dim == 64
@@ -56,6 +56,7 @@ def test_config_defaults():
 # 2. test_compute_similarity_cosine_shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_similarity_cosine_shape():
     Q, N, D = 3, 10, EMBED_DIM
     query = torch.randn(Q, D)
@@ -67,6 +68,7 @@ def test_compute_similarity_cosine_shape():
 # ---------------------------------------------------------------------------
 # 3. test_compute_similarity_self — cosine(x, x) → ~1.0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_similarity_self():
     torch.manual_seed(0)
@@ -80,6 +82,7 @@ def test_compute_similarity_self():
 # ---------------------------------------------------------------------------
 # 4. test_compute_similarity_l2_nonneg — l2 returns non-positive values
 # ---------------------------------------------------------------------------
+
 
 def test_compute_similarity_l2_nonneg():
     torch.manual_seed(1)
@@ -95,6 +98,7 @@ def test_compute_similarity_l2_nonneg():
 # 5. test_kmeans_cluster_shapes
 # ---------------------------------------------------------------------------
 
+
 def test_kmeans_cluster_shapes():
     torch.manual_seed(2)
     N, D, k = 50, EMBED_DIM, 6
@@ -108,6 +112,7 @@ def test_kmeans_cluster_shapes():
 # 6. test_kmeans_cluster_assignment_range
 # ---------------------------------------------------------------------------
 
+
 def test_kmeans_cluster_assignment_range():
     torch.manual_seed(3)
     N, D, k = 40, EMBED_DIM, 5
@@ -120,6 +125,7 @@ def test_kmeans_cluster_assignment_range():
 # ---------------------------------------------------------------------------
 # 7. test_pq_encode_shape
 # ---------------------------------------------------------------------------
+
 
 def test_pq_encode_shape():
     torch.manual_seed(4)
@@ -137,6 +143,7 @@ def test_pq_encode_shape():
 # 8. test_pq_decode_shape
 # ---------------------------------------------------------------------------
 
+
 def test_pq_decode_shape():
     torch.manual_seed(5)
     cfg = small_cfg()
@@ -153,6 +160,7 @@ def test_pq_decode_shape():
 # ---------------------------------------------------------------------------
 # 9. test_pq_encode_decode_approx — decoded ≈ original within reasonable error
 # ---------------------------------------------------------------------------
+
 
 def test_pq_encode_decode_approx():
     torch.manual_seed(6)
@@ -180,6 +188,7 @@ def test_pq_encode_decode_approx():
 # 10. test_pq_asymmetric_distance_shape
 # ---------------------------------------------------------------------------
 
+
 def test_pq_asymmetric_distance_shape():
     torch.manual_seed(7)
     cfg = small_cfg()
@@ -199,6 +208,7 @@ def test_pq_asymmetric_distance_shape():
 # 11. test_ivf_build_and_len
 # ---------------------------------------------------------------------------
 
+
 def test_ivf_build_and_len():
     torch.manual_seed(8)
     cfg = small_cfg()
@@ -211,6 +221,7 @@ def test_ivf_build_and_len():
 # ---------------------------------------------------------------------------
 # 12. test_ivf_search_returns_top_k
 # ---------------------------------------------------------------------------
+
 
 def test_ivf_search_returns_top_k():
     torch.manual_seed(9)
@@ -228,6 +239,7 @@ def test_ivf_search_returns_top_k():
 # ---------------------------------------------------------------------------
 # 13. test_dense_retriever_exact_search_correct
 # ---------------------------------------------------------------------------
+
 
 def test_dense_retriever_exact_search_correct():
     torch.manual_seed(10)
@@ -248,6 +260,7 @@ def test_dense_retriever_exact_search_correct():
 # ---------------------------------------------------------------------------
 # 14. test_dense_retriever_search_result_keys
 # ---------------------------------------------------------------------------
+
 
 def test_dense_retriever_search_result_keys():
     torch.manual_seed(11)
@@ -271,6 +284,7 @@ def test_dense_retriever_search_result_keys():
 # ---------------------------------------------------------------------------
 # 15. test_dense_retriever_evaluate_recall_range
 # ---------------------------------------------------------------------------
+
 
 def test_dense_retriever_evaluate_recall_range():
     torch.manual_seed(12)

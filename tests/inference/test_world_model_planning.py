@@ -6,18 +6,18 @@ Configuration used across all tests:
 """
 
 import math
+
 import torch
-import pytest
 
 from src.inference.world_model_planning import (
+    LatentDecoder,
     LatentEncoder,
     LatentTransitionModel,
-    RewardPredictor,
-    LatentDecoder,
-    WorldModel,
-    WorldModelTrainer,
     PlanningAgent,
+    RewardPredictor,
+    WorldModel,
     WorldModelConfig,
+    WorldModelTrainer,
 )
 
 # ---------------------------------------------------------------------------
@@ -59,6 +59,7 @@ def make_actions() -> torch.Tensor:
 # LatentEncoder
 # ---------------------------------------------------------------------------
 
+
 def test_latent_encoder_output_shape():
     encoder = LatentEncoder(D_MODEL, D_LATENT, VOCAB_SIZE)
     ids = make_input_ids()
@@ -76,6 +77,7 @@ def test_latent_encoder_no_nan():
 # ---------------------------------------------------------------------------
 # LatentTransitionModel
 # ---------------------------------------------------------------------------
+
 
 def test_transition_model_output_shape():
     model = LatentTransitionModel(D_LATENT, N_ACTIONS)
@@ -110,6 +112,7 @@ def test_transition_model_no_nan():
 # RewardPredictor
 # ---------------------------------------------------------------------------
 
+
 def test_reward_predictor_output_shape():
     rp = RewardPredictor(D_LATENT)
     z = make_latent()
@@ -127,6 +130,7 @@ def test_reward_predictor_scalar_per_batch():
 # ---------------------------------------------------------------------------
 # LatentDecoder
 # ---------------------------------------------------------------------------
+
 
 def test_latent_decoder_output_shape():
     decoder = LatentDecoder(D_LATENT, D_MODEL, VOCAB_SIZE, SEQ_LEN)
@@ -147,6 +151,7 @@ def test_latent_decoder_no_nan():
 # ---------------------------------------------------------------------------
 # WorldModel
 # ---------------------------------------------------------------------------
+
 
 def test_world_model_encode_shape():
     wm = make_world_model()
@@ -177,7 +182,7 @@ def test_world_model_imagination_rollout_trajectory_shape():
     actions = torch.randint(0, N_ACTIONS, (B, H))
     z_traj, rewards = wm.imagination_rollout(z0, actions)
     assert z_traj.shape == (B, H + 1, D_LATENT), (
-        f"Expected ({B}, {H+1}, {D_LATENT}), got {z_traj.shape}"
+        f"Expected ({B}, {H + 1}, {D_LATENT}), got {z_traj.shape}"
     )
 
 
@@ -201,6 +206,7 @@ def test_world_model_imagination_rollout_z0_preserved():
 # ---------------------------------------------------------------------------
 # WorldModelTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_reconstruction_loss_finite():
     wm = make_world_model()
@@ -251,6 +257,7 @@ def test_trainer_train_step_losses_finite():
 # PlanningAgent
 # ---------------------------------------------------------------------------
 
+
 def test_planning_agent_random_shooting_shape():
     wm = make_world_model()
     agent = PlanningAgent(wm, horizon=H, n_rollouts=4)
@@ -290,6 +297,7 @@ def test_planning_agent_greedy_rollout_valid_actions():
 # ---------------------------------------------------------------------------
 # WorldModelConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_world_model_config_defaults():
     cfg = WorldModelConfig()

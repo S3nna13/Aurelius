@@ -21,39 +21,119 @@ from .tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
 #: Backward-compatible deny patterns (substring-based).  These are exposed for
 #: tests and introspection but the runtime enforcement uses the stricter regex
 #: and allow-list checks below.
-SHELL_DENY_PATTERNS: frozenset[str] = frozenset({
-    "rm -rf",
-    ":(){ :|:& };:",
-    "dd if=",
-    "mkfs",
-    "shutdown",
-    "reboot",
-    "chmod 777 /",
-    "eval $(",
-    "> /dev/sda",
-})
+SHELL_DENY_PATTERNS: frozenset[str] = frozenset(
+    {
+        "rm -rf",
+        ":(){ :|:& };:",
+        "dd if=",
+        "mkfs",
+        "shutdown",
+        "reboot",
+        "chmod 777 /",
+        "eval $(",
+        "> /dev/sda",
+    }
+)
 
 #: Base commands considered generally safe (read-only or project-local).
-_ALLOWLIST: frozenset[str] = frozenset({
-    "ls", "pwd", "echo", "cat", "head", "tail", "wc", "sort", "uniq",
-    "cut", "tr", "diff", "git", "grep", "rg", "find", "fd", "uv",
-    "ruff", "mypy", "black", "isort", "which", "whoami", "date",
-    "true", "false", "stat", "file", "tree", "mkdir", "touch",
-    "cp", "mv", "rm", "ln", "chmod", "chown", "sleep", "yes",
-    "seq", "printf",
-})
+SHELL_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "ls",
+        "pwd",
+        "echo",
+        "cat",
+        "head",
+        "tail",
+        "wc",
+        "sort",
+        "uniq",
+        "cut",
+        "tr",
+        "diff",
+        "git",
+        "grep",
+        "rg",
+        "find",
+        "fd",
+        "uv",
+        "ruff",
+        "mypy",
+        "black",
+        "isort",
+        "which",
+        "whoami",
+        "date",
+        "true",
+        "false",
+        "stat",
+        "file",
+        "tree",
+        "mkdir",
+        "touch",
+        "cp",
+        "mv",
+        "rm",
+        "ln",
+        "chmod",
+        "chown",
+        "sleep",
+        "yes",
+        "seq",
+        "printf",
+    }
+)
 
 #: Commands that are frequently abused for arbitrary code execution.
 #: Any command whose base name matches one of these is rejected.
-_DENYLIST: frozenset[str] = frozenset({
-    "dd", "mkfs", "mkswap", "fdisk", "parted", "shred", "wipefs",
-    "shutdown", "reboot", "halt", "poweroff", "kexec", "umount",
-    "chattr", "python", "python3", "pip", "pip3", "node", "npm",
-    "npx", "yarn", "pnpm", "make", "cmake", "ninja", "env",
-    "bash", "sh", "zsh", "fish", "dash", "ksh", "csh",
-    "wget", "curl", "nc", "netcat", "telnet", "ssh", "scp",
-    "su", "sudo", "doas", "pkexec",
-})
+_DENYLIST: frozenset[str] = frozenset(
+    {
+        "dd",
+        "mkfs",
+        "mkswap",
+        "fdisk",
+        "parted",
+        "shred",
+        "wipefs",
+        "shutdown",
+        "reboot",
+        "halt",
+        "poweroff",
+        "kexec",
+        "umount",
+        "chattr",
+        "python",
+        "python3",
+        "pip",
+        "pip3",
+        "node",
+        "npm",
+        "npx",
+        "yarn",
+        "pnpm",
+        "make",
+        "cmake",
+        "ninja",
+        "env",
+        "bash",
+        "sh",
+        "zsh",
+        "fish",
+        "dash",
+        "ksh",
+        "csh",
+        "wget",
+        "curl",
+        "nc",
+        "netcat",
+        "telnet",
+        "ssh",
+        "scp",
+        "su",
+        "sudo",
+        "doas",
+        "pkexec",
+    }
+)
 
 #: Regex patterns matched against the *full* command string. Any hit
 #: marks the command as forbidden.
@@ -84,7 +164,7 @@ class ShellTool:
         deny_patterns: frozenset[str] | None = None,
     ) -> None:
         self.timeout_seconds = timeout_seconds
-        self._allowlist = allowlist if allowlist is not None else _ALLOWLIST
+        self._allowlist = allowlist if allowlist is not None else SHELL_ALLOWLIST
         self._denylist = denylist if denylist is not None else _DENYLIST
         self._deny_patterns = deny_patterns if deny_patterns is not None else SHELL_DENY_PATTERNS
 

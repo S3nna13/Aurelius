@@ -25,9 +25,9 @@ No heavyweight imports — pure standard library only at runtime.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
-
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Data containers
@@ -78,8 +78,8 @@ class CriticalPathAnalyzer:
 
     def compute(
         self,
-        main_steps_per_stage: List[int],
-        sub_steps_per_stage: List[List[int]],
+        main_steps_per_stage: list[int],
+        sub_steps_per_stage: list[list[int]],
     ) -> int:
         """Return the total critical-path step count.
 
@@ -99,9 +99,7 @@ class CriticalPathAnalyzer:
         """
         total = 0
         for t, main_s in enumerate(main_steps_per_stage):
-            parallel: List[int] = (
-                sub_steps_per_stage[t] if t < len(sub_steps_per_stage) else []
-            )
+            parallel: list[int] = sub_steps_per_stage[t] if t < len(sub_steps_per_stage) else []
             total += main_s + (max(parallel) if parallel else 0)
         return total
 
@@ -152,9 +150,9 @@ class AgentSwarm:
 
     def dispatch(
         self,
-        tasks: List[Any],
+        tasks: list[Any],
         subagent_fn: Callable[[Any, int], SubAgentResult],
-    ) -> List[SubAgentResult]:
+    ) -> list[SubAgentResult]:
         """Dispatch *tasks* to the frozen *subagent_fn* and collect results.
 
         Tasks are executed concurrently via a :class:`concurrent.futures.ThreadPoolExecutor`.
@@ -179,7 +177,7 @@ class AgentSwarm:
         """
         import concurrent.futures
 
-        results: List[SubAgentResult | None] = [None] * len(tasks)
+        results: list[SubAgentResult | None] = [None] * len(tasks)
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tasks), 8)) as pool:
             futures = {
                 pool.submit(subagent_fn, task, self.subagent_max_steps): i

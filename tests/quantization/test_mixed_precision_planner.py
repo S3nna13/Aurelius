@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.quantization.mixed_precision_planner import (
     LayerSensitivity,
     MixedPrecisionPlan,
     MixedPrecisionPlanner,
 )
 
-
 # ---------------------------------------------------------------------------
 # LayerSensitivity fields
 # ---------------------------------------------------------------------------
+
 
 class TestLayerSensitivityFields:
     def test_has_layer_name(self):
@@ -33,13 +31,16 @@ class TestLayerSensitivityFields:
         assert s.current_bits == 16
 
     def test_custom_current_bits(self):
-        s = LayerSensitivity(layer_name="fc1", sensitivity_score=0.5, recommended_bits=4, current_bits=8)
+        s = LayerSensitivity(
+            layer_name="fc1", sensitivity_score=0.5, recommended_bits=4, current_bits=8
+        )
         assert s.current_bits == 8
 
 
 # ---------------------------------------------------------------------------
 # MixedPrecisionPlan fields
 # ---------------------------------------------------------------------------
+
 
 class TestMixedPrecisionPlanFields:
     def _make_plan(self):
@@ -70,6 +71,7 @@ class TestMixedPrecisionPlanFields:
 # ---------------------------------------------------------------------------
 # MixedPrecisionPlanner.score_sensitivity
 # ---------------------------------------------------------------------------
+
 
 class TestScoreSensitivity:
     def test_high_gradient_weight_ratio_gives_8_bits(self):
@@ -110,7 +112,9 @@ class TestScoreSensitivity:
 
     def test_layer_name_preserved(self):
         planner = MixedPrecisionPlanner()
-        result = planner.score_sensitivity("test_layer", weight_magnitude=1.0, gradient_magnitude=0.5)
+        result = planner.score_sensitivity(
+            "test_layer", weight_magnitude=1.0, gradient_magnitude=0.5
+        )
         assert result.layer_name == "test_layer"
 
     def test_exactly_at_1_boundary(self):
@@ -129,6 +133,7 @@ class TestScoreSensitivity:
 # ---------------------------------------------------------------------------
 # MixedPrecisionPlanner.plan
 # ---------------------------------------------------------------------------
+
 
 class TestPlan:
     def _make_sensitivities(self):
@@ -211,6 +216,7 @@ class TestPlan:
 # ---------------------------------------------------------------------------
 # MixedPrecisionPlanner.validate_plan
 # ---------------------------------------------------------------------------
+
 
 class TestValidatePlan:
     def test_true_when_within_budget(self):

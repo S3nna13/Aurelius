@@ -69,4 +69,3 @@ def best_leaf_path(nodes: list[DraftNode]) -> list[int]:
             best_score = score
             best_path = path
     return best_path
-

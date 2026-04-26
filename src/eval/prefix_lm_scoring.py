@@ -3,12 +3,13 @@
 Computes log-probabilities of completions conditioned on prefixes using
 pure PyTorch — no external evaluation libraries required.
 """
+
 from __future__ import annotations
 
-import math
 import logging
-from dataclasses import dataclass, field
-from typing import Callable, List
+import math
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -31,6 +32,7 @@ class ScoringConfig:
             when reduction="mean" (default True).  When reduction is not
             "mean" this flag has no additional effect.
     """
+
     reduction: str = "mean"
     log_base: float = 2.0
     normalize_by_length: bool = True
@@ -48,6 +50,7 @@ class ScoringConfig:
 # Core primitives
 # ---------------------------------------------------------------------------
 
+
 def compute_token_log_probs(logits: Tensor, token_ids: Tensor) -> Tensor:
     """Compute per-token log-probabilities from raw logits.
 
@@ -63,11 +66,10 @@ def compute_token_log_probs(logits: Tensor, token_ids: Tensor) -> Tensor:
         raise ValueError(f"logits must be 2-D (T, vocab), got shape {logits.shape}")
     if token_ids.ndim != 1 or token_ids.shape[0] != logits.shape[0]:
         raise ValueError(
-            f"token_ids must be 1-D with length T={logits.shape[0]}, "
-            f"got shape {token_ids.shape}"
+            f"token_ids must be 1-D with length T={logits.shape[0]}, got shape {token_ids.shape}"
         )
 
-    log_probs = F.log_softmax(logits, dim=-1)           # (T, vocab)
+    log_probs = F.log_softmax(logits, dim=-1)  # (T, vocab)
     gathered = log_probs.gather(1, token_ids.unsqueeze(1)).squeeze(1)  # (T,)
     return gathered
 
@@ -107,12 +109,12 @@ def score_completion(
         return completion_lp * conversion
 
     if config.reduction == "sum":
-        return (completion_lp.sum() * conversion)
+        return completion_lp.sum() * conversion
 
     # reduction == "mean"
     if completion_lp.numel() == 0:
         return torch.tensor(float("-inf"))
-    return (completion_lp.mean() * conversion)
+    return completion_lp.mean() * conversion
 
 
 def rank_completions(scores: Tensor) -> Tensor:
@@ -136,6 +138,7 @@ def rank_completions(scores: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # High-level scorer
 # ---------------------------------------------------------------------------
+
 
 class PrefixLMScorer:
     """Score and rank completions using a causal language model.
@@ -170,8 +173,8 @@ class PrefixLMScorer:
 
     def score_batch(
         self,
-        inputs: List[Tensor],
-        completion_starts: List[int],
+        inputs: list[Tensor],
+        completion_starts: list[int],
     ) -> Tensor:
         """Score a batch of (prefix + completion) sequences independently.
 
@@ -182,16 +185,13 @@ class PrefixLMScorer:
         Returns:
             Float tensor of shape (n,) with one score per input.
         """
-        scores = [
-            self.score(inp, start)
-            for inp, start in zip(inputs, completion_starts)
-        ]
+        scores = [self.score(inp, start) for inp, start in zip(inputs, completion_starts)]
         return torch.stack(scores)
 
     def rank(
         self,
-        inputs: List[Tensor],
-        completion_starts: List[int],
+        inputs: list[Tensor],
+        completion_starts: list[int],
     ) -> Tensor:
         """Score then rank completions (rank 0 = best / highest score).
 
@@ -205,6 +205,7 @@ class PrefixLMScorer:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def perplexity_from_log_probs(log_probs: Tensor, base: float = 2.0) -> float:
     """Compute perplexity from per-token log-probabilities.

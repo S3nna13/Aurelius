@@ -4,16 +4,14 @@ Uses tiny configs to keep tests fast:
     D_HEAD=8, MAX_LEN=16, B=2, T=8
 """
 
-import math
-import pytest
 import torch
 
 from src.model.rope_cache import (
-    RopeCacheConfig,
-    RopeCache,
     CachedRoPEAttention,
-    build_cos_sin_cache,
+    RopeCache,
+    RopeCacheConfig,
     apply_rotary_with_cache,
+    build_cos_sin_cache,
     rotate_half,
 )
 
@@ -25,7 +23,7 @@ MAX_LEN = 16
 B = 2
 T = 8
 D_MODEL = 16
-N_HEADS = 2   # d_head = D_MODEL // N_HEADS = 8
+N_HEADS = 2  # d_head = D_MODEL // N_HEADS = 8
 
 
 # ---------------------------------------------------------------------------
@@ -105,8 +103,12 @@ def test_rope_cache_get_shape():
     cfg = RopeCacheConfig(d_head=D_HEAD, max_seq_len=MAX_LEN)
     cache = RopeCache(cfg)
     cos, sin = cache.get(T)
-    assert cos.shape == (T, D_HEAD // 2), f"cos shape expected ({T}, {D_HEAD // 2}), got {cos.shape}"
-    assert sin.shape == (T, D_HEAD // 2), f"sin shape expected ({T}, {D_HEAD // 2}), got {sin.shape}"
+    assert cos.shape == (T, D_HEAD // 2), (
+        f"cos shape expected ({T}, {D_HEAD // 2}), got {cos.shape}"
+    )
+    assert sin.shape == (T, D_HEAD // 2), (
+        f"sin shape expected ({T}, {D_HEAD // 2}), got {sin.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +153,7 @@ def test_cached_rope_attention_output_shape():
     attn = CachedRoPEAttention(D_MODEL, N_HEADS, cfg)
     x = torch.randn(B, T, D_MODEL)
     out = attn(x)
-    assert out.shape == (B, T, D_MODEL), (
-        f"Expected ({B}, {T}, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (B, T, D_MODEL), f"Expected ({B}, {T}, {D_MODEL}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ def test_rope_not_idempotent():
 def test_pythagorean_identity():
     """cos^2 + sin^2 must equal 1 for every (position, dimension) entry."""
     cos, sin = build_cos_sin_cache(D_HEAD, MAX_LEN)
-    identity = cos ** 2 + sin ** 2
+    identity = cos**2 + sin**2
     assert torch.allclose(identity, torch.ones_like(identity), atol=1e-5), (
         "cos^2 + sin^2 must equal 1 (Pythagorean identity)"
     )
@@ -202,7 +202,7 @@ def test_rope_position_dependent():
     cos, sin = build_cos_sin_cache(D_HEAD, MAX_LEN)
     v = torch.randn(D_HEAD)
 
-    x0 = v.unsqueeze(0).unsqueeze(0)              # (1, 1, D_HEAD)
+    x0 = v.unsqueeze(0).unsqueeze(0)  # (1, 1, D_HEAD)
     out0 = apply_rotary_with_cache(x0, cos[:1], sin[:1])
 
     x5 = v.unsqueeze(0).unsqueeze(0)

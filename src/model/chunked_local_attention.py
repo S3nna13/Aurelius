@@ -125,7 +125,11 @@ class ChunkedLocalAttention(nn.Module):
 
         # Reshape into chunks: (B, n_chunks, C, H, Dh) -> (B, n_chunks, H, C, Dh)
         def _chunk(t: torch.Tensor) -> torch.Tensor:
-            return t.view(B, n_chunks, C, self.n_heads, self.head_dim).permute(0, 1, 3, 2, 4).contiguous()
+            return (
+                t.view(B, n_chunks, C, self.n_heads, self.head_dim)
+                .permute(0, 1, 3, 2, 4)
+                .contiguous()
+            )
 
         qc = _chunk(q)
         kc = _chunk(k)
@@ -142,13 +146,19 @@ class ChunkedLocalAttention(nn.Module):
 
         dropout_p = self.dropout_p if self.training else 0.0
         out = F.scaled_dot_product_attention(
-            qc, kc, vc,
+            qc,
+            kc,
+            vc,
             attn_mask=attn_mask,
             dropout_p=dropout_p,
             is_causal=False,
         )
         # (BN, H, C, Dh) -> (B, n_chunks, H, C, Dh) -> (B, n_chunks, C, H, Dh) -> (B, S_pad, D)
-        out = out.view(B, n_chunks, self.n_heads, C, self.head_dim).permute(0, 1, 3, 2, 4).contiguous()
+        out = (
+            out.view(B, n_chunks, self.n_heads, C, self.head_dim)
+            .permute(0, 1, 3, 2, 4)
+            .contiguous()
+        )
         out = out.view(B, S_pad, self.n_heads * self.head_dim)
 
         if pad:

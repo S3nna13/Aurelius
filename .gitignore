@@ -52,7 +52,22 @@ aurelius.egg-info/
 
 # Deployment
 .dockerignore
+data/
 
 # IDE
 *.swo
 *~
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Alembic
+alembic/versions/*.pyc
+
+# Coverage
+htmlcov/
+.coverage
+coverage/

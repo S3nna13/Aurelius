@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.backends.tgi_backend_adapter import (
+    TGI_BACKEND_REGISTRY,
     TGIBackendAdapter,
     TGIBackendAdapterError,
-    TGI_BACKEND_REGISTRY,
 )
 
 
@@ -155,9 +155,7 @@ class TestTGIBackendAdapterGenerate:
         adapter = TGIBackendAdapter("http://localhost:8080", "model")
         mock_resp = _make_response({"other_field": "value"})
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            with pytest.raises(
-                TGIBackendAdapterError, match="missing 'generated_text'"
-            ):
+            with pytest.raises(TGIBackendAdapterError, match="missing 'generated_text'"):
                 adapter.generate("hello")
 
 

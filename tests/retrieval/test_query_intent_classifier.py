@@ -6,10 +6,10 @@ import pytest
 
 from src.retrieval.query_intent_classifier import IntentRule, QueryIntentClassifier
 
-
 # ---------------------------------------------------------------------------
 # IntentRule dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestIntentRule:
     def test_basic_construction(self):
@@ -46,6 +46,7 @@ class TestIntentRule:
 # ---------------------------------------------------------------------------
 # classify — built-in intents
 # ---------------------------------------------------------------------------
+
 
 class TestClassifyBuiltinIntents:
     def setup_method(self):
@@ -121,6 +122,7 @@ class TestClassifyBuiltinIntents:
 # confidence
 # ---------------------------------------------------------------------------
 
+
 class TestConfidence:
     def setup_method(self):
         self.clf = QueryIntentClassifier()
@@ -154,6 +156,7 @@ class TestConfidence:
 # batch_classify
 # ---------------------------------------------------------------------------
 
+
 class TestBatchClassify:
     def setup_method(self):
         self.clf = QueryIntentClassifier()
@@ -185,20 +188,17 @@ class TestBatchClassify:
 # register_rule
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterRule:
     def setup_method(self):
         self.clf = QueryIntentClassifier()
 
     def test_custom_rule_overrides(self):
-        self.clf.register_rule(
-            IntentRule(intent="custom", keywords=("zzzzzzzz",), weight=10.0)
-        )
+        self.clf.register_rule(IntentRule(intent="custom", keywords=("zzzzzzzz",), weight=10.0))
         assert self.clf.classify("zzzzzzzz") == "custom"
 
     def test_register_rule_affects_confidence(self):
-        self.clf.register_rule(
-            IntentRule(intent="custom", keywords=("zzzzzzzz",), weight=10.0)
-        )
+        self.clf.register_rule(IntentRule(intent="custom", keywords=("zzzzzzzz",), weight=10.0))
         c = self.clf.confidence("zzzzzzzz")
         assert c > 0.9
 
@@ -217,6 +217,7 @@ class TestRegisterRule:
 # ---------------------------------------------------------------------------
 # Input validation / security
 # ---------------------------------------------------------------------------
+
 
 class TestInputValidation:
     def setup_method(self):

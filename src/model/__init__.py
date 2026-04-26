@@ -2,7 +2,7 @@
 
 import sys
 
-from .dsa_attention import DSAAttention, DSAConfig, LightningIndexer
+from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from .checkpoint_migration import (
     MIGRATION_REGISTRY,
@@ -13,6 +13,7 @@ from .checkpoint_migration import (
     register_migration,
 )
 from .chunked_local_attention import ChunkedLocalAttention
+from .colt5_conditional import CoLT5Block, CoLT5Config, CoLT5FFN
 from .compatibility import (
     CompatibilityError,
     CompatibilityVerdict,
@@ -23,6 +24,8 @@ from .compatibility import (
     parse_semver,
 )
 from .config import AureliusConfig
+from .dp_aware_moe_routing import DPAwareMoERouter
+from .dsa_attention import DSAAttention, DSAConfig, LightningIndexer
 from .factory import (
     DEFAULT_BACKBONE_BUILDERS,
     FactoryError,
@@ -42,6 +45,9 @@ from .family import (
     register_variant,
 )
 from .ffn import SwiGLUFFN
+from .fim_lm import FIMConfig, FIMDocument, FIMLossFilter, FIMTransformer
+from .flash_mla import FlashMLAAttention, FlashMLAConfig
+from .gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 from .head_registry import (
     HEAD_REGISTRY,
     HeadFactoryError,
@@ -52,39 +58,6 @@ from .head_registry import (
     heads_by_kind,
     list_heads,
     register_head,
-)
-from .lambda_attention import LambdaAttention
-from .mtp_shared import SharedMTPHead
-from .model_merging import (
-    MERGING_REGISTRY,
-    MergeError,
-    MergeResult,
-    MergeStrategy,
-    ModelMerger,
-    dare_merge,
-    linear_merge,
-    slerp_merge,
-    ties_merge,
-)
-from .manifest import (
-    AURELIUS_REFERENCE_MANIFEST,
-    MODEL_MANIFEST_REGISTRY,
-    FamilyManifest,
-    ManifestValidationError,
-    ReleaseTrack,
-    dump_manifest,
-    get_manifest,
-    list_manifests,
-    load_manifest,
-    register_manifest,
-)
-from .manifest_v2 import (
-    MANIFEST_SCHEMA_VERSION,
-    compare_backend_contracts,
-    is_v2_manifest,
-    list_v2_manifests,
-    upgrade_to_v2,
-    v2_to_v1_dict,
 )
 from .interface_contract import (
     InterfaceContractBundle,
@@ -111,6 +84,42 @@ from .interface_framework import (
     TaskThreadSpec,
     Workstream,
 )
+from .lambda_attention import LambdaAttention
+from .linear_recurrent_unit import LRUConfig, LRULayer
+from .manifest import (
+    AURELIUS_REFERENCE_MANIFEST,
+    MODEL_MANIFEST_REGISTRY,
+    FamilyManifest,
+    ManifestValidationError,
+    ReleaseTrack,
+    dump_manifest,
+    get_manifest,
+    list_manifests,
+    load_manifest,
+    register_manifest,
+)
+from .manifest_v2 import (
+    MANIFEST_SCHEMA_VERSION,
+    compare_backend_contracts,
+    is_v2_manifest,
+    list_v2_manifests,
+    upgrade_to_v2,
+    v2_to_v1_dict,
+)
+from .mla_256 import MLA256Attention, MLA256Config
+from .model_merging import (
+    MERGING_REGISTRY,
+    MergeError,
+    MergeResult,
+    MergeStrategy,
+    ModelMerger,
+    dare_merge,
+    linear_merge,
+    slerp_merge,
+    ties_merge,
+)
+from .moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
+from .mtp_shared import SharedMTPHead
 from .parallel_attention import ParallelAttentionBlock
 from .release_track_router import (
     DEV_POLICY,
@@ -122,19 +131,8 @@ from .release_track_router import (
     RouterOverrideError,
     RouterPolicy,
 )
-from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
-from .zamba_block import ZambaBlock, ZambaConfig, ZambaSSMLayer, ZambaSharedAttention
-from .colt5_conditional import CoLT5Config, CoLT5FFN, CoLT5Block
-from .linear_recurrent_unit import LRUConfig, LRULayer
-from .fim_lm import FIMConfig, FIMDocument, FIMTransformer, FIMLossFilter
-from .vision_cross_attention import VisionCrossAttention, VisionCrossAttnConfig
-from .dp_aware_moe_routing import DPAwareMoERouter
-from .gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
-from .flash_mla import FlashMLAAttention, FlashMLAConfig
-from .mla_256 import MLA256Attention, MLA256Config
-from .striped_attention import StripedAttention, StripedAttentionConfig
-from .moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
 from .rms_norm import RMSNorm
+from .striped_attention import StripedAttention, StripedAttentionConfig
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
 from .variant_adapter import (
     VARIANT_ADAPTER_ATTACHMENTS,
@@ -148,6 +146,8 @@ from .variant_adapter import (
     list_adapters,
     register_adapter,
 )
+from .vision_cross_attention import VisionCrossAttention, VisionCrossAttnConfig
+from .zamba_block import ZambaBlock, ZambaConfig, ZambaSharedAttention, ZambaSSMLayer
 
 # ---------------------------------------------------------------------------
 # Model component registry — additive, cycle-safe
@@ -170,6 +170,7 @@ MODEL_COMPONENT_REGISTRY["fim_transformer"] = FIMTransformer
 MODEL_COMPONENT_REGISTRY["vision_cross_attention"] = VisionCrossAttention
 
 from .matryoshka_embedding import MatryoshkaConfig, MatryoshkaEmbedding
+
 MODEL_COMPONENT_REGISTRY["matryoshka_embedding"] = MatryoshkaEmbedding
 
 _module = sys.modules[__name__]

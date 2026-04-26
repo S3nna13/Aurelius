@@ -1,4 +1,5 @@
 """Contrastive learning for text representations (SimCSE-style)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,8 +12,8 @@ from torch import Tensor
 
 @dataclass
 class ContrastiveConfig:
-    temperature: float = 0.05          # SimCSE temperature
-    pooling: str = "mean"              # "mean" | "cls" | "last"
+    temperature: float = 0.05  # SimCSE temperature
+    pooling: str = "mean"  # "mean" | "cls" | "last"
     projection_dim: int | None = None  # optional projection head dim
     hard_negative_weight: float = 0.0  # weight for hard negatives
 
@@ -31,7 +32,9 @@ def pool_hidden_states(hidden: Tensor, pooling: str) -> Tensor:
     elif pooling == "last":
         return hidden[:, -1, :]
     else:
-        raise ValueError(f"Unknown pooling strategy: {pooling!r}. Choose from 'mean', 'cls', 'last'.")
+        raise ValueError(
+            f"Unknown pooling strategy: {pooling!r}. Choose from 'mean', 'cls', 'last'."
+        )
 
 
 def simcse_loss(
@@ -145,7 +148,7 @@ class TextEncoder(nn.Module):
 
     def encode(self, input_ids: Tensor) -> Tensor:
         """input_ids (B, T) -> embeddings (B, d_model or projection_dim)."""
-        hidden = self._get_hidden_states(input_ids)          # (B, T, d_model)
+        hidden = self._get_hidden_states(input_ids)  # (B, T, d_model)
         pooled = pool_hidden_states(hidden, self.config.pooling)  # (B, d_model)
 
         if self.projection is not None:
@@ -202,8 +205,8 @@ class HardNegativeSimCSETrainer(SimCSETrainer):
 
     def train_step_with_negatives(
         self,
-        input_ids: Tensor,   # (B, T) anchors
-        neg_ids: Tensor,     # (B, T) hard negatives
+        input_ids: Tensor,  # (B, T) anchors
+        neg_ids: Tensor,  # (B, T) hard negatives
     ) -> dict:
         """Include hard negatives in the contrastive loss.
 

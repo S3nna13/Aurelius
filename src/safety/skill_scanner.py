@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Tuple
 
-SEVERITY_WEIGHTS: Dict[str, float] = {
+SEVERITY_WEIGHTS: dict[str, float] = {
     "low": 0.2,
     "medium": 0.5,
     "high": 0.8,
@@ -24,7 +24,7 @@ WARN_THRESHOLD: float = 0.75
 _EV = "ev" + "al"  # avoid tripping static code-review hooks that scan source
 _EX = "ex" + "ec"
 
-SHELL_EXEC_PATTERNS: Tuple[Tuple[str, str], ...] = (
+SHELL_EXEC_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\bcurl\b[^\n|]{0,200}\|\s*(?:sh|bash|zsh|dash)\b", "critical"),
     (r"\bwget\b[^\n|]{0,200}\|\s*(?:sh|bash|zsh|dash)\b", "critical"),
     (r"\bfetch\b[^\n|]{0,200}\|\s*(?:sh|bash)\b", "critical"),
@@ -41,7 +41,7 @@ SHELL_EXEC_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"\bpowershell\b[^\n]{0,120}-enc(?:odedcommand)?\b", "critical"),
 )
 
-FILESYSTEM_MUTATION_PATTERNS: Tuple[Tuple[str, str], ...] = (
+FILESYSTEM_MUTATION_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\brm\s+-[a-z]*[rf][a-z]*\s+/", "critical"),
     (r"\brm\s+-rf\s+~", "critical"),
     (r"\bchmod\s+(?:-R\s+)?0*777\b", "high"),
@@ -54,7 +54,7 @@ FILESYSTEM_MUTATION_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r":\(\)\{\s*:\|:&\s*\};:", "critical"),
 )
 
-CREDENTIAL_PATTERNS: Tuple[Tuple[str, str], ...] = (
+CREDENTIAL_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\bAKIA[0-9A-Z]{16}\b", "critical"),
     (r"\bASIA[0-9A-Z]{16}\b", "critical"),
     (r"(?i)\baws_secret_access_key\s*[:=]\s*[\"']?[A-Za-z0-9/+=]{30,}", "critical"),
@@ -66,8 +66,11 @@ CREDENTIAL_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"\beyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b", "high"),
 )
 
-PROMPT_INJECTION_PATTERNS: Tuple[Tuple[str, str], ...] = (
-    (r"\bignore\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above|preceding)\s+instructions?\b", "high"),
+PROMPT_INJECTION_PATTERNS: tuple[tuple[str, str], ...] = (
+    (
+        r"\bignore\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above|preceding)\s+instructions?\b",
+        "high",
+    ),
     (r"\bdisregard\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above)\s+instructions?\b", "high"),
     (r"\bforget\s+(?:everything|all|what|the\s+above|previous)\b", "medium"),
     (r"\bDAN\s+mode\b", "high"),
@@ -78,7 +81,7 @@ PROMPT_INJECTION_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"\boverride\s+(?:the\s+)?(?:system|instructions?|guidelines?)\b", "high"),
 )
 
-OBFUSCATION_PATTERNS: Tuple[Tuple[str, str], ...] = (
+OBFUSCATION_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\bString\.fromCharCode\s*\(", "high"),
     (r"\b" + _EV + r"\s*\(\s*atob\s*\(", "critical"),
     (r"\b" + _EV + r"\s*\(\s*(?:decodeURIComponent|unescape)\s*\(", "high"),
@@ -87,7 +90,7 @@ OBFUSCATION_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"[A-Za-z0-9+/]{120,}={0,2}", "medium"),
 )
 
-HTTP_FETCH_PATTERNS: Tuple[Tuple[str, str], ...] = (
+HTTP_FETCH_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\bpip\s+install\s+(?:-[a-zA-Z]+\s+)*https?://", "high"),
     (r"\bpip\s+install\s+git\+https?://", "high"),
     (r"\bnpm\s+install\s+(?:https?|git)\+?://", "high"),
@@ -96,7 +99,7 @@ HTTP_FETCH_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"\bgem\s+install\s+-[a-zA-Z]*\s+https?://", "medium"),
 )
 
-TELEMETRY_PATTERNS: Tuple[Tuple[str, str], ...] = (
+TELEMETRY_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\bhttps?://[^\s/\"']*\bwebhook\.site\b", "high"),
     (r"\bhttps?://[^\s/\"']*\brequestbin\.[a-z]+\b", "high"),
     (r"\bhttps?://[^\s/\"']*\bngrok(?:-free)?\.(?:io|app)\b", "high"),
@@ -106,7 +109,7 @@ TELEMETRY_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"\bhttps?://(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:/[^\s\"']*)?", "medium"),
 )
 
-WILDCARD_GRANT_PATTERNS: Tuple[Tuple[str, str], ...] = (
+WILDCARD_GRANT_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"(?im)^\s*tools?\s*:\s*[\"']?\*[\"']?\s*$", "high"),
     (r"(?im)^\s*permissions?\s*:\s*[\"']?(?:all|\*|unrestricted)[\"']?\s*$", "high"),
     (r"(?im)^\s*network\s*:\s*[\"']?(?:unrestricted|all|any)[\"']?\s*$", "high"),
@@ -114,31 +117,53 @@ WILDCARD_GRANT_PATTERNS: Tuple[Tuple[str, str], ...] = (
     (r"(?im)^\s*sandbox\s*:\s*(?:false|off|no|disabled)\s*$", "medium"),
 )
 
-HIDDEN_CHAR_CODEPOINTS: Tuple[str, ...] = (
-    "\u200b", "\u200c", "\u200d", "\u2060", "\ufeff",
-    "\u202e", "\u202d", "\u202a", "\u202b",
-    "\u2066", "\u2067", "\u2068", "\u2069",
+HIDDEN_CHAR_CODEPOINTS: tuple[str, ...] = (
+    "\u200b",
+    "\u200c",
+    "\u200d",
+    "\u2060",
+    "\ufeff",
+    "\u202e",
+    "\u202d",
+    "\u202a",
+    "\u202b",
+    "\u2066",
+    "\u2067",
+    "\u2068",
+    "\u2069",
 )
 HIDDEN_CHAR_SET = frozenset(HIDDEN_CHAR_CODEPOINTS)
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
-DEFAULT_TRUSTED_DOMAINS: Tuple[str, ...] = (
-    "github.com", "raw.githubusercontent.com", "gist.github.com",
-    "pypi.org", "files.pythonhosted.org",
-    "npmjs.com", "registry.npmjs.org",
-    "docs.python.org", "python.org",
-    "anthropic.com", "docs.anthropic.com",
-    "openai.com", "huggingface.co",
-    "wikipedia.org", "stackoverflow.com",
-    "readthedocs.io", "readthedocs.org",
-    "mozilla.org", "rust-lang.org", "crates.io",
-    "golang.org", "go.dev",
+DEFAULT_TRUSTED_DOMAINS: tuple[str, ...] = (
+    "github.com",
+    "raw.githubusercontent.com",
+    "gist.github.com",
+    "pypi.org",
+    "files.pythonhosted.org",
+    "npmjs.com",
+    "registry.npmjs.org",
+    "docs.python.org",
+    "python.org",
+    "anthropic.com",
+    "docs.anthropic.com",
+    "openai.com",
+    "huggingface.co",
+    "wikipedia.org",
+    "stackoverflow.com",
+    "readthedocs.io",
+    "readthedocs.org",
+    "mozilla.org",
+    "rust-lang.org",
+    "crates.io",
+    "golang.org",
+    "go.dev",
 )
-DEFAULT_TRUSTED_TLDS: Tuple[str, ...] = (".gov", ".edu", ".int")
+DEFAULT_TRUSTED_TLDS: tuple[str, ...] = (".gov", ".edu", ".int")
 
 _URL_RE = re.compile(r"\bhttps?://([^/\s\"'<>()]+)", re.IGNORECASE)
 
-_CATEGORY_TABLES: Tuple[Tuple[str, Tuple[Tuple[str, str], ...], int], ...] = (
+_CATEGORY_TABLES: tuple[tuple[str, tuple[tuple[str, str], ...], int], ...] = (
     ("shell_exec", SHELL_EXEC_PATTERNS, re.IGNORECASE),
     ("filesystem_mutation", FILESYSTEM_MUTATION_PATTERNS, re.IGNORECASE),
     ("credential", CREDENTIAL_PATTERNS, 0),
@@ -150,8 +175,8 @@ _CATEGORY_TABLES: Tuple[Tuple[str, Tuple[Tuple[str, str], ...], int], ...] = (
 )
 
 
-def _compile_category_tables() -> Dict[str, List[Tuple[re.Pattern, str, str]]]:
-    out: Dict[str, List[Tuple[re.Pattern, str, str]]] = {}
+def _compile_category_tables() -> dict[str, list[tuple[re.Pattern, str, str]]]:
+    out: dict[str, list[tuple[re.Pattern, str, str]]] = {}
     for cat, table, flags in _CATEGORY_TABLES:
         out[cat] = [(re.compile(p, flags), p, sev) for p, sev in table]
     return out
@@ -173,18 +198,18 @@ class Finding:
 
 @dataclass
 class SkillScanReport:
-    findings: List[Finding] = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
     risk_score: float = 0.0
     allow_level: str = "allow"
-    frontmatter: Dict[str, object] = field(default_factory=dict)
+    frontmatter: dict[str, object] = field(default_factory=dict)
     body: str = ""
 
 
 class SkillScanner:
     def __init__(
         self,
-        trusted_domains: Optional[Iterable[str]] = None,
-        trusted_tld_suffixes: Optional[Iterable[str]] = None,
+        trusted_domains: Iterable[str] | None = None,
+        trusted_tld_suffixes: Iterable[str] | None = None,
         allow_threshold: float = ALLOW_THRESHOLD,
         warn_threshold: float = WARN_THRESHOLD,
         max_scan_chars: int = _MAX_SCAN_CHARS,
@@ -210,7 +235,7 @@ class SkillScanner:
     def scan_markdown(self, text: object) -> SkillScanReport:
         normalised = self._normalise(text)
         frontmatter, body = self.scan_frontmatter_and_body(normalised)
-        findings: List[Finding] = []
+        findings: list[Finding] = []
         findings.extend(self._scan_hidden_chars(normalised))
         findings.extend(self._scan_regex_categories(normalised))
         findings.extend(self._scan_url_allowlist(normalised))
@@ -225,12 +250,12 @@ class SkillScanner:
             body=body,
         )
 
-    def scan_frontmatter_and_body(self, text: object) -> Tuple[Dict[str, object], str]:
+    def scan_frontmatter_and_body(self, text: object) -> tuple[dict[str, object], str]:
         normalised = self._normalise(text)
         return _parse_yaml_frontmatter(normalised)
 
-    def _scan_hidden_chars(self, text: str) -> List[Finding]:
-        findings: List[Finding] = []
+    def _scan_hidden_chars(self, text: str) -> list[Finding]:
+        findings: list[Finding] = []
         if not text:
             return findings
         bidi = ("\u202e", "\u202d", "\u2066", "\u2067", "\u2068", "\u2069")
@@ -238,31 +263,35 @@ class SkillScanner:
             zw_hits = [ch for ch in line if ch in HIDDEN_CHAR_SET]
             if zw_hits:
                 severity = "high" if any(ch in bidi for ch in zw_hits) else "medium"
-                findings.append(Finding(
-                    category="hidden_char",
-                    pattern="zero_width_or_bidi",
-                    severity=severity,
-                    line=lineno,
-                    match="".join("U+%04X" % ord(c) for c in zw_hits),
-                    context=_redact_controls(line)[:160],
-                ))
+                findings.append(
+                    Finding(
+                        category="hidden_char",
+                        pattern="zero_width_or_bidi",
+                        severity=severity,
+                        line=lineno,
+                        match="".join(f"U+{ord(c):04X}" for c in zw_hits),
+                        context=_redact_controls(line)[:160],
+                    )
+                )
             if _CONTROL_RE.search(line):
-                findings.append(Finding(
-                    category="hidden_char",
-                    pattern="c0_c1_control",
-                    severity="medium",
-                    line=lineno,
-                    match="control_chars",
-                    context=_redact_controls(line)[:160],
-                ))
+                findings.append(
+                    Finding(
+                        category="hidden_char",
+                        pattern="c0_c1_control",
+                        severity="medium",
+                        line=lineno,
+                        match="control_chars",
+                        context=_redact_controls(line)[:160],
+                    )
+                )
         return findings
 
-    def _scan_regex_categories(self, text: str) -> List[Finding]:
-        findings: List[Finding] = []
+    def _scan_regex_categories(self, text: str) -> list[Finding]:
+        findings: list[Finding] = []
         if not text:
             return findings
         lines = text.splitlines()
-        line_starts: List[int] = [0]
+        line_starts: list[int] = [0]
         total = 0
         for ln in lines:
             total += len(ln) + 1
@@ -273,22 +302,24 @@ class SkillScanner:
                     pos = m.start()
                     lineno = _bisect_line(line_starts, pos)
                     ctx = lines[lineno - 1] if 0 < lineno <= len(lines) else ""
-                    findings.append(Finding(
-                        category=category,
-                        pattern=raw_pat,
-                        severity=severity,
-                        line=lineno,
-                        match=m.group(0)[:160],
-                        context=ctx[:160],
-                    ))
+                    findings.append(
+                        Finding(
+                            category=category,
+                            pattern=raw_pat,
+                            severity=severity,
+                            line=lineno,
+                            match=m.group(0)[:160],
+                            context=ctx[:160],
+                        )
+                    )
         return findings
 
-    def _scan_url_allowlist(self, text: str) -> List[Finding]:
-        findings: List[Finding] = []
+    def _scan_url_allowlist(self, text: str) -> list[Finding]:
+        findings: list[Finding] = []
         if not text:
             return findings
         lines = text.splitlines()
-        line_starts: List[int] = [0]
+        line_starts: list[int] = [0]
         total = 0
         for ln in lines:
             total += len(ln) + 1
@@ -304,14 +335,16 @@ class SkillScanner:
             pos = m.start()
             lineno = _bisect_line(line_starts, pos)
             ctx = lines[lineno - 1] if 0 < lineno <= len(lines) else ""
-            findings.append(Finding(
-                category="url_disallow",
-                pattern="url_not_on_allowlist",
-                severity="medium",
-                line=lineno,
-                match=m.group(0)[:160],
-                context=ctx[:160],
-            ))
+            findings.append(
+                Finding(
+                    category="url_disallow",
+                    pattern="url_not_on_allowlist",
+                    severity="medium",
+                    line=lineno,
+                    match=m.group(0)[:160],
+                    context=ctx[:160],
+                )
+            )
         return findings
 
     def _is_trusted_host(self, host: str) -> bool:
@@ -327,7 +360,7 @@ class SkillScanner:
                 return True
         return False
 
-    def _combine_risk(self, findings: List[Finding]) -> float:
+    def _combine_risk(self, findings: list[Finding]) -> float:
         if not findings:
             return 0.0
         product = 1.0
@@ -337,7 +370,7 @@ class SkillScanner:
                 continue
             if w >= 1.0:
                 return 1.0
-            product *= (1.0 - w)
+            product *= 1.0 - w
         risk = 1.0 - product
         if risk < 0.0:
             return 0.0
@@ -370,7 +403,7 @@ class SkillScanner:
         return text
 
 
-def _parse_yaml_frontmatter(text: str) -> Tuple[Dict[str, object], str]:
+def _parse_yaml_frontmatter(text: str) -> tuple[dict[str, object], str]:
     if not text:
         return {}, ""
     stripped = text.lstrip("\ufeff")
@@ -388,8 +421,8 @@ def _parse_yaml_frontmatter(text: str) -> Tuple[Dict[str, object], str]:
         return {"_malformed": True}, text
     fm_lines = lines[1:close_idx]
     body = "\n".join(lines[close_idx + 1 :])
-    result: Dict[str, object] = {}
-    unparsed: List[str] = []
+    result: dict[str, object] = {}
+    unparsed: list[str] = []
     i = 0
     while i < len(fm_lines):
         raw = fm_lines[i]
@@ -413,7 +446,7 @@ def _parse_yaml_frontmatter(text: str) -> Tuple[Dict[str, object], str]:
             i += 1
             continue
         if value == "":
-            items: List[str] = []
+            items: list[str] = []
             j = i + 1
             while j < len(fm_lines):
                 nxt = fm_lines[j]
@@ -446,7 +479,7 @@ def _unquote(value: str) -> str:
     return value
 
 
-def _bisect_line(line_starts: List[int], pos: int) -> int:
+def _bisect_line(line_starts: list[int], pos: int) -> int:
     lo, hi = 0, len(line_starts) - 1
     while lo < hi:
         mid = (lo + hi + 1) // 2
@@ -458,10 +491,10 @@ def _bisect_line(line_starts: List[int], pos: int) -> int:
 
 
 def _redact_controls(s: str) -> str:
-    out: List[str] = []
+    out: list[str] = []
     for ch in s:
         if ch in HIDDEN_CHAR_SET or _CONTROL_RE.match(ch):
-            out.append("<U+%04X>" % ord(ch))
+            out.append(f"<U+{ord(ch):04X}>")
         else:
             out.append(ch)
     return "".join(out)

@@ -1,4 +1,5 @@
 """Tests for src.safety.cvss_assessor."""
+
 from __future__ import annotations
 
 import sys
@@ -9,12 +10,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.safety.cvss_assessor import (  # noqa: E402
+    _SEVERITY_VECTORS,
+    _STATIC_SCORES,
     CVSS_ASSESSOR_REGISTRY,
     CVSSAssessor,
     CVSSMetric,
     CVSSVersion,
-    _SEVERITY_VECTORS,
-    _STATIC_SCORES,
 )
 
 
@@ -88,9 +89,7 @@ def test_severity_to_score_case_insensitive():
 
 
 def test_parse_vector_extracts_keys():
-    parsed = CVSSAssessor().parse_vector(
-        "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
-    )
+    parsed = CVSSAssessor().parse_vector("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
     assert parsed["AV"] == "N"
     assert parsed["AC"] == "L"
     assert parsed["C"] == "H"

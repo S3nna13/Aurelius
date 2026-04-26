@@ -8,13 +8,9 @@ perturbation, while a clean input's prediction distribution shifts meaningfully.
 
 from __future__ import annotations
 
-import math
-from typing import List
-
 import torch
 import torch.nn.functional as F
 
-from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 
@@ -61,11 +57,11 @@ class STRIPDetector:
         """
         # Flatten to the last-token logit vector
         if logits.dim() == 3:
-            last_logits = logits[0, -1, :]   # (vocab_size,)
+            last_logits = logits[0, -1, :]  # (vocab_size,)
         elif logits.dim() == 2:
-            last_logits = logits[-1, :]       # (vocab_size,)
+            last_logits = logits[-1, :]  # (vocab_size,)
         else:
-            last_logits = logits              # (vocab_size,)
+            last_logits = logits  # (vocab_size,)
 
         probs = F.softmax(last_logits, dim=-1)
         # H = -sum(p * log(p)); clamp to avoid log(0)
@@ -171,7 +167,7 @@ class STRIPDetector:
         self,
         batch_ids: torch.Tensor,
         reference_pool: torch.Tensor,
-    ) -> List[float]:
+    ) -> list[float]:
         """Score each sample in a batch independently.
 
         Args:

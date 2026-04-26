@@ -14,12 +14,14 @@ Usage:
     # In forward, same interface as SparseMoEFFN:
     ffn_out, aux_loss = self.ffn(x)   # aux_loss is always 0.0
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 from .moe import MoEConfig
 
@@ -55,18 +57,14 @@ class BalancedMoEFFN(nn.Module):
         self.bias_update_rate: float = getattr(moe_cfg, "bias_update_rate", 0.001)
 
         # Expert networks — each is a full SwiGLUFFN
-        self.experts = nn.ModuleList([
-            SwiGLUFFN(config) for _ in range(self.n_experts)
-        ])
+        self.experts = nn.ModuleList([SwiGLUFFN(config) for _ in range(self.n_experts)])
 
         # Router: token hidden state → expert logits
         self.router = nn.Linear(config.d_model, self.n_experts, bias=False)
         nn.init.normal_(self.router.weight, std=0.01)
 
         # Per-expert bias — updated manually, never by the optimiser
-        self.expert_bias = nn.Parameter(
-            torch.zeros(self.n_experts), requires_grad=False
-        )
+        self.expert_bias = nn.Parameter(torch.zeros(self.n_experts), requires_grad=False)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -82,9 +80,9 @@ class BalancedMoEFFN(nn.Module):
             top_k_probs:   (N, top_k) renormalized routing weights
             top_k_indices: (N, top_k) selected expert indices
         """
-        router_logits = self.router(x_flat)                       # (N, n_experts)
-        biased_logits = router_logits + self.expert_bias          # broadcast over N
-        router_probs = F.softmax(biased_logits, dim=-1)           # (N, n_experts)
+        router_logits = self.router(x_flat)  # (N, n_experts)
+        biased_logits = router_logits + self.expert_bias  # broadcast over N
+        router_probs = F.softmax(biased_logits, dim=-1)  # (N, n_experts)
 
         top_k_probs, top_k_indices = torch.topk(router_probs, self.top_k, dim=-1)
         # Renormalize so weights sum to 1 per token
@@ -92,9 +90,7 @@ class BalancedMoEFFN(nn.Module):
 
         return top_k_probs, top_k_indices
 
-    def _update_bias(
-        self, top_k_indices: torch.Tensor, N: int
-    ) -> None:
+    def _update_bias(self, top_k_indices: torch.Tensor, N: int) -> None:
         """Update expert_bias in-place based on observed load vs target load.
 
         Args:
@@ -130,7 +126,7 @@ class BalancedMoEFFN(nn.Module):
             - aux_loss: scalar ``torch.tensor(0.0)`` — no auxiliary loss
         """
         B, S, D = x.shape
-        x_flat = x.view(-1, D)   # (N, D)
+        x_flat = x.view(-1, D)  # (N, D)
         N = x_flat.shape[0]
 
         top_k_probs, top_k_indices = self._route(x_flat)  # (N, top_k) each
@@ -139,19 +135,19 @@ class BalancedMoEFFN(nn.Module):
         output = torch.zeros_like(x_flat)  # (N, D)
 
         for expert_idx in range(self.n_experts):
-            mask = (top_k_indices == expert_idx)    # (N, top_k)
-            token_mask = mask.any(dim=-1)            # (N,)
+            mask = top_k_indices == expert_idx  # (N, top_k)
+            token_mask = mask.any(dim=-1)  # (N,)
 
             if not token_mask.any():
                 continue
 
-            expert_tokens = x_flat[token_mask]                      # (n_tok, D)
-            expert_out = self.experts[expert_idx](expert_tokens)    # (n_tok, D)
+            expert_tokens = x_flat[token_mask]  # (n_tok, D)
+            expert_out = self.experts[expert_idx](expert_tokens)  # (n_tok, D)
 
             # Sum weights across top_k slots (at most one match per token)
-            expert_weights = (
-                mask[token_mask].float() * top_k_probs[token_mask]
-            ).sum(dim=-1, keepdim=True)  # (n_tok, 1)
+            expert_weights = (mask[token_mask].float() * top_k_probs[token_mask]).sum(
+                dim=-1, keepdim=True
+            )  # (n_tok, 1)
 
             output[token_mask] = output[token_mask] + expert_weights * expert_out
 
@@ -189,9 +185,11 @@ class BalancedMoEFFN(nn.Module):
 # New-style MoE with explicit load-balance auxiliary loss
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MoEBalancedConfig:
     """Configuration for MoEBalancedLayer and related components."""
+
     n_experts: int = 8
     top_k: int = 2
     d_model: int = 64
@@ -222,8 +220,9 @@ class RouterWithLoadBalancing(nn.Module):
     probability for expert i (differentiable).
     """
 
-    def __init__(self, d_model: int, n_experts: int, top_k: int = 2,
-                 load_balance_coef: float = 1e-2) -> None:
+    def __init__(
+        self, d_model: int, n_experts: int, top_k: int = 2, load_balance_coef: float = 1e-2
+    ) -> None:
         super().__init__()
         self.n_experts = n_experts
         self.top_k = top_k
@@ -231,9 +230,7 @@ class RouterWithLoadBalancing(nn.Module):
         self.gate = nn.Linear(d_model, n_experts, bias=False)
         nn.init.normal_(self.gate.weight, std=0.01)
 
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute routing weights, expert indices, and load-balance loss.
 
         Args:
@@ -245,8 +242,8 @@ class RouterWithLoadBalancing(nn.Module):
             load_balance_loss:  scalar      — auxiliary loss encouraging balance
         """
         N = x.shape[0]
-        logits = self.gate(x)                              # (N, n_experts)
-        router_probs = F.softmax(logits, dim=-1)          # (N, n_experts)
+        logits = self.gate(x)  # (N, n_experts)
+        router_probs = F.softmax(logits, dim=-1)  # (N, n_experts)
 
         top_k_weights, top_k_indices = torch.topk(router_probs, self.top_k, dim=-1)
         # Renormalize so weights sum to 1 per token
@@ -259,9 +256,9 @@ class RouterWithLoadBalancing(nn.Module):
         top1_indices = top_k_indices[:, 0]  # (N,)
         one_hot = torch.zeros(N, self.n_experts, device=x.device, dtype=x.dtype)
         one_hot.scatter_(1, top1_indices.unsqueeze(1), 1.0)
-        f_i = one_hot.mean(dim=0)           # (n_experts,) — fraction of tokens
+        f_i = one_hot.mean(dim=0)  # (n_experts,) — fraction of tokens
 
-        p_i = router_probs.mean(dim=0)      # (n_experts,) — mean prob per expert
+        p_i = router_probs.mean(dim=0)  # (n_experts,) — mean prob per expert
 
         load_balance_loss = self.load_balance_coef * (f_i.detach() * p_i).sum()
 
@@ -278,10 +275,9 @@ class MoEBalancedLayer(nn.Module):
     def __init__(self, config: MoEBalancedConfig) -> None:
         super().__init__()
         self.config = config
-        self.experts = nn.ModuleList([
-            ExpertLayer(config.d_model, config.d_ff)
-            for _ in range(config.n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [ExpertLayer(config.d_model, config.d_ff) for _ in range(config.n_experts)]
+        )
         self.router = RouterWithLoadBalancing(
             d_model=config.d_model,
             n_experts=config.n_experts,
@@ -289,9 +285,7 @@ class MoEBalancedLayer(nn.Module):
             load_balance_coef=config.load_balance_coef,
         )
 
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Dispatch tokens and aggregate expert outputs.
 
         Args:
@@ -303,15 +297,15 @@ class MoEBalancedLayer(nn.Module):
         """
         B, S, D = x.shape
         x_flat = x.view(-1, D)  # (N, D)
-        N = x_flat.shape[0]
+        x_flat.shape[0]
 
         routing_weights, expert_indices, aux_loss = self.router(x_flat)
 
         output = torch.zeros_like(x_flat)
 
         for expert_idx in range(self.config.n_experts):
-            mask = (expert_indices == expert_idx)   # (N, top_k) bool
-            token_mask = mask.any(dim=-1)            # (N,) bool
+            mask = expert_indices == expert_idx  # (N, top_k) bool
+            token_mask = mask.any(dim=-1)  # (N,) bool
 
             if not token_mask.any():
                 continue
@@ -320,9 +314,9 @@ class MoEBalancedLayer(nn.Module):
             expert_out = self.experts[expert_idx](expert_input)  # (n_tok, D)
 
             # Weight for each token-expert pair
-            expert_weights = (
-                mask[token_mask].float() * routing_weights[token_mask]
-            ).sum(dim=-1, keepdim=True)  # (n_tok, 1)
+            expert_weights = (mask[token_mask].float() * routing_weights[token_mask]).sum(
+                dim=-1, keepdim=True
+            )  # (n_tok, 1)
 
             output[token_mask] = output[token_mask] + expert_weights * expert_out
 
@@ -343,13 +337,9 @@ class MoEBalancedTransformer(nn.Module):
 
     def __init__(self, config: MoEBalancedConfig, n_layers: int = 2) -> None:
         super().__init__()
-        self.layers = nn.ModuleList([
-            MoEBalancedLayer(config) for _ in range(n_layers)
-        ])
+        self.layers = nn.ModuleList([MoEBalancedLayer(config) for _ in range(n_layers)])
 
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply stacked MoE layers.
 
         Args:
@@ -366,9 +356,7 @@ class MoEBalancedTransformer(nn.Module):
         return x, total_aux_loss
 
 
-def compute_expert_utilization(
-    routing_indices: torch.Tensor, n_experts: int
-) -> dict:
+def compute_expert_utilization(routing_indices: torch.Tensor, n_experts: int) -> dict:
     """Compute expert utilization statistics from routing indices.
 
     Args:
@@ -398,9 +386,7 @@ def compute_expert_utilization(
     # Entropy of the load distribution (using per_expert_load as probabilities)
     eps = 1e-9
     entropy = -sum(
-        p * (p + eps) ** 0 * (torch.tensor(p + eps).log().item())
-        for p in per_expert_load
-        if p > 0
+        p * (p + eps) ** 0 * (torch.tensor(p + eps).log().item()) for p in per_expert_load if p > 0
     )
 
     return {

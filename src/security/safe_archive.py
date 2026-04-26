@@ -1,4 +1,4 @@
-"""Safe archive extraction (zip-slip and tar-slip prevention). AUR-SEC-2026-0014. STRIDE: Tampering, EoP. CWE-22."""
+"""Safe archive extraction (zip-slip and tar-slip prevention). AUR-SEC-2026-0014. STRIDE: Tampering, EoP. CWE-22."""  # noqa: E501
 
 import logging
 import tarfile
@@ -166,15 +166,11 @@ class SafeTarExtractor:
                 # Reject members with .. in name (tar-slip via path components)
                 parts = Path(name).parts
                 if ".." in parts:
-                    raise ArchiveError(
-                        f"Tar-slip detected: member name contains '..': {name!r}"
-                    )
+                    raise ArchiveError(f"Tar-slip detected: member name contains '..': {name!r}")
 
                 # Reject device files (block/char devices, fifos)
                 if member.isdev() or member.isfifo():
-                    raise ArchiveError(
-                        f"Rejecting device/FIFO tar member: {name!r}"
-                    )
+                    raise ArchiveError(f"Rejecting device/FIFO tar member: {name!r}")
 
                 # Reject hardlinks — can overwrite arbitrary files
                 if member.islnk():
@@ -259,13 +255,13 @@ def safe_extract(
     name_lower = path.name.lower()
 
     if name_lower.endswith(".zip"):
-        extractor = SafeZipExtractor(dest_dir, **kwargs)
-        return extractor.extract(path)
+        zip_extractor = SafeZipExtractor(dest_dir, **kwargs)
+        return zip_extractor.extract(path)
 
     tar_suffixes = (".tar", ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2", ".txz")
     if any(name_lower.endswith(s) for s in tar_suffixes):
-        extractor = SafeTarExtractor(dest_dir, **kwargs)
-        return extractor.extract(path)
+        tar_extractor = SafeTarExtractor(dest_dir, **kwargs)
+        return tar_extractor.extract(path)
 
     raise ArchiveError(
         f"Unknown or unsupported archive format: {path.name!r}. "

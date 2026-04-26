@@ -49,7 +49,9 @@ from torch.optim import Optimizer
 _EPS_COMP: float = 1e-12
 
 
-def _init_proj_matrix(r: int, n_flat: int, seed: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+def _init_proj_matrix(
+    r: int, n_flat: int, seed: int, device: torch.device, dtype: torch.dtype
+) -> torch.Tensor:
     """Row-orthonormal random projection matrix P ∈ R^{r × n_flat}.
 
     Uses a deterministic seed that is unique per parameter so that
@@ -62,7 +64,7 @@ def _init_proj_matrix(r: int, n_flat: int, seed: int, device: torch.device, dtyp
     if r <= n_flat:
         # torch.linalg.qr returns Q ∈ R^{n_flat × r} (tall); transpose to get R^{r × n_flat}
         Q, _ = torch.linalg.qr(raw.T)  # Q: n_flat × r
-        P = Q.T.contiguous()           # P: r × n_flat
+        P = Q.T.contiguous()  # P: r × n_flat
     else:
         # r > n_flat: just normalise rows (can't fully orthonormalise)
         P = torch.nn.functional.normalize(raw, dim=1)
@@ -88,9 +90,9 @@ def _project_grad(G: torch.Tensor, P: torch.Tensor) -> tuple[torch.Tensor, torch
 
     # G now has shape (M, N) with M >= N, P has shape (r, N)
     # projected: (r, M) = P @ G.T  →  G_low_T = P.T @ projected  shape (N, M)
-    projected = P @ G.T            # (r, M)
-    G_low_T = P.T @ projected      # (N, M) = reconstruction in original space
-    G_low = G_low_T.T              # (M, N)
+    projected = P @ G.T  # (r, M)
+    G_low_T = P.T @ projected  # (N, M) = reconstruction in original space
+    G_low = G_low_T.T  # (M, N)
 
     G_comp = G - G_low
 
@@ -245,8 +247,8 @@ class Fira(Optimizer):
                     exp_avg.mul_(beta1).add_(G_low, alpha=1.0 - beta1)
                     exp_avg_sq.mul_(beta2).addcmul_(G_low, G_low, value=1.0 - beta2)
 
-                    bias_c1 = 1.0 - beta1 ** t
-                    bias_c2 = 1.0 - beta2 ** t
+                    bias_c1 = 1.0 - beta1**t
+                    bias_c2 = 1.0 - beta2**t
                     m_hat = exp_avg / bias_c1
                     v_hat = exp_avg_sq / bias_c2
                     delta_low = m_hat / (v_hat.sqrt().add_(eps))
@@ -270,8 +272,8 @@ class Fira(Optimizer):
                     exp_avg.mul_(beta1).add_(G, alpha=1.0 - beta1)
                     exp_avg_sq.mul_(beta2).addcmul_(G, G, value=1.0 - beta2)
 
-                    bias_c1 = 1.0 - beta1 ** t
-                    bias_c2 = 1.0 - beta2 ** t
+                    bias_c1 = 1.0 - beta1**t
+                    bias_c2 = 1.0 - beta2**t
                     m_hat = exp_avg / bias_c1
                     v_hat = exp_avg_sq / bias_c2
                     delta = m_hat / (v_hat.sqrt().add_(eps))

@@ -1,4 +1,5 @@
 """Tests for Chain-of-Thought Distillation (Ho et al. 2022)."""
+
 from __future__ import annotations
 
 import pytest
@@ -55,6 +56,7 @@ def _make_samples(n: int = 2) -> list[CoTSample]:
 # CoTSample tests
 # ---------------------------------------------------------------------------
 
+
 def test_cot_sample_constructs():
     """Test 1: CoTSample constructs with correct fields."""
     sample = _make_sample(0)
@@ -81,6 +83,7 @@ def test_cot_sample_with_teacher_logits():
 # ---------------------------------------------------------------------------
 # cot_cross_entropy_loss tests
 # ---------------------------------------------------------------------------
+
 
 def test_cot_ce_loss_returns_tuple():
     """Test 2: cot_cross_entropy_loss returns (tensor, dict) tuple."""
@@ -156,6 +159,7 @@ def test_cot_ce_loss_alpha_zero():
 # knowledge_distillation_loss tests
 # ---------------------------------------------------------------------------
 
+
 def test_kd_loss_returns_scalar():
     """Test 7: knowledge_distillation_loss returns scalar tensor."""
     torch.manual_seed(20)
@@ -185,6 +189,7 @@ def test_kd_loss_finite_and_nonneg():
 # ---------------------------------------------------------------------------
 # prepare_cot_batch tests
 # ---------------------------------------------------------------------------
+
 
 def test_prepare_cot_batch_returns_required_keys():
     """Test 9: prepare_cot_batch returns dict with all required keys."""
@@ -230,6 +235,7 @@ def test_prepare_cot_batch_single_sample():
 # ---------------------------------------------------------------------------
 # CoTDistillTrainer tests
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_returns_loss_key():
     """Test 12: CoTDistillTrainer train_step returns metrics with 'loss' key."""
@@ -298,10 +304,7 @@ def test_trainer_updates_student_params():
     samples = _make_samples(2)
     trainer.train_step(samples)
 
-    changed = any(
-        not torch.equal(before[n], p)
-        for n, p in student.named_parameters()
-    )
+    changed = any(not torch.equal(before[n], p) for n, p in student.named_parameters())
     assert changed, "Student parameters were not updated after train_step"
 
 

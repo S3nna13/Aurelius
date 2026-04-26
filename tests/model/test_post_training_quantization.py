@@ -6,9 +6,9 @@ Every test performs actual forward and/or backward passes.
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
 from src.model.post_training_quantization import (
     GPTQQuantizer,
@@ -28,7 +28,7 @@ N_BITS = 4
 GROUP_SIZE = 8
 BATCH = 2
 SEQ_LEN = 4
-Q_MAX = (1 << N_BITS) - 1   # 15
+Q_MAX = (1 << N_BITS) - 1  # 15
 
 
 def make_activations(seed: int = 0) -> torch.Tensor:
@@ -49,6 +49,7 @@ def make_quantizer() -> GPTQQuantizer:
 # ---------------------------------------------------------------------------
 # Tiny model for ModelQuantizer tests
 # ---------------------------------------------------------------------------
+
 
 class TinyModel(nn.Module):
     """Two-layer MLP for quantization tests."""
@@ -71,12 +72,13 @@ class TinyModel(nn.Module):
 # 1. HessianEstimator.collect: H accumulates and n_collected increments
 # ===========================================================================
 
+
 def test_hessian_estimator_collect_accumulates():
     estimator = HessianEstimator()
-    acts = make_activations(0)           # (2, 4, 16)
+    acts = make_activations(0)  # (2, 4, 16)
     estimator.collect(acts)
     assert estimator.H is not None
-    assert estimator.n_collected == BATCH * SEQ_LEN   # 8
+    assert estimator.n_collected == BATCH * SEQ_LEN  # 8
     H_before = estimator.H.clone()
     estimator.collect(make_activations(1))
     # H must have changed (new activations added)
@@ -87,6 +89,7 @@ def test_hessian_estimator_collect_accumulates():
 # ===========================================================================
 # 2. HessianEstimator.get_hessian: shape (d_in, d_in), symmetric
 # ===========================================================================
+
 
 def test_hessian_estimator_get_hessian_shape_and_symmetry():
     estimator = HessianEstimator()
@@ -99,6 +102,7 @@ def test_hessian_estimator_get_hessian_shape_and_symmetry():
 # ===========================================================================
 # 3. HessianEstimator.damp: diagonal entries larger after damping
 # ===========================================================================
+
 
 def test_hessian_estimator_damp_increases_diagonal():
     estimator = HessianEstimator()
@@ -115,12 +119,13 @@ def test_hessian_estimator_damp_increases_diagonal():
 # 4. GPTQQuantizer.quantize_weight: W_q dtype int-compatible, scale/zero shapes
 # ===========================================================================
 
+
 def test_gptq_quantize_weight_shapes():
     quant = make_quantizer()
-    W = make_linear().weight.data   # (D_OUT, D_IN)
+    W = make_linear().weight.data  # (D_OUT, D_IN)
     H = torch.eye(D_IN)
     W_q, scale, zero = quant.quantize_weight(W, H)
-    n_groups = D_IN // GROUP_SIZE   # 2
+    n_groups = D_IN // GROUP_SIZE  # 2
     assert W_q.shape == (D_OUT, D_IN)
     assert scale.shape == (D_OUT, n_groups)
     assert zero.shape == (D_OUT, n_groups)
@@ -131,6 +136,7 @@ def test_gptq_quantize_weight_shapes():
 # ===========================================================================
 # 5. GPTQQuantizer.quantize_weight: W_q values in [0, 2^n_bits - 1]
 # ===========================================================================
+
 
 def test_gptq_quantize_weight_range():
     quant = make_quantizer()
@@ -144,6 +150,7 @@ def test_gptq_quantize_weight_range():
 # ===========================================================================
 # 6. GPTQQuantizer.dequantize: output shape matches W, round-trip error < 0.5
 # ===========================================================================
+
 
 def test_gptq_dequantize_shape_and_roundtrip():
     quant = make_quantizer()
@@ -159,6 +166,7 @@ def test_gptq_dequantize_shape_and_roundtrip():
 # ===========================================================================
 # 7. LayerQuantizer.quantize: quant_error in [0, 1], weight data changed
 # ===========================================================================
+
 
 def test_layer_quantizer_quantize_error_and_weight_update():
     layer = make_linear()
@@ -178,18 +186,20 @@ def test_layer_quantizer_quantize_error_and_weight_update():
 # 8. LayerQuantizer.compression_ratio: 32 / n_bits (= 8.0 for 4-bit)
 # ===========================================================================
 
+
 def test_layer_quantizer_compression_ratio():
     layer = make_linear()
     quant = make_quantizer()
     lq = LayerQuantizer(layer, quant)
     ratio = lq.compression_ratio()
-    expected = 32.0 / N_BITS   # 8.0
+    expected = 32.0 / N_BITS  # 8.0
     assert ratio == pytest.approx(expected), f"Expected {expected}, got {ratio}"
 
 
 # ===========================================================================
 # 9. ModelQuantizer.find_linear_layers: finds all nn.Linear modules
 # ===========================================================================
+
 
 def test_model_quantizer_find_linear_layers():
     model = TinyModel()
@@ -203,6 +213,7 @@ def test_model_quantizer_find_linear_layers():
 # ===========================================================================
 # 10. ModelQuantizer.quantize_model: returns dict with one entry per linear layer
 # ===========================================================================
+
 
 def test_model_quantizer_quantize_model_keys():
     torch.manual_seed(0)
@@ -219,6 +230,7 @@ def test_model_quantizer_quantize_model_keys():
 # 11. ModelQuantizer.quantization_summary: all 4 keys present, mean_error in [0,1]
 # ===========================================================================
 
+
 def test_model_quantizer_quantization_summary():
     torch.manual_seed(1)
     model = TinyModel()
@@ -230,14 +242,13 @@ def test_model_quantizer_quantization_summary():
     assert required_keys.issubset(summary.keys()), (
         f"Missing keys: {required_keys - set(summary.keys())}"
     )
-    assert 0.0 <= summary["mean_error"] <= 1.0, (
-        f"mean_error out of [0,1]: {summary['mean_error']}"
-    )
+    assert 0.0 <= summary["mean_error"] <= 1.0, f"mean_error out of [0,1]: {summary['mean_error']}"
 
 
 # ===========================================================================
 # 12. QuantizationBenchmark.weight_error: ≥ 0, 0 for identical weights
 # ===========================================================================
+
 
 def test_benchmark_weight_error():
     bench = QuantizationBenchmark()
@@ -254,6 +265,7 @@ def test_benchmark_weight_error():
 # 13. QuantizationBenchmark.output_error: ≥ 0, 0 for identical outputs
 # ===========================================================================
 
+
 def test_benchmark_output_error():
     bench = QuantizationBenchmark()
     out = torch.randn(BATCH, SEQ_LEN, D_OUT)
@@ -269,11 +281,12 @@ def test_benchmark_output_error():
 # 14. QuantizationBenchmark.perplexity_increase: ≥ 1.0 when quantized is worse
 # ===========================================================================
 
+
 def test_benchmark_perplexity_increase():
     bench = QuantizationBenchmark()
     # Original model has higher log-probs than quantized → ratio ≥ 1
     original_lp = torch.full((16,), -1.0)
-    quantized_lp = torch.full((16,), -2.0)   # worse (lower log-prob)
+    quantized_lp = torch.full((16,), -2.0)  # worse (lower log-prob)
     ppl_inc = bench.perplexity_increase(original_lp, quantized_lp)
     assert ppl_inc >= 1.0, f"perplexity_increase should be ≥ 1.0, got {ppl_inc}"
 
@@ -281,6 +294,7 @@ def test_benchmark_perplexity_increase():
 # ===========================================================================
 # 15. Forward pass with quantized model: produces valid logits (no NaN/Inf)
 # ===========================================================================
+
 
 def test_forward_pass_after_quantization():
     torch.manual_seed(7)
@@ -296,9 +310,7 @@ def test_forward_pass_after_quantization():
     with torch.no_grad():
         logits = model(test_input)
 
-    assert logits.shape == (BATCH, SEQ_LEN, D_IN), (
-        f"Unexpected output shape: {logits.shape}"
-    )
+    assert logits.shape == (BATCH, SEQ_LEN, D_IN), f"Unexpected output shape: {logits.shape}"
     assert not torch.isnan(logits).any(), "Forward pass produced NaN values"
     assert not torch.isinf(logits).any(), "Forward pass produced Inf values"
 

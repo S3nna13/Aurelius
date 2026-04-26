@@ -1,4 +1,5 @@
 """Tests for advanced weight merging (TIES, DARE, SLERP)."""
+
 from __future__ import annotations
 
 import math
@@ -18,7 +19,6 @@ from src.training.advanced_merge import (
     ties_merge,
     ties_trim,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

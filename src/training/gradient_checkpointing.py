@@ -8,8 +8,9 @@ peak activation memory.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -46,7 +47,7 @@ class CheckpointedModule(nn.Module):
 def apply_checkpointing(
     model: nn.Module,
     config: CheckpointConfig,
-    layer_names: Optional[List[str]] = None,
+    layer_names: list[str] | None = None,
 ) -> nn.Module:
     """Wrap every nn.ModuleList layer (or layers matching layer_names) in CheckpointedModule."""
     for name, child in list(model.named_children()):
@@ -57,9 +58,7 @@ def apply_checkpointing(
                 apply_checkpointing(child, config, layer_names)
         else:
             if isinstance(child, nn.ModuleList):
-                wrapped = nn.ModuleList(
-                    [CheckpointedModule(layer, config) for layer in child]
-                )
+                wrapped = nn.ModuleList([CheckpointedModule(layer, config) for layer in child])
                 setattr(model, name, wrapped)
             else:
                 apply_checkpointing(child, config, layer_names)
@@ -123,7 +122,7 @@ class CheckpointedSequential(nn.Module):
         config: CheckpointConfig controlling checkpointing behaviour.
     """
 
-    def __init__(self, layers: List[nn.Module], config: CheckpointConfig) -> None:
+    def __init__(self, layers: list[nn.Module], config: CheckpointConfig) -> None:
         super().__init__()
         self.module_list = nn.ModuleList(layers)
         self.config = config

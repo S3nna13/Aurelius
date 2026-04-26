@@ -3,6 +3,7 @@
 Uses a tiny model (vocab=256, d=64, n_heads=4, n_layers=2, max_seq=64) for
 all forward and training-step tests.
 """
+
 from __future__ import annotations
 
 import math
@@ -12,14 +13,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.spin_trainer import (
     SPINBatch,
     SPINConfig,
     SPINLoss,
     SPINTrainer,
 )
-from src.alignment import ALIGNMENT_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Tiny causal LM for testing

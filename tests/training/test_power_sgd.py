@@ -4,22 +4,21 @@ All tests run actual forward/backward passes or tensor operations.
 Tiny configs: matrices (16,8) max, rank=2.
 """
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.training.power_sgd import (
+    CompressionStats,
+    GradientCompressor,
     LowRankApproximation,
     PowerIteration,
-    GradientCompressor,
     PowerSGDOptimizer,
-    CompressionStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # LowRankApproximation tests
 # ---------------------------------------------------------------------------
+
 
 def test_low_rank_decompose_shapes():
     """P shape (m, rank), Q shape (n, rank)."""
@@ -63,6 +62,7 @@ def test_low_rank_compression_ratio_gt1():
 # PowerIteration tests
 # ---------------------------------------------------------------------------
 
+
 def test_power_iteration_shapes():
     """P (m, rank) and Q (n, rank) shapes are correct."""
     pi = PowerIteration(rank=2, n_iter=2)
@@ -96,6 +96,7 @@ def test_power_iteration_n_iter_zero():
 # ---------------------------------------------------------------------------
 # GradientCompressor tests
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_compressor_2d_compressed():
     """2D grad above min ratio: metadata['compressed']==True, P and Q stored."""
@@ -141,6 +142,7 @@ def test_gradient_compressor_decompress_3d_shape():
 # PowerSGDOptimizer tests
 # ---------------------------------------------------------------------------
 
+
 def _make_model_and_opt(start_iter: int = 0):
     """Helper: tiny linear model + PowerSGDOptimizer."""
     model = nn.Linear(8, 4, bias=False)
@@ -172,7 +174,7 @@ def test_powersgd_warmup_before_start_iter():
     loss.backward()
 
     # Capture grad before step
-    grad_before = model.weight.grad.data.clone()
+    model.weight.grad.data.clone()
     opt.step()
 
     # n_steps should be 1, which is <= start_iter=100, so no compression
@@ -195,6 +197,7 @@ def test_powersgd_zero_grad_delegates():
 # ---------------------------------------------------------------------------
 # CompressionStats tests
 # ---------------------------------------------------------------------------
+
 
 def test_compression_stats_summary_keys():
     """summary() dict has all required keys and correct counts."""
@@ -228,6 +231,7 @@ def test_compression_stats_reset():
 # Full training loop
 # ---------------------------------------------------------------------------
 
+
 def test_full_training_loop_finite_loss():
     """3-step training loop with PowerSGDOptimizer produces finite loss values."""
     torch.manual_seed(42)
@@ -251,13 +255,14 @@ def test_full_training_loop_finite_loss():
         opt.step()
         losses.append(loss.item())
 
-    for i, l in enumerate(losses):
-        assert torch.isfinite(torch.tensor(l)), f"Loss at step {i} is not finite: {l}"
+    for i, lo in enumerate(losses):
+        assert torch.isfinite(torch.tensor(lo)), f"Loss at step {i} is not finite: {lo}"
 
 
 # ---------------------------------------------------------------------------
 # n_steps counter
 # ---------------------------------------------------------------------------
+
 
 def test_n_steps_counter():
     """n_steps increments correctly across multiple step() calls."""

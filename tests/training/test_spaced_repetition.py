@@ -9,17 +9,17 @@ from torch.optim import SGD
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.spaced_repetition import (
-    SM2Config,
     CardState,
+    SM2Config,
     SM2Scheduler,
     SpacedRepetitionDataset,
     SpacedRepetitionTrainer,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg():
@@ -35,8 +35,14 @@ def scheduler(cfg):
 def small_model():
     torch.manual_seed(42)
     model_cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(model_cfg)
 
@@ -54,6 +60,7 @@ def _make_dataset(n: int = 6, cfg: SM2Config | None = None) -> SpacedRepetitionD
 # 1. SM2Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_sm2config_defaults():
     cfg = SM2Config()
     assert cfg.initial_interval == 1
@@ -67,19 +74,21 @@ def test_sm2config_defaults():
 # 2. CardState defaults
 # ---------------------------------------------------------------------------
 
+
 def test_cardstate_defaults():
     card = CardState(card_id="x")
     assert card.card_id == "x"
     assert card.interval == 1
     assert card.easiness == pytest.approx(2.5)
     assert card.repetitions == 0
-    assert card.last_loss == float('inf')
+    assert card.last_loss == float("inf")
     assert card.next_review == 0
 
 
 # ---------------------------------------------------------------------------
 # 3. SM2Scheduler.register creates card
 # ---------------------------------------------------------------------------
+
 
 def test_scheduler_register_creates_card(scheduler):
     scheduler.register("card_a")
@@ -101,6 +110,7 @@ def test_scheduler_register_idempotent(scheduler):
 # 4. SM2Scheduler.update increases repetitions on good performance
 # ---------------------------------------------------------------------------
 
+
 def test_update_increases_repetitions_on_good_performance(scheduler):
     scheduler.register("card_a")
     # Loss well below threshold (0.6 * 0.5 = 0.3) → quality = 5
@@ -111,6 +121,7 @@ def test_update_increases_repetitions_on_good_performance(scheduler):
 # ---------------------------------------------------------------------------
 # 5. SM2Scheduler.update resets on bad performance
 # ---------------------------------------------------------------------------
+
 
 def test_update_resets_on_bad_performance(scheduler):
     scheduler.register("card_a")
@@ -127,6 +138,7 @@ def test_update_resets_on_bad_performance(scheduler):
 # ---------------------------------------------------------------------------
 # 6. SM2Scheduler.update interval grows for repeated good performance
 # ---------------------------------------------------------------------------
+
 
 def test_update_interval_grows_with_good_performance(scheduler):
     scheduler.register("card_a")
@@ -146,6 +158,7 @@ def test_update_interval_grows_with_good_performance(scheduler):
 # ---------------------------------------------------------------------------
 # 7. SM2Scheduler.due returns cards with next_review <= step
 # ---------------------------------------------------------------------------
+
 
 def test_due_returns_cards_at_current_step(scheduler):
     scheduler.register("card_a")
@@ -176,6 +189,7 @@ def test_due_respects_n_limit(scheduler):
 # 8. SM2Scheduler.step increments counter
 # ---------------------------------------------------------------------------
 
+
 def test_scheduler_step_increments(scheduler):
     assert scheduler._step == 0
     scheduler.step()
@@ -187,6 +201,7 @@ def test_scheduler_step_increments(scheduler):
 # ---------------------------------------------------------------------------
 # 9. SM2Scheduler.stats returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_scheduler_stats_keys(scheduler):
     scheduler.register("card_a")
@@ -212,6 +227,7 @@ def test_scheduler_stats_values(scheduler):
 # 10. SpacedRepetitionDataset.get_batch returns correct count
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_get_batch_correct_count():
     ds = _make_dataset(n=6)
     batch = ds.get_batch(batch_size=4)
@@ -231,6 +247,7 @@ def test_dataset_get_batch_returns_tuples():
 # ---------------------------------------------------------------------------
 # 11. SpacedRepetitionDataset.record_losses updates scheduler
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_record_losses_updates_scheduler():
     ds = _make_dataset(n=4)
@@ -256,6 +273,7 @@ def test_dataset_record_losses_updates_last_loss():
 # ---------------------------------------------------------------------------
 # 12. SpacedRepetitionDataset.get_batch prefers due cards
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_get_batch_prefers_due_cards():
     """When some cards are due and others are not, due cards should appear first."""
@@ -286,6 +304,7 @@ def test_dataset_get_batch_prefers_due_cards():
 # 13. SpacedRepetitionTrainer.train_step returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_returns_required_keys(small_model):
     ds = _make_dataset(n=6)
     optimizer = SGD(small_model.parameters(), lr=1e-3)
@@ -303,6 +322,7 @@ def test_trainer_train_step_returns_required_keys(small_model):
 # 14. SpacedRepetitionTrainer.train_step loss is positive float
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_loss_is_positive_float(small_model):
     ds = _make_dataset(n=6)
     optimizer = SGD(small_model.parameters(), lr=1e-3)
@@ -318,6 +338,7 @@ def test_trainer_train_step_loss_is_positive_float(small_model):
 # ---------------------------------------------------------------------------
 # 15. SpacedRepetitionTrainer.get_hard_examples returns list of strings
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_get_hard_examples_returns_strings(small_model):
     ds = _make_dataset(n=6)

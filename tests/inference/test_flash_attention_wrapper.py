@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
-from src.inference.flash_attention_wrapper import FlashAttnConfig, FlashAttentionWrapper
+from src.inference.flash_attention_wrapper import FlashAttentionWrapper, FlashAttnConfig
 
 
 def make_qkv(batch=2, n_heads=4, seq_len=8, head_dim=16, device="cpu"):

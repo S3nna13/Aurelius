@@ -97,9 +97,7 @@ class ConversationLogger:
 
     def list_sessions(self) -> list[str]:
         """Return all session identifiers with existing log files."""
-        return sorted(
-            p.stem for p in self.log_dir.iterdir() if p.suffix == ".jsonl"
-        )
+        return sorted(p.stem for p in self.log_dir.iterdir() if p.suffix == ".jsonl")
 
     def delete_session(self, session_id: str) -> None:
         """Remove *session_id*'s log file if it exists."""

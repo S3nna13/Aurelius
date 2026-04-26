@@ -17,17 +17,16 @@ Reference:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DiffAttnConfig:
@@ -48,12 +47,13 @@ class DiffAttnConfig:
         n_layers:     Number of DiffTransformerBlock layers in a stack.
         rms_norm_eps: Epsilon for RMSNorm.
     """
+
     d_model: int = 512
     n_heads: int = 8
     head_dim: int = 64
     dropout: float = 0.0
     lambda_init: float = 0.8
-    d_ff: int = 0                  # 0 → set to 4 * d_model in __post_init__
+    d_ff: int = 0  # 0 → set to 4 * d_model in __post_init__
     n_layers: int = 6
     rms_norm_eps: float = 1e-6
 
@@ -65,6 +65,7 @@ class DiffAttnConfig:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _RMSNorm(nn.Module):
     """Lightweight RMSNorm used internally by this module."""
@@ -85,7 +86,7 @@ class _SwiGLUFFN(nn.Module):
     def __init__(self, d_model: int, d_ff: int, dropout: float = 0.0) -> None:
         super().__init__()
         self.gate_proj = nn.Linear(d_model, d_ff, bias=False)
-        self.up_proj   = nn.Linear(d_model, d_ff, bias=False)
+        self.up_proj = nn.Linear(d_model, d_ff, bias=False)
         self.down_proj = nn.Linear(d_ff, d_model, bias=False)
         self.drop = nn.Dropout(dropout)
 
@@ -96,6 +97,7 @@ class _SwiGLUFFN(nn.Module):
 # ---------------------------------------------------------------------------
 # Differential Attention
 # ---------------------------------------------------------------------------
+
 
 class DifferentialAttention(nn.Module):
     """Multi-head Differential Attention.
@@ -113,9 +115,9 @@ class DifferentialAttention(nn.Module):
 
     def __init__(self, config: DiffAttnConfig) -> None:
         super().__init__()
-        self.n_heads  = config.n_heads
-        self.head_dim = config.head_dim        # dimension of *each* softmax head
-        self.scale    = math.sqrt(self.head_dim)
+        self.n_heads = config.n_heads
+        self.head_dim = config.head_dim  # dimension of *each* softmax head
+        self.scale = math.sqrt(self.head_dim)
 
         # Each differential head needs Q1, Q2 (2 * head_dim) and K1, K2 (2 * head_dim)
         # and V (head_dim).  We project everything in a single fused linear for
@@ -123,12 +125,10 @@ class DifferentialAttention(nn.Module):
         # = 5 * head_dim.  Total = n_heads * 5 * head_dim.
         qkv_dim = config.n_heads * 5 * config.head_dim
         self.qkv_proj = nn.Linear(config.d_model, qkv_dim, bias=False)
-        self.out_proj  = nn.Linear(config.n_heads * config.head_dim, config.d_model, bias=False)
+        self.out_proj = nn.Linear(config.n_heads * config.head_dim, config.d_model, bias=False)
 
         # Per-head learnable λ — shape (n_heads,)
-        self.lambda_param = nn.Parameter(
-            torch.full((config.n_heads,), config.lambda_init)
-        )
+        self.lambda_param = nn.Parameter(torch.full((config.n_heads,), config.lambda_init))
 
         self.attn_drop = nn.Dropout(config.dropout)
 
@@ -148,7 +148,7 @@ class DifferentialAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute differential attention.
 
@@ -162,8 +162,8 @@ class DifferentialAttention(nn.Module):
             (B, T, d_model)
         """
         B, T, _ = x.shape
-        H  = self.n_heads
-        D  = self.head_dim     # dimension of each softmax head
+        H = self.n_heads
+        D = self.head_dim  # dimension of each softmax head
 
         # ---- Project -------------------------------------------------------
         # qkv: (B, T, H * 5 * D)
@@ -173,18 +173,18 @@ class DifferentialAttention(nn.Module):
         qkv = qkv.view(B, T, H, 5 * D)
 
         # Q1, Q2: first 2D slice; K1, K2: next 2D; V: last D
-        q1 = qkv[..., :D]          # (B, T, H, D)
-        q2 = qkv[..., D:2*D]       # (B, T, H, D)
-        k1 = qkv[..., 2*D:3*D]     # (B, T, H, D)
-        k2 = qkv[..., 3*D:4*D]     # (B, T, H, D)
-        v  = qkv[..., 4*D:]        # (B, T, H, D)
+        q1 = qkv[..., :D]  # (B, T, H, D)
+        q2 = qkv[..., D : 2 * D]  # (B, T, H, D)
+        k1 = qkv[..., 2 * D : 3 * D]  # (B, T, H, D)
+        k2 = qkv[..., 3 * D : 4 * D]  # (B, T, H, D)
+        v = qkv[..., 4 * D :]  # (B, T, H, D)
 
         # Transpose to (B, H, T, D) for batch-matmul
         q1 = q1.transpose(1, 2)
         q2 = q2.transpose(1, 2)
         k1 = k1.transpose(1, 2)
         k2 = k2.transpose(1, 2)
-        v  = v.transpose(1, 2)
+        v = v.transpose(1, 2)
 
         # ---- Attention scores -----------------------------------------------
         # (B, H, T, T)
@@ -195,8 +195,8 @@ class DifferentialAttention(nn.Module):
             scores1 = scores1 + mask
             scores2 = scores2 + mask
 
-        attn1 = F.softmax(scores1, dim=-1)   # (B, H, T, T)
-        attn2 = F.softmax(scores2, dim=-1)   # (B, H, T, T)
+        attn1 = F.softmax(scores1, dim=-1)  # (B, H, T, T)
+        attn2 = F.softmax(scores2, dim=-1)  # (B, H, T, T)
 
         # ---- Differential combination ---------------------------------------
         # λ: (H,) → (1, H, 1, 1) for broadcasting
@@ -212,12 +212,13 @@ class DifferentialAttention(nn.Module):
         # ---- Merge heads and project out -----------------------------------
         # (B, T, H * D)
         out = out_heads.transpose(1, 2).contiguous().view(B, T, H * D)
-        return self.out_proj(out)             # (B, T, d_model)
+        return self.out_proj(out)  # (B, T, d_model)
 
 
 # ---------------------------------------------------------------------------
 # Transformer Block
 # ---------------------------------------------------------------------------
+
 
 class DiffTransformerBlock(nn.Module):
     """Single Differential Transformer block.
@@ -230,14 +231,14 @@ class DiffTransformerBlock(nn.Module):
     def __init__(self, config: DiffAttnConfig) -> None:
         super().__init__()
         self.attn_norm = _RMSNorm(config.d_model, eps=config.rms_norm_eps)
-        self.attn      = DifferentialAttention(config)
-        self.ffn_norm  = _RMSNorm(config.d_model, eps=config.rms_norm_eps)
-        self.ffn       = _SwiGLUFFN(config.d_model, config.d_ff, config.dropout)
+        self.attn = DifferentialAttention(config)
+        self.ffn_norm = _RMSNorm(config.d_model, eps=config.rms_norm_eps)
+        self.ffn = _SwiGLUFFN(config.d_model, config.d_ff, config.dropout)
 
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -256,6 +257,7 @@ class DiffTransformerBlock(nn.Module):
 # Layer Stack
 # ---------------------------------------------------------------------------
 
+
 class DiffTransformerLayer(nn.Module):
     """Stack of N DiffTransformerBlocks.
 
@@ -265,15 +267,13 @@ class DiffTransformerLayer(nn.Module):
 
     def __init__(self, config: DiffAttnConfig) -> None:
         super().__init__()
-        self.blocks = nn.ModuleList(
-            [DiffTransformerBlock(config) for _ in range(config.n_layers)]
-        )
+        self.blocks = nn.ModuleList([DiffTransformerBlock(config) for _ in range(config.n_layers)])
         self.final_norm = _RMSNorm(config.d_model, eps=config.rms_norm_eps)
 
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:

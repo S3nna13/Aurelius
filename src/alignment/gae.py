@@ -4,8 +4,9 @@ Implements GAE-Lambda (Schulman et al., 2016) for computing advantages
 and value targets used in Proximal Policy Optimization training.
 """
 
-import torch
 from dataclasses import dataclass
+
+import torch
 
 
 @dataclass

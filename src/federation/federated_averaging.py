@@ -2,6 +2,7 @@
 
 Aurelius LLM Project — clean-room impl per FedAvg (McMahan 2017).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,31 +13,31 @@ import numpy as np
 
 class WeightAverager(Protocol):
     """Protocol for federated averaging strategies."""
-    
+
     def average(self, client_weights: list[dict], client_counts: list[int]) -> dict: ...
 
 
 @dataclass
 class FederatedAveraging:
     """Federated Averaging (FedAvg) weight aggregation.
-    
+
     Aggregates client model weights proportional to client dataset sizes.
     """
-    
+
     def average(self, client_weights: list[dict], client_counts: list[int]) -> dict:
         """Average weights weighted by client sample counts.
-        
+
         Args:
             client_weights: List of model weight dicts from clients
             client_counts: Number of samples on each client
-            
+
         Returns:
             Aggregated weight dict
         """
         total = sum(client_counts)
         if total == 0:
             return client_weights[0] if client_weights else {}
-        
+
         averaged = {}
         for key in client_weights[0]:
             arr = np.asarray(client_weights[0][key], dtype=np.float64)

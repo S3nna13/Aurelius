@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.eval.gsm8k_scorer import GSM8KAnswer, GSM8KScorer
-
+from src.eval.gsm8k_scorer import GSM8KScorer
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def scorer() -> GSM8KScorer:
@@ -150,5 +150,6 @@ def test_batch_score_length_mismatch_raises(scorer: GSM8KScorer):
 
 def test_benchmark_registry_gsm8k():
     from src.eval.gsm8k_scorer import BENCHMARK_REGISTRY
+
     assert "gsm8k" in BENCHMARK_REGISTRY
     assert isinstance(BENCHMARK_REGISTRY["gsm8k"], GSM8KScorer)

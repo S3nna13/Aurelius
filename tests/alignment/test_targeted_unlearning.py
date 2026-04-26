@@ -4,21 +4,18 @@ from __future__ import annotations
 
 import copy
 
-import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.targeted_unlearning import (
+    TargetedUnlearner,
     UnlearningConfig,
     UnlearningResult,
-    TargetedUnlearner,
+    evaluate_forgetting,
     forget_loss,
     retain_loss,
-    evaluate_forgetting,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared config / helpers
@@ -62,6 +59,7 @@ def make_inputs(seed: int = 42) -> tuple[torch.Tensor, torch.Tensor]:
 # Test 1: forget_loss with gradient_ascent returns positive scalar
 # ---------------------------------------------------------------------------
 
+
 def test_forget_loss_gradient_ascent_positive_scalar():
     """forget_loss with gradient_ascent should return a positive-valued scalar tensor."""
     torch.manual_seed(0)
@@ -80,6 +78,7 @@ def test_forget_loss_gradient_ascent_positive_scalar():
 # Test 2: forget_loss with random_label returns positive scalar
 # ---------------------------------------------------------------------------
 
+
 def test_forget_loss_random_label_positive_scalar():
     """forget_loss with random_label should return a positive finite scalar."""
     torch.manual_seed(0)
@@ -94,6 +93,7 @@ def test_forget_loss_random_label_positive_scalar():
 # ---------------------------------------------------------------------------
 # Test 3: retain_loss returns non-negative scalar (KL >= 0)
 # ---------------------------------------------------------------------------
+
 
 def test_retain_loss_non_negative():
     """KL divergence is always non-negative."""
@@ -111,6 +111,7 @@ def test_retain_loss_non_negative():
 # Test 4: retain_loss on identical models -> ~0 KL
 # ---------------------------------------------------------------------------
 
+
 def test_retain_loss_identical_models_near_zero():
     """When model and ref_model are identical, KL divergence should be ~0."""
     torch.manual_seed(0)
@@ -118,14 +119,13 @@ def test_retain_loss_identical_models_near_zero():
     ref = make_ref_model(model)
     inputs, _ = make_inputs()
     loss = retain_loss(model, ref, inputs)
-    assert loss.item() < 1e-4, (
-        f"KL of identical models should be ~0, got {loss.item()}"
-    )
+    assert loss.item() < 1e-4, f"KL of identical models should be ~0, got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: TargetedUnlearner constructs without error
 # ---------------------------------------------------------------------------
+
 
 def test_targeted_unlearner_constructs():
     """TargetedUnlearner should initialise without raising."""
@@ -140,6 +140,7 @@ def test_targeted_unlearner_constructs():
 # ---------------------------------------------------------------------------
 # Test 6: forget_step returns float
 # ---------------------------------------------------------------------------
+
 
 def test_forget_step_returns_float():
     """forget_step should return a Python float."""
@@ -157,6 +158,7 @@ def test_forget_step_returns_float():
 # Test 7: retain_step returns float
 # ---------------------------------------------------------------------------
 
+
 def test_retain_step_returns_float():
     """retain_step should return a Python float."""
     torch.manual_seed(0)
@@ -172,6 +174,7 @@ def test_retain_step_returns_float():
 # ---------------------------------------------------------------------------
 # Test 8: After forget_step, model weights change
 # ---------------------------------------------------------------------------
+
 
 def test_forget_step_updates_weights():
     """Weights should change after a forget_step."""
@@ -197,6 +200,7 @@ def test_forget_step_updates_weights():
 # Test 9: run returns UnlearningResult
 # ---------------------------------------------------------------------------
 
+
 def test_run_returns_unlearning_result():
     """run() should return an UnlearningResult instance."""
     torch.manual_seed(0)
@@ -210,14 +214,13 @@ def test_run_returns_unlearning_result():
     retain_dataset = [inputs]
 
     result = unlearner.run(forget_dataset, retain_dataset)
-    assert isinstance(result, UnlearningResult), (
-        f"Expected UnlearningResult, got {type(result)}"
-    )
+    assert isinstance(result, UnlearningResult), f"Expected UnlearningResult, got {type(result)}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10: run forget_losses list length matches n_forget_steps
 # ---------------------------------------------------------------------------
+
 
 def test_run_forget_losses_length():
     """forget_losses in result should have length == n_forget_steps."""
@@ -243,6 +246,7 @@ def test_run_forget_losses_length():
 # Test 11: evaluate_forgetting returns dict with required keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_forgetting_keys():
     """evaluate_forgetting must return dict with 'forget_loss' and 'forget_perplexity'."""
     torch.manual_seed(0)
@@ -262,6 +266,7 @@ def test_evaluate_forgetting_keys():
 # Test 12: After unlearning, forget_loss higher than before (model forgot)
 # ---------------------------------------------------------------------------
 
+
 def test_unlearning_increases_forget_loss():
     """After running unlearning, the forget loss should be higher (more forgetting)."""
     torch.manual_seed(7)
@@ -280,7 +285,7 @@ def test_unlearning_increases_forget_loss():
         retain_lr=1e-6,
         forget_steps=10,
         retain_steps=1,
-        kl_coef=0.0,   # disable retention to maximise forgetting signal
+        kl_coef=0.0,  # disable retention to maximise forgetting signal
         forget_loss_type="gradient_ascent",
     )
     unlearner = TargetedUnlearner(model, ref, cfg)

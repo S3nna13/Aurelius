@@ -3,10 +3,10 @@ from __future__ import annotations
 import math
 from collections import Counter
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class QualityIssue(str, Enum):
+class QualityIssue(StrEnum):
     TOO_SHORT = "too_short"
     TOO_LONG = "too_long"
     HIGH_REPETITION = "high_repetition"

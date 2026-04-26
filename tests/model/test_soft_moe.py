@@ -1,14 +1,15 @@
 """Tests for src/model/soft_moe.py — Soft Mixture-of-Experts."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.soft_moe import (
-    SoftMoEConfig,
     ExpertFFN,
-    SoftRouter,
+    SoftMoEConfig,
     SoftMoELayer,
+    SoftRouter,
     compute_load_stats,
 )
 
@@ -57,6 +58,7 @@ def layer(config) -> SoftMoELayer:
 # 1. SoftMoEConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SoftMoEConfig()
     assert cfg.n_experts == 8
@@ -70,6 +72,7 @@ def test_config_defaults():
 # 2. ExpertFFN output shape
 # ---------------------------------------------------------------------------
 
+
 def test_expert_ffn_output_shape(expert, x):
     out = expert(x)
     assert out.shape == (B, T, D), f"Expected {(B, T, D)}, got {out.shape}"
@@ -78,6 +81,7 @@ def test_expert_ffn_output_shape(expert, x):
 # ---------------------------------------------------------------------------
 # 3. SoftRouter dispatch_weights shape
 # ---------------------------------------------------------------------------
+
 
 def test_router_dispatch_shape(router, x):
     dispatch, _ = router(x)
@@ -89,6 +93,7 @@ def test_router_dispatch_shape(router, x):
 # 4. SoftRouter combine_weights shape
 # ---------------------------------------------------------------------------
 
+
 def test_router_combine_shape(router, x):
     _, combine = router(x)
     expected = (B, T, N_EXPERTS * N_SLOTS)
@@ -99,29 +104,34 @@ def test_router_combine_shape(router, x):
 # 5. SoftRouter dispatch softmax sums to 1 along dim=1 (over tokens)
 # ---------------------------------------------------------------------------
 
+
 def test_router_dispatch_sums_to_1_over_tokens(router, x):
     dispatch, _ = router(x)
     # Sum over token dim → (B, E*S), should be all ~1
     sums = dispatch.sum(dim=1)  # (B, E*S)
-    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), \
+    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), (
         "dispatch_weights must sum to 1 over the token dimension (dim=1)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 6. SoftRouter combine softmax sums to 1 along dim=2 (over slots)
 # ---------------------------------------------------------------------------
 
+
 def test_router_combine_sums_to_1_over_slots(router, x):
     _, combine = router(x)
     # Sum over slot dim → (B, T), should be all ~1
     sums = combine.sum(dim=2)  # (B, T)
-    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), \
+    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), (
         "combine_weights must sum to 1 over the slot dimension (dim=2)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 7. SoftMoELayer output shape
 # ---------------------------------------------------------------------------
+
 
 def test_soft_moe_layer_output_shape(layer, x):
     out = layer(x)
@@ -131,6 +141,7 @@ def test_soft_moe_layer_output_shape(layer, x):
 # ---------------------------------------------------------------------------
 # 8. SoftMoELayer output is differentiable (backward works)
 # ---------------------------------------------------------------------------
+
 
 def test_soft_moe_layer_backward(layer, x):
     x_req = x.requires_grad_(True)
@@ -145,16 +156,17 @@ def test_soft_moe_layer_backward(layer, x):
 # 9. SoftMoELayer output differs from input (transformation is applied)
 # ---------------------------------------------------------------------------
 
+
 def test_soft_moe_layer_transforms_input(layer, x):
     with torch.no_grad():
         out = layer(x)
-    assert not torch.allclose(out, x, atol=1e-6), \
-        "SoftMoELayer output should differ from the input"
+    assert not torch.allclose(out, x, atol=1e-6), "SoftMoELayer output should differ from the input"
 
 
 # ---------------------------------------------------------------------------
 # 10. compute_load_stats returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_compute_load_stats_keys(router, x):
     dispatch, _ = router(x)
@@ -167,6 +179,7 @@ def test_compute_load_stats_keys(router, x):
 # 11. compute_load_stats expert_load sums to B*T
 # ---------------------------------------------------------------------------
 
+
 def test_compute_load_stats_expert_load_sum(router, x):
     dispatch, _ = router(x)
     stats = compute_load_stats(dispatch)
@@ -175,24 +188,28 @@ def test_compute_load_stats_expert_load_sum(router, x):
     # sums to 1 per batch item.  Summing over batch and tokens gives:
     #   sum_{b,t,s} dispatch[b,t,s] = B * (E*S)   (one unit per batch-slot pair)
     expected = B * N_EXPERTS * N_SLOTS
-    assert abs(total - expected) < 1e-4, \
+    assert abs(total - expected) < 1e-4, (
         f"expert_load should sum to B*(E*S)={expected}, got {total}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 12. compute_load_stats load_balance_loss >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_load_stats_loss_nonneg(router, x):
     dispatch, _ = router(x)
     stats = compute_load_stats(dispatch)
-    assert stats["load_balance_loss"].item() >= 0.0, \
+    assert stats["load_balance_loss"].item() >= 0.0, (
         "load_balance_loss (variance) must be non-negative"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 13. SoftMoELayer works with n_slots=2
 # ---------------------------------------------------------------------------
+
 
 def test_soft_moe_layer_multi_slot():
     cfg = SoftMoEConfig(n_experts=N_EXPERTS, n_slots=2, d_model=D, d_ff=D_FF, dropout=0.0)
@@ -205,6 +222,7 @@ def test_soft_moe_layer_multi_slot():
 # ---------------------------------------------------------------------------
 # 14. ExpertFFN dropout affects output in train vs eval mode
 # ---------------------------------------------------------------------------
+
 
 def test_expert_ffn_dropout_train_vs_eval():
     torch.manual_seed(0)
@@ -231,5 +249,6 @@ def test_expert_ffn_dropout_train_vs_eval():
     # In eval mode all runs produce identical output
     assert len(outputs_eval) == 1, "ExpertFFN should be deterministic in eval mode"
     # In train mode with high dropout (0.5) we expect variation across runs
-    assert len(outputs_train) > 1, \
+    assert len(outputs_train) > 1, (
         "ExpertFFN with dropout=0.5 should produce varied outputs in train mode"
+    )

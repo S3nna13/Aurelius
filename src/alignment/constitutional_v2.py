@@ -1,24 +1,25 @@
 """Constitutional AI v2: multi-principle critique-revision with convergence detection."""
+
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ConstitutionalPrinciple:
     """A single constitutional principle with critique and revision templates."""
 
     name: str
-    critique_prompt: str   # template — must contain {response}
-    revision_prompt: str   # template — must contain {response} and {critique}
+    critique_prompt: str  # template — must contain {response}
+    revision_prompt: str  # template — must contain {response} and {critique}
     weight: float = 1.0
 
 
@@ -74,6 +75,7 @@ HARMLESSNESS_PRINCIPLES: list[ConstitutionalPrinciple] = [
 # Principle sampling
 # ---------------------------------------------------------------------------
 
+
 def sample_principles(
     principles: list[ConstitutionalPrinciple],
     n: int,
@@ -100,6 +102,7 @@ def sample_principles(
 # Prompt formatting helpers
 # ---------------------------------------------------------------------------
 
+
 def format_critique_prompt(principle: ConstitutionalPrinciple, response: str) -> str:
     """Fill the {response} placeholder in principle.critique_prompt."""
     return principle.critique_prompt.format(response=response)
@@ -117,6 +120,7 @@ def format_revision_prompt(
 # ---------------------------------------------------------------------------
 # Greedy generation
 # ---------------------------------------------------------------------------
+
 
 def greedy_generate(
     model,
@@ -168,6 +172,7 @@ def greedy_generate(
 # ---------------------------------------------------------------------------
 # ConstitutionalReviser
 # ---------------------------------------------------------------------------
+
 
 class ConstitutionalReviser:
     """Apply a multi-principle critique-revision pipeline to model responses.
@@ -271,6 +276,7 @@ class ConstitutionalReviser:
 # Similarity metric
 # ---------------------------------------------------------------------------
 
+
 def compute_revision_similarity(response1: str, response2: str) -> float:
     """Character-level Jaccard similarity of bigram sets.
 
@@ -287,7 +293,7 @@ def compute_revision_similarity(response1: str, response2: str) -> float:
         return 1.0
 
     def bigrams(s: str) -> set[str]:
-        return {s[i:i + 2] for i in range(len(s) - 1)}
+        return {s[i : i + 2] for i in range(len(s) - 1)}
 
     bg1 = bigrams(response1)
     bg2 = bigrams(response2)

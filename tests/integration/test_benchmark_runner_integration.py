@@ -27,15 +27,13 @@ class BenchmarkRunnerIntegrationTests(unittest.TestCase):
             IFEvalProblem(
                 prompt="must contain hello",
                 constraints=[
-                    IFEvalConstraint(type="contains_keyword",
-                                     kwargs={"keyword": "hello"}),
+                    IFEvalConstraint(type="contains_keyword", kwargs={"keyword": "hello"}),
                 ],
             ),
             IFEvalProblem(
                 prompt="must start with Hi",
                 constraints=[
-                    IFEvalConstraint(type="start_with",
-                                     kwargs={"phrase": "Hi"}),
+                    IFEvalConstraint(type="start_with", kwargs={"phrase": "Hi"}),
                 ],
             ),
             IFEvalProblem(

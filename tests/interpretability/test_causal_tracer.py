@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -12,10 +11,10 @@ from src.interpretability.causal_tracer import (
     TraceResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model() -> nn.Sequential:
     return nn.Sequential(
@@ -37,6 +36,7 @@ def _ids(seq: int = 4, dim: int = 4) -> torch.Tensor:
 # TraceConfig
 # ---------------------------------------------------------------------------
 
+
 class TestTraceConfig:
     def test_default_metric(self) -> None:
         cfg = TraceConfig(layers=["0"], token_range=(0, 3))
@@ -55,6 +55,7 @@ class TestTraceConfig:
 # CausalTracer construction
 # ---------------------------------------------------------------------------
 
+
 class TestCausalTracerConstruction:
     def test_default_patcher_created(self) -> None:
         model = _tiny_model()
@@ -71,6 +72,7 @@ class TestCausalTracerConstruction:
 # ---------------------------------------------------------------------------
 # CausalTracer.trace
 # ---------------------------------------------------------------------------
+
 
 class TestTrace:
     def test_returns_trace_result(self) -> None:
@@ -142,6 +144,7 @@ class TestTrace:
 # CausalTracer.top_k_layers
 # ---------------------------------------------------------------------------
 
+
 class TestTopKLayers:
     def test_returns_list_of_causal_trace(self) -> None:
         model = _tiny_model()
@@ -174,6 +177,7 @@ class TestTopKLayers:
 # ---------------------------------------------------------------------------
 # CausalTracer.heatmap_data
 # ---------------------------------------------------------------------------
+
 
 class TestHeatmapData:
     def test_returns_nested_dict(self) -> None:

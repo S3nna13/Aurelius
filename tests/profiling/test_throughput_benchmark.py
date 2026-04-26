@@ -1,4 +1,5 @@
 """Tests for throughput_benchmark — throughput measurement."""
+
 from __future__ import annotations
 
 import time
@@ -11,6 +12,7 @@ class TestThroughputBenchmark:
         def dummy():
             for _ in range(1000):
                 pass
+
         t = ThroughputBenchmark().measure(dummy, iterations=1000)
         assert t > 0
 
@@ -30,6 +32,7 @@ class TestThroughputBenchmark:
     def test_measure_with_args(self):
         def adder(x, y):
             return x + y
+
         t = ThroughputBenchmark().measure(adder, iterations=100, args=(1, 2))
         assert t > 0
 

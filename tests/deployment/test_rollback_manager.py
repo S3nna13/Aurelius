@@ -1,4 +1,5 @@
 """Tests for rollback manager."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,7 @@ import time
 
 import pytest
 
-from src.deployment.rollback_manager import RollbackManager, ROLLBACK_MANAGER_REGISTRY
+from src.deployment.rollback_manager import ROLLBACK_MANAGER_REGISTRY, RollbackManager
 
 
 class TestRollbackManager:

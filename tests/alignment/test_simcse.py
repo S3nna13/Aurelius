@@ -1,18 +1,18 @@
 """Tests for SimCSE contrastive embedding training."""
+
 from __future__ import annotations
 
-import copy
-import torch
 import pytest
+import torch
 
 from src.alignment.simcse import SimCSEConfig, SimCSETrainer, extract_embeddings, simcse_loss
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_model():
@@ -39,6 +39,7 @@ def _make_input(batch_size: int = 4, seq_len: int = 8, vocab_size: int = 256) ->
 # ---------------------------------------------------------------------------
 # simcse_loss tests
 # ---------------------------------------------------------------------------
+
 
 def test_simcse_loss_shape():
     """simcse_loss returns a 0-dim scalar tensor."""
@@ -90,6 +91,7 @@ def test_simcse_loss_batch_size_1():
 # extract_embeddings tests
 # ---------------------------------------------------------------------------
 
+
 def test_extract_embeddings_shape(small_model):
     """extract_embeddings returns (B, D=64) tensor."""
     input_ids = _make_input(batch_size=4, seq_len=8)
@@ -106,8 +108,7 @@ def test_extract_embeddings_normalized(small_model):
     small_model.eval()
     emb = extract_embeddings(small_model, input_ids, cfg)
     norms = emb.norm(dim=-1)
-    assert torch.allclose(norms, torch.ones(4), atol=1e-5), \
-        f"Norms should be ~1.0, got: {norms}"
+    assert torch.allclose(norms, torch.ones(4), atol=1e-5), f"Norms should be ~1.0, got: {norms}"
 
 
 def test_extract_embeddings_mean_pooling(small_model):
@@ -124,6 +125,7 @@ def test_extract_embeddings_mean_pooling(small_model):
 # SimCSETrainer tests
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_finite_loss(small_model):
     """train_step should return a finite float loss."""
     input_ids = _make_input(batch_size=4, seq_len=8)
@@ -139,17 +141,13 @@ def test_train_step_updates_weights(small_model):
     trainer = SimCSETrainer(small_model, cfg=SimCSEConfig(), lr=3e-5)
 
     # Capture a snapshot of all parameters before the step
-    params_before = {
-        name: p.data.clone()
-        for name, p in small_model.named_parameters()
-    }
+    params_before = {name: p.data.clone() for name, p in small_model.named_parameters()}
 
     trainer.train_step(input_ids)
 
     # At least one parameter must have changed
     changed = any(
-        not torch.equal(params_before[name], p.data)
-        for name, p in small_model.named_parameters()
+        not torch.equal(params_before[name], p.data) for name, p in small_model.named_parameters()
     )
     assert changed, "No parameters were updated after train_step"
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from src.chat.message_truncation_policy import (
+    VALID_STRATEGIES,
     MessageTruncationPolicy,
     TruncatedResult,
-    VALID_STRATEGIES,
 )
 
 
@@ -56,9 +56,7 @@ def test_keep_system_and_last_n_keeps_system_plus_last_n():
 
 def test_token_budget_oldest_first_drops_until_under_budget():
     msgs = [_mk("user", "x" * 40)] * 5  # 10 tokens each @ //4 counter
-    pol = MessageTruncationPolicy(
-        "token_budget_oldest_first", max_tokens=25
-    )
+    pol = MessageTruncationPolicy("token_budget_oldest_first", max_tokens=25)
     out = pol.apply(msgs)
     total = sum(len(m["content"]) // 4 for m in out.messages)
     assert total <= 25
@@ -70,9 +68,7 @@ def test_token_budget_oldest_first_drops_until_under_budget():
 
 def test_token_budget_oldest_first_preserves_leading_system():
     msgs = [_mk("system", "s" * 40)] + [_mk("user", "u" * 40) for _ in range(3)]
-    pol = MessageTruncationPolicy(
-        "token_budget_oldest_first", max_tokens=20
-    )
+    pol = MessageTruncationPolicy("token_budget_oldest_first", max_tokens=20)
     out = pol.apply(msgs)
     assert out.messages[0]["role"] == "system"
     # 1 system (10) + 1 user (10) = 20, fits.
@@ -105,9 +101,7 @@ def test_token_budget_summarize_invokes_summarize_fn_and_flags():
 
 
 def test_summarize_strategy_without_summarize_fn_raises():
-    pol = MessageTruncationPolicy(
-        "token_budget_summarize_oldest", max_tokens=10
-    )
+    pol = MessageTruncationPolicy("token_budget_summarize_oldest", max_tokens=10)
     with pytest.raises(ValueError):
         pol.apply([_mk("user", "x" * 40)])
 
@@ -157,9 +151,7 @@ def test_empty_messages_returns_empty():
 
 def test_under_budget_input_returns_unchanged():
     msgs = [_mk("user", "x" * 8)]  # 2 tokens
-    pol = MessageTruncationPolicy(
-        "token_budget_oldest_first", max_tokens=100
-    )
+    pol = MessageTruncationPolicy("token_budget_oldest_first", max_tokens=100)
     out = pol.apply(msgs)
     assert out.messages == msgs
     assert out.dropped_count == 0
@@ -175,9 +167,7 @@ def test_determinism_same_inputs_same_outputs():
 
 def test_max_tokens_zero_returns_empty_or_system_only():
     msgs = [_mk("system", "sys"), _mk("user", "hello")]
-    pol = MessageTruncationPolicy(
-        "token_budget_oldest_first", max_tokens=0
-    )
+    pol = MessageTruncationPolicy("token_budget_oldest_first", max_tokens=0)
     out = pol.apply(msgs)
     total = sum(len(m["content"]) // 4 for m in out.messages)
     assert total <= 0

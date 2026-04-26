@@ -18,13 +18,13 @@ class RougeScorer:
 
     def _tokenize(self, text: str) -> list[str]:
         """Lowercase and split on whitespace/punctuation boundaries."""
-        return re.findall(r'\w+', text.lower())
+        return re.findall(r"\w+", text.lower())
 
     def _ngrams(self, tokens: list[str], n: int) -> list[tuple]:
         """Return all n-grams as a list of tuples via a sliding window."""
         if n <= 0 or len(tokens) < n:
             return []
-        return [tuple(tokens[i: i + n]) for i in range(len(tokens) - n + 1)]
+        return [tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
     def _lcs_length(self, a: list[str], b: list[str]) -> int:
         """Compute LCS length between two token lists using dynamic programming."""
@@ -91,9 +91,7 @@ class RougeScorer:
             rougeL=self.rouge_l(hypothesis, reference),
         )
 
-    def corpus_score(
-        self, hypotheses: list[str], references: list[str]
-    ) -> RougeScores:
+    def corpus_score(self, hypotheses: list[str], references: list[str]) -> RougeScores:
         """Compute mean ROUGE scores across a corpus of hypothesis/reference pairs.
 
         Raises ValueError if lengths differ.

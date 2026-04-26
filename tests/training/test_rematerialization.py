@@ -17,10 +17,10 @@ from src.training.rematerialization import (
     wrap_model_layers,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class LinearLayer(nn.Module):
     """Simple stand-in for a transformer layer: nn.Linear that returns a Tensor."""
@@ -41,6 +41,7 @@ def make_layers(n: int = 4, dim: int = 64) -> nn.ModuleList:
 # 1. RematerializationConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_rematerialization_config_defaults() -> None:
     cfg = RematerializationConfig()
     assert cfg.checkpoint_every_n == 1
@@ -53,6 +54,7 @@ def test_rematerialization_config_defaults() -> None:
 # 2. should_checkpoint_layer — every_n=1 (all layers)
 # ---------------------------------------------------------------------------
 
+
 def test_should_checkpoint_layer_every_1_all_layers() -> None:
     cfg = RematerializationConfig(checkpoint_every_n=1)
     for i in range(10):
@@ -62,6 +64,7 @@ def test_should_checkpoint_layer_every_1_all_layers() -> None:
 # ---------------------------------------------------------------------------
 # 3. should_checkpoint_layer — every_n=2 (every other)
 # ---------------------------------------------------------------------------
+
 
 def test_should_checkpoint_layer_every_2() -> None:
     cfg = RematerializationConfig(checkpoint_every_n=2)
@@ -76,6 +79,7 @@ def test_should_checkpoint_layer_every_2() -> None:
 # 4. should_checkpoint_layer — explicit checkpoint_layers list
 # ---------------------------------------------------------------------------
 
+
 def test_should_checkpoint_layer_explicit_list() -> None:
     cfg = RematerializationConfig(checkpoint_layers=[0, 2, 5])
     assert should_checkpoint_layer(0, cfg) is True
@@ -89,6 +93,7 @@ def test_should_checkpoint_layer_explicit_list() -> None:
 # ---------------------------------------------------------------------------
 # 5. checkpoint_forward produces same output as direct call
 # ---------------------------------------------------------------------------
+
 
 def test_checkpoint_forward_same_output() -> None:
     torch.manual_seed(0)
@@ -109,6 +114,7 @@ def test_checkpoint_forward_same_output() -> None:
 # 6. checkpoint_forward preserves gradients
 # ---------------------------------------------------------------------------
 
+
 def test_checkpoint_forward_preserves_gradients() -> None:
     torch.manual_seed(1)
     layer = LinearLayer(64)
@@ -126,6 +132,7 @@ def test_checkpoint_forward_preserves_gradients() -> None:
 # 7. SelectiveCheckpointWrapper — forward output shape
 # ---------------------------------------------------------------------------
 
+
 def test_selective_checkpoint_wrapper_output_shape() -> None:
     layers = make_layers(n=4, dim=64)
     cfg = RematerializationConfig(checkpoint_every_n=2)
@@ -139,6 +146,7 @@ def test_selective_checkpoint_wrapper_output_shape() -> None:
 # ---------------------------------------------------------------------------
 # 8. SelectiveCheckpointWrapper — checkpoint_every_n=1 (all checkpointed)
 # ---------------------------------------------------------------------------
+
 
 def test_selective_checkpoint_wrapper_all_checkpointed() -> None:
     torch.manual_seed(2)
@@ -157,6 +165,7 @@ def test_selective_checkpoint_wrapper_all_checkpointed() -> None:
 # ---------------------------------------------------------------------------
 # 9. SelectiveCheckpointWrapper — checkpoint_every_n=999 (none checkpointed)
 # ---------------------------------------------------------------------------
+
 
 def test_selective_checkpoint_wrapper_none_checkpointed() -> None:
     torch.manual_seed(3)
@@ -179,10 +188,9 @@ def test_selective_checkpoint_wrapper_none_checkpointed() -> None:
 # 10. estimate_activation_memory — keys present
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_activation_memory_keys_present() -> None:
-    result = estimate_activation_memory(
-        batch_size=2, seq_len=512, d_model=64, n_layers=4
-    )
+    result = estimate_activation_memory(batch_size=2, seq_len=512, d_model=64, n_layers=4)
     assert "full_mb" in result
     assert "checkpointed_mb" in result
     assert "savings_factor" in result
@@ -192,17 +200,17 @@ def test_estimate_activation_memory_keys_present() -> None:
 # 11. estimate_activation_memory — savings_factor == n_layers
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_activation_memory_savings_factor() -> None:
     n_layers = 8
-    result = estimate_activation_memory(
-        batch_size=2, seq_len=512, d_model=128, n_layers=n_layers
-    )
+    result = estimate_activation_memory(batch_size=2, seq_len=512, d_model=128, n_layers=n_layers)
     assert result["savings_factor"] == pytest.approx(float(n_layers), rel=1e-6)
 
 
 # ---------------------------------------------------------------------------
 # 12. MemoryProfiler.measure — correct tuple structure
 # ---------------------------------------------------------------------------
+
 
 def test_memory_profiler_measure_tuple_structure() -> None:
     profiler = MemoryProfiler()
@@ -226,6 +234,7 @@ def test_memory_profiler_measure_tuple_structure() -> None:
 # 13. wrap_model_layers convenience function
 # ---------------------------------------------------------------------------
 
+
 def test_wrap_model_layers_returns_wrapper() -> None:
     layers = make_layers(n=3, dim=64)
     cfg = RematerializationConfig(checkpoint_every_n=1)
@@ -240,6 +249,7 @@ def test_wrap_model_layers_returns_wrapper() -> None:
 # ---------------------------------------------------------------------------
 # 14. RematerializationConfig with custom values
 # ---------------------------------------------------------------------------
+
 
 def test_rematerialization_config_custom() -> None:
     cfg = RematerializationConfig(
@@ -257,6 +267,7 @@ def test_rematerialization_config_custom() -> None:
 # ---------------------------------------------------------------------------
 # 15. estimate_activation_memory values are positive and ordered correctly
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_activation_memory_ordering() -> None:
     result = estimate_activation_memory(

@@ -7,16 +7,14 @@ captures how information flows from input tokens to any target position.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Core rollout engine
 # ---------------------------------------------------------------------------
+
 
 class AttentionRollout:
     """Compute attention rollout from a list of per-layer attention maps.
@@ -127,7 +125,7 @@ class AttentionRollout:
     # Public API
     # ------------------------------------------------------------------
 
-    def compute(self, attention_maps: List[Tensor]) -> Tensor:
+    def compute(self, attention_maps: list[Tensor]) -> Tensor:
         """Compute attention rollout from a list of per-layer attention maps.
 
         Args:
@@ -153,7 +151,7 @@ class AttentionRollout:
         first = attention_maps[0]
         batched = first.dim() == 4  # (B, H, T, T)
 
-        rollout: Optional[Tensor] = None
+        rollout: Tensor | None = None
 
         for attn in attention_maps:
             if batched:
@@ -183,7 +181,12 @@ class AttentionRollout:
                 T = a_res.shape[-1]
                 if batched:
                     B = a_res.shape[0]
-                    rollout = torch.eye(T, dtype=a_res.dtype, device=a_res.device).unsqueeze(0).expand(B, T, T).clone()
+                    rollout = (
+                        torch.eye(T, dtype=a_res.dtype, device=a_res.device)
+                        .unsqueeze(0)
+                        .expand(B, T, T)
+                        .clone()
+                    )
                 else:
                     rollout = torch.eye(T, dtype=a_res.dtype, device=a_res.device)
 
@@ -197,6 +200,7 @@ class AttentionRollout:
 # Higher-level attributor
 # ---------------------------------------------------------------------------
 
+
 class RolloutAttributor:
     """Attribute importance scores to input tokens from a target position.
 
@@ -209,7 +213,7 @@ class RolloutAttributor:
 
     def attribute(
         self,
-        attention_maps: List[Tensor],
+        attention_maps: list[Tensor],
         target_pos: int = 0,
     ) -> Tensor:
         """Return per-token importance scores as seen from ``target_pos``.
@@ -245,6 +249,7 @@ class RolloutAttributor:
 # Forward-hook utility
 # ---------------------------------------------------------------------------
 
+
 class AttentionRolloutHook:
     """Collect attention maps from a model via forward hooks.
 
@@ -264,12 +269,12 @@ class AttentionRolloutHook:
     def __init__(
         self,
         model: nn.Module,
-        attention_module_class: Optional[type] = None,
+        attention_module_class: type | None = None,
     ) -> None:
         self.model = model
         self.attention_module_class = attention_module_class
         self._hooks: list = []
-        self._maps: List[Tensor] = []
+        self._maps: list[Tensor] = []
 
     # ------------------------------------------------------------------
     # Hook callback
@@ -314,7 +319,7 @@ class AttentionRolloutHook:
             handle.remove()
         self._hooks.clear()
 
-    def get_maps(self) -> List[Tensor]:
+    def get_maps(self) -> list[Tensor]:
         """Return the list of attention maps collected since the last :meth:`register` call."""
         return list(self._maps)
 

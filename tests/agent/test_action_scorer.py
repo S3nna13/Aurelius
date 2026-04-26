@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.action_scorer import ActionScore, ActionScorer, ScoreLambdas, AGENT_REGISTRY
-
+from src.agent.action_scorer import AGENT_REGISTRY, ActionScore, ActionScorer, ScoreLambdas
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scorer() -> ActionScorer:
@@ -25,6 +25,7 @@ def default_lambdas() -> ScoreLambdas:
 # Registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry_contains_action_scorer():
     assert "action_scorer" in AGENT_REGISTRY
     assert isinstance(AGENT_REGISTRY["action_scorer"], ActionScorer)
@@ -33,6 +34,7 @@ def test_registry_contains_action_scorer():
 # ---------------------------------------------------------------------------
 # estimate_utility
 # ---------------------------------------------------------------------------
+
 
 def test_utility_full_match(scorer):
     action = {"type": "search"}
@@ -62,6 +64,7 @@ def test_utility_no_goals(scorer):
 # estimate_info_gain
 # ---------------------------------------------------------------------------
 
+
 def test_info_gain_info_action(scorer):
     for t in ["search", "retrieve", "query", "fetch", "lookup"]:
         assert scorer.estimate_info_gain({"type": t}, {}) == 1.0
@@ -86,6 +89,7 @@ def test_info_gain_unknown(scorer):
 # ---------------------------------------------------------------------------
 # estimate_risk
 # ---------------------------------------------------------------------------
+
 
 def test_risk_high(scorer):
     for t in ["delete", "write_file", "execute", "shell", "deploy", "drop", "rm"]:
@@ -116,6 +120,7 @@ def test_risk_policy_none(scorer):
 # estimate_cost
 # ---------------------------------------------------------------------------
 
+
 def test_cost_zero_tokens(scorer):
     assert scorer.estimate_cost({}) == 0.0
 
@@ -135,6 +140,7 @@ def test_cost_partial(scorer):
 # ---------------------------------------------------------------------------
 # score
 # ---------------------------------------------------------------------------
+
 
 def test_score_returns_action_score(scorer):
     result = scorer.score({"type": "search"}, {"goals": ["search"]})
@@ -159,6 +165,7 @@ def test_score_default_lambdas(scorer):
 # ---------------------------------------------------------------------------
 # rank_actions
 # ---------------------------------------------------------------------------
+
 
 def test_rank_actions_descending(scorer):
     actions = [

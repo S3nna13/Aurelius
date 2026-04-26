@@ -1,8 +1,9 @@
 """Tests for adapter-based continual learning (adapter_continual.py)."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -16,10 +17,10 @@ from src.training.adapter_continual import (
     freeze_adapters,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg():
@@ -55,6 +56,7 @@ def adapter_layer(ac_config):
 # 1. Test AdapterContinualConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_adapter_continual_config_defaults():
     cfg = AdapterContinualConfig()
     assert cfg.adapter_rank == 8
@@ -68,6 +70,7 @@ def test_adapter_continual_config_defaults():
 # 2. Test TaskAdapter forward output shape
 # ---------------------------------------------------------------------------
 
+
 def test_task_adapter_forward_output_shape():
     adapter = TaskAdapter(d_model=64, rank=4, alpha=8.0, task_id=0)
     x = torch.randn(2, 10, 64)
@@ -78,6 +81,7 @@ def test_task_adapter_forward_output_shape():
 # ---------------------------------------------------------------------------
 # 3. Test TaskAdapter forward residual (output changes from input)
 # ---------------------------------------------------------------------------
+
 
 def test_task_adapter_forward_residual_changes_after_training():
     """After a gradient update, the adapter output should differ from the input."""
@@ -92,12 +96,15 @@ def test_task_adapter_forward_residual_changes_after_training():
 
     out = adapter(x)
     # Output should not be identical to input once weights are non-trivial
-    assert not torch.allclose(out, x), "Adapter output should differ from input when weights are non-zero"
+    assert not torch.allclose(out, x), (
+        "Adapter output should differ from input when weights are non-zero"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 4. Test MultiTaskAdapterLayer.add_task registers adapter
 # ---------------------------------------------------------------------------
+
 
 def test_multi_task_adapter_layer_add_task_registers(adapter_layer):
     assert 0 not in adapter_layer.adapters
@@ -109,6 +116,7 @@ def test_multi_task_adapter_layer_add_task_registers(adapter_layer):
 # ---------------------------------------------------------------------------
 # 5. Test MultiTaskAdapterLayer.forward routes to correct adapter
 # ---------------------------------------------------------------------------
+
 
 def test_multi_task_adapter_layer_forward_routes(adapter_layer):
     adapter_layer.add_task(0)
@@ -133,6 +141,7 @@ def test_multi_task_adapter_layer_forward_routes(adapter_layer):
 # 6. Test MultiTaskAdapterLayer unknown task → identity
 # ---------------------------------------------------------------------------
 
+
 def test_multi_task_adapter_layer_unknown_task_identity(adapter_layer):
     x = torch.randn(2, 8, 64)
     out = adapter_layer(x, task_id=99)
@@ -142,6 +151,7 @@ def test_multi_task_adapter_layer_unknown_task_identity(adapter_layer):
 # ---------------------------------------------------------------------------
 # 7. Test compute_task_overlap returns float in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_task_overlap_range():
     torch.manual_seed(1)
@@ -162,6 +172,7 @@ def test_compute_task_overlap_range():
 # 8. Test compute_task_overlap same adapter → ~1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_task_overlap_same_adapter():
     torch.manual_seed(2)
     a = TaskAdapter(d_model=32, rank=4, alpha=8.0, task_id=0)
@@ -175,6 +186,7 @@ def test_compute_task_overlap_same_adapter():
 # ---------------------------------------------------------------------------
 # 9. Test freeze_adapters freezes all but current
 # ---------------------------------------------------------------------------
+
 
 def test_freeze_adapters_freezes_all_but_current(adapter_layer):
     for tid in [0, 1, 2]:
@@ -194,6 +206,7 @@ def test_freeze_adapters_freezes_all_but_current(adapter_layer):
 # 10. Test compute_overlap_penalty returns scalar
 # ---------------------------------------------------------------------------
 
+
 def test_compute_overlap_penalty_returns_scalar():
     torch.manual_seed(3)
     adapters = {}
@@ -212,6 +225,7 @@ def test_compute_overlap_penalty_returns_scalar():
 # ---------------------------------------------------------------------------
 # 11. Test AdapterContinualTrainer.train_step returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_train_step_returns_correct_keys(small_model):
     config = AdapterContinualConfig(adapter_rank=4, adapter_alpha=8.0)
@@ -235,6 +249,7 @@ def test_trainer_train_step_returns_correct_keys(small_model):
 # 12. Test AdapterContinualTrainer.evaluate_forgetting with no history → 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_evaluate_forgetting_no_history(small_model):
     config = AdapterContinualConfig()
     trainer = AdapterContinualTrainer(small_model, config)
@@ -246,6 +261,7 @@ def test_trainer_evaluate_forgetting_no_history(small_model):
 # ---------------------------------------------------------------------------
 # Bonus: evaluate_forgetting with task history
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_evaluate_forgetting_detects_increase(small_model):
     config = AdapterContinualConfig(adapter_rank=4)

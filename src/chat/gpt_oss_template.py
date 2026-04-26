@@ -90,9 +90,7 @@ class GptOssTemplate:
         # Prepend tool namespace as a developer message.
         if tools:
             ts_block = render_namespace("functions", tools)
-            parts.append(
-                f"{START}developer{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{ts_block}{END}"
-            )
+            parts.append(f"{START}developer{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{ts_block}{END}")
 
         # Build a look-ahead index: for each assistant message that has
         # reasoning content, is there a LATER non-tool-call assistant msg?
@@ -107,20 +105,14 @@ class GptOssTemplate:
             content = self._get_content(msg)
 
             if role == "developer":
-                parts.append(
-                    f"{START}developer{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}"
-                )
+                parts.append(f"{START}developer{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}")
 
             elif role == "system":
                 # Treat system as developer.
-                parts.append(
-                    f"{START}developer{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}"
-                )
+                parts.append(f"{START}developer{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}")
 
             elif role == "user":
-                parts.append(
-                    f"{START}user{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}"
-                )
+                parts.append(f"{START}user{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}")
 
             elif role == "assistant":
                 tool_calls = msg.get("tool_calls")
@@ -139,48 +131,31 @@ class GptOssTemplate:
                             f"{CHANNEL}commentary json{MESSAGE}{args_str}{CALL}"
                         )
                 else:
-                    reasoning = (
-                        msg.get("reasoning_content", "")
-                        or msg.get("thinking", "")
-                        or ""
-                    )
+                    reasoning = msg.get("reasoning_content", "") or msg.get("thinking", "") or ""
 
                     # Look-ahead: is there a later non-tool-call assistant msg?
-                    future_assistant = any(
-                        j > idx for j in assistant_indices
-                    )
+                    future_assistant = any(j > idx for j in assistant_indices)
 
                     if reasoning and not future_assistant:
                         # Last CoT message — emit analysis channel first.
                         parts.append(
-                            f"{START}assistant{CHANNEL}{ANALYSIS_CHANNEL}"
-                            f"{MESSAGE}{reasoning}{END}"
+                            f"{START}assistant{CHANNEL}{ANALYSIS_CHANNEL}{MESSAGE}{reasoning}{END}"
                         )
 
                     # Always emit final channel.
-                    parts.append(
-                        f"{START}assistant{CHANNEL}{FINAL_CHANNEL}"
-                        f"{MESSAGE}{content}{END}"
-                    )
+                    parts.append(f"{START}assistant{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}")
 
             elif role == "tool":
                 # Tool result / observation.
                 fn_name = msg.get("name", msg.get("tool_call_id", "tool"))
-                parts.append(
-                    f"{START}functions.{fn_name}{CHANNEL}result"
-                    f"{MESSAGE}{content}{RETURN}"
-                )
+                parts.append(f"{START}functions.{fn_name}{CHANNEL}result{MESSAGE}{content}{RETURN}")
 
             else:
                 # Unknown role — pass through as user.
-                parts.append(
-                    f"{START}user{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}"
-                )
+                parts.append(f"{START}user{CHANNEL}{FINAL_CHANNEL}{MESSAGE}{content}{END}")
 
         if add_generation_prompt:
-            parts.append(
-                f"{START}assistant{CHANNEL}{FINAL_CHANNEL}{MESSAGE}"
-            )
+            parts.append(f"{START}assistant{CHANNEL}{FINAL_CHANNEL}{MESSAGE}")
 
         return "".join(parts)
 

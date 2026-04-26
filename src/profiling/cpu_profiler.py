@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import statistics
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -56,7 +55,7 @@ class CPUProfiler:
             return 0.0
         return statistics.mean(s.overall_pct for s in self._samples)
 
-    def hottest_core(self) -> Optional[int]:
+    def hottest_core(self) -> int | None:
         if not self._samples:
             return None
         # Determine the max number of cores seen
@@ -71,8 +70,7 @@ class CPUProfiler:
                 core_totals[i] += val
                 core_counts[i] += 1
         means = [
-            core_totals[i] / core_counts[i] if core_counts[i] > 0 else 0.0
-            for i in range(max_cores)
+            core_totals[i] / core_counts[i] if core_counts[i] > 0 else 0.0 for i in range(max_cores)
         ]
         return means.index(max(means))
 

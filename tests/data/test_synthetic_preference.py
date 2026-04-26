@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
 from src.data.synthetic_preference import (
     PreferenceDataConfig,
     PreferencePair,
@@ -19,10 +17,10 @@ from src.data.synthetic_preference import (
     generate_reasoning_pair,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _rng(seed: int = 0) -> random.Random:
     return random.Random(seed)
@@ -31,6 +29,7 @@ def _rng(seed: int = 0) -> random.Random:
 # ---------------------------------------------------------------------------
 # PreferenceDataConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_preference_data_config_defaults():
     cfg = PreferenceDataConfig()
@@ -44,6 +43,7 @@ def test_preference_data_config_defaults():
 # ---------------------------------------------------------------------------
 # generate_math_pair
 # ---------------------------------------------------------------------------
+
 
 def test_generate_math_pair_returns_preference_pair():
     pair = generate_math_pair(_rng())
@@ -70,6 +70,7 @@ def test_generate_math_pair_has_prompt():
 # generate_coding_pair
 # ---------------------------------------------------------------------------
 
+
 def test_generate_coding_pair_domain():
     pair = generate_coding_pair(_rng())
     assert pair.domain == "coding"
@@ -89,6 +90,7 @@ def test_generate_coding_pair_chosen_ne_rejected():
 # generate_reasoning_pair
 # ---------------------------------------------------------------------------
 
+
 def test_generate_reasoning_pair_domain():
     pair = generate_reasoning_pair(_rng())
     assert pair.domain == "reasoning"
@@ -107,6 +109,7 @@ def test_generate_reasoning_pair_chosen_ne_rejected():
 # ---------------------------------------------------------------------------
 # augment_with_critique
 # ---------------------------------------------------------------------------
+
 
 def test_augment_with_critique_adds_critique():
     pair = generate_math_pair(_rng())
@@ -137,6 +140,7 @@ def test_augment_with_critique_template_format():
 # filter_by_quality
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_quality_removes_low_margin():
     pairs = [
         PreferencePair("p", "c", "r", "math", score_chosen=0.6, score_rejected=0.5),  # diff=0.1
@@ -165,6 +169,7 @@ def test_filter_by_quality_empty_input():
 # format_for_dpo
 # ---------------------------------------------------------------------------
 
+
 def test_format_for_dpo_keys_present():
     pair = generate_math_pair(_rng())
     result = format_for_dpo(pair)
@@ -185,6 +190,7 @@ def test_format_for_dpo_values_match():
 # format_for_rlhf
 # ---------------------------------------------------------------------------
 
+
 def test_format_for_rlhf_keys_present():
     pair = generate_math_pair(_rng())
     result = format_for_rlhf(pair)
@@ -203,6 +209,7 @@ def test_format_for_rlhf_uses_chosen_and_score():
 # ---------------------------------------------------------------------------
 # SyntheticPreferenceGenerator
 # ---------------------------------------------------------------------------
+
 
 def test_generator_generate_returns_list():
     cfg = PreferenceDataConfig(n_pairs=10, augment_with_critique=False, quality_threshold=0.0)
@@ -249,8 +256,12 @@ def test_generator_generate_distributes_across_domains():
 
 
 def test_generator_reproducible_with_same_seed():
-    cfg1 = PreferenceDataConfig(n_pairs=5, seed=99, augment_with_critique=False, quality_threshold=0.0)
-    cfg2 = PreferenceDataConfig(n_pairs=5, seed=99, augment_with_critique=False, quality_threshold=0.0)
+    cfg1 = PreferenceDataConfig(
+        n_pairs=5, seed=99, augment_with_critique=False, quality_threshold=0.0
+    )
+    cfg2 = PreferenceDataConfig(
+        n_pairs=5, seed=99, augment_with_critique=False, quality_threshold=0.0
+    )
     result1 = SyntheticPreferenceGenerator(cfg1).generate()
     result2 = SyntheticPreferenceGenerator(cfg2).generate()
     assert [p.prompt for p in result1] == [p.prompt for p in result2]

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.deployment.rollout_manager import (
     CANARY_3_STAGE,
     ROLLOUT_REGISTRY,
@@ -13,10 +11,10 @@ from src.deployment.rollout_manager import (
     RolloutStrategy,
 )
 
-
 # ---------------------------------------------------------------------------
 # RolloutStrategy enum
 # ---------------------------------------------------------------------------
+
 
 class TestRolloutStrategy:
     def test_canary_value(self):
@@ -38,6 +36,7 @@ class TestRolloutStrategy:
 # ---------------------------------------------------------------------------
 # RolloutStage dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestRolloutStage:
     def test_name_and_traffic(self):
@@ -66,6 +65,7 @@ class TestRolloutStage:
 # RolloutPlan dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestRolloutPlan:
     def test_strategy_and_stages(self):
         stages = [RolloutStage("a", 10.0)]
@@ -85,6 +85,7 @@ class TestRolloutPlan:
 # ---------------------------------------------------------------------------
 # RolloutManager
 # ---------------------------------------------------------------------------
+
 
 def _make_canary_manager(num_stages: int = 3) -> RolloutManager:
     stages = [RolloutStage(f"s{i}", float(i * 10)) for i in range(1, num_stages + 1)]
@@ -253,6 +254,7 @@ class TestRolloutManagerProgress:
 # ---------------------------------------------------------------------------
 # Registry and pre-built plans
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_canary_3stage(self):

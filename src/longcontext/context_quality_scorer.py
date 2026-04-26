@@ -119,11 +119,7 @@ class ContextQualityScorer:
         structure = _structure_bonus(chunk)
         penalty = _redundancy_factor(chunk)
 
-        raw = (
-            density * _WEIGHT_DENSITY
-            + overlap * _WEIGHT_OVERLAP
-            + structure * _WEIGHT_STRUCTURE
-        )
+        raw = density * _WEIGHT_DENSITY + overlap * _WEIGHT_OVERLAP + structure * _WEIGHT_STRUCTURE
         return min(raw * penalty, 1.0)
 
     def score_chunks(

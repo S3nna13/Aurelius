@@ -7,14 +7,13 @@ Implements: BLEU, ROUGE (N, L, W), METEOR-lite, SemanticSimilarity (BERTScore-li
 
 import math
 from collections import Counter
-from typing import List, Tuple, Dict
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # NGramCounter
 # ---------------------------------------------------------------------------
+
 
 class NGramCounter:
     """Count n-grams in a token sequence."""
@@ -45,6 +44,7 @@ class NGramCounter:
 # BLEUScore
 # ---------------------------------------------------------------------------
 
+
 class BLEUScore:
     """BLEU metric (Papineni et al. 2002)."""
 
@@ -65,7 +65,7 @@ class BLEUScore:
             return 1.0
         return math.exp(1.0 - ref_len / hyp_len)
 
-    def bleu_n(self, hypothesis: List[str], reference: List[str], n: int) -> float:
+    def bleu_n(self, hypothesis: list[str], reference: list[str], n: int) -> float:
         """n-gram precision for a single sentence pair."""
         if not hypothesis:
             return 0.0
@@ -82,7 +82,7 @@ class BLEUScore:
     # public API
     # ------------------------------------------------------------------
 
-    def sentence_bleu(self, hypothesis: List[str], reference: List[str]) -> float:
+    def sentence_bleu(self, hypothesis: list[str], reference: list[str]) -> float:
         """BLEU-N (up to max_n) for a single sentence pair."""
         if not hypothesis:
             return 0.0
@@ -116,8 +116,8 @@ class BLEUScore:
 
     def corpus_bleu(
         self,
-        hypotheses: List[List[str]],
-        references: List[List[str]],
+        hypotheses: list[list[str]],
+        references: list[list[str]],
     ) -> float:
         """Corpus-level BLEU.
 
@@ -167,6 +167,7 @@ class BLEUScore:
 # ROUGEScore
 # ---------------------------------------------------------------------------
 
+
 class ROUGEScore:
     """ROUGE metrics (Lin 2004)."""
 
@@ -177,9 +178,7 @@ class ROUGEScore:
     # ROUGE-N
     # ------------------------------------------------------------------
 
-    def rouge_n(
-        self, hypothesis: List[str], reference: List[str], n: int = 2
-    ) -> Dict[str, float]:
+    def rouge_n(self, hypothesis: list[str], reference: list[str], n: int = 2) -> dict[str, float]:
         """ROUGE-N: precision, recall, f1."""
         if not hypothesis or not reference:
             return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
@@ -217,9 +216,7 @@ class ROUGEScore:
             prev, curr = curr, [0] * (n + 1)
         return prev[n]
 
-    def rouge_l(
-        self, hypothesis: List[str], reference: List[str]
-    ) -> Dict[str, float]:
+    def rouge_l(self, hypothesis: list[str], reference: list[str]) -> dict[str, float]:
         """ROUGE-L based on LCS."""
         if not hypothesis or not reference:
             return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
@@ -245,7 +242,7 @@ class ROUGEScore:
             for j in range(1, n + 1):
                 if x[i - 1] == y[j - 1]:
                     k = w[i - 1][j - 1]
-                    c[i][j] = c[i - 1][j - 1] + (k + 1) ** weight - k ** weight
+                    c[i][j] = c[i - 1][j - 1] + (k + 1) ** weight - k**weight
                     w[i][j] = k + 1
                 else:
                     if c[i - 1][j] >= c[i][j - 1]:
@@ -258,10 +255,10 @@ class ROUGEScore:
 
     def rouge_w(
         self,
-        hypothesis: List[str],
-        reference: List[str],
+        hypothesis: list[str],
+        reference: list[str],
         weight: float = 1.2,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """ROUGE-W: weighted LCS."""
         if not hypothesis or not reference:
             return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
@@ -281,6 +278,7 @@ class ROUGEScore:
 # METEORScore
 # ---------------------------------------------------------------------------
 
+
 class METEORScore:
     """Simplified METEOR (Banerjee & Lavie 2005) — exact match only."""
 
@@ -294,12 +292,10 @@ class METEORScore:
         self.beta = beta
         self.gamma = gamma
 
-    def _match_tokens(
-        self, hyp: List[str], ref: List[str]
-    ) -> List[Tuple[int, int]]:
+    def _match_tokens(self, hyp: list[str], ref: list[str]) -> list[tuple[int, int]]:
         """Greedy exact-match alignment, each ref token used at most once."""
         ref_available = list(range(len(ref)))
-        matches: List[Tuple[int, int]] = []
+        matches: list[tuple[int, int]] = []
         for h_idx, h_tok in enumerate(hyp):
             for r_idx in ref_available:
                 if ref[r_idx] == h_tok:
@@ -309,7 +305,7 @@ class METEORScore:
         return matches
 
     @staticmethod
-    def _count_chunks(matches: List[Tuple[int, int]]) -> int:
+    def _count_chunks(matches: list[tuple[int, int]]) -> int:
         """Count contiguous chunks in matched pairs (both sides consecutive)."""
         if not matches:
             return 0
@@ -321,7 +317,7 @@ class METEORScore:
                 chunks += 1
         return chunks
 
-    def score(self, hypothesis: List[str], reference: List[str]) -> float:
+    def score(self, hypothesis: list[str], reference: list[str]) -> float:
         """METEOR score in [0, 1]."""
         if not hypothesis or not reference:
             return 0.0
@@ -341,7 +337,7 @@ class METEORScore:
         # Fragmentation penalty: 0 when all matches are in one contiguous chunk.
         # Use (chunks - 1) so a perfectly-contiguous match incurs no penalty.
         frag = (chunks - 1) / matched if matched > 0 else 0.0
-        penalty = self.gamma * frag ** self.beta
+        penalty = self.gamma * frag**self.beta
 
         meteor = f_mean * (1.0 - penalty)
         # Clamp to [0, 1] for numerical safety
@@ -352,13 +348,14 @@ class METEORScore:
 # SemanticSimilarityScore  (BERTScore-lite, no pretrained model)
 # ---------------------------------------------------------------------------
 
+
 class SemanticSimilarityScore:
     """Embedding-based similarity via char-hash embeddings."""
 
     def __init__(self, embed_dim: int = 16) -> None:
         self.embed_dim = embed_dim
 
-    def embed(self, tokens: List[str]) -> torch.Tensor:
+    def embed(self, tokens: list[str]) -> torch.Tensor:
         """Return (len, embed_dim) unit-normed tensor.
 
         For each token: embedding[d] = sum over chars of sin(ord(c) * 0.01 * (i+1))
@@ -372,7 +369,7 @@ class SemanticSimilarityScore:
         for token in tokens:
             vec = torch.zeros(self.embed_dim)
             for i, c in enumerate(token):
-                val = math.sin(ord(c) * 0.01 * (i + 1))
+                math.sin(ord(c) * 0.01 * (i + 1))
                 # Distribute across all dimensions with dimension-varying phase
                 for d in range(self.embed_dim):
                     vec[d] += math.sin(ord(c) * 0.01 * (i + 1) + d * 0.5)
@@ -384,9 +381,7 @@ class SemanticSimilarityScore:
 
         return torch.stack(vecs)  # (len, embed_dim)
 
-    def greedy_match(
-        self, hyp_embeddings: torch.Tensor, ref_embeddings: torch.Tensor
-    ) -> float:
+    def greedy_match(self, hyp_embeddings: torch.Tensor, ref_embeddings: torch.Tensor) -> float:
         """Mean of max cosine similarities (hyp token → best ref token)."""
         if hyp_embeddings.shape[0] == 0 or ref_embeddings.shape[0] == 0:
             return 0.0
@@ -395,9 +390,7 @@ class SemanticSimilarityScore:
         max_sims = sim.max(dim=1).values
         return max_sims.mean().item()
 
-    def score(
-        self, hypothesis: List[str], reference: List[str]
-    ) -> Dict[str, float]:
+    def score(self, hypothesis: list[str], reference: list[str]) -> dict[str, float]:
         """BERTScore-lite: precision, recall, f1."""
         if not hypothesis or not reference:
             return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
@@ -414,6 +407,7 @@ class SemanticSimilarityScore:
 # ---------------------------------------------------------------------------
 # Shared helper
 # ---------------------------------------------------------------------------
+
 
 def _f1(precision: float, recall: float, beta: float = 1.0) -> float:
     denom = beta**2 * precision + recall

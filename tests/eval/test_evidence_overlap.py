@@ -33,4 +33,3 @@ def test_max_evidence_overlap_handles_empty_passages():
 
 def test_evidence_jaccard_handles_empty_texts():
     assert evidence_jaccard("", "") == pytest.approx(1.0)
-

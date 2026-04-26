@@ -6,9 +6,9 @@ concentrate rank budget on the most important directions.
 
 Reference: Zhang et al. 2023, arXiv:2303.10512
 """
+
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -18,14 +18,14 @@ import torch.nn.functional as F
 
 @dataclass
 class AdaLoRAConfig:
-    init_rank: int = 12            # starting rank (will be pruned down)
-    target_rank: int = 4           # target rank after pruning
-    alpha: float = 32.0            # LoRA scaling factor
-    beta1: float = 0.85            # EMA coefficient for importance scores
-    beta2: float = 0.85            # EMA coefficient for sensitivity scores
+    init_rank: int = 12  # starting rank (will be pruned down)
+    target_rank: int = 4  # target rank after pruning
+    alpha: float = 32.0  # LoRA scaling factor
+    beta1: float = 0.85  # EMA coefficient for importance scores
+    beta2: float = 0.85  # EMA coefficient for sensitivity scores
     pruning_warmup_steps: int = 10  # steps before starting to prune
-    total_steps: int = 100          # total training steps (for scheduling)
-    reg_lambda: float = 0.1         # orthogonality regularization weight
+    total_steps: int = 100  # total training steps (for scheduling)
+    reg_lambda: float = 0.1  # orthogonality regularization weight
 
 
 class AdaLoRALinear(nn.Module):
@@ -56,9 +56,7 @@ class AdaLoRALinear(nn.Module):
         self.scale = cfg.alpha / cfg.init_rank
 
         # Frozen base weight
-        self.weight = nn.Parameter(
-            torch.zeros(out_features, in_features), requires_grad=False
-        )
+        self.weight = nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
 
         # SVD-parameterized LoRA: W_delta = P @ diag(lambda_vec) @ Q
         self.P = nn.Parameter(torch.randn(out_features, cfg.init_rank) * 0.01)
@@ -91,10 +89,7 @@ class AdaLoRALinear(nn.Module):
         """
         if self.lambda_vec.grad is not None:
             grad_mag = self.lambda_vec.grad.detach().abs()
-            self.importance = (
-                self.cfg.beta1 * self.importance
-                + (1 - self.cfg.beta1) * grad_mag
-            )
+            self.importance = self.cfg.beta1 * self.importance + (1 - self.cfg.beta1) * grad_mag
 
     def prune_to_budget(self, target_rank: int) -> None:
         """Zero out the least important singular values.
@@ -116,9 +111,9 @@ class AdaLoRALinear(nn.Module):
         L_orth = ||P.T @ P - I||_F^2 + ||Q @ Q.T - I||_F^2
         """
         r = self.rank
-        PtP = self.P.T @ self.P   # (r, r)
-        QQt = self.Q @ self.Q.T   # (r, r)
-        I = torch.eye(r, device=self.P.device, dtype=self.P.dtype)
+        PtP = self.P.T @ self.P  # (r, r)
+        QQt = self.Q @ self.Q.T  # (r, r)
+        I = torch.eye(r, device=self.P.device, dtype=self.P.dtype)  # noqa: E741
         return (PtP - I).pow(2).sum() + (QQt - I).pow(2).sum()
 
 
@@ -170,9 +165,7 @@ class AdaLoRATrainer:
         Returns metrics: {"loss": float, "active_rank": float, "orth_loss": float}
         """
         # Add orthogonality regularization to the loss
-        orth_loss = sum(
-            layer.orthogonality_loss() for layer in self.adalora_layers
-        )
+        orth_loss = sum(layer.orthogonality_loss() for layer in self.adalora_layers)
         total_loss = loss + self.cfg.reg_lambda * orth_loss
 
         self.optimizer.zero_grad()
@@ -196,5 +189,7 @@ class AdaLoRATrainer:
         return {
             "loss": loss.item(),
             "active_rank": avg_active_rank,
-            "orth_loss": orth_loss.item() if isinstance(orth_loss, torch.Tensor) else float(orth_loss),
+            "orth_loss": orth_loss.item()
+            if isinstance(orth_loss, torch.Tensor)
+            else float(orth_loss),
         }

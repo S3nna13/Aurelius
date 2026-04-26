@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import copy
-
-import pytest
 import torch
 
 from src.model.titans import (
@@ -84,7 +81,9 @@ def test_read_shape():
     mem = make_memory()
     x, _ = make_xy()
     out = mem.read(x)
-    assert out.shape == (BATCH, SEQ, D_MODEL), f"Expected ({BATCH},{SEQ},{D_MODEL}), got {out.shape}"
+    assert out.shape == (BATCH, SEQ, D_MODEL), (
+        f"Expected ({BATCH},{SEQ},{D_MODEL}), got {out.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +158,9 @@ def test_titans_layer_output_shape():
     layer = make_layer()
     x, _ = make_xy()
     out = layer(x)
-    assert out.shape == (BATCH, SEQ, D_MODEL), f"Expected ({BATCH},{SEQ},{D_MODEL}), got {out.shape}"
+    assert out.shape == (BATCH, SEQ, D_MODEL), (
+        f"Expected ({BATCH},{SEQ},{D_MODEL}), got {out.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -184,8 +185,12 @@ def test_titans_layer_backward():
 
 def test_persistent_memory_contributes():
     torch.manual_seed(7)
-    cfg_with = TitansConfig(d_model=D_MODEL, n_heads=4, memory_dim=32, n_persistent=8, use_persistent_memory=True)
-    cfg_without = TitansConfig(d_model=D_MODEL, n_heads=4, memory_dim=32, n_persistent=8, use_persistent_memory=False)
+    cfg_with = TitansConfig(
+        d_model=D_MODEL, n_heads=4, memory_dim=32, n_persistent=8, use_persistent_memory=True
+    )
+    cfg_without = TitansConfig(
+        d_model=D_MODEL, n_heads=4, memory_dim=32, n_persistent=8, use_persistent_memory=False
+    )
 
     layer_with = build_titans_layer(cfg_with)
     layer_without = build_titans_layer(cfg_without)

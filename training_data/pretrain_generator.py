@@ -38,6 +38,7 @@ def _p(tag: str, body: str, indent: int = 0) -> str:
 # Generator
 # ---------------------------------------------------------------------------
 
+
 class PretrainDataGenerator:
     """Generate synthetic pretraining data and save tokenized shards.
 
@@ -88,29 +89,66 @@ class PretrainDataGenerator:
         return "".join(parts)
 
     def _py_type(self) -> str:
-        return self._rng.choice([
-            "int", "str", "float", "bool", "bytes",
-            "list[str]", "dict[str, Any]", "Optional[int]",
-            "tuple[int, ...]", "set[str]", "frozenset",
-            "Sequence[float]", "Mapping[str, int]", "Any",
-            "Path", "Iterator[str]", "Callable[[int], str]",
-        ])
+        return self._rng.choice(
+            [
+                "int",
+                "str",
+                "float",
+                "bool",
+                "bytes",
+                "list[str]",
+                "dict[str, Any]",
+                "Optional[int]",
+                "tuple[int, ...]",
+                "set[str]",
+                "frozenset",
+                "Sequence[float]",
+                "Mapping[str, int]",
+                "Any",
+                "Path",
+                "Iterator[str]",
+                "Callable[[int], str]",
+            ]
+        )
 
     def _go_type(self) -> str:
-        return self._rng.choice([
-            "int", "int64", "string", "float64", "bool",
-            "[]byte", "error", "time.Time", "uint32",
-            "int32", "rune", "complex128", "any",
-        ])
+        return self._rng.choice(
+            [
+                "int",
+                "int64",
+                "string",
+                "float64",
+                "bool",
+                "[]byte",
+                "error",
+                "time.Time",
+                "uint32",
+                "int32",
+                "rune",
+                "complex128",
+                "any",
+            ]
+        )
 
     def _rust_type(self) -> str:
-        return self._rng.choice([
-            "i32", "u64", "String", "bool", "f64",
-            "Vec<u8>", "HashMap<String, i32>",
-            "Option<usize>", "Result<(), Box<dyn Error>>",
-            "Duration", "PathBuf", "Arc<Mutex<T>>",
-            "BTreeMap<u64, String>", "HashSet<i32>",
-        ])
+        return self._rng.choice(
+            [
+                "i32",
+                "u64",
+                "String",
+                "bool",
+                "f64",
+                "Vec<u8>",
+                "HashMap<String, i32>",
+                "Option<usize>",
+                "Result<(), Box<dyn Error>>",
+                "Duration",
+                "PathBuf",
+                "Arc<Mutex<T>>",
+                "BTreeMap<u64, String>",
+                "HashSet<i32>",
+            ]
+        )
 
     def _param(self) -> str:
         return self._snake()
@@ -121,8 +159,10 @@ class PretrainDataGenerator:
             "",
         ]
         for _ in range(self._rng.randint(1, 3)):
-            lines.append(f"    {self._word(4, 12).capitalize()} "
-                         f"{' '.join(self._word(3, 8) for _ in range(self._rng.randint(3, 10)))}.")
+            lines.append(
+                f"    {self._word(4, 12).capitalize()} "
+                f"{' '.join(self._word(3, 8) for _ in range(self._rng.randint(3, 10)))}."
+            )
         lines.append('    """')
         return "\n".join(lines)
 
@@ -150,7 +190,7 @@ class PretrainDataGenerator:
                 f"class {cls}:\n"
                 f"    {field_a}: str\n"
                 f"    {field_b}: Optional[Path] = None\n"
-                f'    _cache: dict[str, list[float]] = field(default_factory=dict)\n\n'
+                f"    _cache: dict[str, list[float]] = field(default_factory=dict)\n\n"
                 f"    def {method}(self, value: float, /) -> list[float]:\n"
                 f'        """Apply the normalizing transform to *value*."""\n'
                 f"        result = [v * 1.5 for v in self._cache.get(self.{field_a}, [])]\n"
@@ -203,7 +243,7 @@ class PretrainDataGenerator:
         def t04() -> str:
             """Simple transformer-style MLP block."""
             cls = self._camel("MLP", "Block")
-            dim = self._snake("hidden", "dim")
+            self._snake("hidden", "dim")
             return (
                 "import torch\n"
                 "import torch.nn as nn\n\n"
@@ -237,7 +277,7 @@ class PretrainDataGenerator:
                 f"        if skip_header:\n"
                 f"            next(reader, None)\n"
                 f"        for row in reader:\n"
-                f"            yield { {k: v.strip() if v else '' for k, v in row.items()} }\n"
+                f"            yield { {k: v.strip() if v else '' for k, v in row.items()} }\n"  # noqa: F821
             )
 
         def t06() -> str:
@@ -644,9 +684,28 @@ class PretrainDataGenerator:
             )
 
         return [
-            t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
-            t11, t12, t13, t14, t15, t16, t17, t18, t19, t20,
-            t21, t22,
+            t01,
+            t02,
+            t03,
+            t04,
+            t05,
+            t06,
+            t07,
+            t08,
+            t09,
+            t10,
+            t11,
+            t12,
+            t13,
+            t14,
+            t15,
+            t16,
+            t17,
+            t18,
+            t19,
+            t20,
+            t21,
+            t22,
         ]
 
     # ------------------------------------------------------------------
@@ -676,8 +735,8 @@ class PretrainDataGenerator:
                 f"    on{self._camel('Update')}?.(hookVal + 1);\n"
                 f"  }}, [on{self._camel('Update')}, hookVal]);\n\n"
                 f"  return (\n"
-                f"    <div className=\"{self._snake('widget', 'container')}\">\n"
-                f"      <p>Current value: {hookVal}</p>\n"
+                f'    <div className="{self._snake("widget", "container")}">\n'
+                f"      <p>Current value: {hookVal}</p>\n"  # noqa: F821
                 f"      <button onClick={{handleClick}}>Increment</button>\n"
                 f"    </div>\n"
                 f"  );\n"
@@ -1074,9 +1133,9 @@ class PretrainDataGenerator:
                 '    "time"\n'
                 ")\n\n"
                 f"type {self._camel('Server', 'Config')} struct {{\n"
-                f"    Addr         string        `json:\"addr\"`\n"
-                f"    ReadTimeout  time.Duration `json:\"read_timeout\"`\n"
-                f"    WriteTimeout time.Duration `json:\"write_timeout\"`\n"
+                f'    Addr         string        `json:"addr"`\n'
+                f'    ReadTimeout  time.Duration `json:"read_timeout"`\n'
+                f'    WriteTimeout time.Duration `json:"write_timeout"`\n'
                 f"}}\n\n"
                 f"func {fn}(w http.ResponseWriter, r *http.Request) {{\n"
                 f'    w.Header().Set("Content-Type", "application/json")\n'
@@ -1089,8 +1148,8 @@ class PretrainDataGenerator:
                 "        ReadTimeout:  10 * time.Second,\n"
                 "        WriteTimeout: 10 * time.Second,\n"
                 "    }}\n"
-                f"    http.HandleFunc(\"/api/v1/{self._snake()}\", {fn})\n"
-                f"    log.Printf(\"listening on %s\", cfg.Addr)\n"
+                f'    http.HandleFunc("/api/v1/{self._snake()}", {fn})\n'
+                f'    log.Printf("listening on %s", cfg.Addr)\n'
                 f"    log.Fatal(http.ListenAndServe(cfg.Addr, nil))\n"
                 "}\n"
             )
@@ -1162,15 +1221,15 @@ class PretrainDataGenerator:
                 f"    return &{impl}{{basePath: path}}\n"
                 f"}}\n\n"
                 f"func (s *{impl}) Get(ctx context.Context, key string) ([]byte, error) {{\n"
-                f"    if key == \"\" {{\n"
-                f"        return nil, errors.New(\"empty key\")\n"
+                f'    if key == "" {{\n'
+                f'        return nil, errors.New("empty key")\n'
                 f"    }}\n"
                 f"    // simulated disk read\n"
                 f"    return []byte(key), nil\n"
                 f"}}\n\n"
                 f"func (s *{impl}) Put(ctx context.Context, key string, data []byte) error {{\n"
                 f"    if len(data) == 0 {{\n"
-                f"        return errors.New(\"empty data\")\n"
+                f'        return errors.New("empty data")\n'
                 f"    }}\n"
                 f"    return nil\n"
                 f"}}\n\n"
@@ -1192,7 +1251,7 @@ class PretrainDataGenerator:
                 f"func {fn}(path string) (int, error) {{\n"
                 f"    f, err := os.Open(path)\n"
                 f"    if err != nil {{\n"
-                f"        return 0, fmt.Errorf(\"open: %w\", err)\n"
+                f'        return 0, fmt.Errorf("open: %w", err)\n'
                 f"    }}\n"
                 f"    defer f.Close()\n\n"
                 f"    scanner := bufio.NewScanner(f)\n"
@@ -1203,12 +1262,12 @@ class PretrainDataGenerator:
                 f"    return lines, scanner.Err()\n"
                 f"}}\n\n"
                 "func main() {\n"
-                f"    count, err := {fn}(\"data.txt\")\n"
+                f'    count, err := {fn}("data.txt")\n'
                 f"    if err != nil {{\n"
-                f"        fmt.Fprintf(os.Stderr, \"error: %v\\n\", err)\n"
+                f'        fmt.Fprintf(os.Stderr, "error: %v\\n", err)\n'
                 f"        os.Exit(1)\n"
                 f"    }}\n"
-                f"    fmt.Printf(\"Lines: %d\\n\", count)\n"
+                f'    fmt.Printf("Lines: %d\\n", count)\n'
                 "}\n"
             )
 
@@ -1228,7 +1287,7 @@ class PretrainDataGenerator:
                 f"        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {{\n"
                 f"            start := time.Now()\n"
                 f"            next.ServeHTTP(w, r)\n"
-                f"            log.Printf(\"%s %s took %v\", r.Method, r.URL.Path, time.Since(start))\n"
+                f'            log.Printf("%s %s took %v", r.Method, r.URL.Path, time.Since(start))\n'
                 f"        }})\n"
                 f"    }}\n"
                 f"}}\n\n"
@@ -1237,8 +1296,8 @@ class PretrainDataGenerator:
                 f"        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {{\n"
                 f"            defer func() {{\n"
                 f"                if err := recover(); err != nil {{\n"
-                f"                    http.Error(w, \"Internal Error\", http.StatusInternalServerError)\n"
-                f"                    log.Printf(\"panic: %v\", err)\n"
+                f'                    http.Error(w, "Internal Error", http.StatusInternalServerError)\n'
+                f'                    log.Printf("panic: %v", err)\n'
                 f"                }}\n"
                 f"            }}()\n"
                 f"            next.ServeHTTP(w, r)\n"
@@ -1265,16 +1324,16 @@ class PretrainDataGenerator:
                 f"        a, b     int\n"
                 f"        expected int\n"
                 f"    }}{{\n"
-                f"        {{\"positive\", 3, 5, 8}},\n"
-                f"        {{\"negative\", -1, 1, 0}},\n"
-                f"        {{\"zero\", 0, 0, 0}},\n"
-                f"        {{\"large\", 1000, 2000, 3000}},\n"
+                f'        {{"positive", 3, 5, 8}},\n'
+                f'        {{"negative", -1, 1, 0}},\n'
+                f'        {{"zero", 0, 0, 0}},\n'
+                f'        {{"large", 1000, 2000, 3000}},\n'
                 f"    }}\n\n"
                 f"    for _, tc := range tests {{\n"
                 f"        t.Run(tc.name, func(t *testing.T) {{\n"
                 f"            got := tc.a + tc.b\n"
                 f"            if got != tc.expected {{\n"
-                f"                t.Errorf(\"add(%d, %d) = %d; want %d\", tc.a, tc.b, got, tc.expected)\n"
+                f'                t.Errorf("add(%d, %d) = %d; want %d", tc.a, tc.b, got, tc.expected)\n'
                 f"            }}\n"
                 f"        }})\n"
                 f"    }}\n"
@@ -1306,15 +1365,15 @@ class PretrainDataGenerator:
                 f"    }}\n"
                 f"}}\n\n"
                 f"func (c *{self._camel('Client')}) {fn}(path string, target any) error {{\n"
-                f"    url := fmt.Sprintf(\"%s/%s\", c.baseURL, path)\n"
+                f'    url := fmt.Sprintf("%s/%s", c.baseURL, path)\n'
                 f"    resp, err := c.httpClient.Get(url)\n"
                 f"    if err != nil {{\n"
-                f"        return fmt.Errorf(\"get: %w\", err)\n"
+                f'        return fmt.Errorf("get: %w", err)\n'
                 f"    }}\n"
                 f"    defer resp.Body.Close()\n\n"
                 f"    if resp.StatusCode != http.StatusOK {{\n"
                 f"        body, _ := io.ReadAll(resp.Body)\n"
-                f"        return fmt.Errorf(\"status %d: %s\", resp.StatusCode, string(body))\n"
+                f'        return fmt.Errorf("status %d: %s", resp.StatusCode, string(body))\n'
                 f"    }}\n"
                 f"    return json.NewDecoder(resp.Body).Decode(target)\n"
                 f"}}\n"
@@ -1369,7 +1428,7 @@ class PretrainDataGenerator:
             fn = self._camel("Pipeline")
             return (
                 "package main\n\n"
-                "import \"fmt\"\n\n"
+                'import "fmt"\n\n'
                 f"func {fn}(nums []int) <-chan int {{\n"
                 f"    out := make(chan int)\n"
                 f"    go func() {{\n"
@@ -1402,7 +1461,7 @@ class PretrainDataGenerator:
 
         def t10() -> str:
             """CLI tool with flags."""
-            fn = self._camel("Run")
+            self._camel("Run")
             return (
                 "package main\n\n"
                 "import (\n"
@@ -1411,22 +1470,22 @@ class PretrainDataGenerator:
                 '    "os"\n'
                 ")\n\n"
                 "func main() {\n"
-                f"    var (\n"
-                f"        input  = flag.String(\"input\", \"\", \"input file path\")\n"
-                f"        output = flag.String(\"output\", \"output.txt\", \"output file path\")\n"
-                f"        verbose = flag.Bool(\"verbose\", false, \"enable verbose logging\")\n"
-                f"        threads = flag.Int(\"threads\", 4, \"number of worker threads\")\n"
-                f"    )\n"
-                f"    flag.Parse()\n\n"
-                f"    if *input == \"\" {{\n"
-                f'        fmt.Fprintln(os.Stderr, "error: --input is required")\n'
-                f"        os.Exit(1)\n"
-                f"    }}\n\n"
-                f"    if *verbose {{\n"
-                f'        fmt.Printf("Processing %s -> %s with %d workers\\n", *input, *output, *threads)\n'
-                f"    }}\n"
-                f"    // processing logic\n"
-                f'    fmt.Println("Done")\n'
+                "    var (\n"
+                '        input  = flag.String("input", "", "input file path")\n'
+                '        output = flag.String("output", "output.txt", "output file path")\n'
+                '        verbose = flag.Bool("verbose", false, "enable verbose logging")\n'
+                '        threads = flag.Int("threads", 4, "number of worker threads")\n'
+                "    )\n"
+                "    flag.Parse()\n\n"
+                '    if *input == "" {\n'
+                '        fmt.Fprintln(os.Stderr, "error: --input is required")\n'
+                "        os.Exit(1)\n"
+                "    }\n\n"
+                "    if *verbose {\n"
+                '        fmt.Printf("Processing %s -> %s with %d workers\\n", *input, *output, *threads)\n'
+                "    }\n"
+                "    // processing logic\n"
+                '    fmt.Println("Done")\n'
                 "}\n"
             )
 
@@ -1483,10 +1542,10 @@ class PretrainDataGenerator:
                 f"impl {name} {{\n"
                 f"    pub fn describe(&self) -> String {{\n"
                 f"        match self {{\n"
-                f"            Self::{self._camel()} => \"init\".into(),\n"
-                f"            Self::{self._camel()} => \"reset\".into(),\n"
-                f"            Self::{self._camel()}(msg) => format!(\"echo: {{msg}}\"),\n"
-                f"            Self::{self._camel()}{{ {self._snake()}, .. }} => format!(\"set key={{}}\", {self._snake()}),\n"
+                f'            Self::{self._camel()} => "init".into(),\n'
+                f'            Self::{self._camel()} => "reset".into(),\n'
+                f'            Self::{self._camel()}(msg) => format!("echo: {{msg}}"),\n'
+                f'            Self::{self._camel()}{{ {self._snake()}, .. }} => format!("set key={{}}", {self._snake()}),\n'
                 f"        }}\n"
                 f"    }}\n"
                 f"}}\n"
@@ -1522,21 +1581,21 @@ class PretrainDataGenerator:
                 "use std::path::Path;\n\n"
                 "#[derive(Debug, thiserror::Error)]\n"
                 f"pub enum {self._camel('Config', 'Error')} {{\n"
-                f"    #[error(\"file not found: {{0}}\")]\n"
+                f'    #[error("file not found: {{0}}")]\n'
                 f"    NotFound(String),\n"
-                f"    #[error(\"parse error: {{0}}\")]\n"
+                f'    #[error("parse error: {{0}}")]\n'
                 f"    ParseError(String),\n"
                 f"}}\n\n"
                 f"pub fn {fn}(path: &Path) -> Result<String, {self._camel('Config', 'Error')}> {{\n"
                 f"    let content = std::fs::read_to_string(path)\n"
                 f"        .map_err(|_| {self._camel('Config', 'Error')}::NotFound(path.display().to_string()))?;\n\n"
                 f"    if content.is_empty() {{\n"
-                f"        return Err({self._camel('Config', 'Error')}::ParseError(\"empty file\".into()));\n"
+                f'        return Err({self._camel("Config", "Error")}::ParseError("empty file".into()));\n'
                 f"    }}\n\n"
                 f"    content.lines()\n"
-                f"        .find(|l| l.starts_with(\"key=\"))\n"
-                f"        .map(|l| l.trim_start_matches(\"key=\").to_string())\n"
-                f"        .ok_or_else(|| {self._camel('Config', 'Error')}::ParseError(\"missing key\".into()))\n"
+                f'        .find(|l| l.starts_with("key="))\n'
+                f'        .map(|l| l.trim_start_matches("key=").to_string())\n'
+                f'        .ok_or_else(|| {self._camel("Config", "Error")}::ParseError("missing key".into()))\n'
                 f"}}\n"
             )
 
@@ -1622,11 +1681,11 @@ class PretrainDataGenerator:
                 "use std::num::ParseIntError;\n\n"
                 "#[derive(Debug, thiserror::Error)]\n"
                 f"pub enum {cls} {{\n"
-                f"    #[error(\"invalid token: {{0}}\")]\n"
+                f'    #[error("invalid token: {{0}}")]\n'
                 f"    InvalidToken(String),\n\n"
-                f"    #[error(\"unexpected end of input\")]\n"
+                f'    #[error("unexpected end of input")]\n'
                 f"    UnexpectedEof,\n\n"
-                f"    #[error(\"integer overflow at line {{0}}\")]\n"
+                f'    #[error("integer overflow at line {{0}}")]\n'
                 f"    Overflow(usize),\n\n"
                 f"    #[error(transparent)]\n"
                 f"    Io(#[from] std::io::Error),\n"
@@ -2006,7 +2065,7 @@ class PretrainDataGenerator:
                 "uninitialized variables or unreachable code. Abstract interpretation "
                 "approximates program behavior by mapping concrete values to an abstract "
                 "domain. Formal verification tools like Dafny or Coq go further, allowing "
-                "\"programmers to specify preconditions, postconditions, and invariants "
+                '"programmers to specify preconditions, postconditions, and invariants '
                 "that are mechanically verified."
             )
 
@@ -2041,9 +2100,30 @@ class PretrainDataGenerator:
                 "detects and repairs silent data corruption across replicas."
             )
 
-        return [t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
-                t11, t12, t13, t14, t15, t16, t17, t18, t19, t20,
-                t21, t22]
+        return [
+            t01,
+            t02,
+            t03,
+            t04,
+            t05,
+            t06,
+            t07,
+            t08,
+            t09,
+            t10,
+            t11,
+            t12,
+            t13,
+            t14,
+            t15,
+            t16,
+            t17,
+            t18,
+            t19,
+            t20,
+            t21,
+            t22,
+        ]
 
     # ------------------------------------------------------------------
     # Public API
@@ -2170,17 +2250,19 @@ class PretrainDataGenerator:
 
                 doc_end = doc_index
                 token_end = (shard_index + 1) * self._shard_size
-                manifest.append({
-                    "shard": f"shard_{shard_index:06d}.npy",
-                    "path": str(shard_path.relative_to(output_dir)),
-                    "tokens": self._shard_size,
-                    "doc_start": doc_index,
-                    "doc_end": doc_end,
-                    "token_start": shard_index * self._shard_size,
-                    "token_end": token_end,
-                })
+                manifest.append(
+                    {
+                        "shard": f"shard_{shard_index:06d}.npy",
+                        "path": str(shard_path.relative_to(output_dir)),
+                        "tokens": self._shard_size,
+                        "doc_start": doc_index,
+                        "doc_end": doc_end,
+                        "token_start": shard_index * self._shard_size,
+                        "token_end": token_end,
+                    }
+                )
 
-                tokenizer_dir_str = str(tokenizer_dir)
+                str(tokenizer_dir)
                 label = f"Shard {shard_index:06d}"
                 if _tqdm is not None:
                     iterator.set_description(f"Writing {label:24s}")
@@ -2193,27 +2275,32 @@ class PretrainDataGenerator:
             all_ids.extend([0] * remaining)  # pad with null id
             shard_path = shard_dir / f"shard_{shard_index:06d}.npy"
             np.save(str(shard_path), np.array(all_ids, dtype=np.uint16))
-            manifest.append({
-                "shard": f"shard_{shard_index:06d}.npy",
-                "path": str(shard_path.relative_to(output_dir)),
-                "tokens": len(all_ids),
-                "padded": remaining,
-                "doc_start": doc_index,
-                "doc_end": doc_index,
-                "token_start": shard_index * self._shard_size,
-                "token_end": shard_index * self._shard_size + len(all_ids),
-            })
+            manifest.append(
+                {
+                    "shard": f"shard_{shard_index:06d}.npy",
+                    "path": str(shard_path.relative_to(output_dir)),
+                    "tokens": len(all_ids),
+                    "padded": remaining,
+                    "doc_start": doc_index,
+                    "doc_end": doc_index,
+                    "token_start": shard_index * self._shard_size,
+                    "token_end": shard_index * self._shard_size + len(all_ids),
+                }
+            )
             shard_index += 1
 
         # -- save manifest ---------------------------------------------------
         manifest_path = shard_dir / "manifest.json"
         manifest_path.write_text(
-            json.dumps({
-                "num_samples": num_samples,
-                "shard_size": self._shard_size,
-                "num_shards": shard_index,
-                "shards": manifest,
-            }, indent=2),
+            json.dumps(
+                {
+                    "num_samples": num_samples,
+                    "shard_size": self._shard_size,
+                    "num_shards": shard_index,
+                    "shards": manifest,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
 

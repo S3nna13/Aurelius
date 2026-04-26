@@ -1,12 +1,12 @@
 """Tests for sparse_attention.py — local window + strided global patterns."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.model.sparse_attention import (
-    SparseAttentionConfig,
     SparseAttention,
+    SparseAttentionConfig,
     SparseTransformer,
     SparseTransformerLayer,
     build_local_mask,
@@ -19,6 +19,7 @@ from src.model.sparse_attention import (
 # Small test config helpers
 # ---------------------------------------------------------------------------
 
+
 def small_config(**kwargs) -> SparseAttentionConfig:
     defaults = dict(d_model=64, n_heads=4, window_size=4, stride=4, dropout=0.0)
     defaults.update(kwargs)
@@ -28,6 +29,7 @@ def small_config(**kwargs) -> SparseAttentionConfig:
 # ---------------------------------------------------------------------------
 # 1. SparseAttentionConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_attention_config_defaults():
     cfg = SparseAttentionConfig()
@@ -42,6 +44,7 @@ def test_sparse_attention_config_defaults():
 # 2. build_local_mask shape is (T, T)
 # ---------------------------------------------------------------------------
 
+
 def test_build_local_mask_shape():
     T = 16
     mask = build_local_mask(T, window_size=3)
@@ -51,6 +54,7 @@ def test_build_local_mask_shape():
 # ---------------------------------------------------------------------------
 # 3. build_local_mask is causal (upper triangle is False)
 # ---------------------------------------------------------------------------
+
 
 def test_build_local_mask_causal():
     T = 10
@@ -65,6 +69,7 @@ def test_build_local_mask_causal():
 # 4. build_local_mask diagonal is True (attend to self)
 # ---------------------------------------------------------------------------
 
+
 def test_build_local_mask_diagonal_true():
     T = 8
     mask = build_local_mask(T, window_size=2)
@@ -75,6 +80,7 @@ def test_build_local_mask_diagonal_true():
 # ---------------------------------------------------------------------------
 # 5. build_local_mask token outside window is False
 # ---------------------------------------------------------------------------
+
 
 def test_build_local_mask_outside_window_false():
     T = 20
@@ -92,6 +98,7 @@ def test_build_local_mask_outside_window_false():
 # 6. build_strided_mask shape is (T, T)
 # ---------------------------------------------------------------------------
 
+
 def test_build_strided_mask_shape():
     T = 24
     mask = build_strided_mask(T, stride=4)
@@ -101,6 +108,7 @@ def test_build_strided_mask_shape():
 # ---------------------------------------------------------------------------
 # 7. build_strided_mask position 0 (stride divides 0) is True for all rows
 # ---------------------------------------------------------------------------
+
 
 def test_build_strided_mask_col0_true():
     T = 16
@@ -113,6 +121,7 @@ def test_build_strided_mask_col0_true():
 # ---------------------------------------------------------------------------
 # 8. build_sparse_mask is superset of both local and strided masks
 # ---------------------------------------------------------------------------
+
 
 def test_build_sparse_mask_superset():
     T = 16
@@ -131,17 +140,21 @@ def test_build_sparse_mask_superset():
 # 9. build_sparse_mask is always causal (no future tokens)
 # ---------------------------------------------------------------------------
 
+
 def test_build_sparse_mask_causal():
     T = 12
     mask = build_sparse_mask(T, window_size=3, stride=4)
     for i in range(T):
         for j in range(i + 1, T):
-            assert not mask[i, j].item(), f"Sparse mask must be causal: mask[{i},{j}] should be False"
+            assert not mask[i, j].item(), (
+                f"Sparse mask must be causal: mask[{i},{j}] should be False"
+            )
 
 
 # ---------------------------------------------------------------------------
 # 10. SparseAttention output shape matches input (B, T, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_attention_output_shape():
     cfg = small_config()
@@ -155,6 +168,7 @@ def test_sparse_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 11. SparseAttention with window_size >= T equivalent to full causal attention
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_attention_full_window():
     T = 8
@@ -175,6 +189,7 @@ def test_sparse_attention_full_window():
 # 12. SparseTransformerLayer output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_sparse_transformer_layer_output_shape():
     cfg = small_config()
     layer = SparseTransformerLayer(cfg)
@@ -187,6 +202,7 @@ def test_sparse_transformer_layer_output_shape():
 # ---------------------------------------------------------------------------
 # 13. SparseTransformer output shape is (B, T, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_transformer_output_shape():
     cfg = small_config()
@@ -201,6 +217,7 @@ def test_sparse_transformer_output_shape():
 # ---------------------------------------------------------------------------
 # 14. SparseTransformer is differentiable (backward works)
 # ---------------------------------------------------------------------------
+
 
 def test_sparse_transformer_backward():
     cfg = small_config()
@@ -219,6 +236,7 @@ def test_sparse_transformer_backward():
 # 15. sparsity_ratio returns float in (0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_sparsity_ratio_range():
     ratio = sparsity_ratio(seq_len=32, window_size=4, stride=4)
     assert isinstance(ratio, float)
@@ -229,12 +247,12 @@ def test_sparsity_ratio_range():
 # 16. sparsity_ratio increases with larger window_size
 # ---------------------------------------------------------------------------
 
+
 def test_sparsity_ratio_increases_with_window():
     seq_len = 64
     stride = 8
     ratio_small = sparsity_ratio(seq_len, window_size=2, stride=stride)
     ratio_large = sparsity_ratio(seq_len, window_size=16, stride=stride)
     assert ratio_large > ratio_small, (
-        f"Larger window_size should yield higher sparsity_ratio: "
-        f"{ratio_large} > {ratio_small}"
+        f"Larger window_size should yield higher sparsity_ratio: {ratio_large} > {ratio_small}"
     )

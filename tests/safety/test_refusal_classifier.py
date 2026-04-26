@@ -48,9 +48,7 @@ def test_obvious_refusal_flags_true(clf: RefusalClassifier) -> None:
 
 
 def test_obvious_compliance_is_not_refusal(clf: RefusalClassifier) -> None:
-    res = clf.classify(
-        "Here's the answer: you sort a Python list with list.sort() or sorted()."
-    )
+    res = clf.classify("Here's the answer: you sort a Python list with list.sort() or sorted().")
     assert res.is_refusal is False
     assert res.score < 0.5
     assert "canonical_phrase" not in res.signals

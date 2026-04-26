@@ -9,12 +9,12 @@ Strategies:
 - UNIFORM: Every Nth layer (balance memory vs speed)
 - MEMORY_OPTIMAL: Greedy algorithm — checkpoint largest activations first
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-import math
-import torch
+
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
@@ -22,24 +22,25 @@ from torch.utils.checkpoint import checkpoint
 class CheckpointStrategy(Enum):
     NONE = "none"
     ALL = "all"
-    UNIFORM = "uniform"           # every N layers
+    UNIFORM = "uniform"  # every N layers
     MEMORY_OPTIMAL = "memory_optimal"  # greedy by activation size
 
 
 @dataclass
 class CheckpointPolicyConfig:
     strategy: CheckpointStrategy = CheckpointStrategy.UNIFORM
-    memory_budget_gb: float = 16.0     # target peak memory in GB
-    uniform_interval: int = 2          # for UNIFORM: checkpoint every N layers
-    recompute_factor: float = 0.33     # FLOPs overhead per checkpointed layer
+    memory_budget_gb: float = 16.0  # target peak memory in GB
+    uniform_interval: int = 2  # for UNIFORM: checkpoint every N layers
+    recompute_factor: float = 0.33  # FLOPs overhead per checkpointed layer
 
 
 @dataclass
 class LayerMemoryEstimate:
     """Memory estimate for a single transformer layer."""
+
     layer_idx: int
-    activation_bytes: int    # bytes to store forward activations
-    param_bytes: int         # bytes for parameters (always stored)
+    activation_bytes: int  # bytes to store forward activations
+    param_bytes: int  # bytes for parameters (always stored)
     checkpointed: bool = False
 
     @property
@@ -54,9 +55,10 @@ class LayerMemoryEstimate:
 @dataclass
 class CheckpointPlan:
     """Computed checkpointing plan for a model."""
+
     strategy: CheckpointStrategy
     layer_estimates: list[LayerMemoryEstimate]
-    checkpointed_layers: list[int]      # indices of checkpointed layers
+    checkpointed_layers: list[int]  # indices of checkpointed layers
     estimated_peak_memory_bytes: int
     estimated_recompute_overhead: float  # fraction of extra FLOPs
 
@@ -66,10 +68,7 @@ class CheckpointPlan:
 
     @property
     def memory_saved_bytes(self) -> int:
-        return sum(
-            e.activation_bytes for e in self.layer_estimates
-            if e.checkpointed
-        )
+        return sum(e.activation_bytes for e in self.layer_estimates if e.checkpointed)
 
 
 def estimate_layer_memory(
@@ -164,7 +163,7 @@ def compute_checkpoint_plan(
         checkpointed_layers = [i for i in range(n_layers) if i % interval == 0]
 
     elif cfg.strategy == CheckpointStrategy.MEMORY_OPTIMAL:
-        budget_bytes = int(cfg.memory_budget_gb * (1024 ** 3))
+        budget_bytes = int(cfg.memory_budget_gb * (1024**3))
         # Sort layers by activation size descending (greedy: checkpoint biggest first)
         sorted_by_size = sorted(estimates, key=lambda e: e.activation_bytes, reverse=True)
         checkpointed_set: set[int] = set()
@@ -214,7 +213,7 @@ def apply_checkpoint_plan(
     for i, layer in enumerate(model.layers):
         if i in checkpointed_set:
             # Save original forward if not already wrapped
-            if not hasattr(layer, '_original_forward'):
+            if not hasattr(layer, "_original_forward"):
                 layer._original_forward = layer.forward
 
             original_forward = layer._original_forward
@@ -225,11 +224,13 @@ def apply_checkpoint_plan(
                     # Flatten args and pass through checkpoint
                     def fn(*a):
                         return orig_fwd(*a, **kwargs)
+
                     return checkpoint(fn, *args, use_reentrant=False)
+
                 return checkpointed_forward
 
             layer.forward = make_checkpointed_forward(original_forward)
         else:
             # Restore original forward if it was previously wrapped
-            if hasattr(layer, '_original_forward'):
+            if hasattr(layer, "_original_forward"):
                 layer.forward = layer._original_forward

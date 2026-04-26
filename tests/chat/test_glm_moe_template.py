@@ -5,12 +5,12 @@ from __future__ import annotations
 import pytest
 
 from src.chat.glm_moe_template import (
+    CHAT_TEMPLATE_REGISTRY,
     GMASK_TOKEN,
-    SOP_TOKEN,
     ROLES,
+    SOP_TOKEN,
     GlmMoeTemplate,
     visible_text,
-    CHAT_TEMPLATE_REGISTRY,
 )
 
 
@@ -98,7 +98,9 @@ class TestGlmMoeTemplateEncode:
         assert ROLES["user"] + "\nBye" in result
 
     def test_tools_prepended_as_system(self, tmpl):
-        tools = [{"name": "search", "description": "Search the web", "parameters": {"properties": {}}}]
+        tools = [
+            {"name": "search", "description": "Search the web", "parameters": {"properties": {}}}
+        ]
         msgs = [{"role": "user", "content": "Find stuff"}]
         result = tmpl.encode(msgs, tools=tools)
         # System block appears before user block.

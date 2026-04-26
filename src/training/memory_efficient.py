@@ -15,14 +15,15 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.checkpoint import checkpoint
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MemEffConfig:
     """Configuration for memory-efficient training utilities."""
+
     use_checkpointing: bool = True
     chunk_size: int = 1
     offload_optimizer: bool = False
@@ -32,6 +33,7 @@ class MemEffConfig:
 # ---------------------------------------------------------------------------
 # Checkpointed forward
 # ---------------------------------------------------------------------------
+
 
 def checkpointed_forward(module: nn.Module, *args: Any) -> Tensor:
     """Wrapper around torch.utils.checkpoint.checkpoint.
@@ -44,6 +46,7 @@ def checkpointed_forward(module: nn.Module, *args: Any) -> Tensor:
 # ---------------------------------------------------------------------------
 # Chunked cross-entropy
 # ---------------------------------------------------------------------------
+
 
 def chunked_cross_entropy(
     logits: Tensor,
@@ -95,6 +98,7 @@ def chunked_cross_entropy(
 # Gradient accumulator
 # ---------------------------------------------------------------------------
 
+
 class GradientAccumulator:
     """Accumulates gradients across micro-batches.
 
@@ -141,6 +145,7 @@ class GradientAccumulator:
 # Memory tracker
 # ---------------------------------------------------------------------------
 
+
 class MemoryTracker:
     """Tracks peak CUDA memory usage.
 
@@ -165,9 +170,9 @@ class MemoryTracker:
             dict with keys "allocated_mb", "reserved_mb", "peak_mb" (all MB).
         """
         if torch.cuda.is_available():
-            allocated = torch.cuda.memory_allocated() / 1024 ** 2
-            reserved = torch.cuda.memory_reserved() / 1024 ** 2
-            peak = torch.cuda.max_memory_allocated() / 1024 ** 2
+            allocated = torch.cuda.memory_allocated() / 1024**2
+            reserved = torch.cuda.memory_reserved() / 1024**2
+            peak = torch.cuda.max_memory_allocated() / 1024**2
         else:
             allocated = 0.0
             reserved = 0.0
@@ -179,7 +184,7 @@ class MemoryTracker:
             "peak_mb": peak,
         }
 
-    def __enter__(self) -> "MemoryTracker":
+    def __enter__(self) -> MemoryTracker:
         self.reset()
         return self
 
@@ -190,6 +195,7 @@ class MemoryTracker:
 # ---------------------------------------------------------------------------
 # Memory-efficient trainer
 # ---------------------------------------------------------------------------
+
 
 class MemEfficientTrainer:
     """Trainer that applies memory-efficient techniques.

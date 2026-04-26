@@ -24,6 +24,7 @@ def manager() -> MCPSessionManager:
 # create_session()
 # ---------------------------------------------------------------------------
 
+
 class TestCreateSession:
     def test_returns_mcp_session(self, manager):
         session = manager.create_session()
@@ -61,6 +62,7 @@ class TestCreateSession:
 # get_session()
 # ---------------------------------------------------------------------------
 
+
 class TestGetSession:
     def test_returns_none_for_unknown_id(self, manager):
         assert manager.get_session("nonexistent") is None
@@ -73,6 +75,7 @@ class TestGetSession:
 # ---------------------------------------------------------------------------
 # update_activity()
 # ---------------------------------------------------------------------------
+
 
 class TestUpdateActivity:
     def test_bumps_last_activity(self, manager):
@@ -97,6 +100,7 @@ class TestUpdateActivity:
 # close_session()
 # ---------------------------------------------------------------------------
 
+
 class TestCloseSession:
     def test_session_becomes_closed(self, manager):
         session = manager.create_session()
@@ -115,6 +119,7 @@ class TestCloseSession:
 # ---------------------------------------------------------------------------
 # prune_idle()
 # ---------------------------------------------------------------------------
+
 
 class TestPruneIdle:
     def test_prunes_old_session(self, manager):
@@ -149,6 +154,7 @@ class TestPruneIdle:
 # list_active()
 # ---------------------------------------------------------------------------
 
+
 class TestListActive:
     def test_empty_initially(self, manager):
         assert manager.list_active() == []
@@ -173,6 +179,7 @@ class TestListActive:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_session_manager(self):

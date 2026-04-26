@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List, Optional
+from enum import StrEnum
 
 import torch
 
 from src.training.lora_adapter_manager import LoRAAdapterManager, LoRALayer
 
 
-class CompositionMode(str, Enum):
+class CompositionMode(StrEnum):
     ADD = "add"
     WEIGHTED = "weighted"
     SEQUENTIAL = "sequential"
@@ -17,8 +16,8 @@ class CompositionMode(str, Enum):
 
 @dataclass
 class ComposedAdapter:
-    names: List[str]
-    weights: List[float]
+    names: list[str]
+    weights: list[float]
     mode: CompositionMode
 
 
@@ -30,8 +29,8 @@ class AdapterComposer:
 
     def compose(
         self,
-        adapter_names: List[str],
-        weights: Optional[List[float]] = None,
+        adapter_names: list[str],
+        weights: list[float] | None = None,
         mode: CompositionMode = CompositionMode.WEIGHTED,
     ) -> ComposedAdapter:
         for n in adapter_names:
@@ -88,8 +87,8 @@ class AdapterComposer:
         self,
         composed: ComposedAdapter,
         layer_name: str,
-    ) -> Optional[torch.Tensor]:
-        delta: Optional[torch.Tensor] = None
+    ) -> torch.Tensor | None:
+        delta: torch.Tensor | None = None
         for name, weight in zip(composed.names, composed.weights):
             adapter = self.manager.get_adapter(name)
             if adapter is None or layer_name not in adapter:

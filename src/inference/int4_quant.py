@@ -1,18 +1,20 @@
-"""INT4 weight quantization: pack two 4-bit values per byte, group-wise quantization, and dequant matmul."""
+"""INT4 weight quantization: pack two 4-bit values per byte, group-wise quantization, and dequant matmul."""  # noqa: E501
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class INT4Config:
     """Configuration for INT4 weight quantization."""
-    group_size: int = 128           # quantization group size (rows grouped along in_features)
-    symmetric: bool = True          # symmetric (zero_point=0) vs asymmetric
+
+    group_size: int = 128  # quantization group size (rows grouped along in_features)
+    symmetric: bool = True  # symmetric (zero_point=0) vs asymmetric
     pack_format: str = "row_major"  # packing order
     compute_dtype: torch.dtype = torch.float32
 
@@ -21,7 +23,7 @@ def quantize_to_int4(
     weight: torch.Tensor,
     group_size: int = 128,
     symmetric: bool = True,
-) -> tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
     """Quantize a weight tensor to 4-bit integers, group-wise along in_features.
 
     Args:
@@ -109,7 +111,7 @@ def unpack_int4(packed: torch.Tensor, original_in_features: int) -> torch.Tensor
         unpacked: (out_features, original_in_features) int8 tensor with values in [0, 15].
     """
     p = packed.to(torch.int32)
-    low = p & 0xF         # even columns
+    low = p & 0xF  # even columns
     high = (p >> 4) & 0xF  # odd columns
 
     out_features = packed.shape[0]
@@ -126,7 +128,7 @@ def unpack_int4(packed: torch.Tensor, original_in_features: int) -> torch.Tensor
 def dequantize_int4(
     weight_int4: torch.Tensor,
     scales: torch.Tensor,
-    zero_points: Optional[torch.Tensor],
+    zero_points: torch.Tensor | None,
     group_size: int,
 ) -> torch.Tensor:
     """Reconstruct float weights from int4 + scales (and optional zero_points).
@@ -180,7 +182,7 @@ class INT4Linear(nn.Module):
         in_features: int,
         out_features: int,
         bias: bool = False,
-        config: Optional[INT4Config] = None,
+        config: INT4Config | None = None,
     ):
         super().__init__()
         self.in_features = in_features
@@ -214,7 +216,7 @@ class INT4Linear(nn.Module):
             self.bias = None
 
     @classmethod
-    def from_linear(cls, linear: nn.Linear, config: Optional[INT4Config] = None) -> "INT4Linear":
+    def from_linear(cls, linear: nn.Linear, config: INT4Config | None = None) -> INT4Linear:
         """Create an INT4Linear by quantizing an existing nn.Linear layer.
 
         Args:
@@ -294,7 +296,7 @@ class INT4Linear(nn.Module):
 def convert_model_to_int4(
     model: nn.Module,
     config: INT4Config,
-    skip_layers: Optional[list[str]] = None,
+    skip_layers: list[str] | None = None,
 ) -> nn.Module:
     """Replace all nn.Linear layers in a model with INT4Linear.
 
@@ -343,7 +345,7 @@ def estimate_int4_memory_savings(model: nn.Module) -> dict[str, float]:
     n_params = sum(p.numel() for p in model.parameters())
 
     float32_bytes = n_params * 4  # 4 bytes per float32
-    int4_bytes = n_params / 2     # 2 params per byte in INT4
+    int4_bytes = n_params / 2  # 2 params per byte in INT4
 
     float32_mb = float32_bytes / 1e6
     int4_mb = int4_bytes / 1e6

@@ -7,17 +7,17 @@ import dataclasses
 import unittest
 
 from src.workflow.workflow_visualizer import (
+    _FILLCOLOR,
     WORKFLOW_VISUALIZER_REGISTRY,
     NodeStyle,
     VisualizerConfig,
     WorkflowVisualizer,
-    _FILLCOLOR,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_viz(indent: int = 2, show_metadata: bool = False) -> WorkflowVisualizer:
     return WorkflowVisualizer(VisualizerConfig(indent=indent, show_metadata=show_metadata))
@@ -31,8 +31,8 @@ SAMPLE_EDGES = [("A", "B"), ("A", "C")]
 # to_dot() tests
 # ---------------------------------------------------------------------------
 
-class TestToDot(unittest.TestCase):
 
+class TestToDot(unittest.TestCase):
     def setUp(self):
         self.viz = make_viz()
 
@@ -99,8 +99,8 @@ class TestToDot(unittest.TestCase):
 # to_ascii() tests
 # ---------------------------------------------------------------------------
 
-class TestToAscii(unittest.TestCase):
 
+class TestToAscii(unittest.TestCase):
     def setUp(self):
         self.viz = make_viz(indent=2)
 
@@ -112,20 +112,20 @@ class TestToAscii(unittest.TestCase):
         output = self.viz.to_ascii(["A", "B"], [("A", "B")])
         lines = output.splitlines()
         # "B" should be indented (start with spaces)
-        b_line = next(l for l in lines if "B" in l)
+        b_line = next(line for line in lines if "B" in line)
         self.assertTrue(b_line.startswith(" "))
 
     def test_root_not_indented(self):
         output = self.viz.to_ascii(["A", "B"], [("A", "B")])
         lines = output.splitlines()
-        a_line = next(l for l in lines if l.strip() == "A")
+        a_line = next(line for line in lines if line.strip() == "A")
         self.assertFalse(a_line.startswith(" "))
 
     def test_indent_respects_config(self):
         viz4 = make_viz(indent=4)
         output = viz4.to_ascii(["A", "B"], [("A", "B")])
         lines = output.splitlines()
-        b_line = next(l for l in lines if "B" in l)
+        b_line = next(line for line in lines if "B" in line)
         self.assertTrue(b_line.startswith("    "))
 
     def test_empty_graph_returns_empty_string(self):
@@ -141,7 +141,7 @@ class TestToAscii(unittest.TestCase):
         nodes = ["A", "B", "C"]
         edges = [("A", "B"), ("B", "C")]
         output = self.viz.to_ascii(nodes, edges)
-        lines = [l.strip() for l in output.splitlines()]
+        lines = [line.strip() for line in output.splitlines()]
         self.assertEqual(lines.index("A"), 0)
         self.assertLess(lines.index("A"), lines.index("B"))
         self.assertLess(lines.index("B"), lines.index("C"))
@@ -155,8 +155,8 @@ class TestToAscii(unittest.TestCase):
 # to_mermaid() tests
 # ---------------------------------------------------------------------------
 
-class TestToMermaid(unittest.TestCase):
 
+class TestToMermaid(unittest.TestCase):
     def setUp(self):
         self.viz = make_viz()
 
@@ -195,8 +195,8 @@ class TestToMermaid(unittest.TestCase):
 # VisualizerConfig frozen dataclass test
 # ---------------------------------------------------------------------------
 
-class TestVisualizerConfig(unittest.TestCase):
 
+class TestVisualizerConfig(unittest.TestCase):
     def test_config_is_frozen(self):
         cfg = VisualizerConfig()
         with self.assertRaises((dataclasses.FrozenInstanceError, AttributeError)):
@@ -217,8 +217,8 @@ class TestVisualizerConfig(unittest.TestCase):
 # NodeStyle tests
 # ---------------------------------------------------------------------------
 
-class TestNodeStyle(unittest.TestCase):
 
+class TestNodeStyle(unittest.TestCase):
     def test_all_styles_in_fillcolor_map(self):
         for style in NodeStyle:
             self.assertIn(style, _FILLCOLOR)
@@ -240,8 +240,8 @@ class TestNodeStyle(unittest.TestCase):
 # Registry tests
 # ---------------------------------------------------------------------------
 
-class TestRegistry(unittest.TestCase):
 
+class TestRegistry(unittest.TestCase):
     def test_registry_has_default_key(self):
         self.assertIn("default", WORKFLOW_VISUALIZER_REGISTRY)
 

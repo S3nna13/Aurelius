@@ -7,10 +7,10 @@ import math
 import pytest
 
 from src.safety.knn_known_bad_guard import (
+    SEED_KNOWN_BAD,
     KnnKnownBadGuard,
     KnnVerdict,
     KnownBadEntry,
-    SEED_KNOWN_BAD,
     _cosine_distance,
 )
 
@@ -76,7 +76,13 @@ def test_add_known_bad_increments_size():
 def test_seed_known_bad_loads():
     assert len(SEED_KNOWN_BAD) >= 20
     cats = {e["category"] for e in SEED_KNOWN_BAD}
-    assert {"prompt_injection", "jailbreak", "data_exfil", "role_hijack", "indirect_injection"} <= cats
+    assert {
+        "prompt_injection",
+        "jailbreak",
+        "data_exfil",
+        "role_hijack",
+        "indirect_injection",
+    } <= cats
     g = KnnKnownBadGuard(embed_fn=stub_embed)
     g.bulk_load(list(SEED_KNOWN_BAD))
     assert g.size == len(SEED_KNOWN_BAD)
@@ -103,7 +109,7 @@ def test_threshold_boundary():
     lookup = {
         "bad": [1.0, 0.0, 0.0],
         "near": [0.99, 0.141, 0.0],  # cos_sim ~ 0.99 -> dist ~ 0.01
-        "far": [0.0, 1.0, 0.0],      # dist = 1.0
+        "far": [0.0, 1.0, 0.0],  # dist = 1.0
     }
 
     def emb(t: str) -> list[float]:

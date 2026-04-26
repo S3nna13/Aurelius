@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterator, Optional
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -18,7 +18,7 @@ class StreamToken:
     text: str
     token_id: int
     is_final: bool = False
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 @dataclass
@@ -86,9 +86,7 @@ class TokenStreamer:
         past_key_values = None
 
         for step in range(cfg.max_new_tokens):
-            loss, logits, past_key_values = model(
-                cur_ids, past_key_values=past_key_values
-            )
+            loss, logits, past_key_values = model(cur_ids, past_key_values=past_key_values)
 
             # Take the last position's logits: shape (batch, vocab) → (vocab,)
             next_logits = logits[0, -1, :]
@@ -183,7 +181,7 @@ class SSEFormatter:
         """Return the SSE stream-termination sentinel."""
         return "data: [DONE]\n\n"
 
-    def parse_sse_line(self, line: str) -> Optional[Dict]:
+    def parse_sse_line(self, line: str) -> dict | None:
         """Parse a ``"data: {...}"`` SSE line back to a dict.
 
         Args:
@@ -196,7 +194,7 @@ class SSEFormatter:
         prefix = "data: "
         if not line.startswith(prefix):
             return None
-        payload = line[len(prefix):]
+        payload = line[len(prefix) :]
         try:
             result = json.loads(payload)
             if isinstance(result, dict):

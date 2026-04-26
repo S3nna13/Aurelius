@@ -18,6 +18,7 @@ Dr. GRPO fixes both:
 Pure PyTorch implementation — no transformers, scipy, sklearn, or other
 external ML libraries.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,10 +26,10 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DrGRPOConfig:
@@ -44,6 +45,7 @@ class DrGRPOConfig:
             (1/T_i weighting).  Setting False reverts to the biased
             token-level-mean GRPO behaviour.
     """
+
     group_size: int = 8
     clip_eps: float = 0.2
     kl_coeff: float = 0.01
@@ -55,6 +57,7 @@ class DrGRPOConfig:
 # Batch container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DrGRPOBatch:
     """A group of G responses for a single prompt.
@@ -65,15 +68,17 @@ class DrGRPOBatch:
         rewards: Scalar reward per response, shape [G].
         attention_mask: 1 for real tokens, 0 for padding, shape [G, T].
     """
-    log_probs: Tensor        # [G, T]
-    ref_log_probs: Tensor    # [G, T]
-    rewards: Tensor          # [G]
-    attention_mask: Tensor   # [G, T]
+
+    log_probs: Tensor  # [G, T]
+    ref_log_probs: Tensor  # [G, T]
+    rewards: Tensor  # [G]
+    attention_mask: Tensor  # [G, T]
 
 
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class DrGRPOTrainer:
     """Bias-free GRPO trainer.
@@ -130,29 +135,29 @@ class DrGRPOTrainer:
             Scalar policy-gradient loss (to be minimised).
         """
         cfg = self.config
-        mask = batch.attention_mask.float()           # [G, T]
+        mask = batch.attention_mask.float()  # [G, T]
 
         # 1. Importance ratios — clamp log-ratio before exp() for stability.
         log_ratio = batch.log_probs - batch.ref_log_probs.detach()  # [G, T]
         log_ratio = log_ratio.clamp(-20.0, 20.0)
-        ratio = log_ratio.exp()                                       # [G, T]
+        ratio = log_ratio.exp()  # [G, T]
 
         # 2. Advantages [G], broadcast to [G, T].
-        adv = self.compute_advantages(batch.rewards)                  # [G]
-        adv_expanded = adv.unsqueeze(1).expand_as(ratio)             # [G, T]
+        adv = self.compute_advantages(batch.rewards)  # [G]
+        adv_expanded = adv.unsqueeze(1).expand_as(ratio)  # [G, T]
 
         # 3. Clipped PPO surrogate.
-        surr1 = ratio * adv_expanded                                  # [G, T]
+        surr1 = ratio * adv_expanded  # [G, T]
         surr2 = ratio.clamp(1.0 - cfg.clip_eps, 1.0 + cfg.clip_eps) * adv_expanded
-        pg = -torch.min(surr1, surr2) * mask                         # [G, T]
+        pg = -torch.min(surr1, surr2) * mask  # [G, T]
 
         # 4. Per-sequence loss: divide each sequence's token sum by its length.
         if cfg.normalize_sequence_length:
-            seq_lengths = mask.sum(dim=1).clamp(min=1.0)             # [G]
-            per_seq_loss = pg.sum(dim=1) / seq_lengths                # [G]
+            seq_lengths = mask.sum(dim=1).clamp(min=1.0)  # [G]
+            per_seq_loss = pg.sum(dim=1) / seq_lengths  # [G]
         else:
             # Biased token-level mean (standard GRPO behaviour).
-            per_seq_loss = pg.sum(dim=1)                              # [G]
+            per_seq_loss = pg.sum(dim=1)  # [G]
 
         # 5. Mean over group.
         return per_seq_loss.mean()
@@ -174,7 +179,7 @@ class DrGRPOTrainer:
             Scalar non-negative KL estimate.
         """
         mask = batch.attention_mask.float()
-        kl = (batch.ref_log_probs - batch.log_probs) * mask          # [G, T]
+        kl = (batch.ref_log_probs - batch.log_probs) * mask  # [G, T]
         n_tokens = mask.sum().clamp(min=1.0)
         return kl.sum() / n_tokens
 
@@ -231,7 +236,7 @@ class DrGRPOTrainer:
             mask = batch.attention_mask.float()
 
             log_ratio = (batch.log_probs - batch.ref_log_probs).clamp(-20.0, 20.0)
-            ratio = log_ratio.exp()                                    # [G, T]
+            ratio = log_ratio.exp()  # [G, T]
 
             # Clip fraction over valid tokens.
             was_clipped = (ratio < 1.0 - cfg.clip_eps) | (ratio > 1.0 + cfg.clip_eps)

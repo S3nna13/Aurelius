@@ -9,17 +9,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Exit Classifier
 # ---------------------------------------------------------------------------
+
 
 class ExitClassifier(nn.Module):
     """Lightweight 2-class classifier that predicts exit probability per token.
@@ -66,10 +65,11 @@ class ExitClassifier(nn.Module):
 # Multi-head Self-Attention (pure PyTorch, no flash_attn)
 # ---------------------------------------------------------------------------
 
+
 class _SelfAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.scale = math.sqrt(self.head_dim)
@@ -91,9 +91,7 @@ class _SelfAttention(nn.Module):
         # Scaled dot-product attention
         attn = (q @ k.transpose(-2, -1)) / self.scale  # [B, H, T, T]
         # Causal mask
-        causal_mask = torch.triu(
-            torch.ones(T, T, dtype=torch.bool, device=x.device), diagonal=1
-        )
+        causal_mask = torch.triu(torch.ones(T, T, dtype=torch.bool, device=x.device), diagonal=1)
         attn = attn.masked_fill(causal_mask, float("-inf"))
         attn = F.softmax(attn, dim=-1)
 
@@ -130,6 +128,7 @@ class _TransformerBlock(nn.Module):
 # Early Exit Layer
 # ---------------------------------------------------------------------------
 
+
 class EarlyExitLayer(nn.Module):
     """One transformer layer augmented with an exit classifier and a shallow LM head.
 
@@ -157,8 +156,8 @@ class EarlyExitLayer(nn.Module):
         self,
         x: Tensor,
         exit_threshold: float,
-        already_exited: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+        already_exited: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Process hidden states and decide per-token exits.
 
         Args:
@@ -189,7 +188,7 @@ class EarlyExitLayer(nn.Module):
         exit_mask = exit_mask_raw & (~already_exited)  # [B, T]
 
         # For tokens that do NOT exit here and have NOT exited before, update x
-        active = ~(exit_mask | already_exited)  # tokens still "alive"
+        ~(exit_mask | already_exited)  # tokens still "alive"
         # Build x_out: exited tokens keep previous x; active tokens get x_new
         x_out = torch.where(
             (exit_mask | already_exited).unsqueeze(-1).expand_as(x),
@@ -206,6 +205,7 @@ class EarlyExitLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # Adaptive Early Exit Model
 # ---------------------------------------------------------------------------
+
 
 class AdaptiveEarlyExitModel(nn.Module):
     """Full model with per-token adaptive early exit across N layers.
@@ -248,7 +248,7 @@ class AdaptiveEarlyExitModel(nn.Module):
     def forward(
         self,
         input_ids: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Run forward pass with adaptive early exit.
 
         Args:
@@ -323,6 +323,7 @@ class AdaptiveEarlyExitModel(nn.Module):
 # Early Exit Trainer
 # ---------------------------------------------------------------------------
 
+
 class EarlyExitTrainer:
     """Training wrapper that combines task loss with an exit-regularization term.
 
@@ -376,7 +377,7 @@ class EarlyExitTrainer:
         penalty = F.relu(mean_exit - target)
         return penalty
 
-    def train_step(self, input_ids: Tensor) -> Tuple[Tensor, float]:
+    def train_step(self, input_ids: Tensor) -> tuple[Tensor, float]:
         """One gradient update step.
 
         Args:
@@ -411,6 +412,7 @@ class EarlyExitTrainer:
 # Early Exit Profiler
 # ---------------------------------------------------------------------------
 
+
 class EarlyExitProfiler:
     """Accumulates per-batch layer-assignment statistics.
 
@@ -427,7 +429,7 @@ class EarlyExitProfiler:
     def __init__(self) -> None:
         self._total_tokens: int = 0
         self._sum_layers: float = 0.0
-        self._layer_counts: Dict[int, int] = {}
+        self._layer_counts: dict[int, int] = {}
 
     def record_batch(self, layer_assignments: Tensor) -> None:
         """Accumulate statistics from one batch.
@@ -450,7 +452,7 @@ class EarlyExitProfiler:
             return 0.0
         return self._sum_layers / self._total_tokens
 
-    def layer_distribution(self) -> Dict[int, float]:
+    def layer_distribution(self) -> dict[int, float]:
         """Return fraction of tokens that exited at each layer.
 
         Returns:
@@ -458,10 +460,7 @@ class EarlyExitProfiler:
         """
         if self._total_tokens == 0:
             return {}
-        return {
-            layer: count / self._total_tokens
-            for layer, count in self._layer_counts.items()
-        }
+        return {layer: count / self._total_tokens for layer, count in self._layer_counts.items()}
 
     def compute_flop_savings(self, n_layers: int) -> float:
         """Estimate FLOPs saved relative to running all layers.
@@ -483,6 +482,7 @@ class EarlyExitProfiler:
 # ---------------------------------------------------------------------------
 # Configuration dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EarlyExitConfig:

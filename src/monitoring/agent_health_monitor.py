@@ -1,4 +1,5 @@
 """Agent health monitor: heartbeat tracking, timeout detection, thread-safe."""
+
 from __future__ import annotations
 
 import threading
@@ -31,7 +32,7 @@ class AgentHealthMonitor:
             for agent_id, state in self._agents.items():
                 last_seen = state["last_seen"]
                 timeout = state["heartbeat_timeout_sec"]
-                if last_seen is None:
+                if last_seen is None or timeout is None:
                     result[agent_id] = "unknown"
                 elif now - last_seen > timeout:
                     result[agent_id] = "unhealthy"

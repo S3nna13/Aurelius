@@ -1,6 +1,8 @@
 """Unit tests for Toggle token-efficient RL (Kimi K2.5 §3.4, arXiv:2602.02276)."""
+
 import pytest
 import torch
+
 from src.alignment.toggle import ToggleReward
 
 
@@ -63,27 +65,21 @@ def test_exactly_at_threshold(toggle):
     """Phase 0: accuracy exactly at lambda_threshold -> reward given (inclusive)."""
     mean_reward = torch.tensor([2.0, 3.0])
     result = toggle(mean_reward, accuracy=0.8, tokens_used=512, phase=0)
-    assert torch.allclose(result, mean_reward), (
-        f"Expected reward at exact threshold, got {result}"
-    )
+    assert torch.allclose(result, mean_reward), f"Expected reward at exact threshold, got {result}"
 
 
 def test_exactly_at_budget(toggle):
     """Phase 0: tokens_used exactly at token_budget -> reward given (inclusive)."""
     mean_reward = torch.tensor([2.0, 3.0])
     result = toggle(mean_reward, accuracy=0.9, tokens_used=2048, phase=0)
-    assert torch.allclose(result, mean_reward), (
-        f"Expected reward at exact budget, got {result}"
-    )
+    assert torch.allclose(result, mean_reward), f"Expected reward at exact budget, got {result}"
 
 
 def test_phase1_ignores_accuracy(toggle):
     """Phase 1: accuracy=0.0, tokens=9999 -> still returns mean_reward."""
     mean_reward = torch.tensor([5.0])
     result = toggle(mean_reward, accuracy=0.0, tokens_used=9999, phase=1)
-    assert torch.allclose(result, mean_reward), (
-        f"Expected {mean_reward} in phase 1, got {result}"
-    )
+    assert torch.allclose(result, mean_reward), f"Expected {mean_reward} in phase 1, got {result}"
 
 
 def test_determinism(toggle):
@@ -91,6 +87,4 @@ def test_determinism(toggle):
     mean_reward = torch.tensor([1.0, 2.0, 3.0])
     result_a = toggle(mean_reward, accuracy=0.9, tokens_used=512, phase=0)
     result_b = toggle(mean_reward, accuracy=0.9, tokens_used=512, phase=0)
-    assert torch.allclose(result_a, result_b), (
-        f"Non-deterministic: {result_a} vs {result_b}"
-    )
+    assert torch.allclose(result_a, result_b), f"Non-deterministic: {result_a} vs {result_b}"

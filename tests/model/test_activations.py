@@ -3,20 +3,20 @@
 Uses tiny dimensions throughout so the suite runs quickly on CPU.
 """
 
-import torch
 import pytest
+import torch
 
 from src.model.activations import (
-    swiglu,
+    ActivationFactory,
+    GeGLUFFN,
+    SwiGLUFFN,
+    benchmark_activation,
     geglu,
+    quick_gelu,
     reglu,
     silu,
-    quick_gelu,
     squared_relu,
-    SwiGLUFFN,
-    GeGLUFFN,
-    ActivationFactory,
-    benchmark_activation,
+    swiglu,
 )
 
 # ---------------------------------------------------------------------------
@@ -31,6 +31,7 @@ D_FF = 32
 # ---------------------------------------------------------------------------
 # Functional: swiglu
 # ---------------------------------------------------------------------------
+
 
 def test_swiglu_output_shape():
     x = torch.randn(B, T, D_MODEL)
@@ -51,6 +52,7 @@ def test_swiglu_zero_gate_gives_zero():
 # Functional: geglu
 # ---------------------------------------------------------------------------
 
+
 def test_geglu_output_shape():
     x = torch.randn(B, T, D_MODEL)
     gate = torch.randn(B, T, D_MODEL)
@@ -69,6 +71,7 @@ def test_geglu_zero_gate_gives_zero():
 # ---------------------------------------------------------------------------
 # Functional: reglu
 # ---------------------------------------------------------------------------
+
 
 def test_reglu_output_shape():
     x = torch.randn(B, T, D_MODEL)
@@ -89,6 +92,7 @@ def test_reglu_negative_gate_gives_zero():
 # Functional: silu
 # ---------------------------------------------------------------------------
 
+
 def test_silu_output_shape():
     x = torch.randn(B, T, D_MODEL)
     assert silu(x).shape == (B, T, D_MODEL)
@@ -106,6 +110,7 @@ def test_silu_differentiable():
 # Functional: quick_gelu
 # ---------------------------------------------------------------------------
 
+
 def test_quick_gelu_output_shape():
     x = torch.randn(B, T, D_MODEL)
     assert quick_gelu(x).shape == (B, T, D_MODEL)
@@ -114,6 +119,7 @@ def test_quick_gelu_output_shape():
 # ---------------------------------------------------------------------------
 # Functional: squared_relu
 # ---------------------------------------------------------------------------
+
 
 def test_squared_relu_non_negative():
     """squared_relu must produce non-negative values for any input."""
@@ -130,6 +136,7 @@ def test_squared_relu_output_shape():
 # ---------------------------------------------------------------------------
 # Module: SwiGLUFFN
 # ---------------------------------------------------------------------------
+
 
 def test_swiglu_ffn_output_shape():
     ffn = SwiGLUFFN(D_MODEL, D_FF)
@@ -153,6 +160,7 @@ def test_swiglu_ffn_gradient_flows():
 # Module: GeGLUFFN
 # ---------------------------------------------------------------------------
 
+
 def test_geglu_ffn_output_shape():
     ffn = GeGLUFFN(D_MODEL, D_FF)
     x = torch.randn(B, T, D_MODEL)
@@ -162,6 +170,7 @@ def test_geglu_ffn_output_shape():
 # ---------------------------------------------------------------------------
 # ActivationFactory
 # ---------------------------------------------------------------------------
+
 
 def test_activation_factory_get_silu_callable():
     fn = ActivationFactory.get("silu")
@@ -196,6 +205,7 @@ def test_activation_factory_unknown_name_raises():
 # benchmark_activation
 # ---------------------------------------------------------------------------
 
+
 def test_benchmark_activation_returns_correct_keys():
     x = torch.randn(B, T, D_MODEL)
     result = benchmark_activation(silu, x, n_runs=5)
@@ -223,6 +233,7 @@ def test_benchmark_activation_mean_positive():
 # ---------------------------------------------------------------------------
 # Cross-activation: swiglu vs geglu differ on same inputs
 # ---------------------------------------------------------------------------
+
 
 def test_swiglu_and_geglu_differ():
     """For the same (x, gate) pair, SwiGLU and GeGLU should produce different

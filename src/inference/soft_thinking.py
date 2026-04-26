@@ -7,6 +7,7 @@ differentiable through the entire reasoning chain.
 
 Reference: Soft Thinking (2025) — probabilistic token mixing for LLM reasoning.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,23 +17,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SoftThinkingConfig:
     d_model: int = 2048
     vocab_size: int = 128000
-    top_k: int = 50            # number of tokens to mix
-    temperature: float = 1.0   # applied to logits before softmax
-    renormalize: bool = True   # renormalize probabilities after top-k selection
+    top_k: int = 50  # number of tokens to mix
+    temperature: float = 1.0  # applied to logits before softmax
+    renormalize: bool = True  # renormalize probabilities after top-k selection
 
 
 # ---------------------------------------------------------------------------
 # Core module
 # ---------------------------------------------------------------------------
+
 
 class SoftThinkingMixer(nn.Module):
     """Computes soft token embeddings from logits + embedding table.
@@ -109,8 +111,8 @@ class SoftThinkingMixer(nn.Module):
         # 5. Gather embedding vectors for top-k indices
         #    emb_weight: [V, d_model]
         #    topk_indices flat: [B*T*k] → gather embeddings → reshape [B, T, k, d_model]
-        flat_indices = topk_indices.reshape(-1)          # [B*T*k]
-        flat_embeddings = emb_weight[flat_indices]       # [B*T*k, d_model]
+        flat_indices = topk_indices.reshape(-1)  # [B*T*k]
+        flat_embeddings = emb_weight[flat_indices]  # [B*T*k, d_model]
         d = emb_weight.shape[-1]
         embeddings = flat_embeddings.reshape(B, T, k, d)  # [B, T, k, d_model]
 

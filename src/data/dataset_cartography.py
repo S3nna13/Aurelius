@@ -5,8 +5,7 @@ ambiguous, or hard-to-learn based on per-epoch confidence and correctness.
 """
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Dict
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -14,7 +13,7 @@ from torch import Tensor
 
 @dataclass
 class CartographyConfig:
-    n_epochs: int = 3       # epochs to track dynamics
+    n_epochs: int = 3  # epochs to track dynamics
     smoothing: float = 0.0  # label smoothing for confidence
 
 
@@ -23,8 +22,8 @@ class SampleDynamics:
     """Training dynamics for a single example across epochs."""
 
     sample_idx: int
-    confidences: List[float]   # per-epoch probability of correct label
-    correctness: List[bool]    # per-epoch correct prediction
+    confidences: list[float]  # per-epoch probability of correct label
+    correctness: list[bool]  # per-epoch correct prediction
 
     @property
     def mean_confidence(self) -> float:
@@ -73,17 +72,17 @@ class CartographyTracker:
     def __init__(self, n_samples: int, config: CartographyConfig):
         self.n_samples = n_samples
         self.config = config
-        self.dynamics: Dict[int, SampleDynamics] = {}
+        self.dynamics: dict[int, SampleDynamics] = {}
 
     def record_epoch(
         self,
-        sample_indices: List[int],   # which samples were seen
-        logits: Tensor,              # (N, n_classes) predicted logits
-        labels: Tensor,              # (N,) true class labels
+        sample_indices: list[int],  # which samples were seen
+        logits: Tensor,  # (N, n_classes) predicted logits
+        labels: Tensor,  # (N,) true class labels
     ) -> None:
         """Record confidence and correctness for each sample this epoch."""
-        probs = torch.softmax(logits, dim=-1)          # (N, n_classes)
-        preds = logits.argmax(dim=-1)                   # (N,)
+        probs = torch.softmax(logits, dim=-1)  # (N, n_classes)
+        preds = logits.argmax(dim=-1)  # (N,)
 
         for i, idx in enumerate(sample_indices):
             true_label = int(labels[i].item())
@@ -103,21 +102,17 @@ class CartographyTracker:
         """Get dynamics for a specific sample."""
         return self.dynamics[idx]
 
-    def get_all_dynamics(self) -> List[SampleDynamics]:
+    def get_all_dynamics(self) -> list[SampleDynamics]:
         """Return all tracked sample dynamics."""
         return list(self.dynamics.values())
 
-    def select_by_region(self, region: str) -> List[int]:
+    def select_by_region(self, region: str) -> list[int]:
         """Return sample indices in the given region."""
-        return [
-            d.sample_idx
-            for d in self.dynamics.values()
-            if d.region == region
-        ]
+        return [d.sample_idx for d in self.dynamics.values() if d.region == region]
 
-    def cartography_summary(self) -> Dict[str, int]:
+    def cartography_summary(self) -> dict[str, int]:
         """Count samples per region: {'easy-to-learn': N, 'ambiguous': N, 'hard-to-learn': N}"""
-        summary: Dict[str, int] = {
+        summary: dict[str, int] = {
             "easy-to-learn": 0,
             "ambiguous": 0,
             "hard-to-learn": 0,
@@ -129,9 +124,9 @@ class CartographyTracker:
 
 def select_training_subset(
     tracker: CartographyTracker,
-    strategy: str = "ambiguous",   # "ambiguous", "easy-to-learn", "hard-to-learn"
+    strategy: str = "ambiguous",  # "ambiguous", "easy-to-learn", "hard-to-learn"
     fraction: float = 0.33,
-) -> List[int]:
+) -> list[int]:
     """Select a fraction of training data based on cartography region.
 
     Returns list of sample indices. If the target region has more samples than
@@ -143,12 +138,12 @@ def select_training_subset(
     return candidates[:budget]
 
 
-def compute_forgetting_events(dynamics_list: List[SampleDynamics]) -> Dict[int, int]:
+def compute_forgetting_events(dynamics_list: list[SampleDynamics]) -> dict[int, int]:
     """Count forgetting events per sample: transitions from correct→incorrect.
 
     Returns {sample_idx: n_forgetting_events}.
     """
-    result: Dict[int, int] = {}
+    result: dict[int, int] = {}
     for d in dynamics_list:
         events = 0
         for t in range(1, len(d.correctness)):

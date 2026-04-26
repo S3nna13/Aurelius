@@ -28,17 +28,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Callable, TextIO
+from collections.abc import Callable
+from typing import TextIO
 
-from src.model.family import MODEL_FAMILY_REGISTRY, MODEL_VARIANT_REGISTRY
 from src.model.compatibility import check_manifest_compatibility
+from src.model.family import MODEL_FAMILY_REGISTRY, MODEL_VARIANT_REGISTRY
 from src.model.manifest import dump_manifest
 from src.model.manifest_v2 import compare_backend_contracts
 from src.model.release_track_router import (
     POLICY_REGISTRY,
     ReleaseTrackRouter,
 )
-
 
 __all__ = [
     "FAMILY_COMMAND_HANDLERS",
@@ -58,9 +58,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def handle_family_list(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def handle_family_list(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Emit a JSON array of registered family names (sorted)."""
     stream = out_stream if out_stream is not None else sys.stdout
     names = sorted(MODEL_FAMILY_REGISTRY.keys())
@@ -69,9 +67,7 @@ def handle_family_list(
     return 0
 
 
-def handle_family_show(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def handle_family_show(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Emit JSON describing one family + its variants."""
     stream = out_stream if out_stream is not None else sys.stdout
     name = getattr(args, "family_name", None)
@@ -106,9 +102,7 @@ def handle_family_show(
     return 0
 
 
-def handle_family_variants(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def handle_family_variants(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Emit a JSON array of variant names within a family."""
     stream = out_stream if out_stream is not None else sys.stdout
     name = getattr(args, "family_name", None)
@@ -138,9 +132,7 @@ def handle_family_variants(
     return 0
 
 
-def handle_family_manifest(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def handle_family_manifest(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Dump a variant's :class:`FamilyManifest` as JSON."""
     stream = out_stream if out_stream is not None else sys.stdout
     variant_id = getattr(args, "variant_id", None)
@@ -162,9 +154,7 @@ def handle_family_manifest(
     return 0
 
 
-def handle_family_compare(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def handle_family_compare(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Compare two variant manifests and print compatibility as JSON."""
     stream = out_stream if out_stream is not None else sys.stdout
     required_id = getattr(args, "required_variant_id", None)
@@ -198,12 +188,8 @@ def handle_family_compare(
 
     required = MODEL_VARIANT_REGISTRY[required_id]
     candidate = MODEL_VARIANT_REGISTRY[candidate_id]
-    verdict = check_manifest_compatibility(
-        required.manifest, candidate.manifest
-    )
-    backend_verdict = compare_backend_contracts(
-        required.manifest, candidate.manifest
-    )
+    verdict = check_manifest_compatibility(required.manifest, candidate.manifest)
+    backend_verdict = compare_backend_contracts(required.manifest, candidate.manifest)
     payload = {
         "required_variant_id": required_id,
         "candidate_variant_id": candidate_id,
@@ -217,9 +203,7 @@ def handle_family_compare(
     return 0 if verdict.compatible else 1
 
 
-def handle_family_check(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def handle_family_check(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Route a variant under a named policy and print the decision as JSON."""
     stream = out_stream if out_stream is not None else sys.stdout
     variant_id = getattr(args, "variant_id", None)
@@ -279,9 +263,7 @@ def handle_family_check(
 # Handler registry
 # ---------------------------------------------------------------------------
 
-FAMILY_COMMAND_HANDLERS: dict[
-    str, Callable[[argparse.Namespace, TextIO], int]
-] = {
+FAMILY_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace, TextIO], int]] = {
     "list": handle_family_list,
     "show": handle_family_show,
     "variants": handle_family_variants,
@@ -307,9 +289,7 @@ def build_family_parser(subparsers: argparse._SubParsersAction) -> argparse.Argu
         help="inspect model families and variants",
         description="Model family + variant listing and selection.",
     )
-    family_sub = family_parser.add_subparsers(
-        dest="family_command", metavar="family_command"
-    )
+    family_sub = family_parser.add_subparsers(dest="family_command", metavar="family_command")
 
     # family list
     family_sub.add_parser("list", help="list registered families")
@@ -319,37 +299,21 @@ def build_family_parser(subparsers: argparse._SubParsersAction) -> argparse.Argu
     show_p.add_argument("family_name", help="family name (e.g. 'aurelius')")
 
     # family variants <family_name>
-    variants_p = family_sub.add_parser(
-        "variants", help="list variant names in a family"
-    )
+    variants_p = family_sub.add_parser("variants", help="list variant names in a family")
     variants_p.add_argument("family_name", help="family name")
 
     # family manifest <family/variant>
-    manifest_p = family_sub.add_parser(
-        "manifest", help="dump a variant manifest as JSON"
-    )
-    manifest_p.add_argument(
-        "variant_id", help="variant id in the form 'family/variant'"
-    )
+    manifest_p = family_sub.add_parser("manifest", help="dump a variant manifest as JSON")
+    manifest_p.add_argument("variant_id", help="variant id in the form 'family/variant'")
 
     # family compare <required> <candidate>
-    compare_p = family_sub.add_parser(
-        "compare", help="compare two variant manifests"
-    )
-    compare_p.add_argument(
-        "required_variant_id", help="required variant id (family/variant)"
-    )
-    compare_p.add_argument(
-        "candidate_variant_id", help="candidate variant id (family/variant)"
-    )
+    compare_p = family_sub.add_parser("compare", help="compare two variant manifests")
+    compare_p.add_argument("required_variant_id", help="required variant id (family/variant)")
+    compare_p.add_argument("candidate_variant_id", help="candidate variant id (family/variant)")
 
     # family check <family/variant> --policy ... [--override FLAG]
-    check_p = family_sub.add_parser(
-        "check", help="apply the release-track router to a variant"
-    )
-    check_p.add_argument(
-        "variant_id", help="variant id in the form 'family/variant'"
-    )
+    check_p = family_sub.add_parser("check", help="apply the release-track router to a variant")
+    check_p.add_argument("variant_id", help="variant id in the form 'family/variant'")
     check_p.add_argument(
         "--policy",
         required=True,
@@ -361,18 +325,13 @@ def build_family_parser(subparsers: argparse._SubParsersAction) -> argparse.Argu
         action="append",
         default=None,
         metavar="FLAG",
-        help=(
-            "override flag (repeatable); 'allow_research' or bare "
-            "'research' are both accepted"
-        ),
+        help=("override flag (repeatable); 'allow_research' or bare 'research' are both accepted"),
     )
 
     return family_parser
 
 
-def dispatch_family_command(
-    args: argparse.Namespace, out_stream: TextIO | None = None
-) -> int:
+def dispatch_family_command(args: argparse.Namespace, out_stream: TextIO | None = None) -> int:
     """Route an ``argparse.Namespace`` from ``build_family_parser`` to a handler."""
     name = getattr(args, "family_command", None)
     if name is None:

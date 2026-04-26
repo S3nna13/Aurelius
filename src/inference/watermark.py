@@ -50,9 +50,7 @@ def apply_watermark(
     config: WatermarkConfig,
 ) -> torch.Tensor:
     """Add delta to green list token logits. Returns modified logits (same shape)."""
-    green_set = compute_green_list(
-        prev_token, config.vocab_size, config.gamma, config.seed
-    )
+    green_set = compute_green_list(prev_token, config.vocab_size, config.gamma, config.seed)
     out = logits.clone()
     green_indices = torch.tensor(sorted(green_set), dtype=torch.long)
     out[..., green_indices] += config.delta

@@ -22,10 +22,9 @@ Variable notation follows the paper where possible:
 """
 
 import math
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Optional
 
 
 class RingAttention(nn.Module):
@@ -56,14 +55,12 @@ class RingAttention(nn.Module):
     ) -> None:
         super().__init__()
         if d_model % n_heads != 0:
-            raise ValueError(
-                f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
-            )
+            raise ValueError(f"d_model ({d_model}) must be divisible by n_heads ({n_heads})")
         self.d_model = d_model
-        self.n_heads = n_heads          # H
-        self.chunk_size = chunk_size    # C
+        self.n_heads = n_heads  # H
+        self.chunk_size = chunk_size  # C
         self.causal = causal
-        self.d_k = d_model // n_heads   # head dimension
+        self.d_k = d_model // n_heads  # head dimension
 
         # Projection matrices
         self.W_q = nn.Linear(d_model, d_model, bias=False)
@@ -95,10 +92,10 @@ class RingAttention(nn.Module):
 
     @staticmethod
     def _online_update(
-        lse_old: torch.Tensor,   # (B, H, C, 1)
-        O_old: torch.Tensor,     # (B, H, C, d_k)
-        S_new: torch.Tensor,     # (B, H, C, C)  raw scores (post-mask)
-        V_j: torch.Tensor,       # (B, H, C, d_k)
+        lse_old: torch.Tensor,  # (B, H, C, 1)
+        O_old: torch.Tensor,  # (B, H, C, d_k)
+        S_new: torch.Tensor,  # (B, H, C, C)  raw scores (post-mask)
+        V_j: torch.Tensor,  # (B, H, C, d_k)
     ):
         """Merge a new KV block into running (lse, O) accumulators.
 
@@ -119,14 +116,14 @@ class RingAttention(nn.Module):
         # Per-row max for numerical stability.
         # Replace -inf max (all-masked row) with 0 so that exp(S - m) = 0
         # for all-masked rows, leaving those rows uncontributed.
-        m_new = S_new.amax(dim=-1, keepdim=True)       # (B, H, C, 1)
+        m_new = S_new.amax(dim=-1, keepdim=True)  # (B, H, C, 1)
         m_new_safe = m_new.clamp(min=torch.finfo(S_new.dtype).min / 2)
 
         # exp of shifted scores; rows where m_new=-inf safely become 0
-        exp_s = torch.exp(S_new - m_new_safe)           # (B, H, C, C)
+        exp_s = torch.exp(S_new - m_new_safe)  # (B, H, C, C)
 
         # Sum of exp per row; all-masked rows → 0 (not NaN)
-        sum_exp_s = exp_s.sum(dim=-1, keepdim=True)     # (B, H, C, 1)
+        sum_exp_s = exp_s.sum(dim=-1, keepdim=True)  # (B, H, C, 1)
 
         # Local lse for this block.  All-masked rows produce lse = -inf
         # because log(0 + 1e-30) ≈ -inf, which correctly contributes nothing
@@ -139,8 +136,7 @@ class RingAttention(nn.Module):
         # Guard against -inf - (-inf) = NaN by treating -inf max as finite
         lse_max_safe = lse_max.clamp(min=torch.finfo(S_new.dtype).min / 2)
         lse_new = lse_max_safe + torch.log(
-            torch.exp(lse_old - lse_max_safe)
-            + torch.exp(lse_block - lse_max_safe)
+            torch.exp(lse_old - lse_max_safe) + torch.exp(lse_block - lse_max_safe)
         )  # (B, H, C, 1)
 
         # Where both lse_old and lse_block are -inf, lse_new is effectively
@@ -148,7 +144,7 @@ class RingAttention(nn.Module):
         lse_new = torch.nan_to_num(lse_new, nan=float("-inf"))
 
         # Update output accumulator
-        scale_old = torch.exp(lse_old - lse_new)    # (B, H, C, 1)
+        scale_old = torch.exp(lse_old - lse_new)  # (B, H, C, 1)
         scale_new = torch.exp(lse_block - lse_new)  # (B, H, C, 1)
 
         # Guard NaN from 0/0 when lse_new = -inf (no valid keys anywhere yet)
@@ -156,7 +152,7 @@ class RingAttention(nn.Module):
         scale_new = torch.nan_to_num(scale_new, nan=0.0)
 
         # Normalise exp_s within this block (safe: all-masked rows → 0/eps = 0)
-        exp_s_norm = exp_s / (sum_exp_s + 1e-30)    # (B, H, C, C)
+        exp_s_norm = exp_s / (sum_exp_s + 1e-30)  # (B, H, C, C)
         O_new = scale_old * O_old + scale_new * (exp_s_norm @ V_j)
 
         return lse_new, O_new
@@ -194,7 +190,7 @@ class RingAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute ring attention.
 
@@ -234,7 +230,7 @@ class RingAttention(nn.Module):
 
         # Build additive attention bias from mask if provided
         # We support (B, T) padding masks (1 = keep, 0 = pad)
-        attn_bias: Optional[torch.Tensor] = None
+        attn_bias: torch.Tensor | None = None
         if attention_mask is not None:
             if attention_mask.dim() == 2:
                 # (B, T) → (B, 1, 1, T)  additive key-side mask
@@ -263,13 +259,13 @@ class RingAttention(nn.Module):
             for _ in range(N)
         ]
 
-        for r in range(N):            # ring round
-            for i in range(N):        # query block index
-                j = (i + r) % N       # KV block index on this round
+        for r in range(N):  # ring round
+            for i in range(N):  # query block index
+                j = (i + r) % N  # KV block index on this round
 
-                q_i = Q_chunks[i]     # (B, H, C, d_k)
-                k_j = K_chunks[j]     # (B, H, C, d_k)
-                v_j = V_chunks[j]     # (B, H, C, d_k)
+                q_i = Q_chunks[i]  # (B, H, C, d_k)
+                k_j = K_chunks[j]  # (B, H, C, d_k)
+                v_j = V_chunks[j]  # (B, H, C, d_k)
 
                 # Raw scores S_ij = q_i @ k_j^T / sqrt(d_k)
                 # (B, H, C, C)
@@ -289,8 +285,8 @@ class RingAttention(nn.Module):
                     # attn_bias shape: (B, 1, 1, T) key-side mask  OR
                     #                  (B, H or 1, T, T) full mask
                     ab = attn_bias
-                    q_sz = ab.shape[-2]   # 1 (key-only) or T (full)
-                    k_sz = ab.shape[-1]   # T always
+                    q_sz = ab.shape[-2]  # 1 (key-only) or T (full)
+                    ab.shape[-1]  # T always
 
                     if q_sz == 1:
                         # (B, 1, 1, T) → slice key dimension only
@@ -305,8 +301,8 @@ class RingAttention(nn.Module):
                 )
 
         # Concatenate output blocks: (B, H, T, d_k)
-        O = torch.cat(O_blocks, dim=2)
+        O = torch.cat(O_blocks, dim=2)  # noqa: E741
         # Merge heads: (B, T, d_model)
-        out = self._merge_heads(O)
+        out = self._merge_heads(O)  # noqa: E741
         # Output projection
         return self.W_o(out)

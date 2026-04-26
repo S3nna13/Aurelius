@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional
+from enum import StrEnum
 
 
-class RequestPriority(str, Enum):
+class RequestPriority(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     NORMAL = "normal"
@@ -41,9 +40,9 @@ class ContinuousBatcherV2:
         RequestPriority.LOW: 3,
     }
 
-    def __init__(self, config: Optional[BatchingConfig] = None) -> None:
+    def __init__(self, config: BatchingConfig | None = None) -> None:
         self.config = config if config is not None else BatchingConfig()
-        self._queue: List[BatchRequest] = []
+        self._queue: list[BatchRequest] = []
 
     def enqueue(self, request: BatchRequest) -> None:
         """Add a request to the queue."""
@@ -53,13 +52,13 @@ class ContinuousBatcherV2:
         """Return numeric priority (lower = higher priority)."""
         return self._PRIORITY_SCORES.get(req.priority, 2)
 
-    def next_batch(self) -> List[BatchRequest]:
+    def next_batch(self) -> list[BatchRequest]:
         """Greedily fill up to max_batch_tokens and max_batch_size.
 
         Sort queue by priority_score, take from front while token budget allows.
         """
         sorted_queue = sorted(self._queue, key=self._priority_score)
-        selected: List[BatchRequest] = []
+        selected: list[BatchRequest] = []
         token_budget = self.config.max_batch_tokens
 
         for req in sorted_queue:
@@ -80,7 +79,7 @@ class ContinuousBatcherV2:
                 return True
         return False
 
-    def preempt_lowest(self, n: int = 1) -> List[BatchRequest]:
+    def preempt_lowest(self, n: int = 1) -> list[BatchRequest]:
         """If preemption_enabled: remove n lowest-priority requests, return them."""
         if not self.config.preemption_enabled:
             return []
@@ -98,7 +97,7 @@ class ContinuousBatcherV2:
         """Return current number of requests in the queue."""
         return len(self._queue)
 
-    def token_utilization(self, batch: List[BatchRequest]) -> float:
+    def token_utilization(self, batch: list[BatchRequest]) -> float:
         """Fraction of max_batch_tokens used by batch."""
         total = sum(req.prompt_tokens + req.generated_tokens for req in batch)
         return total / self.config.max_batch_tokens

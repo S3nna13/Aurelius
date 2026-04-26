@@ -14,18 +14,18 @@ Tests cover:
 
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.process_reward_eval import (
     PRMEvalConfig,
     ProcessRewardEval,
     SolutionEval,
     StepPrediction,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_step(
     idx: int,
@@ -55,6 +55,7 @@ def _perfect_solution(n: int = 3, reward: float = 0.9, gt: bool = True) -> Solut
 # Test 1: config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = PRMEvalConfig()
     assert cfg.correct_threshold == 0.5
@@ -64,6 +65,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Tests 2–4: step_accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_step_accuracy_perfect():
     """All predictions match ground truth → 1.0."""
@@ -85,10 +87,9 @@ def test_step_accuracy_partial():
     """3 out of 5 steps match → 0.6."""
     # steps 0,1,2: reward=0.9, gt=True  → match
     # steps 3,4:   reward=0.9, gt=False → mismatch
-    steps = (
-        [_make_step(i, 0.9, True) for i in range(3)] +
-        [_make_step(i + 3, 0.9, False) for i in range(2)]
-    )
+    steps = [_make_step(i, 0.9, True) for i in range(3)] + [
+        _make_step(i + 3, 0.9, False) for i in range(2)
+    ]
     sol = SolutionEval("p2", steps, False, 0.5)
     evaluator = ProcessRewardEval()
     assert abs(evaluator.step_accuracy([sol]) - 0.6) < 1e-9
@@ -97,6 +98,7 @@ def test_step_accuracy_partial():
 # ---------------------------------------------------------------------------
 # Tests 5–6: step_precision_recall_f1
 # ---------------------------------------------------------------------------
+
 
 def test_precision_recall_f1_perfect():
     """All true positives → precision=recall=f1=1.0."""
@@ -123,6 +125,7 @@ def test_precision_recall_f1_empty_pos():
 # ---------------------------------------------------------------------------
 # Tests 7–8: final_answer_correlation
 # ---------------------------------------------------------------------------
+
 
 def test_final_answer_correlation_perfect():
     """High PRM score → correct final; low → incorrect. Expect positive corr."""
@@ -152,6 +155,7 @@ def test_final_answer_correlation_no_variance():
 # ---------------------------------------------------------------------------
 # Tests 9–11: first_error_detection
 # ---------------------------------------------------------------------------
+
 
 def test_first_error_detection_found():
     """First error flagged → detection_rate=1.0."""
@@ -196,6 +200,7 @@ def test_first_error_no_errors():
 # Tests 12–13: calibration_error
 # ---------------------------------------------------------------------------
 
+
 def test_calibration_perfect():
     """Predicted reward closely matches gt rates within each bin → ECE ~ 0."""
     # All steps in the 0.8–0.9 bin (bin 8) with gt=True (fraction=1.0).
@@ -223,6 +228,7 @@ def test_calibration_imperfect():
 # Test 14: evaluate() returns all expected keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_keys():
     """evaluate() dict must contain all expected metric keys."""
     steps = [_make_step(i, 0.8, True) for i in range(3)]
@@ -245,6 +251,7 @@ def test_evaluate_keys():
 # ---------------------------------------------------------------------------
 # Test 15: registry
 # ---------------------------------------------------------------------------
+
 
 def test_registry():
     """BENCHMARK_REGISTRY['process_reward_eval'] is ProcessRewardEval."""

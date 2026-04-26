@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.inference.request_classifier import ComplexityTier, TaskType
 from src.inference.task_route_table import TASK_ROUTE_TABLE, RouteEntry, TaskRouteTable
 
@@ -34,7 +32,9 @@ def test_default_high_routes_to_api():
 
 def test_register_overrides_default():
     table = TaskRouteTable()
-    custom = RouteEntry(task_type=TaskType.CODE, complexity=ComplexityTier.HIGH, backend="gpu-cluster", priority=1)
+    custom = RouteEntry(
+        task_type=TaskType.CODE, complexity=ComplexityTier.HIGH, backend="gpu-cluster", priority=1
+    )
     table.register(custom)
     result = table.lookup(TaskType.CODE, ComplexityTier.HIGH)
     assert result.backend == "gpu-cluster"
@@ -47,7 +47,9 @@ def test_list_routes_returns_all_entries():
 
 
 def test_custom_init_routes_applied():
-    custom = RouteEntry(task_type=TaskType.REASONING, complexity=ComplexityTier.MEDIUM, backend="tpu")
+    custom = RouteEntry(
+        task_type=TaskType.REASONING, complexity=ComplexityTier.MEDIUM, backend="tpu"
+    )
     table = TaskRouteTable(routes=[custom])
     result = table.lookup(TaskType.REASONING, ComplexityTier.MEDIUM)
     assert result.backend == "tpu"
@@ -76,10 +78,14 @@ def test_singleton_lookup_works():
 
 def test_register_preserves_other_routes():
     table = TaskRouteTable()
-    table.register(RouteEntry(task_type=TaskType.MATH, complexity=ComplexityTier.LOW, backend="fast"))
+    table.register(
+        RouteEntry(task_type=TaskType.MATH, complexity=ComplexityTier.LOW, backend="fast")
+    )
     assert table.lookup(TaskType.CODE, ComplexityTier.LOW).backend == "cached"
 
 
 def test_route_entry_custom_timeout():
-    entry = RouteEntry(task_type=TaskType.TRANSLATE, complexity=ComplexityTier.HIGH, backend="api", timeout_s=120.0)
+    entry = RouteEntry(
+        task_type=TaskType.TRANSLATE, complexity=ComplexityTier.HIGH, backend="api", timeout_s=120.0
+    )
     assert entry.timeout_s == 120.0

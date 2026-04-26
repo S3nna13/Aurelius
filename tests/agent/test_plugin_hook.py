@@ -1,14 +1,15 @@
 """Unit tests for src/agent/plugin_hook.py — PluginHookRegistry."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.agent.plugin_hook import HOOK_POINTS, HOOK_REGISTRY, PluginHookRegistry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _fresh() -> PluginHookRegistry:
     """Return a brand-new registry to avoid test pollution."""
@@ -18,6 +19,7 @@ def _fresh() -> PluginHookRegistry:
 # ---------------------------------------------------------------------------
 # 1. test_register_and_fire
 # ---------------------------------------------------------------------------
+
 
 def test_register_and_fire():
     reg = _fresh()
@@ -30,6 +32,7 @@ def test_register_and_fire():
 # ---------------------------------------------------------------------------
 # 2. test_multiple_hooks_called_in_order
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_hooks_called_in_order():
     reg = _fresh()
@@ -44,6 +47,7 @@ def test_multiple_hooks_called_in_order():
 # ---------------------------------------------------------------------------
 # 3. test_pre_tool_call_receives_kwargs
 # ---------------------------------------------------------------------------
+
 
 def test_pre_tool_call_receives_kwargs():
     reg = _fresh()
@@ -62,6 +66,7 @@ def test_pre_tool_call_receives_kwargs():
 # 4. test_post_tool_call_receives_result
 # ---------------------------------------------------------------------------
 
+
 def test_post_tool_call_receives_result():
     reg = _fresh()
     received = {}
@@ -78,6 +83,7 @@ def test_post_tool_call_receives_result():
 # ---------------------------------------------------------------------------
 # 5. test_on_error_receives_exception
 # ---------------------------------------------------------------------------
+
 
 def test_on_error_receives_exception():
     reg = _fresh()
@@ -96,6 +102,7 @@ def test_on_error_receives_exception():
 # 6. test_unknown_point_register_raises
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_point_register_raises():
     reg = _fresh()
     with pytest.raises(ValueError, match="Unknown hook point"):
@@ -106,6 +113,7 @@ def test_unknown_point_register_raises():
 # 7. test_unknown_point_fire_raises
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_point_fire_raises():
     reg = _fresh()
     with pytest.raises(ValueError, match="Unknown hook point"):
@@ -115,6 +123,7 @@ def test_unknown_point_fire_raises():
 # ---------------------------------------------------------------------------
 # 8. test_hook_exception_is_logged_not_propagated
 # ---------------------------------------------------------------------------
+
 
 def test_hook_exception_is_logged_not_propagated():
     reg = _fresh()
@@ -131,6 +140,7 @@ def test_hook_exception_is_logged_not_propagated():
 # 9. test_clear_specific_point
 # ---------------------------------------------------------------------------
 
+
 def test_clear_specific_point():
     reg = _fresh()
     reg.register("pre_tool_call", lambda **kw: None)
@@ -143,6 +153,7 @@ def test_clear_specific_point():
 # ---------------------------------------------------------------------------
 # 10. test_clear_all
 # ---------------------------------------------------------------------------
+
 
 def test_clear_all():
     reg = _fresh()
@@ -157,6 +168,7 @@ def test_clear_all():
 # 11. test_hook_count
 # ---------------------------------------------------------------------------
 
+
 def test_hook_count():
     reg = _fresh()
     reg.register("pre_generation", lambda **kw: None)
@@ -168,6 +180,7 @@ def test_hook_count():
 # ---------------------------------------------------------------------------
 # 12. test_all_points_returns_tuple
 # ---------------------------------------------------------------------------
+
 
 def test_all_points_returns_tuple():
     reg = _fresh()
@@ -181,6 +194,7 @@ def test_all_points_returns_tuple():
 # 13. test_empty_hook_list_no_crash
 # ---------------------------------------------------------------------------
 
+
 def test_empty_hook_list_no_crash():
     reg = _fresh()
     # No hooks registered — should not raise
@@ -190,6 +204,7 @@ def test_empty_hook_list_no_crash():
 # ---------------------------------------------------------------------------
 # 14. test_second_hook_called_even_if_first_raises
 # ---------------------------------------------------------------------------
+
 
 def test_second_hook_called_even_if_first_raises():
     reg = _fresh()
@@ -213,6 +228,7 @@ def test_second_hook_called_even_if_first_raises():
 # ---------------------------------------------------------------------------
 # 15. test_singleton_exists
 # ---------------------------------------------------------------------------
+
 
 def test_singleton_exists():
     assert isinstance(HOOK_REGISTRY, PluginHookRegistry)

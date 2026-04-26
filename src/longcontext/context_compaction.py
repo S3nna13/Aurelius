@@ -26,9 +26,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
-
 
 _VALID_KINDS = frozenset({"message", "tool_call", "tool_result", "system"})
 _VALID_POLICIES = frozenset({"oldest_first", "middle_biased", "tool_output_aggregated"})
@@ -50,13 +49,9 @@ class Turn:
         if not isinstance(self.role, str):
             raise TypeError(f"Turn.role must be str, got {type(self.role).__name__}")
         if not isinstance(self.content, str):
-            raise TypeError(
-                f"Turn.content must be str, got {type(self.content).__name__}"
-            )
+            raise TypeError(f"Turn.content must be str, got {type(self.content).__name__}")
         if self.kind not in _VALID_KINDS:
-            raise ValueError(
-                f"Turn.kind must be one of {sorted(_VALID_KINDS)}, got {self.kind!r}"
-            )
+            raise ValueError(f"Turn.kind must be one of {sorted(_VALID_KINDS)}, got {self.kind!r}")
 
 
 # Fact-extraction regexes. Deterministic, documented.
@@ -64,7 +59,10 @@ _FACT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     # key=value or key: value (digits or quoted/bareword)
     ("kv", re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*[:=]\s*([\"']?[\w\-./]+[\"']?)")),
     # "port 8080", "version 3.14"
-    ("labeled_num", re.compile(r"\b(port|version|id|count|limit|timeout)\s+(\d+(?:\.\d+)?)", re.IGNORECASE)),
+    (
+        "labeled_num",
+        re.compile(r"\b(port|version|id|count|limit|timeout)\s+(\d+(?:\.\d+)?)", re.IGNORECASE),
+    ),
     # URLs
     ("url", re.compile(r"https?://[^\s)>\]]+")),
     # File paths

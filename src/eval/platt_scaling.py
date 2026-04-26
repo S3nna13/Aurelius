@@ -9,12 +9,9 @@ References:
 
 from __future__ import annotations
 
-from typing import Dict
-
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Temperature Scaling  (Guo et al. 2017)
@@ -48,7 +45,7 @@ class TemperatureScaler:
         labels: Tensor,
         lr: float = 0.01,
         n_iters: int = 200,
-    ) -> "TemperatureScaler":
+    ) -> TemperatureScaler:
         """Find optimal temperature T by minimising NLL on calibration data.
 
         Args:
@@ -121,7 +118,7 @@ class PlattScaler:
         labels: Tensor,
         lr: float = 0.01,
         n_iters: int = 200,
-    ) -> "PlattScaler":
+    ) -> PlattScaler:
         """Fit logistic calibration parameters A and B.
 
         Args:
@@ -228,7 +225,7 @@ class IsotonicCalibrator:
         self._x_fit: Tensor | None = None
         self._y_fit: Tensor | None = None
 
-    def fit(self, scores: Tensor, labels: Tensor) -> "IsotonicCalibrator":
+    def fit(self, scores: Tensor, labels: Tensor) -> IsotonicCalibrator:
         """Fit the isotonic mapping on calibration data.
 
         Args:
@@ -368,7 +365,7 @@ class CalibrationMetrics:
         probs: Tensor,
         labels: Tensor,
         n_bins: int = 15,
-    ) -> Dict[str, list]:
+    ) -> dict[str, list]:
         """Compute data needed to draw a reliability diagram.
 
         Args:

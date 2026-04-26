@@ -87,10 +87,7 @@ class CrossEncoderReranker:
         queries: list[str],
         results_per_query: list[list[RankedResult]],
     ) -> list[list[RankedResult]]:
-        return [
-            self.rerank(q, results)
-            for q, results in zip(queries, results_per_query)
-        ]
+        return [self.rerank(q, results) for q, results in zip(queries, results_per_query)]
 
 
 CROSS_ENCODER_RERANKER = CrossEncoderReranker()

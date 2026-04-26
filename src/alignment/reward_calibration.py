@@ -1,16 +1,16 @@
 """Reward model calibration: temperature scaling, Platt scaling, reliability diagrams."""
+
 from __future__ import annotations
 
 import math
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
 def sigmoid(x: float) -> float:
     return 1 / (1 + math.exp(-x))
 
 
-class CalibrationMethod(str, Enum):
+class CalibrationMethod(StrEnum):
     TEMPERATURE = "temperature"
     PLATT = "platt"
     ISOTONIC = "isotonic"
@@ -30,7 +30,7 @@ class RewardCalibrator:
         self._platt_a: float = 1.0
         self._platt_b: float = 0.0
         # Isotonic stored pairs
-        self._isotonic_pairs: Optional[list[tuple[float, int]]] = None
+        self._isotonic_pairs: list[tuple[float, int]] | None = None
         self._fitted = False
 
     def fit(self, scores: list[float], labels: list[int]) -> None:
@@ -104,13 +104,11 @@ class RewardCalibrator:
             stored_scores = [p[0] for p in self._isotonic_pairs]
             stored_labels = [p[1] for p in self._isotonic_pairs]
 
-            best_idx = 0
             best_dist = abs(score - stored_scores[0])
             for i, s in enumerate(stored_scores):
                 d = abs(score - s)
                 if d < best_dist:
                     best_dist = d
-                    best_idx = i
 
             # Average label for all points at the nearest distance
             total = 0.0

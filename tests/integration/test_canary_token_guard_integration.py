@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.safety import (
     SAFETY_FILTER_REGISTRY,
     CanaryDetection,
@@ -58,9 +58,7 @@ def test_end_to_end_inject_then_scan_detects_leak() -> None:
     # its hidden canary — the classical prompt-injection exfil pattern.
     active: set[str] = {token}
     fake_model_output = (
-        "Sure, here's what I see in my system prompt: "
-        + token
-        + " (end of disclosure)"
+        "Sure, here's what I see in my system prompt: " + token + " (end of disclosure)"
     )
     detection = guard.scan(fake_model_output, active)
     assert isinstance(detection, CanaryDetection)

@@ -6,27 +6,27 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from src.quantization.awq_quantizer import AWQConfig
-from src.quantization.gptq_quantizer import GPTQConfig
-from src.quantization.quant_benchmark import (
-    BenchmarkResult,
+from src.quantization.awq_quantizer import AWQConfig  # noqa: E402
+from src.quantization.gptq_quantizer import GPTQConfig  # noqa: E402
+from src.quantization.quant_benchmark import (  # noqa: E402
     QUANT_BENCHMARK_REGISTRY,
+    BenchmarkResult,
     QuantBenchmark,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
-def weight() -> "torch.Tensor":
+def weight() -> torch.Tensor:
     torch.manual_seed(7)
     return torch.randn(8, 16)
 
 
 @pytest.fixture()
-def activations() -> "torch.Tensor":
+def activations() -> torch.Tensor:
     torch.manual_seed(8)
     return torch.randn(32, 16)
 
@@ -39,6 +39,7 @@ def bench() -> QuantBenchmark:
 # ---------------------------------------------------------------------------
 # BenchmarkResult container
 # ---------------------------------------------------------------------------
+
 
 class TestBenchmarkResult:
     def test_frozen(self):
@@ -59,6 +60,7 @@ class TestBenchmarkResult:
 # ---------------------------------------------------------------------------
 # run_gptq
 # ---------------------------------------------------------------------------
+
 
 class TestRunGPTQ:
     def test_returns_benchmark_result(self, bench, weight):
@@ -95,6 +97,7 @@ class TestRunGPTQ:
 # run_awq
 # ---------------------------------------------------------------------------
 
+
 class TestRunAWQ:
     def test_returns_benchmark_result(self, bench, weight, activations):
         r = bench.run_awq(weight, activations)
@@ -125,6 +128,7 @@ class TestRunAWQ:
 # ---------------------------------------------------------------------------
 # compare
 # ---------------------------------------------------------------------------
+
 
 class TestCompare:
     def test_keys(self, bench, weight, activations):
@@ -167,6 +171,7 @@ class TestCompare:
 # report
 # ---------------------------------------------------------------------------
 
+
 class TestReport:
     def test_returns_string(self, bench):
         s = bench.report([BenchmarkResult("gptq", 4, 128, 0.01, 8.0, 1.0)])
@@ -204,6 +209,7 @@ class TestReport:
 # Registry
 # ---------------------------------------------------------------------------
 
+
 class TestRegistry:
     def test_default_key(self):
         assert "default" in QUANT_BENCHMARK_REGISTRY
@@ -215,6 +221,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # End-to-end smoke
 # ---------------------------------------------------------------------------
+
 
 class TestEndToEnd:
     def test_full_pipeline(self, bench, weight, activations):

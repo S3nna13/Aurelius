@@ -82,13 +82,11 @@ def test_end_to_end_two_problem_score():
     )
 
     completions = [
-        ["print(input())\n"],                      # passes both cases
-        ["x=int(input()); print(x + x)\n"],         # returns 6 not 9: fails
+        ["print(input())\n"],  # passes both cases
+        ["x=int(input()); print(x + x)\n"],  # returns 6 not 9: fails
     ]
 
-    out = score_problems(
-        [p1, p2], completions, k_values=[1], timeout_seconds=5.0
-    )
+    out = score_problems([p1, p2], completions, k_values=[1], timeout_seconds=5.0)
     assert out["n_problems"] == 2
     assert out["pass@1"] == pytest.approx(0.5)
     assert out["per_difficulty"]["easy"] == pytest.approx(1.0)

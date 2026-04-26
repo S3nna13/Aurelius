@@ -7,9 +7,7 @@ Pure PyTorch only; no scipy, sklearn, HuggingFace, etc.
 from __future__ import annotations
 
 import math
-from typing import Tuple
 
-import pytest
 import torch
 
 from src.alignment.rest import (
@@ -18,7 +16,6 @@ from src.alignment.rest import (
     ReSTThresholdSchedule,
     ReSTTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,6 +50,7 @@ def _rewards(batch: int, seed: int = 7) -> torch.Tensor:
 # Test 1 — ReSTLoss output is a scalar
 # ---------------------------------------------------------------------------
 
+
 def test_rest_loss_output_is_scalar():
     loss_fn = ReSTLoss()
     lp = _log_probs(8)
@@ -64,6 +62,7 @@ def test_rest_loss_output_is_scalar():
 # ---------------------------------------------------------------------------
 # Test 2 — Gradients are finite on accepted samples
 # ---------------------------------------------------------------------------
+
 
 def test_rest_loss_gradients_finite():
     loss_fn = ReSTLoss()
@@ -80,10 +79,11 @@ def test_rest_loss_gradients_finite():
 # Test 3 — All samples below threshold → loss is zero (NaN-free)
 # ---------------------------------------------------------------------------
 
+
 def test_rest_loss_all_rejected_is_zero():
     loss_fn = ReSTLoss()
     lp = _log_probs(6)
-    r = torch.zeros(6)            # all rewards are 0
+    r = torch.zeros(6)  # all rewards are 0
     loss, n_accepted = loss_fn(lp, r, threshold=1.0)  # threshold=1.0 → none pass
     assert n_accepted == 0
     assert not torch.isnan(loss), "loss must not be NaN when all samples rejected"
@@ -93,6 +93,7 @@ def test_rest_loss_all_rejected_is_zero():
 # ---------------------------------------------------------------------------
 # Test 4 — n_accepted is the correct count
 # ---------------------------------------------------------------------------
+
 
 def test_rest_loss_n_accepted_correct():
     loss_fn = ReSTLoss()
@@ -108,6 +109,7 @@ def test_rest_loss_n_accepted_correct():
 # Test 5 — Higher threshold → fewer (or equal) accepted samples
 # ---------------------------------------------------------------------------
 
+
 def test_higher_threshold_fewer_accepted():
     loss_fn = ReSTLoss()
     r = _rewards(16)
@@ -121,6 +123,7 @@ def test_higher_threshold_fewer_accepted():
 # Test 6 — ReSTThresholdSchedule: threshold increases with iteration k
 # ---------------------------------------------------------------------------
 
+
 def test_threshold_schedule_increases_with_k():
     sched = ReSTThresholdSchedule(base_percentile=40.0, increment=10.0)
     rewards = torch.linspace(0.0, 1.0, 100)
@@ -128,7 +131,7 @@ def test_threshold_schedule_increases_with_k():
     for i in range(len(thresholds) - 1):
         assert thresholds[i] <= thresholds[i + 1], (
             f"threshold at k={i} ({thresholds[i]:.4f}) must be <= "
-            f"k={i+1} ({thresholds[i+1]:.4f})"
+            f"k={i + 1} ({thresholds[i + 1]:.4f})"
         )
 
 
@@ -136,9 +139,10 @@ def test_threshold_schedule_increases_with_k():
 # Test 7 — ReSTThresholdSchedule: threshold at k=0 is the 50th percentile
 # ---------------------------------------------------------------------------
 
+
 def test_threshold_schedule_k0_is_median():
     sched = ReSTThresholdSchedule(base_percentile=50.0, increment=10.0)
-    rewards = torch.linspace(0.0, 1.0, 101)   # 0.00, 0.01, … 1.00
+    rewards = torch.linspace(0.0, 1.0, 101)  # 0.00, 0.01, … 1.00
     tau_0 = sched.threshold_for_iteration(0, rewards)
     expected = torch.quantile(rewards.float(), 0.5).item()
     assert math.isclose(tau_0, expected, rel_tol=1e-5), (
@@ -149,6 +153,7 @@ def test_threshold_schedule_k0_is_median():
 # ---------------------------------------------------------------------------
 # Test 8 — ReSTDataset.filter: returns subset where reward >= threshold
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_filter_correct_subset():
     ds = _make_dataset(n=10)
@@ -164,6 +169,7 @@ def test_dataset_filter_correct_subset():
 # Test 9 — ReSTDataset.filter: no samples when threshold > max reward
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_filter_all_rejected():
     ds = _make_dataset(n=8)
     max_r = max(ds.rewards)
@@ -175,18 +181,18 @@ def test_dataset_filter_all_rejected():
 # Test 10 — ReSTDataset.filter: all samples when threshold <= min reward
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_filter_all_accepted():
     ds = _make_dataset(n=8)
     min_r = min(ds.rewards)
     filtered = ds.filter(min_r - 1.0)
-    assert len(filtered) == len(ds), (
-        "expected full dataset when threshold <= min reward"
-    )
+    assert len(filtered) == len(ds), "expected full dataset when threshold <= min reward"
 
 
 # ---------------------------------------------------------------------------
 # Test 11 — ReSTLoss determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 def test_rest_loss_determinism():
     torch.manual_seed(99)
@@ -207,6 +213,7 @@ def test_rest_loss_determinism():
 # Test 12 — No NaN/Inf on normal inputs
 # ---------------------------------------------------------------------------
 
+
 def test_rest_loss_no_nan_inf():
     loss_fn = ReSTLoss()
     lp = _log_probs(32, seq=16)
@@ -218,6 +225,7 @@ def test_rest_loss_no_nan_inf():
 # ---------------------------------------------------------------------------
 # Test 13 — ReSTTrainer.compute_loss matches ReSTLoss directly
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_compute_loss_matches_rest_loss():
     loss_fn = ReSTLoss()
@@ -231,14 +239,14 @@ def test_trainer_compute_loss_matches_rest_loss():
     direct_loss, _ = loss_fn(lp, r, threshold)
 
     assert torch.isclose(trainer_loss, direct_loss), (
-        f"trainer loss {trainer_loss.item():.6f} != "
-        f"direct loss {direct_loss.item():.6f}"
+        f"trainer loss {trainer_loss.item():.6f} != direct loss {direct_loss.item():.6f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 14 — batch_size=1 works
 # ---------------------------------------------------------------------------
+
 
 def test_rest_loss_batch_size_one():
     loss_fn = ReSTLoss()
@@ -254,11 +262,12 @@ def test_rest_loss_batch_size_one():
 # Bonus tests for ReSTDataset.grow and ReSTTrainer.grow_dataset
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_grow_size():
     ds = _make_dataset(n=3)
     n_per = 4
 
-    def _gen(prompt: torch.Tensor) -> Tuple[torch.Tensor, float]:
+    def _gen(prompt: torch.Tensor) -> tuple[torch.Tensor, float]:
         return torch.randint(0, VOCAB, (5,)), 0.5
 
     grown = ds.grow(_gen, n_samples_per_prompt=n_per)

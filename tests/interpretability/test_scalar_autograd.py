@@ -1,19 +1,18 @@
 """Tests for src/interpretability/scalar_autograd.py — micrograd-style autograd."""
 
 import math
-import pytest
 
 from src.interpretability.scalar_autograd import (
-    ScalarValue,
-    ScalarNeuron,
     ScalarLayer,
     ScalarMLP,
+    ScalarNeuron,
+    ScalarValue,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def wrap(x) -> ScalarValue:
     return ScalarValue(x)
@@ -26,6 +25,7 @@ def allclose(a: float, b: float, tol: float = 1e-6) -> bool:
 # ---------------------------------------------------------------------------
 # Basic operations — forward pass
 # ---------------------------------------------------------------------------
+
 
 def test_add_forward():
     a, b = wrap(2.0), wrap(3.0)
@@ -41,7 +41,7 @@ def test_mul_forward():
 
 def test_pow_forward():
     a = wrap(3.0)
-    c = a ** 2
+    c = a**2
     assert allclose(c.data, 9.0)
 
 
@@ -69,6 +69,7 @@ def test_exp_forward():
 # Backward — gradient checks
 # ---------------------------------------------------------------------------
 
+
 def test_add_backward():
     a, b = wrap(2.0), wrap(3.0)
     c = a + b
@@ -82,12 +83,12 @@ def test_mul_backward():
     c = a * b
     c.backward()
     assert allclose(a.grad, -2.0)  # dc/da = b
-    assert allclose(b.grad, 4.0)   # dc/db = a
+    assert allclose(b.grad, 4.0)  # dc/db = a
 
 
 def test_pow_backward():
     a = wrap(3.0)
-    c = a ** 2
+    c = a**2
     c.backward()
     assert allclose(a.grad, 6.0)  # d/da a^2 = 2a = 6
 
@@ -126,6 +127,7 @@ def test_exp_backward():
 # Chain rule
 # ---------------------------------------------------------------------------
 
+
 def test_chain_rule_add_mul():
     # f(a, b, c) = (a + b) * c
     a, b, c = wrap(2.0), wrap(3.0), wrap(4.0)
@@ -140,7 +142,7 @@ def test_chain_rule_add_mul():
 def test_chain_rule_pow_mul():
     # f(a) = (a^2) * 3 → df/da = 6a
     a = wrap(2.0)
-    out = (a ** 2) * wrap(3.0)
+    out = (a**2) * wrap(3.0)
     out.backward()
     assert allclose(a.grad, 12.0)
 
@@ -148,6 +150,7 @@ def test_chain_rule_pow_mul():
 # ---------------------------------------------------------------------------
 # Operator overloads
 # ---------------------------------------------------------------------------
+
 
 def test_radd():
     a = wrap(3.0)
@@ -197,14 +200,15 @@ def test_repr():
 # zero_grad pattern
 # ---------------------------------------------------------------------------
 
+
 def test_zero_grad_pattern():
     a = wrap(2.0)
-    out = a ** 2
+    out = a**2
     out.backward()
     assert a.grad != 0.0
     # Simulate zero_grad by resetting.
     a.grad = 0.0
-    out2 = a ** 2
+    out2 = a**2
     out2.backward()
     assert allclose(a.grad, 4.0)  # fresh gradient, not accumulated twice
 
@@ -212,6 +216,7 @@ def test_zero_grad_pattern():
 # ---------------------------------------------------------------------------
 # ScalarNeuron
 # ---------------------------------------------------------------------------
+
 
 def test_scalar_neuron_forward_shape():
     n = ScalarNeuron(nin=3, nonlin=True)
@@ -239,6 +244,7 @@ def test_scalar_neuron_linear_no_relu():
 # ScalarLayer
 # ---------------------------------------------------------------------------
 
+
 def test_scalar_layer_forward_shape():
     layer = ScalarLayer(nin=2, nout=3)
     x = [wrap(1.0), wrap(-1.0)]
@@ -256,6 +262,7 @@ def test_scalar_layer_parameters_count():
 # ---------------------------------------------------------------------------
 # ScalarMLP — forward and backward
 # ---------------------------------------------------------------------------
+
 
 def test_mlp_forward_single_output():
     mlp = ScalarMLP(nin=2, nouts=[4, 1])

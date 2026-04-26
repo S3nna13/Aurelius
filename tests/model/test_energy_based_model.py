@@ -8,7 +8,6 @@ Config: d_model=16, vocab_size=16, n_layers=2, B=4, T=6
 import math
 
 import torch
-import torch.nn as nn
 
 from src.model.energy_based_model import (
     EBMConfig,
@@ -75,10 +74,7 @@ def test_energy_gradient_flows():
     energy = model(ids)
     loss = energy.sum()
     loss.backward()
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum().item() > 0 for p in model.parameters())
     assert has_grad, "No gradient flowed through SequenceEnergyFunction"
 
 
@@ -98,9 +94,7 @@ def test_random_corrupt_shape_preserved():
     """random_corrupt must not alter tensor shape."""
     ids = _make_ids()
     corrupted = NegativeSampler.random_corrupt(ids, corrupt_frac=0.15)
-    assert corrupted.shape == ids.shape, (
-        f"Shape mismatch: {corrupted.shape} != {ids.shape}"
-    )
+    assert corrupted.shape == ids.shape, f"Shape mismatch: {corrupted.shape} != {ids.shape}"
 
 
 def test_masked_corrupt_mask_shape():
@@ -118,9 +112,7 @@ def test_masked_corrupt_fraction():
     _, mask = NegativeSampler.masked_corrupt(ids)
     fraction = mask.float().mean().item()
     # Allow generous tolerance: ±0.05
-    assert abs(fraction - 0.15) < 0.05, (
-        f"Masked fraction {fraction:.4f} is far from 0.15"
-    )
+    assert abs(fraction - 0.15) < 0.05, f"Masked fraction {fraction:.4f} is far from 0.15"
 
 
 # ---------------------------------------------------------------------------
@@ -147,10 +139,7 @@ def test_nce_loss_backward():
     neg_ids = NegativeSampler.random_corrupt(pos_ids)
     loss = trainer.nce_loss(pos_ids, neg_ids)
     loss.backward()
-    has_grad = any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in model.parameters()
-    )
+    has_grad = any(p.grad is not None and p.grad.abs().sum().item() > 0 for p in model.parameters())
     assert has_grad, "No gradient flowed through NCETrainer.nce_loss"
 
 
@@ -161,9 +150,7 @@ def test_contrastive_divergence_finite():
     pos_ids = _make_ids()
     loss = trainer.contrastive_divergence(pos_ids, n_mcmc_steps=3)
     assert loss.dim() == 0, "contrastive_divergence should return a scalar"
-    assert torch.isfinite(loss), (
-        f"contrastive_divergence is not finite: {loss.item()}"
-    )
+    assert torch.isfinite(loss), f"contrastive_divergence is not finite: {loss.item()}"
 
 
 def test_train_step_finite():
@@ -225,9 +212,7 @@ def test_reranker_returns_lowest_energy():
     expected_idx = int(min(range(len(energies)), key=lambda i: energies[i]))
     expected_best = candidates[expected_idx]
 
-    assert torch.equal(best, expected_best), (
-        "rerank did not return the lowest-energy candidate"
-    )
+    assert torch.equal(best, expected_best), "rerank did not return the lowest-energy candidate"
 
 
 def test_ebm_config_defaults():

@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Callable
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Configuration dataclasses
@@ -24,7 +23,7 @@ class FlywheelConfig:
 
     min_quality_score: float = 0.5
     max_buffer_size: int = 10000
-    diversity_threshold: float = 0.3   # minimum pairwise diversity required
+    diversity_threshold: float = 0.3  # minimum pairwise diversity required
     n_generate_per_step: int = 16
     temperature: float = 0.8
 
@@ -165,10 +164,7 @@ class QualityFilter:
             sample.quality_score = float(quality)
             sample.diversity_score = float(div_score)
 
-            accepted = (
-                quality >= cfg.min_quality_score
-                and div_score >= cfg.diversity_threshold
-            )
+            accepted = quality >= cfg.min_quality_score and div_score >= cfg.diversity_threshold
             sample.accepted = accepted
 
             if accepted:
@@ -331,9 +327,11 @@ class DataFlywheelGenerator:
         Picks up to n_generate_per_step prompts (cycling through seeds).
         """
         n = self.config.n_generate_per_step
-        prompts = [
-            self.seed_prompts[i % len(self.seed_prompts)] for i in range(n)
-        ] if self.seed_prompts else []
+        prompts = (
+            [self.seed_prompts[i % len(self.seed_prompts)] for i in range(n)]
+            if self.seed_prompts
+            else []
+        )
 
         samples: list[GeneratedSample] = []
         for prompt in prompts:

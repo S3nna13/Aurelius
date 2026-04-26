@@ -1,4 +1,4 @@
-from src.workflow.event_bus import Event, EventBus, Subscription, EVENT_BUS_REGISTRY
+from src.workflow.event_bus import EVENT_BUS_REGISTRY, Event, EventBus, Subscription
 
 
 def test_registry_has_default():

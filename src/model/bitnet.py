@@ -9,17 +9,16 @@ Pure PyTorch — no external quantization libraries required.
 from __future__ import annotations
 
 import math
-from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # TernaryQuantizer
 # ---------------------------------------------------------------------------
+
 
 class TernaryQuantizer:
     """Quantize weights to {-1, 0, +1} using absmean scaling."""
@@ -48,6 +47,7 @@ class TernaryQuantizer:
 # AbsMaxQuantizer
 # ---------------------------------------------------------------------------
 
+
 class AbsMaxQuantizer:
     """Per-token activation quantization (simulated n-bit integer)."""
 
@@ -56,7 +56,7 @@ class AbsMaxQuantizer:
         self._max_int = 2 ** (n_bits - 1) - 1
         self._min_int = -(2 ** (n_bits - 1))
 
-    def quantize(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def quantize(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Quantize per-token activations.
 
         Args:
@@ -79,6 +79,7 @@ class AbsMaxQuantizer:
 # ---------------------------------------------------------------------------
 # BitLinear
 # ---------------------------------------------------------------------------
+
 
 class BitLinear(nn.Module):
     """Linear layer with 1.58-bit ternary weights and 8-bit activations."""
@@ -114,12 +115,13 @@ class BitLinear(nn.Module):
 # BitNetBlock
 # ---------------------------------------------------------------------------
 
+
 class BitNetBlock(nn.Module):
     """Transformer block using BitLinear for all projection layers."""
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -149,7 +151,7 @@ class BitNetBlock(nn.Module):
         K = K.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
         V = V.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
 
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
         scores = torch.matmul(Q, K.transpose(-2, -1)) * scale  # (B, H, T, T)
 
         # Causal mask
@@ -176,6 +178,7 @@ class BitNetBlock(nn.Module):
 # BitNetModel
 # ---------------------------------------------------------------------------
 
+
 class BitNetModel(nn.Module):
     """Full BitNet b1.58 language model."""
 
@@ -188,9 +191,7 @@ class BitNetModel(nn.Module):
     ) -> None:
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.blocks = nn.ModuleList(
-            [BitNetBlock(d_model, n_heads) for _ in range(n_layers)]
-        )
+        self.blocks = nn.ModuleList([BitNetBlock(d_model, n_heads) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, vocab_size, bias=False)
 
@@ -212,6 +213,7 @@ class BitNetModel(nn.Module):
 # ---------------------------------------------------------------------------
 # BitNetAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class BitNetAnalyzer:
     """Analyze quantization properties of a BitNet model."""

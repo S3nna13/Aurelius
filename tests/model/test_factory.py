@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 import pytest
 
 from src.model.factory import (
@@ -14,7 +12,7 @@ from src.model.factory import (
     build_from_variant_id,
     register_backbone_builder,
 )
-from src.model.manifest import AURELIUS_REFERENCE_MANIFEST, FamilyManifest
+from src.model.manifest import FamilyManifest
 
 
 def _dummy_manifest(**overrides) -> FamilyManifest:
@@ -111,13 +109,8 @@ def test_register_backbone_builder_override():
 
 
 def test_default_builders_has_reference_entry():
-    assert (
-        "src.model.transformer.AureliusTransformer"
-        in DEFAULT_BACKBONE_BUILDERS
-    )
-    assert callable(
-        DEFAULT_BACKBONE_BUILDERS["src.model.transformer.AureliusTransformer"]
-    )
+    assert "src.model.transformer.AureliusTransformer" in DEFAULT_BACKBONE_BUILDERS
+    assert callable(DEFAULT_BACKBONE_BUILDERS["src.model.transformer.AureliusTransformer"])
 
 
 def test_build_with_none_config_uses_stub_defaults():

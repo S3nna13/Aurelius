@@ -11,22 +11,22 @@ Components:
     BestOfNDebate      -- generate N responses and use debate to select the best
     DebateDataCollector-- collect transcripts and convert to preference pairs
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
-import torch.nn as nn
 
 
 @dataclass
 class DebateArgument:
     """A single argument in a debate."""
 
-    position: str   # 'for' | 'against'
+    position: str  # 'for' | 'against'
     content: str
     round: int
-    model_id: str   # which model made this argument
+    model_id: str  # which model made this argument
 
 
 class DebateSession:
@@ -74,8 +74,7 @@ class DebateSession:
             for arg in history:
                 lines.append(f"  [{arg.position.upper()} - Round {arg.round}] {arg.content}")
         lines.append(
-            f"Provide a concise argument {position} the claim "
-            "(respond with 1-2 sentences):"
+            f"Provide a concise argument {position} the claim (respond with 1-2 sentences):"
         )
         return "\n".join(lines)
 
@@ -89,9 +88,9 @@ class DebateSession:
         for arg in arguments:
             lines.append(f"  [{arg.position.upper()} - Round {arg.round}] {arg.content}")
         lines.append(
-            'Evaluate the debate. Which side made stronger arguments? '
-            'Reply with WINNER: for, WINNER: against, or WINNER: tie, '
-            'followed by a brief reasoning.'
+            "Evaluate the debate. Which side made stronger arguments? "
+            "Reply with WINNER: for, WINNER: against, or WINNER: tie, "
+            "followed by a brief reasoning."
         )
         return "\n".join(lines)
 
@@ -120,7 +119,7 @@ class DebateSession:
                     temperature=0.7,
                     top_p=0.9,
                 )
-            new_ids = output[:, input_ids.shape[1]:][0].tolist()
+            new_ids = output[:, input_ids.shape[1] :][0].tolist()
             # Decode as ASCII mod 95 printable chars (simple proxy)
             return "".join(chr(max(32, i % 95 + 32)) for i in new_ids[:max_tokens])
         except Exception:
@@ -193,9 +192,7 @@ class DebateSession:
         'winner' is 'for', 'against', or 'tie'.
         """
         judge_prompt = self._build_judge_prompt(claim, arguments)
-        raw = self._generate_argument(
-            self.judge_model, judge_prompt, self.max_tokens_per_round
-        )
+        raw = self._generate_argument(self.judge_model, judge_prompt, self.max_tokens_per_round)
 
         # Parse winner from raw text (look for 'WINNER: <label>')
         winner = "tie"
@@ -246,7 +243,7 @@ class BestOfNDebate:
                         temperature=1.0,
                         top_p=0.9,
                     )
-                new_ids = output[:, input_ids.shape[1]:][0].tolist()
+                new_ids = output[:, input_ids.shape[1] :][0].tolist()
                 text = "".join(chr(max(32, i % 95 + 32)) for i in new_ids[:64])
             except Exception:
                 text = f"[response {len(responses)}]"

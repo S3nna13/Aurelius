@@ -38,7 +38,10 @@ def test_shard_tensor_indivisible_pads_with_zero():
 
 def test_gather_tensor_reconstructs_original():
     original = torch.randn(12)
-    spec = lambda r: ShardSpec(world_size=4, rank=r)
+
+    def spec(r):
+        return ShardSpec(world_size=4, rank=r)
+
     shards = [shard_tensor(original, spec(r)) for r in range(4)]
     gathered = gather_tensor(shards, original_numel=12, original_shape=(12,))
     assert torch.equal(gathered, original)
@@ -46,7 +49,10 @@ def test_gather_tensor_reconstructs_original():
 
 def test_gather_tensor_reconstructs_after_padding():
     original = torch.arange(10, dtype=torch.float32)
-    spec = lambda r: ShardSpec(world_size=4, rank=r)
+
+    def spec(r):
+        return ShardSpec(world_size=4, rank=r)
+
     shards = [shard_tensor(original, spec(r)) for r in range(4)]
     gathered = gather_tensor(shards, original_numel=10, original_shape=(10,))
     assert torch.equal(gathered, original)
@@ -141,7 +147,9 @@ def test_determinism_with_manual_seed():
 
 def test_sequential_of_three_linears_wrapped():
     torch.manual_seed(9)
-    mlp = nn.Sequential(nn.Linear(16, 12), nn.ReLU(), nn.Linear(12, 12), nn.ReLU(), nn.Linear(12, 8))
+    mlp = nn.Sequential(
+        nn.Linear(16, 12), nn.ReLU(), nn.Linear(12, 12), nn.ReLU(), nn.Linear(12, 8)
+    )
     ref_input = torch.randn(2, 16, generator=torch.Generator().manual_seed(11))
     ref_out = mlp(ref_input)
 

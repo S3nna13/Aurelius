@@ -89,9 +89,9 @@ def test_score_single_multi_test_second_fails():
         text="double",
         code="",
         test_list=[
-            "assert double(1) == 2",          # passes
-            "assert double(3) == 999",        # fails
-            "assert double(5) == 10",         # never reached
+            "assert double(1) == 2",  # passes
+            "assert double(3) == 999",  # fails
+            "assert double(5) == 10",  # never reached
         ],
     )
     completion = "def double(x):\n    return x * 2\n"
@@ -121,13 +121,13 @@ def test_score_single_empty_test_list_raises():
 
 def test_score_problems_aggregates_pass_at_1():
     prob = _add_problem()
-    completions = [[
-        "def add(a, b):\n    return a + b\n",   # correct
-        "def add(a, b):\n    return a - b\n",   # wrong
-    ]]
-    out = score_problems(
-        [prob], completions, k_values=[1], max_workers=2, timeout_seconds=5.0
-    )
+    completions = [
+        [
+            "def add(a, b):\n    return a + b\n",  # correct
+            "def add(a, b):\n    return a - b\n",  # wrong
+        ]
+    ]
+    out = score_problems([prob], completions, k_values=[1], max_workers=2, timeout_seconds=5.0)
     assert out["n_problems"] == 1
     assert out["pass@1"] == pytest.approx(0.5)
     assert out["per_task"][0]["n_correct"] == 1
@@ -136,14 +136,14 @@ def test_score_problems_aggregates_pass_at_1():
 
 def test_score_problems_pass_at_3():
     prob = _add_problem()
-    completions = [[
-        "def add(a, b):\n    return a + b\n",
-        "def add(a, b):\n    return a - b\n",
-        "def add(a, b):\n    return a + b\n",
-    ]]
-    out = score_problems(
-        [prob], completions, k_values=[1, 3], max_workers=2, timeout_seconds=5.0
-    )
+    completions = [
+        [
+            "def add(a, b):\n    return a + b\n",
+            "def add(a, b):\n    return a - b\n",
+            "def add(a, b):\n    return a + b\n",
+        ]
+    ]
+    out = score_problems([prob], completions, k_values=[1, 3], max_workers=2, timeout_seconds=5.0)
     # With 2 correct / 3 samples, pass@3 must be 1.0 (every 3-subset is all 3).
     assert out["pass@3"] == pytest.approx(1.0)
     assert out["pass@1"] == pytest.approx(2.0 / 3.0)
@@ -168,11 +168,7 @@ def test_subprocess_isolation_filesystem(tmp_path):
         code="",
         test_list=["assert side_effect() == 0"],
     )
-    completion = (
-        "def side_effect():\n"
-        f"    open({str(sentinel)!r}, 'w').write('hi')\n"
-        "    return 0\n"
-    )
+    completion = f"def side_effect():\n    open({str(sentinel)!r}, 'w').write('hi')\n    return 0\n"
     # Snapshot parent CWD files before.
     res = score_single(prob, completion, timeout_seconds=5.0)
     assert res.passed is True, res.error
@@ -201,18 +197,16 @@ def test_pass_at_k_with_k_greater_than_n_raises():
 
 def test_score_problems_workers_equivalence():
     prob = _add_problem()
-    completions = [[
-        "def add(a, b):\n    return a + b\n",
-        "def add(a, b):\n    return a - b\n",
-        "def add(a, b):\n    return a + b\n",
-        "def add(a, b):\n    return a + b\n",
-    ]]
-    o1 = score_problems(
-        [prob], completions, k_values=[1], max_workers=1, timeout_seconds=5.0
-    )
-    o4 = score_problems(
-        [prob], completions, k_values=[1], max_workers=4, timeout_seconds=5.0
-    )
+    completions = [
+        [
+            "def add(a, b):\n    return a + b\n",
+            "def add(a, b):\n    return a - b\n",
+            "def add(a, b):\n    return a + b\n",
+            "def add(a, b):\n    return a + b\n",
+        ]
+    ]
+    o1 = score_problems([prob], completions, k_values=[1], max_workers=1, timeout_seconds=5.0)
+    o4 = score_problems([prob], completions, k_values=[1], max_workers=4, timeout_seconds=5.0)
     assert o1["pass@1"] == pytest.approx(o4["pass@1"])
     assert o1["per_task"][0]["n_correct"] == o4["per_task"][0]["n_correct"]
 

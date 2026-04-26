@@ -11,15 +11,14 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from typing import Optional
 
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # SequenceSimilarity
 # ---------------------------------------------------------------------------
+
 
 class SequenceSimilarity:
     """Compute pairwise similarity between candidate integer sequences."""
@@ -37,6 +36,7 @@ class SequenceSimilarity:
 
     def ngram_f1(self, hyp: list[int], ref: list[int], n: int = 2) -> float:
         """F1 of n-gram overlap between *hyp* and *ref* (∈ [0, 1])."""
+
         def _ngrams(seq: list[int], n: int) -> Counter:
             return Counter(tuple(seq[i : i + n]) for i in range(max(0, len(seq) - n + 1)))
 
@@ -94,6 +94,7 @@ class SequenceSimilarity:
 # HypothesisPool
 # ---------------------------------------------------------------------------
 
+
 class HypothesisPool:
     """Manage a pool of sampled hypotheses with associated log-probabilities."""
 
@@ -139,7 +140,7 @@ class HypothesisPool:
     # Pool manipulation
     # ------------------------------------------------------------------
 
-    def deduplicate(self) -> "HypothesisPool":
+    def deduplicate(self) -> HypothesisPool:
         """Return a new HypothesisPool with unique sequences.
 
         For duplicate sequences the log-probabilities are combined via
@@ -161,10 +162,12 @@ class HypothesisPool:
         new_lps = list(seen.values())
         return HypothesisPool(new_seqs, new_lps)
 
-    def top_k(self, k: int) -> "HypothesisPool":
+    def top_k(self, k: int) -> HypothesisPool:
         """Return a new HypothesisPool with the *k* highest log_prob sequences."""
         k = min(k, len(self.sequences))
-        indices = sorted(range(len(self.log_probs)), key=lambda i: self.log_probs[i], reverse=True)[:k]
+        indices = sorted(range(len(self.log_probs)), key=lambda i: self.log_probs[i], reverse=True)[
+            :k
+        ]
         return HypothesisPool(
             [self.sequences[i] for i in indices],
             [self.log_probs[i] for i in indices],
@@ -177,6 +180,7 @@ class HypothesisPool:
 # ---------------------------------------------------------------------------
 # MBRScorer
 # ---------------------------------------------------------------------------
+
 
 class MBRScorer:
     """Score each hypothesis against a reference pool via expected similarity."""
@@ -218,6 +222,7 @@ class MBRScorer:
 # ---------------------------------------------------------------------------
 # MBRDecoder
 # ---------------------------------------------------------------------------
+
 
 class MBRDecoder:
     """Full MBR decoding pipeline: sample → score → select best."""
@@ -277,7 +282,9 @@ class MBRDecoder:
             cumulative_log_prob += token_log_prob
 
             # Append to context
-            next_token_tensor = torch.tensor([[next_token]], dtype=torch.long, device=current_ids.device)
+            next_token_tensor = torch.tensor(
+                [[next_token]], dtype=torch.long, device=current_ids.device
+            )
             current_ids = torch.cat([current_ids, next_token_tensor], dim=1)
 
         return generated, cumulative_log_prob
@@ -327,6 +334,7 @@ class MBRDecoder:
 # MBRAnalytics
 # ---------------------------------------------------------------------------
 
+
 class MBRAnalytics:
     """Post-hoc analysis utilities for an MBR hypothesis pool."""
 
@@ -372,7 +380,7 @@ class MBRAnalytics:
         lengths = [len(s) for s in pool.sequences]
         n = len(lengths)
         mean_len = sum(lengths) / n
-        variance = sum((l - mean_len) ** 2 for l in lengths) / n
+        variance = sum((line - mean_len) ** 2 for line in lengths) / n
         std_len = math.sqrt(variance)
         return {
             "mean_len": mean_len,

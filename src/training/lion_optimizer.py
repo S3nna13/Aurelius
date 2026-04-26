@@ -16,9 +16,10 @@ Update rule per step::
 Reference: Chen et al. 2023, "Symbolic Discovery of Optimization Algorithms",
 arXiv:2302.06675.
 """
+
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 from torch.optim import Optimizer
@@ -64,7 +65,7 @@ class Lion(Optimizer):
         super().__init__(params, defaults)
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable[[], torch.Tensor]] = None):
+    def step(self, closure: Callable[[], torch.Tensor] | None = None):
         """Perform a single optimization step.
 
         Args:
@@ -94,9 +95,7 @@ class Lion(Optimizer):
 
                 state = self.state[p]
                 if len(state) == 0:
-                    state["exp_avg"] = torch.zeros_like(
-                        p, memory_format=torch.preserve_format
-                    )
+                    state["exp_avg"] = torch.zeros_like(p, memory_format=torch.preserve_format)
 
                 exp_avg = state["exp_avg"]
 

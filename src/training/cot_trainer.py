@@ -8,13 +8,12 @@ tokens are penalized more than reasoning steps.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # -- Configuration -------------------------------------------------------------
 
@@ -23,11 +22,11 @@ from torch import Tensor
 class CoTConfig:
     """Configuration for chain-of-thought scratchpad training."""
 
-    scratchpad_weight: float = 1.0      # loss weight on reasoning steps
-    answer_weight: float = 5.0          # loss weight on final answer tokens
-    answer_delimiter: str = "####"      # separator between scratchpad and answer
+    scratchpad_weight: float = 1.0  # loss weight on reasoning steps
+    answer_weight: float = 5.0  # loss weight on final answer tokens
+    answer_delimiter: str = "####"  # separator between scratchpad and answer
     max_seq_len: int = 512
-    verification_reward: float = 1.0    # bonus applied when answer is correct
+    verification_reward: float = 1.0  # bonus applied when answer is correct
     min_answer_tokens: int = 1
 
 
@@ -39,8 +38,8 @@ class CoTExample:
     """A single chain-of-thought example with question, scratchpad, and answer."""
 
     question: str
-    scratchpad: str   # step-by-step reasoning
-    answer: str       # final answer (e.g. "72")
+    scratchpad: str  # step-by-step reasoning
+    answer: str  # final answer (e.g. "72")
 
     def full_text(self, delimiter: str = "####") -> str:
         return f"{self.question}\n{self.scratchpad}\n{delimiter} {self.answer}"
@@ -347,7 +346,7 @@ def extract_cot_answer(text: str, delimiter: str = "####") -> str | None:
     idx = text.rfind(delimiter)
     if idx == -1:
         return None
-    after = text[idx + len(delimiter):]
+    after = text[idx + len(delimiter) :]
     answer = after.strip().strip(".,;:!?\"'")
     return answer if answer else None
 

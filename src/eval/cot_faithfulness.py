@@ -7,8 +7,8 @@ via counterfactual perturbation experiments.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -18,23 +18,23 @@ import torch.nn as nn
 class CoTFaithfulnessConfig:
     """Configuration for CoT faithfulness evaluation."""
 
-    n_interventions: int = 5        # number of perturbation experiments
+    n_interventions: int = 5  # number of perturbation experiments
     perturbation_prob: float = 0.3  # prob of corrupting each reasoning step
-    answer_token: str = "Answer:"   # delimiter for final answer
-    max_steps: int = 10             # max reasoning steps to analyze
+    answer_token: str = "Answer:"  # delimiter for final answer
+    max_steps: int = 10  # max reasoning steps to analyze
 
 
 @dataclass
 class FaithfulnessResult:
     """Result of a CoT faithfulness evaluation."""
 
-    faithfulness_score: float        # 0.0 to 1.0 (1.0 = fully faithful)
-    n_steps: int                     # number of CoT steps found
-    step_influences: list[float]     # per-step influence on final answer
-    answer_consistency: float        # how consistent is the final answer
+    faithfulness_score: float  # 0.0 to 1.0 (1.0 = fully faithful)
+    n_steps: int  # number of CoT steps found
+    step_influences: list[float]  # per-step influence on final answer
+    answer_consistency: float  # how consistent is the final answer
 
 
-def extract_cot_steps(text: str, answer_token: str = "Answer:") -> tuple[list[str], str]:
+def extract_cot_steps(text: str, answer_token: str = "Answer:") -> tuple[list[str], str]:  # noqa: S107
     """Split text into (reasoning_steps, final_answer).
 
     Split on newlines before answer_token. Returns list of non-empty step strings
@@ -49,7 +49,7 @@ def extract_cot_steps(text: str, answer_token: str = "Answer:") -> tuple[list[st
         if answer_token in line:
             # Everything before this line is steps; after answer_token is the answer
             idx = line.index(answer_token)
-            answer = line[idx + len(answer_token):].strip()
+            answer = line[idx + len(answer_token) :].strip()
             break
         stripped = line.strip()
         if stripped:
@@ -64,10 +64,7 @@ def corrupt_step(step: str, rng: random.Random, p: float = 0.3) -> str:
     Each word is replaced with probability p.
     """
     words = step.split()
-    corrupted = [
-        "[MASK]" if rng.random() < p else word
-        for word in words
-    ]
+    corrupted = ["[MASK]" if rng.random() < p else word for word in words]
     return " ".join(corrupted)
 
 
@@ -160,7 +157,7 @@ def measure_step_influence(
         _, new_answer = extract_cot_steps(decoded, cfg.answer_token)
         if not new_answer:
             # Use the tail of the decoded text as a proxy answer
-            new_answer = decoded[len(prompt):].strip()
+            new_answer = decoded[len(prompt) :].strip()
 
         sim = compute_answer_similarity(original_answer, new_answer)
         similarities.append(sim)
@@ -205,9 +202,7 @@ def counterfactual_faithfulness(
     # Measure per-step influence
     step_influences: list[float] = []
     for idx in range(n_steps):
-        influence = measure_step_influence(
-            model, encode_fn, decode_fn, text, idx, cfg, rng
-        )
+        influence = measure_step_influence(model, encode_fn, decode_fn, text, idx, cfg, rng)
         step_influences.append(influence)
 
     faithfulness_score = compute_faithfulness_score(step_influences)
@@ -215,14 +210,12 @@ def counterfactual_faithfulness(
     # Measure answer consistency: corrupt ALL steps n_interventions times
     consistency_similarities: list[float] = []
     for _ in range(cfg.n_interventions):
-        corrupted_steps = [
-            corrupt_step(s, rng, cfg.perturbation_prob) for s in steps
-        ]
+        corrupted_steps = [corrupt_step(s, rng, cfg.perturbation_prob) for s in steps]
         prompt = "\n".join(corrupted_steps)
         decoded = _greedy_decode(model, encode_fn, decode_fn, prompt, max_new_tokens=20)
         _, new_answer = extract_cot_steps(decoded, cfg.answer_token)
         if not new_answer:
-            new_answer = decoded[len(prompt):].strip()
+            new_answer = decoded[len(prompt) :].strip()
         sim = compute_answer_similarity(original_answer, new_answer)
         consistency_similarities.append(sim)
 

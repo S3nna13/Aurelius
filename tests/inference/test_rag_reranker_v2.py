@@ -6,12 +6,11 @@ Uses d_model=16, N_docs=20 throughout.
 
 from __future__ import annotations
 
-import torch
 import pytest
-
+import torch
 from aurelius.inference.rag_reranker_v2 import (
-    CrossEncoderScorer,
     BiEncoderRetriever,
+    CrossEncoderScorer,
     Document,
     RAGReranker,
     RecipRankFusion,
@@ -65,6 +64,7 @@ def rag_reranker(retriever, scorer):
 # CrossEncoderScorer tests
 # ---------------------------------------------------------------------------
 
+
 def test_cross_encoder_output_shape(scorer, query_emb, corpus):
     """score() should return a 1-D tensor of length N."""
     embs, _ = corpus
@@ -86,14 +86,13 @@ def test_cross_encoder_different_queries_produce_different_scores(scorer, corpus
     q2 = torch.randn(D_MODEL)
     scores1 = scorer.score(q1, embs)
     scores2 = scorer.score(q2, embs)
-    assert not torch.allclose(scores1, scores2), (
-        "Different queries should produce different scores"
-    )
+    assert not torch.allclose(scores1, scores2), "Different queries should produce different scores"
 
 
 # ---------------------------------------------------------------------------
 # BiEncoderRetriever tests
 # ---------------------------------------------------------------------------
+
 
 def test_retriever_returns_documents(retriever, query_emb):
     """retrieve() should return a non-empty list of Document objects."""
@@ -129,6 +128,7 @@ def test_document_score_is_float(retriever, query_emb):
 # ---------------------------------------------------------------------------
 # RecipRankFusion tests
 # ---------------------------------------------------------------------------
+
 
 def test_rrf_fuse_returns_list_of_ints():
     """fuse() should return a list of integers."""
@@ -173,6 +173,7 @@ def test_rrf_single_list():
 # RAGReranker tests
 # ---------------------------------------------------------------------------
 
+
 def test_rag_reranker_returns_documents(rag_reranker, query_emb):
     """retrieve_and_rerank() should return a list of Document objects."""
     docs = rag_reranker.retrieve_and_rerank(query_emb)
@@ -190,9 +191,7 @@ def test_score_documents_output_shape(rag_reranker, retriever, query_emb):
     """score_documents() should return a 1-D tensor matching number of docs."""
     candidates = retriever.retrieve(query_emb, top_k=8)
     scores = rag_reranker.score_documents(query_emb, candidates)
-    assert scores.shape == (len(candidates),), (
-        f"Expected ({len(candidates)},), got {scores.shape}"
-    )
+    assert scores.shape == (len(candidates),), f"Expected ({len(candidates)},), got {scores.shape}"
 
 
 def test_score_documents_finite(rag_reranker, retriever, query_emb):

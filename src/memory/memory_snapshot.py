@@ -63,12 +63,16 @@ class MemorySnapshot:
 
         slots: list[dict[str, Any]] = []
         if hasattr(memory, "_slots"):
-            slots = [s.__dict__ if hasattr(s, "__dict__") else dict(s) for s in memory._slots.values()]
+            slots = [
+                s.__dict__ if hasattr(s, "__dict__") else dict(s) for s in memory._slots.values()
+            ]
 
         concepts: list[dict[str, Any]] = []
         relations: list[dict[str, Any]] = []
         if hasattr(memory, "_concepts"):
-            concepts = [c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in memory._concepts.values()]
+            concepts = [
+                c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in memory._concepts.values()
+            ]
         if hasattr(memory, "_relations"):
             relations = [
                 r.__dict__ if hasattr(r, "__dict__") else dict(r) for r in memory._relations
@@ -87,7 +91,7 @@ class MemorySnapshot:
         """Reconstruct a memory store from payload."""
         store_type = payload.get("store_type")
         if store_type == "EpisodicMemory":
-            from src.memory.episodic_memory import EpisodicMemory, MemoryEntry
+            from src.memory.episodic_memory import EpisodicMemory
 
             inst = EpisodicMemory()
             for e in payload.get("entries", []):
@@ -163,4 +167,4 @@ class MemorySnapshot:
 
 
 # Avoid importing hmac at top to satisfy lazy-import style; used above via compare_digest
-import hmac
+import hmac  # noqa: E402

@@ -9,7 +9,7 @@ from src.inference.flash_prefill import causal_attention_scores, flash_prefill, 
 def naive_prefill(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
     batch, seq_len, _, head_dim = query.shape
     outputs = []
-    scale = head_dim ** -0.5
+    scale = head_dim**-0.5
     for index in range(seq_len):
         q = query[:, index : index + 1]
         k = key[:, : index + 1]
@@ -57,7 +57,9 @@ def test_flash_prefill_rejects_shape_mismatch():
 
 def test_prefill_chunked_rejects_bad_chunk_size():
     with pytest.raises(ValueError):
-        prefill_chunked(torch.randn(1, 2, 3, 4), torch.randn(1, 2, 3, 4), torch.randn(1, 2, 3, 4), 0)
+        prefill_chunked(
+            torch.randn(1, 2, 3, 4), torch.randn(1, 2, 3, 4), torch.randn(1, 2, 3, 4), 0
+        )
 
 
 def test_causal_attention_scores_rejects_bad_rank():

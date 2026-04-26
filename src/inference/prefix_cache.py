@@ -1,10 +1,10 @@
-"""Prefix caching: reuse KV cache across requests sharing common prefixes (system prompt caching)."""
+"""Prefix caching: reuse KV cache across requests sharing common prefixes (system prompt caching)."""  # noqa: E501
 
 from __future__ import annotations
 
 import hashlib
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -75,7 +75,7 @@ def merge_kv_caches(
     new_kv: list[tuple[Tensor, Tensor]],
 ) -> list[tuple[Tensor, Tensor]]:
     """Concatenate prefix_kv and new_kv along the sequence (T) dimension."""
-    assert len(prefix_kv) == len(new_kv), "KV caches must have same number of layers"
+    assert len(prefix_kv) == len(new_kv), "KV caches must have same number of layers"  # noqa: S101
     return [
         (torch.cat([pk, nk], dim=2), torch.cat([pv, nv], dim=2))
         for (pk, pv), (nk, nv) in zip(prefix_kv, new_kv)

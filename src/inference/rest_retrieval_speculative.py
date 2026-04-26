@@ -17,19 +17,19 @@ RESTDatastore     — builds and queries the n-gram → continuations lookup tab
 RESTDecoder       — draft (Grow) + verify (Check) using exact-match acceptance
 RESTAccelerator   — high-level single-step wrapper
 """
+
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Datastore — Section 3.1 of the paper
 # ---------------------------------------------------------------------------
+
 
 class RESTDatastore:
     """N-gram retrieval datastore for REST draft generation.
@@ -48,13 +48,13 @@ class RESTDatastore:
             raise ValueError(f"n-gram order must be >= 1, got {n}")
         self.n: int = n
         # Internal store: ngram_tuple -> Counter of next-token frequencies
-        self._store: Dict[Tuple[int, ...], Counter] = defaultdict(Counter)
+        self._store: dict[tuple[int, ...], Counter] = defaultdict(Counter)
 
     # ------------------------------------------------------------------
     # Build
     # ------------------------------------------------------------------
 
-    def add_document(self, token_ids: List[int]) -> None:
+    def add_document(self, token_ids: list[int]) -> None:
         """Index all n-grams in *token_ids* into the datastore.
 
         For each position i where a full n-gram [i..i+n) exists and a next
@@ -69,7 +69,7 @@ class RESTDatastore:
             # Not enough tokens to form even one (ngram, continuation) pair.
             return
         for i in range(len(token_ids) - self.n):
-            ngram: Tuple[int, ...] = tuple(token_ids[i : i + self.n])
+            ngram: tuple[int, ...] = tuple(token_ids[i : i + self.n])
             next_tok: int = token_ids[i + self.n]
             self._store[ngram][next_tok] += 1
 
@@ -77,7 +77,7 @@ class RESTDatastore:
     # Retrieve
     # ------------------------------------------------------------------
 
-    def retrieve(self, context_ids: List[int], top_k: int = 5) -> List[int]:
+    def retrieve(self, context_ids: list[int], top_k: int = 5) -> list[int]:
         """Return the top-*k* next tokens for the n-gram suffix of *context_ids*.
 
         Uses the last ``n`` tokens of *context_ids* as the query key and returns
@@ -97,7 +97,7 @@ class RESTDatastore:
         """
         if len(context_ids) < self.n:
             return []
-        query: Tuple[int, ...] = tuple(context_ids[-self.n :])
+        query: tuple[int, ...] = tuple(context_ids[-self.n :])
         counter = self._store.get(query)
         if not counter:
             return []
@@ -107,6 +107,7 @@ class RESTDatastore:
 # ---------------------------------------------------------------------------
 # Decoder — Section 3.2 (Grow) + Section 3.3 (Check)
 # ---------------------------------------------------------------------------
+
 
 class RESTDecoder:
     """REST draft-and-verify decoder.
@@ -129,7 +130,7 @@ class RESTDecoder:
     # Grow step (Section 3.2)
     # ------------------------------------------------------------------
 
-    def draft(self, context_ids: List[int], top_k: int = 5) -> List[int]:
+    def draft(self, context_ids: list[int], top_k: int = 5) -> list[int]:
         """Produce up to γ draft tokens via greedy n-gram retrieval.
 
         At each step the most frequent continuation is appended to the running
@@ -149,8 +150,8 @@ class RESTDecoder:
         -------
         List of up to γ draft token ids.  May be empty.
         """
-        draft_tokens: List[int] = []
-        running_ctx: List[int] = list(context_ids)
+        draft_tokens: list[int] = []
+        running_ctx: list[int] = list(context_ids)
 
         for _ in range(self.gamma):
             candidates = self.datastore.retrieve(running_ctx, top_k=top_k)
@@ -169,10 +170,10 @@ class RESTDecoder:
 
     def verify(
         self,
-        context_ids: List[int],
-        draft_tokens: List[int],
-        target_probs_fn: Callable[[List[int]], Tensor],
-    ) -> Tuple[List[int], int]:
+        context_ids: list[int],
+        draft_tokens: list[int],
+        target_probs_fn: Callable[[list[int]], Tensor],
+    ) -> tuple[list[int], int]:
         """Verify draft tokens against the target LM using greedy acceptance.
 
         The target LM is run *once* on the concatenated sequence
@@ -203,11 +204,11 @@ class RESTDecoder:
         """
         if not draft_tokens:
             # No draft — just sample a single token from target at context.
-            probs = target_probs_fn(context_ids)   # (T, V)
+            probs = target_probs_fn(context_ids)  # (T, V)
             bonus_tok: int = int(torch.argmax(probs[-1]).item())
             return [bonus_tok], 0
 
-        full_seq: List[int] = list(context_ids) + list(draft_tokens)
+        full_seq: list[int] = list(context_ids) + list(draft_tokens)
         # Shape: (len(full_seq), V)
         probs: Tensor = target_probs_fn(full_seq)
 
@@ -229,13 +230,14 @@ class RESTDecoder:
         bonus_pos: int = ctx_len - 1 + n_accepted
         bonus_tok = int(torch.argmax(probs[bonus_pos]).item())
 
-        accepted: List[int] = list(draft_tokens[:n_accepted]) + [bonus_tok]
+        accepted: list[int] = list(draft_tokens[:n_accepted]) + [bonus_tok]
         return accepted, n_accepted
 
 
 # ---------------------------------------------------------------------------
 # High-level accelerator
 # ---------------------------------------------------------------------------
+
 
 class RESTAccelerator:
     """High-level wrapper that performs one complete REST step.
@@ -261,9 +263,9 @@ class RESTAccelerator:
 
     def step(
         self,
-        context_ids: List[int],
-        target_probs_fn: Callable[[List[int]], Tensor],
-    ) -> Tuple[List[int], int]:
+        context_ids: list[int],
+        target_probs_fn: Callable[[list[int]], Tensor],
+    ) -> tuple[list[int], int]:
         """Run one draft + verify step.
 
         Parameters
@@ -281,7 +283,5 @@ class RESTAccelerator:
             Number of draft tokens accepted (excludes bonus token).
         """
         draft_toks = self.decoder.draft(context_ids, top_k=self.top_k)
-        new_tokens, n_accepted = self.decoder.verify(
-            context_ids, draft_toks, target_probs_fn
-        )
+        new_tokens, n_accepted = self.decoder.verify(context_ids, draft_toks, target_probs_fn)
         return new_tokens, n_accepted

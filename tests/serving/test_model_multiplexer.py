@@ -11,13 +11,14 @@ from src.serving.model_multiplexer import (
     RoutingRule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _ep(name: str, model_id: str = "m", priority: int = 0, tags: list[str] | None = None) -> ModelEndpoint:
+def _ep(
+    name: str, model_id: str = "m", priority: int = 0, tags: list[str] | None = None
+) -> ModelEndpoint:
     return ModelEndpoint(name=name, model_id=model_id, priority=priority, tags=tags or [])
 
 

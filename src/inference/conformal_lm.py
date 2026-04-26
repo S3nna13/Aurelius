@@ -12,7 +12,6 @@ References:
 """
 
 import math
-from typing import Dict, List
 
 import torch
 from torch import Tensor
@@ -27,7 +26,7 @@ class CalibrationSet:
     """
 
     def __init__(self) -> None:
-        self.scores: List[float] = []
+        self.scores: list[float] = []
         self.n: int = 0
 
     def add(self, probs: Tensor, true_token_id: int) -> None:
@@ -79,7 +78,7 @@ class RAPSCalibrationSet:
         """
         self.k_reg = k_reg
         self.lambda_reg = lambda_reg
-        self.scores: List[float] = []
+        self.scores: list[float] = []
         self.n: int = 0
 
     def add(self, probs: Tensor, true_token_id: int) -> None:
@@ -143,7 +142,7 @@ class ConformalTokenSet:
         """
         self.tau = tau
 
-    def predict_set(self, probs: Tensor) -> List[int]:
+    def predict_set(self, probs: Tensor) -> list[int]:
         """Return the prediction set for a single position.
 
         Tokens are included greedily from highest probability downward until
@@ -158,7 +157,7 @@ class ConformalTokenSet:
         """
         sorted_probs, sorted_idx = torch.sort(probs, descending=True)
         cumsum = 0.0
-        result: List[int] = []
+        result: list[int] = []
         for i in range(len(sorted_probs)):
             cumsum += float(sorted_probs[i].item())
             result.append(int(sorted_idx[i].item()))
@@ -166,7 +165,7 @@ class ConformalTokenSet:
                 break
         return result
 
-    def set_size_stats(self, probs_batch: Tensor) -> Dict[str, float]:
+    def set_size_stats(self, probs_batch: Tensor) -> dict[str, float]:
         """Compute set-size statistics over a batch.
 
         Args:
@@ -217,7 +216,7 @@ class ConformalLMDecoder:
             self.calibration_set = CalibrationSet()
         self.tau: float | None = None
 
-    def calibrate(self, probs_list: List[Tensor], true_tokens: List[int]) -> float:
+    def calibrate(self, probs_list: list[Tensor], true_tokens: list[int]) -> float:
         """Run calibration and store the resulting threshold tau.
 
         Args:
@@ -232,7 +231,7 @@ class ConformalLMDecoder:
         self.tau = self.calibration_set.quantile(self.alpha)
         return self.tau
 
-    def predict(self, probs: Tensor) -> List[int]:
+    def predict(self, probs: Tensor) -> list[int]:
         """Return the prediction set for a single token position.
 
         Args:
@@ -249,7 +248,7 @@ class ConformalLMDecoder:
         token_set = ConformalTokenSet(self.tau)
         return token_set.predict_set(probs)
 
-    def coverage_estimate(self, probs_list: List[Tensor], true_tokens: List[int]) -> float:
+    def coverage_estimate(self, probs_list: list[Tensor], true_tokens: list[int]) -> float:
         """Empirically estimate coverage on a held-out set.
 
         Args:
@@ -262,8 +261,6 @@ class ConformalLMDecoder:
         if not probs_list:
             return 0.0
         covered = sum(
-            1
-            for probs, token in zip(probs_list, true_tokens)
-            if token in self.predict(probs)
+            1 for probs, token in zip(probs_list, true_tokens) if token in self.predict(probs)
         )
         return covered / len(probs_list)

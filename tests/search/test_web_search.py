@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.search.web_search import (
+    WEB_SEARCH,
     SearchQuery,
     SearchResult,
     WebSearchStub,
-    WEB_SEARCH,
 )
-
 
 # ---------------------------------------------------------------------------
 # SearchResult
 # ---------------------------------------------------------------------------
+
 
 class TestSearchResult:
     def test_auto_id_generated(self):
@@ -65,6 +63,7 @@ class TestSearchResult:
 # SearchQuery
 # ---------------------------------------------------------------------------
 
+
 class TestSearchQuery:
     def test_query_field(self):
         q = SearchQuery(query="hello")
@@ -98,6 +97,7 @@ class TestSearchQuery:
 # ---------------------------------------------------------------------------
 # WebSearchStub
 # ---------------------------------------------------------------------------
+
 
 class TestWebSearchStubInit:
     def test_default_has_five_results(self):

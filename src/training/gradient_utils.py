@@ -13,12 +13,11 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Dict, Iterable, Iterator, List, Optional, Union
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -31,7 +30,7 @@ class GradientConfig:
 
     max_norm: float = 1.0
     norm_type: float = 2.0
-    clip_value: Optional[float] = None
+    clip_value: float | None = None
     warn_threshold: float = 10.0
 
 
@@ -41,7 +40,7 @@ class GradientConfig:
 
 
 def _iter_params(
-    parameters: Union[nn.Module, Iterable[torch.Tensor]],
+    parameters: nn.Module | Iterable[torch.Tensor],
 ) -> Iterator[torch.Tensor]:
     """Yield individual parameter tensors from a module or an iterable."""
     if isinstance(parameters, nn.Module):
@@ -51,7 +50,7 @@ def _iter_params(
 
 
 def compute_grad_norm(
-    parameters: Union[nn.Module, Iterable[torch.Tensor]],
+    parameters: nn.Module | Iterable[torch.Tensor],
     norm_type: float = 2.0,
 ) -> float:
     """Compute the global gradient norm across all parameters that have gradients.
@@ -83,7 +82,7 @@ def compute_grad_norm(
 
 
 def clip_grad_norm(
-    parameters: Union[nn.Module, Iterable[torch.Tensor]],
+    parameters: nn.Module | Iterable[torch.Tensor],
     max_norm: float,
     norm_type: float = 2.0,
 ) -> float:
@@ -114,7 +113,7 @@ def clip_grad_norm(
 
 
 def clip_grad_value(
-    parameters: Union[nn.Module, Iterable[torch.Tensor]],
+    parameters: nn.Module | Iterable[torch.Tensor],
     clip_value: float,
 ) -> None:
     """Clip each gradient element to the range ``[-clip_value, clip_value]``.
@@ -148,12 +147,12 @@ class GradientMonitor:
 
     def __init__(self, config: GradientConfig) -> None:
         self.config = config
-        self._history: List[Dict[str, float]] = []
+        self._history: list[dict[str, float]] = []
 
     def record(
         self,
-        parameters: Union[nn.Module, Iterable[torch.Tensor]],
-    ) -> Dict[str, float]:
+        parameters: nn.Module | Iterable[torch.Tensor],
+    ) -> dict[str, float]:
         """Compute norm, apply clipping if configured, and record the step.
 
         Parameters
@@ -186,11 +185,9 @@ class GradientMonitor:
 
         clipped_norm = compute_grad_norm(params, self.config.norm_type)
 
-        clip_ratio = (
-            grad_norm / self.config.max_norm if self.config.max_norm > 0 else 0.0
-        )
+        clip_ratio = grad_norm / self.config.max_norm if self.config.max_norm > 0 else 0.0
 
-        entry: Dict[str, float] = {
+        entry: dict[str, float] = {
             "grad_norm": grad_norm,
             "clipped_norm": clipped_norm,
             "was_clipped": float(was_clipped),
@@ -199,11 +196,11 @@ class GradientMonitor:
         self._history.append(entry)
         return entry
 
-    def get_history(self) -> List[Dict[str, float]]:
+    def get_history(self) -> list[dict[str, float]]:
         """Return all recorded entries."""
         return list(self._history)
 
-    def get_stats(self) -> Dict[str, float]:
+    def get_stats(self) -> dict[str, float]:
         """Aggregate statistics over all recorded steps.
 
         Returns
@@ -244,8 +241,8 @@ class GradientMonitor:
 
 
 def detect_gradient_issues(
-    parameters: Union[nn.Module, Iterable[torch.Tensor]],
-) -> Dict[str, bool]:
+    parameters: nn.Module | Iterable[torch.Tensor],
+) -> dict[str, bool]:
     """Detect common gradient problems.
 
     Parameters
@@ -289,7 +286,7 @@ def detect_gradient_issues(
 # ---------------------------------------------------------------------------
 
 
-def compute_layer_grad_norms(model: nn.Module) -> Dict[str, float]:
+def compute_layer_grad_norms(model: nn.Module) -> dict[str, float]:
     """Return per-parameter gradient L2 norms for all params with gradients.
 
     Parameters
@@ -303,7 +300,7 @@ def compute_layer_grad_norms(model: nn.Module) -> Dict[str, float]:
         ``{parameter_name: grad_norm}`` for every named parameter that has a
         gradient.
     """
-    result: Dict[str, float] = {}
+    result: dict[str, float] = {}
     for name, p in model.named_parameters():
         if p.grad is not None:
             result[name] = float(p.grad.detach().float().norm(2).item())
@@ -367,7 +364,7 @@ class AdaptiveGradClipper:
 
     def clip(
         self,
-        parameters: Union[nn.Module, Iterable[torch.Tensor]],
+        parameters: nn.Module | Iterable[torch.Tensor],
     ) -> float:
         """Compute gradient norm, clip to percentile threshold, return pre-clip norm.
 

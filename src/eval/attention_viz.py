@@ -11,10 +11,7 @@ No matplotlib or visualization dependencies — pure tensor analytics.
 
 from __future__ import annotations
 
-from typing import List
-
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -44,8 +41,8 @@ class AttentionConcentration:
         i = torch.arange(1, n + 1, dtype=attn.dtype, device=attn.device)  # (T_k,)
 
         # G = (2 * sum(i * x_i) / (n * sum(x_i))) - (n+1)/n
-        sum_ix = (i * x).sum(dim=-1)   # (B, H, T_q)
-        sum_x = x.sum(dim=-1)          # (B, H, T_q)
+        sum_ix = (i * x).sum(dim=-1)  # (B, H, T_q)
+        sum_x = x.sum(dim=-1)  # (B, H, T_q)
 
         gini = (2.0 * sum_ix / (n * (sum_x + 1e-10))) - (n + 1.0) / n
         return gini
@@ -61,9 +58,9 @@ class AttentionConcentration:
             (B, H, T_q) fraction in [0, 1].
         """
         k = min(k, attn.shape[-1])
-        top_vals, _ = attn.topk(k, dim=-1)   # (B, H, T_q, k)
-        top_sum = top_vals.sum(dim=-1)        # (B, H, T_q)
-        total = attn.sum(dim=-1)              # (B, H, T_q)
+        top_vals, _ = attn.topk(k, dim=-1)  # (B, H, T_q, k)
+        top_sum = top_vals.sum(dim=-1)  # (B, H, T_q)
+        total = attn.sum(dim=-1)  # (B, H, T_q)
         return top_sum / (total + 1e-10)
 
     def entropy(self, attn: Tensor) -> Tensor:
@@ -129,10 +126,10 @@ class RecencyBiasAnalyzer:
         count = 0
 
         for q in range(T):
-            past_end = q + 1                      # keys 0..q inclusive
-            window_start = max(0, q - window + 1) # last `window` keys ending at q
+            past_end = q + 1  # keys 0..q inclusive
+            window_start = max(0, q - window + 1)  # last `window` keys ending at q
 
-            past_sum = attn[:, :, q, :past_end].sum(dim=-1)          # (B, H)
+            past_sum = attn[:, :, q, :past_end].sum(dim=-1)  # (B, H)
             window_sum = attn[:, :, q, window_start:past_end].sum(dim=-1)  # (B, H)
 
             ratio = (window_sum / (past_sum + 1e-8)).mean().item()
@@ -164,7 +161,7 @@ class SinkTokenDetector:
         mean_received = attn.mean(dim=(0, 1, 2))  # (T_k,)
         return mean_received > self.sink_threshold
 
-    def sink_positions(self, attn: Tensor) -> List[int]:
+    def sink_positions(self, attn: Tensor) -> list[int]:
         """List of position indices that are attention sinks.
 
         Args:
@@ -185,7 +182,7 @@ class SinkTokenDetector:
         Returns:
             Scalar float in [0, 1].
         """
-        mask = self.detect_sinks(attn)          # (T_k,)
+        mask = self.detect_sinks(attn)  # (T_k,)
         sink_total = attn[..., mask].sum().item()
         grand_total = attn.sum().item()
         return sink_total / (grand_total + 1e-10)
@@ -240,8 +237,8 @@ class HeadDiversityAnalyzer:
         mean_head = attn.mean(dim=1, keepdim=True)  # (B, 1, T_q, T_k)
 
         # Add epsilon
-        p = attn + 1e-10          # (B, H, T_q, T_k)
-        q = mean_head + 1e-10     # (B, 1, T_q, T_k)
+        p = attn + 1e-10  # (B, H, T_q, T_k)
+        q = mean_head + 1e-10  # (B, 1, T_q, T_k)
 
         # KL(p || q) per (b, h, q)
         kl = (p * (torch.log(p) - torch.log(q))).sum(dim=-1)  # (B, H, T_q)

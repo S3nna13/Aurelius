@@ -7,17 +7,16 @@ Pure PyTorch only -- no transformers, einops, trl, xformers, flash_attn, etc.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # RewardModel
 # ---------------------------------------------------------------------------
+
 
 class RewardModel(nn.Module):
     """Scalar reward head on top of a language model backbone.
@@ -41,7 +40,7 @@ class RewardModel(nn.Module):
             rewards: (B,) scalar reward per sequence -- last-token value
         """
         hidden_states = self.backbone(input_ids)  # (B, T, D)
-        last_hidden = hidden_states[:, -1, :]      # (B, D)
+        last_hidden = hidden_states[:, -1, :]  # (B, D)
         rewards = self.reward_head(last_hidden).squeeze(-1)  # (B,)
         return rewards
 
@@ -49,6 +48,7 @@ class RewardModel(nn.Module):
 # ---------------------------------------------------------------------------
 # BradleyTerryLoss
 # ---------------------------------------------------------------------------
+
 
 class BradleyTerryLoss(nn.Module):
     """Pairwise preference loss based on the Bradley-Terry model.
@@ -85,6 +85,7 @@ class BradleyTerryLoss(nn.Module):
 # ListwiseRankingLoss
 # ---------------------------------------------------------------------------
 
+
 class ListwiseRankingLoss(nn.Module):
     """Listwise ranking loss for K candidate responses per prompt."""
 
@@ -100,15 +101,16 @@ class ListwiseRankingLoss(nn.Module):
         Returns:
             loss: scalar -- cross-entropy between target distribution and predicted ranking
         """
-        target_dist = F.softmax(preference_labels, dim=1)   # (B, K)
-        log_pred    = F.log_softmax(rewards, dim=1)          # (B, K)
-        per_sample  = -(target_dist * log_pred).sum(dim=1)   # (B,)
+        target_dist = F.softmax(preference_labels, dim=1)  # (B, K)
+        log_pred = F.log_softmax(rewards, dim=1)  # (B, K)
+        per_sample = -(target_dist * log_pred).sum(dim=1)  # (B,)
         return per_sample.mean()
 
 
 # ---------------------------------------------------------------------------
 # RewardNormalizer
 # ---------------------------------------------------------------------------
+
 
 class RewardNormalizer:
     """Normalize rewards for training stability using exponential moving averages.
@@ -126,16 +128,16 @@ class RewardNormalizer:
     def update(self, rewards: Tensor) -> None:
         """Update running mean and variance estimates with new rewards."""
         batch_mean = rewards.mean().item()
-        batch_var  = rewards.var(unbiased=False).item() if rewards.numel() > 1 else 0.0
+        batch_var = rewards.var(unbiased=False).item() if rewards.numel() > 1 else 0.0
         self._n += rewards.numel()
         if self._n == rewards.numel():
             # First update: initialise directly
             self._mean = batch_mean
-            self._var  = max(batch_var, 1e-8)
+            self._var = max(batch_var, 1e-8)
         else:
             self._mean = self.momentum * self._mean + (1.0 - self.momentum) * batch_mean
-            self._var  = self.momentum * self._var  + (1.0 - self.momentum) * batch_var
-            self._var  = max(self._var, 1e-8)
+            self._var = self.momentum * self._var + (1.0 - self.momentum) * batch_var
+            self._var = max(self._var, 1e-8)
 
     @property
     def std(self) -> float:
@@ -152,8 +154,8 @@ class RewardNormalizer:
     def stats(self) -> dict:
         """Return current running statistics."""
         return {
-            "mean":      self._mean,
-            "std":       self.std,
+            "mean": self._mean,
+            "std": self.std,
             "n_samples": self._n,
         }
 
@@ -161,6 +163,7 @@ class RewardNormalizer:
 # ---------------------------------------------------------------------------
 # PreferenceDataset
 # ---------------------------------------------------------------------------
+
 
 class PreferenceDataset:
     """Dataset of preference pairs for reward model training.
@@ -175,18 +178,16 @@ class PreferenceDataset:
         self,
         chosen_ids: list,
         rejected_ids: list,
-        margin_labels: Optional[list] = None,
+        margin_labels: list | None = None,
     ) -> None:
         if len(chosen_ids) != len(rejected_ids):
             raise ValueError(
                 f"chosen_ids and rejected_ids must have the same length, "
                 f"got {len(chosen_ids)} and {len(rejected_ids)}"
             )
-        self._chosen  = chosen_ids
+        self._chosen = chosen_ids
         self._rejected = rejected_ids
-        self._margins = (
-            margin_labels if margin_labels is not None else [1.0] * len(chosen_ids)
-        )
+        self._margins = margin_labels if margin_labels is not None else [1.0] * len(chosen_ids)
 
     def __len__(self) -> int:
         return len(self._chosen)
@@ -209,9 +210,9 @@ class PreferenceDataset:
                 padded.append(s)
             return torch.stack(padded, dim=0)
 
-        chosen_batch   = pad_sequences(chosen_list)
+        chosen_batch = pad_sequences(chosen_list)
         rejected_batch = pad_sequences(rejected_list)
-        margins_batch  = torch.tensor(margins, dtype=torch.float32)
+        margins_batch = torch.tensor(margins, dtype=torch.float32)
         return chosen_batch, rejected_batch, margins_batch
 
     def split(self, ratio: float = 0.8) -> tuple:
@@ -223,7 +224,7 @@ class PreferenceDataset:
         Returns:
             (train_dataset, val_dataset)
         """
-        n       = len(self)
+        n = len(self)
         n_train = max(1, round(n * ratio))
         if n >= 2 and n_train >= n:
             n_train = n - 1
@@ -245,6 +246,7 @@ class PreferenceDataset:
 # RewardModelTrainer
 # ---------------------------------------------------------------------------
 
+
 class RewardModelTrainer:
     """Full training pipeline for a reward model.
 
@@ -263,9 +265,9 @@ class RewardModelTrainer:
         normalizer: RewardNormalizer,
     ) -> None:
         self.reward_model = reward_model
-        self.optimizer    = optimizer
-        self.bt_loss      = bt_loss
-        self.normalizer   = normalizer
+        self.optimizer = optimizer
+        self.bt_loss = bt_loss
+        self.normalizer = normalizer
 
     def train_step(
         self,
@@ -284,7 +286,7 @@ class RewardModelTrainer:
         self.reward_model.train()
         self.optimizer.zero_grad()
 
-        chosen_rewards   = self.reward_model(chosen_ids)
+        chosen_rewards = self.reward_model(chosen_ids)
         rejected_rewards = self.reward_model(rejected_ids)
 
         loss, accuracy = self.bt_loss(chosen_rewards, rejected_rewards)
@@ -295,14 +297,14 @@ class RewardModelTrainer:
         self.normalizer.update(all_rewards)
 
         with torch.no_grad():
-            chosen_mean   = chosen_rewards.mean().item()
+            chosen_mean = chosen_rewards.mean().item()
             rejected_mean = rejected_rewards.mean().item()
             reward_margin = (chosen_rewards - rejected_rewards).mean().item()
 
         return {
-            "loss":          loss.item(),
-            "accuracy":      accuracy.item(),
-            "chosen_mean":   chosen_mean,
+            "loss": loss.item(),
+            "accuracy": accuracy.item(),
+            "chosen_mean": chosen_mean,
             "rejected_mean": rejected_mean,
             "reward_margin": reward_margin,
         }
@@ -323,17 +325,17 @@ class RewardModelTrainer:
         """
         self.reward_model.eval()
         with torch.no_grad():
-            chosen_rewards   = self.reward_model(chosen_ids)
+            chosen_rewards = self.reward_model(chosen_ids)
             rejected_rewards = self.reward_model(rejected_ids)
 
-            diff             = chosen_rewards - rejected_rewards
-            accuracy         = (diff > 0).float().mean().item()
-            mean_margin      = diff.mean().item()
+            diff = chosen_rewards - rejected_rewards
+            accuracy = (diff > 0).float().mean().item()
+            mean_margin = diff.mean().item()
             consistency_rate = accuracy
 
         return {
-            "accuracy":         accuracy,
-            "mean_margin":      mean_margin,
+            "accuracy": accuracy,
+            "mean_margin": mean_margin,
             "consistency_rate": consistency_rate,
         }
 

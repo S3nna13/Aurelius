@@ -8,26 +8,24 @@ Covers:
 - RoPE theta differentiation
 """
 
-import math
 import pytest
 import torch
 
 from src.model.config import AureliusConfig
 from src.model.local_global_attention import (
-    LOCAL_ROPE_THETA,
     GLOBAL_ROPE_THETA,
-    LOCAL_WINDOW_SIZE,
-    is_global_layer,
-    LocalAttentionLayer,
+    LOCAL_ROPE_THETA,
     GlobalAttentionLayer,
     InterleavedAttentionLayer,
+    LocalAttentionLayer,
     _build_local_mask,
+    is_global_layer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def config() -> AureliusConfig:
@@ -42,6 +40,7 @@ def inference_mode(layer):
 # ---------------------------------------------------------------------------
 # 1. is_global_layer
 # ---------------------------------------------------------------------------
+
 
 def test_is_global_layer():
     """Layers 0-4 are local; layer 5 is global; pattern repeats."""
@@ -62,6 +61,7 @@ def test_is_global_layer():
 # 2. LocalAttentionLayer — forward shape
 # ---------------------------------------------------------------------------
 
+
 def test_local_attention_forward_shape(config):
     """(2, 64, 2048) input produces (2, 64, 2048) output."""
     layer = inference_mode(LocalAttentionLayer(config))
@@ -78,6 +78,7 @@ def test_local_attention_forward_shape(config):
 # ---------------------------------------------------------------------------
 # 3. GlobalAttentionLayer — forward shape
 # ---------------------------------------------------------------------------
+
 
 def test_global_attention_forward_shape(config):
     """(2, 64, 2048) input produces (2, 64, 2048) output."""
@@ -96,6 +97,7 @@ def test_global_attention_forward_shape(config):
 # 4. Local mask restricts attention range
 # ---------------------------------------------------------------------------
 
+
 def test_local_attention_mask_restricts_range():
     """Token at position 100 should NOT attend to token at position 0
     when window_size=32 and seq_len=128.
@@ -105,32 +107,25 @@ def test_local_attention_mask_restricts_range():
     mask = _build_local_mask(seq_len, window_size, device=torch.device("cpu"))
 
     # mask[i, j] == -inf  means token i cannot attend to token j
-    assert mask[100, 0] == float("-inf"), (
-        "Token 100 must not attend to token 0 with window_size=32"
-    )
+    assert mask[100, 0] == float("-inf"), "Token 100 must not attend to token 0 with window_size=32"
 
     # Sanity-check: token 100 CAN attend to token 100 (itself)
     assert mask[100, 100] == 0.0, "Token 100 must be able to attend to itself"
 
     # Token 100 can attend to token 100 - window_size = 68 (boundary)
-    assert mask[100, 68] == 0.0, (
-        "Token 100 must be able to attend to token 68 (boundary of window)"
-    )
+    assert mask[100, 68] == 0.0, "Token 100 must be able to attend to token 68 (boundary of window)"
 
     # Token 100 cannot attend to token 67 (just outside window)
-    assert mask[100, 67] == float("-inf"), (
-        "Token 100 must not attend to token 67 (outside window)"
-    )
+    assert mask[100, 67] == float("-inf"), "Token 100 must not attend to token 67 (outside window)"
 
     # Causal: token 50 cannot attend to token 51 (future)
-    assert mask[50, 51] == float("-inf"), (
-        "Token 50 must not attend to future token 51"
-    )
+    assert mask[50, 51] == float("-inf"), "Token 50 must not attend to future token 51"
 
 
 # ---------------------------------------------------------------------------
 # 5. InterleavedAttentionLayer selects correctly
 # ---------------------------------------------------------------------------
+
 
 def test_interleaved_layer_selects_correctly(config):
     """layer_idx=5 uses global; layer_idx=0 uses local. Both produce correct shapes."""
@@ -158,6 +153,7 @@ def test_interleaved_layer_selects_correctly(config):
 # ---------------------------------------------------------------------------
 # 6. Different RoPE theta per layer type
 # ---------------------------------------------------------------------------
+
 
 def test_different_rope_theta(config):
     """Local layers use theta=10 000; global layers use theta=1 000 000."""

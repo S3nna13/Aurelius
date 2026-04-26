@@ -26,7 +26,9 @@ def combined_mix_weights(
     bucket_probs = curriculum_weights([source.bucket for source in sources], step, total_steps)
     raw = {}
     for source in sources:
-        raw[source.corpus.name] = corpus_probs[source.corpus.name] * bucket_probs[source.bucket.name]
+        raw[source.corpus.name] = (
+            corpus_probs[source.corpus.name] * bucket_probs[source.bucket.name]
+        )
     total = sum(raw.values())
     return {name: value / total for name, value in raw.items()}
 
@@ -41,4 +43,3 @@ def dominant_source(
     if not weights:
         raise ValueError("sources must be non-empty")
     return max(weights, key=weights.get)
-

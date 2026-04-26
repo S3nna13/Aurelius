@@ -8,10 +8,11 @@ Implements beam search with:
 
 Pure PyTorch — no external dependencies.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Set, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -21,10 +22,11 @@ from torch import Tensor
 @dataclass
 class BeamSearchConfig:
     """Configuration for beam search decoding."""
+
     beam_width: int = 4
     max_new_tokens: int = 50
     length_penalty: float = 1.0
-    eos_token_id: Optional[int] = None
+    eos_token_id: int | None = None
     no_repeat_ngram_size: int = 0
     temperature: float = 1.0
 
@@ -32,6 +34,7 @@ class BeamSearchConfig:
 @dataclass
 class BeamHypothesis:
     """A single beam hypothesis."""
+
     token_ids: Tensor
     score: float
     is_done: bool = False
@@ -40,18 +43,18 @@ class BeamHypothesis:
 def normalize_score(score: float, length: int, length_penalty: float) -> float:
     if length == 0:
         return score
-    return score / (length ** length_penalty)
+    return score / (length**length_penalty)
 
 
-def get_ngram_blocked_tokens(token_ids: Tensor, ngram_size: int) -> Set[int]:
+def get_ngram_blocked_tokens(token_ids: Tensor, ngram_size: int) -> set[int]:
     if ngram_size <= 0 or token_ids.numel() < ngram_size - 1:
         return set()
     ids = token_ids.tolist()
     n = ngram_size
-    prefix = tuple(ids[-(n - 1):]) if n > 1 else ()
-    blocked: Set[int] = set()
+    prefix = tuple(ids[-(n - 1) :]) if n > 1 else ()
+    blocked: set[int] = set()
     for i in range(len(ids) - n + 1):
-        if tuple(ids[i:i + n - 1]) == prefix:
+        if tuple(ids[i : i + n - 1]) == prefix:
             blocked.add(ids[i + n - 1])
     return blocked
 
@@ -77,18 +80,23 @@ class BeamSearch:
         config: BeamSearchConfig.
     """
 
-    def __init__(self, model_fn: Callable[[Tensor], Tensor], config: Optional[BeamSearchConfig] = None) -> None:
+    def __init__(
+        self, model_fn: Callable[[Tensor], Tensor], config: BeamSearchConfig | None = None
+    ) -> None:
         self.model_fn = model_fn
         self.config = config or BeamSearchConfig()
 
-    def initialize_beams(self, prompt_ids: Tensor) -> List[BeamHypothesis]:
+    def initialize_beams(self, prompt_ids: Tensor) -> list[BeamHypothesis]:
         if prompt_ids.dim() == 2:
             prompt_ids = prompt_ids[0]
-        return [BeamHypothesis(token_ids=prompt_ids.clone(), score=0.0) for _ in range(self.config.beam_width)]
+        return [
+            BeamHypothesis(token_ids=prompt_ids.clone(), score=0.0)
+            for _ in range(self.config.beam_width)
+        ]
 
-    def expand_beams(self, beams: List[BeamHypothesis]) -> Tuple[List[BeamHypothesis], bool]:
+    def expand_beams(self, beams: list[BeamHypothesis]) -> tuple[list[BeamHypothesis], bool]:
         cfg = self.config
-        candidates: List[Tuple[float, Tensor, bool]] = []
+        candidates: list[tuple[float, Tensor, bool]] = []
 
         for beam in beams:
             if beam.is_done:
@@ -113,16 +121,21 @@ class BeamSearch:
 
             for lp, tok_id in zip(top_lp.tolist(), top_idx.tolist()):
                 new_score = beam.score + lp
-                new_ids = torch.cat([beam.token_ids, torch.tensor([tok_id], dtype=beam.token_ids.dtype)])
-                done = (cfg.eos_token_id is not None and tok_id == cfg.eos_token_id)
+                new_ids = torch.cat(
+                    [beam.token_ids, torch.tensor([tok_id], dtype=beam.token_ids.dtype)]
+                )
+                done = cfg.eos_token_id is not None and tok_id == cfg.eos_token_id
                 candidates.append((new_score, new_ids, done))
 
-        def _norm(c: Tuple[float, Tensor, bool]) -> float:
+        def _norm(c: tuple[float, Tensor, bool]) -> float:
             return normalize_score(c[0], c[1].shape[0], cfg.length_penalty)
 
         candidates.sort(key=_norm, reverse=True)
-        selected = candidates[:cfg.beam_width]
-        new_beams = [BeamHypothesis(token_ids=ids, score=score, is_done=done) for score, ids, done in selected]
+        selected = candidates[: cfg.beam_width]
+        new_beams = [
+            BeamHypothesis(token_ids=ids, score=score, is_done=done)
+            for score, ids, done in selected
+        ]
         return new_beams, all(b.is_done for b in new_beams)
 
     def search(self, prompt_ids: Tensor) -> Tensor:
@@ -137,7 +150,7 @@ class BeamSearch:
 
         return max(beams, key=_norm_beam).token_ids
 
-    def search_with_scores(self, prompt_ids: Tensor) -> List[BeamHypothesis]:
+    def search_with_scores(self, prompt_ids: Tensor) -> list[BeamHypothesis]:
         beams = self.initialize_beams(prompt_ids)
         for _ in range(self.config.max_new_tokens):
             beams, all_done = self.expand_beams(beams)

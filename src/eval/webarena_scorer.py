@@ -9,7 +9,7 @@ Autonomous Agents", arXiv:2307.13854.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 # ---------------------------------------------------------------------------
@@ -120,14 +120,8 @@ class WebArenaScorer:
         success_rate = (n_success / n_tasks) if n_tasks > 0 else 0.0
         avg_steps = (sum(total_steps) / len(total_steps)) if total_steps else 0.0
 
-        by_category = {
-            cat: sum(vals) / len(vals)
-            for cat, vals in category_success.items()
-        }
-        by_difficulty = {
-            diff: sum(vals) / len(vals)
-            for diff, vals in difficulty_success.items()
-        }
+        by_category = {cat: sum(vals) / len(vals) for cat, vals in category_success.items()}
+        by_difficulty = {diff: sum(vals) / len(vals) for diff, vals in difficulty_success.items()}
 
         return WebArenaMetrics(
             n_tasks=n_tasks,

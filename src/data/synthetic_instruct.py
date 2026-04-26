@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import random
 from dataclasses import dataclass, field
 
@@ -10,6 +9,7 @@ from dataclasses import dataclass, field
 @dataclass
 class InstructConfig:
     """Configuration for synthetic instruction generation."""
+
     n_instructions: int = 100
     max_instruction_len: int = 200  # max chars
     complexity_levels: int = 3  # 1=simple, 2=medium, 3=complex
@@ -23,6 +23,7 @@ class InstructConfig:
 @dataclass
 class InstructionSample:
     """A single instruction-following training sample."""
+
     instruction: str
     input_context: str  # optional context/input
     output: str  # expected output
@@ -34,6 +35,7 @@ class InstructionSample:
 # ---------------------------------------------------------------------------
 # Domain generators
 # ---------------------------------------------------------------------------
+
 
 def generate_math_instruction(
     rng: random.Random, complexity: int, include_cot: bool = True
@@ -55,9 +57,7 @@ def generate_math_instruction(
         y_val = rng.randint(1, 20)
         a_coeff = rng.randint(1, 5)
         b_coeff = rng.randint(1, 5)
-        instruction = (
-            f"If x = {x_val} and y = {y_val}, what is {a_coeff}x + {b_coeff}y?"
-        )
+        instruction = f"If x = {x_val} and y = {y_val}, what is {a_coeff}x + {b_coeff}y?"
         result = a_coeff * x_val + b_coeff * y_val
         if include_cot:
             output = (
@@ -72,9 +72,7 @@ def generate_math_instruction(
     else:  # complexity >= 3
         total = rng.randint(20, 200)
         pct = rng.choice([10, 20, 25, 30, 40, 50])
-        instruction = (
-            f"A store has {total} items. {pct}% are sold. How many remain?"
-        )
+        instruction = f"A store has {total} items. {pct}% are sold. How many remain?"
         sold = total * pct // 100
         remain = total - sold
         if include_cot:
@@ -138,7 +136,7 @@ def generate_coding_instruction(
                 "def is_palindrome(s):\n    return s == s[::-1]",
             ),
             (
-                "Write a Python function that removes duplicates from a list while preserving order.",
+                "Write a Python function that removes duplicates from a list while preserving order.",  # noqa: E501
                 (
                     "def remove_duplicates(lst):\n"
                     "    seen = set()\n"
@@ -154,7 +152,7 @@ def generate_coding_instruction(
     else:  # complexity >= 3
         tasks = [
             (
-                "Implement a binary search function on a sorted list that returns the index of the target, or -1 if not found.",
+                "Implement a binary search function on a sorted list that returns the index of the target, or -1 if not found.",  # noqa: E501
                 (
                     "def binary_search(arr, target):\n"
                     "    lo, hi = 0, len(arr) - 1\n"
@@ -238,8 +236,7 @@ def generate_reasoning_instruction(
         age1 = rng.randint(20, 50)
         diff = rng.randint(1, 15)
         instruction = (
-            f"{n1} is {age1} years old. {n2} is {diff} years older than {n1}. "
-            f"How old is {n2}?"
+            f"{n1} is {age1} years old. {n2} is {diff} years older than {n1}. How old is {n2}?"
         )
         answer = age1 + diff
         if include_cot:
@@ -262,9 +259,7 @@ def generate_reasoning_instruction(
         ask_name = assignment[0][0]
         ask_item = assignment[0][1]
         instruction = (
-            f"Given the following clues:\n"
-            + "\n".join(clues)
-            + f"\nWhat did {ask_name} pick?"
+            "Given the following clues:\n" + "\n".join(clues) + f"\nWhat did {ask_name} pick?"
         )
         if include_cot:
             output = (
@@ -292,7 +287,7 @@ def generate_writing_instruction(
         topics = ["the water cycle", "photosynthesis", "gravity", "the solar system"]
         topic = rng.choice(topics)
         instruction = f"Explain {topic} in one or two simple sentences."
-        output = f"{topic.capitalize()} is a natural process. It is important to understand its basic principles."
+        output = f"{topic.capitalize()} is a natural process. It is important to understand its basic principles."  # noqa: E501
 
     elif complexity == 2:
         topics = [
@@ -323,7 +318,7 @@ def generate_writing_instruction(
             ),
             (
                 "Rewrite the following sentence to be more concise: "
-                "'The reason why the project was not completed on time is because there were not enough resources available.'",
+                "'The reason why the project was not completed on time is because there were not enough resources available.'",  # noqa: E501
                 "The project missed its deadline due to insufficient resources.",
             ),
             (
@@ -353,8 +348,14 @@ def generate_factual_instruction(
     """Generate a factual instruction sample (definitions, comparisons, classifications)."""
     if complexity == 1:
         terms = [
-            ("algorithm", "A step-by-step procedure for solving a problem or performing a computation."),
-            ("photosynthesis", "The process by which plants convert sunlight into chemical energy."),
+            (
+                "algorithm",
+                "A step-by-step procedure for solving a problem or performing a computation.",
+            ),
+            (
+                "photosynthesis",
+                "The process by which plants convert sunlight into chemical energy.",
+            ),
             ("democracy", "A system of government where power is vested in the people."),
             ("gravity", "A force that attracts objects with mass toward each other."),
         ]
@@ -365,17 +366,20 @@ def generate_factual_instruction(
     elif complexity == 2:
         comparisons = [
             (
-                "CPU", "GPU",
-                "A CPU (Central Processing Unit) handles general-purpose tasks with a few powerful cores. "
-                "A GPU (Graphics Processing Unit) has many smaller cores optimized for parallel computation.",
+                "CPU",
+                "GPU",
+                "A CPU (Central Processing Unit) handles general-purpose tasks with a few powerful cores. "  # noqa: E501
+                "A GPU (Graphics Processing Unit) has many smaller cores optimized for parallel computation.",  # noqa: E501
             ),
             (
-                "TCP", "UDP",
+                "TCP",
+                "UDP",
                 "TCP provides reliable, ordered delivery with error checking. "
                 "UDP is faster but does not guarantee delivery or ordering.",
             ),
             (
-                "compiler", "interpreter",
+                "compiler",
+                "interpreter",
                 "A compiler translates the entire source code to machine code before execution. "
                 "An interpreter executes code line by line at runtime.",
             ),
@@ -387,7 +391,7 @@ def generate_factual_instruction(
     else:  # complexity >= 3
         tasks = [
             (
-                "Classify the following into programming paradigms: Python, Haskell, C, Java, Prolog.",
+                "Classify the following into programming paradigms: Python, Haskell, C, Java, Prolog.",  # noqa: E501
                 (
                     "Multi-paradigm: Python, Java. "
                     "Functional: Haskell. "
@@ -396,7 +400,7 @@ def generate_factual_instruction(
                 ),
             ),
             (
-                "Classify these data structures by access pattern: array, linked list, hash table, binary search tree.",
+                "Classify these data structures by access pattern: array, linked list, hash table, binary search tree.",  # noqa: E501
                 (
                     "Random access: array, hash table. "
                     "Sequential access: linked list. "
@@ -404,11 +408,8 @@ def generate_factual_instruction(
                 ),
             ),
             (
-                "Classify these sorting algorithms by time complexity (average case): bubble sort, merge sort, quicksort, insertion sort.",
-                (
-                    "O(n log n): merge sort, quicksort. "
-                    "O(n^2): bubble sort, insertion sort."
-                ),
+                "Classify these sorting algorithms by time complexity (average case): bubble sort, merge sort, quicksort, insertion sort.",  # noqa: E501
+                ("O(n log n): merge sort, quicksort. O(n^2): bubble sort, insertion sort."),
             ),
         ]
         instruction, output = rng.choice(tasks)
@@ -427,9 +428,8 @@ def generate_factual_instruction(
 # Evol-Instruct
 # ---------------------------------------------------------------------------
 
-def evolve_instruction(
-    rng: random.Random, base: InstructionSample
-) -> InstructionSample:
+
+def evolve_instruction(rng: random.Random, base: InstructionSample) -> InstructionSample:
     """Evol-Instruct: make an instruction harder by adding constraints or combining steps.
 
     Returns a new InstructionSample with increased complexity (capped at 3).
@@ -439,7 +439,7 @@ def evolve_instruction(
         "Extend the task: ",
         "Require explanation: ",
     ]
-    strategy = rng.choice(evolution_strategies)
+    rng.choice(evolution_strategies)
 
     constraints = [
         "Also explain your reasoning.",
@@ -515,9 +515,7 @@ class InstructionGenerator:
 
         return samples
 
-    def generate_batch(
-        self, n: int, domain: str | None = None
-    ) -> list[InstructionSample]:
+    def generate_batch(self, n: int, domain: str | None = None) -> list[InstructionSample]:
         """Generate n samples, optionally filtered by domain."""
         cfg = self.config
         samples: list[InstructionSample] = []
@@ -539,9 +537,7 @@ class InstructionGenerator:
 
         return samples
 
-    def to_sft_format(
-        self, samples: list[InstructionSample]
-    ) -> list[dict]:
+    def to_sft_format(self, samples: list[InstructionSample]) -> list[dict]:
         """Convert samples to SFT format: [{"prompt": str, "completion": str}, ...]."""
         results = []
         for s in samples:

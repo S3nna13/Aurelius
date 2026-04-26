@@ -16,8 +16,7 @@ def test_mars_exposed_via_package():
 
 def test_prior_entries_intact():
     # Ensure additive append didn't remove existing exports.
-    for name in ("Adafactor", "LAMB", "Lookahead", "Prodigy",
-                 "RAdam", "ScheduleFreeAdamW"):
+    for name in ("Adafactor", "LAMB", "Lookahead", "Prodigy", "RAdam", "ScheduleFreeAdamW"):
         assert hasattr(optimizers, name), f"missing prior export {name}"
 
 

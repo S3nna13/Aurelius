@@ -1,9 +1,10 @@
-import torch
-import torch.nn as nn
-import pytest
 import dataclasses
 
-from src.runtime.memory_profiler import MemorySnapshot, MemoryProfiler, MEMORY_PROFILER_REGISTRY
+import pytest
+import torch
+import torch.nn as nn
+
+from src.runtime.memory_profiler import MEMORY_PROFILER_REGISTRY, MemoryProfiler, MemorySnapshot
 
 
 def _tiny_model() -> nn.Module:
@@ -53,7 +54,7 @@ class TestMemoryProfiler:
     def test_estimate_activation_mb_arithmetic(self):
         profiler = MemoryProfiler()
         result = profiler.estimate_activation_mb(batch=2, seq_len=16, d_model=64, n_layers=4)
-        expected = (2 * 16 * 64 * 4 * 4) / (1024 ** 2)
+        expected = (2 * 16 * 64 * 4 * 4) / (1024**2)
         assert abs(result - expected) < 1e-9
 
     def test_estimate_activation_mb_returns_float(self):

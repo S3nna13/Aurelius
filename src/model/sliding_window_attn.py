@@ -8,17 +8,16 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SWAConfig:
@@ -32,6 +31,7 @@ class SWAConfig:
 # ---------------------------------------------------------------------------
 # Mask builder
 # ---------------------------------------------------------------------------
+
 
 def build_sliding_window_mask(
     seq_len: int,
@@ -69,13 +69,14 @@ def build_sliding_window_mask(
 # Functional sliding-window attention
 # ---------------------------------------------------------------------------
 
+
 def sliding_window_attention(
     Q: Tensor,
     K: Tensor,
     V: Tensor,
     window_size: int,
     causal: bool = True,
-    scale: Optional[float] = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Scaled dot-product attention with a sliding window mask.
 
@@ -95,7 +96,9 @@ def sliding_window_attention(
         scale = 1.0 / math.sqrt(d_head)
 
     # Build mask on same device/dtype
-    mask = build_sliding_window_mask(T, window_size, causal=causal).to(device=Q.device, dtype=Q.dtype)
+    mask = build_sliding_window_mask(T, window_size, causal=causal).to(
+        device=Q.device, dtype=Q.dtype
+    )
 
     # scores: (B, H, T, T)
     scores = torch.matmul(Q, K.transpose(-2, -1)) * scale
@@ -109,6 +112,7 @@ def sliding_window_attention(
 # SlidingWindowAttention module
 # ---------------------------------------------------------------------------
 
+
 class SlidingWindowAttention(nn.Module):
     """Multi-head attention with sliding window restriction.
 
@@ -117,7 +121,7 @@ class SlidingWindowAttention(nn.Module):
 
     def __init__(self, config: SWAConfig) -> None:
         super().__init__()
-        assert config.d_model % config.n_heads == 0, (
+        assert config.d_model % config.n_heads == 0, (  # noqa: S101
             f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
         )
         self.config = config
@@ -148,7 +152,9 @@ class SlidingWindowAttention(nn.Module):
         V = self.v_proj(x).view(B, T, H, d_h).transpose(1, 2)
 
         out = sliding_window_attention(
-            Q, K, V,
+            Q,
+            K,
+            V,
             window_size=self.window_size,
             causal=self.causal,
         )  # (B, H, T, d_h)
@@ -160,6 +166,7 @@ class SlidingWindowAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # SWABlock: pre-norm + SWA + residual
 # ---------------------------------------------------------------------------
+
 
 class SWABlock(nn.Module):
     """Transformer block with pre-LayerNorm + SlidingWindowAttention + residual."""
@@ -183,6 +190,7 @@ class SWABlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Diagnostic utility
 # ---------------------------------------------------------------------------
+
 
 def compare_swa_vs_full_attention(
     x: Tensor,
@@ -208,7 +216,9 @@ def compare_swa_vs_full_attention(
         V = swa.v_proj(x).view(B, T, H, d_h).transpose(1, 2)
 
         # SWA output
-        swa_out = sliding_window_attention(Q, K, V, window_size=window_size, causal=True, scale=scale)
+        swa_out = sliding_window_attention(
+            Q, K, V, window_size=window_size, causal=True, scale=scale
+        )
 
         # Full causal mask (no window restriction — window = T covers everything)
         full_out = sliding_window_attention(Q, K, V, window_size=T, causal=True, scale=scale)

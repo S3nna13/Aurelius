@@ -11,44 +11,47 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # ClusteringConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ClusteringConfig:
     """Configuration for an activation clustering experiment."""
-    n_clusters: int = 4        # for k-means
-    n_init: int = 3            # k-means restarts
-    max_iter: int = 100        # k-means iterations
-    tol: float = 1e-4          # convergence threshold
-    layer_idx: int = -1        # which layer to cluster
-    position: str = "last"     # "last", "mean", or "all" token positions
+
+    n_clusters: int = 4  # for k-means
+    n_init: int = 3  # k-means restarts
+    max_iter: int = 100  # k-means iterations
+    tol: float = 1e-4  # convergence threshold
+    layer_idx: int = -1  # which layer to cluster
+    position: str = "last"  # "last", "mean", or "all" token positions
 
 
 # ---------------------------------------------------------------------------
 # ClusterResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ClusterResult:
     """Result from a clustering run."""
-    centroids: Tensor   # (n_clusters, d_model) cluster centers
-    labels: Tensor      # (N,) cluster assignment per sample
-    inertia: float      # within-cluster sum of squared distances
-    n_iter: int         # iterations until convergence
+
+    centroids: Tensor  # (n_clusters, d_model) cluster centers
+    labels: Tensor  # (N,) cluster assignment per sample
+    inertia: float  # within-cluster sum of squared distances
+    n_iter: int  # iterations until convergence
 
 
 # ---------------------------------------------------------------------------
 # pairwise_distances
 # ---------------------------------------------------------------------------
+
 
 def pairwise_distances(a: Tensor, b: Tensor) -> Tensor:
     """Compute pairwise squared Euclidean distances.
@@ -63,9 +66,9 @@ def pairwise_distances(a: Tensor, b: Tensor) -> Tensor:
     Tensor  shape (N, M) of squared Euclidean distances.
     """
     # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 * a @ b^T
-    a_sq = (a * a).sum(dim=1, keepdim=True)    # (N, 1)
+    a_sq = (a * a).sum(dim=1, keepdim=True)  # (N, 1)
     b_sq = (b * b).sum(dim=1, keepdim=True).T  # (1, M)
-    ab   = a @ b.T                              # (N, M)
+    ab = a @ b.T  # (N, M)
     dist = a_sq + b_sq - 2.0 * ab
     # Clamp negative values caused by floating-point error
     return dist.clamp(min=0.0)
@@ -74,6 +77,7 @@ def pairwise_distances(a: Tensor, b: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # kmeans_cluster
 # ---------------------------------------------------------------------------
+
 
 def kmeans_cluster(
     activations: Tensor,
@@ -104,7 +108,7 @@ def kmeans_cluster(
     N, d = activations.shape
     k = min(n_clusters, N)
 
-    best: Optional[ClusterResult] = None
+    best: ClusterResult | None = None
 
     for run in range(n_init):
         rng = torch.Generator()
@@ -115,20 +119,18 @@ def kmeans_cluster(
         centroids = activations[int(idx0)].unsqueeze(0).clone()  # (1, d)
 
         for _ in range(k - 1):
-            dists = pairwise_distances(activations, centroids)    # (N, k_so_far)
-            min_dists = dists.min(dim=1).values                   # (N,)
+            dists = pairwise_distances(activations, centroids)  # (N, k_so_far)
+            min_dists = dists.min(dim=1).values  # (N,)
             probs = min_dists / min_dists.sum().clamp(min=1e-10)
             chosen = torch.multinomial(probs, num_samples=1, generator=rng).item()
-            centroids = torch.cat(
-                [centroids, activations[int(chosen)].unsqueeze(0)], dim=0
-            )
+            centroids = torch.cat([centroids, activations[int(chosen)].unsqueeze(0)], dim=0)
 
         # --- Lloyd iterations ---
         n_iter = 0
         for it in range(max_iter):
             # Assignment step
-            dists = pairwise_distances(activations, centroids)   # (N, k)
-            labels = dists.argmin(dim=1)                          # (N,)
+            dists = pairwise_distances(activations, centroids)  # (N, k)
+            labels = dists.argmin(dim=1)  # (N,)
 
             # Update step
             new_centroids = torch.zeros_like(centroids)
@@ -148,8 +150,8 @@ def kmeans_cluster(
                 break
 
         # Compute inertia
-        dists = pairwise_distances(activations, centroids)   # (N, k)
-        labels = dists.argmin(dim=1)                          # (N,)
+        dists = pairwise_distances(activations, centroids)  # (N, k)
+        labels = dists.argmin(dim=1)  # (N,)
         min_sq_dists = dists[torch.arange(N), labels]
         inertia = min_sq_dists.sum().item()
 
@@ -163,13 +165,14 @@ def kmeans_cluster(
         if best is None or inertia < best.inertia:
             best = result
 
-    assert best is not None
+    assert best is not None  # noqa: S101
     return best
 
 
 # ---------------------------------------------------------------------------
 # silhouette_score
 # ---------------------------------------------------------------------------
+
 
 def silhouette_score(activations: Tensor, labels: Tensor) -> float:
     """Compute mean silhouette score: (b - a) / max(a, b).
@@ -190,7 +193,7 @@ def silhouette_score(activations: Tensor, labels: Tensor) -> float:
 
     # Pairwise Euclidean distances
     sq_dists = pairwise_distances(activations, activations)  # (N, N)
-    dists = sq_dists.sqrt()                                   # (N, N)
+    dists = sq_dists.sqrt()  # (N, N)
 
     scores = torch.zeros(N, dtype=activations.dtype)
 
@@ -234,6 +237,7 @@ def silhouette_score(activations: Tensor, labels: Tensor) -> float:
 # extract_layer_activations
 # ---------------------------------------------------------------------------
 
+
 def extract_layer_activations(
     model: nn.Module,
     input_ids: Tensor,
@@ -260,11 +264,11 @@ def extract_layer_activations(
     2-D Tensor (N_out, d_model).
     """
     N, T = input_ids.shape
-    all_acts: List[Tensor] = []
+    all_acts: list[Tensor] = []
 
     target_layer = model.layers[layer_idx]
 
-    captured: List[Optional[Tensor]] = [None]
+    captured: list[Tensor | None] = [None]
 
     def _hook(module: nn.Module, inp, output) -> None:
         if isinstance(output, tuple):
@@ -300,8 +304,7 @@ def extract_layer_activations(
                     all_acts.append(act.reshape(B_local * T, -1))
                 else:
                     raise ValueError(
-                        f"Unknown position mode '{position}'. "
-                        "Expected 'last', 'mean', or 'all'."
+                        f"Unknown position mode '{position}'. Expected 'last', 'mean', or 'all'."
                     )
     finally:
         hook.remove()
@@ -312,6 +315,7 @@ def extract_layer_activations(
 # ---------------------------------------------------------------------------
 # cluster_token_sequences
 # ---------------------------------------------------------------------------
+
 
 def cluster_token_sequences(
     model: nn.Module,
@@ -349,6 +353,7 @@ def cluster_token_sequences(
 # nearest_cluster_examples
 # ---------------------------------------------------------------------------
 
+
 def nearest_cluster_examples(
     activations: Tensor,
     result: ClusterResult,
@@ -368,7 +373,7 @@ def nearest_cluster_examples(
     -------
     Tensor  shape (top_k,) of integer indices into activations.
     """
-    centroid = result.centroids[cluster_idx].unsqueeze(0)           # (1, d)
+    centroid = result.centroids[cluster_idx].unsqueeze(0)  # (1, d)
     sq_dists = pairwise_distances(activations, centroid).squeeze(1)  # (N,)
     k = min(top_k, activations.shape[0])
     _, indices = sq_dists.topk(k, largest=False)

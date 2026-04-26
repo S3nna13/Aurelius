@@ -1,15 +1,16 @@
 """Tests for cross-lingual transfer evaluation module."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.eval.crosslingual_eval import (
+    LANG_TEMPLATES,
     CrosslingualConfig,
+    CrosslingualEvaluator,
     LanguagePair,
     TransferResult,
-    CrosslingualEvaluator,
-    LANG_TEMPLATES,
     compute_language_similarity,
     compute_perplexity,
     compute_token_accuracy,
@@ -45,12 +46,14 @@ def tiny_model():
 
 
 # Byte-level tokenizer: encode string to list of ints, capped at 256
-encode = lambda s: list(s.encode("utf-8", errors="replace"))[:256]
+def encode(s):
+    return list(s.encode("utf-8", errors="replace"))[:256]
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     """CrosslingualConfig has 5 languages and metric='perplexity'."""

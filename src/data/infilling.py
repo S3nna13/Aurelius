@@ -17,7 +17,7 @@ is intentionally *not* re-used here because it operates on raw text.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import torch
@@ -38,9 +38,9 @@ if TYPE_CHECKING:
 class InfillingConfig:
     """Hyper-parameters for span masking and FIM training."""
 
-    mask_prob: float = 0.15          # fraction of tokens to mask in total
-    mean_span_length: float = 3.0    # mean length of each masked span
-    fim_prob: float = 0.5            # probability of FIM vs span-mask per sample
+    mask_prob: float = 0.15  # fraction of tokens to mask in total
+    mean_span_length: float = 3.0  # mean length of each masked span
+    fim_prob: float = 0.5  # probability of FIM vs span-mask per sample
 
     # Special token ids (must already be in the vocabulary)
     prefix_token: int = 1
@@ -85,6 +85,7 @@ def sample_span_lengths(
     lam = max(expected_masked / mean_span_length, 1e-9)
     # Sample from Poisson using sum of exponentials (simple approach for small lambda)
     import math
+
     # Knuth's algorithm for Poisson sampling
     L = math.exp(-lam)
     k = 0
@@ -119,7 +120,6 @@ def sample_span_lengths(
             continue
 
         # Try up to 10 candidate positions
-        placed = False
         for _ in range(10):
             start = rng.randint(0, max_start)
             end = start + length
@@ -127,7 +127,6 @@ def sample_span_lengths(
             if candidate.isdisjoint(occupied):
                 spans.append((start, end))
                 occupied |= candidate
-                placed = True
                 break
         # If we couldn't place after retries, skip this span
 
@@ -231,16 +230,18 @@ def fim_transform(
         middle = input_ids[i:j]
         suffix = input_ids[j:]
 
-    special = input_ids.new_tensor([prefix_token, suffix_token, middle_token])
+    input_ids.new_tensor([prefix_token, suffix_token, middle_token])
 
-    result = torch.cat([
-        input_ids.new_tensor([prefix_token]),
-        prefix,
-        input_ids.new_tensor([suffix_token]),
-        suffix,
-        input_ids.new_tensor([middle_token]),
-        middle,
-    ])
+    result = torch.cat(
+        [
+            input_ids.new_tensor([prefix_token]),
+            prefix,
+            input_ids.new_tensor([suffix_token]),
+            suffix,
+            input_ids.new_tensor([middle_token]),
+            middle,
+        ]
+    )
     return result
 
 
@@ -331,7 +332,7 @@ class InfillingTrainer:
         self,
         model: torch.nn.Module,
         config: InfillingConfig | None = None,
-        optimizer: "torch.optim.Optimizer | None" = None,
+        optimizer: torch.optim.Optimizer | None = None,
     ) -> None:
         self.model = model
         self.config = config or InfillingConfig()
@@ -355,7 +356,6 @@ class InfillingTrainer:
             ``"n_masked"``  — total number of masked tokens in the batch (int)
         """
         cfg = self.config
-        device = input_ids.device
         B, S = input_ids.shape
 
         # Build masked inputs and labels for each item in the batch
@@ -369,8 +369,8 @@ class InfillingTrainer:
             masked_list.append(m_ids)
             labels_list.append(lbl)
 
-        masked_input = torch.stack(masked_list, dim=0)      # (B, S)
-        labels = torch.stack(labels_list, dim=0)             # (B, S)
+        masked_input = torch.stack(masked_list, dim=0)  # (B, S)
+        labels = torch.stack(labels_list, dim=0)  # (B, S)
 
         n_masked = int((labels != -100).sum().item())
 

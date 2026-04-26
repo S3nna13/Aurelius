@@ -23,7 +23,6 @@ that genuinely need to pass such literals must sanitize upstream.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 from .chatml_template import (
     IM_END,
@@ -36,9 +35,9 @@ from .llama3_template import (
     BEGIN_OF_TEXT,
     END_HEADER,
     EOT,
+    START_HEADER,
     Llama3FormatError,
     Llama3Template,
-    START_HEADER,
 )
 
 __all__ = ["ToolResult", "ToolMessageFormatter"]
@@ -89,20 +88,14 @@ class ToolMessageFormatter:
     ) -> None:
         if template not in _SUPPORTED_TEMPLATES:
             raise ValueError(
-                f"unknown template {template!r}; supported: "
-                f"{sorted(_SUPPORTED_TEMPLATES)}"
+                f"unknown template {template!r}; supported: {sorted(_SUPPORTED_TEMPLATES)}"
             )
-        if not isinstance(max_content_chars, int) or isinstance(
-            max_content_chars, bool
-        ):
+        if not isinstance(max_content_chars, int) or isinstance(max_content_chars, bool):
             raise ValueError(
-                f"max_content_chars must be int, got "
-                f"{type(max_content_chars).__name__}"
+                f"max_content_chars must be int, got {type(max_content_chars).__name__}"
             )
         if max_content_chars <= 0:
-            raise ValueError(
-                f"max_content_chars must be > 0, got {max_content_chars}"
-            )
+            raise ValueError(f"max_content_chars must be > 0, got {max_content_chars}")
         self.template = template
         self.max_content_chars = max_content_chars
 
@@ -142,9 +135,7 @@ class ToolMessageFormatter:
         if len(body) <= self.max_content_chars:
             return body
         dropped = len(body) - self.max_content_chars
-        return body[: self.max_content_chars] + _TRUNCATION_MARKER.format(
-            dropped=dropped
-        )
+        return body[: self.max_content_chars] + _TRUNCATION_MARKER.format(dropped=dropped)
 
     # ---------------------------------------------------------------- format
 
@@ -159,10 +150,7 @@ class ToolMessageFormatter:
         role is ``tool`` for ChatML and ``ipython`` for Llama-3.
         """
         if not isinstance(tool_result, ToolResult):
-            raise TypeError(
-                f"tool_result must be ToolResult, got "
-                f"{type(tool_result).__name__}"
-            )
+            raise TypeError(f"tool_result must be ToolResult, got {type(tool_result).__name__}")
         if not isinstance(tool_result.call_id, str):
             raise TypeError("ToolResult.call_id must be str")
         if not isinstance(tool_result.name, str):
@@ -192,7 +180,7 @@ class ToolMessageFormatter:
 
         return Message(role=self._role(), content=content, name=tool_result.name)
 
-    def format_batch(self, results: List[ToolResult]) -> List[Message]:
+    def format_batch(self, results: list[ToolResult]) -> list[Message]:
         """Format a list of tool results, preserving order."""
         if not isinstance(results, list):
             raise TypeError("results must be a list[ToolResult]")
@@ -202,8 +190,8 @@ class ToolMessageFormatter:
 
     def to_prompt_turn(
         self,
-        results: List[ToolResult],
-        template_obj: Optional[object] = None,
+        results: list[ToolResult],
+        template_obj: object | None = None,
     ) -> str:
         """Render results as a ready-to-feed prompt fragment.
 
@@ -216,13 +204,9 @@ class ToolMessageFormatter:
         messages = self.format_batch(results)
 
         if template_obj is None:
-            template_obj = (
-                Llama3Template() if self.template == "llama3" else ChatMLTemplate()
-            )
+            template_obj = Llama3Template() if self.template == "llama3" else ChatMLTemplate()
         else:
-            expected = (
-                Llama3Template if self.template == "llama3" else ChatMLTemplate
-            )
+            expected = Llama3Template if self.template == "llama3" else ChatMLTemplate
             if not isinstance(template_obj, expected):
                 raise TypeError(
                     f"template_obj must be {expected.__name__} for "

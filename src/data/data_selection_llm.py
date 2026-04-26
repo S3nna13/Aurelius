@@ -7,33 +7,36 @@ Implements modern data selection approaches inspired by:
 
 Core classes: DataScorer, InstructionFollowingScorer, DiversitySelector.
 """
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DataSelectionConfig:
     """Configuration for LLM-based data selection pipeline."""
-    top_fraction: float = 0.1       # fraction of data to keep
-    diversity_weight: float = 0.5   # weight for diversity vs quality
-    min_score: float = 0.0          # minimum score threshold
-    batch_size: int = 8             # scoring batch size
+
+    top_fraction: float = 0.1  # fraction of data to keep
+    diversity_weight: float = 0.5  # weight for diversity vs quality
+    min_score: float = 0.0  # minimum score threshold
+    batch_size: int = 8  # scoring batch size
 
 
 # ---------------------------------------------------------------------------
 # DataScorer
 # ---------------------------------------------------------------------------
+
 
 class DataScorer:
     """Score a dataset using an arbitrary scoring function and select subsets.
@@ -55,10 +58,10 @@ class DataScorer:
 
     def score_dataset(
         self,
-        examples: List[dict],
+        examples: list[dict],
         instruction_key: str = "instruction",
         response_key: str = "response",
-    ) -> List[float]:
+    ) -> list[float]:
         """Score all examples using score_fn.
 
         Args:
@@ -69,7 +72,7 @@ class DataScorer:
         Returns:
             List of float scores, one per example.
         """
-        scores: List[float] = []
+        scores: list[float] = []
         for ex in examples:
             instruction = ex.get(instruction_key, "")
             response = ex.get(response_key, "")
@@ -79,11 +82,11 @@ class DataScorer:
 
     def select_top_k(
         self,
-        examples: List[dict],
-        scores: List[float],
-        k: Optional[int] = None,
-        fraction: Optional[float] = None,
-    ) -> Tuple[List[dict], List[float]]:
+        examples: list[dict],
+        scores: list[float],
+        k: int | None = None,
+        fraction: float | None = None,
+    ) -> tuple[list[dict], list[float]]:
         """Select top-k examples by score.
 
         Exactly one of k or fraction must be specified.
@@ -115,10 +118,10 @@ class DataScorer:
 
     def filter_by_threshold(
         self,
-        examples: List[dict],
-        scores: List[float],
+        examples: list[dict],
+        scores: list[float],
         threshold: float,
-    ) -> Tuple[List[dict], List[float]]:
+    ) -> tuple[list[dict], list[float]]:
         """Keep only examples with score >= threshold.
 
         Args:
@@ -129,8 +132,8 @@ class DataScorer:
         Returns:
             (filtered_examples, filtered_scores)
         """
-        filtered_examples: List[dict] = []
-        filtered_scores: List[float] = []
+        filtered_examples: list[dict] = []
+        filtered_scores: list[float] = []
         for ex, sc in zip(examples, scores):
             if sc >= threshold:
                 filtered_examples.append(ex)
@@ -141,6 +144,7 @@ class DataScorer:
 # ---------------------------------------------------------------------------
 # InstructionFollowingScorer
 # ---------------------------------------------------------------------------
+
 
 class InstructionFollowingScorer:
     """Score how well a response follows an instruction via log-probability.
@@ -167,7 +171,7 @@ class InstructionFollowingScorer:
     def score(
         self,
         instruction_ids: torch.Tensor,  # (S_i,)
-        response_ids: torch.Tensor,     # (S_r,)
+        response_ids: torch.Tensor,  # (S_r,)
     ) -> float:
         """Return negative perplexity of response given instruction.
 
@@ -204,7 +208,7 @@ class InstructionFollowingScorer:
         logit_end = inst_len + resp_len - 1
 
         resp_logits = logits[0, logit_start:logit_end, :]  # (resp_len, V)
-        resp_targets = response_ids[:resp_logits.shape[0]]  # (resp_len,)
+        resp_targets = response_ids[: resp_logits.shape[0]]  # (resp_len,)
 
         # Clamp targets to valid vocab range
         resp_targets = resp_targets.clamp(0, resp_logits.shape[-1] - 1)
@@ -215,8 +219,8 @@ class InstructionFollowingScorer:
     @torch.no_grad()
     def batch_score(
         self,
-        instruction_ids_list: List[torch.Tensor],
-        response_ids_list: List[torch.Tensor],
+        instruction_ids_list: list[torch.Tensor],
+        response_ids_list: list[torch.Tensor],
     ) -> torch.Tensor:
         """Score a batch of (instruction, response) pairs.
 
@@ -228,8 +232,7 @@ class InstructionFollowingScorer:
             (n,) float tensor of scores (one per pair).
         """
         scores = [
-            self.score(inst, resp)
-            for inst, resp in zip(instruction_ids_list, response_ids_list)
+            self.score(inst, resp) for inst, resp in zip(instruction_ids_list, response_ids_list)
         ]
         return torch.tensor(scores, dtype=torch.float32)
 
@@ -237,6 +240,7 @@ class InstructionFollowingScorer:
 # ---------------------------------------------------------------------------
 # DiversitySelector
 # ---------------------------------------------------------------------------
+
 
 class DiversitySelector:
     """Select a maximally diverse subset from a collection of examples.
@@ -263,7 +267,7 @@ class DiversitySelector:
 
     def compute_embeddings(
         self,
-        examples: List[torch.Tensor],
+        examples: list[torch.Tensor],
     ) -> torch.Tensor:
         """Compute embeddings for all examples.
 
@@ -281,8 +285,8 @@ class DiversitySelector:
     def select_diverse(
         self,
         embeddings: torch.Tensor,  # (n, D)
-        n: Optional[int] = None,
-    ) -> List[int]:
+        n: int | None = None,
+    ) -> list[int]:
         """Greedy maximum-coverage selection (farthest-point sampling).
 
         Iteratively selects the example that maximises the minimum cosine
@@ -308,15 +312,15 @@ class DiversitySelector:
         norms = embeddings.norm(dim=-1, keepdim=True).clamp(min=1e-8)
         normed = embeddings / norms  # (N, D)
 
-        selected: List[int] = [0]
+        selected: list[int] = [0]
         # min cosine distance from each point to the selected set
         min_dist = torch.full((total,), float("inf"), dtype=embeddings.dtype)
         min_dist[0] = -1.0  # already selected
 
         for _ in range(n - 1):
             last = normed[selected[-1]].unsqueeze(0)  # (1, D)
-            cos_sim = (normed @ last.T).squeeze(-1)   # (N,)
-            dist = 1.0 - cos_sim                       # cosine distance
+            cos_sim = (normed @ last.T).squeeze(-1)  # (N,)
+            dist = 1.0 - cos_sim  # cosine distance
 
             # Update running minimum
             min_dist = torch.minimum(min_dist, dist)
@@ -331,9 +335,9 @@ class DiversitySelector:
     def quality_diversity_select(
         self,
         embeddings: torch.Tensor,  # (n, D)
-        scores: torch.Tensor,      # (n,)
+        scores: torch.Tensor,  # (n,)
         alpha: float = 0.5,
-    ) -> List[int]:
+    ) -> list[int]:
         """Combined quality + diversity selection.
 
         Combined score = alpha * normalised_quality + (1 - alpha) * normalised_diversity.
@@ -362,8 +366,8 @@ class DiversitySelector:
 
         # Diversity: mean cosine distance to all others
         norms = embeddings.norm(dim=-1, keepdim=True).clamp(min=1e-8)
-        normed = embeddings / norms                        # (n, D)
-        cos_sim_matrix = normed @ normed.T                 # (n, n)
+        normed = embeddings / norms  # (n, D)
+        cos_sim_matrix = normed @ normed.T  # (n, n)
         cos_dist_matrix = 1.0 - cos_sim_matrix
         mask = 1.0 - torch.eye(n, device=embeddings.device, dtype=embeddings.dtype)
         if n > 1:
@@ -390,10 +394,11 @@ class DiversitySelector:
 # Standalone scoring functions
 # ---------------------------------------------------------------------------
 
+
 def nuggets_score(
     instruction: str,
     response: str,
-    keywords: List[str],
+    keywords: list[str],
 ) -> float:
     """NUGGETS-style heuristic quality score.
 
@@ -434,10 +439,10 @@ def nuggets_score(
 
 
 def alpagasus_filter(
-    examples: List[dict],
-    scores: List[float],
+    examples: list[dict],
+    scores: list[float],
     threshold: float = 4.5,
-) -> List[dict]:
+) -> list[dict]:
     """AlpaGasus-style filter: keep examples with score >= threshold.
 
     AlpaGasus uses a 5.0-point scale (ChatGPT ratings) and keeps examples

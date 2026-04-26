@@ -14,25 +14,24 @@ Covers:
   11. OPOTrainer.collect_and_train returns metrics dict
   12. collect_and_train changes model weights (optimizer step happened)
 """
+
 from __future__ import annotations
 
 import copy
 
 import torch
-import pytest
 
 from src.alignment.online_preference_opt import (
-    OPOConfig,
     OnlinePair,
-    generate_response,
-    collect_online_pairs,
-    opo_loss,
+    OPOConfig,
     OPOTrainer,
+    collect_online_pairs,
+    generate_response,
+    opo_loss,
 )
 from src.alignment.reward_model import RewardModel, RewardModelConfig
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -71,7 +70,7 @@ def make_reward_model() -> RewardModel:
     def backbone_fn(token_ids: torch.Tensor) -> torch.Tensor:
         # token_ids: (B, T) -> hidden states (B, T, d_model)
         out = backbone(token_ids)
-        logits = out[1] if isinstance(out, tuple) else out  # (B, T, vocab)
+        out[1] if isinstance(out, tuple) else out  # (B, T, vocab)
         # project vocab -> d_model via random linear to get "hidden states"
         # We re-use the embedding matrix transposed: (vocab, d_model) -> (B, T, d_model)
         embed_w = backbone.embed.weight  # (vocab, d_model)
@@ -86,6 +85,7 @@ def make_reward_model() -> RewardModel:
 # ---------------------------------------------------------------------------
 # Test 1: OPOConfig defaults are sensible
 # ---------------------------------------------------------------------------
+
 
 def test_opo_config_defaults():
     cfg = OPOConfig()
@@ -105,6 +105,7 @@ def test_opo_config_defaults():
 # Test 2: generate_response returns Tensor of length max_new_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_generate_response_length():
     torch.manual_seed(0)
     model = make_tiny_model(1)
@@ -122,6 +123,7 @@ def test_generate_response_length():
 # Test 3: generate_response returns valid token ids in [0, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_generate_response_valid_token_ids():
     torch.manual_seed(1)
     model = make_tiny_model(2)
@@ -136,6 +138,7 @@ def test_generate_response_valid_token_ids():
 # Test 4: collect_online_pairs returns list of OnlinePair
 # ---------------------------------------------------------------------------
 
+
 def test_collect_online_pairs_returns_list():
     torch.manual_seed(2)
     model = make_tiny_model(3)
@@ -149,12 +152,15 @@ def test_collect_online_pairs_returns_list():
     assert isinstance(pairs, list), "collect_online_pairs should return a list"
     assert len(pairs) == len(prompts), f"Expected {len(prompts)} pairs, got {len(pairs)}"
     for pair in pairs:
-        assert isinstance(pair, OnlinePair), f"Each element should be an OnlinePair, got {type(pair)}"
+        assert isinstance(pair, OnlinePair), (
+            f"Each element should be an OnlinePair, got {type(pair)}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Test 5: Each OnlinePair has chosen_reward >= rejected_reward
 # ---------------------------------------------------------------------------
+
 
 def test_collect_online_pairs_chosen_geq_rejected():
     torch.manual_seed(3)
@@ -176,6 +182,7 @@ def test_collect_online_pairs_chosen_geq_rejected():
 # ---------------------------------------------------------------------------
 # Test 6: opo_loss returns (Tensor, dict) tuple
 # ---------------------------------------------------------------------------
+
 
 def test_opo_loss_returns_tensor_and_dict():
     torch.manual_seed(4)
@@ -209,6 +216,7 @@ def test_opo_loss_returns_tensor_and_dict():
 # Test 7: opo_loss dict has required keys
 # ---------------------------------------------------------------------------
 
+
 def test_opo_loss_dict_keys():
     torch.manual_seed(5)
     model = make_tiny_model(6)
@@ -239,6 +247,7 @@ def test_opo_loss_dict_keys():
 # Test 8: opo_loss total_loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_opo_loss_total_loss_finite():
     torch.manual_seed(6)
     model = make_tiny_model(7)
@@ -268,6 +277,7 @@ def test_opo_loss_total_loss_finite():
 # ---------------------------------------------------------------------------
 # Test 9: opo_loss reward_margin = chosen - rejected >= 0 for best-vs-worst pair
 # ---------------------------------------------------------------------------
+
 
 def test_opo_loss_reward_margin():
     torch.manual_seed(7)
@@ -303,6 +313,7 @@ def test_opo_loss_reward_margin():
 # Test 10: OPOTrainer constructs without error
 # ---------------------------------------------------------------------------
 
+
 def test_opo_trainer_constructs():
     torch.manual_seed(8)
     model = make_tiny_model(9)
@@ -321,6 +332,7 @@ def test_opo_trainer_constructs():
 # ---------------------------------------------------------------------------
 # Test 11: OPOTrainer.collect_and_train returns metrics dict
 # ---------------------------------------------------------------------------
+
 
 def test_collect_and_train_returns_metrics():
     torch.manual_seed(9)
@@ -343,6 +355,7 @@ def test_collect_and_train_returns_metrics():
 # ---------------------------------------------------------------------------
 # Test 12: collect_and_train changes model weights (optimizer step happened)
 # ---------------------------------------------------------------------------
+
 
 def test_collect_and_train_updates_weights():
     torch.manual_seed(10)

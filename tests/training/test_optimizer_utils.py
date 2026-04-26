@@ -5,8 +5,6 @@ All tests use tiny models and minimal configs to keep runtime fast.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn as nn
@@ -21,7 +19,6 @@ from src.training.optimizer_utils import (
     get_lr_schedule,
     get_param_groups,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -47,7 +44,9 @@ def _tiny_sequential() -> nn.Sequential:
 def _run_backward(model: nn.Module) -> None:
     """Run a tiny forward + backward pass."""
     model.zero_grad()
-    x = torch.randn(1, model[0].in_features if isinstance(model, nn.Sequential) else model.in_features)
+    x = torch.randn(
+        1, model[0].in_features if isinstance(model, nn.Sequential) else model.in_features
+    )
     out = model(x)
     out.sum().backward()
 
@@ -181,9 +180,7 @@ def test_get_lr_schedule_warmup_linear():
     assert multipliers[10] == pytest.approx(1.0)
     # Each step should be larger than the previous during warmup
     for i in range(1, 11):
-        assert multipliers[i] > multipliers[i - 1], (
-            f"Expected monotone increase at step {i}"
-        )
+        assert multipliers[i] > multipliers[i - 1], f"Expected monotone increase at step {i}"
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +322,7 @@ def test_get_param_groups_linear_only():
     # weight (2D) and bias (1D)
     wd_params = groups[0]["params"]
     no_wd_params = groups[1]["params"]
-    assert len(wd_params) == 1    # weight matrix
+    assert len(wd_params) == 1  # weight matrix
     assert len(no_wd_params) == 1  # bias vector
     assert wd_params[0].ndim == 2
     assert no_wd_params[0].ndim == 1

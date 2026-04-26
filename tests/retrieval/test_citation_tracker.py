@@ -8,7 +8,6 @@ from src.retrieval.citation_tracker import (
     DEFAULT_MIN_EXACT_LEN,
     DEFAULT_MIN_UNCITED_RUN,
     CitationReport,
-    CitationSpan,
     CitationTracker,
     Source,
 )
@@ -84,10 +83,7 @@ def test_empty_sources():
 
 def test_uncited_segment_detection():
     src = _src("s1", "CITED PORTION OF THE OUTPUT HERE IS LONG ENOUGH")
-    out = (
-        "CITED PORTION OF THE OUTPUT HERE IS LONG ENOUGH "
-        + "X" * 60
-    )
+    out = "CITED PORTION OF THE OUTPUT HERE IS LONG ENOUGH " + "X" * 60
     tr = CitationTracker()
     rep = tr.track(out, [src])
     assert len(rep.spans) == 1

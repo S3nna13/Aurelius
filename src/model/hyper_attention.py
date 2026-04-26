@@ -10,8 +10,6 @@ Approximates softmax attention in O(n sqrt(n)) by:
 
 from __future__ import annotations
 
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -82,7 +80,7 @@ class HyperAttention(nn.Module):
         self.d_head = d_head
         self.n_hashes = n_hashes
         self.sample_size = sample_size
-        self.scale = scale if scale is not None else d_head ** -0.5
+        self.scale = scale if scale is not None else d_head**-0.5
         self.lsh = HammingLSH(d_head=d_head, n_hashes=n_hashes)
 
     def forward(self, q: Tensor, k: Tensor, v: Tensor) -> Tensor:
@@ -124,9 +122,9 @@ class HyperAttention(nn.Module):
         outputs = []
         for b in range(B):
             # overlap[b]: (T, T) — row i = hash similarity of q_i with all keys
-            q_b = q[b]   # (T, d_head)
-            k_b = k[b]   # (T, d_head)
-            v_b = v[b]   # (T, d_head)
+            q_b = q[b]  # (T, d_head)
+            k_b = k[b]  # (T, d_head)
+            v_b = v[b]  # (T, d_head)
             ov_b = overlap[b]  # (T, T)
 
             # For each query, pick heavy + light candidate key indices
@@ -207,8 +205,10 @@ class HyperAttentionLayer(nn.Module):
         # Reshape to (B * n_heads, T, d_head)
         def split_heads(t: Tensor) -> Tensor:
             # (B, T, d_model) -> (B, n_heads, T, d_head) -> (B*n_heads, T, d_head)
-            return t.view(B, T, self.n_heads, self.d_head).transpose(1, 2).reshape(
-                B * self.n_heads, T, self.d_head
+            return (
+                t.view(B, T, self.n_heads, self.d_head)
+                .transpose(1, 2)
+                .reshape(B * self.n_heads, T, self.d_head)
             )
 
         q_h = split_heads(q)

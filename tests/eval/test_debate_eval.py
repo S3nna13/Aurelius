@@ -15,10 +15,10 @@ from src.eval.debate_eval import (
     extract_winner,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper: mock generate_fn
 # ---------------------------------------------------------------------------
+
 
 def _make_generate_fn(judge_response: str = "Winner: A") -> callable:
     """Return a generate_fn that produces judge_response when called with a
@@ -36,6 +36,7 @@ def _make_generate_fn(judge_response: str = "Winner: A") -> callable:
 # ---------------------------------------------------------------------------
 # extract_winner tests
 # ---------------------------------------------------------------------------
+
 
 def test_extract_winner_a():
     assert extract_winner("Winner: A") == "A"
@@ -56,6 +57,7 @@ def test_extract_winner_garbage_returns_none():
 # ---------------------------------------------------------------------------
 # build_debater_prompt tests
 # ---------------------------------------------------------------------------
+
 
 def test_build_debater_prompt_contains_question():
     transcript = DebateTranscript(
@@ -81,6 +83,7 @@ def test_build_debater_prompt_contains_position():
 # build_judge_prompt tests
 # ---------------------------------------------------------------------------
 
+
 def test_build_judge_prompt_contains_arguments():
     transcript = DebateTranscript(
         question="Is the sky blue?",
@@ -103,6 +106,7 @@ def test_build_judge_prompt_contains_arguments():
 # DebateTranscript dataclass tests
 # ---------------------------------------------------------------------------
 
+
 def test_debate_transcript_creation():
     transcript = DebateTranscript(
         question="Q",
@@ -123,6 +127,7 @@ def test_debate_transcript_creation():
 # DebateConfig defaults test
 # ---------------------------------------------------------------------------
 
+
 def test_debate_config_defaults():
     config = DebateConfig()
     assert config.n_rounds == 2
@@ -133,6 +138,7 @@ def test_debate_config_defaults():
 # ---------------------------------------------------------------------------
 # DebateEvaluator.run_debate tests
 # ---------------------------------------------------------------------------
+
 
 def test_run_debate_returns_transcript():
     evaluator = DebateEvaluator(_make_generate_fn(), DebateConfig(n_rounds=1))
@@ -168,6 +174,7 @@ def test_run_debate_argument_round_numbers():
 # DebateEvaluator.evaluate_claim tests
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_claim_returns_transcript():
     evaluator = DebateEvaluator(_make_generate_fn(), DebateConfig(n_rounds=1))
     result = evaluator.evaluate_claim("The sun rises in the east.")
@@ -185,6 +192,7 @@ def test_evaluate_claim_question_contains_claim():
 # DebateEvaluator.batch_evaluate tests
 # ---------------------------------------------------------------------------
 
+
 def test_batch_evaluate_returns_correct_length():
     evaluator = DebateEvaluator(_make_generate_fn(), DebateConfig(n_rounds=1))
     claims = ["Claim one.", "Claim two.", "Claim three."]
@@ -201,6 +209,7 @@ def test_batch_evaluate_empty_list():
 # ---------------------------------------------------------------------------
 # aggregate_debate_results tests
 # ---------------------------------------------------------------------------
+
 
 def _make_transcript(winner: str) -> DebateTranscript:
     return DebateTranscript(

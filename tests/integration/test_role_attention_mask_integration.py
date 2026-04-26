@@ -10,8 +10,8 @@ import torch
 import src.chat as chat_pkg
 from src.chat import (
     CHAT_TEMPLATE_REGISTRY,
-    MESSAGE_FORMAT_REGISTRY,
     MASK_VALUE,
+    MESSAGE_FORMAT_REGISTRY,
     ChatMLTemplate,
     Message,
     RoleSpan,
@@ -50,9 +50,7 @@ def test_build_mask_for_chatml_conversation():
     # treat each message's encoded string length as its "token count".
     # What matters is that build_role_mask + build_loss_mask accept the
     # span tiling and return correctly-shaped outputs.
-    per_msg_lens = [
-        len(tmpl.encode([m])) for m in msgs
-    ]
+    per_msg_lens = [len(tmpl.encode([m])) for m in msgs]
     spans = []
     cursor = 0
     for m, n in zip(msgs, per_msg_lens):
@@ -82,7 +80,7 @@ def test_build_mask_for_chatml_conversation():
     assert loss.shape == (seq_len,)
     # Only assistant span is True.
     assistant = spans[2]
-    assert loss[assistant.start:assistant.end].all().item()
+    assert loss[assistant.start : assistant.end].all().item()
     # Non-assistant positions are False.
     for i in range(seq_len):
         if not (assistant.start <= i < assistant.end):

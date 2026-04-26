@@ -39,7 +39,9 @@ class FlashAttentionWrapper:
         if self.is_flash_available and not use_window and self.config.alibi_slopes is None:
             dropout = self.config.dropout_p if torch.is_grad_enabled() else 0.0
             return F.scaled_dot_product_attention(
-                q, k, v,
+                q,
+                k,
+                v,
                 attn_mask=attention_mask,
                 dropout_p=dropout,
                 is_causal=self.config.causal if attention_mask is None else False,

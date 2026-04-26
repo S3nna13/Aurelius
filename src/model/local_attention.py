@@ -7,28 +7,30 @@ a ring buffer to maintain the KV cache without reallocating memory.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 from .config import AureliusConfig
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LocalAttentionConfig:
-    window_size: int = 512          # number of tokens to attend to
-    overlap: int = 0                # optional overlap with previous window (for continuity)
-    use_ring_buffer: bool = True    # efficient ring buffer vs simple append
+    window_size: int = 512  # number of tokens to attend to
+    overlap: int = 0  # optional overlap with previous window (for continuity)
+    use_ring_buffer: bool = True  # efficient ring buffer vs simple append
 
 
 # ---------------------------------------------------------------------------
 # Ring Buffer
 # ---------------------------------------------------------------------------
+
 
 class RingBuffer:
     """Fixed-size ring buffer for efficient sliding window KV cache.
@@ -90,6 +92,7 @@ class RingBuffer:
 # ---------------------------------------------------------------------------
 # KV Cache using ring buffers
 # ---------------------------------------------------------------------------
+
 
 class LocalWindowKVCache:
     """KV cache for local window attention.
@@ -169,6 +172,7 @@ class LocalWindowKVCache:
 # Local Window Attention Module
 # ---------------------------------------------------------------------------
 
+
 class LocalWindowAttention(nn.Module):
     """Attention that only attends to the last `window_size` tokens.
 
@@ -205,9 +209,7 @@ class LocalWindowAttention(nn.Module):
         self.v_proj = nn.Linear(config.d_model, config.n_kv_heads * config.head_dim, bias=False)
         self.o_proj = nn.Linear(config.n_heads * config.head_dim, config.d_model, bias=False)
 
-    def _local_causal_mask(
-        self, seq_len: int, window: int, device: torch.device
-    ) -> torch.Tensor:
+    def _local_causal_mask(self, seq_len: int, window: int, device: torch.device) -> torch.Tensor:
         """Create a causal mask where token i can only attend to [max(0, i-window+1), i].
 
         Args:
@@ -219,16 +221,16 @@ class LocalWindowAttention(nn.Module):
             Boolean mask of shape (1, 1, seq_len, seq_len).
             True means the position is attended; False means it is masked.
         """
-        rows = torch.arange(seq_len, device=device).unsqueeze(1)   # (T, 1)
-        cols = torch.arange(seq_len, device=device).unsqueeze(0)   # (1, T)
+        rows = torch.arange(seq_len, device=device).unsqueeze(1)  # (T, 1)
+        cols = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, T)
         # Causal: col <= row
         # Window:  col >= row - window + 1
-        mask = (cols <= rows) & (cols >= rows - window + 1)        # (T, T) bool
-        return mask.unsqueeze(0).unsqueeze(0)                      # (1, 1, T, T)
+        mask = (cols <= rows) & (cols >= rows - window + 1)  # (T, T) bool
+        return mask.unsqueeze(0).unsqueeze(0)  # (1, 1, T, T)
 
     def forward(
         self,
-        x: torch.Tensor,                      # (B, T, D)
+        x: torch.Tensor,  # (B, T, D)
         local_cache: LocalWindowKVCache | None = None,
         layer_idx: int = 0,
         **kwargs,
@@ -257,7 +259,7 @@ class LocalWindowAttention(nn.Module):
         # ---- Decode mode: T == 1 and a ring-buffer cache is available --------
         if local_cache is not None and T == 1:
             # Only supports batch_size == 1 in single-token decode mode
-            assert B == 1, "Ring-buffer decode mode supports batch_size == 1"
+            assert B == 1, "Ring-buffer decode mode supports batch_size == 1"  # noqa: S101
 
             # Squeeze batch and sequence dims: (n_kv_heads, head_dim)
             k_tok = k[0, 0]  # (n_kv_heads, head_dim)
@@ -275,12 +277,14 @@ class LocalWindowAttention(nn.Module):
                 v_win = v_win.reshape(T_win, self.n_heads, self.head_dim)
 
             # Reshape for SDPA: (1, n_heads, T, head_dim)
-            q_sdpa = q.transpose(1, 2)                            # (1, n_heads, 1, head_dim)
-            k_sdpa = k_win.transpose(0, 1).unsqueeze(0)          # (1, n_heads, T_win, head_dim)
-            v_sdpa = v_win.transpose(0, 1).unsqueeze(0)          # (1, n_heads, T_win, head_dim)
+            q_sdpa = q.transpose(1, 2)  # (1, n_heads, 1, head_dim)
+            k_sdpa = k_win.transpose(0, 1).unsqueeze(0)  # (1, n_heads, T_win, head_dim)
+            v_sdpa = v_win.transpose(0, 1).unsqueeze(0)  # (1, n_heads, T_win, head_dim)
 
             out = F.scaled_dot_product_attention(
-                q_sdpa, k_sdpa, v_sdpa,
+                q_sdpa,
+                k_sdpa,
+                v_sdpa,
                 attn_mask=None,
                 dropout_p=0.0,
                 is_causal=False,  # query sees only past tokens via the ring buffer
@@ -307,7 +311,9 @@ class LocalWindowAttention(nn.Module):
         v = v.transpose(1, 2)
 
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=additive_mask,
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
@@ -320,6 +326,7 @@ class LocalWindowAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Token generator
 # ---------------------------------------------------------------------------
+
 
 class LocalAttentionGenerator:
     """Token generator using LocalWindowAttention with a ring buffer KV cache.
@@ -422,7 +429,7 @@ class LocalAttentionGenerator:
         )
         # Two buffers (K and V) per layer
         total_bytes = 2 * self.n_layers * bytes_per_buffer
-        cache_mb = total_bytes / (1024 ** 2)
+        cache_mb = total_bytes / (1024**2)
 
         tokens_in_cache = self._cache.k_buffers[0].size if self.n_layers > 0 else 0
 

@@ -1,20 +1,20 @@
 """Tests for BestOfNOptimizer and ThinkingModeParser."""
+
 from __future__ import annotations
 
-import pytest
 from src.reasoning.best_of_n_chain_optimizer import (
-    ThinkingBlock,
-    ParsedReasoning,
-    ThinkingModeParser,
-    CandidateResult,
-    BestOfNOptimizer,
     BEST_OF_N_REGISTRY,
+    BestOfNOptimizer,
+    CandidateResult,
+    ParsedReasoning,
+    ThinkingBlock,
+    ThinkingModeParser,
 )
-
 
 # ---------------------------------------------------------------------------
 # ThinkingModeParser
 # ---------------------------------------------------------------------------
+
 
 def test_parser_no_think_blocks_returns_full_text_as_answer():
     parser = ThinkingModeParser()
@@ -103,6 +103,7 @@ def test_strip_thinking_no_blocks_returns_original():
 # ---------------------------------------------------------------------------
 # BestOfNOptimizer
 # ---------------------------------------------------------------------------
+
 
 def test_generate_candidates_default_count():
     opt = BestOfNOptimizer(n=5)

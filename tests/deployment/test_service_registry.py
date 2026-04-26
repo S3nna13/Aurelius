@@ -1,9 +1,8 @@
 """Tests for service registry."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.deployment.service_registry import ServiceRegistry, ServiceInstance
+from src.deployment.service_registry import ServiceInstance, ServiceRegistry
 
 
 class TestServiceRegistry:

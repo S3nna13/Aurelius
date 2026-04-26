@@ -1,7 +1,8 @@
 """Advanced model merging: DARE (random pruning) and TIES with sign consensus voting."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -300,8 +301,7 @@ def merge_models(
         return _dare_ties_merge(base_state, finetuned_states, config)
 
     raise ValueError(
-        f"Unknown merge method '{method}'. "
-        "Supported: 'linear', 'dare', 'ties', 'dare_ties'."
+        f"Unknown merge method '{method}'. Supported: 'linear', 'dare', 'ties', 'dare_ties'."
     )
 
 

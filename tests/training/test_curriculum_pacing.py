@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.training.curriculum_pacing import (
-    PacingConfig,
-    linear_pacing,
-    exponential_pacing,
-    step_pacing,
-    get_pacing_fraction,
-    DifficultyScorer,
-    CurriculumSampler,
-)
-from src.model.transformer import AureliusTransformer
 from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
+from src.training.curriculum_pacing import (
+    CurriculumSampler,
+    DifficultyScorer,
+    PacingConfig,
+    exponential_pacing,
+    get_pacing_fraction,
+    linear_pacing,
+    step_pacing,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,6 +53,7 @@ def _make_samples_and_difficulties():
 # PacingConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_pacing_config_defaults():
     cfg = PacingConfig()
     assert cfg.pacing_fn == "linear"
@@ -65,6 +66,7 @@ def test_pacing_config_defaults():
 # ---------------------------------------------------------------------------
 # linear_pacing
 # ---------------------------------------------------------------------------
+
 
 def test_linear_pacing_at_step_0_returns_start():
     assert linear_pacing(0, 1000, 0.2, 1.0) == pytest.approx(0.2)
@@ -88,6 +90,7 @@ def test_linear_pacing_clamps_beyond_n_steps():
 # exponential_pacing
 # ---------------------------------------------------------------------------
 
+
 def test_exponential_pacing_at_step_0_near_start():
     val = exponential_pacing(0, 1000, 0.2, 1.0)
     assert val == pytest.approx(0.2, abs=1e-6)
@@ -107,6 +110,7 @@ def test_exponential_pacing_monotonically_increasing():
 # ---------------------------------------------------------------------------
 # step_pacing
 # ---------------------------------------------------------------------------
+
 
 def test_step_pacing_returns_discrete_levels():
     """Values should only increase at multiples of step_size."""
@@ -133,6 +137,7 @@ def test_step_pacing_at_step_0_returns_start():
 # get_pacing_fraction dispatches correctly
 # ---------------------------------------------------------------------------
 
+
 def test_get_pacing_fraction_dispatches_linear():
     cfg = PacingConfig(pacing_fn="linear", start_fraction=0.2, end_fraction=1.0, n_steps=1000)
     assert get_pacing_fraction(0, cfg) == pytest.approx(linear_pacing(0, 1000, 0.2, 1.0))
@@ -147,7 +152,9 @@ def test_get_pacing_fraction_dispatches_exponential():
 
 
 def test_get_pacing_fraction_dispatches_step():
-    cfg = PacingConfig(pacing_fn="step", start_fraction=0.2, end_fraction=1.0, n_steps=1000, step_size=100)
+    cfg = PacingConfig(
+        pacing_fn="step", start_fraction=0.2, end_fraction=1.0, n_steps=1000, step_size=100
+    )
     assert get_pacing_fraction(150, cfg) == pytest.approx(
         step_pacing(150, 100, 0.2, 1.0, 1000), rel=1e-5
     )
@@ -162,6 +169,7 @@ def test_get_pacing_fraction_raises_on_unknown():
 # ---------------------------------------------------------------------------
 # DifficultyScorer
 # ---------------------------------------------------------------------------
+
 
 def test_difficulty_scorer_score_shape():
     model = _small_model()
@@ -182,6 +190,7 @@ def test_difficulty_scorer_score_non_negative():
 # ---------------------------------------------------------------------------
 # CurriculumSampler
 # ---------------------------------------------------------------------------
+
 
 def test_curriculum_sampler_get_batch_correct_count():
     samples, difficulties = _make_samples_and_difficulties()

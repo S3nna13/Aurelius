@@ -18,6 +18,7 @@ Cache benefit: at inference we store c (kv_lrank floats/token) instead of
 K and V separately (2 * n_heads * head_dim floats/token).  The up-projections
 are absorbed into the pre-multiplied per-head query matrices.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -33,9 +34,9 @@ class FlashMLAConfig:
     d_model: int = 2048
     n_heads: int = 16
     head_dim: int = 128
-    kv_lrank: int = 512       # low-rank dim for KV compression
-    q_lrank: int = 1536       # low-rank dim for Q (optional, informational)
-    rope_dim: int = 64        # dimensions for RoPE (decoupled, reserved for future use)
+    kv_lrank: int = 512  # low-rank dim for KV compression
+    q_lrank: int = 1536  # low-rank dim for Q (optional, informational)
+    rope_dim: int = 64  # dimensions for RoPE (decoupled, reserved for future use)
     dropout: float = 0.0
 
 
@@ -68,7 +69,7 @@ class FlashMLAAttention(nn.Module):
         self.n_heads = cfg.n_heads
         self.head_dim = cfg.head_dim
         self.kv_lrank = cfg.kv_lrank
-        self.scale = cfg.head_dim ** -0.5
+        self.scale = cfg.head_dim**-0.5
 
         # Core projections
         self.kv_down = nn.Linear(cfg.d_model, cfg.kv_lrank, bias=False)
@@ -158,7 +159,9 @@ class FlashMLAAttention(nn.Module):
         V = self.v_up(c).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
 
         out = F.scaled_dot_product_attention(
-            Q, K, V,
+            Q,
+            K,
+            V,
             dropout_p=self.cfg.dropout if self.training else 0.0,
             is_causal=True,
         )
@@ -179,9 +182,7 @@ class FlashMLAAttention(nn.Module):
         we use W_q_h^T @ W_k_h -- not a re-scaled version).
         """
         if self.absorbed_qk is None:
-            raise RuntimeError(
-                "absorb_projections() must be called before use_absorbed=True."
-            )
+            raise RuntimeError("absorb_projections() must be called before use_absorbed=True.")
 
         # absorbed_qk: [n_heads, d_model, kv_lrank]
         # x:           [B, T, d_model]

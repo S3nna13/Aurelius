@@ -7,10 +7,10 @@ import torch
 import src.alignment as alignment_pkg
 from src.alignment import (
     bradley_terry_loss,
-    margin_ranking_loss,
-    listnet_loss,
-    ordinal_ranking_loss,
     dpo_pair_loss,
+    listnet_loss,
+    margin_ranking_loss,
+    ordinal_ranking_loss,
 )
 
 

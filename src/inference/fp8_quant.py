@@ -8,9 +8,11 @@ to its local dynamic range.
 
 Reference: DeepSeek-V3 Technical Report — per-block FP8 weight quantization.
 """
+
 from __future__ import annotations
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,7 +21,7 @@ import torch.nn.functional as F
 # Constants
 # ---------------------------------------------------------------------------
 
-BLOCK_SIZE: int = 128   # elements per quantization block
+BLOCK_SIZE: int = 128  # elements per quantization block
 FP8_MAX: float = 448.0  # float8_e4m3fn representable maximum
 
 # Detect native FP8 support (added in PyTorch 2.1)
@@ -30,6 +32,7 @@ STORAGE_DTYPE: torch.dtype = torch.float8_e4m3fn if HAS_FP8 else torch.int8  # t
 # ---------------------------------------------------------------------------
 # Core quantize / dequantize
 # ---------------------------------------------------------------------------
+
 
 def fp8_block_quantize(
     weight: torch.Tensor,
@@ -129,6 +132,7 @@ def fp8_block_dequantize(
 # FP8Linear layer
 # ---------------------------------------------------------------------------
 
+
 class FP8Linear(nn.Module):
     """Linear layer with FP8 weight storage.
 
@@ -155,18 +159,16 @@ class FP8Linear(nn.Module):
         w = torch.empty(out_features, in_features)
         nn.init.kaiming_uniform_(w, a=math.sqrt(5))
         w_q, scales = fp8_block_quantize(w)
-        self.register_buffer("weight_q", w_q)       # STORAGE_DTYPE
+        self.register_buffer("weight_q", w_q)  # STORAGE_DTYPE
         self.register_buffer("fp8_scales", scales)  # float32, (n_blocks,)
 
         if bias:
-            self.bias: nn.Parameter | None = nn.Parameter(
-                torch.zeros(out_features)
-            )
+            self.bias: nn.Parameter | None = nn.Parameter(torch.zeros(out_features))
         else:
             self.bias = None
 
     @classmethod
-    def from_linear(cls, linear: nn.Linear) -> "FP8Linear":
+    def from_linear(cls, linear: nn.Linear) -> FP8Linear:
         """Convert an existing ``nn.Linear`` to ``FP8Linear``.
 
         Args:
@@ -194,9 +196,7 @@ class FP8Linear(nn.Module):
         return obj
 
     def _dequantized_weight(self) -> torch.Tensor:
-        return fp8_block_dequantize(
-            self.weight_q, self.fp8_scales, self._original_shape
-        )
+        return fp8_block_dequantize(self.weight_q, self.fp8_scales, self._original_shape)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         w = self._dequantized_weight()
@@ -212,6 +212,7 @@ class FP8Linear(nn.Module):
 # ---------------------------------------------------------------------------
 # Model-level helpers
 # ---------------------------------------------------------------------------
+
 
 def quantize_model_fp8(
     model: nn.Module,
@@ -286,8 +287,8 @@ def compute_fp8_memory_savings(model: nn.Module) -> dict:
         # BF16 would be 2 bytes/element
         bf16_bytes += n * 2
 
-    fp8_memory_mb = fp8_bytes / (1024 ** 2)
-    bf16_memory_mb = bf16_bytes / (1024 ** 2)
+    fp8_memory_mb = fp8_bytes / (1024**2)
+    bf16_memory_mb = bf16_bytes / (1024**2)
     savings_factor = (bf16_memory_mb / fp8_memory_mb) if fp8_memory_mb > 0 else 1.0
 
     return {

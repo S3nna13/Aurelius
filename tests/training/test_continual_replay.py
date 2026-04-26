@@ -1,36 +1,44 @@
 """Tests for continual_replay: DER++, ring buffer replay, and EWC consolidation."""
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.continual_replay import (
+    ContinualReplayTrainer,
     ReplayConfig,
     ReplayExample,
     RingBufferReplay,
-    ContinualReplayTrainer,
-    der_loss,
     compute_ewc_penalty,
+    der_loss,
     estimate_fisher_diagonal,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_model():
     torch.manual_seed(42)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
 
-def make_example(seq_len: int = 16, vocab_size: int = 256, task_id: int = 0, with_logits: bool = False):
+def make_example(
+    seq_len: int = 16, vocab_size: int = 256, task_id: int = 0, with_logits: bool = False
+):
     ids = torch.randint(0, vocab_size, (seq_len,))
     labels = ids.clone()
     logits = torch.randn(seq_len, vocab_size) if with_logits else None
@@ -46,6 +54,7 @@ def make_example(seq_len: int = 16, vocab_size: int = 256, task_id: int = 0, wit
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_replay_config_defaults():
     """Test ReplayConfig has correct default values."""
@@ -183,9 +192,7 @@ def test_estimate_fisher_diagonal_keys():
 
     fisher = estimate_fisher_diagonal(model, data, n_samples=3)
 
-    expected_keys = {
-        name for name, p in model.named_parameters() if p.requires_grad
-    }
+    expected_keys = {name for name, p in model.named_parameters() if p.requires_grad}
     assert set(fisher.keys()) == expected_keys
     for name, val in fisher.items():
         assert val.shape == dict(model.named_parameters())[name].shape

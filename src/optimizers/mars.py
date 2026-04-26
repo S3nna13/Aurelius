@@ -132,8 +132,8 @@ class Mars(Optimizer):
                 exp_avg.mul_(beta1).add_(g_tilde, alpha=1.0 - beta1)
                 exp_avg_sq.mul_(beta2).addcmul_(g_tilde, g_tilde, value=1.0 - beta2)
 
-                bias_correction1 = 1.0 - beta1 ** step
-                bias_correction2 = 1.0 - beta2 ** step
+                bias_correction1 = 1.0 - beta1**step
+                bias_correction2 = 1.0 - beta2**step
 
                 m_hat = exp_avg / bias_correction1
                 v_hat = exp_avg_sq / bias_correction2

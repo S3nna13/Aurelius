@@ -18,17 +18,16 @@ Variable notation matches the paper:
 from __future__ import annotations
 
 import math
-from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # CALMConfidenceScorer
 # ---------------------------------------------------------------------------
+
 
 class CALMConfidenceScorer:
     """Computes scalar confidence c_l ∈ [0, 1] from layer-l logits.
@@ -44,8 +43,7 @@ class CALMConfidenceScorer:
     def __init__(self, method: str = "softmax_max") -> None:
         if method not in self.VALID_METHODS:
             raise ValueError(
-                f"Unknown confidence method '{method}'. "
-                f"Choose from {self.VALID_METHODS}."
+                f"Unknown confidence method '{method}'. Choose from {self.VALID_METHODS}."
             )
         self.method = method
 
@@ -86,6 +84,7 @@ class CALMConfidenceScorer:
 # CALMEarlyExitDecoder
 # ---------------------------------------------------------------------------
 
+
 class CALMEarlyExitDecoder(nn.Module):
     """Decides at which layer to exit for a single forward pass.
 
@@ -116,9 +115,9 @@ class CALMEarlyExitDecoder(nn.Module):
 
     def forward(
         self,
-        layer_outputs: List[Tensor],
+        layer_outputs: list[Tensor],
         lm_head: nn.Linear,
-    ) -> Tuple[Tensor, int, float]:
+    ) -> tuple[Tensor, int, float]:
         """Run adaptive exit over layer hidden states.
 
         Args:
@@ -132,14 +131,11 @@ class CALMEarlyExitDecoder(nn.Module):
               confidence   : float in [0, 1]
         """
         if len(layer_outputs) != self.n_layers:
-            raise ValueError(
-                f"Expected {self.n_layers} layer outputs, "
-                f"got {len(layer_outputs)}."
-            )
+            raise ValueError(f"Expected {self.n_layers} layer outputs, got {len(layer_outputs)}.")
 
         λ = self.threshold
 
-        for l, h_l in enumerate(layer_outputs):
+        for l, h_l in enumerate(layer_outputs):  # noqa: E741
             # h_l : (B, T, d_model)
             logits_l = lm_head(h_l)  # (B, T, V)
             c_l = self.scorer.score(logits_l)
@@ -154,6 +150,7 @@ class CALMEarlyExitDecoder(nn.Module):
 # ---------------------------------------------------------------------------
 # CALMCalibrator
 # ---------------------------------------------------------------------------
+
 
 class CALMCalibrator:
     """Finds optimal threshold λ via binary search on a calibration set.
@@ -178,7 +175,7 @@ class CALMCalibrator:
 
     def calibrate(
         self,
-        layer_outputs_list: List[List[Tensor]],
+        layer_outputs_list: list[list[Tensor]],
         lm_head: nn.Linear,
         target_coverage: float = 0.95,
     ) -> float:
@@ -195,17 +192,15 @@ class CALMCalibrator:
             Optimal threshold λ* ∈ [0, 1].
         """
         if not (0.0 < target_coverage <= 1.0):
-            raise ValueError(
-                f"target_coverage must be in (0, 1], got {target_coverage}."
-            )
+            raise ValueError(f"target_coverage must be in (0, 1], got {target_coverage}.")
         ε = 1.0 - target_coverage
 
         # Pre-compute full-model (last-layer) predictions for each example
-        full_preds: List[Tensor] = []
+        full_preds: list[Tensor] = []
         with torch.no_grad():
             for layer_outputs in layer_outputs_list:
-                h_last = layer_outputs[-1]           # (B, T, d_model)
-                logits_full = lm_head(h_last)        # (B, T, V)
+                h_last = layer_outputs[-1]  # (B, T, d_model)
+                logits_full = lm_head(h_last)  # (B, T, V)
                 full_preds.append(logits_full.argmax(dim=-1))  # (B, T)
 
         def error_rate_at(λ: float) -> float:
@@ -237,7 +232,7 @@ class CALMCalibrator:
                 best_λ = mid
                 hi = mid  # try lower λ (earlier exit)
             else:
-                lo = mid   # need higher λ to reduce errors
+                lo = mid  # need higher λ to reduce errors
 
         return float(best_λ)
 
@@ -245,6 +240,7 @@ class CALMCalibrator:
 # ---------------------------------------------------------------------------
 # CALMDecoder
 # ---------------------------------------------------------------------------
+
 
 class CALMDecoder(nn.Module):
     """High-level decoder wrapping CALMEarlyExitDecoder for multi-token decoding.
@@ -278,8 +274,8 @@ class CALMDecoder(nn.Module):
 
     def decode_step(
         self,
-        layer_outputs: List[Tensor],
-    ) -> Tuple[Tensor, List[int], List[float]]:
+        layer_outputs: list[Tensor],
+    ) -> tuple[Tensor, list[int], list[float]]:
         """Run CALM early exit for one decoding step.
 
         Unlike per-position iteration, this treats the full sequence (B, T, d)
@@ -302,7 +298,7 @@ class CALMDecoder(nn.Module):
         return token_ids, [exit_layer], [confidence]
 
     @staticmethod
-    def average_exit_layer(exit_layers: List[int]) -> float:
+    def average_exit_layer(exit_layers: list[int]) -> float:
         """Compute mean exit layer across decoding steps (efficiency metric).
 
         Lower value → more computation saved on average.

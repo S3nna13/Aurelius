@@ -4,6 +4,7 @@ Applies a random orthogonal rotation, per-vector min-max normalization,
 and Lloyd-Max quantization to KV cache vectors. Returns quantized state
 and residual for Stage 2 (QJL).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,10 +24,11 @@ class PolarQuantState:
       maxs:   per-vector maximum values (before normalization)
       Q:      the random orthogonal rotation matrix (shared across all vectors)
     """
-    codes: torch.Tensor   # shape (..., d), dtype=int64 — codebook indices
-    mins: torch.Tensor    # shape (..., 1) — per-vector mins
-    maxs: torch.Tensor    # shape (..., 1) — per-vector maxs
-    Q: torch.Tensor       # shape (d, d) — rotation matrix
+
+    codes: torch.Tensor  # shape (..., d), dtype=int64 — codebook indices
+    mins: torch.Tensor  # shape (..., 1) — per-vector mins
+    maxs: torch.Tensor  # shape (..., 1) — per-vector maxs
+    Q: torch.Tensor  # shape (d, d) — rotation matrix
 
 
 class PolarQuant:
@@ -69,17 +71,17 @@ class PolarQuant:
         x_rot = x_f @ self.Q.to(x_f.device)  # (..., dim)
 
         # Step 2: Per-vector min-max normalization to [0, 1]
-        mins = x_rot.min(dim=-1, keepdim=True).values   # (..., 1)
-        maxs = x_rot.max(dim=-1, keepdim=True).values   # (..., 1)
+        mins = x_rot.min(dim=-1, keepdim=True).values  # (..., 1)
+        maxs = x_rot.max(dim=-1, keepdim=True).values  # (..., 1)
         scale = (maxs - mins).clamp(min=1e-8)
-        x_norm = (x_rot - mins) / scale                  # (..., dim) in [0, 1]
+        x_norm = (x_rot - mins) / scale  # (..., dim) in [0, 1]
 
         # Step 3: Nearest-centroid quantization
         # codes[i] = argmin_j |x_norm[i] - codebook[j]|
-        cb = self.codebook.to(x_norm.device)             # (n_codes,)
+        cb = self.codebook.to(x_norm.device)  # (n_codes,)
         # Broadcast: (..., dim, 1) vs (n_codes,) -> (..., dim, n_codes)
         dists = (x_norm.unsqueeze(-1) - cb).abs()
-        codes = dists.argmin(dim=-1)                     # (..., dim), int64
+        codes = dists.argmin(dim=-1)  # (..., dim), int64
 
         state = PolarQuantState(codes=codes, mins=mins, maxs=maxs, Q=self.Q)
 
@@ -105,10 +107,10 @@ class PolarQuant:
 
         # Denormalize: undo min-max scaling
         scale = (state.maxs - state.mins).clamp(min=1e-8)
-        x_hat_rot = x_hat_norm * scale + state.mins   # (..., dim) in original rotated space
+        x_hat_rot = x_hat_norm * scale + state.mins  # (..., dim) in original rotated space
 
         # Undo rotation: x_hat = x_hat_rot @ Q^T  (Q is orthogonal so Q^-1 = Q^T)
         Q = state.Q.to(x_hat_rot.device)
-        x_hat = x_hat_rot @ Q.T                        # (..., dim)
+        x_hat = x_hat_rot @ Q.T  # (..., dim)
 
         return x_hat

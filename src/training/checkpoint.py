@@ -3,6 +3,7 @@
 Saves model weights + optimizer state + training metadata.
 Tracks best checkpoint (lowest validation loss) automatically.
 """
+
 from __future__ import annotations
 
 import json
@@ -10,7 +11,6 @@ import logging
 import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CheckpointMeta:
     """Metadata saved alongside each checkpoint."""
+
     step: int
     epoch: int
     train_loss: float
@@ -76,7 +77,11 @@ def save_checkpoint(
     config = {}
     if hasattr(model, "config"):
         try:
-            config = asdict(model.config) if hasattr(model.config, "__dataclass_fields__") else vars(model.config)
+            config = (
+                asdict(model.config)
+                if hasattr(model.config, "__dataclass_fields__")
+                else vars(model.config)
+            )
         except Exception:
             config = {}
 

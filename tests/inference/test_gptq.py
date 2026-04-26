@@ -1,9 +1,9 @@
 """Tests for GPTQ post-training quantization (src/inference/gptq.py)."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.gptq import (
     GPTQConfig,
@@ -34,6 +34,7 @@ def _make_hessian(n: int, seed: int = 0) -> torch.Tensor:
 # 1. GPTQConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestGPTQConfigDefaults:
     def test_gptq_config_defaults(self):
         cfg = GPTQConfig()
@@ -47,6 +48,7 @@ class TestGPTQConfigDefaults:
 # ---------------------------------------------------------------------------
 # 2. quantize_to_bits — output same shape as input
 # ---------------------------------------------------------------------------
+
 
 class TestQuantizeToBitsShape:
     def test_quantize_to_bits_shape(self):
@@ -62,6 +64,7 @@ class TestQuantizeToBitsShape:
 # 3. quantize_to_bits — values close to original for a well-scaled input
 # ---------------------------------------------------------------------------
 
+
 class TestQuantizeToBitsRange:
     def test_quantize_to_bits_range(self):
         """Dequantized values stay close to original for a low-range matrix."""
@@ -70,7 +73,7 @@ class TestQuantizeToBitsRange:
         x = torch.rand(OUT_FEATURES, IN_FEATURES) * 10.0
         x_min = x.min()
         x_max = x.max()
-        scale = (x_max - x_min) / (2 ** BITS - 1)
+        scale = (x_max - x_min) / (2**BITS - 1)
         zero = (-x_min / scale).round()
 
         out = quantize_to_bits(x, BITS, scale, zero)
@@ -82,6 +85,7 @@ class TestQuantizeToBitsRange:
 # 4. quantize_to_bits — 8-bit has lower error than 4-bit
 # ---------------------------------------------------------------------------
 
+
 class TestQuantizeToBitsInt8Precision:
     def test_quantize_to_bits_int8_precision(self):
         torch.manual_seed(3)
@@ -89,7 +93,7 @@ class TestQuantizeToBitsInt8Precision:
         x_min, x_max = x.min(), x.max()
 
         def _err(bits: int) -> float:
-            scale = (x_max - x_min) / (2 ** bits - 1)
+            scale = (x_max - x_min) / (2**bits - 1)
             zero = (-x_min / scale).round()
             out = quantize_to_bits(x, bits, scale, zero)
             return (out - x).abs().mean().item()
@@ -100,6 +104,7 @@ class TestQuantizeToBitsInt8Precision:
 # ---------------------------------------------------------------------------
 # 5. quantize_weight_gptq — W_quantized same shape as W
 # ---------------------------------------------------------------------------
+
 
 class TestQuantizeWeightGPTQShape:
     def test_quantize_weight_gptq_shape(self):
@@ -115,6 +120,7 @@ class TestQuantizeWeightGPTQShape:
 # ---------------------------------------------------------------------------
 # 6. quantize_weight_gptq — error bounded for identity H
 # ---------------------------------------------------------------------------
+
 
 class TestQuantizeWeightGPTQErrorBounded:
     def test_quantize_weight_gptq_error_bounded(self):
@@ -135,6 +141,7 @@ class TestQuantizeWeightGPTQErrorBounded:
 # 7. compute_hessian — H shape is (in_features, in_features)
 # ---------------------------------------------------------------------------
 
+
 class TestComputeHessianShape:
     def test_compute_hessian_shape(self):
         torch.manual_seed(6)
@@ -147,6 +154,7 @@ class TestComputeHessianShape:
 # ---------------------------------------------------------------------------
 # 8. compute_hessian — H is approximately symmetric
 # ---------------------------------------------------------------------------
+
 
 class TestComputeHessianSymmetric:
     def test_compute_hessian_symmetric(self):
@@ -161,6 +169,7 @@ class TestComputeHessianSymmetric:
 # 9. GPTQLinear forward — output shape (B, T, out_features)
 # ---------------------------------------------------------------------------
 
+
 class TestGPTQLinearForwardShape:
     def test_gptq_linear_forward_shape(self):
         q_layer = GPTQLinear(IN_FEATURES, OUT_FEATURES, bits=BITS, group_size=GROUP_SIZE)
@@ -173,6 +182,7 @@ class TestGPTQLinearForwardShape:
 # ---------------------------------------------------------------------------
 # 10. GPTQLinear.from_linear — creates GPTQLinear correctly
 # ---------------------------------------------------------------------------
+
 
 class TestGPTQLinearFromLinear:
     def test_gptq_linear_from_linear(self):
@@ -197,6 +207,7 @@ class TestGPTQLinearFromLinear:
 # ---------------------------------------------------------------------------
 # 11. apply_gptq_to_model — replaces Linear layers with GPTQLinear
 # ---------------------------------------------------------------------------
+
 
 class TestApplyGPTQToModel:
     def test_apply_gptq_to_model(self):

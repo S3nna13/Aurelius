@@ -2,23 +2,22 @@
 
 Inspired by Flamingo (DeepMind, 2204.14198), BLIP-2 late fusion (Salesforce, Apache-2.0, 2301.12597),
 Gemini multimodal fusion (Google DeepMind 2025), clean-room reimplementation.
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # FusionStrategy enum
 # ---------------------------------------------------------------------------
+
 
 class FusionStrategy(Enum):
     """Strategy for combining token streams from different modalities."""
@@ -32,6 +31,7 @@ class FusionStrategy(Enum):
 # ---------------------------------------------------------------------------
 # TokenFusionConfig dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TokenFusionConfig:
@@ -60,6 +60,7 @@ class TokenFusionConfig:
 # GatedFusion
 # ---------------------------------------------------------------------------
 
+
 class GatedFusion(nn.Module):
     """Sigmoid-gated element-wise fusion of text, vision, and audio token streams.
 
@@ -84,8 +85,8 @@ class GatedFusion(nn.Module):
     def forward(
         self,
         text: Tensor,
-        vision: Optional[Tensor] = None,
-        audio: Optional[Tensor] = None,
+        vision: Tensor | None = None,
+        audio: Tensor | None = None,
     ) -> Tensor:
         """Fuse modality token streams via sigmoid gating.
 
@@ -101,7 +102,7 @@ class GatedFusion(nn.Module):
 
         # Gated text contribution
         g_t = torch.sigmoid(self.text_gate(text))  # (B, T, d)
-        text_contrib = g_t * text                   # (B, T, d)
+        text_contrib = g_t * text  # (B, T, d)
 
         # Vision: mean-pool to (B, 1, d) then expand to (B, T, d)
         if vision is not None:
@@ -113,7 +114,7 @@ class GatedFusion(nn.Module):
 
         # Audio: mean-pool to (B, 1, d) then expand to (B, T, d)
         if audio is not None:
-            audio_pooled = audio.mean(dim=1, keepdim=True).expand(B, T, d)   # (B, T, d)
+            audio_pooled = audio.mean(dim=1, keepdim=True).expand(B, T, d)  # (B, T, d)
             g_a = torch.sigmoid(self.audio_gate(audio_pooled))
             audio_contrib = g_a * audio_pooled
         else:
@@ -125,6 +126,7 @@ class GatedFusion(nn.Module):
 # ---------------------------------------------------------------------------
 # WeightedSumFusion
 # ---------------------------------------------------------------------------
+
 
 class WeightedSumFusion(nn.Module):
     """Learnable softmax-weighted sum of three modality token streams.
@@ -144,9 +146,7 @@ class WeightedSumFusion(nn.Module):
         audio_weight: float = 0.2,
     ) -> None:
         super().__init__()
-        self.weights = nn.Parameter(
-            torch.tensor([text_weight, vision_weight, audio_weight])
-        )
+        self.weights = nn.Parameter(torch.tensor([text_weight, vision_weight, audio_weight]))
 
     def forward(self, text: Tensor, vision: Tensor, audio: Tensor) -> Tensor:
         """Weighted-sum fusion (all inputs must share the same shape).
@@ -167,6 +167,7 @@ class WeightedSumFusion(nn.Module):
 # MultimodalTokenFusion
 # ---------------------------------------------------------------------------
 
+
 class MultimodalTokenFusion(nn.Module):
     """Top-level late-fusion module that dispatches to the configured fusion strategy.
 
@@ -180,7 +181,11 @@ class MultimodalTokenFusion(nn.Module):
         super().__init__()
         self.config = config
 
-        if config.strategy in (FusionStrategy.GATED, FusionStrategy.CROSS_ATTN, FusionStrategy.CONCAT):
+        if config.strategy in (
+            FusionStrategy.GATED,
+            FusionStrategy.CROSS_ATTN,
+            FusionStrategy.CONCAT,
+        ):
             self.fusion = GatedFusion(d_model=config.d_model)
         elif config.strategy == FusionStrategy.WEIGHTED_SUM:
             self.fusion = WeightedSumFusion(
@@ -192,7 +197,7 @@ class MultimodalTokenFusion(nn.Module):
             raise ValueError(f"Unknown FusionStrategy: {config.strategy!r}")
 
     @classmethod
-    def from_config(cls, cfg: TokenFusionConfig) -> "MultimodalTokenFusion":
+    def from_config(cls, cfg: TokenFusionConfig) -> MultimodalTokenFusion:
         """Construct a MultimodalTokenFusion from a TokenFusionConfig.
 
         Args:
@@ -206,8 +211,8 @@ class MultimodalTokenFusion(nn.Module):
     def forward(
         self,
         text: Tensor,
-        vision: Optional[Tensor] = None,
-        audio: Optional[Tensor] = None,
+        vision: Tensor | None = None,
+        audio: Tensor | None = None,
     ) -> Tensor:
         """Fuse text, vision, and audio token streams.
 

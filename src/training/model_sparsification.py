@@ -8,20 +8,20 @@ Pure native PyTorch — no transformers, einops, or other heavy dependencies.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # SparsificationConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SparsificationConfig:
     """Configuration for the full sparsification pipeline."""
+
     target_sparsity: float = 0.9
     initial_sparsity: float = 0.0
     begin_step: int = 0
@@ -36,7 +36,8 @@ class SparsificationConfig:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _prunable_named_params(model: nn.Module) -> List[Tuple[str, nn.Parameter]]:
+
+def _prunable_named_params(model: nn.Module) -> list[tuple[str, nn.Parameter]]:
     """Return (name, param) pairs for weight tensors with >= 2 dimensions."""
     return [
         (name, param)
@@ -49,6 +50,7 @@ def _prunable_named_params(model: nn.Module) -> List[Tuple[str, nn.Parameter]]:
 # MagnitudePruner
 # ---------------------------------------------------------------------------
 
+
 class MagnitudePruner:
     """Unstructured magnitude-based weight pruning."""
 
@@ -56,9 +58,9 @@ class MagnitudePruner:
         self.target_sparsity = target_sparsity
 
     # ------------------------------------------------------------------
-    def compute_thresholds(self, model: nn.Module) -> Dict[str, float]:
+    def compute_thresholds(self, model: nn.Module) -> dict[str, float]:
         """Per-layer magnitude threshold achieving target_sparsity."""
-        thresholds: Dict[str, float] = {}
+        thresholds: dict[str, float] = {}
         for name, param in _prunable_named_params(model):
             magnitudes = param.data.abs().flatten()
             k = int(math.floor(self.target_sparsity * magnitudes.numel()))
@@ -71,17 +73,17 @@ class MagnitudePruner:
         return thresholds
 
     # ------------------------------------------------------------------
-    def create_masks(self, model: nn.Module) -> Dict[str, torch.Tensor]:
+    def create_masks(self, model: nn.Module) -> dict[str, torch.Tensor]:
         """Binary masks: 1 where |weight| > threshold (keep), 0 elsewhere (prune)."""
         thresholds = self.compute_thresholds(model)
-        masks: Dict[str, torch.Tensor] = {}
+        masks: dict[str, torch.Tensor] = {}
         for name, param in _prunable_named_params(model):
             thr = thresholds[name]
             masks[name] = (param.data.abs() > thr).float()
         return masks
 
     # ------------------------------------------------------------------
-    def apply_masks(self, model: nn.Module, masks: Dict[str, torch.Tensor]) -> None:
+    def apply_masks(self, model: nn.Module, masks: dict[str, torch.Tensor]) -> None:
         """Zero out pruned weights in-place (weight ← weight * mask)."""
         param_dict = dict(model.named_parameters())
         for name, mask in masks.items():
@@ -106,6 +108,7 @@ class MagnitudePruner:
 # MovementPruner
 # ---------------------------------------------------------------------------
 
+
 class MovementPruner:
     """Movement pruning: importance = |weight × gradient|, accumulated over steps."""
 
@@ -118,9 +121,8 @@ class MovementPruner:
         self.target_sparsity = target_sparsity
         self.warmup_steps = warmup_steps
         # Initialise score accumulators to zero
-        self.scores: Dict[str, torch.Tensor] = {
-            name: torch.zeros_like(param.data)
-            for name, param in _prunable_named_params(model)
+        self.scores: dict[str, torch.Tensor] = {
+            name: torch.zeros_like(param.data) for name, param in _prunable_named_params(model)
         }
         self._step = 0
 
@@ -138,9 +140,9 @@ class MovementPruner:
         self._step += 1
 
     # ------------------------------------------------------------------
-    def create_masks(self, threshold_percentile: float) -> Dict[str, torch.Tensor]:
+    def create_masks(self, threshold_percentile: float) -> dict[str, torch.Tensor]:
         """Binary masks based on accumulated movement scores at given percentile."""
-        masks: Dict[str, torch.Tensor] = {}
+        masks: dict[str, torch.Tensor] = {}
         for name, score in self.scores.items():
             flat = score.flatten()
             if flat.numel() == 0:
@@ -154,9 +156,7 @@ class MovementPruner:
         return masks
 
     # ------------------------------------------------------------------
-    def apply_masks(
-        self, model: nn.Module, masks: Dict[str, torch.Tensor]
-    ) -> None:
+    def apply_masks(self, model: nn.Module, masks: dict[str, torch.Tensor]) -> None:
         """Zero out pruned weights in-place."""
         param_dict = dict(model.named_parameters())
         for name, mask in masks.items():
@@ -168,6 +168,7 @@ class MovementPruner:
 # ---------------------------------------------------------------------------
 # SparsityScheduler
 # ---------------------------------------------------------------------------
+
 
 class SparsityScheduler:
     """Cubic sparsity schedule from initial_sparsity → final_sparsity."""
@@ -210,16 +211,13 @@ class SparsityScheduler:
     # ------------------------------------------------------------------
     def should_prune(self, step: int, freq: int = 100) -> bool:
         """True when step is a multiple of freq and within [begin_step, end_step]."""
-        return (
-            self.begin_step <= step <= self.end_step
-            and freq > 0
-            and step % freq == 0
-        )
+        return self.begin_step <= step <= self.end_step and freq > 0 and step % freq == 0
 
 
 # ---------------------------------------------------------------------------
 # HeadPruner
 # ---------------------------------------------------------------------------
+
 
 class HeadPruner:
     """Structured attention-head pruning based on attention entropy."""
@@ -237,9 +235,7 @@ class HeadPruner:
         return -(p * p.log()).sum(dim=-1).mean(dim=-1)  # mean over query positions
 
     # ------------------------------------------------------------------
-    def compute_head_importance(
-        self, attn_weights: List[torch.Tensor]
-    ) -> Dict[str, torch.Tensor]:
+    def compute_head_importance(self, attn_weights: list[torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Importance = mean |attention entropy| per head.
 
@@ -251,7 +247,7 @@ class HeadPruner:
         -------
         dict mapping layer index string → importance Tensor [n_heads]
         """
-        importance: Dict[str, torch.Tensor] = {}
+        importance: dict[str, torch.Tensor] = {}
         for layer_idx, attn in enumerate(attn_weights):
             # attn: [B, n_heads, T, T]
             # entropy per head: [B, n_heads]
@@ -261,8 +257,8 @@ class HeadPruner:
 
     # ------------------------------------------------------------------
     def prune_heads(
-        self, importance: Dict[str, torch.Tensor], n_to_prune: int
-    ) -> Dict[str, List[int]]:
+        self, importance: dict[str, torch.Tensor], n_to_prune: int
+    ) -> dict[str, list[int]]:
         """
         Select the n_to_prune heads with lowest importance globally.
 
@@ -271,7 +267,7 @@ class HeadPruner:
         dict mapping layer_name → list of head indices to prune
         """
         # Flatten all (layer_name, head_idx, importance_value) triples
-        candidates: List[Tuple[str, int, float]] = []
+        candidates: list[tuple[str, int, float]] = []
         for layer_name, imp in importance.items():
             for head_idx in range(imp.numel()):
                 candidates.append((layer_name, head_idx, imp[head_idx].item()))
@@ -279,15 +275,13 @@ class HeadPruner:
         # Sort ascending (lowest importance first)
         candidates.sort(key=lambda x: x[2])
 
-        to_prune: Dict[str, List[int]] = {}
+        to_prune: dict[str, list[int]] = {}
         for layer_name, head_idx, _ in candidates[:n_to_prune]:
             to_prune.setdefault(layer_name, []).append(head_idx)
         return to_prune
 
     # ------------------------------------------------------------------
-    def apply_head_masks(
-        self, model: nn.Module, head_masks: Dict[str, List[int]]
-    ) -> None:
+    def apply_head_masks(self, model: nn.Module, head_masks: dict[str, list[int]]) -> None:
         """
         Zero out attention projection weights for pruned heads.
 
@@ -296,7 +290,7 @@ class HeadPruner:
         to a head index.  Works with standard nn.MultiheadAttention and
         custom attention layers that expose an `out_proj` weight.
         """
-        named_modules = dict(model.named_modules())
+        dict(model.named_modules())
         named_params = dict(model.named_parameters())
 
         for layer_key, head_indices in head_masks.items():
@@ -313,6 +307,7 @@ class HeadPruner:
 # LoRARegrowth
 # ---------------------------------------------------------------------------
 
+
 class LoRARegrowth:
     """Re-grow pruned capacity via LoRA-style low-rank perturbations."""
 
@@ -322,8 +317,8 @@ class LoRARegrowth:
 
     # ------------------------------------------------------------------
     def regrow_pruned(
-        self, masks: Dict[str, torch.Tensor]
-    ) -> Dict[str, Tuple[nn.Parameter, nn.Parameter]]:
+        self, masks: dict[str, torch.Tensor]
+    ) -> dict[str, tuple[nn.Parameter, nn.Parameter]]:
         """
         For each pruned weight tensor, create LoRA A/B matrices.
 
@@ -334,7 +329,7 @@ class LoRARegrowth:
             B : [d_out, rank]
         """
         param_dict = dict(self.model.named_parameters())
-        lora_params: Dict[str, Tuple[nn.Parameter, nn.Parameter]] = {}
+        lora_params: dict[str, tuple[nn.Parameter, nn.Parameter]] = {}
 
         for name, mask in masks.items():
             if name not in param_dict:
@@ -356,8 +351,8 @@ class LoRARegrowth:
     def merge_and_reprune(
         self,
         model: nn.Module,
-        lora_params: Dict[str, Tuple[nn.Parameter, nn.Parameter]],
-        masks: Dict[str, torch.Tensor],
+        lora_params: dict[str, tuple[nn.Parameter, nn.Parameter]],
+        masks: dict[str, torch.Tensor],
     ) -> None:
         """
         Merge LoRA deltas back into weights and re-apply masks.
@@ -386,6 +381,7 @@ class LoRARegrowth:
 # PruningTrainer
 # ---------------------------------------------------------------------------
 
+
 class PruningTrainer:
     """Thin training wrapper that integrates pruning into the forward/backward pass."""
 
@@ -400,7 +396,7 @@ class PruningTrainer:
         self.pruner = pruner
         self.scheduler = scheduler
         self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        self._current_masks: Dict[str, torch.Tensor] = {}
+        self._current_masks: dict[str, torch.Tensor] = {}
 
     # ------------------------------------------------------------------
     def train_step(
@@ -408,7 +404,7 @@ class PruningTrainer:
         input_ids: torch.Tensor,
         labels: torch.Tensor,
         step: int,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Single training step with optional pruning.
 
@@ -428,9 +424,7 @@ class PruningTrainer:
         # Forward pass — model must accept (input_ids) and return logits [B, T, vocab]
         logits = self.model(input_ids)
         B, T, V = logits.shape
-        loss = nn.functional.cross_entropy(
-            logits.reshape(B * T, V), labels.reshape(B * T)
-        )
+        loss = nn.functional.cross_entropy(logits.reshape(B * T, V), labels.reshape(B * T))
         loss.backward()
 
         # Movement pruner: update scores from gradients before optimizer step
@@ -463,11 +457,9 @@ class PruningTrainer:
         return zeros / total if total > 0 else 0.0
 
     # ------------------------------------------------------------------
-    def get_pruning_stats(self) -> Dict[str, object]:
+    def get_pruning_stats(self) -> dict[str, object]:
         total = sum(p.numel() for _, p in _prunable_named_params(self.model))
-        zeros = sum(
-            (p.data == 0).sum().item() for _, p in _prunable_named_params(self.model)
-        )
+        zeros = sum((p.data == 0).sum().item() for _, p in _prunable_named_params(self.model))
         return {
             "current_sparsity": zeros / total if total > 0 else 0.0,
             "n_pruned_params": int(zeros),

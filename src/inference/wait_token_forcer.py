@@ -9,14 +9,15 @@ model to reason further.
 This is a *sequence-manipulation* approach distinct from the logit-bias
 approach used in token_budget_forcing.py.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class WaitTokenForcerConfig:
@@ -38,8 +39,8 @@ class WaitTokenForcerConfig:
                              spurious.
     """
 
-    end_think_token_id: int = 151645   # </think>
-    wait_token_id: int = 151649        # "Wait"
+    end_think_token_id: int = 151645  # </think>
+    wait_token_id: int = 151649  # "Wait"
     max_thinking_tokens: int = 16384
     max_wait_injections: int = 8
     min_thinking_tokens: int = 64
@@ -48,6 +49,7 @@ class WaitTokenForcerConfig:
 # ---------------------------------------------------------------------------
 # Core class
 # ---------------------------------------------------------------------------
+
 
 class WaitTokenForcer:
     """Inject wait tokens to prevent premature end-of-thinking.

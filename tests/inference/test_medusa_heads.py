@@ -1,14 +1,11 @@
 """Tests for src/inference/medusa_heads.py"""
 
-import pytest
 import torch
-import torch.nn as nn
-
 from aurelius.inference.medusa_heads import (
+    MedusaDecoder,
     MedusaHead,
     MedusaHeads,
     MedusaVerifier,
-    MedusaDecoder,
 )
 
 D_MODEL = 32
@@ -20,6 +17,7 @@ B, T = 2, 8
 # ---------------------------------------------------------------------------
 # MedusaHead
 # ---------------------------------------------------------------------------
+
 
 def test_medusa_head_output_shape():
     head = MedusaHead(D_MODEL, VOCAB_SIZE)
@@ -47,6 +45,7 @@ def test_medusa_head_gradient_flows():
 # ---------------------------------------------------------------------------
 # MedusaHeads
 # ---------------------------------------------------------------------------
+
 
 def test_medusa_heads_forward_returns_list():
     heads = MedusaHeads(D_MODEL, VOCAB_SIZE, n_heads=N_HEADS)
@@ -85,6 +84,7 @@ def test_medusa_heads_token_ids_in_vocab_range():
 # MedusaVerifier
 # ---------------------------------------------------------------------------
 
+
 def test_verifier_all_match():
     verifier = MedusaVerifier(n_heads=N_HEADS)
     base_tokens = torch.tensor([1, 2, 3, 4], dtype=torch.long)
@@ -116,9 +116,7 @@ def test_verifier_2d_head_predictions():
     verifier = MedusaVerifier(n_heads=3)
     # 2D case: head_predictions[i, i] is diagonal
     base_tokens = torch.tensor([10, 20, 30], dtype=torch.long)
-    head_preds_2d = torch.tensor(
-        [[10, 0, 0], [0, 20, 0], [0, 0, 30]], dtype=torch.long
-    )
+    head_preds_2d = torch.tensor([[10, 0, 0], [0, 20, 0], [0, 0, 30]], dtype=torch.long)
     accepted, n = verifier.verify(base_tokens, head_preds_2d)
     assert n == 3
 
@@ -126,6 +124,7 @@ def test_verifier_2d_head_predictions():
 # ---------------------------------------------------------------------------
 # MedusaDecoder
 # ---------------------------------------------------------------------------
+
 
 def _make_base_model_fn(vocab_size: int, seq_tokens: list):
     """Return a callable that always returns the next token from seq_tokens."""

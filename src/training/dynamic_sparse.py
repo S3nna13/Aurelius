@@ -15,19 +15,19 @@ Usage::
         info = trainer.train_step(batch["input_ids"])
         print(info["loss"], info["sparsity"])
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DynamicSparseConfig:
@@ -42,15 +42,17 @@ class DynamicSparseConfig:
         grow_method: How to select new connections when growing — "gradient"
             uses |grad * weight| scores, "random" samples uniformly.
     """
+
     sparsity: float = 0.9
     update_interval: int = 100
-    init_method: str = "random"   # "random" | "magnitude"
+    init_method: str = "random"  # "random" | "magnitude"
     grow_method: str = "gradient"  # "gradient" | "random"
 
 
 # ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
+
 
 def compute_sparsity(tensor: torch.Tensor) -> float:
     """Return the fraction of elements that are exactly zero.
@@ -88,7 +90,7 @@ def create_random_mask(shape: tuple, sparsity: float) -> torch.Tensor:
     return flat.reshape(shape)
 
 
-def apply_mask(model: nn.Module, masks: Dict[str, torch.Tensor]) -> None:
+def apply_mask(model: nn.Module, masks: dict[str, torch.Tensor]) -> None:
     """Zero out weights in-place for every parameter listed in *masks*.
 
     Args:
@@ -123,7 +125,7 @@ def compute_magnitude_mask(param: torch.Tensor, sparsity: float) -> torch.Tensor
     if mask.sum().item() > n_active:
         # Zero out the excess randomly from the tied positions
         excess = int(mask.sum().item()) - n_active
-        tied = ((param.data.abs() == threshold).float().flatten().nonzero(as_tuple=False).squeeze(1))
+        tied = (param.data.abs() == threshold).float().flatten().nonzero(as_tuple=False).squeeze(1)
         drop = tied[torch.randperm(tied.numel())[:excess]]
         mask_flat = mask.flatten()
         mask_flat[drop] = 0.0
@@ -151,12 +153,13 @@ def compute_gradient_scores(param: torch.Tensor) -> torch.Tensor:
 # RigL mask update
 # ---------------------------------------------------------------------------
 
+
 def rigl_update(
     model: nn.Module,
-    masks: Dict[str, torch.Tensor],
+    masks: dict[str, torch.Tensor],
     sparsity: float,
     grow_method: str = "gradient",
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """Perform one RigL mask update for every parameter in *masks*.
 
     For each masked parameter:
@@ -178,7 +181,7 @@ def rigl_update(
     Returns:
         New masks dict with the same keys.
     """
-    new_masks: Dict[str, torch.Tensor] = {}
+    new_masks: dict[str, torch.Tensor] = {}
 
     params_dict = dict(model.named_parameters())
 
@@ -246,6 +249,7 @@ def rigl_update(
 # Trainer
 # ---------------------------------------------------------------------------
 
+
 class DynamicSparseTrainer:
     """Training wrapper that applies RigL dynamic sparse training.
 
@@ -273,7 +277,7 @@ class DynamicSparseTrainer:
         self.step = 0
 
         # Initialise masks for every parameter that has >= 2 elements
-        self.masks: Dict[str, torch.Tensor] = {}
+        self.masks: dict[str, torch.Tensor] = {}
         for name, param in model.named_parameters():
             if param.numel() < 2:
                 continue

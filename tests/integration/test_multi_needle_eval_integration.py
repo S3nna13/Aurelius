@@ -34,9 +34,7 @@ def test_benchmark_registry_contains_niah_mk():
 
 
 def test_end_to_end_perfect_recovery_all_or_nothing():
-    cfg = MultiNeedleConfig(
-        num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=11
-    )
+    cfg = MultiNeedleConfig(num_needles=4, haystack_tokens=512, depth_profile="uniform", seed=11)
     s = multi_needle_build_sample(cfg)
     lines = "\n".join(f"{k}={v}" for (k, v) in sorted(s.gold))
     v = multi_needle_score(s, lines)

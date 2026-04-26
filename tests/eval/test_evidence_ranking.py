@@ -3,7 +3,12 @@
 import pytest
 import torch
 
-from src.eval.evidence_ranking import EvidenceItem, mean_reciprocal_rank, rank_evidence, topk_precision
+from src.eval.evidence_ranking import (
+    EvidenceItem,
+    mean_reciprocal_rank,
+    rank_evidence,
+    topk_precision,
+)
 
 
 def make_items():

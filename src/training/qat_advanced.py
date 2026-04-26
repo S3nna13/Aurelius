@@ -1,4 +1,5 @@
-"""Advanced quantization-aware training: LSQ learned step sizes, mixed-precision, and STE gradients."""
+"""Advanced quantization-aware training: LSQ learned step sizes, mixed-precision, and STE gradients."""  # noqa: E501
+
 from __future__ import annotations
 
 import math
@@ -20,9 +21,7 @@ class AdvancedQATConfig:
     use_lsq: bool = True  # learned step size quantization
     lsq_init_factor: float = 2.0  # LSQ step size init: 2 * mean(|w|) / sqrt(2^bits - 1)
     clip_val: float = 6.0  # activation clip value
-    mixed_precision_layers: list[str] = field(
-        default_factory=lambda: ["lm_head"]
-    )  # keep in fp16
+    mixed_precision_layers: list[str] = field(default_factory=lambda: ["lm_head"])  # keep in fp16
     warmup_steps: int = 1000  # steps before enabling quantization
 
 

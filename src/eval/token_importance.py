@@ -3,30 +3,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenImportanceConfig:
     """Configuration for token importance scoring."""
-    method: str = "gradient"          # "gradient" | "integrated_gradients" | "attention"
-    n_ig_steps: int = 20              # steps for integrated gradients
-    ig_baseline: str = "zero"         # "zero" | "mean"
-    aggregate: str = "l2"             # "l2" | "mean" | "max" over embedding dim
-    normalize: bool = True            # normalize scores to sum to 1
+
+    method: str = "gradient"  # "gradient" | "integrated_gradients" | "attention"
+    n_ig_steps: int = 20  # steps for integrated gradients
+    ig_baseline: str = "zero"  # "zero" | "mean"
+    aggregate: str = "l2"  # "l2" | "mean" | "max" over embedding dim
+    normalize: bool = True  # normalize scores to sum to 1
 
 
 # ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
+
 
 def aggregate_embeddings(emb_grad: Tensor, method: str) -> Tensor:
     """Aggregate gradient/embedding over embedding dimension.
@@ -60,7 +61,7 @@ def normalize_scores(scores: Tensor) -> Tensor:
     """
     row_sums = scores.sum(dim=-1, keepdim=True)  # (B, 1)
     # Avoid division by zero: rows with zero sum become uniform
-    zero_mask = (row_sums.squeeze(-1) == 0)  # (B,)
+    zero_mask = row_sums.squeeze(-1) == 0  # (B,)
     safe_sums = row_sums.clone()
     safe_sums[safe_sums == 0] = 1.0
     normalized = scores / safe_sums
@@ -78,11 +79,12 @@ def normalize_scores(scores: Tensor) -> Tensor:
 # Gradient saliency
 # ---------------------------------------------------------------------------
 
+
 def gradient_saliency(
     model: nn.Module,
-    input_ids: Tensor,          # (B, T)
-    target_position: int,       # which position's logit to differentiate
-    target_token: int,          # which vocab token to score
+    input_ids: Tensor,  # (B, T)
+    target_position: int,  # which position's logit to differentiate
+    target_token: int,  # which vocab token to score
 ) -> Tensor:
     """Compute gradient of logit[target_position, target_token] w.r.t. input embeddings.
 
@@ -94,7 +96,7 @@ def gradient_saliency(
     """
     model.eval()
 
-    saved_emb: List[Tensor] = []
+    saved_emb: list[Tensor] = []
 
     def _forward_hook(module: nn.Module, inp: tuple, output: Tensor) -> None:
         output.retain_grad()
@@ -128,13 +130,14 @@ def gradient_saliency(
 # Integrated gradients
 # ---------------------------------------------------------------------------
 
+
 def integrated_gradients(
     model: nn.Module,
-    input_ids: Tensor,          # (B, T)
+    input_ids: Tensor,  # (B, T)
     target_position: int,
     target_token: int,
     n_steps: int = 20,
-    baseline: str = "zero",     # "zero" | "mean"
+    baseline: str = "zero",  # "zero" | "mean"
 ) -> Tensor:
     """Integrated gradients approximation.
 
@@ -171,9 +174,10 @@ def integrated_gradients(
 # Attention importance
 # ---------------------------------------------------------------------------
 
+
 def attention_importance(
     model: nn.Module,
-    input_ids: Tensor,          # (B, T)
+    input_ids: Tensor,  # (B, T)
     target_position: int,
 ) -> Tensor:
     """Extract attention weights to target_position across all layers/heads, average.
@@ -187,22 +191,23 @@ def attention_importance(
     model.eval()
 
     import torch.nn.functional as _F
+
     import src.model.attention as _attn_module
 
-    captured_attn: List[Tensor] = []
+    captured_attn: list[Tensor] = []
     original_sdpa = _F.scaled_dot_product_attention
 
     def _patched_sdpa(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, **kwargs):
         # Compute attention weights manually
         B_, H_, S_q, D_ = query.shape
         S_kv = key.shape[2]
-        sc = D_ ** -0.5
+        sc = D_**-0.5
         scores = torch.matmul(query.float(), key.float().transpose(-2, -1)) * sc
         if is_causal and S_q > 1:
             causal_mask = torch.triu(
                 torch.ones(S_q, S_kv, device=query.device, dtype=torch.bool), diagonal=1
             )
-            scores = scores.masked_fill(causal_mask.unsqueeze(0).unsqueeze(0), float('-inf'))
+            scores = scores.masked_fill(causal_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
         if attn_mask is not None:
             scores = scores + attn_mask.float()
         weights = torch.softmax(scores, dim=-1)  # (B, H, S_q, S_kv)
@@ -224,7 +229,7 @@ def attention_importance(
     T = input_ids.shape[1]
 
     if captured_attn:
-        layer_scores: List[Tensor] = []
+        layer_scores: list[Tensor] = []
         for w in captured_attn:
             # w: (B, H, S_q, S_kv)
             if w.shape[2] > target_position:
@@ -241,6 +246,7 @@ def attention_importance(
 # ---------------------------------------------------------------------------
 # Unified scorer class
 # ---------------------------------------------------------------------------
+
 
 class TokenImportanceScorer:
     """Unified interface for token importance scoring."""
@@ -260,8 +266,12 @@ class TokenImportanceScorer:
             scores = aggregate_embeddings(raw, self.cfg.aggregate)
         elif self.cfg.method == "integrated_gradients":
             raw = integrated_gradients(
-                self.model, input_ids, target_position, target_token,
-                n_steps=self.cfg.n_ig_steps, baseline=self.cfg.ig_baseline,
+                self.model,
+                input_ids,
+                target_position,
+                target_token,
+                n_steps=self.cfg.n_ig_steps,
+                baseline=self.cfg.ig_baseline,
             )
             scores = aggregate_embeddings(raw, self.cfg.aggregate)
         elif self.cfg.method == "attention":

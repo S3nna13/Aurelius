@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.training.hard_negative import (
@@ -17,8 +16,8 @@ from src.training.hard_negative import (
 
 torch.manual_seed(42)
 
-D = 16   # embedding dimension
-N = 12   # total embeddings per batch
+D = 16  # embedding dimension
+N = 12  # total embeddings per batch
 
 
 def _make_embeddings(n: int = N, d: int = D, seed: int = 0) -> torch.Tensor:
@@ -36,9 +35,10 @@ def _make_labels(n: int = N, n_classes: int = 3) -> torch.Tensor:
 # 1. test_compute_cosine_distances_range
 # ---------------------------------------------------------------------------
 
+
 def test_compute_cosine_distances_range():
     """Cosine distances must lie in [0, 2]."""
-    miner = HardNegativeMiner(distance_metric='cosine')
+    miner = HardNegativeMiner(distance_metric="cosine")
     emb = _make_embeddings()
     dist = miner.compute_distances(emb)
 
@@ -51,9 +51,10 @@ def test_compute_cosine_distances_range():
 # 2. test_compute_euclidean_distances_positive
 # ---------------------------------------------------------------------------
 
+
 def test_compute_euclidean_distances_positive():
     """Euclidean distances must be >= 0."""
-    miner = HardNegativeMiner(distance_metric='euclidean')
+    miner = HardNegativeMiner(distance_metric="euclidean")
     emb = _make_embeddings()
     dist = miner.compute_distances(emb)
 
@@ -67,9 +68,10 @@ def test_compute_euclidean_distances_positive():
 # 3. test_mine_hardest_returns_negatives
 # ---------------------------------------------------------------------------
 
+
 def test_mine_hardest_returns_negatives():
     """Hardest-mined indices must have a different class than their anchors."""
-    miner = HardNegativeMiner(mining_strategy='hardest', distance_metric='cosine')
+    miner = HardNegativeMiner(mining_strategy="hardest", distance_metric="cosine")
     emb = _make_embeddings()
     labels = _make_labels()
     dist = miner.compute_distances(emb)
@@ -95,9 +97,10 @@ def test_mine_hardest_returns_negatives():
 # 4. test_mine_hardest_is_closest
 # ---------------------------------------------------------------------------
 
+
 def test_mine_hardest_is_closest():
     """Hardest negative must be the closest (smallest distance) among all valid negatives."""
-    miner = HardNegativeMiner(mining_strategy='hardest', distance_metric='euclidean')
+    miner = HardNegativeMiner(mining_strategy="hardest", distance_metric="euclidean")
     emb = _make_embeddings()
     labels = _make_labels()
     dist = miner.compute_distances(emb)
@@ -131,6 +134,7 @@ def test_mine_hardest_is_closest():
 # 5. test_mine_semi_hard_within_margin
 # ---------------------------------------------------------------------------
 
+
 def test_mine_semi_hard_within_margin():
     """
     When a semi-hard negative exists it must satisfy:
@@ -139,8 +143,8 @@ def test_mine_semi_hard_within_margin():
     margin = 0.5
     miner = HardNegativeMiner(
         margin=margin,
-        mining_strategy='semi_hard',
-        distance_metric='cosine',
+        mining_strategy="semi_hard",
+        distance_metric="cosine",
     )
     emb = _make_embeddings(n=20, seed=7)
     labels = _make_labels(n=20, n_classes=4)
@@ -169,13 +173,11 @@ def test_mine_semi_hard_within_margin():
         d_ap = dist[a, p].item()
 
         # Check there exists at least one semi-hard candidate
-        neg_mask = (labels != anchor_label)
+        neg_mask = labels != anchor_label
         neg_mask_no_self = neg_mask.clone()
         neg_mask_no_self[a] = False
         d_row = dist[a]
-        semi_exists = (
-            neg_mask_no_self & (d_row > d_ap) & (d_row < d_ap + margin)
-        ).any()
+        semi_exists = (neg_mask_no_self & (d_row > d_ap) & (d_row < d_ap + margin)).any()
 
         if semi_exists:
             d_an = dist[a, n].item()
@@ -193,6 +195,7 @@ def test_mine_semi_hard_within_margin():
 # 6. test_mine_semi_hard_fallback
 # ---------------------------------------------------------------------------
 
+
 def test_mine_semi_hard_fallback():
     """
     When no semi-hard negative exists, mine_semi_hard must return the hardest
@@ -200,8 +203,8 @@ def test_mine_semi_hard_fallback():
     """
     miner = HardNegativeMiner(
         margin=0.0,  # zero margin → semi-hard zone is empty
-        mining_strategy='semi_hard',
-        distance_metric='cosine',
+        mining_strategy="semi_hard",
+        distance_metric="cosine",
     )
     emb = _make_embeddings()
     labels = _make_labels()
@@ -224,18 +227,19 @@ def test_mine_semi_hard_fallback():
 # 7. test_mine_distance_weighted_valid_indices
 # ---------------------------------------------------------------------------
 
+
 def test_mine_distance_weighted_valid_indices():
     """Distance-weighted sampling must return valid in-range indices of a different class."""
     miner = HardNegativeMiner(
-        mining_strategy='distance_weighted',
-        distance_metric='cosine',
+        mining_strategy="distance_weighted",
+        distance_metric="cosine",
     )
     emb = _make_embeddings()
     labels = _make_labels()
     dist = miner.compute_distances(emb)
 
     anchor_idx = torch.arange(N)
-    positive_idx = (anchor_idx + 3) % N  # dummy positives (unused by this strategy)
+    (anchor_idx + 3) % N  # dummy positives (unused by this strategy)
 
     neg_idx = miner.mine_distance_weighted(anchor_idx, dist, labels)
 
@@ -244,7 +248,7 @@ def test_mine_distance_weighted_valid_indices():
         a = anchor_idx[i].item()
         n = neg_idx[i].item()
         assert 0 <= n < N, f"Index {n} out of range [0, {N})"
-        assert n != a, f"Negative must not be the anchor itself"
+        assert n != a, "Negative must not be the anchor itself"
         assert labels[n] != labels[a], (
             f"Anchor {a} (label {labels[a].item()}) and negative {n} "
             f"(label {labels[n].item()}) must have different labels"
@@ -254,6 +258,7 @@ def test_mine_distance_weighted_valid_indices():
 # ---------------------------------------------------------------------------
 # 8. test_triplet_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_triplet_loss_scalar():
     """TripletLossWithMining.forward() must return a 0-d scalar tensor."""
@@ -269,6 +274,7 @@ def test_triplet_loss_scalar():
 # 9. test_triplet_loss_positive
 # ---------------------------------------------------------------------------
 
+
 def test_triplet_loss_positive():
     """Triplet loss must be >= 0 (relu ensures non-negativity)."""
     loss_fn = TripletLossWithMining(margin=0.2)
@@ -283,13 +289,13 @@ def test_triplet_loss_positive():
 # 10. test_triplet_loss_zero_perfect
 # ---------------------------------------------------------------------------
 
+
 def test_triplet_loss_zero_perfect():
     """
     When the anchor equals the positive and the negative is far away,
     d(a,p)=0 and d(a,n) is large, so loss = max(0, 0 - large + margin) ≈ 0.
     """
     D_small = 8
-    n_classes = 2
     # Each class: two identical vectors (so anchor==positive in cosine space)
     base_pos = torch.zeros(D_small)
     base_pos[0] = 1.0
@@ -300,7 +306,7 @@ def test_triplet_loss_zero_perfect():
     emb = torch.stack([base_pos, base_pos, base_neg, base_neg])
     labels = torch.tensor([0, 0, 1, 1])
 
-    miner = HardNegativeMiner(margin=0.2, mining_strategy='hardest', distance_metric='cosine')
+    miner = HardNegativeMiner(margin=0.2, mining_strategy="hardest", distance_metric="cosine")
     loss_fn = TripletLossWithMining(margin=0.2, miner=miner)
     loss = loss_fn(emb, labels)
 
@@ -313,6 +319,7 @@ def test_triplet_loss_zero_perfect():
 # 11. test_preference_hard_negative_shape
 # ---------------------------------------------------------------------------
 
+
 def test_preference_hard_negative_shape():
     """find_hard_rejected must return a (B, d) tensor."""
     B = 6
@@ -321,14 +328,13 @@ def test_preference_hard_negative_shape():
     rejected = _make_embeddings(n=B, d=D, seed=2)
 
     hard_rej = phn.find_hard_rejected(chosen, rejected)
-    assert hard_rej.shape == (B, D), (
-        f"Expected shape ({B}, {D}), got {hard_rej.shape}"
-    )
+    assert hard_rej.shape == (B, D), f"Expected shape ({B}, {D}), got {hard_rej.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 12. test_preference_hard_negative_indices
 # ---------------------------------------------------------------------------
+
 
 def test_preference_hard_negative_indices():
     """hard_negative_indices must return a valid (B,) int tensor in [0, B)."""

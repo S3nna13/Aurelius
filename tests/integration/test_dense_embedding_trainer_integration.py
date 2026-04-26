@@ -79,7 +79,7 @@ def test_hermetic_import_does_not_pull_src_model() -> None:
         "assert not bad, f'src.model leaked into retrieval import: {bad}'\n"
         "print('OK')\n"
     )
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,

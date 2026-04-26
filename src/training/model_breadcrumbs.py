@@ -8,21 +8,21 @@ carefully chosen sparse subset of weights (e.g., the 1% with smallest absolute
 value). This degrades memorisation of specific data without substantially
 changing the model's general capabilities.
 """
+
 from __future__ import annotations
 
 import copy
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BreadcrumbConfig:
@@ -42,6 +42,7 @@ class BreadcrumbConfig:
               forget set (requires forget_inputs / forget_targets).
         seed: Base RNG seed for reproducibility.
     """
+
     sparsity: float = 0.99
     perturbation_scale: float = 0.01
     n_iterations: int = 5
@@ -53,11 +54,12 @@ class BreadcrumbConfig:
 # Core helpers
 # ---------------------------------------------------------------------------
 
+
 def select_weight_mask(
     param: Tensor,
     sparsity: float,
     method: str = "magnitude",
-    grad: Optional[Tensor] = None,
+    grad: Tensor | None = None,
 ) -> Tensor:
     """Return a boolean mask selecting (1 - sparsity) fraction of weights to perturb.
 
@@ -99,8 +101,7 @@ def select_weight_mask(
 
     else:
         raise ValueError(
-            f"Unknown selection_method: {method!r}. "
-            "Choose 'magnitude', 'random', or 'gradient'."
+            f"Unknown selection_method: {method!r}. Choose 'magnitude', 'random', or 'gradient'."
         )
 
     mask_flat[indices] = True
@@ -155,8 +156,8 @@ def apply_breadcrumb_perturbation(
 def compute_weight_masks(
     model: nn.Module,
     config: BreadcrumbConfig,
-    forget_inputs: Optional[Tensor] = None,
-    forget_targets: Optional[Tensor] = None,
+    forget_inputs: Tensor | None = None,
+    forget_targets: Tensor | None = None,
 ) -> dict[str, Tensor]:
     """Compute per-parameter boolean masks for every trainable parameter.
 
@@ -175,7 +176,7 @@ def compute_weight_masks(
     """
     torch.manual_seed(config.seed)
 
-    grads: dict[str, Optional[Tensor]] = {}
+    grads: dict[str, Tensor | None] = {}
 
     if config.selection_method == "gradient":
         if forget_inputs is None or forget_targets is None:
@@ -215,6 +216,7 @@ def compute_weight_masks(
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BreadcrumbResult:
     """Summary statistics from a breadcrumb unlearning run.
@@ -224,6 +226,7 @@ class BreadcrumbResult:
         fraction_changed: n_params_changed / total_trainable_parameters.
         perturbation_norms: Per-parameter L2 norm of the perturbation delta.
     """
+
     n_params_changed: int
     fraction_changed: float
     perturbation_norms: dict[str, float] = field(default_factory=dict)
@@ -232,6 +235,7 @@ class BreadcrumbResult:
 # ---------------------------------------------------------------------------
 # High-level API
 # ---------------------------------------------------------------------------
+
 
 class BreadcrumbUnlearner:
     """Apply Model Breadcrumbs for selective unlearning without full retraining.
@@ -249,8 +253,8 @@ class BreadcrumbUnlearner:
 
     def compute_masks(
         self,
-        forget_inputs: Optional[Tensor] = None,
-        forget_targets: Optional[Tensor] = None,
+        forget_inputs: Tensor | None = None,
+        forget_targets: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Compute sparse boolean masks using ``config.selection_method``.
 
@@ -281,9 +285,7 @@ class BreadcrumbUnlearner:
             Tuple of (perturbed_model, BreadcrumbResult).
         """
         current_model = self.model
-        total_params = sum(
-            p.numel() for p in self.model.parameters() if p.requires_grad
-        )
+        total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
         for iteration in range(self.config.n_iterations):
             iter_seed = self.config.seed + iteration
@@ -320,8 +322,8 @@ class BreadcrumbUnlearner:
 
     def run(
         self,
-        forget_inputs: Optional[Tensor] = None,
-        forget_targets: Optional[Tensor] = None,
+        forget_inputs: Tensor | None = None,
+        forget_targets: Tensor | None = None,
     ) -> tuple[nn.Module, BreadcrumbResult]:
         """Full pipeline: compute masks then apply perturbations.
 
@@ -342,6 +344,7 @@ class BreadcrumbUnlearner:
 # ---------------------------------------------------------------------------
 # Diagnostic utilities
 # ---------------------------------------------------------------------------
+
 
 def measure_weight_change(
     original_model: nn.Module,

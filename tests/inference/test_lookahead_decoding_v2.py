@@ -9,9 +9,8 @@
 Mock model: nn.Embedding + nn.Linear, deterministic via fixed seed.
   vocab_size=32, d_model=16
 """
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import pytest
 import torch
@@ -24,7 +23,6 @@ from src.inference.lookahead_decoding_v2 import (
     LookaheadVerifier,
     NGramPool,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -45,7 +43,7 @@ class MockModel(nn.Module):
 
     def forward(self, input_ids: LongTensor) -> LongTensor:  # (1, T) -> (1, T, V)
         x = self.embed(input_ids)  # (1, T, D)
-        return self.head(x)        # (1, T, V)
+        return self.head(x)  # (1, T, V)
 
 
 @pytest.fixture()
@@ -53,9 +51,11 @@ def model_fn():
     """Return a callable model_fn(ids) -> logits."""
     m = MockModel()
     m.eval()
+
     def _fn(ids: LongTensor) -> LongTensor:
         with torch.no_grad():
             return m(ids)
+
     return _fn
 
 
@@ -84,6 +84,7 @@ def decoder(model_fn) -> LookaheadDecoder:
 # 1. LookaheadConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestLookaheadConfig:
     def test_default_window_size(self, default_config):
         assert default_config.window_size == 5
@@ -101,6 +102,7 @@ class TestLookaheadConfig:
 # ---------------------------------------------------------------------------
 # 2. NGramPool
 # ---------------------------------------------------------------------------
+
 
 class TestNGramPool:
     def test_add_stores_ngrams(self, pool: NGramPool):
@@ -163,6 +165,7 @@ class TestNGramPool:
 # 3. LookaheadVerifier
 # ---------------------------------------------------------------------------
 
+
 class TestLookaheadVerifier:
     def test_verify_ngram_all_match(self, verifier: LookaheadVerifier):
         assert verifier.verify_ngram([1, 2, 3], [1, 2, 3]) == 3
@@ -175,9 +178,9 @@ class TestLookaheadVerifier:
 
     def test_select_best_candidate_returns_best(self, verifier: LookaheadVerifier):
         candidates = [
-            [9, 2, 3],   # 0 matches
-            [1, 2, 9],   # 2 matches
-            [1, 9, 3],   # 1 match
+            [9, 2, 3],  # 0 matches
+            [1, 2, 9],  # 2 matches
+            [1, 9, 3],  # 1 match
         ]
         best, n = verifier.select_best_candidate(candidates, ground_truth=[1, 2, 3])
         assert n == 2
@@ -193,6 +196,7 @@ class TestLookaheadVerifier:
 # 4. LookaheadDecoder
 # ---------------------------------------------------------------------------
 
+
 class TestLookaheadDecoder:
     def test_generate_returns_correct_length(self, decoder: LookaheadDecoder):
         """Output should have prompt_len + max_new_tokens columns."""
@@ -204,7 +208,7 @@ class TestLookaheadDecoder:
     def test_generated_tokens_in_valid_range(self, decoder: LookaheadDecoder):
         prompt = torch.tensor([[1, 2, 3]], dtype=torch.long)
         out = decoder.generate(prompt, max_new_tokens=8)
-        new_tokens = out[0, prompt.shape[1]:].tolist()
+        new_tokens = out[0, prompt.shape[1] :].tolist()
         assert all(0 <= t < VOCAB for t in new_tokens), f"Out-of-range tokens: {new_tokens}"
 
     def test_generate_step_returns_at_least_one_token(self, decoder: LookaheadDecoder):

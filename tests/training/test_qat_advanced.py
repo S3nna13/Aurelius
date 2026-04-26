@@ -1,21 +1,21 @@
 """Tests for advanced quantization-aware training (LSQ, STE, mixed-precision)."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
-from src.training.qat_advanced import (
-    AdvancedQATConfig,
-    round_ste,
-    clamp_ste,
-    LSQQuantizer,
-    FakeQuantLinear,
-    MixedPrecisionScheduler,
-    convert_to_fake_quant,
-)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.qat_advanced import (
+    AdvancedQATConfig,
+    FakeQuantLinear,
+    LSQQuantizer,
+    MixedPrecisionScheduler,
+    clamp_ste,
+    convert_to_fake_quant,
+    round_ste,
+)
 
 IN_FEATURES = 32
 OUT_FEATURES = 32
@@ -63,9 +63,7 @@ def test_round_ste_backward():
     y = round_ste(x)
     y.sum().backward()
     assert x.grad is not None
-    assert torch.allclose(x.grad, torch.ones(3)), (
-        f"Expected gradient of ones, got {x.grad}"
-    )
+    assert torch.allclose(x.grad, torch.ones(3)), f"Expected gradient of ones, got {x.grad}"
 
 
 # ---------------------------------------------------------------------------
@@ -93,9 +91,7 @@ def test_clamp_ste_backward_passes_through():
     y.sum().backward()
     assert x.grad is not None
     # STE: gradient is 1 everywhere (passes through clamp)
-    assert torch.allclose(x.grad, torch.ones(3)), (
-        f"Expected gradient of ones via STE, got {x.grad}"
-    )
+    assert torch.allclose(x.grad, torch.ones(3)), f"Expected gradient of ones via STE, got {x.grad}"
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +101,7 @@ def test_clamp_ste_backward_passes_through():
 
 def test_lsq_quantizer_output_shape():
     """LSQQuantizer output must have the same shape as input."""
-    cfg = AdvancedQATConfig()
+    AdvancedQATConfig()
     q = LSQQuantizer(bits=8, per_channel=True, n_channels=OUT_FEATURES)
     x = torch.randn(OUT_FEATURES, IN_FEATURES)
     out = q(x)
@@ -178,9 +174,7 @@ def test_fake_quant_linear_enabled_output_shape():
 
     x = torch.randn(2, 8, IN_FEATURES)
     out = fq(x)
-    assert out.shape == (2, 8, OUT_FEATURES), (
-        f"Expected (2, 8, {OUT_FEATURES}), got {out.shape}"
-    )
+    assert out.shape == (2, 8, OUT_FEATURES), f"Expected (2, 8, {OUT_FEATURES}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +281,5 @@ def test_convert_to_fake_quant_skips_mixed_precision():
     for name, module in model.named_modules():
         if "lm_head" in name and isinstance(module, (nn.Linear, FakeQuantLinear)):
             assert not isinstance(module, FakeQuantLinear), (
-                f"Layer '{name}' is in mixed_precision_layers but was converted "
-                f"to FakeQuantLinear"
+                f"Layer '{name}' is in mixed_precision_layers but was converted to FakeQuantLinear"
             )

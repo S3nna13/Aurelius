@@ -1,4 +1,5 @@
 """CLI configuration file parser for agent settings."""
+
 from __future__ import annotations
 
 import os
@@ -29,6 +30,7 @@ class CLIAppConfig:
 
     def save(self, path: str) -> None:
         import json
+
         data = {
             "data_dir": self.data_dir,
             "log_level": self.log_level,
@@ -43,6 +45,7 @@ class CLIAppConfig:
     @classmethod
     def load(cls, path: str) -> CLIAppConfig:
         import json
+
         with open(path) as f:
             data = json.load(f)
         return cls(

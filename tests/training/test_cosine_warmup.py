@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.optim as optim
@@ -15,15 +13,13 @@ from src.training.cosine_warmup import (
     get_lr_multiplier,
 )
 
-
 # ------------------------------------------------------------------------------- #
 # Helpers                                                                          #
 # ------------------------------------------------------------------------------- #
 
+
 def make_schedule(warmup=100, total=1000, min_lr_ratio=0.1):
-    return CosineWarmupSchedule(
-        warmup_steps=warmup, total_steps=total, min_lr_ratio=min_lr_ratio
-    )
+    return CosineWarmupSchedule(warmup_steps=warmup, total_steps=total, min_lr_ratio=min_lr_ratio)
 
 
 def make_optimizer(lr=1e-3):
@@ -34,6 +30,7 @@ def make_optimizer(lr=1e-3):
 # ------------------------------------------------------------------------------- #
 # Tests                                                                            #
 # ------------------------------------------------------------------------------- #
+
 
 def test_lr_at_step_0_is_zero():
     """At step 0 the multiplier should be 0 (start of warmup)."""
@@ -115,9 +112,7 @@ def test_multiple_param_groups():
     """Scheduler should correctly scale multiple param group lrs."""
     p1 = torch.nn.Parameter(torch.tensor(1.0))
     p2 = torch.nn.Parameter(torch.tensor(2.0))
-    opt = optim.Adam(
-        [{"params": [p1], "lr": 1e-3}, {"params": [p2], "lr": 1e-2}]
-    )
+    opt = optim.Adam([{"params": [p1], "lr": 1e-3}, {"params": [p2], "lr": 1e-2}])
     scheduler = WarmupCosineScheduler(opt, warmup_steps=10, total_steps=100)
     # Step into cosine decay region
     for _ in range(50):

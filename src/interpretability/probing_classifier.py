@@ -2,10 +2,10 @@
 
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class ProbeTask(str, Enum):
+class ProbeTask(StrEnum):
     POS_TAGGING = "pos_tagging"
     SENTIMENT = "sentiment"
     SYNTAX_DEPTH = "syntax_depth"
@@ -32,7 +32,7 @@ class LinearProbe:
 
     def _softmax(self, logits: list[float]) -> list[float]:
         max_l = max(logits)
-        exps = [math.exp(l - max_l) for l in logits]
+        exps = [math.exp(line - max_l) for line in logits]
         total = sum(exps)
         return [e / total for e in exps]
 

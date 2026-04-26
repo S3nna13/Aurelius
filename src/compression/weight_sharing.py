@@ -1,4 +1,5 @@
 """Weight sharing / parameter tying for model compression."""
+
 from __future__ import annotations
 
 import random
@@ -8,6 +9,7 @@ from dataclasses import dataclass
 @dataclass
 class SharingGroup:
     """A group of parameters that share a single set of centroid values."""
+
     group_id: str
     param_names: list[str]
     shared_value: list[float]
@@ -16,6 +18,7 @@ class SharingGroup:
 @dataclass(frozen=True)
 class WeightSharingConfig:
     """Configuration for weight-sharing / k-means clustering."""
+
     num_clusters: int = 256
     bits: int = 8
 

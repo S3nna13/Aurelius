@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -79,13 +79,9 @@ class EvalHarness:
             "mean_score": mean_score,
         }
 
-    def filter_by_category(
-        self, results: list[EvalResult], category: str
-    ) -> list[EvalResult]:
+    def filter_by_category(self, results: list[EvalResult], category: str) -> list[EvalResult]:
         """Return only results whose task_id matches tasks in the given category."""
-        category_ids = {
-            t.task_id for t in self.tasks if t.category == category
-        }
+        category_ids = {t.task_id for t in self.tasks if t.category == category}
         return [r for r in results if r.task_id in category_ids]
 
 

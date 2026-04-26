@@ -27,18 +27,20 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class IntermDistillConfig:
-    temperature: float = 4.0        # softmax temperature for output KD
-    alpha_pred: float = 0.5         # weight for prediction loss
-    alpha_hidden: float = 0.33      # weight for hidden state loss
-    alpha_attn: float = 0.17        # weight for attention loss
+    temperature: float = 4.0  # softmax temperature for output KD
+    alpha_pred: float = 0.5  # weight for prediction loss
+    alpha_hidden: float = 0.33  # weight for hidden state loss
+    alpha_attn: float = 0.17  # weight for attention loss
     layer_mapping: str = "uniform"  # "uniform" | "last_n" | "every_other"
 
 
 # ---------------------------------------------------------------------------
 # Layer mapper
 # ---------------------------------------------------------------------------
+
 
 class LayerMapper:
     """Maps student layers to teacher layers for knowledge transfer.
@@ -90,6 +92,7 @@ class LayerMapper:
 # Alignment projection
 # ---------------------------------------------------------------------------
 
+
 class AlignmentProjection(nn.Module):
     """Learnable projection to align student hidden dim to teacher hidden dim.
 
@@ -115,6 +118,7 @@ class AlignmentProjection(nn.Module):
 # ---------------------------------------------------------------------------
 # Main distillation loss module
 # ---------------------------------------------------------------------------
+
 
 class IntermediateDistillationLoss(nn.Module):
     """Compute multi-level distillation loss.
@@ -151,10 +155,7 @@ class IntermediateDistillationLoss(nn.Module):
         # One AlignmentProjection per student layer — registered as nn.ModuleList
         # so their parameters participate in optimisation.
         self.hidden_proj = nn.ModuleList(
-            [
-                AlignmentProjection(student_d_model, teacher_d_model)
-                for _ in range(n_student_layers)
-            ]
+            [AlignmentProjection(student_d_model, teacher_d_model) for _ in range(n_student_layers)]
         )
 
     # ------------------------------------------------------------------
@@ -192,20 +193,20 @@ class IntermediateDistillationLoss(nn.Module):
         device = student_attn_maps[0].device
         total = torch.zeros(1, device=device).squeeze()
         for s_idx, t_idx in mapping:
-            s_map = student_attn_maps[s_idx]   # (B, H_s, T, T)
-            t_map = teacher_attn_maps[t_idx]   # (B, H_t, T, T)
+            s_map = student_attn_maps[s_idx]  # (B, H_s, T, T)
+            t_map = teacher_attn_maps[t_idx]  # (B, H_t, T, T)
 
             # Average over the head dimension
-            s_avg = s_map.mean(dim=1)   # (B, T, T)
-            t_avg = t_map.mean(dim=1)   # (B, T, T)
+            s_avg = s_map.mean(dim=1)  # (B, T, T)
+            t_avg = t_map.mean(dim=1)  # (B, T, T)
 
             total = total + F.mse_loss(s_avg, t_avg.detach())
         return total / len(mapping)
 
     def prediction_loss(
         self,
-        student_logits: torch.Tensor,   # (B, T, V_student)
-        teacher_logits: torch.Tensor,   # (B, T, V_teacher)
+        student_logits: torch.Tensor,  # (B, T, V_student)
+        teacher_logits: torch.Tensor,  # (B, T, V_teacher)
         temperature: float | None = None,
     ) -> torch.Tensor:
         """KL divergence: KL(student_soft || teacher_soft).
@@ -221,8 +222,8 @@ class IntermediateDistillationLoss(nn.Module):
         V_t = teacher_logits.shape[-1]
         V = min(V_s, V_t)
 
-        s_logits = student_logits[..., :V]   # (B, S, V)
-        t_logits = teacher_logits[..., :V]   # (B, S, V)
+        s_logits = student_logits[..., :V]  # (B, S, V)
+        t_logits = teacher_logits[..., :V]  # (B, S, V)
 
         B, S, _ = s_logits.shape
         s_flat = s_logits.reshape(B * S, V)
@@ -232,7 +233,7 @@ class IntermediateDistillationLoss(nn.Module):
         teacher_probs = F.softmax(t_flat.detach() / T, dim=-1)
 
         kl = F.kl_div(log_student, teacher_probs, reduction="batchmean")
-        return kl * (T ** 2)
+        return kl * (T**2)
 
     # ------------------------------------------------------------------
     # Forward
@@ -285,6 +286,7 @@ class IntermediateDistillationLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class IntermDistillTrainer:
     """Trainer that runs teacher forward (no_grad) and student forward,
@@ -372,10 +374,12 @@ class IntermDistillTrainer:
         hooks: list = []
 
         for i in range(n_layers):
+
             def make_hook(idx: int):
                 def hook(module, inputs, outputs):
                     hidden = outputs[0] if isinstance(outputs, (tuple, list)) else outputs
                     captures["hiddens"][idx] = hidden
+
                 return hook
 
             h = model.layers[i].register_forward_hook(make_hook(i))
@@ -411,9 +415,7 @@ class IntermDistillTrainer:
         for h in teacher_hooks:
             h.remove()
 
-        teacher_hiddens = [
-            t.detach() for t in teacher_caps["hiddens"] if t is not None
-        ]
+        teacher_hiddens = [t.detach() for t in teacher_caps["hiddens"] if t is not None]
 
         # --- Student forward ---
         student_hooks, student_caps = self._capture_hiddens(self.student)

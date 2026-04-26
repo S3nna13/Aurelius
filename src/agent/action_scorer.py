@@ -9,26 +9,28 @@ negative to penalise undesirable dimensions (risk, cost by default).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ScoreLambdas:
     """Weighting coefficients for each scoring dimension."""
+
     utility: float = 1.0
     info_gain: float = 0.5
-    risk: float = -1.5      # negative: penalizes risk
-    cost: float = -0.2      # negative: penalizes cost
+    risk: float = -1.5  # negative: penalizes risk
+    cost: float = -0.2  # negative: penalizes cost
 
 
 @dataclass
 class ActionScore:
     """Raw dimension scores plus the weighted total."""
+
     utility: float
     info_gain: float
     risk: float
@@ -40,11 +42,12 @@ class ActionScore:
 # Scorer
 # ---------------------------------------------------------------------------
 
+
 class ActionScorer:
     """Score and rank candidate actions against the current agent state."""
 
     HIGH_RISK = frozenset({"delete", "write_file", "execute", "shell", "deploy", "drop", "rm"})
-    MED_RISK  = frozenset({"read_file", "api_call", "network", "http"})
+    MED_RISK = frozenset({"read_file", "api_call", "network", "http"})
     INFO_ACTIONS = frozenset({"search", "retrieve", "query", "fetch", "lookup"})
 
     # ------------------------------------------------------------------
@@ -128,12 +131,7 @@ class ActionScorer:
         r = self.estimate_risk(action, state, policy)
         c = self.estimate_cost(action)
 
-        total = (
-            lambdas.utility   * u
-            + lambdas.info_gain * i
-            + lambdas.risk      * r
-            + lambdas.cost      * c
-        )
+        total = lambdas.utility * u + lambdas.info_gain * i + lambdas.risk * r + lambdas.cost * c
 
         return ActionScore(utility=u, info_gain=i, risk=r, cost=c, total=total)
 

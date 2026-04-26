@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 import torch
 import torch.nn.functional as F
@@ -24,6 +24,7 @@ class SamplingConfig:
 # ---------------------------------------------------------------------------
 # Individual filter functions
 # ---------------------------------------------------------------------------
+
 
 def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
     """Divide logits by temperature.
@@ -156,10 +157,11 @@ def apply_typical_p(logits: torch.Tensor, mass: float) -> torch.Tensor:
 # Unified sampling entry point
 # ---------------------------------------------------------------------------
 
+
 def sample_token(
     logits: torch.Tensor,
     config: SamplingConfig,
-    input_ids: Optional[torch.Tensor] = None,
+    input_ids: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Apply all configured filters then draw one token via multinomial sampling.
 
@@ -195,6 +197,7 @@ def sample_token(
 # ---------------------------------------------------------------------------
 # Decoder classes
 # ---------------------------------------------------------------------------
+
 
 class SamplingDecoder:
     """Autoregressive decoder that uses sample_token at each step."""

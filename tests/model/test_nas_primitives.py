@@ -1,18 +1,18 @@
 """Tests for NAS primitives: mixed operations, weight sharing, and DARTS-style search."""
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.model.nas_primitives import (
-    NASConfig,
-    IdentityOp,
-    ZeroOp,
-    LinearOp,
     ConvOp,
-    MixedOperation,
     DARTSCell,
+    IdentityOp,
+    LinearOp,
+    MixedOperation,
     NASArchitectureOptimizer,
+    NASConfig,
+    ZeroOp,
     discretize_architecture,
 )
 
@@ -24,6 +24,7 @@ B, T, D = 2, 8, 64
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def _sample_input() -> torch.Tensor:
     torch.manual_seed(0)
@@ -38,6 +39,7 @@ def _default_ops(d_model: int = D) -> list:
 # 1. NASConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_nas_config_defaults():
     cfg = NASConfig()
     assert cfg.n_ops == 4
@@ -49,6 +51,7 @@ def test_nas_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. IdentityOp shape
 # ---------------------------------------------------------------------------
+
 
 def test_identity_op_shape():
     op = IdentityOp()
@@ -62,6 +65,7 @@ def test_identity_op_shape():
 # 3. ZeroOp zeros
 # ---------------------------------------------------------------------------
 
+
 def test_zero_op_zeros():
     op = ZeroOp()
     x = _sample_input()
@@ -74,6 +78,7 @@ def test_zero_op_zeros():
 # 4. LinearOp shape
 # ---------------------------------------------------------------------------
 
+
 def test_linear_op_shape():
     op = LinearOp(D)
     x = _sample_input()
@@ -85,6 +90,7 @@ def test_linear_op_shape():
 # 5. ConvOp shape
 # ---------------------------------------------------------------------------
 
+
 def test_conv_op_shape():
     op = ConvOp(D)
     x = _sample_input()
@@ -95,6 +101,7 @@ def test_conv_op_shape():
 # ---------------------------------------------------------------------------
 # 6. MixedOperation output shape
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_operation_output_shape():
     cfg = NASConfig(d_model=D)
@@ -108,10 +115,12 @@ def test_mixed_operation_output_shape():
 # 7. MixedOperation softmax weights sum to 1
 # ---------------------------------------------------------------------------
 
+
 def test_mixed_operation_weights_sum_one():
     cfg = NASConfig(d_model=D)
     mixed = MixedOperation(_default_ops(), cfg)
     import torch.nn.functional as F
+
     weights = F.softmax(mixed.arch_weights / cfg.temperature, dim=0)
     assert abs(weights.sum().item() - 1.0) < 1e-5
 
@@ -119,6 +128,7 @@ def test_mixed_operation_weights_sum_one():
 # ---------------------------------------------------------------------------
 # 8. MixedOperation gumbel_forward shape
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_operation_gumbel_shape():
     cfg = NASConfig(d_model=D)
@@ -132,6 +142,7 @@ def test_mixed_operation_gumbel_shape():
 # 9. DARTSCell output shape
 # ---------------------------------------------------------------------------
 
+
 def test_darts_cell_output_shape():
     cfg = NASConfig(d_model=D)
     cell = DARTSCell(n_nodes=3, d_model=D, config=cfg)
@@ -143,6 +154,7 @@ def test_darts_cell_output_shape():
 # ---------------------------------------------------------------------------
 # 10. DARTSCell get_architecture_weights returns dict
 # ---------------------------------------------------------------------------
+
 
 def test_darts_cell_arch_weights_dict():
     cfg = NASConfig(d_model=D)
@@ -158,6 +170,7 @@ def test_darts_cell_arch_weights_dict():
 # ---------------------------------------------------------------------------
 # 11. discretize_architecture keys
 # ---------------------------------------------------------------------------
+
 
 def test_discretize_architecture_keys():
     cfg = NASConfig(d_model=D)
@@ -177,6 +190,7 @@ def test_discretize_architecture_keys():
 # ---------------------------------------------------------------------------
 # 12. NASArchitectureOptimizer param groups non-empty
 # ---------------------------------------------------------------------------
+
 
 def test_nas_optimizer_param_groups():
     cfg = NASConfig(d_model=D)

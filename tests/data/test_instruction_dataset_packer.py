@@ -70,7 +70,7 @@ def test_segment_ids_increment():
     pb = out[0]
     seg = pb.segment_ids[0].tolist()
     # First sample seg=1 occupies positions 0..? Depending on FFD order by length desc:
-    # lengths: 6, 4, 8 -> sorted: 8,6,4. So bin order: base=100 (seg1), base=1 (seg2), base=50 (seg3).
+    # lengths: 6, 4, 8 -> sorted: 8,6,4. So bin order: base=100 (seg1), base=1 (seg2), base=50 (seg3).  # noqa: E501
     unique_in_order = []
     for v in seg:
         if v != 0 and (not unique_in_order or unique_in_order[-1] != v):
@@ -115,7 +115,7 @@ def test_pad_fills_remainder():
     pb = out[0]
     seg = pb.segment_ids[0]
     # All positions where seg==0 must be pad_token_id.
-    pad_positions = (seg == 0)
+    pad_positions = seg == 0
     assert pad_positions.sum().item() == 11
     assert torch.all(pb.input_ids[0][pad_positions] == 7).item()
 
@@ -166,9 +166,7 @@ def test_single_sample_pack():
 
 
 def test_cross_sample_attention_when_boundaries_disabled():
-    packer = InstructionDatasetPacker(
-        max_seq_len=16, respect_sample_boundaries=False
-    )
+    packer = InstructionDatasetPacker(max_seq_len=16, respect_sample_boundaries=False)
     out = packer.pack([_mk(2, 2, base=1), _mk(2, 2, base=50)])
     pb = out[0]
     attn = pb.attention_mask[0]

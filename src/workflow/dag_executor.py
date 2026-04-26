@@ -1,11 +1,12 @@
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable
+from enum import StrEnum
+from typing import Any
 
 
-class NodeStatus(str, Enum):
+class NodeStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -75,8 +76,11 @@ class DAGExecutor:
         for nid in order:
             node = self._nodes[nid]
             failed_dep = next(
-                (d for d in node.dependencies
-                 if results.get(d) and results[d].status != NodeStatus.COMPLETED),
+                (
+                    d
+                    for d in node.dependencies
+                    if results.get(d) and results[d].status != NodeStatus.COMPLETED
+                ),
                 None,
             )
             if failed_dep is not None:

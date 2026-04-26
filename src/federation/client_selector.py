@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class SelectionStrategy(str, Enum):
+class SelectionStrategy(StrEnum):
     RANDOM = "RANDOM"
     POWER_OF_CHOICE = "POWER_OF_CHOICE"
     RESOURCE_AWARE = "RESOURCE_AWARE"
@@ -57,9 +57,7 @@ class ClientSelector:
             selected = candidates[:k]
 
         elif self.strategy == SelectionStrategy.RESOURCE_AWARE:
-            sorted_profiles = sorted(
-                profiles, key=lambda p: p.compute_score, reverse=True
-            )
+            sorted_profiles = sorted(profiles, key=lambda p: p.compute_score, reverse=True)
             selected = sorted_profiles[:k]
 
         elif self.strategy == SelectionStrategy.ROUND_ROBIN:

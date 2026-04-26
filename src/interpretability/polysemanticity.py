@@ -16,15 +16,14 @@ Pure PyTorch — no HuggingFace, no scipy, no sklearn, no einops.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # PolysemanticitAnalyzer  (typo preserved from spec)
 # ---------------------------------------------------------------------------
+
 
 class PolysemanticitAnalyzer:
     """
@@ -130,9 +129,7 @@ class PolysemanticitAnalyzer:
         float
         """
         if activations.dim() != 2:
-            raise ValueError(
-                f"activations must be 2-D (N, d), got shape {activations.shape}"
-            )
+            raise ValueError(f"activations must be 2-D (N, d), got shape {activations.shape}")
 
         N, d = activations.shape
         # Compute A^T A / N — symmetric positive semi-definite
@@ -145,13 +142,13 @@ class PolysemanticitAnalyzer:
         eigenvalues = eigenvalues.clamp(min=0.0)
 
         sum_lam = eigenvalues.sum()
-        sum_lam2 = (eigenvalues ** 2).sum()
+        sum_lam2 = (eigenvalues**2).sum()
 
         if sum_lam2 < self.eps:
             # Zero matrix — convention: PR = 1
             return 1.0
 
-        pr = (sum_lam ** 2) / sum_lam2
+        pr = (sum_lam**2) / sum_lam2
         return pr.item()
 
     # ------------------------------------------------------------------
@@ -224,9 +221,7 @@ class PolysemanticitAnalyzer:
         Tensor of shape (d,) with values in [0, 1].
         """
         if activations.dim() != 2:
-            raise ValueError(
-                f"activations must be 2-D (N, d), got shape {activations.shape}"
-            )
+            raise ValueError(f"activations must be 2-D (N, d), got shape {activations.shape}")
         # (N, d) → bool mask, average over N
         sparse_mask = (activations.abs() < self.threshold).float()
         return sparse_mask.mean(dim=0)  # (d,)
@@ -293,7 +288,7 @@ class PolysemanticitAnalyzer:
     def analyze(
         self,
         W: Tensor,
-        activations: Optional[Tensor] = None,
+        activations: Tensor | None = None,
     ) -> dict:
         """
         Full polysemanticity / superposition analysis.

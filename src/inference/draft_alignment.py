@@ -28,4 +28,3 @@ def first_misalignment(draft: torch.Tensor, target: torch.Tensor) -> int | None:
     if mismatches.numel() == 0:
         return None
     return int(mismatches[0].item())
-

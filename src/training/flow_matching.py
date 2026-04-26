@@ -9,6 +9,7 @@ Objective:
 
 where x_t = (1-t)*x0 + t*x1 and u_t = x1 - x0.
 """
+
 from __future__ import annotations
 
 import math
@@ -24,10 +25,10 @@ from torch import Tensor
 class FlowConfig:
     """Configuration for flow matching."""
 
-    sigma: float = 0.1          # noise level (unused in basic CFM but available for extensions)
-    n_timesteps: int = 100      # number of ODE integration steps by default
-    ode_method: str = "euler"   # "euler" | "midpoint"
-    d_model: int = 64           # embedding dimensionality
+    sigma: float = 0.1  # noise level (unused in basic CFM but available for extensions)
+    n_timesteps: int = 100  # number of ODE integration steps by default
+    ode_method: str = "euler"  # "euler" | "midpoint"
+    d_model: int = 64  # embedding dimensionality
 
 
 def sample_xt(x0: Tensor, x1: Tensor, t: Tensor) -> Tensor:
@@ -94,8 +95,9 @@ class VectorFieldNet(nn.Module):
             Predicted vector field shape (B, D).
         """
         t = t.view(-1, 1)  # (B, 1)
-        t_embed = torch.cat([torch.sin(2.0 * math.pi * t),
-                              torch.cos(2.0 * math.pi * t)], dim=-1)  # (B, 2)
+        t_embed = torch.cat(
+            [torch.sin(2.0 * math.pi * t), torch.cos(2.0 * math.pi * t)], dim=-1
+        )  # (B, 2)
         h = torch.cat([x, t_embed], dim=-1)  # (B, D+2)
         return self.net(h)
 
@@ -119,9 +121,9 @@ def flow_matching_loss(
     Returns:
         Scalar MSE loss.
     """
-    x_t = sample_xt(x0, x1, t)               # (B, D)
-    u_t = compute_ut(x0, x1)                  # (B, D)
-    v_pred = vf_net(x_t, t)                   # (B, D)
+    x_t = sample_xt(x0, x1, t)  # (B, D)
+    u_t = compute_ut(x0, x1)  # (B, D)
+    v_pred = vf_net(x_t, t)  # (B, D)
     return F.mse_loss(v_pred, u_t)
 
 

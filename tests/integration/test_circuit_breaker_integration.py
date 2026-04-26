@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from src.model.config import AureliusConfig
-from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.serving import (
     API_SHAPE_REGISTRY,
     DECODER_REGISTRY,

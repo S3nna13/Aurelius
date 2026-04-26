@@ -1,17 +1,17 @@
 """Tests for src/monitoring/slo_tracker.py"""
+
 import pytest
 
 from src.monitoring.slo_tracker import (
     SLODefinition,
-    SLOStatus,
     SLOTracker,
     SLOType,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh() -> SLOTracker:
     return SLOTracker()
@@ -22,12 +22,15 @@ def latency_slo(target: float = 0.2, name: str = "latency") -> SLODefinition:
 
 
 def availability_slo(target: float = 0.99, name: str = "avail") -> SLODefinition:
-    return SLODefinition(name=name, slo_type=SLOType.AVAILABILITY, target=target, window_seconds=3600.0)
+    return SLODefinition(
+        name=name, slo_type=SLOType.AVAILABILITY, target=target, window_seconds=3600.0
+    )
 
 
 # ---------------------------------------------------------------------------
 # SLOType enum
 # ---------------------------------------------------------------------------
+
 
 def test_slo_type_values():
     assert SLOType.LATENCY == "LATENCY"
@@ -39,6 +42,7 @@ def test_slo_type_values():
 # ---------------------------------------------------------------------------
 # define_slo / record
 # ---------------------------------------------------------------------------
+
 
 def test_define_and_record():
     st = fresh()
@@ -58,6 +62,7 @@ def test_evaluate_unknown_slo_raises():
 # ---------------------------------------------------------------------------
 # Latency compliance
 # ---------------------------------------------------------------------------
+
 
 def test_latency_compliant_when_below_target():
     st = fresh()
@@ -91,6 +96,7 @@ def test_error_rate_compliance():
 # Availability compliance
 # ---------------------------------------------------------------------------
 
+
 def test_availability_compliant():
     st = fresh()
     st.define_slo(availability_slo(target=0.99))
@@ -123,6 +129,7 @@ def test_throughput_compliance():
 # burn_rate
 # ---------------------------------------------------------------------------
 
+
 def test_burn_rate_non_negative():
     st = fresh()
     st.define_slo(availability_slo())
@@ -144,6 +151,7 @@ def test_burn_rate_zero_when_fully_compliant():
 # ---------------------------------------------------------------------------
 # get_all_status
 # ---------------------------------------------------------------------------
+
 
 def test_get_all_status():
     st = fresh()

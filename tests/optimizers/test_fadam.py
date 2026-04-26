@@ -10,15 +10,14 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from src.optimizers.fadam import FAdam
 
-
 # ------------------------------------------------------------------------------- #
 # Helpers                                                                          #
 # ------------------------------------------------------------------------------- #
+
 
 def make_scalar_param(value: float = 2.0) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(value))
@@ -30,12 +29,13 @@ def make_matrix_param(rows: int = 4, cols: int = 4) -> torch.nn.Parameter:
 
 def quadratic_loss(p: torch.Tensor) -> torch.Tensor:
     """L = sum(p^2) — global minimum at p = 0."""
-    return (p ** 2).sum()
+    return (p**2).sum()
 
 
 # ------------------------------------------------------------------------------- #
 # 1. Shape / dtype: step() updates scalar and matrix parameters correctly          #
 # ------------------------------------------------------------------------------- #
+
 
 def test_shape_and_dtype_scalar():
     p = make_scalar_param(3.0)
@@ -62,6 +62,7 @@ def test_shape_and_dtype_matrix():
 # ------------------------------------------------------------------------------- #
 # 2. Convergence: FAdam converges on quadratic loss faster than SGD               #
 # ------------------------------------------------------------------------------- #
+
 
 def test_convergence_on_quadratic():
     """FAdam converges on L=p^2 within 300 steps.
@@ -94,6 +95,7 @@ def test_convergence_on_quadratic():
 # 3. Determinism under torch.manual_seed                                           #
 # ------------------------------------------------------------------------------- #
 
+
 def test_determinism():
     def run() -> float:
         torch.manual_seed(42)
@@ -101,7 +103,7 @@ def test_determinism():
         opt = FAdam([p], lr=1e-3)
         for _ in range(10):
             opt.zero_grad()
-            (p ** 2 + 0.5 * p).backward()
+            (p**2 + 0.5 * p).backward()
             opt.step()
         return p.item()
 
@@ -113,6 +115,7 @@ def test_determinism():
 #    Verify FAdam and Adam diverge when the gradient changes but the momentum      #
 #    trajectory differs: i.e. Fisher is driven by m_t, not g_t.                   #
 # ------------------------------------------------------------------------------- #
+
 
 def test_fisher_uses_momentum_not_raw_gradient():
     """FAdam updates must differ from standard Adam because F_t uses m_t^2."""
@@ -148,6 +151,7 @@ def test_fisher_uses_momentum_not_raw_gradient():
 # 5. Bias correction: m̂_t and F̂_t use (1 - β^t)                                 #
 # ------------------------------------------------------------------------------- #
 
+
 def test_bias_correction_applied():
     """At step 1 with β1=0.9, β2=0.999, verify the update matches the formula."""
     lr, beta1, beta2, eps = 0.1, 0.9, 0.999, 1e-8
@@ -160,10 +164,10 @@ def test_bias_correction_applied():
     opt.step()
 
     # Manual computation of step 1:
-    m1 = (1 - beta1) * g_val                        # m_t
-    F1 = (1 - beta2) * m1 ** 2                      # F_t (from m_t^2)
-    m_hat = m1 / (1 - beta1 ** 1)                   # bias-corrected m
-    F_hat = F1 / (1 - beta2 ** 1)                   # bias-corrected F
+    m1 = (1 - beta1) * g_val  # m_t
+    F1 = (1 - beta2) * m1**2  # F_t (from m_t^2)
+    m_hat = m1 / (1 - beta1**1)  # bias-corrected m
+    F_hat = F1 / (1 - beta2**1)  # bias-corrected F
     expected = init_val - lr * m_hat / (math.sqrt(F_hat) + eps)
 
     # Use abs_tol because both values are very close to zero (float32 precision
@@ -177,10 +181,11 @@ def test_bias_correction_applied():
 # 6. Weight decay: params shrink when weight_decay > 0                            #
 # ------------------------------------------------------------------------------- #
 
+
 def test_weight_decay_shrinks_params():
     p = torch.nn.Parameter(torch.tensor(1.0))
     opt = FAdam([p], lr=1e-2, weight_decay=0.5)
-    p.grad = torch.tensor(0.0)   # zero grad so only wd acts
+    p.grad = torch.tensor(0.0)  # zero grad so only wd acts
     before = p.item()
     opt.step()
     # With zero gradient, m_t and F_t stay at 0 so no update from Fisher term,
@@ -191,6 +196,7 @@ def test_weight_decay_shrinks_params():
 # ------------------------------------------------------------------------------- #
 # 7. Zero gradient: params unchanged when grad = 0                                 #
 # ------------------------------------------------------------------------------- #
+
 
 def test_zero_gradient_no_change():
     p = torch.nn.Parameter(torch.tensor(5.0))
@@ -204,6 +210,7 @@ def test_zero_gradient_no_change():
 # ------------------------------------------------------------------------------- #
 # 8. Numerical stability: no NaN/Inf after 100 steps on random gradients          #
 # ------------------------------------------------------------------------------- #
+
 
 def test_numerical_stability_random_gradients():
     torch.manual_seed(7)
@@ -220,6 +227,7 @@ def test_numerical_stability_random_gradients():
 # 9. State keys: 'step', 'exp_avg', 'fisher_diag' present after first step        #
 # ------------------------------------------------------------------------------- #
 
+
 def test_state_keys_after_first_step():
     p = make_scalar_param(1.0)
     opt = FAdam([p], lr=1e-3)
@@ -235,6 +243,7 @@ def test_state_keys_after_first_step():
 # ------------------------------------------------------------------------------- #
 # 10. Gradient clipping: clip_value > 0 clips raw gradients before update         #
 # ------------------------------------------------------------------------------- #
+
 
 def test_gradient_clipping_limits_update():
     """With clip_value=0.01 and a huge gradient, the update should be small."""
@@ -282,6 +291,7 @@ def test_gradient_clipping_disabled_when_zero():
 # 11. Multiple param groups: different lr per group                                #
 # ------------------------------------------------------------------------------- #
 
+
 def test_multiple_param_groups_different_lr():
     p1 = torch.nn.Parameter(torch.tensor(3.0))
     p2 = torch.nn.Parameter(torch.tensor(-3.0))
@@ -308,6 +318,7 @@ def test_multiple_param_groups_different_lr():
 # 12. eps effect: larger eps → smaller step size                                   #
 # ------------------------------------------------------------------------------- #
 
+
 def test_larger_eps_gives_smaller_step():
     """Denominator = sqrt(F̂_t) + ε; larger ε → smaller update magnitude."""
     init = torch.tensor(1.0)
@@ -329,14 +340,14 @@ def test_larger_eps_gives_smaller_step():
     delta_large = abs(p_large_eps.item() - init.item())
 
     assert delta_small > delta_large, (
-        f"Small eps should give larger update: Δsmall={delta_small:.6f}, "
-        f"Δlarge={delta_large:.6f}"
+        f"Small eps should give larger update: Δsmall={delta_small:.6f}, Δlarge={delta_large:.6f}"
     )
 
 
 # ------------------------------------------------------------------------------- #
 # 13. Fisher state values are non-negative (it is a squared quantity)             #
 # ------------------------------------------------------------------------------- #
+
 
 def test_fisher_diag_non_negative():
     """Fisher diagonal is computed as sum of squared quantities, must be >= 0."""
@@ -353,6 +364,7 @@ def test_fisher_diag_non_negative():
 # ------------------------------------------------------------------------------- #
 # 14. Closure support: step() accepts and calls a closure                          #
 # ------------------------------------------------------------------------------- #
+
 
 def test_closure_returns_loss():
     p = torch.nn.Parameter(torch.tensor(2.0))

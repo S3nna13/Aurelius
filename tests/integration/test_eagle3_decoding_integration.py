@@ -17,7 +17,6 @@ from src.inference.eagle3_decoding import (
     Eagle3Decoder,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -41,17 +40,17 @@ def make_config(**kwargs) -> Eagle3Config:
 
 def make_target_fn(batch: int, vocab: int):
     """Returns a mock target_model_fn that yields random softmax probs."""
+
     def target_model_fn(draft_tokens):
-        return [
-            F.softmax(torch.randn(batch, vocab), dim=-1)
-            for _ in draft_tokens
-        ]
+        return [F.softmax(torch.randn(batch, vocab), dim=-1) for _ in draft_tokens]
+
     return target_model_fn
 
 
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_eagle3_full_decode_step():
     """End-to-end: build decoder, run decode_step, check all invariants."""
@@ -65,9 +64,12 @@ def test_eagle3_full_decode_step():
     result = decoder.decode_step(initial_hidden, target_fn)
 
     # Output dict structure
-    assert set(result.keys()) >= {"accepted_tokens", "n_accepted", "n_drafted", "acceptance_rate"}, (
-        f"Missing keys in result: {result.keys()}"
-    )
+    assert set(result.keys()) >= {
+        "accepted_tokens",
+        "n_accepted",
+        "n_drafted",
+        "acceptance_rate",
+    }, f"Missing keys in result: {result.keys()}"
 
     # Type checks
     assert isinstance(result["accepted_tokens"], list)
@@ -76,9 +78,7 @@ def test_eagle3_full_decode_step():
     assert isinstance(result["acceptance_rate"], float)
 
     # Numeric invariants
-    assert 0 <= result["n_accepted"] <= result["n_drafted"], (
-        "n_accepted must be <= n_drafted"
-    )
+    assert 0 <= result["n_accepted"] <= result["n_drafted"], "n_accepted must be <= n_drafted"
     assert 1 <= result["n_drafted"] <= config.max_draft_len, (
         f"n_drafted={result['n_drafted']} outside [1, {config.max_draft_len}]"
     )
@@ -132,17 +132,15 @@ def test_eagle3_high_threshold_drafts_min():
 
     result = decoder.decode_step(hidden, target_fn)
     assert result["n_drafted"] == config.min_draft_len, (
-        f"Expected n_drafted={config.min_draft_len} with threshold=1.0, "
-        f"got {result['n_drafted']}"
+        f"Expected n_drafted={config.min_draft_len} with threshold=1.0, got {result['n_drafted']}"
     )
 
 
 def test_eagle3_registry_wired():
     """DECODER_REGISTRY['eagle3'] must point to Eagle3Decoder."""
     from src.inference import DECODER_REGISTRY
-    assert "eagle3" in DECODER_REGISTRY, (
-        "eagle3 not found in DECODER_REGISTRY"
-    )
+
+    assert "eagle3" in DECODER_REGISTRY, "eagle3 not found in DECODER_REGISTRY"
     assert DECODER_REGISTRY["eagle3"] is Eagle3Decoder, (
         "DECODER_REGISTRY['eagle3'] is not Eagle3Decoder"
     )

@@ -23,9 +23,7 @@ class MetricAggregator:
 
     def __init__(self, weights: list[MetricWeight] | None = None) -> None:
         # Map from metric name -> weight value
-        self._weights: dict[str, float] = (
-            {w.name: w.weight for w in weights} if weights else {}
-        )
+        self._weights: dict[str, float] = {w.name: w.weight for w in weights} if weights else {}
         self._scores: dict[str, MetricScore] = {}
 
     def add_score(self, score: MetricScore) -> None:
@@ -68,9 +66,7 @@ class MetricAggregator:
 
     def best(self, n: int = 3) -> list[MetricScore]:
         """Return top-n scores by value descending."""
-        sorted_scores = sorted(
-            self._scores.values(), key=lambda s: s.value, reverse=True
-        )
+        sorted_scores = sorted(self._scores.values(), key=lambda s: s.value, reverse=True)
         return sorted_scores[:n]
 
 

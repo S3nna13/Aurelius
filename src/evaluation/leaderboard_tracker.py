@@ -66,9 +66,7 @@ class Leaderboard:
 
         entries = list(best_per_model.values())
         reverse = self.higher_is_better
-        entries.sort(
-            key=lambda e: (e.score * (-1 if reverse else 1), e.timestamp)
-        )
+        entries.sort(key=lambda e: (e.score * (-1 if reverse else 1), e.timestamp))
         return entries
 
     def best(self) -> LeaderboardEntry | None:

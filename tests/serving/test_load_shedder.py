@@ -1,12 +1,10 @@
 """Tests for src/serving/load_shedder.py"""
 
-import pytest
 from src.serving.load_shedder import (
+    SERVING_REGISTRY,
     LoadShedder,
     ShedPolicy,
-    SERVING_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # DROP_TAIL

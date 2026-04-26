@@ -7,18 +7,16 @@ Pure PyTorch only. No external dependencies beyond stdlib + torch.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # ActivationExtractor
 # ---------------------------------------------------------------------------
+
 
 class ActivationExtractor:
     """
@@ -35,11 +33,11 @@ class ActivationExtractor:
             acts = ext.activations
     """
 
-    def __init__(self, model: nn.Module, layer_names: List[str]) -> None:
+    def __init__(self, model: nn.Module, layer_names: list[str]) -> None:
         self.model = model
         self.layer_names = layer_names
-        self.activations: Dict[str, torch.Tensor] = {}
-        self._hooks: List = []
+        self.activations: dict[str, torch.Tensor] = {}
+        self._hooks: list = []
         self._register_hooks()
 
     # ------------------------------------------------------------------
@@ -51,8 +49,7 @@ class ActivationExtractor:
         for name in self.layer_names:
             if name not in named_modules:
                 raise ValueError(
-                    f"Layer '{name}' not found in model. "
-                    f"Available: {list(named_modules.keys())}"
+                    f"Layer '{name}' not found in model. Available: {list(named_modules.keys())}"
                 )
             module = named_modules[name]
             hook = module.register_forward_hook(self._make_hook(name))
@@ -64,6 +61,7 @@ class ActivationExtractor:
                 self.activations[name] = output[0].detach()
             else:
                 self.activations[name] = output.detach()
+
         return hook_fn
 
     def _remove_hooks(self) -> None:
@@ -75,7 +73,7 @@ class ActivationExtractor:
     # Public API
     # ------------------------------------------------------------------
 
-    def forward(self, input_ids: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor) -> dict[str, torch.Tensor]:
         """
         Run a forward pass and return collected activations.
 
@@ -98,7 +96,7 @@ class ActivationExtractor:
     # Context-manager protocol
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "ActivationExtractor":
+    def __enter__(self) -> ActivationExtractor:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -110,8 +108,9 @@ class ActivationExtractor:
 # Helper: macro F1 in pure PyTorch
 # ---------------------------------------------------------------------------
 
+
 def _macro_f1(preds: torch.Tensor, labels: torch.Tensor, n_classes: int) -> float:
-    f1_scores: List[float] = []
+    f1_scores: list[float] = []
     for c in range(n_classes):
         tp = ((preds == c) & (labels == c)).sum().item()
         fp = ((preds == c) & (labels != c)).sum().item()
@@ -132,6 +131,7 @@ def _macro_f1(preds: torch.Tensor, labels: torch.Tensor, n_classes: int) -> floa
 # LinearProbe
 # ---------------------------------------------------------------------------
 
+
 class LinearProbe(nn.Module):
     """
     Single linear layer probe for classifying internal representations.
@@ -151,11 +151,11 @@ class LinearProbe(nn.Module):
         labels: torch.Tensor,
         n_epochs: int = 5,
         lr: float = 1e-3,
-    ) -> List[float]:
+    ) -> list[float]:
         """Train the probe. Returns per-epoch loss history."""
         self.train()
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-        loss_history: List[float] = []
+        loss_history: list[float] = []
 
         for _ in range(n_epochs):
             optimizer.zero_grad()
@@ -172,7 +172,7 @@ class LinearProbe(nn.Module):
         self,
         features: torch.Tensor,
         labels: torch.Tensor,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Returns (accuracy, macro_f1) both in [0, 1]."""
         self.eval()
         with torch.no_grad():
@@ -188,6 +188,7 @@ class LinearProbe(nn.Module):
 # ---------------------------------------------------------------------------
 # NonlinearProbe
 # ---------------------------------------------------------------------------
+
 
 class NonlinearProbe(nn.Module):
     """
@@ -213,11 +214,11 @@ class NonlinearProbe(nn.Module):
         labels: torch.Tensor,
         n_epochs: int = 5,
         lr: float = 1e-3,
-    ) -> List[float]:
+    ) -> list[float]:
         """Train the probe. Returns per-epoch loss history."""
         self.train()
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-        loss_history: List[float] = []
+        loss_history: list[float] = []
 
         for _ in range(n_epochs):
             optimizer.zero_grad()
@@ -234,7 +235,7 @@ class NonlinearProbe(nn.Module):
         self,
         features: torch.Tensor,
         labels: torch.Tensor,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Returns (accuracy, macro_f1) both in [0, 1]."""
         self.eval()
         with torch.no_grad():
@@ -250,6 +251,7 @@ class NonlinearProbe(nn.Module):
 # ---------------------------------------------------------------------------
 # Helpers for RSA
 # ---------------------------------------------------------------------------
+
 
 def _center_kernel(K: torch.Tensor) -> torch.Tensor:
     """Double-center a kernel matrix: H K H where H = I - (1/n) 11^T."""
@@ -271,6 +273,7 @@ def _knn_indices(X: torch.Tensor, k: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # RepresentationSimilarityAnalysis
 # ---------------------------------------------------------------------------
+
 
 class RepresentationSimilarityAnalysis:
     """
@@ -348,7 +351,7 @@ class RepresentationSimilarityAnalysis:
         knn_x = _knn_indices(X, k)
         knn_y = _knn_indices(Y, k)
 
-        overlaps: List[float] = []
+        overlaps: list[float] = []
         for i in range(n):
             set_x = set(knn_x[i].tolist())
             set_y = set(knn_y[i].tolist())
@@ -363,9 +366,11 @@ class RepresentationSimilarityAnalysis:
 # ProbingConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProbingConfig:
     """Configuration dataclass for ProbeEvaluationSuite."""
+
     n_epochs: int = 5
     lr: float = 1e-3
     hidden: int = 64
@@ -377,13 +382,14 @@ class ProbingConfig:
 # ProbeEvaluationSuite
 # ---------------------------------------------------------------------------
 
+
 class ProbeEvaluationSuite:
     """
     High-level interface: run probes across all captured layers and compare
     their representational geometry via CKA.
     """
 
-    def __init__(self, model: nn.Module, layer_names: List[str]) -> None:
+    def __init__(self, model: nn.Module, layer_names: list[str]) -> None:
         self.model = model
         self.layer_names = layer_names
         self.extractor = ActivationExtractor(model, layer_names)
@@ -393,8 +399,8 @@ class ProbeEvaluationSuite:
         input_ids: torch.Tensor,
         labels: torch.Tensor,
         probe_type: str = "linear",
-        config: Optional[ProbingConfig] = None,
-    ) -> Dict[str, Dict]:
+        config: ProbingConfig | None = None,
+    ) -> dict[str, dict]:
         """
         For each layer: extract mean-pooled representations, fit a probe,
         evaluate it, and return results.
@@ -413,7 +419,7 @@ class ProbeEvaluationSuite:
 
         activations = self.extractor.forward(input_ids)
 
-        results: Dict[str, Dict] = {}
+        results: dict[str, dict] = {}
         for layer_name, acts in activations.items():
             features = acts.mean(dim=1)  # [N, d]
             d_in = features.shape[-1]
@@ -424,9 +430,7 @@ class ProbeEvaluationSuite:
             elif probe_type == "nonlinear":
                 probe = NonlinearProbe(d_in, n_classes, hidden=config.hidden)
             else:
-                raise ValueError(
-                    f"Unknown probe_type '{probe_type}'. Use 'linear' or 'nonlinear'."
-                )
+                raise ValueError(f"Unknown probe_type '{probe_type}'. Use 'linear' or 'nonlinear'.")
 
             loss_curve = probe.fit(  # type: ignore[attr-defined]
                 features.detach(),
@@ -443,7 +447,7 @@ class ProbeEvaluationSuite:
     def compare_layers(
         self,
         input_ids: torch.Tensor,
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         """
         Compute pairwise Linear CKA between all captured layers.
 
@@ -451,13 +455,13 @@ class ProbeEvaluationSuite:
             {layer_a: {layer_b: cka_value, ...}, ...}
         """
         activations = self.extractor.forward(input_ids)
-        pooled: Dict[str, torch.Tensor] = {
+        pooled: dict[str, torch.Tensor] = {
             name: acts.mean(dim=1) for name, acts in activations.items()
         }
 
         rsa = RepresentationSimilarityAnalysis()
         layer_list = list(pooled.keys())
-        result: Dict[str, Dict[str, float]] = {name: {} for name in layer_list}
+        result: dict[str, dict[str, float]] = {name: {} for name in layer_list}
 
         for name_a in layer_list:
             for name_b in layer_list:

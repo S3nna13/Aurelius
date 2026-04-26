@@ -22,8 +22,9 @@ modules — no ML framework imports.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.safety.harm_taxonomy_classifier import HarmTaxonomyClassifier
 from src.safety.jailbreak_detector import JailbreakDetector
@@ -87,13 +88,9 @@ class PolicyRule:
 
     def __post_init__(self) -> None:
         if self.phase not in _VALID_PHASES:
-            raise ValueError(
-                f"phase must be one of {sorted(_VALID_PHASES)}, got {self.phase!r}"
-            )
+            raise ValueError(f"phase must be one of {sorted(_VALID_PHASES)}, got {self.phase!r}")
         if self.action not in _VALID_ACTIONS:
-            raise ValueError(
-                f"action must be one of {sorted(_VALID_ACTIONS)}, got {self.action!r}"
-            )
+            raise ValueError(f"action must be one of {sorted(_VALID_ACTIONS)}, got {self.action!r}")
         if not callable(self.check):
             raise TypeError("check must be callable")
         if not isinstance(self.name, str) or not self.name:
@@ -125,8 +122,8 @@ class PolicyDecision:
 
     final_action: str = "allow"
     triggered_rules: list[str] = field(default_factory=list)
-    modified_input: Optional[str] = None
-    modified_output: Optional[str] = None
+    modified_input: str | None = None
+    modified_output: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
 
 
@@ -152,7 +149,7 @@ class PolicyEngine:
 
     def __init__(
         self,
-        rules: Optional[list[PolicyRule]] = None,
+        rules: list[PolicyRule] | None = None,
         harm_threshold: float = 0.6,
     ) -> None:
         # Always instantiate the underlying detectors — they are cheap and
@@ -187,9 +184,7 @@ class PolicyEngine:
             raise TypeError("rule must be a PolicyRule")
         self.rules.append(rule)
 
-    def evaluate(
-        self, input_text: str, output_text: str = ""
-    ) -> PolicyDecision:
+    def evaluate(self, input_text: str, output_text: str = "") -> PolicyDecision:
         """Run the pipeline. See :class:`PolicyDecision` for semantics."""
 
         if not isinstance(input_text, str):

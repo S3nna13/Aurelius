@@ -5,7 +5,6 @@ from __future__ import annotations
 from src.agent.ast_fim import ASTAnalyzer, FIMFormat, FIMSpan, FIMTokenizer
 from src.agent.patch_synthesis import PatchSynthesizer
 
-
 _SAMPLE_SOURCE = """\
 import os
 

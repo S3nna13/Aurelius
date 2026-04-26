@@ -1,4 +1,5 @@
 """Tests for online_learning — drift-aware adaptive-LR online learning."""
+
 from __future__ import annotations
 
 import pytest
@@ -7,17 +8,17 @@ import torch
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.online_learning import (
-    OnlineLearningConfig,
-    LossWindow,
-    DriftDetector,
     AdaptiveLRScheduler,
+    DriftDetector,
+    LossWindow,
     OnlineLearner,
+    OnlineLearningConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -68,6 +69,7 @@ def _make_input(batch_size: int = 2, seq_len: int = 8, vocab_size: int = 256) ->
 # 1. OnlineLearningConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_online_learning_config_defaults():
     cfg = OnlineLearningConfig()
     assert cfg.window_size == 100
@@ -83,6 +85,7 @@ def test_online_learning_config_defaults():
 # 2. LossWindow starts empty
 # ---------------------------------------------------------------------------
 
+
 def test_loss_window_starts_empty():
     w = LossWindow(window_size=10)
     assert len(w) == 0
@@ -91,6 +94,7 @@ def test_loss_window_starts_empty():
 # ---------------------------------------------------------------------------
 # 3. LossWindow.add increases length
 # ---------------------------------------------------------------------------
+
 
 def test_loss_window_add_increases_length():
     w = LossWindow(window_size=10)
@@ -104,6 +108,7 @@ def test_loss_window_add_increases_length():
 # 4. LossWindow.mean correct average
 # ---------------------------------------------------------------------------
 
+
 def test_loss_window_mean_correct():
     w = LossWindow(window_size=10)
     w.add(1.0)
@@ -114,6 +119,7 @@ def test_loss_window_mean_correct():
 # ---------------------------------------------------------------------------
 # 5. LossWindow.is_full when at capacity
 # ---------------------------------------------------------------------------
+
 
 def test_loss_window_is_full():
     w = LossWindow(window_size=3)
@@ -129,6 +135,7 @@ def test_loss_window_is_full():
 # 6. DriftDetector.update returns bool
 # ---------------------------------------------------------------------------
 
+
 def test_drift_detector_update_returns_bool(config):
     detector = DriftDetector(config)
     result = detector.update(1.0)
@@ -138,6 +145,7 @@ def test_drift_detector_update_returns_bool(config):
 # ---------------------------------------------------------------------------
 # 7. DriftDetector.update no drift when losses stable
 # ---------------------------------------------------------------------------
+
 
 def test_drift_detector_no_drift_stable(config):
     detector = DriftDetector(config)
@@ -152,6 +160,7 @@ def test_drift_detector_no_drift_stable(config):
 # ---------------------------------------------------------------------------
 # 8. DriftDetector.update detects drift with large loss jump
 # ---------------------------------------------------------------------------
+
 
 def test_drift_detector_detects_drift_large_jump(config):
     detector = DriftDetector(config)
@@ -171,6 +180,7 @@ def test_drift_detector_detects_drift_large_jump(config):
 # 9. DriftDetector.drift_score returns float
 # ---------------------------------------------------------------------------
 
+
 def test_drift_detector_drift_score_returns_float(config):
     detector = DriftDetector(config)
     detector.update(1.0)
@@ -182,6 +192,7 @@ def test_drift_detector_drift_score_returns_float(config):
 # 10. AdaptiveLRScheduler.on_drift_detected increases LR
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_lr_on_drift_detected_increases_lr(optimizer, config):
     scheduler = AdaptiveLRScheduler(optimizer, config)
     before = scheduler._current_lr
@@ -192,6 +203,7 @@ def test_adaptive_lr_on_drift_detected_increases_lr(optimizer, config):
 # ---------------------------------------------------------------------------
 # 11. AdaptiveLRScheduler.on_stable decays LR toward base
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_lr_on_stable_decays_toward_base(optimizer, config):
     scheduler = AdaptiveLRScheduler(optimizer, config)
@@ -205,6 +217,7 @@ def test_adaptive_lr_on_stable_decays_toward_base(optimizer, config):
 # ---------------------------------------------------------------------------
 # 12. AdaptiveLRScheduler LR stays within [min_lr, max_lr]
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_lr_stays_within_bounds(optimizer, config):
     scheduler = AdaptiveLRScheduler(optimizer, config)
@@ -222,6 +235,7 @@ def test_adaptive_lr_stays_within_bounds(optimizer, config):
 # 13. OnlineLearner.train_step returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_online_learner_train_step_required_keys(learner):
     input_ids = _make_input()
     result = learner.train_step(input_ids)
@@ -233,6 +247,7 @@ def test_online_learner_train_step_required_keys(learner):
 # 14. OnlineLearner.train_step loss is positive
 # ---------------------------------------------------------------------------
 
+
 def test_online_learner_train_step_loss_positive(learner):
     input_ids = _make_input()
     result = learner.train_step(input_ids)
@@ -242,6 +257,7 @@ def test_online_learner_train_step_loss_positive(learner):
 # ---------------------------------------------------------------------------
 # 15. OnlineLearner.get_stats returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_online_learner_get_stats_required_keys(learner):
     input_ids = _make_input()

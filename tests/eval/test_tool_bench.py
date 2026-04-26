@@ -1,4 +1,5 @@
 """Unit tests for src/eval/tool_bench.py — 15 tests total."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,10 +11,10 @@ from src.eval.tool_bench import (
     ToolCall,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_call(name: str, **params) -> ToolCall:
     return ToolCall(tool_name=name, parameters=dict(params))
@@ -40,6 +41,7 @@ def _make_sample(
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = ToolBenchConfig()
     assert cfg.param_match_threshold == 0.8
@@ -50,6 +52,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2–4. Tool selection accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_tool_selection_perfect():
     bench = ToolBench()
@@ -85,6 +88,7 @@ def test_tool_selection_wrong_tool():
 # ---------------------------------------------------------------------------
 # 5–7. Parameter accuracy
 # ---------------------------------------------------------------------------
+
 
 def test_parameter_accuracy_perfect():
     bench = ToolBench()
@@ -122,10 +126,11 @@ def test_parameter_accuracy_no_match():
 # 8–10. Sequence exact match
 # ---------------------------------------------------------------------------
 
+
 def test_sequence_exact_match_perfect():
     bench = ToolBench()
     calls = [_make_call("search", q="foo"), _make_call("read", path="/x")]
-    sample = _make_sample("s1", expected=calls, predicted=list(calls))
+    _make_sample("s1", expected=calls, predicted=list(calls))
     # Use separate ToolCall objects with identical values
     pred = [_make_call("search", q="foo"), _make_call("read", path="/x")]
     sample2 = _make_sample("s1", expected=calls, predicted=pred)
@@ -145,7 +150,7 @@ def test_sequence_exact_match_wrong_order():
 def test_sequence_exact_match_wrong_params():
     bench = ToolBench()
     expected = [_make_call("search", q="foo")]
-    predicted = [_make_call("search", q="bar")]   # right tool, wrong param
+    predicted = [_make_call("search", q="bar")]  # right tool, wrong param
     sample = _make_sample("s1", expected=expected, predicted=predicted)
     assert bench.sequence_exact_match([sample]) == pytest.approx(0.0)
 
@@ -179,14 +184,20 @@ def test_format_compliance_mixed():
 # 14–15. evaluate() API
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_keys():
     bench = ToolBench()
     expected = [_make_call("search", q="x")]
     predicted = [_make_call("search", q="x")]
     sample = _make_sample("s1", expected=expected, predicted=predicted)
     result = bench.evaluate([sample], raw_responses=[VALID_RESPONSE])
-    for key in ("tool_selection", "parameter_accuracy", "sequence_exact_match",
-                "format_compliance", "n_samples"):
+    for key in (
+        "tool_selection",
+        "parameter_accuracy",
+        "sequence_exact_match",
+        "format_compliance",
+        "n_samples",
+    ):
         assert key in result, f"Missing key: {key}"
     assert result["n_samples"] == 1
 

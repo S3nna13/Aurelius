@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+")
 
 
@@ -21,7 +20,9 @@ def support_coverage(response: str, evidence: str) -> float:
     return len(response_tokens & evidence_tokens) / len(response_tokens)
 
 
-def contradiction_rate(response: str, evidence: str, contradiction_terms: tuple[str, ...] = ("not", "never", "no")) -> float:
+def contradiction_rate(
+    response: str, evidence: str, contradiction_terms: tuple[str, ...] = ("not", "never", "no")
+) -> float:
     """Lightweight contradiction heuristic using negation mismatch."""
     response_lower = response.lower()
     evidence_lower = evidence.lower()

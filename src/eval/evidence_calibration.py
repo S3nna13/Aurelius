@@ -32,7 +32,9 @@ def evidence_ece(scores: torch.Tensor, labels: torch.Tensor, n_bins: int = 10) -
     return ece
 
 
-def evidence_calibration_report(scores: torch.Tensor, labels: torch.Tensor, n_bins: int = 10) -> dict[str, torch.Tensor]:
+def evidence_calibration_report(
+    scores: torch.Tensor, labels: torch.Tensor, n_bins: int = 10
+) -> dict[str, torch.Tensor]:
     """Bundle evidence calibration metrics."""
     return {
         "brier": evidence_brier_score(scores, labels),

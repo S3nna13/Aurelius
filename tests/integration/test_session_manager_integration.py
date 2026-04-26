@@ -22,8 +22,12 @@ def test_session_manager_persists_session_workstream_and_queue_state(tmp_path):
     framework = AureliusInterfaceFramework.from_repo_root(root_dir=_repo_root())
     manager = SessionManager(root_dir=tmp_path)
 
-    session = manager.ensure_session(workspace=tmp_path / "workspace", metadata={"integration": True})
-    workstream = manager.ensure_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
+    session = manager.ensure_session(
+        workspace=tmp_path / "workspace", metadata={"integration": True}
+    )
+    workstream = manager.ensure_workstream(
+        session.session_id, "integration", workspace=tmp_path / "workspace"
+    )
     thread = framework.create_thread(
         TaskThreadSpec(
             title="Integration thread",
@@ -57,7 +61,9 @@ def test_session_manager_persists_session_workstream_and_queue_state(tmp_path):
     )
     manager.register_checkpoint(session.session_id, checkpoint)
 
-    routing = framework.route_channel(host="cli", channel="terminal", thread=thread, recipient="user:demo")
+    routing = framework.route_channel(
+        host="cli", channel="terminal", thread=thread, recipient="user:demo"
+    )
     manager.register_message(session.session_id, MessageEnvelope(**routing["envelope"]))
 
     job = framework.launch_background_job(thread, description="run detached validation")
@@ -98,5 +104,8 @@ def test_session_manager_persists_session_workstream_and_queue_state(tmp_path):
     assert reloaded_session.queue[0].item_id == work_item.item_id
     assert journal.describe()["entries"] >= 1
     assert reloaded_journal.describe()["entries"] == journal.describe()["entries"]
-    assert reloaded.get_workstream(session.session_id, workstream.name).workstream_id == workstream.workstream_id
+    assert (
+        reloaded.get_workstream(session.session_id, workstream.name).workstream_id
+        == workstream.workstream_id
+    )
     assert reloaded.list_sessions()[0].session_id == session.session_id

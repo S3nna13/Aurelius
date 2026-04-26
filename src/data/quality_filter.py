@@ -11,10 +11,10 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class QualityFilterConfig:
@@ -24,27 +24,28 @@ class QualityFilterConfig:
     min_words: int = 20
 
     # Perplexity proxy (character entropy)
-    min_char_entropy: float = 3.5   # bits; below = repetitive
-    max_char_entropy: float = 6.5   # bits; above = random/noise
+    min_char_entropy: float = 3.5  # bits; below = repetitive
+    max_char_entropy: float = 6.5  # bits; above = random/noise
 
     # N-gram dedup
     ngram_n: int = 5
-    min_unique_ngram_ratio: float = 0.2   # below = too repetitive
+    min_unique_ngram_ratio: float = 0.2  # below = too repetitive
 
     # Heuristic rules
-    min_alpha_ratio: float = 0.5          # fraction of alpha chars
-    max_bullet_ratio: float = 0.9         # fraction of lines starting with bullet
-    max_ellipsis_ratio: float = 0.1       # fraction of lines ending with "..."
+    min_alpha_ratio: float = 0.5  # fraction of alpha chars
+    max_bullet_ratio: float = 0.9  # fraction of lines starting with bullet
+    max_ellipsis_ratio: float = 0.1  # fraction of lines ending with "..."
 
 
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FilterResult:
     passed: bool
-    reasons: list[str] = field(default_factory=list)   # failure reasons; empty = passed
+    reasons: list[str] = field(default_factory=list)  # failure reasons; empty = passed
     stats: dict[str, float] = field(default_factory=dict)
 
 
@@ -95,7 +96,7 @@ class QualityFilter:
             return 0.0
         if len(words) < n:
             return 1.0  # can't form any n-gram → vacuously all unique
-        ngrams = [tuple(words[i: i + n]) for i in range(len(words) - n + 1)]
+        ngrams = [tuple(words[i : i + n]) for i in range(len(words) - n + 1)]
         total = len(ngrams)
         unique = len(set(ngrams))
         return unique / max(total, 1)

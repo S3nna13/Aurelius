@@ -1,7 +1,4 @@
 """Tests for src/monitoring/tracing_collector.py"""
-import time
-
-import pytest
 
 from src.monitoring.tracing_collector import (
     Span,
@@ -9,10 +6,10 @@ from src.monitoring.tracing_collector import (
     TracingCollector,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_collector() -> TracingCollector:
     return TracingCollector()
@@ -21,6 +18,7 @@ def make_collector() -> TracingCollector:
 # ---------------------------------------------------------------------------
 # SpanKind enum
 # ---------------------------------------------------------------------------
+
 
 def test_span_kind_values():
     assert SpanKind.INTERNAL == "INTERNAL"
@@ -33,6 +31,7 @@ def test_span_kind_values():
 # ---------------------------------------------------------------------------
 # Span dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_span_defaults():
     s = Span(trace_id="t1", name="op")
@@ -51,6 +50,7 @@ def test_span_unique_ids():
 # ---------------------------------------------------------------------------
 # start_span / end_span
 # ---------------------------------------------------------------------------
+
 
 def test_start_span_creates_trace_id():
     tc = make_collector()
@@ -92,6 +92,7 @@ def test_end_span_stores_in_completed():
 # add_event
 # ---------------------------------------------------------------------------
 
+
 def test_add_event_basic():
     tc = make_collector()
     span = tc.start_span("op")
@@ -118,6 +119,7 @@ def test_add_multiple_events():
 # ---------------------------------------------------------------------------
 # get_trace
 # ---------------------------------------------------------------------------
+
 
 def test_get_trace_empty():
     tc = make_collector()
@@ -150,6 +152,7 @@ def test_get_trace_isolation():
 # ---------------------------------------------------------------------------
 # export_jaeger_format
 # ---------------------------------------------------------------------------
+
 
 def test_export_jaeger_format_structure():
     tc = make_collector()

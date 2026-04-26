@@ -10,25 +10,23 @@ Classes:
     LogitLensAnalyzer        — Intermediate representation decoding
     CausalEvalConfig         — Default configuration for evaluation experiments
 """
+
 from __future__ import annotations
 
-import math
-import warnings
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CausalEvalConfig:
     """Default hyper-parameters for causal evaluation experiments."""
+
     vocab_size: int = 64
     d_model: int = 32
     n_layers: int = 2
@@ -39,6 +37,7 @@ class CausalEvalConfig:
 # ---------------------------------------------------------------------------
 # CounterfactualGenerator
 # ---------------------------------------------------------------------------
+
 
 class CounterfactualGenerator:
     """Generate counterfactual sequences and measure their effect on model outputs.
@@ -84,10 +83,10 @@ class CounterfactualGenerator:
 
     def intervene_token(
         self,
-        input_ids: torch.Tensor,   # [B, T]
+        input_ids: torch.Tensor,  # [B, T]
         pos: int,
         new_token_id: int,
-    ) -> torch.Tensor:              # [B, T]
+    ) -> torch.Tensor:  # [B, T]
         """Return a copy of input_ids with token at *pos* replaced by *new_token_id*."""
         counterfactual = input_ids.clone()
         counterfactual[:, pos] = new_token_id
@@ -95,11 +94,11 @@ class CounterfactualGenerator:
 
     def intervene_span(
         self,
-        input_ids: torch.Tensor,   # [B, T]
+        input_ids: torch.Tensor,  # [B, T]
         start: int,
         end: int,
         fill_id: int = 0,
-    ) -> torch.Tensor:              # [B, T]
+    ) -> torch.Tensor:  # [B, T]
         """Return a copy with tokens in [start, end) replaced by *fill_id* (ablation)."""
         counterfactual = input_ids.clone()
         counterfactual[:, start:end] = fill_id
@@ -107,11 +106,11 @@ class CounterfactualGenerator:
 
     def generate_minimal_pair(
         self,
-        input_ids: torch.Tensor,   # [B, T]
+        input_ids: torch.Tensor,  # [B, T]
         pos: int,
         token_a: int,
         token_b: int,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Return two sequences that differ only at *pos* (token_a vs token_b)."""
         seq_a = self.intervene_token(input_ids, pos, token_a)
         seq_b = self.intervene_token(input_ids, pos, token_b)
@@ -119,17 +118,17 @@ class CounterfactualGenerator:
 
     def logit_diff(
         self,
-        input_ids_a: torch.Tensor,   # [B, T]
-        input_ids_b: torch.Tensor,   # [B, T]
+        input_ids_a: torch.Tensor,  # [B, T]
+        input_ids_b: torch.Tensor,  # [B, T]
         target_pos: int,
-    ) -> torch.Tensor:                # [B]
+    ) -> torch.Tensor:  # [B]
         """Per-example difference of max logits at *target_pos*.
 
         Returns model(a)[:, target_pos, :].max(-1).values
                - model(b)[:, target_pos, :].max(-1).values
         """
-        logits_a = self._logits(input_ids_a)   # [B, T, V]
-        logits_b = self._logits(input_ids_b)   # [B, T, V]
+        logits_a = self._logits(input_ids_a)  # [B, T, V]
+        logits_b = self._logits(input_ids_b)  # [B, T, V]
         max_a = logits_a[:, target_pos, :].max(dim=-1).values  # [B]
         max_b = logits_b[:, target_pos, :].max(dim=-1).values  # [B]
         return max_a - max_b
@@ -138,6 +137,7 @@ class CounterfactualGenerator:
 # ---------------------------------------------------------------------------
 # CausalEffectEstimator
 # ---------------------------------------------------------------------------
+
 
 class CausalEffectEstimator:
     """Estimate total, direct, and indirect causal effects of token interventions.
@@ -149,7 +149,7 @@ class CausalEffectEstimator:
 
     def __init__(self, model: nn.Module) -> None:
         self.model = model
-        self._gen: Optional[CounterfactualGenerator] = None
+        self._gen: CounterfactualGenerator | None = None
 
     # ------------------------------------------------------------------
     # Internal
@@ -164,7 +164,7 @@ class CausalEffectEstimator:
     def _max_logit_at(self, input_ids: torch.Tensor, pos: int) -> float:
         """Mean over batch of max logit at *pos*."""
         gen = self._get_gen()
-        logits = gen._logits(input_ids)          # [B, T, V]
+        logits = gen._logits(input_ids)  # [B, T, V]
         return logits[:, pos, :].max(dim=-1).values.mean().item()
 
     # ------------------------------------------------------------------
@@ -173,7 +173,7 @@ class CausalEffectEstimator:
 
     def total_effect(
         self,
-        input_ids: torch.Tensor,   # [B, T]
+        input_ids: torch.Tensor,  # [B, T]
         intervention_pos: int,
         token_a: int,
         token_b: int,
@@ -192,7 +192,7 @@ class CausalEffectEstimator:
 
     def direct_effect(
         self,
-        input_ids: torch.Tensor,   # [B, T]
+        input_ids: torch.Tensor,  # [B, T]
         intervention_pos: int,
         token_a: int,
         token_b: int,
@@ -232,6 +232,7 @@ class CausalEffectEstimator:
 # AttentionPatternAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class AttentionPatternAnalyzer:
     """Extract and analyse attention patterns from a transformer model.
 
@@ -254,7 +255,7 @@ class AttentionPatternAnalyzer:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _try_get_attn_module(layer: nn.Module) -> Optional[nn.Module]:
+    def _try_get_attn_module(layer: nn.Module) -> nn.Module | None:
         """Return the attention sub-module of a TransformerBlock, or None."""
         for name in ("attn", "attention", "self_attn", "self_attention"):
             mod = getattr(layer, name, None)
@@ -268,8 +269,8 @@ class AttentionPatternAnalyzer:
 
     def extract_attention_weights(
         self,
-        input_ids: torch.Tensor,   # [B, T]
-    ) -> List[torch.Tensor]:        # list[Tensor [B, n_heads, T, T]]
+        input_ids: torch.Tensor,  # [B, T]
+    ) -> list[torch.Tensor]:  # list[Tensor [B, n_heads, T, T]]
         """Register forward hooks to capture attention weight tensors.
 
         For each transformer layer the hook intercepts whatever the attention
@@ -279,7 +280,7 @@ class AttentionPatternAnalyzer:
 
         Returns a list of length n_layers, each tensor [B, n_heads, T, T].
         """
-        captured: List[Optional[torch.Tensor]] = []
+        captured: list[torch.Tensor | None] = []
         hooks = []
 
         def _make_hook(idx: int):
@@ -303,6 +304,7 @@ class AttentionPatternAnalyzer:
                     ):
                         captured[idx] = t.detach().clone()
                         return
+
             return hook
 
         layers = list(self.model.layers)
@@ -314,7 +316,7 @@ class AttentionPatternAnalyzer:
 
         try:
             with torch.no_grad():
-                out = self.model(input_ids)
+                self.model(input_ids)
         finally:
             for h in hooks:
                 h.remove()
@@ -322,7 +324,7 @@ class AttentionPatternAnalyzer:
         # Replace None entries with uniform attention as a safe fallback
         B, T = input_ids.shape
         n_heads = 1
-        results: List[torch.Tensor] = []
+        results: list[torch.Tensor] = []
         for w in captured:
             if w is not None:
                 n_heads = w.shape[1]
@@ -335,8 +337,8 @@ class AttentionPatternAnalyzer:
 
     def attention_rollout(
         self,
-        attn_weights: List[torch.Tensor],   # list[Tensor [B, n_heads, T, T]]
-    ) -> torch.Tensor:                        # [B, T, T]
+        attn_weights: list[torch.Tensor],  # list[Tensor [B, n_heads, T, T]]
+    ) -> torch.Tensor:  # [B, T, T]
         """Compute attention rollout (Abnar & Zuidema, 2020).
 
         At each layer we:
@@ -355,7 +357,7 @@ class AttentionPatternAnalyzer:
         T = attn_weights[0].shape[2]
         eye = torch.eye(T, device=attn_weights[0].device).unsqueeze(0).expand(B, -1, -1)
 
-        rollout: Optional[torch.Tensor] = None
+        rollout: torch.Tensor | None = None
 
         for layer_w in attn_weights:
             # Average heads: [B, T, T]
@@ -370,25 +372,26 @@ class AttentionPatternAnalyzer:
             else:
                 rollout = torch.bmm(mixed, rollout)
 
-        return rollout   # type: ignore[return-value]
+        return rollout  # type: ignore[return-value]
 
     def attention_flow(
         self,
-        attn_weights: List[torch.Tensor],   # list[Tensor [B, n_heads, T, T]]
+        attn_weights: list[torch.Tensor],  # list[Tensor [B, n_heads, T, T]]
         target_pos: int,
-    ) -> torch.Tensor:                        # [B, T]
+    ) -> torch.Tensor:  # [B, T]
         """Approximate max-flow importance of each input token for *target_pos*.
 
         Uses the attention rollout matrix: the row corresponding to
         *target_pos* gives the flow from each input token.
         """
-        rollout = self.attention_rollout(attn_weights)   # [B, T, T]
-        return rollout[:, target_pos, :]                  # [B, T]
+        rollout = self.attention_rollout(attn_weights)  # [B, T, T]
+        return rollout[:, target_pos, :]  # [B, T]
 
 
 # ---------------------------------------------------------------------------
 # LogitLensAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class LogitLensAnalyzer:
     """Decode intermediate transformer hidden states into vocabulary logits.
@@ -415,14 +418,14 @@ class LogitLensAnalyzer:
 
     def extract_intermediate_logits(
         self,
-        input_ids: torch.Tensor,   # [B, T]
-    ) -> List[torch.Tensor]:        # list[Tensor [B, T, vocab_size]]  (len = n_layers)
+        input_ids: torch.Tensor,  # [B, T]
+    ) -> list[torch.Tensor]:  # list[Tensor [B, T, vocab_size]]  (len = n_layers)
         """Project each layer's hidden state through lm_head.
 
         Hooks on each TransformerBlock output capture the hidden state before
         it is passed to the next layer.
         """
-        hidden_states: List[Optional[torch.Tensor]] = [None] * len(self.model.layers)
+        hidden_states: list[torch.Tensor | None] = [None] * len(self.model.layers)
         hooks = []
 
         def _make_hook(idx: int):
@@ -430,6 +433,7 @@ class LogitLensAnalyzer:
                 hs = output[0] if isinstance(output, (tuple, list)) else output
                 if isinstance(hs, torch.Tensor) and hs.dim() == 3:
                     hidden_states[idx] = hs.detach().clone()
+
             return hook
 
         for i, layer in enumerate(self.model.layers):
@@ -448,7 +452,7 @@ class LogitLensAnalyzer:
 
         norm_fn = getattr(self.model, "norm", None)
 
-        intermediate_logits: List[torch.Tensor] = []
+        intermediate_logits: list[torch.Tensor] = []
         for hs in hidden_states:
             if hs is None:
                 # Fallback: zeros
@@ -457,24 +461,24 @@ class LogitLensAnalyzer:
                 continue
             with torch.no_grad():
                 h = norm_fn(hs) if norm_fn is not None else hs
-                logits = lm_head(h)   # [B, T, vocab_size]
+                logits = lm_head(h)  # [B, T, vocab_size]
             intermediate_logits.append(logits)
 
         return intermediate_logits
 
     def top_k_predictions(
         self,
-        logits: torch.Tensor,   # [B, T, vocab_size]
+        logits: torch.Tensor,  # [B, T, vocab_size]
         k: int = 5,
-    ) -> List[List[int]]:
+    ) -> list[list[int]]:
         """Return the top-k token indices for each (batch, position) pair.
 
         Returns a flat list of length B*T, each element being a list of k
         token indices sorted descending by logit.
         """
         B, T, V = logits.shape
-        top_k_indices = logits.topk(min(k, V), dim=-1).indices   # [B, T, k]
-        result: List[List[int]] = []
+        top_k_indices = logits.topk(min(k, V), dim=-1).indices  # [B, T, k]
+        result: list[list[int]] = []
         for b in range(B):
             for t in range(T):
                 result.append(top_k_indices[b, t].tolist())
@@ -482,17 +486,17 @@ class LogitLensAnalyzer:
 
     def prediction_confidence_by_layer(
         self,
-        intermediate_logits: List[torch.Tensor],   # list[Tensor [B, T, vocab]]
-        final_tokens: torch.Tensor,                  # [B, T]
-    ) -> List[float]:
+        intermediate_logits: list[torch.Tensor],  # list[Tensor [B, T, vocab]]
+        final_tokens: torch.Tensor,  # [B, T]
+    ) -> list[float]:
         """Fraction of positions where a layer's top prediction matches final_tokens.
 
         Returns a list of floats in [0, 1], one per layer.
         """
-        confidences: List[float] = []
+        confidences: list[float] = []
         for logits in intermediate_logits:
             # argmax over vocabulary → [B, T]
-            pred = logits.argmax(dim=-1)               # [B, T]
-            correct = (pred == final_tokens).float()   # [B, T]
+            pred = logits.argmax(dim=-1)  # [B, T]
+            correct = (pred == final_tokens).float()  # [B, T]
             confidences.append(correct.mean().item())
         return confidences

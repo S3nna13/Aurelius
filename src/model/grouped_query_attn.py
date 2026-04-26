@@ -7,8 +7,7 @@ MQA is the extreme case with a single K/V head shared by all Q heads.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -31,7 +30,7 @@ class GQAConfig:
     d_model: int = 64
     n_heads: int = 8
     n_kv_heads: int = 2
-    d_head: Optional[int] = None
+    d_head: int | None = None
     causal: bool = True
     dropout_p: float = 0.0
 
@@ -47,6 +46,7 @@ class GQAConfig:
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
     """Repeat each KV head n_rep times to match the number of Q heads.
@@ -70,6 +70,7 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # Core module
 # ---------------------------------------------------------------------------
+
 
 class GroupedQueryAttention(nn.Module):
     """Grouped Query Attention.
@@ -137,7 +138,9 @@ class GroupedQueryAttention(nn.Module):
 
         dropout_p = cfg.dropout_p if self.training else 0.0
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=attn_mask,
             dropout_p=dropout_p,
             is_causal=False,  # mask supplied explicitly
@@ -151,6 +154,7 @@ class GroupedQueryAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Convenience wrappers
 # ---------------------------------------------------------------------------
+
 
 class MultiQueryAttention(nn.Module):
     """Multi-Query Attention — GQA with n_kv_heads=1.
@@ -170,7 +174,7 @@ class MultiQueryAttention(nn.Module):
         self,
         d_model: int = 64,
         n_heads: int = 8,
-        d_head: Optional[int] = None,
+        d_head: int | None = None,
         causal: bool = True,
         dropout_p: float = 0.0,
     ) -> None:
@@ -217,7 +221,8 @@ class GQABlock(nn.Module):
 # Utility
 # ---------------------------------------------------------------------------
 
-def count_kv_cache_params(config: GQAConfig) -> Dict[str, int]:
+
+def count_kv_cache_params(config: GQAConfig) -> dict[str, int]:
     """Return KV cache parameter statistics for a GQA configuration.
 
     Returns a dictionary with:

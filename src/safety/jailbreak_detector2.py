@@ -9,12 +9,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class JailbreakCategory(Enum):
     ROLE_PLAY = "role_play"
@@ -29,9 +28,11 @@ class JailbreakCategory(Enum):
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class JailbreakSignal:
     """A single matched jailbreak signal."""
+
     category: JailbreakCategory
     pattern: str
     weight: float
@@ -62,11 +63,9 @@ _PATTERN_STRINGS: dict[JailbreakCategory, str] = {
     JailbreakCategory.INJECTION: (
         r"(ignore (previous|all|prior)|forget your|new instruction|override|system prompt)"
     ),
-    JailbreakCategory.OBFUSCATION: (
-        r"(base64|rot13|encoded|decode this|translate.*to.*english)"
-    ),
+    JailbreakCategory.OBFUSCATION: (r"(base64|rot13|encoded|decode this|translate.*to.*english)"),
     JailbreakCategory.AUTHORITY_CLAIM: (
-        r"(i am (a|an|the) (developer|admin|researcher|openai|anthropic)|authorized|permission granted)"
+        r"(i am (a|an|the) (developer|admin|researcher|openai|anthropic)|authorized|permission granted)"  # noqa: E501
     ),
     JailbreakCategory.DIRECT_REQUEST: (
         r"(tell me how to|give me instructions|provide (a )?(step|guide)|explain how to make)"
@@ -78,6 +77,7 @@ _PATTERN_STRINGS: dict[JailbreakCategory, str] = {
 # Detector
 # ---------------------------------------------------------------------------
 
+
 class JailbreakDetector:
     """Regex-based jailbreak attempt detector."""
 
@@ -88,12 +88,12 @@ class JailbreakDetector:
             for category, pattern in _PATTERN_STRINGS.items()
         }
 
-    def detect(self, prompt: str) -> List[JailbreakSignal]:
+    def detect(self, prompt: str) -> list[JailbreakSignal]:
         """Return all matched jailbreak signals for the given prompt.
 
         Each pattern category can match at most once per prompt.
         """
-        signals: List[JailbreakSignal] = []
+        signals: list[JailbreakSignal] = []
         for category, rx in self._compiled.items():
             m = rx.search(prompt)
             if m is not None:
@@ -107,7 +107,7 @@ class JailbreakDetector:
                 )
         return signals
 
-    def risk_score(self, signals: List[JailbreakSignal]) -> float:
+    def risk_score(self, signals: list[JailbreakSignal]) -> float:
         """Sum signal weights, clamped to [0.0, 10.0]."""
         total = sum(s.weight for s in signals)
         if total < 0.0:

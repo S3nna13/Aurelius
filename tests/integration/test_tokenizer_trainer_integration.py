@@ -26,6 +26,7 @@ def test_prior_entries_intact() -> None:
         FIMConfig,
         fim_transform,
     )
+
     assert AURELIUS_MIX is not None
     assert "fim_prefix" in FIM_PREFIX
     assert "fim_suffix" in FIM_SUFFIX
@@ -37,16 +38,20 @@ def test_prior_entries_intact() -> None:
 def test_train_and_encode_decode_small_corpus() -> None:
     cfg = BPEConfig(vocab_size=320, special_tokens=["<pad>", "<eos>"])
     trainer = BPETrainer(cfg)
-    tok = trainer.train([
-        "the quick brown fox",
-        "the slow green turtle",
-        "hello world hello",
-    ])
+    tok = trainer.train(
+        [
+            "the quick brown fox",
+            "the slow green turtle",
+            "hello world hello",
+        ]
+    )
     assert "<pad>" in tok["vocab"]
     assert len(tok["merges"]) > 0
 
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"], byte_level=True,
+        tok["vocab"],
+        tok["merges"],
+        byte_level=True,
         special_tokens=tok["special_tokens"],
         pretokenize_regex=tok["pretokenize_regex"],
     )

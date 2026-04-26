@@ -6,8 +6,8 @@ import pytest
 
 from src.training.privacy_accountant import PrivacyAccountant, PrivacyBudget
 
-
 # --- PrivacyBudget dataclass ---
+
 
 def test_privacy_budget_fields():
     pb = PrivacyBudget(epsilon=1.0, delta=1e-5, mechanism="gaussian")
@@ -17,6 +17,7 @@ def test_privacy_budget_fields():
 
 
 # --- PrivacyAccountant construction ---
+
 
 def test_default_construction():
     pa = PrivacyAccountant()
@@ -46,6 +47,7 @@ def test_valid_mechanisms():
 
 
 # --- accumulate ---
+
 
 def test_accumulate_returns_budget():
     pa = PrivacyAccountant()
@@ -97,6 +99,7 @@ def test_accumulate_epsilon_formula():
 
 # --- get_budget ---
 
+
 def test_get_budget_zero_initially():
     pa = PrivacyAccountant()
     assert pa.get_budget().epsilon == 0.0
@@ -109,6 +112,7 @@ def test_get_budget_delta_preserved():
 
 
 # --- reset ---
+
 
 def test_reset_clears_epsilon():
     pa = PrivacyAccountant()
@@ -125,6 +129,7 @@ def test_reset_clears_steps():
 
 
 # --- steps_for_epsilon ---
+
 
 def test_steps_for_epsilon_positive():
     pa = PrivacyAccountant()
@@ -162,6 +167,7 @@ def test_steps_for_epsilon_invalid_sample_rate():
 
 
 # --- report ---
+
 
 def test_report_keys():
     pa = PrivacyAccountant()

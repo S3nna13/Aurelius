@@ -14,21 +14,22 @@ References:
     Mallya & Lazebnik (2018)  "PackNet"
     Rusu et al. (2016)        "Progressive Neural Networks"
 """
+
 from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterator, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # FisherInformationEstimator
 # ---------------------------------------------------------------------------
+
 
 class FisherInformationEstimator:
     """Estimates the diagonal of the Fisher Information Matrix.
@@ -51,7 +52,7 @@ class FisherInformationEstimator:
         self,
         dataloader_fn: Callable,
         loss_fn: Callable,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Accumulate squared gradients to estimate diagonal Fisher.
 
         Args:
@@ -65,7 +66,7 @@ class FisherInformationEstimator:
         self.model.train(False)
 
         # Initialise accumulators to zero.
-        fisher: Dict[str, Tensor] = {
+        fisher: dict[str, Tensor] = {
             name: torch.zeros_like(param, requires_grad=False)
             for name, param in self.model.named_parameters()
             if param.requires_grad
@@ -107,6 +108,7 @@ class FisherInformationEstimator:
 # EWCRegularizer
 # ---------------------------------------------------------------------------
 
+
 class EWCRegularizer:
     """Elastic Weight Consolidation penalty term.
 
@@ -124,15 +126,15 @@ class EWCRegularizer:
         self.lambda_ewc = lambda_ewc
 
         # List of (theta_star, fisher) tuples, one per consolidated task.
-        self._anchors: List[Tuple[Dict[str, Tensor], Dict[str, Tensor]]] = []
+        self._anchors: list[tuple[dict[str, Tensor], dict[str, Tensor]]] = []
 
-    def consolidate(self, fisher: Dict[str, Tensor]) -> None:
+    def consolidate(self, fisher: dict[str, Tensor]) -> None:
         """Save the current model parameters and Fisher diagonals.
 
         Args:
             fisher : Diagonal Fisher estimates from FisherInformationEstimator.
         """
-        theta_star: Dict[str, Tensor] = {
+        theta_star: dict[str, Tensor] = {
             name: param.detach().clone()
             for name, param in self.model.named_parameters()
             if param.requires_grad
@@ -182,6 +184,7 @@ class EWCRegularizer:
 # OnlineEWC
 # ---------------------------------------------------------------------------
 
+
 class OnlineEWC(EWCRegularizer):
     """EWC with a running (online) Fisher estimate.
 
@@ -204,8 +207,8 @@ class OnlineEWC(EWCRegularizer):
     ) -> None:
         super().__init__(model, lambda_ewc)
         self.gamma = gamma
-        self._running_fisher: Optional[Dict[str, Tensor]] = None
-        self._running_theta_star: Optional[Dict[str, Tensor]] = None
+        self._running_fisher: dict[str, Tensor] | None = None
+        self._running_theta_star: dict[str, Tensor] | None = None
 
     # Override penalty to use the running anchor.
     def penalty(self, model: nn.Module) -> Tensor:
@@ -226,7 +229,7 @@ class OnlineEWC(EWCRegularizer):
 
         return loss
 
-    def consolidate_online(self, fisher: Dict[str, Tensor], task_id: int) -> None:
+    def consolidate_online(self, fisher: dict[str, Tensor], task_id: int) -> None:
         """Update the running Fisher and save current theta*.
 
         F_running = gamma * F_old + (1 - gamma) * F_new
@@ -236,9 +239,7 @@ class OnlineEWC(EWCRegularizer):
             task_id : Integer task identifier (informational only).
         """
         if self._running_fisher is None:
-            self._running_fisher = {
-                name: f.detach().clone() for name, f in fisher.items()
-            }
+            self._running_fisher = {name: f.detach().clone() for name, f in fisher.items()}
         else:
             for name, f_new in fisher.items():
                 if name in self._running_fisher:
@@ -261,6 +262,7 @@ class OnlineEWC(EWCRegularizer):
 # PackNetManager
 # ---------------------------------------------------------------------------
 
+
 class PackNetManager:
     """Progressive network pruning and weight freezing (PackNet).
 
@@ -282,17 +284,17 @@ class PackNetManager:
         self.prune_fraction = prune_fraction
 
         # task_masks[task_id][param_name] -> binary bool Tensor
-        self.task_masks: Dict[int, Dict[str, Tensor]] = {}
+        self.task_masks: dict[int, dict[str, Tensor]] = {}
 
         # Accumulated mask of all weights allocated to any prior task.
-        self._allocated_mask: Dict[str, Tensor] = {
+        self._allocated_mask: dict[str, Tensor] = {
             name: torch.zeros_like(param, dtype=torch.bool)
             for name, param in model.named_parameters()
             if param.requires_grad
         }
 
         # Gradient hook handles.
-        self._hook_handles: List = []
+        self._hook_handles: list = []
 
     def prune_for_task(self, task_id: int) -> None:
         """Assign highest-magnitude free weights to task_id; zero the rest.
@@ -300,15 +302,13 @@ class PackNetManager:
         Args:
             task_id : Integer identifier for the task being completed.
         """
-        task_mask: Dict[str, Tensor] = {}
+        task_mask: dict[str, Tensor] = {}
 
         for name, param in self.model.named_parameters():
             if not param.requires_grad:
                 continue
 
-            allocated = self._allocated_mask.get(
-                name, torch.zeros_like(param, dtype=torch.bool)
-            )
+            allocated = self._allocated_mask.get(name, torch.zeros_like(param, dtype=torch.bool))
             free_mask = ~allocated
             free_count = int(free_mask.sum().item())
 
@@ -362,6 +362,7 @@ class PackNetManager:
             def _make_hook(mask: Tensor):
                 def _hook(grad: Tensor) -> Tensor:
                     return grad * (~mask).to(grad.dtype)
+
                 return _hook
 
             handle = param.register_hook(_make_hook(frozen.to(param.device)))
@@ -394,6 +395,7 @@ class PackNetManager:
 # ---------------------------------------------------------------------------
 # ProgressiveNNColumn
 # ---------------------------------------------------------------------------
+
 
 class _LateralAdapter(nn.Module):
     """Small linear adapter connecting one column's output to another's input."""
@@ -445,10 +447,7 @@ class ProgressiveNNColumn(nn.Module):
 
         # lateral_connections[t] is a ModuleList with t adapters (from col 0..t-1).
         self.lateral_connections = nn.ModuleList(
-            [
-                nn.ModuleList([_LateralAdapter(d_model) for _ in range(t)])
-                for t in range(n_tasks)
-            ]
+            [nn.ModuleList([_LateralAdapter(d_model) for _ in range(t)]) for t in range(n_tasks)]
         )
 
     def forward(self, x: Tensor, task_id: int) -> Tensor:
@@ -465,7 +464,7 @@ class ProgressiveNNColumn(nn.Module):
             raise ValueError(f"task_id={task_id} >= n_tasks={self.n_tasks}")
 
         # Compute prior column outputs without gradient accumulation.
-        prior_outputs: List[Tensor] = []
+        prior_outputs: list[Tensor] = []
         for k in range(task_id):
             with torch.no_grad():
                 h_k = self.columns[k](x)
@@ -485,6 +484,7 @@ class ProgressiveNNColumn(nn.Module):
 # ---------------------------------------------------------------------------
 # ContinualTrainer
 # ---------------------------------------------------------------------------
+
 
 class ContinualTrainer:
     """Unified training loop for continual-learning strategies.
@@ -513,20 +513,18 @@ class ContinualTrainer:
         self.strategy = strategy
         self.lr = lr
 
-        self.ewc: Optional[EWCRegularizer] = (
-            EWCRegularizer(model) if strategy == "ewc" else None
-        )
-        self.packnet: Optional[PackNetManager] = (
+        self.ewc: EWCRegularizer | None = EWCRegularizer(model) if strategy == "ewc" else None
+        self.packnet: PackNetManager | None = (
             PackNetManager(model) if strategy == "packnet" else None
         )
-        self._completed_tasks: List[int] = []
+        self._completed_tasks: list[int] = []
 
     def train_task(
         self,
         task_id: int,
         data_fn: Callable,
         n_steps: int,
-    ) -> List[float]:
+    ) -> list[float]:
         """Train on one task for n_steps gradient steps.
 
         Args:
@@ -541,7 +539,7 @@ class ContinualTrainer:
         self.model.train()
         optimiser = torch.optim.SGD(self.model.parameters(), lr=self.lr)
         criterion = nn.MSELoss()
-        loss_history: List[float] = []
+        loss_history: list[float] = []
 
         def _fresh_iter() -> Iterator:
             return iter(data_fn())
@@ -616,6 +614,7 @@ class ContinualTrainer:
 # ---------------------------------------------------------------------------
 # ContinualConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ContinualConfig:

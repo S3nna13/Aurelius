@@ -38,9 +38,7 @@ def test_training_step_with_token_dropout() -> None:
     model = _TinyLM(vocab=vocab, dim=16)
     opt = torch.optim.SGD(model.parameters(), lr=1e-2)
 
-    td = TokenDropout(
-        p=0.2, mask_token_id=0, mode="both", exclude_special_ids=(1,)
-    )
+    td = TokenDropout(p=0.2, mask_token_id=0, mode="both", exclude_special_ids=(1,))
 
     ids = torch.randint(1, vocab, (4, 8))
     targets = ids.clone()
@@ -55,17 +53,12 @@ def test_training_step_with_token_dropout() -> None:
         targets.reshape(-1),
         reduction="none",
     )
-    loss = (loss_flat * loss_mask.reshape(-1)).sum() / loss_mask.sum().clamp(
-        min=1.0
-    )
+    loss = (loss_flat * loss_mask.reshape(-1)).sum() / loss_mask.sum().clamp(min=1.0)
 
     assert torch.isfinite(loss)
     loss.backward()
     # At least one parameter should have a non-zero gradient.
-    assert any(
-        p.grad is not None and p.grad.abs().sum().item() > 0
-        for p in model.parameters()
-    )
+    assert any(p.grad is not None and p.grad.abs().sum().item() > 0 for p in model.parameters())
     opt.step()
     opt.zero_grad()
 

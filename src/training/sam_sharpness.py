@@ -14,12 +14,11 @@ where g(w) = grad_w L(w).
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
-
 
 LossFn = Callable[[nn.Module], torch.Tensor]
 

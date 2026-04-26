@@ -1,19 +1,22 @@
 """Tests for MetricsCollector (~50 tests)."""
+
 from __future__ import annotations
 
 import time
+
 import pytest
+
 from src.monitoring.metrics_collector import (
-    MetricType,
+    METRICS_COLLECTOR,
     MetricSample,
     MetricsCollector,
-    METRICS_COLLECTOR,
+    MetricType,
 )
-
 
 # ---------------------------------------------------------------------------
 # MetricType enum
 # ---------------------------------------------------------------------------
+
 
 class TestMetricTypeEnum:
     def test_counter_value(self):
@@ -35,6 +38,7 @@ class TestMetricTypeEnum:
 # ---------------------------------------------------------------------------
 # MetricSample dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestMetricSample:
     def test_fields_set(self):
@@ -65,6 +69,7 @@ class TestMetricSample:
 # ---------------------------------------------------------------------------
 # MetricsCollector.record
 # ---------------------------------------------------------------------------
+
 
 class TestRecord:
     def setup_method(self):
@@ -112,6 +117,7 @@ class TestRecord:
 # MetricsCollector.increment
 # ---------------------------------------------------------------------------
 
+
 class TestIncrement:
     def setup_method(self):
         self.mc = MetricsCollector()
@@ -145,6 +151,7 @@ class TestIncrement:
 # ---------------------------------------------------------------------------
 # MetricsCollector.get_samples
 # ---------------------------------------------------------------------------
+
 
 class TestGetSamples:
     def setup_method(self):
@@ -190,14 +197,23 @@ class TestGetSamples:
 # MetricsCollector.summary
 # ---------------------------------------------------------------------------
 
+
 class TestSummary:
     def setup_method(self):
         self.mc = MetricsCollector()
 
     def test_empty_returns_all_zeros(self):
         s = self.mc.summary("missing")
-        assert s == {"count": 0, "sum": 0.0, "mean": 0.0, "min": 0.0, "max": 0.0,
-                     "p50": 0.0, "p95": 0.0, "p99": 0.0}
+        assert s == {
+            "count": 0,
+            "sum": 0.0,
+            "mean": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+        }
 
     def test_count(self):
         for v in [1, 2, 3, 4, 5]:
@@ -254,6 +270,7 @@ class TestSummary:
 # MetricsCollector.metric_names
 # ---------------------------------------------------------------------------
 
+
 class TestMetricNames:
     def setup_method(self):
         self.mc = MetricsCollector()
@@ -277,6 +294,7 @@ class TestMetricNames:
 # ---------------------------------------------------------------------------
 # Singleton
 # ---------------------------------------------------------------------------
+
 
 class TestSingleton:
     def test_metrics_collector_exists(self):

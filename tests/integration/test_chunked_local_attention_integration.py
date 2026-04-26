@@ -12,10 +12,7 @@ import pathlib
 
 import torch
 
-
-FROZEN_ATTENTION_SHA256 = (
-    "e1edf0b235c89e7284ac64a75dd5a7ffcd95846da765714a8b32e96e75bacc49"
-)
+FROZEN_ATTENTION_SHA256 = "e1edf0b235c89e7284ac64a75dd5a7ffcd95846da765714a8b32e96e75bacc49"
 
 
 def _attention_path() -> pathlib.Path:
@@ -26,9 +23,9 @@ def _attention_path() -> pathlib.Path:
 
 
 def test_exposed_via_src_model():
+    import src.model as m
     from src.model import ChunkedLocalAttention  # noqa: F401
 
-    import src.model as m
     assert hasattr(m, "ChunkedLocalAttention")
     assert "ChunkedLocalAttention" in m.__all__
 
@@ -38,8 +35,7 @@ def test_frozen_attention_file_unchanged():
     data = path.read_bytes()
     got = hashlib.sha256(data).hexdigest()
     assert got == FROZEN_ATTENTION_SHA256, (
-        f"src/model/attention.py was modified — sha256 {got} "
-        f"(expected {FROZEN_ATTENTION_SHA256})"
+        f"src/model/attention.py was modified — sha256 {got} (expected {FROZEN_ATTENTION_SHA256})"
     )
 
 
@@ -48,8 +44,12 @@ def test_end_to_end_forward():
 
     torch.manual_seed(1234)
     mod = ChunkedLocalAttention(
-        d_model=32, n_heads=4, head_dim=8,
-        chunk_size=8, window_size=4, dropout=0.0,
+        d_model=32,
+        n_heads=4,
+        head_dim=8,
+        chunk_size=8,
+        window_size=4,
+        dropout=0.0,
     )
     x = torch.randn(2, 32, 32)
     y = mod(x)

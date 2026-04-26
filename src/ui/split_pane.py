@@ -8,13 +8,12 @@ Only rich, stdlib, and project-local imports are used.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
 from rich.console import Console
 from rich.table import Table
-from rich.text import Text
 
 
 class SplitPaneError(Exception):
@@ -73,9 +72,7 @@ class SplitPane:
         """
         existing_ids = {p.pane_id for p in self.panes}
         if config.pane_id in existing_ids:
-            raise SplitPaneError(
-                f"pane {config.pane_id!r} already exists in this layout"
-            )
+            raise SplitPaneError(f"pane {config.pane_id!r} already exists in this layout")
         self.panes.append(config)
 
     def remove_pane(self, pane_id: str) -> None:
@@ -92,8 +89,7 @@ class SplitPane:
                 del self.panes[i]
                 return
         raise SplitPaneError(
-            f"pane {pane_id!r} not found; "
-            f"available: {[p.pane_id for p in self.panes]}"
+            f"pane {pane_id!r} not found; available: {[p.pane_id for p in self.panes]}"
         )
 
     def show(self, pane_id: str) -> None:
@@ -131,9 +127,7 @@ class SplitPane:
             SplitPaneError: If *pane_id* is not found or *new_weight* <= 0.
         """
         if new_weight <= 0:
-            raise SplitPaneError(
-                f"weight must be > 0, got {new_weight!r}"
-            )
+            raise SplitPaneError(f"weight must be > 0, got {new_weight!r}")
         pane = self._get_pane(pane_id)
         pane.weight = new_weight
 
@@ -216,8 +210,7 @@ class SplitPane:
             if pane.pane_id == pane_id:
                 return pane
         raise SplitPaneError(
-            f"pane {pane_id!r} not found; "
-            f"available: {[p.pane_id for p in self.panes]}"
+            f"pane {pane_id!r} not found; available: {[p.pane_id for p in self.panes]}"
         )
 
 

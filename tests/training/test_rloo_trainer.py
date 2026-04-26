@@ -11,6 +11,7 @@
   - TRAINING_REGISTRY registration
   Integration: k=4, B=2, T=8 full forward + backward
 """
+
 from __future__ import annotations
 
 import math
@@ -30,14 +31,15 @@ from src.training.rloo_trainer import RLOOBatch, RLOOConfig, RLOOTrainer
 D_MODEL = 64
 N_HEADS = 4
 VOCAB = 256
-K = 4       # responses per prompt
-B = 2       # number of distinct prompts
-T = 8       # sequence length
+K = 4  # responses per prompt
+B = 2  # number of distinct prompts
+T = 8  # sequence length
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_batch(
     k: int = K,
@@ -73,6 +75,7 @@ def default_trainer(normalize: bool = True, k: int = K) -> RLOOTrainer:
 # 1. Config defaults
 # ===========================================================================
 
+
 def test_config_defaults() -> None:
     cfg = RLOOConfig()
     assert cfg.k == 8
@@ -85,6 +88,7 @@ def test_config_defaults() -> None:
 # 2. LOO advantages — output shape matches input
 # ===========================================================================
 
+
 def test_loo_advantages_shape() -> None:
     trainer = default_trainer()
     rewards = torch.rand(B * K)
@@ -95,6 +99,7 @@ def test_loo_advantages_shape() -> None:
 # ===========================================================================
 # 3. LOO baseline correctness for k=3
 # ===========================================================================
+
 
 def test_loo_baseline_correct() -> None:
     """Manually verify baseline = mean of the other k-1 for one group."""
@@ -113,6 +118,7 @@ def test_loo_baseline_correct() -> None:
 # 4. LOO advantages for k=2: adv_0 = r_0 - r_1, adv_1 = r_1 - r_0
 # ===========================================================================
 
+
 def test_loo_advantages_k2() -> None:
     trainer = RLOOTrainer(RLOOConfig(k=2, normalize_advantages=False))
     r0, r1 = 0.3, 0.7
@@ -126,6 +132,7 @@ def test_loo_advantages_k2() -> None:
 # 5. Uniform rewards → all advantages = 0 (before normalisation)
 # ===========================================================================
 
+
 def test_loo_advantages_uniform() -> None:
     trainer = RLOOTrainer(RLOOConfig(k=4, normalize_advantages=False))
     rewards = torch.ones(B * 4) * 0.5
@@ -136,6 +143,7 @@ def test_loo_advantages_uniform() -> None:
 # ===========================================================================
 # 6. Normalised advantages have ~zero mean and ~unit std
 # ===========================================================================
+
 
 def test_normalize_advantages() -> None:
     trainer = default_trainer(normalize=True)
@@ -150,6 +158,7 @@ def test_normalize_advantages() -> None:
 # 7. KL penalty is 0 when log_probs == ref_log_probs
 # ===========================================================================
 
+
 def test_kl_penalty_zero() -> None:
     trainer = default_trainer()
     lp = torch.randn(B * K, T)
@@ -162,9 +171,10 @@ def test_kl_penalty_zero() -> None:
 # 8. KL penalty > 0 when distributions differ
 # ===========================================================================
 
+
 def test_kl_penalty_positive() -> None:
     trainer = default_trainer()
-    lp = torch.zeros(B * K, T)       # policy: all 0
+    lp = torch.zeros(B * K, T)  # policy: all 0
     ref_lp = torch.ones(B * K, T) * -2.0  # reference: all -2
     mask = torch.ones(B * K, T)
     kl = trainer.compute_kl_penalty(lp, ref_lp, mask)
@@ -177,6 +187,7 @@ def test_kl_penalty_positive() -> None:
 # 9. Policy loss sign: positive advantage + higher log_prob → lower loss
 # ===========================================================================
 
+
 def test_policy_loss_sign() -> None:
     """A response with positive advantage should push toward lower loss when
     its log_probs are high (pg_loss = -adv * log_prob, so high log_prob
@@ -184,7 +195,7 @@ def test_policy_loss_sign() -> None:
     trainer = RLOOTrainer(RLOOConfig(k=2, normalize_advantages=False))
     # Rewards: first response clearly better
     rewards_high = torch.tensor([1.0, 0.0])
-    rewards_low  = torch.tensor([0.0, 1.0])
+    rewards_low = torch.tensor([0.0, 1.0])
 
     # Same log_probs for both cases
     log_probs = torch.ones(2, T) * 0.5
@@ -204,7 +215,7 @@ def test_policy_loss_sign() -> None:
     )
 
     loss_high = trainer.compute_policy_loss(batch_high)
-    loss_low  = trainer.compute_policy_loss(batch_low)
+    loss_low = trainer.compute_policy_loss(batch_low)
     # Both are symmetric — their magnitudes should be equal, signs equal by construction
     assert torch.isfinite(loss_high)
     assert torch.isfinite(loss_low)
@@ -213,6 +224,7 @@ def test_policy_loss_sign() -> None:
 # ===========================================================================
 # 10. Attention mask excludes padding from loss
 # ===========================================================================
+
 
 def test_attention_mask() -> None:
     """Setting mask to zero on all but one token should affect the loss."""
@@ -251,6 +263,7 @@ def test_attention_mask() -> None:
 # 11. total_loss returns expected keys
 # ===========================================================================
 
+
 def test_total_loss_keys() -> None:
     trainer = default_trainer()
     batch = make_batch()
@@ -262,6 +275,7 @@ def test_total_loss_keys() -> None:
 # ===========================================================================
 # 12. total_loss values are scalars
 # ===========================================================================
+
 
 def test_total_loss_scalar() -> None:
     trainer = default_trainer()
@@ -275,6 +289,7 @@ def test_total_loss_scalar() -> None:
 # ===========================================================================
 # 13. statistics returns expected keys with Python floats
 # ===========================================================================
+
 
 def test_statistics_keys() -> None:
     trainer = default_trainer()
@@ -291,6 +306,7 @@ def test_statistics_keys() -> None:
 # 14. Gradient flows through total_loss
 # ===========================================================================
 
+
 def test_gradient_flows() -> None:
     trainer = default_trainer()
     batch = make_batch(all_ones_mask=True)
@@ -305,8 +321,10 @@ def test_gradient_flows() -> None:
 # 15. TRAINING_REGISTRY contains "rloo" key
 # ===========================================================================
 
+
 def test_registry_contains_rloo() -> None:
     from src.training import TRAINING_REGISTRY
+
     assert "rloo" in TRAINING_REGISTRY, (
         f"'rloo' not in TRAINING_REGISTRY. Keys: {list(TRAINING_REGISTRY.keys())}"
     )
@@ -317,6 +335,7 @@ def test_registry_contains_rloo() -> None:
 # 16. Invalid k raises ValueError
 # ===========================================================================
 
+
 def test_invalid_k_raises() -> None:
     with pytest.raises(ValueError, match="k must be >= 2"):
         RLOOTrainer(RLOOConfig(k=1))
@@ -325,6 +344,7 @@ def test_invalid_k_raises() -> None:
 # ===========================================================================
 # 17. Non-divisible rewards tensor raises ValueError
 # ===========================================================================
+
 
 def test_non_divisible_rewards_raises() -> None:
     trainer = default_trainer(k=4)
@@ -336,6 +356,7 @@ def test_non_divisible_rewards_raises() -> None:
 # ===========================================================================
 # Integration: k=4, B=2, T=8 — full forward + backward
 # ===========================================================================
+
 
 def test_integration_forward_backward() -> None:
     """Full RLOO pipeline: k=4 groups, B=2 prompts, T=8 tokens."""

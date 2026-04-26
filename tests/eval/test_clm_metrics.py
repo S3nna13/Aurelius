@@ -14,9 +14,8 @@ stdlib operations — no HuggingFace, no scipy, no sklearn.
   - GenerationMetrics.evaluate (required keys present)
   - GenerationMetrics.compare (difference dict correctness)
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.eval.clm_metrics import (
     CLMMetricsConfig,
@@ -28,7 +27,6 @@ from src.eval.clm_metrics import (
     compute_self_bleu,
     compute_vocabulary_coverage,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -55,6 +53,7 @@ REPEATED_SEQS = [
 # 1. CLMMetricsConfig defaults
 # ===========================================================================
 
+
 class TestCLMMetricsConfig:
     def test_default_ngram_sizes(self):
         cfg = CLMMetricsConfig()
@@ -73,8 +72,9 @@ class TestCLMMetricsConfig:
         assert cfg.length_penalty_alpha == 0.0
 
     def test_custom_values(self):
-        cfg = CLMMetricsConfig(ngram_sizes=[1, 2], repetition_window=8, distinct_n=1,
-                               length_penalty_alpha=0.5)
+        cfg = CLMMetricsConfig(
+            ngram_sizes=[1, 2], repetition_window=8, distinct_n=1, length_penalty_alpha=0.5
+        )
         assert cfg.ngram_sizes == [1, 2]
         assert cfg.repetition_window == 8
         assert cfg.length_penalty_alpha == 0.5
@@ -83,6 +83,7 @@ class TestCLMMetricsConfig:
 # ===========================================================================
 # 2. compute_ngram_frequencies
 # ===========================================================================
+
 
 class TestComputeNgramFrequencies:
     def test_unigram_counts(self):
@@ -110,6 +111,7 @@ class TestComputeNgramFrequencies:
 # ===========================================================================
 # 3. compute_distinct_n
 # ===========================================================================
+
 
 class TestComputeDistinctN:
     def test_all_unique_unigrams_returns_1(self):
@@ -141,6 +143,7 @@ class TestComputeDistinctN:
 # ===========================================================================
 # 4. compute_repetition_rate
 # ===========================================================================
+
 
 class TestComputeRepetitionRate:
     def test_all_unique_returns_0(self):
@@ -176,6 +179,7 @@ class TestComputeRepetitionRate:
 # 5. compute_self_bleu
 # ===========================================================================
 
+
 class TestComputeSelfBleu:
     def test_in_range_0_to_1(self):
         seqs = [[1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6]]
@@ -203,6 +207,7 @@ class TestComputeSelfBleu:
 # ===========================================================================
 # 6. compute_length_stats
 # ===========================================================================
+
 
 class TestComputeLengthStats:
     REQUIRED_KEYS = {"mean", "std", "min", "max", "median"}
@@ -233,6 +238,7 @@ class TestComputeLengthStats:
 # 7. compute_vocabulary_coverage
 # ===========================================================================
 
+
 class TestComputeVocabularyCoverage:
     def test_coverage_in_range(self):
         tokens = list(range(10))
@@ -259,8 +265,14 @@ class TestComputeVocabularyCoverage:
 # ===========================================================================
 
 EXPECTED_EVAL_KEYS = {
-    "distinct_1", "distinct_2", "distinct_3", "distinct_4",
-    "repetition_rate", "self_bleu", "length_mean", "length_std",
+    "distinct_1",
+    "distinct_2",
+    "distinct_3",
+    "distinct_4",
+    "repetition_rate",
+    "self_bleu",
+    "length_mean",
+    "length_std",
     "vocab_coverage",
 }
 
@@ -302,6 +314,7 @@ class TestGenerationMetricsEvaluate:
 # 9. GenerationMetrics.compare
 # ===========================================================================
 
+
 class TestGenerationMetricsCompare:
     def _make_evaluator(self):
         return GenerationMetrics(CLMMetricsConfig())
@@ -323,9 +336,17 @@ class TestGenerationMetricsCompare:
     def test_compare_signed_difference(self):
         ev = self._make_evaluator()
         # metrics_b is metrics_a with one field bumped
-        ma = {"distinct_1": 0.5, "distinct_2": 0.4, "distinct_3": 0.3,
-              "distinct_4": 0.2, "repetition_rate": 0.1, "self_bleu": 0.2,
-              "length_mean": 5.0, "length_std": 1.0, "vocab_coverage": 0.5}
+        ma = {
+            "distinct_1": 0.5,
+            "distinct_2": 0.4,
+            "distinct_3": 0.3,
+            "distinct_4": 0.2,
+            "repetition_rate": 0.1,
+            "self_bleu": 0.2,
+            "length_mean": 5.0,
+            "length_std": 1.0,
+            "vocab_coverage": 0.5,
+        }
         mb = dict(ma)
         mb["distinct_1"] = 0.8
         diff = ev.compare(ma, mb)

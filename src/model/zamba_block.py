@@ -31,35 +31,35 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ZambaConfig:
     """Hyperparameters for the Zamba hybrid SSM + shared attention model."""
 
     d_model: int = 2048
-    d_state: int = 64          # SSM state dimension
-    d_conv: int = 4            # SSM depthwise conv width
-    expand: int = 2            # SSM inner expansion factor
-    n_heads: int = 16          # shared attention heads
-    head_dim: int = 128        # per-head dimension
-    attn_every_n: int = 6      # inject shared attention every N SSM layers
-    n_layers: int = 26         # total layers in the stack (SSM + attn)
+    d_state: int = 64  # SSM state dimension
+    d_conv: int = 4  # SSM depthwise conv width
+    expand: int = 2  # SSM inner expansion factor
+    n_heads: int = 16  # shared attention heads
+    head_dim: int = 128  # per-head dimension
+    attn_every_n: int = 6  # inject shared attention every N SSM layers
+    n_layers: int = 26  # total layers in the stack (SSM + attn)
 
 
 # ---------------------------------------------------------------------------
 # SSM Layer (simplified Mamba-style)
 # ---------------------------------------------------------------------------
+
 
 class ZambaSSMLayer(nn.Module):
     """Simplified Mamba-style SSM layer.
@@ -125,25 +125,25 @@ class ZambaSSMLayer(nn.Module):
         B, T, _ = x.shape
 
         # Project input
-        projected = self.in_proj(x)                                 # [B, T, d_inner + 2*d_state]
-        x_ssm = projected[..., : self.d_inner]                     # [B, T, d_inner]
-        B_mat = projected[..., self.d_inner: self.d_inner + self.d_state]      # [B, T, d_state]
-        C_mat = projected[..., self.d_inner + self.d_state:]       # [B, T, d_state]
+        projected = self.in_proj(x)  # [B, T, d_inner + 2*d_state]
+        x_ssm = projected[..., : self.d_inner]  # [B, T, d_inner]
+        B_mat = projected[..., self.d_inner : self.d_inner + self.d_state]  # [B, T, d_state]
+        C_mat = projected[..., self.d_inner + self.d_state :]  # [B, T, d_state]
 
         # Depthwise conv (needs [B, C, T] layout), then trim causal padding
-        x_conv = self.conv1d(x_ssm.transpose(1, 2))                # [B, d_inner, T + pad]
-        x_conv = x_conv[..., :T]                                    # [B, d_inner, T]
-        x_conv = F.silu(x_conv).transpose(1, 2)                    # [B, T, d_inner]
+        x_conv = self.conv1d(x_ssm.transpose(1, 2))  # [B, d_inner, T + pad]
+        x_conv = x_conv[..., :T]  # [B, d_inner, T]
+        x_conv = F.silu(x_conv).transpose(1, 2)  # [B, T, d_inner]
 
         # Linear SSM recurrence: h_t = A*h_{t-1} + B_t*u_t, y_t = C_t*h_t
-        A = -torch.exp(self.A_log)                                  # [d_inner], negative
+        A = -torch.exp(self.A_log)  # [d_inner], negative
         h = torch.zeros(B, self.d_inner, self.d_state, device=x.device, dtype=x.dtype)
 
-        ys: List[Tensor] = []
+        ys: list[Tensor] = []
         for t in range(T):
-            u_t = x_conv[:, t, :]                                   # [B, d_inner]
-            b_t = B_mat[:, t, :]                                    # [B, d_state]
-            c_t = C_mat[:, t, :]                                    # [B, d_state]
+            u_t = x_conv[:, t, :]  # [B, d_inner]
+            b_t = B_mat[:, t, :]  # [B, d_state]
+            c_t = C_mat[:, t, :]  # [B, d_state]
 
             # h: [B, d_inner, d_state]
             # A broadcast: [d_inner] → [1, d_inner, 1]
@@ -154,16 +154,17 @@ class ZambaSSMLayer(nn.Module):
             y_t = (h * c_t.unsqueeze(1)).sum(-1)
             ys.append(y_t)
 
-        y = torch.stack(ys, dim=1)                                  # [B, T, d_inner]
+        y = torch.stack(ys, dim=1)  # [B, T, d_inner]
 
         # Output projection + residual
-        out = self.out_proj(y)                                      # [B, T, d_model]
+        out = self.out_proj(y)  # [B, T, d_model]
         return self.norm(out + residual)
 
 
 # ---------------------------------------------------------------------------
 # Shared Attention Layer
 # ---------------------------------------------------------------------------
+
 
 class ZambaSharedAttention(nn.Module):
     """Causal self-attention layer shared across multiple positions in the stack.
@@ -197,13 +198,13 @@ class ZambaSharedAttention(nn.Module):
         """
         residual = x
         B, T, _ = x.shape
-        scale = self.head_dim ** -0.5
+        scale = self.head_dim**-0.5
 
         def _split_heads(t: Tensor) -> Tensor:
             # t: [B, T, d_attn] → [B, n_heads, T, head_dim]
             return t.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
 
-        Q = _split_heads(self.q_proj(x))   # [B, H, T, head_dim]
+        Q = _split_heads(self.q_proj(x))  # [B, H, T, head_dim]
         K = _split_heads(self.k_proj(x))
         V = _split_heads(self.v_proj(x))
 
@@ -211,23 +212,22 @@ class ZambaSharedAttention(nn.Module):
         attn_scores = torch.matmul(Q, K.transpose(-2, -1)) * scale  # [B, H, T, T]
 
         # Causal mask: upper triangle = -inf
-        causal_mask = torch.triu(
-            torch.ones(T, T, device=x.device, dtype=torch.bool), diagonal=1
-        )
+        causal_mask = torch.triu(torch.ones(T, T, device=x.device, dtype=torch.bool), diagonal=1)
         attn_scores = attn_scores.masked_fill(causal_mask, float("-inf"))
 
         attn_weights = torch.softmax(attn_scores, dim=-1)
-        attn_out = torch.matmul(attn_weights, V)                    # [B, H, T, head_dim]
+        attn_out = torch.matmul(attn_weights, V)  # [B, H, T, head_dim]
 
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(B, T, self.d_attn)
-        out = self.out_proj(attn_out)                               # [B, T, d_model]
+        out = self.out_proj(attn_out)  # [B, T, d_model]
         return self.norm(out + residual)
 
 
 # ---------------------------------------------------------------------------
 # Zamba Block
 # ---------------------------------------------------------------------------
+
 
 class ZambaBlock(nn.Module):
     """Stack of ZambaSSMLayers with periodic shared attention injection.
@@ -246,7 +246,7 @@ class ZambaBlock(nn.Module):
         self.config = config
 
         # Build the schedule
-        self._schedule: List[str] = []
+        self._schedule: list[str] = []
         for i in range(config.n_layers):
             if i % config.attn_every_n == config.attn_every_n - 1:
                 self._schedule.append("attn")
@@ -255,15 +255,17 @@ class ZambaBlock(nn.Module):
 
         # Instantiate SSM layers (one per SSM position)
         n_ssm = self._schedule.count("ssm")
-        self.ssm_layers = nn.ModuleList([
-            ZambaSSMLayer(
-                d_model=config.d_model,
-                d_state=config.d_state,
-                d_conv=config.d_conv,
-                expand=config.expand,
-            )
-            for _ in range(n_ssm)
-        ])
+        self.ssm_layers = nn.ModuleList(
+            [
+                ZambaSSMLayer(
+                    d_model=config.d_model,
+                    d_state=config.d_state,
+                    d_conv=config.d_conv,
+                    expand=config.expand,
+                )
+                for _ in range(n_ssm)
+            ]
+        )
 
         # ONE shared attention module (reused at every attn position)
         self.shared_attn = ZambaSharedAttention(

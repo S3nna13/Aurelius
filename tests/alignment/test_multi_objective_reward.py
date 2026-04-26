@@ -1,20 +1,19 @@
 """Tests for multi-objective reward modeling."""
+
 from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.alignment.multi_objective_reward import (
     MultiHeadRewardModel,
-    linear_scalarize,
-    chebyshev_scalarize,
-    hypervolume_scalarize,
-    is_pareto_dominated,
-    pareto_front,
-    ObjectiveConfig,
     MultiObjectiveRMTrainer,
+    ObjectiveConfig,
+    chebyshev_scalarize,
     compute_pareto_reward,
+    is_pareto_dominated,
+    linear_scalarize,
+    pareto_front,
 )
 
 # ---------------------------------------------------------------------------
@@ -29,6 +28,7 @@ B = 4
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def model():
@@ -64,6 +64,7 @@ def trainer(model, objectives):
 # Test 1: forward shape
 # ---------------------------------------------------------------------------
 
+
 def test_forward_shape(model, hidden):
     rewards = model(hidden)
     assert rewards.shape == (B, N_OBJECTIVES), (
@@ -75,6 +76,7 @@ def test_forward_shape(model, hidden):
 # Test 2: get_objective_reward shape
 # ---------------------------------------------------------------------------
 
+
 def test_get_objective_reward_shape(model, hidden):
     for idx in range(N_OBJECTIVES):
         r = model.get_objective_reward(hidden, idx)
@@ -84,6 +86,7 @@ def test_get_objective_reward_shape(model, hidden):
 # ---------------------------------------------------------------------------
 # Test 3: each head has independent parameters (different outputs same input)
 # ---------------------------------------------------------------------------
+
 
 def test_heads_are_independent(model, hidden):
     rewards = model(hidden)  # (B, N_OBJECTIVES)
@@ -97,6 +100,7 @@ def test_heads_are_independent(model, hidden):
 # ---------------------------------------------------------------------------
 # Test 4: linear_scalarize shape and correctness
 # ---------------------------------------------------------------------------
+
 
 def test_linear_scalarize_shape_and_correctness():
     torch.manual_seed(42)
@@ -113,6 +117,7 @@ def test_linear_scalarize_shape_and_correctness():
 # Test 5: linear_scalarize with uniform weights == mean
 # ---------------------------------------------------------------------------
 
+
 def test_linear_scalarize_uniform_is_mean():
     torch.manual_seed(7)
     rewards = torch.randn(B, N_OBJECTIVES)
@@ -128,6 +133,7 @@ def test_linear_scalarize_uniform_is_mean():
 # Test 6: chebyshev_scalarize shape
 # ---------------------------------------------------------------------------
 
+
 def test_chebyshev_scalarize_shape():
     torch.manual_seed(3)
     rewards = torch.randn(B, N_OBJECTIVES)
@@ -139,6 +145,7 @@ def test_chebyshev_scalarize_shape():
 # ---------------------------------------------------------------------------
 # Test 7: chebyshev_scalarize with one-hot weight collapses to that objective
 # ---------------------------------------------------------------------------
+
 
 def test_chebyshev_one_hot_collapses():
     """With weight = [1,0,0] and reference=0, result = -|reward_0|."""
@@ -157,6 +164,7 @@ def test_chebyshev_one_hot_collapses():
 # Test 8: is_pareto_dominated — dominated solution returns True
 # ---------------------------------------------------------------------------
 
+
 def test_is_pareto_dominated_true():
     # solution [1,1,1] is dominated by [2,2,2]
     solution = torch.tensor([1.0, 1.0, 1.0])
@@ -167,6 +175,7 @@ def test_is_pareto_dominated_true():
 # ---------------------------------------------------------------------------
 # Test 9: is_pareto_dominated — Pareto-optimal returns False
 # ---------------------------------------------------------------------------
+
 
 def test_is_pareto_dominated_false():
     # solution [3,1,1] — no one dominates it (population has [1,3,1] and [1,1,3])
@@ -179,6 +188,7 @@ def test_is_pareto_dominated_false():
 # Test 10: is_pareto_dominated — empty population returns False
 # ---------------------------------------------------------------------------
 
+
 def test_is_pareto_dominated_empty_population():
     solution = torch.tensor([1.0, 2.0, 3.0])
     population = torch.zeros(0, 3)
@@ -188,6 +198,7 @@ def test_is_pareto_dominated_empty_population():
 # ---------------------------------------------------------------------------
 # Test 11: pareto_front — all identical solutions → all non-dominated
 # ---------------------------------------------------------------------------
+
 
 def test_pareto_front_identical():
     # Identical solutions: none strictly dominates another
@@ -201,13 +212,16 @@ def test_pareto_front_identical():
 # Test 12: pareto_front — clearly dominated solution excluded
 # ---------------------------------------------------------------------------
 
+
 def test_pareto_front_dominated_excluded():
     # [2,2,2] dominates [1,1,1]
-    solutions = torch.tensor([
-        [2.0, 2.0, 2.0],  # idx 0: dominates idx 1
-        [1.0, 1.0, 1.0],  # idx 1: dominated
-        [3.0, 0.5, 0.5],  # idx 2: non-dominated (high on obj 0)
-    ])
+    solutions = torch.tensor(
+        [
+            [2.0, 2.0, 2.0],  # idx 0: dominates idx 1
+            [1.0, 1.0, 1.0],  # idx 1: dominated
+            [3.0, 0.5, 0.5],  # idx 2: non-dominated (high on obj 0)
+        ]
+    )
     mask = pareto_front(solutions)
     assert mask.shape == (3,)
     assert mask[0].item() is True, "Solution 0 should be non-dominated"
@@ -218,6 +232,7 @@ def test_pareto_front_dominated_excluded():
 # ---------------------------------------------------------------------------
 # Test 13: compute_loss returns scalar loss + metrics dict
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_returns_scalar_and_metrics(trainer, hidden):
     torch.manual_seed(5)
@@ -232,6 +247,7 @@ def test_compute_loss_returns_scalar_and_metrics(trainer, hidden):
 # ---------------------------------------------------------------------------
 # Test 14: per-objective metrics have correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_compute_loss_metric_keys(trainer, hidden):
     torch.manual_seed(6)
@@ -248,6 +264,7 @@ def test_compute_loss_metric_keys(trainer, hidden):
 # Test 15: detect_gradient_conflict returns (n_obj, n_obj) with diagonal ≈ 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_detect_gradient_conflict_shape_and_diagonal(trainer, hidden):
     torch.manual_seed(11)
     chosen = hidden
@@ -258,7 +275,7 @@ def test_detect_gradient_conflict_shape_and_diagonal(trainer, hidden):
     )
     for i in range(N_OBJECTIVES):
         assert abs(sim[i, i].item() - 1.0) < 1e-4, (
-            f"Diagonal element [{i},{i}] = {sim[i,i].item():.6f}, expected ≈ 1.0"
+            f"Diagonal element [{i},{i}] = {sim[i, i].item():.6f}, expected ≈ 1.0"
         )
 
 
@@ -266,18 +283,23 @@ def test_detect_gradient_conflict_shape_and_diagonal(trainer, hidden):
 # Test 16: compute_pareto_reward — dominating gets +1, dominated gets -1
 # ---------------------------------------------------------------------------
 
+
 def test_compute_pareto_reward():
     # B=3: dominating, dominated, neutral
-    rewards = torch.tensor([
-        [3.0, 3.0, 3.0],  # dominates ref → +1
-        [0.5, 0.5, 0.5],  # dominated by ref → -1
-        [2.0, 1.0, 3.0],  # neither (not all >= ref, not all <= ref) → 0
-    ])
-    reference = torch.tensor([
-        [1.0, 1.0, 1.0],  # dominated by rewards[0]
-        [2.0, 2.0, 2.0],  # dominates rewards[1]
-        [1.0, 2.0, 2.0],  # rewards[2] wins obj0 and obj2, loses obj1 → 0
-    ])
+    rewards = torch.tensor(
+        [
+            [3.0, 3.0, 3.0],  # dominates ref → +1
+            [0.5, 0.5, 0.5],  # dominated by ref → -1
+            [2.0, 1.0, 3.0],  # neither (not all >= ref, not all <= ref) → 0
+        ]
+    )
+    reference = torch.tensor(
+        [
+            [1.0, 1.0, 1.0],  # dominated by rewards[0]
+            [2.0, 2.0, 2.0],  # dominates rewards[1]
+            [1.0, 2.0, 2.0],  # rewards[2] wins obj0 and obj2, loses obj1 → 0
+        ]
+    )
     result = compute_pareto_reward(rewards, reference)
     assert result.shape == (3,), f"Expected (3,), got {result.shape}"
     assert result[0].item() == 1, f"Expected +1 for dominating, got {result[0].item()}"

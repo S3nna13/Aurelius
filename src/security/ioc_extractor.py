@@ -17,8 +17,6 @@ import hashlib
 import ipaddress
 import re
 from dataclasses import dataclass, field
-from typing import Iterable
-
 
 # --------------------------------------------------------------------------- #
 # Dataclasses                                                                 #
@@ -175,9 +173,7 @@ _HASH_SHA512_RE = re.compile(r"(?<![0-9a-fA-F])([0-9a-fA-F]{128})(?![0-9a-fA-F])
 _CVE_RE = re.compile(r"\b(CVE-\d{4}-\d{4,7})\b", re.IGNORECASE)
 
 # Windows file paths: drive-letter + backslash path, OR UNC.
-_WIN_PATH_RE = re.compile(
-    r"(?<![\w])((?:[A-Za-z]:\\|\\\\)[^\s<>\"'|?*\r\n]+)"
-)
+_WIN_PATH_RE = re.compile(r"(?<![\w])((?:[A-Za-z]:\\|\\\\)[^\s<>\"'|?*\r\n]+)")
 # Unix paths: absolute paths of reasonable depth.
 _UNIX_PATH_RE = re.compile(r"(?<![\w/])(/(?:[\w.\-]+/)+[\w.\-]+)")
 
@@ -223,8 +219,19 @@ def _refang_text(text: str) -> str:
     return text
 
 
-_DEFANG_MARKERS = ("[.]", "(.)", "{.}", "[dot]", "(dot)", "hxxp", "fxp",
-                   "[at]", "(at)", "{at}", "[:]")
+_DEFANG_MARKERS = (
+    "[.]",
+    "(.)",
+    "{.}",
+    "[dot]",
+    "(dot)",
+    "hxxp",
+    "fxp",
+    "[at]",
+    "(at)",
+    "{at}",
+    "[:]",
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -243,8 +250,10 @@ class IOCExtractor:
     ) -> None:
         self.include_private_ips = bool(include_private_ips)
         self.domain_allowlist = {
-            d.lower() for d in (domain_allowlist if domain_allowlist is not None
-                                else DEFAULT_DOMAIN_ALLOWLIST)
+            d.lower()
+            for d in (
+                domain_allowlist if domain_allowlist is not None else DEFAULT_DOMAIN_ALLOWLIST
+            )
         }
         self.refang = bool(refang)
 
@@ -344,8 +353,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="url", value=value, confidence=0.95,
-                    defanged=defanged, span=span),
+                IOC(type="url", value=value, confidence=0.95, defanged=defanged, span=span),
             )
 
     def _extract_emails(
@@ -367,8 +375,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="email", value=em.group(1), confidence=0.9,
-                    defanged=True, span=span),
+                IOC(type="email", value=em.group(1), confidence=0.9, defanged=True, span=span),
             )
 
         for m in _EMAIL_RE.finditer(scan_text):
@@ -376,8 +383,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="email", value=m.group(1), confidence=0.95,
-                    defanged=False, span=span),
+                IOC(type="email", value=m.group(1), confidence=0.95, defanged=False, span=span),
             )
 
     def _extract_hashes(
@@ -400,8 +406,13 @@ class IOCExtractor:
                 self._add(
                     bucket,
                     occupied,
-                    IOC(type=htype, value=m.group(1).lower(),
-                        confidence=0.99, defanged=False, span=span),
+                    IOC(
+                        type=htype,
+                        value=m.group(1).lower(),
+                        confidence=0.99,
+                        defanged=False,
+                        span=span,
+                    ),
                 )
 
     def _extract_cves(
@@ -415,8 +426,9 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="cve", value=m.group(1).upper(),
-                    confidence=0.99, defanged=False, span=span),
+                IOC(
+                    type="cve", value=m.group(1).upper(), confidence=0.99, defanged=False, span=span
+                ),
             )
 
     def _extract_registry_keys(
@@ -431,8 +443,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="registry_key", value=value,
-                    confidence=0.95, defanged=False, span=span),
+                IOC(type="registry_key", value=value, confidence=0.95, defanged=False, span=span),
             )
 
     def _extract_windows_paths(
@@ -451,8 +462,13 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="file_path_windows", value=value,
-                    confidence=0.85, defanged=False, span=span),
+                IOC(
+                    type="file_path_windows",
+                    value=value,
+                    confidence=0.85,
+                    defanged=False,
+                    span=span,
+                ),
             )
 
     def _extract_unix_paths(
@@ -467,8 +483,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="file_path_unix", value=value,
-                    confidence=0.8, defanged=False, span=span),
+                IOC(type="file_path_unix", value=value, confidence=0.8, defanged=False, span=span),
             )
 
     def _extract_ipv4(
@@ -485,16 +500,19 @@ class IOCExtractor:
             except (ValueError, ipaddress.AddressValueError):
                 continue
             if not self.include_private_ips and (
-                ip.is_private or ip.is_loopback or ip.is_link_local
-                or ip.is_multicast or ip.is_reserved or ip.is_unspecified
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
             ):
                 continue
             span = m.span(1)
             self._add(
                 bucket,
                 occupied,
-                IOC(type="ipv4", value=str(ip), confidence=0.98,
-                    defanged=defanged, span=span),
+                IOC(type="ipv4", value=str(ip), confidence=0.98, defanged=defanged, span=span),
             )
 
     def _extract_ipv6(
@@ -510,16 +528,19 @@ class IOCExtractor:
             except (ValueError, ipaddress.AddressValueError):
                 continue
             if not self.include_private_ips and (
-                ip.is_private or ip.is_loopback or ip.is_link_local
-                or ip.is_multicast or ip.is_reserved or ip.is_unspecified
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
             ):
                 continue
             span = m.span(1)
             self._add(
                 bucket,
                 occupied,
-                IOC(type="ipv6", value=str(ip), confidence=0.95,
-                    defanged=False, span=span),
+                IOC(type="ipv6", value=str(ip), confidence=0.95, defanged=False, span=span),
             )
 
     def _extract_bitcoin(
@@ -536,8 +557,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="bitcoin", value=candidate,
-                    confidence=0.99, defanged=False, span=span),
+                IOC(type="bitcoin", value=candidate, confidence=0.99, defanged=False, span=span),
             )
 
     def _extract_domains(
@@ -571,8 +591,7 @@ class IOCExtractor:
             self._add(
                 bucket,
                 occupied,
-                IOC(type="domain", value=value, confidence=0.8,
-                    defanged=defanged, span=span),
+                IOC(type="domain", value=value, confidence=0.8, defanged=defanged, span=span),
             )
 
     def _is_allowlisted(self, domain: str) -> bool:

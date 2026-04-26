@@ -12,7 +12,6 @@ from src.serving.function_calling_api import (
     FunctionCallError,
     FunctionCallValidator,
     FunctionSchema,
-    ToolCall,
     ToolChoice,
     ToolDefinition,
 )
@@ -92,9 +91,7 @@ def test_tool_choice_auto_needs_no_name():
 def test_validate_tool_choice_rejects_unknown_named_tool():
     v = FunctionCallValidator()
     with pytest.raises(FunctionCallError):
-        v.validate_tool_choice(
-            ToolChoice(mode="named", name="missing"), ["a", "b"]
-        )
+        v.validate_tool_choice(ToolChoice(mode="named", name="missing"), ["a", "b"])
 
 
 def test_parse_tool_calls_length_and_round_trip():
@@ -193,7 +190,7 @@ def test_determinism_same_input_same_output():
         {
             "id": "c",
             "type": "function",
-            "function": {"name": "f", "arguments": "{\"k\": 1}"},
+            "function": {"name": "f", "arguments": '{"k": 1}'},
         }
     ]
     a = v.parse_tool_calls(raw)
@@ -202,9 +199,7 @@ def test_determinism_same_input_same_output():
         (x.id, x.function_name, x.arguments_json) for x in b
     ]
     # format_tool_message is deterministic too
-    assert v.format_tool_message("i", "n", "c") == v.format_tool_message(
-        "i", "n", "c"
-    )
+    assert v.format_tool_message("i", "n", "c") == v.format_tool_message("i", "n", "c")
 
 
 def test_tool_choice_non_named_forbids_name():

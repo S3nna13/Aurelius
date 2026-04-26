@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from src.alignment.step_dpo import (
-    StepPreferenceExample,
     StepDPOTrainer,
+    StepPreferenceExample,
     step_dpo_loss,
 )
 
@@ -17,6 +17,7 @@ from src.alignment.step_dpo import (
 def _mkex(c=0.0, r=0.0, cr=0.0, rr=0.0, prefix=0.0, requires_grad=False):
     def t(v):
         return torch.tensor(float(v), requires_grad=requires_grad)
+
     return StepPreferenceExample(
         prefix_logprobs=t(prefix),
         chosen_step_logprobs=t(c),
@@ -73,9 +74,7 @@ def test_loss_increases_when_policy_prefers_rejected():
     base_c, base_r = torch.tensor([0.0]), torch.tensor([0.0])
     cr, rr = torch.zeros(1), torch.zeros(1)
     base_loss = step_dpo_loss(base_c, base_r, cr, rr, beta=0.5)
-    bad_loss = step_dpo_loss(
-        torch.tensor([-1.0]), torch.tensor([1.0]), cr, rr, beta=0.5
-    )
+    bad_loss = step_dpo_loss(torch.tensor([-1.0]), torch.tensor([1.0]), cr, rr, beta=0.5)
     assert bad_loss.item() > base_loss.item()
 
 

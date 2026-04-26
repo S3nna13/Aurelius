@@ -2,10 +2,10 @@ import hashlib
 import re
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class DedupStrategy(str, Enum):
+class DedupStrategy(StrEnum):
     EXACT_HASH = "exact_hash"
     PREFIX_HASH = "prefix_hash"
     SEMANTIC_HASH = "semantic_hash"

@@ -21,12 +21,12 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 # Import from sibling module (do NOT modify agent_swarm.py).
 from .agent_swarm import AgentSwarm, SubAgentResult  # noqa: F401
-
 
 # ---------------------------------------------------------------------------
 # Data containers
@@ -38,12 +38,12 @@ class WorkItem:
     """A single unit of work inside the SwarmScaler queue."""
 
     task_id: int
-    payload: Any                        # arbitrary task data passed to worker_fn
-    priority: int = 0                   # lower value = higher priority
+    payload: Any  # arbitrary task data passed to worker_fn
+    priority: int = 0  # lower value = higher priority
     created_at: float = field(default_factory=time.time)
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
-    worker_id: Optional[int] = None
+    started_at: float | None = None
+    completed_at: float | None = None
+    worker_id: int | None = None
     result: Any = field(default=None, repr=False)
 
 
@@ -53,7 +53,7 @@ class WorkerStats:
 
     worker_id: int
     tasks_completed: int = 0
-    tasks_stolen: int = 0    # tasks this worker pulled via work-stealing
+    tasks_stolen: int = 0  # tasks this worker pulled via work-stealing
     idle_time_s: float = 0.0
 
 
@@ -63,7 +63,7 @@ class SwarmScalerConfig:
 
     max_workers: int = 300
     max_total_steps: int = 4000
-    work_steal_batch: int = 4    # how many tasks to steal per steal event
+    work_steal_batch: int = 4  # how many tasks to steal per steal event
     enable_work_stealing: bool = True
 
 
@@ -82,7 +82,7 @@ class SwarmScaler:
     >>> completed = scaler.dispatch(lambda x: x * 2)
     """
 
-    def __init__(self, config: Optional[SwarmScalerConfig] = None) -> None:
+    def __init__(self, config: SwarmScalerConfig | None = None) -> None:
         self._config = config or SwarmScalerConfig()
         # Monotonically increasing task counter across the lifetime of this instance.
         self._next_task_id: int = 0
@@ -102,7 +102,7 @@ class SwarmScaler:
     def submit_tasks(
         self,
         payloads: list[Any],
-        priorities: Optional[list[int]] = None,
+        priorities: list[int] | None = None,
     ) -> list[int]:
         """Submit a batch of tasks and return their assigned task IDs.
 
@@ -133,9 +133,7 @@ class SwarmScaler:
 
         # Guard: check if we'd exceed max_total_steps when including already
         # completed tasks plus current pending plus new tasks.
-        total_after = (
-            len(self._completed) + len(self._pending) + len(payloads)
-        )
+        total_after = len(self._completed) + len(self._pending) + len(payloads)
         if total_after > self._config.max_total_steps:
             raise ValueError(
                 f"Submitting {len(payloads)} task(s) would exceed "
@@ -147,9 +145,7 @@ class SwarmScaler:
         for payload, priority in zip(payloads, priorities):
             task_id = self._next_task_id
             self._next_task_id += 1
-            self._pending.append(
-                WorkItem(task_id=task_id, payload=payload, priority=priority)
-            )
+            self._pending.append(WorkItem(task_id=task_id, payload=payload, priority=priority))
             ids.append(task_id)
 
         return ids
@@ -161,7 +157,7 @@ class SwarmScaler:
     def dispatch(
         self,
         worker_fn: Callable[[Any], Any],
-        n_workers: Optional[int] = None,
+        n_workers: int | None = None,
     ) -> list[WorkItem]:
         """Simulate work-stealing dispatch over all pending tasks.
 
@@ -196,9 +192,7 @@ class SwarmScaler:
         effective = min(n_workers or cfg.max_workers, n_pending) if n_pending else 0
 
         if n_workers is not None and n_workers > cfg.max_workers:
-            raise ValueError(
-                f"n_workers={n_workers} exceeds max_workers={cfg.max_workers}"
-            )
+            raise ValueError(f"n_workers={n_workers} exceeds max_workers={cfg.max_workers}")
 
         if effective == 0:
             return []
@@ -239,7 +233,6 @@ class SwarmScaler:
         # steal from that pool.
 
         # Flatten in priority order for the steal pool.
-        steal_pool: list[WorkItem] = []
         # We'll build steal_pool from items beyond what each worker takes in
         # the first pass.  The simplest correct model: each worker takes its
         # assigned items first; any stealing happens from leftover items in
@@ -262,7 +255,6 @@ class SwarmScaler:
 
         # Now execute worker by worker, removing from residual as we go.
         batch_completed: list[WorkItem] = []
-        residual_set_idx: int = 0  # pointer into residual for stealing
 
         # Track which items each worker "owns" to compute tasks_stolen.
         # Items originally assigned to worker wid are worker_queues[wid].

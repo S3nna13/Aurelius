@@ -3,8 +3,6 @@
 Uses tiny configurations (VOCAB=64) to keep execution fast.
 """
 
-import math
-
 import pytest
 import torch
 
@@ -171,7 +169,7 @@ def test_batch_detect_length():
 # ---------------------------------------------------------------------------
 def test_all_green_sequence_positive_z():
     """Build a sequence where every token lands in its predecessor's green list."""
-    cfg = WatermarkConfig(vocab_size=VOCAB, delta=DELTA, gamma=GAMMA, key=KEY)
+    WatermarkConfig(vocab_size=VOCAB, delta=DELTA, gamma=GAMMA, key=KEY)
     tokens = [0]
     for _ in range(T):
         green = get_green_list(tokens[-1], VOCAB, GAMMA, KEY)

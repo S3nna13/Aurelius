@@ -7,14 +7,13 @@ Stdlib-only.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class FilterAction(Enum):
     ALLOW = "allow"
@@ -27,9 +26,11 @@ class FilterAction(Enum):
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class FilterRule:
     """A single output filter rule."""
+
     name: str
     pattern: str
     action: FilterAction
@@ -39,32 +40,33 @@ class FilterRule:
 @dataclass(frozen=True)
 class FilterResult:
     """Result of applying an OutputFilter to a text string."""
+
     original: str
     filtered: str
     action: FilterAction
-    triggered_rules: List[str]
+    triggered_rules: list[str]
 
 
 # ---------------------------------------------------------------------------
 # Default rules
 # ---------------------------------------------------------------------------
 
-_DEFAULT_RULES: List[FilterRule] = [
+_DEFAULT_RULES: list[FilterRule] = [
     FilterRule(
         name="pii_email",
-        pattern=r'\b[\w.-]+@[\w.-]+\.\w{2,}\b',
+        pattern=r"\b[\w.-]+@[\w.-]+\.\w{2,}\b",
         action=FilterAction.REDACT,
         replacement="[EMAIL]",
     ),
     FilterRule(
         name="pii_phone",
-        pattern=r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
+        pattern=r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b",
         action=FilterAction.REDACT,
         replacement="[PHONE]",
     ),
     FilterRule(
         name="pii_ssn",
-        pattern=r'\b\d{3}-\d{2}-\d{4}\b',
+        pattern=r"\b\d{3}-\d{2}-\d{4}\b",
         action=FilterAction.REDACT,
         replacement="[SSN]",
     ),
@@ -75,12 +77,13 @@ _DEFAULT_RULES: List[FilterRule] = [
 # OutputFilter
 # ---------------------------------------------------------------------------
 
+
 class OutputFilter:
     """Applies ordered filter rules to model output text."""
 
-    def __init__(self, rules: Optional[List[FilterRule]] = None) -> None:
+    def __init__(self, rules: list[FilterRule] | None = None) -> None:
         if rules is None:
-            self._rules: List[FilterRule] = list(_DEFAULT_RULES)
+            self._rules: list[FilterRule] = list(_DEFAULT_RULES)
         else:
             self._rules = list(rules)
         # Cache compiled patterns; invalidated on add/remove
@@ -88,9 +91,7 @@ class OutputFilter:
         self._rebuild_cache()
 
     def _rebuild_cache(self) -> None:
-        self._compiled = {
-            rule.name: re.compile(rule.pattern) for rule in self._rules
-        }
+        self._compiled = {rule.name: re.compile(rule.pattern) for rule in self._rules}
 
     def filter(self, text: str) -> FilterResult:
         """Apply all rules in order and return a FilterResult.
@@ -101,7 +102,7 @@ class OutputFilter:
         ALLOW:   pass through without modification.
         """
         current = text
-        triggered: List[str] = []
+        triggered: list[str] = []
         highest_action = FilterAction.ALLOW
 
         for rule in self._rules:

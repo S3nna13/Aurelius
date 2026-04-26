@@ -1,9 +1,13 @@
 import pytest
 import torch
 from torch.utils.data import WeightedRandomSampler
+
 from src.data.importance_sampler import (
-    ImportanceSamplerConfig, ImportanceWeightedSampler, DynamicCurriculumSampler
+    DynamicCurriculumSampler,
+    ImportanceSamplerConfig,
+    ImportanceWeightedSampler,
 )
+
 
 def test_set_weights_normalizes():
     sampler = ImportanceWeightedSampler(n_examples=10)
@@ -13,6 +17,7 @@ def test_set_weights_normalizes():
     weights = sampler.weights
     assert torch.allclose(weights, torch.ones(10), atol=0.01)
 
+
 def test_set_weights_upweights_hard():
     """High-perplexity examples should get higher weights."""
     sampler = ImportanceWeightedSampler(n_examples=5, cfg=ImportanceSamplerConfig(temperature=1.0))
@@ -21,6 +26,7 @@ def test_set_weights_upweights_hard():
     weights = sampler.weights
     assert weights[-1] > weights[0]  # hard example has higher weight
 
+
 def test_set_weights_min_floor():
     sampler = ImportanceWeightedSampler(n_examples=5, cfg=ImportanceSamplerConfig(min_weight=0.1))
     ppls = torch.tensor([1.0, 1.0, 1.0, 1.0, 1000.0])
@@ -28,11 +34,13 @@ def test_set_weights_min_floor():
     weights = sampler.weights
     assert (weights > 0).all()  # no zero weights
 
+
 def test_get_sampler_returns_weighted_random():
     sampler = ImportanceWeightedSampler(n_examples=10)
     sampler.set_weights(torch.ones(10))
     ws = sampler.get_sampler()
     assert isinstance(ws, WeightedRandomSampler)
+
 
 def test_update_weight_ema():
     sampler = ImportanceWeightedSampler(n_examples=5)
@@ -41,6 +49,7 @@ def test_update_weight_ema():
     sampler.update_weight(0, 10.0)  # example 0 becomes harder
     # Weight of example 0 should now be higher
     assert sampler.weights[0] > sampler.weights[1]
+
 
 def test_dynamic_curriculum_temperature_decay():
     sched = DynamicCurriculumSampler(
@@ -56,6 +65,7 @@ def test_dynamic_curriculum_temperature_decay():
     assert t100 == pytest.approx(1.0)
     assert t0 > t50 > t100
 
+
 def test_dynamic_curriculum_step():
     sched = DynamicCurriculumSampler(n_examples=5, total_steps=10)
     ppls = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0])
@@ -63,11 +73,11 @@ def test_dynamic_curriculum_step():
     assert isinstance(ws, WeightedRandomSampler)
     assert sched._step == 1
 
+
 def test_high_temperature_is_uniform():
     """Very high temperature -> near-uniform weights."""
     sampler = ImportanceWeightedSampler(
-        n_examples=5,
-        cfg=ImportanceSamplerConfig(temperature=1000.0, min_weight=0.0)
+        n_examples=5, cfg=ImportanceSamplerConfig(temperature=1000.0, min_weight=0.0)
     )
     ppls = torch.tensor([1.0, 10.0, 100.0, 1000.0, 10000.0])
     sampler.set_weights(ppls)

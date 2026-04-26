@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import random
-
-import pytest
 import torch
 
 from src.data.mmap_dataset import MmapConfig, MmapDataset
 from src.data.streaming_dataloader import StreamConfig, StreamingDataloader
 
-
 # ---------------------------------------------------------------------------
 # Minimal in-memory dataset for isolated tests
 # ---------------------------------------------------------------------------
+
 
 class _TinyDataset:
     """Fixed-size dataset returning sequential tensors for deterministic tests."""
@@ -32,6 +29,7 @@ class _TinyDataset:
 # StreamConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestStreamConfig:
     def test_defaults(self):
         cfg = StreamConfig()
@@ -49,6 +47,7 @@ class TestStreamConfig:
 # ---------------------------------------------------------------------------
 # StreamingDataloader tests
 # ---------------------------------------------------------------------------
+
 
 class TestStreamingDataloader:
     def _make(self, n=100, seq_len=16, batch_size=8, **kw):
@@ -110,8 +109,13 @@ class TestStreamingDataloader:
 
     def test_collate_stacks_tensors(self):
         dl = self._make(seq_len=8)
-        samples = [{"input_ids": torch.zeros(8, dtype=torch.long),
-                    "labels": torch.ones(8, dtype=torch.long)} for _ in range(4)]
+        samples = [
+            {
+                "input_ids": torch.zeros(8, dtype=torch.long),
+                "labels": torch.ones(8, dtype=torch.long),
+            }
+            for _ in range(4)
+        ]
         out = dl.collate(samples)
         assert out["input_ids"].shape == (4, 8)
         assert out["labels"].shape == (4, 8)

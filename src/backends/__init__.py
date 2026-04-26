@@ -23,17 +23,17 @@ from src.backends.registry import (
     register_engine_adapter,
     select_backend_for_manifest,
 )
-from src.backends.vllm_adapter import (
-    VLLMAdapter,
-    VLLMAdapterError,
-    VLLMEngineAdapter,
-    VLLMEngineConfig,
-)
 from src.backends.sglang_adapter import (
     SGLangAdapter,
     SGLangAdapterError,
     SGLangEngineAdapter,
     SGLangEngineConfig,
+)
+from src.backends.vllm_adapter import (
+    VLLMAdapter,
+    VLLMAdapterError,
+    VLLMEngineAdapter,
+    VLLMEngineConfig,
 )
 
 __all__ = [
@@ -81,10 +81,12 @@ def register_backend_adapter_pytorch() -> None:
 register_backend_adapter_pytorch()
 
 # --- Ollama adapter (additive, cycle-146) --------------------------------------
-from src.backends.ollama_adapter import (  # noqa: E402,F401
-    OLLAMA_REGISTRY,
-    OllamaAdapter,
-    OllamaConfig,
+# --- Backend health checker (additive, cycle-146) ------------------------------
+from src.backends.backend_health import (  # noqa: E402,F401
+    BACKEND_HEALTH_REGISTRY,
+    BackendHealthChecker,
+    HealthReport,
+    HealthStatus,
 )
 
 # --- Generic HTTP backend (additive, cycle-146) --------------------------------
@@ -93,11 +95,8 @@ from src.backends.http_backend import (  # noqa: E402,F401
     HTTPBackend,
     HTTPBackendConfig,
 )
-
-# --- Backend health checker (additive, cycle-146) ------------------------------
-from src.backends.backend_health import (  # noqa: E402,F401
-    BACKEND_HEALTH_REGISTRY,
-    BackendHealthChecker,
-    HealthReport,
-    HealthStatus,
+from src.backends.ollama_adapter import (  # noqa: E402,F401
+    OLLAMA_REGISTRY,
+    OllamaAdapter,
+    OllamaConfig,
 )

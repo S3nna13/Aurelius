@@ -1,4 +1,5 @@
 """Tests for GraphReasoningTrainer and related utilities."""
+
 from __future__ import annotations
 
 import pytest
@@ -8,7 +9,6 @@ from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.graph_reasoning import (
     GraphConfig,
-    GraphProblem,
     GraphReasoningTrainer,
     GraphTrainerConfig,
     extract_answer_nodes,
@@ -19,7 +19,6 @@ from src.training.graph_reasoning import (
     solve_bfs,
     solve_parents,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

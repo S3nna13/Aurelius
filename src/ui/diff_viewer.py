@@ -69,9 +69,7 @@ class ParsedDiff:
 
 
 # Matches: @@ -L,S +L,S @@
-_HUNK_HEADER_RE = re.compile(
-    r"^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@"
-)
+_HUNK_HEADER_RE = re.compile(r"^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@")
 _OLD_FILE_RE = re.compile(r"^---\s+(.+)$")
 _NEW_FILE_RE = re.compile(r"^\+\+\+\s+(.+)$")
 

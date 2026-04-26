@@ -13,6 +13,7 @@ from typing import Any
 
 class CompressionStrategy(Enum):
     """Strategies for compressing a memory store."""
+
     DEDUP = "dedup"
     TRUNCATE = "truncate"
     MERGE_SIMILAR = "merge_similar"
@@ -21,6 +22,7 @@ class CompressionStrategy(Enum):
 @dataclass(frozen=True)
 class CompressionResult:
     """Immutable summary of a compression operation."""
+
     original_count: int
     compressed_count: int
     strategy: CompressionStrategy

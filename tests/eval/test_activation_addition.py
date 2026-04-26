@@ -9,16 +9,13 @@ import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
-from typing import List
-
 from aurelius.eval.activation_addition import (
-    SteeringVector,
     ActivationAddition,
-    SteeringVectorExtractor,
     RepresentationDatabase,
+    SteeringVector,
+    SteeringVectorExtractor,
 )
-
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Shared constants / helpers
@@ -30,7 +27,7 @@ B = 2
 T = 8
 
 
-def _make_layers(n: int = N_LAYERS, d: int = D_MODEL) -> List[nn.Module]:
+def _make_layers(n: int = N_LAYERS, d: int = D_MODEL) -> list[nn.Module]:
     """Return a list of simple Linear layers to act as stand-in transformer layers."""
     layers = []
     for _ in range(n):
@@ -45,32 +42,35 @@ def _make_sv(layer_idx: int = 0, d: int = D_MODEL, seed: int = 42) -> SteeringVe
     return SteeringVector(direction=v, layer_idx=layer_idx)
 
 
-def _make_model_fn(layers: List[nn.Module]):
+def _make_model_fn(layers: list[nn.Module]):
     """Return a model_fn that runs each layer sequentially and collects hidden states.
 
     Uses the sum of input_ids as a seed so pos and neg inputs produce distinct hidden
     states even when the layers are deterministic.
     """
-    def model_fn(input_ids: Tensor) -> List[Tensor]:
+
+    def model_fn(input_ids: Tensor) -> list[Tensor]:
         # input_ids: (B, T) — embed as float to get (B, T, d_model)
         B_, T_ = input_ids.shape
         d = layers[0].weight.shape[0]
         # Use a data-dependent seed so pos != neg inputs → different hidden states
-        seed = int(input_ids.sum().item()) % (2 ** 31)
+        seed = int(input_ids.sum().item()) % (2**31)
         gen = torch.Generator()
         gen.manual_seed(seed)
         hidden = torch.randn(B_, T_, d, generator=gen)
-        hiddens: List[Tensor] = []
+        hiddens: list[Tensor] = []
         for layer in layers:
             hidden = layer(hidden)
             hiddens.append(hidden)
         return hiddens
+
     return model_fn
 
 
 # ---------------------------------------------------------------------------
 # 1. SteeringVector has correct fields
 # ---------------------------------------------------------------------------
+
 
 def test_steering_vector_fields():
     """SteeringVector stores direction and layer_idx."""
@@ -84,6 +84,7 @@ def test_steering_vector_fields():
 # ---------------------------------------------------------------------------
 # 2. ActivationAddition: hook count before entering context is 0
 # ---------------------------------------------------------------------------
+
 
 def test_activation_addition_no_hooks_before_context():
     """No hooks are installed before entering the context manager."""
@@ -99,6 +100,7 @@ def test_activation_addition_no_hooks_before_context():
 # 3. ActivationAddition: hook count inside context equals number of vectors
 # ---------------------------------------------------------------------------
 
+
 def test_activation_addition_hooks_installed_during_context():
     """Hooks are installed for all registered vectors during the context."""
     layers = _make_layers()
@@ -113,6 +115,7 @@ def test_activation_addition_hooks_installed_during_context():
 # 4. ActivationAddition: hook count after exiting context is 0
 # ---------------------------------------------------------------------------
 
+
 def test_activation_addition_hooks_removed_after_context():
     """All hooks are removed after exiting the context manager."""
     layers = _make_layers()
@@ -126,6 +129,7 @@ def test_activation_addition_hooks_removed_after_context():
 # ---------------------------------------------------------------------------
 # 5. Steering actually changes model output
 # ---------------------------------------------------------------------------
+
 
 def test_steering_changes_output():
     """Model output differs with vs. without steering (alpha != 0)."""
@@ -156,6 +160,7 @@ def test_steering_changes_output():
 # 6. SteeringVectorExtractor.extract returns correct layer_idx
 # ---------------------------------------------------------------------------
 
+
 def test_extractor_layer_idx():
     """Extracted SteeringVector carries the requested layer_idx."""
     layers = _make_layers()
@@ -170,6 +175,7 @@ def test_extractor_layer_idx():
 # ---------------------------------------------------------------------------
 # 7. Extracted direction is unit-norm
 # ---------------------------------------------------------------------------
+
 
 def test_extractor_direction_unit_norm():
     """Direction returned by extractor is L2-normalised."""
@@ -188,6 +194,7 @@ def test_extractor_direction_unit_norm():
 # 8. Extracted direction shape is (d_model,)
 # ---------------------------------------------------------------------------
 
+
 def test_extractor_direction_shape():
     """Extracted direction has shape (d_model,)."""
     layers = _make_layers()
@@ -203,6 +210,7 @@ def test_extractor_direction_shape():
 # 9. RepresentationDatabase: add / get round-trip
 # ---------------------------------------------------------------------------
 
+
 def test_repr_database_add_get():
     """add then get returns the same SteeringVector."""
     db = RepresentationDatabase()
@@ -216,6 +224,7 @@ def test_repr_database_add_get():
 # 10. RepresentationDatabase: list_names
 # ---------------------------------------------------------------------------
 
+
 def test_repr_database_list_names():
     """list_names returns all added names."""
     db = RepresentationDatabase()
@@ -228,6 +237,7 @@ def test_repr_database_list_names():
 # ---------------------------------------------------------------------------
 # 11. RepresentationDatabase: remove deletes the entry
 # ---------------------------------------------------------------------------
+
 
 def test_repr_database_remove():
     """remove deletes the named entry; get raises KeyError afterwards."""
@@ -244,6 +254,7 @@ def test_repr_database_remove():
 # 12. remove_vector removes only the targeted layer
 # ---------------------------------------------------------------------------
 
+
 def test_remove_vector_removes_only_target():
     """remove_vector for layer 0 leaves the layer 1 vector intact."""
     layers = _make_layers()
@@ -258,6 +269,7 @@ def test_remove_vector_removes_only_target():
 # ---------------------------------------------------------------------------
 # 13. alpha=0 steering produces identical output as no steering
 # ---------------------------------------------------------------------------
+
 
 def test_alpha_zero_identical_to_no_steering():
     """With alpha=0 the steered output is numerically identical to baseline."""
@@ -279,14 +291,13 @@ def test_alpha_zero_identical_to_no_steering():
         with aa:
             steered = layer(x).clone()
 
-    assert torch.allclose(baseline, steered, atol=1e-6), (
-        "alpha=0 should not change the output"
-    )
+    assert torch.allclose(baseline, steered, atol=1e-6), "alpha=0 should not change the output"
 
 
 # ---------------------------------------------------------------------------
 # 14. Works with B=1, T=1 (minimal batch/seq)
 # ---------------------------------------------------------------------------
+
 
 def test_works_with_b1_t1():
     """ActivationAddition works for a single token in a single batch."""
@@ -315,6 +326,7 @@ def test_works_with_b1_t1():
 # ---------------------------------------------------------------------------
 # 15. Extractor works with B=1, T=1
 # ---------------------------------------------------------------------------
+
 
 def test_extractor_b1_t1():
     """SteeringVectorExtractor handles B=1, T=1 inputs without error."""

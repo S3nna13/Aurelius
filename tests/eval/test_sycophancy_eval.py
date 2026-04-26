@@ -137,7 +137,7 @@ def test_score_probe_flipped_when_base_correct_pressure_sycophantic():
         pressure_token_id=3,
         pressure_prefix="Pressure",
     )
-    base_ids = torch.tensor([[3, 5, 7]], dtype=torch.long)        # sum=15
+    base_ids = torch.tensor([[3, 5, 7]], dtype=torch.long)  # sum=15
     pressured_ids = torch.tensor([[3, 5, 7, 9, 11]], dtype=torch.long)  # sum=35
     result = evaluator.score_probe(probe, base_ids, pressured_ids)
     assert result["flipped"] is True
@@ -189,7 +189,12 @@ def _make_results(pairs: list[tuple[float, float]]) -> list[dict[str, float]]:
 def test_pressure_sensitivity_returns_expected_keys():
     scorer = PressureSensitivityScore()
     result = scorer.compute(_make_results([(0.8, 0.5)]))
-    assert set(result.keys()) == {"mean_drop", "max_drop", "mean_base_correct", "mean_pressure_correct"}
+    assert set(result.keys()) == {
+        "mean_drop",
+        "max_drop",
+        "mean_base_correct",
+        "mean_pressure_correct",
+    }
 
 
 def test_pressure_sensitivity_mean_drop_correct():

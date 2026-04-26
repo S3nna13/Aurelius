@@ -7,6 +7,7 @@ Low perplexity = easy example (model already knows this).
 Used by curriculum learning to schedule easy->hard,
 and by importance sampling to upweight hard examples.
 """
+
 from __future__ import annotations
 
 import math
@@ -22,18 +23,19 @@ from torch.utils.data import DataLoader
 @dataclass
 class DifficultyScore:
     """Difficulty score for a single training example."""
-    index: int           # position in dataset
-    perplexity: float    # model perplexity on this example
-    loss: float          # mean cross-entropy loss
-    n_tokens: int        # number of tokens in example
+
+    index: int  # position in dataset
+    perplexity: float  # model perplexity on this example
+    loss: float  # mean cross-entropy loss
+    n_tokens: int  # number of tokens in example
 
 
 @dataclass
 class DifficultyScoreConfig:
     batch_size: int = 8
     device: str = "cpu"
-    percentile_easy: float = 33.0    # examples below this ppl percentile = "easy"
-    percentile_hard: float = 66.0    # examples above this ppl percentile = "hard"
+    percentile_easy: float = 33.0  # examples below this ppl percentile = "easy"
+    percentile_hard: float = 66.0  # examples above this ppl percentile = "hard"
 
 
 class DifficultyScorer:
@@ -56,8 +58,8 @@ class DifficultyScorer:
     @torch.no_grad()
     def score_batch(
         self,
-        input_ids: torch.Tensor,   # (B, S)
-        labels: torch.Tensor,      # (B, S) -- shifted labels
+        input_ids: torch.Tensor,  # (B, S)
+        labels: torch.Tensor,  # (B, S) -- shifted labels
     ) -> list[DifficultyScore]:
         """Score a batch of examples. Returns one DifficultyScore per example."""
         self.model.eval()
@@ -73,15 +75,17 @@ class DifficultyScorer:
 
         for i in range(B):
             # logits[:, :-1] predicts labels[:, 1:] (standard causal LM shift)
-            logits_i = logits[i, :-1, :]          # (S-1, V)
-            targets_i = labels[i, 1:]              # (S-1,)
+            logits_i = logits[i, :-1, :]  # (S-1, V)
+            targets_i = labels[i, 1:]  # (S-1,)
 
             # Mask out padding tokens if labels contain -100
             valid_mask = targets_i != -100
             n_tokens = int(valid_mask.sum().item())
 
             if n_tokens == 0:
-                scores.append(DifficultyScore(index=0, perplexity=float("inf"), loss=float("inf"), n_tokens=0))
+                scores.append(
+                    DifficultyScore(index=0, perplexity=float("inf"), loss=float("inf"), n_tokens=0)
+                )
                 continue
 
             per_token_loss = F.cross_entropy(
@@ -92,12 +96,14 @@ class DifficultyScorer:
             mean_loss = per_token_loss.item()
             ppl = math.exp(min(mean_loss, 20.0))  # cap to avoid overflow
 
-            scores.append(DifficultyScore(
-                index=0,           # placeholder; caller sets index
-                perplexity=ppl,
-                loss=mean_loss,
-                n_tokens=n_tokens,
-            ))
+            scores.append(
+                DifficultyScore(
+                    index=0,  # placeholder; caller sets index
+                    perplexity=ppl,
+                    loss=mean_loss,
+                    n_tokens=n_tokens,
+                )
+            )
 
         return scores
 
@@ -174,19 +180,21 @@ class DifficultyScorer:
         ppls = torch.tensor([s.perplexity for s in scores], dtype=torch.float32)
         ppls = ppls.clamp(min=1e-8)
         exponent = 1.0 / max(temperature, 1e-8)
-        raw = ppls ** exponent
+        raw = ppls**exponent
         weights = raw / raw.sum()
         return weights
 
     def save_scores(self, scores: list[DifficultyScore], path: str | Path) -> None:
         """Save scores to .npy file as structured array."""
         path = Path(path)
-        dtype = np.dtype([
-            ("index", np.int64),
-            ("perplexity", np.float64),
-            ("loss", np.float64),
-            ("n_tokens", np.int64),
-        ])
+        dtype = np.dtype(
+            [
+                ("index", np.int64),
+                ("perplexity", np.float64),
+                ("loss", np.float64),
+                ("n_tokens", np.int64),
+            ]
+        )
         arr = np.empty(len(scores), dtype=dtype)
         for i, s in enumerate(scores):
             arr[i] = (s.index, s.perplexity, s.loss, s.n_tokens)

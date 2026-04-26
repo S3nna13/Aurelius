@@ -7,16 +7,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.alignment.rft import (
-    RFTSampler,
     RFTDataset,
+    RFTSampler,
     RFTTrainer,
     compute_reward_stats,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
+
 
 class MockModel(nn.Module):
     """Tiny model that returns random logits — no real transformer needed."""
@@ -35,8 +35,8 @@ class MockModel(nn.Module):
         labels: torch.Tensor | None = None,
         past_key_values=None,
     ):
-        x = self.embed(input_ids)           # (B, S, 8)
-        logits = self.head(x)               # (B, S, VOCAB)
+        x = self.embed(input_ids)  # (B, S, 8)
+        logits = self.head(x)  # (B, S, VOCAB)
 
         loss = None
         if labels is not None:
@@ -86,6 +86,7 @@ def _prompt(length: int = 3) -> torch.Tensor:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_sample_and_score_count():
     """sample_and_score returns exactly k=4 scored completions."""
     sampler = _make_sampler(k=4)
@@ -98,9 +99,7 @@ def test_sample_and_score_sorted():
     sampler = _make_sampler(k=6)
     scored = sampler.sample_and_score(_prompt())
     rewards = [d["reward"] for d in scored]
-    assert rewards == sorted(rewards, reverse=True), (
-        f"Rewards not sorted descending: {rewards}"
-    )
+    assert rewards == sorted(rewards, reverse=True), f"Rewards not sorted descending: {rewards}"
 
 
 def test_filter_completions():
@@ -190,9 +189,7 @@ def test_reward_stats():
     stats = compute_reward_stats(scored)
 
     required_keys = {"mean_reward", "max_reward", "min_reward", "acceptance_rate"}
-    assert required_keys <= set(stats.keys()), (
-        f"Missing keys: {required_keys - set(stats.keys())}"
-    )
+    assert required_keys <= set(stats.keys()), f"Missing keys: {required_keys - set(stats.keys())}"
 
     assert abs(stats["mean_reward"] - 0.5) < 1e-5, stats["mean_reward"]
     assert abs(stats["max_reward"] - 0.8) < 1e-5, stats["max_reward"]
@@ -214,7 +211,7 @@ def test_rft_loop_returns_losses():
     losses = trainer.rft_loop(sampler, prompts, n_epochs=1)
     assert isinstance(losses, list), "Expected list of losses"
     assert len(losses) > 0, "Expected at least one loss entry"
-    assert all(isinstance(l, float) for l in losses), "All losses should be floats"
+    assert all(isinstance(line, float) for line in losses), "All losses should be floats"
 
 
 def test_rft_loop_no_accepted():

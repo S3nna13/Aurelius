@@ -2,7 +2,12 @@
 
 import pytest
 
-from src.eval.answer_consistency import exact_match_rate, lexical_overlap, mean_pairwise_consistency, normalize_answer
+from src.eval.answer_consistency import (
+    exact_match_rate,
+    lexical_overlap,
+    mean_pairwise_consistency,
+    normalize_answer,
+)
 
 
 def test_normalize_answer_tokenizes_lowercase():
@@ -33,4 +38,3 @@ def test_exact_match_rate_handles_empty_input():
 
 def test_mean_pairwise_consistency_handles_single_answer():
     assert mean_pairwise_consistency(["only one"]) == pytest.approx(1.0)
-

@@ -1,7 +1,7 @@
 """Tests for task vector arithmetic (Ilharco et al. 2022, arXiv:2212.04089)."""
+
 import copy
 
-import pytest
 import torch
 
 from src.model.config import AureliusConfig
@@ -9,7 +9,6 @@ from src.model.transformer import AureliusTransformer
 from src.training.task_vector import (
     TaskVector,
     apply_task_vectors,
-    extract_task_vector,
     negation_edit,
 )
 
@@ -42,6 +41,7 @@ def _finetuned_model(pretrained: AureliusTransformer, seed: int = 42) -> Aureliu
 # Construction tests
 # ---------------------------------------------------------------------------
 
+
 def test_task_vector_from_models():
     """TaskVector created from (pretrained, finetuned) has expected keys."""
     pretrained = _small_model()
@@ -71,6 +71,7 @@ def test_task_vector_zero_from_same_model():
 # ---------------------------------------------------------------------------
 # Arithmetic tests
 # ---------------------------------------------------------------------------
+
 
 def test_task_vector_addition():
     """(tv1 + tv2).vector keys match tv1.vector keys."""
@@ -107,6 +108,7 @@ def test_task_vector_negation():
 # Norm test
 # ---------------------------------------------------------------------------
 
+
 def test_task_vector_norm_nonneg():
     """norm() >= 0."""
     pretrained = _small_model()
@@ -118,6 +120,7 @@ def test_task_vector_norm_nonneg():
 # ---------------------------------------------------------------------------
 # apply() tests
 # ---------------------------------------------------------------------------
+
 
 def test_apply_returns_new_model():
     """apply() returns a different Python object from pretrained."""
@@ -149,9 +152,7 @@ def test_apply_nonzero_tv_changes_weights():
     new_model = tv.apply(pretrained, scaling_coef=1.0)
 
     any_changed = False
-    for (_, p_orig), (_, p_new) in zip(
-        pretrained.named_parameters(), new_model.named_parameters()
-    ):
+    for (_, p_orig), (_, p_new) in zip(pretrained.named_parameters(), new_model.named_parameters()):
         if not torch.equal(p_orig, p_new):
             any_changed = True
             break
@@ -161,6 +162,7 @@ def test_apply_nonzero_tv_changes_weights():
 # ---------------------------------------------------------------------------
 # apply_task_vectors() test
 # ---------------------------------------------------------------------------
+
 
 def test_apply_task_vectors_combines():
     """Two TVs applied together equal TV sum applied once."""
@@ -174,15 +176,14 @@ def test_apply_task_vectors_combines():
     tv_sum = tv1 + tv2
     expected = tv_sum.apply(pretrained, scaling_coef=1.0)
 
-    for (name, p_comb), (_, p_exp) in zip(
-        combined.named_parameters(), expected.named_parameters()
-    ):
+    for (name, p_comb), (_, p_exp) in zip(combined.named_parameters(), expected.named_parameters()):
         assert torch.allclose(p_comb, p_exp, atol=1e-6), f"Mismatch at {name}"
 
 
 # ---------------------------------------------------------------------------
 # negation_edit() test
 # ---------------------------------------------------------------------------
+
 
 def test_negation_edit_removes_delta():
     """negation_edit with coef=1 gives 2*pretrained - finetuned weights."""

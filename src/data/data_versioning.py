@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _new_id() -> str:
@@ -22,7 +21,7 @@ class DatasetVersion:
     n_samples: int
     version_id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=_now_iso)
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     description: str = ""
     metadata: dict = field(default_factory=dict)
 
@@ -38,13 +37,13 @@ class DataDiff:
 
 class DataVersionRegistry:
     def __init__(self) -> None:
-        self._versions: Dict[str, DatasetVersion] = {}
+        self._versions: dict[str, DatasetVersion] = {}
 
     def create_version(
         self,
         name: str,
         n_samples: int,
-        parent_id: Optional[str] = None,
+        parent_id: str | None = None,
         description: str = "",
         **metadata,
     ) -> DatasetVersion:
@@ -58,10 +57,10 @@ class DataVersionRegistry:
         self._versions[v.version_id] = v
         return v
 
-    def get(self, version_id: str) -> Optional[DatasetVersion]:
+    def get(self, version_id: str) -> DatasetVersion | None:
         return self._versions.get(version_id)
 
-    def diff(self, from_id: str, to_id: str) -> Optional[DataDiff]:
+    def diff(self, from_id: str, to_id: str) -> DataDiff | None:
         from_v = self._versions.get(from_id)
         to_v = self._versions.get(to_id)
         if from_v is None or to_v is None:
@@ -77,10 +76,10 @@ class DataVersionRegistry:
             modified=modified,
         )
 
-    def lineage(self, version_id: str) -> List[DatasetVersion]:
+    def lineage(self, version_id: str) -> list[DatasetVersion]:
         """Walk parent_id chain from version to root; return list from root to version."""
-        chain: List[DatasetVersion] = []
-        current_id: Optional[str] = version_id
+        chain: list[DatasetVersion] = []
+        current_id: str | None = version_id
         while current_id is not None:
             v = self._versions.get(current_id)
             if v is None:
@@ -90,7 +89,7 @@ class DataVersionRegistry:
         chain.reverse()
         return chain
 
-    def list_versions(self) -> List[DatasetVersion]:
+    def list_versions(self) -> list[DatasetVersion]:
         """All versions sorted by created_at."""
         return sorted(self._versions.values(), key=lambda v: v.created_at)
 

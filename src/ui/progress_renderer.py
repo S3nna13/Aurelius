@@ -4,7 +4,7 @@ Inspired by MoonshotAI/kimi-cli debug surfaces (MIT), Anthropic Claude Code prog
 clean-room reimplementation with original Aurelius design.
 
 Only rich, stdlib, and project-local imports are used.
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
@@ -173,9 +173,7 @@ class ProgressRenderer:
             ProgressError: If *task_id* is not registered.
         """
         if task_id not in self._tasks:
-            raise ProgressError(
-                f"task {task_id!r} not found; available: {list(self._tasks)}"
-            )
+            raise ProgressError(f"task {task_id!r} not found; available: {list(self._tasks)}")
         task = self._tasks[task_id]
         task.completed += delta
         self._estimators[task_id].record(task.completed)
@@ -189,9 +187,7 @@ class ProgressRenderer:
             ProgressError: If *task_id* is not registered.
         """
         if task_id not in self._tasks:
-            raise ProgressError(
-                f"task {task_id!r} not found; available: {list(self._tasks)}"
-            )
+            raise ProgressError(f"task {task_id!r} not found; available: {list(self._tasks)}")
         task = self._tasks[task_id]
         if task.total is not None:
             task.completed = task.total
@@ -204,9 +200,7 @@ class ProgressRenderer:
             ProgressError: If *task_id* is not registered.
         """
         if task_id not in self._tasks:
-            raise ProgressError(
-                f"task {task_id!r} not found; available: {list(self._tasks)}"
-            )
+            raise ProgressError(f"task {task_id!r} not found; available: {list(self._tasks)}")
         del self._tasks[task_id]
         del self._estimators[task_id]
 
@@ -254,9 +248,7 @@ class ProgressRenderer:
         """
         total_tasks = len(self._tasks)
         completed_tasks = sum(
-            1
-            for t in self._tasks.values()
-            if t.total is not None and t.completed >= t.total
+            1 for t in self._tasks.values() if t.total is not None and t.completed >= t.total
         )
         msg = Text()
         msg.append(f"{total_tasks}", style="bold")

@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
-
 from aurelius.model.rope_extensions import (
     BaseRoPE,
     DynamicNTKRoPE,
@@ -41,7 +38,9 @@ def make_config(
     )
 
 
-def make_input(B: int = 2, T: int = SEQ_LEN, n_heads: int = 4, head_dim: int = HEAD_DIM) -> torch.Tensor:
+def make_input(
+    B: int = 2, T: int = SEQ_LEN, n_heads: int = 4, head_dim: int = HEAD_DIM
+) -> torch.Tensor:
     torch.manual_seed(42)
     return torch.randn(B, T, n_heads, head_dim)
 
@@ -49,6 +48,7 @@ def make_input(B: int = 2, T: int = SEQ_LEN, n_heads: int = 4, head_dim: int = H
 # ===========================================================================
 # 1. BaseRoPE.get_freqs — shape
 # ===========================================================================
+
 
 def test_base_rope_get_freqs_shape():
     cfg = make_config()
@@ -63,6 +63,7 @@ def test_base_rope_get_freqs_shape():
 # 2. BaseRoPE.apply — output shape matches input shape
 # ===========================================================================
 
+
 def test_base_rope_apply_output_shape():
     cfg = make_config()
     rope = BaseRoPE(cfg)
@@ -74,6 +75,7 @@ def test_base_rope_apply_output_shape():
 # ===========================================================================
 # 3. BaseRoPE.apply — rotation is norm-preserving
 # ===========================================================================
+
 
 def test_base_rope_apply_norm_preserving():
     cfg = make_config()
@@ -92,12 +94,13 @@ def test_base_rope_apply_norm_preserving():
 # 4. BaseRoPE — different positions produce different rotations
 # ===========================================================================
 
+
 def test_base_rope_different_positions_differ():
     cfg = make_config()
     rope = BaseRoPE(cfg)
     # Use T=2 so we compare position 0 vs position 1
     x = make_input(T=2)
-    out = rope.apply(x, seq_len=2)
+    rope.apply(x, seq_len=2)
     # Output at position 0 and position 1 should differ (same input vector)
     x_uniform = torch.ones(1, 2, 1, HEAD_DIM)
     out_uniform = rope.apply(x_uniform, seq_len=2)
@@ -109,6 +112,7 @@ def test_base_rope_different_positions_differ():
 # ===========================================================================
 # 5. LinearScaledRoPE freqs differ from BaseRoPE when scale_factor != 1
 # ===========================================================================
+
 
 def test_linear_scaled_rope_freqs_differ_from_base():
     base_cfg = make_config(scale_factor=1.0)
@@ -129,6 +133,7 @@ def test_linear_scaled_rope_freqs_differ_from_base():
 # 6. NTKScaledRoPE freqs differ from BaseRoPE
 # ===========================================================================
 
+
 def test_ntk_scaled_rope_freqs_differ_from_base():
     base_cfg = make_config(scale_factor=1.0)
     ntk_cfg = make_config(scale_factor=4.0)
@@ -148,6 +153,7 @@ def test_ntk_scaled_rope_freqs_differ_from_base():
 # 7. YaRNRoPE output shape matches input
 # ===========================================================================
 
+
 def test_yarn_rope_output_shape():
     cfg = make_config(scale_factor=2.0)
     rope = YaRNRoPE(cfg)
@@ -159,6 +165,7 @@ def test_yarn_rope_output_shape():
 # ===========================================================================
 # 8. YaRNRoPE with alpha=0, beta=1 (nearly all NTK) differs from LinearScaledRoPE
 # ===========================================================================
+
 
 def test_yarn_rope_all_ntk_differs_from_linear():
     cfg = make_config(scale_factor=2.0)
@@ -176,6 +183,7 @@ def test_yarn_rope_all_ntk_differs_from_linear():
 # ===========================================================================
 # 9. DynamicNTKRoPE at seq_len <= original_max_len matches BaseRoPE
 # ===========================================================================
+
 
 def test_dynamic_ntk_rope_short_seq_matches_base():
     cfg = make_config(original_max_len=ORIGINAL_MAX_LEN)
@@ -195,6 +203,7 @@ def test_dynamic_ntk_rope_short_seq_matches_base():
 # 10. DynamicNTKRoPE at seq_len > original_max_len differs from BaseRoPE
 # ===========================================================================
 
+
 def test_dynamic_ntk_rope_long_seq_differs_from_base():
     cfg = make_config(original_max_len=ORIGINAL_MAX_LEN)
     base_rope = BaseRoPE(cfg)
@@ -213,13 +222,17 @@ def test_dynamic_ntk_rope_long_seq_differs_from_base():
 # 11. All variants produce finite values
 # ===========================================================================
 
-@pytest.mark.parametrize("rope_cls,kwargs", [
-    (BaseRoPE, {}),
-    (LinearScaledRoPE, {"scale_factor": 2.0}),
-    (NTKScaledRoPE, {"scale_factor": 4.0}),
-    (YaRNRoPE, {"scale_factor": 2.0}),
-    (DynamicNTKRoPE, {}),
-])
+
+@pytest.mark.parametrize(
+    "rope_cls,kwargs",
+    [
+        (BaseRoPE, {}),
+        (LinearScaledRoPE, {"scale_factor": 2.0}),
+        (NTKScaledRoPE, {"scale_factor": 4.0}),
+        (YaRNRoPE, {"scale_factor": 2.0}),
+        (DynamicNTKRoPE, {}),
+    ],
+)
 def test_all_variants_finite(rope_cls, kwargs):
     cfg = make_config(**kwargs)
     if rope_cls is YaRNRoPE:
@@ -227,19 +240,16 @@ def test_all_variants_finite(rope_cls, kwargs):
     else:
         rope = rope_cls(cfg)
     freqs = rope.get_freqs(SEQ_LEN, DEVICE)
-    assert torch.isfinite(freqs).all(), (
-        f"{rope_cls.__name__} produced non-finite frequency values."
-    )
+    assert torch.isfinite(freqs).all(), f"{rope_cls.__name__} produced non-finite frequency values."
     x = make_input()
     out = rope.apply(x, SEQ_LEN)
-    assert torch.isfinite(out).all(), (
-        f"{rope_cls.__name__} produced non-finite output values."
-    )
+    assert torch.isfinite(out).all(), f"{rope_cls.__name__} produced non-finite output values."
 
 
 # ===========================================================================
 # 12. RoPE applied once is NOT the identity (rotation is actually applied)
 # ===========================================================================
+
 
 def test_rope_applied_is_not_identity():
     cfg = make_config()
@@ -256,13 +266,17 @@ def test_rope_applied_is_not_identity():
 # 13. head_dim=64 works for all variants
 # ===========================================================================
 
-@pytest.mark.parametrize("rope_cls", [
-    BaseRoPE,
-    LinearScaledRoPE,
-    NTKScaledRoPE,
-    YaRNRoPE,
-    DynamicNTKRoPE,
-])
+
+@pytest.mark.parametrize(
+    "rope_cls",
+    [
+        BaseRoPE,
+        LinearScaledRoPE,
+        NTKScaledRoPE,
+        YaRNRoPE,
+        DynamicNTKRoPE,
+    ],
+)
 def test_head_dim_64(rope_cls):
     cfg = make_config(head_dim=64, scale_factor=2.0)
     if rope_cls is YaRNRoPE:
@@ -279,13 +293,17 @@ def test_head_dim_64(rope_cls):
 # 14. Works with seq_len=1
 # ===========================================================================
 
-@pytest.mark.parametrize("rope_cls", [
-    BaseRoPE,
-    LinearScaledRoPE,
-    NTKScaledRoPE,
-    YaRNRoPE,
-    DynamicNTKRoPE,
-])
+
+@pytest.mark.parametrize(
+    "rope_cls",
+    [
+        BaseRoPE,
+        LinearScaledRoPE,
+        NTKScaledRoPE,
+        YaRNRoPE,
+        DynamicNTKRoPE,
+    ],
+)
 def test_seq_len_1(rope_cls):
     cfg = make_config(scale_factor=2.0, original_max_len=128)
     if rope_cls is YaRNRoPE:

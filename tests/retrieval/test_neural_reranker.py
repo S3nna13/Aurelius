@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 
 from src.retrieval.neural_reranker import (
@@ -11,10 +10,10 @@ from src.retrieval.neural_reranker import (
     RerankScore,
 )
 
-
 # ---------------------------------------------------------------------------
 # RerankScore dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestRerankScore:
     def test_fields_present(self):
@@ -45,6 +44,7 @@ class TestRerankScore:
 # ---------------------------------------------------------------------------
 # CrossEncoderReranker._score_pair
 # ---------------------------------------------------------------------------
+
 
 class TestCrossEncoderRerankerScorePair:
     def setup_method(self):
@@ -94,6 +94,7 @@ class TestCrossEncoderRerankerScorePair:
 # ---------------------------------------------------------------------------
 # CrossEncoderReranker.rerank
 # ---------------------------------------------------------------------------
+
 
 class TestCrossEncoderRerankerRerank:
     def setup_method(self):
@@ -170,6 +171,7 @@ class TestCrossEncoderRerankerRerank:
 # CrossEncoderReranker.batch_rerank
 # ---------------------------------------------------------------------------
 
+
 class TestCrossEncoderRerankerBatchRerank:
     def setup_method(self):
         self.reranker = CrossEncoderReranker()
@@ -206,6 +208,7 @@ class TestCrossEncoderRerankerBatchRerank:
 # ---------------------------------------------------------------------------
 # ListwiseReranker.softmax_scores
 # ---------------------------------------------------------------------------
+
 
 class TestListwiseRerankerSoftmax:
     def setup_method(self):
@@ -254,6 +257,7 @@ class TestListwiseRerankerSoftmax:
 # ---------------------------------------------------------------------------
 # ListwiseReranker.rerank
 # ---------------------------------------------------------------------------
+
 
 class TestListwiseRerankerRerank:
     def setup_method(self):

@@ -12,13 +12,11 @@ Techniques implemented:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Set, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration dataclass
@@ -63,7 +61,7 @@ class NgramBlocker:
 
     def __init__(self, ngram_size: int = 3) -> None:
         self.ngram_size = ngram_size
-        self._blocked: Set[Tuple[int, ...]] = set()
+        self._blocked: set[tuple[int, ...]] = set()
 
     # ------------------------------------------------------------------
     # Public API
@@ -82,9 +80,7 @@ class NgramBlocker:
             ngram = tuple(ids[i : i + n])
             self._blocked.add(ngram)
 
-    def apply_blocking_mask(
-        self, logits: torch.Tensor, context_ids: torch.Tensor
-    ) -> torch.Tensor:
+    def apply_blocking_mask(self, logits: torch.Tensor, context_ids: torch.Tensor) -> torch.Tensor:
         """Return logits with blocked tokens set to -inf.
 
         A token ``t`` is blocked if the tuple
@@ -137,9 +133,7 @@ class DiversityPenalty:
 
     def __init__(self, penalty_type: str = "hamming", alpha: float = 0.5) -> None:
         if penalty_type not in ("hamming", "cosine"):
-            raise ValueError(
-                f"penalty_type must be 'hamming' or 'cosine', got '{penalty_type}'"
-            )
+            raise ValueError(f"penalty_type must be 'hamming' or 'cosine', got '{penalty_type}'")
         self.penalty_type = penalty_type
         self.alpha = alpha
 
@@ -150,7 +144,7 @@ class DiversityPenalty:
     def compute_diversity_bonus(
         self,
         candidate_ids: torch.Tensor,
-        previous_ids: List[torch.Tensor],
+        previous_ids: list[torch.Tensor],
     ) -> torch.Tensor:
         """Return a (vocab_size,) bonus tensor.
 
@@ -179,7 +173,7 @@ class DiversityPenalty:
             return bonus
 
         # Collect the set of all token ids seen in previous sequences.
-        seen: Set[int] = set()
+        seen: set[int] = set()
         for seq in previous_ids:
             seen.update(seq.tolist())
 
@@ -317,12 +311,12 @@ class OutputDiversifier:
             LongTensor of shape (n_samples, max_new_tokens).
         """
         self._blocker.reset()
-        completed: List[torch.Tensor] = []
+        completed: list[torch.Tensor] = []
         all_generated = torch.zeros(n_samples, max_new_tokens, dtype=torch.long)
 
         for sample_idx in range(n_samples):
             context = input_ids.clone()
-            generated_tokens: List[int] = []
+            generated_tokens: list[int] = []
 
             for step in range(max_new_tokens):
                 logits = self._get_logits(context)
@@ -387,9 +381,7 @@ class OutputDiversifier:
 
         return total_diversity / count if count > 0 else 0.0
 
-    def filter_diverse(
-        self, sequences: torch.Tensor, min_diversity: float = 0.3
-    ) -> torch.Tensor:
+    def filter_diverse(self, sequences: torch.Tensor, min_diversity: float = 0.3) -> torch.Tensor:
         """Remove near-duplicate sequences, keeping only the diverse subset.
 
         Iteratively adds sequences to a kept set; a new sequence is only kept
@@ -408,7 +400,7 @@ class OutputDiversifier:
         if n == 0:
             return sequences
 
-        kept_indices: List[int] = [0]
+        kept_indices: list[int] = [0]
 
         for i in range(1, n):
             is_diverse = True

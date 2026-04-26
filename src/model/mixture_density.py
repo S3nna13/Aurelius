@@ -12,12 +12,11 @@ Implements Bishop (1994)-style MDNs:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -69,9 +68,9 @@ class MDNHead(nn.Module):
         self.hidden = nn.Linear(config.input_dim, H)
 
         # Per-output heads
-        self.pi_head    = nn.Linear(H, K)          # mixing logits
-        self.mu_head    = nn.Linear(H, K * D)      # means
-        self.sigma_head = nn.Linear(H, K * D)      # log-std logits
+        self.pi_head = nn.Linear(H, K)  # mixing logits
+        self.mu_head = nn.Linear(H, K * D)  # means
+        self.sigma_head = nn.Linear(H, K * D)  # log-std logits
 
     def forward(self, h: torch.Tensor):
         """Forward pass.
@@ -87,11 +86,11 @@ class MDNHead(nn.Module):
         K = self.config.n_components
         D = self.config.output_dim
 
-        z = F.relu(self.hidden(h))           # (B, H)
+        z = F.relu(self.hidden(h))  # (B, H)
 
-        pi    = F.softmax(self.pi_head(z), dim=-1)              # (B, K)
-        mu    = self.mu_head(z).view(-1, K, D)                  # (B, K, D)
-        sigma = torch.exp(self.sigma_head(z)).view(-1, K, D)    # (B, K, D)
+        pi = F.softmax(self.pi_head(z), dim=-1)  # (B, K)
+        mu = self.mu_head(z).view(-1, K, D)  # (B, K, D)
+        sigma = torch.exp(self.sigma_head(z)).view(-1, K, D)  # (B, K, D)
 
         return pi, mu, sigma
 
@@ -126,16 +125,12 @@ def mdn_loss(
     # Log-probability under each Gaussian component, summed over D
     # log N(x; mu, sigma) = -0.5 * ((x-mu)/sigma)^2 - log(sigma) - 0.5*log(2pi)
     log_norm = -0.5 * math.log(2.0 * math.pi)
-    log_prob = (
-        log_norm
-        - sigma.log()
-        - 0.5 * ((target - mu) / sigma) ** 2
-    )  # (B, K, D)
+    log_prob = log_norm - sigma.log() - 0.5 * ((target - mu) / sigma) ** 2  # (B, K, D)
     log_prob = log_prob.sum(dim=-1)  # (B, K)  — sum over output dims
 
     # log sum_k { pi_k * p_k } = logsumexp( log(pi_k) + log_prob_k )
-    log_pi   = torch.log(pi + 1e-8)  # (B, K)
-    log_mix  = torch.logsumexp(log_pi + log_prob, dim=-1)  # (B,)
+    log_pi = torch.log(pi + 1e-8)  # (B, K)
+    log_mix = torch.logsumexp(log_pi + log_prob, dim=-1)  # (B,)
 
     return -log_mix.mean()
 
@@ -171,7 +166,7 @@ def mdn_sample(
 
     # Gather selected mu and sigma: (B, D)
     k_idx_exp = k_idx.unsqueeze(-1).unsqueeze(-1).expand(B, 1, D)
-    mu_k    = mu.gather(1, k_idx_exp).squeeze(1)     # (B, D)
+    mu_k = mu.gather(1, k_idx_exp).squeeze(1)  # (B, D)
     sigma_k = sigma.gather(1, k_idx_exp).squeeze(1)  # (B, D)
 
     # Sample from the selected Gaussian
@@ -224,12 +219,12 @@ def mdn_variance(
     pi_exp = pi.unsqueeze(-1)  # (B, K, 1)
 
     # E[Var] = sum_k pi_k * sigma_k^2
-    e_var = (pi_exp * sigma ** 2).sum(dim=1)  # (B, D)
+    e_var = (pi_exp * sigma**2).sum(dim=1)  # (B, D)
 
     # Var[E] = sum_k pi_k * (mu_k - mean)^2
-    mean = mdn_mean(pi, mu)                           # (B, D)
-    diff = mu - mean.unsqueeze(1)                     # (B, K, D)
-    var_e = (pi_exp * diff ** 2).sum(dim=1)           # (B, D)
+    mean = mdn_mean(pi, mu)  # (B, D)
+    diff = mu - mean.unsqueeze(1)  # (B, K, D)
+    var_e = (pi_exp * diff**2).sum(dim=1)  # (B, D)
 
     return e_var + var_e
 

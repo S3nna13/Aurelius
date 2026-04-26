@@ -1,15 +1,14 @@
 """Tests for src/alignment/hierarchical_reward.py"""
+
 from __future__ import annotations
 
 import torch
-import pytest
-
 from aurelius.alignment.hierarchical_reward import (
-    RewardCriterion,
     CriterionWeights,
-    HierarchicalRewardModel,
     HierarchicalRewardLoss,
+    HierarchicalRewardModel,
     MultiObjectiveRewardOptimizer,
+    RewardCriterion,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,6 +39,7 @@ def make_hidden(B: int = B, d_model: int = D_MODEL) -> torch.Tensor:
 # 1. RewardCriterion output shape (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_reward_criterion_output_shape():
     criterion = RewardCriterion(name="helpfulness", d_model=D_MODEL)
     hidden = make_hidden()
@@ -50,6 +50,7 @@ def test_reward_criterion_output_shape():
 # ---------------------------------------------------------------------------
 # 2. RewardCriterion output is finite
 # ---------------------------------------------------------------------------
+
 
 def test_reward_criterion_output_finite():
     criterion = RewardCriterion(name="harmlessness", d_model=D_MODEL)
@@ -62,6 +63,7 @@ def test_reward_criterion_output_finite():
 # 3. CriterionWeights.get_weights sums to 1
 # ---------------------------------------------------------------------------
 
+
 def test_criterion_weights_sums_to_one():
     cw = CriterionWeights(n_criteria=N_CRITERIA, learnable=False)
     w = cw.get_weights()
@@ -72,6 +74,7 @@ def test_criterion_weights_sums_to_one():
 # 4. Learnable weights have requires_grad=True
 # ---------------------------------------------------------------------------
 
+
 def test_learnable_weights_requires_grad():
     cw = CriterionWeights(n_criteria=N_CRITERIA, learnable=True)
     assert cw.raw_weights.requires_grad, "Learnable weights should require grad"
@@ -80,6 +83,7 @@ def test_learnable_weights_requires_grad():
 # ---------------------------------------------------------------------------
 # 5. Fixed weights are uniform
 # ---------------------------------------------------------------------------
+
 
 def test_fixed_weights_are_uniform():
     cw = CriterionWeights(n_criteria=N_CRITERIA, learnable=False)
@@ -91,6 +95,7 @@ def test_fixed_weights_are_uniform():
 # ---------------------------------------------------------------------------
 # 6. HierarchicalRewardModel forward returns expected keys
 # ---------------------------------------------------------------------------
+
 
 def test_hierarchical_reward_model_forward_keys():
     model = make_model()
@@ -105,6 +110,7 @@ def test_hierarchical_reward_model_forward_keys():
 # 7. total_reward shape is (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_total_reward_shape():
     model = make_model()
     hidden = make_hidden()
@@ -115,6 +121,7 @@ def test_total_reward_shape():
 # ---------------------------------------------------------------------------
 # 8. criterion_scores has n_criteria entries
 # ---------------------------------------------------------------------------
+
 
 def test_criterion_scores_length():
     model = make_model()
@@ -129,6 +136,7 @@ def test_criterion_scores_length():
 # 9. criterion_names returns list of correct length
 # ---------------------------------------------------------------------------
 
+
 def test_criterion_names_length():
     model = make_model()
     names = model.criterion_names()
@@ -139,6 +147,7 @@ def test_criterion_names_length():
 # ---------------------------------------------------------------------------
 # 10. breakdown returns dict with 'total' and criterion names
 # ---------------------------------------------------------------------------
+
 
 def test_breakdown_keys():
     model = make_model()
@@ -152,6 +161,7 @@ def test_breakdown_keys():
 # ---------------------------------------------------------------------------
 # 11. HierarchicalRewardLoss.preference_loss returns 'total_loss' and 'margin'
 # ---------------------------------------------------------------------------
+
 
 def test_preference_loss_keys():
     model = make_model()
@@ -167,6 +177,7 @@ def test_preference_loss_keys():
 # 12. diversity_regularizer returns a scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_diversity_regularizer_is_scalar():
     model = make_model()
     loss_fn = HierarchicalRewardLoss(reward_model=model)
@@ -178,6 +189,7 @@ def test_diversity_regularizer_is_scalar():
 # ---------------------------------------------------------------------------
 # 13. diversity_regularizer >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_diversity_regularizer_non_negative():
     model = make_model()
@@ -191,6 +203,7 @@ def test_diversity_regularizer_non_negative():
 # 14. MultiObjectiveRewardOptimizer.scalarize output shape (B,)
 # ---------------------------------------------------------------------------
 
+
 def test_scalarize_output_shape():
     optimizer = MultiObjectiveRewardOptimizer(n_criteria=N_CRITERIA)
     names = ["helpfulness", "harmlessness", "honesty"]
@@ -202,6 +215,7 @@ def test_scalarize_output_shape():
 # ---------------------------------------------------------------------------
 # 15. dominated: b=[2,2] dominates a=[1,1]
 # ---------------------------------------------------------------------------
+
 
 def test_dominated_b_dominates_a():
     optimizer = MultiObjectiveRewardOptimizer(n_criteria=2)

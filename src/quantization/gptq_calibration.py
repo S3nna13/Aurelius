@@ -1,9 +1,9 @@
-"""GPTQ-style calibration: Hessian approximation, optimal quantization (Frantar et al. 2210.17323)."""
+"""GPTQ-style calibration: Hessian approximation, optimal quantization (Frantar et al. 2210.17323)."""  # noqa: E501
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -36,7 +36,7 @@ class GPTQCalibrator:
         if not inputs:
             return
 
-        n_new = len(inputs)
+        len(inputs)
         d = len(inputs[0])
 
         if layer_name not in self._stats:

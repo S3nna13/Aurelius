@@ -6,6 +6,7 @@ trained to predict what gradient update to apply.
 
 Reference: Andrychowicz et al. 2016, "Learning to learn by gradient descent by gradient descent"
 """
+
 from __future__ import annotations
 
 import math
@@ -247,12 +248,7 @@ class MetaTrainingLoop:
             f"task_model.{name}": param.detach().clone().requires_grad_(True)
             for name, param in task_model.named_parameters()
         }
-        params.update(
-            {
-                f"task_model.{name}": buffer
-                for name, buffer in task_model.named_buffers()
-            }
-        )
+        params.update({f"task_model.{name}": buffer for name, buffer in task_model.named_buffers()})
 
         for _ in range(n_unroll):
             loss = torch.func.functional_call(loss_module, params, ())
@@ -271,8 +267,7 @@ class MetaTrainingLoop:
 
             # Apply learned optimizer: LSTM maps grad features -> updates
             new_params = {
-                f"task_model.{name}": buffer
-                for name, buffer in task_model.named_buffers()
+                f"task_model.{name}": buffer for name, buffer in task_model.named_buffers()
             }
             for name, grad in zip(param_names, grads):
                 param = params[name]

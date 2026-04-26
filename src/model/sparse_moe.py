@@ -1,4 +1,5 @@
 """Sparse Mixture-of-Experts with capacity buffers, token dropping, and load balance loss."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,12 +14,12 @@ from torch import Tensor
 class SparseMoEConfig:
     d_model: int = 512
     n_experts: int = 8
-    n_active: int = 2            # top-k experts per token
+    n_active: int = 2  # top-k experts per token
     capacity_factor: float = 1.25  # expert capacity = capacity_factor * T * n_active / n_experts
     expert_d_ff: int = 2048
     aux_loss_coeff: float = 0.01
     expert_dropout: float = 0.0
-    jitter_noise: float = 0.0    # add noise to router logits for load balance
+    jitter_noise: float = 0.0  # add noise to router logits for load balance
 
 
 class ExpertFFN(nn.Module):
@@ -42,7 +43,9 @@ class ExpertFFN(nn.Module):
 class TokenRouter(nn.Module):
     """Routes tokens to experts via a learned linear projection."""
 
-    def __init__(self, d_model: int, n_experts: int, n_active: int, jitter_noise: float = 0.0) -> None:
+    def __init__(
+        self, d_model: int, n_experts: int, n_active: int, jitter_noise: float = 0.0
+    ) -> None:
         super().__init__()
         self.n_experts = n_experts
         self.n_active = n_active
@@ -127,7 +130,9 @@ def dispatch_tokens(
             expert_id = int(indices[token_idx, slot].item())
             fill = expert_fill[expert_id]
             if fill < capacity:
-                expert_inputs[expert_id, fill] = x[token_idx].detach() if not x.requires_grad else x[token_idx]
+                expert_inputs[expert_id, fill] = (
+                    x[token_idx].detach() if not x.requires_grad else x[token_idx]
+                )
                 expert_fill[expert_id] = fill + 1
                 dispatch_mask[token_idx, slot] = True
 
@@ -170,8 +175,7 @@ def combine_expert_outputs(
             expert_id = int(indices[token_idx, slot].item())
             fill = expert_fill[expert_id]
             output[token_idx] = (
-                output[token_idx]
-                + weights[token_idx, slot] * expert_outputs[expert_id, fill]
+                output[token_idx] + weights[token_idx, slot] * expert_outputs[expert_id, fill]
             )
             expert_fill[expert_id] = fill + 1
 
@@ -190,10 +194,12 @@ class SparseMoELayer(nn.Module):
             n_active=config.n_active,
             jitter_noise=config.jitter_noise,
         )
-        self.experts = nn.ModuleList([
-            ExpertFFN(config.d_model, config.expert_d_ff, config.expert_dropout)
-            for _ in range(config.n_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                ExpertFFN(config.d_model, config.expert_d_ff, config.expert_dropout)
+                for _ in range(config.n_experts)
+            ]
+        )
         # Cache for get_routing_stats()
         self._last_router_probs: Tensor | None = None
         self._last_dispatch_mask: Tensor | None = None
@@ -217,7 +223,9 @@ class SparseMoELayer(nn.Module):
         router_probs, top_k_indices, top_k_weights = self.router(x)
 
         # 2. Compute per-expert capacity
-        capacity = compute_capacity(T, self.config.n_experts, self.config.n_active, self.config.capacity_factor)
+        capacity = compute_capacity(
+            T, self.config.n_experts, self.config.n_active, self.config.capacity_factor
+        )
 
         # 3. Dispatch to expert buffers (with gradient-compatible indexing)
         expert_inputs, dispatch_mask = dispatch_tokens(
@@ -245,7 +253,7 @@ class SparseMoELayer(nn.Module):
 
         total_dispatched = dispatch_mask.sum().clamp(min=1).to(x.dtype)
         f_i = expert_counts / total_dispatched  # fraction of accepted tokens per expert
-        P_i = router_probs.mean(dim=0)          # mean router probability per expert
+        P_i = router_probs.mean(dim=0)  # mean router probability per expert
         aux_loss = self.config.aux_loss_coeff * n_experts * (f_i * P_i).sum()
 
         # Cache stats
@@ -269,7 +277,7 @@ class SparseMoELayer(nn.Module):
 
         n_experts = self.config.n_experts
         dispatch_mask = self._last_dispatch_mask  # (N, n_active)
-        indices = self._last_indices              # (N, n_active)
+        indices = self._last_indices  # (N, n_active)
         N = dispatch_mask.shape[0]
 
         expert_counts = torch.zeros(n_experts, device=dispatch_mask.device, dtype=torch.float)

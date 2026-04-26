@@ -23,8 +23,8 @@ import tempfile
 import time
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from typing import Iterable
 
 __all__ = [
     "Fact",
@@ -51,9 +51,7 @@ class MalformedMemoryFileError(MemoryStoreError):
 
 def _validate_importance(importance: float) -> float:
     if not isinstance(importance, (int, float)) or isinstance(importance, bool):
-        raise ValueError(
-            f"importance must be a float in [0, 1], got {importance!r}"
-        )
+        raise ValueError(f"importance must be a float in [0, 1], got {importance!r}")
     f = float(importance)
     if f != f:  # NaN
         raise ValueError("importance must not be NaN")
@@ -86,16 +84,12 @@ class Fact:
         self.created_at = float(self.created_at)
         self.importance = _validate_importance(self.importance)
         if self.ttl_seconds is not None:
-            if not isinstance(self.ttl_seconds, (int, float)) or isinstance(
-                self.ttl_seconds, bool
-            ):
+            if not isinstance(self.ttl_seconds, (int, float)) or isinstance(self.ttl_seconds, bool):
                 raise TypeError("Fact.ttl_seconds must be numeric or None")
             if self.ttl_seconds <= 0:
                 raise ValueError("Fact.ttl_seconds must be > 0 when set")
             self.ttl_seconds = float(self.ttl_seconds)
-        if not isinstance(self.tags, list) or not all(
-            isinstance(t, str) for t in self.tags
-        ):
+        if not isinstance(self.tags, list) or not all(isinstance(t, str) for t in self.tags):
             raise TypeError("Fact.tags must be list[str]")
 
     def is_expired(self, now: float) -> bool:
@@ -107,13 +101,11 @@ class Fact:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Fact":
+    def from_dict(cls, data: dict) -> Fact:
         required = {"id", "namespace", "content", "created_at"}
         missing = required - data.keys()
         if missing:
-            raise MalformedMemoryFileError(
-                f"Fact record missing required keys: {sorted(missing)}"
-            )
+            raise MalformedMemoryFileError(f"Fact record missing required keys: {sorted(missing)}")
         return cls(
             id=data["id"],
             namespace=data["namespace"],
@@ -146,9 +138,7 @@ class MemoryStore(ABC):
     def list_by_namespace(self, namespace: str) -> list[Fact]: ...
 
     @abstractmethod
-    def query(
-        self, namespace: str, query: str, k: int = 5
-    ) -> list[Fact]: ...
+    def query(self, namespace: str, query: str, k: int = 5) -> list[Fact]: ...
 
 
 class InMemoryStore(MemoryStore):
@@ -171,9 +161,7 @@ class InMemoryStore(MemoryStore):
     def list_by_namespace(self, namespace: str) -> list[Fact]:
         return [f for f in self._facts.values() if f.namespace == namespace]
 
-    def query(
-        self, namespace: str, query: str, k: int = 5
-    ) -> list[Fact]:
+    def query(self, namespace: str, query: str, k: int = 5) -> list[Fact]:
         # Default backend implements substring fall-back; BM25 ranking
         # is handled by ConversationMemory, which may bypass this path.
         return _substring_query(self.list_by_namespace(namespace), query, k)
@@ -210,26 +198,20 @@ class JSONFileStore(MemoryStore):
             self._facts = {}
             return
         try:
-            with open(self._path, "r", encoding="utf-8") as fh:
+            with open(self._path, encoding="utf-8") as fh:
                 data = json.load(fh)
         except json.JSONDecodeError as exc:
             raise MalformedMemoryFileError(
                 f"failed to parse memory file {self._path!r}: {exc}"
             ) from exc
         except OSError as exc:
-            raise MemoryStoreError(
-                f"failed to read memory file {self._path!r}: {exc}"
-            ) from exc
+            raise MemoryStoreError(f"failed to read memory file {self._path!r}: {exc}") from exc
 
         if not isinstance(data, dict) or "facts" not in data:
-            raise MalformedMemoryFileError(
-                f"memory file {self._path!r} has no 'facts' key"
-            )
+            raise MalformedMemoryFileError(f"memory file {self._path!r} has no 'facts' key")
         records = data.get("facts")
         if not isinstance(records, list):
-            raise MalformedMemoryFileError(
-                f"memory file {self._path!r}: 'facts' must be a list"
-            )
+            raise MalformedMemoryFileError(f"memory file {self._path!r}: 'facts' must be a list")
         facts: dict[str, Fact] = {}
         for rec in records:
             if not isinstance(rec, dict):
@@ -290,9 +272,7 @@ class JSONFileStore(MemoryStore):
     def list_by_namespace(self, namespace: str) -> list[Fact]:
         return [f for f in self._facts.values() if f.namespace == namespace]
 
-    def query(
-        self, namespace: str, query: str, k: int = 5
-    ) -> list[Fact]:
+    def query(self, namespace: str, query: str, k: int = 5) -> list[Fact]:
         return _substring_query(self.list_by_namespace(namespace), query, k)
 
     def _all(self) -> list[Fact]:
@@ -392,9 +372,7 @@ class ConversationMemory:
         self.store = store
         self._bm25 = bm25_retriever
         self._clock = clock if clock is not None else time.time
-        self._id_factory = (
-            id_factory if id_factory is not None else (lambda: uuid.uuid4().hex)
-        )
+        self._id_factory = id_factory if id_factory is not None else (lambda: uuid.uuid4().hex)
 
     # ---- CRUD ---------------------------------------------------------- #
 
@@ -431,9 +409,7 @@ class ConversationMemory:
 
     # ---- Retrieval ----------------------------------------------------- #
 
-    def retrieve(
-        self, namespace: str, query: str, k: int = 5
-    ) -> list[Fact]:
+    def retrieve(self, namespace: str, query: str, k: int = 5) -> list[Fact]:
         """Return up to ``k`` live (non-expired) facts ranked for ``query``.
 
         Uses BM25 when a retriever is configured, otherwise substring.
@@ -445,11 +421,7 @@ class ConversationMemory:
         if not isinstance(query, str):
             raise TypeError("query must be a string")
         now = float(self._clock())
-        candidates = [
-            f
-            for f in self.store.list_by_namespace(namespace)
-            if not f.is_expired(now)
-        ]
+        candidates = [f for f in self.store.list_by_namespace(namespace) if not f.is_expired(now)]
         if not candidates or not query.strip():
             return []
 
@@ -480,9 +452,7 @@ class ConversationMemory:
             # indexes remain immutable per-query.
             cls = candidate.__class__
             return cls()
-        raise TypeError(
-            "bm25_retriever must be a BM25-shaped class, factory, or instance"
-        )
+        raise TypeError("bm25_retriever must be a BM25-shaped class, factory, or instance")
 
     # ---- Maintenance --------------------------------------------------- #
 
@@ -496,14 +466,11 @@ class ConversationMemory:
         if hasattr(store, "_all"):
             all_facts = store._all()  # type: ignore[attr-defined]
         else:  # pragma: no cover - defensive path for custom backends
-            raise MemoryStoreError(
-                "store does not expose iteration for prune_expired"
-            )
+            raise MemoryStoreError("store does not expose iteration for prune_expired")
         victims = [
             f.id
             for f in all_facts
-            if f.is_expired(now)
-            and (namespace is None or f.namespace == namespace)
+            if f.is_expired(now) and (namespace is None or f.namespace == namespace)
         ]
         if not victims:
             return 0
@@ -519,12 +486,6 @@ class ConversationMemory:
         if not isinstance(k, int) or isinstance(k, bool) or k <= 0:
             raise ValueError(f"k must be a positive int, got {k!r}")
         now = float(self._clock())
-        facts = [
-            f
-            for f in self.store.list_by_namespace(namespace)
-            if not f.is_expired(now)
-        ]
-        facts.sort(
-            key=lambda f: (-f.importance, -f.created_at, f.id)
-        )
+        facts = [f for f in self.store.list_by_namespace(namespace) if not f.is_expired(now)]
+        facts.sort(key=lambda f: (-f.importance, -f.created_at, f.id))
         return facts[:k]

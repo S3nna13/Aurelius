@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import random
 import re
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NectarSample:
@@ -97,6 +97,7 @@ class ArgillaSample:
 # Parsers
 # ---------------------------------------------------------------------------
 
+
 def parse_nectar_sample(raw: dict) -> NectarSample:
     """Parse a raw dict into a NectarSample."""
     return NectarSample(
@@ -134,6 +135,7 @@ def parse_argilla_sample(raw: dict) -> ArgillaSample:
 # Synthesizer
 # ---------------------------------------------------------------------------
 
+
 class PreferenceSynthesizer:
     """Synthesize preference pairs from instruction data using scoring heuristics."""
 
@@ -170,14 +172,12 @@ class PreferenceSynthesizer:
 
         # ---- markdown structure (0–0.3) ----
         md_patterns = [
-            r"^#{1,6}\s",          # headers
-            r"^\s*[-*+]\s",        # bullet lists
-            r"```",                 # code blocks
-            r"^\s*\d+\.\s",        # numbered lists
+            r"^#{1,6}\s",  # headers
+            r"^\s*[-*+]\s",  # bullet lists
+            r"```",  # code blocks
+            r"^\s*\d+\.\s",  # numbered lists
         ]
-        md_hits = sum(
-            1 for pat in md_patterns if re.search(pat, response, re.MULTILINE)
-        )
+        md_hits = sum(1 for pat in md_patterns if re.search(pat, response, re.MULTILINE))
         score += min(0.3, md_hits * 0.1)
 
         # ---- no repetition (0–0.2) ----
@@ -233,12 +233,12 @@ class PreferenceSynthesizer:
         target = min(n_pairs, max(len(high), 1))
         for i in range(target):
             h = high[i % len(high)]
-            l = low[i % len(low)]
+            lo = low[i % len(low)]
             pairs.append(
                 {
                     "prompt": h["prompt"],
                     "chosen": h["output"],
-                    "rejected": l["output"],
+                    "rejected": lo["output"],
                 }
             )
 
@@ -297,7 +297,7 @@ class PreferenceSynthesizer:
             match = re.search(r"[.!?]", text)
             if match:
                 first = text[: match.end()]
-                rest = text[match.end():]
+                rest = text[match.end() :]
             else:
                 first = text
                 rest = ""
@@ -314,6 +314,7 @@ class PreferenceSynthesizer:
 # Mock data generators
 # ---------------------------------------------------------------------------
 
+
 def mock_nectar_data(n: int = 4) -> list[dict]:
     """Return n mock Nectar raw dicts."""
     data = []
@@ -325,8 +326,8 @@ def mock_nectar_data(n: int = 4) -> list[dict]:
                 "answers": [
                     {
                         "answer": f"This is a thorough explanation of concept {i}. "
-                                  "It covers the main ideas, provides examples, and "
-                                  "concludes with a summary.",
+                        "It covers the main ideas, provides examples, and "
+                        "concludes with a summary.",
                         "model": "gpt-4",
                         "rank": 1,
                         "score": 4.5,
@@ -355,7 +356,7 @@ def mock_openhermes_data(n: int = 4) -> list[dict]:
                     {
                         "from": "gpt",
                         "value": f"Topic {i} refers to an important subject. "
-                                 "Here is a detailed explanation with examples.",
+                        "Here is a detailed explanation with examples.",
                     },
                 ],
                 "category": "general",
@@ -375,7 +376,7 @@ def mock_argilla_data(n: int = 4) -> list[dict]:
                 "system": "You are a helpful assistant.",
                 "question": f"Please explain item {i}.",
                 "chosen": f"Item {i} is well understood. It has many properties "
-                          "and applications that are worth exploring in depth.",
+                "and applications that are worth exploring in depth.",
                 "rejected": f"Item {i} exists.",
                 "raw_chosen": {"justification": "Comprehensive answer.", "rating": 5},
                 "raw_rejected": {"justification": "Too brief.", "rating": 2},

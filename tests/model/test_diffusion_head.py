@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
+from src.model.config import AureliusConfig
 from src.model.diffusion_head import (
     MASK_TOKEN_ID,
-    DiffusionSchedule,
-    DiffusionLMHead,
-    MaskedDiffusionTrainer,
     DiffusionDecoder,
+    DiffusionLMHead,
+    DiffusionSchedule,
+    MaskedDiffusionTrainer,
 )
-from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 # Small config for all tests
@@ -32,6 +31,7 @@ SMALL_CONFIG = AureliusConfig(
 # ---------------------------------------------------------------------------
 # DiffusionSchedule tests
 # ---------------------------------------------------------------------------
+
 
 def test_schedule_mask_rate_range():
     """mask_rate in [0, 1] for all t, both schedules."""
@@ -100,6 +100,7 @@ def test_get_timesteps_range():
 # DiffusionLMHead tests
 # ---------------------------------------------------------------------------
 
+
 def test_diffusion_head_output_shape():
     """(2, 16, 64) hidden states -> (2, 16, vocab_size) logits."""
     head = DiffusionLMHead(d_model=64, vocab_size=256)
@@ -147,15 +148,14 @@ def test_diffusion_loss_zero_no_masks():
 # MaskedDiffusionTrainer tests
 # ---------------------------------------------------------------------------
 
+
 def _make_trainer():
     """Helper: create a small trainer for testing."""
     config = SMALL_CONFIG
     model = AureliusTransformer(config)
     head = DiffusionLMHead(d_model=config.d_model, vocab_size=config.vocab_size)
     schedule = DiffusionSchedule(T=10, schedule="linear", mask_token_id=MASK_TOKEN_ID)
-    optimizer = torch.optim.Adam(
-        list(model.parameters()) + list(head.parameters()), lr=1e-4
-    )
+    optimizer = torch.optim.Adam(list(model.parameters()) + list(head.parameters()), lr=1e-4)
     trainer = MaskedDiffusionTrainer(model, head, schedule, optimizer)
     return trainer
 
@@ -190,6 +190,7 @@ def test_diffusion_trainer_loss_positive():
 # DiffusionDecoder tests
 # ---------------------------------------------------------------------------
 
+
 def test_diffusion_decoder_shape():
     """decode returns (1, gen_len) tensor."""
     config = SMALL_CONFIG
@@ -202,6 +203,4 @@ def test_diffusion_decoder_shape():
     gen_len = 8
 
     generated = decoder.decode(prompt_ids, gen_len=gen_len, n_steps=3)
-    assert generated.shape == (1, gen_len), (
-        f"Expected (1, {gen_len}), got {generated.shape}"
-    )
+    assert generated.shape == (1, gen_len), f"Expected (1, {gen_len}), got {generated.shape}"

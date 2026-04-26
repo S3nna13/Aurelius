@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+
 import pytest
 
 from src.security.scope_manifest import (
@@ -11,10 +12,10 @@ from src.security.scope_manifest import (
     ScopeManifest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def checker() -> ScopeChecker:
@@ -37,6 +38,7 @@ def manifest() -> ScopeManifest:
 # ---------------------------------------------------------------------------
 # host_in_scope
 # ---------------------------------------------------------------------------
+
 
 class TestHostInScope:
     def test_exact_host_match(self, checker, manifest):
@@ -87,6 +89,7 @@ class TestHostInScope:
 # url_in_scope
 # ---------------------------------------------------------------------------
 
+
 class TestUrlInScope:
     def test_http_url_in_scope(self, checker, manifest):
         assert checker.url_in_scope(manifest, "http://sub.example.com/path") is True
@@ -124,6 +127,7 @@ class TestUrlInScope:
 # kill_switch
 # ---------------------------------------------------------------------------
 
+
 class TestKillSwitch:
     def test_kill_switch_inactive_when_file_absent(self, checker):
         assert checker.kill_switch_active("/tmp/__no_such_kill_switch_file__") is False
@@ -141,6 +145,7 @@ class TestKillSwitch:
 # allow_tool
 # ---------------------------------------------------------------------------
 
+
 class TestAllowTool:
     def test_allowed_tool(self, checker, manifest):
         assert checker.allow_tool(manifest, "nmap") is True
@@ -156,18 +161,27 @@ class TestAllowTool:
 # ScopeManifest defaults & dataclass integrity
 # ---------------------------------------------------------------------------
 
+
 class TestScopeManifestDefaults:
     def test_default_scan_mode(self):
         m = ScopeManifest(
-            name="x", domains=[], hosts=[], cidrs=[],
-            out_of_scope_patterns=[], allow_tools=[],
+            name="x",
+            domains=[],
+            hosts=[],
+            cidrs=[],
+            out_of_scope_patterns=[],
+            allow_tools=[],
         )
         assert m.scan_mode == ScanMode.PASSIVE_SAFE
 
     def test_default_kill_switch_file(self):
         m = ScopeManifest(
-            name="x", domains=[], hosts=[], cidrs=[],
-            out_of_scope_patterns=[], allow_tools=[],
+            name="x",
+            domains=[],
+            hosts=[],
+            cidrs=[],
+            out_of_scope_patterns=[],
+            allow_tools=[],
         )
         assert m.kill_switch_file == ".kill_switch"
 

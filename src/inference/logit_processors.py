@@ -1,7 +1,8 @@
 """Composable pipeline of logit transformations applied before sampling."""
 
-import torch
 from abc import ABC, abstractmethod
+
+import torch
 
 
 class LogitProcessor(ABC):

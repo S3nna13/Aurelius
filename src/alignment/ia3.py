@@ -8,6 +8,7 @@ efficient path to behaviour adaptation.
 
 Only the injected scale vectors are trainable; all base model weights are frozen.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -17,22 +18,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class IA3Config:
     """Configuration for IA³ injection."""
+
     target_modules: list[str] = field(default_factory=lambda: ["k_proj", "v_proj", "down_proj"])
-    init_ia3_weights: bool = True   # init scaling vectors to ones
-    trainable_only: bool = True     # only ia3 vectors trainable
+    init_ia3_weights: bool = True  # init scaling vectors to ones
+    trainable_only: bool = True  # only ia3 vectors trainable
 
 
 # ---------------------------------------------------------------------------
 # Core layer
 # ---------------------------------------------------------------------------
+
 
 class IA3Layer(nn.Module):
     """Scales activations with a learned vector of ones-initialized weights.
@@ -61,6 +64,7 @@ class IA3Layer(nn.Module):
 # Scaled linear wrapper
 # ---------------------------------------------------------------------------
 
+
 class IA3ScaledLinear(nn.Module):
     """Linear layer with IA³ scaling applied to its output.
 
@@ -84,6 +88,7 @@ class IA3ScaledLinear(nn.Module):
 # Parameter utilities
 # ---------------------------------------------------------------------------
 
+
 def count_trainable_parameters(model: nn.Module) -> int:
     """Count parameters where requires_grad=True."""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -102,6 +107,7 @@ def get_ia3_parameters(ia3_layers: dict[str, IA3Layer]) -> list[nn.Parameter]:
 # ---------------------------------------------------------------------------
 # Injection
 # ---------------------------------------------------------------------------
+
 
 def inject_ia3_layers(model: nn.Module, cfg: IA3Config) -> dict[str, IA3Layer]:
     """Inject IA3Layer scaling into FFN down_proj activations across all transformer layers.
@@ -140,6 +146,7 @@ def inject_ia3_layers(model: nn.Module, cfg: IA3Config) -> dict[str, IA3Layer]:
 # Save / load
 # ---------------------------------------------------------------------------
 
+
 def save_ia3_weights(ia3_layers: dict[str, IA3Layer], path: str) -> None:
     """Save IA³ scales as {name: tensor} dict via torch.save."""
     state = {name: layer.scale.data for name, layer in ia3_layers.items()}
@@ -156,6 +163,7 @@ def load_ia3_weights(ia3_layers: dict[str, IA3Layer], path: str) -> None:
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class IA3Trainer:
     """Fine-tuning trainer using IA³ adapters."""

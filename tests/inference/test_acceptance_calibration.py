@@ -43,4 +43,3 @@ def test_acceptance_ece_rejects_shape_mismatch():
 def test_acceptance_ece_rejects_bad_bins():
     with pytest.raises(ValueError):
         acceptance_ece(torch.tensor([0.1]), torch.tensor([1]), n_bins=0)
-

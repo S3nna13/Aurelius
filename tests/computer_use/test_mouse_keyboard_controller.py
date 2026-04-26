@@ -6,7 +6,6 @@ import pytest
 
 from src.computer_use.mouse_keyboard_controller import MouseKeyboardController
 
-
 # ---------------------------------------------------------------------------
 # Action method tests
 # ---------------------------------------------------------------------------
@@ -21,9 +20,7 @@ class TestMouseActions:
     def test_click_logs(self):
         ctrl = MouseKeyboardController()
         ctrl.click(50, 60, button="right")
-        assert ctrl.get_action_log() == [
-            {"action": "click", "x": 50, "y": 60, "button": "right"}
-        ]
+        assert ctrl.get_action_log() == [{"action": "click", "x": 50, "y": 60, "button": "right"}]
 
     def test_click_defaults_left(self):
         ctrl = MouseKeyboardController()
@@ -55,9 +52,7 @@ class TestKeyboardActions:
     def test_type_text_logs(self):
         ctrl = MouseKeyboardController()
         ctrl.type_text("hello", interval=0.05)
-        assert ctrl.get_action_log() == [
-            {"action": "type_text", "text": "hello", "interval": 0.05}
-        ]
+        assert ctrl.get_action_log() == [{"action": "type_text", "text": "hello", "interval": 0.05}]
 
     def test_type_text_defaults_interval(self):
         ctrl = MouseKeyboardController()
@@ -72,9 +67,7 @@ class TestKeyboardActions:
     def test_hotkey_logs(self):
         ctrl = MouseKeyboardController()
         ctrl.hotkey(["ctrl", "c"])
-        assert ctrl.get_action_log() == [
-            {"action": "hotkey", "keys": ["ctrl", "c"]}
-        ]
+        assert ctrl.get_action_log() == [{"action": "hotkey", "keys": ["ctrl", "c"]}]
 
 
 # ---------------------------------------------------------------------------

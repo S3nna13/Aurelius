@@ -1,7 +1,6 @@
 """Tests for CSV parser."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.csv_parser import CSVParser
 

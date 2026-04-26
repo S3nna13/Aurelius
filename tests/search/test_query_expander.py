@@ -1,21 +1,21 @@
 """Tests for src/search/query_expander.py — 20 tests."""
+
 from __future__ import annotations
 
 import pytest
 
+from src.search.bm25_index import BM25Index
 from src.search.query_expander import (
-    QueryExpander,
-    ExpandedQuery,
+    _MAX_EXPANSIONS,
     _MAX_QUERY_LEN,
     _MAX_SYNONYMS,
-    _MAX_EXPANSIONS,
+    QueryExpander,
 )
-from src.search.bm25_index import BM25Index
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh_expander(**kwargs) -> QueryExpander:
     return QueryExpander(**kwargs)
@@ -24,6 +24,7 @@ def fresh_expander(**kwargs) -> QueryExpander:
 # ---------------------------------------------------------------------------
 # split_identifier
 # ---------------------------------------------------------------------------
+
 
 def test_split_identifier_camel_case():
     qe = fresh_expander()
@@ -58,6 +59,7 @@ def test_split_identifier_all_caps_abbreviation():
 # tokenize
 # ---------------------------------------------------------------------------
 
+
 def test_tokenize_plain_words_lowercased():
     qe = fresh_expander()
     result = qe.tokenize("hello world")
@@ -74,6 +76,7 @@ def test_tokenize_camel_case_split():
 # ---------------------------------------------------------------------------
 # expand
 # ---------------------------------------------------------------------------
+
 
 def test_expand_original_always_in_variants():
     qe = fresh_expander()
@@ -118,6 +121,7 @@ def test_expand_query_too_long_raises():
 # add_synonyms
 # ---------------------------------------------------------------------------
 
+
 def test_add_synonyms_lookup_works():
     qe = fresh_expander()
     qe.add_synonyms({"function": ["method", "procedure"]})
@@ -137,6 +141,7 @@ def test_add_synonyms_overflow_raises():
 # max_expansions constructor guard
 # ---------------------------------------------------------------------------
 
+
 def test_max_expansions_too_large_raises():
     with pytest.raises(ValueError, match="max_expansions exceeds"):
         QueryExpander(max_expansions=_MAX_EXPANSIONS + 1)
@@ -145,6 +150,7 @@ def test_max_expansions_too_large_raises():
 # ---------------------------------------------------------------------------
 # expand: no synonyms
 # ---------------------------------------------------------------------------
+
 
 def test_expand_no_synonyms_only_token_variants():
     qe = fresh_expander()
@@ -157,6 +163,7 @@ def test_expand_no_synonyms_only_token_variants():
 # ---------------------------------------------------------------------------
 # Adversarial
 # ---------------------------------------------------------------------------
+
 
 def test_expand_empty_query():
     qe = fresh_expander()
@@ -182,6 +189,7 @@ def test_expand_special_chars_only_alphanum_extracted():
 # ---------------------------------------------------------------------------
 # Round-trip: expand then search in BM25
 # ---------------------------------------------------------------------------
+
 
 def test_expand_then_bm25_search():
     """Expand a camelCase query and verify a variant appears in BM25 results."""

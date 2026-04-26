@@ -1,9 +1,11 @@
 """Deterministic simulation runner with fixed seed for reproducibility."""
+
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
@@ -28,8 +30,7 @@ class DeterministicRunner:
         self._rng = random.Random(seed if seed is not None else self.seed)
 
     def run(self, env_fn: Callable[[], Any], steps: int = 100) -> list[SimStep]:
-        env = env_fn()
-        state = env
+        env_fn()
         history = []
         for _ in range(steps):
             action = self._rng.choice(["left", "right", "up", "down", "stay"])

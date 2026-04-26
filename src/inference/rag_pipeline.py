@@ -7,32 +7,32 @@ RAGPipeline, and RAGTrainer for fine-tuning on RAG-augmented inputs.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RAGConfig:
-    chunk_size: int = 256        # tokens (words) per chunk
-    chunk_overlap: int = 32      # overlap words between consecutive chunks
-    n_retrieve: int = 5          # docs to retrieve (sparse + dense each)
-    n_rerank: int = 3            # top docs after reranking / RRF fusion
-    fusion_alpha: float = 0.5    # weight of dense vs sparse score
+    chunk_size: int = 256  # tokens (words) per chunk
+    chunk_overlap: int = 32  # overlap words between consecutive chunks
+    n_retrieve: int = 5  # docs to retrieve (sparse + dense each)
+    n_rerank: int = 3  # top docs after reranking / RRF fusion
+    fusion_alpha: float = 0.5  # weight of dense vs sparse score
     max_context_len: int = 1024  # max context length in words
 
 
 # ---------------------------------------------------------------------------
 # Text chunking
 # ---------------------------------------------------------------------------
+
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
     """Split text into overlapping word-level chunks.
@@ -66,6 +66,7 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
 # BM25 sparse index
 # ---------------------------------------------------------------------------
 
+
 class BM25Index:
     """Simple BM25 scoring index (Robertson & Zaragoza 2009).
 
@@ -81,8 +82,8 @@ class BM25Index:
         self.k1 = k1
         self.b = b
         self._documents: list[str] = []
-        self._tf: list[dict[str, int]] = []   # per-doc term frequency
-        self._df: dict[str, int] = {}          # document frequency per term
+        self._tf: list[dict[str, int]] = []  # per-doc term frequency
+        self._df: dict[str, int] = {}  # document frequency per term
         self._avgdl: float = 0.0
         self._n: int = 0
 
@@ -127,9 +128,11 @@ class BM25Index:
                 continue
             idf = math.log((self._n - df_tok + 0.5) / (df_tok + 0.5) + 1)
             numerator = tf_tok * (self.k1 + 1)
-            denominator = tf_tok + self.k1 * (
-                1 - self.b + self.b * dl / self._avgdl
-            ) if self._avgdl > 0 else tf_tok + self.k1
+            denominator = (
+                tf_tok + self.k1 * (1 - self.b + self.b * dl / self._avgdl)
+                if self._avgdl > 0
+                else tf_tok + self.k1
+            )
             result += idf * numerator / denominator
 
         return result
@@ -147,6 +150,7 @@ class BM25Index:
 # ---------------------------------------------------------------------------
 # Reciprocal Rank Fusion
 # ---------------------------------------------------------------------------
+
 
 def reciprocal_rank_fusion(rankings: list[list[int]], k: int = 60) -> list[int]:
     """Combine multiple ranked lists via Reciprocal Rank Fusion.
@@ -176,6 +180,7 @@ def reciprocal_rank_fusion(rankings: list[list[int]], k: int = 60) -> list[int]:
 # Dense retriever (lightweight, no AureliusTransformer dependency)
 # ---------------------------------------------------------------------------
 
+
 class DenseRetriever(nn.Module):
     """Lightweight dense retriever using a learnable projection matrix.
 
@@ -201,9 +206,7 @@ class DenseRetriever(nn.Module):
         vectors = []
         for text in texts:
             if text:
-                scalar = torch.tensor(
-                    [ord(c) for c in text], dtype=torch.float
-                ).mean()
+                scalar = torch.tensor([ord(c) for c in text], dtype=torch.float).mean()
             else:
                 scalar = torch.zeros(1, dtype=torch.float).squeeze()
             vec = scalar.expand(self.embed_dim).clone()  # (embed_dim,)
@@ -237,6 +240,7 @@ class DenseRetriever(nn.Module):
 # ---------------------------------------------------------------------------
 # Full RAG Pipeline
 # ---------------------------------------------------------------------------
+
 
 class RAGPipeline:
     """Full RAG pipeline: chunk, index, retrieve via sparse+dense fusion, format context.
@@ -318,15 +322,16 @@ class RAGPipeline:
 # Dense RAG: DocumentStore, QueryEncoder, augmented input, generator pipeline
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DenseRAGConfig:
     """Configuration for the dense-retrieval RAG pipeline."""
 
-    n_docs: int = 3                 # documents to retrieve per query
-    max_doc_len: int = 64           # max tokens per document
+    n_docs: int = 3  # documents to retrieve per query
+    max_doc_len: int = 64  # max tokens per document
     max_answer_len: int = 32
-    score_method: str = "dot"       # "dot" | "cosine"
-    prepend_docs: bool = True       # prepend retrieved docs to query
+    score_method: str = "dot"  # "dot" | "cosine"
+    prepend_docs: bool = True  # prepend retrieved docs to query
 
 
 class DocumentStore:
@@ -344,7 +349,7 @@ class DocumentStore:
 
     def add_batch(self, doc_ids_list: list[Tensor], embeddings: Tensor) -> None:
         """Add multiple docs. embeddings shape (n_docs, embed_dim)."""
-        assert embeddings.shape[0] == len(doc_ids_list), (
+        assert embeddings.shape[0] == len(doc_ids_list), (  # noqa: S101
             "Number of embeddings must match number of doc_ids entries."
         )
         for i, doc_ids in enumerate(doc_ids_list):
@@ -367,11 +372,11 @@ class DocumentStore:
         q = query_emb.detach().float()
 
         if method == "cosine":
-            q_norm = F.normalize(q.unsqueeze(0), dim=-1)              # (1, D)
-            d_norm = F.normalize(doc_matrix.float(), dim=-1)          # (N, D)
-            scores = (d_norm @ q_norm.T).squeeze(-1)                  # (N,)
+            q_norm = F.normalize(q.unsqueeze(0), dim=-1)  # (1, D)
+            d_norm = F.normalize(doc_matrix.float(), dim=-1)  # (N, D)
+            scores = (d_norm @ q_norm.T).squeeze(-1)  # (N,)
         else:  # dot
-            scores = doc_matrix.float() @ q.float()                   # (N,)
+            scores = doc_matrix.float() @ q.float()  # (N,)
 
         k = min(n_docs, scores.shape[0])
         top_scores, top_indices = torch.topk(scores, k)
@@ -398,8 +403,8 @@ class QueryEncoder(nn.Module):
     def forward(self, input_ids: Tensor) -> Tensor:
         """input_ids (B, T) -> embeddings (B, embed_dim) — mean-pool over T."""
         # (B, T, embed_dim) -> mean over T -> (B, embed_dim)
-        token_embeds = self.embed(input_ids)        # (B, T, D)
-        return token_embeds.mean(dim=1)             # (B, D)
+        token_embeds = self.embed(input_ids)  # (B, T, D)
+        return token_embeds.mean(dim=1)  # (B, D)
 
 
 def build_augmented_input(
@@ -432,9 +437,7 @@ def build_augmented_input(
     # Pad left with zeros if shorter
     pad_len = max_total_len - combined.shape[0]
     if pad_len > 0:
-        combined = torch.cat(
-            [torch.zeros(pad_len, dtype=combined.dtype), combined], dim=0
-        )
+        combined = torch.cat([torch.zeros(pad_len, dtype=combined.dtype), combined], dim=0)
 
     return combined
 
@@ -463,7 +466,7 @@ class DenseRAGPipeline:
         """Encode query and retrieve top-n_docs documents."""
         with torch.no_grad():
             q_emb = self.query_encoder(query_ids.unsqueeze(0))  # (1, D)
-            q_emb = q_emb.squeeze(0)                            # (D,)
+            q_emb = q_emb.squeeze(0)  # (D,)
         return self.doc_store.retrieve(
             q_emb, n_docs=self.config.n_docs, method=self.config.score_method
         )
@@ -542,12 +545,9 @@ class DenseRAGTrainer:
         # Retrieve (no grad needed for retrieval)
         retrieved = self.pipeline.retrieve(query_ids)
         n_docs = len(retrieved)
-        mean_score = (
-            float(sum(s for _, s in retrieved) / n_docs) if n_docs > 0 else 0.0
-        )
+        mean_score = float(sum(s for _, s in retrieved) / n_docs) if n_docs > 0 else 0.0
         doc_ids_list = [d for d, _ in retrieved]
 
-        cfg = self.pipeline.config
         generator = self.pipeline.generator
         max_seq = generator.config.max_seq_len if hasattr(generator, "config") else 512
 

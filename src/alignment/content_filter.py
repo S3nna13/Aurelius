@@ -1,18 +1,18 @@
-"""Multi-category content filtering with confidence thresholds, ensemble scoring, and audit logging."""
+"""Multi-category content filtering with confidence thresholds, ensemble scoring, and audit logging."""  # noqa: E501
+
 from __future__ import annotations
 
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
 
-
 # ---------------------------------------------------------------------------
 # Config & Decision dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FilterConfig:
@@ -28,7 +28,7 @@ class FilterConfig:
             "pii": 0.9,
         }
     )
-    ensemble_method: str = "max"   # "max" | "mean" | "weighted"
+    ensemble_method: str = "max"  # "max" | "mean" | "weighted"
     n_ensemble: int = 3
     log_decisions: bool = True
     appeal_enabled: bool = False
@@ -48,6 +48,7 @@ class FilterDecision:
 # CategoryScorer
 # ---------------------------------------------------------------------------
 
+
 class CategoryScorer(nn.Module):
     """Byte-level embedding + linear classifier for harmful categories."""
 
@@ -58,11 +59,11 @@ class CategoryScorer(nn.Module):
         self.classifier = nn.Linear(d_model, len(categories))
 
     def forward(self, text: str) -> dict[str, float]:  # type: ignore[override]
-        byte_ids = torch.tensor(
-            list(text.encode("utf-8")), dtype=torch.long
-        ).unsqueeze(0)  # (1, seq_len)
-        emb = self.embed(byte_ids)            # (1, d_model)
-        logits = self.classifier(emb)         # (1, n_categories)
+        byte_ids = torch.tensor(list(text.encode("utf-8")), dtype=torch.long).unsqueeze(
+            0
+        )  # (1, seq_len)
+        emb = self.embed(byte_ids)  # (1, d_model)
+        logits = self.classifier(emb)  # (1, n_categories)
         scores = torch.sigmoid(logits).squeeze(0)  # (n_categories,)
         return {cat: scores[i].item() for i, cat in enumerate(self.categories)}
 
@@ -70,6 +71,7 @@ class CategoryScorer(nn.Module):
 # ---------------------------------------------------------------------------
 # EnsembleFilter
 # ---------------------------------------------------------------------------
+
 
 class EnsembleFilter:
     """Multiple CategoryScorers vote on safety via an ensemble method."""
@@ -107,6 +109,7 @@ class EnsembleFilter:
 # ---------------------------------------------------------------------------
 # AuditLog
 # ---------------------------------------------------------------------------
+
 
 class AuditLog:
     """Stores FilterDecisions for auditing and statistics."""
@@ -154,6 +157,7 @@ class AuditLog:
 # ContentFilter
 # ---------------------------------------------------------------------------
 
+
 class ContentFilter:
     """Main content filtering interface."""
 
@@ -167,15 +171,14 @@ class ContentFilter:
         thresholds = self.config.thresholds
 
         triggered = [
-            cat for cat in self.config.categories
+            cat
+            for cat in self.config.categories
             if scores.get(cat, 0.0) >= thresholds.get(cat, 0.5)
         ]
         is_safe = len(triggered) == 0
 
         if triggered:
-            confidence = 1.0 - max(
-                abs(scores[cat] - thresholds[cat]) for cat in triggered
-            )
+            confidence = 1.0 - max(abs(scores[cat] - thresholds[cat]) for cat in triggered)
         else:
             confidence = 1.0
 
@@ -231,6 +234,7 @@ def detect_pii(text: str) -> list[str]:
 # Metrics
 # ---------------------------------------------------------------------------
 
+
 def compute_filter_metrics(
     decisions: list[FilterDecision], ground_truth: list[bool]
 ) -> dict[str, float]:
@@ -256,11 +260,7 @@ def compute_filter_metrics(
 
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if (precision + recall) > 0
-        else 0.0
-    )
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
     accuracy = (tp + tn) / len(decisions) if decisions else 0.0
 
     return {"precision": precision, "recall": recall, "f1": f1, "accuracy": accuracy}

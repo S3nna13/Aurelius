@@ -1,6 +1,7 @@
 """Tests for SimPO (Simple Preference Optimization) loss."""
+
 import torch
-import pytest
+
 from src.alignment.simpo import SimPOLoss
 
 
@@ -69,5 +70,3 @@ def test_simpo_batch_shapes():
     # rewards have shape (batch,)
     assert chosen_rewards.shape == torch.Size([batch_size])
     assert rejected_rewards.shape == torch.Size([batch_size])
-
-

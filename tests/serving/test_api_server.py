@@ -129,7 +129,9 @@ def test_chat_response_instantiates():
         object="chat.completion",
         created=1234567890,
         model="aurelius",
-        choices=[{"index": 0, "message": {"role": "assistant", "content": "Hi"}, "finish_reason": "stop"}],
+        choices=[
+            {"index": 0, "message": {"role": "assistant", "content": "Hi"}, "finish_reason": "stop"}
+        ],
         usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
     )
     assert resp.id == "chatcmpl-abc"
@@ -331,9 +333,7 @@ def test_health_skips_auth():
 
 
 def test_rate_limiter_rejects_when_exceeded():
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=0.0, burst_size=0)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=0.0, burst_size=0))
     status, headers, body = _invoke(
         AureliusRequestHandler,
         "GET",
@@ -346,9 +346,7 @@ def test_rate_limiter_rejects_when_exceeded():
 
 
 def test_rate_limiter_allows_when_within_limit():
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=100.0, burst_size=10)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=100.0, burst_size=10))
     status, _, body = _invoke(
         AureliusRequestHandler,
         "GET",
@@ -361,9 +359,7 @@ def test_rate_limiter_allows_when_within_limit():
 
 def test_rate_limiter_uses_key_id_when_authenticated():
     mw = _auth_mw("secret")
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=0.0, burst_size=0)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=0.0, burst_size=0))
     status, _, body = _invoke(
         AureliusRequestHandler,
         "GET",
@@ -378,9 +374,7 @@ def test_rate_limiter_uses_key_id_when_authenticated():
 
 def test_create_server_forwards_auth_and_rate_limiter():
     mw = _auth_mw()
-    limiter = TokenBucketLimiter(
-        RateLimitConfig(requests_per_second=1.0, burst_size=1)
-    )
+    limiter = TokenBucketLimiter(RateLimitConfig(requests_per_second=1.0, burst_size=1))
     server = create_server(
         "127.0.0.1",
         0,

@@ -4,7 +4,6 @@
 ranges, edge cases, determinism, and the forget-gate semantic.
 """
 
-import pytest
 import torch
 
 from src.model.gated_delta_net import GatedDeltaNetConfig, GatedDeltaNetLayer
@@ -13,11 +12,11 @@ from src.model.gated_delta_net import GatedDeltaNetConfig, GatedDeltaNetLayer
 # Shared fixtures / helpers
 # ---------------------------------------------------------------------------
 
-B  = 2    # batch size
-T  = 12   # sequence length
-DM = 64   # d_model
-NH = 4    # n_heads
-DH = 16   # d_head
+B = 2  # batch size
+T = 12  # sequence length
+DM = 64  # d_model
+NH = 4  # n_heads
+DH = 16  # d_head
 
 
 def make_layer() -> GatedDeltaNetLayer:
@@ -66,14 +65,15 @@ def test_causal():
     layer = make_layer()
     torch.manual_seed(42)
     x_short = torch.randn(1, T, DM)
-    x_long  = torch.cat([x_short, torch.randn(1, 5, DM)], dim=1)
+    x_long = torch.cat([x_short, torch.randn(1, 5, DM)], dim=1)
 
     with torch.no_grad():
         out_short, _ = layer(x_short)
-        out_long,  _ = layer(x_long)
+        out_long, _ = layer(x_long)
 
-    assert torch.allclose(out_short, out_long[:, :T, :], atol=1e-5), \
+    assert torch.allclose(out_short, out_long[:, :T, :], atol=1e-5), (
         "Outputs for x[0..T-1] differ when future tokens are present — not causal"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -103,13 +103,15 @@ def test_none_state_equals_zero_state():
     layer = make_layer()
     x = torch.randn(B, T, DM)
     with torch.no_grad():
-        out_none,  s_none  = layer(x, state=None)
+        out_none, s_none = layer(x, state=None)
         out_zeros, s_zeros = layer(x, state=zero_state())
 
-    assert torch.allclose(out_none, out_zeros, atol=1e-6), \
+    assert torch.allclose(out_none, out_zeros, atol=1e-6), (
         "Outputs differ between state=None and state=zeros"
-    assert torch.allclose(s_none, s_zeros, atol=1e-6), \
+    )
+    assert torch.allclose(s_none, s_zeros, atol=1e-6), (
         "Final states differ between state=None and state=zeros"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -124,11 +126,12 @@ def test_different_states_give_different_outputs():
     s_nonzero = torch.randn(B, NH, DH, DH)  # random non-zero state
 
     with torch.no_grad():
-        out_zero, _    = layer(x, state=zero_state())
+        out_zero, _ = layer(x, state=zero_state())
         out_nonzero, _ = layer(x, state=s_nonzero)
 
-    assert not torch.allclose(out_zero, out_nonzero, atol=1e-4), \
+    assert not torch.allclose(out_zero, out_nonzero, atol=1e-4), (
         "Different initial states produced identical outputs"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -143,8 +146,9 @@ def test_alpha_gate_range():
     x = torch.randn(B, T, DM)
     with torch.no_grad():
         alpha = torch.sigmoid(layer.alpha_proj(x))  # (B, T, NH)
-    assert (alpha > 0).all() and (alpha < 1).all(), \
+    assert (alpha > 0).all() and (alpha < 1).all(), (
         f"alpha gate out of (0,1): min={alpha.min():.4f} max={alpha.max():.4f}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -158,9 +162,10 @@ def test_beta_gate_range():
     layer = GatedDeltaNetLayer(cfg)
     x = torch.randn(B, T, DM)
     with torch.no_grad():
-        beta = torch.sigmoid(layer.beta_proj(x))   # (B, T, NH)
-    assert (beta > 0).all() and (beta < 1).all(), \
+        beta = torch.sigmoid(layer.beta_proj(x))  # (B, T, NH)
+    assert (beta > 0).all() and (beta < 1).all(), (
         f"beta gate out of (0,1): min={beta.min():.4f} max={beta.max():.4f}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +193,7 @@ def test_no_nan_inf():
     x = torch.randn(B, T, DM)
     with torch.no_grad():
         out, state = layer(x)
-    assert torch.isfinite(out).all(),   "Output contains NaN or Inf"
+    assert torch.isfinite(out).all(), "Output contains NaN or Inf"
     assert torch.isfinite(state).all(), "State contains NaN or Inf"
 
 
@@ -208,7 +213,7 @@ def test_determinism():
         out2, s2 = layer(x)
 
     assert torch.equal(out1, out2), "Forward pass is not deterministic"
-    assert torch.equal(s1,   s2),   "State is not deterministic"
+    assert torch.equal(s1, s2), "State is not deterministic"
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +239,7 @@ def test_forgetting_with_near_zero_alpha():
 
     with torch.no_grad():
         out_large_s0, _ = layer(x, state=s_large)
-        out_zero_s0,  _ = layer(x, state=None)
+        out_zero_s0, _ = layer(x, state=None)
 
     # With alpha near 0 the state is reset at each step; outputs should match
     assert torch.allclose(out_large_s0, out_zero_s0, atol=1e-3), (

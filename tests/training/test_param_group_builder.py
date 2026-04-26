@@ -1,24 +1,23 @@
 """Tests for src/training/param_group_builder.py"""
-import pytest
-import torch
+
 import torch.nn as nn
 
 from src.training.param_group_builder import (
+    PARAM_GROUP_BUILDER,
     ParamGroupBuilder,
     ParamGroupConfig,
-    PARAM_GROUP_BUILDER,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 class SimpleModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.linear = nn.Linear(16, 16)  # weight (2D) + bias (1D)
-        self.norm = nn.LayerNorm(16)     # weight (1D) + bias (1D)
+        self.norm = nn.LayerNorm(16)  # weight (1D) + bias (1D)
         self.embedding = nn.Embedding(100, 16)  # weight (2D) but name matches pattern
 
     def forward(self, x):
@@ -38,6 +37,7 @@ class FrozenParamModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Tests: build()
 # ---------------------------------------------------------------------------
+
 
 def test_build_returns_two_groups():
     model = SimpleModel()
@@ -71,7 +71,7 @@ def test_build_1d_params_go_to_no_decay():
     groups = builder.build(model, cfg)
     decay_shapes = [p.shape for p in groups[0]["params"]]
     no_decay_shapes = [p.shape for p in groups[1]["params"]]
-    assert all(len(s) > 1 for s in decay_shapes)   # decay: multi-dim only
+    assert all(len(s) > 1 for s in decay_shapes)  # decay: multi-dim only
     assert all(len(s) == 1 for s in no_decay_shapes)  # no-decay: 1D only
 
 
@@ -138,6 +138,7 @@ def test_build_custom_no_decay_patterns():
 # Tests: count_params()
 # ---------------------------------------------------------------------------
 
+
 def test_count_params_total_matches_sum():
     model = SimpleModel()
     builder = ParamGroupBuilder()
@@ -168,6 +169,7 @@ def test_count_params_frozen_count():
 # Tests: get_param_stats()
 # ---------------------------------------------------------------------------
 
+
 def test_get_param_stats_returns_dict():
     model = SimpleModel()
     builder = ParamGroupBuilder()
@@ -194,6 +196,7 @@ def test_get_param_stats_values_are_ints():
 # ---------------------------------------------------------------------------
 # Tests: module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_singleton_is_instance():
     assert isinstance(PARAM_GROUP_BUILDER, ParamGroupBuilder)

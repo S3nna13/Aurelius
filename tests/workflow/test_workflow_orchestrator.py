@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from src.workflow.workflow_orchestrator import (
-    WorkflowOrchestrator,
     WORKFLOW_ORCHESTRATOR_REGISTRY,
+    WorkflowOrchestrator,
 )
 
 

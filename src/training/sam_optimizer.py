@@ -14,16 +14,16 @@ Pure stdlib + torch only.
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SAMOptimizer
 # ---------------------------------------------------------------------------
+
 
 class SAMOptimizer:
     """Sharpness-Aware Minimization (Foret et al. 2021).
@@ -154,6 +154,7 @@ class SAMOptimizer:
 # ASAM
 # ---------------------------------------------------------------------------
 
+
 class ASAM:
     """Adaptive SAM (Kwon et al. 2021).
 
@@ -238,6 +239,7 @@ class ASAM:
 # ---------------------------------------------------------------------------
 # LookSAM
 # ---------------------------------------------------------------------------
+
 
 class LookSAM:
     """LookAhead + SAM combination.
@@ -340,6 +342,7 @@ class LookSAM:
 # ---------------------------------------------------------------------------
 # SharpnessAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class SharpnessAnalyzer:
     """Measure loss-landscape sharpness around the current weights."""
@@ -445,6 +448,7 @@ class SharpnessAnalyzer:
 # ---------------------------------------------------------------------------
 # SAMTrainingLoop
 # ---------------------------------------------------------------------------
+
 
 class SAMTrainingLoop:
     """Convenience wrapper that handles the two-closure SAM training pattern.

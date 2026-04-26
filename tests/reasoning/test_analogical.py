@@ -1,9 +1,8 @@
 """Tests for analogical reasoner."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.reasoning.analogical import AnalogicalReasoner, AnalogicalExample
+from src.reasoning.analogical import AnalogicalExample, AnalogicalReasoner
 
 
 class TestAnalogicalReasoner:

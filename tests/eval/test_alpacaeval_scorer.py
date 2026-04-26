@@ -10,7 +10,6 @@ from src.eval.alpacaeval_scorer import (
     AlpacaProblem,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fake judges
 # ---------------------------------------------------------------------------
@@ -19,11 +18,13 @@ from src.eval.alpacaeval_scorer import (
 def _judge_always(verdict: str):
     def fn(prompt: str) -> str:
         return f"Explanation. [[{verdict}]]"
+
     return fn
 
 
 def _judge_prefers_a_block_marker(marker: str = "[WIN]"):
     """Judge that returns [[A]] if marker present in A's block, else [[B]]."""
+
     def fn(prompt: str) -> str:
         a_idx = prompt.find("The Start of Assistant A")
         b_idx = prompt.find("The Start of Assistant B")
@@ -36,6 +37,7 @@ def _judge_prefers_a_block_marker(marker: str = "[WIN]"):
         if b_hit and not a_hit:
             return "reasoning [[B]]"
         return "reasoning [[C]]"
+
     return fn
 
 
@@ -86,6 +88,7 @@ def test_swap_order_false_trusts_first_call():
 def test_malformed_judge_output_is_invalid():
     def judge(prompt: str) -> str:
         return "I have no opinion."
+
     scorer = AlpacaEvalScorer(judge, swap_order=False)
     p = AlpacaProblem("q", "ref")
     c = scorer.compare(p, "cand")
@@ -95,9 +98,7 @@ def test_malformed_judge_output_is_invalid():
 def test_score_aggregates_winrate_correctly():
     # [WIN] in candidate -> candidate wins under both orders.
     scorer = AlpacaEvalScorer(_judge_prefers_a_block_marker(), swap_order=True)
-    problems = [
-        AlpacaProblem(f"q{i}", "neutral ref text") for i in range(4)
-    ]
+    problems = [AlpacaProblem(f"q{i}", "neutral ref text") for i in range(4)]
     candidates = [
         "cand [WIN] a",
         "cand [WIN] b",
@@ -140,6 +141,7 @@ def test_empty_results_returns_zeros_not_nan():
 def test_judge_fn_raising_is_invalid():
     def judge(prompt: str) -> str:
         raise RuntimeError("boom")
+
     scorer = AlpacaEvalScorer(judge, swap_order=False)
     p = AlpacaProblem("q", "ref")
     c = scorer.compare(p, "cand")
@@ -167,11 +169,11 @@ def test_rates_sum_to_one_on_valid_subset():
         calls["i"] += 1
         # swap_order=False so one call per comparison.
         return [
-            "explanation [[A]]",     # candidate
-            "explanation [[A]]",     # candidate
-            "explanation [[B]]",     # reference
-            "explanation [[C]]",     # tie
-            "totally unparseable",   # invalid
+            "explanation [[A]]",  # candidate
+            "explanation [[A]]",  # candidate
+            "explanation [[B]]",  # reference
+            "explanation [[C]]",  # tie
+            "totally unparseable",  # invalid
         ][i]
 
     scorer = AlpacaEvalScorer(judge, swap_order=False)

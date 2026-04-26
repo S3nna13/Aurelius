@@ -8,8 +8,8 @@ No external APIs, no HuggingFace -- pure PyTorch.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -27,19 +27,19 @@ logger = logging.getLogger(__name__)
 class GEvalCriteria:
     """A single evaluation criterion for G-Eval."""
 
-    name: str                   # e.g. "Coherence"
-    description: str            # criterion description
-    scale: int = 5              # 1-N scale
-    weight: float = 1.0         # for composite score
+    name: str  # e.g. "Coherence"
+    description: str  # criterion description
+    scale: int = 5  # 1-N scale
+    weight: float = 1.0  # for composite score
 
 
 @dataclass
 class GEvalResult:
     """Result of a G-Eval evaluation run."""
 
-    criteria_scores: Dict[str, float]        # per-criterion score
+    criteria_scores: dict[str, float]  # per-criterion score
     composite_score: float
-    raw_logprobs: Dict[str, List[float]]     # per-criterion token logprobs
+    raw_logprobs: dict[str, list[float]]  # per-criterion token logprobs
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ class GEvalResult:
 # ---------------------------------------------------------------------------
 
 
-def make_default_criteria() -> List[GEvalCriteria]:
+def make_default_criteria() -> list[GEvalCriteria]:
     """Return standard NLG evaluation criteria: Coherence, Fluency, Consistency, Relevance."""
     return [
         GEvalCriteria(
@@ -112,10 +112,10 @@ class GEvalJudge:
     def __init__(
         self,
         model: nn.Module,
-        tokenizer_encode: Callable[[str], List[int]],
+        tokenizer_encode: Callable[[str], list[int]],
         tokenizer_decode: Callable[[int], str],
-        criteria: List[GEvalCriteria],
-        score_tokens: Optional[List[str]] = None,
+        criteria: list[GEvalCriteria],
+        score_tokens: list[str] | None = None,
         device: str = "cpu",
     ) -> None:
         self.model = model
@@ -126,7 +126,7 @@ class GEvalJudge:
         self.device = device
 
         # Pre-compute score token ids once (take first token id per score string)
-        self._score_token_ids: List[int] = []
+        self._score_token_ids: list[int] = []
         for tok in self.score_tokens:
             ids = self.tokenizer_encode(tok)
             self._score_token_ids.append(ids[0] if ids else 0)
@@ -166,7 +166,7 @@ class GEvalJudge:
         self,
         prompt_ids: Tensor,
         criterion: GEvalCriteria,
-    ) -> List[float]:
+    ) -> list[float]:
         """Run model on prompt_ids, extract logprobs at score token positions.
 
         Returns a list of log-probabilities, one per score token (length == scale).
@@ -189,15 +189,13 @@ class GEvalJudge:
         num_scores = criterion.scale
         score_token_ids = self._score_token_ids[:num_scores]
 
-        score_logits = torch.stack(
-            [last_logits[tid] for tid in score_token_ids]
-        )  # (num_scores,)
+        score_logits = torch.stack([last_logits[tid] for tid in score_token_ids])  # (num_scores,)
 
         # Convert to log-probabilities via log_softmax over the score subset
         log_probs = torch.log_softmax(score_logits, dim=0)
         return log_probs.tolist()
 
-    def _weighted_score(self, logprobs: List[float], scale: int) -> float:
+    def _weighted_score(self, logprobs: list[float], scale: int) -> float:
         """Convert logprobs to weighted score using softmax + expectation.
 
         score = sum_{i=1}^{scale}  i * P(score_i)
@@ -224,14 +222,12 @@ class GEvalJudge:
         task_description: str = "Evaluate the quality of the following summary.",
     ) -> GEvalResult:
         """Evaluate hypothesis against document on all criteria."""
-        criteria_scores: Dict[str, float] = {}
-        raw_logprobs: Dict[str, List[float]] = {}
+        criteria_scores: dict[str, float] = {}
+        raw_logprobs: dict[str, list[float]] = {}
 
         for criterion in self.criteria:
             prompt = self._build_prompt(task_description, document, hypothesis, criterion)
-            prompt_ids = torch.tensor(
-                self.tokenizer_encode(prompt), dtype=torch.long
-            )
+            prompt_ids = torch.tensor(self.tokenizer_encode(prompt), dtype=torch.long)
 
             logprobs = self._get_score_logprobs(prompt_ids, criterion)
             score = self._weighted_score(logprobs, criterion.scale)
@@ -241,9 +237,9 @@ class GEvalJudge:
 
         # Weighted composite score
         total_weight = sum(c.weight for c in self.criteria)
-        composite = sum(
-            criteria_scores[c.name] * c.weight for c in self.criteria
-        ) / (total_weight if total_weight > 0 else 1.0)
+        composite = sum(criteria_scores[c.name] * c.weight for c in self.criteria) / (
+            total_weight if total_weight > 0 else 1.0
+        )
 
         return GEvalResult(
             criteria_scores=criteria_scores,
@@ -253,10 +249,10 @@ class GEvalJudge:
 
     def batch_evaluate(
         self,
-        documents: List[str],
-        hypotheses: List[str],
+        documents: list[str],
+        hypotheses: list[str],
         task_description: str = "Evaluate the quality of the following summary.",
-    ) -> List[GEvalResult]:
+    ) -> list[GEvalResult]:
         """Evaluate multiple document-hypothesis pairs."""
         if len(documents) != len(hypotheses):
             raise ValueError(
@@ -264,8 +260,7 @@ class GEvalJudge:
                 f"got {len(documents)} and {len(hypotheses)}"
             )
         return [
-            self.evaluate(doc, hyp, task_description)
-            for doc, hyp in zip(documents, hypotheses)
+            self.evaluate(doc, hyp, task_description) for doc, hyp in zip(documents, hypotheses)
         ]
 
 

@@ -1,12 +1,12 @@
 """Tests for SelfConsistency."""
+
 from __future__ import annotations
 
-import pytest
 from src.reasoning.self_consistency import (
+    SELF_CONSISTENCY_REGISTRY,
+    ConsistencyResult,
     SelfConsistency,
     SelfConsistencyConfig,
-    ConsistencyResult,
-    SELF_CONSISTENCY_REGISTRY,
 )
 
 

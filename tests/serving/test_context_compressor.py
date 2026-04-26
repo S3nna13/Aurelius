@@ -1,17 +1,18 @@
 """Tests for src/serving/context_compressor.py (~45 tests)."""
 
 import pytest
+
 from src.serving.context_compressor import (
+    CONTEXT_COMPRESSOR_REGISTRY,
     CompressedTurn,
     CompressionStrategy,
     ContextCompressor,
-    CONTEXT_COMPRESSOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_turns(*roles_contents):
     """Build a list of turn dicts from (role, content) pairs."""
@@ -25,6 +26,7 @@ def simple_turns(n: int, role: str = "user") -> list[dict]:
 # ---------------------------------------------------------------------------
 # CompressionStrategy enum
 # ---------------------------------------------------------------------------
+
 
 class TestCompressionStrategyEnum:
     def test_truncate_oldest_value(self):
@@ -47,6 +49,7 @@ class TestCompressionStrategyEnum:
 # CompressedTurn dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestCompressedTurn:
     def test_basic_construction(self):
         t = CompressedTurn(role="user", content="hello")
@@ -65,6 +68,7 @@ class TestCompressedTurn:
 # ---------------------------------------------------------------------------
 # TRUNCATE_OLDEST strategy
 # ---------------------------------------------------------------------------
+
 
 class TestTruncateOldest:
     def _compressor(self, max_turns=3):
@@ -141,6 +145,7 @@ class TestTruncateOldest:
 # SUMMARIZE_MIDDLE strategy
 # ---------------------------------------------------------------------------
 
+
 class TestSummarizeMiddle:
     def _compressor(self, max_turns=6):
         return ContextCompressor(
@@ -214,6 +219,7 @@ class TestSummarizeMiddle:
 # DROP_TOOL_RESULTS strategy
 # ---------------------------------------------------------------------------
 
+
 class TestDropToolResults:
     def _compressor(self, max_turns=20):
         return ContextCompressor(
@@ -257,10 +263,9 @@ class TestDropToolResults:
 
     def test_respects_max_turns_after_drop(self):
         c = self._compressor(max_turns=3)
-        turns = (
-            [{"role": "tool", "content": "t"}]
-            + [{"role": "user", "content": f"u{i}"} for i in range(6)]
-        )
+        turns = [{"role": "tool", "content": "t"}] + [
+            {"role": "user", "content": f"u{i}"} for i in range(6)
+        ]
         result = c.compress(turns)
         assert len(result) == 3
 
@@ -277,6 +282,7 @@ class TestDropToolResults:
 # ---------------------------------------------------------------------------
 # compression_ratio
 # ---------------------------------------------------------------------------
+
 
 class TestCompressionRatio:
     def _compressor(self):
@@ -317,6 +323,7 @@ class TestCompressionRatio:
 # ---------------------------------------------------------------------------
 # CONTEXT_COMPRESSOR_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestContextCompressorRegistry:
     def test_has_default(self):

@@ -4,11 +4,11 @@ Tiny config: vocab=16, d_model=8, n_draft=3, max_new_tokens=6, B=1.
 All tests run forward/backward passes (where applicable) or full
 generate() calls.
 """
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.inference.speculative_decoding_v4 import (
     DraftModel,
@@ -41,10 +41,10 @@ def make_tiny_model() -> nn.Module:
         def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
             # Accept 1-D (T,) or 2-D (B, T)
             if input_ids.dim() == 1:
-                x = self.embed(input_ids)          # (T, D)
-                return self.head(x)                 # (T, V)
-            x = self.embed(input_ids)              # (B, T, D)
-            return self.head(x)                     # (B, T, V)
+                x = self.embed(input_ids)  # (T, D)
+                return self.head(x)  # (T, V)
+            x = self.embed(input_ids)  # (B, T, D)
+            return self.head(x)  # (B, T, V)
 
     return TinyLM()
 
@@ -72,9 +72,7 @@ def test_verifier_accept_when_target_dominates():
     target_probs[5] = 0.05
 
     # draft_prob very small -> ratio >> 1 -> always accepted
-    accepted_count = sum(
-        verifier.verify_token(3, 1e-6, target_probs)[0] for _ in range(20)
-    )
+    accepted_count = sum(verifier.verify_token(3, 1e-6, target_probs)[0] for _ in range(20))
     assert accepted_count == 20, f"Expected 20 accepts, got {accepted_count}"
 
 
@@ -88,9 +86,7 @@ def test_verifier_reject_when_draft_dominates():
 
     # draft assigned 0.99 to token 3, but target assigns only 0.01 -> ratio ~0.01
     # Over many trials, almost all should be rejected
-    rejected_count = sum(
-        not verifier.verify_token(3, 0.99, target_probs)[0] for _ in range(100)
-    )
+    rejected_count = sum(not verifier.verify_token(3, 0.99, target_probs)[0] for _ in range(100))
     assert rejected_count >= 80, f"Expected many rejections, got {rejected_count}"
 
 
@@ -118,9 +114,7 @@ def test_verify_sequence_n_accepted_in_range():
 
     target_logits = torch.randn(K, VOCAB)
 
-    n_accepted, final_token = verifier.verify_sequence(
-        draft_tokens, draft_probs, target_logits
-    )
+    n_accepted, final_token = verifier.verify_sequence(draft_tokens, draft_probs, target_logits)
 
     assert 0 <= n_accepted <= K, f"n_accepted={n_accepted} out of [0, {K}]"
     assert 0 <= final_token < VOCAB, f"final_token={final_token} out of vocab"
@@ -145,18 +139,14 @@ def test_verify_sequence_same_model_all_accepted():
 
     # Get exact probabilities the same model assigns at draft positions
     target_probs_all = torch.softmax(target_logits.float(), dim=-1)  # (K, V)
-    draft_probs_exact = torch.stack(
-        [target_probs_all[i, draft_tokens[i]] for i in range(K)]
-    )
+    draft_probs_exact = torch.stack([target_probs_all[i, draft_tokens[i]] for i in range(K)])
 
     verifier = SpeculativeVerifier()
     n_accepted, final_token = verifier.verify_sequence(
         draft_tokens, draft_probs_exact, target_logits
     )
 
-    assert n_accepted == K, (
-        f"Same model should accept all {K} tokens, got {n_accepted}"
-    )
+    assert n_accepted == K, f"Same model should accept all {K} tokens, got {n_accepted}"
     assert 0 <= final_token < VOCAB
 
 
@@ -176,9 +166,7 @@ def test_draft_model_output_shapes():
     assert draft_tokens.shape == (N_DRAFT,), (
         f"draft_tokens shape {draft_tokens.shape} != ({N_DRAFT},)"
     )
-    assert draft_probs.shape == (N_DRAFT,), (
-        f"draft_probs shape {draft_probs.shape} != ({N_DRAFT},)"
-    )
+    assert draft_probs.shape == (N_DRAFT,), f"draft_probs shape {draft_probs.shape} != ({N_DRAFT},)"
 
 
 def test_draft_probs_valid_range():
@@ -264,9 +252,7 @@ def test_decoder_output_shape_batched():
     output_ids, _ = decoder.generate(prompt, max_new_tokens=MAX_NEW)
 
     expected = (1, SEQ_LEN + MAX_NEW)
-    assert output_ids.shape == expected, (
-        f"output_ids shape {output_ids.shape} != {expected}"
-    )
+    assert output_ids.shape == expected, f"output_ids shape {output_ids.shape} != {expected}"
 
 
 def test_decoder_stats_has_all_keys():
@@ -277,9 +263,7 @@ def test_decoder_stats_has_all_keys():
     _, stats = decoder.generate(prompt, max_new_tokens=MAX_NEW)
 
     required = {"n_steps", "total_accepted", "total_drafted", "acceptance_rate"}
-    assert required <= stats.keys(), (
-        f"Missing keys: {required - stats.keys()}"
-    )
+    assert required <= stats.keys(), f"Missing keys: {required - stats.keys()}"
 
 
 def test_decoder_acceptance_rate_in_range():
@@ -333,9 +317,7 @@ def test_speedup_theoretical_gt_one():
     bench = SpeedupBenchmark()
     for alpha in [0.1, 0.5, 0.8, 0.95, 0.99]:
         sp = bench.theoretical_speedup(alpha, N_DRAFT)
-        assert sp > 1.0, (
-            f"theoretical_speedup({alpha}, {N_DRAFT}) = {sp:.4f} not > 1.0"
-        )
+        assert sp > 1.0, f"theoretical_speedup({alpha}, {N_DRAFT}) = {sp:.4f} not > 1.0"
 
 
 def test_speedup_empirical_formula():
@@ -344,9 +326,7 @@ def test_speedup_empirical_formula():
     stats = {"n_steps": 7, "total_accepted": 14, "total_drafted": 21}
     expected = (14 + 7) / 7  # = 3.0
     result = bench.empirical_speedup(stats)
-    assert abs(result - expected) < 1e-6, (
-        f"empirical_speedup={result} != expected {expected}"
-    )
+    assert abs(result - expected) < 1e-6, f"empirical_speedup={result} != expected {expected}"
 
 
 def test_speedup_theoretical_alpha_one():

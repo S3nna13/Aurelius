@@ -24,23 +24,22 @@ Algorithm per ``schedule_batch``
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from statistics import mean
-from typing import Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Public data types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Request:
     """A single inference request."""
 
     request_id: str
-    prompt_tokens: int       # total prompt length in tokens
-    max_output_tokens: int   # maximum tokens to generate
-    priority: int = 0        # lower value = higher priority
+    prompt_tokens: int  # total prompt length in tokens
+    max_output_tokens: int  # maximum tokens to generate
+    priority: int = 0  # lower value = higher priority
 
 
 @dataclass
@@ -48,9 +47,9 @@ class RequestState:
     """Mutable per-request scheduler state."""
 
     request: Request
-    prefill_done: int = 0         # tokens prefilled so far
+    prefill_done: int = 0  # tokens prefilled so far
     tokens_generated: int = 0
-    status: str = "prefilling"    # "prefilling" | "decoding" | "completed"
+    status: str = "prefilling"  # "prefilling" | "decoding" | "completed"
 
 
 @dataclass
@@ -58,8 +57,8 @@ class BatchSlot:
     """A single request's contribution to one batch."""
 
     request_id: str
-    slot_type: str   # "prefill" or "decode"
-    n_tokens: int    # tokens processed this slot
+    slot_type: str  # "prefill" or "decode"
+    n_tokens: int  # tokens processed this slot
 
 
 @dataclass
@@ -67,7 +66,7 @@ class ChunkPrefillConfig:
     """Scheduler hyper-parameters."""
 
     max_batch_size: int = 32
-    chunk_size: int = 512                    # max prefill tokens per request per batch
+    chunk_size: int = 512  # max prefill tokens per request per batch
     max_prefill_tokens_per_batch: int = 4096
     max_decode_tokens_per_batch: int = 32
 
@@ -75,6 +74,7 @@ class ChunkPrefillConfig:
 # ---------------------------------------------------------------------------
 # Scheduler
 # ---------------------------------------------------------------------------
+
 
 class ChunkPrefillScheduler:
     """Interleaved chunked-prefill / decode scheduler.
@@ -85,13 +85,13 @@ class ChunkPrefillScheduler:
         Scheduler configuration.  Defaults to :class:`ChunkPrefillConfig`.
     """
 
-    def __init__(self, config: Optional[ChunkPrefillConfig] = None) -> None:
+    def __init__(self, config: ChunkPrefillConfig | None = None) -> None:
         self._config = config if config is not None else ChunkPrefillConfig()
         # Insertion-ordered dict keyed by request_id.
-        self._states: Dict[str, RequestState] = {}
+        self._states: dict[str, RequestState] = {}
         # Telemetry accumulators.
-        self._batch_prefill_tokens: List[int] = []
-        self._batch_decode_slots: List[int] = []
+        self._batch_prefill_tokens: list[int] = []
+        self._batch_decode_slots: list[int] = []
 
     # ------------------------------------------------------------------
     # Admission
@@ -106,16 +106,14 @@ class ChunkPrefillScheduler:
             If a request with the same ``request_id`` already exists.
         """
         if request.request_id in self._states:
-            raise ValueError(
-                f"duplicate request_id: {request.request_id!r}"
-            )
+            raise ValueError(f"duplicate request_id: {request.request_id!r}")
         self._states[request.request_id] = RequestState(request=request)
 
     # ------------------------------------------------------------------
     # Core scheduling
     # ------------------------------------------------------------------
 
-    def schedule_batch(self) -> List[BatchSlot]:
+    def schedule_batch(self) -> list[BatchSlot]:
         """Build the next batch by interleaving decode and prefill slots.
 
         Returns
@@ -124,7 +122,7 @@ class ChunkPrefillScheduler:
             Ordered list of slots; decode slots appear before prefill slots.
         """
         cfg = self._config
-        slots: List[BatchSlot] = []
+        slots: list[BatchSlot] = []
 
         # Sort active requests by priority (lower value = higher priority).
         # Stable sort preserves insertion order for equal-priority items.
@@ -161,8 +159,9 @@ class ChunkPrefillScheduler:
             if len(slots) >= cfg.max_batch_size:
                 break
             remaining = state.request.prompt_tokens - state.prefill_done
-            chunk = min(cfg.chunk_size, remaining,
-                        cfg.max_prefill_tokens_per_batch - prefill_tokens_used)
+            chunk = min(
+                cfg.chunk_size, remaining, cfg.max_prefill_tokens_per_batch - prefill_tokens_used
+            )
             if chunk <= 0:
                 continue
             slots.append(
@@ -192,9 +191,7 @@ class ChunkPrefillScheduler:
         self._batch_prefill_tokens.append(
             sum(s.n_tokens for s in slots if s.slot_type == "prefill")
         )
-        self._batch_decode_slots.append(
-            sum(1 for s in slots if s.slot_type == "decode")
-        )
+        self._batch_decode_slots.append(sum(1 for s in slots if s.slot_type == "decode"))
 
         return slots
 
@@ -253,14 +250,10 @@ class ChunkPrefillScheduler:
         """
         return {
             "prefill_tokens_per_batch": (
-                mean(self._batch_prefill_tokens)
-                if self._batch_prefill_tokens
-                else 0.0
+                mean(self._batch_prefill_tokens) if self._batch_prefill_tokens else 0.0
             ),
             "decode_slots_per_batch": (
-                mean(self._batch_decode_slots)
-                if self._batch_decode_slots
-                else 0.0
+                mean(self._batch_decode_slots) if self._batch_decode_slots else 0.0
             ),
         }
 

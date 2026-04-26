@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -19,7 +18,7 @@ class PositionEncodingConfig:
     n_heads: int
     d_model: int
     max_seq_len: int = 2048
-    alibi_slopes: Optional[List[float]] = None
+    alibi_slopes: list[float] | None = None
 
 
 class ALiBiPositionBias(nn.Module):
@@ -29,7 +28,7 @@ class ALiBiPositionBias(nn.Module):
     Enables Input Length Extrapolation"
     """
 
-    def __init__(self, n_heads: int, slopes: Optional[List[float]] = None) -> None:
+    def __init__(self, n_heads: int, slopes: list[float] | None = None) -> None:
         super().__init__()
         self.n_heads = n_heads
         computed = self.get_slopes(n_heads)
@@ -183,7 +182,7 @@ class LearnedAbsolutePositionEncoding(nn.Module):
 
         # Reshape for interpolate: (1, 1, old_len, d_model) → treat as 2D image
         # Use linear interpolation along the sequence dimension
-        old_len = old_weight.shape[0]
+        old_weight.shape[0]
         # (1, d_model, old_len) for 1D interpolation
         x = old_weight.T.unsqueeze(0)  # (1, d_model, old_len)
         x_interp = F.interpolate(x, size=new_max_len, mode="linear", align_corners=False)
@@ -208,9 +207,7 @@ class KERPLEBias(nn.Module):
         super().__init__()
         self.n_heads = n_heads
         # Learnable r per head; use softplus to ensure r > 0
-        self.r_log = nn.Parameter(
-            torch.full((n_heads,), math.log(math.expm1(init_r)))
-        )
+        self.r_log = nn.Parameter(torch.full((n_heads,), math.log(math.expm1(init_r))))
 
     @property
     def r(self) -> Tensor:

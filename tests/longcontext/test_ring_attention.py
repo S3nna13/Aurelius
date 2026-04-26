@@ -11,7 +11,6 @@ import torch.nn.functional as F
 
 from src.longcontext.ring_attention import RingAttention, ring_attention
 
-
 B, H, S, D = 2, 4, 32, 8
 
 

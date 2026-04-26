@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from src.memory.memory_index import IndexedEntry, MemoryIndex, MEMORY_INDEX
-
+from src.memory.memory_index import MEMORY_INDEX, IndexedEntry, MemoryIndex
 
 # ---------------------------------------------------------------------------
 # IndexedEntry

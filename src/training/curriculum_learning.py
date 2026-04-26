@@ -4,28 +4,29 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import List
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CurriculumConfig:
     """Configuration for a curriculum learning schedule."""
-    strategy: str = "linear"          # "linear", "exponential", or "step"
+
+    strategy: str = "linear"  # "linear", "exponential", or "step"
     n_stages: int = 5
     warmup_steps: int = 100
     total_steps: int = 1000
-    difficulty_metric: str = "loss"   # "loss" or "perplexity"
+    difficulty_metric: str = "loss"  # "loss" or "perplexity"
 
 
 @dataclass
 class DifficultyScore:
     """Stores a difficulty score for a single training sample."""
+
     sample_id: int
     score: float
     metadata: dict = field(default_factory=dict)
@@ -35,6 +36,7 @@ class DifficultyScore:
 # Curriculum weight functions
 # ---------------------------------------------------------------------------
 
+
 def linear_curriculum_weight(step: int, total_steps: int) -> float:
     """Return a value in [0, 1] growing linearly from 0 to 1 over total_steps."""
     if total_steps <= 0:
@@ -42,9 +44,7 @@ def linear_curriculum_weight(step: int, total_steps: int) -> float:
     return float(min(max(step / total_steps, 0.0), 1.0))
 
 
-def exponential_curriculum_weight(
-    step: int, total_steps: int, k: float = 5.0
-) -> float:
+def exponential_curriculum_weight(step: int, total_steps: int, k: float = 5.0) -> float:
     """Exponential growth: (exp(k * step/total_steps) - 1) / (exp(k) - 1), clamped to [0, 1]."""
     if total_steps <= 0:
         return 1.0
@@ -76,13 +76,14 @@ def step_curriculum_weight(step: int, n_stages: int, total_steps: int) -> float:
 # DifficultyRanker
 # ---------------------------------------------------------------------------
 
+
 class DifficultyRanker:
     """Ranks samples by their difficulty scores."""
 
-    def __init__(self, scores: List[DifficultyScore]) -> None:
-        self._scores: List[DifficultyScore] = list(scores)
+    def __init__(self, scores: list[DifficultyScore]) -> None:
+        self._scores: list[DifficultyScore] = list(scores)
 
-    def rank(self, ascending: bool = True) -> List[DifficultyScore]:
+    def rank(self, ascending: bool = True) -> list[DifficultyScore]:
         """Return a copy of scores sorted by score value."""
         return sorted(self._scores, key=lambda ds: ds.score, reverse=not ascending)
 
@@ -105,13 +106,13 @@ class DifficultyRanker:
         frac = idx - lo
         return sorted_scores[lo] + frac * (sorted_scores[hi] - sorted_scores[lo])
 
-    def get_easy_samples(self, fraction: float) -> List[DifficultyScore]:
+    def get_easy_samples(self, fraction: float) -> list[DifficultyScore]:
         """Return the easiest (lowest score) fraction of samples."""
         ranked = self.rank(ascending=True)
         n = max(1, int(math.ceil(len(ranked) * fraction)))
         return ranked[:n]
 
-    def get_hard_samples(self, fraction: float) -> List[DifficultyScore]:
+    def get_hard_samples(self, fraction: float) -> list[DifficultyScore]:
         """Return the hardest (highest score) fraction of samples."""
         ranked = self.rank(ascending=False)
         n = max(1, int(math.ceil(len(ranked) * fraction)))
@@ -121,6 +122,7 @@ class DifficultyRanker:
 # ---------------------------------------------------------------------------
 # CurriculumSampler
 # ---------------------------------------------------------------------------
+
 
 class CurriculumSampler:
     """Samples from the dataset according to a curriculum schedule."""
@@ -144,7 +146,7 @@ class CurriculumSampler:
         # Always expose at least a small fraction so we can sample
         return float(max(weight, 1.0 / max(len(self._ranker._scores), 1)))
 
-    def sample_indices(self, step: int, n_samples: int) -> List[int]:
+    def sample_indices(self, step: int, n_samples: int) -> list[int]:
         """Return n_samples sample_ids from the curriculum-appropriate difficulty range."""
         fraction = self.get_curriculum_fraction(step)
         easy_pool = self._ranker.get_easy_samples(fraction)
@@ -153,16 +155,16 @@ class CurriculumSampler:
 
         # Cycle through the pool to fill n_samples
         ids = [ds.sample_id for ds in easy_pool]
-        result: List[int] = []
+        result: list[int] = []
         pool_size = len(ids)
         for i in range(n_samples):
             result.append(ids[i % pool_size])
         return result
 
-    def update_scores(self, updates: List[DifficultyScore]) -> None:
+    def update_scores(self, updates: list[DifficultyScore]) -> None:
         """Update scores for given sample_ids; re-ranking happens on next call."""
         update_map = {ds.sample_id: ds for ds in updates}
-        new_scores: List[DifficultyScore] = []
+        new_scores: list[DifficultyScore] = []
         existing_ids = {ds.sample_id for ds in self._ranker._scores}
         for ds in self._ranker._scores:
             if ds.sample_id in update_map:
@@ -181,6 +183,7 @@ class CurriculumSampler:
 # Utility
 # ---------------------------------------------------------------------------
 
-def compute_sample_difficulty(losses: torch.Tensor) -> List[float]:
+
+def compute_sample_difficulty(losses: torch.Tensor) -> list[float]:
     """Convert per-sample losses (1-D tensor) to difficulty scores (list of floats)."""
     return losses.detach().float().tolist()

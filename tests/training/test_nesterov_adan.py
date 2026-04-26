@@ -16,20 +16,18 @@ Covers all 12+ rigor requirements from the spec:
   13. Bias correction: applied correctly (m̂, v̂, n̂)
   14. zero_moments helper resets state correctly
 """
+
 from __future__ import annotations
 
-import math
-
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
 from src.training.nesterov_adan import NesterovAdan
-
 
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def _make_scalar(val: float = 2.0, requires_grad: bool = True) -> torch.Tensor:
     return torch.tensor([val], dtype=torch.float32, requires_grad=requires_grad)
@@ -42,13 +40,14 @@ def _make_matrix(shape=(4, 4), requires_grad: bool = True) -> torch.Tensor:
 
 def _forward_backward(param: torch.Tensor) -> None:
     """Compute f(x) = sum(x**2) and call backward."""
-    loss = (param ** 2).sum()
+    loss = (param**2).sum()
     loss.backward()
 
 
 # ---------------------------------------------------------------------------
 # 1. Shape / dtype: step() updates scalar and matrix params
 # ---------------------------------------------------------------------------
+
 
 class TestShapeDtype:
     def test_scalar_param_updated(self):
@@ -86,10 +85,10 @@ class TestShapeDtype:
 # 2. Convergence: reduces loss on quadratic faster than SGD
 # ---------------------------------------------------------------------------
 
+
 class TestConvergence:
     @staticmethod
-    def _run_illcond(opt_class, opt_kwargs: dict, n_steps: int = 500,
-                     seed: int = 42) -> float:
+    def _run_illcond(opt_class, opt_kwargs: dict, n_steps: int = 500, seed: int = 42) -> float:
         """Run optimizer on an ill-conditioned quadratic (scales 1–100 per dim).
 
         SGD diverges or stalls here; Adan's adaptive denominator handles the
@@ -97,12 +96,12 @@ class TestConvergence:
         """
         torch.manual_seed(seed)
         d = 16
-        scale = torch.logspace(0, 2, d)   # dimension scales: 1 … 100
+        scale = torch.logspace(0, 2, d)  # dimension scales: 1 … 100
         p = torch.randn(d, requires_grad=True)
         opt = opt_class([p], **opt_kwargs)
         for _ in range(n_steps):
             opt.zero_grad()
-            loss = (scale * p ** 2).sum()
+            loss = (scale * p**2).sum()
             loss.backward()
             opt.step()
         with torch.no_grad():
@@ -112,12 +111,8 @@ class TestConvergence:
         """Adan's adaptive denominator should drastically outperform SGD on
         an ill-conditioned quadratic where different dimensions have scales
         ranging from 1 to 100 (SGD struggles or diverges with any single lr)."""
-        adan_loss = self._run_illcond(
-            NesterovAdan, {"lr": 1e-2, "weight_decay": 0.0}, n_steps=500
-        )
-        sgd_loss = self._run_illcond(
-            torch.optim.SGD, {"lr": 1e-2}, n_steps=500
-        )
+        adan_loss = self._run_illcond(NesterovAdan, {"lr": 1e-2, "weight_decay": 0.0}, n_steps=500)
+        sgd_loss = self._run_illcond(torch.optim.SGD, {"lr": 1e-2}, n_steps=500)
         assert adan_loss < sgd_loss, (
             f"Adan final loss {adan_loss:.4f} should be << SGD loss {sgd_loss:.4f} "
             f"on ill-conditioned quadratic"
@@ -138,14 +133,14 @@ class TestConvergence:
             losses.append(loss.item())
         # Adan converges to near zero but needs ~500 steps to warm up betas
         assert losses[-1] < losses[0] * 1e-4, (
-            f"Loss should decrease by 99.99%+ over 500 steps: "
-            f"{losses[0]:.4f} → {losses[-1]:.6f}"
+            f"Loss should decrease by 99.99%+ over 500 steps: {losses[0]:.4f} → {losses[-1]:.6f}"
         )
 
 
 # ---------------------------------------------------------------------------
 # 3. Determinism under torch.manual_seed
 # ---------------------------------------------------------------------------
+
 
 class TestDeterminism:
     def _run_steps(self, seed: int, n: int = 5) -> list[float]:
@@ -155,7 +150,7 @@ class TestDeterminism:
         vals = []
         for _ in range(n):
             opt.zero_grad()
-            (p ** 2).sum().backward()
+            (p**2).sum().backward()
             opt.step()
             vals.append(p.detach().clone().tolist())
         return vals
@@ -174,6 +169,7 @@ class TestDeterminism:
 # ---------------------------------------------------------------------------
 # 4. Three state variables: exp_avg, exp_avg_diff, exp_avg_sq after step 1
 # ---------------------------------------------------------------------------
+
 
 class TestStateVariables:
     def test_three_moment_buffers_exist(self):
@@ -211,6 +207,7 @@ class TestStateVariables:
 # 5. Gradient difference: v_t uses g_t - g_{t-1}
 # ---------------------------------------------------------------------------
 
+
 class TestGradientDifference:
     def test_vt_encodes_gradient_change(self):
         """After step 2, exp_avg_diff should reflect g_2 - g_1."""
@@ -219,13 +216,13 @@ class TestGradientDifference:
         opt = NesterovAdan([p], lr=1e-3, betas=(β1, β2, β3), weight_decay=0.0)
 
         # Step 1 — gradient = 2*p = 6.0; prev_grad set to g1=6.0; diff=0
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         g1 = p.grad.clone()
         opt.step()
         opt.zero_grad()
 
         # Step 2 — gradient ≠ g1 (p has moved); diff should be nonzero
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         g2 = p.grad.clone()
         opt.step()
 
@@ -234,14 +231,14 @@ class TestGradientDifference:
         expected_v2 = (1.0 - β2) * (g2 - g1)
         actual_v2 = opt.state[p]["exp_avg_diff"]
         assert torch.allclose(actual_v2, expected_v2, atol=1e-6), (
-            f"exp_avg_diff mismatch: expected {expected_v2.item():.6f}, "
-            f"got {actual_v2.item():.6f}"
+            f"exp_avg_diff mismatch: expected {expected_v2.item():.6f}, got {actual_v2.item():.6f}"
         )
 
 
 # ---------------------------------------------------------------------------
 # 6. First step: g_{-1} = g_0 so difference = 0 on step 1
 # ---------------------------------------------------------------------------
+
 
 class TestFirstStepZeroDiff:
     def test_exp_avg_diff_zero_after_first_step(self):
@@ -261,10 +258,10 @@ class TestFirstStepZeroDiff:
         p = torch.tensor([2.0], requires_grad=True)
         β1, β2, β3 = 0.98, 0.92, 0.99
         opt = NesterovAdan([p], lr=1e-3, betas=(β1, β2, β3), weight_decay=0.0)
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         g1 = p.grad.clone()
         opt.step()
-        expected_n1 = (1.0 - β3) * g1 ** 2
+        expected_n1 = (1.0 - β3) * g1**2
         actual_n1 = opt.state[p]["exp_avg_sq"]
         assert torch.allclose(actual_n1, expected_n1, atol=1e-9)
 
@@ -272,6 +269,7 @@ class TestFirstStepZeroDiff:
 # ---------------------------------------------------------------------------
 # 7. Weight decay decoupled: params shrink under weight decay
 # ---------------------------------------------------------------------------
+
 
 class TestWeightDecay:
     def test_proximal_wd_shrinks_params(self):
@@ -284,9 +282,7 @@ class TestWeightDecay:
         # Give a zero gradient — WD still fires via proximal division
         p.grad = torch.zeros_like(p)
         opt.step()
-        assert p.item() < p_init, (
-            "Proximal weight decay should shrink the parameter"
-        )
+        assert p.item() < p_init, "Proximal weight decay should shrink the parameter"
 
     def test_no_wd_leaves_param_magnitude_unchanged_direction(self):
         """With weight_decay=0 and no_prox, pure gradient update only."""
@@ -304,6 +300,7 @@ class TestWeightDecay:
 # ---------------------------------------------------------------------------
 # 8. Zero gradient: params still shrink under weight decay, step size = 0
 # ---------------------------------------------------------------------------
+
 
 class TestZeroGradient:
     def test_zero_grad_proximal_wd_still_shrinks(self):
@@ -328,14 +325,13 @@ class TestZeroGradient:
         opt = NesterovAdan([p], lr=1e-2, weight_decay=0.5)
         # Do not set p.grad — leaves it None
         opt.step()
-        assert p.item() == pytest.approx(3.0), (
-            "Parameter with None grad must not be modified"
-        )
+        assert p.item() == pytest.approx(3.0), "Parameter with None grad must not be modified"
 
 
 # ---------------------------------------------------------------------------
 # 9. Numerical stability: no NaN/Inf after 100 steps on random gradients
 # ---------------------------------------------------------------------------
+
 
 class TestNumericalStability:
     def test_no_nan_inf_random_gradients(self):
@@ -368,6 +364,7 @@ class TestNumericalStability:
 # 10. no_prox=True: uses additive weight decay style
 # ---------------------------------------------------------------------------
 
+
 class TestNoProx:
     def test_no_prox_and_prox_differ(self):
         """no_prox=True and no_prox=False should produce different param values."""
@@ -381,12 +378,10 @@ class TestNoProx:
         for _ in range(5):
             for p, opt in [(p1, opt1), (p2, opt2)]:
                 opt.zero_grad()
-                (p ** 2).sum().backward()
+                (p**2).sum().backward()
                 opt.step()
 
-        assert not torch.allclose(p1, p2), (
-            "no_prox=True and no_prox=False should diverge"
-        )
+        assert not torch.allclose(p1, p2), "no_prox=True and no_prox=False should diverge"
 
     def test_no_prox_applies_l2_before_gradient(self):
         """In no_prox mode, weight decay is applied as θ*(1 - α*λ)."""
@@ -405,6 +400,7 @@ class TestNoProx:
 # ---------------------------------------------------------------------------
 # 11. Multiple param groups: different lr per group
 # ---------------------------------------------------------------------------
+
 
 class TestMultipleParamGroups:
     def test_different_lr_per_group(self):
@@ -452,21 +448,20 @@ class TestMultipleParamGroups:
 # 12. State stored: prev_grad key present after step 1
 # ---------------------------------------------------------------------------
 
+
 class TestPrevGradState:
     def test_prev_grad_present_after_first_step(self):
         p = _make_scalar()
         opt = NesterovAdan([p], lr=1e-3, weight_decay=0.0)
         _forward_backward(p)
         opt.step()
-        assert "prev_grad" in opt.state[p], (
-            "'prev_grad' must be stored in state after first step"
-        )
+        assert "prev_grad" in opt.state[p], "'prev_grad' must be stored in state after first step"
 
     def test_prev_grad_stores_actual_gradient(self):
         """prev_grad must equal the gradient from the previous step."""
         p = torch.tensor([4.0], requires_grad=True)
         opt = NesterovAdan([p], lr=1e-4, weight_decay=0.0)
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         g1 = p.grad.clone()
         opt.step()
         # prev_grad should now hold g1
@@ -480,12 +475,12 @@ class TestPrevGradState:
         opt = NesterovAdan([p], lr=1e-4, weight_decay=0.0)
 
         # Step 1
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         opt.step()
         opt.zero_grad()
 
         # Step 2
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         g2 = p.grad.clone()
         opt.step()
 
@@ -498,13 +493,14 @@ class TestPrevGradState:
 # 13. Bias correction applied correctly
 # ---------------------------------------------------------------------------
 
+
 class TestBiasCorrection:
     def test_exp_avg_matches_paper_formula_step1(self):
         """After step 1: m̂_1 = m_1 / (1 - β1^1) = g_1 (since m_1=(1-β1)*g_1)."""
         p = torch.tensor([2.0], requires_grad=True)
         β1, β2, β3 = 0.98, 0.92, 0.99
         opt = NesterovAdan([p], lr=1e-6, betas=(β1, β2, β3), weight_decay=0.0)
-        (p ** 2).sum().backward()
+        (p**2).sum().backward()
         g1 = p.grad.item()
         opt.step()
         # m_1 = (1-β1)*g_1
@@ -526,6 +522,7 @@ class TestBiasCorrection:
 # ---------------------------------------------------------------------------
 # 14. zero_moments resets state correctly
 # ---------------------------------------------------------------------------
+
 
 class TestZeroMoments:
     def test_zero_moments_resets_buffers(self):

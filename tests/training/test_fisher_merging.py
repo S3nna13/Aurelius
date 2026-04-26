@@ -1,11 +1,11 @@
 """Tests for fisher_merging.py -- Fisher information-weighted model merging."""
+
 from __future__ import annotations
 
 import copy
 
 import pytest
 import torch
-import torch.nn as nn
 from torch import Tensor
 
 from src.model.config import AureliusConfig
@@ -19,10 +19,10 @@ from src.training.fisher_merging import (
     regmean_merge,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _small_model(seed: int = 0) -> AureliusTransformer:
     """Return a tiny AureliusTransformer for fast tests."""
@@ -50,6 +50,7 @@ def _make_data(n: int = 4, seq_len: int = 8, vocab_size: int = 256, seed: int = 
 # Test 1: FisherMergeConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_fisher_merge_config_defaults():
     cfg = FisherMergeConfig()
     assert cfg.n_samples == 64
@@ -61,6 +62,7 @@ def test_fisher_merge_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: compute_diagonal_fisher returns dict with param names
 # ---------------------------------------------------------------------------
+
 
 def test_compute_diagonal_fisher_returns_dict():
     model = _small_model(0)
@@ -75,6 +77,7 @@ def test_compute_diagonal_fisher_returns_dict():
 # Test 3: compute_diagonal_fisher all values >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_diagonal_fisher_nonnegative():
     model = _small_model(0)
     data = _make_data(4)
@@ -86,6 +89,7 @@ def test_compute_diagonal_fisher_nonnegative():
 # ---------------------------------------------------------------------------
 # Test 4: compute_diagonal_fisher shape matches parameter shape
 # ---------------------------------------------------------------------------
+
 
 def test_compute_diagonal_fisher_shapes():
     model = _small_model(0)
@@ -103,6 +107,7 @@ def test_compute_diagonal_fisher_shapes():
 # Test 5: fisher_merge_two returns state dict
 # ---------------------------------------------------------------------------
 
+
 def test_fisher_merge_two_returns_state_dict():
     model_a = _small_model(0)
     model_b = _small_model(1)
@@ -119,6 +124,7 @@ def test_fisher_merge_two_returns_state_dict():
 # ---------------------------------------------------------------------------
 # Test 6: fisher_merge_two merged values between model_a and model_b
 # ---------------------------------------------------------------------------
+
 
 def test_fisher_merge_two_values_between_models():
     torch.manual_seed(7)
@@ -159,6 +165,7 @@ def test_fisher_merge_two_values_between_models():
 # Test 7: fisher_merge_two equal Fisher -> midpoint merge
 # ---------------------------------------------------------------------------
 
+
 def test_fisher_merge_two_equal_fisher_midpoint():
     torch.manual_seed(42)
     model_a = _small_model(0)
@@ -190,6 +197,7 @@ def test_fisher_merge_two_equal_fisher_midpoint():
 # Test 8: apply_state_dict modifies model parameters
 # ---------------------------------------------------------------------------
 
+
 def test_apply_state_dict_modifies_model():
     model = _small_model(0)
     new_model = _small_model(1)
@@ -212,6 +220,7 @@ def test_apply_state_dict_modifies_model():
 # Test 9: regmean_merge returns state dict
 # ---------------------------------------------------------------------------
 
+
 def test_regmean_merge_returns_state_dict():
     model_a = _small_model(0)
     model_b = _small_model(1)
@@ -224,6 +233,7 @@ def test_regmean_merge_returns_state_dict():
 # ---------------------------------------------------------------------------
 # Test 10: regmean_merge shapes match model parameters
 # ---------------------------------------------------------------------------
+
 
 def test_regmean_merge_shapes_match():
     model_a = _small_model(0)
@@ -242,6 +252,7 @@ def test_regmean_merge_shapes_match():
 # Test 11: FisherMerger.compute_fisher returns dict
 # ---------------------------------------------------------------------------
 
+
 def test_fisher_merger_compute_fisher_returns_dict():
     cfg = FisherMergeConfig(n_samples=3)
     merger = FisherMerger(cfg)
@@ -255,6 +266,7 @@ def test_fisher_merger_compute_fisher_returns_dict():
 # ---------------------------------------------------------------------------
 # Test 12: FisherMerger.merge returns state dict for 2 models
 # ---------------------------------------------------------------------------
+
 
 def test_fisher_merger_merge_two_models():
     cfg = FisherMergeConfig(n_samples=3)
@@ -276,6 +288,7 @@ def test_fisher_merger_merge_two_models():
 # Test 13: FisherMerger.evaluate_merge_quality returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_merge_quality_keys():
     cfg = FisherMergeConfig(n_samples=3)
     merger = FisherMerger(cfg)
@@ -294,6 +307,7 @@ def test_evaluate_merge_quality_keys():
 # ---------------------------------------------------------------------------
 # Test 14: FisherMerger.evaluate_merge_quality degradation is float
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_merge_quality_degradation_is_float():
     cfg = FisherMergeConfig(n_samples=3)
@@ -314,6 +328,7 @@ def test_evaluate_merge_quality_degradation_is_float():
 # ---------------------------------------------------------------------------
 # Test 15: compute_diagonal_fisher with 1 sample still works
 # ---------------------------------------------------------------------------
+
 
 def test_compute_diagonal_fisher_one_sample():
     model = _small_model(0)

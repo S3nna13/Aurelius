@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.neftune import NEFTuneTrainer, NEFTuneWrapper, NoisyEmbedding
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_noisy_emb(
     num_embeddings: int = 100,
@@ -244,9 +242,7 @@ class TestNEFTuneWrapper:
 
         out_noisy = model.embed_tokens(x)
         out_clean = clean_ref(x)
-        assert not torch.allclose(out_noisy, out_clean), (
-            "train mode should add noise after apply()"
-        )
+        assert not torch.allclose(out_noisy, out_clean), "train mode should add noise after apply()"
 
     def test_inference_mode_no_noise_after_apply(self):
         """After apply(), model in inference mode (train(False)) should not add noise."""
@@ -329,10 +325,7 @@ class TestNEFTuneTrainer:
         def loss_fn(logits, tgt):
             return nn.CrossEntropyLoss()(logits.view(-1, C), tgt.view(-1))
 
-        losses = [
-            trainer.train_step(embeddings.clone(), targets, loss_fn)
-            for _ in range(20)
-        ]
+        losses = [trainer.train_step(embeddings.clone(), targets, loss_fn) for _ in range(20)]
         assert losses[-1] < losses[0], (
             f"Loss did not decrease: initial={losses[0]:.4f}, final={losses[-1]:.4f}"
         )
@@ -342,9 +335,7 @@ class TestNEFTuneTrainer:
         B, T, D, C = 2, 8, 16, 10
         trainer, model = _make_trainer(D, C)
 
-        params_before = {
-            k: v.clone() for k, v in model.named_parameters()
-        }
+        params_before = {k: v.clone() for k, v in model.named_parameters()}
 
         embeddings = torch.randn(B, T, D)
         targets = torch.randint(0, C, (B, T))

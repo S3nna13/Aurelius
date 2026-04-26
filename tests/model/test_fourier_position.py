@@ -1,7 +1,8 @@
 """Tests for FourierPositionEncoding."""
 
-import torch
 import pytest
+import torch
+
 from src.model.fourier_position import FourierPEConfig, FourierPositionEncoding
 
 

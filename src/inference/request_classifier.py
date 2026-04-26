@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from enum import Enum
-from typing import Pattern
+from enum import StrEnum
+from re import Pattern
 
 
-class TaskType(str, Enum):
+class TaskType(StrEnum):
     CHAT = "chat"
     CODE = "code"
     MATH = "math"
@@ -19,7 +19,7 @@ class TaskType(str, Enum):
     UNKNOWN = "unknown"
 
 
-class ComplexityTier(str, Enum):
+class ComplexityTier(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -34,30 +34,48 @@ class ClassificationResult:
 
 
 _PATTERNS: list[tuple[TaskType, Pattern[str]]] = [
-    (TaskType.CODE, re.compile(
-        r"\b(def |function |class |import |#include|var |const |let |=>|lambda|async def)\b",
-        re.IGNORECASE,
-    )),
-    (TaskType.MATH, re.compile(
-        r"\b(equation|solve|calculate|integral|derivative|matrix|modulo|factorial|==|!=|<=|>=)\b",
-        re.IGNORECASE,
-    )),
-    (TaskType.SUMMARIZE, re.compile(
-        r"\b(summarize|summary|tldr|tl;dr|brief|condense|shorten|abstract)\b",
-        re.IGNORECASE,
-    )),
-    (TaskType.TRANSLATE, re.compile(
-        r"\b(translate|translation|in (spanish|french|german|japanese|chinese|arabic|portuguese|italian|korean|russian))\b",
-        re.IGNORECASE,
-    )),
-    (TaskType.REASONING, re.compile(
-        r"\b(why|explain|reason|because|therefore|analyze|analysis|compare|evaluate|justify)\b",
-        re.IGNORECASE,
-    )),
-    (TaskType.RETRIEVAL, re.compile(
-        r"\b(find|search|lookup|retrieve|fetch|query|what is|who is|where is|when did)\b",
-        re.IGNORECASE,
-    )),
+    (
+        TaskType.CODE,
+        re.compile(
+            r"\b(def |function |class |import |#include|var |const |let |=>|lambda|async def)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        TaskType.MATH,
+        re.compile(
+            r"\b(equation|solve|calculate|integral|derivative|matrix|modulo|factorial|==|!=|<=|>=)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        TaskType.SUMMARIZE,
+        re.compile(
+            r"\b(summarize|summary|tldr|tl;dr|brief|condense|shorten|abstract)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        TaskType.TRANSLATE,
+        re.compile(
+            r"\b(translate|translation|in (spanish|french|german|japanese|chinese|arabic|portuguese|italian|korean|russian))\b",  # noqa: E501
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        TaskType.REASONING,
+        re.compile(
+            r"\b(why|explain|reason|because|therefore|analyze|analysis|compare|evaluate|justify)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        TaskType.RETRIEVAL,
+        re.compile(
+            r"\b(find|search|lookup|retrieve|fetch|query|what is|who is|where is|when did)\b",
+            re.IGNORECASE,
+        ),
+    ),
 ]
 
 _LOW_WORD_MAX = 200

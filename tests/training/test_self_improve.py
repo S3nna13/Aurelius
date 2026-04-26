@@ -1,24 +1,24 @@
 """Tests for the autonomous self-improvement loop."""
 
 import math
+
 import pytest
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 
+from src.alignment.reward_model import RewardModel
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.alignment.reward_model import RewardModel
 from src.training.self_improve import (
-    SelfImproveConfig,
-    SelfImproveReport,
-    SelfImprover,
     RoundResult,
+    SelfImproveConfig,
+    SelfImprover,
+    SelfImproveReport,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_model():
@@ -40,8 +40,10 @@ def small_model():
 @pytest.fixture(scope="module")
 def small_reward_model(small_model):
     import copy
+
     backbone = copy.deepcopy(small_model)
     from src.alignment.reward_model import RewardModelConfig
+
     cfg = RewardModelConfig(d_model=256)  # matches vocab_size (logits dim)
     rm = RewardModel(backbone_fn=backbone, config=cfg)
     return rm
@@ -55,7 +57,7 @@ def tiny_cfg():
         max_rounds=2,
         min_examples_to_train=2,  # low enough that tests can train
         max_new_tokens=4,
-        reward_threshold=-1e9,    # keep all above a very low threshold
+        reward_threshold=-1e9,  # keep all above a very low threshold
         top_fraction=0.75,
     )
 
@@ -79,6 +81,7 @@ def self_improver(small_model, small_reward_model, tiny_cfg):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_self_improve_config_defaults():
     cfg = SelfImproveConfig()
@@ -109,8 +112,7 @@ def test_filter_by_reward_keeps_top_fraction(self_improver):
     n_total = 8
     # Create dummy examples: (input_ids, labels)
     examples = [
-        (torch.randint(0, 256, (10,)), torch.randint(0, 256, (10,)))
-        for _ in range(n_total)
+        (torch.randint(0, 256, (10,)), torch.randint(0, 256, (10,))) for _ in range(n_total)
     ]
     rewards = torch.randn(n_total)
     filtered, mean_r = self_improver.filter_by_reward(examples, rewards)
@@ -119,10 +121,7 @@ def test_filter_by_reward_keeps_top_fraction(self_improver):
 
 
 def test_sft_step_returns_finite_loss(self_improver):
-    examples = [
-        (torch.randint(0, 256, (12,)), torch.randint(0, 256, (12,)))
-        for _ in range(4)
-    ]
+    examples = [(torch.randint(0, 256, (12,)), torch.randint(0, 256, (12,))) for _ in range(4)]
     loss = self_improver.sft_step(examples)
     assert isinstance(loss, float)
     assert math.isfinite(loss)
@@ -136,6 +135,7 @@ def test_run_round_returns_result(self_improver, tiny_cfg, prompt_template):
 
 def test_run_returns_report(small_model, small_reward_model, tiny_cfg, prompt_template):
     import copy
+
     # Use a fresh improver to avoid state pollution
     improver = SelfImprover(
         model=copy.deepcopy(small_model),
@@ -149,6 +149,7 @@ def test_run_returns_report(small_model, small_reward_model, tiny_cfg, prompt_te
 
 def test_report_rounds_count(small_model, small_reward_model, tiny_cfg, prompt_template):
     import copy
+
     improver = SelfImprover(
         model=copy.deepcopy(small_model),
         reward_model=copy.deepcopy(small_reward_model),

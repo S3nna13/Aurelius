@@ -14,10 +14,11 @@ import json
 import shlex
 import uuid
 from collections import Counter
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
 
 from src.agent.skill_catalog import SkillCatalog
 from src.agent.surface_catalog import describe_ui_surface
@@ -26,12 +27,13 @@ from src.model.interface_framework import (
     AureliusInterfaceFramework,
     BackgroundJob,
     Checkpoint,
-    InterfaceFrameworkError,
     ModePolicy,
-    MessageEnvelope as FrameworkMessageEnvelope,
     SkillBundle,
     TaskThread,
     TaskThreadSpec,
+)
+from src.model.interface_framework import (
+    MessageEnvelope as FrameworkMessageEnvelope,
 )
 
 __all__ = [
@@ -80,16 +82,14 @@ class MessageEnvelope:
         for field_name in ("channel", "sender", "kind", "content", "created_at"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise AureliusShellError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise AureliusShellError(f"{field_name} must be a non-empty string")
         if self.thread_id is not None and not isinstance(self.thread_id, str):
             raise AureliusShellError("thread_id must be a str or None")
         if not isinstance(self.metadata, dict):
             raise AureliusShellError("metadata must be a dict")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "MessageEnvelope":
+    def from_dict(cls, payload: Mapping[str, Any]) -> MessageEnvelope:
         return cls(
             channel=payload["channel"],
             thread_id=payload.get("thread_id"),
@@ -117,16 +117,14 @@ class SkillRecord:
         for field_name in ("skill_id", "name", "source_path", "provenance", "scope"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise AureliusShellError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise AureliusShellError(f"{field_name} must be a non-empty string")
         if not isinstance(self.summary, str):
             raise AureliusShellError("summary must be a string")
         if not isinstance(self.metadata, dict):
             raise AureliusShellError("metadata must be a dict")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "SkillRecord":
+    def from_dict(cls, payload: Mapping[str, Any]) -> SkillRecord:
         return cls(
             skill_id=payload["skill_id"],
             name=payload["name"],
@@ -155,9 +153,7 @@ class Workstream:
         for field_name in ("workstream_id", "name", "status", "created_at", "updated_at"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise AureliusShellError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise AureliusShellError(f"{field_name} must be a non-empty string")
         if self.workspace is not None and not isinstance(self.workspace, str):
             raise AureliusShellError("workspace must be a str or None")
         if not isinstance(self.thread_ids, tuple):
@@ -168,7 +164,7 @@ class Workstream:
             raise AureliusShellError("metadata must be a dict")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "Workstream":
+    def from_dict(cls, payload: Mapping[str, Any]) -> Workstream:
         return cls(
             workstream_id=payload["workstream_id"],
             name=payload["name"],
@@ -203,7 +199,7 @@ class WorkflowStep:
             raise AureliusShellError("approval_required must be bool")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "WorkflowStep":
+    def from_dict(cls, payload: Mapping[str, Any]) -> WorkflowStep:
         return cls(
             index=payload["index"],
             kind=payload["kind"],
@@ -240,9 +236,7 @@ class WorkflowRun:
         ):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise AureliusShellError(
-                    f"{field_name} must be a non-empty string"
-                )
+                raise AureliusShellError(f"{field_name} must be a non-empty string")
         if not isinstance(self.steps, tuple):
             raise AureliusShellError("steps must be a tuple")
         if not all(isinstance(item, WorkflowStep) for item in self.steps):
@@ -266,7 +260,7 @@ class WorkflowRun:
         json.dumps(self.metadata, sort_keys=True)
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "WorkflowRun":
+    def from_dict(cls, payload: Mapping[str, Any]) -> WorkflowRun:
         return cls(
             run_id=payload["run_id"],
             thread_id=payload["thread_id"],
@@ -321,7 +315,7 @@ class AureliusShell:
         *,
         session_id: str | None = None,
         workspace: str | Path | None = None,
-    ) -> "AureliusShell":
+    ) -> AureliusShell:
         return cls(
             root_dir=root_dir,
             variant_id=variant_id,
@@ -735,15 +729,18 @@ class AureliusShell:
         if target is not None:
             self._tool_calls.setdefault(target.thread_id, []).append(record)
             self.active_thread_id = target.thread_id
-            self._append_toolless_step(target.thread_id, MessageEnvelope(
-                channel=target.channel or "tool_call",
-                thread_id=target.thread_id,
-                sender="tool",
-                kind="tool_call",
-                content=tool_name,
-                created_at=record["recorded_at"],
-                metadata={"arguments": copy.deepcopy(arguments)},
-            ))
+            self._append_toolless_step(
+                target.thread_id,
+                MessageEnvelope(
+                    channel=target.channel or "tool_call",
+                    thread_id=target.thread_id,
+                    sender="tool",
+                    kind="tool_call",
+                    content=tool_name,
+                    created_at=record["recorded_at"],
+                    metadata={"arguments": copy.deepcopy(arguments)},
+                ),
+            )
         return record
 
     def discover_skills(
@@ -786,7 +783,11 @@ class AureliusShell:
     ) -> WorkflowRun:
         current_thread = self._coerce_thread(thread)
         if current_thread.workstream_id is None:
-            workstream = self._workstreams.get(self.active_workstream_id) if self.active_workstream_id else None
+            workstream = (
+                self._workstreams.get(self.active_workstream_id)
+                if self.active_workstream_id
+                else None
+            )
             if workstream is None:
                 workstream = self.create_workstream(
                     f"{current_thread.title} workstream",
@@ -934,9 +935,7 @@ class AureliusShell:
             )
         else:
             lines.append("Job counts: none")
-        lines.append(
-            f"Workflow runs: {len(self._workflow_runs)}"
-        )
+        lines.append(f"Workflow runs: {len(self._workflow_runs)}")
         lines.append(
             f"Tool-call audit entries: {sum(len(entries) for entries in self._tool_calls.values())}"
         )
@@ -951,17 +950,23 @@ class AureliusShell:
 
     def render_thread_status(self, thread_id: str) -> str:
         thread = self._coerce_thread(thread_id)
-        skill_labels = ", ".join(
-            f"{skill.name} [{skill.skill_id}]" for skill in thread.skills
-        ) or "none"
-        approval_ids = ", ".join(
-            approval.approval_id
-            for approval in self._approvals.values()
-            if approval.thread_id == thread.thread_id
-        ) or "none"
-        job_ids = ", ".join(
-            job.job_id for job in self._jobs.values() if job.thread_id == thread.thread_id
-        ) or "none"
+        skill_labels = (
+            ", ".join(f"{skill.name} [{skill.skill_id}]" for skill in thread.skills) or "none"
+        )
+        approval_ids = (
+            ", ".join(
+                approval.approval_id
+                for approval in self._approvals.values()
+                if approval.thread_id == thread.thread_id
+            )
+            or "none"
+        )
+        job_ids = (
+            ", ".join(
+                job.job_id for job in self._jobs.values() if job.thread_id == thread.thread_id
+            )
+            or "none"
+        )
         lines = [
             f"Thread: {thread.thread_id}",
             f"Title: {thread.title}",
@@ -980,7 +985,7 @@ class AureliusShell:
             f"Approvals: {approval_ids}",
             f"Checkpoints: {', '.join(thread.checkpoints) if thread.checkpoints else 'none'}",
             f"Background jobs: {job_ids}",
-            f"Tool calls: {len(self._tool_calls.get(thread.thread_id, ())) }",
+            f"Tool calls: {len(self._tool_calls.get(thread.thread_id, ()))}",
             f"Message history: {len(thread.message_history)}",
             f"Memory summary: {thread.memory_summary or 'none'}",
             f"Last model response: {thread.last_model_response or 'none'}",
@@ -1051,17 +1056,14 @@ class AureliusShell:
             },
             "jobs": {job_id: asdict(job) for job_id, job in self._jobs.items()},
             "approvals": {
-                approval_id: asdict(approval)
-                for approval_id, approval in self._approvals.items()
+                approval_id: asdict(approval) for approval_id, approval in self._approvals.items()
             },
             "checkpoints": {
                 checkpoint_id: asdict(checkpoint)
                 for checkpoint_id, checkpoint in self._checkpoints.items()
             },
             "messages": [asdict(message) for message in self._messages],
-            "workflow_runs": {
-                run_id: asdict(run) for run_id, run in self._workflow_runs.items()
-            },
+            "workflow_runs": {run_id: asdict(run) for run_id, run in self._workflow_runs.items()},
             "tool_calls": copy.deepcopy(self._tool_calls),
         }
 
@@ -1073,7 +1075,7 @@ class AureliusShell:
         root_dir: str | Path | None = None,
         variant_id: str | None = None,
         framework: AureliusInterfaceFramework | None = None,
-    ) -> "AureliusShell":
+    ) -> AureliusShell:
         if not isinstance(snapshot, Mapping):
             raise AureliusShellError("snapshot must be a mapping")
         shell = cls(
@@ -1128,7 +1130,9 @@ class AureliusShell:
                 workstream_name=payload.get("workstream_name"),
                 pending_approval_ids=tuple(payload.get("pending_approval_ids", ())),
                 active_job_ids=tuple(payload.get("active_job_ids", ())),
-                tool_observations=tuple(dict(item) for item in payload.get("tool_observations", ())),
+                tool_observations=tuple(
+                    dict(item) for item in payload.get("tool_observations", ())
+                ),
             )
         shell._messages = [
             MessageEnvelope.from_dict(payload) for payload in snapshot.get("messages", [])
@@ -1380,10 +1384,7 @@ class AureliusShell:
         )
 
     def _build_workstream_id(self, name: str) -> str:
-        slug = "".join(
-            ch.lower() if ch.isalnum() else "-"
-            for ch in name.strip()
-        )
+        slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in name.strip())
         slug = "-".join(part for part in slug.split("-") if part)
         slug = slug[:32] or "workstream"
         return f"workstream-{slug}-{uuid.uuid4().hex[:8]}"
@@ -1405,12 +1406,8 @@ class AureliusShell:
             try:
                 return self._workstreams[workstream]
             except KeyError as exc:
-                raise AureliusShellError(
-                    f"unknown workstream: {workstream!r}"
-                ) from exc
-        raise AureliusShellError(
-            "workstream must be a Workstream or non-empty workstream id"
-        )
+                raise AureliusShellError(f"unknown workstream: {workstream!r}") from exc
+        raise AureliusShellError("workstream must be a Workstream or non-empty workstream id")
 
     def _coerce_job(self, job: str | BackgroundJob) -> BackgroundJob:
         if isinstance(job, BackgroundJob):
@@ -1430,15 +1427,11 @@ class AureliusShell:
         elif isinstance(checkpoint, str) and checkpoint:
             checkpoint_id = checkpoint
         else:
-            raise AureliusShellError(
-                "checkpoint must be a Checkpoint or non-empty checkpoint id"
-            )
+            raise AureliusShellError("checkpoint must be a Checkpoint or non-empty checkpoint id")
         try:
             return self._checkpoints[checkpoint_id]
         except KeyError as exc:
-            raise AureliusShellError(
-                f"unknown checkpoint: {checkpoint_id!r}"
-            ) from exc
+            raise AureliusShellError(f"unknown checkpoint: {checkpoint_id!r}") from exc
 
     def _attach_thread_to_workstream(self, workstream_id: str, thread_id: str) -> None:
         workstream = self._coerce_workstream(workstream_id)
@@ -1537,7 +1530,11 @@ class AureliusShell:
             raise AureliusShellError(f"skill bundle is empty: {skill_file}")
         skill_id = self._skill_id_for_file(root, skill_file)
         name, summary = _parse_skill_markdown(text, skill_id)
-        provenance = "repo-local" if skill_file.resolve().is_relative_to(self.framework.paths.repo_root) else "global"
+        provenance = (
+            "repo-local"
+            if skill_file.resolve().is_relative_to(self.framework.paths.repo_root)
+            else "global"
+        )
         scope = "repo" if provenance == "repo-local" else "global"
         return SkillRecord(
             skill_id=skill_id,
@@ -1599,9 +1596,7 @@ class AureliusShell:
                 raise AureliusShellError(f"workflow step {index} is missing kind/type")
             kind = kind_value.strip().lower()
             if kind not in _KNOWN_WORKFLOW_STEP_KINDS:
-                raise AureliusShellError(
-                    f"workflow step {index} has unsupported kind {kind!r}"
-                )
+                raise AureliusShellError(f"workflow step {index} has unsupported kind {kind!r}")
             payload = {
                 key: copy.deepcopy(value)
                 for key, value in raw_step.items()
@@ -1848,9 +1843,7 @@ def _thread_from_dict(payload: Mapping[str, Any]) -> TaskThread:
             metadata=dict(payload.get("metadata", {})),
         )
     except KeyError as exc:
-        raise AureliusShellError(
-            f"thread snapshot missing required field: {exc.args[0]}"
-        ) from exc
+        raise AureliusShellError(f"thread snapshot missing required field: {exc.args[0]}") from exc
 
 
 def _normalize_decision(value: Any) -> str:
@@ -1919,4 +1912,4 @@ def _dedupe_strings(values: Sequence[str]) -> tuple[str, ...]:
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

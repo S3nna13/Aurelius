@@ -37,15 +37,14 @@ except Exception:  # pragma: no cover - exercised only when manifest absent
 class ModelVariant:
     """A named, human-documented wrapper around a :class:`FamilyManifest`."""
 
-    manifest: "_FamilyManifest"
+    manifest: _FamilyManifest
     description: str
     release_notes: str = ""
 
     def __post_init__(self) -> None:
         if self.manifest is None:
             raise TypeError(
-                "ModelVariant.manifest is required (got None); "
-                "pass a FamilyManifest instance."
+                "ModelVariant.manifest is required (got None); pass a FamilyManifest instance."
             )
 
 
@@ -60,10 +59,7 @@ class ModelFamily:
     def add_variant(self, name: str, variant: ModelVariant) -> None:
         """Register ``variant`` under ``name``; reject duplicate names."""
         if name in self.variants:
-            raise ValueError(
-                f"variant {name!r} already registered in family "
-                f"{self.family_name!r}"
-            )
+            raise ValueError(f"variant {name!r} already registered in family {self.family_name!r}")
         self.variants[name] = variant
 
     def get_variant(self, name: str) -> ModelVariant:
@@ -95,9 +91,7 @@ def register_family(family: ModelFamily) -> ModelFamily:
     :data:`MODEL_VARIANT_REGISTRY` under ``"{family_name}/{variant_name}"``.
     """
     if family.family_name in MODEL_FAMILY_REGISTRY:
-        raise ValueError(
-            f"family {family.family_name!r} already registered"
-        )
+        raise ValueError(f"family {family.family_name!r} already registered")
     MODEL_FAMILY_REGISTRY[family.family_name] = family
     for variant_name, variant in family.variants.items():
         variant_id = f"{family.family_name}/{variant_name}"
@@ -105,18 +99,13 @@ def register_family(family: ModelFamily) -> ModelFamily:
     return family
 
 
-def register_variant(
-    family_name: str, variant_name: str, variant: ModelVariant
-) -> str:
+def register_variant(family_name: str, variant_name: str, variant: ModelVariant) -> str:
     """Register ``variant`` into an existing family.
 
     Returns the fully qualified variant id ``"{family}/{variant}"``.
     """
     if family_name not in MODEL_FAMILY_REGISTRY:
-        raise KeyError(
-            f"family {family_name!r} not registered; "
-            f"call register_family() first"
-        )
+        raise KeyError(f"family {family_name!r} not registered; call register_family() first")
     family = MODEL_FAMILY_REGISTRY[family_name]
     family.add_variant(variant_name, variant)
     variant_id = f"{family_name}/{variant_name}"
@@ -128,8 +117,7 @@ def get_family(name: str) -> ModelFamily:
     """Return family ``name`` or raise ``KeyError``."""
     if name not in MODEL_FAMILY_REGISTRY:
         raise KeyError(
-            f"family {name!r} not registered; "
-            f"known families: {sorted(MODEL_FAMILY_REGISTRY)}"
+            f"family {name!r} not registered; known families: {sorted(MODEL_FAMILY_REGISTRY)}"
         )
     return MODEL_FAMILY_REGISTRY[name]
 
@@ -154,8 +142,7 @@ if _MANIFEST_AVAILABLE and AURELIUS_REFERENCE_MANIFEST is not None:
     _base_variant = ModelVariant(
         manifest=AURELIUS_REFERENCE_MANIFEST,
         description=(
-            "Aurelius reference 1.395B-parameter decoder-only transformer "
-            "(baseline configuration)."
+            "Aurelius reference 1.395B-parameter decoder-only transformer (baseline configuration)."
         ),
         release_notes="Cycle-122 baseline reference variant.",
     )

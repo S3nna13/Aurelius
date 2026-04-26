@@ -1,4 +1,5 @@
-"""Embedding compression: factorize large embedding tables, share weights, and reduce memory footprint."""
+"""Embedding compression: factorize large embedding tables, share weights, and reduce memory footprint."""  # noqa: E501
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,11 +13,12 @@ from torch import Tensor
 @dataclass
 class EmbedConfig:
     """Configuration for embedding compression techniques."""
+
     vocab_size: int = 32000
     d_model: int = 512
-    embedding_dim: int = 128       # compressed embedding dim (< d_model)
-    n_clusters: int = 256          # for cluster-based compression
-    tie_weights: bool = True       # tie input/output embeddings
+    embedding_dim: int = 128  # compressed embedding dim (< d_model)
+    n_clusters: int = 256  # for cluster-based compression
+    tie_weights: bool = True  # tie input/output embeddings
     use_factorization: bool = True  # ALBERT-style factorization
 
 
@@ -78,8 +80,8 @@ class ClusteredEmbedding(nn.Module):
         """Lookup cluster centroid + per-token offset: returns (B, T, d_model)."""
         # input_ids: (B, T)
         cluster_ids = self.cluster_assign[input_ids]  # (B, T)
-        centroid = self.centroids(cluster_ids)         # (B, T, d_model)
-        offset = self.offsets(input_ids)               # (B, T, d_model)
+        centroid = self.centroids(cluster_ids)  # (B, T, d_model)
+        offset = self.offsets(input_ids)  # (B, T, d_model)
         return centroid + offset
 
     def num_parameters(self) -> int:
@@ -171,7 +173,7 @@ class EmbeddingCompressor:
         U, S, Vh = torch.linalg.svd(embedding_weight, full_matrices=False)
         r = self.target_rank
         U_r = U[:, :r] * S[:r]  # (V, r) — absorb singular values into U
-        V_r = Vh[:r, :]          # (r, D)
+        V_r = Vh[:r, :]  # (r, D)
         return U_r, V_r
 
     def reconstruction_error(self, original: Tensor, u_r: Tensor, v_r: Tensor) -> float:

@@ -1,6 +1,8 @@
 """Tests for Fill-in-the-Middle transformation."""
+
 import pytest
-from src.data.fim_transform import apply_fim, fim_transform_batch, FIMResult
+
+from src.data.fim_transform import FIMResult, apply_fim, fim_transform_batch
 
 
 def test_passthrough_short_code():
@@ -16,7 +18,9 @@ def test_fim_markers_present_when_applied():
     for seed in range(20):
         result = apply_fim(code, seed=seed)
         if result != code:
-            assert any(tok in result for tok in ["<|fim_prefix|>", "<|fim_suffix|>", "<|fim_middle|>"])
+            assert any(
+                tok in result for tok in ["<|fim_prefix|>", "<|fim_suffix|>", "<|fim_middle|>"]
+            )
             return
     # It's fine if FIM wasn't applied (50% rate) in 20 tries — just skip
     pytest.skip("All 20 seeds skipped FIM — statistically unlikely but acceptable")

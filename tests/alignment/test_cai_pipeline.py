@@ -1,23 +1,21 @@
 """Tests for src/alignment/cai_pipeline.py — Constitutional AI pipeline."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.alignment.cai_pipeline import (
     CAIConfig,
-    ConstitutionalPrinciple,
+    CAIDataCollector,
+    CAIReviser,
     build_critique_prompt,
     build_revision_prompt,
     extract_critique_score,
-    CAIReviser,
     score_response_safety,
-    CAIDataCollector,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared mock generate function
 # ---------------------------------------------------------------------------
+
 
 def mock_generate(prompt: str) -> str:
     return "This is a helpful and appropriate response."
@@ -26,6 +24,7 @@ def mock_generate(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 # 1. CAIConfig defaults: 3 principles
 # ---------------------------------------------------------------------------
+
 
 def test_config_default_n_principles():
     cfg = CAIConfig()
@@ -37,6 +36,7 @@ def test_config_default_n_principles():
 # 2. CAIConfig default n_revision_steps
 # ---------------------------------------------------------------------------
 
+
 def test_config_default_n_revision_steps():
     cfg = CAIConfig()
     assert cfg.n_revision_steps == 2
@@ -45,6 +45,7 @@ def test_config_default_n_revision_steps():
 # ---------------------------------------------------------------------------
 # 3. build_critique_prompt contains principle and response
 # ---------------------------------------------------------------------------
+
 
 def test_build_critique_prompt_contains_principle_and_response():
     template = "Principle: {principle}\nResponse: {response}\nCritique:"
@@ -57,6 +58,7 @@ def test_build_critique_prompt_contains_principle_and_response():
 # 4. build_revision_prompt contains original response and critique
 # ---------------------------------------------------------------------------
 
+
 def test_build_revision_prompt_contains_response_and_critique():
     template = "Original: {response}\nCritique: {critique}\nRevised:"
     result = build_revision_prompt("Original text.", "It has issues.", template)
@@ -68,6 +70,7 @@ def test_build_revision_prompt_contains_response_and_critique():
 # 5. extract_critique_score returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_extract_critique_score_returns_float_in_range():
     score = extract_critique_score("This response is good and helpful.")
     assert isinstance(score, float)
@@ -77,6 +80,7 @@ def test_extract_critique_score_returns_float_in_range():
 # ---------------------------------------------------------------------------
 # 6. extract_critique_score: negative text scores lower than positive text
 # ---------------------------------------------------------------------------
+
 
 def test_extract_critique_score_negative_lower_than_positive():
     negative = "This response is harmful, dangerous, and inappropriate."
@@ -90,6 +94,7 @@ def test_extract_critique_score_negative_lower_than_positive():
 # 7. CAIReviser.critique returns string
 # ---------------------------------------------------------------------------
 
+
 def test_cai_reviser_critique_returns_string():
     cfg = CAIConfig()
     reviser = CAIReviser(mock_generate, cfg)
@@ -101,6 +106,7 @@ def test_cai_reviser_critique_returns_string():
 # ---------------------------------------------------------------------------
 # 8. CAIReviser.revise returns string
 # ---------------------------------------------------------------------------
+
 
 def test_cai_reviser_revise_returns_string():
     cfg = CAIConfig()
@@ -114,6 +120,7 @@ def test_cai_reviser_revise_returns_string():
 # 9. run_revision_cycle returns a list
 # ---------------------------------------------------------------------------
 
+
 def test_run_revision_cycle_returns_list():
     cfg = CAIConfig(n_revision_steps=1)
     reviser = CAIReviser(mock_generate, cfg)
@@ -126,6 +133,7 @@ def test_run_revision_cycle_returns_list():
 # ---------------------------------------------------------------------------
 # 10. run_full_pipeline returns tuple of (str, list)
 # ---------------------------------------------------------------------------
+
 
 def test_run_full_pipeline_returns_tuple():
     cfg = CAIConfig(n_revision_steps=1)
@@ -142,6 +150,7 @@ def test_run_full_pipeline_returns_tuple():
 # 11. score_response_safety returns float in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_score_response_safety_returns_float_in_range():
     score = score_response_safety("This is a nice helpful response.")
     assert isinstance(score, float)
@@ -151,6 +160,7 @@ def test_score_response_safety_returns_float_in_range():
 # ---------------------------------------------------------------------------
 # 12. score_response_safety: harmful text scores lower than safe text
 # ---------------------------------------------------------------------------
+
 
 def test_score_response_safety_harmful_lower_than_safe():
     safe = "This is a helpful and informative response."
@@ -163,6 +173,7 @@ def test_score_response_safety_harmful_lower_than_safe():
 # ---------------------------------------------------------------------------
 # 13. CAIDataCollector.collect returns list of dicts
 # ---------------------------------------------------------------------------
+
 
 def test_cai_data_collector_collect_returns_list_of_dicts():
     cfg = CAIConfig(n_revision_steps=1)
@@ -182,6 +193,7 @@ def test_cai_data_collector_collect_returns_list_of_dicts():
 # 14. get_stats returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_get_stats_returns_correct_keys():
     cfg = CAIConfig(n_revision_steps=1)
     reviser = CAIReviser(mock_generate, cfg)
@@ -197,6 +209,7 @@ def test_get_stats_returns_correct_keys():
 # ---------------------------------------------------------------------------
 # 15. collect handles empty input
 # ---------------------------------------------------------------------------
+
 
 def test_collect_handles_empty_input():
     cfg = CAIConfig(n_revision_steps=1)

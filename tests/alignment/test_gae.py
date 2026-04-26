@@ -1,6 +1,8 @@
 import pytest
 import torch
-from src.alignment.gae import compute_gae, compute_returns, normalize_advantages, GAEConfig
+
+from src.alignment.gae import compute_gae, compute_returns, normalize_advantages
+
 
 def test_gae_output_shapes():
     T = 10
@@ -10,6 +12,7 @@ def test_gae_output_shapes():
     adv, ret = compute_gae(rewards, values, dones)
     assert adv.shape == (T,)
     assert ret.shape == (T,)
+
 
 def test_gae_no_done_returns_sum_of_rewards():
     """With no dones and values=0, returns should be discounted sum of rewards."""
@@ -21,6 +24,7 @@ def test_gae_no_done_returns_sum_of_rewards():
     # returns[0] = 1 + 0.9 + 0.81 + 0.729 + 0.6561 ≈ 4.0951
     expected = sum(gamma**i for i in range(5))
     assert ret[0].item() == pytest.approx(expected, rel=1e-4)
+
 
 def test_gae_done_resets():
     """Episode termination (done=1) should reset the bootstrap."""
@@ -35,6 +39,7 @@ def test_gae_done_resets():
     assert ret[1].item() == pytest.approx(1.0)
     assert ret[0].item() == pytest.approx(1.9, rel=1e-4)
 
+
 def test_gae_advantages_equal_returns_minus_values():
     rewards = torch.randn(8)
     values = torch.randn(8)
@@ -42,11 +47,13 @@ def test_gae_advantages_equal_returns_minus_values():
     adv, ret = compute_gae(rewards, values, dones)
     assert torch.allclose(ret, adv + values, atol=1e-5)
 
+
 def test_compute_returns_shape():
     rewards = torch.ones(7)
     dones = torch.zeros(7)
     ret = compute_returns(rewards, dones)
     assert ret.shape == (7,)
+
 
 def test_compute_returns_discounted():
     rewards = torch.ones(3)
@@ -59,15 +66,18 @@ def test_compute_returns_discounted():
     assert ret[1].item() == pytest.approx(1.5)
     assert ret[0].item() == pytest.approx(1.75)
 
+
 def test_normalize_advantages_mean_zero():
     adv = torch.randn(100)
     normalized = normalize_advantages(adv)
     assert abs(normalized.mean().item()) < 1e-5
 
+
 def test_normalize_advantages_std_one():
     adv = torch.randn(100)
     normalized = normalize_advantages(adv)
     assert abs(normalized.std().item() - 1.0) < 0.01
+
 
 def test_gae_lam_zero_equals_td():
     """Lambda=0 should give single-step TD advantage."""

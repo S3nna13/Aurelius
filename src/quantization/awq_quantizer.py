@@ -32,6 +32,7 @@ AWQ_QUANTIZER_REGISTRY: dict[str, type] = {}
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AWQConfig:
     """Configuration for :class:`AWQQuantizer`.
@@ -59,6 +60,7 @@ class ActivationStats:
 # ---------------------------------------------------------------------------
 # Scale search (legacy API, retained for existing call sites)
 # ---------------------------------------------------------------------------
+
 
 class AWQScaleSearch:
     """Grid-search for the per-channel scale that best preserves weight range."""
@@ -99,6 +101,7 @@ class AWQScaleSearch:
 # ---------------------------------------------------------------------------
 # Full quantizer
 # ---------------------------------------------------------------------------
+
 
 class AWQQuantizer:
     """AWQ quantizer: activation-aware scaling + asymmetric INT-N quantization."""

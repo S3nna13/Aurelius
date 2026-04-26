@@ -40,4 +40,3 @@ def reward_ensemble_report(scores: torch.Tensor) -> RewardEnsembleReport:
         std=ensemble_std(scores),
         disagreement=ensemble_disagreement(scores),
     )
-

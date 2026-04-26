@@ -5,7 +5,9 @@ from __future__ import annotations
 import torch
 
 
-def route_dropout_mask(shape: torch.Size | tuple[int, ...], drop_prob: float, device=None) -> torch.Tensor:
+def route_dropout_mask(
+    shape: torch.Size | tuple[int, ...], drop_prob: float, device=None
+) -> torch.Tensor:
     """Sample a Bernoulli keep mask for router probabilities."""
     if not 0.0 <= drop_prob < 1.0:
         raise ValueError(f"drop_prob must be in [0, 1), got {drop_prob}")
@@ -25,4 +27,3 @@ def apply_route_dropout(router_probs: torch.Tensor, drop_prob: float) -> torch.T
 def route_survival_rate(mask: torch.Tensor) -> torch.Tensor:
     """Fraction of routes kept by dropout."""
     return mask.float().mean()
-

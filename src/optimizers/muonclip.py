@@ -30,8 +30,8 @@ def _orthogonalize(M: torch.Tensor) -> torch.Tensor:
     orig_shape = M.shape
     m = M.reshape(M.shape[0], -1)
     A = m @ m.T
-    I = torch.eye(A.shape[0], device=A.device, dtype=A.dtype)
-    B = 1.5 * I - 0.5 * A
+    _I = torch.eye(A.shape[0], device=A.device, dtype=A.dtype)
+    B = 1.5 * _I - 0.5 * A
     m = B @ m
     return m.reshape(orig_shape)
 

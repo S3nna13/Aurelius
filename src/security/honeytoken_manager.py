@@ -1,8 +1,9 @@
 """Honeytoken generator for detecting unauthorized data access."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from datetime import UTC
 
 
 @dataclass
@@ -21,12 +22,13 @@ class HoneytokenManager:
 
     def generate(self, location: str) -> Honeytoken:
         import uuid
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         token_str = f"hk_{uuid.uuid4().hex}"
         token = Honeytoken(
             token=token_str,
             location=location,
-            created=datetime.now(timezone.utc).isoformat(),
+            created=datetime.now(UTC).isoformat(),
         )
         self._tokens[token_str] = token
         return token
@@ -35,9 +37,10 @@ class HoneytokenManager:
         token = self._tokens.get(token_str)
         if token is None:
             return None
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         token.accessed = True
-        token.access_time = datetime.now(timezone.utc).isoformat()
+        token.access_time = datetime.now(UTC).isoformat()
         token.access_source = source
         return token
 

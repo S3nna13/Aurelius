@@ -1,10 +1,10 @@
 """Tests for src/training/sift.py"""
 
 import math
+
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.sift import InfluenceScorer, SIFTFilter, SIFTLoss, SIFTTrainer
 
 SEED = 42
@@ -14,6 +14,7 @@ B, T, V = 4, 8, 32
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_model():
     return nn.Linear(16, 16)
@@ -27,6 +28,7 @@ def _scalar_loss(model, x, target):
 # ---------------------------------------------------------------------------
 # InfluenceScorer
 # ---------------------------------------------------------------------------
+
 
 def test_influence_score_range():
     torch.manual_seed(SEED)
@@ -87,6 +89,7 @@ def test_influence_zero_grad_returns_zero():
 # SIFTFilter
 # ---------------------------------------------------------------------------
 
+
 def test_filter_threshold_keeps_positive():
     f = SIFTFilter(threshold=0.0)
     scores = torch.tensor([0.5, -0.1, 0.3, -0.4, 0.0])
@@ -134,6 +137,7 @@ def test_filter_requires_1d():
 # SIFTLoss
 # ---------------------------------------------------------------------------
 
+
 def test_siftloss_uniform_weights_equals_mean_ce():
     torch.manual_seed(SEED)
     loss_fn = SIFTLoss()
@@ -178,6 +182,7 @@ def test_siftloss_gradient_flows():
 # ---------------------------------------------------------------------------
 # SIFTTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_sifttrainer_returns_correct_keys():
     torch.manual_seed(SEED)

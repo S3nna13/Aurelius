@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List
-
-import pytest
 import torch
 import torch.nn as nn
 
@@ -44,9 +41,7 @@ class MockModel(nn.Module):
         batch, seq_len = input_ids.shape
         # Tile fixed logits across the sequence so generate_diverse_batch can
         # index position -1.
-        logits = self.fixed_logits.unsqueeze(0).unsqueeze(0).expand(
-            batch, seq_len, self.vocab_size
-        )
+        logits = self.fixed_logits.unsqueeze(0).unsqueeze(0).expand(batch, seq_len, self.vocab_size)
         return logits.contiguous()
 
 
@@ -209,11 +204,13 @@ def test_pairwise_diversity_completely_different():
     model = MockModel(vocab_size=VOCAB)
     diversifier = OutputDiversifier(model)
     # Two sequences with no overlapping token ids.
-    seq_a = torch.zeros(1, 5, dtype=torch.long)          # all token 0
-    seq_b = torch.ones(1, 5, dtype=torch.long)            # all token 1
+    seq_a = torch.zeros(1, 5, dtype=torch.long)  # all token 0
+    seq_b = torch.ones(1, 5, dtype=torch.long)  # all token 1
     seqs = torch.cat([seq_a, seq_b], dim=0)
     diversity = diversifier.compute_pairwise_diversity(seqs)
-    assert diversity == 1.0, f"Completely different sequences should have diversity 1, got {diversity}"
+    assert diversity == 1.0, (
+        f"Completely different sequences should have diversity 1, got {diversity}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -226,11 +223,11 @@ def test_filter_diverse_removes_near_duplicates():
     diversifier = OutputDiversifier(model)
 
     # Create a batch: 2 nearly identical sequences + 1 very different one.
-    base = torch.zeros(8, dtype=torch.long)               # all 0s
-    near_dup = torch.zeros(8, dtype=torch.long)           # also all 0s (duplicate)
-    different = torch.ones(8, dtype=torch.long) * 15      # all token 15
+    base = torch.zeros(8, dtype=torch.long)  # all 0s
+    near_dup = torch.zeros(8, dtype=torch.long)  # also all 0s (duplicate)
+    different = torch.ones(8, dtype=torch.long) * 15  # all token 15
 
-    seqs = torch.stack([base, near_dup, different])       # (3, 8)
+    seqs = torch.stack([base, near_dup, different])  # (3, 8)
     filtered = diversifier.filter_diverse(seqs, min_diversity=0.3)
 
     # The near-duplicate should be removed; we should have at most 2 sequences.

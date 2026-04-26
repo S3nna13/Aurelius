@@ -4,11 +4,12 @@ Evolves weight coefficients for linear merging of multiple model checkpoints
 using a simple genetic algorithm: Dirichlet initialization, Gaussian mutation,
 uniform crossover, and elite selection.
 """
+
 from __future__ import annotations
 
 import copy
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import torch
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EvoMergeConfig:
@@ -35,6 +37,7 @@ class EvoMergeConfig:
 # ---------------------------------------------------------------------------
 # Merge utilities
 # ---------------------------------------------------------------------------
+
 
 def linear_merge(
     models: list[nn.Module],
@@ -57,8 +60,7 @@ def linear_merge(
 
     for key in state_dicts[0]:
         merged[key] = sum(
-            coefficients[i] * state_dicts[i][key].float()
-            for i in range(len(models))
+            coefficients[i] * state_dicts[i][key].float() for i in range(len(models))
         ).to(state_dicts[0][key].dtype)
 
     return merged
@@ -92,6 +94,7 @@ def evaluate_model(
 # Individual
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Individual:
     """A candidate merge configuration."""
@@ -103,6 +106,7 @@ class Individual:
 # ---------------------------------------------------------------------------
 # Evolutionary merger
 # ---------------------------------------------------------------------------
+
 
 class EvolutionaryMerger:
     """Evolves merge coefficients over a population of Individuals."""

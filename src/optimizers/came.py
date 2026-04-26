@@ -12,8 +12,6 @@ Key innovations over Adafactor:
 
 from __future__ import annotations
 
-import math
-
 import torch
 from torch.optim import Optimizer
 
@@ -131,15 +129,11 @@ class CAME(Optimizer):
 
                     if factored:
                         # Row factor V_r  (shape: first dim of p)
-                        state["V_r"] = torch.zeros(
-                            p.shape[0], device=p.device, dtype=p.dtype
-                        )
+                        state["V_r"] = torch.zeros(p.shape[0], device=p.device, dtype=p.dtype)
                         # Col factor V_c  (shape: last dim of p for 2D;
                         # for higher-rank, flatten all but first dim)
                         col_size = p.numel() // p.shape[0]
-                        state["V_c"] = torch.zeros(
-                            col_size, device=p.device, dtype=p.dtype
-                        )
+                        state["V_c"] = torch.zeros(col_size, device=p.device, dtype=p.dtype)
                         # Confidence matrix C (same shape as p)
                         state["C"] = torch.ones_like(p)
                     else:
@@ -215,7 +209,7 @@ class CAME(Optimizer):
                 if beta1 > 0.0:
                     # Bias-corrected first moment
                     state["m"].mul_(beta1).add_(update, alpha=1.0 - beta1)
-                    bc1 = 1.0 - beta1 ** t
+                    bc1 = 1.0 - beta1**t
                     update = state["m"] / bc1
 
                 # ----------------------------------------------------------------

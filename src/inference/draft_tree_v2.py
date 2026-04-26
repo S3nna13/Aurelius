@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configs / data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DraftTreeConfig:
     """Configuration for draft-tree speculative decoding."""
+
     branch_factor: int = 3
     depth: int = 4
     acceptance_threshold: float = 0.8
@@ -26,9 +26,10 @@ class DraftTreeConfig:
 @dataclass
 class TreeNode:
     """A single node in the draft tree."""
+
     token_id: int
     log_prob: float
-    children: List["TreeNode"] = field(default_factory=list)
+    children: list[TreeNode] = field(default_factory=list)
     depth: int = 0
     is_accepted: bool = False
 
@@ -36,6 +37,7 @@ class TreeNode:
 # ---------------------------------------------------------------------------
 # Tree construction
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def build_draft_tree(
@@ -55,8 +57,8 @@ def build_draft_tree(
     root_token = int(input_ids[0, -1].item())
 
     # Get log-probs for the root position.
-    loss, logits, _ = model(input_ids)            # (B, T, V)
-    last_logits = logits[0, -1]                    # (V,)
+    loss, logits, _ = model(input_ids)  # (B, T, V)
+    last_logits = logits[0, -1]  # (V,)
     log_probs = F.log_softmax(last_logits, dim=-1)
 
     root = TreeNode(token_id=root_token, log_prob=0.0, depth=0)
@@ -96,23 +98,24 @@ def build_draft_tree(
 # Path helpers
 # ---------------------------------------------------------------------------
 
-def score_path(path: List[TreeNode]) -> float:
+
+def score_path(path: list[TreeNode]) -> float:
     """Sum of log_prob values along *path*."""
     return sum(node.log_prob for node in path)
 
 
-def extract_all_paths(root: TreeNode) -> List[List[TreeNode]]:
+def extract_all_paths(root: TreeNode) -> list[list[TreeNode]]:
     """DFS to extract every root-to-leaf path."""
     if not root.children:
         return [[root]]
-    paths: List[List[TreeNode]] = []
+    paths: list[list[TreeNode]] = []
     for child in root.children:
         for sub in extract_all_paths(child):
             paths.append([root] + sub)
     return paths
 
 
-def best_path(root: TreeNode) -> List[int]:
+def best_path(root: TreeNode) -> list[int]:
     """Return token ids of the highest-scoring root-to-leaf path."""
     all_paths = extract_all_paths(root)
     best = max(all_paths, key=score_path)
@@ -123,13 +126,14 @@ def best_path(root: TreeNode) -> List[int]:
 # Verification
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def verify_path(
     model: torch.nn.Module,
     input_ids: Tensor,
-    path: List[int],
+    path: list[int],
     threshold: float,
-) -> Tuple[List[int], int]:
+) -> tuple[list[int], int]:
     """Verify each token in *path* against the target model.
 
     Feeds *input_ids* (optionally extended one token at a time) through
@@ -138,7 +142,7 @@ def verify_path(
 
     Returns (accepted_tokens, n_accepted).
     """
-    accepted: List[int] = []
+    accepted: list[int] = []
     ctx = input_ids.clone()
 
     for token_id in path:
@@ -160,6 +164,7 @@ def verify_path(
 # ---------------------------------------------------------------------------
 # Decoder class
 # ---------------------------------------------------------------------------
+
 
 class DraftTreeDecoder:
     """Iteratively build draft trees and verify them to generate tokens."""
@@ -194,14 +199,10 @@ class DraftTreeDecoder:
             # Skip root token (already in context) for verification.
             candidate = path_ids[1:] if len(path_ids) > 1 else path_ids
 
-            accepted, n_acc = verify_path(
-                model, ctx, candidate, self.config.acceptance_threshold
-            )
+            accepted, n_acc = verify_path(model, ctx, candidate, self.config.acceptance_threshold)
 
             if n_acc > 0:
-                new_tokens = torch.tensor(
-                    [accepted], dtype=torch.long, device=ctx.device
-                )
+                new_tokens = torch.tensor([accepted], dtype=torch.long, device=ctx.device)
                 ctx = torch.cat([ctx, new_tokens], dim=1)
                 generated += n_acc
             else:

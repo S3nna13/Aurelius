@@ -9,7 +9,6 @@ With share_every_n=2 layers 0 and 2 are KV owners; layers 1 and 3 borrow.
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.longcontext.cross_layer_kv_sharing import (
@@ -17,7 +16,6 @@ from src.longcontext.cross_layer_kv_sharing import (
     CrossLayerKVConfig,
     CrossLayerKVStack,
 )
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared tiny config
@@ -44,6 +42,7 @@ def _x(seed: int = 0) -> torch.Tensor:
 # 1. test_config_defaults
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_config_defaults() -> None:
     cfg = CrossLayerKVConfig()
     assert cfg.n_layers == 24
@@ -58,6 +57,7 @@ def test_config_defaults() -> None:
 # 2. test_kv_owner_has_projections
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_kv_owner_has_projections() -> None:
     owner = CrossLayerKVAttention(TINY, layer_idx=0, is_kv_owner=True)
     assert hasattr(owner, "k_proj") and owner.k_proj is not None
@@ -69,6 +69,7 @@ def test_kv_owner_has_projections() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # 3. test_kv_borrower_no_projections
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_kv_borrower_no_projections() -> None:
     borrower = CrossLayerKVAttention(TINY, layer_idx=1, is_kv_owner=False)
@@ -83,6 +84,7 @@ def test_kv_borrower_no_projections() -> None:
 # 4. test_forward_shape
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_forward_shape() -> None:
     owner = CrossLayerKVAttention(TINY, layer_idx=0, is_kv_owner=True)
     x = _x()
@@ -94,6 +96,7 @@ def test_forward_shape() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # 5. test_forward_deterministic
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_forward_deterministic() -> None:
     owner = CrossLayerKVAttention(TINY, layer_idx=0, is_kv_owner=True)
@@ -107,6 +110,7 @@ def test_forward_deterministic() -> None:
 # 6. test_kv_state_shape
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_kv_state_shape() -> None:
     owner = CrossLayerKVAttention(TINY, layer_idx=0, is_kv_owner=True)
     x = _x()
@@ -119,6 +123,7 @@ def test_kv_state_shape() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # 7. test_borrower_uses_owner_kv
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_borrower_uses_owner_kv() -> None:
     owner = CrossLayerKVAttention(TINY, layer_idx=0, is_kv_owner=True)
@@ -152,6 +157,7 @@ def test_borrower_uses_owner_kv() -> None:
 # 8. test_stack_forward_shape
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_stack_forward_shape() -> None:
     stack = CrossLayerKVStack(TINY)
     x = _x()
@@ -164,6 +170,7 @@ def test_stack_forward_shape() -> None:
 # 9. test_kv_cache_size_ratio
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_kv_cache_size_ratio() -> None:
     stack = CrossLayerKVStack(TINY)
     ratio = stack.kv_cache_size_ratio()
@@ -174,6 +181,7 @@ def test_kv_cache_size_ratio() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # 10. test_parameter_reduction
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_parameter_reduction() -> None:
     """Borrower layers have strictly fewer parameters than owner layers."""
@@ -192,18 +200,15 @@ def test_parameter_reduction() -> None:
 # 11. test_parameter_count_keys
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_parameter_count_keys() -> None:
     stack = CrossLayerKVStack(TINY)
     counts = stack.parameter_count()
     required = {"total", "kv_params", "q_params", "other_params"}
-    assert required.issubset(counts.keys()), (
-        f"Missing keys: {required - set(counts.keys())}"
-    )
+    assert required.issubset(counts.keys()), f"Missing keys: {required - set(counts.keys())}"
     # Sanity: kv_params + q_params + other_params == total
     parts = counts["kv_params"] + counts["q_params"] + counts["other_params"]
-    assert parts == counts["total"], (
-        f"Parts sum ({parts}) != total ({counts['total']})"
-    )
+    assert parts == counts["total"], f"Parts sum ({parts}) != total ({counts['total']})"
     # With share_every_n=2 and 4 layers, half the layers own KV projections.
     assert counts["kv_params"] > 0, "There must be some KV parameters"
     assert counts["q_params"] > 0, "There must be some Q parameters"
@@ -212,6 +217,7 @@ def test_parameter_count_keys() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # 12. test_gradient_flows
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_gradient_flows() -> None:
     stack = CrossLayerKVStack(TINY)
@@ -233,6 +239,7 @@ def test_gradient_flows() -> None:
 # 13. test_share_every_3
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_share_every_3() -> None:
     """share_every_n=3: layers 0, 3, 6, … own KV; 1/3 of layers are owners."""
     cfg = CrossLayerKVConfig(
@@ -245,8 +252,8 @@ def test_share_every_3() -> None:
     )
     stack = CrossLayerKVStack(cfg)
 
-    owners = [l for l in stack.layers if l.is_kv_owner]
-    borrowers = [l for l in stack.layers if not l.is_kv_owner]
+    owners = [line for line in stack.layers if line.is_kv_owner]
+    borrowers = [line for line in stack.layers if not line.is_kv_owner]
 
     assert len(owners) == 2, f"Expected 2 owners (layers 0, 3), got {len(owners)}"
     assert len(borrowers) == 4, f"Expected 4 borrowers, got {len(borrowers)}"
@@ -265,18 +272,20 @@ def test_share_every_3() -> None:
 # 14. test_n_layers_4_owners
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_n_layers_4_owners() -> None:
     """n_layers=4, share_every_n=2 → exactly 2 owners at indices 0 and 2."""
     stack = CrossLayerKVStack(TINY)
-    owner_indices = [l.layer_idx for l in stack.layers if l.is_kv_owner]
+    owner_indices = [line.layer_idx for line in stack.layers if line.is_kv_owner]
     assert owner_indices == [0, 2], f"Expected owners at [0, 2], got {owner_indices}"
-    borrower_indices = [l.layer_idx for l in stack.layers if not l.is_kv_owner]
+    borrower_indices = [line.layer_idx for line in stack.layers if not line.is_kv_owner]
     assert borrower_indices == [1, 3], f"Expected borrowers at [1, 3], got {borrower_indices}"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Integration test
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_integration_forward_and_backward() -> None:
     """Full integration: n_layers=4 tiny config, B=2 T=8, shape + backward."""
@@ -296,9 +305,7 @@ def test_integration_forward_and_backward() -> None:
     # --- Forward ---
     out = stack(x)
 
-    assert out.shape == (2, 8, cfg.d_model), (
-        f"Integration: unexpected output shape {out.shape}"
-    )
+    assert out.shape == (2, 8, cfg.d_model), f"Integration: unexpected output shape {out.shape}"
     assert torch.isfinite(out).all(), "Integration: output contains non-finite values"
 
     # --- Backward ---

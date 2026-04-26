@@ -7,21 +7,41 @@ detection (SimHash), and instruction-following relevance into a composite score.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # Stopwords
 # ---------------------------------------------------------------------------
 
-STOPWORDS: Set[str] = {
-    "the", "a", "an", "is", "are", "was", "were", "be", "been",
-    "to", "of", "and", "in", "that", "for", "on", "with", "as",
-    "at", "by", "from", "this", "it", "its",
+STOPWORDS: set[str] = {
+    "the",
+    "a",
+    "an",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "to",
+    "of",
+    "and",
+    "in",
+    "that",
+    "for",
+    "on",
+    "with",
+    "as",
+    "at",
+    "by",
+    "from",
+    "this",
+    "it",
+    "its",
 }
 
 
@@ -29,14 +49,15 @@ STOPWORDS: Set[str] = {
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class QualitySignals:
-    perplexity: float           # model perplexity on the response
-    length_score: float         # score in [0,1] based on ideal length
-    novelty_score: float        # n-gram novelty vs reference corpus
-    dedup_score: float          # 1.0 = unique, 0.0 = duplicate
+    perplexity: float  # model perplexity on the response
+    length_score: float  # score in [0,1] based on ideal length
+    novelty_score: float  # n-gram novelty vs reference corpus
+    dedup_score: float  # 1.0 = unique, 0.0 = duplicate
     instruction_relevance: float  # heuristic: does response contain instruction keywords?
-    composite: float            # weighted combination
+    composite: float  # weighted combination
 
 
 @dataclass
@@ -45,12 +66,13 @@ class ScoredExample:
     instruction: str
     response: str
     signals: QualitySignals
-    rank: int = 0               # rank in dataset (lower = better quality)
+    rank: int = 0  # rank in dataset (lower = better quality)
 
 
 # ---------------------------------------------------------------------------
 # Length scoring
 # ---------------------------------------------------------------------------
+
 
 def compute_length_score(
     text: str,
@@ -88,7 +110,8 @@ def compute_length_score(
 # N-gram novelty
 # ---------------------------------------------------------------------------
 
-def _get_ngrams(text: str, n: int) -> Set[tuple]:
+
+def _get_ngrams(text: str, n: int) -> set[tuple]:
     words = text.lower().split()
     if len(words) < n:
         return set()
@@ -97,7 +120,7 @@ def _get_ngrams(text: str, n: int) -> Set[tuple]:
 
 def compute_ngram_novelty(
     text: str,
-    reference_texts: List[str],
+    reference_texts: list[str],
     n: int = 4,
 ) -> float:
     """Fraction of n-grams in text not appearing in any reference_text."""
@@ -105,7 +128,7 @@ def compute_ngram_novelty(
     if not text_ngrams:
         return 1.0  # no n-grams -> trivially novel
 
-    reference_ngrams: Set[tuple] = set()
+    reference_ngrams: set[tuple] = set()
     for ref in reference_texts:
         reference_ngrams.update(_get_ngrams(ref, n))
 
@@ -116,6 +139,7 @@ def compute_ngram_novelty(
 # ---------------------------------------------------------------------------
 # SimHash
 # ---------------------------------------------------------------------------
+
 
 def simhash(text: str, n_bits: int = 64) -> int:
     """
@@ -131,7 +155,7 @@ def simhash(text: str, n_bits: int = 64) -> int:
         return 0
 
     # Count word frequencies
-    freq: Dict[str, int] = {}
+    freq: dict[str, int] = {}
     for w in words:
         freq[w] = freq.get(w, 0) + 1
 
@@ -147,7 +171,7 @@ def simhash(text: str, n_bits: int = 64) -> int:
     fingerprint = 0
     for i in range(n_bits):
         if vector[i] > 0:
-            fingerprint |= (1 << i)
+            fingerprint |= 1 << i
     return fingerprint
 
 
@@ -163,20 +187,17 @@ def hamming_distance(a: int, b: int, n_bits: int = 64) -> int:
 
 def compute_dedup_score(
     text: str,
-    seen_hashes: Set[int],
+    seen_hashes: set[int],
     similarity_threshold: int = 3,
     n_bits: int = 64,
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """
     Returns (dedup_score, simhash_of_text).
     dedup_score=1.0 if unique, 0.0 if near-duplicate.
     Adds hash to seen_hashes in-place.
     """
     h = simhash(text, n_bits=n_bits)
-    is_duplicate = any(
-        hamming_distance(h, s, n_bits) <= similarity_threshold
-        for s in seen_hashes
-    )
+    is_duplicate = any(hamming_distance(h, s, n_bits) <= similarity_threshold for s in seen_hashes)
     seen_hashes.add(h)
     score = 0.0 if is_duplicate else 1.0
     return score, h
@@ -186,18 +207,19 @@ def compute_dedup_score(
 # Instruction relevance
 # ---------------------------------------------------------------------------
 
+
 def compute_instruction_relevance(instruction: str, response: str) -> float:
     """
     Heuristic: what fraction of instruction keywords appear in response?
     Uses simple word overlap after stopword removal.
     Returns float in [0, 1].
     """
-    def keywords(text: str) -> Set[str]:
+
+    def keywords(text: str) -> set[str]:
         return {
             w.lower().strip(".,!?;:\"'")
             for w in text.split()
-            if w.lower().strip(".,!?;:\"'") not in STOPWORDS
-            and w.strip(".,!?;:\"'")
+            if w.lower().strip(".,!?;:\"'") not in STOPWORDS and w.strip(".,!?;:\"'")
         }
 
     instr_kws = keywords(instruction)
@@ -213,13 +235,14 @@ def compute_instruction_relevance(instruction: str, response: str) -> float:
 # PerplexityScorer
 # ---------------------------------------------------------------------------
 
+
 class PerplexityScorer:
     """Compute language model perplexity on text for quality estimation."""
 
     def __init__(
         self,
         model: nn.Module,
-        encode_fn: Callable[[str], List[int]],
+        encode_fn: Callable[[str], list[int]],
         device: str = "cpu",
         max_seq_len: int = 512,
     ) -> None:
@@ -243,7 +266,7 @@ class PerplexityScorer:
 
         return float(math.exp(loss.item()))
 
-    def score_batch(self, texts: List[str]) -> List[float]:
+    def score_batch(self, texts: list[str]) -> list[float]:
         return [self.score(t) for t in texts]
 
 
@@ -271,20 +294,20 @@ def _perplexity_to_score(perplexity: float, scale: float = 100.0) -> float:
 class DatasetQualityScorer:
     def __init__(
         self,
-        perplexity_scorer: Optional[PerplexityScorer] = None,
-        weights: Optional[Dict[str, float]] = None,
-        reference_texts: Optional[List[str]] = None,
+        perplexity_scorer: PerplexityScorer | None = None,
+        weights: dict[str, float] | None = None,
+        reference_texts: list[str] | None = None,
     ) -> None:
         self.perplexity_scorer = perplexity_scorer
         self.weights = weights if weights is not None else dict(_DEFAULT_WEIGHTS)
         self.reference_texts = reference_texts or []
-        self._seen_hashes: Set[int] = set()
+        self._seen_hashes: set[int] = set()
 
     def score_example(
         self,
         instruction: str,
         response: str,
-        reference_texts: Optional[List[str]] = None,
+        reference_texts: list[str] | None = None,
     ) -> QualitySignals:
         text = (instruction + " " + response).strip()
         refs = reference_texts if reference_texts is not None else self.reference_texts
@@ -341,25 +364,27 @@ class DatasetQualityScorer:
 
     def score_dataset(
         self,
-        examples: List[Dict[str, str]],
-        reference_texts: Optional[List[str]] = None,
-    ) -> List[ScoredExample]:
+        examples: list[dict[str, str]],
+        reference_texts: list[str] | None = None,
+    ) -> list[ScoredExample]:
         """Score and rank all examples. Best quality = lowest rank."""
         # Reset dedup state for a fresh dataset scoring run
         self._seen_hashes = set()
 
-        scored: List[ScoredExample] = []
+        scored: list[ScoredExample] = []
         for ex in examples:
             instruction = ex.get("instruction", "")
             response = ex.get("response", "")
             signals = self.score_example(instruction, response, reference_texts)
             text = (instruction + " " + response).strip()
-            scored.append(ScoredExample(
-                text=text,
-                instruction=instruction,
-                response=response,
-                signals=signals,
-            ))
+            scored.append(
+                ScoredExample(
+                    text=text,
+                    instruction=instruction,
+                    response=response,
+                    signals=signals,
+                )
+            )
 
         # Sort: higher composite = better quality = lower rank number
         scored.sort(key=lambda s: s.signals.composite, reverse=True)
@@ -370,11 +395,11 @@ class DatasetQualityScorer:
 
     def filter_top_k(
         self,
-        scored: List[ScoredExample],
+        scored: list[ScoredExample],
         k: int,
         strategy: str = "top_k",
         threshold: float = 0.5,
-    ) -> List[ScoredExample]:
+    ) -> list[ScoredExample]:
         if strategy == "top_k":
             return scored[:k]
         elif strategy == "threshold":
@@ -383,15 +408,15 @@ class DatasetQualityScorer:
         else:
             raise ValueError(f"Unknown strategy: {strategy!r}")
 
-    def get_quality_report(self, scored: List[ScoredExample]) -> Dict[str, float]:
+    def get_quality_report(self, scored: list[ScoredExample]) -> dict[str, float]:
         """Return aggregate stats: mean/std of each signal, fraction passing threshold."""
         if not scored:
             return {}
 
-        def _mean(vals: List[float]) -> float:
+        def _mean(vals: list[float]) -> float:
             return sum(vals) / len(vals)
 
-        def _std(vals: List[float]) -> float:
+        def _std(vals: list[float]) -> float:
             m = _mean(vals)
             variance = sum((v - m) ** 2 for v in vals) / len(vals)
             return math.sqrt(variance)
@@ -405,14 +430,14 @@ class DatasetQualityScorer:
             ("composite", [s.signals.composite for s in scored]),
         ]
 
-        report: Dict[str, float] = {}
+        report: dict[str, float] = {}
         for name, vals in signal_fields:
             report[f"{name}_mean"] = _mean(vals)
             report[f"{name}_std"] = _std(vals)
 
         # Fraction with composite >= 0.5
-        report["fraction_passing"] = sum(
-            1 for s in scored if s.signals.composite >= 0.5
-        ) / len(scored)
+        report["fraction_passing"] = sum(1 for s in scored if s.signals.composite >= 0.5) / len(
+            scored
+        )
 
         return report

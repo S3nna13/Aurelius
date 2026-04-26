@@ -2,27 +2,24 @@
 
 from __future__ import annotations
 
-import copy
-
 import pytest
 import torch
 import torch.nn as nn
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer, TransformerBlock
 from src.model.surgery import (
     ScalingResult,
-    clone_model_with_depth,
     insert_layer,
     remove_layer,
     scale_model_depth,
     swap_ffn,
 )
-
+from src.model.transformer import AureliusTransformer, TransformerBlock
 
 # ---------------------------------------------------------------------------
 # Fixture: tiny model for fast tests
 # ---------------------------------------------------------------------------
+
 
 def make_tiny_config() -> AureliusConfig:
     """Return a tiny config that satisfies all AureliusConfig assertions."""
@@ -31,7 +28,7 @@ def make_tiny_config() -> AureliusConfig:
         n_layers=4,
         n_heads=2,
         n_kv_heads=1,
-        head_dim=32,       # 2 * 32 == 64 ✓
+        head_dim=32,  # 2 * 32 == 64 ✓
         d_ff=128,
         vocab_size=256,
         max_seq_len=128,
@@ -52,6 +49,7 @@ def input_ids() -> torch.Tensor:
 # insert_layer tests
 # ---------------------------------------------------------------------------
 
+
 def test_insert_layer_increases_count(tiny_model):
     """n_layers should increase by 1 after insert."""
     original_count = tiny_model.config.n_layers
@@ -68,9 +66,7 @@ def test_insert_layer_copy_init(tiny_model):
     assert isinstance(inserted, TransformerBlock)
     # Check same parameter shapes
     orig_layer = tiny_model.layers[2]  # original layer 1 is now at index 2
-    for (n1, p1), (n2, p2) in zip(
-        inserted.named_parameters(), orig_layer.named_parameters()
-    ):
+    for (n1, p1), (n2, p2) in zip(inserted.named_parameters(), orig_layer.named_parameters()):
         assert p1.shape == p2.shape, f"Shape mismatch for {n1} vs {n2}"
 
 
@@ -105,6 +101,7 @@ def test_insert_layer_at_end(tiny_model):
 # remove_layer tests
 # ---------------------------------------------------------------------------
 
+
 def test_remove_layer_decreases_count(tiny_model):
     """n_layers should decrease by 1 after remove."""
     original_count = tiny_model.config.n_layers
@@ -123,6 +120,7 @@ def test_remove_layer_returns_module(tiny_model):
 # ---------------------------------------------------------------------------
 # swap_ffn tests
 # ---------------------------------------------------------------------------
+
 
 def test_swap_ffn_returns_old(tiny_model):
     """swap_ffn should return the old FFN module."""
@@ -156,6 +154,7 @@ def test_swap_ffn_model_uses_new(tiny_model, input_ids):
 # ---------------------------------------------------------------------------
 # scale_model_depth tests
 # ---------------------------------------------------------------------------
+
 
 def test_scale_model_depth_grow(tiny_model):
     """Growing: target > current → n_layers increases."""
@@ -196,6 +195,7 @@ def test_scale_result_fields(tiny_model):
 # ---------------------------------------------------------------------------
 # End-to-end: model still runs after surgery
 # ---------------------------------------------------------------------------
+
 
 def test_model_still_runs_after_surgery(tiny_model, input_ids):
     """Model forward pass should work correctly after insert + remove."""

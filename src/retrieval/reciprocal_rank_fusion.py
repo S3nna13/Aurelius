@@ -52,8 +52,8 @@ Stdlib only. No numpy, no torch.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Iterable
 
 __all__ = [
     "RankedDoc",
@@ -75,6 +75,7 @@ class RankedDoc:
     score: float
     source: str
 
+
 Ranking = list[tuple[str, float]]
 
 
@@ -92,9 +93,7 @@ def _validate_rankings(rankings: list[Ranking]) -> None:
     wins?) so we refuse to guess.
     """
     if not isinstance(rankings, list):
-        raise TypeError(
-            f"rankings must be a list of ranked lists, got {type(rankings).__name__}"
-        )
+        raise TypeError(f"rankings must be a list of ranked lists, got {type(rankings).__name__}")
     for i, ranking in enumerate(rankings):
         if not isinstance(ranking, list):
             raise TypeError(
@@ -103,14 +102,8 @@ def _validate_rankings(rankings: list[Ranking]) -> None:
             )
         seen: set[str] = set()
         for j, entry in enumerate(ranking):
-            if (
-                not isinstance(entry, tuple)
-                or len(entry) != 2
-                or not isinstance(entry[0], str)
-            ):
-                raise TypeError(
-                    f"rankings[{i}][{j}] must be a (str, float) tuple, got {entry!r}"
-                )
+            if not isinstance(entry, tuple) or len(entry) != 2 or not isinstance(entry[0], str):
+                raise TypeError(f"rankings[{i}][{j}] must be a (str, float) tuple, got {entry!r}")
             doc_id = entry[0]
             if doc_id in seen:
                 raise ValueError(
@@ -198,14 +191,11 @@ def reciprocal_rank_fusion(
     if weights is not None:
         if len(weights) != len(rankings):
             raise ValueError(
-                f"weights length {len(weights)} does not match rankings length "
-                f"{len(rankings)}"
+                f"weights length {len(weights)} does not match rankings length {len(rankings)}"
             )
         for i, w in enumerate(weights):
             if not isinstance(w, (int, float)) or isinstance(w, bool) or w < 0:
-                raise ValueError(
-                    f"weights[{i}] must be a non-negative number, got {w!r}"
-                )
+                raise ValueError(f"weights[{i}] must be a non-negative number, got {w!r}")
 
     fused: dict[str, float] = {}
     for list_idx, ranking in enumerate(rankings):
@@ -253,17 +243,13 @@ def borda_count(
 # ---------------------------------------------------------------------------
 
 
-def _normalize_per_list(
-    rankings: list[Ranking], normalize: str
-) -> list[dict[str, float]]:
+def _normalize_per_list(rankings: list[Ranking], normalize: str) -> list[dict[str, float]]:
     """Apply per-list normalization and return list of ``{doc_id: score}``."""
     if normalize == "minmax":
         return [_minmax_normalize(r) for r in rankings]
     if normalize == "none":
         return [_raw_scores(r) for r in rankings]
-    raise ValueError(
-        f"unknown normalize={normalize!r}; expected 'minmax' or 'none'"
-    )
+    raise ValueError(f"unknown normalize={normalize!r}; expected 'minmax' or 'none'")
 
 
 def comb_sum(
@@ -340,7 +326,5 @@ def fuse(method: str, rankings: list[Ranking], **kwargs) -> Ranking:
         impl = FUSION_REGISTRY[method]
     except KeyError:
         valid = ", ".join(sorted(FUSION_REGISTRY))
-        raise ValueError(
-            f"unknown fusion method {method!r}; expected one of: {valid}"
-        ) from None
+        raise ValueError(f"unknown fusion method {method!r}; expected one of: {valid}") from None
     return impl(rankings, **kwargs)

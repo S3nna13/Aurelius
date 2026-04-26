@@ -57,8 +57,7 @@ class ToolCallSupervisionLoss(nn.Module):
         n = int(active.sum().item())
         if n == 0:
             raise RuntimeError(
-                "tool_call_supervision_loss: zero active positions — "
-                "refusing silent zero loss"
+                "tool_call_supervision_loss: zero active positions — refusing silent zero loss"
             )
 
         flat_logits = logits.reshape(-1, logits.size(-1))

@@ -8,13 +8,10 @@ from src.inference.code_execution import (
     CodeGenerationEvaluator,
     CodeInterpreterSession,
     ExecutionConfig,
-    ExecutionResult,
     execute_python,
     extract_code_blocks,
-    format_code_result,
     sanitize_code,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. ExecutionConfig defaults
@@ -50,11 +47,7 @@ def test_extract_code_blocks_markdown():
 
 
 def test_extract_code_blocks_multiple():
-    text = (
-        "```python\nx = 1\n```\n"
-        "Some text\n"
-        "```python\ny = 2\n```"
-    )
+    text = "```python\nx = 1\n```\nSome text\n```python\ny = 2\n```"
     blocks = extract_code_blocks(text)
     assert len(blocks) == 2
     assert any("x = 1" in b for b in blocks)

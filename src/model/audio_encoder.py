@@ -21,28 +21,29 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MelConfig:
     """Configuration for mel spectrogram extraction."""
 
-    sample_rate: int = 16000    # audio sample rate in Hz
-    n_fft: int = 400            # FFT window size
-    hop_length: int = 160       # samples between consecutive STFT windows
-    n_mels: int = 128           # number of mel filterbank bins (Whisper v3 uses 128)
-    fmin: float = 0.0           # minimum mel frequency in Hz
-    fmax: float = 8000.0        # maximum mel frequency in Hz
-    max_frames: int = 3000      # maximum number of time frames (30s at 10ms hop)
-    normalize: bool = True      # normalize log-mel values to [-1, 1]
+    sample_rate: int = 16000  # audio sample rate in Hz
+    n_fft: int = 400  # FFT window size
+    hop_length: int = 160  # samples between consecutive STFT windows
+    n_mels: int = 128  # number of mel filterbank bins (Whisper v3 uses 128)
+    fmin: float = 0.0  # minimum mel frequency in Hz
+    fmax: float = 8000.0  # maximum mel frequency in Hz
+    max_frames: int = 3000  # maximum number of time frames (30s at 10ms hop)
+    normalize: bool = True  # normalize log-mel values to [-1, 1]
 
 
 # ---------------------------------------------------------------------------
 # Hz <-> Mel conversion (HTK formula)
 # ---------------------------------------------------------------------------
+
 
 def hz_to_mel(hz: float | Tensor) -> float | Tensor:
     """Convert frequency in Hz to mel scale using HTK formula.
@@ -80,6 +81,7 @@ def mel_to_hz(mel: float | Tensor) -> float | Tensor:
 # Mel filterbank construction
 # ---------------------------------------------------------------------------
 
+
 def build_mel_filterbank(cfg: MelConfig) -> Tensor:
     """Build a triangular mel filterbank matrix.
 
@@ -109,9 +111,9 @@ def build_mel_filterbank(cfg: MelConfig) -> Tensor:
     # Build filterbank: (n_mels, n_freqs)
     filterbank = torch.zeros(cfg.n_mels, n_freqs, dtype=torch.float32)
     for m in range(cfg.n_mels):
-        f_left = bin_points[m]      # left edge (frequency bin index)
+        f_left = bin_points[m]  # left edge (frequency bin index)
         f_center = bin_points[m + 1]  # center
-        f_right = bin_points[m + 2]   # right edge
+        f_right = bin_points[m + 2]  # right edge
 
         # Rising slope: left edge -> center (peak = 1.0)
         if f_center > f_left:
@@ -157,18 +159,18 @@ def _build_mel_filterbank_vectorized(cfg: MelConfig) -> Tensor:
 
     # Build filterbank using broadcasting
     # Lower and upper slopes for each mel band
-    lower = hz_pts[:-2]   # (n_mels,) — left edge
+    lower = hz_pts[:-2]  # (n_mels,) — left edge
     center = hz_pts[1:-1]  # (n_mels,) — center / peak
-    upper = hz_pts[2:]     # (n_mels,) — right edge
+    upper = hz_pts[2:]  # (n_mels,) — right edge
 
     # fft_freqs: (n_freqs,), lower/center/upper: (n_mels,)
     # Broadcast to (n_mels, n_freqs)
-    f = fft_freqs.unsqueeze(0)           # (1, n_freqs)
-    lo = lower.unsqueeze(1)              # (n_mels, 1)
-    ce = center.unsqueeze(1)             # (n_mels, 1)
-    up = upper.unsqueeze(1)              # (n_mels, 1)
+    f = fft_freqs.unsqueeze(0)  # (1, n_freqs)
+    lo = lower.unsqueeze(1)  # (n_mels, 1)
+    ce = center.unsqueeze(1)  # (n_mels, 1)
+    up = upper.unsqueeze(1)  # (n_mels, 1)
 
-    rising  = (f - lo) / (ce - lo + 1e-10)
+    rising = (f - lo) / (ce - lo + 1e-10)
     falling = (up - f) / (up - ce + 1e-10)
 
     filterbank = torch.clamp(torch.minimum(rising, falling), min=0.0)
@@ -177,7 +179,7 @@ def _build_mel_filterbank_vectorized(cfg: MelConfig) -> Tensor:
     row_maxes = filterbank.max(dim=1, keepdim=True).values  # (n_mels, 1)
 
     # For degenerate rows (all-zero when lower == center), place a unit spike at center bin
-    degenerate = (row_maxes.squeeze(1) == 0)  # (n_mels,)
+    degenerate = row_maxes.squeeze(1) == 0  # (n_mels,)
     if degenerate.any():
         # Find the FFT bin closest to each degenerate filter's center frequency
         center_hz = center[degenerate]  # frequencies in Hz for degenerate filters
@@ -199,6 +201,7 @@ def _build_mel_filterbank_vectorized(cfg: MelConfig) -> Tensor:
 # Hann window
 # ---------------------------------------------------------------------------
 
+
 def build_hann_window(n_fft: int) -> Tensor:
     """Build a periodic Hann window of length n_fft.
 
@@ -214,6 +217,7 @@ def build_hann_window(n_fft: int) -> Tensor:
 # ---------------------------------------------------------------------------
 # STFT
 # ---------------------------------------------------------------------------
+
 
 def stft(waveform: Tensor, n_fft: int, hop_length: int, window: Tensor) -> Tensor:
     """Compute the magnitude spectrogram via Short-Time Fourier Transform.
@@ -267,6 +271,7 @@ def stft(waveform: Tensor, n_fft: int, hop_length: int, window: Tensor) -> Tenso
 # Full pipeline: waveform -> log-mel spectrogram
 # ---------------------------------------------------------------------------
 
+
 def waveform_to_log_mel(waveform: Tensor, cfg: MelConfig) -> Tensor:
     """Convert raw waveform to normalised log-mel spectrogram.
 
@@ -294,7 +299,7 @@ def waveform_to_log_mel(waveform: Tensor, cfg: MelConfig) -> Tensor:
     mag = stft(waveform, cfg.n_fft, cfg.hop_length, window)
 
     # Power spectrogram
-    power = mag ** 2  # (B, freq_bins, n_frames)
+    power = mag**2  # (B, freq_bins, n_frames)
 
     # Apply mel filterbank: (n_mels, freq_bins) @ (B, freq_bins, n_frames)
     # -> (B, n_mels, n_frames)
@@ -325,6 +330,7 @@ def waveform_to_log_mel(waveform: Tensor, cfg: MelConfig) -> Tensor:
 # MelSpectrogramExtractor (nn.Module with registered buffers)
 # ---------------------------------------------------------------------------
 
+
 class MelSpectrogramExtractor(nn.Module):
     """Differentiable mel spectrogram extraction as an nn.Module.
 
@@ -341,7 +347,7 @@ class MelSpectrogramExtractor(nn.Module):
         filterbank = _build_mel_filterbank_vectorized(cfg)
         window = build_hann_window(cfg.n_fft)
         self.register_buffer("filterbank", filterbank)  # (n_mels, n_fft//2+1)
-        self.register_buffer("window", window)           # (n_fft,)
+        self.register_buffer("window", window)  # (n_fft,)
 
     def forward(self, waveform: Tensor) -> Tensor:
         """Compute log-mel spectrogram.
@@ -377,7 +383,7 @@ class MelSpectrogramExtractor(nn.Module):
             specs.append(complex_spec.abs())
 
         mag = torch.stack(specs, dim=0)  # (B, n_fft//2+1, n_frames)
-        power = mag ** 2
+        power = mag**2
 
         # Mel filterbank application
         mel_spec = torch.einsum("mf,bft->bmt", self.filterbank, power)
@@ -401,6 +407,7 @@ class MelSpectrogramExtractor(nn.Module):
 # ---------------------------------------------------------------------------
 # WhisperStyleEncoder
 # ---------------------------------------------------------------------------
+
 
 class WhisperStyleEncoder(nn.Module):
     """Whisper-inspired audio encoder: waveform -> dense sequence embeddings.
@@ -469,14 +476,14 @@ class WhisperStyleEncoder(nn.Module):
             mel = mel.unsqueeze(0)  # handle single-sample case
 
         # Convolutional feature extraction
-        x = self.act(self.conv1(mel))    # (B, d_model, T_frames)
-        x = self.act(self.conv2(x))      # (B, d_model, T_frames//2)
+        x = self.act(self.conv1(mel))  # (B, d_model, T_frames)
+        x = self.act(self.conv2(x))  # (B, d_model, T_frames//2)
 
         # Transpose for sequence-first format
-        x = x.transpose(1, 2)           # (B, T_frames//2, d_model)
+        x = x.transpose(1, 2)  # (B, T_frames//2, d_model)
 
         # Project to output_dim
-        x = self.proj(x)                 # (B, T_frames//2, output_dim)
+        x = self.proj(x)  # (B, T_frames//2, output_dim)
 
         return x
 

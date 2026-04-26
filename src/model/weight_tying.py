@@ -12,19 +12,18 @@ Utilities provided:
 - LanguageModelWithTying: minimal demonstration model
 - count_unique_parameters / count_parameter_bytes: accounting helpers
 """
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Primitive: tie two existing modules
 # ---------------------------------------------------------------------------
+
 
 def tie_embedding_weights(embedding: nn.Embedding, linear: nn.Linear) -> None:
     """Make *linear* share its weight tensor with *embedding*.
@@ -45,6 +44,7 @@ def tie_embedding_weights(embedding: nn.Embedding, linear: nn.Linear) -> None:
 # TiedEmbedding: single parameter for embed + project
 # ---------------------------------------------------------------------------
 
+
 class TiedEmbedding(nn.Module):
     """Embedding + LM-head projection sharing a single weight matrix.
 
@@ -56,7 +56,7 @@ class TiedEmbedding(nn.Module):
     def __init__(self, vocab_size: int, d_model: int) -> None:
         super().__init__()
         self._weight = nn.Parameter(torch.empty(vocab_size, d_model))
-        nn.init.normal_(self._weight, std=d_model ** -0.5)
+        nn.init.normal_(self._weight, std=d_model**-0.5)
 
     @property
     def weight(self) -> nn.Parameter:
@@ -97,6 +97,7 @@ class TiedEmbedding(nn.Module):
 # Copy-based weight sharing (not true tying)
 # ---------------------------------------------------------------------------
 
+
 def copy_shared_weights(source: nn.Module, target: nn.Module) -> None:
     """Copy parameter values from *source* to *target* (not tied).
 
@@ -112,7 +113,7 @@ def copy_shared_weights(source: nn.Module, target: nn.Module) -> None:
 
 
 def cross_layer_weight_sharing(
-    layers: List[nn.Module],
+    layers: list[nn.Module],
     share_every_n: int = 2,
 ) -> None:
     """Copy weights from representative layers into subsequent layers.
@@ -143,6 +144,7 @@ def cross_layer_weight_sharing(
 # ---------------------------------------------------------------------------
 # SharedLinear: linear layer that borrows its weight from outside
 # ---------------------------------------------------------------------------
+
 
 class SharedLinear(nn.Module):
     """Linear layer whose weight is supplied externally (not owned here).
@@ -177,6 +179,7 @@ class SharedLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # Parameter accounting helpers
 # ---------------------------------------------------------------------------
+
 
 def count_unique_parameters(model: nn.Module) -> int:
     """Count parameters by storage identity to avoid double-counting tied weights.
@@ -221,6 +224,7 @@ def count_parameter_bytes(model: nn.Module, deduplicate: bool = True) -> int:
 # Demonstration model
 # ---------------------------------------------------------------------------
 
+
 class LanguageModelWithTying(nn.Module):
     """Minimal language model demonstrating input/output weight tying.
 
@@ -250,8 +254,8 @@ class LanguageModelWithTying(nn.Module):
         # (B, T, d_model)
         x = self.tied.embed(token_ids)
         # Simple mean pooling over sequence dimension, broadcast back
-        pooled = x.mean(dim=1, keepdim=True)          # (B, 1, d_model)
-        pooled = pooled.expand_as(x)                  # (B, T, d_model)
+        pooled = x.mean(dim=1, keepdim=True)  # (B, 1, d_model)
+        pooled = pooled.expand_as(x)  # (B, T, d_model)
         # (B, T, vocab_size)
         logits = self.tied.project(pooled)
         return logits

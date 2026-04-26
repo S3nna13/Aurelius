@@ -5,8 +5,8 @@ from __future__ import annotations
 import random
 import string
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -45,8 +45,7 @@ class BehavioralTest(ABC):
     name: str = "behavioral_test"
 
     @abstractmethod
-    def generate_cases(self) -> list[TestCase]:
-        ...
+    def generate_cases(self) -> list[TestCase]: ...
 
     def evaluate(
         self,

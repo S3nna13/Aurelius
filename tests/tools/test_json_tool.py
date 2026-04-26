@@ -1,5 +1,6 @@
 import pytest
-from src.tools.json_tool import JSONTool, JSONToolConfig, JSON_TOOL_REGISTRY
+
+from src.tools.json_tool import JSON_TOOL_REGISTRY, JSONTool, JSONToolConfig
 
 
 def test_validate_valid():

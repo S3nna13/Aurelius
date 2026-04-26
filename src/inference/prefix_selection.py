@@ -28,4 +28,3 @@ def prefix_match_mask(candidate: torch.Tensor, reference: torch.Tensor) -> torch
     mask = torch.zeros_like(candidate, dtype=torch.bool)
     mask[:prefix_len] = True
     return mask
-

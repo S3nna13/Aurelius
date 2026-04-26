@@ -54,9 +54,7 @@ class WorkingMemory:
             # Evict oldest slot
             oldest_key = min(self._slots, key=lambda k: self._slots[k].created_at)
             del self._slots[oldest_key]
-        self._slots[key] = WorkingMemorySlot(
-            key=key, value=value, ttl_seconds=ttl_seconds
-        )
+        self._slots[key] = WorkingMemorySlot(key=key, value=value, ttl_seconds=ttl_seconds)
 
     def get(self, key: str) -> object | None:
         """Return value for *key* if not expired, else evict and return None."""

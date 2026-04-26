@@ -1,15 +1,16 @@
 """Tests for Socratic self-evaluation module."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.eval.socratic_eval import (
-    SocraticConfig,
-    CritiqueResult,
-    SocraticEvaluator,
     CRITIQUE_QUESTIONS,
     QUESTION_POLARITIES,
+    CritiqueResult,
+    SocraticConfig,
+    SocraticEvaluator,
     compute_critique_score,
     critique_response,
     greedy_decode,
@@ -24,13 +25,24 @@ from src.model.transformer import AureliusTransformer
 # ---------------------------------------------------------------------------
 
 TINY_CFG = AureliusConfig(
-    n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-    head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+    n_layers=2,
+    d_model=64,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
 )
 
+
 # Byte-level tokenizer (truncate to 256 to stay within vocab)
-encode = lambda s: list(s.encode("utf-8")[:256])
-decode = lambda ids: bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
+def encode(s):
+    return list(s.encode("utf-8")[:256])
+
+
+def decode(ids):
+    return bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
 
 
 @pytest.fixture(scope="module")
@@ -66,6 +78,7 @@ def evaluator(tiny_model, fast_cfg):
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SocraticConfig()
     assert cfg.n_critique_questions == 5
@@ -76,6 +89,7 @@ def test_config_defaults():
 # 2. test_critique_questions_count
 # ---------------------------------------------------------------------------
 
+
 def test_critique_questions_count():
     assert len(CRITIQUE_QUESTIONS) == 5
 
@@ -84,6 +98,7 @@ def test_critique_questions_count():
 # 3. test_question_polarities_count
 # ---------------------------------------------------------------------------
 
+
 def test_question_polarities_count():
     assert len(QUESTION_POLARITIES) == 5
 
@@ -91,6 +106,7 @@ def test_question_polarities_count():
 # ---------------------------------------------------------------------------
 # 4. test_compute_critique_score_positive
 # ---------------------------------------------------------------------------
+
 
 def test_compute_critique_score_positive():
     score = compute_critique_score(yes_prob=0.8, no_prob=0.2, positive_question=True)
@@ -102,6 +118,7 @@ def test_compute_critique_score_positive():
 # 5. test_compute_critique_score_negative
 # ---------------------------------------------------------------------------
 
+
 def test_compute_critique_score_negative():
     score = compute_critique_score(yes_prob=0.2, no_prob=0.8, positive_question=False)
     assert score > 0.5, f"Expected high score, got {score}"
@@ -112,17 +129,21 @@ def test_compute_critique_score_negative():
 # 6. test_compute_critique_score_range
 # ---------------------------------------------------------------------------
 
+
 def test_compute_critique_score_range():
     for yes_p in [0.0, 0.1, 0.5, 0.9, 1.0]:
         for no_p in [0.0, 0.1, 0.5, 0.9, 1.0]:
             for polarity in [True, False]:
                 s = compute_critique_score(yes_p, no_p, polarity)
-                assert 0.0 <= s <= 1.0, f"score {s} out of range for y={yes_p} n={no_p} p={polarity}"
+                assert 0.0 <= s <= 1.0, (
+                    f"score {s} out of range for y={yes_p} n={no_p} p={polarity}"
+                )
 
 
 # ---------------------------------------------------------------------------
 # 7. test_score_from_logits_probs_valid
 # ---------------------------------------------------------------------------
+
 
 def test_score_from_logits_probs_valid(tiny_model):
     p_yes, p_no = score_from_logits(
@@ -136,6 +157,7 @@ def test_score_from_logits_probs_valid(tiny_model):
 # 8. test_greedy_decode_shape
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decode_shape(tiny_model):
     input_ids = torch.tensor([[72, 101, 108, 108, 111]], dtype=torch.long)  # "Hello"
     max_new = 3
@@ -147,16 +169,19 @@ def test_greedy_decode_shape(tiny_model):
 # 9. test_greedy_decode_vocab_range
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_decode_vocab_range(tiny_model):
     input_ids = torch.tensor([[72, 101, 108, 108, 111]], dtype=torch.long)
     generated = greedy_decode(tiny_model, input_ids, max_new_tokens=5)
-    assert all(0 <= t.item() < TINY_CFG.vocab_size for t in generated), \
+    assert all(0 <= t.item() < TINY_CFG.vocab_size for t in generated), (
         f"Token out of vocab range: {generated.tolist()}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. test_critique_response_fields
 # ---------------------------------------------------------------------------
+
 
 def test_critique_response_fields(tiny_model, fast_cfg):
     result = critique_response(
@@ -181,6 +206,7 @@ def test_critique_response_fields(tiny_model, fast_cfg):
 # 11. test_critique_response_score_range
 # ---------------------------------------------------------------------------
 
+
 def test_critique_response_score_range(tiny_model, fast_cfg):
     result = critique_response(
         model=tiny_model,
@@ -199,6 +225,7 @@ def test_critique_response_score_range(tiny_model, fast_cfg):
 # 12. test_socratic_evaluate_keys
 # ---------------------------------------------------------------------------
 
+
 def test_socratic_evaluate_keys(tiny_model, fast_cfg):
     out = socratic_evaluate(
         model=tiny_model,
@@ -209,17 +236,20 @@ def test_socratic_evaluate_keys(tiny_model, fast_cfg):
         cfg=fast_cfg,
     )
     required_keys = {
-        "overall_score", "critique_results",
-        "consistency_score", "directness_score",
-        "error_score", "clarity_score",
+        "overall_score",
+        "critique_results",
+        "consistency_score",
+        "directness_score",
+        "error_score",
+        "clarity_score",
     }
-    assert required_keys.issubset(out.keys()), \
-        f"Missing keys: {required_keys - set(out.keys())}"
+    assert required_keys.issubset(out.keys()), f"Missing keys: {required_keys - set(out.keys())}"
 
 
 # ---------------------------------------------------------------------------
 # 13. test_socratic_evaluate_score_range
 # ---------------------------------------------------------------------------
+
 
 def test_socratic_evaluate_score_range(tiny_model, fast_cfg):
     out = socratic_evaluate(
@@ -230,13 +260,13 @@ def test_socratic_evaluate_score_range(tiny_model, fast_cfg):
         response="Gravity is a fundamental force.",
         cfg=fast_cfg,
     )
-    assert 0.0 <= out["overall_score"] <= 1.0, \
-        f"overall_score {out['overall_score']} out of [0, 1]"
+    assert 0.0 <= out["overall_score"] <= 1.0, f"overall_score {out['overall_score']} out of [0, 1]"
 
 
 # ---------------------------------------------------------------------------
 # 14. test_evaluator_batch_keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_batch_keys(evaluator):
     qa_pairs = [
@@ -245,14 +275,16 @@ def test_evaluator_batch_keys(evaluator):
     ]
     result = evaluator.evaluate_batch(qa_pairs)
     required_keys = {"mean_overall_score", "mean_consistency", "mean_clarity", "n_evaluated"}
-    assert required_keys.issubset(result.keys()), \
+    assert required_keys.issubset(result.keys()), (
         f"Missing keys: {required_keys - set(result.keys())}"
+    )
     assert len(result) == 4
 
 
 # ---------------------------------------------------------------------------
 # 15. test_evaluator_rank_responses
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_rank_responses(evaluator):
     question = "What is the capital of France?"
@@ -263,8 +295,9 @@ def test_evaluator_rank_responses(evaluator):
     ]
     ranked = evaluator.rank_responses(question, responses)
     assert len(ranked) == len(responses), f"Expected {len(responses)} indices, got {len(ranked)}"
-    assert set(ranked) == set(range(len(responses))), \
+    assert set(ranked) == set(range(len(responses))), (
         f"Indices should cover {{0, 1, 2}}, got {ranked}"
+    )
     # All indices in valid range
     for idx in ranked:
         assert 0 <= idx < len(responses), f"Index {idx} out of range"

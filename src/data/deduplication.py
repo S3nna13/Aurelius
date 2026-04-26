@@ -1,14 +1,14 @@
-"""Text deduplication via MinHash LSH: shingling, banding, Jaccard estimation, and streaming pipeline."""
+"""Text deduplication via MinHash LSH: shingling, banding, Jaccard estimation, and streaming pipeline."""  # noqa: E501
 
 from __future__ import annotations
 
 import hashlib
 import sys
 
-
 # ---------------------------------------------------------------------------
 # Shingling
 # ---------------------------------------------------------------------------
+
 
 def shingle(text: str, k: int = 5) -> set[str]:
     """Extract k-character shingles from text.
@@ -53,6 +53,7 @@ def minhash_signature(shingles: set[str], n_hashes: int = 128, seed: int = 42) -
 # Jaccard Estimation
 # ---------------------------------------------------------------------------
 
+
 def estimate_jaccard(sig1: list[int], sig2: list[int]) -> float:
     """Estimate Jaccard similarity as fraction of positions where sig1[i] == sig2[i].
 
@@ -67,6 +68,7 @@ def estimate_jaccard(sig1: list[int], sig2: list[int]) -> float:
 # ---------------------------------------------------------------------------
 # LSH Index
 # ---------------------------------------------------------------------------
+
 
 class LSHIndex:
     """Locality-Sensitive Hashing index using banding technique."""
@@ -115,6 +117,7 @@ class LSHIndex:
 # is_duplicate
 # ---------------------------------------------------------------------------
 
+
 def is_duplicate(sig1: list[int], sig2: list[int], threshold: float) -> bool:
     """Return True if estimate_jaccard(sig1, sig2) >= threshold."""
     return estimate_jaccard(sig1, sig2) >= threshold
@@ -123,6 +126,7 @@ def is_duplicate(sig1: list[int], sig2: list[int], threshold: float) -> bool:
 # ---------------------------------------------------------------------------
 # StreamingDeduplicator
 # ---------------------------------------------------------------------------
+
 
 class StreamingDeduplicator:
     """Streaming deduplication pipeline using MinHash LSH."""

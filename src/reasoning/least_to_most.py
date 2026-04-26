@@ -1,9 +1,10 @@
 """Least-to-Most Prompting: Zhou et al. 2022 'Least-to-Most Prompting Enables Complex Reasoning'."""
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -38,12 +39,12 @@ class LeastToMost:
             line = line.strip()
             if not line:
                 continue
-            if re.match(r'^\d+[.)]\s+', line):
-                text = re.sub(r'^\d+[.)]\s+', '', line).strip()
+            if re.match(r"^\d+[.)]\s+", line):
+                text = re.sub(r"^\d+[.)]\s+", "", line).strip()
                 if text:
                     subproblems.append(text)
-            elif re.match(r'^[-•]\s+', line):
-                text = re.sub(r'^[-•]\s+', '', line).strip()
+            elif re.match(r"^[-•]\s+", line):
+                text = re.sub(r"^[-•]\s+", "", line).strip()
                 if text:
                     subproblems.append(text)
         return subproblems[: self.config.max_subproblems]

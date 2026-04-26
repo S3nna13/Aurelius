@@ -4,10 +4,10 @@ Verifies that the class is correctly wired into MODEL_COMPONENT_REGISTRY
 via src/model/__init__.py, and that basic forward / freeze-indexer paths
 work end-to-end.
 """
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -15,6 +15,7 @@ import pytest
 # ---------------------------------------------------------------------------
 def test_dsa_attention_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
+
     assert "dsa_attention" in MODEL_COMPONENT_REGISTRY, (
         "MODEL_COMPONENT_REGISTRY missing 'dsa_attention' key"
     )
@@ -66,6 +67,7 @@ def test_registry_freeze_indexer_path():
 def test_existing_registry_key_regression():
     """Ensure adding dsa_attention did not remove any pre-existing registry keys."""
     from src.model import MODEL_COMPONENT_REGISTRY
+
     # The registry was introduced alongside dsa_attention; at minimum it must
     # contain "dsa_attention" (tested above). Any future keys added by sibling
     # cycles will remain. This test guards that the dict itself is intact.

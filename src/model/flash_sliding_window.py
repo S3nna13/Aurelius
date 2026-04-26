@@ -15,17 +15,16 @@ This is intentionally distinct from:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SlidingWindowConfig:
@@ -51,6 +50,7 @@ class SlidingWindowConfig:
 # ---------------------------------------------------------------------------
 # Mask construction
 # ---------------------------------------------------------------------------
+
 
 def build_sliding_window_mask(
     seq_len: int,
@@ -86,7 +86,8 @@ def build_sliding_window_mask(
 # Online softmax
 # ---------------------------------------------------------------------------
 
-def online_softmax(scores: Tensor, mask: Optional[Tensor] = None) -> Tensor:
+
+def online_softmax(scores: Tensor, mask: Tensor | None = None) -> Tensor:
     """Numerically stable softmax using the online (subtract-max) trick.
 
     Args:
@@ -112,6 +113,7 @@ def online_softmax(scores: Tensor, mask: Optional[Tensor] = None) -> Tensor:
 # ---------------------------------------------------------------------------
 # Tiled attention with sliding window mask
 # ---------------------------------------------------------------------------
+
 
 def tiled_attention(
     q: Tensor,
@@ -157,24 +159,22 @@ def tiled_attention(
             k_end = min(k_start + block_size, T)
             k_block = k[:, :, k_start:k_end, :]  # (B, H, Tk, D)
             v_block = v[:, :, k_start:k_end, :]  # (B, H, Tk, D)
-            Tk = k_end - k_start
+            k_end - k_start
 
             # Scores for this tile: (B, H, Tq, Tk)
             scores = scale * torch.matmul(q_block, k_block.transpose(-2, -1))
 
             # Extract the sub-mask for this (q_block, k_block) tile: (Tq, Tk)
             tile_mask = mask[q_start:q_end, k_start:k_end]  # (Tq, Tk)
-            scores = scores.masked_fill(
-                ~tile_mask.unsqueeze(0).unsqueeze(0), -1e9
-            )
+            scores = scores.masked_fill(~tile_mask.unsqueeze(0).unsqueeze(0), -1e9)
 
             # Online normalisation update
             tile_max = scores.max(dim=-1, keepdim=True).values  # (B, H, Tq, 1)
             new_max = torch.maximum(running_max, tile_max)
 
             # Rescale old accumulator and add new tile
-            exp_tile = torch.exp(scores - new_max)             # (B, H, Tq, Tk)
-            rescale = torch.exp(running_max - new_max)         # (B, H, Tq, 1)
+            exp_tile = torch.exp(scores - new_max)  # (B, H, Tq, Tk)
+            rescale = torch.exp(running_max - new_max)  # (B, H, Tq, 1)
 
             running_out = rescale * running_out + torch.matmul(exp_tile, v_block)
             running_sum = rescale * running_sum + exp_tile.sum(dim=-1, keepdim=True)
@@ -189,6 +189,7 @@ def tiled_attention(
 # ---------------------------------------------------------------------------
 # SlidingWindowAttention module
 # ---------------------------------------------------------------------------
+
 
 class SlidingWindowAttention(nn.Module):
     """Multi-head sliding window attention computed with online softmax tiling.
@@ -217,7 +218,7 @@ class SlidingWindowAttention(nn.Module):
         self.v_proj = nn.Linear(d_model, d_model, bias=False)
         self.out_proj = nn.Linear(d_model, d_model, bias=False)
 
-    def forward(self, x: Tensor, mask: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         """Run sliding-window attention over ``x``.
 
         Args:
@@ -255,6 +256,7 @@ class SlidingWindowAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # GlobalLocalAttention module
 # ---------------------------------------------------------------------------
+
 
 class GlobalLocalAttention(nn.Module):
     """Attention that gives leading tokens global reach and the rest local reach.
@@ -310,9 +312,9 @@ class GlobalLocalAttention(nn.Module):
         else:
             # For causal, rows >= g can attend to global tokens that are in the past
             i = torch.arange(seq_len, device=device).unsqueeze(1)  # (T, 1)
-            j = torch.arange(g, device=device).unsqueeze(0)        # (1, g)
+            j = torch.arange(g, device=device).unsqueeze(0)  # (1, g)
             # row i can attend to global token j if j <= i (causal)
-            global_col_mask = (j <= i)                             # (T, g)
+            global_col_mask = j <= i  # (T, g)
             mask[:, :g] = mask[:, :g] | global_col_mask
 
         return mask
@@ -343,6 +345,7 @@ class GlobalLocalAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # FLOP estimation
 # ---------------------------------------------------------------------------
+
 
 def compute_attention_flops(
     seq_len: int,
@@ -381,11 +384,7 @@ def compute_attention_flops(
     # Sliding window: each query row attends to at most effective_window keys
     sliding_window_flops = 2 * n_heads * seq_len * effective_window * head_dim
 
-    speedup_ratio = (
-        full_attention_flops / sliding_window_flops
-        if sliding_window_flops > 0
-        else 1.0
-    )
+    speedup_ratio = full_attention_flops / sliding_window_flops if sliding_window_flops > 0 else 1.0
 
     return {
         "full_attention_flops": full_attention_flops,

@@ -5,26 +5,29 @@ states at a specific layer during generation to shift model behavior.
 
 Reference: Zou et al. 2023 "Representation Engineering" (arXiv:2310.01405)
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 
 
 @dataclass
 class SteeringConfig:
-    layer_idx: int = 15          # which layer to apply steering
-    alpha: float = 10.0          # steering intensity (multiplier)
-    normalize: bool = True       # normalize steering vector to unit norm
+    layer_idx: int = 15  # which layer to apply steering
+    alpha: float = 10.0  # steering intensity (multiplier)
+    normalize: bool = True  # normalize steering vector to unit norm
 
 
 @dataclass
 class SteeringVector:
     """A learned steering direction in activation space."""
-    direction: torch.Tensor    # (D,) unit-norm vector
+
+    direction: torch.Tensor  # (D,) unit-norm vector
     layer_idx: int
-    name: str = ""             # e.g. "helpfulness", "honesty"
+    name: str = ""  # e.g. "helpfulness", "honesty"
 
     @property
     def norm(self) -> float:
@@ -33,9 +36,9 @@ class SteeringVector:
 
 def extract_hidden_states_at_layer(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (B, S)
+    input_ids: torch.Tensor,  # (B, S)
     layer_idx: int,
-    pool: str = "mean",        # "mean", "last", "first"
+    pool: str = "mean",  # "mean", "last", "first"
 ) -> torch.Tensor:
     """Extract pooled hidden states at a specific layer.
 
@@ -60,19 +63,19 @@ def extract_hidden_states_at_layer(
     hs = captured[0]  # (B, S, D)
 
     if pool == "mean":
-        return hs.mean(dim=1)   # (B, D)
+        return hs.mean(dim=1)  # (B, D)
     elif pool == "last":
-        return hs[:, -1, :]    # (B, D)
+        return hs[:, -1, :]  # (B, D)
     elif pool == "first":
-        return hs[:, 0, :]     # (B, D)
+        return hs[:, 0, :]  # (B, D)
     else:
         raise ValueError(f"Unknown pool mode: {pool!r}. Choose 'mean', 'last', or 'first'.")
 
 
 def compute_steering_vector(
     model: nn.Module,
-    positive_ids: torch.Tensor,   # (N, S) — positive examples (target behavior)
-    negative_ids: torch.Tensor,   # (N, S) — negative examples (anti-target behavior)
+    positive_ids: torch.Tensor,  # (N, S) — positive examples (target behavior)
+    negative_ids: torch.Tensor,  # (N, S) — negative examples (anti-target behavior)
     layer_idx: int,
     pool: str = "mean",
     normalize: bool = True,
@@ -120,7 +123,7 @@ class SteeringHook:
         self.alpha = alpha
         self._hooks: list = []
 
-    def __enter__(self) -> "SteeringHook":
+    def __enter__(self) -> SteeringHook:
         """Register forward hooks that add steering vectors."""
         for sv in self.vectors:
             layer = self.model.layers[sv.layer_idx]
@@ -132,6 +135,7 @@ class SteeringHook:
                     h, kv = output
                     h = h + self.alpha * d.unsqueeze(0).unsqueeze(0)
                     return (h, kv)
+
                 return hook
 
             self._hooks.append(layer.register_forward_hook(make_hook(direction)))
@@ -145,7 +149,7 @@ class SteeringHook:
 
 def generate_with_steering(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (1, S)
+    input_ids: torch.Tensor,  # (1, S)
     steering_vector: SteeringVector,
     max_new_tokens: int = 64,
     alpha: float = 10.0,

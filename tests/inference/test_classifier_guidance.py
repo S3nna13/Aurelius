@@ -1,21 +1,20 @@
 """Tests for classifier_guidance.py — PPLM / classifier-free guidance generation."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.inference.classifier_guidance import (
-    GuidanceConfig,
     AttributeClassifier,
+    GuidanceConfig,
+    GuidedGenerator,
     classifier_free_guidance,
-    pplm_step,
     dexperts_guidance,
     top_k_filter,
-    GuidedGenerator,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -72,6 +71,7 @@ def input_ids():
 # 1. GuidanceConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_guidance_config_defaults():
     cfg = GuidanceConfig()
     assert cfg.guidance_scale == 1.5
@@ -86,6 +86,7 @@ def test_guidance_config_defaults():
 # 2. AttributeClassifier output shape (B, n_classes)
 # ---------------------------------------------------------------------------
 
+
 def test_attribute_classifier_output_shape(classifier):
     B, T = 3, 8
     ids = torch.randint(0, VOCAB_SIZE, (B, T))
@@ -96,6 +97,7 @@ def test_attribute_classifier_output_shape(classifier):
 # ---------------------------------------------------------------------------
 # 3. AttributeClassifier gradients flow
 # ---------------------------------------------------------------------------
+
 
 def test_attribute_classifier_gradients_flow(classifier):
     ids = torch.randint(0, VOCAB_SIZE, (2, 5))
@@ -110,6 +112,7 @@ def test_attribute_classifier_gradients_flow(classifier):
 # ---------------------------------------------------------------------------
 # 4. classifier_free_guidance scale=1.0 returns conditional logits
 # ---------------------------------------------------------------------------
+
 
 def test_cfg_scale_one_returns_conditional():
     torch.manual_seed(0)
@@ -129,6 +132,7 @@ def test_cfg_scale_one_returns_conditional():
 # 5. classifier_free_guidance scale=2.0 amplifies difference from unconditional
 # ---------------------------------------------------------------------------
 
+
 def test_cfg_scale_amplifies_difference():
     torch.manual_seed(7)
     uncond = torch.randn(1, 5, VOCAB_SIZE)
@@ -147,6 +151,7 @@ def test_cfg_scale_amplifies_difference():
 # 6. classifier_free_guidance output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_cfg_output_shape_matches_input():
     shape = (2, 7, VOCAB_SIZE)
     uncond = torch.randn(*shape)
@@ -158,6 +163,7 @@ def test_cfg_output_shape_matches_input():
 # ---------------------------------------------------------------------------
 # 7. dexperts_guidance output shape matches base_logits
 # ---------------------------------------------------------------------------
+
 
 def test_dexperts_output_shape():
     shape = (1, 6, VOCAB_SIZE)
@@ -172,18 +178,22 @@ def test_dexperts_output_shape():
 # 8. dexperts_guidance scale=0.0 returns base_logits
 # ---------------------------------------------------------------------------
 
+
 def test_dexperts_scale_zero_returns_base():
     torch.manual_seed(3)
     base = torch.randn(1, 4, VOCAB_SIZE)
     expert = torch.randn(1, 4, VOCAB_SIZE)
     antiexpert = torch.randn(1, 4, VOCAB_SIZE)
     guided = dexperts_guidance(base, expert, antiexpert, scale=0.0)
-    assert torch.allclose(guided, base), "DExperts with scale=0.0 should return base_logits unchanged"
+    assert torch.allclose(guided, base), (
+        "DExperts with scale=0.0 should return base_logits unchanged"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 9. top_k_filter zeros out non-top-k values
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_filter_zeros_non_top_k():
     V = 20
@@ -199,6 +209,7 @@ def test_top_k_filter_zeros_non_top_k():
 # ---------------------------------------------------------------------------
 # 10. top_k_filter top_k=1 keeps only maximum
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_filter_top_k_one():
     V = 50
@@ -219,6 +230,7 @@ def test_top_k_filter_top_k_one():
 # 11. GuidedGenerator.generate_cfg output shape (1, max_new)
 # ---------------------------------------------------------------------------
 
+
 def test_guided_generator_cfg_output_shape(model, cfg_config, input_ids):
     generator = GuidedGenerator(model, cfg_config)
     uncond_ids = torch.zeros_like(input_ids)
@@ -230,6 +242,7 @@ def test_guided_generator_cfg_output_shape(model, cfg_config, input_ids):
 # 12. GuidedGenerator.generate_pplm output shape (1, max_new)
 # ---------------------------------------------------------------------------
 
+
 def test_guided_generator_pplm_output_shape(model, pplm_config, classifier, input_ids):
     generator = GuidedGenerator(model, pplm_config, classifier=classifier)
     out = generator.generate_pplm(input_ids, target_class=0, max_new=MAX_NEW)
@@ -239,6 +252,7 @@ def test_guided_generator_pplm_output_shape(model, pplm_config, classifier, inpu
 # ---------------------------------------------------------------------------
 # 13. GuidedGenerator.generate dispatches to correct method
 # ---------------------------------------------------------------------------
+
 
 def test_guided_generator_dispatch_cfg(model, cfg_config, input_ids, monkeypatch):
     """generate() with mode='cfg' should call generate_cfg."""

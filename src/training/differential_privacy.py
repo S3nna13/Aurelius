@@ -13,18 +13,16 @@ Implements:
 from __future__ import annotations
 
 import math
-import warnings
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # PrivacyAccountant
 # ---------------------------------------------------------------------------
+
 
 class PrivacyAccountant:
     """
@@ -111,7 +109,7 @@ class PrivacyAccountant:
         sigma = self._sigma
         delta = self.delta
         # Per-step RDP (Gaussian mechanism, amplified by subsampling)
-        rdp_per_step = alpha * (q ** 2) / (2.0 * sigma ** 2)
+        rdp_per_step = alpha * (q**2) / (2.0 * sigma**2)
         rdp_total = T * rdp_per_step
         # Convert RDP → (eps, delta)-DP
         eps = rdp_total + math.log(1.0 / delta) / (alpha - 1)
@@ -122,7 +120,7 @@ class PrivacyAccountant:
         n_steps: int,
         dataset_size: int,
         batch_size: int,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Return {"epsilon": float, "delta": float, "sample_rate": float}.
         Uses moments_accountant_epsilon for the epsilon estimate.
@@ -144,6 +142,7 @@ class PrivacyAccountant:
 # PerSampleGradientClipper
 # ---------------------------------------------------------------------------
 
+
 class PerSampleGradientClipper:
     """
     Clips per-sample gradients by their L2 norm, then aggregates (sums) into
@@ -156,11 +155,9 @@ class PerSampleGradientClipper:
         self.model = model
         self.max_norm = max_norm
         # Build name → param mapping for convenience
-        self._named_params: Dict[str, nn.Parameter] = dict(model.named_parameters())
+        self._named_params: dict[str, nn.Parameter] = dict(model.named_parameters())
 
-    def clip_gradients(
-        self, per_sample_grads: Dict[str, Tensor]
-    ) -> Dict[str, Tensor]:
+    def clip_gradients(self, per_sample_grads: dict[str, Tensor]) -> dict[str, Tensor]:
         """
         Clip per-sample gradients.
 
@@ -191,7 +188,7 @@ class PerSampleGradientClipper:
         clip_factor = torch.clamp(self.max_norm / (norms + 1e-6), max=1.0)  # [B]
 
         # Apply clipping
-        clipped: Dict[str, Tensor] = {}
+        clipped: dict[str, Tensor] = {}
         for name, g in per_sample_grads.items():
             # Broadcast clip_factor over parameter dimensions
             shape = (B,) + (1,) * (g.dim() - 1)
@@ -199,7 +196,7 @@ class PerSampleGradientClipper:
 
         return clipped
 
-    def aggregate(self, clipped_grads: Dict[str, Tensor]) -> None:
+    def aggregate(self, clipped_grads: dict[str, Tensor]) -> None:
         """
         Sum clipped per-sample grads over the batch dimension and store in
         param.grad. This *replaces* any existing .grad on each parameter.
@@ -220,6 +217,7 @@ class PerSampleGradientClipper:
 # ---------------------------------------------------------------------------
 # GaussianMechanism
 # ---------------------------------------------------------------------------
+
 
 class GaussianMechanism:
     """
@@ -254,6 +252,7 @@ class GaussianMechanism:
 # DPSGDOptimizer
 # ---------------------------------------------------------------------------
 
+
 class DPSGDOptimizer:
     """
     DP-SGD optimizer that:
@@ -287,8 +286,8 @@ class DPSGDOptimizer:
     def compute_per_sample_grads(
         self,
         loss_per_sample: Tensor,
-        params: List[nn.Parameter],
-    ) -> Dict[str, Tensor]:
+        params: list[nn.Parameter],
+    ) -> dict[str, Tensor]:
         """
         Compute per-sample gradients using autograd.grad (one call per sample).
 
@@ -301,12 +300,10 @@ class DPSGDOptimizer:
         """
         B = loss_per_sample.shape[0]
         # Build name list aligned with params
-        param_to_name: Dict[int, str] = {
-            id(p): n for n, p in self.model.named_parameters()
-        }
+        param_to_name: dict[int, str] = {id(p): n for n, p in self.model.named_parameters()}
         param_names = [param_to_name[id(p)] for p in params]
 
-        per_sample_grads: Dict[str, List[Tensor]] = {n: [] for n in param_names}
+        per_sample_grads: dict[str, list[Tensor]] = {n: [] for n in param_names}
 
         for i in range(B):
             grads = torch.autograd.grad(
@@ -363,6 +360,7 @@ class DPSGDOptimizer:
 # DPTrainer
 # ---------------------------------------------------------------------------
 
+
 class DPTrainer:
     """
     High-level trainer wrapping DPSGDOptimizer with PrivacyAccountant.
@@ -387,7 +385,7 @@ class DPTrainer:
         self,
         input_ids: Tensor,
         labels: Tensor,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Perform one DP training step.
 
@@ -405,16 +403,14 @@ class DPTrainer:
         # Forward pass per sample to get independent computation graphs
         per_sample_losses = []
         for b in range(B):
-            inp = input_ids[b : b + 1]   # [1, T]
-            lbl = labels[b : b + 1]       # [1, T]
+            inp = input_ids[b : b + 1]  # [1, T]
+            lbl = labels[b : b + 1]  # [1, T]
 
-            logits = self.model(inp)       # [1, T, vocab]
+            logits = self.model(inp)  # [1, T, vocab]
             logits_flat = logits.view(-1, logits.size(-1))  # [T, vocab]
-            lbl_flat = lbl.view(-1)                          # [T]
+            lbl_flat = lbl.view(-1)  # [T]
 
-            loss = nn.functional.cross_entropy(
-                logits_flat, lbl_flat, ignore_index=-100
-            )
+            loss = nn.functional.cross_entropy(logits_flat, lbl_flat, ignore_index=-100)
             per_sample_losses.append(loss)
 
         per_sample_tensor = torch.stack(per_sample_losses)  # [B]
@@ -431,7 +427,7 @@ class DPTrainer:
 
         return mean_loss, eps
 
-    def privacy_report(self) -> Dict[str, object]:
+    def privacy_report(self) -> dict[str, object]:
         """
         Return a dictionary summarising the current privacy budget.
         """
@@ -458,9 +454,11 @@ class DPTrainer:
 # DPConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DPConfig:
     """Hyperparameter dataclass for DP-SGD training."""
+
     max_grad_norm: float = 1.0
     noise_multiplier: float = 1.1
     delta: float = 1e-5

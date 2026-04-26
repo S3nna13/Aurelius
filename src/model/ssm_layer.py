@@ -21,27 +21,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SSMConfig:
     """Hyperparameters for the simplified Mamba-inspired SSM layer."""
 
     d_model: int = 64
-    d_state: int = 16      # state dimension (N in S4/Mamba)
-    d_conv: int = 4        # depthwise conv kernel size
-    expand: int = 2        # expansion factor (d_inner = expand * d_model)
-    dt_rank: int = 4       # rank of delta-t projection
+    d_state: int = 16  # state dimension (N in S4/Mamba)
+    d_conv: int = 4  # depthwise conv kernel size
+    expand: int = 2  # expansion factor (d_inner = expand * d_model)
+    dt_rank: int = 4  # rank of delta-t projection
     dt_min: float = 0.001  # min timescale
-    dt_max: float = 0.1    # max timescale
+    dt_max: float = 0.1  # max timescale
 
 
 # ---------------------------------------------------------------------------
 # A-matrix initialization
 # ---------------------------------------------------------------------------
+
 
 def init_A_matrix(d_model: int, d_state: int) -> Tensor:
     """Initialize log_A ~ U(0, 1).
@@ -57,11 +58,12 @@ def init_A_matrix(d_model: int, d_state: int) -> Tensor:
 # Selective scan (sequential Python loop — correctness over speed)
 # ---------------------------------------------------------------------------
 
+
 def selective_scan(
-    u: Tensor,      # (B, T, D) input
-    A: Tensor,      # (D, N) state matrix (log-parameterized, already negated)
-    B: Tensor,      # (B, T, N) input projection (selective)
-    C: Tensor,      # (B, T, N) output projection (selective)
+    u: Tensor,  # (B, T, D) input
+    A: Tensor,  # (D, N) state matrix (log-parameterized, already negated)
+    B: Tensor,  # (B, T, N) input projection (selective)
+    C: Tensor,  # (B, T, N) output projection (selective)
     delta: Tensor,  # (B, T, D) timescales (positive after softplus)
 ) -> Tensor:
     """Discretized SSM scan (simplified sequential scan, not parallel).
@@ -83,10 +85,10 @@ def selective_scan(
     ys = []
 
     for t in range(T):
-        delta_t = delta[:, t, :]          # (B, D)
-        u_t = u[:, t, :]                  # (B, D)
-        B_t = B[:, t, :]                  # (B, N)
-        C_t = C[:, t, :]                  # (B, N)
+        delta_t = delta[:, t, :]  # (B, D)
+        u_t = u[:, t, :]  # (B, D)
+        B_t = B[:, t, :]  # (B, N)
+        C_t = C[:, t, :]  # (B, N)
 
         # Discretize
         # A_bar_t: (B, D, N)
@@ -109,6 +111,7 @@ def selective_scan(
 # SSM Layer
 # ---------------------------------------------------------------------------
 
+
 class SSMLayer(nn.Module):
     """Mamba-inspired SSM layer with selective state spaces."""
 
@@ -122,7 +125,9 @@ class SSMLayer(nn.Module):
 
         # Depthwise conv over the inner sequence
         self.conv1d = nn.Conv1d(
-            d_inner, d_inner, cfg.d_conv,
+            d_inner,
+            d_inner,
+            cfg.d_conv,
             padding=cfg.d_conv - 1,
             groups=d_inner,
             bias=True,
@@ -157,22 +162,20 @@ class SSMLayer(nn.Module):
         x = self.norm(x)
 
         # 3. Input projection + gating split
-        xz = self.in_proj(x)                               # (B, T, 2*d_inner)
-        x_inner, z = xz.chunk(2, dim=-1)                   # each (B, T, d_inner)
+        xz = self.in_proj(x)  # (B, T, 2*d_inner)
+        x_inner, z = xz.chunk(2, dim=-1)  # each (B, T, d_inner)
 
         # 4. Depthwise conv on x
         #    Conv1d expects (B, C, T); padding adds d_conv-1 extra steps at end
-        x_conv = self.conv1d(x_inner.transpose(1, 2))       # (B, d_inner, T + d_conv - 1)
-        x_conv = x_conv[:, :, :T].transpose(1, 2)           # (B, T, d_inner)
+        x_conv = self.conv1d(x_inner.transpose(1, 2))  # (B, d_inner, T + d_conv - 1)
+        x_conv = x_conv[:, :, :T].transpose(1, 2)  # (B, T, d_inner)
 
         # 5. SiLU activation
         x_inner = F.silu(x_conv)
 
         # 6. Project to (dt_rank + 2*d_state)
-        xbc = self.x_proj(x_inner)                          # (B, T, dt_rank + 2*d_state)
-        dt, B_ssm, C_ssm = xbc.split(
-            [self.cfg.dt_rank, self.cfg.d_state, self.cfg.d_state], dim=-1
-        )
+        xbc = self.x_proj(x_inner)  # (B, T, dt_rank + 2*d_state)
+        dt, B_ssm, C_ssm = xbc.split([self.cfg.dt_rank, self.cfg.d_state, self.cfg.d_state], dim=-1)
         # dt: (B, T, dt_rank), B_ssm: (B, T, d_state), C_ssm: (B, T, d_state)
 
         # 7. Delta: project, apply softplus, clamp
@@ -180,25 +183,26 @@ class SSMLayer(nn.Module):
         dt = dt.clamp(self.cfg.dt_min, self.cfg.dt_max)
 
         # 8. Actual A (negative for stability)
-        A = -torch.exp(self.log_A)                           # (d_inner, d_state)
+        A = -torch.exp(self.log_A)  # (d_inner, d_state)
 
         # 9. Selective scan
-        y = selective_scan(x_inner, A, B_ssm, C_ssm, dt)    # (B, T, d_inner)
+        y = selective_scan(x_inner, A, B_ssm, C_ssm, dt)  # (B, T, d_inner)
 
         # 10. Skip connection with D
-        y = y + x_inner * self.D                             # (B, T, d_inner)
+        y = y + x_inner * self.D  # (B, T, d_inner)
 
         # 11. Gate with z
-        y = y * F.silu(z)                                    # (B, T, d_inner)
+        y = y * F.silu(z)  # (B, T, d_inner)
 
         # 12. Output projection + residual
-        output = self.out_proj(y) + residual                 # (B, T, d_model)
+        output = self.out_proj(y) + residual  # (B, T, d_model)
         return output
 
 
 # ---------------------------------------------------------------------------
 # SSM Block (transformer-like block using SSM instead of attention)
 # ---------------------------------------------------------------------------
+
 
 class SSMBlock(nn.Module):
     """Transformer-like block using SSM instead of attention."""
@@ -223,6 +227,7 @@ class SSMBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Parameter counter
 # ---------------------------------------------------------------------------
+
 
 def count_ssm_parameters(cfg: SSMConfig) -> int:
     """Count total trainable parameters in one SSMLayer."""

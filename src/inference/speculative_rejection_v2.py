@@ -6,6 +6,7 @@ forward pass through the target model, maintaining the exact target distribution
 
 Reference: "Speculative Rejection Sampling" (Liu et al., 2024)
 """
+
 from __future__ import annotations
 
 import torch
@@ -13,10 +14,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # DraftTree
 # ---------------------------------------------------------------------------
+
 
 class DraftTree:
     """Manages a tree of draft token candidates.
@@ -35,8 +36,8 @@ class DraftTree:
         self.depth = depth
 
         # Populated by build()
-        self.tokens: Tensor | None = None      # (depth, branching_factor)
-        self.log_probs: Tensor | None = None   # (depth, branching_factor)
+        self.tokens: Tensor | None = None  # (depth, branching_factor)
+        self.log_probs: Tensor | None = None  # (depth, branching_factor)
 
     def build(self, draft_logits: list[Tensor]) -> None:
         """Build the tree from draft logits.
@@ -45,9 +46,7 @@ class DraftTree:
             draft_logits: list of depth tensors, each shape (V,) — one per depth
         """
         if len(draft_logits) != self.depth:
-            raise ValueError(
-                f"Expected {self.depth} logit tensors, got {len(draft_logits)}"
-            )
+            raise ValueError(f"Expected {self.depth} logit tensors, got {len(draft_logits)}")
 
         all_tokens = []
         all_log_probs = []
@@ -70,11 +69,11 @@ class DraftTree:
                 best = logits.argmax().unsqueeze(0)
                 sampled = best.expand(self.branching_factor).clone()
 
-            lp = log_p[sampled]          # (branching_factor,)
-            all_tokens.append(sampled)   # (branching_factor,)
-            all_log_probs.append(lp)     # (branching_factor,)
+            lp = log_p[sampled]  # (branching_factor,)
+            all_tokens.append(sampled)  # (branching_factor,)
+            all_log_probs.append(lp)  # (branching_factor,)
 
-        self.tokens = torch.stack(all_tokens, dim=0)      # (depth, branching_factor)
+        self.tokens = torch.stack(all_tokens, dim=0)  # (depth, branching_factor)
         self.log_probs = torch.stack(all_log_probs, dim=0)  # (depth, branching_factor)
 
     def linear_paths(self) -> list[list[int]]:
@@ -103,6 +102,7 @@ class DraftTree:
 # TokenTreeVerifier
 # ---------------------------------------------------------------------------
 
+
 class TokenTreeVerifier:
     """Verify draft tokens against the target model in a single forward pass."""
 
@@ -112,7 +112,7 @@ class TokenTreeVerifier:
     @torch.no_grad()
     def verify(
         self,
-        input_ids: Tensor,     # (B, T_context)
+        input_ids: Tensor,  # (B, T_context)
         draft_tokens: Tensor,  # (B, K) — K draft candidates to verify
     ) -> tuple[Tensor, Tensor]:
         """Run target model once to verify all draft candidates.
@@ -138,10 +138,10 @@ class TokenTreeVerifier:
         # Extract logits at draft positions: positions T-1 .. T+K-2
         # (the logit at position i predicts token i+1, so position T-1 predicts the
         #  first draft token, position T predicts the second, etc.)
-        draft_pos_logits = logits[:, T - 1: T + K - 1, :]  # (B, K, V)
+        draft_pos_logits = logits[:, T - 1 : T + K - 1, :]  # (B, K, V)
 
-        target_argmax = draft_pos_logits.argmax(dim=-1)      # (B, K)
-        accept_mask = target_argmax == draft_tokens           # (B, K) bool
+        target_argmax = draft_pos_logits.argmax(dim=-1)  # (B, K)
+        accept_mask = target_argmax == draft_tokens  # (B, K) bool
 
         return draft_pos_logits, accept_mask
 
@@ -149,6 +149,7 @@ class TokenTreeVerifier:
 # ---------------------------------------------------------------------------
 # RejectionSamplingCorrector
 # ---------------------------------------------------------------------------
+
 
 class RejectionSamplingCorrector:
     """Correct rejected tokens to maintain the exact target distribution."""
@@ -175,8 +176,11 @@ class RejectionSamplingCorrector:
 
         # Draft prob for this token
         draft_probs = torch.zeros_like(target_probs)
-        draft_probs[draft_token] = float(draft_logp.exp() if isinstance(draft_logp, Tensor) else
-                                         torch.tensor(draft_logp).exp().item())
+        draft_probs[draft_token] = float(
+            draft_logp.exp()
+            if isinstance(draft_logp, Tensor)
+            else torch.tensor(draft_logp).exp().item()
+        )
 
         correction = F.relu(target_probs - draft_probs)
         Z = correction.sum() + 1e-9
@@ -187,9 +191,9 @@ class RejectionSamplingCorrector:
 
     def batch_correct(
         self,
-        draft_tokens: Tensor,   # (B, K)
-        accept_mask: Tensor,    # (B, K) bool
-        draft_logps: Tensor,    # (B, K)
+        draft_tokens: Tensor,  # (B, K)
+        accept_mask: Tensor,  # (B, K) bool
+        draft_logps: Tensor,  # (B, K)
         target_logits: Tensor,  # (B, K, V)
     ) -> Tensor:
         """Correct a batch of draft tokens.
@@ -219,6 +223,7 @@ class RejectionSamplingCorrector:
 # ---------------------------------------------------------------------------
 # SpeculativeRejectionDecoder
 # ---------------------------------------------------------------------------
+
 
 class SpeculativeRejectionDecoder:
     """Full speculative rejection sampling decoder.
@@ -267,7 +272,7 @@ class SpeculativeRejectionDecoder:
 
     def generate(
         self,
-        input_ids: Tensor,       # (B, T)
+        input_ids: Tensor,  # (B, T)
         max_new_tokens: int = 20,
     ) -> Tensor:
         """Generate max_new_tokens tokens using speculative rejection sampling.
@@ -305,7 +310,7 @@ class SpeculativeRejectionDecoder:
             # accept_mask:   (B, spec_depth) bool
 
             # --- 4. Find longest accepted prefix (first batch element drives) ---
-            accept_vec = accept_mask[0]   # (spec_depth,)
+            accept_vec = accept_mask[0]  # (spec_depth,)
             n_accepted = 0
             for i in range(spec_depth):
                 if accept_vec[i].item():
@@ -349,12 +354,13 @@ class SpeculativeRejectionDecoder:
                 tokens_generated += 1
 
         # Trim to exactly T_init + max_new_tokens
-        return current[:, :T_init + max_new_tokens]
+        return current[:, : T_init + max_new_tokens]
 
 
 # ---------------------------------------------------------------------------
 # AcceptanceRateTracker
 # ---------------------------------------------------------------------------
+
 
 class AcceptanceRateTracker:
     """Monitor acceptance rate statistics across decode steps."""

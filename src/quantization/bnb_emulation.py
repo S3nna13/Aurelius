@@ -21,6 +21,7 @@ except ImportError:
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BnBConfig:
     bits: int = 8
@@ -31,6 +32,7 @@ class BnBConfig:
 # ---------------------------------------------------------------------------
 # Outlier detection
 # ---------------------------------------------------------------------------
+
 
 class OutlierDetector:
     """Detects weight outliers using an absolute-value threshold."""
@@ -47,7 +49,7 @@ class OutlierDetector:
         Returns:
             Boolean tensor of the same shape (True = outlier).
         """
-        return (tensor.abs() > self.config.threshold)  # type: ignore[return-value]
+        return tensor.abs() > self.config.threshold  # type: ignore[return-value]
 
     def extract_outliers(
         self,

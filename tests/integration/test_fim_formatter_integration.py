@@ -5,11 +5,11 @@ from __future__ import annotations
 import src.chat as chat
 from src.chat import (
     CHAT_TEMPLATE_REGISTRY,
-    MESSAGE_FORMAT_REGISTRY,
     FIM_MIDDLE,
     FIM_PAD,
     FIM_PREFIX,
     FIM_SUFFIX,
+    MESSAGE_FORMAT_REGISTRY,
     FIMExample,
     FIMFormatter,
 )

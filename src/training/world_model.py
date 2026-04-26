@@ -7,19 +7,19 @@ Components:
 4. world_model_loss   -- MSE losses for state and reward reconstruction
 5. WorldModelTrainer  -- trains both models and exposes a planning interface
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class WorldModelConfig:
@@ -33,6 +33,7 @@ class WorldModelConfig:
 # ---------------------------------------------------------------------------
 # TransitionModel
 # ---------------------------------------------------------------------------
+
 
 class TransitionModel(nn.Module):
     """Predicts the next latent state (and its log-variance) from state + action."""
@@ -70,6 +71,7 @@ class TransitionModel(nn.Module):
 # RewardModel
 # ---------------------------------------------------------------------------
 
+
 class RewardModel(nn.Module):
     """Predicts a scalar reward from state + action."""
 
@@ -101,6 +103,7 @@ class RewardModel(nn.Module):
 # Trajectory imagination
 # ---------------------------------------------------------------------------
 
+
 def imagine_trajectory(
     transition_model: TransitionModel,
     reward_model: RewardModel,
@@ -129,16 +132,16 @@ def imagine_trajectory(
     all_rewards = []
 
     for t in range(horizon):
-        action_t = actions[:, t, :]               # (B, action_dim)
+        action_t = actions[:, t, :]  # (B, action_dim)
         next_state, _ = transition_model(state, action_t)
         reward_t = reward_model(state, action_t)  # (B, 1)
         all_states.append(next_state)
         all_rewards.append(reward_t)
         state = next_state
 
-    states = torch.stack(all_states, dim=1)       # (B, horizon+1, state_dim)
-    rewards = torch.cat(all_rewards, dim=-1)      # (B, horizon)
-    total_reward = rewards.sum(dim=-1)            # (B,)
+    states = torch.stack(all_states, dim=1)  # (B, horizon+1, state_dim)
+    rewards = torch.cat(all_rewards, dim=-1)  # (B, horizon)
+    total_reward = rewards.sum(dim=-1)  # (B,)
 
     return {"states": states, "rewards": rewards, "total_reward": total_reward}
 
@@ -146,6 +149,7 @@ def imagine_trajectory(
 # ---------------------------------------------------------------------------
 # Losses
 # ---------------------------------------------------------------------------
+
 
 def world_model_loss(
     transition_model: TransitionModel,
@@ -173,7 +177,7 @@ def world_model_loss(
     pred_next_state, _ = transition_model(states, actions)
     state_loss = F.mse_loss(pred_next_state, next_states)
 
-    pred_reward = reward_model(states, actions)    # (B, 1)
+    pred_reward = reward_model(states, actions)  # (B, 1)
     target_reward = rewards.view_as(pred_reward)
     reward_loss = F.mse_loss(pred_reward, target_reward)
 
@@ -189,6 +193,7 @@ def world_model_loss(
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class WorldModelTrainer:
     """Trains the world model on collected (s, a, s', r) transitions.
@@ -242,7 +247,7 @@ class WorldModelTrainer:
     def plan(
         self,
         init_state: torch.Tensor,
-        candidate_actions_list: List[torch.Tensor],
+        candidate_actions_list: list[torch.Tensor],
     ) -> int:
         """Select the best action sequence by imagining each candidate.
 
@@ -269,9 +274,7 @@ class WorldModelTrainer:
                     actions = actions.unsqueeze(0)  # (1, horizon, action_dim)
                 B = actions.shape[0]
                 state = init_state.expand(B, -1)
-                traj = imagine_trajectory(
-                    self.transition_model, self.reward_model, state, actions
-                )
+                traj = imagine_trajectory(self.transition_model, self.reward_model, state, actions)
                 total = traj["total_reward"].mean().item()
                 if total > best_reward:
                     best_reward = total

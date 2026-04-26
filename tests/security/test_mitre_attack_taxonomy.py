@@ -29,6 +29,7 @@ def test_every_technique_has_at_least_one_keyword():
 
 def test_technique_ids_match_pattern():
     import re as _re
+
     pat = _re.compile(r"^T\d+(\.\d+)?$")
     for tid in ATTACK_TECHNIQUES:
         assert pat.match(tid), f"bad id format: {tid}"
@@ -81,7 +82,11 @@ def test_by_tactic_unknown_raises():
 
 def test_get_kill_chain_orders_by_tactic():
     clf = MitreAttackClassifier()
-    sample = [tid for tid in ATTACK_TECHNIQUES if ATTACK_TECHNIQUES[tid]["tactic"][0] in ("impact", "initial-access")][:4]
+    sample = [
+        tid
+        for tid in ATTACK_TECHNIQUES
+        if ATTACK_TECHNIQUES[tid]["tactic"][0] in ("impact", "initial-access")
+    ][:4]
     if len(sample) < 2:
         pytest.skip("not enough techniques")
     chained = clf.get_kill_chain(sample)
@@ -91,7 +96,14 @@ def test_get_kill_chain_orders_by_tactic():
 
 
 def test_custom_techniques_extend_catalog():
-    custom = {"T9999": {"name": "Custom", "tactic": ["execution"], "description": "x", "keywords": ["zzz-unique"]}}
+    custom = {
+        "T9999": {
+            "name": "Custom",
+            "tactic": ["execution"],
+            "description": "x",
+            "keywords": ["zzz-unique"],
+        }
+    }
     clf = MitreAttackClassifier(custom_techniques=custom)
     matches = clf.classify("zzz-unique payload")
     ids = [m.technique_id for m in matches]

@@ -114,12 +114,14 @@ def test_to_dict_returns_dict() -> None:
 
 def test_to_dict_contains_node_data() -> None:
     tree = StatusTree()
-    tree.add_node(StatusNode(
-        id="sess1",
-        level=StatusLevel.SESSION,
-        state=StatusState.RUNNING,
-        label="My Session",
-    ))
+    tree.add_node(
+        StatusNode(
+            id="sess1",
+            level=StatusLevel.SESSION,
+            state=StatusState.RUNNING,
+            label="My Session",
+        )
+    )
     d = tree.to_dict()
     root_ids = [r["id"] for r in d["roots"]]
     assert "sess1" in root_ids

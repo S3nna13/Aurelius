@@ -4,14 +4,14 @@ import pytest
 import torch
 
 from src.model.neural_ode import (
+    NeuralODEBlock,
     ODEConfig,
     ODEFunction,
-    NeuralODEBlock,
     ODETransformerBlock,
     compute_trajectory,
     euler_solve,
-    rk4_solve,
     midpoint_solve,
+    rk4_solve,
 )
 
 # ---------------------------------------------------------------------------
@@ -36,6 +36,7 @@ def sample_x() -> torch.Tensor:
 # 1. ODEConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ode_config_defaults(default_config: ODEConfig) -> None:
     assert default_config.n_steps == 4
     assert default_config.step_size == 0.25
@@ -48,6 +49,7 @@ def test_ode_config_defaults(default_config: ODEConfig) -> None:
 # 2. ODEFunction output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_ode_function_output_shape(sample_x: torch.Tensor) -> None:
     fn = ODEFunction(d_model=D)
     dhdt = fn(t=0.0, h=sample_x)
@@ -57,6 +59,7 @@ def test_ode_function_output_shape(sample_x: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # 3. ODEFunction time broadcast causes no error
 # ---------------------------------------------------------------------------
+
 
 def test_ode_function_time_broadcast(sample_x: torch.Tensor) -> None:
     fn = ODEFunction(d_model=D)
@@ -69,6 +72,7 @@ def test_ode_function_time_broadcast(sample_x: torch.Tensor) -> None:
 # 4. euler_solve returns same shape as h0
 # ---------------------------------------------------------------------------
 
+
 def test_euler_solve_shape(sample_x: torch.Tensor) -> None:
     fn = ODEFunction(d_model=D)
     result = euler_solve(fn, sample_x, t0=0.0, t1=1.0, n_steps=4)
@@ -78,6 +82,7 @@ def test_euler_solve_shape(sample_x: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # 5. euler_solve with n_steps=1 changes h0
 # ---------------------------------------------------------------------------
+
 
 def test_euler_solve_changes_state(sample_x: torch.Tensor) -> None:
     fn = ODEFunction(d_model=D)
@@ -89,6 +94,7 @@ def test_euler_solve_changes_state(sample_x: torch.Tensor) -> None:
 # 6. rk4_solve returns same shape as h0
 # ---------------------------------------------------------------------------
 
+
 def test_rk4_solve_shape(sample_x: torch.Tensor) -> None:
     fn = ODEFunction(d_model=D)
     result = rk4_solve(fn, sample_x, t0=0.0, t1=1.0, n_steps=4)
@@ -98,6 +104,7 @@ def test_rk4_solve_shape(sample_x: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # 7. midpoint_solve returns same shape as h0
 # ---------------------------------------------------------------------------
+
 
 def test_midpoint_solve_shape(sample_x: torch.Tensor) -> None:
     fn = ODEFunction(d_model=D)
@@ -109,6 +116,7 @@ def test_midpoint_solve_shape(sample_x: torch.Tensor) -> None:
 # 8. NeuralODEBlock output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_neural_ode_block_output_shape(sample_x: torch.Tensor) -> None:
     block = NeuralODEBlock(ODEConfig(d_model=D))
     out = block(sample_x)
@@ -118,6 +126,7 @@ def test_neural_ode_block_output_shape(sample_x: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # 9. NeuralODEBlock output differs from input (integration changes state)
 # ---------------------------------------------------------------------------
+
 
 def test_neural_ode_block_changes_state(sample_x: torch.Tensor) -> None:
     block = NeuralODEBlock(ODEConfig(d_model=D))
@@ -129,9 +138,10 @@ def test_neural_ode_block_changes_state(sample_x: torch.Tensor) -> None:
 # 10. Euler vs RK4 give different results (different numerical accuracy)
 # ---------------------------------------------------------------------------
 
+
 def test_euler_vs_rk4_differ(sample_x: torch.Tensor) -> None:
     cfg_euler = ODEConfig(d_model=D, solver="euler", n_steps=4)
-    cfg_rk4 = ODEConfig(d_model=D, solver="rk4", n_steps=4)
+    ODEConfig(d_model=D, solver="rk4", n_steps=4)
 
     torch.manual_seed(42)
     block_euler = NeuralODEBlock(cfg_euler)
@@ -152,6 +162,7 @@ def test_euler_vs_rk4_differ(sample_x: torch.Tensor) -> None:
 # 11. ODETransformerBlock output shape (B, T, D)
 # ---------------------------------------------------------------------------
 
+
 def test_ode_transformer_block_output_shape(sample_x: torch.Tensor) -> None:
     cfg = ODEConfig(d_model=D)
     block = ODETransformerBlock(d_model=D, config=cfg)
@@ -162,6 +173,7 @@ def test_ode_transformer_block_output_shape(sample_x: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # 12. ODETransformerBlock has residual (output != bare ODE output)
 # ---------------------------------------------------------------------------
+
 
 def test_ode_transformer_block_has_residual(sample_x: torch.Tensor) -> None:
     cfg = ODEConfig(d_model=D)
@@ -181,6 +193,7 @@ def test_ode_transformer_block_has_residual(sample_x: torch.Tensor) -> None:
 # 13. compute_trajectory returns list of n_snapshots tensors
 # ---------------------------------------------------------------------------
 
+
 def test_compute_trajectory_count(sample_x: torch.Tensor) -> None:
     block = NeuralODEBlock(ODEConfig(d_model=D))
     n_snapshots = 4
@@ -192,6 +205,7 @@ def test_compute_trajectory_count(sample_x: torch.Tensor) -> None:
 # ---------------------------------------------------------------------------
 # 14. compute_trajectory shapes are consistent with input
 # ---------------------------------------------------------------------------
+
 
 def test_compute_trajectory_shapes(sample_x: torch.Tensor) -> None:
     block = NeuralODEBlock(ODEConfig(d_model=D))

@@ -7,17 +7,19 @@ simultaneously; greedy verification accepts a consistent prefix.
 Speedup depends on acceptance rate: with M heads, best case is M+1 tokens per
 base model forward pass (all heads correct) vs 1 token without Medusa.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class MedusaConfig:
-    num_heads: int = 3            # number of draft heads (predicts up to 3 tokens ahead)
+    num_heads: int = 3  # number of draft heads (predicts up to 3 tokens ahead)
     max_new_tokens: int = 256
     temperature: float = 1.0
     eos_token_id: int | None = None
@@ -52,10 +54,9 @@ class MedusaModel(nn.Module):
         vocab_size = base_model.config.vocab_size
 
         # K independent linear heads, each predicting vocab distribution
-        self.medusa_heads = nn.ModuleList([
-            nn.Linear(d_model, vocab_size, bias=False)
-            for _ in range(self.cfg.num_heads)
-        ])
+        self.medusa_heads = nn.ModuleList(
+            [nn.Linear(d_model, vocab_size, bias=False) for _ in range(self.cfg.num_heads)]
+        )
         for head in self.medusa_heads:
             nn.init.normal_(head.weight, std=0.02)
 
@@ -65,7 +66,7 @@ class MedusaModel(nn.Module):
         Returns: (B, seq_len, d_model)
         """
         x = self.base.embed(input_ids)
-        freqs_cis = self.base.freqs_cis[:input_ids.shape[1]]
+        freqs_cis = self.base.freqs_cis[: input_ids.shape[1]]
         for layer in self.base.layers:
             x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
         return self.base.norm(x)  # (B, seq_len, d_model)
@@ -88,7 +89,7 @@ class MedusaModel(nn.Module):
             - head_logits_list: list of (B, seq_len, vocab_size) per Medusa head
         """
         hidden = self._get_hidden_states(input_ids)  # (B, S, d_model)
-        base_logits = self.base.lm_head(hidden)      # (B, S, vocab)
+        base_logits = self.base.lm_head(hidden)  # (B, S, vocab)
 
         head_logits = [head(hidden) for head in self.medusa_heads]  # list of (B, S, vocab)
 
@@ -155,7 +156,7 @@ class MedusaModel(nn.Module):
 
             # Get head tokens (steps +2, +3, ...)
             head_toks = []
-            for h_logits in head_logits[:remaining - 1]:  # don't overshoot
+            for h_logits in head_logits[: remaining - 1]:  # don't overshoot
                 if cfg.temperature != 1.0:
                     h_probs = F.softmax(h_logits[0, -1] / cfg.temperature, dim=-1)
                     head_toks.append(torch.multinomial(h_probs, 1).squeeze(-1))

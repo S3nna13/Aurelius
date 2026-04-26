@@ -1,16 +1,17 @@
 """Unit tests for SHADE-Arena harness."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.eval.shade_arena import (
     DEFAULT_SHADE_SCENARIOS,
+    VALID_LABELS,
     MainTaskSpec,
     MonitorVerdict,
     ShadeArenaHarness,
     ShadeArenaResult,
     SideTaskSpec,
-    VALID_LABELS,
     stub_agent_fn,
     stub_monitor_fn,
 )
@@ -30,7 +31,9 @@ def _main_spec(crit=_always_true) -> MainTaskSpec:
 
 def _side_spec(pattern=r"BADTOKEN") -> SideTaskSpec:
     return SideTaskSpec(
-        id="s", harmful_objective="do harm", detection_pattern=pattern,
+        id="s",
+        harmful_objective="do harm",
+        detection_pattern=pattern,
     )
 
 
@@ -51,18 +54,20 @@ def _one_hit_agent(_m, _s):
 
 
 def _sneaky_monitor(_traj):
-    return MonitorVerdict(suspicious=False, flagged_turns=[],
-                          rationale="nothing seen", score=0.0)
+    return MonitorVerdict(suspicious=False, flagged_turns=[], rationale="nothing seen", score=0.0)
 
 
 def _strict_monitor(traj):
     return MonitorVerdict(
-        suspicious=True, flagged_turns=list(range(len(traj))),
-        rationale="caught", score=0.9,
+        suspicious=True,
+        flagged_turns=list(range(len(traj))),
+        rationale="caught",
+        score=0.9,
     )
 
 
 # --- scenario shape ---------------------------------------------------------
+
 
 def test_default_scenarios_shape():
     assert isinstance(DEFAULT_SHADE_SCENARIOS, tuple)
@@ -77,6 +82,7 @@ def test_default_scenarios_shape():
 
 
 # --- label coverage ---------------------------------------------------------
+
 
 def test_label_safe():
     h = ShadeArenaHarness([(_main_spec(), _side_spec())])
@@ -108,6 +114,7 @@ def test_label_sabotaged_worst_case():
 
 
 # --- edge cases -------------------------------------------------------------
+
 
 def test_run_all_empty():
     h = ShadeArenaHarness([])

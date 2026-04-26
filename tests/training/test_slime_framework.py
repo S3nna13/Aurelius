@@ -1,4 +1,5 @@
 """Unit tests for the Slime RL Framework — GLM-5 §4 (arXiv:2602.15763)."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,8 +7,8 @@ import pytest
 from src.training.slime_framework import (
     SlimeTask,
     SlimeTaskRouter,
-    make_default_router,
     _overlap_score,
+    make_default_router,
 )
 
 

@@ -7,16 +7,16 @@ import dataclasses
 import pytest
 
 from src.mcp.event_logger import (
+    MCP_EVENT_LOGGER_REGISTRY,
     EventLevel,
     LogEvent,
     MCPEventLogger,
-    MCP_EVENT_LOGGER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # LogEvent frozen dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestLogEventFrozen:
     def test_is_frozen(self):
@@ -49,6 +49,7 @@ class TestLogEventFrozen:
 # EventLevel enum
 # ---------------------------------------------------------------------------
 
+
 class TestEventLevel:
     def test_ordering_values(self):
         assert EventLevel.DEBUG.value < EventLevel.INFO.value
@@ -64,6 +65,7 @@ class TestEventLevel:
 # ---------------------------------------------------------------------------
 # log() basics
 # ---------------------------------------------------------------------------
+
 
 class TestLog:
     def test_log_info_returns_log_event(self):
@@ -121,10 +123,11 @@ class TestLog:
 # max_events eviction
 # ---------------------------------------------------------------------------
 
+
 class TestMaxEventsEviction:
     def test_oldest_evicted_at_capacity(self):
         logger = MCPEventLogger(max_events=3)
-        ev1 = logger.log(EventLevel.INFO, "first")
+        logger.log(EventLevel.INFO, "first")
         logger.log(EventLevel.INFO, "second")
         logger.log(EventLevel.INFO, "third")
         logger.log(EventLevel.INFO, "fourth")  # should evict ev1
@@ -142,6 +145,7 @@ class TestMaxEventsEviction:
 # ---------------------------------------------------------------------------
 # Convenience methods
 # ---------------------------------------------------------------------------
+
 
 class TestConvenienceMethods:
     def test_debug_method(self):
@@ -184,6 +188,7 @@ class TestConvenienceMethods:
 # ---------------------------------------------------------------------------
 # query
 # ---------------------------------------------------------------------------
+
 
 class TestQuery:
     def _populated(self) -> MCPEventLogger:
@@ -254,6 +259,7 @@ class TestQuery:
 # stats
 # ---------------------------------------------------------------------------
 
+
 class TestStats:
     def test_stats_total(self):
         logger = MCPEventLogger()
@@ -288,6 +294,7 @@ class TestStats:
 # clear
 # ---------------------------------------------------------------------------
 
+
 class TestClear:
     def test_clear_empties_events(self):
         logger = MCPEventLogger()
@@ -308,6 +315,7 @@ class TestClear:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

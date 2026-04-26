@@ -4,42 +4,38 @@ frontierscience, coval, gdpval, healthbench.
 All tests use mock data; no network requests are made.
 """
 
-import pytest
-
 from src.data.openai_datasets import (
-    # GSM8K
-    GSM8KSample,
-    GSM8KDataset,
-    parse_gsm8k_answer,
-    parse_gsm8k_final_number,
-    # MMMLU
-    MMLUSample,
-    MMMLUDataset,
-    # MRCR
-    MRCRSample,
-    MRCRDataset,
+    FrontierScienceDataset,
+    # FrontierScience
+    FrontierScienceSample,
+    GDPvalDataset,
+    # GDPval
+    GDPvalSample,
     # GraphWalks
     GraphWalkSample,
     GraphWalksDataset,
-    graphwalks_f1_score,
-    # FrontierScience
-    FrontierScienceSample,
-    FrontierScienceDataset,
-    # CoVal
-    CoValSample,
-    CoValDataset,
-    coval_rankings_to_pairs,
-    coval_to_dpo_format,
-    # GDPval
-    GDPvalSample,
-    GDPvalDataset,
+    GSM8KDataset,
+    # GSM8K
+    GSM8KSample,
+    HealthBenchDataset,
     # HealthBench
     HealthBenchSample,
-    HealthBenchDataset,
+    # MMMLU
+    MMLUSample,
+    MMMLUDataset,
+    MRCRDataset,
+    # MRCR
+    MRCRSample,
+    # CoVal
+    coval_rankings_to_pairs,
+    coval_to_dpo_format,
+    graphwalks_f1_score,
+    parse_gsm8k_answer,
+    parse_gsm8k_final_number,
 )
 
-
 # ── GSM8K ─────────────────────────────────────────────────────────────────────
+
 
 def test_parse_gsm8k_answer_splits_correctly():
     raw = "He had 3 apples.\nThen he got 5 more.\n#### 8"
@@ -90,6 +86,7 @@ def test_gsm8k_sample_fields():
 
 # ── MMMLU ─────────────────────────────────────────────────────────────────────
 
+
 def test_mmlu_sample_choices_dict():
     rows = [
         {
@@ -131,6 +128,7 @@ def test_mmlu_dataset_len():
 
 # ── MRCR ──────────────────────────────────────────────────────────────────────
 
+
 def test_mrcr_sample_fields():
     rows = [
         {
@@ -157,6 +155,7 @@ def test_mrcr_sample_fields():
 
 
 # ── GraphWalks ────────────────────────────────────────────────────────────────
+
 
 def test_graphwalks_f1_perfect():
     predicted = ["A", "B", "C"]
@@ -201,6 +200,7 @@ def test_graphwalks_dataset_len():
 
 # ── CoVal ─────────────────────────────────────────────────────────────────────
 
+
 def test_coval_rankings_to_pairs():
     assessments = [
         {"ranking": "B>A>C=D"},
@@ -242,6 +242,7 @@ def test_coval_to_dpo_format_keys():
 
 # ── FrontierScience ───────────────────────────────────────────────────────────
 
+
 def test_frontier_science_sample_fields():
     rows = [
         {
@@ -261,6 +262,7 @@ def test_frontier_science_sample_fields():
 
 
 # ── GDPval ────────────────────────────────────────────────────────────────────
+
 
 def test_gdpval_sample_fields():
     rows = [
@@ -285,6 +287,7 @@ def test_gdpval_sample_fields():
 
 # ── HealthBench ───────────────────────────────────────────────────────────────
 
+
 def test_health_bench_sample_fields():
     rows = [
         {
@@ -293,9 +296,7 @@ def test_health_bench_sample_fields():
             "completion": "Aspirin is used for pain relief...",
             "completion_id": "c_001",
             "category": "medication",
-            "rubrics": [
-                {"criterion": "accuracy", "points": 5, "tags": ["factual"]}
-            ],
+            "rubrics": [{"criterion": "accuracy", "points": 5, "tags": ["factual"]}],
             "example_tags": ["pharmacology", "OTC"],
         }
     ]

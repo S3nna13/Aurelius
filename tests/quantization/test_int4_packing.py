@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from src.quantization.int4_packing import (
+    INT4_PACKING_REGISTRY,
+    Int4Tensor,
     pack_int4,
     unpack_int4,
-    Int4Tensor,
-    INT4_PACKING_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # pack_int4
 # ---------------------------------------------------------------------------
+
 
 class TestPackInt4:
     def test_pack_empty(self):
@@ -81,6 +81,7 @@ class TestPackInt4:
 # unpack_int4
 # ---------------------------------------------------------------------------
 
+
 class TestUnpackInt4:
     def test_unpack_empty_bytes_count_zero(self):
         result = unpack_int4(b"", 0)
@@ -134,6 +135,7 @@ class TestUnpackInt4:
 # ---------------------------------------------------------------------------
 # Int4Tensor
 # ---------------------------------------------------------------------------
+
 
 class TestInt4Tensor:
     def test_len_empty(self):
@@ -198,6 +200,7 @@ class TestInt4Tensor:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_exists(self):

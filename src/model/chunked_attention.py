@@ -7,17 +7,16 @@ O(T * chunk_size), while remaining numerically equivalent to standard attention.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
 @dataclass
 class ChunkedAttnConfig:
-    chunk_size: int = 64        # query chunk size
+    chunk_size: int = 64  # query chunk size
     causal: bool = True
     scale: float | None = None  # if None, use 1/sqrt(head_dim)
 
@@ -59,13 +58,13 @@ def chunked_attention(
             # query positions: [start, end)
             # key positions:   [0, S)
             # mask out positions where key_pos > query_pos
-            chunk_len = end - start
-            q_positions = torch.arange(start, end, device=q.device).unsqueeze(1)   # (chunk, 1)
-            k_positions = torch.arange(0, S, device=q.device).unsqueeze(0)          # (1, S)
+            end - start
+            q_positions = torch.arange(start, end, device=q.device).unsqueeze(1)  # (chunk, 1)
+            k_positions = torch.arange(0, S, device=q.device).unsqueeze(0)  # (1, S)
             causal_mask = k_positions > q_positions  # (chunk, S) — True where masked
             # Broadcast to (1, 1, chunk, S)
             causal_mask = causal_mask.unsqueeze(0).unsqueeze(0)
-            scores = scores.masked_fill(causal_mask, float('-inf'))
+            scores = scores.masked_fill(causal_mask, float("-inf"))
 
         # Numerical stability: subtract max
         scores_max = scores.amax(dim=-1, keepdim=True)
@@ -101,10 +100,10 @@ def standard_attention(
 
     if causal:
         # T x S causal mask
-        q_positions = torch.arange(T, device=q.device).unsqueeze(1)   # (T, 1)
-        k_positions = torch.arange(S, device=q.device).unsqueeze(0)    # (1, S)
+        q_positions = torch.arange(T, device=q.device).unsqueeze(1)  # (T, 1)
+        k_positions = torch.arange(S, device=q.device).unsqueeze(0)  # (1, S)
         mask = k_positions > q_positions  # (T, S)
-        scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float('-inf'))
+        scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
     attn_weights = torch.softmax(scores, dim=-1)
     return torch.matmul(attn_weights, v)  # (B, H, T, D)
@@ -125,7 +124,7 @@ class ChunkedMultiHeadAttention(nn.Module):
         cfg: ChunkedAttnConfig,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
@@ -146,7 +145,9 @@ class ChunkedMultiHeadAttention(nn.Module):
 
         def _project_and_reshape(proj: nn.Linear) -> Tensor:
             out = proj(x)  # (B, T, D)
-            return out.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)  # (B, H, T, head_dim)
+            return out.view(B, T, self.n_heads, self.head_dim).transpose(
+                1, 2
+            )  # (B, H, T, head_dim)
 
         q = _project_and_reshape(self.q_proj)
         k = _project_and_reshape(self.k_proj)
@@ -155,7 +156,9 @@ class ChunkedMultiHeadAttention(nn.Module):
         scale = self.cfg.scale if self.cfg.scale is not None else 1.0 / math.sqrt(self.head_dim)
 
         out = chunked_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             chunk_size=self.cfg.chunk_size,
             causal=self.cfg.causal,
             scale=scale,
@@ -180,13 +183,13 @@ def estimate_attention_memory_mb(
     chunked: B * H * chunk_size * T * bytes  (if chunk_size provided, else same as full)
     """
     full_elements = batch_size * n_heads * seq_len * seq_len
-    full_mb = full_elements * bytes_per_element / (1024 ** 2)
+    full_mb = full_elements * bytes_per_element / (1024**2)
 
     if chunk_size is not None:
         chunked_elements = batch_size * n_heads * chunk_size * seq_len
     else:
         chunked_elements = full_elements
-    chunked_mb = chunked_elements * bytes_per_element / (1024 ** 2)
+    chunked_mb = chunked_elements * bytes_per_element / (1024**2)
 
     savings_fraction = 1.0 - (chunked_mb / full_mb) if full_mb > 0 else 0.0
 
@@ -214,7 +217,9 @@ class ChunkedAttentionBenchmark:
         scale = self.cfg.scale
         ref = standard_attention(q, k, v, causal=self.cfg.causal, scale=scale)
         chunked = chunked_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             chunk_size=self.cfg.chunk_size,
             causal=self.cfg.causal,
             scale=scale,

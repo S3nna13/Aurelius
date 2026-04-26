@@ -16,10 +16,10 @@ from src.data.quality_filter import (
     QualityFilterConfig,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def default_filter() -> QualityFilter:
@@ -42,6 +42,7 @@ REPETITIVE_TEXT = "the " * 200  # 800 chars, but very low entropy and low unique
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = QualityFilterConfig()
     assert cfg.min_chars == 100
@@ -60,6 +61,7 @@ def test_config_defaults():
 # 2. test_char_entropy_uniform — uniform char distribution → high entropy
 # ---------------------------------------------------------------------------
 
+
 def test_char_entropy_uniform(default_filter: QualityFilter):
     # 256 distinct characters each appearing exactly once → max entropy = log2(256) = 8
     text = "".join(chr(i) for i in range(32, 288))  # 256 printable-ish chars
@@ -72,6 +74,7 @@ def test_char_entropy_uniform(default_filter: QualityFilter):
 # 3. test_char_entropy_repetitive — single char repeated → near-0 entropy
 # ---------------------------------------------------------------------------
 
+
 def test_char_entropy_repetitive(default_filter: QualityFilter):
     text = "a" * 1000
     entropy = default_filter.char_entropy(text)
@@ -81,6 +84,7 @@ def test_char_entropy_repetitive(default_filter: QualityFilter):
 # ---------------------------------------------------------------------------
 # 4. test_unique_ngram_ratio_all_unique — no repeated ngrams → ratio = 1.0
 # ---------------------------------------------------------------------------
+
 
 def test_unique_ngram_ratio_all_unique(default_filter: QualityFilter):
     # 30 distinct words — with n=5 most 5-grams slide one word at a time,
@@ -95,6 +99,7 @@ def test_unique_ngram_ratio_all_unique(default_filter: QualityFilter):
 # 5. test_unique_ngram_ratio_all_same — same ngram repeated → low ratio
 # ---------------------------------------------------------------------------
 
+
 def test_unique_ngram_ratio_all_same(default_filter: QualityFilter):
     # "a b c d e" repeated many times → every 5-gram is identical
     text = "a b c d e " * 50
@@ -107,6 +112,7 @@ def test_unique_ngram_ratio_all_same(default_filter: QualityFilter):
 # 6. test_alpha_ratio_all_letters — pure alpha text → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_alpha_ratio_all_letters(default_filter: QualityFilter):
     ratio = default_filter.alpha_ratio("abcdefghijklmnopqrstuvwxyz")
     assert ratio == pytest.approx(1.0)
@@ -115,6 +121,7 @@ def test_alpha_ratio_all_letters(default_filter: QualityFilter):
 # ---------------------------------------------------------------------------
 # 7. test_alpha_ratio_mixed — numbers and letters
 # ---------------------------------------------------------------------------
+
 
 def test_alpha_ratio_mixed(default_filter: QualityFilter):
     # "aaa111" → 3 alpha / 6 total = 0.5
@@ -126,6 +133,7 @@ def test_alpha_ratio_mixed(default_filter: QualityFilter):
 # 8. test_bullet_ratio_none — no bullets → 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_bullet_ratio_none(default_filter: QualityFilter):
     text = "This is line one.\nThis is line two.\nThis is line three."
     ratio = default_filter.bullet_ratio(text)
@@ -136,6 +144,7 @@ def test_bullet_ratio_none(default_filter: QualityFilter):
 # 9. test_bullet_ratio_all — all bullet lines → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_bullet_ratio_all(default_filter: QualityFilter):
     text = "- item one\n* item two\n• item three\n1. item four"
     ratio = default_filter.bullet_ratio(text)
@@ -145,6 +154,7 @@ def test_bullet_ratio_all(default_filter: QualityFilter):
 # ---------------------------------------------------------------------------
 # 10. test_filter_passes_good_text — normal paragraph passes all checks
 # ---------------------------------------------------------------------------
+
 
 def test_filter_passes_good_text(default_filter: QualityFilter):
     result = default_filter.filter(GOOD_PARAGRAPH)
@@ -161,6 +171,7 @@ def test_filter_passes_good_text(default_filter: QualityFilter):
 # 11. test_filter_fails_short — too few chars/words → fails length check
 # ---------------------------------------------------------------------------
 
+
 def test_filter_fails_short(default_filter: QualityFilter):
     result = default_filter.filter("Hi.")
     assert not result.passed
@@ -172,6 +183,7 @@ def test_filter_fails_short(default_filter: QualityFilter):
 # ---------------------------------------------------------------------------
 # 12. test_filter_fails_low_entropy — "aaa..." repeated → fails entropy check
 # ---------------------------------------------------------------------------
+
 
 def test_filter_fails_low_entropy():
     # Use very relaxed length/word thresholds so only entropy causes failure.
@@ -197,6 +209,7 @@ def test_filter_fails_low_entropy():
 # 13. test_filter_fails_low_alpha — all-digit text → fails alpha ratio
 # ---------------------------------------------------------------------------
 
+
 def test_filter_fails_low_alpha():
     cfg = QualityFilterConfig(
         min_chars=1,
@@ -221,6 +234,7 @@ def test_filter_fails_low_alpha():
 # 14. test_filter_batch_length — returns same length as input
 # ---------------------------------------------------------------------------
 
+
 def test_filter_batch_length(default_filter: QualityFilter):
     texts = [GOOD_PARAGRAPH, "short", REPETITIVE_TEXT, ""]
     results = default_filter.filter_batch(texts)
@@ -231,6 +245,7 @@ def test_filter_batch_length(default_filter: QualityFilter):
 # ---------------------------------------------------------------------------
 # 15. test_statistics_pass_rate — pass_rate in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_pass_rate(default_filter: QualityFilter):
     texts = [GOOD_PARAGRAPH, "x", REPETITIVE_TEXT]
@@ -248,6 +263,7 @@ def test_statistics_pass_rate(default_filter: QualityFilter):
 # 16. test_statistics_empty — empty list returns zeroed stats
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_empty(default_filter: QualityFilter):
     stats = default_filter.statistics([])
     assert stats["pass_rate"] == pytest.approx(0.0)
@@ -257,6 +273,7 @@ def test_statistics_empty(default_filter: QualityFilter):
 # ---------------------------------------------------------------------------
 # Integration: mix of 5 good + 5 bad texts
 # ---------------------------------------------------------------------------
+
 
 def test_integration_mixed_batch():
     """Integration test: 5 good + 5 bad texts; pass_rate strictly between 0 and 1."""
@@ -297,16 +314,16 @@ def test_integration_mixed_batch():
         (
             "The novel explores themes of identity, belonging, and cultural displacement through "
             "the eyes of a young immigrant navigating life in an unfamiliar city. Critics praised "
-            "its vivid prose and nuanced characterization of communities often overlooked in literature."
+            "its vivid prose and nuanced characterization of communities often overlooked in literature."  # noqa: E501
         ),
     ]
 
     bad_texts = [
-        "Hi.",                           # too short
-        "1" * 500,                       # all digits, zero alpha ratio
-        "a" * 500,                       # low entropy (single char)
-        "a b c d e " * 100,             # repetitive n-grams
-        "x",                             # far too short
+        "Hi.",  # too short
+        "1" * 500,  # all digits, zero alpha ratio
+        "a" * 500,  # low entropy (single char)
+        "a b c d e " * 100,  # repetitive n-grams
+        "x",  # far too short
     ]
 
     all_texts = good_texts + bad_texts
@@ -324,6 +341,7 @@ def test_integration_mixed_batch():
     for key in ("pass_rate", "mean_char_entropy", "mean_unique_ngram_ratio", "mean_alpha_ratio"):
         assert key in stats
         import math as _math
+
         assert _math.isfinite(stats[key]), f"{key} is not finite: {stats[key]}"
 
     # Sanity: every result has stats populated

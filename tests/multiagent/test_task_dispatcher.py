@@ -1,19 +1,18 @@
 """Tests for src/multiagent/task_dispatcher.py."""
+
 from __future__ import annotations
 
-import pytest
-
 from src.multiagent.task_dispatcher import (
-    DispatchStatus,
-    DispatchedTask,
-    TaskDispatcher,
     TASK_DISPATCHER_REGISTRY,
+    DispatchedTask,
+    DispatchStatus,
+    TaskDispatcher,
 )
-
 
 # ---------------------------------------------------------------------------
 # DispatchStatus enum
 # ---------------------------------------------------------------------------
+
 
 def test_dispatch_status_values():
     assert DispatchStatus.PENDING == "pending"
@@ -34,6 +33,7 @@ def test_dispatch_status_is_str():
 # ---------------------------------------------------------------------------
 # DispatchedTask dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_dispatched_task_defaults():
     task = DispatchedTask(task_id="abc", description="do stuff")
@@ -56,6 +56,7 @@ def test_dispatched_task_created_at_explicit():
 # ---------------------------------------------------------------------------
 # TaskDispatcher.submit
 # ---------------------------------------------------------------------------
+
 
 def test_submit_returns_dispatched_task():
     td = TaskDispatcher(agents=["a1"])
@@ -90,6 +91,7 @@ def test_submit_description_stored():
 # ---------------------------------------------------------------------------
 # TaskDispatcher.assign
 # ---------------------------------------------------------------------------
+
 
 def test_assign_returns_true_on_success():
     td = TaskDispatcher(agents=["agent-1"])
@@ -126,6 +128,7 @@ def test_assign_unknown_agent_returns_false():
 # TaskDispatcher.complete
 # ---------------------------------------------------------------------------
 
+
 def test_complete_returns_true():
     td = TaskDispatcher(agents=["a1"])
     task = td.submit("x")
@@ -154,6 +157,7 @@ def test_complete_unknown_task_returns_false():
 # ---------------------------------------------------------------------------
 # TaskDispatcher.fail
 # ---------------------------------------------------------------------------
+
 
 def test_fail_returns_true():
     td = TaskDispatcher(agents=["a1"])
@@ -184,6 +188,7 @@ def test_fail_unknown_task_returns_false():
 # TaskDispatcher.pending_tasks
 # ---------------------------------------------------------------------------
 
+
 def test_pending_tasks_returns_pending():
     td = TaskDispatcher(agents=["a1"])
     t1 = td.submit("one")
@@ -207,6 +212,7 @@ def test_pending_tasks_empty_after_all_assigned():
 # TaskDispatcher.agent_load
 # ---------------------------------------------------------------------------
 
+
 def test_agent_load_initial_zero():
     td = TaskDispatcher(agents=["a1", "a2"])
     load = td.agent_load()
@@ -227,6 +233,7 @@ def test_agent_load_counts_assigned():
 # ---------------------------------------------------------------------------
 # TaskDispatcher.add_agent / remove_agent
 # ---------------------------------------------------------------------------
+
 
 def test_add_agent_allows_assignment():
     td = TaskDispatcher(agents=[])
@@ -255,6 +262,7 @@ def test_remove_agent_missing_returns_false():
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 def test_registry_contains_default():
     assert "default" in TASK_DISPATCHER_REGISTRY

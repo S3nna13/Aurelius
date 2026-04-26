@@ -16,17 +16,16 @@ References:
 from __future__ import annotations
 
 import math
-from typing import Dict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Functional activations
 # ---------------------------------------------------------------------------
+
 
 def swish(x: Tensor) -> Tensor:
     """Swish / SiLU activation: x * sigmoid(x).
@@ -60,6 +59,7 @@ def gelu_tanh(x: Tensor) -> Tensor:
 # Gated FFN modules
 # ---------------------------------------------------------------------------
 
+
 class SwiGLU(nn.Module):
     """SwiGLU feed-forward block.
 
@@ -87,8 +87,8 @@ class SwiGLU(nn.Module):
         Returns:
             Tensor of shape (B, T, d_model).
         """
-        gate = swish(self.W(x))   # (B, T, d_ffn)
-        value = self.V(x)          # (B, T, d_ffn)
+        gate = swish(self.W(x))  # (B, T, d_ffn)
+        value = self.V(x)  # (B, T, d_ffn)
         return self.W2(gate * value)
 
 
@@ -120,13 +120,14 @@ class GeGLU(nn.Module):
             Tensor of shape (B, T, d_model).
         """
         gate = F.gelu(self.W(x))  # (B, T, d_ffn)
-        value = self.V(x)          # (B, T, d_ffn)
+        value = self.V(x)  # (B, T, d_ffn)
         return self.W2(gate * value)
 
 
 # ---------------------------------------------------------------------------
 # Normalization layers
 # ---------------------------------------------------------------------------
+
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization.
@@ -231,7 +232,8 @@ class CRMSNorm(nn.Module):
 # Utility
 # ---------------------------------------------------------------------------
 
-def compute_activation_stats(x: Tensor) -> Dict[str, float]:
+
+def compute_activation_stats(x: Tensor) -> dict[str, float]:
     """Compute basic statistics of an activation tensor.
 
     Args:

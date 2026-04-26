@@ -1,7 +1,5 @@
 """Tests for src/agent/tool_orchestrator.py."""
 
-import pytest
-
 from src.agent.tool_orchestrator import (
     TOOL_ORCHESTRATOR,
     ToolCall,
@@ -9,10 +7,10 @@ from src.agent.tool_orchestrator import (
     ToolOrchestrator,
 )
 
-
 # ---------------------------------------------------------------------------
 # ToolCall
 # ---------------------------------------------------------------------------
+
 
 def test_toolcall_auto_id_is_8_chars():
     tc = ToolCall(tool_name="my_tool", arguments={})
@@ -59,6 +57,7 @@ def test_toolcall_custom_id():
 # ToolCallOutcome
 # ---------------------------------------------------------------------------
 
+
 def test_outcome_fields_stored():
     o = ToolCallOutcome(call_id="abc", tool_name="t", success=True, output="ok")
     assert o.call_id == "abc"
@@ -85,6 +84,7 @@ def test_outcome_custom_error():
 # ---------------------------------------------------------------------------
 # ToolOrchestrator.build_call
 # ---------------------------------------------------------------------------
+
 
 def test_build_call_returns_tool_call():
     orch = ToolOrchestrator()
@@ -113,6 +113,7 @@ def test_build_call_generates_id():
 # ---------------------------------------------------------------------------
 # dispatch: success
 # ---------------------------------------------------------------------------
+
 
 def test_dispatch_success():
     orch = ToolOrchestrator()
@@ -152,6 +153,7 @@ def test_dispatch_tool_name_matches():
 # ---------------------------------------------------------------------------
 # dispatch: retry on transient failure
 # ---------------------------------------------------------------------------
+
 
 def test_dispatch_retries_once_and_succeeds():
     orch = ToolOrchestrator()
@@ -217,6 +219,7 @@ def test_dispatch_zero_retries_one_attempt_on_fail():
 # dispatch_batch
 # ---------------------------------------------------------------------------
 
+
 def test_dispatch_batch_returns_list():
     orch = ToolOrchestrator()
     calls = [
@@ -260,6 +263,7 @@ def test_dispatch_batch_mixed_tools():
 # success_rate
 # ---------------------------------------------------------------------------
 
+
 def test_success_rate_all_success():
     outcomes = [
         ToolCallOutcome(call_id="a", tool_name="t", success=True, output=""),
@@ -292,6 +296,7 @@ def test_success_rate_all_failed():
 # failed_outcomes
 # ---------------------------------------------------------------------------
 
+
 def test_failed_outcomes_returns_only_failed():
     outcomes = [
         ToolCallOutcome(call_id="a", tool_name="t", success=True, output=""),
@@ -317,6 +322,7 @@ def test_failed_outcomes_empty_input():
 # ---------------------------------------------------------------------------
 # TOOL_ORCHESTRATOR singleton
 # ---------------------------------------------------------------------------
+
 
 def test_tool_orchestrator_singleton_exists():
     assert TOOL_ORCHESTRATOR is not None

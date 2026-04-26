@@ -11,9 +11,10 @@ from __future__ import annotations
 import json
 import uuid
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
-from typing import Any, Callable, Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 from src.longcontext.context_compaction import ContextCompactor, Turn
 from src.model.interface_framework import InterfaceFrameworkError
@@ -27,13 +28,11 @@ __all__ = [
 
 
 _VALID_SEVERITIES = frozenset({"info", "notice", "warning", "error", "critical"})
-_VALID_COMPACTION_POLICIES = frozenset(
-    {"oldest_first", "middle_biased", "tool_output_aggregated"}
-)
+_VALID_COMPACTION_POLICIES = frozenset({"oldest_first", "middle_biased", "tool_output_aggregated"})
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_non_empty(value: str, field_name: str) -> str:
@@ -46,7 +45,9 @@ def _json_safe(value: Any) -> Any:
     return json.loads(json.dumps(value, sort_keys=True))
 
 
-def _dedupe_strings(values: tuple[str, ...] | list[str] | tuple[Any, ...] | list[Any]) -> tuple[str, ...]:
+def _dedupe_strings(
+    values: tuple[str, ...] | list[str] | tuple[Any, ...] | list[Any],
+) -> tuple[str, ...]:
     if isinstance(values, str):
         raise InterfaceFrameworkError("expected a sequence of strings, got bare str")
     normalized: list[str] = []
@@ -61,7 +62,7 @@ def _dedupe_strings(values: tuple[str, ...] | list[str] | tuple[Any, ...] | list
     return tuple(normalized)
 
 
-def _entry_text(entry: "SessionJournalEntry") -> str:
+def _entry_text(entry: SessionJournalEntry) -> str:
     payload = _json_safe(entry.payload)
     metadata = _json_safe(entry.metadata)
     parts = [
@@ -82,7 +83,7 @@ def _entry_text(entry: "SessionJournalEntry") -> str:
     return " | ".join(parts)
 
 
-def _turn_for_entry(entry: "SessionJournalEntry") -> Turn:
+def _turn_for_entry(entry: SessionJournalEntry) -> Turn:
     kind = "tool_result" if entry.kind in {"tool_result", "tool_call"} else "message"
     return Turn(role=entry.kind, content=_entry_text(entry), kind=kind)
 
@@ -148,7 +149,7 @@ class SessionJournalEntry:
             raise InterfaceFrameworkError("payload and metadata must be JSON serializable") from exc
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "SessionJournalEntry":
+    def from_dict(cls, payload: Mapping[str, Any]) -> SessionJournalEntry:
         return cls(
             entry_id=payload["entry_id"],
             session_id=payload["session_id"],
@@ -197,7 +198,7 @@ class SessionJournalBranch:
             raise InterfaceFrameworkError("head_entry_id must reference an entry in entry_ids")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "SessionJournalBranch":
+    def from_dict(cls, payload: Mapping[str, Any]) -> SessionJournalBranch:
         return cls(
             branch_id=payload["branch_id"],
             session_id=payload["session_id"],
@@ -255,7 +256,7 @@ class SessionJournalCompaction:
             raise InterfaceFrameworkError("metadata must be a dict")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "SessionJournalCompaction":
+    def from_dict(cls, payload: Mapping[str, Any]) -> SessionJournalCompaction:
         return cls(
             compaction_id=payload["compaction_id"],
             session_id=payload["session_id"],
@@ -331,21 +332,24 @@ class SessionJournal:
                     )
             if branch.base_entry_id is not None and branch.base_entry_id not in entry_ids:
                 raise InterfaceFrameworkError(
-                    f"branch {branch.branch_id!r} references unknown base entry {branch.base_entry_id!r}"
+                    f"branch {branch.branch_id!r} references unknown base entry {branch.base_entry_id!r}"  # noqa: E501
                 )
             if branch.head_entry_id is not None and branch.head_entry_id not in entry_ids:
                 raise InterfaceFrameworkError(
-                    f"branch {branch.branch_id!r} references unknown head entry {branch.head_entry_id!r}"
+                    f"branch {branch.branch_id!r} references unknown head entry {branch.head_entry_id!r}"  # noqa: E501
                 )
         for compaction in self.compactions.values():
-            if compaction.summary_entry_id is not None and compaction.summary_entry_id not in entry_ids:
+            if (
+                compaction.summary_entry_id is not None
+                and compaction.summary_entry_id not in entry_ids
+            ):
                 raise InterfaceFrameworkError(
                     f"compaction {compaction.compaction_id!r} references unknown summary entry"
                 )
             for entry_id in compaction.dropped_entry_ids + compaction.retained_entry_ids:
                 if entry_id not in entry_ids:
                     raise InterfaceFrameworkError(
-                        f"compaction {compaction.compaction_id!r} references unknown entry {entry_id!r}"
+                        f"compaction {compaction.compaction_id!r} references unknown entry {entry_id!r}"  # noqa: E501
                     )
 
     @classmethod
@@ -356,7 +360,7 @@ class SessionJournal:
         created_at: str | None = None,
         metadata: Mapping[str, Any] | None = None,
         journal_id: str | None = None,
-    ) -> "SessionJournal":
+    ) -> SessionJournal:
         now = created_at or _utc_now()
         return cls(
             journal_id=journal_id or f"journal-{uuid.uuid4()}",
@@ -370,7 +374,7 @@ class SessionJournal:
         )
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "SessionJournal":
+    def from_dict(cls, payload: Mapping[str, Any]) -> SessionJournal:
         branches = {
             branch_id: SessionJournalBranch.from_dict(branch_payload)
             for branch_id, branch_payload in dict(payload.get("branches", {})).items()
@@ -426,9 +430,7 @@ class SessionJournal:
             raise InterfaceFrameworkError(f"unknown journal branch: {branch_id!r}")
         entries = list(self.entries_for_branch(branch_id))
         latest_entry = entries[-1] if entries else None
-        compactions = [
-            item for item in self.compactions.values() if item.branch_id == branch_id
-        ]
+        compactions = [item for item in self.compactions.values() if item.branch_id == branch_id]
         latest_compaction = (
             max(compactions, key=lambda item: (item.created_at, item.compaction_id))
             if compactions
@@ -564,7 +566,9 @@ class SessionJournal:
         self.entries = self.entries + (entry,)
         updated_branch = replace(
             branch,
-            base_entry_id=branch.base_entry_id if branch.base_entry_id is not None else parent_entry_id,
+            base_entry_id=branch.base_entry_id
+            if branch.base_entry_id is not None
+            else parent_entry_id,
             head_entry_id=entry.entry_id,
             entry_ids=tuple(dict.fromkeys(branch.entry_ids + (entry.entry_id,))),
             updated_at=now,

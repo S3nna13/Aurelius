@@ -8,13 +8,13 @@ pre-validation.  Pure standard library.
 from __future__ import annotations
 
 import ast
+import logging
 import os
 import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from enum import Enum
-import logging
+from enum import StrEnum
 
 __all__ = [
     "ExecutionLanguage",
@@ -30,7 +30,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-class ExecutionLanguage(str, Enum):
+class ExecutionLanguage(StrEnum):
     """Languages supported by :class:`CodeExecutionTool`."""
 
     PYTHON = "python"
@@ -66,21 +66,68 @@ class ExecutionResult:
 # ---------------------------------------------------------------------------
 
 # Modules that must not be imported / used in any form.
-_FORBIDDEN_MODULES: frozenset[str] = frozenset({
-    "os", "sys", "subprocess", "shutil", "socket", "pty", "pickle",
-    "marshal", "ctypes", "cffi", "builtins", "importlib", "imp",
-    "runpy", "code", "codeop", "tempfile", "pathlib", "urllib", "http",
-    "ftplib", "smtplib", "poplib", "imaplib", "nntplib", "telnetlib",
-    "webbrowser", "xmlrpc", "concurrent", "multiprocessing", "threading",
-    "asyncio", "sqlite3", "dbm", "shelve",
-})
+_FORBIDDEN_MODULES: frozenset[str] = frozenset(
+    {
+        "os",
+        "sys",
+        "subprocess",
+        "shutil",
+        "socket",
+        "pty",
+        "pickle",
+        "marshal",
+        "ctypes",
+        "cffi",
+        "builtins",
+        "importlib",
+        "imp",
+        "runpy",
+        "code",
+        "codeop",
+        "tempfile",
+        "pathlib",
+        "urllib",
+        "http",
+        "ftplib",
+        "smtplib",
+        "poplib",
+        "imaplib",
+        "nntplib",
+        "telnetlib",
+        "webbrowser",
+        "xmlrpc",
+        "concurrent",
+        "multiprocessing",
+        "threading",
+        "asyncio",
+        "sqlite3",
+        "dbm",
+        "shelve",
+    }
+)
 
 # Built-in callables that must not be invoked.
-_FORBIDDEN_BUILTINS: frozenset[str] = frozenset({
-    "eval", "exec", "compile", "open", "__import__", "input",
-    "breakpoint", "exit", "quit", "getattr", "setattr", "delattr",
-    "vars", "globals", "locals", "dir", "hasattr",
-})
+_FORBIDDEN_BUILTINS: frozenset[str] = frozenset(
+    {
+        "eval",
+        "exec",
+        "compile",
+        "open",
+        "__import__",
+        "input",
+        "breakpoint",
+        "exit",
+        "quit",
+        "getattr",
+        "setattr",
+        "delattr",
+        "vars",
+        "globals",
+        "locals",
+        "dir",
+        "hasattr",
+    }
+)
 
 
 def _validate_ast(code: str) -> list[str]:
@@ -236,14 +283,34 @@ class CodeExecutionTool:
         from the current environment, scrub it, then layer the user-provided
         values on top — but reject any attempt to set a dangerous key.
         """
-        dangerous_keys = frozenset({
-            "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT", "LD_PROFILE",
-            "PATH", "HOME", "SHELL", "PYTHONPATH", "PYTHONHOME",
-            "PYTHONSTARTUP", "PYTHONINSPECT", "PYTHONIOENCODING",
-            "PYTHONDONTWRITEBYTECODE", "PYTHONOPTIMIZE", "PYTHONNOUSERSITE",
-            "BROWSER", "EDITOR", "PAGER", "TERM", "TERMCAP",
-            "DISPLAY", "XAUTHORITY", "XDG_CONFIG_DIRS", "XDG_DATA_DIRS",
-        })
+        dangerous_keys = frozenset(
+            {
+                "LD_PRELOAD",
+                "LD_LIBRARY_PATH",
+                "LD_AUDIT",
+                "LD_PROFILE",
+                "PATH",
+                "HOME",
+                "SHELL",
+                "PYTHONPATH",
+                "PYTHONHOME",
+                "PYTHONSTARTUP",
+                "PYTHONINSPECT",
+                "PYTHONIOENCODING",
+                "PYTHONDONTWRITEBYTECODE",
+                "PYTHONOPTIMIZE",
+                "PYTHONNOUSERSITE",
+                "BROWSER",
+                "EDITOR",
+                "PAGER",
+                "TERM",
+                "TERMCAP",
+                "DISPLAY",
+                "XAUTHORITY",
+                "XDG_CONFIG_DIRS",
+                "XDG_DATA_DIRS",
+            }
+        )
 
         if not user_env:
             # No user overrides — just scrub the inherited environment
@@ -261,9 +328,7 @@ class CodeExecutionTool:
         for key, value in user_env.items():
             if key.upper() in dangerous_keys:
                 # Reject rather than silently ignore — caller gets an error
-                raise ValueError(
-                    f"env_vars key {key!r} is not allowed for security reasons"
-                )
+                raise ValueError(f"env_vars key {key!r} is not allowed for security reasons")
             base[key] = value
 
         return base

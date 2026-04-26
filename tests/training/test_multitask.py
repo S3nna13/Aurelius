@@ -1,4 +1,5 @@
 """Tests for the multi-task learning framework."""
+
 import math
 
 import pytest
@@ -17,16 +18,22 @@ from src.training.multitask import (
     project_conflicting_gradients,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def small_config():
     return AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
 
 
@@ -79,6 +86,7 @@ def targets():
 # 1. MultitaskConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_multitask_config_defaults():
     cfg = MultitaskConfig()
     assert cfg.balancing_strategy == "static"
@@ -90,6 +98,7 @@ def test_multitask_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. project_conflicting_gradients — aligned gradients unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_aligned_gradients():
     g1 = torch.tensor([1.0, 2.0, 3.0])
@@ -103,6 +112,7 @@ def test_pcgrad_aligned_gradients():
 # ---------------------------------------------------------------------------
 # 3. project_conflicting_gradients — opposing gradients reduce conflict
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_opposing_gradients():
     g1 = torch.tensor([1.0, 0.0])
@@ -118,6 +128,7 @@ def test_pcgrad_opposing_gradients():
 # 4. UncertaintyWeighting output is scalar
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_weighting_scalar():
     uw = UncertaintyWeighting(n_tasks=3)
     losses = [torch.tensor(1.0), torch.tensor(2.0), torch.tensor(0.5)]
@@ -129,6 +140,7 @@ def test_uncertainty_weighting_scalar():
 # 5. UncertaintyWeighting log_vars are learnable
 # ---------------------------------------------------------------------------
 
+
 def test_uncertainty_weighting_learnable():
     uw = UncertaintyWeighting(n_tasks=2)
     assert uw.log_vars.requires_grad is True
@@ -138,6 +150,7 @@ def test_uncertainty_weighting_learnable():
 # ---------------------------------------------------------------------------
 # 6. DynamicTemperatureBalancing output is scalar
 # ---------------------------------------------------------------------------
+
 
 def test_dynamic_temperature_scalar():
     dtb = DynamicTemperatureBalancing(n_tasks=3)
@@ -150,6 +163,7 @@ def test_dynamic_temperature_scalar():
 # 7. DynamicTemperatureBalancing temperatures are learnable
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_temperature_learnable():
     dtb = DynamicTemperatureBalancing(n_tasks=2)
     assert dtb.temperatures.requires_grad is True
@@ -160,16 +174,18 @@ def test_dynamic_temperature_learnable():
 # 8. MultitaskModel forward returns tensor for each task
 # ---------------------------------------------------------------------------
 
+
 def test_multitask_model_forward(multitask_model, input_ids):
     cls_out = multitask_model(input_ids, "classification")
     reg_out = multitask_model(input_ids, "regression")
     assert cls_out.shape == (2, 10)  # batch=2, num_classes=10
-    assert reg_out.shape == (2, 1)   # batch=2, scalar output
+    assert reg_out.shape == (2, 1)  # batch=2, scalar output
 
 
 # ---------------------------------------------------------------------------
 # 9. MultitaskModel raises on unknown task name
 # ---------------------------------------------------------------------------
+
 
 def test_multitask_model_unknown_task(multitask_model, input_ids):
     with pytest.raises(ValueError, match="Unknown task"):
@@ -179,6 +195,7 @@ def test_multitask_model_unknown_task(multitask_model, input_ids):
 # ---------------------------------------------------------------------------
 # 10. MultitaskTrainer compute_all_losses returns loss per task
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_compute_all_losses(multitask_model, input_ids, targets):
     config = MultitaskConfig()
@@ -196,6 +213,7 @@ def test_trainer_compute_all_losses(multitask_model, input_ids, targets):
 # 11. MultitaskTrainer train_step returns correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_keys(multitask_model, input_ids, targets):
     config = MultitaskConfig()
     optimizer = torch.optim.Adam(multitask_model.parameters(), lr=1e-3)
@@ -211,6 +229,7 @@ def test_trainer_train_step_keys(multitask_model, input_ids, targets):
 # 12. MultitaskTrainer train_step loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_finite(multitask_model, input_ids, targets):
     config = MultitaskConfig()
     optimizer = torch.optim.Adam(multitask_model.parameters(), lr=1e-3)
@@ -225,6 +244,7 @@ def test_trainer_train_step_finite(multitask_model, input_ids, targets):
 # ---------------------------------------------------------------------------
 # 13. MultitaskTrainer with uncertainty balancing includes uncertainty params
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_uncertainty_balancing(backbone, task_heads, input_ids, targets):
     config = MultitaskConfig(balancing_strategy="uncertainty")

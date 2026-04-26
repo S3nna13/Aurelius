@@ -32,9 +32,7 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -45,10 +43,10 @@ from torch import Tensor
 class TTTConfig:
     """Hyperparameters for a TTT-Linear layer (paper §3)."""
 
-    d_model: int = 64          # token dimension d
+    d_model: int = 64  # token dimension d
     mini_batch_size: int = 16  # tokens per W-update mini-batch (b in paper)
-    lr: float = 0.01           # inner learning rate η
-    use_ln: bool = True        # apply LayerNorm to output (paper Appendix B)
+    lr: float = 0.01  # inner learning rate η
+    use_ln: bool = True  # apply LayerNorm to output (paper Appendix B)
 
 
 # ---------------------------------------------------------------------------
@@ -120,11 +118,11 @@ class TTTLinearLayer(nn.Module):
             Updated W,  shape (d, d).
         """
         # Prediction using current W
-        y_hat = W @ k_t           # (d,)
+        y_hat = W @ k_t  # (d,)
         # Target using fixed W_0
-        z = self.W_0 @ k_t        # (d,)
+        z = self.W_0 @ k_t  # (d,)
         # Gradient of ℓ_t w.r.t. W  is  (ŷ_t − z_t) kₜᵀ
-        grad = torch.outer(y_hat - z, k_t)   # (d, d)
+        grad = torch.outer(y_hat - z, k_t)  # (d, d)
         return W - self.lr * grad
 
     # ------------------------------------------------------------------
@@ -141,31 +139,29 @@ class TTTLinearLayer(nn.Module):
             Output tensor of shape (B, T, d_model).
         """
         B, T, d = x.shape
-        assert d == self.d_model, (
-            f"Input last-dim {d} ≠ d_model {self.d_model}"
-        )
+        assert d == self.d_model, f"Input last-dim {d} ≠ d_model {self.d_model}"  # noqa: S101
 
         # Project inputs (paper §2.2)
-        K = self.theta_K(x)   # (B, T, d)  — keys
-        V = self.theta_V(x)   # (B, T, d)  — values (unused in TTT-Linear loss)
-        Q = self.theta_Q(x)   # (B, T, d)  — output queries
+        K = self.theta_K(x)  # (B, T, d)  — keys
+        V = self.theta_V(x)  # (B, T, d)  — values (unused in TTT-Linear loss)
+        Q = self.theta_Q(x)  # (B, T, d)  — output queries
 
         outputs = torch.zeros(B, T, d, dtype=x.dtype, device=x.device)
 
         for b in range(B):
             # Each sequence gets its own W trajectory (no cross-batch leakage)
-            W = self.W_0.clone()   # (d, d)
+            W = self.W_0.clone()  # (d, d)
 
             for t in range(T):
-                k_t = K[b, t]    # (d,)
-                v_t = V[b, t]    # (d,)
+                k_t = K[b, t]  # (d,)
+                v_t = V[b, t]  # (d,)
 
                 # Update W via gradient step on ℓ_t  (paper eq. 3)
                 W = self._update_W(W, k_t, v_t)
 
                 # Output: query the updated W  (paper eq. 4 / 6)
-                q_t = Q[b, t]    # (d,)
-                o_t = W @ q_t    # (d,)
+                q_t = Q[b, t]  # (d,)
+                o_t = W @ q_t  # (d,)
                 outputs[b, t] = o_t
 
         if self.use_ln:

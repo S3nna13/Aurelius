@@ -21,8 +21,6 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -47,10 +45,10 @@ class SWEProblem:
     """
 
     task_id: str
-    repo_files: Dict[str, str]
+    repo_files: dict[str, str]
     gold_patch: str
-    test_command: List[str]
-    test_should_pass_after_patch: List[str] = field(default_factory=list)
+    test_command: list[str]
+    test_should_pass_after_patch: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -93,7 +91,7 @@ def materialize_repo(problem: SWEProblem, root_dir: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _parse_file_header(line: str) -> Optional[str]:
+def _parse_file_header(line: str) -> str | None:
     """Extract path from a '--- a/foo' or '+++ b/foo' header."""
     if not (line.startswith("--- ") or line.startswith("+++ ")):
         return None
@@ -103,11 +101,11 @@ def _parse_file_header(line: str) -> Optional[str]:
         return None
     for prefix in ("a/", "b/"):
         if path.startswith(prefix):
-            return path[len(prefix):]
+            return path[len(prefix) :]
     return path
 
 
-def _parse_hunk_header(line: str) -> Optional[Tuple[int, int, int, int]]:
+def _parse_hunk_header(line: str) -> tuple[int, int, int, int] | None:
     """Parse '@@ -l,s +l,s @@ [context]' -> (old_start, old_len, new_start, new_len)."""
     if not line.startswith("@@"):
         return None
@@ -118,7 +116,7 @@ def _parse_hunk_header(line: str) -> Optional[Tuple[int, int, int, int]]:
         if not (old_part.startswith("-") and new_part.startswith("+")):
             return None
 
-        def _range(spec: str) -> Tuple[int, int]:
+        def _range(spec: str) -> tuple[int, int]:
             spec = spec[1:]
             if "," in spec:
                 a, b = spec.split(",", 1)
@@ -132,11 +130,11 @@ def _parse_hunk_header(line: str) -> Optional[Tuple[int, int, int, int]]:
         return None
 
 
-def _split_into_file_sections(diff: str) -> List[List[str]]:
+def _split_into_file_sections(diff: str) -> list[list[str]]:
     """Group diff lines into sections, one per file."""
     lines = diff.splitlines()
-    sections: List[List[str]] = []
-    current: List[str] = []
+    sections: list[list[str]] = []
+    current: list[str] = []
     i = 0
     while i < len(lines):
         line = lines[i]
@@ -156,10 +154,10 @@ def _split_into_file_sections(diff: str) -> List[List[str]]:
     return sections
 
 
-def _extract_paths(section: List[str]) -> Tuple[Optional[str], Optional[str]]:
+def _extract_paths(section: list[str]) -> tuple[str | None, str | None]:
     """Return (old_path, new_path) from section headers; None if /dev/null."""
-    old_path: Optional[str] = None
-    new_path: Optional[str] = None
+    old_path: str | None = None
+    new_path: str | None = None
     saw_minus = False
     saw_plus = False
     for line in section:
@@ -176,22 +174,18 @@ def _extract_paths(section: List[str]) -> Tuple[Optional[str], Optional[str]]:
     return old_path, new_path
 
 
-def _apply_hunks_to_lines(
-    original: List[str], section: List[str]
-) -> Optional[List[str]]:
+def _apply_hunks_to_lines(original: list[str], section: list[str]) -> list[str] | None:
     """Apply all hunks in ``section`` to ``original`` (list of lines without newlines).
 
     Returns the new list of lines, or None on any context mismatch / bad hunk.
     """
     # Find indices of hunk headers.
-    hunk_indices = [
-        i for i, line in enumerate(section) if line.startswith("@@")
-    ]
+    hunk_indices = [i for i, line in enumerate(section) if line.startswith("@@")]
     if not hunk_indices:
         # No hunks: treat as no-op but only if file already exists; caller handles.
         return list(original)
 
-    result: List[str] = []
+    result: list[str] = []
     cursor = 0  # index into ``original`` (0-based)
 
     for idx, h_start in enumerate(hunk_indices):
@@ -209,9 +203,7 @@ def _apply_hunks_to_lines(
         result.extend(original[cursor:target_idx])
         cursor = target_idx
 
-        h_end = (
-            hunk_indices[idx + 1] if idx + 1 < len(hunk_indices) else len(section)
-        )
+        h_end = hunk_indices[idx + 1] if idx + 1 < len(hunk_indices) else len(section)
         body = section[h_start + 1 : h_end]
 
         old_consumed = 0
@@ -307,18 +299,12 @@ def apply_patch_via_python(diff: str, root_dir: str) -> bool:
         # Creation: --- is /dev/null, file should not exist (but be tolerant).
         if old_path is None:
             try:
-                hunk_indices = [
-                    i for i, line in enumerate(section) if line.startswith("@@")
-                ]
+                hunk_indices = [i for i, line in enumerate(section) if line.startswith("@@")]
                 if not hunk_indices:
                     return False
-                added: List[str] = []
+                added: list[str] = []
                 for idx, h_start in enumerate(hunk_indices):
-                    h_end = (
-                        hunk_indices[idx + 1]
-                        if idx + 1 < len(hunk_indices)
-                        else len(section)
-                    )
+                    h_end = hunk_indices[idx + 1] if idx + 1 < len(hunk_indices) else len(section)
                     for line in section[h_start + 1 : h_end]:
                         if not line:
                             continue
@@ -376,8 +362,8 @@ def apply_patch_via_python(diff: str, root_dir: str) -> bool:
 
 
 def run_tests(
-    test_command: List[str], root_dir: str, timeout: float = 30.0
-) -> Tuple[bool, str, str]:
+    test_command: list[str], root_dir: str, timeout: float = 30.0
+) -> tuple[bool, str, str]:
     """Run ``test_command`` in ``root_dir`` under a timeout.
 
     Returns ``(passed, stdout, stderr)``. ``passed`` is True iff the
@@ -387,7 +373,7 @@ def run_tests(
     if not test_command:
         return False, "", "empty test_command"
     try:
-        proc = subprocess.run(
+        proc = subprocess.run(  # noqa: S603
             list(test_command),
             cwd=root_dir,
             capture_output=True,
@@ -432,9 +418,7 @@ def score_single(
                 stderr="patch application failed",
                 duration_ms=duration_ms,
             )
-        passed, stdout, stderr = run_tests(
-            problem.test_command, tmp, timeout=timeout_seconds
-        )
+        passed, stdout, stderr = run_tests(problem.test_command, tmp, timeout=timeout_seconds)
         duration_ms = (time.monotonic() - start) * 1000.0
         return SWEResult(
             task_id=problem.task_id,
@@ -449,10 +433,10 @@ def score_single(
 
 
 def score_problems(
-    problems: List[SWEProblem],
-    candidate_patches: List[str],
+    problems: list[SWEProblem],
+    candidate_patches: list[str],
     timeout_seconds: float = 30.0,
-) -> Dict:
+) -> dict:
     """Score a list of problems and aggregate pass@1.
 
     If there are no problems, returns ``{"pass@1": 0.0, "per_task": [],
@@ -466,7 +450,7 @@ def score_problems(
     if not problems:
         return {"pass@1": 0.0, "per_task": [], "n_problems": 0}
 
-    per_task: List[Dict] = []
+    per_task: list[dict] = []
     passed = 0
     for prob, patch in zip(problems, candidate_patches):
         result = score_single(prob, patch, timeout_seconds=timeout_seconds)

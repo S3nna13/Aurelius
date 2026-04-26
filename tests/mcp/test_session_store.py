@@ -6,12 +6,12 @@ import time
 
 import pytest
 
-from src.mcp.session_store import MCPSession, SESSION_STORE_REGISTRY, SessionStore
-
+from src.mcp.session_store import SESSION_STORE_REGISTRY, MCPSession, SessionStore
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_store(**kwargs) -> SessionStore:
     return SessionStore(**kwargs)
@@ -20,6 +20,7 @@ def make_store(**kwargs) -> SessionStore:
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 class TestCreate:
     def test_returns_mcp_session(self):
@@ -94,6 +95,7 @@ class TestCreate:
 # get
 # ---------------------------------------------------------------------------
 
+
 class TestGet:
     def test_get_existing_session(self):
         store = make_store()
@@ -122,6 +124,7 @@ class TestGet:
 # ---------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------
+
 
 class TestUpdate:
     def test_update_merges_data(self):
@@ -156,6 +159,7 @@ class TestUpdate:
 # delete
 # ---------------------------------------------------------------------------
 
+
 class TestDelete:
     def test_delete_existing_returns_true(self):
         store = make_store()
@@ -185,11 +189,12 @@ class TestDelete:
 # expire_all
 # ---------------------------------------------------------------------------
 
+
 class TestExpireAll:
     def test_expire_all_returns_count(self):
         store = make_store(default_ttl_s=1000.0)
         s1 = store.create("c")
-        s2 = store.create("c")
+        store.create("c")
         store.create("c")
         future = s1.expires_at + 1.0
         count = store.expire_all(now=future)
@@ -216,6 +221,7 @@ class TestExpireAll:
 # active_count
 # ---------------------------------------------------------------------------
 
+
 class TestActiveCount:
     def test_active_count_after_creates(self):
         store = make_store()
@@ -238,6 +244,7 @@ class TestActiveCount:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

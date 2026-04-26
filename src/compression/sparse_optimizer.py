@@ -1,4 +1,5 @@
 """Sparse gradient optimizer that skips zero-gradient parameters."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class SparseUpdate:
     """Metadata about a single optimiser step."""
+
     param_id: str
     grad_nnz: int
     grad_total: int
@@ -23,6 +25,7 @@ class SparseUpdate:
 @dataclass(frozen=True)
 class SparseOptimizerConfig:
     """Configuration for the sparse SGD optimiser."""
+
     lr: float = 0.01
     sparsity_threshold: float = 0.0
     skip_sparse_ratio: float = 0.0

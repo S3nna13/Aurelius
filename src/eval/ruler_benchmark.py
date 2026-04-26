@@ -36,10 +36,10 @@ from __future__ import annotations
 
 import random
 import string
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+from collections.abc import Callable, Sequence
 
 # Shared lorem-like base sentences. Deterministic, self-contained.
-_BASE_SENTENCES: Tuple[str, ...] = (
+_BASE_SENTENCES: tuple[str, ...] = (
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
     "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
     "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
@@ -53,14 +53,57 @@ _BASE_SENTENCES: Tuple[str, ...] = (
 )
 
 # Word pool for common-words extraction. All lowercase ascii, fixed.
-_WORD_POOL: Tuple[str, ...] = (
-    "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf",
-    "hotel", "india", "juliet", "kilo", "lima", "mike", "november",
-    "oscar", "papa", "quebec", "romeo", "sierra", "tango", "uniform",
-    "victor", "whiskey", "xray", "yankee", "zulu", "apple", "banana",
-    "cherry", "date", "elder", "fig", "grape", "honey", "iris", "jade",
-    "kiwi", "lotus", "mango", "nectar", "olive", "peach", "quince",
-    "raven", "saffron", "thyme", "umber", "vanilla", "willow", "xenon",
+_WORD_POOL: tuple[str, ...] = (
+    "alpha",
+    "bravo",
+    "charlie",
+    "delta",
+    "echo",
+    "foxtrot",
+    "golf",
+    "hotel",
+    "india",
+    "juliet",
+    "kilo",
+    "lima",
+    "mike",
+    "november",
+    "oscar",
+    "papa",
+    "quebec",
+    "romeo",
+    "sierra",
+    "tango",
+    "uniform",
+    "victor",
+    "whiskey",
+    "xray",
+    "yankee",
+    "zulu",
+    "apple",
+    "banana",
+    "cherry",
+    "date",
+    "elder",
+    "fig",
+    "grape",
+    "honey",
+    "iris",
+    "jade",
+    "kiwi",
+    "lotus",
+    "mango",
+    "nectar",
+    "olive",
+    "peach",
+    "quince",
+    "raven",
+    "saffron",
+    "thyme",
+    "umber",
+    "vanilla",
+    "willow",
+    "xenon",
 )
 
 APPROX_CHARS_PER_TOKEN = 4
@@ -75,7 +118,7 @@ def _filler(char_budget: int, rng: random.Random) -> str:
         return ""
     sentences = list(_BASE_SENTENCES)
     rng.shuffle(sentences)
-    parts: List[str] = []
+    parts: list[str] = []
     total = 0
     i = 0
     while total < char_budget:
@@ -118,7 +161,7 @@ def _sprinkle(pieces: Sequence[str], filler: str, rng: random.Random) -> str:
         # Distribute pieces across all slots roughly evenly.
         chosen = sorted(rng.choices(range(n_slots), k=n_pieces))
     # Rebuild, inserting pieces at chosen indices.
-    out: List[str] = []
+    out: list[str] = []
     pi = 0
     for i in range(len(sents) + 1):
         while pi < n_pieces and chosen[pi] == i:
@@ -142,7 +185,7 @@ class RULERBenchmark:
     strings, lists of strings, or numbers depending on the task.
     """
 
-    TASKS: Tuple[str, ...] = (
+    TASKS: tuple[str, ...] = (
         "multi_key_niah",
         "multi_value_niah",
         "variable_tracking",
@@ -163,14 +206,12 @@ class RULERBenchmark:
     # ------------------------------------------------------------------
     def _char_budget(self, context_tokens: int) -> int:
         if not isinstance(context_tokens, int) or context_tokens <= 0:
-            raise ValueError(
-                f"context_tokens must be a positive int, got {context_tokens!r}"
-            )
+            raise ValueError(f"context_tokens must be a positive int, got {context_tokens!r}")
         return context_tokens * self.approx_chars_per_token
 
     def build_multi_key_niah(
         self, context_tokens: int, n_keys: int = 4, seed: int = 0
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Multi-key NIAH: insert n_keys (key, value) pairs; query one."""
         if not isinstance(n_keys, int) or n_keys <= 0:
             raise ValueError(f"n_keys must be a positive int, got {n_keys!r}")
@@ -178,7 +219,7 @@ class RULERBenchmark:
         budget = self._char_budget(context_tokens)
 
         # Generate distinct keys.
-        keys: List[str] = []
+        keys: list[str] = []
         seen: set = set()
         while len(keys) < n_keys:
             k = _random_key(rng)
@@ -190,23 +231,18 @@ class RULERBenchmark:
         target_key = keys[target_idx]
         target_value = values[target_idx]
 
-        needle_sents = [
-            f"The code for {k} is {v}." for k, v in zip(keys, values)
-        ]
+        needle_sents = [f"The code for {k} is {v}." for k, v in zip(keys, values)]
         reserved = sum(len(s) + 1 for s in needle_sents) + 200
         filler_budget = max(1, budget - reserved)
         filler = _filler(filler_budget, rng)
         body = _sprinkle(needle_sents, filler, rng)
 
-        prompt = (
-            body
-            + f"\n\nQuestion: What is the code for {target_key}?\nAnswer:"
-        )
+        prompt = body + f"\n\nQuestion: What is the code for {target_key}?\nAnswer:"
         return prompt, target_value
 
     def build_multi_value_niah(
         self, context_tokens: int, n_values: int = 3, seed: int = 0
-    ) -> Tuple[str, List[str]]:
+    ) -> tuple[str, list[str]]:
         """Multi-value NIAH: one key, several values; retrieve them all."""
         if not isinstance(n_values, int) or n_values <= 0:
             raise ValueError(f"n_values must be a positive int, got {n_values!r}")
@@ -222,8 +258,7 @@ class RULERBenchmark:
 
         needle_sents = [f"A value for {target_key} is {v}." for v in values]
         distractor_sents = [
-            f"A value for {k} is {v}."
-            for k, v in zip(distractor_keys, distractor_values)
+            f"A value for {k} is {v}." for k, v in zip(distractor_keys, distractor_values)
         ]
         all_sents = needle_sents + distractor_sents
         rng.shuffle(all_sents)
@@ -233,10 +268,7 @@ class RULERBenchmark:
         filler = _filler(filler_budget, rng)
         body = _sprinkle(all_sents, filler, rng)
 
-        prompt = (
-            body
-            + f"\n\nQuestion: List all values for {target_key}.\nAnswer:"
-        )
+        prompt = body + f"\n\nQuestion: List all values for {target_key}.\nAnswer:"
         return prompt, list(values)
 
     def build_variable_tracking(
@@ -245,21 +277,19 @@ class RULERBenchmark:
         n_vars: int = 5,
         chain_length: int = 3,
         seed: int = 0,
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Variable tracking: X1=const; X2=X1; ... return final value of target."""
         if not isinstance(n_vars, int) or n_vars <= 0:
             raise ValueError(f"n_vars must be a positive int, got {n_vars!r}")
         if not isinstance(chain_length, int) or chain_length <= 0:
-            raise ValueError(
-                f"chain_length must be a positive int, got {chain_length!r}"
-            )
+            raise ValueError(f"chain_length must be a positive int, got {chain_length!r}")
         rng = random.Random(seed)
         budget = self._char_budget(context_tokens)
 
         # Build n_vars independent chains; track the first chain as target.
-        assignments: List[str] = []
-        target_tail_name: Optional[str] = None
-        target_value: Optional[str] = None
+        assignments: list[str] = []
+        target_tail_name: str | None = None
+        target_value: str | None = None
         for vi in range(n_vars):
             root_val = _random_value(rng)
             names = [f"var_{vi}_{step}" for step in range(chain_length)]
@@ -271,7 +301,7 @@ class RULERBenchmark:
                 target_tail_name = names[-1]
                 target_value = root_val
 
-        assert target_tail_name is not None and target_value is not None
+        assert target_tail_name is not None and target_value is not None  # noqa: S101
 
         rng.shuffle(assignments)
         code_sents = [a + "." for a in assignments]
@@ -281,22 +311,17 @@ class RULERBenchmark:
         filler = _filler(filler_budget, rng)
         body = _sprinkle(code_sents, filler, rng)
 
-        prompt = (
-            body
-            + f"\n\nQuestion: What is the final value of {target_tail_name}?\nAnswer:"
-        )
+        prompt = body + f"\n\nQuestion: What is the final value of {target_tail_name}?\nAnswer:"
         return prompt, target_value
 
     def build_common_words_extraction(
         self, context_tokens: int, n_common: int = 5, seed: int = 0
-    ) -> Tuple[str, List[str]]:
+    ) -> tuple[str, list[str]]:
         """Common-words extraction: K words repeated often amid singletons."""
         if not isinstance(n_common, int) or n_common <= 0:
             raise ValueError(f"n_common must be a positive int, got {n_common!r}")
         if n_common > len(_WORD_POOL) // 2:
-            raise ValueError(
-                f"n_common={n_common} too large for pool of {len(_WORD_POOL)}"
-            )
+            raise ValueError(f"n_common={n_common} too large for pool of {len(_WORD_POOL)}")
         rng = random.Random(seed)
         budget = self._char_budget(context_tokens)
 
@@ -307,7 +332,7 @@ class RULERBenchmark:
 
         # Emit each common word many times, each singleton once.
         common_count = 10
-        words: List[str] = []
+        words: list[str] = []
         for w in common:
             words.extend([w] * common_count)
         words.extend(singletons)
@@ -320,15 +345,12 @@ class RULERBenchmark:
         filler = _filler(filler_budget, rng)
         body = filler + " " + word_block
 
-        prompt = (
-            body
-            + f"\n\nQuestion: List the {n_common} most frequent words above.\nAnswer:"
-        )
+        prompt = body + f"\n\nQuestion: List the {n_common} most frequent words above.\nAnswer:"
         return prompt, list(common)
 
     def build_aggregation(
         self, context_tokens: int, operation: str = "sum", seed: int = 0
-    ) -> Tuple[str, int]:
+    ) -> tuple[str, int]:
         """Aggregation: embed numbers; compute sum or max."""
         if operation not in ("sum", "max"):
             raise ValueError(f"operation must be 'sum' or 'max', got {operation!r}")
@@ -350,8 +372,7 @@ class RULERBenchmark:
 
         op_word = "sum" if operation == "sum" else "maximum"
         prompt = (
-            body
-            + f"\n\nQuestion: Compute the {op_word} of all recorded values above.\nAnswer:"
+            body + f"\n\nQuestion: Compute the {op_word} of all recorded values above.\nAnswer:"
         )
         return prompt, expected
 
@@ -360,7 +381,7 @@ class RULERBenchmark:
     # ------------------------------------------------------------------
     def _build_task(
         self, task: str, context_tokens: int, seed: int
-    ) -> Tuple[str, Union[str, List[str], int]]:
+    ) -> tuple[str, str | list[str] | int]:
         if task == "multi_key_niah":
             return self.build_multi_key_niah(context_tokens, seed=seed)
         if task == "multi_value_niah":
@@ -379,11 +400,9 @@ class RULERBenchmark:
     # Scoring
     # ------------------------------------------------------------------
     @staticmethod
-    def _check(expected: Union[str, List[str], int], response: str) -> bool:
+    def _check(expected: str | list[str] | int, response: str) -> bool:
         if not isinstance(response, str):
-            raise TypeError(
-                f"generate_fn must return str, got {type(response).__name__}"
-            )
+            raise TypeError(f"generate_fn must return str, got {type(response).__name__}")
         r = response.lower()
         if isinstance(expected, list):
             return all(str(v).lower() in r for v in expected)
@@ -395,10 +414,10 @@ class RULERBenchmark:
     def evaluate(
         self,
         generate_fn: Callable[[str], str],
-        tasks: List[str],
-        context_lengths: List[int],
+        tasks: list[str],
+        context_lengths: list[int],
         samples_per: int = 3,
-    ) -> Dict[str, Dict[str, object]]:
+    ) -> dict[str, dict[str, object]]:
         """Run a task x context_length grid, `samples_per` seeds each.
 
         Returns a dict keyed by task with per-length pass rates and the raw
@@ -411,9 +430,7 @@ class RULERBenchmark:
         if not context_lengths:
             raise ValueError("context_lengths must be a non-empty list")
         if not isinstance(samples_per, int) or samples_per <= 0:
-            raise ValueError(
-                f"samples_per must be a positive int, got {samples_per!r}"
-            )
+            raise ValueError(f"samples_per must be a positive int, got {samples_per!r}")
         for task in tasks:
             if task not in self.TASKS:
                 raise ValueError(f"unknown task {task!r}; known: {self.TASKS}")
@@ -421,9 +438,9 @@ class RULERBenchmark:
             if not isinstance(L, int) or L <= 0:
                 raise ValueError(f"context length must be positive int, got {L!r}")
 
-        results: Dict[str, Dict[str, object]] = {}
+        results: dict[str, dict[str, object]] = {}
         for task in tasks:
-            cells: List[Dict[str, object]] = []
+            cells: list[dict[str, object]] = []
             for L in context_lengths:
                 for s in range(samples_per):
                     prompt, expected = self._build_task(task, L, seed=s)
@@ -452,8 +469,8 @@ class RULERBenchmark:
     # Aggregation helpers
     # ------------------------------------------------------------------
     @staticmethod
-    def score_per_task(results: Dict[str, Dict[str, object]]) -> Dict[str, float]:
-        out: Dict[str, float] = {}
+    def score_per_task(results: dict[str, dict[str, object]]) -> dict[str, float]:
+        out: dict[str, float] = {}
         for task, info in results.items():
             rate = info.get("pass_rate", 0.0)
             if not isinstance(rate, (int, float)):
@@ -461,14 +478,12 @@ class RULERBenchmark:
                     f"pass_rate for {task!r} must be numeric, got {type(rate).__name__}"
                 )
             if rate < 0.0 or rate > 1.0:
-                raise ValueError(
-                    f"pass_rate for {task!r} out of range: {rate!r}"
-                )
+                raise ValueError(f"pass_rate for {task!r} out of range: {rate!r}")
             out[task] = float(rate)
         return out
 
     @classmethod
-    def overall_score(cls, results: Dict[str, Dict[str, object]]) -> float:
+    def overall_score(cls, results: dict[str, dict[str, object]]) -> float:
         per = cls.score_per_task(results)
         if not per:
             return 0.0

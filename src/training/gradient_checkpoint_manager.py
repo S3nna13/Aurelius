@@ -1,10 +1,10 @@
 """Gradient checkpointing manager: segment selection, memory estimation, recompute policy."""
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class CheckpointPolicy(str, Enum):
+class CheckpointPolicy(StrEnum):
     NONE = "none"
     EVERY_LAYER = "every_layer"
     EVERY_K_LAYERS = "every_k_layers"
@@ -56,9 +56,7 @@ class GradientCheckpointManager:
         checkpointed_count = len(self.checkpointed_layers())
         return checkpointed_count * layer_mem_gb
 
-    def recompute_cost_estimate(
-        self, n_checkpointed: int, base_forward_cost: float = 1.0
-    ) -> float:
+    def recompute_cost_estimate(self, n_checkpointed: int, base_forward_cost: float = 1.0) -> float:
         """Estimate extra compute cost from recomputation.
 
         Each checkpointed layer adds one extra forward pass.

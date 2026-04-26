@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -47,7 +46,7 @@ class StreamingAttentionCache:
             del self._keys[evict_idx]
             del self._values[evict_idx]
 
-    def get_cache(self) -> tuple[Optional[Tensor], Optional[Tensor]]:
+    def get_cache(self) -> tuple[Tensor | None, Tensor | None]:
         """Return (stacked keys, stacked values), or (None, None) if empty."""
         if not self._keys:
             return None, None
@@ -86,7 +85,6 @@ def compute_streaming_attention(
     if K is None:
         return torch.zeros_like(query)
 
-    original_shape = query.shape
     # Normalise to 4-D: (batch, heads, q_len, head_dim)
     if query.dim() == 3:
         q = query.unsqueeze(2)  # (B, H, 1, D)
@@ -102,15 +100,15 @@ def compute_streaming_attention(
     # Handle arbitrary token shapes by flattening non-head dims.
     # K shape: (cache_len, ...) — we need (cache_len, head_dim)
     cache_len = K.shape[0]
-    k_flat = K.reshape(cache_len, -1)   # (cache_len, head_dim)
-    v_flat = V.reshape(cache_len, -1)   # (cache_len, head_dim)
+    k_flat = K.reshape(cache_len, -1)  # (cache_len, head_dim)
+    v_flat = V.reshape(cache_len, -1)  # (cache_len, head_dim)
 
     # q: (B, H, L, D) — compute for each (B, H, L) independently
     B, H, L, D = q.shape
 
     # scores: (B, H, L, cache_len)
     scores = torch.einsum("bhld,cd->bhlc", q, k_flat) * scale
-    attn = torch.softmax(scores, dim=-1)   # (B, H, L, cache_len)
+    attn = torch.softmax(scores, dim=-1)  # (B, H, L, cache_len)
 
     # out: (B, H, L, D)
     out = torch.einsum("bhlc,cd->bhld", attn, v_flat)

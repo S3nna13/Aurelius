@@ -1,12 +1,11 @@
 """Tests for audit export."""
+
 from __future__ import annotations
 
 import json
 import tempfile
 
-import pytest
-
-from src.security.audit_export import AuditExporter, AuditEntry
+from src.security.audit_export import AuditEntry, AuditExporter
 
 
 class TestAuditExporter:

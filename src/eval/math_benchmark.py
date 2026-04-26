@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class MathCategory(str, Enum):
+class MathCategory(StrEnum):
     ALGEBRA = "algebra"
     GEOMETRY = "geometry"
     NUMBER_THEORY = "number_theory"
@@ -28,7 +27,7 @@ class MathProblem:
 
 
 class MathAnswer:
-    _BOXED_RE = re.compile(r'\\boxed\{([^}]*)\}')
+    _BOXED_RE = re.compile(r"\\boxed\{([^}]*)\}")
 
     @staticmethod
     def normalize(raw: str) -> str:
@@ -39,7 +38,7 @@ class MathAnswer:
         if m:
             s = m.group(1)
         # Remove dollar signs
-        s = s.replace('$', '')
+        s = s.replace("$", "")
         return s.strip().lower()
 
     @staticmethod
@@ -106,8 +105,10 @@ _DEFAULT_PROBLEMS: list[MathProblem] = [
 
 
 class MathBenchmark:
-    def __init__(self, problems: Optional[list[MathProblem]] = None) -> None:
-        self.problems: list[MathProblem] = problems if problems is not None else list(_DEFAULT_PROBLEMS)
+    def __init__(self, problems: list[MathProblem] | None = None) -> None:
+        self.problems: list[MathProblem] = (
+            problems if problems is not None else list(_DEFAULT_PROBLEMS)
+        )
 
     def problem_ids(self) -> list[str]:
         return [p.problem_id for p in self.problems]
@@ -143,9 +144,8 @@ class MathBenchmark:
             by_difficulty[diff_key]["total"] += 1
 
             predicted = predictions.get(p.problem_id, "")
-            is_correct = (
-                MathAnswer.check_exact(predicted, p.answer)
-                or MathAnswer.check_numeric(predicted, p.answer)
+            is_correct = MathAnswer.check_exact(predicted, p.answer) or MathAnswer.check_numeric(
+                predicted, p.answer
             )
             if is_correct:
                 correct += 1

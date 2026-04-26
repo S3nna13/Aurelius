@@ -9,12 +9,12 @@ from src.model.early_exit import (
     EarlyExitConfig,
     EarlyExitTransformer,
     ExitStats,
-    profile_exit_distribution,
 )
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg():
@@ -33,7 +33,9 @@ def cfg():
 
 @pytest.fixture
 def exit_cfg():
-    return EarlyExitConfig(n_exit_layers=2, exit_threshold=0.9, loss_weight=0.3, placement="uniform")
+    return EarlyExitConfig(
+        n_exit_layers=2, exit_threshold=0.9, loss_weight=0.3, placement="uniform"
+    )
 
 
 @pytest.fixture
@@ -51,18 +53,22 @@ def input_ids(cfg):
 # 1. EarlyExitClassifier output shapes
 # ---------------------------------------------------------------------------
 
+
 def test_exit_classifier_output_shapes(cfg):
     clf = EarlyExitClassifier(cfg.d_model, cfg.vocab_size)
     B, T = 2, 8
     x = torch.randn(B, T, cfg.d_model)
     logits, confidence = clf(x)
-    assert logits.shape == (B, T, cfg.vocab_size), f"Expected ({B}, {T}, {cfg.vocab_size}), got {logits.shape}"
+    assert logits.shape == (B, T, cfg.vocab_size), (
+        f"Expected ({B}, {T}, {cfg.vocab_size}), got {logits.shape}"
+    )
     assert confidence.shape == (B, T), f"Expected ({B}, {T}), got {confidence.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 2. EarlyExitClassifier confidence values in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_exit_classifier_confidence_in_range(cfg):
     clf = EarlyExitClassifier(cfg.d_model, cfg.vocab_size)
@@ -75,6 +81,7 @@ def test_exit_classifier_confidence_in_range(cfg):
 # ---------------------------------------------------------------------------
 # 3. Training forward returns (loss, logits, None)
 # ---------------------------------------------------------------------------
+
 
 def test_early_exit_transformer_training_forward(model, input_ids):
     labels = input_ids.clone()
@@ -91,6 +98,7 @@ def test_early_exit_transformer_training_forward(model, input_ids):
 # 4. Training loss is positive
 # ---------------------------------------------------------------------------
 
+
 def test_early_exit_training_loss_positive(model, input_ids):
     labels = input_ids.clone()
     loss, _, _ = model(input_ids, labels=labels)
@@ -100,6 +108,7 @@ def test_early_exit_training_loss_positive(model, input_ids):
 # ---------------------------------------------------------------------------
 # 5. Inference without early exit returns (None, logits, None)
 # ---------------------------------------------------------------------------
+
 
 def test_early_exit_inference_no_exit(model, input_ids, cfg):
     with torch.no_grad():
@@ -116,6 +125,7 @@ def test_early_exit_inference_no_exit(model, input_ids, cfg):
 # 6. Inference with early exit returns a 3-tuple
 # ---------------------------------------------------------------------------
 
+
 def test_early_exit_inference_with_exit(model, input_ids, cfg):
     with torch.no_grad():
         result = model(input_ids, use_early_exit=True)
@@ -131,6 +141,7 @@ def test_early_exit_inference_with_exit(model, input_ids, cfg):
 # 7. Uniform exit positions are spread across layers
 # ---------------------------------------------------------------------------
 
+
 def test_exit_positions_uniform(cfg):
     exit_cfg = EarlyExitConfig(n_exit_layers=2, placement="uniform")
     model = EarlyExitTransformer(cfg, exit_cfg)
@@ -141,7 +152,7 @@ def test_exit_positions_uniform(cfg):
     assert n_layers - 1 not in positions, "Last layer should never be an exit position"
     # All positions must be valid layer indices
     for p in positions:
-        assert 0 <= p < n_layers - 1, f"Position {p} out of valid range [0, {n_layers-2}]"
+        assert 0 <= p < n_layers - 1, f"Position {p} out of valid range [0, {n_layers - 2}]"
     # Should have at most n_exit_layers exits
     assert len(positions) <= exit_cfg.n_exit_layers
 
@@ -149,6 +160,7 @@ def test_exit_positions_uniform(cfg):
 # ---------------------------------------------------------------------------
 # 8. Late exit positions are in the last half of layers
 # ---------------------------------------------------------------------------
+
 
 def test_exit_positions_late(cfg):
     exit_cfg = EarlyExitConfig(n_exit_layers=2, placement="late")
@@ -168,6 +180,7 @@ def test_exit_positions_late(cfg):
 # 9. compute_exit_stats returns ExitStats with correct attributes
 # ---------------------------------------------------------------------------
 
+
 def test_compute_exit_stats_returns_stats(model, input_ids):
     with torch.no_grad():
         stats = model.compute_exit_stats(input_ids)
@@ -185,9 +198,8 @@ def test_compute_exit_stats_returns_stats(model, input_ids):
 # 10. flop_savings is in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_flop_savings_in_range(model, input_ids):
     with torch.no_grad():
         stats = model.compute_exit_stats(input_ids)
-    assert 0.0 <= stats.flop_savings <= 1.0, (
-        f"flop_savings={stats.flop_savings} is outside [0, 1]"
-    )
+    assert 0.0 <= stats.flop_savings <= 1.0, f"flop_savings={stats.flop_savings} is outside [0, 1]"

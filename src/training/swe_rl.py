@@ -15,25 +15,25 @@ Classes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SWETask:
     """Specification for a software engineering RL task."""
 
     task_id: str
-    repo_context: str              # condensed repo context (docstrings, signatures)
+    repo_context: str  # condensed repo context (docstrings, signatures)
     issue_description: str
-    test_cases: list[str]          # test identifiers (simulated)
-    difficulty: str = "medium"     # "easy", "medium", "hard"
+    test_cases: list[str]  # test identifiers (simulated)
+    difficulty: str = "medium"  # "easy", "medium", "hard"
     metadata: dict = field(default_factory=dict)
 
 
@@ -42,7 +42,7 @@ class SWEPatch:
     """A generated patch produced by the model."""
 
     task_id: str
-    patch_text: str                # generated patch
+    patch_text: str  # generated patch
     tokens_used: int
     attempt_idx: int = 0
 
@@ -55,7 +55,7 @@ class SWEResult:
     tests_passed: int
     tests_total: int
     reward: float
-    resolved: bool                 # all tests pass
+    resolved: bool  # all tests pass
 
 
 @dataclass
@@ -63,9 +63,9 @@ class SWERLConfig:
     """Hyperparameters for SWERLTrainer."""
 
     max_patch_tokens: int = 4096
-    n_attempts_per_task: int = 4   # generate N patches, take best
+    n_attempts_per_task: int = 4  # generate N patches, take best
     pass_rate_reward: bool = True  # reward = tests_passed/tests_total, not just 0/1
-    resolved_bonus: float = 0.5    # extra reward for fully resolved
+    resolved_bonus: float = 0.5  # extra reward for fully resolved
     partial_credit: bool = True
     difficulty_weights: dict = field(
         default_factory=lambda: {"easy": 0.5, "medium": 1.0, "hard": 2.0}
@@ -75,6 +75,7 @@ class SWERLConfig:
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class SWERLTrainer:
     """
@@ -98,14 +99,14 @@ class SWERLTrainer:
         print(result.reward, result.resolved)
     """
 
-    def __init__(self, config: Optional[SWERLConfig] = None) -> None:
+    def __init__(self, config: SWERLConfig | None = None) -> None:
         self.config = config if config is not None else SWERLConfig()
 
     # ------------------------------------------------------------------
     # Core reward computation
     # ------------------------------------------------------------------
 
-    def compute_reward(self, result: SWEResult, task: Optional[SWETask] = None) -> float:
+    def compute_reward(self, result: SWEResult, task: SWETask | None = None) -> float:
         """Compute the scalar reward for a SWEResult.
 
         Algorithm:
@@ -166,7 +167,7 @@ class SWERLTrainer:
             SWEResult with reward and resolved flag populated.
         """
         tests_passed, tests_total = verifier_fn(patch.patch_text, task.test_cases)
-        resolved = (tests_passed == tests_total and tests_total > 0)
+        resolved = tests_passed == tests_total and tests_total > 0
         # Build a partial result first (reward=0.0 placeholder) so compute_reward
         # can inspect the resolved flag.
         partial = SWEResult(
@@ -221,9 +222,7 @@ class SWERLTrainer:
     # Policy gradient loss
     # ------------------------------------------------------------------
 
-    def compute_policy_loss(
-        self, log_probs: torch.Tensor, rewards: torch.Tensor
-    ) -> torch.Tensor:
+    def compute_policy_loss(self, log_probs: torch.Tensor, rewards: torch.Tensor) -> torch.Tensor:
         """REINFORCE policy gradient loss.
 
         loss = -mean(reward * log_prob)

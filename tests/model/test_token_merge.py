@@ -3,22 +3,21 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
-from src.model.config import AureliusConfig
 from src.model.attention import GroupedQueryAttention, precompute_rope_frequencies
+from src.model.config import AureliusConfig
 from src.model.token_merge import (
-    bipartite_soft_matching,
     TokenMergeAttention,
-    apply_token_merging,
     ToMeStats,
+    apply_token_merging,
+    bipartite_soft_matching,
 )
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def tiny_cfg(**kwargs) -> AureliusConfig:
     """Build a minimal AureliusConfig for fast tests."""
@@ -47,6 +46,7 @@ def make_attn(cfg: AureliusConfig | None = None) -> GroupedQueryAttention:
 # bipartite_soft_matching tests
 # ---------------------------------------------------------------------------
 
+
 def test_bipartite_matching_merge_reduces_length():
     """merge_fn on (1, 20, 64) with r=4 → (1, 16, 64)."""
     B, N, C = 1, 20, 64
@@ -55,7 +55,7 @@ def test_bipartite_matching_merge_reduces_length():
     merge_fn, _ = bipartite_soft_matching(metric, r)
     x = torch.randn(B, N, C)
     merged = merge_fn(x)
-    assert merged.shape == (B, N - r, C), f"Expected {(B, N-r, C)}, got {merged.shape}"
+    assert merged.shape == (B, N - r, C), f"Expected {(B, N - r, C)}, got {merged.shape}"
 
 
 def test_bipartite_matching_unmerge_restores_length():
@@ -111,6 +111,7 @@ def test_r_zero_no_change():
 # TokenMergeAttention tests
 # ---------------------------------------------------------------------------
 
+
 def test_token_merge_attention_output_shape():
     """(2, 32, 64) → (2, 32, 64) after merge+attn+unmerge."""
     cfg = tiny_cfg()
@@ -142,12 +143,13 @@ def test_token_merge_reduces_attn_sequence():
     assert len(tome_attn._merge_history) == 1
     event = tome_attn._merge_history[0]
     assert event["before"] == N
-    assert event["after"] == N - 4, f"Expected {N-4}, got {event['after']}"
+    assert event["after"] == N - 4, f"Expected {N - 4}, got {event['after']}"
 
 
 # ---------------------------------------------------------------------------
 # apply_token_merging tests
 # ---------------------------------------------------------------------------
+
 
 def test_apply_token_merging_wraps_layers():
     """After apply_token_merging, all attention layers are TokenMergeAttention."""
@@ -169,13 +171,14 @@ def test_some_layers_only():
     assert isinstance(model.layers[0].attn, TokenMergeAttention)
     for block in model.layers[1:]:
         assert not isinstance(block.attn, TokenMergeAttention), (
-            f"Layer after index 0 should NOT be TokenMergeAttention"
+            "Layer after index 0 should NOT be TokenMergeAttention"
         )
 
 
 # ---------------------------------------------------------------------------
 # ToMeStats tests
 # ---------------------------------------------------------------------------
+
 
 def test_tome_stats_compression():
     """record(100, 80) → compression_ratio() == 0.8."""
@@ -202,6 +205,7 @@ def test_tome_stats_multiple_records():
 # ---------------------------------------------------------------------------
 # Edge case: small sequence
 # ---------------------------------------------------------------------------
+
 
 def test_small_seq_no_merge():
     """seq_len < 4 doesn't crash (r is clamped / merging skipped)."""

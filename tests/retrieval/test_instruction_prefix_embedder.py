@@ -47,9 +47,7 @@ class _ByteTokenizer:
     def __call__(self, text: str) -> list[int]:
         self.calls.append(text)
         words = text.split()
-        return [
-            ((sum(ord(c) for c in w) % (self.vocab_size - 1)) + 1) for w in words
-        ]
+        return [((sum(ord(c) for c in w) % (self.vocab_size - 1)) + 1) for w in words]
 
 
 def test_instruction_prefixes_has_all_six_documented_tasks() -> None:
@@ -103,20 +101,14 @@ def test_similarity_returns_list_of_floats() -> None:
 
 def test_similarity_of_identical_text_same_task_is_approximately_one() -> None:
     wrapper, _ = _make_wrapper()
-    sims = wrapper.similarity(
-        "abc", ["abc"], query_task="passage", passage_task="passage"
-    )
+    sims = wrapper.similarity("abc", ["abc"], query_task="passage", passage_task="passage")
     assert sims[0] == pytest.approx(1.0, abs=1e-5)
 
 
 def test_different_task_yields_different_embedding_via_similarity() -> None:
     wrapper, _ = _make_wrapper()
-    same_task = wrapper.similarity(
-        "abc", ["abc"], query_task="query", passage_task="query"
-    )[0]
-    cross_task = wrapper.similarity(
-        "abc", ["abc"], query_task="query", passage_task="passage"
-    )[0]
+    same_task = wrapper.similarity("abc", ["abc"], query_task="query", passage_task="query")[0]
+    cross_task = wrapper.similarity("abc", ["abc"], query_task="query", passage_task="passage")[0]
     assert same_task == pytest.approx(1.0, abs=1e-5)
     assert cross_task < 0.9999
 

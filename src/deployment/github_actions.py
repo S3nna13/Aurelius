@@ -9,7 +9,6 @@ Generates valid GitHub Actions workflow YAML using stdlib string formatting only
 
 from __future__ import annotations
 
-import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,12 +30,8 @@ class GHActionsError(Exception):
 class GHActionsTrigger:
     """Defines when a GitHub Actions workflow is triggered."""
 
-    on_push_branches: list[str] = field(
-        default_factory=lambda: ["main", "codex/*"]
-    )
-    on_pull_request_branches: list[str] = field(
-        default_factory=lambda: ["main"]
-    )
+    on_push_branches: list[str] = field(default_factory=lambda: ["main", "codex/*"])
+    on_pull_request_branches: list[str] = field(default_factory=lambda: ["main"])
     on_schedule_cron: str | None = None
 
 
@@ -161,9 +156,7 @@ class GHActionsGenerator:
         lines.append("")
         return "\n".join(lines)
 
-    def write_workflow(
-        self, workflow: GHActionsWorkflow, output_dir: Path
-    ) -> Path:
+    def write_workflow(self, workflow: GHActionsWorkflow, output_dir: Path) -> Path:
         """Write workflow YAML to output_dir/.github/workflows/<name>.yml.
 
         Creates intermediate directories if needed.

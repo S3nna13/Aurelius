@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 
 @dataclass
@@ -50,10 +50,17 @@ class TechnicalAnalyzer:
         ema_12 = self._ema(prices, 12)
         ema_26 = self._ema(prices, 26)
         return TechnicalIndicators(
-            rsi=rsi, macd_line=macd_line, macd_signal=macd_signal,
-            macd_histogram=macd_histogram, upper_band=upper,
-            middle_band=middle, lower_band=lower, sma_50=sma_50,
-            sma_200=sma_200, ema_12=ema_12, ema_26=ema_26,
+            rsi=rsi,
+            macd_line=macd_line,
+            macd_signal=macd_signal,
+            macd_histogram=macd_histogram,
+            upper_band=upper,
+            middle_band=middle,
+            lower_band=lower,
+            sma_50=sma_50,
+            sma_200=sma_200,
+            ema_12=ema_12,
+            ema_26=ema_26,
         )
 
     def _sma(self, prices: Sequence[float], period: int) -> float:

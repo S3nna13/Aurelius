@@ -1,4 +1,5 @@
 """Agent belief state tracking via a probabilistic world model."""
+
 from __future__ import annotations
 
 import time
@@ -85,7 +86,7 @@ class BeliefState:
         for n1 in names:
             for prefix in ("not_", "no_"):
                 if n1.startswith(prefix):
-                    base = n1[len(prefix):]
+                    base = n1[len(prefix) :]
                     if base in self._props:
                         p1 = self._props[n1]
                         p2 = self._props[base]

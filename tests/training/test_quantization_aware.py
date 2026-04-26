@@ -1,16 +1,16 @@
 """Tests for quantization_aware training module."""
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.quantization_aware import (
-    QATConfig,
-    compute_quantization_params,
-    fake_quantize,
     FakeQuantize,
+    QATConfig,
     QATLinear,
     apply_qat,
     compute_model_quantization_error,
+    compute_quantization_params,
+    fake_quantize,
 )
 
 # Constants used throughout tests
@@ -207,8 +207,9 @@ def test_apply_qat_replaced_modules_are_qat_linear():
     # No direct child should still be a bare nn.Linear (QATLinear wraps an inner
     # nn.Linear, so we only check the Sequential's immediate children)
     for child in model.children():
-        assert not (type(child) is nn.Linear), \
+        assert type(child) is not nn.Linear, (
             f"Direct child {child} is still a plain nn.Linear after apply_qat"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -236,5 +237,7 @@ def test_per_channel_scale_shape():
     scale, zp = compute_quantization_params(
         x, n_bits=N_BITS, symmetric=True, per_channel=True, channel_dim=0
     )
-    assert scale.shape == (OUT_FEATURES,), f"Expected scale shape ({OUT_FEATURES},), got {scale.shape}"
+    assert scale.shape == (OUT_FEATURES,), (
+        f"Expected scale shape ({OUT_FEATURES},), got {scale.shape}"
+    )
     assert zp.shape == (OUT_FEATURES,), f"Expected zp shape ({OUT_FEATURES},), got {zp.shape}"

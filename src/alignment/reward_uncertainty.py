@@ -7,15 +7,13 @@ Provides two orthogonal uncertainty estimation approaches:
 Also includes UncertaintyFilter for filtering high-uncertainty samples and
 RewardUncertaintyTrainer for Bradley-Terry preference training.
 """
-from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # MCDropoutReward
@@ -54,9 +52,7 @@ class MCDropoutReward(nn.Module):
         h = self.fc2(h)
         return h.squeeze(-1)
 
-    def predict_with_uncertainty(
-        self, x: Tensor, n_samples: int = 20
-    ) -> Tuple[Tensor, Tensor]:
+    def predict_with_uncertainty(self, x: Tensor, n_samples: int = 20) -> tuple[Tensor, Tensor]:
         """Estimate reward and uncertainty via MC-Dropout.
 
         Enables dropout at inference by temporarily setting the model to train
@@ -73,9 +69,7 @@ class MCDropoutReward(nn.Module):
         self.train()
 
         with torch.no_grad():
-            samples = torch.stack(
-                [self.forward(x) for _ in range(n_samples)], dim=0
-            )
+            samples = torch.stack([self.forward(x) for _ in range(n_samples)], dim=0)
 
         if not was_training:
             self.eval()
@@ -98,7 +92,7 @@ class DeepEnsembleReward:
                 (B, d_model) tensors and return (B,) rewards.
     """
 
-    def __init__(self, models: List[nn.Module]) -> None:
+    def __init__(self, models: list[nn.Module]) -> None:
         if not models:
             raise ValueError("models list must be non-empty")
         self.models = list(models)
@@ -115,7 +109,7 @@ class DeepEnsembleReward:
         rewards = torch.stack([m(x) for m in self.models], dim=0)
         return rewards.mean(dim=0)
 
-    def predict_with_uncertainty(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def predict_with_uncertainty(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Return mean and std across ensemble members.
 
         Args:
@@ -140,9 +134,7 @@ class DeepEnsembleReward:
             model: New nn.Module to insert.
         """
         if idx < 0 or idx >= len(self.models):
-            raise IndexError(
-                f"Index {idx} out of range for ensemble of size {len(self.models)}"
-            )
+            raise IndexError(f"Index {idx} out of range for ensemble of size {len(self.models)}")
         self.models[idx] = model
 
 
@@ -162,9 +154,7 @@ class UncertaintyFilter:
     def __init__(self, threshold: float) -> None:
         self.threshold = threshold
 
-    def filter(
-        self, rewards: Tensor, uncertainties: Tensor
-    ) -> Tuple[Tensor, Tensor]:
+    def filter(self, rewards: Tensor, uncertainties: Tensor) -> tuple[Tensor, Tensor]:
         """Keep samples with low uncertainty.
 
         Args:
@@ -178,9 +168,7 @@ class UncertaintyFilter:
         kept_rewards = rewards[kept_mask]
         return kept_rewards, kept_mask
 
-    def calibrate_threshold(
-        self, uncertainties: Tensor, percentile: float = 90
-    ) -> float:
+    def calibrate_threshold(self, uncertainties: Tensor, percentile: float = 90) -> float:
         """Set and return the p-th percentile of uncertainties as threshold.
 
         Args:
@@ -217,9 +205,7 @@ class RewardUncertaintyTrainer:
         self.model = model
         self.optimizer = optimizer
 
-    def train_step(
-        self, x_w: Tensor, x_l: Tensor
-    ) -> Dict[str, float]:
+    def train_step(self, x_w: Tensor, x_l: Tensor) -> dict[str, float]:
         """One gradient update on a preference pair batch.
 
         Bradley-Terry loss: -logsigmoid(r_w - r_l)

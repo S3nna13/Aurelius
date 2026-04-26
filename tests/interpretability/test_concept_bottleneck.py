@@ -8,19 +8,20 @@ Minimum 28 tests.
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.interpretability.concept_bottleneck import (
-    Concept,
-    ConceptScore,
-    ConceptBottleneck,
     CONCEPT_BOTTLENECK_REGISTRY,
+    Concept,
+    ConceptBottleneck,
+    ConceptScore,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_concept(cid: int = 0, name: str = "test", desc: str = "A test concept") -> Concept:
     return Concept(name=name, description=desc, concept_id=cid)
@@ -50,6 +51,7 @@ def _make_activations(dim: int, val: float = 0.1) -> list[float]:
 # ---------------------------------------------------------------------------
 # 1. Concept dataclass — frozen
 # ---------------------------------------------------------------------------
+
 
 class TestConceptDataclass:
     def test_fields_stored(self):
@@ -88,6 +90,7 @@ class TestConceptDataclass:
 # 2. ConceptScore dataclass — frozen
 # ---------------------------------------------------------------------------
 
+
 class TestConceptScoreDataclass:
     def test_fields_stored(self):
         c = _make_concept()
@@ -113,6 +116,7 @@ class TestConceptScoreDataclass:
 # 3. ConceptBottleneck — constructor
 # ---------------------------------------------------------------------------
 
+
 class TestBottleneckConstructor:
     def test_concepts_stored(self):
         concepts = _make_concepts(4)
@@ -131,6 +135,7 @@ class TestBottleneckConstructor:
 # ---------------------------------------------------------------------------
 # 4. register_probe
 # ---------------------------------------------------------------------------
+
 
 class TestRegisterProbe:
     def test_register_probe_stores_weights(self):
@@ -160,6 +165,7 @@ class TestRegisterProbe:
 # ---------------------------------------------------------------------------
 # 5. score_concept
 # ---------------------------------------------------------------------------
+
 
 class TestScoreConcept:
     def test_score_in_zero_one(self):
@@ -206,6 +212,7 @@ class TestScoreConcept:
 # 6. predict
 # ---------------------------------------------------------------------------
 
+
 class TestPredict:
     def test_predict_returns_list(self):
         cb = _make_bottleneck(n_concepts=3)
@@ -251,6 +258,7 @@ class TestPredict:
 # 7. active_concepts
 # ---------------------------------------------------------------------------
 
+
 class TestActiveConcepts:
     def test_active_concepts_returns_list(self):
         cb = _make_bottleneck(n_concepts=2)
@@ -263,7 +271,7 @@ class TestActiveConcepts:
         concepts = _make_concepts(2)
         cb = ConceptBottleneck(concepts=concepts, threshold=0.5)
         # Concept 0: high score (active), concept 1: low score (inactive)
-        cb.register_probe(0, [1.0])   # sigmoid(big) > 0.5
+        cb.register_probe(0, [1.0])  # sigmoid(big) > 0.5
         cb.register_probe(1, [-1.0])  # sigmoid(-big) < 0.5
         active = cb.active_concepts([100.0])
         assert len(active) == 1
@@ -302,6 +310,7 @@ class TestActiveConcepts:
 # 8. intervention
 # ---------------------------------------------------------------------------
 
+
 class TestIntervention:
     def test_intervention_returns_list(self):
         cb = _make_bottleneck()
@@ -339,6 +348,7 @@ class TestIntervention:
 # ---------------------------------------------------------------------------
 # 9. REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):

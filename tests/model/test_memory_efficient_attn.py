@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 import torch.nn.functional as F
 
@@ -19,10 +18,10 @@ from src.model.memory_efficient_attn import (
 # ---------------------------------------------------------------------------
 # Test dimensions (kept small for speed)
 # ---------------------------------------------------------------------------
-B = 2    # batch size
-T = 16   # sequence length
-H = 4    # number of heads
-D = 32   # head dimension
+B = 2  # batch size
+T = 16  # sequence length
+H = 4  # number of heads
+D = 32  # head dimension
 CHUNK = 4  # chunk size for tests
 
 
@@ -30,10 +29,11 @@ CHUNK = 4  # chunk size for tests
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def reference_attention(
-    q: torch.Tensor,   # (B, H, T_q, D)
-    k: torch.Tensor,   # (B, H, T_k, D)
-    v: torch.Tensor,   # (B, H, T_k, D)
+    q: torch.Tensor,  # (B, H, T_q, D)
+    k: torch.Tensor,  # (B, H, T_k, D)
+    v: torch.Tensor,  # (B, H, T_k, D)
     causal: bool = False,
     scale: float | None = None,
 ) -> torch.Tensor:
@@ -68,6 +68,7 @@ def make_small_config(n_heads: int = H, n_kv_heads: int = H) -> AureliusConfig:
 # 1. online_softmax_update matches standard softmax
 # ---------------------------------------------------------------------------
 
+
 def test_online_softmax_matches_standard():
     """Chunked online softmax should match a single-pass full softmax."""
     torch.manual_seed(42)
@@ -85,21 +86,20 @@ def test_online_softmax_matches_standard():
     running_out = torch.zeros(B, H, T, D)
 
     for start in range(0, T_k, half):
-        s_chunk = scores_all[:, :, :, start:start + half]
-        v_chunk = v_all[:, :, start:start + half, :]
+        s_chunk = scores_all[:, :, :, start : start + half]
+        v_chunk = v_all[:, :, start : start + half, :]
         running_max, running_sum, running_out = online_softmax_update(
             running_max, running_sum, running_out, s_chunk, v_chunk
         )
 
     result = running_out / running_sum.unsqueeze(-1)
-    assert torch.allclose(result, ref, atol=1e-5), (
-        f"Max diff: {(result - ref).abs().max().item()}"
-    )
+    assert torch.allclose(result, ref, atol=1e-5), f"Max diff: {(result - ref).abs().max().item()}"
 
 
 # ---------------------------------------------------------------------------
 # 2. chunked_attention output shape
 # ---------------------------------------------------------------------------
+
 
 def test_chunked_attention_output_shape():
     """chunked_attention should return (B, H, T_q, D) for (B, H, T_q, D) inputs."""
@@ -114,6 +114,7 @@ def test_chunked_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 3. chunked_attention matches standard attention (no causal mask)
 # ---------------------------------------------------------------------------
+
 
 def test_chunked_attention_matches_standard():
     """Without causal masking, chunked attention must equal full softmax attention."""
@@ -134,6 +135,7 @@ def test_chunked_attention_matches_standard():
 # 4. chunked_attention with causal=True matches causal reference
 # ---------------------------------------------------------------------------
 
+
 def test_chunked_attention_causal_matches_standard():
     """With causal=True, chunked attention must match causal masked attention."""
     torch.manual_seed(2)
@@ -152,6 +154,7 @@ def test_chunked_attention_causal_matches_standard():
 # ---------------------------------------------------------------------------
 # 5. chunk_size=1 still gives correct result
 # ---------------------------------------------------------------------------
+
 
 def test_chunked_attention_chunk_size_1():
     """chunk_size=1 (most extreme chunking) should still be numerically correct."""
@@ -172,6 +175,7 @@ def test_chunked_attention_chunk_size_1():
 # 6. MemoryEfficientAttention output shape
 # ---------------------------------------------------------------------------
 
+
 def test_memory_efficient_attn_output_shape():
     """MemoryEfficientAttention should return (B, T, D) from (B, T, D) input."""
     torch.manual_seed(4)
@@ -180,14 +184,13 @@ def test_memory_efficient_attn_output_shape():
     model.eval()
     x = torch.randn(B, T, cfg.d_model)
     out = model(x)
-    assert out.shape == (B, T, cfg.d_model), (
-        f"Expected ({B}, {T}, {cfg.d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, T, cfg.d_model), f"Expected ({B}, {T}, {cfg.d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 7. MemoryEfficientAttention matches manual reference
 # ---------------------------------------------------------------------------
+
 
 def test_memory_efficient_attn_matches_reference():
     """MemoryEfficientAttention output should match a hand-rolled causal attention."""
@@ -219,6 +222,7 @@ def test_memory_efficient_attn_matches_reference():
 # 8. compute_attention_memory returns all required keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_attention_memory_keys():
     """compute_attention_memory must return a dict with all 4 required keys."""
     result = compute_attention_memory(seq_len=T, n_heads=H, head_dim=D, chunk_size=CHUNK)
@@ -234,6 +238,7 @@ def test_compute_attention_memory_keys():
 # 9. reduction_factor > 1 when chunk_size < seq_len
 # ---------------------------------------------------------------------------
 
+
 def test_memory_reduction_factor_greater_1():
     """With chunk_size < seq_len, reduction_factor should be > 1."""
     assert CHUNK < T, "Test requires chunk_size < seq_len"
@@ -246,6 +251,7 @@ def test_memory_reduction_factor_greater_1():
 # ---------------------------------------------------------------------------
 # 10. use_cache=True returns tuple
 # ---------------------------------------------------------------------------
+
 
 def test_efficient_attn_use_cache():
     """With use_cache=True, forward should return (output, present_kv) tuple."""

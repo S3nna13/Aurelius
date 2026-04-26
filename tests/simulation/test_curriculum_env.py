@@ -1,12 +1,14 @@
 """Tests for src/simulation/curriculum_env.py — 10+ tests."""
-import pytest
-from src.simulation.curriculum_env import CurriculumLevel, CurriculumEnv, _default_grid_factory
-from src.simulation.environment import EnvAction
 
+import pytest
+
+from src.simulation.curriculum_env import CurriculumEnv, CurriculumLevel, _default_grid_factory
+from src.simulation.environment import EnvAction
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _levels(n=3, threshold=0.8):
     return [
@@ -33,6 +35,7 @@ def _mark_failures(env: CurriculumEnv, n: int):
 # 1. Construction
 # ---------------------------------------------------------------------------
 
+
 def test_initial_level_is_zero():
     env = CurriculumEnv(_levels())
     assert env.current_level.level_id == 0
@@ -46,6 +49,7 @@ def test_raises_on_empty_levels():
 # ---------------------------------------------------------------------------
 # 2. Success rate
 # ---------------------------------------------------------------------------
+
 
 def test_success_rate_starts_zero():
     env = CurriculumEnv(_levels())
@@ -68,6 +72,7 @@ def test_success_rate_mixed():
 # ---------------------------------------------------------------------------
 # 3. Advancement
 # ---------------------------------------------------------------------------
+
 
 def test_no_advance_below_threshold():
     env = CurriculumEnv(_levels(threshold=0.8), window=10)
@@ -115,6 +120,7 @@ def test_advance_increments_level_sequentially():
 # 4. Env delegation
 # ---------------------------------------------------------------------------
 
+
 def test_reset_delegates_to_inner():
     env = CurriculumEnv(_levels())
     state = env.reset()
@@ -139,6 +145,7 @@ def test_valid_actions_delegates():
 # ---------------------------------------------------------------------------
 # 5. Default factory
 # ---------------------------------------------------------------------------
+
 
 def test_default_grid_factory_creates_env():
     inner = _default_grid_factory({"width": 4, "height": 4})

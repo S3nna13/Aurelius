@@ -6,14 +6,13 @@ import math
 
 import pytest
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.noise_training import (
-    NoiseConfig,
     NoiseAwareTrainer,
+    NoiseConfig,
     inject_token_noise,
     label_smoothed_loss,
     mixup_embeddings,

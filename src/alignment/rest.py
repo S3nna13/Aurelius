@@ -22,10 +22,9 @@ Loss:
 from __future__ import annotations
 
 import logging
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
 import torch
-import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +44,9 @@ class ReSTDataset:
 
     def __init__(
         self,
-        prompts: List[torch.Tensor],
-        completions: List[torch.Tensor],
-        rewards: List[float],
+        prompts: list[torch.Tensor],
+        completions: list[torch.Tensor],
+        rewards: list[float],
     ) -> None:
         if not (len(prompts) == len(completions) == len(rewards)):
             raise ValueError(
@@ -63,7 +62,7 @@ class ReSTDataset:
         return len(self.prompts)
 
     # ------------------------------------------------------------------
-    def filter(self, threshold: float) -> "ReSTDataset":
+    def filter(self, threshold: float) -> ReSTDataset:
         """Return a new ReSTDataset containing only pairs with reward >= threshold."""
         kept_p, kept_c, kept_r = [], [], []
         for p, c, r in zip(self.prompts, self.completions, self.rewards):
@@ -76,9 +75,9 @@ class ReSTDataset:
     # ------------------------------------------------------------------
     def grow(
         self,
-        generator_fn: Callable[[torch.Tensor], Tuple[torch.Tensor, float]],
+        generator_fn: Callable[[torch.Tensor], tuple[torch.Tensor, float]],
         n_samples_per_prompt: int = 4,
-    ) -> "ReSTDataset":
+    ) -> ReSTDataset:
         """Expand dataset by generating multiple completions per prompt.
 
         Args:
@@ -92,9 +91,9 @@ class ReSTDataset:
         if n_samples_per_prompt < 1:
             raise ValueError("n_samples_per_prompt must be >= 1")
 
-        new_p: List[torch.Tensor] = []
-        new_c: List[torch.Tensor] = []
-        new_r: List[float] = []
+        new_p: list[torch.Tensor] = []
+        new_c: list[torch.Tensor] = []
+        new_r: list[float] = []
 
         # We iterate over the *unique* prompts in the current dataset so that
         # each seed prompt gets n_samples_per_prompt candidates added.
@@ -201,7 +200,7 @@ class ReSTLoss:
         log_probs: torch.Tensor,
         rewards: torch.Tensor,
         threshold: float,
-    ) -> Tuple[torch.Tensor, int]:
+    ) -> tuple[torch.Tensor, int]:
         """Compute the ReST loss.
 
         Args:
@@ -217,13 +216,9 @@ class ReSTLoss:
             n_accepted: Number of samples that passed the threshold (int).
         """
         if log_probs.dim() not in (1, 2):
-            raise ValueError(
-                f"log_probs must be 1-D or 2-D; got shape {log_probs.shape}"
-            )
+            raise ValueError(f"log_probs must be 1-D or 2-D; got shape {log_probs.shape}")
         if rewards.dim() != 1:
-            raise ValueError(
-                f"rewards must be 1-D; got shape {rewards.shape}"
-            )
+            raise ValueError(f"rewards must be 1-D; got shape {rewards.shape}")
         if log_probs.shape[0] != rewards.shape[0]:
             raise ValueError(
                 "Batch size mismatch: log_probs.shape[0]="
@@ -232,9 +227,9 @@ class ReSTLoss:
 
         # Reduce to per-sample log-prob if sequence dimension present
         if log_probs.dim() == 2:
-            per_sample_lp = log_probs.mean(dim=1)   # (B,)
+            per_sample_lp = log_probs.mean(dim=1)  # (B,)
         else:
-            per_sample_lp = log_probs               # (B,)
+            per_sample_lp = log_probs  # (B,)
 
         mask = (rewards >= threshold).to(dtype=per_sample_lp.dtype)  # (B,)
         n_accepted = int(mask.sum().item())
@@ -245,7 +240,7 @@ class ReSTLoss:
             return loss, 0
 
         # NLL = -log_prob; apply mask to zero out rejected samples
-        nll = -per_sample_lp * mask            # (B,)
+        nll = -per_sample_lp * mask  # (B,)
 
         if self.reduction == "mean":
             loss = nll.sum() / n_accepted
@@ -272,8 +267,8 @@ class ReSTTrainer:
 
     def __init__(
         self,
-        threshold_schedule: Optional[ReSTThresholdSchedule] = None,
-        loss_fn: Optional[ReSTLoss] = None,
+        threshold_schedule: ReSTThresholdSchedule | None = None,
+        loss_fn: ReSTLoss | None = None,
         n_per_prompt: int = 4,
     ) -> None:
         self.schedule = threshold_schedule or ReSTThresholdSchedule()
@@ -304,10 +299,10 @@ class ReSTTrainer:
     def grow_dataset(
         self,
         dataset: ReSTDataset,
-        n_per_prompt: Optional[int] = None,
+        n_per_prompt: int | None = None,
         vocab_size: int = 32,
         max_completion_len: int = 8,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> ReSTDataset:
         """Augment dataset using a random mock generator (for testing / dry-runs).
 
@@ -330,7 +325,7 @@ class ReSTTrainer:
 
         def _mock_generator(
             prompt: torch.Tensor,
-        ) -> Tuple[torch.Tensor, float]:
+        ) -> tuple[torch.Tensor, float]:
             length = torch.randint(1, max_completion_len + 1, ()).item()
             completion = torch.randint(0, vocab_size, (int(length),))
             reward = torch.rand(()).item()

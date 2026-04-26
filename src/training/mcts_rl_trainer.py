@@ -26,10 +26,10 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # MCTSRLConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MCTSRLConfig:
@@ -56,6 +56,7 @@ class MCTSRLConfig:
 # ---------------------------------------------------------------------------
 # MCTSNode
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MCTSNode:
@@ -87,6 +88,7 @@ class MCTSNode:
 # MCTSStats
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MCTSStats:
     """Statistics produced by MCTS simulation for a single position.
@@ -100,14 +102,15 @@ class MCTSStats:
     """
 
     state_id: int
-    visit_counts: Tensor    # [A]
-    action_values: Tensor   # [A]
-    mcts_policy: Tensor     # [A]  temperature-normalised
+    visit_counts: Tensor  # [A]
+    action_values: Tensor  # [A]
+    mcts_policy: Tensor  # [A]  temperature-normalised
 
 
 # ---------------------------------------------------------------------------
 # MCTSRLTrainer
 # ---------------------------------------------------------------------------
+
 
 class MCTSRLTrainer:
     """Stateless MCTS RL loss computation for policy/value networks.
@@ -219,11 +222,11 @@ class MCTSRLTrainer:
             * ``"kl_from_mcts"`` -- KL(π_MCTS ‖ π_θ), for monitoring.
         """
         # Stack MCTS targets from the list of stats objects.
-        mcts_policies = torch.stack([s.mcts_policy for s in mcts_stats], dim=0)   # [B, A]
-        mcts_values   = torch.stack([s.action_values.mean() for s in mcts_stats]) # [B]
+        mcts_policies = torch.stack([s.mcts_policy for s in mcts_stats], dim=0)  # [B, A]
+        mcts_values = torch.stack([s.action_values.mean() for s in mcts_stats])  # [B]
 
         l_pi = self.policy_loss(log_policy, mcts_policies)
-        l_v  = self.value_loss(predicted_values, mcts_values)
+        l_v = self.value_loss(predicted_values, mcts_values)
         total = l_pi + self.config.value_weight * l_v
 
         # KL(π_MCTS ‖ π_θ) = Σ π_MCTS · (log π_MCTS - log π_θ)
@@ -255,10 +258,7 @@ class MCTSRLTrainer:
             UCT score as a plain Python float.
         """
         exploration = (
-            self.config.c_puct
-            * node.prior
-            * math.sqrt(parent_visits)
-            / (1 + node.visit_count)
+            self.config.c_puct * node.prior * math.sqrt(parent_visits) / (1 + node.visit_count)
         )
         return node.q_value + exploration
 
@@ -292,8 +292,8 @@ class MCTSRLTrainer:
 
             return {
                 "mean_visit_count": sum(total_visits) / max(len(total_visits), 1),
-                "policy_entropy":   sum(entropies)    / max(len(entropies), 1),
-                "mean_q_value":     sum(mean_qs)      / max(len(mean_qs), 1),
+                "policy_entropy": sum(entropies) / max(len(entropies), 1),
+                "mean_q_value": sum(mean_qs) / max(len(mean_qs), 1),
             }
 
 

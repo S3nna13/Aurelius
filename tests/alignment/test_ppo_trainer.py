@@ -1,24 +1,24 @@
 """Tests for src/alignment/ppo_trainer.py — PPO RLHF trainer."""
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.alignment.ppo_trainer import (
     PPOConfig,
-    ValueHead,
     PPOTrainer,
+    ValueHead,
     compute_gae,
+    entropy_bonus,
     ppo_policy_loss,
     ppo_value_loss,
-    entropy_bonus,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared tiny model config (fast for tests)
@@ -49,7 +49,10 @@ def _make_prompt(B: int = 1) -> torch.Tensor:
 def _make_trainer(B: int = 1, n_epochs: int = 1) -> PPOTrainer:
     policy = _make_model()
     ref_model = _make_model()
-    reward_fn = lambda tokens: 1.0  # constant reward
+
+    def reward_fn(tokens):
+        return 1.0  # constant reward
+
     cfg = PPOConfig(n_epochs=n_epochs, n_rollout_steps=4)
     optimizer = optim.SGD(policy.parameters(), lr=1e-3)
     return PPOTrainer(
@@ -64,6 +67,7 @@ def _make_trainer(B: int = 1, n_epochs: int = 1) -> PPOTrainer:
 # ---------------------------------------------------------------------------
 # 1. PPOConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_ppoconfig_defaults():
     cfg = PPOConfig()
@@ -82,6 +86,7 @@ def test_ppoconfig_defaults():
 # 2. ValueHead output shape (B, T)
 # ---------------------------------------------------------------------------
 
+
 def test_value_head_output_shape():
     B, T, d_model = 3, 7, 64
     vh = ValueHead(d_model)
@@ -93,6 +98,7 @@ def test_value_head_output_shape():
 # ---------------------------------------------------------------------------
 # 3. ValueHead is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_value_head_differentiable():
     B, T, d_model = 2, 5, 64
@@ -109,6 +115,7 @@ def test_value_head_differentiable():
 # 4. compute_gae output shapes are (T,) for both outputs
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gae_output_shapes():
     T = 10
     rewards = torch.ones(T)
@@ -122,6 +129,7 @@ def test_compute_gae_output_shapes():
 # 5. compute_gae advantages and returns shapes match rewards
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gae_shapes_match_rewards():
     T = 15
     rewards = torch.randn(T)
@@ -134,6 +142,7 @@ def test_compute_gae_shapes_match_rewards():
 # ---------------------------------------------------------------------------
 # 6. compute_gae with all-zero rewards and values: advantages ~0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_gae_zero_rewards_zero_values():
     T = 8
@@ -152,6 +161,7 @@ def test_compute_gae_zero_rewards_zero_values():
 # 7. ppo_policy_loss returns (Tensor, dict)
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_policy_loss_return_types():
     T = 8
     log_probs = torch.randn(2, T)
@@ -169,6 +179,7 @@ def test_ppo_policy_loss_return_types():
 # 8. ppo_policy_loss dict has correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_policy_loss_dict_keys():
     log_probs = torch.randn(2, 8)
     old_log_probs = torch.randn(2, 8)
@@ -183,6 +194,7 @@ def test_ppo_policy_loss_dict_keys():
 # 9. ppo_policy_loss clip_fraction in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_policy_loss_clip_fraction_range():
     log_probs = torch.randn(4, 16)
     old_log_probs = torch.randn(4, 16)
@@ -195,6 +207,7 @@ def test_ppo_policy_loss_clip_fraction_range():
 # ---------------------------------------------------------------------------
 # 10. ppo_policy_loss with ratio=1 (same policy): no clipping
 # ---------------------------------------------------------------------------
+
 
 def test_ppo_policy_loss_ratio_one_no_clipping():
     T = 8
@@ -216,6 +229,7 @@ def test_ppo_policy_loss_ratio_one_no_clipping():
 # 11. ppo_value_loss returns scalar >= 0
 # ---------------------------------------------------------------------------
 
+
 def test_ppo_value_loss_scalar_nonneg():
     values = torch.randn(4, 8)
     returns = torch.randn(4, 8)
@@ -227,6 +241,7 @@ def test_ppo_value_loss_scalar_nonneg():
 # ---------------------------------------------------------------------------
 # 12. entropy_bonus returns scalar >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_entropy_bonus_scalar_nonneg():
     # For sampled log probs that are negative (log probs are <= 0),
@@ -245,6 +260,7 @@ def test_entropy_bonus_scalar_nonneg():
 # 13. PPOTrainer.collect_rollout returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_collect_rollout_keys():
     trainer = _make_trainer()
     prompt = _make_prompt(B=2)
@@ -258,6 +274,7 @@ def test_collect_rollout_keys():
 # ---------------------------------------------------------------------------
 # 13b. collect_rollout tensor shapes
 # ---------------------------------------------------------------------------
+
 
 def test_collect_rollout_shapes():
     trainer = _make_trainer()
@@ -275,6 +292,7 @@ def test_collect_rollout_shapes():
 # 14. PPOTrainer.train_step returns dict with correct keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_correct_keys():
     trainer = _make_trainer()
     prompt = _make_prompt(B=1)
@@ -289,6 +307,7 @@ def test_train_step_returns_correct_keys():
 # 15. PPOTrainer.train_step losses are finite
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_losses_finite():
     trainer = _make_trainer()
     prompt = _make_prompt(B=2)
@@ -302,6 +321,7 @@ def test_train_step_losses_finite():
 # Bonus: ref_model is frozen
 # ---------------------------------------------------------------------------
 
+
 def test_ref_model_frozen():
     trainer = _make_trainer()
     for p in trainer.ref_model.parameters():
@@ -311,6 +331,7 @@ def test_ref_model_frozen():
 # ---------------------------------------------------------------------------
 # Bonus: ValueHead params added to optimizer
 # ---------------------------------------------------------------------------
+
 
 def test_value_head_params_in_optimizer():
     trainer = _make_trainer()

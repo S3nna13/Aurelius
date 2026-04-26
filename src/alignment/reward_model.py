@@ -1,8 +1,9 @@
 """Reward model training with Bradley-Terry preference learning."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict
 
 import torch
 import torch.nn as nn
@@ -104,7 +105,7 @@ class RewardTrainer:
         self,
         chosen_ids: Tensor,
         rejected_ids: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Forward both, compute BT loss, backward, step. Returns metrics dict."""
         self.model.train()
         self.optimizer.zero_grad()
@@ -132,7 +133,7 @@ class RewardTrainer:
         self,
         chosen_ids: Tensor,
         rejected_ids: Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Evaluate without gradient. Same metrics as train_step."""
         self.model.eval()
         with torch.no_grad():

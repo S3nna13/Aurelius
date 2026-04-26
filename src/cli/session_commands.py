@@ -10,14 +10,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Callable, TextIO
+from typing import Any, TextIO
 
 from src.agent.interface_runtime import AureliusInterfaceRuntime
 from src.agent.session_manager import SessionManager
-from src.model.interface_framework import AureliusInterfaceFramework
-from src.model.interface_framework import InterfaceFrameworkError
+from src.model.interface_framework import AureliusInterfaceFramework, InterfaceFrameworkError
 
 __all__ = [
     "SESSION_COMMAND_HANDLERS",
@@ -39,7 +39,15 @@ __all__ = [
 ]
 
 
-_SESSION_TOP_LEVEL_COMMANDS = ("list", "show", "export", "import", "journal", "thread", "workstream")
+_SESSION_TOP_LEVEL_COMMANDS = (
+    "list",
+    "show",
+    "export",
+    "import",
+    "journal",
+    "thread",
+    "workstream",
+)
 _SESSION_THREAD_COMMANDS = ("list", "show")
 _SESSION_JOURNAL_COMMANDS = ("list", "show", "append", "branch", "compact")
 _SESSION_WORKSTREAM_COMMANDS = ("list", "show")
@@ -70,7 +78,9 @@ def _parse_json_payload(value: str | None, field_name: str) -> dict[str, Any]:
     return payload
 
 
-def _build_runtime(args: argparse.Namespace, runtime: AureliusInterfaceRuntime | None = None) -> AureliusInterfaceRuntime:
+def _build_runtime(
+    args: argparse.Namespace, runtime: AureliusInterfaceRuntime | None = None
+) -> AureliusInterfaceRuntime:
     if runtime is not None:
         return runtime
     repo_root = getattr(args, "repo_root", None)
@@ -79,7 +89,11 @@ def _build_runtime(args: argparse.Namespace, runtime: AureliusInterfaceRuntime |
     if state_dir is None:
         return AureliusInterfaceRuntime.from_repo_root(root_dir=repo_root, variant_id=variant_id)
     framework = AureliusInterfaceFramework.from_repo_root(root_dir=repo_root, variant_id=variant_id)
-    resolved_root = Path(repo_root).expanduser().resolve() if repo_root is not None else framework.paths.repo_root
+    resolved_root = (
+        Path(repo_root).expanduser().resolve()
+        if repo_root is not None
+        else framework.paths.repo_root
+    )
     return AureliusInterfaceRuntime(
         framework,
         root_dir=resolved_root,
@@ -330,7 +344,9 @@ def handle_session_journal_branch(
             name,
             from_entry_id=getattr(args, "from_entry_id", None),
             source_branch_id=getattr(args, "source_branch_id", "main") or "main",
-            metadata={"reason": getattr(args, "reason", None)} if getattr(args, "reason", None) else None,
+            metadata={"reason": getattr(args, "reason", None)}
+            if getattr(args, "reason", None)
+            else None,
         )
     except InterfaceFrameworkError as exc:
         return _error(stream, str(exc))
@@ -354,7 +370,9 @@ def handle_session_journal_compact(
             branch_id=getattr(args, "branch_id", "main") or "main",
             keep_last_n=getattr(args, "keep_last_n", 4),
             policy=getattr(args, "policy", "oldest_first"),
-            metadata={"reason": getattr(args, "reason", None)} if getattr(args, "reason", None) else None,
+            metadata={"reason": getattr(args, "reason", None)}
+            if getattr(args, "reason", None)
+            else None,
         )
     except InterfaceFrameworkError as exc:
         return _error(stream, str(exc))

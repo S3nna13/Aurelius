@@ -3,28 +3,33 @@
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.token_merging import (
     ToMeConfig,
+    ToMeLayer,
+    ToMeWrapper,
     bipartite_soft_matching,
     merge_tokens,
     unmerge_tokens,
-    ToMeLayer,
-    ToMeWrapper,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_tiny_model():
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -32,6 +37,7 @@ def make_tiny_model():
 # ---------------------------------------------------------------------------
 # 1. ToMeConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_tome_config_defaults():
     cfg = ToMeConfig()
@@ -43,6 +49,7 @@ def test_tome_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. bipartite_soft_matching returns 3 tensors
 # ---------------------------------------------------------------------------
+
 
 def test_bipartite_soft_matching_returns_three_tensors():
     B, T, d = 2, 10, 32
@@ -58,6 +65,7 @@ def test_bipartite_soft_matching_returns_three_tensors():
 # 3. bipartite_soft_matching src_idx shape is (B, r') where r' <= min(T//2, r)
 # ---------------------------------------------------------------------------
 
+
 def test_bipartite_soft_matching_src_idx_shape():
     B, T, d = 2, 10, 32
     r = 3
@@ -71,6 +79,7 @@ def test_bipartite_soft_matching_src_idx_shape():
 # ---------------------------------------------------------------------------
 # 4. bipartite_soft_matching indices are valid (in range)
 # ---------------------------------------------------------------------------
+
 
 def test_bipartite_soft_matching_indices_in_range():
     B, T, d = 2, 12, 16
@@ -87,6 +96,7 @@ def test_bipartite_soft_matching_indices_in_range():
 # 5. bipartite_soft_matching with r=0 returns empty indices
 # ---------------------------------------------------------------------------
 
+
 def test_bipartite_soft_matching_r_zero():
     B, T, d = 2, 8, 16
     x = torch.randn(B, T, d)
@@ -99,6 +109,7 @@ def test_bipartite_soft_matching_r_zero():
 # ---------------------------------------------------------------------------
 # 6. merge_tokens output shape is (B, T-r, d)
 # ---------------------------------------------------------------------------
+
 
 def test_merge_tokens_output_shape():
     B, T, d = 2, 10, 32
@@ -113,6 +124,7 @@ def test_merge_tokens_output_shape():
 # ---------------------------------------------------------------------------
 # 7. merge_tokens size tensor sums to T (conservation of tokens)
 # ---------------------------------------------------------------------------
+
 
 def test_merge_tokens_size_sums_to_T():
     B, T, d = 2, 10, 32
@@ -129,6 +141,7 @@ def test_merge_tokens_size_sums_to_T():
 # 8. unmerge_tokens restores shape to (B, T_orig, d)
 # ---------------------------------------------------------------------------
 
+
 def test_unmerge_tokens_restores_shape():
     B, T, d = 2, 10, 32
     r = 3
@@ -143,6 +156,7 @@ def test_unmerge_tokens_restores_shape():
 # 9. unmerge_tokens with r=0 is identity
 # ---------------------------------------------------------------------------
 
+
 def test_unmerge_tokens_r_zero_is_identity():
     B, T, d = 2, 8, 16
     x = torch.randn(B, T, d)
@@ -150,13 +164,15 @@ def test_unmerge_tokens_r_zero_is_identity():
     merged, size = merge_tokens(x, src_idx, dst_idx)
     reconstructed = unmerge_tokens(merged, src_idx, dst_idx, size, T_orig=T)
     assert reconstructed.shape == (B, T, d)
-    assert torch.allclose(reconstructed, x, atol=1e-5), \
+    assert torch.allclose(reconstructed, x, atol=1e-5), (
         "With r=0, unmerge should return the original sequence unchanged"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. ToMeLayer output shape matches input shape
 # ---------------------------------------------------------------------------
+
 
 def test_tome_layer_output_shape_matches_input():
     B, T, d = 2, 10, 32
@@ -172,6 +188,7 @@ def test_tome_layer_output_shape_matches_input():
 # 11. ToMeLayer with r > T//2 doesn't crash (caps merging)
 # ---------------------------------------------------------------------------
 
+
 def test_tome_layer_r_larger_than_half_T_does_not_crash():
     B, T, d = 2, 6, 16
     cfg = ToMeConfig(r=100)
@@ -185,6 +202,7 @@ def test_tome_layer_r_larger_than_half_T_does_not_crash():
 # ---------------------------------------------------------------------------
 # 12. ToMeWrapper instantiates from AureliusTransformer
 # ---------------------------------------------------------------------------
+
 
 def test_tome_wrapper_instantiation():
     model = make_tiny_model()
@@ -201,6 +219,7 @@ def test_tome_wrapper_instantiation():
 # ---------------------------------------------------------------------------
 # 13. ToMeWrapper.forward returns 3-tuple with logits shape (B, T, vocab)
 # ---------------------------------------------------------------------------
+
 
 def test_tome_wrapper_forward_shape():
     model = make_tiny_model()
@@ -225,6 +244,7 @@ def test_tome_wrapper_forward_shape():
 # 14. ToMeWrapper.get_compression_ratio returns float in (0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_tome_wrapper_get_compression_ratio():
     model = make_tiny_model()
     cfg = ToMeConfig(r=2)
@@ -237,6 +257,7 @@ def test_tome_wrapper_get_compression_ratio():
 # ---------------------------------------------------------------------------
 # 15. ToMeWrapper with r=0 gives same output as base model (no merging)
 # ---------------------------------------------------------------------------
+
 
 def test_tome_wrapper_r_zero_matches_base_model():
     model = make_tiny_model()
@@ -253,6 +274,7 @@ def test_tome_wrapper_r_zero_matches_base_model():
         _loss_base, logits_base, _pkv_base = model(input_ids)
         _loss_wrap, logits_wrap, _pkv_wrap = wrapper(input_ids)
 
-    assert torch.allclose(logits_base, logits_wrap, atol=1e-5), \
-        f"With r=0, wrapper output should match base model. " \
+    assert torch.allclose(logits_base, logits_wrap, atol=1e-5), (
+        f"With r=0, wrapper output should match base model. "
         f"Max diff: {(logits_base - logits_wrap).abs().max().item()}"
+    )

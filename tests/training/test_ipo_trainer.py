@@ -27,15 +27,14 @@ import math
 
 import pytest
 import torch
-from torch import Tensor
 
-from src.training.ipo_trainer import IPOBatch, IPOConfig, IPOTrainer
 from src.training import TRAINING_REGISTRY
-
+from src.training.ipo_trainer import IPOBatch, IPOConfig, IPOTrainer
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_batch(
     B: int = 2,
@@ -67,6 +66,7 @@ def _make_batch(
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = IPOConfig()
     assert cfg.tau == pytest.approx(0.1)
@@ -76,6 +76,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_sequence_mean_log_prob_shape
 # ---------------------------------------------------------------------------
+
 
 def test_sequence_mean_log_prob_shape():
     trainer = IPOTrainer()
@@ -89,6 +90,7 @@ def test_sequence_mean_log_prob_shape():
 # ---------------------------------------------------------------------------
 # 3. test_sequence_mean_log_prob_masked
 # ---------------------------------------------------------------------------
+
 
 def test_sequence_mean_log_prob_masked():
     """Only unmasked tokens should contribute to the mean."""
@@ -109,6 +111,7 @@ def test_sequence_mean_log_prob_masked():
 # 4. test_compute_h_shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_h_shape():
     trainer = IPOTrainer()
     batch = _make_batch(B=3)
@@ -119,6 +122,7 @@ def test_compute_h_shape():
 # ---------------------------------------------------------------------------
 # 5. test_compute_h_zero — policy identical to reference → h = 0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_h_zero():
     trainer = IPOTrainer()
@@ -131,7 +135,7 @@ def test_compute_h_zero():
     batch = IPOBatch(
         chosen_log_probs=lp_chosen,
         rejected_log_probs=lp_rejected,
-        chosen_ref_log_probs=lp_chosen.clone(),   # identical to policy
+        chosen_ref_log_probs=lp_chosen.clone(),  # identical to policy
         rejected_ref_log_probs=lp_rejected.clone(),
         chosen_mask=mask_w,
         rejected_mask=mask_l,
@@ -143,6 +147,7 @@ def test_compute_h_zero():
 # ---------------------------------------------------------------------------
 # 6. test_compute_h_positive — chosen improved more than rejected → h > 0
 # ---------------------------------------------------------------------------
+
 
 def test_compute_h_positive():
     trainer = IPOTrainer()
@@ -168,6 +173,7 @@ def test_compute_h_positive():
 # 7. test_total_loss_keys
 # ---------------------------------------------------------------------------
 
+
 def test_total_loss_keys():
     trainer = IPOTrainer()
     out = trainer.total_loss(_make_batch())
@@ -179,6 +185,7 @@ def test_total_loss_keys():
 # 8. test_total_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_total_loss_scalar():
     trainer = IPOTrainer()
     out = trainer.total_loss(_make_batch())
@@ -188,6 +195,7 @@ def test_total_loss_scalar():
 # ---------------------------------------------------------------------------
 # 9. test_loss_at_target — h exactly equals 1/(2*tau) → loss = 0
 # ---------------------------------------------------------------------------
+
 
 def test_loss_at_target():
     cfg = IPOConfig(tau=0.1)
@@ -200,7 +208,7 @@ def test_loss_at_target():
     # Simple setup: chosen delta = target_val, rejected delta = 0.
     ref_chosen = torch.zeros(B, T_w)
     ref_rejected = torch.zeros(B, T_l)
-    policy_chosen = ref_chosen + target_val   # per-token shift → mean also = target_val
+    policy_chosen = ref_chosen + target_val  # per-token shift → mean also = target_val
     policy_rejected = ref_rejected.clone()
 
     batch = IPOBatch(
@@ -220,6 +228,7 @@ def test_loss_at_target():
 # ---------------------------------------------------------------------------
 # 10. test_loss_symmetric — symmetric deviation has same loss regardless of sign
 # ---------------------------------------------------------------------------
+
 
 def test_loss_symmetric():
     """(h - target)^2 = (target - h)^2: loss is the same for +δ and -δ offsets."""
@@ -253,6 +262,7 @@ def test_loss_symmetric():
 # 11. test_reward_accuracy_range
 # ---------------------------------------------------------------------------
 
+
 def test_reward_accuracy_range():
     trainer = IPOTrainer()
     batch = _make_batch(B=8)
@@ -264,6 +274,7 @@ def test_reward_accuracy_range():
 # ---------------------------------------------------------------------------
 # 12. test_tau_effect — smaller tau → smaller target gap
 # ---------------------------------------------------------------------------
+
 
 def test_tau_effect():
     small_tau = IPOTrainer(IPOConfig(tau=0.05))
@@ -283,6 +294,7 @@ def test_tau_effect():
 # 13. test_gradient_flows
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows():
     trainer = IPOTrainer()
     batch = _make_batch(requires_grad=True)
@@ -299,6 +311,7 @@ def test_gradient_flows():
 # 14. test_statistics_keys
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_keys():
     trainer = IPOTrainer()
     stats = trainer.statistics(_make_batch())
@@ -309,6 +322,7 @@ def test_statistics_keys():
 # ---------------------------------------------------------------------------
 # 15. test_statistics_types
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_types():
     trainer = IPOTrainer()
@@ -321,6 +335,7 @@ def test_statistics_types():
 # 16. test_registry_entry
 # ---------------------------------------------------------------------------
 
+
 def test_registry_entry():
     assert "ipo" in TRAINING_REGISTRY, "'ipo' not found in TRAINING_REGISTRY"
     assert TRAINING_REGISTRY["ipo"] is IPOTrainer, (
@@ -331,6 +346,7 @@ def test_registry_entry():
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_integration_forward_backward():
     """Full forward + backward pass with realistic tensor shapes."""

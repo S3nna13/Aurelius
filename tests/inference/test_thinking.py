@@ -1,22 +1,23 @@
 """Tests for think-before-answer generation (thinking.py)."""
-import torch
-import pytest
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
+import pytest
+import torch
+
 from src.inference.thinking import (
     ThinkingConfig,
-    ThinkingResult,
-    generate_thinking,
-    generate_answer,
-    think_and_answer,
     ThinkingReranker,
+    ThinkingResult,
+    generate_answer,
+    generate_thinking,
+    think_and_answer,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -60,6 +61,7 @@ def fast_thinking_cfg():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_thinking_config_defaults():
     cfg = ThinkingConfig()

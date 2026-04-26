@@ -6,19 +6,18 @@ then accepted/rejected using the full model's distribution.
 
 Reference: Zhang et al. 2024 (SELF-SD) — https://arxiv.org/abs/2401.17448
 """
-from __future__ import annotations
 
-from typing import List, Tuple
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # EarlyExitHead
 # ---------------------------------------------------------------------------
+
 
 class EarlyExitHead(nn.Module):
     """Lightweight output head attached to an intermediate transformer layer.
@@ -54,6 +53,7 @@ class EarlyExitHead(nn.Module):
 # LayeredModel
 # ---------------------------------------------------------------------------
 
+
 class LayeredModel(nn.Module):
     """Simulated multi-layer transformer with early-exit capabilities.
 
@@ -76,7 +76,7 @@ class LayeredModel(nn.Module):
         )
         self.final_head = nn.Linear(d_model, vocab_size)
 
-    def forward_to_layer(self, x: Tensor, up_to_layer: int) -> Tuple[Tensor, Tensor]:
+    def forward_to_layer(self, x: Tensor, up_to_layer: int) -> tuple[Tensor, Tensor]:
         """Run input through layers 0..up_to_layer (inclusive).
 
         Args:
@@ -115,6 +115,7 @@ class LayeredModel(nn.Module):
 # SelfSpeculativeDecoder
 # ---------------------------------------------------------------------------
 
+
 class SelfSpeculativeDecoder:
     """Decodes using early-exit drafting and full-model verification.
 
@@ -141,7 +142,7 @@ class SelfSpeculativeDecoder:
         self.draft_layer = draft_layer
         self.n_draft_tokens = n_draft_tokens
 
-    def _draft(self, hidden_at_draft: Tensor) -> Tuple[Tensor, Tensor]:
+    def _draft(self, hidden_at_draft: Tensor) -> tuple[Tensor, Tensor]:
         """Generate draft tokens greedily from intermediate hidden states.
 
         Args:
@@ -154,10 +155,10 @@ class SelfSpeculativeDecoder:
         """
         # Use the last position for autoregressive drafting
         logits = self.draft_head(hidden_at_draft)  # (B, T, vocab_size)
-        last_logits = logits[0, -1, :]              # (vocab_size,)
+        last_logits = logits[0, -1, :]  # (vocab_size,)
 
-        draft_tokens: List[int] = []
-        draft_probs_list: List[Tensor] = []
+        draft_tokens: list[int] = []
+        draft_probs_list: list[Tensor] = []
 
         current_logits = last_logits
         for _ in range(self.n_draft_tokens):
@@ -172,7 +173,7 @@ class SelfSpeculativeDecoder:
         probs_tensor = torch.stack(draft_probs_list, dim=0)  # (n_draft_tokens, vocab_size)
         return tokens_tensor, probs_tensor
 
-    def _verify(self, input_ids: Tensor, draft_tokens: Tensor) -> Tuple[Tensor, int]:
+    def _verify(self, input_ids: Tensor, draft_tokens: Tensor) -> tuple[Tensor, int]:
         """Verify draft tokens using the full model.
 
         Runs the full model on [input_ids | draft_tokens] and accepts the greedy
@@ -217,7 +218,7 @@ class SelfSpeculativeDecoder:
         # Position i in draft corresponds to index (len(input_ids) + i - 1) in full_logits
         # because full_logits[t] predicts token at position t+1
         context_len = input_ids.shape[0]
-        accepted: List[int] = []
+        accepted: list[int] = []
 
         for i in range(n_draft):
             # The full model's prediction at position (context_len - 1 + i) predicts
@@ -254,7 +255,7 @@ class SelfSpeculativeDecoder:
             generated: (max_new_tokens,) LongTensor of generated token ids.
         """
         d_model = self.model.d_model
-        generated: List[int] = []
+        generated: list[int] = []
         context = prompt_ids.clone()
 
         while len(generated) < max_new_tokens:
@@ -290,11 +291,15 @@ class SelfSpeculativeDecoder:
                 if len(generated) >= max_new_tokens:
                     break
 
-            new_toks = torch.tensor(tokens_to_add[: len(generated) - (len(generated) - len(tokens_to_add))],
-                                     dtype=torch.long)
+            torch.tensor(
+                tokens_to_add[: len(generated) - (len(generated) - len(tokens_to_add))],
+                dtype=torch.long,
+            )
             # Extend context
             added = min(len(tokens_to_add), max_new_tokens - (len(generated) - len(tokens_to_add)))
-            context = torch.cat([context, torch.tensor(tokens_to_add[:added], dtype=torch.long)], dim=0)
+            context = torch.cat(
+                [context, torch.tensor(tokens_to_add[:added], dtype=torch.long)], dim=0
+            )
 
         return torch.tensor(generated[:max_new_tokens], dtype=torch.long)
 
@@ -302,6 +307,7 @@ class SelfSpeculativeDecoder:
 # ---------------------------------------------------------------------------
 # DraftQualityMonitor
 # ---------------------------------------------------------------------------
+
 
 class DraftQualityMonitor:
     """Tracks and reports draft token acceptance statistics.
@@ -313,7 +319,7 @@ class DraftQualityMonitor:
     def __init__(self) -> None:
         self.total_drafted: int = 0
         self.total_accepted: int = 0
-        self.acceptance_history: List[float] = []
+        self.acceptance_history: list[float] = []
 
     def record(self, n_drafted: int, n_accepted: int) -> None:
         """Record a single draft-verify step.

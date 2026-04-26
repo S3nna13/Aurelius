@@ -28,7 +28,6 @@ Public surface:
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 from torch import Tensor
@@ -46,17 +45,11 @@ def _validate_qkv(q: Tensor, k: Tensor, v: Tensor) -> None:
     B_k, H_k, S_k, D_k = k.shape
     B_v, H_v, S_v, D_v = v.shape
     if (B_q, H_q) != (B_k, H_k) or (B_q, H_q) != (B_v, H_v):
-        raise ValueError(
-            f"ring_attention: batch/head mismatch q={q.shape} k={k.shape} v={v.shape}"
-        )
+        raise ValueError(f"ring_attention: batch/head mismatch q={q.shape} k={k.shape} v={v.shape}")
     if D_q != D_k:
-        raise ValueError(
-            f"ring_attention: q/k head-dim mismatch D_q={D_q} D_k={D_k}"
-        )
+        raise ValueError(f"ring_attention: q/k head-dim mismatch D_q={D_q} D_k={D_k}")
     if S_k != S_v:
-        raise ValueError(
-            f"ring_attention: k/v seq-len mismatch S_k={S_k} S_v={S_v}"
-        )
+        raise ValueError(f"ring_attention: k/v seq-len mismatch S_k={S_k} S_v={S_v}")
     if D_v <= 0 or D_q <= 0:
         raise ValueError("ring_attention: head dim must be positive")
 
@@ -67,8 +60,8 @@ def ring_attention(
     v: Tensor,
     chunk_size: int = 128,
     causal: bool = False,
-    mask: Optional[Tensor] = None,
-    scale: Optional[float] = None,
+    mask: Tensor | None = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Compute scaled-dot-product attention via a chunked online-softmax ring.
 
@@ -120,7 +113,7 @@ def ring_attention(
     # out: running weighted value sum (rebased), shape [B, H, S_q, D_v]
     neg_inf = torch.finfo(q.dtype).min
     m = torch.full((B, H, S_q, 1), neg_inf, dtype=q.dtype, device=q.device)
-    l = torch.zeros((B, H, S_q, 1), dtype=q.dtype, device=q.device)
+    item = torch.zeros((B, H, S_q, 1), dtype=q.dtype, device=q.device)
     out = torch.zeros((B, H, S_q, D_v), dtype=q.dtype, device=q.device)
 
     # Query absolute positions (for causal mask). Standard decoder convention:
@@ -136,8 +129,8 @@ def ring_attention(
 
     for start in range(0, S_k, chunk):
         end = min(start + chunk, S_k)
-        k_chunk = k[:, :, start:end, :]                       # [B,H,c,D]
-        v_chunk = v[:, :, start:end, :]                       # [B,H,c,D_v]
+        k_chunk = k[:, :, start:end, :]  # [B,H,c,D]
+        v_chunk = v[:, :, start:end, :]  # [B,H,c,D_v]
 
         # logits: [B,H,S_q,c]
         logits = torch.matmul(q, k_chunk.transpose(-1, -2)) * scale
@@ -146,7 +139,7 @@ def ring_attention(
             # q_pos shape [S_q,1], k_pos shape [1,c]
             q_pos = torch.arange(S_q, device=q.device).unsqueeze(-1) + q_offset
             k_pos = torch.arange(start, end, device=q.device).unsqueeze(0)
-            causal_block = k_pos > q_pos                       # [S_q,c] bool
+            causal_block = k_pos > q_pos  # [S_q,c] bool
             if causal_block.any():
                 logits = logits.masked_fill(causal_block, neg_inf)
 
@@ -157,7 +150,7 @@ def ring_attention(
 
         # Online-softmax update.
         # m_new = max(m, rowmax(logits))
-        chunk_max = logits.amax(dim=-1, keepdim=True)          # [B,H,S_q,1]
+        chunk_max = logits.amax(dim=-1, keepdim=True)  # [B,H,S_q,1]
         # If an entire query row is fully masked in this chunk, chunk_max
         # will be neg_inf; that's fine — exp(logits - m_new) stays 0.
         m_new = torch.maximum(m, chunk_max)
@@ -169,20 +162,20 @@ def ring_attention(
         alpha = torch.where(torch.isfinite(alpha), alpha, torch.zeros_like(alpha))
 
         # Probs for this chunk, rebased.
-        p = torch.exp(logits - m_new)                          # [B,H,S_q,c]
+        p = torch.exp(logits - m_new)  # [B,H,S_q,c]
         # If m_new is neg_inf for a row (no finite logits ever), p is NaN
         # due to -inf - -inf; zero it out.
         p = torch.where(torch.isfinite(p), p, torch.zeros_like(p))
 
         # Update accumulators.
-        out = out * alpha + torch.matmul(p, v_chunk)           # [B,H,S_q,D_v]
-        l = l * alpha + p.sum(dim=-1, keepdim=True)            # [B,H,S_q,1]
+        out = out * alpha + torch.matmul(p, v_chunk)  # [B,H,S_q,D_v]
+        item = item * alpha + p.sum(dim=-1, keepdim=True)  # [B,H,S_q,1]
         m = m_new
 
     # Normalize. Guard against l == 0 (fully-masked rows) -> output zeros.
-    safe_l = torch.where(l > 0, l, torch.ones_like(l))
+    safe_l = torch.where(item > 0, item, torch.ones_like(item))
     out = out / safe_l
-    out = torch.where(l > 0, out, torch.zeros_like(out))
+    out = torch.where(item > 0, out, torch.zeros_like(out))
     return out
 
 
@@ -205,8 +198,8 @@ class RingAttention:
         q: Tensor,
         k: Tensor,
         v: Tensor,
-        mask: Optional[Tensor] = None,
-        scale: Optional[float] = None,
+        mask: Tensor | None = None,
+        scale: float | None = None,
     ) -> Tensor:
         return ring_attention(
             q,

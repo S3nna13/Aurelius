@@ -6,17 +6,16 @@ Checks:
     returns exactly 5 results.
  3. Pre-existing AUXILIARY_LOSS_REGISTRY key is still present (regression guard).
 """
+
 from __future__ import annotations
 
-import pytest
-
-from src.training import TRAINING_REGISTRY, AUXILIARY_LOSS_REGISTRY
+from src.training import AUXILIARY_LOSS_REGISTRY, TRAINING_REGISTRY
 from src.training.async_rl_infra import RolloutOrchestrator, RolloutResult, RolloutTask
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_task(task_id: int, task_type: str = "swe") -> RolloutTask:
     return RolloutTask(task_id=task_id, task_type=task_type, prompt=f"prompt-{task_id}")
@@ -37,6 +36,7 @@ def _success_fn(task: RolloutTask) -> RolloutResult:
 # Integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestTrainingRegistry:
     def test_async_rl_in_training_registry(self) -> None:
         """'async_rl' key must be present in TRAINING_REGISTRY."""
@@ -55,9 +55,7 @@ class TestEndToEnd:
     def test_enqueue_and_dispatch_five_tasks(self) -> None:
         """Construct orchestrator, enqueue 5 tasks, dispatch all → 5 results."""
         OrchestratorClass = TRAINING_REGISTRY["async_rl"]
-        orch: RolloutOrchestrator = OrchestratorClass(
-            heartbeat_timeout=30.0, max_concurrent=1000
-        )
+        orch: RolloutOrchestrator = OrchestratorClass(heartbeat_timeout=30.0, max_concurrent=1000)
         tasks = [_make_task(i) for i in range(5)]
         orch.enqueue(tasks)
         assert orch.queue_depth == 5
@@ -78,11 +76,13 @@ class TestEndToEnd:
     def test_trainer_async_rl_branch_returns_orchestrator(self) -> None:
         """build_async_rl_orchestrator(enabled=True) returns a RolloutOrchestrator."""
         from src.training.trainer import build_async_rl_orchestrator
+
         orch = build_async_rl_orchestrator(enabled=True)
         assert isinstance(orch, RolloutOrchestrator)
 
     def test_trainer_async_rl_branch_disabled_returns_none(self) -> None:
         """build_async_rl_orchestrator(enabled=False) returns None (feature flag off)."""
         from src.training.trainer import build_async_rl_orchestrator
+
         result = build_async_rl_orchestrator(enabled=False)
         assert result is None

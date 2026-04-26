@@ -52,41 +52,30 @@ class PanelLayout:
         if not isinstance(self.layout_id, str) or not self.layout_id:
             raise UIError("layout_id must be a non-empty str")
         if not _ID_RE.match(self.layout_id):
-            raise UIError(
-                f"layout_id={self.layout_id!r} must match [a-z0-9_-]+"
-            )
+            raise UIError(f"layout_id={self.layout_id!r} must match [a-z0-9_-]+")
 
         if not isinstance(self.regions, tuple) or len(self.regions) == 0:
             raise UIError("regions must be a non-empty tuple of str")
         for idx, r in enumerate(self.regions):
             if not isinstance(r, str) or not r:
-                raise UIError(
-                    f"regions[{idx}] must be a non-empty str, got {r!r}"
-                )
+                raise UIError(f"regions[{idx}] must be a non-empty str, got {r!r}")
         if len(set(self.regions)) != len(self.regions):
-            raise UIError(
-                f"regions must be unique, got duplicates in {self.regions!r}"
-            )
+            raise UIError(f"regions must be unique, got duplicates in {self.regions!r}")
 
         if not isinstance(self.min_cols, int) or isinstance(self.min_cols, bool):
             raise UIError("min_cols must be an int")
         if not isinstance(self.min_rows, int) or isinstance(self.min_rows, bool):
             raise UIError("min_rows must be an int")
         if self.min_cols < _MIN_COLS_HARD_FLOOR:
-            raise UIError(
-                f"min_cols={self.min_cols} below hard floor {_MIN_COLS_HARD_FLOOR}"
-            )
+            raise UIError(f"min_cols={self.min_cols} below hard floor {_MIN_COLS_HARD_FLOOR}")
         if self.min_rows < _MIN_ROWS_HARD_FLOOR:
-            raise UIError(
-                f"min_rows={self.min_rows} below hard floor {_MIN_ROWS_HARD_FLOOR}"
-            )
+            raise UIError(f"min_rows={self.min_rows} below hard floor {_MIN_ROWS_HARD_FLOOR}")
 
         if not isinstance(self.focus_order, tuple):
             raise UIError("focus_order must be a tuple of str")
         if sorted(self.focus_order) != sorted(self.regions):
             raise UIError(
-                f"focus_order={self.focus_order!r} is not a permutation of "
-                f"regions={self.regions!r}"
+                f"focus_order={self.focus_order!r} is not a permutation of regions={self.regions!r}"
             )
 
 
@@ -191,10 +180,7 @@ def compose_layout(
 
     inner_cols = cols - 2
     if inner_cols <= 0:
-        raise UIError(
-            f"cols={cols} too small to render borders for layout "
-            f"{layout.layout_id!r}"
-        )
+        raise UIError(f"cols={cols} too small to render borders for layout {layout.layout_id!r}")
 
     border = "+" + ("-" * inner_cols) + "+"
 
@@ -202,9 +188,7 @@ def compose_layout(
     for idx, region in enumerate(layout.regions):
         content = panels.get(region, "")
         if not isinstance(content, str):
-            raise UIError(
-                f"panels[{region!r}] must be str, got {type(content).__name__}"
-            )
+            raise UIError(f"panels[{region!r}] must be str, got {type(content).__name__}")
         header_label = _sanitize_line(region, inner_cols)
         header_label = header_label.ljust(inner_cols)
         lines.append(border)
@@ -241,9 +225,7 @@ def register_panel_layout(layout: PanelLayout) -> None:
     if not isinstance(layout, PanelLayout):
         raise UIError("register_panel_layout requires a PanelLayout instance")
     if layout.layout_id in PANEL_LAYOUT_REGISTRY:
-        raise UIError(
-            f"panel layout {layout.layout_id!r} is already registered"
-        )
+        raise UIError(f"panel layout {layout.layout_id!r} is already registered")
     PANEL_LAYOUT_REGISTRY[layout.layout_id] = layout
 
 

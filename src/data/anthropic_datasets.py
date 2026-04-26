@@ -17,7 +17,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-import torch
 from torch.utils.data import Dataset
 
 
@@ -32,6 +31,7 @@ def _datasets_module() -> Any:
 
 
 # ── hh-rlhf ──────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class HHRLHFSample:
@@ -100,13 +100,11 @@ def hh_rlhf_to_dpo_format(dataset: HHRLHFDataset) -> list[dict[str, str]]:
 
     Returns list of dicts with keys "prompt", "chosen", "rejected".
     """
-    return [
-        {"prompt": s.prompt, "chosen": s.chosen, "rejected": s.rejected}
-        for s in dataset
-    ]
+    return [{"prompt": s.prompt, "chosen": s.chosen, "rejected": s.rejected} for s in dataset]
 
 
 # ── model-written-evals ───────────────────────────────────────────────────────
+
 
 @dataclass
 class ModelWrittenEvalSample:
@@ -201,9 +199,7 @@ def load_persuasion(cache_dir: str | None = None) -> PersuasionDataset:
     """Load Anthropic/persuasion from HuggingFace."""
     hf_datasets = _datasets_module()
 
-    raw = hf_datasets.load_dataset(
-        "Anthropic/persuasion", split="train", cache_dir=cache_dir
-    )
+    raw = hf_datasets.load_dataset("Anthropic/persuasion", split="train", cache_dir=cache_dir)
 
     samples: list[PersuasionSample] = []
     for row in raw:
@@ -236,6 +232,7 @@ def persuasion_to_reward_samples(dataset: PersuasionDataset) -> list[dict[str, A
 
 
 # ── discrim-eval ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class DiscrimEvalSample:
@@ -281,9 +278,7 @@ class DiscrimEvalDataset(Dataset):
         return dict(groups)
 
 
-def load_discrim_eval(
-    config: str = "explicit", cache_dir: str | None = None
-) -> DiscrimEvalDataset:
+def load_discrim_eval(config: str = "explicit", cache_dir: str | None = None) -> DiscrimEvalDataset:
     """Load Anthropic/discrim-eval from HuggingFace.
 
     Args:
@@ -336,7 +331,4 @@ def compute_demographic_bias_score(
         group_totals[value] += score
         group_counts[value] += 1
 
-    return {
-        group: group_totals[group] / group_counts[group]
-        for group in group_totals
-    }
+    return {group: group_totals[group] / group_counts[group] for group in group_totals}

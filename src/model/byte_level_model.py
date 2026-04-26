@@ -13,16 +13,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Internal building blocks
 # ---------------------------------------------------------------------------
+
 
 class _LayerNorm(nn.Module):
     """Standard LayerNorm wrapper."""
@@ -40,7 +39,7 @@ class _SelfAttention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.qkv = nn.Linear(d_model, 3 * d_model, bias=False)
@@ -101,6 +100,7 @@ class _TransformerBlock(nn.Module):
 # ByteEncoder
 # ---------------------------------------------------------------------------
 
+
 class ByteEncoder(nn.Module):
     """Embed raw bytes and compress them into patches via Conv1d.
 
@@ -115,7 +115,8 @@ class ByteEncoder(nn.Module):
         self.patch_size = patch_size
         self.byte_embedding = nn.Embedding(256, d_model)
         self.patch_conv = nn.Conv1d(
-            d_model, d_model,
+            d_model,
+            d_model,
             kernel_size=patch_size,
             stride=patch_size,
             bias=True,
@@ -133,16 +134,17 @@ class ByteEncoder(nn.Module):
         T_trunc = (T // self.patch_size) * self.patch_size
         byte_ids = byte_ids[:, :T_trunc]
 
-        x = self.byte_embedding(byte_ids)   # [B, T_trunc, d_model]
-        x = x.transpose(1, 2)              # [B, d_model, T_trunc]
-        x = self.patch_conv(x)             # [B, d_model, T_patches]
-        x = x.transpose(1, 2)             # [B, T_patches, d_model]
+        x = self.byte_embedding(byte_ids)  # [B, T_trunc, d_model]
+        x = x.transpose(1, 2)  # [B, d_model, T_trunc]
+        x = self.patch_conv(x)  # [B, d_model, T_patches]
+        x = x.transpose(1, 2)  # [B, T_patches, d_model]
         return x
 
 
 # ---------------------------------------------------------------------------
 # ByteDecoder
 # ---------------------------------------------------------------------------
+
 
 class ByteDecoder(nn.Module):
     """Expand patch representations to byte-level logits over 256 values.
@@ -168,15 +170,18 @@ class ByteDecoder(nn.Module):
             logits: [B, T_patches * patch_size, 256]
         """
         B, T_patches, _ = patch_repr.shape
-        expanded = self.patch_proj(patch_repr)                             # [B, T_patches, d_model*patch_size]
-        expanded = expanded.view(B, T_patches * self.patch_size, self.d_model)  # [B, T_bytes, d_model]
-        logits = self.byte_head(expanded)                                  # [B, T_bytes, 256]
+        expanded = self.patch_proj(patch_repr)  # [B, T_patches, d_model*patch_size]
+        expanded = expanded.view(
+            B, T_patches * self.patch_size, self.d_model
+        )  # [B, T_bytes, d_model]
+        logits = self.byte_head(expanded)  # [B, T_bytes, 256]
         return logits
 
 
 # ---------------------------------------------------------------------------
 # CrossPatchAttention
 # ---------------------------------------------------------------------------
+
 
 class CrossPatchAttention(nn.Module):
     """Hierarchical byte encoder combining local and global attention.
@@ -239,7 +244,9 @@ class CrossPatchAttention(nn.Module):
             x = blk(x)
 
         T_patches = T_trunc // self.patch_size
-        x = x.view(B, T_patches, self.patch_size, self.d_model).mean(dim=2)  # [B, T_patches, d_model]
+        x = x.view(B, T_patches, self.patch_size, self.d_model).mean(
+            dim=2
+        )  # [B, T_patches, d_model]
 
         for blk in self.global_attn:
             x = blk(x)
@@ -251,6 +258,7 @@ class CrossPatchAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # ByteLevelLM
 # ---------------------------------------------------------------------------
+
 
 class ByteLevelLM(nn.Module):
     """Full byte-level language model.
@@ -313,7 +321,7 @@ class ByteLevelLM(nn.Module):
         Returns:
             Scalar cross-entropy loss.
         """
-        logits = self.forward(byte_ids)   # [B, T_trunc, 256]
+        logits = self.forward(byte_ids)  # [B, T_trunc, 256]
         T_trunc = logits.shape[1]
 
         targets = byte_ids[:, 1 : T_trunc + 1]  # [B, T_trunc] (may be shorter)
@@ -348,15 +356,13 @@ class ByteLevelLM(nn.Module):
 
         for _ in range(max_new):
             if seq.shape[0] < self.patch_size:
-                pad = torch.zeros(
-                    self.patch_size - seq.shape[0], dtype=torch.long, device=device
-                )
+                pad = torch.zeros(self.patch_size - seq.shape[0], dtype=torch.long, device=device)
                 inp = torch.cat([pad, seq], dim=0)
             else:
                 inp = seq
 
-            inp_batch = inp.unsqueeze(0)        # [1, T]
-            logits = self.forward(inp_batch)    # [1, T_trunc, 256]
+            inp_batch = inp.unsqueeze(0)  # [1, T]
+            logits = self.forward(inp_batch)  # [1, T_trunc, 256]
             next_byte = logits[0, -1, :].argmax(dim=-1).unsqueeze(0)  # [1]
             seq = torch.cat([seq, next_byte], dim=0)
 
@@ -366,6 +372,7 @@ class ByteLevelLM(nn.Module):
 # ---------------------------------------------------------------------------
 # ByteMetrics
 # ---------------------------------------------------------------------------
+
 
 class ByteMetrics:
     """Evaluation metrics for byte-level language models."""
@@ -419,7 +426,7 @@ class ByteMetrics:
         Returns:
             Top-k accuracy in [0, 1].
         """
-        topk = logits.topk(k, dim=-1).indices        # [B, T, k]
+        topk = logits.topk(k, dim=-1).indices  # [B, T, k]
         targets_exp = targets.unsqueeze(-1).expand_as(topk)
         return (topk == targets_exp).any(dim=-1).float().mean().item()
 
@@ -427,6 +434,7 @@ class ByteMetrics:
 # ---------------------------------------------------------------------------
 # ByteModelConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ByteModelConfig:

@@ -8,19 +8,20 @@ Coverage target: 15 unit tests (spec requires 10-16).
 
 from __future__ import annotations
 
-import pytest
-import torch
 import warnings
 
-from src.model.moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
+import torch
 
+from src.model.moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_packer(patch_size: int = 4, num_frames: int = 2, channels: int = 3,
-                max_patches: int = 4096) -> MoonVitPatchPacker:
+
+def make_packer(
+    patch_size: int = 4, num_frames: int = 2, channels: int = 3, max_patches: int = 4096
+) -> MoonVitPatchPacker:
     """Construct a packer with the given tiny-test config."""
     cfg = MoonVitPatchPackerConfig(
         patch_size=patch_size,
@@ -35,6 +36,7 @@ def make_packer(patch_size: int = 4, num_frames: int = 2, channels: int = 3,
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """Default config values: patch_size=16, num_frames=4, channels=3, patch_dim=768."""
     cfg = MoonVitPatchPackerConfig()
@@ -48,6 +50,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_output_shapes_fixed_res
 # ---------------------------------------------------------------------------
+
 
 def test_output_shapes_fixed_res():
     """Input [1, 4, 3, 64, 64] with patch_size=16 → patches [1, 64, 768]."""
@@ -66,6 +69,7 @@ def test_output_shapes_fixed_res():
 # 3. test_output_shapes_small
 # ---------------------------------------------------------------------------
 
+
 def test_output_shapes_small():
     """Input [2, 2, 3, 8, 8] with patch_size=4 → patches [2, 8, 48], mask valid."""
     packer = make_packer(patch_size=4, num_frames=2, channels=3)
@@ -82,6 +86,7 @@ def test_output_shapes_small():
 # 4. test_patch_dim_correct
 # ---------------------------------------------------------------------------
 
+
 def test_patch_dim_correct():
     """patch_dim == patch_size^2 * channels for various configs."""
     for ps, ch in [(4, 1), (4, 3), (8, 2), (16, 3)]:
@@ -95,6 +100,7 @@ def test_patch_dim_correct():
 # 5. test_positions_frame_index
 # ---------------------------------------------------------------------------
 
+
 def test_positions_frame_index():
     """positions[:, :, 0] should be correct frame indices (0..T-1 repeated)."""
     packer = make_packer(patch_size=4, num_frames=2, channels=1)
@@ -104,14 +110,13 @@ def test_positions_frame_index():
     # First 4 patches: frame 0; next 4 patches: frame 1
     frame_indices = positions[0, :, 0]  # [8]
     expected = torch.tensor([0, 0, 0, 0, 1, 1, 1, 1])
-    assert torch.equal(frame_indices, expected), (
-        f"frame indices mismatch: {frame_indices.tolist()}"
-    )
+    assert torch.equal(frame_indices, expected), f"frame indices mismatch: {frame_indices.tolist()}"
 
 
 # ---------------------------------------------------------------------------
 # 6. test_positions_row_col
 # ---------------------------------------------------------------------------
+
 
 def test_positions_row_col():
     """positions[:, :, 1] and [:, :, 2] are valid grid row/col indices."""
@@ -140,6 +145,7 @@ def test_positions_row_col():
 # 7. test_mask_all_ones_uniform
 # ---------------------------------------------------------------------------
 
+
 def test_mask_all_ones_uniform():
     """When all frames have the same size, mask is all 1s (no padding slots)."""
     packer = make_packer(patch_size=4, num_frames=2, channels=3)
@@ -153,6 +159,7 @@ def test_mask_all_ones_uniform():
 # ---------------------------------------------------------------------------
 # 8. test_padding_to_patch_multiple
 # ---------------------------------------------------------------------------
+
 
 def test_padding_to_patch_multiple():
     """Input H=6 (not multiple of 4): packs correctly after padding to H=8."""
@@ -169,6 +176,7 @@ def test_padding_to_patch_multiple():
 # 9. test_single_frame
 # ---------------------------------------------------------------------------
 
+
 def test_single_frame():
     """T=1 input works correctly."""
     packer = make_packer(patch_size=4, num_frames=1, channels=3)
@@ -184,6 +192,7 @@ def test_single_frame():
 # 10. test_batch_size_one
 # ---------------------------------------------------------------------------
 
+
 def test_batch_size_one():
     """B=1 works correctly."""
     packer = make_packer(patch_size=4, num_frames=2, channels=3)
@@ -197,6 +206,7 @@ def test_batch_size_one():
 # ---------------------------------------------------------------------------
 # 11. test_batch_size_two
 # ---------------------------------------------------------------------------
+
 
 def test_batch_size_two():
     """B=2 works with same-shape inputs."""
@@ -214,21 +224,21 @@ def test_batch_size_two():
 # 12. test_no_grad_positions
 # ---------------------------------------------------------------------------
 
+
 def test_no_grad_positions():
     """positions tensor has no gradient (it's an integer index tensor)."""
     packer = make_packer(patch_size=4, num_frames=2, channels=3)
     x = torch.randn(1, 2, 3, 8, 8, requires_grad=True)
     patches, positions, mask = packer(x)
 
-    assert positions.dtype == torch.long, (
-        f"positions should be long, got {positions.dtype}"
-    )
+    assert positions.dtype == torch.long, f"positions should be long, got {positions.dtype}"
     assert not positions.requires_grad, "positions should not require grad"
 
 
 # ---------------------------------------------------------------------------
 # 13. test_max_patches_config
 # ---------------------------------------------------------------------------
+
 
 def test_max_patches_config():
     """max_patches truncates output when total patches would exceed the limit."""
@@ -249,6 +259,7 @@ def test_max_patches_config():
 # 14. test_determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     """Same input produces identical output on two forward passes."""
     torch.manual_seed(42)
@@ -267,6 +278,7 @@ def test_determinism():
 # 15. test_tiny_config
 # ---------------------------------------------------------------------------
 
+
 def test_tiny_config():
     """patch_size=4, num_frames=2, channels=1, input [1,2,1,8,8] → patches [1,8,16]."""
     cfg = MoonVitPatchPackerConfig(patch_size=4, num_frames=2, channels=1)
@@ -284,6 +296,7 @@ def test_tiny_config():
 # ---------------------------------------------------------------------------
 # 16. test_pack_single_shape
 # ---------------------------------------------------------------------------
+
 
 def test_pack_single_shape():
     """pack_single returns correct shape for a single frame."""

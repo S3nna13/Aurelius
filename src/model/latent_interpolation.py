@@ -14,7 +14,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # LinearInterpolator
 # ---------------------------------------------------------------------------
@@ -100,10 +99,9 @@ class SphericalInterpolator:
             # Parallel vectors — fall back to linear interpolation
             return ((1.0 - t) * z0_n + t * z1_n) * scale
 
-        result = (
-            torch.sin((1.0 - t) * theta) * z0_n
-            + torch.sin(t * theta) * z1_n
-        ) / torch.sin(theta)
+        result = (torch.sin((1.0 - t) * theta) * z0_n + torch.sin(t * theta) * z1_n) / torch.sin(
+            theta
+        )
         return result * scale
 
     def path(self, z0: Tensor, z1: Tensor, n_steps: int) -> Tensor:
@@ -243,8 +241,8 @@ class InterpolationAnalyzer:
         Returns:
             Sum of L2 distances between consecutive points.
         """
-        diffs = path[1:] - path[:-1]          # (n_steps-1, d)
-        step_lengths = diffs.norm(dim=-1)      # (n_steps-1,)
+        diffs = path[1:] - path[:-1]  # (n_steps-1, d)
+        step_lengths = diffs.norm(dim=-1)  # (n_steps-1,)
         return float(step_lengths.sum().item())
 
     def midpoint_deviation(self, path: Tensor, z0: Tensor, z1: Tensor) -> float:
@@ -280,7 +278,7 @@ class InterpolationAnalyzer:
             return 1.0
 
         d0 = dirs[:-1]  # (n_steps-2, d)
-        d1 = dirs[1:]   # (n_steps-2, d)
+        d1 = dirs[1:]  # (n_steps-2, d)
 
         eps = 1e-8
         norm0 = d0.norm(dim=-1, keepdim=True).clamp(min=eps)

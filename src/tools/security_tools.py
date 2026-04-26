@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass
@@ -23,11 +22,21 @@ class SecurityToolManager:
         self._discover_tools()
 
     def _discover_tools(self) -> None:
-        tools = ["nmap", "nikto", "sqlmap", "gobuster", "ffuf", "wpscan", "hydra", "john", "aircrack-ng"]
+        tools = [
+            "nmap",
+            "nikto",
+            "sqlmap",
+            "gobuster",
+            "ffuf",
+            "wpscan",
+            "hydra",
+            "john",
+            "aircrack-ng",
+        ]
         for tool in tools:
             try:
-                result = subprocess.run(
-                    ["which", tool],
+                result = subprocess.run(  # noqa: S603
+                    ["which", tool],  # noqa: S607
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -36,7 +45,7 @@ class SecurityToolManager:
                     path = result.stdout.strip()
                     if path:
                         self._tool_paths[tool] = path
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
     def is_available(self, tool: str) -> bool:
@@ -57,10 +66,14 @@ class SecurityToolManager:
             args += ["--data", data]
         return self._run("sqlmap", target, args)
 
-    def run_gobuster(self, target: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt") -> ToolResult:
+    def run_gobuster(
+        self, target: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt"
+    ) -> ToolResult:
         return self._run("gobuster", target, ["dir", "-u", target, "-w", wordlist])
 
-    def run_ffuf(self, target: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt") -> ToolResult:
+    def run_ffuf(
+        self, target: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt"
+    ) -> ToolResult:
         return self._run("ffuf", target, ["-u", f"{target}/FUZZ", "-w", wordlist])
 
     def _run(self, tool: str, target: str | None, args: list[str]) -> ToolResult:
@@ -68,7 +81,7 @@ class SecurityToolManager:
             return ToolResult(tool=tool, target=target, error=f"{tool} not found")
         try:
             cmd = [self._tool_paths[tool]] + args
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603
                 cmd,
                 capture_output=True,
                 text=True,

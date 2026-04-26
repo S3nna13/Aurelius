@@ -7,31 +7,29 @@ Pure PyTorch implementation of targeted unlearning that combines:
 
 from __future__ import annotations
 
-import copy
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class UnlearningConfig:
     """Configuration for targeted machine unlearning."""
 
-    forget_lr: float = 1e-4       # learning rate for forget step
-    retain_lr: float = 1e-5       # learning rate for retain step
-    forget_steps: int = 5         # gradient ascent steps on forget set
-    retain_steps: int = 5         # KL retention steps on retain set
-    kl_coef: float = 1.0          # weight for KL retention loss
-    max_grad_norm: float = 1.0    # gradient clipping
+    forget_lr: float = 1e-4  # learning rate for forget step
+    retain_lr: float = 1e-5  # learning rate for retain step
+    forget_steps: int = 5  # gradient ascent steps on forget set
+    retain_steps: int = 5  # KL retention steps on retain set
+    kl_coef: float = 1.0  # weight for KL retention loss
+    max_grad_norm: float = 1.0  # gradient clipping
     forget_loss_type: str = "gradient_ascent"  # "gradient_ascent" or "random_label"
 
 
@@ -39,9 +37,10 @@ class UnlearningConfig:
 # Loss functions
 # ---------------------------------------------------------------------------
 
+
 def forget_loss(
     model: nn.Module,
-    forget_inputs: Tensor,   # (B, T) token ids
+    forget_inputs: Tensor,  # (B, T) token ids
     forget_targets: Tensor,  # (B, T) token ids for next-token prediction
     loss_type: str = "gradient_ascent",
 ) -> Tensor:
@@ -72,20 +71,19 @@ def forget_loss(
     elif loss_type == "random_label":
         # Cross-entropy against uniform random targets
         shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
-        random_targets = torch.randint(
-            0, V, (B * (T - 1),), device=forget_inputs.device
-        )
+        random_targets = torch.randint(0, V, (B * (T - 1),), device=forget_inputs.device)
         return F.cross_entropy(shift_logits.view(-1, V), random_targets)
 
     else:
-        raise ValueError(f"Unknown forget_loss_type: {loss_type!r}. "
-                         "Choose 'gradient_ascent' or 'random_label'.")
+        raise ValueError(
+            f"Unknown forget_loss_type: {loss_type!r}. Choose 'gradient_ascent' or 'random_label'."
+        )
 
 
 def retain_loss(
     model: nn.Module,
-    ref_model: nn.Module,    # frozen reference model
-    retain_inputs: Tensor,   # (B, T) token ids
+    ref_model: nn.Module,  # frozen reference model
+    retain_inputs: Tensor,  # (B, T) token ids
 ) -> Tensor:
     """KL divergence retention loss: KL(model || ref_model) on retain set.
 
@@ -103,8 +101,8 @@ def retain_loss(
 
     B, T, V = logits.shape
 
-    log_probs = F.log_softmax(logits.view(-1, V), dim=-1)       # (B*T, V)
-    ref_probs = F.softmax(ref_logits.view(-1, V), dim=-1)        # (B*T, V)
+    log_probs = F.log_softmax(logits.view(-1, V), dim=-1)  # (B*T, V)
+    ref_probs = F.softmax(ref_logits.view(-1, V), dim=-1)  # (B*T, V)
 
     # kl_div(input, target) computes mean(target * (log(target) - input))
     # which equals KL(ref || model) >= 0
@@ -116,12 +114,13 @@ def retain_loss(
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class UnlearningResult:
     """Result of a targeted unlearning run."""
 
-    forget_losses: list[float]    # forget loss per step
-    retain_losses: list[float]    # retain loss per step
+    forget_losses: list[float]  # forget loss per step
+    retain_losses: list[float]  # retain loss per step
     n_forget_steps: int
     n_retain_steps: int
 
@@ -129,6 +128,7 @@ class UnlearningResult:
 # ---------------------------------------------------------------------------
 # TargetedUnlearner
 # ---------------------------------------------------------------------------
+
 
 class TargetedUnlearner:
     """Orchestrates targeted machine unlearning via SCRUB-style alternation."""
@@ -147,12 +147,8 @@ class TargetedUnlearner:
         for p in self.ref_model.parameters():
             p.requires_grad_(False)
 
-        self.forget_optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=config.forget_lr
-        )
-        self.retain_optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=config.retain_lr
-        )
+        self.forget_optimizer = torch.optim.Adam(self.model.parameters(), lr=config.forget_lr)
+        self.retain_optimizer = torch.optim.Adam(self.model.parameters(), lr=config.retain_lr)
 
     def forget_step(
         self,
@@ -164,7 +160,9 @@ class TargetedUnlearner:
         self.forget_optimizer.zero_grad()
 
         loss = forget_loss(
-            self.model, forget_inputs, forget_targets,
+            self.model,
+            forget_inputs,
+            forget_targets,
             loss_type=self.config.forget_loss_type,
         )
         loss.backward()
@@ -181,9 +179,7 @@ class TargetedUnlearner:
         self.model.train()
         self.retain_optimizer.zero_grad()
 
-        loss = self.config.kl_coef * retain_loss(
-            self.model, self.ref_model, retain_inputs
-        )
+        loss = self.config.kl_coef * retain_loss(self.model, self.ref_model, retain_inputs)
         loss.backward()
         nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
         self.retain_optimizer.step()
@@ -193,7 +189,7 @@ class TargetedUnlearner:
     def run(
         self,
         forget_dataset: list[tuple[Tensor, Tensor]],  # list of (inputs, targets)
-        retain_dataset: list[Tensor],                  # list of inputs (no targets for KL)
+        retain_dataset: list[Tensor],  # list of inputs (no targets for KL)
     ) -> UnlearningResult:
         """Run full unlearning: alternate forget and retain steps."""
         forget_losses: list[float] = []
@@ -228,6 +224,7 @@ class TargetedUnlearner:
 # Evaluation
 # ---------------------------------------------------------------------------
 
+
 def evaluate_forgetting(
     model: nn.Module,
     forget_inputs: Tensor,
@@ -244,7 +241,7 @@ def evaluate_forgetting(
         logits = out[1] if isinstance(out, tuple) else out  # (B, T, V)
 
         B, T, V = logits.shape
-        shift_logits = logits[:, :-1, :].contiguous()   # (B, T-1, V)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
         shift_targets = forget_targets[:, 1:].contiguous()  # (B, T-1)
 
         ce = F.cross_entropy(
@@ -264,8 +261,8 @@ def evaluate_forgetting(
 # Utilities
 # ---------------------------------------------------------------------------
 
+
 def _cycle(dataset: list):
     """Infinite cycling iterator over a list."""
     while True:
-        for item in dataset:
-            yield item
+        yield from dataset

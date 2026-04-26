@@ -1,12 +1,12 @@
-import pytest
 import torch
+
 from src.model.block_sparse_attention import (
-    BlockSparseConfig,
-    create_block_sparse_mask,
-    compute_block_attention,
-    BlockSparseAttention,
     BigBirdBlock,
+    BlockSparseAttention,
+    BlockSparseConfig,
+    compute_block_attention,
     compute_sparsity,
+    create_block_sparse_mask,
     estimate_flop_reduction,
 )
 
@@ -21,8 +21,8 @@ CFG = BlockSparseConfig(
     window_size=1,
     dropout=0.0,
 )
-T = 32   # seq_len; divisible by block_size=8
-B = 2    # batch size
+T = 32  # seq_len; divisible by block_size=8
+B = 2  # batch size
 
 
 def _make_input():
@@ -122,9 +122,7 @@ def test_block_sparse_attention_output_shape():
     model = BlockSparseAttention(CFG)
     x = _make_input()
     out = model(x)
-    assert out.shape == (B, T, CFG.d_model), (
-        f"Expected ({B},{T},{CFG.d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, T, CFG.d_model), f"Expected ({B},{T},{CFG.d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +146,7 @@ def test_bigbird_block_output_shape():
     block = BigBirdBlock(CFG, d_ff=d_ff)
     x = _make_input()
     out = block(x)
-    assert out.shape == (B, T, CFG.d_model), (
-        f"Expected ({B},{T},{CFG.d_model}), got {out.shape}"
-    )
+    assert out.shape == (B, T, CFG.d_model), f"Expected ({B},{T},{CFG.d_model}), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +185,4 @@ def test_compute_sparsity_range():
 # ---------------------------------------------------------------------------
 def test_flop_reduction_positive():
     ratio = estimate_flop_reduction(T, CFG)
-    assert ratio > 1.0, (
-        f"Block-sparse should attend fewer pairs than dense; got ratio={ratio}"
-    )
+    assert ratio > 1.0, f"Block-sparse should attend fewer pairs than dense; got ratio={ratio}"

@@ -1,26 +1,26 @@
 """Tests for token-level dense reward signals (src/alignment/token_reward.py)."""
 
 import math
+
 import pytest
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.alignment.token_reward import (
     TokenRewardConfig,
     TokenRewardModel,
     TokenRewardTrainer,
-    compute_returns,
     compute_gae,
+    compute_returns,
     shape_rewards,
 )
-
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def small_cfg():
@@ -64,6 +64,7 @@ def trainer(policy, reward_model):
 # Test 1: TokenRewardConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_token_reward_config_defaults():
     cfg = TokenRewardConfig()
     assert cfg.reward_type == "dense"
@@ -77,6 +78,7 @@ def test_token_reward_config_defaults():
 # Test 2: TokenRewardModel output shape (B, T)
 # ---------------------------------------------------------------------------
 
+
 def test_token_reward_model_output_shape(reward_model):
     B, T = 2, 8
     input_ids = torch.randint(0, 256, (B, T))
@@ -88,6 +90,7 @@ def test_token_reward_model_output_shape(reward_model):
 # Test 3: TokenRewardModel output is finite
 # ---------------------------------------------------------------------------
 
+
 def test_token_reward_model_output_finite(reward_model):
     input_ids = torch.randint(0, 256, (2, 8))
     out = reward_model(input_ids)
@@ -97,6 +100,7 @@ def test_token_reward_model_output_finite(reward_model):
 # ---------------------------------------------------------------------------
 # Test 4: compute_returns shape (B, T)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_returns_shape():
     B, T = 3, 10
@@ -108,6 +112,7 @@ def test_compute_returns_shape():
 # ---------------------------------------------------------------------------
 # Test 5: compute_returns last position equals last reward
 # ---------------------------------------------------------------------------
+
 
 def test_compute_returns_last_position():
     rewards = torch.tensor([[1.0, 2.0, 3.0]])
@@ -122,6 +127,7 @@ def test_compute_returns_last_position():
 # Test 6: compute_returns first position > last (positive rewards)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_returns_first_greater_than_last():
     rewards = torch.ones(1, 5)  # all positive rewards
     returns = compute_returns(rewards, gamma=0.99)
@@ -135,6 +141,7 @@ def test_compute_returns_first_greater_than_last():
 # Test 7: compute_gae shape (B, T)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gae_shape():
     B, T = 2, 12
     rewards = torch.randn(B, T)
@@ -146,6 +153,7 @@ def test_compute_gae_shape():
 # ---------------------------------------------------------------------------
 # Test 8: compute_gae with lam=1 and zero values matches discounted returns
 # ---------------------------------------------------------------------------
+
 
 def test_compute_gae_lam1_zero_values_equals_returns():
     torch.manual_seed(0)
@@ -168,6 +176,7 @@ def test_compute_gae_lam1_zero_values_equals_returns():
 # Test 9: shape_rewards clips to [-clip, clip]
 # ---------------------------------------------------------------------------
 
+
 def test_shape_rewards_clips():
     cfg = TokenRewardConfig(clip_reward=5.0, normalize=False)
     rewards = torch.tensor([[100.0, -200.0, 3.0, -3.0]])
@@ -179,6 +188,7 @@ def test_shape_rewards_clips():
 # ---------------------------------------------------------------------------
 # Test 10: shape_rewards normalize: mean ≈ 0 per sequence
 # ---------------------------------------------------------------------------
+
 
 def test_shape_rewards_normalize_mean():
     cfg = TokenRewardConfig(clip_reward=100.0, normalize=True)
@@ -195,6 +205,7 @@ def test_shape_rewards_normalize_mean():
 # Test 11: shape_rewards normalize: std ≈ 1 per sequence
 # ---------------------------------------------------------------------------
 
+
 def test_shape_rewards_normalize_std():
     cfg = TokenRewardConfig(clip_reward=100.0, normalize=True)
     torch.manual_seed(2)
@@ -210,18 +221,18 @@ def test_shape_rewards_normalize_std():
 # Test 12: train_step returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_train_step_returns_required_keys(trainer):
     input_ids = torch.randint(0, 256, (2, 8))
     result = trainer.train_step(input_ids)
     required_keys = {"loss", "mean_reward", "mean_advantage", "mean_return"}
-    assert required_keys.issubset(result.keys()), (
-        f"Missing keys: {required_keys - result.keys()}"
-    )
+    assert required_keys.issubset(result.keys()), f"Missing keys: {required_keys - result.keys()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 13: train_step loss is finite
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_loss_is_finite(trainer):
     input_ids = torch.randint(0, 256, (2, 8))
@@ -232,6 +243,7 @@ def test_train_step_loss_is_finite(trainer):
 # ---------------------------------------------------------------------------
 # Test 14: train_step mean_reward is float
 # ---------------------------------------------------------------------------
+
 
 def test_train_step_mean_reward_is_float(trainer):
     input_ids = torch.randint(0, 256, (2, 8))
@@ -245,6 +257,7 @@ def test_train_step_mean_reward_is_float(trainer):
 # Test 15: compute_gae when values=0: advantage equals discounted future rewards
 # ---------------------------------------------------------------------------
 
+
 def test_compute_gae_zero_values_equals_returns():
     torch.manual_seed(99)
     B, T = 2, 8
@@ -256,6 +269,5 @@ def test_compute_gae_zero_values_equals_returns():
 
     # When V=0 and lam=1: A_t should equal G_t (discounted return from t)
     assert torch.allclose(adv, ret, atol=1e-5), (
-        f"GAE with values=0 should equal discounted returns.\n"
-        f"adv[0]: {adv[0]}\nret[0]: {ret[0]}"
+        f"GAE with values=0 should equal discounted returns.\nadv[0]: {adv[0]}\nret[0]: {ret[0]}"
     )

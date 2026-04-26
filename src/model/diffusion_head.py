@@ -9,7 +9,6 @@ Implements the masked diffusion (MDLM) approach from Austin et al. 2021:
 from __future__ import annotations
 
 import math
-from typing import Union
 
 import torch
 import torch.nn as nn
@@ -43,7 +42,7 @@ class DiffusionSchedule:
         self.schedule = schedule
         self.mask_token_id = mask_token_id
 
-    def mask_rate(self, t: Union[int, torch.Tensor]) -> torch.Tensor:
+    def mask_rate(self, t: int | torch.Tensor) -> torch.Tensor:
         """Return mask probability at timestep t. Returns tensor in [0, 1]."""
         if not isinstance(t, torch.Tensor):
             t = torch.tensor(t, dtype=torch.float32)
@@ -191,7 +190,7 @@ class MaskedDiffusionTrainer:
         device = input_ids.device
         B = input_ids.size(0)
 
-        # 1. Sample one timestep per batch (use the first for noise rate; could extend to per-sample)
+        # 1. Sample one timestep per batch (use the first for noise rate; could extend to per-sample)  # noqa: E501
         t_batch = self.schedule.get_timesteps(B, device=device)
         t = t_batch[0].item()
 
@@ -358,8 +357,8 @@ class DiffusionDecoder:
             # Unmask selected positions
             for idx in topk_idx:
                 b = idx.item() // gen_len
-                l = idx.item() % gen_len
-                gen_ids[b, l] = sampled_tokens[b, l]
+                lvl = idx.item() % gen_len
+                gen_ids[b, lvl] = sampled_tokens[b, lvl]
 
         return gen_ids
 

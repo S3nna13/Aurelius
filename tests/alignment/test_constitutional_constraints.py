@@ -10,18 +10,18 @@ Parameters used throughout:
 """
 
 import math
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.alignment.constitutional_constraints import (
+    ConstitutionalConfig,
     ConstitutionalRule,
-    TokenConstraintSet,
-    LogitConstraintEnforcer,
+    ConstitutionalSampler,
     ConstrainedDecoder,
     ConstraintRepairModel,
-    ConstitutionalSampler,
-    ConstitutionalConfig,
+    LogitConstraintEnforcer,
+    TokenConstraintSet,
 )
 
 # ---------------------------------------------------------------------------
@@ -38,6 +38,7 @@ MAX_NEW = 4
 # ---------------------------------------------------------------------------
 # Minimal stub language model for decoding tests
 # ---------------------------------------------------------------------------
+
 
 class _TinyLM(nn.Module):
     """Single-layer embedding + linear head for shape-correctness tests."""
@@ -68,11 +69,10 @@ def _make_input() -> torch.Tensor:
 # 1. ConstitutionalRule — forbidden_tokens: check fails for forbidden token
 # ---------------------------------------------------------------------------
 
+
 def test_rule_forbidden_tokens_check_fails():
-    rule = ConstitutionalRule(
-        "no_bad", "forbidden_tokens", {"token_ids": [3, 7]}
-    )
-    tokens_with_forbidden = [1, 2, 3, 4]   # contains 3
+    rule = ConstitutionalRule("no_bad", "forbidden_tokens", {"token_ids": [3, 7]})
+    tokens_with_forbidden = [1, 2, 3, 4]  # contains 3
     tokens_clean = [1, 2, 4, 5]
     assert rule.check(tokens_with_forbidden) is False
     assert rule.check(tokens_clean) is True
@@ -82,12 +82,11 @@ def test_rule_forbidden_tokens_check_fails():
 # 2. ConstitutionalRule — length_bound: check fails for too-long sequence
 # ---------------------------------------------------------------------------
 
+
 def test_rule_length_bound_check_fails_too_long():
-    rule = ConstitutionalRule(
-        "short", "length_bound", {"max_length": 3}
-    )
-    long_seq = [0, 1, 2, 3, 4]   # length 5 > max 3
-    short_seq = [0, 1, 2]        # length 3 == max 3
+    rule = ConstitutionalRule("short", "length_bound", {"max_length": 3})
+    long_seq = [0, 1, 2, 3, 4]  # length 5 > max 3
+    short_seq = [0, 1, 2]  # length 3 == max 3
     assert rule.check(long_seq) is False
     assert rule.check(short_seq) is True
 
@@ -96,10 +95,9 @@ def test_rule_length_bound_check_fails_too_long():
 # 3. ConstitutionalRule — max_repetition: violation_score > 0 when violated
 # ---------------------------------------------------------------------------
 
+
 def test_rule_max_repetition_violation_score():
-    rule = ConstitutionalRule(
-        "no_repeat", "max_repetition", {"max_reps": 2}
-    )
+    rule = ConstitutionalRule("no_repeat", "max_repetition", {"max_reps": 2})
     # token 5 appears 4 times -> excess = 2
     tokens = [5, 5, 5, 5, 1, 2]
     score = rule.violation_score(tokens)
@@ -110,10 +108,9 @@ def test_rule_max_repetition_violation_score():
 # 4. ConstitutionalRule — max_repetition: zero violation when within limit
 # ---------------------------------------------------------------------------
 
+
 def test_rule_max_repetition_no_violation():
-    rule = ConstitutionalRule(
-        "no_repeat", "max_repetition", {"max_reps": 3}
-    )
+    rule = ConstitutionalRule("no_repeat", "max_repetition", {"max_reps": 3})
     tokens = [5, 5, 5, 1, 2, 3]  # 5 appears exactly 3 times
     assert rule.violation_score(tokens) == 0.0
     assert rule.check(tokens) is True
@@ -122,6 +119,7 @@ def test_rule_max_repetition_no_violation():
 # ---------------------------------------------------------------------------
 # 5. TokenConstraintSet — check_all returns dict with rule names as keys
 # ---------------------------------------------------------------------------
+
 
 def test_constraint_set_check_all_returns_dict():
     r1 = ConstitutionalRule("r1", "forbidden_tokens", {"token_ids": [9]})
@@ -140,6 +138,7 @@ def test_constraint_set_check_all_returns_dict():
 # 6. TokenConstraintSet — satisfied returns True when all rules pass
 # ---------------------------------------------------------------------------
 
+
 def test_constraint_set_satisfied_all_pass():
     r1 = ConstitutionalRule("r1", "forbidden_tokens", {"token_ids": [99]})
     r2 = ConstitutionalRule("r2", "length_bound", {"max_length": 5})
@@ -152,6 +151,7 @@ def test_constraint_set_satisfied_all_pass():
 # 7. TokenConstraintSet — satisfied returns False when any rule fails
 # ---------------------------------------------------------------------------
 
+
 def test_constraint_set_satisfied_fails():
     r1 = ConstitutionalRule("r1", "forbidden_tokens", {"token_ids": [2]})
     cset = TokenConstraintSet([r1])
@@ -162,6 +162,7 @@ def test_constraint_set_satisfied_fails():
 # ---------------------------------------------------------------------------
 # 8. TokenConstraintSet — total_violation >= 0
 # ---------------------------------------------------------------------------
+
 
 def test_constraint_set_total_violation_nonneg():
     r1 = ConstitutionalRule("r1", "forbidden_tokens", {"token_ids": [3, 7]})
@@ -177,6 +178,7 @@ def test_constraint_set_total_violation_nonneg():
 # 9. LogitConstraintEnforcer — forward output shape [B, vocab_size]
 # ---------------------------------------------------------------------------
 
+
 def test_enforcer_output_shape():
     enforcer = LogitConstraintEnforcer(vocab_size=VOCAB)
     logits = torch.randn(B, VOCAB)
@@ -188,6 +190,7 @@ def test_enforcer_output_shape():
 # ---------------------------------------------------------------------------
 # 10. LogitConstraintEnforcer — forbidden tokens set to -inf
 # ---------------------------------------------------------------------------
+
 
 def test_enforcer_forbidden_tokens_neginf():
     enforcer = LogitConstraintEnforcer(vocab_size=VOCAB)
@@ -205,6 +208,7 @@ def test_enforcer_forbidden_tokens_neginf():
 # 11. LogitConstraintEnforcer — non-forbidden tokens remain finite
 # ---------------------------------------------------------------------------
 
+
 def test_enforcer_non_forbidden_finite():
     enforcer = LogitConstraintEnforcer(vocab_size=VOCAB)
     enforcer.set_forbidden([0])
@@ -218,6 +222,7 @@ def test_enforcer_non_forbidden_finite():
 # ---------------------------------------------------------------------------
 # 12. LogitConstraintEnforcer — repetition penalty reduces repeated token score
 # ---------------------------------------------------------------------------
+
 
 def test_enforcer_repetition_penalty():
     enforcer = LogitConstraintEnforcer(vocab_size=VOCAB)
@@ -235,6 +240,7 @@ def test_enforcer_repetition_penalty():
 # 13. ConstrainedDecoder — decode output shape [B, T + max_new]
 # ---------------------------------------------------------------------------
 
+
 def test_constrained_decoder_output_shape():
     lm = _make_lm()
     enforcer = LogitConstraintEnforcer(vocab_size=VOCAB)
@@ -248,6 +254,7 @@ def test_constrained_decoder_output_shape():
 # 14. ConstrainedDecoder — forbidden tokens never appear in generated portion
 # ---------------------------------------------------------------------------
 
+
 def test_constrained_decoder_no_forbidden_tokens():
     torch.manual_seed(42)
     lm = _make_lm()
@@ -256,9 +263,7 @@ def test_constrained_decoder_no_forbidden_tokens():
     forbidden = list(range(8))
     enforcer.set_forbidden(forbidden)
     input_ids = torch.randint(8, VOCAB, (B, T))  # input uses only upper half
-    out = decoder_out = ConstrainedDecoder(lm, enforcer).decode(
-        input_ids, max_new=MAX_NEW
-    )
+    out = ConstrainedDecoder(lm, enforcer).decode(input_ids, max_new=MAX_NEW)
     # Check only the newly generated portion
     generated_portion = out[:, T:]  # [B, MAX_NEW]
     for fid in forbidden:
@@ -271,6 +276,7 @@ def test_constrained_decoder_no_forbidden_tokens():
 # 15. ConstraintRepairModel — forward output shape [B, T, vocab_size]
 # ---------------------------------------------------------------------------
 
+
 def test_repair_model_forward_shape():
     torch.manual_seed(0)
     model = ConstraintRepairModel(d_model=D_MODEL, vocab_size=VOCAB, n_layers=2)
@@ -282,6 +288,7 @@ def test_repair_model_forward_shape():
 # ---------------------------------------------------------------------------
 # 16. ConstraintRepairModel — repair_loss is finite scalar
 # ---------------------------------------------------------------------------
+
 
 def test_repair_model_repair_loss_finite():
     torch.manual_seed(0)
@@ -297,6 +304,7 @@ def test_repair_model_repair_loss_finite():
 # 17. ConstitutionalSampler — best_of_n returns correct shapes
 # ---------------------------------------------------------------------------
 
+
 def test_sampler_best_of_n_ids_shape():
     lm = _make_lm()
     rules = [ConstitutionalRule("r1", "length_bound", {"max_length": 100})]
@@ -310,6 +318,7 @@ def test_sampler_best_of_n_ids_shape():
 # 18. ConstitutionalSampler — best_of_n scores shape [B]
 # ---------------------------------------------------------------------------
 
+
 def test_sampler_best_of_n_scores_shape():
     lm = _make_lm()
     rules = [ConstitutionalRule("r1", "length_bound", {"max_length": 100})]
@@ -322,6 +331,7 @@ def test_sampler_best_of_n_scores_shape():
 # ---------------------------------------------------------------------------
 # 19. ConstitutionalConfig — default values
 # ---------------------------------------------------------------------------
+
 
 def test_constitutional_config_defaults():
     cfg = ConstitutionalConfig()
@@ -338,6 +348,7 @@ def test_constitutional_config_defaults():
 # ---------------------------------------------------------------------------
 # 20. ConstitutionalConfig — custom values round-trip
 # ---------------------------------------------------------------------------
+
 
 def test_constitutional_config_custom():
     cfg = ConstitutionalConfig(
@@ -356,6 +367,7 @@ def test_constitutional_config_custom():
 # 21. ConstitutionalRule — sentiment_bound violation
 # ---------------------------------------------------------------------------
 
+
 def test_rule_sentiment_bound_violation():
     rule = ConstitutionalRule(
         "sentiment",
@@ -372,11 +384,10 @@ def test_rule_sentiment_bound_violation():
 # 22. ConstitutionalRule — required_prefix violation
 # ---------------------------------------------------------------------------
 
+
 def test_rule_required_prefix_violation():
-    rule = ConstitutionalRule(
-        "prefix", "required_prefix", {"prefix": [1, 2, 3]}
-    )
-    wrong_start = [9, 2, 3, 4]   # first token wrong
+    rule = ConstitutionalRule("prefix", "required_prefix", {"prefix": [1, 2, 3]})
+    wrong_start = [9, 2, 3, 4]  # first token wrong
     correct_start = [1, 2, 3, 4]
     assert rule.check(wrong_start) is False
     assert rule.check(correct_start) is True
@@ -385,6 +396,7 @@ def test_rule_required_prefix_violation():
 # ---------------------------------------------------------------------------
 # 23. ConstrainedDecoder — beam_decode_constrained output shape
 # ---------------------------------------------------------------------------
+
 
 def test_beam_decode_output_shape():
     lm = _make_lm()

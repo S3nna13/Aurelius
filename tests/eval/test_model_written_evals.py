@@ -36,7 +36,10 @@ def test_weighted_verdict_score_uses_positive_label():
 
 
 def test_average_rubric_score_means_values():
-    evals = [parse_written_eval(make_text(rubric_score=6.0)), parse_written_eval(make_text(rubric_score=8.0))]
+    evals = [
+        parse_written_eval(make_text(rubric_score=6.0)),
+        parse_written_eval(make_text(rubric_score=8.0)),
+    ]
     assert average_rubric_score(evals) == pytest.approx(7.0)
 
 

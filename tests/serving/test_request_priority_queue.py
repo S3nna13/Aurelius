@@ -7,10 +7,9 @@ import threading
 import pytest
 
 from src.serving.request_priority_queue import (
-    RequestPriorityQueue,
     PRIORITY_QUEUE_REGISTRY,
+    RequestPriorityQueue,
 )
-
 
 # ---------------------------------------------------------------------------
 # Priority ordering

@@ -35,11 +35,9 @@ xLSTM model: stack of xLSTM blocks with configurable block_types list.
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 from .rms_norm import RMSNorm
@@ -49,15 +47,16 @@ from .rms_norm import RMSNorm
 # ---------------------------------------------------------------------------
 
 # sLSTM state: (c, n, m) each (B, d_model)
-sLSTMState = Tuple[Tensor, Tensor, Tensor]
+sLSTMState = tuple[Tensor, Tensor, Tensor]
 
 # mLSTM state: (C, n, m) where C: (B, d_head, d_head), n: (B, d_head), m: (B,)
-mLSTMState = Tuple[Tensor, Tensor, Tensor]
+mLSTMState = tuple[Tensor, Tensor, Tensor]
 
 
 # ---------------------------------------------------------------------------
 # sLSTM Cell  (Section 2.1)
 # ---------------------------------------------------------------------------
+
 
 class sLSTMCell(nn.Module):
     """Scalar-memory LSTM cell with exponential gating and normaliser state.
@@ -80,23 +79,23 @@ class sLSTMCell(nn.Module):
         # Input projections: produce z_i, z_f, z_v, z_o from x_t
         # All are linear projections of the input (no bias needed for gates,
         # bias for value/output keeps expressivity).
-        self.W_i = nn.Linear(d_model, d_model, bias=True)   # z_i_t (log of input gate)
-        self.W_f = nn.Linear(d_model, d_model, bias=True)   # z_f_t (log of forget gate)
-        self.W_v = nn.Linear(d_model, d_model, bias=True)   # z_v_t (value / candidate)
-        self.W_o = nn.Linear(d_model, d_model, bias=True)   # z_o_t (output gate, sigmoid)
+        self.W_i = nn.Linear(d_model, d_model, bias=True)  # z_i_t (log of input gate)
+        self.W_f = nn.Linear(d_model, d_model, bias=True)  # z_f_t (log of forget gate)
+        self.W_v = nn.Linear(d_model, d_model, bias=True)  # z_v_t (value / candidate)
+        self.W_o = nn.Linear(d_model, d_model, bias=True)  # z_o_t (output gate, sigmoid)
 
     def init_state(self, batch_size: int, device: torch.device, dtype: torch.dtype) -> sLSTMState:
         """Return zero-initialised state (c, n, m)."""
         zeros = torch.zeros(batch_size, self.d_model, device=device, dtype=dtype)
         # m starts at -inf so the first max picks up i_t unconditionally
-        m0 = torch.full((batch_size, self.d_model), float('-inf'), device=device, dtype=dtype)
+        m0 = torch.full((batch_size, self.d_model), float("-inf"), device=device, dtype=dtype)
         return (zeros, zeros, m0)
 
     def forward(
         self,
-        x_t: Tensor,                          # (B, d_model)
-        state: Optional[sLSTMState] = None,   # (c, n, m) or None
-    ) -> Tuple[Tensor, sLSTMState]:           # (h_t, new_state)
+        x_t: Tensor,  # (B, d_model)
+        state: sLSTMState | None = None,  # (c, n, m) or None
+    ) -> tuple[Tensor, sLSTMState]:  # (h_t, new_state)
         """Single-step sLSTM forward pass.
 
         Args:
@@ -116,30 +115,30 @@ class sLSTMCell(nn.Module):
         c_prev, n_prev, m_prev = state
 
         # --- Gate pre-activations (linear projections) ---
-        z_i_t = self.W_i(x_t)            # (B, d_model)  — log of input gate
-        z_f_t = self.W_f(x_t)            # (B, d_model)  — log of forget gate
-        z_v_t = self.W_v(x_t)            # (B, d_model)  — value / candidate
+        z_i_t = self.W_i(x_t)  # (B, d_model)  — log of input gate
+        z_f_t = self.W_f(x_t)  # (B, d_model)  — log of forget gate
+        z_v_t = self.W_v(x_t)  # (B, d_model)  — value / candidate
         z_o_t = torch.sigmoid(self.W_o(x_t))  # (B, d_model)  — output gate ∈ (0,1)
 
         # --- Exponential gates (Section 2.1, eq. 3–4) ---
         # Work in log-space for the stabiliser to avoid large intermediates.
         # m_t = max(z_f_t + m_{t-1}, z_i_t)  [log-space stabiliser]
-        m_t = torch.maximum(z_f_t + m_prev, z_i_t)        # (B, d_model)
+        m_t = torch.maximum(z_f_t + m_prev, z_i_t)  # (B, d_model)
 
         # Normalised gates (divide by exp(m_t) to keep values in [0,1])
         # i'_t = exp(z_i_t - m_t)
-        i_prime = torch.exp(z_i_t - m_t)                  # (B, d_model)
+        i_prime = torch.exp(z_i_t - m_t)  # (B, d_model)
         # f'_t = exp(z_f_t + m_{t-1} - m_t)
-        f_prime = torch.exp(z_f_t + m_prev - m_t)         # (B, d_model)
+        f_prime = torch.exp(z_f_t + m_prev - m_t)  # (B, d_model)
 
         # --- State updates ---
-        c_t = f_prime * c_prev + i_prime * z_v_t           # cell state
-        n_t = f_prime * n_prev + i_prime                   # normaliser state
+        c_t = f_prime * c_prev + i_prime * z_v_t  # cell state
+        n_t = f_prime * n_prev + i_prime  # normaliser state
 
         # --- Output (eq. 7) ---
         # h_t = o_t * tanh(c_t) / max(|n_t|, 1)
-        denom = torch.clamp(n_t.abs(), min=1.0)            # (B, d_model)
-        h_t = z_o_t * torch.tanh(c_t) / denom             # (B, d_model)
+        denom = torch.clamp(n_t.abs(), min=1.0)  # (B, d_model)
+        h_t = z_o_t * torch.tanh(c_t) / denom  # (B, d_model)
 
         return h_t, (c_t, n_t, m_t)
 
@@ -147,6 +146,7 @@ class sLSTMCell(nn.Module):
 # ---------------------------------------------------------------------------
 # mLSTM Cell  (Section 3.1)
 # ---------------------------------------------------------------------------
+
 
 class mLSTMCell(nn.Module):
     """Matrix-memory LSTM cell with query/key/value projections.
@@ -166,7 +166,7 @@ class mLSTMCell(nn.Module):
         d_head:  Head dimension for Q/K/V and matrix memory.  Defaults to d_model.
     """
 
-    def __init__(self, d_model: int, d_head: Optional[int] = None) -> None:
+    def __init__(self, d_model: int, d_head: int | None = None) -> None:
         super().__init__()
         self.d_model = d_model
         self.d_head = d_head if d_head is not None else d_model
@@ -177,10 +177,10 @@ class mLSTMCell(nn.Module):
         self.W_k = nn.Linear(d_model, d, bias=False)
         self.W_v = nn.Linear(d_model, d, bias=False)
         # Scalar gate pre-activations
-        self.w_i = nn.Linear(d_model, 1, bias=True)   # z_i_t (log input gate)
-        self.w_f = nn.Linear(d_model, 1, bias=True)   # z_f_t (log forget gate)
+        self.w_i = nn.Linear(d_model, 1, bias=True)  # z_i_t (log input gate)
+        self.w_f = nn.Linear(d_model, 1, bias=True)  # z_f_t (log forget gate)
         # Output gate
-        self.W_o = nn.Linear(d_model, d, bias=True)   # produces o_t via sigmoid
+        self.W_o = nn.Linear(d_model, d, bias=True)  # produces o_t via sigmoid
         # Output projection back to d_model
         self.out_proj = nn.Linear(d, d_model, bias=False)
 
@@ -192,14 +192,14 @@ class mLSTMCell(nn.Module):
         d = self.d_head
         C0 = torch.zeros(batch_size, d, d, device=device, dtype=dtype)
         n0 = torch.zeros(batch_size, d, device=device, dtype=dtype)
-        m0 = torch.full((batch_size,), float('-inf'), device=device, dtype=dtype)
+        m0 = torch.full((batch_size,), float("-inf"), device=device, dtype=dtype)
         return (C0, n0, m0)
 
     def forward(
         self,
-        x_t: Tensor,                          # (B, d_model)
-        state: Optional[mLSTMState] = None,   # (C, n, m) or None
-    ) -> Tuple[Tensor, mLSTMState]:           # (h_t, new_state)
+        x_t: Tensor,  # (B, d_model)
+        state: mLSTMState | None = None,  # (C, n, m) or None
+    ) -> tuple[Tensor, mLSTMState]:  # (h_t, new_state)
         """Single-step mLSTM forward pass.
 
         Args:
@@ -216,36 +216,36 @@ class mLSTMCell(nn.Module):
         if state is None:
             state = self.init_state(B, device, dtype)
 
-        C_prev, n_prev, m_prev = state   # (B,d,d), (B,d), (B,)
+        C_prev, n_prev, m_prev = state  # (B,d,d), (B,d), (B,)
 
         # --- Q / K / V (Section 3.1) ---
-        q_t = self.W_q(x_t) * self.scale    # (B, d_head)
-        k_t = self.W_k(x_t) * self.scale    # (B, d_head)
-        v_t = self.W_v(x_t)                 # (B, d_head)
+        q_t = self.W_q(x_t) * self.scale  # (B, d_head)
+        k_t = self.W_k(x_t) * self.scale  # (B, d_head)
+        v_t = self.W_v(x_t)  # (B, d_head)
 
         # --- Scalar gate pre-activations ---
-        z_i_t = self.w_i(x_t).squeeze(-1)   # (B,)  log input gate
-        z_f_t = self.w_f(x_t).squeeze(-1)   # (B,)  log forget gate
+        z_i_t = self.w_i(x_t).squeeze(-1)  # (B,)  log input gate
+        z_f_t = self.w_f(x_t).squeeze(-1)  # (B,)  log forget gate
 
         # --- Log-space stabiliser ---
-        m_t = torch.maximum(z_f_t + m_prev, z_i_t)   # (B,)
+        m_t = torch.maximum(z_f_t + m_prev, z_i_t)  # (B,)
 
-        i_prime = torch.exp(z_i_t - m_t)              # (B,)
-        f_prime = torch.exp(z_f_t + m_prev - m_t)     # (B,)
+        i_prime = torch.exp(z_i_t - m_t)  # (B,)
+        f_prime = torch.exp(z_f_t + m_prev - m_t)  # (B,)
 
         # --- Matrix memory update: C_t = f'_t * C_{t-1} + i'_t * (v_t ⊗ k_t) ---
         # v_t ⊗ k_t is the outer product: (B, d, 1) @ (B, 1, d) = (B, d, d)
-        outer = torch.bmm(v_t.unsqueeze(2), k_t.unsqueeze(1))   # (B, d_head, d_head)
+        outer = torch.bmm(v_t.unsqueeze(2), k_t.unsqueeze(1))  # (B, d_head, d_head)
 
         # Broadcast scalars over (d_head, d_head)
         C_t = f_prime[:, None, None] * C_prev + i_prime[:, None, None] * outer  # (B,d,d)
 
         # --- Normaliser update: n_t = f'_t * n_{t-1} + i'_t * k_t ---
-        n_t = f_prime[:, None] * n_prev + i_prime[:, None] * k_t   # (B, d_head)
+        n_t = f_prime[:, None] * n_prev + i_prime[:, None] * k_t  # (B, d_head)
 
         # --- Output (Section 3.1, eq. 12) ---
         # h_t = o_t * (C_t q_t) / max(|n_t^T q_t|, 1)
-        o_t = torch.sigmoid(self.W_o(x_t))              # (B, d_head)
+        o_t = torch.sigmoid(self.W_o(x_t))  # (B, d_head)
 
         # C_t q_t: (B, d, d) @ (B, d, 1) → (B, d, 1) → (B, d)
         Cq = torch.bmm(C_t, q_t.unsqueeze(2)).squeeze(2)  # (B, d_head)
@@ -253,8 +253,8 @@ class mLSTMCell(nn.Module):
         # Denominator: |n_t^T q_t|, at least 1
         denom = torch.clamp((n_t * q_t).sum(dim=-1, keepdim=True).abs(), min=1.0)  # (B, 1)
 
-        h_head = o_t * Cq / denom           # (B, d_head)
-        h_t = self.out_proj(h_head)         # (B, d_model)
+        h_head = o_t * Cq / denom  # (B, d_head)
+        h_t = self.out_proj(h_head)  # (B, d_model)
 
         return h_t, (C_t, n_t, m_t)
 
@@ -262,6 +262,7 @@ class mLSTMCell(nn.Module):
 # ---------------------------------------------------------------------------
 # xLSTM Block  (Section 4)
 # ---------------------------------------------------------------------------
+
 
 class xLSTMBlock(nn.Module):
     """Single xLSTM block: pre-norm + cell + residual, processes full sequence.
@@ -278,7 +279,7 @@ class xLSTMBlock(nn.Module):
         self,
         d_model: int,
         block_type: str = "mlstm",
-        d_head: Optional[int] = None,
+        d_head: int | None = None,
     ) -> None:
         if block_type not in self.VALID_TYPES:
             raise ValueError(
@@ -295,9 +296,9 @@ class xLSTMBlock(nn.Module):
 
     def forward(
         self,
-        x: Tensor,             # (B, T, d_model)
-        state=None,            # per-cell state or None
-    ) -> Tuple[Tensor, object]:
+        x: Tensor,  # (B, T, d_model)
+        state=None,  # per-cell state or None
+    ) -> tuple[Tensor, object]:
         """Process sequence x step-by-step through the cell.
 
         Args:
@@ -310,7 +311,7 @@ class xLSTMBlock(nn.Module):
                 final_state — state tuple after the last time step
         """
         B, T, d = x.shape
-        normed = self.norm(x)    # pre-norm
+        normed = self.norm(x)  # pre-norm
 
         outputs = []
         h_state = state
@@ -318,13 +319,14 @@ class xLSTMBlock(nn.Module):
             h_t, h_state = self.cell(normed[:, t, :], h_state)
             outputs.append(h_t)
 
-        out = torch.stack(outputs, dim=1)   # (B, T, d_model)
-        return x + out, h_state             # residual connection
+        out = torch.stack(outputs, dim=1)  # (B, T, d_model)
+        return x + out, h_state  # residual connection
 
 
 # ---------------------------------------------------------------------------
 # xLSTM Model
 # ---------------------------------------------------------------------------
+
 
 class xLSTMModel(nn.Module):
     """Stack of xLSTM blocks forming a sequence model.
@@ -348,8 +350,8 @@ class xLSTMModel(nn.Module):
         self,
         d_model: int,
         n_layers: int,
-        block_types: Optional[List[str]] = None,
-        d_head: Optional[int] = None,
+        block_types: list[str] | None = None,
+        d_head: int | None = None,
     ) -> None:
         super().__init__()
 
@@ -358,25 +360,20 @@ class xLSTMModel(nn.Module):
             block_types = ["mlstm" if i % 2 == 0 else "slstm" for i in range(n_layers)]
 
         if len(block_types) != n_layers:
-            raise ValueError(
-                f"len(block_types)={len(block_types)} must equal n_layers={n_layers}"
-            )
+            raise ValueError(f"len(block_types)={len(block_types)} must equal n_layers={n_layers}")
 
         self.d_model = d_model
         self.n_layers = n_layers
         self.block_types = list(block_types)
 
-        self.blocks = nn.ModuleList([
-            xLSTMBlock(d_model, bt, d_head=d_head)
-            for bt in block_types
-        ])
+        self.blocks = nn.ModuleList([xLSTMBlock(d_model, bt, d_head=d_head) for bt in block_types])
         self.norm_f = RMSNorm(d_model)
 
     def forward(
         self,
-        x: Tensor,                              # (B, T, d_model)
-        hidden_states: Optional[List] = None,   # list[state] of length n_layers or None
-    ) -> Tuple[Tensor, List]:                   # (output, new_hidden_states)
+        x: Tensor,  # (B, T, d_model)
+        hidden_states: list | None = None,  # list[state] of length n_layers or None
+    ) -> tuple[Tensor, list]:  # (output, new_hidden_states)
         """Full forward pass.
 
         Args:
@@ -392,11 +389,9 @@ class xLSTMModel(nn.Module):
         if hidden_states is None:
             hidden_states = [None] * self.n_layers
         elif len(hidden_states) != self.n_layers:
-            raise ValueError(
-                f"Expected {self.n_layers} hidden_states, got {len(hidden_states)}"
-            )
+            raise ValueError(f"Expected {self.n_layers} hidden_states, got {len(hidden_states)}")
 
-        new_hidden: List = []
+        new_hidden: list = []
         for i, block in enumerate(self.blocks):
             x, new_s = block(x, hidden_states[i])
             new_hidden.append(new_s)

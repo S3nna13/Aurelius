@@ -8,6 +8,7 @@ Symmetric InfoNCE:
     labels     = torch.arange(B)  (diagonal = positive pairs)
     loss       = (CE(similarity, labels) + CE(similarity.T, labels)) / 2
 """
+
 from __future__ import annotations
 
 import math
@@ -18,10 +19,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CLIPAlignmentConfig:
@@ -39,6 +40,7 @@ class CLIPAlignmentConfig:
 # ---------------------------------------------------------------------------
 # Functional helpers
 # ---------------------------------------------------------------------------
+
 
 def clip_loss(
     text_embeds: Tensor,
@@ -92,6 +94,7 @@ def contrastive_accuracy(
 # ---------------------------------------------------------------------------
 # CLIPAlignmentLayer
 # ---------------------------------------------------------------------------
+
 
 def _build_projection_head(in_dim: int, out_dim: int, dropout: float) -> nn.Sequential:
     """Two-layer MLP projection head: Linear -> GELU -> Linear."""
@@ -187,6 +190,7 @@ class CLIPAlignmentLayer(nn.Module):
 # CLIPAlignmentTrainer
 # ---------------------------------------------------------------------------
 
+
 class CLIPAlignmentTrainer:
     """Trainer that aligns Aurelius text embeddings with external modality features."""
 
@@ -216,8 +220,8 @@ class CLIPAlignmentTrainer:
         freqs_cis = self.model.freqs_cis[:S]
         for layer in self.model.layers:
             x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
-        x = self.model.norm(x)   # (B, S, d_model)
-        return x.mean(dim=1)     # (B, d_model)
+        x = self.model.norm(x)  # (B, S, d_model)
+        return x.mean(dim=1)  # (B, d_model)
 
     def train_step(
         self,
@@ -265,6 +269,7 @@ class CLIPAlignmentTrainer:
 # Hard Negative Mining
 # ---------------------------------------------------------------------------
 
+
 def hard_negative_mining(
     text_embeds: Tensor,
     other_embeds: Tensor,
@@ -285,18 +290,18 @@ def hard_negative_mining(
     """
     B, D = text_embeds.shape
 
-    sim = text_embeds @ other_embeds.T   # (B, B)
+    sim = text_embeds @ other_embeds.T  # (B, B)
 
     # Mask diagonal (positive pairs)
     mask = torch.eye(B, dtype=torch.bool, device=sim.device)
     sim_masked = sim.masked_fill(mask, float("-inf"))
 
     # Hard other embeddings for each text anchor
-    _, top_other_idx = sim_masked.topk(n_hard_negatives, dim=1)   # (B, n_hard)
-    hard_neg_other = other_embeds[top_other_idx.reshape(-1)]      # (B*n_hard, D)
+    _, top_other_idx = sim_masked.topk(n_hard_negatives, dim=1)  # (B, n_hard)
+    hard_neg_other = other_embeds[top_other_idx.reshape(-1)]  # (B*n_hard, D)
 
     # Hard text embeddings for each other anchor
     _, top_text_idx = sim_masked.T.topk(n_hard_negatives, dim=1)  # (B, n_hard)
-    hard_neg_text = text_embeds[top_text_idx.reshape(-1)]          # (B*n_hard, D)
+    hard_neg_text = text_embeds[top_text_idx.reshape(-1)]  # (B*n_hard, D)
 
     return hard_neg_text, hard_neg_other

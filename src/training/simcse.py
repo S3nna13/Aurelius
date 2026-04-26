@@ -10,17 +10,17 @@ Alignment & Uniformity: Wang & Isola 2020 embedding quality metrics
 from __future__ import annotations
 
 import math
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # SimCSEEncoder
 # ---------------------------------------------------------------------------
+
 
 class SimCSEEncoder(nn.Module):
     """Wraps an arbitrary backbone to produce pooled sentence embeddings.
@@ -63,6 +63,7 @@ class SimCSEEncoder(nn.Module):
 # ---------------------------------------------------------------------------
 # Unsupervised SimCSE Loss (NT-Xent with dropout augmentation)
 # ---------------------------------------------------------------------------
+
 
 class UnsupervisedSimCSELoss(nn.Module):
     """NT-Xent contrastive loss using two dropout passes as positives.
@@ -113,6 +114,7 @@ class UnsupervisedSimCSELoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Supervised SimCSE Loss
 # ---------------------------------------------------------------------------
+
 
 class SupervisedSimCSELoss(nn.Module):
     """Supervised NT-Xent with hard negatives from NLI contradiction pairs.
@@ -165,6 +167,7 @@ class SupervisedSimCSELoss(nn.Module):
 # ---------------------------------------------------------------------------
 # Alignment & Uniformity Loss (Wang & Isola 2020)
 # ---------------------------------------------------------------------------
+
 
 class AlignmentUniformityLoss(nn.Module):
     """Measures embedding space quality via alignment and uniformity.
@@ -225,6 +228,7 @@ class AlignmentUniformityLoss(nn.Module):
 # SimCSETrainer
 # ---------------------------------------------------------------------------
 
+
 class SimCSETrainer:
     """Training wrapper for SimCSE.
 
@@ -251,8 +255,8 @@ class SimCSETrainer:
     def train_step(
         self,
         input_ids: Tensor,
-        positive_ids: Optional[Tensor] = None,
-        negative_ids: Optional[Tensor] = None,
+        positive_ids: Tensor | None = None,
+        negative_ids: Tensor | None = None,
     ) -> dict:
         """Run one gradient update step.
 
@@ -266,9 +270,7 @@ class SimCSETrainer:
             loss, pos_sim, neg_sim = self._unsup_loss(self.encoder, input_ids)
         else:
             if positive_ids is None or negative_ids is None:
-                raise ValueError(
-                    "supervised mode requires positive_ids and negative_ids"
-                )
+                raise ValueError("supervised mode requires positive_ids and negative_ids")
             loss, pos_sim, neg_sim = self._sup_loss(
                 self.encoder, input_ids, positive_ids, negative_ids
             )
@@ -321,6 +323,7 @@ class SimCSETrainer:
 # ---------------------------------------------------------------------------
 # Spearman rank correlation (stdlib only, no scipy)
 # ---------------------------------------------------------------------------
+
 
 def _rank(values: list) -> list:
     """Convert a list of values to average ranks (1-based)."""

@@ -12,28 +12,28 @@ from __future__ import annotations
 import collections
 import hashlib
 import json
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Deque
-
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Enumerations & data classes
 # ---------------------------------------------------------------------------
 
-class StallReason(str, Enum):
-    NO_PROGRESS      = "NO_PROGRESS"
-    REPEATED_ACTION  = "REPEATED_ACTION"
-    MAX_STEPS        = "MAX_STEPS"
-    CYCLE_DETECTED   = "CYCLE_DETECTED"
+
+class StallReason(StrEnum):
+    NO_PROGRESS = "NO_PROGRESS"
+    REPEATED_ACTION = "REPEATED_ACTION"
+    MAX_STEPS = "MAX_STEPS"
+    CYCLE_DETECTED = "CYCLE_DETECTED"
 
 
 @dataclass
 class LoopGuardConfig:
-    max_no_progress: int   = 5
-    max_steps: int         = 50
+    max_no_progress: int = 5
+    max_steps: int = 50
     max_action_repeats: int = 3
-    history_window: int    = 10
+    history_window: int = 10
 
 
 @dataclass
@@ -48,16 +48,17 @@ class LoopGuardResult:
 # Guard implementation
 # ---------------------------------------------------------------------------
 
+
 class AgentLoopGuard:
     """Stateful guard that detects agent loops and stalls."""
 
     def __init__(self, config: LoopGuardConfig | None = None) -> None:
         self._config = config or LoopGuardConfig()
         self._steps: int = 0
-        self._progress_signals: Deque[float] = collections.deque(
+        self._progress_signals: collections.deque[float] = collections.deque(
             maxlen=self._config.max_no_progress
         )
-        self._action_hashes: Deque[str] = collections.deque(
+        self._action_hashes: collections.deque[str] = collections.deque(
             maxlen=self._config.history_window
         )
 
@@ -94,18 +95,14 @@ class AgentLoopGuard:
 
         # 2. No-progress detection
         self._progress_signals.append(progress_signal)
-        if (
-            len(self._progress_signals) == self._config.max_no_progress
-            and all(s < 0.01 for s in self._progress_signals)
+        if len(self._progress_signals) == self._config.max_no_progress and all(
+            s < 0.01 for s in self._progress_signals
         ):
             return LoopGuardResult(
                 should_terminate=True,
                 reason=StallReason.NO_PROGRESS,
                 steps_taken=self._steps,
-                message=(
-                    f"No progress detected over last "
-                    f"{self._config.max_no_progress} steps."
-                ),
+                message=(f"No progress detected over last {self._config.max_no_progress} steps."),
             )
 
         # 3. Repeated-action / cycle detection

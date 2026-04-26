@@ -1,7 +1,5 @@
 """Tests for src/agent/plan_executor.py."""
 
-import pytest
-
 from src.agent.plan_executor import (
     PLAN_EXECUTOR_REGISTRY,
     PlanExecutor,
@@ -9,10 +7,10 @@ from src.agent.plan_executor import (
     StepStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # StepStatus enum values (5 tests)
 # ---------------------------------------------------------------------------
+
 
 def test_status_pending_value():
     assert StepStatus.PENDING == "pending"
@@ -37,6 +35,7 @@ def test_status_skipped_value():
 # ---------------------------------------------------------------------------
 # PlanStep defaults
 # ---------------------------------------------------------------------------
+
 
 def test_planstep_defaults():
     s = PlanStep(id="a", description="do something")
@@ -77,6 +76,7 @@ def test_planstep_depends_on_independent():
 # PlanExecutor.add_step + ready_steps
 # ---------------------------------------------------------------------------
 
+
 def test_add_step_single():
     pe = PlanExecutor()
     step = PlanStep(id="1", description="first")
@@ -114,6 +114,7 @@ def test_ready_steps_done_not_ready():
 # ---------------------------------------------------------------------------
 # ready_steps: dependency resolution
 # ---------------------------------------------------------------------------
+
 
 def test_ready_steps_unresolved_dep_not_ready():
     pe = PlanExecutor()
@@ -154,6 +155,7 @@ def test_ready_steps_all_deps_done():
 # mark_done
 # ---------------------------------------------------------------------------
 
+
 def test_mark_done_returns_true_valid():
     pe = PlanExecutor()
     pe.add_step(PlanStep(id="a", description="A"))
@@ -190,6 +192,7 @@ def test_mark_done_empty_result_default():
 # mark_failed
 # ---------------------------------------------------------------------------
 
+
 def test_mark_failed_returns_true_valid():
     pe = PlanExecutor()
     pe.add_step(PlanStep(id="a", description="A"))
@@ -218,6 +221,7 @@ def test_mark_failed_stores_result():
 # ---------------------------------------------------------------------------
 # skip_dependents
 # ---------------------------------------------------------------------------
+
 
 def test_skip_dependents_direct():
     pe = PlanExecutor()
@@ -258,6 +262,7 @@ def test_skip_dependents_does_not_skip_unrelated():
 # is_complete
 # ---------------------------------------------------------------------------
 
+
 def test_is_complete_all_done():
     pe = PlanExecutor()
     pe.add_step(PlanStep(id="a", description="A", status=StepStatus.DONE))
@@ -293,6 +298,7 @@ def test_is_complete_empty():
 # ---------------------------------------------------------------------------
 # summary()
 # ---------------------------------------------------------------------------
+
 
 def test_summary_all_pending():
     pe = PlanExecutor()
@@ -330,6 +336,7 @@ def test_summary_has_all_keys():
 # PLAN_EXECUTOR_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_registry_has_default_key():
     assert "default" in PLAN_EXECUTOR_REGISTRY
 
@@ -341,6 +348,7 @@ def test_registry_default_is_plan_executor():
 # ---------------------------------------------------------------------------
 # Constructor with initial steps
 # ---------------------------------------------------------------------------
+
 
 def test_constructor_with_steps():
     steps = [PlanStep(id="a", description="A"), PlanStep(id="b", description="B")]

@@ -15,7 +15,7 @@ import logging
 import sys
 import types
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import ClassVar
 
 logger = logging.getLogger(__name__)
@@ -39,8 +39,7 @@ class MCPServerConfig:
     def __post_init__(self) -> None:
         if self.transport not in _VALID_TRANSPORTS:
             raise ValueError(
-                f"transport must be one of {sorted(_VALID_TRANSPORTS)!r}, "
-                f"got {self.transport!r}"
+                f"transport must be one of {sorted(_VALID_TRANSPORTS)!r}, got {self.transport!r}"
             )
         if not isinstance(self.host, str) or not self.host:
             raise ValueError("host must be a non-empty string")
@@ -130,15 +129,11 @@ class StdioMCPServer(MCPServer):
         req_id = payload.get("id")
 
         if payload.get("jsonrpc") != _JSONRPC_VERSION:
-            return _error_response(
-                req_id, _INVALID_REQUEST, "jsonrpc field must be '2.0'"
-            )
+            return _error_response(req_id, _INVALID_REQUEST, "jsonrpc field must be '2.0'")
 
         method = payload.get("method")
         if not isinstance(method, str) or not method:
-            return _error_response(
-                req_id, _INVALID_REQUEST, "missing or invalid 'method' field"
-            )
+            return _error_response(req_id, _INVALID_REQUEST, "missing or invalid 'method' field")
 
         raw_params = payload.get("params")
         if raw_params is not None and not isinstance(raw_params, dict):
@@ -148,9 +143,7 @@ class StdioMCPServer(MCPServer):
         params = raw_params or {}
         handler = self._METHOD_HANDLERS.get(method)
         if handler is None:
-            return _error_response(
-                req_id, _METHOD_NOT_FOUND, f"method not found: {method!r}"
-            )
+            return _error_response(req_id, _METHOD_NOT_FOUND, f"method not found: {method!r}")
 
         try:
             result = handler(self, params)
@@ -176,11 +169,13 @@ class StdioMCPServer(MCPServer):
     def _handle_ping(self, params: dict) -> dict:
         return {}
 
-    _METHOD_HANDLERS: ClassVar[types.MappingProxyType] = types.MappingProxyType({
-        "initialize": _handle_initialize,
-        "tools/list": _handle_tools_list,
-        "ping": _handle_ping,
-    })
+    _METHOD_HANDLERS: ClassVar[types.MappingProxyType] = types.MappingProxyType(
+        {
+            "initialize": _handle_initialize,
+            "tools/list": _handle_tools_list,
+            "ping": _handle_ping,
+        }
+    )
 
     # ------------------------------------------------------------------
     # Line-oriented loop (for real stdio usage)
@@ -249,8 +244,7 @@ def get_mcp_server(name: str) -> type[MCPServer]:
     """
     if name not in MCP_SERVER_REGISTRY:
         raise KeyError(
-            f"No MCP server registered under {name!r}. "
-            f"Available: {sorted(MCP_SERVER_REGISTRY)!r}"
+            f"No MCP server registered under {name!r}. Available: {sorted(MCP_SERVER_REGISTRY)!r}"
         )
     return MCP_SERVER_REGISTRY[name]
 

@@ -74,9 +74,7 @@ class WorkflowDAG:
         for node in self.nodes.values():
             for dep in node.depends_on:
                 if dep not in self.nodes:
-                    errors.append(
-                        f"Node '{node.node_id}' depends on undefined node '{dep}'."
-                    )
+                    errors.append(f"Node '{node.node_id}' depends on undefined node '{dep}'.")
 
         in_degree = {nid: 0 for nid in self.nodes}
         for node in self.nodes.values():

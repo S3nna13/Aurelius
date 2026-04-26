@@ -17,8 +17,8 @@ Pure stdlib only.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ class VoteResult:
     """
 
     selected: str
-    votes: Dict[str, float] = field(default_factory=dict)
+    votes: dict[str, float] = field(default_factory=dict)
     strategy: str = "majority"
     confidence: float = 0.0
 
@@ -96,14 +96,13 @@ class MultiSampleVoter:
 
     def __init__(
         self,
-        answer_extractor: Optional[Callable[[str], str]] = None,
+        answer_extractor: Callable[[str], str] | None = None,
         strategy: str = "majority",
-        similarity_fn: Optional[Callable[[str, str], float]] = None,
+        similarity_fn: Callable[[str, str], float] | None = None,
     ) -> None:
         if strategy not in self._VALID_STRATEGIES:
             raise ValueError(
-                f"Unknown strategy {strategy!r}; "
-                f"expected one of {self._VALID_STRATEGIES}."
+                f"Unknown strategy {strategy!r}; expected one of {self._VALID_STRATEGIES}."
             )
         self.answer_extractor = answer_extractor or _identity_extractor
         self.strategy = strategy
@@ -112,8 +111,8 @@ class MultiSampleVoter:
     # ------------------------------------------------------------------
     def vote(
         self,
-        samples: List[str],
-        weights: Optional[List[float]] = None,
+        samples: list[str],
+        weights: list[float] | None = None,
     ) -> VoteResult:
         """Aggregate ``samples`` to a single answer.
 
@@ -131,15 +130,10 @@ class MultiSampleVoter:
 
         if weights is not None:
             if len(weights) != len(samples):
-                raise ValueError(
-                    f"weights length {len(weights)} != samples length "
-                    f"{len(samples)}."
-                )
+                raise ValueError(f"weights length {len(weights)} != samples length {len(samples)}.")
             for w in weights:
                 if w < 0:
-                    raise ValueError(
-                        f"weights must be non-negative; got {w}."
-                    )
+                    raise ValueError(f"weights must be non-negative; got {w}.")
 
         # Single-sample fast path --------------------------------------------------
         if len(samples) == 1:
@@ -168,13 +162,13 @@ class MultiSampleVoter:
     # ------------------------------------------------------------------
     def _vote_majority(
         self,
-        samples: List[str],
-        weights: Optional[List[float]],
+        samples: list[str],
+        weights: list[float] | None,
     ) -> VoteResult:
         """Unit-weight majority vote over extracted answers. Ties: first-seen."""
 
-        tallies: Dict[str, float] = {}
-        first_seen: Dict[str, int] = {}
+        tallies: dict[str, float] = {}
+        first_seen: dict[str, int] = {}
         for idx, s in enumerate(samples):
             key = self.answer_extractor(s)
             if key not in tallies:
@@ -199,14 +193,14 @@ class MultiSampleVoter:
     # ------------------------------------------------------------------
     def _vote_weighted(
         self,
-        samples: List[str],
-        weights: Optional[List[float]],
+        samples: list[str],
+        weights: list[float] | None,
     ) -> VoteResult:
         """Weighted vote. If weights is None, falls back to unit weights."""
 
         w = weights if weights is not None else [1.0] * len(samples)
-        tallies: Dict[str, float] = {}
-        first_seen: Dict[str, int] = {}
+        tallies: dict[str, float] = {}
+        first_seen: dict[str, int] = {}
         for idx, (s, wi) in enumerate(zip(samples, w)):
             key = self.answer_extractor(s)
             if key not in tallies:
@@ -228,7 +222,7 @@ class MultiSampleVoter:
         )
 
     # ------------------------------------------------------------------
-    def _vote_usc(self, samples: List[str]) -> VoteResult:
+    def _vote_usc(self, samples: list[str]) -> VoteResult:
         """Universal Self-Consistency: pick the medoid sample.
 
         For each sample i, compute mean_j sim(i, j) for j != i. Pick the
@@ -236,7 +230,7 @@ class MultiSampleVoter:
         """
 
         n = len(samples)
-        mean_sims: List[float] = []
+        mean_sims: list[float] = []
         for i in range(n):
             total = 0.0
             count = 0
@@ -257,14 +251,12 @@ class MultiSampleVoter:
 
         # Votes dict: index-keyed scores. Key by sample text; if duplicates,
         # accumulate.
-        votes: Dict[str, float] = {}
+        votes: dict[str, float] = {}
         for s, m in zip(samples, mean_sims):
             votes[s] = votes.get(s, 0.0) + m
         total_mass = sum(votes.values())
         selected_text = samples[best_idx]
-        confidence = (
-            votes[selected_text] / total_mass if total_mass > 0 else 0.0
-        )
+        confidence = votes[selected_text] / total_mass if total_mass > 0 else 0.0
         return VoteResult(
             selected=selected_text,
             votes=votes,

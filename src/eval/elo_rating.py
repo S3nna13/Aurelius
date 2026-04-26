@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -21,12 +20,13 @@ class ComparisonResult:
     model_a: str
     model_b: str
     winner: str  # "model_a", "model_b", or "tie"
-    prompt_id: Optional[str] = None
+    prompt_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
 # Standard ELO
 # ---------------------------------------------------------------------------
+
 
 class ELORating:
     """Standard ELO rating system with configurable K-factor."""
@@ -70,6 +70,7 @@ class ELORating:
 # ---------------------------------------------------------------------------
 # Bradley-Terry MLE
 # ---------------------------------------------------------------------------
+
 
 class BradleyTerry:
     """
@@ -163,6 +164,7 @@ class BradleyTerry:
 # Bootstrap CI
 # ---------------------------------------------------------------------------
 
+
 def bootstrap_elo_ci(
     results: list[ComparisonResult],
     n_bootstrap: int = 200,
@@ -214,6 +216,7 @@ def bootstrap_elo_ci(
 # ---------------------------------------------------------------------------
 # TrueSkill-lite Bayesian Skill Tracker
 # ---------------------------------------------------------------------------
+
 
 class BayesianSkillTracker:
     """
@@ -271,7 +274,7 @@ class BayesianSkillTracker:
 
     def _w_draw(self, t: float, eps: float) -> float:
         """Variance correction for draw."""
-        num = ((eps - t) * self._norm_pdf(eps - t) + (eps + t) * self._norm_pdf(eps + t))
+        num = (eps - t) * self._norm_pdf(eps - t) + (eps + t) * self._norm_pdf(eps + t)
         den = self._norm_cdf(eps - t) - self._norm_cdf(-eps - t)
         if abs(den) < 1e-12:
             return 0.0
@@ -281,7 +284,7 @@ class BayesianSkillTracker:
         mu_a, sigma_a = self._get(result.model_a)
         mu_b, sigma_b = self._get(result.model_b)
 
-        c = math.sqrt(sigma_a ** 2 + sigma_b ** 2 + 2.0 * self.beta ** 2)
+        c = math.sqrt(sigma_a**2 + sigma_b**2 + 2.0 * self.beta**2)
         eps = 0.0  # draw margin (simplified: no draw zone)
         t = (mu_a - mu_b) / c
 
@@ -300,17 +303,17 @@ class BayesianSkillTracker:
             w = self._w_draw(t, eps)
             sign_a, sign_b = 1.0, -1.0  # symmetric for ties
 
-        delta_a = (sigma_a ** 2 / c) * sign_a * v
-        delta_b = (sigma_b ** 2 / c) * sign_b * v
+        delta_a = (sigma_a**2 / c) * sign_a * v
+        delta_b = (sigma_b**2 / c) * sign_b * v
 
-        gamma_a = (sigma_a ** 2 / c ** 2) * w
-        gamma_b = (sigma_b ** 2 / c ** 2) * w
+        gamma_a = (sigma_a**2 / c**2) * w
+        gamma_b = (sigma_b**2 / c**2) * w
 
         self._mu[result.model_a] = mu_a + delta_a
         self._mu[result.model_b] = mu_b + delta_b
 
-        new_var_a = sigma_a ** 2 * (1.0 - gamma_a)
-        new_var_b = sigma_b ** 2 * (1.0 - gamma_b)
+        new_var_a = sigma_a**2 * (1.0 - gamma_a)
+        new_var_b = sigma_b**2 * (1.0 - gamma_b)
 
         # Clamp variance to remain positive
         self._sigma[result.model_a] = math.sqrt(max(new_var_a, 1e-6))
@@ -319,16 +322,12 @@ class BayesianSkillTracker:
     def get_skills(self) -> dict[str, tuple[float, float]]:
         """Return {model: (mu, sigma)}."""
         models = set(self._mu) | set(self._sigma)
-        return {m: (self._mu.get(m, self.mu0), self._sigma.get(m, self.sigma0))
-                for m in models}
+        return {m: (self._mu.get(m, self.mu0), self._sigma.get(m, self.sigma0)) for m in models}
 
     def leaderboard(self) -> list[tuple[str, float]]:
         """Return list of (model, conservative_score) sorted descending.
 
         Conservative score = mu - 3 * sigma (lower-confidence bound).
         """
-        scores = [
-            (m, mu - 3.0 * sigma)
-            for m, (mu, sigma) in self.get_skills().items()
-        ]
+        scores = [(m, mu - 3.0 * sigma) for m, (mu, sigma) in self.get_skills().items()]
         return sorted(scores, key=lambda x: x[1], reverse=True)

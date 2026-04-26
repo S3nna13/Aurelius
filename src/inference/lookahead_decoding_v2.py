@@ -11,19 +11,20 @@ Key idea:
      them against greedy autoregressive continuations, and accept the longest
      matching prefix — reducing average per-token LLM calls below 1.
 """
+
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Callable, List, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 from torch import LongTensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LookaheadConfig:
@@ -35,6 +36,7 @@ class LookaheadConfig:
         pool_size:      Maximum number of n-grams kept in the pool (LRU eviction).
         guess_set_size: Top-K candidates from the pool verified per decoding step.
     """
+
     window_size: int = 5
     ngram_size: int = 3
     pool_size: int = 64
@@ -44,6 +46,7 @@ class LookaheadConfig:
 # ---------------------------------------------------------------------------
 # NGramPool
 # ---------------------------------------------------------------------------
+
 
 class NGramPool:
     """Recency-ordered pool of n-grams used as speculative candidates.
@@ -59,19 +62,21 @@ class NGramPool:
 
     def __init__(self, ngram_size: int, pool_size: int) -> None:
         if ngram_size < 2:
-            raise ValueError("ngram_size must be >= 2 (need at least a 1-token prefix + 1 continuation)")
+            raise ValueError(
+                "ngram_size must be >= 2 (need at least a 1-token prefix + 1 continuation)"
+            )
         if pool_size < 1:
             raise ValueError("pool_size must be >= 1")
         self.ngram_size = ngram_size
         self.pool_size = pool_size
         # OrderedDict preserves insertion order; oldest → newest
-        self._store: OrderedDict[Tuple[int, ...], None] = OrderedDict()
+        self._store: OrderedDict[tuple[int, ...], None] = OrderedDict()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def add(self, tokens: List[int]) -> None:
+    def add(self, tokens: list[int]) -> None:
         """Extract every n-gram from *tokens* and add them to the pool.
 
         Duplicate n-grams are moved to the end (most-recent position).
@@ -93,7 +98,7 @@ class NGramPool:
                 if len(self._store) > self.pool_size:
                     self._store.popitem(last=False)
 
-    def query(self, context: List[int], k: int = 5) -> List[List[int]]:
+    def query(self, context: list[int], k: int = 5) -> list[list[int]]:
         """Return up to *k* n-grams whose (n-1)-prefix matches context's tail.
 
         The prefix match is against the last ``ngram_size - 1`` tokens of
@@ -111,7 +116,7 @@ class NGramPool:
         if len(context) < prefix_len:
             return []
         prefix = tuple(context[-prefix_len:]) if prefix_len > 0 else ()
-        results: List[List[int]] = []
+        results: list[list[int]] = []
         # Iterate newest → oldest
         for gram in reversed(self._store):
             if gram[:prefix_len] == prefix:
@@ -133,6 +138,7 @@ class NGramPool:
 # LookaheadVerifier
 # ---------------------------------------------------------------------------
 
+
 class LookaheadVerifier:
     """Verifies speculative n-gram candidates against ground-truth tokens.
 
@@ -148,8 +154,8 @@ class LookaheadVerifier:
 
     def verify_ngram(
         self,
-        candidate_ngram: List[int],
-        ground_truth_tokens: List[int],
+        candidate_ngram: list[int],
+        ground_truth_tokens: list[int],
     ) -> int:
         """Return the length of the longest matching prefix.
 
@@ -179,9 +185,9 @@ class LookaheadVerifier:
 
     def select_best_candidate(
         self,
-        candidates: List[List[int]],
-        ground_truth: List[int],
-    ) -> Tuple[List[int], int]:
+        candidates: list[list[int]],
+        ground_truth: list[int],
+    ) -> tuple[list[int], int]:
         """Verify all candidates; return the one with the most accepted tokens.
 
         Ties are broken by taking the first candidate in *candidates* with the
@@ -199,7 +205,7 @@ class LookaheadVerifier:
         if not candidates:
             return [], 0
 
-        best_ngram: List[int] = []
+        best_ngram: list[int] = []
         best_n: int = 0
         for cand in candidates:
             n = self.verify_ngram(cand, ground_truth)
@@ -212,6 +218,7 @@ class LookaheadVerifier:
 # ---------------------------------------------------------------------------
 # LookaheadDecoder
 # ---------------------------------------------------------------------------
+
 
 class LookaheadDecoder:
     """Lookahead decoder that uses an NGramPool to speculate continuations.
@@ -250,7 +257,7 @@ class LookaheadDecoder:
         self,
         context_ids: LongTensor,
         pool: NGramPool,
-    ) -> Tuple[List[int], int]:
+    ) -> tuple[list[int], int]:
         """Perform one lookahead decoding step.
 
         Algorithm:
@@ -276,7 +283,7 @@ class LookaheadDecoder:
             of new token ids (length ≥ 1) and *n_accepted* is the count.
         """
         cfg = self.config
-        context_list: List[int] = context_ids[0].tolist()
+        context_list: list[int] = context_ids[0].tolist()
 
         # --- Step 1: query pool for candidate n-grams ---
         candidates = pool.query(context_list, k=cfg.guess_set_size)
@@ -288,7 +295,7 @@ class LookaheadDecoder:
         base_token = int(next_token_logits.argmax().item())
 
         # --- Step 3: build greedy ground-truth of length ngram_size ---
-        ground_truth: List[int] = [base_token]
+        ground_truth: list[int] = [base_token]
         cur_ids = torch.cat(
             [context_ids, torch.tensor([[base_token]], dtype=torch.long)],
             dim=1,
@@ -304,9 +311,7 @@ class LookaheadDecoder:
             )
 
         # --- Step 4: verify candidates ---
-        best_ngram, n_accepted = self.verifier.select_best_candidate(
-            candidates, ground_truth
-        )
+        best_ngram, n_accepted = self.verifier.select_best_candidate(candidates, ground_truth)
 
         # --- Step 5: choose accepted tokens & update pool ---
         if n_accepted >= 1:
@@ -344,7 +349,7 @@ class LookaheadDecoder:
         )
 
         # Seed pool with prompt n-grams so the first query can find candidates
-        prompt_list: List[int] = prompt_ids[0].tolist()
+        prompt_list: list[int] = prompt_ids[0].tolist()
         if len(prompt_list) >= self.config.ngram_size:
             pool.add(prompt_list)
 

@@ -14,22 +14,22 @@ Covers:
   11. buffer_size limits memory usage (old tokens evicted)
   12. Works with arbitrary integer token ids
 """
+
 from __future__ import annotations
 
 import torch
-import pytest
 
 from src.inference.token_recycling import (
-    TokenRecyclingConfig,
     RecyclingBuffer,
     TokenRecycler,
+    TokenRecyclingConfig,
     build_recycling_draft_tree,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test 1 — TokenRecyclingConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = TokenRecyclingConfig()
@@ -42,6 +42,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2 — RecyclingBuffer add and get_recent
 # ---------------------------------------------------------------------------
+
 
 def test_buffer_add_and_get_recent():
     buf = RecyclingBuffer(max_size=10)
@@ -58,6 +59,7 @@ def test_buffer_add_and_get_recent():
 # ---------------------------------------------------------------------------
 # Test 3 — After seeing "A B C A B", draft after "A B" should suggest "C"
 # ---------------------------------------------------------------------------
+
 
 def test_bigram_suggests_correct_continuation():
     # Token ids: A=10, B=20, C=30
@@ -78,6 +80,7 @@ def test_bigram_suggests_correct_continuation():
 # Test 4 — draft() returns None on empty buffer
 # ---------------------------------------------------------------------------
 
+
 def test_draft_returns_none_on_empty_buffer():
     recycler = TokenRecycler(vocab_size=1000)
     context = torch.tensor([5, 10, 15], dtype=torch.long)
@@ -88,6 +91,7 @@ def test_draft_returns_none_on_empty_buffer():
 # ---------------------------------------------------------------------------
 # Test 5 — draft() returns correct shape after warm-up
 # ---------------------------------------------------------------------------
+
 
 def test_draft_shape_after_warmup():
     recycler = TokenRecycler(vocab_size=1000, max_draft_tokens=5, buffer_size=256)
@@ -106,6 +110,7 @@ def test_draft_shape_after_warmup():
 # Test 6 — update() correctly builds adjacency table
 # ---------------------------------------------------------------------------
 
+
 def test_update_builds_adjacency_table():
     recycler = TokenRecycler(vocab_size=500)
     tokens = torch.tensor([7, 8, 9], dtype=torch.long)
@@ -121,6 +126,7 @@ def test_update_builds_adjacency_table():
 # ---------------------------------------------------------------------------
 # Test 7 — get_bigram_candidates returns sorted by count (descending)
 # ---------------------------------------------------------------------------
+
 
 def test_bigram_candidates_sorted_by_count():
     buf = RecyclingBuffer(max_size=256)
@@ -144,6 +150,7 @@ def test_bigram_candidates_sorted_by_count():
 # Test 8 — batch_draft returns correct shape (n_candidates, n_tokens)
 # ---------------------------------------------------------------------------
 
+
 def test_batch_draft_shape():
     recycler = TokenRecycler(vocab_size=1000, buffer_size=256)
     tokens = torch.tensor([1, 2, 3, 4, 5, 1, 2, 6, 1, 2, 7, 1, 2, 8], dtype=torch.long)
@@ -158,6 +165,7 @@ def test_batch_draft_shape():
 # ---------------------------------------------------------------------------
 # Test 9 — build_recycling_draft_tree produces dict with correct structure
 # ---------------------------------------------------------------------------
+
 
 def test_build_recycling_draft_tree_structure():
     buf = RecyclingBuffer(max_size=128)
@@ -179,6 +187,7 @@ def test_build_recycling_draft_tree_structure():
 # Test 10 — Repeated patterns increase candidate confidence
 # ---------------------------------------------------------------------------
 
+
 def test_repeated_patterns_increase_count():
     buf = RecyclingBuffer(max_size=256)
 
@@ -197,6 +206,7 @@ def test_repeated_patterns_increase_count():
 # ---------------------------------------------------------------------------
 # Test 11 — buffer_size limits memory usage (old tokens evicted)
 # ---------------------------------------------------------------------------
+
 
 def test_buffer_size_limits_memory():
     max_size = 10
@@ -217,12 +227,11 @@ def test_buffer_size_limits_memory():
 # Test 12 — Works with arbitrary integer token ids
 # ---------------------------------------------------------------------------
 
+
 def test_works_with_arbitrary_integer_token_ids():
     recycler = TokenRecycler(vocab_size=200_000)
     # Use large, sparse token ids typical in real vocabularies
-    tokens = torch.tensor(
-        [50256, 12345, 99999, 50256, 12345, 99999], dtype=torch.long
-    )
+    tokens = torch.tensor([50256, 12345, 99999, 50256, 12345, 99999], dtype=torch.long)
     recycler.update(tokens)
 
     context = torch.tensor([50256, 12345], dtype=torch.long)

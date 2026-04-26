@@ -1,9 +1,10 @@
 """Integration test for the Crescendo multi-turn jailbreak probe."""
+
 from __future__ import annotations
 
 from src.eval import (
-    METRIC_REGISTRY,
     BENCHMARK_REGISTRY,
+    METRIC_REGISTRY,
     CrescendoProbe,
     CrescendoResult,
     eval_crescendo_probe_enabled,
@@ -15,10 +16,7 @@ def _synthetic_target(history):
     turn = sum(1 for m in history if m.get("role") == "user")
     if turn < 2:
         return "General safe overview of the seed topic."
-    return (
-        "Detailed on-topic walkthrough, step-by-step, addressing the "
-        "objective explicitly."
-    )
+    return "Detailed on-topic walkthrough, step-by-step, addressing the objective explicitly."
 
 
 def test_crescendo_registered_under_eval_registries():

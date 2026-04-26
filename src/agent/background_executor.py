@@ -16,10 +16,10 @@ execution step-by-step without any scheduler or event loop.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Enums and dataclasses
@@ -39,15 +39,15 @@ class BackgroundTask:
     """A single unit of work managed by :class:`BackgroundExecutor`."""
 
     task_id: str
-    priority: int          # lower value == higher priority (0 is highest)
-    task_fn: Callable      # callable that takes no args, returns Any
+    priority: int  # lower value == higher priority (0 is highest)
+    task_fn: Callable  # callable that takes no args, returns Any
     created_at: float = field(default_factory=time.time)
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    started_at: float | None = None
+    completed_at: float | None = None
     status: TaskStatus = TaskStatus.PENDING
     result: Any = None
-    error: Optional[str] = None
-    heartbeat_at: Optional[float] = None
+    error: str | None = None
+    heartbeat_at: float | None = None
     max_duration_s: float = 300.0  # per-task wall-clock timeout (informational)
 
 
@@ -80,7 +80,7 @@ class BackgroundExecutor:
         omitted.
     """
 
-    def __init__(self, config: Optional[BackgroundExecutorConfig] = None) -> None:
+    def __init__(self, config: BackgroundExecutorConfig | None = None) -> None:
         self._config: BackgroundExecutorConfig = config or BackgroundExecutorConfig()
         # task_id → BackgroundTask (all states)
         self._tasks: dict[str, BackgroundTask] = {}
@@ -93,7 +93,7 @@ class BackgroundExecutor:
         self,
         task_id: str,
         task_fn: Callable,
-        priority: Optional[int] = None,
+        priority: int | None = None,
     ) -> BackgroundTask:
         """Enqueue *task_fn* under *task_id* with the given *priority*.
 
@@ -117,9 +117,7 @@ class BackgroundExecutor:
             raise ValueError(f"task_id {task_id!r} already exists")
         pending_count = self.pending_count()
         if pending_count >= self._config.max_queue_size:
-            raise ValueError(
-                f"queue full: max_queue_size={self._config.max_queue_size}"
-            )
+            raise ValueError(f"queue full: max_queue_size={self._config.max_queue_size}")
         if priority is None:
             priority = self._config.default_priority
         task = BackgroundTask(task_id=task_id, priority=priority, task_fn=task_fn)
@@ -130,7 +128,7 @@ class BackgroundExecutor:
     # Execution
     # ------------------------------------------------------------------
 
-    def run_next(self) -> Optional[BackgroundTask]:
+    def run_next(self) -> BackgroundTask | None:
         """Pop the highest-priority PENDING task, execute it, return it.
 
         The task transitions through RUNNING → COMPLETED (or FAILED).
@@ -181,12 +179,12 @@ class BackgroundExecutor:
     # Queries
     # ------------------------------------------------------------------
 
-    def get_status(self, task_id: str) -> Optional[TaskStatus]:
+    def get_status(self, task_id: str) -> TaskStatus | None:
         """Return the :class:`TaskStatus` for *task_id*, or ``None``."""
         task = self._tasks.get(task_id)
         return task.status if task is not None else None
 
-    def get_task(self, task_id: str) -> Optional[BackgroundTask]:
+    def get_task(self, task_id: str) -> BackgroundTask | None:
         """Return the :class:`BackgroundTask` for *task_id*, or ``None``."""
         return self._tasks.get(task_id)
 
@@ -233,15 +231,11 @@ class BackgroundExecutor:
 
     def pending_count(self) -> int:
         """Number of tasks in PENDING state."""
-        return sum(
-            1 for t in self._tasks.values() if t.status == TaskStatus.PENDING
-        )
+        return sum(1 for t in self._tasks.values() if t.status == TaskStatus.PENDING)
 
     def running_count(self) -> int:
         """Number of tasks in RUNNING state."""
-        return sum(
-            1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING
-        )
+        return sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
 
     def queue_snapshot(self) -> list[BackgroundTask]:
         """All PENDING tasks sorted by priority (lowest int first), then insertion order."""

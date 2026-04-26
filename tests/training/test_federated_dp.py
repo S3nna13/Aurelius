@@ -5,10 +5,8 @@ Uses tiny inline models: d_model=8, vocab_size=8, n_clients=3, B=2, T=4.
 Pure PyTorch only.
 """
 
-import copy
 import math
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -133,10 +131,7 @@ def test_client_fedprox_update_keys_match_params():
 
 
 def _make_delta_w(model: nn.Module, scale: float = 1.0) -> dict:
-    return {
-        n: torch.randn_like(p.detach().float()) * scale
-        for n, p in model.named_parameters()
-    }
+    return {n: torch.randn_like(p.detach().float()) * scale for n, p in model.named_parameters()}
 
 
 def test_dp_clip_reduces_norm():
@@ -169,9 +164,7 @@ def test_dp_add_noise_changes_update():
     delta = _make_delta_w(model, scale=1.0)
     noised = agg.add_noise(delta)
     # At least one tensor should differ
-    any_diff = any(
-        not torch.allclose(delta[k], noised[k]) for k in delta
-    )
+    any_diff = any(not torch.allclose(delta[k], noised[k]) for k in delta)
     assert any_diff, "add_noise must modify the update"
 
 
@@ -227,8 +220,9 @@ def test_server_aggregate_updates_weighted_average():
     # Equal weights → average should be 2.0 everywhere
     agg = server.aggregate_updates([u1, u2], weights=[1.0, 1.0])
     for k, v in agg.items():
-        assert torch.allclose(v, torch.full_like(v, 2.0), atol=1e-5), \
+        assert torch.allclose(v, torch.full_like(v, 2.0), atol=1e-5), (
             f"Expected 2.0, got {v.mean().item():.4f}"
+        )
 
 
 def test_server_update_global_changes_params():
@@ -240,9 +234,7 @@ def test_server_update_global_changes_params():
     delta = {n: torch.ones_like(p.float()) * 5.0 for n, p in model.named_parameters()}
     server.update_global(delta)
     after = {n: p.detach().clone() for n, p in model.named_parameters()}
-    any_changed = any(
-        not torch.allclose(before[n], after[n]) for n in before
-    )
+    any_changed = any(not torch.allclose(before[n], after[n]) for n in before)
     assert any_changed, "update_global must change at least one parameter"
 
 
@@ -253,9 +245,9 @@ def test_server_broadcast_returns_current_params():
     broadcasted = server.broadcast()
     assert isinstance(broadcasted, dict)
     for n, p in model.named_parameters():
-        assert torch.allclose(
-            broadcasted[n].float(), p.detach().float(), atol=1e-6
-        ), f"broadcast mismatch for {n}"
+        assert torch.allclose(broadcasted[n].float(), p.detach().float(), atol=1e-6), (
+            f"broadcast mismatch for {n}"
+        )
 
 
 # ===========================================================================
@@ -288,9 +280,9 @@ def test_secure_agg_pairwise_cancellation():
     # Sum of all masks across clients should be ~0 per key
     for k in delta_w:
         total_mask = sum(masks[cid][k] for cid in client_ids)
-        assert torch.allclose(
-            total_mask, torch.zeros_like(total_mask), atol=1e-5
-        ), f"Masks do not cancel for key {k}: norm={total_mask.norm().item()}"
+        assert torch.allclose(total_mask, torch.zeros_like(total_mask), atol=1e-5), (
+            f"Masks do not cancel for key {k}: norm={total_mask.norm().item()}"
+        )
 
 
 def test_secure_agg_verify_cancellation_returns_true():
@@ -300,9 +292,7 @@ def test_secure_agg_verify_cancellation_returns_true():
     client_ids = [0, 1, 2]
     masks = sim.generate_masks(client_ids)
     delta_w = _make_delta_w(model)
-    masked_list = [
-        sim.mask_update(cid, delta_w, masks) for cid in client_ids
-    ]
+    masked_list = [sim.mask_update(cid, delta_w, masks) for cid in client_ids]
     result = sim.verify_cancellation(masked_list)
     assert result is True
 

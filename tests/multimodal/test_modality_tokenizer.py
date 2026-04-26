@@ -14,10 +14,10 @@ from src.multimodal.modality_tokenizer import (
     PassthroughModalityTokenizer,
 )
 
-
 # ---------------------------------------------------------------------------
 # ModalityToken dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_modality_token_is_dataclass():
     """ModalityToken must be a proper dataclass."""
@@ -54,6 +54,7 @@ def test_modality_token_default_metadata():
 # ModalityType enum
 # ---------------------------------------------------------------------------
 
+
 def test_modality_type_values():
     """ModalityType must contain at least TEXT, IMAGE, AUDIO, VIDEO, DOCUMENT."""
     names = {m.name for m in ModalityType}
@@ -63,6 +64,7 @@ def test_modality_type_values():
 # ---------------------------------------------------------------------------
 # PassthroughModalityTokenizer — TEXT modality
 # ---------------------------------------------------------------------------
+
 
 def test_passthrough_text_returns_modality_token():
     """PassthroughModalityTokenizer.tokenize(TEXT) must return a ModalityToken."""
@@ -97,12 +99,16 @@ def test_passthrough_text_empty_ids():
 # PassthroughModalityTokenizer — non-TEXT modalities raise NotImplementedError
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("modality", [
-    ModalityType.IMAGE,
-    ModalityType.AUDIO,
-    ModalityType.VIDEO,
-    ModalityType.DOCUMENT,
-])
+
+@pytest.mark.parametrize(
+    "modality",
+    [
+        ModalityType.IMAGE,
+        ModalityType.AUDIO,
+        ModalityType.VIDEO,
+        ModalityType.DOCUMENT,
+    ],
+)
 def test_passthrough_non_text_raises_not_implemented(modality):
     """PassthroughModalityTokenizer must raise NotImplementedError for non-TEXT modalities."""
     tokenizer = PassthroughModalityTokenizer()
@@ -114,6 +120,7 @@ def test_passthrough_non_text_raises_not_implemented(modality):
 # ModalityTokenizer is abstract
 # ---------------------------------------------------------------------------
 
+
 def test_modality_tokenizer_is_abstract():
     """ModalityTokenizer cannot be instantiated directly."""
     with pytest.raises(TypeError):
@@ -124,21 +131,25 @@ def test_modality_tokenizer_is_abstract():
 # MODALITY_TOKENIZER_REGISTRY
 # ---------------------------------------------------------------------------
 
+
 def test_modality_tokenizer_registry_is_dict():
     """MODALITY_TOKENIZER_REGISTRY must be accessible from src.multimodal and be a dict."""
     import src.multimodal as mm
+
     assert isinstance(mm.MODALITY_TOKENIZER_REGISTRY, dict)
 
 
 def test_modality_tokenizer_registry_non_empty():
     """MODALITY_TOKENIZER_REGISTRY must have at least one entry after import."""
     import src.multimodal as mm
+
     assert len(mm.MODALITY_TOKENIZER_REGISTRY) >= 1
 
 
 # ---------------------------------------------------------------------------
 # ModalityTokenizerError
 # ---------------------------------------------------------------------------
+
 
 def test_modality_tokenizer_error_is_exception():
     """ModalityTokenizerError must be a subclass of Exception."""

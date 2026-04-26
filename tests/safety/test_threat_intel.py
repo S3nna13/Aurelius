@@ -1,4 +1,5 @@
 """Tests for src.safety.threat_intel."""
+
 from __future__ import annotations
 
 import sys
@@ -16,9 +17,14 @@ from src.safety.threat_intel import (  # noqa: E402
 )
 
 
-def _entry(vuln_id: str, epss: float, cvss: float,
-           level: ThreatLevel = ThreatLevel.MEDIUM,
-           tags=None, notes: str = "") -> ThreatEntry:
+def _entry(
+    vuln_id: str,
+    epss: float,
+    cvss: float,
+    level: ThreatLevel = ThreatLevel.MEDIUM,
+    tags=None,
+    notes: str = "",
+) -> ThreatEntry:
     return ThreatEntry(
         vuln_id=vuln_id,
         epss_score=epss,
@@ -201,22 +207,38 @@ def test_from_dict_missing_entries_key():
 
 
 def test_from_dict_invalid_level_defaults_info():
-    eng = ThreatIntelEngine.from_dict({
-        "entries": [{
-            "vuln_id": "X", "epss_score": 0.1, "cvss_score": 1.0,
-            "threat_level": "bogus", "tags": [],
-        }],
-    })
+    eng = ThreatIntelEngine.from_dict(
+        {
+            "entries": [
+                {
+                    "vuln_id": "X",
+                    "epss_score": 0.1,
+                    "cvss_score": 1.0,
+                    "threat_level": "bogus",
+                    "tags": [],
+                }
+            ],
+        }
+    )
     got = eng.get("X")
     assert got is not None
     assert got.threat_level == ThreatLevel.INFO
 
 
 def test_from_dict_skips_missing_vuln_id():
-    eng = ThreatIntelEngine.from_dict({
-        "entries": [{"vuln_id": "", "epss_score": 0.1, "cvss_score": 1.0,
-                     "threat_level": "low", "tags": []}],
-    })
+    eng = ThreatIntelEngine.from_dict(
+        {
+            "entries": [
+                {
+                    "vuln_id": "",
+                    "epss_score": 0.1,
+                    "cvss_score": 1.0,
+                    "threat_level": "low",
+                    "tags": [],
+                }
+            ],
+        }
+    )
     assert eng.to_dict() == {"entries": []}
 
 

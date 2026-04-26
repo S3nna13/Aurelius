@@ -12,16 +12,16 @@ import pytest
 import torch
 
 from src.interpretability.attention_visualizer import (
-    AttentionVisualizer,
     ATTENTION_VISUALIZER_REGISTRY,
+    AttentionVisualizer,
 )
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-H = 4   # number of heads
-T = 6   # sequence length
+H = 4  # number of heads
+T = 6  # sequence length
 
 
 def _make_visualizer(max_seq_len: int = 128) -> AttentionVisualizer:
@@ -52,6 +52,7 @@ def _random_attn_map(seq_len: int = T) -> torch.Tensor:
 # 1. Constructor
 # ---------------------------------------------------------------------------
 
+
 class TestConstructor:
     def test_default_max_seq_len(self):
         v = AttentionVisualizer()
@@ -77,6 +78,7 @@ class TestConstructor:
 # ---------------------------------------------------------------------------
 # 2. compute_attention_map
 # ---------------------------------------------------------------------------
+
 
 class TestComputeAttentionMap:
     def test_output_shape(self):
@@ -128,6 +130,7 @@ class TestComputeAttentionMap:
 # ---------------------------------------------------------------------------
 # 3. highlight_top_tokens
 # ---------------------------------------------------------------------------
+
 
 class TestHighlightTopTokens:
     def test_output_type(self):
@@ -219,6 +222,7 @@ class TestHighlightTopTokens:
 # 4. rollout_attention
 # ---------------------------------------------------------------------------
 
+
 class TestRolloutAttention:
     def test_single_layer_shape(self):
         v = _make_visualizer()
@@ -274,10 +278,12 @@ class TestRolloutAttention:
     def test_invalid_mismatched_shapes(self):
         v = _make_visualizer()
         with pytest.raises(ValueError):
-            v.rollout_attention([
-                torch.randn(3, 3),
-                torch.randn(4, 4),
-            ])
+            v.rollout_attention(
+                [
+                    torch.randn(3, 3),
+                    torch.randn(4, 4),
+                ]
+            )
 
     def test_invalid_not_tensor_in_list(self):
         v = _make_visualizer()
@@ -293,6 +299,7 @@ class TestRolloutAttention:
 # ---------------------------------------------------------------------------
 # 5. normalize_for_display
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizeForDisplay:
     def test_output_shape(self):
@@ -350,6 +357,7 @@ class TestNormalizeForDisplay:
 # ---------------------------------------------------------------------------
 # 6. ATTENTION_VISUALIZER_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

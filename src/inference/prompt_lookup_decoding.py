@@ -11,19 +11,19 @@ PromptLookupConfig      — configuration dataclass
 find_ngram_matches      — find all positions in context where a query ngram matches
 PromptLookupDecoding    — full decode loop with prompt-lookup drafting + statistics
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PromptLookupConfig:
@@ -38,11 +38,12 @@ class PromptLookupConfig:
 # N-gram matching helper
 # ---------------------------------------------------------------------------
 
+
 def find_ngram_matches(
     context: Tensor,
     query: Tensor,
     max_candidates: int = 10,
-) -> List[int]:
+) -> list[int]:
     """Find all positions in *context* where *query* ngram matches.
 
     Searches for every occurrence of the query ngram in the context tensor and
@@ -72,7 +73,7 @@ def find_ngram_matches(
     if ngram_size == 0 or context_len < ngram_size:
         return []
 
-    positions: List[int] = []
+    positions: list[int] = []
     # Slide over context looking for full ngram match
     for i in range(context_len - ngram_size + 1):
         if torch.equal(context[i : i + ngram_size], query):
@@ -89,6 +90,7 @@ def find_ngram_matches(
 # ---------------------------------------------------------------------------
 # Main class
 # ---------------------------------------------------------------------------
+
 
 class PromptLookupDecoding:
     """Speculative decoding using prompt n-gram lookup for free draft tokens.
@@ -139,7 +141,7 @@ class PromptLookupDecoding:
         self,
         input_ids: Tensor,
         ngram_size: int,
-    ) -> Optional[Tensor]:
+    ) -> Tensor | None:
         """Search the context for an ngram match and return candidate tokens.
 
         Takes the last *ngram_size* tokens of *input_ids* as the query, then
@@ -186,7 +188,7 @@ class PromptLookupDecoding:
         candidates_start = follow_pos
         candidates_end = min(
             candidates_start + self.num_speculative_tokens,
-            seq_len - ngram_size,   # don't include query tokens themselves
+            seq_len - ngram_size,  # don't include query tokens themselves
         )
 
         if candidates_start >= candidates_end:
@@ -202,7 +204,7 @@ class PromptLookupDecoding:
         self,
         model_logits: Tensor,
         candidate_ids: Tensor,
-    ) -> Tuple[Tensor, int]:
+    ) -> tuple[Tensor, int]:
         """Greedy-verify candidate tokens against model logits.
 
         For each position *i* we check whether
@@ -231,7 +233,7 @@ class PromptLookupDecoding:
             raise ValueError("candidate_ids must be 1-D")
 
         n_candidates = candidate_ids.shape[0]
-        accepted: List[Tensor] = []
+        accepted: list[Tensor] = []
         n_accepted = 0
 
         for i in range(n_candidates):
@@ -271,7 +273,7 @@ class PromptLookupDecoding:
 
         # Remove batch dimension
         if logits.ndim == 3:
-            logits = logits[0]   # (T, V)
+            logits = logits[0]  # (T, V)
         elif logits.ndim == 2:
             # Could be (1, V) from models that only return last position
             if logits.shape[0] == 1:
@@ -323,7 +325,7 @@ class PromptLookupDecoding:
             seq_1d = generated[0]  # (T,) — unbatched view for ngram search
 
             # --- Try to find draft candidates from the prompt ---
-            candidates: Optional[Tensor] = None
+            candidates: Tensor | None = None
             for ngram_size in range(self.max_matching_ngram_size, 0, -1):
                 cands = self.find_candidate_tokens(seq_1d, ngram_size)
                 if cands is not None and cands.shape[0] > 0:
@@ -394,7 +396,7 @@ class PromptLookupDecoding:
     # Statistics
     # ------------------------------------------------------------------
 
-    def get_stats(self) -> Dict[str, float]:
+    def get_stats(self) -> dict[str, float]:
         """Return generation statistics.
 
         Returns

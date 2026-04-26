@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class ConsolidationPolicy(str, Enum):
+class ConsolidationPolicy(StrEnum):
     RECENCY = "recency"
     IMPORTANCE = "importance"
     FREQUENCY = "frequency"
@@ -42,10 +42,8 @@ class MemoryConsolidator:
 
         Non-destructive: uses dataclasses.replace to copy entries.
         """
-        factor = self.decay_factor ** steps
-        return [
-            dataclasses.replace(e, importance=e.importance * factor) for e in entries
-        ]
+        factor = self.decay_factor**steps
+        return [dataclasses.replace(e, importance=e.importance * factor) for e in entries]
 
     # ------------------------------------------------------------------
     # Selection
@@ -90,8 +88,7 @@ class MemoryConsolidator:
                         semantic_memory.add_concept(role)
 
         summary = (
-            f"Consolidated {n} memories: "
-            + "; ".join(entry.content[:30] for entry in selected)
+            f"Consolidated {n} memories: " + "; ".join(entry.content[:30] for entry in selected)
             if selected
             else f"Consolidated {n} memories: "
         )

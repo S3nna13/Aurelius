@@ -1,14 +1,14 @@
 """Tests for recursive_reward.py — hierarchical reward decomposition."""
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.alignment.recursive_reward import (
+    RecursiveRewardTree,
     RecursiveRMConfig,
     RewardNode,
-    RecursiveRewardTree,
     TaskDecomposer,
     build_recursive_rm,
     evaluate_with_uncertainty,
@@ -40,6 +40,7 @@ def make_input(batch: int = BATCH, seq: int = SEQ_LEN) -> torch.Tensor:
 # Test 1: RecursiveRMConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = RecursiveRMConfig()
     assert cfg.max_depth == 3
@@ -51,6 +52,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: RewardNode.evaluate returns (batch,) tensor
 # ---------------------------------------------------------------------------
+
 
 def test_reward_node_evaluate_shape():
     model = MockRewardModel(output_val=2.5)
@@ -65,6 +67,7 @@ def test_reward_node_evaluate_shape():
 # Test 3: RewardNode.get_depth returns correct depth
 # ---------------------------------------------------------------------------
 
+
 def test_reward_node_get_depth():
     # Single leaf node — depth 0
     leaf = RewardNode(reward_model=MockRewardModel(), depth=0)
@@ -73,16 +76,12 @@ def test_reward_node_get_depth():
     # A node with two leaf children — depth 1
     child_a = RewardNode(reward_model=MockRewardModel(), depth=1)
     child_b = RewardNode(reward_model=MockRewardModel(), depth=1)
-    parent = RewardNode(
-        reward_model=MockRewardModel(), depth=0, children=[child_a, child_b]
-    )
+    parent = RewardNode(reward_model=MockRewardModel(), depth=0, children=[child_a, child_b])
     assert parent.get_depth() == 1
 
     # A node with a child that itself has a child — depth 2
     grandchild = RewardNode(reward_model=MockRewardModel(), depth=2)
-    child = RewardNode(
-        reward_model=MockRewardModel(), depth=1, children=[grandchild]
-    )
+    child = RewardNode(reward_model=MockRewardModel(), depth=1, children=[grandchild])
     root = RewardNode(reward_model=MockRewardModel(), depth=0, children=[child])
     assert root.get_depth() == 2
 
@@ -90,6 +89,7 @@ def test_reward_node_get_depth():
 # ---------------------------------------------------------------------------
 # Test 4: RecursiveRewardTree.add_node returns valid id
 # ---------------------------------------------------------------------------
+
 
 def test_add_node_returns_valid_id():
     tree = RecursiveRewardTree()
@@ -104,11 +104,12 @@ def test_add_node_returns_valid_id():
 # Test 5: Tree with 2 leaf nodes evaluates correctly (mean of both)
 # ---------------------------------------------------------------------------
 
+
 def test_tree_two_leaves_mean():
     tree = RecursiveRewardTree(aggregation="mean")
     # Add two independent root leaves (no shared parent)
-    n0 = tree.add_node(RewardNode(MockRewardModel(output_val=2.0)))
-    n1 = tree.add_node(RewardNode(MockRewardModel(output_val=4.0)))
+    tree.add_node(RewardNode(MockRewardModel(output_val=2.0)))
+    tree.add_node(RewardNode(MockRewardModel(output_val=4.0)))
     input_ids = make_input()
     result = tree.evaluate(input_ids)
     assert result.shape == (BATCH,)
@@ -119,6 +120,7 @@ def test_tree_two_leaves_mean():
 # ---------------------------------------------------------------------------
 # Test 6: aggregate 'mean' returns mean of rewards
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_mean():
     tree = RecursiveRewardTree()
@@ -133,6 +135,7 @@ def test_aggregate_mean():
 # Test 7: aggregate 'min' returns minimum reward
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_min():
     tree = RecursiveRewardTree()
     r1 = torch.tensor([1.0, 5.0, 3.0])
@@ -146,6 +149,7 @@ def test_aggregate_min():
 # Test 8: aggregate 'product' returns product of rewards
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_product():
     tree = RecursiveRewardTree()
     r1 = torch.tensor([2.0, 3.0])
@@ -158,6 +162,7 @@ def test_aggregate_product():
 # ---------------------------------------------------------------------------
 # Test 9: TaskDecomposer.decompose returns n_subtasks chunks
 # ---------------------------------------------------------------------------
+
 
 def test_task_decomposer_decompose():
     n_subtasks = 3
@@ -173,6 +178,7 @@ def test_task_decomposer_decompose():
 # ---------------------------------------------------------------------------
 # Test 10: compose_rewards with equal weights == mean
 # ---------------------------------------------------------------------------
+
 
 def test_compose_rewards_equal_weights():
     decomposer = TaskDecomposer(decompose_fn=lambda x: x, n_subtasks=3)
@@ -195,11 +201,12 @@ def test_compose_rewards_equal_weights():
 # Test 11: build_recursive_rm creates tree with correct leaf count
 # ---------------------------------------------------------------------------
 
+
 def test_build_recursive_rm_leaf_count():
     branching = 2
     depth = 3
     # A complete tree has branching^depth leaves
-    expected_leaves = branching ** depth
+    expected_leaves = branching**depth
 
     tree = build_recursive_rm(
         reward_model_factory=lambda: MockRewardModel(),
@@ -215,6 +222,7 @@ def test_build_recursive_rm_leaf_count():
 # ---------------------------------------------------------------------------
 # Test 12: evaluate_with_uncertainty returns (mean, std) with correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_with_uncertainty_shapes():
     # Use a model with dropout so samples actually vary

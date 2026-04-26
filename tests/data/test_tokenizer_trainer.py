@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 import time
 
 import pytest
@@ -14,7 +11,6 @@ from src.data.tokenizer_trainer import (
     BPETokenizer,
     BPETrainer,
 )
-
 
 CORPUS = [
     "the quick brown fox jumps over the lazy dog",
@@ -50,7 +46,8 @@ def test_encode_decode_roundtrip_byte_level() -> None:
     cfg = BPEConfig(vocab_size=400, special_tokens=["<pad>"])
     _, tok = _make_tok(cfg)
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"],
+        tok["vocab"],
+        tok["merges"],
         byte_level=True,
         special_tokens=tok["special_tokens"],
         pretokenize_regex=tok["pretokenize_regex"],
@@ -66,7 +63,9 @@ def test_oov_bytes_byte_level_fallback() -> None:
     cfg = BPEConfig(vocab_size=260, special_tokens=[])
     _, tok = _make_tok(cfg)
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"], byte_level=True,
+        tok["vocab"],
+        tok["merges"],
+        byte_level=True,
         pretokenize_regex=tok["pretokenize_regex"],
     )
     # emoji / rare unicode not seen in corpus -- must still encode
@@ -121,12 +120,15 @@ def test_vocab_size_too_small_raises() -> None:
 def test_pretokenize_regex_respected() -> None:
     # regex that only matches alphabetic runs -- punctuation/digits dropped
     cfg = BPEConfig(
-        vocab_size=300, special_tokens=[],
+        vocab_size=300,
+        special_tokens=[],
         pretokenize_regex=r"[a-z]+",
     )
     trainer, tok = _make_tok(cfg, texts=["hello123world foo!bar"])
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"], byte_level=True,
+        tok["vocab"],
+        tok["merges"],
+        byte_level=True,
         pretokenize_regex=tok["pretokenize_regex"],
     )
     ids = bt.encode("hello123world foo!bar")
@@ -154,7 +156,9 @@ def test_special_token_single_id() -> None:
     cfg = BPEConfig(vocab_size=320, special_tokens=["<pad>", "<eos>"])
     _, tok = _make_tok(cfg)
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"], byte_level=True,
+        tok["vocab"],
+        tok["merges"],
+        byte_level=True,
         special_tokens=tok["special_tokens"],
         pretokenize_regex=tok["pretokenize_regex"],
     )
@@ -169,7 +173,9 @@ def test_special_pattern_not_split_as_bytes() -> None:
     cfg = BPEConfig(vocab_size=320, special_tokens=["<EOS>"])
     _, tok = _make_tok(cfg)
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"], byte_level=True,
+        tok["vocab"],
+        tok["merges"],
+        byte_level=True,
         special_tokens=tok["special_tokens"],
         pretokenize_regex=tok["pretokenize_regex"],
     )
@@ -183,7 +189,9 @@ def test_decode_out_of_vocab_raises() -> None:
     cfg = BPEConfig(vocab_size=320, special_tokens=[])
     _, tok = _make_tok(cfg)
     bt = BPETokenizer(
-        tok["vocab"], tok["merges"], byte_level=True,
+        tok["vocab"],
+        tok["merges"],
+        byte_level=True,
         pretokenize_regex=tok["pretokenize_regex"],
     )
     bad_id = max(tok["vocab"].values()) + 9999

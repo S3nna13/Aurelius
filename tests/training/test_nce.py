@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import random
-
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.nce import (
-    NCEConfig,
     EmbeddingProjector,
+    NCEConfig,
     NCEEmbeddingTrainer,
     hard_negative_mining,
     in_batch_nce_loss,
@@ -24,10 +21,10 @@ from src.training.nce import (
 # Shared constants
 # ---------------------------------------------------------------------------
 
-B = 4       # batch size
-T = 8       # sequence length
-D = 64      # model d_model
-E = 32      # embed_dim for projector
+B = 4  # batch size
+T = 8  # sequence length
+D = 64  # model d_model
+E = 32  # embed_dim for projector
 
 TINY_CFG = AureliusConfig(
     n_layers=2,
@@ -44,6 +41,7 @@ TINY_CFG = AureliusConfig(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_model() -> AureliusTransformer:
@@ -91,6 +89,7 @@ def positive_ids() -> torch.Tensor:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = NCEConfig()
     assert cfg.temperature == 0.07
@@ -101,9 +100,10 @@ def test_config_defaults():
 # 2. test_info_nce_loss_scalar
 # ---------------------------------------------------------------------------
 
+
 def test_info_nce_loss_scalar():
     torch.manual_seed(0)
-    anchors   = torch.randn(B, D)
+    anchors = torch.randn(B, D)
     positives = torch.randn(B, D)
     negatives = torch.randn(B, 5, D)
     loss = info_nce_loss(anchors, positives, negatives)
@@ -115,13 +115,14 @@ def test_info_nce_loss_scalar():
 # 3. test_info_nce_loss_positive_match — when pos == anchor, loss is low
 # ---------------------------------------------------------------------------
 
+
 def test_info_nce_loss_positive_match():
     """When positives == anchors, the loss should be lower than with random positives."""
     torch.manual_seed(0)
-    anchors   = torch.randn(B, D)
+    anchors = torch.randn(B, D)
     negatives = torch.randn(B, 5, D)
 
-    loss_match  = info_nce_loss(anchors, anchors.clone(), negatives)
+    loss_match = info_nce_loss(anchors, anchors.clone(), negatives)
     loss_random = info_nce_loss(anchors, torch.randn(B, D), negatives)
 
     assert loss_match.item() < loss_random.item(), (
@@ -133,6 +134,7 @@ def test_info_nce_loss_positive_match():
 # ---------------------------------------------------------------------------
 # 4. test_in_batch_nce_loss_scalar
 # ---------------------------------------------------------------------------
+
 
 def test_in_batch_nce_loss_scalar():
     torch.manual_seed(0)
@@ -147,11 +149,12 @@ def test_in_batch_nce_loss_scalar():
 # 5. test_in_batch_nce_loss_identity — when a == b, loss is near 0
 # ---------------------------------------------------------------------------
 
+
 def test_in_batch_nce_loss_identity():
     """When embeddings_a == embeddings_b, diagonal dominates -> very low loss."""
     torch.manual_seed(0)
     # Use orthogonal vectors so diagonal clearly dominates
-    a = torch.eye(B, D)   # each row is a unit vector
+    a = torch.eye(B, D)  # each row is a unit vector
     loss = in_batch_nce_loss(a, a.clone(), temperature=0.07)
     assert loss.item() < 0.5, f"Identity loss should be near 0, got {loss.item():.4f}"
 
@@ -160,11 +163,12 @@ def test_in_batch_nce_loss_identity():
 # 6. test_hard_negative_mining_shape
 # ---------------------------------------------------------------------------
 
+
 def test_hard_negative_mining_shape():
     torch.manual_seed(0)
-    anchor     = torch.randn(D)
+    anchor = torch.randn(D)
     candidates = torch.randn(20, D)
-    indices    = hard_negative_mining(anchor, candidates, top_k=5)
+    indices = hard_negative_mining(anchor, candidates, top_k=5)
     assert indices.shape == (5,), f"Expected (5,), got {indices.shape}"
 
 
@@ -172,12 +176,13 @@ def test_hard_negative_mining_shape():
 # 7. test_hard_negative_mining_excludes
 # ---------------------------------------------------------------------------
 
+
 def test_hard_negative_mining_excludes():
     torch.manual_seed(0)
-    anchor     = torch.randn(D)
+    anchor = torch.randn(D)
     candidates = torch.randn(20, D)
-    exclude    = 3
-    indices    = hard_negative_mining(anchor, candidates, top_k=5, exclude_idx=exclude)
+    exclude = 3
+    indices = hard_negative_mining(anchor, candidates, top_k=5, exclude_idx=exclude)
     assert exclude not in indices.tolist(), (
         f"Excluded index {exclude} should not appear in result {indices.tolist()}"
     )
@@ -186,6 +191,7 @@ def test_hard_negative_mining_excludes():
 # ---------------------------------------------------------------------------
 # 8. test_sample_random_negatives_shape
 # ---------------------------------------------------------------------------
+
 
 def test_sample_random_negatives_shape():
     K = 6
@@ -198,6 +204,7 @@ def test_sample_random_negatives_shape():
 # 9. test_sample_random_negatives_vocab_range
 # ---------------------------------------------------------------------------
 
+
 def test_sample_random_negatives_vocab_range():
     vocab_size = 256
     seqs = sample_random_negatives(batch_size=B, n_negatives=5, vocab_size=vocab_size, seq_len=T)
@@ -209,11 +216,12 @@ def test_sample_random_negatives_vocab_range():
 # 10. test_embedding_projector_shape
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_projector_shape():
     torch.manual_seed(0)
     proj = EmbeddingProjector(d_model=D, embed_dim=E)
-    x    = torch.randn(B, D)
-    out  = proj(x)
+    x = torch.randn(B, D)
+    out = proj(x)
     assert out.shape == (B, E), f"Expected ({B}, {E}), got {out.shape}"
 
 
@@ -221,20 +229,20 @@ def test_embedding_projector_shape():
 # 11. test_embedding_projector_normalized
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_projector_normalized():
     torch.manual_seed(0)
     proj = EmbeddingProjector(d_model=D, embed_dim=E)
-    x    = torch.randn(B, D)
-    out  = proj(x)
+    x = torch.randn(B, D)
+    out = proj(x)
     norms = out.norm(dim=-1)
-    assert torch.allclose(norms, torch.ones(B), atol=1e-5), (
-        f"Expected unit norms, got {norms}"
-    )
+    assert torch.allclose(norms, torch.ones(B), atol=1e-5), f"Expected unit norms, got {norms}"
 
 
 # ---------------------------------------------------------------------------
 # 12. test_nce_trainer_get_embeddings_shape
 # ---------------------------------------------------------------------------
+
 
 def test_nce_trainer_get_embeddings_shape(trainer, anchor_ids):
     emb = trainer.get_embeddings(anchor_ids)
@@ -244,6 +252,7 @@ def test_nce_trainer_get_embeddings_shape(trainer, anchor_ids):
 # ---------------------------------------------------------------------------
 # 13. test_nce_trainer_train_step_keys
 # ---------------------------------------------------------------------------
+
 
 def test_nce_trainer_train_step_keys(trainer, anchor_ids, positive_ids):
     result = trainer.train_step_in_batch(anchor_ids, positive_ids)
@@ -256,6 +265,7 @@ def test_nce_trainer_train_step_keys(trainer, anchor_ids, positive_ids):
 # 14. test_nce_trainer_loss_positive
 # ---------------------------------------------------------------------------
 
+
 def test_nce_trainer_loss_positive(trainer, anchor_ids, positive_ids):
     result = trainer.train_step_in_batch(anchor_ids, positive_ids)
     assert result["loss"] > 0, f"Loss should be positive, got {result['loss']}"
@@ -264,6 +274,7 @@ def test_nce_trainer_loss_positive(trainer, anchor_ids, positive_ids):
 # ---------------------------------------------------------------------------
 # 15. test_nce_trainer_evaluate_retrieval_keys
 # ---------------------------------------------------------------------------
+
 
 def test_nce_trainer_evaluate_retrieval_keys(trainer, anchor_ids, positive_ids):
     result = trainer.evaluate_retrieval(anchor_ids, positive_ids, top_k=5)

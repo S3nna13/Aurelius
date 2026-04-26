@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.inference.prefix_caching import (
     CachedPrefix,
     PrefixCache,
@@ -179,6 +177,7 @@ class TestPrefixCacheStats:
 class TestCachedPrefix:
     def test_is_dataclass(self):
         import dataclasses
+
         assert dataclasses.is_dataclass(CachedPrefix)
 
     def test_fields(self):

@@ -18,7 +18,6 @@ from src.safety.malicious_code_detector import (
     MaliciousCodeDetector,
 )
 
-
 # Runtime-assembled trigger tokens.
 _EV = "ev" + "al"
 _EX = "ex" + "ec"
@@ -142,29 +141,18 @@ def test_custom_patterns_extend_detection() -> None:
 
 
 def test_determinism(detector: MaliciousCodeDetector) -> None:
-    code = (
-        f"import os, {_PK}\n"
-        f"os.{_SYS}('{_RMRF}')\n"
-        f"{_PK}.loads(b'x')\n"
-        f"{_EV}(x)\n"
-    )
+    code = f"import os, {_PK}\nos.{_SYS}('{_RMRF}')\n{_PK}.loads(b'x')\n{_EV}(x)\n"
     r1 = detector.scan(code, language="python")
     r2 = detector.scan(code, language="python")
     assert r1.total == r2.total
-    assert [
-        (t.category, t.line_no, t.severity, t.snippet) for t in r1.threats
-    ] == [
+    assert [(t.category, t.line_no, t.severity, t.snippet) for t in r1.threats] == [
         (t.category, t.line_no, t.severity, t.snippet) for t in r2.threats
     ]
     assert r1.severity == r2.severity
 
 
 def test_severity_aggregation_is_max(detector: MaliciousCodeDetector) -> None:
-    code = (
-        "import base64, os\n"
-        "base64.b64decode(payload)\n"
-        f"os.{_SYS}('{_RMRF}')\n"
-    )
+    code = f"import base64, os\nbase64.b64decode(payload)\nos.{_SYS}('{_RMRF}')\n"
     report = detector.scan(code, language="python")
     sevs = {t.severity for t in report.threats}
     assert "critical" in sevs
@@ -203,9 +191,7 @@ def test_unknown_language_raises() -> None:
 
 def test_custom_pattern_bad_category_raises() -> None:
     with pytest.raises(ValueError):
-        MaliciousCodeDetector(
-            custom_patterns={"not_a_category": [(r"foo", "high")]}
-        )
+        MaliciousCodeDetector(custom_patterns={"not_a_category": [(r"foo", "high")]})
 
 
 def test_code_threat_is_dataclass_instance(detector: MaliciousCodeDetector) -> None:

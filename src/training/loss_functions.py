@@ -12,17 +12,16 @@ Implements multiple loss variants for language model training:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LossConfig:
@@ -35,6 +34,7 @@ class LossConfig:
         ignore_index:    Token id to exclude from loss computation (e.g. padding).
         reduction:       How to aggregate token losses. "mean" or "sum".
     """
+
     label_smoothing: float = 0.0
     focal_gamma: float = 2.0
     ignore_index: int = -100
@@ -44,6 +44,7 @@ class LossConfig:
 # ---------------------------------------------------------------------------
 # cross_entropy_loss
 # ---------------------------------------------------------------------------
+
 
 def cross_entropy_loss(
     logits: torch.Tensor,
@@ -63,8 +64,8 @@ def cross_entropy_loss(
         Scalar (reduction="mean") or 1-D tensor of per-token losses (reduction="none").
     """
     V = logits.shape[-1]
-    logits_flat = logits.reshape(-1, V)   # (B*T, V)
-    labels_flat = labels.reshape(-1)       # (B*T,)
+    logits_flat = logits.reshape(-1, V)  # (B*T, V)
+    labels_flat = labels.reshape(-1)  # (B*T,)
 
     return F.cross_entropy(
         logits_flat,
@@ -77,6 +78,7 @@ def cross_entropy_loss(
 # ---------------------------------------------------------------------------
 # label_smoothed_loss
 # ---------------------------------------------------------------------------
+
 
 def label_smoothed_loss(
     logits: torch.Tensor,
@@ -102,8 +104,8 @@ def label_smoothed_loss(
         Scalar mean loss over all valid (non-ignored) positions.
     """
     V = logits.shape[-1]
-    logits_flat = logits.reshape(-1, V)   # (N, V)
-    labels_flat = labels.reshape(-1)       # (N,)
+    logits_flat = logits.reshape(-1, V)  # (N, V)
+    labels_flat = labels.reshape(-1)  # (N,)
 
     valid_mask = labels_flat != ignore_index
 
@@ -127,6 +129,7 @@ def label_smoothed_loss(
 # ---------------------------------------------------------------------------
 # focal_loss
 # ---------------------------------------------------------------------------
+
 
 def focal_loss(
     logits: torch.Tensor,
@@ -177,6 +180,7 @@ def focal_loss(
 # token_weighted_loss
 # ---------------------------------------------------------------------------
 
+
 def token_weighted_loss(
     logits: torch.Tensor,
     labels: torch.Tensor,
@@ -199,8 +203,8 @@ def token_weighted_loss(
         Scalar weighted-mean loss, or 0 if all positions are masked / zero-weight.
     """
     V = logits.shape[-1]
-    logits_flat = logits.reshape(-1, V)    # (N, V)
-    labels_flat = labels.reshape(-1)        # (N,)
+    logits_flat = logits.reshape(-1, V)  # (N, V)
+    labels_flat = labels.reshape(-1)  # (N,)
     weights_flat = weights.reshape(-1).to(logits.dtype)  # (N,)
 
     valid_mask = labels_flat != ignore_index
@@ -225,6 +229,7 @@ def token_weighted_loss(
 # z_loss
 # ---------------------------------------------------------------------------
 
+
 def z_loss(
     logits: torch.Tensor,
     coef: float = 1e-4,
@@ -244,12 +249,13 @@ def z_loss(
     """
     # log(sum(exp(x))) = logsumexp; shape (...,) after reducing last dim
     log_z = torch.logsumexp(logits, dim=-1)  # (B, T)
-    return coef * (log_z ** 2).mean()
+    return coef * (log_z**2).mean()
 
 
 # ---------------------------------------------------------------------------
 # compute_ppl_from_loss
 # ---------------------------------------------------------------------------
+
 
 def compute_ppl_from_loss(loss: torch.Tensor) -> torch.Tensor:
     """Compute perplexity from a (mean) cross-entropy loss.
@@ -268,6 +274,7 @@ def compute_ppl_from_loss(loss: torch.Tensor) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # LMLoss — nn.Module combining the above
 # ---------------------------------------------------------------------------
+
 
 class LMLoss(nn.Module):
     """Combined language modeling loss module.
@@ -295,7 +302,7 @@ class LMLoss(nn.Module):
         self,
         logits: torch.Tensor,
         labels: torch.Tensor,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """Compute loss.
 
         Args:

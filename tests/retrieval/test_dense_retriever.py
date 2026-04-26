@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import math
 import pytest
 
 from src.retrieval.dense_retriever import DenseDocument, DenseRetriever
 
-
 # ---------------------------------------------------------------------------
 # DenseDocument dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestDenseDocument:
     def test_fields_present(self):
@@ -41,6 +40,7 @@ class TestDenseDocument:
 # ---------------------------------------------------------------------------
 # DenseRetriever._embed_stub
 # ---------------------------------------------------------------------------
+
 
 class TestDenseRetrieverEmbedStub:
     def setup_method(self):
@@ -92,6 +92,7 @@ class TestDenseRetrieverEmbedStub:
 # DenseRetriever.add and __len__
 # ---------------------------------------------------------------------------
 
+
 class TestDenseRetrieverAdd:
     def setup_method(self):
         self.retriever = DenseRetriever(embedding_dim=16)
@@ -141,6 +142,7 @@ class TestDenseRetrieverAdd:
 # DenseRetriever.cosine_similarity
 # ---------------------------------------------------------------------------
 
+
 class TestCosinesimilarity:
     def setup_method(self):
         self.retriever = DenseRetriever()
@@ -189,6 +191,7 @@ class TestCosinesimilarity:
 # ---------------------------------------------------------------------------
 # DenseRetriever.search
 # ---------------------------------------------------------------------------
+
 
 class TestDenseRetrieverSearch:
     def setup_method(self):
@@ -243,6 +246,7 @@ class TestDenseRetrieverSearch:
 # ---------------------------------------------------------------------------
 # DenseRetriever.remove
 # ---------------------------------------------------------------------------
+
 
 class TestDenseRetrieverRemove:
     def setup_method(self):

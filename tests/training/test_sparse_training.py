@@ -1,4 +1,5 @@
 """Tests for sparse_training: target-loss pruning and L0 hard-concrete regularization."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,20 +7,20 @@ import torch
 import torch.nn as nn
 
 from src.training.sparse_training import (
-    TargetLossPruningConfig,
-    PruningResult,
-    compute_model_sparsity,
-    prune_magnitude,
-    evaluate_model_loss,
-    target_loss_prune,
     HardConcrete,
     L0LinearLayer,
-    l0_regularization_loss,
+    PruningResult,
+    TargetLossPruningConfig,
     add_l0_regularization,
+    compute_model_sparsity,
+    evaluate_model_loss,
+    l0_regularization_loss,
+    prune_magnitude,
+    target_loss_prune,
 )
 
-
 # ── Fixtures ───────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def simple_model():
@@ -60,6 +61,7 @@ def _make_batches(n=5, seq_len=8, vocab=256):
 
 class TinyLM(nn.Module):
     """Minimal LM for testing evaluate_model_loss."""
+
     def __init__(self, vocab=256, d=32):
         super().__init__()
         self.embed = nn.Embedding(vocab, d)
@@ -69,14 +71,13 @@ class TinyLM(nn.Module):
         x = self.embed(input_ids)
         logits = self.proj(x)
         if labels is not None:
-            loss = nn.functional.cross_entropy(
-                logits.view(-1, logits.size(-1)), labels.view(-1)
-            )
+            loss = nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1))
             return loss, logits
         return logits
 
 
 # ── 1. compute_model_sparsity ──────────────────────────────────────────────────
+
 
 def test_compute_model_sparsity_all_zero(all_zero_model):
     sparsity = compute_model_sparsity(all_zero_model)
@@ -89,6 +90,7 @@ def test_compute_model_sparsity_none_zero(no_zero_model):
 
 
 # ── 2. prune_magnitude ────────────────────────────────────────────────────────
+
 
 def test_prune_magnitude_count(simple_model):
     n_zeroed = prune_magnitude(simple_model, fraction=0.1)
@@ -122,6 +124,7 @@ def test_prune_magnitude_zeros_smallest(simple_model):
 
 # ── 3. evaluate_model_loss ────────────────────────────────────────────────────
 
+
 def test_evaluate_model_loss_positive():
     torch.manual_seed(0)
     model = TinyLM()
@@ -132,6 +135,7 @@ def test_evaluate_model_loss_positive():
 
 
 # ── 4. target_loss_prune ──────────────────────────────────────────────────────
+
 
 def test_target_loss_prune_returns_result():
     torch.manual_seed(0)
@@ -185,6 +189,7 @@ def test_target_loss_prune_loss_history_len():
 
 # ── 5. HardConcrete ──────────────────────────────────────────────────────────
 
+
 def test_hard_concrete_output_range():
     torch.manual_seed(0)
     hc = HardConcrete(n_weights=128)
@@ -216,6 +221,7 @@ def test_hard_concrete_eval_mode_binary():
 
 # ── 6. L0LinearLayer ─────────────────────────────────────────────────────────
 
+
 def test_l0_linear_forward_shape():
     torch.manual_seed(0)
     layer = L0LinearLayer(in_features=16, out_features=32)
@@ -234,6 +240,7 @@ def test_l0_linear_l0_penalty_positive():
 
 # ── 7. l0_regularization_loss ────────────────────────────────────────────────
 
+
 def test_l0_regularization_loss_sum():
     torch.manual_seed(0)
     model = nn.Sequential(
@@ -247,6 +254,7 @@ def test_l0_regularization_loss_sum():
 
 
 # ── 8. add_l0_regularization ─────────────────────────────────────────────────
+
 
 def test_add_l0_regularization_count():
     torch.manual_seed(0)

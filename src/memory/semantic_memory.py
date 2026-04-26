@@ -5,10 +5,10 @@ from __future__ import annotations
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class RelationType(str, Enum):
+class RelationType(StrEnum):
     IS_A = "is_a"
     HAS_PROPERTY = "has_property"
     RELATED_TO = "related_to"
@@ -78,19 +78,13 @@ class SemanticMemory:
             raise ValueError(f"Unknown source concept: {source!r}")
         if target not in self._concepts:
             raise ValueError(f"Unknown target concept: {target!r}")
-        rel = Relation(
-            source=source, relation_type=relation_type, target=target, weight=weight
-        )
+        rel = Relation(source=source, relation_type=relation_type, target=target, weight=weight)
         self._relations.append(rel)
         return rel
 
     def get_relations(self, concept_name: str) -> list[Relation]:
         """Return all relations where concept_name is source OR target."""
-        return [
-            r
-            for r in self._relations
-            if r.source == concept_name or r.target == concept_name
-        ]
+        return [r for r in self._relations if r.source == concept_name or r.target == concept_name]
 
     def relation_count(self) -> int:
         return len(self._relations)
@@ -109,9 +103,7 @@ class SemanticMemory:
                 result.add(r.source)
         return result
 
-    def find_path(
-        self, start: str, end: str, max_depth: int = 5
-    ) -> list[str] | None:
+    def find_path(self, start: str, end: str, max_depth: int = 5) -> list[str] | None:
         """BFS shortest path from start to end. Returns [start, ..., end] or None."""
         if start == end:
             return [start]

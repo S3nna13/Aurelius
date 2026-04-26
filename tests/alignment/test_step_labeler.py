@@ -3,19 +3,18 @@
 import pytest
 import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.alignment.step_labeler import (
-    StepLabel,
-    Step,
     LabeledChain,
-    StepLabelerConfig,
+    StepLabel,
     StepLabeler,
-    parse_steps,
+    StepLabelerConfig,
+    answers_match,
     extract_answer,
     normalize_answer,
-    answers_match,
+    parse_steps,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 STEP_DELIMITER_ID = 5
 VOCAB_SIZE = 256
@@ -160,11 +159,14 @@ def test_label_chain_step_count(labeler):
     prompt_ids = [1, 2]
     # 2 delimiters → 3 steps
     chain_ids = [
-        10, 11,
+        10,
+        11,
         STEP_DELIMITER_ID,
-        20, 21,
+        20,
+        21,
         STEP_DELIMITER_ID,
-        30, 31,
+        30,
+        31,
     ]
     result = labeler.label_chain(prompt_ids, chain_ids, correct_answer="99")
     assert len(result.steps) == 3

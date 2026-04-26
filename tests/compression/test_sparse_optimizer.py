@@ -1,20 +1,22 @@
 """Tests for src/compression/sparse_optimizer.py (≥28 tests)."""
+
 from __future__ import annotations
 
 import dataclasses
+
 import pytest
 
 from src.compression.sparse_optimizer import (
+    SPARSE_OPTIMIZER_REGISTRY,
     SparseOptimizer,
     SparseOptimizerConfig,
     SparseUpdate,
-    SPARSE_OPTIMIZER_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # SparseOptimizerConfig
 # ---------------------------------------------------------------------------
+
 
 class TestSparseOptimizerConfig:
     def test_defaults(self):
@@ -41,6 +43,7 @@ class TestSparseOptimizerConfig:
 # ---------------------------------------------------------------------------
 # SparseUpdate
 # ---------------------------------------------------------------------------
+
 
 class TestSparseUpdate:
     def test_fields(self):
@@ -75,6 +78,7 @@ class TestSparseUpdate:
 # ---------------------------------------------------------------------------
 # SparseOptimizer.step — dense gradients
 # ---------------------------------------------------------------------------
+
 
 class TestStepDense:
     def _opt(self, lr: float = 0.1, skip: float = 0.0) -> SparseOptimizer:
@@ -131,6 +135,7 @@ class TestStepDense:
 # SparseOptimizer.step — skip when sparse
 # ---------------------------------------------------------------------------
 
+
 class TestStepSkip:
     def _opt(self, skip: float = 0.5, threshold: float = 0.0) -> SparseOptimizer:
         return SparseOptimizer(
@@ -175,6 +180,7 @@ class TestStepSkip:
 # ---------------------------------------------------------------------------
 # SparseOptimizer.stats and reset_stats
 # ---------------------------------------------------------------------------
+
 
 class TestStats:
     def _opt(self) -> SparseOptimizer:
@@ -235,6 +241,7 @@ class TestStats:
 # ---------------------------------------------------------------------------
 # REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default(self):

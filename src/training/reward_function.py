@@ -45,9 +45,7 @@ class BaseRewardFunction(ABC):
 # DirectionalRewardFn
 # ---------------------------------------------------------------------------
 
-_DIRECTION_PATTERN = re.compile(
-    r"\b(bullish|bearish|neutral|long|short|buy|sell|hold)\b", re.I
-)
+_DIRECTION_PATTERN = re.compile(r"\b(bullish|bearish|neutral|long|short|buy|sell|hold)\b", re.I)
 
 _DIRECTION_MAP: dict[str, str] = {
     "bullish": "bullish",
@@ -111,13 +109,9 @@ class DirectionalRewardFn(BaseRewardFunction):
 
         score = max(-0.5, min(1.0, score))
         notes = f"predicted={pred} truth={gt_direction} words={word_count}"
-        return RewardResult(
-            score=score, signal=_classify(score), breakdown=breakdown, notes=notes
-        )
+        return RewardResult(score=score, signal=_classify(score), breakdown=breakdown, notes=notes)
 
-    def score_batch(
-        self, completions: list[str], ground_truth: str
-    ) -> list[RewardResult]:
+    def score_batch(self, completions: list[str], ground_truth: str) -> list[RewardResult]:
         """Score a batch of completions against a shared ground truth."""
         return [self.score(c, ground_truth) for c in completions]
 

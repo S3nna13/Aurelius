@@ -21,10 +21,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SelfPlayConfig:
@@ -37,6 +37,7 @@ class SelfPlayConfig:
         temperature: Sampling temperature for generation. Default: 0.8.
         improvement_threshold: Minimum win-rate improvement to continue. Default: 0.01.
     """
+
     n_rounds: int = 3
     beta: float = 0.1
     max_gen_tokens: int = 64
@@ -47,6 +48,7 @@ class SelfPlayConfig:
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
+
 
 def generate_self_play_response(
     model: nn.Module,
@@ -89,6 +91,7 @@ def generate_self_play_response(
 # ---------------------------------------------------------------------------
 # Win-rate evaluation
 # ---------------------------------------------------------------------------
+
 
 def compute_win_rate(
     model: nn.Module,
@@ -138,6 +141,7 @@ def compute_win_rate(
 # SPIN loss
 # ---------------------------------------------------------------------------
 
+
 def spin_loss(
     policy_logps_real: torch.Tensor,
     policy_logps_generated: torch.Tensor,
@@ -170,6 +174,7 @@ def spin_loss(
 # Token log-probability helper
 # ---------------------------------------------------------------------------
 
+
 def _compute_token_log_probs(
     model: nn.Module,
     input_ids: torch.Tensor,
@@ -191,7 +196,7 @@ def _compute_token_log_probs(
     full_ids = torch.cat([input_ids, response_ids], dim=1)
     _, logits, _ = model(full_ids)
 
-    response_logits = logits[:, S - 1: S + R - 1, :]
+    response_logits = logits[:, S - 1 : S + R - 1, :]
     log_probs = F.log_softmax(response_logits, dim=-1)
     token_log_probs = log_probs.gather(2, response_ids.unsqueeze(-1)).squeeze(-1)
 
@@ -201,6 +206,7 @@ def _compute_token_log_probs(
 # ---------------------------------------------------------------------------
 # Self-Play Trainer
 # ---------------------------------------------------------------------------
+
 
 class SelfPlayTrainer:
     """Orchestrates self-play training rounds.
@@ -263,19 +269,27 @@ class SelfPlayTrainer:
 
             # Compute policy log probs
             policy_logps_real = _compute_token_log_probs(
-                self.model, prompt_ids, real_response_ids,
+                self.model,
+                prompt_ids,
+                real_response_ids,
             )
             policy_logps_gen = _compute_token_log_probs(
-                self.model, prompt_ids, synth_response_ids,
+                self.model,
+                prompt_ids,
+                synth_response_ids,
             )
 
             # Compute opponent log probs (no grad)
             with torch.no_grad():
                 opp_logps_real = _compute_token_log_probs(
-                    self.opponent_model, prompt_ids, real_response_ids,
+                    self.opponent_model,
+                    prompt_ids,
+                    real_response_ids,
                 )
                 opp_logps_gen = _compute_token_log_probs(
-                    self.opponent_model, prompt_ids, synth_response_ids,
+                    self.opponent_model,
+                    prompt_ids,
+                    synth_response_ids,
                 )
 
             loss = spin_loss(
@@ -294,9 +308,7 @@ class SelfPlayTrainer:
             n_steps += 1
 
         # Update opponent to current model weights for next round
-        self.opponent_model.load_state_dict(
-            copy.deepcopy(self.model.state_dict())
-        )
+        self.opponent_model.load_state_dict(copy.deepcopy(self.model.state_dict()))
         for p in self.opponent_model.parameters():
             p.requires_grad_(False)
 
@@ -306,9 +318,11 @@ class SelfPlayTrainer:
         def _default_judge(resp_a, resp_b):
             return resp_a.sum().item() >= resp_b.sum().item()
 
-        win_rate = compute_win_rate(
-            self.model, self.opponent_model, prompts, _default_judge
-        ) if prompts else 0.0
+        win_rate = (
+            compute_win_rate(self.model, self.opponent_model, prompts, _default_judge)
+            if prompts
+            else 0.0
+        )
 
         return {
             "round_loss": avg_loss,

@@ -10,9 +10,11 @@ Usage:
     trainer = ContextDistillationTrainer(model, system_prompt_ids, cfg)
     trainer.train_step(user_message_ids, response_ids)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,18 +23,18 @@ from torch.optim import AdamW
 
 @dataclass
 class ContextDistillationConfig:
-    temperature: float = 2.0        # KD temperature
-    kl_weight: float = 1.0          # weight for KL loss vs CE loss
-    ce_weight: float = 0.0          # weight for CE (response tokens) loss
+    temperature: float = 2.0  # KD temperature
+    kl_weight: float = 1.0  # weight for KL loss vs CE loss
+    ce_weight: float = 0.0  # weight for CE (response tokens) loss
     lr: float = 1e-5
-    freeze_except_last_n: int = 4   # only fine-tune last N layers (efficiency)
+    freeze_except_last_n: int = 4  # only fine-tune last N layers (efficiency)
 
 
 def compute_teacher_logits(
     model: nn.Module,
     system_prompt_ids: torch.Tensor,  # (S_sys,)
-    message_ids: torch.Tensor,        # (S_msg,)
-    response_ids: torch.Tensor,       # (S_resp,)
+    message_ids: torch.Tensor,  # (S_msg,)
+    response_ids: torch.Tensor,  # (S_resp,)
 ) -> torch.Tensor:
     """Run model WITH system prompt prefix. Returns logits at response positions.
 
@@ -61,7 +63,7 @@ def compute_teacher_logits(
 
 def compute_student_logits(
     model: nn.Module,
-    message_ids: torch.Tensor,   # (S_msg,)
+    message_ids: torch.Tensor,  # (S_msg,)
     response_ids: torch.Tensor,  # (S_resp,)
 ) -> torch.Tensor:
     """Run model WITHOUT system prompt. Returns logits at response positions.
@@ -85,9 +87,9 @@ def compute_student_logits(
 
 
 def context_distillation_loss(
-    student_logits: torch.Tensor,   # (S_resp, V)
-    teacher_logits: torch.Tensor,   # (S_resp, V)
-    response_ids: torch.Tensor,     # (S_resp,)
+    student_logits: torch.Tensor,  # (S_resp, V)
+    teacher_logits: torch.Tensor,  # (S_resp, V)
+    response_ids: torch.Tensor,  # (S_resp,)
     cfg: ContextDistillationConfig,
 ) -> tuple[torch.Tensor, dict[str, float]]:
     """Compute context distillation loss.
@@ -109,7 +111,7 @@ def context_distillation_loss(
         student_log_soft,
         teacher_soft,
         reduction="batchmean",
-    ) * (T ** 2)
+    ) * (T**2)
 
     # CE loss on raw student logits vs ground-truth response tokens
     ce_loss = F.cross_entropy(student_logits, response_ids)
@@ -145,14 +147,14 @@ class ContextDistillationTrainer:
         for i, layer in enumerate(model.layers):
             if i >= n_layers - self.cfg.freeze_except_last_n:
                 trainable.extend(layer.parameters())
-        if hasattr(model, 'lm_head'):
+        if hasattr(model, "lm_head"):
             trainable.extend(model.lm_head.parameters())
 
         self.optimizer = AdamW(trainable, lr=self.cfg.lr)
 
     def train_step(
         self,
-        message_ids: torch.Tensor,   # (S_msg,)
+        message_ids: torch.Tensor,  # (S_msg,)
         response_ids: torch.Tensor,  # (S_resp,)
     ) -> dict[str, float]:
         """One training step. Returns {"kl": float, "ce": float, "total": float}."""

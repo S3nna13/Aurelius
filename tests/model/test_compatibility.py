@@ -309,6 +309,4 @@ def test_verdict_reasons_populated_on_failure():
 
 def test_verdict_construction_validates_severity():
     with pytest.raises(CompatibilityError):
-        CompatibilityVerdict(
-            compatible=True, reasons=(), severity="not-a-real-severity"
-        )
+        CompatibilityVerdict(compatible=True, reasons=(), severity="not-a-real-severity")

@@ -11,33 +11,32 @@ high reward) back into the generative model, avoiding explicit RL.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BONDConfig:
     """Configuration for BOND alignment training."""
 
-    n_samples: int = 8          # N candidates sampled per prompt
-    temperature: float = 1.0    # Reward softmax temperature (soft BOND)
-    kl_coef: float = 0.1        # KL-regularization coefficient vs. ref model
-    hard_bond: bool = False      # If True use top-1 (hard) instead of soft weighting
+    n_samples: int = 8  # N candidates sampled per prompt
+    temperature: float = 1.0  # Reward softmax temperature (soft BOND)
+    kl_coef: float = 0.1  # KL-regularization coefficient vs. ref model
+    hard_bond: bool = False  # If True use top-1 (hard) instead of soft weighting
     reward_scaling: bool = True  # Normalise rewards to zero-mean unit-var before weighting
 
 
 # ---------------------------------------------------------------------------
 # Stand-alone utility: bootstrap J*(n) estimate
 # ---------------------------------------------------------------------------
+
 
 def compute_j_star(
     rewards: torch.Tensor,
@@ -62,14 +61,15 @@ def compute_j_star(
 
     # Draw n_bootstrap groups of size n (with replacement) and take max of each.
     indices = torch.randint(0, m, (n_bootstrap, n))  # (n_bootstrap, n)
-    samples = rewards[indices]                        # (n_bootstrap, n)
-    maxima = samples.max(dim=1).values               # (n_bootstrap,)
+    samples = rewards[indices]  # (n_bootstrap, n)
+    maxima = samples.max(dim=1).values  # (n_bootstrap,)
     return maxima.mean().item()
 
 
 # ---------------------------------------------------------------------------
 # BONDTrainer
 # ---------------------------------------------------------------------------
+
 
 class BONDTrainer:
     """Trains a policy model using Best-of-N Distillation.
@@ -126,22 +126,20 @@ class BONDTrainer:
         rewards = rewards.float()
         total = rewards.numel()
         if total % n != 0:
-            raise ValueError(
-                f"rewards length {total} is not divisible by n={n}."
-            )
+            raise ValueError(f"rewards length {total} is not divisible by n={n}.")
         batch = total // n
         # Reshape to (batch, n) for group-wise operations.
         r = rewards.view(batch, n)
 
         if self.hard_bond:
             # One-hot: 1.0 at argmax, 0.0 elsewhere.
-            argmax = r.argmax(dim=1, keepdim=True)          # (batch, 1)
+            argmax = r.argmax(dim=1, keepdim=True)  # (batch, 1)
             weights = torch.zeros_like(r)
             weights.scatter_(1, argmax, 1.0)
         else:
             # Soft: temperature-scaled softmax over rewards in each group.
             scaled = r / max(temperature, 1e-8)
-            weights = F.softmax(scaled, dim=1)              # (batch, n)
+            weights = F.softmax(scaled, dim=1)  # (batch, n)
 
         return weights.view(-1)  # (batch * n,)
 
@@ -218,7 +216,7 @@ class BONDTrainer:
         ref_log_probs: torch.Tensor,
         policy_log_probs: torch.Tensor,
         rewards: torch.Tensor,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """Single BOND training step.
 
         Args:

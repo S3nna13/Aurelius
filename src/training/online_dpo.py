@@ -13,18 +13,17 @@ Pure native PyTorch only; no external dependencies beyond stdlib + torch.
 
 from __future__ import annotations
 
-import copy
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # OnlinePairGenerator
 # ---------------------------------------------------------------------------
+
 
 class OnlinePairGenerator:
     """Generate on-policy preference pairs by sampling then scoring.
@@ -71,8 +70,8 @@ class OnlinePairGenerator:
         current = input_ids.clone()
         with torch.no_grad():
             for _ in range(max_new_tokens):
-                logits = self.model(current)           # (1, T', V)
-                next_logits = logits[:, -1, :]         # (1, V)
+                logits = self.model(current)  # (1, T', V)
+                next_logits = logits[:, -1, :]  # (1, V)
                 scaled = next_logits / max(self.temperature, 1e-8)
                 probs = F.softmax(scaled, dim=-1)
                 next_token = torch.multinomial(probs, num_samples=1)  # (1, 1)
@@ -87,7 +86,7 @@ class OnlinePairGenerator:
         self,
         input_ids: Tensor,
         max_new_tokens: int = 16,
-    ) -> Optional[tuple[Tensor, Tensor, float, float]]:
+    ) -> tuple[Tensor, Tensor, float, float] | None:
         """Generate a (chosen, rejected) pair from a single prompt.
 
         Args:
@@ -128,7 +127,7 @@ class OnlinePairGenerator:
     def batch_generate(
         self,
         prompts: list[Tensor],
-    ) -> list[Optional[tuple[Tensor, Tensor, float, float]]]:
+    ) -> list[tuple[Tensor, Tensor, float, float] | None]:
         """Generate pairs for a list of prompts.
 
         Args:
@@ -144,6 +143,7 @@ class OnlinePairGenerator:
 # ---------------------------------------------------------------------------
 # IPOLoss
 # ---------------------------------------------------------------------------
+
 
 class IPOLoss(nn.Module):
     """Identity Preference Optimization loss (Azar et al. 2023).
@@ -199,6 +199,7 @@ class IPOLoss(nn.Module):
 # SLiCLoss
 # ---------------------------------------------------------------------------
 
+
 class SLiCLoss(nn.Module):
     """Sequence Likelihood Calibration loss (Zhao et al. 2023).
 
@@ -252,6 +253,7 @@ class SLiCLoss(nn.Module):
 # DPOVariantTrainer
 # ---------------------------------------------------------------------------
 
+
 class DPOVariantTrainer:
     """Unified trainer supporting DPO, IPO, and SLiC loss objectives.
 
@@ -295,9 +297,7 @@ class DPOVariantTrainer:
     # Log-prob computation
     # ------------------------------------------------------------------
 
-    def compute_logps(
-        self, model: nn.Module, input_ids: Tensor, labels: Tensor
-    ) -> Tensor:
+    def compute_logps(self, model: nn.Module, input_ids: Tensor, labels: Tensor) -> Tensor:
         """Compute per-sequence summed log-probs.
 
         Args:
@@ -315,9 +315,7 @@ class DPOVariantTrainer:
         log_probs_all = F.log_softmax(shift_logits, dim=-1)
         gather_labels = shift_labels.clone()
         gather_labels[gather_labels == -100] = 0
-        token_logps = log_probs_all.gather(
-            dim=-1, index=gather_labels.unsqueeze(-1)
-        ).squeeze(-1)
+        token_logps = log_probs_all.gather(dim=-1, index=gather_labels.unsqueeze(-1)).squeeze(-1)
 
         mask = (shift_labels != -100).float()
         return (token_logps * mask).sum(dim=-1)
@@ -362,20 +360,12 @@ class DPOVariantTrainer:
         self.policy_model.train()
         self.optimizer.zero_grad()
 
-        policy_chosen_logps = self.compute_logps(
-            self.policy_model, chosen_ids, chosen_labels
-        )
-        policy_rejected_logps = self.compute_logps(
-            self.policy_model, rejected_ids, rejected_labels
-        )
+        policy_chosen_logps = self.compute_logps(self.policy_model, chosen_ids, chosen_labels)
+        policy_rejected_logps = self.compute_logps(self.policy_model, rejected_ids, rejected_labels)
 
         with torch.no_grad():
-            ref_chosen_logps = self.compute_logps(
-                self.ref_model, chosen_ids, chosen_labels
-            )
-            ref_rejected_logps = self.compute_logps(
-                self.ref_model, rejected_ids, rejected_labels
-            )
+            ref_chosen_logps = self.compute_logps(self.ref_model, chosen_ids, chosen_labels)
+            ref_rejected_logps = self.compute_logps(self.ref_model, rejected_ids, rejected_labels)
 
         if self.loss_type == "dpo":
             loss = self._dpo_loss(
@@ -424,6 +414,7 @@ class DPOVariantTrainer:
 # ---------------------------------------------------------------------------
 # OnlineDPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class OnlineDPOTrainer:
     """Full online DPO training loop.
@@ -486,8 +477,7 @@ class OnlineDPOTrainer:
         prompt_list = [prompts[i].unsqueeze(0) for i in range(batch_size)]
 
         raw_pairs = [
-            self.pair_generator.generate_pair(p, max_new_tokens=max_new_tokens)
-            for p in prompt_list
+            self.pair_generator.generate_pair(p, max_new_tokens=max_new_tokens) for p in prompt_list
         ]
 
         valid_pairs = [p for p in raw_pairs if p is not None]
@@ -515,18 +505,12 @@ class OnlineDPOTrainer:
 
         def _pad(seq: Tensor, target_len: int) -> Tensor:
             if seq.size(0) < target_len:
-                pad = torch.zeros(
-                    target_len - seq.size(0), dtype=seq.dtype, device=seq.device
-                )
+                pad = torch.zeros(target_len - seq.size(0), dtype=seq.dtype, device=seq.device)
                 seq = torch.cat([seq, pad], dim=0)
             return seq
 
-        chosen_batch = torch.stack(
-            [_pad(t, max_len) for t in chosen_list], dim=0
-        )
-        rejected_batch = torch.stack(
-            [_pad(t, max_len) for t in rejected_list], dim=0
-        )
+        chosen_batch = torch.stack([_pad(t, max_len) for t in chosen_list], dim=0)
+        rejected_batch = torch.stack([_pad(t, max_len) for t in rejected_list], dim=0)
 
         step_result = self.variant_trainer.train_step(
             chosen_ids=chosen_batch,
@@ -535,9 +519,7 @@ class OnlineDPOTrainer:
             rejected_labels=rejected_batch.clone(),
         )
 
-        mean_reward_gap = torch.tensor(
-            sum(reward_gaps) / len(reward_gaps), dtype=torch.float32
-        )
+        mean_reward_gap = torch.tensor(sum(reward_gaps) / len(reward_gaps), dtype=torch.float32)
 
         return {
             "loss": step_result["loss"],
@@ -562,6 +544,4 @@ class OnlineDPOTrainer:
             for ref_param, policy_param in zip(
                 self.ref_model.parameters(), self.policy_model.parameters()
             ):
-                ref_param.data.mul_(1.0 - alpha).add_(
-                    policy_param.data, alpha=alpha
-                )
+                ref_param.data.mul_(1.0 - alpha).add_(policy_param.data, alpha=alpha)

@@ -1,20 +1,21 @@
 """Tests for greedy bin-packing with cross-document loss masking."""
+
 import math
-import pytest
+
 import torch
+
 from src.data.sequence_packing import (
     PackingConfig,
-    PackedBatch,
-    greedy_pack,
     compute_document_mask,
     create_block_diagonal_attention_mask,
+    greedy_pack,
     pack_dataset,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_seqs(lengths, start=1):
     """Create 1-D token-id tensors with distinct values per sequence."""
@@ -29,6 +30,7 @@ def _make_seqs(lengths, start=1):
 # ---------------------------------------------------------------------------
 # greedy_pack tests
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_pack_output_shape():
     """input_ids must be (n_chunks, max_seq_len)."""
@@ -132,6 +134,7 @@ def test_greedy_pack_n_docs_packed():
 # compute_document_mask tests
 # ---------------------------------------------------------------------------
 
+
 def test_compute_document_mask_first_false():
     """First position in every chunk must always be False (no boundary before it)."""
     doc_ids = torch.tensor([[0, 0, 1, 1, 2], [0, 1, 1, 2, 2]], dtype=torch.long)
@@ -147,14 +150,15 @@ def test_compute_document_mask_boundary_detected():
     # Boundaries at positions 2 and 4
     assert not mask[0, 0]
     assert not mask[0, 1]
-    assert mask[0, 2]   # 0 -> 1
+    assert mask[0, 2]  # 0 -> 1
     assert not mask[0, 3]
-    assert mask[0, 4]   # 1 -> 2
+    assert mask[0, 4]  # 1 -> 2
 
 
 # ---------------------------------------------------------------------------
 # create_block_diagonal_attention_mask tests
 # ---------------------------------------------------------------------------
+
 
 def test_block_diagonal_attn_mask_shape():
     """Output must be (n_chunks, max_seq_len, max_seq_len)."""
@@ -197,6 +201,7 @@ def test_block_diagonal_cross_doc_blocked():
 # ---------------------------------------------------------------------------
 # pack_dataset tests
 # ---------------------------------------------------------------------------
+
 
 def test_pack_dataset_all_docs_included():
     """Total real tokens == sum of sequence lengths + one EOS per sequence."""

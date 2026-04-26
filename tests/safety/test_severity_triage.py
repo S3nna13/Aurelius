@@ -126,14 +126,16 @@ def test_critical_threshold_reachable():
 
 
 def test_high_threshold():
-    t = SeverityTriage(keywords=[("rce", 1.0)])
+    SeverityTriage(keywords=[("rce", 1.0)])
     # Score of 0.5 cannot be produced with single-keyword above; verify mapping.
     from src.safety.severity_triage import _severity_for_score
-    assert _severity_for_score(0.5) == SeverityLevel.HIGH
-    assert _severity_for_score(0.7) == SeverityLevel.CRITICAL
-    assert _severity_for_score(0.3) == SeverityLevel.MEDIUM
-    assert _severity_for_score(0.1) == SeverityLevel.LOW
-    assert _severity_for_score(0.05) == SeverityLevel.INFO
+
+    # Compare by name to survive module reloads that recreate the enum class.
+    assert _severity_for_score(0.5).name == SeverityLevel.HIGH.name
+    assert _severity_for_score(0.7).name == SeverityLevel.CRITICAL.name
+    assert _severity_for_score(0.3).name == SeverityLevel.MEDIUM.name
+    assert _severity_for_score(0.1).name == SeverityLevel.LOW.name
+    assert _severity_for_score(0.05).name == SeverityLevel.INFO.name
 
 
 def test_confidence_scales_with_matches(triage: SeverityTriage):

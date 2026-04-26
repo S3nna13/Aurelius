@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Any, Generator
+from typing import Any
 
 import httpx
 
@@ -40,9 +41,7 @@ class ChatClient:
     model: str = "aurelius"
     """Model name to use in API calls."""
 
-    system_prompt: str = (
-        "You are Aurelius, a helpful, harmless, and honest AI assistant."
-    )
+    system_prompt: str = "You are Aurelius, a helpful, harmless, and honest AI assistant."
 
     temperature: float = 0.7
     top_p: float = 0.9
@@ -143,7 +142,7 @@ class ChatClient:
                     if not line.startswith("data: "):
                         continue
 
-                    data_str = line[len("data: "):]
+                    data_str = line[len("data: ") :]
                     if data_str.strip() == "[DONE]":
                         break
 
@@ -221,7 +220,7 @@ def interactive_session(client: ChatClient, *, stream: bool = True) -> None:
             continue
 
         if user_input.startswith("/system "):
-            new_prompt = user_input[len("/system "):]
+            new_prompt = user_input[len("/system ") :]
             client.set_system_prompt(new_prompt)
             print(f"[System prompt updated: {new_prompt[:80]}...]")
             continue

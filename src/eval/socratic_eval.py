@@ -4,11 +4,12 @@ The model critiques its own reasoning by answering targeted yes/no questions
 about response quality. Scores are derived from logit probabilities over the
 yes/no tokens at the first generated position.
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -22,11 +23,13 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SocraticConfig:
     """Configuration for Socratic self-evaluation."""
-    n_critique_questions: int = 5   # questions per response
-    max_new_tokens: int = 20        # tokens to generate per answer
+
+    n_critique_questions: int = 5  # questions per response
+    max_new_tokens: int = 20  # tokens to generate per answer
     score_from_logits: bool = True  # use logit probabilities for scoring
     temperature: float = 0.7
 
@@ -48,26 +51,29 @@ QUESTION_POLARITIES: list[bool] = [True, True, False, True, False]
 
 # Token IDs for a byte-level tokenizer: ord('y') = 121, ord('n') = 110
 YES_TOKEN_ID: int = 121  # ord('y')
-NO_TOKEN_ID: int = 110   # ord('n')
+NO_TOKEN_ID: int = 110  # ord('n')
 
 
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CritiqueResult:
     """Result of a single critique question."""
+
     question: str
-    answer: str           # generated answer text
+    answer: str  # generated answer text
     yes_probability: float
     no_probability: float
-    score: float          # 0-1 quality score derived from yes/no probs + polarity
+    score: float  # 0-1 quality score derived from yes/no probs + polarity
 
 
 # ---------------------------------------------------------------------------
 # Core functions
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def score_from_logits(
@@ -102,7 +108,7 @@ def score_from_logits(
     input_ids = input_ids.to(device)
 
     _, logits, _ = model(input_ids)  # (1, T, V)
-    last_logits = logits[0, -1, :]   # (V,)
+    last_logits = logits[0, -1, :]  # (V,)
     probs = F.softmax(last_logits.float(), dim=-1)
 
     p_yes = probs[yes_token_id].item()
@@ -170,13 +176,11 @@ def greedy_decode(
         if current_ids.shape[1] > max_seq_len:
             current_ids = current_ids[:, -max_seq_len:]
 
-        _, logits, _ = model(current_ids)   # (1, T, V)
+        _, logits, _ = model(current_ids)  # (1, T, V)
         next_token = logits[0, -1, :].argmax(dim=-1)  # greedy
         next_token_id = int(next_token.item())
         generated.append(next_token_id)
-        current_ids = torch.cat(
-            [current_ids, next_token.unsqueeze(0).unsqueeze(0)], dim=1
-        )
+        current_ids = torch.cat([current_ids, next_token.unsqueeze(0).unsqueeze(0)], dim=1)
 
     return torch.tensor(generated, dtype=torch.long)
 
@@ -214,9 +218,7 @@ def critique_response(
     prompt = f"Question: {question}\nResponse: {response}\n{critique_question}"
 
     # Get yes/no probabilities from logits
-    p_yes, p_no = score_from_logits(
-        model, encode_fn, prompt, YES_TOKEN_ID, NO_TOKEN_ID
-    )
+    p_yes, p_no = score_from_logits(model, encode_fn, prompt, YES_TOKEN_ID, NO_TOKEN_ID)
 
     # Generate answer text
     ids = encode_fn(prompt)
@@ -300,6 +302,7 @@ def socratic_evaluate(
 # ---------------------------------------------------------------------------
 # SocraticEvaluator class
 # ---------------------------------------------------------------------------
+
 
 class SocraticEvaluator:
     """Batch Socratic evaluation of model responses."""

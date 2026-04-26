@@ -8,8 +8,8 @@ with bounded memory.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Generator
 
 import torch
 
@@ -28,7 +28,9 @@ class SinkConfig:
         if self.window_size < 1:
             raise ValueError("window_size must be at least 1")
         if self.eviction_policy not in ("fifo", "lru"):
-            raise ValueError(f"eviction_policy must be 'fifo' or 'lru', got '{self.eviction_policy}'")
+            raise ValueError(
+                f"eviction_policy must be 'fifo' or 'lru', got '{self.eviction_policy}'"
+            )
 
 
 @dataclass
@@ -77,7 +79,7 @@ class SinkKVCache:
             # Sort window indices by access count (ascending), then take the most accessed
             window_indices.sort(key=lambda i: self._access_counts[i])
             # Keep the most accessed (last in sorted order)
-            keep_window = window_indices[-(self.config.window_size):]
+            keep_window = window_indices[-(self.config.window_size) :]
             keep_window.sort()  # preserve order
             keep_indices = list(range(n_sink)) + keep_window
 

@@ -14,25 +14,26 @@ References:
   Efficient Deployment" arXiv:1908.09791
   Yu et al. 2019 "Slimmable Neural Networks" arXiv:1812.08928
 """
+
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config & Spec
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OFAConfig:
     """Configuration for the Once-For-All supernet."""
+
     d_model_choices: list = field(default_factory=lambda: [32, 48, 64])
     d_ff_choices: list = field(default_factory=lambda: [64, 128, 256])
     n_layer_choices: list = field(default_factory=lambda: [1, 2])
@@ -43,6 +44,7 @@ class OFAConfig:
 @dataclass
 class SubnetSpec:
     """Specifies a concrete subnet configuration to extract from the supernet."""
+
     d_model: int
     d_ff: int
     n_layers: int
@@ -51,6 +53,7 @@ class SubnetSpec:
 # ---------------------------------------------------------------------------
 # SlimmableLinear
 # ---------------------------------------------------------------------------
+
 
 class SlimmableLinear(nn.Module):
     """Linear layer with a single weight matrix that can be sliced.
@@ -70,8 +73,8 @@ class SlimmableLinear(nn.Module):
     def forward(
         self,
         x: Tensor,
-        in_features: Optional[int] = None,
-        out_features: Optional[int] = None,
+        in_features: int | None = None,
+        out_features: int | None = None,
     ) -> Tensor:
         in_f = in_features if in_features is not None else self.max_in
         out_f = out_features if out_features is not None else self.max_out
@@ -83,6 +86,7 @@ class SlimmableLinear(nn.Module):
 # ---------------------------------------------------------------------------
 # OFABlock
 # ---------------------------------------------------------------------------
+
 
 class OFABlock(nn.Module):
     """Elastic FFN block with SwiGLU activation and slimmable projections.
@@ -104,8 +108,8 @@ class OFABlock(nn.Module):
     def forward(
         self,
         x: Tensor,
-        d_model: Optional[int] = None,
-        d_ff: Optional[int] = None,
+        d_model: int | None = None,
+        d_ff: int | None = None,
     ) -> Tensor:
         dm = d_model if d_model is not None else self.max_d_model
         df = d_ff if d_ff is not None else self.max_d_ff
@@ -127,6 +131,7 @@ class OFABlock(nn.Module):
 # OneShotSuperNet
 # ---------------------------------------------------------------------------
 
+
 class OneShotSuperNet(nn.Module):
     """One-shot supernet that covers all subnet configurations.
 
@@ -142,17 +147,16 @@ class OneShotSuperNet(nn.Module):
         self.vocab_size = config.vocab_size
 
         self.embed = nn.Embedding(config.vocab_size, self.max_d_model)
-        self.blocks = nn.ModuleList([
-            OFABlock(self.max_d_model, self.max_d_ff)
-            for _ in range(self.max_n_layers)
-        ])
+        self.blocks = nn.ModuleList(
+            [OFABlock(self.max_d_model, self.max_d_ff) for _ in range(self.max_n_layers)]
+        )
         # Head: always full d_model -> vocab_size (output projection fixed)
         self.head = nn.Linear(self.max_d_model, config.vocab_size, bias=False)
 
     def forward(
         self,
         input_ids: Tensor,
-        spec: Optional[SubnetSpec] = None,
+        spec: SubnetSpec | None = None,
     ) -> tuple:
         dm = spec.d_model if spec is not None else self.max_d_model
         df = spec.d_ff if spec is not None else self.max_d_ff
@@ -188,10 +192,14 @@ class OneShotSuperNet(nn.Module):
         embed_params = self.vocab_size * dm
         # Each OFABlock: gate_proj + up_proj + down_proj + norm + biases
         block_params = (
-            dm * df + df  # gate_proj weight + bias
-            + dm * df + df  # up_proj weight + bias
-            + df * dm + dm  # down_proj weight + bias
-            + dm + dm  # LayerNorm weight + bias
+            dm * df
+            + df  # gate_proj weight + bias
+            + dm * df
+            + df  # up_proj weight + bias
+            + df * dm
+            + dm  # down_proj weight + bias
+            + dm
+            + dm  # LayerNorm weight + bias
         )
         # Head: dm * vocab_size (no bias)
         head_params = dm * self.vocab_size
@@ -201,6 +209,7 @@ class OneShotSuperNet(nn.Module):
 # ---------------------------------------------------------------------------
 # OFATrainer
 # ---------------------------------------------------------------------------
+
 
 class OFATrainer:
     """Trainer that optimizes the supernet via random subnet sampling."""

@@ -11,14 +11,10 @@ Implements composable token-sampling filters:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -30,14 +26,14 @@ class SamplingConfig:
     """Configuration for all token-sampling filters and DRY penalty."""
 
     temperature: float = 1.0
-    top_k: int = 0             # 0 = disabled
-    top_p: float = 1.0         # 1.0 = disabled
-    min_p: float = 0.0         # 0.0 = disabled
-    typical_p: float = 1.0     # 1.0 = disabled
-    repetition_penalty: float = 1.0   # 1.0 = disabled
+    top_k: int = 0  # 0 = disabled
+    top_p: float = 1.0  # 1.0 = disabled
+    min_p: float = 0.0  # 0.0 = disabled
+    typical_p: float = 1.0  # 1.0 = disabled
+    repetition_penalty: float = 1.0  # 1.0 = disabled
 
     # DRY (Don't Repeat Yourself) repetition penalty
-    dry_multiplier: float = 0.0       # 0.0 = disabled
+    dry_multiplier: float = 0.0  # 0.0 = disabled
     dry_base: float = 1.75
     dry_allowed_length: int = 2
 
@@ -148,7 +144,7 @@ class DRYRepetitionPenalty:
         self.base = base
         self.allowed_length = allowed_length
 
-    def _longest_suffix_match(self, context: List[int], token: int) -> int:
+    def _longest_suffix_match(self, context: list[int], token: int) -> int:
         """Return the length of the longest suffix of context+[token] that
         appears as a sub-sequence starting somewhere earlier in context."""
         seq = context + [token]
@@ -161,8 +157,7 @@ class DRYRepetitionPenalty:
         # strictly earlier than the very last position).
         for start in range(seq_len - 1):
             # Length of the potential match from this start
-            potential = 0
-            tail_start = seq_len - 1  # last added token index in seq
+            seq_len - 1  # last added token index in seq
 
             # Walk forward from `start` and backward from tail
             # to find how many tokens match the current suffix
@@ -186,7 +181,7 @@ class DRYRepetitionPenalty:
 
         return max_match
 
-    def _longest_suffix_match_fast(self, context: List[int], token: int) -> int:
+    def _longest_suffix_match_fast(self, context: list[int], token: int) -> int:
         """Efficient suffix-match: find longest suffix of context+[token]
         that appears as a contiguous sub-sequence starting earlier in context."""
         seq = context + [token]
@@ -203,7 +198,6 @@ class DRYRepetitionPenalty:
             # We want the longest L such that seq[i:i+L] == seq[n-L:n]
             # Equivalently, match seq[i+k] == seq[n-L+k] for k in 0..L-1
             # Grow the match greedily
-            j = i
             # The suffix tail pointer starts at the end and works backward
             # Grow from length=1 upward
             for length in range(1, n - i + 1):
@@ -222,7 +216,7 @@ class DRYRepetitionPenalty:
                 best = max(best, length)
         return best
 
-    def compute_penalty(self, logits: Tensor, context_ids: List[int]) -> Tensor:
+    def compute_penalty(self, logits: Tensor, context_ids: list[int]) -> Tensor:
         """Apply DRY penalty and return modified logits.
 
         Args:
@@ -259,7 +253,7 @@ class LogitsProcessor:
         self.config = config
         self._min_p = MinPSampling()
         self._typical = TypicalSampling()
-        self._dry: Optional[DRYRepetitionPenalty] = None
+        self._dry: DRYRepetitionPenalty | None = None
         if config.dry_multiplier > 0.0:
             self._dry = DRYRepetitionPenalty(
                 multiplier=config.dry_multiplier,
@@ -278,7 +272,7 @@ class LogitsProcessor:
             return logits
         return logits / t
 
-    def apply_repetition_penalty(self, logits: Tensor, context_ids: List[int]) -> Tensor:
+    def apply_repetition_penalty(self, logits: Tensor, context_ids: list[int]) -> Tensor:
         """Standard repetition penalty: divide positive logits, multiply negative ones."""
         penalty = self.config.repetition_penalty
         if penalty == 1.0 or not context_ids:
@@ -332,7 +326,7 @@ class LogitsProcessor:
     def process(
         self,
         logits: Tensor,
-        context_ids: Optional[List[int]] = None,
+        context_ids: list[int] | None = None,
     ) -> Tensor:
         """Apply all enabled filters in order.
 
@@ -411,7 +405,7 @@ class Sampler:
         logits: Tensor,
         beam_scores: Tensor,
         beam_size: int,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """One beam-search expansion step.
 
         For each of the `beam` active hypotheses, add the log-softmax of
@@ -431,7 +425,7 @@ class Sampler:
             # Broadcast single logit vector across all beams
             logits = logits.unsqueeze(0).expand(beam_scores.shape[0], -1)
 
-        beam = beam_scores.shape[0]
+        beam_scores.shape[0]
         vocab = logits.shape[-1]
 
         log_probs = torch.log_softmax(logits, dim=-1)  # (beam, V)
@@ -443,7 +437,7 @@ class Sampler:
         flat_scores = candidate_scores.view(-1)  # (beam * V,)
         top_scores, top_indices = torch.topk(flat_scores, k=beam_size)
 
-        new_beam_scores = top_scores                   # (beam_size,)
-        new_token_ids = top_indices % vocab            # (beam_size,)
+        new_beam_scores = top_scores  # (beam_size,)
+        new_token_ids = top_indices % vocab  # (beam_size,)
 
         return new_beam_scores, new_token_ids

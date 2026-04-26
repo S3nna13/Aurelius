@@ -168,7 +168,7 @@ class SBOMGenerator:
             import tomllib  # Python 3.11+
         except ImportError:
             try:
-                import tomli as tomllib  # type: ignore[no-reattr]
+                import tomli as tomllib  # type: ignore[no-redef]
             except ImportError:
                 # Cannot parse toml; return stub
                 return [

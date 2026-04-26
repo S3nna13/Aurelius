@@ -66,6 +66,7 @@ def target_ids() -> torch.Tensor:
 # 1. GCGConfig defaults are correct
 # ---------------------------------------------------------------------------
 
+
 def test_gcg_config_defaults():
     cfg = GCGConfig()
     assert cfg.suffix_len == 10
@@ -79,6 +80,7 @@ def test_gcg_config_defaults():
 # 2. GCGAttack instantiates without error
 # ---------------------------------------------------------------------------
 
+
 def test_gcg_attack_instantiation(model: AureliusTransformer):
     att = GCGAttack(model, SMALL_GCG)
     assert att is not None
@@ -90,7 +92,10 @@ def test_gcg_attack_instantiation(model: AureliusTransformer):
 # 3. _token_gradients returns shape (suffix_len, vocab_size)
 # ---------------------------------------------------------------------------
 
-def test_token_gradients_shape(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_token_gradients_shape(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     suffix_len = SMALL_GCG.suffix_len
     suffix_ids = torch.randint(0, TINY_CFG.vocab_size, (1, suffix_len))
     input_ids = torch.cat([prefix_ids, suffix_ids], dim=1)
@@ -104,7 +109,10 @@ def test_token_gradients_shape(attacker: GCGAttack, prefix_ids: torch.Tensor, ta
 # 4. _token_gradients values are finite
 # ---------------------------------------------------------------------------
 
-def test_token_gradients_finite(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_token_gradients_finite(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     suffix_len = SMALL_GCG.suffix_len
     suffix_ids = torch.randint(0, TINY_CFG.vocab_size, (1, suffix_len))
     input_ids = torch.cat([prefix_ids, suffix_ids], dim=1)
@@ -117,6 +125,7 @@ def test_token_gradients_finite(attacker: GCGAttack, prefix_ids: torch.Tensor, t
 # ---------------------------------------------------------------------------
 # 5. _sample_candidates returns shape (n_candidates, suffix_len)
 # ---------------------------------------------------------------------------
+
 
 def test_sample_candidates_shape(attacker: GCGAttack):
     suffix_len = SMALL_GCG.suffix_len
@@ -133,6 +142,7 @@ def test_sample_candidates_shape(attacker: GCGAttack):
 # ---------------------------------------------------------------------------
 # 6. Candidates contain only valid token ids in [0, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_sample_candidates_valid_token_range(attacker: GCGAttack):
     suffix_len = SMALL_GCG.suffix_len
@@ -151,7 +161,10 @@ def test_sample_candidates_valid_token_range(attacker: GCGAttack):
 # 7. _eval_loss returns a scalar float
 # ---------------------------------------------------------------------------
 
-def test_loss_computation_returns_scalar(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_loss_computation_returns_scalar(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     suffix_ids = torch.randint(0, TINY_CFG.vocab_size, (1, SMALL_GCG.suffix_len))
 
     loss = attacker._eval_loss(prefix_ids, suffix_ids, target_ids)
@@ -163,7 +176,10 @@ def test_loss_computation_returns_scalar(attacker: GCGAttack, prefix_ids: torch.
 # 8. _eval_loss is finite
 # ---------------------------------------------------------------------------
 
-def test_loss_computation_is_finite(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_loss_computation_is_finite(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     suffix_ids = torch.randint(0, TINY_CFG.vocab_size, (1, SMALL_GCG.suffix_len))
 
     loss = attacker._eval_loss(prefix_ids, suffix_ids, target_ids)
@@ -174,6 +190,7 @@ def test_loss_computation_is_finite(attacker: GCGAttack, prefix_ids: torch.Tenso
 # ---------------------------------------------------------------------------
 # 9. run returns a tuple of (LongTensor, float, list)
 # ---------------------------------------------------------------------------
+
 
 def test_run_return_types(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
     result = attacker.run(prefix_ids, target_ids)
@@ -192,6 +209,7 @@ def test_run_return_types(attacker: GCGAttack, prefix_ids: torch.Tensor, target_
 # 10. best_suffix shape is (suffix_len,)
 # ---------------------------------------------------------------------------
 
+
 def test_best_suffix_shape(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
     best_suffix, _, _ = attacker.run(prefix_ids, target_ids)
 
@@ -202,7 +220,10 @@ def test_best_suffix_shape(attacker: GCGAttack, prefix_ids: torch.Tensor, target
 # 11. loss_history has n_steps elements
 # ---------------------------------------------------------------------------
 
-def test_loss_history_length(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_loss_history_length(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     _, _, loss_history = attacker.run(prefix_ids, target_ids)
 
     assert len(loss_history) == SMALL_GCG.n_steps
@@ -212,7 +233,10 @@ def test_loss_history_length(attacker: GCGAttack, prefix_ids: torch.Tensor, targ
 # 12. best_loss matches min of loss_history (approximately)
 # ---------------------------------------------------------------------------
 
-def test_best_loss_equals_min_of_history(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_best_loss_equals_min_of_history(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     _, best_loss, loss_history = attacker.run(prefix_ids, target_ids)
 
     assert math.isclose(best_loss, min(loss_history), rel_tol=1e-5), (
@@ -224,7 +248,10 @@ def test_best_loss_equals_min_of_history(attacker: GCGAttack, prefix_ids: torch.
 # 13. Suffix tokens are in valid range [0, vocab_size)
 # ---------------------------------------------------------------------------
 
-def test_best_suffix_token_range(attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor):
+
+def test_best_suffix_token_range(
+    attacker: GCGAttack, prefix_ids: torch.Tensor, target_ids: torch.Tensor
+):
     vocab_size = TINY_CFG.vocab_size
     best_suffix, _, _ = attacker.run(prefix_ids, target_ids)
 

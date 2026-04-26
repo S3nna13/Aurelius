@@ -1,18 +1,16 @@
 """Tests for agent_supervisor — lifecycle, health, and crash budgets."""
-from __future__ import annotations
 
-import time
+from __future__ import annotations
 
 import pytest
 
 from src.agent.supervisor import (
+    DEFAULT_SUPERVISOR,
+    SUPERVISOR_REGISTRY,
     AgentState,
     AgentSupervisor,
     SupervisorConfig,
-    SUPERVISOR_REGISTRY,
-    DEFAULT_SUPERVISOR,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registration and start

@@ -12,7 +12,6 @@ from src.ui.keyboard_nav import (
     KeyboardNav,
 )
 
-
 # ---------------------------------------------------------------------------
 # Built-in bindings
 # ---------------------------------------------------------------------------
@@ -102,9 +101,7 @@ def test_register_duplicate_raises() -> None:
     KeyboardNav.register(binding)
     try:
         with pytest.raises(KeyBindingError):
-            KeyboardNav.register(
-                KeyBinding(key="_testkey_dup", description="dup2", action="dup2")
-            )
+            KeyboardNav.register(KeyBinding(key="_testkey_dup", description="dup2", action="dup2"))
     finally:
         del KeyboardNav.BINDINGS["_testkey_dup"]
 

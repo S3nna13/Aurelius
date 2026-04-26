@@ -38,9 +38,8 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -275,12 +274,8 @@ _ADDRESS = re.compile(
 # API keys / tokens. We keep three well-known prefixes with high confidence
 # and one generic high-entropy fallback with low confidence.
 _AWS_KEY = re.compile(r"(?<![A-Z0-9])AKIA[0-9A-Z]{16}(?![A-Z0-9])")
-_GITHUB_TOKEN = re.compile(
-    r"(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36,255}(?![A-Za-z0-9_])"
-)
-_SLACK_TOKEN = re.compile(
-    r"(?<![A-Za-z0-9_])xox[baprs]-[A-Za-z0-9\-]{10,}(?![A-Za-z0-9_])"
-)
+_GITHUB_TOKEN = re.compile(r"(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36,255}(?![A-Za-z0-9_])")
+_SLACK_TOKEN = re.compile(r"(?<![A-Za-z0-9_])xox[baprs]-[A-Za-z0-9\-]{10,}(?![A-Za-z0-9_])")
 # Generic high-entropy alnum string, 32+ chars. Confidence is intentionally low
 # so it never out-votes a checksummed hit.
 _GENERIC_KEY = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9]{32,}(?![A-Za-z0-9])")
@@ -322,19 +317,14 @@ class PIIDetector:
                 f"{sorted(_REDACTION_MODES)}"
             )
         if not 0.0 <= float(confidence_threshold) <= 1.0:
-            raise ValueError(
-                "confidence_threshold must lie in [0, 1], got "
-                f"{confidence_threshold}"
-            )
+            raise ValueError(f"confidence_threshold must lie in [0, 1], got {confidence_threshold}")
         if types is None:
             enabled = set(PII_TYPES)
         else:
             enabled = set()
             for t in types:
                 if t not in PII_TYPES:
-                    raise ValueError(
-                        f"unknown PII type {t!r}; known types: {PII_TYPES}"
-                    )
+                    raise ValueError(f"unknown PII type {t!r}; known types: {PII_TYPES}")
                 enabled.add(t)
         self._redaction_mode = redaction_mode
         self._types = frozenset(enabled)
@@ -412,9 +402,7 @@ class PIIDetector:
                 raw = mo.group(0)
                 digits = re.sub(r"[ \-]", "", raw)
                 if luhn_valid(digits):
-                    out.append(
-                        PIIMatch("credit_card", raw, mo.span(), 0.99)
-                    )
+                    out.append(PIIMatch("credit_card", raw, mo.span(), 0.99))
         if "ipv4" in self._types:
             for mo in _IPV4.finditer(text):
                 try:
@@ -457,9 +445,7 @@ class PIIDetector:
             for mo in _GENERIC_KEY.finditer(text):
                 val = mo.group(0)
                 if _looks_like_token(val):
-                    out.append(
-                        PIIMatch("api_key", val, mo.span(), 0.55)
-                    )
+                    out.append(PIIMatch("api_key", val, mo.span(), 0.55))
 
 
 # ---------------------------------------------------------------------------

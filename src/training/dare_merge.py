@@ -12,10 +12,10 @@ TIES (Trim, Elect Sign, Merge) — Yadav et al. 2023 (improved):
 
 DARE-TIES combines both: apply DARE first, then TIES.
 """
+
 from __future__ import annotations
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Core helpers
@@ -63,9 +63,7 @@ def dare_drop(
         gen.manual_seed(key_seed)
 
         # Bernoulli mask: 1 = keep, 0 = drop
-        keep_mask = torch.bernoulli(
-            torch.full(delta.shape, 1.0 - drop_rate), generator=gen
-        )
+        keep_mask = torch.bernoulli(torch.full(delta.shape, 1.0 - drop_rate), generator=gen)
         result[key] = delta * keep_mask * rescale
 
     return result
@@ -190,9 +188,7 @@ def ties_merge(
         count = count.clamp(min=1.0)
         merged_tv = merged_tv / count
 
-        merged_state[key] = (base_param.float() + scaling_coeff * merged_tv).to(
-            base_param.dtype
-        )
+        merged_state[key] = (base_param.float() + scaling_coeff * merged_tv).to(base_param.dtype)
 
     return merged_state
 
@@ -297,8 +293,7 @@ class MergingPipeline:
         """
         if method not in self.SUPPORTED_METHODS:
             raise ValueError(
-                f"Unknown merge method '{method}'. "
-                f"Supported: {sorted(self.SUPPORTED_METHODS)}"
+                f"Unknown merge method '{method}'. Supported: {sorted(self.SUPPORTED_METHODS)}"
             )
         if not self.finetuned_states:
             return {k: v.clone() for k, v in self.base_state.items()}
@@ -308,9 +303,7 @@ class MergingPipeline:
         elif method == "ties":
             return self._merge_ties(**kwargs)
         elif method == "dare_ties":
-            return dare_ties_merge(
-                self.finetuned_states, self.base_state, **kwargs
-            )
+            return dare_ties_merge(self.finetuned_states, self.base_state, **kwargs)
         elif method == "simple_average":
             return self._merge_simple_average()
         elif method == "weighted_average":
@@ -342,8 +335,7 @@ class MergingPipeline:
         common_keys = [
             k
             for k in merged_state
-            if k in reference_state
-            and merged_state[k].shape == reference_state[k].shape
+            if k in reference_state and merged_state[k].shape == reference_state[k].shape
         ]
 
         for key in common_keys:
@@ -395,25 +387,20 @@ class MergingPipeline:
         merged_state: dict[str, torch.Tensor] = {}
         for key in self.base_state:
             base_param = self.base_state[key]
-            deltas = [
-                tv[key].float() for tv in task_vectors if key in tv
-            ]
+            deltas = [tv[key].float() for tv in task_vectors if key in tv]
             if not deltas:
                 merged_state[key] = base_param.clone()
                 continue
             avg_delta = torch.stack(deltas).mean(dim=0)
-            merged_state[key] = (
-                base_param.float() + scaling_coeff * avg_delta
-            ).to(base_param.dtype)
+            merged_state[key] = (base_param.float() + scaling_coeff * avg_delta).to(
+                base_param.dtype
+            )
 
         return merged_state
 
     def _merge_ties(self, **kwargs) -> dict[str, torch.Tensor]:
         """TIES only (no DARE)."""
-        task_vectors = [
-            compute_task_vector(ft, self.base_state)
-            for ft in self.finetuned_states
-        ]
+        task_vectors = [compute_task_vector(ft, self.base_state) for ft in self.finetuned_states]
         return ties_merge(task_vectors, self.base_state, **kwargs)
 
     def _merge_simple_average(self) -> dict[str, torch.Tensor]:

@@ -4,7 +4,6 @@ Tests for src/workflow/parallel_step.py
 """
 
 import dataclasses
-import threading
 import time
 import unittest
 
@@ -15,10 +14,10 @@ from src.workflow.parallel_step import (
     StepTask,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_task(name: str, fn, timeout_s: float = 30.0) -> StepTask:
     return StepTask(name=name, fn=fn, timeout_s=timeout_s)
@@ -34,9 +33,11 @@ def fail_fn():
 
 def slow_fn(seconds: float = 0.5):
     """Blocks for *seconds* then returns."""
+
     def _inner():
         time.sleep(seconds)
         return "slow_done"
+
     return _inner
 
 
@@ -50,8 +51,8 @@ def blocking_fn():
 # run() tests
 # ---------------------------------------------------------------------------
 
-class TestParallelStepExecutorRun(unittest.TestCase):
 
+class TestParallelStepExecutorRun(unittest.TestCase):
     def setUp(self):
         self.executor = ParallelStepExecutor(max_workers=4)
 
@@ -148,8 +149,8 @@ class TestParallelStepExecutorRun(unittest.TestCase):
 # run_with_timeout() tests
 # ---------------------------------------------------------------------------
 
-class TestParallelStepExecutorRunWithTimeout(unittest.TestCase):
 
+class TestParallelStepExecutorRunWithTimeout(unittest.TestCase):
     def setUp(self):
         self.executor = ParallelStepExecutor(max_workers=4)
 
@@ -203,8 +204,8 @@ class TestParallelStepExecutorRunWithTimeout(unittest.TestCase):
 # ParallelResult frozen dataclass tests
 # ---------------------------------------------------------------------------
 
-class TestParallelResultFrozen(unittest.TestCase):
 
+class TestParallelResultFrozen(unittest.TestCase):
     def test_parallel_result_is_frozen(self):
         pr = ParallelResult(name="x", success=True, output=None, error="", duration_ms=1.0)
         with self.assertRaises((dataclasses.FrozenInstanceError, AttributeError)):
@@ -223,8 +224,8 @@ class TestParallelResultFrozen(unittest.TestCase):
 # Registry tests
 # ---------------------------------------------------------------------------
 
-class TestRegistry(unittest.TestCase):
 
+class TestRegistry(unittest.TestCase):
     def test_registry_has_default_key(self):
         self.assertIn("default", PARALLEL_STEP_REGISTRY)
 

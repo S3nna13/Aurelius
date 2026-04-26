@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.federation.client_selector import (
+    CLIENT_SELECTOR_REGISTRY,
     ClientProfile,
     ClientSelector,
     SelectionStrategy,
-    CLIENT_SELECTOR_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_profile(
     client_id: str,
@@ -40,6 +38,7 @@ def register_n(selector: ClientSelector, n: int) -> list[ClientProfile]:
 # ---------------------------------------------------------------------------
 # ClientProfile dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestClientProfile:
     def test_required_field_stored(self):
@@ -69,6 +68,7 @@ class TestClientProfile:
 # register / client_count
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterAndCount:
     def test_initial_count_zero(self):
         sel = ClientSelector()
@@ -94,6 +94,7 @@ class TestRegisterAndCount:
 # ---------------------------------------------------------------------------
 # deregister
 # ---------------------------------------------------------------------------
+
 
 class TestDeregister:
     def test_deregister_existing_returns_true(self):
@@ -122,6 +123,7 @@ class TestDeregister:
 # ---------------------------------------------------------------------------
 # select — general
 # ---------------------------------------------------------------------------
+
 
 class TestSelectGeneral:
     def test_select_zero_clients_returns_empty(self):
@@ -160,6 +162,7 @@ class TestSelectGeneral:
 # select — RANDOM
 # ---------------------------------------------------------------------------
 
+
 class TestSelectRandom:
     def test_random_count_correct(self):
         sel = ClientSelector(SelectionStrategy.RANDOM)
@@ -189,6 +192,7 @@ class TestSelectRandom:
 # ---------------------------------------------------------------------------
 # select — POWER_OF_CHOICE
 # ---------------------------------------------------------------------------
+
 
 class TestSelectPowerOfChoice:
     def test_poc_count_correct(self):
@@ -221,6 +225,7 @@ class TestSelectPowerOfChoice:
 # select — RESOURCE_AWARE
 # ---------------------------------------------------------------------------
 
+
 class TestSelectResourceAware:
     def test_resource_aware_count_correct(self):
         sel = ClientSelector(SelectionStrategy.RESOURCE_AWARE)
@@ -252,6 +257,7 @@ class TestSelectResourceAware:
 # ---------------------------------------------------------------------------
 # select — ROUND_ROBIN
 # ---------------------------------------------------------------------------
+
 
 class TestSelectRoundRobin:
     def test_round_robin_count_correct(self):
@@ -287,6 +293,7 @@ class TestSelectRoundRobin:
 # ---------------------------------------------------------------------------
 # CLIENT_SELECTOR_REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestClientSelectorRegistry:
     def test_registry_exists(self):

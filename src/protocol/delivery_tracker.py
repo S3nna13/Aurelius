@@ -4,12 +4,12 @@ Tracks send/ack state with monotonic timeouts and retry budgets.
 Fail closed: unacknowledged messages after max retries are surfaced
 as failed deliveries, not silently dropped.
 """
+
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 class DeliveryStatus(Enum):
@@ -122,11 +122,7 @@ class DeliveryTracker:
 
     def pending_ids(self) -> list[str]:
         """Return message_ids currently in PENDING status."""
-        return [
-            mid
-            for mid, r in self._records.items()
-            if r.status == DeliveryStatus.PENDING
-        ]
+        return [mid for mid, r in self._records.items() if r.status == DeliveryStatus.PENDING]
 
     def failed_ids(self) -> list[str]:
         """Return message_ids in FAILED or EXPIRED status."""

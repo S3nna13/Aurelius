@@ -1,16 +1,16 @@
 """Tests for src.memory.memory_retriever — 20+ tests."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.memory.memory_retriever import (
-    MemoryRetriever,
-    RetrievalResult,
-    MEMORY_RETRIEVER,
     _MAX_QUERY_LEN,
     _MAX_TOP_K,
+    MEMORY_RETRIEVER,
+    MemoryRetriever,
+    RetrievalResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # MemoryRetriever construction
@@ -126,7 +126,7 @@ def test_remove_entry_not_in_results():
 
 def test_remove_nonexistent_key_no_error():
     r = MemoryRetriever()
-    r.remove("ghost")   # should not raise
+    r.remove("ghost")  # should not raise
 
 
 def test_remove_updates_len():

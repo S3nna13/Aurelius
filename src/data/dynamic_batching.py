@@ -8,15 +8,14 @@ shuffling, which is important when training on variable-length text corpora.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BatchConfig:
@@ -31,10 +30,11 @@ class BatchConfig:
 # Standalone utilities
 # ---------------------------------------------------------------------------
 
+
 def pad_sequence_batch(
-    sequences: List[Tensor],
+    sequences: list[Tensor],
     pad_value: int = 0,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Pad a list of 1-D sequences to the length of the longest one.
 
     Args:
@@ -63,7 +63,7 @@ def pad_sequence_batch(
     return padded, attention_mask
 
 
-def compute_padding_ratio(sequences: List[Tensor]) -> float:
+def compute_padding_ratio(sequences: list[Tensor]) -> float:
     """Compute the average fraction of padding tokens if sequences were batched together.
 
     The batch is padded to the length of the longest sequence.  The ratio is
@@ -88,9 +88,9 @@ def compute_padding_ratio(sequences: List[Tensor]) -> float:
 
 
 def bucket_by_length(
-    sequences: List[Tensor],
+    sequences: list[Tensor],
     n_buckets: int,
-) -> List[List[Tensor]]:
+) -> list[list[Tensor]]:
     """Sort sequences by length and split into n_buckets equal-sized groups.
 
     If ``len(sequences)`` is not divisible by ``n_buckets``, the final bucket
@@ -112,7 +112,7 @@ def bucket_by_length(
     sorted_seqs = sorted(sequences, key=lambda s: s.shape[0])
     bucket_size = max(1, len(sorted_seqs) // n_buckets)
 
-    buckets: List[List[Tensor]] = []
+    buckets: list[list[Tensor]] = []
     for i in range(n_buckets):
         start = i * bucket_size
         if i < n_buckets - 1:
@@ -125,9 +125,9 @@ def bucket_by_length(
 
 
 def greedy_pack(
-    sequences: List[Tensor],
+    sequences: list[Tensor],
     max_tokens: int,
-) -> List[List[Tensor]]:
+) -> list[list[Tensor]]:
     """Greedily pack sequences into bins where total tokens <= max_tokens.
 
     Sequences are sorted by descending length before packing so that longer
@@ -146,8 +146,8 @@ def greedy_pack(
 
     sorted_seqs = sorted(sequences, key=lambda s: s.shape[0], reverse=True)
 
-    bins: List[List[Tensor]] = []
-    bin_sizes: List[int] = []
+    bins: list[list[Tensor]] = []
+    bin_sizes: list[int] = []
 
     for seq in sorted_seqs:
         L = seq.shape[0]
@@ -172,6 +172,7 @@ def greedy_pack(
 # DynamicBatcher
 # ---------------------------------------------------------------------------
 
+
 class DynamicBatcher:
     """Groups variable-length sequences into padded batches while respecting
     a per-batch token budget.
@@ -187,7 +188,7 @@ class DynamicBatcher:
     # Public methods
     # ------------------------------------------------------------------
 
-    def collate(self, sequences: List[Tensor]) -> Dict[str, Tensor]:
+    def collate(self, sequences: list[Tensor]) -> dict[str, Tensor]:
         """Pad a list of sequences into a single batch dict.
 
         If ``config.sort_by_length`` is True the sequences are sorted by
@@ -209,7 +210,7 @@ class DynamicBatcher:
         padded, attention_mask = pad_sequence_batch(sequences, pad_value=self.config.pad_token_id)
         return {"input_ids": padded, "attention_mask": attention_mask}
 
-    def create_batches(self, sequences: List[Tensor]) -> List[Dict[str, Tensor]]:
+    def create_batches(self, sequences: list[Tensor]) -> list[dict[str, Tensor]]:
         """Partition sequences into batches that respect the token budget.
 
         Algorithm:
@@ -234,8 +235,8 @@ class DynamicBatcher:
         # Sort by ascending length for padding efficiency
         sorted_seqs = sorted(sequences, key=lambda s: s.shape[0])
 
-        batches: List[Dict[str, Tensor]] = []
-        current_group: List[Tensor] = []
+        batches: list[dict[str, Tensor]] = []
+        current_group: list[Tensor] = []
         current_max_len = 0
 
         for seq in sorted_seqs:
@@ -265,7 +266,7 @@ class DynamicBatcher:
 
         return batches
 
-    def compute_efficiency(self, batches: List[Dict[str, Tensor]]) -> float:
+    def compute_efficiency(self, batches: list[dict[str, Tensor]]) -> float:
         """Compute padding efficiency across all batches.
 
         Efficiency = real_tokens / total_tokens, where ``total_tokens``

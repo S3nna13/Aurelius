@@ -1,4 +1,5 @@
 """Integration tests for MLA-256 registry wiring (GLM-5 §3.1, arXiv:2602.15763)."""
+
 from __future__ import annotations
 
 import torch
@@ -26,9 +27,7 @@ def test_mla_256_in_registry():
 # ---------------------------------------------------------------------------
 def test_registry_entry_is_mla256_attention():
     cls = MODEL_COMPONENT_REGISTRY["mla_256"]
-    assert cls is MLA256Attention, (
-        f"Registry['mla_256'] should be MLA256Attention, got {cls}"
-    )
+    assert cls is MLA256Attention, f"Registry['mla_256'] should be MLA256Attention, got {cls}"
 
 
 # ---------------------------------------------------------------------------

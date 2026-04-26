@@ -7,11 +7,9 @@ always succeed.
 
 from __future__ import annotations
 
-import sys
 from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Import-time sanity: module must load even without SGLang installed
@@ -71,11 +69,14 @@ def test_load_engine_raises_sglang_adapter_error_when_sglang_not_installed() -> 
 
     real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
 
-    with patch("builtins.__import__", side_effect=lambda name, *a, **kw: (
-        (_ for _ in ()).throw(ImportError("No module named 'sglang'"))
-        if name == "sglang"
-        else real_import(name, *a, **kw)
-    )):
+    with patch(
+        "builtins.__import__",
+        side_effect=lambda name, *a, **kw: (
+            (_ for _ in ()).throw(ImportError("No module named 'sglang'"))
+            if name == "sglang"
+            else real_import(name, *a, **kw)
+        ),
+    ):
         with pytest.raises(SGLangAdapterError, match="SGLang is not installed"):
             adapter._load_engine()
 
@@ -85,11 +86,14 @@ def test_load_engine_raises_when_sglang_missing_no_config() -> None:
     from src.backends.sglang_adapter import SGLangAdapter, SGLangAdapterError
 
     adapter = SGLangAdapter()  # no config
-    with patch("builtins.__import__", side_effect=lambda name, *a, **kw: (
-        (_ for _ in ()).throw(ImportError("No module named 'sglang'"))
-        if name == "sglang"
-        else (__import__(name, *a, **kw))
-    )):
+    with patch(
+        "builtins.__import__",
+        side_effect=lambda name, *a, **kw: (
+            (_ for _ in ()).throw(ImportError("No module named 'sglang'"))
+            if name == "sglang"
+            else (__import__(name, *a, **kw))
+        ),
+    ):
         with pytest.raises(SGLangAdapterError, match="SGLang is not installed"):
             adapter._load_engine()
 
@@ -183,7 +187,7 @@ def test_sglang_engine_adapter_describe_returns_dict() -> None:
 
 def test_backend_registry_contains_sglang_after_register() -> None:
     from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
-    from src.backends.sglang_adapter import register, SGLangAdapter
+    from src.backends.sglang_adapter import SGLangAdapter, register
 
     before_backend = dict(BACKEND_REGISTRY)
     before_engine = dict(ENGINE_ADAPTER_REGISTRY)
@@ -204,7 +208,7 @@ def test_backend_registry_contains_sglang_after_register() -> None:
 
 def test_engine_adapter_registry_contains_sglang_after_register() -> None:
     from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
-    from src.backends.sglang_adapter import register, SGLangEngineAdapter
+    from src.backends.sglang_adapter import SGLangEngineAdapter, register
 
     before_backend = dict(BACKEND_REGISTRY)
     before_engine = dict(ENGINE_ADAPTER_REGISTRY)

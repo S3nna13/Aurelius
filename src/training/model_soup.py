@@ -11,13 +11,13 @@ This module focuses on:
   - Task vectors (Ilharco et al. 2022)
   - ModelSoupBuilder for pool-based soup construction
 """
+
 from __future__ import annotations
 
 import copy
 import logging
-import math
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -72,7 +72,7 @@ def uniform_soup(models: list[nn.Module]) -> dict[str, Tensor]:
         raise ValueError("models list must be non-empty")
 
     state_dicts = [m.state_dict() for m in models]
-    n = len(state_dicts)
+    len(state_dicts)
     averaged: dict[str, Tensor] = {}
     for key in state_dicts[0]:
         stacked = torch.stack([sd[key].float() for sd in state_dicts])
@@ -161,7 +161,7 @@ def greedy_soup(
         # Tentative: average current soup members + new candidate
         tentative_states = soup_members + [candidate_state]
         tentative_avg: dict[str, Tensor] = {}
-        n = len(tentative_states)
+        len(tentative_states)
         for key in soup_state:
             stacked = torch.stack([sd[key].float() for sd in tentative_states])
             tentative_avg[key] = stacked.mean(dim=0).to(soup_state[key].dtype)
@@ -715,9 +715,7 @@ def apply_task_vector(
     new_sd: dict[str, Tensor] = {}
     for name, param in sd_base.items():
         if name in tv:
-            new_sd[name] = (
-                param.float() + scale * tv[name].float()
-            ).to(param.dtype)
+            new_sd[name] = (param.float() + scale * tv[name].float()).to(param.dtype)
         else:
             new_sd[name] = param.clone()
     return _load_into_copy(base, new_sd)
@@ -795,9 +793,7 @@ class ModelSoupBuilder:
             soup, _ = greedy_soup_module(self._models, val_fn=val_fn)
             return soup
 
-        raise ValueError(
-            f"Unknown method '{method}'. Choose 'uniform', 'weighted', or 'greedy'."
-        )
+        raise ValueError(f"Unknown method '{method}'. Choose 'uniform', 'weighted', or 'greedy'.")
 
     def __len__(self) -> int:
         return len(self._models)

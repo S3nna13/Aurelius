@@ -21,17 +21,16 @@ References:
 
 from __future__ import annotations
 
-import copy
 import random
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # KTO Loss
 # ---------------------------------------------------------------------------
+
 
 class KTOLoss(nn.Module):
     """KTO loss for binary-labeled preference data.
@@ -157,6 +156,7 @@ class KTOLoss(nn.Module):
 # KTO Trainer
 # ---------------------------------------------------------------------------
 
+
 class KTOTrainer:
     """Trains a model using KTO loss."""
 
@@ -190,11 +190,9 @@ class KTOTrainer:
 
         log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)
 
-        token_lp = log_probs.gather(
-            2, input_ids[:, 1:].unsqueeze(-1)
-        ).squeeze(-1)
+        token_lp = log_probs.gather(2, input_ids[:, 1:].unsqueeze(-1)).squeeze(-1)
 
-        response_lp = token_lp[:, P - 1: P + R - 1]
+        response_lp = token_lp[:, P - 1 : P + R - 1]
 
         return response_lp.mean()
 
@@ -231,6 +229,7 @@ class KTOTrainer:
 # KTO Dataset
 # ---------------------------------------------------------------------------
 
+
 class KTODataset:
     """Dataset for KTO training. Each example is (prompt, response, label).
 
@@ -248,11 +247,13 @@ class KTODataset:
         label: int,
     ) -> None:
         """Add one example. label: 1=desirable, 0=undesirable."""
-        self.examples.append({
-            "prompt_ids": prompt_ids,
-            "response_ids": response_ids,
-            "label": label,
-        })
+        self.examples.append(
+            {
+                "prompt_ids": prompt_ids,
+                "response_ids": response_ids,
+                "label": label,
+            }
+        )
 
     def get_batch(self, batch_size: int) -> list[dict]:
         """Random sample of batch_size examples."""

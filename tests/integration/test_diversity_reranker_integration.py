@@ -24,10 +24,10 @@ def test_registry_has_mmr_and_cross_encoder():
 def test_bm25_then_mmr_end_to_end():
     # Corpus of 4 docs: two near-duplicates about cats, two unique topics.
     corpus = [
-        "cats are small furry felines that purr",        # 0
-        "cats are small furry felines that purr loudly", # 1 near-duplicate of 0
-        "dogs bark loudly and chase balls",              # 2
-        "python is a programming language",              # 3
+        "cats are small furry felines that purr",  # 0
+        "cats are small furry felines that purr loudly",  # 1 near-duplicate of 0
+        "dogs bark loudly and chase balls",  # 2
+        "python is a programming language",  # 3
     ]
     bm25 = BM25Retriever()
     bm25.add_documents(corpus)

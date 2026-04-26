@@ -6,8 +6,8 @@ import torch
 from src.model.neural_process_lm import (
     ContextEncoder,
     LatentEncoder,
-    NPDecoder,
     NeuralProcessLM,
+    NPDecoder,
 )
 
 # ---------------------------------------------------------------------------
@@ -16,13 +16,14 @@ from src.model.neural_process_lm import (
 
 D_MODEL = 16
 D_LATENT = 8
-K = 4   # context size
-B = 2   # batch size
+K = 4  # context size
+B = 2  # batch size
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def context_inputs() -> torch.Tensor:
@@ -72,6 +73,7 @@ def np_lm() -> NeuralProcessLM:
 # 1. ContextEncoder output shape is (d_repr,)
 # ---------------------------------------------------------------------------
 
+
 def test_context_encoder_output_shape(
     ctx_encoder: ContextEncoder,
     context_inputs: torch.Tensor,
@@ -84,6 +86,7 @@ def test_context_encoder_output_shape(
 # ---------------------------------------------------------------------------
 # 2. ContextEncoder output changes with different context
 # ---------------------------------------------------------------------------
+
 
 def test_context_encoder_varies_with_context(
     ctx_encoder: ContextEncoder,
@@ -103,6 +106,7 @@ def test_context_encoder_varies_with_context(
 # 3. LatentEncoder.forward returns (mu, log_sigma) tuple
 # ---------------------------------------------------------------------------
 
+
 def test_latent_encoder_returns_tuple(lat_encoder: LatentEncoder) -> None:
     r = torch.randn(32)
     result = lat_encoder(r)
@@ -115,6 +119,7 @@ def test_latent_encoder_returns_tuple(lat_encoder: LatentEncoder) -> None:
 # 4. mu shape is (d_latent,)
 # ---------------------------------------------------------------------------
 
+
 def test_latent_encoder_mu_shape(lat_encoder: LatentEncoder) -> None:
     r = torch.randn(32)
     mu, log_sigma = lat_encoder(r)
@@ -124,6 +129,7 @@ def test_latent_encoder_mu_shape(lat_encoder: LatentEncoder) -> None:
 # ---------------------------------------------------------------------------
 # 5. sample output shape is (d_latent,)
 # ---------------------------------------------------------------------------
+
 
 def test_latent_encoder_sample_shape(lat_encoder: LatentEncoder) -> None:
     r = torch.randn(32)
@@ -135,6 +141,7 @@ def test_latent_encoder_sample_shape(lat_encoder: LatentEncoder) -> None:
 # ---------------------------------------------------------------------------
 # 6. Two samples differ (stochastic)
 # ---------------------------------------------------------------------------
+
 
 def test_latent_encoder_sample_stochastic(lat_encoder: LatentEncoder) -> None:
     r = torch.randn(32)
@@ -148,9 +155,8 @@ def test_latent_encoder_sample_stochastic(lat_encoder: LatentEncoder) -> None:
 # 7. NPDecoder output shape is (B, d_output)
 # ---------------------------------------------------------------------------
 
-def test_np_decoder_output_shape(
-    np_decoder: NPDecoder, query_embs: torch.Tensor
-) -> None:
+
+def test_np_decoder_output_shape(np_decoder: NPDecoder, query_embs: torch.Tensor) -> None:
     z = torch.randn(B, D_LATENT)
     out = np_decoder(query_embs, z)
     assert out.shape == (B, D_MODEL), f"Expected ({B}, {D_MODEL}), got {out.shape}"
@@ -160,9 +166,8 @@ def test_np_decoder_output_shape(
 # 8. NPDecoder gradient flows
 # ---------------------------------------------------------------------------
 
-def test_np_decoder_gradient_flows(
-    np_decoder: NPDecoder, query_embs: torch.Tensor
-) -> None:
+
+def test_np_decoder_gradient_flows(np_decoder: NPDecoder, query_embs: torch.Tensor) -> None:
     z = torch.randn(B, D_LATENT)
     out = np_decoder(query_embs, z)
     loss = out.sum()
@@ -175,6 +180,7 @@ def test_np_decoder_gradient_flows(
 # ---------------------------------------------------------------------------
 # 9. NeuralProcessLM.encode_context returns (mu, log_sigma)
 # ---------------------------------------------------------------------------
+
 
 def test_np_lm_encode_context_returns_tuple(
     np_lm: NeuralProcessLM,
@@ -194,6 +200,7 @@ def test_np_lm_encode_context_returns_tuple(
 # 10. forward output shape is (B, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_np_lm_forward_output_shape(
     np_lm: NeuralProcessLM,
     query_embs: torch.Tensor,
@@ -207,6 +214,7 @@ def test_np_lm_forward_output_shape(
 # ---------------------------------------------------------------------------
 # 11. forward with n_samples=3 still returns (B, d_model)
 # ---------------------------------------------------------------------------
+
 
 def test_np_lm_forward_n_samples(
     np_lm: NeuralProcessLM,
@@ -222,6 +230,7 @@ def test_np_lm_forward_n_samples(
 # 12. forward output is finite
 # ---------------------------------------------------------------------------
 
+
 def test_np_lm_forward_is_finite(
     np_lm: NeuralProcessLM,
     query_embs: torch.Tensor,
@@ -235,6 +244,7 @@ def test_np_lm_forward_is_finite(
 # ---------------------------------------------------------------------------
 # 13. elbo_loss returns expected keys
 # ---------------------------------------------------------------------------
+
 
 def test_np_lm_elbo_loss_keys(
     np_lm: NeuralProcessLM,
@@ -253,6 +263,7 @@ def test_np_lm_elbo_loss_keys(
 # 14. elbo_loss total_loss is finite
 # ---------------------------------------------------------------------------
 
+
 def test_np_lm_elbo_loss_total_finite(
     np_lm: NeuralProcessLM,
     query_embs: torch.Tensor,
@@ -267,6 +278,7 @@ def test_np_lm_elbo_loss_total_finite(
 # ---------------------------------------------------------------------------
 # 15. KL loss is non-negative
 # ---------------------------------------------------------------------------
+
 
 def test_np_lm_kl_loss_non_negative(
     np_lm: NeuralProcessLM,

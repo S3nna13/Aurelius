@@ -1,18 +1,12 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
 
 from src.trading.portfolio import (
-    Portfolio,
-    Trade,
-    Position,
-    PortfolioMetrics,
-    OrderSide,
-    OrderStatus,
     PORTFOLIO_REGISTRY,
-    register_portfolio,
+    Portfolio,
     list_portfolios,
+    register_portfolio,
 )
 
 

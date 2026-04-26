@@ -7,16 +7,16 @@ Verifies:
 - ALIGNMENT_REGISTRY["length_reward"] is wired to LengthReward.
 """
 
-import torch
 import pytest
+import torch
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.length_reward import LengthReward, LengthRewardConfig
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def lr():
@@ -35,17 +35,18 @@ def lr():
 # Five rollouts: mix of correct/incorrect, short/at-budget/long/too-short
 CORRECTNESS = [True, False, True, True, False]
 TOKEN_COUNTS = [
-    1024,   # correct, within budget → bonus
-    3000,   # incorrect, over budget → incorrect_base
-    2048,   # correct, exact budget → correct_base
-    4000,   # correct, over budget → penalty
-    200,    # incorrect, short → incorrect_base
+    1024,  # correct, within budget → bonus
+    3000,  # incorrect, over budget → incorrect_base
+    2048,  # correct, exact budget → correct_base
+    4000,  # correct, over budget → penalty
+    200,  # incorrect, short → incorrect_base
 ]
 
 
 # ---------------------------------------------------------------------------
 # Integration test 1: batch rewards have expected types and count
 # ---------------------------------------------------------------------------
+
 
 def test_batch_rewards_types_and_count(lr):
     rewards = lr.compute_batch(CORRECTNESS, TOKEN_COUNTS)
@@ -58,6 +59,7 @@ def test_batch_rewards_types_and_count(lr):
 # ---------------------------------------------------------------------------
 # Integration test 2: individual reward values match expectations
 # ---------------------------------------------------------------------------
+
 
 def test_batch_reward_values(lr):
     rewards = lr.compute_batch(CORRECTNESS, TOKEN_COUNTS)
@@ -93,6 +95,7 @@ def test_batch_reward_values(lr):
 # Integration test 3: statistics sums — n_correct + n_incorrect == total
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_sum(lr):
     stats = lr.statistics(CORRECTNESS, TOKEN_COUNTS)
     total = len(CORRECTNESS)
@@ -110,19 +113,15 @@ def test_statistics_sum(lr):
 # Integration test 4: statistics n_penalized and n_bonus are consistent
 # ---------------------------------------------------------------------------
 
+
 def test_statistics_penalized_bonus_consistent(lr):
     stats = lr.statistics(CORRECTNESS, TOKEN_COUNTS)
-    cfg = lr.config
 
     # Only rollout 3 is correct and over budget → n_penalized=1
-    assert stats["n_penalized"] == 1, (
-        f"Expected n_penalized=1, got {stats['n_penalized']}"
-    )
+    assert stats["n_penalized"] == 1, f"Expected n_penalized=1, got {stats['n_penalized']}"
 
     # Rollouts 0 (within budget, above min) and 2 (exact budget, above min) → n_bonus=2
-    assert stats["n_bonus"] == 2, (
-        f"Expected n_bonus=2, got {stats['n_bonus']}"
-    )
+    assert stats["n_bonus"] == 2, f"Expected n_bonus=2, got {stats['n_bonus']}"
 
     # n_penalized + n_bonus <= n_correct (correct rollouts partitioned by budget)
     assert stats["n_penalized"] + stats["n_bonus"] <= stats["n_correct"]
@@ -131,6 +130,7 @@ def test_statistics_penalized_bonus_consistent(lr):
 # ---------------------------------------------------------------------------
 # Integration test 5: statistics mean_reward is in plausible range
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_mean_reward_range(lr):
     stats = lr.statistics(CORRECTNESS, TOKEN_COUNTS)
@@ -147,6 +147,7 @@ def test_statistics_mean_reward_range(lr):
 # Integration test 6: compute_tensor output shape and type
 # ---------------------------------------------------------------------------
 
+
 def test_tensor_output_shape_and_type(lr):
     correctness_t = torch.tensor(CORRECTNESS)
     token_counts_t = torch.tensor(TOKEN_COUNTS)
@@ -158,6 +159,7 @@ def test_tensor_output_shape_and_type(lr):
 # ---------------------------------------------------------------------------
 # Integration test 7: compute_tensor values match compute_batch
 # ---------------------------------------------------------------------------
+
 
 def test_tensor_matches_batch(lr):
     rewards_list = lr.compute_batch(CORRECTNESS, TOKEN_COUNTS)
@@ -175,10 +177,9 @@ def test_tensor_matches_batch(lr):
 # Integration test 8: ALIGNMENT_REGISTRY["length_reward"] is wired correctly
 # ---------------------------------------------------------------------------
 
+
 def test_registry_wired():
-    assert "length_reward" in ALIGNMENT_REGISTRY, (
-        "ALIGNMENT_REGISTRY missing 'length_reward' key"
-    )
+    assert "length_reward" in ALIGNMENT_REGISTRY, "ALIGNMENT_REGISTRY missing 'length_reward' key"
     assert ALIGNMENT_REGISTRY["length_reward"] is LengthReward, (
         f"Registry entry should be LengthReward class, got {ALIGNMENT_REGISTRY['length_reward']}"
     )
@@ -187,6 +188,7 @@ def test_registry_wired():
 # ---------------------------------------------------------------------------
 # Integration test 9: Registry entry is instantiable with default config
 # ---------------------------------------------------------------------------
+
 
 def test_registry_instantiable():
     cls = ALIGNMENT_REGISTRY["length_reward"]

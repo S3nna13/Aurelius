@@ -17,23 +17,22 @@ Covers:
 14.  LatentDiffusionTrainer.sample returns (B, T) int64 tensor
 15.  LatentDiffusionTrainer loss stays finite over 3 consecutive steps
 """
+
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
 import pytest
+import torch
 
 from src.training.latent_diffusion import (
-    LatentDiffusionConfig,
-    TextEncoder,
-    TextDecoder,
     LatentDenoiser,
+    LatentDiffusionConfig,
+    LatentDiffusionTrainer,
+    TextDecoder,
+    TextEncoder,
+    ldm_loss,
     ldm_noise_schedule,
     ldm_q_sample,
-    ldm_loss,
-    LatentDiffusionTrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -90,11 +89,7 @@ def trainer(
     denoiser: LatentDenoiser,
     cfg: LatentDiffusionConfig,
 ) -> LatentDiffusionTrainer:
-    params = (
-        list(encoder.parameters())
-        + list(decoder.parameters())
-        + list(denoiser.parameters())
-    )
+    params = list(encoder.parameters()) + list(decoder.parameters()) + list(denoiser.parameters())
     optimizer = torch.optim.Adam(params, lr=1e-3)
     return LatentDiffusionTrainer(encoder, decoder, denoiser, cfg, optimizer)
 
@@ -102,6 +97,7 @@ def trainer(
 # ---------------------------------------------------------------------------
 # Test 1: LatentDiffusionConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults() -> None:
     cfg = LatentDiffusionConfig()
@@ -117,6 +113,7 @@ def test_config_defaults() -> None:
 # Test 2: TextEncoder output shape
 # ---------------------------------------------------------------------------
 
+
 def test_text_encoder_shape(encoder: TextEncoder, input_ids: torch.Tensor) -> None:
     latents = encoder(input_ids)
     assert latents.shape == (BATCH, SEQ_LEN, LATENT_DIM), (
@@ -127,6 +124,7 @@ def test_text_encoder_shape(encoder: TextEncoder, input_ids: torch.Tensor) -> No
 # ---------------------------------------------------------------------------
 # Test 3: TextDecoder output shape
 # ---------------------------------------------------------------------------
+
 
 def test_text_decoder_shape(decoder: TextDecoder) -> None:
     latents = torch.randn(BATCH, SEQ_LEN, LATENT_DIM)
@@ -140,18 +138,18 @@ def test_text_decoder_shape(decoder: TextDecoder) -> None:
 # Test 4: LatentDenoiser output shape matches z_t input
 # ---------------------------------------------------------------------------
 
+
 def test_denoiser_output_shape(denoiser: LatentDenoiser) -> None:
     z_t = torch.randn(BATCH, SEQ_LEN, LATENT_DIM)
     t = torch.randint(0, N_TIMESTEPS, (BATCH,))
     out = denoiser(z_t, t)
-    assert out.shape == z_t.shape, (
-        f"Denoiser output shape {out.shape} != input shape {z_t.shape}"
-    )
+    assert out.shape == z_t.shape, f"Denoiser output shape {out.shape} != input shape {z_t.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: LatentDenoiser handles batch with different timesteps
 # ---------------------------------------------------------------------------
+
 
 def test_denoiser_different_timesteps(denoiser: LatentDenoiser) -> None:
     z_t = torch.randn(BATCH, SEQ_LEN, LATENT_DIM)
@@ -184,6 +182,7 @@ def test_noise_schedule_keys(schedule: dict) -> None:
 # Test 7: ldm_noise_schedule betas are monotonically increasing
 # ---------------------------------------------------------------------------
 
+
 def test_noise_schedule_betas_increasing(schedule: dict) -> None:
     betas = schedule["betas"]
     diffs = betas[1:] - betas[:-1]
@@ -194,11 +193,10 @@ def test_noise_schedule_betas_increasing(schedule: dict) -> None:
 # Test 8: alphas_cumprod is strictly decreasing
 # ---------------------------------------------------------------------------
 
+
 def test_noise_schedule_alphas_cumprod_decreasing(schedule: dict) -> None:
     acp = schedule["alphas_cumprod"]
-    assert acp[-1].item() < acp[0].item(), (
-        "alphas_cumprod[-1] should be < alphas_cumprod[0]"
-    )
+    assert acp[-1].item() < acp[0].item(), "alphas_cumprod[-1] should be < alphas_cumprod[0]"
     diffs = acp[1:] - acp[:-1]
     assert (diffs < 0).all(), "alphas_cumprod should be strictly decreasing"
 
@@ -206,6 +204,7 @@ def test_noise_schedule_alphas_cumprod_decreasing(schedule: dict) -> None:
 # ---------------------------------------------------------------------------
 # Test 9: ldm_q_sample output shapes match input
 # ---------------------------------------------------------------------------
+
 
 def test_q_sample_shapes(schedule: dict, encoder: TextEncoder, input_ids: torch.Tensor) -> None:
     z0 = encoder(input_ids)
@@ -219,7 +218,10 @@ def test_q_sample_shapes(schedule: dict, encoder: TextEncoder, input_ids: torch.
 # Test 10: ldm_q_sample at t=0 is mostly signal
 # ---------------------------------------------------------------------------
 
-def test_q_sample_t0_mostly_signal(schedule: dict, encoder: TextEncoder, input_ids: torch.Tensor) -> None:
+
+def test_q_sample_t0_mostly_signal(
+    schedule: dict, encoder: TextEncoder, input_ids: torch.Tensor
+) -> None:
     """At t=0, z_t ≈ sqrt_alpha_0 * z0 + small noise contribution."""
     z0 = encoder(input_ids)
     t = torch.zeros(BATCH, dtype=torch.long)
@@ -230,9 +232,7 @@ def test_q_sample_t0_mostly_signal(schedule: dict, encoder: TextEncoder, input_i
 
     # The signal coefficient should be much larger than the noise coefficient
     # for a well-chosen beta_start (1e-4 -> sqrt_alpha ~0.9999, noise ~0.01)
-    assert sqrt_alpha_0 > 0.99, (
-        f"sqrt_alpha_0={sqrt_alpha_0:.6f} should be close to 1 at t=0"
-    )
+    assert sqrt_alpha_0 > 0.99, f"sqrt_alpha_0={sqrt_alpha_0:.6f} should be close to 1 at t=0"
     assert sqrt_one_minus_0 < 0.15, (
         f"sqrt_one_minus_0={sqrt_one_minus_0:.6f} should be small at t=0"
     )
@@ -250,6 +250,7 @@ def test_q_sample_t0_mostly_signal(schedule: dict, encoder: TextEncoder, input_i
 # Test 11: ldm_loss returns a scalar tensor
 # ---------------------------------------------------------------------------
 
+
 def test_ldm_loss_scalar(
     encoder: TextEncoder,
     denoiser: LatentDenoiser,
@@ -263,6 +264,7 @@ def test_ldm_loss_scalar(
 # ---------------------------------------------------------------------------
 # Test 12: ldm_loss is finite and positive
 # ---------------------------------------------------------------------------
+
 
 def test_ldm_loss_finite_positive(
     encoder: TextEncoder,
@@ -279,6 +281,7 @@ def test_ldm_loss_finite_positive(
 # Test 13: LatentDiffusionTrainer.train_step returns dict with 'loss'
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_train_step_has_loss(
     trainer: LatentDiffusionTrainer, input_ids: torch.Tensor
 ) -> None:
@@ -294,19 +297,19 @@ def test_trainer_train_step_has_loss(
 # Test 14: LatentDiffusionTrainer.sample returns (B, T) int64
 # ---------------------------------------------------------------------------
 
+
 def test_trainer_sample_shape_and_dtype(trainer: LatentDiffusionTrainer) -> None:
     token_ids = trainer.sample(batch_size=BATCH, seq_len=SEQ_LEN)
     assert token_ids.shape == (BATCH, SEQ_LEN), (
         f"Expected shape ({BATCH}, {SEQ_LEN}), got {token_ids.shape}"
     )
-    assert token_ids.dtype == torch.int64, (
-        f"Expected int64, got {token_ids.dtype}"
-    )
+    assert token_ids.dtype == torch.int64, f"Expected int64, got {token_ids.dtype}"
 
 
 # ---------------------------------------------------------------------------
 # Test 15: Loss stays finite over 3 consecutive train_steps
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_loss_finite_over_steps(
     trainer: LatentDiffusionTrainer, input_ids: torch.Tensor

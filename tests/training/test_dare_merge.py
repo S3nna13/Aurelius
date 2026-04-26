@@ -1,17 +1,18 @@
 """Tests for src/training/dare_merge.py — DARE and improved TIES merging."""
+
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.training.dare_merge import (
+    MergingPipeline,
     compute_task_vector,
     dare_drop,
-    ties_trim,
+    dare_ties_merge,
     ties_elect_sign,
     ties_merge,
-    dare_ties_merge,
-    MergingPipeline,
+    ties_trim,
 )
 
 # ---------------------------------------------------------------------------
@@ -108,14 +109,11 @@ def test_ties_trim_keeps_top_fraction():
 
     all_values = torch.cat([v.flatten() for v in trimmed.values()])
     nonzero_fraction = (all_values != 0).float().mean().item()
-    assert 0.40 <= nonzero_fraction <= 0.65, (
-        f"nonzero fraction = {nonzero_fraction:.3f}"
-    )
+    assert 0.40 <= nonzero_fraction <= 0.65, f"nonzero fraction = {nonzero_fraction:.3f}"
 
 
 def test_ties_elect_sign_majority():
     """2 positive + 1 negative task vectors → elected sign is positive."""
-    shape = (4,)
     # All entries positive in tv1 and tv2, negative in tv3
     tv1 = {"w": torch.tensor([1.0, 2.0, 3.0, 4.0])}
     tv2 = {"w": torch.tensor([0.5, 1.5, 2.5, 3.5])}
@@ -150,14 +148,9 @@ def test_dare_ties_merge_differs_from_base():
     ft1 = _make_state(1)
     ft2 = _make_state(2)
 
-    merged = dare_ties_merge(
-        [ft1, ft2], base, drop_rate=0.5, top_k=0.2, scaling_coeff=1.0, seed=0
-    )
+    merged = dare_ties_merge([ft1, ft2], base, drop_rate=0.5, top_k=0.2, scaling_coeff=1.0, seed=0)
 
-    any_diff = any(
-        not torch.allclose(merged[k].float(), base[k].float())
-        for k in base
-    )
+    any_diff = any(not torch.allclose(merged[k].float(), base[k].float()) for k in base)
     assert any_diff, "Merged state is identical to base — merge had no effect."
 
 

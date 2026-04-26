@@ -1,9 +1,8 @@
 """Tests for request tracker."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.serving.request_tracker import RequestTracker
 

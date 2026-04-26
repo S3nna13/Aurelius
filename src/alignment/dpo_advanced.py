@@ -2,30 +2,32 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DPOAdvancedConfig:
     """Configuration for advanced DPO-family preference optimization."""
 
     beta: float = 0.1
-    loss_type: str = "dpo"          # "dpo" | "ipo" | "slic"
-    label_smoothing: float = 0.0    # label smoothing for DPO
-    slic_delta: float = 1.0         # SLiC margin parameter
-    reference_free: bool = False    # if True, use 0 as ref log-probs
+    loss_type: str = "dpo"  # "dpo" | "ipo" | "slic"
+    label_smoothing: float = 0.0  # label smoothing for DPO
+    slic_delta: float = 1.0  # SLiC margin parameter
+    reference_free: bool = False  # if True, use 0 as ref log-probs
 
 
 # ---------------------------------------------------------------------------
 # Log-prob computation
 # ---------------------------------------------------------------------------
+
 
 def compute_log_probs(
     model: nn.Module,
@@ -65,6 +67,7 @@ def compute_log_probs(
 # ---------------------------------------------------------------------------
 # DPO loss
 # ---------------------------------------------------------------------------
+
 
 def dpo_loss(
     policy_chosen_logps: torch.Tensor,
@@ -109,6 +112,7 @@ def dpo_loss(
 # IPO loss
 # ---------------------------------------------------------------------------
 
+
 def ipo_loss(
     policy_chosen_logps: torch.Tensor,
     policy_rejected_logps: torch.Tensor,
@@ -146,6 +150,7 @@ def ipo_loss(
 # SLiC loss
 # ---------------------------------------------------------------------------
 
+
 def slic_loss(
     policy_chosen_logps: torch.Tensor,
     policy_rejected_logps: torch.Tensor,
@@ -176,6 +181,7 @@ def slic_loss(
 # ---------------------------------------------------------------------------
 # DPOAdvancedTrainer
 # ---------------------------------------------------------------------------
+
 
 class DPOAdvancedTrainer:
     """Trainer for DPO, IPO, and SLiC preference optimization variants.
@@ -237,7 +243,9 @@ class DPOAdvancedTrainer:
         else:
             with torch.no_grad():
                 ref_chosen_logps = compute_log_probs(self.ref_model, chosen_ids, chosen_labels)
-                ref_rejected_logps = compute_log_probs(self.ref_model, rejected_ids, rejected_labels)
+                ref_rejected_logps = compute_log_probs(
+                    self.ref_model, rejected_ids, rejected_labels
+                )
 
         # Dispatch to the appropriate loss function
         cfg = self.config
@@ -251,7 +259,9 @@ class DPOAdvancedTrainer:
                 label_smoothing=cfg.label_smoothing,
             )
             chosen_reward = (cfg.beta * (policy_chosen_logps - ref_chosen_logps).detach()).mean()
-            rejected_reward = (cfg.beta * (policy_rejected_logps - ref_rejected_logps).detach()).mean()
+            rejected_reward = (
+                cfg.beta * (policy_rejected_logps - ref_rejected_logps).detach()
+            ).mean()
 
         elif cfg.loss_type == "ipo":
             loss, reward_margin = ipo_loss(
@@ -276,7 +286,9 @@ class DPOAdvancedTrainer:
             rejected_reward = policy_rejected_logps.detach().mean()
 
         else:
-            raise ValueError(f"Unknown loss_type: {cfg.loss_type!r}. Choose 'dpo', 'ipo', or 'slic'.")
+            raise ValueError(
+                f"Unknown loss_type: {cfg.loss_type!r}. Choose 'dpo', 'ipo', or 'slic'."
+            )
 
         # Backward pass
         self.optimizer.zero_grad()

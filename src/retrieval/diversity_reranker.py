@@ -28,7 +28,7 @@ free so it can be composed with BM25 / hybrid / cross-encoder front-ends.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
@@ -56,9 +56,7 @@ def cosine_similarity(a: Tensor, b: Tensor) -> float:
     if not isinstance(a, Tensor) or not isinstance(b, Tensor):
         raise TypeError("cosine_similarity expects torch.Tensor inputs")
     if a.shape != b.shape:
-        raise ValueError(
-            f"cosine_similarity: shape mismatch {tuple(a.shape)} vs {tuple(b.shape)}"
-        )
+        raise ValueError(f"cosine_similarity: shape mismatch {tuple(a.shape)} vs {tuple(b.shape)}")
     a_f = a.to(dtype=torch.float32).flatten()
     b_f = b.to(dtype=torch.float32).flatten()
     na = torch.linalg.vector_norm(a_f)
@@ -122,10 +120,7 @@ class MMRReranker:
     def __init__(self, lambda_: float = 0.5, similarity: str = "cosine") -> None:
         self.lambda_: float = _validate_lambda(lambda_)
         if similarity != "cosine":
-            raise ValueError(
-                f"MMRReranker: unknown similarity {similarity!r} "
-                "(expected 'cosine')"
-            )
+            raise ValueError(f"MMRReranker: unknown similarity {similarity!r} (expected 'cosine')")
         self.similarity: str = similarity
         self._sim_fn = cosine_similarity
 
@@ -165,9 +160,7 @@ class MMRReranker:
         # rather than after a partial selection.
         for doc_id, _ in ranked:
             if doc_id not in embeddings:
-                raise KeyError(
-                    f"MMRReranker: no embedding for doc_id {doc_id!r}"
-                )
+                raise KeyError(f"MMRReranker: no embedding for doc_id {doc_id!r}")
 
         lam = self.lambda_
         remaining: list[tuple[str, float]] = list(ranked)
@@ -247,9 +240,7 @@ class JaccardDiversityReranker:
             return []
         for doc_id, _ in ranked:
             if doc_id not in docs:
-                raise KeyError(
-                    f"JaccardDiversityReranker: no document text for {doc_id!r}"
-                )
+                raise KeyError(f"JaccardDiversityReranker: no document text for {doc_id!r}")
 
         lam = self.lambda_
         token_sets: dict[str, set] = {

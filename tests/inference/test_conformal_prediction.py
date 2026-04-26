@@ -1,6 +1,5 @@
 """Tests for src/inference/conformal_prediction.py."""
 
-import pytest
 import torch
 
 from src.inference.conformal_prediction import (
@@ -138,9 +137,7 @@ def test_construct_prediction_set_high_threshold_includes_all():
     """With threshold >= 1.0 (APS), every class should be included."""
     result = construct_prediction_set(_probs, threshold=1.0, method="aps")
     for i, pred_set in enumerate(result):
-        assert len(pred_set) == C, (
-            f"Sample {i}: expected {C} classes, got {len(pred_set)}"
-        )
+        assert len(pred_set) == C, f"Sample {i}: expected {C} classes, got {len(pred_set)}"
 
 
 # ---------------------------------------------------------------------------

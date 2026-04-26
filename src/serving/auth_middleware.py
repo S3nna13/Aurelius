@@ -10,20 +10,19 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from dataclasses import dataclass, field
-from typing import Optional
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class APIKey:
     """Registered API key record. The raw secret is never stored here."""
 
     key_id: str
-    key_hash: str          # SHA-256 hex digest of the raw key
+    key_hash: str  # SHA-256 hex digest of the raw key
     scopes: frozenset[str]
     rate_limit_rps: float
 
@@ -43,14 +42,15 @@ class AuthResult:
     """Result returned by :meth:`AuthMiddleware.authenticate`."""
 
     authenticated: bool
-    key_id: Optional[str]
+    key_id: str | None
     scopes: frozenset[str]
-    error: Optional[str]
+    error: str | None
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _sha256_hex(raw_key: str) -> str:
     """Return the SHA-256 hex digest of *raw_key* (UTF-8 encoded)."""
@@ -65,6 +65,7 @@ def _timing_safe_equal(a: str, b: str) -> bool:
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
+
 
 class AuthMiddleware:
     """Authenticate incoming requests against a registry of hashed API keys.
@@ -102,13 +103,13 @@ class AuthMiddleware:
         # Normalise header keys to lower-case for case-insensitive lookup.
         normalised = {k.lower(): v for k, v in headers.items()}
 
-        raw_key: Optional[str] = None
+        raw_key: str | None = None
 
         # 1. Try Bearer token in Authorization header.
         bearer_header = self._config.bearer_header.lower()
         auth_value = normalised.get(bearer_header, "")
         if auth_value.lower().startswith("bearer "):
-            raw_key = auth_value[len("bearer "):]
+            raw_key = auth_value[len("bearer ") :]
 
         # 2. Fall back to X-API-Key header.
         if raw_key is None:
@@ -138,7 +139,7 @@ class AuthMiddleware:
         #    We always hash and compare every registered key to avoid leaking
         #    information about which key_ids exist via early-exit timing.
         supplied_hash = _sha256_hex(raw_key)
-        matched_key: Optional[APIKey] = None
+        matched_key: APIKey | None = None
 
         for api_key in self._keys.values():
             if _timing_safe_equal(supplied_hash, api_key.key_hash):

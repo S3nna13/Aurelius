@@ -5,6 +5,7 @@ during the thinking phase a bias is added to the answer-start token logit
 when the budget is exhausted, steering the model to conclude its chain-of-thought
 and begin generating the answer.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,10 +13,10 @@ from dataclasses import dataclass
 import torch
 from torch import LongTensor, Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BudgetConfig:
@@ -31,6 +32,7 @@ class BudgetConfig:
         truncate_thinking:    If True, discard thinking tokens from the
                               returned sequence.  Default False.
     """
+
     thinking_budget: int
     answer_start_token_id: int
     transition_bias: float = 100.0
@@ -40,6 +42,7 @@ class BudgetConfig:
 # ---------------------------------------------------------------------------
 # Budget tracker
 # ---------------------------------------------------------------------------
+
 
 class BudgetTracker:
     """Tracks how many thinking tokens have been generated.
@@ -104,6 +107,7 @@ class BudgetTracker:
 # Logits processor
 # ---------------------------------------------------------------------------
 
+
 class BudgetForcingLogitsProcessor:
     """Logits processor that steers generation toward the answer phase.
 
@@ -154,6 +158,7 @@ class BudgetForcingLogitsProcessor:
 # Decoder
 # ---------------------------------------------------------------------------
 
+
 class BudgetForcingDecoder:
     """Greedy autoregressive decoder with token budget forcing.
 
@@ -193,7 +198,7 @@ class BudgetForcingDecoder:
         for _ in range(max_total_tokens):
             # Forward pass — take logits for the last position
             logits: Tensor = self._model_fn(input_ids)  # (1, T, V)
-            next_logits: Tensor = logits[0, -1, :]      # (V,)
+            next_logits: Tensor = logits[0, -1, :]  # (V,)
 
             # Apply budget forcing
             next_logits = processor(input_ids, next_logits)

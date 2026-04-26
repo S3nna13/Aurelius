@@ -1,5 +1,7 @@
 import asyncio
+
 import pytest
+
 from src.backends.webhook_dispatcher import (
     CircuitBreaker,
     CircuitState,
@@ -14,6 +16,7 @@ def make_ep(url="http://example.com/hook", retries=3):
 
 
 # --- CircuitBreaker unit tests ---
+
 
 def test_circuit_starts_closed():
     cb = CircuitBreaker()
@@ -60,6 +63,7 @@ def test_circuit_does_not_open_below_threshold():
 
 # --- WebhookDispatcher structural tests ---
 
+
 def test_add_endpoint():
     d = WebhookDispatcher()
     ep = make_ep("http://a.com/hook")
@@ -99,11 +103,13 @@ def test_dispatch_sets_url_on_result():
 
 
 def test_broadcast_all_endpoints():
-    d = WebhookDispatcher([
-        make_ep("http://e1.com/hook"),
-        make_ep("http://e2.com/hook"),
-        make_ep("http://e3.com/hook"),
-    ])
+    d = WebhookDispatcher(
+        [
+            make_ep("http://e1.com/hook"),
+            make_ep("http://e2.com/hook"),
+            make_ep("http://e3.com/hook"),
+        ]
+    )
     results = asyncio.run(d.broadcast({"event": "broadcast"}))
     assert len(results) == 3
     assert all(r.success for r in results)

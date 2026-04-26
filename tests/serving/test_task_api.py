@@ -1,23 +1,20 @@
 """Tests for src/serving/task_api.py — task lifecycle REST contracts."""
 
 import time
-import pytest
 
 from src.serving.task_api import (
-    Artifact,
-    APIError,
-    CreateTaskRequest,
-    TaskCitation,
-    TaskMetrics,
-    TaskResult,
-    TaskStore,
     TASK_STORE,
+    APIError,
+    Artifact,
+    CreateTaskRequest,
+    TaskMetrics,
+    TaskStore,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def fresh_store() -> TaskStore:
     return TaskStore()
@@ -32,6 +29,7 @@ def make_request(**kwargs) -> CreateTaskRequest:
 # ---------------------------------------------------------------------------
 # CreateTaskRequest defaults
 # ---------------------------------------------------------------------------
+
 
 def test_create_request_defaults():
     req = make_request()
@@ -63,6 +61,7 @@ def test_create_request_custom_fields():
 # TaskStore.create
 # ---------------------------------------------------------------------------
 
+
 def test_store_create_returns_pending():
     store = fresh_store()
     req = make_request()
@@ -82,6 +81,7 @@ def test_store_create_unique_tasks():
 # TaskStore.get_result
 # ---------------------------------------------------------------------------
 
+
 def test_get_result_existing():
     store = fresh_store()
     req = make_request()
@@ -99,6 +99,7 @@ def test_get_result_missing():
 # ---------------------------------------------------------------------------
 # TaskStore.update_status
 # ---------------------------------------------------------------------------
+
 
 def test_update_status_to_running():
     store = fresh_store()
@@ -150,6 +151,7 @@ def test_update_status_missing_task_returns_false():
 # TaskStore.list_tasks
 # ---------------------------------------------------------------------------
 
+
 def test_list_tasks_all():
     store = fresh_store()
     store.create(make_request())
@@ -179,6 +181,7 @@ def test_list_tasks_unknown_user_returns_empty():
 # Artifact dataclass
 # ---------------------------------------------------------------------------
 
+
 def test_artifact_defaults():
     a = Artifact()
     assert a.artifact_type == "text"
@@ -195,6 +198,7 @@ def test_artifact_custom():
 # TaskMetrics dataclass
 # ---------------------------------------------------------------------------
 
+
 def test_task_metrics_defaults():
     m = TaskMetrics()
     assert m.steps == 0
@@ -205,6 +209,7 @@ def test_task_metrics_defaults():
 # ---------------------------------------------------------------------------
 # APIError
 # ---------------------------------------------------------------------------
+
 
 def test_api_error_to_dict():
     err = APIError(code="rate_limited", message="Slow down", retry_after_seconds=5.0)
@@ -224,6 +229,7 @@ def test_api_error_unique_trace_ids():
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_task_store_singleton_exists():
     assert TASK_STORE is not None

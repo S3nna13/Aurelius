@@ -1,10 +1,9 @@
 """Tests for integrity verifier."""
+
 from __future__ import annotations
 
 import os
 import tempfile
-
-import pytest
 
 from src.security.integrity_verifier import IntegrityVerifier
 

@@ -4,20 +4,19 @@ from __future__ import annotations
 
 import math
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
-
 from aurelius.training.gradient_noise import (
     GradientNoiseCallback,
     GradientNoiseOptimizer,
     GradientNoiseSchedule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _simple_model() -> nn.Linear:
     """Return a small deterministic linear model."""
@@ -44,6 +43,7 @@ def _compute_loss(model: nn.Module) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # GradientNoiseSchedule tests
 # ---------------------------------------------------------------------------
+
 
 def test_variance_at_step_zero_equals_eta():
     """σ² at step 0 must equal eta exactly."""
@@ -98,6 +98,7 @@ def test_noise_tensor_std_approximates_schedule_std():
 # GradientNoiseOptimizer tests
 # ---------------------------------------------------------------------------
 
+
 def test_step_increments_step_count():
     """_step_count must increase by 1 after each step() call."""
     model = _simple_model()
@@ -118,11 +119,7 @@ def test_step_modifies_gradients():
 
     # Capture clean gradients before any noise is added.
     _compute_loss(model).backward()
-    clean_grads = {
-        name: p.grad.clone()
-        for name, p in model.named_parameters()
-        if p.grad is not None
-    }
+    {name: p.grad.clone() for name, p in model.named_parameters() if p.grad is not None}
 
     # Now exercise GradientNoiseOptimizer with a *different* random seed so
     # the noise is non-zero and the comparison is meaningful.
@@ -134,11 +131,7 @@ def test_step_modifies_gradients():
     # Capture grads just before step() adds noise — we need to compare
     # the gradient state *after* noise injection.  We do this by peeking
     # at the grad after calling step() using a tiny subclass.
-    grads_before_noise = {
-        name: p.grad.clone()
-        for name, p in model2.named_parameters()
-        if p.grad is not None
-    }
+    {name: p.grad.clone() for name, p in model2.named_parameters() if p.grad is not None}
     opt.step()
 
     # The gradients used internally differ from the pre-noise values.
@@ -152,9 +145,7 @@ def test_step_modifies_gradients():
     inner3.step()
 
     # With eta=1.0 the noise is very large — param updates will differ.
-    for (n2, p2), (n3, p3) in zip(
-        model2.named_parameters(), model3.named_parameters()
-    ):
+    for (n2, p2), (n3, p3) in zip(model2.named_parameters(), model3.named_parameters()):
         # At least one parameter must differ between noisy and clean.
         if not torch.allclose(p2, p3, atol=1e-6):
             return  # Test passes as soon as one difference is found.
@@ -220,6 +211,7 @@ def test_param_groups_accessible():
 # GradientNoiseCallback tests
 # ---------------------------------------------------------------------------
 
+
 def test_callback_record_appends_to_history():
     """record() must append the noise std to noise_std_history."""
     schedule = GradientNoiseSchedule(eta=0.01, gamma=0.55)
@@ -250,6 +242,5 @@ def test_plot_schedule_values_are_non_increasing():
     values = cb.plot_schedule(100, schedule)
     for i in range(len(values) - 1):
         assert values[i] >= values[i + 1], (
-            f"Noise std increased between step {i} ({values[i]}) "
-            f"and step {i + 1} ({values[i + 1]})"
+            f"Noise std increased between step {i} ({values[i]}) and step {i + 1} ({values[i + 1]})"
         )

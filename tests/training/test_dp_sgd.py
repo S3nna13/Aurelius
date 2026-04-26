@@ -37,6 +37,7 @@ def run_forward_backward(model):
 
 # --- DPSGDConfig tests ---
 
+
 def test_config_defaults():
     cfg = DPSGDConfig()
     assert cfg.max_grad_norm == 1.0
@@ -52,6 +53,7 @@ def test_config_custom():
 
 
 # --- Construction validation ---
+
 
 def test_invalid_max_grad_norm():
     model = nn.Linear(4, 2)
@@ -82,6 +84,7 @@ def test_invalid_delta():
 
 
 # --- _clip_grad ---
+
 
 def test_clip_grad_returns_float():
     model, dp_opt = make_dp_opt()
@@ -114,6 +117,7 @@ def test_clip_grad_no_op_when_small():
 
 # --- _add_noise ---
 
+
 def test_add_noise_changes_grads():
     model, dp_opt = make_dp_opt()
     run_forward_backward(model)
@@ -139,6 +143,7 @@ def test_add_noise_zero_multiplier_no_change():
 
 # --- step ---
 
+
 def test_step_returns_dict():
     model, dp_opt = make_dp_opt()
     run_forward_backward(model)
@@ -160,10 +165,7 @@ def test_step_updates_params():
     params_before = [p.data.clone() for p in model.parameters()]
     run_forward_backward(model)
     dp_opt.step(list(model.parameters()))
-    updated = any(
-        not torch.equal(pb, p.data)
-        for pb, p in zip(params_before, model.parameters())
-    )
+    updated = any(not torch.equal(pb, p.data) for pb, p in zip(params_before, model.parameters()))
     assert updated
 
 
@@ -176,6 +178,7 @@ def test_zero_grad_clears_grads():
 
 
 # --- get_privacy_spent ---
+
 
 def test_privacy_spent_keys():
     _, dp_opt = make_dp_opt()
@@ -207,6 +210,6 @@ def test_privacy_spent_formula():
     model = nn.Linear(4, 2)
     dp_opt = DPSGDOptimizer(torch.optim.SGD(model.parameters(), lr=0.01), cfg)
     steps = 1000
-    expected = (1.1 ** -2) * 2.0 * math.log(1.25 / 1e-5) * steps / 256
+    expected = (1.1**-2) * 2.0 * math.log(1.25 / 1e-5) * steps / 256
     result = dp_opt.get_privacy_spent(steps)["epsilon"]
     assert abs(result - expected) < 1e-9

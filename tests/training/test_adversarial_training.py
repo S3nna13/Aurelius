@@ -12,8 +12,8 @@ from src.training.adversarial_training import (
     AdvConfig,
     FreeLBTrainer,
     compute_robustness_score,
-    forward_with_embeds,
     fgsm_step,
+    forward_with_embeds,
     project_perturbation,
 )
 
@@ -240,13 +240,9 @@ def test_robustness_score_larger_epsilon():
     scores_large = []
     for seed in range(5):
         torch.manual_seed(seed)
-        scores_small.append(
-            compute_robustness_score(model, input_ids, n_trials=4, epsilon=1e-4)
-        )
+        scores_small.append(compute_robustness_score(model, input_ids, n_trials=4, epsilon=1e-4))
         torch.manual_seed(seed)
-        scores_large.append(
-            compute_robustness_score(model, input_ids, n_trials=4, epsilon=1.0)
-        )
+        scores_large.append(compute_robustness_score(model, input_ids, n_trials=4, epsilon=1.0))
 
     mean_small = sum(scores_small) / len(scores_small)
     mean_large = sum(scores_large) / len(scores_large)

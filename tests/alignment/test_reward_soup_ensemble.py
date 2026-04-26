@@ -1,4 +1,5 @@
 """Tests for src/alignment/reward_soup_ensemble.py — 12 tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -14,6 +15,7 @@ def _make_ensemble(mode: str = "mean", n: int = 3, weights=None) -> RewardSoupEn
 # ---------------------------------------------------------------------------
 # RewardSoupConfig
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = RewardSoupConfig()
@@ -31,6 +33,7 @@ def test_config_custom():
 # ---------------------------------------------------------------------------
 # add_model_scores / aggregate — mean
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_mean_basic():
     ens = _make_ensemble("mean")
@@ -56,6 +59,7 @@ def test_aggregate_empty_buffer():
 # aggregate — weighted
 # ---------------------------------------------------------------------------
 
+
 def test_aggregate_weighted():
     ens = _make_ensemble("weighted", n=2, weights=[0.8, 0.2])
     ens.add_model_scores([1.0, 0.0])
@@ -76,6 +80,7 @@ def test_aggregate_weighted_default_equal():
 # ---------------------------------------------------------------------------
 # aggregate — min / max
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_min():
     ens = _make_ensemble("min")
@@ -104,6 +109,7 @@ def test_aggregate_unknown_mode_raises():
 # interpolate_weights
 # ---------------------------------------------------------------------------
 
+
 def test_interpolate_weights_equal():
     ens = _make_ensemble()
     sd1 = {"w": torch.tensor([1.0, 2.0])}
@@ -129,6 +135,7 @@ def test_interpolate_weights_empty_raises():
 # ---------------------------------------------------------------------------
 # score_batch
 # ---------------------------------------------------------------------------
+
 
 def test_score_batch_mean():
     ens = _make_ensemble("mean")

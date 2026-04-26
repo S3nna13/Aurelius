@@ -1,4 +1,5 @@
 """Tests for cascade speculative decoding."""
+
 from __future__ import annotations
 
 import pytest
@@ -13,10 +14,10 @@ from src.inference.cascade_speculative import (
     compute_cascade_acceptance_rate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mock model for testing
 # ---------------------------------------------------------------------------
+
 
 class MockModel(nn.Module):
     def __init__(self, vocab_size=256, always_token=None):
@@ -39,6 +40,7 @@ class MockModel(nn.Module):
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def make_input(batch=1, seq_len=5, vocab_size=256):
     return torch.randint(0, vocab_size, (batch, seq_len))
 
@@ -46,6 +48,7 @@ def make_input(batch=1, seq_len=5, vocab_size=256):
 # ---------------------------------------------------------------------------
 # Test 1: CascadeConfig defaults correct
 # ---------------------------------------------------------------------------
+
 
 def test_cascade_config_defaults():
     cfg = CascadeConfig()
@@ -57,6 +60,7 @@ def test_cascade_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 2: CascadeLevel.draft returns correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_cascade_level_draft_shapes():
     vocab_size = 256
@@ -76,6 +80,7 @@ def test_cascade_level_draft_shapes():
 # ---------------------------------------------------------------------------
 # Test 3: CascadeLevel.verify accepts all when model agrees with draft
 # ---------------------------------------------------------------------------
+
 
 def test_cascade_level_verify_all_accepted():
     """When model always predicts token 42, draft of all-42 tokens is fully accepted."""
@@ -97,6 +102,7 @@ def test_cascade_level_verify_all_accepted():
 # Test 4: CascadeLevel.verify stops at first mismatch
 # ---------------------------------------------------------------------------
 
+
 def test_cascade_level_verify_stops_at_mismatch():
     """Model always predicts token 42; draft has mismatch at position 2."""
     always_token = 42
@@ -117,6 +123,7 @@ def test_cascade_level_verify_stops_at_mismatch():
 # Test 5: CascadeSpeculativeDecoder with 2 levels instantiates
 # ---------------------------------------------------------------------------
 
+
 def test_cascade_decoder_instantiates():
     level0 = CascadeLevel(MockModel(vocab_size=256), draft_len=4)
     level1 = CascadeLevel(MockModel(vocab_size=256), draft_len=2)
@@ -128,6 +135,7 @@ def test_cascade_decoder_instantiates():
 # ---------------------------------------------------------------------------
 # Test 6: decode_step returns new tokens and stats dict
 # ---------------------------------------------------------------------------
+
 
 def test_decode_step_returns_tokens_and_stats():
     always_token = 7
@@ -151,6 +159,7 @@ def test_decode_step_returns_tokens_and_stats():
 # Test 7: generate() returns tensor longer than input
 # ---------------------------------------------------------------------------
 
+
 def test_generate_longer_than_input():
     always_token = 5
     level0 = CascadeLevel(MockModel(vocab_size=256, always_token=always_token), draft_len=4)
@@ -169,6 +178,7 @@ def test_generate_longer_than_input():
 # ---------------------------------------------------------------------------
 # Test 8: get_stats returns dict with acceptance_rates key
 # ---------------------------------------------------------------------------
+
 
 def test_get_stats_has_acceptance_rates():
     always_token = 3
@@ -191,6 +201,7 @@ def test_get_stats_has_acceptance_rates():
 # Test 9: compute_cascade_acceptance_rate returns correct rates
 # ---------------------------------------------------------------------------
 
+
 def test_compute_cascade_acceptance_rate():
     # Level 0: steps accepted [4, 4, 2] → mean = (4+4+2)/3 = 10/3
     # Level 1: steps accepted [2, 0, 2] → mean = (2+0+2)/3 = 4/3
@@ -210,6 +221,7 @@ def test_compute_cascade_acceptance_rate_empty():
 # ---------------------------------------------------------------------------
 # Test 10: build_cascade factory creates correct structure
 # ---------------------------------------------------------------------------
+
 
 def test_build_cascade_factory():
     models = [MockModel(vocab_size=256), MockModel(vocab_size=256), MockModel(vocab_size=256)]
@@ -238,6 +250,7 @@ def test_build_cascade_single_model_raises():
 # Test 11: Two levels with always-same-token model → 100% acceptance
 # ---------------------------------------------------------------------------
 
+
 def test_two_levels_always_same_token_full_acceptance():
     """When both levels always predict token 7, draft matches perfectly → 100% at final level."""
     always_token = 7
@@ -259,6 +272,7 @@ def test_two_levels_always_same_token_full_acceptance():
 # ---------------------------------------------------------------------------
 # Test 12: Stats track tokens correctly across multiple steps
 # ---------------------------------------------------------------------------
+
 
 def test_stats_track_tokens_across_steps():
     """Verify that total_tokens accumulates correctly over multiple decode_steps."""

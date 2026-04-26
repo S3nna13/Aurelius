@@ -1,12 +1,13 @@
 """Agent harness: run agent policy in environment, collect trajectories."""
+
 from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
-from .environment import EnvAction, EnvState, EnvStep, Environment, GridWorldEnv
+from .environment import EnvAction, Environment, EnvState, EnvStep, GridWorldEnv
 
 random.seed(42)
 
@@ -87,9 +88,7 @@ class AgentHarness:
 
         return _policy
 
-    def run_n_episodes(
-        self, policy: PolicyFn, n: int, max_steps: int = 100
-    ) -> list[Trajectory]:
+    def run_n_episodes(self, policy: PolicyFn, n: int, max_steps: int = 100) -> list[Trajectory]:
         return [self.run_episode(policy, max_steps=max_steps) for _ in range(n)]
 
     @staticmethod

@@ -19,10 +19,10 @@ from src.eval.elo_rating import (
     bootstrap_elo_ci,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_result(a: str, b: str, winner: str) -> ComparisonResult:
     return ComparisonResult(model_a=a, model_b=b, winner=winner)
@@ -51,6 +51,7 @@ def make_results_set() -> list[ComparisonResult]:
 # ---------------------------------------------------------------------------
 # ELO tests
 # ---------------------------------------------------------------------------
+
 
 class TestELORating:
     def test_initial_rating_is_base(self):
@@ -132,6 +133,7 @@ class TestELORating:
 # Bradley-Terry tests
 # ---------------------------------------------------------------------------
 
+
 class TestBradleyTerry:
     def test_fit_runs_on_10_results(self):
         """BradleyTerry.fit should complete without error on 10 results."""
@@ -184,6 +186,7 @@ class TestBradleyTerry:
 # Bootstrap CI tests
 # ---------------------------------------------------------------------------
 
+
 class TestBootstrapEloCi:
     def test_returns_dict_with_tuples(self):
         """bootstrap_elo_ci must return a dict of (lower, upper) tuples."""
@@ -225,6 +228,7 @@ class TestBootstrapEloCi:
 # ---------------------------------------------------------------------------
 # Bayesian Skill Tracker tests
 # ---------------------------------------------------------------------------
+
 
 class TestBayesianSkillTracker:
     def test_update_runs_without_error(self):

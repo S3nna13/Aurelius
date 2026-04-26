@@ -1,9 +1,10 @@
 """Best-of-N concurrent reasoning optimizer with ThinkingModeParser."""
+
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -23,16 +24,18 @@ class ParsedReasoning:
 class ThinkingModeParser:
     """Parses <think>...</think> blocks from model output (regex-based)."""
 
-    THINK_RE = re.compile(r'<think>(.*?)</think>', re.DOTALL)
+    THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
     def parse(self, text: str) -> ParsedReasoning:
         blocks: list[ThinkingBlock] = []
         for m in self.THINK_RE.finditer(text):
-            blocks.append(ThinkingBlock(
-                content=m.group(1),
-                start_pos=m.start(),
-                end_pos=m.end(),
-            ))
+            blocks.append(
+                ThinkingBlock(
+                    content=m.group(1),
+                    start_pos=m.start(),
+                    end_pos=m.end(),
+                )
+            )
 
         if blocks:
             last_end = blocks[-1].end_pos
@@ -47,7 +50,7 @@ class ThinkingModeParser:
         )
 
     def strip_thinking(self, text: str) -> str:
-        return self.THINK_RE.sub('', text).strip()
+        return self.THINK_RE.sub("", text).strip()
 
 
 @dataclass
@@ -88,11 +91,13 @@ class BestOfNOptimizer:
         results: list[CandidateResult] = []
         for idx, raw in enumerate(candidates):
             parsed = self._parser.parse(raw)
-            results.append(CandidateResult(
-                candidate_id=idx,
-                reasoning=parsed,
-                score=self.score(parsed),
-            ))
+            results.append(
+                CandidateResult(
+                    candidate_id=idx,
+                    reasoning=parsed,
+                    score=self.score(parsed),
+                )
+            )
 
         best = max(results, key=lambda r: r.score)
         best.selected = True

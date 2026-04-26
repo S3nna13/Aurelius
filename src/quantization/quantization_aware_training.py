@@ -23,6 +23,7 @@ except ImportError:
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class QATConfig:
     bits: int = 8
@@ -34,6 +35,7 @@ class QATConfig:
 # ---------------------------------------------------------------------------
 # STE (Straight-Through Estimator) autograd function
 # ---------------------------------------------------------------------------
+
 
 class _STEFunction(Function):
     """Round in forward; identity gradient in backward (STE)."""
@@ -52,6 +54,7 @@ class _STEFunction(Function):
 # FakeQuantize module
 # ---------------------------------------------------------------------------
 
+
 class FakeQuantize(nn.Module):
     """Differentiable fake-quantize operator with STE gradient.
 
@@ -69,7 +72,7 @@ class FakeQuantize(nn.Module):
             self.q_max = (2 ** (bits - 1)) - 1
         else:
             self.q_min = 0
-            self.q_max = (2 ** bits) - 1
+            self.q_max = (2**bits) - 1
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
         """Fake-quantize x; STE gradient flows through rounding."""
@@ -95,6 +98,7 @@ class FakeQuantize(nn.Module):
 # ---------------------------------------------------------------------------
 # QATWrapper
 # ---------------------------------------------------------------------------
+
 
 class QATWrapper(nn.Module):
     """Wraps an nn.Linear with fake-quantize nodes on weights and activations.

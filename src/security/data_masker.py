@@ -2,11 +2,11 @@
 
 Trail of Bits: mask sensitive data before it reaches output channels.
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-
 
 _MASK_PATTERNS: list[tuple[str, str]] = [
     (r"\b\d{3}-\d{2}-\d{4}\b", "***-**-****"),

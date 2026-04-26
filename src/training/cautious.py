@@ -17,17 +17,17 @@ Variable notation follows the paper:
     mask_t — sign-agreement mask
     θ_t   — parameter after update
 """
+
 from __future__ import annotations
 
-import math
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
 
-
 # ---------------------------------------------------------------------------
 # Shared masking logic (Algorithm 1, paper §3)
 # ---------------------------------------------------------------------------
+
 
 class CautiousMask:
     """Stateless helper that applies the cautious sign-agreement mask.
@@ -62,6 +62,7 @@ class CautiousMask:
 # ---------------------------------------------------------------------------
 # CautiousAdam — AdamW + cautious mask
 # ---------------------------------------------------------------------------
+
 
 class CautiousAdam(Optimizer):
     """AdamW with cautious update mask (C-AdamW).
@@ -140,14 +141,16 @@ class CautiousAdam(Optimizer):
                     p.mul_(1.0 - lr * wd)
 
                 # Moment updates
-                m_t.mul_(beta1).add_(g_t, alpha=1.0 - beta1)         # m_t = β₁·m_{t-1} + (1−β₁)·g_t
-                v_t.mul_(beta2).addcmul_(g_t, g_t, value=1.0 - beta2)  # v_t = β₂·v_{t-1} + (1−β₂)·g_t²
+                m_t.mul_(beta1).add_(g_t, alpha=1.0 - beta1)  # m_t = β₁·m_{t-1} + (1−β₁)·g_t
+                v_t.mul_(beta2).addcmul_(
+                    g_t, g_t, value=1.0 - beta2
+                )  # v_t = β₂·v_{t-1} + (1−β₂)·g_t²
 
                 # Bias correction
-                bc1 = 1.0 - beta1 ** t
-                bc2 = 1.0 - beta2 ** t
-                m_hat = m_t / bc1   # m̂_t
-                v_hat = v_t / bc2   # v̂_t
+                bc1 = 1.0 - beta1**t
+                bc2 = 1.0 - beta2**t
+                m_hat = m_t / bc1  # m̂_t
+                v_hat = v_t / bc2  # v̂_t
 
                 # Adam update direction  d_t = m̂_t / (sqrt(v̂_t) + ε)
                 d_t = m_hat / (v_hat.sqrt().add_(eps))
@@ -164,6 +167,7 @@ class CautiousAdam(Optimizer):
 # ---------------------------------------------------------------------------
 # CautiousSGD — SGD with momentum + cautious mask
 # ---------------------------------------------------------------------------
+
 
 class CautiousSGD(Optimizer):
     """SGD with momentum and cautious update mask (C-SGD).
@@ -241,6 +245,7 @@ class CautiousSGD(Optimizer):
 # make_cautious factory
 # ---------------------------------------------------------------------------
 
+
 def make_cautious(optimizer_class: type) -> type:
     """Return a new optimizer class that wraps *optimizer_class* with the
     cautious sign-agreement mask.
@@ -279,7 +284,7 @@ def make_cautious(optimizer_class: type) -> type:
 
             # Compute update direction, apply cautious mask, reapply
             for group in self.param_groups:
-                lr = group.get("lr", 1.0)
+                group.get("lr", 1.0)
                 for p in group["params"]:
                     pid = id(p)
                     if pid not in snapshots:
@@ -290,7 +295,9 @@ def make_cautious(optimizer_class: type) -> type:
                         continue
                     g_t = grads[pid]
                     # sign-agreement mask on d_t direction (raw_update is −lr·d_t)
-                    mask_t = (raw_update * g_t < 0).to(dtype=p.dtype)   # agree → update·g < 0 (opposite sign)
+                    mask_t = (raw_update * g_t < 0).to(
+                        dtype=p.dtype
+                    )  # agree → update·g < 0 (opposite sign)
                     mean_mask = mask_t.mean()
                     mask_t = mask_t / (mean_mask + 1e-8)
                     # Revert to pre-step and apply masked update
@@ -300,7 +307,7 @@ def make_cautious(optimizer_class: type) -> type:
 
     CautiousWrapper.__name__ = f"Cautious{optimizer_class.__name__}"
     CautiousWrapper.__qualname__ = f"Cautious{optimizer_class.__name__}"
-    CautiousWrapper.__doc__ = (
-        CautiousWrapper.__doc__ or ""
-    ).replace("{base}", optimizer_class.__name__)
+    CautiousWrapper.__doc__ = (CautiousWrapper.__doc__ or "").replace(
+        "{base}", optimizer_class.__name__
+    )
     return CautiousWrapper

@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     PLAIN = "plain"
     RICH_MARKDOWN = "rich_markdown"
     JSON = "json"
@@ -115,9 +115,7 @@ class OutputFormatter:
             return msg.strip()
         return msg
 
-    def format_tokens_used(
-        self, prompt_tokens: int, completion_tokens: int
-    ) -> str:
+    def format_tokens_used(self, prompt_tokens: int, completion_tokens: int) -> str:
         """Return a human-readable token-usage summary."""
         total = prompt_tokens + completion_tokens
         return (

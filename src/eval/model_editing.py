@@ -1,36 +1,39 @@
 """Model editing: MEMIT-style mass editing, edit evaluation, and counterfactual testing."""
+
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EditRequest:
     """Specification for a single model edit."""
-    subject: str                                    # entity being edited
-    prompt: str                                     # prompt template containing the subject
-    target_new: str                                 # new fact to inject
-    target_old: str | None = None                   # original fact (for evaluation)
-    paraphrase_prompts: list[str] | None = None     # for generalization testing
+
+    subject: str  # entity being edited
+    prompt: str  # prompt template containing the subject
+    target_new: str  # new fact to inject
+    target_old: str | None = None  # original fact (for evaluation)
+    paraphrase_prompts: list[str] | None = None  # for generalization testing
 
 
 @dataclass
 class EditResult:
     """Outcome of applying a model edit."""
+
     success: bool
-    efficacy: float       # does the model output the new fact?
-    generalization: float # does it generalize to paraphrases?
-    specificity: float    # does it preserve unrelated facts?
+    efficacy: float  # does the model output the new fact?
+    generalization: float  # does it generalize to paraphrases?
+    specificity: float  # does it preserve unrelated facts?
     edit_id: str
 
 
@@ -38,9 +41,10 @@ class EditResult:
 # Core math
 # ---------------------------------------------------------------------------
 
+
 def compute_sequence_probability(
     model: nn.Module,
-    input_ids: torch.Tensor,   # (1, S)
+    input_ids: torch.Tensor,  # (1, S)
     target_ids: torch.Tensor,  # (1, T)
 ) -> float:
     """Compute P(target | input) as sum of log-probabilities.
@@ -63,7 +67,7 @@ def compute_sequence_probability(
     for t in range(n_target):
         # Position in full sequence: seq_len - 1 + t gives the position BEFORE the
         # target token; that position's logits predict position seq_len + t.
-        pos = seq_len - 1 + t        # logits at this position predict next token
+        pos = seq_len - 1 + t  # logits at this position predict next token
         tok = target_ids[0, t].item()
         total_log_prob += log_probs[0, pos, tok].item()
 
@@ -83,19 +87,19 @@ def rank_one_update(
 
     Returns a new tensor of the same shape as W.
     """
-    Wk = W @ k                          # (d_out,)
-    residual = v - Wk                   # (d_out,)
-    k_sq = k @ k                        # scalar
+    Wk = W @ k  # (d_out,)
+    residual = v - Wk  # (d_out,)
+    k_sq = k @ k  # scalar
     if k_sq.abs() < 1e-12:
         return W.clone()
-    delta = torch.outer(residual, k) / k_sq   # (d_out, d_in)
+    delta = torch.outer(residual, k) / k_sq  # (d_out, d_in)
     return W + delta
 
 
 def batch_rank_one_updates(
-    W: torch.Tensor,      # (d_out, d_in)
-    keys: torch.Tensor,   # (n_edits, d_in)
-    values: torch.Tensor, # (n_edits, d_out)
+    W: torch.Tensor,  # (d_out, d_in)
+    keys: torch.Tensor,  # (n_edits, d_in)
+    values: torch.Tensor,  # (n_edits, d_out)
 ) -> torch.Tensor:
     """MEMIT: apply multiple rank-1 edits simultaneously via least-squares.
 
@@ -108,21 +112,21 @@ def batch_rank_one_updates(
 
     Returns W + delta_W with the same shape as W.
     """
-    K = keys     # (n_edits, d_in)
-    V = values   # (n_edits, d_out)
+    K = keys  # (n_edits, d_in)
+    V = values  # (n_edits, d_out)
 
     # target matrix: (d_out, n_edits)
-    V_T = V.T                       # (d_out, n_edits)
-    WKT = W @ K.T                   # (d_out, n_edits)
-    residual = V_T - WKT            # (d_out, n_edits)
+    V_T = V.T  # (d_out, n_edits)
+    WKT = W @ K.T  # (d_out, n_edits)
+    residual = V_T - WKT  # (d_out, n_edits)
 
-    KKT = K @ K.T                   # (n_edits, n_edits)
+    KKT = K @ K.T  # (n_edits, n_edits)
     KKT_pinv = torch.linalg.pinv(KKT)  # (n_edits, n_edits)
 
-    delta_W = residual @ KKT_pinv   # (d_out, n_edits) @ (n_edits, n_edits) → (d_out, d_in)?
+    delta_W = residual @ KKT_pinv  # (d_out, n_edits) @ (n_edits, n_edits) → (d_out, d_in)?
     # That gives (d_out, n_edits) — we need (d_out, d_in).
     # Full formula: delta_W = (V^T - W @ K^T) @ pinv(K @ K^T) @ K
-    delta_W = delta_W @ K           # (d_out, n_edits) @ (n_edits, d_in) → (d_out, d_in)
+    delta_W = delta_W @ K  # (d_out, n_edits) @ (n_edits, d_in) → (d_out, d_in)
 
     return W + delta_W
 
@@ -130,6 +134,7 @@ def batch_rank_one_updates(
 # ---------------------------------------------------------------------------
 # Evaluation helpers
 # ---------------------------------------------------------------------------
+
 
 def compute_edit_efficacy(
     model: nn.Module,
@@ -162,6 +167,7 @@ def compute_edit_efficacy(
 # ---------------------------------------------------------------------------
 # ModelEditor
 # ---------------------------------------------------------------------------
+
 
 class ModelEditor:
     """Applies ROME / MEMIT-style edits to an AureliusTransformer model."""
@@ -249,12 +255,12 @@ class ModelEditor:
 
         # Key: subject hidden state lives in d_model space.
         # We need k in d_ff space for the weight update (W maps d_ff → d_model).
-        k_dm = self._subject_key(edit.subject, layer_idx)   # (d_model,)
-        v_dm = self._target_value(edit, layer_idx)           # (d_model,)
+        k_dm = self._subject_key(edit.subject, layer_idx)  # (d_model,)
+        v_dm = self._target_value(edit, layer_idx)  # (d_model,)
 
         # Project key into d_ff space so the rank-1 update is compatible.
         with torch.no_grad():
-            k_ff = W.T @ k_dm   # (d_ff,)
+            k_ff = W.T @ k_dm  # (d_ff,)
 
         W_new = rank_one_update(W.data, k_ff, v_dm)
         self._set_weight(layer_idx, W_new)
@@ -265,8 +271,8 @@ class ModelEditor:
         return EditResult(
             success=True,
             efficacy=efficacy,
-            generalization=0.0,   # would require paraphrase prompts
-            specificity=1.0,      # assume unrelated facts are preserved
+            generalization=0.0,  # would require paraphrase prompts
+            specificity=1.0,  # assume unrelated facts are preserved
             edit_id=edit_id,
         )
 
@@ -285,15 +291,15 @@ class ModelEditor:
         values_list: list[torch.Tensor] = []
 
         for edit in edits:
-            k_dm = self._subject_key(edit.subject, layer_idx)    # (d_model,)
-            v_dm = self._target_value(edit, layer_idx)            # (d_model,)
+            k_dm = self._subject_key(edit.subject, layer_idx)  # (d_model,)
+            v_dm = self._target_value(edit, layer_idx)  # (d_model,)
             with torch.no_grad():
-                k_ff = W.T @ k_dm   # (d_ff,)
+                k_ff = W.T @ k_dm  # (d_ff,)
             keys_list.append(k_ff)
             values_list.append(v_dm)
 
-        keys = torch.stack(keys_list, dim=0)    # (n_edits, d_ff)
-        values = torch.stack(values_list, dim=0) # (n_edits, d_model)
+        keys = torch.stack(keys_list, dim=0)  # (n_edits, d_ff)
+        values = torch.stack(values_list, dim=0)  # (n_edits, d_model)
 
         W_new = batch_rank_one_updates(W.data, keys, values)
         self._set_weight(layer_idx, W_new)
@@ -301,13 +307,15 @@ class ModelEditor:
         results: list[EditResult] = []
         for edit in edits:
             efficacy = compute_edit_efficacy(self.model, self.encode_fn, edit)
-            results.append(EditResult(
-                success=True,
-                efficacy=efficacy,
-                generalization=0.0,
-                specificity=1.0,
-                edit_id=str(uuid.uuid4()),
-            ))
+            results.append(
+                EditResult(
+                    success=True,
+                    efficacy=efficacy,
+                    generalization=0.0,
+                    specificity=1.0,
+                    edit_id=str(uuid.uuid4()),
+                )
+            )
 
         return results
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -54,7 +53,7 @@ class TokenizerCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def get(self, text: str) -> Optional[CachedTokenization]:
+    def get(self, text: str) -> CachedTokenization | None:
         """Return the cached result for *text*, or None on a cache miss.
 
         A hit moves the entry to the end (most-recently-used position).

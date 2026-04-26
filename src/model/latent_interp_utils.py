@@ -7,7 +7,7 @@ Useful for latent space navigation, representation mixing, and smooth decoding.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -92,7 +92,7 @@ def lerp_states(
     Returns:
         List of interpolated tensors of the same shapes.
     """
-    assert len(states_a) == len(states_b), "states_a and states_b must have same length"
+    assert len(states_a) == len(states_b), "states_a and states_b must have same length"  # noqa: S101
     return [(1.0 - t) * a + t * b for a, b in zip(states_a, states_b)]
 
 
@@ -111,7 +111,7 @@ def slerp_states(
     Returns:
         List of slerp-interpolated tensors.
     """
-    assert len(states_a) == len(states_b), "states_a and states_b must have same length"
+    assert len(states_a) == len(states_b), "states_a and states_b must have same length"  # noqa: S101
     return [slerp(a, b, t) for a, b in zip(states_a, states_b)]
 
 

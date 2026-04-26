@@ -7,13 +7,12 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Optional
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ExecutionEvent:
@@ -34,10 +33,11 @@ class BudgetConfig:
 # Monitor
 # ---------------------------------------------------------------------------
 
+
 class ExecutionMonitor:
     """Records execution events and checks budget constraints."""
 
-    def __init__(self, config: Optional[BudgetConfig] = None) -> None:
+    def __init__(self, config: BudgetConfig | None = None) -> None:
         self._config: BudgetConfig = config if config is not None else BudgetConfig()
         self._events: list[ExecutionEvent] = []
 

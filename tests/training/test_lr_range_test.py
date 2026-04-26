@@ -102,6 +102,7 @@ def test_determinism_with_seeded_train_step_fn() -> None:
 
         def fn(lr: float) -> float:
             return rng.random() + lr
+
         return fn
 
     r1 = LRRangeTest(make_fn(42), num_steps=25, divergence_threshold=0.0).run()

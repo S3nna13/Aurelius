@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 __all__ = [
     "NormalizedRequest",
@@ -41,8 +40,7 @@ class NormalizedResponse:
 def _require_provider(provider: str) -> None:
     if provider not in _SUPPORTED_PROVIDERS:
         raise ProviderNormalizerError(
-            f"Unsupported provider {provider!r}. "
-            f"Supported: {sorted(_SUPPORTED_PROVIDERS)}"
+            f"Unsupported provider {provider!r}. Supported: {sorted(_SUPPORTED_PROVIDERS)}"
         )
 
 
@@ -83,7 +81,9 @@ class ProviderNormalizer:
         if provider == "local":
             return NormalizedRequest(
                 prompt=raw_request.get("prompt", ""),
-                max_tokens=int(raw_request.get("max_new_tokens", raw_request.get("max_tokens", 256))),
+                max_tokens=int(
+                    raw_request.get("max_new_tokens", raw_request.get("max_tokens", 256))
+                ),
                 temperature=float(raw_request.get("temperature", 0.8)),
                 stop_sequences=raw_request.get("stop", []) or [],
                 stream=bool(raw_request.get("stream", False)),

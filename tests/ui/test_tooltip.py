@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.ui.tooltip import TooltipConfig, TooltipRenderer, TooltipRegistry, TOOLTIP_REGISTRY
-
+from src.ui.tooltip import TOOLTIP_REGISTRY, TooltipConfig, TooltipRegistry, TooltipRenderer
 
 # ---------------------------------------------------------------------------
 # TooltipConfig — defaults
@@ -98,7 +97,7 @@ class TestTooltipRenderer:
         assert self.renderer.is_visible() is False
 
     def test_show_wraps_long_text(self):
-        long_text = "This is a very long tooltip text that should definitely be wrapped at the max width boundary"
+        long_text = "This is a very long tooltip text that should definitely be wrapped at the max width boundary"  # noqa: E501
         cfg = TooltipConfig(text=long_text, max_width=20)
         result = self.renderer.show(cfg)
         # Each line of the output (stripped) should not be wider than max_width + border chars

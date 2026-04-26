@@ -1,11 +1,11 @@
 import torch
-import pytest
+
 from src.multimodal.ocr_module import (
-    OCRConfig,
-    TextRegionEncoder,
-    LayoutAttention,
-    OCRModule,
     OCR_MODULE_REGISTRY,
+    LayoutAttention,
+    OCRConfig,
+    OCRModule,
+    TextRegionEncoder,
 )
 
 

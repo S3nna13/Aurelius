@@ -18,13 +18,13 @@ class BenchmarkSpec:
     """Specification for a single evaluation benchmark."""
 
     name: str
-    task: str                  # lm-evaluation-harness task name
+    task: str  # lm-evaluation-harness task name
     metric: str
     num_fewshot: int
     expected_low: float
     expected_high: float
     description: str = ""
-    subset: str = ""           # dataset subset/config (empty = default)
+    subset: str = ""  # dataset subset/config (empty = default)
 
 
 # ---------------------------------------------------------------------------

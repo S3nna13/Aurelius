@@ -13,10 +13,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CrossModalConfig:
@@ -33,6 +33,7 @@ class CrossModalConfig:
 # ---------------------------------------------------------------------------
 # CrossModalAttentionLayer
 # ---------------------------------------------------------------------------
+
 
 class CrossModalAttentionLayer(nn.Module):
     """Single Q-Former layer: self-attention over query tokens, then cross-attention to vision.
@@ -105,6 +106,7 @@ class CrossModalAttentionLayer(nn.Module):
 # QFormer
 # ---------------------------------------------------------------------------
 
+
 class QFormer(nn.Module):
     """Multi-layer Q-Former: compresses variable-length vision features to fixed query tokens.
 
@@ -133,13 +135,15 @@ class QFormer(nn.Module):
         # Learnable query token embeddings: (1, n_query_tokens, d_model)
         self.query_tokens = nn.Parameter(torch.randn(1, n_query_tokens, d_model))
 
-        self.layers = nn.ModuleList([
-            CrossModalAttentionLayer(d_model, n_heads, dropout, feedforward_mult)
-            for _ in range(n_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                CrossModalAttentionLayer(d_model, n_heads, dropout, feedforward_mult)
+                for _ in range(n_layers)
+            ]
+        )
 
     @classmethod
-    def from_config(cls, cfg: CrossModalConfig) -> "QFormer":
+    def from_config(cls, cfg: CrossModalConfig) -> QFormer:
         """Construct a QFormer from a CrossModalConfig.
 
         Args:

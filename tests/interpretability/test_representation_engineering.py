@@ -10,11 +10,9 @@ Tiny model configuration used throughout:
 
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.interpretability.representation_engineering import (
     RepEngConfig,
     RepresentationExtractor,
@@ -22,6 +20,8 @@ from src.interpretability.representation_engineering import (
     apply_steering_hook,
     extract_concept_direction,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Shared constants / helpers
@@ -54,6 +54,7 @@ def _make_ids(batch: int = 2, seq: int = 8) -> torch.Tensor:
 # Test 1 — RepresentationExtractor extracts shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_extractor_shape():
     torch.manual_seed(1)
     model = _make_model()
@@ -71,6 +72,7 @@ def test_extractor_shape():
 # ---------------------------------------------------------------------------
 # Test 2 — Different inputs produce different representations
 # ---------------------------------------------------------------------------
+
 
 def test_extractor_different_inputs_differ():
     torch.manual_seed(2)
@@ -93,6 +95,7 @@ def test_extractor_different_inputs_differ():
 # Test 3 — extract_concept_direction returns (d_model,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_extract_concept_direction_shape():
     torch.manual_seed(3)
     model = _make_model()
@@ -102,14 +105,13 @@ def test_extract_concept_direction_shape():
 
     direction = extract_concept_direction(model, pos_ids, neg_ids, layer_idx=0)
 
-    assert direction.shape == (D_MODEL,), (
-        f"Expected shape ({D_MODEL},), got {direction.shape}"
-    )
+    assert direction.shape == (D_MODEL,), f"Expected shape ({D_MODEL},), got {direction.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4 — extract_concept_direction with normalize=True produces unit vector
 # ---------------------------------------------------------------------------
+
 
 def test_extract_concept_direction_unit_norm():
     torch.manual_seed(4)
@@ -118,9 +120,7 @@ def test_extract_concept_direction_unit_norm():
     pos_ids = _make_ids(4, 8)
     neg_ids = _make_ids(4, 8)
 
-    direction = extract_concept_direction(
-        model, pos_ids, neg_ids, layer_idx=0, normalize=True
-    )
+    direction = extract_concept_direction(model, pos_ids, neg_ids, layer_idx=0, normalize=True)
 
     norm = direction.norm().item()
     assert abs(norm - 1.0) < 1e-5, f"Expected unit norm, got {norm}"
@@ -129,6 +129,7 @@ def test_extract_concept_direction_unit_norm():
 # ---------------------------------------------------------------------------
 # Test 5 — SteeringVectorBank add and get roundtrip
 # ---------------------------------------------------------------------------
+
 
 def test_bank_add_get_roundtrip():
     torch.manual_seed(5)
@@ -145,6 +146,7 @@ def test_bank_add_get_roundtrip():
 # Test 6 — SteeringVectorBank.get missing key raises KeyError
 # ---------------------------------------------------------------------------
 
+
 def test_bank_get_missing_key_raises():
     bank = SteeringVectorBank()
 
@@ -155,6 +157,7 @@ def test_bank_get_missing_key_raises():
 # ---------------------------------------------------------------------------
 # Test 7 — SteeringVectorBank.list_names returns correct names
 # ---------------------------------------------------------------------------
+
 
 def test_bank_list_names():
     torch.manual_seed(7)
@@ -172,6 +175,7 @@ def test_bank_list_names():
 # ---------------------------------------------------------------------------
 # Test 8 — SteeringVectorBank.remove removes the entry
 # ---------------------------------------------------------------------------
+
 
 def test_bank_remove():
     torch.manual_seed(8)
@@ -194,6 +198,7 @@ def test_bank_remove():
 # Test 9 — SteeringVectorBank.compose returns (d_model,) tensor
 # ---------------------------------------------------------------------------
 
+
 def test_bank_compose_shape():
     torch.manual_seed(9)
     bank = SteeringVectorBank()
@@ -205,14 +210,13 @@ def test_bank_compose_shape():
 
     composed = bank.compose(["x", "y", "z"])
 
-    assert composed.shape == (D_MODEL,), (
-        f"Expected shape ({D_MODEL},), got {composed.shape}"
-    )
+    assert composed.shape == (D_MODEL,), f"Expected shape ({D_MODEL},), got {composed.shape}"
 
 
 # ---------------------------------------------------------------------------
 # Test 10 — SteeringVectorBank.project_out removes the component (dot ≈ 0)
 # ---------------------------------------------------------------------------
+
 
 def test_bank_project_out_removes_component():
     torch.manual_seed(10)
@@ -226,7 +230,7 @@ def test_bank_project_out_removes_component():
     # Create a vector with a known component along the direction
     orthogonal = torch.randn(D_MODEL)
     orthogonal = orthogonal - direction * orthogonal.dot(direction)  # make it orthogonal
-    vec = orthogonal + 5.0 * direction   # deliberate component along direction
+    vec = orthogonal + 5.0 * direction  # deliberate component along direction
 
     projected = bank.project_out(vec, "dir")
 
@@ -240,6 +244,7 @@ def test_bank_project_out_removes_component():
 # Test 11 — SteeringVectorBank.interpolate: alpha=0 → vec_b, alpha=1 → vec_a
 # ---------------------------------------------------------------------------
 
+
 def test_bank_interpolate_boundary():
     torch.manual_seed(11)
     bank = SteeringVectorBank()
@@ -252,12 +257,8 @@ def test_bank_interpolate_boundary():
     result_alpha1 = bank.interpolate("a", "b", alpha=1.0)
     result_alpha0 = bank.interpolate("a", "b", alpha=0.0)
 
-    assert torch.allclose(result_alpha1, vec_a, atol=1e-6), (
-        "alpha=1 should return vec_a"
-    )
-    assert torch.allclose(result_alpha0, vec_b, atol=1e-6), (
-        "alpha=0 should return vec_b"
-    )
+    assert torch.allclose(result_alpha1, vec_a, atol=1e-6), "alpha=1 should return vec_a"
+    assert torch.allclose(result_alpha0, vec_b, atol=1e-6), "alpha=0 should return vec_b"
 
     # Also check a midpoint
     result_mid = bank.interpolate("a", "b", alpha=0.5)
@@ -270,6 +271,7 @@ def test_bank_interpolate_boundary():
 # ---------------------------------------------------------------------------
 # Test 12 — apply_steering_hook changes model output compared to no hook
 # ---------------------------------------------------------------------------
+
 
 def test_apply_steering_hook_changes_output():
     torch.manual_seed(12)
@@ -307,6 +309,7 @@ def test_apply_steering_hook_changes_output():
 # Test 13 — RepresentationExtractor works with negative layer_idx (-1)
 # ---------------------------------------------------------------------------
 
+
 def test_extractor_negative_layer_idx():
     torch.manual_seed(13)
     model = _make_model()
@@ -327,6 +330,7 @@ def test_extractor_negative_layer_idx():
 # Test 14 — RepEngConfig dataclass has expected defaults
 # ---------------------------------------------------------------------------
 
+
 def test_rep_eng_config_defaults():
     cfg = RepEngConfig()
     assert cfg.layer_idx == -1
@@ -339,6 +343,7 @@ def test_rep_eng_config_defaults():
 # Test 15 — extract_concept_direction with normalize=False does NOT normalize
 # ---------------------------------------------------------------------------
 
+
 def test_extract_concept_direction_unnormalized():
     torch.manual_seed(15)
     model = _make_model()
@@ -346,12 +351,8 @@ def test_extract_concept_direction_unnormalized():
     pos_ids = _make_ids(4, 8)
     neg_ids = _make_ids(4, 8)
 
-    direction_norm = extract_concept_direction(
-        model, pos_ids, neg_ids, layer_idx=0, normalize=True
-    )
-    direction_raw = extract_concept_direction(
-        model, pos_ids, neg_ids, layer_idx=0, normalize=False
-    )
+    direction_norm = extract_concept_direction(model, pos_ids, neg_ids, layer_idx=0, normalize=True)
+    direction_raw = extract_concept_direction(model, pos_ids, neg_ids, layer_idx=0, normalize=False)
 
     # The unnormalized version should have the same orientation as normalized
     # (dot product should be close to its norm, i.e. they point the same way)

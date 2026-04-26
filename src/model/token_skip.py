@@ -8,7 +8,7 @@ Inspired by: Schuster et al. 2022 (Confident Adaptive Language Modeling)
              Elbayad et al. 2020 (Depth-Adaptive Transformer)
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -71,8 +71,8 @@ class SkippableLayer(nn.Module):
     def forward(
         self,
         x: Tensor,
-        skip_mask: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        skip_mask: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
         """Run the layer with optional token skipping.
 
         Args:
@@ -119,15 +119,12 @@ class TokenSkipModel(nn.Module):
         self.layers = nn.ModuleList(
             [nn.Sequential(nn.Linear(d_model, d_model), nn.GELU()) for _ in range(n_layers)]
         )
-        self.gates = nn.ModuleList(
-            [ConfidenceGate(d_model, threshold) for _ in range(n_layers)]
-        )
+        self.gates = nn.ModuleList([ConfidenceGate(d_model, threshold) for _ in range(n_layers)])
         self.skippable_layers = [
-            SkippableLayer(layer, gate)
-            for layer, gate in zip(self.layers, self.gates)
+            SkippableLayer(layer, gate) for layer, gate in zip(self.layers, self.gates)
         ]
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Dict[str, Any]]:
+    def forward(self, x: Tensor) -> tuple[Tensor, dict[str, Any]]:
         """Run the model with adaptive token skipping.
 
         Args:
@@ -146,7 +143,7 @@ class TokenSkipModel(nn.Module):
         # cumulative_skip[b, t] == True means token t in batch b has exited.
         cumulative_skip = torch.zeros(B, T, dtype=torch.bool, device=x.device)
 
-        exit_fractions: List[float] = []
+        exit_fractions: list[float] = []
         # layers_computed[b, t] accumulates how many layers each token ran through.
         layers_computed = torch.zeros(B, T, device=x.device)
 
@@ -161,7 +158,7 @@ class TokenSkipModel(nn.Module):
             cumulative_skip = cumulative_skip | new_skip_mask
             exit_fractions.append(cumulative_skip.float().mean().item())
 
-        stats: Dict[str, Any] = {
+        stats: dict[str, Any] = {
             "exit_fractions": exit_fractions,
             "mean_layers_computed": layers_computed.mean().item(),
         }
@@ -179,7 +176,7 @@ class SkipRateLoss(nn.Module):
         super().__init__()
         self.target_skip_rate = target_skip_rate
 
-    def forward(self, exit_fractions: List[float]) -> Tensor:
+    def forward(self, exit_fractions: list[float]) -> Tensor:
         """Compute the skip-rate auxiliary loss.
 
         Args:

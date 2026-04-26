@@ -8,12 +8,10 @@ K/V in block_k chunks, accumulating with numerically stable online softmax.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -35,7 +33,7 @@ class FlashAttnV2Config:
     block_size_q: int = 16
     block_size_k: int = 16
     causal: bool = True
-    scale: Optional[float] = None
+    scale: float | None = None
 
 
 def tiled_attention_v2(
@@ -45,7 +43,7 @@ def tiled_attention_v2(
     block_q: int,
     block_k: int,
     causal: bool = True,
-    scale: Optional[float] = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Tiled attention with online (numerically stable) softmax accumulation.
 
@@ -70,11 +68,11 @@ def tiled_attention_v2(
         scale = 1.0 / math.sqrt(d_head)
 
     # Output accumulator and online softmax state
-    out = torch.zeros_like(Q)                            # (B, H, T, d_head)
+    out = torch.zeros_like(Q)  # (B, H, T, d_head)
     # Running max per query position (used for numerical stability)
-    running_max = torch.full((B, H, T, 1), float("-inf"), dtype=Q.dtype, device=Q.device)
+    torch.full((B, H, T, 1), float("-inf"), dtype=Q.dtype, device=Q.device)
     # Running sum of exp weights
-    running_sum = torch.zeros(B, H, T, 1, dtype=Q.dtype, device=Q.device)
+    torch.zeros(B, H, T, 1, dtype=Q.dtype, device=Q.device)
 
     num_q_blocks = math.ceil(T / block_q)
     num_k_blocks = math.ceil(T / block_k)
@@ -82,7 +80,7 @@ def tiled_attention_v2(
     for qi in range(num_q_blocks):
         q_start = qi * block_q
         q_end = min(q_start + block_q, T)
-        Qi = Q[:, :, q_start:q_end, :]           # (B, H, bq, d_head)
+        Qi = Q[:, :, q_start:q_end, :]  # (B, H, bq, d_head)
         bq_actual = q_end - q_start
 
         # Per-block online softmax state
@@ -93,8 +91,8 @@ def tiled_attention_v2(
         for ki in range(num_k_blocks):
             k_start = ki * block_k
             k_end = min(k_start + block_k, T)
-            Kj = K[:, :, k_start:k_end, :]       # (B, H, bk, d_head)
-            Vj = V[:, :, k_start:k_end, :]       # (B, H, bk, d_head)
+            Kj = K[:, :, k_start:k_end, :]  # (B, H, bk, d_head)
+            Vj = V[:, :, k_start:k_end, :]  # (B, H, bk, d_head)
 
             # Compute scaled dot-product scores: (B, H, bq, bk)
             scores = torch.matmul(Qi, Kj.transpose(-1, -2)) * scale
@@ -113,7 +111,7 @@ def tiled_attention_v2(
 
             # Corrected running sum and output
             # Correction factor for previous accumulation
-            alpha = torch.exp(m_i - m_new)          # (B, H, bq, 1)
+            alpha = torch.exp(m_i - m_new)  # (B, H, bq, 1)
             # Weights for new block
             exp_scores = torch.exp(scores - m_new)  # (B, H, bq, bk)
             l_new = alpha * l_i + exp_scores.sum(dim=-1, keepdim=True)
@@ -136,7 +134,7 @@ def standard_attention_v2(
     K: Tensor,
     V: Tensor,
     causal: bool = True,
-    scale: Optional[float] = None,
+    scale: float | None = None,
 ) -> Tensor:
     """Reference standard scaled dot-product attention.
 
@@ -154,15 +152,15 @@ def standard_attention_v2(
     if scale is None:
         scale = 1.0 / math.sqrt(d_head)
 
-    scores = torch.matmul(Q, K.transpose(-1, -2)) * scale   # (B, H, T, T)
+    scores = torch.matmul(Q, K.transpose(-1, -2)) * scale  # (B, H, T, T)
 
     if causal:
         # Upper-triangular mask (future positions)
         mask = torch.triu(torch.ones(T, T, device=Q.device, dtype=torch.bool), diagonal=1)
         scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
 
-    attn_weights = torch.softmax(scores, dim=-1)             # (B, H, T, T)
-    return torch.matmul(attn_weights, V)                     # (B, H, T, d_head)
+    attn_weights = torch.softmax(scores, dim=-1)  # (B, H, T, T)
+    return torch.matmul(attn_weights, V)  # (B, H, T, d_head)
 
 
 class FlashAttentionV2(nn.Module):
@@ -177,7 +175,7 @@ class FlashAttentionV2(nn.Module):
 
     def __init__(self, config: FlashAttnV2Config) -> None:
         super().__init__()
-        assert config.d_model % config.n_heads == 0, (
+        assert config.d_model % config.n_heads == 0, (  # noqa: S101
             f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
         )
         self.config = config
@@ -208,7 +206,9 @@ class FlashAttentionV2(nn.Module):
 
         # Apply tiled attention
         out = tiled_attention_v2(
-            Q, K, V,
+            Q,
+            K,
+            V,
             block_q=self.config.block_size_q,
             block_k=self.config.block_size_k,
             causal=self.config.causal,

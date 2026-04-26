@@ -22,19 +22,20 @@ Public API
 DraftHead                   — lightweight MLP (d_model → vocab_size)
 SpeculativeStreamingDecoder — wraps target model_fn with speculative streaming
 """
+
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Draft head (Section 3 — "draft head" MLP)
 # ---------------------------------------------------------------------------
+
 
 class DraftHead(nn.Module):
     """Lightweight MLP that maps hidden states to draft vocabulary logits.
@@ -82,6 +83,7 @@ class DraftHead(nn.Module):
 # Speculative Streaming Decoder (Section 3, Algorithm 1)
 # ---------------------------------------------------------------------------
 
+
 class SpeculativeStreamingDecoder:
     """Speculative Streaming decoder using the target model's own hidden states.
 
@@ -109,7 +111,7 @@ class SpeculativeStreamingDecoder:
 
     def __init__(
         self,
-        model_fn: Callable[..., Tensor | Tuple[Tensor, Tensor]],
+        model_fn: Callable[..., Tensor | tuple[Tensor, Tensor]],
         draft_head: DraftHead,
         gamma: int = 4,
         temperature: float = 1.0,
@@ -122,7 +124,7 @@ class SpeculativeStreamingDecoder:
         self.temperature = temperature
 
         # History: list of (n_accepted, gamma) pairs used to estimate α.
-        self._acceptance_history: List[Tuple[int, int]] = []
+        self._acceptance_history: list[tuple[int, int]] = []
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -154,8 +156,8 @@ class SpeculativeStreamingDecoder:
     def generate_step(
         self,
         input_ids: Tensor,
-        past_key_values: Optional[object] = None,
-    ) -> Tuple[List[int], int]:
+        past_key_values: object | None = None,
+    ) -> tuple[list[int], int]:
         """Run one speculative streaming step.
 
         Implements Algorithm 1 of Bhendawade et al. (2024):
@@ -185,9 +187,7 @@ class SpeculativeStreamingDecoder:
         """
         B, T = input_ids.shape
         if B != 1:
-            raise ValueError(
-                "SpeculativeStreamingDecoder currently supports batch_size=1 only."
-            )
+            raise ValueError("SpeculativeStreamingDecoder currently supports batch_size=1 only.")
 
         # ------------------------------------------------------------------ #
         # Step 1 — forward pass on current context; extract h_l (draft layer)
@@ -204,12 +204,12 @@ class SpeculativeStreamingDecoder:
         # ------------------------------------------------------------------ #
         # Step 2 — draft γ tokens from h_l of the *last* position
         # ------------------------------------------------------------------ #
-        h_last = h_draft[:, -1:, :]                   # (B, 1, d_model)
+        h_last = h_draft[:, -1:, :]  # (B, 1, d_model)
         draft_logits_single = self.draft_head(h_last)  # (B, 1, V)
-        V = draft_logits_single.shape[-1]
+        draft_logits_single.shape[-1]
 
-        draft_token_ids: List[int] = []
-        draft_probs_list: List[Tensor] = []
+        draft_token_ids: list[int] = []
+        draft_probs_list: list[Tensor] = []
 
         # We autoregressively sample γ draft tokens using the draft head.
         # Because the draft head operates only on the hidden state of the last
@@ -221,10 +221,10 @@ class SpeculativeStreamingDecoder:
         # For speculative generation, we need γ draft tokens starting from position T.
         # We use the last position's draft logits repeatedly (no recurrence in draft head).
         last_draft_logits = draft_logits_all[0, -1, :]  # (V,)
-        p_draft_last = self._probs(last_draft_logits)   # (V,)
+        p_draft_last = self._probs(last_draft_logits)  # (V,)
 
         for k in range(self.gamma):
-            tok = self._sample(last_draft_logits)       # scalar tensor
+            tok = self._sample(last_draft_logits)  # scalar tensor
             draft_token_ids.append(tok.item())
             draft_probs_list.append(p_draft_last)
 
@@ -232,7 +232,7 @@ class SpeculativeStreamingDecoder:
         # Step 3 — full forward pass on [context, d_{t+1}, ..., d_{t+γ}]
         # ------------------------------------------------------------------ #
         draft_tensor = torch.tensor(draft_token_ids, dtype=torch.long, device=input_ids.device)
-        draft_tensor = draft_tensor.unsqueeze(0)        # (1, γ)
+        draft_tensor = draft_tensor.unsqueeze(0)  # (1, γ)
         extended_ids = torch.cat([input_ids, draft_tensor], dim=1)  # (1, T+γ)
 
         target_out = self.model_fn(extended_ids, return_hidden=False)
@@ -245,7 +245,7 @@ class SpeculativeStreamingDecoder:
         # ------------------------------------------------------------------ #
         # Step 4 — Algorithm 1 accept/reject loop
         # ------------------------------------------------------------------ #
-        accepted_tokens: List[int] = []
+        accepted_tokens: list[int] = []
 
         for k in range(self.gamma):
             d_k = draft_token_ids[k]
@@ -253,8 +253,8 @@ class SpeculativeStreamingDecoder:
             # but by standard speculative decoding indexing, position T+k predicts d_{t+k+1}).
             # The logit at position T-1+k predicts the token at position T+k (= d_k).
             tgt_logit_k = target_logits[0, T - 1 + k, :]  # (V,)
-            p_target_k = self._probs(tgt_logit_k)          # (V,)
-            p_draft_k = draft_probs_list[k]                # (V,)
+            p_target_k = self._probs(tgt_logit_k)  # (V,)
+            p_draft_k = draft_probs_list[k]  # (V,)
 
             p_t_dk = p_target_k[d_k].clamp(min=0.0)
             p_d_dk = p_draft_k[d_k].clamp(min=1e-9)
@@ -295,7 +295,7 @@ class SpeculativeStreamingDecoder:
     # Statistics
     # ------------------------------------------------------------------
 
-    def acceptance_rate(self, history: Optional[List[Tuple[int, int]]] = None) -> float:
+    def acceptance_rate(self, history: list[tuple[int, int]] | None = None) -> float:
         """Compute mean acceptance rate α = E[n_accepted / gamma].
 
         Parameters

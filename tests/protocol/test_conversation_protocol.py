@@ -1,10 +1,12 @@
 """Tests for src/protocol/conversation_protocol.py (~50 tests)."""
+
 import pytest
+
 from src.protocol.conversation_protocol import (
+    CONVERSATION_PROTOCOL,
     ConversationProtocol,
     ConversationState,
     TurnValidationError,
-    CONVERSATION_PROTOCOL,
 )
 
 

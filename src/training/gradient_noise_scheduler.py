@@ -35,18 +35,12 @@ class GradientNoiseScheduler:
     ) -> None:
         if noise_type not in self._VALID_NOISE_TYPES:
             raise ValueError(
-                f"Unsupported noise_type '{noise_type}'. "
-                f"Must be one of {self._VALID_NOISE_TYPES}."
+                f"Unsupported noise_type '{noise_type}'. Must be one of {self._VALID_NOISE_TYPES}."
             )
         if decay not in self._VALID_DECAYS:
-            raise ValueError(
-                f"Unsupported decay '{decay}'. "
-                f"Must be one of {self._VALID_DECAYS}."
-            )
+            raise ValueError(f"Unsupported decay '{decay}'. Must be one of {self._VALID_DECAYS}.")
         if initial_scale <= 0:
-            raise ValueError(
-                f"initial_scale must be > 0, got {initial_scale}."
-            )
+            raise ValueError(f"initial_scale must be > 0, got {initial_scale}.")
 
         self.noise_type = noise_type
         self.initial_scale = initial_scale
@@ -64,7 +58,7 @@ class GradientNoiseScheduler:
             The noise scale after applying the configured decay.
         """
         if self.decay == "exponential":
-            return self.initial_scale * (self.decay_rate ** step)
+            return self.initial_scale * (self.decay_rate**step)
         if self.decay == "linear":
             return self.initial_scale * max(0.0, 1.0 - step * self.decay_rate)
         # constant
@@ -91,9 +85,7 @@ class GradientNoiseScheduler:
                     noise = torch.randn_like(grad) * scale
                 else:  # laplace
                     u = torch.rand_like(grad) - 0.5
-                    noise = -scale * torch.sign(u) * torch.log1p(
-                        -2 * torch.abs(u)
-                    )
+                    noise = -scale * torch.sign(u) * torch.log1p(-2 * torch.abs(u))
                 grad.add_(noise)
         return gradients
 

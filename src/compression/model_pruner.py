@@ -1,12 +1,13 @@
 """Model pruner: magnitude, structured, and random weight pruning."""
+
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class PruningStrategy(str, Enum):
+class PruningStrategy(StrEnum):
     MAGNITUDE = "magnitude"
     STRUCTURED = "structured"
     RANDOM = "random"
@@ -49,9 +50,7 @@ class ModelPruner:
         keep_count = max(0, min(n, keep_count))
 
         if strategy == PruningStrategy.MAGNITUDE:
-            indexed = sorted(
-                range(n), key=lambda i: abs(weights[i]), reverse=True
-            )
+            indexed = sorted(range(n), key=lambda i: abs(weights[i]), reverse=True)
             keep = set(indexed[:keep_count])
             return [i in keep for i in range(n)]
 
@@ -66,20 +65,14 @@ class ModelPruner:
 
         return [True] * n
 
-    def apply_mask(
-        self, weights: list[float], mask: list[bool]
-    ) -> list[float]:
+    def apply_mask(self, weights: list[float], mask: list[bool]) -> list[float]:
         """Zero out masked-out weights."""
         if len(weights) != len(mask):
             raise ValueError("weights and mask length mismatch")
         return [w if m else 0.0 for w, m in zip(weights, mask)]
 
-    def prune(
-        self, module_name: str, weights: list[float]
-    ) -> tuple[list[float], PruningStats]:
-        mask = self.compute_mask(
-            weights, self.config.sparsity, self.config.strategy
-        )
+    def prune(self, module_name: str, weights: list[float]) -> tuple[list[float], PruningStats]:
+        mask = self.compute_mask(weights, self.config.sparsity, self.config.strategy)
         pruned = self.apply_mask(weights, mask)
         remaining = sum(1 for m in mask if m)
         n = len(weights)

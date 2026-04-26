@@ -4,28 +4,31 @@ Samples N responses per prompt, computes scalar rewards, normalizes within
 the group to get advantages, then applies a clipped policy-gradient loss.
 No reference model required.
 """
+
 from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # New canonical API (required by task spec)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GRPOConfig:
     """Configuration for GRPO training."""
-    n_samples: int = 8              # N responses per prompt
-    beta: float = 0.01              # KL penalty coefficient
-    clip_ratio: float = 0.2         # PPO clip epsilon
-    kl_coef: float = 0.1            # Additional KL regularization coefficient
-    max_new_tokens: int = 64        # Maximum tokens to generate per completion
-    temperature: float = 1.0        # Sampling temperature
+
+    n_samples: int = 8  # N responses per prompt
+    beta: float = 0.01  # KL penalty coefficient
+    clip_ratio: float = 0.2  # PPO clip epsilon
+    kl_coef: float = 0.1  # Additional KL regularization coefficient
+    max_new_tokens: int = 64  # Maximum tokens to generate per completion
+    temperature: float = 1.0  # Sampling temperature
 
 
 def sample_completions(
@@ -34,7 +37,7 @@ def sample_completions(
     n_samples: int,
     max_new_tokens: int,
     temperature: float,
-) -> List[torch.Tensor]:
+) -> list[torch.Tensor]:
     """Generate n_samples completions for a given prompt via temperature sampling.
 
     Args:
@@ -102,7 +105,7 @@ def grpo_policy_loss(
 def compute_sequence_log_probs(
     model: nn.Module,
     input_ids: torch.Tensor,
-    response_start: Optional[int] = None,
+    response_start: int | None = None,
 ) -> torch.Tensor:
     """Compute sum of per-token log probs for a sequence.
 
@@ -122,12 +125,12 @@ def compute_sequence_log_probs(
     _, logits, _ = model(input_ids)
     # Shift: logits[:, t] predicts input_ids[:, t+1]
     log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # (1, seq_len-1, vocab)
-    targets = input_ids[:, 1:]                             # (1, seq_len-1)
+    targets = input_ids[:, 1:]  # (1, seq_len-1)
     token_lp = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # (1, seq_len-1)
 
     if response_start is not None:
         # Sum only response tokens (offset by 1 for the shift)
-        token_lp = token_lp[:, max(0, response_start - 1):]
+        token_lp = token_lp[:, max(0, response_start - 1) :]
 
     return token_lp.sum(dim=-1).squeeze(0)  # scalar
 
@@ -146,7 +149,7 @@ class GRPOTrainer:
     def __init__(
         self,
         model: nn.Module,
-        ref_model: Optional[nn.Module],
+        ref_model: nn.Module | None,
         config: GRPOConfig,
         optimizer: torch.optim.Optimizer,
         reward_fn: Callable[[torch.Tensor], float],
@@ -175,9 +178,7 @@ class GRPOTrainer:
         )
 
         # --- Score completions via reward_fn -----------------------------------
-        rewards = torch.tensor(
-            [float(self.reward_fn(c)) for c in completions], dtype=torch.float32
-        )
+        rewards = torch.tensor([float(self.reward_fn(c)) for c in completions], dtype=torch.float32)
 
         # --- Compute group-relative advantages ---------------------------------
         advantages = group_relative_advantages(rewards)
@@ -222,6 +223,7 @@ class GRPOTrainer:
 # ---------------------------------------------------------------------------
 # Legacy API (kept for backward compatibility)
 # ---------------------------------------------------------------------------
+
 
 def compute_advantages(rewards: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
     """Normalize rewards within a group to get advantages (legacy name).

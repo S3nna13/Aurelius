@@ -27,19 +27,18 @@ References
 ----------
 - "DAPO: An Open-Source LLM Reinforcement Learning System at Scale" (2025).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # DAPOConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DAPOConfig:
@@ -74,6 +73,7 @@ class DAPOConfig:
 # DAPOBatch
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DAPOBatch:
     """Per-step input bundle for DAPOTrainer.
@@ -99,6 +99,7 @@ class DAPOBatch:
 # ---------------------------------------------------------------------------
 # DAPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class DAPOTrainer:
     """DAPO training algorithm (pure PyTorch, no external dependencies).
@@ -167,17 +168,20 @@ class DAPOTrainer:
         ratio = (batch.log_probs - batch.ref_log_probs.detach()).exp()
 
         # 2. Advantages [G] -> [G, T]
-        adv = self.compute_advantages(batch.rewards)          # [G]
-        adv = adv.unsqueeze(1).expand_as(ratio)               # [G, T]
+        adv = self.compute_advantages(batch.rewards)  # [G]
+        adv = adv.unsqueeze(1).expand_as(ratio)  # [G, T]
 
         # 3. Asymmetric clipped surrogate
         surr1 = ratio * adv
-        surr2 = ratio.clamp(
-            1.0 - self.config.clip_low,
-            1.0 + self.config.clip_high,
-        ) * adv
+        surr2 = (
+            ratio.clamp(
+                1.0 - self.config.clip_low,
+                1.0 + self.config.clip_high,
+            )
+            * adv
+        )
         # Token-level policy loss, masked
-        loss_pg = -torch.min(surr1, surr2) * mask             # [G, T]
+        loss_pg = -torch.min(surr1, surr2) * mask  # [G, T]
 
         # 4. Entropy proxy: use -ref_log_probs as a cheap entropy surrogate.
         #    When ref_log_probs are log-uniform the term is maximised, pushing
@@ -242,7 +246,7 @@ class DAPOTrainer:
     # Combined loss
     # ------------------------------------------------------------------
 
-    def total_loss(self, batch: DAPOBatch) -> Dict[str, Tensor]:
+    def total_loss(self, batch: DAPOBatch) -> dict[str, Tensor]:
         """Compute the full DAPO loss and return a breakdown dictionary.
 
         The combined objective is::
@@ -273,10 +277,13 @@ class DAPOTrainer:
         adv_t = adv.unsqueeze(1).expand_as(ratio)
 
         surr1 = ratio * adv_t
-        surr2 = ratio.clamp(
-            1.0 - self.config.clip_low,
-            1.0 + self.config.clip_high,
-        ) * adv_t
+        surr2 = (
+            ratio.clamp(
+                1.0 - self.config.clip_low,
+                1.0 + self.config.clip_high,
+            )
+            * adv_t
+        )
         pg_loss = (-torch.min(surr1, surr2) * mask).sum() / n_tokens
 
         # -- Entropy bonus component --
@@ -299,7 +306,7 @@ class DAPOTrainer:
     # Diagnostic statistics
     # ------------------------------------------------------------------
 
-    def statistics(self, batch: DAPOBatch) -> Dict[str, float]:
+    def statistics(self, batch: DAPOBatch) -> dict[str, float]:
         """Compute diagnostic statistics for logging and monitoring.
 
         Args:

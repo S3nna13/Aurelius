@@ -1,14 +1,13 @@
 """Tests for activation checkpointing policy planner."""
+
 from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.checkpoint_policy import (
-    CheckpointPlan,
     CheckpointPolicyConfig,
     CheckpointStrategy,
     LayerMemoryEstimate,
@@ -146,5 +145,5 @@ def test_memory_optimal_within_budget(small_model):
         memory_budget_gb=1.0,
     )
     plan = compute_checkpoint_plan(small_model, cfg, BATCH_SIZE, SEQ_LEN, D_MODEL, DTYPE_BYTES)
-    budget_bytes = int(cfg.memory_budget_gb * (1024 ** 3))
+    budget_bytes = int(cfg.memory_budget_gb * (1024**3))
     assert plan.estimated_peak_memory_bytes <= budget_bytes

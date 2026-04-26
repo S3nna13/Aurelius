@@ -47,8 +47,7 @@ class RequestQueue:
         now = time.monotonic()
         before = len(self._heap)
         self._heap = [
-            entry for entry in self._heap
-            if entry[2].deadline is None or entry[2].deadline > now
+            entry for entry in self._heap if entry[2].deadline is None or entry[2].deadline > now
         ]
         heapq.heapify(self._heap)
         return before - len(self._heap)

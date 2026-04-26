@@ -11,19 +11,19 @@ References:
 
 from __future__ import annotations
 
-import time
 import statistics
-from typing import Callable, Dict, List
+import time
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Functional activations
 # ---------------------------------------------------------------------------
+
 
 def silu(x: Tensor) -> Tensor:
     """SiLU / Swish activation: x * sigmoid(x).
@@ -52,6 +52,7 @@ def squared_relu(x: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # Gated Linear Unit variants (functional)
 # ---------------------------------------------------------------------------
+
 
 def swiglu(x: Tensor, gate: Tensor) -> Tensor:
     """SwiGLU gating: silu(gate) * x.
@@ -95,6 +96,7 @@ def reglu(x: Tensor, gate: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # GLU Feed-Forward Network modules
 # ---------------------------------------------------------------------------
+
 
 class SwiGLUFFN(nn.Module):
     """Feed-forward network using SwiGLU gating.
@@ -140,7 +142,7 @@ class GeGLUFFN(nn.Module):
 # Activation factory
 # ---------------------------------------------------------------------------
 
-_REGISTRY: Dict[str, Callable[[Tensor], Tensor]] = {
+_REGISTRY: dict[str, Callable[[Tensor], Tensor]] = {
     "silu": silu,
     "swish": silu,
     "gelu": F.gelu,
@@ -166,13 +168,12 @@ class ActivationFactory:
         """
         if name not in _REGISTRY:
             raise KeyError(
-                f"Unknown activation '{name}'. "
-                f"Available: {ActivationFactory.list_available()}"
+                f"Unknown activation '{name}'. Available: {ActivationFactory.list_available()}"
             )
         return _REGISTRY[name]
 
     @staticmethod
-    def list_available() -> List[str]:
+    def list_available() -> list[str]:
         """Return sorted list of all registered activation names."""
         return sorted(_REGISTRY.keys())
 
@@ -181,11 +182,12 @@ class ActivationFactory:
 # Benchmarking helper
 # ---------------------------------------------------------------------------
 
+
 def benchmark_activation(
     fn: Callable[[Tensor], Tensor],
     x: Tensor,
     n_runs: int = 10,
-) -> Dict[str, float | str]:
+) -> dict[str, float | str]:
     """Time *fn* applied to *x* over *n_runs* forward passes.
 
     Args:
@@ -203,7 +205,7 @@ def benchmark_activation(
     with torch.no_grad():
         out = fn(x)
 
-    times_ms: List[float] = []
+    times_ms: list[float] = []
     for _ in range(n_runs):
         t0 = time.perf_counter()
         with torch.no_grad():

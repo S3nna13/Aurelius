@@ -24,8 +24,8 @@ bias convention used elsewhere in Aurelius.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence, Tuple
 
 import torch
 
@@ -73,9 +73,7 @@ def validate_spans(spans: Sequence[RoleSpan], seq_len: int) -> None:
                 f"unknown role {span.role!r}; expected one of {sorted(VALID_ROLES)}"
             )
         if span.start < 0 or span.end > seq_len:
-            raise RoleSpanError(
-                f"span {span} out of range for seq_len={seq_len}"
-            )
+            raise RoleSpanError(f"span {span} out of range for seq_len={seq_len}")
         if span.end <= span.start:
             raise RoleSpanError(f"span {span} has non-positive length")
         if span.start < cursor:
@@ -91,9 +89,7 @@ def validate_spans(spans: Sequence[RoleSpan], seq_len: int) -> None:
         )
 
 
-def _role_indices(
-    spans: Sequence[RoleSpan], seq_len: int
-) -> dict:
+def _role_indices(spans: Sequence[RoleSpan], seq_len: int) -> dict:
     """Return a dict mapping role -> list of (start, end) ranges."""
     buckets: dict = {}
     for s in spans:
@@ -106,7 +102,7 @@ def build_role_mask(
     seq_len: int,
     system_priority: bool = True,
     causal: bool = True,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     dtype: torch.dtype = torch.float32,
 ) -> torch.Tensor:
     """Build an additive [S, S] attention mask from role spans.
@@ -158,7 +154,7 @@ def build_role_mask(
 def build_loss_mask(
     spans: Sequence[RoleSpan],
     seq_len: int,
-    loss_roles: Tuple[str, ...] = ("assistant",),
+    loss_roles: tuple[str, ...] = ("assistant",),
 ) -> torch.Tensor:
     """Build a [seq_len] boolean vector selecting loss-contributing positions.
 
@@ -177,7 +173,7 @@ def build_loss_mask(
     loss_set = set(loss_roles)
     for s in spans:
         if s.role in loss_set:
-            mask[s.start:s.end] = True
+            mask[s.start : s.end] = True
     return mask
 
 

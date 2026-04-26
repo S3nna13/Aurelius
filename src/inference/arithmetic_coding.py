@@ -14,10 +14,10 @@ Classes:
     LMArithmeticCoder  — high-level wrapper (compress / decompress /
                          bits_per_token).
 """
+
 from __future__ import annotations
 
-import math
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 
@@ -26,9 +26,9 @@ import torch
 # ---------------------------------------------------------------------------
 
 PRECISION: int = 32
-FULL: int = 1 << PRECISION          # 2^32  — exclusive upper bound
-HALF: int = 1 << (PRECISION - 1)    # 2^31
-QUARTER: int = 1 << (PRECISION - 2) # 2^30
+FULL: int = 1 << PRECISION  # 2^32  — exclusive upper bound
+HALF: int = 1 << (PRECISION - 1)  # 2^31
+QUARTER: int = 1 << (PRECISION - 2)  # 2^30
 
 EPSILON: float = 1e-9
 
@@ -36,6 +36,7 @@ EPSILON: float = 1e-9
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _normalise(probs: torch.Tensor) -> torch.Tensor:
     """Clip near-zero probabilities and renormalise to sum = 1."""
@@ -70,6 +71,7 @@ def _build_cdf(probs: torch.Tensor):
 # ArithmeticEncoder
 # ---------------------------------------------------------------------------
 
+
 class ArithmeticEncoder:
     """Arithmetic encoder that takes pre-computed probability tensors.
 
@@ -99,9 +101,7 @@ class ArithmeticEncoder:
                         index is out of range for its probability tensor.
         """
         if len(token_ids) != len(probs):
-            raise ValueError(
-                f"len(token_ids)={len(token_ids)} != len(probs)={len(probs)}"
-            )
+            raise ValueError(f"len(token_ids)={len(token_ids)} != len(probs)={len(probs)}")
         if len(token_ids) == 0:
             return b""
 
@@ -120,9 +120,7 @@ class ArithmeticEncoder:
             cdf = _build_cdf(p)
             vocab_size = len(cdf) - 1
             if not (0 <= tok < vocab_size):
-                raise ValueError(
-                    f"token_ids[{t}]={tok} out of range [0, {vocab_size})"
-                )
+                raise ValueError(f"token_ids[{t}]={tok} out of range [0, {vocab_size})")
             cum_low = int(cdf[tok].item())
             cum_high = int(cdf[tok + 1].item())
 
@@ -165,6 +163,7 @@ class ArithmeticEncoder:
 # ---------------------------------------------------------------------------
 # ArithmeticDecoder
 # ---------------------------------------------------------------------------
+
 
 class ArithmeticDecoder:
     """Arithmetic decoder that uses a callable to obtain probabilities.
@@ -216,7 +215,7 @@ class ArithmeticDecoder:
         for _ in range(n_tokens):
             p = probs_fn(decoded)
             cdf = _build_cdf(p)
-            vocab_size = len(cdf) - 1
+            len(cdf) - 1
 
             # Find symbol: scale value into [0, FULL)
             width = high - low
@@ -262,6 +261,7 @@ class ArithmeticDecoder:
 # ---------------------------------------------------------------------------
 # LMArithmeticCoder
 # ---------------------------------------------------------------------------
+
 
 class LMArithmeticCoder:
     """High-level wrapper around :class:`ArithmeticEncoder` /
@@ -338,6 +338,7 @@ class LMArithmeticCoder:
 # ---------------------------------------------------------------------------
 # Bit / byte utilities
 # ---------------------------------------------------------------------------
+
 
 def _bits_to_bytes(bits: list[int]) -> bytes:
     """Pack a list of bits (MSB first) into a :class:`bytes` object.

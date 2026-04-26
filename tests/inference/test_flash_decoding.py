@@ -6,7 +6,9 @@ import torch
 from src.inference.flash_decoding import append_to_kv_cache, flash_decode_step
 
 
-def naive_last_token_attention(query: torch.Tensor, keys: torch.Tensor, values: torch.Tensor) -> torch.Tensor:
+def naive_last_token_attention(
+    query: torch.Tensor, keys: torch.Tensor, values: torch.Tensor
+) -> torch.Tensor:
     scale = query.size(-1) ** -0.5
     scores = torch.einsum("bhd,bshd->bhs", query * scale, keys)
     weights = torch.softmax(scores, dim=-1)
@@ -63,4 +65,9 @@ def test_flash_decode_rejects_mismatched_query_shape():
 
 def test_append_to_kv_cache_rejects_bad_new_tensor_rank():
     with pytest.raises(ValueError):
-        append_to_kv_cache(torch.randn(1, 3, 2, 4), torch.randn(1, 3, 2, 4), torch.randn(1, 1, 2, 4), torch.randn(1, 2, 4))
+        append_to_kv_cache(
+            torch.randn(1, 3, 2, 4),
+            torch.randn(1, 3, 2, 4),
+            torch.randn(1, 1, 2, 4),
+            torch.randn(1, 2, 4),
+        )

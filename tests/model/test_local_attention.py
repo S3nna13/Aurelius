@@ -13,19 +13,17 @@ Covers:
 10. LocalAttentionGenerator.memory_usage returns required keys
 """
 
-import pytest
 import torch
 
 from src.model.config import AureliusConfig
 from src.model.local_attention import (
     LocalAttentionConfig,
-    RingBuffer,
-    LocalWindowKVCache,
-    LocalWindowAttention,
     LocalAttentionGenerator,
+    LocalWindowAttention,
+    LocalWindowKVCache,
+    RingBuffer,
 )
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared test config (small, fast)
@@ -49,6 +47,7 @@ LOCAL_CFG = LocalAttentionConfig(window_size=8)
 # 1. test_ring_buffer_push_and_read
 # ---------------------------------------------------------------------------
 
+
 def test_ring_buffer_push_and_read():
     """Push 3 items; read_ordered returns them in insertion order."""
     buf = RingBuffer(capacity=5, shape=(2,))
@@ -71,6 +70,7 @@ def test_ring_buffer_push_and_read():
 # 2. test_ring_buffer_overflow
 # ---------------------------------------------------------------------------
 
+
 def test_ring_buffer_overflow():
     """Push capacity+2 items; oldest 2 are overwritten."""
     capacity = 4
@@ -92,6 +92,7 @@ def test_ring_buffer_overflow():
 # 3. test_ring_buffer_size_capped_at_capacity
 # ---------------------------------------------------------------------------
 
+
 def test_ring_buffer_size_capped_at_capacity():
     """size never exceeds capacity regardless of how many items are pushed."""
     capacity = 3
@@ -105,6 +106,7 @@ def test_ring_buffer_size_capped_at_capacity():
 # ---------------------------------------------------------------------------
 # 4. test_ring_buffer_is_full
 # ---------------------------------------------------------------------------
+
 
 def test_ring_buffer_is_full():
     """is_full is False until capacity inserts, then True."""
@@ -126,6 +128,7 @@ def test_ring_buffer_is_full():
 # 5. test_local_kv_cache_update_returns_windowed
 # ---------------------------------------------------------------------------
 
+
 def test_local_kv_cache_update_returns_windowed():
     """update() returns (T_window, n_heads, head_dim) tensors."""
     n_layers, n_heads, head_dim, window_size = 2, 2, 16, 4
@@ -142,7 +145,9 @@ def test_local_kv_cache_update_returns_windowed():
 
     # Push beyond capacity; shape should be capped at window_size
     for _ in range(window_size + 2):
-        k_win, v_win = cache.update(0, torch.randn(n_heads, head_dim), torch.randn(n_heads, head_dim))
+        k_win, v_win = cache.update(
+            0, torch.randn(n_heads, head_dim), torch.randn(n_heads, head_dim)
+        )
 
     assert k_win.shape == (window_size, n_heads, head_dim)
     assert v_win.shape == (window_size, n_heads, head_dim)
@@ -151,6 +156,7 @@ def test_local_kv_cache_update_returns_windowed():
 # ---------------------------------------------------------------------------
 # 6. test_local_window_attention_output_shape
 # ---------------------------------------------------------------------------
+
 
 def test_local_window_attention_output_shape():
     """(B, T, D) input returns (B, T, D) output."""
@@ -171,6 +177,7 @@ def test_local_window_attention_output_shape():
 # ---------------------------------------------------------------------------
 # 7. test_local_window_mask_restricts_attention
 # ---------------------------------------------------------------------------
+
 
 def test_local_window_mask_restricts_attention():
     """Token at position i cannot attend beyond i - window + 1."""
@@ -196,6 +203,7 @@ def test_local_window_mask_restricts_attention():
 # 8. test_local_window_causal_mask_shape
 # ---------------------------------------------------------------------------
 
+
 def test_local_window_causal_mask_shape():
     """_local_causal_mask returns a (1, 1, T, T) boolean tensor."""
     layer = LocalWindowAttention(TEST_CONFIG, LOCAL_CFG)
@@ -209,6 +217,7 @@ def test_local_window_causal_mask_shape():
 # ---------------------------------------------------------------------------
 # 9. test_local_attention_generator_returns_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_local_attention_generator_returns_tokens():
     """generate() returns a list of integers of length max_new_tokens."""
@@ -236,6 +245,7 @@ def test_local_attention_generator_returns_tokens():
 # 10. test_memory_usage_returns_dict
 # ---------------------------------------------------------------------------
 
+
 def test_memory_usage_returns_dict():
     """memory_usage() returns a dict with all required keys and correct types."""
     model = AureliusTransformer(TEST_CONFIG)
@@ -252,9 +262,7 @@ def test_memory_usage_returns_dict():
     info = generator.memory_usage()
 
     required_keys = {"cache_mb", "window_size", "n_layers", "tokens_in_cache"}
-    assert required_keys.issubset(info.keys()), (
-        f"Missing keys: {required_keys - info.keys()}"
-    )
+    assert required_keys.issubset(info.keys()), f"Missing keys: {required_keys - info.keys()}"
     assert isinstance(info["cache_mb"], float), "cache_mb must be a float"
     assert info["window_size"] == local_cfg.window_size
     assert info["n_layers"] == TEST_CONFIG.n_layers

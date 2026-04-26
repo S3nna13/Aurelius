@@ -4,7 +4,6 @@ Uses tiny dimensions so tests run quickly on CPU.
 """
 
 import torch
-import pytest
 
 from src.model.quant_aware_attention import (
     FakeQuantize,
@@ -234,8 +233,7 @@ def test_different_weight_bits_different_coarseness():
     err4 = (fq4(w).detach() - w).pow(2).mean().item()
     err8 = (fq8(w).detach() - w).pow(2).mean().item()
     assert err4 > err8, (
-        f"4-bit per-channel error ({err4:.6f}) should exceed "
-        f"8-bit per-channel error ({err8:.6f})"
+        f"4-bit per-channel error ({err4:.6f}) should exceed 8-bit per-channel error ({err8:.6f})"
     )
 
 

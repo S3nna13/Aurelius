@@ -3,13 +3,14 @@
 Routes inbound AgentMessage objects to registered handlers by msg_type.
 Fail closed: unregistered types are rejected with a loud error.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from src.multiagent.message_bus import AgentMessage
-
 
 Handler = Callable[[AgentMessage], Any]
 
@@ -38,9 +39,7 @@ class MessageHandler:
         """
         handler = self._handlers.get(message.msg_type)
         if handler is None:
-            raise ValueError(
-                f"No handler registered for msg_type={message.msg_type!r}"
-            )
+            raise ValueError(f"No handler registered for msg_type={message.msg_type!r}")
         return handler(message)
 
     def can_handle(self, msg_type: str) -> bool:

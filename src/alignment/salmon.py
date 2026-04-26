@@ -20,24 +20,22 @@ Variable names follow the paper notation where possible:
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_VOCAB_SIZE: int = 512   # proxy vocab for the embedding-based reward
-_EMBED_DIM: int = 64     # embedding dimension for the proxy RM
+_VOCAB_SIZE: int = 512  # proxy vocab for the embedding-based reward
+_EMBED_DIM: int = 64  # embedding dimension for the proxy RM
 
 
 # ---------------------------------------------------------------------------
 # Principle-Conditioned Reward Model (PCRM)
 # ---------------------------------------------------------------------------
+
 
 class PrincipleConditionedRM(nn.Module):
     """Proxy principle-conditioned reward model (PCRM).
@@ -71,9 +69,7 @@ class PrincipleConditionedRM(nn.Module):
         self.token_embed: nn.Embedding = nn.Embedding(vocab_size, embed_dim)
 
         # Character-level embedding for principle text
-        self.principle_embed: nn.Embedding = nn.Embedding(
-            principle_vocab_size, embed_dim
-        )
+        self.principle_embed: nn.Embedding = nn.Embedding(principle_vocab_size, embed_dim)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -98,8 +94,8 @@ class PrincipleConditionedRM(nn.Module):
         """
         if ids.numel() == 0:
             return torch.zeros(self.embed_dim, device=table.weight.device)
-        vecs = table(ids)          # (L, embed_dim)
-        return vecs.mean(dim=0)    # (embed_dim,)
+        vecs = table(ids)  # (L, embed_dim)
+        return vecs.mean(dim=0)  # (embed_dim,)
 
     # ------------------------------------------------------------------
     # Public API
@@ -125,16 +121,12 @@ class PrincipleConditionedRM(nn.Module):
             ValueError: If prompt_tokens or response_tokens are not 1-D.
         """
         if prompt_tokens.dim() != 1:
-            raise ValueError(
-                f"prompt_tokens must be 1-D, got shape {prompt_tokens.shape}"
-            )
+            raise ValueError(f"prompt_tokens must be 1-D, got shape {prompt_tokens.shape}")
         if response_tokens.dim() != 1:
-            raise ValueError(
-                f"response_tokens must be 1-D, got shape {response_tokens.shape}"
-            )
+            raise ValueError(f"response_tokens must be 1-D, got shape {response_tokens.shape}")
 
         pi_ids = self._principle_to_ids(principle).to(self.principle_embed.weight.device)
-        pi_emb = self._mean_embed(pi_ids, self.principle_embed)   # (D,)
+        pi_emb = self._mean_embed(pi_ids, self.principle_embed)  # (D,)
         resp_emb = self._mean_embed(response_tokens, self.token_embed)  # (D,)
 
         # Normalised dot product (cosine similarity) as the proxy reward r
@@ -145,6 +137,7 @@ class PrincipleConditionedRM(nn.Module):
 # ---------------------------------------------------------------------------
 # SALMON Scorer
 # ---------------------------------------------------------------------------
+
 
 class SALMONScorer(nn.Module):
     """Aggregates PCRM scores across a principle set {pi_1, …, pi_K}.
@@ -157,14 +150,14 @@ class SALMONScorer(nn.Module):
 
     def __init__(
         self,
-        principles: List[str],
+        principles: list[str],
         vocab_size: int = _VOCAB_SIZE,
         embed_dim: int = _EMBED_DIM,
     ) -> None:
         super().__init__()
         if not principles:
             raise ValueError("principles list must be non-empty")
-        self.principles: List[str] = list(principles)
+        self.principles: list[str] = list(principles)
         self.pcrm = PrincipleConditionedRM(vocab_size=vocab_size, embed_dim=embed_dim)
 
     # ------------------------------------------------------------------
@@ -185,10 +178,7 @@ class SALMONScorer(nn.Module):
         Returns:
             Tensor of shape (K,) containing r(pi_i, x, y) for each principle.
         """
-        scores = [
-            self.pcrm.score(pi, prompt_tokens, response_tokens)
-            for pi in self.principles
-        ]
+        scores = [self.pcrm.score(pi, prompt_tokens, response_tokens) for pi in self.principles]
         return torch.stack(scores)  # (K,)
 
     def aggregate_score(
@@ -211,6 +201,7 @@ class SALMONScorer(nn.Module):
 # SALMON Filter — Best-of-N
 # ---------------------------------------------------------------------------
 
+
 class SALMONFilter(nn.Module):
     """Selects the best response from N candidates using SALMON scoring.
 
@@ -225,8 +216,8 @@ class SALMONFilter(nn.Module):
     def select_best(
         self,
         prompt_tokens: torch.Tensor,
-        candidates: List[torch.Tensor],
-    ) -> Tuple[int, torch.Tensor]:
+        candidates: list[torch.Tensor],
+    ) -> tuple[int, torch.Tensor]:
         """Best-of-N selection.
 
         Args:
@@ -254,6 +245,7 @@ class SALMONFilter(nn.Module):
 # ---------------------------------------------------------------------------
 # SALMON Loss
 # ---------------------------------------------------------------------------
+
 
 class SALMONLoss(nn.Module):
     """SFT NLL on the winner response with optional contrastive penalty.
@@ -284,7 +276,7 @@ class SALMONLoss(nn.Module):
     def forward(
         self,
         log_probs_winner: torch.Tensor,
-        log_probs_losers: List[torch.Tensor],
+        log_probs_losers: list[torch.Tensor],
     ) -> torch.Tensor:
         """Compute the SALMON training loss.
 

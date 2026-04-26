@@ -12,8 +12,8 @@ are used.
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from rich.console import Console
 from rich.table import Table
@@ -62,9 +62,7 @@ def _score(entry: CommandEntry, query: str) -> int:
     """
     q = query.lower()
     tokens = q.split()
-    text = " ".join(
-        [entry.name.lower(), entry.description.lower(), entry.category.lower()]
-    )
+    " ".join([entry.name.lower(), entry.description.lower(), entry.category.lower()])
     if not tokens:
         return 1  # empty query matches everything
     score = 0
@@ -139,13 +137,8 @@ class CommandPalette:
         if not isinstance(query, str):
             query = ""
         if not query.strip():
-            return sorted(
-                cls.COMMAND_PALETTE_REGISTRY.values(), key=lambda e: e.name
-            )
-        scored = [
-            (entry, _score(entry, query))
-            for entry in cls.COMMAND_PALETTE_REGISTRY.values()
-        ]
+            return sorted(cls.COMMAND_PALETTE_REGISTRY.values(), key=lambda e: e.name)
+        scored = [(entry, _score(entry, query)) for entry in cls.COMMAND_PALETTE_REGISTRY.values()]
         matched = [(e, s) for e, s in scored if s > 0]
         matched.sort(key=lambda t: -t[1])
         return [e for e, _ in matched]
@@ -164,9 +157,7 @@ class CommandPalette:
             CommandPaletteError: If *name* is not in the registry.
         """
         if name not in cls.COMMAND_PALETTE_REGISTRY:
-            raise CommandPaletteError(
-                f"no command {name!r} registered in the palette"
-            )
+            raise CommandPaletteError(f"no command {name!r} registered in the palette")
         entry = cls.COMMAND_PALETTE_REGISTRY[name]
         if entry.handler is not None:
             entry.handler()

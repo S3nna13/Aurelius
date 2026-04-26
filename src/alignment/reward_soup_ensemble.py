@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import torch
 
@@ -10,7 +9,7 @@ import torch
 class RewardSoupConfig:
     n_models: int = 3
     aggregation: str = "mean"
-    weights: Optional[List[float]] = None
+    weights: list[float] | None = None
 
 
 class RewardSoupEnsemble:
@@ -18,12 +17,12 @@ class RewardSoupEnsemble:
 
     def __init__(self, config: RewardSoupConfig) -> None:
         self.config = config
-        self._score_buffer: List[List[float]] = []
+        self._score_buffer: list[list[float]] = []
 
-    def add_model_scores(self, scores: List[float]) -> None:
+    def add_model_scores(self, scores: list[float]) -> None:
         self._score_buffer.append(list(scores))
 
-    def aggregate(self) -> List[float]:
+    def aggregate(self) -> list[float]:
         if not self._score_buffer:
             return []
 
@@ -46,13 +45,11 @@ class RewardSoupEnsemble:
             ]
         elif mode == "min":
             result = [
-                min(self._score_buffer[m][s] for m in range(n_models))
-                for s in range(n_samples)
+                min(self._score_buffer[m][s] for m in range(n_models)) for s in range(n_samples)
             ]
         elif mode == "max":
             result = [
-                max(self._score_buffer[m][s] for m in range(n_models))
-                for s in range(n_samples)
+                max(self._score_buffer[m][s] for m in range(n_models)) for s in range(n_samples)
             ]
         else:
             raise ValueError(f"Unknown aggregation mode: {mode}")
@@ -62,9 +59,9 @@ class RewardSoupEnsemble:
 
     def interpolate_weights(
         self,
-        state_dicts: List[Dict[str, torch.Tensor]],
-        weights: Optional[List[float]] = None,
-    ) -> Dict[str, torch.Tensor]:
+        state_dicts: list[dict[str, torch.Tensor]],
+        weights: list[float] | None = None,
+    ) -> dict[str, torch.Tensor]:
         if not state_dicts:
             raise ValueError("state_dicts must not be empty")
 
@@ -72,18 +69,15 @@ class RewardSoupEnsemble:
         if weights is None:
             weights = [1.0 / n] * n
 
-        merged: Dict[str, torch.Tensor] = {}
+        merged: dict[str, torch.Tensor] = {}
         for key in state_dicts[0]:
-            merged[key] = sum(
-                weights[i] * state_dicts[i][key].float()
-                for i in range(n)
-            )
+            merged[key] = sum(weights[i] * state_dicts[i][key].float() for i in range(n))
         return merged
 
     def score_batch(
         self,
-        scores_per_model: List[List[float]],
-    ) -> List[float]:
+        scores_per_model: list[list[float]],
+    ) -> list[float]:
         for model_scores in scores_per_model:
             self.add_model_scores(model_scores)
         return self.aggregate()

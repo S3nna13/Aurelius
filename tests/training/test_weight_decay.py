@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 
 import torch
-import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -92,7 +91,7 @@ def test_layer_wise_wd_last_layer_lowest():
     wds = [layer_wise_wd(0.1, i, n_layers, 0.9) for i in range(n_layers)]
     assert wds[-1] == min(wds)
     # Last layer: base_wd * scale_factor^(n_layers-1) = 0.1 * 0.9^9
-    expected = 0.1 * (0.9 ** 9)
+    expected = 0.1 * (0.9**9)
     assert math.isclose(wds[-1], expected, rel_tol=1e-9)
 
 

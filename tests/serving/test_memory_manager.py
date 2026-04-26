@@ -1,10 +1,9 @@
 """Tests for MemoryStore and SemanticMemory."""
 
-import torch
 import pytest
+import torch
 
 from src.serving.memory_manager import MemoryEntry, MemoryStore, SemanticMemory
-
 
 EMBED_DIM = 64
 VOCAB = 256

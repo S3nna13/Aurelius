@@ -1,9 +1,8 @@
 """Tests for session manager."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.security.session_manager import SessionManager
 

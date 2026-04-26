@@ -6,7 +6,6 @@ Config: B=2, n_heads=4, T=64, head_dim=16, window_size=8, max_capacity=32
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.snapkv import SnapKVCache, SnapKVPolicy
@@ -16,11 +15,11 @@ from src.inference.snapkv import SnapKVCache, SnapKVPolicy
 # ---------------------------------------------------------------------------
 
 B = 2
-H = 4          # n_heads
-T = 64         # seq_len
-D = 16         # head_dim
-W = 8          # window_size
-K = 32         # max_capacity
+H = 4  # n_heads
+T = 64  # seq_len
+D = 16  # head_dim
+W = 8  # window_size
+K = 32  # max_capacity
 
 
 def make_uniform_attn(b: int = 1, h: int = H, t_obs: int = W, t_seq: int = T) -> torch.Tensor:
@@ -48,6 +47,7 @@ def make_peaked_attn(
 # ---------------------------------------------------------------------------
 # SnapKVPolicy tests
 # ---------------------------------------------------------------------------
+
 
 class TestSnapKVPolicyOutputLength:
     """Test 1 — select_indices returns ≤ max_capacity indices."""
@@ -122,9 +122,7 @@ class TestSnapKVCacheSameShape:
         values = torch.randn(B, H, T, D)
         attn = make_uniform_attn(b=B)
         ck, cv = cache.compress(keys, values, attn)
-        assert ck.shape == cv.shape, (
-            f"keys shape {ck.shape} != values shape {cv.shape}"
-        )
+        assert ck.shape == cv.shape, f"keys shape {ck.shape} != values shape {cv.shape}"
 
 
 class TestSnapKVCacheDeterminism:
@@ -149,9 +147,7 @@ class TestSnapKVNoEviction:
         policy = SnapKVPolicy(window_size=W, max_capacity=T)
         attn = make_uniform_attn()
         idx = policy.select_indices(attn, seq_len=T)
-        assert idx.numel() == T, (
-            f"Expected all {T} indices kept, got {idx.numel()}"
-        )
+        assert idx.numel() == T, f"Expected all {T} indices kept, got {idx.numel()}"
         assert set(idx.tolist()) == set(range(T))
 
 
@@ -247,6 +243,4 @@ class TestSnapKVTopKGuarantee:
         idx = policy.select_indices(attn, seq_len=T)
         idx_set = set(idx.tolist())
         for pos in top_positions:
-            assert pos in idx_set, (
-                f"Top position {pos} not in selected indices {sorted(idx_set)}"
-            )
+            assert pos in idx_set, f"Top position {pos} not in selected indices {sorted(idx_set)}"

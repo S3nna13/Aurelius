@@ -1,4 +1,5 @@
 """Unit tests for src/eval/vibe_code_reviewer.py."""
+
 from __future__ import annotations
 
 import os
@@ -62,9 +63,7 @@ def test_low_quality_finding_dropped():
 
 
 def test_review_file_reads_when_code_not_supplied():
-    with tempfile.NamedTemporaryFile(
-        "w", suffix=".py", delete=False, encoding="utf-8"
-    ) as tmp:
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as tmp:
         tmp.write("# VIBE_SSRF_SINK\nrequests.get(u)\n")
         path = tmp.name
     try:
@@ -142,9 +141,7 @@ def test_determinism_with_stub():
     reviewer = VibeCodeReviewer(stub_judge_fn, min_severity="low")
     r1 = reviewer.review_file("x.py", code=code)
     r2 = reviewer.review_file("x.py", code=code)
-    assert [(f.cwe, f.line) for f in r1.findings] == [
-        (f.cwe, f.line) for f in r2.findings
-    ]
+    assert [(f.cwe, f.line) for f in r1.findings] == [(f.cwe, f.line) for f in r2.findings]
 
 
 def test_unicode_code_handled():
@@ -162,11 +159,20 @@ def test_path_does_not_exist_raises():
 
 def test_vibefinding_and_report_dataclass_shape():
     f = VibeFinding(
-        why_real="x", fix_hint="y", cwe="CWE-1", severity="high",
-        line=1, snippet="s", file_path="p",
+        why_real="x",
+        fix_hint="y",
+        cwe="CWE-1",
+        severity="high",
+        line=1,
+        snippet="s",
+        file_path="p",
     )
     assert f.severity == "high"
     r = VibeReviewReport(
-        file_path="p", findings=[f], total_lines=1, elapsed_s=0.0, dropped=0,
+        file_path="p",
+        findings=[f],
+        total_lines=1,
+        elapsed_s=0.0,
+        dropped=0,
     )
     assert r.findings[0].cwe == "CWE-1"

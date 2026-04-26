@@ -27,7 +27,6 @@ leaks into sibling strategies' hermetic checks).
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 from torch import Tensor, nn
@@ -77,8 +76,8 @@ class InfiniAttention(nn.Module):
         self.beta = nn.Parameter(torch.zeros(n_heads))
 
         # Lazy state.
-        self.memory_M: Optional[Tensor] = None
-        self.memory_z: Optional[Tensor] = None
+        self.memory_M: Tensor | None = None
+        self.memory_z: Tensor | None = None
 
     # ------------------------------------------------------------------ #
     # Memory lifecycle                                                    #
@@ -107,12 +106,19 @@ class InfiniAttention(nn.Module):
         )
         if need_alloc:
             self.memory_M = torch.zeros(
-                B, self.n_heads, self.head_dim, self.head_dim,
-                device=device, dtype=dtype,
+                B,
+                self.n_heads,
+                self.head_dim,
+                self.head_dim,
+                device=device,
+                dtype=dtype,
             )
             self.memory_z = torch.zeros(
-                B, self.n_heads, self.head_dim,
-                device=device, dtype=dtype,
+                B,
+                self.n_heads,
+                self.head_dim,
+                device=device,
+                dtype=dtype,
             )
 
     # ------------------------------------------------------------------ #
@@ -209,13 +215,9 @@ class InfiniAttention(nn.Module):
             )
         B, H, S, D = q.shape
         if H != self.n_heads:
-            raise ValueError(
-                f"InfiniAttention: expected H={self.n_heads}, got {H}"
-            )
+            raise ValueError(f"InfiniAttention: expected H={self.n_heads}, got {H}")
         if D != self.head_dim:
-            raise ValueError(
-                f"InfiniAttention: expected head_dim={self.head_dim}, got {D}"
-            )
+            raise ValueError(f"InfiniAttention: expected head_dim={self.head_dim}, got {D}")
 
 
 __all__ = ["InfiniAttention"]

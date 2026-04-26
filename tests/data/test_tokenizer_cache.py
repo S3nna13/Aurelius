@@ -6,9 +6,9 @@ Tests for src/data/tokenizer_cache.py  (≥28 test methods)
 import unittest
 
 from src.data.tokenizer_cache import (
+    TOKENIZER_CACHE_REGISTRY,
     CachedTokenization,
     TokenizerCache,
-    TOKENIZER_CACHE_REGISTRY,
 )
 
 
@@ -20,7 +20,9 @@ class TestCachedTokenizationDataclass(unittest.TestCase):
             tokens = [1, 2]
         if token_strs is None:
             token_strs = ["hello", "world"]
-        return CachedTokenization(text=text, tokens=tokens, token_strs=token_strs, hash_key=hash_key)
+        return CachedTokenization(
+            text=text, tokens=tokens, token_strs=token_strs, hash_key=hash_key
+        )
 
     def test_fields_stored_correctly(self):
         ct = self._make()
@@ -149,8 +151,8 @@ class TestTokenizerCacheHitRate(unittest.TestCase):
 
     def test_hit_rate_partial(self):
         self.cache.put("yes", [1], ["y"])
-        self.cache.get("yes")    # hit
-        self.cache.get("no")     # miss
+        self.cache.get("yes")  # hit
+        self.cache.get("no")  # miss
         self.assertAlmostEqual(self.cache.hit_rate(), 0.5)
 
     def test_stats_contains_expected_keys(self):

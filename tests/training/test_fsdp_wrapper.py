@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import torch
 import torch.nn as nn
-import pytest
 
 from src.training.fsdp_wrapper import (
+    FSDP_REGISTRY,
     FSDPConfig,
     FSDPWrapper,
-    FSDP_REGISTRY,
 )
 
 

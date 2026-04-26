@@ -1,7 +1,10 @@
 """Tests for PCGrad and CAGrad gradient surgery."""
-import torch
-import pytest
 
+import pytest
+import torch
+
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.grad_surgery import (
     GradSurgeryConfig,
     MultiTaskGradManager,
@@ -9,16 +12,20 @@ from src.training.grad_surgery import (
     pcgrad,
     project_gradient,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 
 @pytest.fixture
 def small_model():
     torch.manual_seed(42)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 
@@ -32,11 +39,12 @@ def n_params(small_model):
 # project_gradient tests
 # ---------------------------------------------------------------------------
 
+
 def test_project_gradient_conflicting():
     """Conflicting gradients: projected g_i has smaller component along g_j."""
     torch.manual_seed(0)
     g_i = torch.tensor([1.0, 0.0])
-    g_j = torch.tensor([-1.0, 0.0])   # exactly opposite -> conflicting
+    g_j = torch.tensor([-1.0, 0.0])  # exactly opposite -> conflicting
 
     result = project_gradient(g_i, g_j)
 
@@ -53,7 +61,7 @@ def test_project_gradient_conflicting():
 def test_project_gradient_aligned():
     """Aligned gradients: result should equal g_i (unchanged)."""
     g_i = torch.tensor([1.0, 2.0, 3.0])
-    g_j = torch.tensor([0.5, 1.0, 1.5])   # same direction as g_i
+    g_j = torch.tensor([0.5, 1.0, 1.5])  # same direction as g_i
 
     result = project_gradient(g_i, g_j)
 
@@ -63,6 +71,7 @@ def test_project_gradient_aligned():
 # ---------------------------------------------------------------------------
 # pcgrad tests
 # ---------------------------------------------------------------------------
+
 
 def test_pcgrad_returns_tensor():
     """pcgrad should return a 1-D tensor of same size as inputs."""
@@ -100,6 +109,7 @@ def test_pcgrad_two_tasks_conflicting():
 # cagrad tests
 # ---------------------------------------------------------------------------
 
+
 def test_cagrad_returns_tensor():
     """cagrad should return a 1-D tensor of same size as inputs."""
     torch.manual_seed(0)
@@ -129,6 +139,7 @@ def test_cagrad_c_zero_is_average():
 # ---------------------------------------------------------------------------
 # MultiTaskGradManager tests
 # ---------------------------------------------------------------------------
+
 
 def _make_dummy_losses(model, n_tasks=3, seq_len=8, vocab_size=256):
     """Create synthetic scalar losses from the model for testing."""

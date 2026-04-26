@@ -4,7 +4,7 @@ Inspired by MoonshotAI/kimi-cli debug surfaces (MIT), Anthropic Claude Code prog
 clean-room reimplementation with original Aurelius design.
 
 Only rich, stdlib, and project-local imports are used.
-"""
+"""  # noqa: E501
 
 from __future__ import annotations
 
@@ -132,8 +132,7 @@ class DebugPanel:
         """
         if section_title not in self._sections:
             raise DebugPanelError(
-                f"section {section_title!r} not found; "
-                f"available: {list(self._sections)}"
+                f"section {section_title!r} not found; available: {list(self._sections)}"
             )
         section = self._sections[section_title]
         for metric in section.metrics:
@@ -157,8 +156,7 @@ class DebugPanel:
         """
         if section_title not in self._sections:
             raise DebugPanelError(
-                f"section {section_title!r} not found; "
-                f"available: {list(self._sections)}"
+                f"section {section_title!r} not found; available: {list(self._sections)}"
             )
         self._sections[section_title].metrics.append(metric)
 

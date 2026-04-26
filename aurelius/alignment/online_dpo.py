@@ -11,18 +11,17 @@ All implementation uses pure native PyTorch — no transformers, trl, or peft.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OnlineDPOConfig:
@@ -44,6 +43,7 @@ class OnlineDPOConfig:
 # ---------------------------------------------------------------------------
 # CompletionSampler
 # ---------------------------------------------------------------------------
+
 
 class CompletionSampler:
     """Sample completions and compute their log-probabilities from logit tensors.
@@ -139,6 +139,7 @@ class CompletionSampler:
 # OnlinePairBuilder
 # ---------------------------------------------------------------------------
 
+
 class OnlinePairBuilder:
     """Build (chosen, rejected) index pairs from per-completion reward scores.
 
@@ -157,7 +158,7 @@ class OnlinePairBuilder:
         self,
         rewards: Tensor,
         group_size: int | None = None,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Extract (chosen_indices, rejected_indices) from flat rewards.
 
         Args:
@@ -174,19 +175,17 @@ class OnlinePairBuilder:
         K = group_size if group_size is not None else self.config.n_completions
         total = rewards.shape[0]
         if total % K != 0:
-            raise ValueError(
-                f"rewards length {total} is not divisible by group_size {K}"
-            )
+            raise ValueError(f"rewards length {total} is not divisible by group_size {K}")
         B = total // K
 
         rewards_2d = rewards.reshape(B, K)  # (B, K)
 
-        chosen_local = rewards_2d.argmax(dim=1)   # (B,) local indices in [0, K)
+        chosen_local = rewards_2d.argmax(dim=1)  # (B,) local indices in [0, K)
         rejected_local = rewards_2d.argmin(dim=1)  # (B,)
 
         # Convert to global indices in the flat (B*K,) tensor
         offsets = torch.arange(B, device=rewards.device) * K  # (B,)
-        chosen_indices = offsets + chosen_local    # (B,)
+        chosen_indices = offsets + chosen_local  # (B,)
         rejected_indices = offsets + rejected_local  # (B,)
 
         return chosen_indices, rejected_indices
@@ -195,6 +194,7 @@ class OnlinePairBuilder:
 # ---------------------------------------------------------------------------
 # OnlineDPOLoss
 # ---------------------------------------------------------------------------
+
 
 class OnlineDPOLoss(nn.Module):
     """Standard DPO loss for a single (chosen, rejected) pair per batch item.
@@ -215,7 +215,7 @@ class OnlineDPOLoss(nn.Module):
         pi_rejected: Tensor,
         ref_chosen: Tensor,
         ref_rejected: Tensor,
-    ) -> Tuple[Tensor, Dict]:
+    ) -> tuple[Tensor, dict]:
         """Compute DPO loss and associated metrics.
 
         Args:
@@ -231,7 +231,7 @@ class OnlineDPOLoss(nn.Module):
                          "reward_rejected", "margin".
         """
         # Implicit reward under the policy relative to reference
-        reward_chosen = self.beta * (pi_chosen - ref_chosen)     # (B,)
+        reward_chosen = self.beta * (pi_chosen - ref_chosen)  # (B,)
         reward_rejected = self.beta * (pi_rejected - ref_rejected)  # (B,)
 
         # DPO contrastive logit
@@ -239,14 +239,14 @@ class OnlineDPOLoss(nn.Module):
 
         # Loss: -log σ(logit)
         per_sample = -F.logsigmoid(logits)  # (B,)
-        loss = per_sample.mean()            # scalar
+        loss = per_sample.mean()  # scalar
 
         accuracy = (logits > 0).float().mean().item()
         reward_chosen_mean = reward_chosen.mean().item()
         reward_rejected_mean = reward_rejected.mean().item()
         margin = reward_chosen_mean - reward_rejected_mean
 
-        metrics: Dict = {
+        metrics: dict = {
             "loss": loss.item(),
             "accuracy": accuracy,
             "reward_chosen": reward_chosen_mean,
@@ -260,6 +260,7 @@ class OnlineDPOLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # OnlineDPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class OnlineDPOTrainer:
     """Orchestrates one Online DPO update step.
@@ -297,7 +298,7 @@ class OnlineDPOTrainer:
         pi_rejected: Tensor,
         ref_chosen: Tensor,
         ref_rejected: Tensor,
-    ) -> Dict:
+    ) -> dict:
         """Perform one backward pass and optimizer step, return metrics.
 
         Args:

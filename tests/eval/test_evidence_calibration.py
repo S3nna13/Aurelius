@@ -3,7 +3,11 @@
 import pytest
 import torch
 
-from src.eval.evidence_calibration import evidence_brier_score, evidence_calibration_report, evidence_ece
+from src.eval.evidence_calibration import (
+    evidence_brier_score,
+    evidence_calibration_report,
+    evidence_ece,
+)
 
 
 def test_evidence_brier_score_zero_for_perfect_predictions():

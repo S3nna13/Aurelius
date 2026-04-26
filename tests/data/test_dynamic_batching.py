@@ -17,10 +17,10 @@ from src.data.dynamic_batching import (
     pad_sequence_batch,
 )
 
-
 # ---------------------------------------------------------------------------
 # BatchConfig defaults
 # ---------------------------------------------------------------------------
+
 
 def test_batch_config_defaults():
     cfg = BatchConfig()
@@ -34,6 +34,7 @@ def test_batch_config_defaults():
 # ---------------------------------------------------------------------------
 # pad_sequence_batch
 # ---------------------------------------------------------------------------
+
 
 def test_pad_sequence_batch_shape():
     seqs = [torch.tensor([1, 2, 3]), torch.tensor([4, 5]), torch.tensor([6])]
@@ -72,6 +73,7 @@ def test_pad_sequence_batch_identical_length_no_padding():
 # compute_padding_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_compute_padding_ratio_all_same_length_is_zero():
     seqs = [torch.tensor([1, 2, 3]), torch.tensor([4, 5, 6])]
     ratio = compute_padding_ratio(seqs)
@@ -93,6 +95,7 @@ def test_compute_padding_ratio_empty_list():
 # ---------------------------------------------------------------------------
 # bucket_by_length
 # ---------------------------------------------------------------------------
+
 
 def test_bucket_by_length_returns_n_buckets():
     seqs = [torch.arange(i + 1) for i in range(9)]  # lengths 1..9
@@ -121,6 +124,7 @@ def test_bucket_by_length_sorted_within_bucket():
 # greedy_pack
 # ---------------------------------------------------------------------------
 
+
 def test_greedy_pack_each_bin_le_max_tokens():
     seqs = [torch.arange(i + 1) for i in range(10)]  # lengths 1..10
     max_tokens = 15
@@ -136,9 +140,7 @@ def test_greedy_pack_fewer_bins_than_sequences():
     """Short sequences (length 1) should be packed together into fewer bins."""
     seqs = [torch.tensor([i]) for i in range(20)]  # 20 length-1 sequences
     bins = greedy_pack(seqs, max_tokens=10)
-    assert len(bins) < len(seqs), (
-        f"Expected fewer bins ({len(bins)}) than sequences ({len(seqs)})"
-    )
+    assert len(bins) < len(seqs), f"Expected fewer bins ({len(bins)}) than sequences ({len(seqs)})"
 
 
 def test_greedy_pack_no_sequences():
@@ -156,6 +158,7 @@ def test_greedy_pack_all_sequences_present():
 # ---------------------------------------------------------------------------
 # DynamicBatcher.collate
 # ---------------------------------------------------------------------------
+
 
 def test_collate_returns_correct_keys():
     cfg = BatchConfig(max_tokens_per_batch=128, max_batch_size=8)
@@ -191,6 +194,7 @@ def test_collate_attention_mask_sums_equal_seq_lengths():
 # DynamicBatcher.create_batches
 # ---------------------------------------------------------------------------
 
+
 def test_create_batches_token_budget_respected():
     cfg = BatchConfig(max_tokens_per_batch=20, max_batch_size=32)
     batcher = DynamicBatcher(cfg)
@@ -211,9 +215,7 @@ def test_create_batches_all_sequences_included():
     batcher = DynamicBatcher(cfg)
     seqs = [torch.arange(i + 1) for i in range(10)]
     batches = batcher.create_batches(seqs)
-    recovered = sum(
-        int(batch["attention_mask"].sum().item()) for batch in batches
-    )
+    recovered = sum(int(batch["attention_mask"].sum().item()) for batch in batches)
     expected_real = sum(i + 1 for i in range(10))  # 1+2+...+10 = 55
     assert recovered == expected_real, f"Lost tokens: got {recovered}, expected {expected_real}"
 
@@ -227,6 +229,7 @@ def test_create_batches_empty_input():
 # ---------------------------------------------------------------------------
 # DynamicBatcher.compute_efficiency
 # ---------------------------------------------------------------------------
+
 
 def test_compute_efficiency_in_range():
     cfg = BatchConfig(max_tokens_per_batch=30, max_batch_size=8)

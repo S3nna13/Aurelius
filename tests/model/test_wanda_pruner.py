@@ -16,17 +16,15 @@ Covers:
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
-from src.model.wanda_pruner import WandaConfig, WandaScorer, WandaPruner
-
+from src.model.wanda_pruner import WandaConfig, WandaPruner, WandaScorer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def default_config() -> WandaConfig:
@@ -47,6 +45,7 @@ def pruner(default_config: WandaConfig) -> WandaPruner:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = WandaConfig()
     assert cfg.sparsity_ratio == 0.5
@@ -59,6 +58,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. Accumulate 2-D activations
 # ---------------------------------------------------------------------------
+
 
 def test_accumulate_2d(scorer: WandaScorer):
     """accumulate([B, in]) should produce norms of shape [in_features]."""
@@ -73,6 +73,7 @@ def test_accumulate_2d(scorer: WandaScorer):
 # 3. Accumulate 3-D activations
 # ---------------------------------------------------------------------------
 
+
 def test_accumulate_3d(scorer: WandaScorer):
     """accumulate([B, T, in]) should produce norms of shape [in_features]."""
     in_features = 16
@@ -86,6 +87,7 @@ def test_accumulate_3d(scorer: WandaScorer):
 # 4. Activation norms are non-negative
 # ---------------------------------------------------------------------------
 
+
 def test_activation_norms_positive(scorer: WandaScorer):
     X = torch.randn(16, 64)
     scorer.accumulate(X)
@@ -96,6 +98,7 @@ def test_activation_norms_positive(scorer: WandaScorer):
 # ---------------------------------------------------------------------------
 # 5. Score shape
 # ---------------------------------------------------------------------------
+
 
 def test_score_shape(scorer: WandaScorer):
     out_f, in_f = 32, 64
@@ -109,13 +112,14 @@ def test_score_shape(scorer: WandaScorer):
 # 6. Score values — high-activation columns get higher scores
 # ---------------------------------------------------------------------------
 
+
 def test_score_values(scorer: WandaScorer):
     """Columns with larger activations should yield larger scores for equal weights."""
     torch.manual_seed(42)
     in_f = 8
     # Craft activations so column 0 has much larger norm than others
     X = torch.zeros(100, in_f)
-    X[:, 0] = 10.0   # large activation in column 0
+    X[:, 0] = 10.0  # large activation in column 0
     X[:, 1:] = 0.01  # tiny activations elsewhere
     scorer.accumulate(X)
 
@@ -134,6 +138,7 @@ def test_score_values(scorer: WandaScorer):
 # 7. Unstructured pruning — actual zero fraction matches sparsity_ratio
 # ---------------------------------------------------------------------------
 
+
 def test_prune_unstructured_sparsity():
     torch.manual_seed(0)
     config = WandaConfig(sparsity_ratio=0.5)
@@ -146,14 +151,13 @@ def test_prune_unstructured_sparsity():
     W_pruned = pruner.prune(W, scorer)
 
     actual_sparsity = pruner.sparsity(W_pruned)
-    assert abs(actual_sparsity - 0.5) < 0.01, (
-        f"Expected sparsity ≈ 0.5, got {actual_sparsity:.4f}"
-    )
+    assert abs(actual_sparsity - 0.5) < 0.01, f"Expected sparsity ≈ 0.5, got {actual_sparsity:.4f}"
 
 
 # ---------------------------------------------------------------------------
 # 8. Unstructured pruning keeps highest-scored weights
 # ---------------------------------------------------------------------------
+
 
 def test_prune_unstructured_keeps_high_scores():
     torch.manual_seed(7)
@@ -170,19 +174,18 @@ def test_prune_unstructured_keeps_high_scores():
 
     # All weights equal magnitude so only activation norm decides
     W = torch.ones(out_f, in_f)
-    scores = scorer.score(W)
+    scorer.score(W)
 
     W_pruned = pruner.prune(W, scorer)
 
     # Column 0 has the largest scores; its weights should all survive (not zeroed)
-    assert (W_pruned[:, 0] != 0).all(), (
-        "High-score column 0 weights should all survive pruning"
-    )
+    assert (W_pruned[:, 0] != 0).all(), "High-score column 0 weights should all survive pruning"
 
 
 # ---------------------------------------------------------------------------
 # 9. Semi-structured pruning pattern — every group of M has exactly (M-N) zeros
 # ---------------------------------------------------------------------------
+
 
 def test_prune_semi_structured_pattern():
     torch.manual_seed(3)
@@ -191,7 +194,7 @@ def test_prune_semi_structured_pattern():
     scorer = WandaScorer(config)
     pruner = WandaPruner(config)
 
-    out_f, in_f = 8, 16   # in_f must be divisible by m
+    out_f, in_f = 8, 16  # in_f must be divisible by m
     scorer.accumulate(torch.randn(16, in_f))
     W = torch.randn(out_f, in_f)
     W_pruned = pruner.prune(W, scorer)
@@ -202,14 +205,14 @@ def test_prune_semi_structured_pattern():
 
     expected_zeros = m - n  # = 2
     assert (zeros_per_group == expected_zeros).all(), (
-        f"Every group of {m} should have exactly {expected_zeros} zeros.\n"
-        f"Got: {zeros_per_group}"
+        f"Every group of {m} should have exactly {expected_zeros} zeros.\nGot: {zeros_per_group}"
     )
 
 
 # ---------------------------------------------------------------------------
 # 10. Semi-structured pruning shape unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_prune_semi_structured_shape():
     config = WandaConfig(semi_structured=True, n=2, m=4)
@@ -228,6 +231,7 @@ def test_prune_semi_structured_shape():
 # 11. Reset clears accumulated state
 # ---------------------------------------------------------------------------
 
+
 def test_reset_clears_state(scorer: WandaScorer):
     scorer.accumulate(torch.randn(8, 32))
     scorer.reset()
@@ -238,6 +242,7 @@ def test_reset_clears_state(scorer: WandaScorer):
 # ---------------------------------------------------------------------------
 # 12. Sparsity helper returns correct fraction
 # ---------------------------------------------------------------------------
+
 
 def test_sparsity_zero_weight(pruner: WandaPruner):
     W = torch.zeros(4, 8)
@@ -253,6 +258,7 @@ def test_sparsity_zero_weight(pruner: WandaPruner):
 # ---------------------------------------------------------------------------
 # 13. Full pipeline — accumulate → score → prune, check sparsity
 # ---------------------------------------------------------------------------
+
 
 def test_prune_full_pipeline():
     torch.manual_seed(99)
@@ -275,6 +281,7 @@ def test_prune_full_pipeline():
 # ---------------------------------------------------------------------------
 # 14. Multi-accumulate — two calls, norms reflect combined data
 # ---------------------------------------------------------------------------
+
 
 def test_multi_accumulate():
     """Two accumulate calls should yield the same norms as a single combined call."""
@@ -302,6 +309,7 @@ def test_multi_accumulate():
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_integration_wanda_pruner():
     """End-to-end: accumulate → prune a [128, 64] weight matrix, verify sparsity."""
@@ -345,5 +353,6 @@ def test_integration_wanda_pruner():
 
     # Registry check
     from src.model import MODEL_COMPONENT_REGISTRY
+
     assert "wanda_pruner" in MODEL_COMPONENT_REGISTRY
     assert MODEL_COMPONENT_REGISTRY["wanda_pruner"] is WandaPruner

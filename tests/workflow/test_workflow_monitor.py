@@ -1,13 +1,12 @@
 """Tests for workflow_monitor — workflow execution monitoring."""
+
 from __future__ import annotations
 
-import time
-
 from src.workflow.workflow_monitor import (
+    EventType,
+    WorkflowEvent,
     WorkflowMonitor,
     WorkflowStatus,
-    WorkflowEvent,
-    EventType,
     create_event,
 )
 

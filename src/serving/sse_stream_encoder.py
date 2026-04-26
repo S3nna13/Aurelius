@@ -10,6 +10,7 @@ share one implementation.
 
 from __future__ import annotations
 
+
 class SSEStreamEncoder:
     """Encode logical chunks into UTF-8 SSE frames."""
 
@@ -61,9 +62,7 @@ class SSEStreamEncoder:
 
 def _reject_if_newline(field: str, value: str) -> None:
     if "\r" in value or "\n" in value:
-        raise ValueError(
-            f"{field} must not contain CR/LF — refusing ambiguous framing"
-        )
+        raise ValueError(f"{field} must not contain CR/LF — refusing ambiguous framing")
     if "\x00" in value:
         raise ValueError(f"{field} must not contain NUL bytes")
 

@@ -1,4 +1,5 @@
 """Tests for request_envelope."""
+
 from __future__ import annotations
 
 import json

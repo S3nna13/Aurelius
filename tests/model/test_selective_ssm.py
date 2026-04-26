@@ -1,15 +1,14 @@
 """Tests for src/model/selective_ssm.py"""
+
 import pytest
 import torch
-import torch.nn as nn
 
 from src.model.selective_ssm import (
-    SSMConfig,
-    selective_scan,
-    SelectiveSSM,
     MambaBlock,
     MambaLayer,
-    RMSNorm,
+    SelectiveSSM,
+    SSMConfig,
+    selective_scan,
 )
 
 # ---------------------------------------------------------------------------
@@ -41,6 +40,7 @@ def cfg():
 # SSMConfig
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = SSMConfig()
     assert cfg.d_model == 64
@@ -55,6 +55,7 @@ def test_config_d_inner(cfg):
 # ---------------------------------------------------------------------------
 # selective_scan
 # ---------------------------------------------------------------------------
+
 
 def test_selective_scan_output_shape(cfg):
     u = torch.randn(BATCH, SEQ, D_INNER)
@@ -75,6 +76,7 @@ def test_selective_scan_gradient_flows(cfg):
     out = selective_scan(u.float(), delta.float(), A.float(), B.float(), C.float())
     out.sum().backward()
     # u doesn't get grad because we cast to float in the scan, but no error = pass
+
 
 def test_selective_scan_single_timestep():
     u = torch.randn(BATCH, 1, D_INNER)
@@ -99,6 +101,7 @@ def test_selective_scan_finite_output():
 # ---------------------------------------------------------------------------
 # SelectiveSSM
 # ---------------------------------------------------------------------------
+
 
 def test_selective_ssm_output_shape(cfg):
     ssm = SelectiveSSM(cfg)
@@ -125,6 +128,7 @@ def test_selective_ssm_gradient_flows(cfg):
 # ---------------------------------------------------------------------------
 # MambaBlock
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_block_output_shape(cfg):
     block = MambaBlock(cfg)
@@ -172,6 +176,7 @@ def test_mamba_block_output_finite(cfg):
 # ---------------------------------------------------------------------------
 # MambaLayer
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_layer_output_shape(cfg):
     layer = MambaLayer(cfg)

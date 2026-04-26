@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from typing import List
 
 import pytest
 
@@ -19,7 +18,6 @@ from src.data.preference_collector_v2 import (
     mine_preference_pairs,
     score_with_reward_model,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock helpers (as specified)
@@ -46,6 +44,7 @@ def mock_reward(prompt: str, response: str) -> float:
 # 1. compute_text_similarity — identical strings → 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_similarity_identical():
     assert compute_text_similarity("hello world", "hello world") == 1.0
 
@@ -53,6 +52,7 @@ def test_similarity_identical():
 # ---------------------------------------------------------------------------
 # 2. compute_text_similarity — different strings → < 0.5
 # ---------------------------------------------------------------------------
+
 
 def test_similarity_different():
     result = compute_text_similarity("hello world", "goodbye moon")
@@ -63,6 +63,7 @@ def test_similarity_different():
 # 3. is_near_duplicate — identical strings → True
 # ---------------------------------------------------------------------------
 
+
 def test_near_duplicate_identical():
     assert is_near_duplicate("this is a test", "this is a test") is True
 
@@ -71,6 +72,7 @@ def test_near_duplicate_identical():
 # 4. is_near_duplicate — completely different strings → False
 # ---------------------------------------------------------------------------
 
+
 def test_near_duplicate_different():
     assert is_near_duplicate("alpha beta gamma", "delta epsilon zeta") is False
 
@@ -78,6 +80,7 @@ def test_near_duplicate_different():
 # ---------------------------------------------------------------------------
 # 5. score_with_reward_model returns list of Response
 # ---------------------------------------------------------------------------
+
 
 def test_score_with_reward_model_returns_responses():
     prompt = "What is the capital of France?"
@@ -92,6 +95,7 @@ def test_score_with_reward_model_returns_responses():
 # 6. score_with_reward_model scores are not None
 # ---------------------------------------------------------------------------
 
+
 def test_score_with_reward_model_scores_not_none():
     prompt = "Test prompt."
     responses = ["Response one.", "Response two.", "Response three."]
@@ -103,6 +107,7 @@ def test_score_with_reward_model_scores_not_none():
 # ---------------------------------------------------------------------------
 # 7. mine_preference_pairs: chosen.score > rejected.score for all pairs
 # ---------------------------------------------------------------------------
+
 
 def test_mine_pairs_chosen_higher_score():
     config = CollectionConfig(min_margin=0.0, max_pairs_per_prompt=10)
@@ -121,6 +126,7 @@ def test_mine_pairs_chosen_higher_score():
 # 8. mine_preference_pairs: margin >= min_margin for all returned pairs
 # ---------------------------------------------------------------------------
 
+
 def test_mine_pairs_margin_filter():
     config = CollectionConfig(min_margin=0.2, max_pairs_per_prompt=10)
     responses = [
@@ -137,6 +143,7 @@ def test_mine_pairs_margin_filter():
 # 9. mine_preference_pairs: empty responses → empty list
 # ---------------------------------------------------------------------------
 
+
 def test_mine_pairs_empty_responses():
     config = CollectionConfig()
     result = mine_preference_pairs("test prompt", [], config)
@@ -147,6 +154,7 @@ def test_mine_pairs_empty_responses():
 # 10. PreferenceDatasetV2 starts empty
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_starts_empty():
     ds = PreferenceDatasetV2()
     assert len(ds) == 0
@@ -155,6 +163,7 @@ def test_dataset_starts_empty():
 # ---------------------------------------------------------------------------
 # 11. PreferenceDatasetV2.add increments length
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_add_increments_length():
     config = CollectionConfig(min_margin=0.0)
@@ -173,6 +182,7 @@ def test_dataset_add_increments_length():
 # 12. PreferenceDatasetV2.get_stats returns DatasetStats
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_get_stats_type():
     config = CollectionConfig(min_margin=0.0)
     ds = PreferenceDatasetV2(config=config)
@@ -190,6 +200,7 @@ def test_dataset_get_stats_type():
 # ---------------------------------------------------------------------------
 # 13. DatasetStats.mean_margin in valid range
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_stats_mean_margin_valid():
     config = CollectionConfig(min_margin=0.0)
@@ -210,6 +221,7 @@ def test_dataset_stats_mean_margin_valid():
 # ---------------------------------------------------------------------------
 # 14. PreferenceDatasetV2.to_dicts returns list with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_to_dicts_keys():
     config = CollectionConfig(min_margin=0.0)
@@ -233,6 +245,7 @@ def test_dataset_to_dicts_keys():
 # 15. PreferenceCollectorV2.collect returns list of PreferencePair
 # ---------------------------------------------------------------------------
 
+
 def test_collector_collect_returns_list():
     config = CollectionConfig(
         n_candidates=4,
@@ -255,6 +268,7 @@ def test_collector_collect_returns_list():
 # 16. PreferenceCollectorV2.collect_batch returns PreferenceDatasetV2
 # ---------------------------------------------------------------------------
 
+
 def test_collector_collect_batch_returns_dataset():
     config = CollectionConfig(
         n_candidates=4,
@@ -276,6 +290,7 @@ def test_collector_collect_batch_returns_dataset():
 # Bonus: dataset property returns PreferenceDatasetV2
 # ---------------------------------------------------------------------------
 
+
 def test_collector_dataset_property():
     collector = PreferenceCollectorV2(
         generate_fn=mock_generate,
@@ -287,6 +302,7 @@ def test_collector_dataset_property():
 # ---------------------------------------------------------------------------
 # Bonus: filter_by_margin narrows pairs correctly
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_filter_by_margin():
     config = CollectionConfig(min_margin=0.0)
@@ -308,6 +324,7 @@ def test_dataset_filter_by_margin():
 # Bonus: get_stats on empty dataset returns zeros
 # ---------------------------------------------------------------------------
 
+
 def test_dataset_stats_empty():
     ds = PreferenceDatasetV2()
     stats = ds.get_stats()
@@ -318,6 +335,7 @@ def test_dataset_stats_empty():
 # ---------------------------------------------------------------------------
 # Bonus: sample strategies work correctly
 # ---------------------------------------------------------------------------
+
 
 def test_dataset_sample_high_margin():
     config = CollectionConfig(min_margin=0.0)

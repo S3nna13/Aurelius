@@ -1,6 +1,5 @@
 """Tests for src/serving/system_prompts.py."""
 
-import pytest
 from src.serving.system_prompts import SYSTEM_PROMPTS, SystemPromptLibrary
 
 REQUIRED_KEYS = {"default", "coding", "security", "researcher", "concise", "creative"}

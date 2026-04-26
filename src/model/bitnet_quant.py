@@ -9,31 +9,31 @@ Activations are quantized to int8 range per tensor with straight-through estimat
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BitNetConfig:
     """Configuration for BitNet b1.58 quantization."""
 
-    bits: int = 8                   # bits for activation quantization
-    use_ternary_weights: bool = True # whether to ternarize weights
-    eps: float = 1e-8               # numerical stability in scale computation
+    bits: int = 8  # bits for activation quantization
+    use_ternary_weights: bool = True  # whether to ternarize weights
+    eps: float = 1e-8  # numerical stability in scale computation
 
 
 # ---------------------------------------------------------------------------
 # Core quantization primitives
 # ---------------------------------------------------------------------------
 
-def ternarize_weight(W: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+
+def ternarize_weight(W: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Ternarize weight tensor to values in {-1, 0, +1}.
 
     Scale is computed as mean(|W|) + eps so that the rounded ratio clips
@@ -58,9 +58,7 @@ def ternarize_weight(W: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     return ternary_W, scale.detach()
 
 
-def quantize_activation(
-    x: torch.Tensor, bits: int = 8
-) -> Tuple[torch.Tensor, torch.Tensor]:
+def quantize_activation(x: torch.Tensor, bits: int = 8) -> tuple[torch.Tensor, torch.Tensor]:
     """Per-tensor symmetric int quantization of activations.
 
     The quantized values are returned as floats (not integer dtype) for
@@ -90,6 +88,7 @@ def quantize_activation(
 # BitLinear module
 # ---------------------------------------------------------------------------
 
+
 class BitLinear(nn.Module):
     """Drop-in replacement for nn.Linear using BitNet b1.58 quantization.
 
@@ -109,11 +108,11 @@ class BitLinear(nn.Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.use_ternary = (config.use_ternary_weights if config is not None else True)
-        self.bits = (config.bits if config is not None else 8)
+        self.use_ternary = config.use_ternary_weights if config is not None else True
+        self.bits = config.bits if config is not None else 8
 
         self.weight = nn.Parameter(torch.empty(out_features, in_features))
-        nn.init.kaiming_uniform_(self.weight, a=5 ** 0.5)
+        nn.init.kaiming_uniform_(self.weight, a=5**0.5)
 
         if bias:
             self.bias = nn.Parameter(torch.zeros(out_features))
@@ -135,15 +134,13 @@ class BitLinear(nn.Module):
         return out
 
     def extra_repr(self) -> str:
-        return (
-            f"d_in={self.in_features}, d_out={self.out_features}, "
-            f"use_ternary={self.use_ternary}"
-        )
+        return f"d_in={self.in_features}, d_out={self.out_features}, use_ternary={self.use_ternary}"
 
 
 # ---------------------------------------------------------------------------
 # Model-level utilities
 # ---------------------------------------------------------------------------
+
 
 def apply_bitnet(model: nn.Module, config: BitNetConfig) -> nn.Module:
     """Recursively replace nn.Linear layers with BitLinear in-place.
@@ -182,7 +179,7 @@ def apply_bitnet(model: nn.Module, config: BitNetConfig) -> nn.Module:
     return model
 
 
-def compute_effective_bits(model: nn.Module) -> Dict[str, float]:
+def compute_effective_bits(model: nn.Module) -> dict[str, float]:
     """Count BitLinear vs nn.Linear layers and estimate compression ratio.
 
     Compression ratio = bits saved / total original bits, where BitLinear
@@ -213,9 +210,7 @@ def compute_effective_bits(model: nn.Module) -> Dict[str, float]:
         compression_ratio = 0.0
     else:
         original_bits = total_params * bits_per_float
-        compressed_bits = (
-            bitlinear_params * bits_per_ternary + linear_params * bits_per_float
-        )
+        compressed_bits = bitlinear_params * bits_per_ternary + linear_params * bits_per_float
         bits_saved = original_bits - compressed_bits
         compression_ratio = bits_saved / original_bits
 
@@ -229,6 +224,7 @@ def compute_effective_bits(model: nn.Module) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 # BitNet FFN
 # ---------------------------------------------------------------------------
+
 
 class BitNetFFN(nn.Module):
     """Two-layer feed-forward network using BitLinear layers.

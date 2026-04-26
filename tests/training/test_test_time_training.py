@@ -1,21 +1,22 @@
 """Tests for test-time training (TTT)."""
+
 import torch
-import pytest
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.test_time_training import (
+    TestTimeTrainer,
     TTTConfig,
     create_masked_lm_task,
-    save_model_state,
-    restore_model_state,
     get_adapt_params,
-    TestTimeTrainer,
+    restore_model_state,
+    save_model_state,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_model():
     torch.manual_seed(42)
@@ -41,6 +42,7 @@ def _input_ids(batch_size=1, seq_len=16, vocab_size=256):
 # 1. TTTConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_tttconfig_defaults():
     cfg = TTTConfig()
     assert cfg.n_adapt_steps == 5
@@ -54,6 +56,7 @@ def test_tttconfig_defaults():
 # 2. create_masked_lm_task returns same shape as input
 # ---------------------------------------------------------------------------
 
+
 def test_create_masked_lm_task_shape():
     ids = _input_ids()
     masked, labels = create_masked_lm_task(ids)
@@ -64,6 +67,7 @@ def test_create_masked_lm_task_shape():
 # ---------------------------------------------------------------------------
 # 3. create_masked_lm_task some tokens are masked (~mask_ratio)
 # ---------------------------------------------------------------------------
+
 
 def test_create_masked_lm_task_mask_ratio():
     torch.manual_seed(7)
@@ -85,6 +89,7 @@ def test_create_masked_lm_task_mask_ratio():
 # 4. create_masked_lm_task labels == -100 for unmasked positions
 # ---------------------------------------------------------------------------
 
+
 def test_create_masked_lm_task_labels_unmasked():
     torch.manual_seed(3)
     ids = _input_ids(batch_size=2, seq_len=32)
@@ -92,14 +97,13 @@ def test_create_masked_lm_task_labels_unmasked():
 
     # Positions NOT masked should have label == -100
     unmasked_positions = masked != 0
-    assert (labels[unmasked_positions] == -100).all(), (
-        "Unmasked positions should have label -100"
-    )
+    assert (labels[unmasked_positions] == -100).all(), "Unmasked positions should have label -100"
 
 
 # ---------------------------------------------------------------------------
 # 5. save_model_state returns dict of tensors
 # ---------------------------------------------------------------------------
+
 
 def test_save_model_state_returns_dict_of_tensors():
     model = _make_model()
@@ -115,6 +119,7 @@ def test_save_model_state_returns_dict_of_tensors():
 # ---------------------------------------------------------------------------
 # 6. save_model_state -> modify -> restore_model_state -> original restored
 # ---------------------------------------------------------------------------
+
 
 def test_save_restore_model_state_roundtrip():
     model = _make_model()
@@ -138,6 +143,7 @@ def test_save_restore_model_state_roundtrip():
 # 7. get_adapt_params returns list of parameters
 # ---------------------------------------------------------------------------
 
+
 def test_get_adapt_params_returns_list():
     model = _make_model()
     params = get_adapt_params(model, adapt_layers=[])
@@ -150,6 +156,7 @@ def test_get_adapt_params_returns_list():
 # 8. get_adapt_params with empty adapt_layers returns all layer params
 # ---------------------------------------------------------------------------
 
+
 def test_get_adapt_params_empty_returns_all():
     model = _make_model()
     all_params = get_adapt_params(model, adapt_layers=[])
@@ -160,6 +167,7 @@ def test_get_adapt_params_empty_returns_all():
 # ---------------------------------------------------------------------------
 # 9. TestTimeTrainer.adapt returns required keys
 # ---------------------------------------------------------------------------
+
 
 def test_adapt_returns_required_keys():
     model = _make_model()
@@ -177,6 +185,7 @@ def test_adapt_returns_required_keys():
 # ---------------------------------------------------------------------------
 # 10. TestTimeTrainer.adapt final_loss <= initial_loss
 # ---------------------------------------------------------------------------
+
 
 def test_adapt_loss_decreases_or_stays_flat():
     torch.manual_seed(0)
@@ -198,6 +207,7 @@ def test_adapt_loss_decreases_or_stays_flat():
 # 11. TestTimeTrainer.predict returns logits with correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_predict_logits_shape():
     model = _make_model()
     cfg = TTTConfig(n_adapt_steps=2)
@@ -207,14 +217,13 @@ def test_predict_logits_shape():
     ids = _input_ids(batch_size=B, seq_len=T)
     logits = trainer.predict(ids)
 
-    assert logits.shape == (B, T, 256), (
-        f"Expected (1, 16, 256), got {logits.shape}"
-    )
+    assert logits.shape == (B, T, 256), f"Expected (1, 16, 256), got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 12. TestTimeTrainer.adapt_and_predict returns (Tensor, dict)
 # ---------------------------------------------------------------------------
+
 
 def test_adapt_and_predict_return_types():
     model = _make_model()
@@ -235,6 +244,7 @@ def test_adapt_and_predict_return_types():
 # 13. TestTimeTrainer.adapt_and_predict logits shape (B, T, V)
 # ---------------------------------------------------------------------------
 
+
 def test_adapt_and_predict_logits_shape():
     model = _make_model()
     cfg = TTTConfig(n_adapt_steps=2)
@@ -250,6 +260,7 @@ def test_adapt_and_predict_logits_shape():
 # ---------------------------------------------------------------------------
 # 14. restore_model_state correctly restores after adaptation
 # ---------------------------------------------------------------------------
+
 
 def test_restore_after_adaptation():
     model = _make_model()

@@ -16,32 +16,33 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RewardFreeConfig:
     """Configuration for reward-free alignment training."""
 
-    method: str = "slic"         # "slic" | "calibration" | "contrastive"
-    beta: float = 0.1            # KL / temperature coefficient
-    margin: float = 1.0          # target margin used in calibration loss
-    lambda_reg: float = 1.0      # regularization weight in SLiC
-    delta: float = 1.0           # hinge margin in SLiC ranking loss
+    method: str = "slic"  # "slic" | "calibration" | "contrastive"
+    beta: float = 0.1  # KL / temperature coefficient
+    margin: float = 1.0  # target margin used in calibration loss
+    lambda_reg: float = 1.0  # regularization weight in SLiC
+    delta: float = 1.0  # hinge margin in SLiC ranking loss
 
 
 # ---------------------------------------------------------------------------
 # SLiC Loss
 # ---------------------------------------------------------------------------
+
 
 class SLiCLoss(nn.Module):
     """Sequence Likelihood Calibration loss.
@@ -76,8 +77,8 @@ class SLiCLoss(nn.Module):
         Returns:
             (B,) element-wise hinge values.
         """
-        margin = chosen_logps - rejected_logps          # (B,)
-        return F.relu(self.delta - margin)              # max(0, delta - margin)
+        margin = chosen_logps - rejected_logps  # (B,)
+        return F.relu(self.delta - margin)  # max(0, delta - margin)
 
     def regularization_loss(
         self,
@@ -109,8 +110,8 @@ class SLiCLoss(nn.Module):
         self,
         chosen_logps: Tensor,
         rejected_logps: Tensor,
-        ref_logps: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Dict[str, Any]]:
+        ref_logps: Tensor | None = None,
+    ) -> tuple[Tensor, dict[str, Any]]:
         """Compute the total SLiC loss and per-component metrics.
 
         Args:
@@ -127,7 +128,7 @@ class SLiCLoss(nn.Module):
         if ref_logps is None:
             ref_logps = torch.zeros_like(chosen_logps)
 
-        per_sample_hinge = self.hinge_loss(chosen_logps, rejected_logps)   # (B,)
+        per_sample_hinge = self.hinge_loss(chosen_logps, rejected_logps)  # (B,)
         hinge = per_sample_hinge.mean()
 
         reg = self.regularization_loss(chosen_logps, ref_logps)
@@ -137,7 +138,7 @@ class SLiCLoss(nn.Module):
         # Accuracy: fraction of pairs where chosen_logp > rejected_logp
         accuracy = (chosen_logps > rejected_logps).float().mean()
 
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, Any] = {
             "hinge_loss": hinge.detach(),
             "reg_loss": reg.detach(),
             "accuracy": accuracy.detach(),
@@ -148,6 +149,7 @@ class SLiCLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # ULMA Trainer
 # ---------------------------------------------------------------------------
+
 
 class ULMATrainer:
     """Unified Language Model Alignment trainer.
@@ -172,8 +174,7 @@ class ULMATrainer:
     ) -> None:
         if method not in ("slic", "calibration", "contrastive"):
             raise ValueError(
-                f"method must be one of 'slic', 'calibration', 'contrastive'; "
-                f"got '{method}'"
+                f"method must be one of 'slic', 'calibration', 'contrastive'; got '{method}'"
             )
         self.policy = policy
         self.ref_policy = ref_policy
@@ -208,16 +209,16 @@ class ULMATrainer:
         Returns:
             (B,) summed log-prob per sequence.
         """
-        logits = model(input_ids)                        # (B, T, V)
-        log_probs = F.log_softmax(logits, dim=-1)        # (B, T, V)
+        logits = model(input_ids)  # (B, T, V)
+        log_probs = F.log_softmax(logits, dim=-1)  # (B, T, V)
 
         # Gather log-probs at the target positions
         safe_labels = labels.clone()
-        safe_labels[safe_labels == -100] = 0             # avoid OOB gather
+        safe_labels[safe_labels == -100] = 0  # avoid OOB gather
         token_lp = log_probs.gather(-1, safe_labels.unsqueeze(-1)).squeeze(-1)  # (B, T)
 
-        mask = (labels != -100).float()                  # (B, T)
-        return (token_lp * mask).sum(dim=-1)             # (B,)
+        mask = (labels != -100).float()  # (B, T)
+        return (token_lp * mask).sum(dim=-1)  # (B,)
 
     # ------------------------------------------------------------------
     # Objective implementations
@@ -247,9 +248,9 @@ class ULMATrainer:
         Returns:
             Scalar calibration loss.
         """
-        policy_ratio = chosen_logps - rejected_logps                  # (B,)
-        ref_ratio = ref_chosen_logps - ref_rejected_logps             # (B,)
-        target = ref_ratio + self.margin                              # (B,)
+        policy_ratio = chosen_logps - rejected_logps  # (B,)
+        ref_ratio = ref_chosen_logps - ref_rejected_logps  # (B,)
+        target = ref_ratio + self.margin  # (B,)
         return F.mse_loss(policy_ratio, target)
 
     def contrastive_loss(
@@ -282,7 +283,7 @@ class ULMATrainer:
         """
         # Stack to (B, 2) so we can apply log_softmax over the pair dimension
         logits = torch.stack([chosen_logps, rejected_logps], dim=-1)  # (B, 2)
-        log_probs = F.log_softmax(logits, dim=-1)                      # (B, 2)
+        log_probs = F.log_softmax(logits, dim=-1)  # (B, 2)
         # We want to maximise the probability assigned to the chosen column
         # (index 0), so the *loss* is the mean log-probability (always <= 0)
         return log_probs[:, 0].mean()
@@ -297,7 +298,7 @@ class ULMATrainer:
         rejected_ids: Tensor,
         chosen_labels: Tensor,
         rejected_labels: Tensor,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run a single preference-optimisation step.
 
         Computes log-probs for both policy and reference, selects the
@@ -314,12 +315,8 @@ class ULMATrainer:
             Dict with at minimum a 'loss' key plus per-method metrics.
         """
         # Policy log-probs
-        chosen_logps = self.compute_sequence_logps(
-            self.policy, chosen_ids, chosen_labels
-        )
-        rejected_logps = self.compute_sequence_logps(
-            self.policy, rejected_ids, rejected_labels
-        )
+        chosen_logps = self.compute_sequence_logps(self.policy, chosen_ids, chosen_labels)
+        rejected_logps = self.compute_sequence_logps(self.policy, rejected_ids, rejected_labels)
 
         # Reference log-probs (no gradient)
         with torch.no_grad():
@@ -337,8 +334,10 @@ class ULMATrainer:
 
         elif self.method == "calibration":
             loss = self.calibration_loss(
-                chosen_logps, rejected_logps,
-                ref_chosen_logps, ref_rejected_logps,
+                chosen_logps,
+                rejected_logps,
+                ref_chosen_logps,
+                ref_rejected_logps,
             )
             accuracy = (chosen_logps > rejected_logps).float().mean()
             return {

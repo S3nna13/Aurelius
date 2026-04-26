@@ -7,38 +7,38 @@ apply all of these constraints in a unified pipeline.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # ConstraintConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ConstraintConfig:
     """Configuration for constrained decoding."""
 
-    allowed_tokens: Optional[List[int]] = None
-    banned_tokens: Optional[List[int]] = None
+    allowed_tokens: list[int] | None = None
+    banned_tokens: list[int] | None = None
     min_new_tokens: int = 0
     max_new_tokens: int = 100
-    force_eos_token: Optional[int] = None
-    prefix_tokens: Optional[List[int]] = None
+    force_eos_token: int | None = None
+    prefix_tokens: list[int] | None = None
 
 
 # ---------------------------------------------------------------------------
 # apply_token_constraints
 # ---------------------------------------------------------------------------
 
+
 def apply_token_constraints(
     logits: Tensor,
-    allowed: Optional[List[int]] = None,
-    banned: Optional[List[int]] = None,
+    allowed: list[int] | None = None,
+    banned: list[int] | None = None,
 ) -> Tensor:
     """Apply token-level logit constraints.
 
@@ -83,6 +83,7 @@ def apply_token_constraints(
 # apply_min_length_constraint
 # ---------------------------------------------------------------------------
 
+
 def apply_min_length_constraint(
     logits: Tensor,
     current_len: int,
@@ -113,11 +114,12 @@ def apply_min_length_constraint(
 # force_prefix
 # ---------------------------------------------------------------------------
 
+
 def force_prefix(
-    generated: List[int],
-    prefix: List[int],
+    generated: list[int],
+    prefix: list[int],
     step: int,
-) -> Optional[int]:
+) -> int | None:
     """Return the forced token for the current decoding step.
 
     If ``step < len(prefix)``, the token at ``prefix[step]`` must be produced.
@@ -141,6 +143,7 @@ def force_prefix(
 # LogitProcessor
 # ---------------------------------------------------------------------------
 
+
 class LogitProcessor:
     """Applies all constraints from a :class:`ConstraintConfig` to logits.
 
@@ -154,7 +157,7 @@ class LogitProcessor:
     def __init__(self, config: ConstraintConfig) -> None:
         self.config = config
 
-    def __call__(self, logits: Tensor, generated_ids: List[int]) -> Tensor:
+    def __call__(self, logits: Tensor, generated_ids: list[int]) -> Tensor:
         """Apply all constraints and return modified ``(vocab_size,)`` logits.
 
         Args:
@@ -200,6 +203,7 @@ class LogitProcessor:
 # ConstrainedGreedyDecoder
 # ---------------------------------------------------------------------------
 
+
 class ConstrainedGreedyDecoder:
     """Greedy decoder that applies :class:`ConstraintConfig` at each step.
 
@@ -238,7 +242,7 @@ class ConstrainedGreedyDecoder:
         else:
             current_ids = input_ids.clone()
 
-        generated: List[int] = []
+        generated: list[int] = []
 
         for _ in range(self.config.max_new_tokens):
             logits_3d = self.model_fn(current_ids)  # (1, T, V)
@@ -255,7 +259,7 @@ class ConstrainedGreedyDecoder:
             if next_token == self.eos_token_id:
                 break
 
-        prompt_len = input_ids.shape[-1]
+        input_ids.shape[-1]
         all_ids = current_ids[0]  # (prompt_len + n_generated,)
         return all_ids
 
@@ -263,6 +267,7 @@ class ConstrainedGreedyDecoder:
 # ---------------------------------------------------------------------------
 # ConstrainedSampler
 # ---------------------------------------------------------------------------
+
 
 class ConstrainedSampler:
     """Multinomial sampler with :class:`ConstraintConfig` constraints applied.
@@ -294,7 +299,7 @@ class ConstrainedSampler:
         else:
             current_ids = input_ids.clone()
 
-        generated: List[int] = []
+        generated: list[int] = []
 
         for _ in range(self.config.max_new_tokens):
             logits_3d = self.model_fn(current_ids)
@@ -318,7 +323,7 @@ class ConstrainedSampler:
 
         return current_ids[0]
 
-    def sample(self, input_ids: Tensor, n_samples: int = 1) -> List[Tensor]:
+    def sample(self, input_ids: Tensor, n_samples: int = 1) -> list[Tensor]:
         """Draw ``n_samples`` independently sampled sequences.
 
         Args:
@@ -336,10 +341,11 @@ class ConstrainedSampler:
 # compute_constraint_satisfaction
 # ---------------------------------------------------------------------------
 
+
 def compute_constraint_satisfaction(
     sequence: Tensor,
     config: ConstraintConfig,
-) -> Dict[str, bool]:
+) -> dict[str, bool]:
     """Check whether a generated sequence satisfies the configured constraints.
 
     Checks performed:

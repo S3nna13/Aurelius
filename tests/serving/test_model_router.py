@@ -1,11 +1,10 @@
 """Tests for src/serving/model_router.py"""
 
-import pytest
 from src.serving.model_router import (
+    SERVING_REGISTRY,
     ModelEndpoint,
     ModelRouter,
     RoutingPolicy,
-    SERVING_REGISTRY,
 )
 
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_registry_contains_refusal_entry() -> None:
     import src.safety as safety
@@ -18,10 +16,7 @@ def test_prior_registry_entries_still_present() -> None:
 
     # Previously registered HARM classifier.
     assert "harm_taxonomy" in safety.HARM_CLASSIFIER_REGISTRY
-    assert (
-        safety.HARM_CLASSIFIER_REGISTRY["harm_taxonomy"]
-        is safety.HarmTaxonomyClassifier
-    )
+    assert safety.HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] is safety.HarmTaxonomyClassifier
 
     # Previously registered SAFETY filters — sanity-check a couple.
     assert "jailbreak" in safety.SAFETY_FILTER_REGISTRY
@@ -51,9 +46,7 @@ def test_three_sample_classification() -> None:
     assert len(refusal.signals) >= 1
 
     # 2) Compliance.
-    compliance = clf.classify(
-        "Sure! Here is the pseudocode for binary search on a sorted array."
-    )
+    compliance = clf.classify("Sure! Here is the pseudocode for binary search on a sorted array.")
     assert compliance.is_refusal is False
     assert compliance.score < 0.5
 

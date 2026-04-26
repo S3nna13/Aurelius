@@ -52,21 +52,16 @@ class ColBERTScorer:
 
     def __init__(self, config: ColBERTConfig) -> None:
         if config.embed_dim < 1:
-            raise ValueError(
-                f"embed_dim must be >= 1, got {config.embed_dim}"
-            )
+            raise ValueError(f"embed_dim must be >= 1, got {config.embed_dim}")
         self.config = config
 
     # ------------------------------------------------------------------ utils
     def _check_tokens(self, emb: Tensor, name: str, expect_rank: int) -> None:
         if emb.dim() != expect_rank:
-            raise ValueError(
-                f"{name} must have rank {expect_rank}, got shape {tuple(emb.shape)}"
-            )
+            raise ValueError(f"{name} must have rank {expect_rank}, got shape {tuple(emb.shape)}")
         if emb.shape[-1] != self.config.embed_dim:
             raise ValueError(
-                f"{name} last-dim must equal embed_dim={self.config.embed_dim}, "
-                f"got {emb.shape[-1]}"
+                f"{name} last-dim must equal embed_dim={self.config.embed_dim}, got {emb.shape[-1]}"
             )
 
     def _maybe_normalize(self, emb: Tensor) -> Tensor:
@@ -129,9 +124,7 @@ class ColBERTScorer:
         per_q_max, _ = sim.max(dim=2)  # [B, Nq]
         return per_q_max.sum(dim=1)  # [B]
 
-    def score_query_against_corpus(
-        self, q_embs: Tensor, corpus_embs: list[Tensor]
-    ) -> list[float]:
+    def score_query_against_corpus(self, q_embs: Tensor, corpus_embs: list[Tensor]) -> list[float]:
         """Score one query against a corpus of docs with variable-length tokens.
 
         Args:
@@ -153,9 +146,7 @@ class ColBERTScorer:
         for i, d_embs in enumerate(corpus_embs):
             self._check_tokens(d_embs, f"corpus_embs[{i}]", expect_rank=2)
             if d_embs.shape[0] == 0:
-                raise ValueError(
-                    f"corpus_embs[{i}] must have at least one token (Nd > 0)"
-                )
+                raise ValueError(f"corpus_embs[{i}] must have at least one token (Nd > 0)")
             d = self._maybe_normalize(d_embs)
             sim = q @ d.transpose(0, 1)
             per_q_max, _ = sim.max(dim=1)

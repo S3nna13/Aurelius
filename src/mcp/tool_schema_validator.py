@@ -69,9 +69,7 @@ class ToolSchemaValidator:
         if description is None:
             errors.append("Missing required field: 'description'")
         elif not isinstance(description, str):
-            errors.append(
-                f"'description' must be a string, got {type(description).__name__}"
-            )
+            errors.append(f"'description' must be a string, got {type(description).__name__}")
         elif not description.strip():
             errors.append("'description' must be a non-empty string")
 
@@ -84,8 +82,7 @@ class ToolSchemaValidator:
         key_count = _count_keys(schema)
         if key_count > _MAX_SCHEMA_KEYS:
             errors.append(
-                f"Schema size ({key_count} keys) exceeds maximum allowed "
-                f"({_MAX_SCHEMA_KEYS} keys)"
+                f"Schema size ({key_count} keys) exceeds maximum allowed ({_MAX_SCHEMA_KEYS} keys)"
             )
 
         # Parameters checks
@@ -93,9 +90,7 @@ class ToolSchemaValidator:
         if parameters is None:
             errors.append("Missing required field: 'parameters'")
         elif not isinstance(parameters, dict):
-            errors.append(
-                f"'parameters' must be a dict, got {type(parameters).__name__}"
-            )
+            errors.append(f"'parameters' must be a dict, got {type(parameters).__name__}")
         else:
             if "properties" not in parameters:
                 errors.append("'parameters' missing required key: 'properties'")
@@ -108,15 +103,12 @@ class ToolSchemaValidator:
                 for prop_name, prop_def in parameters["properties"].items():
                     if not isinstance(prop_def, dict):
                         errors.append(
-                            f"Property {prop_name!r} must be a dict, got "
-                            f"{type(prop_def).__name__}"
+                            f"Property {prop_name!r} must be a dict, got {type(prop_def).__name__}"
                         )
                         continue
                     prop_type = prop_def.get("type")
                     if prop_type is None:
-                        errors.append(
-                            f"Property {prop_name!r} missing required key: 'type'"
-                        )
+                        errors.append(f"Property {prop_name!r} missing required key: 'type'")
                     elif prop_type not in _ALLOWED_TYPES:
                         errors.append(
                             f"Property {prop_name!r} has invalid type "
@@ -187,9 +179,7 @@ def _detect_circular_ref(obj: Any) -> str | None:
             path_ids.add(node_id)
             has_ref_in_path[node_id] = current_has_ref
             for key, value in node.items():
-                result = _walk(
-                    value, f"{path}.{key}", has_ref_in_path.get(node_id, False)
-                )
+                result = _walk(value, f"{path}.{key}", has_ref_in_path.get(node_id, False))
                 if result:
                     return result
             path_ids.discard(node_id)

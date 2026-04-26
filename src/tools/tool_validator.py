@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from src.tools.tool_schema_registry import (
+    TOOL_SCHEMA_REGISTRY,
     ParameterSchema,
     ToolSchemaRegistry,
-    TOOL_SCHEMA_REGISTRY,
 )
 
 _TYPE_MAP: dict[str, type] = {

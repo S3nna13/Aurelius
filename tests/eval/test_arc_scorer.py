@@ -7,7 +7,6 @@ import pytest
 from src.eval.arc_scorer import (
     ARC_REGISTRY,
     ARCQuestion,
-    ARCResult,
     ARCScorer,
 )
 

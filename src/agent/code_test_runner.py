@@ -15,10 +15,8 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .code_execution_sandbox import CodeExecutionSandbox, ExecutionResult
-
 
 __all__ = [
     "TestResult",
@@ -132,10 +130,10 @@ class CodeTestRunner:
 
     def __init__(
         self,
-        test_command: Optional[list[str]] = None,
+        test_command: list[str] | None = None,
         timeout: float = DEFAULT_TIMEOUT,
-        working_dir: Optional[str] = None,
-        python_path: Optional[str] = None,
+        working_dir: str | None = None,
+        python_path: str | None = None,
     ) -> None:
         if timeout <= 0:
             raise ValueError(f"timeout must be > 0, got {timeout!r}")
@@ -143,9 +141,7 @@ class CodeTestRunner:
             raise NotADirectoryError(working_dir)
         self.python_path = python_path or sys.executable
         default_cmd = [self.python_path, "-m", "pytest", "-q", "--tb=short"]
-        self.test_command: list[str] = (
-            list(test_command) if test_command else default_cmd
-        )
+        self.test_command: list[str] = list(test_command) if test_command else default_cmd
         self.timeout = float(timeout)
         self.working_dir = working_dir
 
@@ -153,7 +149,7 @@ class CodeTestRunner:
     # Public API
     # ------------------------------------------------------------------
 
-    def run(self, extra_args: Optional[list[str]] = None) -> TestResult:
+    def run(self, extra_args: list[str] | None = None) -> TestResult:
         argv = list(self.test_command)
         if extra_args:
             argv.extend(str(a) for a in extra_args)
@@ -191,12 +187,7 @@ class CodeTestRunner:
         counts = _parse_counts(combined)
         failed_names = _parse_failed_names(combined)
 
-        total = (
-            counts["passed"]
-            + counts["failed"]
-            + counts["skipped"]
-            + counts["errors"]
-        )
+        total = counts["passed"] + counts["failed"] + counts["skipped"] + counts["errors"]
 
         return TestResult(
             total=total,
@@ -216,7 +207,7 @@ class CodeTestRunner:
 def _run_argv_via_sandbox(
     sandbox: CodeExecutionSandbox,
     argv: list[str],
-    cwd: Optional[str],
+    cwd: str | None,
 ) -> ExecutionResult:
     """Run an arbitrary argv through the sandbox's hardened subprocess path.
 

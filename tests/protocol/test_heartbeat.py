@@ -1,9 +1,8 @@
 """Tests for heartbeat monitor."""
+
 from __future__ import annotations
 
 import time
-
-import pytest
 
 from src.protocol.heartbeat import HeartbeatMonitor
 

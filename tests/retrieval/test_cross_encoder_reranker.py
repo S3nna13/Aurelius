@@ -76,7 +76,8 @@ def test_gradient_flows_to_all_trainable_params() -> None:
     loss = out.sum()
     loss.backward()
     missing = [
-        n for n, p in model.named_parameters()
+        n
+        for n, p in model.named_parameters()
         if p.requires_grad and (p.grad is None or p.grad.abs().sum().item() == 0.0)
     ]
     assert missing == [], f"params with no gradient: {missing}"

@@ -1,19 +1,20 @@
 """Tests for src/multiagent/agent_pool.py."""
+
 from __future__ import annotations
 
 import pytest
 
 from src.multiagent.agent_pool import (
+    AGENT_POOL,
     AgentPool,
     PoolAgent,
     PoolAgentStatus,
-    AGENT_POOL,
 )
-
 
 # ---------------------------------------------------------------------------
 # PoolAgentStatus enum
 # ---------------------------------------------------------------------------
+
 
 def test_pool_agent_status_values():
     assert PoolAgentStatus.IDLE == "idle"
@@ -33,6 +34,7 @@ def test_pool_agent_status_is_str():
 # ---------------------------------------------------------------------------
 # PoolAgent dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_pool_agent_auto_id():
     agent = PoolAgent(name="worker")
@@ -66,6 +68,7 @@ def test_pool_agent_custom_fields():
 # ---------------------------------------------------------------------------
 # AgentPool.spawn()
 # ---------------------------------------------------------------------------
+
 
 def test_spawn_returns_pool_agent():
     pool = AgentPool()
@@ -104,6 +107,7 @@ def test_spawn_below_max_returns_agent():
 # retire()
 # ---------------------------------------------------------------------------
 
+
 def test_retire_sets_status_retired():
     pool = AgentPool()
     agent = pool.spawn("worker")
@@ -133,6 +137,7 @@ def test_retire_reduces_pool_size():
 # ---------------------------------------------------------------------------
 # active_agents()
 # ---------------------------------------------------------------------------
+
 
 def test_active_agents_excludes_retired():
     pool = AgentPool(max_size=5)
@@ -166,6 +171,7 @@ def test_active_agents_includes_idle_and_busy():
 # ---------------------------------------------------------------------------
 # assign_task()
 # ---------------------------------------------------------------------------
+
 
 def test_assign_task_sets_status_busy():
     pool = AgentPool()
@@ -202,6 +208,7 @@ def test_assign_task_returns_false_for_retired():
 # ---------------------------------------------------------------------------
 # complete_task()
 # ---------------------------------------------------------------------------
+
 
 def test_complete_task_sets_status_idle():
     pool = AgentPool()
@@ -242,6 +249,7 @@ def test_complete_task_unknown_returns_false():
 # scale_to()
 # ---------------------------------------------------------------------------
 
+
 def test_scale_to_increases_pool():
     pool = AgentPool(min_size=0, max_size=10)
     pool.scale_to(3)
@@ -280,6 +288,7 @@ def test_scale_to_returns_actual_size():
 # pool_size()
 # ---------------------------------------------------------------------------
 
+
 def test_pool_size_zero_initially():
     pool = AgentPool()
     assert pool.pool_size() == 0
@@ -296,6 +305,7 @@ def test_pool_size_excludes_retired():
 # ---------------------------------------------------------------------------
 # utilization()
 # ---------------------------------------------------------------------------
+
 
 def test_utilization_zero_when_empty():
     pool = AgentPool()
@@ -339,6 +349,7 @@ def test_utilization_excludes_retired():
 # ---------------------------------------------------------------------------
 # AGENT_POOL singleton
 # ---------------------------------------------------------------------------
+
 
 def test_agent_pool_singleton_exists():
     assert AGENT_POOL is not None

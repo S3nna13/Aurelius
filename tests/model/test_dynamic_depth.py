@@ -4,19 +4,20 @@ import pytest
 import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.dynamic_depth import (
+    AdaptiveLayerSelector,
     DynamicDepthConfig,
+    DynamicDepthTransformer,
     ExitRouter,
     LayerSkipRouter,
     compute_exit_confidence,
-    DynamicDepthTransformer,
-    AdaptiveLayerSelector,
 )
+from src.model.transformer import AureliusTransformer
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg():
@@ -65,6 +66,7 @@ def input_ids(cfg):
 # 1. DynamicDepthConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_depth_config_defaults():
     cfg = DynamicDepthConfig()
     assert cfg.exit_threshold == 0.9
@@ -78,6 +80,7 @@ def test_dynamic_depth_config_defaults():
 # 2. ExitRouter output shape (B, 1)
 # ---------------------------------------------------------------------------
 
+
 def test_exit_router_output_shape():
     router = ExitRouter(d_model=64)
     B = 4
@@ -90,10 +93,11 @@ def test_exit_router_output_shape():
 # 3. ExitRouter output in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_exit_router_output_range():
     torch.manual_seed(1)
     router = ExitRouter(d_model=64)
-    x = torch.randn(8, 64) * 10.0   # large values to stress sigmoid
+    x = torch.randn(8, 64) * 10.0  # large values to stress sigmoid
     out = router(x)
     assert out.min().item() >= 0.0, "ExitRouter output below 0"
     assert out.max().item() <= 1.0, "ExitRouter output above 1"
@@ -102,6 +106,7 @@ def test_exit_router_output_range():
 # ---------------------------------------------------------------------------
 # 4. LayerSkipRouter output shape and range
 # ---------------------------------------------------------------------------
+
 
 def test_layer_skip_router_output_shape_and_range():
     router = LayerSkipRouter(d_model=32)
@@ -117,6 +122,7 @@ def test_layer_skip_router_output_shape_and_range():
 # 5. compute_exit_confidence shape (B,) and range [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_compute_exit_confidence_shape_and_range():
     B, V = 6, 256
     logits = torch.randn(B, V)
@@ -130,6 +136,7 @@ def test_compute_exit_confidence_shape_and_range():
 # 6. DynamicDepthTransformer.forward returns 3-tuple
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_depth_transformer_returns_3_tuple(dd_model, input_ids):
     result = dd_model(input_ids)
     assert isinstance(result, tuple), "forward should return a tuple"
@@ -139,6 +146,7 @@ def test_dynamic_depth_transformer_returns_3_tuple(dd_model, input_ids):
 # ---------------------------------------------------------------------------
 # 7. DynamicDepthTransformer logits shape (B, T, V)
 # ---------------------------------------------------------------------------
+
 
 def test_dynamic_depth_transformer_logits_shape(dd_model, input_ids, cfg):
     B, T = input_ids.shape
@@ -152,17 +160,17 @@ def test_dynamic_depth_transformer_logits_shape(dd_model, input_ids, cfg):
 # 8. DynamicDepthTransformer exit_layers list length == B
 # ---------------------------------------------------------------------------
 
+
 def test_dynamic_depth_transformer_exit_layers_length(dd_model, input_ids):
     B = input_ids.shape[0]
     _loss, _logits, exit_layers = dd_model(input_ids)
-    assert len(exit_layers) == B, (
-        f"exit_layers length should be {B}, got {len(exit_layers)}"
-    )
+    assert len(exit_layers) == B, f"exit_layers length should be {B}, got {len(exit_layers)}"
 
 
 # ---------------------------------------------------------------------------
 # 9. DynamicDepthTransformer exit layer index <= n_layers - 1
 # ---------------------------------------------------------------------------
+
 
 def test_dynamic_depth_transformer_exit_layer_upper_bound(dd_model, input_ids, cfg):
     _loss, _logits, exit_layers = dd_model(input_ids)
@@ -176,18 +184,18 @@ def test_dynamic_depth_transformer_exit_layer_upper_bound(dd_model, input_ids, c
 # 10. compute_efficiency_stats returns required keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_efficiency_stats_keys(dd_model, input_ids):
     _loss, _logits, exit_layers = dd_model(input_ids)
     stats = dd_model.compute_efficiency_stats(exit_layers)
     required = {"mean_exit_layer", "min_exit_layer", "max_exit_layer", "early_exit_rate"}
-    assert required.issubset(stats.keys()), (
-        f"Missing keys: {required - stats.keys()}"
-    )
+    assert required.issubset(stats.keys()), f"Missing keys: {required - stats.keys()}"
 
 
 # ---------------------------------------------------------------------------
 # 11. compute_efficiency_stats early_exit_rate in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_efficiency_stats_early_exit_rate_range(dd_model, input_ids):
     _loss, _logits, exit_layers = dd_model(input_ids)
@@ -199,6 +207,7 @@ def test_compute_efficiency_stats_early_exit_rate_range(dd_model, input_ids):
 # ---------------------------------------------------------------------------
 # 12. AdaptiveLayerSelector.select_layers returns list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_layer_selector_returns_list_of_ints():
     selector = AdaptiveLayerSelector(n_layers=6, min_layers=2)
@@ -212,20 +221,20 @@ def test_adaptive_layer_selector_returns_list_of_ints():
 # 13. AdaptiveLayerSelector.select_layers length >= min_layers
 # ---------------------------------------------------------------------------
 
+
 def test_adaptive_layer_selector_min_layers():
     min_layers = 3
     selector = AdaptiveLayerSelector(n_layers=8, min_layers=min_layers)
     # Test with a zero tensor (low norm) and a large tensor (high norm)
     for hidden in [torch.zeros(1, 4, 64), torch.randn(1, 4, 64) * 100]:
         layers = selector.select_layers(hidden)
-        assert len(layers) >= min_layers, (
-            f"Expected >= {min_layers} layers, got {len(layers)}"
-        )
+        assert len(layers) >= min_layers, f"Expected >= {min_layers} layers, got {len(layers)}"
 
 
 # ---------------------------------------------------------------------------
 # 14. AdaptiveLayerSelector.select_layers all indices < n_layers
 # ---------------------------------------------------------------------------
+
 
 def test_adaptive_layer_selector_indices_in_range():
     n_layers = 5
@@ -234,6 +243,4 @@ def test_adaptive_layer_selector_indices_in_range():
         hidden = torch.randn(2, 10, 64) * torch.rand(1).item() * 20
         layers = selector.select_layers(hidden)
         for idx in layers:
-            assert idx < n_layers, (
-                f"Layer index {idx} is out of range [0, {n_layers})"
-            )
+            assert idx < n_layers, f"Layer index {idx} is out of range [0, {n_layers})"

@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 
 from src.longcontext import (
     LONGCONTEXT_STRATEGY_REGISTRY,
-    CompressedKV,
     KVInt8Compressor,
     quantize_per_head_symmetric,
 )
-
 
 B, H, S, D = 2, 4, 8, 16
 

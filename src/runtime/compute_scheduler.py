@@ -4,7 +4,6 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
 
 
 class Priority(int, Enum):
@@ -21,8 +20,8 @@ class ComputeJob:
     priority: Priority
     estimated_flops: float
     submitted_at: float
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    started_at: float | None = None
+    completed_at: float | None = None
     status: str = "pending"
     metadata: dict = field(default_factory=dict)
 
@@ -33,13 +32,13 @@ class ComputeScheduler:
     def __init__(self, max_concurrent: int = 4, flop_budget_per_s: float = 1e12) -> None:
         self._max_concurrent = max_concurrent
         self._flop_budget_per_s = flop_budget_per_s
-        self._jobs: Dict[str, ComputeJob] = {}
+        self._jobs: dict[str, ComputeJob] = {}
 
     def submit(
         self,
         priority: Priority,
         estimated_flops: float,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> ComputeJob:
         job = ComputeJob(
             job_id=str(uuid.uuid4()),
@@ -51,7 +50,7 @@ class ComputeScheduler:
         self._jobs[job.job_id] = job
         return job
 
-    def next_job(self) -> Optional[ComputeJob]:
+    def next_job(self) -> ComputeJob | None:
         pending = [j for j in self._jobs.values() if j.status == "pending"]
         if not pending:
             return None
@@ -63,9 +62,7 @@ class ComputeScheduler:
             raise KeyError(f"Unknown job: {job_id}")
         running = [j for j in self._jobs.values() if j.status == "running"]
         if len(running) >= self._max_concurrent:
-            raise RuntimeError(
-                f"max_concurrent ({self._max_concurrent}) running jobs reached"
-            )
+            raise RuntimeError(f"max_concurrent ({self._max_concurrent}) running jobs reached")
         job = self._jobs[job_id]
         job.started_at = time.monotonic()
         job.status = "running"
@@ -86,10 +83,10 @@ class ComputeScheduler:
         job.status = "cancelled"
         return job
 
-    def running_jobs(self) -> List[ComputeJob]:
+    def running_jobs(self) -> list[ComputeJob]:
         return [j for j in self._jobs.values() if j.status == "running"]
 
-    def pending_jobs(self) -> List[ComputeJob]:
+    def pending_jobs(self) -> list[ComputeJob]:
         return [j for j in self._jobs.values() if j.status == "pending"]
 
     def stats(self) -> dict:

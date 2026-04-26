@@ -17,7 +17,6 @@ from src.chat.conversation_memory import (
 )
 from src.retrieval.bm25_retriever import BM25Retriever
 
-
 # --------------------------------------------------------------------------- #
 # Helpers                                                                     #
 # --------------------------------------------------------------------------- #
@@ -144,7 +143,7 @@ def test_jsonfile_atomic_write_no_corruption(tmp_path):
     # The only file at the target path should be valid JSON -- the
     # atomic rename leaves no half-written file behind. Any stale temp
     # siblings would be hidden (dotfile prefix) but the target must parse.
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     assert len(data["facts"]) == 20
 
@@ -206,7 +205,7 @@ def test_query_1000_facts_under_200ms():
     start = time.perf_counter()
     hits = mem.retrieve("n", "pytest", k=10)
     elapsed = time.perf_counter() - start
-    assert elapsed < 0.2, f"retrieve took {elapsed*1000:.1f}ms"
+    assert elapsed < 0.2, f"retrieve took {elapsed * 1000:.1f}ms"
     assert 1 <= len(hits) <= 10
 
 
@@ -221,8 +220,7 @@ def test_determinism_given_fixed_clock_and_ids():
         clock.advance(1.0)
         mem.record_fact("n", "delta epsilon", importance=0.5)
         return [
-            (f.id, f.content, f.created_at, f.importance)
-            for f in mem.top_by_importance("n", k=3)
+            (f.id, f.content, f.created_at, f.importance) for f in mem.top_by_importance("n", k=3)
         ]
 
     assert run() == run()

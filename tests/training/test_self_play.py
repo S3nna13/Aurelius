@@ -72,9 +72,7 @@ def test_generate_candidates_sorted(small_model):
 
 
 def test_make_dpo_pairs_structure(small_model):
-    cfg = SelfPlayConfig(
-        n_candidates=4, max_new_tokens=8, keep_top_k=1, keep_bottom_k=1
-    )
+    cfg = SelfPlayConfig(n_candidates=4, max_new_tokens=8, keep_top_k=1, keep_bottom_k=1)
     prompts = [torch.randint(0, 256, (5,)) for _ in range(2)]
     pairs = make_dpo_pairs(small_model, prompts, cfg)
     assert len(pairs) >= 0  # may be empty if all scores equal
@@ -85,9 +83,7 @@ def test_make_dpo_pairs_structure(small_model):
 
 def test_make_dpo_pairs_chosen_higher(small_model):
     """chosen_score must be >= rejected_score for every pair."""
-    cfg = SelfPlayConfig(
-        n_candidates=6, max_new_tokens=10, keep_top_k=2, keep_bottom_k=2
-    )
+    cfg = SelfPlayConfig(n_candidates=6, max_new_tokens=10, keep_top_k=2, keep_bottom_k=2)
     prompts = [torch.randint(0, 256, (6,)) for _ in range(3)]
     pairs = make_dpo_pairs(small_model, prompts, cfg)
     for p in pairs:

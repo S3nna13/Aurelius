@@ -1,16 +1,14 @@
 """Tests for automatic model documentation (model card) generation."""
 
 import pytest
-import torch
 
+from src.eval.model_card import (
+    ModelCard,
+    build_model_card,
+    count_parameters_by_component,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.eval.model_card import (
-    ParameterBreakdown,
-    ModelCard,
-    count_parameters_by_component,
-    build_model_card,
-)
 
 
 @pytest.fixture

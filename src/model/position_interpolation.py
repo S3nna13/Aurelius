@@ -6,7 +6,6 @@ RoPE to longer contexts at inference time, complementary to YaRN (yarn_rope.py).
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -19,8 +18,8 @@ class PositionInterpolationConfig:
 
     original_max_len: int = 8192
     target_max_len: int = 32768
-    method: str = "linear"   # "linear" | "ntk" | "dynamic_ntk"
-    ntk_alpha: float = 1.0   # NTK scaling factor
+    method: str = "linear"  # "linear" | "ntk" | "dynamic_ntk"
+    ntk_alpha: float = 1.0  # NTK scaling factor
 
 
 def linear_interpolate_positions(
@@ -68,7 +67,7 @@ def ntk_rope_base(
     """
     scale_ratio = alpha * target_max_len / original_max_len
     exponent = head_dim / (head_dim - 2)
-    return base * (scale_ratio ** exponent)
+    return base * (scale_ratio**exponent)
 
 
 def build_rope_freqs(
@@ -140,8 +139,8 @@ def apply_rope(x: Tensor, freqs: Tensor) -> Tensor:
     sin = sin.unsqueeze(0).unsqueeze(0).to(x.device, x.dtype)
 
     # Split x into first and second halves along head_dim
-    x1 = x[..., :half_dim]   # (B, H, T, half_dim)
-    x2 = x[..., half_dim:]   # (B, H, T, half_dim)
+    x1 = x[..., :half_dim]  # (B, H, T, half_dim)
+    x2 = x[..., half_dim:]  # (B, H, T, half_dim)
 
     # 2D rotation: [x1, x2] → [x1*cos - x2*sin, x1*sin + x2*cos]
     out1 = x1 * cos - x2 * sin
@@ -262,4 +261,4 @@ def dynamic_ntk_scale(
     """
     ratio = seq_len / original_max_len
     exponent = head_dim / (head_dim - 2)
-    return max(1.0, ratio ** exponent)
+    return max(1.0, ratio**exponent)

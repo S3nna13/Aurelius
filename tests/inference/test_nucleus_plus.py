@@ -1,16 +1,16 @@
 """Tests for src/inference/nucleus_plus.py"""
-import pytest
+
 import torch
 import torch.nn.functional as F
 
 from src.inference.nucleus_plus import (
     NucleusConfig,
-    apply_temperature,
-    apply_repetition_penalty,
-    apply_min_p,
-    apply_surprise_upweight,
-    nucleus_plus_sample,
     NucleusDecoder,
+    apply_min_p,
+    apply_repetition_penalty,
+    apply_surprise_upweight,
+    apply_temperature,
+    nucleus_plus_sample,
 )
 
 VOCAB_SIZE = 64
@@ -20,6 +20,7 @@ EOS = 2
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
+
 
 def _uniform_logits(vocab: int = VOCAB_SIZE) -> torch.Tensor:
     return torch.zeros(vocab)
@@ -38,6 +39,7 @@ def _prompt(length: int = 4) -> torch.Tensor:
 # Test 1: temperature > 1 flattens the distribution
 # ---------------------------------------------------------------------------
 
+
 def test_temperature_flattens_distribution():
     """Higher temperature should produce a more uniform distribution."""
     torch.manual_seed(0)
@@ -55,6 +57,7 @@ def test_temperature_flattens_distribution():
 # Test 2: repetition penalty reduces score of repeated tokens
 # ---------------------------------------------------------------------------
 
+
 def test_repetition_penalty_reduces_repeated_tokens():
     """Tokens in prev_ids should have reduced logits after penalty."""
     logits = torch.ones(VOCAB_SIZE) * 2.0
@@ -71,6 +74,7 @@ def test_repetition_penalty_reduces_repeated_tokens():
 # ---------------------------------------------------------------------------
 # Test 3: min_p filters low-probability tokens
 # ---------------------------------------------------------------------------
+
 
 def test_min_p_filters_low_prob_tokens():
     """Tokens with prob below min_p * max_prob should be zeroed."""
@@ -92,6 +96,7 @@ def test_min_p_filters_low_prob_tokens():
 # Test 4: surprise_alpha=0 is identity
 # ---------------------------------------------------------------------------
 
+
 def test_surprise_alpha_zero_is_identity():
     """apply_surprise_upweight with alpha=0 should return probs unchanged."""
     probs = F.softmax(torch.randn(VOCAB_SIZE), dim=-1)
@@ -102,6 +107,7 @@ def test_surprise_alpha_zero_is_identity():
 # ---------------------------------------------------------------------------
 # Test 5: nucleus_plus_sample returns int in valid range
 # ---------------------------------------------------------------------------
+
 
 def test_nucleus_plus_sample_returns_valid_int():
     """nucleus_plus_sample must return a Python int in [0, vocab_size)."""
@@ -116,6 +122,7 @@ def test_nucleus_plus_sample_returns_valid_int():
 # ---------------------------------------------------------------------------
 # Test 6: temperature=0.01 is near-greedy (always picks argmax)
 # ---------------------------------------------------------------------------
+
 
 def test_very_low_temperature_is_near_greedy():
     """With temperature close to 0, the sampler should almost always pick the argmax."""
@@ -136,6 +143,7 @@ def test_very_low_temperature_is_near_greedy():
 # Test 7: config defaults work without arguments
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """NucleusConfig() should have the correct default field values."""
     cfg = NucleusConfig()
@@ -149,6 +157,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # Test 8: NucleusDecoder.generate returns a list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_generate_returns_list_of_ints():
     """generate() must return a list of Python ints."""
@@ -166,17 +175,20 @@ def test_generate_returns_list_of_ints():
 # Test 9: eos_id stops generation early
 # ---------------------------------------------------------------------------
 
+
 def test_eos_stops_generation():
     """generate() should stop as soon as eos_id is emitted."""
     eos = 3
+
     # Model that always emits eos_id strongly
     def eos_model(ids: torch.Tensor) -> torch.Tensor:
         logits = torch.full((1, ids.shape[1], VOCAB_SIZE), -1e9)
         logits[:, :, eos] = 10.0
         return logits
 
-    decoder = NucleusDecoder(NucleusConfig(top_p=1.0, min_p=0.0, repetition_penalty=1.0,
-                                           temperature=1.0))
+    decoder = NucleusDecoder(
+        NucleusConfig(top_p=1.0, min_p=0.0, repetition_penalty=1.0, temperature=1.0)
+    )
     tokens = decoder.generate(eos_model, _prompt(), max_new_tokens=20, eos_id=eos)
     # Should stop after 1 token (the EOS itself)
     assert len(tokens) == 1
@@ -186,6 +198,7 @@ def test_eos_stops_generation():
 # ---------------------------------------------------------------------------
 # Test 10: batch of 1 works (input_ids shape (1, T))
 # ---------------------------------------------------------------------------
+
 
 def test_batch_of_one_works():
     """generate() should handle input_ids with batch dim = 1."""

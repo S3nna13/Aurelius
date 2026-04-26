@@ -4,18 +4,18 @@ Diagnoses routing behavior in MoE layers: load balance, entropy,
 specialization, and collapse. Distinct from moe_analysis.py which
 focuses on capacity and loss; this module examines routing patterns.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Dict
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # RoutingStats
 # ---------------------------------------------------------------------------
+
 
 class RoutingStats:
     """Accumulates per-expert token assignment statistics over many batches."""
@@ -73,6 +73,7 @@ class RoutingStats:
 # RoutingEntropyAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class RoutingEntropyAnalyzer:
     """Stateless entropy analysis of per-token routing distributions."""
 
@@ -112,6 +113,7 @@ class RoutingEntropyAnalyzer:
 # ExpertSpecializationAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class ExpertSpecializationAnalyzer:
     """Tracks co-occurrence of token types and expert assignments."""
 
@@ -147,14 +149,13 @@ class ExpertSpecializationAnalyzer:
 
     def reset(self) -> None:
         """Zero out co-occurrence counts."""
-        self.co_occurrence = torch.zeros(
-            self.n_token_types, self.n_experts, dtype=torch.long
-        )
+        self.co_occurrence = torch.zeros(self.n_token_types, self.n_experts, dtype=torch.long)
 
 
 # ---------------------------------------------------------------------------
 # RoutingDiagnostics
 # ---------------------------------------------------------------------------
+
 
 class RoutingDiagnostics:
     """Combined routing diagnostics — stateless per call to ``analyze``."""
@@ -164,7 +165,7 @@ class RoutingDiagnostics:
         self._stats = RoutingStats(n_experts)
         self._entropy = RoutingEntropyAnalyzer()
 
-    def analyze(self, routing_weights: Tensor) -> Dict[str, float]:
+    def analyze(self, routing_weights: Tensor) -> dict[str, float]:
         """Compute all routing metrics for one batch of routing weights.
 
         Args:
@@ -181,7 +182,7 @@ class RoutingDiagnostics:
 
         utilization = self._stats.expert_utilization()
 
-        result: Dict[str, float] = {
+        result: dict[str, float] = {
             "load_balance_score": self._stats.load_balance_score(),
             "router_collapse": self._stats.router_collapse(),
             "mean_entropy": self._entropy.mean_routing_entropy(routing_weights),

@@ -93,18 +93,12 @@ class VideoFrameSampler:
                 return 1
             if arr.ndim == 4:
                 return int(arr.shape[0])
-            raise ValueError(
-                f"Expected a 3D or 4D array, got {arr.ndim}D in {video_path}"
-            )
+            raise ValueError(f"Expected a 3D or 4D array, got {arr.ndim}D in {video_path}")
 
         if p.is_dir():
-            count = sum(
-                1 for f in p.iterdir() if f.is_file() and f.suffix == ".npy"
-            )
+            count = sum(1 for f in p.iterdir() if f.is_file() and f.suffix == ".npy")
             if count == 0:
-                raise ValueError(
-                    f"No .npy frame files found in directory: {video_path}"
-                )
+                raise ValueError(f"No .npy frame files found in directory: {video_path}")
             return count
 
         raise FileNotFoundError(f"Video path not found: {video_path}")
@@ -124,9 +118,7 @@ class VideoFrameSampler:
             ValueError: If shapes mismatch.
         """
         if a.shape != b.shape:
-            raise ValueError(
-                f"Shape mismatch: {a.shape} vs {b.shape}"
-            )
+            raise ValueError(f"Shape mismatch: {a.shape} vs {b.shape}")
         diff = a.astype(np.float64) - b.astype(np.float64)
         return float(np.mean(diff * diff))
 
@@ -147,18 +139,12 @@ class VideoFrameSampler:
                 return [arr]
             if arr.ndim == 4:
                 return [arr[i] for i in range(arr.shape[0])]
-            raise ValueError(
-                f"Expected a 3D or 4D array, got {arr.ndim}D in {video_path}"
-            )
+            raise ValueError(f"Expected a 3D or 4D array, got {arr.ndim}D in {video_path}")
 
         if p.is_dir():
-            files = sorted(
-                f for f in p.iterdir() if f.is_file() and f.suffix == ".npy"
-            )
+            files = sorted(f for f in p.iterdir() if f.is_file() and f.suffix == ".npy")
             if not files:
-                raise ValueError(
-                    f"No .npy frame files found in directory: {video_path}"
-                )
+                raise ValueError(f"No .npy frame files found in directory: {video_path}")
             frames: list[np.ndarray] = []
             for f in files:
                 arr = np.load(str(f))
@@ -167,9 +153,7 @@ class VideoFrameSampler:
                 elif arr.ndim == 4:
                     frames.extend([arr[i] for i in range(arr.shape[0])])
                 else:
-                    raise ValueError(
-                        f"Expected a 3D or 4D array, got {arr.ndim}D in {f}"
-                    )
+                    raise ValueError(f"Expected a 3D or 4D array, got {arr.ndim}D in {f}")
             return frames
 
         raise FileNotFoundError(f"Video path not found: {video_path}")
@@ -182,9 +166,7 @@ class VideoFrameSampler:
         indices = np.linspace(0, n - 1, max_frames, dtype=int)
         return [frames[i] for i in indices]
 
-    def _sample_scene_change(
-        self, frames: list[np.ndarray], max_frames: int
-    ) -> list[np.ndarray]:
+    def _sample_scene_change(self, frames: list[np.ndarray], max_frames: int) -> list[np.ndarray]:
         n = len(frames)
         if max_frames >= n:
             return frames[:]

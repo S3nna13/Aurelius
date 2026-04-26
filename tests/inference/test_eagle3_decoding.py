@@ -17,7 +17,6 @@ from src.inference.eagle3_decoding import (
     Eagle3Verifier,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tiny test config
 # ---------------------------------------------------------------------------
@@ -54,6 +53,7 @@ def initial_hidden() -> torch.Tensor:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = Eagle3Config()
     assert cfg.max_draft_len == 8
@@ -65,6 +65,7 @@ def test_config_defaults():
 # 2. test_confidence_head_shape_2d
 # ---------------------------------------------------------------------------
 
+
 def test_confidence_head_shape_2d():
     head = ConfidenceHead(d_model=D_MODEL, hidden=16)
     x = torch.randn(BATCH, D_MODEL)
@@ -75,6 +76,7 @@ def test_confidence_head_shape_2d():
 # ---------------------------------------------------------------------------
 # 3. test_confidence_head_shape_3d
 # ---------------------------------------------------------------------------
+
 
 def test_confidence_head_shape_3d():
     T = 5
@@ -88,6 +90,7 @@ def test_confidence_head_shape_3d():
 # 4. test_confidence_head_range
 # ---------------------------------------------------------------------------
 
+
 def test_confidence_head_range():
     head = ConfidenceHead(d_model=D_MODEL, hidden=16)
     x = torch.randn(100, D_MODEL)
@@ -100,6 +103,7 @@ def test_confidence_head_range():
 # 5. test_draft_step_output_shapes
 # ---------------------------------------------------------------------------
 
+
 def test_draft_step_output_shapes(drafter: Eagle3Drafter, initial_hidden: torch.Tensor):
     logits, next_hidden, confidence = drafter.draft_step(initial_hidden)
     assert logits.shape == (BATCH, VOCAB_SIZE), f"logits shape mismatch: {logits.shape}"
@@ -111,6 +115,7 @@ def test_draft_step_output_shapes(drafter: Eagle3Drafter, initial_hidden: torch.
 # 6. test_draft_returns_dict_keys
 # ---------------------------------------------------------------------------
 
+
 def test_draft_returns_dict_keys(drafter: Eagle3Drafter, initial_hidden: torch.Tensor):
     result = drafter.draft(initial_hidden)
     for key in ("draft_tokens", "draft_logits", "confidences", "n_drafted"):
@@ -120,6 +125,7 @@ def test_draft_returns_dict_keys(drafter: Eagle3Drafter, initial_hidden: torch.T
 # ---------------------------------------------------------------------------
 # 7. test_draft_max_length
 # ---------------------------------------------------------------------------
+
 
 def test_draft_max_length(tiny_config: Eagle3Config, initial_hidden: torch.Tensor):
     # With a very low confidence_threshold, drafting runs to the max
@@ -133,9 +139,7 @@ def test_draft_max_length(tiny_config: Eagle3Config, initial_hidden: torch.Tenso
     )
     drafter = Eagle3Drafter(cfg)
     result = drafter.draft(initial_hidden, n_tokens=3)
-    assert result["n_drafted"] == 3, (
-        f"Expected exactly 3 tokens drafted, got {result['n_drafted']}"
-    )
+    assert result["n_drafted"] == 3, f"Expected exactly 3 tokens drafted, got {result['n_drafted']}"
     assert len(result["draft_tokens"]) == 3
     assert len(result["draft_logits"]) == 3
     assert len(result["confidences"]) == 3
@@ -144,6 +148,7 @@ def test_draft_max_length(tiny_config: Eagle3Config, initial_hidden: torch.Tenso
 # ---------------------------------------------------------------------------
 # 8. test_draft_confidence_gating — high threshold → fewer tokens drafted
 # ---------------------------------------------------------------------------
+
 
 def test_draft_confidence_gating(initial_hidden: torch.Tensor):
     # Threshold = 1.0 means confidence (always < 1 via sigmoid) is always below it
@@ -171,6 +176,7 @@ def test_draft_confidence_gating(initial_hidden: torch.Tensor):
 # 9. test_draft_low_threshold — threshold=0.0 → always drafts max_draft_len
 # ---------------------------------------------------------------------------
 
+
 def test_draft_low_threshold(initial_hidden: torch.Tensor):
     cfg = Eagle3Config(
         d_model=D_MODEL,
@@ -190,6 +196,7 @@ def test_draft_low_threshold(initial_hidden: torch.Tensor):
 # ---------------------------------------------------------------------------
 # 10. test_verifier_perfect_match — draft matches target argmax → high acceptance
 # ---------------------------------------------------------------------------
+
 
 def test_verifier_perfect_match():
     """When draft tokens exactly match the target argmax the verifier should
@@ -218,6 +225,7 @@ def test_verifier_perfect_match():
 # 11. test_verifier_returns_mask
 # ---------------------------------------------------------------------------
 
+
 def test_verifier_returns_mask():
     vocab = VOCAB_SIZE
     n = 3
@@ -235,6 +243,7 @@ def test_verifier_returns_mask():
 # 12. test_decode_step_keys
 # ---------------------------------------------------------------------------
 
+
 def test_decode_step_keys(tiny_config: Eagle3Config, initial_hidden: torch.Tensor):
     decoder = Eagle3Decoder(tiny_config)
 
@@ -249,6 +258,7 @@ def test_decode_step_keys(tiny_config: Eagle3Config, initial_hidden: torch.Tenso
 # ---------------------------------------------------------------------------
 # 13. test_acceptance_rate_range
 # ---------------------------------------------------------------------------
+
 
 def test_acceptance_rate_range(tiny_config: Eagle3Config, initial_hidden: torch.Tensor):
     decoder = Eagle3Decoder(tiny_config)
@@ -266,6 +276,7 @@ def test_acceptance_rate_range(tiny_config: Eagle3Config, initial_hidden: torch.
 # 14. test_gradients_confidence
 # ---------------------------------------------------------------------------
 
+
 def test_gradients_confidence():
     head = ConfidenceHead(d_model=D_MODEL, hidden=16)
     x = torch.randn(BATCH, D_MODEL, requires_grad=True)
@@ -280,9 +291,9 @@ def test_gradients_confidence():
 # 15. test_registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry():
     from src.inference import DECODER_REGISTRY
-    assert "eagle3" in DECODER_REGISTRY, (
-        "DECODER_REGISTRY must contain 'eagle3'"
-    )
+
+    assert "eagle3" in DECODER_REGISTRY, "DECODER_REGISTRY must contain 'eagle3'"
     assert DECODER_REGISTRY["eagle3"] is Eagle3Decoder

@@ -14,7 +14,6 @@ from src.eval.humaneval_runner import (
     HumanEvalRunner,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -86,18 +85,14 @@ def test_execute_correct_solution_passes(
     assert result.error is None
 
 
-def test_execute_solution_is_even(
-    runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]
-):
+def test_execute_solution_is_even(runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]):
     problem = stub_problems[1]  # is_even(n)
     solution = "    return n % 2 == 0\n"
     result = runner.execute_solution(problem, solution)
     assert result.passed is True
 
 
-def test_execute_solution_maximum(
-    runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]
-):
+def test_execute_solution_maximum(runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]):
     problem = stub_problems[2]  # maximum(lst)
     solution = "    return max(lst)\n"
     result = runner.execute_solution(problem, solution)
@@ -119,9 +114,7 @@ def test_execute_wrong_solution_fails(
     assert result.error is not None
 
 
-def test_execute_syntax_error_fails(
-    runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]
-):
+def test_execute_syntax_error_fails(runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]):
     problem = stub_problems[0]
     solution = "    not_valid_python = \n"
     result = runner.execute_solution(problem, solution)
@@ -153,9 +146,7 @@ def test_execution_result_task_id_matches(
 # ---------------------------------------------------------------------------
 
 
-def test_batch_evaluate_all_correct(
-    runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]
-):
+def test_batch_evaluate_all_correct(runner: HumanEvalRunner, stub_problems: list[HumanEvalProblem]):
     solutions = [
         "    return a + b\n",
         "    return n % 2 == 0\n",
@@ -203,5 +194,6 @@ def test_batch_evaluate_length_mismatch_raises(
 
 def test_benchmark_registry_humaneval():
     from src.eval.humaneval_runner import BENCHMARK_REGISTRY
+
     assert "humaneval" in BENCHMARK_REGISTRY
     assert isinstance(BENCHMARK_REGISTRY["humaneval"], HumanEvalRunner)

@@ -22,23 +22,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NCEConfig:
     """Hyper-parameters for NCEObjectives."""
 
-    temperature: float = 0.07   # τ — scaling for InfoNCE / NT-Xent logits
-    n_negatives: int = 64       # k — number of noise samples per real sample
-    normalize: bool = True      # L2-normalise embeddings before scoring
+    temperature: float = 0.07  # τ — scaling for InfoNCE / NT-Xent logits
+    n_negatives: int = 64  # k — number of noise samples per real sample
+    normalize: bool = True  # L2-normalise embeddings before scoring
 
 
 # ---------------------------------------------------------------------------
 # Module
 # ---------------------------------------------------------------------------
+
 
 class NCEObjectives(nn.Module):
     """
@@ -70,7 +71,7 @@ class NCEObjectives(nn.Module):
 
     def nce_loss(
         self,
-        real_scores: Tensor,   # [B]   — scores assigned to real samples
+        real_scores: Tensor,  # [B]   — scores assigned to real samples
         noise_scores: Tensor,  # [B, k] — scores assigned to k noise samples
     ) -> Tensor:
         """
@@ -93,9 +94,9 @@ class NCEObjectives(nn.Module):
 
     def infonce_loss(
         self,
-        queries: Tensor,                       # [B, D]
-        keys: Tensor,                          # [B, D]
-        negatives: Tensor | None = None,       # [B, N, D] or None
+        queries: Tensor,  # [B, D]
+        keys: Tensor,  # [B, D]
+        negatives: Tensor | None = None,  # [B, N, D] or None
     ) -> Tensor:
         """
         InfoNCE / CPC loss (van den Oord et al. 2018).
@@ -123,7 +124,9 @@ class NCEObjectives(nn.Module):
             # positive scores [B, 1]
             pos_scores = (queries * keys).sum(dim=-1, keepdim=True) / self.config.temperature
             # negative scores [B, N]
-            neg_scores = torch.bmm(negatives, queries.unsqueeze(-1)).squeeze(-1) / self.config.temperature
+            neg_scores = (
+                torch.bmm(negatives, queries.unsqueeze(-1)).squeeze(-1) / self.config.temperature
+            )
             # concatenate [B, 1+N]; positive is at index 0
             logits = torch.cat([pos_scores, neg_scores], dim=1)
             labels = torch.zeros(B, dtype=torch.long, device=logits.device)

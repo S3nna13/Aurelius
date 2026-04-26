@@ -11,7 +11,6 @@ References:
 """
 
 import math
-from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -31,9 +30,8 @@ class GroupNorm1D(nn.Module):
 
     def __init__(self, num_channels: int, num_groups: int = 8, eps: float = 1e-5):
         super().__init__()
-        assert num_channels % num_groups == 0, (
-            f"num_channels ({num_channels}) must be divisible by "
-            f"num_groups ({num_groups})"
+        assert num_channels % num_groups == 0, (  # noqa: S101
+            f"num_channels ({num_channels}) must be divisible by num_groups ({num_groups})"
         )
         self.gn = nn.GroupNorm(num_groups, num_channels, eps=eps)
 
@@ -115,7 +113,7 @@ class QKNorm(nn.Module):
         self,
         q: torch.Tensor,  # (B, n_heads,    T, head_dim)
         k: torch.Tensor,  # (B, n_kv_heads, T, head_dim)
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Return (normalized_q, normalized_k) with the same shapes as inputs."""
         n_kv_heads = k.shape[1]
 

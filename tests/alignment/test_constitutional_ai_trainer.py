@@ -2,6 +2,7 @@
 
 17 tests total: 16 unit tests + 1 integration test.
 """
+
 from __future__ import annotations
 
 import math
@@ -17,7 +18,6 @@ from src.alignment.constitutional_ai_trainer import (
     CAIPrinciple,
     CAITrainer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -249,9 +249,7 @@ def test_apply_principles_filter_miss():
         principle_violated=None,
     )
     result = trainer.apply_principles_filter(example, ["harmless", "honest", "helpful"])
-    assert result is False, (
-        "Filter should return False when no principle appears in critiques"
-    )
+    assert result is False, "Filter should return False when no principle appears in critiques"
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +367,7 @@ def test_integration_forward_backward():
     trainer = CAITrainer(cfg)
 
     torch.manual_seed(42)
-    orig = (torch.randn(B, T_orig) - 1.5)
+    orig = torch.randn(B, T_orig) - 1.5
     rev = (torch.randn(B, T_rev) - 1.0).requires_grad_(True)
     crit = (torch.randn(B, T_crit) - 2.0).requires_grad_(True)
 

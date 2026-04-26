@@ -2,21 +2,21 @@
 
 Tiny config: D=8, T=6, B=2, VOCAB=16
 """
+
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from src.interpretability.token_importance import (
     ImportanceConfig,
-    gradient_norm_importance,
-    attention_rollout,
-    integrated_gradients,
-    smooth_importance,
-    normalize_importance,
     TokenImportanceScorer,
+    attention_rollout,
+    gradient_norm_importance,
+    integrated_gradients,
+    normalize_importance,
+    smooth_importance,
 )
 
 D = 8
@@ -28,6 +28,7 @@ VOCAB = 16
 # ---------------------------------------------------------------------------
 # Tiny model: Embedding → Linear (differentiable)
 # ---------------------------------------------------------------------------
+
 
 class _TinyModel(nn.Module):
     def __init__(self):
@@ -46,6 +47,7 @@ def _loss_fn(logits, labels):
 # Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = ImportanceConfig()
     assert cfg.method == "gradient_norm"
@@ -56,6 +58,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # gradient_norm_importance
 # ---------------------------------------------------------------------------
+
 
 def test_gradient_norm_importance_shape():
     model = _TinyModel()
@@ -77,6 +80,7 @@ def test_gradient_norm_importance_non_negative():
 # attention_rollout
 # ---------------------------------------------------------------------------
 
+
 def test_attention_rollout_shape():
     attn_weights = [torch.softmax(torch.randn(B, 2, T, T), dim=-1) for _ in range(3)]
     rollout = attention_rollout(attn_weights, add_residual=True)
@@ -95,6 +99,7 @@ def test_attention_rollout_sums_to_one():
 # integrated_gradients
 # ---------------------------------------------------------------------------
 
+
 def test_integrated_gradients_shape():
     model = _TinyModel()
     emb = torch.randn(B, T, D)
@@ -107,6 +112,7 @@ def test_integrated_gradients_shape():
 # ---------------------------------------------------------------------------
 # smooth_importance
 # ---------------------------------------------------------------------------
+
 
 def test_smooth_importance_shape_preserved():
     imp = torch.rand(B, T)
@@ -124,6 +130,7 @@ def test_smooth_importance_window_1_unchanged():
 # normalize_importance
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_importance_sums_to_one():
     imp = torch.rand(B, T)
     out = normalize_importance(imp)
@@ -140,6 +147,7 @@ def test_normalize_importance_non_negative():
 # ---------------------------------------------------------------------------
 # TokenImportanceScorer
 # ---------------------------------------------------------------------------
+
 
 def test_scorer_score_shape():
     cfg = ImportanceConfig(method="gradient_norm", normalize=True)

@@ -1,7 +1,9 @@
 """Tests for the continual learning orchestrator."""
+
 import math
-import torch
+
 import pytest
+import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.model.config import AureliusConfig
@@ -13,17 +15,23 @@ from src.training.continual import (
     TaskRecord,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_model():
     torch.manual_seed(42)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=32,
     )
     return AureliusTransformer(cfg)
 
@@ -41,6 +49,7 @@ def _make_loader(n: int = 16, seq_len: int = 16, batch_size: int = 4) -> DataLoa
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_continual_config_defaults():
     cfg = ContinualConfig()

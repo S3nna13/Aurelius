@@ -10,16 +10,15 @@ Convention: lower energy  →  more likely sequence.
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EBMConfig:
@@ -37,6 +36,7 @@ class EBMConfig:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _SinusoidalPositionEncoding(nn.Module):
     """Fixed sinusoidal positional encoding."""
 
@@ -45,8 +45,7 @@ class _SinusoidalPositionEncoding(nn.Module):
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(
-            torch.arange(0, d_model, 2, dtype=torch.float)
-            * (-math.log(10000.0) / d_model)
+            torch.arange(0, d_model, 2, dtype=torch.float) * (-math.log(10000.0) / d_model)
         )
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -87,6 +86,7 @@ class _TransformerEncoderBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # SequenceEnergyFunction
 # ---------------------------------------------------------------------------
+
 
 class SequenceEnergyFunction(nn.Module):
     """
@@ -131,11 +131,11 @@ class SequenceEnergyFunction(nn.Module):
         Returns:
             [B, d_model]
         """
-        x = self.embedding(input_ids)          # [B, T, d_model]
-        x = self.pos_enc(x)                    # [B, T, d_model]
+        x = self.embedding(input_ids)  # [B, T, d_model]
+        x = self.pos_enc(x)  # [B, T, d_model]
         for layer in self.encoder_layers:
-            x = layer(x)                       # [B, T, d_model]
-        pooled = x.mean(dim=1)                 # [B, d_model]
+            x = layer(x)  # [B, T, d_model]
+        pooled = x.mean(dim=1)  # [B, d_model]
         return pooled
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -147,7 +147,7 @@ class SequenceEnergyFunction(nn.Module):
         Returns:
             energy: [B]   (lower = more likely)
         """
-        pooled = self._encode(input_ids)       # [B, d_model]
+        pooled = self._encode(input_ids)  # [B, d_model]
         energy = self.mlp(pooled).squeeze(-1)  # [B]
         return energy
 
@@ -166,6 +166,7 @@ class SequenceEnergyFunction(nn.Module):
 # ---------------------------------------------------------------------------
 # NegativeSampler
 # ---------------------------------------------------------------------------
+
 
 class NegativeSampler:
     """Utility class for generating negative (corrupted) sequences."""
@@ -199,9 +200,7 @@ class NegativeSampler:
         # Sample a flat mask with the desired fraction
         mask = torch.rand(B, T, device=input_ids.device) < corrupt_frac  # [B, T] bool
         # Random replacement tokens
-        random_tokens = torch.randint(
-            0, vocab_size, (B, T), device=input_ids.device
-        )
+        random_tokens = torch.randint(0, vocab_size, (B, T), device=input_ids.device)
         corrupted[mask] = random_tokens[mask]
         return corrupted
 
@@ -252,8 +251,8 @@ class NegativeSampler:
             sampled: [B, T]
         """
         with torch.no_grad():
-            logits = lm_model(input_ids)           # [B, T, V]
-        probs = F.softmax(logits, dim=-1)          # [B, T, V]
+            logits = lm_model(input_ids)  # [B, T, V]
+        probs = F.softmax(logits, dim=-1)  # [B, T, V]
         B, T, V = probs.shape
         # Flatten for multinomial sampling then reshape
         flat_probs = probs.view(B * T, V)
@@ -265,6 +264,7 @@ class NegativeSampler:
 # ---------------------------------------------------------------------------
 # NCETrainer
 # ---------------------------------------------------------------------------
+
 
 class NCETrainer:
     """Trains a SequenceEnergyFunction with NCE and contrastive divergence."""
@@ -302,11 +302,11 @@ class NCETrainer:
         Returns:
             scalar loss
         """
-        pos_score = self.model.score(pos_ids)   # [B]
-        neg_score = self.model.score(neg_ids)   # [B]
+        pos_score = self.model.score(pos_ids)  # [B]
+        neg_score = self.model.score(neg_ids)  # [B]
 
-        pos_loss = -F.logsigmoid(pos_score)     # [B]
-        neg_loss = -F.logsigmoid(-neg_score)    # [B]
+        pos_loss = -F.logsigmoid(pos_score)  # [B]
+        neg_loss = -F.logsigmoid(-neg_score)  # [B]
 
         loss = (pos_loss + neg_loss).mean()
         return loss
@@ -345,7 +345,7 @@ class NCETrainer:
         with torch.no_grad():
             for _ in range(n_mcmc_steps):
                 # Pick a random position per sequence
-                pos_idx = torch.randint(0, T, (B,), device=pos_ids.device)   # [B]
+                pos_idx = torch.randint(0, T, (B,), device=pos_ids.device)  # [B]
                 new_token = torch.randint(0, vocab_size, (B,), device=pos_ids.device)
 
                 # Build proposed sequences
@@ -354,8 +354,8 @@ class NCETrainer:
                     proposed[b, pos_idx[b]] = new_token[b]
 
                 # Acceptance probability (MH)
-                energy_old = self.model(neg_ids)        # [B]
-                energy_new = self.model(proposed)       # [B]
+                energy_old = self.model(neg_ids)  # [B]
+                energy_new = self.model(proposed)  # [B]
                 log_alpha = -(energy_new - energy_old)  # [B]
                 accept = torch.rand(B, device=pos_ids.device).log() < log_alpha
                 for b in range(B):
@@ -397,6 +397,7 @@ class NCETrainer:
 # LangevinSampler
 # ---------------------------------------------------------------------------
 
+
 class LangevinSampler:
     """Langevin dynamics sampler in continuous embedding space."""
 
@@ -433,10 +434,10 @@ class LangevinSampler:
         for layer in self.energy_fn.encoder_layers:
             h = layer(h)
         pooled = h.mean(dim=1)
-        energy = self.energy_fn.mlp(pooled).squeeze(-1).sum()   # scalar
+        energy = self.energy_fn.mlp(pooled).squeeze(-1).sum()  # scalar
 
         # Gradient w.r.t. continuous embedding x
-        grad = torch.autograd.grad(energy, x)[0]                # [B, T, d_model]
+        grad = torch.autograd.grad(energy, x)[0]  # [B, T, d_model]
 
         noise = torch.randn_like(x) * math.sqrt(2.0 * self.step_size)
         x_new = x.detach() - self.step_size * grad.detach() + noise
@@ -470,6 +471,7 @@ class LangevinSampler:
 # EBMReranker
 # ---------------------------------------------------------------------------
 
+
 class EBMReranker:
     """Rerank candidate sequences using the energy function.
 
@@ -488,7 +490,7 @@ class EBMReranker:
     # rerank
     # ------------------------------------------------------------------
 
-    def rerank(self, candidates: List[torch.Tensor]) -> torch.Tensor:
+    def rerank(self, candidates: list[torch.Tensor]) -> torch.Tensor:
         """Score each candidate and return the one with the lowest energy.
 
         Args:
@@ -501,8 +503,8 @@ class EBMReranker:
             energies = []
             for cand in candidates:
                 if cand.dim() == 1:
-                    cand = cand.unsqueeze(0)   # [1, T]
-                e = self.energy_fn(cand)       # [B] or [1]
+                    cand = cand.unsqueeze(0)  # [1, T]
+                e = self.energy_fn(cand)  # [B] or [1]
                 energies.append(e.mean().item())
 
         best_idx = int(min(range(len(energies)), key=lambda i: energies[i]))
@@ -525,10 +527,10 @@ class EBMReranker:
         with torch.no_grad():
             # Flatten to [B*n_cand, T], score, then reshape to [B, n_cand]
             flat = all_candidates.view(B * n_cand, T)
-            energies = self.energy_fn(flat).view(B, n_cand)   # [B, n_cand]
+            energies = self.energy_fn(flat).view(B, n_cand)  # [B, n_cand]
 
         # Pick argmin along candidate dimension
-        best_idx = energies.argmin(dim=1)    # [B]
+        best_idx = energies.argmin(dim=1)  # [B]
         # Gather best candidate for each batch item
         best_idx_exp = best_idx.view(B, 1, 1).expand(B, 1, T)
         best = all_candidates.gather(1, best_idx_exp).squeeze(1)  # [B, T]

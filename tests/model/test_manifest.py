@@ -20,7 +20,6 @@ from src.model.manifest import (
     register_manifest,
 )
 
-
 EXPECTED_FIELDS = {
     "family_name",
     "variant_name",
@@ -77,12 +76,14 @@ def test_all_14_plus_fields_present():
 
 def test_semver_accepts_valid():
     for v in ("1.0.0", "2.10.5", "0.0.1", "10.20.30"):
-        m = load_manifest(_base_payload(
-            variant_name=f"v-{v}",
-            checkpoint_format_version=v,
-            config_version=v,
-            compatibility_version=v,
-        ))
+        m = load_manifest(
+            _base_payload(
+                variant_name=f"v-{v}",
+                checkpoint_format_version=v,
+                config_version=v,
+                compatibility_version=v,
+            )
+        )
         assert m.checkpoint_format_version == v
 
 
@@ -109,8 +110,7 @@ def test_empty_capability_tags_allowed():
 
 
 def test_migration_notes_coerced_to_tuple():
-    m = load_manifest(_base_payload(variant_name="mig-list",
-                                    migration_notes=["a", "b", "c"]))
+    m = load_manifest(_base_payload(variant_name="mig-list", migration_notes=["a", "b", "c"]))
     assert isinstance(m.migration_notes, tuple)
     assert m.migration_notes == ("a", "b", "c")
 
@@ -160,8 +160,9 @@ def test_dump_manifest_is_json_safe():
 
 
 def test_unicode_family_name_allowed():
-    m = load_manifest(_base_payload(family_name="aurelius-\u4e2d\u6587",
-                                    variant_name="unicode-variant"))
+    m = load_manifest(
+        _base_payload(family_name="aurelius-\u4e2d\u6587", variant_name="unicode-variant")
+    )
     assert m.family_name == "aurelius-\u4e2d\u6587"
     # Round-trip through JSON.
     json.dumps(dump_manifest(m))

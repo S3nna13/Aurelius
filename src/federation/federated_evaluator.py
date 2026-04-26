@@ -89,14 +89,9 @@ class FederatedEvaluator:
         client_results = [results_map[c] for c in self._clients]
         total_samples = sum(r.num_samples for r in client_results)
         if total_samples > 0:
-            aggregated = (
-                sum(r.metric_value * r.num_samples for r in client_results)
-                / total_samples
-            )
+            aggregated = sum(r.metric_value * r.num_samples for r in client_results) / total_samples
         else:
-            aggregated = sum(r.metric_value for r in client_results) / len(
-                client_results
-            )
+            aggregated = sum(r.metric_value for r in client_results) / len(client_results)
 
         values = [r.metric_value for r in client_results]
         if len(values) >= 2:

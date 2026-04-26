@@ -1,11 +1,12 @@
 """Pruning scheduler: ramps sparsity levels across training steps."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class SparsitySchedule(str, Enum):
+class SparsitySchedule(StrEnum):
     CONSTANT = "constant"
     LINEAR = "linear"
     POLYNOMIAL = "polynomial"
@@ -15,6 +16,7 @@ class SparsitySchedule(str, Enum):
 @dataclass(frozen=True)
 class PruningConfig:
     """Configuration for a pruning schedule."""
+
     initial_sparsity: float = 0.0
     target_sparsity: float = 0.9
     begin_step: int = 0

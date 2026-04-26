@@ -9,19 +9,15 @@ Covers:
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn.functional as F
 
+from src.inference import DECODER_REGISTRY
 from src.inference.dola_decoding import (
     DoLaConfig,
     DoLaDecoder,
     DoLaLayerOutput,
 )
-from src.inference import DECODER_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,6 +40,7 @@ def _random_logits(*shape) -> torch.Tensor:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = DoLaConfig()
     assert cfg.early_exit_layer == 12
@@ -57,6 +54,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_contrast_subtract_shape
 # ---------------------------------------------------------------------------
+
 
 def test_contrast_subtract_shape():
     dec = _make_decoder(contrast_mode="subtract")
@@ -78,11 +76,12 @@ def test_contrast_subtract_shape_batched():
 # 3. test_contrast_subtract_late_preferred
 # ---------------------------------------------------------------------------
 
+
 def test_contrast_subtract_late_preferred():
     """When the late layer strongly prefers token 0, contrast should also prefer 0."""
     dec = _make_decoder(contrast_mode="subtract", alpha=0.5)
     late = torch.zeros(VOCAB)
-    late[0] = 20.0   # strongly prefer token 0
+    late[0] = 20.0  # strongly prefer token 0
     early = torch.zeros(VOCAB)  # uniform early layer
     out = dec.contrast_logits(late, early)
     assert out.argmax().item() == 0
@@ -91,6 +90,7 @@ def test_contrast_subtract_late_preferred():
 # ---------------------------------------------------------------------------
 # 4. test_contrast_jsd_shape
 # ---------------------------------------------------------------------------
+
 
 def test_contrast_jsd_shape():
     dec = _make_decoder(contrast_mode="jsd")
@@ -112,11 +112,12 @@ def test_contrast_jsd_shape_batched():
 # 5. test_contrast_jsd_amplifies_late
 # ---------------------------------------------------------------------------
 
+
 def test_contrast_jsd_amplifies_late():
     """JSD contrast should give a higher score to tokens favoured by the late layer."""
     dec = _make_decoder(contrast_mode="jsd", alpha=0.5)
     late = torch.zeros(VOCAB)
-    late[7] = 15.0   # strongly prefer token 7
+    late[7] = 15.0  # strongly prefer token 7
     early = torch.zeros(VOCAB)  # uniform early layer
     out = dec.contrast_logits(late, early)
     assert out.argmax().item() == 7
@@ -125,6 +126,7 @@ def test_contrast_jsd_amplifies_late():
 # ---------------------------------------------------------------------------
 # 6. test_jsd_symmetric
 # ---------------------------------------------------------------------------
+
 
 def test_jsd_symmetric():
     dec = _make_decoder()
@@ -138,6 +140,7 @@ def test_jsd_symmetric():
 # 7. test_jsd_zero_identical
 # ---------------------------------------------------------------------------
 
+
 def test_jsd_zero_identical():
     dec = _make_decoder()
     p = torch.ones(VOCAB) / VOCAB
@@ -147,6 +150,7 @@ def test_jsd_zero_identical():
 # ---------------------------------------------------------------------------
 # 8. test_jsd_positive
 # ---------------------------------------------------------------------------
+
 
 def test_jsd_positive():
     dec = _make_decoder()
@@ -161,6 +165,7 @@ def test_jsd_positive():
 # ---------------------------------------------------------------------------
 # 9. test_sample_temperature
 # ---------------------------------------------------------------------------
+
 
 def test_sample_temperature():
     """Higher temperature → higher entropy over many samples."""
@@ -186,6 +191,7 @@ def test_sample_temperature():
 # 10. test_sample_top_k_equals_1
 # ---------------------------------------------------------------------------
 
+
 def test_sample_top_k_equals_1():
     """top_k=1 must always return the argmax token."""
     dec = _make_decoder(top_k=1)
@@ -200,6 +206,7 @@ def test_sample_top_k_equals_1():
 # 11. test_decode_step_keys
 # ---------------------------------------------------------------------------
 
+
 def test_decode_step_keys():
     dec = _make_decoder()
     late_out = DoLaLayerOutput(logits=_random_logits(VOCAB), layer_idx=23)
@@ -211,6 +218,7 @@ def test_decode_step_keys():
 # ---------------------------------------------------------------------------
 # 12. test_decode_step_token_valid
 # ---------------------------------------------------------------------------
+
 
 def test_decode_step_token_valid():
     dec = _make_decoder(vocab_size=VOCAB)
@@ -225,6 +233,7 @@ def test_decode_step_token_valid():
 # 13. test_alpha_zero_equals_late
 # ---------------------------------------------------------------------------
 
+
 def test_alpha_zero_equals_late():
     """alpha=0 in subtract mode → contrast = log_softmax(late_logits / T)."""
     dec = _make_decoder(contrast_mode="subtract", alpha=0.0, temperature=1.0)
@@ -238,6 +247,7 @@ def test_alpha_zero_equals_late():
 # ---------------------------------------------------------------------------
 # 14. test_batch_decode
 # ---------------------------------------------------------------------------
+
 
 def test_batch_decode():
     """decode_step must work correctly for B > 1."""
@@ -258,6 +268,7 @@ def test_batch_decode():
 # ---------------------------------------------------------------------------
 # 15. Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_integration_full_decode_step():
     """End-to-end integration: retrieve from DECODER_REGISTRY, run decode_step."""

@@ -9,7 +9,7 @@ This reduces peak activation memory to roughly K/N of full fine-tuning.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -34,7 +34,7 @@ class LayerActivationSchedule:
         self.activate_layers = activate_layers
         self.seed = seed
 
-    def sample(self, step: int) -> List[int]:
+    def sample(self, step: int) -> list[int]:
         """Return a sorted list of ``activate_layers`` layer indices for *step*.
 
         Uses ``torch.randperm`` with a generator seeded on ``(seed + step)`` so
@@ -64,11 +64,11 @@ class LISALayerManager:
 
     def __init__(
         self,
-        named_layer_params: Dict[int, List[nn.Parameter]],
+        named_layer_params: dict[int, list[nn.Parameter]],
         schedule: LayerActivationSchedule,
     ) -> None:
         # Normalise keys to int so callers can pass either int or str keys.
-        self._layer_params: Dict[int, List[nn.Parameter]] = {
+        self._layer_params: dict[int, list[nn.Parameter]] = {
             int(k): v for k, v in named_layer_params.items()
         }
         self.schedule = schedule
@@ -86,7 +86,7 @@ class LISALayerManager:
     # Public API
     # ------------------------------------------------------------------
 
-    def activate_step(self, step: int) -> List[int]:
+    def activate_step(self, step: int) -> list[int]:
         """Freeze all layers then unfreeze the sampled subset for *step*.
 
         Returns the sorted list of active layer indices.
@@ -130,9 +130,7 @@ class LISATrainer:
         self.optimizer = optimizer
         self.layer_manager = layer_manager
 
-    def train_step(
-        self, loss_fn: Callable[[], torch.Tensor], step: int
-    ) -> Dict[str, float]:
+    def train_step(self, loss_fn: Callable[[], torch.Tensor], step: int) -> dict[str, float]:
         """Execute one LISA training step.
 
         1. Activate the sampled layers for *step*.
@@ -153,11 +151,7 @@ class LISATrainer:
         loss.backward()
         self.optimizer.step()
 
-        n_active_params: int = sum(
-            p.numel()
-            for p in self.model.parameters()
-            if p.requires_grad
-        )
+        n_active_params: int = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
         return {
             "loss": loss.item(),

@@ -12,20 +12,20 @@ greedy_decode                 — standard greedy autoregressive decoding
 speculative_decode_simple     — simple draft-then-verify speculative decoding
 SpeculativeConsistencyChecker — main checker class with verify / stats / calibrate
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration / Report dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpeculativeConsistencyConfig:
@@ -51,6 +51,7 @@ class ConsistencyReport:
 # ---------------------------------------------------------------------------
 # Standalone decoding helpers
 # ---------------------------------------------------------------------------
+
 
 def greedy_decode(
     model: nn.Module,
@@ -79,12 +80,12 @@ def greedy_decode(
     with torch.no_grad():
         for _ in range(max_new_tokens):
             output = model(current)
-            logits = output[1]               # (B, T, V)
+            logits = output[1]  # (B, T, V)
             next_tok = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (B, 1)
             generated.append(next_tok)
             current = torch.cat([current, next_tok], dim=1)
 
-    return torch.cat(generated, dim=1)       # (B, max_new_tokens)
+    return torch.cat(generated, dim=1)  # (B, max_new_tokens)
 
 
 def speculative_decode_simple(
@@ -131,7 +132,7 @@ def speculative_decode_simple(
             draft_ids: list[Tensor] = []
             for _ in range(k):
                 d_out = draft(draft_ctx)
-                d_logits = d_out[1][:, -1, :]          # (B, V)
+                d_logits = d_out[1][:, -1, :]  # (B, V)
                 d_tok = d_logits.argmax(dim=-1, keepdim=True)  # (B, 1)
                 draft_ids.append(d_tok)
                 draft_ctx = torch.cat([draft_ctx, d_tok], dim=1)
@@ -148,12 +149,12 @@ def speculative_decode_simple(
                 t_pos_logits = t_logits[:, current.shape[1] + i - 1, :]  # (B, V)
                 t_probs = F.softmax(t_pos_logits, dim=-1)
 
-                d_tok = draft_ids[i]                                  # (B, 1)
-                t_prob = t_probs.gather(1, d_tok).squeeze(1)          # (B,)
+                d_tok = draft_ids[i]  # (B, 1)
+                t_prob = t_probs.gather(1, d_tok).squeeze(1)  # (B,)
 
-                d_pos_logits = draft(torch.cat([current, *draft_ids[:i+1]], dim=1))[1][:, -2, :]
+                d_pos_logits = draft(torch.cat([current, *draft_ids[: i + 1]], dim=1))[1][:, -2, :]
                 d_probs = F.softmax(d_pos_logits, dim=-1)
-                d_prob = d_probs.gather(1, d_tok).squeeze(1)          # (B,)
+                d_prob = d_probs.gather(1, d_tok).squeeze(1)  # (B,)
 
                 # Rejection sampling ratio
                 ratio = (t_prob / (d_prob + 1e-10)).clamp(max=1.0)
@@ -172,7 +173,7 @@ def speculative_decode_simple(
             # If we didn't fill the window, sample one from target
             if accepted < k and len(generated) < max_new:
                 t_next_logits = t_logits[:, current.shape[1] - 1, :]  # (B, V)
-                t_tok = t_next_logits.argmax(dim=-1, keepdim=True)    # (B, 1)
+                t_tok = t_next_logits.argmax(dim=-1, keepdim=True)  # (B, 1)
                 generated.append(t_tok)
                 current = torch.cat([current, t_tok], dim=1)
 
@@ -184,6 +185,7 @@ def speculative_decode_simple(
 # ---------------------------------------------------------------------------
 # Main checker class
 # ---------------------------------------------------------------------------
+
 
 class SpeculativeConsistencyChecker:
     """Verify that speculative decoding is statistically consistent with
@@ -273,9 +275,9 @@ class SpeculativeConsistencyChecker:
                         d_tok = draft_ids[i]
                         t_prob = t_probs.gather(1, d_tok).squeeze(1)
 
-                        d_pos_logits = self.draft(
-                            torch.cat([current, *draft_ids[:i+1]], dim=1)
-                        )[1][:, -2, :]
+                        d_pos_logits = self.draft(torch.cat([current, *draft_ids[: i + 1]], dim=1))[
+                            1
+                        ][:, -2, :]
                         d_probs = F.softmax(d_pos_logits, dim=-1)
                         d_prob = d_probs.gather(1, d_tok).squeeze(1)
 
@@ -333,11 +335,11 @@ class SpeculativeConsistencyChecker:
             ctx = input_ids[:, :ctx_len]
 
             t_out = self.target(ctx)
-            t_logits = t_out[1][:, -1, :]         # (B, V)
+            t_logits = t_out[1][:, -1, :]  # (B, V)
             t_probs = F.softmax(t_logits, dim=-1)  # (B, V)
 
             d_out = self.draft(ctx)
-            d_logits = d_out[1][:, -1, :]          # (B, V)
+            d_logits = d_out[1][:, -1, :]  # (B, V)
             d_probs = F.softmax(d_logits, dim=-1)  # (B, V)
 
             # KL divergence: D_KL(target || draft) — mean over batch
@@ -363,7 +365,7 @@ class SpeculativeConsistencyChecker:
 
     def calibrate_threshold(
         self,
-        input_ids_list: List[Tensor],
+        input_ids_list: list[Tensor],
         target_acceptance: float = 0.8,
     ) -> float:
         """Binary search for the acceptance threshold that achieves

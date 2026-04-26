@@ -7,10 +7,10 @@ inference via forward hooks.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -37,21 +37,21 @@ class SteeringConfig:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _resolve_layer_idx(model: nn.Module, layer_idx: int) -> int:
     """Resolve a possibly-negative layer index to a non-negative one."""
     n = len(model.layers)
     if layer_idx < 0:
         layer_idx = n + layer_idx
     if not (0 <= layer_idx < n):
-        raise IndexError(
-            f"layer_idx {layer_idx} is out of range for model with {n} layers"
-        )
+        raise IndexError(f"layer_idx {layer_idx} is out of range for model with {n} layers")
     return layer_idx
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def extract_hidden_states(
     model: nn.Module,
@@ -204,6 +204,7 @@ def apply_steering_hook(
 # LatentSteerer class
 # ---------------------------------------------------------------------------
 
+
 class LatentSteerer:
     """High-level interface for latent-space steering during generation.
 
@@ -221,8 +222,8 @@ class LatentSteerer:
     def __init__(self, model: nn.Module, config: SteeringConfig) -> None:
         self.model = model
         self.config = config
-        self._vector: Optional[torch.Tensor] = None
-        self._handle: Optional[torch.utils.hooks.RemovableHook] = None
+        self._vector: torch.Tensor | None = None
+        self._handle: torch.utils.hooks.RemovableHook | None = None
 
     # ------------------------------------------------------------------
     # Public methods
@@ -243,9 +244,7 @@ class LatentSteerer:
         Raises ``RuntimeError`` if no steering vector has been set.
         """
         if self._vector is None:
-            raise RuntimeError(
-                "No steering vector set. Call set_steering_vector() first."
-            )
+            raise RuntimeError("No steering vector set. Call set_steering_vector() first.")
         if self._handle is not None:
             self._handle.remove()
             self._handle = None

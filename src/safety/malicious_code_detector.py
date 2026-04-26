@@ -30,7 +30,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Category and severity vocabularies
 # ---------------------------------------------------------------------------
@@ -143,9 +142,7 @@ _PYTHON_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (_c(r"\bos\.system\s*\("), "shell_injection", "high"),
     (_c(r"\bos\.popen\s*\("), "shell_injection", "high"),
     (
-        _c(
-            r"\bsubprocess\.(?:Popen|call|run|check_output|check_call)\s*\([^)]*shell\s*=\s*True"
-        ),
+        _c(r"\bsubprocess\.(?:Popen|call|run|check_output|check_call)\s*\([^)]*shell\s*=\s*True"),
         "shell_injection",
         "high",
     ),
@@ -165,9 +162,7 @@ _PYTHON_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (_c(r"(?<![\w.])exec\s*\("), "code_injection", "high"),
     (_c(r"\bcompile\s*\([^)]*['\"]exec['\"]"), "code_injection", "high"),
     (
-        _c(
-            r"\b__import__\s*\(\s*['\"](?:os|subprocess|socket|ctypes)['\"]"
-        ),
+        _c(r"\b__import__\s*\(\s*['\"](?:os|subprocess|socket|ctypes)['\"]"),
         "code_injection",
         "medium",
     ),
@@ -187,16 +182,14 @@ _PYTHON_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Credential harvest.
     (
         _c(
-            r"(?i)open\s*\(\s*['\"][^'\"]*(?:/etc/shadow|/etc/passwd|Login Data|cookies\.sqlite|id_rsa)['\"]"
+            r"(?i)open\s*\(\s*['\"][^'\"]*(?:/etc/shadow|/etc/passwd|Login Data|cookies\.sqlite|id_rsa)['\"]"  # noqa: E501
         ),
         "credential_harvest",
         "critical",
     ),
     # Keystroke capture.
     (
-        _c(
-            r"\bpynput\.keyboard\.Listener\b|from\s+pynput\.keyboard\s+import\s+Listener"
-        ),
+        _c(r"\bpynput\.keyboard\.Listener\b|from\s+pynput\.keyboard\s+import\s+Listener"),
         "credential_harvest",
         "high",
     ),
@@ -251,9 +244,7 @@ _JS_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (_c(r"\bXMLHttpRequest\s*\("), "network_exfil", "low"),
     (_c(r"\bdocument\.cookie\b"), "credential_harvest", "medium"),
     (
-        _c(
-            r"\blocalStorage\.getItem\s*\(\s*['\"][^'\"]*(?:token|auth|key|secret)"
-        ),
+        _c(r"\blocalStorage\.getItem\s*\(\s*['\"][^'\"]*(?:token|auth|key|secret)"),
         "credential_harvest",
         "medium",
     ),
@@ -285,7 +276,7 @@ _BASH_TELLS = re.compile(
     r"(?m)^\s*(?:#!/(?:usr/)?bin/(?:env\s+)?(?:bash|sh|zsh)\b|if\s*\[\[|fi\s*$|then\s*$|esac\s*$|\bfunction\s+\w+\s*\()",
 )
 _JS_TELLS = re.compile(
-    r"(?m)^\s*(?:const |let |var |function\s+\w+\s*\(|import\s+\w+\s+from|export\s+(?:default|const|function)|require\s*\()",
+    r"(?m)^\s*(?:const |let |var |function\s+\w+\s*\(|import\s+\w+\s+from|export\s+(?:default|const|function)|require\s*\()",  # noqa: E501
 )
 
 
@@ -314,9 +305,7 @@ class MaliciousCodeDetector:
                     raise ValueError(f"unknown category: {category!r}")
                 for rule in rules:
                     if not isinstance(rule, tuple) or len(rule) != 2:
-                        raise ValueError(
-                            "custom_patterns values must be (regex, severity) tuples"
-                        )
+                        raise ValueError("custom_patterns values must be (regex, severity) tuples")
                     regex_src, severity = rule
                     if severity not in _SEVERITY_RANK or severity == "none":
                         raise ValueError(f"bad severity: {severity!r}")
@@ -364,9 +353,7 @@ class MaliciousCodeDetector:
             language = self.detect_language(code)
         if language not in _LANGUAGE_CATALOGUE:
             raise ValueError(f"unknown language: {language!r}")
-        per_lang = (
-            _LANGUAGE_CATALOGUE[language] if language in self.languages else []
-        )
+        per_lang = _LANGUAGE_CATALOGUE[language] if language in self.languages else []
 
         catalogue: list[tuple[re.Pattern[str], str, str]] = []
         catalogue.extend(_COMMON_PATTERNS)
@@ -380,11 +367,7 @@ class MaliciousCodeDetector:
         for pattern_idx, (regex, category, severity) in enumerate(catalogue):
             for match in regex.finditer(code):
                 line_no = code.count("\n", 0, match.start()) + 1
-                snippet = (
-                    lines[line_no - 1]
-                    if 0 < line_no <= len(lines)
-                    else match.group(0)
-                )
+                snippet = lines[line_no - 1] if 0 < line_no <= len(lines) else match.group(0)
                 snippet = snippet.strip()[:240]
                 key = (line_no, pattern_idx, category)
                 if key in seen:

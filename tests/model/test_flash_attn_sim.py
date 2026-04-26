@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 import torch.nn.functional as F
 
@@ -20,10 +17,10 @@ from src.model.flash_attn_sim import (
 # ---------------------------------------------------------------------------
 # Shared test dimensions
 # ---------------------------------------------------------------------------
-B, H, T, D = 2, 2, 32, 16       # batch, heads, seq_len, head_dim
-d_model = 32                      # H * D
+B, H, T, D = 2, 2, 32, 16  # batch, heads, seq_len, head_dim
+d_model = 32  # H * D
 n_heads = H
-BLOCK = 8                         # block_size for tests
+BLOCK = 8  # block_size for tests
 
 
 def make_qkv(seed: int = 0) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -74,8 +71,9 @@ def test_flash_attention_causal_mask():
     out2 = flash_attention_forward(q, k, v2, cfg)
 
     # First 4 query positions cannot attend to positions 4-7 → outputs must be identical
-    assert torch.allclose(out1[:, :, :4, :], out2[:, :, :4, :], atol=1e-5), \
+    assert torch.allclose(out1[:, :, :4, :], out2[:, :, :4, :], atol=1e-5), (
         "Causal masking failed: early query positions should not see future values"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -88,8 +86,9 @@ def test_flash_attention_matches_standard():
 
     std_out = F.scaled_dot_product_attention(q, k, v, is_causal=True)
 
-    assert torch.allclose(tiled_out.float(), std_out.float(), atol=1e-4), \
+    assert torch.allclose(tiled_out.float(), std_out.float(), atol=1e-4), (
         f"Max diff: {(tiled_out - std_out).abs().max().item():.6f}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -126,17 +125,16 @@ def test_online_softmax_correctness():
     scores = torch.randn(1, 1, T_q, T_kv)
     values = torch.randn(1, 1, T_kv, D)
 
-    new_max, new_sum, new_out = online_softmax_update(
-        prev_max, prev_sum, prev_out, scores, values
-    )
+    new_max, new_sum, new_out = online_softmax_update(prev_max, prev_sum, prev_out, scores, values)
 
     # Direct computation
-    weights = torch.softmax(scores, dim=-1)          # (1, 1, T_q, T_kv)
-    expected_out = torch.matmul(weights, values)     # (1, 1, T_q, D)
+    weights = torch.softmax(scores, dim=-1)  # (1, 1, T_q, T_kv)
+    expected_out = torch.matmul(weights, values)  # (1, 1, T_q, D)
     online_normalized = new_out / new_sum.clamp(min=1e-12)
 
-    assert torch.allclose(online_normalized, expected_out, atol=1e-5), \
+    assert torch.allclose(online_normalized, expected_out, atol=1e-5), (
         f"Max diff: {(online_normalized - expected_out).abs().max().item():.6f}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -176,8 +174,9 @@ def test_compare_with_standard_close():
     q, k, v = make_qkv()
     std_out, tiled_out = compare_with_standard_attention(q, k, v, causal=True)
     assert std_out.shape == tiled_out.shape
-    assert torch.allclose(std_out.float(), tiled_out.float(), atol=1e-3), \
+    assert torch.allclose(std_out.float(), tiled_out.float(), atol=1e-3), (
         f"Max diff: {(std_out - tiled_out).abs().max().item():.6f}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -185,8 +184,9 @@ def test_compare_with_standard_close():
 # ---------------------------------------------------------------------------
 def test_compute_memory_usage_standard_larger():
     info = compute_memory_usage(seq_len=512, n_heads=8, head_dim=64, block_size=32)
-    assert info["standard_bytes"] > info["tiled_bytes"], \
+    assert info["standard_bytes"] > info["tiled_bytes"], (
         "Standard attention should use more memory than tiled for large sequences"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -194,8 +194,9 @@ def test_compute_memory_usage_standard_larger():
 # ---------------------------------------------------------------------------
 def test_compute_memory_usage_reduction_positive():
     info = compute_memory_usage(seq_len=1024, n_heads=4, head_dim=64, block_size=32)
-    assert info["reduction_factor"] > 1.0, \
+    assert info["reduction_factor"] > 1.0, (
         f"Expected reduction_factor > 1, got {info['reduction_factor']}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -210,5 +211,6 @@ def test_flash_attention_different_block_sizes():
     out8 = flash_attention_forward(q, k, v, cfg8)
     out16 = flash_attention_forward(q, k, v, cfg16)
 
-    assert torch.allclose(out8.float(), out16.float(), atol=1e-4), \
-        f"Results differ between block_size=8 and block_size=16; max diff: {(out8 - out16).abs().max().item():.6f}"
+    assert torch.allclose(out8.float(), out16.float(), atol=1e-4), (
+        f"Results differ between block_size=8 and block_size=16; max diff: {(out8 - out16).abs().max().item():.6f}"  # noqa: E501
+    )

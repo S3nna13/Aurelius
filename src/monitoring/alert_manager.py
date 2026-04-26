@@ -1,13 +1,14 @@
 """Alert manager: threshold-based rules, firing/resolution, alert history."""
+
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -81,7 +82,7 @@ class AlertManager:
                     severity=rule.severity,
                     metric_value=value,
                     message=msg,
-                    fired_at=datetime.now(timezone.utc).isoformat(),
+                    fired_at=datetime.now(UTC).isoformat(),
                 )
                 self._history.append(alert)
                 self._firing.add(rule.name)

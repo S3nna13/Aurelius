@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -30,7 +30,7 @@ class FederatedClient:
         round_id: int,
     ) -> ClientUpdate:
         """Compute the delta between local and global weights."""
-        delta = [l - g for l, g in zip(local_weights, global_weights)]
+        delta = [lbl - g for lbl, g in zip(local_weights, global_weights)]
         return ClientUpdate(
             client_id=self.client_id,
             round_id=round_id,
@@ -78,9 +78,7 @@ class FederatedServer:
         self._global_round += 1
         return self._global_round
 
-    def client_participation_rate(
-        self, n_total: int, updates: list[ClientUpdate]
-    ) -> float:
+    def client_participation_rate(self, n_total: int, updates: list[ClientUpdate]) -> float:
         """Return fraction of total clients that submitted updates."""
         return len(updates) / n_total
 

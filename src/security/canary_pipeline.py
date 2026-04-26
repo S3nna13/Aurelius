@@ -1,4 +1,4 @@
-"""Canary token pipeline for data-exfiltration detection. AUR-SEC-2026-0013. STRIDE: Information Disclosure."""
+"""Canary token pipeline for data-exfiltration detection. AUR-SEC-2026-0013. STRIDE: Information Disclosure."""  # noqa: E501
 
 import logging
 import secrets

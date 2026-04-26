@@ -1,14 +1,13 @@
 """Tests for src/inference/self_speculative_decoding.py"""
+
 from __future__ import annotations
 
-import pytest
 import torch
-
 from aurelius.inference.self_speculative_decoding import (
+    DraftQualityMonitor,
     EarlyExitHead,
     LayeredModel,
     SelfSpeculativeDecoder,
-    DraftQualityMonitor,
 )
 
 # ---------------------------------------------------------------------------
@@ -19,7 +18,7 @@ N_LAYERS = 4
 D_MODEL = 16
 VOCAB_SIZE = 32
 N_DRAFT_TOKENS = 3
-DRAFT_LAYER = 1   # exit after layer 1 of 4
+DRAFT_LAYER = 1  # exit after layer 1 of 4
 B, T = 2, 6
 
 
@@ -46,6 +45,7 @@ def make_decoder() -> SelfSpeculativeDecoder:
 # 1. EarlyExitHead output shape (B, T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_early_exit_head_output_shape():
     head = make_draft_head()
     x = torch.randn(B, T, D_MODEL)
@@ -56,6 +56,7 @@ def test_early_exit_head_output_shape():
 # ---------------------------------------------------------------------------
 # 2. EarlyExitHead output is finite
 # ---------------------------------------------------------------------------
+
 
 def test_early_exit_head_output_finite():
     head = make_draft_head()
@@ -68,6 +69,7 @@ def test_early_exit_head_output_finite():
 # 3. LayeredModel.forward_to_layer returns hidden shape (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_forward_to_layer_hidden_shape():
     model = make_model()
     x = torch.randn(B, T, D_MODEL)
@@ -79,16 +81,20 @@ def test_forward_to_layer_hidden_shape():
 # 4. LayeredModel.forward_to_layer returns logits shape (B, T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_forward_to_layer_logits_shape():
     model = make_model()
     x = torch.randn(B, T, D_MODEL)
     _, logits = model.forward_to_layer(x, up_to_layer=DRAFT_LAYER)
-    assert logits.shape == (B, T, VOCAB_SIZE), f"Expected ({B}, {T}, {VOCAB_SIZE}), got {logits.shape}"
+    assert logits.shape == (B, T, VOCAB_SIZE), (
+        f"Expected ({B}, {T}, {VOCAB_SIZE}), got {logits.shape}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # 5. LayeredModel.forward_remaining output shape (B, T, vocab_size)
 # ---------------------------------------------------------------------------
+
 
 def test_forward_remaining_output_shape():
     model = make_model()
@@ -101,6 +107,7 @@ def test_forward_remaining_output_shape():
 # ---------------------------------------------------------------------------
 # 6. Both forward_to_layer and forward_remaining produce finite output
 # ---------------------------------------------------------------------------
+
 
 def test_forward_paths_finite():
     model = make_model()
@@ -115,6 +122,7 @@ def test_forward_paths_finite():
 # 7. SelfSpeculativeDecoder._draft returns (draft_tokens, draft_probs)
 # ---------------------------------------------------------------------------
 
+
 def test_draft_returns_tuple():
     dec = make_decoder()
     hidden = torch.randn(1, T, D_MODEL)
@@ -125,6 +133,7 @@ def test_draft_returns_tuple():
 # ---------------------------------------------------------------------------
 # 8. draft_tokens shape is (n_draft_tokens,) and dtype long
 # ---------------------------------------------------------------------------
+
 
 def test_draft_tokens_shape_and_dtype():
     dec = make_decoder()
@@ -140,6 +149,7 @@ def test_draft_tokens_shape_and_dtype():
 # 9. draft_probs shape is (n_draft_tokens, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_draft_probs_shape():
     dec = make_decoder()
     hidden = torch.randn(1, T, D_MODEL)
@@ -152,6 +162,7 @@ def test_draft_probs_shape():
 # ---------------------------------------------------------------------------
 # 10. _verify returns (accepted_tokens, int)
 # ---------------------------------------------------------------------------
+
 
 def test_verify_returns_tuple():
     dec = make_decoder()
@@ -168,6 +179,7 @@ def test_verify_returns_tuple():
 # 11. n_accepted <= n_draft_tokens
 # ---------------------------------------------------------------------------
 
+
 def test_verify_n_accepted_bounded():
     dec = make_decoder()
     input_ids = torch.randint(0, VOCAB_SIZE, (T,))
@@ -182,6 +194,7 @@ def test_verify_n_accepted_bounded():
 # 12. generate output shape (max_new_tokens,)
 # ---------------------------------------------------------------------------
 
+
 def test_generate_output_shape():
     dec = make_decoder()
     prompt = torch.randint(0, VOCAB_SIZE, (5,))
@@ -194,6 +207,7 @@ def test_generate_output_shape():
 # 13. generate output dtype is long
 # ---------------------------------------------------------------------------
 
+
 def test_generate_output_dtype():
     dec = make_decoder()
     prompt = torch.randint(0, VOCAB_SIZE, (5,))
@@ -204,6 +218,7 @@ def test_generate_output_dtype():
 # ---------------------------------------------------------------------------
 # 14. DraftQualityMonitor.record increments totals
 # ---------------------------------------------------------------------------
+
 
 def test_monitor_record_increments():
     mon = DraftQualityMonitor()
@@ -220,6 +235,7 @@ def test_monitor_record_increments():
 # ---------------------------------------------------------------------------
 # 15. acceptance_rate in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_monitor_acceptance_rate_range():
     mon = DraftQualityMonitor()

@@ -19,8 +19,8 @@ Inspired by ``ishi-gupta/vuln-remediation-system`` automation catalog.
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -73,7 +73,7 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
         description="User input concatenated directly into a SQL query string.",
         persona_hints=(
             "Developer building an admin dashboard concatenates user id into the WHERE clause.",
-            "Quick migration script f-strings the table name and id together to 'save a roundtrip'.",
+            "Quick migration script f-strings the table name and id together to 'save a roundtrip'.",  # noqa: E501
         ),
         vulnerable_template=(
             "def {func}(conn, {arg}):\n"
@@ -97,13 +97,10 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
         name="Cross-Site Scripting (XSS)",
         description="Unescaped user input rendered into an HTML response.",
         persona_hints=(
-            "Engineer interpolates the username into an HTML greeting via f-string instead of escaping.",
+            "Engineer interpolates the username into an HTML greeting via f-string instead of escaping.",  # noqa: E501
             "Server returns raw user-supplied markup in a comment field to preserve 'formatting'.",
         ),
-        vulnerable_template=(
-            "def {func}({arg}):\n"
-            "    return f'<h1>Hello, {{{arg}}}</h1>'\n"
-        ),
+        vulnerable_template=("def {func}({arg}):\n    return f'<h1>Hello, {{{arg}}}</h1>'\n"),
         secure_template=(
             "import html\n"
             "def {func}({arg}):\n"
@@ -119,8 +116,8 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
         name="Path Traversal",
         description="User input joined into a filesystem path without validation.",
         persona_hints=(
-            "Developer writes a file download endpoint and joins the query parameter onto a base dir.",
-            "Engineer ships a 'simple' template loader that opens whatever path the caller asks for.",
+            "Developer writes a file download endpoint and joins the query parameter onto a base dir.",  # noqa: E501
+            "Engineer ships a 'simple' template loader that opens whatever path the caller asks for.",  # noqa: E501
         ),
         vulnerable_template=(
             "import os\n"
@@ -153,9 +150,7 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
             "Bootstrap script ships with a literal admin password at module top-level.",
         ),
         vulnerable_template=(
-            "{var} = 'sk-live-9f3c0a2b1d4e5f67890abcdef1234567'\n"
-            "def {func}():\n"
-            "    return {var}\n"
+            "{var} = 'sk-live-9f3c0a2b1d4e5f67890abcdef1234567'\ndef {func}():\n    return {var}\n"
         ),
         secure_template=(
             "import os\n"
@@ -204,16 +199,8 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
             "Engineer stores session state as a pickled blob in a cookie for convenience.",
             "Internal RPC layer pickles messages over the network 'because it is fast'.",
         ),
-        vulnerable_template=(
-            "import pickle\n"
-            "def {func}({arg}):\n"
-            "    return pickle.loads({arg})\n"
-        ),
-        secure_template=(
-            "import json\n"
-            "def {func}({arg}):\n"
-            "    return json.loads({arg})\n"
-        ),
+        vulnerable_template=("import pickle\ndef {func}({arg}):\n    return pickle.loads({arg})\n"),
+        secure_template=("import json\ndef {func}({arg}):\n    return json.loads({arg})\n"),
         placeholders={
             "func": ("decode_session", "load_message", "parse_payload"),
             "arg": ("blob", "payload", "data"),
@@ -224,17 +211,12 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
         name="Code Injection",
         description="Dynamic-evaluation primitive applied to untrusted input.",
         persona_hints=(
-            "Engineer builds a tiny expression evaluator with a dynamic-eval call to avoid writing a parser.",
-            "Admin tool runs user-provided snippets through a dynamic-exec to keep the feature flexible.",
+            "Engineer builds a tiny expression evaluator with a dynamic-eval call to avoid writing a parser.",  # noqa: E501
+            "Admin tool runs user-provided snippets through a dynamic-exec to keep the feature flexible.",  # noqa: E501
         ),
-        vulnerable_template=(
-            "def {func}({arg}):\n"
-            "    return " + _E + "({arg})\n"
-        ),
+        vulnerable_template=("def {func}({arg}):\n    return " + _E + "({arg})\n"),
         secure_template=(
-            "import ast\n"
-            "def {func}({arg}):\n"
-            "    return ast.literal_" + _E + "({arg})\n"
+            "import ast\ndef {func}({arg}):\n    return ast.literal_" + _E + "({arg})\n"
         ),
         placeholders={
             "func": ("compute_expr", "evaluate", "run_formula"),
@@ -254,11 +236,7 @@ CWE_CATALOG: tuple[CWERecipe, ...] = (
             "def {func}():\n"
             "    return ''.join(random.choice('0123456789abcdef') for _ in range(16))\n"
         ),
-        secure_template=(
-            "import secrets\n"
-            "def {func}():\n"
-            "    return secrets.token_hex(8)\n"
-        ),
+        secure_template=("import secrets\ndef {func}():\n    return secrets.token_hex(8)\n"),
         placeholders={
             "func": ("make_token", "new_session_id", "reset_token"),
         },
@@ -340,11 +318,7 @@ class CWESyntheticGenerator:
         for key, choices in recipe.placeholders.items():
             chosen[key] = self._rng.choice(choices) if choices else key
         vuln, safe = self.render(recipe, placeholders_override=chosen)
-        hint = (
-            self._rng.choice(recipe.persona_hints)
-            if recipe.persona_hints
-            else ""
-        )
+        hint = self._rng.choice(recipe.persona_hints) if recipe.persona_hints else ""
         rationale = (
             f"{recipe.cwe_id} ({recipe.name}): {recipe.description} "
             f"Vulnerable form exhibits the flaw; secure form mitigates it."

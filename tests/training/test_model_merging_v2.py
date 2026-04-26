@@ -6,7 +6,6 @@ import math
 
 import pytest
 import torch
-
 from aurelius.training.model_merging_v2 import (
     DAREMerge,
     LinearMerge,
@@ -16,10 +15,10 @@ from aurelius.training.model_merging_v2 import (
     TIESMerge,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_sd(seed: int, shapes=None):
     """Return a simple state dict with deterministic values."""
@@ -41,6 +40,7 @@ def _sd_close(sd_a, sd_b, atol=1e-5):
 # MergeConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestMergeConfig:
     def test_defaults(self):
         cfg = MergeConfig()
@@ -60,6 +60,7 @@ class TestMergeConfig:
 # ---------------------------------------------------------------------------
 # LinearMerge tests
 # ---------------------------------------------------------------------------
+
 
 class TestLinearMerge:
     def test_merge_two_alpha_zero_returns_sd_a(self):
@@ -81,10 +82,7 @@ class TestLinearMerge:
         sd_a = _make_sd(0)
         sd_b = _make_sd(1)
         result = lm.merge([sd_a, sd_b])
-        expected = {
-            k: ((sd_a[k].float() + sd_b[k].float()) / 2.0).to(sd_a[k].dtype)
-            for k in sd_a
-        }
+        expected = {k: ((sd_a[k].float() + sd_b[k].float()) / 2.0).to(sd_a[k].dtype) for k in sd_a}
         assert _sd_close(result, expected)
 
     def test_merge_two_midpoint(self):
@@ -92,10 +90,7 @@ class TestLinearMerge:
         sd_a = _make_sd(0)
         sd_b = _make_sd(1)
         result = lm.merge_two(sd_a, sd_b, alpha=0.5)
-        expected = {
-            k: ((sd_a[k].float() + sd_b[k].float()) / 2.0).to(sd_a[k].dtype)
-            for k in sd_a
-        }
+        expected = {k: ((sd_a[k].float() + sd_b[k].float()) / 2.0).to(sd_a[k].dtype) for k in sd_a}
         assert _sd_close(result, expected)
 
     def test_identical_models_return_same(self):
@@ -108,6 +103,7 @@ class TestLinearMerge:
 # ---------------------------------------------------------------------------
 # SLERPMerge tests
 # ---------------------------------------------------------------------------
+
 
 class TestSLERPMerge:
     def test_slerp_at_t0_returns_v0(self):
@@ -160,6 +156,7 @@ class TestSLERPMerge:
 # TIESMerge tests
 # ---------------------------------------------------------------------------
 
+
 class TestTIESMerge:
     def test_trim_delta_keeps_top_k_fraction(self):
         tm = TIESMerge()
@@ -209,6 +206,7 @@ class TestTIESMerge:
 # DAREMerge tests
 # ---------------------------------------------------------------------------
 
+
 class TestDAREMerge:
     def test_dare_prune_expected_density(self):
         dm = DAREMerge()
@@ -249,6 +247,7 @@ class TestDAREMerge:
 # ---------------------------------------------------------------------------
 # ModelMerger facade tests
 # ---------------------------------------------------------------------------
+
 
 class TestModelMerger:
     def test_dispatches_to_linear(self):

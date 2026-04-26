@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.model import AureliusConfig, CheckpointMigrator, MIGRATION_REGISTRY
+from src.model import MIGRATION_REGISTRY, AureliusConfig, CheckpointMigrator
 
 
 def test_checkpoint_migrator_exported_from_model_package() -> None:

@@ -1,21 +1,19 @@
 """Tests for src/serving/rate_limiter_v2.py — advanced token-bucket rate limiter."""
 
-import time
 import threading
-import pytest
+import time
 
 from src.serving.rate_limiter_v2 import (
+    RATE_LIMITER_V2,
     RateLimitConfig,
-    RateLimitResult,
     RateLimiterV2,
     TokenBucketV2,
-    RATE_LIMITER_V2,
 )
-
 
 # ---------------------------------------------------------------------------
 # TokenBucketV2
 # ---------------------------------------------------------------------------
+
 
 def test_token_bucket_allows_within_burst():
     bucket = TokenBucketV2(rate=10.0, burst=5)
@@ -55,6 +53,7 @@ def test_token_bucket_burst_cap():
 # RateLimiterV2 — global bucket
 # ---------------------------------------------------------------------------
 
+
 def test_global_allow():
     config = RateLimitConfig(requests_per_second=100.0, burst=50)
     limiter = RateLimiterV2(config)
@@ -80,8 +79,11 @@ def test_global_deny_when_burst_exhausted():
 # RateLimiterV2 — per-user bucket
 # ---------------------------------------------------------------------------
 
+
 def test_per_user_allow():
-    config = RateLimitConfig(requests_per_second=100.0, burst=50, per_user_rps=10.0, per_user_burst=5)
+    config = RateLimitConfig(
+        requests_per_second=100.0, burst=50, per_user_rps=10.0, per_user_burst=5
+    )
     limiter = RateLimiterV2(config)
     result = limiter.check(user_id="alice")
     assert result.allowed is True
@@ -89,8 +91,7 @@ def test_per_user_allow():
 
 def test_per_user_deny_when_exhausted():
     config = RateLimitConfig(
-        requests_per_second=1000.0, burst=1000,
-        per_user_rps=1.0, per_user_burst=2
+        requests_per_second=1000.0, burst=1000, per_user_rps=1.0, per_user_burst=2
     )
     limiter = RateLimiterV2(config)
     limiter.check(user_id="bob")
@@ -103,8 +104,7 @@ def test_per_user_deny_when_exhausted():
 
 def test_per_user_isolated_buckets():
     config = RateLimitConfig(
-        requests_per_second=1000.0, burst=1000,
-        per_user_rps=1.0, per_user_burst=1
+        requests_per_second=1000.0, burst=1000, per_user_rps=1.0, per_user_burst=1
     )
     limiter = RateLimiterV2(config)
     # Exhaust alice.
@@ -118,13 +118,16 @@ def test_per_user_isolated_buckets():
 # Exponential jitter backoff
 # ---------------------------------------------------------------------------
 
+
 def test_backoff_attempt_0_near_base():
     result = RateLimiterV2.exponential_jitter_backoff(attempt=0, base=1.0, cap=60.0, jitter=0.0)
     assert abs(result - 1.0) < 1e-9
 
 
 def test_backoff_grows_with_attempt():
-    no_jitter = lambda a: RateLimiterV2.exponential_jitter_backoff(a, base=1.0, cap=1000.0, jitter=0.0)
+    def no_jitter(a):
+        return RateLimiterV2.exponential_jitter_backoff(a, base=1.0, cap=1000.0, jitter=0.0)
+
     assert no_jitter(1) > no_jitter(0)
     assert no_jitter(2) > no_jitter(1)
     assert no_jitter(3) > no_jitter(2)
@@ -153,6 +156,7 @@ def test_backoff_non_negative():
 # Thread safety (light-touch)
 # ---------------------------------------------------------------------------
 
+
 def test_thread_safety_global_bucket():
     config = RateLimitConfig(requests_per_second=1000.0, burst=100)
     limiter = RateLimiterV2(config)
@@ -177,6 +181,7 @@ def test_thread_safety_global_bucket():
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 def test_rate_limiter_v2_singleton_exists():
     assert RATE_LIMITER_V2 is not None

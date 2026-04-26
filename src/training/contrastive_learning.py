@@ -1,33 +1,36 @@
 """SimCSE-style contrastive learning for sentence embeddings."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ContrastiveConfig:
     """Configuration for contrastive (SimCSE-style) training."""
-    temperature: float = 0.05          # NT-Xent temperature
+
+    temperature: float = 0.05  # NT-Xent temperature
     hard_negative_weight: float = 0.0  # weight for hard negatives (0 = disabled)
-    pooling: str = "mean"              # "mean" | "cls" | "last"
+    pooling: str = "mean"  # "mean" | "cls" | "last"
 
 
 # ---------------------------------------------------------------------------
 # Pooling
 # ---------------------------------------------------------------------------
 
+
 def pool_hidden_states(
     hidden: Tensor,
-    attention_mask: Optional[Tensor] = None,
+    attention_mask: Tensor | None = None,
     pooling: str = "mean",
 ) -> Tensor:
     """Pool (B, T, D) hidden states to (B, D) embeddings.
@@ -48,20 +51,20 @@ def pool_hidden_states(
         if attention_mask is None:
             return hidden.mean(dim=1)
         # masked average
-        mask = attention_mask.unsqueeze(-1).float()          # (B, T, 1)
-        sum_hidden = (hidden * mask).sum(dim=1)              # (B, D)
-        count = mask.sum(dim=1).clamp(min=1e-9)              # (B, 1)
+        mask = attention_mask.unsqueeze(-1).float()  # (B, T, 1)
+        sum_hidden = (hidden * mask).sum(dim=1)  # (B, D)
+        count = mask.sum(dim=1).clamp(min=1e-9)  # (B, 1)
         return sum_hidden / count
 
     if pooling == "last":
         if attention_mask is None:
             return hidden[:, -1, :]
         # index of last real token per sequence
-        lengths = attention_mask.sum(dim=1).long() - 1       # (B,)
+        lengths = attention_mask.sum(dim=1).long() - 1  # (B,)
         lengths = lengths.clamp(min=0)
         batch_size = hidden.size(0)
         idx = lengths.unsqueeze(-1).unsqueeze(-1).expand(batch_size, 1, hidden.size(-1))
-        return hidden.gather(1, idx).squeeze(1)              # (B, D)
+        return hidden.gather(1, idx).squeeze(1)  # (B, D)
 
     raise ValueError(f"Unknown pooling mode: {pooling!r}. Choose 'mean', 'cls', or 'last'.")
 
@@ -69,6 +72,7 @@ def pool_hidden_states(
 # ---------------------------------------------------------------------------
 # Embedding utilities
 # ---------------------------------------------------------------------------
+
 
 def normalize_embeddings(embeddings: Tensor, eps: float = 1e-8) -> Tensor:
     """L2-normalize embeddings along the last dimension.
@@ -102,6 +106,7 @@ def cosine_similarity_matrix(a: Tensor, b: Tensor) -> Tensor:
 # Losses
 # ---------------------------------------------------------------------------
 
+
 def nt_xent_loss(similarity_matrix: Tensor, temperature: float) -> Tensor:
     """Normalized temperature-scaled cross-entropy (NT-Xent) loss.
 
@@ -115,7 +120,7 @@ def nt_xent_loss(similarity_matrix: Tensor, temperature: float) -> Tensor:
         Scalar loss tensor.
     """
     n = similarity_matrix.size(0)
-    logits = similarity_matrix / temperature                  # (N, N)
+    logits = similarity_matrix / temperature  # (N, N)
     labels = torch.arange(n, device=similarity_matrix.device)
     return F.cross_entropy(logits, labels)
 
@@ -138,7 +143,7 @@ def in_batch_negatives_loss(
     Returns:
         Scalar loss tensor.
     """
-    sim = cosine_similarity_matrix(anchor, positive)          # (B, B)
+    sim = cosine_similarity_matrix(anchor, positive)  # (B, B)
     return nt_xent_loss(sim, temperature)
 
 
@@ -166,8 +171,8 @@ def hard_negative_loss(
     """
     # Concatenate positives and hard-negatives as columns
     # candidates: (B, 2*B) — first B cols are positives, next B cols are negatives
-    candidates = torch.cat([positive, negative], dim=0)      # (2B, D)
-    sim = cosine_similarity_matrix(anchor, candidates)        # (B, 2B)
+    candidates = torch.cat([positive, negative], dim=0)  # (2B, D)
+    sim = cosine_similarity_matrix(anchor, candidates)  # (B, 2B)
     logits = sim / temperature
     labels = torch.arange(anchor.size(0), device=anchor.device)
     return F.cross_entropy(logits, labels)
@@ -176,6 +181,7 @@ def hard_negative_loss(
 # ---------------------------------------------------------------------------
 # ContrastiveLearner
 # ---------------------------------------------------------------------------
+
 
 class ContrastiveLearner:
     """High-level wrapper that encodes, pools, normalizes and computes loss."""
@@ -196,7 +202,7 @@ class ContrastiveLearner:
     def encode(
         self,
         token_ids: Tensor,
-        attention_mask: Optional[Tensor] = None,
+        attention_mask: Tensor | None = None,
     ) -> Tensor:
         """Encode token IDs to unit-norm sentence embeddings.
 
@@ -207,7 +213,7 @@ class ContrastiveLearner:
         Returns:
             (B, D) L2-normalized embeddings
         """
-        hidden = self.encoder_fn(token_ids)                  # (B, T, D)
+        hidden = self.encoder_fn(token_ids)  # (B, T, D)
         pooled = pool_hidden_states(hidden, attention_mask, self.config.pooling)
         return normalize_embeddings(pooled)
 
@@ -215,8 +221,8 @@ class ContrastiveLearner:
         self,
         anchor_ids: Tensor,
         positive_ids: Tensor,
-        negative_ids: Optional[Tensor] = None,
-    ) -> Dict[str, Tensor]:
+        negative_ids: Tensor | None = None,
+    ) -> dict[str, Tensor]:
         """Compute contrastive loss and diagnostics.
 
         Args:
@@ -231,25 +237,32 @@ class ContrastiveLearner:
               "mean_positive_sim"  – mean diagonal similarity
               "mean_negative_sim"  – mean off-diagonal similarity
         """
-        anchor_emb = self.encode(anchor_ids)                 # (B, D)
-        positive_emb = self.encode(positive_ids)             # (B, D)
+        anchor_emb = self.encode(anchor_ids)  # (B, D)
+        positive_emb = self.encode(positive_ids)  # (B, D)
 
         sim_matrix = cosine_similarity_matrix(anchor_emb, positive_emb)  # (B, B)
 
         b = anchor_emb.size(0)
         diag_mask = torch.eye(b, dtype=torch.bool, device=sim_matrix.device)
         mean_pos = sim_matrix[diag_mask].mean()
-        mean_neg = sim_matrix[~diag_mask].mean() if b > 1 else torch.zeros(1, device=sim_matrix.device).squeeze()
+        mean_neg = (
+            sim_matrix[~diag_mask].mean()
+            if b > 1
+            else torch.zeros(1, device=sim_matrix.device).squeeze()
+        )
 
         if negative_ids is not None:
             negative_emb = self.encode(negative_ids)
             loss = hard_negative_loss(
-                anchor_emb, positive_emb, negative_emb,
+                anchor_emb,
+                positive_emb,
+                negative_emb,
                 self.config.temperature,
             )
         else:
             loss = in_batch_negatives_loss(
-                anchor_emb, positive_emb,
+                anchor_emb,
+                positive_emb,
                 self.config.temperature,
             )
 
@@ -265,6 +278,7 @@ class ContrastiveLearner:
 # Embedding quality metrics
 # ---------------------------------------------------------------------------
 
+
 def compute_alignment(a: Tensor, b: Tensor) -> float:
     """Alignment metric for normalized embeddings.
 
@@ -279,8 +293,8 @@ def compute_alignment(a: Tensor, b: Tensor) -> float:
     Returns:
         float scalar (<= 0)
     """
-    diff = a - b                                             # (N, D)
-    sq_dist = (diff ** 2).sum(dim=-1)                       # (N,)
+    diff = a - b  # (N, D)
+    sq_dist = (diff**2).sum(dim=-1)  # (N,)
     return (-sq_dist.mean()).item()
 
 
@@ -300,5 +314,5 @@ def compute_uniformity(embeddings: Tensor, t: float = 2.0) -> float:
     """
     # pairwise squared distances via broadcasting
     diff = embeddings.unsqueeze(0) - embeddings.unsqueeze(1)  # (N, N, D)
-    sq_dist = (diff ** 2).sum(dim=-1)                         # (N, N)
+    sq_dist = (diff**2).sum(dim=-1)  # (N, N)
     return torch.log(torch.exp(-t * sq_dist).mean()).item()

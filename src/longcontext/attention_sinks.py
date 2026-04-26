@@ -38,8 +38,6 @@ model forward path. It mutates no existing module.
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import torch
 from torch import Tensor
 
@@ -77,13 +75,9 @@ class AttentionSinkCache:
         if not isinstance(n_sinks, int) or n_sinks < 0:
             raise ValueError(f"n_sinks must be a non-negative int, got {n_sinks!r}")
         if not isinstance(window_size, int) or window_size < 0:
-            raise ValueError(
-                f"window_size must be a non-negative int, got {window_size!r}"
-            )
+            raise ValueError(f"window_size must be a non-negative int, got {window_size!r}")
         if n_sinks + window_size == 0:
-            raise ValueError(
-                "n_sinks + window_size must be > 0 (cache would have zero capacity)"
-            )
+            raise ValueError("n_sinks + window_size must be > 0 (cache would have zero capacity)")
         if not isinstance(head_dim, int) or head_dim <= 0:
             raise ValueError(f"head_dim must be a positive int, got {head_dim!r}")
         if not isinstance(n_kv_heads, int) or n_kv_heads <= 0:
@@ -132,7 +126,7 @@ class AttentionSinkCache:
         new_k: Tensor,
         new_v: Tensor,
         current_seq_pos: int | None = None,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Append new KV entries to the cache and return the full view.
 
         Parameters
@@ -176,20 +170,16 @@ class AttentionSinkCache:
         B, H, T_new, D = new_k.shape
         if H != self.n_kv_heads:
             raise ValueError(
-                f"new_k has {H} kv heads but cache was configured for "
-                f"{self.n_kv_heads}"
+                f"new_k has {H} kv heads but cache was configured for {self.n_kv_heads}"
             )
         if D != self.head_dim:
-            raise ValueError(
-                f"new_k has head_dim={D} but cache was configured for "
-                f"{self.head_dim}"
-            )
+            raise ValueError(f"new_k has head_dim={D} but cache was configured for {self.head_dim}")
 
         self._ensure_buffers(B, new_k.dtype, new_k.device)
-        assert self._sink_k is not None  # for type-checkers
-        assert self._sink_v is not None
-        assert self._win_k is not None
-        assert self._win_v is not None
+        assert self._sink_k is not None  # for type-checkers  # noqa: S101
+        assert self._sink_v is not None  # noqa: S101
+        assert self._win_k is not None  # noqa: S101
+        assert self._win_v is not None  # noqa: S101
 
         # Sanity-check batch size against any previously cached state.
         if self._sink_k.shape[0] != B:
@@ -274,9 +264,7 @@ class AttentionSinkCache:
         if not isinstance(t, Tensor):
             raise TypeError(f"{name} must be a torch.Tensor, got {type(t).__name__}")
         if t.dim() != 4:
-            raise ValueError(
-                f"{name} must be 4-D [B, H_kv, T, D], got shape {tuple(t.shape)}"
-            )
+            raise ValueError(f"{name} must be 4-D [B, H_kv, T, D], got shape {tuple(t.shape)}")
 
     def _ensure_buffers(self, B: int, dtype: torch.dtype, device: torch.device) -> None:
         if self._sink_k is not None:
@@ -284,24 +272,16 @@ class AttentionSinkCache:
         H, D = self.n_kv_heads, self.head_dim
         # Allocate zero-initialized buffers. We never read unfilled
         # slots (views are sliced by filled counts).
-        self._sink_k = torch.zeros(
-            (B, H, self.n_sinks, D), dtype=dtype, device=device
-        )
-        self._sink_v = torch.zeros(
-            (B, H, self.n_sinks, D), dtype=dtype, device=device
-        )
-        self._win_k = torch.zeros(
-            (B, H, self.window_size, D), dtype=dtype, device=device
-        )
-        self._win_v = torch.zeros(
-            (B, H, self.window_size, D), dtype=dtype, device=device
-        )
+        self._sink_k = torch.zeros((B, H, self.n_sinks, D), dtype=dtype, device=device)
+        self._sink_v = torch.zeros((B, H, self.n_sinks, D), dtype=dtype, device=device)
+        self._win_k = torch.zeros((B, H, self.window_size, D), dtype=dtype, device=device)
+        self._win_v = torch.zeros((B, H, self.window_size, D), dtype=dtype, device=device)
 
-    def _materialize_view(self) -> Tuple[Tensor, Tensor, Tensor]:
-        assert self._sink_k is not None
-        assert self._sink_v is not None
-        assert self._win_k is not None
-        assert self._win_v is not None
+    def _materialize_view(self) -> tuple[Tensor, Tensor, Tensor]:
+        assert self._sink_k is not None  # noqa: S101
+        assert self._sink_v is not None  # noqa: S101
+        assert self._win_k is not None  # noqa: S101
+        assert self._win_v is not None  # noqa: S101
 
         ns, nw = self._n_sink_filled, self._n_win_filled
         if self.window_size == 0:
@@ -333,15 +313,11 @@ class AttentionSinkCache:
         positions = self._build_positions(ns, nw, cached_k.device)
         return cached_k, cached_v, positions
 
-    def _build_positions(
-        self, ns: int, nw: int, device: torch.device
-    ) -> Tensor:
+    def _build_positions(self, ns: int, nw: int, device: torch.device) -> Tensor:
         # Sinks: 0 .. ns-1 (true absolute).
         # Window: ns .. ns+nw-1 (shifted -- see module docstring).
         sink_pos = torch.arange(ns, dtype=torch.long, device=device)
-        win_pos = torch.arange(
-            self.n_sinks, self.n_sinks + nw, dtype=torch.long, device=device
-        )
+        win_pos = torch.arange(self.n_sinks, self.n_sinks + nw, dtype=torch.long, device=device)
         if ns == 0:
             return win_pos
         if nw == 0:

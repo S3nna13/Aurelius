@@ -130,9 +130,7 @@ def test_run_extraction_returns_list(extractor, oracle, input_ids):
     """run_extraction returns a list of losses."""
     clone_copy = copy.deepcopy(AureliusTransformer(TINY_CFG))
     n_epochs = 2
-    losses = extractor.run_extraction(
-        oracle, clone_copy, input_ids, n_epochs=n_epochs, lr=1e-3
-    )
+    losses = extractor.run_extraction(oracle, clone_copy, input_ids, n_epochs=n_epochs, lr=1e-3)
     assert isinstance(losses, list)
 
 
@@ -142,18 +140,14 @@ def test_run_extraction_loss_list_length(extractor, oracle, input_ids):
     n_epochs = 3
     # input_ids is (BATCH_SIZE, SEQ_LEN); treated as BATCH_SIZE individual batches
     n_batches = input_ids.shape[0]
-    losses = extractor.run_extraction(
-        oracle, clone_copy, input_ids, n_epochs=n_epochs, lr=1e-3
-    )
+    losses = extractor.run_extraction(oracle, clone_copy, input_ids, n_epochs=n_epochs, lr=1e-3)
     assert len(losses) == n_epochs * n_batches
 
 
 def test_run_extraction_no_nan_inf(extractor, oracle, input_ids):
     """No NaN or Inf appears in any step loss."""
     clone_copy = copy.deepcopy(AureliusTransformer(TINY_CFG))
-    losses = extractor.run_extraction(
-        oracle, clone_copy, input_ids, n_epochs=2, lr=1e-3
-    )
+    losses = extractor.run_extraction(oracle, clone_copy, input_ids, n_epochs=2, lr=1e-3)
     for i, loss in enumerate(losses):
         assert loss == loss, f"loss at step {i} is NaN"
         assert abs(loss) != float("inf"), f"loss at step {i} is Inf"
@@ -171,8 +165,7 @@ def test_run_extraction_clone_parameters_change(extractor, oracle, input_ids):
 
     params_after = list(clone_copy.parameters())
     changed = any(
-        not torch.allclose(pb, pa.detach())
-        for pb, pa in zip(params_before, params_after)
+        not torch.allclose(pb, pa.detach()) for pb, pa in zip(params_before, params_after)
     )
     assert changed, "Clone parameters did not change after extraction"
 
@@ -192,9 +185,7 @@ def test_different_oracles_produce_different_logits(extractor, input_ids):
     logits_a = extractor.query_oracle(oracle_a, input_ids)
     logits_b = extractor.query_oracle(oracle_b, input_ids)
 
-    assert not torch.allclose(logits_a, logits_b), (
-        "Two different oracles produced identical logits"
-    )
+    assert not torch.allclose(logits_a, logits_b), "Two different oracles produced identical logits"
 
 
 def test_batch_size_1_seq_len_4(extractor):

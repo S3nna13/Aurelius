@@ -8,8 +8,6 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Configuration / entry dataclasses
@@ -22,9 +20,7 @@ class VocabConfig:
 
     min_freq: int = 2
     max_vocab: int = 50_000
-    special_tokens: list = field(
-        default_factory=lambda: ["<pad>", "<unk>", "<bos>", "<eos>"]
-    )
+    special_tokens: list = field(default_factory=lambda: ["<pad>", "<unk>", "<bos>", "<eos>"])
 
 
 @dataclass(frozen=True)
@@ -44,7 +40,7 @@ class VocabEntry:
 class Vocabulary:
     """Incrementally build a vocabulary from text and query it after building."""
 
-    def __init__(self, config: Optional[VocabConfig] = None) -> None:
+    def __init__(self, config: VocabConfig | None = None) -> None:
         self._config: VocabConfig = config if config is not None else VocabConfig()
         self._freq: Counter = Counter()
         # These are populated after build()

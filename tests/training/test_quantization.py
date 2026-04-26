@@ -1,10 +1,12 @@
 """Tests for src/training/quantization.py — post-training quantization."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.quantization import (
     CalibrationDataset,
     QuantizationConfig,
@@ -14,13 +16,11 @@ from src.training.quantization import (
     quantize_model,
     quantize_tensor,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tiny_cfg() -> AureliusConfig:
     return AureliusConfig(
@@ -48,6 +48,7 @@ def _sample_weight(out=16, in_=32) -> torch.Tensor:
 # 1. QuantizationConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_quantization_config_defaults():
     cfg = QuantizationConfig()
     assert cfg.bits == 8
@@ -60,6 +61,7 @@ def test_quantization_config_defaults():
 # 2. quantize_tensor — output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_tensor_output_shape():
     w = _sample_weight()
     q_w, scale, zp = quantize_tensor(w, bits=8)
@@ -69,6 +71,7 @@ def test_quantize_tensor_output_shape():
 # ---------------------------------------------------------------------------
 # 3. quantize_tensor symmetric — zero_point is 0
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_tensor_symmetric_zero_point():
     w = _sample_weight()
@@ -80,6 +83,7 @@ def test_quantize_tensor_symmetric_zero_point():
 # 4. quantize_tensor per_channel — scale shape is (out_features,)
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_tensor_per_channel_scale_shape():
     w = _sample_weight(out=16, in_=32)
     _, scale, _ = quantize_tensor(w, bits=8, symmetric=True, per_channel=True)
@@ -89,6 +93,7 @@ def test_quantize_tensor_per_channel_scale_shape():
 # ---------------------------------------------------------------------------
 # 5. quantize_tensor per_tensor — scale is scalar
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_tensor_per_tensor_scale_scalar():
     w = _sample_weight()
@@ -102,6 +107,7 @@ def test_quantize_tensor_per_tensor_scale_scalar():
 # 6. INT4 vs INT8 — INT8 has lower error
 # ---------------------------------------------------------------------------
 
+
 def test_int8_lower_error_than_int4():
     torch.manual_seed(42)
     w = torch.randn(32, 64)
@@ -114,14 +120,13 @@ def test_int8_lower_error_than_int4():
     dq4 = dequantize_tensor(q4, s4, zp4)
     err4 = quantization_error(w, dq4)
 
-    assert err8 < err4, (
-        f"INT8 error ({err8:.4f}) should be less than INT4 error ({err4:.4f})"
-    )
+    assert err8 < err4, f"INT8 error ({err8:.4f}) should be less than INT4 error ({err4:.4f})"
 
 
 # ---------------------------------------------------------------------------
 # 7. dequantize_tensor — output shape matches quantized input
 # ---------------------------------------------------------------------------
+
 
 def test_dequantize_output_shape():
     w = _sample_weight()
@@ -133,6 +138,7 @@ def test_dequantize_output_shape():
 # ---------------------------------------------------------------------------
 # 8. dequantize_tensor — roundtrip close to original
 # ---------------------------------------------------------------------------
+
 
 def test_dequantize_roundtrip():
     torch.manual_seed(7)
@@ -146,6 +152,7 @@ def test_dequantize_roundtrip():
 # ---------------------------------------------------------------------------
 # 9. quantization_error — returns float in [0, 1] for reasonable weights
 # ---------------------------------------------------------------------------
+
 
 def test_quantization_error_range():
     torch.manual_seed(1)
@@ -161,6 +168,7 @@ def test_quantization_error_range():
 # 10. QuantizedLinear — output shape matches nn.Linear output
 # ---------------------------------------------------------------------------
 
+
 def test_quantized_linear_output_shape():
     linear = nn.Linear(32, 16)
     cfg = QuantizationConfig(bits=8)
@@ -170,27 +178,25 @@ def test_quantized_linear_output_shape():
     out_ref = linear(x)
     out_ql = ql(x)
 
-    assert out_ql.shape == out_ref.shape, (
-        f"Expected {out_ref.shape}, got {out_ql.shape}"
-    )
+    assert out_ql.shape == out_ref.shape, f"Expected {out_ref.shape}, got {out_ql.shape}"
 
 
 # ---------------------------------------------------------------------------
 # 11. QuantizedLinear.compression_ratio — 4.0 for INT8 (32/8)
 # ---------------------------------------------------------------------------
 
+
 def test_quantized_linear_compression_ratio_int8():
     linear = nn.Linear(32, 16)
     cfg = QuantizationConfig(bits=8)
     ql = QuantizedLinear(linear, cfg)
-    assert ql.compression_ratio == 4.0, (
-        f"Expected 4.0 for INT8, got {ql.compression_ratio}"
-    )
+    assert ql.compression_ratio == 4.0, f"Expected 4.0 for INT8, got {ql.compression_ratio}"
 
 
 # ---------------------------------------------------------------------------
 # 12. quantize_model — returns modified model + stats dict
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_model_returns_model_and_stats():
     model = _tiny_model()
@@ -203,6 +209,7 @@ def test_quantize_model_returns_model_and_stats():
 # ---------------------------------------------------------------------------
 # 13. quantize_model — stats has correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_model_stats_keys():
     model = _tiny_model()
@@ -217,18 +224,18 @@ def test_quantize_model_stats_keys():
 # 14. quantize_model — n_quantized > 0 for AureliusTransformer
 # ---------------------------------------------------------------------------
 
+
 def test_quantize_model_n_quantized_positive():
     model = _tiny_model()
     cfg = QuantizationConfig(bits=8)
     _, stats = quantize_model(model, cfg)
-    assert stats["n_quantized"] > 0, (
-        f"Expected n_quantized > 0, got {stats['n_quantized']}"
-    )
+    assert stats["n_quantized"] > 0, f"Expected n_quantized > 0, got {stats['n_quantized']}"
 
 
 # ---------------------------------------------------------------------------
 # 15. CalibrationDataset — len matches input
 # ---------------------------------------------------------------------------
+
 
 def test_calibration_dataset_len():
     seqs = [torch.randint(0, 100, (64,)) for _ in range(12)]
@@ -239,6 +246,7 @@ def test_calibration_dataset_len():
 # ---------------------------------------------------------------------------
 # 16. CalibrationDataset.get_batch — returns tensor of shape (batch_size, T)
 # ---------------------------------------------------------------------------
+
 
 def test_calibration_dataset_get_batch_shape():
     torch.manual_seed(0)

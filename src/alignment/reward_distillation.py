@@ -3,18 +3,20 @@
 Distills a teacher reward model into a smaller student model using soft labels,
 and supports synthetic preference pair generation via NLL-based proxy rewards.
 """
+
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
-from typing import List, Tuple
 
 
 @dataclass
 class RewardDistillConfig:
     """Configuration for reward distillation training."""
+
     temperature: float = 2.0
     alpha: float = 0.5
     n_synthetic_pairs: int = 4
@@ -95,7 +97,7 @@ def generate_synthetic_pairs(
     prompt_ids: torch.Tensor,
     n_pairs: int,
     temperature: float,
-) -> List[Tuple[torch.Tensor, torch.Tensor]]:
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Generate synthetic (chosen, rejected) pairs from a model.
 
     Samples two continuations for each pair and uses negative log-likelihood
@@ -186,7 +188,7 @@ class RewardDistillationTrainer:
     def _get_rewards(self, model: nn.Module, input_ids: torch.Tensor) -> torch.Tensor:
         """Extract scalar rewards from a model using the reward head."""
         x = model.embed(input_ids)
-        freqs_cis = model.freqs_cis[:input_ids.shape[1]]
+        freqs_cis = model.freqs_cis[: input_ids.shape[1]]
         for layer in model.layers:
             x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
         x = model.norm(x)  # (B, T, d_model)
@@ -222,7 +224,7 @@ class RewardDistillationTrainer:
         B = input_ids.shape[0]
         half = max(B // 2, 1)
         chosen_rewards = student_rewards[:half]
-        rejected_rewards = student_rewards[half:half * 2] if B >= 2 else student_rewards[:half]
+        rejected_rewards = student_rewards[half : half * 2] if B >= 2 else student_rewards[:half]
         p_loss = preference_loss(chosen_rewards, rejected_rewards, self.config.margin)
 
         # Combined loss

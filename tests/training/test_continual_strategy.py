@@ -44,4 +44,3 @@ def test_replay_ratio_schedule_rejects_bad_ranges():
         replay_ratio_schedule(0, 0)
     with pytest.raises(ValueError):
         replay_ratio_schedule(0, 10, 0.5, 0.4)
-

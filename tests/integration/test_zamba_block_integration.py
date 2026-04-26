@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import torch
 
-from src.model.zamba_block import ZambaBlock, ZambaConfig, ZambaSharedAttention
 from src.model import MODEL_COMPONENT_REGISTRY
-
+from src.model.zamba_block import ZambaBlock, ZambaConfig, ZambaSharedAttention
 
 # ---------------------------------------------------------------------------
 # Shared setup
@@ -47,14 +46,13 @@ def make_block() -> ZambaBlock:
 # Integration tests
 # ---------------------------------------------------------------------------
 
+
 def test_integration_output_shape():
     """Full forward pass produces the correct output shape."""
     blk = make_block()
     x = torch.randn(2, 8, D_MODEL)
     out = blk(x)
-    assert out.shape == (2, 8, D_MODEL), (
-        f"Expected output shape (2, 8, {D_MODEL}), got {out.shape}"
-    )
+    assert out.shape == (2, 8, D_MODEL), f"Expected output shape (2, 8, {D_MODEL}), got {out.shape}"
 
 
 def test_integration_n_attention_layers():
@@ -68,9 +66,7 @@ def test_integration_n_attention_layers():
 def test_integration_n_ssm_layers():
     """With 6 total layers and 2 attention positions → 4 SSM layers."""
     blk = make_block()
-    assert blk.n_ssm_layers() == 4, (
-        f"Expected 4 SSM layers, got {blk.n_ssm_layers()}"
-    )
+    assert blk.n_ssm_layers() == 4, f"Expected 4 SSM layers, got {blk.n_ssm_layers()}"
     assert blk.n_ssm_layers() + blk.n_attention_layers() == N_LAYERS
 
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import copy
-
 import pytest
 import torch
 import torch.nn as nn
@@ -274,8 +272,7 @@ def test_momentum_encoder_update_changes_params():
 
     # Record initial momentum encoder params
     initial_params = {
-        name: param.clone()
-        for name, param in momentum_enc.momentum_encoder.named_parameters()
+        name: param.clone() for name, param in momentum_enc.momentum_encoder.named_parameters()
     }
 
     # Modify the online encoder parameters (simulate a gradient update)

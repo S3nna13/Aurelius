@@ -5,9 +5,10 @@ Handles system prompts, turn alternation, and chat templates.
 Produces SFT-ready (input_ids, labels) pairs where only assistant turns
 are included in the loss (user turns masked to -100).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 import torch
@@ -16,6 +17,7 @@ import torch
 @dataclass
 class Turn:
     """A single conversation turn."""
+
     role: Literal["system", "user", "assistant"]
     content: str
 
@@ -23,6 +25,7 @@ class Turn:
 @dataclass
 class Conversation:
     """A complete multi-turn conversation."""
+
     turns: list[Turn]
 
     def __len__(self) -> int:
@@ -53,6 +56,7 @@ class Conversation:
 @dataclass
 class ChatTemplate:
     """Template for formatting conversations as token sequences."""
+
     system_prefix: str = "<|system|>"
     system_suffix: str = "<|end|>\n"
     user_prefix: str = "<|user|>"
@@ -81,7 +85,7 @@ class ChatTemplate:
 def build_sft_labels(
     conversation: Conversation,
     template: ChatTemplate,
-    tokenize_fn,          # callable: str → list[int]
+    tokenize_fn,  # callable: str → list[int]
     max_seq_len: int,
     loss_on_all_turns: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -172,7 +176,7 @@ class ConversationDataset:
         self,
         conversations: list[Conversation],
         template: ChatTemplate,
-        tokenize_fn,       # callable: str → list[int]
+        tokenize_fn,  # callable: str → list[int]
         max_seq_len: int = 2048,
         loss_on_all_turns: bool = False,
     ) -> None:
@@ -195,7 +199,7 @@ class ConversationDataset:
         input_ids, labels = self._samples[idx]
         return {"input_ids": input_ids, "labels": labels}
 
-    def filter_by_length(self, min_len: int = 4, max_len: int | None = None) -> "ConversationDataset":
+    def filter_by_length(self, min_len: int = 4, max_len: int | None = None) -> ConversationDataset:
         """Return new dataset with conversations within length bounds."""
         filtered_convs = []
         for conv, (input_ids, _) in zip(self._conversations, self._samples):

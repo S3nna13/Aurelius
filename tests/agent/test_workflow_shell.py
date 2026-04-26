@@ -111,7 +111,9 @@ def test_workflow_shell_runs_approval_gated_steps_and_serializes(tmp_path):
     assert stored_thread is not None
     assert stored_thread.status == "completed"
     assert run.approval_ids[0] in stored_thread.approvals
-    stored_checkpoint = runtime.session_manager.get_checkpoint(session.session_id, run.checkpoint_ids[0])
+    stored_checkpoint = runtime.session_manager.get_checkpoint(
+        session.session_id, run.checkpoint_ids[0]
+    )
     assert stored_checkpoint is not None
     assert run.approval_ids[0] in stored_checkpoint.thread_snapshot["approvals"]
     assert run.halted_reason is None

@@ -5,20 +5,20 @@ n_layers=2, vocab_size=16.
 Every test exercises forward (and/or backward) passes, not just instantiation.
 """
 
-import pytest
-import torch
-import sys
 import os
+import sys
+
+import torch
 
 # Ensure src is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from model.mixture_of_depths_v4 import (
-    TokenRouter,
-    MoDBlock,
-    MoDTransformer,
-    MoDLoss,
     CapacityAnalyzer,
+    MoDBlock,
+    MoDLoss,
+    MoDTransformer,
+    TokenRouter,
 )
 
 # ---------------------------------------------------------------------------
@@ -111,16 +111,19 @@ def test_mod_block_zero_capacity_bypass():
     # Actually the spec says capacity=0.0 → all bypass.  max(1,int(8*0))=1.
     # We monkey-patch k=0 to truly test all-bypass.
     block = MoDBlock(D, N_HEADS, capacity_factor=0.0)
+
     # Override router to return an all-False mask
     class _ZeroRouter(torch.nn.Module):
         def __init__(self):
             super().__init__()
             self.proj = torch.nn.Linear(D, 1, bias=False)
+
         def forward(self, x):
             B, T, D = x.shape
             mask = torch.zeros(B, T, dtype=torch.bool)
             logits = torch.zeros(B, T)
             return mask, logits
+
     block.router = _ZeroRouter()
 
     x = torch.randn(B, T, D)
@@ -156,9 +159,7 @@ def test_mod_transformer_grad_flows_to_all_params():
     ids = torch.randint(0, V, (B, T))
     logits, aux = model(ids)
     targets = torch.randint(0, V, (B, T))
-    loss = torch.nn.functional.cross_entropy(
-        logits.reshape(B * T, V), targets.reshape(B * T)
-    ) + aux
+    loss = torch.nn.functional.cross_entropy(logits.reshape(B * T, V), targets.reshape(B * T)) + aux
     loss.backward()
     for name, param in model.named_parameters():
         assert param.grad is not None, f"No grad for param: {name}"
@@ -249,15 +250,18 @@ def test_capacity_full_vs_zero_differ():
 
     # Block with forced all-bypass
     block_bypass = MoDBlock(D, N_HEADS, capacity_factor=0.0)
+
     class _ZeroRouter(torch.nn.Module):
         def __init__(self):
             super().__init__()
             self.proj = torch.nn.Linear(D, 1, bias=False)
+
         def forward(self, inp):
             Bi, Ti, Di = inp.shape
             mask = torch.zeros(Bi, Ti, dtype=torch.bool)
             logits = torch.zeros(Bi, Ti)
             return mask, logits
+
     block_bypass.router = _ZeroRouter()
     out_bypass, _ = block_bypass(x)
 

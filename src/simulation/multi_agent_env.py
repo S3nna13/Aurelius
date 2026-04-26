@@ -1,4 +1,5 @@
 """Multi-agent environment: base class and cooperative grid implementation."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -78,7 +79,8 @@ class SimpleCooperativeEnv(MultiAgentEnv):
             aid: {"row": grid_size, "col": grid_size} for aid in self.agent_ids
         }
         self.action_space = {
-            aid: {"n": 5} for aid in self.agent_ids  # UP DOWN LEFT RIGHT STAY
+            aid: {"n": 5}
+            for aid in self.agent_ids  # UP DOWN LEFT RIGHT STAY
         }
         self._positions: dict[str, list[int]] = {}
         self._step_count = 0
@@ -108,9 +110,7 @@ class SimpleCooperativeEnv(MultiAgentEnv):
 
         self._step_count += 1
 
-        both_at_goal = all(
-            tuple(self._positions[aid]) == self.goal for aid in self.agent_ids
-        )
+        both_at_goal = all(tuple(self._positions[aid]) == self.goal for aid in self.agent_ids)
         rewards: dict[str, float] = {}
         dones: dict[str, bool] = {}
         for aid in self.agent_ids:
@@ -150,9 +150,7 @@ class SimpleCooperativeEnv(MultiAgentEnv):
                 "position": list(self._positions[aid]),
                 "goal": list(self.goal),
                 "other_positions": {
-                    other: list(self._positions[other])
-                    for other in self.agent_ids
-                    if other != aid
+                    other: list(self._positions[other]) for other in self.agent_ids if other != aid
                 },
             }
             for aid in self.agent_ids

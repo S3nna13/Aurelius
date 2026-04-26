@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import copy
 import io
-import pickle  # used only to verify torch.save-compatibility in test 11
 
 import pytest
 import torch
@@ -12,10 +10,10 @@ import torch.nn as nn
 
 from src.training.ema import ModelEMA, StochasticWeightAveraging
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_model() -> nn.Module:
     """Tiny deterministic model for testing."""
@@ -33,15 +31,13 @@ def params_list(model: nn.Module):
 
 
 def params_equal(a_list, b_list, atol: float = 1e-6) -> bool:
-    return all(
-        torch.allclose(a, b, atol=atol)
-        for a, b in zip(a_list, b_list)
-    )
+    return all(torch.allclose(a, b, atol=atol) for a, b in zip(a_list, b_list))
 
 
 # ---------------------------------------------------------------------------
 # 1. ModelEMA initializes with correct decay
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_init_decay():
     model = make_model()
@@ -53,17 +49,20 @@ def test_modelema_init_decay():
 # 2. Shadow params are initialized as copy of model params
 # ---------------------------------------------------------------------------
 
+
 def test_modelema_shadow_init_matches_model():
     model = make_model()
     ema = ModelEMA(model, decay=0.9999)
     for shadow, param in zip(ema.shadow_params, model.parameters()):
-        assert torch.allclose(shadow.float(), param.detach().float(), atol=1e-6), \
+        assert torch.allclose(shadow.float(), param.detach().float(), atol=1e-6), (
             "Shadow params should match model params at initialization."
+        )
 
 
 # ---------------------------------------------------------------------------
 # 3. update() changes shadow params toward model params
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_update_moves_shadow():
     torch.manual_seed(0)
@@ -81,8 +80,7 @@ def test_modelema_update_moves_shadow():
     ema.update(model)
 
     changed = any(
-        not torch.allclose(s, init, atol=1e-6)
-        for s, init in zip(ema.shadow_params, initial_shadow)
+        not torch.allclose(s, init, atol=1e-6) for s, init in zip(ema.shadow_params, initial_shadow)
     )
     assert changed, "Shadow params should change after update() when model params differ."
 
@@ -90,6 +88,7 @@ def test_modelema_update_moves_shadow():
 # ---------------------------------------------------------------------------
 # 4. After update with decay=0.0, shadow matches model instantly
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_decay_zero_instant_match():
     torch.manual_seed(1)
@@ -104,13 +103,15 @@ def test_modelema_decay_zero_instant_match():
     ema.update(model)
 
     for shadow in ema.shadow_params:
-        assert torch.allclose(shadow.float(), torch.full_like(shadow, target_val), atol=1e-5), \
+        assert torch.allclose(shadow.float(), torch.full_like(shadow, target_val), atol=1e-5), (
             "With decay=0.0, shadow should match model params after one update."
+        )
 
 
 # ---------------------------------------------------------------------------
 # 5. effective_decay increases with step (warmup correction)
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_effective_decay_increases_with_step():
     model = make_model()
@@ -121,13 +122,15 @@ def test_modelema_effective_decay_increases_with_step():
         ema._step += 1
 
     for i in range(1, len(decays)):
-        assert decays[i] >= decays[i - 1], \
-            f"effective_decay should be non-decreasing: {decays[i-1]:.6f} -> {decays[i]:.6f}"
+        assert decays[i] >= decays[i - 1], (
+            f"effective_decay should be non-decreasing: {decays[i - 1]:.6f} -> {decays[i]:.6f}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # 6. effective_decay caps at declared decay after warmup
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_effective_decay_caps_at_decay():
     model = make_model()
@@ -142,6 +145,7 @@ def test_modelema_effective_decay_caps_at_decay():
 # 7. copy_to() copies shadow params into model
 # ---------------------------------------------------------------------------
 
+
 def test_modelema_copy_to():
     torch.manual_seed(2)
     model = make_model()
@@ -153,13 +157,15 @@ def test_modelema_copy_to():
 
     ema.copy_to(model)
     for p in model.parameters():
-        assert torch.allclose(p, torch.full_like(p, 99.0), atol=1e-5), \
+        assert torch.allclose(p, torch.full_like(p, 99.0), atol=1e-5), (
             "copy_to() should overwrite model params with shadow values."
+        )
 
 
 # ---------------------------------------------------------------------------
 # 8. store() + restore() recovers original params
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_store_restore():
     torch.manual_seed(3)
@@ -176,13 +182,13 @@ def test_modelema_store_restore():
     ema.restore(model)
     restored = params_list(model)
 
-    assert params_equal(original, restored), \
-        "restore() should recover the params saved by store()."
+    assert params_equal(original, restored), "restore() should recover the params saved by store()."
 
 
 # ---------------------------------------------------------------------------
 # 9. average_parameters() context manager restores after exit
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_context_manager_restores():
     torch.manual_seed(4)
@@ -195,13 +201,15 @@ def test_modelema_context_manager_restores():
         pass
 
     restored = params_list(model)
-    assert params_equal(original, restored), \
+    assert params_equal(original, restored), (
         "average_parameters() should restore original params after context exit."
+    )
 
 
 # ---------------------------------------------------------------------------
 # 10. average_parameters(): params differ inside vs outside (EMA effect)
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_context_manager_ema_active_inside():
     torch.manual_seed(5)
@@ -227,16 +235,15 @@ def test_modelema_context_manager_ema_active_inside():
         inside_params = params_list(model)
 
     any_different = any(
-        not torch.allclose(i, o, atol=1e-3)
-        for i, o in zip(inside_params, outside_params)
+        not torch.allclose(i, o, atol=1e-3) for i, o in zip(inside_params, outside_params)
     )
-    assert any_different, \
-        "Inside average_parameters(), model params should reflect EMA shadow."
+    assert any_different, "Inside average_parameters(), model params should reflect EMA shadow."
 
 
 # ---------------------------------------------------------------------------
 # 11. state_dict() returns serializable dict
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_state_dict_serializable():
     model = make_model()
@@ -266,6 +273,7 @@ def test_modelema_state_dict_serializable():
 # 12. load_state_dict() round-trips correctly
 # ---------------------------------------------------------------------------
 
+
 def test_modelema_load_state_dict_roundtrip():
     torch.manual_seed(6)
     model = make_model()
@@ -286,13 +294,15 @@ def test_modelema_load_state_dict_roundtrip():
     assert ema2.decay == ema.decay
     assert ema2._step == ema._step
     for s1, s2 in zip(ema.shadow_params, ema2.shadow_params):
-        assert torch.allclose(s1.cpu(), s2.cpu(), atol=1e-6), \
+        assert torch.allclose(s1.cpu(), s2.cpu(), atol=1e-6), (
             "Shadow params should match after load_state_dict()."
+        )
 
 
 # ---------------------------------------------------------------------------
 # 13. get_ema_model() returns nn.Module with EMA weights, doesn't modify original
 # ---------------------------------------------------------------------------
+
 
 def test_modelema_get_ema_model():
     torch.manual_seed(7)
@@ -310,17 +320,20 @@ def test_modelema_get_ema_model():
     assert isinstance(ema_model, nn.Module), "get_ema_model() should return nn.Module."
 
     after_params = params_list(model)
-    assert params_equal(original_params, after_params), \
+    assert params_equal(original_params, after_params), (
         "get_ema_model() must not modify the original model."
+    )
 
     for ema_p, shadow in zip(ema_model.parameters(), ema.shadow_params):
-        assert torch.allclose(ema_p.float(), shadow.float(), atol=1e-5), \
+        assert torch.allclose(ema_p.float(), shadow.float(), atol=1e-5), (
             "EMA model params should match shadow params."
+        )
 
 
 # ---------------------------------------------------------------------------
 # 14. SWA.update() returns False before swa_start_step
 # ---------------------------------------------------------------------------
+
 
 def test_swa_update_false_before_start():
     model = make_model()
@@ -335,6 +348,7 @@ def test_swa_update_false_before_start():
 # ---------------------------------------------------------------------------
 # 15. SWA.update() returns True and increments n_averaged at correct steps
 # ---------------------------------------------------------------------------
+
 
 def test_swa_update_true_at_correct_steps():
     model = make_model()
@@ -354,13 +368,15 @@ def test_swa_update_true_at_correct_steps():
         else:
             assert result is False, f"Expected False at step={step}."
 
-    assert swa.n_averaged == len(expected_true), \
+    assert swa.n_averaged == len(expected_true), (
         f"Expected {len(expected_true)} averaged checkpoints, got {swa.n_averaged}."
+    )
 
 
 # ---------------------------------------------------------------------------
 # 16. SWA.get_swa_model() params are average of accumulated checkpoints
 # ---------------------------------------------------------------------------
+
 
 def test_swa_get_swa_model_is_average():
     torch.manual_seed(8)
@@ -379,5 +395,6 @@ def test_swa_get_swa_model_is_average():
 
     expected = 3.0  # mean of 1..5
     for p in swa_model.parameters():
-        assert torch.allclose(p.float(), torch.full_like(p, expected), atol=1e-5), \
-            f"SWA model param should be average of checkpoints (3.0), got {p.float().mean().item():.4f}."
+        assert torch.allclose(p.float(), torch.full_like(p, expected), atol=1e-5), (
+            f"SWA model param should be average of checkpoints (3.0), got {p.float().mean().item():.4f}."  # noqa: E501
+        )

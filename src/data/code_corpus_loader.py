@@ -21,13 +21,13 @@ from __future__ import annotations
 import os
 import random
 import re
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from typing import Callable, Iterator, List, Optional, Tuple
 
 import torch
 
 try:
-    from src.chat.fim_formatter import FIM_PREFIX, FIM_SUFFIX, FIM_MIDDLE
+    from src.chat.fim_formatter import FIM_MIDDLE, FIM_PREFIX, FIM_SUFFIX
 except Exception:  # pragma: no cover - defensive fallback
     FIM_PREFIX = "<fim_prefix>"
     FIM_SUFFIX = "<fim_suffix>"
@@ -61,8 +61,16 @@ _LANGUAGE_BY_EXT = {
     ".sh": "shell",
 }
 
-_DEFAULT_EXTS: Tuple[str, ...] = (
-    ".py", ".js", ".ts", ".go", ".rs", ".java", ".c", ".cpp", ".h",
+_DEFAULT_EXTS: tuple[str, ...] = (
+    ".py",
+    ".js",
+    ".ts",
+    ".go",
+    ".rs",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
 )
 
 
@@ -73,14 +81,14 @@ class CodeChunk:
     file_path: str
     text: str
     language: str
-    tokens: List[int] = field(default_factory=list)
+    tokens: list[int] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 
 
-def _default_tokenizer(text: str) -> List[int]:
+def _default_tokenizer(text: str) -> list[int]:
     """Fallback tokenizer: byte-level ids in [0, 255]. Pure stdlib."""
     return list(text.encode("utf-8", errors="replace"))
 
@@ -97,17 +105,14 @@ def _is_binary(path: str, sniff: int = 2048) -> bool:
     # Heuristic: high ratio of non-text bytes.
     if not chunk:
         return False
-    text_bytes = sum(
-        1 for b in chunk
-        if b in (9, 10, 13) or 32 <= b < 127 or b >= 128
-    )
+    text_bytes = sum(1 for b in chunk if b in (9, 10, 13) or 32 <= b < 127 or b >= 128)
     return (text_bytes / len(chunk)) < 0.75
 
 
 _IMPORT_RE_PY = re.compile(r"^\s*(?:from\s+([\w\.]+)|import\s+([\w\.]+))", re.MULTILINE)
 
 
-def _dependency_order(paths: List[str], root: str) -> List[str]:
+def _dependency_order(paths: list[str], root: str) -> list[str]:
     """Attempt a dependency-aware traversal for Python files.
 
     Files with no intra-repo imports come first, then files whose deps
@@ -134,7 +139,7 @@ def _dependency_order(paths: List[str], root: str) -> List[str]:
     deps: dict[str, set[str]] = {p: set() for p in py_files}
     for p in py_files:
         try:
-            with open(p, "r", encoding="utf-8", errors="replace") as fh:
+            with open(p, encoding="utf-8", errors="replace") as fh:
                 src = fh.read()
         except OSError:
             continue
@@ -146,13 +151,11 @@ def _dependency_order(paths: List[str], root: str) -> List[str]:
                 deps[p].add(target)
 
     # Kahn-ish topological sort with deterministic tie-break.
-    ordered: List[str] = []
+    ordered: list[str] = []
     remaining = set(py_files)
     emitted: set[str] = set()
     while remaining:
-        ready = sorted(
-            p for p in remaining if deps[p].issubset(emitted)
-        )
+        ready = sorted(p for p in remaining if deps[p].issubset(emitted))
         if not ready:
             # Cycle or unresolved; break by path-sorted.
             ready = sorted(remaining)
@@ -196,13 +199,13 @@ class CodeCorpusLoader:
 
     def __init__(
         self,
-        tokenizer: Optional[Callable[[str], List[int]]] = None,
-        extensions: Tuple[str, ...] = _DEFAULT_EXTS,
+        tokenizer: Callable[[str], list[int]] | None = None,
+        extensions: tuple[str, ...] = _DEFAULT_EXTS,
         file_sep_token_id: int = 1,
         chunk_size: int = 2048,
         apply_fim: bool = False,
         fim_rate: float = 0.5,
-        rng: Optional[random.Random] = None,
+        rng: random.Random | None = None,
         dependency_aware: bool = True,
     ) -> None:
         if chunk_size <= 0:
@@ -223,14 +226,15 @@ class CodeCorpusLoader:
         ext = os.path.splitext(path)[1].lower()
         return _LANGUAGE_BY_EXT.get(ext, "unknown")
 
-    def _collect_files(self, root: str) -> List[str]:
-        paths: List[str] = []
+    def _collect_files(self, root: str) -> list[str]:
+        paths: list[str] = []
         if not os.path.isdir(root):
             return paths
         for dirpath, dirnames, filenames in os.walk(root):
             # Skip common vendor / VCS dirs.
             dirnames[:] = [
-                d for d in dirnames
+                d
+                for d in dirnames
                 if d not in {".git", ".hg", ".svn", "__pycache__", "node_modules", ".venv", "venv"}
             ]
             for name in filenames:
@@ -267,7 +271,7 @@ class CodeCorpusLoader:
         """Yield one :class:`CodeChunk` per source file under ``root``."""
         for path in self._collect_files(root):
             try:
-                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                with open(path, encoding="utf-8", errors="replace") as fh:
                     text = fh.read()
             except OSError:
                 continue
@@ -293,7 +297,7 @@ class CodeCorpusLoader:
         """
         if batch_size < 1:
             raise ValueError("batch_size must be >= 1")
-        buf: List[int] = []
+        buf: list[int] = []
         first = True
         for chunk in self.walk(root):
             if not first:
@@ -302,7 +306,7 @@ class CodeCorpusLoader:
             buf.extend(chunk.tokens)
             while len(buf) >= self.chunk_size:
                 head = buf[: self.chunk_size]
-                buf = buf[self.chunk_size:]
+                buf = buf[self.chunk_size :]
                 yield torch.tensor(head, dtype=torch.long)
 
 

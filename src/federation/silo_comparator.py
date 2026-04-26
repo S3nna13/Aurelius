@@ -1,4 +1,5 @@
 """Cross-silo model comparison for federated learning."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ class SiloComparator:
 
     def cosine_similarity(self, silo_a: str, silo_b: str) -> float:
         import numpy as np
+
         wa = self._snapshots.get(silo_a, {})
         wb = self._snapshots.get(silo_b, {})
         if not wa or not wb:
@@ -25,11 +27,12 @@ class SiloComparator:
         dot = sum(np.sum(wa[k] * wb[k]) for k in common)
         na = sum(np.sum(wa[k] ** 2) for k in common)
         nb = sum(np.sum(wb[k] ** 2) for k in common)
-        denom = (na ** 0.5) * (nb ** 0.5)
+        denom = (na**0.5) * (nb**0.5)
         return float(dot / denom) if denom > 0 else 0.0
 
     def weight_divergence(self, silo_a: str, silo_b: str) -> float:
         import numpy as np
+
         wa = self._snapshots.get(silo_a, {})
         wb = self._snapshots.get(silo_b, {})
         if not wa or not wb:

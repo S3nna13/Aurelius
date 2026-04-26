@@ -1,4 +1,4 @@
-"""Instruction following evaluation: measure format compliance, constraint satisfaction, and instruction adherence."""
+"""Instruction following evaluation: measure format compliance, constraint satisfaction, and instruction adherence."""  # noqa: E501
 
 import json
 import random
@@ -67,7 +67,11 @@ def check_format_compliance(response: str, required_format: str | None) -> float
         lines = response.strip().splitlines()
         for line in lines:
             stripped = line.strip()
-            if stripped and (stripped.startswith("- ") or stripped.startswith("* ") or re.match(r"^\d+\.", stripped)):
+            if stripped and (
+                stripped.startswith("- ")
+                or stripped.startswith("* ")
+                or re.match(r"^\d+\.", stripped)
+            ):
                 return 0.0
         words = response.split()
         return 1.0 if len(words) >= 20 else 0.0
@@ -94,9 +98,7 @@ def check_keyword_compliance(
 
     if required:
         present = sum(
-            1
-            for kw in required
-            if (kw if case_sensitive else kw.lower()) in check_response
+            1 for kw in required if (kw if case_sensitive else kw.lower()) in check_response
         )
         required_score = present / len(required)
     else:
@@ -118,7 +120,8 @@ def check_structure_compliance(response: str, required_format: str | None) -> fl
     if required_format == "list":
         lines = [line.strip() for line in response.strip().splitlines() if line.strip()]
         items = [
-            line for line in lines
+            line
+            for line in lines
             if line.startswith("- ") or line.startswith("* ") or re.match(r"^\d+\.", line)
         ]
         return 1.0 if len(items) >= 2 else 0.0

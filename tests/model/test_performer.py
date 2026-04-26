@@ -19,12 +19,10 @@ Test inventory (15 tests):
 """
 
 import torch
-import pytest
-
 from aurelius.model.performer import (
-    PerformerOrthogonalRF,
     PerformerAttention,
     PerformerLayer,
+    PerformerOrthogonalRF,
 )
 
 # ---------------------------------------------------------------------------
@@ -32,15 +30,16 @@ from aurelius.model.performer import (
 # ---------------------------------------------------------------------------
 D_MODEL = 64
 N_HEADS = 4
-D_HEAD  = 16          # d_model // n_heads
+D_HEAD = 16  # d_model // n_heads
 B = 2
 T = 8
-M = 32               # num_features for most tests
+M = 32  # num_features for most tests
 
 
 # ===========================================================================
 # 1. PerformerOrthogonalRF — shape
 # ===========================================================================
+
 
 def test_orf_shape():
     orf = PerformerOrthogonalRF(d_head=D_HEAD, num_features=M, seed=0)
@@ -52,6 +51,7 @@ def test_orf_shape():
 # 2. PerformerOrthogonalRF — approximate orthogonality (m <= d)
 # ===========================================================================
 
+
 def test_orf_approximate_orthogonal():
     """Mean absolute off-diagonal dot product of distinct rows should be small.
 
@@ -59,33 +59,32 @@ def test_orf_approximate_orthogonal():
     QR block that already gives an orthonormal basis.
     """
     d = D_HEAD
-    m = d   # one full orthogonal block — exact orthogonality up to chi scaling
+    m = d  # one full orthogonal block — exact orthogonality up to chi scaling
     orf = PerformerOrthogonalRF(d_head=d, num_features=m, seed=42)
     omega = orf.get_omegas(device=torch.device("cpu"), dtype=torch.float32)
 
     # Normalise rows to unit length before checking dot products
     norms = omega.norm(dim=1, keepdim=True).clamp(min=1e-9)
-    omega_n = omega / norms                      # (m, d) — unit rows
+    omega_n = omega / norms  # (m, d) — unit rows
 
-    gram = omega_n @ omega_n.T                   # (m, m)
+    gram = omega_n @ omega_n.T  # (m, m)
     # Zero out diagonal
     mask = 1.0 - torch.eye(m)
     off_diag = (gram * mask).abs()
     mean_off = off_diag.sum() / mask.sum()
 
-    assert mean_off.item() < 0.1, (
-        f"Rows not approximately orthogonal: mean |dot| = {mean_off:.4f}"
-    )
+    assert mean_off.item() < 0.1, f"Rows not approximately orthogonal: mean |dot| = {mean_off:.4f}"
 
 
 # ===========================================================================
 # 3. PerformerOrthogonalRF — redraw
 # ===========================================================================
 
+
 def test_orf_redraw():
     orf = PerformerOrthogonalRF(d_head=D_HEAD, num_features=M, seed=None)
     dev = torch.device("cpu")
-    dt  = torch.float32
+    dt = torch.float32
     omega1 = orf.get_omegas(dev, dt).clone()
     # Same call — should return cached copy
     omega2 = orf.get_omegas(dev, dt)
@@ -101,6 +100,7 @@ def test_orf_redraw():
 # 4. PerformerAttention — non-causal output shape
 # ===========================================================================
 
+
 def test_attention_noncausal_shape():
     attn = PerformerAttention(d_head=D_HEAD, num_features=M, causal=False, seed=0)
     q = torch.randn(B, T, D_HEAD)
@@ -113,6 +113,7 @@ def test_attention_noncausal_shape():
 # ===========================================================================
 # 5. PerformerAttention — non-causal finite
 # ===========================================================================
+
 
 def test_attention_noncausal_finite():
     attn = PerformerAttention(d_head=D_HEAD, num_features=M, causal=False, seed=1)
@@ -127,6 +128,7 @@ def test_attention_noncausal_finite():
 # 6. PerformerAttention — causal output shape
 # ===========================================================================
 
+
 def test_attention_causal_shape():
     attn = PerformerAttention(d_head=D_HEAD, num_features=M, causal=True, seed=2)
     q = torch.randn(B, T, D_HEAD)
@@ -139,6 +141,7 @@ def test_attention_causal_shape():
 # ===========================================================================
 # 7. PerformerAttention — causal finite
 # ===========================================================================
+
 
 def test_attention_causal_finite():
     attn = PerformerAttention(d_head=D_HEAD, num_features=M, causal=True, seed=3)
@@ -153,16 +156,17 @@ def test_attention_causal_finite():
 # 8. Causal causality check
 # ===========================================================================
 
+
 def test_causal_causality():
     """out[:, :t, :] must not change when v[:, t:, :] is replaced with noise."""
-    t_split = T // 2   # split point
+    t_split = T // 2  # split point
     attn = PerformerAttention(d_head=D_HEAD, num_features=M, causal=True, seed=4)
     # Put in inference mode to disable dropout / other stochastic ops
     attn.train(False)
 
     torch.manual_seed(7)
-    q  = torch.randn(B, T, D_HEAD)
-    k  = torch.randn(B, T, D_HEAD)
+    q = torch.randn(B, T, D_HEAD)
+    k = torch.randn(B, T, D_HEAD)
     v1 = torch.randn(B, T, D_HEAD)
 
     with torch.no_grad():
@@ -185,6 +189,7 @@ def test_causal_causality():
 # 9. PerformerLayer — output shape
 # ===========================================================================
 
+
 def test_layer_shape():
     layer = PerformerLayer(d_model=D_MODEL, n_heads=N_HEADS, num_features=M, causal=False, seed=0)
     x = torch.randn(B, T, D_MODEL)
@@ -195,6 +200,7 @@ def test_layer_shape():
 # ===========================================================================
 # 10. PerformerLayer — finite outputs
 # ===========================================================================
+
 
 def test_layer_finite():
     layer = PerformerLayer(d_model=D_MODEL, n_heads=N_HEADS, num_features=M, causal=True, seed=1)
@@ -207,6 +213,7 @@ def test_layer_finite():
 # 11. PerformerLayer — batch=1
 # ===========================================================================
 
+
 def test_layer_batch1():
     layer = PerformerLayer(d_model=D_MODEL, n_heads=N_HEADS, num_features=M, causal=False)
     x = torch.randn(1, T, D_MODEL)
@@ -218,6 +225,7 @@ def test_layer_batch1():
 # ===========================================================================
 # 12. PerformerLayer — seq_len=1 (causal and non-causal)
 # ===========================================================================
+
 
 def test_layer_seqlen1():
     for causal in (False, True):
@@ -233,6 +241,7 @@ def test_layer_seqlen1():
 # ===========================================================================
 # 13. Gradient flow through PerformerLayer
 # ===========================================================================
+
 
 def test_layer_gradients():
     layer = PerformerLayer(d_model=D_MODEL, n_heads=N_HEADS, num_features=M, causal=False, seed=5)
@@ -252,6 +261,7 @@ def test_layer_gradients():
 # 14. Different seeds produce different omegas
 # ===========================================================================
 
+
 def test_different_seeds():
     orf_a = PerformerOrthogonalRF(d_head=D_HEAD, num_features=M, seed=10)
     orf_b = PerformerOrthogonalRF(d_head=D_HEAD, num_features=M, seed=99)
@@ -267,8 +277,9 @@ def test_different_seeds():
 # 15. More features (m > d_head) — no crash
 # ===========================================================================
 
+
 def test_more_features_no_crash():
-    m_large = D_HEAD * 4    # 64 > d_head=16
+    m_large = D_HEAD * 4  # 64 > d_head=16
     attn = PerformerAttention(d_head=D_HEAD, num_features=m_large, causal=False, seed=6)
     q = torch.randn(B, T, D_HEAD)
     k = torch.randn(B, T, D_HEAD)

@@ -28,40 +28,48 @@ class LinterTool:
         try:
             tree = ast.parse(source)
         except SyntaxError as e:
-            issues.append(LintIssue(
-                line=e.lineno or 0,
-                col=e.offset or 0,
-                code="E001",
-                message=str(e.msg),
-            ))
+            issues.append(
+                LintIssue(
+                    line=e.lineno or 0,
+                    col=e.offset or 0,
+                    code="E001",
+                    message=str(e.msg),
+                )
+            )
             return LintResult(issues=tuple(issues), passed=False)
 
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler) and node.type is None:
-                issues.append(LintIssue(
-                    line=node.lineno,
-                    col=node.col_offset,
-                    code="W001",
-                    message="bare except clause",
-                ))
+                issues.append(
+                    LintIssue(
+                        line=node.lineno,
+                        col=node.col_offset,
+                        code="W001",
+                        message="bare except clause",
+                    )
+                )
             elif isinstance(node, ast.Assert):
-                issues.append(LintIssue(
-                    line=node.lineno,
-                    col=node.col_offset,
-                    code="W002",
-                    message="assert statement (use explicit check)",
-                ))
+                issues.append(
+                    LintIssue(
+                        line=node.lineno,
+                        col=node.col_offset,
+                        code="W002",
+                        message="assert statement (use explicit check)",
+                    )
+                )
             elif (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Name)
                 and node.func.id == "print"
             ):
-                issues.append(LintIssue(
-                    line=node.lineno,
-                    col=node.col_offset,
-                    code="W003",
-                    message="print call (use logger)",
-                ))
+                issues.append(
+                    LintIssue(
+                        line=node.lineno,
+                        col=node.col_offset,
+                        code="W003",
+                        message="print call (use logger)",
+                    )
+                )
 
         return LintResult(issues=tuple(issues), passed=len(issues) == 0)
 

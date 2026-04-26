@@ -14,7 +14,9 @@ class VerificationResult:
     rejected_at: int | None
 
 
-def verify_draft_tokens(base_tokens: torch.Tensor, draft_tokens: torch.Tensor) -> VerificationResult:
+def verify_draft_tokens(
+    base_tokens: torch.Tensor, draft_tokens: torch.Tensor
+) -> VerificationResult:
     """Accept the longest matching prefix between base and draft proposals."""
     if base_tokens.dim() != 1 or draft_tokens.dim() != 1:
         raise ValueError("base_tokens and draft_tokens must be 1D")
@@ -40,7 +42,9 @@ def acceptance_rate(results: list[VerificationResult]) -> float:
     if not results:
         return 0.0
     numer = sum(result.accepted_length for result in results)
-    denom = sum(max(result.accepted_prefix.numel(), result.accepted_length, 1) for result in results)
+    denom = sum(
+        max(result.accepted_prefix.numel(), result.accepted_length, 1) for result in results
+    )
     return numer / denom
 
 

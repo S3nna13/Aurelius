@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import json
 import tarfile
 import tempfile
 from pathlib import Path
@@ -11,9 +10,9 @@ from pathlib import Path
 import pytest
 
 from training_data.arxiv_pipeline import (
-    ArxivPipeline,
-    DEFAULT_CONFIG,
     ARXIV_ID_RE,
+    DEFAULT_CONFIG,
+    ArxivPipeline,
     compute_math_ratio,
     compute_quality_score,
     detect_language,
@@ -23,10 +22,10 @@ from training_data.arxiv_pipeline import (
     strip_latex_commands,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def pipeline():
@@ -45,13 +44,23 @@ def sample_tex():
         r"\title{Attention Is All You Need}"
         r"\author{Ashish Vaswani, Noam Shazeer}"
         r"\begin{abstract}"
-        r"We propose a new simple network architecture, the Transformer."
+        r"We propose a new simple network architecture, the Transformer. "
+        r"This architecture is based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. "  # noqa: E501
+        r"Experiments show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. "  # noqa: E501
+        r"Our model achieves state-of-the-art results on machine translation tasks."
         r"\end{abstract}"
         r"\section{Introduction}"
-        r"The dominant sequence transduction models are based on"
-        r"complex recurrent or convolutional neural networks."
+        r"The dominant sequence transduction models are based on complex recurrent or convolutional neural networks "  # noqa: E501
+        r"which include an encoder and a decoder. The best performing models also connect the encoder and decoder through "  # noqa: E501
+        r"an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention "  # noqa: E501
+        r"mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks "  # noqa: E501
+        r"show these models to be superior in quality while being more parallelizable and requiring significantly less "  # noqa: E501
+        r"time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-to-German translation task, improving "  # noqa: E501
+        r"over the existing best results, including ensembles, by over 2 BLEU."
         r"\section{Method}"
-        r"Our model uses multi-head self-attention."
+        r"Our model uses multi-head self-attention. The Transformer follows this overall architecture using stacked "  # noqa: E501
+        r"self-attention and point-wise, fully connected layers for both the encoder and decoder. The encoder maps "  # noqa: E501
+        r"an input sequence of symbol representations to a sequence of continuous representations."
         r"\begin{equation}"
         r"Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) V"
         r"\end{equation}"
@@ -74,6 +83,7 @@ def sample_tar(temp_dir, sample_tex):
 # ---------------------------------------------------------------------------
 # Test: Config defaults
 # ---------------------------------------------------------------------------
+
 
 class TestConfig:
     def test_default_config_structure(self):
@@ -107,6 +117,7 @@ class TestConfig:
 # Test: Paper ID extraction
 # ---------------------------------------------------------------------------
 
+
 class TestIDExtraction:
     def test_extract_standard_id(self):
         assert extract_arxiv_id("1706.03762") == "1706.03762"
@@ -127,6 +138,7 @@ class TestIDExtraction:
 # ---------------------------------------------------------------------------
 # Test: Text cleaning
 # ---------------------------------------------------------------------------
+
 
 class TestTextCleaning:
     def test_strip_latex_commands(self):
@@ -175,6 +187,7 @@ class TestTextCleaning:
 # Test: Quality filtering
 # ---------------------------------------------------------------------------
 
+
 class TestQualityFilters:
     def test_math_ratio_low(self):
         text = "This is a normal paper with only a few symbols like x."
@@ -208,6 +221,7 @@ class TestQualityFilters:
 # Test: Section splitting
 # ---------------------------------------------------------------------------
 
+
 class TestSectionSplitting:
     def test_split_basic_sections(self):
         text = (
@@ -235,9 +249,10 @@ class TestSectionSplitting:
 # Test: JSONL output format
 # ---------------------------------------------------------------------------
 
+
 class TestJSONLOutput:
     def test_extract_paper_saves_txt(self, pipeline, sample_tar, temp_dir):
-        result = pipeline.extract_paper("1706.03762v1", sample_tar, temp_dir)
+        pipeline.extract_paper("1706.03762v1", sample_tar, temp_dir)
         txt_path = temp_dir / "1706.03762v1.txt"
         assert txt_path.exists()
         assert txt_path.stat().st_size > 0
@@ -276,6 +291,7 @@ class TestJSONLOutput:
 # Test: State tracking
 # ---------------------------------------------------------------------------
 
+
 class TestStateTracking:
     def test_state_initialization(self, pipeline, temp_dir):
         state = pipeline._load_state(temp_dir)
@@ -311,6 +327,7 @@ class TestStateTracking:
 # Test: Incremental / resume logic
 # ---------------------------------------------------------------------------
 
+
 class TestIncremental:
     def test_skip_processed_papers(self, pipeline, temp_dir):
         pipeline._save_state(temp_dir, {"processed_ids": ["1706.03762"]})
@@ -336,6 +353,7 @@ class TestIncremental:
 # ---------------------------------------------------------------------------
 # Test: Pipeline instantiation
 # ---------------------------------------------------------------------------
+
 
 class TestInstantiation:
     def test_pipeline_loads(self):

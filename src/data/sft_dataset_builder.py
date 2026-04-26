@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -24,34 +23,34 @@ class SFTDatasetConfig:
 
 
 class SFTDatasetBuilder:
-    def __init__(self, config: Optional[SFTDatasetConfig] = None) -> None:
+    def __init__(self, config: SFTDatasetConfig | None = None) -> None:
         self.config = config if config is not None else SFTDatasetConfig()
-        self._examples: List[SFTExample] = []
+        self._examples: list[SFTExample] = []
         self._after_filter: int = 0
         self._after_dedup: int = 0
 
     def add(self, example: SFTExample) -> None:
         self._examples.append(example)
 
-    def add_batch(self, examples: List[SFTExample]) -> None:
+    def add_batch(self, examples: list[SFTExample]) -> None:
         self._examples.extend(examples)
 
-    def filter_by_length(self, examples: Optional[List[SFTExample]] = None) -> List[SFTExample]:
+    def filter_by_length(self, examples: list[SFTExample] | None = None) -> list[SFTExample]:
         src = examples if examples is not None else self._examples
         max_len = self.config.max_length
         return [e for e in src if len(e.prompt) + len(e.response) <= max_len]
 
-    def deduplicate(self, examples: Optional[List[SFTExample]] = None) -> List[SFTExample]:
+    def deduplicate(self, examples: list[SFTExample] | None = None) -> list[SFTExample]:
         src = examples if examples is not None else self._examples
         seen: set = set()
-        result: List[SFTExample] = []
+        result: list[SFTExample] = []
         for e in src:
             if e.prompt not in seen:
                 seen.add(e.prompt)
                 result.append(e)
         return result
 
-    def build(self) -> Dict[str, List[SFTExample]]:
+    def build(self) -> dict[str, list[SFTExample]]:
         filtered = self.filter_by_length(self._examples)
         self._after_filter = len(filtered)
         deduped = self.deduplicate(filtered)
@@ -63,7 +62,7 @@ class SFTDatasetBuilder:
         split = int(len(data) * self.config.split_ratio)
         return {"train": data[:split], "val": data[split:]}
 
-    def to_jsonl_lines(self, examples: List[SFTExample]) -> List[str]:
+    def to_jsonl_lines(self, examples: list[SFTExample]) -> list[str]:
         lines = []
         for e in examples:
             record = {

@@ -6,23 +6,22 @@ Pure PyTorch, no external ML libraries.
 from __future__ import annotations
 
 import math
-from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # AttentionScoreAccumulator
 # ---------------------------------------------------------------------------
+
 
 class AttentionScoreAccumulator:
     """Track per-token importance via accumulated attention scores."""
 
     def __init__(self, recent_window: int = 4) -> None:
         self.recent_window = recent_window
-        self.accumulated: Optional[Tensor] = None  # (B, H, T_kv)
+        self.accumulated: Tensor | None = None  # (B, H, T_kv)
 
     def update(self, attn_weights: Tensor) -> None:
         """
@@ -50,9 +49,7 @@ class AttentionScoreAccumulator:
             else:
                 # Partial update (e.g. single new token attending to full cache)
                 # incoming covers [0..new_len-1]; align and add
-                self.accumulated[..., :new_len] = (
-                    self.accumulated[..., :new_len] + incoming
-                )
+                self.accumulated[..., :new_len] = self.accumulated[..., :new_len] + incoming
 
     def importance_scores(self) -> Tensor:
         """
@@ -76,6 +73,7 @@ class AttentionScoreAccumulator:
 # H2OEvictionPolicy
 # ---------------------------------------------------------------------------
 
+
 class H2OEvictionPolicy:
     """Heavy-Hitter Oracle eviction policy."""
 
@@ -83,9 +81,7 @@ class H2OEvictionPolicy:
         self.budget = budget
         self.recent_window = recent_window
 
-    def select_keep_indices(
-        self, accumulated_scores: Tensor, current_len: int
-    ) -> Tensor:
+    def select_keep_indices(self, accumulated_scores: Tensor, current_len: int) -> Tensor:
         """
         Select which KV positions to keep.
 
@@ -126,9 +122,7 @@ class H2OEvictionPolicy:
             )  # (B, heavy_budget)
             top_idx_sorted, _ = top_idx.sort(dim=-1)
         else:
-            top_idx_sorted = torch.zeros(
-                B, 0, dtype=torch.long, device=accumulated_scores.device
-            )
+            top_idx_sorted = torch.zeros(B, 0, dtype=torch.long, device=accumulated_scores.device)
 
         # Combine: heavy hitters + recency tail
         recent_exp = recent_indices.unsqueeze(0).expand(B, -1)  # (B, recent_window)
@@ -140,7 +134,7 @@ class H2OEvictionPolicy:
         keys: Tensor,
         values: Tensor,
         accumulated_scores: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """
         Evict unimportant KV pairs.
 
@@ -170,6 +164,7 @@ class H2OEvictionPolicy:
 # SnapKVPolicy
 # ---------------------------------------------------------------------------
 
+
 class SnapKVPolicy:
     """SnapKV: cluster-based KV compression using an observation window."""
 
@@ -190,7 +185,7 @@ class SnapKVPolicy:
         keys: Tensor,
         values: Tensor,
         query_window: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """
         Compress KV cache using recent query attention as importance signal.
 
@@ -220,7 +215,7 @@ class SnapKVPolicy:
         # Average over heads for a single ranking per batch
         importance_avg = importance.mean(dim=1)  # (B, T)
         _, top_idx = importance_avg.topk(budget, dim=-1)  # (B, budget)
-        top_idx_sorted, _ = top_idx.sort(dim=-1)          # (B, budget)
+        top_idx_sorted, _ = top_idx.sort(dim=-1)  # (B, budget)
 
         # Gather: expand to (B, H, budget, D)
         idx = top_idx_sorted.unsqueeze(1).unsqueeze(-1).expand(B, H, budget, D)
@@ -232,6 +227,7 @@ class SnapKVPolicy:
 # ---------------------------------------------------------------------------
 # CompressedKVCache
 # ---------------------------------------------------------------------------
+
 
 class CompressedKVCache:
     """Unified KV cache supporting H2O, SnapKV, and unlimited modes."""
@@ -249,14 +245,14 @@ class CompressedKVCache:
         self.budget = budget
 
         # Per-layer storage
-        self._keys: Dict[int, Tensor] = {}
-        self._values: Dict[int, Tensor] = {}
+        self._keys: dict[int, Tensor] = {}
+        self._values: dict[int, Tensor] = {}
 
         # Build policy objects
         if policy == "h2o":
             recent_window = policy_kwargs.get("recent_window", 4)
             self._h2o = H2OEvictionPolicy(budget=budget, recent_window=recent_window)
-            self._accumulator: Dict[int, AttentionScoreAccumulator] = {}
+            self._accumulator: dict[int, AttentionScoreAccumulator] = {}
             self._recent_window = recent_window
         elif policy == "snapkv":
             obs_window = policy_kwargs.get("observation_window", 4)
@@ -272,8 +268,8 @@ class CompressedKVCache:
         layer_idx: int,
         new_keys: Tensor,
         new_values: Tensor,
-        attn_weights: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        attn_weights: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
         """
         Append new KV pairs and compress if over budget.
 
@@ -366,6 +362,7 @@ class CompressedKVCache:
 # ---------------------------------------------------------------------------
 # KVCompressionAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class KVCompressionAnalyzer:
     """Measure compression quality metrics."""

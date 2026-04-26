@@ -1,23 +1,23 @@
 """Tests for src/alignment/thinking_tokens.py"""
 
-import torch
 import pytest
+import torch
 
 from src.alignment.thinking_tokens import (
-    THINK_START,
     THINK_END,
-    THINK_START_TOKEN_ID,
     THINK_END_TOKEN_ID,
+    THINK_START,
+    THINK_START_TOKEN_ID,
     ThinkingFormat,
+    ThinkingInferenceHelper,
     ThinkingLossWeights,
     ThinkingSFTDataset,
-    ThinkingInferenceHelper,
 )
-
 
 # ---------------------------------------------------------------------------
 # ThinkingFormat
 # ---------------------------------------------------------------------------
+
 
 def test_wrap_and_extract():
     fmt = ThinkingFormat()
@@ -38,6 +38,7 @@ def test_extract_no_thinking():
 # ---------------------------------------------------------------------------
 # ThinkingLossWeights
 # ---------------------------------------------------------------------------
+
 
 def _make_token_ids():
     """Helper: [prompt_tok, THINK_START, think_tok, THINK_END, answer_tok]"""
@@ -73,6 +74,7 @@ def test_loss_weights_structure_tokens():
 # ---------------------------------------------------------------------------
 # ThinkingSFTDataset
 # ---------------------------------------------------------------------------
+
 
 def test_create_example_shapes():
     ds = ThinkingSFTDataset()
@@ -131,6 +133,7 @@ def test_thinking_loss_weighted():
 # ---------------------------------------------------------------------------
 # ThinkingInferenceHelper
 # ---------------------------------------------------------------------------
+
 
 def test_strip_thinking():
     helper = ThinkingInferenceHelper()

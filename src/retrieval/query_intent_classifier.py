@@ -56,15 +56,27 @@ _DEFAULT_RULES: tuple[IntentRule, ...] = (
     IntentRule(
         intent="procedural",
         keywords=(
-            "steps", "how to", "guide", "tutorial",
-            "instructions", "walkthrough", "procedure",
+            "steps",
+            "how to",
+            "guide",
+            "tutorial",
+            "instructions",
+            "walkthrough",
+            "procedure",
         ),
     ),
     IntentRule(
         intent="navigational",
         keywords=(
-            "find", "locate", "access", "download", "open",
-            "navigate", "url", "link", "site",
+            "find",
+            "locate",
+            "access",
+            "download",
+            "open",
+            "navigate",
+            "url",
+            "link",
+            "site",
         ),
     ),
 )

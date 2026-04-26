@@ -12,12 +12,11 @@ import json
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # AuditEvent
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class TrailAuditEvent:
@@ -28,7 +27,7 @@ class TrailAuditEvent:
     resource: str
     outcome: str
     timestamp: float
-    metadata: Dict
+    metadata: dict
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
 
     def to_dict(self) -> dict:
@@ -52,12 +51,13 @@ AuditEvent = TrailAuditEvent
 # AuditTrail
 # ---------------------------------------------------------------------------
 
+
 class AuditTrail:
     """Append-only, bounded audit trail for security events."""
 
     def __init__(self, max_events: int = 10_000) -> None:
         self._max_events = max_events
-        self._events: List[TrailAuditEvent] = []
+        self._events: list[TrailAuditEvent] = []
 
     # ------------------------------------------------------------------
     # Writing
@@ -69,7 +69,7 @@ class AuditTrail:
         action: str,
         resource: str,
         outcome: str = "success",
-        metadata: Optional[Dict] = None,
+        metadata: dict | None = None,
     ) -> TrailAuditEvent:
         """Record a new audit event and return it."""
         event = TrailAuditEvent(
@@ -92,10 +92,10 @@ class AuditTrail:
 
     def query(
         self,
-        actor: Optional[str] = None,
-        action: Optional[str] = None,
-        outcome: Optional[str] = None,
-    ) -> List[TrailAuditEvent]:
+        actor: str | None = None,
+        action: str | None = None,
+        outcome: str | None = None,
+    ) -> list[TrailAuditEvent]:
         """Filter events by any combination of *actor*, *action*, *outcome*.
 
         A ``None`` value acts as a wildcard (matches any value).
@@ -111,7 +111,7 @@ class AuditTrail:
             result.append(ev)
         return result
 
-    def since(self, timestamp: float) -> List[TrailAuditEvent]:
+    def since(self, timestamp: float) -> list[TrailAuditEvent]:
         """Return all events with ``timestamp >= *timestamp*``."""
         return [ev for ev in self._events if ev.timestamp >= timestamp]
 

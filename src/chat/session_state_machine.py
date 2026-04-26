@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class SessionEvent(str, Enum):
+class SessionEvent(StrEnum):
     START = "start"
     USER_TURN = "user_turn"
     ASSISTANT_TURN = "assistant_turn"
@@ -17,7 +17,7 @@ class SessionEvent(str, Enum):
     END = "end"
 
 
-class SessionPhase(str, Enum):
+class SessionPhase(StrEnum):
     IDLE = "idle"
     AWAITING_INPUT = "awaiting_input"
     GENERATING = "generating"
@@ -42,10 +42,18 @@ class ChatSessionStateMachine:
 
     TRANSITIONS: list[SessionTransition] = [
         SessionTransition(SessionPhase.IDLE, SessionEvent.START, SessionPhase.AWAITING_INPUT),
-        SessionTransition(SessionPhase.AWAITING_INPUT, SessionEvent.USER_TURN, SessionPhase.GENERATING),
-        SessionTransition(SessionPhase.GENERATING, SessionEvent.ASSISTANT_TURN, SessionPhase.AWAITING_INPUT),
-        SessionTransition(SessionPhase.GENERATING, SessionEvent.TOOL_CALL, SessionPhase.TOOL_EXECUTION),
-        SessionTransition(SessionPhase.TOOL_EXECUTION, SessionEvent.TOOL_RESULT, SessionPhase.GENERATING),
+        SessionTransition(
+            SessionPhase.AWAITING_INPUT, SessionEvent.USER_TURN, SessionPhase.GENERATING
+        ),
+        SessionTransition(
+            SessionPhase.GENERATING, SessionEvent.ASSISTANT_TURN, SessionPhase.AWAITING_INPUT
+        ),
+        SessionTransition(
+            SessionPhase.GENERATING, SessionEvent.TOOL_CALL, SessionPhase.TOOL_EXECUTION
+        ),
+        SessionTransition(
+            SessionPhase.TOOL_EXECUTION, SessionEvent.TOOL_RESULT, SessionPhase.GENERATING
+        ),
     ]
 
     # Events that apply to *any* phase (with lower priority than phase-specific ones)
@@ -97,15 +105,11 @@ class ChatSessionStateMachine:
         Raises ValueError if the transition is not valid.
         """
         if self.current_phase == SessionPhase.ENDED:
-            raise ValueError(
-                f"Session is already ENDED; cannot process event {event!r}"
-            )
+            raise ValueError(f"Session is already ENDED; cannot process event {event!r}")
 
         target = self._find_target(event)
         if target is None:
-            raise ValueError(
-                f"Invalid transition: phase={self.current_phase!r}, event={event!r}"
-            )
+            raise ValueError(f"Invalid transition: phase={self.current_phase!r}, event={event!r}")
 
         self.current_phase = target
         return self.current_phase

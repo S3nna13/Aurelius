@@ -17,15 +17,15 @@ def test_registry_has_compressive_memory_entry():
 
 
 def test_registry_retains_prior_entries():
-    from src.longcontext.kv_compression import KVInt8Compressor
     from src.longcontext.attention_sinks import AttentionSinkCache
-    from src.longcontext.ring_attention import RingAttention
-    from src.longcontext.context_compaction import ContextCompactor
-    from src.longcontext.kv_cache_quantization import KIVIQuantizer
-    from src.longcontext.infini_attention import InfiniAttention
     from src.longcontext.chunked_prefill import ChunkedPrefill
+    from src.longcontext.context_compaction import ContextCompactor
+    from src.longcontext.infini_attention import InfiniAttention
+    from src.longcontext.kv_cache_quantization import KIVIQuantizer
+    from src.longcontext.kv_compression import KVInt8Compressor
     from src.longcontext.paged_kv_cache import PagedKVCache
     from src.longcontext.prefix_cache import PrefixCache
+    from src.longcontext.ring_attention import RingAttention
 
     reg = lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert reg["kv_int8"] is KVInt8Compressor

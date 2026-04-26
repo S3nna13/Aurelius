@@ -1,14 +1,14 @@
 """Staleness handler: policies for accepting/weighting delayed client updates."""
+
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import torch
 
 
-class StalenessPolicy(str, Enum):
+class StalenessPolicy(StrEnum):
     DISCARD = "DISCARD"
     DECAY = "DECAY"
     BOUNDED_DELAY = "BOUNDED_DELAY"
@@ -56,7 +56,7 @@ class StalenessHandler:
             return accepted, 1.0 if accepted else 0.0
 
         if config.policy == StalenessPolicy.DECAY:
-            weight = config.decay_factor ** staleness
+            weight = config.decay_factor**staleness
             return True, weight
 
         if config.policy == StalenessPolicy.BOUNDED_DELAY:
@@ -89,8 +89,9 @@ try:
     from src.federation.federated_learning import (  # type: ignore[import]
         FEDERATION_REGISTRY as _REG,
     )
+
     _REG["staleness_handler"] = _STALENESS_HANDLER
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 FEDERATION_REGISTRY: dict[str, object] = {"staleness_handler": _STALENESS_HANDLER}

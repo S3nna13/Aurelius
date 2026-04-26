@@ -8,24 +8,24 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SemanticCacheConfig:
     """Configuration for SemanticCache."""
+
     max_size: int = 1000
     similarity_threshold: float = 0.85
     embedding_dim: int = 64
-    eviction_policy: str = "lru"   # "lru" | "lfu" | "ttl"
+    eviction_policy: str = "lru"  # "lru" | "lfu" | "ttl"
     ttl_seconds: float = 3600.0
 
 
@@ -33,11 +33,13 @@ class SemanticCacheConfig:
 # Cache entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CacheEntry:
     """A single cached prompt → response pair."""
+
     key_text: str
-    key_embedding: torch.Tensor          # (d_model,) normalized
+    key_embedding: torch.Tensor  # (d_model,) normalized
     value: str
     hits: int = 0
     created_at: float = field(default_factory=time.time)
@@ -47,6 +49,7 @@ class CacheEntry:
 # ---------------------------------------------------------------------------
 # Text embedder
 # ---------------------------------------------------------------------------
+
 
 class TextEmbedder:
     """Embeds text by mean-pooling the final transformer layer hidden states.
@@ -99,13 +102,14 @@ class TextEmbedder:
         if hidden.dim() == 3:
             hidden = hidden.squeeze(0)  # (seq_len, d_model)
 
-        emb = hidden.mean(dim=0).float()   # (d_model,)
+        emb = hidden.mean(dim=0).float()  # (d_model,)
         return F.normalize(emb, dim=0)
 
 
 # ---------------------------------------------------------------------------
 # Cosine similarity
 # ---------------------------------------------------------------------------
+
 
 def compute_cosine_similarity(a: torch.Tensor, b: torch.Tensor) -> float:
     """Compute cosine similarity between two 1D tensors.
@@ -128,6 +132,7 @@ def compute_cosine_similarity(a: torch.Tensor, b: torch.Tensor) -> float:
 # Semantic cache
 # ---------------------------------------------------------------------------
 
+
 class SemanticCache:
     """Prompt-response cache keyed by semantic similarity.
 
@@ -142,7 +147,7 @@ class SemanticCache:
         self._misses: int = 0
 
     # ------------------------------------------------------------------
-    def lookup(self, query_embedding: torch.Tensor) -> Optional[CacheEntry]:
+    def lookup(self, query_embedding: torch.Tensor) -> CacheEntry | None:
         """Find entry with cosine similarity >= threshold.
 
         If multiple entries qualify, returns the one with highest similarity.
@@ -159,7 +164,7 @@ class SemanticCache:
             return None
 
         now = time.time()
-        best_entry: Optional[CacheEntry] = None
+        best_entry: CacheEntry | None = None
         best_sim: float = -1.0
 
         for entry in self._entries:
@@ -207,15 +212,11 @@ class SemanticCache:
 
         if policy == "ttl":
             now = time.time()
-            expired = [
-                e for e in self._entries
-                if (now - e.created_at) > self.config.ttl_seconds
-            ]
+            expired = [e for e in self._entries if (now - e.created_at) > self.config.ttl_seconds]
             if expired:
                 # Remove all expired
                 self._entries = [
-                    e for e in self._entries
-                    if (now - e.created_at) <= self.config.ttl_seconds
+                    e for e in self._entries if (now - e.created_at) <= self.config.ttl_seconds
                 ]
                 # If still at capacity after removing expired, fall through to LRU
                 if len(self._entries) < self.config.max_size:
@@ -273,6 +274,7 @@ class SemanticCache:
 # Cached inference engine
 # ---------------------------------------------------------------------------
 
+
 class CachedInferenceEngine:
     """Wraps a model with a semantic cache for fast repeated inference.
 
@@ -299,9 +301,7 @@ class CachedInferenceEngine:
         self.embedder = embedder
 
     # ------------------------------------------------------------------
-    def generate(
-        self, prompt: str, max_new_tokens: int = 64
-    ) -> tuple[str, bool]:
+    def generate(self, prompt: str, max_new_tokens: int = 64) -> tuple[str, bool]:
         """Generate a response, checking the cache first.
 
         Args:

@@ -4,13 +4,14 @@ Inspired by BUGBOUNTY_AGENT/intel/epss.py but strictly local (no network):
 combines EPSS exploitation probability with CVSS base score to produce a
 unified priority signal suitable for offline evaluation.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class ThreatLevel(str, Enum):
+class ThreatLevel(StrEnum):
     """Coarse-grained threat level labels."""
 
     CRITICAL = "critical"
@@ -63,9 +64,7 @@ class ThreatIntelEngine:
     def prioritize(self, vuln_ids: list[str]) -> list[ThreatEntry]:
         """Return known entries sorted by combined score descending."""
         entries = [self._entries[v] for v in vuln_ids or [] if v in self._entries]
-        entries.sort(
-            key=lambda e: _combined(e.epss_score, e.cvss_score), reverse=True
-        )
+        entries.sort(key=lambda e: _combined(e.epss_score, e.cvss_score), reverse=True)
         return entries
 
     def high_risk_ids(self, threshold: float = 0.7) -> list[str]:
@@ -95,7 +94,7 @@ class ThreatIntelEngine:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ThreatIntelEngine":
+    def from_dict(cls, data: dict) -> ThreatIntelEngine:
         """Load an engine from a dict produced by ``to_dict``."""
         engine = cls()
         for raw in (data or {}).get("entries", []) or []:

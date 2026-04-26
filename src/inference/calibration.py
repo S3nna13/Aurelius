@@ -8,6 +8,7 @@ This module provides:
 - Reliability diagram data
 - Sequence-level calibration via token log-prob aggregation
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,18 +20,18 @@ import torch.nn.functional as F
 
 @dataclass
 class CalibrationResult:
-    ece: float              # Expected Calibration Error (lower is better)
-    mce: float              # Maximum Calibration Error
-    brier_score: float      # Brier score (lower is better)
+    ece: float  # Expected Calibration Error (lower is better)
+    mce: float  # Maximum Calibration Error
+    brier_score: float  # Brier score (lower is better)
     n_samples: int
-    bin_confidences: list[float]   # mean confidence per bin
-    bin_accuracies: list[float]    # mean accuracy per bin
-    bin_counts: list[int]          # samples per bin
+    bin_confidences: list[float]  # mean confidence per bin
+    bin_accuracies: list[float]  # mean accuracy per bin
+    bin_counts: list[int]  # samples per bin
 
 
 def expected_calibration_error(
-    confidences: torch.Tensor,   # (N,) predicted probabilities for selected class
-    correctness: torch.Tensor,   # (N,) 0/1 whether prediction was correct
+    confidences: torch.Tensor,  # (N,) predicted probabilities for selected class
+    correctness: torch.Tensor,  # (N,) 0/1 whether prediction was correct
     n_bins: int = 15,
 ) -> CalibrationResult:
     """Compute ECE by binning predictions by confidence.
@@ -116,8 +117,8 @@ class TemperatureCalibrator(nn.Module):
 
     def fit(
         self,
-        logits: torch.Tensor,    # (N, V) or (N, T, V) validation logits
-        labels: torch.Tensor,    # (N,) or (N, T) true labels
+        logits: torch.Tensor,  # (N, V) or (N, T, V) validation logits
+        labels: torch.Tensor,  # (N,) or (N, T) true labels
         n_steps: int = 200,
         lr: float = 0.01,
     ) -> list[float]:
@@ -141,6 +142,7 @@ class TemperatureCalibrator(nn.Module):
         losses: list[float] = []
 
         for _ in range(n_steps):
+
             def closure():
                 optimizer.zero_grad()
                 scaled = logits_flat / self.log_T.exp()
@@ -266,13 +268,15 @@ class SequenceCalibrator:
             # Mean of log probs (length-normalized)
             return sum(scaled) / len(scaled)
         elif self.method == "length_penalty":
-            mean_log_prob = sum(scaled) / len(scaled)
+            sum(scaled) / len(scaled)
             # Penalize: higher mean_log_prob (less negative) is better
             # length_penalty: adjust by sequence length
             length_factor = len(token_log_probs) ** 0.6
             return sum(scaled) / length_factor
         else:
-            raise ValueError(f"Unknown method: {self.method!r}. Choose from 'product', 'mean_log', 'length_penalty'.")
+            raise ValueError(
+                f"Unknown method: {self.method!r}. Choose from 'product', 'mean_log', 'length_penalty'."  # noqa: E501
+            )
 
     def compare(
         self,

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -116,7 +116,7 @@ class DebateDebater:
         if not prompt_ids:
             prompt_ids = [0]
 
-        input_ids = torch.tensor([prompt_ids], dtype=torch.long)
+        torch.tensor([prompt_ids], dtype=torch.long)
         max_new = self.config.max_tokens_per_turn
 
         try:
@@ -138,7 +138,7 @@ class DebateDebater:
 
                     generated.append(next_token)
 
-                new_ids = generated[len(prompt_ids):]
+                new_ids = generated[len(prompt_ids) :]
                 argument = self.tokenizer_decode(new_ids)
         except Exception:
             argument = f"[Debater {self.debater_id} argument placeholder]"
@@ -180,7 +180,7 @@ class DebateSession:
             turns.append(turn)
 
         # Judge scores all arguments from this round
-        round_arguments = [t.argument for t in turns]
+        [t.argument for t in turns]
         for idx, turn in enumerate(turns):
             score = self.judge.score_argument(self.question, turn.argument)
             turns[idx] = DebateTurn(
@@ -216,9 +216,7 @@ class DebateSession:
         winning_position = max(
             self.positions,
             key=lambda p: (
-                position_scores[p] / position_counts[p]
-                if position_counts[p] > 0
-                else float("-inf")
+                position_scores[p] / position_counts[p] if position_counts[p] > 0 else float("-inf")
             ),
         )
         return winning_position, self.history

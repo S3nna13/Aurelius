@@ -145,7 +145,7 @@ def test_thread_safety_under_concurrent_calls() -> None:
         for _ in range(200):
             try:
                 cb.call(lambda: 1)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
     threads = [threading.Thread(target=worker) for _ in range(8)]
@@ -236,9 +236,7 @@ def test_determinism_with_injected_time_fn() -> None:
             cb.record_failure()
         clk.advance(11.0)
         _ = cb.state
-    assert [t.at_time for t in cb1.state_transitions] == [
-        t.at_time for t in cb2.state_transitions
-    ]
+    assert [t.at_time for t in cb1.state_transitions] == [t.at_time for t in cb2.state_transitions]
     assert [(t.from_state, t.to_state) for t in cb1.state_transitions] == [
         (t.from_state, t.to_state) for t in cb2.state_transitions
     ]

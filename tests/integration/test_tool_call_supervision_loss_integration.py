@@ -9,7 +9,10 @@ import src.training as training
 
 def test_auxiliary_loss_registry():
     assert hasattr(training, "AUXILIARY_LOSS_REGISTRY")
-    assert training.AUXILIARY_LOSS_REGISTRY.get("tool_call_supervision") is training.ToolCallSupervisionLoss
+    assert (
+        training.AUXILIARY_LOSS_REGISTRY.get("tool_call_supervision")
+        is training.ToolCallSupervisionLoss
+    )
 
 
 def test_config_default_off():

@@ -4,13 +4,12 @@ import pytest
 import torch
 
 from src.inference.format_enforcer import (
-    FormatSpec,
-    TokenMask,
-    JsonStateMachine,
-    FormatEnforcer,
     ConstrainedGenerator,
+    FormatEnforcer,
+    FormatSpec,
+    JsonStateMachine,
+    TokenMask,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -50,6 +49,7 @@ class FakeModel:
 # 1. FormatSpec fields
 # ---------------------------------------------------------------------------
 
+
 def test_format_spec_fields():
     spec = FormatSpec(
         format_type="json",
@@ -77,6 +77,7 @@ def test_format_spec_defaults():
 # 2. TokenMask.allow_all
 # ---------------------------------------------------------------------------
 
+
 def test_token_mask_allow_all_permits_every_token():
     mask = TokenMask(VOCAB_SIZE)
     # Block some first
@@ -89,6 +90,7 @@ def test_token_mask_allow_all_permits_every_token():
 # ---------------------------------------------------------------------------
 # 3. TokenMask.allow_only
 # ---------------------------------------------------------------------------
+
 
 def test_token_mask_allow_only_blocks_others():
     mask = TokenMask(VOCAB_SIZE)
@@ -108,6 +110,7 @@ def test_token_mask_allow_only_blocks_others():
 # 4. TokenMask.block
 # ---------------------------------------------------------------------------
 
+
 def test_token_mask_block_blocks_specified():
     mask = TokenMask(VOCAB_SIZE)
     mask.allow_all()
@@ -124,6 +127,7 @@ def test_token_mask_block_blocks_specified():
 # 5. TokenMask.to_logit_bias shape
 # ---------------------------------------------------------------------------
 
+
 def test_token_mask_to_logit_bias_shape():
     mask = TokenMask(VOCAB_SIZE)
     bias = mask.to_logit_bias()
@@ -133,6 +137,7 @@ def test_token_mask_to_logit_bias_shape():
 # ---------------------------------------------------------------------------
 # 6. TokenMask.to_logit_bias blocked tokens get -1e9
 # ---------------------------------------------------------------------------
+
 
 def test_token_mask_to_logit_bias_blocked_value():
     mask = TokenMask(VOCAB_SIZE)
@@ -147,6 +152,7 @@ def test_token_mask_to_logit_bias_blocked_value():
 # ---------------------------------------------------------------------------
 # 7. TokenMask.apply_to_logits shape preserved
 # ---------------------------------------------------------------------------
+
 
 def test_token_mask_apply_to_logits_shape_1d():
     mask = TokenMask(VOCAB_SIZE)
@@ -167,6 +173,7 @@ def test_token_mask_apply_to_logits_shape_2d():
 # 8. TokenMask.apply_to_logits blocked tokens get very low value
 # ---------------------------------------------------------------------------
 
+
 def test_token_mask_apply_to_logits_blocked_tokens_very_low():
     mask = TokenMask(VOCAB_SIZE)
     mask.allow_only([65])  # only 'A'
@@ -180,6 +187,7 @@ def test_token_mask_apply_to_logits_blocked_tokens_very_low():
 # ---------------------------------------------------------------------------
 # 9. JsonStateMachine.update changes state
 # ---------------------------------------------------------------------------
+
 
 def test_json_state_machine_update_changes_state():
     sm = JsonStateMachine()
@@ -198,6 +206,7 @@ def test_json_state_machine_done_after_close():
 # ---------------------------------------------------------------------------
 # 10. JsonStateMachine.allowed_next_bytes returns list of ints
 # ---------------------------------------------------------------------------
+
 
 def test_json_state_machine_allowed_next_bytes_returns_list():
     sm = JsonStateMachine()
@@ -224,6 +233,7 @@ def test_json_state_machine_done_allows_nothing():
 # 11. FormatEnforcer.get_allowed_tokens returns TokenMask
 # ---------------------------------------------------------------------------
 
+
 def test_format_enforcer_get_allowed_tokens_returns_token_mask():
     spec = FormatSpec(format_type="free")
     enforcer = FormatEnforcer(spec, dummy_tokenizer_encode, VOCAB_SIZE)
@@ -235,18 +245,19 @@ def test_format_enforcer_get_allowed_tokens_returns_token_mask():
 # 12. FormatEnforcer.is_complete with suffix present
 # ---------------------------------------------------------------------------
 
+
 def test_format_enforcer_is_complete_with_suffix():
     spec = FormatSpec(format_type="json", required_suffix="}")
     enforcer = FormatEnforcer(spec, dummy_tokenizer_encode, VOCAB_SIZE)
     # Generate something ending with '}'
-    generated = list('{"key": "val"}'.encode("utf-8"))
+    generated = list(b'{"key": "val"}')
     assert enforcer.is_complete(generated) is True
 
 
 def test_format_enforcer_is_complete_without_suffix():
     spec = FormatSpec(format_type="json", required_suffix="}")
     enforcer = FormatEnforcer(spec, dummy_tokenizer_encode, VOCAB_SIZE)
-    generated = list('{"key": "val"'.encode("utf-8"))  # missing closing brace
+    generated = list(b'{"key": "val"')  # missing closing brace
     assert enforcer.is_complete(generated) is False
 
 
@@ -260,6 +271,7 @@ def test_format_enforcer_is_complete_no_suffix_always_true():
 # ---------------------------------------------------------------------------
 # 13. ConstrainedGenerator.generate returns string
 # ---------------------------------------------------------------------------
+
 
 def test_constrained_generator_generate_returns_string():
     model = FakeModel(VOCAB_SIZE)
@@ -286,6 +298,7 @@ def test_constrained_generator_generate_respects_max_new_tokens():
 # 14. FormatEnforcer.enforce_prefix returns logits same shape
 # ---------------------------------------------------------------------------
 
+
 def test_format_enforcer_enforce_prefix_shape_1d():
     spec = FormatSpec(format_type="free")
     enforcer = FormatEnforcer(spec, dummy_tokenizer_encode, VOCAB_SIZE)
@@ -306,6 +319,7 @@ def test_format_enforcer_enforce_prefix_shape_2d():
 # ---------------------------------------------------------------------------
 # 15. FormatEnforcer prefix enforcement forces first tokens
 # ---------------------------------------------------------------------------
+
 
 def test_format_enforcer_prefix_forces_first_token():
     """With required_prefix='AB', position 0 should only allow ord('A')=65."""

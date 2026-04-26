@@ -1,22 +1,23 @@
 """Integration test for MultimodalThinkingChain — end-to-end chain building,
 budget accounting, limit enforcement, and registry wiring.
 """
+
 from __future__ import annotations
 
 import pytest
 
+from src.inference import DECODER_REGISTRY
 from src.inference.multimodal_thinking_chain import (
     MultimodalThinkingChain,
     MultimodalThinkingConfig,
     StepType,
     VisionStepLimitError,
 )
-from src.inference import DECODER_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Integration test: full chain exercise
 # ---------------------------------------------------------------------------
+
 
 def test_multimodal_thinking_chain_integration():
     """Build a constrained chain, verify accounting, limits, and registry."""
@@ -34,19 +35,19 @@ def test_multimodal_thinking_chain_integration():
     chain = MultimodalThinkingChain(config)
 
     # Add THINK step with 50 tokens
-    think_tokens = list(range(1, 51))           # 50 tokens
+    think_tokens = list(range(1, 51))  # 50 tokens
     chain.add_step(StepType.THINK, think_tokens)
 
     # Add VISION step with 10 tokens
-    vision_tokens = list(range(100, 110))        # 10 tokens
+    vision_tokens = list(range(100, 110))  # 10 tokens
     chain.add_step(StepType.VISION, vision_tokens)
 
     # Add TOOL_CALL step with 5 tokens
-    tool_tokens = list(range(200, 205))          # 5 tokens
+    tool_tokens = list(range(200, 205))  # 5 tokens
     chain.add_step(StepType.TOOL_CALL, tool_tokens)
 
     # Add TOOL_RESULT step with 3 tokens
-    result_tokens = list(range(300, 303))        # 3 tokens
+    result_tokens = list(range(300, 303))  # 3 tokens
     chain.add_step(StepType.TOOL_RESULT, result_tokens)
 
     # -----------------------------------------------------------------------
@@ -67,9 +68,9 @@ def test_multimodal_thinking_chain_integration():
     # 4. Verify budget_remaining
     # -----------------------------------------------------------------------
     remaining = chain.budget_remaining()
-    assert remaining["steps"] == 1               # 5 - 4 = 1
-    assert remaining["thinking_tokens"] == 50    # 100 - 50 = 50
-    assert remaining["vision_steps"] == 1        # 2 - 1 = 1
+    assert remaining["steps"] == 1  # 5 - 4 = 1
+    assert remaining["thinking_tokens"] == 50  # 100 - 50 = 50
+    assert remaining["vision_steps"] == 1  # 2 - 1 = 1
 
     # -----------------------------------------------------------------------
     # 5. Add a second VISION step — still within limit

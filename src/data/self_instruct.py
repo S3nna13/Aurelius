@@ -9,17 +9,18 @@ from __future__ import annotations
 
 import random
 import re
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Instruction:
     """A single instruction-following example."""
+
     instruction: str
     input: str = ""
     output: str = ""
@@ -31,7 +32,8 @@ class Instruction:
 # ROUGE-L implementation (pure Python)
 # ---------------------------------------------------------------------------
 
-def lcs_length(a: List[str], b: List[str]) -> int:
+
+def lcs_length(a: list[str], b: list[str]) -> int:
     """Compute the length of the Longest Common Subsequence of two token lists."""
     m, n = len(a), len(b)
     if m == 0 or n == 0:
@@ -49,7 +51,7 @@ def lcs_length(a: List[str], b: List[str]) -> int:
     return prev[n]
 
 
-def _tokenize(text: str) -> List[str]:
+def _tokenize(text: str) -> list[str]:
     """Simple whitespace tokenizer (lowercased)."""
     return text.lower().split()
 
@@ -79,9 +81,10 @@ def rouge_l_similarity(a: str, b: str) -> float:
 # Filtering helpers
 # ---------------------------------------------------------------------------
 
+
 def filter_instruction(
     instruction: str,
-    existing_instructions: List[str],
+    existing_instructions: list[str],
     rouge_threshold: float = 0.7,
     min_length: int = 10,
     max_length: int = 500,
@@ -133,7 +136,8 @@ def is_classification_task(instruction: str) -> bool:
 # Prompt builders
 # ---------------------------------------------------------------------------
 
-def build_instruction_prompt(sampled: List[Instruction], n_examples: int = 8) -> str:
+
+def build_instruction_prompt(sampled: list[Instruction], n_examples: int = 8) -> str:
     """Build the few-shot prompt for instruction generation.
 
     Uses up to n_examples instructions from `sampled` as demonstrations,
@@ -180,7 +184,8 @@ def build_instance_prompt(instruction: Instruction) -> str:
 # Parsing
 # ---------------------------------------------------------------------------
 
-def parse_generated_instructions(raw_text: str) -> List[str]:
+
+def parse_generated_instructions(raw_text: str) -> list[str]:
     """Parse model output into individual instruction strings.
 
     Handles numbered lists like:
@@ -188,7 +193,7 @@ def parse_generated_instructions(raw_text: str) -> List[str]:
         2. Write a poem about X.
     and plain newline-separated text.
     """
-    instructions: List[str] = []
+    instructions: list[str] = []
     # Try to match numbered items first (e.g. "1. ...", "1) ...")
     numbered = re.findall(r"^\s*\d+[.)]\s+(.+)", raw_text, re.MULTILINE)
     if numbered:
@@ -209,16 +214,17 @@ def parse_generated_instructions(raw_text: str) -> List[str]:
 # Instruction pool
 # ---------------------------------------------------------------------------
 
+
 class InstructionPool:
     """Manages seed + generated instructions with ROUGE-L deduplication."""
 
     def __init__(
         self,
-        seed_instructions: List[Instruction],
+        seed_instructions: list[Instruction],
         rouge_threshold: float = 0.7,
         seed: int = 42,
     ) -> None:
-        self._pool: List[Instruction] = list(seed_instructions)
+        self._pool: list[Instruction] = list(seed_instructions)
         self._rouge_threshold = rouge_threshold
         self._rng = random.Random(seed)
 
@@ -237,7 +243,7 @@ class InstructionPool:
         self._pool.append(instr)
         return True
 
-    def sample(self, n: int = 8) -> List[Instruction]:
+    def sample(self, n: int = 8) -> list[Instruction]:
         """Sample n instructions for few-shot prompt (mix of seed + generated)."""
         n = min(n, len(self._pool))
         return self._rng.sample(self._pool, n)
@@ -245,7 +251,7 @@ class InstructionPool:
     def __len__(self) -> int:
         return len(self._pool)
 
-    def to_list(self) -> List[Instruction]:
+    def to_list(self) -> list[Instruction]:
         """Return a copy of all instructions in the pool."""
         return list(self._pool)
 
@@ -253,6 +259,7 @@ class InstructionPool:
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 class SelfInstructPipeline:
     """Full Self-Instruct pipeline (Wang et al. 2022).
@@ -263,7 +270,7 @@ class SelfInstructPipeline:
 
     def __init__(
         self,
-        seed_instructions: List[Instruction],
+        seed_instructions: list[Instruction],
         generate_fn: Callable[[str], str],
         rouge_threshold: float = 0.7,
         n_few_shot: int = 8,
@@ -273,7 +280,7 @@ class SelfInstructPipeline:
         self._rouge_threshold = rouge_threshold
         self._n_few_shot = n_few_shot
         self._max_instructions = max_instructions
-        self._generated: List[Instruction] = []
+        self._generated: list[Instruction] = []
         self._pool = InstructionPool(
             seed_instructions,
             rouge_threshold=rouge_threshold,
@@ -283,13 +290,13 @@ class SelfInstructPipeline:
     # Public API
     # ------------------------------------------------------------------
 
-    def generate_batch(self, n_new: int = 20) -> List[Instruction]:
+    def generate_batch(self, n_new: int = 20) -> list[Instruction]:
         """Run one cycle: sample, prompt, generate, filter.
 
         Returns the list of new Instruction objects that were successfully
         added to the pool in this cycle.
         """
-        added: List[Instruction] = []
+        added: list[Instruction] = []
 
         if len(self._pool) >= self._max_instructions:
             return added
@@ -350,7 +357,7 @@ class SelfInstructPipeline:
 
         return added
 
-    def run(self, n_iterations: int = 5, n_per_iter: int = 10) -> List[Instruction]:
+    def run(self, n_iterations: int = 5, n_per_iter: int = 10) -> list[Instruction]:
         """Run full self-instruct loop.
 
         Returns all generated (non-seed) instructions accumulated so far.
@@ -361,7 +368,7 @@ class SelfInstructPipeline:
             self.generate_batch(n_new=n_per_iter)
         return list(self._generated)
 
-    def export_sft_dataset(self) -> List[Dict[str, str]]:
+    def export_sft_dataset(self) -> list[dict[str, str]]:
         """Export as list of {"instruction": ..., "input": ..., "output": ...} dicts."""
         results = []
         for instr in self._pool.to_list():
@@ -384,6 +391,7 @@ class SelfInstructPipeline:
 # Low-quality output filter (internal)
 # ---------------------------------------------------------------------------
 
+
 def _is_low_quality_output(instr: Instruction) -> bool:
     """Return True if the output should be rejected as low quality.
 
@@ -404,7 +412,8 @@ def _is_low_quality_output(instr: Instruction) -> bool:
 # Seed instructions
 # ---------------------------------------------------------------------------
 
-def make_seed_instructions() -> List[Instruction]:
+
+def make_seed_instructions() -> list[Instruction]:
     """Return 20 diverse seed instructions for testing and bootstrapping."""
     seeds = [
         Instruction(
@@ -479,7 +488,7 @@ def make_seed_instructions() -> List[Instruction]:
             source="seed",
         ),
         Instruction(
-            instruction="Identify whether the following text expresses positive, neutral, or negative sentiment.",
+            instruction="Identify whether the following text expresses positive, neutral, or negative sentiment.",  # noqa: E501
             is_classification=True,
             source="seed",
         ),

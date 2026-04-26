@@ -7,7 +7,6 @@ No external dependencies — pure PyTorch.
 
 from __future__ import annotations
 
-import math
 import logging
 
 import torch
@@ -102,7 +101,7 @@ class EmbeddingBERTScore:
         Returns: {'precision': float, 'recall': float, 'f1': float}
         """
         cand_emb = self.encode(candidate_ids)  # (C, d)
-        ref_emb = self.encode(reference_ids)   # (R, d)
+        ref_emb = self.encode(reference_ids)  # (R, d)
 
         if self.idf_weights is not None:
             cand_idf = self.idf_weights[torch.tensor(candidate_ids, dtype=torch.long)]
@@ -137,9 +136,7 @@ class EmbeddingBERTScore:
         references: list[list[int]],
     ) -> list[dict]:
         """Score multiple (candidate, reference) pairs."""
-        return [
-            self.score(cand, ref) for cand, ref in zip(candidates, references)
-        ]
+        return [self.score(cand, ref) for cand, ref in zip(candidates, references)]
 
     def corpus_score(
         self,

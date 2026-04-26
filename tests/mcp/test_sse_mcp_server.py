@@ -6,11 +6,8 @@ error handling, registry population, and start/stop lifecycle.
 
 from __future__ import annotations
 
-import random
-import time
 import importlib
-
-import pytest
+import random
 
 from src.mcp.mcp_server import MCP_SERVER_REGISTRY
 from src.mcp.sse_mcp_server import (
@@ -18,7 +15,6 @@ from src.mcp.sse_mcp_server import (
     SSEMCPServer,
     SSEMCPServerConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # SSEMCPServerConfig defaults
@@ -43,8 +39,10 @@ class TestSSEMCPServerConfigDefaults:
         assert cfg.cors_origins == []
 
     def test_custom_values(self):
-        cfg = SSEMCPServerConfig(host="0.0.0.0", port=9999, path="/mcp", cors_origins=["https://example.com"])
-        assert cfg.host == "0.0.0.0"
+        cfg = SSEMCPServerConfig(
+            host="0.0.0.0", port=9999, path="/mcp", cors_origins=["https://example.com"]  # noqa: S104
+        )
+        assert cfg.host == "0.0.0.0"  # noqa: S104
         assert cfg.port == 9999
         assert cfg.path == "/mcp"
         assert cfg.cors_origins == ["https://example.com"]

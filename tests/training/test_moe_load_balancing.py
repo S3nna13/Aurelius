@@ -11,10 +11,9 @@ import torch
 import torch.nn as nn
 
 from src.training.moe_load_balancing import (
-    LoadBalancingConfig,
     LoadBalancedMoELayer,
+    LoadBalancingConfig,
     MoELoadBalancer,
-    combine_expert_outputs,
     compute_aux_load_balance_loss,
     compute_expert_utilization,
     compute_router_z_loss,
@@ -25,12 +24,12 @@ from src.training.moe_load_balancing import (
 # Shared constants
 # ---------------------------------------------------------------------------
 
-N = 32       # number of tokens (B*T)
-E = 4        # n_experts
-K = 2        # top_k
-D = 16       # d_model
-B = 4        # batch size
-T = 8        # sequence length  (B * T == N)
+N = 32  # number of tokens (B*T)
+E = 4  # n_experts
+K = 2  # top_k
+D = 16  # d_model
+B = 4  # batch size
+T = 8  # sequence length  (B * T == N)
 
 
 def _uniform_logits() -> torch.Tensor:
@@ -59,6 +58,7 @@ def _single_expert_mask() -> torch.Tensor:
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = LoadBalancingConfig()
     assert cfg.n_experts == 8
@@ -73,6 +73,7 @@ def test_config_defaults():
 # 2. test_compute_router_z_loss_shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_router_z_loss_shape():
     logits = torch.randn(N, E)
     z = compute_router_z_loss(logits)
@@ -82,6 +83,7 @@ def test_compute_router_z_loss_shape():
 # ---------------------------------------------------------------------------
 # 3. test_compute_router_z_loss_nonneg
 # ---------------------------------------------------------------------------
+
 
 def test_compute_router_z_loss_nonneg():
     logits = torch.randn(N, E)
@@ -93,14 +95,15 @@ def test_compute_router_z_loss_nonneg():
 # 4. test_compute_aux_loss_balanced
 # ---------------------------------------------------------------------------
 
+
 def test_compute_aux_loss_balanced():
     """Perfectly balanced routing should give lower aux loss than all-to-one."""
     probs_uniform = torch.full((N, E), 1.0 / E)
     mask_balanced = _uniform_mask()
     mask_skewed = _single_expert_mask()
 
-    loss_balanced = compute_aux_load_balance_loss(probs_uniform, mask_balanced)
-    loss_skewed = compute_aux_load_balance_loss(probs_uniform, mask_skewed)
+    compute_aux_load_balance_loss(probs_uniform, mask_balanced)
+    compute_aux_load_balance_loss(probs_uniform, mask_skewed)
 
     # With uniform probs and uniform mask: loss = E * E * (1/E)^2 = 1.0
     # With skewed mask: all load on expert 0 → f_0 = 1 → loss = E * (1 * 1/E) = 1.0
@@ -121,6 +124,7 @@ def test_compute_aux_loss_balanced():
 # 5. test_compute_aux_loss_shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_aux_loss_shape():
     probs = torch.full((N, E), 1.0 / E)
     mask = _uniform_mask()
@@ -132,17 +136,17 @@ def test_compute_aux_loss_shape():
 # 6. test_compute_expert_utilization_keys
 # ---------------------------------------------------------------------------
 
+
 def test_compute_expert_utilization_keys():
     mask = _uniform_mask()
     result = compute_expert_utilization(mask)
-    assert set(result.keys()) == {
-        "utilization_std", "min_utilization", "max_utilization", "cv"
-    }
+    assert set(result.keys()) == {"utilization_std", "min_utilization", "max_utilization", "cv"}
 
 
 # ---------------------------------------------------------------------------
 # 7. test_compute_expert_utilization_balanced
 # ---------------------------------------------------------------------------
+
 
 def test_compute_expert_utilization_balanced():
     """Uniform routing should give near-zero coefficient of variation."""
@@ -157,6 +161,7 @@ def test_compute_expert_utilization_balanced():
 # 8. test_top_k_routing_shapes
 # ---------------------------------------------------------------------------
 
+
 def test_top_k_routing_shapes():
     logits = torch.randn(N, E)
     router_probs, expert_mask, top_k_indices = top_k_routing(logits, top_k=K)
@@ -169,6 +174,7 @@ def test_top_k_routing_shapes():
 # ---------------------------------------------------------------------------
 # 9. test_top_k_routing_probs_normalized
 # ---------------------------------------------------------------------------
+
 
 def test_top_k_routing_probs_normalized():
     """The full softmax router_probs should sum to ~1 per token."""
@@ -185,21 +191,19 @@ def test_top_k_routing_probs_normalized():
 # 10. test_top_k_routing_capacity_respected
 # ---------------------------------------------------------------------------
 
+
 def test_top_k_routing_capacity_respected():
     """No expert should receive more than capacity tokens."""
     logits = torch.randn(N, E)
     cfg = LoadBalancingConfig(n_experts=E, top_k=K, capacity_factor=1.25)
     capacity = max(1, int(N / E * cfg.capacity_factor * K))
 
-    _, expert_mask, _ = top_k_routing(
-        logits, top_k=K, capacity_factor=cfg.capacity_factor
-    )
+    _, expert_mask, _ = top_k_routing(logits, top_k=K, capacity_factor=cfg.capacity_factor)
 
     per_expert_counts = expert_mask.sum(dim=0)  # (E,)
     for e in range(E):
         assert per_expert_counts[e].item() <= capacity + 1e-6, (
-            f"Expert {e} received {per_expert_counts[e].item()} tokens "
-            f"but capacity is {capacity}"
+            f"Expert {e} received {per_expert_counts[e].item()} tokens but capacity is {capacity}"
         )
 
 
@@ -207,11 +211,10 @@ def test_top_k_routing_capacity_respected():
 # 11. test_moe_layer_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_moe_layer_output_shape():
     cfg = LoadBalancingConfig(n_experts=E, top_k=K)
-    layer = LoadBalancedMoELayer(
-        d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg
-    )
+    layer = LoadBalancedMoELayer(d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg)
     x = torch.randn(B, T, D)
     output, _ = layer(x)
     assert output.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {output.shape}"
@@ -221,11 +224,10 @@ def test_moe_layer_output_shape():
 # 12. test_moe_layer_aux_loss_keys
 # ---------------------------------------------------------------------------
 
+
 def test_moe_layer_aux_loss_keys():
     cfg = LoadBalancingConfig(n_experts=E, top_k=K)
-    layer = LoadBalancedMoELayer(
-        d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg
-    )
+    layer = LoadBalancedMoELayer(d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg)
     x = torch.randn(B, T, D)
     _, aux_losses = layer(x)
     assert set(aux_losses.keys()) == {"aux_loss", "z_loss", "total_aux"}
@@ -235,11 +237,10 @@ def test_moe_layer_aux_loss_keys():
 # 13. test_moe_layer_aux_loss_positive
 # ---------------------------------------------------------------------------
 
+
 def test_moe_layer_aux_loss_positive():
     cfg = LoadBalancingConfig(n_experts=E, top_k=K)
-    layer = LoadBalancedMoELayer(
-        d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg
-    )
+    layer = LoadBalancedMoELayer(d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg)
     x = torch.randn(B, T, D)
     _, aux_losses = layer(x)
     assert aux_losses["total_aux"].item() > 0.0, "total_aux should be positive"
@@ -249,11 +250,10 @@ def test_moe_layer_aux_loss_positive():
 # 14. test_load_balancer_combined_loss_keys
 # ---------------------------------------------------------------------------
 
+
 def test_load_balancer_combined_loss_keys():
     cfg = LoadBalancingConfig(n_experts=E, top_k=K)
-    layer = LoadBalancedMoELayer(
-        d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg
-    )
+    layer = LoadBalancedMoELayer(d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg)
     x = torch.randn(B, T, D)
     _, aux_losses = layer(x)
 
@@ -268,12 +268,11 @@ def test_load_balancer_combined_loss_keys():
 # 15. test_load_balancer_total_exceeds_task
 # ---------------------------------------------------------------------------
 
+
 def test_load_balancer_total_exceeds_task():
     """total_loss should be greater than task_loss when aux losses are positive."""
     cfg = LoadBalancingConfig(n_experts=E, top_k=K, aux_loss_coeff=0.01, z_loss_coeff=0.001)
-    layer = LoadBalancedMoELayer(
-        d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg
-    )
+    layer = LoadBalancedMoELayer(d_model=D, d_expert=D * 4, n_experts=E, top_k=K, cfg=cfg)
     x = torch.randn(B, T, D)
     _, aux_losses = layer(x)
 
@@ -282,6 +281,5 @@ def test_load_balancer_total_exceeds_task():
     total_loss, info = balancer.compute_combined_loss(task_loss, [aux_losses])
 
     assert info["total_loss"] > info["task_loss"], (
-        f"total_loss ({info['total_loss']:.6f}) should exceed "
-        f"task_loss ({info['task_loss']:.6f})"
+        f"total_loss ({info['total_loss']:.6f}) should exceed task_loss ({info['task_loss']:.6f})"
     )

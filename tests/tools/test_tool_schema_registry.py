@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import pytest
-
 from src.tools.tool_schema_registry import (
+    TOOL_SCHEMA_REGISTRY,
     ParameterSchema,
     ToolSchema,
     ToolSchemaRegistry,
-    TOOL_SCHEMA_REGISTRY,
 )
 
 
@@ -131,9 +129,7 @@ class TestToolSchemaRegistry:
         schema = ToolSchema(
             name="mode_tool",
             description="choose mode",
-            parameters=[
-                ParameterSchema(name="mode", type="string", enum=["a", "b"])
-            ],
+            parameters=[ParameterSchema(name="mode", type="string", enum=["a", "b"])],
         )
         reg.register(schema)
         d = reg.to_dict("mode_tool")

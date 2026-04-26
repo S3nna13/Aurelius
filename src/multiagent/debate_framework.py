@@ -1,9 +1,10 @@
 """Multiagent debate framework based on Du et al. 2023."""
+
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass

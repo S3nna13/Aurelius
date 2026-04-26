@@ -1,10 +1,10 @@
 """Tests for flops_profiler — FLOPs estimation for transformer layers."""
+
 from __future__ import annotations
 
-import torch
 import torch.nn as nn
 
-from src.profiling.flops_profiler import FlopsProfiler, flops_for_linear, flops_for_attention
+from src.profiling.flops_profiler import FlopsProfiler, flops_for_attention, flops_for_linear
 
 
 class TestFlopsForLinear:
@@ -55,7 +55,9 @@ class TestFlopsProfiler:
 
     def test_profile_transformer_block(self):
         d = 64
-        block = nn.TransformerEncoderLayer(d_model=d, nhead=4, dim_feedforward=256, batch_first=True)
+        block = nn.TransformerEncoderLayer(
+            d_model=d, nhead=4, dim_feedforward=256, batch_first=True
+        )
         profiler = FlopsProfiler()
         result = profiler.profile(block, input_shape=(1, 16, d))
         assert result > 0

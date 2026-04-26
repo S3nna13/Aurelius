@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+
 import pytest
 import torch
 
@@ -10,26 +11,32 @@ from src.eval.reasoning_bench import (
     BenchmarkConfig,
     Problem,
     ReasoningBenchmark,
-    generate_arithmetic_problem,
+    evaluate_chain_of_thought,
     generate_analogy_problem,
+    generate_arithmetic_problem,
     generate_logic_problem,
     generate_sequence_problem,
-    evaluate_chain_of_thought,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def small_model():
     torch.manual_seed(0)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -62,6 +69,7 @@ def bench(fast_config):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_benchmark_config_defaults():
     """BenchmarkConfig has expected default values."""
@@ -205,4 +213,7 @@ def test_evaluate_chain_of_thought_keys(small_model, bench):
     assert isinstance(results["cot_accuracy"], float)
     assert isinstance(results["direct_accuracy"], float)
     # cot_improvement = cot_accuracy - direct_accuracy
-    assert abs(results["cot_improvement"] - (results["cot_accuracy"] - results["direct_accuracy"])) < 1e-9
+    assert (
+        abs(results["cot_improvement"] - (results["cot_accuracy"] - results["direct_accuracy"]))
+        < 1e-9
+    )

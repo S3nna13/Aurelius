@@ -28,32 +28,32 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Mamba2Config:
     """Hyperparameters for the Mamba-2 SSD layer."""
 
-    n_heads: int = 8            # number of SSM heads (analogous to attention heads)
-    d_state: int = 64           # SSM state dimension N (per B/C vector)
-    head_dim: int = 64          # dimension per head (d_inner = n_heads * head_dim)
-    expand: int = 2             # expansion factor for z gate projection
-    dt_rank: str | int = "auto" # if "auto" → n_heads (one dt per head)
+    n_heads: int = 8  # number of SSM heads (analogous to attention heads)
+    d_state: int = 64  # SSM state dimension N (per B/C vector)
+    head_dim: int = 64  # dimension per head (d_inner = n_heads * head_dim)
+    expand: int = 2  # expansion factor for z gate projection
+    dt_rank: str | int = "auto"  # if "auto" → n_heads (one dt per head)
 
 
 # ---------------------------------------------------------------------------
 # SSD Core (Algorithm 1 from paper)
 # ---------------------------------------------------------------------------
+
 
 class SSDLayer(nn.Module):
     """Structured State Space Duality (SSD) core scan.
@@ -95,12 +95,12 @@ class SSDLayer(nn.Module):
 
     def forward(
         self,
-        X: Tensor,           # (B, T, n_heads, head_dim)
-        delta: Tensor,       # (B, T, n_heads) — after softplus + dt_bias
-        B: Tensor,           # (B, T, d_state)
-        C: Tensor,           # (B, T, d_state)
-        h0: Optional[Tensor] = None,  # (B, n_heads, head_dim, d_state) or None
-    ) -> Tuple[Tensor, Tensor]:
+        X: Tensor,  # (B, T, n_heads, head_dim)
+        delta: Tensor,  # (B, T, n_heads) — after softplus + dt_bias
+        B: Tensor,  # (B, T, d_state)
+        C: Tensor,  # (B, T, d_state)
+        h0: Tensor | None = None,  # (B, n_heads, head_dim, d_state) or None
+    ) -> tuple[Tensor, Tensor]:
         """Run SSD recurrent scan.
 
         Returns:
@@ -113,10 +113,7 @@ class SSDLayer(nn.Module):
         dtype = X.dtype
 
         if h0 is None:
-            h = torch.zeros(
-                batch_size, n_heads, head_dim, d_state,
-                device=device, dtype=dtype
-            )
+            h = torch.zeros(batch_size, n_heads, head_dim, d_state, device=device, dtype=dtype)
         else:
             h = h0.to(dtype=dtype)
 
@@ -126,9 +123,7 @@ class SSDLayer(nn.Module):
             # dA: (B, n_heads) = exp(delta_t * A_log) — note: A = -exp(A_log)
             # We compute: dA = exp(delta * (-exp(A_log))) = exp(-delta * exp(A_log))
             # Equivalent to: dA = (-exp(A_log)).unsqueeze broadcast
-            dA = torch.exp(
-                delta[:, t, :] * (-torch.exp(self.A_log))
-            )  # (B, n_heads)
+            dA = torch.exp(delta[:, t, :] * (-torch.exp(self.A_log)))  # (B, n_heads)
 
             # dB: (B, n_heads, d_state) = delta_t * B_t, broadcast across heads
             # B[:, t, :]: (B, d_state) → (B, 1, d_state) broadcast to (B, n_heads, d_state)
@@ -140,9 +135,8 @@ class SSDLayer(nn.Module):
             # dA: (B, n_heads) → (B, n_heads, 1, 1) for broadcast
             # X[:, t]: (B, n_heads, head_dim) → (B, n_heads, head_dim, 1) for outer product
             # dB: (B, n_heads, d_state) → (B, n_heads, 1, d_state) for outer product
-            h = (
-                dA.unsqueeze(-1).unsqueeze(-1) * h
-                + X[:, t].unsqueeze(-1) * dB.unsqueeze(2)
+            h = dA.unsqueeze(-1).unsqueeze(-1) * h + X[:, t].unsqueeze(-1) * dB.unsqueeze(
+                2
             )  # (B, n_heads, head_dim, d_state)
 
             # Output: y_t = h @ C_t  (contract over d_state)
@@ -159,6 +153,7 @@ class SSDLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # Mamba2Block — full Mamba-2 block (Section 5)
 # ---------------------------------------------------------------------------
+
 
 class Mamba2Block(nn.Module):
     """Full Mamba-2 block implementing the SSD architecture.
@@ -224,9 +219,7 @@ class Mamba2Block(nn.Module):
 
         # dt_bias: per-head bias added to dt_raw before softplus
         # Initialized with small positive values for stable initial Δ
-        self.dt_bias = nn.Parameter(
-            torch.full((n_heads,), fill_value=math.log(0.1))
-        )
+        self.dt_bias = nn.Parameter(torch.full((n_heads,), fill_value=math.log(0.1)))
 
         # SSD core
         self.ssd = SSDLayer(n_heads=n_heads, head_dim=head_dim, d_state=d_state)
@@ -242,8 +235,8 @@ class Mamba2Block(nn.Module):
     def forward(
         self,
         x: Tensor,
-        hidden_state: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        hidden_state: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
         """
         Args:
             x: (B, T, d_model)
@@ -290,7 +283,7 @@ class Mamba2Block(nn.Module):
 
         # Gate with SiLU(z)
         z_gated = self.z_gate_proj(F.silu(z))  # (B, T, d_inner)
-        y_gated = y_flat * z_gated              # (B, T, d_inner)
+        y_gated = y_flat * z_gated  # (B, T, d_inner)
 
         # Output projection
         output = self.out_proj(y_gated)  # (B, T, d_model)

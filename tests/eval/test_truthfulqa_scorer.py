@@ -7,7 +7,6 @@ import pytest
 from src.eval.truthfulqa_scorer import (
     TRUTHFULQA_REGISTRY,
     TruthfulQAQuestion,
-    TruthfulQAResult,
     TruthfulQAScorer,
 )
 

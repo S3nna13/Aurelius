@@ -16,12 +16,20 @@ class StructuredPruner:
         try:
             self.strategy = PruningStrategy(strategy)
         except ValueError:
-            raise ValueError(f"Unknown pruning strategy: {strategy}. Options: neurons, heads, channels")
+            raise ValueError(
+                f"Unknown pruning strategy: {strategy}. Options: neurons, heads, channels"
+            )
         if not 0.0 <= amount <= 1.0:
             raise ValueError(f"amount must be in [0,1], got {amount}")
         self.amount = amount
 
-    def prune(self, weight: torch.Tensor, dim: int = 0, groups: int | None = None, group_size: int | None = None) -> torch.Tensor:
+    def prune(
+        self,
+        weight: torch.Tensor,
+        dim: int = 0,
+        groups: int | None = None,
+        group_size: int | None = None,
+    ) -> torch.Tensor:
         pruned = weight.clone()
         if self.amount <= 0.0:
             return pruned

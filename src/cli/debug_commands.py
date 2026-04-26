@@ -1,11 +1,11 @@
 """CLI debug commands: log level control, trace toggling, memory snapshot."""
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
@@ -51,7 +51,7 @@ class DebugCommands:
 
     def snapshot(self) -> DebugSnapshot:
         return DebugSnapshot(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             log_level=self._log_level.value,
             traces_enabled=self._traces_enabled,
             metrics=dict(self._metrics),

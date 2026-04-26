@@ -37,17 +37,17 @@ Pure PyTorch — no external dependencies.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SAEConfig:
@@ -77,6 +77,7 @@ class SAEConfig:
 # ---------------------------------------------------------------------------
 # Straight-through JumpReLU
 # ---------------------------------------------------------------------------
+
 
 class _JumpReLUFunction(torch.autograd.Function):
     """Forward: hard gate z > θ.  Backward: straight-through (identity).
@@ -113,6 +114,7 @@ def jumprelu(z: Tensor, theta: Tensor) -> Tensor:
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
+
 
 class JumpReLUSAE(nn.Module):
     """JumpReLU Sparse Autoencoder.
@@ -244,8 +246,10 @@ class JumpReLUSAE(nn.Module):
 # Loss helpers
 # ---------------------------------------------------------------------------
 
+
 def _safe_log(x: float) -> float:
     import math
+
     return math.log(max(x, 1e-8))
 
 
@@ -275,7 +279,7 @@ def _sae_loss(
     #    where features are active.  This follows the paper's approach where
     #    the threshold θ is updated to steer l0 toward l0_target.
     active_mask = (f > 0).float()
-    l0_per_sample = active_mask.sum(dim=-1)           # (B,)
+    l0_per_sample = active_mask.sum(dim=-1)  # (B,)
     l0_mean = l0_per_sample.mean()
 
     # Differentiable L0 surrogate: penalise sum of activated pre-acts
@@ -303,6 +307,7 @@ def _sae_loss(
 # ---------------------------------------------------------------------------
 # Trainer
 # ---------------------------------------------------------------------------
+
 
 class SAETrainer:
     """Train a JumpReLUSAE with Adam + decoder normalisation after each step.

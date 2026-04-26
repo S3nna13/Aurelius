@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class TurnAction(str, Enum):
+class TurnAction(StrEnum):
     RESPOND = "respond"
     USE_TOOL = "use_tool"
     ASK_CLARIFICATION = "ask_clarification"
@@ -69,9 +69,7 @@ class TurnPlanner:
                 action=TurnAction.DEFER,
                 rationale="User message contains a deferral keyword.",
                 confidence=0.80,
-                metadata={"matched_keyword": next(
-                    kw for kw in _DEFER_KEYWORDS if kw in msg_lower
-                )},
+                metadata={"matched_keyword": next(kw for kw in _DEFER_KEYWORDS if kw in msg_lower)},
             )
 
         # 3. Tool keywords
@@ -88,9 +86,7 @@ class TurnPlanner:
         if len(last_user_msg.strip()) < 10 or last_user_msg.strip().endswith("?"):
             return TurnPlan(
                 action=TurnAction.ASK_CLARIFICATION,
-                rationale=(
-                    "User message is ambiguous (too short or an open question)."
-                ),
+                rationale=("User message is ambiguous (too short or an open question)."),
                 confidence=0.75,
                 metadata={"msg_len": len(last_user_msg.strip())},
             )

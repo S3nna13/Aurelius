@@ -11,20 +11,20 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Persona:
     """A single persona used to condition instruction generation."""
+
     name: str
     description: str
     domain: str
-    traits: List[str]
+    traits: list[str]
 
     def to_prompt_prefix(self) -> str:
         """Return a prompt prefix for this persona."""
@@ -34,11 +34,18 @@ class Persona:
 @dataclass
 class PersonaConfig:
     """Configuration for the PersonaHub framework."""
+
     n_default_personas: int = 20
-    domains: List[str] = field(
+    domains: list[str] = field(
         default_factory=lambda: [
-            "math", "science", "programming", "writing",
-            "history", "business", "education", "art",
+            "math",
+            "science",
+            "programming",
+            "writing",
+            "history",
+            "business",
+            "education",
+            "art",
         ]
     )
     allow_domain_filter: bool = True
@@ -48,135 +55,136 @@ class PersonaConfig:
 # Default persona factory
 # ---------------------------------------------------------------------------
 
-def create_default_personas() -> List[Persona]:
+
+def create_default_personas() -> list[Persona]:
     """Return a list of 20 diverse Persona objects covering all domains."""
     return [
         # --- math ---
         Persona(
             name="a high school math teacher",
-            description="you explain mathematical concepts with clarity and patience, using real-world examples to ground abstract ideas",
+            description="you explain mathematical concepts with clarity and patience, using real-world examples to ground abstract ideas",  # noqa: E501
             domain="math",
             traits=["methodical", "patient", "example-driven", "precise"],
         ),
         Persona(
             name="a competitive mathematics olympiad coach",
-            description="you challenge students with elegant proofs and non-routine problems, emphasising rigour and creativity",
+            description="you challenge students with elegant proofs and non-routine problems, emphasising rigour and creativity",  # noqa: E501
             domain="math",
             traits=["rigorous", "creative", "challenging", "proof-oriented"],
         ),
         # --- science ---
         Persona(
             name="a curiosity-driven research scientist",
-            description="you approach problems with systematic experimental thinking and a deep love of discovery",
+            description="you approach problems with systematic experimental thinking and a deep love of discovery",  # noqa: E501
             domain="science",
             traits=["curious", "systematic", "evidence-based", "open-minded"],
         ),
         Persona(
             name="a science communicator",
-            description="you translate cutting-edge research into accessible explanations for a general audience",
+            description="you translate cutting-edge research into accessible explanations for a general audience",  # noqa: E501
             domain="science",
             traits=["accessible", "enthusiastic", "analogy-rich", "clear"],
         ),
         # --- programming ---
         Persona(
             name="a senior software engineer who loves open source",
-            description="you write clean, idiomatic code and champion best practices such as testing, documentation, and code review",
+            description="you write clean, idiomatic code and champion best practices such as testing, documentation, and code review",  # noqa: E501
             domain="programming",
             traits=["pragmatic", "quality-focused", "collaborative", "opinionated"],
         ),
         Persona(
             name="a security-conscious backend developer",
-            description="you think carefully about threat models, input validation, and the principle of least privilege in every system you build",
+            description="you think carefully about threat models, input validation, and the principle of least privilege in every system you build",  # noqa: E501
             domain="programming",
             traits=["security-minded", "detail-oriented", "defensive", "thorough"],
         ),
         Persona(
             name="a machine learning researcher",
-            description="you approach programming problems through the lens of data, statistics, and scalable computation",
+            description="you approach programming problems through the lens of data, statistics, and scalable computation",  # noqa: E501
             domain="programming",
             traits=["experimental", "mathematical", "scale-aware", "iterative"],
         ),
         # --- writing ---
         Persona(
             name="a seasoned literary fiction author",
-            description="you craft prose with deliberate word choice, character depth, and thematic resonance",
+            description="you craft prose with deliberate word choice, character depth, and thematic resonance",  # noqa: E501
             domain="writing",
             traits=["lyrical", "introspective", "character-driven", "precise"],
         ),
         Persona(
             name="a skeptical investigative journalist",
-            description="you ask hard questions, follow the evidence, and present findings in concise, factual prose",
+            description="you ask hard questions, follow the evidence, and present findings in concise, factual prose",  # noqa: E501
             domain="writing",
             traits=["skeptical", "fact-driven", "concise", "persistent"],
         ),
         # --- history ---
         Persona(
             name="a professor of world history",
-            description="you situate events in their broader social, economic, and political context, drawing connections across eras",
+            description="you situate events in their broader social, economic, and political context, drawing connections across eras",  # noqa: E501
             domain="history",
             traits=["contextual", "analytical", "comparative", "narrative"],
         ),
         Persona(
             name="a military history enthusiast",
-            description="you analyse battles and campaigns through logistics, leadership, and strategic decision-making",
+            description="you analyse battles and campaigns through logistics, leadership, and strategic decision-making",  # noqa: E501
             domain="history",
             traits=["strategic", "detail-oriented", "tactical", "critical"],
         ),
         # --- business ---
         Persona(
             name="a startup founder with two exits",
-            description="you think in terms of product-market fit, unit economics, and iterative growth loops",
+            description="you think in terms of product-market fit, unit economics, and iterative growth loops",  # noqa: E501
             domain="business",
             traits=["results-oriented", "resourceful", "decisive", "risk-tolerant"],
         ),
         Persona(
             name="a management consultant",
-            description="you structure ambiguous problems with frameworks, prioritise ruthlessly, and communicate insights to executives",
+            description="you structure ambiguous problems with frameworks, prioritise ruthlessly, and communicate insights to executives",  # noqa: E501
             domain="business",
             traits=["structured", "concise", "data-driven", "persuasive"],
         ),
         Persona(
             name="a personal finance advisor",
-            description="you help people understand budgeting, investing, and long-term wealth building in plain language",
+            description="you help people understand budgeting, investing, and long-term wealth building in plain language",  # noqa: E501
             domain="business",
             traits=["practical", "empathetic", "conservative", "educational"],
         ),
         # --- education ---
         Persona(
             name="a kindergarten teacher",
-            description="you explain concepts through play, stories, and hands-on activities appropriate for young learners",
+            description="you explain concepts through play, stories, and hands-on activities appropriate for young learners",  # noqa: E501
             domain="education",
             traits=["nurturing", "creative", "simple", "encouraging"],
         ),
         Persona(
             name="an instructional design specialist",
-            description="you design learning experiences grounded in cognitive science, clear objectives, and measurable outcomes",
+            description="you design learning experiences grounded in cognitive science, clear objectives, and measurable outcomes",  # noqa: E501
             domain="education",
             traits=["structured", "evidence-based", "learner-centred", "systematic"],
         ),
         # --- art ---
         Persona(
             name="a contemporary visual artist",
-            description="you explore ideas through colour, form, and composition, drawing on art history and cultural critique",
+            description="you explore ideas through colour, form, and composition, drawing on art history and cultural critique",  # noqa: E501
             domain="art",
             traits=["expressive", "conceptual", "culturally-aware", "experimental"],
         ),
         Persona(
             name="a film critic and screenwriter",
-            description="you analyse narrative structure, cinematography, and subtext, and write with a strong authorial voice",
+            description="you analyse narrative structure, cinematography, and subtext, and write with a strong authorial voice",  # noqa: E501
             domain="art",
             traits=["analytical", "opinionated", "narrative-focused", "cinematic"],
         ),
         Persona(
             name="a jazz musician and composer",
-            description="you think about harmony, rhythm, and improvisation, drawing parallels between music and other creative domains",
+            description="you think about harmony, rhythm, and improvisation, drawing parallels between music and other creative domains",  # noqa: E501
             domain="art",
             traits=["improvisational", "harmonic", "rhythmic", "cross-disciplinary"],
         ),
         # --- extra math (to ensure exactly 20) ---
         Persona(
             name="a data scientist at a tech company",
-            description="you apply statistics and machine learning to messy real-world datasets, communicating uncertainty clearly",
+            description="you apply statistics and machine learning to messy real-world datasets, communicating uncertainty clearly",  # noqa: E501
             domain="math",
             traits=["statistical", "pragmatic", "uncertainty-aware", "communicative"],
         ),
@@ -187,11 +195,12 @@ def create_default_personas() -> List[Persona]:
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def persona_weighted_sample(
-    personas: List[Persona],
-    domain_weights: Dict[str, float],
+    personas: list[Persona],
+    domain_weights: dict[str, float],
     n: int,
-) -> List[Persona]:
+) -> list[Persona]:
     """Sample n personas with domain-specific weights (with replacement allowed when necessary).
 
     Args:
@@ -206,9 +215,7 @@ def persona_weighted_sample(
     if not personas:
         return []
 
-    weights = [
-        domain_weights.get(p.domain, 1.0) for p in personas
-    ]
+    weights = [domain_weights.get(p.domain, 1.0) for p in personas]
     total = sum(weights)
     if total == 0:
         weights = [1.0] * len(personas)
@@ -221,8 +228,8 @@ def persona_weighted_sample(
 
 
 def estimate_coverage(
-    sampled_personas: List[Persona],
-    all_personas: List[Persona],
+    sampled_personas: list[Persona],
+    all_personas: list[Persona],
 ) -> float:
     """Return the fraction of all unique domains represented in sampled_personas.
 
@@ -239,7 +246,8 @@ def estimate_coverage(
 # Tokenisation helper (pure Python)
 # ---------------------------------------------------------------------------
 
-def _tokenize(text: str) -> List[str]:
+
+def _tokenize(text: str) -> list[str]:
     """Simple lowercase whitespace tokeniser."""
     return text.lower().split()
 
@@ -248,7 +256,7 @@ def _tokenize(text: str) -> List[str]:
 # Main PersonaHub class
 # ---------------------------------------------------------------------------
 
-_TASK_INSTRUCTIONS: Dict[str, str] = {
+_TASK_INSTRUCTIONS: dict[str, str] = {
     "qa": (
         "Please generate a thoughtful question-and-answer pair on a topic relevant "
         "to your expertise, along with a detailed answer."
@@ -277,12 +285,12 @@ class PersonaHub:
 
     def __init__(
         self,
-        personas: Optional[List[Persona]] = None,
+        personas: list[Persona] | None = None,
         seed: int = 42,
     ) -> None:
         self._rng = random.Random(seed)
         if personas is None:
-            self._personas: List[Persona] = create_default_personas()
+            self._personas: list[Persona] = create_default_personas()
         else:
             self._personas = list(personas)
 
@@ -293,8 +301,8 @@ class PersonaHub:
     def sample_persona(
         self,
         n: int = 1,
-        domain: Optional[str] = None,
-    ) -> List[Persona]:
+        domain: str | None = None,
+    ) -> list[Persona]:
         """Sample n personas without replacement within this call.
 
         Args:
@@ -342,8 +350,7 @@ class PersonaHub:
         """
         if task_type not in _TASK_INSTRUCTIONS:
             raise ValueError(
-                f"Unknown task_type '{task_type}'. "
-                f"Choose from: {sorted(_TASK_INSTRUCTIONS)}"
+                f"Unknown task_type '{task_type}'. Choose from: {sorted(_TASK_INSTRUCTIONS)}"
             )
         prefix = persona.to_prompt_prefix()
         task_instr = _TASK_INSTRUCTIONS[task_type]
@@ -355,9 +362,9 @@ class PersonaHub:
 
     def diversify_dataset(
         self,
-        base_instructions: List[str],
+        base_instructions: list[str],
         n_personas_per: int = 3,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """Create persona-conditioned variants of each base instruction.
 
         For each instruction in base_instructions, n_personas_per different
@@ -375,11 +382,11 @@ class PersonaHub:
                 - domain: persona's domain
                 - persona_prefix: the prompt prefix string
         """
-        results: List[dict] = []
+        results: list[dict] = []
         for instr in base_instructions:
             # Sample with replacement across persona pool when needed
             personas_needed = n_personas_per
-            sampled: List[Persona] = []
+            sampled: list[Persona] = []
             while personas_needed > 0:
                 batch = min(personas_needed, len(self._personas))
                 sampled.extend(self._rng.sample(self._personas, batch))
@@ -399,7 +406,7 @@ class PersonaHub:
     # Diversity metrics
     # ------------------------------------------------------------------
 
-    def compute_diversity_score(self, instructions: List[str]) -> float:
+    def compute_diversity_score(self, instructions: list[str]) -> float:
         """Estimate dataset diversity as 1 minus average pairwise token overlap.
 
         Token overlap between two strings is the Jaccard similarity of their
@@ -438,9 +445,9 @@ class PersonaHub:
     # Distribution inspection
     # ------------------------------------------------------------------
 
-    def get_persona_distribution(self) -> Dict[str, int]:
+    def get_persona_distribution(self) -> dict[str, int]:
         """Return a {domain: count} mapping for all personas in this hub."""
-        dist: Dict[str, int] = {}
+        dist: dict[str, int] = {}
         for p in self._personas:
             dist[p.domain] = dist.get(p.domain, 0) + 1
         return dist

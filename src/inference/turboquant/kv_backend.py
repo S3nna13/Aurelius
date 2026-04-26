@@ -4,11 +4,12 @@
 Drop-in conceptual replacement for the plain (k, v) tuple cache.
 Stores compressed keys and values per layer.
 """
+
 from __future__ import annotations
 
 import torch
 
-from .compressor import TurboQuantCompressor, CompressedKV
+from .compressor import CompressedKV, TurboQuantCompressor
 
 
 class CompressedKVCache:
@@ -42,7 +43,9 @@ class CompressedKVCache:
             for i in range(n_layers)
         ]
         self._val_compressors = [
-            TurboQuantCompressor(dim=head_dim, n_codes=n_codes, sketch_dim=sketch_dim, seed=i * 2 + 1)
+            TurboQuantCompressor(
+                dim=head_dim, n_codes=n_codes, sketch_dim=sketch_dim, seed=i * 2 + 1
+            )
             for i in range(n_layers)
         ]
 

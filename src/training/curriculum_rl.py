@@ -15,40 +15,40 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Optional
-
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TaskDifficulty:
     """Per-task state tracked by the curriculum sampler."""
 
     task_id: str
-    difficulty: float           # 0 = easiest, 1 = hardest (static estimate)
-    recent_accuracy: float      # EMA of correct-rate, initialised at 0.5
+    difficulty: float  # 0 = easiest, 1 = hardest (static estimate)
+    recent_accuracy: float  # EMA of correct-rate, initialised at 0.5
     n_attempts: int = 0
     n_correct: int = 0
-    ema_alpha: float = 0.1      # EMA smoothing factor for accuracy updates
+    ema_alpha: float = 0.1  # EMA smoothing factor for accuracy updates
 
 
 @dataclass
 class CurriculumRLConfig:
     """Hyperparameters for the CurriculumRLSampler."""
 
-    easy_threshold: float = 0.85        # skip tasks with accuracy > this
-    hard_threshold: float = 0.15        # skip tasks with accuracy < this
-    exploration_prob: float = 0.1       # probability of uniform random exploration
-    temperature: float = 1.0            # softmax temperature for difficulty weighting
-    min_attempts_before_skip: int = 5   # don't skip a task until it has >= this attempts
+    easy_threshold: float = 0.85  # skip tasks with accuracy > this
+    hard_threshold: float = 0.15  # skip tasks with accuracy < this
+    exploration_prob: float = 0.1  # probability of uniform random exploration
+    temperature: float = 1.0  # softmax temperature for difficulty weighting
+    min_attempts_before_skip: int = 5  # don't skip a task until it has >= this attempts
 
 
 # ---------------------------------------------------------------------------
 # Sampler
 # ---------------------------------------------------------------------------
+
 
 class CurriculumRLSampler:
     """
@@ -64,7 +64,7 @@ class CurriculumRLSampler:
         task_ids = sampler.sample(n=4, rng_seed=42)
     """
 
-    def __init__(self, config: Optional[CurriculumRLConfig] = None) -> None:
+    def __init__(self, config: CurriculumRLConfig | None = None) -> None:
         self.config = config if config is not None else CurriculumRLConfig()
         self._tasks: dict[str, TaskDifficulty] = {}
 
@@ -108,9 +108,7 @@ class CurriculumRLSampler:
             td.n_correct += 1
         # EMA update: new = alpha * observation + (1 - alpha) * old
         observation = 1.0 if is_correct else 0.0
-        td.recent_accuracy = (
-            td.ema_alpha * observation + (1.0 - td.ema_alpha) * td.recent_accuracy
-        )
+        td.recent_accuracy = td.ema_alpha * observation + (1.0 - td.ema_alpha) * td.recent_accuracy
 
     def in_learning_zone(self, task_id: str) -> bool:
         """Return True if the task is in the learning zone.
@@ -128,7 +126,7 @@ class CurriculumRLSampler:
             return True
         return cfg.hard_threshold <= td.recent_accuracy <= cfg.easy_threshold
 
-    def sample(self, n: int = 1, rng_seed: Optional[int] = None) -> list[str]:
+    def sample(self, n: int = 1, rng_seed: int | None = None) -> list[str]:
         """Sample ``n`` task IDs according to the curriculum policy.
 
         With probability ``exploration_prob`` draw uniformly at random from all
@@ -197,12 +195,10 @@ class CurriculumRLSampler:
             return td.n_attempts >= cfg.min_attempts_before_skip
 
         n_easy = sum(
-            1 for td in tasks
-            if _qualified(td) and td.recent_accuracy > cfg.easy_threshold
+            1 for td in tasks if _qualified(td) and td.recent_accuracy > cfg.easy_threshold
         )
         n_hard = sum(
-            1 for td in tasks
-            if _qualified(td) and td.recent_accuracy < cfg.hard_threshold
+            1 for td in tasks if _qualified(td) and td.recent_accuracy < cfg.hard_threshold
         )
 
         return {
@@ -242,7 +238,7 @@ class CurriculumRLSampler:
 
         # Numerically stable softmax
         max_logit = max(logits)
-        exp_logits = [math.exp(l - max_logit) for l in logits]
+        exp_logits = [math.exp(line - max_logit) for line in logits]
         total = sum(exp_logits)
         weights = [e / total for e in exp_logits]
 

@@ -1,17 +1,19 @@
 """Tests for MultiModalProjector."""
-import torch
+
 import pytest
+import torch
+
 from src.model.multimodal_projector import (
-    ProjectorConfig,
     ModalityProjector,
     MultiModalProjector,
+    ProjectorConfig,
     build_projector,
 )
-
 
 # ---------------------------------------------------------------------------
 # ProjectorConfig
 # ---------------------------------------------------------------------------
+
 
 def test_projector_config_hidden_dim_auto():
     cfg = ProjectorConfig(input_dim=768, output_dim=2048)
@@ -24,6 +26,7 @@ def test_projector_config_hidden_dim_auto():
 # ---------------------------------------------------------------------------
 # ModalityProjector — output shapes
 # ---------------------------------------------------------------------------
+
 
 def test_modality_projector_output_shape_3d():
     cfg = ProjectorConfig(input_dim=768, output_dim=2048)
@@ -44,6 +47,7 @@ def test_modality_projector_output_shape_2d():
 # ---------------------------------------------------------------------------
 # ModalityProjector — layer counts
 # ---------------------------------------------------------------------------
+
 
 def test_modality_projector_n_layers_1():
     cfg = ProjectorConfig(input_dim=256, output_dim=512, n_layers=1)
@@ -73,6 +77,7 @@ def test_modality_projector_n_layers_3():
 # ModalityProjector — options
 # ---------------------------------------------------------------------------
 
+
 def test_modality_projector_layer_norm_input():
     cfg = ProjectorConfig(input_dim=128, output_dim=256, layer_norm_input=True)
     proj = ModalityProjector(cfg)
@@ -96,6 +101,7 @@ def test_modality_projector_activation_silu():
 # ---------------------------------------------------------------------------
 # MultiModalProjector
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def multi_proj():
@@ -126,6 +132,7 @@ def test_multimodal_projector_project_all(multi_proj):
 # ---------------------------------------------------------------------------
 # build_multimodal_sequence
 # ---------------------------------------------------------------------------
+
 
 def test_build_multimodal_sequence_shape(multi_proj):
     B, S, D = 2, 20, 2048
@@ -165,6 +172,7 @@ def test_build_multimodal_sequence_prepend_order(multi_proj):
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
 
 def test_build_projector_factory():
     proj = build_projector(input_dim=512, output_dim=1024)

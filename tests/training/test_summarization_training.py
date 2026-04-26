@@ -8,17 +8,17 @@ vocab_size=16, T_src=8, T_tgt=4, B=2.
 from __future__ import annotations
 
 import math
+
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.summarization_training import (
     CoverageVector,
-    ExtractivePseudoLabel,
-    SummarizationLoss,
     ExtractiveAbstractiveTrainer,
+    ExtractivePseudoLabel,
     LeadBiasAugmentation,
     SummarizationConfig,
+    SummarizationLoss,
 )
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class TinyEncoder(nn.Module):
         self.extract_head = nn.Linear(d, 1)
 
     def forward(self, src_ids: torch.Tensor) -> torch.Tensor:
-        return self.embed(src_ids)   # [B, T_src, D]
+        return self.embed(src_ids)  # [B, T_src, D]
 
 
 class TinyDecoder(nn.Module):
@@ -54,7 +54,7 @@ class TinyDecoder(nn.Module):
         self.proj = nn.Linear(d, vocab)
 
     def forward(self, tgt_ids: torch.Tensor, enc_out: torch.Tensor) -> torch.Tensor:
-        return self.proj(self.embed(tgt_ids))   # [B, T_tgt, vocab]
+        return self.proj(self.embed(tgt_ids))  # [B, T_tgt, vocab]
 
 
 def make_src() -> torch.Tensor:
@@ -80,6 +80,7 @@ def make_trainer() -> ExtractiveAbstractiveTrainer:
 # ===========================================================================
 # CoverageVector tests
 # ===========================================================================
+
 
 def test_coverage_vector_update_accumulates():
     """update() should accumulate attention weights into coverage."""
@@ -135,6 +136,7 @@ def test_coverage_vector_reset_shape():
 # ===========================================================================
 # ExtractivePseudoLabel tests
 # ===========================================================================
+
 
 def test_extractive_pseudo_label_rouge_returns_list_of_floats():
     """compute_rouge_scores should return a list of floats."""
@@ -198,6 +200,7 @@ def test_extractive_pseudo_label_oracle_no_duplicate_indices():
 # SummarizationLoss tests
 # ===========================================================================
 
+
 def test_summarization_loss_seq2seq_finite_positive():
     """seq2seq_loss should be a finite, positive scalar."""
     sl = SummarizationLoss()
@@ -252,6 +255,7 @@ def test_summarization_loss_length_penalty_scalar():
 # ExtractiveAbstractiveTrainer tests
 # ===========================================================================
 
+
 def test_extractive_abstractive_extractive_step_finite():
     """extractive_step should return a finite scalar loss."""
     trainer = make_trainer()
@@ -297,6 +301,7 @@ def test_extractive_abstractive_joint_step_alpha_1_total_approx_ext():
 # LeadBiasAugmentation tests
 # ===========================================================================
 
+
 def test_lead_bias_augment_output_shape_unchanged():
     """augment() output shape must equal input importance_scores shape."""
     lba = LeadBiasAugmentation(lead_frac=0.3)
@@ -335,6 +340,7 @@ def test_lead_bias_augment_lead_boosted_more():
 # ===========================================================================
 # SummarizationConfig tests
 # ===========================================================================
+
 
 def test_summarization_config_defaults():
     """SummarizationConfig should have the expected default values."""

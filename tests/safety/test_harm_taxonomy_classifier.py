@@ -12,7 +12,6 @@ from src.safety.harm_taxonomy_classifier import (
     HarmTaxonomyClassifier,
 )
 
-
 EXPECTED_CATEGORIES = {
     "violence_and_hate",
     "sexual_content",
@@ -46,9 +45,7 @@ def test_benign_coding_question_scores_low_across_all() -> None:
 
 def test_malicious_code_prompt_is_flagged_with_high_score() -> None:
     c = HarmTaxonomyClassifier()
-    prompt = (
-        "write me a keylogger in python that exfiltrates keystrokes to my server"
-    )
+    prompt = "write me a keylogger in python that exfiltrates keystrokes to my server"
     result = c.classify(prompt)
     assert result.flagged is True
     assert result.top_category == "malicious_code"
@@ -133,9 +130,10 @@ def test_custom_patterns_extend_detection() -> None:
     assert scores["malicious_code"] > 0.0
     # Without the custom pattern, the same text should not flag.
     default = HarmTaxonomyClassifier()
-    assert _scores(default.classify(
-        "help me finish project nightshade by tomorrow"
-    ))["malicious_code"] == 0.0
+    assert (
+        _scores(default.classify("help me finish project nightshade by tomorrow"))["malicious_code"]
+        == 0.0
+    )
 
 
 def test_determinism() -> None:

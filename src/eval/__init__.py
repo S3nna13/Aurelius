@@ -1,16 +1,16 @@
 from .benchmark_config import (
-    BenchmarkSpec,
     ALL_BENCHMARKS,
-    BENCHMARK_BY_NAME,
-    MMLU,
-    HELLASWAG,
     ARC_CHALLENGE,
-    TRUTHFULQA,
-    GSM8K,
-    HUMANEVAL,
-    MATH500,
+    BENCHMARK_BY_NAME,
     GPQA_DIAMOND,
+    GSM8K,
+    HELLASWAG,
+    HUMANEVAL,
     LIVECODEBENCH,
+    MATH500,
+    MMLU,
+    TRUTHFULQA,
+    BenchmarkSpec,
 )
 
 __all__ = [
@@ -32,6 +32,8 @@ __all__ = [
 # Safe to import lazily; does not remove or override any existing symbols.
 from .needle_in_haystack import (
     NeedleInHaystackBenchmark as _NeedleInHaystackBenchmark,
+)
+from .needle_in_haystack import (
     default_haystack_filler as _default_haystack_filler,
 )
 
@@ -69,10 +71,18 @@ __all__ = list(__all__) + ["RULERBenchmark"]
 # and leaves the "niah" and "ruler" entries untouched.
 from .humaneval_scorer import (
     HumanEvalProblem as _HumanEvalProblem,
+)
+from .humaneval_scorer import (
     SampleResult as _HumanEvalSampleResult,
-    score_single as _humaneval_score_single,
-    score_problems as _humaneval_score_problems,
+)
+from .humaneval_scorer import (
     pass_at_k as _humaneval_pass_at_k,
+)
+from .humaneval_scorer import (
+    score_problems as _humaneval_score_problems,
+)
+from .humaneval_scorer import (
+    score_single as _humaneval_score_single,
 )
 
 HumanEvalProblem = _HumanEvalProblem
@@ -99,9 +109,15 @@ __all__ = list(__all__) + [
 # leaves the "niah", "ruler", and "humaneval" entries untouched.
 from .mbpp_scorer import (
     MBPPProblem as _MBPPProblem,
+)
+from .mbpp_scorer import (
     MBPPSampleResult as _MBPPSampleResult,
-    score_single as _mbpp_score_single,
+)
+from .mbpp_scorer import (
     score_problems as _mbpp_score_problems,
+)
+from .mbpp_scorer import (
+    score_single as _mbpp_score_single,
 )
 
 MBPPProblem = _MBPPProblem
@@ -126,12 +142,24 @@ __all__ = list(__all__) + [
 # leaves the "niah", "ruler", "humaneval", and "mbpp" entries untouched.
 from .swebench_lite_scorer import (
     SWEProblem as _SWEProblem,
+)
+from .swebench_lite_scorer import (
     SWEResult as _SWEResult,
-    score_single as _swebench_score_single,
-    score_problems as _swebench_score_problems,
+)
+from .swebench_lite_scorer import (
     apply_patch_via_python as _swebench_apply_patch_via_python,
+)
+from .swebench_lite_scorer import (
     materialize_repo as _swebench_materialize_repo,
+)
+from .swebench_lite_scorer import (
     run_tests as _swebench_run_tests,
+)
+from .swebench_lite_scorer import (
+    score_problems as _swebench_score_problems,
+)
+from .swebench_lite_scorer import (
+    score_single as _swebench_score_single,
 )
 
 SWEProblem = _SWEProblem
@@ -163,8 +191,14 @@ __all__ = list(__all__) + [
 # untouched.
 from .ifeval_scorer import (
     IFEvalConstraint as _IFEvalConstraint,
+)
+from .ifeval_scorer import (
     IFEvalProblem as _IFEvalProblem,
+)
+from .ifeval_scorer import (
     IFEvalResult as _IFEvalResult,
+)
+from .ifeval_scorer import (
     IFEvalScorer as _IFEvalScorer,
 )
 
@@ -191,9 +225,15 @@ __all__ = list(__all__) + [
 # "ifeval" entries untouched.
 from .mtbench_judge import (
     MTBenchJudge as _MTBenchJudge,
+)
+from .mtbench_judge import (
     MTBenchQuestion as _MTBenchQuestion,
-    SingleAnswerScore as _MTBenchSingleAnswerScore,
+)
+from .mtbench_judge import (
     PairwiseResult as _MTBenchPairwiseResult,
+)
+from .mtbench_judge import (
+    SingleAnswerScore as _MTBenchSingleAnswerScore,
 )
 
 MTBenchJudge = _MTBenchJudge
@@ -218,9 +258,13 @@ __all__ = list(__all__) + [
 # leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", "ifeval",
 # and "mtbench" entries untouched.
 from .alpacaeval_scorer import (
-    AlpacaEvalScorer as _AlpacaEvalScorer,
-    AlpacaProblem as _AlpacaProblem,
     AlpacaComparison as _AlpacaComparison,
+)
+from .alpacaeval_scorer import (
+    AlpacaEvalScorer as _AlpacaEvalScorer,
+)
+from .alpacaeval_scorer import (
+    AlpacaProblem as _AlpacaProblem,
 )
 
 AlpacaEvalScorer = _AlpacaEvalScorer
@@ -243,9 +287,13 @@ __all__ = list(__all__) + [
 # leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", "ifeval",
 # "mtbench", and "alpacaeval" entries untouched.
 from .arena_hard_scorer import (
-    ArenaHardScorer as _ArenaHardScorer,
-    ArenaProblem as _ArenaProblem,
     ArenaComparison as _ArenaComparison,
+)
+from .arena_hard_scorer import (
+    ArenaHardScorer as _ArenaHardScorer,
+)
+from .arena_hard_scorer import (
+    ArenaProblem as _ArenaProblem,
 )
 
 ArenaHardScorer = _ArenaHardScorer
@@ -269,8 +317,14 @@ __all__ = list(__all__) + [
 # "mtbench", "alpacaeval", and "arena_hard" entries untouched.
 from .gpqa_scorer import (
     GPQAProblem as _GPQAProblem,
+)
+from .gpqa_scorer import (
     GPQAResult as _GPQAResult,
+)
+from .gpqa_scorer import (
     GPQAScorer as _GPQAScorer,
+)
+from .gpqa_scorer import (
     parse_answer_letter as _gpqa_parse_answer_letter,
 )
 
@@ -297,10 +351,18 @@ __all__ = list(__all__) + [
 # "mtbench", "alpacaeval", "arena_hard", and "gpqa" entries untouched.
 from .livecodebench_scorer import (
     LiveCodeProblem as _LiveCodeProblem,
+)
+from .livecodebench_scorer import (
     LiveCodeResult as _LiveCodeResult,
-    score_single as _livecodebench_score_single,
-    score_problems as _livecodebench_score_problems,
+)
+from .livecodebench_scorer import (
     parse_date_filter as _livecodebench_parse_date_filter,
+)
+from .livecodebench_scorer import (
+    score_problems as _livecodebench_score_problems,
+)
+from .livecodebench_scorer import (
+    score_single as _livecodebench_score_single,
 )
 
 LiveCodeProblem = _LiveCodeProblem
@@ -327,8 +389,14 @@ __all__ = list(__all__) + [
 # leaves prior entries untouched.
 from .mmlu_scorer import (
     MMLUProblem as _MMLUProblem,
+)
+from .mmlu_scorer import (
     MMLUResult as _MMLUResult,
+)
+from .mmlu_scorer import (
     MMLUScorer as _MMLUScorer,
+)
+from .mmlu_scorer import (
     parse_answer_letter as _mmlu_parse_answer_letter,
 )
 
@@ -354,9 +422,15 @@ __all__ = list(__all__) + [
 # leaves all prior entries untouched.
 from .humaneval_plus_scorer import (
     HumanEvalPlusProblem as _HumanEvalPlusProblem,
+)
+from .humaneval_plus_scorer import (
     HumanEvalPlusResult as _HumanEvalPlusResult,
-    score_single as _humaneval_plus_score_single,
+)
+from .humaneval_plus_scorer import (
     score_problems as _humaneval_plus_score_problems,
+)
+from .humaneval_plus_scorer import (
+    score_single as _humaneval_plus_score_single,
 )
 
 HumanEvalPlusProblem = _HumanEvalPlusProblem
@@ -380,10 +454,16 @@ __all__ = list(__all__) + [
 # Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
 # leaves all prior entries untouched.
 from .taubench_scorer import (
-    TauBenchTask as _TauBenchTask,
-    TauBenchTrajectory as _TauBenchTrajectory,
-    TauBenchScorer as _TauBenchScorer,
     TauBenchDataset as _TauBenchDataset,
+)
+from .taubench_scorer import (
+    TauBenchScorer as _TauBenchScorer,
+)
+from .taubench_scorer import (
+    TauBenchTask as _TauBenchTask,
+)
+from .taubench_scorer import (
+    TauBenchTrajectory as _TauBenchTrajectory,
 )
 
 TauBenchTask = _TauBenchTask
@@ -407,13 +487,25 @@ __all__ = list(__all__) + [
 # Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
 # leaves all prior entries untouched. Default config flag is OFF.
 from .mythos_coding_rubric import (
-    MYTHOS_GUIDANCE_SYSTEM_PROMPT as _MYTHOS_GUIDANCE_SYSTEM_PROMPT,
     DIMENSIONS as _MYTHOS_DIMENSIONS,
+)
+from .mythos_coding_rubric import (
+    MYTHOS_GUIDANCE_SYSTEM_PROMPT as _MYTHOS_GUIDANCE_SYSTEM_PROMPT,
+)
+from .mythos_coding_rubric import (
     DimensionScore as _MythosDimensionScore,
-    RubricResult as _MythosRubricResult,
+)
+from .mythos_coding_rubric import (
     MythosCodingRubric as _MythosCodingRubric,
-    heuristic_judge as _mythos_heuristic_judge,
+)
+from .mythos_coding_rubric import (
+    RubricResult as _MythosRubricResult,
+)
+from .mythos_coding_rubric import (
     format_trajectory as _mythos_format_trajectory,
+)
+from .mythos_coding_rubric import (
+    heuristic_judge as _mythos_heuristic_judge,
 )
 
 MYTHOS_GUIDANCE_SYSTEM_PROMPT = _MYTHOS_GUIDANCE_SYSTEM_PROMPT
@@ -447,12 +539,22 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched. Default config flag is OFF.
 from .crescendo_probe import (
-    CrescendoProbe as _CrescendoProbe,
-    CrescendoResult as _CrescendoResult,
-    CrescendoTurn as _CrescendoTurn,
     ESCALATION_TEMPLATES as _CRESCENDO_ESCALATION_TEMPLATES,
-    stub_target_fn as _crescendo_stub_target_fn,
+)
+from .crescendo_probe import (
+    CrescendoProbe as _CrescendoProbe,
+)
+from .crescendo_probe import (
+    CrescendoResult as _CrescendoResult,
+)
+from .crescendo_probe import (
+    CrescendoTurn as _CrescendoTurn,
+)
+from .crescendo_probe import (
     stub_judge_fn as _crescendo_stub_judge_fn,
+)
+from .crescendo_probe import (
+    stub_target_fn as _crescendo_stub_target_fn,
 )
 
 CrescendoProbe = _CrescendoProbe
@@ -484,14 +586,28 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched. Default config flag is OFF.
 from .behavioral_audit_taxonomy import (
-    BehaviorCategory as _BehaviorCategory,
-    BehaviorDimension as _BehaviorDimension,
     BEHAVIORAL_AUDIT_TAXONOMY as _BEHAVIORAL_AUDIT_TAXONOMY,
-    DimensionScore as _BATDimensionScore,
+)
+from .behavioral_audit_taxonomy import (
     AuditResult as _BATAuditResult,
+)
+from .behavioral_audit_taxonomy import (
     BehavioralAuditRegistry as _BehavioralAuditRegistry,
-    by_id as _bat_by_id,
+)
+from .behavioral_audit_taxonomy import (
+    BehaviorCategory as _BehaviorCategory,
+)
+from .behavioral_audit_taxonomy import (
+    BehaviorDimension as _BehaviorDimension,
+)
+from .behavioral_audit_taxonomy import (
+    DimensionScore as _BATDimensionScore,
+)
+from .behavioral_audit_taxonomy import (
     by_category as _bat_by_category,
+)
+from .behavioral_audit_taxonomy import (
+    by_id as _bat_by_id,
 )
 
 BehaviorCategory = _BehaviorCategory
@@ -508,12 +624,8 @@ eval_behavioral_audit_taxonomy_enabled: bool = False
 
 METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
 BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
-METRIC_REGISTRY.setdefault(
-    "behavioral_audit_taxonomy", _BehavioralAuditRegistry
-)
-BENCHMARK_REGISTRY.setdefault(
-    "behavioral_audit_taxonomy", _BehavioralAuditRegistry
-)
+METRIC_REGISTRY.setdefault("behavioral_audit_taxonomy", _BehavioralAuditRegistry)
+BENCHMARK_REGISTRY.setdefault("behavioral_audit_taxonomy", _BehavioralAuditRegistry)
 
 __all__ = list(__all__) + [
     "BehaviorCategory",
@@ -530,7 +642,11 @@ __all__ = list(__all__) + [
 # --- Additive registration for synthetic jailbreak probe generator ----------
 from .synthetic_jailbreak_generator import (  # noqa: E402
     SyntheticJailbreakGenerator as _SyntheticJailbreakGenerator,
+)
+from .synthetic_jailbreak_generator import (
     SyntheticProbe as _SyntheticProbe,
+)
+from .synthetic_jailbreak_generator import (
     score_probe_naive_refusal as _score_probe_naive_refusal,
 )
 
@@ -555,15 +671,31 @@ __all__ = list(__all__) + [
 # --- Additive registration for SHADE-Arena sabotage-vs-monitor eval ---------
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched. Default config flag is OFF.
+from .shade_arena import (
+    DEFAULT_SHADE_SCENARIOS as _DEFAULT_SHADE_SCENARIOS,
+)
+from .shade_arena import (
+    VALID_LABELS as _SHADE_VALID_LABELS,
+)
 from .shade_arena import (  # noqa: E402
     MainTaskSpec as _ShadeMainTaskSpec,
-    SideTaskSpec as _ShadeSideTaskSpec,
+)
+from .shade_arena import (
     MonitorVerdict as _ShadeMonitorVerdict,
-    ShadeArenaResult as _ShadeArenaResult,
+)
+from .shade_arena import (
     ShadeArenaHarness as _ShadeArenaHarness,
-    DEFAULT_SHADE_SCENARIOS as _DEFAULT_SHADE_SCENARIOS,
-    VALID_LABELS as _SHADE_VALID_LABELS,
+)
+from .shade_arena import (
+    ShadeArenaResult as _ShadeArenaResult,
+)
+from .shade_arena import (
+    SideTaskSpec as _ShadeSideTaskSpec,
+)
+from .shade_arena import (
     stub_agent_fn as _shade_stub_agent_fn,
+)
+from .shade_arena import (
     stub_monitor_fn as _shade_stub_monitor_fn,
 )
 
@@ -601,13 +733,25 @@ __all__ = list(__all__) + [
 # --- Additive registration for intent-level vibe code reviewer --------------
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched. Default config flag is OFF.
+from .vibe_code_reviewer import (
+    NEGATIVE_EXAMPLES as _VIBE_NEGATIVE_EXAMPLES,
+)
+from .vibe_code_reviewer import (
+    REQUIRED_FIELDS as _VIBE_REQUIRED_FIELDS,
+)
 from .vibe_code_reviewer import (  # noqa: E402
     VULNHUNTER_SYSTEM_PROMPT as _VULNHUNTER_SYSTEM_PROMPT,
-    NEGATIVE_EXAMPLES as _VIBE_NEGATIVE_EXAMPLES,
-    REQUIRED_FIELDS as _VIBE_REQUIRED_FIELDS,
-    VibeFinding as _VibeFinding,
-    VibeReviewReport as _VibeReviewReport,
+)
+from .vibe_code_reviewer import (
     VibeCodeReviewer as _VibeCodeReviewer,
+)
+from .vibe_code_reviewer import (
+    VibeFinding as _VibeFinding,
+)
+from .vibe_code_reviewer import (
+    VibeReviewReport as _VibeReviewReport,
+)
+from .vibe_code_reviewer import (
     stub_judge_fn as _vibe_stub_judge_fn,
 )
 
@@ -641,14 +785,26 @@ __all__ = list(__all__) + [
 # --- Additive registration for Tree-of-Attacks-with-Pruning (TAP) probe -----
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched. Default config flag is OFF.
+from .tree_of_attacks_probe import (
+    MUTATION_STRATEGIES as _TAP_MUTATION_STRATEGIES,
+)
 from .tree_of_attacks_probe import (  # noqa: E402
     TAPNode as _TAPNode,
+)
+from .tree_of_attacks_probe import (
     TAPResult as _TAPResult,
+)
+from .tree_of_attacks_probe import (
     TreeOfAttacksProbe as _TreeOfAttacksProbe,
-    MUTATION_STRATEGIES as _TAP_MUTATION_STRATEGIES,
+)
+from .tree_of_attacks_probe import (
     heuristic_mutator as _tap_heuristic_mutator,
-    stub_target_fn as _tap_stub_target_fn,
+)
+from .tree_of_attacks_probe import (
     stub_judge_fn as _tap_stub_judge_fn,
+)
+from .tree_of_attacks_probe import (
+    stub_target_fn as _tap_stub_target_fn,
 )
 
 TAPNode = _TAPNode
@@ -682,13 +838,25 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched. Default config flag is OFF.
 from .many_shot_jailbreak_probe import (
-    MSShot as _MSShot,
-    MSJResult as _MSJResult,
-    MSJSweepResult as _MSJSweepResult,
-    ManyShotJailbreakProbe as _ManyShotJailbreakProbe,
     DEFAULT_SHOT_LIBRARY as _MSJ_DEFAULT_SHOT_LIBRARY,
-    stub_target_fn as _msj_stub_target_fn,
+)
+from .many_shot_jailbreak_probe import (
+    ManyShotJailbreakProbe as _ManyShotJailbreakProbe,
+)
+from .many_shot_jailbreak_probe import (
+    MSJResult as _MSJResult,
+)
+from .many_shot_jailbreak_probe import (
+    MSJSweepResult as _MSJSweepResult,
+)
+from .many_shot_jailbreak_probe import (
+    MSShot as _MSShot,
+)
+from .many_shot_jailbreak_probe import (
     stub_judge_fn as _msj_stub_judge_fn,
+)
+from .many_shot_jailbreak_probe import (
+    stub_target_fn as _msj_stub_target_fn,
 )
 
 MSShot = _MSShot
@@ -703,12 +871,8 @@ eval_many_shot_jailbreak_probe_enabled: bool = False
 
 METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
 BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
-METRIC_REGISTRY.setdefault(
-    "many_shot_jailbreak_probe", _ManyShotJailbreakProbe
-)
-BENCHMARK_REGISTRY.setdefault(
-    "many_shot_jailbreak_probe", _ManyShotJailbreakProbe
-)
+METRIC_REGISTRY.setdefault("many_shot_jailbreak_probe", _ManyShotJailbreakProbe)
+BENCHMARK_REGISTRY.setdefault("many_shot_jailbreak_probe", _ManyShotJailbreakProbe)
 
 __all__ = list(__all__) + [
     "MSShot",
@@ -725,13 +889,25 @@ __all__ = list(__all__) + [
 # Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
 # leaves all prior entries untouched. Default config flag is OFF.
 from .agent_red_team_bench import (
-    AttackAttempt as _ARTAttackAttempt,
-    AttackerProfile as _ARTAttackerProfile,
-    ARTResult as _ARTResult,
-    ARTBenchmark as _ARTBenchmark,
     DEFAULT_ATTACKER_PROFILES as _ART_DEFAULT_ATTACKER_PROFILES,
-    stub_target_fn as _art_stub_target_fn,
+)
+from .agent_red_team_bench import (
+    ARTBenchmark as _ARTBenchmark,
+)
+from .agent_red_team_bench import (
+    ARTResult as _ARTResult,
+)
+from .agent_red_team_bench import (
+    AttackAttempt as _ARTAttackAttempt,
+)
+from .agent_red_team_bench import (
+    AttackerProfile as _ARTAttackerProfile,
+)
+from .agent_red_team_bench import (
     stub_judge_fn as _art_stub_judge_fn,
+)
+from .agent_red_team_bench import (
+    stub_target_fn as _art_stub_target_fn,
 )
 
 AttackAttempt = _ARTAttackAttempt
@@ -766,9 +942,13 @@ __all__ = list(__all__) + [
 # speedup, and parallelism_ratio against mock BrowseComp-style tasks.
 # Based on Kimi K2.5 §3.2: single-agent 60.6% → swarm 78.4% on BrowseComp.
 from .swarm_bench import (
-    SwarmTask as _SwarmTask,
-    SwarmBenchResult as _SwarmBenchResult,
     SwarmBench as _SwarmBench,
+)
+from .swarm_bench import (
+    SwarmBenchResult as _SwarmBenchResult,
+)
+from .swarm_bench import (
+    SwarmTask as _SwarmTask,
 )
 
 SwarmTask = _SwarmTask
@@ -790,9 +970,13 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched.
 from .math_eval import (
-    MathEvalConfig as _MathEvalConfig,
     MathAnswer as _MathAnswer,
+)
+from .math_eval import (
     MathEval as _MathEval,
+)
+from .math_eval import (
+    MathEvalConfig as _MathEvalConfig,
 )
 
 MathEvalConfig = _MathEvalConfig
@@ -816,10 +1000,16 @@ __all__ = list(__all__) + [
 # parameter_accuracy, sequence_exact_match, and format_compliance.
 # Cycle 132-D.
 from .tool_bench import (
-    ToolCall as _ToolCall,
-    ToolBenchSample as _ToolBenchSample,
-    ToolBenchConfig as _ToolBenchConfig,
     ToolBench as _ToolBench,
+)
+from .tool_bench import (
+    ToolBenchConfig as _ToolBenchConfig,
+)
+from .tool_bench import (
+    ToolBenchSample as _ToolBenchSample,
+)
+from .tool_bench import (
+    ToolCall as _ToolCall,
 )
 
 ToolCall = _ToolCall
@@ -846,9 +1036,15 @@ __all__ = list(__all__) + [
 # Cycle 135-F.
 from .reasoning_trace_eval import (
     ReasoningTraceConfig as _ReasoningTraceConfig,
-    StepAnalysis as _StepAnalysis,
-    TraceEvalResult as _TraceEvalResult,
+)
+from .reasoning_trace_eval import (
     ReasoningTraceEval as _ReasoningTraceEval,
+)
+from .reasoning_trace_eval import (
+    StepAnalysis as _StepAnalysis,
+)
+from .reasoning_trace_eval import (
+    TraceEvalResult as _TraceEvalResult,
 )
 
 ReasoningTraceConfig = _ReasoningTraceConfig
@@ -874,9 +1070,15 @@ __all__ = list(__all__) + [
 # consensus, and argument diversity (Du et al. 2023).
 # Cycle 137-D.
 from .multi_agent_debate_eval import (
-    DebateConfig as _DebateConfig,
     AgentTurn as _AgentTurn,
+)
+from .multi_agent_debate_eval import (
+    DebateConfig as _DebateConfig,
+)
+from .multi_agent_debate_eval import (
     DebateEvalResult as _DebateEvalResult,
+)
+from .multi_agent_debate_eval import (
     DebateEvaluator as _DebateEvaluator,
 )
 
@@ -902,16 +1104,22 @@ __all__ = list(__all__) + [
 # all prior entries untouched. Pure-stdlib data builder + scorer; no model
 # calls performed at import or registration time. Cycle 132 / surface=eval.
 from src.eval.multi_needle_eval import (
-    MultiNeedleError,
-    MultiNeedleConfig,
-    MultiNeedleSample,
-    MultiNeedleVerdict,
-    build_sample as multi_needle_build_sample,
-    parse_recovery as multi_needle_parse_recovery,
-    score as multi_needle_score,
     DEPTH_PROFILE_REGISTRY,
     MULTI_NEEDLE_REGISTRY,
+    MultiNeedleConfig,
+    MultiNeedleError,
+    MultiNeedleSample,
+    MultiNeedleVerdict,
     register_depth_profile,
+)
+from src.eval.multi_needle_eval import (
+    build_sample as multi_needle_build_sample,
+)
+from src.eval.multi_needle_eval import (
+    parse_recovery as multi_needle_parse_recovery,
+)
+from src.eval.multi_needle_eval import (
+    score as multi_needle_score,
 )
 
 BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
@@ -935,12 +1143,22 @@ __all__ = list(__all__) + [
 # all prior entries untouched.  Measures task-completion rate on realistic
 # web environments (Zhou et al. 2307.13854).
 from .webarena_scorer import (
-    WebArenaTask as _WebArenaTask,
-    WebArenaResult as _WebArenaResult,
-    WebArenaMetrics as _WebArenaMetrics,
-    WebArenaScorer as _WebArenaScorer,
-    WEBARENA_TASK_REGISTRY as _WEBARENA_TASK_REGISTRY,
     WEBARENA_SCORER_REGISTRY as _WEBARENA_SCORER_REGISTRY,
+)
+from .webarena_scorer import (
+    WEBARENA_TASK_REGISTRY as _WEBARENA_TASK_REGISTRY,
+)
+from .webarena_scorer import (
+    WebArenaMetrics as _WebArenaMetrics,
+)
+from .webarena_scorer import (
+    WebArenaResult as _WebArenaResult,
+)
+from .webarena_scorer import (
+    WebArenaScorer as _WebArenaScorer,
+)
+from .webarena_scorer import (
+    WebArenaTask as _WebArenaTask,
 )
 
 WebArenaTask = _WebArenaTask
@@ -968,12 +1186,20 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched.  Measures task completion rate for computer-use
 # tasks across apps and difficulty levels (Xie et al. 2024, 2406.14800).
+from .osworld_scorer import (
+    OSWORLD_TASK_REGISTRY as _OSWORLD_TASK_REGISTRY,
+)
+from .osworld_scorer import (
+    OSWorldMetrics as _OSWorldMetrics,
+)
+from .osworld_scorer import (
+    OSWorldResult as _OSWorldResult,
+)
+from .osworld_scorer import (
+    OSWorldScorer as _OSWorldScorer,
+)
 from .osworld_scorer import (  # noqa: E402
     OSWorldTask as _OSWorldTask,
-    OSWorldResult as _OSWorldResult,
-    OSWorldMetrics as _OSWorldMetrics,
-    OSWorldScorer as _OSWorldScorer,
-    OSWORLD_TASK_REGISTRY as _OSWORLD_TASK_REGISTRY,
 )
 
 OSWorldTask = _OSWorldTask
@@ -1004,9 +1230,13 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched.
 from .benchmark_runner import (
-    RunConfig as _RunConfig,
     BenchmarkResult as _BenchmarkResult,
+)
+from .benchmark_runner import (
     BenchmarkRunner as _BenchmarkRunner,
+)
+from .benchmark_runner import (
+    RunConfig as _RunConfig,
 )
 
 RunConfig = _RunConfig
@@ -1023,9 +1253,13 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched.
 from .ab_comparison import (
-    ComparisonMetric as _ComparisonMetric,
-    ModelComparison as _ModelComparison,
     ABComparison as _ABComparison,
+)
+from .ab_comparison import (
+    ComparisonMetric as _ComparisonMetric,
+)
+from .ab_comparison import (
+    ModelComparison as _ModelComparison,
 )
 
 ComparisonMetric = _ComparisonMetric
@@ -1042,10 +1276,16 @@ __all__ = list(__all__) + [
 # Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
 # all prior entries untouched.
 from .eval_pipeline import (
-    EvalStage as _EvalStage,
-    PipelineResult as _PipelineResult,
-    EvalPipeline as _EvalPipeline,
     EVAL_PIPELINE_REGISTRY as _EVAL_PIPELINE_REGISTRY,
+)
+from .eval_pipeline import (
+    EvalPipeline as _EvalPipeline,
+)
+from .eval_pipeline import (
+    EvalStage as _EvalStage,
+)
+from .eval_pipeline import (
+    PipelineResult as _PipelineResult,
 )
 
 EvalStage = _EvalStage
@@ -1061,23 +1301,30 @@ __all__ = list(__all__) + [
 ]
 
 # --- TruthfulQA + ARC + HellaSwag scorers (additive, cycle-147) ---------------
-from src.eval.truthfulqa_scorer import (  # noqa: E402,F401
-    TruthfulQAQuestion,
-    TruthfulQAResult,
-    TruthfulQAScorer,
-    TRUTHFULQA_REGISTRY,
-)
 from src.eval.arc_scorer import (  # noqa: E402,F401
+    ARC_REGISTRY,
     ARCQuestion,
     ARCResult,
     ARCScorer,
-    ARC_REGISTRY,
 )
 from src.eval.hellaswag_scorer import (  # noqa: E402,F401
+    HELLASWAG_REGISTRY,
     HellaSwagExample,
     HellaSwagResult,
     HellaSwagScorer,
-    HELLASWAG_REGISTRY,
+)
+from src.eval.truthfulqa_scorer import (  # noqa: E402,F401
+    TRUTHFULQA_REGISTRY,
+    TruthfulQAQuestion,
+    TruthfulQAResult,
+    TruthfulQAScorer,
+)
+
+from .chain_of_thought_scorer import (
+    CHAIN_OF_THOUGHT_SCORER_REGISTRY as _CHAIN_OF_THOUGHT_SCORER_REGISTRY,
+)
+from .chain_of_thought_scorer import (
+    DEFAULT_CHAIN_OF_THOUGHT_SCORER as _DEFAULT_CHAIN_OF_THOUGHT_SCORER,
 )
 
 # --- Additive registration for Chain-of-Thought Scorer -----------------------
@@ -1086,8 +1333,6 @@ from src.eval.hellaswag_scorer import (  # noqa: E402,F401
 # step-wise faithfulness, redundancy, and consistency metrics.
 from .chain_of_thought_scorer import (
     ChainOfThoughtScorer as _ChainOfThoughtScorer,
-    DEFAULT_CHAIN_OF_THOUGHT_SCORER as _DEFAULT_CHAIN_OF_THOUGHT_SCORER,
-    CHAIN_OF_THOUGHT_SCORER_REGISTRY as _CHAIN_OF_THOUGHT_SCORER_REGISTRY,
 )
 
 ChainOfThoughtScorer = _ChainOfThoughtScorer
@@ -1110,9 +1355,13 @@ __all__ = list(__all__) + [
 # all prior entries untouched.  Computes demographic-parity and equal-odds
 # gaps from prediction/label slices.
 from .fairness_scorer import (
-    FairnessScorer as _FairnessScorer,
     DEFAULT_FAIRNESS_SCORER as _DEFAULT_FAIRNESS_SCORER,
+)
+from .fairness_scorer import (
     FAIRNESS_SCORER_REGISTRY as _FAIRNESS_SCORER_REGISTRY,
+)
+from .fairness_scorer import (
+    FairnessScorer as _FairnessScorer,
 )
 
 FairnessScorer = _FairnessScorer

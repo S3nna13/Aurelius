@@ -13,15 +13,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MergeConfig:
@@ -44,14 +43,15 @@ class MergeConfig:
 # Linear merging
 # ---------------------------------------------------------------------------
 
+
 class LinearMerge:
     """Weighted (or uniform) linear average of model state dicts."""
 
     def merge(
         self,
-        state_dicts: List[Dict[str, Tensor]],
-        weights: Optional[List[float]] = None,
-    ) -> Dict[str, Tensor]:
+        state_dicts: list[dict[str, Tensor]],
+        weights: list[float] | None = None,
+    ) -> dict[str, Tensor]:
         """Weighted average of *state_dicts*.
 
         Args:
@@ -75,20 +75,18 @@ class LinearMerge:
             weights = [w / total for w in weights]
 
         keys = list(state_dicts[0].keys())
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in keys:
-            stacked = torch.stack(
-                [sd[key].float() * w for sd, w in zip(state_dicts, weights)]
-            )
+            stacked = torch.stack([sd[key].float() * w for sd, w in zip(state_dicts, weights)])
             result[key] = stacked.sum(dim=0).to(state_dicts[0][key].dtype)
         return result
 
     def merge_two(
         self,
-        sd_a: Dict[str, Tensor],
-        sd_b: Dict[str, Tensor],
+        sd_a: dict[str, Tensor],
+        sd_b: dict[str, Tensor],
         alpha: float = 0.5,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Interpolate two state dicts: ``(1 - alpha) * A + alpha * B``.
 
         Args:
@@ -99,7 +97,7 @@ class LinearMerge:
         Returns:
             Merged state dict.
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in sd_a:
             a = sd_a[key].float()
             b = sd_b[key].float()
@@ -110,6 +108,7 @@ class LinearMerge:
 # ---------------------------------------------------------------------------
 # SLERP merging
 # ---------------------------------------------------------------------------
+
 
 class SLERPMerge:
     """Spherical linear interpolation between two model state dicts."""
@@ -162,10 +161,10 @@ class SLERPMerge:
 
     def merge(
         self,
-        sd_a: Dict[str, Tensor],
-        sd_b: Dict[str, Tensor],
+        sd_a: dict[str, Tensor],
+        sd_b: dict[str, Tensor],
         t: float = 0.5,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """SLERP-merge two state dicts at interpolation factor *t*.
 
         Each parameter tensor is flattened, SLERPed, then reshaped.
@@ -178,7 +177,7 @@ class SLERPMerge:
         Returns:
             Merged state dict.
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in sd_a:
             result[key] = self.slerp(sd_a[key], sd_b[key], t)
         return result
@@ -187,6 +186,7 @@ class SLERPMerge:
 # ---------------------------------------------------------------------------
 # TIES merging
 # ---------------------------------------------------------------------------
+
 
 class TIESMerge:
     """TIES (Trim, Elect Sign & Merge) model merging.
@@ -217,7 +217,7 @@ class TIESMerge:
         trimmed = flat * mask.float()
         return trimmed.reshape(delta.shape).to(delta.dtype)
 
-    def resolve_signs(self, deltas: List[Tensor]) -> Tensor:
+    def resolve_signs(self, deltas: list[Tensor]) -> Tensor:
         """Compute the majority sign per element across *deltas*.
 
         Sign is determined by ``sign(sum_of_signs)``.  Ties (sum == 0) yield
@@ -238,10 +238,10 @@ class TIESMerge:
 
     def merge(
         self,
-        base: Dict[str, Tensor],
-        fine_tuned_list: List[Dict[str, Tensor]],
+        base: dict[str, Tensor],
+        fine_tuned_list: list[dict[str, Tensor]],
         k: float = 0.2,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """TIES-merge a list of fine-tuned models into *base*.
 
         Steps per parameter:
@@ -259,7 +259,7 @@ class TIESMerge:
         Returns:
             Merged state dict.
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in base:
             base_param = base[key].float()
             deltas = [sd[key].float() - base_param for sd in fine_tuned_list]
@@ -268,9 +268,7 @@ class TIESMerge:
             majority_sign = self.resolve_signs(trimmed)
 
             # Keep only elements that agree with majority sign
-            agreed = [
-                t * (t.sign() == majority_sign).float() for t in trimmed
-            ]
+            agreed = [t * (t.sign() == majority_sign).float() for t in trimmed]
             # Average (ignoring zeros) — sum / count_of_agreements per element
             stacked = torch.stack(agreed, dim=0)
             counts = (stacked != 0).float().sum(dim=0).clamp(min=1)
@@ -284,6 +282,7 @@ class TIESMerge:
 # ---------------------------------------------------------------------------
 # DARE merging
 # ---------------------------------------------------------------------------
+
 
 class DAREMerge:
     """DARE (Drop And REscale) model merging.
@@ -307,18 +306,16 @@ class DAREMerge:
         """
         if density >= 1.0:
             return delta.clone()
-        mask = torch.bernoulli(
-            torch.full(delta.shape, density, dtype=torch.float32)
-        )
+        mask = torch.bernoulli(torch.full(delta.shape, density, dtype=torch.float32))
         return (delta.float() * mask / density).to(delta.dtype)
 
     def merge(
         self,
-        base: Dict[str, Tensor],
-        fine_tuned: Dict[str, Tensor],
+        base: dict[str, Tensor],
+        fine_tuned: dict[str, Tensor],
         density: float = 0.9,
         alpha: float = 0.5,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """DARE-merge a single fine-tuned model into *base*.
 
         Formula: ``new_params = base + alpha * dare_prune(FT - base, density)``
@@ -332,7 +329,7 @@ class DAREMerge:
         Returns:
             Merged state dict.
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in base:
             base_param = base[key].float()
             delta = fine_tuned[key].float() - base_param
@@ -346,6 +343,7 @@ class DAREMerge:
 # Task Arithmetic merging
 # ---------------------------------------------------------------------------
 
+
 class TaskArithmeticMerge:
     """Task Arithmetic model merging.
 
@@ -354,10 +352,10 @@ class TaskArithmeticMerge:
 
     def merge(
         self,
-        base: Dict[str, Tensor],
-        fine_tuned_list: List[Dict[str, Tensor]],
+        base: dict[str, Tensor],
+        fine_tuned_list: list[dict[str, Tensor]],
         alpha: float = 0.5,
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         """Add scaled task vectors to *base*.
 
         Formula: ``new_params = base + alpha * sum(FT_i - base)``
@@ -370,12 +368,10 @@ class TaskArithmeticMerge:
         Returns:
             Merged state dict.
         """
-        result: Dict[str, Tensor] = {}
+        result: dict[str, Tensor] = {}
         for key in base:
             base_param = base[key].float()
-            task_vector_sum = sum(
-                sd[key].float() - base_param for sd in fine_tuned_list
-            )
+            task_vector_sum = sum(sd[key].float() - base_param for sd in fine_tuned_list)
             merged = base_param + alpha * task_vector_sum
             result[key] = merged.to(base[key].dtype)
         return result
@@ -384,6 +380,7 @@ class TaskArithmeticMerge:
 # ---------------------------------------------------------------------------
 # Facade: ModelMerger
 # ---------------------------------------------------------------------------
+
 
 class ModelMerger:
     """High-level facade that dispatches to the appropriate merge strategy.
@@ -403,9 +400,9 @@ class ModelMerger:
 
     def merge(
         self,
-        base_sd: Dict[str, Tensor],
-        *fine_tuned_sds: Dict[str, Tensor],
-    ) -> Dict[str, Tensor]:
+        base_sd: dict[str, Tensor],
+        *fine_tuned_sds: dict[str, Tensor],
+    ) -> dict[str, Tensor]:
         """Merge *fine_tuned_sds* into *base_sd* using the configured method.
 
         Args:
@@ -441,14 +438,10 @@ class ModelMerger:
 
         elif method == "dare":
             ft = fine_tuned_sds[0]
-            return self._dare.merge(
-                base_sd, ft, density=cfg.dare_density, alpha=cfg.alpha
-            )
+            return self._dare.merge(base_sd, ft, density=cfg.dare_density, alpha=cfg.alpha)
 
         elif method == "task_arithmetic":
-            return self._task_arith.merge(
-                base_sd, list(fine_tuned_sds), alpha=cfg.alpha
-            )
+            return self._task_arith.merge(base_sd, list(fine_tuned_sds), alpha=cfg.alpha)
 
         else:
             raise ValueError(

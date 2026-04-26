@@ -20,17 +20,15 @@ NOTE: this module is self-contained and MUST NOT import from ``src.model``
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor, nn
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Config
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class CrossLayerKVConfig:
@@ -77,14 +75,14 @@ class CrossLayerKVConfig:
             )
         if self.n_heads % self.n_kv_heads != 0:
             raise ValueError(
-                f"n_heads must be divisible by n_kv_heads: "
-                f"{self.n_heads} % {self.n_kv_heads} != 0"
+                f"n_heads must be divisible by n_kv_heads: {self.n_heads} % {self.n_kv_heads} != 0"
             )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Single attention layer
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class CrossLayerKVAttention(nn.Module):
     """Single attention layer that either owns or borrows KV projections.
@@ -126,8 +124,8 @@ class CrossLayerKVAttention(nn.Module):
 
         # Only owner layers hold KV projections.
         if is_kv_owner:
-            self.k_proj: Optional[nn.Linear] = nn.Linear(d, kv_dim, bias=False)
-            self.v_proj: Optional[nn.Linear] = nn.Linear(d, kv_dim, bias=False)
+            self.k_proj: nn.Linear | None = nn.Linear(d, kv_dim, bias=False)
+            self.v_proj: nn.Linear | None = nn.Linear(d, kv_dim, bias=False)
         else:
             self.k_proj = None
             self.v_proj = None
@@ -141,7 +139,7 @@ class CrossLayerKVAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        kv_cache: Optional[Tensor] = None,
+        kv_cache: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         """Apply one cross-layer-KV attention layer.
 
@@ -213,6 +211,7 @@ class CrossLayerKVAttention(nn.Module):
 # Stack
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class CrossLayerKVStack(nn.Module):
     """Stack of N layers with cross-layer KV sharing.
 
@@ -230,7 +229,7 @@ class CrossLayerKVStack(nn.Module):
 
         layers = []
         for i in range(config.n_layers):
-            is_owner = (i % config.share_every_n == 0)
+            is_owner = i % config.share_every_n == 0
             layers.append(CrossLayerKVAttention(config, layer_idx=i, is_kv_owner=is_owner))
         self.layers = nn.ModuleList(layers)
 
@@ -250,7 +249,7 @@ class CrossLayerKVStack(nn.Module):
         Returns:
             [B, T, d_model]
         """
-        current_kv: Optional[Tensor] = None
+        current_kv: Tensor | None = None
 
         for layer in self.layers:
             if layer.is_kv_owner:

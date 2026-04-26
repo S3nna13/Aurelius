@@ -6,7 +6,6 @@ cases, and lengths masking."""
 from __future__ import annotations
 
 import math
-from typing import List
 
 import pytest
 import torch
@@ -116,9 +115,7 @@ def test_compute_sequence_perplexity_lengths_masking():
 
     # Seq 0 should have low perplexity (mean of -0.5 over 4 tokens)
     # Seq 1 should have high perplexity (poisoned padding included)
-    assert perps[0] < perps[1], (
-        f"Seq 0 perp {perps[0]:.2f} should be < seq 1 perp {perps[1]:.2f}"
-    )
+    assert perps[0] < perps[1], f"Seq 0 perp {perps[0]:.2f} should be < seq 1 perp {perps[1]:.2f}"
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +144,7 @@ def test_filter_keeps_within_threshold():
     scorer = make_scorer(cfg)
     pfilter = PerplexityFilter(scorer=scorer, config=cfg)
 
-    texts: List[Tensor] = [torch.randint(0, VOCAB_SIZE, (10,)) for _ in range(5)]
+    texts: list[Tensor] = [torch.randint(0, VOCAB_SIZE, (10,)) for _ in range(5)]
     kept, scores = pfilter.filter_batch(texts)
     assert len(kept) == 5, "Wide window should keep all sequences"
     assert len(scores) == 5
@@ -165,7 +162,7 @@ def test_filter_removes_outside_threshold():
     scorer = make_scorer(cfg)
     pfilter = PerplexityFilter(scorer=scorer, config=cfg)
 
-    texts: List[Tensor] = [torch.randint(0, VOCAB_SIZE, (10,)) for _ in range(4)]
+    texts: list[Tensor] = [torch.randint(0, VOCAB_SIZE, (10,)) for _ in range(4)]
     kept, scores = pfilter.filter_batch(texts)
     assert len(kept) == 0, "Tiny window should remove all sequences"
     assert len(scores) == 0
@@ -199,7 +196,7 @@ def test_get_stats_values_consistent():
     stats = pfilter.get_stats(scores)
     assert stats["min"] == pytest.approx(5.0)
     assert stats["max"] == pytest.approx(200.0)
-    assert stats["n_kept"] == pytest.approx(2.0)   # 20 and 50
+    assert stats["n_kept"] == pytest.approx(2.0)  # 20 and 50
     assert stats["n_filtered"] == pytest.approx(2.0)  # 5 and 200
     assert stats["mean"] == pytest.approx(sum(scores) / len(scores))
 
@@ -215,7 +212,7 @@ def test_ranker_ordering():
     scorer = make_scorer(cfg)
     ranker = DatasetPerplexityRanker(scorer=scorer)
 
-    texts: List[Tensor] = [torch.randint(0, VOCAB_SIZE, (8,)) for _ in range(6)]
+    texts: list[Tensor] = [torch.randint(0, VOCAB_SIZE, (8,)) for _ in range(6)]
     sorted_texts, sorted_scores = ranker.rank(texts, return_scores=True)
 
     assert len(sorted_texts) == 6
@@ -223,7 +220,7 @@ def test_ranker_ordering():
     # Verify ascending order.
     for i in range(len(sorted_scores) - 1):
         assert sorted_scores[i] <= sorted_scores[i + 1], (
-            f"Scores not sorted at position {i}: {sorted_scores[i]} > {sorted_scores[i+1]}"
+            f"Scores not sorted at position {i}: {sorted_scores[i]} > {sorted_scores[i + 1]}"
         )
 
 
@@ -236,7 +233,7 @@ def test_ranker_return_scores_false():
     cfg = PerplexityFilterConfig()
     scorer = make_scorer(cfg)
     ranker = DatasetPerplexityRanker(scorer=scorer)
-    texts: List[Tensor] = [torch.randint(0, VOCAB_SIZE, (5,)) for _ in range(3)]
+    texts: list[Tensor] = [torch.randint(0, VOCAB_SIZE, (5,)) for _ in range(3)]
     result = ranker.rank(texts, return_scores=False)
     assert isinstance(result, list)
     assert len(result) == 3
@@ -297,7 +294,7 @@ def test_single_element_list():
     cfg = PerplexityFilterConfig(min_perplexity=0.0, max_perplexity=1e9)
     scorer = make_scorer(cfg)
     pfilter = PerplexityFilter(scorer=scorer, config=cfg)
-    texts: List[Tensor] = [torch.randint(0, VOCAB_SIZE, (7,))]
+    texts: list[Tensor] = [torch.randint(0, VOCAB_SIZE, (7,))]
     kept, scores = pfilter.filter_batch(texts)
     assert len(kept) == 1
     assert len(scores) == 1
@@ -328,7 +325,7 @@ def test_get_stats_empty():
 def test_score_texts_length():
     cfg = PerplexityFilterConfig(batch_size=3)
     scorer = make_scorer(cfg)
-    texts: List[Tensor] = [torch.randint(0, VOCAB_SIZE, (i + 3,)) for i in range(7)]
+    texts: list[Tensor] = [torch.randint(0, VOCAB_SIZE, (i + 3,)) for i in range(7)]
     scores = scorer.score_texts(texts)
     assert len(scores) == 7
     assert all(isinstance(s, float) for s in scores)

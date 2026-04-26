@@ -1,11 +1,11 @@
 """Tests for src/reasoning/tot_planner.py"""
+
 from __future__ import annotations
 
-import pytest
-from src.reasoning.tot_planner import ThoughtNode, ToTPlanner, TOT_PLANNER
-
+from src.reasoning.tot_planner import TOT_PLANNER, ThoughtNode, ToTPlanner
 
 # ---------- ThoughtNode ----------
+
 
 class TestThoughtNode:
     def test_auto_id_generated(self):
@@ -57,6 +57,7 @@ class TestThoughtNode:
 
 # ---------- ToTPlanner.add_root ----------
 
+
 class TestAddRoot:
     def setup_method(self):
         self.planner = ToTPlanner()
@@ -88,6 +89,7 @@ class TestAddRoot:
 
 # ---------- ToTPlanner.expand ----------
 
+
 class TestExpand:
     def setup_method(self):
         self.planner = ToTPlanner()
@@ -111,7 +113,7 @@ class TestExpand:
         assert grandchildren[0].depth == 2
 
     def test_children_appended_to_parent(self):
-        children = self.planner.expand(self.root, ["a", "b"], [0.8, 0.6])
+        self.planner.expand(self.root, ["a", "b"], [0.8, 0.6])
         assert len(self.root.children) == 2
 
     def test_scores_assigned(self):
@@ -129,6 +131,7 @@ class TestExpand:
 
 
 # ---------- ToTPlanner.beam_select ----------
+
 
 class TestBeamSelect:
     def setup_method(self):
@@ -162,6 +165,7 @@ class TestBeamSelect:
 
 # ---------- ToTPlanner.best_path ----------
 
+
 class TestBestPath:
     def setup_method(self):
         self.planner = ToTPlanner()
@@ -187,12 +191,13 @@ class TestBestPath:
 
     def test_picks_highest_score_child(self):
         root = self.planner.add_root("root")
-        children = self.planner.expand(root, ["low", "high"], [0.3, 0.9])
+        self.planner.expand(root, ["low", "high"], [0.3, 0.9])
         path = self.planner.best_path(root)
         assert path[1].thought == "high"
 
 
 # ---------- ToTPlanner.all_leaves ----------
+
 
 class TestAllLeaves:
     def setup_method(self):
@@ -219,6 +224,7 @@ class TestAllLeaves:
 
 # ---------- ToTPlanner.tree_size ----------
 
+
 class TestTreeSize:
     def setup_method(self):
         self.planner = ToTPlanner()
@@ -240,6 +246,7 @@ class TestTreeSize:
 
 
 # ---------- TOT_PLANNER singleton ----------
+
 
 class TestTotPlannerSingleton:
     def test_exists(self):

@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-import time
-
-import pytest
-
 from src.agent.preserve_thinking import (
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
-    ThinkingSnapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults():
     cfg = PreserveThinkingConfig()
@@ -28,6 +23,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. test_add_snapshot_basic
 # ---------------------------------------------------------------------------
+
 
 def test_add_snapshot_basic():
     buf = PreserveThinkingBuffer()
@@ -44,6 +40,7 @@ def test_add_snapshot_basic():
 # 3. test_add_snapshot_truncates
 # ---------------------------------------------------------------------------
 
+
 def test_add_snapshot_truncates():
     cfg = PreserveThinkingConfig(max_tokens_per_snapshot=4)
     buf = PreserveThinkingBuffer(cfg)
@@ -57,6 +54,7 @@ def test_add_snapshot_truncates():
 # 4. test_ring_buffer_evicts
 # ---------------------------------------------------------------------------
 
+
 def test_ring_buffer_evicts():
     cfg = PreserveThinkingConfig(max_snapshots=3)
     buf = PreserveThinkingBuffer(cfg)
@@ -68,6 +66,7 @@ def test_ring_buffer_evicts():
 # ---------------------------------------------------------------------------
 # 5. test_eviction_count
 # ---------------------------------------------------------------------------
+
 
 def test_eviction_count():
     cfg = PreserveThinkingConfig(max_snapshots=3)
@@ -82,6 +81,7 @@ def test_eviction_count():
 # 6. test_get_prepend_tokens_full
 # ---------------------------------------------------------------------------
 
+
 def test_get_prepend_tokens_full():
     cfg = PreserveThinkingConfig(use_summary=False, max_prepend_tokens=100)
     buf = PreserveThinkingBuffer(cfg)
@@ -94,6 +94,7 @@ def test_get_prepend_tokens_full():
 # 7. test_get_prepend_tokens_summary
 # ---------------------------------------------------------------------------
 
+
 def test_get_prepend_tokens_summary():
     cfg = PreserveThinkingConfig(use_summary=True, max_prepend_tokens=100)
     buf = PreserveThinkingBuffer(cfg)
@@ -105,6 +106,7 @@ def test_get_prepend_tokens_summary():
 # ---------------------------------------------------------------------------
 # 8. test_get_prepend_tokens_respects_max
 # ---------------------------------------------------------------------------
+
 
 def test_get_prepend_tokens_respects_max():
     cfg = PreserveThinkingConfig(use_summary=False, max_prepend_tokens=10)
@@ -120,6 +122,7 @@ def test_get_prepend_tokens_respects_max():
 # 9. test_get_prepend_empty_buffer
 # ---------------------------------------------------------------------------
 
+
 def test_get_prepend_empty_buffer():
     buf = PreserveThinkingBuffer()
     assert buf.get_prepend_tokens() == []
@@ -128,6 +131,7 @@ def test_get_prepend_empty_buffer():
 # ---------------------------------------------------------------------------
 # 10. test_clear
 # ---------------------------------------------------------------------------
+
 
 def test_clear():
     buf = PreserveThinkingBuffer()
@@ -142,6 +146,7 @@ def test_clear():
 # ---------------------------------------------------------------------------
 # 11. test_oldest_first_order
 # ---------------------------------------------------------------------------
+
 
 def test_oldest_first_order():
     buf = PreserveThinkingBuffer()
@@ -158,6 +163,7 @@ def test_oldest_first_order():
 # 12. test_metadata_preserved
 # ---------------------------------------------------------------------------
 
+
 def test_metadata_preserved():
     buf = PreserveThinkingBuffer()
     meta = {"model": "aurelius-1.4B", "step": 42, "tags": ["cot", "plan"]}
@@ -172,6 +178,7 @@ def test_metadata_preserved():
 # 13. test_summary_none_falls_back
 # ---------------------------------------------------------------------------
 
+
 def test_summary_none_falls_back():
     cfg = PreserveThinkingConfig(use_summary=True, max_prepend_tokens=100)
     buf = PreserveThinkingBuffer(cfg)
@@ -184,6 +191,7 @@ def test_summary_none_falls_back():
 # ---------------------------------------------------------------------------
 # 14. test_determinism
 # ---------------------------------------------------------------------------
+
 
 def test_determinism():
     def run():
@@ -199,6 +207,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # 15. test_multiple_turns_most_recent_wins
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_turns_most_recent_wins():
     cfg = PreserveThinkingConfig(use_summary=False, max_prepend_tokens=100)

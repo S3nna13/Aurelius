@@ -12,32 +12,34 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class MemoryType(Enum):
     OBSERVATION = "observation"
-    DECISION    = "decision"
-    REFLECTION  = "reflection"
-    FACT        = "fact"
-    PLAN        = "plan"
+    DECISION = "decision"
+    REFLECTION = "reflection"
+    FACT = "fact"
+    PLAN = "plan"
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class MemoryRecord:
     """A single immutable entry in the agent memory store."""
-    record_id:   str
+
+    record_id: str
     memory_type: MemoryType
-    content:     str
-    importance:  float
-    timestamp:   float
-    tags:        list[str] = field(default_factory=list)
+    content: str
+    importance: float
+    timestamp: float
+    tags: list[str] = field(default_factory=list)
 
     def __new__(cls, *args, **kwargs):  # noqa: D102 – handled via __init__ below
         return object.__new__(cls)
@@ -51,10 +53,10 @@ class MemoryRecord:
         timestamp: float,
         tags: list[str] | None = None,
         record_id: str | None = None,
-    ) -> "MemoryRecord":
+    ) -> MemoryRecord:
         """Factory that auto-generates record_id when not provided."""
-        rid  = record_id if record_id is not None else uuid.uuid4().hex[:10]
-        tgs  = tags if tags is not None else []
+        rid = record_id if record_id is not None else uuid.uuid4().hex[:10]
+        tgs = tags if tags is not None else []
         return cls(
             record_id=rid,
             memory_type=memory_type,
@@ -68,6 +70,7 @@ class MemoryRecord:
 # ---------------------------------------------------------------------------
 # Writer
 # ---------------------------------------------------------------------------
+
 
 class MemoryWriter:
     """Write and recall agent memories with tag/type/importance filtering."""

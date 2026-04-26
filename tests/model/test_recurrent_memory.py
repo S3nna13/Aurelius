@@ -2,22 +2,21 @@
 
 import torch
 import torch.nn as nn
-import pytest
 
+from src.model.config import AureliusConfig
 from src.model.recurrent_memory import (
-    RMTConfig,
     MemoryTokens,
-    segment_sequence,
+    RMTConfig,
     RMTWrapper,
     compute_memory_utilization,
+    segment_sequence,
 )
-from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_small_config() -> AureliusConfig:
     return AureliusConfig(
@@ -53,6 +52,7 @@ def _make_wrapper(rmt_config: RMTConfig | None = None) -> RMTWrapper:
 # 1. RMTConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_rmt_config_defaults():
     cfg = RMTConfig()
     assert cfg.n_memory_tokens == 16
@@ -66,6 +66,7 @@ def test_rmt_config_defaults():
 # 2. MemoryTokens output shape (B, n_tokens, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_memory_tokens_output_shape():
     n_tokens, d_model = 8, 64
     mem = MemoryTokens(n_tokens, d_model)
@@ -78,6 +79,7 @@ def test_memory_tokens_output_shape():
 # 3. MemoryTokens is nn.Parameter (trainable)
 # ---------------------------------------------------------------------------
 
+
 def test_memory_tokens_is_parameter():
     mem = MemoryTokens(8, 64)
     assert isinstance(mem.memory, nn.Parameter)
@@ -87,6 +89,7 @@ def test_memory_tokens_is_parameter():
 # ---------------------------------------------------------------------------
 # 4. MemoryTokens.update changes stored memory
 # ---------------------------------------------------------------------------
+
 
 def test_memory_tokens_update_changes_memory():
     n_tokens, d_model = 4, 64
@@ -107,6 +110,7 @@ def test_memory_tokens_update_changes_memory():
 # 5. segment_sequence correct number of segments
 # ---------------------------------------------------------------------------
 
+
 def test_segment_sequence_num_segments():
     B, T, seg_size = 2, 32, 16
     ids = torch.randint(0, 100, (B, T))
@@ -118,6 +122,7 @@ def test_segment_sequence_num_segments():
 # ---------------------------------------------------------------------------
 # 6. segment_sequence each segment correct size
 # ---------------------------------------------------------------------------
+
 
 def test_segment_sequence_segment_size():
     B, T, seg_size = 2, 48, 16
@@ -132,6 +137,7 @@ def test_segment_sequence_segment_size():
 # 7. segment_sequence last segment handles remainder
 # ---------------------------------------------------------------------------
 
+
 def test_segment_sequence_last_segment_remainder():
     B, T, seg_size = 2, 50, 16
     ids = torch.randint(0, 100, (B, T))
@@ -143,6 +149,7 @@ def test_segment_sequence_last_segment_remainder():
 # ---------------------------------------------------------------------------
 # 8. RMTWrapper forward returns 3-tuple
 # ---------------------------------------------------------------------------
+
 
 def test_rmt_wrapper_forward_returns_3_tuple():
     torch.manual_seed(0)
@@ -157,6 +164,7 @@ def test_rmt_wrapper_forward_returns_3_tuple():
 # 9. RMTWrapper logits shape (B, T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_rmt_wrapper_logits_shape():
     torch.manual_seed(0)
     wrapper = _make_wrapper()
@@ -169,6 +177,7 @@ def test_rmt_wrapper_logits_shape():
 # ---------------------------------------------------------------------------
 # 10. RMTWrapper works with single segment
 # ---------------------------------------------------------------------------
+
 
 def test_rmt_wrapper_single_segment():
     torch.manual_seed(0)
@@ -186,6 +195,7 @@ def test_rmt_wrapper_single_segment():
 # 11. RMTWrapper works with multiple segments
 # ---------------------------------------------------------------------------
 
+
 def test_rmt_wrapper_multiple_segments():
     torch.manual_seed(0)
     cfg = _make_rmt_config(segment_size=8)
@@ -200,6 +210,7 @@ def test_rmt_wrapper_multiple_segments():
 # 12. compute_memory_utilization returns float in [-1, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_compute_memory_utilization_range():
     torch.manual_seed(0)
     a = torch.randn(4, 16, 64)
@@ -213,6 +224,7 @@ def test_compute_memory_utilization_range():
 # 13. compute_memory_utilization identical tensors → ~1.0
 # ---------------------------------------------------------------------------
 
+
 def test_compute_memory_utilization_identical():
     x = torch.randn(4, 16, 64)
     result = compute_memory_utilization(x, x)
@@ -222,6 +234,7 @@ def test_compute_memory_utilization_identical():
 # ---------------------------------------------------------------------------
 # 14. RMTWrapper.process_segment returns correct shapes
 # ---------------------------------------------------------------------------
+
 
 def test_rmt_wrapper_process_segment_shapes():
     torch.manual_seed(0)
@@ -236,4 +249,6 @@ def test_rmt_wrapper_process_segment_shapes():
     logits_seg, new_memory = wrapper.process_segment(seg_ids, memory)
 
     assert logits_seg.shape == (B, S, 256), f"Expected ({B}, {S}, 256), got {logits_seg.shape}"
-    assert new_memory.shape == (B, n_mem, 64), f"Expected ({B}, {n_mem}, 64), got {new_memory.shape}"
+    assert new_memory.shape == (B, n_mem, 64), (
+        f"Expected ({B}, {n_mem}, 64), got {new_memory.shape}"
+    )

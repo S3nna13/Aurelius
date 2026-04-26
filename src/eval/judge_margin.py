@@ -17,8 +17,9 @@ def mean_margin(left_scores: torch.Tensor, right_scores: torch.Tensor) -> torch.
     return score_margin(left_scores, right_scores).mean()
 
 
-def decisive_fraction(left_scores: torch.Tensor, right_scores: torch.Tensor, threshold: float = 0.5) -> torch.Tensor:
+def decisive_fraction(
+    left_scores: torch.Tensor, right_scores: torch.Tensor, threshold: float = 0.5
+) -> torch.Tensor:
     """Fraction of examples with absolute margin above threshold."""
     margins = score_margin(left_scores, right_scores)
     return (margins.abs() >= threshold).float().mean()
-

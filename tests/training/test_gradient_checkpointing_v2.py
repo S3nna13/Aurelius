@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.gradient_checkpointing_v2 import (
     CheckpointConfig,
     CheckpointedLayer,
@@ -13,7 +11,6 @@ from aurelius.training.gradient_checkpointing_v2 import (
     MemoryStats,
     SelectiveCheckpointing,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

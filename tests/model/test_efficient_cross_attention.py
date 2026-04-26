@@ -2,7 +2,6 @@
 
 import pytest
 import torch
-
 from aurelius.model.efficient_cross_attention import (
     CrossAttentionLayer,
     GatedCrossAttention,
@@ -11,15 +10,16 @@ from aurelius.model.efficient_cross_attention import (
 )
 
 # ── shared test dimensions ──────────────────────────────────────────────────
-B = 2       # batch size
-M = 6       # latent / query sequence length
-N = 10      # context sequence length
+B = 2  # batch size
+M = 6  # latent / query sequence length
+N = 10  # context sequence length
 D_MODEL = 32
 D_CONTEXT = 16
 N_HEADS = 4
 
 
 # ── PerceiverCrossAttention ─────────────────────────────────────────────────
+
 
 class TestPerceiverCrossAttention:
     @pytest.fixture
@@ -64,6 +64,7 @@ class TestPerceiverCrossAttention:
 
 
 # ── GatedCrossAttention ─────────────────────────────────────────────────────
+
 
 class TestGatedCrossAttention:
     @pytest.fixture
@@ -111,6 +112,7 @@ class TestGatedCrossAttention:
 
 # ── LinearCrossAttention ────────────────────────────────────────────────────
 
+
 class TestLinearCrossAttention:
     @pytest.fixture
     def model(self):
@@ -147,6 +149,7 @@ class TestLinearCrossAttention:
 
 
 # ── CrossAttentionLayer ─────────────────────────────────────────────────────
+
 
 class TestCrossAttentionLayer:
     @pytest.fixture

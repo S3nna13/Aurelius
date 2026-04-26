@@ -90,8 +90,7 @@ def is_v2_manifest(manifest: FamilyManifest) -> bool:
     """
     if not isinstance(manifest, FamilyManifest):
         raise ManifestValidationError(
-            f"is_v2_manifest expected FamilyManifest, got "
-            f"{type(manifest).__name__}"
+            f"is_v2_manifest expected FamilyManifest, got {type(manifest).__name__}"
         )
     return all(getattr(manifest, f) is not None for f in _V2_FIELDS)
 
@@ -126,8 +125,7 @@ def upgrade_to_v2(
     """
     if not isinstance(manifest, FamilyManifest):
         raise ManifestValidationError(
-            f"upgrade_to_v2 expected FamilyManifest, got "
-            f"{type(manifest).__name__}"
+            f"upgrade_to_v2 expected FamilyManifest, got {type(manifest).__name__}"
         )
     if not isinstance(backend_name, str) or not backend_name:
         raise ManifestValidationError(
@@ -135,15 +133,14 @@ def upgrade_to_v2(
         )
     if not _BACKEND_NAME_RE.match(backend_name):
         raise ManifestValidationError(
-            f"backend_name must match [a-z0-9_-]+ (lower-snake-or-dash), "
-            f"got {backend_name!r}"
+            f"backend_name must match [a-z0-9_-]+ (lower-snake-or-dash), got {backend_name!r}"
         )
-    for cname, cval in (("engine_contract", engine_contract),
-                        ("adapter_contract", adapter_contract)):
+    for cname, cval in (
+        ("engine_contract", engine_contract),
+        ("adapter_contract", adapter_contract),
+    ):
         if not isinstance(cval, str) or not _SEMVER_RE.match(cval):
-            raise ManifestValidationError(
-                f"{cname} must match semver X.Y.Z, got {cval!r}"
-            )
+            raise ManifestValidationError(f"{cname} must match semver X.Y.Z, got {cval!r}")
 
     return dataclasses.replace(
         manifest,
@@ -171,8 +168,7 @@ def v2_to_v1_dict(manifest: FamilyManifest) -> dict:
     """
     if not isinstance(manifest, FamilyManifest):
         raise ManifestValidationError(
-            f"v2_to_v1_dict expected FamilyManifest, got "
-            f"{type(manifest).__name__}"
+            f"v2_to_v1_dict expected FamilyManifest, got {type(manifest).__name__}"
         )
     payload = dump_manifest(manifest)
     for key in _V2_FIELDS:
@@ -189,9 +185,7 @@ def _parse_semver_local(s: Any) -> tuple[int, int, int]:
     manifest-shaped data.
     """
     if not isinstance(s, str):
-        raise ManifestValidationError(
-            f"semver must be a string, got {type(s).__name__}"
-        )
+        raise ManifestValidationError(f"semver must be a string, got {type(s).__name__}")
     m = _SEMVER_RE.match(s)
     if not m:
         raise ManifestValidationError(f"invalid semver: {s!r}")

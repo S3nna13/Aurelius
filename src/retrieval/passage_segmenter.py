@@ -9,16 +9,14 @@ information loss.
 
 from __future__ import annotations
 
-import math
 import re
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List
+from dataclasses import dataclass
+from enum import StrEnum
 
 RETRIEVAL_REGISTRY: dict = {}
 
 
-class SegmentStrategy(str, Enum):
+class SegmentStrategy(StrEnum):
     FIXED_SIZE = "fixed_size"
     SENTENCE = "sentence"
     PARAGRAPH = "paragraph"
@@ -44,7 +42,7 @@ class PassageSegmenter:
         text: str,
         strategy: SegmentStrategy,
         max_tokens: int = 512,
-    ) -> List[Segment]:
+    ) -> list[Segment]:
         """Return a list of Segment objects for *text* under *strategy*."""
         if strategy == SegmentStrategy.FIXED_SIZE:
             return self._fixed_size(text, max_tokens)
@@ -60,19 +58,18 @@ class PassageSegmenter:
     # private helpers
     # ------------------------------------------------------------------
 
-    def _make_segments(self, spans: list[tuple[int, int]], text: str) -> List[Segment]:
-        result: List[Segment] = []
+    def _make_segments(self, spans: list[tuple[int, int]], text: str) -> list[Segment]:
+        result: list[Segment] = []
         for idx, (start, end) in enumerate(spans):
             chunk = text[start:end]
             if chunk.strip():
                 result.append(Segment(text=chunk, start_char=start, end_char=end, segment_id=idx))
         return result
 
-    def _fixed_size(self, text: str, max_tokens: int) -> List[Segment]:
+    def _fixed_size(self, text: str, max_tokens: int) -> list[Segment]:
         max_chars = max_tokens * self._CHARS_PER_TOKEN
         words = text.split(" ")
         spans: list[tuple[int, int]] = []
-        current_start = 0
         current_chars = 0
         current_words: list[str] = []
 
@@ -82,7 +79,6 @@ class PassageSegmenter:
             word_offsets.append(char_offset)
             char_offset += len(w) + 1  # +1 for the space
 
-        seg_start_char = 0
         seg_word_start = 0
 
         for i, (w, off) in enumerate(zip(words, word_offsets)):
@@ -108,7 +104,7 @@ class PassageSegmenter:
 
     def _sentence_spans(self, text: str) -> list[tuple[int, int]]:
         """Split text into sentence spans using '. ', '! ', '? ' boundaries."""
-        pattern = re.compile(r'(?<=[.!?])\s+')
+        pattern = re.compile(r"(?<=[.!?])\s+")
         spans: list[tuple[int, int]] = []
         last = 0
         for m in pattern.finditer(text):
@@ -118,7 +114,7 @@ class PassageSegmenter:
             spans.append((last, len(text)))
         return spans
 
-    def _sentence(self, text: str, max_tokens: int) -> List[Segment]:
+    def _sentence(self, text: str, max_tokens: int) -> list[Segment]:
         max_chars = max_tokens * self._CHARS_PER_TOKEN
         raw_spans = self._sentence_spans(text)
         # merge short sentences to fill up to max_chars
@@ -144,8 +140,8 @@ class PassageSegmenter:
             merged.append((current_start, current_end))
         return self._make_segments(merged, text)
 
-    def _paragraph(self, text: str, max_tokens: int) -> List[Segment]:
-        parts = re.split(r'\n\n+', text)
+    def _paragraph(self, text: str, max_tokens: int) -> list[Segment]:
+        parts = re.split(r"\n\n+", text)
         spans: list[tuple[int, int]] = []
         offset = 0
         for p in parts:
@@ -155,10 +151,10 @@ class PassageSegmenter:
             offset = end + 2  # account for "\n\n"
         return self._make_segments(spans, text)
 
-    def _semantic_boundary(self, text: str, max_tokens: int) -> List[Segment]:
+    def _semantic_boundary(self, text: str, max_tokens: int) -> list[Segment]:
         """Split on paragraph boundaries; merge short ones until max_tokens."""
         max_chars = max_tokens * self._CHARS_PER_TOKEN
-        parts = re.split(r'\n\n+', text)
+        parts = re.split(r"\n\n+", text)
         # collect raw paragraph spans
         raw: list[tuple[int, int]] = []
         offset = 0
@@ -190,16 +186,16 @@ class PassageSegmenter:
 
     def overlap_segments(
         self,
-        segments: List[Segment],
+        segments: list[Segment],
         overlap: int = 50,
-    ) -> List[Segment]:
+    ) -> list[Segment]:
         """Return new segments where each non-first segment prepends up to
         *overlap* tokens worth of text from the previous segment boundary."""
         if len(segments) <= 1:
             return list(segments)
 
         overlap_chars = overlap * self._CHARS_PER_TOKEN
-        result: List[Segment] = [segments[0]]
+        result: list[Segment] = [segments[0]]
         for idx in range(1, len(segments)):
             prev = segments[idx - 1]
             curr = segments[idx]

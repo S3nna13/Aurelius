@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SubTask:
@@ -34,6 +33,7 @@ class TaskPlan:
 # Planner
 # ---------------------------------------------------------------------------
 
+
 class TaskPlanner:
     """Rule-based hierarchical task planner."""
 
@@ -43,10 +43,10 @@ class TaskPlanner:
 
     # --- keyword → subtask-name mapping -----------------------------------
     _KEYWORD_STEPS: dict[tuple[str, ...], list[str]] = {
-        ("research", "find"):        ["fetch_sources", "summarize", "validate"],
-        ("write", "draft"):          ["outline", "draft", "review", "finalize"],
-        ("fix", "debug"):            ["reproduce", "diagnose", "patch", "verify"],
-        ("analyze", "evaluate"):     ["collect_data", "process", "interpret", "report"],
+        ("research", "find"): ["fetch_sources", "summarize", "validate"],
+        ("write", "draft"): ["outline", "draft", "review", "finalize"],
+        ("fix", "debug"): ["reproduce", "diagnose", "patch", "verify"],
+        ("analyze", "evaluate"): ["collect_data", "process", "interpret", "report"],
     }
     _DEFAULT_STEPS: list[str] = ["plan", "execute", "verify"]
 
@@ -57,7 +57,7 @@ class TaskPlanner:
                 return steps
         return self._DEFAULT_STEPS
 
-    def plan(self, goal: str, context: Optional[dict] = None) -> TaskPlan:
+    def plan(self, goal: str, context: dict | None = None) -> TaskPlan:
         steps = self._steps_for(goal)[: self.max_subtasks]
         subtasks: list[SubTask] = []
         for idx, name in enumerate(steps):
@@ -78,7 +78,8 @@ class TaskPlanner:
     def next_ready(self, plan: TaskPlan) -> list[SubTask]:
         completed_ids = {st.task_id for st in plan.subtasks if st.status == "completed"}
         return [
-            st for st in plan.subtasks
+            st
+            for st in plan.subtasks
             if st.status == "pending" and all(dep in completed_ids for dep in st.depends_on)
         ]
 

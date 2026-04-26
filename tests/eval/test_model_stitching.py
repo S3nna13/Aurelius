@@ -4,21 +4,21 @@ import pytest
 import torch
 import torch.nn as nn
 
+from src.eval.model_stitching import (
+    ActivationCollector,
+    StitchConfig,
+    StitchedModel,
+    centered_kernel_alignment,
+    compare_model_representations,
+    procrustes_similarity,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-from src.eval.model_stitching import (
-    StitchConfig,
-    centered_kernel_alignment,
-    procrustes_similarity,
-    ActivationCollector,
-    StitchedModel,
-    compare_model_representations,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def tiny_config():
@@ -56,6 +56,7 @@ def input_ids():
 # 1. StitchConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_stitch_config_defaults():
     cfg = StitchConfig()
     assert cfg.stitch_layer == 1
@@ -68,6 +69,7 @@ def test_stitch_config_defaults():
 # 2. CKA self-similarity approximately 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_cka_self_similarity():
     torch.manual_seed(0)
     X = torch.randn(16, 8)
@@ -78,6 +80,7 @@ def test_cka_self_similarity():
 # ---------------------------------------------------------------------------
 # 3. CKA in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_cka_range():
     torch.manual_seed(1)
@@ -91,6 +94,7 @@ def test_cka_range():
 # 4. CKA(X, random Y) < 1.0
 # ---------------------------------------------------------------------------
 
+
 def test_cka_different_matrices():
     torch.manual_seed(2)
     X = torch.randn(16, 8)
@@ -103,6 +107,7 @@ def test_cka_different_matrices():
 # 5. Procrustes self-similarity high
 # ---------------------------------------------------------------------------
 
+
 def test_procrustes_self_similarity():
     torch.manual_seed(3)
     X = torch.randn(16, 8)
@@ -113,6 +118,7 @@ def test_procrustes_self_similarity():
 # ---------------------------------------------------------------------------
 # 6. Procrustes in reasonable range
 # ---------------------------------------------------------------------------
+
 
 def test_procrustes_range():
     torch.manual_seed(4)
@@ -126,6 +132,7 @@ def test_procrustes_range():
 # 7. ActivationCollector returns a dict
 # ---------------------------------------------------------------------------
 
+
 def test_activation_collector_returns_dict(model_a, input_ids):
     with ActivationCollector(model_a) as collector:
         acts = collector.collect(input_ids)
@@ -137,6 +144,7 @@ def test_activation_collector_returns_dict(model_a, input_ids):
 # 8. ActivationCollector activation shape (B, D)
 # ---------------------------------------------------------------------------
 
+
 def test_activation_collector_shape(model_a, input_ids, tiny_config):
     with ActivationCollector(model_a) as collector:
         acts = collector.collect(input_ids)
@@ -144,14 +152,13 @@ def test_activation_collector_shape(model_a, input_ids, tiny_config):
     B = input_ids.shape[0]
     D = tiny_config.d_model
     for name, act in acts.items():
-        assert act.shape == (B, D), (
-            f"Activation '{name}' shape {act.shape} != ({B}, {D})"
-        )
+        assert act.shape == (B, D), f"Activation '{name}' shape {act.shape} != ({B}, {D})"
 
 
 # ---------------------------------------------------------------------------
 # 9. StitchedModel forward returns correct logits shape (B, T, V)
 # ---------------------------------------------------------------------------
+
 
 def test_stitched_model_forward_shape(model_a, model_b, tiny_config, input_ids):
     cfg = StitchConfig(stitch_layer=1, use_affine=True, freeze_bottom=True, freeze_top=False)
@@ -169,6 +176,7 @@ def test_stitched_model_forward_shape(model_a, model_b, tiny_config, input_ids):
 # 10. compare_model_representations returns dict with cka keys
 # ---------------------------------------------------------------------------
 
+
 def test_compare_model_representations_keys(model_a, model_b, input_ids, tiny_config):
     results = compare_model_representations(model_a, model_b, input_ids)
     assert isinstance(results, dict)
@@ -181,6 +189,7 @@ def test_compare_model_representations_keys(model_a, model_b, input_ids, tiny_co
 # ---------------------------------------------------------------------------
 # 11. Bottom layers are frozen when freeze_bottom=True
 # ---------------------------------------------------------------------------
+
 
 def test_stitched_model_params_frozen(model_a, model_b):
     cfg = StitchConfig(stitch_layer=1, use_affine=True, freeze_bottom=True, freeze_top=False)

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class RolloutStrategy(str, Enum):
+class RolloutStrategy(StrEnum):
     CANARY = "canary"
     BLUE_GREEN = "blue_green"
     ROLLING = "rolling"

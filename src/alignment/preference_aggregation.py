@@ -7,7 +7,7 @@ training signal using Borda count, Bradley-Terry MLE, or majority vote.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +16,19 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AggregationConfig:
-    min_confidence: float = 0.6       # minimum majority fraction to include pair
-    min_annotators: int = 3           # minimum annotators required per prompt
-    tie_threshold: float = 0.05       # Borda score gap below which = tie
-    aggregation_method: str = "borda" # "borda" | "majority" | "bradley_terry"
+    min_confidence: float = 0.6  # minimum majority fraction to include pair
+    min_annotators: int = 3  # minimum annotators required per prompt
+    tie_threshold: float = 0.05  # Borda score gap below which = tie
+    aggregation_method: str = "borda"  # "borda" | "majority" | "bradley_terry"
 
 
 # ---------------------------------------------------------------------------
 # Ranking string parser
 # ---------------------------------------------------------------------------
+
 
 def parse_ranking(ranking_str: str) -> list[list[str]]:
     """Parse "B>A>C=D" → [["B"], ["A"], ["C", "D"]].
@@ -55,7 +57,7 @@ def ranking_to_pairwise(ranking: list[list[str]]) -> list[tuple[str, str, float]
     """
     pairs: list[tuple[str, str, float]] = []
     for i, higher_group in enumerate(ranking):
-        for lower_group in ranking[i + 1:]:
+        for lower_group in ranking[i + 1 :]:
             for winner in higher_group:
                 for loser in lower_group:
                     pairs.append((winner, loser, 1.0))
@@ -65,6 +67,7 @@ def ranking_to_pairwise(ranking: list[list[str]]) -> list[tuple[str, str, float]
 # ---------------------------------------------------------------------------
 # Borda Count
 # ---------------------------------------------------------------------------
+
 
 def borda_scores(
     rankings: list[list[list[str]]],
@@ -107,6 +110,7 @@ def borda_scores(
 # ---------------------------------------------------------------------------
 # Bradley-Terry Model
 # ---------------------------------------------------------------------------
+
 
 def bradley_terry_scores(
     pairwise_wins: dict[tuple[str, str], int],
@@ -169,6 +173,7 @@ def bradley_terry_scores(
 # Majority Vote
 # ---------------------------------------------------------------------------
 
+
 def majority_vote_scores(
     rankings: list[list[list[str]]],
     candidates: list[str],
@@ -225,6 +230,7 @@ def majority_vote_scores(
 # ---------------------------------------------------------------------------
 # Aggregator
 # ---------------------------------------------------------------------------
+
 
 class PreferenceAggregator:
     def __init__(self, cfg: AggregationConfig) -> None:
@@ -314,6 +320,7 @@ class PreferenceAggregator:
 # Confidence metrics
 # ---------------------------------------------------------------------------
 
+
 def annotator_agreement(
     rankings: list[list[list[str]]],
     candidates: list[str],
@@ -323,8 +330,8 @@ def annotator_agreement(
     W = 0 means no agreement, W = 1 means perfect agreement.
     Returns float in [0, 1].
     """
-    k = len(rankings)   # number of annotators
-    n = len(candidates) # number of candidates
+    k = len(rankings)  # number of annotators
+    n = len(candidates)  # number of candidates
 
     if k == 0 or n == 0:
         return 0.0
@@ -365,7 +372,7 @@ def annotator_agreement(
     S = sum((rj - mean_col_sum) ** 2 for rj in col_sums)
 
     # Kendall's W = 12 * S / (k^2 * (n^3 - n))
-    denominator = k * k * (n ** 3 - n)
+    denominator = k * k * (n**3 - n)
     if denominator == 0:
         return 1.0
 

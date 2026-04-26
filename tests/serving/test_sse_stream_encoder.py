@@ -64,4 +64,4 @@ def test_utf8_errors_param():
     enc = SSEStreamEncoder(utf8_errors="replace")
     raw = enc.encode_event(data="café")
     assert isinstance(raw, bytes)
-    assert "café".encode("utf-8") in raw
+    assert "café".encode() in raw

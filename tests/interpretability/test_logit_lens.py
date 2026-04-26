@@ -8,14 +8,14 @@ Minimum 28 tests.
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from src.interpretability.logit_lens import (
-    LogitLensResult,
-    LogitLensAnalyzer,
     LOGIT_LENS_REGISTRY,
+    LogitLensAnalyzer,
+    LogitLensResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,10 +56,12 @@ def _project_manual(hidden: list[float], unembedding: list[list[float]]) -> list
 # 1. LogitLensResult dataclass — frozen
 # ---------------------------------------------------------------------------
 
+
 class TestLogitLensResultDataclass:
     def test_fields_stored(self):
         r = LogitLensResult(
-            layer=2, position=3,
+            layer=2,
+            position=3,
             top_token_ids=[0, 1, 2, 3, 4],
             top_logits=[5.0, 4.0, 3.0, 2.0, 1.0],
             entropy=1.5,
@@ -79,14 +81,19 @@ class TestLogitLensResultDataclass:
             r.entropy = 9.9  # type: ignore[misc]
 
     def test_equality(self):
-        r1 = LogitLensResult(layer=1, position=2, top_token_ids=[0, 1], top_logits=[2.0, 1.0], entropy=0.3)
-        r2 = LogitLensResult(layer=1, position=2, top_token_ids=[0, 1], top_logits=[2.0, 1.0], entropy=0.3)
+        r1 = LogitLensResult(
+            layer=1, position=2, top_token_ids=[0, 1], top_logits=[2.0, 1.0], entropy=0.3
+        )
+        r2 = LogitLensResult(
+            layer=1, position=2, top_token_ids=[0, 1], top_logits=[2.0, 1.0], entropy=0.3
+        )
         assert r1 == r2
 
 
 # ---------------------------------------------------------------------------
 # 2. LogitLensAnalyzer — constructor
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzerConstructor:
     def test_vocab_size_stored(self):
@@ -101,6 +108,7 @@ class TestAnalyzerConstructor:
 # ---------------------------------------------------------------------------
 # 3. _softmax
 # ---------------------------------------------------------------------------
+
 
 class TestSoftmax:
     def test_softmax_sums_to_one(self):
@@ -158,6 +166,7 @@ class TestSoftmax:
 # ---------------------------------------------------------------------------
 # 4. project — result type and structure
 # ---------------------------------------------------------------------------
+
 
 class TestProject:
     def test_project_returns_logit_lens_result(self):
@@ -247,12 +256,31 @@ class TestProject:
 # 5. layer_trajectories
 # ---------------------------------------------------------------------------
 
+
 class TestLayerTrajectories:
     def _make_results(self) -> list[LogitLensResult]:
         return [
-            LogitLensResult(layer=0, position=0, top_token_ids=[2, 1, 0, 3, 4], top_logits=[5.0, 4.0, 3.0, 2.0, 1.0], entropy=1.0),
-            LogitLensResult(layer=1, position=0, top_token_ids=[1, 2, 0, 3, 4], top_logits=[6.0, 5.0, 4.0, 3.0, 2.0], entropy=0.8),
-            LogitLensResult(layer=2, position=0, top_token_ids=[0, 1, 2, 3, 4], top_logits=[7.0, 6.0, 5.0, 4.0, 3.0], entropy=0.6),
+            LogitLensResult(
+                layer=0,
+                position=0,
+                top_token_ids=[2, 1, 0, 3, 4],
+                top_logits=[5.0, 4.0, 3.0, 2.0, 1.0],
+                entropy=1.0,
+            ),
+            LogitLensResult(
+                layer=1,
+                position=0,
+                top_token_ids=[1, 2, 0, 3, 4],
+                top_logits=[6.0, 5.0, 4.0, 3.0, 2.0],
+                entropy=0.8,
+            ),
+            LogitLensResult(
+                layer=2,
+                position=0,
+                top_token_ids=[0, 1, 2, 3, 4],
+                top_logits=[7.0, 6.0, 5.0, 4.0, 3.0],
+                entropy=0.6,
+            ),
         ]
 
     def test_trajectory_length_matches_results(self):
@@ -294,12 +322,31 @@ class TestLayerTrajectories:
 # 6. entropy_by_layer
 # ---------------------------------------------------------------------------
 
+
 class TestEntropyByLayer:
     def _make_results(self) -> list[LogitLensResult]:
         return [
-            LogitLensResult(layer=0, position=0, top_token_ids=[0, 1, 2, 3, 4], top_logits=[5.0, 4.0, 3.0, 2.0, 1.0], entropy=1.0),
-            LogitLensResult(layer=0, position=1, top_token_ids=[0, 1, 2, 3, 4], top_logits=[5.0, 4.0, 3.0, 2.0, 1.0], entropy=2.0),
-            LogitLensResult(layer=1, position=0, top_token_ids=[0, 1, 2, 3, 4], top_logits=[5.0, 4.0, 3.0, 2.0, 1.0], entropy=0.5),
+            LogitLensResult(
+                layer=0,
+                position=0,
+                top_token_ids=[0, 1, 2, 3, 4],
+                top_logits=[5.0, 4.0, 3.0, 2.0, 1.0],
+                entropy=1.0,
+            ),
+            LogitLensResult(
+                layer=0,
+                position=1,
+                top_token_ids=[0, 1, 2, 3, 4],
+                top_logits=[5.0, 4.0, 3.0, 2.0, 1.0],
+                entropy=2.0,
+            ),
+            LogitLensResult(
+                layer=1,
+                position=0,
+                top_token_ids=[0, 1, 2, 3, 4],
+                top_logits=[5.0, 4.0, 3.0, 2.0, 1.0],
+                entropy=0.5,
+            ),
         ]
 
     def test_entropy_by_layer_returns_dict(self):
@@ -336,6 +383,7 @@ class TestEntropyByLayer:
 # ---------------------------------------------------------------------------
 # 7. REGISTRY
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     def test_registry_has_default_key(self):

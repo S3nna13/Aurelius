@@ -13,11 +13,10 @@ from __future__ import annotations
 
 import threading
 import time
-from enum import Enum
-from typing import List
+from enum import StrEnum
 
 
-class ShedPolicy(str, Enum):
+class ShedPolicy(StrEnum):
     DROP_TAIL = "drop_tail"
     PRIORITY_QUEUE = "priority_queue"
     TOKEN_BUCKET = "token_bucket"
@@ -32,7 +31,7 @@ class LoadShedder:
     def __init__(
         self,
         max_depth: int = 100,
-        token_rate: float = 100.0,   # tokens/second replenished
+        token_rate: float = 100.0,  # tokens/second replenished
         bucket_capacity: float = 100.0,
         p99_threshold_ms: float = 2000.0,
     ) -> None:
@@ -46,7 +45,7 @@ class LoadShedder:
         self._last_refill = time.monotonic()
 
         # Ring buffer for latency samples
-        self._ring: List[float] = [0.0] * self._RING_SIZE
+        self._ring: list[float] = [0.0] * self._RING_SIZE
         self._ring_pos: int = 0
         self._ring_count: int = 0
 

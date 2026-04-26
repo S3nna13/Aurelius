@@ -1,18 +1,19 @@
 """Tests for src/alignment/rlhf_pipeline.py."""
 
 import pytest
+
 from src.alignment.rlhf_pipeline import (
-    RLHFPhase,
+    RLHF_PIPELINE,
     PhaseConfig,
     PhaseResult,
+    RLHFPhase,
     RLHFPipeline,
-    RLHF_PIPELINE,
 )
-
 
 # ---------------------------------------------------------------------------
 # RLHFPhase enum
 # ---------------------------------------------------------------------------
+
 
 class TestRLHFPhase:
     def test_sft_value(self):
@@ -37,6 +38,7 @@ class TestRLHFPhase:
 # ---------------------------------------------------------------------------
 # PhaseConfig dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPhaseConfig:
     def test_required_phase_field(self):
@@ -76,6 +78,7 @@ class TestPhaseConfig:
 # PhaseResult dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestPhaseResult:
     def test_fields_present(self):
         r = PhaseResult(phase=RLHFPhase.SFT, epoch=0, loss=1.5)
@@ -101,6 +104,7 @@ class TestPhaseResult:
 # ---------------------------------------------------------------------------
 # RLHFPipeline
 # ---------------------------------------------------------------------------
+
 
 class TestRLHFPipelineDefaults:
     def setup_method(self):
@@ -234,6 +238,7 @@ class TestRLHFPipelineSummary:
 # Custom phases
 # ---------------------------------------------------------------------------
 
+
 class TestRLHFPipelineCustomPhases:
     def test_custom_phases_respected(self):
         phases = [PhaseConfig(phase=RLHFPhase.SFT), PhaseConfig(phase=RLHFPhase.EVAL)]
@@ -250,6 +255,7 @@ class TestRLHFPipelineCustomPhases:
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
+
 
 class TestRLHFPipelineSingleton:
     def test_rlhf_pipeline_exists(self):

@@ -1,6 +1,5 @@
 """Tests for KV cache quantization module."""
 
-import pytest
 import torch
 
 from src.inference.kv_cache_quant import (

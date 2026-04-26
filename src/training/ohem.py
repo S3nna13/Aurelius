@@ -7,21 +7,22 @@ on the most informative samples.
 
 from __future__ import annotations
 
-import torch
 from dataclasses import dataclass
 from enum import Enum
 
+import torch
+
 
 class OHEMMode(Enum):
-    TOKEN = "token"       # mine hardest individual tokens
-    SEQUENCE = "sequence" # mine hardest sequences (by mean loss), then use all their tokens
+    TOKEN = "token"  # mine hardest individual tokens
+    SEQUENCE = "sequence"  # mine hardest sequences (by mean loss), then use all their tokens
 
 
 @dataclass
 class OHEMConfig:
-    keep_fraction: float = 0.7   # fraction of hardest examples to keep (0 < f <= 1.0)
+    keep_fraction: float = 0.7  # fraction of hardest examples to keep (0 < f <= 1.0)
     mode: OHEMMode = OHEMMode.TOKEN
-    min_keep: int = 1            # always keep at least this many examples
+    min_keep: int = 1  # always keep at least this many examples
 
 
 def ohem_mask(

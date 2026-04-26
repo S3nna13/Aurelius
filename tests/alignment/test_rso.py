@@ -2,11 +2,10 @@
 
 import pytest
 import torch
-
 from aurelius.alignment.rso import (
-    RSOSampler,
-    RSOLoss,
     RSOConfig,
+    RSOLoss,
+    RSOSampler,
     RSOTrainer,
 )
 
@@ -18,10 +17,17 @@ B = 8  # batch size
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_batch(B: int, requires_grad: bool = False):
     torch.manual_seed(SEED)
-    keys = ["log_probs_w", "log_probs_l", "ref_log_probs_w", "ref_log_probs_l",
-            "reward_w", "reward_l"]
+    keys = [
+        "log_probs_w",
+        "log_probs_l",
+        "ref_log_probs_w",
+        "ref_log_probs_l",
+        "reward_w",
+        "reward_l",
+    ]
     batch = {}
     for k in keys:
         t = torch.randn(B)
@@ -37,8 +43,8 @@ def _make_batch(B: int, requires_grad: bool = False):
 # RSOSampler
 # ---------------------------------------------------------------------------
 
-class TestRSOSampler:
 
+class TestRSOSampler:
     def test_returns_long_tensor(self):
         sampler = RSOSampler(seed=SEED)
         rewards = torch.randn(10)
@@ -113,8 +119,8 @@ class TestRSOSampler:
 # RSOLoss
 # ---------------------------------------------------------------------------
 
-class TestRSOLoss:
 
+class TestRSOLoss:
     def test_loss_is_scalar(self):
         loss_fn = RSOLoss(beta=0.1)
         batch = _make_batch(B)
@@ -158,7 +164,7 @@ class TestRSOLoss:
     def test_no_importance_weights(self):
         torch.manual_seed(SEED)
         batch = _make_batch(B)
-        loss_iw = RSOLoss(use_importance_weights=True)(**{**batch})[0]
+        RSOLoss(use_importance_weights=True)(**{**batch})[0]
         loss_no_iw = RSOLoss(use_importance_weights=False)(**{**batch})[0]
         # Without IW it's pure DPO; values will differ
         assert torch.isfinite(loss_no_iw)
@@ -219,8 +225,8 @@ class TestRSOLoss:
 # RSOConfig
 # ---------------------------------------------------------------------------
 
-class TestRSOConfig:
 
+class TestRSOConfig:
     def test_defaults(self):
         cfg = RSOConfig()
         assert cfg.beta == 0.1
@@ -238,8 +244,8 @@ class TestRSOConfig:
 # RSOTrainer
 # ---------------------------------------------------------------------------
 
-class TestRSOTrainer:
 
+class TestRSOTrainer:
     def _make_tiny_model(self):
         return torch.nn.Linear(4, 1)
 

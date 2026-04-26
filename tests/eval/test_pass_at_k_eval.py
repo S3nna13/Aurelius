@@ -12,20 +12,21 @@ Covers:
 from __future__ import annotations
 
 import math
+
 import pytest
 
+from src.eval import BENCHMARK_REGISTRY
 from src.eval.pass_at_k_eval import (
     PassAtKConfig,
     PassAtKEvaluator,
     PassAtKResult,
     ProblemResult,
 )
-from src.eval import BENCHMARK_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_evaluator(k_values=None, n_samples=200):
     if k_values is None:
@@ -37,6 +38,7 @@ def _make_evaluator(k_values=None, n_samples=200):
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = PassAtKConfig(k_values=[1, 5, 10])
     assert cfg.n_samples == 200
@@ -46,6 +48,7 @@ def test_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. estimate_single — all correct
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_single_all_correct():
     ev = _make_evaluator()
@@ -58,6 +61,7 @@ def test_estimate_single_all_correct():
 # 3. estimate_single — none correct
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_single_none_correct():
     ev = _make_evaluator()
     for k in [1, 5, 10, 100]:
@@ -67,6 +71,7 @@ def test_estimate_single_none_correct():
 # ---------------------------------------------------------------------------
 # 4. estimate_single — k=1 equals c/n
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_single_k1():
     ev = _make_evaluator()
@@ -80,6 +85,7 @@ def test_estimate_single_k1():
 # 5. estimate_single — k == n, c >= 1 → very close to 1
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_single_k_equals_n():
     ev = _make_evaluator()
     # With k = n and c >= 1, C(n-c, k) = 0 so pass@k = 1
@@ -90,6 +96,7 @@ def test_estimate_single_k_equals_n():
 # ---------------------------------------------------------------------------
 # 6. estimate_single — numerical stability (n=200, c=100, k=10)
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_single_stability():
     ev = _make_evaluator()
@@ -102,6 +109,7 @@ def test_estimate_single_stability():
 # 7. estimate_single — n < k handled without error
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_single_n_lt_k():
     ev = _make_evaluator()
     # n=5 < k=10
@@ -112,6 +120,7 @@ def test_estimate_single_n_lt_k():
 # ---------------------------------------------------------------------------
 # 8. estimate_batch — mean across problems
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_batch_mean():
     ev = _make_evaluator()
@@ -127,6 +136,7 @@ def test_estimate_batch_mean():
 # 9. estimate_batch — empty list returns 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_batch_empty():
     ev = _make_evaluator()
     result = ev.estimate_batch([], k=5)
@@ -136,6 +146,7 @@ def test_estimate_batch_empty():
 # ---------------------------------------------------------------------------
 # 10. evaluate — returns one PassAtKResult per k_value
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_returns_all_k():
     k_values = [1, 5, 10, 100]
@@ -152,6 +163,7 @@ def test_evaluate_returns_all_k():
 # 11. summary — correct key format
 # ---------------------------------------------------------------------------
 
+
 def test_summary_keys():
     k_values = [1, 5, 10]
     ev = _make_evaluator(k_values=k_values)
@@ -164,13 +176,11 @@ def test_summary_keys():
 # 12. summary — all values in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_summary_values_range():
     k_values = [1, 5, 10, 50]
     ev = _make_evaluator(k_values=k_values)
-    results = [
-        ProblemResult(f"p{i}", n_samples=200, n_correct=i * 20)
-        for i in range(5)
-    ]
+    results = [ProblemResult(f"p{i}", n_samples=200, n_correct=i * 20) for i in range(5)]
     s = ev.summary(results)
     for key, val in s.items():
         assert 0.0 <= val <= 1.0, f"{key}={val} out of range"
@@ -179,6 +189,7 @@ def test_summary_values_range():
 # ---------------------------------------------------------------------------
 # 13. difficulty_distribution — correct keys present
 # ---------------------------------------------------------------------------
+
 
 def test_difficulty_distribution_keys():
     ev = _make_evaluator()
@@ -190,13 +201,14 @@ def test_difficulty_distribution_keys():
 # 14. difficulty_distribution — counts sum to n_problems
 # ---------------------------------------------------------------------------
 
+
 def test_difficulty_distribution_counts():
     ev = _make_evaluator()
     results = [
-        ProblemResult("unsolved", n_samples=10, n_correct=0),   # unsolved
-        ProblemResult("easy",     n_samples=10, n_correct=3),   # easy: 0.3 < 0.5
-        ProblemResult("medium",   n_samples=10, n_correct=6),   # medium: 0.6 >= 0.5
-        ProblemResult("perfect",  n_samples=10, n_correct=10),  # all_correct
+        ProblemResult("unsolved", n_samples=10, n_correct=0),  # unsolved
+        ProblemResult("easy", n_samples=10, n_correct=3),  # easy: 0.3 < 0.5
+        ProblemResult("medium", n_samples=10, n_correct=6),  # medium: 0.6 >= 0.5
+        ProblemResult("perfect", n_samples=10, n_correct=10),  # all_correct
     ]
     dist = ev.difficulty_distribution(results)
     assert dist["unsolved"] == 1
@@ -210,6 +222,7 @@ def test_difficulty_distribution_counts():
 # 15. Registry — PassAtKEvaluator registered under "pass_at_k"
 # ---------------------------------------------------------------------------
 
+
 def test_registry_key():
     assert "pass_at_k" in BENCHMARK_REGISTRY
     assert BENCHMARK_REGISTRY["pass_at_k"] is PassAtKEvaluator
@@ -219,6 +232,7 @@ def test_registry_key():
 # Integration test — 10 problems, monotone pass@k, complete summary
 # ---------------------------------------------------------------------------
 
+
 def test_integration_monotone_pass_at_k():
     """With 10 problems of varying difficulty, pass@1 <= pass@5 <= pass@10
     and the summary dict contains all expected keys."""
@@ -226,17 +240,14 @@ def test_integration_monotone_pass_at_k():
     ev = PassAtKEvaluator(PassAtKConfig(k_values=k_values, n_samples=10))
 
     # 10 problems: problem i has n=10, c=i (0..9)
-    results = [
-        ProblemResult(problem_id=f"prob_{i}", n_samples=10, n_correct=i)
-        for i in range(10)
-    ]
+    results = [ProblemResult(problem_id=f"prob_{i}", n_samples=10, n_correct=i) for i in range(10)]
 
     evals = ev.evaluate(results)
     assert len(evals) == 3
 
-    p1  = evals[0].pass_at_k   # pass@1
-    p5  = evals[1].pass_at_k   # pass@5
-    p10 = evals[2].pass_at_k   # pass@10
+    p1 = evals[0].pass_at_k  # pass@1
+    p5 = evals[1].pass_at_k  # pass@5
+    p10 = evals[2].pass_at_k  # pass@10
 
     # Monotone: more samples → higher (or equal) chance of finding a solution
     assert p1 <= p5 + 1e-10, f"Expected pass@1 <= pass@5, got {p1} > {p5}"

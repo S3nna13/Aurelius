@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.adalora import (
-    SVDLoRALayer,
-    RankBudgetAllocator,
     AdaLoRAMask,
-    AdaLoRATrainer,
     AdaLoRARegularizer,
+    AdaLoRATrainer,
+    RankBudgetAllocator,
+    SVDLoRALayer,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,6 +27,7 @@ N_LAYERS = 2
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_layer(rank: int = RANK) -> SVDLoRALayer:
     torch.manual_seed(0)
@@ -177,10 +177,12 @@ def test_trainer_train_step_keys_and_finite() -> None:
         "layer1": make_layer(),
     }
     optimizer = torch.optim.Adam(
-        list(model.parameters()) + [p for l in lora_layers.values() for p in l.parameters()],
+        list(model.parameters()) + [p for line in lora_layers.values() for p in line.parameters()],
         lr=1e-3,
     )
-    trainer = AdaLoRATrainer(model, lora_layers, optimizer, rank_update_interval=10, total_rank_budget=TOTAL_BUDGET)
+    trainer = AdaLoRATrainer(
+        model, lora_layers, optimizer, rank_update_interval=10, total_rank_budget=TOTAL_BUDGET
+    )
 
     input_ids = torch.randint(0, 32, (2, 16))
     labels = torch.randint(0, 32, (2, 16))
@@ -202,15 +204,15 @@ def test_trainer_update_ranks_within_budget() -> None:
         "layer1": make_layer(),
     }
     optimizer = torch.optim.Adam(
-        list(model.parameters()) + [p for l in lora_layers.values() for p in l.parameters()],
+        list(model.parameters()) + [p for line in lora_layers.values() for p in line.parameters()],
         lr=1e-3,
     )
-    trainer = AdaLoRATrainer(model, lora_layers, optimizer, rank_update_interval=10, total_rank_budget=TOTAL_BUDGET)
+    trainer = AdaLoRATrainer(
+        model, lora_layers, optimizer, rank_update_interval=10, total_rank_budget=TOTAL_BUDGET
+    )
     trainer.update_ranks()
 
-    total_active = sum(
-        trainer._masks[name].active_count() for name in lora_layers
-    )
+    total_active = sum(trainer._masks[name].active_count() for name in lora_layers)
     assert total_active <= TOTAL_BUDGET
 
 
@@ -252,7 +254,7 @@ def test_regularizer_total_loss_equals_sum() -> None:
         "layer1": make_layer(),
     }
     total = reg.total_loss(layers)
-    expected = sum(reg.loss(l).item() for l in layers.values())
+    expected = sum(reg.loss(line).item() for line in layers.values())
     assert abs(total.item() - expected) < 1e-6
 
 
@@ -281,7 +283,7 @@ def test_full_training_loop_five_steps() -> None:
         "layer1": SVDLoRALayer(IN, OUT, rank=RANK, alpha=ALPHA),
     }
     optimizer = torch.optim.SGD(
-        list(model.parameters()) + [p for l in lora_layers.values() for p in l.parameters()],
+        list(model.parameters()) + [p for line in lora_layers.values() for p in line.parameters()],
         lr=1e-2,
     )
     # rank_update_interval=3 so update fires at step 3
@@ -302,8 +304,8 @@ def test_full_training_loop_five_steps() -> None:
 
     # All 5 steps completed, all losses finite
     assert len(losses) == 5
-    for i, l in enumerate(losses):
-        assert torch.isfinite(torch.tensor(l)), f"Loss at step {i} not finite: {l}"
+    for i, lo in enumerate(losses):
+        assert torch.isfinite(torch.tensor(lo)), f"Loss at step {i} not finite: {lo}"
 
     # After rank update (step 3), total active rank must be within budget
     total_active = sum(trainer._masks[name].active_count() for name in lora_layers)

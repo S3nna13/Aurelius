@@ -21,22 +21,20 @@ import re
 import time
 import uuid
 from collections import deque
-from dataclasses import asdict, dataclass, field
-from typing import Deque, List
-
+from dataclasses import dataclass, field
 
 AUDIT_LOGGER_NAME = "aurelius.security.audit"
 
 _MAX_BUFFER = 10_000
 
 
-class AuditLevel(str, enum.Enum):
+class AuditLevel(enum.StrEnum):
     INFO = "INFO"
     WARNING = "WARNING"
     CRITICAL = "CRITICAL"
 
 
-class AuditCategory(str, enum.Enum):
+class AuditCategory(enum.StrEnum):
     AUTH = "AUTH"
     POLICY = "POLICY"
     SANDBOX = "SANDBOX"
@@ -91,7 +89,7 @@ class AuditEvent:
         target: str,
         outcome: str,
         detail: str = "",
-    ) -> "AuditEvent":
+    ) -> AuditEvent:
         return AuditEvent(
             event_id=str(uuid.uuid4()),
             category=category,
@@ -124,7 +122,7 @@ class AuditLogger:
 
     def __init__(self, buffer_size: int = _MAX_BUFFER) -> None:
         self._buffer_size = int(buffer_size)
-        self._buffer: Deque[AuditEvent] = deque(maxlen=self._buffer_size)
+        self._buffer: deque[AuditEvent] = deque(maxlen=self._buffer_size)
         self._logger = logging.getLogger(AUDIT_LOGGER_NAME)
 
     def _redact(self, text: str) -> str:
@@ -152,11 +150,11 @@ class AuditLogger:
         }.get(safe.level, logging.INFO)
         try:
             self._logger.log(py_level, safe.to_json())
-        except Exception:
+        except Exception:  # noqa: S110
             # Logging must never propagate failures from the audit path.
             pass
 
-    def recent_events(self, n: int = 100) -> List[AuditEvent]:
+    def recent_events(self, n: int = 100) -> list[AuditEvent]:
         if n <= 0:
             return []
         if n >= len(self._buffer):

@@ -4,12 +4,11 @@ At least 14 tests covering OTConfig, cost_matrix, sinkhorn,
 wasserstein_distance, sequence_ot_loss, and OTAligner.
 """
 
-import pytest
 import torch
 
 from src.training.optimal_transport import (
-    OTConfig,
     OTAligner,
+    OTConfig,
     cost_matrix,
     sequence_ot_loss,
     sinkhorn,
@@ -28,6 +27,7 @@ TOL = 1e-4
 # OTConfig
 # ---------------------------------------------------------------------------
 
+
 def test_otconfig_defaults():
     cfg = OTConfig()
     assert cfg.epsilon == 0.05
@@ -39,6 +39,7 @@ def test_otconfig_defaults():
 # ---------------------------------------------------------------------------
 # cost_matrix
 # ---------------------------------------------------------------------------
+
 
 def test_cost_matrix_shape():
     x = torch.randn(M, D)
@@ -67,6 +68,7 @@ def test_cost_matrix_symmetric_p2():
 # ---------------------------------------------------------------------------
 # sinkhorn
 # ---------------------------------------------------------------------------
+
 
 def _uniform(n: int) -> torch.Tensor:
     return torch.ones(n) / n
@@ -102,6 +104,7 @@ def test_sinkhorn_col_marginals():
 # wasserstein_distance
 # ---------------------------------------------------------------------------
 
+
 def test_wasserstein_same_distribution_near_zero():
     """OT distance between identical point clouds should be near 0."""
     x = torch.randn(M, D)
@@ -115,7 +118,7 @@ def test_wasserstein_different_distributions_positive():
     """OT distance between well-separated clouds should be > 0."""
     torch.manual_seed(42)
     x = torch.randn(M, D)
-    y = torch.randn(N, D) + 10.0   # shift far away
+    y = torch.randn(N, D) + 10.0  # shift far away
     cfg = OTConfig()
     d = wasserstein_distance(x, y, cfg)
     assert d.item() > 0.0
@@ -132,6 +135,7 @@ def test_wasserstein_returns_scalar():
 # ---------------------------------------------------------------------------
 # sequence_ot_loss
 # ---------------------------------------------------------------------------
+
 
 def test_sequence_ot_loss_returns_scalar():
     logits_p = torch.randn(VOCAB_SIZE)
@@ -153,6 +157,7 @@ def test_sequence_ot_loss_same_logits_near_zero():
 # ---------------------------------------------------------------------------
 # OTAligner
 # ---------------------------------------------------------------------------
+
 
 def test_otaligner_align_shape():
     cfg = OTConfig()

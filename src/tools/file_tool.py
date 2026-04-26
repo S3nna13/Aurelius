@@ -1,17 +1,20 @@
 """File read/write tool with path validation."""
+
 from __future__ import annotations
 
 import os
 
-from .tool_registry import ToolResult, ToolSpec, TOOL_REGISTRY
+from .tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
 
-FILE_DENY_PATHS: frozenset[str] = frozenset([
-    "/etc/passwd",
-    "/etc/shadow",
-    os.path.expanduser("~/.ssh/"),
-    "/proc/",
-    "/sys/",
-])
+FILE_DENY_PATHS: frozenset[str] = frozenset(
+    [
+        "/etc/passwd",
+        "/etc/shadow",
+        os.path.expanduser("~/.ssh/"),
+        "/proc/",
+        "/sys/",
+    ]
+)
 
 
 class FileTool:
@@ -34,12 +37,14 @@ class FileTool:
     def read(self, path: str, max_bytes: int = 65536) -> ToolResult:
         """Read up to max_bytes from path."""
         if self.is_denied(path):
-            return ToolResult(tool_name="file", success=False, output="", error=f"path denied: {path!r}")
+            return ToolResult(
+                tool_name="file", success=False, output="", error=f"path denied: {path!r}"
+            )
         base_err = self._check_base_dir(path)
         if base_err:
             return ToolResult(tool_name="file", success=False, output="", error=base_err)
         try:
-            with open(path, "r", errors="replace") as fh:
+            with open(path, errors="replace") as fh:
                 content = fh.read(max_bytes)
             return ToolResult(tool_name="file", success=True, output=content)
         except Exception as e:
@@ -48,7 +53,9 @@ class FileTool:
     def write(self, path: str, content: str) -> ToolResult:
         """Write content to path."""
         if self.is_denied(path):
-            return ToolResult(tool_name="file", success=False, output="", error=f"path denied: {path!r}")
+            return ToolResult(
+                tool_name="file", success=False, output="", error=f"path denied: {path!r}"
+            )
         base_err = self._check_base_dir(path)
         if base_err:
             return ToolResult(tool_name="file", success=False, output="", error=base_err)
@@ -66,7 +73,9 @@ class FileTool:
     def list_dir(self, path: str) -> ToolResult:
         """List directory entries sorted."""
         if self.is_denied(path):
-            return ToolResult(tool_name="file", success=False, output="", error=f"path denied: {path!r}")
+            return ToolResult(
+                tool_name="file", success=False, output="", error=f"path denied: {path!r}"
+            )
         base_err = self._check_base_dir(path)
         if base_err:
             return ToolResult(tool_name="file", success=False, output="", error=base_err)
@@ -95,5 +104,9 @@ class FileTool:
 FILE_TOOL = FileTool()
 TOOL_REGISTRY.register(
     FILE_TOOL.spec(),
-    lambda **kw: FILE_TOOL.read(kw["path"]) if kw.get("operation") == "read" else FILE_TOOL.write(kw["path"], kw.get("content", "")),
+    lambda **kw: (
+        FILE_TOOL.read(kw["path"])
+        if kw.get("operation") == "read"
+        else FILE_TOOL.write(kw["path"], kw.get("content", ""))
+    ),
 )

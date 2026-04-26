@@ -1,4 +1,5 @@
 """Tests for src/training/delta_checkpoint.py."""
+
 from __future__ import annotations
 
 import tempfile
@@ -7,19 +8,19 @@ import pytest
 import torch
 
 from src.training.delta_checkpoint import (
+    DeltaCheckpointManager,
     DeltaConfig,
-    compute_delta,
     apply_delta,
     compress_delta,
+    compute_delta,
     delta_size_bytes,
     quantize_delta,
-    DeltaCheckpointManager,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper – small 4×4 state dicts
 # ---------------------------------------------------------------------------
+
 
 def _state_a() -> dict:
     return {"w": torch.ones(4, 4), "b": torch.zeros(4)}
@@ -33,6 +34,7 @@ def _state_b() -> dict:
 # 1. DeltaConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_delta_config_defaults():
     cfg = DeltaConfig()
     assert cfg.compression == "none"
@@ -44,6 +46,7 @@ def test_delta_config_defaults():
 # ---------------------------------------------------------------------------
 # 2. compute_delta – shape preserved
 # ---------------------------------------------------------------------------
+
 
 def test_compute_delta_shape():
     a, b = _state_a(), _state_b()
@@ -57,6 +60,7 @@ def test_compute_delta_shape():
 # 3. compute_delta – values correct (delta = b - a)
 # ---------------------------------------------------------------------------
 
+
 def test_compute_delta_values():
     a, b = _state_a(), _state_b()
     delta = compute_delta(a, b)
@@ -68,6 +72,7 @@ def test_compute_delta_values():
 # ---------------------------------------------------------------------------
 # 4. apply_delta – roundtrip: apply_delta(a, compute_delta(a, b)) ≈ b
 # ---------------------------------------------------------------------------
+
 
 def test_apply_delta_roundtrip():
     a, b = _state_a(), _state_b()
@@ -83,6 +88,7 @@ def test_apply_delta_roundtrip():
 # 5. compress_delta – "none" is a passthrough
 # ---------------------------------------------------------------------------
 
+
 def test_compress_delta_none_passthrough():
     a, b = _state_a(), _state_b()
     delta = compute_delta(a, b)
@@ -95,6 +101,7 @@ def test_compress_delta_none_passthrough():
 # ---------------------------------------------------------------------------
 # 6. compress_delta – "top_k" zeros out low-magnitude values
 # ---------------------------------------------------------------------------
+
 
 def test_compress_delta_top_k():
     # Build a delta with mixed magnitudes
@@ -109,6 +116,7 @@ def test_compress_delta_top_k():
 # ---------------------------------------------------------------------------
 # 7. compress_delta – "threshold" zeros values below threshold
 # ---------------------------------------------------------------------------
+
 
 def test_compress_delta_threshold():
     delta = {"w": torch.tensor([0.00001, 1.0, 0.00002, 2.0])}
@@ -126,6 +134,7 @@ def test_compress_delta_threshold():
 # 8. delta_size_bytes – positive int
 # ---------------------------------------------------------------------------
 
+
 def test_delta_size_bytes_positive():
     a, b = _state_a(), _state_b()
     delta = compute_delta(a, b)
@@ -137,6 +146,7 @@ def test_delta_size_bytes_positive():
 # ---------------------------------------------------------------------------
 # 9. DeltaCheckpointManager – save/load roundtrip (base)
 # ---------------------------------------------------------------------------
+
 
 def test_manager_save_load_base():
     tmpdir = tempfile.mkdtemp()
@@ -154,6 +164,7 @@ def test_manager_save_load_base():
 # ---------------------------------------------------------------------------
 # 10. DeltaCheckpointManager – save_delta / load roundtrip
 # ---------------------------------------------------------------------------
+
 
 def test_manager_save_load_delta():
     tmpdir = tempfile.mkdtemp()
@@ -174,6 +185,7 @@ def test_manager_save_load_delta():
 # ---------------------------------------------------------------------------
 # 11. quantize_delta – result dtype is int8
 # ---------------------------------------------------------------------------
+
 
 def test_quantize_delta_dtype_int8():
     a, b = _state_a(), _state_b()

@@ -36,4 +36,3 @@ def debate_run_consistency(debate_runs: list[list[str]]) -> float:
             total += argument_overlap(left, right)
             count += 1
     return total / count
-

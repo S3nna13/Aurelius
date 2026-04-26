@@ -10,7 +10,6 @@ from src.ui.errors import UIError
 from src.ui.motion import get_motion
 from src.ui.welcome import WelcomePanel, render_welcome
 
-
 _VENDOR_STRINGS = (
     "Claude",
     "Anthropic",
@@ -98,9 +97,7 @@ def test_no_third_party_vendor_strings_appear(vendor):
         _default_panel(motion=None),
     ):
         out = render_welcome(panel)
-        assert vendor not in out, (
-            f"vendor string {vendor!r} leaked into welcome output"
-        )
+        assert vendor not in out, f"vendor string {vendor!r} leaked into welcome output"
         compact = render_welcome(panel, cols=30, rows=4)
         assert vendor not in compact
 

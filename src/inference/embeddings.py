@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
 
 
 @dataclass
 class EmbeddingConfig:
     """Configuration for embedding extraction."""
 
-    pooling: str = "mean"       # "mean", "last", "max"
-    normalize: bool = True      # L2-normalize embeddings
-    layer: str = "last"         # "last" = after final norm (before lm_head)
+    pooling: str = "mean"  # "mean", "last", "max"
+    normalize: bool = True  # L2-normalize embeddings
+    layer: str = "last"  # "last" = after final norm (before lm_head)
 
 
 class EmbeddingExtractor:
@@ -67,9 +68,7 @@ class EmbeddingExtractor:
             self._remove_hook()
 
         if attention_mask is None:
-            attention_mask = torch.ones(
-                input_ids.shape, dtype=torch.bool, device=input_ids.device
-            )
+            attention_mask = torch.ones(input_ids.shape, dtype=torch.bool, device=input_ids.device)
 
         if self.cfg.pooling == "mean":
             mask = attention_mask.unsqueeze(-1).float()

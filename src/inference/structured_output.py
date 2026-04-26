@@ -6,8 +6,10 @@ output as a valid JSON prefix.
 """
 
 import json
+from dataclasses import dataclass
+
 import torch
-from dataclasses import dataclass, field
+
 from src.inference.logit_processors import LogitProcessor
 
 
@@ -75,21 +77,21 @@ def _is_json_prefix(s: str) -> bool:
         '"}]}',
         '"',
         '"]',
-        ']',
-        '}',
-        ']}',
+        "]",
+        "}",
+        "]}",
         "]}",
         "rue",
         "alse",
         "ull",
-        '0}',
-        '0',
-        '0]',
+        "0}",
+        "0",
+        "0]",
         '""}}',
         '""}',
         ': ""}',
-        ': null}',
-        ': 0}',
+        ": null}",
+        ": 0}",
     ]
     for suffix in completions:
         try:

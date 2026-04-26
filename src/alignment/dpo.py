@@ -7,12 +7,12 @@ chosen_score - rejected_score >= 1.0.
 
 from __future__ import annotations
 
-import importlib
 import copy
+import importlib
 import logging
 import os
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -26,15 +26,14 @@ def _load_dataset(*args: Any, **kwargs: Any) -> Any:
     try:
         datasets_mod = importlib.import_module("datasets")
     except ImportError as exc:  # pragma: no cover - dependency not installed in tests
-        raise ImportError(
-            "The 'datasets' package is required for DPO dataset loading."
-        ) from exc
+        raise ImportError("The 'datasets' package is required for DPO dataset loading.") from exc
     return datasets_mod.load_dataset(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DPORunConfig:
@@ -85,6 +84,7 @@ class DPORunConfig:
 # ---------------------------------------------------------------------------
 # Dataset loading and filtering
 # ---------------------------------------------------------------------------
+
 
 def load_ultrafeedback(cfg: DPORunConfig) -> tuple[Any, Any]:
     """Load and filter UltraFeedback binarized dataset.
@@ -149,7 +149,8 @@ def load_ultrafeedback(cfg: DPORunConfig) -> tuple[Any, Any]:
 
     logger.info(
         "DPO dataset ready: %d train, %d eval",
-        len(split["train"]), len(split["test"]),
+        len(split["train"]),
+        len(split["test"]),
     )
     return split["train"], split["test"]
 
@@ -168,6 +169,7 @@ def _extract_assistant_response(messages: list[dict[str, str]]) -> str:
 # ---------------------------------------------------------------------------
 # Core DPO functions
 # ---------------------------------------------------------------------------
+
 
 def compute_log_probs(
     model: nn.Module,
@@ -191,9 +193,7 @@ def compute_log_probs(
     log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # (B, seq_len-1, vocab_size)
 
     # Gather the log prob of the actual next token
-    token_lp = log_probs.gather(
-        2, input_ids[:, 1:].unsqueeze(-1)
-    ).squeeze(-1)  # (B, seq_len-1)
+    token_lp = log_probs.gather(2, input_ids[:, 1:].unsqueeze(-1)).squeeze(-1)  # (B, seq_len-1)
 
     # Apply response mask (shifted by 1 to align with next-token predictions)
     mask = response_mask[:, 1:].float()  # (B, seq_len-1)
@@ -269,6 +269,7 @@ def dpo_loss(
 # ---------------------------------------------------------------------------
 # NativeDPORunner
 # ---------------------------------------------------------------------------
+
 
 class NativeDPORunner:
     """Native PyTorch DPO training runner."""
@@ -405,6 +406,7 @@ class NativeDPORunner:
 # New DPO Components: DPOConfig, functional dpo_loss, DPOTrainer
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DPOConfig:
     """Configuration for Direct Preference Optimization."""
@@ -450,10 +452,7 @@ def _dpo_loss_from_logps(
         # With optional label smoothing
         ls = config.label_smoothing
         if ls > 0.0:
-            loss = (
-                -F.logsigmoid(margin) * (1 - ls)
-                - F.logsigmoid(-margin) * ls
-            ).mean()
+            loss = (-F.logsigmoid(margin) * (1 - ls) - F.logsigmoid(-margin) * ls).mean()
         else:
             loss = -F.logsigmoid(margin).mean()
     elif config.loss_type == "hinge":
@@ -463,7 +462,9 @@ def _dpo_loss_from_logps(
         # IPO loss: (margin - 1/(2*beta))^2
         loss = ((margin - 1.0 / (2.0 * config.beta)) ** 2).mean()
     else:
-        raise ValueError(f"Unknown loss_type: {config.loss_type!r}. Use 'sigmoid', 'hinge', or 'ipo'.")
+        raise ValueError(
+            f"Unknown loss_type: {config.loss_type!r}. Use 'sigmoid', 'hinge', or 'ipo'."
+        )
 
     chosen_rewards = (config.beta * chosen_diff).detach()
     rejected_rewards = (config.beta * rejected_diff).detach()
@@ -524,7 +525,7 @@ class DPOTrainer:
         chosen_ids: torch.Tensor,
         rejected_ids: torch.Tensor,
         response_mask: torch.Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Perform a single DPO training step.
 
         Args:
@@ -571,21 +572,28 @@ class DPOTrainer:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     """CLI entry point for DPO training."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Aurelius 1.3B DPO Alignment")
     parser.add_argument(
-        "--model", type=str, default="checkpoints/aurelius-1.3b-sft/final",
+        "--model",
+        type=str,
+        default="checkpoints/aurelius-1.3b-sft/final",
         help="Path to SFT model checkpoint",
     )
     parser.add_argument(
-        "--tokenizer", type=str, default="tokenizers/aurelius-128k",
+        "--tokenizer",
+        type=str,
+        default="tokenizers/aurelius-128k",
         help="Path to tokenizer",
     )
     parser.add_argument(
-        "--ref-model", type=str, default=None,
+        "--ref-model",
+        type=str,
+        default=None,
         help="Path to reference model (default: implicit copy)",
     )
     parser.add_argument("--output-dir", type=str, default="checkpoints/aurelius-1.3b-dpo")
@@ -614,7 +622,7 @@ def main() -> None:
 
     # NativeDPORunner requires a pre-loaded model and tokenizer.
     # Use NativeDPORunner directly for programmatic usage.
-    runner = NativeDPORunner(policy=None, cfg=cfg)  # type: ignore[arg-type]
+    NativeDPORunner(policy=None, cfg=cfg)  # type: ignore[arg-type]
     logger.warning("main() stub: provide a loaded model and tokenizer to runner.train(tokenizer)")
 
 

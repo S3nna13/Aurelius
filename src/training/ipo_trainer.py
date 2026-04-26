@@ -25,10 +25,10 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # IPOConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class IPOConfig:
@@ -49,6 +49,7 @@ class IPOConfig:
 # ---------------------------------------------------------------------------
 # IPOBatch
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class IPOBatch:
@@ -78,6 +79,7 @@ class IPOBatch:
 # ---------------------------------------------------------------------------
 # IPOTrainer
 # ---------------------------------------------------------------------------
+
 
 class IPOTrainer:
     """Stateless IPO loss computation.
@@ -109,8 +111,8 @@ class IPOTrainer:
             Fully-masked sequences receive 0.0 to avoid NaN.
         """
         # Clamp mask count to eps so we never divide by zero.
-        denom = mask.sum(dim=-1).clamp(min=self.config.eps)   # [B]
-        return (log_probs * mask).sum(dim=-1) / denom         # [B]
+        denom = mask.sum(dim=-1).clamp(min=self.config.eps)  # [B]
+        return (log_probs * mask).sum(dim=-1) / denom  # [B]
 
     def compute_h(self, batch: IPOBatch) -> Tensor:
         """Compute the implicit reward gap h for each (x, y_w, y_l) triple.
@@ -127,15 +129,9 @@ class IPOTrainer:
         Returns:
             Implicit reward gap per sample, shape ``[B]``.
         """
-        mean_chosen = self.sequence_mean_log_prob(
-            batch.chosen_log_probs, batch.chosen_mask
-        )
-        mean_ref_chosen = self.sequence_mean_log_prob(
-            batch.chosen_ref_log_probs, batch.chosen_mask
-        )
-        mean_rejected = self.sequence_mean_log_prob(
-            batch.rejected_log_probs, batch.rejected_mask
-        )
+        mean_chosen = self.sequence_mean_log_prob(batch.chosen_log_probs, batch.chosen_mask)
+        mean_ref_chosen = self.sequence_mean_log_prob(batch.chosen_ref_log_probs, batch.chosen_mask)
+        mean_rejected = self.sequence_mean_log_prob(batch.rejected_log_probs, batch.rejected_mask)
         mean_ref_rejected = self.sequence_mean_log_prob(
             batch.rejected_ref_log_probs, batch.rejected_mask
         )
@@ -173,8 +169,8 @@ class IPOTrainer:
             device=batch.chosen_log_probs.device,
         )
 
-        h = self.compute_h(batch)                              # [B]
-        loss = ((h - target) ** 2).mean()                     # scalar
+        h = self.compute_h(batch)  # [B]
+        loss = ((h - target) ** 2).mean()  # scalar
 
         h_mean = h.mean()
         reward_accuracy = (h > 0).float().mean()
@@ -208,9 +204,7 @@ class IPOTrainer:
         with torch.no_grad():
             h = self.compute_h(batch)
 
-            chosen_logp = self.sequence_mean_log_prob(
-                batch.chosen_log_probs, batch.chosen_mask
-            )
+            chosen_logp = self.sequence_mean_log_prob(batch.chosen_log_probs, batch.chosen_mask)
             rejected_logp = self.sequence_mean_log_prob(
                 batch.rejected_log_probs, batch.rejected_mask
             )

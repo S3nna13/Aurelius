@@ -1,8 +1,9 @@
 """Tests for src/training/moe_analysis.py."""
+
 from __future__ import annotations
 
 import math
-import pytest
+
 import torch
 
 from src.training.moe_analysis import (
@@ -21,6 +22,7 @@ N_TOKENS = 12
 # ---------------------------------------------------------------------------
 # compute_routing_entropy
 # ---------------------------------------------------------------------------
+
 
 def test_compute_routing_entropy_shape():
     """Output shape is (N,) matching the number of tokens."""
@@ -51,6 +53,7 @@ def test_compute_routing_entropy_one_hot():
 # compute_expert_specialization
 # ---------------------------------------------------------------------------
 
+
 def test_compute_expert_specialization_shape():
     """Output shape is (n_experts, n_classes)."""
     n_classes = 3
@@ -78,6 +81,7 @@ def test_compute_expert_specialization_rows_sum_to_one():
 # compute_load_imbalance
 # ---------------------------------------------------------------------------
 
+
 def test_compute_load_imbalance_keys_present():
     """Result dict contains all required keys."""
     probs = torch.softmax(torch.randn(N_TOKENS, N_EXPERTS), dim=-1)
@@ -104,6 +108,7 @@ def test_compute_load_imbalance_uniform_router_cv_near_zero():
 # gini_coefficient
 # ---------------------------------------------------------------------------
 
+
 def test_gini_coefficient_all_equal_is_zero():
     """Equal values → Gini = 0."""
     x = torch.ones(N_EXPERTS)
@@ -124,13 +129,11 @@ def test_gini_coefficient_one_expert_gets_all_near_one():
 # track_routing_over_time
 # ---------------------------------------------------------------------------
 
+
 def test_track_routing_over_time_load_trajectory_shape():
     """load_trajectory shape is (n_steps, n_experts)."""
     n_steps = 5
-    history = [
-        torch.softmax(torch.randn(N_TOKENS, N_EXPERTS), dim=-1)
-        for _ in range(n_steps)
-    ]
+    history = [torch.softmax(torch.randn(N_TOKENS, N_EXPERTS), dim=-1) for _ in range(n_steps)]
     result = track_routing_over_time(history)
     assert result["load_trajectory"].shape == (n_steps, N_EXPERTS), (
         f"expected ({n_steps}, {N_EXPERTS}), got {result['load_trajectory'].shape}"
@@ -156,6 +159,7 @@ def test_track_routing_over_time_load_variance_shape():
 # ---------------------------------------------------------------------------
 # MoEAnalyzer
 # ---------------------------------------------------------------------------
+
 
 def test_moe_analyzer_record_and_summary():
     """record_batch + summary returns expected keys and valid mean_entropy."""
@@ -203,6 +207,4 @@ def test_moe_analyzer_summary_after_reset_and_new_batch():
     probs_new = torch.softmax(torch.randn(5, N_EXPERTS), dim=-1)
     analyzer.record_batch(probs_new)
     result = analyzer.summary()
-    assert result["n_tokens_seen"] == 5, (
-        f"expected 5 after reset, got {result['n_tokens_seen']}"
-    )
+    assert result["n_tokens_seen"] == 5, f"expected 5 after reset, got {result['n_tokens_seen']}"

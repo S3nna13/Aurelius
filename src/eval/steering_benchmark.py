@@ -8,8 +8,8 @@ Evaluates steering vectors by measuring:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List
 
 import torch
 import torch.nn.functional as F
@@ -23,13 +23,13 @@ class SteeringTarget:
         name: Human-readable name for the concept.
         target_token_ids: Token IDs associated with the target concept (e.g., tokens for "positive").
         anti_target_token_ids: Token IDs for the opposite concept.
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
         name: str,
-        target_token_ids: List[int],
-        anti_target_token_ids: List[int],
+        target_token_ids: list[int],
+        anti_target_token_ids: list[int],
     ) -> None:
         self.name = name
         self.target_token_ids = target_token_ids
@@ -100,9 +100,7 @@ class SteeringEvaluator:
 
         # Step 4: Concept shift — mean probability increase on target tokens
         target_ids = target.target_token_ids
-        concept_shift = (
-            probs_steered[target_ids].mean() - probs_base[target_ids].mean()
-        ).item()
+        concept_shift = (probs_steered[target_ids].mean() - probs_base[target_ids].mean()).item()
 
         # Step 5: Fluency KL — KL divergence from steered to base
         log_probs_steered = torch.log(probs_steered + 1e-10)
@@ -132,7 +130,7 @@ class SteeringComparison:
     def __init__(self) -> None:
         pass
 
-    def compare(self, results: List[SteeringResult]) -> Dict[str, Dict[str, float]]:
+    def compare(self, results: list[SteeringResult]) -> dict[str, dict[str, float]]:
         """Group results by method_name and compute per-method averages.
 
         Args:
@@ -142,11 +140,11 @@ class SteeringComparison:
             Dict mapping method_name -> dict with keys:
                 'mean_concept_shift', 'mean_fluency_kl', 'mean_efficiency', 'n_results'.
         """
-        grouped: Dict[str, List[SteeringResult]] = {}
+        grouped: dict[str, list[SteeringResult]] = {}
         for r in results:
             grouped.setdefault(r.method_name, []).append(r)
 
-        summary: Dict[str, Dict[str, float]] = {}
+        summary: dict[str, dict[str, float]] = {}
         for method, method_results in grouped.items():
             n = len(method_results)
             mean_concept_shift = sum(r.concept_shift for r in method_results) / n
@@ -162,9 +160,9 @@ class SteeringComparison:
 
     def rank_by(
         self,
-        results: List[SteeringResult],
+        results: list[SteeringResult],
         metric: str = "steering_efficiency",
-    ) -> List[SteeringResult]:
+    ) -> list[SteeringResult]:
         """Sort results by the given metric, descending (highest first).
 
         Args:

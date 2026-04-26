@@ -29,7 +29,7 @@ from src.backends.base import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from src.model.manifest import FamilyManifest
+    pass
 
 __all__ = [
     "BACKEND_REGISTRY",
@@ -61,14 +61,12 @@ def register_backend(
     """
     if not isinstance(adapter, BackendAdapter):
         raise BackendAdapterError(
-            f"register_backend expected a BackendAdapter instance, got "
-            f"{type(adapter).__name__}"
+            f"register_backend expected a BackendAdapter instance, got {type(adapter).__name__}"
         )
     name = adapter.contract.backend_name
     if name in BACKEND_REGISTRY and not overwrite:
         raise BackendAdapterError(
-            f"backend already registered: {name!r} "
-            f"(pass overwrite=True to replace)"
+            f"backend already registered: {name!r} (pass overwrite=True to replace)"
         )
     BACKEND_REGISTRY[name] = adapter
 
@@ -76,16 +74,12 @@ def register_backend(
 def get_backend(name: str) -> BackendAdapter:
     """Return the registered backend adapter named ``name``."""
     if not isinstance(name, str) or not name:
-        raise BackendAdapterError(
-            f"backend name must be a non-empty string, got {name!r}"
-        )
+        raise BackendAdapterError(f"backend name must be a non-empty string, got {name!r}")
     try:
         return BACKEND_REGISTRY[name]
     except KeyError as exc:
         known = ", ".join(sorted(BACKEND_REGISTRY.keys())) or "<none>"
-        raise BackendAdapterError(
-            f"backend not registered: {name!r} (known: {known})"
-        ) from exc
+        raise BackendAdapterError(f"backend not registered: {name!r} (known: {known})") from exc
 
 
 def list_backends() -> tuple[str, ...]:
@@ -107,8 +101,7 @@ def register_engine_adapter(
     name = adapter.contract.backend_name
     if name in ENGINE_ADAPTER_REGISTRY and not overwrite:
         raise BackendAdapterError(
-            f"engine adapter already registered: {name!r} "
-            f"(pass overwrite=True to replace)"
+            f"engine adapter already registered: {name!r} (pass overwrite=True to replace)"
         )
     ENGINE_ADAPTER_REGISTRY[name] = adapter
 
@@ -116,9 +109,7 @@ def register_engine_adapter(
 def get_engine_adapter(name: str) -> EngineAdapter:
     """Return the registered engine adapter named ``name``."""
     if not isinstance(name, str) or not name:
-        raise BackendAdapterError(
-            f"engine adapter name must be a non-empty string, got {name!r}"
-        )
+        raise BackendAdapterError(f"engine adapter name must be a non-empty string, got {name!r}")
     try:
         return ENGINE_ADAPTER_REGISTRY[name]
     except KeyError as exc:
@@ -144,8 +135,7 @@ def select_backend_for_manifest(manifest: Any) -> BackendAdapter:
 
     if not isinstance(manifest, FamilyManifest):
         raise BackendAdapterError(
-            f"select_backend_for_manifest expected a FamilyManifest, got "
-            f"{type(manifest).__name__}"
+            f"select_backend_for_manifest expected a FamilyManifest, got {type(manifest).__name__}"
         )
 
     name = manifest.backend_name

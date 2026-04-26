@@ -1,12 +1,11 @@
 """Tests for chunked cross-entropy loss (src/training/fused_ce.py)."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
-import pytest
 
-from src.training.fused_ce import chunked_cross_entropy, ChunkedCrossEntropyLoss
-
+from src.training.fused_ce import ChunkedCrossEntropyLoss, chunked_cross_entropy
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

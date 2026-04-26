@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from rich.console import Console
 
 from src.ui.diff_viewer import (
-    DiffChunk,
-    DiffLine,
     DiffViewer,
-    DiffViewerError,
     ParsedDiff,
     parse_unified_diff,
 )
-
 
 _SAMPLE_DIFF = """\
 --- a/foo.py
@@ -80,12 +75,7 @@ def test_parse_chunk_header_starts_with_at() -> None:
 
 def test_parse_add_line_has_new_lineno() -> None:
     result = parse_unified_diff(_MINIMAL_DIFF)
-    add_lines = [
-        line
-        for chunk in result.chunks
-        for line in chunk.lines
-        if line.line_type == "add"
-    ]
+    add_lines = [line for chunk in result.chunks for line in chunk.lines if line.line_type == "add"]
     assert add_lines
     assert add_lines[0].line_no_new is not None
 
@@ -93,10 +83,7 @@ def test_parse_add_line_has_new_lineno() -> None:
 def test_parse_remove_line_has_old_lineno() -> None:
     result = parse_unified_diff(_MINIMAL_DIFF)
     remove_lines = [
-        line
-        for chunk in result.chunks
-        for line in chunk.lines
-        if line.line_type == "remove"
+        line for chunk in result.chunks for line in chunk.lines if line.line_type == "remove"
     ]
     assert remove_lines
     assert remove_lines[0].line_no_old is not None
@@ -104,22 +91,14 @@ def test_parse_remove_line_has_old_lineno() -> None:
 
 def test_parse_add_line_content_correct() -> None:
     result = parse_unified_diff(_MINIMAL_DIFF)
-    add_lines = [
-        line
-        for chunk in result.chunks
-        for line in chunk.lines
-        if line.line_type == "add"
-    ]
+    add_lines = [line for chunk in result.chunks for line in chunk.lines if line.line_type == "add"]
     assert add_lines[0].content == "new line"
 
 
 def test_parse_remove_line_content_correct() -> None:
     result = parse_unified_diff(_MINIMAL_DIFF)
     remove_lines = [
-        line
-        for chunk in result.chunks
-        for line in chunk.lines
-        if line.line_type == "remove"
+        line for chunk in result.chunks for line in chunk.lines if line.line_type == "remove"
     ]
     assert remove_lines[0].content == "old line"
 

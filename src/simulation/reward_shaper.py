@@ -1,13 +1,14 @@
 """Reward shaping: dense, sparse, potential-based, curiosity, and clip strategies."""
+
 from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
 
-class RewardShapeType(str, Enum):
+class RewardShapeType(StrEnum):
     DENSE = "dense"
     SPARSE = "sparse"
     POTENTIAL_BASED = "potential_based"
@@ -27,8 +28,7 @@ class RewardShaperConfig:
 class PotentialFunction(Protocol):
     """Protocol for potential functions used in potential-based shaping."""
 
-    def __call__(self, state: dict) -> float:
-        ...
+    def __call__(self, state: dict) -> float: ...
 
 
 class _DefaultPotential:

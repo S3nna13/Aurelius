@@ -12,25 +12,25 @@ Pure PyTorch — no HuggingFace.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, Generator, List, Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 import torch
 import torch.nn as nn
-
 
 # ---------------------------------------------------------------------------
 # AblationType
 # ---------------------------------------------------------------------------
 
-class AblationType(str, Enum):
+
+class AblationType(StrEnum):
     """Strategy used to ablate a component's activations or parameters."""
 
-    ZERO   = "zero"    # replace activations with zeros
-    MEAN   = "mean"    # replace activations with a dataset mean tensor
-    NOISE  = "noise"   # add Gaussian noise to activations
+    ZERO = "zero"  # replace activations with zeros
+    MEAN = "mean"  # replace activations with a dataset mean tensor
+    NOISE = "noise"  # add Gaussian noise to activations
     FREEZE = "freeze"  # freeze parameters (no gradient update)
 
 
@@ -38,21 +38,23 @@ class AblationType(str, Enum):
 # AblationResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AblationResult:
     """Stores the outcome of ablating a single model component."""
 
-    component: str        # e.g. "layer_0", "layer_1_attn_head_3"
+    component: str  # e.g. "layer_0", "layer_1_attn_head_3"
     ablation_type: str
     metric_before: float
     metric_after: float
-    delta: float          # metric_after - metric_before (negative = component was helpful)
+    delta: float  # metric_after - metric_before (negative = component was helpful)
     relative_impact: float  # |delta| / |metric_before|
 
 
 # ---------------------------------------------------------------------------
 # AblationConfig
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AblationConfig:
@@ -66,6 +68,7 @@ class AblationConfig:
 # ---------------------------------------------------------------------------
 # LayerAblator
 # ---------------------------------------------------------------------------
+
 
 class LayerAblator:
     """Run layer-level ablation studies on an AureliusTransformer-like model.
@@ -94,11 +97,11 @@ class LayerAblator:
     def _forward(
         self,
         input_ids: torch.Tensor,
-        ablate_layer_idx: Optional[int] = None,
+        ablate_layer_idx: int | None = None,
         ablation_type: AblationType = AblationType.ZERO,
-        mean_activation: Optional[torch.Tensor] = None,
+        mean_activation: torch.Tensor | None = None,
         noise_std: float = 0.1,
-        ablate_head_idx: Optional[int] = None,
+        ablate_head_idx: int | None = None,
     ) -> torch.Tensor:
         """Run forward pass with an optional layer-output ablation.
 
@@ -150,7 +153,7 @@ class LayerAblator:
         self,
         input_ids: torch.Tensor,
         layer_idx: int,
-        head_idx: Optional[int],
+        head_idx: int | None,
         ablation_type: AblationType = AblationType.ZERO,
         noise_std: float = 0.1,
     ) -> torch.Tensor:
@@ -167,10 +170,9 @@ class LayerAblator:
         hooks = []
         target_layer = model.layers[layer_idx]
         head_dim = model.config.head_dim
-        n_heads  = model.config.n_heads
 
         # We hook into the *input* of o_proj to zero the relevant slice.
-        def _make_hook(h_idx: Optional[int]):
+        def _make_hook(h_idx: int | None):
             def _hook(module: nn.Module, inp, out):  # noqa: ANN001
                 # inp[0]: (B, S, n_heads * head_dim)
                 tensor = inp[0].clone()
@@ -181,16 +183,19 @@ class LayerAblator:
                         tensor = tensor + torch.randn_like(tensor) * noise_std
                 else:
                     start = h_idx * head_dim
-                    end   = start + head_dim
+                    end = start + head_dim
                     if ablation_type == AblationType.ZERO:
                         tensor[..., start:end] = 0.0
                     elif ablation_type == AblationType.NOISE:
-                        tensor[..., start:end] += torch.randn_like(tensor[..., start:end]) * noise_std
+                        tensor[..., start:end] += (
+                            torch.randn_like(tensor[..., start:end]) * noise_std
+                        )
                     elif ablation_type == AblationType.MEAN:
                         mean_val = tensor[..., start:end].mean()
                         tensor[..., start:end] = mean_val
                 # Re-run the projection with the modified input
                 return module(tensor)
+
             return _hook
 
         h = target_layer.attn.o_proj.register_forward_hook(_make_hook(head_idx))
@@ -219,7 +224,7 @@ class LayerAblator:
         layer_idx: int,
         ablation_type: AblationType,
         input_ids: torch.Tensor,
-        mean_activation: Optional[torch.Tensor] = None,
+        mean_activation: torch.Tensor | None = None,
     ) -> Generator[torch.Tensor, None, None]:
         """Context manager that temporarily patches the output of *layer_idx*.
 
@@ -245,7 +250,7 @@ class LayerAblator:
     def ablate_attention(
         self,
         layer_idx: int,
-        head_idx: Optional[int],
+        head_idx: int | None,
         ablation_type: AblationType,
         input_ids: torch.Tensor,
     ) -> float:
@@ -282,7 +287,7 @@ class LayerAblator:
         self,
         input_ids: torch.Tensor,
         ablation_type: AblationType = AblationType.ZERO,
-    ) -> List[AblationResult]:
+    ) -> list[AblationResult]:
         """Ablate every layer in turn and record the metric impact.
 
         Parameters
@@ -301,7 +306,7 @@ class LayerAblator:
         baseline_logits = self._forward(input_ids)
         metric_before = self.metric_fn(baseline_logits)
 
-        results: List[AblationResult] = []
+        results: list[AblationResult] = []
         n_layers = len(self.model.layers)
 
         for i in range(n_layers):
@@ -336,7 +341,7 @@ class LayerAblator:
 
     def compute_layer_importance(
         self,
-        results: List[AblationResult],
+        results: list[AblationResult],
     ) -> torch.Tensor:
         """Derive a per-layer importance tensor from ablation results.
 
@@ -374,9 +379,9 @@ class LayerAblator:
 
     def get_redundant_layers(
         self,
-        results: List[AblationResult],
+        results: list[AblationResult],
         threshold: float = 0.05,
-    ) -> List[int]:
+    ) -> list[int]:
         """Return layer indices whose relative impact is below *threshold*.
 
         These layers have minimal effect when ablated and may be safely
@@ -393,7 +398,7 @@ class LayerAblator:
         -------
         Sorted list of layer indices.
         """
-        redundant: List[int] = []
+        redundant: list[int] = []
         for r in results:
             if r.relative_impact < threshold:
                 try:

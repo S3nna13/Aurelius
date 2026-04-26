@@ -25,10 +25,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 import torch
-
 
 # ---------------------------------------------------------------------------
 # Principles enum
@@ -66,9 +64,7 @@ class CAIConfig:
     n_revisions: int = 2
     revision_weight: float = 1.0
     critique_weight: float = 0.5
-    principles: list[str] = field(
-        default_factory=lambda: [p.value for p in CAIPrinciple]
-    )
+    principles: list[str] = field(default_factory=lambda: [p.value for p in CAIPrinciple])
     max_critique_tokens: int = 256
 
 
@@ -92,7 +88,7 @@ class CAIExample:
     original_response: str
     critiques: list[str]
     revised_responses: list[str]
-    principle_violated: Optional[str] = None
+    principle_violated: str | None = None
 
 
 @dataclass

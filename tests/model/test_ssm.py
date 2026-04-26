@@ -6,24 +6,26 @@ Covers all 15 spec requirements plus legacy tests for backward compatibility.
 """
 
 import math
+
 import pytest
 import torch
 import torch.nn.functional as F
+
 from src.model.config import AureliusConfig
 from src.model.ssm import (
-    SSMConfig,
-    SelectiveSSM,
     MambaBlock,
     MambaLayer,
     MambaLM,
+    SelectiveSSM,
+    SSMConfig,
     selective_scan,
     selective_scan_naive,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def small_cfg():
@@ -55,6 +57,7 @@ def ssm(ssm_cfg):
 # Spec test 1: SSMConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_ssm_config_defaults():
     """SSMConfig should have the expected default field values."""
     cfg = SSMConfig()
@@ -69,6 +72,7 @@ def test_ssm_config_defaults():
 # ---------------------------------------------------------------------------
 # Spec test 2: selective_scan output shape is (B, L, d_inner)
 # ---------------------------------------------------------------------------
+
 
 def test_selective_scan_output_shape():
     """selective_scan must return (B, L, d_inner)."""
@@ -87,6 +91,7 @@ def test_selective_scan_output_shape():
 # Spec test 3: selective_scan with B=1, L=8, d_inner=16, d_state=4
 # ---------------------------------------------------------------------------
 
+
 def test_selective_scan_small_dims():
     """selective_scan with B=1, L=8, d_inner=16, d_state=4 must produce correct shape."""
     B, L, d_inner, d_state = 1, 8, 16, 4
@@ -103,6 +108,7 @@ def test_selective_scan_small_dims():
 # ---------------------------------------------------------------------------
 # Spec test 4: selective_scan output is finite (no NaN/Inf)
 # ---------------------------------------------------------------------------
+
 
 def test_selective_scan_finite():
     """selective_scan output must contain no NaN or Inf values."""
@@ -121,6 +127,7 @@ def test_selective_scan_finite():
 # ---------------------------------------------------------------------------
 # Spec test 5: selective_scan D=0 gives zero output when input is zero
 # ---------------------------------------------------------------------------
+
 
 def test_selective_scan_zero_input_zero_D():
     """With u=0 and D=0, the output must be all zeros."""
@@ -141,6 +148,7 @@ def test_selective_scan_zero_input_zero_D():
 # Spec test 6: MambaBlock output shape matches input (B, T, d_model)
 # ---------------------------------------------------------------------------
 
+
 def test_mamba_block_output_shape(small_cfg):
     """MambaBlock must return (B, L, d_model)."""
     block = MambaBlock(small_cfg)
@@ -152,6 +160,7 @@ def test_mamba_block_output_shape(small_cfg):
 # ---------------------------------------------------------------------------
 # Spec test 7: MambaBlock is differentiable (backward works)
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_block_gradients_flow(small_cfg):
     """backward() must run without error and produce non-None gradients."""
@@ -169,6 +178,7 @@ def test_mamba_block_gradients_flow(small_cfg):
 # Spec test 8: MambaBlock with different sequence lengths
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("seq_len", [1, 16, 128])
 def test_mamba_block_different_seq_lens(small_cfg, seq_len):
     """MambaBlock must handle varied sequence lengths without error."""
@@ -182,6 +192,7 @@ def test_mamba_block_different_seq_lens(small_cfg, seq_len):
 # Spec test 9: MambaLayer output shape matches input
 # ---------------------------------------------------------------------------
 
+
 def test_mamba_layer_output_shape(ssm_cfg):
     """MambaLayer must return same shape as input (B, T, d_model)."""
     layer = MambaLayer(ssm_cfg)
@@ -194,6 +205,7 @@ def test_mamba_layer_output_shape(ssm_cfg):
 # ---------------------------------------------------------------------------
 # Spec test 10: MambaLayer with residual: output != input (non-trivial)
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_layer_nontrivial(ssm_cfg):
     """MambaLayer output should differ from input (residual is non-zero)."""
@@ -210,6 +222,7 @@ def test_mamba_layer_nontrivial(ssm_cfg):
 # Spec test 11: MambaLM output shape is (B, T, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_mamba_lm_output_shape(ssm_cfg):
     """MambaLM must return logits of shape (B, T, vocab_size)."""
     vocab_size = 256
@@ -223,6 +236,7 @@ def test_mamba_lm_output_shape(ssm_cfg):
 # ---------------------------------------------------------------------------
 # Spec test 12: MambaLM is differentiable
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_lm_differentiable(ssm_cfg):
     """MambaLM backward must succeed with finite gradients."""
@@ -241,6 +255,7 @@ def test_mamba_lm_differentiable(ssm_cfg):
 # Spec test 13: MambaLM with n_layers=1 and n_layers=4
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("n_layers", [1, 4])
 def test_mamba_lm_various_depths(ssm_cfg, n_layers):
     """MambaLM must work with n_layers=1 and n_layers=4."""
@@ -255,6 +270,7 @@ def test_mamba_lm_various_depths(ssm_cfg, n_layers):
 # ---------------------------------------------------------------------------
 # Spec test 14: MambaLM loss from cross_entropy is finite and positive
 # ---------------------------------------------------------------------------
+
 
 def test_mamba_lm_loss_finite_positive(ssm_cfg):
     """Cross-entropy loss on MambaLM logits must be finite and positive."""
@@ -273,6 +289,7 @@ def test_mamba_lm_loss_finite_positive(ssm_cfg):
 # Spec test 15: A parameter of MambaBlock is initialized negative (log scale)
 # ---------------------------------------------------------------------------
 
+
 def test_mamba_block_A_log_initialized_negative(ssm_cfg):
     """_MambaBlockFromSSMConfig A_log must store log of positive values (A itself negative).
 
@@ -281,6 +298,7 @@ def test_mamba_block_A_log_initialized_negative(ssm_cfg):
     What matters is that -exp(A_log) is strictly negative.
     """
     from src.model.ssm import _MambaBlockFromSSMConfig
+
     block = _MambaBlockFromSSMConfig(ssm_cfg)
     A = -torch.exp(block.A_log)
     assert (A < 0).all(), "All A values (= -exp(A_log)) must be strictly negative"
@@ -289,6 +307,7 @@ def test_mamba_block_A_log_initialized_negative(ssm_cfg):
 # ---------------------------------------------------------------------------
 # Legacy / additional tests (preserved from original test_ssm.py)
 # ---------------------------------------------------------------------------
+
 
 def test_ssm_config_dt_rank_auto():
     """'auto' dt_rank should equal ceil(d_model / 16)."""
@@ -353,15 +372,17 @@ def test_selective_scan_naive_shape():
 
 def test_mamba_block_as_ffn_replacement(small_cfg):
     """MambaBlock can replace SwiGLUFFN in TransformerBlock.ffn."""
-    from src.model.transformer import TransformerBlock
     from src.model.attention import precompute_rope_frequencies
+    from src.model.transformer import TransformerBlock
 
     block = TransformerBlock(small_cfg)
     block.ffn = MambaBlock(small_cfg)
 
     B, L = 2, 8
     x = torch.randn(B, L, small_cfg.d_model)
-    freqs = precompute_rope_frequencies(small_cfg.head_dim, small_cfg.max_seq_len, small_cfg.rope_theta)
+    freqs = precompute_rope_frequencies(
+        small_cfg.head_dim, small_cfg.max_seq_len, small_cfg.rope_theta
+    )
     freqs_cis = freqs[:L]
 
     out, kv = block(x, freqs_cis)

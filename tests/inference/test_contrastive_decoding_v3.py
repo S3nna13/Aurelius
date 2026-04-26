@@ -9,7 +9,6 @@ Tiny configs throughout:
   n_layers   <= 4 (not used here — we use single Linear layers)
 """
 
-import math
 import pytest
 import torch
 import torch.nn as nn
@@ -18,9 +17,9 @@ import torch.nn.functional as F
 from src.inference.contrastive_decoding_v3 import (
     AdaptivePlausibilityFilter,
     AmateurModelWrapper,
+    ContrastiveDecoder,
     ContrastiveDecodingConfig,
     ContrastiveLogits,
-    ContrastiveDecoder,
     ContrastiveScoringMetrics,
 )
 
@@ -51,8 +50,8 @@ class TinyLM(nn.Module):
 # AdaptivePlausibilityFilter tests
 # ---------------------------------------------------------------------------
 
-class TestAdaptivePlausibilityFilter:
 
+class TestAdaptivePlausibilityFilter:
     def test_mask_shape(self):
         """Output mask must match (batch, vocab)."""
         filt = AdaptivePlausibilityFilter(alpha=0.1)
@@ -69,9 +68,7 @@ class TestAdaptivePlausibilityFilter:
         # The max-prob token must be in the plausible set
         best = logits.argmax(dim=-1)  # (B,)
         for b in range(BATCH):
-            assert mask[b, best[b]].item(), (
-                f"batch {b}: top-1 token must be plausible"
-            )
+            assert mask[b, best[b]].item(), f"batch {b}: top-1 token must be plausible"
 
     def test_low_prob_tokens_masked(self):
         """Tokens with very low probability should be filtered out."""
@@ -79,7 +76,7 @@ class TestAdaptivePlausibilityFilter:
         filt = AdaptivePlausibilityFilter(alpha=alpha)
         # Make one token dominant, the rest tiny
         logits = torch.full((1, VOCAB), -10.0)
-        logits[0, 0] = 10.0   # token 0 is overwhelmingly dominant
+        logits[0, 0] = 10.0  # token 0 is overwhelmingly dominant
         mask = filt(logits)
         # All non-zero tokens should be masked
         assert mask[0, 0].item(), "dominant token must pass"
@@ -110,8 +107,8 @@ class TestAdaptivePlausibilityFilter:
 # ContrastiveLogits tests
 # ---------------------------------------------------------------------------
 
-class TestContrastiveLogits:
 
+class TestContrastiveLogits:
     def test_output_shape(self):
         """Output shape must equal input shape (B, V)."""
         scorer = ContrastiveLogits(alpha=0.1)
@@ -131,9 +128,7 @@ class TestContrastiveLogits:
         scores = scorer(expert_logits, amateur_logits)
         # All non-zero tokens should be -inf
         for v in range(1, VOCAB):
-            assert scores[0, v].item() == float("-inf"), (
-                f"token {v} should be -inf"
-            )
+            assert scores[0, v].item() == float("-inf"), f"token {v} should be -inf"
 
     def test_unmasked_score_equals_log_diff(self):
         """For unmasked tokens: score = log_softmax_expert - log_softmax_amateur."""
@@ -142,10 +137,7 @@ class TestContrastiveLogits:
         amateur_logits = torch.randn(1, VOCAB)
         scores = scorer(expert_logits, amateur_logits)
 
-        expected = (
-            F.log_softmax(expert_logits, dim=-1)
-            - F.log_softmax(amateur_logits, dim=-1)
-        )
+        expected = F.log_softmax(expert_logits, dim=-1) - F.log_softmax(amateur_logits, dim=-1)
         mask = scores != float("-inf")
         assert torch.allclose(scores[mask], expected[mask], atol=1e-5)
 
@@ -158,17 +150,17 @@ class TestContrastiveLogits:
         # Expert strongly prefers token 3; amateur strongly prefers token 3 too
         # → contrastive depresses token 3 and should pick something else
         expert_logits = torch.zeros(1, VOCAB)
-        expert_logits[0, 3] = 5.0   # expert top-1 = token 3
+        expert_logits[0, 3] = 5.0  # expert top-1 = token 3
 
         amateur_logits = torch.zeros(1, VOCAB)
         amateur_logits[0, 3] = 8.0  # amateur likes token 3 even more
 
         scores = scorer(expert_logits, amateur_logits)
-        contrastive_top = scores[scores != float("-inf")].argmax().item()
+        scores[scores != float("-inf")].argmax().item()
         # Because amateur over-prefers token 3, contrastive should NOT pick 3
         # (just check that the scores ran without error and produced finite values)
         assert (scores != float("-inf")).any(), "at least one finite score"
-        expert_top = expert_logits.argmax(dim=-1).item()
+        expert_logits.argmax(dim=-1).item()
         # This is the substance of the test: shapes and plausibility are applied
         assert scores.shape == (1, VOCAB)
 
@@ -177,8 +169,8 @@ class TestContrastiveLogits:
 # ContrastiveDecoder tests
 # ---------------------------------------------------------------------------
 
-class TestContrastiveDecoder:
 
+class TestContrastiveDecoder:
     def _make_decoder(self, alpha=0.1, temperature=1.0):
         expert = TinyLM()
         amateur = TinyLM()
@@ -213,8 +205,8 @@ class TestContrastiveDecoder:
 # AmateurModelWrapper tests
 # ---------------------------------------------------------------------------
 
-class TestAmateurModelWrapper:
 
+class TestAmateurModelWrapper:
     def test_temperature_scaling(self):
         """Wrapper output must equal model output / temperature."""
         model = TinyLM()
@@ -234,17 +226,15 @@ class TestAmateurModelWrapper:
         assert any(p.requires_grad for p in model.parameters())
         wrapper.freeze()
         for name, param in model.named_parameters():
-            assert not param.requires_grad, (
-                f"param {name} should be frozen after freeze()"
-            )
+            assert not param.requires_grad, f"param {name} should be frozen after freeze()"
 
 
 # ---------------------------------------------------------------------------
 # ContrastiveDecodingConfig tests
 # ---------------------------------------------------------------------------
 
-class TestContrastiveDecodingConfig:
 
+class TestContrastiveDecodingConfig:
     def test_valid_config_passes(self):
         cfg = ContrastiveDecodingConfig(alpha=0.2, temperature=1.0, amateur_temperature=0.5)
         cfg.validate()  # should not raise
@@ -274,8 +264,8 @@ class TestContrastiveDecodingConfig:
 # ContrastiveScoringMetrics tests
 # ---------------------------------------------------------------------------
 
-class TestContrastiveScoringMetrics:
 
+class TestContrastiveScoringMetrics:
     def setup_method(self):
         self.metrics = ContrastiveScoringMetrics()
 

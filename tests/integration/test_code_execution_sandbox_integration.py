@@ -43,7 +43,7 @@ def test_prior_agent_registry_intact() -> None:
 
 def test_execute_smoke() -> None:
     sbx = CodeExecutionSandbox(timeout=5.0, max_memory_mb=128)
-    res = sbx.execute('print(2 + 2)')
+    res = sbx.execute("print(2 + 2)")
     assert res.exit_code == 0
     assert "4" in res.stdout
     assert res.timed_out is False
@@ -53,9 +53,7 @@ def test_execute_smoke() -> None:
 def test_execute_file_smoke(tmp_path) -> None:
     script = tmp_path / "hello.py"
     script.write_text(
-        "import sys\n"
-        "print('argv', sys.argv[1])\n"
-        "print('isolated', 'src' not in sys.modules)\n"
+        "import sys\nprint('argv', sys.argv[1])\nprint('isolated', 'src' not in sys.modules)\n"
     )
     sbx = CodeExecutionSandbox(timeout=5.0)
     res = sbx.execute_file(str(script), args=["world"])
@@ -63,10 +61,13 @@ def test_execute_file_smoke(tmp_path) -> None:
     assert "argv world" in res.stdout
 
 
-@pytest.mark.parametrize("snippet,expected", [
-    ("print('ok')", "ok"),
-    ("import json; print(json.dumps({'a':1}))", '"a": 1'),
-])
+@pytest.mark.parametrize(
+    "snippet,expected",
+    [
+        ("print('ok')", "ok"),
+        ("import json; print(json.dumps({'a':1}))", '"a": 1'),
+    ],
+)
 def test_execute_various_snippets(snippet: str, expected: str) -> None:
     sbx = CodeExecutionSandbox(timeout=5.0)
     res = sbx.execute(snippet)

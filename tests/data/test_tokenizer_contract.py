@@ -1,4 +1,5 @@
 """Tests for tokenizer_contract (v5 FamilyManifest family-adjacent)."""
+
 from __future__ import annotations
 
 import json

@@ -1,12 +1,11 @@
 """Tests for src/eval/eval_harness.py"""
 
-import pytest
-from src.eval.eval_harness import EvalTask, EvalMetrics, EvalHarness
-
+from src.eval.eval_harness import EvalHarness, EvalMetrics, EvalTask
 
 # ---------------------------------------------------------------------------
 # EvalTask
 # ---------------------------------------------------------------------------
+
 
 def test_eval_task_fields():
     t = EvalTask(task_id="t1", prompt="What is 2+2?", reference="4")
@@ -29,6 +28,7 @@ def test_eval_task_custom_metadata():
 # EvalMetrics
 # ---------------------------------------------------------------------------
 
+
 def test_eval_metrics_fields():
     m = EvalMetrics(
         task_id="t1",
@@ -49,6 +49,7 @@ def test_eval_metrics_fields():
 # ---------------------------------------------------------------------------
 # EvalHarness construction
 # ---------------------------------------------------------------------------
+
 
 def test_harness_init_no_tasks():
     h = EvalHarness()
@@ -80,6 +81,7 @@ def test_harness_load_tasks_replaces():
 # ---------------------------------------------------------------------------
 # _token_f1
 # ---------------------------------------------------------------------------
+
 
 def test_token_f1_exact_match():
     h = EvalHarness()
@@ -121,6 +123,7 @@ def test_token_f1_range():
 # ---------------------------------------------------------------------------
 # evaluate_one
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_one_exact_match():
     h = EvalHarness()
@@ -164,6 +167,7 @@ def test_evaluate_one_char_overlap_exact():
 # evaluate_all
 # ---------------------------------------------------------------------------
 
+
 def test_evaluate_all_returns_list():
     tasks = [EvalTask("t1", "p", "a"), EvalTask("t2", "p", "b")]
     h = EvalHarness(tasks=tasks)
@@ -197,6 +201,7 @@ def test_evaluate_all_mixed():
 # ---------------------------------------------------------------------------
 # aggregate
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_empty():
     h = EvalHarness()
@@ -232,7 +237,11 @@ def test_aggregate_keys_present():
     metrics = h.evaluate_all(["r"])
     agg = h.aggregate(metrics)
     assert set(agg.keys()) == {
-        "exact_match_rate", "mean_token_f1", "mean_char_overlap", "pass_rate", "n_tasks"
+        "exact_match_rate",
+        "mean_token_f1",
+        "mean_char_overlap",
+        "pass_rate",
+        "n_tasks",
     }
 
 
@@ -249,6 +258,7 @@ def test_aggregate_partial():
 # ---------------------------------------------------------------------------
 # filter_failed
 # ---------------------------------------------------------------------------
+
 
 def test_filter_failed_none_fail():
     tasks = [EvalTask("t1", "p", "a"), EvalTask("t2", "p", "b")]

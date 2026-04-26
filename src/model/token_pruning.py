@@ -40,7 +40,7 @@ def score_tokens_by_attention(attention_weights: Tensor) -> Tensor:
     # Column sum along the query dimension (dim=2) gives total attention received
     # attention_weights: (B, n_heads, T_query, T_key)
     col_sums = attention_weights.sum(dim=2)  # (B, n_heads, T)
-    return col_sums.mean(dim=1)              # (B, T)
+    return col_sums.mean(dim=1)  # (B, T)
 
 
 def score_tokens_by_gradient(hidden_states: Tensor, grad: Tensor) -> Tensor:
@@ -55,8 +55,8 @@ def score_tokens_by_gradient(hidden_states: Tensor, grad: Tensor) -> Tensor:
     Returns:
         Importance scores of shape (B, T).
     """
-    product = hidden_states * grad          # (B, T, D)
-    return product.norm(dim=-1)             # (B, T)
+    product = hidden_states * grad  # (B, T, D)
+    return product.norm(dim=-1)  # (B, T)
 
 
 def select_important_tokens(scores: Tensor, config: TokenPruningConfig) -> Tensor:
@@ -117,8 +117,7 @@ class TokenPruningLayer(nn.Module):
             scores = score_tokens_by_attention(attention_weights)
         else:
             # Uniform scores — all tokens equally important
-            scores = torch.ones(B, T, device=hidden_states.device,
-                                dtype=hidden_states.dtype)
+            scores = torch.ones(B, T, device=hidden_states.device, dtype=hidden_states.dtype)
 
         self._last_scores = scores
         keep_mask = select_important_tokens(scores, self.config)
@@ -186,7 +185,7 @@ def evaluate_pruning_efficiency(
     """
     kept = math.ceil(keep_ratio * original_seq_len)
     pruned = original_seq_len - kept
-    speedup = 1.0 / (keep_ratio ** 2) if keep_ratio > 0 else float("inf")
+    speedup = 1.0 / (keep_ratio**2) if keep_ratio > 0 else float("inf")
     return {
         "kept_tokens": float(kept),
         "pruned_tokens": float(pruned),

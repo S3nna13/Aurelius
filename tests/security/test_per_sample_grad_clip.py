@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.nn as nn
-import pytest
 
-from src.security.per_sample_grad_clip import GradSampleHook, PerSampleClipper
-
+from src.security.per_sample_grad_clip import PerSampleClipper
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -55,20 +54,26 @@ def test_grad_sample_hooks_registered_on_linear_layers(model: nn.Sequential) -> 
     assert len(clipper._linear_layers) == linear_count
 
 
-def test_step_runs_without_error(clipper: PerSampleClipper, batch: torch.Tensor, model: nn.Sequential) -> None:
+def test_step_runs_without_error(
+    clipper: PerSampleClipper, batch: torch.Tensor, model: nn.Sequential
+) -> None:
     """step() completes without raising an exception."""
     loss = _forward_and_loss(model, batch)
     clipper.step(loss)
 
 
-def test_step_returns_dict(clipper: PerSampleClipper, batch: torch.Tensor, model: nn.Sequential) -> None:
+def test_step_returns_dict(
+    clipper: PerSampleClipper, batch: torch.Tensor, model: nn.Sequential
+) -> None:
     """step() returns a dict."""
     loss = _forward_and_loss(model, batch)
     result = clipper.step(loss)
     assert isinstance(result, dict)
 
 
-def test_step_dict_has_entry_per_linear_layer(clipper: PerSampleClipper, batch: torch.Tensor, model: nn.Sequential) -> None:
+def test_step_dict_has_entry_per_linear_layer(
+    clipper: PerSampleClipper, batch: torch.Tensor, model: nn.Sequential
+) -> None:
     """step() dict contains one entry for each nn.Linear layer."""
     loss = _forward_and_loss(model, batch)
     result = clipper.step(loss)

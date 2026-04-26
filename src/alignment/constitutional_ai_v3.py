@@ -9,16 +9,15 @@ Implements the trainable/differentiable components of CAI:
 
 Reference: Bai et al., "Constitutional AI: Harmlessness from AI Feedback" (arXiv:2212.08073).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # ConstitutionalPrinciple
@@ -41,7 +40,7 @@ class ConstitutionalPrinciple:
     revision_prompt: str
     weight: float = 1.0
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Return a dict with all fields."""
         return {
             "name": self.name,
@@ -88,7 +87,7 @@ class CritiqueHead(nn.Module):
             (B, n_principles) scores in (0, 1).
         """
         last = hidden_states[:, -1, :]  # (B, D)
-        return self.net(last)           # (B, n_principles)
+        return self.net(last)  # (B, n_principles)
 
     def aggregate(self, scores: Tensor, weights: Tensor) -> Tensor:
         """Compute weighted mean score across principles.
@@ -136,9 +135,7 @@ class RevisionScorer(nn.Module):
         """
         return hidden_states.mean(dim=1)
 
-    def score_revision(
-        self, original_hidden: Tensor, revised_hidden: Tensor
-    ) -> Tensor:
+    def score_revision(self, original_hidden: Tensor, revised_hidden: Tensor) -> Tensor:
         """Compute cosine similarity between revised and original encodings.
 
         Returns cosine_sim(revised, original) as a measure of alignment --
@@ -151,7 +148,7 @@ class RevisionScorer(nn.Module):
         Returns:
             (B,) cosine similarity in [-1, 1].
         """
-        orig_enc = self.encode(original_hidden)    # (B, D)
+        orig_enc = self.encode(original_hidden)  # (B, D)
         revised_enc = self.encode(revised_hidden)  # (B, D)
         return F.cosine_similarity(revised_enc, orig_enc, dim=-1)
 
@@ -197,7 +194,7 @@ class CAITrainer:
         model: nn.Module,
         critique_head: CritiqueHead,
         optimizer: torch.optim.Optimizer,
-        principles: List[ConstitutionalPrinciple],
+        principles: list[ConstitutionalPrinciple],
     ) -> None:
         self.model = model
         self.critique_head = critique_head
@@ -205,9 +202,7 @@ class CAITrainer:
         self.principles = principles
         self._revision_scorer = RevisionScorer(critique_head.d_model)
 
-    def critique_step(
-        self, input_ids: Tensor, harmless_labels: Tensor
-    ) -> Dict:
+    def critique_step(self, input_ids: Tensor, harmless_labels: Tensor) -> dict:
         """Train the CritiqueHead with BCE loss against harmlessness labels.
 
         Args:
@@ -240,9 +235,7 @@ class CAITrainer:
             "per_principle_scores": scores.detach(),
         }
 
-    def revision_step(
-        self, original_ids: Tensor, revised_ids: Tensor
-    ) -> Dict:
+    def revision_step(self, original_ids: Tensor, revised_ids: Tensor) -> dict:
         """Compute revision quality loss toward target cosine similarity 0.8.
 
         Args:
@@ -287,9 +280,7 @@ class ConstitutionalFilter:
         threshold: Scores below this trigger the should_revise flag (default 0.5).
     """
 
-    def __init__(
-        self, critique_head: CritiqueHead, threshold: float = 0.5
-    ) -> None:
+    def __init__(self, critique_head: CritiqueHead, threshold: float = 0.5) -> None:
         self.critique_head = critique_head
         self.threshold = threshold
 

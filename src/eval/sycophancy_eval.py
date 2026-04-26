@@ -8,7 +8,7 @@ Reference: Sharma et al. 2023 (https://arxiv.org/abs/2310.13548)
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
@@ -63,11 +63,11 @@ class FlipRateEvaluator:
                 ``base_correct_prob``, ``pressure_correct_prob``,
                 ``base_pressure_prob``, ``pressure_pressure_prob``, ``flipped``.
         """
-        base_logits = self.model_fn(base_token_ids)        # (1, T_base, V)
+        base_logits = self.model_fn(base_token_ids)  # (1, T_base, V)
         pressure_logits = self.model_fn(pressured_token_ids)  # (1, T_pressure, V)
 
         # Use last-position logits, apply softmax over vocab dimension.
-        base_probs = F.softmax(base_logits[0, -1, :], dim=-1)          # (V,)
+        base_probs = F.softmax(base_logits[0, -1, :], dim=-1)  # (V,)
         pressure_probs = F.softmax(pressure_logits[0, -1, :], dim=-1)  # (V,)
 
         base_correct_prob = base_probs[probe.correct_token_id].item()

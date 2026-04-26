@@ -1,27 +1,24 @@
 """Tests for neural_watermark.py (Kirchenbauer et al. 2023 green/red list watermarking)."""
 
-import math
-
 import pytest
 import torch
-import torch.nn as nn
 
 from src.inference.neural_watermark import (
-    WatermarkConfig,
     GreenListWatermark,
-    watermark_sample,
-    generate_watermarked,
+    WatermarkConfig,
     detect_watermark,
+    generate_watermarked,
+    watermark_sample,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
 # Tiny model fixture
 # ---------------------------------------------------------------------------
 
 VOCAB_SIZE = 256
+
 
 def make_tiny_config():
     return AureliusConfig(
@@ -67,6 +64,7 @@ def watermark(wm_config):
 # 1. WatermarkConfig defaults are sensible
 # ---------------------------------------------------------------------------
 
+
 def test_watermark_config_defaults():
     cfg = WatermarkConfig()
     assert cfg.key == 42
@@ -81,6 +79,7 @@ def test_watermark_config_defaults():
 # 2. get_green_list returns (vocab_size,) bool tensor
 # ---------------------------------------------------------------------------
 
+
 def test_get_green_list_shape(watermark, wm_config):
     mask = watermark.get_green_list(prev_token=5)
     assert mask.shape == (wm_config.vocab_size,)
@@ -90,6 +89,7 @@ def test_get_green_list_shape(watermark, wm_config):
 # ---------------------------------------------------------------------------
 # 3. Fraction of green tokens approximately equals gamma (within +-0.1)
 # ---------------------------------------------------------------------------
+
 
 def test_get_green_list_fraction(watermark, wm_config):
     mask = watermark.get_green_list(prev_token=42)
@@ -103,6 +103,7 @@ def test_get_green_list_fraction(watermark, wm_config):
 # 4. Same prev_token always produces the same green list (deterministic)
 # ---------------------------------------------------------------------------
 
+
 def test_get_green_list_deterministic(watermark):
     mask_a = watermark.get_green_list(prev_token=7)
     mask_b = watermark.get_green_list(prev_token=7)
@@ -112,6 +113,7 @@ def test_get_green_list_deterministic(watermark):
 # ---------------------------------------------------------------------------
 # 5. Different prev_tokens produce different green lists
 # ---------------------------------------------------------------------------
+
 
 def test_get_green_list_different_prev_tokens(watermark):
     mask_a = watermark.get_green_list(prev_token=1)
@@ -124,6 +126,7 @@ def test_get_green_list_different_prev_tokens(watermark):
 # ---------------------------------------------------------------------------
 # 6. apply() increases logits for green tokens
 # ---------------------------------------------------------------------------
+
 
 def test_apply_increases_green_logits(watermark, wm_config):
     torch.manual_seed(0)
@@ -144,6 +147,7 @@ def test_apply_increases_green_logits(watermark, wm_config):
 # 7. apply() doesn't change red-token logits
 # ---------------------------------------------------------------------------
 
+
 def test_apply_does_not_change_red_logits(watermark, wm_config):
     torch.manual_seed(1)
     logits = torch.randn(wm_config.vocab_size)
@@ -162,6 +166,7 @@ def test_apply_does_not_change_red_logits(watermark, wm_config):
 # 8. score_token returns 0 or 1
 # ---------------------------------------------------------------------------
 
+
 def test_score_token_binary(watermark):
     for token in range(10):
         score = watermark.score_token(token=token, prev_token=0)
@@ -171,6 +176,7 @@ def test_score_token_binary(watermark):
 # ---------------------------------------------------------------------------
 # 9. score_sequence returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_score_sequence_keys(watermark):
     tokens = torch.arange(20)
@@ -183,6 +189,7 @@ def test_score_sequence_keys(watermark):
 # ---------------------------------------------------------------------------
 # 10. score_sequence green_fraction is in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_score_sequence_green_fraction_range(watermark):
     torch.manual_seed(2)
@@ -197,6 +204,7 @@ def test_score_sequence_green_fraction_range(watermark):
 # 11. watermark_sample returns valid token id in [0, vocab_size)
 # ---------------------------------------------------------------------------
 
+
 def test_watermark_sample_valid_token(watermark, wm_config):
     torch.manual_seed(3)
     logits = torch.randn(wm_config.vocab_size)
@@ -210,6 +218,7 @@ def test_watermark_sample_valid_token(watermark, wm_config):
 # ---------------------------------------------------------------------------
 # 12. generate_watermarked returns tensor of length max_new_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_generate_watermarked_length(tiny_model, watermark):
     torch.manual_seed(4)
@@ -227,6 +236,7 @@ def test_generate_watermarked_length(tiny_model, watermark):
 # 13. Long watermarked sequence has z_score > 0 (biased toward green)
 # ---------------------------------------------------------------------------
 
+
 def test_watermarked_sequence_positive_z_score(tiny_model):
     """With strong delta=10.0 and gamma=0.5, watermarked text should be clearly green-biased."""
     torch.manual_seed(5)
@@ -241,9 +251,7 @@ def test_watermarked_sequence_positive_z_score(tiny_model):
     wm = GreenListWatermark(cfg)
 
     prompt = torch.tensor([1, 5, 10], dtype=torch.long)
-    generated = generate_watermarked(
-        tiny_model, prompt, wm, max_new_tokens=50, temperature=1.0
-    )
+    generated = generate_watermarked(tiny_model, prompt, wm, max_new_tokens=50, temperature=1.0)
 
     # Combine prompt + generated for a longer sequence to score
     full_seq = torch.cat([prompt, generated])

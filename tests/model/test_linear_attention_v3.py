@@ -21,9 +21,6 @@ Covers (16 tests):
   18. test_multiscale_retention_recurrent_shape
 """
 
-import math
-
-import pytest
 import torch
 
 from src.model.linear_attention_v3 import (
@@ -39,10 +36,10 @@ from src.model.linear_attention_v3 import (
 # Shared test fixtures
 # ---------------------------------------------------------------------------
 
-B = 2        # batch size
-T = 8        # sequence length
-D = 16       # d_model
-H = 4        # n_heads
+B = 2  # batch size
+T = 8  # sequence length
+D = 16  # d_model
+H = 4  # n_heads
 DH = D // H  # d_head = 4
 
 
@@ -53,6 +50,7 @@ def _rand(*shape) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # LinearAttentionConfig
 # ---------------------------------------------------------------------------
+
 
 def test_config_defaults() -> None:
     cfg = LinearAttentionConfig()
@@ -67,6 +65,7 @@ def test_config_defaults() -> None:
 # ---------------------------------------------------------------------------
 # LinearAttention
 # ---------------------------------------------------------------------------
+
 
 def test_linear_attention_forward_shape() -> None:
     attn = LinearAttention(d_model=D, n_heads=H)
@@ -103,6 +102,7 @@ def test_linear_attention_parallel_matches_recurrent() -> None:
 # ---------------------------------------------------------------------------
 # RetentionHead
 # ---------------------------------------------------------------------------
+
 
 def test_retention_head_recurrent_output_shape() -> None:
     head = RetentionHead(d_head=DH, gamma=0.9)
@@ -171,14 +171,14 @@ def test_retention_head_high_gamma_retains_more() -> None:
     norm_high = state_high.norm().item()
     norm_low = state_low.norm().item()
     assert norm_high > norm_low, (
-        f"Expected high-gamma state norm ({norm_high:.4f}) > "
-        f"low-gamma state norm ({norm_low:.4f})"
+        f"Expected high-gamma state norm ({norm_high:.4f}) > low-gamma state norm ({norm_low:.4f})"
     )
 
 
 # ---------------------------------------------------------------------------
 # MultiScaleRetention
 # ---------------------------------------------------------------------------
+
 
 def test_multiscale_retention_forward_shape() -> None:
     msr = MultiScaleRetention(d_model=D, n_heads=H)
@@ -222,6 +222,7 @@ def test_multiscale_retention_different_gammas() -> None:
 # RWKVTimeMix
 # ---------------------------------------------------------------------------
 
+
 def test_rwkv_time_mix_forward_shape() -> None:
     rwkv = RWKVTimeMix(d_model=D, layer_id=0)
     x = _rand(B, T, D)
@@ -232,18 +233,15 @@ def test_rwkv_time_mix_forward_shape() -> None:
 def test_rwkv_time_decay_learnable() -> None:
     """time_decay should be a learnable nn.Parameter."""
     rwkv = RWKVTimeMix(d_model=D, layer_id=1)
-    assert isinstance(rwkv.time_decay, torch.nn.Parameter), (
-        "time_decay should be nn.Parameter"
-    )
+    assert isinstance(rwkv.time_decay, torch.nn.Parameter), "time_decay should be nn.Parameter"
     assert rwkv.time_decay.requires_grad, "time_decay must require grad"
-    assert rwkv.time_decay.shape == (D,), (
-        f"Expected shape ({D},), got {rwkv.time_decay.shape}"
-    )
+    assert rwkv.time_decay.shape == (D,), f"Expected shape ({D},), got {rwkv.time_decay.shape}"
 
 
 # ---------------------------------------------------------------------------
 # LinearTransformerBlock
 # ---------------------------------------------------------------------------
+
 
 def test_linear_transformer_block_retention() -> None:
     block = LinearTransformerBlock(d_model=D, n_heads=H, attention_type="retention")

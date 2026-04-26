@@ -1,10 +1,11 @@
 """Tests for federated_client — federated learning client."""
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
 
-from src.federation.federated_client import FederatedClient, ClientConfig, ModelDelta
+from src.federation.federated_client import ClientConfig, FederatedClient, ModelDelta
 
 
 class TestModelDelta:

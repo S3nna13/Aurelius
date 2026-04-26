@@ -1,9 +1,10 @@
 """Tests for structured_pruning — layer/head/filter level pruning."""
+
 from __future__ import annotations
 
 import torch
 
-from src.compression.structured_pruning import StructuredPruner, PruningStrategy
+from src.compression.structured_pruning import PruningStrategy, StructuredPruner
 
 
 class TestStructuredPruner:
@@ -61,5 +62,6 @@ class TestStructuredPruner:
 
     def test_invalid_strategy_raises(self):
         import pytest
+
         with pytest.raises(ValueError, match="Unknown pruning strategy"):
             StructuredPruner(strategy="invalid", amount=0.3)

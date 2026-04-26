@@ -2,10 +2,10 @@
 
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class ComparisonMetric(str, Enum):
+class ComparisonMetric(StrEnum):
     ACCURACY = "accuracy"
     BLEU = "bleu"
     ROUGE_L = "rouge_l"
@@ -56,7 +56,7 @@ class ABComparison:
         std_a = _std(scores_a)
         std_b = _std(scores_b)
         n = max(len(scores_a), 1)
-        t = (mean_a - mean_b) / math.sqrt((std_a ** 2 / n + std_b ** 2 / n) + 1e-8)
+        t = (mean_a - mean_b) / math.sqrt((std_a**2 / n + std_b**2 / n) + 1e-8)
         p_value = 1.0 / (1.0 + abs(t))
         significant = p_value < self._threshold
         if significant and mean_a > mean_b:
@@ -81,7 +81,7 @@ class ABComparison:
         mean_b = _mean(scores_b)
         std_a = _std(scores_a)
         std_b = _std(scores_b)
-        pooled_variance = (std_a ** 2 + std_b ** 2) / 2.0
+        pooled_variance = (std_a**2 + std_b**2) / 2.0
         pooled_std = math.sqrt(pooled_variance)
         if pooled_std == 0.0:
             return 0.0
@@ -96,10 +96,6 @@ class ABComparison:
                     continue
                 sa = scores.get(model_a, [])
                 sb = scores.get(model_b, [])
-                count = sum(
-                    1
-                    for idx in range(min(len(sa), len(sb)))
-                    if sa[idx] > sb[idx]
-                )
+                count = sum(1 for idx in range(min(len(sa), len(sb))) if sa[idx] > sb[idx])
                 matrix[model_a][model_b] = count
         return matrix

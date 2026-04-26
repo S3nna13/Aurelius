@@ -13,10 +13,9 @@ import json
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Iterable
-
 
 # --- byte-level mapping (GPT-2 style) -----------------------------------------
+
 
 def _bytes_to_unicode() -> dict[int, str]:
     """Reversible mapping from bytes (0..255) to unicode code points that are
@@ -43,6 +42,7 @@ _BYTE_DECODER = {v: k for k, v in _BYTE_ENCODER.items()}
 
 # --- config -------------------------------------------------------------------
 
+
 @dataclass
 class BPEConfig:
     vocab_size: int = 8000
@@ -52,6 +52,7 @@ class BPEConfig:
 
 
 # --- trainer ------------------------------------------------------------------
+
 
 class BPETrainer:
     def __init__(self, config: BPEConfig):
@@ -87,9 +88,7 @@ class BPETrainer:
         word_counts: Counter[tuple[str, ...]] = Counter()
         special_pat = None
         if specials:
-            special_pat = re.compile(
-                "|".join(re.escape(s) for s in specials)
-            )
+            special_pat = re.compile("|".join(re.escape(s) for s in specials))
         for text in texts:
             if not text:
                 continue
@@ -111,8 +110,8 @@ class BPETrainer:
                 vocab[s] = len(vocab)
 
         if cfg.byte_level:
-            for b in range(256):
-                tok = _BYTE_ENCODER[b]
+            for byte_val in range(256):
+                tok = _BYTE_ENCODER[byte_val]
                 if tok not in vocab:
                     vocab[tok] = len(vocab)
         else:
@@ -185,13 +184,14 @@ class BPETrainer:
             json.dump(ser, f, ensure_ascii=False)
 
     def load(self, path: str) -> dict:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         data["merges"] = [tuple(p) for p in data["merges"]]
         return data
 
 
 # --- tokenizer (encode/decode) ------------------------------------------------
+
 
 class BPETokenizer:
     def __init__(
@@ -205,9 +205,7 @@ class BPETokenizer:
         self.vocab: dict[str, int] = dict(vocab)
         self.inv_vocab: dict[int, str] = {v: k for k, v in self.vocab.items()}
         self.merges: list[tuple[str, str]] = [tuple(p) for p in merges]
-        self.bpe_ranks: dict[tuple[str, str], int] = {
-            p: i for i, p in enumerate(self.merges)
-        }
+        self.bpe_ranks: dict[tuple[str, str], int] = {p: i for i, p in enumerate(self.merges)}
         self.byte_level = byte_level
         self.special_tokens = list(special_tokens or [])
         self.pretokenize_regex = pretokenize_regex
@@ -256,9 +254,7 @@ class BPETokenizer:
         ids: list[int] = []
         # split on special tokens first
         if self.special_tokens:
-            pat = re.compile(
-                "(" + "|".join(re.escape(s) for s in self.special_tokens) + ")"
-            )
+            pat = re.compile("(" + "|".join(re.escape(s) for s in self.special_tokens) + ")")
             parts = pat.split(text)
         else:
             parts = [text]
@@ -280,9 +276,7 @@ class BPETokenizer:
                                 if ch in self.vocab:
                                     ids.append(self.vocab[ch])
                                 else:
-                                    raise KeyError(
-                                        f"symbol {ch!r} not in vocab"
-                                    )
+                                    raise KeyError(f"symbol {ch!r} not in vocab")
                         else:
                             raise KeyError(f"token {p!r} not in vocab")
                     else:
@@ -302,9 +296,7 @@ class BPETokenizer:
             for p in pieces:
                 if p in self.special_tokens:
                     if out_bytes:
-                        result_parts.append(
-                            out_bytes.decode("utf-8", errors="replace")
-                        )
+                        result_parts.append(out_bytes.decode("utf-8", errors="replace"))
                         out_bytes = bytearray()
                     result_parts.append(p)
                 else:
@@ -315,8 +307,6 @@ class BPETokenizer:
                             # unknown char -- utf-8 encode it
                             out_bytes.extend(ch.encode("utf-8"))
             if out_bytes:
-                result_parts.append(
-                    out_bytes.decode("utf-8", errors="replace")
-                )
+                result_parts.append(out_bytes.decode("utf-8", errors="replace"))
             return "".join(result_parts)
         return "".join(pieces)

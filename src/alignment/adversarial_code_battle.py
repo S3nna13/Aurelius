@@ -34,8 +34,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class RedFinding:
     confidence: float = 0.5
 
     @classmethod
-    def from_dict(cls, d: Any) -> "RedFinding | None":
+    def from_dict(cls, d: Any) -> RedFinding | None:
         if not isinstance(d, dict):
             return None
         t = d.get("type")
@@ -94,7 +95,7 @@ class BluePatch:
     line: int = -1
 
     @classmethod
-    def from_dict(cls, d: Any) -> "BluePatch | None":
+    def from_dict(cls, d: Any) -> BluePatch | None:
         if not isinstance(d, dict):
             return None
         vt = d.get("vulnerability_type")
@@ -306,9 +307,7 @@ class AdversarialCodeBattle:
                 if applied:
                     code = new_code
                 else:
-                    logger.warning(
-                        "patch for %s did not apply: %s", patch.vulnerability_type, err
-                    )
+                    logger.warning("patch for %s did not apply: %s", patch.vulnerability_type, err)
 
             previous_patches.append(
                 {
@@ -397,10 +396,10 @@ _RED_PATTERNS: tuple[tuple[str, re.Pattern[str], str, str, str], ...] = (
     (
         "hardcoded_secret",
         re.compile(
-            r'''(?ix)
+            r"""(?ix)
             \b(?:password|passwd|secret|api_key|apikey|token)\s*=\s*
             (['"])[^'"\n]{3,}\1
-            ''',
+            """,
         ),
         "high",
         "credential in source",
@@ -423,7 +422,7 @@ _RED_PATTERNS: tuple[tuple[str, re.Pattern[str], str, str, str], ...] = (
     (
         "sql_injection",
         re.compile(
-            r'''(?i)(?:execute|cursor\.execute)\s*\(\s*(?:f['"]|['"][^'"]*['"]\s*\+|.+%\s*)'''
+            r"""(?i)(?:execute|cursor\.execute)\s*\(\s*(?:f['"]|['"][^'"]*['"]\s*\+|.+%\s*)"""
         ),
         "high",
         "string-concatenated SQL",
@@ -512,9 +511,7 @@ _BLUE_RULES: dict[str, Callable[[str], tuple[str, str, str]]] = {
 }
 
 
-def heuristic_blue_fn(
-    code: str, red_findings: dict, previous_patches: list[dict]
-) -> dict:
+def heuristic_blue_fn(code: str, red_findings: dict, previous_patches: list[dict]) -> dict:
     """Deterministic patcher matching heuristic_red_fn's vulnerability types."""
     lines = code.splitlines()
     patches: list[dict] = []

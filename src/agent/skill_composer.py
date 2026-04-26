@@ -76,9 +76,7 @@ class SkillComposer:
 
         for step in steps:
             try:
-                result = self.executor.execute(
-                    step.skill_id, step.instructions, context
-                )
+                result = self.executor.execute(step.skill_id, step.instructions, context)
             except SkillExecutionError as exc:
                 result = ExecutionResult(
                     output=str(exc),
@@ -129,9 +127,7 @@ class SkillComposer:
             context = initial_context if initial_context is not None else SkillContext()
 
             try:
-                result = self.executor.execute(
-                    step.skill_id, step.instructions, context
-                )
+                result = self.executor.execute(step.skill_id, step.instructions, context)
             except SkillExecutionError as exc:
                 result = ExecutionResult(
                     output=str(exc),

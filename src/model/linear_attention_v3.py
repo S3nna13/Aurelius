@@ -18,24 +18,23 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LinearAttentionConfig:
     d_model: int = 32
     n_heads: int = 4
     n_layers: int = 2
-    attention_type: str = "retention"   # "retention" | "linear" | "rwkv"
+    attention_type: str = "retention"  # "retention" | "linear" | "rwkv"
     gamma_min: float = 0.9
     gamma_max: float = 0.999
     ffn_mult: int = 4
@@ -45,6 +44,7 @@ class LinearAttentionConfig:
 # ---------------------------------------------------------------------------
 # Feature maps for LinearAttention
 # ---------------------------------------------------------------------------
+
 
 def _elu_feature_map(x: Tensor) -> Tensor:
     """ELU+1: always strictly positive."""
@@ -65,6 +65,7 @@ def _rbf_feature_map(x: Tensor, omega: Tensor, bias: Tensor) -> Tensor:
 # LinearAttention
 # ---------------------------------------------------------------------------
 
+
 class LinearAttention(nn.Module):
     """Multi-head causal linear attention.
 
@@ -84,7 +85,7 @@ class LinearAttention(nn.Module):
         eps: float = 1e-6,
     ) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -99,8 +100,8 @@ class LinearAttention(nn.Module):
             self.register_buffer("_omega", omega_data)
             self.register_buffer("_bias", bias_data)
         else:
-            self._omega: Optional[Tensor] = None
-            self._bias: Optional[Tensor] = None
+            self._omega: Tensor | None = None
+            self._bias: Tensor | None = None
 
     def _phi(self, x: Tensor) -> Tensor:
         """Apply feature map to [..., d_head] tensor."""
@@ -120,10 +121,10 @@ class LinearAttention(nn.Module):
             [B, T, n_heads, d_head]
         """
         B, T, H, D = q.shape
-        assert H == self.n_heads and D == self.d_head
+        assert H == self.n_heads and D == self.d_head  # noqa: S101
 
-        phi_q = self._phi(q)   # [B, T, H, D]
-        phi_k = self._phi(k)   # [B, T, H, D]
+        phi_q = self._phi(q)  # [B, T, H, D]
+        phi_k = self._phi(k)  # [B, T, H, D]
 
         # S: [B, H, D, D]  — KV outer-product state
         # z: [B, H, D]     — key normaliser
@@ -132,20 +133,20 @@ class LinearAttention(nn.Module):
 
         outputs = []
         for t in range(T):
-            k_t = phi_k[:, t, :, :]   # [B, H, D]
-            v_t = v[:, t, :, :]       # [B, H, D]
-            q_t = phi_q[:, t, :, :]   # [B, H, D]
+            k_t = phi_k[:, t, :, :]  # [B, H, D]
+            v_t = v[:, t, :, :]  # [B, H, D]
+            q_t = phi_q[:, t, :, :]  # [B, H, D]
 
             # Outer product: k_t^T v_t  -> [B, H, D, D]
             S = S + torch.einsum("bhd,bhe->bhde", k_t, v_t)
             z = z + k_t
 
             # out_t = phi(q_t) S_t / (phi(q_t) . z_t + eps)
-            num = torch.einsum("bhd,bhde->bhe", q_t, S)           # [B, H, D]
+            num = torch.einsum("bhd,bhde->bhe", q_t, S)  # [B, H, D]
             den = (torch.einsum("bhd,bhd->bh", q_t, z) + self.eps).unsqueeze(-1)  # [B, H, 1]
-            outputs.append((num / den).unsqueeze(1))               # [B, 1, H, D]
+            outputs.append((num / den).unsqueeze(1))  # [B, 1, H, D]
 
-        return torch.cat(outputs, dim=1)   # [B, T, H, D]
+        return torch.cat(outputs, dim=1)  # [B, T, H, D]
 
     def parallel_forward(self, q: Tensor, k: Tensor, v: Tensor) -> Tensor:
         """Parallel prefix-sum producing the same result as forward().
@@ -159,27 +160,28 @@ class LinearAttention(nn.Module):
             [B, T, n_heads, d_head]
         """
         B, T, H, D = q.shape
-        phi_q = self._phi(q)   # [B, T, H, D]
-        phi_k = self._phi(k)   # [B, T, H, D]
+        phi_q = self._phi(q)  # [B, T, H, D]
+        phi_k = self._phi(k)  # [B, T, H, D]
 
         # outer: [B, T, H, D, D]
         outer = torch.einsum("bthd,bthe->bthde", phi_k, v)
 
         # Cumulative prefix sum along T axis
-        prefix_S = torch.cumsum(outer, dim=1)   # [B, T, H, D, D]
-        prefix_z = torch.cumsum(phi_k, dim=1)   # [B, T, H, D]
+        prefix_S = torch.cumsum(outer, dim=1)  # [B, T, H, D, D]
+        prefix_z = torch.cumsum(phi_k, dim=1)  # [B, T, H, D]
 
         # num: phi_q . S_t  -> [B, T, H, D]
         num = torch.einsum("bthd,bthde->bthe", phi_q, prefix_S)
         # den: phi_q . z_t  -> [B, T, H]
         den = (torch.einsum("bthd,bthd->bth", phi_q, prefix_z) + self.eps).unsqueeze(-1)
 
-        return num / den   # [B, T, H, D]
+        return num / den  # [B, T, H, D]
 
 
 # ---------------------------------------------------------------------------
 # RetentionHead
 # ---------------------------------------------------------------------------
+
 
 class RetentionHead(nn.Module):
     """Single retention head with exponential decay factor gamma.
@@ -199,8 +201,8 @@ class RetentionHead(nn.Module):
         q: Tensor,
         k: Tensor,
         v: Tensor,
-        state: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        state: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
         """Step-by-step recurrent retention.
 
         Args:
@@ -215,9 +217,9 @@ class RetentionHead(nn.Module):
 
         outputs = []
         for t in range(T):
-            k_t = k[:, t, :]   # [B, D]
-            v_t = v[:, t, :]   # [B, D]
-            q_t = q[:, t, :]   # [B, D]
+            k_t = k[:, t, :]  # [B, D]
+            v_t = v[:, t, :]  # [B, D]
+            q_t = q[:, t, :]  # [B, D]
 
             # s_t = gamma * s_{t-1} + k_t^T v_t
             outer = torch.einsum("bd,be->bde", k_t, v_t)  # [B, D, D]
@@ -227,7 +229,7 @@ class RetentionHead(nn.Module):
             out_t = torch.einsum("bd,bde->be", q_t, state)  # [B, D]
             outputs.append(out_t.unsqueeze(1))
 
-        out = torch.cat(outputs, dim=1)   # [B, T, D]
+        out = torch.cat(outputs, dim=1)  # [B, T, D]
         return out, state
 
     def forward_parallel(self, q: Tensor, k: Tensor, v: Tensor) -> Tensor:
@@ -246,22 +248,23 @@ class RetentionHead(nn.Module):
 
         # Build causal decay mask: [T, T]
         idx = torch.arange(T, device=device, dtype=dtype)
-        diff = idx.unsqueeze(1) - idx.unsqueeze(0)   # [T, T]  row - col
+        diff = idx.unsqueeze(1) - idx.unsqueeze(0)  # [T, T]  row - col
         mask = (diff >= 0).to(dtype)
-        decay = (self.gamma ** diff.clamp(min=0)) * mask   # [T, T]
+        decay = (self.gamma ** diff.clamp(min=0)) * mask  # [T, T]
 
         # QK^T: [B, T, T]
         qk = torch.bmm(q, k.transpose(1, 2))
 
         scale = math.sqrt(D)
-        attn = (qk * decay.unsqueeze(0)) / scale   # [B, T, T]
+        attn = (qk * decay.unsqueeze(0)) / scale  # [B, T, T]
 
-        return torch.bmm(attn, v)   # [B, T, D]
+        return torch.bmm(attn, v)  # [B, T, D]
 
 
 # ---------------------------------------------------------------------------
 # MultiScaleRetention
 # ---------------------------------------------------------------------------
+
 
 class MultiScaleRetention(nn.Module):
     """Multi-head retention (RetNet).
@@ -272,16 +275,14 @@ class MultiScaleRetention(nn.Module):
 
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"  # noqa: S101
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
 
         # Per-head decay factors: gamma_i = 1 - 2^(-5 - i)
         gammas = [1.0 - 2.0 ** (-5.0 - i) for i in range(n_heads)]
-        self.heads = nn.ModuleList(
-            [RetentionHead(self.d_head, g) for g in gammas]
-        )
+        self.heads = nn.ModuleList([RetentionHead(self.d_head, g) for g in gammas])
 
         # Projections
         self.W_q = nn.Linear(d_model, d_model, bias=False)
@@ -307,20 +308,20 @@ class MultiScaleRetention(nn.Module):
             [B, T, d_model]
         """
         B, T, _ = x.shape
-        q = self._split_heads(self.W_q(x))   # [B, T, H, D]
-        k = self._split_heads(self.W_k(x))   # [B, T, H, D]
-        v = self._split_heads(self.W_v(x))   # [B, T, H, D]
+        q = self._split_heads(self.W_q(x))  # [B, T, H, D]
+        k = self._split_heads(self.W_k(x))  # [B, T, H, D]
+        v = self._split_heads(self.W_v(x))  # [B, T, H, D]
 
         head_outs = []
         for h, head in enumerate(self.heads):
-            q_h = q[:, :, h, :]   # [B, T, d_head]
+            q_h = q[:, :, h, :]  # [B, T, d_head]
             k_h = k[:, :, h, :]
             v_h = v[:, :, h, :]
             if use_recurrent:
                 out_h, _ = head.forward_recurrent(q_h, k_h, v_h)
             else:
                 out_h = head.forward_parallel(q_h, k_h, v_h)
-            head_outs.append(out_h)   # [B, T, d_head]
+            head_outs.append(out_h)  # [B, T, d_head]
 
         # Concatenate heads: [B, T, d_model]
         y = torch.cat(head_outs, dim=-1)
@@ -328,15 +329,15 @@ class MultiScaleRetention(nn.Module):
         # GroupNorm expects [B, C, *] — reshape: [B, d_model, T]
         y = y.transpose(1, 2)
         y = self.group_norm(y)
-        y = y.transpose(1, 2)   # [B, T, d_model]
+        y = y.transpose(1, 2)  # [B, T, d_model]
 
         return self.W_o(y)
 
     def forward_recurrent(
         self,
         x: Tensor,
-        states: Optional[List[Tensor]] = None,
-    ) -> Tuple[Tensor, List[Tensor]]:
+        states: list[Tensor] | None = None,
+    ) -> tuple[Tensor, list[Tensor]]:
         """Autoregressive recurrent forward (one or more time steps).
 
         Args:
@@ -348,12 +349,12 @@ class MultiScaleRetention(nn.Module):
         if states is None:
             states = [None] * self.n_heads  # type: ignore[list-item]
 
-        q = self._split_heads(self.W_q(x))   # [B, T, H, D]
-        k = self._split_heads(self.W_k(x))   # [B, T, H, D]
-        v = self._split_heads(self.W_v(x))   # [B, T, H, D]
+        q = self._split_heads(self.W_q(x))  # [B, T, H, D]
+        k = self._split_heads(self.W_k(x))  # [B, T, H, D]
+        v = self._split_heads(self.W_v(x))  # [B, T, H, D]
 
-        head_outs: List[Tensor] = []
-        new_states: List[Tensor] = []
+        head_outs: list[Tensor] = []
+        new_states: list[Tensor] = []
         for h, head in enumerate(self.heads):
             q_h = q[:, :, h, :]
             k_h = k[:, :, h, :]
@@ -362,7 +363,7 @@ class MultiScaleRetention(nn.Module):
             head_outs.append(out_h)
             new_states.append(new_s)
 
-        y = torch.cat(head_outs, dim=-1)   # [B, T, d_model]
+        y = torch.cat(head_outs, dim=-1)  # [B, T, d_model]
         y = y.transpose(1, 2)
         y = self.group_norm(y)
         y = y.transpose(1, 2)
@@ -373,6 +374,7 @@ class MultiScaleRetention(nn.Module):
 # ---------------------------------------------------------------------------
 # RWKVTimeMix
 # ---------------------------------------------------------------------------
+
 
 class RWKVTimeMix(nn.Module):
     """RWKV-style time-mixing layer.
@@ -415,29 +417,29 @@ class RWKVTimeMix(nn.Module):
         B, T, D = x.shape
 
         # Shift x by one step: x_prev[t] = x[t-1] (zero-padded at t=0)
-        x_prev = F.pad(x[:, :-1, :], (0, 0, 1, 0))   # [B, T, D]
+        x_prev = F.pad(x[:, :-1, :], (0, 0, 1, 0))  # [B, T, D]
 
         # Time-mixed inputs for k, v, r
         xk = x * self.time_mix_k + x_prev * (1.0 - self.time_mix_k)
         xv = x * self.time_mix_v + x_prev * (1.0 - self.time_mix_v)
         xr = x * self.time_mix_r + x_prev * (1.0 - self.time_mix_r)
 
-        k = self.W_k(xk)                       # [B, T, D]
-        v = self.W_v(xv)                       # [B, T, D]
-        r = torch.sigmoid(self.W_r(xr))        # [B, T, D] gate
+        k = self.W_k(xk)  # [B, T, D]
+        v = self.W_v(xv)  # [B, T, D]
+        r = torch.sigmoid(self.W_r(xr))  # [B, T, D] gate
 
         # WKV computation via sequential scan with log-sum-exp trick.
         # Maintain running log-normaliser (p) and scaled numerator sum (q).
-        w = self.time_decay   # [D]  (negative encouraged)
-        u = self.time_first   # [D]
+        w = self.time_decay  # [D]  (negative encouraged)
+        u = self.time_first  # [D]
 
-        p = torch.full((B, D), float('-inf'), device=x.device, dtype=x.dtype)
+        p = torch.full((B, D), float("-inf"), device=x.device, dtype=x.dtype)
         q = torch.zeros(B, D, device=x.device, dtype=x.dtype)
 
         wkv_out = []
         for t in range(T):
-            k_t = k[:, t, :]   # [B, D]
-            v_t = v[:, t, :]   # [B, D]
+            k_t = k[:, t, :]  # [B, D]
+            v_t = v[:, t, :]  # [B, D]
 
             # Current-token contribution (bonus u)
             new_p = torch.maximum(p, u + k_t)
@@ -447,7 +449,7 @@ class RWKVTimeMix(nn.Module):
             num_t = scale_old * q + scale_cur * v_t
             den_t = scale_old + scale_cur
 
-            wkv = num_t / (den_t + 1e-9)   # [B, D]
+            wkv = num_t / (den_t + 1e-9)  # [B, D]
             wkv_out.append(wkv.unsqueeze(1))
 
             # Update running state: decay by w, add k_t / v_t contribution
@@ -457,7 +459,7 @@ class RWKVTimeMix(nn.Module):
             q = scale_prev * q + scale_new * v_t
             p = new_p2
 
-        wkv = torch.cat(wkv_out, dim=1)   # [B, T, D]
+        wkv = torch.cat(wkv_out, dim=1)  # [B, T, D]
 
         # Gated output
         y = r * wkv
@@ -467,6 +469,7 @@ class RWKVTimeMix(nn.Module):
 # ---------------------------------------------------------------------------
 # LinearTransformerBlock
 # ---------------------------------------------------------------------------
+
 
 class LinearTransformerBlock(nn.Module):
     """Pre-norm transformer block with configurable linear attention type.

@@ -41,19 +41,19 @@ def base_url(server):
 def _get(base_url: str, path: str) -> tuple[int, dict]:
     from urllib.request import urlopen
 
-    with urlopen(f"{base_url}{path}", timeout=5) as resp:
+    with urlopen(f"{base_url}{path}", timeout=5) as resp:  # noqa: S310
         return resp.status, json.loads(resp.read().decode("utf-8"))
 
 
 def _post(base_url: str, path: str, data: dict) -> tuple[int, dict]:
     from urllib.request import Request, urlopen
 
-    req = Request(
+    req = Request(  # noqa: S310
         f"{base_url}{path}",
         data=json.dumps(data).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
-    with urlopen(req, timeout=5) as resp:
+    with urlopen(req, timeout=5) as resp:  # noqa: S310
         return resp.status, json.loads(resp.read().decode("utf-8"))
 
 
@@ -133,9 +133,9 @@ def test_notification_stats_empty(base_url):
 
 def test_notification_lifecycle(base_url):
     # Create a notification via server hermes
-    n = _post(base_url, "/api/command", {"command": "test"})
+    _post(base_url, "/api/command", {"command": "test"})
     # Notify directly
-    h: HermesNotifier = create_aurelius_server("127.0.0.1", 0).hermes  # type: ignore[assignment]
+    create_aurelius_server("127.0.0.1", 0).hermes  # type: ignore[assignment]
     # Actually use the test server's hermes
     # We can't easily get the server hermes here without a global, so test via API only
 
@@ -182,7 +182,7 @@ def test_plugins(base_url):
     assert "plugins" in data
 
 
-def test_workflows(base_url):
+def test_workflows_v2(base_url):
     status, data = _get(base_url, "/api/workflows")
     assert status == 200
     assert "workflows" in data
@@ -212,7 +212,7 @@ def test_index_html_fallback(base_url):
     from urllib.request import urlopen
 
     try:
-        with urlopen(f"{base_url}/", timeout=5) as resp:
+        with urlopen(f"{base_url}/", timeout=5) as resp:  # noqa: S310
             # If it succeeds, it should be HTML
             assert resp.status == 200
             content_type = resp.headers.get("Content-Type", "")
@@ -225,7 +225,7 @@ def test_unknown_api_route_fallback_to_spa(base_url):
     # Unknown paths fall back to index.html for SPA routing
     from urllib.request import urlopen
 
-    with urlopen(f"{base_url}/api/unknown", timeout=5) as resp:
+    with urlopen(f"{base_url}/api/unknown", timeout=5) as resp:  # noqa: S310
         assert resp.status == 200
         content_type = resp.headers.get("Content-Type", "")
         assert "text/html" in content_type or "application/octet-stream" in content_type
@@ -279,10 +279,14 @@ def test_skill_execute_missing_body(base_url):
 
 
 def test_skill_execute_with_body(base_url):
-    status, data = _post(base_url, "/api/skills/execute", {
-        "skill_id": "code-review",
-        "variables": {"foo": "bar"},
-    })
+    status, data = _post(
+        base_url,
+        "/api/skills/execute",
+        {
+            "skill_id": "code-review",
+            "variables": {"foo": "bar"},
+        },
+    )
     assert status == 200
     assert "success" in data
     assert "output" in data
@@ -318,9 +322,13 @@ def test_workflow_detail(base_url):
 
 
 def test_workflow_trigger(base_url):
-    status, data = _post(base_url, "/api/workflows/daily-backup/trigger", {
-        "trigger": "start",
-    })
+    status, data = _post(
+        base_url,
+        "/api/workflows/daily-backup/trigger",
+        {
+            "trigger": "start",
+        },
+    )
     assert status == 200
     assert "success" in data
     assert data["workflow_id"] == "daily-backup"
@@ -351,9 +359,13 @@ def test_config_get(base_url):
 
 
 def test_config_post(base_url):
-    status, data = _post(base_url, "/api/config", {
-        "config": {"log_level": "debug", "agent_mode": "autonomous"},
-    })
+    status, data = _post(
+        base_url,
+        "/api/config",
+        {
+            "config": {"log_level": "debug", "agent_mode": "autonomous"},
+        },
+    )
     assert status == 200
     assert data["success"] is True
     assert data["config"]["log_level"] == "debug"

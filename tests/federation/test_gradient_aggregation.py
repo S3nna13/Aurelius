@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import math
-import pytest
-
 from src.federation.gradient_aggregation import (
+    GRADIENT_AGGREGATOR,
     AggregationStrategy,
     GradientAggregator,
-    GRADIENT_AGGREGATOR,
 )
-
 
 # ---------------------------------------------------------------------------
 # AggregationStrategy enum
 # ---------------------------------------------------------------------------
+
 
 class TestAggregationStrategy:
     def test_enum_count(self):
@@ -39,6 +36,7 @@ class TestAggregationStrategy:
 # ---------------------------------------------------------------------------
 # GradientAggregator – FedAvg
 # ---------------------------------------------------------------------------
+
 
 class TestFedAvg:
     def test_equal_weights_simple_mean(self):
@@ -95,6 +93,7 @@ class TestFedAvg:
 # GradientAggregator – FedMedian
 # ---------------------------------------------------------------------------
 
+
 class TestFedMedian:
     def test_odd_count_median(self):
         agg = GradientAggregator()
@@ -138,6 +137,7 @@ class TestFedMedian:
 # GradientAggregator – Trimmed Mean
 # ---------------------------------------------------------------------------
 
+
 class TestTrimmedMean:
     def test_no_trim_is_mean(self):
         agg = GradientAggregator(trim_fraction=0.0)
@@ -180,6 +180,7 @@ class TestTrimmedMean:
 # GradientAggregator – Krum
 # ---------------------------------------------------------------------------
 
+
 class TestKrum:
     def test_returns_list(self):
         agg = GradientAggregator()
@@ -220,6 +221,7 @@ class TestKrum:
 # ---------------------------------------------------------------------------
 # GradientAggregator – aggregate dispatch
 # ---------------------------------------------------------------------------
+
 
 class TestAggregate:
     def test_dispatch_fedavg(self):
@@ -262,6 +264,7 @@ class TestAggregate:
 # ---------------------------------------------------------------------------
 # GRADIENT_AGGREGATOR singleton
 # ---------------------------------------------------------------------------
+
 
 class TestGradientAggregatorSingleton:
     def test_exists(self):

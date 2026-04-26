@@ -3,7 +3,11 @@
 import pytest
 import torch
 
-from src.inference.draft_path_acceptance import best_accepting_path, mean_acceptance_length, path_acceptance_lengths
+from src.inference.draft_path_acceptance import (
+    best_accepting_path,
+    mean_acceptance_length,
+    path_acceptance_lengths,
+)
 
 
 def make_paths():
@@ -41,4 +45,3 @@ def test_path_acceptance_lengths_handles_empty_target():
 def test_path_acceptance_lengths_handles_empty_path():
     lengths = path_acceptance_lengths([torch.tensor([], dtype=torch.long)], torch.tensor([1, 2]))
     assert torch.equal(lengths, torch.tensor([0]))
-

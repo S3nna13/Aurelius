@@ -1,4 +1,5 @@
 """Token Merging (ToMe): reduce redundant tokens via bipartite matching."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,9 +12,9 @@ from torch import Tensor
 
 @dataclass
 class ToMeConfig:
-    r: int = 4                    # number of token pairs to merge per layer
-    merge_mode: str = "mean"      # "mean" | "weighted"
-    similarity: str = "cosine"    # "cosine" | "dot"
+    r: int = 4  # number of token pairs to merge per layer
+    merge_mode: str = "mean"  # "mean" | "weighted"
+    similarity: str = "cosine"  # "cosine" | "dot"
 
 
 def bipartite_soft_matching(
@@ -40,10 +41,10 @@ def bipartite_soft_matching(
     B, T, d = x.shape
 
     # Split into dst (even indices) and src (odd indices)
-    dst = x[:, 0::2, :]   # (B, T_dst, d)  where T_dst = ceil(T/2)
-    src = x[:, 1::2, :]   # (B, T_src, d)  where T_src = floor(T/2)
+    dst = x[:, 0::2, :]  # (B, T_dst, d)  where T_dst = ceil(T/2)
+    src = x[:, 1::2, :]  # (B, T_src, d)  where T_src = floor(T/2)
 
-    T_dst = dst.shape[1]
+    dst.shape[1]
     T_src = src.shape[1]
 
     # Cap r
@@ -58,8 +59,8 @@ def bipartite_soft_matching(
 
     # Compute similarity between each src and all dst tokens
     if similarity == "cosine":
-        src_norm = F.normalize(src, p=2, dim=-1)   # (B, T_src, d)
-        dst_norm = F.normalize(dst, p=2, dim=-1)   # (B, T_dst, d)
+        src_norm = F.normalize(src, p=2, dim=-1)  # (B, T_src, d)
+        dst_norm = F.normalize(dst, p=2, dim=-1)  # (B, T_dst, d)
         scores = torch.bmm(src_norm, dst_norm.transpose(1, 2))  # (B, T_src, T_dst)
     elif similarity == "dot":
         scores = torch.bmm(src, dst.transpose(1, 2))  # (B, T_src, T_dst)
@@ -143,11 +144,11 @@ def merge_tokens(
     size = torch.ones(B, T, dtype=x.dtype, device=x.device)
 
     # Gather src and dst values
-    src_idx_exp = src_idx.unsqueeze(-1).expand(-1, -1, d)   # (B, r, d)
-    dst_idx_exp = dst_idx.unsqueeze(-1).expand(-1, -1, d)   # (B, r, d)
+    src_idx_exp = src_idx.unsqueeze(-1).expand(-1, -1, d)  # (B, r, d)
+    dst_idx_exp = dst_idx.unsqueeze(-1).expand(-1, -1, d)  # (B, r, d)
 
-    src_vals = x.gather(1, src_idx_exp)   # (B, r, d)
-    dst_vals = x.gather(1, dst_idx_exp)   # (B, r, d)
+    src_vals = x.gather(1, src_idx_exp)  # (B, r, d)
+    dst_vals = x.gather(1, dst_idx_exp)  # (B, r, d)
 
     if mode == "mean":
         merged_vals = (src_vals + dst_vals) * 0.5
@@ -172,12 +173,12 @@ def merge_tokens(
     T_new = T - r
     # nonzero approach: gather D-expanded indices
     keep_indices = keep_mask.nonzero(as_tuple=False)  # (B*T_new, 2)
-    col_indices = keep_indices[:, 1].view(B, T_new)    # (B, T_new)
+    col_indices = keep_indices[:, 1].view(B, T_new)  # (B, T_new)
 
     col_idx_exp = col_indices.unsqueeze(-1).expand(-1, -1, d)
-    merged = x_out.gather(1, col_idx_exp)              # (B, T_new, d)
+    merged = x_out.gather(1, col_idx_exp)  # (B, T_new, d)
 
-    size_merged = size.gather(1, col_indices)           # (B, T_new)
+    size_merged = size.gather(1, col_indices)  # (B, T_new)
 
     return merged, size_merged
 
@@ -233,11 +234,11 @@ def unmerge_tokens(
 
     # Now fill src positions with the value of their matched dst token
     # First, gather the dst values from the output (already placed)
-    dst_idx_exp = dst_idx.unsqueeze(-1).expand(-1, -1, d)   # (B, r, d)
-    dst_vals = output.gather(1, dst_idx_exp)                 # (B, r, d)
+    dst_idx_exp = dst_idx.unsqueeze(-1).expand(-1, -1, d)  # (B, r, d)
+    dst_vals = output.gather(1, dst_idx_exp)  # (B, r, d)
 
     # Scatter dst values to src positions
-    src_idx_exp = src_idx.unsqueeze(-1).expand(-1, -1, d)   # (B, r, d)
+    src_idx_exp = src_idx.unsqueeze(-1).expand(-1, -1, d)  # (B, r, d)
     output.scatter_(1, src_idx_exp, dst_vals)
 
     return output
@@ -260,9 +261,7 @@ class ToMeLayer(nn.Module):
             x, r=r, similarity=self.config.similarity
         )
 
-        x_merged, size = merge_tokens(
-            x, src_idx, dst_idx, mode=self.config.merge_mode
-        )
+        x_merged, size = merge_tokens(x, src_idx, dst_idx, mode=self.config.merge_mode)
 
         # Run the wrapped layer on merged sequence
         out = self.layer(x_merged)
@@ -292,9 +291,7 @@ class ToMeWrapper(nn.Module):
         self._model = model
 
         # Wrap each layer with ToMeLayer
-        self.layers = nn.ModuleList([
-            ToMeLayer(layer, config) for layer in model.layers
-        ])
+        self.layers = nn.ModuleList([ToMeLayer(layer, config) for layer in model.layers])
 
         # Copy freqs_cis buffer if present
         if hasattr(model, "freqs_cis"):
@@ -309,7 +306,7 @@ class ToMeWrapper(nn.Module):
         """Returns (loss, logits, None) — same API as base model."""
         B, S = input_ids.shape
 
-        x = self.embed(input_ids)   # (B, S, d_model)
+        x = self.embed(input_ids)  # (B, S, d_model)
 
         # Get freqs_cis if available (for compatibility with TransformerBlock)
         if self.freqs_cis is not None:
@@ -331,9 +328,7 @@ class ToMeWrapper(nn.Module):
                 x, r=r, similarity=self.config.similarity
             )
 
-            x_merged, size = merge_tokens(
-                x, src_idx, dst_idx, mode=self.config.merge_mode
-            )
+            x_merged, size = merge_tokens(x, src_idx, dst_idx, mode=self.config.merge_mode)
 
             T_merged = x_merged.shape[1]
             T_orig = x.shape[1]
@@ -352,7 +347,7 @@ class ToMeWrapper(nn.Module):
             x = unmerge_tokens(out, src_idx, dst_idx, size, T_orig)
 
         x = self.norm(x)
-        logits = self.lm_head(x)   # (B, S, vocab_size)
+        logits = self.lm_head(x)  # (B, S, vocab_size)
 
         loss = None
         return loss, logits, None

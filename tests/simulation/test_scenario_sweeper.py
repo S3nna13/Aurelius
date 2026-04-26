@@ -1,9 +1,8 @@
 """Tests for scenario sweeper."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.simulation.scenario_sweeper import ScenarioSweeper, SimConfig, ScenarioResult
+from src.simulation.scenario_sweeper import ScenarioSweeper, SimConfig
 
 
 class TestScenarioSweeper:
@@ -25,6 +24,7 @@ class TestScenarioSweeper:
     def test_run_catches_exceptions(self):
         def runner(c: SimConfig) -> dict[str, float]:
             raise ValueError("fail")
+
         sweeper = ScenarioSweeper(runner=runner)
         results = sweeper.run([SimConfig({"x": 1})])
         assert results[0].error is not None
@@ -32,6 +32,7 @@ class TestScenarioSweeper:
     def test_best_returns_max(self):
         def runner(c: SimConfig) -> dict[str, float]:
             return {"score": float(c.params.get("v", 0))}
+
         sweeper = ScenarioSweeper(runner=runner)
         sweeper.run([SimConfig({"v": 1}), SimConfig({"v": 5}), SimConfig({"v": 3})])
         best = sweeper.best("score")

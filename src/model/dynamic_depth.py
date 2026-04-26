@@ -14,16 +14,17 @@ Components (distinct from early_exit.py which uses fixed exit classifiers):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DynamicDepthConfig:
@@ -52,6 +53,7 @@ class DynamicDepthConfig:
 # ---------------------------------------------------------------------------
 # ExitRouter
 # ---------------------------------------------------------------------------
+
 
 class ExitRouter(nn.Module):
     """Learned exit gate operating on the last-token hidden state.
@@ -87,6 +89,7 @@ class ExitRouter(nn.Module):
 # LayerSkipRouter
 # ---------------------------------------------------------------------------
 
+
 class LayerSkipRouter(nn.Module):
     """Learned skip gate for a single transformer layer.
 
@@ -121,6 +124,7 @@ class LayerSkipRouter(nn.Module):
 # Confidence utility
 # ---------------------------------------------------------------------------
 
+
 def compute_exit_confidence(logits: torch.Tensor) -> torch.Tensor:
     """Compute per-batch-element confidence as max softmax probability.
 
@@ -130,14 +134,15 @@ def compute_exit_confidence(logits: torch.Tensor) -> torch.Tensor:
     Returns:
         (B,) — maximum softmax probability (confidence) for each element.
     """
-    probs = F.softmax(logits, dim=-1)          # (B, V)
-    confidence, _ = probs.max(dim=-1)          # (B,)
+    probs = F.softmax(logits, dim=-1)  # (B, V)
+    confidence, _ = probs.max(dim=-1)  # (B,)
     return confidence
 
 
 # ---------------------------------------------------------------------------
 # DynamicDepthTransformer
 # ---------------------------------------------------------------------------
+
 
 class DynamicDepthTransformer(nn.Module):
     """Wraps a base AureliusTransformer with dynamic early exit and layer skipping.
@@ -164,12 +169,8 @@ class DynamicDepthTransformer(nn.Module):
         n_layers = base_model.config.n_layers
         d_model = base_model.config.d_model
 
-        self.exit_routers = nn.ModuleList(
-            [ExitRouter(d_model) for _ in range(n_layers)]
-        )
-        self.skip_routers = nn.ModuleList(
-            [LayerSkipRouter(d_model) for _ in range(n_layers)]
-        )
+        self.exit_routers = nn.ModuleList([ExitRouter(d_model) for _ in range(n_layers)])
+        self.skip_routers = nn.ModuleList([LayerSkipRouter(d_model) for _ in range(n_layers)])
 
     # ------------------------------------------------------------------
     # Forward
@@ -208,12 +209,12 @@ class DynamicDepthTransformer(nn.Module):
         temperature = self.config.temperature
 
         # Embed tokens
-        x = bm.embed(input_ids)                 # (B, T, D)
-        freqs_cis = bm.freqs_cis[:T]            # (T, head_dim//2) complex
+        x = bm.embed(input_ids)  # (B, T, D)
+        freqs_cis = bm.freqs_cis[:T]  # (T, head_dim//2) complex
 
         # Track which batch elements have already exited
         exited = torch.zeros(B, dtype=torch.bool, device=input_ids.device)
-        exit_layer_indices = [-1] * B           # filled as elements exit
+        exit_layer_indices = [-1] * B  # filled as elements exit
 
         # Accumulate output logits (updated whenever an element exits)
         output_logits = torch.zeros(B, T, vocab_size, device=input_ids.device)
@@ -221,7 +222,7 @@ class DynamicDepthTransformer(nn.Module):
         for layer_idx, layer in enumerate(bm.layers):
             # --- Skip router (skip only after min_layers) ---
             if layer_idx >= min_layers and self.config.use_learned_router:
-                last_hidden = x[:, -1, :]       # (B, D)
+                last_hidden = x[:, -1, :]  # (B, D)
                 skip_prob = self.skip_routers[layer_idx](last_hidden)  # (B, 1)
                 # Elements that have already exited are not affected; for the rest,
                 # decide whether to skip. We skip when skip_prob < skip_threshold
@@ -235,21 +236,21 @@ class DynamicDepthTransformer(nn.Module):
                         continue
 
             # Run the layer
-            x, _kv = layer(x, freqs_cis)        # (B, T, D)
+            x, _kv = layer(x, freqs_cis)  # (B, T, D)
 
             # --- Exit router (check only after min_layers) ---
             if layer_idx < min_layers - 1:
                 continue
 
             # Compute logits for the current hidden state
-            x_normed = bm.norm(x)               # (B, T, D)
-            logits = bm.lm_head(x_normed)       # (B, T, V)
+            x_normed = bm.norm(x)  # (B, T, D)
+            logits = bm.lm_head(x_normed)  # (B, T, V)
 
             if temperature != 1.0:
                 logits = logits / temperature
 
             # Confidence from last-token logits
-            last_logits = logits[:, -1, :]      # (B, V)
+            last_logits = logits[:, -1, :]  # (B, V)
             confidence = compute_exit_confidence(last_logits)  # (B,)
 
             if self.config.use_learned_router:
@@ -321,6 +322,7 @@ class DynamicDepthTransformer(nn.Module):
 # AdaptiveLayerSelector
 # ---------------------------------------------------------------------------
 
+
 class AdaptiveLayerSelector:
     """Selects which layers to run based on hidden state complexity (L2 norm).
 
@@ -349,7 +351,7 @@ class AdaptiveLayerSelector:
             Sorted list[int] of layer indices to execute, all in [0, n_layers).
         """
         # Mean L2 norm over batch and sequence
-        norm_val = hidden.norm(dim=-1).mean().item()   # scalar
+        norm_val = hidden.norm(dim=-1).mean().item()  # scalar
 
         # Normalise norm to a fraction in [0, 1] using a sigmoid-like clamp.
         # We use tanh so that typical norm values (~1–10) map smoothly.

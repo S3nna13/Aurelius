@@ -11,20 +11,20 @@ DraftModel          — wraps a callable model_fn, autoregressively proposes K t
 SpeculativeVerifier — implements rejection-sampling accept/reject step
 SpeculativeDecoder  — full draft + verify loop
 """
+
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SpeculativeConfig:
@@ -32,13 +32,14 @@ class SpeculativeConfig:
 
     n_draft_tokens: int = 5
     temperature: float = 1.0
-    top_p: float = 1.0          # nucleus sampling for target; 1.0 means no filtering
+    top_p: float = 1.0  # nucleus sampling for target; 1.0 means no filtering
     max_new_tokens: int = 128
 
 
 # ---------------------------------------------------------------------------
 # Draft Model
 # ---------------------------------------------------------------------------
+
 
 class DraftModel:
     """Wraps a callable draft model function for autoregressive token proposal.
@@ -64,7 +65,7 @@ class DraftModel:
         self,
         input_ids: Tensor,
         n_tokens: int,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Greedily generate ``n_tokens`` tokens from the draft model.
 
         Parameters
@@ -86,11 +87,11 @@ class DraftModel:
 
         with torch.no_grad():
             for _ in range(n_tokens):
-                logits = self.model_fn(current)          # (1, T, V)
-                last_logits = logits[0, -1, :]           # (V,)
+                logits = self.model_fn(current)  # (1, T, V)
+                last_logits = logits[0, -1, :]  # (V,)
 
                 # Greedy selection
-                next_tok = last_logits.argmax(dim=-1)    # scalar
+                next_tok = last_logits.argmax(dim=-1)  # scalar
 
                 token_ids_list.append(next_tok)
                 logits_list.append(last_logits)
@@ -99,14 +100,15 @@ class DraftModel:
                     [current, next_tok.unsqueeze(0).unsqueeze(0)], dim=1
                 )  # (1, T+1)
 
-        token_ids = torch.stack(token_ids_list, dim=0)       # (n_tokens,)
-        logits_per_step = torch.stack(logits_list, dim=0)    # (n_tokens, V)
+        token_ids = torch.stack(token_ids_list, dim=0)  # (n_tokens,)
+        logits_per_step = torch.stack(logits_list, dim=0)  # (n_tokens, V)
         return token_ids, logits_per_step
 
 
 # ---------------------------------------------------------------------------
 # Speculative Verifier
 # ---------------------------------------------------------------------------
+
 
 class SpeculativeVerifier:
     """Implements the rejection sampling accept/reject criterion.
@@ -128,7 +130,7 @@ class SpeculativeVerifier:
         draft_ids: Tensor,
         draft_probs: Tensor,
         target_probs: Tensor,
-    ) -> Tuple[Tensor, int]:
+    ) -> tuple[Tensor, int]:
         """Apply rejection sampling to accept/reject draft tokens.
 
         For each position ``i``:
@@ -160,9 +162,9 @@ class SpeculativeVerifier:
         n_accepted = 0
 
         for i in range(K):
-            tok = draft_ids[i]                         # scalar
-            p_d = draft_probs[i, tok]                  # scalar
-            p_t = target_probs[i, tok]                 # scalar
+            tok = draft_ids[i]  # scalar
+            p_d = draft_probs[i, tok]  # scalar
+            p_t = target_probs[i, tok]  # scalar
 
             # Acceptance probability
             accept_prob = torch.clamp(p_t / (p_d + 1e-10), max=1.0)
@@ -215,6 +217,7 @@ class SpeculativeVerifier:
 # ---------------------------------------------------------------------------
 # Full Speculative Decoder
 # ---------------------------------------------------------------------------
+
 
 class SpeculativeDecoder:
     """Full speculative decoding loop.
@@ -284,9 +287,7 @@ class SpeculativeDecoder:
 
                 # --- Target scoring phase (one parallel forward pass) ---
                 # Append draft tokens to context for a single forward pass
-                full_ids = torch.cat(
-                    [context, draft_ids.unsqueeze(0)], dim=1
-                )  # (1, T+k)
+                full_ids = torch.cat([context, draft_ids.unsqueeze(0)], dim=1)  # (1, T+k)
                 target_logits_all = self.target_model_fn(full_ids)  # (1, T+k, V)
 
                 # The target prediction at position (T-1 + i) predicts draft_ids[i]
@@ -296,9 +297,7 @@ class SpeculativeDecoder:
                 target_logits_draft = target_logits_all[
                     0, prompt_len - 1 : prompt_len - 1 + k, :
                 ]  # (k, V)
-                target_probs_draft = F.softmax(
-                    target_logits_draft / temp, dim=-1
-                )  # (k, V)
+                target_probs_draft = F.softmax(target_logits_draft / temp, dim=-1)  # (k, V)
 
                 # Apply top-p (nucleus) filtering to target probs if configured
                 if cfg.top_p < 1.0:
@@ -318,9 +317,7 @@ class SpeculativeDecoder:
                 tokens_so_far += n_to_add
 
                 # Advance context
-                context = torch.cat(
-                    [context, new_toks.unsqueeze(0)], dim=1
-                )  # (1, T + n_to_add)
+                context = torch.cat([context, new_toks.unsqueeze(0)], dim=1)  # (1, T + n_to_add)
 
         if generated:
             result = torch.cat(generated, dim=0)
@@ -334,6 +331,7 @@ class SpeculativeDecoder:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _apply_top_p(probs: Tensor, top_p: float) -> Tensor:
     """Apply nucleus (top-p) filtering to a batch of probability distributions.

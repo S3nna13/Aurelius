@@ -20,10 +20,10 @@ from src.eval.long_context_eval import (
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 def byte_encode(text: str) -> list[int]:
     """Byte-level tokenizer: text -> utf-8 bytes -> list[int]."""
@@ -83,6 +83,7 @@ def evaluator(small_model, small_config):
 # 1. LongContextConfig defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults(default_config):
     assert default_config.max_context_len == 8192
     assert default_config.n_distractors == 10
@@ -94,6 +95,7 @@ def test_config_defaults(default_config):
 # ---------------------------------------------------------------------------
 # 2. generate_distractor_text returns string of reasonable length
 # ---------------------------------------------------------------------------
+
 
 def test_generate_distractor_text_reasonable_length():
     rng = random.Random(42)
@@ -108,6 +110,7 @@ def test_generate_distractor_text_reasonable_length():
 # 3. generate_distractor_text different seeds give different text
 # ---------------------------------------------------------------------------
 
+
 def test_generate_distractor_text_different_seeds():
     text1 = generate_distractor_text(random.Random(1), 5)
     text2 = generate_distractor_text(random.Random(999), 5)
@@ -118,6 +121,7 @@ def test_generate_distractor_text_different_seeds():
 # ---------------------------------------------------------------------------
 # 4. create_passkey_prompt returns tuple (prompt, passkey)
 # ---------------------------------------------------------------------------
+
 
 def test_create_passkey_prompt_returns_tuple(default_config):
     rng = random.Random(0)
@@ -133,6 +137,7 @@ def test_create_passkey_prompt_returns_tuple(default_config):
 # 5. create_passkey_prompt passkey is numeric and correct length
 # ---------------------------------------------------------------------------
 
+
 def test_create_passkey_prompt_passkey_numeric_correct_length(default_config):
     rng = random.Random(7)
     _, passkey = create_passkey_prompt(rng, default_config, 0.5)
@@ -144,6 +149,7 @@ def test_create_passkey_prompt_passkey_numeric_correct_length(default_config):
 # 6. create_passkey_prompt passkey appears in prompt
 # ---------------------------------------------------------------------------
 
+
 def test_create_passkey_prompt_passkey_in_prompt(default_config):
     rng = random.Random(13)
     prompt, passkey = create_passkey_prompt(rng, default_config, 0.5)
@@ -153,6 +159,7 @@ def test_create_passkey_prompt_passkey_in_prompt(default_config):
 # ---------------------------------------------------------------------------
 # 7. create_needle_prompt needle appears in returned prompt
 # ---------------------------------------------------------------------------
+
 
 def test_create_needle_prompt_needle_in_prompt():
     rng = random.Random(42)
@@ -166,6 +173,7 @@ def test_create_needle_prompt_needle_in_prompt():
 # 8. extract_passkey_from_output finds correct passkey
 # ---------------------------------------------------------------------------
 
+
 def test_extract_passkey_from_output_finds_correct():
     output = "The answer is 83742 based on the context provided."
     result = extract_passkey_from_output(output, 5)
@@ -175,6 +183,7 @@ def test_extract_passkey_from_output_finds_correct():
 # ---------------------------------------------------------------------------
 # 9. extract_passkey_from_output returns None when not present
 # ---------------------------------------------------------------------------
+
 
 def test_extract_passkey_from_output_none_when_missing():
     output = "I do not know the answer."
@@ -186,6 +195,7 @@ def test_extract_passkey_from_output_none_when_missing():
 # 10. extract_passkey_from_output handles wrong length digits
 # ---------------------------------------------------------------------------
 
+
 def test_extract_passkey_from_output_wrong_length():
     # Output has a 3-digit and a 7-digit number, but we want 5-digit
     output = "The values are 123 and 1234567."
@@ -196,6 +206,7 @@ def test_extract_passkey_from_output_wrong_length():
 # ---------------------------------------------------------------------------
 # 11. greedy_generate_text returns a string
 # ---------------------------------------------------------------------------
+
 
 def test_greedy_generate_text_returns_string(small_model):
     output = greedy_generate_text(
@@ -211,6 +222,7 @@ def test_greedy_generate_text_returns_string(small_model):
 # ---------------------------------------------------------------------------
 # 12. LongContextEvaluator.evaluate_passkey_retrieval returns correct keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_passkey_retrieval_keys(evaluator, small_config):
     results = evaluator.evaluate_passkey_retrieval(n_eval=2)
@@ -229,6 +241,7 @@ def test_evaluate_passkey_retrieval_values_in_range(evaluator, small_config):
 # ---------------------------------------------------------------------------
 # 13. LongContextEvaluator.compute_perplexity_at_length returns list of floats
 # ---------------------------------------------------------------------------
+
 
 def test_compute_perplexity_at_length_returns_list_of_floats(evaluator):
     # Generate enough text to form at least one chunk

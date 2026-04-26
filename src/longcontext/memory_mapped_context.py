@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 def _new_chunk_id() -> str:
@@ -33,7 +32,7 @@ class MemoryMappedContext:
         self.chunk_size = chunk_size
         self.max_chunks = max_chunks
         self._chunks: dict[str, ContextChunk] = {}  # chunk_id -> chunk
-        self._ordered: list[str] = []               # insertion order of chunk_ids
+        self._ordered: list[str] = []  # insertion order of chunk_ids
         self._total_tokens: int = 0
 
     # ------------------------------------------------------------------
@@ -45,7 +44,7 @@ class MemoryMappedContext:
         new_chunks: list[ContextChunk] = []
         offset = 0
         while offset < len(token_ids):
-            batch = token_ids[offset: offset + self.chunk_size]
+            batch = token_ids[offset : offset + self.chunk_size]
             start = self._total_tokens
             end = start + len(batch)
             chunk = ContextChunk(
@@ -64,7 +63,7 @@ class MemoryMappedContext:
     # Read path
     # ------------------------------------------------------------------
 
-    def get_chunk(self, chunk_id: str) -> Optional[ContextChunk]:
+    def get_chunk(self, chunk_id: str) -> ContextChunk | None:
         """Return chunk by id, or None if not found."""
         return self._chunks.get(chunk_id)
 

@@ -9,16 +9,15 @@ Reference:
     Deng et al. (2023) "Implicit Chain of Thought Reasoning via Knowledge Distillation"
     https://arxiv.org/abs/2311.01460
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -111,8 +110,8 @@ class ImplicitCoTLoss(nn.Module):
             Scalar loss tensor.
         """
         # Shift: predict token t+1 from token t
-        shift_logits = logits[:, :-1, :].contiguous()   # (B, T-1, V)
-        shift_labels = labels[:, 1:].contiguous()        # (B, T-1)
+        shift_logits = logits[:, :-1, :].contiguous()  # (B, T-1, V)
+        shift_labels = labels[:, 1:].contiguous()  # (B, T-1)
 
         B, T, V = shift_logits.shape
         flat_labels = shift_labels.view(B * T)
@@ -166,7 +165,7 @@ class ImplicitCoTLoss(nn.Module):
         labels: Tensor,
         student_hidden: Tensor,
         teacher_hidden: Tensor,
-    ) -> Tuple[Tensor, Dict[str, Tensor]]:
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         """Compute combined implicit CoT loss.
 
         Args:
@@ -185,7 +184,7 @@ class ImplicitCoTLoss(nn.Module):
         w = self.config.distill_weight
         total = (1.0 - w) * t_loss + w * d_loss
 
-        metrics: Dict[str, Tensor] = {
+        metrics: dict[str, Tensor] = {
             "task_loss": t_loss,
             "distill_loss": d_loss,
             "total_loss": total,
@@ -235,9 +234,7 @@ class ImplicitCoTTrainer:
             param.requires_grad_(False)
         self.teacher.eval()
 
-    def extract_hidden_states(
-        self, model: nn.Module, input_ids: Tensor
-    ) -> Tuple[Tensor, Tensor]:
+    def extract_hidden_states(self, model: nn.Module, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Run ``model`` on ``input_ids`` and return ``(logits, last_hidden)``.
 
         Handles two return conventions:
@@ -269,7 +266,7 @@ class ImplicitCoTTrainer:
     # Training step
     # ------------------------------------------------------------------
 
-    def train_step(self, input_ids: Tensor, labels: Tensor) -> Dict[str, float]:
+    def train_step(self, input_ids: Tensor, labels: Tensor) -> dict[str, float]:
         """Perform one forward + backward + optimiser update.
 
         Args:
@@ -289,9 +286,7 @@ class ImplicitCoTTrainer:
         with torch.no_grad():
             _, teacher_hidden = self.extract_hidden_states(self.teacher, input_ids)
 
-        total_loss, metrics = self.loss_fn(
-            student_logits, labels, student_hidden, teacher_hidden
-        )
+        total_loss, metrics = self.loss_fn(student_logits, labels, student_hidden, teacher_hidden)
 
         self.optimizer.zero_grad()
         total_loss.backward()

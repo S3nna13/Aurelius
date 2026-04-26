@@ -24,7 +24,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -115,8 +114,8 @@ class SPINLoss(nn.Module):
             Scalar loss tensor.
         """
         logr_real = policy_logprobs_real - ref_logprobs_real  # (B,)
-        logr_gen = policy_logprobs_gen - ref_logprobs_gen      # (B,)
-        logits = self.beta * (logr_real - logr_gen)            # (B,)
+        logr_gen = policy_logprobs_gen - ref_logprobs_gen  # (B,)
+        logits = self.beta * (logr_real - logr_gen)  # (B,)
         return -F.logsigmoid(logits).mean()
 
 
@@ -183,21 +182,19 @@ class SPINTrainer:
         Returns:
             Per-sequence mean log-prob, shape (B,).
         """
-        logits = model(input_ids)                              # (B, T, V)
-        log_probs = F.log_softmax(logits, dim=-1)              # (B, T, V)
+        logits = model(input_ids)  # (B, T, V)
+        log_probs = F.log_softmax(logits, dim=-1)  # (B, T, V)
 
-        labels_clamped = labels.clamp(min=0)                   # (B, T)
-        token_lp = log_probs.gather(
-            dim=2, index=labels_clamped.unsqueeze(-1)
-        ).squeeze(-1)                                          # (B, T)
+        labels_clamped = labels.clamp(min=0)  # (B, T)
+        token_lp = log_probs.gather(dim=2, index=labels_clamped.unsqueeze(-1)).squeeze(-1)  # (B, T)
 
         if mask is not None:
             valid = mask.float()
         else:
-            valid = (labels != -100).float()                   # (B, T)
+            valid = (labels != -100).float()  # (B, T)
 
-        valid_count = valid.sum(dim=-1).clamp(min=1.0)        # (B,)
-        return (token_lp * valid).sum(dim=-1) / valid_count    # (B,)
+        valid_count = valid.sum(dim=-1).clamp(min=1.0)  # (B,)
+        return (token_lp * valid).sum(dim=-1) / valid_count  # (B,)
 
     # ------------------------------------------------------------------
     # Training interface

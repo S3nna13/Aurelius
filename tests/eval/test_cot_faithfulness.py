@@ -5,7 +5,6 @@ from __future__ import annotations
 import random
 
 import pytest
-import torch
 
 from src.eval.cot_faithfulness import (
     CoTFaithfulnessConfig,
@@ -38,6 +37,7 @@ TINY_CFG = AureliusConfig(
 
 SAMPLE_COT = "Step 1: add numbers\nStep 2: check result\nAnswer: 42"
 
+
 # Byte-level tokenizer (fast, no external dependencies)
 def byte_encode(s: str) -> list[int]:
     return list(s.encode("utf-8", errors="replace")[:256])
@@ -64,6 +64,7 @@ def fast_cfg():
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     cfg = CoTFaithfulnessConfig()
     assert cfg.n_interventions == 5
@@ -76,6 +77,7 @@ def test_config_defaults():
 # 2. extract_cot_steps — basic split
 # ---------------------------------------------------------------------------
 
+
 def test_extract_cot_steps_basic():
     steps, answer = extract_cot_steps(SAMPLE_COT)
     assert len(steps) == 2
@@ -87,6 +89,7 @@ def test_extract_cot_steps_basic():
 # ---------------------------------------------------------------------------
 # 3. extract_cot_steps — no answer token
 # ---------------------------------------------------------------------------
+
 
 def test_extract_cot_steps_no_answer():
     text = "Step 1: do something\nStep 2: do more"
@@ -101,6 +104,7 @@ def test_extract_cot_steps_no_answer():
 # 4. corrupt_step — produces at least some [MASK] tokens
 # ---------------------------------------------------------------------------
 
+
 def test_corrupt_step_reduces_words():
     rng = random.Random(0)
     step = "add the numbers together carefully now"
@@ -114,6 +118,7 @@ def test_corrupt_step_reduces_words():
 # 5. corrupt_step — p=0.0 returns identical text
 # ---------------------------------------------------------------------------
 
+
 def test_corrupt_step_p0_no_change():
     rng = random.Random(0)
     step = "this should not change at all"
@@ -125,6 +130,7 @@ def test_corrupt_step_p0_no_change():
 # 6. compute_answer_similarity — identical answers
 # ---------------------------------------------------------------------------
 
+
 def test_compute_answer_similarity_identical():
     score = compute_answer_similarity("the answer is 42", "the answer is 42")
     assert score == pytest.approx(1.0)
@@ -133,6 +139,7 @@ def test_compute_answer_similarity_identical():
 # ---------------------------------------------------------------------------
 # 7. compute_answer_similarity — both empty
 # ---------------------------------------------------------------------------
+
 
 def test_compute_answer_similarity_empty_both():
     score = compute_answer_similarity("", "")
@@ -143,6 +150,7 @@ def test_compute_answer_similarity_empty_both():
 # 8. compute_answer_similarity — disjoint tokens
 # ---------------------------------------------------------------------------
 
+
 def test_compute_answer_similarity_disjoint():
     score = compute_answer_similarity("apple banana cherry", "dog elephant fish")
     assert score == pytest.approx(0.0)
@@ -152,6 +160,7 @@ def test_compute_answer_similarity_disjoint():
 # 9. compute_answer_similarity — partial overlap
 # ---------------------------------------------------------------------------
 
+
 def test_compute_answer_similarity_partial():
     score = compute_answer_similarity("the cat sat", "the dog sat")
     assert 0.0 < score < 1.0
@@ -160,6 +169,7 @@ def test_compute_answer_similarity_partial():
 # ---------------------------------------------------------------------------
 # 10. compute_faithfulness_score — result in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def test_compute_faithfulness_score_range():
     for influences in [[], [0.0], [1.0], [0.2, 0.8], [0.5, 0.5, 0.5]]:
@@ -171,11 +181,17 @@ def test_compute_faithfulness_score_range():
 # 11. measure_step_influence — result in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_measure_step_influence_range(tiny_model, fast_cfg):
     rng = random.Random(7)
     influence = measure_step_influence(
-        tiny_model, byte_encode, byte_decode, SAMPLE_COT,
-        step_idx=0, cfg=fast_cfg, rng=rng,
+        tiny_model,
+        byte_encode,
+        byte_decode,
+        SAMPLE_COT,
+        step_idx=0,
+        cfg=fast_cfg,
+        rng=rng,
     )
     assert 0.0 <= influence <= 1.0
 
@@ -183,6 +199,7 @@ def test_measure_step_influence_range(tiny_model, fast_cfg):
 # ---------------------------------------------------------------------------
 # 12. counterfactual_faithfulness — FaithfulnessResult has all fields
 # ---------------------------------------------------------------------------
+
 
 def test_counterfactual_faithfulness_fields(tiny_model, fast_cfg):
     result = counterfactual_faithfulness(
@@ -201,6 +218,7 @@ def test_counterfactual_faithfulness_fields(tiny_model, fast_cfg):
 # 13. counterfactual_faithfulness — score in [0, 1]
 # ---------------------------------------------------------------------------
 
+
 def test_counterfactual_faithfulness_score_range(tiny_model, fast_cfg):
     result = counterfactual_faithfulness(
         tiny_model, byte_encode, byte_decode, SAMPLE_COT, fast_cfg, seed=1
@@ -212,6 +230,7 @@ def test_counterfactual_faithfulness_score_range(tiny_model, fast_cfg):
 # ---------------------------------------------------------------------------
 # 14. CoTFaithfulnessEvaluator.evaluate_batch — returns dict with 3 keys
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_evaluate_batch_keys(tiny_model, fast_cfg):
     evaluator = CoTFaithfulnessEvaluator(tiny_model, byte_encode, byte_decode, fast_cfg)
@@ -226,6 +245,7 @@ def test_evaluator_evaluate_batch_keys(tiny_model, fast_cfg):
 # ---------------------------------------------------------------------------
 # 15. CoTFaithfulnessEvaluator.summarize — returns mean/min/max/mean_n_steps
 # ---------------------------------------------------------------------------
+
 
 def test_evaluator_summarize_keys(tiny_model, fast_cfg):
     evaluator = CoTFaithfulnessEvaluator(tiny_model, byte_encode, byte_decode, fast_cfg)

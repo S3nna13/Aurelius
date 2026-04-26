@@ -42,8 +42,8 @@ from __future__ import annotations
 
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -56,9 +56,27 @@ class MultiNeedleError(Exception):
 # ---------------------------------------------------------------------------
 # Config & result dataclasses
 # ---------------------------------------------------------------------------
-_DEFAULT_TOKEN_VOCAB: Tuple[str, ...] = (
-    "the", "a", "of", "to", "and", "in", "that", "it", "is", "as",
-    "for", "on", "with", "by", "an", "but", "from", "this", "be", "at",
+_DEFAULT_TOKEN_VOCAB: tuple[str, ...] = (
+    "the",
+    "a",
+    "of",
+    "to",
+    "and",
+    "in",
+    "that",
+    "it",
+    "is",
+    "as",
+    "for",
+    "on",
+    "with",
+    "by",
+    "an",
+    "but",
+    "from",
+    "this",
+    "be",
+    "at",
 )
 
 
@@ -94,7 +112,7 @@ class MultiNeedleConfig:
     haystack_tokens: int
     depth_profile: str
     seed: int = 0
-    token_vocab: Tuple[str, ...] = _DEFAULT_TOKEN_VOCAB
+    token_vocab: tuple[str, ...] = _DEFAULT_TOKEN_VOCAB
     needle_template: str = "remember the code {key}={value}."
     key_alphabet: str = "ABCDEFGHJKLMNPQRSTUVWXYZ"
     value_digits: int = 6
@@ -104,11 +122,11 @@ class MultiNeedleConfig:
 class MultiNeedleSample:
     """A fully-materialised multi-needle evaluation sample."""
 
-    needles: Tuple[Tuple[str, str], ...]
+    needles: tuple[tuple[str, str], ...]
     prompt: str
     question: str
-    gold: Tuple[Tuple[str, str], ...]
-    depth_fracs: Tuple[float, ...]
+    gold: tuple[tuple[str, str], ...]
+    depth_fracs: tuple[float, ...]
 
 
 @dataclass(frozen=True)
@@ -116,7 +134,7 @@ class MultiNeedleVerdict:
     """Score report produced by :func:`score`."""
 
     sample: MultiNeedleSample
-    recovered: Tuple[Tuple[str, str], ...]
+    recovered: tuple[tuple[str, str], ...]
     recall_exact: float
     recall_key: float
     precision: float
@@ -127,17 +145,17 @@ class MultiNeedleVerdict:
 # Depth profile registry
 # ---------------------------------------------------------------------------
 # A depth generator is: (num_needles, rng) -> tuple[float, ...] of length K.
-DepthGenerator = Callable[[int, random.Random], Tuple[float, ...]]
+DepthGenerator = Callable[[int, random.Random], tuple[float, ...]]
 
-DEPTH_PROFILE_REGISTRY: Dict[str, DepthGenerator] = {}
+DEPTH_PROFILE_REGISTRY: dict[str, DepthGenerator] = {}
 
 
-def _uniform_profile(k: int, rng: random.Random) -> Tuple[float, ...]:
+def _uniform_profile(k: int, rng: random.Random) -> tuple[float, ...]:
     del rng  # uniform is deterministic in k alone
     return tuple((i + 0.5) / k for i in range(k))
 
 
-def _clustered_early_profile(k: int, rng: random.Random) -> Tuple[float, ...]:
+def _clustered_early_profile(k: int, rng: random.Random) -> tuple[float, ...]:
     del rng
     # Evenly spaced inside [0.0, 0.15). All values strictly < 0.15 < 0.2.
     if k == 1:
@@ -146,7 +164,7 @@ def _clustered_early_profile(k: int, rng: random.Random) -> Tuple[float, ...]:
     return tuple((i + 0.5) * step for i in range(k))
 
 
-def _clustered_late_profile(k: int, rng: random.Random) -> Tuple[float, ...]:
+def _clustered_late_profile(k: int, rng: random.Random) -> tuple[float, ...]:
     del rng
     # Evenly spaced inside (0.85, 1.0). All values strictly > 0.85 > 0.8.
     if k == 1:
@@ -155,7 +173,7 @@ def _clustered_late_profile(k: int, rng: random.Random) -> Tuple[float, ...]:
     return tuple(0.85 + (i + 0.5) * step for i in range(k))
 
 
-def _boundary_profile(k: int, rng: random.Random) -> Tuple[float, ...]:
+def _boundary_profile(k: int, rng: random.Random) -> tuple[float, ...]:
     del rng
     # First half strictly in [0.0, 0.05); second half strictly in (0.95, 1.0).
     # Ensures halves satisfy <0.1 and >0.9 respectively.
@@ -195,7 +213,7 @@ def register_depth_profile(name: str, generator: DepthGenerator) -> None:
 # ---------------------------------------------------------------------------
 # Reference benchmark registry
 # ---------------------------------------------------------------------------
-MULTI_NEEDLE_REGISTRY: Dict[str, MultiNeedleConfig] = {
+MULTI_NEEDLE_REGISTRY: dict[str, MultiNeedleConfig] = {
     "niah-mk-small": MultiNeedleConfig(
         num_needles=4,
         haystack_tokens=512,
@@ -222,38 +240,24 @@ MULTI_NEEDLE_REGISTRY: Dict[str, MultiNeedleConfig] = {
 # ---------------------------------------------------------------------------
 def _validate_config(cfg: MultiNeedleConfig) -> None:
     if not isinstance(cfg, MultiNeedleConfig):
-        raise MultiNeedleError(
-            f"expected MultiNeedleConfig, got {type(cfg).__name__}"
-        )
+        raise MultiNeedleError(f"expected MultiNeedleConfig, got {type(cfg).__name__}")
     if not isinstance(cfg.num_needles, int) or isinstance(cfg.num_needles, bool):
-        raise MultiNeedleError(
-            f"num_needles must be int, got {type(cfg.num_needles).__name__}"
-        )
+        raise MultiNeedleError(f"num_needles must be int, got {type(cfg.num_needles).__name__}")
     if cfg.num_needles < 2 or cfg.num_needles > 16:
-        raise MultiNeedleError(
-            f"num_needles must be in [2, 16], got {cfg.num_needles}"
-        )
+        raise MultiNeedleError(f"num_needles must be in [2, 16], got {cfg.num_needles}")
     if not isinstance(cfg.haystack_tokens, int) or isinstance(cfg.haystack_tokens, bool):
         raise MultiNeedleError(
             f"haystack_tokens must be int, got {type(cfg.haystack_tokens).__name__}"
         )
     if cfg.haystack_tokens < 64 or cfg.haystack_tokens > 65536:
-        raise MultiNeedleError(
-            f"haystack_tokens must be in [64, 65536], got {cfg.haystack_tokens}"
-        )
+        raise MultiNeedleError(f"haystack_tokens must be in [64, 65536], got {cfg.haystack_tokens}")
     if cfg.depth_profile not in DEPTH_PROFILE_REGISTRY:
         allowed = sorted(DEPTH_PROFILE_REGISTRY.keys())
-        raise MultiNeedleError(
-            f"depth_profile must be one of {allowed}, got {cfg.depth_profile!r}"
-        )
+        raise MultiNeedleError(f"depth_profile must be one of {allowed}, got {cfg.depth_profile!r}")
     if not isinstance(cfg.value_digits, int) or isinstance(cfg.value_digits, bool):
-        raise MultiNeedleError(
-            f"value_digits must be int, got {type(cfg.value_digits).__name__}"
-        )
+        raise MultiNeedleError(f"value_digits must be int, got {type(cfg.value_digits).__name__}")
     if cfg.value_digits < 2 or cfg.value_digits > 12:
-        raise MultiNeedleError(
-            f"value_digits must be in [2, 12], got {cfg.value_digits}"
-        )
+        raise MultiNeedleError(f"value_digits must be in [2, 12], got {cfg.value_digits}")
     if not isinstance(cfg.token_vocab, tuple) or not cfg.token_vocab:
         raise MultiNeedleError("token_vocab must be a non-empty tuple of strings")
     for tok in cfg.token_vocab:
@@ -263,28 +267,22 @@ def _validate_config(cfg: MultiNeedleConfig) -> None:
         raise MultiNeedleError("key_alphabet must be a non-empty string")
     for ch in cfg.key_alphabet:
         if not ("A" <= ch <= "Z"):
-            raise MultiNeedleError(
-                f"key_alphabet must contain only upper-case A-Z, got {ch!r}"
-            )
+            raise MultiNeedleError(f"key_alphabet must contain only upper-case A-Z, got {ch!r}")
     # Sanity: need enough 2-letter keys in the alphabet to produce K unique ones.
     if len(cfg.key_alphabet) * len(cfg.key_alphabet) < cfg.num_needles:
-        raise MultiNeedleError(
-            "key_alphabet too small to produce enough unique 2-letter keys"
-        )
+        raise MultiNeedleError("key_alphabet too small to produce enough unique 2-letter keys")
     if not isinstance(cfg.needle_template, str) or not cfg.needle_template:
         raise MultiNeedleError("needle_template must be a non-empty string")
     if "{key}" not in cfg.needle_template or "{value}" not in cfg.needle_template:
-        raise MultiNeedleError(
-            "needle_template must contain both {key} and {value} placeholders"
-        )
+        raise MultiNeedleError("needle_template must contain both {key} and {value} placeholders")
 
 
 # ---------------------------------------------------------------------------
 # Sample construction
 # ---------------------------------------------------------------------------
-def _gen_unique_keys(k: int, alphabet: str, rng: random.Random) -> Tuple[str, ...]:
+def _gen_unique_keys(k: int, alphabet: str, rng: random.Random) -> tuple[str, ...]:
     # 2-letter keys drawn without replacement.
-    seen: Dict[str, None] = {}
+    seen: dict[str, None] = {}
     attempts = 0
     max_attempts = k * 64 + 1024
     while len(seen) < k and attempts < max_attempts:
@@ -330,7 +328,7 @@ def build_sample(cfg: MultiNeedleConfig) -> MultiNeedleSample:
     # testing).
     keys = _gen_unique_keys(cfg.num_needles, cfg.key_alphabet, rng)
     values = tuple(_gen_value(cfg.value_digits, rng) for _ in range(cfg.num_needles))
-    needles: Tuple[Tuple[str, str], ...] = tuple(zip(keys, values))
+    needles: tuple[tuple[str, str], ...] = tuple(zip(keys, values))
 
     # 2) Generate filler tokens.
     vocab = cfg.token_vocab
@@ -351,14 +349,11 @@ def build_sample(cfg: MultiNeedleConfig) -> MultiNeedleSample:
             )
         if d < 0.0 or d > 1.0:
             raise MultiNeedleError(
-                f"depth profile {cfg.depth_profile!r} returned "
-                f"out-of-range depth {d}"
+                f"depth profile {cfg.depth_profile!r} returned out-of-range depth {d}"
             )
 
     # 4) Materialise each needle sentence.
-    needle_texts = tuple(
-        cfg.needle_template.format(key=k, value=v) for (k, v) in needles
-    )
+    needle_texts = tuple(cfg.needle_template.format(key=k, value=v) for (k, v) in needles)
 
     # 5) Compute target insertion indices (between filler tokens).
     n = len(filler_tokens)
@@ -422,7 +417,7 @@ def _strip_line(line: str) -> str:
     return s
 
 
-def parse_recovery(model_output: str) -> Tuple[Tuple[str, str], ...]:
+def parse_recovery(model_output: str) -> tuple[tuple[str, str], ...]:
     """Parse ``KEY=VALUE`` lines from a model's raw text output.
 
     Tolerates leading bullet characters (``-``, ``*``, ``•``, ``>``, ``+``),
@@ -441,13 +436,11 @@ def parse_recovery(model_output: str) -> Tuple[Tuple[str, str], ...]:
     are dropped.
     """
     if not isinstance(model_output, str):
-        raise MultiNeedleError(
-            f"model_output must be str, got {type(model_output).__name__}"
-        )
+        raise MultiNeedleError(f"model_output must be str, got {type(model_output).__name__}")
     if not model_output:
         return tuple()
     out: list = []
-    seen_keys: Dict[str, None] = {}
+    seen_keys: dict[str, None] = {}
     for raw in model_output.splitlines():
         token = _strip_line(raw)
         if not token:
@@ -496,9 +489,7 @@ def score(sample: MultiNeedleSample, model_output: str) -> MultiNeedleVerdict:
     * ``all_or_nothing`` — ``True`` iff ``recall_exact == 1.0``.
     """
     if not isinstance(sample, MultiNeedleSample):
-        raise MultiNeedleError(
-            f"sample must be MultiNeedleSample, got {type(sample).__name__}"
-        )
+        raise MultiNeedleError(f"sample must be MultiNeedleSample, got {type(sample).__name__}")
     recovered = parse_recovery(model_output)
 
     gold_pairs = {(k, v) for (k, v) in sample.gold}
@@ -510,9 +501,7 @@ def score(sample: MultiNeedleSample, model_output: str) -> MultiNeedleVerdict:
         recall_exact = 0.0
         recall_key = 0.0
     else:
-        exact_hits = sum(
-            1 for pair in recovered if pair in gold_pairs and pair[0] in gold_keys
-        )
+        exact_hits = sum(1 for pair in recovered if pair in gold_pairs and pair[0] in gold_keys)
         # De-dup is already enforced by parse_recovery, but clamp to n_gold
         # for safety.
         recall_exact = min(exact_hits, n_gold) / n_gold

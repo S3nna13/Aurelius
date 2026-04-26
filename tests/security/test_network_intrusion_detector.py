@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 import torch.optim as optim
-import pytest
 
 from src.security.network_intrusion_detector import (
     IntrusionConfig,
@@ -14,6 +14,7 @@ from src.security.network_intrusion_detector import (
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def cfg() -> IntrusionConfig:
@@ -49,6 +50,7 @@ def labels() -> torch.Tensor:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_instantiates(detector: IntrusionDetector) -> None:
     assert detector is not None
 
@@ -73,7 +75,9 @@ def test_predict_dtype(detector: IntrusionDetector, x: torch.Tensor) -> None:
     assert preds.dtype == torch.long
 
 
-def test_predict_in_range(detector: IntrusionDetector, x: torch.Tensor, cfg: IntrusionConfig) -> None:
+def test_predict_in_range(
+    detector: IntrusionDetector, x: torch.Tensor, cfg: IntrusionConfig
+) -> None:
     preds = detector.predict(x)
     assert (preds >= 0).all() and (preds < cfg.n_classes).all()
 
@@ -90,6 +94,7 @@ def test_anomaly_score_in_0_1(detector: IntrusionDetector, x: torch.Tensor) -> N
 
 def test_anomaly_score_sums_to_one(detector: IntrusionDetector, x: torch.Tensor) -> None:
     import torch.nn.functional as F
+
     logits = detector.forward(x)
     probs = F.softmax(logits.detach(), dim=-1)
     class0 = probs[:, 0]
@@ -129,8 +134,7 @@ def test_train_step_updates_params(
     detector.train_step(x, labels, optimizer)
     params_after = list(detector.model.parameters())
     changed = any(
-        not torch.equal(before, after)
-        for before, after in zip(params_before, params_after)
+        not torch.equal(before, after) for before, after in zip(params_before, params_after)
     )
     assert changed
 

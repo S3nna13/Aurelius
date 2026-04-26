@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import pytest
 
 from src.training.pipeline_parallel import (
-    PipelineConfig,
-    PipelineStage,
-    PipelineParallel,
     PIPELINE_REGISTRY,
+    PipelineConfig,
+    PipelineParallel,
+    PipelineStage,
 )
 
 

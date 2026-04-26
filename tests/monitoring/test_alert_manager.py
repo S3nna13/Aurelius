@@ -1,19 +1,19 @@
 """Tests for AlertManager (~50 tests)."""
+
 from __future__ import annotations
 
-import pytest
 from src.monitoring.alert_manager import (
-    AlertSeverity,
-    AlertRule,
+    ALERT_MANAGER,
     Alert,
     AlertManager,
-    ALERT_MANAGER,
+    AlertRule,
+    AlertSeverity,
 )
-
 
 # ---------------------------------------------------------------------------
 # AlertSeverity enum
 # ---------------------------------------------------------------------------
+
 
 class TestAlertSeverityEnum:
     def test_critical(self):
@@ -42,6 +42,7 @@ class TestAlertSeverityEnum:
 # AlertRule dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestAlertRule:
     def test_basic_fields(self):
         rule = AlertRule(
@@ -60,7 +61,9 @@ class TestAlertRule:
         assert rule.comparison == ">"
 
     def test_custom_comparison(self):
-        rule = AlertRule(name="r", metric_name="m", threshold=1.0, severity=AlertSeverity.INFO, comparison="<")
+        rule = AlertRule(
+            name="r", metric_name="m", threshold=1.0, severity=AlertSeverity.INFO, comparison="<"
+        )
         assert rule.comparison == "<"
 
     def test_message_template_default_empty(self):
@@ -68,8 +71,13 @@ class TestAlertRule:
         assert rule.message_template == ""
 
     def test_message_template_set(self):
-        rule = AlertRule(name="r", metric_name="m", threshold=1.0, severity=AlertSeverity.INFO,
-                         message_template="cpu too high")
+        rule = AlertRule(
+            name="r",
+            metric_name="m",
+            threshold=1.0,
+            severity=AlertSeverity.INFO,
+            message_template="cpu too high",
+        )
         assert rule.message_template == "cpu too high"
 
 
@@ -77,28 +85,54 @@ class TestAlertRule:
 # Alert dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestAlert:
     def test_auto_id_generated(self):
-        a = Alert(rule_name="r", severity=AlertSeverity.HIGH, metric_value=1.0,
-                  message="msg", fired_at="2026-01-01T00:00:00+00:00")
+        a = Alert(
+            rule_name="r",
+            severity=AlertSeverity.HIGH,
+            metric_value=1.0,
+            message="msg",
+            fired_at="2026-01-01T00:00:00+00:00",
+        )
         assert isinstance(a.id, str)
         assert len(a.id) == 8
 
     def test_unique_ids(self):
-        a1 = Alert(rule_name="r", severity=AlertSeverity.HIGH, metric_value=1.0,
-                   message="m", fired_at="2026-01-01T00:00:00+00:00")
-        a2 = Alert(rule_name="r", severity=AlertSeverity.HIGH, metric_value=1.0,
-                   message="m", fired_at="2026-01-01T00:00:00+00:00")
+        a1 = Alert(
+            rule_name="r",
+            severity=AlertSeverity.HIGH,
+            metric_value=1.0,
+            message="m",
+            fired_at="2026-01-01T00:00:00+00:00",
+        )
+        a2 = Alert(
+            rule_name="r",
+            severity=AlertSeverity.HIGH,
+            metric_value=1.0,
+            message="m",
+            fired_at="2026-01-01T00:00:00+00:00",
+        )
         assert a1.id != a2.id
 
     def test_resolved_default_false(self):
-        a = Alert(rule_name="r", severity=AlertSeverity.LOW, metric_value=0.0,
-                  message="m", fired_at="2026-01-01T00:00:00+00:00")
+        a = Alert(
+            rule_name="r",
+            severity=AlertSeverity.LOW,
+            metric_value=0.0,
+            message="m",
+            fired_at="2026-01-01T00:00:00+00:00",
+        )
         assert a.resolved is False
 
     def test_fields_stored(self):
-        a = Alert(rule_name="my_rule", severity=AlertSeverity.CRITICAL,
-                  metric_value=99.5, message="boom", fired_at="ts")
+        a = Alert(
+            rule_name="my_rule",
+            severity=AlertSeverity.CRITICAL,
+            metric_value=99.5,
+            message="boom",
+            fired_at="ts",
+        )
         assert a.rule_name == "my_rule"
         assert a.severity == AlertSeverity.CRITICAL
         assert a.metric_value == 99.5
@@ -110,15 +144,26 @@ class TestAlert:
 # AlertManager
 # ---------------------------------------------------------------------------
 
+
 class TestAlertManager:
     def setup_method(self):
         self.am = AlertManager()
 
-    def _rule(self, name="cpu_high", metric="cpu", threshold=80.0,
-               severity=AlertSeverity.HIGH, comparison=">"):
-        return AlertRule(name=name, metric_name=metric,
-                         threshold=threshold, severity=severity,
-                         comparison=comparison)
+    def _rule(
+        self,
+        name="cpu_high",
+        metric="cpu",
+        threshold=80.0,
+        severity=AlertSeverity.HIGH,
+        comparison=">",
+    ):
+        return AlertRule(
+            name=name,
+            metric_name=metric,
+            threshold=threshold,
+            severity=severity,
+            comparison=comparison,
+        )
 
     # add_rule
     def test_add_rule_stores(self):
@@ -183,14 +228,20 @@ class TestAlertManager:
         assert len(self.am.evaluate("cpu", 80.0)) == 1
 
     def test_evaluate_fires_for_lte(self):
-        rule = AlertRule(name="r", metric_name="temp", threshold=0.0,
-                         severity=AlertSeverity.INFO, comparison="<=")
+        rule = AlertRule(
+            name="r",
+            metric_name="temp",
+            threshold=0.0,
+            severity=AlertSeverity.INFO,
+            comparison="<=",
+        )
         self.am.add_rule(rule)
         assert len(self.am.evaluate("temp", 0.0)) == 1
 
     def test_evaluate_fires_for_eq(self):
-        rule = AlertRule(name="r", metric_name="q", threshold=42.0,
-                         severity=AlertSeverity.INFO, comparison="==")
+        rule = AlertRule(
+            name="r", metric_name="q", threshold=42.0, severity=AlertSeverity.INFO, comparison="=="
+        )
         self.am.add_rule(rule)
         assert len(self.am.evaluate("q", 42.0)) == 1
 
@@ -263,8 +314,13 @@ class TestAlertManager:
 
     # message_template
     def test_custom_message_used(self):
-        rule = AlertRule(name="r", metric_name="cpu", threshold=80.0,
-                         severity=AlertSeverity.INFO, message_template="custom msg")
+        rule = AlertRule(
+            name="r",
+            metric_name="cpu",
+            threshold=80.0,
+            severity=AlertSeverity.INFO,
+            message_template="custom msg",
+        )
         self.am.add_rule(rule)
         alerts = self.am.evaluate("cpu", 99.0)
         assert alerts[0].message == "custom msg"
@@ -278,6 +334,7 @@ class TestAlertManager:
 # ---------------------------------------------------------------------------
 # Singleton
 # ---------------------------------------------------------------------------
+
 
 class TestSingleton:
     def test_alert_manager_exists(self):

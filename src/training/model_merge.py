@@ -14,10 +14,11 @@ TIES-Merging (Trim, Elect Sign, Disjoint Merge) - Yadav et al., 2023:
 - Step 3: Disjoint Merge — average only parameters that agree with elected sign
 - Best for merging 3+ models without sign conflicts
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Sequence
+from collections.abc import Sequence
 
 import torch
 import torch.nn as nn
@@ -110,11 +111,7 @@ def slerp_merge(
         wb = state_b[name]
 
         # Skip complex tensors (e.g. freqs_cis rotary embeddings) and non-float
-        if (
-            wa.dtype.is_floating_point
-            and not wa.is_complex()
-            and wa.shape == wb.shape
-        ):
+        if wa.dtype.is_floating_point and not wa.is_complex() and wa.shape == wb.shape:
             merged_state[name] = slerp(t, wa, wb)
         else:
             # Non-float or complex buffers: use model_a's value
@@ -193,9 +190,7 @@ def ties_merge(
         sign_sum = stacked.sign().sum(dim=0)  # positive sum = majority positive
         elected_sign = sign_sum.sign()
         # Ties broken by keeping positive
-        elected_sign = torch.where(
-            elected_sign == 0, torch.ones_like(elected_sign), elected_sign
-        )
+        elected_sign = torch.where(elected_sign == 0, torch.ones_like(elected_sign), elected_sign)
 
         # Step 3: Disjoint merge — average task vectors that agree with elected sign
         # Zero out parameters that disagree with elected sign

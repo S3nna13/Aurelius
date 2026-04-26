@@ -14,25 +14,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TokenRewardConfig:
     """Configuration for token-level dense reward signals."""
 
-    reward_type: str = "dense"   # "dense" | "sparse" | "shaped"
-    gamma: float = 0.99          # discount factor
-    gae_lambda: float = 0.95     # GAE lambda for advantage estimation
-    normalize: bool = True       # normalize rewards per sequence
-    clip_reward: float = 10.0    # clip rewards to [-clip_reward, clip_reward]
+    reward_type: str = "dense"  # "dense" | "sparse" | "shaped"
+    gamma: float = 0.99  # discount factor
+    gae_lambda: float = 0.95  # GAE lambda for advantage estimation
+    normalize: bool = True  # normalize rewards per sequence
+    clip_reward: float = 10.0  # clip rewards to [-clip_reward, clip_reward]
 
 
 # ---------------------------------------------------------------------------
 # TokenRewardModel
 # ---------------------------------------------------------------------------
+
 
 class TokenRewardModel(nn.Module):
     """Per-token reward model wrapping an AureliusTransformer backbone.
@@ -64,9 +65,7 @@ class TokenRewardModel(nn.Module):
         """
         hidden_states: list[Tensor] = []
 
-        hook = self.base_model.norm.register_forward_hook(
-            lambda m, i, o: hidden_states.append(o)
-        )
+        hook = self.base_model.norm.register_forward_hook(lambda m, i, o: hidden_states.append(o))
         try:
             self.base_model(input_ids)
         finally:
@@ -80,6 +79,7 @@ class TokenRewardModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Discounted returns
 # ---------------------------------------------------------------------------
+
 
 def compute_returns(rewards: Tensor, gamma: float = 0.99) -> Tensor:
     """Compute discounted returns for each token position.
@@ -108,6 +108,7 @@ def compute_returns(rewards: Tensor, gamma: float = 0.99) -> Tensor:
 # Generalized Advantage Estimation
 # ---------------------------------------------------------------------------
 
+
 def compute_gae(
     rewards: Tensor,
     values: Tensor,
@@ -135,7 +136,11 @@ def compute_gae(
     last_adv = torch.zeros(B, device=rewards.device, dtype=rewards.dtype)
 
     for t in reversed(range(T)):
-        next_value = values[:, t + 1] if t + 1 < T else torch.zeros(B, device=rewards.device, dtype=rewards.dtype)
+        next_value = (
+            values[:, t + 1]
+            if t + 1 < T
+            else torch.zeros(B, device=rewards.device, dtype=rewards.dtype)
+        )
         delta = rewards[:, t] + gamma * next_value - values[:, t]
         last_adv = delta + gamma * lam * last_adv
         advantages[:, t] = last_adv
@@ -146,6 +151,7 @@ def compute_gae(
 # ---------------------------------------------------------------------------
 # Reward shaping
 # ---------------------------------------------------------------------------
+
 
 def shape_rewards(rewards: Tensor, config: TokenRewardConfig) -> Tensor:
     """Apply reward shaping: clipping and optional normalization.
@@ -175,6 +181,7 @@ def shape_rewards(rewards: Tensor, config: TokenRewardConfig) -> Tensor:
 # ---------------------------------------------------------------------------
 # TokenRewardTrainer
 # ---------------------------------------------------------------------------
+
 
 class TokenRewardTrainer:
     """REINFORCE trainer with token-level dense reward signals.
@@ -223,9 +230,7 @@ class TokenRewardTrainer:
         # log_probs for positions 1..T using logits 0..T-1
         log_probs_all = F.log_softmax(logits[:, :-1, :], dim=-1)  # (B, T-1, V)
         target_ids = input_ids[:, 1:]  # (B, T-1)
-        token_log_probs = log_probs_all.gather(
-            2, target_ids.unsqueeze(-1)
-        ).squeeze(-1)  # (B, T-1)
+        token_log_probs = log_probs_all.gather(2, target_ids.unsqueeze(-1)).squeeze(-1)  # (B, T-1)
 
         # Align advantages: drop the last position (no prediction target for it)
         adv = advantages[:, :-1]  # (B, T-1)
@@ -261,7 +266,8 @@ class TokenRewardTrainer:
         # Step 3: compute GAE with zero value baseline
         values = torch.zeros_like(raw_rewards)
         advantages = compute_gae(
-            raw_rewards, values,
+            raw_rewards,
+            values,
             gamma=self.config.gamma,
             lam=self.config.gae_lambda,
         )  # (B, T)

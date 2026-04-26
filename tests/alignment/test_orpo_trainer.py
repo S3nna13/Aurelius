@@ -21,10 +21,8 @@ Covers:
 from __future__ import annotations
 
 import torch
-import pytest
 
-from src.alignment.orpo_trainer import ORPOConfig, ORPOBatch, ORPOTrainer
-
+from src.alignment.orpo_trainer import ORPOBatch, ORPOConfig, ORPOTrainer
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -41,7 +39,7 @@ def _make_batch(
     """Build a random ORPOBatch with valid log-probs in (-5, 0)."""
     torch.manual_seed(seed)
     # Log-probs must be < 0 for log_odds to be valid (they represent log p, p in (0,1))
-    chosen_lp = -torch.rand(B, T_w) * 4.0 - 0.1     # in (-4.1, -0.1)
+    chosen_lp = -torch.rand(B, T_w) * 4.0 - 0.1  # in (-4.1, -0.1)
     rejected_lp = -torch.rand(B, T_l) * 4.0 - 0.1
     if requires_grad:
         chosen_lp = chosen_lp.requires_grad_(True)
@@ -82,7 +80,7 @@ def test_sequence_log_prob_masked():
 
     # Full mask — all tokens valid
     full_mask = torch.ones(B, T)
-    result_full = trainer.sequence_log_prob(log_probs, full_mask)
+    trainer.sequence_log_prob(log_probs, full_mask)
 
     # Partial mask — zero out the last 3 positions AND set those log_probs
     # to something wildly different so that if they were counted the result
@@ -142,9 +140,7 @@ def test_log_odds_monotone():
     seq_lp = torch.tensor([-5.0, -3.0, -1.0, -0.5, -0.1])
     lo = trainer.log_odds(seq_lp)
     diffs = lo[1:] - lo[:-1]
-    assert (diffs > 0).all(), (
-        f"log_odds is not monotonically increasing: {lo}"
-    )
+    assert (diffs > 0).all(), f"log_odds is not monotonically increasing: {lo}"
 
 
 # ---------------------------------------------------------------------------
@@ -226,9 +222,7 @@ def test_total_loss_keys():
     batch = _make_batch()
     out = trainer.total_loss(batch)
     required = {"loss", "sft_loss", "or_loss", "log_odds_ratio"}
-    assert required <= set(out.keys()), (
-        f"Missing keys: {required - set(out.keys())}"
-    )
+    assert required <= set(out.keys()), f"Missing keys: {required - set(out.keys())}"
 
 
 # ---------------------------------------------------------------------------
@@ -242,9 +236,7 @@ def test_total_loss_finite():
     batch = _make_batch()
     out = trainer.total_loss(batch)
     for key, val in out.items():
-        assert torch.isfinite(val).all(), (
-            f"Non-finite value for key '{key}': {val}"
-        )
+        assert torch.isfinite(val).all(), f"Non-finite value for key '{key}': {val}"
 
 
 # ---------------------------------------------------------------------------
@@ -298,15 +290,9 @@ def test_gradient_flows():
     out = trainer.total_loss(batch)
     out["loss"].backward()
 
-    assert batch.chosen_log_probs.grad is not None, (
-        "No gradient on chosen_log_probs"
-    )
-    assert batch.rejected_log_probs.grad is not None, (
-        "No gradient on rejected_log_probs"
-    )
-    assert torch.isfinite(batch.chosen_log_probs.grad).all(), (
-        "Non-finite grad on chosen_log_probs"
-    )
+    assert batch.chosen_log_probs.grad is not None, "No gradient on chosen_log_probs"
+    assert batch.rejected_log_probs.grad is not None, "No gradient on rejected_log_probs"
+    assert torch.isfinite(batch.chosen_log_probs.grad).all(), "Non-finite grad on chosen_log_probs"
     assert torch.isfinite(batch.rejected_log_probs.grad).all(), (
         "Non-finite grad on rejected_log_probs"
     )
@@ -345,9 +331,7 @@ def test_integration_forward_backward():
 
     # All finite
     for key, val in out.items():
-        assert torch.isfinite(val).all(), (
-            f"Non-finite value in integration test for '{key}': {val}"
-        )
+        assert torch.isfinite(val).all(), f"Non-finite value in integration test for '{key}': {val}"
 
     # Combined loss = sft_loss + lambda_or * or_loss
     expected_total = out["sft_loss"] + config.lambda_or * out["or_loss"]

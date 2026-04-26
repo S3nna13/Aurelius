@@ -22,7 +22,6 @@ from dataclasses import dataclass
 import torch
 import torch.nn.functional as F
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -232,12 +231,8 @@ class ORPOTrainer:
                                           (chosen preferred over rejected).
         """
         with torch.no_grad():
-            log_p_w = self.sequence_log_prob(
-                batch.chosen_log_probs, batch.chosen_mask
-            )
-            log_p_l = self.sequence_log_prob(
-                batch.rejected_log_probs, batch.rejected_mask
-            )
+            log_p_w = self.sequence_log_prob(batch.chosen_log_probs, batch.chosen_mask)
+            log_p_l = self.sequence_log_prob(batch.rejected_log_probs, batch.rejected_mask)
             log_or = self.log_odds(log_p_w) - self.log_odds(log_p_l)
             reward_acc = (log_or > 0).float().mean().item()
 
@@ -247,5 +242,3 @@ class ORPOTrainer:
             "log_odds_ratio_mean": log_or.mean().item(),
             "reward_accuracy": reward_acc,
         }
-
-

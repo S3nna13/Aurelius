@@ -1,17 +1,18 @@
 """Tests for src/simulation/episode_recorder.py — ~45 tests."""
+
 from __future__ import annotations
 
 import dataclasses
 
 import pytest
 
-from src.simulation.agent_harness import AgentHarness, Trajectory
+from src.simulation.agent_harness import Trajectory
 from src.simulation.episode_recorder import EPISODE_RECORDER, Episode, EpisodeRecorder
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_trajectory(success: bool = False, env_name: str = "gridworld") -> Trajectory:
     return Trajectory(env_name=env_name, steps=[], total_reward=0.0, success=success)
@@ -26,12 +27,18 @@ def _fresh_recorder() -> EpisodeRecorder:
 # Episode dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestEpisode:
     def _make_episode(self, **kwargs):
         defaults = dict(
             env_name="gridworld",
             policy_name="random",
-            trajectory_data={"env_name": "gridworld", "steps": [], "total_reward": 0.0, "success": False},
+            trajectory_data={
+                "env_name": "gridworld",
+                "steps": [],
+                "total_reward": 0.0,
+                "success": False,
+            },
             timestamp="2026-01-01T00:00:00+00:00",
         )
         defaults.update(kwargs)
@@ -75,7 +82,7 @@ class TestEpisode:
         assert "k" not in ep2.metadata
 
     def test_custom_metadata(self):
-        ep = self._make_episode()
+        self._make_episode()
         ep2 = Episode(
             env_name="g",
             policy_name="r",
@@ -89,6 +96,7 @@ class TestEpisode:
 # ---------------------------------------------------------------------------
 # EpisodeRecorder.record
 # ---------------------------------------------------------------------------
+
 
 class TestEpisodeRecorderRecord:
     def test_record_returns_episode(self):
@@ -146,6 +154,7 @@ class TestEpisodeRecorderRecord:
 # EpisodeRecorder.get
 # ---------------------------------------------------------------------------
 
+
 class TestEpisodeRecorderGet:
     def test_get_returns_episode_for_valid_id(self):
         rec = _fresh_recorder()
@@ -167,6 +176,7 @@ class TestEpisodeRecorderGet:
 # ---------------------------------------------------------------------------
 # EpisodeRecorder.query
 # ---------------------------------------------------------------------------
+
 
 class TestEpisodeRecorderQuery:
     def test_query_all_no_filters(self):
@@ -214,6 +224,7 @@ class TestEpisodeRecorderQuery:
 # ---------------------------------------------------------------------------
 # EpisodeRecorder.stats
 # ---------------------------------------------------------------------------
+
 
 class TestEpisodeRecorderStats:
     def test_stats_has_total(self):
@@ -263,6 +274,7 @@ class TestEpisodeRecorderStats:
 # EpisodeRecorder.export_ids
 # ---------------------------------------------------------------------------
 
+
 class TestEpisodeRecorderExportIds:
     def test_export_ids_returns_list(self):
         rec = _fresh_recorder()
@@ -291,13 +303,14 @@ class TestEpisodeRecorderExportIds:
 # max_episodes eviction
 # ---------------------------------------------------------------------------
 
+
 class TestMaxEpisodesEviction:
     def test_evicts_oldest_when_over_capacity(self):
         rec = EpisodeRecorder(max_episodes=3)
         ep1 = rec.record("gridworld", "r", _make_trajectory())
-        ep2 = rec.record("gridworld", "r", _make_trajectory())
-        ep3 = rec.record("gridworld", "r", _make_trajectory())
-        ep4 = rec.record("gridworld", "r", _make_trajectory())  # should evict ep1
+        rec.record("gridworld", "r", _make_trajectory())
+        rec.record("gridworld", "r", _make_trajectory())
+        rec.record("gridworld", "r", _make_trajectory())  # should evict ep1
         assert rec.get(ep1.id) is None
 
     def test_does_not_exceed_max_capacity(self):
@@ -318,6 +331,7 @@ class TestMaxEpisodesEviction:
 # ---------------------------------------------------------------------------
 # EPISODE_RECORDER singleton
 # ---------------------------------------------------------------------------
+
 
 class TestEpisodeRecorderSingleton:
     def test_exists(self):

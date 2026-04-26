@@ -1,4 +1,5 @@
 """Tests for src/multiagent/negotiation_protocol.py."""
+
 from __future__ import annotations
 
 import pytest

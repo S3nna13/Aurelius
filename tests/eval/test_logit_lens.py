@@ -5,13 +5,8 @@ Import path: from aurelius.eval.logit_lens import ...
 
 from __future__ import annotations
 
-import math
-from typing import List
-
-import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.eval.logit_lens import (
     LogitLens,
     LogitLensAnalyzer,
@@ -308,9 +303,7 @@ def test_tracker_collects_hiddens():
             out = layer(out)
 
     hiddens = tracker.get_hiddens()
-    assert len(hiddens) == len(layers), (
-        f"Expected {len(layers)} hiddens, got {len(hiddens)}"
-    )
+    assert len(hiddens) == len(layers), f"Expected {len(layers)} hiddens, got {len(hiddens)}"
     for h in hiddens:
         assert isinstance(h, torch.Tensor)
         assert h.shape == x.shape

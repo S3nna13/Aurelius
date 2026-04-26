@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import time
-from typing import Iterator
+from collections.abc import Iterator
 
 import pytest
 
-from src.agent.react_loop import AgentStep, AgentTrace, ReActLoop
+from src.agent.react_loop import ReActLoop
 
 
 def _scripted(responses: list[str]):
@@ -112,9 +112,7 @@ def test_tool_timeout_captured():
         "<final_answer>moved on</final_answer>",
     ]
     gen = _scripted(script)
-    loop = ReActLoop(
-        gen, tool_registry={"slow": slow}, max_tool_seconds=0.1
-    )
+    loop = ReActLoop(gen, tool_registry={"slow": slow}, max_tool_seconds=0.1)
     trace = loop.run("call slow")
     obs = next(s for s in trace.steps if s.role == "tool")
     assert obs.error is not None

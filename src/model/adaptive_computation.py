@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
 from torch import Tensor
 
 
@@ -12,8 +13,8 @@ from torch import Tensor
 class ACTConfig:
     """Configuration for Adaptive Computation Time."""
 
-    max_steps: int = 8        # maximum pondering steps
-    epsilon: float = 0.01     # halting threshold (halt when cumulative prob >= 1-epsilon)
+    max_steps: int = 8  # maximum pondering steps
+    epsilon: float = 0.01  # halting threshold (halt when cumulative prob >= 1-epsilon)
     ponder_cost: float = 0.001  # regularization coefficient
     d_model: int = 64
 
@@ -137,12 +138,8 @@ class ACTTransformer(nn.Module):
         self.config = config
         self.n_layers = n_layers
 
-        self.layers = nn.ModuleList(
-            [nn.Linear(d_model, d_model) for _ in range(n_layers)]
-        )
-        self.act_layers = nn.ModuleList(
-            [ACTLayer(self.layers[i], config) for i in range(n_layers)]
-        )
+        self.layers = nn.ModuleList([nn.Linear(d_model, d_model) for _ in range(n_layers)])
+        self.act_layers = nn.ModuleList([ACTLayer(self.layers[i], config) for i in range(n_layers)])
         self.norm = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, d_model)
 

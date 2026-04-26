@@ -7,12 +7,12 @@ Two mechanisms:
    (Louizos et al. 2018, arXiv:1712.01312) that approximates the L0 norm
    of a weight mask during training.
 """
+
 from __future__ import annotations
 
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -24,9 +24,11 @@ logger = logging.getLogger(__name__)
 
 # ── 1. Target-Loss Pruning ───────────────────────────────────────────────────
 
+
 @dataclass
 class TargetLossPruningConfig:
     """Configuration for iterative magnitude pruning with a loss budget."""
+
     target_loss: float = 3.0
     prune_fraction_per_step: float = 0.01
     n_eval_batches: int = 10
@@ -37,6 +39,7 @@ class TargetLossPruningConfig:
 @dataclass
 class PruningResult:
     """Result of a target-loss pruning run."""
+
     final_loss: float
     target_loss: float
     n_steps: int
@@ -197,6 +200,7 @@ def target_loss_prune(
 
 # ── 2. L0 Regularization via Hard Concrete ───────────────────────────────────
 
+
 class HardConcrete(nn.Module):
     """Differentiable L0 approximation via the hard-concrete distribution.
 
@@ -274,7 +278,7 @@ class L0LinearLayer(nn.Module):
         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
 
         if bias:
-            self.bias: Optional[nn.Parameter] = nn.Parameter(torch.zeros(out_features))
+            self.bias: nn.Parameter | None = nn.Parameter(torch.zeros(out_features))
         else:
             self.bias = None
 
@@ -282,8 +286,8 @@ class L0LinearLayer(nn.Module):
         self.hard_concrete = HardConcrete(n_weights=out_features, **hc_kwargs)
 
     def forward(self, x: Tensor) -> Tensor:
-        z = self.hard_concrete()          # (out_features,)
-        masked_weight = self.weight * z.unsqueeze(1)   # broadcast over in_features
+        z = self.hard_concrete()  # (out_features,)
+        masked_weight = self.weight * z.unsqueeze(1)  # broadcast over in_features
         out = F.linear(x, masked_weight, self.bias)
         return out
 
@@ -316,8 +320,8 @@ def l0_regularization_loss(
 
 def add_l0_regularization(
     model: nn.Module,
-    target_modules: Optional[list] = None,
-    skip_modules: Optional[list] = None,
+    target_modules: list | None = None,
+    skip_modules: list | None = None,
     **hc_kwargs,
 ) -> int:
     """Replace nn.Linear layers with L0LinearLayer in-place.

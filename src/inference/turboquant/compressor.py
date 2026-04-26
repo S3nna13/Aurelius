@@ -4,6 +4,7 @@
 Stage 1 (PolarQuant): Random rotation + Lloyd-Max quantization.
 Stage 2 (QJL): Gaussian sketch of the quantization residual.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,11 +18,12 @@ from .qjl import QJLSketch
 @dataclass
 class CompressedKV:
     """Two-stage compressed representation of a single key or value tensor."""
+
     # Stage 1: PolarQuant
     polar_state: PolarQuantState
     # Stage 2: QJL on residual
-    residual_signs: torch.Tensor   # (..., sketch_dim), int8
-    residual_norms: torch.Tensor   # (...), float32
+    residual_signs: torch.Tensor  # (..., sketch_dim), int8
+    residual_norms: torch.Tensor  # (...), float32
 
 
 class TurboQuantCompressor:

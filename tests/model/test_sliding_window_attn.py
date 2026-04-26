@@ -3,18 +3,15 @@
 Tiny configs are used throughout to keep tests fast.
 """
 
-import math
-import pytest
 import torch
-import torch.nn as nn
 
 from src.model.sliding_window_attn import (
-    SWAConfig,
-    build_sliding_window_mask,
-    sliding_window_attention,
     SlidingWindowAttention,
     SWABlock,
+    SWAConfig,
+    build_sliding_window_mask,
     compare_swa_vs_full_attention,
+    sliding_window_attention,
 )
 
 # ---------------------------------------------------------------------------
@@ -22,7 +19,7 @@ from src.model.sliding_window_attn import (
 # ---------------------------------------------------------------------------
 D_MODEL = 16
 N_HEADS = 2
-D_HEAD = D_MODEL // N_HEADS   # 8
+D_HEAD = D_MODEL // N_HEADS  # 8
 WINDOW = 4
 BATCH = 2
 SEQ = 8
@@ -31,8 +28,11 @@ SEQ = 8
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def make_config(**kwargs) -> SWAConfig:
-    defaults = dict(d_model=D_MODEL, n_heads=N_HEADS, window_size=WINDOW, causal=True, dropout_p=0.0)
+    defaults = dict(
+        d_model=D_MODEL, n_heads=N_HEADS, window_size=WINDOW, causal=True, dropout_p=0.0
+    )
     defaults.update(kwargs)
     return SWAConfig(**defaults)
 
@@ -40,6 +40,7 @@ def make_config(**kwargs) -> SWAConfig:
 # ===========================================================================
 # 1. SWAConfig defaults
 # ===========================================================================
+
 
 def test_swa_config_defaults():
     cfg = SWAConfig()
@@ -54,6 +55,7 @@ def test_swa_config_defaults():
 # 2. build_sliding_window_mask — shape
 # ===========================================================================
 
+
 def test_mask_shape():
     mask = build_sliding_window_mask(SEQ, WINDOW)
     assert mask.shape == (SEQ, SEQ), f"Expected ({SEQ},{SEQ}), got {mask.shape}"
@@ -62,6 +64,7 @@ def test_mask_shape():
 # ===========================================================================
 # 3. Causal mask: positions strictly above diagonal beyond window are -inf
 # ===========================================================================
+
 
 def test_causal_mask_future_tokens_blocked():
     mask = build_sliding_window_mask(SEQ, WINDOW, causal=True)
@@ -76,6 +79,7 @@ def test_causal_mask_future_tokens_blocked():
 # 4. Within-window positions are 0.0
 # ===========================================================================
 
+
 def test_causal_mask_within_window_is_zero():
     mask = build_sliding_window_mask(SEQ, WINDOW, causal=True)
     for i in range(SEQ):
@@ -88,6 +92,7 @@ def test_causal_mask_within_window_is_zero():
 # ===========================================================================
 # 5. Beyond-window past tokens are also blocked
 # ===========================================================================
+
 
 def test_causal_mask_beyond_window_past_blocked():
     mask = build_sliding_window_mask(SEQ, WINDOW, causal=True)
@@ -102,6 +107,7 @@ def test_causal_mask_beyond_window_past_blocked():
 # 6. sliding_window_attention — output shape
 # ===========================================================================
 
+
 def test_sliding_window_attention_output_shape():
     Q = torch.randn(BATCH, N_HEADS, SEQ, D_HEAD)
     K = torch.randn(BATCH, N_HEADS, SEQ, D_HEAD)
@@ -115,6 +121,7 @@ def test_sliding_window_attention_output_shape():
 #    Verified by checking that blocked positions contribute nothing to output.
 #    Strategy: set V = eye-like so output of position i encodes which j attended.
 # ===========================================================================
+
 
 def test_swa_blocks_future_tokens():
     """Positions beyond the window should receive ~zero weight in softmax."""
@@ -151,6 +158,7 @@ def test_swa_blocks_future_tokens():
 # 8. SlidingWindowAttention — output shape
 # ===========================================================================
 
+
 def test_sliding_window_attention_module_output_shape():
     cfg = make_config()
     swa = SlidingWindowAttention(cfg)
@@ -162,6 +170,7 @@ def test_sliding_window_attention_module_output_shape():
 # ===========================================================================
 # 9. Gradient flows through SlidingWindowAttention
 # ===========================================================================
+
 
 def test_gradient_flows():
     cfg = make_config()
@@ -181,6 +190,7 @@ def test_gradient_flows():
 # 10. SWABlock — output shape
 # ===========================================================================
 
+
 def test_swa_block_output_shape():
     cfg = make_config()
     block = SWABlock(cfg)
@@ -193,18 +203,22 @@ def test_swa_block_output_shape():
 # 11. SWABlock — residual means output != input
 # ===========================================================================
 
+
 def test_swa_block_residual():
     cfg = make_config()
     block = SWABlock(cfg)
     x = torch.randn(BATCH, SEQ, D_MODEL)
     out = block(x)
     # The output should differ from the input (attention adds something)
-    assert not torch.allclose(out, x), "SWABlock output should differ from input due to residual + attn"
+    assert not torch.allclose(out, x), (
+        "SWABlock output should differ from input due to residual + attn"
+    )
 
 
 # ===========================================================================
 # 12. window_size >= seq_len → same as full causal attention
 # ===========================================================================
+
 
 def test_compare_swa_vs_full_attention_large_window():
     """When window covers the entire sequence, SWA == full causal attention."""
@@ -219,6 +233,7 @@ def test_compare_swa_vs_full_attention_large_window():
 # 13. Non-causal mask symmetry
 # ===========================================================================
 
+
 def test_non_causal_mask_symmetry():
     mask = build_sliding_window_mask(SEQ, WINDOW, causal=False)
     # Should be symmetric: mask[i,j] == mask[j,i]
@@ -228,6 +243,7 @@ def test_non_causal_mask_symmetry():
 # ===========================================================================
 # 14. Single-token sequence
 # ===========================================================================
+
 
 def test_single_token_sequence():
     """A single-token sequence should work without errors."""

@@ -27,7 +27,6 @@ import math
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, List, Optional
 
 import torch
 
@@ -66,7 +65,7 @@ class StealingThreatReport:
 
     client_id: str
     threat_level: str
-    signals: List[str] = field(default_factory=list)
+    signals: list[str] = field(default_factory=list)
     total_queries: int = 0
     suggested_action: str = ""
 
@@ -75,7 +74,7 @@ def _shannon_entropy_bits(text: str) -> float:
     """Compute Shannon entropy (bits) of the character distribution of ``text``."""
     if not text:
         return 0.0
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for ch in text:
         counts[ch] = counts.get(ch, 0) + 1
     n = float(len(text))
@@ -132,10 +131,10 @@ class ModelStealingDefense:
         self.query_rate_threshold_per_minute = int(query_rate_threshold_per_minute)
         self.diversity_window = int(diversity_window)
 
-        self._audit: Dict[str, Deque[QueryAuditEntry]] = defaultdict(
+        self._audit: dict[str, deque[QueryAuditEntry]] = defaultdict(
             lambda: deque(maxlen=max(1024, 4 * self.diversity_window))
         )
-        self._probe_hits: Dict[str, int] = defaultdict(int)
+        self._probe_hits: dict[str, int] = defaultdict(int)
 
     # ------------------------------------------------------------------ utils
     @staticmethod
@@ -194,14 +193,12 @@ class ModelStealingDefense:
         entries = list(self._audit.get(client_id, []))
         total = len(entries)
 
-        signals: List[str] = []
+        signals: list[str] = []
 
         # Rate spike signal.
         rate = self._recent_rate_per_minute(client_id)
         if rate > self.query_rate_threshold_per_minute:
-            signals.append(
-                f"rate_limit:{int(rate)}qpm>{self.query_rate_threshold_per_minute}"
-            )
+            signals.append(f"rate_limit:{int(rate)}qpm>{self.query_rate_threshold_per_minute}")
 
         # High-entropy / uniformly diverse query stream.
         window = entries[-self.diversity_window :]
@@ -268,7 +265,7 @@ class ModelStealingDefense:
         return logits + noise
 
     # ----------------------------------------------------------------- reset
-    def reset(self, client_id: Optional[str] = None) -> None:
+    def reset(self, client_id: str | None = None) -> None:
         """Reset state for a single client or all clients when ``None``."""
         if client_id is None:
             self._audit.clear()

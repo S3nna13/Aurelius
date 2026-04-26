@@ -7,13 +7,9 @@ Covers: CoLT5Config defaults, CoLT5FFN forward shapes, routing behaviour,
 
 from __future__ import annotations
 
-import math
-
-import pytest
 import torch
 
 from src.model.colt5_conditional import CoLT5Block, CoLT5Config, CoLT5FFN
-
 
 # ---------------------------------------------------------------------------
 # Shared tiny config (all tests use this unless noted)
@@ -34,6 +30,7 @@ B, T = 2, 8  # batch=2, seq_len=8 -> k = max(1, int(8*0.25)) = 2
 # 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults():
     """Default CoLT5Config should have the documented field values."""
     cfg = CoLT5Config()
@@ -50,6 +47,7 @@ def test_config_defaults():
 # 2. test_ffn_output_shape
 # ---------------------------------------------------------------------------
 
+
 def test_ffn_output_shape():
     """FFN output tensor must be [B, T, d_model]."""
     ffn = CoLT5FFN(TINY)
@@ -62,6 +60,7 @@ def test_ffn_output_shape():
 # 3. test_ffn_routing_scores_shape
 # ---------------------------------------------------------------------------
 
+
 def test_ffn_routing_scores_shape():
     """Routing scores must be [B, T]."""
     ffn = CoLT5FFN(TINY)
@@ -73,6 +72,7 @@ def test_ffn_routing_scores_shape():
 # ---------------------------------------------------------------------------
 # 4. test_heavy_fraction_respected
 # ---------------------------------------------------------------------------
+
 
 def test_heavy_fraction_respected():
     """Exactly k = max(1, int(T * heavy_fraction)) tokens receive heavy path."""
@@ -88,14 +88,14 @@ def test_heavy_fraction_respected():
 
     for b in range(B):
         assert top_k_idx[b].numel() == k_expected, (
-            f"Batch {b}: expected {k_expected} heavy tokens, "
-            f"got {top_k_idx[b].numel()}"
+            f"Batch {b}: expected {k_expected} heavy tokens, got {top_k_idx[b].numel()}"
         )
 
 
 # ---------------------------------------------------------------------------
 # 5. test_light_heavy_different
 # ---------------------------------------------------------------------------
+
 
 def test_light_heavy_different():
     """CoLT5 output must differ from a light-only baseline."""
@@ -115,6 +115,7 @@ def test_light_heavy_different():
 # ---------------------------------------------------------------------------
 # 6. test_heavy_important_tokens
 # ---------------------------------------------------------------------------
+
 
 def test_heavy_important_tokens():
     """The highest-scoring tokens should be selected for the heavy path."""
@@ -145,6 +146,7 @@ def test_heavy_important_tokens():
 # 7. test_routing_stats_keys
 # ---------------------------------------------------------------------------
 
+
 def test_routing_stats_keys():
     """routing_stats() must return a dict with the required keys."""
     ffn = CoLT5FFN(TINY)
@@ -159,6 +161,7 @@ def test_routing_stats_keys():
 # ---------------------------------------------------------------------------
 # 8. test_routing_stats_fraction_range
 # ---------------------------------------------------------------------------
+
 
 def test_routing_stats_fraction_range():
     """heavy_fraction_actual must be in [0, 1] and score_entropy in [0, 1]."""
@@ -179,6 +182,7 @@ def test_routing_stats_fraction_range():
 # 9. test_block_output_keys
 # ---------------------------------------------------------------------------
 
+
 def test_block_output_keys():
     """CoLT5Block.forward must return dict with 'output' and 'routing_scores'."""
     block = CoLT5Block(TINY)
@@ -191,6 +195,7 @@ def test_block_output_keys():
 # ---------------------------------------------------------------------------
 # 10. test_block_output_shape
 # ---------------------------------------------------------------------------
+
 
 def test_block_output_shape():
     """CoLT5Block output tensor must be [B, T, d_model]."""
@@ -208,6 +213,7 @@ def test_block_output_shape():
 # ---------------------------------------------------------------------------
 # 11. test_block_residual
 # ---------------------------------------------------------------------------
+
 
 def test_block_residual():
     """Block output should equal x + ffn(norm(x)) (pre-norm residual)."""
@@ -230,6 +236,7 @@ def test_block_residual():
 # 12. test_gradient_flows
 # ---------------------------------------------------------------------------
 
+
 def test_gradient_flows():
     """Backward pass must propagate gradients to all learnable parameters."""
     block = CoLT5Block(TINY)
@@ -249,6 +256,7 @@ def test_gradient_flows():
 # 13. test_determinism
 # ---------------------------------------------------------------------------
 
+
 def test_determinism():
     """Same input must produce identical output (no stochastic operations)."""
     block = CoLT5Block(TINY)
@@ -263,6 +271,7 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # 14. test_heavy_fraction_one
 # ---------------------------------------------------------------------------
+
 
 def test_heavy_fraction_one():
     """When heavy_fraction=1.0, every token is routed to the heavy path."""
@@ -290,6 +299,7 @@ def test_heavy_fraction_one():
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
+
 
 def test_integration_colt5_block():
     """Integration: CoLT5Block, d_model=64, B=2, T=16 -- shapes + backward."""
@@ -321,8 +331,7 @@ def test_integration_colt5_block():
         stats = block.colt5_ffn.routing_stats(routing_scores.detach())
     expected_frac = float(k_expected) / T_int
     assert abs(stats["heavy_fraction_actual"] - expected_frac) < 1e-6, (
-        f"Integration: heavy_fraction_actual {stats['heavy_fraction_actual']} "
-        f"!= {expected_frac}"
+        f"Integration: heavy_fraction_actual {stats['heavy_fraction_actual']} != {expected_frac}"
     )
 
     loss = output.mean()

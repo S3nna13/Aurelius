@@ -1,10 +1,10 @@
 """Warmup LR scheduler: linear warmup, cosine decay, get_current_lr."""
 
 import math
-from enum import Enum
+from enum import StrEnum
 
 
-class SchedulerType(str, Enum):
+class SchedulerType(StrEnum):
     LINEAR_WARMUP = "linear_warmup"
     COSINE = "cosine"
     COSINE_WITH_RESTARTS = "cosine_with_restarts"

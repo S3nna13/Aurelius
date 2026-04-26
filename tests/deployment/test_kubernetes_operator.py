@@ -13,7 +13,9 @@ from src.deployment.kubernetes_operator import (
 
 @pytest.fixture()
 def spec() -> ModelDeploymentSpec:
-    return ModelDeploymentSpec(name="aurelius", replicas=3, gpu_count=2, memory_mb=8192, cpu_cores=2.0, port=9090)
+    return ModelDeploymentSpec(
+        name="aurelius", replicas=3, gpu_count=2, memory_mb=8192, cpu_cores=2.0, port=9090
+    )
 
 
 @pytest.fixture()

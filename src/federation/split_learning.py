@@ -9,8 +9,8 @@ clients and a shared server.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -66,9 +66,7 @@ class SplitLearningCoordinator:
         self, data: SmashData, server_fn: Callable[[list[float]], list[float]]
     ) -> GradientPacket:
         output = server_fn(data.activations)
-        gradients = [
-            o - a for o, a in zip(output, data.activations[: len(output)])
-        ]
+        gradients = [o - a for o, a in zip(output, data.activations[: len(output)])]
         return GradientPacket(
             client_id=data.client_id,
             batch_id=data.batch_id,

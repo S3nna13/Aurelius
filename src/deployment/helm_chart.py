@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
@@ -67,7 +66,7 @@ class HelmChartGenerator:
             f"description: {chart.description}\n"
             "type: application\n"
             f"version: {chart.version}\n"
-            f"appVersion: \"{chart.app_version}\"\n"
+            f'appVersion: "{chart.app_version}"\n'
         )
 
     def generate_values_yaml(self, chart: HelmChart) -> str:
@@ -78,19 +77,19 @@ class HelmChartGenerator:
         env_lines: list[str] = []
         if v.env_vars:
             for k, val in v.env_vars.items():
-                env_lines.append(f"  {k}: \"{val}\"")
+                env_lines.append(f'  {k}: "{val}"')
         env_block = "\n".join(env_lines) if env_lines else "  {}"
 
         # Build resources blocks
-        req_lines = "\n".join(f"    {k}: \"{val}\"" for k, val in v.resources_requests.items())
-        lim_lines = "\n".join(f"    {k}: \"{val}\"" for k, val in v.resources_limits.items())
+        req_lines = "\n".join(f'    {k}: "{val}"' for k, val in v.resources_requests.items())
+        lim_lines = "\n".join(f'    {k}: "{val}"' for k, val in v.resources_limits.items())
 
         return (
             f"replicaCount: {v.replicas}\n"
             "\n"
             "image:\n"
             f"  repository: {v.image_repository}\n"
-            f"  tag: \"{v.image_tag}\"\n"
+            f'  tag: "{v.image_tag}"\n'
             "  pullPolicy: IfNotPresent\n"
             "\n"
             f"service:\n"
@@ -119,9 +118,7 @@ class HelmChartGenerator:
         gpu_block = ""
         if v.gpu_enabled:
             gpu_block = (
-                "          resources:\n"
-                "            limits:\n"
-                "              nvidia.com/gpu: 1\n"
+                "          resources:\n            limits:\n              nvidia.com/gpu: 1\n"
             )
 
         return (
@@ -245,7 +242,12 @@ HELM_CHART_REGISTRY: dict[str, HelmChart] = {
 # Register into ARTIFACT_BUILDER_REGISTRY
 # ---------------------------------------------------------------------------
 
-from src.deployment.container_builder import ARTIFACT_BUILDER_REGISTRY, ContainerBuilder, ContainerSpec, BuildResult  # noqa: E402
+from src.deployment.container_builder import (  # noqa: E402
+    ARTIFACT_BUILDER_REGISTRY,
+    BuildResult,
+    ContainerBuilder,
+    ContainerSpec,
+)
 
 
 class _HelmArtifactBuilder(ContainerBuilder):

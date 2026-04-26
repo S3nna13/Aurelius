@@ -17,6 +17,7 @@ Covers:
 14. test_entropy_coeff_effect
 15. test_filter_and_prepare_pipeline
 """
+
 from __future__ import annotations
 
 import math
@@ -26,10 +27,10 @@ import torch
 
 from src.training.still3_trainer import STILL3Config, STILL3Trainer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def default_trainer() -> STILL3Trainer:
@@ -45,6 +46,7 @@ def default_config() -> STILL3Config:
 # 1. Config defaults
 # ---------------------------------------------------------------------------
 
+
 def test_config_defaults(default_config):
     """STILL3Config must expose correct default hyperparameters."""
     assert default_config.min_std_threshold == 0.05
@@ -58,6 +60,7 @@ def test_config_defaults(default_config):
 # 2. filter_by_std — keeps varied group
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_std_keeps_varied(default_trainer):
     """A group with high reward variance must be retained."""
     groups = [[0.0, 0.5, 1.0, 0.2]]  # std well above 0.05
@@ -70,6 +73,7 @@ def test_filter_by_std_keeps_varied(default_trainer):
 # 3. filter_by_std — removes uniform group
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_std_removes_uniform(default_trainer):
     """A group where all rewards are identical must be discarded."""
     groups = [[1.0, 1.0, 1.0, 1.0]]  # std == 0 < 0.05
@@ -81,10 +85,11 @@ def test_filter_by_std_removes_uniform(default_trainer):
 # 4. filter_by_std — mixed groups
 # ---------------------------------------------------------------------------
 
+
 def test_filter_by_std_multiple_groups(default_trainer):
     """Mixed groups: only varied groups should survive."""
-    uniform = [0.8, 0.8, 0.8, 0.8]       # std = 0
-    varied = [0.0, 1.0, 0.5, 0.9]         # std > 0.05
+    uniform = [0.8, 0.8, 0.8, 0.8]  # std = 0
+    varied = [0.0, 1.0, 0.5, 0.9]  # std > 0.05
     nearly_uniform = [0.5, 0.501, 0.499, 0.5]  # std ≈ 0.0008 < 0.05
 
     groups = [uniform, varied, nearly_uniform]
@@ -97,17 +102,19 @@ def test_filter_by_std_multiple_groups(default_trainer):
 # 5. compute_entropy_bonus — output shape
 # ---------------------------------------------------------------------------
 
+
 def test_compute_entropy_shape(default_trainer):
     """compute_entropy_bonus should return a scalar (0-d) tensor."""
     logits = torch.randn(2, 4, 10)
     entropy = default_trainer.compute_entropy_bonus(logits)
     assert entropy.shape == torch.Size([])  # scalar
-    assert entropy.item() > 0.0            # entropy must be non-negative
+    assert entropy.item() > 0.0  # entropy must be non-negative
 
 
 # ---------------------------------------------------------------------------
 # 6. compute_entropy_bonus — uniform distribution → high entropy
 # ---------------------------------------------------------------------------
+
 
 def test_compute_entropy_uniform(default_trainer):
     """Uniform logits should yield entropy close to log(V)."""
@@ -122,6 +129,7 @@ def test_compute_entropy_uniform(default_trainer):
 # 7. compute_entropy_bonus — peaked distribution → near-zero entropy
 # ---------------------------------------------------------------------------
 
+
 def test_compute_entropy_peaked(default_trainer):
     """One-hot (very large logit mass on one token) → near-zero entropy."""
     V = 50
@@ -135,6 +143,7 @@ def test_compute_entropy_peaked(default_trainer):
 # 8. normalize_group_rewards — mean ≈ 0
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_rewards_zero_mean(default_trainer):
     """Normalised rewards should have approximately zero mean."""
     rewards = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -146,6 +155,7 @@ def test_normalize_rewards_zero_mean(default_trainer):
 # ---------------------------------------------------------------------------
 # 9. normalize_group_rewards — std ≈ 1
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_rewards_unit_std(default_trainer):
     """Normalised rewards should have approximately unit std."""
@@ -160,6 +170,7 @@ def test_normalize_rewards_unit_std(default_trainer):
 # 10. normalize_group_rewards — all same → zeros
 # ---------------------------------------------------------------------------
 
+
 def test_normalize_rewards_all_same(default_trainer):
     """If all rewards are identical, normalised rewards must be all zero."""
     rewards = [0.5, 0.5, 0.5, 0.5]
@@ -170,6 +181,7 @@ def test_normalize_rewards_all_same(default_trainer):
 # ---------------------------------------------------------------------------
 # 11. compute_policy_loss — returns scalar
 # ---------------------------------------------------------------------------
+
 
 def test_compute_policy_loss_scalar(default_trainer):
     """compute_policy_loss must return a 0-d tensor."""
@@ -182,6 +194,7 @@ def test_compute_policy_loss_scalar(default_trainer):
 # ---------------------------------------------------------------------------
 # 12. compute_policy_loss — positive reward lowers (or drives negative) loss
 # ---------------------------------------------------------------------------
+
 
 def test_compute_policy_loss_positive_reward_negative_loss(default_trainer):
     """With uniformly positive rewards, REINFORCE loss should be <= 0."""
@@ -205,6 +218,7 @@ def test_compute_policy_loss_positive_reward_negative_loss(default_trainer):
 # 13. total_loss — returns correct dict keys
 # ---------------------------------------------------------------------------
 
+
 def test_total_loss_keys(default_trainer):
     """total_loss must return a tuple (tensor, dict) with the right keys."""
     logits = torch.randn(2, 4, 20)
@@ -224,6 +238,7 @@ def test_total_loss_keys(default_trainer):
 # ---------------------------------------------------------------------------
 # 14. entropy_coeff effect
 # ---------------------------------------------------------------------------
+
 
 def test_entropy_coeff_effect():
     """Higher entropy_coeff should produce a lower (more negative) total loss
@@ -247,16 +262,17 @@ def test_entropy_coeff_effect():
 # 15. filter_and_prepare — full pipeline
 # ---------------------------------------------------------------------------
 
+
 def test_filter_and_prepare_pipeline():
     """filter_and_prepare must filter and (when enabled) normalise rewards."""
     config = STILL3Config(min_std_threshold=0.05, normalize_rewards=True)
     trainer = STILL3Trainer(config)
 
     groups = [
-        {"rewards": [1.0, 1.0, 1.0], "tag": "uniform"},   # should be filtered
-        {"rewards": [0.0, 1.0, 0.5], "tag": "varied"},    # should be kept
+        {"rewards": [1.0, 1.0, 1.0], "tag": "uniform"},  # should be filtered
+        {"rewards": [0.0, 1.0, 0.5], "tag": "varied"},  # should be kept
         {"rewards": [0.3, 0.3, 0.3], "tag": "uniform2"},  # should be filtered
-        {"rewards": [0.2, 0.8, 0.4], "tag": "varied2"},   # should be kept
+        {"rewards": [0.2, 0.8, 0.4], "tag": "varied2"},  # should be kept
     ]
 
     result = trainer.filter_and_prepare(groups)

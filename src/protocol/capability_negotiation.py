@@ -10,12 +10,12 @@ Pure stdlib only.  No external dependencies.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, FrozenSet, Set
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
 
 
-class Capability(str, Enum):
+class Capability(StrEnum):
     STREAMING = "streaming"
     TOOL_USE = "tool_use"
     VISION = "vision"
@@ -26,7 +26,7 @@ class Capability(str, Enum):
 
 @dataclass(frozen=True)
 class CapabilitySet:
-    capabilities: FrozenSet[Capability]
+    capabilities: frozenset[Capability]
     version: str = "1.0"
 
     def __post_init__(self) -> None:
@@ -47,9 +47,7 @@ class CapabilityNegotiator:
         The resulting version is taken from the server capability set.
         """
         return CapabilitySet(
-            capabilities=frozenset(
-                client_caps.capabilities & server_caps.capabilities
-            ),
+            capabilities=frozenset(client_caps.capabilities & server_caps.capabilities),
             version=server_caps.version,
         )
 
@@ -57,21 +55,21 @@ class CapabilityNegotiator:
         self,
         client: CapabilitySet,
         server: CapabilitySet,
-        required: Set[Capability],
+        required: set[Capability],
     ) -> bool:
         """Return ``True`` iff every capability in *required* is in the
         negotiated set."""
         negotiated = self.negotiate(client, server)
         return required.issubset(negotiated.capabilities)
 
-    def to_dict(self, cap_set: CapabilitySet) -> Dict[str, Any]:
+    def to_dict(self, cap_set: CapabilitySet) -> dict[str, Any]:
         """Serialise *cap_set* to a plain dict."""
         return {
             "capabilities": [c.value for c in sorted(cap_set.capabilities, key=lambda c: c.value)],
             "version": cap_set.version,
         }
 
-    def from_dict(self, d: Dict[str, Any]) -> CapabilitySet:
+    def from_dict(self, d: dict[str, Any]) -> CapabilitySet:
         """Deserialise a :class:`CapabilitySet` from a plain dict."""
         caps = frozenset(Capability(c) for c in d.get("capabilities", []))
         return CapabilitySet(
